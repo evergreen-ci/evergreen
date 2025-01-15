@@ -21,12 +21,12 @@ func TestDownstreamExpansions(t *testing.T) {
 			"FilenameIsExpanded": func(t *testing.T, ctx context.Context, comm *client.Mock, conf *internal.TaskConfig, logger client.LoggerProducer, path string) {
 				conf.Expansions = *util.NewExpansions(map[string]string{"foo": path})
 				cmd := &setDownstream{YamlFile: "${foo}"}
-				assert.Nil(t, cmd.Execute(ctx, comm, logger, conf))
+				assert.NoError(t, cmd.Execute(ctx, comm, logger, conf))
 				assert.Equal(t, cmd.YamlFile, path)
 			},
 			"ContentsAreStored": func(t *testing.T, ctx context.Context, comm *client.Mock, conf *internal.TaskConfig, logger client.LoggerProducer, path string) {
 				cmd := &setDownstream{YamlFile: path}
-				assert.Nil(t, cmd.Execute(ctx, comm, logger, conf))
+				assert.NoError(t, cmd.Execute(ctx, comm, logger, conf))
 				paramsCmd := map[string]string{}
 				paramsComm := map[string]string{}
 				for i := range cmd.downstreamParams {
@@ -63,7 +63,7 @@ func TestDownstreamExpansions(t *testing.T) {
 			path := filepath.Join(cwd, "testdata", "git", "test_expansions.yml")
 
 			cmd := &setDownstream{YamlFile: path}
-			assert.Nil(t, cmd.Execute(ctx, comm, logger, conf))
+			assert.NoError(t, cmd.Execute(ctx, comm, logger, conf))
 			paramsCmd := map[string]string{}
 			for i := range cmd.downstreamParams {
 				paramsCmd[cmd.downstreamParams[i].Key] = cmd.downstreamParams[i].Value

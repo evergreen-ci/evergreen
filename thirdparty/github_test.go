@@ -199,7 +199,7 @@ func getInstallationTokenNoCache(ctx context.Context, owner, repo string, opts *
 		return "", errors.Wrap(err, "getting config")
 	}
 
-	token, err := githubapp.CreateGitHubAppAuth(settings).CreateInstallationToken(ctx, owner, repo, opts)
+	token, _, err := githubapp.CreateGitHubAppAuth(settings).CreateInstallationToken(ctx, owner, repo, opts)
 	if err != nil {
 		return "", errors.Wrap(err, "creating installation token")
 	}
@@ -423,11 +423,6 @@ func TestValidatePR(t *testing.T) {
 	pr := prEvent.GetPullRequest()
 
 	assert.NoError(ValidatePR(pr))
-
-	mergeCommitSha := pr.MergeCommitSHA
-	pr.MergeCommitSHA = nil
-	assert.Error(ValidatePR(pr))
-	pr.MergeCommitSHA = mergeCommitSha
 
 	pr.Base = nil
 	assert.Error(ValidatePR(pr))

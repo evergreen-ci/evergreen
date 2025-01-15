@@ -542,10 +542,10 @@ func (s *taskDAGDispatchServiceSuite) TestConstructor() {
 	s.Contains(service.taskGroups, compositeGroupID("group_2", "variant_1", "project_1", "version_1"))
 	s.Contains(service.taskGroups, compositeGroupID("group_1", "variant_2", "project_1", "version_1"))
 	s.Contains(service.taskGroups, compositeGroupID("group_1", "variant_1", "project_1", "version_2"))
-	s.Equal(len(service.taskGroups[compositeGroupID("group_1", "variant_1", "project_1", "version_1")].tasks), 20)
-	s.Equal(len(service.taskGroups[compositeGroupID("group_2", "variant_1", "project_1", "version_1")].tasks), 20)
-	s.Equal(len(service.taskGroups[compositeGroupID("group_1", "variant_2", "project_1", "version_1")].tasks), 20)
-	s.Equal(len(service.taskGroups[compositeGroupID("group_1", "variant_1", "project_1", "version_2")].tasks), 20)
+	s.Len(service.taskGroups[compositeGroupID("group_1", "variant_1", "project_1", "version_1")].tasks, 20)
+	s.Len(service.taskGroups[compositeGroupID("group_2", "variant_1", "project_1", "version_1")].tasks, 20)
+	s.Len(service.taskGroups[compositeGroupID("group_1", "variant_2", "project_1", "version_1")].tasks, 20)
+	s.Len(service.taskGroups[compositeGroupID("group_1", "variant_1", "project_1", "version_2")].tasks, 20)
 
 	expectedOrder := []string{
 		"0",  // ''
@@ -973,15 +973,7 @@ func (s *taskDAGDispatchServiceSuite) TestIsRefreshFindNextTaskThreadSafe() {
 	}
 	s.Require().NoError(d.Insert(s.ctx))
 
-	items := []TaskQueueItem{}
 	for i := 0; i < 50; i++ {
-		items = append(items, TaskQueueItem{
-			Id:            fmt.Sprintf("%d", i),
-			BuildVariant:  "variant_1",
-			Version:       "version_1",
-			Project:       "project_1",
-			GroupMaxHosts: 0,
-		})
 		t := task.Task{
 			Id:                fmt.Sprintf("%d", i),
 			BuildVariant:      "variant_1",
@@ -1029,15 +1021,7 @@ func (s *taskDAGDispatchServiceSuite) TestIsRefreshFindNextTaskThreadSafe() {
 
 func (s *taskDAGDispatchServiceSuite) TestFindNextTaskThreadSafe() {
 	s.Require().NoError(db.ClearCollections(task.Collection))
-	items := []TaskQueueItem{}
 	for i := 0; i < 100; i++ {
-		items = append(items, TaskQueueItem{
-			Id:            fmt.Sprintf("%d", i),
-			BuildVariant:  "variant_1",
-			Version:       "version_1",
-			Project:       "project_1",
-			GroupMaxHosts: 0,
-		})
 		t := task.Task{
 			Id:                fmt.Sprintf("%d", i),
 			BuildVariant:      "variant_1",
@@ -1068,7 +1052,13 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTaskThreadSafe() {
 			defer wg.Done()
 			<-wait
 			item := service.FindNextTask(s.ctx, spec, utility.ZeroTime)
-			s.Require().NotNil(item)
+			s.NotNil(item)
+			if item == nil {
+				// We cannot require item to not be nil because the check would happen in
+				// a goroutine. This could cause the test to behave nondeterministically.
+				// See https://github.com/Antonboom/testifylint?tab=readme-ov-file#go-require.
+				return
+			}
 			mu.Lock()
 			dispatchedTasks[item.Id] = true
 			mu.Unlock()
@@ -1089,18 +1079,9 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTaskThreadSafe() {
 
 func (s *taskDAGDispatchServiceSuite) TestFindNextTaskGroupTaskThreadSafe() {
 	s.Require().NoError(db.ClearCollections(task.Collection))
-	items := []TaskQueueItem{}
 	for i := 0; i < 20; i++ {
 		groupNum := i / 5
 		id := fmt.Sprintf("%d", i)
-		items = append(items, TaskQueueItem{
-			Id:            id,
-			Group:         fmt.Sprintf("group_%d", groupNum),
-			BuildVariant:  "variant_1",
-			Version:       "version_1",
-			Project:       "project_1",
-			GroupMaxHosts: 1,
-		})
 		t := task.Task{
 			Id:                id,
 			TaskGroup:         fmt.Sprintf("group_%d", groupNum),
@@ -1137,7 +1118,13 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTaskGroupTaskThreadSafe() {
 			defer wg.Done()
 			<-wait
 			item := service.FindNextTask(s.ctx, spec, utility.ZeroTime)
-			s.Require().NotNil(item)
+			s.NotNil(item)
+			if item == nil {
+				// We cannot require item to not be nil because the check would happen in
+				// a goroutine. This could cause the test to behave nondeterministically.
+				// See https://github.com/Antonboom/testifylint?tab=readme-ov-file#go-require.
+				return
+			}
 			mu.Lock()
 			dispatchedTasks[item.Id] = true
 			mu.Unlock()
@@ -1156,18 +1143,9 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTaskGroupTaskThreadSafe() {
 	s.Equal(dispatchedCount, numGoroutines)
 
 	s.Require().NoError(db.ClearCollections(task.Collection))
-	items = []TaskQueueItem{}
 	for i := 0; i < 20; i++ {
 		groupNum := i / 5
 		id := fmt.Sprintf("%d", i)
-		items = append(items, TaskQueueItem{
-			Id:            id,
-			Group:         fmt.Sprintf("group_%d", groupNum),
-			BuildVariant:  "variant_1",
-			Version:       "version_1",
-			Project:       "project_1",
-			GroupMaxHosts: 1,
-		})
 		t := task.Task{
 			Id:                id,
 			TaskGroup:         fmt.Sprintf("group_%d", groupNum),
@@ -1199,7 +1177,13 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTaskGroupTaskThreadSafe() {
 			defer wg.Done()
 			<-wait
 			item := service.FindNextTask(s.ctx, spec, utility.ZeroTime)
-			s.Require().NotNil(item)
+			s.NotNil(item)
+			if item == nil {
+				// We cannot require item to not be nil because the check would happen in
+				// a goroutine. This could cause the test to behave nondeterministically.
+				// See https://github.com/Antonboom/testifylint?tab=readme-ov-file#go-require.
+				return
+			}
 			mu.Lock()
 			dispatchedTasks[item.Id] = true
 			mu.Unlock()
@@ -1392,7 +1376,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 		next = service.FindNextTask(s.ctx, spec, utility.ZeroTime)
 		nextInt, err = strconv.Atoi(next.Id)
 		s.NoError(err)
-		s.True(nextInt > currentID)
+		s.Greater(nextInt, currentID)
 		currentID = nextInt
 		s.Equal("group_1", next.Group)
 		s.Equal("variant_1", next.BuildVariant)
@@ -1410,7 +1394,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 		next = service.FindNextTask(s.ctx, spec, utility.ZeroTime)
 		nextInt, err = strconv.Atoi(next.Id)
 		s.NoError(err)
-		s.True(nextInt > currentID)
+		s.Greater(nextInt, currentID)
 		currentID = nextInt
 		s.Equal("group_2", next.Group)
 		s.Equal("variant_1", next.BuildVariant)
@@ -1428,7 +1412,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 		next = service.FindNextTask(s.ctx, spec, utility.ZeroTime)
 		nextInt, err = strconv.Atoi(next.Id)
 		s.NoError(err)
-		s.True(nextInt > currentID)
+		s.Greater(nextInt, currentID)
 		currentID = nextInt
 		s.Equal("group_1", next.Group)
 		s.Equal("variant_2", next.BuildVariant)
@@ -1446,7 +1430,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 		next = service.FindNextTask(s.ctx, spec, utility.ZeroTime)
 		nextInt, err = strconv.Atoi(next.Id)
 		s.NoError(err)
-		s.True(nextInt > currentID)
+		s.Greater(nextInt, currentID)
 		currentID = nextInt
 		s.Equal("group_1", next.Group)
 		s.Equal("variant_1", next.BuildVariant)
@@ -1610,18 +1594,18 @@ func (s *taskDAGDispatchServiceSuite) TestTaskGroupWithExternalDependency() {
 	s.Require().NotNil(next)
 	s.Equal(expectedOrder[0], next.Id)
 	s.Equal("1", taskGroup.tasks[0].Id)
-	s.Equal(false, taskGroup.tasks[0].IsDispatched)
+	s.False(taskGroup.tasks[0].IsDispatched)
 	s.Equal("6", taskGroup.tasks[1].Id)
-	s.Equal(true, taskGroup.tasks[1].IsDispatched)
+	s.True(taskGroup.tasks[1].IsDispatched)
 	s.Equal("11", taskGroup.tasks[2].Id)
-	s.Equal(false, taskGroup.tasks[2].IsDispatched)
+	s.False(taskGroup.tasks[2].IsDispatched)
 
 	for i := 1; i < 5; i++ {
 		next = service.FindNextTask(s.ctx, spec, utility.ZeroTime)
 		s.Require().NotNil(next)
 		s.Equal(expectedOrder[i], next.Id)
 		s.Equal(expectedOrder[i], taskGroup.tasks[i+1].Id)
-		s.Equal(true, taskGroup.tasks[i+1].IsDispatched)
+		s.True(taskGroup.tasks[i+1].IsDispatched)
 	}
 
 	// Set task "95"'s status to evergreen.TaskSucceeded.

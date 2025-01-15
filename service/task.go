@@ -270,7 +270,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		Repo:                 projCtx.ProjectRef.Repo,
 		Archived:             archived,
 		TotalExecutions:      totalExecutions,
-		PartOfDisplay:        projCtx.Task.IsPartOfDisplay(),
+		PartOfDisplay:        projCtx.Task.IsPartOfDisplay(r.Context()),
 		CanSync:              projCtx.Task.CanSync,
 		GeneratedById:        projCtx.Task.GeneratedBy,
 	}
@@ -337,7 +337,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	if projCtx.Patch != nil {
 		var taskOnBaseCommit *task.Task
 		var testResultsOnBaseCommit []testresult.TestResult
-		taskOnBaseCommit, err = projCtx.Task.FindTaskOnBaseCommit()
+		taskOnBaseCommit, err = projCtx.Task.FindTaskOnBaseCommit(r.Context())
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
@@ -785,7 +785,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		return
 	case evergreen.SetActiveAction:
 		active := putParams.Active
-		if active && projCtx.Task.Requester == evergreen.MergeTestRequester {
+		if active && projCtx.Task.Requester == evergreen.GithubMergeRequester {
 			http.Error(w, "commit queue tasks cannot be manually scheduled", http.StatusBadRequest)
 			return
 		}

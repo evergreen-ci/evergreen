@@ -241,12 +241,40 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     $scope.invalidSubnet = "";
   }
 
+  $scope.addInternalBucket = function () {
+    if ($scope.Settings.buckets == null) {
+      $scope.Settings.buckets = {
+        "internal_buckets": []
+      };
+    }
+    if ($scope.Settings.buckets.internal_buckets == null) {
+      $scope.Settings.buckets.internal_buckets = [];
+    }
+
+    if (!$scope.validInternalBucket($scope.new_internal_bucket)) {
+      $scope.invalidInternalBucket = "Bucket name cannot be empty.";
+      return
+    }
+
+    $scope.Settings.buckets.internal_buckets.push($scope.new_internal_bucket);
+    $scope.new_internal_bucket = "";
+    $scope.invalidInternalBucket = "";
+  }
+
   $scope.deleteSubnet = function (index) {
     $scope.Settings.providers.aws.subnets.splice(index, 1);
   }
 
   $scope.validSubnet = function (subnet) {
     return subnet && subnet.az && subnet.subnet_id;
+  }
+
+  $scope.deleteInternalBucket = function (index) {
+    $scope.Settings.buckets.internal_buckets.splice(index, 1);
+  }
+
+  $scope.validInternalBucket = function (bucket) {
+    return bucket && bucket != "";
   }
 
   $scope.addAWSVPCSubnet = function () {

@@ -39,7 +39,6 @@ func TestPipeline(t *testing.T) {
 	requesters := []string{
 		evergreen.PatchVersionRequester,
 		evergreen.GithubPRRequester,
-		evergreen.MergeTestRequester,
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -325,7 +324,7 @@ func TestPipeline(t *testing.T) {
 				"Simple": func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter, expected bson.M) {
 					withCancelledContext(ctx, func(ctx context.Context) {
 						stage := filter.buildMatchStageForTask()
-						assert.Equal(t, stage, expected)
+						assert.Equal(t, expected, stage)
 					})
 				},
 				"Task": func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter, expected bson.M) {
@@ -333,7 +332,7 @@ func TestPipeline(t *testing.T) {
 					expected["$match"].(bson.M)["_id.task_name"] = filter.Tasks[0]
 					withCancelledContext(ctx, func(ctx context.Context) {
 						stage := filter.buildMatchStageForTask()
-						assert.Equal(t, stage, expected)
+						assert.Equal(t, expected, stage)
 					})
 				},
 				"Tasks": func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter, expected bson.M) {
@@ -341,7 +340,7 @@ func TestPipeline(t *testing.T) {
 					expected["$match"].(bson.M)["_id.task_name"] = bson.M{"$in": filter.Tasks}
 					withCancelledContext(ctx, func(ctx context.Context) {
 						stage := filter.buildMatchStageForTask()
-						assert.Equal(t, stage, expected)
+						assert.Equal(t, expected, stage)
 					})
 				},
 				"Variant": func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter, expected bson.M) {
@@ -349,7 +348,7 @@ func TestPipeline(t *testing.T) {
 					expected["$match"].(bson.M)["_id.variant"] = filter.BuildVariants[0]
 					withCancelledContext(ctx, func(ctx context.Context) {
 						stage := filter.buildMatchStageForTask()
-						assert.Equal(t, stage, expected)
+						assert.Equal(t, expected, stage)
 					})
 				},
 				"Variants": func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter, expected bson.M) {
@@ -357,7 +356,7 @@ func TestPipeline(t *testing.T) {
 					expected["$match"].(bson.M)["_id.variant"] = bson.M{"$in": filter.BuildVariants}
 					withCancelledContext(ctx, func(ctx context.Context) {
 						stage := filter.buildMatchStageForTask()
-						assert.Equal(t, stage, expected)
+						assert.Equal(t, expected, stage)
 					})
 				},
 				"Distro": func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter, expected bson.M) {
@@ -365,7 +364,7 @@ func TestPipeline(t *testing.T) {
 					expected["$match"].(bson.M)["_id.distro"] = filter.Distros[0]
 					withCancelledContext(ctx, func(ctx context.Context) {
 						stage := filter.buildMatchStageForTask()
-						assert.Equal(t, stage, expected)
+						assert.Equal(t, expected, stage)
 					})
 				},
 				"Distros": func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter, expected bson.M) {
@@ -373,7 +372,7 @@ func TestPipeline(t *testing.T) {
 					expected["$match"].(bson.M)["_id.distro"] = bson.M{"$in": filter.Distros}
 					withCancelledContext(ctx, func(ctx context.Context) {
 						stage := filter.buildMatchStageForTask()
-						assert.Equal(t, stage, expected)
+						assert.Equal(t, expected, stage)
 					})
 				},
 				"Pagination": func(ctx context.Context, t *testing.T, filter *TaskReliabilityFilter, expected bson.M) {
@@ -392,7 +391,7 @@ func TestPipeline(t *testing.T) {
 					}
 					withCancelledContext(ctx, func(ctx context.Context) {
 						stage := filter.buildMatchStageForTask()
-						assert.Equal(t, stage, expected)
+						assert.Equal(t, expected, stage)
 					})
 				},
 			} {
@@ -434,7 +433,7 @@ func TestPipeline(t *testing.T) {
 						filter.StatsFilter.BeforeDate = before
 						filter.StatsFilter.GroupNumDays = 2
 						stage := filter.BuildTaskStatsQueryGroupStage()
-						assert.Equal(t, stage, bson.M{
+						assert.Equal(t, bson.M{
 							"$group": bson.M{
 								"_id": bson.M{
 									"date": bson.M{
@@ -471,7 +470,7 @@ func TestPipeline(t *testing.T) {
 								"num_timeout":            bson.M{"$sum": "$num_timeout"},
 								"total_duration_success": bson.M{"$sum": bson.M{"$multiply": taskstats.Array{"$num_success", "$avg_duration_success"}}},
 							},
-						})
+						}, stage)
 					})
 				},
 			} {
@@ -545,13 +544,13 @@ func TestPipeline(t *testing.T) {
 
 					withCancelledContext(ctx, func(ctx context.Context) {
 						pipeline := filter.taskReliabilityQueryPipeline()
-						assert.Equal(t, pipeline, []bson.M{
+						assert.Equal(t, []bson.M{
 							match,
 							simpleGroup,
 							projection,
 							sort,
 							limit,
-						})
+						}, pipeline)
 					})
 				},
 			} {

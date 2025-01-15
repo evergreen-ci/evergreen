@@ -352,6 +352,10 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, settings *
 		return errors.Wrap(err, "adding new builds")
 	}
 
+	if err := updateBuildStatusesForGeneratedTasks(ctx, v.Id, newTVPairsForExistingVariants); err != nil {
+		return errors.Wrap(err, "updating statuses for builds that have added generated tasks")
+	}
+
 	numActivatedGenerateTasks := len(activatedTasksInExistingBuilds) + len(activatedTasksInNewBuilds)
 	span.SetAttributes(attribute.Int(numActivatedGenerateTasksAttribute, numActivatedGenerateTasks))
 	if err = g.Task.SetNumActivatedGeneratedTasks(numActivatedGenerateTasks); err != nil {
@@ -364,6 +368,45 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, settings *
 	}
 
 	return nil
+}
+
+// updateBuildStatusesForGeneratedTasks updates the statuses of existing builds
+// that have added generated tasks to run. For example, if a build was already
+// finished and just had new tasks generated, the status should be updated to
+// running.
+func updateBuildStatusesForGeneratedTasks(ctx context.Context, versionID string, newTVPairsForExistingVariants TaskVariantPairs) error {
+	bvs := getBuildVariantsFromPairs(newTVPairsForExistingVariants)
+
+	builds, err := build.FindByVersionAndVariants(ctx, versionID, bvs)
+	if err != nil {
+		return errors.Wrap(err, "finding builds that need their status updated")
+	}
+
+	buildIDs := make([]string, 0, len(builds))
+	for _, b := range builds {
+		buildIDs = append(buildIDs, b.Id)
+	}
+
+	return UpdateVersionAndPatchStatusForBuilds(ctx, buildIDs)
+}
+
+// getBuildVariantsFromPairs returns a slice of all unique build variant names
+// from build variant task pairs.
+func getBuildVariantsFromPairs(pairs TaskVariantPairs) []string {
+	bvSet := make(map[string]any)
+	for _, pair := range pairs.ExecTasks {
+		bvSet[pair.Variant] = struct{}{}
+	}
+	for _, pair := range pairs.DisplayTasks {
+		bvSet[pair.Variant] = struct{}{}
+	}
+
+	var uniqueBVs []string
+	for bv := range bvSet {
+		uniqueBVs = append(uniqueBVs, bv)
+	}
+
+	return uniqueBVs
 }
 
 func validateGeneratedProjectMaxTasks(ctx context.Context, v *Version, tasksToBeCreated int) error {

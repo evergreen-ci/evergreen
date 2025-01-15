@@ -3,7 +3,12 @@
     {
       "query_file": "success.graphql",
       "result": {
-        "data": { "restartTask": { "status": "will-run", "id": "task1" } }
+        "data": {
+          "restartTask": {
+            "displayStatus": "will-run",
+            "id": "task1"
+          }
+        }
       }
     },
     {
@@ -12,8 +17,13 @@
         "errors": [
           {
             "message": "finding project for task 'nonexistent': task not found",
-            "path": ["restartTask", "taskId"],
-            "extensions": { "code": "RESOURCE_NOT_FOUND" }
+            "path": [
+              "restartTask",
+              "taskId"
+            ],
+            "extensions": {
+              "code": "RESOURCE_NOT_FOUND"
+            }
           }
         ],
         "data": null
@@ -25,15 +35,15 @@
         "data": {
           "restartTask": {
             "id": "task3",
-            "status": "will-run",
+            "displayStatus": "will-run",
             "executionTasksFull": [
               {
                 "id": "execution_task_1",
-                "status": "will-run"
+                "displayStatus": "will-run"
               },
               {
                 "id": "execution_task_2",
-                "status": "success"
+                "displayStatus": "success"
               }
             ]
           }
@@ -48,7 +58,10 @@
         "errors": [
           {
             "message": "user 'regular_user' does not have permission to 'edit tasks' for the project 'evergreen'",
-            "path": ["restartTask", "taskId"],
+            "path": [
+              "restartTask",
+              "taskId"
+            ],
             "extensions": {
               "code": "FORBIDDEN"
             }

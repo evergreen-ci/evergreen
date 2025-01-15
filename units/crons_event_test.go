@@ -139,7 +139,7 @@ func (s *cronsEventSuite) TestDegradedMode() {
 	s.NoError(e.Log())
 	jobs, err := eventNotifierJobs(s.ctx, s.env, time.Time{})
 	s.NoError(err)
-	s.Len(jobs, 0)
+	s.Empty(jobs)
 }
 
 func (s *cronsEventSuite) TestSenderDegradedModeDoesntDispatchJobs() {
@@ -158,7 +158,7 @@ func (s *cronsEventSuite) TestSenderDegradedModeDoesntDispatchJobs() {
 
 	jobs, err := notificationJobs(ctx, s.n, &flags, time.Time{})
 	s.NoError(err)
-	s.Len(jobs, 0)
+	s.Empty(jobs)
 
 	out := []notification.Notification{}
 	s.NoError(db.FindAllQ(notification.Collection, db.Q{}, &out))

@@ -44,6 +44,7 @@ const (
 	syncTasksFlagName         = "sync_tasks"
 	syncTimeoutFlagName       = "sync_timeout"
 	tasksFlagName             = "tasks"
+	testingEnvFlagName        = "testing-env"
 	traceEndpointFlagName     = "trace_endpoint"
 	uncommittedChangesFlag    = "uncommitted"
 	variantsFlagName          = "variants"
@@ -89,7 +90,12 @@ func serviceConfigFlags(flags ...cli.Flag) []cli.Flag {
 		cli.BoolFlag{
 			Name:  overwriteConfFlagName,
 			Usage: "overwrite the configuration in the DB with the file",
-		})
+		},
+		cli.BoolFlag{
+			Name:  testingEnvFlagName,
+			Usage: "if true, run Evergreen service as a testing environment",
+		},
+	)
 }
 
 func addProjectFlag(flags ...cli.Flag) []cli.Flag {
@@ -285,13 +291,6 @@ func addReuseFlags(flags ...cli.Flag) []cli.Flag {
 		Usage: fmt.Sprintf(message, "specific patch", "same", "given", ""),
 	})
 	return res
-}
-
-func addPreserveCommitsFlag(flags ...cli.Flag) []cli.Flag {
-	return append(flags, cli.BoolFlag{
-		Name:  preserveCommitsFlag,
-		Usage: "preserve separate commits when enqueueing to the commit queue",
-	})
 }
 
 func mergeFlagSlices(in ...[]cli.Flag) []cli.Flag {

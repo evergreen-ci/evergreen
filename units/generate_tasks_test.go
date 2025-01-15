@@ -695,17 +695,17 @@ func TestGeneratedTasksAreNotDependencies(t *testing.T) {
 	for _, foundTask := range tasks {
 		switch foundTask.DisplayName {
 		case "version_gen", "dependency_task":
-			assert.Equal(foundTask.DependsOn, []task.Dependency{})
+			assert.Equal([]task.Dependency{}, foundTask.DependsOn)
 		case "shouldDependOnVersionGen":
-			assert.Equal(foundTask.DependsOn, []task.Dependency{
+			assert.Equal([]task.Dependency{
 				{
 					TaskId:             "mci_identifier_generate_tasks_for_version_version_gen__01_01_01_00_00_00",
 					Status:             evergreen.TaskSucceeded,
 					OmitGeneratedTasks: true,
 				},
-			})
+			}, foundTask.DependsOn)
 		case "shouldDependOnDependencyTask":
-			assert.Equal(foundTask.DependsOn, []task.Dependency{{TaskId: "mci_identifier_testBV2_dependencyTask__01_01_01_00_00_00", Status: evergreen.TaskSucceeded}})
+			assert.Equal([]task.Dependency{{TaskId: "mci_identifier_testBV2_dependencyTask__01_01_01_00_00_00", Status: evergreen.TaskSucceeded}}, foundTask.DependsOn)
 		}
 	}
 	require.NoError(db.ClearCollections(task.Collection, model.ParserProjectCollection))
@@ -735,14 +735,14 @@ func TestGeneratedTasksAreNotDependencies(t *testing.T) {
 	for _, foundTask := range tasks {
 		switch foundTask.DisplayName {
 		case "version_gen", "dependency_task":
-			assert.Equal(foundTask.DependsOn, []task.Dependency{})
+			assert.Equal([]task.Dependency{}, foundTask.DependsOn)
 		case "shouldDependOnVersionGen":
-			assert.Equal(foundTask.DependsOn, []task.Dependency{
+			assert.Equal([]task.Dependency{
 				{TaskId: "mci_identifier_generate_tasks_for_version_version_gen__01_01_01_00_00_00", Status: evergreen.TaskSucceeded},
 				{TaskId: "mci_identifier_testBV2_dependencyTask__01_01_01_00_00_00", Status: evergreen.TaskSucceeded},
-			})
+			}, foundTask.DependsOn)
 		case "shouldDependOnDependencyTask":
-			assert.Equal(foundTask.DependsOn, []task.Dependency{{TaskId: "mci_identifier_testBV2_dependencyTask__01_01_01_00_00_00", Status: evergreen.TaskSucceeded}})
+			assert.Equal([]task.Dependency{{TaskId: "mci_identifier_testBV2_dependencyTask__01_01_01_00_00_00", Status: evergreen.TaskSucceeded}}, foundTask.DependsOn)
 		}
 	}
 
@@ -794,14 +794,14 @@ func TestParseProjects(t *testing.T) {
 	assert.NoError(err)
 	assert.Len(parsed, 1)
 	assert.Len(parsed[0].BuildVariants, 1)
-	assert.Equal(parsed[0].BuildVariants[0].Name, "race-detector")
+	assert.Equal("race-detector", parsed[0].BuildVariants[0].Name)
 	assert.Equal("my_display_task", parsed[0].BuildVariants[0].DisplayTasks[0].Name)
 	assert.Equal("lint-command", parsed[0].BuildVariants[0].DisplayTasks[0].ExecutionTasks[0])
 	assert.Equal("lint-rest-route", parsed[0].BuildVariants[0].DisplayTasks[0].ExecutionTasks[1])
 	assert.Len(parsed[0].BuildVariants[0].DisplayTasks, 1)
 	assert.Len(parsed[0].Tasks, 4)
-	assert.Equal(parsed[0].Tasks[0].Name, "lint-command")
-	assert.Equal(parsed[0].Tasks[1].Name, "lint-rest-route")
+	assert.Equal("lint-command", parsed[0].Tasks[0].Name)
+	assert.Equal("lint-rest-route", parsed[0].Tasks[1].Name)
 }
 
 func TestGenerateSkipsInvalidDependency(t *testing.T) {
@@ -918,7 +918,7 @@ buildvariants:
 		if dbTask.DisplayName == "new_task" {
 			foundGeneratedtask = true
 			// the patch_only task isn't a dependency
-			assert.Len(dbTask.DependsOn, 0)
+			assert.Empty(dbTask.DependsOn)
 		}
 	}
 	assert.True(foundGeneratedtask)

@@ -541,50 +541,6 @@ func (m *TaskAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, 
 	next(rw, r)
 }
 
-func NewCommitQueueItemOwnerMiddleware() gimlet.Middleware {
-	return &CommitQueueItemOwnerMiddleware{
-		sc: &data.DBConnector{},
-	}
-}
-
-func NewMockCommitQueueItemOwnerMiddleware() gimlet.Middleware {
-	return &CommitQueueItemOwnerMiddleware{
-		sc: &data.MockGitHubConnector{},
-	}
-}
-
-type CommitQueueItemOwnerMiddleware struct {
-	sc data.Connector
-}
-
-func (m *CommitQueueItemOwnerMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	ctx := r.Context()
-	user := MustHaveUser(ctx)
-	opCtx := MustHaveProjectContext(ctx)
-	projRef, err := opCtx.GetProjectRef()
-	if err != nil {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting project ref")))
-		return
-	}
-
-	vars := gimlet.GetVars(r)
-	itemId, ok := vars["item"]
-	if !ok {
-		itemId, ok = vars["patch_id"]
-	}
-	if !ok || itemId == "" {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.New("no commit queue items provided")))
-		return
-	}
-
-	if err = data.CheckCanRemoveCommitQueueItem(ctx, m.sc, user, projRef, itemId); err != nil {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(err))
-		return
-	}
-
-	next(rw, r)
-}
-
 // updateHostAccessTime updates the host access time and disables the host's flags to deploy new a new agent
 // or agent monitor if they are set.
 func updateHostAccessTime(ctx context.Context, h *host.Host) {

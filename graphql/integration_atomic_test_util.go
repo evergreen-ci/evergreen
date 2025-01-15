@@ -123,6 +123,7 @@ func MakeTestsInDirectory(state *AtomicGraphQLState, pathToTests string) func(t 
 				r.Header.Add("content-type", "application/json")
 				resp, err := client.Do(r)
 				require.NoError(t, err)
+				defer resp.Body.Close()
 				b, err := io.ReadAll(resp.Body)
 				require.NoError(t, err)
 
@@ -257,7 +258,7 @@ func setupScopesAndRoles(t *testing.T, state *AtomicGraphQLState) {
 
 	roles, err := roleManager.GetAllRoles()
 	require.NoError(t, err)
-	require.Len(t, roles, 0)
+	require.Empty(t, roles)
 
 	// Set up scopes and roles for projects.
 	allProjectScope := gimlet.Scope{

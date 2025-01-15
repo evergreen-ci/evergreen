@@ -256,8 +256,8 @@ func TestPodTerminationJob(t *testing.T) {
 			dbDisp, err := dispatcher.FindOneByID(pd.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbDisp)
-			assert.Equal(t, dbDisp.PodIDs, []string{"another_pod_id"}, "pod should have been removed from dispatcher's set of pods")
-			assert.Equal(t, dbDisp.TaskIDs, []string{"task_id"}, "tasks being dispatched should be unaffected")
+			assert.Equal(t, []string{"another_pod_id"}, dbDisp.PodIDs, "pod should have been removed from dispatcher's set of pods")
+			assert.Equal(t, []string{"task_id"}, dbDisp.TaskIDs, "tasks being dispatched should be unaffected")
 		},
 		"FixesDispatcherTasksWhenPodIsOnlyRemainingOne": func(ctx context.Context, t *testing.T, j *podTerminationJob) {
 			t0 := task.Task{

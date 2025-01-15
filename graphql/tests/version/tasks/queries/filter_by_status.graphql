@@ -4,7 +4,7 @@
       data {
         id
         displayName
-        status
+        displayStatus
       }
       count
     }

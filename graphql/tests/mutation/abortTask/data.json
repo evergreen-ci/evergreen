@@ -6,7 +6,7 @@
       "branch": "sandbox_project_id",
       "status": "started",
       "build_id": "b1",
-      "r": "merge_test",
+      "r": "github_merge_request",
       "commit_queue_merge": true,
       "version": "123456789012345678901234"
     },
@@ -42,7 +42,7 @@
       "activated": true,
       "execution": 0,
       "order": 5,
-      "r": "merge_test",
+      "r": "github_merge_request",
       "status": "started",
       "build_id": "b2"
     },
@@ -52,7 +52,7 @@
       "branch": "evergreen",
       "status": "started",
       "build_id": "b1",
-      "r": "merge_test",
+      "r": "github_merge_request",
       "commit_queue_merge": true,
       "version": "123456789012345678901234"
     }

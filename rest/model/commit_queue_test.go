@@ -47,11 +47,11 @@ func TestParseGitHubComment(t *testing.T) {
 
 	comment := " evergreen merge "
 	data := ParseGitHubComment(comment)
-	assert.Len(data.Modules, 0)
+	assert.Empty(data.Modules)
 
 	comment = " evergreen merge --unknown-option blah_blah "
 	data = ParseGitHubComment(comment)
-	assert.Len(data.Modules, 0)
+	assert.Empty(data.Modules)
 
 	comment = "evergreen merge --unknown-option blah_blah --module module1:1234"
 	data = ParseGitHubComment(comment)
@@ -77,7 +77,7 @@ func TestParseGitHubComment(t *testing.T) {
 
 	comment = "evergreen merge -m"
 	data = ParseGitHubComment(comment)
-	assert.Len(data.Modules, 0)
+	assert.Empty(data.Modules)
 
 	comment = `evergreen merge --unknown-option blah_blah --module module1:1234
 

@@ -412,7 +412,7 @@ func TestParameterManager(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, params, 1)
 		assert.Equal(t, params[0].Name, dbParam.Name)
-		assert.Equal(t, params[0].Basename, basename)
+		assert.Equal(t, basename, params[0].Basename)
 		// After the readers and writers are all finished and there's no more
 		// modifications being made to the parameter, the parameter returned
 		// from the ParameterManager must match the final value that was last

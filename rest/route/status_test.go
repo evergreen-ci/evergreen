@@ -78,7 +78,7 @@ func (s *StatusSuite) TestParseAndValidateDefault() {
 	err = s.h.Parse(context.Background(), r)
 	s.NoError(err)
 	s.Equal(30, s.h.minutes)
-	s.Equal(false, s.h.verbose)
+	s.False(s.h.verbose)
 }
 
 func (s *StatusSuite) TestParseAndValidateMinutes() {
@@ -87,7 +87,7 @@ func (s *StatusSuite) TestParseAndValidateMinutes() {
 	err = s.h.Parse(context.Background(), r)
 	s.NoError(err)
 	s.Equal(5, s.h.minutes)
-	s.Equal(false, s.h.verbose)
+	s.False(s.h.verbose)
 }
 
 func (s *StatusSuite) TestParseAndValidateByDistro() {
@@ -127,7 +127,7 @@ func (s *StatusSuite) TestParseAndValidateMinutesAndVerbose() {
 	err = s.h.Parse(context.Background(), r)
 	s.NoError(err)
 	s.Equal(5, s.h.minutes)
-	s.Equal(true, s.h.verbose)
+	s.True(s.h.verbose)
 }
 
 func (s *StatusSuite) TestParseAndValidateVerbose() {
@@ -136,7 +136,7 @@ func (s *StatusSuite) TestParseAndValidateVerbose() {
 	err = s.h.Parse(context.Background(), r)
 	s.NoError(err)
 	s.Equal(30, s.h.minutes)
-	s.Equal(true, s.h.verbose)
+	s.True(s.h.verbose)
 }
 
 func (s *StatusSuite) TestParseAndValidateMaxMinutes() {
@@ -145,7 +145,7 @@ func (s *StatusSuite) TestParseAndValidateMaxMinutes() {
 	err = s.h.Parse(context.Background(), r)
 	s.Error(err)
 	s.Equal(0, s.h.minutes)
-	s.Equal(false, s.h.verbose)
+	s.False(s.h.verbose)
 }
 
 func (s *StatusSuite) TestParseAndValidateNegativeMinutesAreParsedPositive() {
@@ -154,7 +154,7 @@ func (s *StatusSuite) TestParseAndValidateNegativeMinutesAreParsedPositive() {
 	err = s.h.Parse(context.Background(), r)
 	s.Error(err)
 	s.Equal(0, s.h.minutes)
-	s.Equal(false, s.h.verbose)
+	s.False(s.h.verbose)
 }
 
 func (s *StatusSuite) TestExecuteDefault() {

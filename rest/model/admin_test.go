@@ -113,15 +113,13 @@ func TestModelConversion(t *testing.T) {
 	assert.Equal(testSettings.Buckets.LogBucket.Name, utility.FromStringPtr(apiSettings.Buckets.LogBucket.Name))
 	assert.EqualValues(testSettings.Buckets.LogBucket.Type, utility.FromStringPtr(apiSettings.Buckets.LogBucket.Type))
 	assert.Equal(testSettings.Buckets.LogBucket.DBName, utility.FromStringPtr(apiSettings.Buckets.LogBucket.DBName))
+	assert.Equal(testSettings.Buckets.InternalBuckets, apiSettings.Buckets.InternalBuckets)
 	assert.EqualValues(testSettings.Buckets.Credentials.Key, utility.FromStringPtr(apiSettings.Buckets.Credentials.Key))
 	assert.EqualValues(testSettings.Buckets.Credentials.Secret, utility.FromStringPtr(apiSettings.Buckets.Credentials.Secret))
 	assert.Equal(testSettings.Cedar.BaseURL, utility.FromStringPtr(apiSettings.Cedar.BaseURL))
 	assert.Equal(testSettings.Cedar.RPCPort, utility.FromStringPtr(apiSettings.Cedar.RPCPort))
 	assert.Equal(testSettings.Cedar.User, utility.FromStringPtr(apiSettings.Cedar.User))
 	assert.Equal(testSettings.Cedar.APIKey, utility.FromStringPtr(apiSettings.Cedar.APIKey))
-	assert.EqualValues(testSettings.CommitQueue.MergeTaskDistro, utility.FromStringPtr(apiSettings.CommitQueue.MergeTaskDistro))
-	assert.EqualValues(testSettings.CommitQueue.CommitterName, utility.FromStringPtr(apiSettings.CommitQueue.CommitterName))
-	assert.EqualValues(testSettings.CommitQueue.CommitterEmail, utility.FromStringPtr(apiSettings.CommitQueue.CommitterEmail))
 	assert.EqualValues(testSettings.ContainerPools.Pools[0].Distro, utility.FromStringPtr(apiSettings.ContainerPools.Pools[0].Distro))
 	assert.EqualValues(testSettings.ContainerPools.Pools[0].Id, utility.FromStringPtr(apiSettings.ContainerPools.Pools[0].Id))
 	assert.EqualValues(testSettings.ContainerPools.Pools[0].MaxContainers, apiSettings.ContainerPools.Pools[0].MaxContainers)
@@ -267,9 +265,6 @@ func TestModelConversion(t *testing.T) {
 	assert.Equal(testSettings.Cedar.RPCPort, utility.FromStringPtr(apiSettings.Cedar.RPCPort))
 	assert.Equal(testSettings.Cedar.User, utility.FromStringPtr(apiSettings.Cedar.User))
 	assert.Equal(testSettings.Cedar.APIKey, utility.FromStringPtr(apiSettings.Cedar.APIKey))
-	assert.EqualValues(testSettings.CommitQueue.MergeTaskDistro, dbSettings.CommitQueue.MergeTaskDistro)
-	assert.EqualValues(testSettings.CommitQueue.CommitterName, dbSettings.CommitQueue.CommitterName)
-	assert.EqualValues(testSettings.CommitQueue.CommitterEmail, dbSettings.CommitQueue.CommitterEmail)
 	assert.EqualValues(testSettings.ContainerPools.Pools[0].Distro, dbSettings.ContainerPools.Pools[0].Distro)
 	assert.EqualValues(testSettings.ContainerPools.Pools[0].Id, dbSettings.ContainerPools.Pools[0].Id)
 	assert.EqualValues(testSettings.ContainerPools.Pools[0].MaxContainers, dbSettings.ContainerPools.Pools[0].MaxContainers)
@@ -358,8 +353,8 @@ func TestRestart(t *testing.T) {
 
 	apiResp := RestartResponse{}
 	assert.NoError(apiResp.BuildFromService(restartResp))
-	assert.Equal(3, len(apiResp.ItemsRestarted))
-	assert.Equal(2, len(apiResp.ItemsErrored))
+	assert.Len(apiResp.ItemsRestarted, 3)
+	assert.Len(apiResp.ItemsErrored, 2)
 }
 
 func TestEventConversion(t *testing.T) {

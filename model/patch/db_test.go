@@ -85,8 +85,8 @@ func TestByPatchNameStatusesCommitQueuePaginatedRequestersOption(t *testing.T) {
 
 			patches, count, err := ByPatchNameStatusesCommitQueuePaginated(ctx, opts)
 			assert.NoError(t, err)
-			assert.Equal(t, 5, count)
-			require.Equal(t, 5, len(patches))
+			assert.Equal(t, 3, count)
+			require.Len(t, patches, 3)
 		},
 		"GithubPRRequester": func(ctx context.Context, t *testing.T) {
 			opts := ByPatchNameStatusesCommitQueuePaginatedOptions{
@@ -96,7 +96,7 @@ func TestByPatchNameStatusesCommitQueuePaginatedRequestersOption(t *testing.T) {
 			patches, count, err := ByPatchNameStatusesCommitQueuePaginated(ctx, opts)
 			assert.NoError(t, err)
 			assert.Equal(t, 1, count)
-			require.Equal(t, 1, len(patches))
+			require.Len(t, patches, 1)
 			assert.Equal(t, "GH PR Patch", patches[0].Description)
 		},
 		"GithubMergeRequester": func(ctx context.Context, t *testing.T) {
@@ -107,20 +107,8 @@ func TestByPatchNameStatusesCommitQueuePaginatedRequestersOption(t *testing.T) {
 			patches, count, err := ByPatchNameStatusesCommitQueuePaginated(ctx, opts)
 			assert.NoError(t, err)
 			assert.Equal(t, 1, count)
-			require.Equal(t, 1, len(patches))
+			require.Len(t, patches, 1)
 			assert.Equal(t, "GH Merge Patch", patches[0].Description)
-		},
-		"MergeTestRequester": func(ctx context.Context, t *testing.T) {
-			opts := ByPatchNameStatusesCommitQueuePaginatedOptions{
-				Project:    utility.ToStringPtr("evergreen"),
-				Requesters: []string{evergreen.MergeTestRequester},
-			}
-			patches, count, err := ByPatchNameStatusesCommitQueuePaginated(ctx, opts)
-			assert.NoError(t, err)
-			assert.Equal(t, 2, count)
-			require.Equal(t, 2, len(patches))
-			assert.Equal(t, "Merge Test Patch - Alias", patches[0].Description)
-			assert.Equal(t, "Merge Test Patch - PR", patches[1].Description)
 		},
 		"PatchVersionRequester": func(ctx context.Context, t *testing.T) {
 			opts := ByPatchNameStatusesCommitQueuePaginatedOptions{
@@ -130,7 +118,7 @@ func TestByPatchNameStatusesCommitQueuePaginatedRequestersOption(t *testing.T) {
 			patches, count, err := ByPatchNameStatusesCommitQueuePaginated(ctx, opts)
 			assert.NoError(t, err)
 			assert.Equal(t, 1, count)
-			require.Equal(t, 1, len(patches))
+			require.Len(t, patches, 1)
 			assert.Equal(t, "Patch Request Patch", patches[0].Description)
 		},
 		"MultipleRequesters": func(ctx context.Context, t *testing.T) {
@@ -141,7 +129,7 @@ func TestByPatchNameStatusesCommitQueuePaginatedRequestersOption(t *testing.T) {
 			patches, count, err := ByPatchNameStatusesCommitQueuePaginated(ctx, opts)
 			assert.NoError(t, err)
 			assert.Equal(t, 2, count)
-			require.Equal(t, 2, len(patches))
+			require.Len(t, patches, 2)
 			assert.Equal(t, "GH Merge Patch", patches[0].Description)
 			assert.Equal(t, "Patch Request Patch", patches[1].Description)
 		},
@@ -151,8 +139,8 @@ func TestByPatchNameStatusesCommitQueuePaginatedRequestersOption(t *testing.T) {
 			}
 			patches, count, err := ByPatchNameStatusesCommitQueuePaginated(ctx, opts)
 			assert.NoError(t, err)
-			assert.Equal(t, 5, count)
-			require.Equal(t, 5, len(patches))
+			assert.Equal(t, 3, count)
+			require.Len(t, patches, 3)
 
 			opts = ByPatchNameStatusesCommitQueuePaginatedOptions{
 				Project:    utility.ToStringPtr("evergreen"),
@@ -160,8 +148,8 @@ func TestByPatchNameStatusesCommitQueuePaginatedRequestersOption(t *testing.T) {
 			}
 			patches, count, err = ByPatchNameStatusesCommitQueuePaginated(ctx, opts)
 			assert.NoError(t, err)
-			assert.Equal(t, 5, count)
-			require.Equal(t, 5, len(patches))
+			assert.Equal(t, 3, count)
+			require.Len(t, patches, 3)
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
@@ -186,23 +174,7 @@ func TestByPatchNameStatusesCommitQueuePaginatedRequestersOption(t *testing.T) {
 				},
 			}
 			assert.NoError(t, ghMergePatch.Insert())
-			mergeTestPatchAlias := Patch{
-				Id:          bson.NewObjectId(),
-				Project:     "evergreen",
-				Description: "Merge Test Patch - Alias",
-				Alias:       evergreen.CommitQueueAlias, // indicates merge_test requester
-			}
-			assert.NoError(t, mergeTestPatchAlias.Insert())
-			mergeTestPatchPR := Patch{
-				Id:          bson.NewObjectId(),
-				Project:     "evergreen",
-				Description: "Merge Test Patch - PR",
-				Alias:       "fake alias",
-				GithubPatchData: thirdparty.GithubPatch{
-					MergeCommitSHA: "merge_commit_sha_value", // indicates merge_test requester
-				},
-			}
-			assert.NoError(t, mergeTestPatchPR.Insert())
+
 			patchRequestPatch := Patch{
 				Id:          bson.NewObjectId(),
 				Project:     "evergreen",
@@ -240,7 +212,7 @@ func TestByPatchNameStatusesCommitQueuePaginated(t *testing.T) {
 	patches, count, err := ByPatchNameStatusesCommitQueuePaginated(ctx, opts)
 	assert.NoError(t, err)
 	assert.Equal(t, 10, count)
-	assert.Equal(t, 10, len(patches))
+	assert.Len(t, patches, 10)
 
 	// Test pagination
 	opts = ByPatchNameStatusesCommitQueuePaginatedOptions{
@@ -252,7 +224,7 @@ func TestByPatchNameStatusesCommitQueuePaginated(t *testing.T) {
 	patches, count, err = ByPatchNameStatusesCommitQueuePaginated(ctx, opts)
 	assert.NoError(t, err)
 	assert.Equal(t, 10, count)
-	assert.Equal(t, 5, len(patches))
+	assert.Len(t, patches, 5)
 	assert.Equal(t, "patch 0", patches[0].Description)
 
 	opts = ByPatchNameStatusesCommitQueuePaginatedOptions{
@@ -264,7 +236,7 @@ func TestByPatchNameStatusesCommitQueuePaginated(t *testing.T) {
 	patches, count, err = ByPatchNameStatusesCommitQueuePaginated(ctx, opts)
 	assert.NoError(t, err)
 	assert.Equal(t, 10, count)
-	assert.Equal(t, 5, len(patches))
+	assert.Len(t, patches, 5)
 	assert.Equal(t, "patch 5", patches[0].Description)
 
 	// Test filtering by commit queue
@@ -275,7 +247,7 @@ func TestByPatchNameStatusesCommitQueuePaginated(t *testing.T) {
 	patches, count, err = ByPatchNameStatusesCommitQueuePaginated(ctx, opts)
 	assert.NoError(t, err)
 	assert.Equal(t, 5, count)
-	assert.Equal(t, 5, len(patches))
+	assert.Len(t, patches, 5)
 	for _, patch := range patches {
 		assert.NotEqual(t, evergreen.CommitQueueAlias, patch.Alias)
 	}
@@ -286,7 +258,7 @@ func TestByPatchNameStatusesCommitQueuePaginated(t *testing.T) {
 	patches, count, err = ByPatchNameStatusesCommitQueuePaginated(ctx, opts)
 	assert.NoError(t, err)
 	assert.Equal(t, 5, count)
-	assert.Equal(t, 5, len(patches))
+	assert.Len(t, patches, 5)
 	for _, patch := range patches {
 		assert.Equal(t, evergreen.CommitQueueAlias, patch.Alias)
 	}

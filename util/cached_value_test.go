@@ -17,7 +17,7 @@ func TestCachedIntValue(t *testing.T) {
 		CollectedAt: time.Now(),
 	}
 
-	assert.True(time.Since(cv.CollectedAt) < cv.TTL)
+	assert.Less(time.Since(cv.CollectedAt), cv.TTL)
 
 	// its ok because it's not stale
 	val, ok := cv.Get()
@@ -28,7 +28,7 @@ func TestCachedIntValue(t *testing.T) {
 	cv.TTL = time.Second
 	startingTime := time.Now().Add(-time.Minute)
 	cv.CollectedAt = startingTime
-	assert.False(time.Since(cv.CollectedAt) < cv.TTL)
+	assert.GreaterOrEqual(time.Since(cv.CollectedAt), cv.TTL)
 
 	val, ok = cv.Get()
 	assert.False(ok)
@@ -47,7 +47,7 @@ func TestCachedIntValue(t *testing.T) {
 	val, ok = cv.Get()
 	assert.True(ok)
 	assert.Equal(42, val)
-	assert.Equal(cv.String(), "42")
+	assert.Equal("42", cv.String())
 	assert.True(cv.CollectedAt.After(startingTime))
 
 	// test refresher setting
@@ -72,7 +72,7 @@ func TestCachedDurationValue(t *testing.T) {
 		CollectedAt: time.Now(),
 	}
 
-	assert.True(time.Since(cv.CollectedAt) < cv.TTL)
+	assert.Less(time.Since(cv.CollectedAt), cv.TTL)
 
 	// don't need to save (ok) if it's not stale
 	val, ok := cv.Get()
@@ -83,7 +83,7 @@ func TestCachedDurationValue(t *testing.T) {
 	cv.TTL = time.Second
 	startingTime := time.Now().Add(-time.Minute)
 	cv.CollectedAt = startingTime
-	assert.False(time.Since(cv.CollectedAt) < cv.TTL)
+	assert.GreaterOrEqual(time.Since(cv.CollectedAt), cv.TTL)
 
 	val, ok = cv.Get()
 	assert.False(ok)
@@ -102,7 +102,7 @@ func TestCachedDurationValue(t *testing.T) {
 	val, ok = cv.Get()
 	assert.True(ok)
 	assert.Equal(42*time.Second, val.Average)
-	assert.Equal(cv.String(), "42s")
+	assert.Equal("42s", cv.String())
 	assert.True(cv.CollectedAt.After(startingTime))
 
 	// test refresher setting

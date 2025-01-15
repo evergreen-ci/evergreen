@@ -359,8 +359,8 @@ func (h *podAgentNextTask) checkAndRedispatchRunningTask(ctx context.Context, p 
 		return gimlet.NewJSONResponse(struct{}{})
 	}
 
-	if t.IsPartOfDisplay() {
-		if err = model.UpdateDisplayTaskForTask(t); err != nil {
+	if t.IsPartOfDisplay(ctx) {
+		if err = model.UpdateDisplayTaskForTask(ctx, t); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "updating parent display task for task '%s'", t.Id))
 		}
 	}
@@ -498,8 +498,8 @@ func (h *podAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "calling mark finish on task '%s'", t.Id))
 	}
 
-	if evergreen.IsCommitQueueRequester(t.Requester) {
-		if err = model.HandleEndTaskForCommitQueueTask(ctx, t, h.details.Status); err != nil {
+	if evergreen.IsGithubMergeQueueRequester(t.Requester) {
+		if err = model.HandleEndTaskForGithubMergeQueueTask(ctx, t, h.details.Status); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(err)
 		}
 	}
@@ -545,7 +545,7 @@ func (h *podAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 		"path":        fmt.Sprintf("/rest/v2/pods/%s/task/%s/end", p.ID, t.Id),
 	}
 
-	if t.IsPartOfDisplay() {
+	if t.IsPartOfDisplay(ctx) {
 		msg["display_task_id"] = t.DisplayTaskId
 	}
 
