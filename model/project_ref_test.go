@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud/parameterstore/fakeparameter"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/parsley"
@@ -3165,7 +3164,7 @@ func TestFindDownstreamProjects(t *testing.T) {
 }
 
 func TestAddEmptyBranch(t *testing.T) {
-	require.NoError(t, db.ClearCollections(user.Collection, ProjectRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection, commitqueue.Collection))
+	require.NoError(t, db.ClearCollections(user.Collection, ProjectRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection))
 	u := user.DBUser{
 		Id: "me",
 	}
@@ -3185,7 +3184,7 @@ func TestAddPermissions(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(user.Collection, ProjectRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection, commitqueue.Collection))
+	assert.NoError(db.ClearCollections(user.Collection, ProjectRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection))
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 	env := testutil.NewEnvironment(ctx, t)
 	u := user.DBUser{

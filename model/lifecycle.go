@@ -1181,7 +1181,6 @@ func createOneTask(ctx context.Context, id string, creationInfo TaskCreationInfo
 		TriggerID:                  creationInfo.Version.TriggerID,
 		TriggerType:                creationInfo.Version.TriggerType,
 		TriggerEvent:               creationInfo.Version.TriggerEvent,
-		CommitQueueMerge:           buildVarTask.CommitQueueMerge,
 		IsGithubCheck:              isGithubCheck,
 		ActivatedBy:                creationInfo.Version.AuthorID, // this will be overridden if the task was activated by stepback
 		DisplayTaskId:              utility.ToStringPtr(""),       // this will be overridden if the task is an execution task

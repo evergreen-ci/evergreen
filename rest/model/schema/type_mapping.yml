@@ -5,5 +5,3 @@ models:
     model: github.com/evergreen-ci/evergreen/model/patch.DisplayTask
   BaseTaskInfo:
     model: github.com/evergreen-ci/evergreen/model/task.BaseTaskInfo
-  Module:
-    model: github.com/evergreen-ci/evergreen/model/commitqueue.Module

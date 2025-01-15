@@ -5098,9 +5098,8 @@ func TestTVToTaskUnit(t *testing.T) {
 					Variant:  "rhel",
 					Priority: 20,
 				}, {TaskName: "compile", Variant: "ubuntu"}: {
-					Name:             "compile",
-					Variant:          "ubuntu",
-					CommitQueueMerge: true,
+					Name:    "compile",
+					Variant: "ubuntu",
 					DependsOn: []model.TaskUnitDependency{
 						{
 							Name:    "setup",
@@ -5149,9 +5148,8 @@ func TestTVToTaskUnit(t *testing.T) {
 						Name: "ubuntu",
 						Tasks: []model.BuildVariantTaskUnit{
 							{
-								Name:             "compile",
-								Variant:          "ubuntu",
-								CommitQueueMerge: true,
+								Name:    "compile",
+								Variant: "ubuntu",
 								DependsOn: []model.TaskUnitDependency{
 									{
 										Name:    "setup",
@@ -5185,11 +5183,10 @@ func TestTVToTaskUnit(t *testing.T) {
 					Variant:  "rhel",
 					Priority: 20,
 				}, {TaskName: "compile", Variant: "ubuntu"}: {
-					Name:             "compile",
-					Variant:          "ubuntu",
-					IsPartOfGroup:    true,
-					GroupName:        "compile_group",
-					CommitQueueMerge: true,
+					Name:          "compile",
+					Variant:       "ubuntu",
+					IsPartOfGroup: true,
+					GroupName:     "compile_group",
 					DependsOn: []model.TaskUnitDependency{
 						{
 							Name:    "setup",
@@ -5246,9 +5243,8 @@ func TestTVToTaskUnit(t *testing.T) {
 						Name: "ubuntu",
 						Tasks: []model.BuildVariantTaskUnit{
 							{
-								Name:             "compile_group",
-								Variant:          "ubuntu",
-								CommitQueueMerge: true,
+								Name:    "compile_group",
+								Variant: "ubuntu",
 							},
 						},
 					}, {
@@ -5286,7 +5282,6 @@ func TestTVToTaskUnit(t *testing.T) {
 					assert.Contains(t, taskUnit.DependsOn, dep)
 				}
 				assert.Equal(t, expectedTaskUnit.Stepback, taskUnit.Stepback)
-				assert.Equal(t, expectedTaskUnit.CommitQueueMerge, taskUnit.CommitQueueMerge, "%s/%s", expectedTaskUnit.Variant, expectedTaskUnit.Name)
 				assert.Equal(t, expectedTaskUnit.Variant, taskUnit.Variant)
 			}
 		})

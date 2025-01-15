@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/build"
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -450,7 +449,7 @@ func TestSetActiveState(t *testing.T) {
 	defer cancel()
 
 	Convey("With one task with no dependencies", t, func() {
-		require.NoError(t, db.ClearCollections(task.Collection, build.Collection, task.OldCollection, VersionCollection, commitqueue.Collection))
+		require.NoError(t, db.ClearCollections(task.Collection, build.Collection, task.OldCollection, VersionCollection))
 		var err error
 
 		displayName := "testName"
@@ -474,7 +473,6 @@ func TestSetActiveState(t *testing.T) {
 			Version:           v.Id,
 			Project:           "p",
 			Status:            evergreen.TaskUndispatched,
-			CommitQueueMerge:  true,
 			Requester:         evergreen.GithubMergeRequester,
 			TaskGroup:         "tg",
 			TaskGroupMaxHosts: 1,

@@ -1209,11 +1209,6 @@ func validateBVNames(project *model.Project) ValidationErrors {
 					Message: fmt.Sprintf("buildvariant '%s' does not have a display name", buildVariant.Name),
 				},
 			)
-		} else if dispName == evergreen.MergeTaskVariant {
-			errs = append(errs, ValidationError{
-				Level:   Error,
-				Message: fmt.Sprintf("the variant name '%s' is reserved for the commit queue", evergreen.MergeTaskVariant),
-			})
 		}
 
 		if strings.ContainsAny(buildVariant.Name, strings.Join(unauthorizedCharacters, "")) {
