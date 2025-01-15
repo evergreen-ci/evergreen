@@ -802,7 +802,7 @@ func (t *Task) setDependenciesMetTime() {
 			dependenciesMetTime = dependency.FinishedAt
 		}
 	}
-	if dependenciesMetTime.IsZero() {
+	if utility.IsZeroTime(dependenciesMetTime) {
 		dependenciesMetTime = time.Now()
 	}
 	t.DependenciesMetTime = dependenciesMetTime
