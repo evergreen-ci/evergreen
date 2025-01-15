@@ -560,7 +560,7 @@ func constructAliasWarnings(aliasMap map[string]model.ProjectAlias, aliasNeedsVa
 		msgComponents := []string{}
 		switch a.Alias {
 		case evergreen.CommitQueueAlias:
-			msgComponents = append(msgComponents, "Commit queue alias")
+			msgComponents = append(msgComponents, "Merge queue alias")
 		case evergreen.GithubPRAlias:
 			msgComponents = append(msgComponents, "GitHub PR alias")
 		case evergreen.GitTagAlias:
