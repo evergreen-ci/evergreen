@@ -259,8 +259,8 @@ func (h *markTaskForRestartHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 	taskToRestart := t
-	if t.IsPartOfDisplay() {
-		dt, err := t.GetDisplayTask()
+	if t.IsPartOfDisplay(ctx) {
+		dt, err := t.GetDisplayTask(ctx)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting display task for execution task '%s'", h.taskID))
 		}
@@ -883,7 +883,7 @@ func (h *startTaskHandler) Run(ctx context.Context) gimlet.Responder {
 	})
 
 	updates := model.StatusChanges{}
-	if err = model.MarkStart(t, &updates); err != nil {
+	if err = model.MarkStart(ctx, t, &updates); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "marking task '%s' started", t.Id))
 	}
 
@@ -1277,7 +1277,7 @@ func (h *setDownstreamParamsHandler) Parse(ctx context.Context, r *http.Request)
 			"message": errorMessage,
 			"task_id": h.taskID,
 		})
-		return errors.Wrapf(err, errorMessage)
+		return errors.Wrap(err, errorMessage)
 	}
 	return nil
 }
@@ -1412,7 +1412,7 @@ func (h *checkRunHandler) Parse(ctx context.Context, r *http.Request) error {
 			"message": errorMessage,
 			"task_id": h.taskID,
 		})
-		return errors.Wrapf(err, errorMessage)
+		return errors.Wrap(err, errorMessage)
 	}
 
 	// output is empty if it does not specify the three fields Evergreen processes.
@@ -1429,7 +1429,7 @@ func (h *checkRunHandler) Parse(ctx context.Context, r *http.Request) error {
 			"task_id": h.taskID,
 			"error":   err.Error(),
 		})
-		return errors.Wrapf(err, errorMessage)
+		return errors.Wrap(err, errorMessage)
 	}
 
 	return nil
@@ -1570,7 +1570,7 @@ func (h *createGitHubDynamicAccessToken) Parse(ctx context.Context, r *http.Requ
 		"task_id": h.taskID,
 	}))
 
-	return errors.Wrapf(err, errorMessage)
+	return errors.Wrap(err, errorMessage)
 }
 
 func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Responder {

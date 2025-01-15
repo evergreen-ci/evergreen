@@ -108,8 +108,8 @@ func SetActiveState(ctx context.Context, caller string, active bool, tasks ...ta
 	}
 
 	for _, t := range tasksToActivate {
-		if t.IsPartOfDisplay() {
-			catcher.Wrap(UpdateDisplayTaskForTask(&t), "updating display task")
+		if t.IsPartOfDisplay(ctx) {
+			catcher.Wrap(UpdateDisplayTaskForTask(ctx, &t), "updating display task")
 		}
 	}
 	for b, item := range buildToTaskMap {
@@ -235,7 +235,7 @@ func activatePreviousTask(ctx context.Context, taskId, caller string, originalSt
 	// find previous task limiting to just the last one
 	filter, sort := task.ByBeforeRevision(t.RevisionOrderNumber, t.BuildVariant, t.DisplayName, t.Project, t.Requester)
 	query := db.Query(filter).Sort(sort)
-	prevTask, err := task.FindOne(query)
+	prevTask, err := task.FindOne(ctx, query)
 	if err != nil {
 		return errors.Wrap(err, "finding previous task")
 	}
@@ -285,7 +285,7 @@ func TryResetTask(ctx context.Context, settings *evergreen.Settings, taskId, use
 	if t == nil {
 		return errors.Errorf("cannot restart task '%s' because it could not be found", taskId)
 	}
-	if t.IsPartOfDisplay() {
+	if t.IsPartOfDisplay(ctx) {
 		return errors.Errorf("cannot restart execution task '%s' because it is part of a display task", t.Id)
 	}
 
@@ -365,7 +365,7 @@ func TryResetTask(ctx context.Context, settings *evergreen.Settings, taskId, use
 		caller = user
 	}
 	if t.IsPartOfSingleHostTaskGroup() {
-		if err = t.SetResetWhenFinished(user); err != nil {
+		if err = t.SetResetWhenFinished(ctx, user); err != nil {
 			return errors.Wrap(err, "marking task group for reset")
 		}
 		return errors.Wrap(checkResetSingleHostTaskGroup(ctx, t, caller), "resetting single host task group")
@@ -381,10 +381,10 @@ func resetTask(ctx context.Context, taskId, caller string) error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	if t.IsPartOfDisplay() {
+	if t.IsPartOfDisplay(ctx) {
 		return errors.Errorf("cannot restart execution task '%s' because it is part of a display task", t.Id)
 	}
-	if err = task.CheckUsersPatchTaskLimit(t.Requester, caller, false, *t); err != nil {
+	if err = task.CheckUsersPatchTaskLimit(ctx, t.Requester, caller, false, *t); err != nil {
 		return errors.Wrap(err, "updating patch task limit for user")
 	}
 	if err = t.Archive(ctx); err != nil {
@@ -536,7 +536,7 @@ func doLinearStepback(ctx context.Context, t *task.Task) error {
 	//See if there is a prior success for this particular task.
 	//If there isn't, we should not activate the previous task because
 	//it could trigger stepping backwards ad infinitum.
-	prevTask, err := t.PreviousCompletedTask(t.Project, []string{evergreen.TaskSucceeded})
+	prevTask, err := t.PreviousCompletedTask(ctx, t.Project, []string{evergreen.TaskSucceeded})
 	if err != nil {
 		return errors.Wrap(err, "locating previous successful task")
 	}
@@ -572,7 +572,7 @@ func doBisectStepback(ctx context.Context, t *task.Task) error {
 		s = *t.StepbackInfo
 	} else {
 		// If this is the first iteration of stepback, we must get the initial condition (last successful passing task).
-		lastPassing, err := t.PreviousCompletedTask(t.Project, []string{evergreen.TaskSucceeded})
+		lastPassing, err := t.PreviousCompletedTask(ctx, t.Project, []string{evergreen.TaskSucceeded})
 		if err != nil {
 			return errors.Wrap(err, "locating previous successful task")
 		}
@@ -604,7 +604,7 @@ func doBisectStepback(ctx context.Context, t *task.Task) error {
 	}
 
 	// The midway task is our next stepback target.
-	nextTask, err := task.ByBeforeMidwayTaskFromIds(s.LastFailingStepbackTaskId, s.LastPassingStepbackTaskId)
+	nextTask, err := task.ByBeforeMidwayTaskFromIds(ctx, s.LastFailingStepbackTaskId, s.LastPassingStepbackTaskId)
 	if err != nil {
 		return errors.Wrap(err, "finding previous task")
 	}
@@ -662,7 +662,7 @@ func doBisectStepbackForGeneratedTask(ctx context.Context, generator *task.Task,
 		// Carry over from the last task.
 		s = *lastStepbackInfo
 	} else {
-		lastPassingGenerated, err := generated.PreviousCompletedTask(generated.Project, []string{evergreen.TaskSucceeded})
+		lastPassingGenerated, err := generated.PreviousCompletedTask(ctx, generated.Project, []string{evergreen.TaskSucceeded})
 		if err != nil {
 			return errors.Wrap(err, "locating previous successful task")
 		}
@@ -704,7 +704,7 @@ func doBisectStepbackForGeneratedTask(ctx context.Context, generator *task.Task,
 	}
 
 	// The midway task is our next stepback target.
-	nextTask, err := task.ByBeforeMidwayTaskFromIds(s.LastFailingStepbackTaskId, s.LastPassingStepbackTaskId)
+	nextTask, err := task.ByBeforeMidwayTaskFromIds(ctx, s.LastFailingStepbackTaskId, s.LastPassingStepbackTaskId)
 	if err != nil {
 		return errors.Wrapf(err, "finding midway task between tasks '%s' and '%s'", s.LastFailingStepbackTaskId, s.LastPassingStepbackTaskId)
 	}
@@ -847,7 +847,7 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 		"execution_platform": t.ExecutionPlatform,
 	})
 	origin := evergreen.APIServerTaskActivator
-	if t.IsPartOfDisplay() {
+	if t.IsPartOfDisplay(ctx) {
 		catcher.Add(markEndDisplayTask(ctx, settings, t, caller, origin))
 	} else if t.IsPartOfSingleHostTaskGroup() {
 		catcher.Wrap(checkResetSingleHostTaskGroup(ctx, t, caller), "resetting single host task group")
@@ -867,7 +867,7 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 
 	catcher.Wrap(logTaskEndStats(ctx, t), "logging task end stats")
 
-	if (t.ResetWhenFinished || t.ResetFailedWhenFinished) && !t.IsPartOfDisplay() && !t.IsPartOfSingleHostTaskGroup() {
+	if (t.ResetWhenFinished || t.ResetFailedWhenFinished) && !t.IsPartOfDisplay(ctx) && !t.IsPartOfSingleHostTaskGroup() {
 		if t.IsAutomaticRestart {
 			caller = evergreen.AutoRestartActivator
 		}
@@ -878,10 +878,10 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 }
 
 func markEndDisplayTask(ctx context.Context, settings *evergreen.Settings, t *task.Task, caller, origin string) error {
-	if err := UpdateDisplayTaskForTask(t); err != nil {
+	if err := UpdateDisplayTaskForTask(ctx, t); err != nil {
 		return errors.Wrap(err, "updating display task")
 	}
-	dt, err := t.GetDisplayTask()
+	dt, err := t.GetDisplayTask(ctx)
 	if err != nil {
 		return errors.Wrap(err, "getting display task")
 	}
@@ -891,8 +891,8 @@ func markEndDisplayTask(ctx context.Context, settings *evergreen.Settings, t *ta
 func attemptStepback(ctx context.Context, t *task.Task, status string) {
 	var err error
 	if !evergreen.IsPatchRequester(t.Requester) {
-		if t.IsPartOfDisplay() {
-			_, err = t.GetDisplayTask()
+		if t.IsPartOfDisplay(ctx) {
+			_, err = t.GetDisplayTask(ctx)
 			if err != nil {
 				err = errors.Wrap(err, "getting display task")
 			} else {
@@ -937,7 +937,7 @@ func logTaskEndStats(ctx context.Context, t *task.Task) error {
 		"version":              t.Version,
 	}
 
-	if t.IsPartOfDisplay() {
+	if t.IsPartOfDisplay(ctx) {
 		msg["display_task_id"] = t.DisplayTaskId
 	}
 
@@ -1749,7 +1749,7 @@ func UpdateVersionAndPatchStatusForBuilds(ctx context.Context, buildIds []string
 }
 
 // MarkStart updates the task, build, version and if necessary, patch documents with the task start time
-func MarkStart(t *task.Task, updates *StatusChanges) error {
+func MarkStart(ctx context.Context, t *task.Task, updates *StatusChanges) error {
 	var err error
 
 	startTime := time.Now().Round(time.Millisecond)
@@ -1780,8 +1780,8 @@ func MarkStart(t *task.Task, updates *StatusChanges) error {
 		}
 	}
 
-	if t.IsPartOfDisplay() {
-		return UpdateDisplayTaskForTask(t)
+	if t.IsPartOfDisplay(ctx) {
+		return UpdateDisplayTaskForTask(ctx, t)
 	}
 
 	return nil
@@ -1789,16 +1789,16 @@ func MarkStart(t *task.Task, updates *StatusChanges) error {
 
 // MarkHostTaskDispatched marks a task as being dispatched to the host. If it's
 // part of a display task, update the display task as necessary.
-func MarkHostTaskDispatched(t *task.Task, h *host.Host) error {
-	if err := t.MarkAsHostDispatched(h.Id, h.Distro.Id, h.AgentRevision, time.Now()); err != nil {
+func MarkHostTaskDispatched(ctx context.Context, t *task.Task, h *host.Host) error {
+	if err := t.MarkAsHostDispatched(ctx, h.Id, h.Distro.Id, h.AgentRevision, time.Now()); err != nil {
 		return errors.Wrapf(err, "marking task '%s' as dispatched "+
 			"on host '%s'", t.Id, h.Id)
 	}
 
 	event.LogHostTaskDispatched(t.Id, t.Execution, h.Id)
 
-	if t.IsPartOfDisplay() {
-		return UpdateDisplayTaskForTask(t)
+	if t.IsPartOfDisplay(ctx) {
+		return UpdateDisplayTaskForTask(ctx, t)
 	}
 
 	return nil
@@ -1896,8 +1896,8 @@ func RestartFailedTasks(ctx context.Context, opts RestartOptions) (RestartResult
 	displayTasksToCheck := map[string]task.Task{}
 	idsToRestart := []string{}
 	for _, t := range tasksToRestart {
-		if t.IsPartOfDisplay() {
-			dt, err := t.GetDisplayTask()
+		if t.IsPartOfDisplay(ctx) {
+			dt, err := t.GetDisplayTask(ctx)
 			if err != nil {
 				return results, errors.Wrap(err, "getting display task")
 			}
@@ -1918,7 +1918,7 @@ func RestartFailedTasks(ctx context.Context, opts RestartOptions) (RestartResult
 		if dt.IsFinished() {
 			idsToRestart = append(idsToRestart, id)
 		} else {
-			if err = dt.SetResetWhenFinished(opts.User); err != nil {
+			if err = dt.SetResetWhenFinished(ctx, opts.User); err != nil {
 				return results, errors.Wrapf(err, "marking display task '%s' for reset", id)
 			}
 		}
@@ -2059,12 +2059,12 @@ func FixStaleTask(ctx context.Context, settings *evergreen.Settings, t *task.Tas
 		}
 	} else {
 		if err := endAndResetSystemFailedTask(ctx, settings, t, failureDesc); err != nil {
-			if !t.IsPartOfDisplay() {
+			if !t.IsPartOfDisplay(ctx) {
 				return errors.Wrap(err, "resetting heartbeat task")
 			}
 			// It's possible for display tasks to race, since multiple execution tasks can system fail at the same time.
 			// Only error if the display task hasn't actually been reset.
-			dt, dbErr := t.GetDisplayTask()
+			dt, dbErr := t.GetDisplayTask(ctx)
 			if dbErr != nil {
 				return errors.Wrap(dbErr, "confirming display task status")
 			}
@@ -2150,8 +2150,8 @@ func endAndResetSystemFailedTask(ctx context.Context, settings *evergreen.Settin
 // Marks display tasks as reset when finished and then check if it can be reset immediately.
 func ResetTaskOrDisplayTask(ctx context.Context, settings *evergreen.Settings, t *task.Task, user, origin string, failedOnly bool, detail *apimodels.TaskEndDetail) error {
 	taskToReset := *t
-	if taskToReset.IsPartOfDisplay() { // if given an execution task, attempt to restart the full display task
-		dt, err := taskToReset.GetDisplayTask()
+	if taskToReset.IsPartOfDisplay(ctx) { // if given an execution task, attempt to restart the full display task
+		dt, err := taskToReset.GetDisplayTask(ctx)
 		if err != nil {
 			return errors.Wrap(err, "getting display task")
 		}
@@ -2161,11 +2161,11 @@ func ResetTaskOrDisplayTask(ctx context.Context, settings *evergreen.Settings, t
 	}
 	if taskToReset.DisplayOnly {
 		if failedOnly {
-			if err := taskToReset.SetResetFailedWhenFinished(user); err != nil {
+			if err := taskToReset.SetResetFailedWhenFinished(ctx, user); err != nil {
 				return errors.Wrap(err, "marking display task for reset")
 			}
 		} else {
-			if err := taskToReset.SetResetWhenFinished(user); err != nil {
+			if err := taskToReset.SetResetWhenFinished(ctx, user); err != nil {
 				return errors.Wrap(err, "marking display task for reset")
 			}
 		}
@@ -2176,8 +2176,8 @@ func ResetTaskOrDisplayTask(ctx context.Context, settings *evergreen.Settings, t
 }
 
 // UpdateDisplayTaskForTask updates the status of the given execution task's display task
-func UpdateDisplayTaskForTask(t *task.Task) error {
-	if !t.IsPartOfDisplay() {
+func UpdateDisplayTaskForTask(ctx context.Context, t *task.Task) error {
+	if !t.IsPartOfDisplay(ctx) {
 		return errors.Errorf("task '%s' is not an execution task", t.Id)
 	}
 
@@ -2201,7 +2201,7 @@ func UpdateDisplayTaskForTask(t *task.Task) error {
 		// the latest display task data.
 		t.DisplayTask = nil
 
-		originalDisplayTask, err = t.GetDisplayTask()
+		originalDisplayTask, err = t.GetDisplayTask(ctx)
 		if err != nil {
 			return errors.Wrap(err, "getting display task for task")
 		}
@@ -2303,7 +2303,7 @@ func tryUpdateDisplayTaskAtomically(dt task.Task) (updated *task.Task, err error
 	dt.Details = statusTask.Details
 	dt.Details.TraceID = "" // Unset TraceID because display tasks don't have corresponding traces.
 	dt.TimeTaken = timeTaken
-	dt.DisplayStatusCache = statusTask.FindDisplayStatus()
+	dt.DisplayStatusCache = statusTask.DetermineDisplayStatus()
 
 	update := bson.M{
 		task.StatusKey:             dt.Status,
@@ -2474,4 +2474,20 @@ func MarkUnallocatableContainerTasksSystemFailed(ctx context.Context, settings *
 	}
 
 	return catcher.Resolve()
+}
+
+// HandleEndTaskForGithubMergeQueueTask stops running GitHub merge queue tasks as soon as one task is finished.
+// This is done to save resources and speed up the CI processing by preventing unnecessary tasks from running.
+func HandleEndTaskForGithubMergeQueueTask(ctx context.Context, t *task.Task, status string) error {
+	// If the task has succeeded, we don't need to do anything.
+	// If the task is already aborted, we shouldn't do anything, because the version has already been aborted.
+	if status == evergreen.TaskSucceeded || t.Aborted {
+		return nil
+	}
+
+	reason := fmt.Sprintf("task '%s' on variant '%s' failed", t.DisplayName, t.BuildVariantDisplayName)
+	if err := SetVersionActivation(ctx, t.Version, false, reason); err != nil {
+		return errors.WithStack(err)
+	}
+	return errors.WithStack(task.AbortVersionTasks(t.Version, task.AbortInfo{TaskID: t.Id, User: evergreen.GithubMergeRequester}))
 }

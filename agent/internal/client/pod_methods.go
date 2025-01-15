@@ -22,7 +22,7 @@ func (c *podCommunicator) EndTask(ctx context.Context, detail *apimodels.TaskEnd
 	}
 	resp, err := c.retryRequest(ctx, info, detail)
 	if err != nil {
-		return nil, util.RespErrorf(resp, errors.Wrap(err, "ending task").Error())
+		return nil, util.RespError(resp, errors.Wrap(err, "ending task").Error())
 	}
 
 	var taskEndResp apimodels.EndTaskResponse
@@ -45,7 +45,7 @@ func (c *podCommunicator) GetNextTask(ctx context.Context, details *apimodels.Ge
 	}
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return nil, util.RespErrorf(resp, errors.Wrap(err, "getting next task").Error())
+		return nil, util.RespError(resp, errors.Wrap(err, "getting next task").Error())
 	}
 
 	var nextTask apimodels.NextTaskResponse

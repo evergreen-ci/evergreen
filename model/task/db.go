@@ -1312,9 +1312,9 @@ func FindTaskNamesByBuildVariant(projectId string, buildVariant string, repoOrde
 // DB Boilerplate
 
 // FindOne returns a single task that satisfies the query.
-func FindOne(query db.Q) (*Task, error) {
+func FindOne(ctx context.Context, query db.Q) (*Task, error) {
 	task := &Task{}
-	err := db.FindOneQ(Collection, query, task)
+	err := db.FindOneQContext(ctx, Collection, query, task)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -1746,9 +1746,9 @@ func Count(query db.Q) (int, error) {
 	return db.CountQ(Collection, query)
 }
 
-func FindProjectForTask(taskID string) (string, error) {
+func FindProjectForTask(ctx context.Context, taskID string) (string, error) {
 	query := db.Query(ById(taskID)).WithFields(ProjectKey)
-	t, err := FindOne(query)
+	t, err := FindOne(ctx, query)
 	if err != nil {
 		return "", err
 	}
@@ -1847,16 +1847,6 @@ func HasUnfinishedTaskForVersions(versionIds []string, taskName, variantName str
 	return count > 0, err
 }
 
-// FindTaskForVersion returns a task matching the given version and task info.
-func FindTaskForVersion(versionId, taskName, variantName string) (*Task, error) {
-	return FindOne(
-		db.Query(bson.M{
-			VersionKey:      versionId,
-			DisplayNameKey:  taskName,
-			BuildVariantKey: variantName,
-		}))
-}
-
 func AddHostCreateDetails(taskId, hostId string, execution int, hostCreateError error) error {
 	if hostCreateError == nil {
 		return nil
@@ -1871,8 +1861,8 @@ func AddHostCreateDetails(taskId, hostId string, execution int, hostCreateError 
 
 // FindActivatedStepbackTaskByName queries for running/scheduled stepback tasks with
 // matching build variant and task name.
-func FindActivatedStepbackTaskByName(projectId string, variantName string, taskName string) (*Task, error) {
-	t, err := FindOne(db.Query(bson.M{
+func FindActivatedStepbackTaskByName(ctx context.Context, projectId string, variantName string, taskName string) (*Task, error) {
+	t, err := FindOne(ctx, db.Query(bson.M{
 		ProjectKey:      projectId,
 		BuildVariantKey: variantName,
 		DisplayNameKey:  taskName,

@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -20,9 +21,9 @@ type ContainerTaskQueue struct {
 
 // NewContainerTaskQueue returns a populated iterator representing an ordered
 // queue of container tasks that are ready to be allocated a container.
-func NewContainerTaskQueue() (*ContainerTaskQueue, error) {
+func NewContainerTaskQueue(ctx context.Context) (*ContainerTaskQueue, error) {
 	q := &ContainerTaskQueue{}
-	if err := q.populate(); err != nil {
+	if err := q.populate(ctx); err != nil {
 		return nil, errors.Wrap(err, "initial population of container task queue")
 	}
 	return q, nil
@@ -53,7 +54,7 @@ func (q *ContainerTaskQueue) Len() int {
 	return len(q.queue) - q.position
 }
 
-func (q *ContainerTaskQueue) populate() error {
+func (q *ContainerTaskQueue) populate(ctx context.Context) error {
 	startAt := time.Now()
 	candidates, err := task.FindNeedsContainerAllocation()
 	if err != nil {
@@ -75,7 +76,7 @@ func (q *ContainerTaskQueue) populate() error {
 
 	q.queue = readyForAllocation
 
-	q.setFirstScheduledTime(startAt)
+	q.setFirstScheduledTime(ctx, startAt)
 
 	return nil
 }
@@ -155,7 +156,7 @@ func (q *ContainerTaskQueue) getProjectRefs(tasks []task.Task) (map[string]Proje
 	return projRefsByID, nil
 }
 
-func (q *ContainerTaskQueue) setFirstScheduledTime(scheduledTime time.Time) {
+func (q *ContainerTaskQueue) setFirstScheduledTime(ctx context.Context, scheduledTime time.Time) {
 	var notScheduledBefore []task.Task
 	for i := range q.queue {
 		if utility.IsZeroTime(q.queue[i].ScheduledTime) {
@@ -167,7 +168,7 @@ func (q *ContainerTaskQueue) setFirstScheduledTime(scheduledTime time.Time) {
 		return
 	}
 
-	if err := task.SetTasksScheduledAndDepsMetTime(notScheduledBefore, scheduledTime); err != nil {
+	if err := task.SetTasksScheduledAndDepsMetTime(ctx, notScheduledBefore, scheduledTime); err != nil {
 		grip.Warning(message.WrapError(err, message.Fields{
 			"message":                 "could not set first scheduled time for new container tasks",
 			"num_new_container_tasks": len(notScheduledBefore),

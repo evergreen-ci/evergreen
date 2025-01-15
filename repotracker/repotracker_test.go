@@ -373,7 +373,7 @@ tasks:
 	}
 	assert.NoError(t, repoTracker.StoreRevisions(ctx, revisions))
 
-	bv1t1, err := task.FindOne(db.Query(bson.M{task.BuildVariantKey: "bv1", task.DisplayNameKey: "t1"}))
+	bv1t1, err := task.FindOne(ctx, db.Query(bson.M{task.BuildVariantKey: "bv1", task.DisplayNameKey: "t1"}))
 	require.NoError(t, err)
 	require.NotNil(t, bv1t1)
 	assert.Equal(t, 4, bv1t1.NumDependents)

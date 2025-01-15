@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
@@ -10,7 +11,7 @@ import (
 
 // PersistTaskQueue saves the task queue to the database.
 // Returns an error if the db call returns an error.
-func PersistTaskQueue(distro string, tasks []task.Task, distroQueueInfo model.DistroQueueInfo) error {
+func PersistTaskQueue(ctx context.Context, distro string, tasks []task.Task, distroQueueInfo model.DistroQueueInfo) error {
 	startAt := time.Now()
 	taskQueue := make([]model.TaskQueueItem, 0, len(tasks))
 	for _, t := range tasks {
@@ -47,7 +48,7 @@ func PersistTaskQueue(distro string, tasks []task.Task, distroQueueInfo model.Di
 	}
 
 	// track scheduled time for prioritized tasks
-	if err := task.SetTasksScheduledAndDepsMetTime(tasks, startAt); err != nil {
+	if err := task.SetTasksScheduledAndDepsMetTime(ctx, tasks, startAt); err != nil {
 		return errors.Wrapf(err, "setting scheduled time for prioritized tasks for distro '%s'", distro)
 	}
 	return nil

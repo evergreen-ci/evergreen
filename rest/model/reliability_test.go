@@ -35,18 +35,21 @@ func TestAPITaskReliabilityBuildFromService(t *testing.T) {
 
 	assert.Equal(serviceDoc.TaskName, *apiDoc.TaskName)
 	assert.Equal(serviceDoc.BuildVariant, *apiDoc.BuildVariant)
-	assert.Equal(serviceDoc.Distro, *apiDoc.Distro)
-	assert.Equal(serviceDoc.Date.Format("2006-01-02"), *apiDoc.Date)
-	assert.Equal(serviceDoc.NumSuccess, apiDoc.NumSuccess)
-	assert.Equal(serviceDoc.NumFailed, apiDoc.NumFailed)
-	assert.Equal(serviceDoc.NumTotal, apiDoc.NumTotal)
-	assert.Equal(serviceDoc.NumTimeout, apiDoc.NumTimeout)
-	assert.Equal(serviceDoc.NumTestFailed, apiDoc.NumTestFailed)
-	assert.Equal(serviceDoc.NumSystemFailed, apiDoc.NumSystemFailed)
-	assert.Equal(serviceDoc.NumSetupFailed, apiDoc.NumSetupFailed)
-	assert.Equal(serviceDoc.SuccessRate, apiDoc.SuccessRate)
-	assert.Equal(serviceDoc.AvgDurationSuccess, apiDoc.AvgDurationSuccess)
-	assert.Equal(serviceDoc.SuccessRate, 8.0)
+	assert.Equal(*apiDoc.Distro, serviceDoc.Distro)
+	assert.Equal(*apiDoc.Date, serviceDoc.Date.Format("2006-01-02"))
+	assert.Equal(apiDoc.NumSuccess, serviceDoc.NumSuccess)
+	assert.Equal(apiDoc.NumFailed, serviceDoc.NumFailed)
+	assert.Equal(apiDoc.NumTotal, serviceDoc.NumTotal)
+	assert.Equal(apiDoc.NumTimeout, serviceDoc.NumTimeout)
+	assert.Equal(apiDoc.NumTestFailed, serviceDoc.NumTestFailed)
+	assert.Equal(apiDoc.NumSystemFailed, serviceDoc.NumSystemFailed)
+	assert.Equal(apiDoc.NumSetupFailed, serviceDoc.NumSetupFailed)
+	//nolint:testifylint // We expect it to be exactly equal.
+	assert.Equal(apiDoc.SuccessRate, serviceDoc.SuccessRate)
+	//nolint:testifylint // We expect it to be exactly equal.
+	assert.Equal(apiDoc.AvgDurationSuccess, serviceDoc.AvgDurationSuccess)
+	//nolint:testifylint // We expect it to be exactly 0.0.
+	assert.Equal(8.0, serviceDoc.SuccessRate)
 }
 
 func TestAPITaskReliabilityStartAtKey(t *testing.T) {
