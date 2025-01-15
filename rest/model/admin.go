@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func NewConfigModel() *APIAdminSettings {
@@ -27,6 +28,7 @@ func NewConfigModel() *APIAdminSettings {
 		LoggerConfig:        &APILoggerConfig{},
 		NewRelic:            &APINewRelicConfig{},
 		Notify:              &APINotifyConfig{},
+		Overrides:           &APIOverridesConfig{},
 		ParameterStore:      &APIParameterStoreConfig{},
 		Plugins:             map[string]map[string]interface{}{},
 		PodLifecycle:        &APIPodLifecycleConfig{},
@@ -78,6 +80,7 @@ type APIAdminSettings struct {
 	LogPath             *string                           `json:"log_path,omitempty"`
 	NewRelic            *APINewRelicConfig                `json:"newrelic,omitempty"`
 	Notify              *APINotifyConfig                  `json:"notify,omitempty"`
+	Overrides           *APIOverridesConfig               `json:"overrides,omitempty"`
 	ParameterStore      *APIParameterStoreConfig          `json:"parameter_store,omitempty"`
 	Plugins             map[string]map[string]interface{} `json:"plugins,omitempty"`
 	PodLifecycle        *APIPodLifecycleConfig            `json:"pod_lifecycle,omitempty"`
@@ -1183,6 +1186,85 @@ func (a *APINotifyConfig) ToService() (interface{}, error) {
 		BufferIntervalSeconds:   a.BufferIntervalSeconds,
 		SES:                     ses.(evergreen.SESConfig),
 	}, nil
+}
+
+type APIOverridesConfig struct {
+	Overrides []APIOverride `json:"overrides"`
+}
+
+func (a *APIOverridesConfig) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.OverridesConfig:
+		var overrides []APIOverride
+		for _, override := range v.Overrides {
+			var apiOverride APIOverride
+			if err := apiOverride.BuildFromService(override); err != nil {
+				return errors.Wrap(err, "building APIOverride from service")
+			}
+			overrides = append(overrides, apiOverride)
+		}
+		a.Overrides = overrides
+	default:
+		return errors.Errorf("programmatic error: expected overrides config but got type %T", h)
+	}
+	return nil
+}
+
+func (a *APIOverridesConfig) ToService() (interface{}, error) {
+	var overrides []evergreen.Override
+	for _, apiOverride := range a.Overrides {
+		overrideInterface, err := apiOverride.ToService()
+		if err != nil {
+			return nil, errors.Wrap(err, "converting APIOverride to service")
+		}
+		override, ok := overrideInterface.(evergreen.Override)
+		if !ok {
+			return nil, errors.Errorf("programmatic error: expected override but got type %T", overrideInterface)
+		}
+		overrides = append(overrides, override)
+	}
+	return evergreen.OverridesConfig{
+		Overrides: overrides,
+	}, nil
+}
+
+type APIOverride struct {
+	SectionID *string     `bson:"section_id" json:"section_id"`
+	Field     *string     `bson:"field" json:"field"`
+	Value     interface{} `bson:"value" json:"value"`
+}
+
+// MarshalJSON is a custom JSON marshaler function to satisfy the [json.Marshaler] interface.
+// This is necessary because the regular JSON marshaler doesn't account for all the bson data types.
+func (a APIOverride) MarshalJSON() ([]byte, error) {
+	return bson.MarshalExtJSON(a, false, false)
+}
+
+// UnmarshalJSON is a custom JSON unmarshaler function to satisfy the [json.Unmarshaler] interface.
+// This is necessary because the regular JSON unmarshaler doesn't account for all the bson data types.
+func (a *APIOverride) UnmarshalJSON(data []byte) error {
+	return bson.UnmarshalExtJSON(data, false, a)
+}
+
+func (a *APIOverride) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.Override:
+		a.SectionID = utility.ToStringPtr(v.SectionID)
+		a.Field = utility.ToStringPtr(v.Field)
+		a.Value = v.Value
+	default:
+		return errors.Errorf("programmatic error: expected override but got type %T", h)
+	}
+	return nil
+}
+
+func (a *APIOverride) ToService() (interface{}, error) {
+	override := evergreen.Override{
+		SectionID: utility.FromStringPtr(a.SectionID),
+		Field:     utility.FromStringPtr(a.Field),
+		Value:     a.Value,
+	}
+	return override, nil
 }
 
 type APIParameterStoreConfig struct {
