@@ -13,8 +13,7 @@
               "restricted": true,
               "commitQueue": {
                 "enabled": true,
-                "mergeMethod": "squash",
-                "mergeQueue": "GITHUB"
+                "mergeMethod": "squash"
               },
               "periodicBuilds": null,
               "githubChecksEnabled": false,
