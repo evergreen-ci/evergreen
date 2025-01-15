@@ -6,7 +6,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
@@ -69,9 +68,6 @@ func (n *Notification) SetBSON(raw mgobson.Raw) error {
 
 	case event.GithubPullRequestSubscriberType, event.GithubCheckSubscriberType, event.GithubMergeSubscriberType:
 		n.Payload = &message.GithubStatus{}
-
-	case event.EnqueuePatchSubscriberType:
-		n.Payload = &model.EnqueuePatch{}
 
 	default:
 		return errors.Errorf("unknown payload type '%s'", temp.Subscriber.Type)

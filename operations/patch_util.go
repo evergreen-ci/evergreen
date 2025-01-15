@@ -83,7 +83,6 @@ type patchParams struct {
 	Uncommitted         bool
 	PreserveCommits     bool
 	Ref                 string
-	BackportOf          patch.BackportInfo
 	TriggerAliases      []string
 	Parameters          []patch.Parameter
 	RepeatDefinition    bool
@@ -113,7 +112,6 @@ type patchSubmission struct {
 	finalize            bool
 	parameters          []patch.Parameter
 	triggerAliases      []string
-	backportOf          patch.BackportInfo
 	gitMetadata         patch.GitMetadata
 	repeatDefinition    bool
 	repeatFailed        bool
@@ -139,7 +137,6 @@ func (p *patchParams) createPatch(ac *legacyClient, diffData *localDiff) (*patch
 		syncStatuses:        p.SyncStatuses,
 		syncTimeout:         p.SyncTimeout,
 		finalize:            p.Finalize,
-		backportOf:          p.BackportOf,
 		parameters:          p.Parameters,
 		triggerAliases:      p.TriggerAliases,
 		gitMetadata:         diffData.gitMetadata,
