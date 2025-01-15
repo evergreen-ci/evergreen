@@ -239,16 +239,16 @@ func GetWaterfallBuildVariants(ctx context.Context, versionIds []string) ([]Wate
 	return res, nil
 }
 
-// GetNextRecentActiveWaterfallVersion returns the next recent active version on the waterfall, i.e. a newer
-// activated version than the version with the given minOrder.
-func GetNextRecentActiveWaterfallVersion(ctx context.Context, projectId string, minOrder int) (*Version, error) {
+// GetNewerActiveWaterfallVersion returns the next newer active version on the waterfall, i.e. a more
+// recent activated version than the current version.
+func GetNewerActiveWaterfallVersion(ctx context.Context, projectId string, version Version) (*Version, error) {
 	match := bson.M{
 		VersionIdentifierKey: projectId,
 		VersionRequesterKey: bson.M{
 			"$in": evergreen.SystemVersionRequesterTypes,
 		},
 		VersionRevisionOrderNumberKey: bson.M{
-			"$gt": minOrder,
+			"$gt": version.RevisionOrderNumber,
 		},
 		VersionActivatedKey: true,
 	}
@@ -274,16 +274,16 @@ func GetNextRecentActiveWaterfallVersion(ctx context.Context, projectId string, 
 	return &res[0], nil
 }
 
-// GetNextOlderActiveWaterfallVersion returns the next older active version on the waterfall, i.e. an older
-// activated version than the version with the given maxOrder.
-func GetNextOlderActiveWaterfallVersion(ctx context.Context, projectId string, maxOrder int) (*Version, error) {
+// GetOlderActiveWaterfallVersion returns the next older active version on the waterfall, i.e. an older
+// activated version than the current version.
+func GetOlderActiveWaterfallVersion(ctx context.Context, projectId string, version Version) (*Version, error) {
 	match := bson.M{
 		VersionIdentifierKey: projectId,
 		VersionRequesterKey: bson.M{
 			"$in": evergreen.SystemVersionRequesterTypes,
 		},
 		VersionRevisionOrderNumberKey: bson.M{
-			"$lt": maxOrder,
+			"$lt": version.RevisionOrderNumber,
 		},
 		VersionActivatedKey: true,
 	}

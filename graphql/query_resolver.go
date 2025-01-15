@@ -996,7 +996,7 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 		// versions on the waterfall and that we should not place a lower bound.
 		// If it does exist, set the min order to one more than its order. This is guaranteed to either be
 		// the last version in activeVersions or the last inactive version within its collapsed group.
-		prevActiveVersion, err := model.GetNextOlderActiveWaterfallVersion(ctx, projectId, activeVersions[len(activeVersions)-1].RevisionOrderNumber)
+		prevActiveVersion, err := model.GetOlderActiveWaterfallVersion(ctx, projectId, activeVersions[len(activeVersions)-1])
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching previous active waterfall version: %s", err.Error()))
 		}
@@ -1015,11 +1015,11 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 		// If no order options were specified, we're on the first page and should not put a limit on the first version returned so that we don't omit inactive versions
 		maxVersionOrder = 0
 	} else if maxOrderOpt == 0 {
-		// Find the next recent active version. If it doesn't exist, that means there are leading inactive
+		// Find a newer version that is activated. If it doesn't exist, that means there are leading inactive
 		// versions on the waterfall and we should reset to the first page.
 		// If it does exist, set the max order to one less than its order. This is guaranteed to either be
 		// the 0th version in activeVersions or the first inactive version within its collapsed group.
-		nextActiveVersion, err := model.GetNextRecentActiveWaterfallVersion(ctx, projectId, activeVersions[0].RevisionOrderNumber)
+		nextActiveVersion, err := model.GetNewerActiveWaterfallVersion(ctx, projectId, activeVersions[0])
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching next active waterfall version: %s", err.Error()))
 		}
