@@ -258,6 +258,11 @@ func MockConfig() *evergreen.Settings {
 				SenderAddress: "from",
 			},
 		},
+		Overrides: evergreen.OverridesConfig{
+			Overrides: []evergreen.Override{
+				{SectionID: "section id", Field: "field name", Value: "the value"},
+			},
+		},
 		ParameterStore: evergreen.ParameterStoreConfig{
 			Prefix: "/prefix",
 		},
