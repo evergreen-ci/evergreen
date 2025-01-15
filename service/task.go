@@ -275,7 +275,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		GeneratedById:        projCtx.Task.GeneratedBy,
 	}
 
-	deps, taskWaiting, err := getTaskDependencies(projCtx.Task)
+	deps, taskWaiting, err := getTaskDependencies(r.Context(), projCtx.Task)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -450,7 +450,7 @@ const DefaultLogMessages = 100 // passed as a limit, so 0 means don't limit
 
 // getTaskDependencies returns the uiDeps for the task and its status (either its original status,
 // "blocked", or "pending")
-func getTaskDependencies(t *task.Task) ([]uiDep, string, error) {
+func getTaskDependencies(ctx context.Context, t *task.Task) ([]uiDep, string, error) {
 	depIds := []string{}
 	for _, dep := range t.DependsOn {
 		depIds = append(depIds, dep.TaskId)
@@ -482,7 +482,7 @@ func getTaskDependencies(t *task.Task) ([]uiDep, string, error) {
 		})
 	}
 
-	if err = t.CircularDependencies(); err != nil {
+	if err = t.CircularDependencies(ctx); err != nil {
 		return nil, "", err
 	}
 	state, err := t.BlockedState(taskMap)

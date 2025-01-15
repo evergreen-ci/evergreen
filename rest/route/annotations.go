@@ -58,7 +58,7 @@ func (h *annotationsByBuildHandler) Parse(ctx context.Context, r *http.Request) 
 }
 
 func (h *annotationsByBuildHandler) Run(ctx context.Context) gimlet.Responder {
-	taskIds, err := task.FindAllTaskIDsFromBuild(h.buildId)
+	taskIds, err := task.FindAllTaskIDsFromBuild(ctx, h.buildId)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "finding task IDs for build '%s'", h.buildId))
 	}
@@ -107,7 +107,7 @@ func (h *annotationsByVersionHandler) Parse(ctx context.Context, r *http.Request
 }
 
 func (h *annotationsByVersionHandler) Run(ctx context.Context) gimlet.Responder {
-	taskIds, err := task.FindAllTaskIDsFromVersion(h.versionId)
+	taskIds, err := task.FindAllTaskIDsFromVersion(ctx, h.versionId)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "finding task IDs for version '%s'", h.versionId))
 	}

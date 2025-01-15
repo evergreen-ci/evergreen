@@ -1224,6 +1224,9 @@ func TestBlocked(t *testing.T) {
 }
 
 func TestCircularDependency(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 	require.NoError(t, db.ClearCollections(Collection))
 	t1 := Task{
@@ -1247,7 +1250,7 @@ func TestCircularDependency(t *testing.T) {
 	}
 	assert.NoError(t2.Insert())
 	assert.NotPanics(func() {
-		err := t1.CircularDependencies()
+		err := t1.CircularDependencies(ctx)
 		assert.Contains(err.Error(), "dependency cycle detected")
 	})
 }
@@ -3865,7 +3868,7 @@ func TestAbortVersionTasks(t *testing.T) {
 	}
 	assert.NoError(t, db.InsertMany(Collection, finishedExecTask, failingExecTask, otherExecTask, dt))
 
-	assert.NoError(t, AbortVersionTasks("v1", AbortInfo{TaskID: "et2"}))
+	assert.NoError(t, AbortVersionTasks(ctx, "v1", AbortInfo{TaskID: "et2"}))
 
 	var err error
 	dt, err = FindOneId(ctx, "dt")

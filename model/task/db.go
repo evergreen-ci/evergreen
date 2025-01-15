@@ -1469,9 +1469,9 @@ func FindOneIdWithFields(ctx context.Context, id string, projected ...string) (*
 }
 
 // findAllTaskIDs returns a list of task IDs associated with the given query.
-func findAllTaskIDs(q db.Q) ([]string, error) {
+func findAllTaskIDs(ctx context.Context, q db.Q) ([]string, error) {
 	tasks := []Task{}
-	err := db.FindAllQ(Collection, q, &tasks)
+	err := db.FindAllQContext(ctx, Collection, q, &tasks)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding tasks")
 	}
@@ -1502,22 +1502,22 @@ func FindStuckDispatching() ([]Task, error) {
 }
 
 // FindAllTaskIDsFromVersion returns a list of task IDs associated with a version.
-func FindAllTaskIDsFromVersion(versionId string) ([]string, error) {
+func FindAllTaskIDsFromVersion(ctx context.Context, versionId string) ([]string, error) {
 	q := db.Query(ByVersion(versionId)).WithFields(IdKey)
-	return findAllTaskIDs(q)
+	return findAllTaskIDs(ctx, q)
 }
 
 // FindAllTaskIDsFromBuild returns a list of task IDs associated with a build.
-func FindAllTaskIDsFromBuild(buildId string) ([]string, error) {
+func FindAllTaskIDsFromBuild(ctx context.Context, buildId string) ([]string, error) {
 	q := db.Query(ByBuildId(buildId)).WithFields(IdKey)
-	return findAllTaskIDs(q)
+	return findAllTaskIDs(ctx, q)
 }
 
 // FindAllTasksFromVersionWithDependencies finds all tasks in a version and includes only their dependencies.
-func FindAllTasksFromVersionWithDependencies(versionId string) ([]Task, error) {
+func FindAllTasksFromVersionWithDependencies(ctx context.Context, versionId string) ([]Task, error) {
 	q := db.Query(ByVersion(versionId)).WithFields(IdKey, DependsOnKey)
 	tasks := []Task{}
-	err := db.FindAllQ(Collection, q, &tasks)
+	err := db.FindAllQContext(ctx, Collection, q, &tasks)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding task IDs for version '%s'", versionId)
 	}

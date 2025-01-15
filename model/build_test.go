@@ -150,7 +150,10 @@ func (s *BuildConnectorAbortSuite) SetupSuite() {
 }
 
 func (s *BuildConnectorAbortSuite) TestAbort() {
-	err := AbortBuild("build1", "user1")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	err := AbortBuild(ctx, "build1", "user1")
 	s.NoError(err)
 	b, err := build.FindOne(build.ById("build1"))
 	s.NoError(err)

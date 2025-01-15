@@ -241,7 +241,7 @@ func (b *buildAbortHandler) Parse(ctx context.Context, r *http.Request) error {
 
 func (b *buildAbortHandler) Run(ctx context.Context) gimlet.Responder {
 	usr := MustHaveUser(ctx)
-	if err := serviceModel.AbortBuild(b.buildId, usr.Id); err != nil {
+	if err := serviceModel.AbortBuild(ctx, b.buildId, usr.Id); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "aborting build '%s'", b.buildId))
 	}
 
@@ -295,7 +295,7 @@ func (b *buildRestartHandler) Parse(ctx context.Context, r *http.Request) error 
 
 func (b *buildRestartHandler) Run(ctx context.Context) gimlet.Responder {
 	usr := MustHaveUser(ctx)
-	taskIds, err := task.FindAllTaskIDsFromBuild(b.buildId)
+	taskIds, err := task.FindAllTaskIDsFromBuild(ctx, b.buildId)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting tasks for build '%s'", b.buildId))
 	}

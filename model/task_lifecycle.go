@@ -2489,5 +2489,5 @@ func HandleEndTaskForGithubMergeQueueTask(ctx context.Context, t *task.Task, sta
 	if err := SetVersionActivation(ctx, t.Version, false, reason); err != nil {
 		return errors.WithStack(err)
 	}
-	return errors.WithStack(task.AbortVersionTasks(t.Version, task.AbortInfo{TaskID: t.Id, User: evergreen.GithubMergeRequester}))
+	return errors.WithStack(task.AbortVersionTasks(ctx, t.Version, task.AbortInfo{TaskID: t.Id, User: evergreen.GithubMergeRequester}))
 }

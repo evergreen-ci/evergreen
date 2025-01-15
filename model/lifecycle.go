@@ -184,12 +184,12 @@ func setTaskActivationForBuilds(ctx context.Context, buildIds []string, active, 
 
 // AbortBuild marks the build as deactivated and sets the abort flag on all tasks associated
 // with the build which are in an abortable state.
-func AbortBuild(buildId string, caller string) error {
+func AbortBuild(ctx context.Context, buildId string, caller string) error {
 	if err := build.UpdateActivation([]string{buildId}, false, caller); err != nil {
 		return errors.Wrapf(err, "deactivating build '%s'", buildId)
 	}
 
-	return errors.Wrapf(task.AbortBuildTasks(buildId, task.AbortInfo{User: caller}), "aborting tasks for build '%s'", buildId)
+	return errors.Wrapf(task.AbortBuildTasks(ctx, buildId, task.AbortInfo{User: caller}), "aborting tasks for build '%s'", buildId)
 }
 
 func TryMarkVersionStarted(versionId string, startTime time.Time) error {

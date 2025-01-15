@@ -2882,7 +2882,7 @@ func findAllTasksChunked(taskIDs []string) ([]Task, error) {
 }
 
 // AbortBuildTasks sets the abort flag on all tasks associated with the build which are in an abortable
-func AbortBuildTasks(buildId string, reason AbortInfo) error {
+func AbortBuildTasks(ctx context.Context, buildId string, reason AbortInfo) error {
 	q := bson.M{
 		BuildIdKey: buildId,
 		StatusKey:  bson.M{"$in": evergreen.TaskInProgressStatuses},
@@ -2890,12 +2890,12 @@ func AbortBuildTasks(buildId string, reason AbortInfo) error {
 	if reason.TaskID != "" {
 		q[IdKey] = bson.M{"$ne": reason.TaskID}
 	}
-	return errors.Wrapf(abortTasksByQuery(q, reason), "aborting tasks for build '%s'", buildId)
+	return errors.Wrapf(abortTasksByQuery(ctx, q, reason), "aborting tasks for build '%s'", buildId)
 }
 
 // AbortVersionTasks sets the abort flag on all tasks associated with the version which are in an
 // abortable state
-func AbortVersionTasks(versionId string, reason AbortInfo) error {
+func AbortVersionTasks(ctx context.Context, versionId string, reason AbortInfo) error {
 	q := ByVersionWithChildTasks(versionId)
 	q[StatusKey] = bson.M{"$in": evergreen.TaskInProgressStatuses}
 	if reason.TaskID != "" {
@@ -2903,11 +2903,11 @@ func AbortVersionTasks(versionId string, reason AbortInfo) error {
 		// if the aborting task is part of a display task, we also don't want to mark it as aborted
 		q[ExecutionTasksKey] = bson.M{"$ne": reason.TaskID}
 	}
-	return errors.Wrapf(abortTasksByQuery(q, reason), "aborting tasks for version '%s'", versionId)
+	return errors.Wrapf(abortTasksByQuery(ctx, q, reason), "aborting tasks for version '%s'", versionId)
 }
 
-func abortTasksByQuery(q bson.M, reason AbortInfo) error {
-	ids, err := findAllTaskIDs(db.Query(q))
+func abortTasksByQuery(ctx context.Context, q bson.M, reason AbortInfo) error {
+	ids, err := findAllTaskIDs(ctx, db.Query(q))
 	if err != nil {
 		return errors.Wrap(err, "finding updated tasks")
 	}
@@ -3767,9 +3767,9 @@ func (t *Task) BlockedState(dependencies map[string]*Task) (string, error) {
 
 // CircularDependencies detects if any tasks in this version are part of a dependency cycle
 // Note that it does not check inter-version dependencies, because only evergreen can add those
-func (t *Task) CircularDependencies() error {
+func (t *Task) CircularDependencies(ctx context.Context) error {
 	var err error
-	tasksWithDeps, err := FindAllTasksFromVersionWithDependencies(t.Version)
+	tasksWithDeps, err := FindAllTasksFromVersionWithDependencies(ctx, t.Version)
 	if err != nil {
 		return errors.Wrap(err, "finding tasks with dependencies")
 	}

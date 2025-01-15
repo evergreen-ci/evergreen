@@ -260,7 +260,7 @@ func (s *VersionSuite) TestAbortVersion() {
 	s.Equal(utility.ToStringPtr(versionId), h.Id)
 
 	// Check that all tasks have been aborted.
-	tasks, err := task.FindAllTaskIDsFromVersion("versionId")
+	tasks, err := task.FindAllTaskIDsFromVersion(s.ctx, "versionId")
 	s.NoError(err)
 	for _, t := range tasks {
 		foundTask, err := task.FindOneId(s.ctx, t)
