@@ -222,7 +222,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		tId = projCtx.Task.OldTaskId
 
 		// Get total number of executions for executions drop down
-		mostRecentExecution, err := task.FindOneId(tId)
+		mostRecentExecution, err := task.FindOneId(r.Context(), tId)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError,
 				errors.Wrapf(err, "Error finding most recent execution by id %s", tId))
@@ -359,7 +359,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 
 	if projCtx.Task.TriggerID != "" {
 		var projectName string
-		projectName, err = model.GetUpstreamProjectName(projCtx.Task.TriggerID, projCtx.Task.TriggerType)
+		projectName, err = model.GetUpstreamProjectName(r.Context(), projCtx.Task.TriggerID, projCtx.Task.TriggerType)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
@@ -390,7 +390,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if uiTask.AbortInfo.TaskID != "" {
-		abortedBy, err := getAbortedBy(projCtx.Task.AbortInfo.TaskID)
+		abortedBy, err := getAbortedBy(r.Context(), projCtx.Task.AbortInfo.TaskID)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
@@ -410,8 +410,8 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	}{uis.Settings.Ui.Url, uiTask, taskHost, pluginContent, uis.Settings.Jira.Host, permissions, newUILink, uis.GetCommonViewData(w, r, false, true)}, "base", "task.html", "base_angular.html", "menu.html")
 }
 
-func getAbortedBy(abortedByTaskId string) (*abortedByDisplay, error) {
-	abortedTask, err := task.FindOneId(abortedByTaskId)
+func getAbortedBy(ctx context.Context, abortedByTaskId string) (*abortedByDisplay, error) {
+	abortedTask, err := task.FindOneId(ctx, abortedByTaskId)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem getting abortedBy task")
 	}
@@ -763,7 +763,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Reload the task from db, send it back
-		projCtx.Task, err = task.FindOneId(projCtx.Task.Id)
+		projCtx.Task, err = task.FindOneId(r.Context(), projCtx.Task.Id)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		}
@@ -776,7 +776,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Reload the task from db, send it back
-		projCtx.Task, err = task.FindOneId(projCtx.Task.Id)
+		projCtx.Task, err = task.FindOneId(r.Context(), projCtx.Task.Id)
 
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -796,7 +796,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Reload the task from db, send it back
-		projCtx.Task, err = task.FindOneId(projCtx.Task.Id)
+		projCtx.Task, err = task.FindOneId(r.Context(), projCtx.Task.Id)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		}
@@ -822,7 +822,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Reload the task from db, send it back
-		projCtx.Task, err = task.FindOneId(projCtx.Task.Id)
+		projCtx.Task, err = task.FindOneId(r.Context(), projCtx.Task.Id)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		}
@@ -914,7 +914,7 @@ func (uis *UIServer) getTestResults(ctx context.Context, projCtx projectContext,
 			if uiTask.Archived {
 				et, err = task.FindOneOldByIdAndExecution(t, projCtx.Task.Execution)
 			} else {
-				et, err = task.FindOneId(t)
+				et, err = task.FindOneId(ctx, t)
 			}
 			if err != nil {
 				grip.Error(message.Fields{

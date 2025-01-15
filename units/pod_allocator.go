@@ -207,7 +207,7 @@ func (j *podAllocatorJob) populate(ctx context.Context) error {
 	j.settings = *settings
 
 	if j.task == nil {
-		t, err := task.FindOneId(j.TaskID)
+		t, err := task.FindOneId(ctx, j.TaskID)
 		if err != nil {
 			return errors.Wrapf(err, "finding task '%s'", j.TaskID)
 		}

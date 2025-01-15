@@ -72,7 +72,7 @@ func (h *generateHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "generating tasks for task '%s'", h.taskID))
 	}
 
-	t, err := task.FindOneId(h.taskID)
+	t, err := task.FindOneId(ctx, h.taskID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting task '%s'", h.taskID))
 	}

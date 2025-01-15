@@ -947,7 +947,7 @@ func TestMarkGeneratedTasksError(t *testing.T) {
 	j := NewGenerateTasksJob(env, sampleTask.Version, sampleTask.Id, "1")
 	j.Run(ctx)
 	assert.Error(t, j.Error())
-	dbTask, err := task.FindOneId(sampleTask.Id)
+	dbTask, err := task.FindOneId(ctx, sampleTask.Id)
 	assert.NoError(t, err)
 	require.NotZero(t, dbTask)
 	assert.Equal(t, "version 'sample_version' not found", dbTask.GenerateTasksError)

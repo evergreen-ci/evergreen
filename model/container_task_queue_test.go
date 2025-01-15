@@ -94,7 +94,7 @@ func TestContainerTaskQueue(t *testing.T) {
 			require.NotZero(t, first)
 			assert.Equal(t, needsAllocation.Id, first.Id, "should return task in need of allocation")
 
-			dbFirstTask, err := task.FindOneId(first.Id)
+			dbFirstTask, err := task.FindOneId(ctx, first.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbFirstTask)
 			assert.False(t, utility.IsZeroTime(dbFirstTask.ScheduledTime))
