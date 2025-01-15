@@ -79,7 +79,7 @@ func (tbh *tasksByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 	// Fetch all of the tasks to be returned in this page plus the tasks used for
 	// calculating information about the next page. Here the limit is multiplied
 	// by two to fetch the next page.
-	tasks, err := data.FindTasksByBuildId(tbh.buildId, tbh.key, tbh.status, tbh.limit+1, 1)
+	tasks, err := data.FindTasksByBuildId(ctx, tbh.buildId, tbh.key, tbh.status, tbh.limit+1, 1)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding tasks for build '%s'", tbh.buildId))
 	}

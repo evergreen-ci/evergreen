@@ -15,11 +15,11 @@ import (
 // FindTasksByBuildId uses the service layer's task type to query the backing database for a
 // list of task that matches buildId. It accepts the startTaskId and a limit
 // to allow for pagination of the queries. It returns results sorted by taskId.
-func FindTasksByBuildId(buildId, taskId, status string, limit int, sortDir int) ([]task.Task, error) {
+func FindTasksByBuildId(ctx context.Context, buildId, taskId, status string, limit int, sortDir int) ([]task.Task, error) {
 	pipeline := task.TasksByBuildIdPipeline(buildId, taskId, status, limit, sortDir)
 	res := []task.Task{}
 
-	err := task.Aggregate(pipeline, &res)
+	err := task.AggregateContext(ctx, pipeline, &res)
 	if err != nil {
 		return []task.Task{}, err
 	}
@@ -45,7 +45,7 @@ func FindTasksByBuildId(buildId, taskId, status string, limit int, sortDir int) 
 // FindTasksByProjectAndCommit is a method to find a set of tasks which ran as part of
 // certain version in a project. It takes the projectId, commit hash, and a taskId
 // for paginating through the results.
-func FindTasksByProjectAndCommit(opts task.GetTasksByProjectAndCommitOptions) ([]task.Task, error) {
+func FindTasksByProjectAndCommit(ctx context.Context, opts task.GetTasksByProjectAndCommitOptions) ([]task.Task, error) {
 	projectId, err := model.GetIdForProject(opts.Project)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
@@ -58,7 +58,7 @@ func FindTasksByProjectAndCommit(opts task.GetTasksByProjectAndCommitOptions) ([
 	pipeline := task.TasksByProjectAndCommitPipeline(opts)
 
 	res := []task.Task{}
-	err = task.Aggregate(pipeline, &res)
+	err = task.AggregateContext(ctx, pipeline, &res)
 	if err != nil {
 		return []task.Task{}, err
 	}

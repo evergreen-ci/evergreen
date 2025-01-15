@@ -1710,13 +1710,6 @@ func Remove(id string) error {
 	)
 }
 
-func Aggregate(pipeline []bson.M, results interface{}) error {
-	return db.Aggregate(
-		Collection,
-		pipeline,
-		results)
-}
-
 func AggregateContext(ctx context.Context, pipeline []bson.M, results interface{}) error {
 	return db.AggregateContext(ctx,
 		Collection,

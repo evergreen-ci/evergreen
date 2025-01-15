@@ -55,6 +55,9 @@ func updateTestDepTasks(t *testing.T) {
 }
 
 func TestGetDisplayStatusAndColorSort(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.ClearCollections(Collection, annotations.Collection))
 	t1 := Task{
 		Id:             "t1",
@@ -171,7 +174,7 @@ func TestGetDisplayStatusAndColorSort(t *testing.T) {
 	pipeline = append(pipeline, sortPipeline...)
 
 	taskResults := []Task{}
-	err = Aggregate(pipeline, &taskResults)
+	err = AggregateContext(ctx, pipeline, &taskResults)
 	require.NoError(t, err)
 
 	assert.Len(t, taskResults, 11)
