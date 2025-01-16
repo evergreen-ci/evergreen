@@ -3150,7 +3150,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 		distroIds := []string{"rhel55", "singleTaskDistro"}
 		distroAliases := []string{"rhel55-alias"}
 		singleTaskDistroIDs := []string{"singleTaskDistro"}
-		allowedSingleTaskDistroTasks := []string{"allowedSingleTask"}
+		allowedSingleTaskDistroTasks := []string{".*SingleT.*"}
 		distroWarnings := map[string]string{
 			"rhel55":       "55 is not the best number",
 			"rhel55-alias": "and this is not the best alias",
@@ -3251,13 +3251,14 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 			"task is a single task only distro and the task is not allowed", func() {
 			project := &model.Project{
 				Tasks: []model.ProjectTask{
-					{Name: "compile", RunOn: []string{"singleTaskDistro"}},
+					{Name: "compile"},
 				},
 				BuildVariants: []model.BuildVariant{
 					{
-						Name: "linux",
+						Name:  "enterprise",
+						RunOn: []string{"rhel55"},
 						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "compile", Variant: "linux", RunOn: []string{"rhel55"}},
+							{Name: "compile", RunOn: []string{"singleTaskDistro"}},
 						},
 					},
 				},
@@ -3324,7 +3325,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 				BuildVariants: []model.BuildVariant{
 					{
 						Name:  "enterprise",
-						RunOn: distroIds,
+						RunOn: []string{"rhel55"},
 					},
 				},
 			}
@@ -3349,14 +3350,6 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 			project := &model.Project{
 				Tasks: []model.ProjectTask{
 					{Name: "allowedSingleTask", RunOn: []string{"singleTaskDistro"}},
-				},
-				BuildVariants: []model.BuildVariant{
-					{
-						Name: "linux",
-						Tasks: []model.BuildVariantTaskUnit{
-							{Name: "compile", Variant: "linux", RunOn: []string{"rhel55"}},
-						},
-					},
 				},
 			}
 			So(ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, allowedSingleTaskDistroTasks, nil), ShouldResemble, ValidationErrors{})
