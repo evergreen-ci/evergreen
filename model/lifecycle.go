@@ -1164,6 +1164,7 @@ func createOneTask(ctx context.Context, id string, creationInfo TaskCreationInfo
 		StartTime:                  utility.ZeroTime, // Certain time fields must be initialized
 		FinishTime:                 utility.ZeroTime, // to our own utility.ZeroTime value (which is
 		DispatchTime:               utility.ZeroTime, // Unix epoch 0, not Go's time.Time{})
+		DependenciesMetTime:        utility.ZeroTime,
 		LastHeartbeat:              utility.ZeroTime,
 		Status:                     evergreen.TaskUndispatched,
 		Activated:                  activateTask,
@@ -1363,6 +1364,7 @@ func createDisplayTask(id string, creationInfo TaskCreationInfo, displayName str
 		ActivatedTime:           activatedTime,
 		DispatchTime:            utility.ZeroTime,
 		ScheduledTime:           utility.ZeroTime,
+		DependenciesMetTime:     utility.ZeroTime,
 		TriggerID:               creationInfo.Version.TriggerID,
 		TriggerType:             creationInfo.Version.TriggerType,
 		TriggerEvent:            creationInfo.Version.TriggerEvent,

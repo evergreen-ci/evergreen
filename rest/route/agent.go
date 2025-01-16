@@ -875,10 +875,15 @@ func (h *startTaskHandler) Run(ctx context.Context) gimlet.Responder {
 			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
 		})
 	}
+	dependenciesMetTime := t.ScheduledTime
+	if t.DependenciesMetTime.After(dependenciesMetTime) {
+		dependenciesMetTime = t.DependenciesMetTime
+	}
 	grip.Debug(message.Fields{
-		"message": "marking task started",
-		"task_id": t.Id,
-		"details": t.Details,
+		"message":                        "marking task started",
+		"task_id":                        t.Id,
+		"details":                        t.Details,
+		"seconds_since_dependencies_met": time.Since(dependenciesMetTime).Seconds(),
 	})
 
 	updates := model.StatusChanges{}

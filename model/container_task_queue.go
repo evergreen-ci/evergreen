@@ -168,7 +168,7 @@ func (q *ContainerTaskQueue) setFirstScheduledTime(ctx context.Context, schedule
 		return
 	}
 
-	if err := task.SetTasksScheduledTime(ctx, notScheduledBefore, scheduledTime); err != nil {
+	if err := task.SetTasksScheduledAndDepsMetTime(ctx, notScheduledBefore, scheduledTime); err != nil {
 		grip.Warning(message.WrapError(err, message.Fields{
 			"message":                 "could not set first scheduled time for new container tasks",
 			"num_new_container_tasks": len(notScheduledBefore),
