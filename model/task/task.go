@@ -452,6 +452,8 @@ type Dependency struct {
 	Unattainable bool   `bson:"unattainable" json:"unattainable"`
 	// Finished indicates if the task's dependency has finished running or not.
 	Finished bool `bson:"finished" json:"finished"`
+	// FinishedAt indicates the time the task's dependency was finished at.
+	FinishedAt time.Time `bson:"finished_at,omitempty" json:"finished_at,omitempty"`
 	// OmitGeneratedTasks causes tasks that depend on a generator task to not depend on
 	// the generated tasks if this is set
 	OmitGeneratedTasks bool `bson:"omit_generated_tasks,omitempty" json:"omit_generated_tasks,omitempty"`
@@ -663,7 +665,9 @@ func (t *Task) isSystemUnresponsive() bool {
 }
 
 func (t *Task) SetOverrideDependencies(userID string) error {
+	dependenciesMetTime := time.Now()
 	t.OverrideDependencies = true
+	t.DependenciesMetTime = dependenciesMetTime
 	t.DisplayStatusCache = t.DetermineDisplayStatus()
 	event.LogTaskDependenciesOverridden(t.Id, t.Execution, userID)
 	return UpdateOne(
@@ -673,6 +677,7 @@ func (t *Task) SetOverrideDependencies(userID string) error {
 		bson.M{
 			"$set": bson.M{
 				OverrideDependenciesKey: true,
+				DependenciesMetTimeKey:  dependenciesMetTime,
 				DisplayStatusCacheKey:   t.DisplayStatusCache,
 			},
 		},
@@ -774,8 +779,8 @@ func (t *Task) DependenciesMet(ctx context.Context, depCaches map[string]Task) (
 			return false, nil
 		}
 	}
-	// this is not exact, but depTask.FinishTime is not always set in time to use that
-	t.DependenciesMetTime = time.Now()
+
+	t.setDependenciesMetTime()
 	err = UpdateOne(
 		bson.M{IdKey: t.Id},
 		bson.M{
@@ -788,6 +793,19 @@ func (t *Task) DependenciesMet(ctx context.Context, depCaches map[string]Task) (
 		"task_id": t.Id}))
 
 	return true, nil
+}
+
+func (t *Task) setDependenciesMetTime() {
+	dependenciesMetTime := utility.ZeroTime
+	for _, dependency := range t.DependsOn {
+		if !utility.IsZeroTime(dependency.FinishedAt) && dependency.FinishedAt.After(dependenciesMetTime) {
+			dependenciesMetTime = dependency.FinishedAt
+		}
+	}
+	if utility.IsZeroTime(dependenciesMetTime) {
+		dependenciesMetTime = time.Now()
+	}
+	t.DependenciesMetTime = dependenciesMetTime
 }
 
 // populateDependencyTaskCache ensures that all the dependencies for the task are in the cache.
@@ -928,12 +946,17 @@ func (t *Task) AllDependenciesSatisfied(ctx context.Context, cache map[string]Ta
 }
 
 // MarkDependenciesFinished updates all direct dependencies on this task to
-// cache whether or not this task has finished running.
+// cache whether this task has finished running, and at what time it finished (if applicable).
 func (t *Task) MarkDependenciesFinished(ctx context.Context, finished bool) error {
 	if t.DisplayOnly {
 		// This update can be skipped for display tasks since tasks are not
 		// allowed to have dependencies on display tasks.
 		return nil
+	}
+
+	finishedAt := t.FinishTime
+	if !finished {
+		finishedAt = utility.ZeroTime
 	}
 
 	_, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(ctx,
@@ -943,7 +966,10 @@ func (t *Task) MarkDependenciesFinished(ctx context.Context, finished bool) erro
 			}},
 		},
 		bson.M{
-			"$set": bson.M{bsonutil.GetDottedKeyName(DependsOnKey, "$[elem]", DependencyFinishedKey): finished},
+			"$set": bson.M{
+				bsonutil.GetDottedKeyName(DependsOnKey, "$[elem]", DependencyFinishedKey):   finished,
+				bsonutil.GetDottedKeyName(DependsOnKey, "$[elem]", DependencyFinishedAtKey): finishedAt,
+			},
 		},
 		options.Update().SetArrayFilters(options.ArrayFilters{Filters: []interface{}{
 			bson.M{bsonutil.GetDottedKeyName("elem", DependencyTaskIdKey): t.Id},
@@ -1386,31 +1412,51 @@ func (t *Task) SetGeneratedTasksToActivate(buildVariantName, taskName string) er
 	)
 }
 
-// SetTasksScheduledTime takes a list of tasks and a time, and then sets
-// the scheduled time in the database for the tasks if it is currently unset
-func SetTasksScheduledTime(ctx context.Context, tasks []Task, scheduledTime time.Time) error {
-	ids := []string{}
+// SetTasksScheduledAndDepsMetTime takes a list of tasks and a time, and then sets
+// the scheduled time in the database for the tasks if ScheduledTime is currently unset, and
+// does the same for the dependencies met time for the tasks if the task has its
+// dependencies met and DependenciesMetTime is unset.
+func SetTasksScheduledAndDepsMetTime(ctx context.Context, tasks []Task, scheduledTime time.Time) error {
+	idsToSchedule := []string{}
+	idsToSetDependenciesMet := []string{}
 	for i := range tasks {
 		// Skip tasks with scheduled time to prevent large updates
 		if utility.IsZeroTime(tasks[i].ScheduledTime) {
 			tasks[i].ScheduledTime = scheduledTime
-			ids = append(ids, tasks[i].Id)
+			idsToSchedule = append(idsToSchedule, tasks[i].Id)
+		}
+		if utility.IsZeroTime(tasks[i].DependenciesMetTime) && tasks[i].HasDependenciesMet() {
+			tasks[i].DependenciesMetTime = scheduledTime
+			idsToSetDependenciesMet = append(idsToSetDependenciesMet, tasks[i].Id)
 		}
 
 		// Display tasks are considered scheduled when their first exec task is scheduled
 		if tasks[i].IsPartOfDisplay(ctx) {
-			ids = append(ids, utility.FromStringPtr(tasks[i].DisplayTaskId))
+			idsToSchedule = append(idsToSchedule, utility.FromStringPtr(tasks[i].DisplayTaskId))
+			idsToSetDependenciesMet = append(idsToSetDependenciesMet, utility.FromStringPtr(tasks[i].DisplayTaskId))
 		}
 	}
 	// Remove duplicates to prevent large updates
-	uniqueIDs := utility.UniqueStrings(ids)
-	if len(uniqueIDs) == 0 {
+	uniqueIDsToSchedule := utility.UniqueStrings(idsToSchedule)
+	uniqueIDsToSetDependenciesMet := utility.UniqueStrings(idsToSetDependenciesMet)
+
+	if err := setScheduledTimeForTasks(uniqueIDsToSchedule, scheduledTime); err != nil {
+		return errors.Wrap(err, "setting scheduled time for tasks")
+	}
+	if err := setDependenciesMetTimeForTasks(uniqueIDsToSetDependenciesMet, scheduledTime); err != nil {
+		return errors.Wrap(err, "setting dependencies met time for tasks")
+	}
+	return nil
+}
+
+func setScheduledTimeForTasks(uniqueIDsToSchedule []string, scheduledTime time.Time) error {
+	if len(uniqueIDsToSchedule) == 0 {
 		return nil
 	}
 	_, err := UpdateAll(
 		bson.M{
 			IdKey: bson.M{
-				"$in": uniqueIDs,
+				"$in": uniqueIDsToSchedule,
 			},
 			ScheduledTimeKey: bson.M{
 				"$lte": utility.ZeroTime,
@@ -1425,7 +1471,31 @@ func SetTasksScheduledTime(ctx context.Context, tasks []Task, scheduledTime time
 	if err != nil {
 		return err
 	}
+	return nil
+}
 
+func setDependenciesMetTimeForTasks(uniqueIDsToSetDependenciesMet []string, dependenciesMetTime time.Time) error {
+	if len(uniqueIDsToSetDependenciesMet) == 0 {
+		return nil
+	}
+	_, err := UpdateAll(
+		bson.M{
+			IdKey: bson.M{
+				"$in": uniqueIDsToSetDependenciesMet,
+			},
+			DependenciesMetTimeKey: bson.M{
+				"$lte": utility.ZeroTime,
+			},
+		},
+		bson.M{
+			"$set": bson.M{
+				DependenciesMetTimeKey: dependenciesMetTime,
+			},
+		},
+	)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
