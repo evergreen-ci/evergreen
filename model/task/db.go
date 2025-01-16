@@ -153,6 +153,7 @@ var (
 	DependencyStatusKey             = bsonutil.MustHaveTag(Dependency{}, "Status")
 	DependencyUnattainableKey       = bsonutil.MustHaveTag(Dependency{}, "Unattainable")
 	DependencyFinishedKey           = bsonutil.MustHaveTag(Dependency{}, "Finished")
+	DependencyFinishedAtKey         = bsonutil.MustHaveTag(Dependency{}, "FinishedAt")
 	DependencyOmitGeneratedTasksKey = bsonutil.MustHaveTag(Dependency{}, "OmitGeneratedTasks")
 )
 
@@ -1321,26 +1322,17 @@ func FindOne(ctx context.Context, query db.Q) (*Task, error) {
 }
 
 // FindOneId returns a single task with the given ID.
-func FindOneId(id string) (*Task, error) {
-	task := &Task{}
-	query := db.Query(bson.M{IdKey: id})
-	err := db.FindOneQ(Collection, query, task)
+func FindOneId(ctx context.Context, id string) (*Task, error) {
+	task, err := FindOne(ctx, db.Query(bson.M{IdKey: id}))
 
-	if adb.ResultsNotFound(err) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, errors.Wrap(err, "finding task by ID")
-	}
-
-	return task, nil
+	return task, errors.Wrap(err, "finding task by ID")
 }
 
 // FindByIdExecution returns a single task with the given ID and execution. If
 // execution is nil, the latest execution is returned.
-func FindByIdExecution(id string, execution *int) (*Task, error) {
+func FindByIdExecution(ctx context.Context, id string, execution *int) (*Task, error) {
 	if execution == nil {
-		return FindOneId(id)
+		return FindOneId(ctx, id)
 	}
 	return FindOneIdAndExecution(id, *execution)
 }
@@ -1594,10 +1586,10 @@ func FindOldWithDisplayTasks(filter bson.M) ([]Task, error) {
 
 // FindOneIdOldOrNew returns a single task with the given ID and execution,
 // first looking in the old tasks collection, then the tasks collection.
-func FindOneIdOldOrNew(id string, execution int) (*Task, error) {
+func FindOneIdOldOrNew(ctx context.Context, id string, execution int) (*Task, error) {
 	task, err := FindOneOldId(MakeOldID(id, execution))
 	if task == nil || err != nil {
-		return FindOneId(id)
+		return FindOneId(ctx, id)
 	}
 
 	return task, err
@@ -1921,8 +1913,14 @@ func addStatusColorSort(key string) bson.M {
 							},
 							"then": 10, // green
 						},
+						{
+							"case": bson.M{
+								"$in": []interface{}{"$" + key, []string{evergreen.TaskUnscheduled, evergreen.TaskInactive, evergreen.TaskStatusBlocked, evergreen.TaskAborted}},
+							},
+							"then": 11, // light grey
+						},
 					},
-					"default": 6, // all shades of grey
+					"default": 6, // dark grey
 				},
 			},
 		},

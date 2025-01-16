@@ -44,7 +44,7 @@ func (t *taskAbortHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "aborting task '%s'", t.taskId))
 	}
 
-	foundTask, err := task.FindOneId(t.taskId)
+	foundTask, err := task.FindOneId(ctx, t.taskId)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding updated task '%s'", t.taskId))
 	}

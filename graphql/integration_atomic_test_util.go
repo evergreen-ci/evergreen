@@ -551,7 +551,7 @@ func setupTaskLogData(ctx context.Context, data json.RawMessage) error {
 	}
 
 	for _, taskLog := range taskLogs {
-		tsk, err := task.FindByIdExecution(taskLog.TaskID, utility.ToIntPtr(taskLog.Execution))
+		tsk, err := task.FindByIdExecution(ctx, taskLog.TaskID, utility.ToIntPtr(taskLog.Execution))
 		if err != nil {
 			return errors.Wrap(err, "finding task for task log")
 		}

@@ -449,7 +449,9 @@ func TestFindAllFirstExecution(t *testing.T) {
 }
 
 func TestFindOneIdOldOrNew(t *testing.T) {
-	ctx := context.TODO()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -462,12 +464,12 @@ func TestFindOneIdOldOrNew(t *testing.T) {
 	require.NoError(taskDoc.Insert())
 	require.NoError(taskDoc.Archive(ctx))
 
-	task00, err := FindOneIdOldOrNew("task", 0)
+	task00, err := FindOneIdOldOrNew(ctx, "task", 0)
 	assert.NoError(err)
 	require.NotNil(task00)
 	assert.Equal(0, task00.Execution)
 
-	task01, err := FindOneIdOldOrNew("task", 1)
+	task01, err := FindOneIdOldOrNew(ctx, "task", 1)
 	assert.NoError(err)
 	require.NotNil(task01)
 	assert.Equal("task", task01.Id)
@@ -475,12 +477,15 @@ func TestFindOneIdOldOrNew(t *testing.T) {
 }
 
 func TestAddHostCreateDetails(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert.NoError(t, db.ClearCollections(Collection))
 	task := Task{Id: "t1", Execution: 0}
 	assert.NoError(t, task.Insert())
 	errToSave := errors.Wrapf(errors.New("InsufficientCapacityError"), "error trying to start host")
 	assert.NoError(t, AddHostCreateDetails(task.Id, "h1", 0, errToSave))
-	dbTask, err := FindOneId(task.Id)
+	dbTask, err := FindOneId(ctx, task.Id)
 	assert.NoError(t, err)
 	assert.NotNil(t, dbTask)
 	require.Len(t, dbTask.HostCreateDetails, 1)
@@ -488,7 +493,7 @@ func TestAddHostCreateDetails(t *testing.T) {
 	assert.Contains(t, dbTask.HostCreateDetails[0].Error, "InsufficientCapacityError")
 
 	assert.NoError(t, AddHostCreateDetails(task.Id, "h2", 0, errToSave))
-	dbTask, err = FindOneId(task.Id)
+	dbTask, err = FindOneId(ctx, task.Id)
 	assert.NoError(t, err)
 	assert.NotNil(t, dbTask)
 	assert.Len(t, dbTask.HostCreateDetails, 2)
@@ -2047,6 +2052,7 @@ func TestHasActivatedDependentTasks(t *testing.T) {
 	hasDependentTasks, err = HasActivatedDependentTasks("secondTask")
 	assert.NoError(t, err)
 	assert.False(t, hasDependentTasks)
+	assert.False(t, t3.DependenciesMetTime.IsZero())
 
 	hasDependentTasks, err = HasActivatedDependentTasks("inactive")
 	assert.NoError(t, err)
@@ -2055,6 +2061,9 @@ func TestHasActivatedDependentTasks(t *testing.T) {
 }
 
 func TestActivateTasksUpdate(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	defer func() {
 		require.NoError(t, db.Clear(Collection))
 	}()
@@ -2071,7 +2080,7 @@ func TestActivateTasksUpdate(t *testing.T) {
 
 		require.NoError(t, t0.Insert())
 		assert.NoError(t, activateTasks([]string{t0.Id}, caller, activationTime))
-		dbTask, err := FindOneId(t0.Id)
+		dbTask, err := FindOneId(ctx, t0.Id)
 		assert.NoError(t, err)
 		assert.True(t, dbTask.Activated)
 		assert.Equal(t, caller, dbTask.ActivatedBy)

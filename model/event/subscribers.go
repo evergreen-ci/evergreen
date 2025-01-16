@@ -5,7 +5,6 @@ import (
 
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -19,7 +18,6 @@ const (
 	EvergreenWebhookSubscriberType  = "evergreen-webhook"
 	EmailSubscriberType             = "email"
 	SlackSubscriberType             = "slack"
-	EnqueuePatchSubscriberType      = "enqueue-patch"
 	SubscriberTypeNone              = "none"
 	RunChildPatchSubscriberType     = "run-child-patch"
 
@@ -37,15 +35,8 @@ var SubscriberTypes = []string{
 	EvergreenWebhookSubscriberType,
 	EmailSubscriberType,
 	SlackSubscriberType,
-	EnqueuePatchSubscriberType,
 	RunChildPatchSubscriberType,
 }
-
-//nolint:megacheck,unused
-var (
-	subscriberTypeKey   = bsonutil.MustHaveTag(Subscriber{}, "Type")
-	subscriberTargetKey = bsonutil.MustHaveTag(Subscriber{}, "Target")
-)
 
 type Subscriber struct {
 	Type string `bson:"type"`
@@ -87,9 +78,6 @@ func (s *Subscriber) SetBSON(raw mgobson.Raw) error {
 		s.Target = &str
 	case RunChildPatchSubscriberType:
 		s.Target = &ChildPatchSubscriber{}
-	case EnqueuePatchSubscriberType:
-		s.Target = nil
-		return nil
 
 	default:
 		return errors.Errorf("unknown subscriber type '%s'", temp.Type)
@@ -228,13 +216,6 @@ type ChildPatchSubscriber struct {
 
 func (s *GithubCheckSubscriber) String() string {
 	return fmt.Sprintf("%s-%s-%s", s.Owner, s.Repo, s.Ref)
-}
-
-func NewEnqueuePatchSubscriber() Subscriber {
-	return Subscriber{
-		Type:   EnqueuePatchSubscriberType,
-		Target: nil,
-	}
 }
 
 func NewRunChildPatchSubscriber(s ChildPatchSubscriber) Subscriber {

@@ -226,13 +226,15 @@ func checkPriority(t *testing.T, taskResults []Task) {
 	assert.Equal(t, evergreen.TaskSystemTimedOut, taskResults[4].DisplayStatus)
 	assert.Equal(t, evergreen.TaskSystemFailed, taskResults[5].DisplayStatus)
 	assert.Equal(t, evergreen.TaskWillRun, taskResults[6].DisplayStatus)
-	assert.Equal(t, evergreen.TaskStatusBlocked, taskResults[7].DisplayStatus)
-	assert.Equal(t, evergreen.TaskAborted, taskResults[8].DisplayStatus)
-	assert.Equal(t, evergreen.TaskUnscheduled, taskResults[9].DisplayStatus)
-	assert.Equal(t, evergreen.TaskSucceeded, taskResults[10].DisplayStatus)
+	assert.Equal(t, evergreen.TaskSucceeded, taskResults[7].DisplayStatus)
+	assert.Equal(t, evergreen.TaskStatusBlocked, taskResults[8].DisplayStatus)
+	assert.Equal(t, evergreen.TaskAborted, taskResults[9].DisplayStatus)
+	assert.Equal(t, evergreen.TaskUnscheduled, taskResults[10].DisplayStatus)
 }
 
 func TestDependenciesMet(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	var taskId string
 	var taskDoc *Task
@@ -262,7 +264,7 @@ func TestDependenciesMet(t *testing.T) {
 
 		Convey("sanity check the local version of the function in the nil case", func() {
 			taskDoc.DependsOn = []Dependency{}
-			met, err := taskDoc.AllDependenciesSatisfied(map[string]Task{})
+			met, err := taskDoc.AllDependenciesSatisfied(ctx, map[string]Task{})
 			So(err, ShouldBeNil)
 			So(met, ShouldBeTrue)
 			taskDoc.DependenciesMetTime = utility.ZeroTime
@@ -271,18 +273,20 @@ func TestDependenciesMet(t *testing.T) {
 		Convey("if the task has no dependencies its dependencies should"+
 			" be met by default", func() {
 			taskDoc.DependsOn = []Dependency{}
-			met, err := taskDoc.DependenciesMet(map[string]Task{})
+			met, err := taskDoc.DependenciesMet(ctx, map[string]Task{})
 			So(err, ShouldBeNil)
 			So(met, ShouldBeTrue)
+			So(utility.IsZeroTime(taskDoc.DependenciesMetTime), ShouldBeTrue)
 			taskDoc.DependenciesMetTime = utility.ZeroTime
 		})
 
 		Convey("task with overridden dependencies should be met", func() {
 			taskDoc.DependsOn = depTaskIds
 			taskDoc.OverrideDependencies = true
-			met, err := taskDoc.DependenciesMet(map[string]Task{})
+			met, err := taskDoc.DependenciesMet(ctx, map[string]Task{})
 			So(err, ShouldBeNil)
 			So(met, ShouldBeTrue)
+			So(utility.IsZeroTime(taskDoc.DependenciesMetTime), ShouldBeTrue)
 			taskDoc.DependenciesMetTime = utility.ZeroTime
 		})
 
@@ -298,9 +302,10 @@ func TestDependenciesMet(t *testing.T) {
 						},
 					},
 				), ShouldBeNil)
-				met, err := taskDoc.DependenciesMet(map[string]Task{})
+				met, err := taskDoc.DependenciesMet(ctx, map[string]Task{})
 				So(err, ShouldBeNil)
 				So(met, ShouldBeFalse)
+				So(utility.IsZeroTime(taskDoc.DependenciesMetTime), ShouldBeTrue)
 				taskDoc.DependenciesMetTime = utility.ZeroTime
 			})
 
@@ -308,7 +313,7 @@ func TestDependenciesMet(t *testing.T) {
 			" should correctly believe its dependencies are met", func() {
 			taskDoc.DependsOn = depTaskIds
 			updateTestDepTasks(t)
-			met, err := taskDoc.DependenciesMet(map[string]Task{})
+			met, err := taskDoc.DependenciesMet(ctx, map[string]Task{})
 			So(err, ShouldBeNil)
 			So(met, ShouldBeTrue)
 			taskDoc.DependenciesMetTime = utility.ZeroTime
@@ -319,9 +324,10 @@ func TestDependenciesMet(t *testing.T) {
 			dependencyCache := make(map[string]Task)
 			taskDoc.DependsOn = depTaskIds
 			updateTestDepTasks(t)
-			met, err := taskDoc.DependenciesMet(dependencyCache)
+			met, err := taskDoc.DependenciesMet(ctx, dependencyCache)
 			So(err, ShouldBeNil)
 			So(met, ShouldBeTrue)
+			So(utility.IsZeroTime(taskDoc.DependenciesMetTime), ShouldBeFalse)
 			taskDoc.DependenciesMetTime = utility.ZeroTime
 			for _, depTaskId := range depTaskIds[:4] {
 				So(dependencyCache[depTaskId.TaskId].Id, ShouldEqual, depTaskId.TaskId)
@@ -334,9 +340,10 @@ func TestDependenciesMet(t *testing.T) {
 			updateTestDepTasks(t)
 			dependencyCache := make(map[string]Task)
 			taskDoc.DependsOn = depTaskIds
-			met, err := taskDoc.DependenciesMet(dependencyCache)
+			met, err := taskDoc.DependenciesMet(ctx, dependencyCache)
 			So(err, ShouldBeNil)
 			So(met, ShouldBeTrue)
+			So(utility.IsZeroTime(taskDoc.DependenciesMetTime), ShouldBeFalse)
 			taskDoc.DependenciesMetTime = utility.ZeroTime
 
 			// alter the dependency cache so that it should seem as if the
@@ -345,7 +352,7 @@ func TestDependenciesMet(t *testing.T) {
 			So(cachedTask.Status, ShouldEqual, evergreen.TaskSucceeded)
 			cachedTask.Status = evergreen.TaskFailed
 			dependencyCache[depTaskIds[0].TaskId] = cachedTask
-			met, err = taskDoc.DependenciesMet(dependencyCache)
+			met, err = taskDoc.DependenciesMet(ctx, dependencyCache)
 			So(err, ShouldBeNil)
 			So(met, ShouldBeFalse)
 			taskDoc.DependenciesMetTime = utility.ZeroTime
@@ -382,24 +389,26 @@ func TestDependenciesMet(t *testing.T) {
 				dependencyCache := make(map[string]Task)
 				taskDoc.DependsOn = []Dependency{depTaskIds[0], depTaskIds[1],
 					depTaskIds[2]}
-				met, err := taskDoc.DependenciesMet(dependencyCache)
+				met, err := taskDoc.DependenciesMet(ctx, dependencyCache)
 				So(err, ShouldBeNil)
 				So(met, ShouldBeFalse)
+				So(utility.IsZeroTime(taskDoc.DependenciesMetTime), ShouldBeTrue)
 				taskDoc.DependenciesMetTime = utility.ZeroTime
 
-				met, err = taskDoc.AllDependenciesSatisfied(dependencyCache)
+				met, err = taskDoc.AllDependenciesSatisfied(ctx, dependencyCache)
 				So(err, ShouldBeNil)
 				So(met, ShouldBeFalse)
 
 				// remove the failed task from the dependencies (but not from
 				// the cache).  it should be ignored in the next pass
 				taskDoc.DependsOn = []Dependency{depTaskIds[0], depTaskIds[1]}
-				met, err = taskDoc.DependenciesMet(dependencyCache)
+				met, err = taskDoc.DependenciesMet(ctx, dependencyCache)
 				So(err, ShouldBeNil)
 				So(met, ShouldBeTrue)
+				So(utility.IsZeroTime(taskDoc.DependenciesMetTime), ShouldBeFalse)
 				taskDoc.DependenciesMetTime = utility.ZeroTime
 
-				met, err = taskDoc.AllDependenciesSatisfied(dependencyCache)
+				met, err = taskDoc.AllDependenciesSatisfied(ctx, dependencyCache)
 				So(err, ShouldBeNil)
 				So(met, ShouldBeTrue)
 			})
@@ -515,6 +524,9 @@ func TestGetFinishedBlockingDependencies(t *testing.T) {
 }
 
 func TestGetDeactivatedBlockingDependencies(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	taskId := "t1"
 	taskDoc := &Task{
 		Id: taskId,
@@ -536,7 +548,7 @@ func TestGetDeactivatedBlockingDependencies(t *testing.T) {
 		taskDoc.DependsOn = []Dependency{
 			{TaskId: depTaskIds[0].TaskId},
 		}
-		blockingTasks, err := taskDoc.GetDeactivatedBlockingDependencies(map[string]Task{})
+		blockingTasks, err := taskDoc.GetDeactivatedBlockingDependencies(ctx, map[string]Task{})
 		require.NoError(t, err)
 		assert.Empty(t, blockingTasks)
 	})
@@ -545,7 +557,7 @@ func TestGetDeactivatedBlockingDependencies(t *testing.T) {
 			{TaskId: depTaskIds[0].TaskId},
 			{TaskId: "cached-task"},
 		}
-		blockingTasks, err := taskDoc.GetDeactivatedBlockingDependencies(map[string]Task{
+		blockingTasks, err := taskDoc.GetDeactivatedBlockingDependencies(ctx, map[string]Task{
 			"cached-task": {Id: "cached-task", Status: evergreen.TaskSucceeded},
 		})
 		require.NoError(t, err)
@@ -555,7 +567,7 @@ func TestGetDeactivatedBlockingDependencies(t *testing.T) {
 		taskDoc.DependsOn = []Dependency{
 			{TaskId: depTaskIds[1].TaskId},
 		}
-		blockingTasks, err := taskDoc.GetDeactivatedBlockingDependencies(map[string]Task{})
+		blockingTasks, err := taskDoc.GetDeactivatedBlockingDependencies(ctx, map[string]Task{})
 		require.NoError(t, err)
 		assert.Empty(t, blockingTasks)
 	})
@@ -563,7 +575,7 @@ func TestGetDeactivatedBlockingDependencies(t *testing.T) {
 		taskDoc.DependsOn = []Dependency{
 			{TaskId: depTaskIds[2].TaskId},
 		}
-		blockingTasks, err := taskDoc.GetDeactivatedBlockingDependencies(map[string]Task{})
+		blockingTasks, err := taskDoc.GetDeactivatedBlockingDependencies(ctx, map[string]Task{})
 		require.NoError(t, err)
 		assert.Len(t, blockingTasks, 1)
 	})
@@ -572,7 +584,7 @@ func TestGetDeactivatedBlockingDependencies(t *testing.T) {
 			{TaskId: depTaskIds[2].TaskId},
 			{TaskId: "cached-task"},
 		}
-		blockingTasks, err := taskDoc.GetDeactivatedBlockingDependencies(map[string]Task{
+		blockingTasks, err := taskDoc.GetDeactivatedBlockingDependencies(ctx, map[string]Task{
 			"cached-task": {Id: "cached-task", Status: evergreen.TaskSucceeded},
 		})
 		require.NoError(t, err)
@@ -609,11 +621,12 @@ func TestMarkDependenciesFinished(t *testing.T) {
 
 			require.NoError(t, t0.MarkDependenciesFinished(ctx, true))
 
-			dbTask2, err := FindOneId(t2.Id)
+			dbTask2, err := FindOneId(ctx, t2.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask2)
 			require.Len(t, dbTask2.DependsOn, 1)
 			assert.False(t, dbTask2.DependsOn[0].Finished, "unconnected dependency edge should not be marked finished")
+			assert.True(t, utility.IsZeroTime(dbTask2.DependsOn[0].FinishedAt), "unconnected dependency edge should not be marked finished")
 		},
 		"UpdatesDependencyWithMatchingStatus": func(t *testing.T) {
 			t0 := Task{
@@ -632,13 +645,15 @@ func TestMarkDependenciesFinished(t *testing.T) {
 			require.NoError(t, t0.Insert())
 			require.NoError(t, t1.Insert())
 
+			t0.FinishTime = time.Now()
 			require.NoError(t, t0.MarkDependenciesFinished(ctx, true))
 
-			dbTask1, err := FindOneId(t1.Id)
+			dbTask1, err := FindOneId(ctx, t1.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask1)
 			require.Len(t, dbTask1.DependsOn, 1)
 			assert.True(t, dbTask1.DependsOn[0].Finished)
+			assert.False(t, utility.IsZeroTime(dbTask1.DependsOn[0].FinishedAt))
 		},
 		"UpdatesDependencyWithUnmatchingStatus": func(t *testing.T) {
 			t0 := Task{
@@ -657,13 +672,103 @@ func TestMarkDependenciesFinished(t *testing.T) {
 			require.NoError(t, t0.Insert())
 			require.NoError(t, t1.Insert())
 
+			t0.FinishTime = time.Now()
 			require.NoError(t, t0.MarkDependenciesFinished(ctx, true))
+			assert.NoError(t, t0.MarkEnd(t0.FinishTime, &apimodels.TaskEndDetail{Status: evergreen.TaskFailed}))
+
+			dbTask1, err := FindOneId(ctx, t1.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask1)
+			require.Len(t, dbTask1.DependsOn, 1)
+			assert.True(t, dbTask1.DependsOn[0].Finished)
+			assert.False(t, utility.IsZeroTime(dbTask1.DependsOn[0].FinishedAt))
+
+			met, err := dbTask1.DependenciesMet(map[string]Task{})
+			assert.NoError(t, err)
+			assert.False(t, met)
+			assert.Zero(t, dbTask1.DependenciesMetTime)
+		},
+		"UpdatesDependenciesMetTimeAccordingToFinishedAtWithSingleDependency": func(t *testing.T) {
+			t0 := Task{
+				Id:     "task0",
+				Status: evergreen.TaskSucceeded,
+			}
+			t1 := Task{
+				Id: "task1",
+				DependsOn: []Dependency{
+					{
+						TaskId: "task0",
+						Status: evergreen.TaskSucceeded,
+					},
+				},
+			}
+			require.NoError(t, t0.Insert())
+			require.NoError(t, t1.Insert())
+
+			t0.FinishTime = time.Now().Round(time.Millisecond)
+			require.NoError(t, t0.MarkDependenciesFinished(ctx, true))
+			assert.NoError(t, t0.MarkEnd(t0.FinishTime, &apimodels.TaskEndDetail{Status: evergreen.TaskSucceeded}))
 
 			dbTask1, err := FindOneId(t1.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask1)
 			require.Len(t, dbTask1.DependsOn, 1)
 			assert.True(t, dbTask1.DependsOn[0].Finished)
+			assert.False(t, utility.IsZeroTime(dbTask1.DependsOn[0].FinishedAt))
+
+			met, err := dbTask1.DependenciesMet(map[string]Task{})
+			assert.NoError(t, err)
+			assert.True(t, met)
+			assert.Equal(t, dbTask1.DependenciesMetTime, t0.FinishTime)
+		},
+		"UpdatesDependenciesMetTimeAccordingToFinishedAt": func(t *testing.T) {
+			t0 := Task{
+				Id:     "task0",
+				Status: evergreen.TaskSucceeded,
+			}
+			t1 := Task{
+				Id:     "task1",
+				Status: evergreen.TaskSucceeded,
+			}
+			t2 := Task{
+				Id: "task2",
+				DependsOn: []Dependency{
+					{
+						TaskId: "task0",
+						Status: evergreen.TaskSucceeded,
+					},
+					{
+						TaskId: "task1",
+						Status: evergreen.TaskSucceeded,
+					},
+				},
+			}
+			require.NoError(t, t0.Insert())
+			require.NoError(t, t1.Insert())
+			require.NoError(t, t2.Insert())
+
+			t0.FinishTime = time.Now()
+			require.NoError(t, t0.MarkDependenciesFinished(ctx, true))
+			assert.NoError(t, t0.MarkEnd(t0.FinishTime, &apimodels.TaskEndDetail{Status: evergreen.TaskSucceeded}))
+
+			t1.FinishTime = time.Now().Round(time.Millisecond)
+			require.NoError(t, t1.MarkDependenciesFinished(ctx, true))
+			assert.NoError(t, t1.MarkEnd(t1.FinishTime, &apimodels.TaskEndDetail{Status: evergreen.TaskSucceeded}))
+
+			dbTask2, err := FindOneId(t2.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask2)
+			require.Len(t, dbTask2.DependsOn, 2)
+			assert.True(t, dbTask2.DependsOn[0].Finished)
+			assert.False(t, utility.IsZeroTime(dbTask2.DependsOn[0].FinishedAt))
+			assert.True(t, dbTask2.DependsOn[1].Finished)
+			assert.False(t, utility.IsZeroTime(dbTask2.DependsOn[1].FinishedAt))
+
+			met, err := dbTask2.DependenciesMet(map[string]Task{})
+			assert.NoError(t, err)
+			assert.True(t, met)
+			assert.Equal(t, dbTask2.DependenciesMetTime, t1.FinishTime)
+			assert.True(t, dbTask2.DependenciesMetTime.After(t0.FinishTime))
 		},
 		"UpdatesSpecificDependency": func(t *testing.T) {
 			t0 := Task{
@@ -685,16 +790,21 @@ func TestMarkDependenciesFinished(t *testing.T) {
 			require.NoError(t, t0.Insert())
 			require.NoError(t, t1.Insert())
 
+			t0.FinishTime = time.Now()
 			require.NoError(t, t0.MarkDependenciesFinished(ctx, true))
 
-			dbTask1, err := FindOneId(t1.Id)
+			dbTask1, err := FindOneId(ctx, t1.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask1)
 			require.Len(t, dbTask1.DependsOn, 4)
 			assert.False(t, dbTask1.DependsOn[0].Finished)
+			assert.True(t, utility.IsZeroTime(dbTask1.DependsOn[0].FinishedAt))
 			assert.False(t, dbTask1.DependsOn[1].Finished)
+			assert.True(t, utility.IsZeroTime(dbTask1.DependsOn[1].FinishedAt))
 			assert.True(t, dbTask1.DependsOn[2].Finished)
+			assert.False(t, utility.IsZeroTime(dbTask1.DependsOn[2].FinishedAt))
 			assert.False(t, dbTask1.DependsOn[3].Finished)
+			assert.True(t, utility.IsZeroTime(dbTask1.DependsOn[3].FinishedAt))
 		},
 		"UpdatesDirectDependenciesOnly": func(t *testing.T) {
 			t0 := Task{
@@ -717,19 +827,22 @@ func TestMarkDependenciesFinished(t *testing.T) {
 			require.NoError(t, t1.Insert())
 			require.NoError(t, t2.Insert())
 
+			t0.FinishTime = time.Now()
 			require.NoError(t, t0.MarkDependenciesFinished(ctx, true))
 
-			dbTask1, err := FindOneId(t1.Id)
+			dbTask1, err := FindOneId(ctx, t1.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask1)
 			require.Len(t, dbTask1.DependsOn, 1)
 			assert.True(t, dbTask1.DependsOn[0].Finished, "direct dependency should be marked finished")
+			assert.False(t, utility.IsZeroTime(dbTask1.DependsOn[0].FinishedAt), "direct dependency should be marked finished")
 
-			dbTask2, err := FindOneId(t2.Id)
+			dbTask2, err := FindOneId(ctx, t2.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask2)
 			require.Len(t, dbTask2.DependsOn, 1)
 			assert.False(t, dbTask2.DependsOn[0].Finished, "indirect dependency edge should not be marked finished")
+			assert.True(t, utility.IsZeroTime(dbTask2.DependsOn[0].FinishedAt), "indirect dependency edge should not be marked finished")
 		},
 		"UpdateDependencyToUnfinished": func(t *testing.T) {
 			t0 := Task{
@@ -750,11 +863,12 @@ func TestMarkDependenciesFinished(t *testing.T) {
 
 			require.NoError(t, t0.MarkDependenciesFinished(ctx, false))
 
-			dbTask1, err := FindOneId(t1.Id)
+			dbTask1, err := FindOneId(ctx, t1.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask1)
 			require.Len(t, dbTask1.DependsOn, 1)
-			assert.False(t, dbTask1.DependsOn[0].Finished, "direct dependency should be marked finished")
+			assert.False(t, dbTask1.DependsOn[0].Finished, "direct dependency should not be marked finished")
+			assert.True(t, utility.IsZeroTime(dbTask1.DependsOn[0].FinishedAt), "direct dependency should not be marked finished")
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
@@ -773,22 +887,25 @@ func TestSetTasksScheduledTime(t *testing.T) {
 		So(db.Clear(Collection), ShouldBeNil)
 
 		tasks := []Task{
-			{Id: "t0", ScheduledTime: utility.ZeroTime, ExecutionTasks: []string{"t1", "t2"}},
-			{Id: "t1", ScheduledTime: utility.ZeroTime},
-			{Id: "t2", ScheduledTime: utility.ZeroTime},
-			{Id: "t3", ScheduledTime: utility.ZeroTime},
+			{Id: "t0", ScheduledTime: utility.ZeroTime, DependenciesMetTime: utility.ZeroTime, ExecutionTasks: []string{"t1", "t2"}},
+			{Id: "t1", ScheduledTime: utility.ZeroTime, DependenciesMetTime: utility.ZeroTime},
+			{Id: "t2", ScheduledTime: utility.ZeroTime, DependenciesMetTime: utility.ZeroTime},
+			{Id: "t3", ScheduledTime: utility.ZeroTime, DependenciesMetTime: utility.ZeroTime, DependsOn: []Dependency{{TaskId: "t2"}}},
 		}
 		for _, task := range tasks {
 			So(task.Insert(), ShouldBeNil)
 		}
 		Convey("when updating ScheduledTime for some of the tasks", func() {
 			testTime := time.Unix(31337, 0)
-			So(SetTasksScheduledTime(ctx, tasks[2:], testTime), ShouldBeNil)
+			So(SetTasksScheduledAndDepsMetTime(ctx, tasks[2:], testTime), ShouldBeNil)
 
 			Convey("the tasks should be updated in memory", func() {
 				So(tasks[1].ScheduledTime, ShouldResemble, utility.ZeroTime)
 				So(tasks[2].ScheduledTime, ShouldResemble, testTime)
 				So(tasks[3].ScheduledTime, ShouldResemble, testTime)
+				So(tasks[1].DependenciesMetTime, ShouldResemble, utility.ZeroTime)
+				So(tasks[2].DependenciesMetTime, ShouldResemble, testTime)
+				So(tasks[3].DependenciesMetTime, ShouldResemble, utility.ZeroTime)
 
 				Convey("and in the db", func() {
 					// Need to use a margin of error on time tests
@@ -798,56 +915,77 @@ func TestSetTasksScheduledTime(t *testing.T) {
 					t0, err := FindOne(ctx, db.Query(ById("t0")))
 					So(err, ShouldBeNil)
 					So(t0.ScheduledTime.Round(oneMs), ShouldResemble, testTime)
+					So(t0.DependenciesMetTime.Round(oneMs), ShouldResemble, testTime)
 					t1, err := FindOne(ctx, db.Query(ById("t1")))
 					So(err, ShouldBeNil)
 					So(t1.ScheduledTime.Round(oneMs), ShouldResemble, utility.ZeroTime)
+					So(t1.DependenciesMetTime.Round(oneMs), ShouldResemble, utility.ZeroTime)
 					t2, err := FindOne(ctx, db.Query(ById("t2")))
 					So(err, ShouldBeNil)
 					So(t2.ScheduledTime.Round(oneMs), ShouldResemble, testTime)
+					So(t2.DependenciesMetTime.Round(oneMs), ShouldResemble, testTime)
 					t3, err := FindOne(ctx, db.Query(ById("t3")))
 					So(err, ShouldBeNil)
 					So(t3.ScheduledTime.Round(oneMs), ShouldResemble, testTime)
+					So(t3.DependenciesMetTime.Round(oneMs), ShouldResemble, utility.ZeroTime)
 				})
 
 				Convey("if we update a second time", func() {
 					newTime := time.Unix(99999999, 0)
 					So(newTime, ShouldHappenAfter, testTime)
-					So(SetTasksScheduledTime(ctx, tasks, newTime), ShouldBeNil)
+					So(SetTasksScheduledAndDepsMetTime(ctx, tasks, newTime), ShouldBeNil)
 
 					Convey("only unset scheduled times should be updated", func() {
 						t0, err := FindOne(ctx, db.Query(ById("t0")))
 						So(err, ShouldBeNil)
 						So(t0.ScheduledTime.Round(oneMs), ShouldResemble, testTime)
+						So(t0.DependenciesMetTime.Round(oneMs), ShouldResemble, testTime)
 						t1, err := FindOne(ctx, db.Query(ById("t1")))
 						So(err, ShouldBeNil)
 						So(t1.ScheduledTime.Round(oneMs), ShouldResemble, newTime)
+						So(t1.DependenciesMetTime.Round(oneMs), ShouldResemble, newTime)
 						t2, err := FindOne(ctx, db.Query(ById("t2")))
 						So(err, ShouldBeNil)
 						So(t2.ScheduledTime.Round(oneMs), ShouldResemble, testTime)
+						So(t2.DependenciesMetTime.Round(oneMs), ShouldResemble, testTime)
 						t3, err := FindOne(ctx, db.Query(ById("t3")))
 						So(err, ShouldBeNil)
 						So(t3.ScheduledTime.Round(oneMs), ShouldResemble, testTime)
+						So(t3.DependenciesMetTime.Round(oneMs), ShouldResemble, utility.ZeroTime)
 					})
 				})
 
 				Convey("if we update a third time", func() {
 					newTime := time.Unix(99999999, 0)
 					So(newTime, ShouldHappenAfter, testTime)
-					So(SetTasksScheduledTime(ctx, tasks, newTime), ShouldBeNil)
+
+					depsFinishedTime := time.Now()
+					So(tasks[2].MarkDependenciesFinished(ctx, true), ShouldBeNil)
+					So(tasks[2].MarkEnd(newTime, &apimodels.TaskEndDetail{Status: evergreen.TaskSucceeded}), ShouldBeNil)
+					t3FromDb, err := FindOneId("t3")
+					So(err, ShouldBeNil)
+					depsMet, err := t3FromDb.DependenciesMet(map[string]Task{})
+					So(err, ShouldBeNil)
+					So(depsMet, ShouldBeTrue)
+					So(SetTasksScheduledAndDepsMetTime(ctx, tasks, newTime), ShouldBeNil)
 
 					Convey("nothing should have updated", func() {
 						t0, err := FindOne(ctx, db.Query(ById("t0")))
 						So(err, ShouldBeNil)
 						So(t0.ScheduledTime.Round(oneMs), ShouldResemble, testTime)
+						So(t0.DependenciesMetTime.Round(oneMs), ShouldResemble, testTime)
 						t1, err := FindOne(ctx, db.Query(ById("t1")))
 						So(err, ShouldBeNil)
 						So(t1.ScheduledTime.Round(oneMs), ShouldResemble, newTime)
+						So(t1.DependenciesMetTime.Round(oneMs), ShouldResemble, newTime)
 						t2, err := FindOne(ctx, db.Query(ById("t2")))
 						So(err, ShouldBeNil)
 						So(t2.ScheduledTime.Round(oneMs), ShouldResemble, testTime)
+						So(t2.DependenciesMetTime.Round(oneMs), ShouldResemble, testTime)
 						t3, err := FindOne(ctx, db.Query(ById("t3")))
 						So(err, ShouldBeNil)
 						So(t3.ScheduledTime.Round(oneMs), ShouldResemble, testTime)
+						So(t3.DependenciesMetTime.After(depsFinishedTime), ShouldBeTrue)
 					})
 				})
 
@@ -1515,13 +1653,13 @@ func TestUnscheduleStaleUnderwaterHostTasksNoDistro(t *testing.T) {
 	tasks, err := UnscheduleStaleUnderwaterHostTasks(ctx, "")
 	assert.NoError(err)
 	require.Len(t, tasks, 2)
-	dbTask, err := FindOneId("t1")
+	dbTask, err := FindOneId(ctx, "t1")
 	assert.NoError(err)
 	assert.False(dbTask.Activated)
 	assert.Equal(evergreen.TaskUnscheduled, dbTask.DisplayStatusCache)
 	assert.EqualValues(-1, dbTask.Priority)
 
-	dbTask, err = FindOneId("t2")
+	dbTask, err = FindOneId(ctx, "t2")
 	assert.NoError(err)
 	assert.False(dbTask.Activated)
 	assert.Equal(evergreen.TaskUnscheduled, dbTask.DisplayStatusCache)
@@ -1658,7 +1796,7 @@ func TestUnscheduleStaleUnderwaterHostTasksWithDistro(t *testing.T) {
 	tasks, err := UnscheduleStaleUnderwaterHostTasks(ctx, "d0")
 	assert.NoError(t, err)
 	require.Len(t, tasks, 1)
-	dbTask, err := FindOneId("t1")
+	dbTask, err := FindOneId(ctx, "t1")
 	assert.NoError(t, err)
 	assert.False(t, dbTask.Activated)
 	assert.EqualValues(t, -1, dbTask.Priority)
@@ -1690,7 +1828,7 @@ func TestUnscheduleStaleUnderwaterHostTasksWithDistroAlias(t *testing.T) {
 
 	tasks, err := UnscheduleStaleUnderwaterHostTasks(ctx, "d0")
 	assert.NoError(t, err)
-	dbTask, err := FindOneId("t1")
+	dbTask, err := FindOneId(ctx, "t1")
 	assert.NoError(t, err)
 	assert.False(t, dbTask.Activated)
 	assert.EqualValues(t, -1, dbTask.Priority)
@@ -1788,7 +1926,7 @@ func TestAddDependency(t *testing.T) {
 		"AddingDuplicateDependencyIsNoop": func(t *testing.T, tsk *Task) {
 			assert.NoError(t, tsk.AddDependency(ctx, depTaskIds[0]))
 
-			updated, err := FindOneId(tsk.Id)
+			updated, err := FindOneId(ctx, tsk.Id)
 			assert.NoError(t, err)
 			require.NotZero(t, updated)
 			assert.Equal(t, tsk.DependsOn, updated.DependsOn)
@@ -1801,7 +1939,7 @@ func TestAddDependency(t *testing.T) {
 				Unattainable: true,
 			}))
 
-			updated, err := FindOneId(tsk.Id)
+			updated, err := FindOneId(ctx, tsk.Id)
 			assert.NoError(t, err)
 			require.NotZero(t, updated)
 			require.Len(t, updated.DependsOn, len(depTaskIds))
@@ -1814,7 +1952,7 @@ func TestAddDependency(t *testing.T) {
 				Status: evergreen.TaskFailed,
 			}))
 
-			updated, err := FindOneId(tsk.Id)
+			updated, err := FindOneId(ctx, tsk.Id)
 			assert.NoError(t, err)
 			require.NotZero(t, updated)
 			assert.Len(t, updated.DependsOn, len(depTaskIds)+1)
@@ -1824,7 +1962,7 @@ func TestAddDependency(t *testing.T) {
 				TaskId: tsk.Id,
 			}))
 
-			updated, err := FindOneId(tsk.Id)
+			updated, err := FindOneId(ctx, tsk.Id)
 			assert.NoError(t, err)
 			require.NotZero(t, updated)
 			assert.Len(t, updated.DependsOn, len(depTaskIds))
@@ -1838,7 +1976,7 @@ func TestAddDependency(t *testing.T) {
 				assert.NotEqual(t, d.TaskId, depTaskIds[2].TaskId)
 			}
 
-			updated, err := FindOneId(tsk.Id)
+			updated, err := FindOneId(ctx, tsk.Id)
 			assert.NoError(t, err)
 			require.NotZero(t, updated)
 			for _, d := range updated.DependsOn {
@@ -2002,6 +2140,9 @@ func TestGetFormattedTimeSpent(t *testing.T) {
 }
 
 func TestUpdateDependsOn(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.ClearCollections(Collection))
 	t1 := &Task{Id: "t1"}
 	assert.NoError(t, t1.Insert())
@@ -2016,18 +2157,18 @@ func TestUpdateDependsOn(t *testing.T) {
 
 	var err error
 	assert.NoError(t, t1.UpdateDependsOn(evergreen.TaskFailed, []string{"t3", "t4"}))
-	t2, err = FindOneId("t2")
+	t2, err = FindOneId(ctx, "t2")
 	assert.NoError(t, err)
 	assert.Len(t, t2.DependsOn, 2)
 
 	assert.NoError(t, t1.UpdateDependsOn(evergreen.TaskSucceeded, []string{"t3", "t4"}))
-	t2, err = FindOneId("t2")
+	t2, err = FindOneId(ctx, "t2")
 	assert.NoError(t, err)
 	assert.Len(t, t2.DependsOn, 4)
 
 	t.Run("AddingSelfDependencyShouldNoop", func(t *testing.T) {
 		assert.NoError(t, t1.UpdateDependsOn(evergreen.TaskSucceeded, []string{t1.Id}))
-		dbTask1, err := FindOneId(t1.Id)
+		dbTask1, err := FindOneId(ctx, t1.Id)
 		assert.NoError(t, err)
 		require.NotZero(t, dbTask1)
 		for _, d := range dbTask1.DependsOn {
@@ -2037,6 +2178,9 @@ func TestUpdateDependsOn(t *testing.T) {
 }
 
 func TestMarkGeneratedTasks(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.Clear(Collection))
 	t1 := &Task{
 		Id: "t1",
@@ -2046,14 +2190,14 @@ func TestMarkGeneratedTasks(t *testing.T) {
 	mockError := errors.New("mock error")
 
 	require.NoError(t, MarkGeneratedTasks(t1.Id))
-	found, err := FindOneId(t1.Id)
+	found, err := FindOneId(ctx, t1.Id)
 	require.NoError(t, err)
 	require.True(t, found.GeneratedTasks)
 	require.Equal(t, "", found.GenerateTasksError)
 
 	require.NoError(t, MarkGeneratedTasks(t1.Id))
 	require.NoError(t, MarkGeneratedTasksErr(t1.Id, mockError))
-	found, err = FindOneId(t1.Id)
+	found, err = FindOneId(ctx, t1.Id)
 	require.NoError(t, err)
 	require.True(t, found.GeneratedTasks)
 	require.Equal(t, "", found.GenerateTasksError, "calling after GeneratedTasks is set should not set an error")
@@ -2063,7 +2207,7 @@ func TestMarkGeneratedTasks(t *testing.T) {
 	}
 	require.NoError(t, t3.Insert())
 	require.NoError(t, MarkGeneratedTasksErr(t3.Id, mongo.ErrNoDocuments))
-	found, err = FindOneId(t3.Id)
+	found, err = FindOneId(ctx, t3.Id)
 	require.NoError(t, err)
 	require.False(t, found.GeneratedTasks, "document not found should not set generated tasks, since this was a race and did not generate.tasks")
 	require.Equal(t, "", found.GenerateTasksError)
@@ -2074,7 +2218,7 @@ func TestMarkGeneratedTasks(t *testing.T) {
 	dupError := errors.New("duplicate key error")
 	require.NoError(t, t4.Insert())
 	require.NoError(t, MarkGeneratedTasksErr(t4.Id, dupError))
-	found, err = FindOneId(t4.Id)
+	found, err = FindOneId(ctx, t4.Id)
 	require.NoError(t, err)
 	require.False(t, found.GeneratedTasks, "duplicate key error should not set generated tasks, since this was a race and did not generate.tasks")
 	require.Equal(t, "", found.GenerateTasksError)
@@ -2280,6 +2424,9 @@ func TestTopologicalSort(t *testing.T) {
 }
 
 func TestActivateTasks(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	defer func() {
 		assert.NoError(t, db.ClearCollections(Collection, event.EventCollection, user.Collection))
 	}()
@@ -2356,7 +2503,7 @@ func TestActivateTasks(t *testing.T) {
 		require.NoError(t, err)
 		assert.Empty(t, events)
 
-		dbTask, err := FindOneId(task.Id)
+		dbTask, err := FindOneId(ctx, task.Id)
 		require.NoError(t, err)
 		require.NotNil(t, dbTask)
 		assert.True(t, task.Activated)
@@ -2438,7 +2585,7 @@ func TestMarkAsContainerDispatched(t *testing.T) {
 	const podID = "pod_id"
 
 	checkTaskDispatched := func(t *testing.T, taskID string) {
-		dbTask, err := FindOneId(taskID)
+		dbTask, err := FindOneId(ctx, taskID)
 		require.NoError(t, err)
 		require.NotZero(t, dbTask)
 		assert.Equal(t, evergreen.TaskDispatched, dbTask.Status)
@@ -2496,7 +2643,7 @@ func TestMarkAsContainerDispatched(t *testing.T) {
 		"FailsWithNonexistentTask": func(ctx context.Context, t *testing.T, env *mock.Environment, tsks []Task) {
 			require.Error(t, tsks[1].MarkAsContainerDispatched(ctx, env, podID, evergreen.AgentVersion))
 
-			dbTask, err := FindOneId(tsks[1].Id)
+			dbTask, err := FindOneId(ctx, tsks[1].Id)
 			assert.NoError(t, err)
 			assert.Zero(t, dbTask)
 		},
@@ -2524,7 +2671,7 @@ func TestMarkAsContainerAllocated(t *testing.T) {
 	require.NoError(t, env.Configure(ctx))
 
 	checkTaskAllocated := func(t *testing.T, taskID string) {
-		dbTask, err := FindOneId(taskID)
+		dbTask, err := FindOneId(ctx, taskID)
 		require.NoError(t, err)
 		require.NotZero(t, dbTask)
 		assert.True(t, dbTask.ContainerAllocated)
@@ -2598,7 +2745,7 @@ func TestMarkAsContainerAllocated(t *testing.T) {
 		"FailsWithNonexistentTask": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
 			require.Error(t, tsk.MarkAsContainerAllocated(ctx, env))
 
-			dbTask, err := FindOneId(tsk.Id)
+			dbTask, err := FindOneId(ctx, tsk.Id)
 			assert.NoError(t, err)
 			assert.Zero(t, dbTask)
 		},
@@ -2633,7 +2780,7 @@ func TestMarkAsContainerDeallocated(t *testing.T) {
 	require.NoError(t, env.Configure(ctx))
 
 	checkTaskUnallocated := func(t *testing.T, taskID string) {
-		dbTask, err := FindOneId(taskID)
+		dbTask, err := FindOneId(ctx, taskID)
 		require.NoError(t, err)
 		require.NotZero(t, dbTask)
 		assert.False(t, dbTask.ContainerAllocated)
@@ -2669,7 +2816,7 @@ func TestMarkAsContainerDeallocated(t *testing.T) {
 		"FailsWithNonexistentTask": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
 			require.Error(t, tsk.MarkAsContainerDeallocated(ctx, env))
 
-			dbTask, err := FindOneId(tsk.Id)
+			dbTask, err := FindOneId(ctx, tsk.Id)
 			assert.NoError(t, err)
 			assert.Zero(t, dbTask)
 		},
@@ -2695,13 +2842,16 @@ func TestMarkAsContainerDeallocated(t *testing.T) {
 }
 
 func TestMarkTasksAsContainerDeallocated(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	defer func() {
 		assert.NoError(t, db.Clear(Collection))
 	}()
 
 	checkTasksUnallocated := func(t *testing.T, taskIDs []string) {
 		for _, taskID := range taskIDs {
-			dbTask, err := FindOneId(taskID)
+			dbTask, err := FindOneId(ctx, taskID)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask)
 			assert.False(t, dbTask.ContainerAllocated)
@@ -2730,7 +2880,7 @@ func TestMarkTasksAsContainerDeallocated(t *testing.T) {
 
 			require.NoError(t, MarkTasksAsContainerDeallocated(taskIDs))
 			checkTasksUnallocated(t, taskIDs[1:])
-			dbHostTask, err := FindOneId(tasks[0].Id)
+			dbHostTask, err := FindOneId(ctx, tasks[0].Id)
 			require.NoError(t, err)
 			assert.Equal(t, tasks[0].ContainerAllocated, dbHostTask.ContainerAllocated, "host task should not be updated")
 			assert.NotZero(t, dbHostTask.LastHeartbeat, "host task should not be updated")
@@ -2757,7 +2907,7 @@ func TestMarkTasksAsContainerDeallocated(t *testing.T) {
 			require.NoError(t, MarkTasksAsContainerDeallocated(taskIDs))
 			checkTasksUnallocated(t, taskIDs[1:])
 
-			dbTask, err := FindOneId(tasks[0].Id)
+			dbTask, err := FindOneId(ctx, tasks[0].Id)
 			assert.NoError(t, err)
 			assert.Zero(t, dbTask)
 		},
@@ -3030,13 +3180,16 @@ func getTaskThatNeedsContainerAllocation() Task {
 }
 
 func TestMarkAllForUnattainableDependencies(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	defer func() {
 		assert.NoError(t, db.Clear(Collection))
 	}()
 
 	// checkTaskAndDB runs identical checks on a task and its corresponding DB document.
 	checkTaskAndDB := func(t *testing.T, tsk Task, doCheck func(t *testing.T, taskToCheck Task)) {
-		dbTask, err := FindOneId(tsk.Id)
+		dbTask, err := FindOneId(ctx, tsk.Id)
 		require.NoError(t, err)
 		require.NotZero(t, dbTask)
 
@@ -3352,34 +3505,37 @@ func TestMarkAllForUnattainableDependencies(t *testing.T) {
 }
 
 func TestSetGeneratedTasksToActivate(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.ClearCollections(Collection))
 	task := Task{Id: "t1"}
 	assert.NoError(t, task.Insert())
 
 	// add stepback task to variant
 	assert.NoError(t, task.SetGeneratedTasksToActivate("bv2", "t2"))
-	taskFromDb, err := FindOneId("t1")
+	taskFromDb, err := FindOneId(ctx, "t1")
 	assert.NoError(t, err)
 	assert.NotNil(t, taskFromDb)
 	assert.Equal(t, []string{"t2"}, taskFromDb.GeneratedTasksToActivate["bv2"])
 
 	// add different stepback task to variant
 	assert.NoError(t, task.SetGeneratedTasksToActivate("bv2", "t2.0"))
-	taskFromDb, err = FindOneId("t1")
+	taskFromDb, err = FindOneId(ctx, "t1")
 	assert.NoError(t, err)
 	assert.NotNil(t, taskFromDb)
 	assert.Equal(t, []string{"t2", "t2.0"}, taskFromDb.GeneratedTasksToActivate["bv2"])
 
 	// verify duplicate doesn't overwrite
 	assert.NoError(t, task.SetGeneratedTasksToActivate("bv2", "t2.0"))
-	taskFromDb, err = FindOneId("t1")
+	taskFromDb, err = FindOneId(ctx, "t1")
 	assert.NoError(t, err)
 	assert.NotNil(t, taskFromDb)
 	assert.Equal(t, []string{"t2", "t2.0"}, taskFromDb.GeneratedTasksToActivate["bv2"])
 
 	// adding second variant doesn't affect previous
 	assert.NoError(t, task.SetGeneratedTasksToActivate("bv3", "t3"))
-	taskFromDb, err = FindOneId("t1")
+	taskFromDb, err = FindOneId(ctx, "t1")
 	assert.NoError(t, err)
 	assert.NotNil(t, taskFromDb)
 	assert.Equal(t, []string{"t2", "t2.0"}, taskFromDb.GeneratedTasksToActivate["bv2"])
@@ -3387,6 +3543,9 @@ func TestSetGeneratedTasksToActivate(t *testing.T) {
 }
 
 func TestSetNextStepbackId(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 	require.NoError(t, db.ClearCollections(Collection))
 	task := Task{Id: "t1"}
@@ -3400,7 +3559,7 @@ func TestSetNextStepbackId(t *testing.T) {
 	}
 
 	require.NoError(t, SetNextStepbackId(task.Id, s))
-	taskFromDb, err := FindOneId("t1")
+	taskFromDb, err := FindOneId(ctx, "t1")
 	require.NoError(t, err)
 	require.NotNil(t, taskFromDb)
 	assert.NotEqual("t2", taskFromDb.StepbackInfo.LastFailingStepbackTaskId)
@@ -3410,6 +3569,9 @@ func TestSetNextStepbackId(t *testing.T) {
 }
 
 func TestSetLastAndPreviousStepbackIds(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 	require.NoError(t, db.ClearCollections(Collection))
 	task := Task{Id: "t1"}
@@ -3423,7 +3585,7 @@ func TestSetLastAndPreviousStepbackIds(t *testing.T) {
 	}
 
 	require.NoError(t, SetLastAndPreviousStepbackIds(task.Id, s))
-	taskFromDb, err := FindOneId("t1")
+	taskFromDb, err := FindOneId(ctx, "t1")
 	require.NoError(t, err)
 	require.NotNil(t, taskFromDb)
 	assert.Equal("t2", taskFromDb.StepbackInfo.LastFailingStepbackTaskId)
@@ -3433,16 +3595,19 @@ func TestSetLastAndPreviousStepbackIds(t *testing.T) {
 }
 
 func TestGetLatestExecution(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.Clear(Collection))
 	sample := Task{
 		Id:        "task_id_some_other_stuff",
 		Execution: 55,
 	}
 	assert.NoError(t, sample.Insert())
-	execution, err := GetLatestExecution(sample.Id)
+	execution, err := GetLatestExecution(ctx, sample.Id)
 	assert.NoError(t, err)
 	assert.Equal(t, sample.Execution, execution)
-	execution, err = GetLatestExecution(fmt.Sprintf("%s_3", sample.Id))
+	execution, err = GetLatestExecution(ctx, fmt.Sprintf("%s_3", sample.Id))
 	assert.NoError(t, err)
 	assert.Equal(t, sample.Execution, execution)
 }
@@ -3620,7 +3785,7 @@ func TestArchiveManyAfterFailedOnly(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	t3Pointer, err := FindByIdExecution(t3.Id, nil)
+	t3Pointer, err := FindByIdExecution(ctx, t3.Id, nil)
 	assert.NoError(t, err)
 	t3Pointer.ResetFailedWhenFinished = false
 	assert.NoError(t, ArchiveMany(ctx, []Task{t1, t2, *t3Pointer, t4}))
@@ -3712,6 +3877,9 @@ func TestAddParentDisplayTasks(t *testing.T) {
 }
 
 func TestSetCheckRunId(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.Clear(Collection))
 	t1 := &Task{
 		Id: "t1",
@@ -3721,7 +3889,7 @@ func TestSetCheckRunId(t *testing.T) {
 	assert.NoError(t, t1.SetCheckRunId(12345))
 
 	var err error
-	t1, err = FindOneId(t1.Id)
+	t1, err = FindOneId(ctx, t1.Id)
 	require.NotNil(t, t1)
 	assert.NoError(t, err)
 
@@ -3730,6 +3898,9 @@ func TestSetCheckRunId(t *testing.T) {
 }
 
 func TestAddDisplayTaskIdToExecTasks(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.Clear(Collection))
 	t1 := &Task{
 		Id:            "t1",
@@ -3750,20 +3921,23 @@ func TestAddDisplayTaskIdToExecTasks(t *testing.T) {
 	assert.NoError(t, AddDisplayTaskIdToExecTasks("dt", []string{t1.Id, t2.Id}))
 
 	var err error
-	t1, err = FindOneId(t1.Id)
+	t1, err = FindOneId(ctx, t1.Id)
 	assert.NoError(t, err)
 	assert.Equal(t, "dt", utility.FromStringPtr(t1.DisplayTaskId))
 
-	t2, err = FindOneId(t2.Id)
+	t2, err = FindOneId(ctx, t2.Id)
 	assert.NoError(t, err)
 	assert.Equal(t, "dt", utility.FromStringPtr(t2.DisplayTaskId))
 
-	t3, err = FindOneId(t3.Id)
+	t3, err = FindOneId(ctx, t3.Id)
 	assert.NoError(t, err)
 	assert.NotEqual(t, "dt", utility.FromStringPtr(t3.DisplayTaskId))
 }
 
 func TestAddExecTasksToDisplayTask(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.Clear(Collection))
 	dt1 := Task{
 		Id:             "dt1",
@@ -3774,8 +3948,8 @@ func TestAddExecTasksToDisplayTask(t *testing.T) {
 	assert.NoError(t, dt1.Insert())
 
 	// no tasks to add
-	assert.NoError(t, AddExecTasksToDisplayTask(dt1.Id, []string{}, false))
-	dtFromDB, err := FindOneId(dt1.Id)
+	assert.NoError(t, AddExecTasksToDisplayTask(ctx, dt1.Id, []string{}, false))
+	dtFromDB, err := FindOneId(ctx, dt1.Id)
 	assert.NoError(t, err)
 	assert.NotNil(t, dtFromDB)
 	assert.Len(t, dtFromDB.ExecutionTasks, 2)
@@ -3783,8 +3957,8 @@ func TestAddExecTasksToDisplayTask(t *testing.T) {
 	assert.Contains(t, dtFromDB.ExecutionTasks, "et2")
 
 	// new and existing tasks to add (existing tasks not duplicated)
-	assert.NoError(t, AddExecTasksToDisplayTask(dt1.Id, []string{"et2", "et3", "et4"}, true))
-	dtFromDB, err = FindOneId(dt1.Id)
+	assert.NoError(t, AddExecTasksToDisplayTask(ctx, dt1.Id, []string{"et2", "et3", "et4"}, true))
+	dtFromDB, err = FindOneId(ctx, dt1.Id)
 	assert.NoError(t, err)
 	assert.NotNil(t, dtFromDB)
 	assert.Len(t, dtFromDB.ExecutionTasks, 4)
@@ -3797,6 +3971,9 @@ func TestAddExecTasksToDisplayTask(t *testing.T) {
 }
 
 func TestAbortVersionTasks(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert.NoError(t, db.ClearCollections(Collection))
 	finishedExecTask := &Task{
 		Id:      "et1",
@@ -3824,13 +4001,13 @@ func TestAbortVersionTasks(t *testing.T) {
 	assert.NoError(t, AbortVersionTasks("v1", AbortInfo{TaskID: "et2"}))
 
 	var err error
-	dt, err = FindOneId("dt")
+	dt, err = FindOneId(ctx, "dt")
 	assert.NoError(t, err)
 	require.NotNil(t, dt)
 	assert.False(t, dt.Aborted)
 	assert.Empty(t, dt.AbortInfo.TaskID)
 
-	otherExecTask, err = FindOneId("et3")
+	otherExecTask, err = FindOneId(ctx, "et3")
 	assert.NoError(t, err)
 	require.NotNil(t, otherExecTask)
 	assert.True(t, otherExecTask.Aborted)
@@ -4023,15 +4200,15 @@ func TestArchiveFailedOnly(t *testing.T) {
 		archivedDisplayTaskID := MakeOldID(dt.Id, dt.Execution)
 		require.Equal(t, 0, dt.Execution)
 		require.NoError(t, dt.Archive(ctx))
-		dt, err = FindOneId(dt.Id)
+		dt, err = FindOneId(ctx, dt.Id)
 		require.NoError(t, err)
 		require.Equal(t, 1, dt.Execution)
 
-		t1, err = FindOneId(dt.ExecutionTasks[0])
+		t1, err = FindOneId(ctx, dt.ExecutionTasks[0])
 		require.NoError(t, err)
 		require.Equal(t, 1, t1.Execution)
 		require.Equal(t, t1.LatestParentExecution, t1.Execution)
-		t2, err := FindOneId(dt.ExecutionTasks[1])
+		t2, err := FindOneId(ctx, dt.ExecutionTasks[1])
 		require.NoError(t, err)
 		require.Equal(t, 0, t2.Execution)
 		require.Equal(t, 1, t2.LatestParentExecution)
@@ -4055,10 +4232,10 @@ func TestArchiveFailedOnly(t *testing.T) {
 		dt.ResetFailedWhenFinished = false
 		// Verifies the results from the last test as a basis (more on below comment)
 		require.Equal(t, 1, dt.Execution)
-		t1, err := FindOneId(dt.ExecutionTasks[0])
+		t1, err := FindOneId(ctx, dt.ExecutionTasks[0])
 		require.NoError(t, err)
 		require.Equal(t, 1, t1.Execution, t1.Execution)
-		t2, err := FindOneId(dt.ExecutionTasks[1])
+		t2, err := FindOneId(ctx, dt.ExecutionTasks[1])
 		require.NoError(t, err)
 		require.Equal(t, 0, t2.Execution)
 		// This ensures that the latest (highest execution) task in the database for each ID is proper.
@@ -4074,15 +4251,15 @@ func TestArchiveFailedOnly(t *testing.T) {
 		// Verifies the display task is archived after calling archive
 		archivedDisplayTaskID := MakeOldID(dt.Id, dt.Execution)
 		require.NoError(t, dt.Archive(ctx))
-		dt, err = FindOneId(dt.Id)
+		dt, err = FindOneId(ctx, dt.Id)
 		require.NoError(t, err)
 		require.Equal(t, 2, dt.Execution)
 
-		t1, err = FindOneId(dt.ExecutionTasks[0])
+		t1, err = FindOneId(ctx, dt.ExecutionTasks[0])
 		require.NoError(t, err)
 		require.Equal(t, 2, t1.Execution)
 		require.Equal(t, t1.LatestParentExecution, t1.Execution)
-		t2, err = FindOneId(dt.ExecutionTasks[1])
+		t2, err = FindOneId(ctx, dt.ExecutionTasks[1])
 		require.NoError(t, err)
 		require.Equal(t, 2, t2.Execution)
 		require.Equal(t, t2.LatestParentExecution, t2.Execution)
@@ -4309,8 +4486,11 @@ func (s *TaskConnectorFetchByIdSuite) SetupTest() {
 }
 
 func (s *TaskConnectorFetchByIdSuite) TestFindById() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	for i := 0; i < 10; i++ {
-		found, err := FindOneId(fmt.Sprintf("task_%d", i))
+		found, err := FindOneId(ctx, fmt.Sprintf("task_%d", i))
 		s.NoError(err)
 		s.Equal(found.BuildId, fmt.Sprintf("build_%d", i))
 	}
@@ -4462,7 +4642,10 @@ func (s *TaskConnectorFetchByIdSuite) TestFindOldTasksByIDWithDisplayTasks() {
 }
 
 func (s *TaskConnectorFetchByIdSuite) TestFindByIdFail() {
-	found, err := FindOneId("fake_task")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	found, err := FindOneId(ctx, "fake_task")
 	s.NoError(err)
 	s.Nil(found)
 }
@@ -4986,7 +5169,7 @@ func TestReset(t *testing.T) {
 		assert.NoError(t, t0.Insert())
 
 		assert.NoError(t, t0.Reset(ctx, "user"))
-		dbTask, err := FindOneId(t0.Id)
+		dbTask, err := FindOneId(ctx, t0.Id)
 		assert.NoError(t, err)
 		assert.False(t, dbTask.UnattainableDependency)
 		assert.Equal(t, "user", dbTask.ActivatedBy)
@@ -5008,7 +5191,7 @@ func TestReset(t *testing.T) {
 		assert.NoError(t, t0.Insert())
 
 		assert.NoError(t, t0.Reset(ctx, ""))
-		dbTask, err := FindOneId(t0.Id)
+		dbTask, err := FindOneId(ctx, t0.Id)
 		assert.NoError(t, err)
 		assert.True(t, dbTask.UnattainableDependency)
 	})
@@ -5028,7 +5211,7 @@ func TestReset(t *testing.T) {
 		assert.NoError(t, t0.Insert())
 
 		assert.NoError(t, t0.Reset(ctx, ""))
-		dbTask, err := FindOneId(t0.Id)
+		dbTask, err := FindOneId(ctx, t0.Id)
 		assert.NoError(t, err)
 		assert.False(t, dbTask.UnattainableDependency)
 	})
@@ -5059,7 +5242,7 @@ func TestReset(t *testing.T) {
 		assert.NoError(t, t0.Insert())
 
 		assert.NoError(t, t0.Reset(ctx, ""))
-		dbTask, err := FindOneId(t0.Id)
+		dbTask, err := FindOneId(ctx, t0.Id)
 		assert.NoError(t, err)
 		assert.False(t, dbTask.ResultsFailed)
 		assert.False(t, dbTask.HasCedarResults)
@@ -5082,6 +5265,9 @@ func TestReset(t *testing.T) {
 }
 
 func TestResetTasks(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	defer func() {
 		require.NoError(t, db.Clear(Collection))
 	}()
@@ -5097,7 +5283,7 @@ func TestResetTasks(t *testing.T) {
 		assert.NoError(t, t0.Insert())
 
 		assert.NoError(t, ResetTasks([]Task{t0}, "user"))
-		dbTask, err := FindOneId(t0.Id)
+		dbTask, err := FindOneId(ctx, t0.Id)
 		assert.NoError(t, err)
 		assert.False(t, dbTask.UnattainableDependency)
 		assert.Equal(t, "user", dbTask.ActivatedBy)
@@ -5119,7 +5305,7 @@ func TestResetTasks(t *testing.T) {
 		assert.NoError(t, t0.Insert())
 
 		assert.NoError(t, ResetTasks([]Task{t0}, ""))
-		dbTask, err := FindOneId(t0.Id)
+		dbTask, err := FindOneId(ctx, t0.Id)
 		assert.NoError(t, err)
 		assert.True(t, dbTask.UnattainableDependency)
 	})
@@ -5139,7 +5325,7 @@ func TestResetTasks(t *testing.T) {
 		assert.NoError(t, t0.Insert())
 
 		assert.NoError(t, ResetTasks([]Task{t0}, ""))
-		dbTask, err := FindOneId(t0.Id)
+		dbTask, err := FindOneId(ctx, t0.Id)
 		assert.NoError(t, err)
 		assert.False(t, dbTask.UnattainableDependency)
 	})
@@ -5207,6 +5393,9 @@ func TestGenerateNotRun(t *testing.T) {
 }
 
 func TestSetGeneratedJSON(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	defer func() {
 		assert.NoError(t, db.ClearCollections(Collection))
 	}()
@@ -5218,7 +5407,7 @@ func TestSetGeneratedJSON(t *testing.T) {
 
 			require.NoError(t, tsk.SetGeneratedJSON(files))
 
-			dbTask, err := FindOneId(tsk.Id)
+			dbTask, err := FindOneId(ctx, tsk.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask)
 			assert.Equal(t, files, dbTask.GeneratedJSONAsString)
@@ -5230,7 +5419,7 @@ func TestSetGeneratedJSON(t *testing.T) {
 
 			require.NoError(t, tsk.SetGeneratedJSON([]string{"new_generated_json"}))
 
-			dbTask, err := FindOneId(tsk.Id)
+			dbTask, err := FindOneId(ctx, tsk.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask)
 			assert.EqualValues(t, originalFiles, dbTask.GeneratedJSONAsString)
@@ -5244,7 +5433,7 @@ func TestSetGeneratedJSON(t *testing.T) {
 
 			require.NoError(t, tsk.SetGeneratedJSON(GeneratedJSONFiles{"new_generated_json"}))
 
-			dbTask, err := FindOneId(tsk.Id)
+			dbTask, err := FindOneId(ctx, tsk.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask)
 			assert.Equal(t, originalFiles, dbTask.GeneratedJSONAsString)
@@ -5256,7 +5445,7 @@ func TestSetGeneratedJSON(t *testing.T) {
 
 			require.NoError(t, tsk.SetGeneratedJSON(GeneratedJSONFiles{"new_generated_json"}))
 
-			dbTask, err := FindOneId(tsk.Id)
+			dbTask, err := FindOneId(ctx, tsk.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask)
 			assert.Equal(t, evergreen.ProjectStorageMethodS3, dbTask.GeneratedJSONStorageMethod)
@@ -5281,6 +5470,9 @@ func TestSetGeneratedJSON(t *testing.T) {
 }
 
 func TestSetGeneratedJSONStorageMethod(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	defer func() {
 		assert.NoError(t, db.ClearCollections(Collection))
 	}()
@@ -5291,7 +5483,7 @@ func TestSetGeneratedJSONStorageMethod(t *testing.T) {
 
 			require.NoError(t, tsk.SetGeneratedJSONStorageMethod(evergreen.ProjectStorageMethodS3))
 
-			dbTask, err := FindOneId(tsk.Id)
+			dbTask, err := FindOneId(ctx, tsk.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask)
 			assert.Equal(t, evergreen.ProjectStorageMethodS3, dbTask.GeneratedJSONStorageMethod)
@@ -5302,7 +5494,7 @@ func TestSetGeneratedJSONStorageMethod(t *testing.T) {
 
 			require.NoError(t, tsk.SetGeneratedJSONStorageMethod(evergreen.ProjectStorageMethodS3))
 
-			dbTask, err := FindOneId(tsk.Id)
+			dbTask, err := FindOneId(ctx, tsk.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask)
 			assert.Equal(t, evergreen.ProjectStorageMethodDB, dbTask.GeneratedJSONStorageMethod)

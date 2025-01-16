@@ -854,7 +854,7 @@ func GetGithubTokensForTask(ctx context.Context, taskId string) (string, []strin
 
 	var projectOwner, projectRepo string
 	var modules map[string]*manifest.Module
-	t, err := task.FindOneId(taskId)
+	t, err := task.FindOneId(ctx, taskId)
 	catcher.Add(err)
 	if err == nil && t != nil {
 		mfest, err := manifest.FindFromVersion(t.Version, t.Project, t.Revision, t.Requester)

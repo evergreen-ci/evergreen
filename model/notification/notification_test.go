@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/mock"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	_ "github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
@@ -381,23 +380,11 @@ func (s *notificationSuite) TestGithubPayload() {
 	s.True(c.Loggable())
 }
 
-func (s *notificationSuite) TestEnqueuePatchPayload() {
-	s.n.Subscriber.Type = event.EnqueuePatchSubscriberType
-	s.n.Payload = &model.EnqueuePatch{
-		PatchID: "1234567890987654321abcde",
-	}
-	c, err := s.n.Composer()
-	s.NoError(err)
-	s.Require().NotNil(c)
-	s.True(c.Loggable())
-}
-
 func (s *notificationSuite) TestCollectUnsentNotificationStats() {
 	types := []string{event.GithubPullRequestSubscriberType, event.EmailSubscriberType,
 		event.SlackSubscriberType, event.EvergreenWebhookSubscriberType,
 		event.JIRACommentSubscriberType, event.JIRAIssueSubscriberType,
-		event.EnqueuePatchSubscriberType, event.GithubCheckSubscriberType,
-		event.GithubMergeSubscriberType}
+		event.GithubCheckSubscriberType, event.GithubMergeSubscriberType}
 
 	n := []Notification{}
 	// add one of every notification, unsent

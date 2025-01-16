@@ -202,7 +202,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	} else {
 		// Consider if the host is in between running a single-host task group
 		if j.host.LastGroup != "" {
-			latestTask, err := task.FindOneId(j.host.LastTask)
+			latestTask, err := task.FindOneId(ctx, j.host.LastTask)
 			if err != nil {
 				j.AddError(errors.Wrapf(err, "finding last task '%s'", j.host.LastTask))
 				return

@@ -140,6 +140,39 @@
       "author": "sophie.stadler",
       "status": "inactive",
       "order": 3
+    },
+    {
+      "_id": "sandbox_active",
+      "gitspec": "abc",
+      "identifier": "sandbox_project_id",
+      "r": "gitter_request",
+      "activated": true,
+      "author": "sophie.stadler",
+      "status": "created",
+      "order": 3,
+      "create_time": {
+        "$date": "2020-01-05T12:00:00Z"
+      }
+    },
+    {
+      "_id": "sandbox_inactive1",
+      "gitspec": "abc",
+      "identifier": "sandbox_project_id",
+      "r": "gitter_request",
+      "activated": false,
+      "author": "sophie.stadler",
+      "status": "inactive",
+      "order": 2
+    },
+    {
+      "_id": "sandbox_inactive2",
+      "gitspec": "abc",
+      "identifier": "sandbox_project_id",
+      "r": "gitter_request",
+      "activated": false,
+      "author": "sophie.stadler",
+      "status": "inactive",
+      "order": 1
     }
   ],
   "tasks": [
@@ -157,7 +190,8 @@
         "$date": "2020-01-01T00:00:05Z"
       },
       "execution": 0,
-      "display_task_id": ""
+      "display_task_id": "",
+      "r": "gitter_request"
     },
     {
       "_id": "task_2",
@@ -173,7 +207,8 @@
         "$date": "2020-01-01T00:00:05Z"
       },
       "execution": 1,
-      "display_task_id": ""
+      "display_task_id": "",
+      "r": "gitter_request"
     },
     {
       "_id": "task_3",
@@ -192,7 +227,8 @@
         "$date": "2020-01-01T00:00:05Z"
       },
       "execution": 0,
-      "display_task_id": ""
+      "display_task_id": "",
+      "r": "gitter_request"
     },
     {
       "_id": "task_4",
@@ -208,7 +244,8 @@
         "$date": "2020-01-01T00:00:05Z"
       },
       "execution": 0,
-      "display_task_id": ""
+      "display_task_id": "",
+      "r": "gitter_request"
     },
     {
       "_id": "task_5",
@@ -224,7 +261,8 @@
         "$date": "2020-01-01T00:00:05Z"
       },
       "execution": 0,
-      "display_task_id": ""
+      "display_task_id": "",
+      "r": "gitter_request"
     }
   ],
   "project_ref": [
@@ -238,7 +276,11 @@
     },
     {
       "_id": "sandbox_project_id",
-      "identifier": "project_sandbox"
+      "identifier": "sandbox"
+    },
+    {
+      "_id": "evergreen",
+      "identifier": "evergreen"
     }
   ],
   "builds": [

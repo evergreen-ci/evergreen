@@ -52,8 +52,6 @@ func (r *subscriberWrapperResolver) Subscriber(ctx context.Context, obj *model.A
 		res.EmailSubscriber = obj.Target.(*string)
 	case event.SlackSubscriberType:
 		res.SlackSubscriber = obj.Target.(*string)
-	case event.EnqueuePatchSubscriberType:
-		// We don't store information in target for this case, so do nothing.
 	default:
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("encountered unknown subscriber type '%s'", subscriberType))
 	}

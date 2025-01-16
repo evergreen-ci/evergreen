@@ -722,7 +722,7 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (ta
 	}
 	generatorIsGithubCheck := false
 	if creationInfo.GeneratedBy != "" {
-		generateTask, err := task.FindOneId(creationInfo.GeneratedBy)
+		generateTask, err := task.FindOneId(ctx, creationInfo.GeneratedBy)
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding generated task '%s'", creationInfo.GeneratedBy)
 		}
@@ -824,7 +824,7 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (ta
 
 		// existing display task may need to be updated
 		if displayTaskAlreadyExists {
-			grip.Error(message.WrapError(task.AddExecTasksToDisplayTask(id, execTaskIds, displayTaskActivated), message.Fields{
+			grip.Error(message.WrapError(task.AddExecTasksToDisplayTask(ctx, id, execTaskIds, displayTaskActivated), message.Fields{
 				"message":      "problem adding exec tasks to display tasks",
 				"exec_tasks":   execTaskIds,
 				"display_task": dt.Name,
@@ -1164,6 +1164,7 @@ func createOneTask(ctx context.Context, id string, creationInfo TaskCreationInfo
 		StartTime:                  utility.ZeroTime, // Certain time fields must be initialized
 		FinishTime:                 utility.ZeroTime, // to our own utility.ZeroTime value (which is
 		DispatchTime:               utility.ZeroTime, // Unix epoch 0, not Go's time.Time{})
+		DependenciesMetTime:        utility.ZeroTime,
 		LastHeartbeat:              utility.ZeroTime,
 		Status:                     evergreen.TaskUndispatched,
 		Activated:                  activateTask,
@@ -1363,6 +1364,7 @@ func createDisplayTask(id string, creationInfo TaskCreationInfo, displayName str
 		ActivatedTime:           activatedTime,
 		DispatchTime:            utility.ZeroTime,
 		ScheduledTime:           utility.ZeroTime,
+		DependenciesMetTime:     utility.ZeroTime,
 		TriggerID:               creationInfo.Version.TriggerID,
 		TriggerType:             creationInfo.Version.TriggerType,
 		TriggerEvent:            creationInfo.Version.TriggerEvent,

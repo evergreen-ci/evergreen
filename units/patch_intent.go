@@ -216,7 +216,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		}
 		catcher.Wrap(err, "building GitHub patch document")
 	case patch.GithubMergeIntentType:
-		if err := j.buildGithubMergeDoc(ctx, patchDoc); err != nil {
+		if err := j.buildGithubMergeDoc(patchDoc); err != nil {
 			catcher.Wrap(err, "building GitHub merge queue patch document")
 		}
 	case patch.TriggerIntentType:
@@ -271,11 +271,6 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	if pref.IsPatchingDisabled() {
 		j.gitHubError = PatchingDisabled
 		return errors.New("patching is disabled for project")
-	}
-
-	if patchDoc.IsBackport() && !pref.CommitQueue.IsEnabled() {
-		j.gitHubError = commitQueueDisabled
-		return errors.New("commit queue is disabled for project")
 	}
 
 	if !pref.TaskSync.IsPatchEnabled() && (len(patchDoc.SyncAtEndOpts.Tasks) != 0 || len(patchDoc.SyncAtEndOpts.BuildVariants) != 0) {
@@ -383,13 +378,6 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		patchDoc.Description = model.MakeCommitQueueDescription(patchDoc.Patches, pref, patchedProject, patchDoc.IsGithubMergePatch(), patchDoc.GithubMergeData)
 	}
 
-	if patchDoc.IsBackport() {
-		patchDoc.Description, err = patchDoc.MakeBackportDescription()
-		if err != nil {
-			return errors.Wrap(err, "making backport patch description")
-		}
-	}
-
 	// set the patch number based on patch author
 	patchDoc.PatchNumber, err = j.user.IncPatchNumber()
 	if err != nil {
@@ -444,12 +432,6 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 
 	if patchDoc.IsGithubMergePatch() {
 		catcher.Wrap(j.createGitHubMergeSubscription(ctx, patchDoc), "creating GitHub merge queue subscriptions")
-	}
-	if patchDoc.IsBackport() {
-		backportSubscription := event.NewExpiringPatchSuccessSubscription(j.PatchID.Hex(), event.NewEnqueuePatchSubscriber())
-		if err = backportSubscription.Upsert(); err != nil {
-			catcher.Wrap(err, "inserting backport subscription")
-		}
 	}
 
 	if catcher.HasErrors() {
@@ -854,10 +836,6 @@ func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *p
 		return errors.Errorf("project ref '%s' not found", patchDoc.Project)
 	}
 
-	if patchDoc.IsBackport() {
-		return j.buildBackportPatchDoc(ctx, projectRef, patchDoc)
-	}
-
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
@@ -890,61 +868,13 @@ func getModulePatch(modulePatch patch.ModulePatch) (patch.ModulePatch, error) {
 		return modulePatch, errors.Wrap(err, "fetching patch contents")
 	}
 
-	var summaries []thirdparty.Summary
-	if patch.IsMailboxDiff(patchContents) {
-		var commitMessages []string
-		summaries, commitMessages, err = thirdparty.GetPatchSummariesFromMboxPatch(patchContents)
-		if err != nil {
-			return modulePatch, errors.Wrapf(err, "getting patch summaries by commit")
-		}
-		modulePatch.PatchSet.CommitMessages = commitMessages
-	} else {
-		summaries, err = thirdparty.GetPatchSummaries(patchContents)
-		if err != nil {
-			return modulePatch, errors.Wrap(err, "getting patch summaries")
-		}
-	}
-
-	modulePatch.IsMbox = len(patchContents) == 0 || patch.IsMailboxDiff(patchContents)
 	modulePatch.ModuleName = ""
-	modulePatch.PatchSet.Summary = summaries
-	return modulePatch, nil
-}
-
-func (j *patchIntentProcessor) buildBackportPatchDoc(ctx context.Context, projectRef *model.ProjectRef, patchDoc *patch.Patch) error {
-	if len(patchDoc.BackportOf.PatchID) > 0 {
-		existingMergePatch, err := patch.FindOneId(patchDoc.BackportOf.PatchID)
-		if err != nil {
-			return errors.Wrap(err, "getting existing merge patch")
-		}
-		if existingMergePatch == nil {
-			return errors.Errorf("patch '%s' not found", patchDoc.BackportOf.PatchID)
-		}
-		if !existingMergePatch.IsMergeQueuePatch() {
-			return errors.Errorf("can only backport commit queue patches")
-		}
-
-		for _, p := range existingMergePatch.Patches {
-			if p.ModuleName == "" {
-				p.Githash = patchDoc.Githash
-			}
-			patchDoc.Patches = append(patchDoc.Patches, p)
-		}
-		return nil
-	}
-
-	patchSet, err := patch.CreatePatchSetForSHA(ctx, j.env.Settings(), projectRef.Owner, projectRef.Repo, patchDoc.BackportOf.SHA)
+	modulePatch.PatchSet.Summary, err = thirdparty.GetPatchSummaries(patchContents)
 	if err != nil {
-		return errors.Wrapf(err, "creating a patch set for SHA '%s'", patchDoc.BackportOf.SHA)
+		return modulePatch, errors.Wrap(err, "getting patch summaries")
 	}
-	patchDoc.Patches = []patch.ModulePatch{{
-		ModuleName: "",
-		IsMbox:     true,
-		PatchSet:   patchSet,
-		Githash:    patchDoc.Githash,
-	}}
 
-	return nil
+	return modulePatch, nil
 }
 
 func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc *patch.Patch) (bool, error) {
@@ -1057,7 +987,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 	return isMember, nil
 }
 
-func (j *patchIntentProcessor) buildGithubMergeDoc(ctx context.Context, patchDoc *patch.Patch) error {
+func (j *patchIntentProcessor) buildGithubMergeDoc(patchDoc *patch.Patch) error {
 	defer func() {
 		grip.Error(message.WrapError(j.intent.SetProcessed(), message.Fields{
 			"message":     "could not mark patch intent as processed",

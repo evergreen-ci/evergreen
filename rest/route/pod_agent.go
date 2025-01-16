@@ -449,7 +449,7 @@ func (h *podAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
-	t, err := data.FindTask(h.taskID)
+	t, err := data.FindTask(ctx, h.taskID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}

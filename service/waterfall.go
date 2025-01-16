@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"sort"
@@ -199,7 +200,7 @@ func variantHasActiveTasks(bvDisplayName, variantQuery string, tasks []task.Task
 // The skip value indicates how many versions back in time should be skipped
 // before starting to fetch versions, the project indicates which project the
 // returned versions should be a part of.
-func getVersionsAndVariants(skip, numVersionElements int, project *model.Project, variantQuery string, showTriggered bool) (versionVariantData, error) {
+func getVersionsAndVariants(ctx context.Context, skip, numVersionElements int, project *model.Project, variantQuery string, showTriggered bool) (versionVariantData, error) {
 	// the final array of versions to return
 	finalVersions := []waterfallVersion{}
 
@@ -347,7 +348,7 @@ func getVersionsAndVariants(skip, numVersionElements int, project *model.Project
 			}
 			if versionFromDB.TriggerID != "" {
 				var projectName string
-				projectName, err = model.GetUpstreamProjectName(versionFromDB.TriggerID, versionFromDB.TriggerType)
+				projectName, err = model.GetUpstreamProjectName(ctx, versionFromDB.TriggerID, versionFromDB.TriggerType)
 				if err != nil {
 					return versionVariantData{}, err
 				}
@@ -684,7 +685,7 @@ func (restapi restAPI) getWaterfallData(w http.ResponseWriter, r *http.Request) 
 
 	showUpstream := (query.Get(showUpstreamParam) == "true")
 
-	vvData, err := getVersionsAndVariants(skip, limit, project, variantQuery, showUpstream)
+	vvData, err := getVersionsAndVariants(r.Context(), skip, limit, project, variantQuery, showUpstream)
 	if err != nil {
 		gimlet.WriteJSONResponse(
 			w, http.StatusNotFound, responseError{Message: errors.Wrap(
