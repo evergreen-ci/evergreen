@@ -36,6 +36,7 @@ func main() {
 
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI("mongodb://localhost:27017").SetConnectTimeout(5*time.Second))
 	grip.EmergencyFatal(errors.Wrap(err, "connecting to DB"))
+	defer client.Disconnect(ctx)
 
 	paramName := fmt.Sprintf("/evg-test/vars/%s/%s", project, key)
 
