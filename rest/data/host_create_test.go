@@ -144,6 +144,7 @@ func TestCreateHostsFromTask(t *testing.T) {
 		Id: "p",
 	}
 	assert.NoError(t, pvars.Insert())
+	checkAndSetProjectVarsSynced(t, &p, false)
 
 	// Run tests
 	t.Run("Classic", func(t *testing.T) {
@@ -522,6 +523,7 @@ buildvariants:
 		Id: "p",
 	}
 	assert.NoError(pvars.Insert())
+	checkAndSetProjectVarsSynced(t, &p, false)
 
 	assert.NoError(CreateHostsFromTask(ctx, env, &t1, user.DBUser{Id: "me"}, ""))
 

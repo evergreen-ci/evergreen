@@ -118,6 +118,11 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 	}
 	projectVars := &model.ProjectVars{
 		Id: project.DisplayName,
+		Vars: map[string]string{
+			"aws_key":    testConfig.Providers.AWS.EC2Keys[0].Key,
+			"aws_secret": testConfig.Providers.AWS.EC2Keys[0].Secret,
+			"fetch_key":  "fetch_expansion_value",
+		},
 	}
 	if _, err = projectVars.Upsert(); err != nil {
 		return nil, errors.Wrap(err, "inserting project variables")

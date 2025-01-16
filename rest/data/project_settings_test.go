@@ -213,6 +213,7 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 			PrivateVars: map[string]bool{"hello": true},
 		}
 		assert.NoError(t, pVars.Insert())
+		checkAndSetProjectVarsSynced(t, &repoRef.ProjectRef, true)
 
 		// add scopes
 		allProjectsScope := gimlet.Scope{
@@ -1018,6 +1019,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			PrivateVars: map[string]bool{"hello": true, "private": true, "change": true},
 		}
 		assert.NoError(t, pVars.Insert())
+		checkAndSetProjectVarsSynced(t, &pRef, false)
 
 		// add scopes
 		allProjectsScope := gimlet.Scope{
@@ -1256,6 +1258,7 @@ func TestPromoteVarsToRepo(t *testing.T) {
 			AdminOnlyVars: map[string]bool{"d": true},
 		}
 		assert.NoError(t, rVars.Insert())
+		checkAndSetProjectVarsSynced(t, &repoRef.ProjectRef, true)
 
 		pRef := model.ProjectRef{
 			Id:                    "pId",
@@ -1285,6 +1288,7 @@ func TestPromoteVarsToRepo(t *testing.T) {
 			AdminOnlyVars: map[string]bool{},
 		}
 		assert.NoError(t, pVars.Insert())
+		checkAndSetProjectVarsSynced(t, &pRef, false)
 
 		usr := user.DBUser{
 			Id:          "u",
@@ -1428,6 +1432,7 @@ func TestCopyProject(t *testing.T) {
 			PrivateVars: map[string]bool{"hello": true, "private": true, "change": true},
 		}
 		assert.NoError(t, pVars.Insert())
+		checkAndSetProjectVarsSynced(t, &pRef, false)
 		// add scopes
 		allProjectsScope := gimlet.Scope{
 			ID:        evergreen.AllProjectsScope,
