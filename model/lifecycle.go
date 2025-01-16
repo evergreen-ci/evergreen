@@ -1190,6 +1190,8 @@ func createOneTask(ctx context.Context, id string, creationInfo TaskCreationInfo
 		CachedProjectStorageMethod: creationInfo.Version.ProjectStorageMethod,
 	}
 
+	t.DisplayStatusCache = t.DetermineDisplayStatus()
+
 	if err := t.SetGenerateTasksEstimations(ctx); err != nil {
 		return nil, errors.Wrap(err, "setting generate tasks estimations")
 	}
@@ -1370,6 +1372,7 @@ func createDisplayTask(id string, creationInfo TaskCreationInfo, displayName str
 		TriggerEvent:            creationInfo.Version.TriggerEvent,
 		DisplayTaskId:           utility.ToStringPtr(""),
 	}
+	t.DisplayStatusCache = t.DetermineDisplayStatus()
 	return t, nil
 }
 
