@@ -229,10 +229,10 @@ func checkPriority(t *testing.T, taskResults []Task) {
 	assert.Equal(t, evergreen.TaskSystemTimedOut, taskResults[4].DisplayStatus)
 	assert.Equal(t, evergreen.TaskSystemFailed, taskResults[5].DisplayStatus)
 	assert.Equal(t, evergreen.TaskWillRun, taskResults[6].DisplayStatus)
-	assert.Equal(t, evergreen.TaskStatusBlocked, taskResults[7].DisplayStatus)
-	assert.Equal(t, evergreen.TaskAborted, taskResults[8].DisplayStatus)
-	assert.Equal(t, evergreen.TaskUnscheduled, taskResults[9].DisplayStatus)
-	assert.Equal(t, evergreen.TaskSucceeded, taskResults[10].DisplayStatus)
+	assert.Equal(t, evergreen.TaskSucceeded, taskResults[7].DisplayStatus)
+	assert.Equal(t, evergreen.TaskStatusBlocked, taskResults[8].DisplayStatus)
+	assert.Equal(t, evergreen.TaskAborted, taskResults[9].DisplayStatus)
+	assert.Equal(t, evergreen.TaskUnscheduled, taskResults[10].DisplayStatus)
 }
 
 func TestDependenciesMet(t *testing.T) {
