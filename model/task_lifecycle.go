@@ -600,7 +600,7 @@ func doBisectStepback(ctx context.Context, t *task.Task) error {
 	} else if t.Status == evergreen.TaskFailed {
 		s.LastFailingStepbackTaskId = t.Id
 	} else {
-		grip.Warningf("stopping task stepback due to status '%s'", t.Status)
+		grip.Warningf("stopping task '%s' stepback due to status '%s'", t.Id, t.Status)
 		return nil
 	}
 
@@ -701,7 +701,7 @@ func doBisectStepbackForGeneratedTask(ctx context.Context, generator *task.Task,
 	} else if generated.Status == evergreen.TaskFailed {
 		s.LastFailingStepbackTaskId = generator.Id
 	} else {
-		grip.Warningf("stopping task stepback due to status '%s'", generated.Status)
+		grip.Warningf("stopping task '%s' stepback due to status '%s'", generated.Id, generated.Status)
 		return nil
 	}
 
