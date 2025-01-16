@@ -233,6 +233,35 @@ type AssumeRoleResponse struct {
 	Expiration      string `json:"expiration"`
 }
 
+// S3Request the details of what S3 bucket to access.
+type S3Request struct {
+	// Bucket is the name of the S3 bucket to access.
+	Bucket string `json:"bucket"`
+	// RoleARN an optional field to AssumeRole before generating the credentials.
+	RoleARN *string `json:"role_arn"`
+}
+
+// Validate checks that the request has valid values.
+func (ar *S3Request) Validate() error {
+	catcher := grip.NewBasicCatcher()
+
+	catcher.NewWhen(ar.Bucket == "", "must specify bucket name")
+
+	if ar.RoleARN != nil {
+		catcher.NewWhen(*ar.RoleARN == "", "role ARN must not be empty")
+	}
+
+	return catcher.Resolve()
+}
+
+// S3Response the credentials for accessing an S3 bucket.
+type S3Response struct {
+	AccessKeyID     string `json:"access_key_id"`
+	SecretAccessKey string `json:"secret_access_key"`
+	SessionToken    string `json:"session_token"`
+	Expiration      string `json:"expiration"`
+}
+
 func (ted *TaskEndDetail) IsEmpty() bool {
 	return ted == nil || ted.Status == ""
 }

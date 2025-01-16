@@ -125,6 +125,9 @@ type AWSClient interface {
 
 	// AssumeRole is a wrapper for sts.AssumeRole.
 	AssumeRole(ctx context.Context, input *sts.AssumeRoleInput) (*sts.AssumeRoleOutput, error)
+
+	// GetCallerIdentity is a wrapper for sts.GetCallerIdentity.
+	GetCallerIdentity(ctx context.Context, input *sts.GetCallerIdentityInput) (*sts.GetCallerIdentityOutput, error)
 }
 
 // awsClientImpl wraps ec2.EC2.
@@ -1052,6 +1055,36 @@ func (c *awsClientImpl) AssumeRole(ctx context.Context, input *sts.AssumeRoleInp
 	return output, nil
 }
 
+// GetCallerIdentity is a wrapper for sts.GetCallerIdentity
+func (c *awsClientImpl) GetCallerIdentity(ctx context.Context, input *sts.GetCallerIdentityInput) (*sts.GetCallerIdentityOutput, error) {
+	var output *sts.GetCallerIdentityOutput
+	var err error
+	err = utility.Retry(
+		ctx,
+		func() (bool, error) {
+			msg := makeAWSLogMessage("GetCallerIdentity", fmt.Sprintf("%T", c), input)
+			output, err = c.stsClient.GetCallerIdentity(ctx, input)
+			if err != nil {
+				var apiErr smithy.APIError
+				if errors.As(err, &apiErr) {
+					if strings.Contains(apiErr.ErrorCode(), stsErrorAccessDenied) ||
+						strings.Contains(apiErr.ErrorCode(), stsErrorAssumeRoleAccessDenied) {
+						// This means the role does not exist or our role does not have permission to assume it.
+						return false, err
+					}
+					grip.Debug(message.WrapError(apiErr, msg))
+				}
+				return true, err
+			}
+			grip.Info(msg)
+			return false, nil
+		}, awsClientDefaultRetryOptions())
+	if err != nil {
+		return nil, err
+	}
+	return output, nil
+}
+
 // awsClientMock mocks ec2.EC2.
 type awsClientMock struct { //nolint
 	*ec2.RunInstancesInput
@@ -1078,6 +1111,7 @@ type awsClientMock struct { //nolint
 	*ec2.DeleteLaunchTemplateInput
 	*ec2.CreateFleetInput
 	*sts.AssumeRoleInput
+	*sts.GetCallerIdentityOutput
 
 	*types.Instance
 	*ec2.DescribeInstancesOutput
@@ -1461,6 +1495,17 @@ func (c *awsClientMock) AssumeRole(ctx context.Context, input *sts.AssumeRoleInp
 			SessionToken:    aws.String("session_token"),
 			Expiration:      aws.Time(time.Now().Add(time.Duration(*input.DurationSeconds) * time.Second)),
 		},
+	}, nil
+}
+
+func (c *awsClientMock) GetCallerIdentity(ctx context.Context, input *sts.GetCallerIdentityInput) (*sts.GetCallerIdentityOutput, error) {
+	if c.GetCallerIdentityOutput != nil {
+		return c.GetCallerIdentityOutput, nil
+	}
+	return &sts.GetCallerIdentityOutput{
+		Account: aws.String("account"),
+		Arn:     aws.String("arn"),
+		UserId:  aws.String("user_id"),
 	}, nil
 }
 

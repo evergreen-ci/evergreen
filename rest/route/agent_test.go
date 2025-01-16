@@ -983,3 +983,129 @@ func TestAWSAssumeRole(t *testing.T) {
 	}
 
 }
+
+func TestAWSS3(t *testing.T) {
+	route := "/task/%s/aws/s3"
+	taskID := "taskID"
+	bucket := "bucket"
+	roleARN := "unique_role_arn"
+
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, ar *awsS3){
+		"ParseErrorsOnNilBody": func(ctx context.Context, t *testing.T, handler *awsS3) {
+			url := fmt.Sprintf(route, taskID)
+			request, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(nil))
+			require.NoError(t, err)
+
+			options := map[string]string{"task_id": taskID}
+			request = gimlet.SetURLVars(request, options)
+
+			assert.ErrorContains(t, handler.Parse(ctx, request), "reading s3 body for task 'taskID'")
+		},
+		"ParseErrorsOnEmptyBody": func(ctx context.Context, t *testing.T, handler *awsS3) {
+			url := fmt.Sprintf(route, taskID)
+			request, err := http.NewRequest(http.MethodPost, url, bytes.NewReader([]byte("{}")))
+			require.NoError(t, err)
+
+			options := map[string]string{"task_id": taskID}
+			request = gimlet.SetURLVars(request, options)
+
+			assert.ErrorContains(t, handler.Parse(ctx, request), "validating s3 body for task 'taskID'")
+		},
+		"ParseErrorsWithMissingBucket": func(ctx context.Context, t *testing.T, handler *awsS3) {
+			body, err := json.Marshal(apimodels.S3Request{RoleARN: &roleARN})
+			require.NoError(t, err)
+
+			url := fmt.Sprintf(route, taskID)
+			request, err := http.NewRequest(http.MethodPost, url, bytes.NewReader([]byte(body)))
+			require.NoError(t, err)
+
+			options := map[string]string{"task_id": taskID}
+			request = gimlet.SetURLVars(request, options)
+
+			err = handler.Parse(ctx, request)
+			assert.ErrorContains(t, err, "validating s3 body for task 'taskID'")
+			assert.ErrorContains(t, err, "must specify bucket name")
+		},
+		"ParseSucceeds": func(ctx context.Context, t *testing.T, handler *awsS3) {
+			for _, tCase := range []struct {
+				Desc      string
+				s3Request apimodels.S3Request
+			}{
+				{
+					Desc: "WithArn",
+					s3Request: apimodels.S3Request{
+						Bucket:  bucket,
+						RoleARN: &roleARN,
+					},
+				},
+				{
+					Desc: "WithoutArn",
+					s3Request: apimodels.S3Request{
+						Bucket:  bucket,
+						RoleARN: nil,
+					},
+				},
+			} {
+				require.NoError(t, db.ClearCollections(task.Collection))
+				t.Run(tCase.Desc, func(t *testing.T) {
+					body, err := json.Marshal(tCase.s3Request)
+					require.NoError(t, err)
+
+					url := fmt.Sprintf(route, taskID)
+					request, err := http.NewRequest(http.MethodPost, url, bytes.NewReader([]byte(body)))
+					require.NoError(t, err)
+
+					options := map[string]string{"task_id": taskID}
+					request = gimlet.SetURLVars(request, options)
+
+					require.NoError(t, handler.Parse(ctx, request))
+					assert.Equal(t, taskID, handler.taskID)
+					assert.Equal(t, bucket, handler.body.Bucket)
+					if tCase.s3Request.RoleARN == nil {
+						assert.Nil(t, handler.body.RoleARN)
+					} else {
+						assert.Equal(t, roleARN, utility.FromStringPtr(handler.body.RoleARN))
+					}
+
+					t.Run("RunErrorsOnNilTask", func(t *testing.T) {
+						resp := handler.Run(ctx)
+						require.NotNil(t, resp)
+						require.Equal(t, http.StatusNotFound, resp.Status(), resp.Data())
+					})
+
+					t.Run("RunSucceeds", func(t *testing.T) {
+						task := task.Task{Id: taskID, Project: projectID, Requester: "requester"}
+						require.NoError(t, task.Insert())
+
+						resp := handler.Run(ctx)
+						require.NotNil(t, resp)
+						require.Equal(t, http.StatusOK, resp.Status(), resp.Data())
+						data, ok := resp.Data().(apimodels.S3Response)
+						require.True(t, ok)
+						assert.NotEmpty(t, data.AccessKeyID)
+						assert.NotEmpty(t, data.SecretAccessKey)
+						assert.NotEmpty(t, data.SessionToken)
+						assert.NotEmpty(t, data.Expiration)
+					})
+				})
+			}
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(task.Collection))
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			env := &mock.Environment{}
+			require.NoError(t, env.Configure(ctx))
+
+			manager := cloud.GetSTSManager(true)
+
+			r, ok := makeAWSS3(manager).(*awsS3)
+			require.True(t, ok)
+
+			tCase(ctx, t, r)
+		})
+	}
+}
