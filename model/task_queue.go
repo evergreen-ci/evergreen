@@ -19,27 +19,51 @@ const (
 )
 
 type TaskGroupInfo struct {
-	Name                       string        `bson:"name" json:"name"`
-	Count                      int           `bson:"count" json:"count"`
-	CountFree                  int           `bson:"count_free" json:"count_free"`
-	CountRequired              int           `bson:"count_required" json:"count_required"`
-	MaxHosts                   int           `bson:"max_hosts" json:"max_hosts"`
-	ExpectedDuration           time.Duration `bson:"expected_duration" json:"expected_duration"`
-	CountDurationOverThreshold int           `bson:"count_over_threshold" json:"count_over_threshold"`
-	CountWaitOverThreshold     int           `bson:"count_wait_over_threshold" json:"count_wait_over_threshold"`
-	DurationOverThreshold      time.Duration `bson:"duration_over_threshold" json:"duration_over_threshold"`
+	// Name is the name of the task group. An empty string denotes that it is a standalone task
+	Name string `bson:"name" json:"name"`
+	// Count is the number of tasks in the group that are currently in the queue.
+	Count int `bson:"count" json:"count"`
+	// CountFree represents the number of hosts that are free (or expected to soon be free) to run tasks in the group
+	CountFree int `bson:"count_free" json:"count_free"`
+	// CountRequired represents the number of new hosts that will be spawned to run tasks in the group
+	CountRequired int `bson:"count_required" json:"count_required"`
+	// MaxHosts represents the maximum number of hosts that can be allocated to the group at once
+	MaxHosts int `bson:"max_hosts" json:"max_hosts"`
+	// ExpectedDuration represents the sum of the expected runtime of all tasks waiting in the group with their dependencies met
+	ExpectedDuration time.Duration `bson:"expected_duration" json:"expected_duration"`
+	// CountDurationOverThreshold represents he number of tasks in the group that have their dependencies were
+	// met and are expected to take over the distro queue's MaxDurationThreshold
+	CountDurationOverThreshold int `bson:"count_over_threshold" json:"count_over_threshold"`
+	// CountWaitOverThreshold the number of tasks in the group that have been waiting the distro queue's MaxDurationThreshold
+	// since their dependencies were met
+	CountWaitOverThreshold int `bson:"count_wait_over_threshold" json:"count_wait_over_threshold"`
+	// DurationOverThreshold represents the sum of the expected durations of tasks in the group
+	// that have their dependencies were met and are expected to take over the distro queue's MaxDurationThreshold
+	DurationOverThreshold time.Duration `bson:"duration_over_threshold" json:"duration_over_threshold"`
 }
 
 type DistroQueueInfo struct {
-	Length                     int             `bson:"length" json:"length"`
-	LengthWithDependenciesMet  int             `bson:"length_with_dependencies_met" json:"length_with_dependencies_met"`
-	ExpectedDuration           time.Duration   `bson:"expected_duration" json:"expected_duration"`
-	MaxDurationThreshold       time.Duration   `bson:"max_duration_threshold" json:"max_duration_threshold"`
-	PlanCreatedAt              time.Time       `bson:"created_at" json:"created_at"`
-	CountDurationOverThreshold int             `bson:"count_over_threshold" json:"count_over_threshold"`
-	DurationOverThreshold      time.Duration   `bson:"duration_over_threshold" json:"duration_over_threshold"`
-	CountWaitOverThreshold     int             `bson:"count_wait_over_threshold" json:"count_wait_over_threshold"`
-	TaskGroupInfos             []TaskGroupInfo `bson:"task_group_infos" json:"task_group_infos"`
+	// Length represents the number of tasks waiting in the queue
+	Length int `bson:"length" json:"length"`
+	// LengthWithDependenciesMet represents the number of tasks waiting in the queue with their dependencies met
+	LengthWithDependenciesMet int `bson:"length_with_dependencies_met" json:"length_with_dependencies_met"`
+	// ExpectedDuration represents the sum of the expected runtime of all tasks waiting in the queue with their dependencies met
+	ExpectedDuration time.Duration `bson:"expected_duration" json:"expected_duration"`
+	// MaxDurationThreshold is the target length of time the host allocator aims to complete dependency-fulfilled tasks in the queue
+	// when determining how many hosts to spawn
+	MaxDurationThreshold time.Duration `bson:"max_duration_threshold" json:"max_duration_threshold"`
+	// PlanCreatedAt represents the timestamp at which the queue plan was initialized
+	PlanCreatedAt time.Time `bson:"created_at" json:"created_at"`
+	// CountDurationOverThreshold represents he number of tasks that have their dependencies were met and are expected to take over MaxDurationThreshold
+	CountDurationOverThreshold int `bson:"count_over_threshold" json:"count_over_threshold"`
+	// DurationOverThreshold represents the sum of the expected durations of all tasks that have their dependencies were met
+	// and are expected to take over MaxDurationThreshold
+	DurationOverThreshold time.Duration `bson:"duration_over_threshold" json:"duration_over_threshold"`
+	// CountWaitOverThreshold the number of tasks that have been waiting the MaxDurationThreshold since their dependencies were met
+	CountWaitOverThreshold int `bson:"count_wait_over_threshold" json:"count_wait_over_threshold"`
+	// TaskGroupInfos is a list info that contains the same information as in this struct, but granularized to be only for tasks in
+	// a specific group (standalone tasks are included as well, denoted by an empty string for the group name)
+	TaskGroupInfos []TaskGroupInfo `bson:"task_group_infos" json:"task_group_infos"`
 	// SecondaryQueue refers to whether or not this info refers to a secondary queue.
 	// Tags don't match due to outdated naming convention.
 	SecondaryQueue bool `bson:"alias_queue" json:"alias_queue"`
