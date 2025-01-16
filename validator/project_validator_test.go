@@ -4766,15 +4766,15 @@ func TestGetDistrosForProject(t *testing.T) {
 	}
 	require.NoError(d1.Insert(ctx))
 	d2 := distro.Distro{
-		Id:          "distro2",
-		Aliases:     []string{"distro2-alias", "distro1and2-alias"},
-		WarningNote: "this is the warning for another distro",
+		Id:               "distro2",
+		Aliases:          []string{"distro2-alias", "distro1and2-alias"},
+		WarningNote:      "this is the warning for another distro",
+		SingleTaskDistro: true,
 	}
 	require.NoError(d2.Insert(ctx))
 	d3 := distro.Distro{
-		Id:               "distro3",
-		ValidProjects:    []string{"project5"},
-		SingleTaskDistro: true,
+		Id:            "distro3",
+		ValidProjects: []string{"project5"},
 	}
 	require.NoError(d3.Insert(ctx))
 
@@ -4797,16 +4797,17 @@ func TestGetDistrosForProject(t *testing.T) {
 	require.NoError(err)
 	require.Len(ids, 2)
 	require.Len(warnings, 5) // Both d1 and d2 are going to match here
-	require.Len(singleTaskDistroIDs, 0)
+	require.Len(singleTaskDistroIDs, 1)
 	assert.Contains(ids, "distro1")
 	assert.Contains(aliases, "distro1and2-alias")
 	assert.Contains(aliases, "distro1-alias")
+	assert.Equal(singleTaskDistroIDs[0], "distro2")
 
 	// Only d2 is going to match here
 	ids, aliases, singleTaskDistroIDs, warnings, err = getDistrosForProject(ctx, "project3")
 	require.NoError(err)
 	require.Len(ids, 1)
-	assert.Len(warnings, 3)
+	require.Len(warnings, 3)
 	require.Len(singleTaskDistroIDs, 1)
 	assert.Contains(ids, "distro2")
 	assert.Contains(aliases, "distro2-alias")
@@ -4814,7 +4815,7 @@ func TestGetDistrosForProject(t *testing.T) {
 	assert.Equal(warnings[d2.Id], d2.WarningNote)
 	assert.Equal(warnings["distro2-alias"], d2.WarningNote)
 	assert.Equal(warnings["distro1and2-alias"], d2.WarningNote)
-	assert.Equal(singleTaskDistroIDs[0], "distro3")
+	assert.Equal(singleTaskDistroIDs[0], "distro2")
 }
 
 func TestValidateTaskSyncCommands(t *testing.T) {
