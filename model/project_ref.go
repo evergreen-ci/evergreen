@@ -535,7 +535,6 @@ var (
 	projectRefGitHubDynamicTokenPermissionGroupsKey = bsonutil.MustHaveTag(ProjectRef{}, "GitHubDynamicTokenPermissionGroups")
 	projectRefGithubPermissionGroupByRequesterKey   = bsonutil.MustHaveTag(ProjectRef{}, "GitHubPermissionGroupByRequester")
 	projectRefParameterStoreEnabledKey              = bsonutil.MustHaveTag(ProjectRef{}, "ParameterStoreEnabled")
-	projectRefParameterStoreVarsSyncedKey           = bsonutil.MustHaveTag(ProjectRef{}, "ParameterStoreVarsSynced")
 	projectRefLastAutoRestartedTaskAtKey            = bsonutil.MustHaveTag(ProjectRef{}, "LastAutoRestartedTaskAt")
 	projectRefNumAutoRestartedTasksKey              = bsonutil.MustHaveTag(ProjectRef{}, "NumAutoRestartedTasks")
 

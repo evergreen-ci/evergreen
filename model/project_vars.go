@@ -510,60 +510,6 @@ func getUpdatedParamMappings(original ParameterMappings, upserted, deleted map[s
 	return updatedParamMappings
 }
 
-// isParameterStoreEnabledForProject checks if Parameter Store is enabled for a
-// project. If ignoreProjectFeatureFlag is enabled, the project will use
-// Parameter Store regardless of the project-level feature flag.
-// TODO (DEVPROD-11882): remove feature flag checks once all project vars are
-// using Parameter Store and the rollout is stable.
-// kim: TODO: delete once DEVPROD-11883 is merged and the function is unused.
-func isParameterStoreEnabledForProject(ctx context.Context, ref *ProjectRef, ignoreProjectFeatureFlag bool) (bool, error) {
-	flags, err := evergreen.GetServiceFlags(ctx)
-	if err != nil {
-		return false, errors.Wrap(err, "getting service flags")
-	}
-	if flags.ParameterStoreDisabled {
-		return false, nil
-	}
-
-	if ignoreProjectFeatureFlag {
-		return true, nil
-	}
-
-	if ref == nil {
-		return false, errors.Errorf("ref is nil")
-	}
-	return ref.ParameterStoreEnabled, nil
-}
-
-// findProjectRef finds the project ref associated with the ID.
-// Returns a bool indicating if it's a branch project ref or a repo ref.
-func findProjectRef(projectID string) (ref *ProjectRef, isRepoRef bool, err error) {
-	// This intentionally looks for a branch project ref without merging with
-	// its repo ref because project vars for a branch project are stored
-	// separately from project vars for a repo. Therefore, a branch project and
-	// its repo could have differing sync statuses (e.g. it's possible for a
-	// branch project's vars to be synced to Parameter Store, but not its repo
-	// vars).
-	projRef, err := FindBranchProjectRef(projectID)
-	if err != nil {
-		return nil, false, errors.Wrapf(err, "finding merged project ref '%s'", projectID)
-	}
-	if projRef != nil {
-		return projRef, false, nil
-	}
-
-	// Project vars could tied to a repo instead of branch project, so check the
-	// repo as a fallback.
-	repoRef, err := FindOneRepoRef(projectID)
-	if err != nil {
-		return nil, false, errors.Wrapf(err, "finding repo ref '%s'", projectID)
-	}
-	if repoRef == nil {
-		return nil, false, errors.Errorf("project or repo ref '%s' not found", projectID)
-	}
-	return &repoRef.ProjectRef, true, nil
-}
-
 // Insert creates a new project vars document and stores all the project
 // variables in the DB. If Parameter Store is enabled for the project, it also
 // stores the variables in Parameter Store.
