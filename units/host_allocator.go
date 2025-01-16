@@ -214,7 +214,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	// how long will it take the current fleet of hosts, plus the ones we spawned, to chew through
 	// the scheduled tasks in the queue?
 
-	// The number of task group tasks that have been waiting some max threshold (30min) since their dependencies were met
+	// The number of task group tasks that have been waiting >= MaxDurationThreshold since their dependencies were met
 	var totalOverdueInTaskGroups int
 	// The number of task group tasks have their dependencies were met and are expected to take over MaxDurationThreshold
 	var countDurationOverThresholdInTaskGroups int
