@@ -1046,7 +1046,7 @@ func ensureReferentialIntegrity(project *model.Project, containerNameMap map[str
 			if utility.StringSliceContains(singleTaskDistroIDs, name) {
 				errs = append(errs,
 					ValidationError{
-						Message: fmt.Sprintf("buildvariant '%s' references a single task distro '%s' which is not allowed for entire buildvariants, only  individual tasks", buildVariant.Name, name),
+						Message: fmt.Sprintf("buildvariant '%s' references a single task distro '%s' which is not allowed for entire buildvariants, only individual tasks", buildVariant.Name, name),
 						Level:   Error,
 					},
 				)
@@ -2525,12 +2525,28 @@ func getAllowedSingleTaskDistroTasksForProject(ctx context.Context, identifier s
 	}
 
 	allowedSingleTaskDistroTasks := []string{}
+	projectsToLookFor := []string{}
 	for _, pairs := range settings.SingleTaskDistro.ProjectTasksPairs {
 		pRef, err := model.FindBranchProjectRef(identifier)
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding project ref '%s'", identifier)
 		}
-		if pairs.ProjectID == pRef.Id || pairs.ProjectID == pRef.Identifier || pairs.ProjectID == pRef.RepoRefId {
+
+		// Look for allowed tasks for the project and its repo project.
+		if pRef != nil {
+			projectsToLookFor = append(projectsToLookFor, pRef.Id, pRef.Identifier, pRef.RepoRefId)
+		} else {
+			// If project ref is nil, it means the project is a repo project.
+			repoRef, err := model.FindOneRepoRef(identifier)
+			if err != nil {
+				return nil, errors.Wrapf(err, "finding repo ref '%s'", identifier)
+			}
+			if repoRef == nil {
+				return nil, errors.Errorf("project or repo ref '%s' not found", identifier)
+			}
+			projectsToLookFor = append(projectsToLookFor, repoRef.Id)
+		}
+		if utility.StringSliceContains(projectsToLookFor, pairs.ProjectID) {
 			allowedSingleTaskDistroTasks = append(allowedSingleTaskDistroTasks, pairs.AllowedTasks...)
 		}
 	}

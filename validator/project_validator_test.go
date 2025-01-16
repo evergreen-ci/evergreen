@@ -4801,7 +4801,7 @@ func TestGetDistrosForProject(t *testing.T) {
 	assert.Contains(ids, "distro1")
 	assert.Contains(aliases, "distro1and2-alias")
 	assert.Contains(aliases, "distro1-alias")
-	assert.Equal(singleTaskDistroIDs[0], "distro2")
+	assert.Equal("distro2", singleTaskDistroIDs[0])
 
 	// Only d2 is going to match here
 	ids, aliases, singleTaskDistroIDs, warnings, err = getDistrosForProject(ctx, "project3")
@@ -4815,7 +4815,7 @@ func TestGetDistrosForProject(t *testing.T) {
 	assert.Equal(warnings[d2.Id], d2.WarningNote)
 	assert.Equal(warnings["distro2-alias"], d2.WarningNote)
 	assert.Equal(warnings["distro1and2-alias"], d2.WarningNote)
-	assert.Equal(singleTaskDistroIDs[0], "distro2")
+	assert.Equal("distro2", singleTaskDistroIDs[0])
 }
 
 func TestValidateTaskSyncCommands(t *testing.T) {
