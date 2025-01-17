@@ -1812,7 +1812,7 @@ func (h *awsS3) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting caller identity for task '%s'", h.taskID))
 		}
 	}
-	// TODO (DEVPROD-13978): Create correct session policy based off task.
+	// TODO (DEVPROD-13978): Create correct session policy based off of provided task.
 	sessionPolicy := map[string]interface{}{
 		"Version": "2012-10-17",
 		"Statement": []map[string]interface{}{
