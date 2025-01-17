@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -20,7 +19,7 @@ import (
 )
 
 func TestAPIPatch(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, commitqueue.Collection))
+	assert.NoError(t, db.ClearCollections(model.ProjectRefCollection))
 	assert := assert.New(t)
 	baseTime := time.Now()
 	pRef := model.ProjectRef{
@@ -67,19 +66,10 @@ func TestAPIPatch(t *testing.T) {
 			Author:    "octocat",
 		},
 	}
-	cq := commitqueue.CommitQueue{
-		ProjectID: p.Project,
-		Queue: []commitqueue.CommitQueueItem{
-			{PatchId: "something else"},
-			{PatchId: p.Id.Hex()},
-		},
-	}
-	assert.NoError(commitqueue.InsertQueue(&cq))
 
 	a := APIPatch{}
 	err := a.BuildFromService(p, &APIPatchArgs{
-		IncludeProjectIdentifier:   true,
-		IncludeCommitQueuePosition: true,
+		IncludeProjectIdentifier: true,
 	})
 	assert.NoError(err)
 
@@ -94,7 +84,6 @@ func TestAPIPatch(t *testing.T) {
 	assert.Equal(p.Version, utility.FromStringPtr(a.Version))
 	assert.Equal(p.Status, utility.FromStringPtr(a.Status))
 	assert.Zero(a.CreateTime.Sub(p.CreateTime))
-	assert.Equal(1, utility.FromIntPtr(a.CommitQueuePosition))
 	assert.Equal(-time.Hour, a.CreateTime.Sub(p.StartTime))
 	assert.Equal(-2*time.Hour, a.CreateTime.Sub(p.FinishTime))
 	for i, variant := range a.Variants {

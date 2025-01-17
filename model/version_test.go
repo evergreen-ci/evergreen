@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
 	. "github.com/smartystreets/goconvey/convey"
@@ -121,32 +120,6 @@ func TestFindLastPeriodicBuild(t *testing.T) {
 	mostRecent, err := FindLastPeriodicBuild("myProj", "a")
 	assert.NoError(err)
 	assert.Equal(v2.Id, mostRecent.Id)
-}
-
-func TestGetVersionForCommitQueueItem(t *testing.T) {
-	assert.NoError(t, db.Clear(VersionCollection))
-	v1 := Version{Id: "version-1234"}
-	assert.NoError(t, v1.Insert())
-
-	cq := commitqueue.CommitQueue{
-		Queue: []commitqueue.CommitQueueItem{
-			{Issue: "version-1234", Version: "version-1234", Source: commitqueue.SourceDiff},
-			{Issue: "patch-2345", Source: commitqueue.SourceDiff},
-			{Issue: "2345", Source: commitqueue.SourcePullRequest},
-		},
-	}
-	version, err := GetVersionForCommitQueueItem(&cq, cq.Queue[0].Issue)
-	assert.NoError(t, err)
-	assert.NotNil(t, version)
-
-	version, err = GetVersionForCommitQueueItem(&cq, cq.Queue[1].Issue)
-	assert.NoError(t, err)
-	assert.Nil(t, version)
-
-	version, err = GetVersionForCommitQueueItem(&cq, cq.Queue[2].Issue)
-	assert.NoError(t, err)
-	assert.Nil(t, version)
-
 }
 
 func TestBuildVariantsStatusUnmarshal(t *testing.T) {

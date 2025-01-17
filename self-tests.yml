@@ -600,9 +600,6 @@ tasks:
     name: test-model-distro
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
-    name: test-model-commitqueue
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
     name: test-model-cache
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]

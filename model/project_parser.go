@@ -428,7 +428,6 @@ type parserBVTaskUnit struct {
 	Stepback          *bool                     `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 	Distros           parserStringSlice         `yaml:"distros,omitempty" bson:"distros,omitempty"`
 	RunOn             parserStringSlice         `yaml:"run_on,omitempty" bson:"run_on,omitempty"` // Alias for "Distros" TODO: deprecate Distros
-	CommitQueueMerge  bool                      `yaml:"commit_queue_merge,omitempty" bson:"commit_queue_merge,omitempty"`
 	// Use a *int for 2 possible states
 	// nil - not overriding the project setting
 	// non-nil - overriding the project setting with this BatchTime
@@ -1445,21 +1444,20 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 // * Build variant's settings
 func getParserBuildVariantTaskUnit(name string, pt parserTask, bvt parserBVTaskUnit, bv parserBV) BuildVariantTaskUnit {
 	res := BuildVariantTaskUnit{
-		Name:             name,
-		Variant:          bv.Name,
-		Patchable:        bvt.Patchable,
-		PatchOnly:        bvt.PatchOnly,
-		Disable:          bvt.Disable,
-		AllowForGitTag:   bvt.AllowForGitTag,
-		GitTagOnly:       bvt.GitTagOnly,
-		Priority:         bvt.Priority,
-		Stepback:         bvt.Stepback,
-		RunOn:            bvt.RunOn,
-		CommitQueueMerge: bvt.CommitQueueMerge,
-		CronBatchTime:    bvt.CronBatchTime,
-		BatchTime:        bvt.BatchTime,
-		Activate:         bvt.Activate,
-		CreateCheckRun:   bvt.CreateCheckRun,
+		Name:           name,
+		Variant:        bv.Name,
+		Patchable:      bvt.Patchable,
+		PatchOnly:      bvt.PatchOnly,
+		Disable:        bvt.Disable,
+		AllowForGitTag: bvt.AllowForGitTag,
+		GitTagOnly:     bvt.GitTagOnly,
+		Priority:       bvt.Priority,
+		Stepback:       bvt.Stepback,
+		RunOn:          bvt.RunOn,
+		CronBatchTime:  bvt.CronBatchTime,
+		BatchTime:      bvt.BatchTime,
+		Activate:       bvt.Activate,
+		CreateCheckRun: bvt.CreateCheckRun,
 	}
 	res.AllowedRequesters = bvt.AllowedRequesters
 	if res.Priority == 0 {

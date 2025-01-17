@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud/parameterstore/fakeparameter"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -1378,7 +1377,7 @@ func TestCopyProject(t *testing.T) {
 		},
 	} {
 		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameter.Collection, model.ProjectAliasCollection,
-			event.SubscriptionsCollection, event.EventCollection, evergreen.ScopeCollection, user.Collection, commitqueue.Collection))
+			event.SubscriptionsCollection, event.EventCollection, evergreen.ScopeCollection, user.Collection))
 		require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
 		cocoaMock.ResetGlobalSecretCache()

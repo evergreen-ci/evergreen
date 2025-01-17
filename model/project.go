@@ -127,8 +127,6 @@ type BuildVariantTaskUnit struct {
 	RunOn    []string `yaml:"run_on,omitempty" bson:"run_on"`
 	Stepback *bool    `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 
-	CommitQueueMerge bool `yaml:"commit_queue_merge,omitempty" bson:"commit_queue_merge"`
-
 	// Use a *int for 2 possible states
 	// nil - not overriding the project setting
 	// non-nil - overriding the project setting with this BatchTime
@@ -1624,7 +1622,6 @@ func (p *Project) tasksFromGroup(bvTaskGroup BuildVariantTaskUnit) []BuildVarian
 			RunOn:             bvTaskGroup.RunOn,
 			Stepback:          bvTaskGroup.Stepback,
 			Activate:          bvTaskGroup.Activate,
-			CommitQueueMerge:  bvTaskGroup.CommitQueueMerge,
 		}
 		// Default to project task settings when unspecified
 		bvt.Populate(taskMap[t], *bv)

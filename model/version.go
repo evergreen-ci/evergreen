@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/build"
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -276,15 +275,6 @@ func (v *Version) UpdatePreGenerationProjectStorageMethod(method evergreen.Parse
 	}
 	v.PreGenerationProjectStorageMethod = method
 	return nil
-}
-
-func GetVersionForCommitQueueItem(cq *commitqueue.CommitQueue, issue string) (*Version, error) {
-	spot := cq.FindItem(issue)
-	if spot == -1 {
-		return nil, nil
-	}
-
-	return VersionFindOneId(cq.Queue[spot].Version)
 }
 
 // VersionBuildStatus stores metadata relating to each build

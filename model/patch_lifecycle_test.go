@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/build"
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -1044,7 +1043,7 @@ func TestAbortPatchesWithGithubPatchData(t *testing.T) {
 	defer cancel()
 
 	defer func() {
-		assert.NoError(t, db.ClearCollections(commitqueue.Collection, patch.Collection, task.Collection, VersionCollection))
+		assert.NoError(t, db.ClearCollections(patch.Collection, task.Collection, VersionCollection))
 	}()
 	for tName, tCase := range map[string]func(t *testing.T, p *patch.Patch, v *Version, tsk *task.Task){
 		"AbortsGitHubPRPatch": func(t *testing.T, p *patch.Patch, v *Version, tsk *task.Task) {
@@ -1072,7 +1071,7 @@ func TestAbortPatchesWithGithubPatchData(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(commitqueue.Collection, patch.Collection, task.Collection, VersionCollection))
+			require.NoError(t, db.ClearCollections(patch.Collection, task.Collection, VersionCollection))
 			id := mgobson.NewObjectId()
 			v := Version{
 				Id:        id.Hex(),

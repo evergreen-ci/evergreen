@@ -15,7 +15,6 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/notification"
@@ -442,7 +441,7 @@ func TestCreateProject(t *testing.T) {
 	defer cancel()
 
 	defer func() {
-		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameter.Collection, commitqueue.Collection, event.EventCollection, user.Collection, evergreen.ScopeCollection))
+		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameter.Collection, event.EventCollection, user.Collection, evergreen.ScopeCollection))
 
 		cocoaMock.ResetGlobalSecretCache()
 	}()
@@ -537,7 +536,7 @@ func TestCreateProject(t *testing.T) {
 			tctx, tcancel := context.WithCancel(context.Background())
 			defer tcancel()
 
-			require.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameter.Collection, commitqueue.Collection, event.EventCollection, user.Collection, evergreen.ScopeCollection))
+			require.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameter.Collection, event.EventCollection, user.Collection, evergreen.ScopeCollection))
 
 			cocoaMock.ResetGlobalSecretCache()
 

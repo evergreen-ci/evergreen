@@ -26,7 +26,6 @@ type ServiceFlags struct {
 	CacheStatsJobDisabled           bool `bson:"cache_stats_job_disabled" json:"cache_stats_job_disabled"`
 	CacheStatsEndpointDisabled      bool `bson:"cache_stats_endpoint_disabled" json:"cache_stats_endpoint_disabled"`
 	TaskReliabilityDisabled         bool `bson:"task_reliability_disabled" json:"task_reliability_disabled"`
-	CommitQueueDisabled             bool `bson:"commit_queue_disabled" json:"commit_queue_disabled"`
 	HostAllocatorDisabled           bool `bson:"host_allocator_disabled" json:"host_allocator_disabled"`
 	PodAllocatorDisabled            bool `bson:"pod_allocator_disabled" json:"pod_allocator_disabled"`
 	UnrecognizedPodCleanupDisabled  bool `bson:"unrecognized_pod_cleanup_disabled" json:"unrecognized_pod_cleanup_disabled"`
@@ -80,7 +79,6 @@ func (c *ServiceFlags) Set(ctx context.Context) error {
 			cacheStatsJobDisabledKey:           c.CacheStatsJobDisabled,
 			cacheStatsEndpointDisabledKey:      c.CacheStatsEndpointDisabled,
 			taskReliabilityDisabledKey:         c.TaskReliabilityDisabled,
-			commitQueueDisabledKey:             c.CommitQueueDisabled,
 			hostAllocatorDisabledKey:           c.HostAllocatorDisabled,
 			podAllocatorDisabledKey:            c.PodAllocatorDisabled,
 			backgroundCleanupDisabledKey:       c.BackgroundCleanupDisabled,

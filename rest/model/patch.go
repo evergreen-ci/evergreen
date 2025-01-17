@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
@@ -62,8 +61,6 @@ type APIPatch struct {
 	ChildPatchAliases    []APIChildPatchAlias `json:"child_patch_aliases,omitempty"`
 	Requester            *string              `json:"requester"`
 	MergedFrom           *string              `json:"merged_from"`
-	// Only populated for commit queue patches: returns the 0-indexed position of the patch on the queue, or -1 if not on the queue anymore
-	CommitQueuePosition *int `json:"commit_queue_position,omitempty"`
 }
 
 type DownstreamTasks struct {
@@ -144,9 +141,8 @@ func (p *APIParameter) BuildFromService(param *patch.Parameter) {
 }
 
 type APIPatchArgs struct {
-	IncludeProjectIdentifier   bool
-	IncludeCommitQueuePosition bool
-	IncludeChildPatches        bool
+	IncludeProjectIdentifier bool
+	IncludeChildPatches      bool
 }
 
 // BuildFromService converts from service level structs to an APIPatch.
@@ -164,38 +160,11 @@ func (apiPatch *APIPatch) BuildFromService(p patch.Patch, args *APIPatchArgs) er
 			}
 
 		}
-
-		if args.IncludeCommitQueuePosition {
-			if err := apiPatch.GetCommitQueuePosition(); err != nil {
-				return errors.Wrap(err, "getting commit queue position")
-			}
-		}
 	}
 	apiPatch.buildModuleChanges(p, projectIdentifier)
 
 	if args != nil && args.IncludeChildPatches {
 		return apiPatch.buildChildPatches(p)
-	}
-	return nil
-}
-
-func (apiPatch *APIPatch) GetCommitQueuePosition() error {
-	if apiPatch.CommitQueuePosition != nil {
-		return nil
-	}
-	// GitHub merge patches use the commit queue alias but do not have commit queue positions.
-	if utility.FromStringPtr(apiPatch.Requester) == evergreen.GithubMergeRequester {
-		return nil
-	}
-	if utility.FromStringPtr(apiPatch.Alias) == evergreen.CommitQueueAlias {
-		cq, err := commitqueue.FindOneId(utility.FromStringPtr(apiPatch.ProjectId))
-		if err != nil {
-			return errors.Wrap(err, "error getting commit queue position")
-		}
-		apiPatch.CommitQueuePosition = utility.ToIntPtr(-1)
-		if cq != nil {
-			apiPatch.CommitQueuePosition = utility.ToIntPtr(cq.FindItem(utility.FromStringPtr(apiPatch.Id)))
-		}
 	}
 	return nil
 }

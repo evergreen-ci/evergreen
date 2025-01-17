@@ -29,7 +29,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/log"
@@ -149,7 +148,6 @@ func MakeTestsInDirectory(state *AtomicGraphQLState, pathToTests string) func(t 
 					grip.Info("=== actual ===")
 					grip.Info(actual.Bytes())
 				}
-				additionalChecks(t)
 			}
 
 			t.Run(testCase.QueryFile, singleTest)
@@ -689,21 +687,4 @@ func addSubnets(t *testing.T) {
 
 func clearSubnets(t *testing.T) {
 	evergreen.GetEnvironment().Settings().Providers.AWS.Subnets = []evergreen.Subnet{}
-}
-
-func additionalChecks(t *testing.T) {
-	var checks = map[string]func(*testing.T){
-		// note these 2 are only the same because the same project ID is used
-		"TestAtomicGQLQueries/abortTask/commit-queue-dequeue.graphql":            checkCommitQueueDequeued,
-		"TestAtomicGQLQueries/unschedulePatchTasks/commit-queue-dequeue.graphql": checkCommitQueueDequeued,
-	}
-	if check, exists := checks[t.Name()]; exists {
-		check(t)
-	}
-}
-
-func checkCommitQueueDequeued(t *testing.T) {
-	cq, err := commitqueue.FindOneId("p1")
-	assert.NoError(t, err)
-	assert.Empty(t, cq.Queue)
 }
