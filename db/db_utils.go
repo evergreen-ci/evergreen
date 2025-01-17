@@ -364,10 +364,6 @@ func Aggregate(collection string, pipeline interface{}, out interface{}) error {
 	}
 	defer session.Close()
 
-	// NOTE: with the legacy driver, this function unset the
-	// socket timeout, which isn't really an option here. (other
-	// operations had a 90s timeout, which is no longer specified)
-
 	pipe := db.C(collection).Pipe(pipeline)
 
 	return errors.WithStack(pipe.All(out))
@@ -384,10 +380,6 @@ func AggregateContext(ctx context.Context, collection string, pipeline interface
 		return err
 	}
 	defer session.Close()
-
-	// NOTE: with the legacy driver, this function unset the
-	// socket timeout, which isn't really an option here. (other
-	// operations had a 90s timeout, which is no longer specified)
 
 	pipe := db.C(collection).Pipe(pipeline)
 
