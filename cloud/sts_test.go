@@ -79,7 +79,7 @@ func TestGetCallerIdentity(t *testing.T) {
 			awsClientMock.GetCallerIdentityOutput = &sts.GetCallerIdentityOutput{
 				Arn: nil,
 			}
-			_, err := manager.GetCallerIdentity(ctx)
+			_, err := manager.GetCallerIdentityARN(ctx)
 			require.ErrorContains(t, err, "caller identity ARN is nil")
 		},
 		"Success": func(ctx context.Context, t *testing.T, manager STSManager, awsClientMock *awsClientMock) {
@@ -87,7 +87,7 @@ func TestGetCallerIdentity(t *testing.T) {
 				Arn: &roleARN,
 			}
 
-			arn, err := manager.GetCallerIdentity(ctx)
+			arn, err := manager.GetCallerIdentityARN(ctx)
 			require.NoError(t, err)
 			assert.Equal(t, roleARN, arn)
 		},

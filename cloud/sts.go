@@ -19,8 +19,8 @@ import (
 type STSManager interface {
 	// AssumeRole gets the credentials for a role as the given task.
 	AssumeRole(ctx context.Context, taskID string, opts AssumeRoleOptions) (AssumeRoleCredentials, error)
-	// GetCallerIdentity gets the credentials for a role as the given task.
-	GetCallerIdentity(ctx context.Context) (string, error)
+	// GetCallerIdentityARN gets the caller identity's ARN.
+	GetCallerIdentityARN(ctx context.Context) (string, error)
 }
 
 // GetSTSManager returns either a real or mock STSManager.
@@ -95,8 +95,8 @@ func (s *stsManagerImpl) AssumeRole(ctx context.Context, taskID string, opts Ass
 	}, nil
 }
 
-// GetCallerIdentityARN gets the ARN of the caller identity.
-func (s *stsManagerImpl) GetCallerIdentity(ctx context.Context) (string, error) {
+// GetCallerIdentityARN gets the caller identity's ARN.
+func (s *stsManagerImpl) GetCallerIdentityARN(ctx context.Context) (string, error) {
 	if err := s.client.Create(ctx, evergreen.DefaultEC2Region); err != nil {
 		return "", errors.Wrapf(err, "creating AWS client")
 	}
