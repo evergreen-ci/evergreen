@@ -483,7 +483,7 @@ func (r *versionResolver) VersionTiming(ctx context.Context, obj *restModel.APIV
 	if v == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("finding version '%s'", utility.FromStringPtr(obj.Id)))
 	}
-	timeTaken, makespan, err := v.GetTimeSpent()
+	timeTaken, makespan, err := v.GetTimeSpent(ctx)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting timing for version '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
 	}

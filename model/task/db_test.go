@@ -417,6 +417,9 @@ func TestFindOneIdAndExecutionWithDisplayStatus(t *testing.T) {
 }
 
 func TestFindAllFirstExecution(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.ClearCollections(Collection, OldCollection))
 	tasks := []Task{
 		{Id: "t0"},
@@ -429,7 +432,7 @@ func TestFindAllFirstExecution(t *testing.T) {
 	oldTask := Task{Id: MakeOldID("t1", 0)}
 	require.NoError(t, db.Insert(OldCollection, &oldTask))
 
-	foundTasks, err := FindAllFirstExecution(All)
+	foundTasks, err := FindAllFirstExecution(ctx, All)
 	assert.NoError(t, err)
 	assert.Len(t, foundTasks, 3)
 	expectedIDs := []string{"t0", MakeOldID("t1", 0), "t2"}

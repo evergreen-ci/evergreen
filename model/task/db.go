@@ -1585,7 +1585,7 @@ func MakeOldID(taskID string, execution int) string {
 	return fmt.Sprintf("%s_%d", taskID, execution)
 }
 
-func FindAllFirstExecution(query db.Q) ([]Task, error) {
+func FindAllFirstExecution(ctx context.Context, query db.Q) ([]Task, error) {
 	existingTasks, err := FindAll(query)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting current tasks")
@@ -1601,7 +1601,7 @@ func FindAllFirstExecution(query db.Q) ([]Task, error) {
 	}
 
 	if len(oldIDs) > 0 {
-		oldTasks, err := FindAllOld(db.Query(ByIds(oldIDs)))
+		oldTasks, err := FindAllOld(ctx, db.Query(ByIds(oldIDs)))
 		if err != nil {
 			return nil, errors.Wrap(err, "getting old tasks")
 		}
@@ -1656,9 +1656,9 @@ func FindAll(query db.Q) ([]Task, error) {
 }
 
 // Find returns really all tasks that satisfy the query.
-func FindAllOld(query db.Q) ([]Task, error) {
+func FindAllOld(ctx context.Context, query db.Q) ([]Task, error) {
 	tasks := []Task{}
-	err := db.FindAllQ(OldCollection, query, &tasks)
+	err := db.FindAllQContext(ctx, OldCollection, query, &tasks)
 	return tasks, err
 }
 

@@ -1002,7 +1002,7 @@ func getVersionCtxForTracing(ctx context.Context, v *Version, project string) (c
 		return nil, errors.New("version is nil")
 	}
 
-	timeTaken, makespan, err := v.GetTimeSpent()
+	timeTaken, makespan, err := v.GetTimeSpent(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting time spent")
 	}
