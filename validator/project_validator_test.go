@@ -4427,7 +4427,7 @@ buildvariants:
 	assert.Len(tg.Tasks, 2)
 	assert.Equal("not_in_a_task_group", proj.Tasks[0].Name)
 	assert.Equal("task_in_a_task_group_1", proj.Tasks[0].DependsOn[0].Name)
-	errors := CheckProjectErrors(ctx, &proj, false)
+	errors := CheckProjectErrors(ctx, &proj)
 	assert.Empty(errors)
 	warnings := CheckProjectWarnings(&proj)
 	assert.Empty(warnings)
@@ -4486,7 +4486,7 @@ buildvariants:
 		"display_three")
 	proj.BuildVariants[0].Tasks = append(proj.BuildVariants[0].Tasks, model.BuildVariantTaskUnit{Name: "display_three"})
 
-	errors := CheckProjectErrors(ctx, &proj, false)
+	errors := CheckProjectErrors(ctx, &proj)
 	require.Len(errors, 1)
 	assert.Equal(Error, errors[0].Level)
 	assert.Equal("execution task 'display_three' has prefix 'display_' which is invalid",
@@ -4680,7 +4680,7 @@ buildvariants:
 	require.NoError(err)
 	assert.NotEmpty(proj)
 	assert.NotNil(pp)
-	errs := CheckProjectErrors(ctx, &proj, false)
+	errs := CheckProjectErrors(ctx, &proj)
 	assert.Empty(errs, "no errors were found")
 	errs = CheckProjectWarnings(&proj)
 	assert.Len(errs, 2, "two warnings were found")

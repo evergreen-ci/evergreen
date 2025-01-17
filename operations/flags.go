@@ -19,7 +19,6 @@ const (
 	largeFlagName           = "large"
 	limitFlagName           = "limit"
 	localModulesFlagName    = "local_modules"
-	longFlagName            = "long"
 	moduleFlagName          = "module"
 	overwriteConfFlagName   = "overwrite"
 	parameterFlagName       = "param"

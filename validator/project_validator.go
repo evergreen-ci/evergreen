@@ -117,7 +117,6 @@ func (v ValidationErrors) Has(level ValidationErrorLevel) bool {
 type ValidationInput struct {
 	ProjectYaml []byte `json:"project_yaml" yaml:"project_yaml"`
 	Quiet       bool   `json:"quiet" yaml:"quiet"`
-	IncludeLong bool   `json:"include_long" yaml:"include_long"`
 	ProjectID   string `json:"project_id" yaml:"project_id"`
 }
 
@@ -181,9 +180,6 @@ var projectSettingsValidators = []projectSettingsValidator{
 	validateIncludeLimits,
 	validateTimeoutLimits,
 }
-
-// These validators have the potential to be very long, and may not be fully run unless specified.
-var longErrorValidators = []longValidator{}
 
 func (vr ValidationError) Error() string {
 	return vr.Message
@@ -251,9 +247,9 @@ func addDistroWarning(distroWarnings map[string]string, distroName, warningNote 
 // projectRefId is used to determine if there is a project specified and
 // projectRefErr is used to determine if there was a problem retrieving
 // the ref; both output different warnings for the project.
-func CheckProject(ctx context.Context, project *model.Project, config *model.ProjectConfig, ref *model.ProjectRef, includeLong bool, projectRefId string, projectRefErr error) ValidationErrors {
+func CheckProject(ctx context.Context, project *model.Project, config *model.ProjectConfig, ref *model.ProjectRef, projectRefId string, projectRefErr error) ValidationErrors {
 	isConfigDefined := config != nil
-	verrs := CheckProjectErrors(ctx, project, includeLong)
+	verrs := CheckProjectErrors(ctx, project)
 	verrs = append(verrs, CheckProjectWarnings(project)...)
 	if config != nil {
 		verrs = append(verrs, CheckProjectConfigErrors(config)...)
@@ -312,15 +308,11 @@ func CheckAliasWarnings(project *model.Project, aliases model.ProjectAliases) Va
 }
 
 // CheckProjectErrors returns errors about the project configuration syntax
-func CheckProjectErrors(ctx context.Context, project *model.Project, includeLong bool) ValidationErrors {
+func CheckProjectErrors(ctx context.Context, project *model.Project) ValidationErrors {
 	validationErrs := ValidationErrors{}
 	for _, projectErrorValidator := range projectErrorValidators {
 		validationErrs = append(validationErrs,
 			projectErrorValidator(project)...)
-	}
-	for _, longSyntaxValidator := range longErrorValidators {
-		validationErrs = append(validationErrs,
-			longSyntaxValidator(project, includeLong)...)
 	}
 
 	// get distro IDs and aliases for ensureReferentialIntegrity validation
@@ -387,7 +379,7 @@ func CheckProjectConfigurationIsValid(ctx context.Context, settings *evergreen.S
 	))
 	defer span.End()
 	catcher := grip.NewBasicCatcher()
-	projectErrors := CheckProjectErrors(ctx, project, false)
+	projectErrors := CheckProjectErrors(ctx, project)
 	if len(projectErrors) != 0 {
 		if errs := projectErrors.AtLevel(Error); len(errs) != 0 {
 			catcher.Errorf("project contains errors: %s", ValidationErrorsToString(errs))
