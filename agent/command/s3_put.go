@@ -550,9 +550,13 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, lo
 		if s3pc.Visibility == artifact.Signed {
 			bucket = s3pc.Bucket
 			fileKey = remoteFileName
-			// TODO (DEVPROD-13658): Check if the bucket is internal and use the app's server IRSA credentials.
-			key = s3pc.AwsKey
-			secret = s3pc.AwsSecret
+			// If the bucket is an internal one, Evergreen does not need the credentials
+			// to sign the URL. If the bucket is not an internal one, Evergreen needs the
+			// credentials to sign the URL.
+			if !utility.StringSliceContains(s3pc.internalBuckets, s3pc.Bucket) {
+				key = s3pc.AwsKey
+				secret = s3pc.AwsSecret
+			}
 		}
 
 		files = append(files, &artifact.File{
