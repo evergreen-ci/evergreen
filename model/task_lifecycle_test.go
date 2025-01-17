@@ -826,7 +826,7 @@ func TestSetActiveState(t *testing.T) {
 
 		So(SetActiveState(ctx, "test", true, *taskDef), ShouldBeNil)
 
-		taskGroup, err := task.FindTaskGroupFromBuild(b.Id, taskDef.TaskGroup)
+		taskGroup, err := task.FindTaskGroupFromBuild(ctx, b.Id, taskDef.TaskGroup)
 		So(err, ShouldBeNil)
 		So(taskGroup, ShouldHaveLength, 4)
 		for _, t := range taskGroup {
@@ -882,7 +882,7 @@ func TestSetActiveState(t *testing.T) {
 		taskDef.Id = "task3"
 		So(SetActiveState(ctx, "test", false, *taskDef), ShouldBeNil)
 
-		taskGroup, err := task.FindTaskGroupFromBuild(b.Id, taskDef.TaskGroup)
+		taskGroup, err := task.FindTaskGroupFromBuild(ctx, b.Id, taskDef.TaskGroup)
 		So(err, ShouldBeNil)
 		So(taskGroup, ShouldHaveLength, 4)
 		for _, t := range taskGroup {
@@ -2459,7 +2459,7 @@ func TestMarkEndIsAutomaticRestart(t *testing.T) {
 		},
 		"ResetsSingleHostTaskGroupWithFailure": func(t *testing.T) {
 			assert.NoError(t, MarkEnd(ctx, &evergreen.Settings{}, tgTask1, "test", time.Now(), detail, false))
-			tasks, err := task.FindTaskGroupFromBuild(tgTask1.BuildId, tgTask1.TaskGroup)
+			tasks, err := task.FindTaskGroupFromBuild(ctx, tgTask1.BuildId, tgTask1.TaskGroup)
 			assert.NoError(t, err)
 			require.Len(t, tasks, 2)
 

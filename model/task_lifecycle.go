@@ -1150,7 +1150,7 @@ func evalLinearStepback(ctx context.Context, t *task.Task, newStepback, shouldSt
 		if t.IsPartOfSingleHostTaskGroup() {
 			// Stepback earlier task group tasks as well because these need to be run sequentially.
 			catcher := grip.NewBasicCatcher()
-			tasks, err := task.FindTaskGroupFromBuild(t.BuildId, t.TaskGroup)
+			tasks, err := task.FindTaskGroupFromBuild(ctx, t.BuildId, t.TaskGroup)
 			if err != nil {
 				return errors.Wrapf(err, "getting task group for task '%s'", t.Id)
 			}
@@ -2370,7 +2370,7 @@ func checkResetSingleHostTaskGroup(ctx context.Context, t *task.Task, caller str
 	if !t.IsPartOfSingleHostTaskGroup() {
 		return nil
 	}
-	tasks, err := task.FindTaskGroupFromBuild(t.BuildId, t.TaskGroup)
+	tasks, err := task.FindTaskGroupFromBuild(ctx, t.BuildId, t.TaskGroup)
 	if err != nil {
 		return errors.Wrapf(err, "getting task group for task '%s'", t.Id)
 	}

@@ -1549,8 +1549,8 @@ func HasActivatedDependentTasks(taskId string) (bool, error) {
 	return numDependentTasks > 0, err
 }
 
-func FindTaskGroupFromBuild(buildId, taskGroup string) ([]Task, error) {
-	tasks, err := FindWithSort(bson.M{
+func FindTaskGroupFromBuild(ctx context.Context, buildId, taskGroup string) ([]Task, error) {
+	tasks, err := FindWithSort(ctx, bson.M{
 		BuildIdKey:   buildId,
 		TaskGroupKey: taskGroup,
 	}, []string{TaskGroupOrderKey})
@@ -1636,14 +1636,14 @@ func FindWithFields(ctx context.Context, filter bson.M, fields ...string) ([]Tas
 	return tasks, err
 }
 
-func FindWithSort(filter bson.M, sort []string) ([]Task, error) {
+func FindWithSort(ctx context.Context, filter bson.M, sort []string) ([]Task, error) {
 	tasks := []Task{}
 	_, exists := filter[DisplayOnlyKey]
 	if !exists {
 		filter[DisplayOnlyKey] = bson.M{"$ne": true}
 	}
 	query := db.Query(filter).Sort(sort)
-	err := db.FindAllQ(Collection, query, &tasks)
+	err := db.FindAllQContext(ctx, Collection, query, &tasks)
 
 	return tasks, err
 }

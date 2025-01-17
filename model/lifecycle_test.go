@@ -1335,7 +1335,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(tasks1.InsertUnordered(context.Background()), ShouldBeNil)
 			So(tasks2.InsertUnordered(context.Background()), ShouldBeNil)
 			So(tasks3.InsertUnordered(context.Background()), ShouldBeNil)
-			dbTasks, err := task.FindWithSort(bson.M{}, []string{task.DisplayNameKey, task.BuildVariantKey})
+			dbTasks, err := task.FindWithSort(ctx, bson.M{}, []string{task.DisplayNameKey, task.BuildVariantKey})
 			So(err, ShouldBeNil)
 			So(len(dbTasks), ShouldEqual, 9)
 

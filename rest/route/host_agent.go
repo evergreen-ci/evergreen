@@ -608,7 +608,7 @@ func checkHostTaskGroupAfterDispatch(ctx context.Context, t *task.Task) error {
 		if t.TaskGroupOrder > 1 {
 			// If the previous task in the single-host task group has yet to run
 			// and should run, then wait for the previous task to run.
-			tgTasks, err := task.FindTaskGroupFromBuild(t.BuildId, t.TaskGroup)
+			tgTasks, err := task.FindTaskGroupFromBuild(ctx, t.BuildId, t.TaskGroup)
 			if err != nil {
 				return errors.Wrap(err, "finding task group from build")
 			}

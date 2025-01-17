@@ -2664,7 +2664,7 @@ func GetRecursiveDependenciesUp(ctx context.Context, tasks []Task, depCache map[
 			}
 		}
 		if t.IsPartOfSingleHostTaskGroup() {
-			tasksInGroup, err := FindTaskGroupFromBuild(t.BuildId, t.TaskGroup)
+			tasksInGroup, err := FindTaskGroupFromBuild(ctx, t.BuildId, t.TaskGroup)
 			if err != nil {
 				return nil, errors.Wrapf(err, "finding task group '%s'", t.TaskGroup)
 			}
@@ -3429,7 +3429,7 @@ func updateSchedulingLimitForResetWhenFinished(ctx context.Context, t *Task, cal
 			return errors.Wrapf(err, "finding execution tasks for '%s'", t.Id)
 		}
 	} else if t.IsPartOfSingleHostTaskGroup() {
-		tasks, err = FindTaskGroupFromBuild(t.BuildId, t.TaskGroup)
+		tasks, err = FindTaskGroupFromBuild(ctx, t.BuildId, t.TaskGroup)
 		if err != nil {
 			return errors.Wrapf(err, "finding task group '%s'", t.TaskGroup)
 		}
