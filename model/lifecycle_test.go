@@ -205,7 +205,7 @@ func TestBuildSetPriority(t *testing.T) {
 
 			So(SetBuildPriority(ctx, b.Id, 42, ""), ShouldBeNil)
 
-			tasks, err := task.Find(task.ByBuildId(b.Id))
+			tasks, err := task.Find(ctx, task.ByBuildId(b.Id))
 			So(err, ShouldBeNil)
 			So(len(tasks), ShouldEqual, 3)
 			So(tasks[0].Priority, ShouldEqual, 42)
@@ -489,7 +489,7 @@ func TestBuildMarkAborted(t *testing.T) {
 
 				So(AbortBuild(ctx, b.Id, ""), ShouldBeNil)
 
-				abortedTasks, err := task.Find(task.ByAborted(true))
+				abortedTasks, err := task.Find(ctx, task.ByAborted(true))
 				So(err, ShouldBeNil)
 				So(len(abortedTasks), ShouldEqual, 2)
 				So(taskIdInSlice(abortedTasks, abortableOne.Id), ShouldBeTrue)
@@ -642,7 +642,7 @@ func TestBuildSetActivated(t *testing.T) {
 				So(b.ActivatedBy, ShouldEqual, evergreen.GenerateTasksActivator)
 
 				// only the matching task should have been updated that has not been set by a user
-				deactivatedTasks, err := task.Find(task.ByActivation(false))
+				deactivatedTasks, err := task.Find(ctx, task.ByActivation(false))
 				So(err, ShouldBeNil)
 				So(len(deactivatedTasks), ShouldEqual, 3)
 				So(deactivatedTasks[0].Id, ShouldEqual, matching.Id)
@@ -654,7 +654,7 @@ func TestBuildSetActivated(t *testing.T) {
 				So(differentUserTask.ActivatedBy, ShouldEqual, user)
 
 				So(ActivateBuildsAndTasks(ctx, []string{b.Id}, true, ""), ShouldBeNil)
-				activatedTasks, err := task.Find(task.ByActivation(true))
+				activatedTasks, err := task.Find(ctx, task.ByActivation(true))
 				So(err, ShouldBeNil)
 				So(len(activatedTasks), ShouldEqual, 5)
 			})
@@ -2165,7 +2165,7 @@ func TestVersionRestart(t *testing.T) {
 	taskIds := []string{"task1", "task3", "task4"}
 	buildIds := []string{"build1", "build2"}
 	assert.NoError(RestartVersion(ctx, "version", taskIds, false, "test"))
-	tasks, err := task.Find(task.ByIds(taskIds))
+	tasks, err := task.Find(ctx, task.ByIds(taskIds))
 	assert.NoError(err)
 	assert.NotEmpty(tasks)
 	builds, err := build.Find(build.ByIds(buildIds))
@@ -3095,14 +3095,14 @@ func TestRecomputeNumDependents(t *testing.T) {
 	assert.NoError(t, t5.Insert())
 
 	assert.NoError(t, RecomputeNumDependents(ctx, t3))
-	tasks, err := task.Find(task.ByVersion(t1.Version))
+	tasks, err := task.Find(ctx, task.ByVersion(t1.Version))
 	assert.NoError(t, err)
 	for i, dbTask := range tasks {
 		assert.Equal(t, i, dbTask.NumDependents)
 	}
 
 	assert.NoError(t, RecomputeNumDependents(ctx, t5))
-	tasks, err = task.Find(task.ByVersion(t1.Version))
+	tasks, err = task.Find(ctx, task.ByVersion(t1.Version))
 	assert.NoError(t, err)
 	for i, dbTask := range tasks {
 		assert.Equal(t, i, dbTask.NumDependents)
@@ -3139,7 +3139,7 @@ func TestRecomputeNumDependents(t *testing.T) {
 	assert.NoError(t, t9.Insert())
 
 	assert.NoError(t, RecomputeNumDependents(ctx, t8))
-	tasks, err = task.Find(task.ByVersion(t6.Version))
+	tasks, err = task.Find(ctx, task.ByVersion(t6.Version))
 	assert.NoError(t, err)
 	expected := map[string]int{
 		"6": 0,

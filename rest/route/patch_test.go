@@ -981,7 +981,7 @@ buildvariants:
 	respVersion := resp.Data().(restModel.APIVersion)
 	assert.Equal(t, unfinalized.Id.Hex(), *respVersion.Id)
 	assert.Equal(t, description, *respVersion.Message)
-	tasks, err := task.Find(task.ByVersion(*respVersion.Id))
+	tasks, err := task.Find(ctx, task.ByVersion(*respVersion.Id))
 	assert.NoError(t, err)
 	assert.Len(t, tasks, 2)
 	foundCompile := false
@@ -1017,7 +1017,7 @@ buildvariants:
 	respVersion = resp.Data().(restModel.APIVersion)
 	assert.Equal(t, unfinalized.Id.Hex(), *respVersion.Id)
 	assert.Equal(t, description, *respVersion.Message)
-	tasks, err = task.Find(task.ByVersion(*respVersion.Id))
+	tasks, err = task.Find(ctx, task.ByVersion(*respVersion.Id))
 	assert.NoError(t, err)
 	assert.Len(t, tasks, 3)
 	foundCompile = false
@@ -1074,7 +1074,7 @@ buildvariants:
 	respVersion = resp.Data().(restModel.APIVersion)
 	assert.Equal(t, patch2.Id.Hex(), *respVersion.Id)
 	assert.Equal(t, "", *respVersion.Message)
-	tasks, err = task.Find(task.ByVersion(*respVersion.Id))
+	tasks, err = task.Find(ctx, task.ByVersion(*respVersion.Id))
 	assert.NoError(t, err)
 	assert.Len(t, tasks, 4)
 
@@ -1107,7 +1107,7 @@ buildvariants:
 	respVersion = resp.Data().(restModel.APIVersion)
 	assert.Equal(t, patch3.Id.Hex(), *respVersion.Id)
 	assert.Equal(t, "", *respVersion.Message)
-	tasks, err = task.Find(task.ByVersion(*respVersion.Id))
+	tasks, err = task.Find(ctx, task.ByVersion(*respVersion.Id))
 	assert.NoError(t, err)
 	assert.Len(t, tasks, 2)
 }
@@ -1394,7 +1394,7 @@ tasks:
 	respVersion := resp.Data().(restModel.APIVersion)
 	assert.Equal(t, unfinalized.Id.Hex(), *respVersion.Id)
 	assert.Equal(t, description, *respVersion.Message)
-	tasks, err := task.Find(task.ByVersion(*respVersion.Id))
+	tasks, err := task.Find(ctx, task.ByVersion(*respVersion.Id))
 	assert.NoError(t, err)
 	assert.Len(t, tasks, 1)
 	// manually set the task as running and its generated JSON for simplicity
@@ -1426,7 +1426,7 @@ tasks:
 	respVersion = resp.Data().(restModel.APIVersion)
 	assert.Equal(t, unfinalized.Id.Hex(), *respVersion.Id)
 	assert.Equal(t, description, *respVersion.Message)
-	tasks, err = task.Find(task.ByVersion(*respVersion.Id))
+	tasks, err = task.Find(ctx, task.ByVersion(*respVersion.Id))
 	assert.NoError(t, err)
 	// affirm that pre-existing inactive tasks are all activated now
 	for _, foundTask := range tasks {
@@ -1453,7 +1453,7 @@ tasks:
 	respVersion = resp.Data().(restModel.APIVersion)
 	assert.Equal(t, unfinalized.Id.Hex(), *respVersion.Id)
 	assert.Equal(t, description, *respVersion.Message)
-	tasks, err = task.Find(task.ByVersion(*respVersion.Id))
+	tasks, err = task.Find(ctx, task.ByVersion(*respVersion.Id))
 	assert.NoError(t, err)
 	numTGTasksScheduled := 0
 	for _, foundTask := range tasks {

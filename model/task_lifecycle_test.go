@@ -7134,7 +7134,7 @@ func TestHandleEndTaskForGithubMergeQueueTask(t *testing.T) {
 	// Neither of these should abort any tasks.
 	assert.NoError(t, HandleEndTaskForGithubMergeQueueTask(ctx, t1, evergreen.TaskSucceeded))
 	assert.NoError(t, HandleEndTaskForGithubMergeQueueTask(ctx, t2, evergreen.TaskFailed))
-	tasks, err := task.Find(task.ByVersion("version1"))
+	tasks, err := task.Find(ctx, task.ByVersion("version1"))
 	assert.NoError(t, err)
 	for _, task := range tasks {
 		// only t2 should be aborted, since it already was
@@ -7147,7 +7147,7 @@ func TestHandleEndTaskForGithubMergeQueueTask(t *testing.T) {
 
 	// This should abort all tasks.
 	assert.NoError(t, HandleEndTaskForGithubMergeQueueTask(ctx, t3, evergreen.TaskFailed))
-	tasks, err = task.Find(task.ByVersion("version1"))
+	tasks, err = task.Find(ctx, task.ByVersion("version1"))
 	assert.NoError(t, err)
 	for _, task := range tasks {
 		// all but t1, which already succeeded, and t3, the caller, should be aborted

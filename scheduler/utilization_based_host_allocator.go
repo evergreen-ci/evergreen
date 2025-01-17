@@ -152,7 +152,7 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskGroupData Tas
 	}
 
 	// determine how many free hosts we have that are already up
-	numFreeHosts, err := calcExistingFreeHosts(existingHosts, futureHostFraction, maxDurationThreshold)
+	numFreeHosts, err := calcExistingFreeHosts(ctx, existingHosts, futureHostFraction, maxDurationThreshold)
 	if err != nil {
 		return numNewHosts, numFreeHosts, err
 	}
@@ -293,7 +293,7 @@ func calcNewHostsNeeded(scheduledDuration, maxDurationPerHost time.Duration, num
 
 // calcExistingFreeHosts returns the number of hosts that are not running a task,
 // plus hosts that will soon be free scaled by some fraction
-func calcExistingFreeHosts(existingHosts []host.Host, futureHostFactor float64, maxDurationPerHost time.Duration) (int, error) {
+func calcExistingFreeHosts(ctx context.Context, existingHosts []host.Host, futureHostFactor float64, maxDurationPerHost time.Duration) (int, error) {
 	numFreeHosts := 0
 	if futureHostFactor > 1 {
 		return numFreeHosts, errors.New("future host factor cannot be greater than 1")
@@ -305,7 +305,7 @@ func calcExistingFreeHosts(existingHosts []host.Host, futureHostFactor float64, 
 		}
 	}
 
-	soonToBeFree, err := getSoonToBeFreeHosts(existingHosts, futureHostFactor, maxDurationPerHost)
+	soonToBeFree, err := getSoonToBeFreeHosts(ctx, existingHosts, futureHostFactor, maxDurationPerHost)
 	if err != nil {
 		return 0, err
 	}
@@ -317,7 +317,7 @@ func calcExistingFreeHosts(existingHosts []host.Host, futureHostFactor float64, 
 // to be free for some fraction of the next maxDurationPerHost interval
 // the final value is scaled by some fraction representing how confident we are that
 // the hosts will actually be free in the expected amount of time
-func getSoonToBeFreeHosts(existingHosts []host.Host, futureHostFraction float64, maxDurationPerHost time.Duration) (float64, error) {
+func getSoonToBeFreeHosts(ctx context.Context, existingHosts []host.Host, futureHostFraction float64, maxDurationPerHost time.Duration) (float64, error) {
 	runningTaskIds := []string{}
 
 	for _, existingDistroHost := range existingHosts {
@@ -330,7 +330,7 @@ func getSoonToBeFreeHosts(existingHosts []host.Host, futureHostFraction float64,
 		return 0.0, nil
 	}
 
-	runningTasks, err := task.Find(task.ByIds(runningTaskIds))
+	runningTasks, err := task.Find(ctx, task.ByIds(runningTaskIds))
 	if err != nil {
 		return 0.0, err
 	}

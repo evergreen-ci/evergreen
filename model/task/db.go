@@ -890,7 +890,7 @@ func GetRecentTaskStats(ctx context.Context, period time.Duration, nameKey strin
 // FindByExecutionTasksAndMaxExecution returns the tasks corresponding to the
 // passed in taskIds and execution, or the most recent executions of those
 // tasks if they do not have a matching execution.
-func FindByExecutionTasksAndMaxExecution(taskIds []string, execution int, filters ...bson.E) ([]Task, error) {
+func FindByExecutionTasksAndMaxExecution(ctx context.Context, taskIds []string, execution int, filters ...bson.E) ([]Task, error) {
 	query := bson.M{
 		IdKey: bson.M{
 			"$in": taskIds,
@@ -902,7 +902,7 @@ func FindByExecutionTasksAndMaxExecution(taskIds []string, execution int, filter
 	for _, filter := range filters {
 		query[filter.Key] = filter.Value
 	}
-	tasks, err := Find(query)
+	tasks, err := Find(ctx, query)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding tasks")
 	}
@@ -1612,14 +1612,14 @@ func FindAllFirstExecution(query db.Q) ([]Task, error) {
 }
 
 // Find returns all tasks that satisfy the query it also filters out display tasks from the results.
-func Find(filter bson.M) ([]Task, error) {
+func Find(ctx context.Context, filter bson.M) ([]Task, error) {
 	tasks := []Task{}
 	_, exists := filter[DisplayOnlyKey]
 	if !exists {
 		filter[DisplayOnlyKey] = bson.M{"$ne": true}
 	}
 	query := db.Query(filter)
-	err := db.FindAllQ(Collection, query, &tasks)
+	err := db.FindAllQContext(ctx, Collection, query, &tasks)
 
 	return tasks, err
 }

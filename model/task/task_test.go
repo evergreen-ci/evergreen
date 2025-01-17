@@ -1443,6 +1443,9 @@ func TestSiblingDependency(t *testing.T) {
 }
 
 func TestBulkInsert(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 	require.NoError(t, db.ClearCollections(Collection))
 	t1_a := Task{
@@ -1463,7 +1466,7 @@ func TestBulkInsert(t *testing.T) {
 	}
 	tasks := Tasks{&t1_a, &t1_b, &t2, &t3}
 	assert.Error(tasks.InsertUnordered(context.Background()))
-	dbTasks, err := Find(ByVersion("version"))
+	dbTasks, err := Find(ctx, ByVersion("version"))
 	assert.NoError(err)
 	assert.Len(dbTasks, 3)
 	for _, dbTask := range dbTasks {
@@ -4286,6 +4289,9 @@ func TestArchiveFailedOnly(t *testing.T) {
 }
 
 func TestByExecutionTasksAndMaxExecution(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	tasksToFetch := []string{"t1", "t2"}
 	t.Run("Fetching latest execution with same executions", func(t *testing.T) {
 		require.NoError(t, db.ClearCollections(Collection, OldCollection))
@@ -4314,7 +4320,7 @@ func TestByExecutionTasksAndMaxExecution(t *testing.T) {
 		ot2 = *ot2.makeArchivedTask()
 		assert.NoError(t, db.Insert(OldCollection, ot2))
 
-		tasks, err := FindByExecutionTasksAndMaxExecution(tasksToFetch, 1)
+		tasks, err := FindByExecutionTasksAndMaxExecution(ctx, tasksToFetch, 1)
 		tasks = convertOldTasksIntoTasks(tasks)
 		assert.NoError(t, err)
 		assert.Len(t, tasks, 2)
@@ -4352,7 +4358,7 @@ func TestByExecutionTasksAndMaxExecution(t *testing.T) {
 		ot2 = *ot2.makeArchivedTask()
 		assert.NoError(t, db.Insert(OldCollection, ot2))
 
-		tasks, err := FindByExecutionTasksAndMaxExecution(tasksToFetch, 2)
+		tasks, err := FindByExecutionTasksAndMaxExecution(ctx, tasksToFetch, 2)
 		tasks = convertOldTasksIntoTasks(tasks)
 		assert.NoError(t, err)
 		assert.Len(t, tasks, 2)
@@ -4399,7 +4405,7 @@ func TestByExecutionTasksAndMaxExecution(t *testing.T) {
 		ot2 = *ot2.makeArchivedTask()
 		assert.NoError(t, db.Insert(OldCollection, ot2))
 
-		tasks, err := FindByExecutionTasksAndMaxExecution(tasksToFetch, 1)
+		tasks, err := FindByExecutionTasksAndMaxExecution(ctx, tasksToFetch, 1)
 		tasks = convertOldTasksIntoTasks(tasks)
 		assert.NoError(t, err)
 		assert.Len(t, tasks, 2)
@@ -4894,6 +4900,9 @@ func TestHasResults(t *testing.T) {
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
 			for _, execTask := range test.executionTasks {
 				_, err := db.Upsert(Collection, ById(execTask.Id), &execTask)
 				require.NoError(t, err)
@@ -4903,7 +4912,7 @@ func TestHasResults(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			assert.Equal(t, test.hasResults, test.tsk.HasResults())
+			assert.Equal(t, test.hasResults, test.tsk.HasResults(ctx))
 		})
 	}
 }
@@ -5076,6 +5085,9 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
 			for _, execTask := range test.executionTasks {
 				_, err := db.Upsert(Collection, ById(execTask.Id), &execTask)
 				require.NoError(t, err)
@@ -5086,7 +5098,7 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			opts, err := test.tsk.CreateTestResultsTaskOptions()
+			opts, err := test.tsk.CreateTestResultsTaskOptions(ctx)
 			require.NoError(t, err)
 			assert.ElementsMatch(t, test.expectedOpts, opts)
 		})

@@ -42,7 +42,7 @@ func SetActiveState(ctx context.Context, caller string, active bool, tasks ...ta
 	for _, t := range tasks {
 		originalTasks := []task.Task{t}
 		if t.DisplayOnly {
-			execTasks, err := task.Find(task.ByIds(t.ExecutionTasks))
+			execTasks, err := task.Find(ctx, task.ByIds(t.ExecutionTasks))
 			catcher.Wrap(err, "getting execution tasks")
 			originalTasks = append(originalTasks, execTasks...)
 		}
@@ -520,7 +520,7 @@ func getStepback(ctx context.Context, taskId string) (stepbackInstructions, erro
 // tasks one by one). If there is a previous task and if not it returns nothing.
 func doLinearStepback(ctx context.Context, t *task.Task) error {
 	if t.DisplayOnly {
-		execTasks, err := task.Find(task.ByIds(t.ExecutionTasks))
+		execTasks, err := task.Find(ctx, task.ByIds(t.ExecutionTasks))
 		if err != nil {
 			return errors.Wrapf(err, "finding tasks for stepback of '%s'", t.Id)
 		}
@@ -553,7 +553,7 @@ func doLinearStepback(ctx context.Context, t *task.Task) error {
 func doBisectStepback(ctx context.Context, t *task.Task) error {
 	// Do stepback for all execution tasks.
 	if t.DisplayOnly {
-		execTasks, err := task.Find(task.ByIds(t.ExecutionTasks))
+		execTasks, err := task.Find(ctx, task.ByIds(t.ExecutionTasks))
 		if err != nil {
 			return errors.Wrapf(err, "finding tasks for stepback of '%s'", t.Id)
 		}
@@ -789,7 +789,7 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 		})
 		return nil
 	}
-	if detailsCopy.Status == evergreen.TaskSucceeded && t.MustHaveResults && !t.HasResults() {
+	if detailsCopy.Status == evergreen.TaskSucceeded && t.MustHaveResults && !t.HasResults(ctx) {
 		detailsCopy.Type = evergreen.CommandTypeTest
 		detailsCopy.Status = evergreen.TaskFailed
 		detailsCopy.Description = evergreen.TaskDescriptionNoResults
@@ -1359,8 +1359,8 @@ func checkUpdateBuildPRStatusPending(ctx context.Context, b *build.Build) error 
 
 // updateBuildStatus updates the status of the build based on its tasks' statuses
 // Returns true if the build's status has changed or if all the build's tasks become blocked / unscheduled.
-func updateBuildStatus(b *build.Build) (bool, error) {
-	buildTasks, err := task.Find(task.ByBuildId(b.Id))
+func updateBuildStatus(ctx context.Context, b *build.Build) (bool, error) {
+	buildTasks, err := task.Find(ctx, task.ByBuildId(b.Id))
 	if err != nil {
 		return false, errors.Wrapf(err, "getting tasks in build '%s'", b.Id)
 	}
@@ -1613,7 +1613,7 @@ func UpdateBuildAndVersionStatusForTask(ctx context.Context, t *task.Task) error
 	if taskBuild == nil {
 		return errors.Errorf("no build '%s' found for task '%s'", t.BuildId, t.Id)
 	}
-	buildStatusChanged, err := updateBuildStatus(taskBuild)
+	buildStatusChanged, err := updateBuildStatus(ctx, taskBuild)
 	if err != nil {
 		return errors.Wrapf(err, "updating build '%s' status", taskBuild.Id)
 	}
@@ -1710,7 +1710,7 @@ func UpdateVersionAndPatchStatusForBuilds(ctx context.Context, buildIds []string
 
 	versionsToUpdate := make(map[string]bool)
 	for _, build := range builds {
-		buildStatusChanged, err := updateBuildStatus(&build)
+		buildStatusChanged, err := updateBuildStatus(ctx, &build)
 		if err != nil {
 			return errors.Wrapf(err, "updating build '%s' status", build.Id)
 		}
@@ -2219,7 +2219,7 @@ func UpdateDisplayTaskForTask(ctx context.Context, t *task.Task) error {
 			return errors.Errorf("task '%s' is not a display task", originalDisplayTask.Id)
 		}
 
-		updatedDisplayTask, err = tryUpdateDisplayTaskAtomically(*originalDisplayTask)
+		updatedDisplayTask, err = tryUpdateDisplayTaskAtomically(ctx, *originalDisplayTask)
 		if err == nil {
 			// Update the cached display task in case it's used later on.
 			t.DisplayTask = updatedDisplayTask
@@ -2244,10 +2244,10 @@ func UpdateDisplayTaskForTask(ctx context.Context, t *task.Task) error {
 	return nil
 }
 
-func tryUpdateDisplayTaskAtomically(dt task.Task) (updated *task.Task, err error) {
+func tryUpdateDisplayTaskAtomically(ctx context.Context, dt task.Task) (updated *task.Task, err error) {
 	originalStatus := dt.Status
 
-	execTasks, err := task.Find(task.ByIds(dt.ExecutionTasks))
+	execTasks, err := task.Find(ctx, task.ByIds(dt.ExecutionTasks))
 	if err != nil {
 		return &dt, errors.Wrap(err, "retrieving execution tasks")
 	}
@@ -2404,7 +2404,7 @@ func checkResetDisplayTask(ctx context.Context, setting *evergreen.Settings, use
 	if !t.ResetWhenFinished && !t.ResetFailedWhenFinished {
 		return nil
 	}
-	execTasks, err := task.Find(task.ByIds(t.ExecutionTasks))
+	execTasks, err := task.Find(ctx, task.ByIds(t.ExecutionTasks))
 	if err != nil {
 		return errors.Wrapf(err, "getting execution tasks for display task '%s'", t.Id)
 	}

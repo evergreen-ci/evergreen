@@ -14,7 +14,7 @@ func CompareTasks(ctx context.Context, taskIds []string, useLegacy bool) ([]stri
 	if len(taskIds) == 0 {
 		return nil, nil, nil
 	}
-	tasks, err := task.Find(task.ByIds(taskIds))
+	tasks, err := task.Find(ctx, task.ByIds(taskIds))
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "finding tasks to compare")
 	}

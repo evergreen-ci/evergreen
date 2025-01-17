@@ -174,7 +174,7 @@ func (r *versionResolver) GeneratedTaskCounts(ctx context.Context, obj *restMode
 	}
 
 	var res []*GeneratedTaskCountResults
-	versionGeneratorTasks, err := task.Find(bson.M{
+	versionGeneratorTasks, err := task.Find(ctx, bson.M{
 		task.VersionKey:      versionID,
 		task.GenerateTaskKey: true,
 	})
