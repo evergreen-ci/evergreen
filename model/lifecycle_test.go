@@ -1298,10 +1298,14 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			// check the display tasks too
 			So(len(tasks), ShouldEqual, 6)
 			So(tasks[0].DisplayName, ShouldEqual, buildVar1.DisplayTasks[0].Name)
+			So(tasks[0].Status, ShouldEqual, evergreen.TaskUndispatched)
+			So(tasks[0].DisplayStatusCache, ShouldEqual, evergreen.TaskUnscheduled)
 			So(tasks[0].DisplayOnly, ShouldBeTrue)
 			So(len(tasks[0].ExecutionTasks), ShouldEqual, 2)
 			So(tasks[1].DisplayName, ShouldEqual, buildVar1.DisplayTasks[1].Name)
 			So(tasks[1].DisplayOnly, ShouldBeTrue)
+			So(tasks[1].Status, ShouldEqual, evergreen.TaskUndispatched)
+			So(tasks[1].DisplayStatusCache, ShouldEqual, evergreen.TaskUnscheduled)
 		})
 		Convey("all of the tasks created should have the dependencies"+
 			"and priorities specified in the project", func() {
@@ -1443,6 +1447,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(tasks[2].BuildVariant, ShouldEqual, buildVar1.Name)
 			So(tasks[2].CreateTime.Equal(creationInfo.TaskCreateTime), ShouldBeTrue)
 			So(tasks[2].Status, ShouldEqual, evergreen.TaskUndispatched)
+			So(tasks[2].DisplayStatusCache, ShouldEqual, evergreen.TaskUnscheduled)
 			So(tasks[2].Activated, ShouldBeFalse)
 			So(tasks[2].ActivatedTime.Equal(utility.ZeroTime), ShouldBeTrue)
 			So(tasks[2].RevisionOrderNumber, ShouldEqual, build.RevisionOrderNumber)
