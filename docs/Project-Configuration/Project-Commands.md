@@ -503,6 +503,9 @@ Notes:
     if you aren't sure what to do with a hanging generate.tasks.
 -   If generate.tasks produces many errors, you may not be able to see the full
     error output.
+-   generate.tasks is idempotent across task restarts. In other words, once
+    generate.tasks succeeds once, later task restarts will cause generate.tasks
+    to no-op rather than generate duplicate configuration.
 
 ``` yaml
 - command: generate.tasks
