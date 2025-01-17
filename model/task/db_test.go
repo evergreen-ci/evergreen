@@ -356,7 +356,9 @@ func TestFindTasksByBuildIdAndGithubChecks(t *testing.T) {
 }
 
 func TestFindOneIdAndExecutionWithDisplayStatus(t *testing.T) {
-	ctx := context.TODO()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection, OldCollection))
 	taskDoc := Task{
@@ -365,23 +367,23 @@ func TestFindOneIdAndExecutionWithDisplayStatus(t *testing.T) {
 		Activated: true,
 	}
 	assert.NoError(taskDoc.Insert())
-	task, err := FindOneIdAndExecutionWithDisplayStatus(taskDoc.Id, utility.ToIntPtr(0))
+	task, err := FindOneIdAndExecutionWithDisplayStatus(ctx, taskDoc.Id, utility.ToIntPtr(0))
 	assert.NoError(err)
 	assert.NotNil(task)
 	assert.Equal(evergreen.TaskSucceeded, task.DisplayStatus)
 
 	// Should fetch tasks from the old collection
 	assert.NoError(taskDoc.Archive(ctx))
-	task, err = FindOneOldByIdAndExecution(taskDoc.Id, 0)
+	task, err = FindOneOldByIdAndExecution(ctx, taskDoc.Id, 0)
 	assert.NoError(err)
 	assert.NotNil(task)
-	task, err = FindOneIdAndExecutionWithDisplayStatus(taskDoc.Id, utility.ToIntPtr(0))
+	task, err = FindOneIdAndExecutionWithDisplayStatus(ctx, taskDoc.Id, utility.ToIntPtr(0))
 	assert.NoError(err)
 	assert.NotNil(task)
 	assert.Equal(task.OldTaskId, taskDoc.Id)
 
 	// Should fetch recent executions by default
-	task, err = FindOneIdAndExecutionWithDisplayStatus(taskDoc.Id, nil)
+	task, err = FindOneIdAndExecutionWithDisplayStatus(ctx, taskDoc.Id, nil)
 	assert.NoError(err)
 	assert.NotNil(task)
 	assert.Equal(1, task.Execution)
@@ -393,36 +395,10 @@ func TestFindOneIdAndExecutionWithDisplayStatus(t *testing.T) {
 		Activated: false,
 	}
 	assert.NoError(taskDoc.Insert())
-	task, err = FindOneIdAndExecutionWithDisplayStatus(taskDoc.Id, utility.ToIntPtr(0))
+	task, err = FindOneIdAndExecutionWithDisplayStatus(ctx, taskDoc.Id, utility.ToIntPtr(0))
 	assert.NoError(err)
 	assert.NotNil(task)
 	assert.Equal(evergreen.TaskUnscheduled, task.DisplayStatus)
-}
-
-func TestFindOldTasksByID(t *testing.T) {
-	ctx := context.TODO()
-	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(Collection, OldCollection))
-
-	taskDoc := Task{
-		Id:     "task",
-		Status: evergreen.TaskSucceeded,
-	}
-	assert.NoError(taskDoc.Insert())
-	assert.NoError(taskDoc.Archive(ctx))
-	taskDoc.Execution += 1
-	assert.NoError(taskDoc.Archive(ctx))
-	taskDoc.Execution += 1
-
-	tasks, err := FindOld(ByOldTaskID("task"))
-	assert.NoError(err)
-	assert.Len(tasks, 2)
-	assert.Equal(0, tasks[0].Execution)
-	assert.Equal("task_0", tasks[0].Id)
-	assert.Equal("task", tasks[0].OldTaskId)
-	assert.Equal(1, tasks[1].Execution)
-	assert.Equal("task_1", tasks[1].Id)
-	assert.Equal("task", tasks[1].OldTaskId)
 }
 
 func TestFindAllFirstExecution(t *testing.T) {
@@ -650,6 +626,9 @@ func TestDisplayStatus(t *testing.T) {
 }
 
 func TestFindTaskNamesByBuildVariant(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	Convey("Should return unique task names for a given build variant", t, func() {
 		assert.NoError(t, db.ClearCollections(Collection))
 		t1 := Task{
@@ -692,7 +671,7 @@ func TestFindTaskNamesByBuildVariant(t *testing.T) {
 			RevisionOrderNumber: 1,
 		}
 		assert.NoError(t, t4.Insert())
-		buildVariantTask, err := FindTaskNamesByBuildVariant("evergreen", "ubuntu1604", 1)
+		buildVariantTask, err := FindTaskNamesByBuildVariant(ctx, "evergreen", "ubuntu1604", 1)
 		assert.NoError(t, err)
 		assert.Equal(t, []string{"dist", "test-agent", "test-graphql"}, buildVariantTask)
 
@@ -739,7 +718,7 @@ func TestFindTaskNamesByBuildVariant(t *testing.T) {
 			RevisionOrderNumber: 1,
 		}
 		assert.NoError(t, t4.Insert())
-		buildVariantTasks, err := FindTaskNamesByBuildVariant("evergreen", "ubuntu1604", 1)
+		buildVariantTasks, err := FindTaskNamesByBuildVariant(ctx, "evergreen", "ubuntu1604", 1)
 		assert.NoError(t, err)
 		assert.Equal(t, []string{"test-graphql", "test-something"}, buildVariantTasks)
 	})

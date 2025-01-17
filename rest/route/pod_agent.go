@@ -335,7 +335,7 @@ func (h *podAgentNextTask) findDispatcher() (*dispatcher.PodDispatcher, error) {
 }
 
 func (h *podAgentNextTask) checkAndRedispatchRunningTask(ctx context.Context, p *pod.Pod) gimlet.Responder {
-	t, err := task.FindOneIdAndExecution(p.TaskRuntimeInfo.RunningTaskID, p.TaskRuntimeInfo.RunningTaskExecution)
+	t, err := task.FindOneIdAndExecution(ctx, p.TaskRuntimeInfo.RunningTaskID, p.TaskRuntimeInfo.RunningTaskExecution)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting running task '%s' execution %d", p.TaskRuntimeInfo.RunningTaskID, p.TaskRuntimeInfo.RunningTaskExecution))
 	}

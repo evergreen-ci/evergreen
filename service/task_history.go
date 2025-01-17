@@ -98,7 +98,7 @@ func (uis *UIServer) taskHistoryPage(w http.ResponseWriter, r *http.Request) {
 		gimlet.WriteTextResponse(w, http.StatusNotFound, "no history found for project")
 		return
 	}
-	buildVariants, err := task.FindVariantsWithTask(taskName, project.Identifier, repo.RevisionOrderNumber-50, repo.RevisionOrderNumber)
+	buildVariants, err := task.FindVariantsWithTask(r.Context(), taskName, project.Identifier, repo.RevisionOrderNumber-50, repo.RevisionOrderNumber)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -257,7 +257,7 @@ func (uis *UIServer) taskHistoryPickaxe(w http.ResponseWriter, r *http.Request) 
 		OldestOrder:   lowOrder,
 		BuildVariants: filter.BuildVariants,
 	}
-	tasks, err := model.TaskHistoryPickaxe(params)
+	tasks, err := model.TaskHistoryPickaxe(r.Context(), params)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error finding tasks: %s", err.Error()), http.StatusInternalServerError)
 		return

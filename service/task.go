@@ -196,7 +196,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 
 		// Try to find the task in the old_tasks collection.
 		var taskFromDb *task.Task
-		taskFromDb, err = task.FindOneOld(task.ById(oldTaskId))
+		taskFromDb, err = task.FindOneOld(r.Context(), task.ById(oldTaskId))
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
@@ -275,7 +275,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		GeneratedById:        projCtx.Task.GeneratedBy,
 	}
 
-	deps, taskWaiting, err := getTaskDependencies(projCtx.Task)
+	deps, taskWaiting, err := getTaskDependencies(r.Context(), projCtx.Task)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -300,7 +300,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	}
 	if uiTask.GeneratedById != "" {
 		var generator *task.Task
-		generator, err = task.FindOneIdWithFields(uiTask.GeneratedById, task.DisplayNameKey)
+		generator, err = task.FindOneIdWithFields(ctx, uiTask.GeneratedById, task.DisplayNameKey)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
@@ -450,7 +450,7 @@ const DefaultLogMessages = 100 // passed as a limit, so 0 means don't limit
 
 // getTaskDependencies returns the uiDeps for the task and its status (either its original status,
 // "blocked", or "pending")
-func getTaskDependencies(t *task.Task) ([]uiDep, string, error) {
+func getTaskDependencies(ctx context.Context, t *task.Task) ([]uiDep, string, error) {
 	depIds := []string{}
 	for _, dep := range t.DependsOn {
 		depIds = append(depIds, dep.TaskId)
@@ -482,7 +482,7 @@ func getTaskDependencies(t *task.Task) ([]uiDep, string, error) {
 		})
 	}
 
-	if err = t.CircularDependencies(); err != nil {
+	if err = t.CircularDependencies(ctx); err != nil {
 		return nil, "", err
 	}
 	state, err := t.BlockedState(taskMap)
@@ -509,7 +509,7 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if tsk.Execution != execution {
-			tsk, err = task.FindOneIdAndExecution(tsk.Id, execution)
+			tsk, err = task.FindOneIdAndExecution(r.Context(), tsk.Id, execution)
 			if err != nil {
 				uis.LoggedError(w, r, http.StatusInternalServerError, err)
 				return
@@ -569,7 +569,7 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if tsk.Execution != execution {
-			tsk, err = task.FindOneIdAndExecution(tsk.Id, execution)
+			tsk, err = task.FindOneIdAndExecution(r.Context(), tsk.Id, execution)
 			if err != nil {
 				uis.LoggedError(w, r, http.StatusInternalServerError, err)
 				return
@@ -859,7 +859,7 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid execution", http.StatusBadRequest)
 		return
 	}
-	tsk, err := task.FindOneIdAndExecution(taskID, execution)
+	tsk, err := task.FindOneIdAndExecution(r.Context(), taskID, execution)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -912,7 +912,7 @@ func (uis *UIServer) getTestResults(ctx context.Context, projCtx projectContext,
 				err error
 			)
 			if uiTask.Archived {
-				et, err = task.FindOneOldByIdAndExecution(t, projCtx.Task.Execution)
+				et, err = task.FindOneOldByIdAndExecution(ctx, t, projCtx.Task.Execution)
 			} else {
 				et, err = task.FindOneId(ctx, t)
 			}

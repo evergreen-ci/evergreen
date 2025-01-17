@@ -37,14 +37,14 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 	}()
 
 	checkTaskRestarted := func(t *testing.T, taskID string, oldExecution int, description string) {
-		archivedTask, err := task.FindOneIdAndExecution(taskID, oldExecution)
+		archivedTask, err := task.FindOneIdAndExecution(ctx, taskID, oldExecution)
 		require.NoError(t, err)
 		require.NotZero(t, archivedTask)
 		assert.True(t, archivedTask.Archived)
 		assert.Equal(t, evergreen.TaskFailed, archivedTask.Status)
 		assert.Equal(t, description, archivedTask.Details.Description)
 
-		restartedTask, err := task.FindOneIdAndExecution(taskID, oldExecution+1)
+		restartedTask, err := task.FindOneIdAndExecution(ctx, taskID, oldExecution+1)
 		require.NoError(t, err)
 		require.NotZero(t, restartedTask)
 		assert.Equal(t, evergreen.TaskUndispatched, restartedTask.Status)
@@ -264,7 +264,7 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 			j.Run(ctx)
 			require.NoError(t, j.Error())
 
-			dbTask, err := task.FindOneIdAndExecution(j.task.Id, 0)
+			dbTask, err := task.FindOneIdAndExecution(ctx, j.task.Id, 0)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask)
 			assert.False(t, dbTask.Archived, "active task should not be archived")

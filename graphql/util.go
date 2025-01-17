@@ -310,7 +310,7 @@ func getAPITaskFromTask(ctx context.Context, url string, task task.Task) (*restM
 
 // getTask returns the task with the given id and execution number
 func getTask(ctx context.Context, taskID string, execution *int, apiURL string) (*restModel.APITask, error) {
-	dbTask, err := task.FindOneIdAndExecutionWithDisplayStatus(taskID, execution)
+	dbTask, err := task.FindOneIdAndExecutionWithDisplayStatus(ctx, taskID, execution)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
@@ -907,7 +907,7 @@ func getProjectMetadata(ctx context.Context, projectId *string, patchId *string)
 //////////////////////////////////
 
 func getTaskLogs(ctx context.Context, obj *TaskLogs, logType taskoutput.TaskLogType) ([]*apimodels.LogMessage, error) {
-	dbTask, err := task.FindOneIdAndExecution(obj.TaskID, obj.Execution)
+	dbTask, err := task.FindOneIdAndExecution(ctx, obj.TaskID, obj.Execution)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Finding task '%s': %s", obj.TaskID, err.Error()))
 	}

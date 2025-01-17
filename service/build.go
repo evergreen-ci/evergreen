@@ -167,7 +167,7 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 	// determine what action needs to be taken
 	switch putParams.Action {
 	case evergreen.AbortAction:
-		if err = model.AbortBuild(projCtx.Build.Id, user.Id); err != nil {
+		if err = model.AbortBuild(r.Context(), projCtx.Build.Id, user.Id); err != nil {
 			http.Error(w, fmt.Sprintf("Error aborting build %v", projCtx.Build.Id), http.StatusInternalServerError)
 			return
 		}
@@ -208,7 +208,7 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if !putParams.Active && putParams.Abort {
-			if err = task.AbortBuildTasks(projCtx.Build.Id, task.AbortInfo{User: user.Id}); err != nil {
+			if err = task.AbortBuildTasks(r.Context(), projCtx.Build.Id, task.AbortInfo{User: user.Id}); err != nil {
 				http.Error(w, "Error unscheduling tasks", http.StatusInternalServerError)
 				return
 			}

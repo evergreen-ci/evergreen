@@ -139,6 +139,24 @@ func FindAllQ(collection string, q Q, out interface{}) error {
 		All(out)
 }
 
+func FindAllQContext(ctx context.Context, collection string, q Q, out interface{}) error {
+	session, db, err := GetGlobalSessionFactory().GetContextSession(ctx)
+	if err != nil {
+		return err
+	}
+	defer session.Close()
+
+	return db.C(collection).
+		Find(q.filter).
+		Select(q.projection).
+		Sort(q.sort...).
+		Skip(q.skip).
+		Limit(q.limit).
+		Hint(q.hint).
+		MaxTime(q.maxTime).
+		All(out)
+}
+
 // CountQ runs a Q count query against the given collection.
 func CountQ(collection string, q Q) (int, error) {
 	return Count(collection, q.filter)

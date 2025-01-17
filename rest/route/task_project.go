@@ -110,7 +110,7 @@ func (tph *tasksByProjectHandler) Run(ctx context.Context) gimlet.Responder {
 		TaskName:       tph.taskName,
 		Limit:          tph.limit + 1,
 	}
-	tasks, err := data.FindTasksByProjectAndCommit(opts)
+	tasks, err := data.FindTasksByProjectAndCommit(ctx, opts)
 	if err != nil {
 		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "Database error"))
 	}

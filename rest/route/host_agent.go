@@ -977,7 +977,7 @@ func sendBackRunningTask(ctx context.Context, env evergreen.Environment, h *host
 
 	var err error
 	var t *task.Task
-	t, err = task.FindOneIdAndExecution(h.RunningTask, h.RunningTaskExecution)
+	t, err = task.FindOneIdAndExecution(ctx, h.RunningTask, h.RunningTaskExecution)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting running task '%s' execution '%d'", h.RunningTask, h.RunningTaskExecution))
 	}

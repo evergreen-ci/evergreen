@@ -55,6 +55,9 @@ func updateTestDepTasks(t *testing.T) {
 }
 
 func TestGetDisplayStatusAndColorSort(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.ClearCollections(Collection, annotations.Collection))
 	t1 := Task{
 		Id:             "t1",
@@ -171,7 +174,7 @@ func TestGetDisplayStatusAndColorSort(t *testing.T) {
 	pipeline = append(pipeline, sortPipeline...)
 
 	taskResults := []Task{}
-	err = Aggregate(pipeline, &taskResults)
+	err = Aggregate(ctx, pipeline, &taskResults)
 	require.NoError(t, err)
 
 	assert.Len(t, taskResults, 11)
@@ -1357,6 +1360,9 @@ func TestBlocked(t *testing.T) {
 }
 
 func TestCircularDependency(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 	require.NoError(t, db.ClearCollections(Collection))
 	t1 := Task{
@@ -1380,7 +1386,7 @@ func TestCircularDependency(t *testing.T) {
 	}
 	assert.NoError(t2.Insert())
 	assert.NotPanics(func() {
-		err := t1.CircularDependencies()
+		err := t1.CircularDependencies(ctx)
 		assert.Contains(err.Error(), "dependency cycle detected")
 	})
 }
@@ -1836,6 +1842,9 @@ func TestUnscheduleStaleUnderwaterHostTasksWithDistroAlias(t *testing.T) {
 }
 
 func TestGetRecentTaskStats(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 	require.NoError(t, db.ClearCollections(Collection))
 	tasks := []Task{
@@ -1851,7 +1860,7 @@ func TestGetRecentTaskStats(t *testing.T) {
 		assert.NoError(task.Insert())
 	}
 
-	list, err := GetRecentTaskStats(time.Minute, DistroIdKey)
+	list, err := GetRecentTaskStats(ctx, time.Minute, DistroIdKey)
 	assert.NoError(err)
 
 	// Two statuses
@@ -1898,6 +1907,9 @@ func TestGetResultCountList(t *testing.T) {
 }
 
 func TestFindVariantsWithTask(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 	require.NoError(t, db.Clear(Collection))
 	tasks := Tasks{
@@ -1908,7 +1920,7 @@ func TestFindVariantsWithTask(t *testing.T) {
 	}
 	assert.NoError(tasks.Insert())
 
-	bvs, err := FindVariantsWithTask("match", "p", 10, 20)
+	bvs, err := FindVariantsWithTask(ctx, "match", "p", 10, 20)
 	assert.NoError(err)
 	require.Len(t, bvs, 2)
 	assert.Contains(bvs, "bv1")
@@ -3998,7 +4010,7 @@ func TestAbortVersionTasks(t *testing.T) {
 	}
 	assert.NoError(t, db.InsertMany(Collection, finishedExecTask, failingExecTask, otherExecTask, dt))
 
-	assert.NoError(t, AbortVersionTasks("v1", AbortInfo{TaskID: "et2"}))
+	assert.NoError(t, AbortVersionTasks(ctx, "v1", AbortInfo{TaskID: "et2"}))
 
 	var err error
 	dt, err = FindOneId(ctx, "dt")
@@ -4023,7 +4035,7 @@ func TestArchive(t *testing.T) {
 		assert.NoError(t, db.ClearCollections(Collection, OldCollection, event.EventCollection))
 	}()
 	checkTaskIsArchived := func(t *testing.T, oldTaskID string) {
-		dbTask, err := FindOneOldId(oldTaskID)
+		dbTask, err := FindOneOldId(ctx, oldTaskID)
 		require.NoError(t, err)
 		require.NotZero(t, dbTask)
 		assert.NotZero(t, dbTask.OldTaskId)
@@ -4034,7 +4046,7 @@ func TestArchive(t *testing.T) {
 	}
 
 	checkEventLogHostTaskExecutions := func(t *testing.T, hostID, oldTaskID string, _ int) {
-		dbTask, err := FindOneOldId(oldTaskID)
+		dbTask, err := FindOneOldId(ctx, oldTaskID)
 		require.NoError(t, err)
 		require.NotZero(t, dbTask)
 
@@ -4142,7 +4154,7 @@ func TestArchiveFailedOnly(t *testing.T) {
 	assert.NoError(t, dt.Insert())
 
 	checkTaskIsArchived := func(t *testing.T, oldTaskID string) {
-		dbTask, err := FindOneOldId(oldTaskID)
+		dbTask, err := FindOneOldId(ctx, oldTaskID)
 		require.NoError(t, err)
 		require.NotZero(t, dbTask)
 		assert.NotZero(t, dbTask.OldTaskId)
@@ -4153,21 +4165,21 @@ func TestArchiveFailedOnly(t *testing.T) {
 	}
 
 	checkTaskIsNotArchived := func(t *testing.T, taskID string, execution int) {
-		task, err := FindOneIdAndExecution(taskID, execution)
+		task, err := FindOneIdAndExecution(ctx, taskID, execution)
 		assert.NoError(t, err)
 		assert.False(t, task.Archived)
 
-		oldT, err := FindOneOldId(MakeOldID(taskID, execution))
+		oldT, err := FindOneOldId(ctx, MakeOldID(taskID, execution))
 		assert.NoError(t, err)
 		assert.Nil(t, oldT)
 
-		nextExecution, err := FindOneIdAndExecution(taskID, execution+1)
+		nextExecution, err := FindOneIdAndExecution(ctx, taskID, execution+1)
 		assert.NoError(t, err)
 		assert.Nil(t, nextExecution)
 	}
 
 	checkEventLogHostTaskExecutions := func(t *testing.T, hostID, oldTaskID string, _ int) {
-		dbTask, err := FindOneOldId(oldTaskID)
+		dbTask, err := FindOneOldId(ctx, oldTaskID)
 		require.NoError(t, err)
 		require.NotZero(t, dbTask)
 
@@ -4187,7 +4199,7 @@ func TestArchiveFailedOnly(t *testing.T) {
 		dt.ResetFailedWhenFinished = true
 
 		// Gets the future archived tasks information.
-		t1, err := FindOneIdAndExecution(dt.ExecutionTasks[0], dt.Execution)
+		t1, err := FindOneIdAndExecution(ctx, dt.ExecutionTasks[0], dt.Execution)
 		require.NoError(t, err)
 		archivedT1 := MakeOldID(t1.Id, t1.Execution)
 		archivedExecution := t1.Execution
@@ -4518,7 +4530,7 @@ func (s *TaskConnectorFetchByIdSuite) TestFindByIdAndExecution() {
 		testTask1.Execution += 1
 	}
 	for i := 0; i < 10; i++ {
-		task, err := FindOneIdAndExecution("task_1", i)
+		task, err := FindOneIdAndExecution(ctx, "task_1", i)
 		s.NoError(err)
 		s.Equal(task.Id, fmt.Sprintf("task_1_%d", i))
 		s.Equal(task.Execution, i)
@@ -4626,14 +4638,14 @@ func (s *TaskConnectorFetchByIdSuite) TestFindOldTasksByIDWithDisplayTasks() {
 		s.NoError(testTask2.Archive(ctx))
 		testTask2.Execution += 1
 	}
-	tasks, err := FindOldWithDisplayTasks(ByOldTaskID("task_1"))
+	tasks, err := FindOldWithDisplayTasks(ctx, ByOldTaskID("task_1"))
 	s.NoError(err)
 	s.Len(tasks, 10)
 	for i := range tasks {
 		s.Equal(i, tasks[i].Execution)
 	}
 
-	tasks, err = FindOldWithDisplayTasks(ByOldTaskID("task_2"))
+	tasks, err = FindOldWithDisplayTasks(ctx, ByOldTaskID("task_2"))
 	s.NoError(err)
 	s.Len(tasks, 10)
 	for i := range tasks {

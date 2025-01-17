@@ -1,6 +1,7 @@
 package task
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -10,6 +11,9 @@ import (
 )
 
 func TestRecentTasks(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 	err := db.Clear(Collection)
 	assert.NoError(err)
@@ -36,7 +40,7 @@ func TestRecentTasks(t *testing.T) {
 		assert.NoError(err)
 	}
 
-	recent, err := GetRecentTasks(1 * time.Minute)
+	recent, err := GetRecentTasks(ctx, 1*time.Minute)
 	assert.NoError(err)
 	assert.Len(recent, 5)
 }

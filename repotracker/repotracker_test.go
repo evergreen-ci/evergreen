@@ -1255,7 +1255,7 @@ tasks:
 	s.Require().NotNil(v)
 	s.Empty(v.Errors)
 
-	tasks, err := task.FindAllTaskIDsFromVersion(v.Id)
+	tasks, err := task.FindAllTaskIDsFromVersion(s.ctx, v.Id)
 	s.NoError(err)
 	s.Len(tasks, 4)
 
@@ -1334,7 +1334,7 @@ tasks:
 	}
 
 	s.NoError(createVersionItems(s.ctx, v, metadata, projectInfo, nil))
-	tasks, err := task.FindAllTaskIDsFromVersion(v.Id)
+	tasks, err := task.FindAllTaskIDsFromVersion(s.ctx, v.Id)
 	s.NoError(err)
 	s.Len(tasks, 4)
 	tomorrow := versionCreateTime.Add(time.Hour * 24) // next day

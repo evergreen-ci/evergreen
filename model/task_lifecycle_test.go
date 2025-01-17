@@ -2566,7 +2566,7 @@ func TestMarkEndWithDisplayTaskResetWhenFinished(t *testing.T) {
 	assert.Equal(t, evergreen.TaskUndispatched, restartedDisplayTask.Status, "display task should restart when execution task finishes")
 	assert.Equal(t, 1, restartedDisplayTask.Execution, "execution number should have incremented")
 
-	originalDisplayTask, err := task.FindOneOldByIdAndExecution(dtID, 0)
+	originalDisplayTask, err := task.FindOneOldByIdAndExecution(ctx, dtID, 0)
 	assert.NoError(t, err)
 	require.NotZero(t, originalDisplayTask)
 	assert.Equal(t, evergreen.TaskSucceeded, originalDisplayTask.Status, "original display task should be successful")
@@ -2577,7 +2577,7 @@ func TestMarkEndWithDisplayTaskResetWhenFinished(t *testing.T) {
 	assert.Equal(t, evergreen.TaskUndispatched, restartedExecTask.Status, "execution task should restart when it finishes")
 	assert.Equal(t, 1, restartedExecTask.Execution, "execution number should have incremented")
 
-	originalExecTask, err := task.FindOneOldByIdAndExecution(etID, 0)
+	originalExecTask, err := task.FindOneOldByIdAndExecution(ctx, etID, 0)
 	assert.NoError(t, err)
 	require.NotZero(t, originalExecTask)
 	assert.Equal(t, evergreen.TaskSucceeded, originalExecTask.Status, "original execution task should be successful")
@@ -2659,7 +2659,7 @@ func TestTryResetTask(t *testing.T) {
 				So(testTask.FinishTime, ShouldResemble, utility.ZeroTime)
 				So(testTask.Activated, ShouldBeTrue)
 				oldTaskId := fmt.Sprintf("%v_%v", testTask.Id, 1)
-				oldTask, err := task.FindOneOld(task.ById(oldTaskId))
+				oldTask, err := task.FindOneOld(ctx, task.ById(oldTaskId))
 				So(err, ShouldBeNil)
 				So(oldTask, ShouldNotBeNil)
 				So(oldTask.Execution, ShouldEqual, 1)
@@ -2706,7 +2706,7 @@ func TestTryResetTask(t *testing.T) {
 					So(dbTask.Activated, ShouldBeTrue)
 					So(dbTask.ContainerAllocationAttempts, ShouldEqual, 0)
 					So(dbTask.PodID, ShouldBeZeroValue)
-					oldTask, err := task.FindOneOldByIdAndExecution(dbTask.Id, 1)
+					oldTask, err := task.FindOneOldByIdAndExecution(ctx, dbTask.Id, 1)
 					So(err, ShouldBeNil)
 					So(oldTask, ShouldNotBeNil)
 					So(oldTask.Execution, ShouldEqual, 1)
@@ -4588,7 +4588,7 @@ func TestClearAndResetStrandedHostTaskFailedOnly(t *testing.T) {
 	assert.Equal(t, 0, nonRestartedExecutionTask.Execution)
 	assert.Equal(t, 1, restartedExecutionTask.LatestParentExecution)
 
-	oldRestartedExecutionTask, err := task.FindOneOld(task.ById(fmt.Sprintf("%v_%v", execTask1.Id, 0)))
+	oldRestartedExecutionTask, err := task.FindOneOld(ctx, task.ById(fmt.Sprintf("%v_%v", execTask1.Id, 0)))
 	assert.NoError(t, err)
 	assert.NotNil(t, oldRestartedExecutionTask)
 	assert.Equal(t, evergreen.TaskFailed, oldRestartedExecutionTask.Status)
@@ -4796,7 +4796,7 @@ func TestClearAndResetStrandedContainerTask(t *testing.T) {
 			assert.Zero(t, dbPod.TaskRuntimeInfo.RunningTaskID)
 			assert.Zero(t, dbPod.TaskRuntimeInfo.RunningTaskExecution)
 
-			dbArchivedTask, err := task.FindOneOldByIdAndExecution(tsk.Id, 0)
+			dbArchivedTask, err := task.FindOneOldByIdAndExecution(ctx, tsk.Id, 0)
 			require.NoError(t, err)
 			require.NotZero(t, dbArchivedTask, "should have archived the old task execution")
 			assert.Equal(t, evergreen.TaskFailed, dbArchivedTask.Status)
@@ -4849,7 +4849,7 @@ func TestClearAndResetStrandedContainerTask(t *testing.T) {
 			require.NotZero(t, dbDisplayTask)
 			assert.True(t, dbDisplayTask.ResetFailedWhenFinished, "display task should reset failed when other exec task finishes running")
 
-			dbArchivedTask, err := task.FindOneOldByIdAndExecution(tsk.Id, 1)
+			dbArchivedTask, err := task.FindOneOldByIdAndExecution(ctx, tsk.Id, 1)
 			assert.NoError(t, err)
 			assert.Zero(t, dbArchivedTask, "execution task should not be archived until display task can reset")
 
@@ -5037,7 +5037,7 @@ func TestResetStaleTask(t *testing.T) {
 
 			require.NoError(t, FixStaleTask(ctx, settings, &tsk))
 
-			dbArchivedTask, err := task.FindOneOldByIdAndExecution(tsk.Id, 0)
+			dbArchivedTask, err := task.FindOneOldByIdAndExecution(ctx, tsk.Id, 0)
 			require.NoError(t, err)
 			require.NotZero(t, dbArchivedTask, "should have archived the old task execution")
 			assert.Equal(t, evergreen.TaskFailed, dbArchivedTask.Status)
@@ -5075,7 +5075,7 @@ func TestResetStaleTask(t *testing.T) {
 			require.NoError(t, tsk.Insert())
 			require.NoError(t, FixStaleTask(ctx, settings, &tsk))
 
-			dbArchivedTask, err := task.FindOneOldByIdAndExecution(tsk.Id, 0)
+			dbArchivedTask, err := task.FindOneOldByIdAndExecution(ctx, tsk.Id, 0)
 			require.NoError(t, err)
 			require.Zero(t, dbArchivedTask, "should not have archived the aborted task")
 
@@ -5120,7 +5120,7 @@ func TestResetStaleTask(t *testing.T) {
 			require.NotZero(t, dbDisplayTask)
 			assert.True(t, dbDisplayTask.ResetFailedWhenFinished, "display task should reset failed when other exec task finishes running")
 
-			dbArchivedTask, err := task.FindOneOldByIdAndExecution(tsk.Id, 0)
+			dbArchivedTask, err := task.FindOneOldByIdAndExecution(ctx, tsk.Id, 0)
 			assert.NoError(t, err)
 			assert.Zero(t, dbArchivedTask, "execution task should not be archived until display task can reset")
 
@@ -5619,7 +5619,7 @@ func TestDisplayTaskDelayedRestart(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(evergreen.TaskUndispatched, dbTask2.Status)
 
-	oldTask, err := task.FindOneOld(task.ById("dt_0"))
+	oldTask, err := task.FindOneOld(ctx, task.ById("dt_0"))
 	assert.NoError(err)
 	assert.NotNil(oldTask)
 }
@@ -5775,7 +5775,7 @@ func TestAbortedTaskDelayedRestart(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, evergreen.TaskUndispatched, newTask.Status)
 	assert.Equal(t, 1, newTask.Execution)
-	oldTask, err := task.FindOneOld(task.ById("task1_0"))
+	oldTask, err := task.FindOneOld(ctx, task.ById("task1_0"))
 	assert.NoError(t, err)
 	assert.True(t, oldTask.Aborted)
 }

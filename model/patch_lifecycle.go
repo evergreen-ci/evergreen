@@ -951,7 +951,7 @@ func CancelPatch(ctx context.Context, p *patch.Patch, reason task.AbortInfo) err
 		if err := SetVersionActivation(ctx, p.Version, false, reason.User); err != nil {
 			return errors.WithStack(err)
 		}
-		return errors.WithStack(task.AbortVersionTasks(p.Version, reason))
+		return errors.WithStack(task.AbortVersionTasks(ctx, p.Version, reason))
 	}
 
 	return errors.WithStack(patch.Remove(patch.ById(p.Id)))
