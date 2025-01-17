@@ -1753,7 +1753,7 @@ func (h *awsAssumeRole) Run(ctx context.Context) gimlet.Responder {
 }
 
 // POST /rest/v2/task/{task_id}/aws/s3_credentials
-// This route is used to retrieve credentials for an S3 bucket for a task.
+// This route is used to generates credentials for s3 access for a task.
 // s3.put and s3.get call this route when the command is targeting an
 // internal bucket.
 type awsS3 struct {
