@@ -1806,7 +1806,6 @@ func (h *awsS3) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	if h.callerARN == "" {
-		var err error
 		h.callerARN, err = h.stsManager.GetCallerIdentityARN(ctx)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting caller identity for task '%s'", h.taskID))
