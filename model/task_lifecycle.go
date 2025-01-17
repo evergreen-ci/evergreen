@@ -258,7 +258,7 @@ func activatePreviousTask(ctx context.Context, taskId, caller string, originalSt
 	// If this is a generator task and we originally were stepping back a generated task, activate the generated task
 	// once the generator finishes.
 	if prevTask.GenerateTask && originalStepbackTask != nil {
-		if err = prevTask.SetGeneratedTasksToActivate(originalStepbackTask.BuildVariant, originalStepbackTask.DisplayName); err != nil {
+		if err = prevTask.SetGeneratedTasksToActivate(ctx, originalStepbackTask.BuildVariant, originalStepbackTask.DisplayName); err != nil {
 			return errors.Wrap(err, "setting generated tasks to activate")
 		}
 	}
@@ -355,7 +355,7 @@ func TryResetTask(ctx context.Context, settings *evergreen.Settings, taskId, use
 	}
 
 	if detail != nil {
-		if err = t.MarkEnd(time.Now(), detail); err != nil {
+		if err = t.MarkEnd(ctx, time.Now(), detail); err != nil {
 			return errors.Wrap(err, "marking task as ended")
 		}
 	}
@@ -618,7 +618,7 @@ func doBisectStepback(ctx context.Context, t *task.Task) error {
 	}
 	s.NextStepbackTaskId = nextTask.Id
 	// Store our next task to our current task.
-	if err := task.SetNextStepbackId(t.Id, s); err != nil {
+	if err := task.SetNextStepbackId(ctx, t.Id, s); err != nil {
 		return errors.Wrapf(err, "could not set next stepback task id for stepback task '%s'", t.Id)
 	}
 	// If the next task has finished, negative priority, or already activated, no-op.
@@ -626,7 +626,7 @@ func doBisectStepback(ctx context.Context, t *task.Task) error {
 		return nil
 	}
 	// Store our last and previous stepback tasks in our upcoming/next task.
-	if err = task.SetLastAndPreviousStepbackIds(nextTask.Id, s); err != nil {
+	if err = task.SetLastAndPreviousStepbackIds(ctx, nextTask.Id, s); err != nil {
 		return errors.Wrapf(err, "setting stepback info for task '%s'", nextTask.Id)
 	}
 
@@ -649,7 +649,7 @@ func doBisectStepback(ctx context.Context, t *task.Task) error {
 
 	// If this is a generator task, activate generated tasks.
 	if nextTask.GenerateTask {
-		if err = nextTask.SetGeneratedTasksToActivate(nextTask.BuildVariant, nextTask.DisplayName); err != nil {
+		if err = nextTask.SetGeneratedTasksToActivate(ctx, nextTask.BuildVariant, nextTask.DisplayName); err != nil {
 			return errors.Wrap(err, "setting generated tasks to activate")
 		}
 	}
@@ -725,7 +725,7 @@ func doBisectStepbackForGeneratedTask(ctx context.Context, generator *task.Task,
 	// This is only for UI purposes. The generated task needs these fields populated
 	// to show stepback options in the UI. We create a new stepback info because we do
 	// not want to copy over the generated related fields.
-	if err := task.SetLastAndPreviousStepbackIds(generated.Id, task.StepbackInfo{
+	if err := task.SetLastAndPreviousStepbackIds(ctx, generated.Id, task.StepbackInfo{
 		LastFailingStepbackTaskId: s.LastFailingStepbackTaskId,
 		LastPassingStepbackTaskId: s.LastPassingStepbackTaskId,
 		PreviousStepbackTaskId:    s.PreviousStepbackTaskId,
@@ -734,7 +734,7 @@ func doBisectStepbackForGeneratedTask(ctx context.Context, generator *task.Task,
 		return errors.Wrapf(err, "could not set stepback info for generated task '%s'", generated.Id)
 	}
 	// Store our last and previous stepback tasks in our upcoming/next task.
-	if err = task.AddGeneratedStepbackInfoForGenerator(nextTask.Id, s); err != nil {
+	if err = task.AddGeneratedStepbackInfoForGenerator(ctx, nextTask.Id, s); err != nil {
 		return errors.Wrapf(err, "setting stepback info for task '%s'", nextTask.Id)
 	}
 
@@ -758,7 +758,7 @@ func doBisectStepbackForGeneratedTask(ctx context.Context, generator *task.Task,
 
 	// If this is a generator task, activate generated tasks.
 	if nextTask.GenerateTask {
-		if err = nextTask.SetGeneratedTasksToActivate(generated.BuildVariant, generated.DisplayName); err != nil {
+		if err = nextTask.SetGeneratedTasksToActivate(ctx, generated.BuildVariant, generated.DisplayName); err != nil {
 			return errors.Wrap(err, "setting generated tasks to activate")
 		}
 	}
@@ -807,7 +807,7 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 	}
 
 	startPhaseAt := time.Now()
-	err := t.MarkEnd(finishTime, &detailsCopy)
+	err := t.MarkEnd(ctx, finishTime, &detailsCopy)
 
 	grip.NoticeWhen(time.Since(startPhaseAt) > slowThreshold, message.Fields{
 		"message":       "slow operation",
@@ -1756,7 +1756,7 @@ func MarkStart(ctx context.Context, t *task.Task, updates *StatusChanges) error 
 
 	startTime := time.Now().Round(time.Millisecond)
 
-	if err = t.MarkStart(startTime); err != nil {
+	if err = t.MarkStart(ctx, startTime); err != nil {
 		return errors.WithStack(err)
 	}
 	event.LogTaskStarted(t.Id, t.Execution)
@@ -2137,7 +2137,7 @@ func endAndResetSystemFailedTask(ctx context.Context, settings *evergreen.Settin
 		return errors.WithStack(MarkEnd(ctx, settings, t, evergreen.MonitorPackage, time.Now(), &failureDetails, false))
 	}
 
-	if err := t.MarkSystemFailed(description); err != nil {
+	if err := t.MarkSystemFailed(ctx, description); err != nil {
 		return errors.Wrap(err, "marking task as system failed")
 	}
 	if err := logTaskEndStats(ctx, t); err != nil {
@@ -2343,6 +2343,7 @@ func tryUpdateDisplayTaskAtomically(ctx context.Context, dt task.Task) (updated 
 	}
 
 	if err := task.UpdateOne(
+		ctx,
 		bson.M{
 			task.IdKey: dt.Id,
 			// Require that the status/activation state is updated atomically.

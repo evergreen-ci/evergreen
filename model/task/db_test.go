@@ -478,7 +478,7 @@ func TestAddHostCreateDetails(t *testing.T) {
 	task := Task{Id: "t1", Execution: 0}
 	assert.NoError(t, task.Insert())
 	errToSave := errors.Wrapf(errors.New("InsufficientCapacityError"), "error trying to start host")
-	assert.NoError(t, AddHostCreateDetails(task.Id, "h1", 0, errToSave))
+	assert.NoError(t, AddHostCreateDetails(ctx, task.Id, "h1", 0, errToSave))
 	dbTask, err := FindOneId(ctx, task.Id)
 	assert.NoError(t, err)
 	assert.NotNil(t, dbTask)
@@ -486,7 +486,7 @@ func TestAddHostCreateDetails(t *testing.T) {
 	assert.Equal(t, "h1", dbTask.HostCreateDetails[0].HostId)
 	assert.Contains(t, dbTask.HostCreateDetails[0].Error, "InsufficientCapacityError")
 
-	assert.NoError(t, AddHostCreateDetails(task.Id, "h2", 0, errToSave))
+	assert.NoError(t, AddHostCreateDetails(ctx, task.Id, "h2", 0, errToSave))
 	dbTask, err = FindOneId(ctx, task.Id)
 	assert.NoError(t, err)
 	assert.NotNil(t, dbTask)
@@ -2015,6 +2015,9 @@ func TestCountNumExecutionsForInterval(t *testing.T) {
 }
 
 func TestHasActivatedDependentTasks(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert.NoError(t, db.Clear(Collection))
 	t1 := Task{
 		Id:        "activeDependent",
@@ -2048,7 +2051,7 @@ func TestHasActivatedDependentTasks(t *testing.T) {
 	assert.True(t, hasDependentTasks)
 
 	// Tasks overriding dependencies don't count as dependent.
-	assert.NoError(t, t3.SetOverrideDependencies("me"))
+	assert.NoError(t, t3.SetOverrideDependencies(ctx, "me"))
 	hasDependentTasks, err = HasActivatedDependentTasks("secondTask")
 	assert.NoError(t, err)
 	assert.False(t, hasDependentTasks)

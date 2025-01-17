@@ -723,7 +723,7 @@ func TestSetActiveState(t *testing.T) {
 		})
 
 		Convey("activating a task with override dependencies set should not activate the tasks it depends on", func() {
-			So(testTask.SetOverrideDependencies(userName), ShouldBeNil)
+			So(testTask.SetOverrideDependencies(ctx, userName), ShouldBeNil)
 
 			So(SetActiveState(ctx, userName, true, testTask), ShouldBeNil)
 			depTask, err := task.FindOne(ctx, db.Query(task.ById(dep1.Id)))
@@ -1451,6 +1451,7 @@ func TestUpdateVersionAndPatchStatusForBuilds(t *testing.T) {
 	assert.Equal(t, evergreen.VersionStarted, dbPatch.Status)
 
 	err = task.UpdateOne(
+		ctx,
 		bson.M{task.IdKey: testTask.Id},
 		bson.M{"$set": bson.M{task.StatusKey: evergreen.TaskFailed}},
 	)
@@ -1707,7 +1708,7 @@ func TestUpdateBuildAndVersionStatusForTaskAbort(t *testing.T) {
 
 	// abort started task
 	assert.NoError(t, testTask.SetAborted(ctx, task.AbortInfo{}))
-	assert.NoError(t, testTask.MarkFailed())
+	assert.NoError(t, testTask.MarkFailed(ctx))
 	assert.NoError(t, UpdateBuildAndVersionStatusForTask(ctx, &testTask))
 	dbBuild1, err = build.FindOneId(b1.Id)
 	assert.NoError(t, err)
@@ -1724,7 +1725,7 @@ func TestUpdateBuildAndVersionStatusForTaskAbort(t *testing.T) {
 
 	// restart aborted task
 	assert.NoError(t, testTask.Archive(ctx))
-	assert.NoError(t, testTask.MarkUnscheduled())
+	assert.NoError(t, testTask.MarkUnscheduled(ctx))
 	assert.NoError(t, UpdateBuildAndVersionStatusForTask(ctx, &testTask))
 	dbBuild1, err = build.FindOneId(b1.Id)
 	assert.NoError(t, err)
@@ -2921,7 +2922,7 @@ func TestTryResetTaskWithTaskGroup(t *testing.T) {
 			assert.Contains(err.Error(), "cannot reset task in this status")
 		},
 		"CanResetTaskGroup": func(t *testing.T, t1 *task.Task, t2Id string) {
-			assert.NoError(t1.MarkFailed())
+			assert.NoError(t1.MarkFailed(ctx))
 			assert.NoError(TryResetTask(ctx, settings, t2Id, "user", "test", nil))
 
 			var err error
@@ -2967,7 +2968,7 @@ func TestTryResetTaskWithTaskGroup(t *testing.T) {
 			}
 			assert.NoError(runningTask.Insert())
 			assert.NoError(otherTask.Insert())
-			assert.NoError(runningTask.MarkStart(time.Now()))
+			assert.NoError(runningTask.MarkStart(ctx, time.Now()))
 			t1 := *runningTask
 			test(t, &t1, otherTask.Id)
 		})
@@ -5494,7 +5495,7 @@ func TestDisplayTaskUpdates(t *testing.T) {
 	assert.Equal(evergreen.TaskStarted, dbTask.Status)
 
 	// a blocked execution task should not contribute to the status
-	assert.NoError(task10.MarkFailed())
+	assert.NoError(task10.MarkFailed(ctx))
 	assert.NoError(UpdateDisplayTaskForTask(ctx, &task8))
 	dbTask, err = task.FindOne(ctx, db.Query(task.ById(blockedDt.Id)))
 	assert.NoError(err)
@@ -5689,17 +5690,17 @@ func TestDisplayTaskUpdatesAreConcurrencySafe(t *testing.T) {
 
 		// Simulate a condition where some goroutines see the execution task as
 		// still running, while others see it as succeeded.
-		if err := et1.MarkEnd(time.Now(), &apimodels.TaskEndDetail{Status: evergreen.TaskSucceeded}); err != nil {
+		if err := et1.MarkEnd(ctx, time.Now(), &apimodels.TaskEndDetail{Status: evergreen.TaskSucceeded}); err != nil {
 			errs <- err
 			return
 		}
 
-		if err := et1.MarkStart(time.Now()); err != nil {
+		if err := et1.MarkStart(ctx, time.Now()); err != nil {
 			errs <- err
 			return
 		}
 
-		if err := et1.MarkEnd(time.Now(), &apimodels.TaskEndDetail{Status: evergreen.TaskSucceeded}); err != nil {
+		if err := et1.MarkEnd(ctx, time.Now(), &apimodels.TaskEndDetail{Status: evergreen.TaskSucceeded}); err != nil {
 			errs <- err
 			return
 		}
@@ -5934,7 +5935,7 @@ func TestMarkEndDeactivatesPrevious(t *testing.T) {
 	assert.NoError(err)
 	assert.True(checkTask.Activated)
 
-	require.NoError(t, task.UpdateOne(bson.M{"_id": finishedTask.Id},
+	require.NoError(t, task.UpdateOne(ctx, bson.M{"_id": finishedTask.Id},
 		bson.M{"$set": bson.M{"status": evergreen.TaskUndispatched}}))
 	finishedTask.Requester = evergreen.RepotrackerVersionRequester
 	finishedTask.Status = evergreen.TaskUndispatched
@@ -5957,7 +5958,7 @@ func TestEvalBisectStepback(t *testing.T) {
 	for tName, tCase := range map[string]func(t *testing.T, t10 task.Task){
 		"NoPreviousSuccessfulTask": func(t *testing.T, t10 task.Task) {
 			// Set the first task to failed status.
-			require.NoError(task.UpdateOne(bson.M{"_id": "t1"},
+			require.NoError(task.UpdateOne(ctx, bson.M{"_id": "t1"},
 				bson.M{"$set": bson.M{"status": evergreen.TaskFailed}}))
 			require.NoError(evalStepback(ctx, &t10, evergreen.TaskFailed))
 			midTask, err := task.ByBeforeMidwayTaskFromIds(ctx, "t10", "t1")
@@ -6026,7 +6027,7 @@ func TestEvalBisectStepback(t *testing.T) {
 
 			// 2nd Iteration. Task failed, moving last failing stepback to midtask.
 			prevTask.Status = evergreen.TaskFailed
-			require.NoError(task.UpdateOne(bson.M{"_id": midTask.Id},
+			require.NoError(task.UpdateOne(ctx, bson.M{"_id": midTask.Id},
 				bson.M{"$set": bson.M{"status": evergreen.TaskFailed}}))
 			// Activate next stepback
 			require.NoError(evalStepback(ctx, &prevTask, evergreen.TaskFailed))
@@ -6080,7 +6081,7 @@ func TestEvalBisectStepback(t *testing.T) {
 			// 2nd Iteration. Task passed, moving last passing stepback to midtask.
 			midTask.Status = evergreen.TaskSucceeded
 			prevTask := *midTask
-			require.NoError(task.UpdateOne(bson.M{"_id": midTask.Id},
+			require.NoError(task.UpdateOne(ctx, bson.M{"_id": midTask.Id},
 				bson.M{"$set": bson.M{"status": evergreen.TaskSucceeded}}))
 			// Activate next stepback
 			require.NoError(evalStepback(ctx, midTask, evergreen.TaskSucceeded))
@@ -6113,7 +6114,7 @@ func TestEvalBisectStepback(t *testing.T) {
 		"GeneratedTasksStepbackGenerator": func(t *testing.T, t10 task.Task) {
 			// Make all generator tasks pass.
 			for i := 1; i <= 10; i++ {
-				require.NoError(task.UpdateOne(bson.M{"_id": fmt.Sprintf("t%d", i)},
+				require.NoError(task.UpdateOne(ctx, bson.M{"_id": fmt.Sprintf("t%d", i)},
 					bson.M{"$set": bson.M{"status": evergreen.TaskSucceeded}}))
 			}
 			generated1Tasks := []task.Task{}
@@ -6153,16 +6154,16 @@ func TestEvalBisectStepback(t *testing.T) {
 			}
 			// Make the first generated tasks fail and the last pass.
 			generated1Tasks[0].Status = evergreen.TaskSucceeded
-			require.NoError(task.UpdateOne(bson.M{"_id": generated1Tasks[0].Id},
+			require.NoError(task.UpdateOne(ctx, bson.M{"_id": generated1Tasks[0].Id},
 				bson.M{"$set": bson.M{"status": generated1Tasks[0].Status}}))
 			generated2Tasks[0].Status = evergreen.TaskSucceeded
-			require.NoError(task.UpdateOne(bson.M{"_id": generated2Tasks[0].Id},
+			require.NoError(task.UpdateOne(ctx, bson.M{"_id": generated2Tasks[0].Id},
 				bson.M{"$set": bson.M{"status": generated2Tasks[0].Status}}))
 			generated1Tasks[9].Status = evergreen.TaskFailed
-			require.NoError(task.UpdateOne(bson.M{"_id": generated1Tasks[9].Id},
+			require.NoError(task.UpdateOne(ctx, bson.M{"_id": generated1Tasks[9].Id},
 				bson.M{"$set": bson.M{"status": generated1Tasks[9].Status}}))
 			generated2Tasks[9].Status = evergreen.TaskFailed
-			require.NoError(task.UpdateOne(bson.M{"_id": generated2Tasks[9].Id},
+			require.NoError(task.UpdateOne(ctx, bson.M{"_id": generated2Tasks[9].Id},
 				bson.M{"$set": bson.M{"status": generated2Tasks[9].Status}}))
 			require.NoError(evalStepback(ctx, &generated1Tasks[9], evergreen.TaskFailed))
 			require.NoError(evalStepback(ctx, &generated2Tasks[9], evergreen.TaskFailed))
@@ -6221,12 +6222,12 @@ func TestEvalBisectStepback(t *testing.T) {
 			midTaskG1, err := task.FindOneId(ctx, "g1-5")
 			require.NoError(err)
 			midTaskG1.Status = evergreen.TaskSucceeded
-			require.NoError(task.UpdateOne(bson.M{"_id": midTaskG1.Id},
+			require.NoError(task.UpdateOne(ctx, bson.M{"_id": midTaskG1.Id},
 				bson.M{"$set": bson.M{"status": midTaskG1.Status}}))
 			midTaskG2, err := task.FindOneId(ctx, "g2-5")
 			require.NoError(err)
 			midTaskG2.Status = evergreen.TaskFailed
-			require.NoError(task.UpdateOne(bson.M{"_id": midTaskG2.Id},
+			require.NoError(task.UpdateOne(ctx, bson.M{"_id": midTaskG2.Id},
 				bson.M{"$set": bson.M{"status": midTaskG2.Status}}))
 
 			prevTask := *midTask

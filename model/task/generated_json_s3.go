@@ -85,7 +85,7 @@ func (s *generatedJSONS3Storage) Insert(ctx context.Context, t *Task, files Gene
 		}
 	}
 
-	if err := t.SetGeneratedJSONStorageMethod(evergreen.ProjectStorageMethodS3); err != nil {
+	if err := t.SetGeneratedJSONStorageMethod(ctx, evergreen.ProjectStorageMethodS3); err != nil {
 		return errors.Wrapf(err, "settings generated JSON storage method to S3 for task '%s'", t.Id)
 	}
 

@@ -350,7 +350,7 @@ func getSoonToBeFreeHosts(ctx context.Context, existingHosts []host.Host, future
 			defer recovery.LogStackTraceAndContinue("panic during future free host calculation")
 			defer wg.Done()
 			for t := range source {
-				durationStats := t.FetchExpectedDuration()
+				durationStats := t.FetchExpectedDuration(ctx)
 				expectedDuration := durationStats.Average
 				durationStdDev := durationStats.StdDev
 				elapsedTime := time.Since(t.StartTime)

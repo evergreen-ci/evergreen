@@ -16,7 +16,10 @@ import (
 )
 
 func TestPlanner(t *testing.T) {
-	_, err := evergreen.GetEnvironment().DB().Collection(task.Collection).Indexes().CreateOne(context.Background(), mongo.IndexModel{Keys: task.DurationIndex})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	_, err := evergreen.GetEnvironment().DB().Collection(task.Collection).Indexes().CreateOne(ctx, mongo.IndexModel{Keys: task.DurationIndex})
 	assert.NoError(t, err)
 
 	t.Run("Caches", func(t *testing.T) {
@@ -116,7 +119,7 @@ func TestPlanner(t *testing.T) {
 				cache := UnitCache{}
 				one := task.Task{Id: "one"}
 				cache.Create("one", one)
-				assert.Empty(t, cache.Export())
+				assert.Empty(t, cache.Export(ctx))
 			})
 			t.Run("ExportPropogatesTasks", func(t *testing.T) {
 				cache := UnitCache{}
@@ -124,13 +127,13 @@ func TestPlanner(t *testing.T) {
 				two := task.Task{Id: "two"}
 				cache.Create("one", one).SetDistro(&distro.Distro{})
 				cache.Create("two", two).SetDistro(&distro.Distro{})
-				plan := cache.Export()
+				plan := cache.Export(ctx)
 				assert.Len(t, plan, 2)
-				for _, ts := range plan {
+				for _, ts := range plan.units {
 					ts.SetDistro(&distro.Distro{})
 					require.Len(t, ts.tasks, 1)
 				}
-				for _, ts := range plan.Export(context.Background()) {
+				for _, ts := range plan.Export(ctx) {
 					require.True(t, ts.Id == "one" || ts.Id == "two")
 				}
 			})
@@ -139,7 +142,7 @@ func TestPlanner(t *testing.T) {
 				one := task.Task{Id: "one"}
 				cache.Create("one", one).SetDistro(&distro.Distro{})
 				cache.Create("two", one).SetDistro(&distro.Distro{})
-				plan := cache.Export()
+				plan := cache.Export(ctx)
 				assert.Len(t, plan, 1)
 			})
 		})
@@ -169,9 +172,9 @@ func TestPlanner(t *testing.T) {
 			t.Run("HashCaches", func(t *testing.T) {
 				unit := NewUnit(task.Task{Id: "foo"})
 				hash := unit.ID()
-				assert.Len(t, unit.Export(), 1)
+				assert.Len(t, unit.Export(ctx), 1)
 				unit.Add(task.Task{Id: "bar"})
-				assert.Len(t, unit.Export(), 2)
+				assert.Len(t, unit.Export(ctx), 2)
 				newHash := unit.ID()
 				assert.Equal(t, hash, newHash)
 			})
@@ -197,119 +200,119 @@ func TestPlanner(t *testing.T) {
 				t.Run("SingleTask", func(t *testing.T) {
 					unit := NewUnit(task.Task{Id: "foo"})
 					unit.SetDistro(&distro.Distro{})
-					assert.EqualValues(t, 180, unit.sortingValueBreakdown().TotalValue)
-					verifyRankBreakdown(t, unit.sortingValueBreakdown())
+					assert.EqualValues(t, 180, unit.sortingValueBreakdown(ctx).TotalValue)
+					verifyRankBreakdown(t, unit.sortingValueBreakdown(ctx))
 				})
 				t.Run("MultipleTasks", func(t *testing.T) {
 					unit := NewUnit(task.Task{Id: "foo"})
 					unit.SetDistro(&distro.Distro{})
 					unit.Add(task.Task{Id: "bar"})
-					assert.EqualValues(t, 181, unit.sortingValueBreakdown().TotalValue)
-					verifyRankBreakdown(t, unit.sortingValueBreakdown())
+					assert.EqualValues(t, 181, unit.sortingValueBreakdown(ctx).TotalValue)
+					verifyRankBreakdown(t, unit.sortingValueBreakdown(ctx))
 				})
 				t.Run("MergeQueue", func(t *testing.T) {
 					unit := NewUnit(task.Task{Id: "foo", Requester: evergreen.GithubMergeRequester})
 					unit.SetDistro(&distro.Distro{})
-					assert.EqualValues(t, 2413, unit.sortingValueBreakdown().TotalValue)
-					verifyRankBreakdown(t, unit.sortingValueBreakdown())
+					assert.EqualValues(t, 2413, unit.sortingValueBreakdown(ctx).TotalValue)
+					verifyRankBreakdown(t, unit.sortingValueBreakdown(ctx))
 				})
 				t.Run("Patches", func(t *testing.T) {
 					t.Run("CLI", func(t *testing.T) {
 						unit := NewUnit(task.Task{Id: "foo", Requester: evergreen.PatchVersionRequester})
 						unit.SetDistro(&distro.Distro{})
 						unit.distro.PlannerSettings.PatchFactor = 10
-						assert.EqualValues(t, 22, unit.sortingValueBreakdown().TotalValue)
-						verifyRankBreakdown(t, unit.sortingValueBreakdown())
+						assert.EqualValues(t, 22, unit.sortingValueBreakdown(ctx).TotalValue)
+						verifyRankBreakdown(t, unit.sortingValueBreakdown(ctx))
 					})
 					t.Run("Github", func(t *testing.T) {
 						unit := NewUnit(task.Task{Id: "foo", Requester: evergreen.GithubPRRequester})
 						unit.SetDistro(&distro.Distro{})
 						unit.distro.PlannerSettings.PatchFactor = 10
-						assert.EqualValues(t, 22, unit.sortingValueBreakdown().TotalValue)
-						verifyRankBreakdown(t, unit.sortingValueBreakdown())
+						assert.EqualValues(t, 22, unit.sortingValueBreakdown(ctx).TotalValue)
+						verifyRankBreakdown(t, unit.sortingValueBreakdown(ctx))
 					})
 				})
 				t.Run("Priority", func(t *testing.T) {
 					unit := NewUnit(task.Task{Id: "foo", Priority: 10})
 					unit.SetDistro(&distro.Distro{})
-					assert.EqualValues(t, 1970, unit.sortingValueBreakdown().TotalValue)
-					verifyRankBreakdown(t, unit.sortingValueBreakdown())
+					assert.EqualValues(t, 1970, unit.sortingValueBreakdown(ctx).TotalValue)
+					verifyRankBreakdown(t, unit.sortingValueBreakdown(ctx))
 				})
 				t.Run("TimeInQueuePatch", func(t *testing.T) {
 					unit := NewUnit(task.Task{Id: "foo", Requester: evergreen.PatchVersionRequester, ActivatedTime: time.Now().Add(-time.Hour)})
 					unit.SetDistro(&distro.Distro{})
-					assert.EqualValues(t, 73, unit.sortingValueBreakdown().TotalValue)
-					verifyRankBreakdown(t, unit.sortingValueBreakdown())
+					assert.EqualValues(t, 73, unit.sortingValueBreakdown(ctx).TotalValue)
+					verifyRankBreakdown(t, unit.sortingValueBreakdown(ctx))
 				})
 				t.Run("TimeInQueueMainline", func(t *testing.T) {
 					unit := NewUnit(task.Task{Id: "foo", Requester: evergreen.RepotrackerVersionRequester, ActivatedTime: time.Now().Add(-time.Hour)})
 					unit.SetDistro(&distro.Distro{})
-					assert.EqualValues(t, 178, unit.sortingValueBreakdown().TotalValue)
-					verifyRankBreakdown(t, unit.sortingValueBreakdown())
+					assert.EqualValues(t, 178, unit.sortingValueBreakdown(ctx).TotalValue)
+					verifyRankBreakdown(t, unit.sortingValueBreakdown(ctx))
 				})
 				t.Run("LifeTimePatch", func(t *testing.T) {
 					unit := NewUnit(task.Task{Id: "foo", Requester: evergreen.PatchVersionRequester, IngestTime: time.Now().Add(-10 * time.Hour)})
 					unit.SetDistro(&distro.Distro{})
-					assert.EqualValues(t, 613, unit.sortingValueBreakdown().TotalValue)
-					verifyRankBreakdown(t, unit.sortingValueBreakdown())
+					assert.EqualValues(t, 613, unit.sortingValueBreakdown(ctx).TotalValue)
+					verifyRankBreakdown(t, unit.sortingValueBreakdown(ctx))
 				})
 				t.Run("LifeTimeMainlineNew", func(t *testing.T) {
 					unit := NewUnit(task.Task{Id: "foo", Requester: evergreen.RepotrackerVersionRequester, IngestTime: time.Now().Add(-10 * time.Minute)})
 					unit.SetDistro(&distro.Distro{})
-					assert.EqualValues(t, 179, unit.sortingValueBreakdown().TotalValue)
-					verifyRankBreakdown(t, unit.sortingValueBreakdown())
+					assert.EqualValues(t, 179, unit.sortingValueBreakdown(ctx).TotalValue)
+					verifyRankBreakdown(t, unit.sortingValueBreakdown(ctx))
 				})
 				t.Run("LifeTimeMainlineOld", func(t *testing.T) {
 					unit := NewUnit(task.Task{Id: "foo", Requester: evergreen.RepotrackerVersionRequester, IngestTime: time.Now().Add(-7 * 24 * time.Hour)})
 					unit.SetDistro(&distro.Distro{})
-					assert.EqualValues(t, 12, unit.sortingValueBreakdown().TotalValue)
-					verifyRankBreakdown(t, unit.sortingValueBreakdown())
+					assert.EqualValues(t, 12, unit.sortingValueBreakdown(ctx).TotalValue)
+					verifyRankBreakdown(t, unit.sortingValueBreakdown(ctx))
 				})
 				t.Run("NumDependents", func(t *testing.T) {
 					unit := NewUnit(task.Task{Id: "foo", NumDependents: 2})
 					unit.SetDistro(&distro.Distro{})
-					assert.EqualValues(t, 182, unit.sortingValueBreakdown().TotalValue)
-					verifyRankBreakdown(t, unit.sortingValueBreakdown())
+					assert.EqualValues(t, 182, unit.sortingValueBreakdown(ctx).TotalValue)
+					verifyRankBreakdown(t, unit.sortingValueBreakdown(ctx))
 				})
 				t.Run("NumDependentsWithFactor", func(t *testing.T) {
 					unit := NewUnit(task.Task{Id: "foo", NumDependents: 2})
 					unit.SetDistro(&distro.Distro{})
 					unit.distro.PlannerSettings.NumDependentsFactor = 10
-					assert.EqualValues(t, 200, unit.sortingValueBreakdown().TotalValue)
-					verifyRankBreakdown(t, unit.sortingValueBreakdown())
+					assert.EqualValues(t, 200, unit.sortingValueBreakdown(ctx).TotalValue)
+					verifyRankBreakdown(t, unit.sortingValueBreakdown(ctx))
 				})
 				t.Run("NumDependentsWithFractionFactor", func(t *testing.T) {
 					unit := NewUnit(task.Task{Id: "foo", NumDependents: 2})
 					unit.SetDistro(&distro.Distro{})
 					unit.distro.PlannerSettings.NumDependentsFactor = 0.5
-					assert.EqualValues(t, 181, unit.sortingValueBreakdown().TotalValue)
-					verifyRankBreakdown(t, unit.sortingValueBreakdown())
+					assert.EqualValues(t, 181, unit.sortingValueBreakdown(ctx).TotalValue)
+					verifyRankBreakdown(t, unit.sortingValueBreakdown(ctx))
 				})
 				t.Run("GenerateTask", func(t *testing.T) {
 					unit := NewUnit(task.Task{Id: "foo", GenerateTask: true})
 					unit.SetDistro(&distro.Distro{})
 					unit.distro.PlannerSettings.GenerateTaskFactor = 10
-					assert.EqualValues(t, 1791, unit.sortingValueBreakdown().TotalValue)
-					verifyRankBreakdown(t, unit.sortingValueBreakdown())
+					assert.EqualValues(t, 1791, unit.sortingValueBreakdown(ctx).TotalValue)
+					verifyRankBreakdown(t, unit.sortingValueBreakdown(ctx))
 				})
 				t.Run("TaskGroup", func(t *testing.T) {
 					unit := NewUnit(task.Task{Id: "foo", TaskGroup: "tg1"})
 					unit.Add(task.Task{Id: "bar", TaskGroup: "tg1"})
 					unit.Add(task.Task{Id: "baz", TaskGroup: "tg1"})
 					unit.SetDistro(&distro.Distro{})
-					assert.EqualValues(t, 719, unit.sortingValueBreakdown().TotalValue)
-					verifyRankBreakdown(t, unit.sortingValueBreakdown())
+					assert.EqualValues(t, 719, unit.sortingValueBreakdown(ctx).TotalValue)
+					verifyRankBreakdown(t, unit.sortingValueBreakdown(ctx))
 				})
 			})
 			t.Run("RankCachesValue", func(t *testing.T) {
 				unit := NewUnit(task.Task{Id: "foo", Priority: 100})
 				unit.SetDistro(&distro.Distro{})
 
-				assert.EqualValues(t, 18080, unit.sortingValueBreakdown().TotalValue)
-				verifyRankBreakdown(t, unit.sortingValueBreakdown())
+				assert.EqualValues(t, 18080, unit.sortingValueBreakdown(ctx).TotalValue)
+				verifyRankBreakdown(t, unit.sortingValueBreakdown(ctx))
 				unit.Add(task.Task{Id: "bar"})
-				assert.EqualValues(t, 18080, unit.sortingValueBreakdown().TotalValue)
-				verifyRankBreakdown(t, unit.sortingValueBreakdown())
+				assert.EqualValues(t, 18080, unit.sortingValueBreakdown(ctx).TotalValue)
+				verifyRankBreakdown(t, unit.sortingValueBreakdown(ctx))
 			})
 		})
 		t.Run("TaskPlan", func(t *testing.T) {
@@ -318,91 +321,91 @@ func TestPlanner(t *testing.T) {
 				for _, u := range units {
 					u.SetDistro(d)
 				}
-				return TaskPlan(units)
+				return TaskPlan{ctx: ctx, units: units}
 			}
 			t.Run("NoChange", func(t *testing.T) {
 				plan := buildPlan(NewUnit(task.Task{Id: "foo"}), NewUnit(task.Task{Id: "bar"}))
 				sort.Stable(plan)
-				out := plan.Export(context.Background())
+				out := plan.Export(ctx)
 				assert.Equal(t, "foo", out[0].Id)
 				assert.Equal(t, "bar", out[1].Id)
 			})
 			t.Run("ChangeOrder", func(t *testing.T) {
 				plan := buildPlan(NewUnit(task.Task{Id: "foo"}), NewUnit(task.Task{Id: "bar", Priority: 10}))
 				sort.Stable(plan)
-				out := plan.Export(context.Background())
+				out := plan.Export(ctx)
 				assert.Equal(t, "bar", out[0].Id)
 				assert.Equal(t, "foo", out[1].Id)
 			})
 			t.Run("Deduplicates", func(t *testing.T) {
 				plan := buildPlan(NewUnit(task.Task{Id: "foo"}), NewUnit(task.Task{Id: "foo"}))
-				assert.Len(t, plan.Export(context.Background()), 1)
+				assert.Len(t, plan.Export(ctx), 1)
 			})
 		})
 		t.Run("TaskList", func(t *testing.T) {
 			t.Run("NoChange", func(t *testing.T) {
-				plan := TaskList{{Id: "second"}, {Id: "first"}}
-				assert.Equal(t, "second", plan[0].Id)
-				assert.Equal(t, "first", plan[1].Id)
+				plan := TaskList{ctx: ctx, tasks: []task.Task{{Id: "second"}, {Id: "first"}}}
+				assert.Equal(t, "second", plan.tasks[0].Id)
+				assert.Equal(t, "first", plan.tasks[1].Id)
 				sort.Sort(plan)
-				assert.Equal(t, "second", plan[0].Id)
-				assert.Equal(t, "first", plan[1].Id)
+				assert.Equal(t, "second", plan.tasks[0].Id)
+				assert.Equal(t, "first", plan.tasks[1].Id)
 			})
 			t.Run("TaskGroupOrder", func(t *testing.T) {
-				plan := TaskList{{Id: "second", TaskGroupOrder: 2}, {Id: "first", TaskGroupOrder: 1}}
+				plan := TaskList{ctx: ctx, tasks: []task.Task{{Id: "second", TaskGroupOrder: 2}, {Id: "first", TaskGroupOrder: 1}}}
 				sort.Sort(plan)
-				assert.Equal(t, 1, plan[0].TaskGroupOrder)
-				assert.Equal(t, 2, plan[1].TaskGroupOrder)
+				assert.Equal(t, 1, plan.tasks[0].TaskGroupOrder)
+				assert.Equal(t, 2, plan.tasks[1].TaskGroupOrder)
 
-				assert.Equal(t, "first", plan[0].Id)
-				assert.Equal(t, "second", plan[1].Id)
+				assert.Equal(t, "first", plan.tasks[0].Id)
+				assert.Equal(t, "second", plan.tasks[1].Id)
 			})
 			t.Run("NumDependents", func(t *testing.T) {
-				plan := TaskList{{Id: "second"}, {Id: "first", NumDependents: 2}}
+				plan := TaskList{ctx: ctx, tasks: []task.Task{{Id: "second"}, {Id: "first", NumDependents: 2}}}
 				sort.Sort(plan)
-				assert.Equal(t, "first", plan[0].Id)
-				assert.Equal(t, "second", plan[1].Id)
+				assert.Equal(t, "first", plan.tasks[0].Id)
+				assert.Equal(t, "second", plan.tasks[1].Id)
 
 			})
 			t.Run("Priority", func(t *testing.T) {
-				plan := TaskList{{Id: "second"}, {Id: "first", Priority: 100}}
+				plan := TaskList{ctx: ctx, tasks: []task.Task{{Id: "second"}, {Id: "first", Priority: 100}}}
 				sort.Sort(plan)
-				assert.Equal(t, "first", plan[0].Id)
-				assert.Equal(t, "second", plan[1].Id)
+				assert.Equal(t, "first", plan.tasks[0].Id)
+				assert.Equal(t, "second", plan.tasks[1].Id)
 			})
 			t.Run("ExpectedDuration", func(t *testing.T) {
-				plan := TaskList{{Id: "second"}, {Id: "first"}}
-				plan[1].DurationPrediction.Value = time.Hour
-				plan[1].DurationPrediction.TTL = time.Hour * 24
-				plan[1].DurationPrediction.CollectedAt = time.Now()
+				plan := TaskList{ctx: ctx, tasks: []task.Task{{Id: "second"}, {Id: "first"}}}
+				plan.tasks[1].DurationPrediction.Value = time.Hour
+				plan.tasks[1].DurationPrediction.TTL = time.Hour * 24
+				plan.tasks[1].DurationPrediction.CollectedAt = time.Now()
 
-				plan[0].DurationPrediction.Value = time.Minute
-				plan[0].DurationPrediction.TTL = time.Hour * 24
-				plan[0].DurationPrediction.CollectedAt = time.Now()
+				plan.tasks[0].DurationPrediction.Value = time.Minute
+				plan.tasks[0].DurationPrediction.TTL = time.Hour * 24
+				plan.tasks[0].DurationPrediction.CollectedAt = time.Now()
 
 				sort.Sort(plan)
 
-				assert.Equal(t, "first", plan[0].Id)
-				assert.Equal(t, "second", plan[1].Id)
+				assert.Equal(t, "first", plan.tasks[0].Id)
+				assert.Equal(t, "second", plan.tasks[1].Id)
 			})
 		})
 	})
 	t.Run("PrepareTaskPlan", func(t *testing.T) {
 		t.Run("Noop", func(t *testing.T) {
-			assert.Empty(t, PrepareTasksForPlanning(&distro.Distro{}, []task.Task{}))
+			assert.Empty(t, PrepareTasksForPlanning(ctx, &distro.Distro{}, []task.Task{}))
 		})
 		t.Run("TaskGroupsGrouped", func(t *testing.T) {
-			plan := PrepareTasksForPlanning(&distro.Distro{}, []task.Task{
+			plan := PrepareTasksForPlanning(ctx, &distro.Distro{}, []task.Task{
 				{Id: "one", TaskGroup: "first"},
 				{Id: "two", TaskGroup: "first"},
 				{Id: "three"},
 			})
 
 			assert.Len(t, plan, 2)
-			assert.Len(t, plan.Export(context.Background()), 3)
+			assert.Len(t, plan.Export(ctx), 3)
 		})
 		t.Run("VersionsGrouped", func(t *testing.T) {
-			plan := PrepareTasksForPlanning(&distro.Distro{
+			plan := PrepareTasksForPlanning(ctx, &distro.Distro{
 				PlannerSettings: distro.PlannerSettings{
 					GroupVersions: func() *bool { b := true; return &b }(),
 				},
@@ -413,10 +416,10 @@ func TestPlanner(t *testing.T) {
 			})
 
 			assert.Len(t, plan, 2)
-			assert.Len(t, plan.Export(context.Background()), 3)
+			assert.Len(t, plan.Export(ctx), 3)
 		})
 		t.Run("VersionsAndTaskGroupsGrouped", func(t *testing.T) {
-			plan := PrepareTasksForPlanning(&distro.Distro{
+			plan := PrepareTasksForPlanning(ctx, &distro.Distro{
 				PlannerSettings: distro.PlannerSettings{
 					GroupVersions: func() *bool { b := true; return &b }(),
 				},
@@ -430,13 +433,13 @@ func TestPlanner(t *testing.T) {
 			})
 
 			assert.Len(t, plan, 3)
-			tasks := plan.Export(context.Background())
+			tasks := plan.Export(ctx)
 			assert.Len(t, tasks, 6)
 			assert.Equal(t, "one", tasks[0].TaskGroup)
 			assert.Equal(t, "one", tasks[1].TaskGroup)
 		})
 		t.Run("DependenciesGrouped", func(t *testing.T) {
-			plan := PrepareTasksForPlanning(&distro.Distro{}, []task.Task{
+			plan := PrepareTasksForPlanning(ctx, &distro.Distro{}, []task.Task{
 				{Id: "one", DependsOn: []task.Dependency{{TaskId: "two"}}},
 				{Id: "three"},
 				{Id: "two"},
@@ -444,7 +447,7 @@ func TestPlanner(t *testing.T) {
 			})
 
 			require.Len(t, plan, 4, "keys:%s", plan.Keys())
-			tasks := plan.Export(context.Background())
+			tasks := plan.Export(ctx)
 			require.Len(t, tasks, 4)
 			assert.Equal(t, "three", tasks[3].Id)
 
@@ -455,14 +458,14 @@ func TestPlanner(t *testing.T) {
 
 		})
 		t.Run("ExternalDependenciesIgnored", func(t *testing.T) {
-			plan := PrepareTasksForPlanning(&distro.Distro{}, []task.Task{
+			plan := PrepareTasksForPlanning(ctx, &distro.Distro{}, []task.Task{
 				{Id: "one", DependsOn: []task.Dependency{{TaskId: "missing"}}},
 				{Id: "three"},
 				{Id: "two", DependsOn: []task.Dependency{{TaskId: "missing"}}},
 			})
 
 			assert.Len(t, plan, 3)
-			assert.Len(t, plan.Export(context.Background()), 3)
+			assert.Len(t, plan.Export(ctx), 3)
 		})
 	})
 }

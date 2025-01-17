@@ -1398,7 +1398,7 @@ tasks:
 	assert.NoError(t, err)
 	assert.Len(t, tasks, 1)
 	// manually set the task as running and its generated JSON for simplicity
-	err = task.UpdateOne(task.ById(tasks[0].Id), bson.M{
+	err = task.UpdateOne(ctx, task.ById(tasks[0].Id), bson.M{
 		"$set": bson.M{
 			task.StatusKey:                evergreen.TaskStarted,
 			task.GeneratedJSONAsStringKey: generatedProject,

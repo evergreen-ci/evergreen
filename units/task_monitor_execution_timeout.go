@@ -182,7 +182,7 @@ func (j *taskExecutionTimeoutJob) cleanUpTimedOutTask(ctx context.Context) error
 			"operation": "cleanup timed out task",
 			"job":       j.ID(),
 		})
-		return errors.WithStack(j.task.MarkUnscheduled())
+		return errors.WithStack(j.task.MarkUnscheduled(ctx))
 	}
 
 	if host.RunningTask == j.task.Id {

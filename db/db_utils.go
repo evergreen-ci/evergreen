@@ -233,6 +233,19 @@ func Update(collection string, query interface{}, update interface{}) error {
 	return db.C(collection).Update(query, update)
 }
 
+// Update updates one matching document in the collection.
+func UpdateContext(ctx context.Context, collection string, query interface{}, update interface{}) error {
+	session, db, err := GetGlobalSessionFactory().GetContextSession(ctx)
+	if err != nil {
+		grip.Errorf("error establishing db connection: %+v", err)
+
+		return err
+	}
+	defer session.Close()
+
+	return db.C(collection).Update(query, update)
+}
+
 // UpdateId updates one _id-matching document in the collection.
 func UpdateId(collection string, id, update interface{}) error {
 	session, db, err := GetGlobalSessionFactory().GetSession()

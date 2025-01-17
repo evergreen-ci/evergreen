@@ -837,7 +837,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "not authorized to override dependencies", http.StatusUnauthorized)
 			return
 		}
-		err = projCtx.Task.SetOverrideDependencies(authUser.Username())
+		err = projCtx.Task.SetOverrideDependencies(ctx, authUser.Username())
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

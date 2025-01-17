@@ -1044,7 +1044,7 @@ func RecomputeNumDependents(ctx context.Context, t task.Task) error {
 	SetNumDependents(taskPtrs)
 	catcher := grip.NewBasicCatcher()
 	for _, t := range taskPtrs {
-		catcher.Add(t.SetNumDependents())
+		catcher.Add(t.SetNumDependents(ctx))
 	}
 
 	return errors.Wrap(catcher.Resolve(), "setting num dependents")

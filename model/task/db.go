@@ -1663,27 +1663,13 @@ func FindAllOld(ctx context.Context, query db.Q) ([]Task, error) {
 }
 
 // UpdateOne updates one task.
-func UpdateOne(query interface{}, update interface{}) error {
-	return db.Update(
+func UpdateOne(ctx context.Context, query interface{}, update interface{}) error {
+	return db.UpdateContext(
+		ctx,
 		Collection,
 		query,
 		update,
 	)
-}
-
-func UpdateOneContext(ctx context.Context, query interface{}, update interface{}) error {
-	res, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateOne(ctx,
-		query,
-		update,
-	)
-	if err != nil {
-		return errors.Wrapf(err, "updating task")
-	}
-	if res.MatchedCount == 0 {
-		return adb.ErrNotFound
-	}
-
-	return nil
 }
 
 func UpdateAll(query interface{}, update interface{}) (*adb.ChangeInfo, error) {
@@ -1824,11 +1810,12 @@ func HasUnfinishedTaskForVersions(versionIds []string, taskName, variantName str
 	return count > 0, err
 }
 
-func AddHostCreateDetails(taskId, hostId string, execution int, hostCreateError error) error {
+func AddHostCreateDetails(ctx context.Context, taskId, hostId string, execution int, hostCreateError error) error {
 	if hostCreateError == nil {
 		return nil
 	}
 	err := UpdateOne(
+		ctx,
 		ByIdAndExecution(taskId, execution),
 		bson.M{"$push": bson.M{
 			HostCreateDetailsKey: HostCreateDetail{HostId: hostId, Error: hostCreateError.Error()},
@@ -2702,8 +2689,9 @@ func enableDisabledTasks(taskIDs []string) error {
 
 // IncNumNextTaskDispatches sets the number of times a host has requested this
 // task and execution as its next task.
-func (t *Task) IncNumNextTaskDispatches() error {
+func (t *Task) IncNumNextTaskDispatches(ctx context.Context) error {
 	if err := UpdateOne(
+		ctx,
 		ByIdAndExecution(t.Id, t.Execution),
 		bson.M{
 			"$inc": bson.M{NumNextTaskDispatchesKey: 1},
@@ -2717,7 +2705,7 @@ func (t *Task) IncNumNextTaskDispatches() error {
 // UpdateHasAnnotations updates a task's HasAnnotations flag, indicating if there
 // are any annotations with populated IssuesKey for its id / execution pair.
 func UpdateHasAnnotations(ctx context.Context, taskId string, execution int, hasAnnotations bool) error {
-	err := UpdateOneContext(
+	err := UpdateOne(
 		ctx,
 		ByIdAndExecution(taskId, execution),
 		[]bson.M{
