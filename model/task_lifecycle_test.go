@@ -82,7 +82,7 @@ func TestDisableStaleContainerTasks(t *testing.T) {
 			tsk.ActivatedTime = time.Now().Add(-9000 * 24 * time.Hour)
 			require.NoError(t, tsk.Insert())
 
-			require.NoError(t, DisableStaleContainerTasks(t.Name()))
+			require.NoError(t, DisableStaleContainerTasks(ctx, t.Name()))
 
 			dbTask, err := task.FindOneId(ctx, tsk.Id)
 			require.NoError(t, err)
@@ -95,7 +95,7 @@ func TestDisableStaleContainerTasks(t *testing.T) {
 			tsk.ContainerAllocatedTime = time.Now().Add(-5000 * 24 * time.Hour)
 			require.NoError(t, tsk.Insert())
 
-			require.NoError(t, DisableStaleContainerTasks(t.Name()))
+			require.NoError(t, DisableStaleContainerTasks(ctx, t.Name()))
 
 			dbTask, err := task.FindOneId(ctx, tsk.Id)
 			require.NoError(t, err)
@@ -106,7 +106,7 @@ func TestDisableStaleContainerTasks(t *testing.T) {
 			tsk.ActivatedTime = time.Now()
 			require.NoError(t, tsk.Insert())
 
-			require.NoError(t, DisableStaleContainerTasks(t.Name()))
+			require.NoError(t, DisableStaleContainerTasks(ctx, t.Name()))
 
 			dbTask, err := task.FindOneId(ctx, tsk.Id)
 			require.NoError(t, err)
@@ -119,7 +119,7 @@ func TestDisableStaleContainerTasks(t *testing.T) {
 			tsk.Status = evergreen.TaskSucceeded
 			require.NoError(t, tsk.Insert())
 
-			require.NoError(t, DisableStaleContainerTasks(t.Name()))
+			require.NoError(t, DisableStaleContainerTasks(ctx, t.Name()))
 
 			dbTask, err := task.FindOneId(ctx, tsk.Id)
 			require.NoError(t, err)
@@ -132,7 +132,7 @@ func TestDisableStaleContainerTasks(t *testing.T) {
 			tsk.ExecutionPlatform = task.ExecutionPlatformHost
 			require.NoError(t, tsk.Insert())
 
-			require.NoError(t, DisableStaleContainerTasks(t.Name()))
+			require.NoError(t, DisableStaleContainerTasks(ctx, t.Name()))
 
 			dbTask, err := task.FindOneId(ctx, tsk.Id)
 			require.NoError(t, err)
@@ -178,7 +178,7 @@ func TestDisableOneTask(t *testing.T) {
 
 	for funcName, disable := range map[string]disableFunc{
 		"DisableTasks": func(t *testing.T, tsk task.Task) error {
-			return DisableTasks(t.Name(), tsk)
+			return DisableTasks(ctx, t.Name(), tsk)
 		},
 	} {
 		t.Run(funcName, func(t *testing.T) {
@@ -314,7 +314,7 @@ func TestDisableManyTasks(t *testing.T) {
 			require.NoError(t, et2.Insert())
 			require.NoError(t, et3.Insert())
 
-			require.NoError(t, DisableTasks(t.Name(), et1, et2))
+			require.NoError(t, DisableTasks(ctx, t.Name(), et1, et2))
 
 			dbDisplayTask, err := task.FindOneId(ctx, dt.Id)
 			require.NoError(t, err)
@@ -391,7 +391,7 @@ func TestDisableManyTasks(t *testing.T) {
 			require.NoError(t, et3.Insert())
 			require.NoError(t, et4.Insert())
 
-			require.NoError(t, DisableTasks(t.Name(), et1, et3, dt2))
+			require.NoError(t, DisableTasks(ctx, t.Name(), et1, et3, dt2))
 
 			dbDisplayTask1, err := task.FindOneId(ctx, dt1.Id)
 			require.NoError(t, err)

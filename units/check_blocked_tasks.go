@@ -157,7 +157,7 @@ func checkUnmarkedBlockingTasks(ctx context.Context, t *task.Task, dependencyCac
 	deactivatedBlockingTasks, err := t.GetDeactivatedBlockingDependencies(ctx, dependencyCaches)
 	catcher.Wrap(err, "getting blocked status")
 	if err == nil && len(deactivatedBlockingTasks) > 0 {
-		err = task.DeactivateDependencies(deactivatedBlockingTasks, evergreen.CheckBlockedTasksActivator)
+		err = task.DeactivateDependencies(ctx, deactivatedBlockingTasks, evergreen.CheckBlockedTasksActivator)
 		catcher.Add(err)
 	}
 

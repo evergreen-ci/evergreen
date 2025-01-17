@@ -1672,8 +1672,9 @@ func UpdateOne(ctx context.Context, query interface{}, update interface{}) error
 	)
 }
 
-func UpdateAll(query interface{}, update interface{}) (*adb.ChangeInfo, error) {
-	return db.UpdateAll(
+func UpdateAll(ctx context.Context, query interface{}, update interface{}) (*adb.ChangeInfo, error) {
+	return db.UpdateAllContext(
+		ctx,
 		Collection,
 		query,
 		update,
@@ -2648,8 +2649,9 @@ func FindAllDependencyTasksToModify(tasks []Task, isBlocking, ignoreDependencySt
 	return allTasks, nil
 }
 
-func activateTasks(taskIDs []string, caller string, activationTime time.Time) error {
+func activateTasks(ctx context.Context, taskIDs []string, caller string, activationTime time.Time) error {
 	_, err := UpdateAll(
+		ctx,
 		bson.M{
 			IdKey:        bson.M{"$in": taskIDs},
 			ActivatedKey: false,
@@ -2667,14 +2669,15 @@ func activateTasks(taskIDs []string, caller string, activationTime time.Time) er
 	if err != nil {
 		return errors.Wrap(err, "setting tasks to active")
 	}
-	if err = enableDisabledTasks(taskIDs); err != nil {
+	if err = enableDisabledTasks(ctx, taskIDs); err != nil {
 		return errors.Wrap(err, "enabling disabled tasks")
 	}
 	return nil
 }
 
-func enableDisabledTasks(taskIDs []string) error {
+func enableDisabledTasks(ctx context.Context, taskIDs []string) error {
 	_, err := UpdateAll(
+		ctx,
 		bson.M{
 			IdKey:       bson.M{"$in": taskIDs},
 			PriorityKey: evergreen.DisabledTaskPriority,

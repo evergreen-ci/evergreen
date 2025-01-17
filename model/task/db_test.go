@@ -2082,7 +2082,7 @@ func TestActivateTasksUpdate(t *testing.T) {
 		}
 
 		require.NoError(t, t0.Insert())
-		assert.NoError(t, activateTasks([]string{t0.Id}, caller, activationTime))
+		assert.NoError(t, activateTasks(ctx, []string{t0.Id}, caller, activationTime))
 		dbTask, err := FindOneId(ctx, t0.Id)
 		assert.NoError(t, err)
 		assert.True(t, dbTask.Activated)
@@ -2108,7 +2108,7 @@ func TestActivateTasksUpdate(t *testing.T) {
 
 		require.NoError(t, d.Insert(ctx))
 		require.NoError(t, t0.Insert())
-		assert.NoError(t, activateTasks([]string{t0.Id}, caller, activationTime))
+		assert.NoError(t, activateTasks(ctx, []string{t0.Id}, caller, activationTime))
 
 		tasks, err := FindHostSchedulable(ctx, "d")
 		require.NoError(t, err)

@@ -1279,12 +1279,12 @@ func (t *Task) MarkAsContainerDeallocated(ctx context.Context, env evergreen.Env
 
 // MarkTasksAsContainerDeallocated marks multiple container tasks as no longer
 // allocated containers.
-func MarkTasksAsContainerDeallocated(taskIDs []string) error {
+func MarkTasksAsContainerDeallocated(ctx context.Context, taskIDs []string) error {
 	if len(taskIDs) == 0 {
 		return nil
 	}
 
-	if _, err := UpdateAll(bson.M{
+	if _, err := UpdateAll(ctx, bson.M{
 		IdKey:                bson.M{"$in": taskIDs},
 		ExecutionPlatformKey: ExecutionPlatformContainer,
 	}, containerDeallocatedUpdate()); err != nil {
@@ -1447,20 +1447,21 @@ func SetTasksScheduledAndDepsMetTime(ctx context.Context, tasks []Task, schedule
 	uniqueIDsToSchedule := utility.UniqueStrings(idsToSchedule)
 	uniqueIDsToSetDependenciesMet := utility.UniqueStrings(idsToSetDependenciesMet)
 
-	if err := setScheduledTimeForTasks(uniqueIDsToSchedule, scheduledTime); err != nil {
+	if err := setScheduledTimeForTasks(ctx, uniqueIDsToSchedule, scheduledTime); err != nil {
 		return errors.Wrap(err, "setting scheduled time for tasks")
 	}
-	if err := setDependenciesMetTimeForTasks(uniqueIDsToSetDependenciesMet, scheduledTime); err != nil {
+	if err := setDependenciesMetTimeForTasks(ctx, uniqueIDsToSetDependenciesMet, scheduledTime); err != nil {
 		return errors.Wrap(err, "setting dependencies met time for tasks")
 	}
 	return nil
 }
 
-func setScheduledTimeForTasks(uniqueIDsToSchedule []string, scheduledTime time.Time) error {
+func setScheduledTimeForTasks(ctx context.Context, uniqueIDsToSchedule []string, scheduledTime time.Time) error {
 	if len(uniqueIDsToSchedule) == 0 {
 		return nil
 	}
 	_, err := UpdateAll(
+		ctx,
 		bson.M{
 			IdKey: bson.M{
 				"$in": uniqueIDsToSchedule,
@@ -1481,11 +1482,12 @@ func setScheduledTimeForTasks(uniqueIDsToSchedule []string, scheduledTime time.T
 	return nil
 }
 
-func setDependenciesMetTimeForTasks(uniqueIDsToSetDependenciesMet []string, dependenciesMetTime time.Time) error {
+func setDependenciesMetTimeForTasks(ctx context.Context, uniqueIDsToSetDependenciesMet []string, dependenciesMetTime time.Time) error {
 	if len(uniqueIDsToSetDependenciesMet) == 0 {
 		return nil
 	}
 	_, err := UpdateAll(
+		ctx,
 		bson.M{
 			IdKey: bson.M{
 				"$in": uniqueIDsToSetDependenciesMet,
@@ -1625,7 +1627,7 @@ func DeactivateStepbackTask(ctx context.Context, projectId, buildVariantName, ta
 		return errors.Errorf("no stepback task '%s' for variant '%s' found", taskName, buildVariantName)
 	}
 
-	if err = DeactivateTasks([]Task{*t}, true, caller); err != nil {
+	if err = DeactivateTasks(ctx, []Task{*t}, true, caller); err != nil {
 		return errors.Wrap(err, "deactivating stepback task")
 	}
 	if t.IsAbortable() {
@@ -1965,7 +1967,7 @@ func (t *Task) HasResults(ctx context.Context) bool {
 }
 
 // ActivateTasks sets all given tasks to active, logs them as activated, and proceeds to activate any dependencies that were deactivated.
-func ActivateTasks(tasks []Task, activationTime time.Time, updateDependencies bool, caller string) error {
+func ActivateTasks(ctx context.Context, tasks []Task, activationTime time.Time, updateDependencies bool, caller string) error {
 	if len(tasks) == 0 {
 		return nil
 	}
@@ -1994,7 +1996,7 @@ func ActivateTasks(tasks []Task, activationTime time.Time, updateDependencies bo
 	if err = UpdateSchedulingLimit(caller, tasks[0].Requester, numTasksModified, true); err != nil {
 		return err
 	}
-	err = activateTasks(taskIDs, caller, activationTime)
+	err = activateTasks(ctx, taskIDs, caller, activationTime)
 	if err != nil {
 		return errors.Wrap(err, "activating tasks")
 	}
@@ -2009,7 +2011,7 @@ func ActivateTasks(tasks []Task, activationTime time.Time, updateDependencies bo
 	}))
 
 	if len(depTaskIDsToUpdate) > 0 {
-		return activateDeactivatedDependencies(depTasksToUpdate, depTaskIDsToUpdate, caller)
+		return activateDeactivatedDependencies(ctx, depTasksToUpdate, depTaskIDsToUpdate, caller)
 	}
 	return nil
 }
@@ -2051,7 +2053,7 @@ func ActivateTasksByIdsWithDependencies(ctx context.Context, ids []string, calle
 		return errors.Wrap(err, "getting recursive dependencies")
 	}
 
-	if err = ActivateTasks(append(tasks, dependOn...), time.Now(), true, caller); err != nil {
+	if err = ActivateTasks(ctx, append(tasks, dependOn...), time.Now(), true, caller); err != nil {
 		return errors.Wrap(err, "updating tasks for activation")
 	}
 	return nil
@@ -2141,8 +2143,9 @@ func getDependencyTaskIdsToActivate(tasks []string, updateDependencies bool) (ma
 
 // activateDeactivatedDependencies activates tasks that depend on these tasks which were deactivated because a task
 // they depended on was deactivated. Only activate when all their dependencies are activated or are being activated
-func activateDeactivatedDependencies(tasksToActivate map[string]Task, taskIDsToActivate []string, caller string) error {
+func activateDeactivatedDependencies(ctx context.Context, tasksToActivate map[string]Task, taskIDsToActivate []string, caller string) error {
 	_, err := UpdateAll(
+		ctx,
 		bson.M{IdKey: bson.M{"$in": taskIDsToActivate}},
 		[]bson.M{
 			{
@@ -2225,7 +2228,7 @@ func topologicalSort(tasks []Task) ([]Task, error) {
 	return sortedTasks, nil
 }
 
-func DeactivateTasks(tasks []Task, updateDependencies bool, caller string) error {
+func DeactivateTasks(ctx context.Context, tasks []Task, updateDependencies bool, caller string) error {
 	if len(tasks) == 0 {
 		return nil
 	}
@@ -2259,6 +2262,7 @@ func DeactivateTasks(tasks []Task, updateDependencies bool, caller string) error
 	}
 
 	_, err = UpdateAll(
+		ctx,
 		bson.M{
 			IdKey: bson.M{"$in": taskIDs},
 		},
@@ -2285,7 +2289,7 @@ func DeactivateTasks(tasks []Task, updateDependencies bool, caller string) error
 	}))
 
 	if len(depTaskIDsToUpdate) > 0 {
-		return deactivateDependencies(depTasksToUpdate, depTaskIDsToUpdate, caller)
+		return deactivateDependencies(ctx, depTasksToUpdate, depTaskIDsToUpdate, caller)
 	}
 	return nil
 }
@@ -2310,11 +2314,12 @@ func getDependencyTasksToUpdate(tasks []string, updateDependencies bool) ([]Task
 	return tasksToUpdate, taskIDsToUpdate, nil
 }
 
-func deactivateDependencies(tasksToUpdate []Task, taskIDsToUpdate []string, caller string) error {
+func deactivateDependencies(ctx context.Context, tasksToUpdate []Task, taskIDsToUpdate []string, caller string) error {
 	if len(tasksToUpdate) == 0 {
 		return nil
 	}
 	_, err := UpdateAll(
+		ctx,
 		bson.M{
 			IdKey: bson.M{"$in": taskIDsToUpdate},
 		},
@@ -2343,12 +2348,12 @@ func deactivateDependencies(tasksToUpdate []Task, taskIDsToUpdate []string, call
 
 // DeactivateDependencies gets all tasks that are blocked by the given tasks (this could be 1st level
 // or recursive) and deactivates them. Then it sends out the event logs for the deactivation.
-func DeactivateDependencies(tasks []string, caller string) error {
+func DeactivateDependencies(ctx context.Context, tasks []string, caller string) error {
 	tasksToUpdate, taskIDsToUpdate, err := getDependencyTasksToUpdate(tasks, true)
 	if err != nil {
 		return errors.Wrap(err, "retrieving dependency tasks to deactivate")
 	}
-	return errors.Wrap(deactivateDependencies(tasksToUpdate, taskIDsToUpdate, caller), "marking dependencies deactivated")
+	return errors.Wrap(deactivateDependencies(ctx, tasksToUpdate, taskIDsToUpdate, caller), "marking dependencies deactivated")
 }
 
 // MarkEnd handles the Task updates associated with ending a task. If the task's start time is zero
@@ -2514,7 +2519,7 @@ func (t *Task) Reset(ctx context.Context, caller string) error {
 
 // ResetTasks performs the same DB updates as (*Task).Reset, but resets many
 // tasks instead of a single one.
-func ResetTasks(tasks []Task, caller string) error {
+func ResetTasks(ctx context.Context, tasks []Task, caller string) error {
 	if len(tasks) == 0 {
 		return nil
 	}
@@ -2524,6 +2529,7 @@ func ResetTasks(tasks []Task, caller string) error {
 	}
 
 	if _, err := UpdateAll(
+		ctx,
 		bson.M{
 			IdKey:       bson.M{"$in": taskIDs},
 			StatusKey:   bson.M{"$in": evergreen.TaskCompletedStatuses},
@@ -3003,6 +3009,7 @@ func abortTasksByQuery(ctx context.Context, q bson.M, reason AbortInfo) error {
 		return nil
 	}
 	_, err = UpdateAll(
+		ctx,
 		ByIds(ids),
 		[]bson.M{
 			bson.M{"$set": taskAbortUpdate(reason)},
@@ -4019,7 +4026,7 @@ func AddParentDisplayTasks(tasks []Task) ([]Task, error) {
 
 // UpdateDependsOn appends new dependencies to tasks that already depend on this task
 // if the task does not explicitly omit having generated tasks as dependencies
-func (t *Task) UpdateDependsOn(status string, newDependencyIDs []string) error {
+func (t *Task) UpdateDependsOn(ctx context.Context, status string, newDependencyIDs []string) error {
 	newDependencies := make([]Dependency, 0, len(newDependencyIDs))
 	for _, depID := range newDependencyIDs {
 		if depID == t.Id {
@@ -4038,6 +4045,7 @@ func (t *Task) UpdateDependsOn(status string, newDependencyIDs []string) error {
 	}
 
 	_, err := UpdateAll(
+		ctx,
 		bson.M{
 			DependsOnKey: bson.M{"$elemMatch": bson.M{
 				DependencyTaskIdKey:             t.Id,
@@ -4101,11 +4109,11 @@ func (t *Task) SetNumDependents(ctx context.Context) error {
 	}, update)
 }
 
-func AddDisplayTaskIdToExecTasks(displayTaskId string, execTasksToUpdate []string) error {
+func AddDisplayTaskIdToExecTasks(ctx context.Context, displayTaskId string, execTasksToUpdate []string) error {
 	if len(execTasksToUpdate) == 0 {
 		return nil
 	}
-	_, err := UpdateAll(bson.M{
+	_, err := UpdateAll(ctx, bson.M{
 		IdKey: bson.M{"$in": execTasksToUpdate},
 	},
 		bson.M{"$set": bson.M{

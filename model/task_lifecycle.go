@@ -84,7 +84,7 @@ func SetActiveState(ctx context.Context, caller string, active bool, tasks ...ta
 	}
 
 	if active {
-		if err := task.ActivateTasks(tasksToActivate, time.Now(), true, caller); err != nil {
+		if err := task.ActivateTasks(ctx, tasksToActivate, time.Now(), true, caller); err != nil {
 			return errors.Wrap(err, "activating tasks")
 		}
 		versionIdsToActivate := []string{}
@@ -102,7 +102,7 @@ func SetActiveState(ctx context.Context, caller string, active bool, tasks ...ta
 			return errors.Wrap(err, "marking builds as activated")
 		}
 	} else {
-		if err := task.DeactivateTasks(tasksToActivate, true, caller); err != nil {
+		if err := task.DeactivateTasks(ctx, tasksToActivate, true, caller); err != nil {
 			return errors.Wrap(err, "deactivating task")
 		}
 	}
@@ -133,7 +133,7 @@ func SetActiveStateById(ctx context.Context, id, user string, active bool) error
 	return SetActiveState(ctx, user, active, *t)
 }
 
-func DisableTasks(caller string, tasks ...task.Task) error {
+func DisableTasks(ctx context.Context, caller string, tasks ...task.Task) error {
 	if len(tasks) == 0 {
 		return nil
 	}
@@ -147,7 +147,7 @@ func DisableTasks(caller string, tasks ...task.Task) error {
 		execTaskIDs = append(execTaskIDs, t.ExecutionTasks...)
 	}
 
-	_, err := task.UpdateAll(
+	_, err := task.UpdateAll(ctx,
 		task.ByIds(append(taskIDs, execTaskIDs...)),
 		bson.M{"$set": bson.M{task.PriorityKey: evergreen.DisabledTaskPriority}},
 	)
@@ -166,7 +166,7 @@ func DisableTasks(caller string, tasks ...task.Task) error {
 		event.LogTaskPriority(t.Id, t.Execution, caller, evergreen.DisabledTaskPriority)
 	}
 
-	if err := task.DeactivateTasks(tasks, true, caller); err != nil {
+	if err := task.DeactivateTasks(ctx, tasks, true, caller); err != nil {
 		return errors.Wrap(err, "deactivating dependencies")
 	}
 
@@ -196,7 +196,7 @@ func findMissingTasks(taskIDs []string, tasksPresent map[string]struct{}) ([]tas
 
 // DisableStaleContainerTasks disables all container tasks that have been
 // scheduled to run for a long time without actually dispatching the task.
-func DisableStaleContainerTasks(caller string) error {
+func DisableStaleContainerTasks(ctx context.Context, caller string) error {
 	query := task.ScheduledContainerTasksQuery()
 	query[task.ActivatedTimeKey] = bson.M{"$lte": time.Now().Add(-task.UnschedulableThreshold)}
 
@@ -211,7 +211,7 @@ func DisableStaleContainerTasks(caller string) error {
 		"caller":    caller,
 	})
 
-	if err := DisableTasks(caller, tasks...); err != nil {
+	if err := DisableTasks(ctx, caller, tasks...); err != nil {
 		return errors.Wrap(err, "disabled stale container tasks")
 	}
 
@@ -1844,7 +1844,7 @@ func MarkTasksReset(ctx context.Context, taskIds []string, caller string) error 
 		return errors.WithStack(err)
 	}
 
-	if err = task.ResetTasks(tasks, caller); err != nil {
+	if err = task.ResetTasks(ctx, tasks, caller); err != nil {
 		return errors.Wrap(err, "resetting tasks in database")
 	}
 

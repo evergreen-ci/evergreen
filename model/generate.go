@@ -715,7 +715,7 @@ func (g *GeneratedProject) addDependencies(ctx context.Context, newTaskIds []str
 	defer span.End()
 	statuses := []string{evergreen.TaskSucceeded, task.AllStatuses}
 	for _, status := range statuses {
-		if err := g.Task.UpdateDependsOn(status, newTaskIds); err != nil {
+		if err := g.Task.UpdateDependsOn(ctx, status, newTaskIds); err != nil {
 			return errors.Wrapf(err, "updating tasks depending on '%s'", g.Task.Id)
 		}
 	}

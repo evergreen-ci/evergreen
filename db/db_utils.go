@@ -246,6 +246,34 @@ func UpdateContext(ctx context.Context, collection string, query interface{}, up
 	return db.C(collection).Update(query, update)
 }
 
+func UpdateAllContext(ctx context.Context, collection string, query interface{}, update interface{}) (*db.ChangeInfo, error) {
+	switch query.(type) {
+	case *Q, Q:
+		grip.EmergencyPanic(message.Fields{
+			"message":    "invalid query passed to update all",
+			"cause":      "programmer error",
+			"query":      query,
+			"collection": collection,
+		})
+	case nil:
+		grip.EmergencyPanic(message.Fields{
+			"message":    "nil query passed to update all",
+			"query":      query,
+			"collection": collection,
+		})
+	}
+
+	session, db, err := GetGlobalSessionFactory().GetContextSession(ctx)
+	if err != nil {
+		grip.Errorf("error establishing db connection: %+v", err)
+
+		return nil, err
+	}
+	defer session.Close()
+
+	return db.C(collection).UpdateAll(query, update)
+}
+
 // UpdateId updates one _id-matching document in the collection.
 func UpdateId(collection string, id, update interface{}) error {
 	session, db, err := GetGlobalSessionFactory().GetSession()

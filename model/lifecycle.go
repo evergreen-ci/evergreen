@@ -70,7 +70,7 @@ func SetVersionActivation(ctx context.Context, versionId string, active bool, ca
 			return errors.Wrap(err, "getting tasks to activate")
 		}
 		if len(tasksToModify) > 0 {
-			if err = task.ActivateTasks(tasksToModify, time.Now(), false, caller); err != nil {
+			if err = task.ActivateTasks(ctx, tasksToModify, time.Now(), false, caller); err != nil {
 				return errors.Wrap(err, "updating tasks for activation")
 			}
 		}
@@ -85,7 +85,7 @@ func SetVersionActivation(ctx context.Context, versionId string, active bool, ca
 			return errors.Wrap(err, "getting tasks to deactivate")
 		}
 		if len(tasksToModify) > 0 {
-			if err = task.DeactivateTasks(tasksToModify, false, caller); err != nil {
+			if err = task.DeactivateTasks(ctx, tasksToModify, false, caller); err != nil {
 				return errors.Wrap(err, "deactivating tasks")
 			}
 		}
@@ -153,7 +153,7 @@ func setTaskActivationForBuilds(ctx context.Context, buildIds []string, active, 
 				}
 			}
 		}
-		if err = task.ActivateTasks(tasksToActivate, time.Now(), withDependencies, caller); err != nil {
+		if err = task.ActivateTasks(ctx, tasksToActivate, time.Now(), withDependencies, caller); err != nil {
 			return errors.Wrap(err, "updating tasks for activation")
 		}
 
@@ -171,7 +171,7 @@ func setTaskActivationForBuilds(ctx context.Context, buildIds []string, active, 
 		if err != nil {
 			return errors.Wrap(err, "getting tasks to deactivate")
 		}
-		if err = task.DeactivateTasks(tasks, withDependencies, caller); err != nil {
+		if err = task.DeactivateTasks(ctx, tasks, withDependencies, caller); err != nil {
 			return errors.Wrap(err, "deactivating tasks")
 		}
 	}
@@ -242,7 +242,7 @@ func SetTaskPriority(ctx context.Context, t task.Task, priority int64, caller st
 	for _, taskToUpdate := range tasks {
 		taskIDs = append(taskIDs, taskToUpdate.Id)
 	}
-	_, err = task.UpdateAll(
+	_, err = task.UpdateAll(ctx,
 		bson.M{task.IdKey: bson.M{"$in": taskIDs}},
 		bson.M{"$set": bson.M{task.PriorityKey: priority}},
 	)
@@ -276,7 +276,7 @@ func SetVersionsPriority(ctx context.Context, versionIds []string, priority int6
 }
 
 func setTasksPriority(ctx context.Context, query bson.M, priority int64, caller string) error {
-	_, err := task.UpdateAll(query,
+	_, err := task.UpdateAll(ctx, query,
 		bson.M{"$set": bson.M{task.PriorityKey: priority}},
 	)
 	if err != nil {
@@ -814,7 +814,7 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (ta
 		}
 
 		// update existing exec tasks
-		grip.Error(message.WrapError(task.AddDisplayTaskIdToExecTasks(id, execTasksThatNeedParentId), message.Fields{
+		grip.Error(message.WrapError(task.AddDisplayTaskIdToExecTasks(ctx, id, execTasksThatNeedParentId), message.Fields{
 			"message":              "problem adding display task ID to exec tasks",
 			"exec_tasks_to_update": execTasksThatNeedParentId,
 			"display_task_id":      id,
@@ -1029,7 +1029,7 @@ func RecomputeNumDependents(ctx context.Context, t task.Task) error {
 		taskPtrs = append(taskPtrs, &depTasks[i])
 	}
 	query := task.ByVersion(t.Version)
-	_, err = task.UpdateAll(query, bson.M{"$set": bson.M{task.NumDependentsKey: 0}})
+	_, err = task.UpdateAll(ctx, query, bson.M{"$set": bson.M{task.NumDependentsKey: 0}})
 	if err != nil {
 		return errors.Wrap(err, "resetting num dependents")
 	}
@@ -1664,7 +1664,7 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 		return nil, errors.Wrap(err, "getting dependencies for activated tasks")
 	}
 
-	if err = task.ActivateTasks(activatedTaskDependencies, time.Now(), true, evergreen.User); err != nil {
+	if err = task.ActivateTasks(ctx, activatedTaskDependencies, time.Now(), true, evergreen.User); err != nil {
 		return nil, errors.Wrap(err, "activating dependencies for new tasks")
 	}
 
@@ -1792,7 +1792,7 @@ func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationI
 	if err != nil {
 		return nil, errors.Wrap(err, "getting dependencies for activated tasks")
 	}
-	if err = task.ActivateTasks(activatedTaskDependencies, time.Now(), true, evergreen.User); err != nil {
+	if err = task.ActivateTasks(ctx, activatedTaskDependencies, time.Now(), true, evergreen.User); err != nil {
 		return nil, errors.Wrap(err, "activating existing dependencies for new tasks")
 	}
 

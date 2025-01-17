@@ -2178,18 +2178,18 @@ func TestUpdateDependsOn(t *testing.T) {
 	assert.NoError(t, t2.Insert())
 
 	var err error
-	assert.NoError(t, t1.UpdateDependsOn(evergreen.TaskFailed, []string{"t3", "t4"}))
+	assert.NoError(t, t1.UpdateDependsOn(ctx, evergreen.TaskFailed, []string{"t3", "t4"}))
 	t2, err = FindOneId(ctx, "t2")
 	assert.NoError(t, err)
 	assert.Len(t, t2.DependsOn, 2)
 
-	assert.NoError(t, t1.UpdateDependsOn(evergreen.TaskSucceeded, []string{"t3", "t4"}))
+	assert.NoError(t, t1.UpdateDependsOn(ctx, evergreen.TaskSucceeded, []string{"t3", "t4"}))
 	t2, err = FindOneId(ctx, "t2")
 	assert.NoError(t, err)
 	assert.Len(t, t2.DependsOn, 4)
 
 	t.Run("AddingSelfDependencyShouldNoop", func(t *testing.T) {
-		assert.NoError(t, t1.UpdateDependsOn(evergreen.TaskSucceeded, []string{t1.Id}))
+		assert.NoError(t, t1.UpdateDependsOn(ctx, evergreen.TaskSucceeded, []string{t1.Id}))
 		dbTask1, err := FindOneId(ctx, t1.Id)
 		assert.NoError(t, err)
 		require.NotZero(t, dbTask1)
@@ -2353,6 +2353,9 @@ func TestGetRecursiveDependenciesDown(t *testing.T) {
 }
 
 func TestDeactivateDependencies(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.ClearCollections(Collection, event.EventCollection))
 
 	tasks := []Task{
@@ -2368,7 +2371,7 @@ func TestDeactivateDependencies(t *testing.T) {
 	}
 
 	updatedIDs := []string{"t4", "t5"}
-	err := DeactivateDependencies([]string{"t0"}, "")
+	err := DeactivateDependencies(ctx, []string{"t0"}, "")
 	assert.NoError(t, err)
 
 	dbTasks, err := FindAll(All)
@@ -2390,6 +2393,9 @@ func TestDeactivateDependencies(t *testing.T) {
 }
 
 func TestActivateDeactivatedDependencies(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.ClearCollections(Collection, event.EventCollection))
 
 	tasks := []Task{
@@ -2406,7 +2412,7 @@ func TestActivateDeactivatedDependencies(t *testing.T) {
 	updatedIDs := []string{"t3", "t4"}
 	depTasksToUpdate, depTaskIDsToUpdate, err := getDependencyTaskIdsToActivate([]string{"t0"}, true)
 	require.NoError(t, err)
-	err = activateDeactivatedDependencies(depTasksToUpdate, depTaskIDsToUpdate, "")
+	err = activateDeactivatedDependencies(ctx, depTasksToUpdate, depTaskIDsToUpdate, "")
 	assert.NoError(t, err)
 
 	dbTasks, err := FindAll(All)
@@ -2478,7 +2484,7 @@ func TestActivateTasks(t *testing.T) {
 		}
 
 		updatedIDs := []string{"t0", "t3", "t4"}
-		err := ActivateTasks([]Task{tasks[0]}, time.Time{}, true, u.Id)
+		err := ActivateTasks(ctx, []Task{tasks[0]}, time.Time{}, true, u.Id)
 		assert.NoError(t, err)
 
 		u, err = user.FindOne(user.ById(u.Id))
@@ -2509,7 +2515,7 @@ func TestActivateTasks(t *testing.T) {
 			}
 		}
 
-		err = ActivateTasks([]Task{tasks[1]}, time.Time{}, true, u.Id)
+		err = ActivateTasks(ctx, []Task{tasks[1]}, time.Time{}, true, u.Id)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), fmt.Sprintf("cannot schedule %d tasks, maximum hourly per-user limit is %d", 102, 100))
 	})
@@ -2524,7 +2530,7 @@ func TestActivateTasks(t *testing.T) {
 		}
 		require.NoError(t, task.Insert())
 
-		err := ActivateTasks([]Task{task}, time.Now(), true, "abyssinian")
+		err := ActivateTasks(ctx, []Task{task}, time.Now(), true, "abyssinian")
 		assert.NoError(t, err)
 
 		events, err := event.FindAllByResourceID(task.Id)
@@ -2541,6 +2547,9 @@ func TestActivateTasks(t *testing.T) {
 }
 
 func TestDeactivateTasks(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.ClearCollections(Collection, event.EventCollection))
 
 	tasks := []Task{
@@ -2558,7 +2567,7 @@ func TestDeactivateTasks(t *testing.T) {
 	}
 
 	updatedIDs := []string{"t0", "t4", "t5", "t6", "t7"}
-	err := DeactivateTasks([]Task{tasks[0]}, true, "")
+	err := DeactivateTasks(ctx, []Task{tasks[0]}, true, "")
 	assert.NoError(t, err)
 
 	dbTasks, err := FindAll(All)
@@ -2895,7 +2904,7 @@ func TestMarkTasksAsContainerDeallocated(t *testing.T) {
 				taskIDs = append(taskIDs, tsk.Id)
 			}
 
-			require.NoError(t, MarkTasksAsContainerDeallocated(taskIDs))
+			require.NoError(t, MarkTasksAsContainerDeallocated(ctx, taskIDs))
 			checkTasksUnallocated(t, taskIDs)
 		},
 		"NoopsWithHostTask": func(t *testing.T, tasks []Task) {
@@ -2906,7 +2915,7 @@ func TestMarkTasksAsContainerDeallocated(t *testing.T) {
 				taskIDs = append(taskIDs, tsk.Id)
 			}
 
-			require.NoError(t, MarkTasksAsContainerDeallocated(taskIDs))
+			require.NoError(t, MarkTasksAsContainerDeallocated(ctx, taskIDs))
 			checkTasksUnallocated(t, taskIDs[1:])
 			dbHostTask, err := FindOneId(ctx, tasks[0].Id)
 			require.NoError(t, err)
@@ -2922,7 +2931,7 @@ func TestMarkTasksAsContainerDeallocated(t *testing.T) {
 				taskIDs = append(taskIDs, tsk.Id)
 			}
 
-			require.NoError(t, MarkTasksAsContainerDeallocated(taskIDs))
+			require.NoError(t, MarkTasksAsContainerDeallocated(ctx, taskIDs))
 			checkTasksUnallocated(t, taskIDs)
 		},
 		"DoesNotUpdateNonexistentTask": func(t *testing.T, tasks []Task) {
@@ -2932,7 +2941,7 @@ func TestMarkTasksAsContainerDeallocated(t *testing.T) {
 				taskIDs = append(taskIDs, tsk.Id)
 			}
 
-			require.NoError(t, MarkTasksAsContainerDeallocated(taskIDs))
+			require.NoError(t, MarkTasksAsContainerDeallocated(ctx, taskIDs))
 			checkTasksUnallocated(t, taskIDs[1:])
 
 			dbTask, err := FindOneId(ctx, tasks[0].Id)
@@ -3947,7 +3956,7 @@ func TestAddDisplayTaskIdToExecTasks(t *testing.T) {
 	assert.NoError(t, t2.Insert())
 	assert.NoError(t, t3.Insert())
 
-	assert.NoError(t, AddDisplayTaskIdToExecTasks("dt", []string{t1.Id, t2.Id}))
+	assert.NoError(t, AddDisplayTaskIdToExecTasks(ctx, "dt", []string{t1.Id, t2.Id}))
 
 	var err error
 	t1, err = FindOneId(ctx, t1.Id)
@@ -5325,7 +5334,7 @@ func TestResetTasks(t *testing.T) {
 		}
 		assert.NoError(t, t0.Insert())
 
-		assert.NoError(t, ResetTasks([]Task{t0}, "user"))
+		assert.NoError(t, ResetTasks(ctx, []Task{t0}, "user"))
 		dbTask, err := FindOneId(ctx, t0.Id)
 		assert.NoError(t, err)
 		assert.False(t, dbTask.UnattainableDependency)
@@ -5347,7 +5356,7 @@ func TestResetTasks(t *testing.T) {
 		}
 		assert.NoError(t, t0.Insert())
 
-		assert.NoError(t, ResetTasks([]Task{t0}, ""))
+		assert.NoError(t, ResetTasks(ctx, []Task{t0}, ""))
 		dbTask, err := FindOneId(ctx, t0.Id)
 		assert.NoError(t, err)
 		assert.True(t, dbTask.UnattainableDependency)
@@ -5367,7 +5376,7 @@ func TestResetTasks(t *testing.T) {
 		}
 		assert.NoError(t, t0.Insert())
 
-		assert.NoError(t, ResetTasks([]Task{t0}, ""))
+		assert.NoError(t, ResetTasks(ctx, []Task{t0}, ""))
 		dbTask, err := FindOneId(ctx, t0.Id)
 		assert.NoError(t, err)
 		assert.False(t, dbTask.UnattainableDependency)
