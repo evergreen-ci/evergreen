@@ -985,7 +985,7 @@ func TestAWSAssumeRole(t *testing.T) {
 }
 
 func TestAWSS3(t *testing.T) {
-	route := "/task/%s/aws/s3"
+	route := "/task/%s/aws/s3_credentials"
 	taskID := "taskID"
 	bucket := "bucket"
 
