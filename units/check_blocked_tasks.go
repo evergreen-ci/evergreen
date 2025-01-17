@@ -125,7 +125,7 @@ func (j *checkBlockedTasksJob) getContainerTasksToCheck() []task.Task {
 func checkUnmarkedBlockingTasks(ctx context.Context, t *task.Task, dependencyCaches map[string]task.Task) error {
 	catcher := grip.NewBasicCatcher()
 
-	dependenciesMet, err := t.DependenciesMet(dependencyCaches)
+	dependenciesMet, err := t.DependenciesMet(ctx, dependencyCaches)
 	if err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
 			"message":      "could not check if dependencies met for task",
@@ -154,7 +154,7 @@ func checkUnmarkedBlockingTasks(ctx context.Context, t *task.Task, dependencyCac
 		}
 	}
 
-	deactivatedBlockingTasks, err := t.GetDeactivatedBlockingDependencies(dependencyCaches)
+	deactivatedBlockingTasks, err := t.GetDeactivatedBlockingDependencies(ctx, dependencyCaches)
 	catcher.Wrap(err, "getting blocked status")
 	if err == nil && len(deactivatedBlockingTasks) > 0 {
 		err = task.DeactivateDependencies(deactivatedBlockingTasks, evergreen.CheckBlockedTasksActivator)

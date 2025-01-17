@@ -537,7 +537,6 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 		RegexVariants       []string                   `json:"regex_buildvariants"`
 		RegexTasks          []string                   `json:"regex_tasks"`
 		Finalize            bool                       `json:"finalize"`
-		BackportInfo        patch.BackportInfo         `json:"backport_info"`
 		TriggerAliases      []string                   `json:"trigger_aliases"`
 		Parameters          []patch.Parameter          `json:"parameters"`
 		GitMetadata         patch.GitMetadata          `json:"git_metadata"`
@@ -559,7 +558,6 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 		RegexVariants:       incomingPatch.regexVariants,
 		RegexTasks:          incomingPatch.regexTasks,
 		Finalize:            incomingPatch.finalize,
-		BackportInfo:        incomingPatch.backportOf,
 		TriggerAliases:      incomingPatch.triggerAliases,
 		Parameters:          incomingPatch.parameters,
 		GitMetadata:         incomingPatch.gitMetadata,

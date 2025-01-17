@@ -183,11 +183,11 @@ func TestSetPriority(t *testing.T) {
 	}
 	err := SetVersionsPriority(ctx, []string{"aabbccddeeff001122334455"}, 7, "")
 	assert.NoError(t, err)
-	foundTask, err := task.FindOneId("t1")
+	foundTask, err := task.FindOneId(ctx, "t1")
 	assert.NoError(t, err)
 	assert.Equal(t, int64(7), foundTask.Priority)
 
-	foundTask, err = task.FindOneId("t2")
+	foundTask, err = task.FindOneId(ctx, "t2")
 	assert.NoError(t, err)
 	assert.Equal(t, int64(7), foundTask.Priority)
 }
@@ -1051,7 +1051,7 @@ func TestAbortPatchesWithGithubPatchData(t *testing.T) {
 
 			require.NoError(t, AbortPatchesWithGithubPatchData(ctx, time.Now(), false, "", p.GithubPatchData.BaseOwner, p.GithubPatchData.BaseRepo, p.GithubPatchData.PRNumber))
 
-			dbTask, err := task.FindOneId(tsk.Id)
+			dbTask, err := task.FindOneId(ctx, tsk.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask)
 			assert.True(t, dbTask.Aborted)
@@ -1063,7 +1063,7 @@ func TestAbortPatchesWithGithubPatchData(t *testing.T) {
 
 			require.NoError(t, AbortPatchesWithGithubPatchData(ctx, time.Now().Add(-time.Hour), false, "", p.GithubPatchData.BaseOwner, p.GithubPatchData.BaseRepo, p.GithubPatchData.PRNumber))
 
-			dbTask, err := task.FindOneId(tsk.Id)
+			dbTask, err := task.FindOneId(ctx, tsk.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask)
 			assert.False(t, dbTask.Aborted)

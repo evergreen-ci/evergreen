@@ -658,14 +658,14 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 	assert.NoError(t, tsk.Insert())
 	tsk = task.Task{Id: "t_12", DisplayName: "Task 12", Status: evergreen.TaskWillRun}
 	assert.NoError(t, tsk.Insert())
-	tsk = task.Task{Id: "t_66", DisplayName: "Task 66", Status: evergreen.TaskWillRun}
+	tsk = task.Task{Id: "t_66", DisplayName: "Task 66", Status: evergreen.TaskWillRun, Requester: evergreen.RepotrackerVersionRequester}
 	assert.NoError(t, tsk.Insert())
-	tsk = task.Task{Id: "t_89", DisplayName: "Task 89", Status: evergreen.TaskWillRun}
+	tsk = task.Task{Id: "t_89", DisplayName: "Task 89", Status: evergreen.TaskWillRun, Requester: evergreen.RepotrackerVersionRequester}
 	assert.NoError(t, tsk.Insert())
 	tsk = task.Task{Id: "t_32", DisplayName: "Task 32", DisplayStatusCache: evergreen.TaskSystemTimedOut, Status: evergreen.TaskFailed, Details: apimodels.TaskEndDetail{
 		Type:     evergreen.CommandTypeSystem,
 		TimedOut: true,
-	}}
+	}, Requester: evergreen.RepotrackerVersionRequester}
 	assert.NoError(t, tsk.Insert())
 	tsk = task.Task{Id: "t_54", DisplayName: "Task 54", Status: evergreen.TaskDispatched}
 	assert.NoError(t, tsk.Insert())
@@ -675,9 +675,9 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 	assert.NoError(t, tsk.Insert())
 	tsk = task.Task{Id: "t_235", DisplayName: "Task 235", Status: evergreen.TaskSucceeded}
 	assert.NoError(t, tsk.Insert())
-	tsk = task.Task{Id: "t_995", DisplayName: "Task 995", Status: evergreen.TaskUnscheduled}
+	tsk = task.Task{Id: "t_995", DisplayName: "Task 995", Status: evergreen.TaskUnscheduled, Requester: evergreen.RepotrackerVersionRequester}
 	assert.NoError(t, tsk.Insert())
-	tsk = task.Task{Id: "t_473", DisplayName: "Task 473", Status: evergreen.TaskUnscheduled}
+	tsk = task.Task{Id: "t_473", DisplayName: "Task 473", Status: evergreen.TaskUnscheduled, Requester: evergreen.RepotrackerVersionRequester}
 	assert.NoError(t, tsk.Insert())
 	tsk = task.Task{Id: "t_347", DisplayName: "Task 347", Status: evergreen.TaskUnscheduled}
 	assert.NoError(t, tsk.Insert())
@@ -685,13 +685,13 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 	assert.NoError(t, tsk.Insert())
 	tsk = task.Task{Id: "t_3632", DisplayName: "Task 3632", Status: evergreen.TaskUnscheduled}
 	assert.NoError(t, tsk.Insert())
-	tsk = task.Task{Id: "t_537", DisplayName: "Task 537", Status: evergreen.TaskUnscheduled}
+	tsk = task.Task{Id: "t_537", DisplayName: "Task 537", Status: evergreen.TaskUnscheduled, Requester: evergreen.RepotrackerVersionRequester}
 	assert.NoError(t, tsk.Insert())
-	tsk = task.Task{Id: "t_737", DisplayName: "Task 737", Status: evergreen.TaskUnscheduled}
+	tsk = task.Task{Id: "t_737", DisplayName: "Task 737", Status: evergreen.TaskUnscheduled, Requester: evergreen.RepotrackerVersionRequester}
 	assert.NoError(t, tsk.Insert())
-	tsk = task.Task{Id: "t_135", DisplayName: "Task 135", Status: evergreen.TaskUnscheduled}
+	tsk = task.Task{Id: "t_135", DisplayName: "Task 135", Status: evergreen.TaskUnscheduled, Requester: evergreen.RepotrackerVersionRequester}
 	assert.NoError(t, tsk.Insert())
-	tsk = task.Task{Id: "t_1", DisplayName: "Task 1", Status: evergreen.TaskUnscheduled}
+	tsk = task.Task{Id: "t_1", DisplayName: "Task 1", Status: evergreen.TaskUnscheduled, Requester: evergreen.RepotrackerVersionRequester}
 	assert.NoError(t, tsk.Insert())
 	tsk = task.Task{Id: "t_92", DisplayName: "Task 92", Status: evergreen.TaskSucceeded}
 	assert.NoError(t, tsk.Insert())
@@ -711,9 +711,9 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 	assert.NoError(t, tsk.Insert())
 	tsk = task.Task{Id: "t_8423", DisplayName: "Task 8423", Status: evergreen.TaskSucceeded}
 	assert.NoError(t, tsk.Insert())
-	tsk = task.Task{Id: "t_8648", DisplayName: "Task 8648", Status: evergreen.TaskSucceeded}
+	tsk = task.Task{Id: "t_8648", DisplayName: "Task 8648", Status: evergreen.TaskSucceeded, Requester: evergreen.RepotrackerVersionRequester}
 	assert.NoError(t, tsk.Insert())
-	tsk = task.Task{Id: "t_845", DisplayName: "Task 845", Status: evergreen.TaskSucceeded}
+	tsk = task.Task{Id: "t_845", DisplayName: "Task 845", Status: evergreen.TaskSucceeded, Requester: evergreen.RepotrackerVersionRequester}
 	assert.NoError(t, tsk.Insert())
 	tsk = task.Task{Id: "t_4834", DisplayName: "Task 4834", Status: evergreen.TaskSucceeded}
 	assert.NoError(t, tsk.Insert())
@@ -777,7 +777,7 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 	assert.Len(t, buildVariants[0].Builds[3].Tasks, 2)
 }
 
-func TestGetNextRecentActiveWaterfallVersion(t *testing.T) {
+func TestGetNewerActiveWaterfallVersion(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -789,12 +789,22 @@ func TestGetNextRecentActiveWaterfallVersion(t *testing.T) {
 	}
 	assert.NoError(t, p.Insert())
 
+	// Versions are ordered from new to old.
 	v := Version{
+		Id:                  "v_0",
+		Identifier:          "a_project",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		RevisionOrderNumber: 11,
+		CreateTime:          start,
+		Activated:           utility.TruePtr(),
+	}
+	assert.NoError(t, v.Insert())
+	v = Version{
 		Id:                  "v_1",
 		Identifier:          "a_project",
 		Requester:           evergreen.RepotrackerVersionRequester,
 		RevisionOrderNumber: 10,
-		CreateTime:          start,
+		CreateTime:          start.Add(-2 * time.Minute),
 		Activated:           utility.TruePtr(),
 	}
 	assert.NoError(t, v.Insert())
@@ -826,8 +836,73 @@ func TestGetNextRecentActiveWaterfallVersion(t *testing.T) {
 	}
 	assert.NoError(t, v.Insert())
 
-	version, err := GetNextRecentActiveWaterfallVersion(ctx, p.Id, 7)
+	version, err := GetNewerActiveWaterfallVersion(ctx, p.Id, v)
 	assert.NoError(t, err)
 	require.NotNil(t, version)
 	assert.Equal(t, "v_1", version.Id)
+}
+
+func TestGetOlderActiveWaterfallVersion(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	assert.NoError(t, db.ClearCollections(VersionCollection, ProjectRefCollection))
+	start := time.Now()
+	p := ProjectRef{
+		Id:         "a_project",
+		Identifier: "a_project_identifier",
+	}
+	assert.NoError(t, p.Insert())
+
+	// Versions are ordered from old to new.
+	v := Version{
+		Id:                  "v_5",
+		Identifier:          "a_project",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		RevisionOrderNumber: 6,
+		CreateTime:          start,
+		Activated:           utility.TruePtr(),
+	}
+	assert.NoError(t, v.Insert())
+	v = Version{
+		Id:                  "v_4",
+		Identifier:          "a_project",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		RevisionOrderNumber: 7,
+		CreateTime:          start.Add(2 * time.Minute),
+		Activated:           utility.TruePtr(),
+	}
+	assert.NoError(t, v.Insert())
+	v = Version{
+		Id:                  "v_3",
+		Identifier:          "a_project",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		RevisionOrderNumber: 8,
+		CreateTime:          start.Add(2 * time.Minute),
+		Activated:           utility.FalsePtr(),
+	}
+	assert.NoError(t, v.Insert())
+	v = Version{
+		Id:                  "v_2",
+		Identifier:          "a_project",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		RevisionOrderNumber: 9,
+		CreateTime:          start.Add(2 * time.Minute),
+		Activated:           utility.FalsePtr(),
+	}
+	assert.NoError(t, v.Insert())
+	v = Version{
+		Id:                  "v_1",
+		Identifier:          "a_project",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		RevisionOrderNumber: 10,
+		CreateTime:          start.Add(2 * time.Minute),
+		Activated:           utility.TruePtr(),
+	}
+	assert.NoError(t, v.Insert())
+
+	version, err := GetOlderActiveWaterfallVersion(ctx, p.Id, v)
+	assert.NoError(t, err)
+	require.NotNil(t, version)
+	assert.Equal(t, "v_4", version.Id)
 }

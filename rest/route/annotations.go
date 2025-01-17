@@ -229,7 +229,7 @@ func (h *annotationByTaskGetHandler) Run(ctx context.Context) gimlet.Responder {
 // PUT /rest/v2/tasks/{task_id}/annotation
 
 // Parsing logic for task annotation put and patch routes.
-func annotationByTaskPutOrPatchParser(_ context.Context, r *http.Request) (string, *restModel.APITaskAnnotation, error) {
+func annotationByTaskPutOrPatchParser(ctx context.Context, r *http.Request) (string, *restModel.APITaskAnnotation, error) {
 	var taskId string
 	var annotation *restModel.APITaskAnnotation
 	var err error
@@ -265,7 +265,7 @@ func annotationByTaskPutOrPatchParser(_ context.Context, r *http.Request) (strin
 	}
 
 	// check if the task exists
-	t, err := task.FindByIdExecution(taskId, annotation.TaskExecution)
+	t, err := task.FindByIdExecution(ctx, taskId, annotation.TaskExecution)
 	if err != nil {
 		return "", nil, errors.Wrap(err, "finding task")
 	}
@@ -456,7 +456,7 @@ func (h *createdTicketByTaskPutHandler) Parse(ctx context.Context, r *http.Reque
 	}
 	h.execution = execution
 
-	t, err := task.FindOneId(h.taskId)
+	t, err := task.FindOneId(ctx, h.taskId)
 	if err != nil {
 		return errors.Wrapf(err, "finding task '%s'", h.taskId)
 	}

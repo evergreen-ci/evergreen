@@ -66,7 +66,7 @@ func TestPodAllocatorJob(t *testing.T) {
 
 			require.NoError(t, j.Error())
 
-			dbTask, err := task.FindOneId(tsk.Id)
+			dbTask, err := task.FindOneId(ctx, tsk.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask)
 			assert.True(t, dbTask.ContainerAllocated)
@@ -117,7 +117,7 @@ func TestPodAllocatorJob(t *testing.T) {
 
 			require.NoError(t, j.Error())
 
-			dbTask, err := task.FindOneId(tsk.Id)
+			dbTask, err := task.FindOneId(ctx, tsk.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask)
 			assert.True(t, dbTask.ContainerAllocated)
@@ -158,7 +158,7 @@ func TestPodAllocatorJob(t *testing.T) {
 			require.Error(t, j.Error())
 			assert.True(t, j.RetryInfo().ShouldRetry())
 
-			dbTask, err := task.FindOneId(tsk.Id)
+			dbTask, err := task.FindOneId(ctx, tsk.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask)
 			assert.False(t, dbTask.ContainerAllocated)
@@ -184,7 +184,7 @@ func TestPodAllocatorJob(t *testing.T) {
 			require.NoError(t, j.Error())
 			assert.False(t, j.RetryInfo().ShouldRetry())
 
-			dbTask, err := task.FindOneId(tsk.Id)
+			dbTask, err := task.FindOneId(ctx, tsk.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask)
 			assert.False(t, dbTask.ContainerAllocated)
@@ -214,7 +214,7 @@ func TestPodAllocatorJob(t *testing.T) {
 			j.Run(ctx)
 			assert.True(t, j.RetryInfo().ShouldRetry())
 
-			dbTask, err := task.FindOneId(tsk.Id)
+			dbTask, err := task.FindOneId(ctx, tsk.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask)
 			assert.False(t, dbTask.ContainerAllocated)
@@ -235,7 +235,7 @@ func TestPodAllocatorJob(t *testing.T) {
 			j.Run(ctx)
 			assert.True(t, j.RetryInfo().ShouldRetry())
 
-			dbTask, err := task.FindOneId(tsk.Id)
+			dbTask, err := task.FindOneId(ctx, tsk.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask)
 			assert.False(t, dbTask.ContainerAllocated)
@@ -249,7 +249,7 @@ func TestPodAllocatorJob(t *testing.T) {
 
 			require.NoError(t, j.Error())
 
-			dbTask, err := task.FindOneId(tsk.Id)
+			dbTask, err := task.FindOneId(ctx, tsk.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask)
 			assert.False(t, dbTask.ContainerAllocated)
@@ -373,7 +373,7 @@ func TestPopulatePodAllocatorJobs(t *testing.T) {
 			require.NoError(t, env.Remote.PutMany(ctx, jobs))
 			assert.Zero(t, env.Remote.Stats(ctx))
 
-			dbTask, err := task.FindOneId(staleNeedsAllocation.Id)
+			dbTask, err := task.FindOneId(ctx, staleNeedsAllocation.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask)
 			assert.False(t, dbTask.ShouldAllocateContainer())

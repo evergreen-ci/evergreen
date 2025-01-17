@@ -130,11 +130,11 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 
 			checkTaskRestarted(t, j.task.Id, 0, evergreen.TaskDescriptionHeartbeat)
 
-			dbOtherTask, err := task.FindOneId(otherTask.Id)
+			dbOtherTask, err := task.FindOneId(ctx, otherTask.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbOtherTask)
 			assert.Equal(t, evergreen.TaskUndispatched, dbOtherTask.Status)
-			depsMet, err := dbOtherTask.DependenciesMet(map[string]task.Task{})
+			depsMet, err := dbOtherTask.DependenciesMet(ctx, map[string]task.Task{})
 			require.NoError(t, err)
 			assert.False(t, depsMet, "single host task group task should depend on first task succeeding")
 		},
@@ -229,7 +229,7 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 			checkTaskRestarted(t, j.task.Id, 0, evergreen.TaskDescriptionHeartbeat)
 
 			for _, taskID := range []string{et0.Id, et1.Id, j.task.Id} {
-				dbTask, err := task.FindOneId(taskID)
+				dbTask, err := task.FindOneId(ctx, taskID)
 				require.NoError(t, err)
 				assert.Equal(t, evergreen.TaskUndispatched, dbTask.Status, "execution task '%s' should be reset", dbTask.Id)
 			}

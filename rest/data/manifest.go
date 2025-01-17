@@ -1,6 +1,7 @@
 package data
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
@@ -11,8 +12,8 @@ import (
 )
 
 // GetManifestByTask finds the version manifest corresponding to the given task.
-func GetManifestByTask(taskId string) (*manifest.Manifest, error) {
-	t, err := task.FindOneId(taskId)
+func GetManifestByTask(ctx context.Context, taskId string) (*manifest.Manifest, error) {
+	t, err := task.FindOneId(ctx, taskId)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding task '%s'", t)
 	}

@@ -263,8 +263,6 @@ type APICommitQueueParams struct {
 	Enabled *bool `json:"enabled"`
 	// Method of merging (squash, merge, or rebase).
 	MergeMethod *string `json:"merge_method"`
-	// Merge queue to use (EVERGREEN or GITHUB).
-	MergeQueue model.MergeQueue `json:"merge_queue"`
 	// Message to display when users interact with the commit queue.
 	Message *string `json:"message"`
 }
@@ -273,11 +271,6 @@ func (cqParams *APICommitQueueParams) BuildFromService(params model.CommitQueueP
 	cqParams.Enabled = utility.BoolPtrCopy(params.Enabled)
 	cqParams.MergeMethod = utility.ToStringPtr(params.MergeMethod)
 	cqParams.Message = utility.ToStringPtr(params.Message)
-
-	if params.MergeQueue == "" {
-		params.MergeQueue = model.MergeQueueGitHub
-	}
-	cqParams.MergeQueue = params.MergeQueue
 }
 
 func (cqParams *APICommitQueueParams) ToService() model.CommitQueueParams {
@@ -285,11 +278,6 @@ func (cqParams *APICommitQueueParams) ToService() model.CommitQueueParams {
 	serviceParams.Enabled = utility.BoolPtrCopy(cqParams.Enabled)
 	serviceParams.MergeMethod = utility.FromStringPtr(cqParams.MergeMethod)
 	serviceParams.Message = utility.FromStringPtr(cqParams.Message)
-
-	if cqParams.MergeQueue == "" {
-		cqParams.MergeQueue = model.MergeQueueGitHub
-	}
-	serviceParams.MergeQueue = cqParams.MergeQueue
 
 	return serviceParams
 }

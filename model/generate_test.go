@@ -693,7 +693,7 @@ func (s *GenerateSuite) TestSaveWithMaxTasksPerVersion() {
 
 	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
 
-	generatorTask, err := task.FindOneId(tasksThatExist[0].Id)
+	generatorTask, err := task.FindOneId(ctx, tasksThatExist[0].Id)
 	s.NoError(err)
 	s.Require().NotNil(generatorTask)
 	s.Equal(4, generatorTask.NumGeneratedTasks)
@@ -1158,6 +1158,9 @@ func (s *GenerateSuite) TestSaveWithAlreadyGeneratedTasksAndVariants() {
 }
 
 func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	tasksThatExist := []task.Task{
 		{
 			Id:      "task_that_called_generate_task",
@@ -1243,7 +1246,7 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
 		s.True(expect, "%s should be a dependency but wasn't", taskID)
 	}
 
-	generatorTask, err := task.FindOneId(tasksThatExist[0].Id)
+	generatorTask, err := task.FindOneId(ctx, tasksThatExist[0].Id)
 	s.NoError(err)
 	s.Require().NotNil(generatorTask)
 	s.Equal(1, generatorTask.NumActivatedGeneratedTasks)
@@ -2446,6 +2449,9 @@ func TestFilterInactiveTasks(t *testing.T) {
 }
 
 func TestAddDependencies(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.Clear(task.Collection))
 
 	existingTasks := []task.Task{
@@ -2459,14 +2465,14 @@ func TestAddDependencies(t *testing.T) {
 	g := GeneratedProject{Task: &task.Task{Id: "generator"}}
 	assert.NoError(t, g.addDependencies(context.Background(), []string{"t3"}))
 
-	t1, err := task.FindOneId("t1")
+	t1, err := task.FindOneId(ctx, "t1")
 	assert.NoError(t, err)
 	assert.Len(t, t1.DependsOn, 2)
 	for _, dep := range t1.DependsOn {
 		assert.Equal(t, evergreen.TaskSucceeded, dep.Status)
 	}
 
-	t2, err := task.FindOneId("t2")
+	t2, err := task.FindOneId(ctx, "t2")
 	assert.NoError(t, err)
 	assert.Len(t, t2.DependsOn, 2)
 	for _, dep := range t2.DependsOn {

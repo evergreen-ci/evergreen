@@ -494,7 +494,7 @@ Notes:
     or variant more than once in the JSON document passed to the command _except_
     to specify a variant multiple times in order to append additional tasks to the variant.
 -   Generated task's [tags](Project-Configuration-Files#task-and-variant-tags) will not be
-    re-evaluate when added and retroactivately activated in accordance with the variant's tags.
+    re-evaluated when added or retroactively activated in accordance with the variant's tags.
 -   The calls to generate.tasks may not in aggregate in a single version
     generate more than 100 variants or more than 1000 tasks.
 -   Because generate.tasks retries on errors that aren't known to us,
@@ -503,6 +503,9 @@ Notes:
     if you aren't sure what to do with a hanging generate.tasks.
 -   If generate.tasks produces many errors, you may not be able to see the full
     error output.
+-   generate.tasks is idempotent across task restarts. In other words, once
+    generate.tasks succeeds once, later task restarts will cause generate.tasks
+    to no-op rather than generate duplicate configuration.
 
 ``` yaml
 - command: generate.tasks

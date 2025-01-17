@@ -208,7 +208,7 @@ func TestMarkTaskForReset(t *testing.T) {
 			require.NotZero(t, resp)
 			assert.Equal(t, http.StatusOK, resp.Status())
 
-			foundTask, err := task.FindOneId("t2")
+			foundTask, err := task.FindOneId(ctx, "t2")
 			require.NoError(t, err)
 			require.NotNil(t, foundTask)
 			assert.True(t, foundTask.ResetWhenFinished)
@@ -225,7 +225,7 @@ func TestMarkTaskForReset(t *testing.T) {
 			require.NotZero(t, resp)
 			assert.Equal(t, http.StatusBadRequest, resp.Status())
 
-			foundTask, err = task.FindOneId("t2")
+			foundTask, err = task.FindOneId(ctx, "t2")
 			require.NoError(t, err)
 			require.NotNil(t, foundTask)
 			assert.False(t, foundTask.ResetWhenFinished)
@@ -239,7 +239,7 @@ func TestMarkTaskForReset(t *testing.T) {
 			require.NotZero(t, resp)
 			assert.Equal(t, http.StatusOK, resp.Status())
 
-			foundTask, err := task.FindOneId("dt")
+			foundTask, err := task.FindOneId(ctx, "dt")
 			require.NoError(t, err)
 			require.NotNil(t, foundTask)
 			assert.True(t, foundTask.ResetWhenFinished)
@@ -253,7 +253,7 @@ func TestMarkTaskForReset(t *testing.T) {
 			require.NotZero(t, resp)
 			assert.Equal(t, http.StatusOK, resp.Status())
 
-			foundTask, err = task.FindOneId("dt")
+			foundTask, err = task.FindOneId(ctx, "dt")
 			require.NoError(t, err)
 			require.NotNil(t, foundTask)
 			assert.True(t, foundTask.ResetWhenFinished)
@@ -267,7 +267,7 @@ func TestMarkTaskForReset(t *testing.T) {
 			require.NotZero(t, resp)
 			assert.Equal(t, http.StatusOK, resp.Status())
 
-			foundTask, err := task.FindOneId("t2")
+			foundTask, err := task.FindOneId(ctx, "t2")
 			require.NoError(t, err)
 			require.NotNil(t, foundTask)
 			assert.True(t, foundTask.ResetWhenFinished)
@@ -294,7 +294,7 @@ func TestMarkTaskForReset(t *testing.T) {
 			require.NotZero(t, resp)
 			assert.Equal(t, http.StatusOK, resp.Status())
 
-			foundTask, err = task.FindOneId("t4")
+			foundTask, err = task.FindOneId(ctx, "t4")
 			require.NoError(t, err)
 			require.NotNil(t, foundTask)
 			assert.True(t, foundTask.ResetWhenFinished)

@@ -180,6 +180,13 @@ func GetWaterfallBuildVariants(ctx context.Context, versionIds []string) ([]Wate
 		"foreignField": task.IdKey,
 		"pipeline": []bson.M{
 			{
+				"$match": bson.M{
+					task.RequesterKey: bson.M{
+						"$in": evergreen.SystemVersionRequesterTypes,
+					},
+				},
+			},
+			{
 				"$sort": bson.M{task.IdKey: 1},
 			},
 			// The following projection should exactly match the index on the tasks collection in order to function as a covered query
@@ -232,22 +239,57 @@ func GetWaterfallBuildVariants(ctx context.Context, versionIds []string) ([]Wate
 	return res, nil
 }
 
-// GetNextRecentActiveWaterfallVersion returns the next recent active version on the waterfall, i.e. a newer
-// activated version than the version with the given minOrder.
-func GetNextRecentActiveWaterfallVersion(ctx context.Context, projectId string, minOrder int) (*Version, error) {
+// GetNewerActiveWaterfallVersion returns the next newer active version on the waterfall, i.e. a more
+// recent activated version than the current version.
+func GetNewerActiveWaterfallVersion(ctx context.Context, projectId string, version Version) (*Version, error) {
 	match := bson.M{
 		VersionIdentifierKey: projectId,
 		VersionRequesterKey: bson.M{
 			"$in": evergreen.SystemVersionRequesterTypes,
 		},
 		VersionRevisionOrderNumberKey: bson.M{
-			"$gt": minOrder,
+			"$gt": version.RevisionOrderNumber,
 		},
 		VersionActivatedKey: true,
 	}
 	pipeline := []bson.M{
 		{"$match": match},
 		{"$sort": bson.M{VersionRevisionOrderNumberKey: 1}},
+		{"$limit": 1},
+	}
+
+	res := []Version{}
+	env := evergreen.GetEnvironment()
+	cursor, err := env.DB().Collection(VersionCollection).Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, errors.Wrap(err, "aggregating versions")
+	}
+	err = cursor.All(ctx, &res)
+	if err != nil {
+		return nil, err
+	}
+	if len(res) == 0 {
+		return nil, nil
+	}
+	return &res[0], nil
+}
+
+// GetOlderActiveWaterfallVersion returns the next older active version on the waterfall, i.e. an older
+// activated version than the current version.
+func GetOlderActiveWaterfallVersion(ctx context.Context, projectId string, version Version) (*Version, error) {
+	match := bson.M{
+		VersionIdentifierKey: projectId,
+		VersionRequesterKey: bson.M{
+			"$in": evergreen.SystemVersionRequesterTypes,
+		},
+		VersionRevisionOrderNumberKey: bson.M{
+			"$lt": version.RevisionOrderNumber,
+		},
+		VersionActivatedKey: true,
+	}
+	pipeline := []bson.M{
+		{"$match": match},
+		{"$sort": bson.M{VersionRevisionOrderNumberKey: -1}},
 		{"$limit": 1},
 	}
 

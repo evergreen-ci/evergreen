@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
@@ -25,11 +26,11 @@ const (
 // ValidateTask ensures that a task ID is set and corresponds to a task in the
 // database. If checkSecret is true, it also validates the task's secret. It
 // returns a task, http status code, and error.
-func ValidateTask(taskId string, checkSecret bool, r *http.Request) (*task.Task, int, error) {
+func ValidateTask(ctx context.Context, taskId string, checkSecret bool, r *http.Request) (*task.Task, int, error) {
 	if taskId == "" {
 		return nil, http.StatusBadRequest, errors.New("missing task ID")
 	}
-	t, err := task.FindOneId(taskId)
+	t, err := task.FindOneId(ctx, taskId)
 	if err != nil {
 		return nil, http.StatusInternalServerError, err
 	}

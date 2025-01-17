@@ -33,11 +33,11 @@ var (
 
 	// ClientVersion is the commandline version string used to control updating
 	// the CLI. The format is the calendar date (YYYY-MM-DD).
-	ClientVersion = "2025-01-09"
+	ClientVersion = "2025-01-16"
 
 	// Agent version to control agent rollover. The format is the calendar date
 	// (YYYY-MM-DD).
-	AgentVersion = "2025-01-14"
+	AgentVersion = "2025-01-17"
 )
 
 const (
@@ -91,6 +91,7 @@ type Settings struct {
 	LogPath             string                    `yaml:"log_path" bson:"log_path" json:"log_path"`
 	NewRelic            NewRelicConfig            `yaml:"newrelic" bson:"newrelic" json:"newrelic" id:"newrelic"`
 	Notify              NotifyConfig              `yaml:"notify" bson:"notify" json:"notify" id:"notify"`
+	Overrides           OverridesConfig           `yaml:"overrides" bson:"overrides" json:"overrides" id:"overrides"`
 	ParameterStore      ParameterStoreConfig      `yaml:"parameter_store" bson:"parameter_store" json:"parameter_store" id:"parameter_store"`
 	Plugins             PluginConfig              `yaml:"plugins" bson:"plugins" json:"plugins"`
 	PluginsNew          util.KeyValuePairSlice    `yaml:"plugins_new" bson:"plugins_new" json:"plugins_new"`
@@ -253,18 +254,18 @@ func NewSettings(filename string) (*Settings, error) {
 	return settings, nil
 }
 
-// GetConfig returns the complete Evergreen configuration which is comprised of the shared
-// configuration from the config database with overrides from the local [ConfigCollection]
-// collection. Use [GetSharedConfig] to get a configuration that reflects only the shared
-// configuration.
+// GetConfig returns the complete Evergreen configuration with overrides applied from
+// the [ConfigCollection] collection in the [DB] database. Use [GetRawConfig] to get
+// a configuration that doesn't reflect overrides.
 func GetConfig(ctx context.Context) (*Settings, error) {
 	return getSettings(ctx, true)
 }
 
-// GetSharedConfig returns only the Evergreen configuration which is shared among all instances
-// reading from a single shared database. Use [GetConfig] to get a complete configuration that
-// includes overrides from the local database.
-func GetSharedConfig(ctx context.Context) (*Settings, error) {
+// GetRawConfig returns only the raw Evergreen configuration without applying overrides. Use
+// [GetConfig] to get a complete configuration that includes overrides from the [DB] database.
+// If there is no [SharedDB] there are no overrides and [GetConfig] and [GetRawConfig] are
+// functionally equivalent.
+func GetRawConfig(ctx context.Context) (*Settings, error) {
 	return getSettings(ctx, false)
 }
 

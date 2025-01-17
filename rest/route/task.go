@@ -82,7 +82,7 @@ func (tgh *taskGetHandler) Run(ctx context.Context) gimlet.Responder {
 	var foundTask *task.Task
 	var err error
 	if tgh.execution == -1 {
-		foundTask, err = task.FindOneId(tgh.taskID)
+		foundTask, err = task.FindOneId(ctx, tgh.taskID)
 	} else {
 		foundTask, err = task.FindOneIdAndExecution(tgh.taskID, tgh.execution)
 	}
@@ -213,7 +213,7 @@ func (tep *taskExecutionPatchHandler) Run(ctx context.Context) gimlet.Responder 
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "setting activation state for task '%s'", tep.task.Id))
 		}
 	}
-	refreshedTask, err := task.FindOneId(tep.task.Id)
+	refreshedTask, err := task.FindOneId(ctx, tep.task.Id)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", tep.task.Id))
 	}
@@ -258,7 +258,7 @@ func (rh *displayTaskGetHandler) Parse(ctx context.Context, r *http.Request) err
 }
 
 func (rh *displayTaskGetHandler) Run(ctx context.Context) gimlet.Responder {
-	t, err := task.FindOneId(rh.taskID)
+	t, err := task.FindOneId(ctx, rh.taskID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", rh.taskID))
 	}

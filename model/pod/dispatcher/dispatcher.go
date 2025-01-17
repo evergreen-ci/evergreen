@@ -110,7 +110,7 @@ func (pd *PodDispatcher) AssignNextTask(ctx context.Context, env evergreen.Envir
 
 	for len(pd.TaskIDs) > 0 {
 		taskID := pd.TaskIDs[0]
-		t, err := task.FindOneId(taskID)
+		t, err := task.FindOneId(ctx, taskID)
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding task '%s'", taskID)
 		}

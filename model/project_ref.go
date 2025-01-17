@@ -204,7 +204,7 @@ func (p *ProjectRef) GetGitHubPermissionGroup(requester string) (GitHubDynamicTo
 // GetGitHubAppAuth returns the App auth for the given project.
 // If the project defaults to the repo and the app is not defined on the project, it will return the app from the repo.
 func (p *ProjectRef) GetGitHubAppAuth() (*githubapp.GithubAppAuth, error) {
-	appAuth, err := GitHubAppAuthFindOne(p.Id)
+	appAuth, err := githubapp.FindOneGitHubAppAuth(p.Id)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding GitHub app auth")
 	}
@@ -214,7 +214,7 @@ func (p *ProjectRef) GetGitHubAppAuth() (*githubapp.GithubAppAuth, error) {
 	if !p.UseRepoSettings() {
 		return nil, nil
 	}
-	appAuth, err = GitHubAppAuthFindOne(p.RepoRefId)
+	appAuth, err = githubapp.FindOneGitHubAppAuth(p.RepoRefId)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding GitHub app auth")
 	}
@@ -351,17 +351,10 @@ type ExternalLink struct {
 	URLTemplate string   `bson:"url_template,omitempty" json:"url_template,omitempty" yaml:"url_template,omitempty"`
 }
 
-type MergeQueue string
-
-const (
-	MergeQueueGitHub MergeQueue = "GITHUB"
-)
-
 type CommitQueueParams struct {
-	Enabled     *bool      `bson:"enabled" json:"enabled" yaml:"enabled"`
-	MergeMethod string     `bson:"merge_method" json:"merge_method" yaml:"merge_method"`
-	MergeQueue  MergeQueue `bson:"merge_queue" json:"merge_queue" yaml:"merge_queue"`
-	Message     string     `bson:"message,omitempty" json:"message,omitempty" yaml:"message"`
+	Enabled     *bool  `bson:"enabled" json:"enabled" yaml:"enabled"`
+	MergeMethod string `bson:"merge_method" json:"merge_method" yaml:"merge_method"`
+	Message     string `bson:"message,omitempty" json:"message,omitempty" yaml:"message"`
 }
 
 // RepositoryErrorDetails indicates whether or not there is an invalid revision and if there is one,
@@ -766,12 +759,12 @@ func (p *ProjectRef) MergeWithProjectConfig(version string) (err error) {
 // are empty, the entry is deleted.
 func (p *ProjectRef) SetGithubAppCredentials(appID int64, privateKey []byte) error {
 	if appID == 0 && len(privateKey) == 0 {
-		ghApp, err := GitHubAppAuthFindOne(p.Id)
+		ghApp, err := githubapp.FindOneGitHubAppAuth(p.Id)
 		if err != nil {
 			return errors.Wrap(err, "finding GitHub app auth")
 		}
 		if ghApp != nil {
-			return GitHubAppAuthRemove(ghApp)
+			return githubapp.RemoveGitHubAppAuth(ghApp)
 		}
 	}
 
@@ -783,7 +776,7 @@ func (p *ProjectRef) SetGithubAppCredentials(appID int64, privateKey []byte) err
 		AppID:      appID,
 		PrivateKey: privateKey,
 	}
-	return GitHubAppAuthUpsert(&auth)
+	return githubapp.UpsertGitHubAppAuth(&auth)
 }
 
 // DefaultGithubAppCredentialsToRepo defaults the app credentials to the repo by
@@ -794,12 +787,12 @@ func DefaultGithubAppCredentialsToRepo(projectId string) error {
 		return errors.Wrap(err, "finding project ref")
 	}
 
-	ghApp, err := GitHubAppAuthFindOne(p.Id)
+	ghApp, err := githubapp.FindOneGitHubAppAuth(p.Id)
 	if err != nil {
 		return errors.Wrap(err, "finding GitHub app auth")
 	}
 	if ghApp != nil {
-		return GitHubAppAuthRemove(ghApp)
+		return githubapp.RemoveGitHubAppAuth(ghApp)
 	}
 	return nil
 }
@@ -2089,7 +2082,7 @@ func GetProjectSettings(p *ProjectRef) (*ProjectSettings, error) {
 		return nil, errors.Wrapf(err, "finding subscription for project '%s'", p.Id)
 	}
 
-	githubApp, err := GitHubAppAuthFindOne(p.Id)
+	githubApp, err := githubapp.FindOneGitHubAppAuth(p.Id)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding GitHub app for project '%s'", p.Id)
 	}
@@ -3126,8 +3119,8 @@ func (p *ProjectRef) CommitQueueIsOn() error {
 	return catcher.Resolve()
 }
 
-func GetProjectRefForTask(taskId string) (*ProjectRef, error) {
-	t, err := task.FindOneId(taskId)
+func GetProjectRefForTask(ctx context.Context, taskId string) (*ProjectRef, error) {
+	t, err := task.FindOneId(ctx, taskId)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding task '%s'", taskId)
 	}
@@ -3145,7 +3138,7 @@ func GetProjectRefForTask(taskId string) (*ProjectRef, error) {
 }
 
 func GetSetupScriptForTask(ctx context.Context, taskId string) (string, error) {
-	pRef, err := GetProjectRefForTask(taskId)
+	pRef, err := GetProjectRefForTask(ctx, taskId)
 	if err != nil {
 		return "", errors.Wrap(err, "getting project")
 	}
@@ -3387,13 +3380,13 @@ func IsWebhookConfigured(project string, version string) (evergreen.WebHook, boo
 	}
 }
 
-func GetUpstreamProjectName(triggerID, triggerType string) (string, error) {
+func GetUpstreamProjectName(ctx context.Context, triggerID, triggerType string) (string, error) {
 	if triggerID == "" || triggerType == "" {
 		return "", nil
 	}
 	var projectID string
 	if triggerType == ProjectTriggerLevelTask {
-		upstreamTask, err := task.FindOneId(triggerID)
+		upstreamTask, err := task.FindOneId(ctx, triggerID)
 		if err != nil {
 			return "", errors.Wrap(err, "finding upstream task")
 		}

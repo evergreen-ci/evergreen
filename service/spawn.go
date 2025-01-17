@@ -89,7 +89,7 @@ func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
 	}
 	var setupScriptPath string
 	if len(r.FormValue("task_id")) > 0 {
-		spawnTask, err = task.FindOneId(r.FormValue("task_id"))
+		spawnTask, err = task.FindOneId(r.Context(), r.FormValue("task_id"))
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError,
 				errors.Wrapf(err, "Error finding task '%s'", r.FormValue("task_id")))
@@ -102,7 +102,7 @@ func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
 		}
 		// if we can't find the setup script path, don't fail the request
 		var pRef *model.ProjectRef
-		pRef, err = model.GetProjectRefForTask(spawnTask.Id)
+		pRef, err = model.GetProjectRefForTask(r.Context(), spawnTask.Id)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":    "project can't be found",
@@ -302,7 +302,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if putParams.UseTaskConfig {
-		t, err := task.FindOneId(putParams.Task)
+		t, err := task.FindOneId(r.Context(), putParams.Task)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.New("Error finding task"))
 			return

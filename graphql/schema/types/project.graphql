@@ -154,7 +154,6 @@ input TaskSpecifierInput {
 input CommitQueueParamsInput {
   enabled: Boolean
   mergeMethod: String
-  mergeQueue: MergeQueue
   message: String
 }
 
@@ -237,11 +236,6 @@ enum ProjectHealthView {
   FAILED
 }
 
-enum MergeQueue {
-  EVERGREEN
-  GITHUB
-}
-
 """
 Project models single repository on GitHub.
 """
@@ -312,7 +306,6 @@ type RepotrackerError {
 type CommitQueueParams {
   enabled: Boolean
   mergeMethod: String!
-  mergeQueue: MergeQueue!
   message: String!
 }
 

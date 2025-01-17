@@ -1,17 +1,15 @@
 {
-  waterfall(options: { projectIdentifier: "evergreen" }) {
+  waterfall(options: { projectIdentifier: "sandbox_project_id", maxOrder: 4 }) {
     versions {
       version {
-        activated
-        author
         id
         order
+        revision
       }
       inactiveVersions {
-        activated
-        author
         id
         order
+        revision
       }
     }
     pagination {
