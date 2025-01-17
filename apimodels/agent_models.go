@@ -225,7 +225,7 @@ func (ar *AssumeRoleRequest) Validate() error {
 	return catcher.Resolve()
 }
 
-// AssumeRoleResponse the credentials from assuming a role.
+// AssumeRoleResponse contains the AssumeRole credentials.
 type AssumeRoleResponse struct {
 	AccessKeyID     string `json:"access_key_id"`
 	SecretAccessKey string `json:"secret_access_key"`
@@ -233,7 +233,7 @@ type AssumeRoleResponse struct {
 	Expiration      string `json:"expiration"`
 }
 
-// S3Request the details of what S3 bucket to access.
+// S3Request contains the s3 bucket to access.
 type S3Request struct {
 	// Bucket is the name of the S3 bucket to access.
 	Bucket string `json:"bucket"`
@@ -248,7 +248,7 @@ func (ar *S3Request) Validate() error {
 	return catcher.Resolve()
 }
 
-// S3Response the credentials for accessing an S3 bucket.
+// S3Response contains the s3 credentials for a task.
 type S3Response struct {
 	AccessKeyID     string `json:"access_key_id"`
 	SecretAccessKey string `json:"secret_access_key"`
