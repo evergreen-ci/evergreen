@@ -146,9 +146,8 @@ func (as *APIServer) fetchLimitedProjectRef(w http.ResponseWriter, r *http.Reque
 		RemotePath:        utility.ToStringPtr(p.RemotePath),
 		WorkstationConfig: wc,
 		CommitQueue: restModel.APICommitQueueParams{
-			Message:    utility.ToStringPtr(p.CommitQueue.Message),
-			Enabled:    p.CommitQueue.Enabled,
-			MergeQueue: p.CommitQueue.MergeQueue,
+			Message: utility.ToStringPtr(p.CommitQueue.Message),
+			Enabled: p.CommitQueue.Enabled,
 		},
 	}
 
