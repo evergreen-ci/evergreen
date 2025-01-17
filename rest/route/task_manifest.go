@@ -40,7 +40,7 @@ func (h *getManifestHandler) Parse(ctx context.Context, r *http.Request) error {
 
 // Execute returns the manifest for the given task.
 func (h *getManifestHandler) Run(ctx context.Context) gimlet.Responder {
-	manifest, err := data.GetManifestByTask(h.taskID)
+	manifest, err := data.GetManifestByTask(ctx, h.taskID)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "getting manifest using task '%s'", h.taskID))
 	}

@@ -212,7 +212,7 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 
 		if beforeTaskId != "" {
 			var t *task.Task
-			t, err = task.FindOneId(beforeTaskId)
+			t, err = task.FindOneId(r.Context(), beforeTaskId)
 			if err != nil {
 				uis.LoggedError(w, r, http.StatusNotFound, err)
 				return

@@ -33,7 +33,7 @@ func (r *taskResolver) AbortInfo(ctx context.Context, obj *restModel.APITask) (*
 	}
 
 	if len(obj.AbortInfo.TaskID) > 0 {
-		abortedTask, err := task.FindOneId(obj.AbortInfo.TaskID)
+		abortedTask, err := task.FindOneId(ctx, obj.AbortInfo.TaskID)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Problem getting aborted task %s: %s", *obj.Id, err.Error()))
 		}
@@ -106,7 +106,7 @@ func (r *taskResolver) BaseTask(ctx context.Context, obj *restModel.APITask) (*r
 	var baseTask *task.Task
 	// BaseTask is sometimes added via aggregation when Task is resolved via GetTasksByVersion.
 	if t.BaseTask.Id != "" {
-		baseTask, err = task.FindOneId(t.BaseTask.Id)
+		baseTask, err = task.FindOneId(ctx, t.BaseTask.Id)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding task '%s': %s", t.BaseTask.Id, err.Error()))
 		}
@@ -312,7 +312,7 @@ func (r *taskResolver) DependsOn(ctx context.Context, obj *restModel.APITask) ([
 
 // DisplayTask is the resolver for the displayTask field.
 func (r *taskResolver) DisplayTask(ctx context.Context, obj *restModel.APITask) (*restModel.APITask, error) {
-	t, err := task.FindOneId(*obj.Id)
+	t, err := task.FindOneId(ctx, *obj.Id)
 	if err != nil || t == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find task with id: %s", *obj.Id))
 	}
@@ -474,7 +474,7 @@ func (r *taskResolver) IsPerfPluginEnabled(ctx context.Context, obj *restModel.A
 
 // LatestExecution is the resolver for the latestExecution field.
 func (r *taskResolver) LatestExecution(ctx context.Context, obj *restModel.APITask) (int, error) {
-	return task.GetLatestExecution(*obj.Id)
+	return task.GetLatestExecution(ctx, *obj.Id)
 }
 
 // MinQueuePosition is the resolver for the minQueuePosition field.

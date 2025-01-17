@@ -1,6 +1,8 @@
 package model
 
 import (
+	"context"
+
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -24,36 +26,36 @@ type Context struct {
 // LoadContext builds a Context from the set of given resource ID's
 // by inferring all the relationships between them - for example, e.g. loading a project based on
 // the the task, or the version based on the patch, etc.
-func LoadContext(taskId, buildId, versionId, patchId, projectId string) (Context, error) {
-	ctx := Context{}
+func LoadContext(ctx context.Context, taskId, buildId, versionId, patchId, projectId string) (Context, error) {
+	c := Context{}
 
-	pID, err := ctx.populateTaskBuildVersion(taskId, buildId, versionId)
+	pID, err := c.populateTaskBuildVersion(ctx, taskId, buildId, versionId)
 	if err != nil {
-		return ctx, err
+		return c, err
 	}
 
 	if len(projectId) == 0 || (len(pID) > 0 && pID != projectId) {
 		projectId = pID
 	}
 
-	err = ctx.populatePatch(patchId)
+	err = c.populatePatch(patchId)
 	if err != nil {
-		return ctx, err
+		return c, err
 	}
-	if ctx.Patch != nil && len(projectId) == 0 {
-		projectId = ctx.Patch.Project
+	if c.Patch != nil && len(projectId) == 0 {
+		projectId = c.Patch.Project
 	}
 
 	// Try to load project for the ID we found, and set cookie with it for subsequent requests
 	if len(projectId) > 0 {
 		// Also lookup the ProjectRef itself and add it to context.
-		ctx.ProjectRef, err = FindMergedProjectRef(projectId, versionId, true)
+		c.ProjectRef, err = FindMergedProjectRef(projectId, versionId, true)
 		if err != nil {
-			return ctx, err
+			return c, err
 		}
 	}
 
-	return ctx, nil
+	return c, nil
 }
 
 func (ctx *Context) GetProjectRef() (*ProjectRef, error) {
@@ -92,47 +94,47 @@ func (ctx *Context) GetProject() (*Project, error) {
 // with as many of the task, build, and version documents as possible.
 // If any of the provided IDs is blank, they will be inferred from the more selective ones.
 // Returns the project ID of the data found, which may be blank if the IDs are empty.
-func (ctx *Context) populateTaskBuildVersion(taskId, buildId, versionId string) (string, error) {
+func (c *Context) populateTaskBuildVersion(ctx context.Context, taskId, buildId, versionId string) (string, error) {
 	projectId := ""
 	var err error
 	// Fetch task if there's a task ID present; if we find one, populate build/version IDs from it
 	if len(taskId) > 0 {
-		ctx.Task, err = task.FindOneId(taskId)
-		if err != nil || ctx.Task == nil {
+		c.Task, err = task.FindOneId(ctx, taskId)
+		if err != nil || c.Task == nil {
 			// if no task found, see if this is an old task
 			task, err := task.FindOneOldId(taskId)
 			if err != nil {
 				return "", err
 			}
-			ctx.Task = task
+			c.Task = task
 		}
 
-		if ctx.Task != nil {
+		if c.Task != nil {
 			// override build and version ID with the ones this task belongs to
-			buildId = ctx.Task.BuildId
-			versionId = ctx.Task.Version
-			projectId = ctx.Task.Project
+			buildId = c.Task.BuildId
+			versionId = c.Task.Version
+			projectId = c.Task.Project
 		}
 	}
 
 	// Fetch build if there's a build ID present; if we find one, populate version ID from it
 	if len(buildId) > 0 {
-		ctx.Build, err = build.FindOne(build.ById(buildId))
+		c.Build, err = build.FindOne(build.ById(buildId))
 		if err != nil {
 			return "", err
 		}
-		if ctx.Build != nil {
-			versionId = ctx.Build.Version
-			projectId = ctx.Build.Project
+		if c.Build != nil {
+			versionId = c.Build.Version
+			projectId = c.Build.Project
 		}
 	}
 	if len(versionId) > 0 {
-		ctx.Version, err = VersionFindOne(VersionById(versionId))
+		c.Version, err = VersionFindOne(VersionById(versionId))
 		if err != nil {
 			return "", err
 		}
-		if ctx.Version != nil {
-			projectId = ctx.Version.Identifier
+		if c.Version != nil {
+			projectId = c.Version.Identifier
 		}
 	}
 	return projectId, nil

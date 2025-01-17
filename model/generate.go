@@ -153,7 +153,7 @@ func (g *GeneratedProject) Save(ctx context.Context, settings *evergreen.Setting
 	ctx, span := tracer.Start(ctx, "save-generated-project")
 	defer span.End()
 	// Get task again, to exit early if another generator finished early.
-	t, err := task.FindOneId(g.Task.Id)
+	t, err := task.FindOneId(ctx, g.Task.Id)
 	if err != nil {
 		return errors.Wrapf(err, "finding task '%s'", g.Task.Id)
 	}

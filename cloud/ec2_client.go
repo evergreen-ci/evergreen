@@ -871,7 +871,7 @@ func (c *awsClientImpl) CreateFleet(ctx context.Context, input *ec2.CreateFleetI
 }
 
 func (c *awsClientImpl) GetKey(ctx context.Context, h *host.Host) (string, error) {
-	t, err := task.FindOneId(h.StartedBy)
+	t, err := task.FindOneId(ctx, h.StartedBy)
 	if err != nil {
 		return "", errors.Wrapf(err, "finding task '%s'", h.StartedBy)
 	}

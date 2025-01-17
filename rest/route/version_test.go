@@ -263,7 +263,7 @@ func (s *VersionSuite) TestAbortVersion() {
 	tasks, err := task.FindAllTaskIDsFromVersion("versionId")
 	s.NoError(err)
 	for _, t := range tasks {
-		foundTask, err := task.FindOneId(t)
+		foundTask, err := task.FindOneId(s.ctx, t)
 		s.NoError(err)
 		if utility.StringSliceContains(evergreen.TaskInProgressStatuses, foundTask.Status) {
 			s.True(foundTask.Aborted)

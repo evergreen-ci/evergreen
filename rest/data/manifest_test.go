@@ -21,14 +21,14 @@ func TestGetManifestByTask(t *testing.T) {
 		"Succeeds": func(ctx context.Context, t *testing.T, tsk *task.Task, mfest *manifest.Manifest) {
 			require.NoError(t, tsk.Insert())
 			require.NoError(t, mfest.InsertWithContext(ctx))
-			dbManifest, err := GetManifestByTask(tsk.Id)
+			dbManifest, err := GetManifestByTask(ctx, tsk.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbManifest)
 			assert.Equal(t, mfest.Id, dbManifest.Id)
 		},
 		"FailsWithNonexistentTask": func(ctx context.Context, t *testing.T, tsk *task.Task, mfest *manifest.Manifest) {
 			require.NoError(t, mfest.InsertWithContext(ctx))
-			dbManifest, err := GetManifestByTask(tsk.Id)
+			dbManifest, err := GetManifestByTask(ctx, tsk.Id)
 			assert.Error(t, err)
 			gimErr, ok := err.(gimlet.ErrorResponse)
 			require.True(t, ok)
@@ -37,7 +37,7 @@ func TestGetManifestByTask(t *testing.T) {
 		},
 		"FailsWithNonexistentManifest": func(ctx context.Context, t *testing.T, tsk *task.Task, mfest *manifest.Manifest) {
 			require.NoError(t, tsk.Insert())
-			dbManifest, err := GetManifestByTask(tsk.Id)
+			dbManifest, err := GetManifestByTask(ctx, tsk.Id)
 			assert.Error(t, err)
 			gimErr, ok := err.(gimlet.ErrorResponse)
 			require.True(t, ok)

@@ -31,10 +31,11 @@ func (uis *UIServer) adminSettings(w http.ResponseWriter, r *http.Request) {
 	data := struct {
 		ViewData
 		CanClearTokens                         bool
+		ShowOverridesSection                   bool
 		ValidDefaultHostAllocatorRoundingRules []string
 		ValidDefaultHostAllocatorFeedbackRules []string
 		ValidDefaultHostsOverallocatedRules    []string
-	}{uis.GetCommonViewData(w, r, true, false), uis.env.UserManagerInfo().CanClearTokens, evergreen.ValidDefaultHostAllocatorRoundingRules, evergreen.ValidDefaultHostAllocatorFeedbackRules, evergreen.ValidDefaultHostsOverallocatedRules}
+	}{uis.GetCommonViewData(w, r, true, false), uis.env.UserManagerInfo().CanClearTokens, uis.env.SharedDB() != nil, evergreen.ValidDefaultHostAllocatorRoundingRules, evergreen.ValidDefaultHostAllocatorFeedbackRules, evergreen.ValidDefaultHostsOverallocatedRules}
 
 	uis.render.WriteResponse(w, http.StatusOK, data, "base", template, "base_angular.html", "menu.html")
 }

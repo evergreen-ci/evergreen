@@ -123,7 +123,7 @@ func SetActiveState(ctx context.Context, caller string, active bool, tasks ...ta
 }
 
 func SetActiveStateById(ctx context.Context, id, user string, active bool) error {
-	t, err := task.FindOneId(id)
+	t, err := task.FindOneId(ctx, id)
 	if err != nil {
 		return errors.Wrapf(err, "finding task '%s'", id)
 	}
@@ -224,7 +224,7 @@ func DisableStaleContainerTasks(caller string) error {
 // for a generated task.
 func activatePreviousTask(ctx context.Context, taskId, caller string, originalStepbackTask *task.Task) error {
 	// find the task first
-	t, err := task.FindOneId(taskId)
+	t, err := task.FindOneId(ctx, taskId)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -278,7 +278,7 @@ func resetManyTasks(ctx context.Context, tasks []task.Task, caller string) error
 // reset an execution task, the given task ID must be that of its parent display
 // task.
 func TryResetTask(ctx context.Context, settings *evergreen.Settings, taskId, user, origin string, detail *apimodels.TaskEndDetail) error {
-	t, err := task.FindOneId(taskId)
+	t, err := task.FindOneId(ctx, taskId)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -306,7 +306,7 @@ func TryResetTask(ctx context.Context, settings *evergreen.Settings, taskId, use
 			if detail != nil {
 				if t.DisplayOnly {
 					for _, etId := range t.ExecutionTasks {
-						execTask, err = task.FindOneId(etId)
+						execTask, err = task.FindOneId(ctx, etId)
 						if err != nil {
 							return errors.Wrap(err, "finding execution task")
 						}
@@ -336,7 +336,7 @@ func TryResetTask(ctx context.Context, settings *evergreen.Settings, taskId, use
 			if t.DisplayOnly {
 				execTasks := map[string]string{}
 				for _, et := range t.ExecutionTasks {
-					execTask, err = task.FindOneId(et)
+					execTask, err = task.FindOneId(ctx, et)
 					if err != nil {
 						continue
 					}
@@ -377,7 +377,7 @@ func TryResetTask(ctx context.Context, settings *evergreen.Settings, taskId, use
 // resetTask finds a finished task, attempts to archive it, and resets the task and
 // resets the TaskCache in the build as well.
 func resetTask(ctx context.Context, taskId, caller string) error {
-	t, err := task.FindOneId(taskId)
+	t, err := task.FindOneId(ctx, taskId)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -399,7 +399,7 @@ func resetTask(ctx context.Context, taskId, caller string) error {
 }
 
 func AbortTask(ctx context.Context, taskId, caller string) error {
-	t, err := task.FindOneId(taskId)
+	t, err := task.FindOneId(ctx, taskId)
 	if err != nil {
 		return err
 	}
@@ -467,8 +467,8 @@ type stepbackInstructions struct {
 // If it should stepback is retrieved from the top-level project if not explicitly
 // set on the task or disabled at the project level. And the stepback type is
 // either linear or bisect, which is retrieved from the project ref.
-func getStepback(taskId string) (stepbackInstructions, error) {
-	t, err := task.FindOneId(taskId)
+func getStepback(ctx context.Context, taskId string) (stepbackInstructions, error) {
+	t, err := task.FindOneId(ctx, taskId)
 	if err != nil {
 		return stepbackInstructions{}, errors.Wrapf(err, "finding task '%s'", taskId)
 	}
@@ -600,7 +600,8 @@ func doBisectStepback(ctx context.Context, t *task.Task) error {
 	} else if t.Status == evergreen.TaskFailed {
 		s.LastFailingStepbackTaskId = t.Id
 	} else {
-		return errors.Errorf("stopping task stepback due to status '%s'", t.Status)
+		grip.Warningf("stopping task '%s' stepback due to status '%s'", t.Id, t.Status)
+		return nil
 	}
 
 	// The midway task is our next stepback target.
@@ -700,7 +701,8 @@ func doBisectStepbackForGeneratedTask(ctx context.Context, generator *task.Task,
 	} else if generated.Status == evergreen.TaskFailed {
 		s.LastFailingStepbackTaskId = generator.Id
 	} else {
-		return errors.Errorf("stopping task stepback due to status '%s'", generated.Status)
+		grip.Warningf("stopping task '%s' stepback due to status '%s'", generated.Id, generated.Status)
+		return nil
 	}
 
 	// The midway task is our next stepback target.
@@ -1123,7 +1125,7 @@ func UpdateUnblockedDependencies(ctx context.Context, dependencies []task.Task) 
 // The status passed in is a display status, initially stepback only activates if the task
 // has failed but not on system failure.
 func evalStepback(ctx context.Context, t *task.Task, status string) error {
-	s, err := getStepback(t.Id)
+	s, err := getStepback(ctx, t.Id)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -1185,7 +1187,7 @@ func evalBisectStepback(ctx context.Context, t *task.Task, newStepback, shouldSt
 		return nil
 	}
 
-	generator, err := task.FindOneId(t.GeneratedBy)
+	generator, err := task.FindOneId(ctx, t.GeneratedBy)
 	if err != nil {
 		return errors.Wrapf(err, "finding generator '%s'", t.GeneratedBy)
 	}
@@ -2441,7 +2443,7 @@ func checkResetDisplayTask(ctx context.Context, setting *evergreen.Settings, use
 func MarkUnallocatableContainerTasksSystemFailed(ctx context.Context, settings *evergreen.Settings, candidateTaskIDs []string) error {
 	var unallocatableTasks []task.Task
 	for _, taskID := range candidateTaskIDs {
-		tsk, err := task.FindOneId(taskID)
+		tsk, err := task.FindOneId(ctx, taskID)
 		if err != nil {
 			return errors.Wrapf(err, "finding task '%s'", taskID)
 		}

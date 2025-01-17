@@ -161,7 +161,7 @@ func (j *idleHostJob) checkAndTerminateHost(ctx context.Context, schedulerConfig
 		return err
 	}
 
-	idleInfo, err := j.getIdleInfo(h, &d, schedulerConfig)
+	idleInfo, err := j.getIdleInfo(ctx, h, &d, schedulerConfig)
 	if err != nil {
 		return errors.Wrap(err, "getting information on idle host")
 	}
@@ -187,7 +187,7 @@ type hostIdleInfo struct {
 // getIdleInfo returns information about how long the host has been idle,
 // how long it is allowed to be idle, and other special considerations for
 // whether the host should be considered idle.
-func (j *idleHostJob) getIdleInfo(h *host.Host, d *distro.Distro, schedulerConfig evergreen.SchedulerConfig) (hostIdleInfo, error) {
+func (j *idleHostJob) getIdleInfo(ctx context.Context, h *host.Host, d *distro.Distro, schedulerConfig evergreen.SchedulerConfig) (hostIdleInfo, error) {
 	idleThreshold := d.HostAllocatorSettings.AcceptableHostIdleTime
 	if idleThreshold == 0 {
 		idleThreshold = time.Duration(schedulerConfig.AcceptableHostIdleTimeSeconds) * time.Second
@@ -198,7 +198,7 @@ func (j *idleHostJob) getIdleInfo(h *host.Host, d *distro.Distro, schedulerConfi
 	// single host task group breaks continuity and requires restarting the
 	// entire task group from the start, which is undesirable.
 	const singleHostTaskGroupIdleCutoff = 5 * time.Minute
-	isRunningSingleHostTaskGroup, err := isAssignedSingleHostTaskGroup(h)
+	isRunningSingleHostTaskGroup, err := isAssignedSingleHostTaskGroup(ctx, h)
 	if err != nil {
 		return hostIdleInfo{}, errors.Wrap(err, "checking if host is running single host task group")
 	}
@@ -220,7 +220,7 @@ func (j *idleHostJob) getIdleInfo(h *host.Host, d *distro.Distro, schedulerConfi
 
 // isAssignedSingleHostTaskGroup returns whether the host is assigned to run a
 // single host task group.
-func isAssignedSingleHostTaskGroup(h *host.Host) (bool, error) {
+func isAssignedSingleHostTaskGroup(ctx context.Context, h *host.Host) (bool, error) {
 	if h.RunningTaskGroup != "" && h.RunningTask != "" {
 		runningTask, err := task.FindOneIdAndExecution(h.RunningTask, h.RunningTaskExecution)
 		if err != nil {
@@ -237,7 +237,7 @@ func isAssignedSingleHostTaskGroup(h *host.Host) (bool, error) {
 		// task but hasn't gotten to the next one yet (if any). Assume that it
 		// will continue onto the next task group task ASAP, so it's still
 		// assigned the task group.
-		prevTask, err := task.FindOneId(h.LastTask)
+		prevTask, err := task.FindOneId(ctx, h.LastTask)
 		if err != nil {
 			return false, errors.Wrapf(err, "finding host's last task group task '%s'", h.LastTask)
 		}

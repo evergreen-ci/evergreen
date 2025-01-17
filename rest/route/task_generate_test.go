@@ -82,7 +82,7 @@ func TestGenerateExecuteWithSmallFileInDB(t *testing.T) {
 	assert.Equal(t, struct{}{}, r.Data())
 	assert.Equal(t, http.StatusOK, r.Status())
 
-	dbTask, err := task.FindOneId(tsk.Id)
+	dbTask, err := task.FindOneId(ctx, tsk.Id)
 	require.NoError(t, err)
 	require.NotZero(t, dbTask)
 	assert.Equal(t, evergreen.ProjectStorageMethodDB, dbTask.GeneratedJSONStorageMethod)
@@ -155,7 +155,7 @@ func TestGenerateExecuteWithLargeFileInS3(t *testing.T) {
 	assert.Equal(t, struct{}{}, r.Data())
 	assert.Equal(t, http.StatusOK, r.Status())
 
-	dbTask, err := task.FindOneId(tsk.Id)
+	dbTask, err := task.FindOneId(ctx, tsk.Id)
 	require.NoError(t, err)
 	require.NotZero(t, dbTask)
 	assert.Equal(t, evergreen.ProjectStorageMethodS3, dbTask.GeneratedJSONStorageMethod)

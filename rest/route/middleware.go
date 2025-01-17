@@ -52,7 +52,7 @@ func (m *projCtxMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, n
 	patchId := vars["patch_id"]
 	projectId := vars["project_id"]
 
-	opCtx, err := model.LoadContext(taskId, buildId, versionId, patchId, projectId)
+	opCtx, err := model.LoadContext(r.Context(), taskId, buildId, versionId, patchId, projectId)
 	if err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "loading resources from context")))
 		return
@@ -285,7 +285,7 @@ func (m *TaskHostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.Errorf("host '%s' is not started by any task", h.Id)))
 		return
 	}
-	t, err := task.FindOneId(h.StartedBy)
+	t, err := task.FindOneId(r.Context(), h.StartedBy)
 	if err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s' started by host '%s'", h.StartedBy, h.Id)))
 		return

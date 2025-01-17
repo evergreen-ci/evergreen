@@ -13,7 +13,7 @@ import (
 
 // GenerateTasks parses JSON files for `generate.tasks` and creates the new builds and tasks.
 func GenerateTasks(ctx context.Context, settings *evergreen.Settings, taskID string, jsonFiles []json.RawMessage) error {
-	t, err := task.FindOneId(taskID)
+	t, err := task.FindOneId(ctx, taskID)
 	if err != nil {
 		return errors.Wrapf(err, "finding task '%s'", taskID)
 	}
@@ -43,7 +43,7 @@ func GenerateTasks(ctx context.Context, settings *evergreen.Settings, taskID str
 
 // GeneratePoll checks to see if a `generate.tasks` job has finished.
 func GeneratePoll(ctx context.Context, taskID string) (bool, string, error) {
-	t, err := task.FindOneId(taskID)
+	t, err := task.FindOneId(ctx, taskID)
 	if err != nil {
 		return false, "", errors.Wrapf(err, "finding task '%s'", taskID)
 	}

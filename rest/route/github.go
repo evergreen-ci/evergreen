@@ -292,7 +292,7 @@ func (gh *githubHookApi) rerunCheckRun(ctx context.Context, owner, repo string, 
 		})
 		return errors.New("check run GitHub event doesn't carry task")
 	}
-	taskToRestart, taskErr := data.FindTask(taskIDFromCheckrun)
+	taskToRestart, taskErr := data.FindTask(ctx, taskIDFromCheckrun)
 	if taskErr != nil {
 		grip.Error(message.Fields{
 			"source":  "GitHub hook",
@@ -344,7 +344,7 @@ func (gh *githubHookApi) rerunCheckRun(ctx context.Context, owner, repo string, 
 
 	// Get the task again to ensure we have the latest execution for link to task.
 	// Should still update check run even if task isn't refreshed.
-	latestExecutionForTask, taskErr := data.FindTask(taskIDFromCheckrun)
+	latestExecutionForTask, taskErr := data.FindTask(ctx, taskIDFromCheckrun)
 	if taskErr != nil {
 		grip.Error(message.Fields{
 			"source":  "GitHub hook",

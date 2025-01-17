@@ -83,7 +83,7 @@ func (uis *UIServer) buildPage(w http.ResponseWriter, r *http.Request) {
 
 	if projCtx.Build.TriggerID != "" {
 		var projectName string
-		projectName, err = model.GetUpstreamProjectName(projCtx.Build.TriggerID, projCtx.Build.TriggerType)
+		projectName, err = model.GetUpstreamProjectName(r.Context(), projCtx.Build.TriggerID, projCtx.Build.TriggerType)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return

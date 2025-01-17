@@ -809,36 +809,10 @@ func (c *gitFetchProject) getPatchContents(ctx context.Context, comm client.Comm
 	return nil
 }
 
-// getApplyCommand determines the patch type. If the patch is a mailbox-style
-// patch, it uses git-am (see https://git-scm.com/docs/git-am), otherwise
-// it uses git apply
+// getApplyCommand returns the git apply command
 func (c *gitFetchProject) getApplyCommand(patchFile string, conf *internal.TaskConfig) (string, error) {
-	useGitAm, err := isMailboxPatch(patchFile, conf)
-	if err != nil {
-		return "", err
-	}
-
-	if useGitAm {
-		committerName := defaultCommitterName
-		committerEmail := defaultCommitterEmail
-		if len(c.CommitterName) > 0 {
-			committerName = c.CommitterName
-		}
-		if len(c.CommitterEmail) > 0 {
-			committerEmail = c.CommitterEmail
-		}
-		return fmt.Sprintf(`GIT_COMMITTER_NAME="%s" GIT_COMMITTER_EMAIL="%s" git am --keep-cr --keep < "%s"`, committerName, committerEmail, patchFile), nil
-	}
 	apply := fmt.Sprintf("GIT_TRACE=1 git apply --binary --index < '%s'", patchFile)
 	return apply, nil
-}
-
-func isMailboxPatch(patchFile string, conf *internal.TaskConfig) (bool, error) {
-	isMBP, err := patch.IsMailbox(patchFile)
-	if err != nil {
-		return false, errors.Wrap(err, "checking patch type")
-	}
-	return isMBP && conf.Task.DisplayName == evergreen.MergeTaskName, nil
 }
 
 // getPatchCommands, given a module patch of a patch, will return the appropriate list of commands that

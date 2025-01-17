@@ -1488,6 +1488,10 @@ Parameters:
     task's execution. If this is set to true, cleanup will be deferred
     until the task group is finished. Defaults to false.
 
+Intentionally, `teardown_group_can_fail_task` is not supported. Teardown groups
+are not ran within the same context of the task's normal execution and we
+discourage relying on it for anything critical in general.
+
 The following constraints apply:
 
 -   Tasks can appear in multiple task groups. However, no task can be

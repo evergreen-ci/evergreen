@@ -500,7 +500,7 @@ func TestHandleTerminatedHostSpawnedByTask(t *testing.T) {
 				assert.Nil(t, intent)
 			}
 
-			t0, err := task.FindOneId(testCase.t.Id)
+			t0, err := task.FindOneId(ctx, testCase.t.Id)
 			require.NoError(t, err)
 			require.NotNil(t, t0)
 			if testCase.hostDetailsSet {
