@@ -419,6 +419,9 @@ func TestDependenciesMet(t *testing.T) {
 }
 
 func TestGetFinishedBlockingDependencies(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	taskId := "t1"
 	taskDoc := &Task{
 		Id: taskId,
@@ -440,7 +443,7 @@ func TestGetFinishedBlockingDependencies(t *testing.T) {
 			taskDoc.DependsOn = []Dependency{}
 			require.NoError(t, taskDoc.Insert())
 
-			tasks, err := taskDoc.GetFinishedBlockingDependencies(map[string]Task{})
+			tasks, err := taskDoc.GetFinishedBlockingDependencies(ctx, map[string]Task{})
 			assert.NoError(t, err)
 			assert.Empty(t, tasks)
 		},
@@ -451,7 +454,7 @@ func TestGetFinishedBlockingDependencies(t *testing.T) {
 			}
 			require.NoError(t, taskDoc.Insert())
 
-			tasks, err := taskDoc.GetFinishedBlockingDependencies(map[string]Task{})
+			tasks, err := taskDoc.GetFinishedBlockingDependencies(ctx, map[string]Task{})
 			assert.NoError(t, err)
 			assert.Empty(t, tasks)
 		},
@@ -462,7 +465,7 @@ func TestGetFinishedBlockingDependencies(t *testing.T) {
 			}
 			require.NoError(t, taskDoc.Insert())
 
-			tasks, err := taskDoc.GetFinishedBlockingDependencies(map[string]Task{
+			tasks, err := taskDoc.GetFinishedBlockingDependencies(ctx, map[string]Task{
 				"cached-task": {Id: "cached-task", Status: evergreen.TaskSucceeded},
 			})
 			assert.NoError(t, err)
@@ -476,7 +479,7 @@ func TestGetFinishedBlockingDependencies(t *testing.T) {
 			}
 			require.NoError(t, taskDoc.Insert())
 
-			tasks, err := taskDoc.GetFinishedBlockingDependencies(map[string]Task{})
+			tasks, err := taskDoc.GetFinishedBlockingDependencies(ctx, map[string]Task{})
 			assert.NoError(t, err)
 			assert.Len(t, tasks, 1)
 		},
@@ -488,7 +491,7 @@ func TestGetFinishedBlockingDependencies(t *testing.T) {
 			}
 			require.NoError(t, taskDoc.Insert())
 
-			tasks, err := taskDoc.GetFinishedBlockingDependencies(map[string]Task{
+			tasks, err := taskDoc.GetFinishedBlockingDependencies(ctx, map[string]Task{
 				"cached-task": {Id: "cached-task", Status: evergreen.TaskFailed},
 			})
 			assert.NoError(t, err)
@@ -501,7 +504,7 @@ func TestGetFinishedBlockingDependencies(t *testing.T) {
 			}
 			require.NoError(t, taskDoc.Insert())
 
-			tasks, err := taskDoc.GetFinishedBlockingDependencies(map[string]Task{})
+			tasks, err := taskDoc.GetFinishedBlockingDependencies(ctx, map[string]Task{})
 			assert.NoError(t, err)
 			// already marked blocked
 			assert.Empty(t, tasks)
@@ -514,7 +517,7 @@ func TestGetFinishedBlockingDependencies(t *testing.T) {
 			}
 			require.NoError(t, taskDoc.Insert())
 
-			tasks, err := taskDoc.GetFinishedBlockingDependencies(map[string]Task{})
+			tasks, err := taskDoc.GetFinishedBlockingDependencies(ctx, map[string]Task{})
 			assert.NoError(t, err)
 			assert.Len(t, tasks, 1)
 		}} {
@@ -2272,6 +2275,9 @@ func TestGetAllDependencies(t *testing.T) {
 }
 
 func TestGetRecursiveDependenciesUp(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.Clear(Collection))
 	tasks := []Task{
 		{Id: "t0"},
@@ -2285,7 +2291,7 @@ func TestGetRecursiveDependenciesUp(t *testing.T) {
 		require.NoError(t, task.Insert())
 	}
 
-	taskDependsOn, err := GetRecursiveDependenciesUp([]Task{tasks[3], tasks[4]}, nil)
+	taskDependsOn, err := GetRecursiveDependenciesUp(ctx, []Task{tasks[3], tasks[4]}, nil)
 	assert.NoError(t, err)
 	assert.Len(t, taskDependsOn, 3)
 	expectedIDs := []string{"t2", "t1", "t0"}
@@ -2295,6 +2301,9 @@ func TestGetRecursiveDependenciesUp(t *testing.T) {
 }
 
 func TestGetRecursiveDependenciesUpWithTaskGroup(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.Clear(Collection))
 	tasks := []Task{
 		{Id: "t0", BuildId: "b1", TaskGroup: "tg", TaskGroupMaxHosts: 1, TaskGroupOrder: 0},
@@ -2307,7 +2316,7 @@ func TestGetRecursiveDependenciesUpWithTaskGroup(t *testing.T) {
 	for _, task := range tasks {
 		require.NoError(t, task.Insert())
 	}
-	taskDependsOn, err := GetRecursiveDependenciesUp([]Task{tasks[2], tasks[3]}, nil)
+	taskDependsOn, err := GetRecursiveDependenciesUp(ctx, []Task{tasks[2], tasks[3]}, nil)
 	assert.NoError(t, err)
 	assert.Len(t, taskDependsOn, 2)
 	expectedIDs := []string{"t0", "t1"}
@@ -4687,6 +4696,9 @@ func assertTasksAreEqual(t *testing.T, expected, actual Task, exectedExecution i
 }
 
 func TestFindAbortingAndResettingDependencies(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	defer func() {
 		assert.NoError(t, db.Clear(Collection))
 	}()
@@ -4694,7 +4706,7 @@ func TestFindAbortingAndResettingDependencies(t *testing.T) {
 		"ReturnsAllMatchingDependencies": func(t *testing.T, tsk Task, depTasks []Task) {
 			require.NoError(t, tsk.Insert())
 
-			found, err := tsk.FindAbortingAndResettingDependencies()
+			found, err := tsk.FindAbortingAndResettingDependencies(ctx)
 			assert.NoError(t, err)
 			require.Len(t, found, 2)
 			expected := []string{depTasks[1].Id, depTasks[3].Id}
@@ -4713,7 +4725,7 @@ func TestFindAbortingAndResettingDependencies(t *testing.T) {
 			tsk.DependsOn = []Dependency{{TaskId: intermediateDepTask.Id}}
 			require.NoError(t, tsk.Insert())
 
-			found, err := tsk.FindAbortingAndResettingDependencies()
+			found, err := tsk.FindAbortingAndResettingDependencies(ctx)
 			assert.NoError(t, err)
 			require.Len(t, found, 1)
 			assert.Equal(t, depTasks[1].Id, found[0].Id)
@@ -4722,7 +4734,7 @@ func TestFindAbortingAndResettingDependencies(t *testing.T) {
 			tsk.DependsOn = append(tsk.DependsOn, Dependency{TaskId: "nonexistent"})
 			require.NoError(t, tsk.Insert())
 
-			found, err := tsk.FindAbortingAndResettingDependencies()
+			found, err := tsk.FindAbortingAndResettingDependencies(ctx)
 			assert.NoError(t, err)
 			require.Len(t, found, 2)
 			expected := []string{depTasks[1].Id, depTasks[3].Id}
@@ -4734,7 +4746,7 @@ func TestFindAbortingAndResettingDependencies(t *testing.T) {
 			tsk.DependsOn = []Dependency{tsk.DependsOn[0], tsk.DependsOn[2], tsk.DependsOn[3]}
 			require.NoError(t, tsk.Insert())
 
-			found, err := tsk.FindAbortingAndResettingDependencies()
+			found, err := tsk.FindAbortingAndResettingDependencies(ctx)
 			assert.NoError(t, err)
 			require.Len(t, found, 1)
 			assert.Equal(t, depTasks[3].Id, found[0].Id)
@@ -4743,7 +4755,7 @@ func TestFindAbortingAndResettingDependencies(t *testing.T) {
 			tsk.DependsOn = nil
 			require.NoError(t, tsk.Insert())
 
-			found, err := tsk.FindAbortingAndResettingDependencies()
+			found, err := tsk.FindAbortingAndResettingDependencies(ctx)
 			assert.NoError(t, err)
 			assert.Empty(t, found)
 		},

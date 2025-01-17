@@ -52,7 +52,7 @@ func SetActiveState(ctx context.Context, caller string, active bool, tasks ...ta
 			// if the task is being activated, and it doesn't override its dependencies
 			// activate the task's dependencies as well
 			if !t.OverrideDependencies {
-				deps, err := task.GetRecursiveDependenciesUp(originalTasks, nil)
+				deps, err := task.GetRecursiveDependenciesUp(ctx, originalTasks, nil)
 				catcher.Wrapf(err, "getting dependencies up for task '%s'", t.Id)
 				if t.IsPartOfSingleHostTaskGroup() {
 					for _, dep := range deps {
@@ -1808,7 +1808,7 @@ func MarkHostTaskDispatched(ctx context.Context, t *task.Task, h *host.Host) err
 
 func MarkOneTaskReset(ctx context.Context, t *task.Task, caller string) error {
 	if t.DisplayOnly {
-		execTaskIdsToRestart, err := task.FindExecTasksToReset(t)
+		execTaskIdsToRestart, err := task.FindExecTasksToReset(ctx, t)
 		if err != nil {
 			return errors.Wrap(err, "finding execution tasks to restart")
 		}

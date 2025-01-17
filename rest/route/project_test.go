@@ -1664,7 +1664,7 @@ func TestModifyProjectVersions(t *testing.T) {
 			resp := rm.Run(ctx)
 			assert.NotNil(resp)
 			assert.Equal(http.StatusOK, resp.Status())
-			foundTasks, err := task.FindWithFields(task.ByVersions([]string{"v1", "v2", "v3", "v4"}), task.IdKey, task.PriorityKey, task.ActivatedKey)
+			foundTasks, err := task.FindWithFields(ctx, task.ByVersions([]string{"v1", "v2", "v3", "v4"}), task.IdKey, task.PriorityKey, task.ActivatedKey)
 			assert.NoError(err)
 			assert.Len(foundTasks, 4)
 			var count int
@@ -1686,7 +1686,7 @@ func TestModifyProjectVersions(t *testing.T) {
 			resp := rm.Run(ctx)
 			assert.NotNil(resp)
 			assert.Equal(http.StatusOK, resp.Status())
-			foundTasks, err := task.FindWithFields(task.ByVersions([]string{"v1", "v2", "v3", "v4"}), task.IdKey, task.PriorityKey, task.ActivatedKey)
+			foundTasks, err := task.FindWithFields(ctx, task.ByVersions([]string{"v1", "v2", "v3", "v4"}), task.IdKey, task.PriorityKey, task.ActivatedKey)
 			assert.NoError(err)
 			assert.Len(foundTasks, 4)
 			var count int

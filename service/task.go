@@ -455,7 +455,7 @@ func getTaskDependencies(ctx context.Context, t *task.Task) ([]uiDep, string, er
 	for _, dep := range t.DependsOn {
 		depIds = append(depIds, dep.TaskId)
 	}
-	dependencies, err := task.FindWithFields(task.ByIds(depIds), task.DisplayNameKey, task.StatusKey,
+	dependencies, err := task.FindWithFields(ctx, task.ByIds(depIds), task.DisplayNameKey, task.StatusKey,
 		task.ActivatedKey, task.BuildVariantKey, task.DetailsKey, task.DependsOnKey)
 	if err != nil {
 		return nil, "", err

@@ -1363,7 +1363,7 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 				require.NoError(t, tempTask.Insert())
 			}
 			// Verify tasks are inserted and found correctly
-			tasks, err := task.FindWithFields(task.ByBuildId(b.Id))
+			tasks, err := task.FindWithFields(ctx, task.ByBuildId(b.Id))
 			assert.NoError(t, err)
 			assert.Len(t, tasks, 2)
 

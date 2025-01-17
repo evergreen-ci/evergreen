@@ -318,7 +318,7 @@ func TaskHistoryPickaxe(ctx context.Context, params PickaxeParams) ([]task.Task,
 		task.TimeTakenKey,
 		task.BuildVariantKey,
 	}
-	last, err := task.FindWithFields(query, projection...)
+	last, err := task.FindWithFields(ctx, query, projection...)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding tasks")
 	}

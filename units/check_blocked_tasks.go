@@ -139,7 +139,7 @@ func checkUnmarkedBlockingTasks(ctx context.Context, t *task.Task, dependencyCac
 		return nil
 	}
 
-	finishedBlockingTasks, err := t.GetFinishedBlockingDependencies(dependencyCaches)
+	finishedBlockingTasks, err := t.GetFinishedBlockingDependencies(ctx, dependencyCaches)
 	catcher.Wrap(err, "getting blocking tasks")
 	blockingTaskIds := []string{}
 	if err == nil {

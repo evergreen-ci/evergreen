@@ -143,7 +143,7 @@ func setTaskActivationForBuilds(ctx context.Context, buildIds []string, active, 
 			return errors.Wrap(err, "getting tasks to activate")
 		}
 		if withDependencies {
-			dependOn, err := task.GetRecursiveDependenciesUp(tasksToActivate, nil)
+			dependOn, err := task.GetRecursiveDependenciesUp(ctx, tasksToActivate, nil)
 			if err != nil {
 				return errors.Wrap(err, "getting recursive dependencies")
 			}
@@ -213,7 +213,7 @@ func TryMarkVersionStarted(versionId string, startTime time.Time) error {
 // dependencies that have a lower priority than the one being set for this task
 // will also have their priority increased.
 func SetTaskPriority(ctx context.Context, t task.Task, priority int64, caller string) error {
-	depTasks, err := task.GetRecursiveDependenciesUp([]task.Task{t}, nil)
+	depTasks, err := task.GetRecursiveDependenciesUp(ctx, []task.Task{t}, nil)
 	if err != nil {
 		return errors.Wrap(err, "getting task dependencies")
 	}
@@ -1659,7 +1659,7 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 		return nil, errors.Wrap(err, "updating version with new build IDs")
 	}
 
-	activatedTaskDependencies, err := task.GetRecursiveDependenciesUp(newActivatedTasks, nil)
+	activatedTaskDependencies, err := task.GetRecursiveDependenciesUp(ctx, newActivatedTasks, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting dependencies for activated tasks")
 	}
@@ -1788,7 +1788,7 @@ func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationI
 		}
 	}
 
-	activatedTaskDependencies, err := task.GetRecursiveDependenciesUp(activatedTasks, nil)
+	activatedTaskDependencies, err := task.GetRecursiveDependenciesUp(ctx, activatedTasks, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting dependencies for activated tasks")
 	}

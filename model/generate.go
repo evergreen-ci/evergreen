@@ -446,7 +446,7 @@ func (g *GeneratedProject) GetNewTasksAndActivationInfo(ctx context.Context, v *
 func (g *GeneratedProject) CheckForCycles(ctx context.Context, v *Version, p *Project, projectRef *ProjectRef) error {
 	ctx, span := tracer.Start(ctx, "check-for-cycles")
 	defer span.End()
-	existingTasksGraph, err := task.VersionDependencyGraph(g.Task.Version, false)
+	existingTasksGraph, err := task.VersionDependencyGraph(ctx, g.Task.Version, false)
 	if err != nil {
 		return errors.Wrapf(err, "creating dependency graph for version '%s'", g.Task.Version)
 	}

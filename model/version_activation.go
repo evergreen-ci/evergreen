@@ -142,7 +142,7 @@ func ActivateElapsedBuildsAndTasks(ctx context.Context, v *Version) (bool, error
 		}
 	}
 	if len(allReadyTaskIds) > 0 {
-		if err := task.ActivateTasksByIdsWithDependencies(allReadyTaskIds, evergreen.ElapsedTaskActivator); err != nil {
+		if err := task.ActivateTasksByIdsWithDependencies(ctx, allReadyTaskIds, evergreen.ElapsedTaskActivator); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"operation": "project-activation",
 				"message":   "problem activating batchtime tasks",

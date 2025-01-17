@@ -765,7 +765,7 @@ func (t *Task) DependenciesMet(ctx context.Context, depCaches map[string]Task) (
 		return true, nil
 	}
 
-	_, err := t.populateDependencyTaskCache(depCaches)
+	_, err := t.populateDependencyTaskCache(ctx, depCaches)
 	if err != nil {
 		return false, errors.WithStack(err)
 	}
@@ -809,7 +809,7 @@ func (t *Task) setDependenciesMetTime() {
 }
 
 // populateDependencyTaskCache ensures that all the dependencies for the task are in the cache.
-func (t *Task) populateDependencyTaskCache(depCache map[string]Task) ([]Task, error) {
+func (t *Task) populateDependencyTaskCache(ctx context.Context, depCache map[string]Task) ([]Task, error) {
 	var deps []Task
 	depIdsToQueryFor := make([]string, 0, len(t.DependsOn))
 	for _, dep := range t.DependsOn {
@@ -821,7 +821,7 @@ func (t *Task) populateDependencyTaskCache(depCache map[string]Task) ([]Task, er
 	}
 
 	if len(depIdsToQueryFor) > 0 {
-		newDeps, err := FindWithFields(ByIds(depIdsToQueryFor), StatusKey, DependsOnKey, ActivatedKey)
+		newDeps, err := FindWithFields(ctx, ByIds(depIdsToQueryFor), StatusKey, DependsOnKey, ActivatedKey)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
@@ -837,7 +837,7 @@ func (t *Task) populateDependencyTaskCache(depCache map[string]Task) ([]Task, er
 }
 
 // GetFinishedBlockingDependencies gets all blocking tasks that are finished or blocked.
-func (t *Task) GetFinishedBlockingDependencies(depCache map[string]Task) ([]Task, error) {
+func (t *Task) GetFinishedBlockingDependencies(ctx context.Context, depCache map[string]Task) ([]Task, error) {
 	if len(t.DependsOn) == 0 || t.OverrideDependencies {
 		return nil, nil
 	}
@@ -849,7 +849,7 @@ func (t *Task) GetFinishedBlockingDependencies(depCache map[string]Task) ([]Task
 		}
 	}
 
-	_, err := t.populateDependencyTaskCache(depCache)
+	_, err := t.populateDependencyTaskCache(ctx, depCache)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -875,7 +875,7 @@ func (t *Task) GetFinishedBlockingDependencies(depCache map[string]Task) ([]Task
 // GetDeactivatedBlockingDependencies gets all blocking tasks that are not finished and are not activated.
 // These tasks are not going to run unless they are manually activated.
 func (t *Task) GetDeactivatedBlockingDependencies(ctx context.Context, depCache map[string]Task) ([]string, error) {
-	_, err := t.populateDependencyTaskCache(depCache)
+	_, err := t.populateDependencyTaskCache(ctx, depCache)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -2025,7 +2025,7 @@ func UpdateSchedulingLimit(username, requester string, numTasksModified int, act
 }
 
 // ActivateTasksByIdsWithDependencies activates the given tasks and their dependencies.
-func ActivateTasksByIdsWithDependencies(ids []string, caller string) error {
+func ActivateTasksByIdsWithDependencies(ctx context.Context, ids []string, caller string) error {
 	q := db.Query(bson.M{
 		IdKey:     bson.M{"$in": ids},
 		StatusKey: evergreen.TaskUndispatched,
@@ -2035,7 +2035,7 @@ func ActivateTasksByIdsWithDependencies(ids []string, caller string) error {
 	if err != nil {
 		return errors.Wrap(err, "getting tasks for activation")
 	}
-	dependOn, err := GetRecursiveDependenciesUp(tasks, nil)
+	dependOn, err := GetRecursiveDependenciesUp(ctx, tasks, nil)
 	if err != nil {
 		return errors.Wrap(err, "getting recursive dependencies")
 	}
@@ -2648,7 +2648,7 @@ func (t *Task) SetNumActivatedGeneratedTasks(numActivatedGeneratedTasks int) err
 // GetRecursiveDependenciesUp returns all tasks recursively depended upon
 // that are not in the original task slice (this includes earlier tasks in task groups, if applicable).
 // depCache should originally be nil. We assume there are no dependency cycles.
-func GetRecursiveDependenciesUp(tasks []Task, depCache map[string]Task) ([]Task, error) {
+func GetRecursiveDependenciesUp(ctx context.Context, tasks []Task, depCache map[string]Task) ([]Task, error) {
 	if depCache == nil {
 		depCache = make(map[string]Task)
 	}
@@ -2683,12 +2683,12 @@ func GetRecursiveDependenciesUp(tasks []Task, depCache map[string]Task) ([]Task,
 		return nil, nil
 	}
 
-	deps, err := FindWithFields(ByIds(tasksToFind), IdKey, DependsOnKey, ExecutionKey, BuildIdKey, StatusKey, TaskGroupKey, ActivatedKey, DisplayNameKey, PriorityKey)
+	deps, err := FindWithFields(ctx, ByIds(tasksToFind), IdKey, DependsOnKey, ExecutionKey, BuildIdKey, StatusKey, TaskGroupKey, ActivatedKey, DisplayNameKey, PriorityKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting dependencies")
 	}
 
-	recursiveDeps, err := GetRecursiveDependenciesUp(deps, depCache)
+	recursiveDeps, err := GetRecursiveDependenciesUp(ctx, deps, depCache)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting recursive dependencies")
 	}
@@ -3300,7 +3300,7 @@ func (t *Task) CreateTestResultsTaskOptions(ctx context.Context) ([]testresult.T
 		} else {
 			query := ByIds(t.ExecutionTasks)
 			query["$or"] = hasResults
-			execTasksWithResults, err = FindWithFields(query, ExecutionKey, ResultsServiceKey, HasCedarResultsKey)
+			execTasksWithResults, err = FindWithFields(ctx, query, ExecutionKey, ResultsServiceKey, HasCedarResultsKey)
 		}
 		if err != nil {
 			return nil, errors.Wrap(err, "getting execution tasks for display task")
@@ -3466,12 +3466,12 @@ func CheckUsersPatchTaskLimit(ctx context.Context, requester, username string, i
 	return UpdateSchedulingLimit(username, requester, numTasksToActivate, true)
 }
 
-func FindExecTasksToReset(t *Task) ([]string, error) {
+func FindExecTasksToReset(ctx context.Context, t *Task) ([]string, error) {
 	if !t.IsRestartFailedOnly() {
 		return t.ExecutionTasks, nil
 	}
 
-	failedExecTasks, err := FindWithFields(FailedTasksByIds(t.ExecutionTasks), IdKey)
+	failedExecTasks, err := FindWithFields(ctx, FailedTasksByIds(t.ExecutionTasks), IdKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "retrieving failed execution tasks")
 	}
@@ -4133,8 +4133,8 @@ func AddExecTasksToDisplayTask(ctx context.Context, displayTaskId string, execTa
 }
 
 // in the process of aborting and will eventually reset themselves.
-func (t *Task) FindAbortingAndResettingDependencies() ([]Task, error) {
-	recursiveDeps, err := GetRecursiveDependenciesUp([]Task{*t}, map[string]Task{})
+func (t *Task) FindAbortingAndResettingDependencies(ctx context.Context) ([]Task, error) {
+	recursiveDeps, err := GetRecursiveDependenciesUp(ctx, []Task{*t}, map[string]Task{})
 	if err != nil {
 		return nil, errors.Wrap(err, "getting recursive parent dependencies")
 	}

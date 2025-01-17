@@ -1526,8 +1526,8 @@ func FindAllTasksFromVersionWithDependencies(ctx context.Context, versionId stri
 }
 
 // FindTasksFromVersions returns all tasks associated with the given versions. Note that this only returns a few key fields.
-func FindTasksFromVersions(versionIds []string) ([]Task, error) {
-	return FindWithFields(ByVersions(versionIds),
+func FindTasksFromVersions(ctx context.Context, versionIds []string) ([]Task, error) {
+	return FindWithFields(ctx, ByVersions(versionIds),
 		IdKey, DisplayNameKey, StatusKey, TimeTakenKey, VersionKey, BuildVariantKey, AbortedKey, AbortInfoKey)
 }
 
@@ -1624,14 +1624,14 @@ func Find(ctx context.Context, filter bson.M) ([]Task, error) {
 	return tasks, err
 }
 
-func FindWithFields(filter bson.M, fields ...string) ([]Task, error) {
+func FindWithFields(ctx context.Context, filter bson.M, fields ...string) ([]Task, error) {
 	tasks := []Task{}
 	_, exists := filter[DisplayOnlyKey]
 	if !exists {
 		filter[DisplayOnlyKey] = bson.M{"$ne": true}
 	}
 	query := db.Query(filter).WithFields(fields...)
-	err := db.FindAllQ(Collection, query, &tasks)
+	err := db.FindAllQContext(ctx, Collection, query, &tasks)
 
 	return tasks, err
 }

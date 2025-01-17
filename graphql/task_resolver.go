@@ -256,7 +256,7 @@ func (r *taskResolver) DependsOn(ctx context.Context, obj *restModel.APITask) ([
 		depIds = append(depIds, dep.TaskId)
 	}
 
-	dependencyTasks, err := task.FindWithFields(task.ByIds(depIds), task.DisplayNameKey, task.StatusKey,
+	dependencyTasks, err := task.FindWithFields(ctx, task.ByIds(depIds), task.DisplayNameKey, task.StatusKey,
 		task.ActivatedKey, task.BuildVariantKey, task.DetailsKey, task.DependsOnKey)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Cannot find dependency tasks for task %s: %s", *obj.Id, err.Error()))
