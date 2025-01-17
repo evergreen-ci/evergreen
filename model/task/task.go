@@ -430,11 +430,6 @@ func (t *Task) GetTaskGroupString() string {
 	return fmt.Sprintf("%s_%s_%s_%s", t.TaskGroup, t.BuildVariant, t.Project, t.Version)
 }
 
-// S3Path returns the path to a task's directory dump in S3.
-func (t *Task) S3Path(bv, name string) string {
-	return strings.Join([]string{t.Project, t.Version, bv, name, "latest"}, "/")
-}
-
 // Dependency represents a task that must be completed before the owning
 // task can be scheduled.
 type Dependency struct {

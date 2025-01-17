@@ -39,7 +39,6 @@ const (
 	invalidAlias                = "alias not found"
 	NoTasksOrVariants           = "no tasks/variants were configured"
 	noChildPatchTasksOrVariants = "no tasks/variants were configured for child patch"
-	NoSyncTasksOrVariants       = "no tasks/variants were configured for sync"
 	GitHubInternalError         = "GitHub returned an error"
 	InvalidConfig               = "config file was invalid: sync with base branch & run `evergreen validate -p <project>`"
 	EmptyConfig                 = "config file was empty"
