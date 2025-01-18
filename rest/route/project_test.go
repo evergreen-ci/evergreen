@@ -1072,7 +1072,6 @@ func TestDeleteProject(t *testing.T) {
 
 		projects = append(projects, project)
 		require.NoError(t, project.Add(&u))
-		project.ParameterStoreVarsSynced = true
 	}
 
 	numAliases := 2
@@ -1107,15 +1106,14 @@ func TestDeleteProject(t *testing.T) {
 		hiddenProj, err := serviceModel.FindMergedProjectRef(projects[i].Id, "", true)
 		assert.NoError(t, err)
 		skeletonProj := serviceModel.ProjectRef{
-			Id:                       projects[i].Id,
-			Owner:                    repo.Owner,
-			Repo:                     repo.Repo,
-			Branch:                   projects[i].Branch,
-			RepoRefId:                repo.Id,
-			Enabled:                  false,
-			Hidden:                   utility.TruePtr(),
-			ParameterStoreEnabled:    true,
-			ParameterStoreVarsSynced: true,
+			Id:                    projects[i].Id,
+			Owner:                 repo.Owner,
+			Repo:                  repo.Repo,
+			Branch:                projects[i].Branch,
+			RepoRefId:             repo.Id,
+			Enabled:               false,
+			Hidden:                utility.TruePtr(),
+			ParameterStoreEnabled: true,
 		}
 		assert.Equal(t, skeletonProj, *hiddenProj)
 

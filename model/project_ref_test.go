@@ -1046,32 +1046,6 @@ func checkParametersMatchVars(ctx context.Context, t *testing.T, pm ParameterMap
 	}
 }
 
-// checkAndSetProjectVarsSynced checks that the project ref's parameter store
-// vars are synced according to the DB and sets the flag to true. This is mostly
-// helpful as a temporary workaround to ensure that the project ref agrees with
-// the latest one in the DB. In tests where the project ref is inserted
-// initially, then the sync flag is set to true by a project variable operation
-// (e.g. (*ProjectVars).Insert), the local copy of the project ref isn't
-// updated. If the outdated local project ref is used for a later Upsert, the
-// sync flag will be incorrectly cleared.
-func checkAndSetProjectVarsSynced(t *testing.T, projRef *ProjectRef, isRepoRef bool) {
-	var dbProjRef *ProjectRef
-	var err error
-	if isRepoRef {
-		dbRepoRef, err := FindOneRepoRef(projRef.Id)
-		require.NoError(t, err)
-		require.NotZero(t, dbRepoRef)
-		dbProjRef = &dbRepoRef.ProjectRef
-	} else {
-		dbProjRef, err = FindBranchProjectRef(projRef.Id)
-		require.NoError(t, err)
-		require.NotZero(t, dbProjRef)
-	}
-	assert.True(t, dbProjRef.ParameterStoreVarsSynced, "parameter store vars must be synced but they aren't")
-
-	projRef.ParameterStoreVarsSynced = true
-}
-
 // checkParametersNamespacedByProject checks that the parameter names for the
 // project vars all include the project ID as a prefix.
 func checkParametersNamespacedByProject(t *testing.T, vars ProjectVars) {
@@ -1302,7 +1276,6 @@ func TestDetachFromRepo(t *testing.T) {
 			dbProjRef, err := FindBranchProjectRef(pRef.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbProjRef)
-			assert.True(t, dbProjRef.ParameterStoreVarsSynced, "branch project vars should be synced to Parameter Store after Upsert")
 
 			repoVars := &ProjectVars{
 				Id: repoRef.Id,
@@ -1320,7 +1293,6 @@ func TestDetachFromRepo(t *testing.T) {
 			dbRepoRef, err := FindOneRepoRef(repoRef.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbRepoRef)
-			assert.True(t, dbRepoRef.ParameterStoreVarsSynced, "repo vars should be synced to Parameter Store after Upsert")
 
 			u := &user.DBUser{
 				Id: "me",
@@ -1550,7 +1522,6 @@ func TestDefaultRepoBySection(t *testing.T) {
 				PrivateVars: map[string]bool{"hello": true},
 			}
 			assert.NoError(t, pVars.Insert())
-			checkAndSetProjectVarsSynced(t, &pRef, false)
 			checkParametersNamespacedByProject(t, pVars)
 
 			aliases := []ProjectAlias{
@@ -2041,7 +2012,6 @@ func TestCreateNewRepoRef(t *testing.T) {
 	assert.Nil(t, repoRef.GithubChecksEnabled)
 	assert.Equal(t, "my message", repoRef.CommitQueue.Message)
 	assert.False(t, repoRef.TaskSync.IsPatchEnabled())
-	assert.True(t, repoRef.ParameterStoreVarsSynced)
 
 	projectVars, err := FindOneProjectVars(repoRef.Id)
 	assert.NoError(t, err)

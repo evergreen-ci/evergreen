@@ -1679,7 +1679,6 @@ func TestFindProjectsSuite(t *testing.T) {
 			PrivateVars: map[string]bool{"b": true},
 		}
 		s.NoError(vars.Insert())
-		checkAndSetProjectVarsSynced(s.T(), projectWithVars, false)
 		checkParametersNamespacedByProject(s.T(), *vars)
 
 		repoWithVars := &RepoRef{ProjectRef{
@@ -1694,7 +1693,6 @@ func TestFindProjectsSuite(t *testing.T) {
 			PrivateVars: map[string]bool{"a": true},
 		}
 		s.NoError(repoVars.Insert())
-		checkAndSetProjectVarsSynced(s.T(), &repoWithVars.ProjectRef, true)
 		checkParametersNamespacedByProject(s.T(), *repoVars)
 
 		before := getMockProjectSettings()

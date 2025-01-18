@@ -113,15 +113,89 @@
   "project_vars": [
     {
       "_id": "sandbox_project_id",
-      "vars": { "hello": "world", "foo": "bar", "admintest": "woo" },
       "private_vars": { "hello": true, "foo": false },
-      "admin_only_vars": { "admintest": true }
+      "admin_only_vars": { "admintest": true },
+      "parameters": [
+        {
+          "name": "hello",
+          "parameter_name": "/evg-test/vars/sandbox_project_id/hello"
+        },
+        {
+          "name": "foo",
+          "parameter_name": "/evg-test/vars/sandbox_project_id/foo"
+        },
+        {
+          "name": "admintest",
+          "parameter_name": "/evg-test/vars/sandbox_project_id/admintest"
+        }
+      ]
     },
     {
       "_id": "spruce",
-      "vars": { "both": "dos" },
       "private_vars": { "both": true },
-      "admin_only_vars": { "both": true }
+      "admin_only_vars": { "both": true },
+      "parameters": [
+        {
+          "name": "both",
+          "parameter_name": "/evg-test/vars/spruce/both"
+        }
+      ]
+    }
+  ],
+  "fake_parameters": [
+    {
+      "_id": "/evg-test/vars/sandbox_project_id/hello",
+      "value": "world",
+      "last_updated": {
+        "$date": "2025-01-15T00:00:00.000Z"
+      }
+    },
+    {
+      "_id": "/evg-test/vars/sandbox_project_id/foo",
+      "value": "bar",
+      "last_updated": {
+        "$date": "2025-01-15T00:00:00.000Z"
+      }
+    },
+    {
+      "_id": "/evg-test/vars/sandbox_project_id/admintest",
+      "value": "woo",
+      "last_updated": {
+        "$date": "2025-01-15T00:00:00.000Z"
+      }
+    },
+    {
+      "_id": "/evg-test/vars/spruce/both",
+      "value": "dos",
+      "last_updated": {
+        "$date": "2025-01-15T00:00:00.000Z"
+      }
+    }
+  ],
+  "parameter_records": [
+    {
+      "_id": "/evg-test/vars/sandbox_project_id/hello",
+      "last_updated": {
+        "$date": "2025-01-15T00:00:00.000Z"
+      }
+    },
+    {
+      "_id": "/evg-test/vars/sandbox_project_id/foo",
+      "last_updated": {
+        "$date": "2025-01-15T00:00:00.000Z"
+      }
+    },
+    {
+      "_id": "/evg-test/vars/sandbox_project_id/admintest",
+      "last_updated": {
+        "$date": "2025-01-15T00:00:00.000Z"
+      }
+    },
+    {
+      "_id": "/evg-test/vars/spruce/both",
+      "last_updated": {
+        "$date": "2025-01-15T00:00:00.000Z"
+      }
     }
   ]
 }
