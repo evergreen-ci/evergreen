@@ -944,7 +944,7 @@ func (r *mutationResolver) OverrideTaskDependencies(ctx context.Context, taskID 
 	if t == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find task with id %s", taskID))
 	}
-	if err = t.SetOverrideDependencies(currentUser.Username()); err != nil {
+	if err = t.SetOverrideDependencies(ctx, currentUser.Username()); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("overriding dependencies for task '%s': %s", taskID, err.Error()))
 	}
 	return getAPITaskFromTask(ctx, r.sc.GetURL(), *t)
@@ -1322,7 +1322,7 @@ func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, ve
 					baseGeneratorTask, _ := generatorTask.FindTaskOnBaseCommit(ctx)
 					// If baseGeneratorTask is nil then it didn't exist on the base task and we can't do anything
 					if baseGeneratorTask != nil && baseGeneratorTask.Status == evergreen.TaskUndispatched {
-						err = baseGeneratorTask.SetGeneratedTasksToActivate(t.BuildVariant, t.DisplayName)
+						err = baseGeneratorTask.SetGeneratedTasksToActivate(ctx, t.BuildVariant, t.DisplayName)
 						if err != nil {
 							return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not activate generated task: %s", err.Error()))
 						}

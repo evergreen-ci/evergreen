@@ -1330,7 +1330,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 			assert.Equal(t, "", h.RunningTask)
 		},
 		"a dispatched task should not be updated in the host": func(ctx context.Context, t *testing.T, env *mock.Environment, d data) {
-			require.NoError(t, task.UpdateOne(bson.M{"_id": d.Task3.Id},
+			require.NoError(t, task.UpdateOne(ctx, bson.M{"_id": d.Task3.Id},
 				bson.M{"$set": bson.M{"status": evergreen.TaskStarted}}))
 			nextTaskId := d.Tq3.Queue[1].Id
 			details := &apimodels.GetNextTaskDetails{}
@@ -1501,9 +1501,9 @@ func TestAssignNextAvailableTask(t *testing.T) {
 				TaskGroupMaxHosts: 2,
 			}
 			require.NoError(t, tg1Task3.Insert())
-			require.NoError(t, task.UpdateOne(bson.M{"_id": d.Tg1Task1.Id},
+			require.NoError(t, task.UpdateOne(ctx, bson.M{"_id": d.Tg1Task1.Id},
 				bson.M{"$set": bson.M{"task_group_max_hosts": 2}}))
-			require.NoError(t, task.UpdateOne(bson.M{"_id": d.Tg1Task2.Id},
+			require.NoError(t, task.UpdateOne(ctx, bson.M{"_id": d.Tg1Task2.Id},
 				bson.M{"$set": bson.M{"task_group_max_hosts": 2}}))
 			details := &apimodels.GetNextTaskDetails{}
 			// The first host should get the top of the task group.

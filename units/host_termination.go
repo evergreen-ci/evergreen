@@ -209,7 +209,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			}
 			// Only try to restart the task group if it was successful and should have continued executing.
 			if latestTask != nil && latestTask.IsPartOfSingleHostTaskGroup() && latestTask.Status == evergreen.TaskSucceeded {
-				tasks, err := task.FindTaskGroupFromBuild(latestTask.BuildId, latestTask.TaskGroup)
+				tasks, err := task.FindTaskGroupFromBuild(ctx, latestTask.BuildId, latestTask.TaskGroup)
 				if err != nil {
 					j.AddError(errors.Wrapf(err, "getting task group for task '%s'", latestTask.Id))
 					return

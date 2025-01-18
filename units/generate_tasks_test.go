@@ -911,7 +911,7 @@ buildvariants:
 	j.Run(ctx)
 	assert.NoError(j.Error())
 
-	tasks, err := task.Find(task.ByVersion(sampleVersion.Id))
+	tasks, err := task.Find(ctx, task.ByVersion(sampleVersion.Id))
 	assert.NoError(err)
 	foundGeneratedtask := false
 	for _, dbTask := range tasks {

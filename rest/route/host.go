@@ -260,7 +260,7 @@ func (hgh *hostGetHandler) Run(ctx context.Context) gimlet.Responder {
 
 	var tasks []task.Task
 	if len(taskIds) > 0 {
-		tasks, err = task.Find(task.ByIds(taskIds))
+		tasks, err = task.Find(ctx, task.ByIds(taskIds))
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding tasks %s", taskIds))
 		}

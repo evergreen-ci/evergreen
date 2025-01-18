@@ -135,7 +135,7 @@ func getTaskLogURLs(data *jiraTemplateData) ([]taskInfo, error) {
 		} else {
 			// Task is display only without tests
 			result := make([]taskInfo, 0)
-			execTasks, err := task.Find(task.ByIds(data.Task.ExecutionTasks))
+			execTasks, err := task.Find(data.Context, task.ByIds(data.Task.ExecutionTasks))
 			if err != nil {
 				return nil, errors.Wrapf(err, "finding execution tasks for task '%s'", data.Task.Id)
 			}
@@ -182,6 +182,7 @@ type jiraBuilder struct {
 }
 
 type jiraTemplateData struct {
+	Context            context.Context
 	UIRoot             string
 	SubscriptionID     string
 	EventID            string

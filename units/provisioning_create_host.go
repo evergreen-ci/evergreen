@@ -222,7 +222,7 @@ func (j *createHostJob) Run(ctx context.Context) {
 			}))
 
 			if j.host.SpawnOptions.SpawnedByTask {
-				if err := task.AddHostCreateDetails(j.host.StartedBy, j.host.Id, j.host.SpawnOptions.TaskExecutionNumber, j.Error()); err != nil {
+				if err := task.AddHostCreateDetails(ctx, j.host.StartedBy, j.host.Id, j.host.SpawnOptions.TaskExecutionNumber, j.Error()); err != nil {
 					j.AddError(errors.Wrapf(err, "adding host create error details"))
 				}
 			}

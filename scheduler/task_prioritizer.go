@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"time"
@@ -20,12 +21,13 @@ type TaskPrioritizer interface {
 	// Takes in a slice of tasks and the current MCI settings.
 	// Returns the slice of tasks, sorted in the order in which they should
 	// be run, as well as an error if appropriate.
-	PrioritizeTasks(distroId string, tasks []task.Task, versions map[string]model.Version) ([]task.Task, map[string]map[string]string, error)
+	PrioritizeTasks(ctx context.Context, distroId string, tasks []task.Task, versions map[string]model.Version) ([]task.Task, map[string]map[string]string, error)
 }
 
 // CmpBasedTaskComparator runs the tasks through a slice of comparator functions
 // determining which is more important.
 type CmpBasedTaskComparator struct {
+	ctx            context.Context
 	runtimeID      string
 	tasks          []task.Task
 	versions       map[string]model.Version
@@ -46,8 +48,9 @@ type CmpBasedTaskQueues struct {
 
 // NewCmpBasedTaskComparator returns a new task prioritizer, using the default set of comparators
 // as well as the setup functions necessary for those comparators.
-func NewCmpBasedTaskComparator(id string) *CmpBasedTaskComparator {
+func NewCmpBasedTaskComparator(ctx context.Context, id string) *CmpBasedTaskComparator {
 	return &CmpBasedTaskComparator{
+		ctx:       ctx,
 		runtimeID: id,
 		setupFuncs: []sortSetupFunc{
 			cacheExpectedDurations,
@@ -74,8 +77,8 @@ type CmpBasedTaskPrioritizer struct {
 // whether they are part of patch versions or automatically created versions.
 // Then prioritizes each slice, and merges them.
 // Returns a full slice of the prioritized tasks, and an error if one occurs.
-func (prioritizer *CmpBasedTaskPrioritizer) PrioritizeTasks(distroId string, tasks []task.Task, versions map[string]model.Version) ([]task.Task, map[string]map[string]string, error) {
-	comparator := NewCmpBasedTaskComparator(prioritizer.runtimeID)
+func (prioritizer *CmpBasedTaskPrioritizer) PrioritizeTasks(ctx context.Context, distroId string, tasks []task.Task, versions map[string]model.Version) ([]task.Task, map[string]map[string]string, error) {
+	comparator := NewCmpBasedTaskComparator(ctx, prioritizer.runtimeID)
 	comparator.versions = versions
 	// split the tasks into repotracker tasks and patch tasks, then prioritize
 	// individually and merge
@@ -93,7 +96,7 @@ func (prioritizer *CmpBasedTaskPrioritizer) PrioritizeTasks(distroId string, tas
 		comparator.tasks = taskList
 
 		startAt = time.Now()
-		err := comparator.setupForSortingTasks()
+		err := comparator.setupForSortingTasks(ctx)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "Error running setup for sorting tasks")
 		}
@@ -140,9 +143,9 @@ func (prioritizer *CmpBasedTaskPrioritizer) PrioritizeTasks(distroId string, tas
 
 // Run all of the setup functions necessary for prioritizing the tasks.
 // Returns an error if any of the setup funcs return an error.
-func (cbtc *CmpBasedTaskComparator) setupForSortingTasks() error {
+func (cbtc *CmpBasedTaskComparator) setupForSortingTasks(ctx context.Context) error {
 	for _, setupFunc := range cbtc.setupFuncs {
-		if err := setupFunc(cbtc); err != nil {
+		if err := setupFunc(ctx, cbtc); err != nil {
 			return errors.Wrap(err, "Error running setup for sorting")
 		}
 	}

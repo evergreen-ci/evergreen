@@ -121,7 +121,7 @@ func (t *patchTriggers) patchOutcome(ctx context.Context, sub *event.Subscriptio
 			return nil, nil
 		}
 	}
-	return t.generate(sub)
+	return t.generate(ctx, sub)
 }
 
 func (t *patchTriggers) patchFailure(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
@@ -129,7 +129,7 @@ func (t *patchTriggers) patchFailure(ctx context.Context, sub *event.Subscriptio
 		return nil, nil
 	}
 
-	return t.generate(sub)
+	return t.generate(ctx, sub)
 }
 
 func finalizeChildPatch(sub *event.Subscription) error {
@@ -172,7 +172,7 @@ func (t *patchTriggers) patchSuccess(ctx context.Context, sub *event.Subscriptio
 		return nil, nil
 	}
 
-	return t.generate(sub)
+	return t.generate(ctx, sub)
 }
 
 func (t *patchTriggers) patchStarted(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
@@ -180,10 +180,10 @@ func (t *patchTriggers) patchStarted(ctx context.Context, sub *event.Subscriptio
 		return nil, nil
 	}
 
-	return t.generate(sub)
+	return t.generate(ctx, sub)
 }
 
-func (t *patchTriggers) makeData(sub *event.Subscription) (*commonTemplateData, error) {
+func (t *patchTriggers) makeData(ctx context.Context, sub *event.Subscription) (*commonTemplateData, error) {
 	api := restModel.APIPatch{}
 	if err := api.BuildFromService(*t.patch, &restModel.APIPatchArgs{
 		IncludeProjectIdentifier: true,
@@ -279,7 +279,7 @@ func (t *patchTriggers) makeData(sub *event.Subscription) (*commonTemplateData, 
 		})
 	}
 
-	tasks, err := task.Find(task.ByVersionWithChildTasks(t.patch.Id.Hex()))
+	tasks, err := task.Find(ctx, task.ByVersionWithChildTasks(t.patch.Id.Hex()))
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting tasks for patch '%s'", t.patch.Id)
 	}
@@ -303,8 +303,8 @@ func (t *patchTriggers) makeData(sub *event.Subscription) (*commonTemplateData, 
 	return &data, nil
 }
 
-func (t *patchTriggers) generate(sub *event.Subscription) (*notification.Notification, error) {
-	data, err := t.makeData(sub)
+func (t *patchTriggers) generate(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
+	data, err := t.makeData(ctx, sub)
 	if err != nil {
 		return nil, errors.Wrap(err, "collecting patch data")
 	}
@@ -344,7 +344,7 @@ func (t *patchTriggers) patchFamilyOutcome(ctx context.Context, sub *event.Subsc
 		return nil, nil
 	}
 
-	return t.generate(sub)
+	return t.generate(ctx, sub)
 }
 
 func (t *patchTriggers) patchFamilySuccess(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
@@ -352,12 +352,12 @@ func (t *patchTriggers) patchFamilySuccess(ctx context.Context, sub *event.Subsc
 		return nil, nil
 	}
 
-	return t.generate(sub)
+	return t.generate(ctx, sub)
 }
 
 func (t *patchTriggers) patchFamilyFailure(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
 	if t.data.Status != evergreen.VersionFailed || t.event.EventType != event.PatchChildrenCompletion {
 		return nil, nil
 	}
-	return t.generate(sub)
+	return t.generate(ctx, sub)
 }

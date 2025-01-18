@@ -1101,7 +1101,7 @@ func podAllocatorJobs(ctx context.Context, _ evergreen.Environment, ts time.Time
 		return nil, nil
 	}
 
-	if err := model.DisableStaleContainerTasks(evergreen.StaleContainerTaskMonitor); err != nil {
+	if err := model.DisableStaleContainerTasks(ctx, evergreen.StaleContainerTaskMonitor); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "could not disable stale container tasks",
 			"context": "pod allocation",

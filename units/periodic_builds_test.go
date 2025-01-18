@@ -65,7 +65,7 @@ func TestPeriodicBuildsJob(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(evergreen.AdHocRequester, createdVersion.Requester)
 	assert.Equal(prevVersion.Revision, createdVersion.Revision)
-	tasks, err := task.Find(task.ByVersion(createdVersion.Id))
+	tasks, err := task.Find(ctx, task.ByVersion(createdVersion.Id))
 	require.NoError(t, err)
 	assert.True(tasks[0].Activated)
 	dbProject, err := model.FindBranchProjectRef(sampleProject.Id)

@@ -824,7 +824,7 @@ func (s *taskSuite) makeTest(ctx context.Context, testName, testStatus string) {
 		Execution: s.task.Execution,
 		Status:    testStatus,
 	}))
-	s.Require().NoError(s.task.SetResultsInfo(testresult.TestResultsServiceLocal, testStatus == evergreen.TestFailedStatus))
+	s.Require().NoError(s.task.SetResultsInfo(ctx, testresult.TestResultsServiceLocal, testStatus == evergreen.TestFailedStatus))
 }
 
 func (s *taskSuite) tryDoubleTrigger(shouldGenerate bool) {
@@ -1432,7 +1432,7 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 		TestName: "f1",
 		Status:   evergreen.TestFailedStatus,
 	}))
-	require.NoError(t, tasks[4].SetResultsInfo(testresult.TestResultsServiceLocal, true))
+	require.NoError(t, tasks[4].SetResultsInfo(ctx, testresult.TestResultsServiceLocal, true))
 	notification, err = tr.taskRegressionByTest(ctx, &event.Subscription{ID: "s1", Subscriber: subscriber, Trigger: "t1"})
 	assert.NoError(t, err)
 	require.NotNil(t, notification)

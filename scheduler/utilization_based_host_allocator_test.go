@@ -170,6 +170,9 @@ func (s *UtilizationAllocatorSuite) TestCalcNewHostsNeeded() {
 }
 
 func (s *UtilizationAllocatorSuite) TestCalcExistingFreeHosts() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	h1 := host.Host{
 		Id:          "h1",
 		RunningTask: "t1",
@@ -215,7 +218,7 @@ func (s *UtilizationAllocatorSuite) TestCalcExistingFreeHosts() {
 	}
 	s.NoError(t3.Insert())
 
-	freeHosts, err := calcExistingFreeHosts([]host.Host{h1, h2, h3, h4, h5}, 1, evergreen.MaxDurationPerDistroHost)
+	freeHosts, err := calcExistingFreeHosts(ctx, []host.Host{h1, h2, h3, h4, h5}, 1, evergreen.MaxDurationPerDistroHost)
 	s.NoError(err)
 	s.Equal(3, freeHosts)
 }

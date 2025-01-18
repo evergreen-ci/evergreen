@@ -352,7 +352,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		return err
 	}
 
-	if err = j.buildTasksAndVariants(patchDoc, patchedProject); err != nil {
+	if err = j.buildTasksAndVariants(ctx, patchDoc, patchedProject); err != nil {
 		return errors.Wrap(err, BuildTasksAndVariantsError)
 	}
 
@@ -567,7 +567,7 @@ func (j *patchIntentProcessor) createGitHubMergeSubscription(ctx context.Context
 	return catcher.Resolve()
 }
 
-func (j *patchIntentProcessor) buildTasksAndVariants(patchDoc *patch.Patch, project *model.Project) error {
+func (j *patchIntentProcessor) buildTasksAndVariants(ctx context.Context, patchDoc *patch.Patch, project *model.Project) error {
 	var err error
 	var reuseDef bool
 	reusePatchId, failedOnly := j.intent.RepeatFailedTasksAndVariants()
@@ -576,7 +576,7 @@ func (j *patchIntentProcessor) buildTasksAndVariants(patchDoc *patch.Patch, proj
 	}
 
 	if reuseDef || failedOnly {
-		err = j.setToPreviousPatchDefinition(patchDoc, project, reusePatchId, failedOnly)
+		err = j.setToPreviousPatchDefinition(ctx, patchDoc, project, reusePatchId, failedOnly)
 		if err != nil {
 			return err
 		}
@@ -618,7 +618,7 @@ func (j *patchIntentProcessor) buildTasksAndVariants(patchDoc *patch.Patch, proj
 
 // setToFilteredTasks sets the tasks/variants to a previous patch's activated tasks (filtered on failures if requested)
 // and adds dependencies and task group tasks as needed.
-func setToFilteredTasks(patchDoc, reusePatch *patch.Patch, project *model.Project, failedOnly bool) error {
+func setToFilteredTasks(ctx context.Context, patchDoc, reusePatch *patch.Patch, project *model.Project, failedOnly bool) error {
 	activatedTasks, err := task.FindActivatedByVersionWithoutDisplay(reusePatch.Version)
 	if err != nil {
 		return errors.Wrap(err, "filtering to activated tasks")
@@ -645,7 +645,7 @@ func setToFilteredTasks(patchDoc, reusePatch *patch.Patch, project *model.Projec
 		// We only need to add dependencies and task group tasks for failed tasks because otherwise
 		// we can rely on them being there from the previous patch.
 		if failedOnly {
-			failedPlusNeeded, err := addDependenciesAndTaskGroups(failedTasks, failedTaskDisplayNames, project, vt)
+			failedPlusNeeded, err := addDependenciesAndTaskGroups(ctx, failedTasks, failedTaskDisplayNames, project, vt)
 			if err != nil {
 				return errors.Wrap(err, "getting dependencies and task groups for activated tasks")
 			}
@@ -670,12 +670,12 @@ func setToFilteredTasks(patchDoc, reusePatch *patch.Patch, project *model.Projec
 }
 
 // addDependenciesAndTaskGroups adds dependencies and tasks from single host task groups for the given tasks.
-func addDependenciesAndTaskGroups(tasks []task.Task, taskDisplayNames []string, project *model.Project, vt patch.VariantTasks) ([]string, error) {
+func addDependenciesAndTaskGroups(ctx context.Context, tasks []task.Task, taskDisplayNames []string, project *model.Project, vt patch.VariantTasks) ([]string, error) {
 	// only add tasks if they are in the current project definition
 	tasksInProjectVariant := project.FindTasksForVariant(vt.Variant)
 	tasksToAdd := []string{}
 	// add dependencies of failed tasks
-	taskDependencies, err := task.GetRecursiveDependenciesUp(tasks, nil)
+	taskDependencies, err := task.GetRecursiveDependenciesUp(ctx, tasks, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting dependencies for activated tasks")
 	}
@@ -704,7 +704,7 @@ func addDependenciesAndTaskGroups(tasks []task.Task, taskDisplayNames []string, 
 // setToPreviousPatchDefinition sets the tasks/variants based on a previous patch.
 // If failedOnly is set, we only use the tasks/variants that failed.
 // If patchId isn't set, we just use the most recent patch for the project.
-func (j *patchIntentProcessor) setToPreviousPatchDefinition(patchDoc *patch.Patch,
+func (j *patchIntentProcessor) setToPreviousPatchDefinition(ctx context.Context, patchDoc *patch.Patch,
 	project *model.Project, patchId string, failedOnly bool) error {
 	var reusePatch *patch.Patch
 	var err error
@@ -733,7 +733,7 @@ func (j *patchIntentProcessor) setToPreviousPatchDefinition(patchDoc *patch.Patc
 		return nil
 	}
 
-	if err = setToFilteredTasks(patchDoc, reusePatch, project, failedOnly); err != nil {
+	if err = setToFilteredTasks(ctx, patchDoc, reusePatch, project, failedOnly); err != nil {
 		return errors.Wrapf(err, "filtering tasks for '%s'", patchId)
 	}
 

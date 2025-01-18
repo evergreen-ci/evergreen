@@ -392,6 +392,9 @@ func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithDisabledCommitQueue() {
 }
 
 func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	patchId := mgobson.NewObjectId().Hex()
 	previousPatchDoc := &patch.Patch{
 		Id:         patch.NewId(patchId),
@@ -481,7 +484,7 @@ func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 	}
 	for testName, testCase := range map[string]func(*patchIntentProcessor, *patch.Patch){
 		"previous/reuse": func(j *patchIntentProcessor, currentPatchDoc *patch.Patch) {
-			err := j.setToPreviousPatchDefinition(currentPatchDoc, &project, "", false)
+			err := j.setToPreviousPatchDefinition(ctx, currentPatchDoc, &project, "", false)
 			s.NoError(err)
 			sort.Strings(previousPatchDoc.Tasks)
 			sort.Strings(previousPatchDoc.BuildVariants)
@@ -493,7 +496,7 @@ func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 
 		},
 		"previous/reuse failed": func(j *patchIntentProcessor, currentPatchDoc *patch.Patch) {
-			err := j.setToPreviousPatchDefinition(currentPatchDoc, &project, "", true)
+			err := j.setToPreviousPatchDefinition(ctx, currentPatchDoc, &project, "", true)
 			s.NoError(err)
 			sort.Strings(previousPatchDoc.BuildVariants)
 			sort.Strings(currentPatchDoc.BuildVariants)
@@ -502,7 +505,7 @@ func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 			s.Equal([]string{"et1", "t1", "tgt1", "tgt2", "tgt4"}, currentPatchDoc.Tasks)
 		},
 		"specific patch/reuse": func(j *patchIntentProcessor, currentPatchDoc *patch.Patch) {
-			err := j.setToPreviousPatchDefinition(currentPatchDoc, &project, reusePatchId, false)
+			err := j.setToPreviousPatchDefinition(ctx, currentPatchDoc, &project, reusePatchId, false)
 			s.NoError(err)
 
 			s.Equal(currentPatchDoc.BuildVariants, reusePatchDoc.BuildVariants)
@@ -510,7 +513,7 @@ func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 
 		},
 		"specific patch/reuse failed": func(j *patchIntentProcessor, currentPatchDoc *patch.Patch) {
-			err := j.setToPreviousPatchDefinition(currentPatchDoc, &project, reusePatchId, true)
+			err := j.setToPreviousPatchDefinition(ctx, currentPatchDoc, &project, reusePatchId, true)
 			s.NoError(err)
 			s.Equal(currentPatchDoc.BuildVariants, reusePatchDoc.BuildVariants)
 			s.Equal([]string{"diffTask1"}, currentPatchDoc.Tasks)
@@ -655,6 +658,9 @@ func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 }
 
 func (s *PatchIntentUnitsSuite) TestBuildTasksAndVariantsWithRepeatFailed() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	patchId := "aaaaaaaaaaff001122334455"
 	tasks := []task.Task{
 		{
@@ -778,13 +784,16 @@ func (s *PatchIntentUnitsSuite) TestBuildTasksAndVariantsWithRepeatFailed() {
 
 	s.NoError(err)
 
-	err = j.buildTasksAndVariants(currentPatchDoc, &project)
+	err = j.buildTasksAndVariants(ctx, currentPatchDoc, &project)
 	s.NoError(err)
 	sort.Strings(currentPatchDoc.Tasks)
 	s.Equal([]string{"t1", "t3", "t4"}, currentPatchDoc.Tasks)
 }
 
 func (s *PatchIntentUnitsSuite) TestBuildTasksAndVariantsWithReuse() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	patchId := "aaaaaaaaaaff001122334455"
 	tasks := []task.Task{
 		{
@@ -938,7 +947,7 @@ func (s *PatchIntentUnitsSuite) TestBuildTasksAndVariantsWithReuse() {
 	s.NoError(err)
 
 	// test --reuse
-	err = j.buildTasksAndVariants(currentPatchDoc, &project)
+	err = j.buildTasksAndVariants(ctx, currentPatchDoc, &project)
 	s.NoError(err)
 	sort.Strings(currentPatchDoc.Tasks)
 	s.Equal([]string{"t1", "t2", "t3", "t4"}, currentPatchDoc.Tasks)
@@ -952,6 +961,9 @@ func (s *PatchIntentUnitsSuite) TestBuildTasksAndVariantsWithReuse() {
 }
 
 func (s *PatchIntentUnitsSuite) TestBuildTasksAndVariantsWithReusePatchId() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	earlierPatchId := mgobson.NewObjectId().Hex()
 	tasks := []task.Task{
 		{
@@ -1105,7 +1117,7 @@ func (s *PatchIntentUnitsSuite) TestBuildTasksAndVariantsWithReusePatchId() {
 	s.NoError(err)
 
 	// test --reuse with patch ID
-	err = j.buildTasksAndVariants(currentPatchDoc, &project)
+	err = j.buildTasksAndVariants(ctx, currentPatchDoc, &project)
 	s.NoError(err)
 	sort.Strings(currentPatchDoc.Tasks)
 	s.Equal([]string{"t1", "t2", "t3", "t4"}, currentPatchDoc.Tasks)

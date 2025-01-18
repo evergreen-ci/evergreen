@@ -17,6 +17,6 @@ func (s generatedJSONDBStorage) Find(_ context.Context, t *Task) (GeneratedJSONF
 
 // Insert inserts all the generated JSON files for the given task. If the files
 // are already persisted, this will no-op.
-func (s generatedJSONDBStorage) Insert(_ context.Context, t *Task, files GeneratedJSONFiles) error {
-	return t.SetGeneratedJSON(files)
+func (s generatedJSONDBStorage) Insert(ctx context.Context, t *Task, files GeneratedJSONFiles) error {
+	return t.SetGeneratedJSON(ctx, files)
 }

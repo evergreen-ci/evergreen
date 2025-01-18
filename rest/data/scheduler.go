@@ -14,7 +14,7 @@ func CompareTasks(ctx context.Context, taskIds []string, useLegacy bool) ([]stri
 	if len(taskIds) == 0 {
 		return nil, nil, nil
 	}
-	tasks, err := task.Find(task.ByIds(taskIds))
+	tasks, err := task.Find(ctx, task.ByIds(taskIds))
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "finding tasks to compare")
 	}
@@ -35,7 +35,7 @@ func CompareTasks(ctx context.Context, taskIds []string, useLegacy bool) ([]stri
 	cmp := scheduler.CmpBasedTaskPrioritizer{}
 	logic := map[string]map[string]string{}
 	if useLegacy {
-		tasks, logic, err = cmp.PrioritizeTasks(distroId, tasks, versions)
+		tasks, logic, err = cmp.PrioritizeTasks(ctx, distroId, tasks, versions)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "prioritizing tasks")
 		}
@@ -51,7 +51,7 @@ func CompareTasks(ctx context.Context, taskIds []string, useLegacy bool) ([]stri
 		if d == nil {
 			return nil, nil, errors.Errorf("distro '%s' not found", distroId)
 		}
-		taskPlan := scheduler.PrepareTasksForPlanning(d, tasks)
+		taskPlan := scheduler.PrepareTasksForPlanning(ctx, d, tasks)
 		tasks = taskPlan.Export(ctx)
 	}
 	prioritizedIds := []string{}

@@ -75,7 +75,7 @@ func (uis *UIServer) buildPage(w http.ResponseWriter, r *http.Request) {
 	}
 	buildAsUI.Tasks = uiTasks
 
-	buildAsUI.TimeTaken, buildAsUI.Makespan, err = projCtx.Build.GetTimeSpent()
+	buildAsUI.TimeTaken, buildAsUI.Makespan, err = projCtx.Build.GetTimeSpent(r.Context())
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "can't get time spent for build"))
 		return
@@ -245,7 +245,7 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 	}
 	updatedBuild.Tasks = uiTasks
 
-	updatedBuild.TimeTaken, updatedBuild.Makespan, err = projCtx.Build.GetTimeSpent()
+	updatedBuild.TimeTaken, updatedBuild.Makespan, err = projCtx.Build.GetTimeSpent(r.Context())
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "can't get time spent for build"))
 		return

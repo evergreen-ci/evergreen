@@ -63,7 +63,7 @@ func (r *patchResolver) Builds(ctx context.Context, obj *restModel.APIPatch) ([]
 // Duration is the resolver for the duration field.
 func (r *patchResolver) Duration(ctx context.Context, obj *restModel.APIPatch) (*PatchDuration, error) {
 	query := db.Query(task.ByVersion(*obj.Id)).WithFields(task.TimeTakenKey, task.StartTimeKey, task.FinishTimeKey, task.DisplayOnlyKey, task.ExecutionKey)
-	tasks, err := task.FindAllFirstExecution(query)
+	tasks, err := task.FindAllFirstExecution(ctx, query)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}

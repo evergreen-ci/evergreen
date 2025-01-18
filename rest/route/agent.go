@@ -297,7 +297,7 @@ func (h *markTaskForRestartHandler) Run(ctx context.Context) gimlet.Responder {
 	if err = projectRef.CheckAndUpdateAutoRestartLimit(maxDailyAutoRestarts); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "checking auto restart limit for '%s'", projectRef.Id))
 	}
-	if err = taskToRestart.SetResetWhenFinishedWithInc(); err != nil {
+	if err = taskToRestart.SetResetWhenFinishedWithInc(ctx); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "setting reset when finished for task '%s'", h.taskID))
 	}
 	return gimlet.NewJSONResponse(struct{}{})
@@ -660,7 +660,7 @@ func (h *setTaskResultsInfoHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	if err = t.SetResultsInfo(h.info.Service, h.info.Failed); err != nil {
+	if err = t.SetResultsInfo(ctx, h.info.Service, h.info.Failed); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "setting results info for task '%s'", h.taskID))
 	}
 
@@ -781,7 +781,7 @@ func (h *heartbeatHandler) Run(ctx context.Context) gimlet.Responder {
 		heartbeatResponse.Abort = true
 	}
 
-	if err := t.UpdateHeartbeat(); err != nil {
+	if err := t.UpdateHeartbeat(ctx); err != nil {
 		grip.Warningf("updating heartbeat for task %s: %+v", t.Id, err)
 	}
 	return gimlet.NewJSONResponse(heartbeatResponse)
@@ -1506,7 +1506,7 @@ func (h *checkRunHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	checkRunInt := utility.FromInt64Ptr(checkRun.ID)
-	if err = t.SetCheckRunId(checkRunInt); err != nil {
+	if err = t.SetCheckRunId(ctx, checkRunInt); err != nil {
 		err = errors.Wrap(err, "setting check run ID on task")
 		grip.Error(message.WrapError(err,
 			message.Fields{

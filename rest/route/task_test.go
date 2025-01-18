@@ -60,7 +60,7 @@ func (s *TaskAbortSuite) TestAbort() {
 	s.Equal(http.StatusOK, res.Status())
 
 	s.NotNil(res)
-	tasks, err := task.Find(task.ByIds([]string{"task1", "task2"}))
+	tasks, err := task.Find(ctx, task.ByIds([]string{"task1", "task2"}))
 	s.NoError(err)
 	s.Equal("user1", tasks[0].ActivatedBy)
 	s.Equal("", tasks[1].ActivatedBy)
@@ -71,7 +71,7 @@ func (s *TaskAbortSuite) TestAbort() {
 	res = rm.Run(ctx)
 	s.Equal(http.StatusOK, res.Status())
 	s.NotNil(res)
-	tasks, err = task.Find(task.ByIds([]string{"task1", "task2"}))
+	tasks, err = task.Find(ctx, task.ByIds([]string{"task1", "task2"}))
 	s.NoError(err)
 	s.Equal("user1", tasks[0].AbortInfo.User)
 	s.Equal("", tasks[1].AbortInfo.User)

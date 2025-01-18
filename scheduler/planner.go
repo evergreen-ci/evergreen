@@ -70,9 +70,9 @@ func (cache UnitCache) Create(id string, t task.Task) *Unit {
 }
 
 // Export returns an unordered sequence of unique Units.
-func (cache UnitCache) Export() TaskPlan {
+func (cache UnitCache) Export(ctx context.Context) TaskPlan {
 	seen := StringSet{}
-	tpl := TaskPlan{}
+	tpl := TaskPlan{ctx: ctx}
 	for id := range cache {
 		if seen.Visit(cache[id].ID()) {
 			continue
@@ -82,7 +82,7 @@ func (cache UnitCache) Export() TaskPlan {
 			continue
 		}
 
-		tpl = append(tpl, cache[id])
+		tpl.units = append(tpl.units, cache[id])
 	}
 
 	return tpl
@@ -117,11 +117,11 @@ func NewUnit(t task.Task) *Unit {
 
 // Export returns an unordered sequence of tasks from unit. All tasks
 // are unique.
-func (unit *Unit) Export() TaskList {
-	out := make(TaskList, 0, len(unit.tasks))
+func (unit *Unit) Export(ctx context.Context) TaskList {
+	out := TaskList{ctx: ctx}
 
 	for _, t := range unit.tasks {
-		out = append(out, t)
+		out.tasks = append(out.tasks, t)
 	}
 
 	return out
@@ -291,7 +291,7 @@ func (u *unitInfo) computePriority(breakdown *task.SortingValueBreakdown) int64 
 	return initialPriority
 }
 
-func (unit *Unit) info() unitInfo {
+func (unit *Unit) info(ctx context.Context) unitInfo {
 	info := unitInfo{
 		Settings: unit.distro.PlannerSettings,
 	}
@@ -314,7 +314,7 @@ func (unit *Unit) info() unitInfo {
 		}
 
 		info.TotalPriority += t.Priority
-		info.ExpectedRuntime += t.FetchExpectedDuration().Average
+		info.ExpectedRuntime += t.FetchExpectedDuration(ctx).Average
 		info.NumDependents += int64(t.NumDependents)
 		info.TaskIDs = append(info.TaskIDs, t.Id)
 	}
@@ -328,12 +328,12 @@ func (unit *Unit) info() unitInfo {
 // Generally, higher point values are given to larger units and for
 // units that have been in the queue for longer, with longer expected
 // runtimes. The tasks' priority acts as a multiplying factor.
-func (unit *Unit) sortingValueBreakdown() task.SortingValueBreakdown {
+func (unit *Unit) sortingValueBreakdown(ctx context.Context) task.SortingValueBreakdown {
 	if unit.cachedValue.TotalValue > 0 {
 		return unit.cachedValue
 	}
 
-	info := unit.info()
+	info := unit.info(ctx)
 	unit.cachedValue = info.value()
 	return unit.cachedValue
 }
@@ -363,13 +363,16 @@ func (s StringSet) Visit(id string) bool {
 // prioritizes tasks by the number of dependencies, priority, and
 // expected duration. This sorting is used for ordering tasks within a
 // unit.
-type TaskList []task.Task
+type TaskList struct {
+	ctx   context.Context
+	tasks []task.Task
+}
 
-func (tl TaskList) Len() int      { return len(tl) }
-func (tl TaskList) Swap(i, j int) { tl[i], tl[j] = tl[j], tl[i] }
+func (tl TaskList) Len() int      { return len(tl.tasks) }
+func (tl TaskList) Swap(i, j int) { tl.tasks[i], tl.tasks[j] = tl.tasks[j], tl.tasks[i] }
 func (tl TaskList) Less(i, j int) bool {
-	t1 := tl[i]
-	t2 := tl[j]
+	t1 := tl.tasks[i]
+	t2 := tl.tasks[j]
 
 	// TODO note about impact of this with versions.
 	if t1.TaskGroupOrder != t2.TaskGroupOrder {
@@ -384,23 +387,26 @@ func (tl TaskList) Less(i, j int) bool {
 		return t1.Priority > t2.Priority
 	}
 
-	return t1.FetchExpectedDuration().Average > t2.FetchExpectedDuration().Average
+	return t1.FetchExpectedDuration(tl.ctx).Average > t2.FetchExpectedDuration(tl.ctx).Average
 }
 
 // TaskPlan provides a sortable interface on top of a slice of
 // schedulable units, with ordering of units provided by the
 // implementation of SortingValueBreakdown.
-type TaskPlan []*Unit
-
-func (tpl TaskPlan) Len() int { return len(tpl) }
-func (tpl TaskPlan) Less(i, j int) bool {
-	return tpl[i].sortingValueBreakdown().TotalValue > tpl[j].sortingValueBreakdown().TotalValue
+type TaskPlan struct {
+	ctx   context.Context
+	units []*Unit
 }
-func (tpl TaskPlan) Swap(i, j int) { tpl[i], tpl[j] = tpl[j], tpl[i] }
+
+func (tpl TaskPlan) Len() int { return len(tpl.units) }
+func (tpl TaskPlan) Less(i, j int) bool {
+	return tpl.units[i].sortingValueBreakdown(tpl.ctx).TotalValue > tpl.units[j].sortingValueBreakdown(tpl.ctx).TotalValue
+}
+func (tpl TaskPlan) Swap(i, j int) { tpl.units[i], tpl.units[j] = tpl.units[j], tpl.units[i] }
 
 func (tpl TaskPlan) Keys() []string {
 	out := []string{}
-	for _, unit := range tpl {
+	for _, unit := range tpl.units {
 		out = append(out, unit.Keys()...)
 	}
 	return out
@@ -408,7 +414,7 @@ func (tpl TaskPlan) Keys() []string {
 
 // PrepareTasksForPlanning takes a list of tasks for a distro and
 // returns a TaskPlan, grouping tasks into the appropriate units.
-func PrepareTasksForPlanning(distro *distro.Distro, tasks []task.Task) TaskPlan {
+func PrepareTasksForPlanning(ctx context.Context, distro *distro.Distro, tasks []task.Task) TaskPlan {
 	cache := UnitCache{}
 
 	for _, t := range tasks {
@@ -435,7 +441,7 @@ func PrepareTasksForPlanning(distro *distro.Distro, tasks []task.Task) TaskPlan 
 		}
 	}
 
-	return cache.Export()
+	return cache.Export(ctx)
 }
 
 // Export sorts the TaskPlan returning a unique list of tasks.
@@ -444,16 +450,16 @@ func (tpl TaskPlan) Export(ctx context.Context) []task.Task {
 
 	output := []task.Task{}
 	seen := StringSet{}
-	for _, unit := range tpl {
-		sortingValueBreakdown := unit.sortingValueBreakdown()
-		tasks := unit.Export()
+	for _, unit := range tpl.units {
+		sortingValueBreakdown := unit.sortingValueBreakdown(ctx)
+		tasks := unit.Export(ctx)
 		sort.Sort(tasks)
-		for i := range tasks {
-			if seen.Visit(tasks[i].Id) {
+		for i := range tasks.tasks {
+			if seen.Visit(tasks.tasks[i].Id) {
 				continue
 			}
-			tasks[i].SetSortingValueBreakdownAttributes(ctx, sortingValueBreakdown)
-			output = append(output, tasks[i])
+			tasks.tasks[i].SetSortingValueBreakdownAttributes(ctx, sortingValueBreakdown)
+			output = append(output, tasks.tasks[i])
 		}
 	}
 

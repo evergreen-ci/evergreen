@@ -1,6 +1,7 @@
 package task
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -70,8 +71,8 @@ func (t TaskNode) String() string {
 }
 
 // VersionDependencyGraph finds all the tasks from the version given by versionID and constructs a DependencyGraph from them.
-func VersionDependencyGraph(versionID string, transposed bool) (DependencyGraph, error) {
-	tasks, err := FindWithFields(ByVersion(versionID), DependsOnKey, BuildVariantKey, DisplayNameKey)
+func VersionDependencyGraph(ctx context.Context, versionID string, transposed bool) (DependencyGraph, error) {
+	tasks, err := FindWithFields(ctx, ByVersion(versionID), DependsOnKey, BuildVariantKey, DisplayNameKey)
 	if err != nil {
 		return DependencyGraph{}, errors.Wrapf(err, "getting tasks for version '%s'", versionID)
 	}
