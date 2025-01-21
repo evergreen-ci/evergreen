@@ -92,8 +92,6 @@ type NotificationPreferences struct {
 	SpawnHostExpirationID string                     `bson:"spawn_host_expiration_id,omitempty" json:"-"`
 	SpawnHostOutcome      UserSubscriptionPreference `bson:"spawn_host_outcome" json:"spawn_host_outcome"`
 	SpawnHostOutcomeID    string                     `bson:"spawn_host_outcome_id,omitempty" json:"-"`
-	CommitQueue           UserSubscriptionPreference `bson:"commit_queue" json:"commit_queue"`
-	CommitQueueID         string                     `bson:"commit_queue_id,omitempty" json:"-"`
 }
 
 type UserSubscriptionPreference string
@@ -541,9 +539,6 @@ func (u *DBUser) GeneralSubscriptionIDs() []string {
 		ids = append(ids, id)
 	}
 	if id := u.Settings.Notifications.SpawnHostOutcomeID; id != "" {
-		ids = append(ids, id)
-	}
-	if id := u.Settings.Notifications.CommitQueueID; id != "" {
 		ids = append(ids, id)
 	}
 

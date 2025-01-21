@@ -61,6 +61,7 @@ type ResolverRoot interface {
 	IssueLink() IssueLinkResolver
 	LogkeeperBuild() LogkeeperBuildResolver
 	Mutation() MutationResolver
+	Notifications() NotificationsResolver
 	Patch() PatchResolver
 	Permissions() PermissionsResolver
 	PlannerSettings() PlannerSettingsResolver
@@ -87,6 +88,7 @@ type ResolverRoot interface {
 	DistroInput() DistroInputResolver
 	FinderSettingsInput() FinderSettingsInputResolver
 	HostAllocatorSettingsInput() HostAllocatorSettingsInputResolver
+	NotificationsInput() NotificationsInputResolver
 	PlannerSettingsInput() PlannerSettingsInputResolver
 	ProjectSettingsInput() ProjectSettingsInputResolver
 	RepoSettingsInput() RepoSettingsInputResolver
@@ -1866,6 +1868,10 @@ type MutationResolver interface {
 	SetVersionPriority(ctx context.Context, versionID string, priority int) (*string, error)
 	UnscheduleVersionTasks(ctx context.Context, versionID string, abort bool) (*string, error)
 }
+type NotificationsResolver interface {
+	CommitQueue(ctx context.Context, obj *model.APINotificationPreferences) (*string, error)
+	CommitQueueID(ctx context.Context, obj *model.APINotificationPreferences) (*string, error)
+}
 type PatchResolver interface {
 	AuthorDisplayName(ctx context.Context, obj *model.APIPatch) (string, error)
 	BaseTaskStatuses(ctx context.Context, obj *model.APIPatch) ([]string, error)
@@ -2131,6 +2137,9 @@ type HostAllocatorSettingsInputResolver interface {
 
 	RoundingRule(ctx context.Context, obj *model.APIHostAllocatorSettings, data RoundingRule) error
 	Version(ctx context.Context, obj *model.APIHostAllocatorSettings, data HostAllocatorVersion) error
+}
+type NotificationsInputResolver interface {
+	CommitQueue(ctx context.Context, obj *model.APINotificationPreferences, data *string) error
 }
 type PlannerSettingsInputResolver interface {
 	TargetTime(ctx context.Context, obj *model.APIPlannerSettings, data int) error
@@ -35426,7 +35435,7 @@ func (ec *executionContext) _Notifications_commitQueue(ctx context.Context, fiel
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.CommitQueue, nil
+		return ec.resolvers.Notifications().CommitQueue(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -35444,8 +35453,8 @@ func (ec *executionContext) fieldContext_Notifications_commitQueue(_ context.Con
 	fc = &graphql.FieldContext{
 		Object:     "Notifications",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
 		},
@@ -35467,7 +35476,7 @@ func (ec *executionContext) _Notifications_commitQueueId(ctx context.Context, fi
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.CommitQueueID, nil
+		return ec.resolvers.Notifications().CommitQueueID(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -35485,8 +35494,8 @@ func (ec *executionContext) fieldContext_Notifications_commitQueueId(_ context.C
 	fc = &graphql.FieldContext{
 		Object:     "Notifications",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
 		},
@@ -74949,7 +74958,9 @@ func (ec *executionContext) unmarshalInputNotificationsInput(ctx context.Context
 			if err != nil {
 				return it, err
 			}
-			it.CommitQueue = data
+			if err = ec.resolvers.NotificationsInput().CommitQueue(ctx, &it, data); err != nil {
+				return it, err
+			}
 		case "patchFinish":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("patchFinish"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -84086,9 +84097,71 @@ func (ec *executionContext) _Notifications(ctx context.Context, sel ast.Selectio
 		case "buildBreakId":
 			out.Values[i] = ec._Notifications_buildBreakId(ctx, field, obj)
 		case "commitQueue":
-			out.Values[i] = ec._Notifications_commitQueue(ctx, field, obj)
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Notifications_commitQueue(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "commitQueueId":
-			out.Values[i] = ec._Notifications_commitQueueId(ctx, field, obj)
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Notifications_commitQueueId(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "patchFinish":
 			out.Values[i] = ec._Notifications_patchFinish(ctx, field, obj)
 		case "patchFinishId":

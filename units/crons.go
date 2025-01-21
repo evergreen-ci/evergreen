@@ -32,7 +32,6 @@ const (
 	createHostQueueGroup = "service.host.create"
 	// terminateHostQueueGroup is the queue group for host-termination-jobs.
 	terminateHostQueueGroup         = "service.host.termination"
-	commitQueueQueueGroup           = "service.commitqueue"
 	eventNotifierQueueGroup         = "service.event.notifier"
 	podAllocationQueueGroup         = "service.pod.allocate"
 	podDefinitionCreationQueueGroup = "service.pod.definition.create"

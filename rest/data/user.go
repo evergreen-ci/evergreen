@@ -25,7 +25,6 @@ func UpdateSettings(dbUser *user.DBUser, settings user.UserSettings) error {
 	settings.Notifications.PatchFinishID = dbUser.Settings.Notifications.PatchFinishID
 	settings.Notifications.SpawnHostOutcomeID = dbUser.Settings.Notifications.SpawnHostOutcomeID
 	settings.Notifications.SpawnHostExpirationID = dbUser.Settings.Notifications.SpawnHostExpirationID
-	settings.Notifications.CommitQueueID = dbUser.Settings.Notifications.CommitQueueID
 
 	slackTarget := fmt.Sprintf("@%s", settings.SlackUsername)
 
@@ -121,24 +120,6 @@ func UpdateSettings(dbUser *user.DBUser, settings user.UserSettings) error {
 		settings.Notifications.SpawnHostOutcomeID = spawnHostOutcomeSubscription.ID
 	} else {
 		settings.Notifications.SpawnHostOutcomeID = ""
-	}
-
-	var commitQueueSubscriber event.Subscriber
-	switch settings.Notifications.CommitQueue {
-	case user.PreferenceSlack:
-		commitQueueSubscriber = event.NewSlackSubscriber(slackTarget)
-	case user.PreferenceEmail:
-		commitQueueSubscriber = event.NewEmailSubscriber(dbUser.Email())
-	}
-	commitQueueSubscription, err := event.CreateOrUpdateGeneralSubscription(event.GeneralSubscriptionCommitQueue,
-		dbUser.Settings.Notifications.CommitQueueID, commitQueueSubscriber, dbUser.Id)
-	if err != nil {
-		return errors.Wrap(err, "creating commit queue subscription")
-	}
-	if commitQueueSubscription != nil {
-		settings.Notifications.CommitQueueID = commitQueueSubscription.ID
-	} else {
-		settings.Notifications.CommitQueueID = ""
 	}
 
 	return dbUser.UpdateSettings(settings)

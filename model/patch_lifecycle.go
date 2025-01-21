@@ -222,7 +222,7 @@ func getPatchedProjectYAML(ctx context.Context, projectRef *ProjectRef, opts *Ge
 	if p.IsGithubPRPatch() {
 		hash = p.GithubPatchData.HeadHash
 	}
-	if p.IsGithubMergePatch() {
+	if p.IsMergeQueuePatch() {
 		hash = p.GithubMergeData.HeadSHA
 	}
 	opts.Revision = hash
@@ -858,7 +858,7 @@ func getLoadProjectOptsForPatch(p *patch.Patch) (*ProjectRef, *GetProjectOpts, e
 	if p.IsGithubPRPatch() {
 		hash = p.GithubPatchData.HeadHash
 	}
-	if p.IsGithubMergePatch() {
+	if p.IsMergeQueuePatch() {
 		hash = p.GithubMergeData.HeadSHA
 	}
 
