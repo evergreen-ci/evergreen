@@ -30,7 +30,6 @@ import (
 
 var (
 	projectVarIdKey          = bsonutil.MustHaveTag(ProjectVars{}, "Id")
-	projectVarsMapKey        = bsonutil.MustHaveTag(ProjectVars{}, "Vars")
 	projectVarsParametersKey = bsonutil.MustHaveTag(ProjectVars{}, "Parameters")
 	privateVarsMapKey        = bsonutil.MustHaveTag(ProjectVars{}, "PrivateVars")
 	adminOnlyVarsMapKey      = bsonutil.MustHaveTag(ProjectVars{}, "AdminOnlyVars")
@@ -52,10 +51,9 @@ type ProjectVars struct {
 	Id string `bson:"_id" json:"_id"`
 
 	// Vars is the actual mapping of variable names to values for this project.
-	// TODO (DEVPROD-9440): after all project vars are migrated to Parameter
-	// Store, remove the BSON tags on this field to ensure project var values
-	// are not put in the DB anymore.
-	Vars map[string]string `bson:"vars" json:"vars"`
+	// This is intentionally not stored in the DB for security reasons. The
+	// variables can be fetched from ParameterStore using the Parameters field.
+	Vars map[string]string `bson:"-" json:"vars"`
 
 	// Parameters contains the mappings between user-defined project variable
 	// names and the parameter name where the variable's value can be found in
@@ -318,7 +316,6 @@ func (projectVars *ProjectVars) Upsert() (*adb.ChangeInfo, error) {
 	}
 
 	setUpdate := bson.M{
-		projectVarsMapKey:   projectVars.Vars,
 		privateVarsMapKey:   projectVars.PrivateVars,
 		adminOnlyVarsMapKey: projectVars.AdminOnlyVars,
 	}
@@ -554,7 +551,9 @@ func insertParameterStore(ctx context.Context, vars *ProjectVars) (*ParameterMap
 // FindAndModify is almost the same functionally as Upsert, except that it only
 // deletes project vars that are explicitly provided in varsToDelete. In other
 // words, even if a project variable is omitted from projectVars, it won't be
-// deleted unless that variable is explicitly listed in varsToDelete.
+// deleted unless that variable is explicitly listed in varsToDelete. If this
+// succeeds, projectVars will contain all the project variables, including those
+// that were not explicitly modified.
 func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.ChangeInfo, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultParameterStoreAccessTimeout)
 	defer cancel()
@@ -577,9 +576,6 @@ func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.Chang
 		len(projectVars.AdminOnlyVars) == 0 && len(projectVars.Parameters) == 0 && len(varsToDelete) == 0 {
 		return nil, nil
 	}
-	for key, val := range projectVars.Vars {
-		setUpdate[bsonutil.GetDottedKeyName(projectVarsMapKey, key)] = val
-	}
 	for key, val := range projectVars.PrivateVars {
 		setUpdate[bsonutil.GetDottedKeyName(privateVarsMapKey, key)] = val
 	}
@@ -596,14 +592,14 @@ func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.Chang
 	}
 
 	for _, val := range varsToDelete {
-		unsetUpdate[bsonutil.GetDottedKeyName(projectVarsMapKey, val)] = 1
 		unsetUpdate[bsonutil.GetDottedKeyName(privateVarsMapKey, val)] = 1
 		unsetUpdate[bsonutil.GetDottedKeyName(adminOnlyVarsMapKey, val)] = 1
 	}
 	if len(unsetUpdate) > 0 {
 		update["$unset"] = unsetUpdate
 	}
-	return db.FindAndModify(
+
+	change, err := db.FindAndModify(
 		ProjectVarsCollection,
 		bson.M{projectVarIdKey: projectVars.Id},
 		nil,
@@ -614,6 +610,27 @@ func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.Chang
 		},
 		projectVars,
 	)
+	if err != nil {
+		return nil, errors.Wrap(err, "finding and modifying project vars in DB")
+	}
+
+	// FindAndModify is expected to return all the project's vars. However,
+	// FindAndModify only receives as input the subset of vars to be modified.
+	// Therefore, it's necessary to look up all the vars in Parameter Store
+	// after the update to ensure that the the returned project vars includes
+	// all the unmodified vars.
+	if err := projectVars.checkAndRunParameterStoreOp(ctx, func() error {
+		projectVarsFromPS, err := projectVars.findParameterStore(ctx)
+		if err != nil {
+			return errors.Wrap(err, "finding unmodified project vars in Parameter Store")
+		}
+		projectVars.Vars = projectVarsFromPS.Vars
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return change, nil
 }
 
 // findAndModifyParameterStore is almost the same functionally as Upsert, except
@@ -670,7 +687,6 @@ func (projectVars *ProjectVars) Clear() error {
 		bson.M{ProjectRefIdKey: projectVars.Id},
 		bson.M{
 			"$unset": bson.M{
-				projectVarsMapKey:        1,
 				privateVarsMapKey:        1,
 				adminOnlyVarsMapKey:      1,
 				projectVarsParametersKey: 1,

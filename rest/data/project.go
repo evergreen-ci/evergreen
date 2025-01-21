@@ -309,9 +309,9 @@ func UpdateProjectVars(projectId string, varsModel *restModel.APIProjectVars, ov
 	vars.Id = projectId
 
 	// Avoid accidentally overwriting private variables, for example if the GET route is used to populate PATCH.
-	for key, val := range varsModel.Vars {
+	for key, val := range vars.Vars {
 		if val == "" {
-			delete(varsModel.Vars, key)
+			delete(vars.Vars, key)
 		}
 	}
 	if overwrite {
