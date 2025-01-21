@@ -216,13 +216,13 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 
 	// The number of task group tasks that have been waiting >= MaxDurationThreshold since their dependencies were met
 	var totalOverdueInTaskGroups int
-	// The number of task group tasks have their dependencies were met and are expected to take over MaxDurationThreshold
+	// The number of task group tasks have their dependencies met and are expected to take over MaxDurationThreshold
 	var countDurationOverThresholdInTaskGroups int
 	// The total number of hosts that are dedicated to running task groups that are free or are estimated to soon be free
 	var freeInTaskGroups int
 	// The total number of hosts that are dedicated to running task groups that are running tasks
 	var requiredInTaskGroups int
-	// The sum of the expected durations of all task group tasks that have their dependencies were met and are expected to take over MaxDurationThreshold
+	// The sum of the expected durations of all task group tasks that have their dependencies met and are expected to take over MaxDurationThreshold
 	var durationOverThresholdInTaskGroups time.Duration
 	// The sum of the expected durations of all task group tasks that have their dependencies met
 	var expectedDurationInTaskGroups time.Duration
@@ -240,11 +240,11 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 
 	// The sum of the expected durations of all standalone tasks that have their dependencies met
 	correctedExpectedDuration := distroQueueInfo.ExpectedDuration - expectedDurationInTaskGroups
-	// The sum of the expected durations of all standalone tasks that have their dependencies were met and are expected to take over MaxDurationThreshold
+	// The sum of the expected durations of all standalone tasks that have their dependencies met and are expected to take over MaxDurationThreshold
 	correctedDurationOverThreshold := distroQueueInfo.DurationOverThreshold - durationOverThresholdInTaskGroups
-	// The sum of the expected durations of all standalone tasks that have their dependencies were met and are expected to take under MaxDurationThreshold
+	// The sum of the expected durations of all standalone tasks that have their dependencies met and are expected to take under MaxDurationThreshold
 	scheduledDuration := correctedExpectedDuration - correctedDurationOverThreshold
-	// The number of standalone tasks that have their dependencies were met and are expected to take over MaxDurationThreshold
+	// The number of standalone tasks that have their dependencies met and are expected to take over MaxDurationThreshold
 	durationOverThreshNoTaskGroups := distroQueueInfo.CountDurationOverThreshold - countDurationOverThresholdInTaskGroups
 
 	// The number of additional hosts to be spawned that will be dedicated to standalone tasks

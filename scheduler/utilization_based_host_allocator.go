@@ -265,7 +265,7 @@ func groupByTaskGroup(runningHosts []host.Host, distroQueueInfo model.DistroQueu
 
 // calcNewHostsNeeded returns the number of new hosts needed based on a heuristic that utilizes the
 // sum of the expected durations of all short-running (<= maxDurationPerHost) tasks that have their
-// dependencies were met. It attempts to allocate enough hosts to run all short running tasks within
+// dependencies met. It attempts to allocate enough hosts to run all short running tasks within
 // maxDurationPerHost, plus one host for each long-running task with runtime > maxDurationPerHost,
 // plus (optionally) one host for each task that have been waiting maxDurationPerHost since its dependencies
 // were met.
