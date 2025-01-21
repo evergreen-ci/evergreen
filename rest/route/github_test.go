@@ -14,7 +14,6 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
@@ -70,7 +69,6 @@ func (s *GithubWebhookRouteSuite) TearDownSuite() {
 
 func (s *GithubWebhookRouteSuite) SetupTest() {
 	s.NoError(db.Clear(model.ProjectRefCollection))
-	s.NoError(db.Clear(commitqueue.Collection))
 
 	s.queue = s.env.LocalQueue()
 	s.mockSc = &data.MockGitHubConnector{
@@ -79,8 +77,6 @@ func (s *GithubWebhookRouteSuite) SetupTest() {
 
 	s.rm = makeGithubHooksRoute(s.sc, s.queue, []byte(s.conf.GithubWebhookSecret), s.env.Settings())
 	s.mockRm = makeGithubHooksRoute(s.mockSc, s.queue, []byte(s.conf.GithubWebhookSecret), s.env.Settings())
-
-	s.Require().NoError(commitqueue.InsertQueue(&commitqueue.CommitQueue{ProjectID: "mci"}))
 
 	var err error
 	s.prBody, err = os.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "pull_request.json"))

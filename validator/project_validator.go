@@ -570,7 +570,7 @@ func constructAliasWarnings(aliasMap map[string]model.ProjectAlias, aliasNeedsVa
 		msgComponents := []string{}
 		switch a.Alias {
 		case evergreen.CommitQueueAlias:
-			msgComponents = append(msgComponents, "Commit queue alias")
+			msgComponents = append(msgComponents, "Merge queue alias")
 		case evergreen.GithubPRAlias:
 			msgComponents = append(msgComponents, "GitHub PR alias")
 		case evergreen.GitTagAlias:
@@ -1263,11 +1263,6 @@ func validateBVNames(project *model.Project) ValidationErrors {
 					Message: fmt.Sprintf("buildvariant '%s' does not have a display name", buildVariant.Name),
 				},
 			)
-		} else if dispName == evergreen.MergeTaskVariant {
-			errs = append(errs, ValidationError{
-				Level:   Error,
-				Message: fmt.Sprintf("the variant name '%s' is reserved for the commit queue", evergreen.MergeTaskVariant),
-			})
 		}
 
 		if strings.ContainsAny(buildVariant.Name, strings.Join(unauthorizedCharacters, "")) {

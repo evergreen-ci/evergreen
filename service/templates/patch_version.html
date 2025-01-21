@@ -6,7 +6,6 @@
   var variants = {{.Variants}}
   var tasks = {{.Tasks}}
   var patch= {{.ProjectData.Patch}}
-  var commitQueuePosition = {{.CommitQueuePosition}}
   window.hasBanner = {{ne .Banner ""}}
 </script>
 {{end}}
@@ -26,15 +25,6 @@ Evergreen - Configure Patch
     <div ng-show="patch.Version.length > 0">
       Tasks for this patch have already been scheduled. <br/>
       <a href="/version/[[patch.Version]]">View Existing Tasks&hellip;</a>
-    </div>
-    <div ng-show="patch.Version.length == 0">
-      <div ng-show="commitQueuePosition >= 0">
-        <h3>This patch is at position [[commitQueuePosition]] in the commit queue.</h3>
-        <button type="button" class="btn btn-danger" ng-click="deleteFromQueue()" data-dismiss="modal">Delete From Queue</button>
-      </div>
-      <div ng-show="commitQueuePosition < 0">
-        <h3>This patch is not on the queue (paused or deleted).</h3>
-      </div>
     </div>
   </div>
   <div ng-show="patch.Alias != '__commit_queue'">

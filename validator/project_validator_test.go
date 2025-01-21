@@ -2643,10 +2643,10 @@ func TestValidateAliasCoverage(t *testing.T) {
 			}
 			errs := validateAliasCoverage(p, model.ProjectAliases{alias1, alias2})
 			require.Len(t, errs, 2)
-			assert.Contains(t, errs[0].Message, "Commit queue alias")
+			assert.Contains(t, errs[0].Message, "Merge queue alias")
 			assert.Contains(t, errs[0].Message, "(from the yaml)")
 			assert.Contains(t, errs[0].Message, "has no matching variants")
-			assert.Contains(t, errs[1].Message, "Commit queue alias")
+			assert.Contains(t, errs[1].Message, "Merge queue alias")
 			assert.Contains(t, errs[1].Message, "(from the yaml)")
 			assert.Contains(t, errs[1].Message, "has no matching variants")
 			assert.NotContains(t, errs[0].Message, "tasks")
@@ -2713,11 +2713,11 @@ func TestValidateAliasCoverage(t *testing.T) {
 
 			errs := validateAliasCoverage(p, model.ProjectAliases{alias1, alias2})
 			require.Len(t, errs, 2)
-			assert.Contains(t, errs[0].Message, "Commit queue alias")
+			assert.Contains(t, errs[0].Message, "Merge queue alias")
 			assert.Contains(t, errs[0].Message, "(from the project page)")
 			assert.Contains(t, errs[0].Message, "has no matching variants")
 			assert.NotContains(t, errs[0].Message, "matching task regexp")
-			assert.Contains(t, errs[1].Message, "Commit queue alias")
+			assert.Contains(t, errs[1].Message, "Merge queue alias")
 			assert.Contains(t, errs[1].Message, "(from the project page)")
 			assert.Contains(t, errs[1].Message, "has no matching tasks")
 			assert.Contains(t, errs[1].Message, "variant tags")
@@ -5148,9 +5148,8 @@ func TestTVToTaskUnit(t *testing.T) {
 					Variant:  "rhel",
 					Priority: 20,
 				}, {TaskName: "compile", Variant: "ubuntu"}: {
-					Name:             "compile",
-					Variant:          "ubuntu",
-					CommitQueueMerge: true,
+					Name:    "compile",
+					Variant: "ubuntu",
 					DependsOn: []model.TaskUnitDependency{
 						{
 							Name:    "setup",
@@ -5199,9 +5198,8 @@ func TestTVToTaskUnit(t *testing.T) {
 						Name: "ubuntu",
 						Tasks: []model.BuildVariantTaskUnit{
 							{
-								Name:             "compile",
-								Variant:          "ubuntu",
-								CommitQueueMerge: true,
+								Name:    "compile",
+								Variant: "ubuntu",
 								DependsOn: []model.TaskUnitDependency{
 									{
 										Name:    "setup",
@@ -5235,11 +5233,10 @@ func TestTVToTaskUnit(t *testing.T) {
 					Variant:  "rhel",
 					Priority: 20,
 				}, {TaskName: "compile", Variant: "ubuntu"}: {
-					Name:             "compile",
-					Variant:          "ubuntu",
-					IsPartOfGroup:    true,
-					GroupName:        "compile_group",
-					CommitQueueMerge: true,
+					Name:          "compile",
+					Variant:       "ubuntu",
+					IsPartOfGroup: true,
+					GroupName:     "compile_group",
 					DependsOn: []model.TaskUnitDependency{
 						{
 							Name:    "setup",
@@ -5296,9 +5293,8 @@ func TestTVToTaskUnit(t *testing.T) {
 						Name: "ubuntu",
 						Tasks: []model.BuildVariantTaskUnit{
 							{
-								Name:             "compile_group",
-								Variant:          "ubuntu",
-								CommitQueueMerge: true,
+								Name:    "compile_group",
+								Variant: "ubuntu",
 							},
 						},
 					}, {
@@ -5336,7 +5332,6 @@ func TestTVToTaskUnit(t *testing.T) {
 					assert.Contains(t, taskUnit.DependsOn, dep)
 				}
 				assert.Equal(t, expectedTaskUnit.Stepback, taskUnit.Stepback)
-				assert.Equal(t, expectedTaskUnit.CommitQueueMerge, taskUnit.CommitQueueMerge, "%s/%s", expectedTaskUnit.Variant, expectedTaskUnit.Name)
 				assert.Equal(t, expectedTaskUnit.Variant, taskUnit.Variant)
 			}
 		})

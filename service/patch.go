@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen/units"
 
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -58,32 +57,19 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	commitQueuePosition := 0
-	if projCtx.Patch.IsMergeQueuePatch() {
-		cq, err := commitqueue.FindOneId(projCtx.ProjectRef.Id)
-		// still display patch page if problem finding commit queue
-		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error finding commit queue"))
-		}
-		if cq != nil {
-			commitQueuePosition = cq.FindItem(projCtx.Patch.Id.Hex())
-		}
-	}
-
 	newUILink := ""
 	if len(uis.Settings.Ui.UIv2Url) > 0 {
 		newUILink = spruceLink
 	}
 	uis.render.WriteResponse(w, http.StatusOK, struct {
-		Version             *uiVersion
-		Variants            map[string]model.BuildVariant
-		Tasks               []struct{ Name string }
-		CanEdit             bool
-		CommitQueuePosition int
-		NewUILink           string
+		Version   *uiVersion
+		Variants  map[string]model.BuildVariant
+		Tasks     []struct{ Name string }
+		CanEdit   bool
+		NewUILink string
 		ViewData
 	}{versionAsUI, variantsAndTasksFromProject.Variants, variantsAndTasksFromProject.Tasks, currentUser != nil,
-		commitQueuePosition, newUILink, uis.GetCommonViewData(w, r, true, true)},
+		newUILink, uis.GetCommonViewData(w, r, true, true)},
 		"base", "patch_version.html", "base_angular.html", "menu.html")
 }
 

@@ -14,7 +14,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/cache"
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
@@ -1546,43 +1545,6 @@ func missingBaseRepoOwnerLogin(pr *github.PullRequest) bool {
 
 func missingHeadSHA(pr *github.PullRequest) bool {
 	return pr.Head == nil || pr.Head.GetSHA() == ""
-}
-
-func SendCommitQueueGithubStatus(ctx context.Context, env evergreen.Environment, pr *github.PullRequest, state message.GithubState, description, versionID string) error {
-	owner := utility.FromStringPtr(pr.Base.Repo.Owner.Login)
-	repo := utility.FromStringPtr(pr.Base.Repo.Name)
-
-	sender, err := env.GetGitHubSender(owner, repo, githubapp.CreateGitHubAppAuth(env.Settings()).CreateGitHubSenderInstallationToken)
-	if err != nil {
-		return errors.Wrap(err, "getting github status sender")
-	}
-
-	var url string
-	if versionID != "" {
-		uiConfig := evergreen.UIConfig{}
-		if err := uiConfig.Get(ctx); err == nil {
-			url = fmt.Sprintf("%s/version/%s?redirect_spruce_users=true", uiConfig.Url, versionID)
-		}
-	}
-
-	msg := message.GithubStatus{
-		Owner:       owner,
-		Repo:        repo,
-		Ref:         utility.FromStringPtr(pr.Head.SHA),
-		Context:     commitqueue.GithubContext,
-		State:       state,
-		Description: description,
-		URL:         url,
-	}
-
-	c := message.NewGithubStatusMessageWithRepo(level.Notice, msg)
-	sender.Send(c)
-	grip.Info(message.Fields{
-		"ticket":  GithubInvestigation,
-		"message": "called github status send",
-		"caller":  "commit queue github status",
-	})
-	return nil
 }
 
 // PostCommentToPullRequest posts the given comment to the associated PR.
