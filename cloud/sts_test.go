@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
@@ -68,4 +69,43 @@ func TestAssumeRole(t *testing.T) {
 		})
 	}
 
+}
+
+func TestGetCallerIdentity(t *testing.T) {
+	roleARN := "role_arn"
+
+	testCases := map[string]func(ctx context.Context, t *testing.T, manager STSManager, awsClientMock *awsClientMock){
+		"InvalidReturnedARN": func(ctx context.Context, t *testing.T, manager STSManager, awsClientMock *awsClientMock) {
+			awsClientMock.GetCallerIdentityOutput = &sts.GetCallerIdentityOutput{
+				Arn: nil,
+			}
+			_, err := manager.GetCallerIdentityARN(ctx)
+			require.ErrorContains(t, err, "caller identity ARN is nil")
+		},
+		"Success": func(ctx context.Context, t *testing.T, manager STSManager, awsClientMock *awsClientMock) {
+			awsClientMock.GetCallerIdentityOutput = &sts.GetCallerIdentityOutput{
+				Arn: &roleARN,
+			}
+
+			arn, err := manager.GetCallerIdentityARN(ctx)
+			require.NoError(t, err)
+			assert.Equal(t, roleARN, arn)
+		},
+	}
+	for tName, tCase := range testCases {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(task.Collection))
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			manager := GetSTSManager(true)
+			stsManagerImpl, ok := manager.(*stsManagerImpl)
+			require.True(t, ok)
+			awsClientMock, ok := stsManagerImpl.client.(*awsClientMock)
+			require.True(t, ok)
+
+			tCase(ctx, t, manager, awsClientMock)
+		})
+	}
 }
