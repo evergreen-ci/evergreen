@@ -1276,10 +1276,6 @@ func setRepoFieldsFromProjects(repoRef *RepoRef, projectRefs []ProjectRef) {
 }
 
 func (p *ProjectRef) createNewRepoRef(u *user.DBUser) (repoRef *RepoRef, err error) {
-	repoRef = &RepoRef{ProjectRef{
-		Admins: []string{},
-	}}
-
 	allEnabledProjects, err := FindMergedEnabledProjectRefsByOwnerAndRepo(p.Owner, p.Repo)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding all enabled projects")
@@ -1288,10 +1284,11 @@ func (p *ProjectRef) createNewRepoRef(u *user.DBUser) (repoRef *RepoRef, err err
 	defer func() {
 		err = recovery.HandlePanicWithError(recover(), err, "project and repo structures do not match")
 	}()
+	repoRef = &RepoRef{ProjectRef{}}
 	setRepoFieldsFromProjects(repoRef, allEnabledProjects)
-	if !utility.StringSliceContains(repoRef.Admins, u.Username()) {
-		repoRef.Admins = append(repoRef.Admins, u.Username())
-	}
+	// Initially, the only repo admin will be the user who created it.
+	repoRef.Admins = []string{u.Username()}
+
 	// Some fields shouldn't be set from projects.
 	repoRef.Id = mgobson.NewObjectId().Hex()
 	repoRef.RepoRefId = ""
