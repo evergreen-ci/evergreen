@@ -76,7 +76,6 @@ input ProjectInput {
   stepbackDisabled: Boolean
   stepbackBisect: Boolean
   taskAnnotationSettings: TaskAnnotationSettingsInput
-  taskSync: TaskSyncOptionsInput
   tracksPushEvents: Boolean
   triggers: [TriggerAliasInput!]
   versionControlEnabled: Boolean

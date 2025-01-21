@@ -46,8 +46,6 @@ func init() {
 		"s3.get":                                s3GetFactory,
 		"s3.put":                                s3PutFactory,
 		"s3Copy.copy":                           s3CopyFactory,
-		evergreen.S3PushCommandName:             s3PushFactory,
-		evergreen.S3PullCommandName:             s3PullFactory,
 		evergreen.ShellExecCommandName:          shellExecFactory,
 		"subprocess.exec":                       subprocessExecFactory,
 		"setup.initial":                         initialSetupFactory,
@@ -219,7 +217,6 @@ const (
 	SetupGroupBlock    BlockType = "setup_group"
 	TeardownGroupBlock BlockType = "teardown_group"
 	PostBlock          BlockType = "post"
-	TaskSyncBlock      BlockType = "task_sync"
 )
 
 // BlockInfo contains information about the enclosing block in which a function

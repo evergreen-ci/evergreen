@@ -198,7 +198,6 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 	if err := json.Unmarshal(bytes, &input); err != nil {
 		// try the legacy structure
 		input.ProjectYaml = bytes
-		input.IncludeLong = true // this is legacy behavior
 	}
 
 	project := &model.Project{}
@@ -220,7 +219,7 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 	}
 
 	projectRef, err := model.FindMergedProjectRef(input.ProjectID, "", false)
-	errs := validator.CheckProject(ctx, project, projectConfig, projectRef, input.IncludeLong, input.ProjectID, err)
+	errs := validator.CheckProject(ctx, project, projectConfig, projectRef, input.ProjectID, err)
 
 	if input.Quiet {
 		errs = errs.AtLevel(validator.Error)

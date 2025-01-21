@@ -71,11 +71,6 @@ input ProjectAliasInput {
   parameters: [ParameterInput!]
 }
 
-input TaskSyncOptionsInput {
-  configEnabled: Boolean
-  patchEnabled: Boolean
-}
-
 input PeriodicBuildInput {
   id: String!
   alias: String!
@@ -291,7 +286,6 @@ type Project {
   stepbackDisabled: Boolean
   stepbackBisect: Boolean
   taskAnnotationSettings: TaskAnnotationSettings!
-  taskSync: TaskSyncOptions!
   tracksPushEvents: Boolean
   triggers: [TriggerAlias!]
   versionControlEnabled: Boolean
@@ -313,11 +307,6 @@ type CommitQueueParams {
   enabled: Boolean
   mergeMethod: String!
   message: String!
-}
-
-type TaskSyncOptions {
-  configEnabled: Boolean
-  patchEnabled: Boolean
 }
 
 type WorkstationConfig {

@@ -52,7 +52,6 @@ func buildApp() *cli.App {
 		// Top-level commands.
 		operations.Keys(),
 		operations.Fetch(),
-		operations.Pull(),
 		operations.Evaluate(),
 		operations.Validate(),
 		operations.List(),

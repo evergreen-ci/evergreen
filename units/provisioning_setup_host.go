@@ -502,11 +502,10 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 			})
 
 			grip.Error(message.WrapError(j.fetchRemoteTaskData(ctx), message.Fields{
-				"message":   "failed to fetch data onto host",
-				"task":      j.host.ProvisionOptions.TaskId,
-				"task_sync": j.host.ProvisionOptions.TaskSync,
-				"host_id":   j.host.Id,
-				"job":       j.ID(),
+				"message": "failed to fetch data onto host",
+				"task":    j.host.ProvisionOptions.TaskId,
+				"host_id": j.host.Id,
+				"job":     j.ID(),
 			}))
 		}
 		if j.host.ProvisionOptions != nil && j.host.ProvisionOptions.SetupScript != "" {
@@ -578,20 +577,16 @@ func (j *setupHostJob) setupSpawnHost(ctx context.Context, env evergreen.Environ
 
 func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context) error {
 	var cmd string
-	if j.host.ProvisionOptions.TaskSync {
-		cmd = strings.Join(j.host.SpawnHostPullTaskSyncCommand(), " ")
-	} else {
-		// Do not error when trying to populate github tokens because if the repo is not private, cloning the repo will still work.
-		// Additionally, we should still spin up the host even if we can't fetch the data
-		githubAppToken, moduleTokens, err := GetGithubTokensForTask(ctx, j.host.ProvisionOptions.TaskId)
-		grip.Warning(message.WrapError(err, message.Fields{
-			"message": "error getting GitHub tokens for fetching data for task",
-			"task":    j.host.ProvisionOptions.TaskId,
-		}))
-		cmd = strings.Join(j.host.SpawnHostGetTaskDataCommand(ctx, githubAppToken, moduleTokens), " ")
-	}
+	// Do not error when trying to populate github tokens because if the repo is not private, cloning the repo will still work.
+	// Additionally, we should still spin up the host even if we can't fetch the data
+	githubAppToken, moduleTokens, err := GetGithubTokensForTask(ctx, j.host.ProvisionOptions.TaskId)
+	grip.Warning(message.WrapError(err, message.Fields{
+		"message": "error getting GitHub tokens for fetching data for task",
+		"task":    j.host.ProvisionOptions.TaskId,
+	}))
+	cmd = strings.Join(j.host.SpawnHostGetTaskDataCommand(ctx, githubAppToken, moduleTokens), " ")
+
 	var output string
-	var err error
 	fetchTimeout := 20 * time.Minute
 	getTaskDataCtx, cancel := context.WithTimeout(ctx, fetchTimeout)
 	defer cancel()
@@ -609,13 +604,12 @@ func (j *setupHostJob) fetchRemoteTaskData(ctx context.Context) error {
 	}
 
 	grip.Error(message.WrapError(err, message.Fields{
-		"message":   "problem fetching task data",
-		"task_id":   j.host.ProvisionOptions.TaskId,
-		"task_sync": j.host.ProvisionOptions.TaskSync,
-		"host_id":   j.host.Id,
-		"cmd":       cmd,
-		"job":       j.ID(),
-		"logs":      output,
+		"message": "problem fetching task data",
+		"task_id": j.host.ProvisionOptions.TaskId,
+		"host_id": j.host.Id,
+		"cmd":     cmd,
+		"job":     j.ID(),
+		"logs":    output,
 	}))
 
 	return errors.Wrap(err, "fetching remote task data")

@@ -47,7 +47,6 @@ input SpawnHostInput {
   sleepSchedule: SleepScheduleInput
   spawnHostsStartedByTask: Boolean
   taskId: String
-  taskSync: Boolean
   useProjectSetupScript: Boolean
   userDataScript: String
   useTaskConfig: Boolean
@@ -101,5 +100,3 @@ input InstanceTagInput {
   key: String!
   value: String!
 }
-
-

@@ -348,25 +348,6 @@ func (ta *APITaskAnnotationSettings) BuildFromService(config evergreen.Annotatio
 	ta.FileTicketWebhook = apiWebhook
 }
 
-type APITaskSyncOptions struct {
-	// Enable task sync in project configs.
-	ConfigEnabled *bool `json:"config_enabled"`
-	// Enable task sync in patches.
-	PatchEnabled *bool `json:"patch_enabled"`
-}
-
-func (opts *APITaskSyncOptions) BuildFromService(in model.TaskSyncOptions) {
-	opts.ConfigEnabled = utility.BoolPtrCopy(in.ConfigEnabled)
-	opts.PatchEnabled = utility.BoolPtrCopy(in.PatchEnabled)
-}
-
-func (opts *APITaskSyncOptions) ToService() model.TaskSyncOptions {
-	return model.TaskSyncOptions{
-		ConfigEnabled: utility.BoolPtrCopy(opts.ConfigEnabled),
-		PatchEnabled:  utility.BoolPtrCopy(opts.PatchEnabled),
-	}
-}
-
 type APIWorkstationConfig struct {
 	// List of setup commands to run.
 	SetupCommands []APIWorkstationSetupCommand `bson:"setup_commands" json:"setup_commands"`
@@ -632,8 +613,6 @@ type APIProjectRef struct {
 	RepoRefId *string `json:"repo_ref_id"`
 	// Options for commit queue.
 	CommitQueue APICommitQueueParams `json:"commit_queue"`
-	// Options for task sync.
-	TaskSync APITaskSyncOptions `json:"task_sync"`
 	// Options for task annotations.
 	TaskAnnotationSettings APITaskAnnotationSettings `json:"task_annotation_settings"`
 	// Options for Build Baron.
@@ -737,7 +716,6 @@ func (p *APIProjectRef) ToService() (*model.ProjectRef, error) {
 		GithubChecksEnabled:              utility.BoolPtrCopy(p.GithubChecksEnabled),
 		RepoRefId:                        utility.FromStringPtr(p.RepoRefId),
 		CommitQueue:                      p.CommitQueue.ToService(),
-		TaskSync:                         p.TaskSync.ToService(),
 		WorkstationConfig:                p.WorkstationConfig.ToService(),
 		BuildBaronSettings:               p.BuildBaronSettings.ToService(),
 		TaskAnnotationSettings:           p.TaskAnnotationSettings.ToService(),
@@ -888,10 +866,6 @@ func (p *APIProjectRef) BuildPublicFields(projectRef model.ProjectRef) error {
 	cq := APICommitQueueParams{}
 	cq.BuildFromService(projectRef.CommitQueue)
 	p.CommitQueue = cq
-
-	var taskSync APITaskSyncOptions
-	taskSync.BuildFromService(projectRef.TaskSync)
-	p.TaskSync = taskSync
 
 	buildbaronConfig := APIBuildBaronSettings{}
 	buildbaronConfig.BuildFromService(projectRef.BuildBaronSettings)

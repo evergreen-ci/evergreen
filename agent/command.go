@@ -7,10 +7,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/command"
-	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
@@ -151,8 +149,6 @@ func (a *Agent) blockToLegacyName(block command.BlockType) string {
 		return "teardown-task"
 	case command.TeardownGroupBlock:
 		return "teardown-group"
-	case command.TaskSyncBlock:
-		return "task-sync"
 	default:
 		return string(block)
 	}
@@ -331,27 +327,4 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, commandInfo mod
 	}
 
 	return nil
-}
-
-// endTaskSyncCommands returns the commands to sync the task to S3 if it was
-// requested when the task completes.
-func endTaskSyncCommands(tc *taskContext, detail *apimodels.TaskEndDetail) *model.YAMLCommandSet {
-	if !tc.taskConfig.Task.SyncAtEndOpts.Enabled {
-		return nil
-	}
-	if statusFilter := tc.taskConfig.Task.SyncAtEndOpts.Statuses; len(statusFilter) != 0 {
-		if detail.Status == evergreen.TaskSucceeded {
-			if !utility.StringSliceContains(statusFilter, evergreen.TaskSucceeded) {
-				return nil
-			}
-		} else if !utility.StringSliceContains(statusFilter, evergreen.TaskFailed) {
-			return nil
-		}
-	}
-	return &model.YAMLCommandSet{
-		SingleCommand: &model.PluginCommandConf{
-			Type:    evergreen.CommandTypeSetup,
-			Command: evergreen.S3PushCommandName,
-		},
-	}
 }

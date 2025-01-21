@@ -6,7 +6,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
-	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
@@ -295,13 +294,6 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, settings *
 	}
 
 	// This will only be populated for patches, not mainline commits.
-	var syncAtEndOpts patch.SyncAtEndOptions
-	if patchDoc, _ := patch.FindOne(patch.ByVersion(v.Id)); patchDoc != nil {
-		if err = patchDoc.AddSyncVariantsTasks(newTVPairs.TVPairsToVariantTasks()); err != nil {
-			return errors.Wrap(err, "updating sync variants and tasks")
-		}
-		syncAtEndOpts = patchDoc.SyncAtEndOpts
-	}
 	projectRef, err := FindMergedProjectRef(p.Identifier, v.Id, true)
 	if err != nil {
 		return errors.Wrapf(err, "finding merged project ref '%s' for version '%s'", p.Identifier, v.Id)
@@ -334,7 +326,6 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, settings *
 		TaskIDs:        allTasksToBeCreatedIncludingDeps,
 		Pairs:          newTVPairsForExistingVariants,
 		ActivationInfo: *activationInfo,
-		SyncAtEndOpts:  syncAtEndOpts,
 		GeneratedBy:    g.Task.Id,
 		// If the parent generator is required to finish, then its generated
 		// tasks inherit that requirement.

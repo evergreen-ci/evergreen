@@ -68,7 +68,6 @@ type Task {
   canRestart: Boolean!
   canSchedule: Boolean!
   canSetPriority: Boolean!
-  canSync: Boolean!
   canUnschedule: Boolean!
   containerAllocatedTime: Time
   createTime: Time
@@ -119,7 +118,7 @@ type Task {
   """
   This is a task's original status. It is the status stored in the database, and is distinct from the displayStatus.
   """
-  status: String! 
+  status: String!
   tags: [String!]!
   taskGroup: String
   taskGroupMaxHosts: Int

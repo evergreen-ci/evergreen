@@ -100,7 +100,6 @@ type s3Loc struct {
 func s3CopyFactory() Command   { return &s3copy{} }
 func (c *s3copy) Name() string { return "s3Copy.copy" }
 
-// ParseParams decodes the S3 push command parameters
 func (c *s3copy) ParseParams(params map[string]interface{}) error {
 	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
 		WeaklyTypedInput: true,
@@ -318,13 +317,13 @@ func (c *s3copy) copyWithRetry(ctx context.Context,
 					}
 					if s3CopyFile.Optional {
 						logger.Execution().Error(err)
-						logger.Execution().Errorf("S3 push copy failed to copy '%s' to '%s' and file is optional, continuing.",
+						logger.Execution().Errorf("S3copy.copy failed to copy '%s' to '%s' and file is optional, continuing.",
 							s3CopyFile.Source.Path, s3CopyFile.Destination.Bucket)
 						timer.Reset(backoffCounter.Duration())
 						continue retryLoop
 					} else {
-						logger.Execution().Errorf("S3 push copy failed to copy '%s' to '%s' and file is not optional, exiting.", s3CopyFile.Source.Path, s3CopyFile.Destination.Bucket)
-						return errors.Wrapf(err, "S3 push copy failed to copy '%s' to '%s'", s3CopyFile.Source.Path, s3CopyFile.Destination.Bucket)
+						logger.Execution().Errorf("S3copy.copy failed to copy '%s' to '%s' and file is not optional, exiting.", s3CopyFile.Source.Path, s3CopyFile.Destination.Bucket)
+						return errors.Wrapf(err, "S3copy.copy failed to copy '%s' to '%s'", s3CopyFile.Source.Path, s3CopyFile.Destination.Bucket)
 					}
 				} else {
 					newPushLog.Status = pushLogSuccess

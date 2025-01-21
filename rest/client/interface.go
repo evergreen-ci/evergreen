@@ -105,12 +105,6 @@ type Communicator interface {
 
 	GetRecentVersionsForProject(ctx context.Context, projectID, requester string) ([]restmodel.APIVersion, error)
 
-	// GetTaskSyncReadCredentials returns the credentials to fetch task
-	// directory from S3.
-	GetTaskSyncReadCredentials(ctx context.Context) (*evergreen.S3Credentials, error)
-	// GetTaskSyncPath returns the path to the task directory in S3.
-	GetTaskSyncPath(ctx context.Context, taskID string) (string, error)
-
 	// GetClientURLs returns the all URLs that can be used to request the
 	// Evergreen binary for a given distro.
 	GetClientURLs(ctx context.Context, distroID string) ([]string, error)

@@ -1824,8 +1824,7 @@ func TestHostUpsert(t *testing.T) {
 		InstanceType:   "instance",
 		Zone:           "zone",
 		ProvisionOptions: &ProvisionOptions{
-			TaskId:   "task_id",
-			TaskSync: true,
+			TaskId: "task_id",
 		},
 		ContainerImages: map[string]bool{},
 	}

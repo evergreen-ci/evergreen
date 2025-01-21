@@ -455,24 +455,6 @@ Define default filters for your project. Users can access these filters in Parsl
 
 ![parsley_filters.png](../images/parsley_filters.png)
 
-
-### Task Sync
-
-Enabling this feature allows users to push and pull their task working
-directory to and from a remote store (S3). This can be done either using
-the
-[s3.push](Project-Commands#s3push)
-or
-[s3.pull](Project-Commands#s3pull)
-project commands, or using it from [the CLI](../CLI#task-sync).
-
-Options:
-
--   Enable for Project Config Commands: Users can use task sync commands
-    in their Evergreen project config.
--   Enable for Tasks in Patches: Users can use task sync in their
-    patches.
-
 ### Virtual Workstation Commands
 
 Users can specify custom commands to be run when setting up their
@@ -749,16 +731,6 @@ setup_commands:
   directory: "/etc"
 ```
 
-### Task Sync
-
-[View setting
-definition](#task-sync)
-
-``` yaml
-task_sync:
-   config_enabled: true
-   patch_enabled: false
-```
 
 ### Ticket Creation
 

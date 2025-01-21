@@ -113,7 +113,6 @@ type AgentSetupData struct {
 	SplunkServerURL        string                  `json:"splunk_server_url"`
 	SplunkClientToken      string                  `json:"splunk_client_token"`
 	SplunkChannel          string                  `json:"splunk_channel"`
-	TaskSync               evergreen.S3Credentials `json:"task_sync"`
 	TaskOutput             evergreen.S3Credentials `json:"task_output"`
 	TraceCollectorEndpoint string                  `json:"trace_collector_endpoint"`
 	MaxExecTimeoutSecs     int                     `json:"max_exec_timeout_secs"`

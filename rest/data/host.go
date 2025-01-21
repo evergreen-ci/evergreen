@@ -283,7 +283,6 @@ func makeSpawnOptions(options *restmodel.HostRequestOptions, user *user.DBUser) 
 		UseProjectSetupScript: options.UseProjectSetupScript,
 		ProvisionOptions: &host.ProvisionOptions{
 			TaskId:      options.TaskID,
-			TaskSync:    options.TaskSync,
 			SetupScript: options.SetupScript,
 			OwnerId:     user.Id,
 		},

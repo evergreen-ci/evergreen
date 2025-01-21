@@ -117,16 +117,14 @@ type APITask struct {
 	// "gitter_request" (caused by git commit, aka the repotracker requester),
 	// "trigger_request" (Project Trigger versions) , "merge_test" (commit queue
 	// patches), "ad_hoc" (periodic builds)
-	Requester         *string             `json:"requester"`
-	TestResults       []APITest           `json:"test_results"`
-	Aborted           bool                `json:"aborted"`
-	AbortInfo         APIAbortInfo        `json:"abort_info,omitempty"`
-	CanSync           bool                `json:"can_sync,omitempty"`
-	SyncAtEndOpts     APISyncAtEndOptions `json:"sync_at_end_opts"`
-	AMI               *string             `json:"ami"`
-	MustHaveResults   bool                `json:"must_have_test_results"`
-	BaseTask          APIBaseTaskInfo     `json:"base_task"`
-	ResetWhenFinished bool                `json:"reset_when_finished"`
+	Requester         *string         `json:"requester"`
+	TestResults       []APITest       `json:"test_results"`
+	Aborted           bool            `json:"aborted"`
+	AbortInfo         APIAbortInfo    `json:"abort_info,omitempty"`
+	AMI               *string         `json:"ami"`
+	MustHaveResults   bool            `json:"must_have_test_results"`
+	BaseTask          APIBaseTaskInfo `json:"base_task"`
+	ResetWhenFinished bool            `json:"reset_when_finished"`
 	// These fields are used by graphql gen, but do not need to be exposed
 	// via Evergreen's user-facing API.
 	OverrideDependencies bool   `json:"-"`
@@ -350,18 +348,12 @@ func (at *APITask) buildTask(t *task.Task) error {
 		Blocked:                     t.Blocked(),
 		Requester:                   utility.ToStringPtr(t.Requester),
 		Aborted:                     t.Aborted,
-		CanSync:                     t.CanSync,
 		ResultsService:              t.ResultsService,
 		HasCedarResults:             t.HasCedarResults,
 		ResultsFailed:               t.ResultsFailed,
 		MustHaveResults:             t.MustHaveResults,
 		ResetWhenFinished:           t.ResetWhenFinished,
 		ParentTaskId:                utility.FromStringPtr(t.DisplayTaskId),
-		SyncAtEndOpts: APISyncAtEndOptions{
-			Enabled:  t.SyncAtEndOpts.Enabled,
-			Statuses: t.SyncAtEndOpts.Statuses,
-			Timeout:  t.SyncAtEndOpts.Timeout,
-		},
 		AbortInfo: APIAbortInfo{
 			NewVersion: t.AbortInfo.NewVersion,
 			TaskID:     t.AbortInfo.TaskID,
@@ -551,16 +543,10 @@ func (at *APITask) ToService() (*task.Task, error) {
 		GeneratedBy:                 at.GeneratedBy,
 		DisplayOnly:                 at.DisplayOnly,
 		Requester:                   utility.FromStringPtr(at.Requester),
-		CanSync:                     at.CanSync,
 		ResultsService:              at.ResultsService,
 		HasCedarResults:             at.HasCedarResults,
 		ResultsFailed:               at.ResultsFailed,
 		MustHaveResults:             at.MustHaveResults,
-		SyncAtEndOpts: task.SyncAtEndOptions{
-			Enabled:  at.SyncAtEndOpts.Enabled,
-			Statuses: at.SyncAtEndOpts.Statuses,
-			Timeout:  at.SyncAtEndOpts.Timeout,
-		},
 		BaseTask: task.BaseTaskInfo{
 			Id:     utility.FromStringPtr(at.BaseTask.Id),
 			Status: utility.FromStringPtr(at.BaseTask.Status),
@@ -654,12 +640,6 @@ func (at *APITask) getArtifacts(ctx context.Context) error {
 	}
 
 	return nil
-}
-
-type APISyncAtEndOptions struct {
-	Enabled  bool          `json:"enabled"`
-	Statuses []string      `json:"statuses"`
-	Timeout  time.Duration `json:"timeout" swaggertype:"primitive,integer"`
 }
 
 type APIDependency struct {

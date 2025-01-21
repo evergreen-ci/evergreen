@@ -33,7 +33,6 @@ type ProjectConfigFields struct {
 	GitHubChecksAliases      []ProjectAlias                 `yaml:"github_checks_aliases,omitempty" bson:"github_checks_aliases,omitempty"`
 	PatchAliases             []ProjectAlias                 `yaml:"patch_aliases,omitempty" bson:"patch_aliases,omitempty"`
 	WorkstationConfig        *WorkstationConfig             `yaml:"workstation_config,omitempty" bson:"workstation_config,omitempty"`
-	TaskSync                 *TaskSyncOptions               `yaml:"task_sync,omitempty" bson:"task_sync,omitempty"`
 	GithubTriggerAliases     []string                       `yaml:"github_trigger_aliases,omitempty" bson:"github_trigger_aliases,omitempty"`
 	ContainerSizeDefinitions []ContainerResources           `yaml:"container_size_definitions,omitempty" bson:"container_size_definitions,omitempty"`
 }

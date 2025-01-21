@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
-	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -1408,23 +1407,13 @@ func TestCreateBuildFromVersion(t *testing.T) {
 
 		Convey("all of the tasks' essential fields should be set correctly", func() {
 			creationInfo := TaskCreationInfo{
-				Project:          project,
-				ProjectRef:       pref,
-				Version:          v,
-				TaskIDs:          table,
-				BuildVariantName: buildVar1.Name,
-				ActivateBuild:    false,
-				TaskNames:        []string{},
-				SyncAtEndOpts: patch.SyncAtEndOptions{
-					BuildVariants: []string{buildVar1.Name},
-					Tasks:         []string{"taskA", "taskB"},
-					VariantsTasks: []patch.VariantTasks{
-						{
-							Variant: buildVar1.Name,
-							Tasks:   []string{"taskA", "taskB"},
-						},
-					},
-				},
+				Project:                             project,
+				ProjectRef:                          pref,
+				Version:                             v,
+				TaskIDs:                             table,
+				BuildVariantName:                    buildVar1.Name,
+				ActivateBuild:                       false,
+				TaskNames:                           []string{},
 				TaskCreateTime:                      time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
 				ActivatedTasksAreEssentialToSucceed: true,
 			}
@@ -1455,7 +1444,6 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(tasks[2].Version, ShouldEqual, v.Id)
 			So(tasks[2].Revision, ShouldEqual, v.Revision)
 			So(tasks[2].Project, ShouldEqual, project.Identifier)
-			So(tasks[2].CanSync, ShouldBeTrue)
 
 			So(tasks[3].Id, ShouldNotEqual, "")
 			So(tasks[3].Secret, ShouldNotEqual, "")
@@ -1472,7 +1460,6 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(tasks[3].Version, ShouldEqual, v.Id)
 			So(tasks[3].Revision, ShouldEqual, v.Revision)
 			So(tasks[3].Project, ShouldEqual, project.Identifier)
-			So(tasks[3].CanSync, ShouldBeTrue)
 
 			So(tasks[4].Id, ShouldNotEqual, "")
 			So(tasks[4].Secret, ShouldNotEqual, "")
@@ -1489,7 +1476,6 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(tasks[4].Version, ShouldEqual, v.Id)
 			So(tasks[4].Revision, ShouldEqual, v.Revision)
 			So(tasks[4].Project, ShouldEqual, project.Identifier)
-			So(tasks[4].CanSync, ShouldBeFalse)
 
 			So(tasks[5].Id, ShouldNotEqual, "")
 			So(tasks[5].Secret, ShouldNotEqual, "")
@@ -1506,7 +1492,6 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(tasks[5].Version, ShouldEqual, v.Id)
 			So(tasks[5].Revision, ShouldEqual, v.Revision)
 			So(tasks[5].Project, ShouldEqual, project.Identifier)
-			So(tasks[5].CanSync, ShouldBeFalse)
 		})
 
 		Convey("if the activated flag is set, the build and all its tasks should be activated",
@@ -2739,97 +2724,6 @@ func TestMarkAsHostDispatched(t *testing.T) {
 
 }
 
-func TestShouldSyncTask(t *testing.T) {
-	for testName, testCase := range map[string]struct {
-		syncVTs    []patch.VariantTasks
-		bv         string
-		task       string
-		shouldSync bool
-	}{
-		"MatchesTaskInBV": {
-			syncVTs: []patch.VariantTasks{
-				{
-					Variant: "bv1",
-					Tasks:   []string{"t1"},
-				},
-			},
-			bv:         "bv1",
-			task:       "t1",
-			shouldSync: true,
-		},
-		"DoesNotMatchDisplayTaskName": {
-			syncVTs: []patch.VariantTasks{
-				{
-					Variant: "bv1",
-					DisplayTasks: []patch.DisplayTask{
-						{
-							Name: "dt1",
-						},
-					},
-				},
-			},
-			bv:         "bv1",
-			task:       "dt1",
-			shouldSync: false,
-		},
-		"MatchesExecutionTaskWithinDisplayTask": {
-			syncVTs: []patch.VariantTasks{
-				{
-					Variant: "bv1",
-					DisplayTasks: []patch.DisplayTask{
-						{
-							Name:      "dt1",
-							ExecTasks: []string{"et1"},
-						},
-					},
-				},
-			},
-			bv:         "bv1",
-			task:       "et1",
-			shouldSync: true,
-		},
-		"NoMatchForTask": {
-			syncVTs: []patch.VariantTasks{
-				{
-					Variant: "bv1",
-					Tasks:   []string{"t1 ", "et1"},
-					DisplayTasks: []patch.DisplayTask{
-						{
-							Name:      "dt1",
-							ExecTasks: []string{"et1"},
-						},
-					},
-				},
-			},
-			bv:         "bv1",
-			task:       "t2",
-			shouldSync: false,
-		},
-		"NoMatchForBuildVariant": {
-			syncVTs: []patch.VariantTasks{
-				{
-					Variant: "bv1",
-					Tasks:   []string{"t1 ", "et1"},
-					DisplayTasks: []patch.DisplayTask{
-						{
-							Name:      "dt1",
-							ExecTasks: []string{"et1"},
-						},
-					},
-				},
-			},
-			bv:         "bv1",
-			task:       "t2",
-			shouldSync: false,
-		},
-	} {
-		t.Run(testName, func(t *testing.T) {
-			shouldSync := shouldSyncTask(testCase.syncVTs, testCase.bv, testCase.task)
-			assert.Equal(t, testCase.shouldSync, shouldSync)
-		})
-	}
-}
-
 func TestSetTaskActivationForBuildsActivated(t *testing.T) {
 	require.NoError(t, db.ClearCollections(build.Collection, task.Collection, VersionCollection))
 
@@ -3029,7 +2923,6 @@ func TestAddNewTasks(t *testing.T) {
 				Version:        v,
 				Pairs:          tasksToAdd,
 				ActivationInfo: testCase.activationInfo,
-				SyncAtEndOpts:  patch.SyncAtEndOptions{},
 				GeneratedBy:    "",
 			}
 			_, err := addNewTasksToExistingBuilds(context.Background(), creationInfo, []build.Build{b}, "")

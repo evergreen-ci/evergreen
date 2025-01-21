@@ -22,7 +22,6 @@ import (
 	"github.com/evergreen-ci/evergreen/service/testutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
-	jcli "github.com/mongodb/jasper/cli"
 	jmock "github.com/mongodb/jasper/mock"
 	"github.com/mongodb/jasper/options"
 	"github.com/mongodb/jasper/remote"
@@ -267,9 +266,8 @@ func TestJasperCommands(t *testing.T) {
 			require.NoError(t, user.Insert())
 
 			h.ProvisionOptions = &ProvisionOptions{
-				OwnerId:  userID,
-				TaskId:   "task_id",
-				TaskSync: true,
+				OwnerId: userID,
+				TaskId:  "task_id",
 			}
 			require.NoError(t, h.Insert(ctx))
 
@@ -279,16 +277,6 @@ func TestJasperCommands(t *testing.T) {
 			require.NoError(t, err)
 
 			setupSpawnHost, err := h.SpawnHostSetupCommands(settings)
-			require.NoError(t, err)
-
-			bashPullTaskSync := []string{h.Distro.ShellBinary(), "-l", "-c", strings.Join(h.SpawnHostPullTaskSyncCommand(), " ")}
-			pullTaskSync, err := h.buildLocalJasperClientRequest(
-				settings.HostJasper,
-				strings.Join([]string{jcli.ManagerCommand, jcli.CreateProcessCommand}, " "),
-				options.Create{
-					Args: bashPullTaskSync,
-					Tags: []string{evergreen.HostFetchTag},
-				})
 			require.NoError(t, err)
 
 			markDone := h.MarkUserDataProvisioningDoneCommand()
@@ -301,7 +289,6 @@ func TestJasperCommands(t *testing.T) {
 				h.ForceReinstallJasperCommand(settings),
 				h.ChangeJasperDirsOwnerCommand(),
 				setupSpawnHost,
-				pullTaskSync,
 				markDone,
 			}
 

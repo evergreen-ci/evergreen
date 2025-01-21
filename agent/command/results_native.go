@@ -70,9 +70,6 @@ type attachResults struct {
 func attachResultsFactory() Command   { return &attachResults{} }
 func (c *attachResults) Name() string { return evergreen.AttachResultsCommandName }
 
-// ParseParams decodes the S3 push command parameters that are
-// specified as part of an AttachPlugin command; this is required
-// to satisfy the 'Command' interface
 func (c *attachResults) ParseParams(params map[string]interface{}) error {
 	if err := mapstructure.Decode(params, c); err != nil {
 		return errors.Wrap(err, "decoding mapstructure params")
