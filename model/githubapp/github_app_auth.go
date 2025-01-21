@@ -21,7 +21,7 @@ type GithubAppAuth struct {
 	// PrivateKey is the GitHub app's private key and is intentionally not
 	// stored in the database for security reasons. The private key can be
 	// fetched from Parameter Store using PrivateKeyParameter.
-	PrivateKey []byte `bson:"-" json:"-"`
+	PrivateKey []byte `bson:"-" json:"private_key"`
 	// PrivateKeyParameter is the name of the parameter that holds the
 	// GitHub app's private key.
 	PrivateKeyParameter string `bson:"private_key_parameter" json:"private_key_parameter"`
