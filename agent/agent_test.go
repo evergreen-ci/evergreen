@@ -1824,6 +1824,7 @@ tasks:
 	factory, ok := command.GetCommandFactory("command.mock")
 	s.Require().True(ok)
 	userDefinedTaskStatusCmd := factory()
+	userDefinedTaskStatusCmd.SetFullDisplayName("command.mock")
 	userDefinedTaskStatusCmd.SetFailureMetadataTags([]string{"user_defined_end_task_response_tag"})
 	s.tc.setCurrentCommand(userDefinedTaskStatusCmd)
 
@@ -1879,6 +1880,7 @@ tasks:
 	factory, ok := command.GetCommandFactory("command.mock")
 	s.Require().True(ok)
 	userDefinedTaskStatusCmd := factory()
+	userDefinedTaskStatusCmd.SetFullDisplayName("command.mock")
 	userDefinedTaskStatusCmd.SetFailureMetadataTags([]string{"user_defined_end_task_response_tag"})
 	s.tc.setCurrentCommand(userDefinedTaskStatusCmd)
 
@@ -1933,6 +1935,7 @@ tasks:
 	factory, ok := command.GetCommandFactory("command.mock")
 	s.Require().True(ok)
 	userDefinedTaskStatusCmd := factory()
+	userDefinedTaskStatusCmd.SetFullDisplayName("command.mock")
 	userDefinedTaskStatusCmd.SetFailureMetadataTags([]string{"user_defined_end_task_response_tag"})
 	s.tc.setCurrentCommand(userDefinedTaskStatusCmd)
 

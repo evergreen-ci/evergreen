@@ -32,8 +32,6 @@ func (c *mockCommand) Execute(context.Context, client.Communicator, client.Logge
 // Name returns the value of the command's name.
 func (c *mockCommand) Name() string { return "command.mock" }
 
-func (c *mockCommand) FullDisplayName() string { return c.Name() }
-
 // ParseParams parses the parameters to the mock command, if any.
 func (c *mockCommand) ParseParams(params map[string]interface{}) error {
 	if err := mapstructure.Decode(params, c); err != nil {
