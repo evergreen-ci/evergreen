@@ -617,8 +617,8 @@ func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.Chang
 	// FindAndModify is expected to return all the project's vars. However,
 	// FindAndModify only receives as input the subset of vars to be modified.
 	// Therefore, it's necessary to look up all the vars in Parameter Store
-	// after the update to ensure that the the returned project vars includes
-	// all the unmodified vars.
+	// after the update to ensure that the returned project vars includes all
+	// the unmodified vars.
 	if err := projectVars.checkAndRunParameterStoreOp(ctx, func() error {
 		projectVarsFromPS, err := projectVars.findParameterStore(ctx)
 		if err != nil {
