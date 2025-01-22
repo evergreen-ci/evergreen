@@ -389,7 +389,14 @@ This command will also send an external ID in the form
 Evergreen's account ID can be found on the 
 [wiki page](https://wiki.corp.mongodb.com/display/SYSENG/AWS+Accounts+Overview) 
 under `Kernel-Build` and can be used in a trust policy to allow only Evergreen 
-to assume your roles.
+to assume your roles. 
+
+If your Evergreen project AWS IAM role was made by DevProd, your role’s policy will have the following principal: 
+```
+"Principal": {
+    "AWS": "arn:aws:iam::<Kernel-Build-Account-ID>:role/evergreen.role.production"
+}
+```
 
 ## expansions.update
 
