@@ -721,19 +721,18 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 	if projectRef == nil {
 		return nil
 	}
-	var mergeBase string
-	if projectRef.OldestAllowedMergeBase != "" {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-		defer cancel()
-		baseOwnerAndRepo := strings.Split(pr.Base.Repo.GetFullName(), "/")
-		if len(baseOwnerAndRepo) != 2 {
-			return errors.New("PR base repo name is invalid (expected [owner]/[repo])")
-		}
-		mergeBase, err = thirdparty.GetGithubMergeBaseRevision(ctx, baseOwnerAndRepo[0], baseOwnerAndRepo[1], pr.Base.GetRef(), pr.Head.GetRef())
-		if err != nil {
-			return errors.Wrapf(err, "getting merge base between branches '%s' and '%s'", pr.Base.GetRef(), pr.Head.GetRef())
-		}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	baseOwnerAndRepo := strings.Split(pr.Base.Repo.GetFullName(), "/")
+	if len(baseOwnerAndRepo) != 2 {
+		return errors.New("PR base repo name is invalid (expected [owner]/[repo])")
 	}
+	mergeBase, err := thirdparty.GetGithubMergeBaseRevision(ctx, baseOwnerAndRepo[0], baseOwnerAndRepo[1], pr.Base.GetRef(), pr.Head.GetRef())
+	if err != nil {
+		return errors.Wrapf(err, "getting merge base between branches '%s' and '%s'", pr.Base.GetRef(), pr.Head.GetRef())
+	}
+
 	ghi, err := patch.NewGithubIntent(gh.msgID, owner, calledBy, alias, mergeBase, pr)
 	if err != nil {
 		return errors.Wrap(err, "creating GitHub patch intent")
