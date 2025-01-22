@@ -82,10 +82,10 @@ func (s *GithubWebhookRouteSuite) SetupTest() {
 	var err error
 	s.prBody, err = os.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "pull_request.json"))
 	s.NoError(err)
-	//s.Len(s.prBody, 24692)
+	s.Len(s.prBody, 24069)
 	s.pushBody, err = os.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "push_event.json"))
 	s.NoError(err)
-	s.Len(s.pushBody, 7597)
+	s.Len(s.pushBody, 7378)
 	s.commitQueueCommentBody, err = os.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "commit_queue_comment_event.json"))
 	s.NoError(err)
 	s.Len(s.commitQueueCommentBody, 11494)
