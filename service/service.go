@@ -75,7 +75,8 @@ func GetRouter(ctx context.Context, as *APIServer, uis *UIServer) (http.Handler,
 	// and UI endpoints. While there were no users of restv1 in
 	// with the "api" prefix, there are many users of restv2, so
 	// we will continue to publish these routes in these
-	// endpoints.
+	// endpoints. The version uses a placeholder that's computed
+	// and replaced during publishing.
 	//
 	//	@title						Evergreen REST v2 API
 	//	@version					{OPENAPI_VERSION}
