@@ -1913,9 +1913,11 @@ tasks:
       - command: shell.exec
         params:
           script: exit 0
+        failure_metadata_tags: ["failure_tag1"]
       - command: shell.exec
         params:
           script: exit 0
+        failure_metadata_tags: ["failure_tag2"]
 `
 	s.setupRunTask(projYml)
 
@@ -1925,6 +1927,11 @@ tasks:
 		Description:    "task failed",
 		ShouldContinue: true,
 	}
+	factory, ok := command.GetCommandFactory("command.mock")
+	s.Require().True(ok)
+	cmd := factory()
+	cmd.SetFailureMetadataTags([]string{"failure_tag0"})
+	s.tc.setCurrentCommand(cmd)
 	s.tc.setUserEndTaskResponse(resp)
 
 	nextTask := &apimodels.NextTaskResponse{
@@ -1937,6 +1944,7 @@ tasks:
 	s.Equal(resp.Status, s.mockCommunicator.EndTaskResult.Detail.Status, "should set user-defined task status")
 	s.Equal(resp.Type, s.mockCommunicator.EndTaskResult.Detail.Type, "should set user-defined command failure type")
 	s.Equal(resp.Description, s.mockCommunicator.EndTaskResult.Detail.Description, "should set user-defined task description")
+	s.Equal([]string{"failure_tag0"}, s.mockCommunicator.EndTaskResult.Detail.FailureMetadataTags, "should set failure metadata tags to the ones associated with the command that triggered a user-defined end task response because it caused the task to fail")
 
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
