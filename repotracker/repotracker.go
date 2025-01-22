@@ -400,14 +400,12 @@ func (repoTracker *RepoTracker) GetProjectConfig(ctx context.Context, revision s
 	projectRef := repoTracker.ProjectRef
 	projectInfo, err := repoTracker.GetRemoteConfig(ctx, revision)
 	if err != nil {
-		// Only create a stub version on API request errors that pertain
-		// to actually fetching a config. Those errors currently include:
-		// thirdparty.APIRequestError, thirdparty.FileNotFoundError and
-		// thirdparty.YAMLFormatError
+		// Create a stub version on API request errors that pertain
+		// to fetching or loading a config.
 		_, apiReqErr := errors.Cause(err).(thirdparty.APIRequestError)
 		_, ymlFmtErr := errors.Cause(err).(thirdparty.YAMLFormatError)
 		_, noFileErr := errors.Cause(err).(thirdparty.FileNotFoundError)
-		parsingErr := strings.Contains(err.Error(), model.TranslateProjectError)
+		parsingErr := strings.Contains(err.Error(), model.TranslateProjectError) || strings.Contains(err.Error(), model.LoadProjectError)
 		configErr := strings.Contains(err.Error(), model.TranslateProjectConfigError) || strings.Contains(err.Error(), model.MergeProjectConfigError)
 		if apiReqErr || noFileErr || ymlFmtErr || parsingErr || configErr {
 			// If there's an error getting the remote config, e.g. because it
