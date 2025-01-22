@@ -208,7 +208,7 @@ functions:
             make mod-tidy;
             [[ $? -eq 0 ]] && break;
           done
-  
+
   assume-role:
     command: ec2.assume_role
     type: setup
