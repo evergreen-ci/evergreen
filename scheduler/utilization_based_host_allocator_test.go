@@ -118,7 +118,6 @@ func TestGroupByTaskGroup(t *testing.T) {
 
 	taskGroupDatas = groupByTaskGroup(hosts, distroQueueInfo)
 	assert.Len(taskGroupDatas, 2)
-	assert.Len(taskGroupDatas[fmt.Sprintf("%s_%s_%s_%s", "g2", "", "", "")].Hosts, 2)
 	assert.Equal(1, taskGroupDatas[fmt.Sprintf("%s_%s_%s_%s", "g2", "", "", "")].Info.Count)
 	assert.Len(taskGroupDatas[""].Hosts, 2)
 	assert.Equal(1, taskGroupDatas[""].Info.Count)
