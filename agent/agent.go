@@ -1200,7 +1200,7 @@ func setEndTaskFailureDetails(tc *taskContext, detail *apimodels.TaskEndDetail, 
 			tc.setFailingCommand(currCmd)
 		}
 		detail.Type = failureType
-		detail.FailureMetadataTags = utility.UniqueStrings(append(currCmd.FailureMetadataTags(), failureMetadataTagsToAdd...))
+		detail.FailureMetadataTags = utility.UniqueStrings(append(tc.getFailingCommand().FailureMetadataTags(), failureMetadataTagsToAdd...))
 	}
 
 	detail.OtherFailingCommands = tc.getOtherFailingCommands()

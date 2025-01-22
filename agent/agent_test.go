@@ -1817,8 +1817,16 @@ tasks:
       - command: shell.exec
         params:
           script: exit 0
+        failure_metadata_tags: ["failure_tag2"]
 `
 	s.setupRunTask(projYml)
+
+	factory, ok := command.GetCommandFactory("command.mock")
+	s.Require().True(ok)
+	userDefinedTaskStatusCmd := factory()
+	userDefinedTaskStatusCmd.SetFullDisplayName("command.mock")
+	userDefinedTaskStatusCmd.SetFailureMetadataTags([]string{"user_defined_end_task_response_tag"})
+	s.tc.setCurrentCommand(userDefinedTaskStatusCmd)
 
 	resp := &triggerEndTaskResp{
 		Status:                 evergreen.TaskFailed,
@@ -1826,16 +1834,9 @@ tasks:
 		Description:            "task failed",
 		AddFailureMetadataTags: []string{"failure_tag0", "failure_tag1", "failure_tag2"},
 	}
-
-	s.Nil(s.tc.userEndTaskResp)
 	s.tc.setUserEndTaskResponse(resp)
 	s.NotNil(s.tc.userEndTaskRespOriginatingCommand)
-	s.Equal("initial task setup", s.tc.userEndTaskRespOriginatingCommand.FullDisplayName())
-
-	// Set the current command to show that the command containing the user-defined resp has precedence.
-	factory, ok := command.GetCommandFactory("command.mock")
-	s.Require().True(ok)
-	s.tc.setCurrentCommand(factory())
+	s.Equal(userDefinedTaskStatusCmd.FullDisplayName(), s.tc.userEndTaskRespOriginatingCommand.FullDisplayName())
 
 	nextTask := &apimodels.NextTaskResponse{
 		TaskId:     s.tc.task.ID,
@@ -1847,8 +1848,8 @@ tasks:
 	s.Equal(resp.Status, s.mockCommunicator.EndTaskResult.Detail.Status, "should set user-defined task status")
 	s.Equal(resp.Type, s.mockCommunicator.EndTaskResult.Detail.Type, "should set user-defined command failure type")
 	s.Equal(resp.Description, s.mockCommunicator.EndTaskResult.Detail.Description, "should set user-defined task description")
-	s.Equal("initial task setup", s.mockCommunicator.EndTaskResult.Detail.FailingCommand, "should set the failing command's display name to the user-defined resp's originating command")
-	s.ElementsMatch([]string{"failure_tag0", "failure_tag1", "failure_tag2"}, s.mockCommunicator.EndTaskResult.Detail.FailureMetadataTags, "should set the failing command's metadata tags along with the additional tags")
+	s.Equal(userDefinedTaskStatusCmd.FullDisplayName(), s.mockCommunicator.EndTaskResult.Detail.FailingCommand, "should set the failing command's display name to the user-defined resp's originating command")
+	s.ElementsMatch(append(userDefinedTaskStatusCmd.FailureMetadataTags(), "failure_tag0", "failure_tag1", "failure_tag2"), s.mockCommunicator.EndTaskResult.Detail.FailureMetadataTags, "should set the failing command's metadata tags along with the additional tags")
 
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
@@ -1872,8 +1873,16 @@ tasks:
       - command: shell.exec
         params:
           script: exit 1
+        failure_metadata_tags: ["failure_tag0"]
 `
 	s.setupRunTask(projYml)
+
+	factory, ok := command.GetCommandFactory("command.mock")
+	s.Require().True(ok)
+	userDefinedTaskStatusCmd := factory()
+	userDefinedTaskStatusCmd.SetFullDisplayName("command.mock")
+	userDefinedTaskStatusCmd.SetFailureMetadataTags([]string{"user_defined_end_task_response_tag"})
+	s.tc.setCurrentCommand(userDefinedTaskStatusCmd)
 
 	resp := &triggerEndTaskResp{
 		Status:      evergreen.TaskSucceeded,
@@ -1891,6 +1900,8 @@ tasks:
 	s.Equal(resp.Status, s.mockCommunicator.EndTaskResult.Detail.Status, "should set user-defined task status")
 	s.Equal(resp.Type, s.mockCommunicator.EndTaskResult.Detail.Type, "should set user-defined command failure type")
 	s.Equal(resp.Description, s.mockCommunicator.EndTaskResult.Detail.Description, "should set user-defined task description")
+	s.Empty(s.mockCommunicator.EndTaskResult.Detail.FailingCommand, "should not set a failing command because the task succeeded")
+	s.Empty(s.mockCommunicator.EndTaskResult.Detail.FailureMetadataTags, "should not set the failing command's metadata tags because the task succeeded")
 
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
@@ -1913,11 +1924,20 @@ tasks:
       - command: shell.exec
         params:
           script: exit 0
+        failure_metadata_tags: ["failure_tag0"]
       - command: shell.exec
         params:
           script: exit 0
+        failure_metadata_tags: ["failure_tag1"]
 `
 	s.setupRunTask(projYml)
+
+	factory, ok := command.GetCommandFactory("command.mock")
+	s.Require().True(ok)
+	userDefinedTaskStatusCmd := factory()
+	userDefinedTaskStatusCmd.SetFullDisplayName("command.mock")
+	userDefinedTaskStatusCmd.SetFailureMetadataTags([]string{"user_defined_end_task_response_tag"})
+	s.tc.setCurrentCommand(userDefinedTaskStatusCmd)
 
 	resp := &triggerEndTaskResp{
 		Status:         evergreen.TaskFailed,
@@ -1937,6 +1957,7 @@ tasks:
 	s.Equal(resp.Status, s.mockCommunicator.EndTaskResult.Detail.Status, "should set user-defined task status")
 	s.Equal(resp.Type, s.mockCommunicator.EndTaskResult.Detail.Type, "should set user-defined command failure type")
 	s.Equal(resp.Description, s.mockCommunicator.EndTaskResult.Detail.Description, "should set user-defined task description")
+	s.ElementsMatch(userDefinedTaskStatusCmd.FailureMetadataTags(), s.mockCommunicator.EndTaskResult.Detail.FailureMetadataTags, "should set failure metadata tags to the ones associated with the command that sets the user-defined response")
 
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
