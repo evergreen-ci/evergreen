@@ -17,20 +17,20 @@
     }
   ],
   "fake_parameters": [
-      {
-        "_id": "/evg-test/github_apps/sandbox_project_id/private_key",
-        "value": "secret",
-        "last_updated": {
-            "$date": "2025-01-13T00:00:00.000Z"
-        }
+    {
+      "_id": "/evg-test/github_apps/sandbox_project_id/private_key",
+      "value": "secret",
+      "last_updated": {
+        "$date": "2025-01-13T00:00:00.000Z"
       }
+    }
   ],
   "parameter_records": [
-      {
-          "_id": "/evg-test/github_apps/sandbox_project_id/private_key",
-          "last_updated": {
-              "$date": "2025-01-13T00:00:00.000Z"
-          }
+    {
+      "_id": "/evg-test/github_apps/sandbox_project_id/private_key",
+      "last_updated": {
+        "$date": "2025-01-13T00:00:00.000Z"
       }
+    }
   ]
 }

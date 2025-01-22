@@ -56,7 +56,6 @@ func TestFindOneProjectVar(t *testing.T) {
 	assert.Equal("mongodb", projectVarsFromDB.Id)
 	assert.Equal(vars, projectVarsFromDB.Vars)
 
-	checkAndSetProjectVarsSynced(t, &pRef, false)
 	checkParametersMatchVars(ctx, t, projectVarsFromDB.Parameters, vars)
 	checkParametersNamespacedByProject(t, *projectVarsFromDB)
 }
@@ -105,9 +104,7 @@ func TestFindMergedProjectVars(t *testing.T) {
 	require.NoError(t, repoVars.Insert())
 	require.NoError(t, project0Vars.Insert())
 
-	checkAndSetProjectVarsSynced(t, &project0, false)
 	checkParametersNamespacedByProject(t, project0Vars)
-	checkAndSetProjectVarsSynced(t, &repo.ProjectRef, true)
 	checkParametersNamespacedByProject(t, repoVars)
 
 	// Testing merging of project vars and repo vars
@@ -169,7 +166,6 @@ func TestFindMergedProjectVars(t *testing.T) {
 
 	// Testing ProjectRef.RepoRefId == ""
 	project0.RepoRefId = ""
-	project0.ParameterStoreVarsSynced = true
 	require.NoError(t, project0.Upsert())
 	mergedVars, err = FindMergedProjectVars(project0.Id)
 	assert.NoError(err)
@@ -451,7 +447,6 @@ func TestProjectVarsFindAndModify(t *testing.T) {
 
 			checkParametersMatchVars(ctx, t, dbVars.Parameters, dbVars.Vars)
 			checkParametersNamespacedByProject(t, *dbVars)
-			checkAndSetProjectVarsSynced(t, &pRef, false)
 
 			// want to "fix" b, add c, delete d
 			newVars := &ProjectVars{
@@ -1081,153 +1076,5 @@ func TestShouldGetAdminOnlyVars(t *testing.T) {
 			}
 		}
 		assert.True(t, tested, "requester '%s' not tested with non-admin", requester)
-	}
-}
-
-func TestFullSyncToParameterStore(t *testing.T) {
-	defer func() {
-		assert.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, ProjectVarsCollection, fakeparameter.Collection))
-	}()
-	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T){
-		"InitiallySyncsAllParametersWithNewProjectVars": func(ctx context.Context, t *testing.T) {
-			projRef := ProjectRef{
-				Id:                    "project_id",
-				ParameterStoreEnabled: true,
-			}
-			require.NoError(t, projRef.Insert())
-			vars := map[string]string{
-				"var1": "value1",
-				"var2": "value2",
-			}
-			projVars := ProjectVars{
-				Id:   "project_id",
-				Vars: vars,
-			}
-			require.NoError(t, projVars.Insert())
-
-			checkAndSetProjectVarsSynced(t, &projRef, false)
-
-			dbProjVars, err := FindOneProjectVars(projVars.Id)
-			require.NoError(t, err)
-			require.NotZero(t, dbProjVars)
-
-			checkParametersMatchVars(ctx, t, dbProjVars.Parameters, vars)
-			checkParametersNamespacedByProject(t, *dbProjVars)
-		},
-		"InitiallySyncsAllParametersWithPreexistingProjectVars": func(ctx context.Context, t *testing.T) {
-			projRef := ProjectRef{
-				Id:                    "project_id",
-				ParameterStoreEnabled: true,
-			}
-			require.NoError(t, projRef.Insert())
-			vars := map[string]string{
-				"var1": "value1",
-				"var2": "value2",
-			}
-			projVars := ProjectVars{
-				Id:   "project_id",
-				Vars: vars,
-			}
-			require.NoError(t, db.Insert(ProjectVarsCollection, projVars))
-
-			pm, err := FullSyncToParameterStore(ctx, &projVars, &projRef, false)
-			require.NoError(t, err)
-
-			checkAndSetProjectVarsSynced(t, &projRef, false)
-
-			dbProjVars, err := FindOneProjectVars(projVars.Id)
-			require.NoError(t, err)
-			require.NotZero(t, dbProjVars)
-			dbProjVars.Parameters = *pm
-
-			checkParametersMatchVars(ctx, t, dbProjVars.Parameters, vars)
-			checkParametersNamespacedByProject(t, *dbProjVars)
-		},
-		"InitiallySyncsAllParametersForRepoVars": func(ctx context.Context, t *testing.T) {
-			repoRef := RepoRef{
-				ProjectRef: ProjectRef{
-					Id:                    "repo_id",
-					ParameterStoreEnabled: true,
-				},
-			}
-			require.NoError(t, repoRef.Upsert())
-			vars := map[string]string{
-				"var1": "value1",
-				"var2": "value2",
-			}
-			repoVars := ProjectVars{
-				Id:   "repo_id",
-				Vars: vars,
-			}
-			require.NoError(t, db.Insert(ProjectVarsCollection, repoVars))
-
-			pm, err := FullSyncToParameterStore(ctx, &repoVars, &repoRef.ProjectRef, true)
-			require.NoError(t, err)
-
-			checkAndSetProjectVarsSynced(t, &repoRef.ProjectRef, true)
-
-			dbRepoVars, err := FindOneProjectVars(repoVars.Id)
-			require.NoError(t, err)
-			require.NotZero(t, dbRepoVars)
-			dbRepoVars.Parameters = *pm
-
-			checkParametersMatchVars(ctx, t, dbRepoVars.Parameters, vars)
-			checkParametersNamespacedByProject(t, *dbRepoVars)
-		},
-		"DeletesExistingDesyncedParametersAndResyncs": func(ctx context.Context, t *testing.T) {
-			projRef := ProjectRef{
-				Id:                    "project_id",
-				ParameterStoreEnabled: true,
-			}
-			require.NoError(t, projRef.Insert())
-			vars := map[string]string{
-				"var1": "value1",
-				"var2": "value2",
-				"var3": "value3",
-			}
-			projVars := ProjectVars{
-				Id:   "project_id",
-				Vars: vars,
-			}
-			require.NoError(t, projVars.Insert())
-
-			checkAndSetProjectVarsSynced(t, &projRef, false)
-
-			dbProjVars, err := FindOneProjectVars(projVars.Id)
-			require.NoError(t, err)
-			require.NotZero(t, dbProjVars)
-
-			checkParametersMatchVars(ctx, t, dbProjVars.Parameters, vars)
-			checkParametersNamespacedByProject(t, *dbProjVars)
-
-			require.NoError(t, projRef.setParameterStoreVarsSynced(false, false))
-			newVars := map[string]string{
-				"var1": "value1",
-				"var3": "new_value3",
-				"var4": "value4",
-			}
-			newProjVars := ProjectVars{
-				Id:   projVars.Id,
-				Vars: newVars,
-			}
-
-			pm, err := FullSyncToParameterStore(ctx, &newProjVars, &projRef, false)
-			require.NoError(t, err)
-
-			newDBProjVars, err := FindOneProjectVars(projVars.Id)
-			require.NoError(t, err)
-			require.NotZero(t, newDBProjVars)
-			newDBProjVars.Parameters = *pm
-
-			checkParametersMatchVars(ctx, t, newDBProjVars.Parameters, newVars)
-			checkParametersNamespacedByProject(t, *newDBProjVars)
-		},
-	} {
-		t.Run(tName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-			require.NoError(t, db.ClearCollections(ProjectRefCollection, RepoRefCollection, ProjectVarsCollection, fakeparameter.Collection))
-			tCase(ctx, t)
-		})
 	}
 }
