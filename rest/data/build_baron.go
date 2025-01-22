@@ -28,7 +28,7 @@ type FailingTaskData struct {
 // BbFileTicket creates a JIRA ticket for a task with the given test failures.
 func BbFileTicket(ctx context.Context, taskId string, execution int) (int, error) {
 	// Find information about the task
-	t, err := task.FindOneIdAndExecution(taskId, execution)
+	t, err := task.FindOneIdAndExecution(ctx, taskId, execution)
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}

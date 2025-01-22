@@ -329,10 +329,6 @@ const (
 	GithubChecksAlias = "__github_checks"
 	GitTagAlias       = "__git_tag"
 
-	MergeTaskVariant = "commit-queue-merge"
-	MergeTaskName    = "merge-patch"
-	MergeTaskGroup   = "merge-task-group"
-
 	DefaultJasperPort = 2385
 
 	GithubAppPrivateKey = "github_app_key"

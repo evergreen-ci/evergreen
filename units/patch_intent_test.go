@@ -388,7 +388,7 @@ func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithDisabledCommitQueue() {
 	err = j.finishPatch(s.ctx, patchDoc)
 	s.Error(err)
 	s.NotEmpty(j.gitHubError)
-	s.Equal(commitQueueDisabled, j.gitHubError)
+	s.Equal(mergeQueueDisabled, j.gitHubError)
 }
 
 func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {

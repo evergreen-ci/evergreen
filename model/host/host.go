@@ -2702,6 +2702,7 @@ type HostGroupStats struct {
 	Total          int `bson:"total" json:"total" yaml:"total"`
 }
 
+// Stats provides a breakdown of the statuses of all hosts
 func (hosts HostGroup) Stats() HostGroupStats {
 	out := HostGroupStats{}
 

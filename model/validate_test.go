@@ -14,31 +14,34 @@ import (
 )
 
 func TestBadHostTaskRelationship(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 	require := require.New(t)
 	require.NoError(db.Clear(task.Collection))
 
 	var h *host.Host
 	var k *task.Task
-	assert.False(badHostTaskRelationship(h, k), "false for nil task")
+	assert.False(badHostTaskRelationship(ctx, h, k), "false for nil task")
 
 	k = &task.Task{Id: "1"}
 	h = &host.Host{RunningTask: "1"}
-	assert.False(badHostTaskRelationship(h, k), "false if task id matches running task")
+	assert.False(badHostTaskRelationship(ctx, h, k), "false if task id matches running task")
 
 	h.RunningTask = ""
 	h.LastTask = "1"
-	assert.False(badHostTaskRelationship(h, k), "false if this is last task, and running task is empty")
+	assert.False(badHostTaskRelationship(ctx, h, k), "false if this is last task, and running task is empty")
 
 	h.RunningTask = "2"
 	runningTask := &task.Task{Id: "2", Status: evergreen.TaskStarted}
 	require.NoError(runningTask.Insert())
-	assert.True(badHostTaskRelationship(h, k), "true if task is in a state other than dispatched")
+	assert.True(badHostTaskRelationship(ctx, h, k), "true if task is in a state other than dispatched")
 
 	require.NoError(db.Clear(task.Collection))
 	runningTask.Status = evergreen.TaskDispatched
 	require.NoError(runningTask.Insert())
-	assert.False(badHostTaskRelationship(h, k), "false if task is dispatched")
+	assert.False(badHostTaskRelationship(ctx, h, k), "false if task is dispatched")
 }
 
 func TestValidateHost(t *testing.T) {

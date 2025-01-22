@@ -222,7 +222,7 @@ func (j *idleHostJob) getIdleInfo(ctx context.Context, h *host.Host, d *distro.D
 // single host task group.
 func isAssignedSingleHostTaskGroup(ctx context.Context, h *host.Host) (bool, error) {
 	if h.RunningTaskGroup != "" && h.RunningTask != "" {
-		runningTask, err := task.FindOneIdAndExecution(h.RunningTask, h.RunningTaskExecution)
+		runningTask, err := task.FindOneIdAndExecution(ctx, h.RunningTask, h.RunningTaskExecution)
 		if err != nil {
 			return false, errors.Wrapf(err, "finding host's running task '%s' execution %d", h.RunningTask, h.RunningTaskExecution)
 		}

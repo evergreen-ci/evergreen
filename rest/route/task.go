@@ -84,7 +84,7 @@ func (tgh *taskGetHandler) Run(ctx context.Context) gimlet.Responder {
 	if tgh.execution == -1 {
 		foundTask, err = task.FindOneId(ctx, tgh.taskID)
 	} else {
-		foundTask, err = task.FindOneIdAndExecution(tgh.taskID, tgh.execution)
+		foundTask, err = task.FindOneIdAndExecution(ctx, tgh.taskID, tgh.execution)
 	}
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", tgh.taskID))
@@ -110,7 +110,7 @@ func (tgh *taskGetHandler) Run(ctx context.Context) gimlet.Responder {
 
 	if tgh.fetchAllExecutions {
 		var tasks []task.Task
-		tasks, err = task.FindOldWithDisplayTasks(task.ByOldTaskID(tgh.taskID))
+		tasks, err = task.FindOldWithDisplayTasks(ctx, task.ByOldTaskID(tgh.taskID))
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding archived executions for task '%s'", tgh.taskID))
 		}

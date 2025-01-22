@@ -15,7 +15,6 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/notification"
@@ -154,7 +153,6 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 			PrivateVars: map[string]bool{"b": true},
 		}
 		s.NoError(projVars.Insert())
-		checkAndSetProjectVarsSynced(t, projWithVars, false)
 
 		repoWithVars := &model.RepoRef{
 			ProjectRef: model.ProjectRef{
@@ -169,7 +167,6 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 			PrivateVars: map[string]bool{"a": true},
 		}
 		s.NoError(repoVars.Insert())
-		checkAndSetProjectVarsSynced(t, &repoWithVars.ProjectRef, true)
 
 		before := getMockProjectSettings()
 		after := getMockProjectSettings()
@@ -291,24 +288,6 @@ func checkParametersMatchVars(ctx context.Context, t *testing.T, pm model.Parame
 		assert.NotEmpty(t, varName, "parameter should have corresponding project variable")
 		assert.Equal(t, vars[varName], fakeParam.Value, "project variable value should match the parameter value")
 	}
-}
-
-func checkAndSetProjectVarsSynced(t *testing.T, projRef *model.ProjectRef, isRepoRef bool) {
-	var dbProjRef *model.ProjectRef
-	var err error
-	if isRepoRef {
-		dbRepoRef, err := model.FindOneRepoRef(projRef.Id)
-		require.NoError(t, err)
-		require.NotZero(t, dbRepoRef)
-		dbProjRef = &dbRepoRef.ProjectRef
-	} else {
-		dbProjRef, err = model.FindBranchProjectRef(projRef.Id)
-		require.NoError(t, err)
-		require.NotZero(t, dbProjRef)
-	}
-	assert.True(t, dbProjRef.ParameterStoreVarsSynced, "parameter store vars must be synced but they aren't")
-
-	projRef.ParameterStoreVarsSynced = true
 }
 
 func checkParametersNamespacedByProject(t *testing.T, vars model.ProjectVars) {
@@ -442,7 +421,7 @@ func TestCreateProject(t *testing.T) {
 	defer cancel()
 
 	defer func() {
-		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameter.Collection, commitqueue.Collection, event.EventCollection, user.Collection, evergreen.ScopeCollection))
+		assert.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameter.Collection, event.EventCollection, user.Collection, evergreen.ScopeCollection))
 
 		cocoaMock.ResetGlobalSecretCache()
 	}()
@@ -537,7 +516,7 @@ func TestCreateProject(t *testing.T) {
 			tctx, tcancel := context.WithCancel(context.Background())
 			defer tcancel()
 
-			require.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameter.Collection, commitqueue.Collection, event.EventCollection, user.Collection, evergreen.ScopeCollection))
+			require.NoError(t, db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameter.Collection, event.EventCollection, user.Collection, evergreen.ScopeCollection))
 
 			cocoaMock.ResetGlobalSecretCache()
 
@@ -669,7 +648,6 @@ func TestHideBranch(t *testing.T) {
 		PrivateVars: map[string]bool{"b": true},
 	}
 	require.NoError(t, vars.Insert())
-	checkAndSetProjectVarsSynced(t, project, false)
 
 	err := HideBranch(project.Id)
 	assert.NoError(t, err)
@@ -677,15 +655,14 @@ func TestHideBranch(t *testing.T) {
 	hiddenProj, err := model.FindMergedProjectRef(project.Id, "", true)
 	assert.NoError(t, err)
 	skeletonProj := model.ProjectRef{
-		Id:                       project.Id,
-		Owner:                    repo.Owner,
-		Repo:                     repo.Repo,
-		Branch:                   project.Branch,
-		RepoRefId:                repo.Id,
-		Enabled:                  false,
-		Hidden:                   utility.TruePtr(),
-		ParameterStoreEnabled:    true,
-		ParameterStoreVarsSynced: true,
+		Id:                    project.Id,
+		Owner:                 repo.Owner,
+		Repo:                  repo.Repo,
+		Branch:                project.Branch,
+		RepoRefId:             repo.Id,
+		Enabled:               false,
+		Hidden:                utility.TruePtr(),
+		ParameterStoreEnabled: true,
 	}
 	assert.Equal(t, skeletonProj, *hiddenProj)
 

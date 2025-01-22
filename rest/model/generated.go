@@ -4,7 +4,6 @@
 package model
 
 import (
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/patch"
 )
 
@@ -28,22 +27,4 @@ func APIDisplayTaskBuildFromService(t patch.DisplayTask) *APIDisplayTask {
 	m.ExecutionTasks = ArrstringArrstring(t.ExecTasks)
 	m.Name = StringStringPtr(t.Name)
 	return &m
-}
-
-// APIModuleBuildFromService takes the commitqueue.Module DB struct and
-// returns the REST struct *APIModule with the corresponding fields populated
-func APIModuleBuildFromService(t commitqueue.Module) *APIModule {
-	m := APIModule{}
-	m.Module = StringStringPtr(t.Module)
-	m.Issue = StringStringPtr(t.Issue)
-	return &m
-}
-
-// APIModuleToService takes the APIModule REST struct and returns the DB struct
-// *commitqueue.Module with the corresponding fields populated
-func APIModuleToService(m APIModule) *commitqueue.Module {
-	out := &commitqueue.Module{}
-	out.Module = StringPtrString(m.Module)
-	out.Issue = StringPtrString(m.Issue)
-	return out
 }

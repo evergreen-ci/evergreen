@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -11,6 +12,9 @@ import (
 )
 
 func TestFindUniqueBuildVariantNamesByTask(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert.NoError(t, db.ClearCollections(task.Collection))
 	t1 := task.Task{
 		Id:                      "t1",
@@ -51,7 +55,7 @@ func TestFindUniqueBuildVariantNamesByTask(t *testing.T) {
 		RevisionOrderNumber:     1,
 	}
 	assert.NoError(t, t3.Insert())
-	taskBuildVariants, err := task.FindUniqueBuildVariantNamesByTask("evergreen", "test-agent", 1)
+	taskBuildVariants, err := task.FindUniqueBuildVariantNamesByTask(ctx, "evergreen", "test-agent", 1)
 	assert.NoError(t, err)
 	assert.Equal(t, []*task.BuildVariantTuple{
 		{DisplayName: "OSX", BuildVariant: "osx"},

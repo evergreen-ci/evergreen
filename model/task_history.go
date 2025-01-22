@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -277,7 +278,7 @@ type PickaxeParams struct {
 	BuildVariants []string
 }
 
-func TaskHistoryPickaxe(params PickaxeParams) ([]task.Task, error) {
+func TaskHistoryPickaxe(ctx context.Context, params PickaxeParams) ([]task.Task, error) {
 	// If there are no build variants, use all of them for the given task name.
 	// Need this because without the build_variant specified, no amount of hinting
 	// will get sort to use the proper index
@@ -289,7 +290,7 @@ func TaskHistoryPickaxe(params PickaxeParams) ([]task.Task, error) {
 		return nil, errors.New("unable to find repository")
 	}
 	grip.Info(repo)
-	buildVariants, err := task.FindVariantsWithTask(params.TaskName, params.Project.Identifier, repo.RevisionOrderNumber-50, repo.RevisionOrderNumber)
+	buildVariants, err := task.FindVariantsWithTask(ctx, params.TaskName, params.Project.Identifier, repo.RevisionOrderNumber-50, repo.RevisionOrderNumber)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding build variants")
 	}

@@ -118,10 +118,10 @@ func GetEstimatedStartTime(ctx context.Context, t task.Task) (time.Duration, err
 	if err != nil {
 		return -1, errors.Wrapf(err, "retrieving hosts from distro '%s'", t.DistroId)
 	}
-	return createSimulatorModel(*queue, hosts).simulate(queuePos), nil
+	return createSimulatorModel(ctx, *queue, hosts).simulate(queuePos), nil
 }
 
-func createSimulatorModel(taskQueue TaskQueue, hosts []host.Host) *estimatedTimeSimulator {
+func createSimulatorModel(ctx context.Context, taskQueue TaskQueue, hosts []host.Host) *estimatedTimeSimulator {
 	estimator := estimatedTimeSimulator{}
 	for i := 0; i < len(taskQueue.Queue); i++ {
 		_ = estimator.tasks.Enqueue(estimatedTask{duration: taskQueue.Queue[i].ExpectedDuration})
@@ -138,7 +138,7 @@ func createSimulatorModel(taskQueue TaskQueue, hosts []host.Host) *estimatedTime
 			if h.RunningTask == "" {
 				estimator.hosts = append(estimator.hosts, estimatedHost{timeToCompletion: 0})
 			} else {
-				t, err := task.FindOneIdAndExecution(h.RunningTask, h.RunningTaskExecution)
+				t, err := task.FindOneIdAndExecution(ctx, h.RunningTask, h.RunningTaskExecution)
 				if err != nil {
 					grip.Error(message.WrapError(err, message.Fields{
 						"message": "retrieving tasks for task start estimation simulator",

@@ -271,7 +271,7 @@ func ParallelTaskFinder(ctx context.Context, d distro.Distro) ([]task.Task, erro
 		go func() {
 			defer wg.Done()
 			for id := range toLookup {
-				nt, err := task.FindOneIdWithFields(id, task.StatusKey, task.DependsOnKey)
+				nt, err := task.FindOneIdWithFields(ctx, id, task.StatusKey, task.DependsOnKey)
 				catcher.Add(err)
 				if nt == nil {
 					continue

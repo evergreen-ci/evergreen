@@ -990,7 +990,7 @@ func (j *patchIntentProcessor) buildGithubMergeDoc(patchDoc *patch.Patch) error 
 		)
 	}
 	if projectRef == nil {
-		j.gitHubError = commitQueueDisabled
+		j.gitHubError = mergeQueueDisabled
 		return errors.Errorf("project ref for repo '%s/%s' with branch '%s' and merge queue enabled not found",
 			patchDoc.GithubMergeData.Org, patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.BaseBranch)
 	}

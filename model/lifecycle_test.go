@@ -412,6 +412,9 @@ func TestBuildRestart(t *testing.T) {
 }
 
 func TestBuildMarkAborted(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	Convey("With a build", t, func() {
 
 		require.NoError(t, db.ClearCollections(build.Collection, task.Collection, VersionCollection))
@@ -440,7 +443,7 @@ func TestBuildMarkAborted(t *testing.T) {
 
 			Convey("it should be deactivated", func() {
 				var err error
-				So(AbortBuild(b.Id, ""), ShouldBeNil)
+				So(AbortBuild(ctx, b.Id, ""), ShouldBeNil)
 				b, err = build.FindOne(build.ById(b.Id))
 				So(err, ShouldBeNil)
 				So(b.Activated, ShouldBeFalse)
@@ -483,7 +486,7 @@ func TestBuildMarkAborted(t *testing.T) {
 				// aborting the build should mark only the two abortable tasks
 				// with the correct build id as aborted
 
-				So(AbortBuild(b.Id, ""), ShouldBeNil)
+				So(AbortBuild(ctx, b.Id, ""), ShouldBeNil)
 
 				abortedTasks, err := task.Find(task.ByAborted(true))
 				So(err, ShouldBeNil)
@@ -2244,7 +2247,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 	// test that restarting a task correctly resets the task and archives it
 	assert.NoError(resetTaskData())
 	assert.NoError(resetTask(ctx, "displayTask1", "caller"))
-	archivedTasks, err := task.FindOldWithDisplayTasks(nil)
+	archivedTasks, err := task.FindOldWithDisplayTasks(ctx, nil)
 	assert.NoError(err)
 	assert.Len(archivedTasks, 3)
 	foundDisplayTask := false

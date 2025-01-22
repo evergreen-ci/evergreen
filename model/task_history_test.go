@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -104,6 +105,9 @@ func TestTaskHistory(t *testing.T) {
 }
 
 func TestTaskHistoryPickaxe(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.ClearCollections(task.Collection, RepositoriesCollection))
 	assert := assert.New(t)
 	proj := Project{
@@ -154,7 +158,7 @@ func TestTaskHistoryPickaxe(t *testing.T) {
 		OldestOrder:   1,
 		BuildVariants: []string{"bv"},
 	}
-	results, err := TaskHistoryPickaxe(params)
+	results, err := TaskHistoryPickaxe(ctx, params)
 	require.NoError(t, err)
 	require.Len(t, results, 3)
 }

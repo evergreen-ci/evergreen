@@ -2108,7 +2108,6 @@ type APIServiceFlags struct {
 	CacheStatsJobDisabled           bool `json:"cache_stats_job_disabled"`
 	CacheStatsEndpointDisabled      bool `json:"cache_stats_endpoint_disabled"`
 	TaskReliabilityDisabled         bool `json:"task_reliability_disabled"`
-	CommitQueueDisabled             bool `json:"commit_queue_disabled"`
 	HostAllocatorDisabled           bool `json:"host_allocator_disabled"`
 	PodAllocatorDisabled            bool `json:"pod_allocator_disabled"`
 	UnrecognizedPodCleanupDisabled  bool `json:"unrecognized_pod_cleanup_disabled"`
@@ -2493,7 +2492,6 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.CacheStatsJobDisabled = v.CacheStatsJobDisabled
 		as.CacheStatsEndpointDisabled = v.CacheStatsEndpointDisabled
 		as.TaskReliabilityDisabled = v.TaskReliabilityDisabled
-		as.CommitQueueDisabled = v.CommitQueueDisabled
 		as.HostAllocatorDisabled = v.HostAllocatorDisabled
 		as.PodAllocatorDisabled = v.PodAllocatorDisabled
 		as.UnrecognizedPodCleanupDisabled = v.UnrecognizedPodCleanupDisabled
@@ -2537,7 +2535,6 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		CacheStatsJobDisabled:           as.CacheStatsJobDisabled,
 		CacheStatsEndpointDisabled:      as.CacheStatsEndpointDisabled,
 		TaskReliabilityDisabled:         as.TaskReliabilityDisabled,
-		CommitQueueDisabled:             as.CommitQueueDisabled,
 		HostAllocatorDisabled:           as.HostAllocatorDisabled,
 		PodAllocatorDisabled:            as.PodAllocatorDisabled,
 		UnrecognizedPodCleanupDisabled:  as.UnrecognizedPodCleanupDisabled,

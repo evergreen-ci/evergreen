@@ -320,7 +320,8 @@ type Task struct {
 	TriggerType  string `bson:"trigger_type,omitempty" json:"trigger_type,omitempty"`
 	TriggerEvent string `bson:"trigger_event,omitempty" json:"trigger_event,omitempty"`
 
-	CommitQueueMerge bool `bson:"commit_queue_merge,omitempty" json:"commit_queue_merge,omitempty"`
+	CanSync       bool             `bson:"can_sync" json:"can_sync"`
+	SyncAtEndOpts SyncAtEndOptions `bson:"sync_at_end_opts,omitempty" json:"sync_at_end_opts,omitempty"`
 
 	// IsEssentialToSucceed indicates that this task must finish in order for
 	// its build and version to be considered successful. For example, tasks
@@ -2938,7 +2939,7 @@ func findAllTasksChunked(taskIDs []string) ([]Task, error) {
 }
 
 // AbortBuildTasks sets the abort flag on all tasks associated with the build which are in an abortable
-func AbortBuildTasks(buildId string, reason AbortInfo) error {
+func AbortBuildTasks(ctx context.Context, buildId string, reason AbortInfo) error {
 	q := bson.M{
 		BuildIdKey: buildId,
 		StatusKey:  bson.M{"$in": evergreen.TaskInProgressStatuses},
@@ -2946,12 +2947,12 @@ func AbortBuildTasks(buildId string, reason AbortInfo) error {
 	if reason.TaskID != "" {
 		q[IdKey] = bson.M{"$ne": reason.TaskID}
 	}
-	return errors.Wrapf(abortTasksByQuery(q, reason), "aborting tasks for build '%s'", buildId)
+	return errors.Wrapf(abortTasksByQuery(ctx, q, reason), "aborting tasks for build '%s'", buildId)
 }
 
 // AbortVersionTasks sets the abort flag on all tasks associated with the version which are in an
 // abortable state
-func AbortVersionTasks(versionId string, reason AbortInfo) error {
+func AbortVersionTasks(ctx context.Context, versionId string, reason AbortInfo) error {
 	q := ByVersionWithChildTasks(versionId)
 	q[StatusKey] = bson.M{"$in": evergreen.TaskInProgressStatuses}
 	if reason.TaskID != "" {
@@ -2959,11 +2960,11 @@ func AbortVersionTasks(versionId string, reason AbortInfo) error {
 		// if the aborting task is part of a display task, we also don't want to mark it as aborted
 		q[ExecutionTasksKey] = bson.M{"$ne": reason.TaskID}
 	}
-	return errors.Wrapf(abortTasksByQuery(q, reason), "aborting tasks for version '%s'", versionId)
+	return errors.Wrapf(abortTasksByQuery(ctx, q, reason), "aborting tasks for version '%s'", versionId)
 }
 
-func abortTasksByQuery(q bson.M, reason AbortInfo) error {
-	ids, err := findAllTaskIDs(db.Query(q))
+func abortTasksByQuery(ctx context.Context, q bson.M, reason AbortInfo) error {
+	ids, err := findAllTaskIDs(ctx, db.Query(q))
 	if err != nil {
 		return errors.Wrap(err, "finding updated tasks")
 	}
@@ -3560,9 +3561,9 @@ func (t *Task) GetDisplayTask(ctx context.Context) (*Task, error) {
 	var err error
 	if t.Archived {
 		if dtId != "" {
-			dt, err = FindOneOldByIdAndExecution(dtId, t.Execution)
+			dt, err = FindOneOldByIdAndExecution(ctx, dtId, t.Execution)
 		} else {
-			dt, err = FindOneOld(ByExecutionTask(t.OldTaskId))
+			dt, err = FindOneOld(ctx, ByExecutionTask(t.OldTaskId))
 			if dt != nil {
 				dtId = dt.OldTaskId // save the original task ID to cache
 			}
@@ -3823,9 +3824,9 @@ func (t *Task) BlockedState(dependencies map[string]*Task) (string, error) {
 
 // CircularDependencies detects if any tasks in this version are part of a dependency cycle
 // Note that it does not check inter-version dependencies, because only evergreen can add those
-func (t *Task) CircularDependencies() error {
+func (t *Task) CircularDependencies(ctx context.Context) error {
 	var err error
-	tasksWithDeps, err := FindAllTasksFromVersionWithDependencies(t.Version)
+	tasksWithDeps, err := FindAllTasksFromVersionWithDependencies(ctx, t.Version)
 	if err != nil {
 		return errors.Wrap(err, "finding tasks with dependencies")
 	}
