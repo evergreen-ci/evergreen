@@ -320,9 +320,6 @@ type Task struct {
 	TriggerType  string `bson:"trigger_type,omitempty" json:"trigger_type,omitempty"`
 	TriggerEvent string `bson:"trigger_event,omitempty" json:"trigger_event,omitempty"`
 
-	CanSync       bool             `bson:"can_sync" json:"can_sync"`
-	SyncAtEndOpts SyncAtEndOptions `bson:"sync_at_end_opts,omitempty" json:"sync_at_end_opts,omitempty"`
-
 	// IsEssentialToSucceed indicates that this task must finish in order for
 	// its build and version to be considered successful. For example, tasks
 	// selected by the GitHub PR alias must succeed for the GitHub PR requester

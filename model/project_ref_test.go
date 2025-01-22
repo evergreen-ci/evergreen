@@ -1999,7 +1999,6 @@ func TestCreateNewRepoRef(t *testing.T) {
 	assert.Nil(t, repoRef.NotifyOnBuildFailure)
 	assert.Nil(t, repoRef.GithubChecksEnabled)
 	assert.Equal(t, "my message", repoRef.CommitQueue.Message)
-	assert.False(t, repoRef.TaskSync.IsPatchEnabled())
 
 	projectVars, err := FindOneProjectVars(repoRef.Id)
 	assert.NoError(t, err)
