@@ -110,6 +110,14 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData *HostA
 		}
 	}
 
+	// Ensure we do not request more hosts than there are dependency-fulfilled tasks
+	if numNewHostsRequired+len(freeHosts) > hostAllocatorData.DistroQueueInfo.LengthWithDependenciesMet {
+		numNewHostsRequired = hostAllocatorData.DistroQueueInfo.LengthWithDependenciesMet - len(freeHosts)
+	}
+	if numNewHostsRequired < 0 {
+		numNewHostsRequired = 0
+	}
+
 	// Ensure that at least distro.HostAllocatorSettings.MinimumHosts will be running once numNewHostsRequired are up and running.
 	numExistingAndRequiredHosts := numExistingHosts + numNewHostsRequired
 	numAdditionalHostsToMeetMinimum := 0
@@ -244,19 +252,6 @@ func groupByTaskGroup(runningHosts []host.Host, distroQueueInfo model.DistroQueu
 				Hosts: []host.Host{},
 				Info:  info,
 			}
-		}
-	}
-
-	// Any task group can use a host not running a task group, so add them to each list.
-	// This does mean that we can plan more than 1 task for a given host from 2 different
-	// task groups, but that should be in the realm of "this is an estimate"
-	if taskGroupData, ok := taskGroupDatas[""]; ok {
-		for name, data := range taskGroupDatas {
-			if name == "" {
-				continue
-			}
-			data.Hosts = append(data.Hosts, taskGroupData.Hosts...)
-			taskGroupDatas[name] = data
 		}
 	}
 
