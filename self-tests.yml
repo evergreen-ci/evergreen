@@ -209,27 +209,6 @@ functions:
             [[ $? -eq 0 ]] && break;
           done
   
-  generate-api-docs:
-    - command: subprocess.exec
-      params:
-        binary: make
-        args: ["swaggo-install"]
-        working_dir: evergreen
-        env:
-          GOPATH: ${workdir}/gopath
-        include_expansions_in_env:
-          - GOROOT
-    - command: shell.exec
-      params:
-        shell: bash
-        working_dir: evergreen
-        env:
-          GOPATH: ${workdir}/gopath
-        script: |
-          set -o verbose
-          set -o errexit
-          $GOPATH/bin/swag init -g service/service.go
-  
   assume-role:
     command: ec2.assume_role
     type: setup
@@ -718,7 +697,25 @@ tasks:
   - name: generate-api-docs
     commands:
       - func: get-project-and-modules
-      - func: generate-api-docs
+      - command: subprocess.exec
+        params:
+          binary: make
+          args: ["swaggo-install"]
+          working_dir: evergreen
+          env:
+            GOPATH: ${workdir}/gopath
+          include_expansions_in_env:
+            - GOROOT
+      - command: shell.exec
+        params:
+          shell: bash
+          working_dir: evergreen
+          env:
+            GOPATH: ${workdir}/gopath
+          script: |
+            set -o verbose
+            set -o errexit
+            $GOPATH/bin/swag init -g service/service.go
       - command: s3.get
         params:
           aws_key: ${AWS_ACCESS_KEY_ID}
