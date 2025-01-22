@@ -2046,7 +2046,7 @@ func TestCreateNewRepoRef(t *testing.T) {
 	users, err := user.FindByRole(GetRepoAdminRole(repoRef.Id))
 	assert.NoError(t, err)
 	require.Len(t, users, 1)
-	assert.Equal(t, users[0].Id, "me")
+	assert.Equal(t, "me", users[0].Id)
 
 	projectVars, err := FindOneProjectVars(repoRef.Id)
 	assert.NoError(t, err)
