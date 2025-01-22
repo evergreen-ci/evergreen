@@ -1676,7 +1676,6 @@ func TestCreateManifest(t *testing.T) {
 		},
 	}
 	require.NoError(t, projVars.Insert())
-	projRef.ParameterStoreVarsSynced = true
 
 	manifest, err := model.CreateManifest(&v, proj.Modules, projRef, settings)
 	assert.NoError(err)

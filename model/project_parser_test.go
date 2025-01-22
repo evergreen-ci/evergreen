@@ -264,7 +264,6 @@ buildvariants:
 			So(bv.Name, ShouldEqual, "v1")
 			So(len(bv.Tasks), ShouldEqual, 1)
 			So(bv.Tasks[0].Name, ShouldEqual, "t1")
-			So(bv.Tasks[0].CommitQueueMerge, ShouldBeTrue)
 		})
 	})
 }
@@ -624,7 +623,7 @@ func TestTranslateBuildVariants(t *testing.T) {
 			pp.BuildVariants = []parserBV{{
 				Name: "v1",
 				Tasks: parserBVTaskUnits{
-					{Name: "t1", CommitQueueMerge: true},
+					{Name: "t1"},
 					{Name: ".z", DependsOn: parserDependencies{
 						{TaskSelector: taskSelector{Name: ".b"}}}},
 				},
@@ -638,7 +637,6 @@ func TestTranslateBuildVariants(t *testing.T) {
 			So(len(bvts), ShouldEqual, 2)
 			So(bvts[0].Name, ShouldEqual, "t1")
 			So(bvts[1].Name, ShouldEqual, "t2")
-			So(bvts[0].CommitQueueMerge, ShouldBeTrue)
 			So(bvts[1].DependsOn[0].Name, ShouldEqual, "t3")
 		})
 	})

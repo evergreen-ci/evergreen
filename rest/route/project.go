@@ -338,7 +338,6 @@ func (h *projectIDPatchHandler) Parse(ctx context.Context, r *http.Request) erro
 	}
 	newProjectRef.RepoRefId = oldProject.RepoRefId // this can't be modified by users
 	newProjectRef.ParameterStoreEnabled = oldProject.ParameterStoreEnabled
-	newProjectRef.ParameterStoreVarsSynced = oldProject.ParameterStoreVarsSynced
 
 	h.newProjectRef = newProjectRef
 	h.originalProject = oldProject

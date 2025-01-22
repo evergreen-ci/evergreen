@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud/parameterstore/fakeparameter"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/parsley"
@@ -1046,32 +1045,6 @@ func checkParametersMatchVars(ctx context.Context, t *testing.T, pm ParameterMap
 	}
 }
 
-// checkAndSetProjectVarsSynced checks that the project ref's parameter store
-// vars are synced according to the DB and sets the flag to true. This is mostly
-// helpful as a temporary workaround to ensure that the project ref agrees with
-// the latest one in the DB. In tests where the project ref is inserted
-// initially, then the sync flag is set to true by a project variable operation
-// (e.g. (*ProjectVars).Insert), the local copy of the project ref isn't
-// updated. If the outdated local project ref is used for a later Upsert, the
-// sync flag will be incorrectly cleared.
-func checkAndSetProjectVarsSynced(t *testing.T, projRef *ProjectRef, isRepoRef bool) {
-	var dbProjRef *ProjectRef
-	var err error
-	if isRepoRef {
-		dbRepoRef, err := FindOneRepoRef(projRef.Id)
-		require.NoError(t, err)
-		require.NotZero(t, dbRepoRef)
-		dbProjRef = &dbRepoRef.ProjectRef
-	} else {
-		dbProjRef, err = FindBranchProjectRef(projRef.Id)
-		require.NoError(t, err)
-		require.NotZero(t, dbProjRef)
-	}
-	assert.True(t, dbProjRef.ParameterStoreVarsSynced, "parameter store vars must be synced but they aren't")
-
-	projRef.ParameterStoreVarsSynced = true
-}
-
 // checkParametersNamespacedByProject checks that the parameter names for the
 // project vars all include the project ID as a prefix.
 func checkParametersNamespacedByProject(t *testing.T, vars ProjectVars) {
@@ -1302,7 +1275,6 @@ func TestDetachFromRepo(t *testing.T) {
 			dbProjRef, err := FindBranchProjectRef(pRef.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbProjRef)
-			assert.True(t, dbProjRef.ParameterStoreVarsSynced, "branch project vars should be synced to Parameter Store after Upsert")
 
 			repoVars := &ProjectVars{
 				Id: repoRef.Id,
@@ -1320,7 +1292,6 @@ func TestDetachFromRepo(t *testing.T) {
 			dbRepoRef, err := FindOneRepoRef(repoRef.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbRepoRef)
-			assert.True(t, dbRepoRef.ParameterStoreVarsSynced, "repo vars should be synced to Parameter Store after Upsert")
 
 			u := &user.DBUser{
 				Id: "me",
@@ -1550,7 +1521,6 @@ func TestDefaultRepoBySection(t *testing.T) {
 				PrivateVars: map[string]bool{"hello": true},
 			}
 			assert.NoError(t, pVars.Insert())
-			checkAndSetProjectVarsSynced(t, &pRef, false)
 			checkParametersNamespacedByProject(t, pVars)
 
 			aliases := []ProjectAlias{
@@ -2031,9 +2001,6 @@ func TestCreateNewRepoRef(t *testing.T) {
 	assert.Equal(t, "mongo", repoRef.Repo)
 	assert.Empty(t, repoRef.Branch)
 	assert.True(t, repoRef.DoesTrackPushEvents())
-	assert.Contains(t, repoRef.Admins, "bob")
-	assert.Contains(t, repoRef.Admins, "other bob")
-	assert.Contains(t, repoRef.Admins, "me")
 	assert.True(t, repoRef.IsPRTestingEnabled())
 	assert.Equal(t, "evergreen.yml", repoRef.RemotePath)
 	assert.Equal(t, "", repoRef.Identifier)
@@ -2041,7 +2008,14 @@ func TestCreateNewRepoRef(t *testing.T) {
 	assert.Nil(t, repoRef.GithubChecksEnabled)
 	assert.Equal(t, "my message", repoRef.CommitQueue.Message)
 	assert.False(t, repoRef.TaskSync.IsPatchEnabled())
-	assert.True(t, repoRef.ParameterStoreVarsSynced)
+
+	assert.NotContains(t, repoRef.Admins, "bob")
+	assert.NotContains(t, repoRef.Admins, "other bob")
+	assert.Contains(t, repoRef.Admins, "me")
+	users, err := user.FindByRole(GetRepoAdminRole(repoRef.Id))
+	assert.NoError(t, err)
+	require.Len(t, users, 1)
+	assert.Equal(t, "me", users[0].Id)
 
 	projectVars, err := FindOneProjectVars(repoRef.Id)
 	assert.NoError(t, err)
@@ -3165,7 +3139,7 @@ func TestFindDownstreamProjects(t *testing.T) {
 }
 
 func TestAddEmptyBranch(t *testing.T) {
-	require.NoError(t, db.ClearCollections(user.Collection, ProjectRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection, commitqueue.Collection))
+	require.NoError(t, db.ClearCollections(user.Collection, ProjectRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection))
 	u := user.DBUser{
 		Id: "me",
 	}
@@ -3185,7 +3159,7 @@ func TestAddPermissions(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	assert := assert.New(t)
-	assert.NoError(db.ClearCollections(user.Collection, ProjectRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection, commitqueue.Collection))
+	assert.NoError(db.ClearCollections(user.Collection, ProjectRefCollection, evergreen.ScopeCollection, evergreen.RoleCollection))
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 	env := testutil.NewEnvironment(ctx, t)
 	u := user.DBUser{

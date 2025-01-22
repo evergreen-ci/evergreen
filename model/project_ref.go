@@ -527,8 +527,6 @@ var (
 	projectRefProjectHealthViewKey                  = bsonutil.MustHaveTag(ProjectRef{}, "ProjectHealthView")
 	projectRefGitHubDynamicTokenPermissionGroupsKey = bsonutil.MustHaveTag(ProjectRef{}, "GitHubDynamicTokenPermissionGroups")
 	projectRefGithubPermissionGroupByRequesterKey   = bsonutil.MustHaveTag(ProjectRef{}, "GitHubPermissionGroupByRequester")
-	projectRefParameterStoreEnabledKey              = bsonutil.MustHaveTag(ProjectRef{}, "ParameterStoreEnabled")
-	projectRefParameterStoreVarsSyncedKey           = bsonutil.MustHaveTag(ProjectRef{}, "ParameterStoreVarsSynced")
 	projectRefLastAutoRestartedTaskAtKey            = bsonutil.MustHaveTag(ProjectRef{}, "LastAutoRestartedTaskAt")
 	projectRefNumAutoRestartedTasksKey              = bsonutil.MustHaveTag(ProjectRef{}, "NumAutoRestartedTasks")
 
@@ -1276,10 +1274,6 @@ func setRepoFieldsFromProjects(repoRef *RepoRef, projectRefs []ProjectRef) {
 }
 
 func (p *ProjectRef) createNewRepoRef(u *user.DBUser) (repoRef *RepoRef, err error) {
-	repoRef = &RepoRef{ProjectRef{
-		Admins: []string{},
-	}}
-
 	allEnabledProjects, err := FindMergedEnabledProjectRefsByOwnerAndRepo(p.Owner, p.Repo)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding all enabled projects")
@@ -1288,10 +1282,11 @@ func (p *ProjectRef) createNewRepoRef(u *user.DBUser) (repoRef *RepoRef, err err
 	defer func() {
 		err = recovery.HandlePanicWithError(recover(), err, "project and repo structures do not match")
 	}()
+	repoRef = &RepoRef{ProjectRef{}}
 	setRepoFieldsFromProjects(repoRef, allEnabledProjects)
-	if !utility.StringSliceContains(repoRef.Admins, u.Username()) {
-		repoRef.Admins = append(repoRef.Admins, u.Username())
-	}
+	// Initially, the only repo admin will be the user who created it.
+	repoRef.Admins = []string{u.Username()}
+
 	// Some fields shouldn't be set from projects.
 	repoRef.Id = mgobson.NewObjectId().Hex()
 	repoRef.RepoRefId = ""
@@ -1303,7 +1298,6 @@ func (p *ProjectRef) createNewRepoRef(u *user.DBUser) (repoRef *RepoRef, err err
 	if len(allEnabledProjects) == 0 {
 		repoRef.ParameterStoreEnabled = p.ParameterStoreEnabled
 	}
-	repoRef.ParameterStoreVarsSynced = false
 	_, err = SetTracksPushEvents(context.Background(), &repoRef.ProjectRef)
 	if err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
@@ -3641,52 +3635,4 @@ func ProjectCanDispatchTask(pRef *ProjectRef, t *task.Task) (canDispatch bool, r
 	}
 
 	return true, reason
-}
-
-// setParameterStoreVarsSynced marks the project or repo ref to indicate whether
-// its project variables are fully synced to Parameter Store.
-func (p *ProjectRef) setParameterStoreVarsSynced(isSynced bool, isRepoRef bool) error {
-	if p.ParameterStoreVarsSynced == isSynced {
-		return nil
-	}
-
-	coll := ProjectRefCollection
-	if isRepoRef {
-		coll = RepoRefCollection
-	}
-
-	if err := db.UpdateId(coll, p.Id, bson.M{
-		"$set": bson.M{
-			projectRefParameterStoreVarsSyncedKey: isSynced,
-		},
-	}); err != nil {
-		return errors.Wrapf(err, "updating project/repo ref vars sync state to %t", isSynced)
-	}
-
-	p.ParameterStoreVarsSynced = true
-
-	return nil
-}
-
-var psEnabledButNotSyncedQuery = bson.M{
-	projectRefParameterStoreEnabledKey: true,
-	"$or": []bson.M{
-		{projectRefParameterStoreVarsSyncedKey: false},
-		{projectRefParameterStoreVarsSyncedKey: bson.M{"$exists": false}},
-	},
-}
-
-// FindProjectRefsToSync finds all project refs that have Parameter Sore enabled
-// but don't have their project variables synced to Parameter Store yet.
-// TODO (DEVPROD-11882): remove this function once the rollout is stable.
-func FindProjectRefsToSync(ctx context.Context) ([]ProjectRef, error) {
-	cur, err := evergreen.GetEnvironment().DB().Collection(ProjectRefCollection).Find(ctx, psEnabledButNotSyncedQuery)
-	if err != nil {
-		return nil, errors.Wrap(err, "finding project refs to sync")
-	}
-	pRefs := []ProjectRef{}
-	if err := cur.All(ctx, &pRefs); err != nil {
-		return nil, errors.Wrap(err, "decoding project refs to sync")
-	}
-	return pRefs, nil
 }
