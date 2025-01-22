@@ -29,7 +29,6 @@ func TestFilterGeneralSubscriptions(t *testing.T) {
 	usr := &user.DBUser{}
 	usr.Settings.Notifications = user.NotificationPreferences{
 		PatchFinishID: "patch_finish_id",
-		CommitQueueID: "commit_queue_id",
 	}
 
 	t.Run("NoGeneralSubscriptions", func(t *testing.T) {
