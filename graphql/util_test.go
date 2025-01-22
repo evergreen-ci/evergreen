@@ -28,7 +28,8 @@ func init() {
 func TestFilterGeneralSubscriptions(t *testing.T) {
 	usr := &user.DBUser{}
 	usr.Settings.Notifications = user.NotificationPreferences{
-		PatchFinishID: "patch_finish_id",
+		PatchFinishID:         "patch_finish_id",
+		SpawnHostExpirationID: "spawn_host_subscription_id",
 	}
 
 	t.Run("NoGeneralSubscriptions", func(t *testing.T) {
@@ -43,7 +44,7 @@ func TestFilterGeneralSubscriptions(t *testing.T) {
 	t.Run("OnlyGeneralSubscriptions", func(t *testing.T) {
 		subs := []event.Subscription{
 			{ID: "patch_finish_id"},
-			{ID: "commit_queue_id"},
+			{ID: "spawn_host_subscription_id"},
 		}
 		filteredSubIDs := removeGeneralSubscriptions(usr, subs)
 		assert.Empty(t, filteredSubIDs)
