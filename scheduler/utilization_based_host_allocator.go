@@ -47,7 +47,7 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData *HostA
 		return 0, len(freeHosts), nil
 	}
 
-	// only want to meet minimum hosts
+	// If the distro is disabled, we only need to meet the minimum number of hosts
 	if distro.Disabled {
 
 		numNewHostsToRequest := minimumHostsThreshold - numExistingHosts
@@ -110,7 +110,7 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData *HostA
 		}
 	}
 
-	// Will at least distro.HostAllocatorSettings.MinimumHosts be running once numNewHostsRequired are up and running?
+	// Ensure that at least distro.HostAllocatorSettings.MinimumHosts will be running once numNewHostsRequired are up and running.
 	numExistingAndRequiredHosts := numExistingHosts + numNewHostsRequired
 	numAdditionalHostsToMeetMinimum := 0
 	if numExistingAndRequiredHosts < minimumHostsThreshold {
@@ -121,17 +121,17 @@ func UtilizationBasedHostAllocator(ctx context.Context, hostAllocatorData *HostA
 	return numNewHostsToRequest, numFreeApprox, nil
 }
 
-// Calculate the number of hosts needed by taking the total task scheduled task time
-// and dividing it by the target duration. Request however many hosts are needed to
-// achieve that minus the number of free hosts
+// evalHostUtilization calculates the number of hosts needed by taking the total task scheduled task time
+// and dividing it by the target duration. Request however many hosts are needed to achieve that minus the
+// number of free hosts
 func evalHostUtilization(ctx context.Context, d distro.Distro, taskGroupData TaskGroupData, futureHostFraction float64, containerPool *evergreen.ContainerPool, maxDurationThreshold time.Duration, maxHosts int) (int, int, error) {
 	existingHosts := taskGroupData.Hosts
 	taskGroupInfo := taskGroupData.Info
-	numLongTasks := taskGroupInfo.CountDurationOverThreshold
-	numOverdueTasks := taskGroupInfo.CountWaitOverThreshold
-	scheduledDuration := taskGroupInfo.ExpectedDuration - taskGroupInfo.DurationOverThreshold
+	numLongRunningTasks := taskGroupInfo.CountDurationOverThreshold
+	totalShortRunningTasksExpectedDuration := taskGroupInfo.ExpectedDuration - taskGroupInfo.DurationOverThreshold
 	numNewHosts := 0
 
+	// Skip for non-static providers
 	if !d.IsEphemeral() {
 		return 0, 0, nil
 	}
@@ -151,23 +151,27 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskGroupData Tas
 		maxHosts = parentDistro.HostAllocatorSettings.MaximumHosts * containerPool.MaxContainers
 	}
 
-	// determine how many free hosts we have that are already up
-	numFreeHosts, err := calcExistingFreeHosts(existingHosts, futureHostFraction, maxDurationThreshold)
+	// Determine the number of expected free hosts by summing the number of free hosts with the
+	// estimated number of hosts we expect to be free within the maxDurationThreshold. This estimation
+	// is calculated by taking all running tasks that are expected to complete within maxDurationThreshold,
+	// summing their estimated time left to completion, and dividing that number by maxDurationThreshold.
+	// That estimate is then multiplied by the futureHostFraction coefficient, which is a fraction that allows us
+	// to tune the final estimate up or down.
+	expectedNumFreeHosts, err := calcExistingFreeHosts(existingHosts, futureHostFraction, maxDurationThreshold)
 	if err != nil {
-		return numNewHosts, numFreeHosts, err
+		return numNewHosts, expectedNumFreeHosts, err
 	}
 
 	roundDown := true
 	if d.HostAllocatorSettings.RoundingRule == evergreen.HostAllocatorRoundUp {
 		roundDown = false
 	}
-	numQOSTasks := numLongTasks
 
+	numHostsForOverdueTasks := 0
 	if d.HostAllocatorSettings.FeedbackRule == evergreen.HostAllocatorWaitsOverThreshFeedback {
-		numQOSTasks += numOverdueTasks
+		numHostsForOverdueTasks = taskGroupInfo.CountWaitOverThreshold
 	}
-	// calculate how many new hosts are needed (minus the hosts for long tasks)
-	numNewHosts = calcNewHostsNeeded(scheduledDuration, maxDurationThreshold, numFreeHosts, numQOSTasks, roundDown)
+	numNewHosts = calcNewHostsNeeded(totalShortRunningTasksExpectedDuration, maxDurationThreshold, expectedNumFreeHosts, numLongRunningTasks, numHostsForOverdueTasks, roundDown)
 
 	// don't start more hosts than new tasks. This can happen if the task queue is mostly long tasks
 	if numNewHosts > taskGroupInfo.Count {
@@ -184,23 +188,26 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskGroupData Tas
 		numNewHosts = 0
 	}
 
-	// alert if the distro is underwater
 	if maxHosts < 1 {
 		return 0, 0, errors.Errorf("unable to plan hosts for distro %s due to pool size of %d", d.Id, d.HostAllocatorSettings.MaximumHosts)
 	}
+	// Alert if we expect the total expected duration of all short running tasks to take over
+	// the dynamicDistroRuntimeAlertThreshold even when the distro's (or group's) max hosts
+	// are reached
 	underWaterAlert := message.Fields{
-		"provider":  d.Provider,
-		"distro":    d.Id,
-		"runtime":   scheduledDuration,
-		"runner":    RunnerName,
-		"message":   "distro underwater",
-		"num_hosts": len(existingHosts),
-		"max_hosts": d.HostAllocatorSettings.MaximumHosts,
+		"provider":        d.Provider,
+		"distro":          d.Id,
+		"runtime":         totalShortRunningTasksExpectedDuration,
+		"runner":          RunnerName,
+		"message":         "distro underwater",
+		"num_hosts":       len(existingHosts),
+		"max_hosts":       d.HostAllocatorSettings.MaximumHosts,
+		"task_group_name": taskGroupInfo.Name,
 	}
-	avgMakespan := scheduledDuration / time.Duration(maxHosts)
+	avgMakespan := totalShortRunningTasksExpectedDuration / time.Duration(maxHosts)
 	grip.AlertWhen(avgMakespan > dynamicDistroRuntimeAlertThreshold, underWaterAlert)
 
-	return numNewHosts, numFreeHosts, nil
+	return numNewHosts, expectedNumFreeHosts, nil
 }
 
 // groupByTaskGroup takes a list of hosts and tasks and returns them grouped by task group
@@ -256,35 +263,36 @@ func groupByTaskGroup(runningHosts []host.Host, distroQueueInfo model.DistroQueu
 	return taskGroupDatas
 }
 
-// calcNewHostsNeeded returns the number of new hosts needed based
-// on a heuristic that utilizes the total duration of scheduled tasks.
-// We should allocate enough hosts to run all tasks with runtime < maxDurationPerHost in less than maxDurationPerHost,
-// and one host for each task with runtime > maxDurationPerHost.
-// Alternatively, we should allocate sufficient hosts to schedule all tasks within maxDurationPerHost.
-func calcNewHostsNeeded(scheduledDuration, maxDurationPerHost time.Duration, numExistingHosts, numHostsNeededAlready int, roundDown bool) int {
-	// number of hosts needed to meet the duration based turnaround requirement
-	// may be a decimal because we care about the difference between 0.5 and 0 hosts
-	numHostsForTurnaroundRequirement := float64(scheduledDuration) / float64(maxDurationPerHost)
+// calcNewHostsNeeded returns the number of new hosts needed based on a heuristic that utilizes the
+// sum of the expected durations of all short-running (<= maxDurationPerHost) tasks that have their
+// dependencies met. It attempts to allocate enough hosts to run all short running tasks within
+// maxDurationPerHost, plus one host for each long-running task with runtime > maxDurationPerHost,
+// plus (optionally) one host for each task that have been waiting maxDurationPerHost since its dependencies
+// were met.
+func calcNewHostsNeeded(totalShortRunningTasksExpectedDuration, maxDurationPerHost time.Duration,
+	expectedNumFreeHosts, numLongRunningTasks, numHostsForOverdueTasks int, roundDown bool) int {
 
-	// number of hosts that need to be spun up
-	numNewHostsNeeded := numHostsForTurnaroundRequirement - float64(numExistingHosts) + float64(numHostsNeededAlready)
+	// Calculate the number of hosts needed to run the full totalShortRunningTasksExpectedDuration within
+	// the maxDurationPerHost turnaround requirement
+	numHostsForTurnaroundRequirement := float64(totalShortRunningTasksExpectedDuration) / float64(maxDurationPerHost)
 
-	// if we need less than 1 new host but have no existing hosts, return 1 host
+	// Subtract the number of hosts that we expect to be free, add the number of long-running tasks,
+	// and add the number of overdue tasks to get the final number of hosts that need to be spun up
+	numNewHostsNeeded := numHostsForTurnaroundRequirement - float64(expectedNumFreeHosts) + float64(numLongRunningTasks) + float64(numHostsForOverdueTasks)
+
+	// If we need less than 1 new host but have no existing hosts, return 1 host
 	// so that small queues are not stranded
-	if numExistingHosts < 1 && numNewHostsNeeded > 0 && numNewHostsNeeded < 1 {
+	if expectedNumFreeHosts < 1 && numNewHostsNeeded > 0 && numNewHostsNeeded < 1 {
 		return 1
 	}
 
-	// round the # of hosts needed down or up depending
-
+	// Round the number of hosts needed down or up
 	var numNewHosts int
 	if roundDown {
 		numNewHosts = int(math.Floor(numNewHostsNeeded))
 	} else {
 		numNewHosts = int(math.Ceil(numNewHostsNeeded))
 	}
-
-	// return 0 if numNewHosts is less than 0
 	if numNewHosts < 0 {
 		numNewHosts = 0
 	}

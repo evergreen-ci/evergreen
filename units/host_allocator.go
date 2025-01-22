@@ -145,6 +145,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		j.AddError(errors.Wrap(err, "finding active hosts"))
 		return
 	}
+	// Total number of hosts with a status within evergreen.UpHostStatus
 	upHosts := existingHosts.Uphosts()
 
 	distroQueueInfo, err := model.GetDistroQueueInfo(j.DistroID)
@@ -166,6 +167,8 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	}
 
 	// nHosts is the number of additional hosts desired.
+	// nHostsFree is the sum of the number of hosts that are currently free and the
+	// number of hosts estimated to soon be free.
 	nHosts, nHostsFree, err := hostAllocator(ctx, &hostAllocatorData)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "calculating the number of new hosts required for distro '%s'", j.DistroID))
@@ -186,6 +189,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	//////////////////////
 
 	hostSpawningBegins := time.Now()
+	// Number of new hosts to be allocated
 	hostsSpawned, err := scheduler.SpawnHosts(ctx, *distro, nHosts, containerPool)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "spawning new hosts"))
@@ -210,8 +214,19 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	// how long will it take the current fleet of hosts, plus the ones we spawned, to chew through
 	// the scheduled tasks in the queue?
 
-	var totalOverdueInTaskGroups, countDurationOverThresholdInTaskGroups, freeInTaskGroups, requiredInTaskGroups int
-	var durationOverThresholdInTaskGroups, expectedDurationInTaskGroups time.Duration
+	// The number of task group tasks that have been waiting >= MaxDurationThreshold since their dependencies were met
+	var totalOverdueInTaskGroups int
+	// The number of task group tasks have their dependencies met and are expected to take over MaxDurationThreshold
+	var countDurationOverThresholdInTaskGroups int
+	// The total number of hosts that are dedicated to running task groups that are free or are estimated to soon be free
+	var freeInTaskGroups int
+	// The total number of hosts that are dedicated to running task groups that are running tasks
+	var requiredInTaskGroups int
+	// The sum of the expected durations of all task group tasks that have their dependencies met and are expected to take over MaxDurationThreshold
+	var durationOverThresholdInTaskGroups time.Duration
+	// The sum of the expected durations of all task group tasks that have their dependencies met
+	var expectedDurationInTaskGroups time.Duration
+
 	for _, info := range hostAllocatorData.DistroQueueInfo.TaskGroupInfos {
 		if info.Name != "" {
 			totalOverdueInTaskGroups += info.CountWaitOverThreshold
@@ -223,15 +238,28 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		}
 	}
 
+	// The sum of the expected durations of all standalone tasks that have their dependencies met
 	correctedExpectedDuration := distroQueueInfo.ExpectedDuration - expectedDurationInTaskGroups
+	// The sum of the expected durations of all standalone tasks that have their dependencies met and are expected to take over MaxDurationThreshold
 	correctedDurationOverThreshold := distroQueueInfo.DurationOverThreshold - durationOverThresholdInTaskGroups
+	// The sum of the expected durations of all standalone tasks that have their dependencies met and are expected to take under MaxDurationThreshold
 	scheduledDuration := correctedExpectedDuration - correctedDurationOverThreshold
+	// The number of standalone tasks that have their dependencies met and are expected to take over MaxDurationThreshold
 	durationOverThreshNoTaskGroups := distroQueueInfo.CountDurationOverThreshold - countDurationOverThresholdInTaskGroups
 
+	// The number of additional hosts to be spawned that will be dedicated to standalone tasks
 	correctedHostsSpawned := len(hostsSpawned) - requiredInTaskGroups
+	// The number of hosts that are expected to be available for running standalone tasks that are expected to take under MaxDurationThreshold
 	hostsAvail := (nHostsFree - freeInTaskGroups) + correctedHostsSpawned - durationOverThreshNoTaskGroups
 
-	var timeToEmpty, timeToEmptyNoSpawns time.Duration
+	// The total amount of time the tasks with dependencies met and are expected to take under MaxDurationThreshold
+	// in the queue will take to complete when ran on the number of hosts we expect to be available for them
+	var timeToEmpty time.Duration
+	// The total amount of time the tasks with dependencies met and are expected to take under MaxDurationThreshold
+	// in the queue will take to complete when ran on the number of hosts if only free (or soon to be free) hosts are
+	// used
+	var timeToEmptyNoSpawns time.Duration
+
 	if scheduledDuration <= 0 {
 		timeToEmpty = time.Duration(0)
 		timeToEmptyNoSpawns = time.Duration(0)
@@ -251,7 +279,9 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		}
 	}
 
+	// How many multiples of MaxDurationThreshold the timeToEmpty variable is
 	hostQueueRatio := float32(timeToEmpty.Nanoseconds()) / float32(distroQueueInfo.MaxDurationThreshold.Nanoseconds())
+	// How many multiples of MaxDurationThreshold the timeToEmptyNoSpawns variable is
 	noSpawnsRatio := float32(timeToEmptyNoSpawns.Nanoseconds()) / float32(distroQueueInfo.MaxDurationThreshold.Nanoseconds())
 
 	// rough value that should correspond to situations where a queue will be empty very soon
