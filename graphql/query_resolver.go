@@ -980,6 +980,7 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 		Requesters: requesters,
 		MaxOrder:   maxOrderOpt,
 		MinOrder:   minOrderOpt,
+		Variants:   options.Variants,
 	}
 
 	activeVersions, err := model.GetActiveWaterfallVersions(ctx, projectId, opts)

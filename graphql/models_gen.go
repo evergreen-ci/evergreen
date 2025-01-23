@@ -635,6 +635,7 @@ type WaterfallOptions struct {
 	ProjectIdentifier string   `json:"projectIdentifier"`
 	Requesters        []string `json:"requesters,omitempty"`
 	Revision          *string  `json:"revision,omitempty"`
+	Variants          []string `json:"variants,omitempty"`
 }
 
 type WaterfallPagination struct {

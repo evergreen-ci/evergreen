@@ -9,6 +9,7 @@ input WaterfallOptions {
     @requireProjectAccess(permission: TASKS, access: VIEW)
   requesters: [String!]
   revision: String
+  variants: [String!]
 }
 
 type WaterfallTask {

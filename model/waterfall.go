@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -46,6 +47,7 @@ type WaterfallOptions struct {
 	MaxOrder   int      `bson:"-" json:"-"`
 	MinOrder   int      `bson:"-" json:"-"`
 	Requesters []string `bson:"-" json:"-"`
+	Variants   []string `bson:"-" json:"-"`
 }
 
 // GetActiveWaterfallVersions returns at most `opts.limit` activated versions for a given project.
@@ -65,6 +67,12 @@ func GetActiveWaterfallVersions(ctx context.Context, projectId string, opts Wate
 			"$in": opts.Requesters,
 		},
 		VersionActivatedKey: true,
+	}
+
+	if len(opts.Variants) > 0 {
+		variantsAsRegex := strings.Join(opts.Variants, "|")
+		match[bsonutil.GetDottedKeyName(VersionBuildVariantsKey, VersionBuildStatusVariantKey)] = bson.M{"$regex": variantsAsRegex, "$options": "i"}
+
 	}
 
 	pagingForward := opts.MaxOrder != 0
@@ -130,6 +138,7 @@ func GetAllWaterfallVersions(ctx context.Context, projectId string, minOrder int
 
 	pipeline := []bson.M{{"$match": match}}
 	pipeline = append(pipeline, bson.M{"$sort": bson.M{VersionRevisionOrderNumberKey: -1}})
+	pipeline = append(pipeline, bson.M{"$limit": MaxWaterfallVersionLimit})
 
 	res := []Version{}
 	env := evergreen.GetEnvironment()
