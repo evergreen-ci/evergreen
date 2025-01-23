@@ -119,7 +119,7 @@ func TestPlanner(t *testing.T) {
 				cache := UnitCache{}
 				one := task.Task{Id: "one"}
 				cache.Create("one", one)
-				assert.Empty(t, cache.Export(ctx))
+				assert.Zero(t, cache.Export(ctx).Len())
 			})
 			t.Run("ExportPropogatesTasks", func(t *testing.T) {
 				cache := UnitCache{}
@@ -128,7 +128,7 @@ func TestPlanner(t *testing.T) {
 				cache.Create("one", one).SetDistro(&distro.Distro{})
 				cache.Create("two", two).SetDistro(&distro.Distro{})
 				plan := cache.Export(ctx)
-				assert.Len(t, plan, 2)
+				assert.Equal(t, plan.Len(), 2)
 				for _, ts := range plan.units {
 					ts.SetDistro(&distro.Distro{})
 					require.Len(t, ts.tasks, 1)
@@ -143,7 +143,7 @@ func TestPlanner(t *testing.T) {
 				cache.Create("one", one).SetDistro(&distro.Distro{})
 				cache.Create("two", one).SetDistro(&distro.Distro{})
 				plan := cache.Export(ctx)
-				assert.Len(t, plan, 1)
+				assert.Equal(t, plan.Len(), 1)
 			})
 		})
 		t.Run("Unit", func(t *testing.T) {
@@ -172,9 +172,9 @@ func TestPlanner(t *testing.T) {
 			t.Run("HashCaches", func(t *testing.T) {
 				unit := NewUnit(task.Task{Id: "foo"})
 				hash := unit.ID()
-				assert.Len(t, unit.Export(ctx), 1)
+				assert.Equal(t, unit.Export(ctx).Len(), 1)
 				unit.Add(task.Task{Id: "bar"})
-				assert.Len(t, unit.Export(ctx), 2)
+				assert.Equal(t, unit.Export(ctx).Len(), 2)
 				newHash := unit.ID()
 				assert.Equal(t, hash, newHash)
 			})
@@ -392,7 +392,7 @@ func TestPlanner(t *testing.T) {
 	})
 	t.Run("PrepareTaskPlan", func(t *testing.T) {
 		t.Run("Noop", func(t *testing.T) {
-			assert.Empty(t, PrepareTasksForPlanning(ctx, &distro.Distro{}, []task.Task{}))
+			assert.Zero(t, PrepareTasksForPlanning(ctx, &distro.Distro{}, []task.Task{}).Len())
 		})
 		t.Run("TaskGroupsGrouped", func(t *testing.T) {
 			plan := PrepareTasksForPlanning(ctx, &distro.Distro{}, []task.Task{
@@ -401,7 +401,7 @@ func TestPlanner(t *testing.T) {
 				{Id: "three"},
 			})
 
-			assert.Len(t, plan, 2)
+			assert.Equal(t, plan.Len(), 2)
 			assert.Len(t, plan.Export(ctx), 3)
 		})
 		t.Run("VersionsGrouped", func(t *testing.T) {
@@ -415,7 +415,7 @@ func TestPlanner(t *testing.T) {
 				{Id: "three", Version: "second"},
 			})
 
-			assert.Len(t, plan, 2)
+			assert.Equal(t, plan.Len(), 2)
 			assert.Len(t, plan.Export(ctx), 3)
 		})
 		t.Run("VersionsAndTaskGroupsGrouped", func(t *testing.T) {
@@ -432,7 +432,7 @@ func TestPlanner(t *testing.T) {
 				{Id: "extra", Version: "first", Priority: 1},
 			})
 
-			assert.Len(t, plan, 3)
+			assert.Equal(t, plan.Len(), 3)
 			tasks := plan.Export(ctx)
 			assert.Len(t, tasks, 6)
 			assert.Equal(t, "one", tasks[0].TaskGroup)
@@ -446,7 +446,7 @@ func TestPlanner(t *testing.T) {
 				{Id: "other", DependsOn: []task.Dependency{{TaskId: "two"}}},
 			})
 
-			require.Len(t, plan, 4, "keys:%s", plan.Keys())
+			require.Equal(t, plan.Len(), 4, "keys:%s", plan.Keys())
 			tasks := plan.Export(ctx)
 			require.Len(t, tasks, 4)
 			assert.Equal(t, "three", tasks[3].Id)
@@ -464,7 +464,7 @@ func TestPlanner(t *testing.T) {
 				{Id: "two", DependsOn: []task.Dependency{{TaskId: "missing"}}},
 			})
 
-			assert.Len(t, plan, 3)
+			assert.Equal(t, plan.Len(), 3)
 			assert.Len(t, plan.Export(ctx), 3)
 		})
 	})
