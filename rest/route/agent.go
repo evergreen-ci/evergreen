@@ -1744,7 +1744,7 @@ func (h *awsAssumeRole) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "assuming role for task '%s'", h.taskID))
 	}
-	return gimlet.NewJSONResponse(apimodels.AssumeRoleResponse{
+	return gimlet.NewJSONResponse(apimodels.AWSCredentials{
 		AccessKeyID:     creds.AccessKeyID,
 		SecretAccessKey: creds.SecretAccessKey,
 		SessionToken:    creds.SessionToken,
@@ -1756,7 +1756,7 @@ func (h *awsAssumeRole) Run(ctx context.Context) gimlet.Responder {
 // This route is used to generates credentials for s3 access for a task.
 // s3.put and s3.get call this route when the command is targeting an
 // internal bucket.
-type awsS3 struct {
+type awsS3Credentials struct {
 	env        evergreen.Environment
 	stsManager cloud.STSManager
 
@@ -1764,19 +1764,19 @@ type awsS3 struct {
 	// This is saved across requests to avoid unnecessary calls to AWS STS.
 	callerARN string
 
-	body   apimodels.S3Request
+	body   apimodels.S3CredentialsRequest
 	taskID string
 }
 
-func makeAWSS3(env evergreen.Environment, stsManager cloud.STSManager) gimlet.RouteHandler {
-	return &awsS3{env: env, stsManager: stsManager}
+func makeAWSS3Credentials(env evergreen.Environment, stsManager cloud.STSManager) gimlet.RouteHandler {
+	return &awsS3Credentials{env: env, stsManager: stsManager}
 }
 
-func (h *awsS3) Factory() gimlet.RouteHandler {
-	return &awsS3{env: h.env, stsManager: h.stsManager, callerARN: h.callerARN}
+func (h *awsS3Credentials) Factory() gimlet.RouteHandler {
+	return &awsS3Credentials{env: h.env, stsManager: h.stsManager, callerARN: h.callerARN}
 }
 
-func (h *awsS3) Parse(ctx context.Context, r *http.Request) error {
+func (h *awsS3Credentials) Parse(ctx context.Context, r *http.Request) error {
 	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
 		return errors.New("missing task_id")
 	}
@@ -1793,7 +1793,7 @@ func (h *awsS3) Parse(ctx context.Context, r *http.Request) error {
 	return errors.Wrapf(h.body.Validate(), "validating s3 body for task '%s'", h.taskID)
 }
 
-func (h *awsS3) Run(ctx context.Context) gimlet.Responder {
+func (h *awsS3Credentials) Run(ctx context.Context) gimlet.Responder {
 	t, err := task.FindOneId(ctx, h.taskID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
@@ -1834,7 +1834,7 @@ func (h *awsS3) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "creating credentials for s3 access for task '%s'", h.taskID))
 	}
 
-	return gimlet.NewJSONResponse(apimodels.S3Response{
+	return gimlet.NewJSONResponse(apimodels.AWSCredentials{
 		AccessKeyID:     creds.AccessKeyID,
 		SecretAccessKey: creds.SecretAccessKey,
 		SessionToken:    creds.SessionToken,

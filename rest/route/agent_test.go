@@ -955,7 +955,7 @@ func TestAWSAssumeRole(t *testing.T) {
 				resp := handler.Run(ctx)
 				require.NotNil(t, resp)
 				require.Equal(t, http.StatusOK, resp.Status(), resp.Data())
-				data, ok := resp.Data().(apimodels.AssumeRoleResponse)
+				data, ok := resp.Data().(apimodels.AWSCredentials)
 				require.True(t, ok)
 				assert.NotEmpty(t, data.AccessKeyID)
 				assert.NotEmpty(t, data.SecretAccessKey)
@@ -989,8 +989,8 @@ func TestAWSS3(t *testing.T) {
 	taskID := "taskID"
 	bucket := "bucket"
 
-	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, ar *awsS3){
-		"ParseErrorsOnNilBody": func(ctx context.Context, t *testing.T, handler *awsS3) {
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, ar *awsS3Credentials){
+		"ParseErrorsOnNilBody": func(ctx context.Context, t *testing.T, handler *awsS3Credentials) {
 			url := fmt.Sprintf(route, taskID)
 			request, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(nil))
 			require.NoError(t, err)
@@ -1000,7 +1000,7 @@ func TestAWSS3(t *testing.T) {
 
 			assert.ErrorContains(t, handler.Parse(ctx, request), "reading s3 body for task 'taskID'")
 		},
-		"ParseErrorsOnEmptyBody": func(ctx context.Context, t *testing.T, handler *awsS3) {
+		"ParseErrorsOnEmptyBody": func(ctx context.Context, t *testing.T, handler *awsS3Credentials) {
 			url := fmt.Sprintf(route, taskID)
 			request, err := http.NewRequest(http.MethodPost, url, bytes.NewReader([]byte("{}")))
 			require.NoError(t, err)
@@ -1010,8 +1010,8 @@ func TestAWSS3(t *testing.T) {
 
 			assert.ErrorContains(t, handler.Parse(ctx, request), "validating s3 body for task 'taskID'")
 		},
-		"ParseSucceeds": func(ctx context.Context, t *testing.T, handler *awsS3) {
-			body, err := json.Marshal(apimodels.S3Request{Bucket: bucket})
+		"ParseSucceeds": func(ctx context.Context, t *testing.T, handler *awsS3Credentials) {
+			body, err := json.Marshal(apimodels.S3CredentialsRequest{Bucket: bucket})
 			require.NoError(t, err)
 
 			url := fmt.Sprintf(route, taskID)
@@ -1038,7 +1038,7 @@ func TestAWSS3(t *testing.T) {
 				resp := handler.Run(ctx)
 				require.NotNil(t, resp)
 				require.Equal(t, http.StatusOK, resp.Status(), resp.Data())
-				data, ok := resp.Data().(apimodels.S3Response)
+				data, ok := resp.Data().(apimodels.AWSCredentials)
 				require.True(t, ok)
 				assert.NotEmpty(t, data.AccessKeyID)
 				assert.NotEmpty(t, data.SecretAccessKey)
@@ -1058,7 +1058,7 @@ func TestAWSS3(t *testing.T) {
 
 			manager := cloud.GetSTSManager(true)
 
-			r, ok := makeAWSS3(env, manager).(*awsS3)
+			r, ok := makeAWSS3Credentials(env, manager).(*awsS3Credentials)
 			require.True(t, ok)
 
 			tCase(ctx, t, r)

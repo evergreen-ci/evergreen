@@ -54,7 +54,7 @@ func TestEC2AssumeRoleExecute(t *testing.T) {
 			assert.EqualError(t, c.Execute(ctx, comm, logger, conf), "nil credentials returned")
 		},
 		"Success": func(ctx context.Context, t *testing.T, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig) {
-			comm.AssumeRoleResponse = &apimodels.AssumeRoleResponse{
+			comm.AssumeRoleResponse = &apimodels.AWSCredentials{
 				AccessKeyID:     "access_key_id",
 				SecretAccessKey: "secret_access_key",
 				SessionToken:    "session_token",
