@@ -273,9 +273,6 @@ func UpdateAllContext(ctx context.Context, collection string, query interface{},
 	if err != nil {
 		return nil, errors.Wrapf(err, "updating task")
 	}
-	if res.MatchedCount == 0 {
-		return nil, db.ErrNotFound
-	}
 
 	return &db.ChangeInfo{Updated: int(res.ModifiedCount)}, nil
 }
