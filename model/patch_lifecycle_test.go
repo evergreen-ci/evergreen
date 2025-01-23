@@ -802,7 +802,8 @@ func TestAddNewPatch(t *testing.T) {
 		Identifier: "project",
 		BuildVariants: []BuildVariant{
 			{
-				Name: "variant",
+				Name:        "variant",
+				DisplayName: "My Variant Display",
 				Tasks: []BuildVariantTaskUnit{
 					{Name: "task1", Variant: "variant"}, {Name: "task2", Variant: "variant"}, {Name: "task3", Variant: "variant"},
 				},
@@ -844,6 +845,12 @@ func TestAddNewPatch(t *testing.T) {
 	assert.NoError(err)
 	require.NotNil(t, dbBuild)
 	assert.Len(dbBuild.Tasks, 2)
+	dbVersion, err := VersionFindOne(db.Q{})
+	assert.NoError(err)
+	require.NotNil(t, dbVersion)
+	assert.Len(dbVersion.BuildVariants, 1)
+	assert.Equal("variant", dbVersion.BuildVariants[0].BuildVariant)
+	assert.Equal("My Variant Display", dbVersion.BuildVariants[0].DisplayName)
 
 	_, err = addNewTasksToExistingBuilds(context.Background(), creationInfo, []build.Build{*dbBuild}, "")
 	assert.NoError(err)

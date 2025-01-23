@@ -1584,6 +1584,7 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 		newBuildStatuses = append(newBuildStatuses,
 			VersionBuildStatus{
 				BuildVariant:   pair.Variant,
+				DisplayName:    build.DisplayName,
 				BuildId:        build.Id,
 				BatchTimeTasks: batchTimeTaskStatuses,
 				ActivationStatus: ActivationStatus{
