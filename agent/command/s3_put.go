@@ -551,7 +551,7 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, lo
 			bucket = s3pc.Bucket
 			fileKey = remoteFileName
 			// TODO (DEVPROD-13973): After verifying all added internal buckets can be signed,
-			// renable the check below.
+			// re-enable the check below.
 			// If the bucket is an internal one, Evergreen does not need the credentials
 			// to sign the URL. If the bucket is not an internal one, Evergreen needs the
 			// credentials to sign the URL.
