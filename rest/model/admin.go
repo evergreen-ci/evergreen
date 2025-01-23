@@ -2118,7 +2118,6 @@ type APIServiceFlags struct {
 	SleepScheduleDisabled           bool `json:"sleep_schedule_disabled"`
 	SystemFailedTaskRestartDisabled bool `json:"system_failed_task_restart_disabled"`
 	DegradedModeDisabled            bool `json:"cpu_degraded_mode_disabled"`
-	ParameterStoreDisabled          bool `json:"parameter_store_disabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
