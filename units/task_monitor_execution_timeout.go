@@ -182,7 +182,7 @@ func (j *taskExecutionTimeoutJob) cleanUpTimedOutTask(ctx context.Context) error
 			"operation": "cleanup timed out task",
 			"job":       j.ID(),
 		})
-		return errors.WithStack(j.task.MarkUnscheduled())
+		return errors.WithStack(j.task.MarkUnscheduled(ctx))
 	}
 
 	if host.RunningTask == j.task.Id {
@@ -266,7 +266,7 @@ func (j *taskExecutionTimeoutPopulationJob) Run(ctx context.Context) {
 	}
 	queue := j.env.RemoteQueue()
 
-	tasks, err := task.FindWithFields(task.ByStaleRunningTask(evergreen.HeartbeatTimeoutThreshold), task.IdKey)
+	tasks, err := task.FindWithFields(ctx, task.ByStaleRunningTask(evergreen.HeartbeatTimeoutThreshold), task.IdKey)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "finding tasks with timed-out or stale heartbeats"))
 		return

@@ -637,7 +637,7 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 		aliasErr = fmt.Sprintf("requested alias '%s' is undefined", metadata.Alias)
 	}
 
-	verrs := validator.CheckProject(ctx, projectInfo.Project, projectInfo.Config, projectInfo.Ref, true, projectInfo.Ref.Id, nil)
+	verrs := validator.CheckProject(ctx, projectInfo.Project, projectInfo.Config, projectInfo.Ref, projectInfo.Ref.Id, nil)
 	if len(verrs) > 0 || versionErrs != nil || aliasErr != "" {
 		// We have errors in the project.
 		// Format them, as we need to store + display them to the user

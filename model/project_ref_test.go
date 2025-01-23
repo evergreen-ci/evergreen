@@ -89,7 +89,6 @@ func TestFindMergedProjectRef(t *testing.T) {
 		},
 		CommitQueue:       CommitQueueParams{Enabled: nil, Message: "using repo commit queue"},
 		WorkstationConfig: WorkstationConfig{GitClone: utility.TruePtr()},
-		TaskSync:          TaskSyncOptions{ConfigEnabled: utility.FalsePtr()},
 		ParsleyFilters: []parsley.Filter{
 			{
 				Expression:    "project-filter",
@@ -113,7 +112,6 @@ func TestFindMergedProjectRef(t *testing.T) {
 		PatchTriggerAliases: []patch.PatchTriggerDefinition{
 			{Alias: "global patch trigger"},
 		},
-		TaskSync:          TaskSyncOptions{ConfigEnabled: utility.TruePtr(), PatchEnabled: utility.TruePtr()},
 		CommitQueue:       CommitQueueParams{Enabled: utility.TruePtr()},
 		WorkstationConfig: WorkstationConfig{SetupCommands: []WorkstationSetupCommand{{Command: "my-command"}}},
 		ParsleyFilters: []parsley.Filter{
@@ -142,8 +140,6 @@ func TestFindMergedProjectRef(t *testing.T) {
 	assert.False(t, mergedProject.IsGithubChecksEnabled())
 	assert.True(t, mergedProject.IsPRTestingEnabled())
 	assert.Equal(t, "my-path", mergedProject.SpawnHostScriptPath)
-	assert.False(t, utility.FromBoolPtr(mergedProject.TaskSync.ConfigEnabled))
-	assert.True(t, utility.FromBoolPtr(mergedProject.TaskSync.PatchEnabled))
 	assert.Empty(t, mergedProject.GitTagAuthorizedTeams) // empty lists take precedent
 	assert.Len(t, mergedProject.GitTagAuthorizedUsers, 1)
 	require.Len(t, mergedProject.PatchTriggerAliases, 1)
@@ -218,7 +214,6 @@ func TestFindMergedEnabledProjectRefsByIds(t *testing.T) {
 		},
 		CommitQueue:       CommitQueueParams{Enabled: nil, Message: "using repo commit queue"},
 		WorkstationConfig: WorkstationConfig{GitClone: utility.TruePtr()},
-		TaskSync:          TaskSyncOptions{ConfigEnabled: utility.FalsePtr()},
 		ParsleyFilters: []parsley.Filter{
 			{
 				Expression:    "project-filter",
@@ -248,7 +243,6 @@ func TestFindMergedEnabledProjectRefsByIds(t *testing.T) {
 		},
 		CommitQueue:       CommitQueueParams{Enabled: nil, Message: "using repo commit queue"},
 		WorkstationConfig: WorkstationConfig{GitClone: utility.TruePtr()},
-		TaskSync:          TaskSyncOptions{ConfigEnabled: utility.FalsePtr()},
 		ParsleyFilters: []parsley.Filter{
 			{
 				Expression:    "project-filter",
@@ -273,7 +267,6 @@ func TestFindMergedEnabledProjectRefsByIds(t *testing.T) {
 		PatchTriggerAliases: []patch.PatchTriggerDefinition{
 			{Alias: "global patch trigger"},
 		},
-		TaskSync:          TaskSyncOptions{ConfigEnabled: utility.TruePtr(), PatchEnabled: utility.TruePtr()},
 		CommitQueue:       CommitQueueParams{Enabled: utility.TruePtr()},
 		WorkstationConfig: WorkstationConfig{SetupCommands: []WorkstationSetupCommand{{Command: "my-command"}}},
 		ParsleyFilters: []parsley.Filter{
@@ -1325,7 +1318,6 @@ func TestDefaultRepoBySection(t *testing.T) {
 			assert.Nil(t, pRefFromDb.RepotrackerDisabled)
 			assert.Nil(t, pRefFromDb.DeactivatePrevious)
 			assert.Empty(t, pRefFromDb.RemotePath)
-			assert.Nil(t, pRefFromDb.TaskSync.ConfigEnabled)
 		},
 		ProjectPageAccessSection: func(t *testing.T, id string) {
 			assert.NoError(t, DefaultSectionToRepo(id, ProjectPageAccessSection, "me"))
@@ -1467,7 +1459,6 @@ func TestDefaultRepoBySection(t *testing.T) {
 				RepotrackerDisabled:   utility.TruePtr(),
 				DeactivatePrevious:    utility.FalsePtr(),
 				RemotePath:            "path.yml",
-				TaskSync:              TaskSyncOptions{ConfigEnabled: utility.TruePtr()},
 				Restricted:            utility.FalsePtr(),
 				Admins:                []string{"annie"},
 				PRTestingEnabled:      utility.TruePtr(),
@@ -1865,7 +1856,6 @@ func TestCreateNewRepoRef(t *testing.T) {
 		RemotePath:            "evergreen.yml",
 		NotifyOnBuildFailure:  utility.TruePtr(),
 		CommitQueue:           CommitQueueParams{Message: "my message"},
-		TaskSync:              TaskSyncOptions{PatchEnabled: utility.TruePtr()},
 		ParameterStoreEnabled: true,
 	}
 	assert.NoError(t, doc1.Insert())
@@ -1882,7 +1872,6 @@ func TestCreateNewRepoRef(t *testing.T) {
 		NotifyOnBuildFailure:  utility.FalsePtr(),
 		GithubChecksEnabled:   utility.TruePtr(),
 		CommitQueue:           CommitQueueParams{Message: "my message"},
-		TaskSync:              TaskSyncOptions{PatchEnabled: utility.TruePtr(), ConfigEnabled: utility.TruePtr()},
 		ParameterStoreEnabled: true,
 	}
 	assert.NoError(t, doc2.Insert())
@@ -2007,7 +1996,6 @@ func TestCreateNewRepoRef(t *testing.T) {
 	assert.Nil(t, repoRef.NotifyOnBuildFailure)
 	assert.Nil(t, repoRef.GithubChecksEnabled)
 	assert.Equal(t, "my message", repoRef.CommitQueue.Message)
-	assert.False(t, repoRef.TaskSync.IsPatchEnabled())
 
 	assert.NotContains(t, repoRef.Admins, "bob")
 	assert.NotContains(t, repoRef.Admins, "other bob")

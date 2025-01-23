@@ -36,7 +36,6 @@ input RepoRefInput {
   stepbackDisabled: Boolean
   stepbackBisect: Boolean
   taskAnnotationSettings: TaskAnnotationSettingsInput
-  taskSync: TaskSyncOptionsInput
   tracksPushEvents: Boolean
   triggers: [TriggerAliasInput!]
   versionControlEnabled: Boolean
@@ -87,7 +86,6 @@ type RepoRef {
   stepbackDisabled: Boolean!
   stepbackBisect: Boolean
   taskAnnotationSettings: TaskAnnotationSettings!
-  taskSync: RepoTaskSyncOptions!
   tracksPushEvents: Boolean!
   triggers: [TriggerAlias!]!
   versionControlEnabled: Boolean!
@@ -99,11 +97,6 @@ type RepoCommitQueueParams {
   enabled: Boolean!
   mergeMethod: String!
   message: String!
-}
-
-type RepoTaskSyncOptions {
-  configEnabled: Boolean!
-  patchEnabled: Boolean!
 }
 
 type RepoWorkstationConfig {

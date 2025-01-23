@@ -308,7 +308,7 @@ func TestHostTerminationJob(t *testing.T) {
 			assert.Equal(t, evergreen.TaskSucceeded, resetTask.Status)
 
 			// Verify the single host task group did not reset
-			tasks, err := task.Find(task.ByIds([]string{task1.Id, task2.Id}))
+			tasks, err := task.Find(ctx, task.ByIds([]string{task1.Id, task2.Id}))
 			require.NoError(t, err)
 			require.Len(t, tasks, 2)
 			for _, dbTask := range tasks {
@@ -425,7 +425,7 @@ func TestHostTerminationJob(t *testing.T) {
 			assert.Equal(t, cloud.StatusTerminated, cloudHost.Status)
 
 			// Verify the single host task group reset
-			tasks, err := task.Find(task.ByIds([]string{task1.Id, task2.Id, task3.Id, task4.Id, task5.Id}))
+			tasks, err := task.Find(ctx, task.ByIds([]string{task1.Id, task2.Id, task3.Id, task4.Id, task5.Id}))
 			require.NoError(t, err)
 			require.Len(t, tasks, 5)
 			for _, dbTask := range tasks {

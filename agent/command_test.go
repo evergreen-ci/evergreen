@@ -17,8 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/jasper"
 	"github.com/mongodb/jasper/mock"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.opentelemetry.io/otel"
 )
@@ -149,64 +147,6 @@ func (s *CommandSuite) TestShellExec() {
 	taskData := s.mockCommunicator.EndTaskResult.TaskData
 	s.Equal(taskID, taskData.ID)
 	s.Equal(s.tc.task.Secret, taskData.Secret)
-}
-
-func TestEndTaskSyncCommands(t *testing.T) {
-	s3PushFound := func(cmds *model.YAMLCommandSet) bool {
-		for _, cmd := range cmds.List() {
-			if cmd.Command == evergreen.S3PushCommandName {
-				return true
-			}
-		}
-		return false
-	}
-	for testName, testCase := range map[string]func(t *testing.T, tc *taskContext, detail *apimodels.TaskEndDetail){
-		"ReturnsTaskSyncCommands": func(t *testing.T, tc *taskContext, detail *apimodels.TaskEndDetail) {
-			cmds := endTaskSyncCommands(tc, detail)
-			require.NotNil(t, cmds)
-			assert.True(t, s3PushFound(cmds))
-		},
-		"ReturnsNoCommandsForNoSync": func(t *testing.T, tc *taskContext, detail *apimodels.TaskEndDetail) {
-			tc.taskConfig.Task.SyncAtEndOpts.Enabled = false
-			assert.Nil(t, endTaskSyncCommands(tc, detail))
-		},
-		"ReturnsCommandsIfMatchesTaskStatus": func(t *testing.T, tc *taskContext, detail *apimodels.TaskEndDetail) {
-			detail.Status = evergreen.TaskSucceeded
-			tc.taskConfig.Task.SyncAtEndOpts.Statuses = []string{evergreen.TaskSucceeded}
-			cmds := endTaskSyncCommands(tc, detail)
-			require.NotNil(t, cmds)
-			assert.True(t, s3PushFound(cmds))
-		},
-		"ReturnsNoCommandsIfDoesNotMatchTaskStatus": func(t *testing.T, tc *taskContext, detail *apimodels.TaskEndDetail) {
-			detail.Status = evergreen.TaskSucceeded
-			tc.taskConfig.Task.SyncAtEndOpts.Statuses = []string{evergreen.TaskFailed}
-			cmds := endTaskSyncCommands(tc, detail)
-			assert.Nil(t, cmds)
-		},
-	} {
-		t.Run(testName, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-
-			const taskID = "task_id"
-			comm := client.NewMock("url")
-			tsk := task.Task{
-				Id:            taskID,
-				SyncAtEndOpts: task.SyncAtEndOptions{Enabled: true},
-			}
-			logger, err := comm.GetLoggerProducer(ctx, &tsk, nil)
-			require.NoError(t, err)
-			tc := &taskContext{
-				taskConfig: &internal.TaskConfig{
-					Task: tsk,
-				},
-				logger:     logger,
-				oomTracker: &mock.OOMTracker{},
-			}
-			detail := &apimodels.TaskEndDetail{}
-			testCase(t, tc, detail)
-		})
-	}
 }
 
 func (s *CommandSuite) setUpConfigAndProject(projYml string) {

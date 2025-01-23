@@ -318,7 +318,7 @@ func TestFinalizePatch(t *testing.T) {
 			require.NoError(t, err)
 			assert.Len(t, builds, 1)
 			assert.Len(t, builds[0].Tasks, 2)
-			tasks, err := task.Find(bson.M{})
+			tasks, err := task.Find(ctx, bson.M{})
 			require.NoError(t, err)
 			assert.Len(t, tasks, 2)
 		},
@@ -419,7 +419,7 @@ func TestFinalizePatch(t *testing.T) {
 			assert.Len(t, builds, 1)
 			assert.Len(t, builds[0].Tasks, 2)
 
-			tasks, err := task.Find(bson.M{})
+			tasks, err := task.Find(ctx, bson.M{})
 			require.NoError(t, err)
 			assert.Len(t, tasks, 2)
 			for _, tsk := range tasks {
@@ -836,7 +836,6 @@ func TestAddNewPatch(t *testing.T) {
 		Version:        v,
 		Pairs:          tasks,
 		ActivationInfo: specificActivationInfo{},
-		SyncAtEndOpts:  p.SyncAtEndOpts,
 		GeneratedBy:    "",
 	}
 	_, err := addNewBuilds(context.Background(), creationInfo, nil)
@@ -929,7 +928,6 @@ func TestAddNewPatchWithMissingBaseVersion(t *testing.T) {
 		Version:        v,
 		Pairs:          tasks,
 		ActivationInfo: specificActivationInfo{},
-		SyncAtEndOpts:  p.SyncAtEndOpts,
 		GeneratedBy:    "",
 	}
 	_, err := addNewBuilds(context.Background(), creationInfo, nil)

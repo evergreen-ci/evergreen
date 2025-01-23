@@ -147,10 +147,6 @@
       <input type="checkbox" ng-disabled="$parent.isVirtualWorkstation" ng-model="$parent.spawnTaskChecked" />
         Load data for <strong>[[spawnTask.display_name]]</strong> on <strong>[[spawnTask.build_variant]]</strong> @ <strong class="mono">[[spawnTask.gitspec | limitTo:5]]</strong> onto host at startup
       <br/>
-      <div ng-show="spawnTask.can_sync">
-      <input type="checkbox" ng-disabled="$parent.isVirtualWorkstation || !spawnTask.can_sync || !$parent.spawnTaskChecked" ng-model="$parent.spawnTaskSyncChecked" />
-        Load from task sync
-      </div>
       <br/>
       <input type="checkbox" ng-disabled="$parent.isVirtualWorkstation" ng-model="$parent.useTaskConfig" />
         Also start any hosts this task started (if applicable)

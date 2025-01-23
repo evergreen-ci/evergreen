@@ -1284,56 +1284,6 @@ func (c *communicatorImpl) GetRecentVersionsForProject(ctx context.Context, proj
 	return getVersionsResp, nil
 }
 
-func (c *communicatorImpl) GetTaskSyncReadCredentials(ctx context.Context) (*evergreen.S3Credentials, error) {
-	info := requestInfo{
-		method: http.MethodGet,
-		path:   "/tasks/sync/read_credentials",
-	}
-
-	resp, err := c.request(ctx, info, nil)
-	if err != nil {
-		return nil, errors.Wrap(err, "sending request to get task sync read-only credentials")
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, util.RespError(resp, AuthError)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, util.RespError(resp, "getting task sync read-only credentials")
-	}
-	creds := &evergreen.S3Credentials{}
-	if err := utility.ReadJSON(resp.Body, creds); err != nil {
-		return nil, errors.Wrap(err, "reading JSON response body")
-	}
-
-	return creds, nil
-}
-
-func (c *communicatorImpl) GetTaskSyncPath(ctx context.Context, taskID string) (string, error) {
-	info := requestInfo{
-		method: http.MethodGet,
-		path:   fmt.Sprintf("/tasks/%s/sync_path", taskID),
-	}
-
-	resp, err := c.request(ctx, info, nil)
-	if err != nil {
-		return "", errors.Wrap(err, "sending request to get task sync path")
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusUnauthorized {
-		return "", util.RespError(resp, AuthError)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return "", util.RespError(resp, "getting task sync path")
-	}
-	path, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", errors.Wrap(err, "reading response body")
-	}
-
-	return string(path), nil
-}
-
 func (c *communicatorImpl) GetDistroByName(ctx context.Context, id string) (*restmodel.APIDistro, error) {
 	info := requestInfo{
 		method: http.MethodGet,

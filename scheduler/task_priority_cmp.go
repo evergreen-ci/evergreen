@@ -99,9 +99,9 @@ func (c *byAge) compare(t1, t2 task.Task, _ *CmpBasedTaskComparator) (int, strin
 type byRuntime struct{}
 
 func (c *byRuntime) name() string { return "expected runtime" }
-func (c *byRuntime) compare(t1, t2 task.Task, _ *CmpBasedTaskComparator) (int, string, error) {
-	oneExpected := t1.FetchExpectedDuration().Average
-	twoExpected := t2.FetchExpectedDuration().Average
+func (c *byRuntime) compare(t1, t2 task.Task, cmp *CmpBasedTaskComparator) (int, string, error) {
+	oneExpected := t1.FetchExpectedDuration(cmp.ctx).Average
+	twoExpected := t2.FetchExpectedDuration(cmp.ctx).Average
 
 	reason := fmt.Sprintf("%s is %s; %s is %s", t1.Id, oneExpected.String(), t2.Id, twoExpected.String())
 	if oneExpected == 0 || twoExpected == 0 {

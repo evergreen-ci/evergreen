@@ -547,7 +547,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 			continue
 		}
 
-		grip.Error(message.WrapError(nextTask.IncNumNextTaskDispatches(), message.Fields{
+		grip.Error(message.WrapError(nextTask.IncNumNextTaskDispatches(ctx), message.Fields{
 			"message":        "problem updating the number of times the task has been dispatched",
 			"task_id":        nextTask.Id,
 			"task_execution": nextTask.Execution,
@@ -608,7 +608,7 @@ func checkHostTaskGroupAfterDispatch(ctx context.Context, t *task.Task) error {
 		if t.TaskGroupOrder > 1 {
 			// If the previous task in the single-host task group has yet to run
 			// and should run, then wait for the previous task to run.
-			tgTasks, err := task.FindTaskGroupFromBuild(t.BuildId, t.TaskGroup)
+			tgTasks, err := task.FindTaskGroupFromBuild(ctx, t.BuildId, t.TaskGroup)
 			if err != nil {
 				return errors.Wrap(err, "finding task group from build")
 			}
@@ -1039,7 +1039,7 @@ func sendBackRunningTask(ctx context.Context, env evergreen.Environment, h *host
 	}
 
 	if t.Activated {
-		grip.Error(message.WrapError(t.IncNumNextTaskDispatches(), message.Fields{
+		grip.Error(message.WrapError(t.IncNumNextTaskDispatches(ctx), message.Fields{
 			"message":        "problem updating the number of times the task has been dispatched",
 			"task_id":        t.Id,
 			"task_execution": t.Execution,

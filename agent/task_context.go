@@ -68,18 +68,6 @@ func (tc *taskContext) setPostErrored(errored bool) {
 	tc.postErrored = errored
 }
 
-func (tc *taskContext) setFailingCommand(cmd command.Command) {
-	tc.Lock()
-	defer tc.Unlock()
-	tc.failingCommand = cmd
-}
-
-func (tc *taskContext) addFailingCommand(cmd command.Command) {
-	tc.Lock()
-	defer tc.Unlock()
-	tc.otherFailingCommands = append(tc.otherFailingCommands, cmd)
-}
-
 func (tc *taskContext) addTaskCommandCleanups(cleanups []internal.CommandCleanup) {
 	tc.Lock()
 	defer tc.Unlock()
@@ -137,6 +125,24 @@ func runCommandCleanups(ctx context.Context, cleanups []internal.CommandCleanup,
 		span.End()
 	}
 	return catcher.Resolve()
+}
+
+func (tc *taskContext) setFailingCommand(cmd command.Command) {
+	tc.Lock()
+	defer tc.Unlock()
+	tc.failingCommand = cmd
+}
+
+func (tc *taskContext) getFailingCommand() command.Command {
+	tc.RLock()
+	defer tc.RUnlock()
+	return tc.failingCommand
+}
+
+func (tc *taskContext) addFailingCommand(cmd command.Command) {
+	tc.Lock()
+	defer tc.Unlock()
+	tc.otherFailingCommands = append(tc.otherFailingCommands, cmd)
 }
 
 func (tc *taskContext) getOtherFailingCommands() []apimodels.FailingCommand {
@@ -369,7 +375,6 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.
 		return nil, err
 	}
 	taskConfig.TaskOutput = a.opts.SetupData.TaskOutput
-	taskConfig.TaskSync = a.opts.SetupData.TaskSync
 	taskConfig.MaxExecTimeoutSecs = a.opts.SetupData.MaxExecTimeoutSecs
 	taskConfig.InternalBuckets = a.opts.SetupData.InternalBuckets
 
