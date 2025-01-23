@@ -235,15 +235,18 @@ func Update(collection string, query interface{}, update interface{}) error {
 
 // Update updates one matching document in the collection.
 func UpdateContext(ctx context.Context, collection string, query interface{}, update interface{}) error {
-	session, db, err := GetGlobalSessionFactory().GetContextSession(ctx)
+	res, err := evergreen.GetEnvironment().DB().Collection(collection).UpdateOne(ctx,
+		query,
+		update,
+	)
 	if err != nil {
-		grip.Errorf("error establishing db connection: %+v", err)
-
-		return err
+		return errors.Wrapf(err, "updating task")
 	}
-	defer session.Close()
+	if res.MatchedCount == 0 {
+		return db.ErrNotFound
+	}
 
-	return db.C(collection).Update(query, update)
+	return nil
 }
 
 func UpdateAllContext(ctx context.Context, collection string, query interface{}, update interface{}) (*db.ChangeInfo, error) {
@@ -263,15 +266,18 @@ func UpdateAllContext(ctx context.Context, collection string, query interface{},
 		})
 	}
 
-	session, db, err := GetGlobalSessionFactory().GetContextSession(ctx)
+	res, err := evergreen.GetEnvironment().DB().Collection(collection).UpdateMany(ctx,
+		query,
+		update,
+	)
 	if err != nil {
-		grip.Errorf("error establishing db connection: %+v", err)
-
-		return nil, err
+		return nil, errors.Wrapf(err, "updating task")
 	}
-	defer session.Close()
+	if res.MatchedCount == 0 {
+		return nil, db.ErrNotFound
+	}
 
-	return db.C(collection).UpdateAll(query, update)
+	return &db.ChangeInfo{Updated: int(res.ModifiedCount)}, nil
 }
 
 // UpdateId updates one _id-matching document in the collection.
