@@ -168,7 +168,6 @@ func (s *eventNotificationSuite) TestDegradedMode() {
 		EmailNotificationsDisabled:   true,
 		WebhookNotificationsDisabled: true,
 		GithubStatusAPIDisabled:      true,
-		CommitQueueDisabled:          true,
 		BackgroundStatsDisabled:      true,
 	}
 	s.NoError(flags.Set(s.ctx))

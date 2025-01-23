@@ -263,8 +263,6 @@ type APICommitQueueParams struct {
 	Enabled *bool `json:"enabled"`
 	// Method of merging (squash, merge, or rebase).
 	MergeMethod *string `json:"merge_method"`
-	// Merge queue to use (EVERGREEN or GITHUB).
-	MergeQueue model.MergeQueue `json:"merge_queue"`
 	// Message to display when users interact with the commit queue.
 	Message *string `json:"message"`
 }
@@ -273,11 +271,6 @@ func (cqParams *APICommitQueueParams) BuildFromService(params model.CommitQueueP
 	cqParams.Enabled = utility.BoolPtrCopy(params.Enabled)
 	cqParams.MergeMethod = utility.ToStringPtr(params.MergeMethod)
 	cqParams.Message = utility.ToStringPtr(params.Message)
-
-	if params.MergeQueue == "" {
-		params.MergeQueue = model.MergeQueueGitHub
-	}
-	cqParams.MergeQueue = params.MergeQueue
 }
 
 func (cqParams *APICommitQueueParams) ToService() model.CommitQueueParams {
@@ -285,11 +278,6 @@ func (cqParams *APICommitQueueParams) ToService() model.CommitQueueParams {
 	serviceParams.Enabled = utility.BoolPtrCopy(cqParams.Enabled)
 	serviceParams.MergeMethod = utility.FromStringPtr(cqParams.MergeMethod)
 	serviceParams.Message = utility.FromStringPtr(cqParams.Message)
-
-	if cqParams.MergeQueue == "" {
-		cqParams.MergeQueue = model.MergeQueueGitHub
-	}
-	serviceParams.MergeQueue = cqParams.MergeQueue
 
 	return serviceParams
 }
@@ -358,25 +346,6 @@ func (ta *APITaskAnnotationSettings) BuildFromService(config evergreen.Annotatio
 	apiWebhook.Secret = utility.ToStringPtr(config.FileTicketWebhook.Secret)
 	apiWebhook.Endpoint = utility.ToStringPtr(config.FileTicketWebhook.Endpoint)
 	ta.FileTicketWebhook = apiWebhook
-}
-
-type APITaskSyncOptions struct {
-	// Enable task sync in project configs.
-	ConfigEnabled *bool `json:"config_enabled"`
-	// Enable task sync in patches.
-	PatchEnabled *bool `json:"patch_enabled"`
-}
-
-func (opts *APITaskSyncOptions) BuildFromService(in model.TaskSyncOptions) {
-	opts.ConfigEnabled = utility.BoolPtrCopy(in.ConfigEnabled)
-	opts.PatchEnabled = utility.BoolPtrCopy(in.PatchEnabled)
-}
-
-func (opts *APITaskSyncOptions) ToService() model.TaskSyncOptions {
-	return model.TaskSyncOptions{
-		ConfigEnabled: utility.BoolPtrCopy(opts.ConfigEnabled),
-		PatchEnabled:  utility.BoolPtrCopy(opts.PatchEnabled),
-	}
 }
 
 type APIWorkstationConfig struct {
@@ -644,8 +613,6 @@ type APIProjectRef struct {
 	RepoRefId *string `json:"repo_ref_id"`
 	// Options for commit queue.
 	CommitQueue APICommitQueueParams `json:"commit_queue"`
-	// Options for task sync.
-	TaskSync APITaskSyncOptions `json:"task_sync"`
 	// Options for task annotations.
 	TaskAnnotationSettings APITaskAnnotationSettings `json:"task_annotation_settings"`
 	// Options for Build Baron.
@@ -749,7 +716,6 @@ func (p *APIProjectRef) ToService() (*model.ProjectRef, error) {
 		GithubChecksEnabled:              utility.BoolPtrCopy(p.GithubChecksEnabled),
 		RepoRefId:                        utility.FromStringPtr(p.RepoRefId),
 		CommitQueue:                      p.CommitQueue.ToService(),
-		TaskSync:                         p.TaskSync.ToService(),
 		WorkstationConfig:                p.WorkstationConfig.ToService(),
 		BuildBaronSettings:               p.BuildBaronSettings.ToService(),
 		TaskAnnotationSettings:           p.TaskAnnotationSettings.ToService(),
@@ -900,10 +866,6 @@ func (p *APIProjectRef) BuildPublicFields(projectRef model.ProjectRef) error {
 	cq := APICommitQueueParams{}
 	cq.BuildFromService(projectRef.CommitQueue)
 	p.CommitQueue = cq
-
-	var taskSync APITaskSyncOptions
-	taskSync.BuildFromService(projectRef.TaskSync)
-	p.TaskSync = taskSync
 
 	buildbaronConfig := APIBuildBaronSettings{}
 	buildbaronConfig.BuildFromService(projectRef.BuildBaronSettings)

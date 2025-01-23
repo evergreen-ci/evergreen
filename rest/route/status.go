@@ -78,7 +78,7 @@ func (h *recentTasksGetHandler) Parse(ctx context.Context, r *http.Request) erro
 }
 
 func (h *recentTasksGetHandler) Run(ctx context.Context) gimlet.Responder {
-	tasks, stats, err := data.FindRecentTasks(h.minutes)
+	tasks, stats, err := data.FindRecentTasks(ctx, h.minutes)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "finding recent tasks"))
 	}
@@ -108,11 +108,11 @@ func (h *recentTasksGetHandler) Run(ctx context.Context) gimlet.Responder {
 		var stats *model.APIRecentTaskStatsList
 		switch {
 		case h.byDistro:
-			stats, err = data.FindRecentTaskListDistro(h.minutes)
+			stats, err = data.FindRecentTaskListDistro(ctx, h.minutes)
 		case h.byProject:
-			stats, err = data.FindRecentTaskListProject(h.minutes)
+			stats, err = data.FindRecentTaskListProject(ctx, h.minutes)
 		case h.byAgentVersion:
-			stats, err = data.FindRecentTaskListAgentVersion(h.minutes)
+			stats, err = data.FindRecentTaskListAgentVersion(ctx, h.minutes)
 		}
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "finding recent task list by filter"))

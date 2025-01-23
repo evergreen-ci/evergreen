@@ -494,7 +494,7 @@ Notes:
     or variant more than once in the JSON document passed to the command _except_
     to specify a variant multiple times in order to append additional tasks to the variant.
 -   Generated task's [tags](Project-Configuration-Files#task-and-variant-tags) will not be
-    re-evaluate when added and retroactivately activated in accordance with the variant's tags.
+    re-evaluated when added or retroactively activated in accordance with the variant's tags.
 -   The calls to generate.tasks may not in aggregate in a single version
     generate more than 100 variants or more than 1000 tasks.
 -   Because generate.tasks retries on errors that aren't known to us,
@@ -503,6 +503,9 @@ Notes:
     if you aren't sure what to do with a hanging generate.tasks.
 -   If generate.tasks produces many errors, you may not be able to see the full
     error output.
+-   generate.tasks is idempotent across task restarts. In other words, once
+    generate.tasks succeeds once, later task restarts will cause generate.tasks
+    to no-op rather than generate duplicate configuration.
 
 ``` yaml
 - command: generate.tasks
@@ -1435,81 +1438,6 @@ specification as gitignore when matching files. In this way, all files
 that would be marked to be ignored in a gitignore containing the lines
 `slow_tests/coverage/*.tgz` and `fast_tests/coverage/*.tgz` are uploaded
 to the s3 bucket.
-
-## s3.push
-
-This command supports the task sync feature, which allows users to
-upload and download their task directory to and from Amazon S3. It must
-be enabled in the project settings before it can be used.
-
-This command uploads the task directory to S3. This can later be used in
-dependent tasks using the [s3.pull](#s3pull) command. There is only one
-latest copy of the task sync in S3 per task - if the task containing
-s3.push is restarted, it will replace the existing one.
-
-Users also have the option to inspect the task working directory after
-it has finished pushing (e.g. for debugging a failed task). This can be
-achieved by either pulling the task working directory from S3 onto a
-spawn host (from the UI) or their local machines (using [evergreen pull](../CLI#pull)).
-
-The working directory is put in a private S3 bucket shared between all
-projects. Any other logged in user can pull and view the directory
-contents of an s3.push command once it has been uploaded.
-
-``` yaml
-- command: s3.push
-  params:
-     exclude: path/to/directory/to/ignore
-     max_retries: 50
-```
-
-Parameters:
-
--   `max_retries`: Optional. The maximum number of times it will attempt
-    to push a file to S3.
--   `exclude`: Optional. Specify files to exclude within the working
-    directory in [Google RE2
-    syntax](https://github.com/google/re2/wiki/Syntax).
-
-## s3.pull
-
-This command helps support the task sync feature, which allows users to
-upload and download their task directory to and from Amazon S3. It must
-be enabled in the project settings before it can be used.
-
-This command downloads the task directory from S3 that was uploaded by
-[s3.push](#s3push). It can only be used in a task which depends on a
-task that runs s3.push first and must explicitly specify the dependency
-using `depends_on`.
-
-``` yaml
-- command: s3.pull
-  params:
-     task: my_s3_push_task
-     from_build_variant: some_other_build_variant
-     working_directory: path/to/working/directory
-     delete_on_sync: false
-     exclude: path/to/directory/to/ignore
-     max_retries: 50
-```
-
-Parameters:
-
--   `working_directory`: Required. Specify the location where the task
-    directory should be pulled to.
--   `task`: Required. The name of the task to be pulled from. Does not
-    accept expansions.
--   `from_build_variant`: Optional. Specify the build variant to pull
-    from. If none is provided, it defaults to the build variant on which
-    s3.pull runs. Does not accept expansions.
--   `delete_on_sync`: Optional. If set, anything already in the working
-    directory that is not in the remote task sync directory will be
-    deleted. Defaults to false.
--   `exclude`: Optional. Specify files to exclude from the synced task
-    directory in [Google RE2
-    syntax](https://github.com/google/re2/wiki/Syntax).
--   `max_retries`: Optional. The maximum number of times it will attempt
-    to pull a file from S3.
 
 ## s3Copy.copy (Deprecated)
 

@@ -210,7 +210,7 @@ func (j *podTerminationJob) fixStrandedRunningTask(ctx context.Context) error {
 	// A stranded task will need to be re-allocated to ensure that it
 	// dispatches to a new pod after this one is terminated.
 
-	t, err := task.FindOneIdAndExecution(j.pod.TaskRuntimeInfo.RunningTaskID, j.pod.TaskRuntimeInfo.RunningTaskExecution)
+	t, err := task.FindOneIdAndExecution(ctx, j.pod.TaskRuntimeInfo.RunningTaskID, j.pod.TaskRuntimeInfo.RunningTaskExecution)
 	if err != nil {
 		return errors.Wrapf(err, "finding stranded container task '%s' execution %d", j.pod.TaskRuntimeInfo.RunningTaskID, j.pod.TaskRuntimeInfo.RunningTaskExecution)
 	}

@@ -50,11 +50,7 @@
                   "cpu": 2,
                   "memoryMb": 2048
                 }
-              ],
-              "taskSync": {
-                "configEnabled": false,
-                "patchEnabled": true
-              }
+              ]
             }
           }
         }

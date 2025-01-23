@@ -71,11 +71,6 @@ input ProjectAliasInput {
   parameters: [ParameterInput!]
 }
 
-input TaskSyncOptionsInput {
-  configEnabled: Boolean
-  patchEnabled: Boolean
-}
-
 input PeriodicBuildInput {
   id: String!
   alias: String!
@@ -159,7 +154,6 @@ input TaskSpecifierInput {
 input CommitQueueParamsInput {
   enabled: Boolean
   mergeMethod: String
-  mergeQueue: MergeQueue
   message: String
 }
 
@@ -242,11 +236,6 @@ enum ProjectHealthView {
   FAILED
 }
 
-enum MergeQueue {
-  EVERGREEN
-  GITHUB
-}
-
 """
 Project models single repository on GitHub.
 """
@@ -297,7 +286,6 @@ type Project {
   stepbackDisabled: Boolean
   stepbackBisect: Boolean
   taskAnnotationSettings: TaskAnnotationSettings!
-  taskSync: TaskSyncOptions!
   tracksPushEvents: Boolean
   triggers: [TriggerAlias!]
   versionControlEnabled: Boolean
@@ -318,13 +306,7 @@ type RepotrackerError {
 type CommitQueueParams {
   enabled: Boolean
   mergeMethod: String!
-  mergeQueue: MergeQueue!
   message: String!
-}
-
-type TaskSyncOptions {
-  configEnabled: Boolean
-  patchEnabled: Boolean
 }
 
 type WorkstationConfig {

@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
-	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
@@ -70,7 +69,7 @@ func SetVersionActivation(ctx context.Context, versionId string, active bool, ca
 			return errors.Wrap(err, "getting tasks to activate")
 		}
 		if len(tasksToModify) > 0 {
-			if err = task.ActivateTasks(tasksToModify, time.Now(), false, caller); err != nil {
+			if err = task.ActivateTasks(ctx, tasksToModify, time.Now(), false, caller); err != nil {
 				return errors.Wrap(err, "updating tasks for activation")
 			}
 		}
@@ -85,7 +84,7 @@ func SetVersionActivation(ctx context.Context, versionId string, active bool, ca
 			return errors.Wrap(err, "getting tasks to deactivate")
 		}
 		if len(tasksToModify) > 0 {
-			if err = task.DeactivateTasks(tasksToModify, false, caller); err != nil {
+			if err = task.DeactivateTasks(ctx, tasksToModify, false, caller); err != nil {
 				return errors.Wrap(err, "deactivating tasks")
 			}
 		}
@@ -143,7 +142,7 @@ func setTaskActivationForBuilds(ctx context.Context, buildIds []string, active, 
 			return errors.Wrap(err, "getting tasks to activate")
 		}
 		if withDependencies {
-			dependOn, err := task.GetRecursiveDependenciesUp(tasksToActivate, nil)
+			dependOn, err := task.GetRecursiveDependenciesUp(ctx, tasksToActivate, nil)
 			if err != nil {
 				return errors.Wrap(err, "getting recursive dependencies")
 			}
@@ -153,7 +152,7 @@ func setTaskActivationForBuilds(ctx context.Context, buildIds []string, active, 
 				}
 			}
 		}
-		if err = task.ActivateTasks(tasksToActivate, time.Now(), withDependencies, caller); err != nil {
+		if err = task.ActivateTasks(ctx, tasksToActivate, time.Now(), withDependencies, caller); err != nil {
 			return errors.Wrap(err, "updating tasks for activation")
 		}
 
@@ -171,7 +170,7 @@ func setTaskActivationForBuilds(ctx context.Context, buildIds []string, active, 
 		if err != nil {
 			return errors.Wrap(err, "getting tasks to deactivate")
 		}
-		if err = task.DeactivateTasks(tasks, withDependencies, caller); err != nil {
+		if err = task.DeactivateTasks(ctx, tasks, withDependencies, caller); err != nil {
 			return errors.Wrap(err, "deactivating tasks")
 		}
 	}
@@ -184,12 +183,12 @@ func setTaskActivationForBuilds(ctx context.Context, buildIds []string, active, 
 
 // AbortBuild marks the build as deactivated and sets the abort flag on all tasks associated
 // with the build which are in an abortable state.
-func AbortBuild(buildId string, caller string) error {
+func AbortBuild(ctx context.Context, buildId string, caller string) error {
 	if err := build.UpdateActivation([]string{buildId}, false, caller); err != nil {
 		return errors.Wrapf(err, "deactivating build '%s'", buildId)
 	}
 
-	return errors.Wrapf(task.AbortBuildTasks(buildId, task.AbortInfo{User: caller}), "aborting tasks for build '%s'", buildId)
+	return errors.Wrapf(task.AbortBuildTasks(ctx, buildId, task.AbortInfo{User: caller}), "aborting tasks for build '%s'", buildId)
 }
 
 func TryMarkVersionStarted(versionId string, startTime time.Time) error {
@@ -213,7 +212,7 @@ func TryMarkVersionStarted(versionId string, startTime time.Time) error {
 // dependencies that have a lower priority than the one being set for this task
 // will also have their priority increased.
 func SetTaskPriority(ctx context.Context, t task.Task, priority int64, caller string) error {
-	depTasks, err := task.GetRecursiveDependenciesUp([]task.Task{t}, nil)
+	depTasks, err := task.GetRecursiveDependenciesUp(ctx, []task.Task{t}, nil)
 	if err != nil {
 		return errors.Wrap(err, "getting task dependencies")
 	}
@@ -242,7 +241,7 @@ func SetTaskPriority(ctx context.Context, t task.Task, priority int64, caller st
 	for _, taskToUpdate := range tasks {
 		taskIDs = append(taskIDs, taskToUpdate.Id)
 	}
-	_, err = task.UpdateAll(
+	_, err = task.UpdateAll(ctx,
 		bson.M{task.IdKey: bson.M{"$in": taskIDs}},
 		bson.M{"$set": bson.M{task.PriorityKey: priority}},
 	)
@@ -276,7 +275,7 @@ func SetVersionsPriority(ctx context.Context, versionIds []string, priority int6
 }
 
 func setTasksPriority(ctx context.Context, query bson.M, priority int64, caller string) error {
-	_, err := task.UpdateAll(query,
+	_, err := task.UpdateAll(ctx, query,
 		bson.M{"$set": bson.M{task.PriorityKey: priority}},
 	)
 	if err != nil {
@@ -751,23 +750,6 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (ta
 			newTask.IsGithubCheck = true
 		}
 
-		if shouldSyncTask(creationInfo.SyncAtEndOpts.VariantsTasks, newTask.BuildVariant, newTask.DisplayName) {
-			newTask.CanSync = true
-			newTask.SyncAtEndOpts = task.SyncAtEndOptions{
-				Enabled:  true,
-				Statuses: creationInfo.SyncAtEndOpts.Statuses,
-				Timeout:  creationInfo.SyncAtEndOpts.Timeout,
-			}
-		} else {
-			cmds, err := creationInfo.Project.CommandsRunOnTV(TVPair{TaskName: newTask.DisplayName, Variant: newTask.BuildVariant}, evergreen.S3PushCommandName)
-			if err != nil {
-				return nil, errors.Wrapf(err, "checking if task definition contains command '%s'", evergreen.S3PushCommandName)
-			}
-			if len(cmds) != 0 {
-				newTask.CanSync = true
-			}
-		}
-
 		taskMap[newTask.Id] = newTask
 	}
 
@@ -814,7 +796,7 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (ta
 		}
 
 		// update existing exec tasks
-		grip.Error(message.WrapError(task.AddDisplayTaskIdToExecTasks(id, execTasksThatNeedParentId), message.Fields{
+		grip.Error(message.WrapError(task.AddDisplayTaskIdToExecTasks(ctx, id, execTasksThatNeedParentId), message.Fields{
 			"message":              "problem adding display task ID to exec tasks",
 			"exec_tasks_to_update": execTasksThatNeedParentId,
 			"display_task_id":      id,
@@ -943,25 +925,6 @@ func makeDeps(deps []TaskUnitDependency, thisTask *task.Task, taskIds TaskIdTabl
 	return dependencies
 }
 
-// shouldSyncTask returns whether or not this task in this build variant should
-// sync its task directory.
-func shouldSyncTask(syncVariantsTasks []patch.VariantTasks, bv, task string) bool {
-	for _, vt := range syncVariantsTasks {
-		if vt.Variant != bv {
-			continue
-		}
-		if utility.StringSliceContains(vt.Tasks, task) {
-			return true
-		}
-		for _, dt := range vt.DisplayTasks {
-			if utility.StringSliceContains(dt.ExecTasks, task) {
-				return true
-			}
-		}
-	}
-	return false
-}
-
 // SetNumDependents sets NumDependents for each task in tasks.
 // NumDependents is the number of tasks depending on the task.
 func SetNumDependents(tasks []*task.Task) {
@@ -1029,7 +992,7 @@ func RecomputeNumDependents(ctx context.Context, t task.Task) error {
 		taskPtrs = append(taskPtrs, &depTasks[i])
 	}
 	query := task.ByVersion(t.Version)
-	_, err = task.UpdateAll(query, bson.M{"$set": bson.M{task.NumDependentsKey: 0}})
+	_, err = task.UpdateAll(ctx, query, bson.M{"$set": bson.M{task.NumDependentsKey: 0}})
 	if err != nil {
 		return errors.Wrap(err, "resetting num dependents")
 	}
@@ -1044,7 +1007,7 @@ func RecomputeNumDependents(ctx context.Context, t task.Task) error {
 	SetNumDependents(taskPtrs)
 	catcher := grip.NewBasicCatcher()
 	for _, t := range taskPtrs {
-		catcher.Add(t.SetNumDependents())
+		catcher.Add(t.SetNumDependents(ctx))
 	}
 
 	return errors.Wrap(catcher.Resolve(), "setting num dependents")
@@ -1182,13 +1145,14 @@ func createOneTask(ctx context.Context, id string, creationInfo TaskCreationInfo
 		TriggerID:                  creationInfo.Version.TriggerID,
 		TriggerType:                creationInfo.Version.TriggerType,
 		TriggerEvent:               creationInfo.Version.TriggerEvent,
-		CommitQueueMerge:           buildVarTask.CommitQueueMerge,
 		IsGithubCheck:              isGithubCheck,
 		ActivatedBy:                creationInfo.Version.AuthorID, // this will be overridden if the task was activated by stepback
 		DisplayTaskId:              utility.ToStringPtr(""),       // this will be overridden if the task is an execution task
 		IsEssentialToSucceed:       creationInfo.ActivatedTasksAreEssentialToSucceed && activateTask,
 		CachedProjectStorageMethod: creationInfo.Version.ProjectStorageMethod,
 	}
+
+	t.DisplayStatusCache = t.DetermineDisplayStatus()
 
 	if err := t.SetGenerateTasksEstimations(ctx); err != nil {
 		return nil, errors.Wrap(err, "setting generate tasks estimations")
@@ -1370,6 +1334,7 @@ func createDisplayTask(id string, creationInfo TaskCreationInfo, displayName str
 		TriggerEvent:            creationInfo.Version.TriggerEvent,
 		DisplayTaskId:           utility.ToStringPtr(""),
 	}
+	t.DisplayStatusCache = t.DetermineDisplayStatus()
 	return t, nil
 }
 
@@ -1556,7 +1521,6 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 			ActivationInfo:                      creationInfo.ActivationInfo,
 			GeneratedBy:                         creationInfo.GeneratedBy,
 			TaskCreateTime:                      createTime,
-			SyncAtEndOpts:                       creationInfo.SyncAtEndOpts,
 			ActivatedTasksAreEssentialToSucceed: creationInfo.ActivatedTasksAreEssentialToSucceed,
 		}
 
@@ -1656,12 +1620,12 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 		return nil, errors.Wrap(err, "updating version with new build IDs")
 	}
 
-	activatedTaskDependencies, err := task.GetRecursiveDependenciesUp(newActivatedTasks, nil)
+	activatedTaskDependencies, err := task.GetRecursiveDependenciesUp(ctx, newActivatedTasks, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting dependencies for activated tasks")
 	}
 
-	if err = task.ActivateTasks(activatedTaskDependencies, time.Now(), true, evergreen.User); err != nil {
+	if err = task.ActivateTasks(ctx, activatedTaskDependencies, time.Now(), true, evergreen.User); err != nil {
 		return nil, errors.Wrap(err, "activating dependencies for new tasks")
 	}
 
@@ -1785,11 +1749,11 @@ func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationI
 		}
 	}
 
-	activatedTaskDependencies, err := task.GetRecursiveDependenciesUp(activatedTasks, nil)
+	activatedTaskDependencies, err := task.GetRecursiveDependenciesUp(ctx, activatedTasks, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting dependencies for activated tasks")
 	}
-	if err = task.ActivateTasks(activatedTaskDependencies, time.Now(), true, evergreen.User); err != nil {
+	if err = task.ActivateTasks(ctx, activatedTaskDependencies, time.Now(), true, evergreen.User); err != nil {
 		return nil, errors.Wrap(err, "activating existing dependencies for new tasks")
 	}
 

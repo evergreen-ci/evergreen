@@ -84,7 +84,7 @@ func (tgh *taskGetHandler) Run(ctx context.Context) gimlet.Responder {
 	if tgh.execution == -1 {
 		foundTask, err = task.FindOneId(ctx, tgh.taskID)
 	} else {
-		foundTask, err = task.FindOneIdAndExecution(tgh.taskID, tgh.execution)
+		foundTask, err = task.FindOneIdAndExecution(ctx, tgh.taskID, tgh.execution)
 	}
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", tgh.taskID))
@@ -110,7 +110,7 @@ func (tgh *taskGetHandler) Run(ctx context.Context) gimlet.Responder {
 
 	if tgh.fetchAllExecutions {
 		var tasks []task.Task
-		tasks, err = task.FindOldWithDisplayTasks(task.ByOldTaskID(tgh.taskID))
+		tasks, err = task.FindOldWithDisplayTasks(ctx, task.ByOldTaskID(tgh.taskID))
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding archived executions for task '%s'", tgh.taskID))
 		}
@@ -280,66 +280,6 @@ func (rh *displayTaskGetHandler) Run(ctx context.Context) gimlet.Responder {
 		info.Name = dt.DisplayName
 	}
 	return gimlet.NewJSONResponse(info)
-}
-
-// GET /tasks/{task_id}/sync_path
-
-type taskSyncPathGetHandler struct {
-	taskID string
-}
-
-func makeTaskSyncPathGetHandler() gimlet.RouteHandler {
-	return &taskSyncPathGetHandler{}
-}
-
-func (rh *taskSyncPathGetHandler) Factory() gimlet.RouteHandler {
-	return &taskSyncPathGetHandler{}
-}
-
-// ParseAndValidate fetches the needed data from the request and errors otherwise.
-// It fetches the task and user from the request context and fetches the changes
-// in activation and priority from the request body.
-func (rh *taskSyncPathGetHandler) Parse(ctx context.Context, r *http.Request) error {
-	rh.taskID = gimlet.GetVars(r)["task_id"]
-	return nil
-}
-
-func (rh *taskSyncPathGetHandler) Run(ctx context.Context) gimlet.Responder {
-	t, err := task.FindOneId(ctx, rh.taskID)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", rh.taskID))
-	}
-	if t == nil {
-		return gimlet.MakeJSONInternalErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("task '%s' not found", rh.taskID),
-		})
-	}
-	return gimlet.NewTextResponse(t.S3Path(t.BuildVariant, t.DisplayName))
-}
-
-// GET /tasks/sync/read_credentials
-
-type taskSyncReadCredentialsGetHandler struct{}
-
-func makeTaskSyncReadCredentialsGetHandler() gimlet.RouteHandler {
-	return &taskSyncReadCredentialsGetHandler{}
-}
-
-func (rh *taskSyncReadCredentialsGetHandler) Factory() gimlet.RouteHandler {
-	return &taskSyncReadCredentialsGetHandler{}
-}
-
-func (rh *taskSyncReadCredentialsGetHandler) Parse(ctx context.Context, r *http.Request) error {
-	return nil
-}
-
-func (rh *taskSyncReadCredentialsGetHandler) Run(ctx context.Context) gimlet.Responder {
-	settings, err := evergreen.GetConfig(ctx)
-	if err != nil {
-		return gimlet.MakeJSONErrorResponder(err)
-	}
-	return gimlet.NewJSONResponse(settings.Providers.AWS.TaskSyncRead)
 }
 
 type generatedTasksGetHandler struct {

@@ -205,7 +205,6 @@ type ComplexityRoot struct {
 	CommitQueueParams struct {
 		Enabled     func(childComplexity int) int
 		MergeMethod func(childComplexity int) int
-		MergeQueue  func(childComplexity int) int
 		Message     func(childComplexity int) int
 	}
 
@@ -977,7 +976,6 @@ type ComplexityRoot struct {
 		StepbackBisect                     func(childComplexity int) int
 		StepbackDisabled                   func(childComplexity int) int
 		TaskAnnotationSettings             func(childComplexity int) int
-		TaskSync                           func(childComplexity int) int
 		TracksPushEvents                   func(childComplexity int) int
 		Triggers                           func(childComplexity int) int
 		VersionControlEnabled              func(childComplexity int) int
@@ -1104,7 +1102,6 @@ type ComplexityRoot struct {
 	RepoCommitQueueParams struct {
 		Enabled     func(childComplexity int) int
 		MergeMethod func(childComplexity int) int
-		MergeQueue  func(childComplexity int) int
 		Message     func(childComplexity int) int
 	}
 
@@ -1151,7 +1148,6 @@ type ComplexityRoot struct {
 		StepbackBisect                     func(childComplexity int) int
 		StepbackDisabled                   func(childComplexity int) int
 		TaskAnnotationSettings             func(childComplexity int) int
-		TaskSync                           func(childComplexity int) int
 		TracksPushEvents                   func(childComplexity int) int
 		Triggers                           func(childComplexity int) int
 		VersionControlEnabled              func(childComplexity int) int
@@ -1165,11 +1161,6 @@ type ComplexityRoot struct {
 		ProjectRef            func(childComplexity int) int
 		Subscriptions         func(childComplexity int) int
 		Vars                  func(childComplexity int) int
-	}
-
-	RepoTaskSyncOptions struct {
-		ConfigEnabled func(childComplexity int) int
-		PatchEnabled  func(childComplexity int) int
 	}
 
 	RepoWorkstationConfig struct {
@@ -1301,7 +1292,6 @@ type ComplexityRoot struct {
 		CanRestart              func(childComplexity int) int
 		CanSchedule             func(childComplexity int) int
 		CanSetPriority          func(childComplexity int) int
-		CanSync                 func(childComplexity int) int
 		CanUnschedule           func(childComplexity int) int
 		ContainerAllocatedTime  func(childComplexity int) int
 		CreateTime              func(childComplexity int) int
@@ -1463,11 +1453,6 @@ type ComplexityRoot struct {
 	TaskStats struct {
 		Counts func(childComplexity int) int
 		ETA    func(childComplexity int) int
-	}
-
-	TaskSyncOptions struct {
-		ConfigEnabled func(childComplexity int) int
-		PatchEnabled  func(childComplexity int) int
 	}
 
 	TaskTestResult struct {
@@ -2007,7 +1992,6 @@ type TaskResolver interface {
 	CanRestart(ctx context.Context, obj *model.APITask) (bool, error)
 	CanSchedule(ctx context.Context, obj *model.APITask) (bool, error)
 	CanSetPriority(ctx context.Context, obj *model.APITask) (bool, error)
-
 	CanUnschedule(ctx context.Context, obj *model.APITask) (bool, error)
 
 	DependsOn(ctx context.Context, obj *model.APITask) ([]*Dependency, error)
@@ -2582,13 +2566,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.CommitQueueParams.MergeMethod(childComplexity), true
-
-	case "CommitQueueParams.mergeQueue":
-		if e.complexity.CommitQueueParams.MergeQueue == nil {
-			break
-		}
-
-		return e.complexity.CommitQueueParams.MergeQueue(childComplexity), true
 
 	case "CommitQueueParams.message":
 		if e.complexity.CommitQueueParams.Message == nil {
@@ -6500,13 +6477,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Project.TaskAnnotationSettings(childComplexity), true
 
-	case "Project.taskSync":
-		if e.complexity.Project.TaskSync == nil {
-			break
-		}
-
-		return e.complexity.Project.TaskSync(childComplexity), true
-
 	case "Project.tracksPushEvents":
 		if e.complexity.Project.TracksPushEvents == nil {
 			break
@@ -7287,13 +7257,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.RepoCommitQueueParams.MergeMethod(childComplexity), true
 
-	case "RepoCommitQueueParams.mergeQueue":
-		if e.complexity.RepoCommitQueueParams.MergeQueue == nil {
-			break
-		}
-
-		return e.complexity.RepoCommitQueueParams.MergeQueue(childComplexity), true
-
 	case "RepoCommitQueueParams.message":
 		if e.complexity.RepoCommitQueueParams.Message == nil {
 			break
@@ -7574,13 +7537,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.RepoRef.TaskAnnotationSettings(childComplexity), true
 
-	case "RepoRef.taskSync":
-		if e.complexity.RepoRef.TaskSync == nil {
-			break
-		}
-
-		return e.complexity.RepoRef.TaskSync(childComplexity), true
-
 	case "RepoRef.tracksPushEvents":
 		if e.complexity.RepoRef.TracksPushEvents == nil {
 			break
@@ -7650,20 +7606,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.RepoSettings.Vars(childComplexity), true
-
-	case "RepoTaskSyncOptions.configEnabled":
-		if e.complexity.RepoTaskSyncOptions.ConfigEnabled == nil {
-			break
-		}
-
-		return e.complexity.RepoTaskSyncOptions.ConfigEnabled(childComplexity), true
-
-	case "RepoTaskSyncOptions.patchEnabled":
-		if e.complexity.RepoTaskSyncOptions.PatchEnabled == nil {
-			break
-		}
-
-		return e.complexity.RepoTaskSyncOptions.PatchEnabled(childComplexity), true
 
 	case "RepoWorkstationConfig.gitClone":
 		if e.complexity.RepoWorkstationConfig.GitClone == nil {
@@ -8224,13 +8166,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Task.CanSetPriority(childComplexity), true
-
-	case "Task.canSync":
-		if e.complexity.Task.CanSync == nil {
-			break
-		}
-
-		return e.complexity.Task.CanSync(childComplexity), true
 
 	case "Task.canUnschedule":
 		if e.complexity.Task.CanUnschedule == nil {
@@ -9090,20 +9025,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.TaskStats.ETA(childComplexity), true
-
-	case "TaskSyncOptions.configEnabled":
-		if e.complexity.TaskSyncOptions.ConfigEnabled == nil {
-			break
-		}
-
-		return e.complexity.TaskSyncOptions.ConfigEnabled(childComplexity), true
-
-	case "TaskSyncOptions.patchEnabled":
-		if e.complexity.TaskSyncOptions.PatchEnabled == nil {
-			break
-		}
-
-		return e.complexity.TaskSyncOptions.PatchEnabled(childComplexity), true
 
 	case "TaskTestResult.filteredTestCount":
 		if e.complexity.TaskTestResult.FilteredTestCount == nil {
@@ -10480,7 +10401,6 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputTaskAnnotationSettingsInput,
 		ec.unmarshalInputTaskFilterOptions,
 		ec.unmarshalInputTaskSpecifierInput,
-		ec.unmarshalInputTaskSyncOptionsInput,
 		ec.unmarshalInputTestFilter,
 		ec.unmarshalInputTestFilterOptions,
 		ec.unmarshalInputTestSortOptions,
@@ -16162,50 +16082,6 @@ func (ec *executionContext) fieldContext_CommitQueueParams_mergeMethod(_ context
 	return fc, nil
 }
 
-func (ec *executionContext) _CommitQueueParams_mergeQueue(ctx context.Context, field graphql.CollectedField, obj *model.APICommitQueueParams) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_CommitQueueParams_mergeQueue(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.MergeQueue, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(model1.MergeQueue)
-	fc.Result = res
-	return ec.marshalNMergeQueue2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐMergeQueue(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_CommitQueueParams_mergeQueue(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "CommitQueueParams",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type MergeQueue does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _CommitQueueParams_message(ctx context.Context, field graphql.CollectedField, obj *model.APICommitQueueParams) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_CommitQueueParams_message(ctx, field)
 	if err != nil {
@@ -21535,8 +21411,6 @@ func (ec *executionContext) fieldContext_GroupedBuildVariant_tasks(_ context.Con
 				return ec.fieldContext_Task_canSchedule(ctx, field)
 			case "canSetPriority":
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
-			case "canSync":
-				return ec.fieldContext_Task_canSync(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
 			case "containerAllocatedTime":
@@ -22051,8 +21925,6 @@ func (ec *executionContext) fieldContext_GroupedProjects_projects(_ context.Cont
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
-			case "taskSync":
-				return ec.fieldContext_Project_taskSync(ctx, field)
 			case "tracksPushEvents":
 				return ec.fieldContext_Project_tracksPushEvents(ctx, field)
 			case "triggers":
@@ -22176,8 +22048,6 @@ func (ec *executionContext) fieldContext_GroupedProjects_repo(_ context.Context,
 				return ec.fieldContext_RepoRef_stepbackBisect(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_RepoRef_taskAnnotationSettings(ctx, field)
-			case "taskSync":
-				return ec.fieldContext_RepoRef_taskSync(ctx, field)
 			case "tracksPushEvents":
 				return ec.fieldContext_RepoRef_tracksPushEvents(ctx, field)
 			case "triggers":
@@ -25840,8 +25710,6 @@ func (ec *executionContext) fieldContext_Image_latestTask(_ context.Context, fie
 				return ec.fieldContext_Task_canSchedule(ctx, field)
 			case "canSetPriority":
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
-			case "canSync":
-				return ec.fieldContext_Task_canSync(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
 			case "containerAllocatedTime":
@@ -28346,8 +28214,6 @@ func (ec *executionContext) fieldContext_LogkeeperBuild_task(_ context.Context, 
 				return ec.fieldContext_Task_canSchedule(ctx, field)
 			case "canSetPriority":
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
-			case "canSync":
-				return ec.fieldContext_Task_canSync(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
 			case "containerAllocatedTime":
@@ -30874,8 +30740,6 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToNewRepo(ctx con
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
-			case "taskSync":
-				return ec.fieldContext_Project_taskSync(ctx, field)
 			case "tracksPushEvents":
 				return ec.fieldContext_Project_tracksPushEvents(ctx, field)
 			case "triggers":
@@ -31033,8 +30897,6 @@ func (ec *executionContext) fieldContext_Mutation_attachProjectToRepo(ctx contex
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
-			case "taskSync":
-				return ec.fieldContext_Project_taskSync(ctx, field)
 			case "tracksPushEvents":
 				return ec.fieldContext_Project_tracksPushEvents(ctx, field)
 			case "triggers":
@@ -31192,8 +31054,6 @@ func (ec *executionContext) fieldContext_Mutation_createProject(ctx context.Cont
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
-			case "taskSync":
-				return ec.fieldContext_Project_taskSync(ctx, field)
 			case "tracksPushEvents":
 				return ec.fieldContext_Project_tracksPushEvents(ctx, field)
 			case "triggers":
@@ -31351,8 +31211,6 @@ func (ec *executionContext) fieldContext_Mutation_copyProject(ctx context.Contex
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
-			case "taskSync":
-				return ec.fieldContext_Project_taskSync(ctx, field)
 			case "tracksPushEvents":
 				return ec.fieldContext_Project_tracksPushEvents(ctx, field)
 			case "triggers":
@@ -31728,8 +31586,6 @@ func (ec *executionContext) fieldContext_Mutation_detachProjectFromRepo(ctx cont
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
-			case "taskSync":
-				return ec.fieldContext_Project_taskSync(ctx, field)
 			case "tracksPushEvents":
 				return ec.fieldContext_Project_tracksPushEvents(ctx, field)
 			case "triggers":
@@ -32813,8 +32669,6 @@ func (ec *executionContext) fieldContext_Mutation_abortTask(ctx context.Context,
 				return ec.fieldContext_Task_canSchedule(ctx, field)
 			case "canSetPriority":
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
-			case "canSync":
-				return ec.fieldContext_Task_canSync(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
 			case "containerAllocatedTime":
@@ -33022,8 +32876,6 @@ func (ec *executionContext) fieldContext_Mutation_overrideTaskDependencies(ctx c
 				return ec.fieldContext_Task_canSchedule(ctx, field)
 			case "canSetPriority":
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
-			case "canSync":
-				return ec.fieldContext_Task_canSync(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
 			case "containerAllocatedTime":
@@ -33231,8 +33083,6 @@ func (ec *executionContext) fieldContext_Mutation_restartTask(ctx context.Contex
 				return ec.fieldContext_Task_canSchedule(ctx, field)
 			case "canSetPriority":
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
-			case "canSync":
-				return ec.fieldContext_Task_canSync(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
 			case "containerAllocatedTime":
@@ -33440,8 +33290,6 @@ func (ec *executionContext) fieldContext_Mutation_scheduleTasks(ctx context.Cont
 				return ec.fieldContext_Task_canSchedule(ctx, field)
 			case "canSetPriority":
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
-			case "canSync":
-				return ec.fieldContext_Task_canSync(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
 			case "containerAllocatedTime":
@@ -33649,8 +33497,6 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriority(ctx context.Co
 				return ec.fieldContext_Task_canSchedule(ctx, field)
 			case "canSetPriority":
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
-			case "canSync":
-				return ec.fieldContext_Task_canSync(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
 			case "containerAllocatedTime":
@@ -33858,8 +33704,6 @@ func (ec *executionContext) fieldContext_Mutation_unscheduleTask(ctx context.Con
 				return ec.fieldContext_Task_canSchedule(ctx, field)
 			case "canSetPriority":
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
-			case "canSync":
-				return ec.fieldContext_Task_canSync(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
 			case "containerAllocatedTime":
@@ -34117,8 +33961,6 @@ func (ec *executionContext) fieldContext_Mutation_addFavoriteProject(ctx context
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
-			case "taskSync":
-				return ec.fieldContext_Project_taskSync(ctx, field)
 			case "tracksPushEvents":
 				return ec.fieldContext_Project_tracksPushEvents(ctx, field)
 			case "triggers":
@@ -34436,8 +34278,6 @@ func (ec *executionContext) fieldContext_Mutation_removeFavoriteProject(ctx cont
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
-			case "taskSync":
-				return ec.fieldContext_Project_taskSync(ctx, field)
 			case "tracksPushEvents":
 				return ec.fieldContext_Project_tracksPushEvents(ctx, field)
 			case "triggers":
@@ -35018,8 +34858,6 @@ func (ec *executionContext) fieldContext_Mutation_scheduleUndispatchedBaseTasks(
 				return ec.fieldContext_Task_canSchedule(ctx, field)
 			case "canSetPriority":
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
-			case "canSync":
-				return ec.fieldContext_Task_canSync(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
 			case "containerAllocatedTime":
@@ -37711,8 +37549,6 @@ func (ec *executionContext) fieldContext_Patch_projectMetadata(_ context.Context
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
-			case "taskSync":
-				return ec.fieldContext_Project_taskSync(ctx, field)
 			case "tracksPushEvents":
 				return ec.fieldContext_Project_tracksPushEvents(ctx, field)
 			case "triggers":
@@ -40313,8 +40149,6 @@ func (ec *executionContext) fieldContext_Pod_task(_ context.Context, field graph
 				return ec.fieldContext_Task_canSchedule(ctx, field)
 			case "canSetPriority":
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
-			case "canSync":
-				return ec.fieldContext_Task_canSync(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
 			case "containerAllocatedTime":
@@ -40856,8 +40690,6 @@ func (ec *executionContext) fieldContext_PodEventLogData_task(_ context.Context,
 				return ec.fieldContext_Task_canSchedule(ctx, field)
 			case "canSetPriority":
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
-			case "canSync":
-				return ec.fieldContext_Task_canSync(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
 			case "containerAllocatedTime":
@@ -41808,8 +41640,6 @@ func (ec *executionContext) fieldContext_Project_commitQueue(_ context.Context, 
 				return ec.fieldContext_CommitQueueParams_enabled(ctx, field)
 			case "mergeMethod":
 				return ec.fieldContext_CommitQueueParams_mergeMethod(ctx, field)
-			case "mergeQueue":
-				return ec.fieldContext_CommitQueueParams_mergeQueue(ctx, field)
 			case "message":
 				return ec.fieldContext_CommitQueueParams_message(ctx, field)
 			}
@@ -43550,56 +43380,6 @@ func (ec *executionContext) fieldContext_Project_taskAnnotationSettings(_ contex
 	return fc, nil
 }
 
-func (ec *executionContext) _Project_taskSync(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Project_taskSync(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.TaskSync, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(model.APITaskSyncOptions)
-	fc.Result = res
-	return ec.marshalNTaskSyncOptions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSyncOptions(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Project_taskSync(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Project",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "configEnabled":
-				return ec.fieldContext_TaskSyncOptions_configEnabled(ctx, field)
-			case "patchEnabled":
-				return ec.fieldContext_TaskSyncOptions_patchEnabled(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type TaskSyncOptions", field.Name)
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Project_tracksPushEvents(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Project_tracksPushEvents(ctx, field)
 	if err != nil {
@@ -44936,8 +44716,6 @@ func (ec *executionContext) fieldContext_ProjectEventSettings_projectRef(_ conte
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
-			case "taskSync":
-				return ec.fieldContext_Project_taskSync(ctx, field)
 			case "tracksPushEvents":
 				return ec.fieldContext_Project_tracksPushEvents(ctx, field)
 			case "triggers":
@@ -45549,8 +45327,6 @@ func (ec *executionContext) fieldContext_ProjectSettings_projectRef(_ context.Co
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
-			case "taskSync":
-				return ec.fieldContext_Project_taskSync(ctx, field)
 			case "tracksPushEvents":
 				return ec.fieldContext_Project_tracksPushEvents(ctx, field)
 			case "triggers":
@@ -47305,8 +47081,6 @@ func (ec *executionContext) fieldContext_Query_project(ctx context.Context, fiel
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
-			case "taskSync":
-				return ec.fieldContext_Project_taskSync(ctx, field)
 			case "tracksPushEvents":
 				return ec.fieldContext_Project_tracksPushEvents(ctx, field)
 			case "triggers":
@@ -48077,8 +47851,6 @@ func (ec *executionContext) fieldContext_Query_task(ctx context.Context, field g
 				return ec.fieldContext_Task_canSchedule(ctx, field)
 			case "canSetPriority":
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
-			case "canSync":
-				return ec.fieldContext_Task_canSync(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
 			case "containerAllocatedTime":
@@ -48286,8 +48058,6 @@ func (ec *executionContext) fieldContext_Query_taskAllExecutions(ctx context.Con
 				return ec.fieldContext_Task_canSchedule(ctx, field)
 			case "canSetPriority":
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
-			case "canSync":
-				return ec.fieldContext_Task_canSync(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
 			case "containerAllocatedTime":
@@ -49473,50 +49243,6 @@ func (ec *executionContext) fieldContext_RepoCommitQueueParams_mergeMethod(_ con
 	return fc, nil
 }
 
-func (ec *executionContext) _RepoCommitQueueParams_mergeQueue(ctx context.Context, field graphql.CollectedField, obj *model.APICommitQueueParams) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_RepoCommitQueueParams_mergeQueue(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.MergeQueue, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(model1.MergeQueue)
-	fc.Result = res
-	return ec.marshalNMergeQueue2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐMergeQueue(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_RepoCommitQueueParams_mergeQueue(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "RepoCommitQueueParams",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type MergeQueue does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _RepoCommitQueueParams_message(ctx context.Context, field graphql.CollectedField, obj *model.APICommitQueueParams) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_RepoCommitQueueParams_message(ctx, field)
 	if err != nil {
@@ -49886,8 +49612,6 @@ func (ec *executionContext) fieldContext_RepoRef_commitQueue(_ context.Context, 
 				return ec.fieldContext_RepoCommitQueueParams_enabled(ctx, field)
 			case "mergeMethod":
 				return ec.fieldContext_RepoCommitQueueParams_mergeMethod(ctx, field)
-			case "mergeQueue":
-				return ec.fieldContext_RepoCommitQueueParams_mergeQueue(ctx, field)
 			case "message":
 				return ec.fieldContext_RepoCommitQueueParams_message(ctx, field)
 			}
@@ -51294,56 +51018,6 @@ func (ec *executionContext) fieldContext_RepoRef_taskAnnotationSettings(_ contex
 	return fc, nil
 }
 
-func (ec *executionContext) _RepoRef_taskSync(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_RepoRef_taskSync(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.TaskSync, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(model.APITaskSyncOptions)
-	fc.Result = res
-	return ec.marshalNRepoTaskSyncOptions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSyncOptions(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_RepoRef_taskSync(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "RepoRef",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "configEnabled":
-				return ec.fieldContext_RepoTaskSyncOptions_configEnabled(ctx, field)
-			case "patchEnabled":
-				return ec.fieldContext_RepoTaskSyncOptions_patchEnabled(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type RepoTaskSyncOptions", field.Name)
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _RepoRef_tracksPushEvents(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectRef) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_RepoRef_tracksPushEvents(ctx, field)
 	if err != nil {
@@ -51877,8 +51551,6 @@ func (ec *executionContext) fieldContext_RepoSettings_projectRef(_ context.Conte
 				return ec.fieldContext_RepoRef_stepbackBisect(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_RepoRef_taskAnnotationSettings(ctx, field)
-			case "taskSync":
-				return ec.fieldContext_RepoRef_taskSync(ctx, field)
 			case "tracksPushEvents":
 				return ec.fieldContext_RepoRef_tracksPushEvents(ctx, field)
 			case "triggers":
@@ -51999,94 +51671,6 @@ func (ec *executionContext) fieldContext_RepoSettings_vars(_ context.Context, fi
 				return ec.fieldContext_ProjectVars_vars(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ProjectVars", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _RepoTaskSyncOptions_configEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APITaskSyncOptions) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_RepoTaskSyncOptions_configEnabled(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.ConfigEnabled, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*bool)
-	fc.Result = res
-	return ec.marshalNBoolean2ᚖbool(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_RepoTaskSyncOptions_configEnabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "RepoTaskSyncOptions",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _RepoTaskSyncOptions_patchEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APITaskSyncOptions) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_RepoTaskSyncOptions_patchEnabled(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.PatchEnabled, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*bool)
-	fc.Result = res
-	return ec.marshalNBoolean2ᚖbool(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_RepoTaskSyncOptions_patchEnabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "RepoTaskSyncOptions",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -55324,8 +54908,6 @@ func (ec *executionContext) fieldContext_Task_baseTask(_ context.Context, field 
 				return ec.fieldContext_Task_canSchedule(ctx, field)
 			case "canSetPriority":
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
-			case "canSync":
-				return ec.fieldContext_Task_canSync(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
 			case "containerAllocatedTime":
@@ -55922,50 +55504,6 @@ func (ec *executionContext) fieldContext_Task_canSetPriority(_ context.Context, 
 	return fc, nil
 }
 
-func (ec *executionContext) _Task_canSync(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Task_canSync(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.CanSync, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(bool)
-	fc.Result = res
-	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Task_canSync(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Task",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Task_canUnschedule(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Task_canUnschedule(ctx, field)
 	if err != nil {
@@ -56454,8 +55992,6 @@ func (ec *executionContext) fieldContext_Task_displayTask(_ context.Context, fie
 				return ec.fieldContext_Task_canSchedule(ctx, field)
 			case "canSetPriority":
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
-			case "canSync":
-				return ec.fieldContext_Task_canSync(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
 			case "containerAllocatedTime":
@@ -56819,8 +56355,6 @@ func (ec *executionContext) fieldContext_Task_executionTasksFull(_ context.Conte
 				return ec.fieldContext_Task_canSchedule(ctx, field)
 			case "canSetPriority":
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
-			case "canSync":
-				return ec.fieldContext_Task_canSync(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
 			case "containerAllocatedTime":
@@ -58007,8 +57541,6 @@ func (ec *executionContext) fieldContext_Task_project(_ context.Context, field g
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
-			case "taskSync":
-				return ec.fieldContext_Project_taskSync(ctx, field)
 			case "tracksPushEvents":
 				return ec.fieldContext_Project_tracksPushEvents(ctx, field)
 			case "triggers":
@@ -61896,88 +61428,6 @@ func (ec *executionContext) fieldContext_TaskStats_eta(_ context.Context, field 
 	return fc, nil
 }
 
-func (ec *executionContext) _TaskSyncOptions_configEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APITaskSyncOptions) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_TaskSyncOptions_configEnabled(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.ConfigEnabled, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*bool)
-	fc.Result = res
-	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_TaskSyncOptions_configEnabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "TaskSyncOptions",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _TaskSyncOptions_patchEnabled(ctx context.Context, field graphql.CollectedField, obj *model.APITaskSyncOptions) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_TaskSyncOptions_patchEnabled(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.PatchEnabled, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*bool)
-	fc.Result = res
-	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_TaskSyncOptions_patchEnabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "TaskSyncOptions",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _TaskTestResult_testResults(ctx context.Context, field graphql.CollectedField, obj *TaskTestResult) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_TaskTestResult_testResults(ctx, field)
 	if err != nil {
@@ -64426,8 +63876,6 @@ func (ec *executionContext) fieldContext_UpstreamProject_task(_ context.Context,
 				return ec.fieldContext_Task_canSchedule(ctx, field)
 			case "canSetPriority":
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
-			case "canSync":
-				return ec.fieldContext_Task_canSync(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
 			case "containerAllocatedTime":
@@ -67702,8 +67150,6 @@ func (ec *executionContext) fieldContext_Version_projectMetadata(_ context.Conte
 				return ec.fieldContext_Project_stepbackBisect(ctx, field)
 			case "taskAnnotationSettings":
 				return ec.fieldContext_Project_taskAnnotationSettings(ctx, field)
-			case "taskSync":
-				return ec.fieldContext_Project_taskSync(ctx, field)
 			case "tracksPushEvents":
 				return ec.fieldContext_Project_tracksPushEvents(ctx, field)
 			case "triggers":
@@ -68417,8 +67863,6 @@ func (ec *executionContext) fieldContext_VersionTasks_data(_ context.Context, fi
 				return ec.fieldContext_Task_canSchedule(ctx, field)
 			case "canSetPriority":
 				return ec.fieldContext_Task_canSetPriority(ctx, field)
-			case "canSync":
-				return ec.fieldContext_Task_canSync(ctx, field)
 			case "canUnschedule":
 				return ec.fieldContext_Task_canUnschedule(ctx, field)
 			case "containerAllocatedTime":
@@ -73296,7 +72740,7 @@ func (ec *executionContext) unmarshalInputCommitQueueParamsInput(ctx context.Con
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"enabled", "mergeMethod", "mergeQueue", "message"}
+	fieldsInOrder := [...]string{"enabled", "mergeMethod", "message"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -73317,13 +72761,6 @@ func (ec *executionContext) unmarshalInputCommitQueueParamsInput(ctx context.Con
 				return it, err
 			}
 			it.MergeMethod = data
-		case "mergeQueue":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("mergeQueue"))
-			data, err := ec.unmarshalOMergeQueue2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐMergeQueue(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.MergeQueue = data
 		case "message":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("message"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -75827,7 +75264,7 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "admins", "banner", "batchTime", "branch", "buildBaronSettings", "commitQueue", "containerSizeDefinitions", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubDynamicTokenPermissionGroups", "githubPermissionGroupByRequester", "githubTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "identifier", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "projectHealthView", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "stepbackBisect", "taskAnnotationSettings", "taskSync", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig"}
+	fieldsInOrder := [...]string{"id", "admins", "banner", "batchTime", "branch", "buildBaronSettings", "commitQueue", "containerSizeDefinitions", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubDynamicTokenPermissionGroups", "githubPermissionGroupByRequester", "githubTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "identifier", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "projectHealthView", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "stepbackBisect", "taskAnnotationSettings", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -76121,13 +75558,6 @@ func (ec *executionContext) unmarshalInputProjectInput(ctx context.Context, obj 
 				return it, err
 			}
 			it.TaskAnnotationSettings = data
-		case "taskSync":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskSync"))
-			data, err := ec.unmarshalOTaskSyncOptionsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSyncOptions(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.TaskSync = data
 		case "tracksPushEvents":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("tracksPushEvents"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -76502,7 +75932,7 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "admins", "batchTime", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubDynamicTokenPermissionGroups", "githubPermissionGroupByRequester", "githubTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "stepbackBisect", "taskAnnotationSettings", "taskSync", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig", "containerSizeDefinitions"}
+	fieldsInOrder := [...]string{"id", "admins", "batchTime", "buildBaronSettings", "commitQueue", "deactivatePrevious", "disabledStatsCache", "dispatchingDisabled", "displayName", "enabled", "externalLinks", "githubChecksEnabled", "githubDynamicTokenPermissionGroups", "githubPermissionGroupByRequester", "githubTriggerAliases", "gitTagAuthorizedTeams", "gitTagAuthorizedUsers", "gitTagVersionsEnabled", "manualPrTestingEnabled", "notifyOnBuildFailure", "oldestAllowedMergeBase", "owner", "parsleyFilters", "patchingDisabled", "patchTriggerAliases", "perfEnabled", "periodicBuilds", "prTestingEnabled", "remotePath", "repo", "repotrackerDisabled", "restricted", "spawnHostScriptPath", "stepbackDisabled", "stepbackBisect", "taskAnnotationSettings", "tracksPushEvents", "triggers", "versionControlEnabled", "workstationConfig", "containerSizeDefinitions"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -76761,13 +76191,6 @@ func (ec *executionContext) unmarshalInputRepoRefInput(ctx context.Context, obj 
 				return it, err
 			}
 			it.TaskAnnotationSettings = data
-		case "taskSync":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskSync"))
-			data, err := ec.unmarshalOTaskSyncOptionsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSyncOptions(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.TaskSync = data
 		case "tracksPushEvents":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("tracksPushEvents"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -77200,7 +76623,7 @@ func (ec *executionContext) unmarshalInputSpawnHostInput(ctx context.Context, ob
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"distroId", "expiration", "homeVolumeSize", "isVirtualWorkStation", "noExpiration", "publicKey", "region", "savePublicKey", "setUpScript", "sleepSchedule", "spawnHostsStartedByTask", "taskId", "taskSync", "useProjectSetupScript", "userDataScript", "useTaskConfig", "volumeId"}
+	fieldsInOrder := [...]string{"distroId", "expiration", "homeVolumeSize", "isVirtualWorkStation", "noExpiration", "publicKey", "region", "savePublicKey", "setUpScript", "sleepSchedule", "spawnHostsStartedByTask", "taskId", "useProjectSetupScript", "userDataScript", "useTaskConfig", "volumeId"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -77291,13 +76714,6 @@ func (ec *executionContext) unmarshalInputSpawnHostInput(ctx context.Context, ob
 				return it, err
 			}
 			it.TaskID = data
-		case "taskSync":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskSync"))
-			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.TaskSync = data
 		case "useProjectSetupScript":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("useProjectSetupScript"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -77681,40 +77097,6 @@ func (ec *executionContext) unmarshalInputTaskSpecifierInput(ctx context.Context
 				return it, err
 			}
 			it.VariantRegex = data
-		}
-	}
-
-	return it, nil
-}
-
-func (ec *executionContext) unmarshalInputTaskSyncOptionsInput(ctx context.Context, obj interface{}) (model.APITaskSyncOptions, error) {
-	var it model.APITaskSyncOptions
-	asMap := map[string]interface{}{}
-	for k, v := range obj.(map[string]interface{}) {
-		asMap[k] = v
-	}
-
-	fieldsInOrder := [...]string{"configEnabled", "patchEnabled"}
-	for _, k := range fieldsInOrder {
-		v, ok := asMap[k]
-		if !ok {
-			continue
-		}
-		switch k {
-		case "configEnabled":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("configEnabled"))
-			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.ConfigEnabled = data
-		case "patchEnabled":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("patchEnabled"))
-			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.PatchEnabled = data
 		}
 	}
 
@@ -79501,11 +78883,6 @@ func (ec *executionContext) _CommitQueueParams(ctx context.Context, sel ast.Sele
 			out.Values[i] = ec._CommitQueueParams_enabled(ctx, field, obj)
 		case "mergeMethod":
 			out.Values[i] = ec._CommitQueueParams_mergeMethod(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "mergeQueue":
-			out.Values[i] = ec._CommitQueueParams_mergeQueue(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -86379,11 +85756,6 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
-		case "taskSync":
-			out.Values[i] = ec._Project_taskSync(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
 		case "tracksPushEvents":
 			out.Values[i] = ec._Project_tracksPushEvents(ctx, field, obj)
 		case "triggers":
@@ -88133,11 +87505,6 @@ func (ec *executionContext) _RepoCommitQueueParams(ctx context.Context, sel ast.
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "mergeQueue":
-			out.Values[i] = ec._RepoCommitQueueParams_mergeQueue(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "message":
 			out.Values[i] = ec._RepoCommitQueueParams_message(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -88374,11 +87741,6 @@ func (ec *executionContext) _RepoRef(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "taskSync":
-			out.Values[i] = ec._RepoRef_taskSync(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "tracksPushEvents":
 			out.Values[i] = ec._RepoRef_tracksPushEvents(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -88605,50 +87967,6 @@ func (ec *executionContext) _RepoSettings(ctx context.Context, sel ast.Selection
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
-var repoTaskSyncOptionsImplementors = []string{"RepoTaskSyncOptions"}
-
-func (ec *executionContext) _RepoTaskSyncOptions(ctx context.Context, sel ast.SelectionSet, obj *model.APITaskSyncOptions) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, repoTaskSyncOptionsImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("RepoTaskSyncOptions")
-		case "configEnabled":
-			out.Values[i] = ec._RepoTaskSyncOptions_configEnabled(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "patchEnabled":
-			out.Values[i] = ec._RepoTaskSyncOptions_patchEnabled(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -90038,11 +89356,6 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-		case "canSync":
-			out.Values[i] = ec._Task_canSync(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
 		case "canUnschedule":
 			field := field
 
@@ -91849,44 +91162,6 @@ func (ec *executionContext) _TaskStats(ctx context.Context, sel ast.SelectionSet
 			out.Values[i] = ec._TaskStats_counts(ctx, field, obj)
 		case "eta":
 			out.Values[i] = ec._TaskStats_eta(ctx, field, obj)
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
-var taskSyncOptionsImplementors = []string{"TaskSyncOptions"}
-
-func (ec *executionContext) _TaskSyncOptions(ctx context.Context, sel ast.SelectionSet, obj *model.APITaskSyncOptions) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, taskSyncOptionsImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("TaskSyncOptions")
-		case "configEnabled":
-			out.Values[i] = ec._TaskSyncOptions_configEnabled(ctx, field, obj)
-		case "patchEnabled":
-			out.Values[i] = ec._TaskSyncOptions_patchEnabled(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -97096,22 +96371,6 @@ func (ec *executionContext) marshalNMap2ᚕmapᚄ(ctx context.Context, sel ast.S
 	return ret
 }
 
-func (ec *executionContext) unmarshalNMergeQueue2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐMergeQueue(ctx context.Context, v interface{}) (model1.MergeQueue, error) {
-	tmp, err := graphql.UnmarshalString(v)
-	res := model1.MergeQueue(tmp)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalNMergeQueue2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐMergeQueue(ctx context.Context, sel ast.SelectionSet, v model1.MergeQueue) graphql.Marshaler {
-	res := graphql.MarshalString(string(v))
-	if res == graphql.Null {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-	}
-	return res
-}
-
 func (ec *executionContext) unmarshalNMetStatus2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐMetStatus(ctx context.Context, v interface{}) (MetStatus, error) {
 	var res MetStatus
 	err := res.UnmarshalGQL(v)
@@ -98254,10 +97513,6 @@ func (ec *executionContext) marshalNRepoSettings2ᚖgithubᚗcomᚋevergreenᚑc
 	return ec._RepoSettings(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNRepoTaskSyncOptions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSyncOptions(ctx context.Context, sel ast.SelectionSet, v model.APITaskSyncOptions) graphql.Marshaler {
-	return ec._RepoTaskSyncOptions(ctx, sel, &v)
-}
-
 func (ec *executionContext) marshalNRepoWorkstationConfig2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWorkstationConfig(ctx context.Context, sel ast.SelectionSet, v model.APIWorkstationConfig) graphql.Marshaler {
 	return ec._RepoWorkstationConfig(ctx, sel, &v)
 }
@@ -98971,10 +98226,6 @@ func (ec *executionContext) unmarshalNTaskSpecifierInput2ᚕgithubᚗcomᚋeverg
 		}
 	}
 	return res, nil
-}
-
-func (ec *executionContext) marshalNTaskSyncOptions2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSyncOptions(ctx context.Context, sel ast.SelectionSet, v model.APITaskSyncOptions) graphql.Marshaler {
-	return ec._TaskSyncOptions(ctx, sel, &v)
 }
 
 func (ec *executionContext) marshalNTaskTestResult2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskTestResult(ctx context.Context, sel ast.SelectionSet, v TaskTestResult) graphql.Marshaler {
@@ -101434,17 +100685,6 @@ func (ec *executionContext) marshalOMap2map(ctx context.Context, sel ast.Selecti
 	return res
 }
 
-func (ec *executionContext) unmarshalOMergeQueue2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐMergeQueue(ctx context.Context, v interface{}) (model1.MergeQueue, error) {
-	tmp, err := graphql.UnmarshalString(v)
-	res := model1.MergeQueue(tmp)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalOMergeQueue2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐMergeQueue(ctx context.Context, sel ast.SelectionSet, v model1.MergeQueue) graphql.Marshaler {
-	res := graphql.MarshalString(string(v))
-	return res
-}
-
 func (ec *executionContext) marshalOMetadataLink2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIMetadataLinkᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APIMetadataLink) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -102443,11 +101683,6 @@ func (ec *executionContext) marshalOTaskStats2ᚖgithubᚗcomᚋevergreenᚑci�
 		return graphql.Null
 	}
 	return ec._TaskStats(ctx, sel, v)
-}
-
-func (ec *executionContext) unmarshalOTaskSyncOptionsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSyncOptions(ctx context.Context, v interface{}) (model.APITaskSyncOptions, error) {
-	res, err := ec.unmarshalInputTaskSyncOptionsInput(ctx, v)
-	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOTaskTestResultSample2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskTestResultSampleᚄ(ctx context.Context, sel ast.SelectionSet, v []*TaskTestResultSample) graphql.Marshaler {

@@ -670,7 +670,7 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, versionID string, ta
 		if dbTask.Version != versionID && dbTask.ParentPatchID != versionID {
 			return nil, InputValidationError.Send(ctx, fmt.Sprintf("task '%s' does not belong to version '%s'", dbTask.Id, versionID))
 		}
-		taskOpts, err := dbTask.CreateTestResultsTaskOptions()
+		taskOpts, err := dbTask.CreateTestResultsTaskOptions(ctx)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("creating test results task options for task '%s': %s", dbTask.Id, err.Error()))
 		}
@@ -760,7 +760,7 @@ func (r *queryResolver) BuildVariantsForTaskName(ctx context.Context, projectIde
 	if repo == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find repository '%s'", pid))
 	}
-	taskBuildVariants, err := task.FindUniqueBuildVariantNamesByTask(pid, taskName, repo.RevisionOrderNumber)
+	taskBuildVariants, err := task.FindUniqueBuildVariantNamesByTask(ctx, pid, taskName, repo.RevisionOrderNumber)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting build variant tasks for task '%s': %s", taskName, err.Error()))
 	}
@@ -921,7 +921,7 @@ func (r *queryResolver) TaskNamesForBuildVariant(ctx context.Context, projectIde
 	if repo == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("could not find repository '%s'", pid))
 	}
-	buildVariantTasks, err := task.FindTaskNamesByBuildVariant(pid, buildVariant, repo.RevisionOrderNumber)
+	buildVariantTasks, err := task.FindTaskNamesByBuildVariant(ctx, pid, buildVariant, repo.RevisionOrderNumber)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting tasks for '%s': %s", buildVariant, err.Error()))
 	}

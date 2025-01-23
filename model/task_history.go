@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -233,7 +234,7 @@ func (thi *taskHistoryIterator) GetFailedTests(tasks []task.Task) (map[string][]
 	var allTaskOpts []testresult.TaskOptions
 	taskIDsToDisplay := map[string]string{}
 	for _, tsk := range tasks {
-		taskOpts, err := tsk.CreateTestResultsTaskOptions()
+		taskOpts, err := tsk.CreateTestResultsTaskOptions(ctx)
 		if err != nil {
 			return nil, errors.Wrap(err, "creating test results task options")
 		}
@@ -277,7 +278,7 @@ type PickaxeParams struct {
 	BuildVariants []string
 }
 
-func TaskHistoryPickaxe(params PickaxeParams) ([]task.Task, error) {
+func TaskHistoryPickaxe(ctx context.Context, params PickaxeParams) ([]task.Task, error) {
 	// If there are no build variants, use all of them for the given task name.
 	// Need this because without the build_variant specified, no amount of hinting
 	// will get sort to use the proper index
@@ -289,7 +290,7 @@ func TaskHistoryPickaxe(params PickaxeParams) ([]task.Task, error) {
 		return nil, errors.New("unable to find repository")
 	}
 	grip.Info(repo)
-	buildVariants, err := task.FindVariantsWithTask(params.TaskName, params.Project.Identifier, repo.RevisionOrderNumber-50, repo.RevisionOrderNumber)
+	buildVariants, err := task.FindVariantsWithTask(ctx, params.TaskName, params.Project.Identifier, repo.RevisionOrderNumber-50, repo.RevisionOrderNumber)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding build variants")
 	}
@@ -317,7 +318,7 @@ func TaskHistoryPickaxe(params PickaxeParams) ([]task.Task, error) {
 		task.TimeTakenKey,
 		task.BuildVariantKey,
 	}
-	last, err := task.FindWithFields(query, projection...)
+	last, err := task.FindWithFields(ctx, query, projection...)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding tasks")
 	}

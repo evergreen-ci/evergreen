@@ -152,7 +152,7 @@ func (s *HostsChangeStatusesSuite) TestRunHostQuarantinesStaticHostAndFixesStran
 	s.Equal(evergreen.HostQuarantined, dbHost.Status)
 	s.Zero(dbHost.RunningTask)
 
-	dbTask, err := task.FindOneIdAndExecution(tsk.Id, tsk.Execution)
+	dbTask, err := task.FindOneIdAndExecution(ctx, tsk.Id, tsk.Execution)
 	s.Require().NoError(err)
 	s.Require().NotZero(dbTask)
 	s.Equal(evergreen.TaskFailed, dbTask.Status)
@@ -1055,7 +1055,7 @@ func TestDisableHostHandler(t *testing.T) {
 			assert.Equal(t, evergreen.HostDecommissioned, foundHost.Status)
 			assert.Zero(t, foundHost.RunningTask)
 
-			dbTask, err := task.FindOneIdAndExecution(taskID, taskExec)
+			dbTask, err := task.FindOneIdAndExecution(ctx, taskID, taskExec)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask)
 			assert.Equal(t, evergreen.TaskFailed, dbTask.Status)
@@ -1082,7 +1082,7 @@ func TestDisableHostHandler(t *testing.T) {
 			require.NotZero(t, foundHost)
 			assert.Equal(t, evergreen.HostQuarantined, foundHost.Status)
 
-			dbTask, err := task.FindOneIdAndExecution(taskID, taskExec)
+			dbTask, err := task.FindOneIdAndExecution(ctx, taskID, taskExec)
 			require.NoError(t, err)
 			require.NotZero(t, dbTask)
 			assert.Equal(t, evergreen.TaskFailed, dbTask.Status)

@@ -329,10 +329,6 @@ const (
 	GithubChecksAlias = "__github_checks"
 	GitTagAlias       = "__git_tag"
 
-	MergeTaskVariant = "commit-queue-merge"
-	MergeTaskName    = "merge-patch"
-	MergeTaskGroup   = "merge-task-group"
-
 	DefaultJasperPort = 2385
 
 	GithubAppPrivateKey = "github_app_key"
@@ -345,10 +341,6 @@ const (
 	GithubRetryMinDelay = time.Second
 
 	VSCodePort = 2021
-
-	// DefaultTaskSyncAtEndTimeout is the default timeout for task sync at the
-	// end of a patch.
-	DefaultTaskSyncAtEndTimeout = time.Hour
 
 	DefaultShutdownWaitSeconds = 10
 
@@ -772,8 +764,6 @@ func UserRequesterToInternalRequester(requester UserRequester) string {
 const (
 	GenerateTasksCommandName      = "generate.tasks"
 	HostCreateCommandName         = "host.create"
-	S3PushCommandName             = "s3.push"
-	S3PullCommandName             = "s3.pull"
 	ShellExecCommandName          = "shell.exec"
 	AttachResultsCommandName      = "attach.results"
 	AttachArtifactsCommandName    = "attach.artifacts"

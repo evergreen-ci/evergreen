@@ -14,11 +14,15 @@ import (
 // Sometimes this struct is used as a way to pass around AppId and PrivateKey for Evergreen's
 // github app, in which the Id is set to empty.
 type GithubAppAuth struct {
-	// Should match the identifier of the project it refers to
+	// Should match the ID of the project it refers to
 	Id string `bson:"_id" json:"_id"`
 
-	AppID      int64  `bson:"app_id" json:"app_id"`
-	PrivateKey []byte `bson:"private_key" json:"private_key"`
+	// AppID is the GitHub app's ID.
+	AppID int64 `bson:"app_id" json:"app_id"`
+	// PrivateKey is the GitHub app's private key and is intentionally not
+	// stored in the database for security reasons. The private key can be
+	// fetched from Parameter Store using PrivateKeyParameter.
+	PrivateKey []byte `bson:"-" json:"private_key"`
 	// PrivateKeyParameter is the name of the parameter that holds the
 	// GitHub app's private key.
 	PrivateKeyParameter string `bson:"private_key_parameter" json:"private_key_parameter"`

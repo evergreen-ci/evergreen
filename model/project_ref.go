@@ -90,9 +90,6 @@ type ProjectRef struct {
 	// If a repo is enabled and this is what creates the hook, then TracksPushEvents will be set at the repo level.
 	TracksPushEvents *bool `bson:"tracks_push_events" json:"tracks_push_events" yaml:"tracks_push_events"`
 
-	// TaskSync holds settings for synchronizing task directories to S3.
-	TaskSync TaskSyncOptions `bson:"task_sync" json:"task_sync" yaml:"task_sync"`
-
 	// GitTagAuthorizedUsers contains a list of users who are able to create versions from git tags.
 	GitTagAuthorizedUsers []string `bson:"git_tag_authorized_users" json:"git_tag_authorized_users"`
 	GitTagAuthorizedTeams []string `bson:"git_tag_authorized_teams" json:"git_tag_authorized_teams"`
@@ -354,24 +351,10 @@ type ExternalLink struct {
 	URLTemplate string   `bson:"url_template,omitempty" json:"url_template,omitempty" yaml:"url_template,omitempty"`
 }
 
-type MergeQueue string
-
-const (
-	MergeQueueGitHub MergeQueue = "GITHUB"
-)
-
 type CommitQueueParams struct {
-	Enabled     *bool      `bson:"enabled" json:"enabled" yaml:"enabled"`
-	MergeMethod string     `bson:"merge_method" json:"merge_method" yaml:"merge_method"`
-	MergeQueue  MergeQueue `bson:"merge_queue" json:"merge_queue" yaml:"merge_queue"`
-	Message     string     `bson:"message,omitempty" json:"message,omitempty" yaml:"message"`
-}
-
-// TaskSyncOptions contains information about which features are allowed for
-// syncing task directories to S3.
-type TaskSyncOptions struct {
-	ConfigEnabled *bool `bson:"config_enabled" json:"config_enabled" yaml:"config_enabled"`
-	PatchEnabled  *bool `bson:"patch_enabled" json:"patch_enabled" yaml:"patch_enabled"`
+	Enabled     *bool  `bson:"enabled" json:"enabled" yaml:"enabled"`
+	MergeMethod string `bson:"merge_method" json:"merge_method" yaml:"merge_method"`
+	Message     string `bson:"message,omitempty" json:"message,omitempty" yaml:"message"`
 }
 
 // RepositoryErrorDetails indicates whether or not there is an invalid revision and if there is one,
@@ -509,7 +492,6 @@ var (
 	projectRefGitTagVersionsEnabledKey              = bsonutil.MustHaveTag(ProjectRef{}, "GitTagVersionsEnabled")
 	projectRefRepotrackerDisabledKey                = bsonutil.MustHaveTag(ProjectRef{}, "RepotrackerDisabled")
 	projectRefCommitQueueKey                        = bsonutil.MustHaveTag(ProjectRef{}, "CommitQueue")
-	projectRefTaskSyncKey                           = bsonutil.MustHaveTag(ProjectRef{}, "TaskSync")
 	projectRefPatchingDisabledKey                   = bsonutil.MustHaveTag(ProjectRef{}, "PatchingDisabled")
 	projectRefDispatchingDisabledKey                = bsonutil.MustHaveTag(ProjectRef{}, "DispatchingDisabled")
 	projectRefStepbackDisabledKey                   = bsonutil.MustHaveTag(ProjectRef{}, "StepbackDisabled")
@@ -534,8 +516,6 @@ var (
 	projectRefProjectHealthViewKey                  = bsonutil.MustHaveTag(ProjectRef{}, "ProjectHealthView")
 	projectRefGitHubDynamicTokenPermissionGroupsKey = bsonutil.MustHaveTag(ProjectRef{}, "GitHubDynamicTokenPermissionGroups")
 	projectRefGithubPermissionGroupByRequesterKey   = bsonutil.MustHaveTag(ProjectRef{}, "GitHubPermissionGroupByRequester")
-	projectRefParameterStoreEnabledKey              = bsonutil.MustHaveTag(ProjectRef{}, "ParameterStoreEnabled")
-	projectRefParameterStoreVarsSyncedKey           = bsonutil.MustHaveTag(ProjectRef{}, "ParameterStoreVarsSynced")
 	projectRefLastAutoRestartedTaskAtKey            = bsonutil.MustHaveTag(ProjectRef{}, "LastAutoRestartedTaskAt")
 	projectRefNumAutoRestartedTasksKey              = bsonutil.MustHaveTag(ProjectRef{}, "NumAutoRestartedTasks")
 
@@ -634,14 +614,6 @@ func (p *ProjectRef) IsPerfEnabled() bool {
 
 func (p *CommitQueueParams) IsEnabled() bool {
 	return utility.FromBoolPtr(p.Enabled)
-}
-
-func (ts *TaskSyncOptions) IsPatchEnabled() bool {
-	return utility.FromBoolPtr(ts.PatchEnabled)
-}
-
-func (ts *TaskSyncOptions) IsConfigEnabled() bool {
-	return utility.FromBoolPtr(ts.ConfigEnabled)
 }
 
 func (c *WorkstationConfig) ShouldGitClone() bool {
@@ -772,9 +744,6 @@ func (p *ProjectRef) MergeWithProjectConfig(version string) (err error) {
 		}
 		if projectConfig.TaskAnnotationSettings != nil {
 			pRefToMerge.TaskAnnotationSettings = *projectConfig.TaskAnnotationSettings
-		}
-		if projectConfig.TaskSync != nil {
-			pRefToMerge.TaskSync = *projectConfig.TaskSync
 		}
 		reflectedRef := reflect.ValueOf(p).Elem()
 		reflectedConfig := reflect.ValueOf(pRefToMerge)
@@ -1283,10 +1252,6 @@ func setRepoFieldsFromProjects(repoRef *RepoRef, projectRefs []ProjectRef) {
 }
 
 func (p *ProjectRef) createNewRepoRef(u *user.DBUser) (repoRef *RepoRef, err error) {
-	repoRef = &RepoRef{ProjectRef{
-		Admins: []string{},
-	}}
-
 	allEnabledProjects, err := FindMergedEnabledProjectRefsByOwnerAndRepo(p.Owner, p.Repo)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding all enabled projects")
@@ -1295,10 +1260,11 @@ func (p *ProjectRef) createNewRepoRef(u *user.DBUser) (repoRef *RepoRef, err err
 	defer func() {
 		err = recovery.HandlePanicWithError(recover(), err, "project and repo structures do not match")
 	}()
+	repoRef = &RepoRef{ProjectRef{}}
 	setRepoFieldsFromProjects(repoRef, allEnabledProjects)
-	if !utility.StringSliceContains(repoRef.Admins, u.Username()) {
-		repoRef.Admins = append(repoRef.Admins, u.Username())
-	}
+	// Initially, the only repo admin will be the user who created it.
+	repoRef.Admins = []string{u.Username()}
+
 	// Some fields shouldn't be set from projects.
 	repoRef.Id = mgobson.NewObjectId().Hex()
 	repoRef.RepoRefId = ""
@@ -1310,7 +1276,6 @@ func (p *ProjectRef) createNewRepoRef(u *user.DBUser) (repoRef *RepoRef, err err
 	if len(allEnabledProjects) == 0 {
 		repoRef.ParameterStoreEnabled = p.ParameterStoreEnabled
 	}
-	repoRef.ParameterStoreVarsSynced = false
 	_, err = SetTracksPushEvents(context.Background(), &repoRef.ProjectRef)
 	if err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
@@ -2253,7 +2218,6 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 			ProjectRefDeactivatePreviousKey:    p.DeactivatePrevious,
 			projectRefRepotrackerDisabledKey:   p.RepotrackerDisabled,
 			projectRefPatchingDisabledKey:      p.PatchingDisabled,
-			projectRefTaskSyncKey:              p.TaskSync,
 			ProjectRefDisabledStatsCacheKey:    p.DisabledStatsCache,
 		}
 		// Unlike other fields, this will only be set if we're actually modifying it since it's used by the backend.
@@ -3648,52 +3612,4 @@ func ProjectCanDispatchTask(pRef *ProjectRef, t *task.Task) (canDispatch bool, r
 	}
 
 	return true, reason
-}
-
-// setParameterStoreVarsSynced marks the project or repo ref to indicate whether
-// its project variables are fully synced to Parameter Store.
-func (p *ProjectRef) setParameterStoreVarsSynced(isSynced bool, isRepoRef bool) error {
-	if p.ParameterStoreVarsSynced == isSynced {
-		return nil
-	}
-
-	coll := ProjectRefCollection
-	if isRepoRef {
-		coll = RepoRefCollection
-	}
-
-	if err := db.UpdateId(coll, p.Id, bson.M{
-		"$set": bson.M{
-			projectRefParameterStoreVarsSyncedKey: isSynced,
-		},
-	}); err != nil {
-		return errors.Wrapf(err, "updating project/repo ref vars sync state to %t", isSynced)
-	}
-
-	p.ParameterStoreVarsSynced = true
-
-	return nil
-}
-
-var psEnabledButNotSyncedQuery = bson.M{
-	projectRefParameterStoreEnabledKey: true,
-	"$or": []bson.M{
-		{projectRefParameterStoreVarsSyncedKey: false},
-		{projectRefParameterStoreVarsSyncedKey: bson.M{"$exists": false}},
-	},
-}
-
-// FindProjectRefsToSync finds all project refs that have Parameter Sore enabled
-// but don't have their project variables synced to Parameter Store yet.
-// TODO (DEVPROD-11882): remove this function once the rollout is stable.
-func FindProjectRefsToSync(ctx context.Context) ([]ProjectRef, error) {
-	cur, err := evergreen.GetEnvironment().DB().Collection(ProjectRefCollection).Find(ctx, psEnabledButNotSyncedQuery)
-	if err != nil {
-		return nil, errors.Wrap(err, "finding project refs to sync")
-	}
-	pRefs := []ProjectRef{}
-	if err := cur.All(ctx, &pRefs); err != nil {
-		return nil, errors.Wrap(err, "decoding project refs to sync")
-	}
-	return pRefs, nil
 }

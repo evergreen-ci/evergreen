@@ -2643,10 +2643,10 @@ func TestValidateAliasCoverage(t *testing.T) {
 			}
 			errs := validateAliasCoverage(p, model.ProjectAliases{alias1, alias2})
 			require.Len(t, errs, 2)
-			assert.Contains(t, errs[0].Message, "Commit queue alias")
+			assert.Contains(t, errs[0].Message, "Merge queue alias")
 			assert.Contains(t, errs[0].Message, "(from the yaml)")
 			assert.Contains(t, errs[0].Message, "has no matching variants")
-			assert.Contains(t, errs[1].Message, "Commit queue alias")
+			assert.Contains(t, errs[1].Message, "Merge queue alias")
 			assert.Contains(t, errs[1].Message, "(from the yaml)")
 			assert.Contains(t, errs[1].Message, "has no matching variants")
 			assert.NotContains(t, errs[0].Message, "tasks")
@@ -2713,11 +2713,11 @@ func TestValidateAliasCoverage(t *testing.T) {
 
 			errs := validateAliasCoverage(p, model.ProjectAliases{alias1, alias2})
 			require.Len(t, errs, 2)
-			assert.Contains(t, errs[0].Message, "Commit queue alias")
+			assert.Contains(t, errs[0].Message, "Merge queue alias")
 			assert.Contains(t, errs[0].Message, "(from the project page)")
 			assert.Contains(t, errs[0].Message, "has no matching variants")
 			assert.NotContains(t, errs[0].Message, "matching task regexp")
-			assert.Contains(t, errs[1].Message, "Commit queue alias")
+			assert.Contains(t, errs[1].Message, "Merge queue alias")
 			assert.Contains(t, errs[1].Message, "(from the project page)")
 			assert.Contains(t, errs[1].Message, "has no matching tasks")
 			assert.Contains(t, errs[1].Message, "variant tags")
@@ -3147,8 +3147,10 @@ func TestCheckTaskCommands(t *testing.T) {
 
 func TestEnsureReferentialIntegrity(t *testing.T) {
 	Convey("When validating a project", t, func() {
-		distroIds := []string{"rhel55"}
+		distroIds := []string{"rhel55", "singleTaskDistro"}
 		distroAliases := []string{"rhel55-alias"}
+		singleTaskDistroIDs := []string{"singleTaskDistro"}
+		allowedSingleTaskDistroTasks := []string{".*SingleT.*"}
 		distroWarnings := map[string]string{
 			"rhel55":       "55 is not the best number",
 			"rhel55-alias": "and this is not the best alias",
@@ -3170,7 +3172,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, nil)
+			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, allowedSingleTaskDistroTasks, nil)
 			So(errs, ShouldNotResemble, ValidationErrors{})
 			So(len(errs), ShouldEqual, 1)
 		})
@@ -3189,7 +3191,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			So(ensureReferentialIntegrity(project, nil, distroIds, distroAliases, nil), ShouldResemble,
+			So(ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, allowedSingleTaskDistroTasks, nil), ShouldResemble,
 				ValidationErrors{})
 		})
 		Convey("an error should be thrown if a task references a distro has a warning", func() {
@@ -3206,7 +3208,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, distroWarnings)
+			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, allowedSingleTaskDistroTasks, distroWarnings)
 			So(errs, ShouldNotResemble, ValidationErrors{})
 			So(len(errs.AtLevel(Notice)), ShouldEqual, 1)
 			So(errs[0].Message, ShouldContainSubstring, "distro 'rhel55' with the following admin-defined warning(s): 55 is not the best number")
@@ -3226,7 +3228,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, distroWarnings)
+			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, allowedSingleTaskDistroTasks, distroWarnings)
 			So(errs, ShouldNotResemble, ValidationErrors{})
 			So(len(errs.AtLevel(Notice)), ShouldEqual, 1)
 			So(errs[0].Message, ShouldContainSubstring, "distro 'rhel55-alias' with the following admin-defined warning: and this is not the best alias")
@@ -3241,11 +3243,44 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, nil)
+			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, allowedSingleTaskDistroTasks, nil)
 			So(errs, ShouldNotResemble, ValidationErrors{})
 			So(len(errs), ShouldEqual, 1)
 		})
-
+		Convey("an error should be thrown if a referenced distro for a "+
+			"task is a single task only distro and the task is not allowed", func() {
+			project := &model.Project{
+				Tasks: []model.ProjectTask{
+					{Name: "compile"},
+				},
+				BuildVariants: []model.BuildVariant{
+					{
+						Name:  "enterprise",
+						RunOn: []string{"rhel55"},
+						Tasks: []model.BuildVariantTaskUnit{
+							{Name: "compile", RunOn: []string{"singleTaskDistro"}},
+						},
+					},
+				},
+			}
+			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, allowedSingleTaskDistroTasks, nil)
+			So(errs, ShouldNotResemble, ValidationErrors{})
+			So(len(errs), ShouldEqual, 1)
+		})
+		Convey("an error should be thrown if a refrerenced distro for a "+
+			"buildvariant is a single task only distro", func() {
+			project := &model.Project{
+				BuildVariants: []model.BuildVariant{
+					{
+						Name:  "enterprise",
+						RunOn: []string{"singleTaskDistro"},
+					},
+				},
+			}
+			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, allowedSingleTaskDistroTasks, nil)
+			So(errs, ShouldNotResemble, ValidationErrors{})
+			So(len(errs), ShouldEqual, 1)
+		})
 		Convey("an error should be thrown if a referenced distro for a "+
 			"buildvariant has the same name as an existing container", func() {
 			project := &model.Project{
@@ -3259,7 +3294,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 			containerNameMap := map[string]bool{
 				"rhel55": true,
 			}
-			errs := ensureReferentialIntegrity(project, containerNameMap, distroIds, distroAliases, nil)
+			errs := ensureReferentialIntegrity(project, containerNameMap, distroIds, distroAliases, singleTaskDistroIDs, allowedSingleTaskDistroTasks, nil)
 			So(errs, ShouldNotResemble, ValidationErrors{})
 			So(len(errs), ShouldEqual, 2)
 			So(errs[0].Message, ShouldContainSubstring, "buildvariant 'enterprise' references a container name overlapping with an existing distro 'rhel55'")
@@ -3278,7 +3313,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 			containerNameMap := map[string]bool{
 				"c1": true,
 			}
-			errs := ensureReferentialIntegrity(project, containerNameMap, distroIds, distroAliases, nil)
+			errs := ensureReferentialIntegrity(project, containerNameMap, distroIds, distroAliases, singleTaskDistroIDs, allowedSingleTaskDistroTasks, nil)
 			So(errs, ShouldNotResemble, ValidationErrors{})
 			So(len(errs), ShouldEqual, 1)
 			So(errs[0].Message, ShouldContainSubstring, "run_on cannot contain a mixture of containers and distros")
@@ -3290,11 +3325,11 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 				BuildVariants: []model.BuildVariant{
 					{
 						Name:  "enterprise",
-						RunOn: distroIds,
+						RunOn: []string{"rhel55"},
 					},
 				},
 			}
-			So(ensureReferentialIntegrity(project, nil, distroIds, distroAliases, nil), ShouldResemble, ValidationErrors{})
+			So(ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, allowedSingleTaskDistroTasks, nil), ShouldResemble, ValidationErrors{})
 		})
 
 		Convey("no error should be thrown if a referenced distro alias for a"+
@@ -3307,7 +3342,17 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			So(ensureReferentialIntegrity(project, nil, distroIds, distroAliases, nil), ShouldResemble, ValidationErrors{})
+			So(ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, allowedSingleTaskDistroTasks, nil), ShouldResemble, ValidationErrors{})
+		})
+
+		Convey("no error should be thrown if a referenced single task distro ID for a "+
+			"task is allowed to use single task distros", func() {
+			project := &model.Project{
+				Tasks: []model.ProjectTask{
+					{Name: "allowedSingleTask", RunOn: []string{"singleTaskDistro"}},
+				},
+			}
+			So(ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, allowedSingleTaskDistroTasks, nil), ShouldResemble, ValidationErrors{})
 		})
 	})
 }
@@ -4427,7 +4472,7 @@ buildvariants:
 	assert.Len(tg.Tasks, 2)
 	assert.Equal("not_in_a_task_group", proj.Tasks[0].Name)
 	assert.Equal("task_in_a_task_group_1", proj.Tasks[0].DependsOn[0].Name)
-	errors := CheckProjectErrors(ctx, &proj, false)
+	errors := CheckProjectErrors(ctx, &proj)
 	assert.Empty(errors)
 	warnings := CheckProjectWarnings(&proj)
 	assert.Empty(warnings)
@@ -4486,7 +4531,7 @@ buildvariants:
 		"display_three")
 	proj.BuildVariants[0].Tasks = append(proj.BuildVariants[0].Tasks, model.BuildVariantTaskUnit{Name: "display_three"})
 
-	errors := CheckProjectErrors(ctx, &proj, false)
+	errors := CheckProjectErrors(ctx, &proj)
 	require.Len(errors, 1)
 	assert.Equal(Error, errors[0].Level)
 	assert.Equal("execution task 'display_three' has prefix 'display_' which is invalid",
@@ -4680,30 +4725,11 @@ buildvariants:
 	require.NoError(err)
 	assert.NotEmpty(proj)
 	assert.NotNil(pp)
-	errs := CheckProjectErrors(ctx, &proj, false)
+	errs := CheckProjectErrors(ctx, &proj)
 	assert.Empty(errs, "no errors were found")
 	errs = CheckProjectWarnings(&proj)
 	assert.Len(errs, 2, "two warnings were found")
 	assert.NoError(CheckProjectConfigurationIsValid(ctx, &evergreen.Settings{}, &proj, &model.ProjectRef{}), "no errors are reported because they are warnings")
-
-	exampleYml = `
-tasks:
-  - name: taskA
-    commands:
-    - command: s3.push
-    - command: s3.push
-buildvariants:
-  - name: bvA
-    display_name: "bvA_display"
-    run_on: example_distro
-    tasks:
-      - name: taskA
-`
-	pp, err = model.LoadProjectInto(ctx, []byte(exampleYml), nil, "example_project", &proj)
-	require.NoError(err)
-	assert.NotNil(pp)
-	assert.NotEmpty(proj)
-	assert.Error(CheckProjectConfigurationIsValid(ctx, &evergreen.Settings{}, &proj, &model.ProjectRef{}))
 }
 
 func TestGetDistrosForProject(t *testing.T) {
@@ -4721,9 +4747,10 @@ func TestGetDistrosForProject(t *testing.T) {
 	}
 	require.NoError(d1.Insert(ctx))
 	d2 := distro.Distro{
-		Id:          "distro2",
-		Aliases:     []string{"distro2-alias", "distro1and2-alias"},
-		WarningNote: "this is the warning for another distro",
+		Id:               "distro2",
+		Aliases:          []string{"distro2-alias", "distro1and2-alias"},
+		WarningNote:      "this is the warning for another distro",
+		SingleTaskDistro: true,
 	}
 	require.NoError(d2.Insert(ctx))
 	d3 := distro.Distro{
@@ -4747,68 +4774,29 @@ func TestGetDistrosForProject(t *testing.T) {
 	assert.Contains(warnings["distro1and2-alias"], d1.WarningNote)
 	assert.Contains(warnings["distro1and2-alias"], d2.WarningNote)
 
-	ids, aliases, warnings, err = getDistrosForProject(ctx, "project1")
+	ids, aliases, singleTaskDistroIDs, warnings, err := getDistrosForProject(ctx, "project1")
 	require.NoError(err)
 	require.Len(ids, 2)
 	require.Len(warnings, 5) // Both d1 and d2 are going to match here
+	require.Len(singleTaskDistroIDs, 1)
 	assert.Contains(ids, "distro1")
 	assert.Contains(aliases, "distro1and2-alias")
 	assert.Contains(aliases, "distro1-alias")
+	assert.Equal("distro2", singleTaskDistroIDs[0])
 
 	// Only d2 is going to match here
-	ids, aliases, warnings, err = getDistrosForProject(ctx, "project3")
+	ids, aliases, singleTaskDistroIDs, warnings, err = getDistrosForProject(ctx, "project3")
 	require.NoError(err)
 	require.Len(ids, 1)
-	assert.Len(warnings, 3)
+	require.Len(warnings, 3)
+	require.Len(singleTaskDistroIDs, 1)
 	assert.Contains(ids, "distro2")
 	assert.Contains(aliases, "distro2-alias")
 	assert.Contains(aliases, "distro1and2-alias")
 	assert.Equal(warnings[d2.Id], d2.WarningNote)
 	assert.Equal(warnings["distro2-alias"], d2.WarningNote)
 	assert.Equal(warnings["distro1and2-alias"], d2.WarningNote)
-}
-
-func TestValidateTaskSyncCommands(t *testing.T) {
-	t.Run("TaskWithNoS3PushCallsPasses", func(t *testing.T) {
-		p := &model.Project{
-			Tasks: []model.ProjectTask{
-				{
-					Name:     t.Name(),
-					Commands: []model.PluginCommandConf{},
-				},
-			},
-		}
-		assert.Empty(t, validateTaskSyncCommands(p, false))
-	})
-	t.Run("TaskWithMultipleS3PushCallsFails", func(t *testing.T) {
-		p := &model.Project{
-			Tasks: []model.ProjectTask{
-				{
-					Name: t.Name(),
-					Commands: []model.PluginCommandConf{
-						{
-							Command: evergreen.S3PushCommandName,
-						},
-						{
-							Command: evergreen.S3PushCommandName,
-						},
-					},
-				},
-			},
-			BuildVariants: []model.BuildVariant{
-				{
-					Name: "build_variant",
-					Tasks: []model.BuildVariantTaskUnit{
-						{
-							Name:    t.Name(),
-							Variant: "build_variant",
-						},
-					},
-				},
-			},
-		}
-		assert.NotEmpty(t, validateTaskSyncCommands(p, false))
-	})
+	assert.Equal("distro2", singleTaskDistroIDs[0])
 }
 
 func TestValidateVersionControl(t *testing.T) {
@@ -4996,96 +4984,6 @@ func TestValidateContainers(t *testing.T) {
 	}
 }
 
-func TestValidateTaskSyncSettings(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	for testName, testParams := range map[string]struct {
-		tasks                    []model.ProjectTask
-		taskSyncEnabledForConfig bool
-		expectError              bool
-	}{
-		"NoTaskSyncPasses": {
-			expectError: false,
-		},
-		"ConfigWithTaskSyncWhenEnabledPasses": {
-			taskSyncEnabledForConfig: true,
-			tasks: []model.ProjectTask{
-				{
-					Commands: []model.PluginCommandConf{
-						{
-							Command: evergreen.S3PushCommandName,
-						},
-					},
-				},
-			},
-			expectError: false,
-		},
-		"ConfigWithS3PushWhenDisabledFails": {
-			tasks: []model.ProjectTask{
-				{
-					Commands: []model.PluginCommandConf{
-						{
-							Command: evergreen.S3PushCommandName,
-						},
-					},
-				},
-			},
-			expectError: true,
-		},
-		"ConfigWithS3PullWhenDisabledFails": {
-			tasks: []model.ProjectTask{
-				{
-					Commands: []model.PluginCommandConf{
-						{
-							Command: evergreen.S3PullCommandName,
-						},
-					},
-				},
-			},
-			expectError: true,
-		},
-		"ConfigWithoutTaskSyncWhenEnabledPasses": {
-			taskSyncEnabledForConfig: true,
-			expectError:              false,
-		},
-	} {
-		t.Run(testName, func(t *testing.T) {
-			ref := &model.ProjectRef{
-				TaskSync: model.TaskSyncOptions{
-					ConfigEnabled: &testParams.taskSyncEnabledForConfig,
-				},
-			}
-			p := &model.Project{Tasks: testParams.tasks}
-			errs := validateTaskSyncSettings(ctx, &evergreen.Settings{}, p, ref, false)
-			if testParams.expectError {
-				assert.NotEmpty(t, errs)
-			} else {
-				assert.Empty(t, errs)
-			}
-		})
-	}
-	ref := &model.ProjectRef{}
-	p := &model.Project{
-		Tasks: []model.ProjectTask{
-			{
-				Commands: []model.PluginCommandConf{
-					{
-						Command: evergreen.S3PushCommandName,
-					},
-				},
-			},
-		},
-	}
-	assert.NotEmpty(t, validateTaskSyncSettings(ctx, &evergreen.Settings{}, p, ref, false))
-
-	ref.TaskSync.ConfigEnabled = utility.TruePtr()
-	assert.Empty(t, validateTaskSyncSettings(ctx, &evergreen.Settings{}, p, ref, false))
-
-	p.Tasks = []model.ProjectTask{}
-	assert.Empty(t, validateTaskSyncSettings(ctx, &evergreen.Settings{}, p, ref, false))
-}
-
 func TestTVToTaskUnit(t *testing.T) {
 	for testName, testCase := range map[string]struct {
 		expectedTVToTaskUnit map[model.TVPair]model.BuildVariantTaskUnit
@@ -5098,9 +4996,8 @@ func TestTVToTaskUnit(t *testing.T) {
 					Variant:  "rhel",
 					Priority: 20,
 				}, {TaskName: "compile", Variant: "ubuntu"}: {
-					Name:             "compile",
-					Variant:          "ubuntu",
-					CommitQueueMerge: true,
+					Name:    "compile",
+					Variant: "ubuntu",
 					DependsOn: []model.TaskUnitDependency{
 						{
 							Name:    "setup",
@@ -5149,9 +5046,8 @@ func TestTVToTaskUnit(t *testing.T) {
 						Name: "ubuntu",
 						Tasks: []model.BuildVariantTaskUnit{
 							{
-								Name:             "compile",
-								Variant:          "ubuntu",
-								CommitQueueMerge: true,
+								Name:    "compile",
+								Variant: "ubuntu",
 								DependsOn: []model.TaskUnitDependency{
 									{
 										Name:    "setup",
@@ -5185,11 +5081,10 @@ func TestTVToTaskUnit(t *testing.T) {
 					Variant:  "rhel",
 					Priority: 20,
 				}, {TaskName: "compile", Variant: "ubuntu"}: {
-					Name:             "compile",
-					Variant:          "ubuntu",
-					IsPartOfGroup:    true,
-					GroupName:        "compile_group",
-					CommitQueueMerge: true,
+					Name:          "compile",
+					Variant:       "ubuntu",
+					IsPartOfGroup: true,
+					GroupName:     "compile_group",
 					DependsOn: []model.TaskUnitDependency{
 						{
 							Name:    "setup",
@@ -5246,9 +5141,8 @@ func TestTVToTaskUnit(t *testing.T) {
 						Name: "ubuntu",
 						Tasks: []model.BuildVariantTaskUnit{
 							{
-								Name:             "compile_group",
-								Variant:          "ubuntu",
-								CommitQueueMerge: true,
+								Name:    "compile_group",
+								Variant: "ubuntu",
 							},
 						},
 					}, {
@@ -5286,7 +5180,6 @@ func TestTVToTaskUnit(t *testing.T) {
 					assert.Contains(t, taskUnit.DependsOn, dep)
 				}
 				assert.Equal(t, expectedTaskUnit.Stepback, taskUnit.Stepback)
-				assert.Equal(t, expectedTaskUnit.CommitQueueMerge, taskUnit.CommitQueueMerge, "%s/%s", expectedTaskUnit.Variant, expectedTaskUnit.Name)
 				assert.Equal(t, expectedTaskUnit.Variant, taskUnit.Variant)
 			}
 		})
@@ -5969,75 +5862,6 @@ func TestValidateTVDependsOnTV(t *testing.T) {
 	}
 }
 
-func TestParseS3PullParameters(t *testing.T) {
-	for testName, testCase := range map[string]struct {
-		expectError bool
-		params      map[string]interface{}
-	}{
-		"PassesWithPopulatedParameters": {
-			expectError: false,
-			params: map[string]interface{}{
-				"task":               "t",
-				"from_build_variant": "bv",
-			},
-		},
-		"PassesWithPopulatedTaskOnly": {
-			expectError: false,
-			params: map[string]interface{}{
-				"task": "t",
-			},
-		},
-		"FailsForEmptyParameters": {
-			expectError: true,
-			params:      map[string]interface{}{},
-		},
-		"FailsForNilParameters": {
-			expectError: true,
-		},
-		"FailsForMissingTask": {
-			expectError: true,
-			params: map[string]interface{}{
-				"from_build_variant": "bv",
-			},
-		},
-		"FailsForNonStringTaskArgument": {
-			expectError: true,
-			params: map[string]interface{}{
-				"task":               0,
-				"from_build_variant": "bv",
-			},
-		},
-		"FailsForNonStringBuildVariantArgument": {
-			expectError: true,
-			params: map[string]interface{}{
-				"task":               "task",
-				"from_build_variant": 0,
-			},
-		},
-	} {
-		t.Run(testName, func(t *testing.T) {
-			cmd := model.PluginCommandConf{
-				Command: evergreen.S3PullCommandName,
-				Params:  testCase.params,
-			}
-			task, bv, err := parseS3PullParameters(cmd)
-			if testCase.expectError {
-				assert.Error(t, err)
-				assert.Empty(t, task)
-				assert.Empty(t, bv)
-			} else {
-				assert.NoError(t, err)
-				assert.Equal(t, testCase.params["task"], task)
-				if fromBV, ok := testCase.params["from_build_variant"]; ok {
-					assert.Equal(t, fromBV, bv)
-				} else {
-					assert.Empty(t, bv)
-				}
-			}
-		})
-	}
-}
-
 func TestValidateTaskGroupsInBV(t *testing.T) {
 	tests := map[string]struct {
 		project        model.Project
@@ -6209,7 +6033,7 @@ func TestValidateTaskGroupsInBV(t *testing.T) {
 	}
 	for testName, testCase := range tests {
 		t.Run(testName, func(t *testing.T) {
-			errs := ensureReferentialIntegrity(&testCase.project, nil, []string{}, []string{}, nil)
+			errs := ensureReferentialIntegrity(&testCase.project, nil, []string{}, []string{}, []string{}, []string{}, nil)
 			if testCase.expectErr {
 				assert.Equal(t, testCase.expectedErrMsg, errs[0].Message)
 			} else {
@@ -6217,810 +6041,6 @@ func TestValidateTaskGroupsInBV(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestBVsWithTasksThatCallCommand(t *testing.T) {
-	findCmdByDisplayName := func(cmds []model.PluginCommandConf, name string) *model.PluginCommandConf {
-		for _, cmd := range cmds {
-			if cmd.DisplayName == name {
-				return &cmd
-			}
-		}
-		return nil
-	}
-	cmd := evergreen.S3PullCommandName
-	t.Run("CommandsIn", func(t *testing.T) {
-		for testName, testCase := range map[string]struct {
-			project                    model.Project
-			expectedBVsToTasksWithCmds map[string]map[string][]model.PluginCommandConf
-		}{
-			"Task": {
-				project: model.Project{
-					Tasks: []model.ProjectTask{
-						{
-							Name: "setup",
-							Commands: []model.PluginCommandConf{
-								{
-									DisplayName: "push_dir",
-									Command:     evergreen.S3PushCommandName,
-								},
-							},
-						}, {
-							Name: "pull",
-							Commands: []model.PluginCommandConf{
-								{
-									DisplayName: "pull_dir",
-									Command:     evergreen.S3PullCommandName,
-								},
-							},
-						}, {
-							Name: "pull_twice",
-							Commands: []model.PluginCommandConf{
-								{
-									DisplayName: "pull_dir1",
-									Command:     evergreen.S3PullCommandName,
-								},
-								{
-									DisplayName: "pull_dir2",
-									Command:     evergreen.S3PullCommandName,
-								},
-							},
-						}, {
-							Name: "test",
-							Commands: []model.PluginCommandConf{
-								{
-									DisplayName: "pull_dir_for_test",
-									Command:     evergreen.S3PullCommandName,
-									Variants:    []string{"rhel", "debian"},
-								},
-								{
-									DisplayName: "generate_test",
-									Command:     evergreen.GenerateTasksCommandName,
-								},
-							},
-						}, {
-							Name: "lint",
-							Commands: []model.PluginCommandConf{
-								{
-									DisplayName: "generate_lint",
-									Command:     evergreen.GenerateTasksCommandName,
-								},
-							},
-						},
-					},
-					BuildVariants: []model.BuildVariant{
-						{
-							Name: "ubuntu",
-							Tasks: []model.BuildVariantTaskUnit{
-								{
-									Name:    "pull",
-									Variant: "ubuntu",
-								},
-							},
-						},
-						{
-							Name: "rhel",
-							Tasks: []model.BuildVariantTaskUnit{
-								{
-									Name:    "test",
-									Variant: "rhel",
-								},
-								{
-									Name:    "pull_twice",
-									Variant: "rhel",
-								},
-							},
-						}, {
-							Name: "archlinux",
-							Tasks: []model.BuildVariantTaskUnit{
-								{
-									Name:    "lint",
-									Variant: "archlinux",
-								},
-							},
-						}, {
-							Name: "debian",
-							Tasks: []model.BuildVariantTaskUnit{
-								{
-									Name:    "pull",
-									Variant: "debian",
-								},
-								{
-									Name:    "test",
-									Variant: "debian",
-								},
-								{
-									Name:    "lint",
-									Variant: "debian",
-								},
-							},
-						}, {
-							Name: "fedora",
-							Tasks: []model.BuildVariantTaskUnit{
-								{
-									Name:    "pull",
-									Variant: "fedora",
-								},
-								{
-									Name:    "test",
-									Variant: "fedora",
-								},
-							},
-						},
-					},
-				},
-				expectedBVsToTasksWithCmds: map[string]map[string][]model.PluginCommandConf{
-					"ubuntu": {
-						"pull": {
-							{
-								DisplayName: "pull_dir",
-								Command:     evergreen.S3PullCommandName,
-							},
-						},
-					},
-					"rhel": {
-						"test": {
-							{
-								DisplayName: "pull_dir_for_test",
-								Command:     evergreen.S3PullCommandName,
-							},
-						},
-						"pull_twice": {
-							{
-								DisplayName: "pull_dir1",
-								Command:     evergreen.S3PullCommandName,
-							},
-							{
-								DisplayName: "pull_dir2",
-								Command:     evergreen.S3PullCommandName,
-							},
-						},
-					},
-					"debian": {
-						"pull": {
-							{
-								DisplayName: "pull_dir",
-								Command:     evergreen.S3PullCommandName,
-							},
-						},
-						"test": {
-							{
-								DisplayName: "pull_dir_for_test",
-								Command:     evergreen.S3PullCommandName,
-							},
-						},
-					},
-					"fedora": {
-						"pull": {
-							{
-								DisplayName: "pull_dir",
-								Command:     evergreen.S3PullCommandName,
-							},
-						},
-					},
-				},
-			},
-			"TaskFunctionExpandsCommands": {
-				project: model.Project{
-					Functions: map[string]*model.YAMLCommandSet{
-						"pull_func": {
-							SingleCommand: &model.PluginCommandConf{
-								Command:     evergreen.S3PullCommandName,
-								DisplayName: "pull_dir",
-							},
-						},
-						"test_func": {
-							MultiCommand: []model.PluginCommandConf{
-								{
-									Command:     evergreen.S3PullCommandName,
-									DisplayName: "pull_dir_for_test",
-								}, {
-									Command:     evergreen.GenerateTasksCommandName,
-									DisplayName: "generate_test",
-								},
-							},
-						},
-					},
-					Tasks: []model.ProjectTask{
-						{
-							Name: "setup",
-							Commands: []model.PluginCommandConf{
-								{
-									Function: "pull_func",
-								},
-							},
-						}, {
-							Name: "test",
-							Commands: []model.PluginCommandConf{
-								{
-									Function: "test_func",
-								},
-							},
-						},
-					},
-					BuildVariants: []model.BuildVariant{
-						{
-							Name: "ubuntu",
-							Tasks: []model.BuildVariantTaskUnit{
-								{
-									Name:    "setup",
-									Variant: "ubuntu",
-								},
-							},
-						},
-						{
-							Name: "rhel",
-							Tasks: []model.BuildVariantTaskUnit{
-								{
-									Name:    "test",
-									Variant: "rhel",
-								},
-							},
-						},
-					},
-				},
-				expectedBVsToTasksWithCmds: map[string]map[string][]model.PluginCommandConf{
-					"ubuntu": {
-						"setup": {
-							{
-								DisplayName: "pull_dir",
-								Command:     evergreen.S3PullCommandName,
-							},
-						},
-					},
-					"rhel": {
-						"test": {
-							{
-								DisplayName: "pull_dir_for_test",
-								Command:     evergreen.S3PullCommandName,
-							},
-						},
-					},
-				},
-			},
-			"Pre": {
-				project: model.Project{
-					Pre: &model.YAMLCommandSet{
-						MultiCommand: []model.PluginCommandConf{
-							{
-								DisplayName: "pull_dir",
-								Command:     evergreen.S3PullCommandName,
-								Variants:    []string{"ubuntu", "rhel"},
-							},
-						},
-					},
-					Tasks: []model.ProjectTask{
-						{Name: "test"},
-					},
-					BuildVariants: []model.BuildVariant{
-						{
-							Name: "ubuntu",
-							Tasks: []model.BuildVariantTaskUnit{
-								{
-									Name:    "test",
-									Variant: "ubuntu",
-								},
-							},
-						},
-						{Name: "rhel",
-							Tasks: []model.BuildVariantTaskUnit{
-								{
-									Name:    "test",
-									Variant: "rhel",
-								},
-							},
-						}, {
-							Name: "archlinux",
-							Tasks: []model.BuildVariantTaskUnit{
-								{
-									Name:    "test",
-									Variant: "archlinux",
-								},
-							},
-						},
-					},
-				},
-				expectedBVsToTasksWithCmds: map[string]map[string][]model.PluginCommandConf{
-					"ubuntu": {
-						"test": {
-							{
-								DisplayName: "pull_dir",
-								Command:     evergreen.S3PullCommandName,
-							},
-						},
-					},
-					"rhel": {
-						"test": {
-							{
-								DisplayName: "pull_dir",
-								Command:     evergreen.S3PullCommandName,
-							},
-						},
-					},
-				},
-			},
-			"Post": {
-				project: model.Project{
-					Post: &model.YAMLCommandSet{
-						MultiCommand: []model.PluginCommandConf{
-							{
-								DisplayName: "pull_dir",
-								Command:     evergreen.S3PullCommandName,
-								Variants:    []string{"ubuntu", "rhel"},
-							},
-						},
-					},
-					Tasks: []model.ProjectTask{
-						{Name: "test"},
-					},
-					BuildVariants: []model.BuildVariant{
-						{
-							Name: "ubuntu",
-							Tasks: []model.BuildVariantTaskUnit{
-								{Name: "test", Variant: "ubuntu"},
-							},
-						},
-						{Name: "rhel",
-							Tasks: []model.BuildVariantTaskUnit{
-								{Name: "test", Variant: "rhel"},
-							},
-						}, {
-							Name: "archlinux",
-							Tasks: []model.BuildVariantTaskUnit{
-								{Name: "test", Variant: "archlinux"},
-							},
-						},
-					},
-				},
-				expectedBVsToTasksWithCmds: map[string]map[string][]model.PluginCommandConf{
-					"ubuntu": {
-						"test": {
-							{
-								DisplayName: "pull_dir",
-								Command:     evergreen.S3PullCommandName,
-							},
-						},
-					},
-					"rhel": {
-						"test": {
-							{
-								DisplayName: "pull_dir",
-								Command:     evergreen.S3PullCommandName,
-							},
-						},
-					},
-				},
-			},
-			"SetupGroupInTaskGroup": {
-				project: model.Project{
-					TaskGroups: []model.TaskGroup{
-						{
-							Name: "test_group",
-							SetupGroup: &model.YAMLCommandSet{
-								MultiCommand: []model.PluginCommandConf{
-									{
-										DisplayName: "pull_dir",
-										Command:     evergreen.S3PullCommandName,
-										Variants:    []string{"ubuntu", "rhel"},
-									},
-								},
-							},
-							Tasks: []string{"test"},
-						},
-					},
-					Tasks: []model.ProjectTask{
-						{Name: "test"},
-					},
-					BuildVariants: []model.BuildVariant{
-						{
-							Name: "ubuntu",
-							Tasks: []model.BuildVariantTaskUnit{
-								{
-									Name:    "test_group",
-									Variant: "ubuntu",
-									IsGroup: true,
-								},
-							},
-						},
-						{Name: "rhel",
-							Tasks: []model.BuildVariantTaskUnit{
-								{
-									Name:    "test_group",
-									Variant: "rhel",
-									IsGroup: true,
-								},
-							},
-						}, {
-							Name: "archlinux",
-							Tasks: []model.BuildVariantTaskUnit{
-								{
-									Name:    "test_group",
-									Variant: "archlinux",
-									IsGroup: true,
-								},
-							},
-						},
-					},
-				},
-				expectedBVsToTasksWithCmds: map[string]map[string][]model.PluginCommandConf{
-					"ubuntu": {
-						"test": {
-							{
-								DisplayName: "pull_dir",
-								Command:     evergreen.S3PullCommandName,
-							},
-						},
-					},
-					"rhel": {
-						"test": {
-							{
-								DisplayName: "pull_dir",
-								Command:     evergreen.S3PullCommandName,
-							},
-						},
-					},
-				},
-			},
-			"SetupTaskInTaskGroup": {
-				project: model.Project{
-					TaskGroups: []model.TaskGroup{
-						{
-							Name: "test_group",
-							SetupTask: &model.YAMLCommandSet{
-								MultiCommand: []model.PluginCommandConf{
-									{
-										DisplayName: "pull_dir",
-										Command:     evergreen.S3PullCommandName,
-										Variants:    []string{"ubuntu", "rhel"},
-									},
-								},
-							},
-							Tasks: []string{"test"},
-						},
-					},
-					Tasks: []model.ProjectTask{
-						{Name: "test"},
-					},
-					BuildVariants: []model.BuildVariant{
-						{
-							Name: "ubuntu",
-							Tasks: []model.BuildVariantTaskUnit{
-								{
-									Name:    "test_group",
-									Variant: "ubuntu",
-									IsGroup: true,
-								},
-							},
-						},
-						{Name: "rhel",
-							Tasks: []model.BuildVariantTaskUnit{
-								{
-									Name:    "test_group",
-									Variant: "rhel",
-									IsGroup: true,
-								},
-							},
-						}, {
-							Name: "archlinux",
-							Tasks: []model.BuildVariantTaskUnit{
-								{
-									Name:    "test_group",
-									Variant: "archlinux",
-									IsGroup: true,
-								},
-							},
-						},
-					},
-				},
-				expectedBVsToTasksWithCmds: map[string]map[string][]model.PluginCommandConf{
-					"ubuntu": {
-						"test": {
-							{
-								DisplayName: "pull_dir",
-								Command:     evergreen.S3PullCommandName,
-							},
-						},
-					},
-					"rhel": {
-						"test": {
-							{
-								DisplayName: "pull_dir",
-								Command:     evergreen.S3PullCommandName,
-							},
-						},
-					},
-				},
-			},
-			"TasksInTaskGroup": {
-				project: model.Project{
-					TaskGroups: []model.TaskGroup{
-						{
-							Name:  "test_group",
-							Tasks: []string{"test"},
-						},
-					},
-					Tasks: []model.ProjectTask{
-						{
-							Name: "test",
-							Commands: []model.PluginCommandConf{
-								{
-									Command:     evergreen.S3PullCommandName,
-									DisplayName: "pull_dir",
-									Variants:    []string{"ubuntu", "rhel"},
-								},
-							},
-						},
-					},
-					BuildVariants: []model.BuildVariant{
-						{
-							Name: "ubuntu",
-							Tasks: []model.BuildVariantTaskUnit{
-								{
-									Name:    "test_group",
-									Variant: "ubuntu",
-									IsGroup: true,
-								},
-							},
-						},
-						{Name: "rhel",
-							Tasks: []model.BuildVariantTaskUnit{
-								{
-									Name:    "test_group",
-									Variant: "rhel",
-									IsGroup: true,
-								},
-							},
-						}, {
-							Name: "archlinux",
-							Tasks: []model.BuildVariantTaskUnit{
-								{
-									Name:    "test_group",
-									Variant: "archlinux",
-									IsGroup: true,
-								},
-							},
-						},
-					},
-				},
-				expectedBVsToTasksWithCmds: map[string]map[string][]model.PluginCommandConf{
-					"ubuntu": {
-						"test": {
-							{
-								DisplayName: "pull_dir",
-								Command:     evergreen.S3PullCommandName,
-							},
-						},
-					},
-					"rhel": {
-						"test": {
-							{
-								DisplayName: "pull_dir",
-								Command:     evergreen.S3PullCommandName,
-							},
-						},
-					},
-				},
-			},
-			"TeardownGroupInTaskGroup": {
-				project: model.Project{
-					TaskGroups: []model.TaskGroup{
-						{
-							Name: "test_group",
-							TeardownGroup: &model.YAMLCommandSet{
-								MultiCommand: []model.PluginCommandConf{
-									{
-										DisplayName: "pull_dir",
-										Command:     evergreen.S3PullCommandName,
-										Variants:    []string{"ubuntu", "rhel"},
-									},
-								},
-							},
-							Tasks: []string{"test"},
-						},
-					},
-					Tasks: []model.ProjectTask{
-						{Name: "test"},
-					},
-					BuildVariants: []model.BuildVariant{
-						{
-							Name: "ubuntu",
-							Tasks: []model.BuildVariantTaskUnit{
-								{
-									Name:    "test_group",
-									Variant: "ubuntu",
-									IsGroup: true,
-								},
-							},
-						},
-						{Name: "rhel",
-							Tasks: []model.BuildVariantTaskUnit{
-								{
-									Name:    "test_group",
-									Variant: "rhel",
-									IsGroup: true,
-								},
-							},
-						}, {
-							Name: "archlinux",
-							Tasks: []model.BuildVariantTaskUnit{
-								{
-									Name:    "test_group",
-									Variant: "archlinux",
-									IsGroup: true,
-								},
-							},
-						},
-					},
-				},
-				expectedBVsToTasksWithCmds: map[string]map[string][]model.PluginCommandConf{
-					"ubuntu": {
-						"test": {
-							{
-								DisplayName: "pull_dir",
-								Command:     evergreen.S3PullCommandName,
-							},
-						},
-					},
-					"rhel": {
-						"test": {
-							{
-								DisplayName: "pull_dir",
-								Command:     evergreen.S3PullCommandName,
-							},
-						},
-					},
-				},
-			},
-			"TeardownTaskInTaskGroup": {
-				project: model.Project{
-					TaskGroups: []model.TaskGroup{
-						{
-							Name: "test_group",
-							TeardownTask: &model.YAMLCommandSet{
-								MultiCommand: []model.PluginCommandConf{
-									{
-										DisplayName: "pull_dir",
-										Command:     evergreen.S3PullCommandName,
-										Variants:    []string{"ubuntu", "rhel"},
-									},
-								},
-							},
-							Tasks: []string{"test"},
-						},
-					},
-					Tasks: []model.ProjectTask{
-						{Name: "test"},
-					},
-					BuildVariants: []model.BuildVariant{
-						{
-							Name: "ubuntu",
-							Tasks: []model.BuildVariantTaskUnit{
-								{
-									Name:    "test_group",
-									Variant: "ubuntu",
-									IsGroup: true,
-								},
-							},
-						}, {
-							Name: "rhel",
-							Tasks: []model.BuildVariantTaskUnit{
-								{
-									Name:    "test_group",
-									Variant: "rhel",
-									IsGroup: true,
-								},
-							},
-						}, {
-							Name: "archlinux",
-							Tasks: []model.BuildVariantTaskUnit{
-								{
-									Name:    "test_group",
-									Variant: "archlinux",
-									IsGroup: true,
-								},
-							},
-						},
-					},
-				},
-				expectedBVsToTasksWithCmds: map[string]map[string][]model.PluginCommandConf{
-					"ubuntu": {
-						"test": {
-							{
-								DisplayName: "pull_dir",
-								Command:     evergreen.S3PullCommandName,
-							},
-						},
-					},
-					"rhel": {
-						"test": {
-							{
-								DisplayName: "pull_dir",
-								Command:     evergreen.S3PullCommandName,
-							},
-						},
-					},
-				},
-			},
-		} {
-			t.Run(testName, func(t *testing.T) {
-				bvsToTasksWithCmds, _, err := bvsWithTasksThatCallCommand(&testCase.project, cmd)
-				require.NoError(t, err)
-				assert.Len(t, bvsToTasksWithCmds, len(testCase.expectedBVsToTasksWithCmds))
-				for bv, expectedTasks := range testCase.expectedBVsToTasksWithCmds {
-					assert.Contains(t, bvsToTasksWithCmds, bv)
-					tasks := bvsToTasksWithCmds[bv]
-					assert.Len(t, tasks, len(expectedTasks))
-					for taskName, expectedCmds := range expectedTasks {
-						assert.Contains(t, tasks, taskName)
-						cmds := tasks[taskName]
-						assert.Len(t, cmds, len(expectedCmds))
-						for _, expectedCmd := range expectedCmds {
-							cmd := findCmdByDisplayName(cmds, expectedCmd.DisplayName)
-							require.NotNil(t, cmd)
-							assert.Equal(t, expectedCmd.Command, cmd.Command)
-						}
-					}
-				}
-			})
-		}
-	})
-
-	t.Run("MissingDefinition", func(t *testing.T) {
-		for testName, project := range map[string]model.Project{
-			"ForTaskReferencedInBV": {
-				BuildVariants: []model.BuildVariant{
-					{
-						Name: "ubuntu",
-						Tasks: []model.BuildVariantTaskUnit{
-							{
-								Name:    "test",
-								Variant: "ubuntu",
-							},
-						},
-					},
-				},
-			},
-			"ForTaskGroupReferencedInBV": {
-				BuildVariants: []model.BuildVariant{
-					{
-						Name: "ubuntu",
-						Tasks: []model.BuildVariantTaskUnit{
-							{
-								Name:    "test_group",
-								Variant: "ubuntu",
-								IsGroup: true,
-							},
-						},
-					},
-				},
-			},
-			"ForTaskReferencedInTaskGroupInBV": {
-				TaskGroups: []model.TaskGroup{
-					{
-						Name:  "test_group",
-						Tasks: []string{"test"},
-					},
-				},
-				BuildVariants: []model.BuildVariant{
-					{
-						Name: "ubuntu",
-						Tasks: []model.BuildVariantTaskUnit{
-							{
-								Name:    "test_group",
-								Variant: "ubuntu",
-								IsGroup: true,
-							},
-						},
-					},
-				},
-			},
-		} {
-			t.Run(testName, func(t *testing.T) {
-				_, _, err := bvsWithTasksThatCallCommand(&project, cmd)
-				assert.Error(t, err)
-			})
-		}
-	})
 }
 
 func TestValidationErrorsAtLevel(t *testing.T) {

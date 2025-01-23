@@ -96,7 +96,7 @@ func (tgh *testGetHandler) Parse(ctx context.Context, r *http.Request) error {
 				}
 			}
 		}
-		taskByExecution, err := task.FindOneIdAndExecution(tgh.taskID, execution)
+		taskByExecution, err := task.FindOneIdAndExecution(ctx, tgh.taskID, execution)
 		if err != nil {
 			return gimlet.ErrorResponse{
 				StatusCode: http.StatusNotFound,

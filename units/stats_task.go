@@ -73,7 +73,7 @@ func (j *taskStatsCollector) Run(ctx context.Context) {
 		j.logger = logging.MakeGrip(grip.GetSender())
 	}
 
-	tasks, err := task.GetRecentTasks(taskStatsCollectorInterval)
+	tasks, err := task.GetRecentTasks(ctx, taskStatsCollectorInterval)
 	if err != nil {
 		j.AddError(err)
 		return

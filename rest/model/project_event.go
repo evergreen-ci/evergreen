@@ -142,6 +142,7 @@ func DbProjectSettingsToRestModel(settings model.ProjectSettings) (APIProjectSet
 func (p *APIProjectVars) ToService() *model.ProjectVars {
 	privateVars := map[string]bool{}
 	adminOnlyVars := map[string]bool{}
+	vars := map[string]string{}
 	// ignore false inputs
 	for key, val := range p.PrivateVars {
 		if val {
@@ -153,6 +154,9 @@ func (p *APIProjectVars) ToService() *model.ProjectVars {
 			adminOnlyVars[key] = val
 		}
 	}
+	for key, val := range p.Vars {
+		vars[key] = val
+	}
 
 	// handle UI list
 	for _, each := range p.PrivateVarsList {
@@ -162,7 +166,7 @@ func (p *APIProjectVars) ToService() *model.ProjectVars {
 		adminOnlyVars[each] = true
 	}
 	return &model.ProjectVars{
-		Vars:          p.Vars,
+		Vars:          vars,
 		AdminOnlyVars: adminOnlyVars,
 		PrivateVars:   privateVars,
 	}

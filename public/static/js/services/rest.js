@@ -295,7 +295,6 @@ mciServices.rest.factory('mciSpawnRestService', ['mciBaseRestService', function 
             data: data
         };
         config.data['task_id'] = spawnInfo.task_id;
-        config.data['task_sync'] = spawnInfo.task_sync;
         config.data['setup_script'] = spawnInfo.setup_script;
         config.data['use_project_setup_script'] = spawnInfo.use_project_setup_script;
         config.data['distro'] = spawnInfo.distroId;

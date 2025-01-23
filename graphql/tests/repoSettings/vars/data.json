@@ -35,10 +35,6 @@
       "admins": ["annie.black"],
       "spawn_host_script_path": "",
       "tracks_push_events": true,
-      "task_sync": {
-        "config_enabled": false,
-        "patch_enabled": true
-      },
       "perf_enabled": true,
       "build_baron_settings": {
         "ticket_create_project": "EVG",
@@ -87,8 +83,47 @@
   "project_vars": [
     {
       "_id": "sandbox_repo_id",
-      "vars": { "hello": "world", "foo": "bar" },
-      "private_vars": { "hello": true, "foo": false }
+      "private_vars": { "hello": true, "foo": false },
+      "parameters": [
+        {
+          "name": "hello",
+          "parameter_name": "/evg-test/vars/sandbox_repo_id/hello"
+        },
+        {
+          "name": "foo",
+          "parameter_name": "/evg-test/vars/sandbox_repo_id/foo"
+        }
+      ]
+    }
+  ],
+  "fake_parameters": [
+      {
+        "_id": "/evg-test/vars/sandbox_repo_id/hello",
+        "value": "world",
+        "last_updated": {
+          "$date": "2025-01-15T00:00:00.000Z"
+        }
+      },
+      {
+        "_id": "/evg-test/vars/sandbox_repo_id/foo",
+        "value": "bar",
+        "last_updated": {
+          "$date": "2025-01-15T00:00:00.000Z"
+        }
+      }
+  ],
+  "parameter_records": [
+    {
+      "_id": "/evg-test/vars/sandbox_repo_id/hello",
+      "last_updated": {
+        "$date": "2025-01-15T00:00:00.000Z"
+      }
+    },
+    {
+      "_id": "/evg-test/vars/sandbox_repo_id/foo",
+      "last_updated": {
+        "$date": "2025-01-15T00:00:00.000Z"
+      }
     }
   ]
 }

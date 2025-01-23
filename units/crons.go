@@ -1101,7 +1101,7 @@ func podAllocatorJobs(ctx context.Context, _ evergreen.Environment, ts time.Time
 		return nil, nil
 	}
 
-	if err := model.DisableStaleContainerTasks(evergreen.StaleContainerTaskMonitor); err != nil {
+	if err := model.DisableStaleContainerTasks(ctx, evergreen.StaleContainerTaskMonitor); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "could not disable stale container tasks",
 			"context": "pod allocation",
@@ -1210,12 +1210,6 @@ func PopulateUnexpirableSpawnHostStatsJob() amboy.QueueOperation {
 
 func sleepSchedulerJobs(ctx context.Context, env evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
 	return []amboy.Job{NewSleepSchedulerJob(env, ts.Format(TSFormat))}, nil
-}
-
-func populateParameterStoreSyncJobs() amboy.QueueOperation {
-	return func(ctx context.Context, queue amboy.Queue) error {
-		return amboy.EnqueueUniqueJob(ctx, queue, NewParameterStoreSyncJob(utility.RoundPartOfMinute(0).Format(TSFormat)))
-	}
 }
 
 func populateQueueGroup(ctx context.Context, env evergreen.Environment, queueGroupName string, factory cronJobFactory, ts time.Time) error {

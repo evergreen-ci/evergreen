@@ -310,7 +310,7 @@ func getAPITaskFromTask(ctx context.Context, url string, task task.Task) (*restM
 
 // getTask returns the task with the given id and execution number
 func getTask(ctx context.Context, taskID string, execution *int, apiURL string) (*restModel.APITask, error) {
-	dbTask, err := task.FindOneIdAndExecutionWithDisplayStatus(taskID, execution)
+	dbTask, err := task.FindOneIdAndExecutionWithDisplayStatus(ctx, taskID, execution)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
@@ -869,12 +869,6 @@ func getHostRequestOptions(ctx context.Context, usr *user.DBUser, spawnHostInput
 		}
 		options.UseProjectSetupScript = *spawnHostInput.UseProjectSetupScript
 	}
-	if utility.FromBoolPtr(spawnHostInput.TaskSync) {
-		if t == nil {
-			return nil, ResourceNotFound.Send(ctx, "A valid task id must be supplied when taskSync is set to true")
-		}
-		options.TaskSync = *spawnHostInput.TaskSync
-	}
 
 	if utility.FromBoolPtr(spawnHostInput.SpawnHostsStartedByTask) {
 		if t == nil {
@@ -907,7 +901,7 @@ func getProjectMetadata(ctx context.Context, projectId *string, patchId *string)
 //////////////////////////////////
 
 func getTaskLogs(ctx context.Context, obj *TaskLogs, logType taskoutput.TaskLogType) ([]*apimodels.LogMessage, error) {
-	dbTask, err := task.FindOneIdAndExecution(obj.TaskID, obj.Execution)
+	dbTask, err := task.FindOneIdAndExecution(ctx, obj.TaskID, obj.Execution)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Finding task '%s': %s", obj.TaskID, err.Error()))
 	}
@@ -1008,7 +1002,7 @@ func getBaseTaskTestResultsOptions(ctx context.Context, dbTask *task.Task) ([]te
 	}
 
 	if baseTask != nil && baseTask.ResultsService == dbTask.ResultsService {
-		taskOpts, err = baseTask.CreateTestResultsTaskOptions()
+		taskOpts, err = baseTask.CreateTestResultsTaskOptions(ctx)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error creating test results task options for base task '%s': %s", baseTask.Id, err))
 		}

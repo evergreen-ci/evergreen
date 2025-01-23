@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/build"
-	"github.com/evergreen-ci/evergreen/model/commitqueue"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -220,10 +219,10 @@ func setVersionStatus(versionId, newStatus string) error {
 
 // GetTimeSpent returns the total time_taken and makespan of a version for
 // each task that has finished running
-func (v *Version) GetTimeSpent() (time.Duration, time.Duration, error) {
+func (v *Version) GetTimeSpent(ctx context.Context) (time.Duration, time.Duration, error) {
 	query := db.Query(task.ByVersion(v.Id)).WithFields(
 		task.TimeTakenKey, task.StartTimeKey, task.FinishTimeKey, task.DisplayOnlyKey, task.ExecutionKey)
-	tasks, err := task.FindAllFirstExecution(query)
+	tasks, err := task.FindAllFirstExecution(ctx, query)
 	if err != nil {
 		return 0, 0, errors.Wrapf(err, "getting tasks for version '%s'", v.Id)
 	}
@@ -276,15 +275,6 @@ func (v *Version) UpdatePreGenerationProjectStorageMethod(method evergreen.Parse
 	}
 	v.PreGenerationProjectStorageMethod = method
 	return nil
-}
-
-func GetVersionForCommitQueueItem(cq *commitqueue.CommitQueue, issue string) (*Version, error) {
-	spot := cq.FindItem(issue)
-	if spot == -1 {
-		return nil, nil
-	}
-
-	return VersionFindOneId(cq.Queue[spot].Version)
 }
 
 // VersionBuildStatus stores metadata relating to each build

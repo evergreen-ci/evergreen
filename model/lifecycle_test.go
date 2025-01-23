@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
-	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -205,7 +204,7 @@ func TestBuildSetPriority(t *testing.T) {
 
 			So(SetBuildPriority(ctx, b.Id, 42, ""), ShouldBeNil)
 
-			tasks, err := task.Find(task.ByBuildId(b.Id))
+			tasks, err := task.Find(ctx, task.ByBuildId(b.Id))
 			So(err, ShouldBeNil)
 			So(len(tasks), ShouldEqual, 3)
 			So(tasks[0].Priority, ShouldEqual, 42)
@@ -413,6 +412,9 @@ func TestBuildRestart(t *testing.T) {
 }
 
 func TestBuildMarkAborted(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	Convey("With a build", t, func() {
 
 		require.NoError(t, db.ClearCollections(build.Collection, task.Collection, VersionCollection))
@@ -441,7 +443,7 @@ func TestBuildMarkAborted(t *testing.T) {
 
 			Convey("it should be deactivated", func() {
 				var err error
-				So(AbortBuild(b.Id, ""), ShouldBeNil)
+				So(AbortBuild(ctx, b.Id, ""), ShouldBeNil)
 				b, err = build.FindOne(build.ById(b.Id))
 				So(err, ShouldBeNil)
 				So(b.Activated, ShouldBeFalse)
@@ -484,9 +486,9 @@ func TestBuildMarkAborted(t *testing.T) {
 				// aborting the build should mark only the two abortable tasks
 				// with the correct build id as aborted
 
-				So(AbortBuild(b.Id, ""), ShouldBeNil)
+				So(AbortBuild(ctx, b.Id, ""), ShouldBeNil)
 
-				abortedTasks, err := task.Find(task.ByAborted(true))
+				abortedTasks, err := task.Find(ctx, task.ByAborted(true))
 				So(err, ShouldBeNil)
 				So(len(abortedTasks), ShouldEqual, 2)
 				So(taskIdInSlice(abortedTasks, abortableOne.Id), ShouldBeTrue)
@@ -639,7 +641,7 @@ func TestBuildSetActivated(t *testing.T) {
 				So(b.ActivatedBy, ShouldEqual, evergreen.GenerateTasksActivator)
 
 				// only the matching task should have been updated that has not been set by a user
-				deactivatedTasks, err := task.Find(task.ByActivation(false))
+				deactivatedTasks, err := task.Find(ctx, task.ByActivation(false))
 				So(err, ShouldBeNil)
 				So(len(deactivatedTasks), ShouldEqual, 3)
 				So(deactivatedTasks[0].Id, ShouldEqual, matching.Id)
@@ -651,7 +653,7 @@ func TestBuildSetActivated(t *testing.T) {
 				So(differentUserTask.ActivatedBy, ShouldEqual, user)
 
 				So(ActivateBuildsAndTasks(ctx, []string{b.Id}, true, ""), ShouldBeNil)
-				activatedTasks, err := task.Find(task.ByActivation(true))
+				activatedTasks, err := task.Find(ctx, task.ByActivation(true))
 				So(err, ShouldBeNil)
 				So(len(activatedTasks), ShouldEqual, 5)
 			})
@@ -1295,10 +1297,14 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			// check the display tasks too
 			So(len(tasks), ShouldEqual, 6)
 			So(tasks[0].DisplayName, ShouldEqual, buildVar1.DisplayTasks[0].Name)
+			So(tasks[0].Status, ShouldEqual, evergreen.TaskUndispatched)
+			So(tasks[0].DisplayStatusCache, ShouldEqual, evergreen.TaskUnscheduled)
 			So(tasks[0].DisplayOnly, ShouldBeTrue)
 			So(len(tasks[0].ExecutionTasks), ShouldEqual, 2)
 			So(tasks[1].DisplayName, ShouldEqual, buildVar1.DisplayTasks[1].Name)
 			So(tasks[1].DisplayOnly, ShouldBeTrue)
+			So(tasks[1].Status, ShouldEqual, evergreen.TaskUndispatched)
+			So(tasks[1].DisplayStatusCache, ShouldEqual, evergreen.TaskUnscheduled)
 		})
 		Convey("all of the tasks created should have the dependencies"+
 			"and priorities specified in the project", func() {
@@ -1328,7 +1334,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(tasks1.InsertUnordered(context.Background()), ShouldBeNil)
 			So(tasks2.InsertUnordered(context.Background()), ShouldBeNil)
 			So(tasks3.InsertUnordered(context.Background()), ShouldBeNil)
-			dbTasks, err := task.FindWithSort(bson.M{}, []string{task.DisplayNameKey, task.BuildVariantKey})
+			dbTasks, err := task.FindWithSort(ctx, bson.M{}, []string{task.DisplayNameKey, task.BuildVariantKey})
 			So(err, ShouldBeNil)
 			So(len(dbTasks), ShouldEqual, 9)
 
@@ -1401,23 +1407,13 @@ func TestCreateBuildFromVersion(t *testing.T) {
 
 		Convey("all of the tasks' essential fields should be set correctly", func() {
 			creationInfo := TaskCreationInfo{
-				Project:          project,
-				ProjectRef:       pref,
-				Version:          v,
-				TaskIDs:          table,
-				BuildVariantName: buildVar1.Name,
-				ActivateBuild:    false,
-				TaskNames:        []string{},
-				SyncAtEndOpts: patch.SyncAtEndOptions{
-					BuildVariants: []string{buildVar1.Name},
-					Tasks:         []string{"taskA", "taskB"},
-					VariantsTasks: []patch.VariantTasks{
-						{
-							Variant: buildVar1.Name,
-							Tasks:   []string{"taskA", "taskB"},
-						},
-					},
-				},
+				Project:                             project,
+				ProjectRef:                          pref,
+				Version:                             v,
+				TaskIDs:                             table,
+				BuildVariantName:                    buildVar1.Name,
+				ActivateBuild:                       false,
+				TaskNames:                           []string{},
 				TaskCreateTime:                      time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
 				ActivatedTasksAreEssentialToSucceed: true,
 			}
@@ -1440,6 +1436,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(tasks[2].BuildVariant, ShouldEqual, buildVar1.Name)
 			So(tasks[2].CreateTime.Equal(creationInfo.TaskCreateTime), ShouldBeTrue)
 			So(tasks[2].Status, ShouldEqual, evergreen.TaskUndispatched)
+			So(tasks[2].DisplayStatusCache, ShouldEqual, evergreen.TaskUnscheduled)
 			So(tasks[2].Activated, ShouldBeFalse)
 			So(tasks[2].ActivatedTime.Equal(utility.ZeroTime), ShouldBeTrue)
 			So(tasks[2].RevisionOrderNumber, ShouldEqual, build.RevisionOrderNumber)
@@ -1447,7 +1444,6 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(tasks[2].Version, ShouldEqual, v.Id)
 			So(tasks[2].Revision, ShouldEqual, v.Revision)
 			So(tasks[2].Project, ShouldEqual, project.Identifier)
-			So(tasks[2].CanSync, ShouldBeTrue)
 
 			So(tasks[3].Id, ShouldNotEqual, "")
 			So(tasks[3].Secret, ShouldNotEqual, "")
@@ -1464,7 +1460,6 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(tasks[3].Version, ShouldEqual, v.Id)
 			So(tasks[3].Revision, ShouldEqual, v.Revision)
 			So(tasks[3].Project, ShouldEqual, project.Identifier)
-			So(tasks[3].CanSync, ShouldBeTrue)
 
 			So(tasks[4].Id, ShouldNotEqual, "")
 			So(tasks[4].Secret, ShouldNotEqual, "")
@@ -1481,7 +1476,6 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(tasks[4].Version, ShouldEqual, v.Id)
 			So(tasks[4].Revision, ShouldEqual, v.Revision)
 			So(tasks[4].Project, ShouldEqual, project.Identifier)
-			So(tasks[4].CanSync, ShouldBeFalse)
 
 			So(tasks[5].Id, ShouldNotEqual, "")
 			So(tasks[5].Secret, ShouldNotEqual, "")
@@ -1498,7 +1492,6 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(tasks[5].Version, ShouldEqual, v.Id)
 			So(tasks[5].Revision, ShouldEqual, v.Revision)
 			So(tasks[5].Project, ShouldEqual, project.Identifier)
-			So(tasks[5].CanSync, ShouldBeFalse)
 		})
 
 		Convey("if the activated flag is set, the build and all its tasks should be activated",
@@ -2157,7 +2150,7 @@ func TestVersionRestart(t *testing.T) {
 	taskIds := []string{"task1", "task3", "task4"}
 	buildIds := []string{"build1", "build2"}
 	assert.NoError(RestartVersion(ctx, "version", taskIds, false, "test"))
-	tasks, err := task.Find(task.ByIds(taskIds))
+	tasks, err := task.Find(ctx, task.ByIds(taskIds))
 	assert.NoError(err)
 	assert.NotEmpty(tasks)
 	builds, err := build.Find(build.ByIds(buildIds))
@@ -2254,7 +2247,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 	// test that restarting a task correctly resets the task and archives it
 	assert.NoError(resetTaskData())
 	assert.NoError(resetTask(ctx, "displayTask1", "caller"))
-	archivedTasks, err := task.FindOldWithDisplayTasks(nil)
+	archivedTasks, err := task.FindOldWithDisplayTasks(ctx, nil)
 	assert.NoError(err)
 	assert.Len(archivedTasks, 3)
 	foundDisplayTask := false
@@ -2731,97 +2724,6 @@ func TestMarkAsHostDispatched(t *testing.T) {
 
 }
 
-func TestShouldSyncTask(t *testing.T) {
-	for testName, testCase := range map[string]struct {
-		syncVTs    []patch.VariantTasks
-		bv         string
-		task       string
-		shouldSync bool
-	}{
-		"MatchesTaskInBV": {
-			syncVTs: []patch.VariantTasks{
-				{
-					Variant: "bv1",
-					Tasks:   []string{"t1"},
-				},
-			},
-			bv:         "bv1",
-			task:       "t1",
-			shouldSync: true,
-		},
-		"DoesNotMatchDisplayTaskName": {
-			syncVTs: []patch.VariantTasks{
-				{
-					Variant: "bv1",
-					DisplayTasks: []patch.DisplayTask{
-						{
-							Name: "dt1",
-						},
-					},
-				},
-			},
-			bv:         "bv1",
-			task:       "dt1",
-			shouldSync: false,
-		},
-		"MatchesExecutionTaskWithinDisplayTask": {
-			syncVTs: []patch.VariantTasks{
-				{
-					Variant: "bv1",
-					DisplayTasks: []patch.DisplayTask{
-						{
-							Name:      "dt1",
-							ExecTasks: []string{"et1"},
-						},
-					},
-				},
-			},
-			bv:         "bv1",
-			task:       "et1",
-			shouldSync: true,
-		},
-		"NoMatchForTask": {
-			syncVTs: []patch.VariantTasks{
-				{
-					Variant: "bv1",
-					Tasks:   []string{"t1 ", "et1"},
-					DisplayTasks: []patch.DisplayTask{
-						{
-							Name:      "dt1",
-							ExecTasks: []string{"et1"},
-						},
-					},
-				},
-			},
-			bv:         "bv1",
-			task:       "t2",
-			shouldSync: false,
-		},
-		"NoMatchForBuildVariant": {
-			syncVTs: []patch.VariantTasks{
-				{
-					Variant: "bv1",
-					Tasks:   []string{"t1 ", "et1"},
-					DisplayTasks: []patch.DisplayTask{
-						{
-							Name:      "dt1",
-							ExecTasks: []string{"et1"},
-						},
-					},
-				},
-			},
-			bv:         "bv1",
-			task:       "t2",
-			shouldSync: false,
-		},
-	} {
-		t.Run(testName, func(t *testing.T) {
-			shouldSync := shouldSyncTask(testCase.syncVTs, testCase.bv, testCase.task)
-			assert.Equal(t, testCase.shouldSync, shouldSync)
-		})
-	}
-}
-
 func TestSetTaskActivationForBuildsActivated(t *testing.T) {
 	require.NoError(t, db.ClearCollections(build.Collection, task.Collection, VersionCollection))
 
@@ -3021,7 +2923,6 @@ func TestAddNewTasks(t *testing.T) {
 				Version:        v,
 				Pairs:          tasksToAdd,
 				ActivationInfo: testCase.activationInfo,
-				SyncAtEndOpts:  patch.SyncAtEndOptions{},
 				GeneratedBy:    "",
 			}
 			_, err := addNewTasksToExistingBuilds(context.Background(), creationInfo, []build.Build{b}, "")
@@ -3087,14 +2988,14 @@ func TestRecomputeNumDependents(t *testing.T) {
 	assert.NoError(t, t5.Insert())
 
 	assert.NoError(t, RecomputeNumDependents(ctx, t3))
-	tasks, err := task.Find(task.ByVersion(t1.Version))
+	tasks, err := task.Find(ctx, task.ByVersion(t1.Version))
 	assert.NoError(t, err)
 	for i, dbTask := range tasks {
 		assert.Equal(t, i, dbTask.NumDependents)
 	}
 
 	assert.NoError(t, RecomputeNumDependents(ctx, t5))
-	tasks, err = task.Find(task.ByVersion(t1.Version))
+	tasks, err = task.Find(ctx, task.ByVersion(t1.Version))
 	assert.NoError(t, err)
 	for i, dbTask := range tasks {
 		assert.Equal(t, i, dbTask.NumDependents)
@@ -3131,7 +3032,7 @@ func TestRecomputeNumDependents(t *testing.T) {
 	assert.NoError(t, t9.Insert())
 
 	assert.NoError(t, RecomputeNumDependents(ctx, t8))
-	tasks, err = task.Find(task.ByVersion(t6.Version))
+	tasks, err = task.Find(ctx, task.ByVersion(t6.Version))
 	assert.NoError(t, err)
 	expected := map[string]int{
 		"6": 0,

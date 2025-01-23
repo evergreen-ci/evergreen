@@ -127,8 +127,6 @@ type BuildVariantTaskUnit struct {
 	RunOn    []string `yaml:"run_on,omitempty" bson:"run_on"`
 	Stepback *bool    `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 
-	CommitQueueMerge bool `yaml:"commit_queue_merge,omitempty" bson:"commit_queue_merge"`
-
 	// Use a *int for 2 possible states
 	// nil - not overriding the project setting
 	// non-nil - overriding the project setting with this BatchTime
@@ -1624,7 +1622,6 @@ func (p *Project) tasksFromGroup(bvTaskGroup BuildVariantTaskUnit) []BuildVarian
 			RunOn:             bvTaskGroup.RunOn,
 			Stepback:          bvTaskGroup.Stepback,
 			Activate:          bvTaskGroup.Activate,
-			CommitQueueMerge:  bvTaskGroup.CommitQueueMerge,
 		}
 		// Default to project task settings when unspecified
 		bvt.Populate(taskMap[t], *bv)
@@ -2056,38 +2053,6 @@ func (p *Project) VariantTasksForSelectors(definitions []patch.PatchTriggerDefin
 	}))
 
 	return pairs.TVPairsToVariantTasks(), nil
-}
-
-// CommandsRunOnTV returns the list of matching commands that match the given
-// command name on the given task in a build variant.
-func (p *Project) CommandsRunOnTV(tv TVPair, cmd string) ([]PluginCommandConf, error) {
-	task := p.FindProjectTask(tv.TaskName)
-	if task == nil {
-		return nil, errors.Errorf("definition of task '%s' not found", tv.TaskName)
-	}
-	return p.CommandsRunOnBV(task.Commands, cmd, tv.Variant), nil
-}
-
-// CommandsRunOnBV returns the list of matching commands from cmds that will run
-// the named command on the build variant.
-func (p *Project) CommandsRunOnBV(cmds []PluginCommandConf, cmd, bv string) []PluginCommandConf {
-	var matchingCmds []PluginCommandConf
-	for _, c := range cmds {
-		if c.Function != "" {
-			f, ok := p.Functions[c.Function]
-			if !ok || f == nil {
-				continue
-			}
-			for _, funcCmd := range f.List() {
-				if funcCmd.Command == cmd && funcCmd.RunOnVariant(bv) {
-					matchingCmds = append(matchingCmds, funcCmd)
-				}
-			}
-		} else if c.Command == cmd && c.RunOnVariant(bv) {
-			matchingCmds = append(matchingCmds, c)
-		}
-	}
-	return matchingCmds
 }
 
 func (p *Project) GetDisplayTask(variant, name string) *patch.DisplayTask {

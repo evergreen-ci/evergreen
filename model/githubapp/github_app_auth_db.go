@@ -25,7 +25,6 @@ const (
 var (
 	GhAuthIdKey                  = bsonutil.MustHaveTag(GithubAppAuth{}, "Id")
 	GhAuthAppIdKey               = bsonutil.MustHaveTag(GithubAppAuth{}, "AppID")
-	GhAuthPrivateKeyKey          = bsonutil.MustHaveTag(GithubAppAuth{}, "PrivateKey")
 	GhAuthPrivateKeyParameterKey = bsonutil.MustHaveTag(GithubAppAuth{}, "PrivateKeyParameter")
 )
 
@@ -165,7 +164,6 @@ func upsertGitHubAppAuthDB(appAuth *GithubAppAuth) error {
 		bson.M{
 			"$set": bson.M{
 				GhAuthAppIdKey:               appAuth.AppID,
-				GhAuthPrivateKeyKey:          appAuth.PrivateKey,
 				GhAuthPrivateKeyParameterKey: appAuth.PrivateKeyParameter,
 			},
 		},

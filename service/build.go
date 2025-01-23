@@ -75,7 +75,7 @@ func (uis *UIServer) buildPage(w http.ResponseWriter, r *http.Request) {
 	}
 	buildAsUI.Tasks = uiTasks
 
-	buildAsUI.TimeTaken, buildAsUI.Makespan, err = projCtx.Build.GetTimeSpent()
+	buildAsUI.TimeTaken, buildAsUI.Makespan, err = projCtx.Build.GetTimeSpent(r.Context())
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "can't get time spent for build"))
 		return
@@ -167,7 +167,7 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 	// determine what action needs to be taken
 	switch putParams.Action {
 	case evergreen.AbortAction:
-		if err = model.AbortBuild(projCtx.Build.Id, user.Id); err != nil {
+		if err = model.AbortBuild(r.Context(), projCtx.Build.Id, user.Id); err != nil {
 			http.Error(w, fmt.Sprintf("Error aborting build %v", projCtx.Build.Id), http.StatusInternalServerError)
 			return
 		}
@@ -208,7 +208,7 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if !putParams.Active && putParams.Abort {
-			if err = task.AbortBuildTasks(projCtx.Build.Id, task.AbortInfo{User: user.Id}); err != nil {
+			if err = task.AbortBuildTasks(r.Context(), projCtx.Build.Id, task.AbortInfo{User: user.Id}); err != nil {
 				http.Error(w, "Error unscheduling tasks", http.StatusInternalServerError)
 				return
 			}
@@ -245,7 +245,7 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 	}
 	updatedBuild.Tasks = uiTasks
 
-	updatedBuild.TimeTaken, updatedBuild.Makespan, err = projCtx.Build.GetTimeSpent()
+	updatedBuild.TimeTaken, updatedBuild.Makespan, err = projCtx.Build.GetTimeSpent(r.Context())
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "can't get time spent for build"))
 		return

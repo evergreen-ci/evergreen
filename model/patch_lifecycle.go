@@ -170,7 +170,6 @@ func ConfigurePatch(ctx context.Context, settings *evergreen.Settings, p *patch.
 				ProjectRef:     proj,
 				Version:        version,
 				Pairs:          tasks,
-				SyncAtEndOpts:  p.SyncAtEndOpts,
 				ActivationInfo: specificActivationInfo{},
 				GeneratedBy:    "",
 			}
@@ -699,7 +698,6 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 			DisplayNames:     displayNames,
 			DistroAliases:    distroAliases,
 			TaskCreateTime:   createTime,
-			SyncAtEndOpts:    p.SyncAtEndOpts,
 			// When a GitHub PR patch is finalized with the PR alias, all of the
 			// tasks selected by the alias must finish in order for the
 			// build/version to be finished.
@@ -951,7 +949,7 @@ func CancelPatch(ctx context.Context, p *patch.Patch, reason task.AbortInfo) err
 		if err := SetVersionActivation(ctx, p.Version, false, reason.User); err != nil {
 			return errors.WithStack(err)
 		}
-		return errors.WithStack(task.AbortVersionTasks(p.Version, reason))
+		return errors.WithStack(task.AbortVersionTasks(ctx, p.Version, reason))
 	}
 
 	return errors.WithStack(patch.Remove(patch.ById(p.Id)))

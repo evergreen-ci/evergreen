@@ -216,7 +216,7 @@ func TestMarkTaskForReset(t *testing.T) {
 			assert.Equal(t, 1, foundTask.NumAutomaticRestarts)
 
 			// Should fail if the task resets and tries to auto restart again
-			require.NoError(t, foundTask.MarkEnd(time.Now(), &apimodels.TaskEndDetail{
+			require.NoError(t, foundTask.MarkEnd(ctx, time.Now(), &apimodels.TaskEndDetail{
 				Status: evergreen.TaskFailed,
 			}))
 			require.NoError(t, foundTask.Archive(ctx))
@@ -440,7 +440,6 @@ func TestAgentSetup(t *testing.T) {
 			assert.Equal(t, data.SplunkServerURL, s.Splunk.SplunkConnectionInfo.ServerURL)
 			assert.Equal(t, data.SplunkClientToken, s.Splunk.SplunkConnectionInfo.Token)
 			assert.Equal(t, data.SplunkChannel, s.Splunk.SplunkConnectionInfo.Channel)
-			assert.Equal(t, data.TaskSync, s.Providers.AWS.TaskSync)
 			assert.Equal(t, data.MaxExecTimeoutSecs, s.TaskLimits.MaxExecTimeoutSecs)
 		},
 		"ReturnsEmpty": func(ctx context.Context, t *testing.T, rh *agentSetup, s *evergreen.Settings) {
@@ -468,11 +467,6 @@ func TestAgentSetup(t *testing.T) {
 				},
 				Providers: evergreen.CloudProviders{
 					AWS: evergreen.AWSConfig{
-						TaskSync: evergreen.S3Credentials{
-							Bucket: "bucket",
-							Key:    "key",
-							Secret: "secret",
-						},
 						EC2Keys: []evergreen.EC2Key{
 							{
 								Name:   "ec2-key",

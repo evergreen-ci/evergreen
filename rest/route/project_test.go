@@ -1072,7 +1072,6 @@ func TestDeleteProject(t *testing.T) {
 
 		projects = append(projects, project)
 		require.NoError(t, project.Add(&u))
-		project.ParameterStoreVarsSynced = true
 	}
 
 	numAliases := 2
@@ -1107,15 +1106,14 @@ func TestDeleteProject(t *testing.T) {
 		hiddenProj, err := serviceModel.FindMergedProjectRef(projects[i].Id, "", true)
 		assert.NoError(t, err)
 		skeletonProj := serviceModel.ProjectRef{
-			Id:                       projects[i].Id,
-			Owner:                    repo.Owner,
-			Repo:                     repo.Repo,
-			Branch:                   projects[i].Branch,
-			RepoRefId:                repo.Id,
-			Enabled:                  false,
-			Hidden:                   utility.TruePtr(),
-			ParameterStoreEnabled:    true,
-			ParameterStoreVarsSynced: true,
+			Id:                    projects[i].Id,
+			Owner:                 repo.Owner,
+			Repo:                  repo.Repo,
+			Branch:                projects[i].Branch,
+			RepoRefId:             repo.Id,
+			Enabled:               false,
+			Hidden:                utility.TruePtr(),
+			ParameterStoreEnabled: true,
 		}
 		assert.Equal(t, skeletonProj, *hiddenProj)
 
@@ -1664,7 +1662,7 @@ func TestModifyProjectVersions(t *testing.T) {
 			resp := rm.Run(ctx)
 			assert.NotNil(resp)
 			assert.Equal(http.StatusOK, resp.Status())
-			foundTasks, err := task.FindWithFields(task.ByVersions([]string{"v1", "v2", "v3", "v4"}), task.IdKey, task.PriorityKey, task.ActivatedKey)
+			foundTasks, err := task.FindWithFields(ctx, task.ByVersions([]string{"v1", "v2", "v3", "v4"}), task.IdKey, task.PriorityKey, task.ActivatedKey)
 			assert.NoError(err)
 			assert.Len(foundTasks, 4)
 			var count int
@@ -1686,7 +1684,7 @@ func TestModifyProjectVersions(t *testing.T) {
 			resp := rm.Run(ctx)
 			assert.NotNil(resp)
 			assert.Equal(http.StatusOK, resp.Status())
-			foundTasks, err := task.FindWithFields(task.ByVersions([]string{"v1", "v2", "v3", "v4"}), task.IdKey, task.PriorityKey, task.ActivatedKey)
+			foundTasks, err := task.FindWithFields(ctx, task.ByVersions([]string{"v1", "v2", "v3", "v4"}), task.IdKey, task.PriorityKey, task.ActivatedKey)
 			assert.NoError(err)
 			assert.Len(foundTasks, 4)
 			var count int

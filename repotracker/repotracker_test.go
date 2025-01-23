@@ -502,7 +502,7 @@ tasks:
 	require.NotZero(t, build1)
 
 	// neither batchtime task nor disabled task should be activated
-	tasks, err := task.Find(task.ByBuildId(build1.Id))
+	tasks, err := task.Find(ctx, task.ByBuildId(build1.Id))
 	assert.NoError(t, err)
 	require.NotEmpty(t, tasks)
 	assert.Len(t, tasks, 3)
@@ -524,7 +524,7 @@ tasks:
 	assert.NoError(t, err)
 	require.NotZero(t, build3)
 
-	tasks, err = task.Find(task.ByBuildId(build3.Id))
+	tasks, err = task.Find(ctx, task.ByBuildId(build3.Id))
 	assert.NoError(t, err)
 	require.Len(t, tasks, 1)
 	assert.Equal(t, evergreen.DisabledTaskPriority, tasks[0].Priority)
@@ -980,6 +980,9 @@ func (s *CreateVersionFromConfigSuite) TearDownTest() {
 }
 
 func (s *CreateVersionFromConfigSuite) TestCreateBasicVersion() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	configYml := `
 buildvariants:
 - name: bv
@@ -1024,12 +1027,15 @@ tasks:
 	s.Equal(v.Id, dbBuild.Version)
 	s.Len(dbBuild.Tasks, 2)
 
-	dbTasks, err := task.Find(task.ByVersion(v.Id))
+	dbTasks, err := task.Find(ctx, task.ByVersion(v.Id))
 	s.NoError(err)
 	s.Len(dbTasks, 2)
 }
 
 func (s *CreateVersionFromConfigSuite) TestInvalidConfigErrors() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	configYml := `
 buildvariants:
 - name: bv
@@ -1075,12 +1081,15 @@ tasks:
 	s.NoError(err)
 	s.Nil(dbBuild)
 
-	dbTasks, err := task.Find(task.ByVersion(v.Id))
+	dbTasks, err := task.Find(ctx, task.ByVersion(v.Id))
 	s.NoError(err)
 	s.Empty(dbTasks)
 }
 
 func (s *CreateVersionFromConfigSuite) TestInvalidAliasErrors() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	configYml := `
 buildvariants:
 - name: bv
@@ -1122,7 +1131,7 @@ tasks:
 	s.NoError(err)
 	s.Nil(dbBuild)
 
-	dbTasks, err := task.Find(task.ByVersion(v.Id))
+	dbTasks, err := task.Find(ctx, task.ByVersion(v.Id))
 	s.NoError(err)
 	s.Empty(dbTasks)
 }
@@ -1180,6 +1189,9 @@ tasks:
 }
 
 func (s *CreateVersionFromConfigSuite) TestTransactionAbort() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	configYml := `
 buildvariants:
 - name: bv
@@ -1210,7 +1222,7 @@ tasks:
 	v, err = CreateVersionFromConfig(s.ctx, projectInfo, model.VersionMetadata{Revision: *s.rev, SourceVersion: s.sourceVersion}, false, nil)
 	s.Error(err)
 
-	tasks, err := task.Find(task.ByVersion(v.Id))
+	tasks, err := task.Find(ctx, task.ByVersion(v.Id))
 	s.NoError(err)
 	s.Empty(tasks)
 }
@@ -1255,7 +1267,7 @@ tasks:
 	s.Require().NotNil(v)
 	s.Empty(v.Errors)
 
-	tasks, err := task.FindAllTaskIDsFromVersion(v.Id)
+	tasks, err := task.FindAllTaskIDsFromVersion(s.ctx, v.Id)
 	s.NoError(err)
 	s.Len(tasks, 4)
 
@@ -1334,7 +1346,7 @@ tasks:
 	}
 
 	s.NoError(createVersionItems(s.ctx, v, metadata, projectInfo, nil))
-	tasks, err := task.FindAllTaskIDsFromVersion(v.Id)
+	tasks, err := task.FindAllTaskIDsFromVersion(s.ctx, v.Id)
 	s.NoError(err)
 	s.Len(tasks, 4)
 	tomorrow := versionCreateTime.Add(time.Hour * 24) // next day
@@ -1365,6 +1377,9 @@ tasks:
 }
 
 func (s *CreateVersionFromConfigSuite) TestVersionWithDependencies() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	configYml := `
 buildvariants:
 - name: bv
@@ -1411,12 +1426,15 @@ tasks:
 	s.Equal(v.Id, dbBuild.Version)
 	s.Len(dbBuild.Tasks, 2)
 
-	dbTasks, err := task.Find(task.ByVersion(v.Id))
+	dbTasks, err := task.Find(ctx, task.ByVersion(v.Id))
 	s.NoError(err)
 	s.Len(dbTasks, 2)
 }
 
 func (s *CreateVersionFromConfigSuite) TestWithAliasAndPatchOptionalDependencyDoesNotCreateDependentTaskAutomatically() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	configYml := `
 buildvariants:
 - name: bv1
@@ -1458,7 +1476,7 @@ tasks:
 	s.Require().NotNil(v)
 	s.Empty(v.Errors)
 
-	tasks, err := task.Find(task.ByVersion(v.Id))
+	tasks, err := task.Find(ctx, task.ByVersion(v.Id))
 	s.NoError(err)
 	s.Require().Len(tasks, 1)
 	s.Equal("task1", tasks[0].DisplayName, "should create task matching alias")
@@ -1467,6 +1485,9 @@ tasks:
 }
 
 func (s *CreateVersionFromConfigSuite) TestWithAliasMatchingTaskGroup() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	configYml := `
 buildvariants:
 - name: bv1
@@ -1512,7 +1533,7 @@ task_groups:
 	s.Require().NotNil(v)
 	s.Empty(v.Errors)
 
-	tasks, err := task.Find(task.ByVersion(v.Id))
+	tasks, err := task.Find(ctx, task.ByVersion(v.Id))
 	s.NoError(err)
 	s.Require().Len(tasks, 2)
 	var foundTask1, foundTask2 bool
@@ -1534,6 +1555,9 @@ task_groups:
 }
 
 func (s *CreateVersionFromConfigSuite) TestWithAliasAndPatchOptionalDependencyCreatesDependencyIfDependentTaskIsCreated() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	configYml := `
 buildvariants:
 - name: bv1
@@ -1577,7 +1601,7 @@ tasks:
 	s.Require().NotNil(v)
 	s.Empty(v.Errors)
 
-	tasks, err := task.Find(task.ByVersion(v.Id))
+	tasks, err := task.Find(ctx, task.ByVersion(v.Id))
 	s.NoError(err)
 	s.Len(tasks, 2)
 
@@ -1652,7 +1676,6 @@ func TestCreateManifest(t *testing.T) {
 		},
 	}
 	require.NoError(t, projVars.Insert())
-	projRef.ParameterStoreVarsSynced = true
 
 	manifest, err := model.CreateManifest(&v, proj.Modules, projRef, settings)
 	assert.NoError(err)

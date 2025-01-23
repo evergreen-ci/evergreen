@@ -247,7 +247,7 @@ func handleTerminatedHostSpawnedByTask(ctx context.Context, h *host.Host) error 
 
 		catcher := grip.NewBasicCatcher()
 		catcher.Wrap(err, "inserting new host for task")
-		catcher.Wrap(task.AddHostCreateDetails(h.SpawnOptions.TaskID, h.Id, h.SpawnOptions.TaskExecutionNumber, errors.New("host was externally terminated")), "adding host create details")
+		catcher.Wrap(task.AddHostCreateDetails(ctx, h.SpawnOptions.TaskID, h.Id, h.SpawnOptions.TaskExecutionNumber, errors.New("host was externally terminated")), "adding host create details")
 		return catcher.Resolve()
 	}
 
@@ -268,7 +268,7 @@ func insertNewHostForTask(ctx context.Context, h *host.Host) (*host.Host, error)
 		return nil, nil
 	}
 
-	t, err := task.FindOneIdAndExecution(h.SpawnOptions.TaskID, h.SpawnOptions.TaskExecutionNumber)
+	t, err := task.FindOneIdAndExecution(ctx, h.SpawnOptions.TaskID, h.SpawnOptions.TaskExecutionNumber)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding task '%s' with execution %d for host '%s'", h.SpawnOptions.TaskID, h.SpawnOptions.TaskExecutionNumber, h.Id)
 	}
