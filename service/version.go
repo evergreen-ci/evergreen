@@ -135,6 +135,7 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 		for i := range dbBuilds {
 			var diff model.BuildStatusDiff
 			diff, err = model.StatusDiffBuilds(
+				r.Context(),
 				baseBuildsByVariant[dbBuilds[i].BuildVariant],
 				&dbBuilds[i],
 			)
@@ -167,7 +168,7 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	query := db.Query(task.ByVersion(projCtx.Version.Id)).WithFields(task.StatusFields...)
-	dbTasks, err := task.FindAll(query)
+	dbTasks, err := task.FindAll(r.Context(), query)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -289,7 +290,7 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 	}
 
 	query := db.Query(task.ByVersion(projCtx.Version.Id)).WithFields(task.StatusFields...)
-	dbTasks, err := task.FindAll(query)
+	dbTasks, err := task.FindAll(r.Context(), query)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -379,7 +380,7 @@ func (uis *UIServer) versionHistory(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		query := db.Query(task.ByVersion(projCtx.Version.Id)).WithFields(task.StatusFields...)
-		dbTasks, err := task.FindAll(query)
+		dbTasks, err := task.FindAll(r.Context(), query)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

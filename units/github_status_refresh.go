@@ -189,7 +189,7 @@ func getGithubStateAndDescriptionForPatch(p *patch.Patch) (message.GithubState, 
 	return state, fmt.Sprintf("%s finished in %s", name, duration)
 }
 
-func (j *githubStatusRefreshJob) sendBuildStatuses() {
+func (j *githubStatusRefreshJob) sendBuildStatuses(ctx context.Context) {
 	status := &message.GithubStatus{
 		Owner: j.patch.GithubPatchData.BaseOwner,
 		Repo:  j.patch.GithubPatchData.BaseRepo,
@@ -209,7 +209,7 @@ func (j *githubStatusRefreshJob) sendBuildStatuses() {
 		}
 
 		query := db.Query(task.ByBuildId(b.Id)).WithFields(task.StatusKey, task.IsEssentialToSucceedKey, task.ActivatedKey)
-		tasks, err := task.FindAll(query)
+		tasks, err := task.FindAll(ctx, query)
 		if err != nil {
 			j.AddError(errors.Wrapf(err, "finding tasks in build '%s'", b.Id))
 			continue
@@ -253,5 +253,5 @@ func (j *githubStatusRefreshJob) Run(ctx context.Context) {
 	}
 
 	// For each build, send build status.
-	j.sendBuildStatuses()
+	j.sendBuildStatuses(ctx)
 }

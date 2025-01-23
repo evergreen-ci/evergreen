@@ -216,7 +216,7 @@ func (h *buildsForVersionHandler) Run(ctx context.Context) gimlet.Responder {
 		buildModel := model.APIBuild{}
 		buildModel.BuildFromService(b, pp)
 		if h.includeTaskInfo {
-			if err := setBuildTaskCache(&b, &buildModel); err != nil {
+			if err := setBuildTaskCache(ctx, &b, &buildModel); err != nil {
 				return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "setting task cache for build '%s'", b.Id))
 			}
 		}

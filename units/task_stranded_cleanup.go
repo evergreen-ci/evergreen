@@ -91,7 +91,7 @@ func (j *taskStrandedCleanupJob) fixTasksStrandedOnTerminatedHosts(ctx context.C
 }
 
 func (j *taskStrandedCleanupJob) fixTasksStuckDispatching(ctx context.Context) error {
-	tasks, err := task.FindStuckDispatching()
+	tasks, err := task.FindStuckDispatching(ctx)
 	if err != nil {
 		return errors.Wrap(err, "finding tasks that are stuck dispatching")
 	}

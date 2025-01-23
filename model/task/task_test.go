@@ -1770,7 +1770,7 @@ func TestDeactivateStepbackTasksForProject(t *testing.T) {
 	assert.Equal(t, 2, numDeactivated)
 	assert.Equal(t, 1, numAborted)
 
-	tasks, err := FindAll(db.Q{})
+	tasks, err := FindAll(ctx, db.Q{})
 	assert.NoError(t, err)
 	for _, dbTask := range tasks {
 		if dbTask.Id == taskDependingOnStepbackTask.Id {
@@ -2019,6 +2019,9 @@ func TestAddDependency(t *testing.T) {
 }
 
 func TestUnattainableSchedulableHostTasksQuery(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 	require.NoError(t, db.ClearCollections(Collection))
 	tasks := []Task{
@@ -2076,7 +2079,7 @@ func TestUnattainableSchedulableHostTasksQuery(t *testing.T) {
 	}
 
 	q := db.Query(schedulableHostTasksQuery())
-	schedulableTasks, err := FindAll(q)
+	schedulableTasks, err := FindAll(ctx, q)
 	assert.NoError(err)
 	assert.Len(schedulableTasks, 2)
 }
@@ -2247,6 +2250,9 @@ func TestMarkGeneratedTasks(t *testing.T) {
 }
 
 func TestGetAllDependencies(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.Clear(Collection))
 	tasks := []Task{
 		{
@@ -2259,12 +2265,12 @@ func TestGetAllDependencies(t *testing.T) {
 		},
 	}
 	// not in the map and not in the db
-	dependencies, err := GetAllDependencies([]string{tasks[0].Id}, map[string]*Task{})
+	dependencies, err := GetAllDependencies(ctx, []string{tasks[0].Id}, map[string]*Task{})
 	assert.Error(t, err)
 	assert.Nil(t, dependencies)
 
 	// in the map
-	dependencies, err = GetAllDependencies([]string{tasks[0].Id}, map[string]*Task{tasks[0].Id: &tasks[0]})
+	dependencies, err = GetAllDependencies(ctx, []string{tasks[0].Id}, map[string]*Task{tasks[0].Id: &tasks[0]})
 	assert.NoError(t, err)
 	assert.Len(t, dependencies, 1)
 	assert.Equal(t, "dependedOn0", dependencies[0].TaskId)
@@ -2272,7 +2278,7 @@ func TestGetAllDependencies(t *testing.T) {
 	// mix of map and db
 	require.NoError(t, tasks[1].Insert())
 	taskMap := map[string]*Task{tasks[0].Id: &tasks[0]}
-	dependencies, err = GetAllDependencies([]string{tasks[0].Id, tasks[1].Id}, taskMap)
+	dependencies, err = GetAllDependencies(ctx, []string{tasks[0].Id, tasks[1].Id}, taskMap)
 	assert.NoError(t, err)
 	assert.Len(t, dependencies, 2)
 	assert.Len(t, taskMap, 1)
@@ -2330,6 +2336,9 @@ func TestGetRecursiveDependenciesUpWithTaskGroup(t *testing.T) {
 }
 
 func TestGetRecursiveDependenciesDown(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.Clear(Collection))
 	tasks := []Task{
 		{Id: "t0"},
@@ -2343,7 +2352,7 @@ func TestGetRecursiveDependenciesDown(t *testing.T) {
 		require.NoError(t, task.Insert())
 	}
 
-	dependingOnMe, err := getRecursiveDependenciesDown([]string{"t0"}, nil)
+	dependingOnMe, err := getRecursiveDependenciesDown(ctx, []string{"t0"}, nil)
 	assert.NoError(t, err)
 	assert.Len(t, dependingOnMe, 3)
 	expectedIDs := []string{"t2", "t4", "t5"}
@@ -2374,7 +2383,7 @@ func TestDeactivateDependencies(t *testing.T) {
 	err := DeactivateDependencies(ctx, []string{"t0"}, "")
 	assert.NoError(t, err)
 
-	dbTasks, err := FindAll(All)
+	dbTasks, err := FindAll(ctx, All)
 	assert.NoError(t, err)
 	assert.Len(t, dbTasks, 6)
 
@@ -2410,12 +2419,12 @@ func TestActivateDeactivatedDependencies(t *testing.T) {
 	}
 
 	updatedIDs := []string{"t3", "t4"}
-	depTasksToUpdate, depTaskIDsToUpdate, err := getDependencyTaskIdsToActivate([]string{"t0"}, true)
+	depTasksToUpdate, depTaskIDsToUpdate, err := getDependencyTaskIdsToActivate(ctx, []string{"t0"}, true)
 	require.NoError(t, err)
 	err = activateDeactivatedDependencies(ctx, depTasksToUpdate, depTaskIDsToUpdate, "")
 	assert.NoError(t, err)
 
-	dbTasks, err := FindAll(All)
+	dbTasks, err := FindAll(ctx, All)
 	assert.NoError(t, err)
 	assert.Len(t, dbTasks, 5)
 
@@ -2492,7 +2501,7 @@ func TestActivateTasks(t *testing.T) {
 		require.NotNil(t, u)
 		assert.Len(t, updatedIDs, u.NumScheduledPatchTasks)
 
-		dbTasks, err := FindAll(All)
+		dbTasks, err := FindAll(ctx, All)
 		assert.NoError(t, err)
 		assert.Len(t, dbTasks, 6)
 
@@ -2570,7 +2579,7 @@ func TestDeactivateTasks(t *testing.T) {
 	err := DeactivateTasks(ctx, []Task{tasks[0]}, true, "")
 	assert.NoError(t, err)
 
-	dbTasks, err := FindAll(All)
+	dbTasks, err := FindAll(ctx, All)
 	assert.NoError(t, err)
 	assert.Len(t, dbTasks, 8)
 
@@ -3687,7 +3696,7 @@ func TestArchiveMany(t *testing.T) {
 	err := ArchiveMany(ctx, tasks)
 	assert.NoError(t, err)
 	verifyTasksState := func() {
-		currentTasks, err := FindAll(db.Query(ByVersion("v")))
+		currentTasks, err := FindAll(ctx, db.Query(ByVersion("v")))
 		assert.NoError(t, err)
 		assert.Len(t, currentTasks, 4)
 		for _, task := range currentTasks {
@@ -3788,7 +3797,7 @@ func TestArchiveManyAfterFailedOnly(t *testing.T) {
 	}
 	assert.NoError(t, t3.Insert())
 	assert.NoError(t, t3.Archive(ctx)) // Failed only is true
-	currentTasks, err := FindAll(db.Query(ByVersion("v")))
+	currentTasks, err := FindAll(ctx, db.Query(ByVersion("v")))
 	assert.NoError(t, err)
 	for _, task := range currentTasks {
 		id := task.Id
@@ -3840,7 +3849,7 @@ func TestArchiveManyAfterFailedOnly(t *testing.T) {
 	// t3: t1 (execution 2), t2 (execution 2), t3 (execution 2)
 	// t4 (execution 2)
 	verifyTasksState := func() {
-		currentTasks, err = FindAll(db.Query(ByVersion("v")))
+		currentTasks, err = FindAll(ctx, db.Query(ByVersion("v")))
 		assert.NoError(t, err)
 		assert.Len(t, currentTasks, 9)
 
@@ -3880,6 +3889,9 @@ func TestArchiveManyAfterFailedOnly(t *testing.T) {
 }
 
 func TestAddParentDisplayTasks(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.Clear(Collection))
 	dt1 := Task{
 		Id:             "dt1",
@@ -3902,7 +3914,7 @@ func TestAddParentDisplayTasks(t *testing.T) {
 	for _, et := range execTasks {
 		assert.NoError(t, et.Insert())
 	}
-	tasks, err := AddParentDisplayTasks(execTasks)
+	tasks, err := AddParentDisplayTasks(ctx, execTasks)
 	assert.NoError(t, err)
 	assert.Equal(t, "et1", tasks[0].Id)
 	assert.Equal(t, dt1.Id, tasks[0].DisplayTask.Id)
@@ -5384,6 +5396,9 @@ func TestResetTasks(t *testing.T) {
 }
 
 func TestGenerateNotRun(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	defer func() {
 		assert.NoError(t, db.ClearCollections(Collection))
 	}()
@@ -5392,7 +5407,7 @@ func TestGenerateNotRun(t *testing.T) {
 		"ReturnsTaskThatNeedsGeneration": func(t *testing.T, tsk *Task) {
 			require.NoError(t, tsk.Insert())
 
-			tasks, err := GenerateNotRun()
+			tasks, err := GenerateNotRun(ctx)
 			require.NoError(t, err)
 			require.Len(t, tasks, 1)
 			assert.Equal(t, tsk.Id, tasks[0].Id)
@@ -5401,7 +5416,7 @@ func TestGenerateNotRun(t *testing.T) {
 			tsk.Status = evergreen.TaskFailed
 			require.NoError(t, tsk.Insert())
 
-			tasks, err := GenerateNotRun()
+			tasks, err := GenerateNotRun(ctx)
 			require.NoError(t, err)
 			assert.Empty(t, tasks)
 		},
@@ -5409,7 +5424,7 @@ func TestGenerateNotRun(t *testing.T) {
 			tsk.GeneratedTasks = true
 			require.NoError(t, tsk.Insert())
 
-			tasks, err := GenerateNotRun()
+			tasks, err := GenerateNotRun(ctx)
 			require.NoError(t, err)
 			assert.Empty(t, tasks)
 		},
@@ -5417,7 +5432,7 @@ func TestGenerateNotRun(t *testing.T) {
 			tsk.GeneratedJSONAsString = nil
 			require.NoError(t, tsk.Insert())
 
-			tasks, err := GenerateNotRun()
+			tasks, err := GenerateNotRun(ctx)
 			require.NoError(t, err)
 			assert.Empty(t, tasks)
 		},
@@ -5425,7 +5440,7 @@ func TestGenerateNotRun(t *testing.T) {
 			tsk.StartTime = time.Now().Add(-100000 * time.Hour)
 			require.NoError(t, tsk.Insert())
 
-			tasks, err := GenerateNotRun()
+			tasks, err := GenerateNotRun(ctx)
 			require.NoError(t, err)
 			assert.Empty(t, tasks)
 		},

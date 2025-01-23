@@ -1757,6 +1757,9 @@ func TestCreateTaskGroup(t *testing.T) {
 }
 
 func TestGetTaskIdTable(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.Clear(task.Collection))
 
 	v := &Version{
@@ -1803,7 +1806,7 @@ func TestGetTaskIdTable(t *testing.T) {
 	existingTask := task.Task{Id: "t2", DisplayName: "existing_task", BuildVariant: "bv0", Version: v.Id}
 	require.NoError(t, existingTask.Insert())
 
-	tables, err := getTaskIdConfig(creationInfo)
+	tables, err := getTaskIdConfig(ctx, creationInfo)
 	assert.NoError(t, err)
 	assert.Len(t, tables.ExecutionTasks, 2)
 	assert.Equal(t, "p0_bv0_t0_abcde_09_11_10_23_00_00", tables.ExecutionTasks.GetId("bv0", "t0"))
@@ -2223,7 +2226,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 	// test restarting a version
 	assert.NoError(resetTaskData())
 	assert.NoError(RestartVersion(ctx, "version", displayTasks, false, "test"))
-	tasks, err := task.FindAll(db.Query(task.ByIds(allTasks)))
+	tasks, err := task.FindAll(ctx, db.Query(task.ByIds(allTasks)))
 	assert.NoError(err)
 	assert.Len(tasks, 3)
 	for _, dbTask := range tasks {
@@ -2235,7 +2238,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 	// test restarting a build
 	assert.NoError(resetTaskData())
 	assert.NoError(RestartBuild(ctx, &build.Build{Id: "build3", Version: "version"}, displayTasks, false, "test"))
-	tasks, err = task.FindAll(db.Query(task.ByIds(allTasks)))
+	tasks, err = task.FindAll(ctx, db.Query(task.ByIds(allTasks)))
 	assert.NoError(err)
 	assert.Len(tasks, 3)
 	for _, dbTask := range tasks {
@@ -2257,7 +2260,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 		}
 	}
 	assert.True(foundDisplayTask)
-	tasks, err = task.FindAll(db.Query(task.ByIds(allTasks)))
+	tasks, err = task.FindAll(ctx, db.Query(task.ByIds(allTasks)))
 	assert.NoError(err)
 	assert.Len(tasks, 3)
 	for _, dbTask := range tasks {
@@ -2279,7 +2282,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 	assert.Equal(2, dbUser.NumScheduledPatchTasks)
 
 	assert.NoError(resetTask(ctx, dt.Id, "caller"))
-	tasks, err = task.FindAll(db.Query(task.ByIds(allTasks)))
+	tasks, err = task.FindAll(ctx, db.Query(task.ByIds(allTasks)))
 	assert.NoError(err)
 	assert.Len(tasks, 3)
 	for _, dbTask := range tasks {
@@ -2303,7 +2306,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 	// trying to restart execution tasks should restart the entire display task, if it's done
 	assert.NoError(resetTaskData())
 	assert.NoError(RestartVersion(ctx, "version", allTasks, false, "test"))
-	tasks, err = task.FindAll(db.Query(task.ByIds(allTasks)))
+	tasks, err = task.FindAll(ctx, db.Query(task.ByIds(allTasks)))
 	assert.NoError(err)
 	assert.Len(tasks, 3)
 	for _, dbTask := range tasks {
@@ -2725,6 +2728,9 @@ func TestMarkAsHostDispatched(t *testing.T) {
 }
 
 func TestSetTaskActivationForBuildsActivated(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.ClearCollections(build.Collection, task.Collection, VersionCollection))
 
 	vId := "v"
@@ -2748,7 +2754,7 @@ func TestSetTaskActivationForBuildsActivated(t *testing.T) {
 	// t0 should still be activated because it's a dependency of a task that is being activated
 	assert.NoError(t, setTaskActivationForBuilds(context.Background(), []string{"b0"}, true, true, []string{"t0"}, ""))
 
-	dbTasks, err := task.FindAll(task.All)
+	dbTasks, err := task.FindAll(ctx, task.All)
 	require.NoError(t, err)
 	require.Len(t, dbTasks, 4)
 	for _, task := range dbTasks {
@@ -2757,6 +2763,9 @@ func TestSetTaskActivationForBuildsActivated(t *testing.T) {
 }
 
 func TestSetTaskActivationForBuildsWithIgnoreTasks(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.ClearCollections(build.Collection, task.Collection, VersionCollection))
 
 	vId := "v"
@@ -2779,7 +2788,7 @@ func TestSetTaskActivationForBuildsWithIgnoreTasks(t *testing.T) {
 
 	assert.NoError(t, setTaskActivationForBuilds(context.Background(), []string{"b0"}, true, true, []string{"t3"}, ""))
 
-	dbTasks, err := task.FindAll(task.All)
+	dbTasks, err := task.FindAll(ctx, task.All)
 	require.NoError(t, err)
 	require.Len(t, dbTasks, 4)
 	for _, dbTask := range dbTasks {
@@ -2792,6 +2801,9 @@ func TestSetTaskActivationForBuildsWithIgnoreTasks(t *testing.T) {
 }
 
 func TestSetTaskActivationForBuildsDeactivated(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	require.NoError(t, db.ClearCollections(build.Collection, task.Collection, VersionCollection))
 
 	vId := "v"
@@ -2814,7 +2826,7 @@ func TestSetTaskActivationForBuildsDeactivated(t *testing.T) {
 	// ignore tasks is ignored for deactivating
 	assert.NoError(t, setTaskActivationForBuilds(context.Background(), []string{"b0"}, false, true, []string{"t0", "t1", "t2"}, ""))
 
-	dbTasks, err := task.FindAll(task.All)
+	dbTasks, err := task.FindAll(ctx, task.All)
 	require.NoError(t, err)
 	require.Len(t, dbTasks, 3)
 	for _, task := range dbTasks {
@@ -2823,6 +2835,9 @@ func TestSetTaskActivationForBuildsDeactivated(t *testing.T) {
 }
 
 func TestAddNewTasks(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	defer func() {
 		assert.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection))
 	}()
@@ -2927,9 +2942,9 @@ func TestAddNewTasks(t *testing.T) {
 			}
 			_, err := addNewTasksToExistingBuilds(context.Background(), creationInfo, []build.Build{b}, "")
 			assert.NoError(t, err)
-			buildTasks, err := task.FindAll(db.Query(bson.M{task.BuildIdKey: "b0"}))
+			buildTasks, err := task.FindAll(ctx, db.Query(bson.M{task.BuildIdKey: "b0"}))
 			assert.NoError(t, err)
-			activatedTasks, err := task.FindAll(db.Query(bson.M{task.ActivatedKey: true}))
+			activatedTasks, err := task.FindAll(ctx, db.Query(bson.M{task.ActivatedKey: true}))
 			assert.NoError(t, err)
 			build, err := build.FindOneId("b0")
 			assert.NoError(t, err)

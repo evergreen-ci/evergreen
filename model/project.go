@@ -2116,7 +2116,7 @@ func dependenciesForTaskUnit(taskUnits []BuildVariantTaskUnit) []task.Dependency
 // FetchVersionsBuildsAndTasks is a helper function to fetch a group of versions and their associated builds and tasks.
 // Returns the versions themselves, a map of version id -> the builds that are a part of the version (unsorted)
 // and a map of build ID -> each build's tasks
-func FetchVersionsBuildsAndTasks(project *Project, skip int, numVersions int, showTriggered bool) ([]Version, map[string][]build.Build, map[string][]task.Task, error) {
+func FetchVersionsBuildsAndTasks(ctx context.Context, project *Project, skip int, numVersions int, showTriggered bool) ([]Version, map[string][]build.Build, map[string][]task.Task, error) {
 	// fetch the versions from the db
 	versionsFromDB, err := VersionFind(VersionByProjectAndTrigger(project.Identifier, showTriggered).
 		WithFields(
@@ -2165,7 +2165,7 @@ func FetchVersionsBuildsAndTasks(project *Project, skip int, numVersions int, sh
 
 	// Filter out execution tasks because they'll be dropped when iterating through the build task cache anyway.
 	// maxTime ensures the query won't go on indefinitely when the request is cancelled.
-	tasksFromDb, err := task.FindAll(db.Query(task.NonExecutionTasksByVersions(versionIds)).WithFields(task.StatusFields...).MaxTime(waterfallTasksQueryMaxTime))
+	tasksFromDb, err := task.FindAll(ctx, db.Query(task.NonExecutionTasksByVersions(versionIds)).WithFields(task.StatusFields...).MaxTime(waterfallTasksQueryMaxTime))
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(err, "fetching tasks from database")
 	}

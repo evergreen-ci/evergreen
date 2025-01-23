@@ -1473,6 +1473,9 @@ tasks:
 }
 
 func (s *projectSuite) TestFetchVersionsBuildsAndTasks() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	v1 := Version{
 		Id:                  "v1",
 		Identifier:          s.project.Identifier,
@@ -1532,7 +1535,7 @@ func (s *projectSuite) TestFetchVersionsBuildsAndTasks() {
 	}
 	s.NoError(t2.Insert())
 
-	versions, builds, tasks, err := FetchVersionsBuildsAndTasks(s.project, 0, 10, false)
+	versions, builds, tasks, err := FetchVersionsBuildsAndTasks(ctx, s.project, 0, 10, false)
 	s.NoError(err)
 	s.Equal(v3.Id, versions[0].Id)
 	s.Equal(v2.Id, versions[1].Id)

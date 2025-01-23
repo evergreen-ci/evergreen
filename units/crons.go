@@ -576,7 +576,7 @@ func agentMonitorDeployJobs(ctx context.Context, env evergreen.Environment, ts t
 // original job fails to run. If the original job has already completed, the job will not be created here. If the original job is in flight,
 // the job will be created here, but will no-op unless the original job fails to complete.
 func enqueueFallbackGenerateTasksJobs(ctx context.Context, env evergreen.Environment, ts time.Time) error {
-	tasks, err := task.GenerateNotRun()
+	tasks, err := task.GenerateNotRun(ctx)
 	if err != nil {
 		return errors.Wrap(err, "getting tasks that need generators run")
 	}

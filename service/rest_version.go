@@ -428,7 +428,7 @@ func (restapi *restAPI) getVersionStatus(w http.ResponseWriter, r *http.Request)
 		restapi.getVersionStatusByTask(versionId, w)
 		return
 	case "builds":
-		restapi.getVersionStatusByBuild(versionId, w)
+		restapi.getVersionStatusByBuild(r.Context(), versionId, w)
 		return
 	default:
 		msg := fmt.Sprintf("Invalid groupby parameter '%v'", groupBy)
@@ -515,7 +515,7 @@ func (restapi *restAPI) getVersionStatusByTask(versionId string, w http.Response
 // grouped on the build variants. The keys of the object are the build
 // variant name, with each key in the nested object representing a
 // particular task.
-func (restapi restAPI) getVersionStatusByBuild(versionId string, w http.ResponseWriter) {
+func (restapi restAPI) getVersionStatusByBuild(ctx context.Context, versionId string, w http.ResponseWriter) {
 	// Get all of the builds corresponding to this version
 	builds, err := build.Find(
 		build.ByVersion(versionId).WithFields(build.BuildVariantKey, bsonutil.GetDottedKeyName(build.TasksKey, build.TaskCacheIdKey)),
@@ -528,7 +528,7 @@ func (restapi restAPI) getVersionStatusByBuild(versionId string, w http.Response
 	}
 
 	query := db.Query(task.ByVersion(versionId)).WithFields(task.StatusKey, task.TimeTakenKey, task.DisplayNameKey)
-	tasks, err := task.FindAll(query)
+	tasks, err := task.FindAll(ctx, query)
 	if err != nil {
 		msg := fmt.Sprintf("Error finding tasks for version '%v'", versionId)
 		grip.Errorf("%s: %+v", msg, err)

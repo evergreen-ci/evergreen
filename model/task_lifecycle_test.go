@@ -215,7 +215,7 @@ func TestDisableOneTask(t *testing.T) {
 					require.NotZero(t, dbDisplayTask)
 					checkDisabled(t, dbDisplayTask)
 
-					dbExecTasks, err := task.FindAll(db.Query(task.ByIds([]string{tasks[1].Id, tasks[2].Id})))
+					dbExecTasks, err := task.FindAll(ctx, db.Query(task.ByIds([]string{tasks[1].Id, tasks[2].Id})))
 					require.NoError(t, err)
 					assert.Len(t, dbExecTasks, 2)
 

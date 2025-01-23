@@ -1047,7 +1047,7 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasksWithBatchtime() {
 		s.Equal(b.Id == sampleBuild.Id, b.HasUnfinishedEssentialTask, "existing build that has essential tasks added should be marked")
 	}
 
-	tasks, err := task.FindAll(db.Query(bson.M{task.VersionKey: v.Id})) // with display
+	tasks, err := task.FindAll(ctx, db.Query(bson.M{task.VersionKey: v.Id})) // with display
 	s.NoError(err)
 	s.Len(tasks, 7)
 

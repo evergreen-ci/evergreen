@@ -67,6 +67,9 @@ func TestFindTasksByIds(t *testing.T) {
 	})
 }
 func TestDisplayTasksByVersion(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	Convey("When calling DisplayTasksByVersion...", t, func() {
 		So(db.Clear(Collection), ShouldBeNil)
 		Convey("only tasks that are display tasks should be returned", func() {
@@ -111,7 +114,7 @@ func TestDisplayTasksByVersion(t *testing.T) {
 				So(task.Insert(), ShouldBeNil)
 			}
 
-			dbTasks, err := FindAll(db.Query(DisplayTasksByVersion("v1", false)))
+			dbTasks, err := FindAll(ctx, db.Query(DisplayTasksByVersion("v1", false)))
 			So(err, ShouldBeNil)
 			So(len(dbTasks), ShouldEqual, 4)
 			So(dbTasks[0].Id, ShouldNotEqual, "execution_task_one")
@@ -333,6 +336,9 @@ func TestFindTasksByVersionWithChildTasks(t *testing.T) {
 	}
 }
 func TestFindTasksByBuildIdAndGithubChecks(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert.NoError(t, db.ClearCollections(Collection))
 	tasks := []Task{
 		{
@@ -359,13 +365,13 @@ func TestFindTasksByBuildIdAndGithubChecks(t *testing.T) {
 	for _, task := range tasks {
 		assert.NoError(t, task.Insert())
 	}
-	dbTasks, err := FindAll(db.Query(ByBuildIdAndGithubChecks("b1")))
+	dbTasks, err := FindAll(ctx, db.Query(ByBuildIdAndGithubChecks("b1")))
 	assert.NoError(t, err)
 	assert.Len(t, dbTasks, 1)
-	dbTasks, err = FindAll(db.Query(ByBuildIdAndGithubChecks("b2")))
+	dbTasks, err = FindAll(ctx, db.Query(ByBuildIdAndGithubChecks("b2")))
 	assert.NoError(t, err)
 	assert.Len(t, dbTasks, 2)
-	dbTasks, err = FindAll(db.Query(ByBuildIdAndGithubChecks("b3")))
+	dbTasks, err = FindAll(ctx, db.Query(ByBuildIdAndGithubChecks("b3")))
 	assert.NoError(t, err)
 	assert.Empty(t, dbTasks)
 }
@@ -744,6 +750,9 @@ func TestFindTaskNamesByBuildVariant(t *testing.T) {
 }
 
 func TestFindNeedsContainerAllocation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	defer func() {
 		assert.NoError(t, db.Clear(Collection))
 	}()
@@ -762,7 +771,7 @@ func TestFindNeedsContainerAllocation(t *testing.T) {
 			needsAllocation := getTaskThatNeedsContainerAllocation()
 			require.NoError(t, needsAllocation.Insert())
 
-			found, err := FindNeedsContainerAllocation()
+			found, err := FindNeedsContainerAllocation(ctx)
 			require.NoError(t, err)
 			require.Len(t, found, 1)
 			assert.Equal(t, needsAllocation.Id, found[0].Id)
@@ -777,7 +786,7 @@ func TestFindNeedsContainerAllocation(t *testing.T) {
 			doesNotNeedAllocation.Activated = false
 			require.NoError(t, doesNotNeedAllocation.Insert())
 
-			found, err := FindNeedsContainerAllocation()
+			found, err := FindNeedsContainerAllocation(ctx)
 			require.NoError(t, err)
 			require.Len(t, found, 2)
 			assert.Equal(t, needsAllocation1.Id, found[0].Id, "tasks should be sorted by activation time, so task with earlier activation time should be first")
@@ -798,7 +807,7 @@ func TestFindNeedsContainerAllocation(t *testing.T) {
 			}
 			require.NoError(t, needsAllocation.Insert())
 
-			found, err := FindNeedsContainerAllocation()
+			found, err := FindNeedsContainerAllocation(ctx)
 			require.NoError(t, err)
 			require.Len(t, found, 1)
 			assert.Equal(t, needsAllocation.Id, found[0].Id)
@@ -813,7 +822,7 @@ func TestFindNeedsContainerAllocation(t *testing.T) {
 			overriddenDependencies.OverrideDependencies = true
 			require.NoError(t, overriddenDependencies.Insert())
 
-			found, err := FindNeedsContainerAllocation()
+			found, err := FindNeedsContainerAllocation(ctx)
 			require.NoError(t, err)
 			require.Len(t, found, 1)
 			assert.Equal(t, overriddenDependencies.Id, found[0].Id)
@@ -827,7 +836,7 @@ func TestFindNeedsContainerAllocation(t *testing.T) {
 			}
 			require.NoError(t, unmetDependencies.Insert())
 
-			found, err := FindNeedsContainerAllocation()
+			found, err := FindNeedsContainerAllocation(ctx)
 			require.NoError(t, err)
 			assert.Empty(t, found)
 		},
@@ -836,7 +845,7 @@ func TestFindNeedsContainerAllocation(t *testing.T) {
 			doesNotNeedAllocation.ExecutionPlatform = ""
 			require.NoError(t, doesNotNeedAllocation.Insert())
 
-			found, err := FindNeedsContainerAllocation()
+			found, err := FindNeedsContainerAllocation(ctx)
 			require.NoError(t, err)
 			assert.Empty(t, found)
 		},
@@ -845,7 +854,7 @@ func TestFindNeedsContainerAllocation(t *testing.T) {
 			doesNotNeedAllocation.ExecutionPlatform = ExecutionPlatformHost
 			require.NoError(t, doesNotNeedAllocation.Insert())
 
-			found, err := FindNeedsContainerAllocation()
+			found, err := FindNeedsContainerAllocation(ctx)
 			require.NoError(t, err)
 			assert.Empty(t, found)
 		},
@@ -855,7 +864,7 @@ func TestFindNeedsContainerAllocation(t *testing.T) {
 			doesNotNeedAllocation.ActivatedTime = utility.ZeroTime
 			require.NoError(t, doesNotNeedAllocation.Insert())
 
-			found, err := FindNeedsContainerAllocation()
+			found, err := FindNeedsContainerAllocation(ctx)
 			require.NoError(t, err)
 			assert.Empty(t, found)
 		},
@@ -864,7 +873,7 @@ func TestFindNeedsContainerAllocation(t *testing.T) {
 			doesNotNeedAllocation.ContainerAllocated = true
 			require.NoError(t, doesNotNeedAllocation.Insert())
 
-			found, err := FindNeedsContainerAllocation()
+			found, err := FindNeedsContainerAllocation(ctx)
 			require.NoError(t, err)
 			assert.Empty(t, found)
 		},
@@ -873,7 +882,7 @@ func TestFindNeedsContainerAllocation(t *testing.T) {
 			doesNotNeedAllocation.Priority = evergreen.DisabledTaskPriority
 			require.NoError(t, doesNotNeedAllocation.Insert())
 
-			found, err := FindNeedsContainerAllocation()
+			found, err := FindNeedsContainerAllocation(ctx)
 			require.NoError(t, err)
 			assert.Empty(t, found)
 		},
@@ -1775,6 +1784,9 @@ func TestHasMatchingTasks(t *testing.T) {
 }
 
 func TestFindAllUnmarkedDependenciesToBlock(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 	require.NoError(t, db.ClearCollections(Collection))
 
@@ -1830,13 +1842,16 @@ func TestFindAllUnmarkedDependenciesToBlock(t *testing.T) {
 		assert.NoError(task.Insert())
 	}
 
-	deps, err := FindAllDependencyTasksToModify([]Task{*t1}, true, false)
+	deps, err := FindAllDependencyTasksToModify(ctx, []Task{*t1}, true, false)
 	assert.NoError(err)
 	require.Len(t, deps, 1)
 	assert.Equal("t2", deps[0].Id)
 }
 
 func TestFindAllUnattainableDependenciesToUnbock(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 	require.NoError(t, db.ClearCollections(Collection))
 
@@ -1869,7 +1884,7 @@ func TestFindAllUnattainableDependenciesToUnbock(t *testing.T) {
 		assert.NoError(task.Insert())
 	}
 
-	deps, err := FindAllDependencyTasksToModify([]Task{*t1}, false, false)
+	deps, err := FindAllDependencyTasksToModify(ctx, []Task{*t1}, false, false)
 	assert.NoError(err)
 	require.Len(t, deps, 1)
 	assert.Equal("t2", deps[0].Id)
@@ -2124,6 +2139,9 @@ func TestActivateTasksUpdate(t *testing.T) {
 }
 
 func TestFindGeneratedTasksFromID(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	defer func() {
 		assert.NoError(t, db.ClearCollections(Collection))
 	}()
@@ -2137,7 +2155,7 @@ func TestFindGeneratedTasksFromID(t *testing.T) {
 	for tName, tCase := range map[string]func(t *testing.T, generatorID string, generated []Task){
 		"ReturnsSingleResult": func(t *testing.T, generatorID string, generated []Task) {
 			require.NoError(t, generated[0].Insert())
-			res, err := FindGeneratedTasksFromID(generatorID)
+			res, err := FindGeneratedTasksFromID(ctx, generatorID)
 			require.NoError(t, err)
 			require.Len(t, res, 1)
 			checkGeneratedTaskInfo(t, generated[0], res[0])
@@ -2146,7 +2164,7 @@ func TestFindGeneratedTasksFromID(t *testing.T) {
 			for _, tsk := range generated {
 				require.NoError(t, tsk.Insert())
 			}
-			res, err := FindGeneratedTasksFromID(generatorID)
+			res, err := FindGeneratedTasksFromID(ctx, generatorID)
 			require.NoError(t, err)
 			require.Len(t, res, len(generated))
 			for i := 0; i < len(generated); i++ {
@@ -2157,7 +2175,7 @@ func TestFindGeneratedTasksFromID(t *testing.T) {
 			for _, tsk := range generated {
 				require.NoError(t, tsk.Insert())
 			}
-			res, err := FindGeneratedTasksFromID("nonexistent")
+			res, err := FindGeneratedTasksFromID(ctx, "nonexistent")
 			require.NoError(t, err)
 			require.Empty(t, res)
 		},

@@ -464,7 +464,7 @@ func (g *GeneratedProject) simulateNewTasks(ctx context.Context, graph task.Depe
 		Version:    v,
 		Pairs:      *newTVPairs,
 	}
-	taskIDs, err := getTaskIdConfig(creationInfo)
+	taskIDs, err := getTaskIdConfig(ctx, creationInfo)
 	if err != nil {
 		return graph, errors.Wrap(err, "getting task ids")
 	}

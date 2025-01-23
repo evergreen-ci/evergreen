@@ -61,7 +61,7 @@ func GetVersionsAndVariants(ctx context.Context, skip, numVersionElements int, p
 
 		// fetch the versions and associated builds
 		versionsFromDB, buildsByVersion, tasksByBuild, err :=
-			model.FetchVersionsBuildsAndTasks(project, skip, numVersionElements, true)
+			model.FetchVersionsBuildsAndTasks(ctx, project, skip, numVersionElements, true)
 
 		if err != nil {
 			return nil, errors.Wrap(err, "fetching versions and builds")

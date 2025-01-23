@@ -650,7 +650,7 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, versionID string, ta
 	if len(taskIds) == 0 {
 		return nil, nil
 	}
-	dbTasks, err := task.FindAll(db.Query(task.ByIds(taskIds)))
+	dbTasks, err := task.FindAll(ctx, db.Query(task.ByIds(taskIds)))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding tasks '%s': %s", taskIds, err.Error()))
 	}
