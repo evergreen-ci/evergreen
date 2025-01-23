@@ -4555,7 +4555,7 @@ func (s *TaskConnectorFetchByIdSuite) TestFindByIdAndExecution() {
 		err := UpdateOne(
 			ctx,
 			bson.M{IdKey: "task_1"},
-			bson.M{CanResetKey: false},
+			bson.M{"$set": bson.M{CanResetKey: false}},
 		)
 		s.NoError(err)
 		testTask1.Execution += 1
