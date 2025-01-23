@@ -34,9 +34,6 @@ type projectSettingsValidator func(context.Context, *evergreen.Settings, *model.
 
 type projectAliasValidator func(config *model.Project, aliases model.ProjectAliases) ValidationErrors
 
-// bool indicates if we should still run the validator if the project is complex
-type longValidator func(*model.Project, bool) ValidationErrors
-
 type ValidationErrorLevel int64
 
 const (
