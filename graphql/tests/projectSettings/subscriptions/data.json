@@ -44,10 +44,6 @@
       "admins": ["annie.black"],
       "spawn_host_script_path": "",
       "tracks_push_events": true,
-      "task_sync": {
-        "config_enabled": false,
-        "patch_enabled": true
-      },
       "perf_enabled": true,
       "build_baron_settings": {
         "ticket_create_project": "EVG",

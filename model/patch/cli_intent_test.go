@@ -17,10 +17,6 @@ type CliIntentSuite struct {
 	description  string
 	variants     []string
 	tasks        []string
-	syncBVs      []string
-	syncTasks    []string
-	syncStatuses []string
-	syncTimeout  time.Duration
 	module       string
 	user         string
 	projectID    string
@@ -38,10 +34,6 @@ func (s *CliIntentSuite) SetupSuite() {
 	s.user = "octocat"
 	s.module = "module"
 	s.tasks = []string{"task1", "Task2"}
-	s.syncBVs = []string{"variant1"}
-	s.syncTasks = []string{"task1"}
-	s.syncStatuses = []string{evergreen.TaskSucceeded}
-	s.syncTimeout = time.Minute
 	s.variants = []string{"variant1", "variant2"}
 	s.projectID = "project"
 	s.description = "desc"
@@ -65,12 +57,6 @@ func (s *CliIntentSuite) TestNewCliIntent() {
 		Variants:     s.variants,
 		Tasks:        s.tasks,
 		Alias:        s.alias,
-		SyncParams: SyncAtEndOptions{
-			BuildVariants: s.syncBVs,
-			Tasks:         s.syncTasks,
-			Statuses:      s.syncStatuses,
-			Timeout:       s.syncTimeout,
-		},
 	})
 	s.NotNil(intent)
 	s.NoError(err)
@@ -91,10 +77,6 @@ func (s *CliIntentSuite) TestNewCliIntent() {
 	s.True(cIntent.Finalize)
 	s.Equal(s.variants, cIntent.BuildVariants)
 	s.Equal(s.tasks, cIntent.Tasks)
-	s.Equal(s.syncBVs, cIntent.SyncAtEndOpts.BuildVariants)
-	s.Equal(s.syncTasks, cIntent.SyncAtEndOpts.Tasks)
-	s.Equal(s.syncStatuses, cIntent.SyncAtEndOpts.Statuses)
-	s.Equal(s.syncTimeout, cIntent.SyncAtEndOpts.Timeout)
 	s.Zero(cIntent.ProcessedAt)
 	s.Zero(cIntent.CreatedAt)
 	s.Equal(cIntent.DocumentID, intent.ID())
@@ -113,11 +95,6 @@ func (s *CliIntentSuite) TestNewCliIntent() {
 	s.True(ok)
 	s.Empty(cIntent.BuildVariants)
 	s.Empty(cIntent.Tasks)
-	s.Empty(cIntent.SyncAtEndOpts.BuildVariants)
-	s.Empty(cIntent.SyncAtEndOpts.Tasks)
-	s.Empty(cIntent.SyncAtEndOpts.VariantsTasks)
-	s.Empty(cIntent.SyncAtEndOpts.Statuses)
-	s.Zero(cIntent.SyncAtEndOpts.Timeout)
 	s.Empty(cIntent.Description)
 	s.Empty(cIntent.Module)
 	s.Empty(cIntent.Alias)
@@ -132,12 +109,6 @@ func (s *CliIntentSuite) TestNewCliIntent() {
 		Variants:    s.variants,
 		Tasks:       s.tasks,
 		Alias:       s.alias,
-		SyncParams: SyncAtEndOptions{
-			BuildVariants: s.syncBVs,
-			Tasks:         s.syncTasks,
-			Statuses:      s.syncStatuses,
-			Timeout:       s.syncTimeout,
-		},
 	})
 	s.NotNil(intent)
 	s.NoError(err)
@@ -154,12 +125,6 @@ func (s *CliIntentSuite) TestNewCliIntentRejectsInvalidIntents() {
 		Variants:     s.variants,
 		Tasks:        s.tasks,
 		Alias:        s.alias,
-		SyncParams: SyncAtEndOptions{
-			BuildVariants: s.syncBVs,
-			Tasks:         s.syncTasks,
-			Statuses:      s.syncStatuses,
-			Timeout:       s.syncTimeout,
-		},
 	})
 	s.Nil(intent)
 	s.Error(err)
@@ -174,12 +139,6 @@ func (s *CliIntentSuite) TestNewCliIntentRejectsInvalidIntents() {
 		Variants:     s.variants,
 		Tasks:        s.tasks,
 		Alias:        s.alias,
-		SyncParams: SyncAtEndOptions{
-			BuildVariants: s.syncBVs,
-			Tasks:         s.syncTasks,
-			Statuses:      s.syncStatuses,
-			Timeout:       s.syncTimeout,
-		},
 	})
 	s.Nil(intent)
 	s.Error(err)
@@ -194,12 +153,6 @@ func (s *CliIntentSuite) TestNewCliIntentRejectsInvalidIntents() {
 		Variants:     s.variants,
 		Tasks:        s.tasks,
 		Alias:        s.alias,
-		SyncParams: SyncAtEndOptions{
-			BuildVariants: s.syncBVs,
-			Tasks:         s.syncTasks,
-			Statuses:      s.syncStatuses,
-			Timeout:       s.syncTimeout,
-		},
 	})
 	s.Nil(intent)
 	s.Error(err)
@@ -213,12 +166,6 @@ func (s *CliIntentSuite) TestNewCliIntentRejectsInvalidIntents() {
 		Description:  s.description,
 		Finalize:     true,
 		Tasks:        s.tasks,
-		SyncParams: SyncAtEndOptions{
-			BuildVariants: s.syncBVs,
-			Tasks:         s.syncTasks,
-			Statuses:      s.syncStatuses,
-			Timeout:       s.syncTimeout,
-		},
 	})
 	s.Nil(intent)
 	s.Error(err)
@@ -232,12 +179,6 @@ func (s *CliIntentSuite) TestNewCliIntentRejectsInvalidIntents() {
 		Description:  s.description,
 		Finalize:     true,
 		Variants:     s.variants,
-		SyncParams: SyncAtEndOptions{
-			BuildVariants: s.syncBVs,
-			Tasks:         s.syncTasks,
-			Statuses:      s.syncStatuses,
-			Timeout:       s.syncTimeout,
-		},
 	})
 	s.Nil(intent)
 	s.Error(err)
@@ -254,12 +195,6 @@ func (s *CliIntentSuite) TestFindIntentSpecifically() {
 		Variants:    s.variants,
 		Tasks:       s.tasks,
 		Alias:       s.alias,
-		SyncParams: SyncAtEndOptions{
-			BuildVariants: s.syncBVs,
-			Tasks:         s.syncTasks,
-			Statuses:      s.syncStatuses,
-			Timeout:       s.syncTimeout,
-		},
 	})
 	s.Require().NoError(err)
 	s.NotNil(intent)
@@ -288,12 +223,6 @@ func (s *CliIntentSuite) TestInsert() {
 		Variants:     s.variants,
 		Tasks:        s.tasks,
 		Alias:        s.alias,
-		SyncParams: SyncAtEndOptions{
-			BuildVariants: s.syncBVs,
-			Tasks:         s.syncTasks,
-			Statuses:      s.syncStatuses,
-			Timeout:       s.syncTimeout,
-		},
 	})
 	s.Require().NoError(err)
 	s.NotNil(intent)
@@ -319,12 +248,6 @@ func (s *CliIntentSuite) TestSetProcessed() {
 		Variants:     s.variants,
 		Tasks:        s.tasks,
 		Alias:        s.alias,
-		SyncParams: SyncAtEndOptions{
-			BuildVariants: s.syncBVs,
-			Tasks:         s.syncTasks,
-			Statuses:      s.syncStatuses,
-			Timeout:       s.syncTimeout,
-		},
 	})
 	s.Require().NoError(err)
 	s.NotNil(intent)
@@ -362,12 +285,6 @@ func (s *CliIntentSuite) TestNewPatch() {
 		Variants:     s.variants,
 		Tasks:        s.tasks,
 		Alias:        s.alias,
-		SyncParams: SyncAtEndOptions{
-			BuildVariants: s.syncBVs,
-			Tasks:         s.syncTasks,
-			Statuses:      s.syncStatuses,
-			Timeout:       s.syncTimeout,
-		},
 	})
 	s.NoError(err)
 	s.NotNil(intent)
@@ -390,9 +307,5 @@ func (s *CliIntentSuite) TestNewPatch() {
 	s.Empty(patchDoc.Patches)
 	s.False(patchDoc.Activated)
 	s.Equal(s.alias, patchDoc.Alias)
-	s.Equal(s.syncBVs, patchDoc.SyncAtEndOpts.BuildVariants)
-	s.Equal(s.syncTasks, patchDoc.SyncAtEndOpts.Tasks)
-	s.Equal(s.syncStatuses, patchDoc.SyncAtEndOpts.Statuses)
-	s.Equal(s.syncTimeout, patchDoc.SyncAtEndOpts.Timeout)
 	s.Zero(patchDoc.GithubPatchData)
 }

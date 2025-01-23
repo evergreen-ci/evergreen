@@ -41,7 +41,6 @@ var (
 	BuildVariantsKey        = bsonutil.MustHaveTag(Patch{}, "BuildVariants")
 	TasksKey                = bsonutil.MustHaveTag(Patch{}, "Tasks")
 	VariantsTasksKey        = bsonutil.MustHaveTag(Patch{}, "VariantsTasks")
-	SyncAtEndOptionsKey     = bsonutil.MustHaveTag(Patch{}, "SyncAtEndOpts")
 	PatchesKey              = bsonutil.MustHaveTag(Patch{}, "Patches")
 	ParametersKey           = bsonutil.MustHaveTag(Patch{}, "Parameters")
 	ActivatedKey            = bsonutil.MustHaveTag(Patch{}, "Activated")
@@ -53,13 +52,6 @@ var (
 	MergePatchKey           = bsonutil.MustHaveTag(Patch{}, "MergePatch")
 	TriggersKey             = bsonutil.MustHaveTag(Patch{}, "Triggers")
 	HiddenKey               = bsonutil.MustHaveTag(Patch{}, "Hidden")
-
-	// BSON fields for sync at end struct
-	SyncAtEndOptionsBuildVariantsKey = bsonutil.MustHaveTag(SyncAtEndOptions{}, "BuildVariants")
-	SyncAtEndOptionsTasksKey         = bsonutil.MustHaveTag(SyncAtEndOptions{}, "Tasks")
-	SyncAtEndOptionsVariantsTasksKey = bsonutil.MustHaveTag(SyncAtEndOptions{}, "VariantsTasks")
-	SyncAtEndOptionsStatusesKey      = bsonutil.MustHaveTag(SyncAtEndOptions{}, "Statuses")
-	SyncAtEndOptionsTimeoutKey       = bsonutil.MustHaveTag(SyncAtEndOptions{}, "Timeout")
 
 	// BSON fields for the module patch struct
 	ModulePatchNameKey    = bsonutil.MustHaveTag(ModulePatch{}, "ModuleName")

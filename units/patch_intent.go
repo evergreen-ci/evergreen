@@ -273,11 +273,6 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		return errors.New("patching is disabled for project")
 	}
 
-	if !pref.TaskSync.IsPatchEnabled() && (len(patchDoc.SyncAtEndOpts.Tasks) != 0 || len(patchDoc.SyncAtEndOpts.BuildVariants) != 0) {
-		j.gitHubError = PatchTaskSyncDisabled
-		return errors.New("task sync at the end of a patched task is disabled by project settings")
-	}
-
 	if j.IntentType == patch.GithubIntentType && pref.OldestAllowedMergeBase != "" {
 		isMergeBaseAllowed, err := thirdparty.IsMergeBaseAllowed(ctx, patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo, pref.OldestAllowedMergeBase, patchDoc.GithubPatchData.MergeBase)
 		if err != nil {
@@ -312,7 +307,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		patchedParserProject = patchConfig.PatchedParserProject
 		patchedProjectConfig = patchConfig.PatchedProjectConfig
 	}
-	if errs := validator.CheckProjectErrors(ctx, patchedProject, false).AtLevel(validator.Error); len(errs) != 0 {
+	if errs := validator.CheckProjectErrors(ctx, patchedProject).AtLevel(validator.Error); len(errs) != 0 {
 		validationCatcher.Errorf("invalid patched config syntax: %s", validator.ValidationErrorsToString(errs))
 	}
 	if errs := validator.CheckProjectSettings(ctx, j.env.Settings(), patchedProject, pref, false).AtLevel(validator.Error); len(errs) != 0 {
@@ -360,18 +355,6 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		len(patchDoc.VariantsTasks) == 0 {
 		j.gitHubError = NoTasksOrVariants
 		return errors.New("patch has no build variants or tasks")
-	}
-
-	if shouldTaskSync := len(patchDoc.SyncAtEndOpts.BuildVariants) != 0 || len(patchDoc.SyncAtEndOpts.Tasks) != 0; shouldTaskSync {
-		patchDoc.SyncAtEndOpts.VariantsTasks = patchDoc.ResolveSyncVariantTasks(patchedProject.GetAllVariantTasks())
-		// If the user requested task sync in their patch, it should match at least
-		// one valid task in a build variant.
-		if len(patchDoc.SyncAtEndOpts.VariantsTasks) == 0 {
-			j.gitHubError = NoSyncTasksOrVariants
-			return errors.Errorf("patch requests task sync for tasks '%s' in build variants '%s'"+
-				" but did not match any tasks within any of the specified build variants",
-				patchDoc.SyncAtEndOpts.Tasks, patchDoc.SyncAtEndOpts.BuildVariants)
-		}
 	}
 
 	if patchDoc.IsMergeQueuePatch() {

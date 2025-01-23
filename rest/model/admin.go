@@ -1520,8 +1520,6 @@ func (a *APISubnet) ToService() (interface{}, error) {
 type APIAWSConfig struct {
 	EC2Keys              []APIEC2Key               `json:"ec2_keys"`
 	Subnets              []APISubnet               `json:"subnets"`
-	TaskSync             *APIS3Credentials         `json:"task_sync"`
-	TaskSyncRead         *APIS3Credentials         `json:"task_sync_read"`
 	ParserProject        *APIParserProjectS3Config `json:"parser_project"`
 	PersistentDNS        *APIPersistentDNSConfig   `json:"persistent_dns"`
 	DefaultSecurityGroup *string                   `json:"default_security_group"`
@@ -1549,18 +1547,6 @@ func (a *APIAWSConfig) BuildFromService(h interface{}) error {
 			}
 			a.Subnets = append(a.Subnets, apiSubnet)
 		}
-
-		taskSync := &APIS3Credentials{}
-		if err := taskSync.BuildFromService(v.TaskSync); err != nil {
-			return errors.Wrap(err, "converting S3 credentials to API model")
-		}
-		a.TaskSync = taskSync
-
-		taskSyncRead := &APIS3Credentials{}
-		if err := taskSyncRead.BuildFromService(v.TaskSyncRead); err != nil {
-			return errors.Wrap(err, "converting S3 credentials to API model")
-		}
-		a.TaskSyncRead = taskSyncRead
 
 		parserProject := &APIParserProjectS3Config{}
 		if err := parserProject.BuildFromService(v.ParserProject); err != nil {
@@ -1600,32 +1586,6 @@ func (a *APIAWSConfig) ToService() (interface{}, error) {
 	var i interface{}
 	var err error
 	var ok bool
-
-	i, err = a.TaskSync.ToService()
-	if err != nil {
-		return nil, errors.Wrap(err, "converting S3 credentials to service model")
-	}
-	var taskSync evergreen.S3Credentials
-	if i != nil {
-		taskSync, ok = i.(evergreen.S3Credentials)
-		if !ok {
-			return nil, errors.Errorf("expecting S3 credentials but got type %T", i)
-		}
-	}
-	config.TaskSync = taskSync
-
-	i, err = a.TaskSyncRead.ToService()
-	if err != nil {
-		return nil, errors.Wrap(err, "converting S3 credentials to service model")
-	}
-	var taskSyncRead evergreen.S3Credentials
-	if i != nil {
-		taskSyncRead, ok = i.(evergreen.S3Credentials)
-		if !ok {
-			return nil, errors.Errorf("programmatic error: expected S3 credentials but got type %T", i)
-		}
-	}
-	config.TaskSyncRead = taskSyncRead
 
 	i, err = a.ParserProject.ToService()
 	if err != nil {

@@ -375,7 +375,6 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.
 		return nil, err
 	}
 	taskConfig.TaskOutput = a.opts.SetupData.TaskOutput
-	taskConfig.TaskSync = a.opts.SetupData.TaskSync
 	taskConfig.MaxExecTimeoutSecs = a.opts.SetupData.MaxExecTimeoutSecs
 	taskConfig.InternalBuckets = a.opts.SetupData.InternalBuckets
 

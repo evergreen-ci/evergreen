@@ -38,10 +38,6 @@ func getPatchFlags(flags ...cli.Flag) []cli.Flag {
 		addVariantsFlag(),
 		addParameterFlag(),
 		addPatchBrowseFlag(),
-		addSyncBuildVariantsFlag(),
-		addSyncTasksFlag(),
-		addSyncStatusesFlag(),
-		addSyncTimeoutFlag(),
 		addLargeFlag(),
 		addSkipConfirmFlag(),
 		addRefFlag(),
@@ -100,15 +96,6 @@ func Patch() cli.Command {
 			mutuallyExclusiveArgs(false, preserveCommitsFlag, uncommittedChangesFlag),
 			mutuallyExclusiveArgs(false, repeatDefinitionFlag, repeatPatchIdFlag),
 			mutuallyExclusiveArgs(false, repeatPatchIdFlag, includeModulesFlag),
-			func(c *cli.Context) error {
-				catcher := grip.NewBasicCatcher()
-				for _, status := range utility.SplitCommas(c.StringSlice(syncStatusesFlagName)) {
-					if !utility.StringSliceContains(evergreen.SyncStatuses, status) {
-						catcher.Errorf("invalid sync status '%s'", status)
-					}
-				}
-				return catcher.Resolve()
-			},
 		),
 		Aliases: []string{"create-patch", "submit-patch"},
 		Usage:   "submit a new patch to Evergreen",
@@ -131,31 +118,27 @@ func Patch() cli.Command {
 			}
 			args := c.Args()
 			params := &patchParams{
-				Project:           c.String(projectFlagName),
-				Path:              c.String(pathFlagName),
-				Variants:          utility.SplitCommas(c.StringSlice(variantsFlagName)),
-				Tasks:             utility.SplitCommas(c.StringSlice(tasksFlagName)),
-				RegexVariants:     utility.SplitCommas(c.StringSlice(regexVariantsFlagName)),
-				RegexTasks:        utility.SplitCommas(c.StringSlice(regexTasksFlagName)),
-				SyncBuildVariants: utility.SplitCommas(c.StringSlice(syncBuildVariantsFlagName)),
-				SyncTasks:         utility.SplitCommas(c.StringSlice(syncTasksFlagName)),
-				SyncStatuses:      utility.SplitCommas(c.StringSlice(syncStatusesFlagName)),
-				SyncTimeout:       c.Duration(syncTimeoutFlagName),
-				SkipConfirm:       c.Bool(skipConfirmFlagName) || outputJSON,
-				Description:       c.String(patchDescriptionFlagName),
-				AutoDescription:   c.Bool(autoDescriptionFlag),
-				Browse:            c.Bool(patchBrowseFlagName),
-				ShowSummary:       c.Bool(patchVerboseFlagName),
-				Large:             c.Bool(largeFlagName),
-				Alias:             c.String(patchAliasFlagName),
-				Ref:               c.String(refFlagName),
-				Uncommitted:       c.Bool(uncommittedChangesFlag),
-				PreserveCommits:   c.Bool(preserveCommitsFlag),
-				TriggerAliases:    utility.SplitCommas(c.StringSlice(patchTriggerAliasFlag)),
-				RepeatPatchId:     c.String(repeatPatchIdFlag),
-				RepeatDefinition:  c.Bool(repeatDefinitionFlag) || c.String(repeatPatchIdFlag) != "",
-				RepeatFailed:      c.Bool(repeatFailedDefinitionFlag),
-				IncludeModules:    c.Bool(includeModulesFlag),
+				Project:          c.String(projectFlagName),
+				Path:             c.String(pathFlagName),
+				Variants:         utility.SplitCommas(c.StringSlice(variantsFlagName)),
+				Tasks:            utility.SplitCommas(c.StringSlice(tasksFlagName)),
+				RegexVariants:    utility.SplitCommas(c.StringSlice(regexVariantsFlagName)),
+				RegexTasks:       utility.SplitCommas(c.StringSlice(regexTasksFlagName)),
+				SkipConfirm:      c.Bool(skipConfirmFlagName) || outputJSON,
+				Description:      c.String(patchDescriptionFlagName),
+				AutoDescription:  c.Bool(autoDescriptionFlag),
+				Browse:           c.Bool(patchBrowseFlagName),
+				ShowSummary:      c.Bool(patchVerboseFlagName),
+				Large:            c.Bool(largeFlagName),
+				Alias:            c.String(patchAliasFlagName),
+				Ref:              c.String(refFlagName),
+				Uncommitted:      c.Bool(uncommittedChangesFlag),
+				PreserveCommits:  c.Bool(preserveCommitsFlag),
+				TriggerAliases:   utility.SplitCommas(c.StringSlice(patchTriggerAliasFlag)),
+				RepeatPatchId:    c.String(repeatPatchIdFlag),
+				RepeatDefinition: c.Bool(repeatDefinitionFlag) || c.String(repeatPatchIdFlag) != "",
+				RepeatFailed:     c.Bool(repeatFailedDefinitionFlag),
+				IncludeModules:   c.Bool(includeModulesFlag),
 			}
 
 			var err error
@@ -423,7 +406,6 @@ func PatchFile() cli.Command {
 				AutoDescription:  c.Bool(autoDescriptionFlag),
 				ShowSummary:      c.Bool(patchVerboseFlagName),
 				Large:            c.Bool(largeFlagName),
-				SyncTasks:        utility.SplitCommas(c.StringSlice(syncTasksFlagName)),
 				PatchAuthor:      c.String(patchAuthorFlag),
 				RepeatPatchId:    c.String(repeatPatchIdFlag),
 				RepeatDefinition: c.Bool(repeatDefinitionFlag) || c.String(repeatPatchIdFlag) != "",

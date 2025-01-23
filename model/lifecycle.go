@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
-	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
@@ -751,23 +750,6 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (ta
 			newTask.IsGithubCheck = true
 		}
 
-		if shouldSyncTask(creationInfo.SyncAtEndOpts.VariantsTasks, newTask.BuildVariant, newTask.DisplayName) {
-			newTask.CanSync = true
-			newTask.SyncAtEndOpts = task.SyncAtEndOptions{
-				Enabled:  true,
-				Statuses: creationInfo.SyncAtEndOpts.Statuses,
-				Timeout:  creationInfo.SyncAtEndOpts.Timeout,
-			}
-		} else {
-			cmds, err := creationInfo.Project.CommandsRunOnTV(TVPair{TaskName: newTask.DisplayName, Variant: newTask.BuildVariant}, evergreen.S3PushCommandName)
-			if err != nil {
-				return nil, errors.Wrapf(err, "checking if task definition contains command '%s'", evergreen.S3PushCommandName)
-			}
-			if len(cmds) != 0 {
-				newTask.CanSync = true
-			}
-		}
-
 		taskMap[newTask.Id] = newTask
 	}
 
@@ -941,25 +923,6 @@ func makeDeps(deps []TaskUnitDependency, thisTask *task.Task, taskIds TaskIdTabl
 	}
 
 	return dependencies
-}
-
-// shouldSyncTask returns whether or not this task in this build variant should
-// sync its task directory.
-func shouldSyncTask(syncVariantsTasks []patch.VariantTasks, bv, task string) bool {
-	for _, vt := range syncVariantsTasks {
-		if vt.Variant != bv {
-			continue
-		}
-		if utility.StringSliceContains(vt.Tasks, task) {
-			return true
-		}
-		for _, dt := range vt.DisplayTasks {
-			if utility.StringSliceContains(dt.ExecTasks, task) {
-				return true
-			}
-		}
-	}
-	return false
 }
 
 // SetNumDependents sets NumDependents for each task in tasks.
@@ -1558,7 +1521,6 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 			ActivationInfo:                      creationInfo.ActivationInfo,
 			GeneratedBy:                         creationInfo.GeneratedBy,
 			TaskCreateTime:                      createTime,
-			SyncAtEndOpts:                       creationInfo.SyncAtEndOpts,
 			ActivatedTasksAreEssentialToSucceed: creationInfo.ActivatedTasksAreEssentialToSucceed,
 		}
 

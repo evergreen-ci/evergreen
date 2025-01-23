@@ -103,9 +103,6 @@ type uiTaskData struct {
 	// generated task info
 	GeneratedById   string `json:"generated_by_id"`
 	GeneratedByName string `json:"generated_by_name"`
-
-	// CanSync indicates that the task can sync its working directory.
-	CanSync bool `json:"can_sync"`
 }
 
 type uiDep struct {
@@ -271,7 +268,6 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		Archived:             archived,
 		TotalExecutions:      totalExecutions,
 		PartOfDisplay:        projCtx.Task.IsPartOfDisplay(r.Context()),
-		CanSync:              projCtx.Task.CanSync,
 		GeneratedById:        projCtx.Task.GeneratedBy,
 	}
 

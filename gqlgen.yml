@@ -386,8 +386,6 @@ models:
         resolver: true
   RepoSettingsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectSettings
-  RepoTaskSyncOptions:
-    model: github.com/evergreen-ci/evergreen/rest/model.APITaskSyncOptions
   RepotrackerError:
     model: github.com/evergreen-ci/evergreen/rest/model.APIRepositoryErrorDetails
   RepoWorkstationConfig:
@@ -502,10 +500,6 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskSpecifier
   TaskStats:
     model: github.com/evergreen-ci/evergreen/model/task.TaskStats
-  TaskSyncOptions:
-    model: github.com/evergreen-ci/evergreen/rest/model.APITaskSyncOptions
-  TaskSyncOptionsInput:
-    model: github.com/evergreen-ci/evergreen/rest/model.APITaskSyncOptions
   TaskQueueItem:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskQueueItem
   TicketFields:

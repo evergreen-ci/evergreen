@@ -91,7 +91,6 @@ func (h *agentSetup) Run(ctx context.Context) gimlet.Responder {
 		SplunkChannel:      h.settings.Splunk.SplunkConnectionInfo.Channel,
 		TaskOutput:         h.settings.Buckets.Credentials,
 		InternalBuckets:    h.settings.Buckets.InternalBuckets,
-		TaskSync:           h.settings.Providers.AWS.TaskSync,
 		MaxExecTimeoutSecs: h.settings.TaskLimits.MaxExecTimeoutSecs,
 	}
 
@@ -1660,7 +1659,7 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 	})
 }
 
-// DELETE /rest/v2/task/{task_id}/github_dynamic_access_tokens
+// DELETE /rest/v2/task/{task_id}/github_dynamic_access_token
 // This route is used to revoke user-used GitHub access token for a task.
 type revokeGitHubDynamicAccessToken struct {
 	taskID string

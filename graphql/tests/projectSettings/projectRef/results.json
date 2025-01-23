@@ -78,10 +78,6 @@
                   ]
                 }
               ],
-              "taskSync": {
-                "configEnabled": false,
-                "patchEnabled": true
-              },
               "perfEnabled": true,
               "buildBaronSettings": {
                 "ticketCreateProject": "EVG",

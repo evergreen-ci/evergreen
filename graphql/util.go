@@ -869,12 +869,6 @@ func getHostRequestOptions(ctx context.Context, usr *user.DBUser, spawnHostInput
 		}
 		options.UseProjectSetupScript = *spawnHostInput.UseProjectSetupScript
 	}
-	if utility.FromBoolPtr(spawnHostInput.TaskSync) {
-		if t == nil {
-			return nil, ResourceNotFound.Send(ctx, "A valid task id must be supplied when taskSync is set to true")
-		}
-		options.TaskSync = *spawnHostInput.TaskSync
-	}
 
 	if utility.FromBoolPtr(spawnHostInput.SpawnHostsStartedByTask) {
 		if t == nil {

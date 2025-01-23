@@ -836,7 +836,6 @@ func TestAddNewPatch(t *testing.T) {
 		Version:        v,
 		Pairs:          tasks,
 		ActivationInfo: specificActivationInfo{},
-		SyncAtEndOpts:  p.SyncAtEndOpts,
 		GeneratedBy:    "",
 	}
 	_, err := addNewBuilds(context.Background(), creationInfo, nil)
@@ -929,7 +928,6 @@ func TestAddNewPatchWithMissingBaseVersion(t *testing.T) {
 		Version:        v,
 		Pairs:          tasks,
 		ActivationInfo: specificActivationInfo{},
-		SyncAtEndOpts:  p.SyncAtEndOpts,
 		GeneratedBy:    "",
 	}
 	_, err := addNewBuilds(context.Background(), creationInfo, nil)

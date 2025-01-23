@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -108,10 +107,6 @@ type patchData struct {
 	Tasks               []string                   `json:"tasks"`
 	RegexVariants       []string                   `json:"regex_buildvariants"`
 	RegexTasks          []string                   `json:"regex_tasks"`
-	SyncBuildVariants   []string                   `json:"sync_build_variants"`
-	SyncTasks           []string                   `json:"sync_tasks"`
-	SyncStatuses        []string                   `json:"sync_statuses"`
-	SyncTimeout         time.Duration              `json:"sync_timeout"`
 	Finalize            bool                       `json:"finalize"`
 	TriggerAliases      []string                   `json:"trigger_aliases"`
 	Alias               string                     `json:"alias"`
@@ -170,11 +165,6 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !pref.TaskSync.IsPatchEnabled() && (len(data.SyncTasks) != 0 || len(data.SyncBuildVariants) != 0) {
-		as.LoggedError(w, r, http.StatusBadRequest, errors.New("task sync at the end of a patched task is disabled by project settings"))
-		return
-	}
-
 	patchID := mgobson.NewObjectId()
 	author, statusCode, err := as.getAuthor(data, dbUser, pref.Id, patchID.Hex())
 	if err != nil {
@@ -202,12 +192,6 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		RepeatFailed:        data.RepeatFailed,
 		RepeatPatchId:       data.RepeatPatchId,
 		LocalModuleIncludes: data.LocalModuleIncludes,
-		SyncParams: patch.SyncAtEndOptions{
-			BuildVariants: data.SyncBuildVariants,
-			Tasks:         data.SyncTasks,
-			Statuses:      data.SyncStatuses,
-			Timeout:       data.SyncTimeout,
-		},
 	})
 
 	if err != nil {

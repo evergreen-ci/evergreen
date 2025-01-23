@@ -368,14 +368,6 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
 
             <patch-diff-panel type="Test" diffs="task.patch_info.StatusDiffs" ng-show="task.patch_info" baselink=""></patch-diff-panel>
 
-            <div class="row" ng-show="task.can_sync">
-              <div class="col-lg-12">
-                <h3 class="section-heading"><i class="fa fa-arrow-circle-o-down"></i> Pull Task Sync Command</h3>
-                  <pre readOnly>evergreen pull --task [[task.id]]</pre>
-              </div>
-            </div>
-
-
             {{range .PluginContent.Panels.Left}}
             {{.}}
             {{end}}

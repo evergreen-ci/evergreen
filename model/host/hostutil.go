@@ -440,12 +440,7 @@ func (h *Host) GenerateUserDataProvisioningScript(ctx context.Context, settings 
 			// operation, which would prevent user data from completing and the
 			// host would be stuck in provisioning. To alleviate this, we
 			// download the task data using Jasper.
-			var fetchCmd []string
-			if h.ProvisionOptions.TaskSync {
-				fetchCmd = []string{h.Distro.ShellBinary(), "-l", "-c", strings.Join(h.SpawnHostPullTaskSyncCommand(), " ")}
-			} else {
-				fetchCmd = []string{h.Distro.ShellBinary(), "-l", "-c", strings.Join(h.SpawnHostGetTaskDataCommand(ctx, githubAppToken, moduleTokens), " ")}
-			}
+			fetchCmd := []string{h.Distro.ShellBinary(), "-l", "-c", strings.Join(h.SpawnHostGetTaskDataCommand(ctx, githubAppToken, moduleTokens), " ")}
 			var getTaskDataCmd string
 			getTaskDataCmd, err = h.buildLocalJasperClientRequest(
 				settings.HostJasper,
@@ -1180,18 +1175,6 @@ func (h *Host) SpawnHostGetTaskDataCommand(ctx context.Context, githubAppToken s
 	}
 
 	return s
-}
-
-// SpawnHostPullTaskSyncCommand returns the command that pulls the task sync
-// directory for a spawn host.
-func (h *Host) SpawnHostPullTaskSyncCommand() []string {
-	return []string{
-		h.AgentBinary(),
-		"-c", h.Distro.AbsPathNotCygwinCompatible(h.spawnHostConfigFile()),
-		"pull",
-		"--task", h.ProvisionOptions.TaskId,
-		"--dir", h.Distro.WorkDir,
-	}
 }
 
 const (
