@@ -126,19 +126,23 @@ func presignFile(ctx context.Context, file File) (string, error) {
 		presignURL, err := pail.PreSign(ctx, requestParams)
 		if err != nil {
 			return "", errors.Wrap(err, "presigning internal bucket file")
-		} else if presignURL != "" {
-			resp, err := http.Get(presignURL)
-			if err != nil || resp.StatusCode == http.StatusForbidden {
-				grip.Debug(message.Fields{
-					"message":    "presigning gave a forbidden status",
-					"error":      err,
-					"bucket":     file.Bucket,
-					"presignURL": presignURL,
-					"file_key":   file.FileKey,
-				})
-			} else if resp.StatusCode == http.StatusOK {
-				return presignURL, nil
-			}
+		}
+		// Test if the presigned URL is valid by making a request to it.
+		resp, err := http.Get(presignURL)
+		if err == nil {
+			defer resp.Body.Close()
+		}
+		if err != nil || resp.StatusCode == http.StatusForbidden {
+			grip.Debug(message.Fields{
+				"message":    "presigning gave a forbidden status",
+				"ticket":     "DEVPROD-13970",
+				"error":      err,
+				"bucket":     file.Bucket,
+				"presignURL": presignURL,
+				"file_key":   file.FileKey,
+			})
+		} else if resp.StatusCode == http.StatusOK {
+			return presignURL, nil
 		}
 	}
 
