@@ -10,8 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -47,20 +45,6 @@ func GetGitHubAppID(projectId string) (*int64, error) {
 	return &githubAppAuth.AppID, err
 }
 
-// githubAppCheckAndRunParameterStoreOp checks if Parameter Store is
-// enabled and if so, runs the given Parameter Store operation.
-func githubAppCheckAndRunParameterStoreOp(ctx context.Context, op func() error) error {
-	flags, err := evergreen.GetServiceFlags(ctx)
-	if err != nil {
-		return errors.Wrap(err, "getting service flags")
-	}
-	if flags.ParameterStoreDisabled {
-		return nil
-	}
-
-	return op()
-}
-
 // defaultParameterStoreAccessTimeout is the default timeout for accessing
 // Parameter Store. In general, the context timeout should prefer to be
 // inherited from a higher-level context (e.g. a REST request's context), so
@@ -82,16 +66,8 @@ func FindOneGitHubAppAuth(id string) (*GithubAppAuth, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultParameterStoreAccessTimeout)
 	defer cancel()
 
-	if err := githubAppCheckAndRunParameterStoreOp(ctx, func() error {
-		return findPrivateKeyParameterStore(ctx, appAuth)
-	}); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":    "could not find GitHub app private key in Parameter Store",
-			"op":         "FindOne",
-			"project_id": appAuth.Id,
-			"epic":       "DEVPROD-5552",
-		}))
-		return nil, err
+	if err := findPrivateKeyParameterStore(ctx, appAuth); err != nil {
+		return nil, errors.Wrapf(err, "finding GitHub app private key for project '%s'", id)
 	}
 
 	return appAuth, nil
@@ -132,24 +108,11 @@ func UpsertGitHubAppAuth(appAuth *GithubAppAuth) error {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultParameterStoreAccessTimeout)
 	defer cancel()
 
-	if err := githubAppCheckAndRunParameterStoreOp(ctx, func() error {
-		paramName, err := upsertPrivateKeyParameterStore(ctx, appAuth)
-		if err != nil {
-			return errors.Wrap(err, "upserting GitHub app private key into Parameter Store")
-		}
-
-		appAuth.PrivateKeyParameter = paramName
-
-		return nil
-	}); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":    "could not upsert GitHub app private key into Parameter Store",
-			"op":         "Upsert",
-			"project_id": appAuth.Id,
-			"epic":       "DEVPROD-5552",
-		}))
-		return err
+	paramName, err := upsertPrivateKeyParameterStore(ctx, appAuth)
+	if err != nil {
+		return errors.Wrapf(err, "upserting GitHub app private key into Parameter Store for project '%s'", appAuth.Id)
 	}
+	appAuth.PrivateKeyParameter = paramName
 
 	return upsertGitHubAppAuthDB(appAuth)
 }
@@ -202,16 +165,8 @@ func RemoveGitHubAppAuth(appAuth *GithubAppAuth) error {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultParameterStoreAccessTimeout)
 	defer cancel()
 
-	if err := githubAppCheckAndRunParameterStoreOp(ctx, func() error {
-		return removePrivateKeyParameterStore(ctx, appAuth)
-	}); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":    "could not delete GitHub app private key from Parameter Store",
-			"op":         "Remove",
-			"project_id": appAuth.Id,
-			"epic":       "DEVPROD-5552",
-		}))
-		return err
+	if err := removePrivateKeyParameterStore(ctx, appAuth); err != nil {
+		return errors.Wrap(err, "removing GitHub app private key from Parameter Store")
 	}
 
 	return removeGitHubAppAuthDB(appAuth.Id)

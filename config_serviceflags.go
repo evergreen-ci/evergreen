@@ -89,7 +89,6 @@ func (c *ServiceFlags) Set(ctx context.Context) error {
 			sleepScheduleDisabledKey:           c.SleepScheduleDisabled,
 			systemFailedTaskRestartDisabledKey: c.SystemFailedTaskRestartDisabled,
 			cpuDegradedModeDisabledKey:         c.CPUDegradedModeDisabled,
-			parameterStoreDisabledKey:          c.ParameterStoreDisabled,
 		}}), "updating config section '%s'", c.SectionId(),
 	)
 }

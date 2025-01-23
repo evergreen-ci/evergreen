@@ -2502,7 +2502,6 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.SleepScheduleDisabled = v.SleepScheduleDisabled
 		as.SystemFailedTaskRestartDisabled = v.SystemFailedTaskRestartDisabled
 		as.DegradedModeDisabled = v.CPUDegradedModeDisabled
-		as.ParameterStoreDisabled = v.ParameterStoreDisabled
 	default:
 		return errors.Errorf("programmatic error: expected service flags config but got type %T", h)
 	}
@@ -2545,7 +2544,6 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		SleepScheduleDisabled:           as.SleepScheduleDisabled,
 		SystemFailedTaskRestartDisabled: as.SystemFailedTaskRestartDisabled,
 		CPUDegradedModeDisabled:         as.DegradedModeDisabled,
-		ParameterStoreDisabled:          as.ParameterStoreDisabled,
 	}, nil
 }
 
