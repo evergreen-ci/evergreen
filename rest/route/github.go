@@ -722,8 +722,6 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 		return nil
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-	defer cancel()
 	baseOwnerAndRepo := strings.Split(pr.Base.Repo.GetFullName(), "/")
 	if len(baseOwnerAndRepo) != 2 {
 		return errors.New("PR base repo name is invalid (expected [owner]/[repo])")
