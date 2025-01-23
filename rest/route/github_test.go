@@ -61,6 +61,7 @@ func (s *GithubWebhookRouteSuite) SetupSuite() {
 
 	s.conf = testutil.TestConfig()
 	s.NotNil(s.conf)
+	testutil.ConfigureIntegrationTest(s.T(), s.conf)
 }
 
 func (s *GithubWebhookRouteSuite) TearDownSuite() {
@@ -81,10 +82,10 @@ func (s *GithubWebhookRouteSuite) SetupTest() {
 	var err error
 	s.prBody, err = os.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "pull_request.json"))
 	s.NoError(err)
-	s.Len(s.prBody, 24692)
+	s.Len(s.prBody, 24069)
 	s.pushBody, err = os.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "push_event.json"))
 	s.NoError(err)
-	s.Len(s.pushBody, 7597)
+	s.Len(s.pushBody, 7378)
 	s.commitQueueCommentBody, err = os.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "commit_queue_comment_event.json"))
 	s.NoError(err)
 	s.Len(s.commitQueueCommentBody, 11494)
@@ -112,9 +113,9 @@ func (s *GithubWebhookRouteSuite) TestAddIntentAndFailsWithDuplicate() {
 	s.NoError(db.ClearCollections(model.ProjectRefCollection, patch.IntentCollection))
 
 	doc := &model.ProjectRef{
-		Owner:            "baxterthehacker",
-		Repo:             "public-repo",
-		Branch:           "main",
+		Owner:            "evergreen-ci",
+		Repo:             "evergreen",
+		Branch:           "105bbb4b34e7da59c42cb93d92954710b1f101ee",
 		Enabled:          true,
 		BatchTime:        10,
 		Id:               "ident0",
@@ -212,7 +213,7 @@ func (s *GithubWebhookRouteSuite) TestPushEventTriggersRepoTracker() {
 	ref := &model.ProjectRef{
 		Id:      "meh",
 		Enabled: true,
-		Owner:   "baxterthehacker",
+		Owner:   "evergreen-ci",
 		Repo:    "public-repo",
 		Branch:  "changes",
 	}
