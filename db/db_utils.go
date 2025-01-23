@@ -208,6 +208,16 @@ func Remove(collection string, query interface{}) error {
 	return db.C(collection).Remove(query)
 }
 
+func RemoveContext(ctx context.Context, collection string, query interface{}) error {
+	session, db, err := GetGlobalSessionFactory().GetContextSession(ctx)
+	if err != nil {
+		return err
+	}
+	defer session.Close()
+
+	return db.C(collection).Remove(query)
+}
+
 // RemoveAll removes all items matching the query from the specified collection.
 func RemoveAll(collection string, query interface{}) error {
 	session, db, err := GetGlobalSessionFactory().GetSession()

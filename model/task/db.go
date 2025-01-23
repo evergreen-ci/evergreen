@@ -1689,8 +1689,9 @@ func UpdateAllWithHint(ctx context.Context, query interface{}, update interface{
 }
 
 // Remove deletes the task of the given id from the database
-func Remove(id string) error {
-	return db.Remove(
+func Remove(ctx context.Context, id string) error {
+	return db.RemoveContext(
+		ctx,
 		Collection,
 		bson.M{IdKey: id},
 	)
