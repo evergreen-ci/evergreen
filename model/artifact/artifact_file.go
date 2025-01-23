@@ -2,6 +2,7 @@ package artifact
 
 import (
 	"context"
+	"net/http"
 	"net/url"
 	"path/filepath"
 	"strings"
@@ -11,6 +12,7 @@ import (
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -113,10 +115,31 @@ func presignFile(ctx context.Context, file File) (string, error) {
 
 	// If this bucket is a devprod owned one, we sign the URL
 	// with the app's server IRSA credentials (which is used
-	// when no credentials are provided).
+	// when no credentials are provided). If it fails,
+	// we fallback to using the provided credentials.
 	if isInternalBucket(file.Bucket) {
-		file.AwsKey = ""
-		file.AwsSecret = ""
+		requestParams := pail.PreSignRequestParams{
+			Bucket:                file.Bucket,
+			FileKey:               file.FileKey,
+			SignatureExpiryWindow: evergreen.PresignMinimumValidTime,
+		}
+		presignURL, err := pail.PreSign(ctx, requestParams)
+		if err != nil {
+			return "", errors.Wrap(err, "presigning internal bucket file")
+		}
+
+		if err := verifyPresignURL(ctx, presignURL); err != nil {
+			grip.Debug(message.Fields{
+				"message":    "presigning with IRSA failed",
+				"ticket":     "DEVPROD-13970",
+				"error":      err,
+				"bucket":     file.Bucket,
+				"presignURL": presignURL,
+				"file_key":   file.FileKey,
+			})
+		} else {
+			return presignURL, nil
+		}
 	}
 
 	requestParams := pail.PreSignRequestParams{
@@ -127,6 +150,28 @@ func presignFile(ctx context.Context, file File) (string, error) {
 		SignatureExpiryWindow: evergreen.PresignMinimumValidTime,
 	}
 	return pail.PreSign(ctx, requestParams)
+}
+
+func verifyPresignURL(ctx context.Context, url string) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return errors.Wrap(err, "creating request to presign URL")
+	}
+
+	client := utility.GetHTTPClient()
+	defer utility.PutHTTPClient(client)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return errors.Wrap(err, "making request to presign URL")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return errors.Errorf("presign URL returned status code '%d'", resp.StatusCode)
+	}
+
+	return nil
 }
 
 func GetAllArtifacts(tasks []TaskIDAndExecution) ([]File, error) {
