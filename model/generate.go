@@ -401,7 +401,7 @@ func getBuildVariantsFromPairs(pairs TaskVariantPairs) []string {
 }
 
 func validateGeneratedProjectMaxTasks(ctx context.Context, v *Version, tasksToBeCreated int) error {
-	numExistingTasks, err := task.Count(db.Query(bson.M{
+	numExistingTasks, err := task.Count(ctx, db.Query(bson.M{
 		task.VersionKey: v.Id,
 	}))
 	if err != nil {

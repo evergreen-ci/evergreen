@@ -2057,22 +2057,22 @@ func TestHasActivatedDependentTasks(t *testing.T) {
 	}
 	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3))
 
-	hasDependentTasks, err := HasActivatedDependentTasks("current")
+	hasDependentTasks, err := HasActivatedDependentTasks(ctx, "current")
 	assert.NoError(t, err)
 	assert.True(t, hasDependentTasks)
 
-	hasDependentTasks, err = HasActivatedDependentTasks("secondTask")
+	hasDependentTasks, err = HasActivatedDependentTasks(ctx, "secondTask")
 	assert.NoError(t, err)
 	assert.True(t, hasDependentTasks)
 
 	// Tasks overriding dependencies don't count as dependent.
 	assert.NoError(t, t3.SetOverrideDependencies(ctx, "me"))
-	hasDependentTasks, err = HasActivatedDependentTasks("secondTask")
+	hasDependentTasks, err = HasActivatedDependentTasks(ctx, "secondTask")
 	assert.NoError(t, err)
 	assert.False(t, hasDependentTasks)
 	assert.False(t, t3.DependenciesMetTime.IsZero())
 
-	hasDependentTasks, err = HasActivatedDependentTasks("inactive")
+	hasDependentTasks, err = HasActivatedDependentTasks(ctx, "inactive")
 	assert.NoError(t, err)
 	assert.False(t, hasDependentTasks)
 

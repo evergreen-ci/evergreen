@@ -978,14 +978,6 @@ func (t *Task) FindTaskOnPreviousCommit(ctx context.Context) (*Task, error) {
 	return FindOne(ctx, db.Query(ByPreviousCommit(t.BuildVariant, t.DisplayName, t.Project, evergreen.RepotrackerVersionRequester, t.RevisionOrderNumber)).Sort([]string{"-" + RevisionOrderNumberKey}))
 }
 
-// CountSimilarFailingTasks returns a count of all tasks with the same project,
-// same display name, and in other buildvariants, that have failed in the same
-// revision
-func (t *Task) CountSimilarFailingTasks() (int, error) {
-	return Count(db.Query(ByDifferentFailedBuildVariants(t.Revision, t.BuildVariant, t.DisplayName,
-		t.Project, t.Requester)))
-}
-
 // Find the previously completed task for the same project +
 // build variant + display name combination as the specified task
 func (t *Task) PreviousCompletedTask(ctx context.Context, project string, statuses []string) (*Task, error) {
@@ -1936,7 +1928,7 @@ func (t *Task) HasResults(ctx context.Context) bool {
 		} else {
 			query := ByIds(t.ExecutionTasks)
 			query["$or"] = hasResults
-			execTasksWithResults, err := Count(db.Query(query))
+			execTasksWithResults, err := Count(ctx, db.Query(query))
 			if err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"message": "getting count of execution tasks with results for display task",

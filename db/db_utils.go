@@ -355,6 +355,19 @@ func Count(collection string, query interface{}) (int, error) {
 	return db.C(collection).Find(query).Count()
 }
 
+// Count run a count command with the specified query against the collection.
+func CountContext(ctx context.Context, collection string, query interface{}) (int, error) {
+	session, db, err := GetGlobalSessionFactory().GetContextSession(ctx)
+	if err != nil {
+		grip.Errorf("error establishing db connection: %+v", err)
+
+		return 0, err
+	}
+	defer session.Close()
+
+	return db.C(collection).Find(query).Count()
+}
+
 // FindAndModify runs the specified query and change against the collection,
 // unmarshaling the result into the specified interface.
 func FindAndModify(collection string, query interface{}, sort []string, change db.Change, out interface{}) (*db.ChangeInfo, error) {

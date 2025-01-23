@@ -443,7 +443,7 @@ func DeactivatePreviousTasks(ctx context.Context, t *task.Task, caller string) e
 	}
 	for _, t := range allTasks {
 		// Only deactivate tasks that other tasks aren't waiting for.
-		hasDependentTasks, err := task.HasActivatedDependentTasks(t.Id)
+		hasDependentTasks, err := task.HasActivatedDependentTasks(ctx, t.Id)
 		if err != nil {
 			return errors.Wrapf(err, "getting activated dependencies for '%s'", t.Id)
 		}

@@ -1529,16 +1529,16 @@ func FindTasksFromVersions(ctx context.Context, versionIds []string) ([]Task, er
 		IdKey, DisplayNameKey, StatusKey, TimeTakenKey, VersionKey, BuildVariantKey, AbortedKey, AbortInfoKey)
 }
 
-func CountActivatedTasksForVersion(versionId string) (int, error) {
-	return Count(db.Query(bson.M{
+func CountActivatedTasksForVersion(ctx context.Context, versionId string) (int, error) {
+	return Count(ctx, db.Query(bson.M{
 		VersionKey:   versionId,
 		ActivatedKey: true,
 	}))
 }
 
 // HasActivatedDependentTasks returns true if there are active tasks waiting on the given task.
-func HasActivatedDependentTasks(taskId string) (bool, error) {
-	numDependentTasks, err := Count(db.Query(bson.M{
+func HasActivatedDependentTasks(ctx context.Context, taskId string) (bool, error) {
+	numDependentTasks, err := Count(ctx, db.Query(bson.M{
 		bsonutil.GetDottedKeyName(DependsOnKey, DependencyTaskIdKey): taskId,
 		ActivatedKey:            true,
 		OverrideDependenciesKey: bson.M{"$ne": true},
@@ -1705,7 +1705,7 @@ func Aggregate(ctx context.Context, pipeline []bson.M, results interface{}) erro
 }
 
 // Count returns the number of tasks that satisfy the given query.
-func Count(query db.Q) (int, error) {
+func Count(ctx context.Context, query db.Q) (int, error) {
 	return db.CountQ(Collection, query)
 }
 
@@ -1795,19 +1795,6 @@ func updateAllTasksForAllMatchingDependencies(ctx context.Context, taskIDs []str
 	}
 
 	return nil
-}
-
-// HasUnfinishedTaskForVersions returns true if there are any scheduled but
-// unfinished tasks matching the given conditions.
-func HasUnfinishedTaskForVersions(versionIds []string, taskName, variantName string) (bool, error) {
-	count, err := Count(
-		db.Query(bson.M{
-			VersionKey:      bson.M{"$in": versionIds},
-			DisplayNameKey:  taskName,
-			BuildVariantKey: variantName,
-			StatusKey:       bson.M{"$in": evergreen.TaskUncompletedStatuses},
-		}))
-	return count > 0, err
 }
 
 func AddHostCreateDetails(ctx context.Context, taskId, hostId string, execution int, hostCreateError error) error {
@@ -2994,8 +2981,8 @@ func GetPendingGenerateTasks(ctx context.Context) (int, error) {
 }
 
 // CountLargeParserProjectTasks counts the number of tasks running with parser projects stored in s3.
-func CountLargeParserProjectTasks() (int, error) {
-	return Count(db.Query(bson.M{
+func CountLargeParserProjectTasks(ctx context.Context) (int, error) {
+	return Count(ctx, db.Query(bson.M{
 		StatusKey: bson.M{
 			"$in": evergreen.TaskInProgressStatuses,
 		},
