@@ -127,8 +127,8 @@ func presignFile(ctx context.Context, file File) (string, error) {
 		if err != nil {
 			return "", errors.Wrap(err, "presigning internal bucket file")
 		}
-		valid, err := testPresignURL(ctx, presignURL)
-		if err != nil || !valid {
+
+		if err := verifyPresignURL(ctx, presignURL); err != nil {
 			grip.Debug(message.Fields{
 				"message":    "presigning with IRSA failed",
 				"ticket":     "DEVPROD-13970",
@@ -137,8 +137,7 @@ func presignFile(ctx context.Context, file File) (string, error) {
 				"presignURL": presignURL,
 				"file_key":   file.FileKey,
 			})
-		}
-		if valid {
+		} else {
 			return presignURL, nil
 		}
 	}
@@ -153,10 +152,10 @@ func presignFile(ctx context.Context, file File) (string, error) {
 	return pail.PreSign(ctx, requestParams)
 }
 
-func testPresignURL(ctx context.Context, url string) (bool, error) {
+func verifyPresignURL(ctx context.Context, url string) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		return false, errors.Wrap(err, "creating request to presign URL")
+		return errors.Wrap(err, "creating request to presign URL")
 	}
 
 	client := utility.GetHTTPClient()
@@ -164,11 +163,15 @@ func testPresignURL(ctx context.Context, url string) (bool, error) {
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return false, errors.Wrap(err, "making request to presign URL")
+		return errors.Wrap(err, "making request to presign URL")
 	}
 	defer resp.Body.Close()
 
-	return resp.StatusCode == http.StatusOK, nil
+	if resp.StatusCode != http.StatusOK {
+		return errors.Errorf("presign URL returned status code '%d'", resp.StatusCode)
+	}
+
+	return nil
 }
 
 func GetAllArtifacts(tasks []TaskIDAndExecution) ([]File, error) {
