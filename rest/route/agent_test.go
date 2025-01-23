@@ -1015,7 +1015,7 @@ func TestAWSS3(t *testing.T) {
 			require.NoError(t, err)
 
 			url := fmt.Sprintf(route, taskID)
-			request, err := http.NewRequest(http.MethodPost, url, bytes.NewReader([]byte(body)))
+			request, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(body))
 			require.NoError(t, err)
 
 			options := map[string]string{"task_id": taskID}
