@@ -337,7 +337,6 @@ func (h *projectIDPatchHandler) Parse(ctx context.Context, r *http.Request) erro
 		return errors.Wrap(err, "converting new project to service model")
 	}
 	newProjectRef.RepoRefId = oldProject.RepoRefId // this can't be modified by users
-	newProjectRef.ParameterStoreEnabled = oldProject.ParameterStoreEnabled
 
 	h.newProjectRef = newProjectRef
 	h.originalProject = oldProject

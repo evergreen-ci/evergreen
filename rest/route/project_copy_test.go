@@ -34,24 +34,22 @@ func (s *ProjectCopySuite) SetupSuite() {
 	s.NoError(db.ClearCollections(model.ProjectRefCollection, user.Collection, model.ProjectVarsCollection, fakeparameter.Collection))
 	pRefs := []model.ProjectRef{
 		{
-			Id:                    "12345",
-			Identifier:            "projectA",
-			Branch:                "abcd",
-			Owner:                 "evergreen-ci",
-			Repo:                  "evergreen",
-			Enabled:               true,
-			Admins:                []string{"my-user"},
-			ParameterStoreEnabled: true,
+			Id:         "12345",
+			Identifier: "projectA",
+			Branch:     "abcd",
+			Owner:      "evergreen-ci",
+			Repo:       "evergreen",
+			Enabled:    true,
+			Admins:     []string{"my-user"},
 		},
 		{
-			Id:                    "23456",
-			Identifier:            "projectB",
-			Branch:                "bcde",
-			Owner:                 "evergreen-ci",
-			Repo:                  "evergreen",
-			Enabled:               true,
-			Admins:                []string{"my-user"},
-			ParameterStoreEnabled: true,
+			Id:         "23456",
+			Identifier: "projectB",
+			Branch:     "bcde",
+			Owner:      "evergreen-ci",
+			Repo:       "evergreen",
+			Enabled:    true,
+			Admins:     []string{"my-user"},
 		},
 	}
 	for _, pRef := range pRefs {
@@ -146,26 +144,23 @@ func (s *copyVariablesSuite) SetupTest() {
 	s.NoError(db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameter.Collection, model.RepoRefCollection))
 	pRefs := []model.ProjectRef{
 		{
-			Id:                    "projectA",
-			Branch:                "abcd",
-			Enabled:               true,
-			Admins:                []string{"my-user"},
-			ParameterStoreEnabled: true,
+			Id:      "projectA",
+			Branch:  "abcd",
+			Enabled: true,
+			Admins:  []string{"my-user"},
 		},
 		{
-			Id:                    "projectB",
-			Branch:                "bcde",
-			Enabled:               true,
-			Admins:                []string{"my-user"},
-			ParameterStoreEnabled: true,
+			Id:      "projectB",
+			Branch:  "bcde",
+			Enabled: true,
+			Admins:  []string{"my-user"},
 		},
 	}
 	for _, pRef := range pRefs {
 		s.NoError(pRef.Insert())
 	}
 	repoRef := model.RepoRef{ProjectRef: model.ProjectRef{
-		Id:                    "repoRef",
-		ParameterStoreEnabled: true,
+		Id: "repoRef",
 	}}
 	s.NoError(repoRef.Upsert())
 	projectVar1 := &model.ProjectVars{

@@ -577,8 +577,7 @@ func TestProject(t *testing.T) {
 func (s *projectSuite) SetupTest() {
 	s.Require().NoError(db.ClearCollections(ProjectRefCollection, ProjectVarsCollection, fakeparameter.Collection, ProjectAliasCollection, VersionCollection, build.Collection, task.Collection))
 	pRef := ProjectRef{
-		Id:                    "project",
-		ParameterStoreEnabled: true,
+		Id: "project",
 	}
 	s.Require().NoError(pRef.Insert())
 	s.vars = ProjectVars{
@@ -1583,83 +1582,72 @@ func TestFindProjectsSuite(t *testing.T) {
 		s.Require().NoError(db.ClearCollections(ProjectRefCollection, ProjectVarsCollection, fakeparameter.Collection))
 
 		projectWithVars := &ProjectRef{
-			Id:                    projectId,
-			ParameterStoreEnabled: true,
+			Id: projectId,
 		}
 		projects := []*ProjectRef{
 			{
-				Id:                    "projectA",
-				Enabled:               true,
-				CommitQueue:           CommitQueueParams{Enabled: utility.TruePtr()},
-				Owner:                 "evergreen-ci",
-				Repo:                  "gimlet",
-				Branch:                "main",
-				ParameterStoreEnabled: true,
+				Id:          "projectA",
+				Enabled:     true,
+				CommitQueue: CommitQueueParams{Enabled: utility.TruePtr()},
+				Owner:       "evergreen-ci",
+				Repo:        "gimlet",
+				Branch:      "main",
 			},
 			{
-				Id:                    "projectB",
-				Enabled:               true,
-				CommitQueue:           CommitQueueParams{Enabled: utility.TruePtr()},
-				Owner:                 "evergreen-ci",
-				Repo:                  "evergreen",
-				Branch:                "main",
-				ParameterStoreEnabled: true,
+				Id:          "projectB",
+				Enabled:     true,
+				CommitQueue: CommitQueueParams{Enabled: utility.TruePtr()},
+				Owner:       "evergreen-ci",
+				Repo:        "evergreen",
+				Branch:      "main",
 			},
 			{
-				Id:                    "projectC",
-				Enabled:               true,
-				CommitQueue:           CommitQueueParams{Enabled: utility.TruePtr()},
-				Owner:                 "mongodb",
-				Repo:                  "mongo",
-				Branch:                "main",
-				ParameterStoreEnabled: true,
+				Id:          "projectC",
+				Enabled:     true,
+				CommitQueue: CommitQueueParams{Enabled: utility.TruePtr()},
+				Owner:       "mongodb",
+				Repo:        "mongo",
+				Branch:      "main",
 			},
 			{
-				Id:                    "projectA-hidden",
-				Hidden:                utility.TruePtr(),
-				Enabled:               true,
-				CommitQueue:           CommitQueueParams{Enabled: utility.TruePtr()},
-				Owner:                 "evergreen-ci",
-				Repo:                  "gimlet",
-				Branch:                "main",
-				ParameterStoreEnabled: true,
+				Id:          "projectA-hidden",
+				Hidden:      utility.TruePtr(),
+				Enabled:     true,
+				CommitQueue: CommitQueueParams{Enabled: utility.TruePtr()},
+				Owner:       "evergreen-ci",
+				Repo:        "gimlet",
+				Branch:      "main",
 			},
 			{
-				Id:                    "projectB-hidden",
-				Hidden:                utility.TruePtr(),
-				Enabled:               true,
-				CommitQueue:           CommitQueueParams{Enabled: utility.TruePtr()},
-				Owner:                 "evergreen-ci",
-				Repo:                  "evergreen",
-				Branch:                "main",
-				ParameterStoreEnabled: true,
+				Id:          "projectB-hidden",
+				Hidden:      utility.TruePtr(),
+				Enabled:     true,
+				CommitQueue: CommitQueueParams{Enabled: utility.TruePtr()},
+				Owner:       "evergreen-ci",
+				Repo:        "evergreen",
+				Branch:      "main",
 			},
 			{
-				Id:                    "projectC-hidden",
-				Hidden:                utility.TruePtr(),
-				Enabled:               true,
-				CommitQueue:           CommitQueueParams{Enabled: utility.TruePtr()},
-				Owner:                 "mongodb",
-				Repo:                  "mongo",
-				Branch:                "main",
-				ParameterStoreEnabled: true,
+				Id:          "projectC-hidden",
+				Hidden:      utility.TruePtr(),
+				Enabled:     true,
+				CommitQueue: CommitQueueParams{Enabled: utility.TruePtr()},
+				Owner:       "mongodb",
+				Repo:        "mongo",
+				Branch:      "main",
 			},
 			{
-				Id:                    "projectD",
-				ParameterStoreEnabled: true,
+				Id: "projectD",
 			},
 			{
-				Id:                    "projectE",
-				ParameterStoreEnabled: true,
+				Id: "projectE",
 			},
 			{
-				Id:                    "projectF",
-				ParameterStoreEnabled: true,
+				Id: "projectF",
 			},
 			{
-				Id:                    "projectF-hidden",
-				Hidden:                utility.TruePtr(),
-				ParameterStoreEnabled: true,
+				Id:     "projectF-hidden",
+				Hidden: utility.TruePtr(),
 			},
 			projectWithVars,
 		}
@@ -1682,10 +1670,8 @@ func TestFindProjectsSuite(t *testing.T) {
 		checkParametersNamespacedByProject(s.T(), *vars)
 
 		repoWithVars := &RepoRef{ProjectRef{
-			Id:                    repoProjectId,
-			ParameterStoreEnabled: true,
-		},
-		}
+			Id: repoProjectId,
+		}}
 		s.Require().NoError(repoWithVars.Upsert())
 		repoVars := &ProjectVars{
 			Id:          repoProjectId,

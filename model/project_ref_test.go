@@ -815,14 +815,12 @@ func TestAttachToNewRepo(t *testing.T) {
 		CommitQueue: CommitQueueParams{
 			Enabled: utility.TruePtr(),
 		},
-		PRTestingEnabled:      utility.TruePtr(),
-		TracksPushEvents:      utility.TruePtr(),
-		ParameterStoreEnabled: true,
+		PRTestingEnabled: utility.TruePtr(),
+		TracksPushEvents: utility.TruePtr(),
 	}
 	assert.NoError(t, pRef.Insert())
 	repoRef := RepoRef{ProjectRef{
-		Id:                    "myRepo",
-		ParameterStoreEnabled: true,
+		Id: "myRepo",
 	}}
 	assert.NoError(t, repoRef.Upsert())
 	u := &user.DBUser{Id: "me"}
@@ -938,10 +936,9 @@ func TestAttachToRepo(t *testing.T) {
 		CommitQueue: CommitQueueParams{
 			Enabled: utility.TruePtr(),
 		},
-		GithubChecksEnabled:   utility.TruePtr(),
-		TracksPushEvents:      utility.TruePtr(),
-		Enabled:               true,
-		ParameterStoreEnabled: true,
+		GithubChecksEnabled: utility.TruePtr(),
+		TracksPushEvents:    utility.TruePtr(),
+		Enabled:             true,
 	}
 	assert.NoError(t, pRef.Insert())
 
@@ -1232,7 +1229,6 @@ func TestDetachFromRepo(t *testing.T) {
 				PRTestingEnabled:      utility.FalsePtr(),          // neither of these should be changed when overwriting
 				GitTagVersionsEnabled: utility.TruePtr(),
 				GithubChecksEnabled:   nil, // for now this is defaulting to repo
-				ParameterStoreEnabled: true,
 			}
 			assert.NoError(t, pRef.Insert())
 
@@ -1248,7 +1244,6 @@ func TestDetachFromRepo(t *testing.T) {
 				PeriodicBuilds: []PeriodicBuildDefinition{
 					{ID: "my_build"},
 				},
-				ParameterStoreEnabled: true,
 			}}
 			assert.NoError(t, repoRef.Upsert())
 
@@ -1494,14 +1489,12 @@ func TestDefaultRepoBySection(t *testing.T) {
 					TicketCreateProject:  "BFG",
 					TicketSearchProjects: []string{"BF", "BFG"},
 				},
-				ParameterStoreEnabled: true,
 			}
 			assert.NoError(t, pRef.Insert())
 
 			repoRef := RepoRef{
 				ProjectRef: ProjectRef{
-					Id:                    pRef.RepoRefId,
-					ParameterStoreEnabled: true,
+					Id: pRef.RepoRefId,
 				},
 			}
 			assert.NoError(t, repoRef.Upsert())
@@ -1829,8 +1822,7 @@ func TestSetGithubAppCredentials(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(ProjectRefCollection, githubapp.GitHubAppAuthCollection))
 			p := &ProjectRef{
-				Id:                    "id1",
-				ParameterStoreEnabled: true,
+				Id: "id1",
 			}
 			require.NoError(t, p.Insert())
 			test(t, p)
@@ -1846,42 +1838,39 @@ func TestCreateNewRepoRef(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	doc1 := &ProjectRef{
-		Id:                    "id1",
-		Owner:                 "mongodb",
-		Repo:                  "mongo",
-		Branch:                "mci",
-		Enabled:               true,
-		Admins:                []string{"bob", "other bob"},
-		PRTestingEnabled:      utility.TruePtr(),
-		RemotePath:            "evergreen.yml",
-		NotifyOnBuildFailure:  utility.TruePtr(),
-		CommitQueue:           CommitQueueParams{Message: "my message"},
-		ParameterStoreEnabled: true,
+		Id:                   "id1",
+		Owner:                "mongodb",
+		Repo:                 "mongo",
+		Branch:               "mci",
+		Enabled:              true,
+		Admins:               []string{"bob", "other bob"},
+		PRTestingEnabled:     utility.TruePtr(),
+		RemotePath:           "evergreen.yml",
+		NotifyOnBuildFailure: utility.TruePtr(),
+		CommitQueue:          CommitQueueParams{Message: "my message"},
 	}
 	assert.NoError(t, doc1.Insert())
 	doc2 := &ProjectRef{
-		Id:                    "id2",
-		Identifier:            "identifier",
-		Owner:                 "mongodb",
-		Repo:                  "mongo",
-		Branch:                "mci2",
-		Enabled:               true,
-		Admins:                []string{"bob", "other bob"},
-		PRTestingEnabled:      utility.TruePtr(),
-		RemotePath:            "evergreen.yml",
-		NotifyOnBuildFailure:  utility.FalsePtr(),
-		GithubChecksEnabled:   utility.TruePtr(),
-		CommitQueue:           CommitQueueParams{Message: "my message"},
-		ParameterStoreEnabled: true,
+		Id:                   "id2",
+		Identifier:           "identifier",
+		Owner:                "mongodb",
+		Repo:                 "mongo",
+		Branch:               "mci2",
+		Enabled:              true,
+		Admins:               []string{"bob", "other bob"},
+		PRTestingEnabled:     utility.TruePtr(),
+		RemotePath:           "evergreen.yml",
+		NotifyOnBuildFailure: utility.FalsePtr(),
+		GithubChecksEnabled:  utility.TruePtr(),
+		CommitQueue:          CommitQueueParams{Message: "my message"},
 	}
 	assert.NoError(t, doc2.Insert())
 	doc3 := &ProjectRef{
-		Id:                    "id3",
-		Owner:                 "mongodb",
-		Repo:                  "mongo",
-		Branch:                "mci2",
-		Enabled:               false,
-		ParameterStoreEnabled: true,
+		Id:      "id3",
+		Owner:   "mongodb",
+		Repo:    "mongo",
+		Branch:  "mci2",
+		Enabled: false,
 	}
 	assert.NoError(t, doc3.Insert())
 
@@ -2293,14 +2282,13 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 	assert.Nil(projectRef)
 
 	doc := &ProjectRef{
-		Owner:                 "mongodb",
-		Repo:                  "mci",
-		Branch:                "main",
-		Enabled:               false,
-		BatchTime:             10,
-		Id:                    "ident0",
-		PRTestingEnabled:      utility.FalsePtr(),
-		ParameterStoreEnabled: true,
+		Owner:            "mongodb",
+		Repo:             "mci",
+		Branch:           "main",
+		Enabled:          false,
+		BatchTime:        10,
+		Id:               "ident0",
+		PRTestingEnabled: utility.FalsePtr(),
 	}
 	require.NoError(doc.Insert())
 
@@ -2335,33 +2323,30 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 	assert.NotNil(projectRef)
 
 	repoDoc := RepoRef{ProjectRef{
-		Id:                    "my_repo",
-		Owner:                 "mongodb",
-		Repo:                  "mci",
-		RemotePath:            "",
-		ParameterStoreEnabled: true,
+		Id:         "my_repo",
+		Owner:      "mongodb",
+		Repo:       "mci",
+		RemotePath: "",
 	}}
 	assert.NoError(repoDoc.Upsert())
 	doc = &ProjectRef{
-		Id:                    "defaulting_project",
-		Owner:                 "mongodb",
-		Repo:                  "mci",
-		Branch:                "mine",
-		Enabled:               true,
-		RepoRefId:             repoDoc.Id,
-		ParameterStoreEnabled: true,
+		Id:        "defaulting_project",
+		Owner:     "mongodb",
+		Repo:      "mci",
+		Branch:    "mine",
+		Enabled:   true,
+		RepoRefId: repoDoc.Id,
 	}
 	assert.NoError(doc.Insert())
 	doc2 := &ProjectRef{
-		Id:                    "hidden_project",
-		Owner:                 "mongodb",
-		Repo:                  "mci",
-		Branch:                "mine",
-		RepoRefId:             repoDoc.Id,
-		Enabled:               false,
-		PRTestingEnabled:      utility.FalsePtr(),
-		Hidden:                utility.TruePtr(),
-		ParameterStoreEnabled: true,
+		Id:               "hidden_project",
+		Owner:            "mongodb",
+		Repo:             "mci",
+		Branch:           "mine",
+		RepoRefId:        repoDoc.Id,
+		Enabled:          false,
+		PRTestingEnabled: utility.FalsePtr(),
+		Hidden:           utility.TruePtr(),
 	}
 	assert.NoError(doc2.Insert())
 
@@ -3133,10 +3118,9 @@ func TestAddEmptyBranch(t *testing.T) {
 	}
 	require.NoError(t, u.Insert())
 	p := ProjectRef{
-		Identifier:            "myProject",
-		Owner:                 "mongodb",
-		Repo:                  "mongo",
-		ParameterStoreEnabled: true,
+		Identifier: "myProject",
+		Owner:      "mongodb",
+		Repo:       "mongo",
 	}
 	assert.NoError(t, p.Add(&u))
 	assert.NotEmpty(t, p.Id)
@@ -3155,12 +3139,11 @@ func TestAddPermissions(t *testing.T) {
 	}
 	assert.NoError(u.Insert())
 	p := ProjectRef{
-		Identifier:            "myProject",
-		Owner:                 "mongodb",
-		Repo:                  "mongo",
-		Branch:                "main",
-		Hidden:                utility.TruePtr(),
-		ParameterStoreEnabled: true,
+		Identifier: "myProject",
+		Owner:      "mongodb",
+		Repo:       "mongo",
+		Branch:     "main",
+		Hidden:     utility.TruePtr(),
 	}
 	assert.NoError(p.Add(&u))
 	assert.NotEmpty(p.Id)

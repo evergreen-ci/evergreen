@@ -180,30 +180,27 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 		require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
 		repoRef := model.RepoRef{ProjectRef: model.ProjectRef{
-			Id:                    "myRepoId",
-			Owner:                 "evergreen-ci",
-			Repo:                  "evergreen",
-			Restricted:            utility.FalsePtr(),
-			Admins:                []string{"oldAdmin"},
-			ParameterStoreEnabled: true,
+			Id:         "myRepoId",
+			Owner:      "evergreen-ci",
+			Repo:       "evergreen",
+			Restricted: utility.FalsePtr(),
+			Admins:     []string{"oldAdmin"},
 		}}
 		assert.NoError(t, repoRef.Upsert())
 
 		pRefThatDefaults := model.ProjectRef{
-			Id:                    "myId",
-			Owner:                 "evergreen-ci",
-			Repo:                  "evergreen",
-			RepoRefId:             "myRepoId",
-			Admins:                []string{"oldAdmin"},
-			ParameterStoreEnabled: true,
+			Id:        "myId",
+			Owner:     "evergreen-ci",
+			Repo:      "evergreen",
+			RepoRefId: "myRepoId",
+			Admins:    []string{"oldAdmin"},
 		}
 		assert.NoError(t, pRefThatDefaults.Upsert())
 
 		pRefThatDoesNotDefault := model.ProjectRef{
-			Id:                    "myId2",
-			Owner:                 "evergreen-ci",
-			Repo:                  "evergreen",
-			ParameterStoreEnabled: true,
+			Id:    "myId2",
+			Owner: "evergreen-ci",
+			Repo:  "evergreen",
 		}
 		assert.NoError(t, pRefThatDoesNotDefault.Upsert())
 
@@ -1000,15 +997,13 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 					},
 				},
 			},
-			ParameterStoreEnabled: true,
 		}
 		assert.NoError(t, pRef.Insert())
 
 		repoRef := model.RepoRef{ProjectRef: model.ProjectRef{
-			Id:                    pRef.RepoRefId,
-			Restricted:            utility.TruePtr(),
-			PRTestingEnabled:      utility.TruePtr(),
-			ParameterStoreEnabled: true,
+			Id:               pRef.RepoRefId,
+			Restricted:       utility.TruePtr(),
+			PRTestingEnabled: utility.TruePtr(),
 		}}
 		assert.NoError(t, repoRef.Upsert())
 
@@ -1240,12 +1235,11 @@ func TestPromoteVarsToRepo(t *testing.T) {
 		require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
 		repoRef := model.RepoRef{ProjectRef: model.ProjectRef{
-			Id:                    "rId",
-			Owner:                 "evergreen-ci",
-			Repo:                  "evergreen",
-			Restricted:            utility.FalsePtr(),
-			Admins:                []string{"u"},
-			ParameterStoreEnabled: true,
+			Id:         "rId",
+			Owner:      "evergreen-ci",
+			Repo:       "evergreen",
+			Restricted: utility.FalsePtr(),
+			Admins:     []string{"u"},
 		}}
 		assert.NoError(t, repoRef.Upsert())
 
@@ -1258,14 +1252,13 @@ func TestPromoteVarsToRepo(t *testing.T) {
 		assert.NoError(t, rVars.Insert())
 
 		pRef := model.ProjectRef{
-			Id:                    "pId",
-			Owner:                 "evergreen-ci",
-			Repo:                  "evergreen",
-			Branch:                "main",
-			Restricted:            utility.FalsePtr(),
-			Admins:                []string{"u"},
-			RepoRefId:             "rId",
-			ParameterStoreEnabled: true,
+			Id:         "pId",
+			Owner:      "evergreen-ci",
+			Repo:       "evergreen",
+			Branch:     "main",
+			Restricted: utility.FalsePtr(),
+			Admins:     []string{"u"},
+			RepoRefId:  "rId",
 		}
 		assert.NoError(t, pRef.Insert())
 
@@ -1407,18 +1400,16 @@ func TestCopyProject(t *testing.T) {
 					ExternalID:   utility.FromStringPtr(createSecretOut.ARN),
 				},
 			},
-			ParameterStoreEnabled: true,
 		}
 		assert.NoError(t, pRef.Insert())
 
 		pRefInvalidAdmin := model.ProjectRef{
-			Id:                    "myIdTwo",
-			Owner:                 "evergreen-ci",
-			Repo:                  "spruce",
-			Branch:                "main",
-			Restricted:            utility.FalsePtr(),
-			Admins:                []string{"unknownAdmin"},
-			ParameterStoreEnabled: true,
+			Id:         "myIdTwo",
+			Owner:      "evergreen-ci",
+			Repo:       "spruce",
+			Branch:     "main",
+			Restricted: utility.FalsePtr(),
+			Admins:     []string{"unknownAdmin"},
 		}
 		assert.NoError(t, pRefInvalidAdmin.Insert())
 
