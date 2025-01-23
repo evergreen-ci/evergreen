@@ -113,7 +113,7 @@ func (j *taskStrandedCleanupJob) fixTasksStuckDispatching(ctx context.Context) e
 		}
 	}
 	if len(tasksToDeactivate) > 0 {
-		err = task.DeactivateTasks(tasksToDeactivate, true, j.ID())
+		err = task.DeactivateTasks(ctx, tasksToDeactivate, true, j.ID())
 		catcher.Wrapf(err, "deactivating tasks exceeding the unschedulable threshold")
 
 		grip.Info(message.Fields{

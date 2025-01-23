@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -192,7 +193,7 @@ func (restapi restAPI) getRecentVersions(w http.ResponseWriter, r *http.Request)
 		result.Versions = append(result.Versions, versionInfo)
 	}
 	// Find all builds/tasks corresponding the set of version ids
-	if err = result.populateBuildsAndTasks(versionIds, versionIdx); err != nil {
+	if err = result.populateBuildsAndTasks(r.Context(), versionIds, versionIdx); err != nil {
 		msg := fmt.Sprintf("Error populating builds/tasks for recent versions of project '%v'", projectIdentifier)
 		grip.Error(errors.Wrap(err, msg))
 		gimlet.WriteJSONInternalError(w, responseError{Message: msg})
@@ -221,12 +222,12 @@ func (restapi restAPI) getRecentVersions(w http.ResponseWriter, r *http.Request)
 	gimlet.WriteJSON(w, result)
 }
 
-func (r *recentVersionsContent) populateBuildsAndTasks(versionIds []string, versionIdx map[string]int) error {
+func (r *recentVersionsContent) populateBuildsAndTasks(ctx context.Context, versionIds []string, versionIdx map[string]int) error {
 	builds, err := build.FindBuildsByVersions(versionIds)
 	if err != nil {
 		return errors.Wrap(err, "Error finding recent versions")
 	}
-	tasks, err := task.FindTasksFromVersions(versionIds)
+	tasks, err := task.FindTasksFromVersions(ctx, versionIds)
 	if err != nil {
 		return errors.Wrap(err, "Error finding recent tasks for recent versions")
 	}

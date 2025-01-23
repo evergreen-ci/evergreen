@@ -451,7 +451,7 @@ func getTaskDependencies(ctx context.Context, t *task.Task) ([]uiDep, string, er
 	for _, dep := range t.DependsOn {
 		depIds = append(depIds, dep.TaskId)
 	}
-	dependencies, err := task.FindWithFields(task.ByIds(depIds), task.DisplayNameKey, task.StatusKey,
+	dependencies, err := task.FindWithFields(ctx, task.ByIds(depIds), task.DisplayNameKey, task.StatusKey,
 		task.ActivatedKey, task.BuildVariantKey, task.DetailsKey, task.DependsOnKey)
 	if err != nil {
 		return nil, "", err
@@ -833,7 +833,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "not authorized to override dependencies", http.StatusUnauthorized)
 			return
 		}
-		err = projCtx.Task.SetOverrideDependencies(authUser.Username())
+		err = projCtx.Task.SetOverrideDependencies(ctx, authUser.Username())
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

@@ -217,7 +217,7 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 	}
 	versionAsUI.Builds = uiBuilds
 
-	versionAsUI.TimeTaken, versionAsUI.Makespan, err = projCtx.Version.GetTimeSpent()
+	versionAsUI.TimeTaken, versionAsUI.Makespan, err = projCtx.Version.GetTimeSpent(r.Context())
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return

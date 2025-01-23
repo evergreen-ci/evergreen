@@ -972,6 +972,7 @@ func JIRATaskPayload(ctx context.Context, params JiraIssueParameters) (*message.
 	}
 
 	data := jiraTemplateData{
+		Context:         ctx,
 		UIRoot:          params.UiURL,
 		SubscriptionID:  params.SubID,
 		EventID:         params.EventID,

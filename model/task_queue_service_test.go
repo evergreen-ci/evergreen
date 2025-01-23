@@ -169,7 +169,7 @@ func (s *taskDAGDispatchServiceSuite) TestOutsideTasksWithTaskGroupDependencies(
 	s.Require().NoError(t1.Insert())
 	s.Require().NoError(t3.Insert())
 	s.Require().NoError(t5.Insert())
-	err = setTaskStatus("taskgroup_task3", evergreen.TaskSucceeded)
+	err = setTaskStatus(s.ctx, "taskgroup_task3", evergreen.TaskSucceeded)
 	s.Require().NoError(err)
 	s.taskQueue.Queue = s.refreshTaskQueue(service)
 
@@ -341,7 +341,7 @@ func (s *taskDAGDispatchServiceSuite) TestIntraTaskGroupDependencies() {
 	s.Require().NoError(t2.Insert())
 	s.Require().NoError(t3.Insert())
 	s.Require().NoError(t4.Insert())
-	err = setTaskStatus("task2", evergreen.TaskSucceeded)
+	err = setTaskStatus(s.ctx, "task2", evergreen.TaskSucceeded)
 	s.Require().NoError(err)
 
 	s.taskQueue.Queue = s.refreshTaskQueue(service)
@@ -364,9 +364,9 @@ func (s *taskDAGDispatchServiceSuite) TestIntraTaskGroupDependencies() {
 	s.Require().NoError(t2.Insert())
 	s.Require().NoError(t3.Insert())
 	s.Require().NoError(t4.Insert())
-	err = setTaskStatus("task2", evergreen.TaskSucceeded)
+	err = setTaskStatus(s.ctx, "task2", evergreen.TaskSucceeded)
 	s.Require().NoError(err)
-	err = setTaskStatus("task4", evergreen.TaskSucceeded)
+	err = setTaskStatus(s.ctx, "task4", evergreen.TaskSucceeded)
 	s.Require().NoError(err)
 
 	s.taskQueue.Queue = s.refreshTaskQueue(service)
@@ -387,11 +387,11 @@ func (s *taskDAGDispatchServiceSuite) TestIntraTaskGroupDependencies() {
 	s.Require().NoError(t2.Insert())
 	s.Require().NoError(t3.Insert())
 	s.Require().NoError(t4.Insert())
-	err = setTaskStatus("task2", evergreen.TaskSucceeded)
+	err = setTaskStatus(s.ctx, "task2", evergreen.TaskSucceeded)
 	s.Require().NoError(err)
-	err = setTaskStatus("task3", evergreen.TaskSucceeded)
+	err = setTaskStatus(s.ctx, "task3", evergreen.TaskSucceeded)
 	s.Require().NoError(err)
-	err = setTaskStatus("task4", evergreen.TaskSucceeded)
+	err = setTaskStatus(s.ctx, "task4", evergreen.TaskSucceeded)
 	s.Require().NoError(err)
 	s.taskQueue.Queue = s.refreshTaskQueue(service)
 
@@ -1257,8 +1257,9 @@ func (s *taskDAGDispatchServiceSuite) TestSingleHostTaskGroupsBlock() {
 	s.Require().Nil(next)
 }
 
-func setTaskStatus(taskID string, status string) error {
+func setTaskStatus(ctx context.Context, taskID string, status string) error {
 	return task.UpdateOne(
+		ctx,
 		bson.M{
 			task.IdKey: taskID,
 		},
@@ -1289,7 +1290,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 		next = service.FindNextTask(s.ctx, spec, utility.ZeroTime)
 		s.Require().NotNil(next)
 		s.Equal(fmt.Sprintf("%d", 5*i+1), next.Id)
-		s.Require().NoError(setTaskStatus(next.Id, evergreen.TaskSucceeded))
+		s.Require().NoError(setTaskStatus(s.ctx, next.Id, evergreen.TaskSucceeded))
 	}
 
 	// Dispatch the first 5 tasks for taskGroupTasks "group_2_variant_1_project_1_version_1", which represents a task group that initially contains 20 tasks.
@@ -1303,7 +1304,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 		}
 		next = service.FindNextTask(s.ctx, spec, utility.ZeroTime)
 		s.Equal(fmt.Sprintf("%d", 5*i+2), next.Id)
-		s.Require().NoError(setTaskStatus(next.Id, evergreen.TaskSucceeded))
+		s.Require().NoError(setTaskStatus(s.ctx, next.Id, evergreen.TaskSucceeded))
 	}
 
 	// Dispatch the first 5 tasks for taskGroupTasks "group_1_variant_2_project_1_version_1", which represents a task group that initially contains 20 tasks.
@@ -1317,7 +1318,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 		}
 		next = service.FindNextTask(s.ctx, spec, utility.ZeroTime)
 		s.Equal(fmt.Sprintf("%d", 5*i+3), next.Id)
-		s.Require().NoError(setTaskStatus(next.Id, evergreen.TaskSucceeded))
+		s.Require().NoError(setTaskStatus(s.ctx, next.Id, evergreen.TaskSucceeded))
 	}
 
 	// Dispatch the first 5 tasks for taskGroupTasks "group_1_variant_1_project_1_version_2", which represents a task group that initially contains 20 tasks.
@@ -1331,7 +1332,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 		}
 		next = service.FindNextTask(s.ctx, spec, utility.ZeroTime)
 		s.Equal(fmt.Sprintf("%d", 5*i+4), next.Id)
-		s.Require().NoError(setTaskStatus(next.Id, evergreen.TaskSucceeded))
+		s.Require().NoError(setTaskStatus(s.ctx, next.Id, evergreen.TaskSucceeded))
 	}
 
 	// The taskGroupTasks "group_1_variant_1_project_1_version_1" now contains 15 tasks; dispatch another 5 of them.
@@ -1345,7 +1346,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 		}
 		next = service.FindNextTask(s.ctx, spec, utility.ZeroTime)
 		s.Equal(fmt.Sprintf("%d", 5*i+26), next.Id)
-		s.Require().NoError(setTaskStatus(next.Id, evergreen.TaskSucceeded))
+		s.Require().NoError(setTaskStatus(s.ctx, next.Id, evergreen.TaskSucceeded))
 	}
 
 	//////////////////////////////////////////////////////////////////////////////
@@ -1363,7 +1364,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 	next = service.FindNextTask(s.ctx, spec, utility.ZeroTime)
 	s.Equal("0", next.Id)
 	s.Equal("", next.Group)
-	s.Require().NoError(setTaskStatus(next.Id, evergreen.TaskSucceeded))
+	s.Require().NoError(setTaskStatus(s.ctx, next.Id, evergreen.TaskSucceeded))
 
 	currentID := 0
 	var nextInt int
@@ -1383,7 +1384,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 		s.Equal("project_1", next.Project)
 		s.Equal("version_1", next.Version)
 		s.Equal("project_1", next.Project)
-		s.Require().NoError(setTaskStatus(next.Id, evergreen.TaskSucceeded))
+		s.Require().NoError(setTaskStatus(s.ctx, next.Id, evergreen.TaskSucceeded))
 	}
 
 	// Make another 15 requests for a task, passing an "empty" TaskSpec{} - all 15 dispatched tasks should come from the "group_2_variant_1_project_1_version_1" taskGroupTasks.
@@ -1401,7 +1402,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 		s.Equal("project_1", next.Project)
 		s.Equal("version_1", next.Version)
 		s.Equal("project_1", next.Project)
-		s.Require().NoError(setTaskStatus(next.Id, evergreen.TaskSucceeded))
+		s.Require().NoError(setTaskStatus(s.ctx, next.Id, evergreen.TaskSucceeded))
 	}
 
 	// Make another 15 requests for a task, passing an "empty" TaskSpec{} - all 15 dispatched tasks should come from the "group_1_variant_2_project_1_version_1" taskGroupTasks.
@@ -1419,7 +1420,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 		s.Equal("project_1", next.Project)
 		s.Equal("version_1", next.Version)
 		s.Equal("project_1", next.Project)
-		s.Require().NoError(setTaskStatus(next.Id, evergreen.TaskSucceeded))
+		s.Require().NoError(setTaskStatus(s.ctx, next.Id, evergreen.TaskSucceeded))
 	}
 
 	// Make another 15 requests for a task, passing an "empty" TaskSpec{} - all 15 dispatched tasks should come from the "group_1_variant_1_project_1_version_2" taskGroupTasks.
@@ -1437,7 +1438,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 		s.Equal("project_1", next.Project)
 		s.Equal("version_2", next.Version)
 		s.Equal("project_1", next.Project)
-		s.Require().NoError(setTaskStatus(next.Id, evergreen.TaskSucceeded))
+		s.Require().NoError(setTaskStatus(s.ctx, next.Id, evergreen.TaskSucceeded))
 	}
 
 	// Make another 19 requests for a task, passing an "empty" TaskSpec{} - all 19 dispatched tasks should be standalone tasks.
@@ -1447,7 +1448,7 @@ func (s *taskDAGDispatchServiceSuite) TestFindNextTask() {
 		next = service.FindNextTask(s.ctx, spec, utility.ZeroTime)
 		s.Equal(expectedStandaloneTaskOrder[i], next.Id)
 		s.Equal("", next.Group)
-		s.Require().NoError(setTaskStatus(next.Id, evergreen.TaskSucceeded))
+		s.Require().NoError(setTaskStatus(s.ctx, next.Id, evergreen.TaskSucceeded))
 		s.taskQueue.Queue = s.refreshTaskQueue(service)
 	}
 }
@@ -1554,6 +1555,7 @@ func (s *taskDAGDispatchServiceSuite) TestTaskGroupTasksRunningHostsVersusMaxHos
 func (s *taskDAGDispatchServiceSuite) TestTaskGroupWithExternalDependency() {
 	dependsOn := []task.Dependency{{TaskId: "95"}}
 	err := task.UpdateOne(
+		s.ctx,
 		bson.M{
 			task.IdKey: "1",
 		},
@@ -1610,6 +1612,7 @@ func (s *taskDAGDispatchServiceSuite) TestTaskGroupWithExternalDependency() {
 
 	// Set task "95"'s status to evergreen.TaskSucceeded.
 	err = task.UpdateOne(
+		s.ctx,
 		bson.M{
 			task.IdKey: "95",
 		},
@@ -1817,6 +1820,9 @@ func (s *taskDAGDispatchServiceSuite) TestNewSingleHostTaskGroupLimits() {
 }
 
 func (s *taskDAGDispatchServiceSuite) TestGenerateTaskLimits() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	defer evergreen.SetEnvironment(evergreen.GetEnvironment())
 
 	s.Require().NoError(db.ClearCollections(task.Collection))
@@ -1911,7 +1917,7 @@ func (s *taskDAGDispatchServiceSuite) TestGenerateTaskLimits() {
 	s.Equal(t2.Id, next.Id)
 
 	// Mark running task as complete so that t1 can be dispatched.
-	s.Require().NoError(running.MarkEnd(time.Now(), nil))
+	s.Require().NoError(running.MarkEnd(ctx, time.Now(), nil))
 
 	// Fake a refresh of the in-memory queue.
 	s.Require().NoError(db.ClearCollections(task.Collection))

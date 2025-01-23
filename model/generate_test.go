@@ -1055,7 +1055,7 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasksWithBatchtime() {
 	s.NoError(err)
 	s.Require().NotZero(dbExistingBV)
 
-	tasksInExistingBV, err := task.Find(task.ByBuildId(sampleBuild.Id)) // without display
+	tasksInExistingBV, err := task.Find(ctx, task.ByBuildId(sampleBuild.Id)) // without display
 	s.NoError(err)
 	s.Len(tasksInExistingBV, 3)
 	for _, tsk := range tasksInExistingBV {

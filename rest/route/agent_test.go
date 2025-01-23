@@ -216,7 +216,7 @@ func TestMarkTaskForReset(t *testing.T) {
 			assert.Equal(t, 1, foundTask.NumAutomaticRestarts)
 
 			// Should fail if the task resets and tries to auto restart again
-			require.NoError(t, foundTask.MarkEnd(time.Now(), &apimodels.TaskEndDetail{
+			require.NoError(t, foundTask.MarkEnd(ctx, time.Now(), &apimodels.TaskEndDetail{
 				Status: evergreen.TaskFailed,
 			}))
 			require.NoError(t, foundTask.Archive(ctx))

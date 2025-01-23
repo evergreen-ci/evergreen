@@ -888,7 +888,7 @@ func GetRecentTaskStats(ctx context.Context, period time.Duration, nameKey strin
 // FindByExecutionTasksAndMaxExecution returns the tasks corresponding to the
 // passed in taskIds and execution, or the most recent executions of those
 // tasks if they do not have a matching execution.
-func FindByExecutionTasksAndMaxExecution(taskIds []string, execution int, filters ...bson.E) ([]Task, error) {
+func FindByExecutionTasksAndMaxExecution(ctx context.Context, taskIds []string, execution int, filters ...bson.E) ([]Task, error) {
 	query := bson.M{
 		IdKey: bson.M{
 			"$in": taskIds,
@@ -900,7 +900,7 @@ func FindByExecutionTasksAndMaxExecution(taskIds []string, execution int, filter
 	for _, filter := range filters {
 		query[filter.Key] = filter.Value
 	}
-	tasks, err := Find(query)
+	tasks, err := Find(ctx, query)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding tasks")
 	}
@@ -1524,8 +1524,8 @@ func FindAllTasksFromVersionWithDependencies(ctx context.Context, versionId stri
 }
 
 // FindTasksFromVersions returns all tasks associated with the given versions. Note that this only returns a few key fields.
-func FindTasksFromVersions(versionIds []string) ([]Task, error) {
-	return FindWithFields(ByVersions(versionIds),
+func FindTasksFromVersions(ctx context.Context, versionIds []string) ([]Task, error) {
+	return FindWithFields(ctx, ByVersions(versionIds),
 		IdKey, DisplayNameKey, StatusKey, TimeTakenKey, VersionKey, BuildVariantKey, AbortedKey, AbortInfoKey)
 }
 
@@ -1547,8 +1547,8 @@ func HasActivatedDependentTasks(taskId string) (bool, error) {
 	return numDependentTasks > 0, err
 }
 
-func FindTaskGroupFromBuild(buildId, taskGroup string) ([]Task, error) {
-	tasks, err := FindWithSort(bson.M{
+func FindTaskGroupFromBuild(ctx context.Context, buildId, taskGroup string) ([]Task, error) {
+	tasks, err := FindWithSort(ctx, bson.M{
 		BuildIdKey:   buildId,
 		TaskGroupKey: taskGroup,
 	}, []string{TaskGroupOrderKey})
@@ -1583,7 +1583,7 @@ func MakeOldID(taskID string, execution int) string {
 	return fmt.Sprintf("%s_%d", taskID, execution)
 }
 
-func FindAllFirstExecution(query db.Q) ([]Task, error) {
+func FindAllFirstExecution(ctx context.Context, query db.Q) ([]Task, error) {
 	existingTasks, err := FindAll(query)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting current tasks")
@@ -1599,7 +1599,7 @@ func FindAllFirstExecution(query db.Q) ([]Task, error) {
 	}
 
 	if len(oldIDs) > 0 {
-		oldTasks, err := FindAllOld(db.Query(ByIds(oldIDs)))
+		oldTasks, err := FindAllOld(ctx, db.Query(ByIds(oldIDs)))
 		if err != nil {
 			return nil, errors.Wrap(err, "getting old tasks")
 		}
@@ -1610,38 +1610,38 @@ func FindAllFirstExecution(query db.Q) ([]Task, error) {
 }
 
 // Find returns all tasks that satisfy the query it also filters out display tasks from the results.
-func Find(filter bson.M) ([]Task, error) {
+func Find(ctx context.Context, filter bson.M) ([]Task, error) {
 	tasks := []Task{}
 	_, exists := filter[DisplayOnlyKey]
 	if !exists {
 		filter[DisplayOnlyKey] = bson.M{"$ne": true}
 	}
 	query := db.Query(filter)
-	err := db.FindAllQ(Collection, query, &tasks)
+	err := db.FindAllQContext(ctx, Collection, query, &tasks)
 
 	return tasks, err
 }
 
-func FindWithFields(filter bson.M, fields ...string) ([]Task, error) {
+func FindWithFields(ctx context.Context, filter bson.M, fields ...string) ([]Task, error) {
 	tasks := []Task{}
 	_, exists := filter[DisplayOnlyKey]
 	if !exists {
 		filter[DisplayOnlyKey] = bson.M{"$ne": true}
 	}
 	query := db.Query(filter).WithFields(fields...)
-	err := db.FindAllQ(Collection, query, &tasks)
+	err := db.FindAllQContext(ctx, Collection, query, &tasks)
 
 	return tasks, err
 }
 
-func FindWithSort(filter bson.M, sort []string) ([]Task, error) {
+func FindWithSort(ctx context.Context, filter bson.M, sort []string) ([]Task, error) {
 	tasks := []Task{}
 	_, exists := filter[DisplayOnlyKey]
 	if !exists {
 		filter[DisplayOnlyKey] = bson.M{"$ne": true}
 	}
 	query := db.Query(filter).Sort(sort)
-	err := db.FindAllQ(Collection, query, &tasks)
+	err := db.FindAllQContext(ctx, Collection, query, &tasks)
 
 	return tasks, err
 }
@@ -1654,38 +1654,25 @@ func FindAll(query db.Q) ([]Task, error) {
 }
 
 // Find returns really all tasks that satisfy the query.
-func FindAllOld(query db.Q) ([]Task, error) {
+func FindAllOld(ctx context.Context, query db.Q) ([]Task, error) {
 	tasks := []Task{}
-	err := db.FindAllQ(OldCollection, query, &tasks)
+	err := db.FindAllQContext(ctx, OldCollection, query, &tasks)
 	return tasks, err
 }
 
 // UpdateOne updates one task.
-func UpdateOne(query interface{}, update interface{}) error {
-	return db.Update(
+func UpdateOne(ctx context.Context, query interface{}, update interface{}) error {
+	return db.UpdateContext(
+		ctx,
 		Collection,
 		query,
 		update,
 	)
 }
 
-func UpdateOneContext(ctx context.Context, query interface{}, update interface{}) error {
-	res, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateOne(ctx,
-		query,
-		update,
-	)
-	if err != nil {
-		return errors.Wrapf(err, "updating task")
-	}
-	if res.MatchedCount == 0 {
-		return adb.ErrNotFound
-	}
-
-	return nil
-}
-
-func UpdateAll(query interface{}, update interface{}) (*adb.ChangeInfo, error) {
-	return db.UpdateAll(
+func UpdateAll(ctx context.Context, query interface{}, update interface{}) (*adb.ChangeInfo, error) {
+	return db.UpdateAllContext(
+		ctx,
 		Collection,
 		query,
 		update,
@@ -1822,11 +1809,12 @@ func HasUnfinishedTaskForVersions(versionIds []string, taskName, variantName str
 	return count > 0, err
 }
 
-func AddHostCreateDetails(taskId, hostId string, execution int, hostCreateError error) error {
+func AddHostCreateDetails(ctx context.Context, taskId, hostId string, execution int, hostCreateError error) error {
 	if hostCreateError == nil {
 		return nil
 	}
 	err := UpdateOne(
+		ctx,
 		ByIdAndExecution(taskId, execution),
 		bson.M{"$push": bson.M{
 			HostCreateDetailsKey: HostCreateDetail{HostId: hostId, Error: hostCreateError.Error()},
@@ -2659,8 +2647,9 @@ func FindAllDependencyTasksToModify(tasks []Task, isBlocking, ignoreDependencySt
 	return allTasks, nil
 }
 
-func activateTasks(taskIDs []string, caller string, activationTime time.Time) error {
+func activateTasks(ctx context.Context, taskIDs []string, caller string, activationTime time.Time) error {
 	_, err := UpdateAll(
+		ctx,
 		bson.M{
 			IdKey:        bson.M{"$in": taskIDs},
 			ActivatedKey: false,
@@ -2678,14 +2667,15 @@ func activateTasks(taskIDs []string, caller string, activationTime time.Time) er
 	if err != nil {
 		return errors.Wrap(err, "setting tasks to active")
 	}
-	if err = enableDisabledTasks(taskIDs); err != nil {
+	if err = enableDisabledTasks(ctx, taskIDs); err != nil {
 		return errors.Wrap(err, "enabling disabled tasks")
 	}
 	return nil
 }
 
-func enableDisabledTasks(taskIDs []string) error {
+func enableDisabledTasks(ctx context.Context, taskIDs []string) error {
 	_, err := UpdateAll(
+		ctx,
 		bson.M{
 			IdKey:       bson.M{"$in": taskIDs},
 			PriorityKey: evergreen.DisabledTaskPriority,
@@ -2700,8 +2690,9 @@ func enableDisabledTasks(taskIDs []string) error {
 
 // IncNumNextTaskDispatches sets the number of times a host has requested this
 // task and execution as its next task.
-func (t *Task) IncNumNextTaskDispatches() error {
+func (t *Task) IncNumNextTaskDispatches(ctx context.Context) error {
 	if err := UpdateOne(
+		ctx,
 		ByIdAndExecution(t.Id, t.Execution),
 		bson.M{
 			"$inc": bson.M{NumNextTaskDispatchesKey: 1},
@@ -2715,7 +2706,7 @@ func (t *Task) IncNumNextTaskDispatches() error {
 // UpdateHasAnnotations updates a task's HasAnnotations flag, indicating if there
 // are any annotations with populated IssuesKey for its id / execution pair.
 func UpdateHasAnnotations(ctx context.Context, taskId string, execution int, hasAnnotations bool) error {
-	err := UpdateOneContext(
+	err := UpdateOne(
 		ctx,
 		ByIdAndExecution(taskId, execution),
 		[]bson.M{
