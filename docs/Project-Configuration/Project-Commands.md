@@ -384,12 +384,60 @@ Parameters:
 -   `duration_seconds`: int in seconds of how long the returned
     credentials will be valid. (default 900)
 
-This command will also send an external ID in the form
+
+The call to AssumeRole includes an external ID formated as
 `<project_id>-<requester>`. This cannot be modified by the user.
-Evergreen's account ID can be found on the 
+The AssumeRole call comes from the role:
+`arn:aws:iam::<evergreen_account_id>:role/evergreen.role.production`
+and your role should only trust that exact role. You should add an
+external ID to your role's trust policy to ensure only your project
+can assume the role. Evergreen's account ID can be found on the 
 [wiki page](https://wiki.corp.mongodb.com/display/SYSENG/AWS+Accounts+Overview) 
-under `Kernel-Build` and can be used in a trust policy to allow only Evergreen 
-to assume your roles.
+under `Kernel-Build`.
+
+An example of a trust policy with an external ID is below:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::<evergreen_account_id>:role/evergreen.role.production"
+      },
+      "Action": "sts:AssumeRole",
+      "Condition": {
+        "StringEquals": {
+          "sts:ExternalId": "<project-id>-<requester>"
+        }
+      }
+    }
+  ]
+}
+```
+
+You can allow any requester by using `StringLike` like below:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::<evergreen_account_id>:role/evergreen.role.production"
+      },
+      "Action": "sts:AssumeRole",
+      "Condition": {
+        "StringLike": {
+          "sts:ExternalId": "<project-id>-*"
+        }
+      }
+    }
+  ]
+}
+```
 
 ## expansions.update
 
