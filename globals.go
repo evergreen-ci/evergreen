@@ -323,7 +323,7 @@ const (
 	HostsOverallocatedIgnore     = "no-terminations-when-overallocated"
 	HostsOverallocatedUseDefault = ""
 
-	// CommitQueueAlias and GithubPRAlias are special aliases to specify variants and tasks for commit queue and GitHub PR patches
+	// CommitQueueAlias and GithubPRAlias are special aliases to specify variants and tasks for the merge queue and GitHub PR patches
 	CommitQueueAlias  = "__commit_queue"
 	GithubPRAlias     = "__github"
 	GithubChecksAlias = "__github_checks"

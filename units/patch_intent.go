@@ -374,10 +374,6 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		}
 	}
 
-	if patchDoc.IsMergeQueuePatch() {
-		patchDoc.Description = model.MakeCommitQueueDescription(patchDoc.Patches, pref, patchedProject, patchDoc.IsMergeQueuePatch(), patchDoc.GithubMergeData)
-	}
-
 	// set the patch number based on patch author
 	patchDoc.PatchNumber, err = j.user.IncPatchNumber()
 	if err != nil {
@@ -1018,8 +1014,13 @@ func (j *patchIntentProcessor) buildGithubMergeDoc(patchDoc *patch.Patch) error 
 	}
 	patchDoc.Author = j.user.Id
 	patchDoc.Project = projectRef.Id
-
+	patchDoc.Description = makeMergeQueueDescription(patchDoc.GithubMergeData)
 	return nil
+}
+
+// makeMergeQueueDescription returns a new description for a merge queue patch using the merge group.
+func makeMergeQueueDescription(mergeGroup thirdparty.GithubMergeGroup) string {
+	return "GitHub Merge Queue: " + mergeGroup.HeadCommit + " (" + mergeGroup.HeadSHA[0:7] + ")"
 }
 
 func (j *patchIntentProcessor) buildTriggerPatchDoc(ctx context.Context, patchDoc *patch.Patch) (*model.Project, *model.ParserProject, error) {
