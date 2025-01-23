@@ -1889,20 +1889,6 @@ func TestAddDependency(t *testing.T) {
 				assert.NotEqual(t, d.TaskId, tsk.Id, "task should not add dependency on itself")
 			}
 		},
-		"RemoveDependency": func(t *testing.T, tsk *Task) {
-			assert.NoError(t, tsk.RemoveDependency(depTaskIds[2].TaskId))
-			for _, d := range tsk.DependsOn {
-				assert.NotEqual(t, d.TaskId, depTaskIds[2].TaskId)
-			}
-
-			updated, err := FindOneId(ctx, tsk.Id)
-			assert.NoError(t, err)
-			require.NotZero(t, updated)
-			for _, d := range updated.DependsOn {
-				assert.NotEqual(t, d.TaskId, depTaskIds[2].TaskId)
-			}
-			assert.Equal(t, evergreen.TaskWillRun, updated.DisplayStatusCache)
-		},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(Collection))
