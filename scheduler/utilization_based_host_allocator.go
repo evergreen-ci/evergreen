@@ -165,7 +165,7 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskGroupData Tas
 	// summing their estimated time left to completion, and dividing that number by maxDurationThreshold.
 	// That estimate is then multiplied by the futureHostFraction coefficient, which is a fraction that allows us
 	// to tune the final estimate up or down.
-	numFreeHosts, err := calcExistingFreeHosts(ctx, existingHosts, futureHostFraction, maxDurationThreshold)
+	expectedNumFreeHosts, err := calcExistingFreeHosts(ctx, existingHosts, futureHostFraction, maxDurationThreshold)
 	if err != nil {
 		return numNewHosts, expectedNumFreeHosts, err
 	}
