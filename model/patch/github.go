@@ -293,7 +293,7 @@ func (g *githubIntent) NewPatch() *Patch {
 		Author:      evergreen.GithubPatchUser,
 		Status:      evergreen.VersionCreated,
 		CreateTime:  g.CreatedAt,
-		Githash:     g.MergeBase,
+		Githash:     g.BaseHash,
 		GithubPatchData: thirdparty.GithubPatch{
 			PRNumber:   g.PRNumber,
 			BaseOwner:  baseRepo[0],
@@ -302,7 +302,6 @@ func (g *githubIntent) NewPatch() *Patch {
 			HeadOwner:  headRepo[0],
 			HeadRepo:   headRepo[1],
 			HeadHash:   g.HeadHash,
-			BaseHash:   g.BaseHash,
 			MergeBase:  g.MergeBase,
 			Author:     g.User,
 			AuthorUID:  g.UID,
