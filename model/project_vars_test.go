@@ -32,8 +32,7 @@ func TestFindOneProjectVar(t *testing.T) {
 
 	require.NoError(t, db.ClearCollections(ProjectVarsCollection, fakeparameter.Collection, ProjectRefCollection))
 	pRef := ProjectRef{
-		Id:                    "mongodb",
-		ParameterStoreEnabled: true,
+		Id: "mongodb",
 	}
 	require.NoError(t, pRef.Insert())
 	vars := map[string]string{
@@ -65,28 +64,25 @@ func TestFindMergedProjectVars(t *testing.T) {
 	require.NoError(t, db.ClearCollections(ProjectVarsCollection, ProjectRefCollection, RepoRefCollection, fakeparameter.Collection))
 
 	repo := RepoRef{ProjectRef{
-		Id:                    "repo_ref",
-		Owner:                 "mongodb",
-		Repo:                  "test_repo",
-		ParameterStoreEnabled: true,
+		Id:    "repo_ref",
+		Owner: "mongodb",
+		Repo:  "test_repo",
 	}}
 	require.NoError(t, repo.Upsert())
 
 	project0 := ProjectRef{
-		Id:                    "project_0",
-		Owner:                 "mongodb",
-		Branch:                "branch_0",
-		Repo:                  "test_repo",
-		RepoRefId:             "repo_ref",
-		ParameterStoreEnabled: true,
+		Id:        "project_0",
+		Owner:     "mongodb",
+		Branch:    "branch_0",
+		Repo:      "test_repo",
+		RepoRefId: "repo_ref",
 	}
 	project1 := ProjectRef{
-		Id:                    "project_1",
-		Owner:                 "mongodb",
-		Branch:                "branch_1",
-		Repo:                  "test_repo",
-		RepoRefId:             "repo_ref",
-		ParameterStoreEnabled: true,
+		Id:        "project_1",
+		Owner:     "mongodb",
+		Branch:    "branch_1",
+		Repo:      "test_repo",
+		RepoRefId: "repo_ref",
 	}
 	require.NoError(t, project0.Insert())
 	require.NoError(t, project1.Insert())
@@ -237,8 +233,7 @@ func TestProjectVarsInsert(t *testing.T) {
 			checkProjectVars(t, vars)
 
 			newProjRef := ProjectRef{
-				Id:                    "new_project",
-				ParameterStoreEnabled: true,
+				Id: "new_project",
 			}
 			require.NoError(t, newProjRef.Insert())
 			newVars := vars
@@ -273,8 +268,7 @@ func TestProjectVarsInsert(t *testing.T) {
 			require.NoError(t, db.ClearCollections(ProjectVarsCollection, fakeparameter.Collection, ProjectRefCollection))
 
 			pRef := ProjectRef{
-				Id:                    "mongodb",
-				ParameterStoreEnabled: true,
+				Id: "mongodb",
 			}
 
 			vars := ProjectVars{
@@ -362,8 +356,7 @@ func TestProjectVarsUpsert(t *testing.T) {
 			checkProjectVars(t, vars)
 
 			newProjRef := ProjectRef{
-				Id:                    "new_project",
-				ParameterStoreEnabled: true,
+				Id: "new_project",
 			}
 			require.NoError(t, newProjRef.Insert())
 			newVars := vars
@@ -400,8 +393,7 @@ func TestProjectVarsUpsert(t *testing.T) {
 			require.NoError(t, db.ClearCollections(ProjectVarsCollection, fakeparameter.Collection, ProjectRefCollection))
 
 			pRef := ProjectRef{
-				Id:                    "project_id",
-				ParameterStoreEnabled: true,
+				Id: "project_id",
 			}
 			vars := ProjectVars{
 				Id:   pRef.Id,
@@ -421,8 +413,7 @@ func TestProjectVarsFindAndModify(t *testing.T) {
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T){
 		"ShouldModifyExistingVars": func(ctx context.Context, t *testing.T) {
 			pRef := ProjectRef{
-				Id:                    "123",
-				ParameterStoreEnabled: true,
+				Id: "123",
 			}
 			require.NoError(t, pRef.Insert())
 
@@ -480,8 +471,7 @@ func TestProjectVarsFindAndModify(t *testing.T) {
 		},
 		"ShouldUpsertNewVars": func(ctx context.Context, t *testing.T) {
 			pRef := ProjectRef{
-				Id:                    "234",
-				ParameterStoreEnabled: true,
+				Id: "234",
 			}
 			require.NoError(t, pRef.Insert())
 
@@ -512,8 +502,7 @@ func TestProjectVarsFindAndModify(t *testing.T) {
 		},
 		"ShouldCreateNewVarsForSeparateProject": func(ctx context.Context, t *testing.T) {
 			pRef := ProjectRef{
-				Id:                    "234",
-				ParameterStoreEnabled: true,
+				Id: "234",
 			}
 			require.NoError(t, pRef.Insert())
 
@@ -543,8 +532,7 @@ func TestProjectVarsFindAndModify(t *testing.T) {
 			checkParametersNamespacedByProject(t, *dbVars)
 
 			newProjRef := ProjectRef{
-				Id:                    "new_project",
-				ParameterStoreEnabled: true,
+				Id: "new_project",
 			}
 			require.NoError(t, newProjRef.Insert())
 
@@ -617,8 +605,7 @@ func TestAWSVars(t *testing.T) {
 	require.NoError(db.ClearCollections(ProjectVarsCollection, fakeparameter.Collection, ProjectRefCollection))
 	assert := assert.New(t)
 	project := ProjectRef{
-		Id:                    "mci",
-		ParameterStoreEnabled: true,
+		Id: "mci",
 	}
 	assert.NoError(project.Insert())
 

@@ -4974,7 +4974,6 @@ func TestValidateContainers(t *testing.T) {
 						Type:       model.ContainerSecretRepoCreds,
 					},
 				},
-				ParameterStoreEnabled: true,
 			}
 
 			require.NoError(t, ref.Upsert())

@@ -473,8 +473,7 @@ func (s *EC2Suite) TestSpawnHostForTask() {
 	s.Require().NoError(t.Insert())
 
 	pRef := &model.ProjectRef{
-		Id:                    project,
-		ParameterStoreEnabled: true,
+		Id: project,
 	}
 	s.Require().NoError(pRef.Insert())
 	newVars := &model.ProjectVars{
