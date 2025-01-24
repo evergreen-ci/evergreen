@@ -710,38 +710,6 @@ func (t *Task) AddDependency(ctx context.Context, d Dependency) error {
 	)
 }
 
-func (t *Task) RemoveDependency(dependencyId string) error {
-	found := false
-	for i := len(t.DependsOn) - 1; i >= 0; i-- {
-		d := t.DependsOn[i]
-		if d.TaskId == dependencyId {
-			var dependsOn []Dependency
-			dependsOn = append(dependsOn, t.DependsOn[:i]...)
-			dependsOn = append(dependsOn, t.DependsOn[i+1:]...)
-			t.DependsOn = dependsOn
-			t.DisplayStatusCache = t.DetermineDisplayStatus()
-			found = true
-			break
-		}
-	}
-	if !found {
-		return errors.Errorf("dependency '%s' not found", dependencyId)
-	}
-
-	query := bson.M{IdKey: t.Id}
-	update := bson.M{
-		"$pull": bson.M{
-			DependsOnKey: bson.M{
-				DependencyTaskIdKey: dependencyId,
-			},
-		},
-		"$set": bson.M{
-			DisplayStatusCacheKey: t.DisplayStatusCache,
-		},
-	}
-	return db.Update(Collection, query, update)
-}
-
 // DependenciesMet checks whether the dependencies for the task have all completed successfully.
 // If any of the dependencies exist in the map that is passed in, they are
 // used to check rather than fetching from the database. All queries
@@ -976,14 +944,6 @@ func (t *Task) FindTaskOnBaseCommit(ctx context.Context) (*Task, error) {
 
 func (t *Task) FindTaskOnPreviousCommit(ctx context.Context) (*Task, error) {
 	return FindOne(ctx, db.Query(ByPreviousCommit(t.BuildVariant, t.DisplayName, t.Project, evergreen.RepotrackerVersionRequester, t.RevisionOrderNumber)).Sort([]string{"-" + RevisionOrderNumberKey}))
-}
-
-// CountSimilarFailingTasks returns a count of all tasks with the same project,
-// same display name, and in other buildvariants, that have failed in the same
-// revision
-func (t *Task) CountSimilarFailingTasks() (int, error) {
-	return Count(db.Query(ByDifferentFailedBuildVariants(t.Revision, t.BuildVariant, t.DisplayName,
-		t.Project, t.Requester)))
 }
 
 // Find the previously completed task for the same project +
@@ -1321,9 +1281,9 @@ func MarkGeneratedTasksErr(ctx context.Context, taskID string, errorToSet error)
 }
 
 // GenerateNotRun returns tasks that have requested to generate tasks.
-func GenerateNotRun() ([]Task, error) {
+func GenerateNotRun(ctx context.Context) ([]Task, error) {
 	const maxGenerateTimeAgo = 24 * time.Hour
-	return FindAll(db.Query(bson.M{
+	return FindAll(ctx, db.Query(bson.M{
 		StatusKey:                evergreen.TaskStarted,                              // task is running
 		StartTimeKey:             bson.M{"$gt": time.Now().Add(-maxGenerateTimeAgo)}, // ignore older tasks, just in case
 		GeneratedTasksKey:        bson.M{"$ne": true},                                // generate.tasks has not yet run
@@ -1575,7 +1535,7 @@ func UnscheduleStaleUnderwaterHostTasks(ctx context.Context, distroID string) ([
 
 	query[ActivatedTimeKey] = bson.M{"$lte": time.Now().Add(-UnschedulableThreshold)}
 
-	tasks, err := FindAll(db.Query(query))
+	tasks, err := FindAll(ctx, db.Query(query))
 	if err != nil {
 		return nil, errors.Wrap(err, "finding matching tasks")
 	}
@@ -1936,7 +1896,7 @@ func (t *Task) HasResults(ctx context.Context) bool {
 		} else {
 			query := ByIds(t.ExecutionTasks)
 			query["$or"] = hasResults
-			execTasksWithResults, err := Count(db.Query(query))
+			execTasksWithResults, err := Count(ctx, db.Query(query))
 			if err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"message": "getting count of execution tasks with results for display task",
@@ -1967,7 +1927,7 @@ func ActivateTasks(ctx context.Context, tasks []Task, activationTime time.Time, 
 		taskIDs = append(taskIDs, t.Id)
 		numEstimatedActivatedGeneratedTasks += utility.FromIntPtr(t.EstimatedNumActivatedGeneratedTasks)
 	}
-	depTasksToUpdate, depTaskIDsToUpdate, err := getDependencyTaskIdsToActivate(taskIDs, updateDependencies)
+	depTasksToUpdate, depTaskIDsToUpdate, err := getDependencyTaskIdsToActivate(ctx, taskIDs, updateDependencies)
 	if err != nil {
 		return errors.Wrap(err, "getting dependency tasks to activate")
 	}
@@ -2028,7 +1988,7 @@ func ActivateTasksByIdsWithDependencies(ctx context.Context, ids []string, calle
 		StatusKey: evergreen.TaskUndispatched,
 	})
 
-	tasks, err := FindAll(q.WithFields(IdKey, DependsOnKey, ExecutionKey, ActivatedKey))
+	tasks, err := FindAll(ctx, q.WithFields(IdKey, DependsOnKey, ExecutionKey, ActivatedKey))
 	if err != nil {
 		return errors.Wrap(err, "getting tasks for activation")
 	}
@@ -2043,7 +2003,7 @@ func ActivateTasksByIdsWithDependencies(ctx context.Context, ids []string, calle
 	return nil
 }
 
-func getDependencyTaskIdsToActivate(tasks []string, updateDependencies bool) (map[string]Task, []string, error) {
+func getDependencyTaskIdsToActivate(ctx context.Context, tasks []string, updateDependencies bool) (map[string]Task, []string, error) {
 	if !updateDependencies {
 		return nil, nil, nil
 	}
@@ -2052,7 +2012,7 @@ func getDependencyTaskIdsToActivate(tasks []string, updateDependencies bool) (ma
 		taskMap[t] = true
 	}
 
-	tasksDependingOnTheseTasks, err := getRecursiveDependenciesDown(tasks, nil)
+	tasksDependingOnTheseTasks, err := getRecursiveDependenciesDown(ctx, tasks, nil)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "getting recursive dependencies down")
 	}
@@ -2084,7 +2044,7 @@ func getDependencyTaskIdsToActivate(tasks []string, updateDependencies bool) (ma
 	missingTaskMap := make(map[string]Task)
 	if len(tasksToGet) > 0 {
 		var missingTasks []Task
-		missingTasks, err = FindAll(db.Query(bson.M{IdKey: bson.M{"$in": tasksToGet}}).WithFields(ActivatedKey))
+		missingTasks, err = FindAll(ctx, db.Query(bson.M{IdKey: bson.M{"$in": tasksToGet}}).WithFields(ActivatedKey))
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "getting missing tasks")
 		}
@@ -2230,7 +2190,7 @@ func DeactivateTasks(ctx context.Context, tasks []Task, updateDependencies bool,
 		numEstimatedActivatedGeneratedTasks += utility.FromIntPtr(t.EstimatedNumActivatedGeneratedTasks)
 	}
 
-	depTasksToUpdate, depTaskIDsToUpdate, err := getDependencyTasksToUpdate(taskIDs, updateDependencies)
+	depTasksToUpdate, depTaskIDsToUpdate, err := getDependencyTasksToUpdate(ctx, taskIDs, updateDependencies)
 	if err != nil {
 		return errors.Wrap(err, "retrieving dependency tasks to deactivate")
 	}
@@ -2278,11 +2238,11 @@ func DeactivateTasks(ctx context.Context, tasks []Task, updateDependencies bool,
 	return nil
 }
 
-func getDependencyTasksToUpdate(tasks []string, updateDependencies bool) ([]Task, []string, error) {
+func getDependencyTasksToUpdate(ctx context.Context, tasks []string, updateDependencies bool) ([]Task, []string, error) {
 	if !updateDependencies {
 		return nil, nil, nil
 	}
-	tasksDependingOnTheseTasks, err := getRecursiveDependenciesDown(tasks, nil)
+	tasksDependingOnTheseTasks, err := getRecursiveDependenciesDown(ctx, tasks, nil)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "getting recursive dependencies down")
 	}
@@ -2333,7 +2293,7 @@ func deactivateDependencies(ctx context.Context, tasksToUpdate []Task, taskIDsTo
 // DeactivateDependencies gets all tasks that are blocked by the given tasks (this could be 1st level
 // or recursive) and deactivates them. Then it sends out the event logs for the deactivation.
 func DeactivateDependencies(ctx context.Context, tasks []string, caller string) error {
-	tasksToUpdate, taskIDsToUpdate, err := getDependencyTasksToUpdate(tasks, true)
+	tasksToUpdate, taskIDsToUpdate, err := getDependencyTasksToUpdate(ctx, tasks, true)
 	if err != nil {
 		return errors.Wrap(err, "retrieving dependency tasks to deactivate")
 	}
@@ -2705,7 +2665,7 @@ func GetRecursiveDependenciesUp(ctx context.Context, tasks []Task, depCache map[
 // getRecursiveDependenciesDown returns a slice containing all tasks recursively depending on tasks.
 // taskMap should originally be nil.
 // We assume there are no dependency cycles.
-func getRecursiveDependenciesDown(tasks []string, taskMap map[string]bool) ([]Task, error) {
+func getRecursiveDependenciesDown(ctx context.Context, tasks []string, taskMap map[string]bool) ([]Task, error) {
 	if taskMap == nil {
 		taskMap = make(map[string]bool)
 	}
@@ -2717,7 +2677,7 @@ func getRecursiveDependenciesDown(tasks []string, taskMap map[string]bool) ([]Ta
 	query := db.Query(bson.M{
 		bsonutil.GetDottedKeyName(DependsOnKey, DependencyTaskIdKey): bson.M{"$in": tasks},
 	}).WithFields(IdKey, ActivatedKey, DeactivatedForDependencyKey, ExecutionKey, DependsOnKey, BuildIdKey)
-	dependOnUsTasks, err := FindAll(query)
+	dependOnUsTasks, err := FindAll(ctx, query)
 	if err != nil {
 		return nil, errors.Wrap(err, "can't get dependencies")
 	}
@@ -2739,7 +2699,7 @@ func getRecursiveDependenciesDown(tasks []string, taskMap map[string]bool) ([]Ta
 	for _, t := range newDeps {
 		newDepIDs = append(newDepIDs, t.Id)
 	}
-	recurseTasks, err := getRecursiveDependenciesDown(newDepIDs, taskMap)
+	recurseTasks, err := getRecursiveDependenciesDown(ctx, newDepIDs, taskMap)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting recursive dependencies")
 	}
@@ -2810,7 +2770,7 @@ func MarkAllForUnattainableDependencies(ctx context.Context, tasks []Task, depen
 
 	event.LogManyTasksBlocked(ctx, toUpdate.newlyBlockedTaskData)
 
-	updatedTasks, err := findAllTasksChunked(toUpdate.taskIDs)
+	updatedTasks, err := findAllTasksChunked(ctx, toUpdate.taskIDs)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding updated tasks")
 	}
@@ -2932,7 +2892,7 @@ func updateTaskDependenciesForChunk(ctx context.Context, taskIDs []string, depen
 // findAllTasksChunked finds all tasks by ID. This finds tasks in smaller chunks
 // to avoid the 16  MB query size limit - if the number of tasks is large, a
 // single query could be too large and the DB will reject it.
-func findAllTasksChunked(taskIDs []string) ([]Task, error) {
+func findAllTasksChunked(ctx context.Context, taskIDs []string) ([]Task, error) {
 	if len(taskIDs) == 0 {
 		return nil, nil
 	}
@@ -2947,7 +2907,7 @@ func findAllTasksChunked(taskIDs []string) ([]Task, error) {
 		if i == len(taskIDs)-1 || len(chunkedTasks) > maxTasksPerQuery {
 			// Query the tasks now - either there's no remaining task IDs, or
 			// the max task IDs that can be checked per query has been reached.
-			tasks, err := FindAll(db.Query(ByIds(chunkedTasks)))
+			tasks, err := FindAll(ctx, db.Query(ByIds(chunkedTasks)))
 			if err != nil {
 				return nil, errors.Wrap(err, "finding tasks")
 			}
@@ -3100,7 +3060,7 @@ func ArchiveMany(ctx context.Context, tasks []Task) error {
 			if t.IsRestartFailedOnly() {
 				execTasks, err = Find(ctx, FailedTasksByIds(t.ExecutionTasks))
 			} else {
-				execTasks, err = FindAll(db.Query(ByIdsAndStatus(t.ExecutionTasks, evergreen.TaskCompletedStatuses)))
+				execTasks, err = FindAll(ctx, db.Query(ByIdsAndStatus(t.ExecutionTasks, evergreen.TaskCompletedStatuses)))
 			}
 
 			if err != nil {
@@ -3539,7 +3499,7 @@ func FindHostSchedulableForAlias(ctx context.Context, id string) ([]Task, error)
 	// group might be assigned to different hosts.
 	q[TaskGroupMaxHostsKey] = bson.M{"$ne": 1}
 
-	return FindAll(db.Query(q))
+	return FindAll(ctx, db.Query(q))
 }
 
 func (t *Task) IsPartOfSingleHostTaskGroup() bool {
@@ -3622,7 +3582,7 @@ func (t *Task) GetDisplayTask(ctx context.Context) (*Task, error) {
 }
 
 // GetAllDependencies returns all the dependencies the tasks in taskIDs rely on
-func GetAllDependencies(taskIDs []string, taskMap map[string]*Task) ([]Dependency, error) {
+func GetAllDependencies(ctx context.Context, taskIDs []string, taskMap map[string]*Task) ([]Dependency, error) {
 	// fill in the gaps in taskMap
 	tasksToFetch := []string{}
 	for _, tID := range taskIDs {
@@ -3632,7 +3592,7 @@ func GetAllDependencies(taskIDs []string, taskMap map[string]*Task) ([]Dependenc
 	}
 	missingTaskMap := make(map[string]*Task)
 	if len(tasksToFetch) > 0 {
-		missingTasks, err := FindAll(db.Query(ByIds(tasksToFetch)).WithFields(DependsOnKey))
+		missingTasks, err := FindAll(ctx, db.Query(ByIds(tasksToFetch)).WithFields(DependsOnKey))
 		if err != nil {
 			return nil, errors.Wrap(err, "getting tasks missing from map")
 		}
@@ -3980,7 +3940,7 @@ type GetTasksByProjectAndCommitOptions struct {
 	Limit          int
 }
 
-func AddParentDisplayTasks(tasks []Task) ([]Task, error) {
+func AddParentDisplayTasks(ctx context.Context, tasks []Task) ([]Task, error) {
 	if len(tasks) == 0 {
 		return tasks, nil
 	}
@@ -3989,7 +3949,7 @@ func AddParentDisplayTasks(tasks []Task) ([]Task, error) {
 	for _, t := range tasks {
 		taskIDs = append(taskIDs, t.Id)
 	}
-	parents, err := FindAll(db.Query(ByExecutionTasks(taskIDs)))
+	parents, err := FindAll(ctx, db.Query(ByExecutionTasks(taskIDs)))
 	if err != nil {
 		return nil, errors.Wrap(err, "finding parent display tasks")
 	}
@@ -4163,7 +4123,7 @@ func (t *Task) FindAbortingAndResettingDependencies(ctx context.Context) ([]Task
 			{ResetFailedWhenFinishedKey: true},
 		},
 	})
-	return FindAll(q)
+	return FindAll(ctx, q)
 }
 
 // SortingValueBreakdown is the full breakdown of the final value used to sort on in the queue,

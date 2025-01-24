@@ -54,7 +54,7 @@ type TaskDetails struct {
 }
 
 type TaskHistoryIterator interface {
-	GetChunk(version *Version, numBefore, numAfter int, include bool) (TaskHistoryChunk, error)
+	GetChunk(ctx context.Context, version *Version, numBefore, numAfter int, include bool) (TaskHistoryChunk, error)
 }
 
 func NewTaskHistoryIterator(name string, buildVariants []string, projectName string) TaskHistoryIterator {
@@ -125,7 +125,7 @@ func (iter *taskHistoryIterator) findAllVersions(v *Version, numRevisions int, b
 
 // GetChunk Returns tasks grouped by their versions, and sorted with the most
 // recent first (i.e. descending commit order number).
-func (iter *taskHistoryIterator) GetChunk(v *Version, numBefore, numAfter int, include bool) (TaskHistoryChunk, error) {
+func (iter *taskHistoryIterator) GetChunk(ctx context.Context, v *Version, numBefore, numAfter int, include bool) (TaskHistoryChunk, error) {
 	chunk := TaskHistoryChunk{
 		Tasks:       []bson.M{},
 		Versions:    []Version{},
@@ -211,7 +211,7 @@ func (iter *taskHistoryIterator) GetChunk(v *Version, numBefore, numAfter int, i
 	chunk.Tasks = rawAggregatedTasks
 
 	matchStage[task.StatusKey] = evergreen.TaskFailed
-	tasks, err := task.FindAll(db.Query(matchStage))
+	tasks, err := task.FindAll(ctx, db.Query(matchStage))
 	if err != nil {
 		return chunk, errors.Wrap(err, "finding failed tasks")
 	}

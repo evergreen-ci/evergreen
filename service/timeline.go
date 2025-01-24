@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -154,7 +155,7 @@ func (uis *UIServer) patchTimelineJson(w http.ResponseWriter, r *http.Request) {
 
 	buildsMap := map[string][]BuildInfo{}
 	for _, version := range versions {
-		builds, err := getBuildInfo(version.BuildIds)
+		builds, err := getBuildInfo(r.Context(), version.BuildIds)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
@@ -171,13 +172,13 @@ func (uis *UIServer) patchTimelineJson(w http.ResponseWriter, r *http.Request) {
 	gimlet.WriteJSON(w, data)
 }
 
-func getBuildInfo(buildIds []string) ([]BuildInfo, error) {
+func getBuildInfo(ctx context.Context, buildIds []string) ([]BuildInfo, error) {
 	dbBuilds, err := build.Find(build.ByIds(buildIds))
 	if err != nil {
 		return nil, errors.Wrap(err, "can't get builds")
 	}
 	query := db.Query(task.ByBuildIds(buildIds)).WithFields(task.DisplayNameKey, task.StatusKey, task.DetailsKey)
-	dbTasks, err := task.FindAll(query)
+	dbTasks, err := task.FindAll(ctx, query)
 	if err != nil {
 		return nil, errors.Wrap(err, "can't get tasks")
 	}

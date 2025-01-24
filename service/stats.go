@@ -224,7 +224,7 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 
 			query := db.Query(task.ByBeforeRevisionWithStatusesAndRequesters(t.RevisionOrderNumber, statuses,
 				buildVariant, taskName, project.Identifier, []string{request})).Limit(limit).Sort([]string{"-" + task.CreateTimeKey}).WithFields(fields...)
-			tasks, err = task.FindAll(query)
+			tasks, err = task.FindAll(r.Context(), query)
 			if err != nil {
 				uis.LoggedError(w, r, http.StatusNotFound, err)
 				return
@@ -232,7 +232,7 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 
 		} else {
 			query := db.Query(task.ByStatuses(statuses, buildVariant, taskName, project.Identifier, request)).Limit(limit).Sort([]string{"-" + task.CreateTimeKey}).WithFields(fields...)
-			tasks, err = task.FindAll(query)
+			tasks, err = task.FindAll(r.Context(), query)
 
 			if err != nil {
 				uis.LoggedError(w, r, http.StatusNotFound, err)

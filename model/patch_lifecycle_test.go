@@ -762,6 +762,9 @@ func TestVariantTasksToTVPairs(t *testing.T) {
 }
 
 func TestAddNewPatch(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 
 	require.NoError(t, db.ClearCollections(patch.Collection, VersionCollection, build.Collection, task.Collection, ProjectRefCollection, user.Collection))
@@ -851,7 +854,7 @@ func TestAddNewPatch(t *testing.T) {
 	assert.NoError(err)
 	require.NotNil(t, dbUser)
 	assert.Equal(4, dbUser.NumScheduledPatchTasks)
-	dbTasks, err := task.FindAll(db.Query(task.ByBuildId(dbBuild.Id)))
+	dbTasks, err := task.FindAll(ctx, db.Query(task.ByBuildId(dbBuild.Id)))
 	assert.NoError(err)
 	assert.NotNil(dbBuild)
 	require.Len(t, dbTasks, 4)
@@ -870,6 +873,9 @@ func TestAddNewPatch(t *testing.T) {
 }
 
 func TestAddNewPatchWithMissingBaseVersion(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 
 	require.NoError(t, db.ClearCollections(patch.Collection, VersionCollection, build.Collection, task.Collection, ProjectRefCollection))
@@ -939,7 +945,7 @@ func TestAddNewPatchWithMissingBaseVersion(t *testing.T) {
 
 	_, err = addNewTasksToExistingBuilds(context.Background(), creationInfo, []build.Build{*dbBuild}, "")
 	assert.NoError(err)
-	dbTasks, err := task.FindAll(db.Query(task.ByBuildId(dbBuild.Id)))
+	dbTasks, err := task.FindAll(ctx, db.Query(task.ByBuildId(dbBuild.Id)))
 	assert.NoError(err)
 	assert.NotNil(dbBuild)
 	assert.Len(dbTasks, 4)

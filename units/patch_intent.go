@@ -602,7 +602,7 @@ func (j *patchIntentProcessor) buildTasksAndVariants(ctx context.Context, patchD
 // setToFilteredTasks sets the tasks/variants to a previous patch's activated tasks (filtered on failures if requested)
 // and adds dependencies and task group tasks as needed.
 func setToFilteredTasks(ctx context.Context, patchDoc, reusePatch *patch.Patch, project *model.Project, failedOnly bool) error {
-	activatedTasks, err := task.FindActivatedByVersionWithoutDisplay(reusePatch.Version)
+	activatedTasks, err := task.FindActivatedByVersionWithoutDisplay(ctx, reusePatch.Version)
 	if err != nil {
 		return errors.Wrap(err, "filtering to activated tasks")
 	}

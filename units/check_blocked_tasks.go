@@ -57,7 +57,7 @@ func (j *checkBlockedTasksJob) Run(ctx context.Context) {
 	if j.DistroId != "" {
 		tasksToCheck = j.getDistroTasksToCheck(ctx)
 	} else {
-		tasksToCheck = j.getContainerTasksToCheck()
+		tasksToCheck = j.getContainerTasksToCheck(ctx)
 	}
 	dependencyCache := map[string]task.Task{}
 	for _, t := range tasksToCheck {
@@ -107,10 +107,10 @@ func (j *checkBlockedTasksJob) getDistroTasksToCheck(ctx context.Context) []task
 	return tasksToCheck
 }
 
-func (j *checkBlockedTasksJob) getContainerTasksToCheck() []task.Task {
+func (j *checkBlockedTasksJob) getContainerTasksToCheck(ctx context.Context) []task.Task {
 	query := task.UndispatchedContainerTasksQuery()
 	query[task.ContainerAllocatedKey] = false
-	tasksToCheck, err := task.FindAll(db.Query(query))
+	tasksToCheck, err := task.FindAll(ctx, db.Query(query))
 	if err != nil {
 		j.AddError(errors.Wrap(err, "getting container tasks to check"))
 		return nil

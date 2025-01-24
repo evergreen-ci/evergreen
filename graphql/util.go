@@ -70,7 +70,7 @@ func getGroupedFiles(ctx context.Context, name string, taskID string, execution 
 }
 
 func findAllTasksByIds(ctx context.Context, taskIDs ...string) ([]task.Task, error) {
-	tasks, err := task.FindAll(db.Query(task.ByIds(taskIDs)))
+	tasks, err := task.FindAll(ctx, db.Query(task.ByIds(taskIDs)))
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
