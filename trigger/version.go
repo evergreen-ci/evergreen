@@ -220,7 +220,7 @@ func (t *versionTriggers) versionFailure(ctx context.Context, sub *event.Subscri
 	if t.data.Status != evergreen.VersionFailed || t.event.EventType == event.VersionChildrenCompletion {
 		return nil, nil
 	}
-	failedTasks, err := task.FindAll(db.Query(task.FailedTasksByVersion(t.version.Id)))
+	failedTasks, err := task.FindAll(ctx, db.Query(task.FailedTasksByVersion(t.version.Id)))
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting failed tasks in version '%s'", t.version.Id)
 	}
@@ -280,7 +280,7 @@ func (t *versionTriggers) versionFamilyFailure(ctx context.Context, sub *event.S
 	if t.data.Status != evergreen.VersionFailed || t.event.EventType != event.VersionChildrenCompletion {
 		return nil, nil
 	}
-	failedTasks, err := task.FindAll(db.Query(task.FailedTasksByVersion(t.version.Id)))
+	failedTasks, err := task.FindAll(ctx, db.Query(task.FailedTasksByVersion(t.version.Id)))
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting failed tasks in version '%s'", t.version.Id)
 	}
@@ -342,7 +342,7 @@ func (t *versionTriggers) versionRegression(ctx context.Context, sub *event.Subs
 		return nil, nil
 	}
 
-	versionTasks, err := task.FindAll(db.Query(task.ByVersion(t.version.Id)))
+	versionTasks, err := task.FindAll(ctx, db.Query(task.ByVersion(t.version.Id)))
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding tasks for version '%s'", t.version.Id)
 	}

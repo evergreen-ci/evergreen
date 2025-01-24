@@ -271,13 +271,13 @@ func (j *generateTasksJob) Run(ctx context.Context) {
 
 	if err != nil && !shouldNoop {
 		j.AddError(err)
-		j.AddError(task.MarkGeneratedTasksErr(j.TaskID, err))
+		j.AddError(task.MarkGeneratedTasksErr(ctx, j.TaskID, err))
 		return
 	}
 	if !shouldNoop {
-		j.AddError(task.MarkGeneratedTasks(j.TaskID))
+		j.AddError(task.MarkGeneratedTasks(ctx, j.TaskID))
 		if t.IsPatchRequest() {
-			activatedTasks, err := task.CountActivatedTasksForVersion(t.Version)
+			activatedTasks, err := task.CountActivatedTasksForVersion(ctx, t.Version)
 			if err != nil {
 				j.AddError(err)
 				return

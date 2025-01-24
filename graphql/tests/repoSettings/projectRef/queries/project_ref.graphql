@@ -56,11 +56,6 @@
         cpu
         memoryMb
       }
-
-      taskSync {
-        configEnabled
-        patchEnabled
-      }
     }
   }
 }

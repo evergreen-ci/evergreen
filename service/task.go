@@ -103,9 +103,6 @@ type uiTaskData struct {
 	// generated task info
 	GeneratedById   string `json:"generated_by_id"`
 	GeneratedByName string `json:"generated_by_name"`
-
-	// CanSync indicates that the task can sync its working directory.
-	CanSync bool `json:"can_sync"`
 }
 
 type uiDep struct {
@@ -271,7 +268,6 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		Archived:             archived,
 		TotalExecutions:      totalExecutions,
 		PartOfDisplay:        projCtx.Task.IsPartOfDisplay(r.Context()),
-		CanSync:              projCtx.Task.CanSync,
 		GeneratedById:        projCtx.Task.GeneratedBy,
 	}
 
@@ -455,7 +451,7 @@ func getTaskDependencies(ctx context.Context, t *task.Task) ([]uiDep, string, er
 	for _, dep := range t.DependsOn {
 		depIds = append(depIds, dep.TaskId)
 	}
-	dependencies, err := task.FindWithFields(task.ByIds(depIds), task.DisplayNameKey, task.StatusKey,
+	dependencies, err := task.FindWithFields(ctx, task.ByIds(depIds), task.DisplayNameKey, task.StatusKey,
 		task.ActivatedKey, task.BuildVariantKey, task.DetailsKey, task.DependsOnKey)
 	if err != nil {
 		return nil, "", err
@@ -837,7 +833,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "not authorized to override dependencies", http.StatusUnauthorized)
 			return
 		}
-		err = projCtx.Task.SetOverrideDependencies(authUser.Username())
+		err = projCtx.Task.SetOverrideDependencies(ctx, authUser.Username())
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

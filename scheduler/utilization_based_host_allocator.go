@@ -165,7 +165,7 @@ func evalHostUtilization(ctx context.Context, d distro.Distro, taskGroupData Tas
 	// summing their estimated time left to completion, and dividing that number by maxDurationThreshold.
 	// That estimate is then multiplied by the futureHostFraction coefficient, which is a fraction that allows us
 	// to tune the final estimate up or down.
-	expectedNumFreeHosts, err := calcExistingFreeHosts(existingHosts, futureHostFraction, maxDurationThreshold)
+	expectedNumFreeHosts, err := calcExistingFreeHosts(ctx, existingHosts, futureHostFraction, maxDurationThreshold)
 	if err != nil {
 		return numNewHosts, expectedNumFreeHosts, err
 	}
@@ -296,7 +296,7 @@ func calcNewHostsNeeded(totalShortRunningTasksExpectedDuration, maxDurationPerHo
 
 // calcExistingFreeHosts returns the number of hosts that are not running a task,
 // plus hosts that will soon be free scaled by some fraction
-func calcExistingFreeHosts(existingHosts []host.Host, futureHostFactor float64, maxDurationPerHost time.Duration) (int, error) {
+func calcExistingFreeHosts(ctx context.Context, existingHosts []host.Host, futureHostFactor float64, maxDurationPerHost time.Duration) (int, error) {
 	numFreeHosts := 0
 	if futureHostFactor > 1 {
 		return numFreeHosts, errors.New("future host factor cannot be greater than 1")
@@ -308,7 +308,7 @@ func calcExistingFreeHosts(existingHosts []host.Host, futureHostFactor float64, 
 		}
 	}
 
-	soonToBeFree, err := getSoonToBeFreeHosts(existingHosts, futureHostFactor, maxDurationPerHost)
+	soonToBeFree, err := getSoonToBeFreeHosts(ctx, existingHosts, futureHostFactor, maxDurationPerHost)
 	if err != nil {
 		return 0, err
 	}
@@ -320,7 +320,7 @@ func calcExistingFreeHosts(existingHosts []host.Host, futureHostFactor float64, 
 // to be free for some fraction of the next maxDurationPerHost interval
 // the final value is scaled by some fraction representing how confident we are that
 // the hosts will actually be free in the expected amount of time
-func getSoonToBeFreeHosts(existingHosts []host.Host, futureHostFraction float64, maxDurationPerHost time.Duration) (float64, error) {
+func getSoonToBeFreeHosts(ctx context.Context, existingHosts []host.Host, futureHostFraction float64, maxDurationPerHost time.Duration) (float64, error) {
 	runningTaskIds := []string{}
 
 	for _, existingDistroHost := range existingHosts {
@@ -333,7 +333,7 @@ func getSoonToBeFreeHosts(existingHosts []host.Host, futureHostFraction float64,
 		return 0.0, nil
 	}
 
-	runningTasks, err := task.Find(task.ByIds(runningTaskIds))
+	runningTasks, err := task.Find(ctx, task.ByIds(runningTaskIds))
 	if err != nil {
 		return 0.0, err
 	}
@@ -353,7 +353,7 @@ func getSoonToBeFreeHosts(existingHosts []host.Host, futureHostFraction float64,
 			defer recovery.LogStackTraceAndContinue("panic during future free host calculation")
 			defer wg.Done()
 			for t := range source {
-				durationStats := t.FetchExpectedDuration()
+				durationStats := t.FetchExpectedDuration(ctx)
 				expectedDuration := durationStats.Average
 				durationStdDev := durationStats.StdDev
 				elapsedTime := time.Since(t.StartTime)

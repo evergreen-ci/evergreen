@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
@@ -151,11 +150,10 @@ func (ac *legacyClient) modifyExisting(patchId, action string) error {
 }
 
 // ValidateLocalConfig validates the local project config with the server
-func (ac *legacyClient) ValidateLocalConfig(data []byte, quiet, includeLong bool, projectID string) (validator.ValidationErrors, error) {
+func (ac *legacyClient) ValidateLocalConfig(data []byte, quiet bool, projectID string) (validator.ValidationErrors, error) {
 	input := validator.ValidationInput{
 		ProjectYaml: data,
 		Quiet:       quiet,
-		IncludeLong: includeLong,
 		ProjectID:   projectID,
 	}
 	rPipe, wPipe := io.Pipe()
@@ -538,10 +536,6 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 		Tasks               []string                   `json:"tasks"`
 		RegexVariants       []string                   `json:"regex_buildvariants"`
 		RegexTasks          []string                   `json:"regex_tasks"`
-		SyncTasks           []string                   `json:"sync_tasks"`
-		SyncBuildVariants   []string                   `json:"sync_build_variants"`
-		SyncStatuses        []string                   `json:"sync_statuses"`
-		SyncTimeout         time.Duration              `json:"sync_timeout"`
 		Finalize            bool                       `json:"finalize"`
 		TriggerAliases      []string                   `json:"trigger_aliases"`
 		Parameters          []patch.Parameter          `json:"parameters"`
@@ -563,10 +557,6 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 		Tasks:               incomingPatch.tasks,
 		RegexVariants:       incomingPatch.regexVariants,
 		RegexTasks:          incomingPatch.regexTasks,
-		SyncBuildVariants:   incomingPatch.syncBuildVariants,
-		SyncTasks:           incomingPatch.syncTasks,
-		SyncStatuses:        incomingPatch.syncStatuses,
-		SyncTimeout:         incomingPatch.syncTimeout,
 		Finalize:            incomingPatch.finalize,
 		TriggerAliases:      incomingPatch.triggerAliases,
 		Parameters:          incomingPatch.parameters,

@@ -431,7 +431,6 @@ type SpawnHostInput struct {
 	SleepSchedule           *host.SleepScheduleInfo `json:"sleepSchedule,omitempty"`
 	SpawnHostsStartedByTask *bool                   `json:"spawnHostsStartedByTask,omitempty"`
 	TaskID                  *string                 `json:"taskId,omitempty"`
-	TaskSync                *bool                   `json:"taskSync,omitempty"`
 	UseProjectSetupScript   *bool                   `json:"useProjectSetupScript,omitempty"`
 	UserDataScript          *string                 `json:"userDataScript,omitempty"`
 	UseTaskConfig           *bool                   `json:"useTaskConfig,omitempty"`

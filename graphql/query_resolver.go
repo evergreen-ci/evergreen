@@ -650,7 +650,7 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, versionID string, ta
 	if len(taskIds) == 0 {
 		return nil, nil
 	}
-	dbTasks, err := task.FindAll(db.Query(task.ByIds(taskIds)))
+	dbTasks, err := task.FindAll(ctx, db.Query(task.ByIds(taskIds)))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding tasks '%s': %s", taskIds, err.Error()))
 	}
@@ -670,7 +670,7 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, versionID string, ta
 		if dbTask.Version != versionID && dbTask.ParentPatchID != versionID {
 			return nil, InputValidationError.Send(ctx, fmt.Sprintf("task '%s' does not belong to version '%s'", dbTask.Id, versionID))
 		}
-		taskOpts, err := dbTask.CreateTestResultsTaskOptions()
+		taskOpts, err := dbTask.CreateTestResultsTaskOptions(ctx)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("creating test results task options for task '%s': %s", dbTask.Id, err.Error()))
 		}

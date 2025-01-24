@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"context"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -43,13 +44,16 @@ func (c *idComparator) compare(t1, t2 task.Task, p *CmpBasedTaskComparator) (int
 	return 0, "", nil
 }
 func TestCmpBasedTaskComparator(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	var taskComparator *CmpBasedTaskComparator
 	var taskIds []string
 	var tasks []task.Task
 
 	Convey("With a CmpBasedTaskComparator", t, func() {
 
-		taskComparator = NewCmpBasedTaskComparator("test-id")
+		taskComparator = NewCmpBasedTaskComparator(ctx, "test-id")
 
 		taskIds = []string{"t1", "t2"}
 
@@ -147,7 +151,7 @@ func TestCmpBasedTaskComparator(t *testing.T) {
 	})
 
 	Convey("Splitting tasks by requester should separate tasks based on the Requester field", t, func() {
-		taskComparator = NewCmpBasedTaskComparator("test-id")
+		taskComparator = NewCmpBasedTaskComparator(ctx, "test-id")
 		taskIds = []string{"t1", "t2", "t3", "t4", "t5"}
 		tasks = []task.Task{
 			{Id: taskIds[0], Requester: evergreen.RepotrackerVersionRequester},
@@ -170,7 +174,7 @@ func TestCmpBasedTaskComparator(t *testing.T) {
 
 	})
 	Convey("Splitting tasks with priority greater than 100 should always put those tasks in the high priority queue", t, func() {
-		taskComparator = NewCmpBasedTaskComparator("test-id")
+		taskComparator = NewCmpBasedTaskComparator(ctx, "test-id")
 		taskIds = []string{"t1", "t2", "t3", "t4", "t5"}
 		tasks = []task.Task{
 			{Id: taskIds[0], Requester: evergreen.RepotrackerVersionRequester, Priority: 101},

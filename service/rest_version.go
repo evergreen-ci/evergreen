@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -192,7 +193,7 @@ func (restapi restAPI) getRecentVersions(w http.ResponseWriter, r *http.Request)
 		result.Versions = append(result.Versions, versionInfo)
 	}
 	// Find all builds/tasks corresponding the set of version ids
-	if err = result.populateBuildsAndTasks(versionIds, versionIdx); err != nil {
+	if err = result.populateBuildsAndTasks(r.Context(), versionIds, versionIdx); err != nil {
 		msg := fmt.Sprintf("Error populating builds/tasks for recent versions of project '%v'", projectIdentifier)
 		grip.Error(errors.Wrap(err, msg))
 		gimlet.WriteJSONInternalError(w, responseError{Message: msg})
@@ -221,12 +222,12 @@ func (restapi restAPI) getRecentVersions(w http.ResponseWriter, r *http.Request)
 	gimlet.WriteJSON(w, result)
 }
 
-func (r *recentVersionsContent) populateBuildsAndTasks(versionIds []string, versionIdx map[string]int) error {
+func (r *recentVersionsContent) populateBuildsAndTasks(ctx context.Context, versionIds []string, versionIdx map[string]int) error {
 	builds, err := build.FindBuildsByVersions(versionIds)
 	if err != nil {
 		return errors.Wrap(err, "Error finding recent versions")
 	}
-	tasks, err := task.FindTasksFromVersions(versionIds)
+	tasks, err := task.FindTasksFromVersions(ctx, versionIds)
 	if err != nil {
 		return errors.Wrap(err, "Error finding recent tasks for recent versions")
 	}
@@ -427,7 +428,7 @@ func (restapi *restAPI) getVersionStatus(w http.ResponseWriter, r *http.Request)
 		restapi.getVersionStatusByTask(versionId, w)
 		return
 	case "builds":
-		restapi.getVersionStatusByBuild(versionId, w)
+		restapi.getVersionStatusByBuild(r.Context(), versionId, w)
 		return
 	default:
 		msg := fmt.Sprintf("Invalid groupby parameter '%v'", groupBy)
@@ -514,7 +515,7 @@ func (restapi *restAPI) getVersionStatusByTask(versionId string, w http.Response
 // grouped on the build variants. The keys of the object are the build
 // variant name, with each key in the nested object representing a
 // particular task.
-func (restapi restAPI) getVersionStatusByBuild(versionId string, w http.ResponseWriter) {
+func (restapi restAPI) getVersionStatusByBuild(ctx context.Context, versionId string, w http.ResponseWriter) {
 	// Get all of the builds corresponding to this version
 	builds, err := build.Find(
 		build.ByVersion(versionId).WithFields(build.BuildVariantKey, bsonutil.GetDottedKeyName(build.TasksKey, build.TaskCacheIdKey)),
@@ -527,7 +528,7 @@ func (restapi restAPI) getVersionStatusByBuild(versionId string, w http.Response
 	}
 
 	query := db.Query(task.ByVersion(versionId)).WithFields(task.StatusKey, task.TimeTakenKey, task.DisplayNameKey)
-	tasks, err := task.FindAll(query)
+	tasks, err := task.FindAll(ctx, query)
 	if err != nil {
 		msg := fmt.Sprintf("Error finding tasks for version '%v'", versionId)
 		grip.Errorf("%s: %+v", msg, err)

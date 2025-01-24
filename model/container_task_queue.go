@@ -56,7 +56,7 @@ func (q *ContainerTaskQueue) Len() int {
 
 func (q *ContainerTaskQueue) populate(ctx context.Context) error {
 	startAt := time.Now()
-	candidates, err := task.FindNeedsContainerAllocation()
+	candidates, err := task.FindNeedsContainerAllocation(ctx)
 	if err != nil {
 		return errors.Wrap(err, "finding candidate container tasks for allocation")
 	}

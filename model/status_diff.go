@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"path"
 	"strings"
 
@@ -54,7 +55,7 @@ type TestStatusDiff struct {
 
 // StatusDiffBuilds takes two builds and returns a diff of their results
 // for easy comparison and analysis.
-func StatusDiffBuilds(original, patch *build.Build) (BuildStatusDiff, error) {
+func StatusDiffBuilds(ctx context.Context, original, patch *build.Build) (BuildStatusDiff, error) {
 	// return an empty diff if one of builds is nonexistant
 	// this is likely to occur after adding a new buildvariant or task
 	if original == nil || patch == nil {
@@ -67,7 +68,7 @@ func StatusDiffBuilds(original, patch *build.Build) (BuildStatusDiff, error) {
 	}
 
 	query := db.Query(task.ByBuildIds([]string{original.Id, patch.Id})).WithFields(task.BuildIdKey, task.StatusKey, task.DetailsKey, task.DisplayNameKey)
-	tasks, err := task.FindAll(query)
+	tasks, err := task.FindAll(ctx, query)
 	if err != nil {
 		return BuildStatusDiff{}, errors.Wrap(err, "finding tasks")
 	}

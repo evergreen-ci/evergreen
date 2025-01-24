@@ -55,9 +55,9 @@ func NewCheckBlockedTasksJob(distroId string, ts time.Time) amboy.Job {
 func (j *checkBlockedTasksJob) Run(ctx context.Context) {
 	var tasksToCheck []task.Task
 	if j.DistroId != "" {
-		tasksToCheck = j.getDistroTasksToCheck()
+		tasksToCheck = j.getDistroTasksToCheck(ctx)
 	} else {
-		tasksToCheck = j.getContainerTasksToCheck()
+		tasksToCheck = j.getContainerTasksToCheck(ctx)
 	}
 	dependencyCache := map[string]task.Task{}
 	for _, t := range tasksToCheck {
@@ -65,7 +65,7 @@ func (j *checkBlockedTasksJob) Run(ctx context.Context) {
 	}
 }
 
-func (j *checkBlockedTasksJob) getDistroTasksToCheck() []task.Task {
+func (j *checkBlockedTasksJob) getDistroTasksToCheck(ctx context.Context) []task.Task {
 	queue, err := model.FindDistroTaskQueue(j.DistroId)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "getting task queue for distro '%s'", j.DistroId))
@@ -99,7 +99,7 @@ func (j *checkBlockedTasksJob) getDistroTasksToCheck() []task.Task {
 		return nil
 	}
 
-	tasksToCheck, err := task.Find(task.PotentiallyBlockedTasksByIds(taskIds))
+	tasksToCheck, err := task.Find(ctx, task.PotentiallyBlockedTasksByIds(taskIds))
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "getting tasks to check in distro '%s'", j.DistroId))
 		return nil
@@ -107,10 +107,10 @@ func (j *checkBlockedTasksJob) getDistroTasksToCheck() []task.Task {
 	return tasksToCheck
 }
 
-func (j *checkBlockedTasksJob) getContainerTasksToCheck() []task.Task {
+func (j *checkBlockedTasksJob) getContainerTasksToCheck(ctx context.Context) []task.Task {
 	query := task.UndispatchedContainerTasksQuery()
 	query[task.ContainerAllocatedKey] = false
-	tasksToCheck, err := task.FindAll(db.Query(query))
+	tasksToCheck, err := task.FindAll(ctx, db.Query(query))
 	if err != nil {
 		j.AddError(errors.Wrap(err, "getting container tasks to check"))
 		return nil
@@ -139,7 +139,7 @@ func checkUnmarkedBlockingTasks(ctx context.Context, t *task.Task, dependencyCac
 		return nil
 	}
 
-	finishedBlockingTasks, err := t.GetFinishedBlockingDependencies(dependencyCaches)
+	finishedBlockingTasks, err := t.GetFinishedBlockingDependencies(ctx, dependencyCaches)
 	catcher.Wrap(err, "getting blocking tasks")
 	blockingTaskIds := []string{}
 	if err == nil {
@@ -157,7 +157,7 @@ func checkUnmarkedBlockingTasks(ctx context.Context, t *task.Task, dependencyCac
 	deactivatedBlockingTasks, err := t.GetDeactivatedBlockingDependencies(ctx, dependencyCaches)
 	catcher.Wrap(err, "getting blocked status")
 	if err == nil && len(deactivatedBlockingTasks) > 0 {
-		err = task.DeactivateDependencies(deactivatedBlockingTasks, evergreen.CheckBlockedTasksActivator)
+		err = task.DeactivateDependencies(ctx, deactivatedBlockingTasks, evergreen.CheckBlockedTasksActivator)
 		catcher.Add(err)
 	}
 

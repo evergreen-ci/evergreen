@@ -9,47 +9,42 @@ import (
 )
 
 const (
-	clientS3BucketFlagName    = "client_s3_bucket"
-	confFlagName              = "conf"
-	dirFlagName               = "dir"
-	displayNameFlagName       = "name"
-	errorOnWarningsFlagName   = "error-on-warnings"
-	forceFlagName             = "force"
-	hostFlagName              = "host"
-	largeFlagName             = "large"
-	limitFlagName             = "limit"
-	localModulesFlagName      = "local_modules"
-	longFlagName              = "long"
-	moduleFlagName            = "module"
-	overwriteConfFlagName     = "overwrite"
-	parameterFlagName         = "param"
-	patchAliasFlagName        = "alias"
-	patchAuthorFlag           = "author"
-	patchBrowseFlagName       = "browse"
-	patchFinalizeFlagName     = "finalize"
-	patchIDFlagName           = "patch"
-	pathFlagName              = "path"
-	preserveCommitsFlag       = "preserve-commits"
-	projectFlagName           = "project"
-	quietFlagName             = "quiet"
-	refFlagName               = "ref"
-	regexTasksFlagName        = "regex_tasks"
-	regexVariantsFlagName     = "regex_variants"
-	regionFlagName            = "region"
-	skipConfirmFlagName       = "skip_confirm"
-	startTimeFlagName         = "time"
-	subscriptionTypeFlag      = "subscription-type"
-	syncBuildVariantsFlagName = "sync_variants"
-	syncStatusesFlagName      = "sync_statuses"
-	syncTasksFlagName         = "sync_tasks"
-	syncTimeoutFlagName       = "sync_timeout"
-	tasksFlagName             = "tasks"
-	testingEnvFlagName        = "testing-env"
-	traceEndpointFlagName     = "trace_endpoint"
-	uncommittedChangesFlag    = "uncommitted"
-	variantsFlagName          = "variants"
-	versionIDFlagName         = "version_id"
-	yesFlagName               = "yes"
+	clientS3BucketFlagName  = "client_s3_bucket"
+	confFlagName            = "conf"
+	dirFlagName             = "dir"
+	displayNameFlagName     = "name"
+	errorOnWarningsFlagName = "error-on-warnings"
+	forceFlagName           = "force"
+	hostFlagName            = "host"
+	largeFlagName           = "large"
+	limitFlagName           = "limit"
+	localModulesFlagName    = "local_modules"
+	moduleFlagName          = "module"
+	overwriteConfFlagName   = "overwrite"
+	parameterFlagName       = "param"
+	patchAliasFlagName      = "alias"
+	patchAuthorFlag         = "author"
+	patchBrowseFlagName     = "browse"
+	patchFinalizeFlagName   = "finalize"
+	patchIDFlagName         = "patch"
+	pathFlagName            = "path"
+	preserveCommitsFlag     = "preserve-commits"
+	projectFlagName         = "project"
+	quietFlagName           = "quiet"
+	refFlagName             = "ref"
+	regexTasksFlagName      = "regex_tasks"
+	regexVariantsFlagName   = "regex_variants"
+	regionFlagName          = "region"
+	skipConfirmFlagName     = "skip_confirm"
+	startTimeFlagName       = "time"
+	subscriptionTypeFlag    = "subscription-type"
+	tasksFlagName           = "tasks"
+	testingEnvFlagName      = "testing-env"
+	traceEndpointFlagName   = "trace_endpoint"
+	uncommittedChangesFlag  = "uncommitted"
+	variantsFlagName        = "variants"
+	versionIDFlagName       = "version_id"
+	yesFlagName             = "yes"
 
 	dbAWSAuthFlagName   = "mongo-aws-auth"
 	dbNameFlagName      = "db"
@@ -131,35 +126,6 @@ func addPatchBrowseFlag(flags ...cli.Flag) []cli.Flag {
 	return append(flags, cli.BoolFlag{
 		Name:  joinFlagNames(patchBrowseFlagName),
 		Usage: "open patch URL in browser",
-	})
-}
-
-func addSyncBuildVariantsFlag(flags ...cli.Flag) []cli.Flag {
-	return append(flags, cli.StringSliceFlag{
-		Name:  syncBuildVariantsFlagName,
-		Usage: "build variants to sync when task ends",
-	})
-}
-
-func addSyncTasksFlag(flags ...cli.Flag) []cli.Flag {
-	return append(flags, cli.StringSliceFlag{
-		Name:  syncTasksFlagName,
-		Usage: "tasks to sync when task ends",
-	})
-}
-
-func addSyncTimeoutFlag(flags ...cli.Flag) []cli.Flag {
-	return append(flags, cli.DurationFlag{
-		Name:  syncTimeoutFlagName,
-		Usage: "max timeout on task sync when task ends (e.g. 15m, 2h)",
-		Value: evergreen.DefaultTaskSyncAtEndTimeout,
-	})
-}
-
-func addSyncStatusesFlag(flags ...cli.Flag) []cli.Flag {
-	return append(flags, cli.StringSliceFlag{
-		Name:  syncStatusesFlagName,
-		Usage: "filter task statuses for which task sync should run when task ends ('success' or 'failed')",
 	})
 }
 

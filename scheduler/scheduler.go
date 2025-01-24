@@ -38,12 +38,12 @@ func PrioritizeTasks(ctx context.Context, d *distro.Distro, tasks []task.Task, o
 func runTunablePlanner(ctx context.Context, d *distro.Distro, tasks []task.Task, opts TaskPlannerOptions) ([]task.Task, error) {
 	var err error
 
-	tasks, err = PopulateCaches(opts.ID, tasks)
+	tasks, err = PopulateCaches(ctx, opts.ID, tasks)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 
-	plan := PrepareTasksForPlanning(d, tasks).Export(ctx)
+	plan := PrepareTasksForPlanning(ctx, d, tasks).Export(ctx)
 	info := GetDistroQueueInfo(ctx, d.Id, plan, d.GetTargetTime(), opts)
 	info.SecondaryQueue = opts.IsSecondaryQueue
 	info.PlanCreatedAt = opts.StartedAt
@@ -101,7 +101,7 @@ type distroScheduler struct {
 }
 
 func (s *distroScheduler) scheduleDistro(ctx context.Context, distroID string, runnableTasks []task.Task, versions map[string]model.Version, maxThreshold time.Duration, isSecondaryQueue bool) ([]task.Task, error) {
-	prioritizedTasks, _, err := s.PrioritizeTasks(distroID, runnableTasks, versions)
+	prioritizedTasks, _, err := s.PrioritizeTasks(ctx, distroID, runnableTasks, versions)
 	if err != nil {
 		return nil, errors.Wrapf(err, "prioritizing tasks for distro '%s'", distroID)
 
@@ -138,7 +138,7 @@ func GetDistroQueueInfo(ctx context.Context, distroID string, tasks []task.Task,
 			name = task.GetTaskGroupString()
 		}
 
-		duration := task.FetchExpectedDuration().Average
+		duration := task.FetchExpectedDuration(ctx).Average
 
 		if task.DistroId != distroID {
 			isSecondaryQueue = true

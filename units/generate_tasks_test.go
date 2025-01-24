@@ -566,7 +566,7 @@ func TestGenerateTasksWithDifferentGeneratedJSONStorageMethods(t *testing.T) {
 			j := NewGenerateTasksJob(env, sampleTask.Version, sampleTask.Id, "1")
 			j.Run(ctx)
 			assert.NoError(j.Error())
-			tasks, err := task.FindAll(db.Query(task.ByVersion("sample_version")))
+			tasks, err := task.FindAll(ctx, db.Query(task.ByVersion("sample_version")))
 			assert.NoError(err)
 			assert.Len(tasks, 4)
 			allTasks := map[string]bool{
@@ -689,7 +689,7 @@ func TestGeneratedTasksAreNotDependencies(t *testing.T) {
 	j := NewGenerateTasksJob(env, generateTask.Version, generateTask.Id, "1")
 	j.Run(ctx)
 	assert.NoError(j.Error())
-	tasks, err := task.FindAll(db.Query(task.ByVersion("sample_version")))
+	tasks, err := task.FindAll(ctx, db.Query(task.ByVersion("sample_version")))
 	assert.NoError(err)
 	assert.Len(tasks, 4)
 	for _, foundTask := range tasks {
@@ -729,7 +729,7 @@ func TestGeneratedTasksAreNotDependencies(t *testing.T) {
 	j = NewGenerateTasksJob(env, generateTask.Version, generateTask.Id, "1")
 	j.Run(ctx)
 	assert.NoError(j.Error())
-	tasks, err = task.FindAll(db.Query(task.ByVersion("sample_version")))
+	tasks, err = task.FindAll(ctx, db.Query(task.ByVersion("sample_version")))
 	assert.NoError(err)
 	assert.Len(tasks, 4)
 	for _, foundTask := range tasks {
@@ -767,7 +767,7 @@ func TestGeneratedTasksAreNotDependencies(t *testing.T) {
 	j = NewGenerateTasksJob(env, generateTask.Version, generateTask.Id, "1")
 	j.Run(ctx)
 	assert.NoError(j.Error())
-	tasks, err = task.FindAll(db.Query(task.ByVersion("sample_version")))
+	tasks, err = task.FindAll(ctx, db.Query(task.ByVersion("sample_version")))
 	assert.NoError(err)
 	assert.Len(tasks, 8)
 	// shouldActivate should be activated because although the inactive dependencyTask has it as a
@@ -911,7 +911,7 @@ buildvariants:
 	j.Run(ctx)
 	assert.NoError(j.Error())
 
-	tasks, err := task.Find(task.ByVersion(sampleVersion.Id))
+	tasks, err := task.Find(ctx, task.ByVersion(sampleVersion.Id))
 	assert.NoError(err)
 	foundGeneratedtask := false
 	for _, dbTask := range tasks {

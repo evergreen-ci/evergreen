@@ -364,7 +364,7 @@ func TestProjectTriggerIntegration(t *testing.T) {
 		assert.Equal(e.ID, b.TriggerEvent)
 		assert.Contains(b.BuildVariant, "buildvariant")
 	}
-	tasks, err := task.Find(task.ByVersion(downstreamVersions[0].Id))
+	tasks, err := task.Find(ctx, task.ByVersion(downstreamVersions[0].Id))
 	assert.NoError(err)
 	assert.NotEmpty(tasks)
 	for _, t := range tasks {
@@ -497,7 +497,7 @@ func TestProjectTriggerIntegrationForBuild(t *testing.T) {
 		assert.Equal(e.ID, b.TriggerEvent)
 		assert.Contains(b.BuildVariant, "buildvariant")
 	}
-	tasks, err := task.Find(task.ByVersion(downstreamVersions[0].Id))
+	tasks, err := task.Find(ctx, task.ByVersion(downstreamVersions[0].Id))
 	assert.NoError(err)
 	assert.NotEmpty(tasks)
 	for _, t := range tasks {
@@ -610,7 +610,7 @@ func TestProjectTriggerIntegrationForPush(t *testing.T) {
 		assert.Equal(model.ProjectTriggerLevelPush, b.TriggerType)
 		assert.Contains(b.BuildVariant, "buildvariant")
 	}
-	tasks, err := task.Find(task.ByVersion(dbVersions[0].Id))
+	tasks, err := task.Find(ctx, task.ByVersion(dbVersions[0].Id))
 	assert.NoError(err)
 	assert.NotEmpty(tasks)
 	for _, t := range tasks {

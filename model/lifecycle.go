@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
-	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
@@ -65,12 +64,12 @@ func SetVersionActivation(ctx context.Context, versionId string, active bool, ca
 		if err := SetVersionActivated(versionId, active); err != nil {
 			return errors.Wrapf(err, "setting activated for version '%s'", versionId)
 		}
-		tasksToModify, err = task.FindAll(db.Query(q).WithFields(task.IdKey, task.DependsOnKey, task.ExecutionKey, task.BuildIdKey, task.ActivatedKey))
+		tasksToModify, err = task.FindAll(ctx, db.Query(q).WithFields(task.IdKey, task.DependsOnKey, task.ExecutionKey, task.BuildIdKey, task.ActivatedKey))
 		if err != nil {
 			return errors.Wrap(err, "getting tasks to activate")
 		}
 		if len(tasksToModify) > 0 {
-			if err = task.ActivateTasks(tasksToModify, time.Now(), false, caller); err != nil {
+			if err = task.ActivateTasks(ctx, tasksToModify, time.Now(), false, caller); err != nil {
 				return errors.Wrap(err, "updating tasks for activation")
 			}
 		}
@@ -80,12 +79,12 @@ func SetVersionActivation(ctx context.Context, versionId string, active bool, ca
 			q[task.ActivatedByKey] = bson.M{"$in": evergreen.SystemActivators}
 		}
 
-		tasksToModify, err = task.FindAll(db.Query(q).WithFields(task.IdKey, task.ExecutionKey, task.BuildIdKey, task.ActivatedKey))
+		tasksToModify, err = task.FindAll(ctx, db.Query(q).WithFields(task.IdKey, task.ExecutionKey, task.BuildIdKey, task.ActivatedKey))
 		if err != nil {
 			return errors.Wrap(err, "getting tasks to deactivate")
 		}
 		if len(tasksToModify) > 0 {
-			if err = task.DeactivateTasks(tasksToModify, false, caller); err != nil {
+			if err = task.DeactivateTasks(ctx, tasksToModify, false, caller); err != nil {
 				return errors.Wrap(err, "deactivating tasks")
 			}
 		}
@@ -138,12 +137,12 @@ func setTaskActivationForBuilds(ctx context.Context, buildIds []string, active, 
 		if len(ignoreTasks) > 0 {
 			q[task.IdKey] = bson.M{"$nin": ignoreTasks}
 		}
-		tasksToActivate, err := task.FindAll(db.Query(q).WithFields(task.IdKey, task.DependsOnKey, task.ExecutionKey, task.ActivatedKey))
+		tasksToActivate, err := task.FindAll(ctx, db.Query(q).WithFields(task.IdKey, task.DependsOnKey, task.ExecutionKey, task.ActivatedKey))
 		if err != nil {
 			return errors.Wrap(err, "getting tasks to activate")
 		}
 		if withDependencies {
-			dependOn, err := task.GetRecursiveDependenciesUp(tasksToActivate, nil)
+			dependOn, err := task.GetRecursiveDependenciesUp(ctx, tasksToActivate, nil)
 			if err != nil {
 				return errors.Wrap(err, "getting recursive dependencies")
 			}
@@ -153,7 +152,7 @@ func setTaskActivationForBuilds(ctx context.Context, buildIds []string, active, 
 				}
 			}
 		}
-		if err = task.ActivateTasks(tasksToActivate, time.Now(), withDependencies, caller); err != nil {
+		if err = task.ActivateTasks(ctx, tasksToActivate, time.Now(), withDependencies, caller); err != nil {
 			return errors.Wrap(err, "updating tasks for activation")
 		}
 
@@ -167,11 +166,11 @@ func setTaskActivationForBuilds(ctx context.Context, buildIds []string, active, 
 			query[task.ActivatedByKey] = bson.M{"$in": evergreen.SystemActivators}
 		}
 
-		tasks, err := task.FindAll(db.Query(query).WithFields(task.IdKey, task.ExecutionKey, task.ActivatedKey))
+		tasks, err := task.FindAll(ctx, db.Query(query).WithFields(task.IdKey, task.ExecutionKey, task.ActivatedKey))
 		if err != nil {
 			return errors.Wrap(err, "getting tasks to deactivate")
 		}
-		if err = task.DeactivateTasks(tasks, withDependencies, caller); err != nil {
+		if err = task.DeactivateTasks(ctx, tasks, withDependencies, caller); err != nil {
 			return errors.Wrap(err, "deactivating tasks")
 		}
 	}
@@ -213,7 +212,7 @@ func TryMarkVersionStarted(versionId string, startTime time.Time) error {
 // dependencies that have a lower priority than the one being set for this task
 // will also have their priority increased.
 func SetTaskPriority(ctx context.Context, t task.Task, priority int64, caller string) error {
-	depTasks, err := task.GetRecursiveDependenciesUp([]task.Task{t}, nil)
+	depTasks, err := task.GetRecursiveDependenciesUp(ctx, []task.Task{t}, nil)
 	if err != nil {
 		return errors.Wrap(err, "getting task dependencies")
 	}
@@ -233,7 +232,7 @@ func SetTaskPriority(ctx context.Context, t task.Task, priority int64, caller st
 			},
 		},
 	}).WithFields(task.ExecutionKey)
-	tasks, err := task.FindAll(query)
+	tasks, err := task.FindAll(ctx, query)
 	if err != nil {
 		return errors.Wrap(err, "finding matching tasks")
 	}
@@ -242,7 +241,7 @@ func SetTaskPriority(ctx context.Context, t task.Task, priority int64, caller st
 	for _, taskToUpdate := range tasks {
 		taskIDs = append(taskIDs, taskToUpdate.Id)
 	}
-	_, err = task.UpdateAll(
+	_, err = task.UpdateAll(ctx,
 		bson.M{task.IdKey: bson.M{"$in": taskIDs}},
 		bson.M{"$set": bson.M{task.PriorityKey: priority}},
 	)
@@ -276,13 +275,13 @@ func SetVersionsPriority(ctx context.Context, versionIds []string, priority int6
 }
 
 func setTasksPriority(ctx context.Context, query bson.M, priority int64, caller string) error {
-	_, err := task.UpdateAll(query,
+	_, err := task.UpdateAll(ctx, query,
 		bson.M{"$set": bson.M{task.PriorityKey: priority}},
 	)
 	if err != nil {
 		return errors.Wrap(err, "setting priority")
 	}
-	tasks, err := task.FindAll(db.Query(query))
+	tasks, err := task.FindAll(ctx, db.Query(query))
 	if err != nil {
 		return errors.Wrap(err, "getting tasks")
 	}
@@ -442,12 +441,12 @@ func CreateTasksCache(tasks []task.Task) []build.TaskCache {
 
 // RefreshTasksCache updates a build document so that the tasks cache reflects the correct current
 // state of the tasks it represents.
-func RefreshTasksCache(buildId string) error {
-	tasks, err := task.FindAll(db.Query(task.ByBuildId(buildId)))
+func RefreshTasksCache(ctx context.Context, buildId string) error {
+	tasks, err := task.FindAll(ctx, db.Query(task.ByBuildId(buildId)))
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	tasks, err = task.AddParentDisplayTasks(tasks)
+	tasks, err = task.AddParentDisplayTasks(ctx, tasks)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -751,23 +750,6 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (ta
 			newTask.IsGithubCheck = true
 		}
 
-		if shouldSyncTask(creationInfo.SyncAtEndOpts.VariantsTasks, newTask.BuildVariant, newTask.DisplayName) {
-			newTask.CanSync = true
-			newTask.SyncAtEndOpts = task.SyncAtEndOptions{
-				Enabled:  true,
-				Statuses: creationInfo.SyncAtEndOpts.Statuses,
-				Timeout:  creationInfo.SyncAtEndOpts.Timeout,
-			}
-		} else {
-			cmds, err := creationInfo.Project.CommandsRunOnTV(TVPair{TaskName: newTask.DisplayName, Variant: newTask.BuildVariant}, evergreen.S3PushCommandName)
-			if err != nil {
-				return nil, errors.Wrapf(err, "checking if task definition contains command '%s'", evergreen.S3PushCommandName)
-			}
-			if len(cmds) != 0 {
-				newTask.CanSync = true
-			}
-		}
-
 		taskMap[newTask.Id] = newTask
 	}
 
@@ -814,7 +796,7 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (ta
 		}
 
 		// update existing exec tasks
-		grip.Error(message.WrapError(task.AddDisplayTaskIdToExecTasks(id, execTasksThatNeedParentId), message.Fields{
+		grip.Error(message.WrapError(task.AddDisplayTaskIdToExecTasks(ctx, id, execTasksThatNeedParentId), message.Fields{
 			"message":              "problem adding display task ID to exec tasks",
 			"exec_tasks_to_update": execTasksThatNeedParentId,
 			"display_task_id":      id,
@@ -839,7 +821,7 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (ta
 				return nil, errors.Wrapf(err, "creating display task '%s'", id)
 			}
 			newDisplayTask.GeneratedBy = creationInfo.GeneratedBy
-			newDisplayTask.DependsOn, err = task.GetAllDependencies(newDisplayTask.ExecutionTasks, taskMap)
+			newDisplayTask.DependsOn, err = task.GetAllDependencies(ctx, newDisplayTask.ExecutionTasks, taskMap)
 			if err != nil {
 				return nil, errors.Wrapf(err, "getting dependencies for display task '%s'", newDisplayTask.Id)
 			}
@@ -943,25 +925,6 @@ func makeDeps(deps []TaskUnitDependency, thisTask *task.Task, taskIds TaskIdTabl
 	return dependencies
 }
 
-// shouldSyncTask returns whether or not this task in this build variant should
-// sync its task directory.
-func shouldSyncTask(syncVariantsTasks []patch.VariantTasks, bv, task string) bool {
-	for _, vt := range syncVariantsTasks {
-		if vt.Variant != bv {
-			continue
-		}
-		if utility.StringSliceContains(vt.Tasks, task) {
-			return true
-		}
-		for _, dt := range vt.DisplayTasks {
-			if utility.StringSliceContains(dt.ExecTasks, task) {
-				return true
-			}
-		}
-	}
-	return false
-}
-
 // SetNumDependents sets NumDependents for each task in tasks.
 // NumDependents is the number of tasks depending on the task.
 func SetNumDependents(tasks []*task.Task) {
@@ -1029,11 +992,11 @@ func RecomputeNumDependents(ctx context.Context, t task.Task) error {
 		taskPtrs = append(taskPtrs, &depTasks[i])
 	}
 	query := task.ByVersion(t.Version)
-	_, err = task.UpdateAll(query, bson.M{"$set": bson.M{task.NumDependentsKey: 0}})
+	_, err = task.UpdateAll(ctx, query, bson.M{"$set": bson.M{task.NumDependentsKey: 0}})
 	if err != nil {
 		return errors.Wrap(err, "resetting num dependents")
 	}
-	versionTasks, err := task.FindAll(db.Query(query))
+	versionTasks, err := task.FindAll(ctx, db.Query(query))
 	if err != nil {
 		return errors.Wrap(err, "getting tasks in version")
 	}
@@ -1044,7 +1007,7 @@ func RecomputeNumDependents(ctx context.Context, t task.Task) error {
 	SetNumDependents(taskPtrs)
 	catcher := grip.NewBasicCatcher()
 	for _, t := range taskPtrs {
-		catcher.Add(t.SetNumDependents())
+		catcher.Add(t.SetNumDependents(ctx))
 	}
 
 	return errors.Wrap(catcher.Resolve(), "setting num dependents")
@@ -1515,7 +1478,7 @@ func sortLayer(layer []task.Task, idToDisplayName map[string]string) []task.Task
 func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBuilds []build.Build) ([]string, error) {
 	ctx, span := tracer.Start(ctx, "add-new-builds")
 	defer span.End()
-	taskIdTables, err := getTaskIdConfig(creationInfo)
+	taskIdTables, err := getTaskIdConfig(ctx, creationInfo)
 	if err != nil {
 		return nil, errors.Wrap(err, "making task ID table")
 	}
@@ -1558,7 +1521,6 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 			ActivationInfo:                      creationInfo.ActivationInfo,
 			GeneratedBy:                         creationInfo.GeneratedBy,
 			TaskCreateTime:                      createTime,
-			SyncAtEndOpts:                       creationInfo.SyncAtEndOpts,
 			ActivatedTasksAreEssentialToSucceed: creationInfo.ActivatedTasksAreEssentialToSucceed,
 		}
 
@@ -1622,6 +1584,7 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 		newBuildStatuses = append(newBuildStatuses,
 			VersionBuildStatus{
 				BuildVariant:   pair.Variant,
+				DisplayName:    build.DisplayName,
 				BuildId:        build.Id,
 				BatchTimeTasks: batchTimeTaskStatuses,
 				ActivationStatus: ActivationStatus{
@@ -1658,12 +1621,12 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 		return nil, errors.Wrap(err, "updating version with new build IDs")
 	}
 
-	activatedTaskDependencies, err := task.GetRecursiveDependenciesUp(newActivatedTasks, nil)
+	activatedTaskDependencies, err := task.GetRecursiveDependenciesUp(ctx, newActivatedTasks, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting dependencies for activated tasks")
 	}
 
-	if err = task.ActivateTasks(activatedTaskDependencies, time.Now(), true, evergreen.User); err != nil {
+	if err = task.ActivateTasks(ctx, activatedTaskDependencies, time.Now(), true, evergreen.User); err != nil {
 		return nil, errors.Wrap(err, "activating dependencies for new tasks")
 	}
 
@@ -1683,7 +1646,7 @@ func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationI
 		return nil, err
 	}
 
-	taskIdTables, err := getTaskIdConfig(creationInfo)
+	taskIdTables, err := getTaskIdConfig(ctx, creationInfo)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting table of task IDs")
 	}
@@ -1695,7 +1658,7 @@ func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationI
 	for _, b := range existingBuilds {
 		wasActivated := b.Activated
 		// Find the set of task names that already exist for the given build, including display tasks.
-		tasksInBuild, err := task.FindAll(db.Query(task.ByBuildId(b.Id)).WithFields(task.DisplayNameKey, task.ActivatedKey))
+		tasksInBuild, err := task.FindAll(ctx, db.Query(task.ByBuildId(b.Id)).WithFields(task.DisplayNameKey, task.ActivatedKey))
 		if err != nil {
 			return nil, err
 		}
@@ -1765,7 +1728,7 @@ func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationI
 	}
 	// update each build to hold the new tasks
 	for _, b := range existingBuilds {
-		if err = RefreshTasksCache(b.Id); err != nil {
+		if err = RefreshTasksCache(ctx, b.Id); err != nil {
 			return nil, errors.Wrapf(err, "updating task cache for '%s'", b.Id)
 		}
 	}
@@ -1787,11 +1750,11 @@ func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationI
 		}
 	}
 
-	activatedTaskDependencies, err := task.GetRecursiveDependenciesUp(activatedTasks, nil)
+	activatedTaskDependencies, err := task.GetRecursiveDependenciesUp(ctx, activatedTasks, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting dependencies for activated tasks")
 	}
-	if err = task.ActivateTasks(activatedTaskDependencies, time.Now(), true, evergreen.User); err != nil {
+	if err = task.ActivateTasks(ctx, activatedTaskDependencies, time.Now(), true, evergreen.User); err != nil {
 		return nil, errors.Wrap(err, "activating existing dependencies for new tasks")
 	}
 
@@ -1803,7 +1766,7 @@ func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationI
 func activateExistingInactiveTasks(ctx context.Context, creationInfo TaskCreationInfo, existingBuilds []build.Build, caller string) error {
 	existingTasksToActivate := []task.Task{}
 	for _, b := range existingBuilds {
-		tasksInBuild, err := task.FindAll(db.Query(task.ByBuildId(b.Id)).WithFields(task.DisplayNameKey, task.ActivatedKey, task.BuildIdKey, task.VersionKey))
+		tasksInBuild, err := task.FindAll(ctx, db.Query(task.ByBuildId(b.Id)).WithFields(task.DisplayNameKey, task.ActivatedKey, task.BuildIdKey, task.VersionKey))
 		if err != nil {
 			return err
 		}
@@ -1830,13 +1793,13 @@ func activateExistingInactiveTasks(ctx context.Context, creationInfo TaskCreatio
 // new task IDs for the task-variant pairs to be created. If there are duplicate
 // task-variant pairs, the new task-variant pairs will overwrite the existing
 // ones.
-func getTaskIdConfig(creationInfo TaskCreationInfo) (TaskIdConfig, error) {
+func getTaskIdConfig(ctx context.Context, creationInfo TaskCreationInfo) (TaskIdConfig, error) {
 	// The table should include only new and existing tasks
 	taskIdTable, err := NewTaskIdConfig(creationInfo.Project, creationInfo.Version, creationInfo.Pairs, creationInfo.ProjectRef.Identifier)
 	if err != nil {
 		return TaskIdConfig{}, errors.Wrap(err, "creating patch's task ID table")
 	}
-	existingTasks, err := task.FindAll(db.Query(task.ByVersion(creationInfo.Version.Id)).WithFields(task.DisplayOnlyKey, task.DisplayNameKey, task.BuildVariantKey))
+	existingTasks, err := task.FindAll(ctx, db.Query(task.ByVersion(creationInfo.Version.Id)).WithFields(task.DisplayOnlyKey, task.DisplayNameKey, task.BuildVariantKey))
 	if err != nil {
 		return TaskIdConfig{}, errors.Wrap(err, "getting existing task IDs")
 	}

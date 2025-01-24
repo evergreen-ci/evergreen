@@ -79,14 +79,14 @@ func (b *buildGetHandler) Run(ctx context.Context) gimlet.Responder {
 
 	buildModel := &model.APIBuild{}
 	buildModel.BuildFromService(*foundBuild, pp)
-	if err := setBuildTaskCache(foundBuild, buildModel); err != nil {
+	if err := setBuildTaskCache(ctx, foundBuild, buildModel); err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "setting task cache for build"))
 	}
 
 	return gimlet.NewJSONResponse(buildModel)
 }
 
-func setBuildTaskCache(b *build.Build, apiBuild *model.APIBuild) error {
+func setBuildTaskCache(ctx context.Context, b *build.Build, apiBuild *model.APIBuild) error {
 	taskIDs := make([]string, 0, len(b.Tasks))
 	for _, t := range b.Tasks {
 		taskIDs = append(taskIDs, t.Id)
@@ -95,7 +95,7 @@ func setBuildTaskCache(b *build.Build, apiBuild *model.APIBuild) error {
 		return nil
 	}
 
-	tasks, err := task.FindAll(db.Query(task.ByIds(taskIDs)))
+	tasks, err := task.FindAll(ctx, db.Query(task.ByIds(taskIDs)))
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,

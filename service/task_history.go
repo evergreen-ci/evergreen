@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -116,16 +117,16 @@ func (uis *UIServer) taskHistoryPage(w http.ResponseWriter, r *http.Request) {
 
 	if r.FormValue("format") == "" {
 		if v != nil {
-			chunk, err = taskHistoryIterator.GetChunk(v, InitRevisionsBefore, InitRevisionsAfter, true)
+			chunk, err = taskHistoryIterator.GetChunk(r.Context(), v, InitRevisionsBefore, InitRevisionsAfter, true)
 		} else {
 			// Load the most recent MaxNumRevisions if a particular
 			// version was unspecified
-			chunk, err = taskHistoryIterator.GetChunk(v, MaxNumRevisions, NoRevisions, false)
+			chunk, err = taskHistoryIterator.GetChunk(r.Context(), v, MaxNumRevisions, NoRevisions, false)
 		}
 	} else if before {
-		chunk, err = taskHistoryIterator.GetChunk(v, MaxNumRevisions, NoRevisions, false)
+		chunk, err = taskHistoryIterator.GetChunk(r.Context(), v, MaxNumRevisions, NoRevisions, false)
 	} else {
-		chunk, err = taskHistoryIterator.GetChunk(v, NoRevisions, MaxNumRevisions, false)
+		chunk, err = taskHistoryIterator.GetChunk(r.Context(), v, NoRevisions, MaxNumRevisions, false)
 	}
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -359,7 +360,7 @@ func (uis *UIServer) taskHistoryDrawer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// populate task groups for the versions in the window
-	taskGroups, err := getTaskDrawerItems(drawerInfo.displayName, drawerInfo.variant, false, versions)
+	taskGroups, err := getTaskDrawerItems(r.Context(), drawerInfo.displayName, drawerInfo.variant, false, versions)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -472,7 +473,7 @@ func surroundingVersions(center *model.Version, projectId string, versionsToFetc
 // groups of tasks.  They will be sorted by ascending revision order number,
 // unless reverseOrder is true, in which case they will be sorted
 // descending.
-func getTaskDrawerItems(displayName string, variant string, reverseOrder bool, versions []model.Version) ([]taskDrawerItem, error) {
+func getTaskDrawerItems(ctx context.Context, displayName string, variant string, reverseOrder bool, versions []model.Version) ([]taskDrawerItem, error) {
 	versionIds := []string{}
 	for _, v := range versions {
 		versionIds = append(versionIds, v.Id)
@@ -484,7 +485,7 @@ func getTaskDrawerItems(displayName string, variant string, reverseOrder bool, v
 	}
 
 	q := db.Query(task.ByVersionsForNameAndVariant(versionIds, []string{displayName}, variant)).Sort([]string{revisionSort})
-	tasks, err := task.FindAll(q)
+	tasks, err := task.FindAll(ctx, q)
 
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting sibling tasks")

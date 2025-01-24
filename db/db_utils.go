@@ -208,6 +208,16 @@ func Remove(collection string, query interface{}) error {
 	return db.C(collection).Remove(query)
 }
 
+func RemoveContext(ctx context.Context, collection string, query interface{}) error {
+	session, db, err := GetGlobalSessionFactory().GetContextSession(ctx)
+	if err != nil {
+		return err
+	}
+	defer session.Close()
+
+	return db.C(collection).Remove(query)
+}
+
 // RemoveAll removes all items matching the query from the specified collection.
 func RemoveAll(collection string, query interface{}) error {
 	session, db, err := GetGlobalSessionFactory().GetSession()
@@ -231,6 +241,50 @@ func Update(collection string, query interface{}, update interface{}) error {
 	defer session.Close()
 
 	return db.C(collection).Update(query, update)
+}
+
+// Update updates one matching document in the collection.
+func UpdateContext(ctx context.Context, collection string, query interface{}, update interface{}) error {
+	res, err := evergreen.GetEnvironment().DB().Collection(collection).UpdateOne(ctx,
+		query,
+		update,
+	)
+	if err != nil {
+		return errors.Wrapf(err, "updating task")
+	}
+	if res.MatchedCount == 0 {
+		return db.ErrNotFound
+	}
+
+	return nil
+}
+
+func UpdateAllContext(ctx context.Context, collection string, query interface{}, update interface{}) (*db.ChangeInfo, error) {
+	switch query.(type) {
+	case *Q, Q:
+		grip.EmergencyPanic(message.Fields{
+			"message":    "invalid query passed to update all",
+			"cause":      "programmer error",
+			"query":      query,
+			"collection": collection,
+		})
+	case nil:
+		grip.EmergencyPanic(message.Fields{
+			"message":    "nil query passed to update all",
+			"query":      query,
+			"collection": collection,
+		})
+	}
+
+	res, err := evergreen.GetEnvironment().DB().Collection(collection).UpdateMany(ctx,
+		query,
+		update,
+	)
+	if err != nil {
+		return nil, errors.Wrapf(err, "updating task")
+	}
+
+	return &db.ChangeInfo{Updated: int(res.ModifiedCount)}, nil
 }
 
 // UpdateId updates one _id-matching document in the collection.
@@ -291,6 +345,19 @@ func Upsert(collection string, query interface{}, update interface{}) (*db.Chang
 // Count run a count command with the specified query against the collection.
 func Count(collection string, query interface{}) (int, error) {
 	session, db, err := GetGlobalSessionFactory().GetSession()
+	if err != nil {
+		grip.Errorf("error establishing db connection: %+v", err)
+
+		return 0, err
+	}
+	defer session.Close()
+
+	return db.C(collection).Find(query).Count()
+}
+
+// Count run a count command with the specified query against the collection.
+func CountContext(ctx context.Context, collection string, query interface{}) (int, error) {
+	session, db, err := GetGlobalSessionFactory().GetContextSession(ctx)
 	if err != nil {
 		grip.Errorf("error establishing db connection: %+v", err)
 

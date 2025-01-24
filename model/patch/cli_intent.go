@@ -7,9 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
-	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
-	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -44,9 +42,6 @@ type cliIntent struct {
 
 	// Parameters is a list of parameters to use with the task.
 	Parameters []Parameter `bson:"parameters,omitempty"`
-
-	// SyncAtEndOpts describe behavior for task sync at the end of the task.
-	SyncAtEndOpts SyncAtEndOptions `bson:"sync_at_end_opts,omitempty"`
 
 	// Finalize is whether or not the patch should finalized.
 	Finalize bool `bson:"finalize"`
@@ -202,7 +197,6 @@ func (c *cliIntent) NewPatch() *Patch {
 		Triggers:            TriggerInfo{Aliases: c.TriggerAliases},
 		Tasks:               c.Tasks,
 		RegexTasks:          c.RegexTasks,
-		SyncAtEndOpts:       c.SyncAtEndOpts,
 		Patches:             []ModulePatch{},
 		GitInfo:             c.GitInfo,
 		LocalModuleIncludes: c.LocalModuleIncludes,
@@ -240,7 +234,6 @@ type CLIIntentParams struct {
 	RepeatDefinition    bool
 	RepeatFailed        bool
 	RepeatPatchId       string
-	SyncParams          SyncAtEndOptions
 	LocalModuleIncludes []LocalModuleInclude
 }
 
@@ -265,21 +258,6 @@ func NewCliIntent(params CLIIntentParams) (Intent, error) {
 			return nil, errors.New("no tasks provided")
 		}
 	}
-	if len(params.SyncParams.BuildVariants) != 0 && len(params.SyncParams.Tasks) == 0 {
-		return nil, errors.New("build variants provided for task sync but task names missing")
-	}
-	if len(params.SyncParams.Tasks) != 0 && len(params.SyncParams.BuildVariants) == 0 {
-		return nil, errors.New("task names provided for sync but build variants missing")
-	}
-	for _, status := range params.SyncParams.Statuses {
-		catcher := grip.NewBasicCatcher()
-		if !utility.StringSliceContains(evergreen.SyncStatuses, status) {
-			catcher.Errorf("invalid sync status '%s'", status)
-		}
-		if catcher.HasErrors() {
-			return nil, catcher.Resolve()
-		}
-	}
 
 	return &cliIntent{
 		DocumentID:          mgobson.NewObjectId().Hex(),
@@ -292,7 +270,6 @@ func NewCliIntent(params CLIIntentParams) (Intent, error) {
 		RegexBuildVariants:  params.RegexVariants,
 		RegexTasks:          params.RegexTasks,
 		Parameters:          params.Parameters,
-		SyncAtEndOpts:       params.SyncParams,
 		User:                params.User,
 		ProjectID:           params.Project,
 		BaseHash:            params.BaseGitHash,

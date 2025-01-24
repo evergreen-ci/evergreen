@@ -2055,38 +2055,6 @@ func (p *Project) VariantTasksForSelectors(definitions []patch.PatchTriggerDefin
 	return pairs.TVPairsToVariantTasks(), nil
 }
 
-// CommandsRunOnTV returns the list of matching commands that match the given
-// command name on the given task in a build variant.
-func (p *Project) CommandsRunOnTV(tv TVPair, cmd string) ([]PluginCommandConf, error) {
-	task := p.FindProjectTask(tv.TaskName)
-	if task == nil {
-		return nil, errors.Errorf("definition of task '%s' not found", tv.TaskName)
-	}
-	return p.CommandsRunOnBV(task.Commands, cmd, tv.Variant), nil
-}
-
-// CommandsRunOnBV returns the list of matching commands from cmds that will run
-// the named command on the build variant.
-func (p *Project) CommandsRunOnBV(cmds []PluginCommandConf, cmd, bv string) []PluginCommandConf {
-	var matchingCmds []PluginCommandConf
-	for _, c := range cmds {
-		if c.Function != "" {
-			f, ok := p.Functions[c.Function]
-			if !ok || f == nil {
-				continue
-			}
-			for _, funcCmd := range f.List() {
-				if funcCmd.Command == cmd && funcCmd.RunOnVariant(bv) {
-					matchingCmds = append(matchingCmds, funcCmd)
-				}
-			}
-		} else if c.Command == cmd && c.RunOnVariant(bv) {
-			matchingCmds = append(matchingCmds, c)
-		}
-	}
-	return matchingCmds
-}
-
 func (p *Project) GetDisplayTask(variant, name string) *patch.DisplayTask {
 	bv := p.FindBuildVariant(variant)
 	if bv == nil {
@@ -2148,7 +2116,7 @@ func dependenciesForTaskUnit(taskUnits []BuildVariantTaskUnit) []task.Dependency
 // FetchVersionsBuildsAndTasks is a helper function to fetch a group of versions and their associated builds and tasks.
 // Returns the versions themselves, a map of version id -> the builds that are a part of the version (unsorted)
 // and a map of build ID -> each build's tasks
-func FetchVersionsBuildsAndTasks(project *Project, skip int, numVersions int, showTriggered bool) ([]Version, map[string][]build.Build, map[string][]task.Task, error) {
+func FetchVersionsBuildsAndTasks(ctx context.Context, project *Project, skip int, numVersions int, showTriggered bool) ([]Version, map[string][]build.Build, map[string][]task.Task, error) {
 	// fetch the versions from the db
 	versionsFromDB, err := VersionFind(VersionByProjectAndTrigger(project.Identifier, showTriggered).
 		WithFields(
@@ -2197,7 +2165,7 @@ func FetchVersionsBuildsAndTasks(project *Project, skip int, numVersions int, sh
 
 	// Filter out execution tasks because they'll be dropped when iterating through the build task cache anyway.
 	// maxTime ensures the query won't go on indefinitely when the request is cancelled.
-	tasksFromDb, err := task.FindAll(db.Query(task.NonExecutionTasksByVersions(versionIds)).WithFields(task.StatusFields...).MaxTime(waterfallTasksQueryMaxTime))
+	tasksFromDb, err := task.FindAll(ctx, db.Query(task.NonExecutionTasksByVersions(versionIds)).WithFields(task.StatusFields...).MaxTime(waterfallTasksQueryMaxTime))
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(err, "fetching tasks from database")
 	}

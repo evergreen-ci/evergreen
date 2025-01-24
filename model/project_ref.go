@@ -90,9 +90,6 @@ type ProjectRef struct {
 	// If a repo is enabled and this is what creates the hook, then TracksPushEvents will be set at the repo level.
 	TracksPushEvents *bool `bson:"tracks_push_events" json:"tracks_push_events" yaml:"tracks_push_events"`
 
-	// TaskSync holds settings for synchronizing task directories to S3.
-	TaskSync TaskSyncOptions `bson:"task_sync" json:"task_sync" yaml:"task_sync"`
-
 	// GitTagAuthorizedUsers contains a list of users who are able to create versions from git tags.
 	GitTagAuthorizedUsers []string `bson:"git_tag_authorized_users" json:"git_tag_authorized_users"`
 	GitTagAuthorizedTeams []string `bson:"git_tag_authorized_teams" json:"git_tag_authorized_teams"`
@@ -360,13 +357,6 @@ type CommitQueueParams struct {
 	Message     string `bson:"message,omitempty" json:"message,omitempty" yaml:"message"`
 }
 
-// TaskSyncOptions contains information about which features are allowed for
-// syncing task directories to S3.
-type TaskSyncOptions struct {
-	ConfigEnabled *bool `bson:"config_enabled" json:"config_enabled" yaml:"config_enabled"`
-	PatchEnabled  *bool `bson:"patch_enabled" json:"patch_enabled" yaml:"patch_enabled"`
-}
-
 // RepositoryErrorDetails indicates whether or not there is an invalid revision and if there is one,
 // what the guessed merge base revision is.
 type RepositoryErrorDetails struct {
@@ -502,7 +492,6 @@ var (
 	projectRefGitTagVersionsEnabledKey              = bsonutil.MustHaveTag(ProjectRef{}, "GitTagVersionsEnabled")
 	projectRefRepotrackerDisabledKey                = bsonutil.MustHaveTag(ProjectRef{}, "RepotrackerDisabled")
 	projectRefCommitQueueKey                        = bsonutil.MustHaveTag(ProjectRef{}, "CommitQueue")
-	projectRefTaskSyncKey                           = bsonutil.MustHaveTag(ProjectRef{}, "TaskSync")
 	projectRefPatchingDisabledKey                   = bsonutil.MustHaveTag(ProjectRef{}, "PatchingDisabled")
 	projectRefDispatchingDisabledKey                = bsonutil.MustHaveTag(ProjectRef{}, "DispatchingDisabled")
 	projectRefStepbackDisabledKey                   = bsonutil.MustHaveTag(ProjectRef{}, "StepbackDisabled")
@@ -625,14 +614,6 @@ func (p *ProjectRef) IsPerfEnabled() bool {
 
 func (p *CommitQueueParams) IsEnabled() bool {
 	return utility.FromBoolPtr(p.Enabled)
-}
-
-func (ts *TaskSyncOptions) IsPatchEnabled() bool {
-	return utility.FromBoolPtr(ts.PatchEnabled)
-}
-
-func (ts *TaskSyncOptions) IsConfigEnabled() bool {
-	return utility.FromBoolPtr(ts.ConfigEnabled)
 }
 
 func (c *WorkstationConfig) ShouldGitClone() bool {
@@ -763,9 +744,6 @@ func (p *ProjectRef) MergeWithProjectConfig(version string) (err error) {
 		}
 		if projectConfig.TaskAnnotationSettings != nil {
 			pRefToMerge.TaskAnnotationSettings = *projectConfig.TaskAnnotationSettings
-		}
-		if projectConfig.TaskSync != nil {
-			pRefToMerge.TaskSync = *projectConfig.TaskSync
 		}
 		reflectedRef := reflect.ValueOf(p).Elem()
 		reflectedConfig := reflect.ValueOf(pRefToMerge)
@@ -2240,7 +2218,6 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 			ProjectRefDeactivatePreviousKey:    p.DeactivatePrevious,
 			projectRefRepotrackerDisabledKey:   p.RepotrackerDisabled,
 			projectRefPatchingDisabledKey:      p.PatchingDisabled,
-			projectRefTaskSyncKey:              p.TaskSync,
 			ProjectRefDisabledStatsCacheKey:    p.DisabledStatsCache,
 		}
 		// Unlike other fields, this will only be set if we're actually modifying it since it's used by the backend.

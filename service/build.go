@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -22,8 +23,8 @@ import (
 
 // getUiTaskCache takes a build object and returns a slice of
 // uiTask objects suitable for front-end
-func getUiTaskCache(b *build.Build) ([]uiTask, error) {
-	tasks, err := task.FindAll(db.Query(task.ByBuildId(b.Id)))
+func getUiTaskCache(ctx context.Context, b *build.Build) ([]uiTask, error) {
+	tasks, err := task.FindAll(ctx, db.Query(task.ByBuildId(b.Id)))
 	if len(tasks) == 0 {
 		return nil, errors.Wrap(err, "can't get tasks for build")
 	}
@@ -68,14 +69,14 @@ func (uis *UIServer) buildPage(w http.ResponseWriter, r *http.Request) {
 		buildAsUI.Repo = projCtx.ProjectRef.Repo
 	}
 
-	uiTasks, err := getUiTaskCache(projCtx.Build)
+	uiTasks, err := getUiTaskCache(r.Context(), projCtx.Build)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "can't get tasks for build"))
 		return
 	}
 	buildAsUI.Tasks = uiTasks
 
-	buildAsUI.TimeTaken, buildAsUI.Makespan, err = projCtx.Build.GetTimeSpent()
+	buildAsUI.TimeTaken, buildAsUI.Makespan, err = projCtx.Build.GetTimeSpent(r.Context())
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "can't get time spent for build"))
 		return
@@ -105,7 +106,7 @@ func (uis *UIServer) buildPage(w http.ResponseWriter, r *http.Request) {
 			grip.Warningln("Could not find build for base commit of patch build:",
 				projCtx.Build.Id)
 		}
-		diffs, err := model.StatusDiffBuilds(buildOnBaseCommit, projCtx.Build)
+		diffs, err := model.StatusDiffBuilds(r.Context(), buildOnBaseCommit, projCtx.Build)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -238,14 +239,14 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 		Version:     *projCtx.Version,
 	}
 
-	uiTasks, err := getUiTaskCache(projCtx.Build)
+	uiTasks, err := getUiTaskCache(r.Context(), projCtx.Build)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "can't get tasks for build"))
 		return
 	}
 	updatedBuild.Tasks = uiTasks
 
-	updatedBuild.TimeTaken, updatedBuild.Makespan, err = projCtx.Build.GetTimeSpent()
+	updatedBuild.TimeTaken, updatedBuild.Makespan, err = projCtx.Build.GetTimeSpent(r.Context())
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "can't get time spent for build"))
 		return
@@ -275,7 +276,7 @@ func (uis *UIServer) buildHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	taskMap, err := getTaskMapForBuilds(builds)
+	taskMap, err := getTaskMapForBuilds(r.Context(), builds)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("error getting tasks for builds: %v", err), http.StatusInternalServerError)
 		return
@@ -331,7 +332,7 @@ func (uis *UIServer) buildHistory(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		uiTasks, err := getUiTaskCache(lastSuccess)
+		uiTasks, err := getUiTaskCache(r.Context(), lastSuccess)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("can't get tasks for last successful version '%s'", lastSuccess.Version), http.StatusInternalServerError)
 			return
@@ -353,13 +354,13 @@ func (uis *UIServer) buildHistory(w http.ResponseWriter, r *http.Request) {
 
 // getTaskMapForBuilds returns a map of task ID to task document
 // for all tasks in builds
-func getTaskMapForBuilds(builds []build.Build) (map[string]task.Task, error) {
+func getTaskMapForBuilds(ctx context.Context, builds []build.Build) (map[string]task.Task, error) {
 	buildIds := make([]string, 0, len(builds))
 	for _, b := range builds {
 		buildIds = append(buildIds, b.Id)
 	}
 	query := db.Query(task.ByBuildIds(buildIds)).WithFields(task.BuildIdKey, task.DisplayNameKey, task.StatusKey, task.DetailsKey)
-	tasksForBuilds, err := task.FindAll(query)
+	tasksForBuilds, err := task.FindAll(ctx, query)
 	if err != nil {
 		return nil, errors.Wrap(err, "can't get tasks for builds")
 	}

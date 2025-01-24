@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -24,13 +25,16 @@ var (
 )
 
 func TestTaskImportanceComparators(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	var taskComparator *CmpBasedTaskComparator
 	var taskIds []string
 	var tasks []task.Task
 
 	Convey("When using the task importance comparators", t, func() {
 
-		taskComparator = &CmpBasedTaskComparator{}
+		taskComparator = NewCmpBasedTaskComparator(ctx, "runtime-id")
 
 		taskIds = []string{"t1", "t2"}
 
@@ -270,6 +274,9 @@ func TestByTaskGroupOrder(t *testing.T) {
 }
 
 func TestPrioritizeTasksWithSameTaskGroupsAndDifferentBuilds(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 	require := require.New(t)
 	require.NoError(db.ClearCollections(model.VersionCollection, task.Collection))
@@ -328,7 +335,7 @@ func TestPrioritizeTasksWithSameTaskGroupsAndDifferentBuilds(t *testing.T) {
 	require.NoError(tasks.Insert())
 
 	prioritizer := &CmpBasedTaskPrioritizer{}
-	sorted, _, err := prioritizer.PrioritizeTasks("distro", tasks.Export(), versions)
+	sorted, _, err := prioritizer.PrioritizeTasks(ctx, "distro", tasks.Export(), versions)
 	require.NoError(err)
 	assert.Equal("task_4", sorted[0].Id)
 	assert.Equal("task_1", sorted[1].Id)
@@ -337,6 +344,9 @@ func TestPrioritizeTasksWithSameTaskGroupsAndDifferentBuilds(t *testing.T) {
 }
 
 func TestTaskGroupsNotOutOfOrderFromOtherComparators(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 	require := require.New(t)
 	require.NoError(db.ClearCollections(model.VersionCollection))
@@ -387,7 +397,7 @@ func TestTaskGroupsNotOutOfOrderFromOtherComparators(t *testing.T) {
 	}
 
 	prioritizer := &CmpBasedTaskPrioritizer{}
-	sorted, _, err := prioritizer.PrioritizeTasks("distro", tasks, versions)
+	sorted, _, err := prioritizer.PrioritizeTasks(ctx, "distro", tasks, versions)
 	assert.NoError(err)
 	list := []string{}
 	for _, t := range sorted {

@@ -14,6 +14,8 @@ import (
 )
 
 func TestTaskHistory(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	Convey("With a task history iterator", t, func() {
 
@@ -61,7 +63,7 @@ func TestTaskHistory(t *testing.T) {
 			Convey("the specified number of task history items should be"+
 				" fetched, starting at the specified version", func() {
 
-				taskHistoryChunk, err := taskHistoryIterator.GetChunk(nil, 5, 0, false)
+				taskHistoryChunk, err := taskHistoryIterator.GetChunk(ctx, nil, 5, 0, false)
 				versions := taskHistoryChunk.Versions
 				tasks := taskHistoryChunk.Tasks
 				So(err, ShouldBeNil)
@@ -82,7 +84,7 @@ func TestTaskHistory(t *testing.T) {
 				vBefore, err := VersionFindOne(VersionById("v15"))
 				So(err, ShouldBeNil)
 
-				taskHistoryChunk, err := taskHistoryIterator.GetChunk(vBefore, 5, 0, false)
+				taskHistoryChunk, err := taskHistoryIterator.GetChunk(ctx, vBefore, 5, 0, false)
 				versions := taskHistoryChunk.Versions
 				tasks := taskHistoryChunk.Tasks
 				So(err, ShouldBeNil)

@@ -318,7 +318,7 @@ func TestFinalizePatch(t *testing.T) {
 			require.NoError(t, err)
 			assert.Len(t, builds, 1)
 			assert.Len(t, builds[0].Tasks, 2)
-			tasks, err := task.Find(bson.M{})
+			tasks, err := task.Find(ctx, bson.M{})
 			require.NoError(t, err)
 			assert.Len(t, tasks, 2)
 		},
@@ -419,7 +419,7 @@ func TestFinalizePatch(t *testing.T) {
 			assert.Len(t, builds, 1)
 			assert.Len(t, builds[0].Tasks, 2)
 
-			tasks, err := task.Find(bson.M{})
+			tasks, err := task.Find(ctx, bson.M{})
 			require.NoError(t, err)
 			assert.Len(t, tasks, 2)
 			for _, tsk := range tasks {
@@ -762,6 +762,9 @@ func TestVariantTasksToTVPairs(t *testing.T) {
 }
 
 func TestAddNewPatch(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 
 	require.NoError(t, db.ClearCollections(patch.Collection, VersionCollection, build.Collection, task.Collection, ProjectRefCollection, user.Collection))
@@ -802,7 +805,8 @@ func TestAddNewPatch(t *testing.T) {
 		Identifier: "project",
 		BuildVariants: []BuildVariant{
 			{
-				Name: "variant",
+				Name:        "variant",
+				DisplayName: "My Variant Display",
 				Tasks: []BuildVariantTaskUnit{
 					{Name: "task1", Variant: "variant"}, {Name: "task2", Variant: "variant"}, {Name: "task3", Variant: "variant"},
 				},
@@ -836,7 +840,6 @@ func TestAddNewPatch(t *testing.T) {
 		Version:        v,
 		Pairs:          tasks,
 		ActivationInfo: specificActivationInfo{},
-		SyncAtEndOpts:  p.SyncAtEndOpts,
 		GeneratedBy:    "",
 	}
 	_, err := addNewBuilds(context.Background(), creationInfo, nil)
@@ -845,6 +848,12 @@ func TestAddNewPatch(t *testing.T) {
 	assert.NoError(err)
 	require.NotNil(t, dbBuild)
 	assert.Len(dbBuild.Tasks, 2)
+	dbVersion, err := VersionFindOne(db.Q{})
+	assert.NoError(err)
+	require.NotNil(t, dbVersion)
+	assert.Len(dbVersion.BuildVariants, 1)
+	assert.Equal("variant", dbVersion.BuildVariants[0].BuildVariant)
+	assert.Equal("My Variant Display", dbVersion.BuildVariants[0].DisplayName)
 
 	_, err = addNewTasksToExistingBuilds(context.Background(), creationInfo, []build.Build{*dbBuild}, "")
 	assert.NoError(err)
@@ -852,7 +861,7 @@ func TestAddNewPatch(t *testing.T) {
 	assert.NoError(err)
 	require.NotNil(t, dbUser)
 	assert.Equal(4, dbUser.NumScheduledPatchTasks)
-	dbTasks, err := task.FindAll(db.Query(task.ByBuildId(dbBuild.Id)))
+	dbTasks, err := task.FindAll(ctx, db.Query(task.ByBuildId(dbBuild.Id)))
 	assert.NoError(err)
 	assert.NotNil(dbBuild)
 	require.Len(t, dbTasks, 4)
@@ -871,6 +880,9 @@ func TestAddNewPatch(t *testing.T) {
 }
 
 func TestAddNewPatchWithMissingBaseVersion(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	assert := assert.New(t)
 
 	require.NoError(t, db.ClearCollections(patch.Collection, VersionCollection, build.Collection, task.Collection, ProjectRefCollection))
@@ -929,7 +941,6 @@ func TestAddNewPatchWithMissingBaseVersion(t *testing.T) {
 		Version:        v,
 		Pairs:          tasks,
 		ActivationInfo: specificActivationInfo{},
-		SyncAtEndOpts:  p.SyncAtEndOpts,
 		GeneratedBy:    "",
 	}
 	_, err := addNewBuilds(context.Background(), creationInfo, nil)
@@ -941,7 +952,7 @@ func TestAddNewPatchWithMissingBaseVersion(t *testing.T) {
 
 	_, err = addNewTasksToExistingBuilds(context.Background(), creationInfo, []build.Build{*dbBuild}, "")
 	assert.NoError(err)
-	dbTasks, err := task.FindAll(db.Query(task.ByBuildId(dbBuild.Id)))
+	dbTasks, err := task.FindAll(ctx, db.Query(task.ByBuildId(dbBuild.Id)))
 	assert.NoError(err)
 	assert.NotNil(dbBuild)
 	assert.Len(dbTasks, 4)

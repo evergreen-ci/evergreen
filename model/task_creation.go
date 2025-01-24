@@ -5,7 +5,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
-	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 )
 
@@ -31,7 +30,6 @@ type TaskCreationInfo struct {
 	DistroAliases       distro.AliasLookupTable // Map of distro aliases to names of distros
 	TaskCreateTime      time.Time               // Create time of tasks in the build
 	GithubChecksAliases ProjectAliases          // Project aliases to use to filter tasks to count towards the github checks, if any
-	SyncAtEndOpts       patch.SyncAtEndOptions  // Describes how tasks should sync upon the end of a task
 	// ActivatedTasksAreEssentialToSucceed indicates whether or not all tasks
 	// that are being created and activated immediately are required to finish
 	// in order for the build/version to be finished. Tasks with specific

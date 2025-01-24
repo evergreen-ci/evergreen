@@ -435,7 +435,7 @@ func TestCLIFunctions(t *testing.T) {
 								patches, err = ac.GetPatches(0)
 								So(err, ShouldBeNil)
 								// After canceling, tasks in the version should be deactivated
-								tasks, err := task.Find(task.ByVersion(patches[0].Version))
+								tasks, err := task.Find(ctx, task.ByVersion(patches[0].Version))
 								So(err, ShouldBeNil)
 								for _, t := range tasks {
 									So(t.Activated, ShouldBeFalse)
@@ -549,7 +549,7 @@ func TestCLIFunctions(t *testing.T) {
 								So(ac.CancelPatch(newPatch.Id.Hex()), ShouldBeNil)
 								patches, err := ac.GetPatches(0)
 								So(err, ShouldBeNil)
-								tasks, err := task.Find(task.ByVersion(patches[0].Version))
+								tasks, err := task.Find(ctx, task.ByVersion(patches[0].Version))
 								So(err, ShouldBeNil)
 								for _, t := range tasks {
 									So(t.Activated, ShouldBeFalse)

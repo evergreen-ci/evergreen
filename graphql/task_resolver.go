@@ -227,7 +227,7 @@ func (r *taskResolver) CanSetPriority(ctx context.Context, obj *restModel.APITas
 		return true, nil
 	}
 	if len(obj.ExecutionTasks) != 0 && !evergreen.IsFinishedTaskStatus(utility.FromStringPtr(obj.Status)) {
-		tasks, err := task.FindByExecutionTasksAndMaxExecution(utility.FromStringPtrSlice(obj.ExecutionTasks), obj.Execution)
+		tasks, err := task.FindByExecutionTasksAndMaxExecution(ctx, utility.FromStringPtrSlice(obj.ExecutionTasks), obj.Execution)
 		if err != nil {
 			return false, InternalServerError.Send(ctx, fmt.Sprintf("finding execution tasks for task '%s': %s", *obj.Id, err.Error()))
 		}
@@ -256,7 +256,7 @@ func (r *taskResolver) DependsOn(ctx context.Context, obj *restModel.APITask) ([
 		depIds = append(depIds, dep.TaskId)
 	}
 
-	dependencyTasks, err := task.FindWithFields(task.ByIds(depIds), task.DisplayNameKey, task.StatusKey,
+	dependencyTasks, err := task.FindWithFields(ctx, task.ByIds(depIds), task.DisplayNameKey, task.StatusKey,
 		task.ActivatedKey, task.BuildVariantKey, task.DetailsKey, task.DependsOnKey)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Cannot find dependency tasks for task %s: %s", *obj.Id, err.Error()))
@@ -346,7 +346,7 @@ func (r *taskResolver) ExecutionTasksFull(ctx context.Context, obj *restModel.AP
 	if len(obj.ExecutionTasks) == 0 {
 		return nil, nil
 	}
-	tasks, err := task.FindByExecutionTasksAndMaxExecution(utility.FromStringPtrSlice(obj.ExecutionTasks), obj.Execution)
+	tasks, err := task.FindByExecutionTasksAndMaxExecution(ctx, utility.FromStringPtrSlice(obj.ExecutionTasks), obj.Execution)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding execution tasks for task '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
 	}
@@ -387,7 +387,7 @@ func (r *taskResolver) Files(ctx context.Context, obj *restModel.APITask) (*Task
 	fileCount := 0
 
 	if obj.DisplayOnly {
-		execTasks, err := task.Find(task.ByIds(utility.FromStringPtrSlice(obj.ExecutionTasks)))
+		execTasks, err := task.Find(ctx, task.ByIds(utility.FromStringPtrSlice(obj.ExecutionTasks)))
 		if err != nil {
 			return &emptyTaskFiles, ResourceNotFound.Send(ctx, err.Error())
 		}

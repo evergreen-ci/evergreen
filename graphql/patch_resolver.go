@@ -63,7 +63,7 @@ func (r *patchResolver) Builds(ctx context.Context, obj *restModel.APIPatch) ([]
 // Duration is the resolver for the duration field.
 func (r *patchResolver) Duration(ctx context.Context, obj *restModel.APIPatch) (*PatchDuration, error) {
 	query := db.Query(task.ByVersion(*obj.Id)).WithFields(task.TimeTakenKey, task.StartTimeKey, task.FinishTimeKey, task.DisplayOnlyKey, task.ExecutionKey)
-	tasks, err := task.FindAllFirstExecution(query)
+	tasks, err := task.FindAllFirstExecution(ctx, query)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
@@ -197,7 +197,7 @@ func (r *patchResolver) ProjectMetadata(ctx context.Context, obj *restModel.APIP
 
 // TaskCount is the resolver for the taskCount field.
 func (r *patchResolver) TaskCount(ctx context.Context, obj *restModel.APIPatch) (*int, error) {
-	taskCount, err := task.Count(db.Query(task.DisplayTasksByVersion(*obj.Id, false)))
+	taskCount, err := task.Count(ctx, db.Query(task.DisplayTasksByVersion(*obj.Id, false)))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting task count for patch '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
 	}

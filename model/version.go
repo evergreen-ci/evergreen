@@ -219,10 +219,10 @@ func setVersionStatus(versionId, newStatus string) error {
 
 // GetTimeSpent returns the total time_taken and makespan of a version for
 // each task that has finished running
-func (v *Version) GetTimeSpent() (time.Duration, time.Duration, error) {
+func (v *Version) GetTimeSpent(ctx context.Context) (time.Duration, time.Duration, error) {
 	query := db.Query(task.ByVersion(v.Id)).WithFields(
 		task.TimeTakenKey, task.StartTimeKey, task.FinishTimeKey, task.DisplayOnlyKey, task.ExecutionKey)
-	tasks, err := task.FindAllFirstExecution(query)
+	tasks, err := task.FindAllFirstExecution(ctx, query)
 	if err != nil {
 		return 0, 0, errors.Wrapf(err, "getting tasks for version '%s'", v.Id)
 	}
@@ -280,6 +280,7 @@ func (v *Version) UpdatePreGenerationProjectStorageMethod(method evergreen.Parse
 // VersionBuildStatus stores metadata relating to each build
 type VersionBuildStatus struct {
 	BuildVariant     string                `bson:"build_variant" json:"id"`
+	DisplayName      string                `bson:"display_name,omitempty" json:"display_name,omitempty"`
 	BuildId          string                `bson:"build_id,omitempty" json:"build_id,omitempty"`
 	BatchTimeTasks   []BatchTimeTaskStatus `bson:"batchtime_tasks,omitempty" json:"batchtime_tasks,omitempty"`
 	ActivationStatus `bson:",inline"`

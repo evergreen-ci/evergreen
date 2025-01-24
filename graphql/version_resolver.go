@@ -174,7 +174,7 @@ func (r *versionResolver) GeneratedTaskCounts(ctx context.Context, obj *restMode
 	}
 
 	var res []*GeneratedTaskCountResults
-	versionGeneratorTasks, err := task.Find(bson.M{
+	versionGeneratorTasks, err := task.Find(ctx, bson.M{
 		task.VersionKey:      versionID,
 		task.GenerateTaskKey: true,
 	})
@@ -272,7 +272,7 @@ func (r *versionResolver) Status(ctx context.Context, obj *restModel.APIVersion)
 
 // TaskCount is the resolver for the taskCount field.
 func (r *versionResolver) TaskCount(ctx context.Context, obj *restModel.APIVersion) (*int, error) {
-	taskCount, err := task.Count(db.Query(task.DisplayTasksByVersion(*obj.Id, !obj.IsPatchRequester())))
+	taskCount, err := task.Count(ctx, db.Query(task.DisplayTasksByVersion(*obj.Id, !obj.IsPatchRequester())))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting task count for version '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
 	}
@@ -483,7 +483,7 @@ func (r *versionResolver) VersionTiming(ctx context.Context, obj *restModel.APIV
 	if v == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("finding version '%s'", utility.FromStringPtr(obj.Id)))
 	}
-	timeTaken, makespan, err := v.GetTimeSpent()
+	timeTaken, makespan, err := v.GetTimeSpent(ctx)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting timing for version '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
 	}

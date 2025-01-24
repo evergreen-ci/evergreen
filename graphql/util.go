@@ -70,7 +70,7 @@ func getGroupedFiles(ctx context.Context, name string, taskID string, execution 
 }
 
 func findAllTasksByIds(ctx context.Context, taskIDs ...string) ([]task.Task, error) {
-	tasks, err := task.FindAll(db.Query(task.ByIds(taskIDs)))
+	tasks, err := task.FindAll(ctx, db.Query(task.ByIds(taskIDs)))
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
@@ -869,12 +869,6 @@ func getHostRequestOptions(ctx context.Context, usr *user.DBUser, spawnHostInput
 		}
 		options.UseProjectSetupScript = *spawnHostInput.UseProjectSetupScript
 	}
-	if utility.FromBoolPtr(spawnHostInput.TaskSync) {
-		if t == nil {
-			return nil, ResourceNotFound.Send(ctx, "A valid task id must be supplied when taskSync is set to true")
-		}
-		options.TaskSync = *spawnHostInput.TaskSync
-	}
 
 	if utility.FromBoolPtr(spawnHostInput.SpawnHostsStartedByTask) {
 		if t == nil {
@@ -1008,7 +1002,7 @@ func getBaseTaskTestResultsOptions(ctx context.Context, dbTask *task.Task) ([]te
 	}
 
 	if baseTask != nil && baseTask.ResultsService == dbTask.ResultsService {
-		taskOpts, err = baseTask.CreateTestResultsTaskOptions()
+		taskOpts, err = baseTask.CreateTestResultsTaskOptions(ctx)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error creating test results task options for base task '%s': %s", baseTask.Id, err))
 		}
