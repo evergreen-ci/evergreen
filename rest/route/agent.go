@@ -1844,3 +1844,44 @@ func (h *awsS3Credentials) Run(ctx context.Context) gimlet.Responder {
 		Expiration:      creds.Expiration.String(),
 	})
 }
+
+// GET /rest/v2/host/{host_id}/allowed_single_task_distro_tasks
+// This route is used to get a list of allowed single task distro tasks for the distro on the given host.
+type allowedSingleTaskDistroTasks struct {
+	hostID string
+
+	settings *evergreen.Settings
+}
+
+func makeAllowedSingleTaskDistroTasks(settings *evergreen.Settings) gimlet.RouteHandler {
+	return &allowedSingleTaskDistroTasks{settings: settings}
+}
+
+func (h *allowedSingleTaskDistroTasks) Factory() gimlet.RouteHandler {
+	return &allowedSingleTaskDistroTasks{settings: h.settings}
+}
+
+func (h *allowedSingleTaskDistroTasks) Parse(ctx context.Context, r *http.Request) error {
+	if h.hostID = gimlet.GetVars(r)["host_id"]; h.hostID == "" {
+		return errors.New("missing host_id")
+	}
+	return nil
+}
+
+func (h *allowedSingleTaskDistroTasks) Run(ctx context.Context) gimlet.Responder {
+	host, err := host.FindOneId(ctx, h.hostID)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding host '%s'", h.hostID))
+	}
+	if host == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("host '%s' not found", h.hostID),
+		})
+	}
+	if !host.Distro.SingleTaskDistro {
+		return gimlet.NewJSONResponse(struct{}{})
+	}
+
+	return gimlet.NewJSONResponse(h.settings.SingleTaskDistro.ProjectTasksPairs)
+}

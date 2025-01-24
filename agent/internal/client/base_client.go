@@ -1025,3 +1025,20 @@ func (c *baseCommunicator) AssumeRole(ctx context.Context, td TaskData, request 
 	}
 	return &creds, nil
 }
+
+func (c *baseCommunicator) AllowedSingleTaskDistroTasks(ctx context.Context) ([]string, error) {
+	info := requestInfo{
+		method: http.MethodGet,
+	}
+	info.setTaskPathSuffix("allowed_single_task_distro_tasks")
+	resp, err := c.retryRequest(ctx, info, nil)
+	if err != nil {
+		return nil, util.RespError(resp, errors.Wrap(err, "getting allowed single task distro tasks").Error())
+	}
+
+	tasks := []string{}
+	if err = utility.ReadJSON(resp.Body, &tasks); err != nil {
+		return nil, errors.Wrap(err, "reading allowed single task distro tasks from response")
+	}
+	return tasks, nil
+}

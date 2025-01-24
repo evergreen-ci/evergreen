@@ -80,6 +80,8 @@ type Options struct {
 	// sent to the global agent file log.
 	SendTaskLogsToGlobalSender bool
 	HomeDirectory              string
+	DistroID                   string
+	SingleTaskDistro           bool
 }
 
 // AddLoggableInfo is a helper to add relevant information about the agent
@@ -213,6 +215,8 @@ func (a *Agent) Start(ctx context.Context) error {
 	if a.opts.Cleanup {
 		a.tryCleanupDirectory(a.opts.WorkingDirectory)
 	}
+
+	a.comm.AllowedSingleTaskDistroTasks(ctx)
 
 	return errors.Wrap(a.loop(ctx), "executing main agent loop")
 }
