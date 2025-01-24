@@ -71,8 +71,10 @@ func GetActiveWaterfallVersions(ctx context.Context, projectId string, opts Wate
 
 	if len(opts.Variants) > 0 {
 		variantsAsRegex := strings.Join(opts.Variants, "|")
-		match[bsonutil.GetDottedKeyName(VersionBuildVariantsKey, VersionBuildStatusVariantKey)] = bson.M{"$regex": variantsAsRegex, "$options": "i"}
-
+		match["$or"] = []bson.M{
+			{bsonutil.GetDottedKeyName(VersionBuildVariantsKey, VersionBuildStatusVariantKey): bson.M{"$regex": variantsAsRegex, "$options": "i"}},
+			{bsonutil.GetDottedKeyName(VersionBuildVariantsKey, VersionBuildStatusDisplayNameKey): bson.M{"$regex": variantsAsRegex, "$options": "i"}},
+		}
 	}
 
 	pagingForward := opts.MaxOrder != 0
