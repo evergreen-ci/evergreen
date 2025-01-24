@@ -1846,7 +1846,7 @@ func (h *awsS3Credentials) Run(ctx context.Context) gimlet.Responder {
 }
 
 // GET /rest/v2/host/{host_id}/allowed_single_task_distro_tasks
-// This route is used to get a list of allowed single task distro tasks for the distro on the given host.
+// This route is used to get a list of all allowed single task distro tasks if the host is a single task distro.
 type allowedSingleTaskDistroTasks struct {
 	hostID string
 
@@ -1883,5 +1883,10 @@ func (h *allowedSingleTaskDistroTasks) Run(ctx context.Context) gimlet.Responder
 		return gimlet.NewJSONResponse(struct{}{})
 	}
 
-	return gimlet.NewJSONResponse(h.settings.SingleTaskDistro.ProjectTasksPairs)
+	allTasks := []string{}
+	for _, tasks := range h.settings.SingleTaskDistro.ProjectTasksPairs {
+		allTasks = append(allTasks, tasks.AllowedTasks...)
+	}
+
+	return gimlet.NewJSONResponse(allTasks)
 }

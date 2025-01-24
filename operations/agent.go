@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/agent"
 	"github.com/evergreen-ci/evergreen/agent/command"
 	"github.com/evergreen-ci/evergreen/agent/globals"
-	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
@@ -185,16 +184,6 @@ func Agent() cli.Command {
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
-
-			h, err := host.FindOneId(ctx, opts.HostID)
-			if err != nil {
-				return errors.Wrap(err, "finding host")
-			}
-			if h == nil {
-				return errors.Errorf("host '%s' not found", opts.HostID)
-			}
-			opts.DistroID = h.Distro.Id
-			opts.SingleTaskDistro = h.Distro.SingleTaskDistro
 
 			agt, err := agent.New(ctx, opts, c.String(agentAPIServerURLFlagName))
 			if err != nil {
