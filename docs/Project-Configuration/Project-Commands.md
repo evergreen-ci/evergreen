@@ -409,7 +409,7 @@ An example of a trust policy with an external ID is below:
       "Action": "sts:AssumeRole",
       "Condition": {
         "StringEquals": {
-          "sts:ExternalId": "<project-id>-<requester>"
+          "sts:ExternalId": "<project_id>-<requester>"
         }
       }
     }
@@ -431,7 +431,7 @@ You can allow any requester by using `StringLike` like below:
       "Action": "sts:AssumeRole",
       "Condition": {
         "StringLike": {
-          "sts:ExternalId": "<project-id>-*"
+          "sts:ExternalId": "<project_id>-*"
         }
       }
     }
