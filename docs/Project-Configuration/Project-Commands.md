@@ -385,7 +385,7 @@ Parameters:
     credentials will be valid. (default 900)
 
 
-The call to AssumeRole includes an external ID formated as
+The call to AssumeRole includes an external ID formatted as
 `<project_id>-<requester>`. This cannot be modified by the user.
 The originating role is: 
 `arn:aws:iam::<evergreen_account_id>:role/evergreen.role.production`
