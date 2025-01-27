@@ -1,6 +1,6 @@
 {
   project(projectIdentifier: "spruce") {
-    patches(patchesInput: { includeCommitQueue: true, statuses: ["failed"] }) {
+    patches(patchesInput: { statuses: ["failed"] }) {
       patches {
         id
         status

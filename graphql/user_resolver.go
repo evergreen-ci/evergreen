@@ -13,14 +13,13 @@ import (
 // Patches is the resolver for the patches field.
 func (r *userResolver) Patches(ctx context.Context, obj *restModel.APIDBUser, patchesInput PatchesInput) (*Patches, error) {
 	opts := patch.ByPatchNameStatusesCommitQueuePaginatedOptions{
-		Author:             obj.UserID,
-		PatchName:          patchesInput.PatchName,
-		Statuses:           patchesInput.Statuses,
-		Page:               patchesInput.Page,
-		Limit:              patchesInput.Limit,
-		IncludeCommitQueue: patchesInput.IncludeCommitQueue,
-		IncludeHidden:      patchesInput.IncludeHidden,
-		Requesters:         patchesInput.Requesters,
+		Author:        obj.UserID,
+		PatchName:     patchesInput.PatchName,
+		Statuses:      patchesInput.Statuses,
+		Page:          patchesInput.Page,
+		Limit:         patchesInput.Limit,
+		IncludeHidden: patchesInput.IncludeHidden,
+		Requesters:    patchesInput.Requesters,
 	}
 	patches, count, err := patch.ByPatchNameStatusesCommitQueuePaginated(ctx, opts)
 	if err != nil {

@@ -205,8 +205,7 @@ func TestByPatchNameStatusesCommitQueuePaginated(t *testing.T) {
 		assert.NoError(t, patch.Insert())
 	}
 	opts := ByPatchNameStatusesCommitQueuePaginatedOptions{
-		Project:            utility.ToStringPtr("evergreen"),
-		IncludeCommitQueue: utility.TruePtr(),
+		Project: utility.ToStringPtr("evergreen"),
 	}
 	ctx := context.TODO()
 	patches, count, err := ByPatchNameStatusesCommitQueuePaginated(ctx, opts)
@@ -216,10 +215,9 @@ func TestByPatchNameStatusesCommitQueuePaginated(t *testing.T) {
 
 	// Test pagination
 	opts = ByPatchNameStatusesCommitQueuePaginatedOptions{
-		Project:            utility.ToStringPtr("evergreen"),
-		IncludeCommitQueue: utility.TruePtr(),
-		Limit:              5,
-		Page:               0,
+		Project: utility.ToStringPtr("evergreen"),
+		Limit:   5,
+		Page:    0,
 	}
 	patches, count, err = ByPatchNameStatusesCommitQueuePaginated(ctx, opts)
 	assert.NoError(t, err)
@@ -228,10 +226,9 @@ func TestByPatchNameStatusesCommitQueuePaginated(t *testing.T) {
 	assert.Equal(t, "patch 0", patches[0].Description)
 
 	opts = ByPatchNameStatusesCommitQueuePaginatedOptions{
-		Project:            utility.ToStringPtr("evergreen"),
-		IncludeCommitQueue: utility.TruePtr(),
-		Limit:              5,
-		Page:               1,
+		Project: utility.ToStringPtr("evergreen"),
+		Limit:   5,
+		Page:    1,
 	}
 	patches, count, err = ByPatchNameStatusesCommitQueuePaginated(ctx, opts)
 	assert.NoError(t, err)
@@ -241,8 +238,7 @@ func TestByPatchNameStatusesCommitQueuePaginated(t *testing.T) {
 
 	// Test filtering by commit queue
 	opts = ByPatchNameStatusesCommitQueuePaginatedOptions{
-		Project:            utility.ToStringPtr("evergreen"),
-		IncludeCommitQueue: utility.FalsePtr(),
+		Project: utility.ToStringPtr("evergreen"),
 	}
 	patches, count, err = ByPatchNameStatusesCommitQueuePaginated(ctx, opts)
 	assert.NoError(t, err)
