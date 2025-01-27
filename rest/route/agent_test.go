@@ -118,10 +118,9 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 				Version: "aaaaaaaaaaff001122334456",
 			}
 			pRef := model.ProjectRef{
-				Id:                    "p1",
-				Owner:                 "evergreen-ci",
-				Repo:                  "sample",
-				ParameterStoreEnabled: true,
+				Id:    "p1",
+				Owner: "evergreen-ci",
+				Repo:  "sample",
 			}
 			vars := &model.ProjectVars{
 				Id:          "p1",

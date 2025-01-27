@@ -134,10 +134,9 @@ func TestCreateHostsFromTask(t *testing.T) {
 	}
 	assert.NoError(t, d.Insert(ctx))
 	p := model.ProjectRef{
-		Id:                    "p",
-		Owner:                 "evergreen-ci",
-		Repo:                  "sample",
-		ParameterStoreEnabled: true,
+		Id:    "p",
+		Owner: "evergreen-ci",
+		Repo:  "sample",
 	}
 	assert.NoError(t, p.Insert())
 	pvars := model.ProjectVars{
@@ -512,10 +511,9 @@ buildvariants:
 	require.NoError(d.Insert(ctx))
 
 	p := model.ProjectRef{
-		Id:                    "p",
-		Owner:                 "evergreen-ci",
-		Repo:                  "sample",
-		ParameterStoreEnabled: true,
+		Id:    "p",
+		Owner: "evergreen-ci",
+		Repo:  "sample",
 	}
 	assert.NoError(p.Insert())
 	pvars := model.ProjectVars{

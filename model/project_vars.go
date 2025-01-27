@@ -162,18 +162,11 @@ func FindOneProjectVars(projectId string) (*ProjectVars, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultParameterStoreAccessTimeout)
 	defer cancel()
 
-	if err := projectVars.checkAndRunParameterStoreOp(ctx, func() error {
-		projectVarsFromPS, err := projectVars.findParameterStore(ctx)
-		if err != nil {
-			return errors.Wrap(err, "finding project vars in Parameter Store")
-		}
-		projectVars = projectVarsFromPS
-		return nil
-	}); err != nil {
-		return nil, err
+	projectVarsFromPS, err := projectVars.findParameterStore(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "finding project vars in Parameter Store")
 	}
-
-	return projectVars, nil
+	return projectVarsFromPS, nil
 }
 
 // findParameterStore finds all the project variables from Parameter Store.
@@ -304,16 +297,11 @@ func (projectVars *ProjectVars) Upsert() (*adb.ChangeInfo, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultParameterStoreAccessTimeout)
 	defer cancel()
 
-	if err := projectVars.checkAndRunParameterStoreOp(ctx, func() error {
-		pm, err := projectVars.upsertParameterStore(ctx)
-		if err != nil {
-			return errors.Wrap(err, "upserting project variables into Parameter Store")
-		}
-		projectVars.Parameters = *pm
-		return nil
-	}); err != nil {
-		return nil, err
+	pm, err := projectVars.upsertParameterStore(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "upserting project variables into Parameter Store")
 	}
+	projectVars.Parameters = *pm
 
 	setUpdate := bson.M{
 		privateVarsMapKey:   projectVars.PrivateVars,
@@ -517,16 +505,11 @@ func (projectVars *ProjectVars) Insert() error {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultParameterStoreAccessTimeout)
 	defer cancel()
 
-	if err := projectVars.checkAndRunParameterStoreOp(ctx, func() error {
-		pm, err := insertParameterStore(ctx, projectVars)
-		if err != nil {
-			return errors.Wrap(err, "inserting project vars into Parameter Store")
-		}
-		projectVars.Parameters = *pm
-		return nil
-	}); err != nil {
-		return err
+	pm, err := insertParameterStore(ctx, projectVars)
+	if err != nil {
+		return errors.Wrap(err, "inserting project vars into Parameter Store")
 	}
+	projectVars.Parameters = *pm
 
 	return db.Insert(
 		ProjectVarsCollection,
@@ -558,16 +541,11 @@ func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.Chang
 	ctx, cancel := context.WithTimeout(context.Background(), defaultParameterStoreAccessTimeout)
 	defer cancel()
 
-	if err := projectVars.checkAndRunParameterStoreOp(ctx, func() error {
-		pm, err := projectVars.findAndModifyParameterStore(ctx, varsToDelete)
-		if err != nil {
-			return errors.Wrap(err, "finding and modifying project vars in Parameter Store")
-		}
-		projectVars.Parameters = *pm
-		return nil
-	}); err != nil {
-		return nil, err
+	pm, err := projectVars.findAndModifyParameterStore(ctx, varsToDelete)
+	if err != nil {
+		return nil, errors.Wrap(err, "finding and modifying project vars in Parameter Store")
 	}
+	projectVars.Parameters = *pm
 
 	setUpdate := bson.M{}
 	unsetUpdate := bson.M{}
@@ -619,16 +597,11 @@ func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.Chang
 	// Therefore, it's necessary to look up all the vars in Parameter Store
 	// after the update to ensure that the returned project vars includes all
 	// the unmodified vars.
-	if err := projectVars.checkAndRunParameterStoreOp(ctx, func() error {
-		projectVarsFromPS, err := projectVars.findParameterStore(ctx)
-		if err != nil {
-			return errors.Wrap(err, "finding unmodified project vars in Parameter Store")
-		}
-		projectVars.Vars = projectVarsFromPS.Vars
-		return nil
-	}); err != nil {
-		return nil, err
+	projectVarsFromPS, err := projectVars.findParameterStore(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "finding unmodified project vars in Parameter Store")
 	}
+	projectVars.Vars = projectVarsFromPS.Vars
 
 	return change, nil
 }
@@ -676,11 +649,8 @@ func (projectVars *ProjectVars) Clear() error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), defaultParameterStoreAccessTimeout)
 	defer cancel()
-	if err := projectVars.checkAndRunParameterStoreOp(ctx, func() error {
-		_, err := projectVars.upsertParameterStore(ctx)
+	if _, err := projectVars.upsertParameterStore(ctx); err != nil {
 		return errors.Wrap(err, "clearing project vars from Parameter Store")
-	}); err != nil {
-		return err
 	}
 
 	err := db.Update(ProjectVarsCollection,
@@ -697,21 +667,6 @@ func (projectVars *ProjectVars) Clear() error {
 	}
 
 	return nil
-}
-
-// checkAndRunParameterStoreOp checks if the project corresponding to the vars
-// has Parameter Store enabled and if so, runs the provided Parameter Store
-// operation.
-func (projectVars *ProjectVars) checkAndRunParameterStoreOp(ctx context.Context, op func() error) error {
-	flags, err := evergreen.GetServiceFlags(ctx)
-	if err != nil {
-		return errors.Wrap(err, "getting service flags")
-	}
-	if flags.ParameterStoreDisabled {
-		return nil
-	}
-
-	return op()
 }
 
 func (projectVars *ProjectVars) GetVars(t *task.Task) map[string]string {

@@ -137,18 +137,6 @@ type ProjectRef struct {
 	// GitHubPermissionGroupByRequester is a mapping of requester type to the user defined GitHub permission groups above.
 	GitHubPermissionGroupByRequester map[string]string `bson:"github_token_permission_by_requester,omitempty" json:"github_token_permission_by_requester,omitempty" yaml:"github_token_permission_by_requester,omitempty"`
 
-	// ParameterStoreEnabled is a temporary feature flag to enable/disable
-	// Parameter Store for storing project secrets.
-	ParameterStoreEnabled bool `bson:"parameter_store_enabled,omitempty" json:"parameter_store_enabled,omitempty" yaml:"parameter_store_enabled,omitempty"`
-	// ParameterStoreVarsSynced is a temporary flag that indicates whether the
-	// project's variables have been synced to Parameter Store. If this is true,
-	// then the project variables can all be found in Parameter Store.
-	ParameterStoreVarsSynced bool `bson:"parameter_store_vars_synced,omitempty" json:"parameter_store_vars_synced,omitempty" yaml:"parameter_store_vars_synced,omitempty"`
-	// ParameterStoreGitHubAppSynced is a temporary flag that indicates whether
-	// the project's GitHub app's private key have been synced to Parameter
-	// Store. If this is true, then the project's GitHub app private key can be
-	// found in Parameter Store.
-	ParameterStoreGitHubAppSynced bool `bson:"parameter_store_github_app_synced,omitempty" json:"parameter_store_github_app_synced,omitempty" yaml:"parameter_store_github_app_synced,omitempty"`
 	// LastAutoRestartedTaskAt is the last timestamp that a task in this project was restarted automatically.
 	LastAutoRestartedTaskAt time.Time `bson:"last_auto_restarted_task_at"`
 	// NumAutoRestartedTasks is the number of tasks this project has restarted automatically in the past 24-hour period.
@@ -1273,9 +1261,6 @@ func (p *ProjectRef) createNewRepoRef(u *user.DBUser) (repoRef *RepoRef, err err
 	// Set explicitly in case no project is enabled.
 	repoRef.Owner = p.Owner
 	repoRef.Repo = p.Repo
-	if len(allEnabledProjects) == 0 {
-		repoRef.ParameterStoreEnabled = p.ParameterStoreEnabled
-	}
 	_, err = SetTracksPushEvents(context.Background(), &repoRef.ProjectRef)
 	if err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
