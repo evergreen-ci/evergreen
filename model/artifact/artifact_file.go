@@ -132,7 +132,7 @@ func presignFile(ctx context.Context, file File) (string, error) {
 			grip.Debug(message.Fields{
 				"message":    "presigning with IRSA failed",
 				"ticket":     "DEVPROD-13970",
-				"error":      err,
+				"error":      err.Error(),
 				"bucket":     file.Bucket,
 				"presignURL": presignURL,
 				"file_key":   file.FileKey,
