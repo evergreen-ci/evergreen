@@ -45,7 +45,7 @@
     "comments_url": "https://api.github.com/repos/evergreen-ci/public-repo/issues/1/comments",
     "statuses_url": "https://api.github.com/repos/evergreen-ci/public-repo/statuses/0d1a26e67d8f5eaf1f6ba5c57fc3c7d91ac0fd1c",
     "head": {
-      "label": "evergreen-ci:changes",
+      "label": "hadjri:patch-intent-test",
       "ref": "49bb297759edd1284ef6adee665180e7b7bac299",
       "sha": "49bb297759edd1284ef6adee665180e7b7bac299",
       "user": {
