@@ -1063,21 +1063,11 @@ func (c *awsClientImpl) GetCallerIdentity(ctx context.Context, input *sts.GetCal
 		ctx,
 		func() (bool, error) {
 			msg := makeAWSLogMessage("GetCallerIdentity", fmt.Sprintf("%T", c), input)
+			// GetCallerIdentity doesn't require permissions and we should retry on
+			// any error.
 			output, err = c.stsClient.GetCallerIdentity(ctx, input)
-			if err != nil {
-				var apiErr smithy.APIError
-				if errors.As(err, &apiErr) {
-					if strings.Contains(apiErr.ErrorCode(), stsErrorAccessDenied) ||
-						strings.Contains(apiErr.ErrorCode(), stsErrorAssumeRoleAccessDenied) {
-						// This means the role does not exist or our role does not have permission to assume it.
-						return false, err
-					}
-					grip.Debug(message.WrapError(apiErr, msg))
-				}
-				return true, err
-			}
-			grip.Info(msg)
-			return false, nil
+			grip.Info(message.WrapError(err, msg))
+			return false, err
 		}, awsClientDefaultRetryOptions())
 	if err != nil {
 		return nil, err
