@@ -128,16 +128,15 @@ func presignFile(ctx context.Context, file File) (string, error) {
 			return "", errors.Wrap(err, "presigning internal bucket file")
 		}
 
-		if err := verifyPresignURL(ctx, presignURL); err != nil {
-			grip.Debug(message.Fields{
-				"message":    "presigning with IRSA failed",
-				"ticket":     "DEVPROD-13970",
-				"error":      err,
-				"bucket":     file.Bucket,
-				"presignURL": presignURL,
-				"file_key":   file.FileKey,
-			})
-		} else {
+		err = verifyPresignURL(ctx, presignURL)
+		grip.Debug(message.WrapError(err, message.Fields{
+			"message":    "presigning with IRSA failed",
+			"ticket":     "DEVPROD-13970",
+			"bucket":     file.Bucket,
+			"presignURL": presignURL,
+			"file_key":   file.FileKey,
+		}))
+		if err == nil {
 			return presignURL, nil
 		}
 	}
