@@ -1063,11 +1063,14 @@ func (c *awsClientImpl) GetCallerIdentity(ctx context.Context, input *sts.GetCal
 		ctx,
 		func() (bool, error) {
 			msg := makeAWSLogMessage("GetCallerIdentity", fmt.Sprintf("%T", c), input)
-			// GetCallerIdentity doesn't require permissions and we should retry on
-			// any error.
 			output, err = c.stsClient.GetCallerIdentity(ctx, input)
-			grip.Info(message.WrapError(err, msg))
-			return false, err
+			if err != nil {
+				grip.Debug(message.WrapError(err, msg))
+				// GetCallerIdentity doesn't require any permissions, so if we get an error, it's likely a network issue.
+				return true, err
+			}
+			grip.Info(msg)
+			return false, nil
 		}, awsClientDefaultRetryOptions())
 	if err != nil {
 		return nil, err
