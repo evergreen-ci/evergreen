@@ -149,6 +149,11 @@ func respFromCache(resp *http.Response) bool {
 	return resp.Header.Get(httpcache.XFromCache) != ""
 }
 
+// IsUnblockedGithubStatus returns true if the status is in the list of unblocked statuses
+func IsUnblockedGithubStatus(status string) bool {
+	return utility.StringSliceContains(UnblockedGithubStatuses, status)
+}
+
 // GithubPatch stores patch data for patches create from GitHub pull requests
 type GithubPatch struct {
 	PRNumber      int    `bson:"pr_number"`
@@ -158,7 +163,6 @@ type GithubPatch struct {
 	HeadOwner     string `bson:"head_owner"`
 	HeadRepo      string `bson:"head_repo"`
 	HeadHash      string `bson:"head_hash"`
-	BaseHash      string `bson:"base_hash"`
 	Author        string `bson:"author"`
 	AuthorUID     int    `bson:"author_uid"`
 	CommitTitle   string `bson:"commit_title"`
