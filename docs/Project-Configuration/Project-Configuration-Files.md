@@ -1492,7 +1492,7 @@ Intentionally, `teardown_group_can_fail_task` is not supported. Teardown groups
 are not ran within the same context of the task's normal execution and we
 discourage relying on it for anything critical in general. 
 
-For that same reason, teardown groups also cannot run the [set manual task status](Project-Configuration/Task-Runtime-Behavior#manually-set-task-status) route. 
+For that same reason, teardown groups also cannot run the [manually set task status](Project-Configuration/Task-Runtime-Behavior#manually-set-task-status) route. 
 
 The following constraints apply:
 
