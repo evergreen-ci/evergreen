@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/cloud"
@@ -1742,7 +1743,97 @@ func (h *awsAssumeRole) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "assuming role for task '%s'", h.taskID))
 	}
-	return gimlet.NewJSONResponse(apimodels.AssumeRoleResponse{
+	return gimlet.NewJSONResponse(apimodels.AWSCredentials{
+		AccessKeyID:     creds.AccessKeyID,
+		SecretAccessKey: creds.SecretAccessKey,
+		SessionToken:    creds.SessionToken,
+		Expiration:      creds.Expiration.String(),
+	})
+}
+
+// POST /rest/v2/task/{task_id}/aws/s3_credentials
+// This route is used to generates credentials for s3 access for a task.
+// s3.put and s3.get call this route when the command is targeting an
+// internal bucket.
+type awsS3Credentials struct {
+	env        evergreen.Environment
+	stsManager cloud.STSManager
+
+	// callerARN is the ARN in use with AWS STS.
+	// This is saved across requests to avoid unnecessary calls to AWS STS.
+	callerARN string
+
+	body   apimodels.S3CredentialsRequest
+	taskID string
+}
+
+func makeAWSS3Credentials(env evergreen.Environment, stsManager cloud.STSManager) gimlet.RouteHandler {
+	return &awsS3Credentials{env: env, stsManager: stsManager}
+}
+
+func (h *awsS3Credentials) Factory() gimlet.RouteHandler {
+	return &awsS3Credentials{env: h.env, stsManager: h.stsManager, callerARN: h.callerARN}
+}
+
+func (h *awsS3Credentials) Parse(ctx context.Context, r *http.Request) error {
+	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
+		return errors.New("missing task_id")
+	}
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		return errors.Wrap(err, "reading body")
+	}
+
+	if err = json.Unmarshal(body, &h.body); err != nil {
+		return errors.Wrapf(err, "reading s3 body for task '%s'", h.taskID)
+	}
+
+	return errors.Wrapf(h.body.Validate(), "validating s3 body for task '%s'", h.taskID)
+}
+
+func (h *awsS3Credentials) Run(ctx context.Context) gimlet.Responder {
+	t, err := task.FindOneId(ctx, h.taskID)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
+	}
+	if t == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
+		})
+	}
+
+	if h.callerARN == "" {
+		h.callerARN, err = h.stsManager.GetCallerIdentityARN(ctx)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting caller identity for task '%s'", h.taskID))
+		}
+	}
+	// TODO (DEVPROD-13978): Create correct session policy based off of provided task.
+	sessionPolicy := map[string]interface{}{
+		"Version": "2012-10-17",
+		"Statement": []map[string]interface{}{
+			{
+				"Effect":   "Deny",
+				"Action":   "*",
+				"Resource": "*",
+			},
+		},
+	}
+	policyJSON, err := json.Marshal(sessionPolicy)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "marshalling session policy for task '%s'", h.taskID))
+	}
+	creds, err := h.stsManager.AssumeRole(ctx, h.taskID, cloud.AssumeRoleOptions{
+		RoleARN: h.callerARN,
+		Policy:  aws.String(string(policyJSON)),
+	})
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "creating credentials for s3 access for task '%s'", h.taskID))
+	}
+
+	return gimlet.NewJSONResponse(apimodels.AWSCredentials{
 		AccessKeyID:     creds.AccessKeyID,
 		SecretAccessKey: creds.SecretAccessKey,
 		SessionToken:    creds.SessionToken,

@@ -224,12 +224,27 @@ func (ar *AssumeRoleRequest) Validate() error {
 	return catcher.Resolve()
 }
 
-// AssumeRoleResponse the credentials from assuming a role.
-type AssumeRoleResponse struct {
+// AWSCredentials contains AWS credentials.
+type AWSCredentials struct {
 	AccessKeyID     string `json:"access_key_id"`
 	SecretAccessKey string `json:"secret_access_key"`
 	SessionToken    string `json:"session_token"`
 	Expiration      string `json:"expiration"`
+}
+
+// S3CredentialsRequest contains the s3 bucket to access.
+type S3CredentialsRequest struct {
+	// Bucket is the name of the S3 bucket to access.
+	Bucket string `json:"bucket"`
+}
+
+// Validate checks that the request has valid values.
+func (ar *S3CredentialsRequest) Validate() error {
+	catcher := grip.NewBasicCatcher()
+
+	catcher.NewWhen(ar.Bucket == "", "must specify bucket name")
+
+	return catcher.Resolve()
 }
 
 func (ted *TaskEndDetail) IsEmpty() bool {

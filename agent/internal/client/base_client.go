@@ -1006,7 +1006,7 @@ func (c *baseCommunicator) UpsertCheckRun(ctx context.Context, td TaskData, chec
 	return nil
 }
 
-func (c *baseCommunicator) AssumeRole(ctx context.Context, td TaskData, request apimodels.AssumeRoleRequest) (*apimodels.AssumeRoleResponse, error) {
+func (c *baseCommunicator) AssumeRole(ctx context.Context, td TaskData, request apimodels.AssumeRoleRequest) (*apimodels.AWSCredentials, error) {
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &td,
@@ -1019,7 +1019,7 @@ func (c *baseCommunicator) AssumeRole(ctx context.Context, td TaskData, request 
 	if resp.StatusCode != http.StatusOK {
 		return nil, util.RespError(resp, "trouble assuming role")
 	}
-	var creds apimodels.AssumeRoleResponse
+	var creds apimodels.AWSCredentials
 	if err := utility.ReadJSON(resp.Body, &creds); err != nil {
 		return nil, errors.Wrap(err, "reading assume role response")
 	}
