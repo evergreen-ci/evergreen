@@ -1667,10 +1667,11 @@ type ComplexityRoot struct {
 	}
 
 	WaterfallBuild struct {
-		DisplayName func(childComplexity int) int
-		Id          func(childComplexity int) int
-		Tasks       func(childComplexity int) int
-		Version     func(childComplexity int) int
+		BuildVariant func(childComplexity int) int
+		DisplayName  func(childComplexity int) int
+		Id           func(childComplexity int) int
+		Tasks        func(childComplexity int) int
+		Version      func(childComplexity int) int
 	}
 
 	WaterfallBuildVariant struct {
@@ -10087,6 +10088,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Waterfall.Versions(childComplexity), true
+
+	case "WaterfallBuild.buildVariant":
+		if e.complexity.WaterfallBuild.BuildVariant == nil {
+			break
+		}
+
+		return e.complexity.WaterfallBuild.BuildVariant(childComplexity), true
 
 	case "WaterfallBuild.displayName":
 		if e.complexity.WaterfallBuild.DisplayName == nil {
@@ -67797,6 +67805,8 @@ func (ec *executionContext) fieldContext_Version_waterfallBuilds(_ context.Conte
 			switch field.Name {
 			case "id":
 				return ec.fieldContext_WaterfallBuild_id(ctx, field)
+			case "buildVariant":
+				return ec.fieldContext_WaterfallBuild_buildVariant(ctx, field)
 			case "displayName":
 				return ec.fieldContext_WaterfallBuild_displayName(ctx, field)
 			case "version":
@@ -69122,6 +69132,50 @@ func (ec *executionContext) fieldContext_WaterfallBuild_id(_ context.Context, fi
 	return fc, nil
 }
 
+func (ec *executionContext) _WaterfallBuild_buildVariant(ctx context.Context, field graphql.CollectedField, obj *model1.WaterfallBuild) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_WaterfallBuild_buildVariant(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BuildVariant, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_WaterfallBuild_buildVariant(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WaterfallBuild",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _WaterfallBuild_displayName(ctx context.Context, field graphql.CollectedField, obj *model1.WaterfallBuild) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_WaterfallBuild_displayName(ctx, field)
 	if err != nil {
@@ -69351,6 +69405,8 @@ func (ec *executionContext) fieldContext_WaterfallBuildVariant_builds(_ context.
 			switch field.Name {
 			case "id":
 				return ec.fieldContext_WaterfallBuild_id(ctx, field)
+			case "buildVariant":
+				return ec.fieldContext_WaterfallBuild_buildVariant(ctx, field)
 			case "displayName":
 				return ec.fieldContext_WaterfallBuild_displayName(ctx, field)
 			case "version":
@@ -93375,6 +93431,11 @@ func (ec *executionContext) _WaterfallBuild(ctx context.Context, sel ast.Selecti
 			out.Values[i] = graphql.MarshalString("WaterfallBuild")
 		case "id":
 			out.Values[i] = ec._WaterfallBuild_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "buildVariant":
+			out.Values[i] = ec._WaterfallBuild_buildVariant(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

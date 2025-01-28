@@ -29,10 +29,11 @@ type WaterfallTask struct {
 }
 
 type WaterfallBuild struct {
-	Id          string          `bson:"_id" json:"_id"`
-	DisplayName string          `bson:"display_name" json:"display_name"`
-	Version     string          `bson:"version" json:"version"`
-	Tasks       []WaterfallTask `bson:"tasks" json:"tasks"`
+	Id           string          `bson:"_id" json:"_id"`
+	BuildVariant string          `bson:"build_variant" json:"build_variant"`
+	DisplayName  string          `bson:"display_name" json:"display_name"`
+	Version      string          `bson:"version" json:"version"`
+	Tasks        []WaterfallTask `bson:"tasks" json:"tasks"`
 }
 
 type WaterfallBuildVariant struct {
@@ -229,6 +230,9 @@ func GetWaterfallBuildVariants(ctx context.Context, versionIds []string) ([]Wate
 		"$project": bson.M{
 			build.VersionKey: bson.M{
 				"$first": "$" + bsonutil.GetDottedKeyName(buildsKey, build.VersionKey),
+			},
+			build.BuildVariantKey: bson.M{
+				"$first": "$" + bsonutil.GetDottedKeyName(buildsKey, build.BuildVariantKey),
 			},
 			build.DisplayNameKey: bson.M{
 				"$first": "$" + bsonutil.GetDottedKeyName(buildsKey, build.DisplayNameKey),
