@@ -185,7 +185,7 @@ send notifications for merges done by the GitHub merge queue.
 add the PR to the merge queue) and the merge queue itself (which determines
 whether or not GitHub will merge the PR).  Nevertheless, you can run different
 tasks in PRs and the merge queue with the separate settings on the GitHub &
-Commit Queue project settings page.
+Merge Queue project settings page.
 
 Evergreen will post a status check called "evergreen" when the entire merge
 queue build has finished, and it will post a status for each variant that

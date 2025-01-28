@@ -191,8 +191,6 @@ type APINotificationPreferences struct {
 	SpawnHostExpirationID *string `json:"spawn_host_expiration_id,omitempty"`
 	SpawnHostOutcome      *string `json:"spawn_host_outcome"`
 	SpawnHostOutcomeID    *string `json:"spawn_host_outcome_id,omitempty"`
-	CommitQueue           *string `json:"commit_queue"`
-	CommitQueueID         *string `json:"commit_queue_id,omitempty"`
 }
 
 func (n *APINotificationPreferences) BuildFromService(in user.NotificationPreferences) {
@@ -201,7 +199,6 @@ func (n *APINotificationPreferences) BuildFromService(in user.NotificationPrefer
 	n.PatchFirstFailure = utility.ToStringPtr(string(in.PatchFirstFailure))
 	n.SpawnHostOutcome = utility.ToStringPtr(string(in.SpawnHostOutcome))
 	n.SpawnHostExpiration = utility.ToStringPtr(string(in.SpawnHostExpiration))
-	n.CommitQueue = utility.ToStringPtr(string(in.CommitQueue))
 	if in.BuildBreakID != "" {
 		n.BuildBreakID = utility.ToStringPtr(in.BuildBreakID)
 	}
@@ -217,9 +214,6 @@ func (n *APINotificationPreferences) BuildFromService(in user.NotificationPrefer
 	if in.SpawnHostExpirationID != "" {
 		n.SpawnHostExpirationID = utility.ToStringPtr(in.SpawnHostExpirationID)
 	}
-	if in.CommitQueueID != "" {
-		n.CommitQueueID = utility.ToStringPtr(in.CommitQueueID)
-	}
 }
 
 func (n *APINotificationPreferences) ToService() (user.NotificationPreferences, error) {
@@ -231,7 +225,6 @@ func (n *APINotificationPreferences) ToService() (user.NotificationPreferences, 
 	patchFirstFailure := utility.FromStringPtr(n.PatchFirstFailure)
 	spawnHostExpiration := utility.FromStringPtr(n.SpawnHostExpiration)
 	spawnHostOutcome := utility.FromStringPtr(n.SpawnHostOutcome)
-	commitQueue := utility.FromStringPtr(n.CommitQueue)
 	if !user.IsValidSubscriptionPreference(buildBreak) {
 		return user.NotificationPreferences{}, errors.Errorf("invalid build break subscription preference '%s'", buildBreak)
 	}
@@ -247,23 +240,18 @@ func (n *APINotificationPreferences) ToService() (user.NotificationPreferences, 
 	if !user.IsValidSubscriptionPreference(spawnHostOutcome) {
 		return user.NotificationPreferences{}, errors.Errorf("invalid spawn host outcome subscription preference '%s'", spawnHostOutcome)
 	}
-	if !user.IsValidSubscriptionPreference(commitQueue) {
-		return user.NotificationPreferences{}, errors.Errorf("invalid commit queue subscription preference '%s'", commitQueue)
-	}
 	preferences := user.NotificationPreferences{
 		BuildBreak:          user.UserSubscriptionPreference(buildBreak),
 		PatchFinish:         user.UserSubscriptionPreference(patchFinish),
 		PatchFirstFailure:   user.UserSubscriptionPreference(patchFirstFailure),
 		SpawnHostOutcome:    user.UserSubscriptionPreference(spawnHostOutcome),
 		SpawnHostExpiration: user.UserSubscriptionPreference(spawnHostExpiration),
-		CommitQueue:         user.UserSubscriptionPreference(commitQueue),
 	}
 	preferences.BuildBreakID = utility.FromStringPtr(n.BuildBreakID)
 	preferences.PatchFinishID = utility.FromStringPtr(n.PatchFinishID)
 	preferences.PatchFirstFailureID = utility.FromStringPtr(n.PatchFirstFailureID)
 	preferences.SpawnHostOutcomeID = utility.FromStringPtr(n.SpawnHostOutcomeID)
 	preferences.SpawnHostExpirationID = utility.FromStringPtr(n.SpawnHostExpirationID)
-	preferences.CommitQueueID = utility.FromStringPtr(n.CommitQueueID)
 	return preferences, nil
 }
 

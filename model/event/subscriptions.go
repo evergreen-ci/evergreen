@@ -66,7 +66,6 @@ const (
 	GeneralSubscriptionBuildBreak                    = "build-break"
 	GeneralSubscriptionSpawnhostExpiration           = "spawnhost-expiration"
 	GeneralSubscriptionSpawnHostOutcome              = "spawnhost-outcome"
-	GeneralSubscriptionCommitQueue                   = "commit-queue"
 
 	ObjectTask    = "task"
 	ObjectVersion = "version"
@@ -738,8 +737,6 @@ func CreateOrUpdateGeneralSubscription(resourceType string, id string,
 				temp = NewSpawnhostExpirationSubscription(user, subscriber)
 			case GeneralSubscriptionSpawnHostOutcome:
 				temp = NewSpawnHostOutcomeByOwner(user, subscriber)
-			case GeneralSubscriptionCommitQueue:
-				temp = NewCommitQueueSubscriptionByOwner(user, subscriber)
 			default:
 				return nil, errors.Errorf("unknown subscription resource type: %s", resourceType)
 			}
@@ -842,10 +839,6 @@ func NewSpawnHostIdleWarningSubscription(hostId string, sub Subscriber) Subscrip
 	// Use hostID in the ID (as opposed to a random hash) to avoid having multiple idle subscriptions on the same host.
 	subscription.ID = fmt.Sprintf(notificationIDFormat, hostId)
 	return subscription
-}
-
-func NewCommitQueueSubscriptionByOwner(owner string, sub Subscriber) Subscription {
-	return NewSubscriptionByOwner(owner, sub, ResourceTypeCommitQueue, TriggerOutcome)
 }
 
 func NewFirstTaskFailureInVersionSubscriptionByOwner(owner string, sub Subscriber) Subscription {

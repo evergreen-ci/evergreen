@@ -29,6 +29,7 @@ import (
 	"github.com/google/go-github/v52/github"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip/send"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -1755,4 +1756,9 @@ tasks:
 	dbPatch, err := patch.FindOneId(p.Id.Hex())
 	s.NoError(err)
 	s.Equal(p.Triggers.ChildPatches, dbPatch.Triggers.ChildPatches)
+}
+
+func TestMakeMergeQueueDescription(t *testing.T) {
+	mergeGroup := thirdparty.GithubMergeGroup{HeadSHA: "0e312ffabcdefghijklmnop", HeadCommit: "I'm a commit!"}
+	assert.Equal(t, "GitHub Merge Queue: I'm a commit! (0e312ff)", makeMergeQueueDescription(mergeGroup))
 }
