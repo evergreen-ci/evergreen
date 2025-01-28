@@ -21,7 +21,6 @@ type WaterfallTask {
 
 type WaterfallBuild {
   id: String!
-  activated: Boolean
   displayName: String!
   version: String!
   tasks: [WaterfallTask!]!
