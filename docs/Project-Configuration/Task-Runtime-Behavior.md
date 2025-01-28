@@ -228,6 +228,10 @@ such as manually setting the task to "failed" after a background process
 abruptly exits. Only use this if the default task status does not suit your
 needs.
 
+Note: This route must be called before the finial task status has been set.
+For example, calling the route in a `teardown_group` will not work because 
+teardown groups run outside the context of their tasks.
+
 Posting a task status will not immediately stop the currently-running command.
 Once the current command completes, it will check if the task end status is
 defined, and will either continue or stop depending on whether `should_continue`
