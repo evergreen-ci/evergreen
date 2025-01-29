@@ -30,12 +30,13 @@ const (
 )
 
 var (
-	fileNameAttribute       = fmt.Sprintf("%s.file_name", artifactFileAttribute)
-	bucketAttribute         = fmt.Sprintf("%s.bucket", artifactFileAttribute)
-	internalBucketAttribute = fmt.Sprintf("%s.internal_bucket", artifactFileAttribute)
-	fileKeyAttribute        = fmt.Sprintf("%s.file_key", artifactFileAttribute)
-	errorAttribute          = fmt.Sprintf("%s.error", artifactFileAttribute)
-	irsaErrorAttribute      = fmt.Sprintf("%s.irsa_error", artifactFileAttribute)
+	fileNameAttribute         = fmt.Sprintf("%s.file_name", artifactFileAttribute)
+	bucketAttribute           = fmt.Sprintf("%s.bucket", artifactFileAttribute)
+	internalBucketAttribute   = fmt.Sprintf("%s.internal_bucket", artifactFileAttribute)
+	fileKeyAttribute          = fmt.Sprintf("%s.file_key", artifactFileAttribute)
+	errorAttribute            = fmt.Sprintf("%s.error", artifactFileAttribute)
+	irsaErrorAttribute        = fmt.Sprintf("%s.irsa_error", artifactFileAttribute)
+	contextCancelledAttribute = fmt.Sprintf("%s.context_cancelled", artifactFileAttribute)
 )
 
 var ValidVisibilities = []string{Public, Private, None, Signed, ""}
@@ -153,6 +154,7 @@ func presignFile(ctx context.Context, file File) (string, error) {
 			return "", err
 		}
 		if err := verifyPresignURL(ctx, presignURL); err != nil {
+			span.SetAttributes(attribute.Bool(contextCancelledAttribute, errors.Is(err, context.Canceled)))
 			span.SetAttributes(attribute.String(irsaErrorAttribute, err.Error()))
 		} else {
 			return presignURL, nil
