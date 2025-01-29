@@ -230,10 +230,9 @@ func checkDependenciesMet(ctx context.Context, t *task.Task, cache map[string]ta
 
 }
 
-// Call out to the embedded Manager to spawn hosts.  Takes in a map of
-// distro -> number of hosts to spawn for the distro.
-// Returns a map of distro -> hosts spawned, and an error if one occurs.
-// The pool parameter is assumed to be the one from the distro passed in
+// SpawnHosts calls out to the embedded Manager to spawn hosts, and takes in a map of
+// distro -> number of hosts to spawn for the distro. It returns a map of distro -> hosts spawned.
+// The pool parameter is assumed to be the one from the distro passed in.
 func SpawnHosts(ctx context.Context, d distro.Distro, newHostsNeeded int, pool *evergreen.ContainerPool) ([]host.Host, error) {
 	startTime := time.Now()
 
@@ -271,10 +270,7 @@ func SpawnHosts(ctx context.Context, d distro.Distro, newHostsNeeded int, pool *
 		})
 	} else { // create intent documents for regular hosts
 		for i := 0; i < numHostsToSpawn; i++ {
-			intent, err := generateIntentHost(d, pool)
-			if err != nil {
-				return nil, errors.Wrap(err, "generating intent host")
-			}
+			intent := generateIntentHost(d)
 			hostsSpawned = append(hostsSpawned, *intent)
 		}
 	}
@@ -317,16 +313,12 @@ func getCreateOptionsFromDistro(d distro.Distro) (*host.CreateOptions, error) {
 }
 
 // generateIntentHost creates a host intent document for a regular host
-func generateIntentHost(d distro.Distro, pool *evergreen.ContainerPool) (*host.Host, error) {
+func generateIntentHost(d distro.Distro) *host.Host {
 	hostOptions := host.CreateOptions{
 		Distro:   d,
 		UserName: evergreen.User,
 	}
-	if pool != nil {
-		hostOptions.ContainerPoolSettings = pool
-		hostOptions.HasContainers = true
-	}
-	return host.NewIntent(hostOptions), nil
+	return host.NewIntent(hostOptions)
 }
 
 // pass the empty string to unschedule all distros.
