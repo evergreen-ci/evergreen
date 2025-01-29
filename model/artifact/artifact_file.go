@@ -2,6 +2,7 @@ package artifact
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/url"
 	"path/filepath"
@@ -12,8 +13,8 @@ import (
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 const Collection = "artifact_files"
@@ -24,6 +25,17 @@ const (
 	Private = "private"
 	None    = "none"
 	Signed  = "signed"
+
+	artifactFileAttribute = "evergreen.artifact_file"
+)
+
+var (
+	fileNameAttribute       = fmt.Sprintf("%s.file_name", artifactFileAttribute)
+	bucketAttribute         = fmt.Sprintf("%s.bucket", artifactFileAttribute)
+	internalBucketAttribute = fmt.Sprintf("%s.internal_bucket", artifactFileAttribute)
+	fileKeyAttribute        = fmt.Sprintf("%s.file_key", artifactFileAttribute)
+	errorAttribute          = fmt.Sprintf("%s.error", artifactFileAttribute)
+	irsaErrorAttribute      = fmt.Sprintf("%s.irsa_error", artifactFileAttribute)
 )
 
 var ValidVisibilities = []string{Public, Private, None, Signed, ""}
@@ -87,6 +99,8 @@ func (f *File) validate() error {
 // StripHiddenFiles is a helper for only showing users the files they are
 // allowed to see. It also pre-signs file URLs.
 func StripHiddenFiles(ctx context.Context, files []File, hasUser bool) ([]File, error) {
+	ctx, span := tracer.Start(ctx, "strip-hidden-files")
+	defer span.End()
 	publicFiles := []File{}
 	for _, file := range files {
 		switch {
@@ -109,34 +123,38 @@ func StripHiddenFiles(ctx context.Context, files []File, hasUser bool) ([]File, 
 }
 
 func presignFile(ctx context.Context, file File) (string, error) {
-	if err := file.validate(); err != nil {
-		return "", errors.Wrap(err, "file validation failed")
+	ctx, span := tracer.Start(ctx, "presign-file")
+	defer span.End()
+	isInternalBucket := isInternalBucket(file.Bucket)
+	span.SetAttributes(
+		attribute.String(fileNameAttribute, file.Name),
+		attribute.String(bucketAttribute, file.Bucket),
+		attribute.String(fileKeyAttribute, file.FileKey),
+		attribute.Bool(internalBucketAttribute, isInternalBucket),
+	)
+	if err := errors.Wrap(file.validate(), "file validation error"); err != nil {
+		span.SetAttributes(attribute.String(errorAttribute, err.Error()))
+		return "", err
 	}
 
 	// If this bucket is a devprod owned one, we sign the URL
 	// with the app's server IRSA credentials (which is used
 	// when no credentials are provided). If it fails,
 	// we fallback to using the provided credentials.
-	if isInternalBucket(file.Bucket) {
+	if isInternalBucket {
 		requestParams := pail.PreSignRequestParams{
 			Bucket:                file.Bucket,
 			FileKey:               file.FileKey,
 			SignatureExpiryWindow: evergreen.PresignMinimumValidTime,
 		}
 		presignURL, err := pail.PreSign(ctx, requestParams)
-		if err != nil {
-			return "", errors.Wrap(err, "presigning internal bucket file")
+		if err = errors.Wrap(err, "presigning internal bucket file"); err != nil {
+			span.SetAttributes(attribute.String(errorAttribute, err.Error()))
+			return "", err
 		}
-
-		err = verifyPresignURL(ctx, presignURL)
-		grip.Debug(message.WrapError(err, message.Fields{
-			"message":    "presigning with IRSA failed",
-			"ticket":     "DEVPROD-13970",
-			"bucket":     file.Bucket,
-			"presignURL": presignURL,
-			"file_key":   file.FileKey,
-		}))
-		if err == nil {
+		if err := verifyPresignURL(ctx, presignURL); err != nil {
+			span.SetAttributes(attribute.String(irsaErrorAttribute, err.Error()))
+		} else {
 			return presignURL, nil
 		}
 	}
@@ -148,7 +166,12 @@ func presignFile(ctx context.Context, file File) (string, error) {
 		AwsSecret:             file.AwsSecret,
 		SignatureExpiryWindow: evergreen.PresignMinimumValidTime,
 	}
-	return pail.PreSign(ctx, requestParams)
+	presignURL, err := pail.PreSign(ctx, requestParams)
+	if err = errors.Wrap(err, "presigning file"); err != nil {
+		span.SetAttributes(attribute.String(errorAttribute, err.Error()))
+		return "", err
+	}
+	return presignURL, nil
 }
 
 func verifyPresignURL(ctx context.Context, url string) error {
