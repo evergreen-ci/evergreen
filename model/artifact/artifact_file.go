@@ -30,13 +30,16 @@ const (
 )
 
 var (
-	fileNameAttribute         = fmt.Sprintf("%s.file_name", artifactFileAttribute)
-	bucketAttribute           = fmt.Sprintf("%s.bucket", artifactFileAttribute)
-	internalBucketAttribute   = fmt.Sprintf("%s.internal_bucket", artifactFileAttribute)
-	fileKeyAttribute          = fmt.Sprintf("%s.file_key", artifactFileAttribute)
-	errorAttribute            = fmt.Sprintf("%s.error", artifactFileAttribute)
-	irsaErrorAttribute        = fmt.Sprintf("%s.irsa_error", artifactFileAttribute)
-	contextCancelledAttribute = fmt.Sprintf("%s.context_cancelled", artifactFileAttribute)
+	fileNameAttribute       = fmt.Sprintf("%s.file_name", artifactFileAttribute)
+	bucketAttribute         = fmt.Sprintf("%s.bucket", artifactFileAttribute)
+	internalBucketAttribute = fmt.Sprintf("%s.internal_bucket", artifactFileAttribute)
+	fileKeyAttribute        = fmt.Sprintf("%s.file_key", artifactFileAttribute)
+	errorAttribute          = fmt.Sprintf("%s.error", artifactFileAttribute)
+	irsaErrorAttribute      = fmt.Sprintf("%s.irsa_error", artifactFileAttribute)
+
+	// TODO (DEVPROD-13973): Remove context cancelled attribute.
+	contextCancelledAttribute       = fmt.Sprintf("%s.context_cancelled", artifactFileAttribute)
+	contextCancelledBeforeAttribute = fmt.Sprintf("%s.context_cancelled_before", artifactFileAttribute)
 )
 
 var ValidVisibilities = []string{Public, Private, None, Signed, ""}
@@ -132,6 +135,8 @@ func presignFile(ctx context.Context, file File) (string, error) {
 		attribute.String(bucketAttribute, file.Bucket),
 		attribute.String(fileKeyAttribute, file.FileKey),
 		attribute.Bool(internalBucketAttribute, isInternalBucket),
+		// TODO (DEVPROD-13973): Remove context cancelled attribute.
+		attribute.Bool(contextCancelledBeforeAttribute, errors.Is(ctx.Err(), context.Canceled) || errors.Is(ctx.Err(), context.DeadlineExceeded)),
 	)
 	if err := errors.Wrap(file.validate(), "file validation error"); err != nil {
 		span.SetAttributes(attribute.String(errorAttribute, err.Error()))
@@ -154,7 +159,8 @@ func presignFile(ctx context.Context, file File) (string, error) {
 			return "", err
 		}
 		if err := verifyPresignURL(ctx, presignURL); err != nil {
-			span.SetAttributes(attribute.Bool(contextCancelledAttribute, errors.Is(err, context.Canceled)))
+			// TODO (DEVPROD-13973): Remove context cancelled attribute.
+			span.SetAttributes(attribute.Bool(contextCancelledAttribute, errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)))
 			span.SetAttributes(attribute.String(irsaErrorAttribute, err.Error()))
 		} else {
 			return presignURL, nil
