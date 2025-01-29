@@ -366,6 +366,8 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, parentHost, cont
 		// Build Evergreen agent command.
 		agentCmdParts = containerHost.AgentCommand(c.evergreenSettings, pathToExecutable)
 		containerHost.DockerOptions.Command = strings.Join(agentCmdParts, "\n")
+		// kim: TODO: need to test that env vars work for Docker containers.
+		containerHost.DockerOptions.EnvironmentVars = append(containerHost.DockerOptions.EnvironmentVars, containerHost.AgentEnvSlice()...)
 	}
 
 	// Populate container settings with command and new image.
