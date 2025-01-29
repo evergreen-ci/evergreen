@@ -726,7 +726,7 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 	if len(baseOwnerAndRepo) != 2 {
 		return errors.New("PR base repo name is invalid (expected [owner]/[repo])")
 	}
-	mergeBase, err := thirdparty.GetGithubMergeBaseRevision(ctx, baseOwnerAndRepo[0], baseOwnerAndRepo[1], pr.Base.GetLabel(), pr.Head.GetLabel())
+	mergeBase, err := thirdparty.GetPullRequestMergeBase(ctx, baseOwnerAndRepo[0], baseOwnerAndRepo[1], pr.Base.GetLabel(), pr.Head.GetLabel(), pr.GetNumber())
 	if err != nil {
 		return errors.Wrapf(err, "getting merge base between branches '%s' and '%s'", pr.Base.GetLabel(), pr.Head.GetLabel())
 	}

@@ -1329,16 +1329,26 @@ func MostRestrictiveGitHubPermission(perm1, perm2 string) string {
 // GetPullRequestMergeBase returns the merge base hash for the given PR.
 // This function will retry up to 5 times, regardless of error response (unless
 // error is the result of hitting an api limit)
-func GetPullRequestMergeBase(ctx context.Context, data GithubPatch) (string, error) {
+func GetPullRequestMergeBase(ctx context.Context, owner, repo, baseRevision, currentCommitHash string, prNum int) (string, error) {
+	mergeBase, err := GetGithubMergeBaseRevision(ctx, owner, repo, baseRevision, currentCommitHash)
+	if err == nil {
+		return mergeBase, nil
+	}
+	apiErr, ok := errors.Cause(err).(APIRequestError)
+	if !ok || apiErr.StatusCode != http.StatusNotFound {
+		return "", err
+	}
+	// If GetGithubMergeBaseRevision returns a 404 APIRequestError, fallback to the secondary way of determining a PR
+	// merge base via API.
 	caller := "GetPullRequestMergeBase"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
-		attribute.String(githubOwnerAttribute, data.BaseOwner),
-		attribute.String(githubRepoAttribute, data.BaseRepo),
+		attribute.String(githubOwnerAttribute, owner),
+		attribute.String(githubRepoAttribute, repo),
 	))
 	defer span.End()
 
-	token, err := getInstallationToken(ctx, data.BaseOwner, data.BaseRepo, nil)
+	token, err := getInstallationToken(ctx, owner, repo, nil)
 	if err != nil {
 		return "", errors.Wrap(err, "getting installation token")
 	}
@@ -1346,7 +1356,7 @@ func GetPullRequestMergeBase(ctx context.Context, data GithubPatch) (string, err
 	githubClient := getGithubClient(token, caller, retryConfig{retry404: true})
 	defer githubClient.Close()
 
-	commits, resp, err := githubClient.PullRequests.ListCommits(ctx, data.BaseOwner, data.BaseRepo, data.PRNumber, nil)
+	commits, resp, err := githubClient.PullRequests.ListCommits(ctx, owner, repo, prNum, nil)
 	if resp != nil {
 		defer resp.Body.Close()
 		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
@@ -1362,9 +1372,9 @@ func GetPullRequestMergeBase(ctx context.Context, data GithubPatch) (string, err
 		return "", errors.New("hash is missing from pull request commit list")
 	}
 
-	commit, err := getCommit(ctx, data.BaseOwner, data.BaseRepo, *commits[0].SHA)
+	commit, err := getCommit(ctx, owner, repo, *commits[0].SHA)
 	if err != nil {
-		return "", errors.Wrapf(err, "getting commit on %s/%s with SHA '%s'", data.BaseOwner, data.BaseRepo, *commits[0].SHA)
+		return "", errors.Wrapf(err, "getting commit on %s/%s with SHA '%s'", owner, repo, *commits[0].SHA)
 	}
 	if len(commit.Parents) == 0 {
 		return "", errors.New("can't find pull request branch point")
