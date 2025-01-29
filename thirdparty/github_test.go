@@ -307,14 +307,7 @@ func (s *githubSuite) TestGetGithubUser() {
 }
 
 func (s *githubSuite) TestGetPullRequestMergeBase() {
-	data := GithubPatch{
-		BaseOwner: "evergreen-ci",
-		BaseRepo:  "evergreen",
-		HeadOwner: "evergreen-ci",
-		HeadRepo:  "somebodyoutthere",
-		PRNumber:  666,
-	}
-	hash, err := GetPullRequestMergeBase(s.ctx, data)
+	hash, err := GetPullRequestMergeBase(s.ctx, "evergreen-ci", "evergreen", "", "", 666)
 	s.NoError(err)
 	s.Equal("61d770097ca0515e46d29add8f9b69e9d9272b94", hash)
 
@@ -325,8 +318,7 @@ func (s *githubSuite) TestGetPullRequestMergeBase() {
 	s.ctx, s.cancel = context.WithTimeout(context.Background(), 30*time.Second)
 	s.Require().NotNil(s.ctx)
 	s.Require().NotNil(s.cancel)
-	data.BaseRepo = "conifer"
-	hash, err = GetPullRequestMergeBase(s.ctx, data)
+	hash, err = GetPullRequestMergeBase(s.ctx, "evergreen-ci", "confier", "", "", 666)
 	s.Error(err)
 	s.Empty(hash)
 }
