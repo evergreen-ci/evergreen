@@ -292,6 +292,7 @@ func (j *agentDeployJob) prepRemoteHost(ctx context.Context) error {
 // Start the agent process on the specified remote host.
 func (j *agentDeployJob) startAgentOnRemote(ctx context.Context, settings *evergreen.Settings) (string, error) {
 	// build the command to run on the remote machine
+	// kim: NOTE: need to modify this to set the env vars.
 	remoteCmd := strings.Join(j.host.AgentCommand(settings, ""), " ")
 	grip.Info(message.Fields{
 		"message": "starting agent on host",
@@ -302,7 +303,9 @@ func (j *agentDeployJob) startAgentOnRemote(ctx context.Context, settings *everg
 	ctx, cancel := context.WithTimeout(ctx, startAgentTimeout)
 	defer cancel()
 
-	startAgentCmd := fmt.Sprintf("nohup %s > /tmp/start 2>&1 &", remoteCmd)
+	agentEnvVars := strings.Join(j.host.AgentEnvSlice(), " ")
+	// kim: TODO: test if setting these env vars really works with nohup.
+	startAgentCmd := fmt.Sprintf("%s nohup %s > /tmp/start 2>&1 &", agentEnvVars, remoteCmd)
 	logs, err := j.host.RunSSHCommand(ctx, startAgentCmd)
 	if err != nil {
 		return logs, errors.Wrapf(err, "starting agent on host '%s'", j.host.Id)
