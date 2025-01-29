@@ -521,17 +521,6 @@ func (r *versionResolver) Warnings(ctx context.Context, obj *restModel.APIVersio
 // WaterfallBuilds is the resolver for the waterfallBuilds field.
 func (r *versionResolver) WaterfallBuilds(ctx context.Context, obj *restModel.APIVersion) ([]*model.WaterfallBuild, error) {
 	versionId := utility.FromStringPtr(obj.Id)
-	// If activated is nil in the db we should resolve it and cache it for subsequent queries. There is a very low likely hood of this field being hit
-	if obj.Activated == nil {
-		version, err := model.VersionFindOne(model.VersionById(versionId))
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", versionId, err.Error()))
-		}
-		if err = setVersionActivationStatus(ctx, version); err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting version activation status: %s", err.Error()))
-		}
-		obj.Activated = version.Activated
-	}
 
 	// No need to fetch build variants for unactivated versions
 	if !utility.FromBoolPtr(obj.Activated) {
