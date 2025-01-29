@@ -49,12 +49,14 @@ func Agent() cli.Command {
 		},
 		Flags: []cli.Flag{
 			cli.StringFlag{
-				Name:  agentHostIDFlagName,
-				Usage: "the ID of the host the agent is running on (applies only to host mode)",
+				Name:   agentHostIDFlagName,
+				Usage:  "the ID of the host the agent is running on (applies only to host mode)",
+				EnvVar: evergreen.HostIDEnvVar,
 			},
 			cli.StringFlag{
-				Name:  agentHostSecretFlagName,
-				Usage: "secret for the current host (applies only to host mode)",
+				Name:   agentHostSecretFlagName,
+				Usage:  "secret for the current host (applies only to host mode)",
+				EnvVar: evergreen.HostSecretEnvVar,
 			},
 			cli.StringFlag{
 				Name:   podIDFlagName,
@@ -157,6 +159,16 @@ func Agent() cli.Command {
 				Cleanup:                    c.Bool(cleanupFlagName),
 				CloudProvider:              c.String(agentCloudProviderFlagName),
 				SendTaskLogsToGlobalSender: c.Bool(sendTaskLogsToGlobalSenderFlagName),
+			}
+
+			// Once the agent has retrieved the host ID and secret, unset those
+			// env vars to prevent them from leaking to task processes such as
+			// shell.exec and subprocess.exec.
+			if err := os.Unsetenv(evergreen.HostIDEnvVar); err != nil {
+				return errors.Wrapf(err, "unsetting %s env var", evergreen.HostIDEnvVar)
+			}
+			if err := os.Unsetenv(evergreen.HostSecretEnvVar); err != nil {
+				return errors.Wrapf(err, "unsetting %s env var", evergreen.HostSecretEnvVar)
 			}
 
 			if err := os.MkdirAll(opts.WorkingDirectory, 0777); err != nil {

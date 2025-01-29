@@ -262,6 +262,9 @@ const (
 	AgentMonitorTag = "agent-monitor"
 	HostFetchTag    = "host-fetch"
 
+	HostIDEnvVar     = "HOST_ID"
+	HostSecretEnvVar = "HOST_SECRET"
+
 	DegradedLoggingPercent = 10
 
 	SetupScriptName               = "setup.sh"

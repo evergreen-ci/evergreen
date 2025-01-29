@@ -1019,14 +1019,39 @@ func (h *Host) AgentCommand(settings *evergreen.Settings, executablePath string)
 		"agent",
 		fmt.Sprintf("--api_server=%s", settings.Api.URL),
 		"--mode=host",
-		fmt.Sprintf("--host_id=%s", h.Id),
-		fmt.Sprintf("--host_secret=%s", h.Secret),
+		// kim: TODO: this needs to stay for the deploy, but commenting it out
+		// verifies if the env vars get propagated to the agent properly via the
+		// agent monitor.
+		// fmt.Sprintf("--host_id=%s", h.Id),
+		// fmt.Sprintf("--host_secret=%s", h.Secret),
 		fmt.Sprintf("--provider=%s", h.Distro.Provider),
 		"--log_output=file",
 		fmt.Sprintf("--log_prefix=%s", filepath.Join(h.Distro.WorkDir, "agent")),
 		fmt.Sprintf("--working_directory=%s", h.Distro.WorkDir),
 		"--cleanup",
 	}
+}
+
+// kim: TODO: need to test the agent with env vars for legacy SSH, SSH, and user
+// data provisioning. Also need to check reprovisioning works.
+
+// AgentEnv returns the environment variables required to start the agent.
+func (h *Host) AgentEnv() map[string]string {
+	return map[string]string{
+		evergreen.HostIDEnvVar:     h.Id,
+		evergreen.HostSecretEnvVar: h.Secret,
+	}
+}
+
+// AgentEnvSlice is the same as AgentEnv but returns the environment variables
+// as a slice of key=value strings.
+func (h *Host) AgentEnvSlice() []string {
+	env := h.AgentEnv()
+	var envSlice []string
+	for k, v := range env {
+		envSlice = append(envSlice, fmt.Sprintf("%s=%s", k, v))
+	}
+	return envSlice
 }
 
 // AgentMonitorOptions assembles the input to a Jasper request to start the
@@ -1036,6 +1061,11 @@ func (h *Host) AgentMonitorOptions(settings *evergreen.Settings) *options.Create
 	credsPath := h.Distro.AbsPathNotCygwinCompatible(h.Distro.BootstrapSettings.JasperCredentialsPath)
 	shellPath := h.Distro.AbsPathNotCygwinCompatible(h.Distro.BootstrapSettings.ShellPath)
 
+	// kim: NOTE: need to pass along host ID and host secret env vars from the
+	// agent monitor to the agent. Potentially, it will just work with no
+	// changes to the agent monitor if the agent inherits the env vars from the
+	// agent monitor, but would have to check. If not, will have to explicitly
+	// set it when invoking the agent.
 	args := append(h.AgentCommand(settings, ""), "monitor")
 	args = append(args,
 		fmt.Sprintf("--client_path=%s", clientPath),
@@ -1048,8 +1078,9 @@ func (h *Host) AgentMonitorOptions(settings *evergreen.Settings) *options.Create
 	)
 
 	return &options.Create{
-		Args: args,
-		Tags: []string{evergreen.AgentMonitorTag},
+		Args:        args,
+		Environment: h.AgentEnv(),
+		Tags:        []string{evergreen.AgentMonitorTag},
 	}
 }
 
