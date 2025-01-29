@@ -162,8 +162,8 @@ func Agent() cli.Command {
 			}
 
 			// Once the agent has retrieved the host ID and secret, unset those
-			// env vars to prevent them from leaking to task processes such as
-			// shell.exec and subprocess.exec.
+			// env vars to prevent them from being inherited by subprocesses
+			// such as shell.exec and subprocess.exec.
 			if err := os.Unsetenv(evergreen.HostIDEnvVar); err != nil {
 				return errors.Wrapf(err, "unsetting %s env var", evergreen.HostIDEnvVar)
 			}

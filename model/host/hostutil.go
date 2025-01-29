@@ -1019,9 +1019,9 @@ func (h *Host) AgentCommand(settings *evergreen.Settings, executablePath string)
 		"agent",
 		fmt.Sprintf("--api_server=%s", settings.Api.URL),
 		"--mode=host",
-		// kim: TODO: this needs to stay for the deploy, but commenting it out
-		// verifies if the env vars get propagated to the agent properly via the
-		// agent monitor.
+		// kim: TODO: this needs to stay for the deploy to ensure a smooth
+		// rollover, but commenting it out verifies if the env vars get
+		// propagated to the agent properly via the agent monitor.
 		// fmt.Sprintf("--host_id=%s", h.Id),
 		// fmt.Sprintf("--host_secret=%s", h.Secret),
 		fmt.Sprintf("--provider=%s", h.Distro.Provider),
@@ -1061,11 +1061,7 @@ func (h *Host) AgentMonitorOptions(settings *evergreen.Settings) *options.Create
 	credsPath := h.Distro.AbsPathNotCygwinCompatible(h.Distro.BootstrapSettings.JasperCredentialsPath)
 	shellPath := h.Distro.AbsPathNotCygwinCompatible(h.Distro.BootstrapSettings.ShellPath)
 
-	// kim: NOTE: need to pass along host ID and host secret env vars from the
-	// agent monitor to the agent. Potentially, it will just work with no
-	// changes to the agent monitor if the agent inherits the env vars from the
-	// agent monitor, but would have to check. If not, will have to explicitly
-	// set it when invoking the agent.
+	// kim: NOTE: agent monitor already passes on its environment to the agent.
 	args := append(h.AgentCommand(settings, ""), "monitor")
 	args = append(args,
 		fmt.Sprintf("--client_path=%s", clientPath),
