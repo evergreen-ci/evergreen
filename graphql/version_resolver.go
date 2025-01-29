@@ -522,7 +522,6 @@ func (r *versionResolver) Warnings(ctx context.Context, obj *restModel.APIVersio
 func (r *versionResolver) WaterfallBuilds(ctx context.Context, obj *restModel.APIVersion) ([]*model.WaterfallBuild, error) {
 	versionId := utility.FromStringPtr(obj.Id)
 	// If activated is nil in the db we should resolve it and cache it for subsequent queries. There is a very low likely hood of this field being hit
-	// TODO: Extract util function for buildVariants resolver to use as well
 	if obj.Activated == nil {
 		version, err := model.VersionFindOne(model.VersionById(versionId))
 		if err != nil {

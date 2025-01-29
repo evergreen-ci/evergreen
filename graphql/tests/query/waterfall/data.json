@@ -24,11 +24,6 @@
       "order": 40,
       "create_time": {
         "$date": "2019-12-31T00:00:03Z"
-      },
-      "build_variants_status": {
-        "activated": false,
-        "build_id": "evergreen_version1_build",
-        "build_variant": "enterprise-ubuntu1604-64"
       }
     },
     {
@@ -47,7 +42,10 @@
         "activated": true,
         "build_id": "evergreen_version1_build",
         "build_variant": "enterprise-ubuntu1604-64"
-      }
+      },
+      "builds": [
+        "evergreen_version1_build"
+      ]
     },
     {
       "_id": "evergreen_version2",
@@ -65,7 +63,10 @@
         "activated": true,
         "build_id": "evergreen_version2_build",
         "build_variant": "enterprise-ubuntu1604-64"
-      }
+      },
+      "builds": [
+        "evergreen_version2_build"
+      ]
     },
     {
       "_id": "evergreen_version3",
@@ -109,7 +110,10 @@
       "order": 45,
       "create_time": {
         "$date": "2020-01-05T12:00:00Z"
-      }
+      },
+      "builds": [
+        "evergreen_version3_build"
+      ]
     },
     {
       "_id": "inactive1",
