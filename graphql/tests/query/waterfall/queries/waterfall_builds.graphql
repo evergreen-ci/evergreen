@@ -1,0 +1,17 @@
+{
+  waterfall(options: { projectIdentifier: "spruce-identifier" }) {
+    flattenedVersions {
+      id
+      waterfallBuilds {
+        buildVariant
+        id
+        displayName
+        version
+        tasks {
+          id
+          displayName
+        }
+      }
+    }
+  }
+}

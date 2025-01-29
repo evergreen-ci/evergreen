@@ -2,7 +2,6 @@
   waterfall(options: { projectIdentifier: "spruce-identifier" }) {
     buildVariants {
       builds {
-        activated
         id
         tasks {
           id
