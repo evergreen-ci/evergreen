@@ -318,7 +318,7 @@ func (s *githubSuite) TestGetPullRequestMergeBase() {
 	s.ctx, s.cancel = context.WithTimeout(context.Background(), 30*time.Second)
 	s.Require().NotNil(s.ctx)
 	s.Require().NotNil(s.cancel)
-	hash, err = GetPullRequestMergeBase(s.ctx, "evergreen-ci", "confier", "", "", 666)
+	hash, err = GetPullRequestMergeBase(s.ctx, "evergreen-ci", "conifer", "", "", 666)
 	s.Error(err)
 	s.Empty(hash)
 }

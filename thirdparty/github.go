@@ -1329,17 +1329,23 @@ func MostRestrictiveGitHubPermission(perm1, perm2 string) string {
 // GetPullRequestMergeBase returns the merge base hash for the given PR.
 // This function will retry up to 5 times, regardless of error response (unless
 // error is the result of hitting an api limit)
-func GetPullRequestMergeBase(ctx context.Context, owner, repo, baseRevision, currentCommitHash string, prNum int) (string, error) {
-	mergeBase, err := GetGithubMergeBaseRevision(ctx, owner, repo, baseRevision, currentCommitHash)
+func GetPullRequestMergeBase(ctx context.Context, owner, repo, baseLabel, headLabel string, prNum int) (string, error) {
+	mergeBase, err := GetGithubMergeBaseRevision(ctx, owner, repo, baseLabel, headLabel)
 	if err == nil {
 		return mergeBase, nil
 	}
-	apiErr, ok := errors.Cause(err).(APIRequestError)
-	if !ok || apiErr.StatusCode != http.StatusNotFound {
-		return "", err
-	}
-	// If GetGithubMergeBaseRevision returns a 404 APIRequestError, fallback to the secondary way of determining a PR
-	// merge base via API.
+	grip.Error(message.WrapError(err, message.Fields{
+		"message": "GetGithubMergeBaseRevision failed, falling back to secondary method of determining merge base",
+		"owner":   owner,
+		"repo":    repo,
+		"head":    headLabel,
+		"pr_num":  prNum,
+		"base":    baseLabel,
+	}))
+	// If GetGithubMergeBaseRevision fails, fallback to the secondary way of determining a PR
+	// merge base via API. A known case where we expect GetGithubMergeBaseRevision to fail is when
+	// trying to find the merge base of a PR based on a private fork that our 10gen GitHub app is not
+	// installed on.
 	caller := "GetPullRequestMergeBase"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
