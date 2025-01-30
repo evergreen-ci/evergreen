@@ -42,7 +42,7 @@
       "identifier": "spruce",
       "remote": false,
       "remote_path": ".evergreen.yml",
-      "r": "gitter_request",
+      "r": "trigger_request",
       "author_id": "arjun.patel",
       "activated": true,
       "trigger_id": "1",
