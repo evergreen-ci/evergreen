@@ -21,6 +21,17 @@
           }
         }
       }
+    },
+    {
+      "query_file": "no_upstream_project.graphql",
+      "result": {
+        "data": {
+          "version": {
+            "id": "5e4ff3abe3c3317e352062e4",
+            "upstreamProject": null
+          }
+        }
+      }
     }
   ]
 }
