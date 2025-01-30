@@ -5,17 +5,18 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strconv"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -44,9 +45,6 @@ type s3get struct {
 	// RemoteFile is the file path of the file to get, within its bucket.
 	RemoteFile string `mapstructure:"remote_file" plugin:"expand"`
 
-	// remoteFile is the file path without any expansions applied.
-	remoteFile string
-
 	// Region is the S3 region where the bucket is located. It defaults to
 	// "us-east-1".
 	Region string `mapstructure:"region" plugin:"region"`
@@ -70,16 +68,24 @@ type s3get struct {
 	// for missing files.
 	Optional string `mapstructure:"optional" plugin:"expand"`
 
-	bucket      pail.Bucket
-	skipMissing bool
+	// TemporaryRoleARN is not meant to be used in production. It is used for testing purposes
+	// relating to the DEVPROD-5553 project.
+	// This is an ARN that should be assumed to make the S3 request.
+	// TODO (DEVPROD-13982): Upgrade this flag to RoleARN.
+	TemporaryRoleARN string `mapstructure:"temporary_role_arn" plugin:"expand"`
 
+	bucket          pail.Bucket
+	internalBuckets []string
+
+	skipMissing        bool
+	originalRemoteFile string
+
+	taskdata client.TaskData
 	base
 }
 
 func s3GetFactory() Command   { return &s3get{} }
 func (c *s3get) Name() string { return "s3.get" }
-
-// s3get implementation of ParseParams.
 func (c *s3get) ParseParams(params map[string]interface{}) error {
 	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
 		WeaklyTypedInput: true,
@@ -91,65 +97,40 @@ func (c *s3get) ParseParams(params map[string]interface{}) error {
 	if err := decoder.Decode(params); err != nil {
 		return errors.Wrap(err, "decoding mapstructure params")
 	}
-
-	// make sure the command params are valid
-	if err := c.validateParams(); err != nil {
+	if err := c.validate(); err != nil {
 		return errors.Wrap(err, "validating params")
 	}
+	c.originalRemoteFile = c.RemoteFile
 
 	return nil
 }
 
-// validateParams that all necessary params are set, and that only one of
-// local_file and extract_to is specified.
-func (c *s3get) validateParams() error {
-	if c.AwsKey == "" {
-		return errors.New("AWS key cannot be blank")
-	}
-	if c.AwsSecret == "" {
-		return errors.New("AWS secret cannot be blank")
-	}
-	if c.RemoteFile == "" {
-		return errors.New("remote file cannot be blank")
+func (c *s3get) validate() error {
+	catcher := grip.NewBasicCatcher()
+
+	catcher.Add(errors.Wrapf(validateS3BucketName(c.Bucket), "validating bucket name '%s'", c.Bucket))
+	catcher.NewWhen(c.LocalFile != "" && c.ExtractTo != "", "cannot specify both local file path and directory to extract to")
+	catcher.NewWhen(c.LocalFile == "" && c.ExtractTo == "", "must specify either local file path or directory to extract to")
+
+	if c.TemporaryRoleARN != "" {
+		// When using the role ARN, there should be no provided AWS credentials.
+		catcher.NewWhen(c.AwsKey != "", "AWS key must be empty when using role ARN")
+		catcher.NewWhen(c.AwsSecret != "", "AWS secret must be empty when using role ARN")
+		catcher.NewWhen(c.AwsSessionToken != "", "AWS session token must be empty when using role ARN")
 	}
 
-	if c.Region == "" {
-		c.Region = evergreen.DefaultEC2Region
+	// If the bucket is not an internal bucket, the AWS credentials must be provided.
+	// The internalBuckets field is only populated during runtime so commands do not
+	// require credentials during validation.
+	if len(c.internalBuckets) > 0 && !utility.StringSliceContains(c.internalBuckets, c.Bucket) {
+		catcher.NewWhen(c.AwsKey == "", "AWS key must be provided")
+		catcher.NewWhen(c.AwsSecret == "", "AWS secret must be provided")
 	}
 
-	// make sure the bucket is valid
-	if err := validateS3BucketName(c.Bucket); err != nil {
-		return errors.Wrapf(err, "validating bucket name '%s'", c.Bucket)
-	}
-
-	// make sure local file and extract-to dir aren't both specified
-	if c.LocalFile != "" && c.ExtractTo != "" {
-		return errors.New("cannot specify both local file path and directory to extract to")
-	}
-
-	// make sure one is specified
-	if c.LocalFile == "" && c.ExtractTo == "" {
-		return errors.New("must specify either local file path or directory to extract to")
-	}
-
-	return nil
+	return catcher.Resolve()
 }
 
-func (c *s3get) shouldRunForVariant(buildVariantName string) bool {
-	//No buildvariant filter, so run always
-	if len(c.BuildVariants) == 0 {
-		return true
-	}
-
-	//Only run if the buildvariant specified appears in our list.
-	return utility.StringSliceContains(c.BuildVariants, buildVariantName)
-}
-
-// Apply the expansions from the relevant task config
-// to all appropriate fields of the s3get.
 func (c *s3get) expandParams(conf *internal.TaskConfig) error {
-	c.remoteFile = c.RemoteFile
-
 	var err error
 	if err = util.ExpandValues(c, &conf.Expansions); err != nil {
 		return errors.Wrap(err, "applying expansions")
@@ -160,99 +141,100 @@ func (c *s3get) expandParams(conf *internal.TaskConfig) error {
 			return errors.Wrap(err, "parsing optional parameter as a boolean")
 		}
 	}
+	if c.LocalFile != "" {
+		c.LocalFile = GetWorkingDirectory(conf, c.LocalFile)
+	}
+	if c.ExtractTo != "" {
+		c.ExtractTo = GetWorkingDirectory(conf, c.ExtractTo)
+	}
+	if c.Region == "" {
+		c.Region = evergreen.DefaultEC2Region
+	}
 	return nil
 }
 
-// Execute expands the parameters, and then fetches the
-// resource from s3.
-func (c *s3get) Execute(ctx context.Context,
-	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
+func (c *s3get) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
+	c.internalBuckets = conf.InternalBuckets
+	c.taskdata = client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 
-	// expand necessary params
 	if err := c.expandParams(conf); err != nil {
 		return errors.Wrap(err, "expanding params")
 	}
-
-	// validate the params
-	if err := c.validateParams(); err != nil {
+	if err := c.validate(); err != nil {
 		return errors.Wrap(err, "validating expanded params")
+	}
+
+	if !shouldRunForVariant(c.BuildVariants, conf.BuildVariant.Name) {
+		logger.Task().Infof("Skipping S3 get of remote file '%s' for variant '%s'.", c.RemoteFile, conf.BuildVariant.Name)
+		return nil
 	}
 
 	trace.SpanFromContext(ctx).SetAttributes(
 		attribute.String(s3GetBucketAttribute, c.Bucket),
 		attribute.Bool(s3GetTemporaryCredentialsAttribute, c.AwsSessionToken != ""),
-		attribute.String(s3GetRemoteFileAttribute, c.remoteFile),
+		attribute.String(s3GetRemoteFileAttribute, c.originalRemoteFile),
 		attribute.String(s3GetExpandedRemoteFileAttribute, c.RemoteFile),
 	)
 
-	// create pail bucket
-	httpClient := utility.GetHTTPClient()
-	httpClient.Timeout = s3HTTPClientTimeout
-	defer utility.PutHTTPClient(httpClient)
-	err := c.createPailBucket(ctx, httpClient)
-	if err != nil {
-		return errors.Wrap(err, "creating S3 bucket")
-	}
-
-	if err := c.bucket.Check(ctx); err != nil {
-		return errors.Wrap(err, "checking bucket")
-	}
-
-	if !c.shouldRunForVariant(conf.BuildVariant.Name) {
-		logger.Task().Infof("Skipping S3 get of remote file '%s' for variant '%s'.",
-			c.RemoteFile, conf.BuildVariant.Name)
-		return nil
-	}
-
-	// if the local file or extract_to is a relative path, join it to the
-	// working dir
 	if c.LocalFile != "" {
-		if !filepath.IsAbs(c.LocalFile) {
-			c.LocalFile = GetWorkingDirectory(conf, c.LocalFile)
-		}
-
 		if err := createEnclosingDirectoryIfNeeded(c.LocalFile); err != nil {
 			return errors.Wrapf(err, "creating parent directories for local file '%s'", c.LocalFile)
 		}
 	}
-
 	if c.ExtractTo != "" {
-		if !filepath.IsAbs(c.ExtractTo) {
-			c.ExtractTo = GetWorkingDirectory(conf, c.ExtractTo)
-		}
-
 		if err := createEnclosingDirectoryIfNeeded(c.ExtractTo); err != nil {
 			return errors.Wrapf(err, "creating parent directories for extraction directory '%s'", c.ExtractTo)
 		}
 	}
 
-	errChan := make(chan error)
-	go func() {
-		err := errors.WithStack(c.getWithRetry(ctx, logger))
-		select {
-		case errChan <- err:
-			return
-		case <-ctx.Done():
-			logger.Task().Infof("Context canceled waiting for s3 get: %s.", ctx.Err())
-			return
+	// If a role is provided, assume the role to get temporary credentials.
+	if c.TemporaryRoleARN != "" {
+		creds, err := comm.AssumeRole(ctx, c.taskdata, apimodels.AssumeRoleRequest{
+			RoleARN: c.TemporaryRoleARN,
+		})
+		if err != nil {
+			return errors.Wrap(err, "getting credentials for provided role arn")
 		}
-	}()
+		if creds == nil {
+			return errors.New("nil credentials returned for provided role arn")
+		}
+		c.AwsKey = creds.AccessKeyID
+		c.AwsSecret = creds.SecretAccessKey
+		c.AwsSessionToken = creds.SessionToken
+	}
 
-	select {
-	case err := <-errChan:
-		if err != nil && c.skipMissing {
-			logger.Task().Infof("Problem getting file but optional is true, exiting without error (%s).", err.Error())
-			return nil
-		}
-		return errors.WithStack(err)
-	case <-ctx.Done():
-		logger.Execution().Infof("Canceled while running command '%s': %s", c.Name(), ctx.Err())
+	// create pail bucket
+	httpClient := utility.GetHTTPClient()
+	httpClient.Timeout = s3HTTPClientTimeout
+	defer utility.PutHTTPClient(httpClient)
+
+	if err := c.createPailBucket(ctx, httpClient); err != nil {
+		return errors.Wrap(err, "creating S3 bucket")
+	}
+
+	err := c.getWithRetry(ctx, logger)
+	if err != nil && c.skipMissing {
+		logger.Task().Infof("Problem getting file but optional is true, exiting without error (%s).", err.Error())
 		return nil
 	}
 
+	return errors.Wrap(err, "getting file")
 }
 
-// Wrapper around the Get() function to retry it
+func (c *s3get) createPailBucket(ctx context.Context, httpClient *http.Client) error {
+	opts := pail.S3Options{
+		Credentials: pail.CreateAWSCredentials(c.AwsKey, c.AwsSecret, c.AwsSessionToken),
+		Region:      c.Region,
+		Name:        c.Bucket,
+	}
+	var err error
+	c.bucket, err = pail.NewS3BucketWithHTTPClient(ctx, httpClient, opts)
+	if err != nil {
+		return errors.Wrap(err, "creating S3 bucket")
+	}
+	return errors.Wrap(c.bucket.Check(ctx), "checking bucket")
+}
+
 func (c *s3get) getWithRetry(ctx context.Context, logger client.LoggerProducer) error {
 	backoffCounter := getS3OpBackoff()
 	timer := time.NewTimer(0)
@@ -266,13 +248,17 @@ func (c *s3get) getWithRetry(ctx context.Context, logger client.LoggerProducer) 
 		case <-ctx.Done():
 			return errors.Errorf("canceled while running command '%s'", c.Name())
 		case <-timer.C:
-			err := errors.WithStack(c.get(ctx))
+			var err error
+			if c.LocalFile != "" {
+				err = c.getLocalFile(ctx)
+			} else {
+				err = c.getExtractTo(ctx)
+			}
 			if err == nil {
 				return nil
 			}
 
-			logger.Task().Errorf("Problem getting remote file '%s' from S3 bucket, retrying: %s",
-				c.RemoteFile, err)
+			logger.Task().Errorf("Problem getting remote file '%s' from S3 bucket, retrying: %s", c.RemoteFile, err)
 			timer.Reset(backoffCounter.Duration())
 		}
 	}
@@ -280,41 +266,23 @@ func (c *s3get) getWithRetry(ctx context.Context, logger client.LoggerProducer) 
 	return errors.Errorf("command '%s' failed after %d attempts", c.Name(), maxS3OpAttempts)
 }
 
-// Fetch the specified resource from s3.
-func (c *s3get) get(ctx context.Context) error {
-	// either untar the remote, or just write to a file
-	if c.LocalFile != "" {
-		// remove the file, if it exists
-		if utility.FileExists(c.LocalFile) {
-			if err := os.RemoveAll(c.LocalFile); err != nil {
-				return errors.Wrapf(err, "removing already-existing local file '%s'", c.LocalFile)
-			}
+func (c *s3get) getLocalFile(ctx context.Context) error {
+	if utility.FileExists(c.LocalFile) {
+		if err := os.RemoveAll(c.LocalFile); err != nil {
+			return errors.Wrapf(err, "removing already-existing local file '%s'", c.LocalFile)
 		}
-
-		// download to local file
-		return errors.Wrapf(c.bucket.Download(ctx, c.RemoteFile, c.LocalFile),
-			"downloading remote file '%s' to local file '%s'", c.RemoteFile, c.LocalFile)
-
 	}
 
+	return errors.Wrapf(c.bucket.Download(ctx, c.RemoteFile, c.LocalFile),
+		"downloading remote file '%s' to local file '%s'", c.RemoteFile, c.LocalFile)
+}
+
+func (c *s3get) getExtractTo(ctx context.Context) error {
 	reader, err := c.bucket.Reader(ctx, c.RemoteFile)
 	if err != nil {
 		return errors.Wrapf(err, "getting reader for remote file '%s'", c.RemoteFile)
 	}
-	if err := extractTarball(ctx, reader, c.ExtractTo, []string{}); err != nil {
-		return errors.Wrapf(err, "extracting file '%s' from archive to destination '%s'", c.RemoteFile, c.ExtractTo)
-	}
 
-	return nil
-}
-
-func (c *s3get) createPailBucket(ctx context.Context, httpClient *http.Client) error {
-	opts := pail.S3Options{
-		Credentials: pail.CreateAWSCredentials(c.AwsKey, c.AwsSecret, c.AwsSessionToken),
-		Region:      c.Region,
-		Name:        c.Bucket,
-	}
-	bucket, err := pail.NewS3BucketWithHTTPClient(ctx, httpClient, opts)
-	c.bucket = bucket
-	return err
+	return errors.Wrapf(extractTarball(ctx, reader, c.ExtractTo, []string{}),
+		"extracting file '%s' from archive to destination '%s'", c.RemoteFile, c.ExtractTo)
 }
