@@ -41,7 +41,7 @@ func startLocalEvergreen() cli.Command {
 				return errors.Wrap(err, "getting working directory")
 			}
 			binary := filepath.Join(wd, "clients", runtime.GOOS+"_"+runtime.GOARCH, "evergreen")
-			if err := smokeRunBinary(exit, "web.service", wd, binary, "service", "web", "--db", "evergreen_local", "--testing-env"); err != nil {
+			if err := smokeRunBinary(exit, "web.service", wd, nil, binary, "service", "web", "--db", "evergreen_local", "--testing-env"); err != nil {
 				return errors.Wrap(err, "running web service")
 			}
 			<-exit
@@ -142,7 +142,7 @@ func smokeStartEvergreen() cli.Command {
 			exit := make(chan error, 3)
 
 			if startWeb {
-				if err := smokeRunBinary(exit, "web.service", wd, binary, "service", "web", "--testing-env", "--conf", confPath); err != nil {
+				if err := smokeRunBinary(exit, "web.service", wd, nil, binary, "service", "web", "--testing-env", "--conf", confPath); err != nil {
 					return errors.Wrap(err, "running web service")
 				}
 			}
@@ -153,13 +153,26 @@ func smokeStartEvergreen() cli.Command {
 					return errors.Wrap(err, "starting mock Cedar service")
 				}
 
+				var envVars []string
+				switch mode {
+				case string(globals.HostMode):
+					envVars = []string{
+						fmt.Sprintf("HOST_ID=%s", execModeID),
+						fmt.Sprintf("HOST_SECRET=%s", execModeSecret),
+					}
+				case string(globals.PodMode):
+					envVars = []string{
+						fmt.Sprintf("POD_ID=%s", execModeID),
+						fmt.Sprintf("POD_SECRET=%s", execModeSecret),
+					}
+				}
+
 				err := smokeRunBinary(exit, "agent",
 					wd,
+					envVars,
 					binary,
 					"agent",
 					fmt.Sprintf("--mode=%s", mode),
-					fmt.Sprintf("--%s_id=%s", mode, execModeID),
-					fmt.Sprintf("--%s_secret=%s", mode, execModeSecret),
 					"--api_server", apiServerURL,
 					"--log_output", string(globals.LogOutputFile),
 					"--log_prefix", "smoke.agent",
@@ -208,11 +221,13 @@ func smokeStartEvergreen() cli.Command {
 					exit,
 					"agent.monitor",
 					wd,
+					[]string{
+						fmt.Sprintf("HOST_ID=%s", execModeID),
+						fmt.Sprintf("HOST_SECRET=%s", execModeSecret),
+					},
 					binary,
 					"agent",
 					fmt.Sprintf("--mode=%s", globals.HostMode),
-					"--host_id", execModeID,
-					"--host_secret", execModeSecret,
 					"--api_server", apiServerURL,
 					"--log_output", string(globals.LogOutputFile),
 					"--global_task_logs",
@@ -239,9 +254,10 @@ func smokeStartEvergreen() cli.Command {
 	}
 }
 
-func smokeRunBinary(exit chan error, name, wd, bin string, cmdParts ...string) error {
+func smokeRunBinary(exit chan error, name string, wd string, envVars []string, bin string, cmdParts ...string) error {
 	cmd := exec.Command(bin, cmdParts...)
 	cmd.Env = append(os.Environ(), fmt.Sprintf("EVGHOME=%s", wd))
+	cmd.Env = append(cmd.Env, envVars...)
 	cmdSender := send.NewWriterSender(send.MakeNative())
 	cmdSender.SetName(name)
 	cmd.Stdout = cmdSender
