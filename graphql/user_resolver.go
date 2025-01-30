@@ -12,7 +12,7 @@ import (
 
 // Patches is the resolver for the patches field.
 func (r *userResolver) Patches(ctx context.Context, obj *restModel.APIDBUser, patchesInput PatchesInput) (*Patches, error) {
-	opts := patch.ByPatchNameStatusesCommitQueuePaginatedOptions{
+	opts := patch.ByPatchNameStatusesMergeQueuePaginatedOptions{
 		Author:        obj.UserID,
 		PatchName:     patchesInput.PatchName,
 		Statuses:      patchesInput.Statuses,
@@ -21,7 +21,7 @@ func (r *userResolver) Patches(ctx context.Context, obj *restModel.APIDBUser, pa
 		IncludeHidden: patchesInput.IncludeHidden,
 		Requesters:    patchesInput.Requesters,
 	}
-	patches, count, err := patch.ByPatchNameStatusesCommitQueuePaginated(ctx, opts)
+	patches, count, err := patch.ByPatchNameStatusesMergeQueuePaginated(ctx, opts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting patches for user '%s': %s", utility.FromStringPtr(obj.UserID), err.Error()))
 	}
