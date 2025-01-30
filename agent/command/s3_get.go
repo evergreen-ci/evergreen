@@ -123,15 +123,11 @@ func (c *s3get) validateParams() error {
 		catcher.NewWhen(c.AwsKey != "", "AWS key must be empty when using role ARN")
 		catcher.NewWhen(c.AwsSecret != "", "AWS secret must be empty when using role ARN")
 		catcher.NewWhen(c.AwsSessionToken != "", "AWS session token must be empty when using role ARN")
-	}
-
-	if len(c.internalBuckets) > 0 && !utility.StringSliceContains(c.internalBuckets, c.Bucket) {
-		// If the bucket is not an internal bucket, the AWS credentials must be provided.
-		// The internalBuckets field is only populated during runtime so commands do not
-		// require credentials during initial validation.
+	} else {
 		catcher.NewWhen(c.AwsKey == "", "AWS key must be provided")
 		catcher.NewWhen(c.AwsSecret == "", "AWS secret must be provided")
 	}
+
 	if c.RemoteFile == "" {
 		return errors.New("remote file cannot be blank")
 	}

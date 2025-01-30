@@ -170,12 +170,7 @@ func (s3pc *s3put) validate() error {
 		catcher.NewWhen(s3pc.AwsKey != "", "AWS key must be empty when using role ARN")
 		catcher.NewWhen(s3pc.AwsSecret != "", "AWS secret must be empty when using role ARN")
 		catcher.NewWhen(s3pc.AwsSessionToken != "", "AWS session token must be empty when using role ARN")
-	}
-
-	if len(s3pc.internalBuckets) > 0 && !utility.StringSliceContains(s3pc.internalBuckets, s3pc.Bucket) {
-		// If the bucket is not an internal bucket, the AWS credentials must be provided.
-		// The internalBuckets field is only populated during runtime so commands do not
-		// require credentials during initial validation.
+	} else {
 		catcher.NewWhen(s3pc.AwsKey == "", "AWS key must be provided")
 		catcher.NewWhen(s3pc.AwsSecret == "", "AWS secret must be provided")
 	}
