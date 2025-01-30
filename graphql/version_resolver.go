@@ -395,6 +395,10 @@ func (r *versionResolver) TaskStatusStats(ctx context.Context, obj *restModel.AP
 
 // UpstreamProject is the resolver for the upstreamProject field.
 func (r *versionResolver) UpstreamProject(ctx context.Context, obj *restModel.APIVersion) (*UpstreamProject, error) {
+	if utility.FromStringPtr(obj.Requester) != evergreen.TriggerRequester {
+		return nil, nil
+	}
+
 	v, err := model.VersionFindOneId(utility.FromStringPtr(obj.Id))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
