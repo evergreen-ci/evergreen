@@ -3,7 +3,6 @@ package trigger
 import (
 	"context"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/repotracker"
@@ -46,10 +45,6 @@ func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 			return nil, err
 		}
 	}
-	settings, err := evergreen.GetConfig(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting Evergreen settings")
-	}
 	// Since push triggers have no source version (unlike build and task level triggers), we need to
 	// extract the project ID from the trigger definition's project ID, which is populated in the TriggerID field
 	// for push triggers.
@@ -78,7 +73,7 @@ func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 			if args.TriggerType == model.ProjectTriggerLevelPush {
 				moduleList[i].Ref = metadata.SourceCommit
 			}
-			_, err = model.CreateManifest(v, moduleList, projectInfo.Ref, settings)
+			_, err = model.CreateManifest(v, moduleList, projectInfo.Ref)
 			if err != nil {
 				return nil, errors.WithStack(err)
 			}

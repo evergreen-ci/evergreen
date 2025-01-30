@@ -842,7 +842,7 @@ func getManifestModule(v *Version, projectRef *ProjectRef, module Module) (*mani
 }
 
 // CreateManifest inserts a newly constructed manifest into the DB.
-func CreateManifest(v *Version, modules ModuleList, projectRef *ProjectRef, settings *evergreen.Settings) (*manifest.Manifest, error) {
+func CreateManifest(v *Version, modules ModuleList, projectRef *ProjectRef) (*manifest.Manifest, error) {
 	newManifest, err := constructManifest(v, projectRef, modules)
 	if err != nil {
 		return nil, errors.Wrap(err, "constructing manifest")
