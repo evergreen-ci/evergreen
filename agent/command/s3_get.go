@@ -12,10 +12,12 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -30,6 +32,8 @@ var (
 	s3GetTemporaryCredentialsAttribute = fmt.Sprintf("%s.temporary_credentials", s3GetAttribute)
 	s3GetRemoteFileAttribute           = fmt.Sprintf("%s.remote_file", s3GetAttribute)
 	s3GetExpandedRemoteFileAttribute   = fmt.Sprintf("%s.expanded_remote_file", s3GetAttribute)
+	s3GetRoleARN                       = fmt.Sprintf("%s.role_arn", s3GetAttribute)
+	s3GetInternalBucketAttribute       = fmt.Sprintf("%s.internal_bucket", s3GetAttribute)
 )
 
 // s3get is a command to fetch a resource from an S3 bucket and download it to
@@ -70,9 +74,18 @@ type s3get struct {
 	// for missing files.
 	Optional string `mapstructure:"optional" plugin:"expand"`
 
-	bucket      pail.Bucket
+	// TemporaryRoleARN is not meant to be used in production. It is used for testing purposes
+	// relating to the DEVPROD-5553 project.
+	// This is an ARN that should be assumed to make the S3 request.
+	// TODO (DEVPROD-13982): Upgrade this flag to RoleARN.
+	TemporaryRoleARN string `mapstructure:"temporary_role_arn" plugin:"expand"`
+
 	skipMissing bool
 
+	bucket          pail.Bucket
+	internalBuckets []string
+
+	taskdata client.TaskData
 	base
 }
 
@@ -103,11 +116,21 @@ func (c *s3get) ParseParams(params map[string]interface{}) error {
 // validateParams that all necessary params are set, and that only one of
 // local_file and extract_to is specified.
 func (c *s3get) validateParams() error {
-	if c.AwsKey == "" {
-		return errors.New("AWS key cannot be blank")
+	catcher := grip.NewSimpleCatcher()
+
+	if c.TemporaryRoleARN != "" {
+		// When using the role ARN, there should be no provided AWS credentials.
+		catcher.NewWhen(c.AwsKey != "", "AWS key must be empty when using role ARN")
+		catcher.NewWhen(c.AwsSecret != "", "AWS secret must be empty when using role ARN")
+		catcher.NewWhen(c.AwsSessionToken != "", "AWS session token must be empty when using role ARN")
 	}
-	if c.AwsSecret == "" {
-		return errors.New("AWS secret cannot be blank")
+
+	if len(c.internalBuckets) > 0 && !utility.StringSliceContains(c.internalBuckets, c.Bucket) {
+		// If the bucket is not an internal bucket, the AWS credentials must be provided.
+		// The internalBuckets field is only populated during runtime so commands do not
+		// require credentials during initial validation.
+		catcher.NewWhen(c.AwsKey == "", "AWS key must be provided")
+		catcher.NewWhen(c.AwsSecret == "", "AWS secret must be provided")
 	}
 	if c.RemoteFile == "" {
 		return errors.New("remote file cannot be blank")
@@ -135,16 +158,6 @@ func (c *s3get) validateParams() error {
 	return nil
 }
 
-func (c *s3get) shouldRunForVariant(buildVariantName string) bool {
-	//No buildvariant filter, so run always
-	if len(c.BuildVariants) == 0 {
-		return true
-	}
-
-	//Only run if the buildvariant specified appears in our list.
-	return utility.StringSliceContains(c.BuildVariants, buildVariantName)
-}
-
 // Apply the expansions from the relevant task config
 // to all appropriate fields of the s3get.
 func (c *s3get) expandParams(conf *internal.TaskConfig) error {
@@ -165,8 +178,9 @@ func (c *s3get) expandParams(conf *internal.TaskConfig) error {
 
 // Execute expands the parameters, and then fetches the
 // resource from s3.
-func (c *s3get) Execute(ctx context.Context,
-	comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
+func (c *s3get) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
+	c.taskdata = client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
+	c.internalBuckets = conf.InternalBuckets
 
 	// expand necessary params
 	if err := c.expandParams(conf); err != nil {
@@ -183,7 +197,24 @@ func (c *s3get) Execute(ctx context.Context,
 		attribute.Bool(s3GetTemporaryCredentialsAttribute, c.AwsSessionToken != ""),
 		attribute.String(s3GetRemoteFileAttribute, c.remoteFile),
 		attribute.String(s3GetExpandedRemoteFileAttribute, c.RemoteFile),
+		attribute.String(s3GetRoleARN, c.TemporaryRoleARN),
+		attribute.Bool(s3GetInternalBucketAttribute, utility.StringSliceContains(conf.InternalBuckets, c.Bucket)),
 	)
+
+	if c.TemporaryRoleARN != "" {
+		creds, err := comm.AssumeRole(ctx, c.taskdata, apimodels.AssumeRoleRequest{
+			RoleARN: c.TemporaryRoleARN,
+		})
+		if err != nil {
+			return errors.Wrap(err, "getting credentials for provided role arn")
+		}
+		if creds == nil {
+			return errors.New("nil credentials returned for provided role arn")
+		}
+		c.AwsKey = creds.AccessKeyID
+		c.AwsSecret = creds.SecretAccessKey
+		c.AwsSessionToken = creds.SessionToken
+	}
 
 	// create pail bucket
 	httpClient := utility.GetHTTPClient()
@@ -198,7 +229,7 @@ func (c *s3get) Execute(ctx context.Context,
 		return errors.Wrap(err, "checking bucket")
 	}
 
-	if !c.shouldRunForVariant(conf.BuildVariant.Name) {
+	if !shouldRunForVariant(c.BuildVariants, conf.BuildVariant.Name) {
 		logger.Task().Infof("Skipping S3 get of remote file '%s' for variant '%s'.",
 			c.RemoteFile, conf.BuildVariant.Name)
 		return nil
