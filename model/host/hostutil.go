@@ -1019,11 +1019,11 @@ func (h *Host) AgentCommand(settings *evergreen.Settings, executablePath string)
 		"agent",
 		fmt.Sprintf("--api_server=%s", settings.Api.URL),
 		"--mode=host",
-		// kim: TODO: this needs to stay for the deploy to ensure a smooth
-		// rollover, but commenting it out verifies if the env vars get
-		// propagated to the agent properly via the agent monitor.
-		// fmt.Sprintf("--host_id=%s", h.Id),
-		// fmt.Sprintf("--host_secret=%s", h.Secret),
+		// TODO (DEVPROD-8409): delete the host ID and secret from the CLI args
+		// once the agent monitor and agent on all static/dynamic hosts have
+		// rolled over to newer versions.
+		fmt.Sprintf("--host_id=%s", h.Id),
+		fmt.Sprintf("--host_secret=%s", h.Secret),
 		fmt.Sprintf("--provider=%s", h.Distro.Provider),
 		"--log_output=file",
 		fmt.Sprintf("--log_prefix=%s", filepath.Join(h.Distro.WorkDir, "agent")),
@@ -1031,9 +1031,6 @@ func (h *Host) AgentCommand(settings *evergreen.Settings, executablePath string)
 		"--cleanup",
 	}
 }
-
-// kim: TODO: need to test the agent with env vars for legacy SSH, SSH, and user
-// data provisioning. Also need to check reprovisioning works.
 
 // AgentEnv returns the environment variables required to start the agent.
 func (h *Host) AgentEnv() map[string]string {
@@ -1061,7 +1058,6 @@ func (h *Host) AgentMonitorOptions(settings *evergreen.Settings) *options.Create
 	credsPath := h.Distro.AbsPathNotCygwinCompatible(h.Distro.BootstrapSettings.JasperCredentialsPath)
 	shellPath := h.Distro.AbsPathNotCygwinCompatible(h.Distro.BootstrapSettings.ShellPath)
 
-	// kim: NOTE: agent monitor already passes on its environment to the agent.
 	args := append(h.AgentCommand(settings, ""), "monitor")
 	args = append(args,
 		fmt.Sprintf("--client_path=%s", clientPath),

@@ -303,7 +303,6 @@ func (j *agentDeployJob) startAgentOnRemote(ctx context.Context, settings *everg
 	defer cancel()
 
 	agentEnvVars := strings.Join(j.host.AgentEnvSlice(), " ")
-	// kim: TODO: test if setting these env vars really works with nohup.
 	startAgentCmd := fmt.Sprintf("%s nohup %s > /tmp/start 2>&1 &", agentEnvVars, remoteCmd)
 	logs, err := j.host.RunSSHCommand(ctx, startAgentCmd)
 	if err != nil {
