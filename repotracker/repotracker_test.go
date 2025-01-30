@@ -1630,6 +1630,8 @@ tasks:
 
 func TestCreateManifest(t *testing.T) {
 	assert := assert.New(t)
+	settings := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, settings)
 	require.NoError(t, db.ClearCollections(model.VersionCollection, model.ProjectRefCollection, model.ProjectVarsCollection), fakeparameter.Collection)
 	// with a revision from 5/31/15
 	v := model.Version{
