@@ -64,7 +64,7 @@ func SetVersionActivation(ctx context.Context, versionId string, active bool, ca
 		if err := SetVersionActivated(versionId, active); err != nil {
 			return errors.Wrapf(err, "setting activated for version '%s'", versionId)
 		}
-		tasksToModify, err = task.FindAll(db.Query(q).WithFields(task.IdKey, task.DependsOnKey, task.ExecutionKey, task.BuildIdKey, task.ActivatedKey))
+		tasksToModify, err = task.FindAll(ctx, db.Query(q).WithFields(task.IdKey, task.DependsOnKey, task.ExecutionKey, task.BuildIdKey, task.ActivatedKey))
 		if err != nil {
 			return errors.Wrap(err, "getting tasks to activate")
 		}
@@ -79,7 +79,7 @@ func SetVersionActivation(ctx context.Context, versionId string, active bool, ca
 			q[task.ActivatedByKey] = bson.M{"$in": evergreen.SystemActivators}
 		}
 
-		tasksToModify, err = task.FindAll(db.Query(q).WithFields(task.IdKey, task.ExecutionKey, task.BuildIdKey, task.ActivatedKey))
+		tasksToModify, err = task.FindAll(ctx, db.Query(q).WithFields(task.IdKey, task.ExecutionKey, task.BuildIdKey, task.ActivatedKey))
 		if err != nil {
 			return errors.Wrap(err, "getting tasks to deactivate")
 		}
@@ -137,7 +137,7 @@ func setTaskActivationForBuilds(ctx context.Context, buildIds []string, active, 
 		if len(ignoreTasks) > 0 {
 			q[task.IdKey] = bson.M{"$nin": ignoreTasks}
 		}
-		tasksToActivate, err := task.FindAll(db.Query(q).WithFields(task.IdKey, task.DependsOnKey, task.ExecutionKey, task.ActivatedKey))
+		tasksToActivate, err := task.FindAll(ctx, db.Query(q).WithFields(task.IdKey, task.DependsOnKey, task.ExecutionKey, task.ActivatedKey))
 		if err != nil {
 			return errors.Wrap(err, "getting tasks to activate")
 		}
@@ -166,7 +166,7 @@ func setTaskActivationForBuilds(ctx context.Context, buildIds []string, active, 
 			query[task.ActivatedByKey] = bson.M{"$in": evergreen.SystemActivators}
 		}
 
-		tasks, err := task.FindAll(db.Query(query).WithFields(task.IdKey, task.ExecutionKey, task.ActivatedKey))
+		tasks, err := task.FindAll(ctx, db.Query(query).WithFields(task.IdKey, task.ExecutionKey, task.ActivatedKey))
 		if err != nil {
 			return errors.Wrap(err, "getting tasks to deactivate")
 		}
@@ -232,7 +232,7 @@ func SetTaskPriority(ctx context.Context, t task.Task, priority int64, caller st
 			},
 		},
 	}).WithFields(task.ExecutionKey)
-	tasks, err := task.FindAll(query)
+	tasks, err := task.FindAll(ctx, query)
 	if err != nil {
 		return errors.Wrap(err, "finding matching tasks")
 	}
@@ -281,7 +281,7 @@ func setTasksPriority(ctx context.Context, query bson.M, priority int64, caller 
 	if err != nil {
 		return errors.Wrap(err, "setting priority")
 	}
-	tasks, err := task.FindAll(db.Query(query))
+	tasks, err := task.FindAll(ctx, db.Query(query))
 	if err != nil {
 		return errors.Wrap(err, "getting tasks")
 	}
@@ -441,12 +441,12 @@ func CreateTasksCache(tasks []task.Task) []build.TaskCache {
 
 // RefreshTasksCache updates a build document so that the tasks cache reflects the correct current
 // state of the tasks it represents.
-func RefreshTasksCache(buildId string) error {
-	tasks, err := task.FindAll(db.Query(task.ByBuildId(buildId)))
+func RefreshTasksCache(ctx context.Context, buildId string) error {
+	tasks, err := task.FindAll(ctx, db.Query(task.ByBuildId(buildId)))
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	tasks, err = task.AddParentDisplayTasks(tasks)
+	tasks, err = task.AddParentDisplayTasks(ctx, tasks)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -821,7 +821,7 @@ func createTasksForBuild(ctx context.Context, creationInfo TaskCreationInfo) (ta
 				return nil, errors.Wrapf(err, "creating display task '%s'", id)
 			}
 			newDisplayTask.GeneratedBy = creationInfo.GeneratedBy
-			newDisplayTask.DependsOn, err = task.GetAllDependencies(newDisplayTask.ExecutionTasks, taskMap)
+			newDisplayTask.DependsOn, err = task.GetAllDependencies(ctx, newDisplayTask.ExecutionTasks, taskMap)
 			if err != nil {
 				return nil, errors.Wrapf(err, "getting dependencies for display task '%s'", newDisplayTask.Id)
 			}
@@ -996,7 +996,7 @@ func RecomputeNumDependents(ctx context.Context, t task.Task) error {
 	if err != nil {
 		return errors.Wrap(err, "resetting num dependents")
 	}
-	versionTasks, err := task.FindAll(db.Query(query))
+	versionTasks, err := task.FindAll(ctx, db.Query(query))
 	if err != nil {
 		return errors.Wrap(err, "getting tasks in version")
 	}
@@ -1478,7 +1478,7 @@ func sortLayer(layer []task.Task, idToDisplayName map[string]string) []task.Task
 func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBuilds []build.Build) ([]string, error) {
 	ctx, span := tracer.Start(ctx, "add-new-builds")
 	defer span.End()
-	taskIdTables, err := getTaskIdConfig(creationInfo)
+	taskIdTables, err := getTaskIdConfig(ctx, creationInfo)
 	if err != nil {
 		return nil, errors.Wrap(err, "making task ID table")
 	}
@@ -1584,6 +1584,7 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 		newBuildStatuses = append(newBuildStatuses,
 			VersionBuildStatus{
 				BuildVariant:   pair.Variant,
+				DisplayName:    build.DisplayName,
 				BuildId:        build.Id,
 				BatchTimeTasks: batchTimeTaskStatuses,
 				ActivationStatus: ActivationStatus{
@@ -1645,7 +1646,7 @@ func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationI
 		return nil, err
 	}
 
-	taskIdTables, err := getTaskIdConfig(creationInfo)
+	taskIdTables, err := getTaskIdConfig(ctx, creationInfo)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting table of task IDs")
 	}
@@ -1657,7 +1658,7 @@ func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationI
 	for _, b := range existingBuilds {
 		wasActivated := b.Activated
 		// Find the set of task names that already exist for the given build, including display tasks.
-		tasksInBuild, err := task.FindAll(db.Query(task.ByBuildId(b.Id)).WithFields(task.DisplayNameKey, task.ActivatedKey))
+		tasksInBuild, err := task.FindAll(ctx, db.Query(task.ByBuildId(b.Id)).WithFields(task.DisplayNameKey, task.ActivatedKey))
 		if err != nil {
 			return nil, err
 		}
@@ -1727,7 +1728,7 @@ func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationI
 	}
 	// update each build to hold the new tasks
 	for _, b := range existingBuilds {
-		if err = RefreshTasksCache(b.Id); err != nil {
+		if err = RefreshTasksCache(ctx, b.Id); err != nil {
 			return nil, errors.Wrapf(err, "updating task cache for '%s'", b.Id)
 		}
 	}
@@ -1765,7 +1766,7 @@ func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationI
 func activateExistingInactiveTasks(ctx context.Context, creationInfo TaskCreationInfo, existingBuilds []build.Build, caller string) error {
 	existingTasksToActivate := []task.Task{}
 	for _, b := range existingBuilds {
-		tasksInBuild, err := task.FindAll(db.Query(task.ByBuildId(b.Id)).WithFields(task.DisplayNameKey, task.ActivatedKey, task.BuildIdKey, task.VersionKey))
+		tasksInBuild, err := task.FindAll(ctx, db.Query(task.ByBuildId(b.Id)).WithFields(task.DisplayNameKey, task.ActivatedKey, task.BuildIdKey, task.VersionKey))
 		if err != nil {
 			return err
 		}
@@ -1792,13 +1793,13 @@ func activateExistingInactiveTasks(ctx context.Context, creationInfo TaskCreatio
 // new task IDs for the task-variant pairs to be created. If there are duplicate
 // task-variant pairs, the new task-variant pairs will overwrite the existing
 // ones.
-func getTaskIdConfig(creationInfo TaskCreationInfo) (TaskIdConfig, error) {
+func getTaskIdConfig(ctx context.Context, creationInfo TaskCreationInfo) (TaskIdConfig, error) {
 	// The table should include only new and existing tasks
 	taskIdTable, err := NewTaskIdConfig(creationInfo.Project, creationInfo.Version, creationInfo.Pairs, creationInfo.ProjectRef.Identifier)
 	if err != nil {
 		return TaskIdConfig{}, errors.Wrap(err, "creating patch's task ID table")
 	}
-	existingTasks, err := task.FindAll(db.Query(task.ByVersion(creationInfo.Version.Id)).WithFields(task.DisplayOnlyKey, task.DisplayNameKey, task.BuildVariantKey))
+	existingTasks, err := task.FindAll(ctx, db.Query(task.ByVersion(creationInfo.Version.Id)).WithFields(task.DisplayOnlyKey, task.DisplayNameKey, task.BuildVariantKey))
 	if err != nil {
 		return TaskIdConfig{}, errors.Wrap(err, "getting existing task IDs")
 	}

@@ -357,10 +357,6 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		return errors.New("patch has no build variants or tasks")
 	}
 
-	if patchDoc.IsMergeQueuePatch() {
-		patchDoc.Description = model.MakeCommitQueueDescription(patchDoc.Patches, pref, patchedProject, patchDoc.IsGithubMergePatch(), patchDoc.GithubMergeData)
-	}
-
 	// set the patch number based on patch author
 	patchDoc.PatchNumber, err = j.user.IncPatchNumber()
 	if err != nil {
@@ -413,7 +409,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		catcher.Wrap(j.createGitHubSubscriptions(patchDoc), "creating GitHub PR patch subscriptions")
 	}
 
-	if patchDoc.IsGithubMergePatch() {
+	if patchDoc.IsMergeQueuePatch() {
 		catcher.Wrap(j.createGitHubMergeSubscription(ctx, patchDoc), "creating GitHub merge queue subscriptions")
 	}
 
@@ -602,7 +598,7 @@ func (j *patchIntentProcessor) buildTasksAndVariants(ctx context.Context, patchD
 // setToFilteredTasks sets the tasks/variants to a previous patch's activated tasks (filtered on failures if requested)
 // and adds dependencies and task group tasks as needed.
 func setToFilteredTasks(ctx context.Context, patchDoc, reusePatch *patch.Patch, project *model.Project, failedOnly bool) error {
-	activatedTasks, err := task.FindActivatedByVersionWithoutDisplay(reusePatch.Version)
+	activatedTasks, err := task.FindActivatedByVersionWithoutDisplay(ctx, reusePatch.Version)
 	if err != nil {
 		return errors.Wrap(err, "filtering to activated tasks")
 	}
@@ -1001,8 +997,13 @@ func (j *patchIntentProcessor) buildGithubMergeDoc(patchDoc *patch.Patch) error 
 	}
 	patchDoc.Author = j.user.Id
 	patchDoc.Project = projectRef.Id
-
+	patchDoc.Description = makeMergeQueueDescription(patchDoc.GithubMergeData)
 	return nil
+}
+
+// makeMergeQueueDescription returns a new description for a merge queue patch using the merge group.
+func makeMergeQueueDescription(mergeGroup thirdparty.GithubMergeGroup) string {
+	return "GitHub Merge Queue: " + mergeGroup.HeadCommit + " (" + mergeGroup.HeadSHA[0:7] + ")"
 }
 
 func (j *patchIntentProcessor) buildTriggerPatchDoc(ctx context.Context, patchDoc *patch.Patch) (*model.Project, *model.ParserProject, error) {

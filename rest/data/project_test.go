@@ -92,48 +92,41 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 		s.Require().NoError(db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameter.Collection))
 
 		projWithVars := &model.ProjectRef{
-			Id:                    projectId,
-			ParameterStoreEnabled: true,
+			Id: projectId,
 		}
 		projects := []*model.ProjectRef{
 			{
-				Id:                    "projectA",
-				Enabled:               true,
-				CommitQueue:           model.CommitQueueParams{Enabled: utility.TruePtr()},
-				Owner:                 "evergreen-ci",
-				Repo:                  "gimlet",
-				Branch:                "main",
-				ParameterStoreEnabled: true,
+				Id:          "projectA",
+				Enabled:     true,
+				CommitQueue: model.CommitQueueParams{Enabled: utility.TruePtr()},
+				Owner:       "evergreen-ci",
+				Repo:        "gimlet",
+				Branch:      "main",
 			},
 			{
-				Id:                    "projectB",
-				Enabled:               true,
-				CommitQueue:           model.CommitQueueParams{Enabled: utility.TruePtr()},
-				Owner:                 "evergreen-ci",
-				Repo:                  "evergreen",
-				Branch:                "main",
-				ParameterStoreEnabled: true,
+				Id:          "projectB",
+				Enabled:     true,
+				CommitQueue: model.CommitQueueParams{Enabled: utility.TruePtr()},
+				Owner:       "evergreen-ci",
+				Repo:        "evergreen",
+				Branch:      "main",
 			},
 			{
-				Id:                    "projectC",
-				Enabled:               true,
-				CommitQueue:           model.CommitQueueParams{Enabled: utility.TruePtr()},
-				Owner:                 "mongodb",
-				Repo:                  "mongo",
-				Branch:                "main",
-				ParameterStoreEnabled: true,
+				Id:          "projectC",
+				Enabled:     true,
+				CommitQueue: model.CommitQueueParams{Enabled: utility.TruePtr()},
+				Owner:       "mongodb",
+				Repo:        "mongo",
+				Branch:      "main",
 			},
 			{
-				Id:                    "projectD",
-				ParameterStoreEnabled: true,
+				Id: "projectD",
 			},
 			{
-				Id:                    "projectE",
-				ParameterStoreEnabled: true,
+				Id: "projectE",
 			},
 			{
-				Id:                    "projectF",
-				ParameterStoreEnabled: true,
+				Id: "projectF",
 			},
 			projWithVars,
 		}
@@ -156,8 +149,7 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 
 		repoWithVars := &model.RepoRef{
 			ProjectRef: model.ProjectRef{
-				Id:                    repoProjectId,
-				ParameterStoreEnabled: true,
+				Id: repoProjectId,
 			},
 		}
 		s.Require().NoError(repoWithVars.Upsert())
@@ -341,8 +333,7 @@ func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
 	checkParametersNamespacedByProject(s.T(), *dbNewVars)
 
 	newProjRef := model.ProjectRef{
-		Id:                    "new_project",
-		ParameterStoreEnabled: true,
+		Id: "new_project",
 	}
 	s.Require().NoError(newProjRef.Insert())
 	// successful upsert
@@ -361,8 +352,7 @@ func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
 
 func (s *ProjectConnectorGetSuite) TestCopyProjectVars() {
 	pRef := model.ProjectRef{
-		Id:                    "project-copy",
-		ParameterStoreEnabled: true,
+		Id: "project-copy",
 	}
 	s.Require().NoError(pRef.Insert())
 	s.NoError(model.CopyProjectVars(projectId, pRef.Id))
@@ -524,11 +514,10 @@ func TestCreateProject(t *testing.T) {
 			require.NoError(t, env.Configure(ctx))
 
 			pRef := model.ProjectRef{
-				Id:                    "new_project",
-				Identifier:            "new project identifier",
-				Owner:                 "evergreen-ci",
-				Repo:                  "treepo",
-				ParameterStoreEnabled: true,
+				Id:         "new_project",
+				Identifier: "new project identifier",
+				Owner:      "evergreen-ci",
+				Repo:       "treepo",
 			}
 
 			adminUser := user.DBUser{
@@ -621,16 +610,15 @@ func TestHideBranch(t *testing.T) {
 	assert.NoError(t, repo.Upsert())
 
 	project := &model.ProjectRef{
-		Identifier:            projectId,
-		Id:                    projectId,
-		DisplayName:           "test_project",
-		Owner:                 repo.Owner,
-		Repo:                  repo.Repo,
-		RepoRefId:             repo.Id,
-		Branch:                "branch",
-		Enabled:               true,
-		Hidden:                utility.ToBoolPtr(false),
-		ParameterStoreEnabled: true,
+		Identifier:  projectId,
+		Id:          projectId,
+		DisplayName: "test_project",
+		Owner:       repo.Owner,
+		Repo:        repo.Repo,
+		RepoRefId:   repo.Id,
+		Branch:      "branch",
+		Enabled:     true,
+		Hidden:      utility.ToBoolPtr(false),
 	}
 	require.NoError(t, project.Upsert())
 
@@ -655,14 +643,13 @@ func TestHideBranch(t *testing.T) {
 	hiddenProj, err := model.FindMergedProjectRef(project.Id, "", true)
 	assert.NoError(t, err)
 	skeletonProj := model.ProjectRef{
-		Id:                    project.Id,
-		Owner:                 repo.Owner,
-		Repo:                  repo.Repo,
-		Branch:                project.Branch,
-		RepoRefId:             repo.Id,
-		Enabled:               false,
-		Hidden:                utility.TruePtr(),
-		ParameterStoreEnabled: true,
+		Id:        project.Id,
+		Owner:     repo.Owner,
+		Repo:      repo.Repo,
+		Branch:    project.Branch,
+		RepoRefId: repo.Id,
+		Enabled:   false,
+		Hidden:    utility.TruePtr(),
 	}
 	assert.Equal(t, skeletonProj, *hiddenProj)
 

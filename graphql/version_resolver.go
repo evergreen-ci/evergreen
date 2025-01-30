@@ -272,7 +272,7 @@ func (r *versionResolver) Status(ctx context.Context, obj *restModel.APIVersion)
 
 // TaskCount is the resolver for the taskCount field.
 func (r *versionResolver) TaskCount(ctx context.Context, obj *restModel.APIVersion) (*int, error) {
-	taskCount, err := task.Count(db.Query(task.DisplayTasksByVersion(*obj.Id, !obj.IsPatchRequester())))
+	taskCount, err := task.Count(ctx, db.Query(task.DisplayTasksByVersion(*obj.Id, !obj.IsPatchRequester())))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting task count for version '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
 	}
@@ -516,6 +516,28 @@ func (r *versionResolver) Warnings(ctx context.Context, obj *restModel.APIVersio
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", utility.FromStringPtr(obj.Id)))
 	}
 	return v.Warnings, nil
+}
+
+// WaterfallBuilds is the resolver for the waterfallBuilds field.
+func (r *versionResolver) WaterfallBuilds(ctx context.Context, obj *restModel.APIVersion) ([]*model.WaterfallBuild, error) {
+	versionId := utility.FromStringPtr(obj.Id)
+
+	// No need to fetch build variants for unactivated versions
+	if !utility.FromBoolPtr(obj.Activated) {
+		return nil, nil
+	}
+
+	versionBuilds := []*model.WaterfallBuild{}
+	builds, err := model.GetVersionBuilds(ctx, versionId)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting version build variants: %s", err.Error()))
+	}
+
+	for _, b := range builds {
+		bCopy := b
+		versionBuilds = append(versionBuilds, &bCopy)
+	}
+	return versionBuilds, nil
 }
 
 // Version returns VersionResolver implementation.

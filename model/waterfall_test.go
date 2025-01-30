@@ -777,6 +777,89 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 	assert.Len(t, buildVariants[0].Builds[3].Tasks, 2)
 }
 
+func TestGetVersionBuilds(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	assert.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection, ProjectRefCollection))
+	start := time.Now()
+	p := ProjectRef{
+		Id:         "a_project",
+		Identifier: "a_project_identifier",
+	}
+	assert.NoError(t, p.Insert())
+
+	v := Version{
+		Id:                  "v_1",
+		Identifier:          "a_project",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		RevisionOrderNumber: 10,
+		CreateTime:          start,
+		Activated:           utility.TruePtr(),
+		BuildIds:            []string{"b_a", "b_b"},
+	}
+	assert.NoError(t, v.Insert())
+
+	b := build.Build{
+		Id:          "b_a",
+		Activated:   true,
+		DisplayName: "02 Build C",
+		Version:     "v_1",
+		Tasks: []build.TaskCache{
+			{
+				Id: "t_80",
+			},
+			{
+				Id: "t_79",
+			},
+			{
+				Id: "t_86",
+			},
+			{
+				Id: "t_200",
+			},
+		},
+	}
+	assert.NoError(t, b.Insert())
+	b = build.Build{
+		Id:          "b_b",
+		Activated:   true,
+		DisplayName: "Ubuntu 2204",
+		Version:     "v_1",
+		Tasks: []build.TaskCache{
+			{
+				Id: "t_45",
+			},
+			{
+				Id: "t_12",
+			},
+			{
+				Id: "t_66",
+			},
+		},
+	}
+	assert.NoError(t, b.Insert())
+
+	tsk := task.Task{Id: "t_80", DisplayName: "Task 80", Status: evergreen.TaskSucceeded}
+	assert.NoError(t, tsk.Insert())
+	tsk = task.Task{Id: "t_79", DisplayName: "Task 79", Status: evergreen.TaskFailed}
+	assert.NoError(t, tsk.Insert())
+	tsk = task.Task{Id: "t_86", DisplayName: "Task 86", Status: evergreen.TaskSucceeded}
+	assert.NoError(t, tsk.Insert())
+	tsk = task.Task{Id: "t_200", DisplayName: "Task 200", Status: evergreen.TaskSucceeded}
+	assert.NoError(t, tsk.Insert())
+	tsk = task.Task{Id: "t_45", DisplayName: "Task 12", Status: evergreen.TaskWillRun}
+	assert.NoError(t, tsk.Insert())
+	tsk = task.Task{Id: "t_12", DisplayName: "Task 12", Status: evergreen.TaskWillRun}
+	assert.NoError(t, tsk.Insert())
+	tsk = task.Task{Id: "t_66", DisplayName: "Task 66", Status: evergreen.TaskWillRun, Requester: evergreen.RepotrackerVersionRequester}
+	assert.NoError(t, tsk.Insert())
+
+	builds, err := GetVersionBuilds(ctx, v.Id)
+	assert.NoError(t, err)
+	assert.Len(t, builds, 2)
+}
+
 func TestGetNewerActiveWaterfallVersion(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

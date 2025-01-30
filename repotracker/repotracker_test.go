@@ -1661,11 +1661,10 @@ func TestCreateManifest(t *testing.T) {
 		},
 	}
 	projRef := &model.ProjectRef{
-		Owner:                 "evergreen-ci",
-		Repo:                  "evergreen",
-		Branch:                "main",
-		Id:                    "project1",
-		ParameterStoreEnabled: true,
+		Owner:  "evergreen-ci",
+		Repo:   "evergreen",
+		Branch: "main",
+		Id:     "project1",
 	}
 	require.NoError(t, projRef.Insert())
 

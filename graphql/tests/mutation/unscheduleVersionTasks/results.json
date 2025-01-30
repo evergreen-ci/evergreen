@@ -17,14 +17,6 @@
       }
     },
     {
-      "query_file": "commit_queue_dequeue.graphql",
-      "result": {
-        "data": {
-          "unscheduleVersionTasks": "5dd2e89cd1fe07048e43bb9c"
-        }
-      }
-    },
-    {
       "query_file": "no_permissions.graphql",
       "test_user_id": "regular_user",
       "result": {

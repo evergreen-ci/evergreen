@@ -208,6 +208,16 @@ func Remove(collection string, query interface{}) error {
 	return db.C(collection).Remove(query)
 }
 
+func RemoveContext(ctx context.Context, collection string, query interface{}) error {
+	session, db, err := GetGlobalSessionFactory().GetContextSession(ctx)
+	if err != nil {
+		return err
+	}
+	defer session.Close()
+
+	return db.C(collection).Remove(query)
+}
+
 // RemoveAll removes all items matching the query from the specified collection.
 func RemoveAll(collection string, query interface{}) error {
 	session, db, err := GetGlobalSessionFactory().GetSession()
@@ -335,6 +345,19 @@ func Upsert(collection string, query interface{}, update interface{}) (*db.Chang
 // Count run a count command with the specified query against the collection.
 func Count(collection string, query interface{}) (int, error) {
 	session, db, err := GetGlobalSessionFactory().GetSession()
+	if err != nil {
+		grip.Errorf("error establishing db connection: %+v", err)
+
+		return 0, err
+	}
+	defer session.Close()
+
+	return db.C(collection).Find(query).Count()
+}
+
+// Count run a count command with the specified query against the collection.
+func CountContext(ctx context.Context, collection string, query interface{}) (int, error) {
+	session, db, err := GetGlobalSessionFactory().GetContextSession(ctx)
 	if err != nil {
 		grip.Errorf("error establishing db connection: %+v", err)
 

@@ -910,12 +910,11 @@ func getTestProjectRef() *serviceModel.ProjectRef {
 		CommitQueue: serviceModel.CommitQueueParams{
 			Enabled: utility.FalsePtr(),
 		},
-		Hidden:                utility.FalsePtr(),
-		PatchingDisabled:      utility.FalsePtr(),
-		Admins:                []string{"langdon.alger"},
-		NotifyOnBuildFailure:  utility.FalsePtr(),
-		DisabledStatsCache:    utility.TruePtr(),
-		ParameterStoreEnabled: true,
+		Hidden:               utility.FalsePtr(),
+		PatchingDisabled:     utility.FalsePtr(),
+		Admins:               []string{"langdon.alger"},
+		NotifyOnBuildFailure: utility.FalsePtr(),
+		DisabledStatsCache:   utility.TruePtr(),
 	}
 }
 
@@ -1043,10 +1042,9 @@ func TestDeleteProject(t *testing.T) {
 
 	repo := serviceModel.RepoRef{
 		ProjectRef: serviceModel.ProjectRef{
-			Id:                    "repo_ref",
-			Owner:                 "mongodb",
-			Repo:                  "test_repo",
-			ParameterStoreEnabled: true,
+			Id:    "repo_ref",
+			Owner: "mongodb",
+			Repo:  "test_repo",
 		},
 	}
 	assert.NoError(t, repo.Upsert())
@@ -1056,18 +1054,17 @@ func TestDeleteProject(t *testing.T) {
 	var projects []serviceModel.ProjectRef
 	for i := 0; i < numGoodProjects; i++ {
 		project := serviceModel.ProjectRef{
-			Id:                    fmt.Sprintf("id_%d", i),
-			Owner:                 "mongodb",
-			Repo:                  "test_repo",
-			Branch:                fmt.Sprintf("branch_%d", i),
-			Enabled:               true,
-			DisplayName:           fmt.Sprintf("display_%d", i),
-			RepoRefId:             "repo_ref",
-			TracksPushEvents:      utility.TruePtr(),
-			PRTestingEnabled:      utility.TruePtr(),
-			Admins:                []string{"admin0", "admin1"},
-			NotifyOnBuildFailure:  utility.TruePtr(),
-			ParameterStoreEnabled: true,
+			Id:                   fmt.Sprintf("id_%d", i),
+			Owner:                "mongodb",
+			Repo:                 "test_repo",
+			Branch:               fmt.Sprintf("branch_%d", i),
+			Enabled:              true,
+			DisplayName:          fmt.Sprintf("display_%d", i),
+			RepoRefId:            "repo_ref",
+			TracksPushEvents:     utility.TruePtr(),
+			PRTestingEnabled:     utility.TruePtr(),
+			Admins:               []string{"admin0", "admin1"},
+			NotifyOnBuildFailure: utility.TruePtr(),
 		}
 
 		projects = append(projects, project)
@@ -1106,14 +1103,13 @@ func TestDeleteProject(t *testing.T) {
 		hiddenProj, err := serviceModel.FindMergedProjectRef(projects[i].Id, "", true)
 		assert.NoError(t, err)
 		skeletonProj := serviceModel.ProjectRef{
-			Id:                    projects[i].Id,
-			Owner:                 repo.Owner,
-			Repo:                  repo.Repo,
-			Branch:                projects[i].Branch,
-			RepoRefId:             repo.Id,
-			Enabled:               false,
-			Hidden:                utility.TruePtr(),
-			ParameterStoreEnabled: true,
+			Id:        projects[i].Id,
+			Owner:     repo.Owner,
+			Repo:      repo.Repo,
+			Branch:    projects[i].Branch,
+			RepoRefId: repo.Id,
+			Enabled:   false,
+			Hidden:    utility.TruePtr(),
 		}
 		assert.Equal(t, skeletonProj, *hiddenProj)
 
@@ -1143,9 +1139,8 @@ func TestDeleteProject(t *testing.T) {
 
 	// Project with UseRepoSettings == false
 	nonTrackingProject := serviceModel.ProjectRef{
-		Id:                    "non_tracking_project",
-		RepoRefId:             "",
-		ParameterStoreEnabled: true,
+		Id:        "non_tracking_project",
+		RepoRefId: "",
 	}
 	require.NoError(t, nonTrackingProject.Insert())
 	pdh.projectName = nonTrackingProject.Id
@@ -1164,15 +1159,14 @@ func TestAttachProjectToRepo(t *testing.T) {
 	assert.NoError(t, u.Insert())
 
 	pRef := serviceModel.ProjectRef{
-		Id:                    "project1",
-		Identifier:            "projectIdent",
-		Owner:                 "evergreen-ci",
-		Repo:                  "evergreen",
-		Branch:                "main",
-		RepoRefId:             "hello",
-		Enabled:               true,
-		Admins:                []string{"me"},
-		ParameterStoreEnabled: true,
+		Id:         "project1",
+		Identifier: "projectIdent",
+		Owner:      "evergreen-ci",
+		Repo:       "evergreen",
+		Branch:     "main",
+		RepoRefId:  "hello",
+		Enabled:    true,
+		Admins:     []string{"me"},
 	}
 	assert.NoError(t, pRef.Insert())
 	projVars := serviceModel.ProjectVars{
@@ -1232,14 +1226,13 @@ func TestDetachProjectFromRepo(t *testing.T) {
 	assert.NoError(t, u.Insert())
 
 	pRef := serviceModel.ProjectRef{
-		Id:                    "project1",
-		Identifier:            "projectIdent",
-		Owner:                 "evergreen-ci",
-		Repo:                  "evergreen",
-		Branch:                "main",
-		Enabled:               true,
-		Admins:                []string{"me"},
-		ParameterStoreEnabled: true,
+		Id:         "project1",
+		Identifier: "projectIdent",
+		Owner:      "evergreen-ci",
+		Repo:       "evergreen",
+		Branch:     "main",
+		Enabled:    true,
+		Admins:     []string{"me"},
 	}
 	assert.NoError(t, pRef.Insert())
 	projVars := serviceModel.ProjectVars{

@@ -155,7 +155,7 @@ func DisableTasks(ctx context.Context, caller string, tasks ...task.Task) error 
 		return errors.Wrap(err, "updating task priorities")
 	}
 
-	execTasks, err := findMissingTasks(execTaskIDs, tasksPresent)
+	execTasks, err := findMissingTasks(ctx, execTaskIDs, tasksPresent)
 	if err != nil {
 		return errors.Wrap(err, "finding additional execution tasks")
 	}
@@ -174,7 +174,7 @@ func DisableTasks(ctx context.Context, caller string, tasks ...task.Task) error 
 }
 
 // findMissingTasks finds all tasks whose IDs are missing from tasksPresent.
-func findMissingTasks(taskIDs []string, tasksPresent map[string]struct{}) ([]task.Task, error) {
+func findMissingTasks(ctx context.Context, taskIDs []string, tasksPresent map[string]struct{}) ([]task.Task, error) {
 	var missingTaskIDs []string
 	for _, id := range taskIDs {
 		if _, ok := tasksPresent[id]; ok {
@@ -186,7 +186,7 @@ func findMissingTasks(taskIDs []string, tasksPresent map[string]struct{}) ([]tas
 		return nil, nil
 	}
 
-	missingTasks, err := task.FindAll(db.Query(task.ByIds(missingTaskIDs)))
+	missingTasks, err := task.FindAll(ctx, db.Query(task.ByIds(missingTaskIDs)))
 	if err != nil {
 		return nil, err
 	}
@@ -200,7 +200,7 @@ func DisableStaleContainerTasks(ctx context.Context, caller string) error {
 	query := task.ScheduledContainerTasksQuery()
 	query[task.ActivatedTimeKey] = bson.M{"$lte": time.Now().Add(-task.UnschedulableThreshold)}
 
-	tasks, err := task.FindAll(db.Query(query))
+	tasks, err := task.FindAll(ctx, db.Query(query))
 	if err != nil {
 		return errors.Wrap(err, "finding tasks that need to be disabled")
 	}
@@ -437,13 +437,13 @@ func DeactivatePreviousTasks(ctx context.Context, t *task.Task, caller string) e
 		t.Project,
 	)
 	query := db.Query(filter).Sort(sort)
-	allTasks, err := task.FindAll(query)
+	allTasks, err := task.FindAll(ctx, query)
 	if err != nil {
 		return errors.Wrapf(err, "finding previous tasks to deactivate for task '%s'", t.Id)
 	}
 	for _, t := range allTasks {
 		// Only deactivate tasks that other tasks aren't waiting for.
-		hasDependentTasks, err := task.HasActivatedDependentTasks(t.Id)
+		hasDependentTasks, err := task.HasActivatedDependentTasks(ctx, t.Id)
 		if err != nil {
 			return errors.Wrapf(err, "getting activated dependencies for '%s'", t.Id)
 		}
@@ -1039,7 +1039,7 @@ func UpdateBlockedDependencies(ctx context.Context, dependencies []task.Task, ig
 		dependencyIDs = append(dependencyIDs, dep.Id)
 	}
 
-	dependentTasks, err := task.FindAllDependencyTasksToModify(dependencies, true, ignoreDependencyStatusForBlocking)
+	dependentTasks, err := task.FindAllDependencyTasksToModify(ctx, dependencies, true, ignoreDependencyStatusForBlocking)
 	if err != nil {
 		return errors.Wrapf(err, "getting all tasks depending on tasks")
 	}
@@ -1086,7 +1086,7 @@ func UpdateUnblockedDependencies(ctx context.Context, dependencies []task.Task) 
 		dependencyIDs = append(dependencyIDs, dep.Id)
 	}
 
-	tasksToUnblock, err := task.FindAllDependencyTasksToModify(dependencies, false, false)
+	tasksToUnblock, err := task.FindAllDependencyTasksToModify(ctx, dependencies, false, false)
 	if err != nil {
 		return errors.Wrapf(err, "getting all tasks depending on tasks")
 	}
@@ -1835,11 +1835,11 @@ func MarkOneTaskReset(ctx context.Context, t *task.Task, caller string) error {
 // MarkTasksReset resets many tasks by their IDs. For execution tasks, this also
 // resets their parent display tasks.
 func MarkTasksReset(ctx context.Context, taskIds []string, caller string) error {
-	tasks, err := task.FindAll(db.Query(task.ByIds(taskIds)))
+	tasks, err := task.FindAll(ctx, db.Query(task.ByIds(taskIds)))
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	tasks, err = task.AddParentDisplayTasks(tasks)
+	tasks, err = task.AddParentDisplayTasks(ctx, tasks)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -1880,11 +1880,11 @@ func RestartFailedTasks(ctx context.Context, opts RestartOptions) (RestartResult
 	if opts.IncludeSetupFailed {
 		failureTypes = append(failureTypes, evergreen.CommandTypeSetup)
 	}
-	tasksToRestart, err := task.FindAll(db.Query(task.ByTimeStartedAndFailed(opts.StartTime, opts.EndTime, failureTypes)))
+	tasksToRestart, err := task.FindAll(ctx, db.Query(task.ByTimeStartedAndFailed(opts.StartTime, opts.EndTime, failureTypes)))
 	if err != nil {
 		return results, errors.WithStack(err)
 	}
-	tasksToRestart, err = task.AddParentDisplayTasks(tasksToRestart)
+	tasksToRestart, err = task.AddParentDisplayTasks(ctx, tasksToRestart)
 	if err != nil {
 		return results, errors.WithStack(err)
 	}
@@ -2122,7 +2122,7 @@ func endAndResetSystemFailedTask(ctx context.Context, settings *evergreen.Settin
 		// If the task has already exceeded the unschedulable threshold, we
 		// don't want to restart it, so just mark it as finished.
 		if t.DisplayOnly {
-			execTasks, err := task.FindAll(db.Query(task.ByIds(t.ExecutionTasks)))
+			execTasks, err := task.FindAll(ctx, db.Query(task.ByIds(t.ExecutionTasks)))
 			if err != nil {
 				return errors.Wrap(err, "finding execution tasks")
 			}

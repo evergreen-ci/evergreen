@@ -830,7 +830,6 @@ func TestGeneralSubscriptionIDs(t *testing.T) {
 		PatchFirstFailureID:   "PatchFirstFailureID",
 		SpawnHostExpirationID: "SpawnHostExpirationID",
 		SpawnHostOutcomeID:    "SpawnHostOutcomeID",
-		CommitQueueID:         "CommitQueueID",
 	}
 
 	assert.ElementsMatch(t, []string{
@@ -839,7 +838,6 @@ func TestGeneralSubscriptionIDs(t *testing.T) {
 		"PatchFirstFailureID",
 		"SpawnHostExpirationID",
 		"SpawnHostOutcomeID",
-		"CommitQueueID",
 	}, u.GeneralSubscriptionIDs())
 }
 

@@ -650,7 +650,7 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, versionID string, ta
 	if len(taskIds) == 0 {
 		return nil, nil
 	}
-	dbTasks, err := task.FindAll(db.Query(task.ByIds(taskIds)))
+	dbTasks, err := task.FindAll(ctx, db.Query(task.ByIds(taskIds)))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding tasks '%s': %s", taskIds, err.Error()))
 	}
@@ -1041,19 +1041,6 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 	}
 
 	waterfallVersions := groupInactiveVersions(allVersions)
-	bv := []*model.WaterfallBuildVariant{}
-
-	if len(activeVersionIds) > 0 {
-		buildVariants, err := model.GetWaterfallBuildVariants(ctx, activeVersionIds)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting waterfall build variants: %s", err.Error()))
-		}
-
-		for _, b := range buildVariants {
-			bCopy := b
-			bv = append(bv, &bCopy)
-		}
-	}
 
 	prevPageOrder := 0
 	nextPageOrder := 0
@@ -1083,8 +1070,7 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 		flattenedVersions = append(flattenedVersions, apiVersion)
 	}
 
-	return &Waterfall{
-		BuildVariants:     bv,
+	results := &Waterfall{
 		FlattenedVersions: flattenedVersions,
 		Versions:          waterfallVersions,
 		Pagination: &WaterfallPagination{
@@ -1093,7 +1079,27 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 			HasNextPage:   nextPageOrder > 0,
 			HasPrevPage:   prevPageOrder > 0,
 		},
-	}, nil
+	}
+
+	// If buildVariants its not included in the request, skip that agg pipeline
+	if utility.StringSliceContains(graphql.CollectAllFields(ctx), "buildVariants") {
+		bv := []*model.WaterfallBuildVariant{}
+
+		if len(activeVersionIds) > 0 {
+			buildVariants, err := model.GetWaterfallBuildVariants(ctx, activeVersionIds)
+			if err != nil {
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting waterfall build variants: %s", err.Error()))
+			}
+
+			for _, b := range buildVariants {
+				bCopy := b
+				bv = append(bv, &bCopy)
+			}
+		}
+		results.BuildVariants = bv
+	}
+
+	return results, nil
 }
 
 // HasVersion is the resolver for the hasVersion field.

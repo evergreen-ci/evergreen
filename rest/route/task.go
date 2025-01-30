@@ -311,7 +311,7 @@ func (rh *generatedTasksGetHandler) Parse(ctx context.Context, r *http.Request) 
 }
 
 func (rh *generatedTasksGetHandler) Run(ctx context.Context) gimlet.Responder {
-	taskInfos, err := data.FindGeneratedTasksFromID(rh.taskID)
+	taskInfos, err := data.FindGeneratedTasksFromID(ctx, rh.taskID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding tasks generated from ID '%s'", rh.taskID))
 	}

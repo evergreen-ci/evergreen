@@ -104,25 +104,6 @@ func (s *DBUserConnectorSuite) TestUpdateSettings() {
 	s.EqualError(UpdateSettings(s.users[0], settings), "400 (Bad Request): expected a Slack username, but got a channel")
 }
 
-func (s *DBUserConnectorSuite) TestUpdateSettingsCommitQueue() {
-	settings := user.UserSettings{
-		SlackUsername: "@test",
-		SlackMemberId: "TESTA25BA",
-		Notifications: user.NotificationPreferences{
-			CommitQueue: user.PreferenceSlack,
-		},
-	}
-
-	// Should create a new subscription
-	s.NoError(UpdateSettings(s.users[0], settings))
-	pref := s.getNotificationSettings(0)
-	s.NotEqual("", pref.CommitQueueID)
-	sub, err := event.FindSubscriptionByID(pref.CommitQueueID)
-	s.NoError(err)
-	s.Require().NotNil(sub)
-	s.Equal(event.SlackSubscriberType, sub.Subscriber.Type)
-}
-
 func TestDBUserConnector(t *testing.T) {
 	s := &DBUserConnectorSuite{}
 	suite.Run(t, s)

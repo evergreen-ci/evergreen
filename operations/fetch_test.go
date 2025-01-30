@@ -124,7 +124,6 @@ func TestFileNameWithIndex(t *testing.T) {
 }
 
 func TestResetGitRemoteToSSH(t *testing.T) {
-
 	opts := cloneOptions{
 		owner:      "evergreen-ci",
 		repository: "sample",
@@ -135,7 +134,7 @@ func TestResetGitRemoteToSSH(t *testing.T) {
 		isAppToken: true,
 	}
 
-	assert.NoError(t, clone(opts))
+	require.NoError(t, clone(opts))
 
 	// check that the remote is reset to SSH
 	cmd := exec.Command("git", "-C", opts.rootDir, "remote", "-v")
@@ -143,6 +142,4 @@ func TestResetGitRemoteToSSH(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, string(output), "git@github.com:")
 	assert.NotContains(t, string(output), "https:")
-	assert.NoError(t, err)
-
 }

@@ -11,7 +11,6 @@
                 "displayName": "01 Ubuntu 16.04",
                 "builds": [
                   {
-                    "activated": true,
                     "id": "evergreen_version1_build",
                     "tasks": [
                       {
@@ -32,7 +31,6 @@
                     "version": "evergreen_version1"
                   },
                   {
-                    "activated": true,
                     "id": "evergreen_version2_build",
                     "tasks": [
                       {
@@ -57,7 +55,6 @@
               {
                 "builds": [
                   {
-                    "activated": true,
                     "id": "evergreen_version3_build",
                     "tasks": [
                       {
@@ -650,6 +647,92 @@
               "nextPageOrder": 0,
               "prevPageOrder": 0
             }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "waterfall_builds.graphql",
+      "result": {
+        "data": {
+          "waterfall": {
+            "flattenedVersions": [
+              {
+                "id": "evergreen_version5",
+                "waterfallBuilds": [
+                  {
+                    "id": "evergreen_version3_build",
+                    "buildVariant": "lint",
+                    "displayName": "03 Linter",
+                    "tasks": [
+                      {
+                        "id": "task_5",
+                        "displayName": "Task Number 5"
+                      }
+                    ],
+                    "version": "evergreen_version5"
+                  }
+                ]
+              },
+              {
+                "id": "evergreen_version4",
+                "waterfallBuilds": null
+              },
+              {
+                "id": "evergreen_version3",
+                "waterfallBuilds": []
+              },
+              {
+                "id": "evergreen_version2",
+                "waterfallBuilds": [
+                  {
+                    "id": "evergreen_version2_build",
+                    "buildVariant": "enterprise-ubuntu1604-64",
+                    "displayName": "02 Ubuntu 16.04",
+                    "tasks": [
+                      {
+                        "id": "task_3",
+                        "displayName": "Some Task"
+                      },
+                      {
+                        "id": "task_4",
+                        "displayName": "Some Other Task"
+                      }
+                    ],
+                    "version": "evergreen_version2"
+                  }
+                ]
+              },
+              {
+                "id": "evergreen_version1",
+                "waterfallBuilds": [
+                  {
+                    "id": "evergreen_version1_build",
+                    "buildVariant": "enterprise-ubuntu1604-64",
+                    "displayName": "01 Ubuntu 16.04",
+                    "tasks": [
+                      {
+                        "id": "task_1",
+                        "displayName": "Some Task"
+                      },
+                      {
+                        "id": "task_2",
+                        "displayName": "Some Other Task"
+                      }
+                    ],
+                    "version": "evergreen_version1"
+                  }
+                ]
+              },
+              {
+                "id": "evergreen_version0",
+                "waterfallBuilds": null
+              },
+              {
+                "id": "evergreen_version39",
+                "waterfallBuilds": []
+              }
+            ]
           }
         }
       }

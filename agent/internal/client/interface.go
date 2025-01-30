@@ -135,7 +135,7 @@ type SharedCommunicator interface {
 	UpsertCheckRun(ctx context.Context, td TaskData, checkRunOutput apimodels.CheckRunOutput) error
 
 	// AssumeRole assumes an AWS role and returns the credentials.
-	AssumeRole(ctx context.Context, td TaskData, request apimodels.AssumeRoleRequest) (*apimodels.AssumeRoleResponse, error)
+	AssumeRole(ctx context.Context, td TaskData, request apimodels.AssumeRoleRequest) (*apimodels.AWSCredentials, error)
 }
 
 // TaskData contains the taskData.ID and taskData.Secret. It must be set for

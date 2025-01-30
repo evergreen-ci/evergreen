@@ -189,7 +189,7 @@ Aliases can also be defined locally as shown [here](../CLI#local-aliases).
 
 ### GitHub Pull Request Testing
 
-Definitions for this section exist under the "Github & Commit Queue" tab.
+Definitions for this section exist under the "GitHub" tab.
 
 Enabling "Automated Testing" will have Evergreen automatically create a patch for
 each pull request opened in the repository as well as each subsequent
@@ -213,7 +213,7 @@ you can enable "Manual Testing".
 You can also have tasks run for a *different* project for
 each pull request opened in the repository as well as each subsequent
 push to each pull request. To do that, add a trigger aliases to the
-"Github Trigger Alias" section. Before an alias can be added, it needs
+"GitHub Trigger Alias" section. Before an alias can be added, it needs
 to be defined in the "Patch Trigger Aliases" section.
 
 ![github_trigger_alias.png](../images/github_trigger_alias.png)
@@ -229,16 +229,16 @@ on your project's branch you want to accept as the merge base via the 'Oldest Al
 
 ### GitHub Commit Checks
 
-Definitions for this section exist under the "Github & Commit Queue" tab.
+Definitions for this section exist under the "GitHub" tab.
 
 This supports GitHub checks on commits (i.e. to be visible at
 `https://github.com/<owner>/<repo>/commits`). Task/variant
-regexes/tags are required, and Github statuses will be sent with only
+regexes/tags are required, and GitHub statuses will be sent with only
 the status of those tasks on the mainline commit version.
 
 ### Triggering Versions With Git Tags
 
-Definitions for this section exist under the "Github & Commit Queue" tab.
+Definitions for this section exist under the "GitHub" tab.
 
 This allows for versions to be created automatically from pushed git tags,
 and these versions will have the following properties:
@@ -276,7 +276,7 @@ Alternatively, you can use Mana to give users permission to trigger git
 tag versions for a project; however the user will need to add their
 GitHub username to their [settings
 page](https://evergreen.mongodb.com/settings) in order for us to connect
-the Github user to an Evergreen user.
+the GitHub user to an Evergreen user.
 
 **NOTE**: If the person who pushed the tag is not part of the authorized users or
 authorized teams, no version will be created. **If git tag versions are not being
@@ -385,7 +385,7 @@ Once the Patch alias is created, you can use it when creating a patch
 build, either by appending `--trigger-alias my_alias` to the evergreen
 patch command when creating a patch via the CLI, or by selecting that
 alias on the patch configure page on the new UI. The alias can also be
-added as a Github Trigger Alias in the GitHub Pull Request Testing
+added as a GitHub Trigger Alias in the GitHub Pull Request Testing
 section to kick off a child patch for each pull request opened in the
 repository as well as each subsequent push to each pull request. If the
 child patch tracks the same project and branch as the parent patch, the
@@ -676,7 +676,7 @@ patch_aliases:
 
 ### Merge Queue Aliases
 
-These apply to the [Github merge queue integration](../Merge-Queue).
+These apply to the [GitHub merge queue integration](../Merge-Queue).
 
 ``` yaml
 commit_queue_aliases:

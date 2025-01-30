@@ -118,10 +118,9 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 				Version: "aaaaaaaaaaff001122334456",
 			}
 			pRef := model.ProjectRef{
-				Id:                    "p1",
-				Owner:                 "evergreen-ci",
-				Repo:                  "sample",
-				ParameterStoreEnabled: true,
+				Id:    "p1",
+				Owner: "evergreen-ci",
+				Repo:  "sample",
 			}
 			vars := &model.ProjectVars{
 				Id:          "p1",
@@ -949,7 +948,7 @@ func TestAWSAssumeRole(t *testing.T) {
 				resp := handler.Run(ctx)
 				require.NotNil(t, resp)
 				require.Equal(t, http.StatusOK, resp.Status(), resp.Data())
-				data, ok := resp.Data().(apimodels.AssumeRoleResponse)
+				data, ok := resp.Data().(apimodels.AWSCredentials)
 				require.True(t, ok)
 				assert.NotEmpty(t, data.AccessKeyID)
 				assert.NotEmpty(t, data.SecretAccessKey)
@@ -976,4 +975,86 @@ func TestAWSAssumeRole(t *testing.T) {
 		})
 	}
 
+}
+
+func TestAWSS3(t *testing.T) {
+	route := "/task/%s/aws/s3_credentials"
+	taskID := "taskID"
+	bucket := "bucket"
+
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, ar *awsS3Credentials){
+		"ParseErrorsOnNilBody": func(ctx context.Context, t *testing.T, handler *awsS3Credentials) {
+			url := fmt.Sprintf(route, taskID)
+			request, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(nil))
+			require.NoError(t, err)
+
+			options := map[string]string{"task_id": taskID}
+			request = gimlet.SetURLVars(request, options)
+
+			assert.ErrorContains(t, handler.Parse(ctx, request), "reading s3 body for task 'taskID'")
+		},
+		"ParseErrorsOnEmptyBody": func(ctx context.Context, t *testing.T, handler *awsS3Credentials) {
+			url := fmt.Sprintf(route, taskID)
+			request, err := http.NewRequest(http.MethodPost, url, bytes.NewReader([]byte("{}")))
+			require.NoError(t, err)
+
+			options := map[string]string{"task_id": taskID}
+			request = gimlet.SetURLVars(request, options)
+
+			assert.ErrorContains(t, handler.Parse(ctx, request), "validating s3 body for task 'taskID'")
+		},
+		"ParseSucceeds": func(ctx context.Context, t *testing.T, handler *awsS3Credentials) {
+			body, err := json.Marshal(apimodels.S3CredentialsRequest{Bucket: bucket})
+			require.NoError(t, err)
+
+			url := fmt.Sprintf(route, taskID)
+			request, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(body))
+			require.NoError(t, err)
+
+			options := map[string]string{"task_id": taskID}
+			request = gimlet.SetURLVars(request, options)
+
+			require.NoError(t, handler.Parse(ctx, request))
+			assert.Equal(t, taskID, handler.taskID)
+			assert.Equal(t, bucket, handler.body.Bucket)
+
+			t.Run("RunErrorsOnNilTask", func(t *testing.T) {
+				resp := handler.Run(ctx)
+				require.NotNil(t, resp)
+				require.Equal(t, http.StatusNotFound, resp.Status(), resp.Data())
+			})
+
+			t.Run("RunSucceeds", func(t *testing.T) {
+				task := task.Task{Id: taskID, Project: projectID, Requester: "requester"}
+				require.NoError(t, task.Insert())
+
+				resp := handler.Run(ctx)
+				require.NotNil(t, resp)
+				require.Equal(t, http.StatusOK, resp.Status(), resp.Data())
+				data, ok := resp.Data().(apimodels.AWSCredentials)
+				require.True(t, ok)
+				assert.NotEmpty(t, data.AccessKeyID)
+				assert.NotEmpty(t, data.SecretAccessKey)
+				assert.NotEmpty(t, data.SessionToken)
+				assert.NotEmpty(t, data.Expiration)
+			})
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(task.Collection))
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			env := &mock.Environment{}
+			require.NoError(t, env.Configure(ctx))
+
+			manager := cloud.GetSTSManager(true)
+
+			r, ok := makeAWSS3Credentials(env, manager).(*awsS3Credentials)
+			require.True(t, ok)
+
+			tCase(ctx, t, r)
+		})
+	}
 }

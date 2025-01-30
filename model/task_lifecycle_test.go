@@ -215,7 +215,7 @@ func TestDisableOneTask(t *testing.T) {
 					require.NotZero(t, dbDisplayTask)
 					checkDisabled(t, dbDisplayTask)
 
-					dbExecTasks, err := task.FindAll(db.Query(task.ByIds([]string{tasks[1].Id, tasks[2].Id})))
+					dbExecTasks, err := task.FindAll(ctx, db.Query(task.ByIds([]string{tasks[1].Id, tasks[2].Id})))
 					require.NoError(t, err)
 					assert.Len(t, dbExecTasks, 2)
 
@@ -5965,7 +5965,7 @@ func TestEvalBisectStepback(t *testing.T) {
 		},
 		"MissingTask": func(t *testing.T, t10 task.Task) {
 			// If t5 is missing, t4 should be used.
-			require.NoError(task.Remove("t5"))
+			require.NoError(task.Remove(ctx, "t5"))
 			require.NoError(evalStepback(ctx, &t10, evergreen.TaskFailed))
 			midTask, err := task.ByBeforeMidwayTaskFromIds(ctx, "t10", "t1")
 			require.NoError(err)
@@ -5974,9 +5974,9 @@ func TestEvalBisectStepback(t *testing.T) {
 		},
 		"ManyMissingTasks": func(t *testing.T, t10 task.Task) {
 			// If t5, t4, t3 are missing, t2 should be used.
-			require.NoError(task.Remove("t5"))
-			require.NoError(task.Remove("t4"))
-			require.NoError(task.Remove("t3"))
+			require.NoError(task.Remove(ctx, "t5"))
+			require.NoError(task.Remove(ctx, "t4"))
+			require.NoError(task.Remove(ctx, "t3"))
 			require.NoError(evalStepback(ctx, &t10, evergreen.TaskFailed))
 			midTask, err := task.ByBeforeMidwayTaskFromIds(ctx, "t10", "t1")
 			require.NoError(err)
@@ -5987,10 +5987,10 @@ func TestEvalBisectStepback(t *testing.T) {
 			// If t5, t4, t3, t2 are missing then stepback has
 			// no task to step back to and it should
 			// no-op (and not re-activate t1).
-			require.NoError(task.Remove("t5"))
-			require.NoError(task.Remove("t4"))
-			require.NoError(task.Remove("t3"))
-			require.NoError(task.Remove("t2"))
+			require.NoError(task.Remove(ctx, "t5"))
+			require.NoError(task.Remove(ctx, "t4"))
+			require.NoError(task.Remove(ctx, "t3"))
+			require.NoError(task.Remove(ctx, "t2"))
 			require.NoError(evalStepback(ctx, &t10, evergreen.TaskFailed))
 			midTask, err := task.ByBeforeMidwayTaskFromIds(ctx, "t10", "t1")
 			require.NoError(err)
