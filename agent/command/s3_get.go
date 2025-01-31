@@ -106,16 +106,16 @@ func (c *s3get) ParseParams(params map[string]interface{}) error {
 	}
 
 	// make sure the command params are valid
-	if err := c.validateParams(); err != nil {
+	if err := c.validate(); err != nil {
 		return errors.Wrap(err, "validating params")
 	}
 
 	return nil
 }
 
-// validateParams that all necessary params are set, and that only one of
+// validate that all necessary params are set, and that only one of
 // local_file and extract_to is specified.
-func (c *s3get) validateParams() error {
+func (c *s3get) validate() error {
 	catcher := grip.NewSimpleCatcher()
 
 	if c.TemporaryRoleARN != "" {
@@ -174,7 +174,7 @@ func (c *s3get) Execute(ctx context.Context, comm client.Communicator, logger cl
 	}
 
 	// validate the params
-	if err := c.validateParams(); err != nil {
+	if err := c.validate(); err != nil {
 		return errors.Wrap(err, "validating expanded params")
 	}
 
