@@ -1019,6 +1019,9 @@ func (h *Host) AgentCommand(settings *evergreen.Settings, executablePath string)
 		"agent",
 		fmt.Sprintf("--api_server=%s", settings.Api.URL),
 		"--mode=host",
+		// TODO (DEVPROD-8409): delete the host ID and secret from the CLI args
+		// once the agent monitor and agent on all static/dynamic hosts have
+		// rolled over to newer versions.
 		fmt.Sprintf("--host_id=%s", h.Id),
 		fmt.Sprintf("--host_secret=%s", h.Secret),
 		fmt.Sprintf("--provider=%s", h.Distro.Provider),
@@ -1027,6 +1030,25 @@ func (h *Host) AgentCommand(settings *evergreen.Settings, executablePath string)
 		fmt.Sprintf("--working_directory=%s", h.Distro.WorkDir),
 		"--cleanup",
 	}
+}
+
+// AgentEnv returns the environment variables required to start the agent.
+func (h *Host) AgentEnv() map[string]string {
+	return map[string]string{
+		evergreen.HostIDEnvVar:     h.Id,
+		evergreen.HostSecretEnvVar: h.Secret,
+	}
+}
+
+// AgentEnvSlice is the same as AgentEnv but returns the environment variables
+// as a slice of key=value strings.
+func (h *Host) AgentEnvSlice() []string {
+	env := h.AgentEnv()
+	var envSlice []string
+	for k, v := range env {
+		envSlice = append(envSlice, fmt.Sprintf("%s=%s", k, v))
+	}
+	return envSlice
 }
 
 // AgentMonitorOptions assembles the input to a Jasper request to start the
@@ -1048,8 +1070,9 @@ func (h *Host) AgentMonitorOptions(settings *evergreen.Settings) *options.Create
 	)
 
 	return &options.Create{
-		Args: args,
-		Tags: []string{evergreen.AgentMonitorTag},
+		Args:        args,
+		Environment: h.AgentEnv(),
+		Tags:        []string{evergreen.AgentMonitorTag},
 	}
 }
 

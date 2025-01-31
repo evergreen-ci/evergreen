@@ -114,7 +114,7 @@ const (
 	AWSSessionToken = "AWS_SESSION_TOKEN"
 	// AWSRoleExpiration is the expansion name for the expiration of a temporary AWS access key.
 	AWSRoleExpiration = "AWS_ROLE_EXPIRATION"
-	// HostSecret is the environment variable within the agent that is unique to its running host.
+	// HostSecret is the expansion name within the agent that is the host's unique secret.
 	HostSecret = "HOST_SECRET"
 )
 
