@@ -205,14 +205,7 @@ func (s3pc *s3put) validate() error {
 		catcher.Errorf("invalid visibility setting '%s', allowed visibilities are: %s", s3pc.Visibility, artifact.ValidVisibilities)
 	}
 
-	if s3pc.Region == "" {
-		s3pc.Region = evergreen.DefaultEC2Region
-	}
-
-	// make sure the bucket is valid
-	if err := validateS3BucketName(s3pc.Bucket); err != nil {
-		catcher.Wrapf(err, "invalid bucket name '%s'", s3pc.Bucket)
-	}
+	catcher.Wrapf(validateS3BucketName(s3pc.Bucket), "validating bucket name '%s'", s3pc.Bucket)
 
 	// make sure the s3 permissions are valid
 	if !validS3Permissions(s3pc.Permissions) {
@@ -275,6 +268,10 @@ func (s3pc *s3put) expandParams(conf *internal.TaskConfig) error {
 		if err != nil {
 			return errors.Wrap(err, "parsing patchable parameter as a boolean")
 		}
+	}
+
+	if s3pc.Region == "" {
+		s3pc.Region = evergreen.DefaultEC2Region
 	}
 
 	return nil

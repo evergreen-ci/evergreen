@@ -128,30 +128,14 @@ func (c *s3get) validateParams() error {
 		catcher.NewWhen(c.AwsSecret == "", "AWS secret must be provided")
 	}
 
-	if c.RemoteFile == "" {
-		return errors.New("remote file cannot be blank")
-	}
+	catcher.NewWhen(c.RemoteFile == "", "remote file cannot be blank")
+	catcher.Wrapf(validateS3BucketName(c.Bucket), "validating bucket name '%s'", c.Bucket)
 
-	if c.Region == "" {
-		c.Region = evergreen.DefaultEC2Region
-	}
+	// There must be only one of local_file or extract_to specified.
+	catcher.NewWhen(c.LocalFile != "" && c.ExtractTo != "", "cannot specify both local file path and directory to extract to")
+	catcher.NewWhen(c.LocalFile == "" && c.ExtractTo == "", "must specify either local file path or directory to extract to")
 
-	// make sure the bucket is valid
-	if err := validateS3BucketName(c.Bucket); err != nil {
-		return errors.Wrapf(err, "validating bucket name '%s'", c.Bucket)
-	}
-
-	// make sure local file and extract-to dir aren't both specified
-	if c.LocalFile != "" && c.ExtractTo != "" {
-		return errors.New("cannot specify both local file path and directory to extract to")
-	}
-
-	// make sure one is specified
-	if c.LocalFile == "" && c.ExtractTo == "" {
-		return errors.New("must specify either local file path or directory to extract to")
-	}
-
-	return nil
+	return catcher.Resolve()
 }
 
 // Apply the expansions from the relevant task config
@@ -163,12 +147,18 @@ func (c *s3get) expandParams(conf *internal.TaskConfig) error {
 	if err = util.ExpandValues(c, &conf.Expansions); err != nil {
 		return errors.Wrap(err, "applying expansions")
 	}
+
 	if c.Optional != "" {
 		c.skipMissing, err = strconv.ParseBool(c.Optional)
 		if err != nil {
 			return errors.Wrap(err, "parsing optional parameter as a boolean")
 		}
 	}
+
+	if c.Region == "" {
+		c.Region = evergreen.DefaultEC2Region
+	}
+
 	return nil
 }
 
