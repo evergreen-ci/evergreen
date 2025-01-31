@@ -409,6 +409,9 @@ func restartTasks(ctx context.Context, allFinishedTasks []task.Task, caller, ver
 	}
 	for _, t := range allFinishedTasks {
 		if !t.IsPartOfSingleHostTaskGroup() { // this will be logged separately if task group is restarted
+			// kim: TODO: figure out if this needs to handle execution tasks as
+			// well. It possibly already handles execution tasks when restarting
+			// an entire version.
 			event.LogTaskRestarted(t.Id, t.Execution, caller)
 		}
 	}
