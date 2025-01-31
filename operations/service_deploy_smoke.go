@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"strconv"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/globals"
 	timberutil "github.com/evergreen-ci/timber/testutil"
 	"github.com/mongodb/grip"
@@ -157,8 +158,8 @@ func smokeStartEvergreen() cli.Command {
 				switch mode {
 				case string(globals.HostMode):
 					envVars = []string{
-						fmt.Sprintf("HOST_ID=%s", execModeID),
-						fmt.Sprintf("HOST_SECRET=%s", execModeSecret),
+						fmt.Sprintf("%s=%s", evergreen.HostIDEnvVar, execModeID),
+						fmt.Sprintf("%s=%s", evergreen.HostSecretEnvVar, execModeSecret),
 					}
 				case string(globals.PodMode):
 					envVars = []string{
