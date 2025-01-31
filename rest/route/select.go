@@ -6,7 +6,9 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/gimlet"
+	testselection "github.com/evergreen-ci/test-selection-client"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -15,6 +17,7 @@ import (
 
 type selectTestsHandler struct {
 	selectTests SelectTestsRequest
+	env         evergreen.Environment
 }
 
 // SelectTestsRequest represents a request to return a filtered set of tests to
@@ -50,7 +53,7 @@ func makeSelectTestsHandler() gimlet.RouteHandler {
 //	@Security		Api-User || Api-Key
 //	@Success		200	{object}	SelectTestsRequest
 func (t *selectTestsHandler) Factory() gimlet.RouteHandler {
-	return &selectTestsHandler{}
+	return &selectTestsHandler{env: t.env}
 }
 
 func (t *selectTestsHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -82,5 +85,23 @@ func (t *selectTestsHandler) Run(ctx context.Context) gimlet.Responder {
 		"request": t.selectTests,
 		"ticket":  "DEVPROD-11629",
 	})
+
+	if url := t.env.Settings().TestSelection.URL; url != "" {
+		// kim: NOTE: see more info: https://www.speakeasy.com/post/openapi-servers#servers-in-oas-3x---controlled-flexibility
+		httpClient := utility.GetHTTPClient()
+		defer utility.PutHTTPClient(httpClient)
+		conf := testselection.NewConfiguration()
+		conf.HTTPClient = httpClient
+		// conf.Host = "TEST_SELECTION_URL_WITHOUT_HTTPS_GOES_HERE"
+		// conf.Scheme = "https"
+		conf.Servers = testselection.ServerConfigurations{
+			{
+				URL:         "TEST_SELECTION_URL_WITH_HTTPS_GOES_HERE",
+				Description: "Test selection service",
+			},
+		}
+		c := testselection.NewAPIClient(conf)
+	}
+
 	return gimlet.NewJSONResponse(t.selectTests)
 }
