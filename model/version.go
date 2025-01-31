@@ -752,7 +752,7 @@ func constructManifest(v *Version, projectRef *ProjectRef, moduleList ModuleList
 
 	var baseManifest *manifest.Manifest
 	isPatch := utility.StringSliceContains(evergreen.PatchRequesters, v.Requester)
-	if isPatch {
+	if isPatch || v.Requester == evergreen.AdHocRequester {
 		baseManifest, err = manifest.FindFromVersion(v.Id, v.Identifier, v.Revision, v.Requester)
 		if err != nil {
 			return nil, errors.Wrap(err, "getting base manifest")
