@@ -157,10 +157,7 @@ func smokeStartEvergreen() cli.Command {
 				var envVars []string
 				switch mode {
 				case string(globals.HostMode):
-					envVars = []string{
-						fmt.Sprintf("%s=%s", evergreen.HostIDEnvVar, execModeID),
-						fmt.Sprintf("%s=%s", evergreen.HostSecretEnvVar, execModeSecret),
-					}
+					envVars = makeHostAuthEnvVars(execModeID, execModeSecret)
 				case string(globals.PodMode):
 					envVars = []string{
 						fmt.Sprintf("POD_ID=%s", execModeID),
@@ -222,10 +219,7 @@ func smokeStartEvergreen() cli.Command {
 					exit,
 					"agent.monitor",
 					wd,
-					[]string{
-						fmt.Sprintf("HOST_ID=%s", execModeID),
-						fmt.Sprintf("HOST_SECRET=%s", execModeSecret),
-					},
+					makeHostAuthEnvVars(execModeID, execModeSecret),
 					binary,
 					"agent",
 					fmt.Sprintf("--mode=%s", globals.HostMode),
@@ -252,6 +246,13 @@ func smokeStartEvergreen() cli.Command {
 			return nil
 
 		},
+	}
+}
+
+func makeHostAuthEnvVars(hostID, secret string) []string {
+	return []string{
+		fmt.Sprintf("%s=%s", evergreen.HostIDEnvVar, hostID),
+		fmt.Sprintf("%s=%s", evergreen.HostSecretEnvVar, secret),
 	}
 }
 
