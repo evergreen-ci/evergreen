@@ -1019,11 +1019,6 @@ func (h *Host) AgentCommand(settings *evergreen.Settings, executablePath string)
 		"agent",
 		fmt.Sprintf("--api_server=%s", settings.Api.URL),
 		"--mode=host",
-		// TODO (DEVPROD-8409): delete the host ID and secret from the CLI args
-		// once the agent monitor and agent on all static/dynamic hosts have
-		// rolled over to newer versions.
-		fmt.Sprintf("--host_id=%s", h.Id),
-		fmt.Sprintf("--host_secret=%s", h.Secret),
 		fmt.Sprintf("--provider=%s", h.Distro.Provider),
 		"--log_output=file",
 		fmt.Sprintf("--log_prefix=%s", filepath.Join(h.Distro.WorkDir, "agent")),
