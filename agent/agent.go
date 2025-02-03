@@ -397,7 +397,7 @@ func (a *Agent) processNextTask(ctx context.Context, nt *apimodels.NextTaskRespo
 				"task":    tc.task.ID,
 			})
 			return processNextResponse{
-				tc: tc,
+				noTaskToRun: true,
 			}, nil
 		}
 	}

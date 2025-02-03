@@ -228,6 +228,28 @@ func (s *AgentSuite) TestTaskWithoutSecret() {
 	s.True(ntr.noTaskToRun)
 }
 
+func (s *AgentSuite) TestSingleTaskDistroValidation() {
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:     "notSingleTaskDistroTask",
+		TaskSecret: "secret",
+	}
+
+	s.a.opts.AllowedSingleTaskDistroTasks = []string{"singleTaskDistroTask"}
+
+	ntr, err := s.a.processNextTask(s.ctx, nextTask, s.tc, false)
+
+	s.NoError(err)
+	s.Require().NotNil(ntr)
+	s.False(ntr.shouldExit)
+	s.True(ntr.noTaskToRun)
+
+	nextTask.TaskId = "singleTaskDistroTask"
+	ntr, err = s.a.processNextTask(s.ctx, nextTask, s.tc, false)
+	s.NoError(err)
+	s.Require().NotNil(ntr)
+	s.Require().NotNil(ntr.tc)
+}
+
 func (s *AgentSuite) TestErrorGettingNextTask() {
 	s.mockCommunicator.NextTaskShouldFail = true
 	ctx, cancel := context.WithTimeout(s.ctx, 5*time.Second)
