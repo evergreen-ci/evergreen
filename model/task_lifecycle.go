@@ -1817,8 +1817,6 @@ func MarkOneTaskReset(ctx context.Context, t *task.Task, caller string) error {
 			return errors.Wrap(err, "resetting failed execution tasks")
 		}
 
-		// kim: TODO: test in staging with failed_only/all
-		// kim: TODO: add unit tests
 		grip.Error(message.WrapError(logExecutionTasksRestarted(ctx, t, execTaskIdsToRestart, caller), message.Fields{
 			"message":                      "could not log task restart events for some execution tasks",
 			"display_task_id":              t.Id,

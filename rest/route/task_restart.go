@@ -80,7 +80,6 @@ func (trh *taskRestartHandler) Parse(ctx context.Context, r *http.Request) error
 
 // Execute calls the data ResetTask function and returns the refreshed
 // task from the service.
-// kim: TODO: double-check that this logs task restart event.
 func (trh *taskRestartHandler) Run(ctx context.Context) gimlet.Responder {
 	err := resetTask(ctx, evergreen.GetEnvironment().Settings(), trh.taskId, trh.username, trh.FailedOnly)
 	if err != nil {
