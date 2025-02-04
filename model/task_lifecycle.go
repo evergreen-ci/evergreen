@@ -1857,7 +1857,13 @@ func logExecutionTasksRestarted(ctx context.Context, displayTask *task.Task, exe
 			catcher.Errorf("execution task '%s' not found", etID)
 			continue
 		}
-		event.LogTaskRestarted(execTask.Id, execTask.Execution, caller)
+		// Use the previous execution number rather than latest execution
+		// number. The task restart event is supposed to log the previous
+		// execution that was restarted (e.g. if it restarted from execution 2
+		// to execution 3, the restart event should log for execution 2). This
+		// logic always logs after the execution task has already been
+		// restarted, so it needs to use the previous execution number.
+		event.LogTaskRestarted(execTask.Id, execTask.Execution-1, caller)
 	}
 
 	return catcher.Resolve()

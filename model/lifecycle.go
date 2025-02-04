@@ -409,10 +409,15 @@ func restartTasks(ctx context.Context, allFinishedTasks []task.Task, caller, ver
 	}
 	for _, t := range allFinishedTasks {
 		if !t.IsPartOfSingleHostTaskGroup() { // this will be logged separately if task group is restarted
-			// kim: TODO: figure out if this needs to handle execution tasks as
-			// well. It possibly already handles execution tasks when restarting
-			// an entire version.
 			event.LogTaskRestarted(t.Id, t.Execution, caller)
+		}
+		if t.DisplayOnly {
+			// kim: TODO: add test for execution task restart log
+			grip.Error(message.WrapError(logExecutionTasksRestarted(ctx, &t, t.ExecutionTasks, caller), message.Fields{
+				"message":                      "could not log task restart events for some execution tasks",
+				"display_task_id":              t.Id,
+				"restarted_execution_task_ids": t.ExecutionTasks,
+			}))
 		}
 	}
 
