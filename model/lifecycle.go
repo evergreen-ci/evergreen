@@ -412,7 +412,6 @@ func restartTasks(ctx context.Context, allFinishedTasks []task.Task, caller, ver
 			event.LogTaskRestarted(t.Id, t.Execution, caller)
 		}
 		if t.DisplayOnly {
-			// kim: TODO: add test for execution task restart log
 			grip.Error(message.WrapError(logExecutionTasksRestarted(ctx, &t, t.ExecutionTasks, caller), message.Fields{
 				"message":                      "could not log task restart events for some execution tasks",
 				"display_task_id":              t.Id,
