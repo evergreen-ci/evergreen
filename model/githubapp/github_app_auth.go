@@ -124,6 +124,8 @@ func (g *GithubAppAuth) CreateGitHubSenderInstallationToken(ctx context.Context,
 // CreateInstallationToken creates an installation token for the given
 // owner/repo. This is never cached, and should only be used in scenarios where
 // the token can be revoked at any time.
+// kim: NOTE: this is the main logic used to generate dynamic access token. This
+// package uses a custom GitHub HTTP client based on utility/rehttp.
 func (g *GithubAppAuth) CreateInstallationToken(ctx context.Context, owner, repo string, opts *github.InstallationTokenOptions) (string, *github.InstallationPermissions, error) {
 	installationID, err := getInstallationID(ctx, g, owner, repo)
 	if err != nil {
