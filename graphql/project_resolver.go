@@ -25,18 +25,21 @@ func (r *projectResolver) IsFavorite(ctx context.Context, obj *restModel.APIProj
 
 // Patches is the resolver for the patches field.
 func (r *projectResolver) Patches(ctx context.Context, obj *restModel.APIProjectRef, patchesInput PatchesInput) (*Patches, error) {
-	opts := patch.ByPatchNameStatusesCommitQueuePaginatedOptions{
-		Project:         obj.Id,
-		PatchName:       patchesInput.PatchName,
-		Statuses:        patchesInput.Statuses,
-		Page:            patchesInput.Page,
-		Limit:           patchesInput.Limit,
-		OnlyCommitQueue: patchesInput.OnlyCommitQueue,
-		IncludeHidden:   patchesInput.IncludeHidden,
-		Requesters:      patchesInput.Requesters,
+	if patchesInput.OnlyMergeQueue == nil {
+		patchesInput.OnlyMergeQueue = patchesInput.OnlyCommitQueue
+	}
+	opts := patch.ByPatchNameStatusesMergeQueuePaginatedOptions{
+		Project:        obj.Id,
+		PatchName:      patchesInput.PatchName,
+		Statuses:       patchesInput.Statuses,
+		Page:           patchesInput.Page,
+		Limit:          patchesInput.Limit,
+		OnlyMergeQueue: patchesInput.OnlyMergeQueue,
+		IncludeHidden:  patchesInput.IncludeHidden,
+		Requesters:     patchesInput.Requesters,
 	}
 
-	patches, count, err := patch.ByPatchNameStatusesCommitQueuePaginated(ctx, opts)
+	patches, count, err := patch.ByPatchNameStatusesMergeQueuePaginated(ctx, opts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patches for project '%s': %s", utility.FromStringPtr(opts.Project), err.Error()))
 	}

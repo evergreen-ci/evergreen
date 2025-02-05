@@ -53,12 +53,24 @@
           "project": {
             "patches": {
               "patches": [
-                { "id": "5e4ff3abe3c3317e352062e8" },
-                { "id": "5e4ff3abe3c3317e352062e7" },
-                { "id": "5e4ff3abe3c3317e352062e6" },
-                { "id": "5e4ff3abe3c3317e352062e5" },
-                { "id": "5e4ff3abe3c3317e352062e4" },
-                { "id": "5e4ff3abe3c3317e352062e9" }
+                {
+                  "id": "5e4ff3abe3c3317e352062e8"
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e7"
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e6"
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e5"
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e4"
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e9"
+                }
               ],
               "filteredPatchCount": 6
             }
@@ -73,29 +85,15 @@
         "errors": [
           {
             "message": "project 'not a real project' not found",
-            "path": ["project", "projectIdentifier"],
+            "path": [
+              "project",
+              "projectIdentifier"
+            ],
             "extensions": {
               "code": "RESOURCE_NOT_FOUND"
             }
           }
         ]
-      }
-    },
-    {
-      "query_file": "only_commit_queue.graphql",
-      "result": {
-        "data": {
-          "project": {
-            "patches": {
-              "patches": [
-                { "id": "5e4ff3abe3c3317e352062e6" },
-                { "id": "5e4ff3abe3c3317e352062e5" },
-                { "id": "5e4ff3abe3c3317e352062e4" }
-              ],
-              "filteredPatchCount": 3
-            }
-          }
-        }
       }
     },
     {
@@ -105,9 +103,15 @@
           "page0": {
             "patches": {
               "patches": [
-                { "id": "5e4ff3abe3c3317e352062e8" },
-                { "id": "5e4ff3abe3c3317e352062e7" },
-                { "id": "5e4ff3abe3c3317e352062e6" }
+                {
+                  "id": "5e4ff3abe3c3317e352062e8"
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e7"
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e6"
+                }
               ],
               "filteredPatchCount": 6
             }
@@ -115,9 +119,15 @@
           "page1": {
             "patches": {
               "patches": [
-                { "id": "5e4ff3abe3c3317e352062e5" },
-                { "id": "5e4ff3abe3c3317e352062e4" },
-                { "id": "5e4ff3abe3c3317e352062e9" }
+                {
+                  "id": "5e4ff3abe3c3317e352062e5"
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e4"
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e9"
+                }
               ],
               "filteredPatchCount": 6
             }
@@ -132,9 +142,18 @@
           "project": {
             "patches": {
               "patches": [
-                { "id": "5e4ff3abe3c3317e352062e7", "description": "222" },
-                { "id": "5e4ff3abe3c3317e352062e5", "description": "222" },
-                { "id": "5e4ff3abe3c3317e352062e9", "description": "222" }
+                {
+                  "id": "5e4ff3abe3c3317e352062e7",
+                  "description": "222"
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e5",
+                  "description": "222"
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e9",
+                  "description": "222"
+                }
               ],
               "filteredPatchCount": 3
             }
@@ -149,8 +168,14 @@
           "project": {
             "patches": {
               "patches": [
-                { "id": "5e4ff3abe3c3317e352062e7", "status": "failed" },
-                { "id": "5e4ff3abe3c3317e352062e9", "status": "failed" }
+                {
+                  "id": "5e4ff3abe3c3317e352062e7",
+                  "status": "failed"
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e9",
+                  "status": "failed"
+                }
               ],
               "filteredPatchCount": 2
             }
@@ -183,6 +208,54 @@
       }
     },
     {
+      "query_file": "only_commit_queue.graphql",
+      "test_user_id": "regular_user",
+      "result": {
+        "data": {
+          "project": {
+            "patches": {
+              "patches": [
+                {
+                  "id": "5e4ff3abe3c3317e352062e6"
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e5"
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e4"
+                }
+              ],
+              "filteredPatchCount": 3
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "only_merge_queue.graphql",
+      "test_user_id": "regular_user",
+      "result": {
+        "data": {
+          "project": {
+            "patches": {
+              "patches": [
+                {
+                  "id": "5e4ff3abe3c3317e352062e6"
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e5"
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e4"
+                }
+              ],
+              "filteredPatchCount": 3
+            }
+          }
+        }
+      }
+    },
+    {
       "query_file": "no_permissions.graphql",
       "test_user_id": "regular_user",
       "result": {
@@ -190,7 +263,10 @@
         "errors": [
           {
             "message": "user 'regular_user' does not have permission to 'view tasks' for the project 'evergreen'",
-            "path": ["project", "projectIdentifier"],
+            "path": [
+              "project",
+              "projectIdentifier"
+            ],
             "extensions": {
               "code": "FORBIDDEN"
             }

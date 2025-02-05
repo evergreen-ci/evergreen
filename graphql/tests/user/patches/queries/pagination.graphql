@@ -2,7 +2,6 @@
   page0: user {
     patches(
       patchesInput: {
-        includeCommitQueue: true
         page: 0
         limit: 3
         includeHidden: true
@@ -17,7 +16,6 @@
   page1: user {
     patches(
       patchesInput: {
-        includeCommitQueue: true
         page: 1
         limit: 3
         includeHidden: true

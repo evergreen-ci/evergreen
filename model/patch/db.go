@@ -136,17 +136,16 @@ func ByGithash(githash string) db.Q {
 	return db.Query(bson.M{bsonutil.GetDottedKeyName(githubPatchDataKey, headHashKey): githash})
 }
 
-type ByPatchNameStatusesCommitQueuePaginatedOptions struct {
-	Author             *string
-	IncludeCommitQueue *bool
-	IncludeHidden      *bool
-	Limit              int
-	OnlyCommitQueue    *bool
-	Page               int
-	PatchName          string
-	Project            *string
-	Requesters         []string
-	Statuses           []string
+type ByPatchNameStatusesMergeQueuePaginatedOptions struct {
+	Author         *string
+	IncludeHidden  *bool
+	Limit          int
+	OnlyMergeQueue *bool
+	Page           int
+	PatchName      string
+	Project        *string
+	Requesters     []string
+	Statuses       []string
 }
 
 // Based off of the implementation for Patch.GetRequester.
@@ -182,28 +181,22 @@ var requesterExpression = bson.M{
 	},
 }
 
-func ByPatchNameStatusesCommitQueuePaginated(ctx context.Context, opts ByPatchNameStatusesCommitQueuePaginatedOptions) ([]Patch, int, error) {
-	if opts.OnlyCommitQueue != nil && opts.IncludeCommitQueue != nil {
-		return nil, 0, errors.New("can't both include commit queue patches and also set only including commit queue patches")
-	}
+func ByPatchNameStatusesMergeQueuePaginated(ctx context.Context, opts ByPatchNameStatusesMergeQueuePaginatedOptions) ([]Patch, int, error) {
 	if opts.Project != nil && opts.Author != nil {
 		return nil, 0, errors.New("can't set both project and author")
 	}
 	pipeline := []bson.M{}
 	match := bson.M{}
-	if len(opts.Requesters) > 0 {
-		pipeline = append(pipeline, bson.M{"$addFields": bson.M{"requester": requesterExpression}})
-		match["requester"] = bson.M{"$in": opts.Requesters}
-	}
-	// Conditionally add the commit queue filter if the user is explicitly filtering on it.
-	// This is only used on the project patches page when we want to conditionally only show the commit queue patches.
-	if utility.FromBoolPtr(opts.OnlyCommitQueue) {
-		match[AliasKey] = evergreen.CommitQueueAlias
-	}
 
-	// This is only used on the user patches page when we want to filter out the commit queue
-	if opts.IncludeCommitQueue != nil && !utility.FromBoolPtr(opts.IncludeCommitQueue) {
-		match[AliasKey] = commitQueueFilter
+	if len(opts.Requesters) > 0 || utility.FromBoolPtr(opts.OnlyMergeQueue) {
+		requesterMatch := bson.M{"$in": opts.Requesters}
+		// Conditionally add the merge queue requester filter if the user is explicitly filtering on it.
+		// This is only used on the project patches page when we want to conditionally only show merge queue patches.
+		if utility.FromBoolPtr(opts.OnlyMergeQueue) {
+			requesterMatch = bson.M{"$eq": evergreen.GithubMergeRequester}
+		}
+		pipeline = append(pipeline, bson.M{"$addFields": bson.M{"requester": requesterExpression}})
+		match["requester"] = requesterMatch
 	}
 
 	if !utility.FromBoolTPtr(opts.IncludeHidden) {

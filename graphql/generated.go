@@ -74969,20 +74969,13 @@ func (ec *executionContext) unmarshalInputPatchesInput(ctx context.Context, obj 
 		asMap["statuses"] = []interface{}{}
 	}
 
-	fieldsInOrder := [...]string{"includeCommitQueue", "limit", "onlyCommitQueue", "includeHidden", "page", "patchName", "statuses", "requesters"}
+	fieldsInOrder := [...]string{"limit", "onlyCommitQueue", "onlyMergeQueue", "includeHidden", "page", "patchName", "statuses", "requesters"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
-		case "includeCommitQueue":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("includeCommitQueue"))
-			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.IncludeCommitQueue = data
 		case "limit":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("limit"))
 			data, err := ec.unmarshalNInt2int(ctx, v)
@@ -74997,6 +74990,13 @@ func (ec *executionContext) unmarshalInputPatchesInput(ctx context.Context, obj 
 				return it, err
 			}
 			it.OnlyCommitQueue = data
+		case "onlyMergeQueue":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("onlyMergeQueue"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.OnlyMergeQueue = data
 		case "includeHidden":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("includeHidden"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
