@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -132,6 +133,18 @@ func ModifyHostStatus(ctx context.Context, env evergreen.Environment, h *host.Ho
 		currentStatus == evergreen.HostQuarantined &&
 		utility.StringSliceContains([]string{evergreen.HostRunning, evergreen.HostProvisioning}, newStatus)
 	if unquarantinedAndNeedsReprovision {
+		query := host.NeedsAgentMonitorDeploy(time.Now())
+		query[host.IdKey] = h.Id
+		foundHost, err := host.FindOne(ctx, query)
+		if err != nil {
+			return "", http.StatusInternalServerError, errors.Wrap(err, HostUpdateError)
+		}
+		if foundHost != nil {
+			if err = h.SetNeedsNewAgentMonitor(ctx, true); err != nil {
+				return "", http.StatusInternalServerError, errors.Wrap(err, HostUpdateError)
+			}
+		}
+
 		if _, err = GetReprovisionToNewCallback(ctx, env, u.Username())(h); err != nil {
 			return "", http.StatusInternalServerError, errors.Wrap(err, HostUpdateError)
 		}

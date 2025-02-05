@@ -59,12 +59,13 @@ func TestModifyHostStatusWithUpdateStatus(t *testing.T) {
 		require.True(ok, "%T", events[0].Data)
 		assert.Equal("because I can", hostevent.Logs)
 	})
-	t.Run("SuccessfullyUnquarantinesHostAndMarksAsReprovisioning", func(t *testing.T) {
+	t.Run("SuccessfullyUnquarantinesUncommunicatedHostAndMarksAsReprovisioning", func(t *testing.T) {
 		user := user.DBUser{Id: "user"}
 		h := host.Host{
-			Id:       "h2",
-			Provider: evergreen.ProviderNameStatic,
-			Status:   evergreen.HostQuarantined,
+			Id:        "h2",
+			StartedBy: evergreen.User,
+			Provider:  evergreen.ProviderNameStatic,
+			Status:    evergreen.HostQuarantined,
 			Distro: distro.Distro{
 				BootstrapSettings: distro.BootstrapSettings{
 					Method:        distro.BootstrapMethodSSH,
@@ -92,6 +93,7 @@ func TestModifyHostStatusWithUpdateStatus(t *testing.T) {
 		require.NotNil(t, dbHost)
 		assert.Equal(0, dbHost.NumAgentCleanupFailures)
 		assert.Equal(evergreen.HostProvisioning, dbHost.Status)
+		assert.True(dbHost.NeedsNewAgentMonitor)
 	})
 	t.Run("FailsToDecommissionStaticHosts", func(t *testing.T) {
 		user := user.DBUser{Id: "user"}
