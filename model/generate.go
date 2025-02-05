@@ -332,13 +332,17 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, settings *
 		ActivatedTasksAreEssentialToSucceed: g.Task.IsEssentialToSucceed,
 	}
 
-	activatedTasksInExistingBuilds, err := addNewTasksToExistingBuilds(ctx, creationInfo, existingBuilds, evergreen.GenerateTasksActivator)
+	// kim: NOTE: activatedTasksInExistingBuilds does not include dependencies
+	// that get activated. Could return it from the result though.
+	activatedTasksInExistingBuilds, activatedDependenciesFromTasksInExistingBuilds, err := addNewTasksToExistingBuilds(ctx, creationInfo, existingBuilds, evergreen.GenerateTasksActivator)
 	if err != nil {
 		return errors.Wrap(err, "adding new tasks")
 	}
 
 	creationInfo.Pairs = newTVPairsForNewVariants
-	activatedTasksInNewBuilds, err := addNewBuilds(ctx, creationInfo, existingBuilds)
+	// kim: NOTE: activatedTasksInNewBUilds does not include dependencies that
+	// get activated. Could return it from the result though.
+	activatedTasksInNewBuilds, activatedDependenciesFromTasksInNewBuilds, err := addNewBuilds(ctx, creationInfo, existingBuilds)
 	if err != nil {
 		return errors.Wrap(err, "adding new builds")
 	}
@@ -347,8 +351,13 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, settings *
 		return errors.Wrap(err, "updating statuses for builds that have added generated tasks")
 	}
 
-	numActivatedGenerateTasks := len(activatedTasksInExistingBuilds) + len(activatedTasksInNewBuilds)
+	numActivatedGenerateTasks := len(activatedTasksInExistingBuilds) + len(activatedTasksInNewBuilds) + len(activatedDependenciesFromTasksInExistingBuilds) + len(activatedDependenciesFromTasksInNewBuilds)
 	span.SetAttributes(attribute.Int(numActivatedGenerateTasksAttribute, numActivatedGenerateTasks))
+	// kim: NOTE: rather than return the number of activated tasks and
+	// dependencies all over the place, we could absorb this as an $inc into
+	// addNewBuilds and addNewTasksToExistingBuilds so they add up the activated
+	// generated tasks as they go. Can set the span attribute using
+	// SpanFromContext.
 	if err = g.Task.SetNumActivatedGeneratedTasks(ctx, numActivatedGenerateTasks); err != nil {
 		return errors.Wrapf(err, "setting number of tasks generated and activated by '%s'", g.Task.Id)
 	}

@@ -69,7 +69,7 @@ func SetVersionActivation(ctx context.Context, versionId string, active bool, ca
 			return errors.Wrap(err, "getting tasks to activate")
 		}
 		if len(tasksToModify) > 0 {
-			if err = task.ActivateTasks(ctx, tasksToModify, time.Now(), false, caller); err != nil {
+			if _, err = task.ActivateTasks(ctx, tasksToModify, time.Now(), false, caller); err != nil {
 				return errors.Wrap(err, "updating tasks for activation")
 			}
 		}
@@ -152,7 +152,7 @@ func setTaskActivationForBuilds(ctx context.Context, buildIds []string, active, 
 				}
 			}
 		}
-		if err = task.ActivateTasks(ctx, tasksToActivate, time.Now(), withDependencies, caller); err != nil {
+		if _, err = task.ActivateTasks(ctx, tasksToActivate, time.Now(), withDependencies, caller); err != nil {
 			return errors.Wrap(err, "updating tasks for activation")
 		}
 
@@ -1481,13 +1481,13 @@ func sortLayer(layer []task.Task, idToDisplayName map[string]string) []task.Task
 // Given a patch version and a list of variant/task pairs, creates the set of new builds that
 // do not exist yet out of the set of pairs. No tasks are added for builds which already exist
 // (see AddNewTasksForPatch). New builds/tasks are activated depending on their batchtime.
-// Returns activated task IDs.
-func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBuilds []build.Build) ([]string, error) {
+// Returns task IDs for activated tasks and for activated dependencies.
+func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBuilds []build.Build) ([]string, []string, error) {
 	ctx, span := tracer.Start(ctx, "add-new-builds")
 	defer span.End()
 	taskIdTables, err := getTaskIdConfig(ctx, creationInfo)
 	if err != nil {
-		return nil, errors.Wrap(err, "making task ID table")
+		return nil, nil, errors.Wrap(err, "making task ID table")
 	}
 
 	newBuildIds := make([]string, 0)
@@ -1504,7 +1504,7 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 
 	createTime, err := getTaskCreateTime(creationInfo)
 	if err != nil {
-		return nil, errors.Wrap(err, "getting create time for tasks")
+		return nil, nil, errors.Wrap(err, "getting create time for tasks")
 	}
 	batchTimeCatcher := grip.NewBasicCatcher()
 	for _, pair := range creationInfo.Pairs.ExecTasks {
@@ -1539,7 +1539,7 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 		})
 		build, tasks, err := CreateBuildFromVersionNoInsert(ctx, buildCreationArgs)
 		if err != nil {
-			return nil, errors.WithStack(err)
+			return nil, nil, errors.WithStack(err)
 		}
 		if len(tasks) == 0 {
 			grip.Info(message.Fields{
@@ -1553,7 +1553,7 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 
 		allTasks = append(allTasks, tasks...)
 		if err = build.Insert(); err != nil {
-			return nil, errors.Wrapf(err, "inserting build '%s'", build.Id)
+			return nil, nil, errors.Wrapf(err, "inserting build '%s'", build.Id)
 		}
 		newBuildIds = append(newBuildIds, build.Id)
 
@@ -1603,11 +1603,14 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 	}
 	SetNumDependents(allTasks)
 	if err = allTasks.InsertUnordered(ctx); err != nil {
-		return nil, errors.Wrap(err, "inserting tasks")
+		return nil, nil, errors.Wrap(err, "inserting tasks")
 	}
 	numTasksModified := numEstimatedActivatedGeneratedTasks + len(newActivatedTaskIds)
+	// kim: NOTE: this scheduling limit appears to exclude dependencies
+	// activated indirectly. Dependencies are added to the scheduling limit in
+	// ActivateTasks below.
 	if err = task.UpdateSchedulingLimit(creationInfo.Version.Author, creationInfo.Version.Requester, numTasksModified, true); err != nil {
-		return nil, errors.Wrapf(err, "fetching user '%s' and updating their scheduling limit", creationInfo.Version.Author)
+		return nil, nil, errors.Wrapf(err, "fetching user '%s' and updating their scheduling limit", creationInfo.Version.Author)
 	}
 	grip.Error(message.WrapError(batchTimeCatcher.Resolve(), message.Fields{
 		"message": "unable to get all activation times",
@@ -1625,37 +1628,42 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 		},
 	))
 	if err != nil {
-		return nil, errors.Wrap(err, "updating version with new build IDs")
+		return nil, nil, errors.Wrap(err, "updating version with new build IDs")
 	}
 
 	activatedTaskDependencies, err := task.GetRecursiveDependenciesUp(ctx, newActivatedTasks, nil)
 	if err != nil {
-		return nil, errors.Wrap(err, "getting dependencies for activated tasks")
+		return nil, nil, errors.Wrap(err, "getting dependencies for activated tasks")
 	}
 
-	if err = task.ActivateTasks(ctx, activatedTaskDependencies, time.Now(), true, evergreen.User); err != nil {
-		return nil, errors.Wrap(err, "activating dependencies for new tasks")
+	// kim: NOTE: ActivateTasks already updates the scheduling limit internally.
+	// However, we don't know how many tasks it actually activates. That could
+	// be returned as the result from task.ActivateTasks.
+	activatedDependencyIDs, err := task.ActivateTasks(ctx, activatedTaskDependencies, time.Now(), true, evergreen.User)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "activating dependencies for new tasks")
 	}
 
-	return newActivatedTaskIds, nil
+	return newActivatedTaskIds, activatedDependencyIDs, nil
 }
 
 // Given a version and set of variant/task pairs, creates any tasks that don't exist yet,
-// within the set of already existing builds. Returns activated task IDs.
-func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBuilds []build.Build, caller string) ([]string, error) {
+// within the set of already existing builds. Returns task IDs for activated
+// tasks and task IDs for activated dependencies.
+func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBuilds []build.Build, caller string) ([]string, []string, error) {
 	ctx, span := tracer.Start(ctx, "add-new-tasks")
 	defer span.End()
 	if creationInfo.Version.BuildIds == nil {
-		return nil, nil
+		return nil, nil, nil
 	}
 	distroAliases, err := distro.NewDistroAliasesLookupTable(ctx)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	taskIdTables, err := getTaskIdConfig(ctx, creationInfo)
 	if err != nil {
-		return nil, errors.Wrap(err, "getting table of task IDs")
+		return nil, nil, errors.Wrap(err, "getting table of task IDs")
 	}
 
 	activatedTaskIds := []string{}
@@ -1667,7 +1675,7 @@ func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationI
 		// Find the set of task names that already exist for the given build, including display tasks.
 		tasksInBuild, err := task.FindAll(ctx, db.Query(task.ByBuildId(b.Id)).WithFields(task.DisplayNameKey, task.ActivatedKey))
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		existingTasksIndex := map[string]bool{}
 		hasActivatedTask := false
@@ -1710,7 +1718,7 @@ func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationI
 		creationInfo.DistroAliases = distroAliases
 		_, tasks, err := addTasksToBuild(ctx, creationInfo)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		allTasks = append(allTasks, tasks...)
@@ -1731,41 +1739,47 @@ func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationI
 	}
 	SetNumDependents(allTasks)
 	if err = allTasks.InsertUnordered(ctx); err != nil {
-		return nil, errors.Wrap(err, "inserting tasks")
+		return nil, nil, errors.Wrap(err, "inserting tasks")
 	}
 	// update each build to hold the new tasks
 	for _, b := range existingBuilds {
 		if err = RefreshTasksCache(ctx, b.Id); err != nil {
-			return nil, errors.Wrapf(err, "updating task cache for '%s'", b.Id)
+			return nil, nil, errors.Wrapf(err, "updating task cache for '%s'", b.Id)
 		}
 	}
+	// kim: NOTE: internally, this calls UpdateSchedulingLimit, so it does add
+	// them to the user's task scheduling limit.
 	if err = task.CheckUsersPatchTaskLimit(ctx, creationInfo.Version.Requester, creationInfo.Version.Author, false, activatedTasks...); err != nil {
-		return nil, errors.Wrap(err, "updating patch task limit for user")
+		return nil, nil, errors.Wrap(err, "updating patch task limit for user")
 	}
 	if len(buildIdsToActivate) > 0 {
 		if err := build.UpdateActivation(buildIdsToActivate, true, caller); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 	if creationInfo.ActivationInfo.hasActivationTasks() {
 		if err = creationInfo.Version.ActivateAndSetBuildVariants(); err != nil {
-			return nil, errors.Wrap(err, "activating version and adding batchtime tasks")
+			return nil, nil, errors.Wrap(err, "activating version and adding batchtime tasks")
 		}
 	} else {
 		if err = creationInfo.Version.SetActivated(true); err != nil {
-			return nil, errors.Wrap(err, "setting version activation to true")
+			return nil, nil, errors.Wrap(err, "setting version activation to true")
 		}
 	}
 
 	activatedTaskDependencies, err := task.GetRecursiveDependenciesUp(ctx, activatedTasks, nil)
 	if err != nil {
-		return nil, errors.Wrap(err, "getting dependencies for activated tasks")
+		return nil, nil, errors.Wrap(err, "getting dependencies for activated tasks")
 	}
-	if err = task.ActivateTasks(ctx, activatedTaskDependencies, time.Now(), true, evergreen.User); err != nil {
-		return nil, errors.Wrap(err, "activating existing dependencies for new tasks")
+	// kim: NOTE: ActivateTasks already updates the scheduling limit internally.
+	// However, we don't know how many tasks it actually activates. That could
+	// be returned as the result from task.ActivateTasks.
+	activatedDependencyIDs, err := task.ActivateTasks(ctx, activatedTaskDependencies, time.Now(), true, evergreen.User)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "activating existing dependencies for new tasks")
 	}
 
-	return activatedTaskIds, nil
+	return activatedTaskIds, activatedDependencyIDs, nil
 }
 
 // activateExistingInactiveTasks will find existing inactive tasks in the patch that need to be activated as

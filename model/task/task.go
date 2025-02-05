@@ -1910,10 +1910,15 @@ func (t *Task) HasResults(ctx context.Context) bool {
 	return t.ResultsService != "" || t.HasCedarResults
 }
 
-// ActivateTasks sets all given tasks to active, logs them as activated, and proceeds to activate any dependencies that were deactivated.
-func ActivateTasks(ctx context.Context, tasks []Task, activationTime time.Time, updateDependencies bool, caller string) error {
+// ActivateTasks sets all given tasks to active, logs them as activated, and
+// proceeds to activate any dependencies that were deactivated. This returns the
+// task IDs that were activated.
+// kim: NOTE: may be best to have this return the task IDs of the activated
+// dependencies. That way, the caller can correctly account for them in the
+// generate.task task count.
+func ActivateTasks(ctx context.Context, tasks []Task, activationTime time.Time, updateDependencies bool, caller string) ([]string, error) {
 	if len(tasks) == 0 {
-		return nil
+		return nil, nil
 	}
 	tasksToActivate := make([]Task, 0, len(tasks))
 	taskIDs := make([]string, 0, len(tasks))
@@ -1925,11 +1930,16 @@ func ActivateTasks(ctx context.Context, tasks []Task, activationTime time.Time, 
 		}
 		tasksToActivate = append(tasksToActivate, t)
 		taskIDs = append(taskIDs, t.Id)
+		// kim: NOTE: should not include this because it would double count the
+		// estimated generated tasks. The function needs to return the total
+		// number of tasks it activated, and should not include the estimated
+		// tasks that those task could generate. The scheduling limits will be
+		// re-checked if/when those tasks actually generate tasks.
 		numEstimatedActivatedGeneratedTasks += utility.FromIntPtr(t.EstimatedNumActivatedGeneratedTasks)
 	}
 	depTasksToUpdate, depTaskIDsToUpdate, err := getDependencyTaskIdsToActivate(ctx, taskIDs, updateDependencies)
 	if err != nil {
-		return errors.Wrap(err, "getting dependency tasks to activate")
+		return nil, errors.Wrap(err, "getting dependency tasks to activate")
 	}
 	for _, depTask := range depTasksToUpdate {
 		numEstimatedActivatedGeneratedTasks += utility.FromIntPtr(depTask.EstimatedNumActivatedGeneratedTasks)
@@ -1938,11 +1948,11 @@ func ActivateTasks(ctx context.Context, tasks []Task, activationTime time.Time, 
 	// all tasks also share the same requester field.
 	numTasksModified := len(taskIDs) + len(depTaskIDsToUpdate) + numEstimatedActivatedGeneratedTasks
 	if err = UpdateSchedulingLimit(caller, tasks[0].Requester, numTasksModified, true); err != nil {
-		return err
+		return nil, err
 	}
 	err = activateTasks(ctx, taskIDs, caller, activationTime)
 	if err != nil {
-		return errors.Wrap(err, "activating tasks")
+		return nil, errors.Wrap(err, "activating tasks")
 	}
 	logs := []event.EventLogEntry{}
 	for _, t := range tasksToActivate {
@@ -1954,10 +1964,15 @@ func ActivateTasks(ctx context.Context, tasks []Task, activationTime time.Time, 
 		"caller":   caller,
 	}))
 
+	activatedTaskIDs := make([]string, 0, len(taskIDs)+len(depTaskIDsToUpdate))
+	activatedTaskIDs = append(activatedTaskIDs, taskIDs...)
+	activatedTaskIDs = append(activatedTaskIDs, depTaskIDsToUpdate...)
+
 	if len(depTaskIDsToUpdate) > 0 {
-		return activateDeactivatedDependencies(ctx, depTasksToUpdate, depTaskIDsToUpdate, caller)
+		return activatedTaskIDs, activateDeactivatedDependencies(ctx, depTasksToUpdate, depTaskIDsToUpdate, caller)
 	}
-	return nil
+
+	return activatedTaskIDs, nil
 }
 
 // UpdateSchedulingLimit retrieves a user from the DB and updates their hourly scheduling limit info
@@ -1997,7 +2012,7 @@ func ActivateTasksByIdsWithDependencies(ctx context.Context, ids []string, calle
 		return errors.Wrap(err, "getting recursive dependencies")
 	}
 
-	if err = ActivateTasks(ctx, append(tasks, dependOn...), time.Now(), true, caller); err != nil {
+	if _, err = ActivateTasks(ctx, append(tasks, dependOn...), time.Now(), true, caller); err != nil {
 		return errors.Wrap(err, "updating tasks for activation")
 	}
 	return nil
@@ -2597,6 +2612,7 @@ func (t *Task) SetNumGeneratedTasks(ctx context.Context, numGeneratedTasks int) 
 }
 
 // SetNumActivatedGeneratedTasks sets the number of activated generated tasks to the given value.
+// kim: TODO: potentially remove if going with $inc
 func (t *Task) SetNumActivatedGeneratedTasks(ctx context.Context, numActivatedGeneratedTasks int) error {
 	return UpdateOne(
 		ctx,
@@ -2606,6 +2622,22 @@ func (t *Task) SetNumActivatedGeneratedTasks(ctx context.Context, numActivatedGe
 		bson.M{
 			"$set": bson.M{
 				NumActivatedGeneratedTasksKey: numActivatedGeneratedTasks,
+			},
+		},
+	)
+}
+
+// IncNumActivatedGeneratedTasks increments the number of activated generated
+// tasks.
+func (t *Task) IncNumActivatedGeneratedTasks(ctx context.Context, numActivatedGeneratedTasksToAdd int) error {
+	return UpdateOne(
+		ctx,
+		bson.M{
+			IdKey: t.Id,
+		},
+		bson.M{
+			"$inc": bson.M{
+				NumActivatedGeneratedTasksKey: numActivatedGeneratedTasksToAdd,
 			},
 		},
 	)

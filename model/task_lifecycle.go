@@ -84,7 +84,7 @@ func SetActiveState(ctx context.Context, caller string, active bool, tasks ...ta
 	}
 
 	if active {
-		if err := task.ActivateTasks(ctx, tasksToActivate, time.Now(), true, caller); err != nil {
+		if _, err := task.ActivateTasks(ctx, tasksToActivate, time.Now(), true, caller); err != nil {
 			return errors.Wrap(err, "activating tasks")
 		}
 		versionIdsToActivate := []string{}
