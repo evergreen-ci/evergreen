@@ -1,0 +1,10 @@
+{
+  project(projectIdentifier: "spruce") {
+    patches(patchesInput: { onlyMergeQueue: true }) {
+      patches {
+        id
+      }
+      filteredPatchCount
+    }
+  }
+}
