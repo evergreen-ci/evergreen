@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
+	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -199,7 +200,18 @@ func (opts cloneOpts) buildHTTPCloneCommand(forApp bool) ([]string, error) {
 	} else {
 		gitURL = thirdparty.FormGitURL(urlLocation.Host, opts.owner, opts.repo, opts.token)
 	}
-	clone := fmt.Sprintf("git clone %s '%s'", gitURL, opts.dir)
+
+	scalarAvailable, err := agentutil.IsGitVersionMinimum(thirdparty.RequiredScalarGitVersion)
+	if err != nil {
+		return nil, errors.Wrap(err, "checking git version")
+	}
+	gitCommand := "scalar"
+	if !scalarAvailable {
+		gitCommand = "git"
+	}
+
+	clone := fmt.Sprintf("%s clone %s '%s'", gitCommand, gitURL, opts.dir)
+
 	if opts.recurseSubmodules {
 		clone = fmt.Sprintf("%s --recurse-submodules", clone)
 	}

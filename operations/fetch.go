@@ -277,7 +277,13 @@ func clone(opts cloneOptions) error {
 	cloneArgs = append(cloneArgs, opts.rootDir)
 	grip.Debug(cloneArgs)
 
-	c := exec.Command("git", cloneArgs...)
+	gitCommand := "scalar"
+
+	if scalarAvailable, err := isScalarAvailable(); err != nil || !scalarAvailable {
+		gitCommand = "git"
+	}
+
+	c := exec.Command(gitCommand, cloneArgs...)
 	c.Stdout, c.Stderr = os.Stdout, os.Stderr
 	err := c.Run()
 	if err != nil {
@@ -288,7 +294,7 @@ func clone(opts cloneOptions) error {
 	checkoutArgs := []string{"checkout", opts.revision}
 	grip.Debug(checkoutArgs)
 
-	c = exec.Command("git", checkoutArgs...)
+	c = exec.Command(gitCommand, checkoutArgs...)
 	stdoutBuf, stderrBuf := &bytes.Buffer{}, &bytes.Buffer{}
 	c.Stdout = io.MultiWriter(os.Stdout, stdoutBuf)
 	c.Stderr = io.MultiWriter(os.Stderr, stderrBuf)
@@ -303,7 +309,7 @@ func clone(opts cloneOptions) error {
 		fetchArgs := []string{"fetch", "--unshallow"}
 		grip.Debug(fetchArgs)
 
-		c = exec.Command("git", fetchArgs...)
+		c = exec.Command(gitCommand, fetchArgs...)
 		c.Stdout, c.Stderr, c.Dir = os.Stdout, os.Stderr, opts.rootDir
 		err = c.Run()
 		if err != nil {
@@ -313,7 +319,7 @@ func clone(opts cloneOptions) error {
 		checkoutRetryArgs := []string{"checkout", opts.revision}
 		grip.Debug(checkoutRetryArgs)
 
-		c = exec.Command("git", checkoutRetryArgs...)
+		c = exec.Command(gitCommand, checkoutRetryArgs...)
 		c.Stdout, c.Stderr, c.Dir = os.Stdout, os.Stderr, opts.rootDir
 		err = c.Run()
 		if err != nil {
@@ -330,6 +336,16 @@ func clone(opts cloneOptions) error {
 	}
 
 	return nil
+}
+
+// isScalarAvailable checks if the installed Git version is later than the specified version.
+func isScalarAvailable() (bool, error) {
+	gitVersion, err := getGitVersion()
+	if err != nil {
+		return false, err
+	}
+
+	return !thirdparty.IsVersionMinimum(gitVersion, thirdparty.RequiredScalarGitVersion), nil
 }
 
 func cloneSource(task *service.RestTask, project *model.ProjectRef, config *model.Project,
