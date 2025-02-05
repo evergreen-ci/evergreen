@@ -2594,7 +2594,7 @@ func TestTryResetTask(t *testing.T) {
 	})
 	Convey("With a task, a build, version and a project", t, func() {
 		Convey("resetting a task without a max number of executions", func() {
-			require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection))
+			require.NoError(t, db.ClearCollections(task.Collection, task.OldCollection, build.Collection, VersionCollection, event.EventCollection))
 
 			displayName := "testName"
 			userName := "testUser"
@@ -2873,9 +2873,19 @@ func TestTryResetTask(t *testing.T) {
 		t1FromDb, err := task.FindOne(ctx, db.Query(task.ById(t1.Id)))
 		So(err, ShouldBeNil)
 		So(t1FromDb.Status, ShouldEqual, evergreen.TaskUndispatched)
+		t1Events, err := event.FindAllByResourceID(dt.Id)
+		So(err, ShouldBeNil)
+		So(len(t1Events), ShouldEqual, 1)
+		So(t1Events[0].EventType, ShouldEqual, event.TaskRestarted)
+
 		dtFromDb, err := task.FindOne(ctx, db.Query(task.ById(dt.Id)))
 		So(err, ShouldBeNil)
 		So(dtFromDb.Status, ShouldEqual, evergreen.TaskUndispatched)
+
+		dtEvents, err := event.FindAllByResourceID(dt.Id)
+		So(err, ShouldBeNil)
+		So(len(dtEvents), ShouldEqual, 1)
+		So(dtEvents[0].EventType, ShouldEqual, event.TaskRestarted)
 	})
 }
 
@@ -4520,7 +4530,7 @@ func TestClearAndResetStrandedHostTaskFailedOnly(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	require.NoError(t, db.ClearCollections(host.Collection, task.Collection, task.OldCollection, build.Collection, VersionCollection))
+	require.NoError(t, db.ClearCollections(host.Collection, task.Collection, task.OldCollection, build.Collection, VersionCollection, event.EventCollection))
 
 	dispTask := &task.Task{
 		Id:             "dt",
@@ -4572,20 +4582,48 @@ func TestClearAndResetStrandedHostTaskFailedOnly(t *testing.T) {
 	assert.NoError(t, v.Insert())
 	settings := testutil.TestConfig()
 	assert.NoError(t, ClearAndResetStrandedHostTask(ctx, settings, h))
+
+	checkTaskRestartEvent := func(t *testing.T, taskID string) {
+		events, err := event.FindAllByResourceID(taskID)
+		require.NoError(t, err)
+		require.NotEmpty(t, events)
+		var foundTaskRestartEvent bool
+		for _, e := range events {
+			if e.EventType == event.TaskRestarted {
+				foundTaskRestartEvent = true
+				break
+			}
+		}
+		assert.True(t, foundTaskRestartEvent, "should have a task restart event for task '%s'", taskID)
+	}
+
 	restartedDisplayTask, err := task.FindOne(ctx, db.Query(task.ById("dt")))
 	assert.NoError(t, err)
+	require.NotZero(t, restartedDisplayTask)
 	assert.Equal(t, evergreen.TaskUndispatched, restartedDisplayTask.Status)
 	assert.Equal(t, 1, restartedDisplayTask.Execution)
+	checkTaskRestartEvent(t, restartedDisplayTask.Id)
+
 	restartedExecutionTask, err := task.FindOne(ctx, db.Query(task.ById("et1")))
 	assert.NoError(t, err)
+	require.NotZero(t, restartedExecutionTask)
 	assert.Equal(t, 1, restartedExecutionTask.Execution)
 	assert.Equal(t, 1, restartedExecutionTask.LatestParentExecution)
 	assert.Equal(t, evergreen.TaskUndispatched, restartedExecutionTask.Status)
+	restartedExecutionTaskEvents, err := event.FindAllByResourceID(restartedExecutionTask.Id)
+	require.NoError(t, err)
+	require.NotEmpty(t, restartedExecutionTaskEvents)
+	checkTaskRestartEvent(t, restartedExecutionTask.Id)
+
 	nonRestartedExecutionTask, err := task.FindOne(ctx, db.Query(task.ById("et2")))
 	assert.NoError(t, err)
+	require.NotZero(t, nonRestartedExecutionTask)
 	assert.Equal(t, evergreen.TaskSucceeded, nonRestartedExecutionTask.Status)
 	assert.Equal(t, 0, nonRestartedExecutionTask.Execution)
 	assert.Equal(t, 1, restartedExecutionTask.LatestParentExecution)
+	events, err := event.FindAllByResourceID(nonRestartedExecutionTask.Id)
+	require.NoError(t, err)
+	assert.Empty(t, events, "should not have any new events for a non-restarted task")
 
 	oldRestartedExecutionTask, err := task.FindOneOld(ctx, task.ById(fmt.Sprintf("%v_%v", execTask1.Id, 0)))
 	assert.NoError(t, err)
