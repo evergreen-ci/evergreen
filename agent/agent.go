@@ -1228,7 +1228,7 @@ func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupC
 
 // clearGitConfig removes cleans up git files that were created in the
 // home directory including the global git config file and credentials file.
-// It also unregisters and repositories that were cloned with scalar to stop
+// It also unregisters any repositories that were cloned with scalar to stop
 // the background maintenance of the repositories.
 func (a *Agent) clearGitConfig(tc *taskContext) {
 	logger := grip.GetDefaultJournaler()

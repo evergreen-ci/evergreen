@@ -242,7 +242,7 @@ func ParseGitVersion(version string) (string, bool, error) {
 		return "", false, errors.Errorf("could not parse git version number from version string '%s'", version)
 	}
 
-	isAppleGit := regexp.MustCompile(appleGitRegex).MatchString(version)
+	isAppleGit := strings.Contains(version, "Apple Git-")
 	return matches[1], isAppleGit, nil
 }
 
