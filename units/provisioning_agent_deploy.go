@@ -302,7 +302,8 @@ func (j *agentDeployJob) startAgentOnRemote(ctx context.Context, settings *everg
 	ctx, cancel := context.WithTimeout(ctx, startAgentTimeout)
 	defer cancel()
 
-	startAgentCmd := fmt.Sprintf("nohup %s > /tmp/start 2>&1 &", remoteCmd)
+	agentEnvVars := strings.Join(j.host.AgentEnvSlice(), " ")
+	startAgentCmd := fmt.Sprintf("%s nohup %s > /tmp/start 2>&1 &", agentEnvVars, remoteCmd)
 	logs, err := j.host.RunSSHCommand(ctx, startAgentCmd)
 	if err != nil {
 		return logs, errors.Wrapf(err, "starting agent on host '%s'", j.host.Id)
