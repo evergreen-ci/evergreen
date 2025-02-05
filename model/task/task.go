@@ -1913,9 +1913,6 @@ func (t *Task) HasResults(ctx context.Context) bool {
 // ActivateTasks sets all given tasks to active, logs them as activated, and
 // proceeds to activate any dependencies that were deactivated. This returns the
 // task IDs that were activated.
-// kim: NOTE: may be best to have this return the task IDs of the activated
-// dependencies. That way, the caller can correctly account for them in the
-// generate.task task count.
 func ActivateTasks(ctx context.Context, tasks []Task, activationTime time.Time, updateDependencies bool, caller string) ([]string, error) {
 	if len(tasks) == 0 {
 		return nil, nil
@@ -1930,11 +1927,6 @@ func ActivateTasks(ctx context.Context, tasks []Task, activationTime time.Time, 
 		}
 		tasksToActivate = append(tasksToActivate, t)
 		taskIDs = append(taskIDs, t.Id)
-		// kim: NOTE: should not include this because it would double count the
-		// estimated generated tasks. The function needs to return the total
-		// number of tasks it activated, and should not include the estimated
-		// tasks that those task could generate. The scheduling limits will be
-		// re-checked if/when those tasks actually generate tasks.
 		numEstimatedActivatedGeneratedTasks += utility.FromIntPtr(t.EstimatedNumActivatedGeneratedTasks)
 	}
 	depTasksToUpdate, depTaskIDsToUpdate, err := getDependencyTaskIdsToActivate(ctx, taskIDs, updateDependencies)
@@ -2612,7 +2604,6 @@ func (t *Task) SetNumGeneratedTasks(ctx context.Context, numGeneratedTasks int) 
 }
 
 // SetNumActivatedGeneratedTasks sets the number of activated generated tasks to the given value.
-// kim: TODO: potentially remove if going with $inc
 func (t *Task) SetNumActivatedGeneratedTasks(ctx context.Context, numActivatedGeneratedTasks int) error {
 	return UpdateOne(
 		ctx,
@@ -2622,22 +2613,6 @@ func (t *Task) SetNumActivatedGeneratedTasks(ctx context.Context, numActivatedGe
 		bson.M{
 			"$set": bson.M{
 				NumActivatedGeneratedTasksKey: numActivatedGeneratedTasks,
-			},
-		},
-	)
-}
-
-// IncNumActivatedGeneratedTasks increments the number of activated generated
-// tasks.
-func (t *Task) IncNumActivatedGeneratedTasks(ctx context.Context, numActivatedGeneratedTasksToAdd int) error {
-	return UpdateOne(
-		ctx,
-		bson.M{
-			IdKey: t.Id,
-		},
-		bson.M{
-			"$inc": bson.M{
-				NumActivatedGeneratedTasksKey: numActivatedGeneratedTasksToAdd,
 			},
 		},
 	)

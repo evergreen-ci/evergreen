@@ -1606,9 +1606,6 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 		return nil, nil, errors.Wrap(err, "inserting tasks")
 	}
 	numTasksModified := numEstimatedActivatedGeneratedTasks + len(newActivatedTaskIds)
-	// kim: NOTE: this scheduling limit appears to exclude dependencies
-	// activated indirectly. Dependencies are added to the scheduling limit in
-	// ActivateTasks below.
 	if err = task.UpdateSchedulingLimit(creationInfo.Version.Author, creationInfo.Version.Requester, numTasksModified, true); err != nil {
 		return nil, nil, errors.Wrapf(err, "fetching user '%s' and updating their scheduling limit", creationInfo.Version.Author)
 	}
@@ -1636,9 +1633,6 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 		return nil, nil, errors.Wrap(err, "getting dependencies for activated tasks")
 	}
 
-	// kim: NOTE: ActivateTasks already updates the scheduling limit internally.
-	// However, we don't know how many tasks it actually activates. That could
-	// be returned as the result from task.ActivateTasks.
 	activatedDependencyIDs, err := task.ActivateTasks(ctx, activatedTaskDependencies, time.Now(), true, evergreen.User)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "activating dependencies for new tasks")
@@ -1747,8 +1741,6 @@ func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationI
 			return nil, nil, errors.Wrapf(err, "updating task cache for '%s'", b.Id)
 		}
 	}
-	// kim: NOTE: internally, this calls UpdateSchedulingLimit, so it does add
-	// them to the user's task scheduling limit.
 	if err = task.CheckUsersPatchTaskLimit(ctx, creationInfo.Version.Requester, creationInfo.Version.Author, false, activatedTasks...); err != nil {
 		return nil, nil, errors.Wrap(err, "updating patch task limit for user")
 	}
@@ -1771,9 +1763,6 @@ func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationI
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "getting dependencies for activated tasks")
 	}
-	// kim: NOTE: ActivateTasks already updates the scheduling limit internally.
-	// However, we don't know how many tasks it actually activates. That could
-	// be returned as the result from task.ActivateTasks.
 	activatedDependencyIDs, err := task.ActivateTasks(ctx, activatedTaskDependencies, time.Now(), true, evergreen.User)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "activating existing dependencies for new tasks")
