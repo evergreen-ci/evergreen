@@ -277,10 +277,10 @@ func clone(opts cloneOptions) error {
 	cloneArgs = append(cloneArgs, opts.rootDir)
 	grip.Debug(cloneArgs)
 
-	gitCommand := "scalar"
+	gitCommand := "scalar clone --no-src"
 
 	if scalarAvailable, err := isScalarAvailable(); err != nil || !scalarAvailable {
-		gitCommand = "git"
+		gitCommand = "git clone"
 	}
 
 	c := exec.Command(gitCommand, cloneArgs...)
@@ -294,7 +294,7 @@ func clone(opts cloneOptions) error {
 	checkoutArgs := []string{"checkout", opts.revision}
 	grip.Debug(checkoutArgs)
 
-	c = exec.Command(gitCommand, checkoutArgs...)
+	c = exec.Command("git", checkoutArgs...)
 	stdoutBuf, stderrBuf := &bytes.Buffer{}, &bytes.Buffer{}
 	c.Stdout = io.MultiWriter(os.Stdout, stdoutBuf)
 	c.Stderr = io.MultiWriter(os.Stderr, stderrBuf)
@@ -309,7 +309,7 @@ func clone(opts cloneOptions) error {
 		fetchArgs := []string{"fetch", "--unshallow"}
 		grip.Debug(fetchArgs)
 
-		c = exec.Command(gitCommand, fetchArgs...)
+		c = exec.Command("git", fetchArgs...)
 		c.Stdout, c.Stderr, c.Dir = os.Stdout, os.Stderr, opts.rootDir
 		err = c.Run()
 		if err != nil {
@@ -319,7 +319,7 @@ func clone(opts cloneOptions) error {
 		checkoutRetryArgs := []string{"checkout", opts.revision}
 		grip.Debug(checkoutRetryArgs)
 
-		c = exec.Command(gitCommand, checkoutRetryArgs...)
+		c = exec.Command("git", checkoutRetryArgs...)
 		c.Stdout, c.Stderr, c.Dir = os.Stdout, os.Stderr, opts.rootDir
 		err = c.Run()
 		if err != nil {
