@@ -124,8 +124,8 @@ func (c *s3get) validate() error {
 		catcher.NewWhen(c.AwsSecret != "", "AWS secret must be empty when using role ARN")
 		catcher.NewWhen(c.AwsSessionToken != "", "AWS session token must be empty when using role ARN")
 	} else {
-		catcher.NewWhen(c.AwsKey == "", "AWS key must be provided")
-		catcher.NewWhen(c.AwsSecret == "", "AWS secret must be provided")
+		catcher.NewWhen(c.AwsKey == "", "AWS key cannot be blank")
+		catcher.NewWhen(c.AwsSecret == "", "AWS secret cannot be blank")
 	}
 
 	catcher.NewWhen(c.RemoteFile == "", "remote file cannot be blank")

@@ -205,7 +205,7 @@ func (s3pc *s3put) validate() error {
 		catcher.Errorf("invalid visibility setting '%s', allowed visibilities are: %s", s3pc.Visibility, artifact.ValidVisibilities)
 	}
 
-	catcher.Wrapf(validateS3BucketName(s3pc.Bucket), "validating bucket name '%s'", s3pc.Bucket)
+	catcher.Wrapf(validateS3BucketName(s3pc.Bucket), "invalid bucket name '%s'", s3pc.Bucket)
 
 	// make sure the s3 permissions are valid
 	if !validS3Permissions(s3pc.Permissions) {
