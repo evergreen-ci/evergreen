@@ -262,6 +262,9 @@ const (
 	AgentMonitorTag = "agent-monitor"
 	HostFetchTag    = "host-fetch"
 
+	HostIDEnvVar     = "HOST_ID"
+	HostSecretEnvVar = "HOST_SECRET"
+
 	DegradedLoggingPercent = 10
 
 	SetupScriptName               = "setup.sh"
@@ -323,7 +326,7 @@ const (
 	HostsOverallocatedIgnore     = "no-terminations-when-overallocated"
 	HostsOverallocatedUseDefault = ""
 
-	// CommitQueueAlias and GithubPRAlias are special aliases to specify variants and tasks for commit queue and GitHub PR patches
+	// CommitQueueAlias and GithubPRAlias are special aliases to specify variants and tasks for the merge queue and GitHub PR patches
 	CommitQueueAlias  = "__commit_queue"
 	GithubPRAlias     = "__github"
 	GithubChecksAlias = "__github_checks"

@@ -21,7 +21,6 @@ func TestFullUserSettings(t *testing.T) {
 		Notifications: user.NotificationPreferences{
 			BuildBreak:  user.PreferenceEmail,
 			PatchFinish: user.PreferenceSlack,
-			CommitQueue: user.PreferenceSlack,
 		},
 	}
 
@@ -39,7 +38,6 @@ func TestPartialSettings(t *testing.T) {
 		Notifications: user.NotificationPreferences{
 			BuildBreak:  user.PreferenceEmail,
 			PatchFinish: user.PreferenceSlack,
-			CommitQueue: user.PreferenceEmail,
 		},
 	}
 

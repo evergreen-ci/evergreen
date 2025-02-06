@@ -393,6 +393,7 @@ func resetTask(ctx context.Context, taskId, caller string) error {
 	if err = MarkOneTaskReset(ctx, t, caller); err != nil {
 		return errors.WithStack(err)
 	}
+
 	event.LogTaskRestarted(t.Id, t.Execution, caller)
 
 	return errors.WithStack(UpdateBuildAndVersionStatusForTask(ctx, t))
@@ -1815,6 +1816,12 @@ func MarkOneTaskReset(ctx context.Context, t *task.Task, caller string) error {
 		if err = MarkTasksReset(ctx, execTaskIdsToRestart, caller); err != nil {
 			return errors.Wrap(err, "resetting failed execution tasks")
 		}
+
+		grip.Error(message.WrapError(logExecutionTasksRestarted(ctx, t, execTaskIdsToRestart, caller), message.Fields{
+			"message":                      "could not log task restart events for some execution tasks",
+			"display_task_id":              t.Id,
+			"restarted_execution_task_ids": execTaskIdsToRestart,
+		}))
 	}
 
 	if err := t.Reset(ctx, caller); err != nil && !adb.ResultsNotFound(err) {
@@ -1830,6 +1837,34 @@ func MarkOneTaskReset(ctx context.Context, t *task.Task, caller string) error {
 	}
 
 	return nil
+}
+
+func logExecutionTasksRestarted(ctx context.Context, displayTask *task.Task, execTaskIDsRestarted []string, caller string) error {
+	if !displayTask.DisplayOnly {
+		return nil
+	}
+
+	catcher := grip.NewBasicCatcher()
+	for _, etID := range execTaskIDsRestarted {
+		execTask, err := task.FindOneId(ctx, etID)
+		if err != nil {
+			catcher.Wrapf(err, "finding execution task '%s'", etID)
+			continue
+		}
+		if execTask == nil {
+			catcher.Errorf("execution task '%s' not found", etID)
+			continue
+		}
+		// Use the previous execution number rather than latest execution
+		// number. The task restart event is supposed to log the previous
+		// execution that was restarted (e.g. if it restarted from execution 2
+		// to execution 3, the restart event should log for execution 2). This
+		// logic always logs after the execution task has already been
+		// restarted, so it needs to use the previous execution number.
+		event.LogTaskRestarted(execTask.Id, execTask.Execution-1, caller)
+	}
+
+	return catcher.Resolve()
 }
 
 // MarkTasksReset resets many tasks by their IDs. For execution tasks, this also

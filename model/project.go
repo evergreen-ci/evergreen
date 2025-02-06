@@ -1129,7 +1129,7 @@ func PopulateExpansions(ctx context.Context, t *task.Task, h *host.Host, appToke
 			expansions.Put("github_author", p.GithubPatchData.Author)
 			expansions.Put("github_commit", p.GithubPatchData.HeadHash)
 		}
-		if p.IsGithubMergePatch() {
+		if p.IsMergeQueuePatch() {
 			expansions.Put("github_org", p.GithubMergeData.Org)
 			expansions.Put("github_repo", p.GithubMergeData.Repo)
 			// this looks like "gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056"

@@ -773,7 +773,7 @@ Every task has some expansions available by default:
 -   `${workdir}` is the task's working directory
 -   `${revision}` is the commit hash of the base commit that a patch's changes
     are being applied to, or of the commit for a mainline build. For PR patches,
-    the base commit is the PR base chosen by GitHub.
+    this is the merge base of the PR branch and the target branch.
 -   `${github_commit}` is the commit hash of the commit that triggered
     the patch run
 -   `${branch_name}` is the name of the branch tracked by the
@@ -1490,7 +1490,9 @@ Parameters:
 
 Intentionally, `teardown_group_can_fail_task` is not supported. Teardown groups
 are not ran within the same context of the task's normal execution and we
-discourage relying on it for anything critical in general.
+discourage relying on it for anything critical in general. 
+
+For that same reason, teardown groups also cannot run the [manually set task status](Project-Configuration/Task-Runtime-Behavior#manually-set-task-status) route. 
 
 The following constraints apply:
 

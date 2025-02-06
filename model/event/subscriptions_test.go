@@ -550,7 +550,7 @@ func (s *subscriptionsSuite) TestCreateOrUpdateGeneralSubscription() {
 		Target: "@octocat",
 	}
 
-	subscription, err := CreateOrUpdateGeneralSubscription(GeneralSubscriptionCommitQueue, "",
+	subscription, err := CreateOrUpdateGeneralSubscription(GeneralSubscriptionPatchOutcome, "",
 		subscriber, "octocat")
 	s.NoError(err)
 

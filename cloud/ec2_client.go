@@ -80,12 +80,6 @@ type AWSClient interface {
 	// DescribeVolumes is a wrapper for ec2.DescribeVolumes.
 	DescribeVolumes(context.Context, *ec2.DescribeVolumesInput) (*ec2.DescribeVolumesOutput, error)
 
-	// DescribeSubnets is a wrapper for ec2.DescribeSubnets.
-	DescribeSubnets(context.Context, *ec2.DescribeSubnetsInput) (*ec2.DescribeSubnetsOutput, error)
-
-	// DescribeVpcs is a wrapper for ec2.DescribeVpcs.
-	DescribeVpcs(context.Context, *ec2.DescribeVpcsInput) (*ec2.DescribeVpcsOutput, error)
-
 	// GetInstanceInfo returns info about an ec2 instance.
 	GetInstanceInfo(context.Context, string) (*types.Instance, error)
 
@@ -112,8 +106,6 @@ type AWSClient interface {
 
 	GetKey(context.Context, *host.Host) (string, error)
 
-	SetTags(context.Context, []string, *host.Host) error
-
 	GetInstanceBlockDevices(context.Context, *host.Host) ([]types.InstanceBlockDeviceMapping, error)
 
 	GetVolumeIDs(context.Context, *host.Host) ([]string, error)
@@ -125,6 +117,9 @@ type AWSClient interface {
 
 	// AssumeRole is a wrapper for sts.AssumeRole.
 	AssumeRole(ctx context.Context, input *sts.AssumeRoleInput) (*sts.AssumeRoleOutput, error)
+
+	// GetCallerIdentity is a wrapper for sts.GetCallerIdentity.
+	GetCallerIdentity(ctx context.Context, input *sts.GetCallerIdentityInput) (*sts.GetCallerIdentityOutput, error)
 }
 
 // awsClientImpl wraps ec2.EC2.
@@ -584,56 +579,6 @@ func (c *awsClientImpl) DescribeVolumes(ctx context.Context, input *ec2.Describe
 	return output, nil
 }
 
-// DescribeSubnets is a wrapper for ec2.DescribeSubnets.
-func (c *awsClientImpl) DescribeSubnets(ctx context.Context, input *ec2.DescribeSubnetsInput) (*ec2.DescribeSubnetsOutput, error) {
-	var output *ec2.DescribeSubnetsOutput
-	var err error
-	err = utility.Retry(
-		ctx,
-		func() (bool, error) {
-			msg := makeAWSLogMessage("DescribeSubnets", fmt.Sprintf("%T", c), input)
-			output, err = c.ec2Client.DescribeSubnets(ctx, input)
-			if err != nil {
-				var apiErr smithy.APIError
-				if errors.As(err, &apiErr) {
-					grip.Debug(message.WrapError(apiErr, msg))
-				}
-				return true, err
-			}
-			grip.Info(msg)
-			return false, nil
-		}, awsClientDefaultRetryOptions())
-	if err != nil {
-		return nil, err
-	}
-	return output, nil
-}
-
-// DescribeVpcs is a wrapper for ec2.DescribeVpcs.
-func (c *awsClientImpl) DescribeVpcs(ctx context.Context, input *ec2.DescribeVpcsInput) (*ec2.DescribeVpcsOutput, error) {
-	var output *ec2.DescribeVpcsOutput
-	var err error
-	err = utility.Retry(
-		ctx,
-		func() (bool, error) {
-			msg := makeAWSLogMessage("DescribeVpcs", fmt.Sprintf("%T", c), input)
-			output, err = c.ec2Client.DescribeVpcs(ctx, input)
-			if err != nil {
-				var apiErr smithy.APIError
-				if errors.As(err, &apiErr) {
-					grip.Debug(message.WrapError(apiErr, msg))
-				}
-				return true, err
-			}
-			grip.Info(msg)
-			return false, nil
-		}, awsClientDefaultRetryOptions())
-	if err != nil {
-		return nil, err
-	}
-	return output, nil
-}
-
 func (c *awsClientImpl) GetInstanceInfo(ctx context.Context, id string) (*types.Instance, error) {
 	if host.IsIntentHostId(id) {
 		return nil, errors.Errorf("host ID '%s' is for an intent host", id)
@@ -914,39 +859,6 @@ func (c *awsClientImpl) makeNewKey(ctx context.Context, project string) (string,
 	return name, nil
 }
 
-// SetTags creates the initial tags for an EC2 host and updates the database with the
-// host's Evergreen-generated tags.
-func (c *awsClientImpl) SetTags(ctx context.Context, resources []string, h *host.Host) error {
-	tags := hostToEC2Tags(makeTags(h))
-	if _, err := c.CreateTags(ctx, &ec2.CreateTagsInput{
-		Resources: resources,
-		Tags:      tags,
-	}); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":       "error attaching tags",
-			"host_id":       h.Id,
-			"host_provider": h.Distro.Provider,
-			"distro":        h.Distro.Id,
-		}))
-		return errors.Wrapf(err, "attaching tags for host '%s'", h.Id)
-	}
-
-	// Push instance tag changes to database
-	if err := h.SetTags(ctx); err != nil {
-		return errors.Wrap(err, "updating instance tags in the database")
-	}
-
-	grip.Debug(message.Fields{
-		"message":       "attached tags for host",
-		"host_id":       h.Id,
-		"host_provider": h.Distro.Provider,
-		"distro":        h.Distro.Id,
-		"tags":          h.InstanceTags,
-	})
-
-	return nil
-}
-
 func (c *awsClientImpl) GetInstanceBlockDevices(ctx context.Context, h *host.Host) ([]types.InstanceBlockDeviceMapping, error) {
 	instance, err := c.GetInstanceInfo(ctx, h.Id)
 	if err != nil {
@@ -1052,6 +964,29 @@ func (c *awsClientImpl) AssumeRole(ctx context.Context, input *sts.AssumeRoleInp
 	return output, nil
 }
 
+// GetCallerIdentity is a wrapper for sts.GetCallerIdentity
+func (c *awsClientImpl) GetCallerIdentity(ctx context.Context, input *sts.GetCallerIdentityInput) (*sts.GetCallerIdentityOutput, error) {
+	var output *sts.GetCallerIdentityOutput
+	var err error
+	err = utility.Retry(
+		ctx,
+		func() (bool, error) {
+			msg := makeAWSLogMessage("GetCallerIdentity", fmt.Sprintf("%T", c), input)
+			output, err = c.stsClient.GetCallerIdentity(ctx, input)
+			if err != nil {
+				grip.Debug(message.WrapError(err, msg))
+				// GetCallerIdentity doesn't require any permissions, so if we get an error, it's likely a network issue.
+				return true, err
+			}
+			grip.Info(msg)
+			return false, nil
+		}, awsClientDefaultRetryOptions())
+	if err != nil {
+		return nil, err
+	}
+	return output, nil
+}
+
 // awsClientMock mocks ec2.EC2.
 type awsClientMock struct { //nolint
 	*ec2.RunInstancesInput
@@ -1069,8 +1004,6 @@ type awsClientMock struct { //nolint
 	*ec2.DetachVolumeInput
 	*ec2.ModifyVolumeInput
 	*ec2.DescribeVolumesInput
-	*ec2.DescribeSubnetsInput
-	*ec2.DescribeVpcsInput
 	*ec2.CreateKeyPairInput
 	*ec2.ImportKeyPairInput
 	*ec2.DeleteKeyPairInput
@@ -1078,6 +1011,7 @@ type awsClientMock struct { //nolint
 	*ec2.DeleteLaunchTemplateInput
 	*ec2.CreateFleetInput
 	*sts.AssumeRoleInput
+	*sts.GetCallerIdentityOutput
 
 	*types.Instance
 	*ec2.DescribeInstancesOutput
@@ -1260,32 +1194,6 @@ func (c *awsClientMock) DescribeVolumes(ctx context.Context, input *ec2.Describe
 	}, nil
 }
 
-// DescribeSubnets is a mock for ec2.DescribeSubnets.
-func (c *awsClientMock) DescribeSubnets(ctx context.Context, input *ec2.DescribeSubnetsInput) (*ec2.DescribeSubnetsOutput, error) {
-	c.DescribeSubnetsInput = input
-	return &ec2.DescribeSubnetsOutput{
-		Subnets: []types.Subnet{
-			{
-				SubnetId: aws.String("subnet-654321"),
-				Tags: []types.Tag{
-					{Key: aws.String("Name"), Value: aws.String("mysubnet_us-east-1a")},
-				},
-				AvailabilityZone: aws.String("us-east-1a"),
-			},
-		},
-	}, nil
-}
-
-// DescribeVpcs is a mock for ec2.DescribeVpcs.
-func (c *awsClientMock) DescribeVpcs(ctx context.Context, input *ec2.DescribeVpcsInput) (*ec2.DescribeVpcsOutput, error) {
-	c.DescribeVpcsInput = input
-	return &ec2.DescribeVpcsOutput{
-		Vpcs: []types.Vpc{
-			{VpcId: aws.String("vpc-123456")},
-		},
-	}, nil
-}
-
 func (c *awsClientMock) GetInstanceInfo(ctx context.Context, id string) (*types.Instance, error) {
 	if c.RequestGetInstanceInfoError != nil {
 		return nil, c.RequestGetInstanceInfoError
@@ -1400,17 +1308,6 @@ func (c *awsClientMock) GetKey(ctx context.Context, h *host.Host) (string, error
 	return "evg_auto_evergreen", nil
 }
 
-func (c *awsClientMock) SetTags(ctx context.Context, resources []string, h *host.Host) error {
-	tagSlice := []types.Tag{}
-	if _, err := c.CreateTags(ctx, &ec2.CreateTagsInput{
-		Resources: resources,
-		Tags:      tagSlice,
-	}); err != nil {
-		return err
-	}
-	return nil
-}
-
 func (c *awsClientMock) GetInstanceBlockDevices(ctx context.Context, h *host.Host) ([]types.InstanceBlockDeviceMapping, error) {
 	return []types.InstanceBlockDeviceMapping{
 		{
@@ -1461,6 +1358,17 @@ func (c *awsClientMock) AssumeRole(ctx context.Context, input *sts.AssumeRoleInp
 			SessionToken:    aws.String("session_token"),
 			Expiration:      aws.Time(time.Now().Add(time.Duration(*input.DurationSeconds) * time.Second)),
 		},
+	}, nil
+}
+
+func (c *awsClientMock) GetCallerIdentity(ctx context.Context, input *sts.GetCallerIdentityInput) (*sts.GetCallerIdentityOutput, error) {
+	if c.GetCallerIdentityOutput != nil {
+		return c.GetCallerIdentityOutput, nil
+	}
+	return &sts.GetCallerIdentityOutput{
+		Account: aws.String("account"),
+		Arn:     aws.String("arn"),
+		UserId:  aws.String("user_id"),
 	}, nil
 }
 

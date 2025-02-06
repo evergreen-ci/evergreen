@@ -315,7 +315,10 @@ func clone(opts cloneOptions) error {
 
 		c = exec.Command("git", checkoutRetryArgs...)
 		c.Stdout, c.Stderr, c.Dir = os.Stdout, os.Stderr, opts.rootDir
-		return c.Run()
+		err = c.Run()
+		if err != nil {
+			return err
+		}
 	}
 	// Reset Git remote URL to SSH after source has been fetched
 	// because the token in the https URL will be revoked.

@@ -668,15 +668,9 @@ func (p *Patch) IsGithubPRPatch() bool {
 	return p.GithubPatchData.HeadOwner != ""
 }
 
-// IsMergeQueuePatch returns true if the the patch is part of any commit queue:
-// either Evergreen's commit queue or GitHub's merge queue.
+// IsMergeQueuePatch returns true if the the patch is part of GitHub's merge queue.
 func (p *Patch) IsMergeQueuePatch() bool {
-	return p.Alias == evergreen.CommitQueueAlias || p.IsGithubMergePatch()
-}
-
-// IsGithubMergePatch returns true if the patch is from the GitHub merge queue.
-func (p *Patch) IsGithubMergePatch() bool {
-	return p.GithubMergeData.HeadSHA != ""
+	return p.Alias == evergreen.CommitQueueAlias || p.GithubMergeData.HeadSHA != ""
 }
 
 func (p *Patch) IsChild() bool {
@@ -853,7 +847,7 @@ func (p *Patch) GetRequester() string {
 	if p.IsGithubPRPatch() {
 		return evergreen.GithubPRRequester
 	}
-	if p.IsGithubMergePatch() {
+	if p.IsMergeQueuePatch() {
 		return evergreen.GithubMergeRequester
 	}
 	return evergreen.PatchVersionRequester

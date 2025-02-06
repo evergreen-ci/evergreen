@@ -41,14 +41,6 @@ type APIGithubMergeSubscriber struct {
 	Ref   *string `json:"ref" mapstructure:"ref"`
 }
 
-type APIPRInfo struct {
-	Owner       *string `json:"owner" mapstructure:"owner"`
-	Repo        *string `json:"repo" mapstructure:"repo"`
-	PRNumber    int     `json:"pr_number" mapstructure:"pr_number"`
-	Ref         *string `json:"ref" mapstructure:"ref"`
-	CommitTitle *string `json:"commit_title" mapstructure:"commit_title"`
-}
-
 type APIWebhookSubscriber struct {
 	URL        *string            `json:"url" mapstructure:"url"`
 	Secret     *string            `json:"secret" mapstructure:"secret"`
@@ -268,24 +260,6 @@ func (s *APIGithubPRSubscriber) ToService() event.GithubPullRequestSubscriber {
 		Repo:     utility.FromStringPtr(s.Repo),
 		Ref:      utility.FromStringPtr(s.Ref),
 		PRNumber: s.PRNumber,
-	}
-}
-
-func (s *APIPRInfo) BuildFromService(info event.PRInfo) {
-	s.Owner = utility.ToStringPtr(info.Owner)
-	s.Repo = utility.ToStringPtr(info.Repo)
-	s.PRNumber = info.PRNum
-	s.Ref = utility.ToStringPtr(info.Ref)
-	s.CommitTitle = utility.ToStringPtr(info.CommitTitle)
-}
-
-func (s *APIPRInfo) ToService() event.PRInfo {
-	return event.PRInfo{
-		Owner:       utility.FromStringPtr(s.Owner),
-		Repo:        utility.FromStringPtr(s.Repo),
-		PRNum:       s.PRNumber,
-		Ref:         utility.FromStringPtr(s.Ref),
-		CommitTitle: utility.FromStringPtr(s.CommitTitle),
 	}
 }
 

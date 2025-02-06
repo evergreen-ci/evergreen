@@ -37,12 +37,24 @@
           "user": {
             "patches": {
               "patches": [
-                { "id": "5e4ff3abe3c3317e352062e8" },
-                { "id": "5e4ff3abe3c3317e352062e7" },
-                { "id": "5e4ff3abe3c3317e352062e6" },
-                { "id": "5e4ff3abe3c3317e352062e5" },
-                { "id": "5e4ff3abe3c3317e352062e4" },
-                { "id": "5e4ff3abe3c3317e352062e9" }
+                {
+                  "id": "5e4ff3abe3c3317e352062e8"
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e7"
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e6"
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e5"
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e4"
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e9"
+                }
               ],
               "filteredPatchCount": 6
             }
@@ -144,33 +156,14 @@
       }
     },
     {
-      "query_file": "include_commit_queue.graphql",
-      "test_user_id": "regular_user",
-      "result": {
-        "data": {
-          "user": {
-            "patches": {
-              "patches": [
-                { "id": "5e4ff3abe3c3317e352062e8" },
-                { "id": "5e4ff3abe3c3317e352062e7" },
-                { "id": "5e4ff3abe3c3317e352062e6" },
-                { "id": "5e4ff3abe3c3317e352062e5" },
-                { "id": "5e4ff3abe3c3317e352062e4" },
-                { "id": "5e4ff3abe3c3317e352062e9" }
-              ],
-              "filteredPatchCount": 6
-            }
-          }
-        }
-      }
-    },
-    {
       "query_file": "nonexistent_user.graphql",
       "result": {
         "errors": [
           {
             "message": "unable to find user from user ID",
-            "path": ["user"],
+            "path": [
+              "user"
+            ],
             "extensions": {
               "code": "RESOURCE_NOT_FOUND"
             }
@@ -187,9 +180,15 @@
           "page0": {
             "patches": {
               "patches": [
-                { "id": "5e4ff3abe3c3317e352062e8" },
-                { "id": "5e4ff3abe3c3317e352062e7" },
-                { "id": "5e4ff3abe3c3317e352062e6" }
+                {
+                  "id": "5e4ff3abe3c3317e352062e8"
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e7"
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e6"
+                }
               ],
               "filteredPatchCount": 6
             }
@@ -197,9 +196,15 @@
           "page1": {
             "patches": {
               "patches": [
-                { "id": "5e4ff3abe3c3317e352062e5" },
-                { "id": "5e4ff3abe3c3317e352062e4" },
-                { "id": "5e4ff3abe3c3317e352062e9" }
+                {
+                  "id": "5e4ff3abe3c3317e352062e5"
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e4"
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e9"
+                }
               ],
               "filteredPatchCount": 6
             }
@@ -215,9 +220,18 @@
           "user": {
             "patches": {
               "patches": [
-                { "id": "5e4ff3abe3c3317e352062e7", "description": "222" },
-                { "id": "5e4ff3abe3c3317e352062e5", "description": "222" },
-                { "id": "5e4ff3abe3c3317e352062e9", "description": "222" }
+                {
+                  "id": "5e4ff3abe3c3317e352062e7",
+                  "description": "222"
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e5",
+                  "description": "222"
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e9",
+                  "description": "222"
+                }
               ],
               "filteredPatchCount": 3
             }
@@ -233,8 +247,14 @@
           "user": {
             "patches": {
               "patches": [
-                { "id": "5e4ff3abe3c3317e352062e7", "status": "failed" },
-                { "id": "5e4ff3abe3c3317e352062e9", "status": "failed" }
+                {
+                  "id": "5e4ff3abe3c3317e352062e7",
+                  "status": "failed"
+                },
+                {
+                  "id": "5e4ff3abe3c3317e352062e9",
+                  "status": "failed"
+                }
               ],
               "filteredPatchCount": 2
             }

@@ -250,7 +250,7 @@ func (s *GithubSuite) TestFindUnprocessedGithubIntents() {
 
 func (s *GithubSuite) TestNewPatch() {
 	s.NoError(db.Clear(IntentCollection))
-	intent, err := NewGithubIntent("4", "", "", "", "", testutil.NewGithubPR(s.pr, s.baseRepo, s.baseHash, s.headRepo, s.hash, s.user, s.title))
+	intent, err := NewGithubIntent("4", "", "", "", s.baseHash, testutil.NewGithubPR(s.pr, s.baseRepo, s.baseHash, s.headRepo, s.hash, s.user, s.title))
 	s.NoError(err)
 	s.NotNil(intent)
 	s.NoError(intent.Insert())

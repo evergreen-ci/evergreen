@@ -10,19 +10,28 @@ import (
 	"github.com/evergreen-ci/utility"
 )
 
+// CommitQueue is the resolver for the commitQueue field.
+func (r *notificationsResolver) CommitQueue(ctx context.Context, obj *restModel.APINotificationPreferences) (*string, error) {
+	panic(fmt.Errorf("not implemented: CommitQueue - commitQueue"))
+}
+
+// CommitQueueID is the resolver for the commitQueueId field.
+func (r *notificationsResolver) CommitQueueID(ctx context.Context, obj *restModel.APINotificationPreferences) (*string, error) {
+	panic(fmt.Errorf("not implemented: CommitQueueID - commitQueueId"))
+}
+
 // Patches is the resolver for the patches field.
 func (r *userResolver) Patches(ctx context.Context, obj *restModel.APIDBUser, patchesInput PatchesInput) (*Patches, error) {
-	opts := patch.ByPatchNameStatusesCommitQueuePaginatedOptions{
-		Author:             obj.UserID,
-		PatchName:          patchesInput.PatchName,
-		Statuses:           patchesInput.Statuses,
-		Page:               patchesInput.Page,
-		Limit:              patchesInput.Limit,
-		IncludeCommitQueue: patchesInput.IncludeCommitQueue,
-		IncludeHidden:      patchesInput.IncludeHidden,
-		Requesters:         patchesInput.Requesters,
+	opts := patch.ByPatchNameStatusesMergeQueuePaginatedOptions{
+		Author:        obj.UserID,
+		PatchName:     patchesInput.PatchName,
+		Statuses:      patchesInput.Statuses,
+		Page:          patchesInput.Page,
+		Limit:         patchesInput.Limit,
+		IncludeHidden: patchesInput.IncludeHidden,
+		Requesters:    patchesInput.Requesters,
 	}
-	patches, count, err := patch.ByPatchNameStatusesCommitQueuePaginated(ctx, opts)
+	patches, count, err := patch.ByPatchNameStatusesMergeQueuePaginated(ctx, opts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting patches for user '%s': %s", utility.FromStringPtr(obj.UserID), err.Error()))
 	}
@@ -48,17 +57,32 @@ func (r *userResolver) Subscriptions(ctx context.Context, obj *restModel.APIDBUs
 	return getAPISubscriptionsForOwner(ctx, utility.FromStringPtr(obj.UserID), event.OwnerTypePerson)
 }
 
+// CommitQueue is the resolver for the commitQueue field.
+func (r *notificationsInputResolver) CommitQueue(ctx context.Context, obj *restModel.APINotificationPreferences, data *string) error {
+	panic(fmt.Errorf("not implemented: CommitQueue - commitQueue"))
+}
+
 // Target is the resolver for the target field.
 func (r *subscriberInputResolver) Target(ctx context.Context, obj *restModel.APISubscriber, data string) error {
 	obj.Target = data
 	return nil
 }
 
+// Notifications returns NotificationsResolver implementation.
+func (r *Resolver) Notifications() NotificationsResolver { return &notificationsResolver{r} }
+
 // User returns UserResolver implementation.
 func (r *Resolver) User() UserResolver { return &userResolver{r} }
+
+// NotificationsInput returns NotificationsInputResolver implementation.
+func (r *Resolver) NotificationsInput() NotificationsInputResolver {
+	return &notificationsInputResolver{r}
+}
 
 // SubscriberInput returns SubscriberInputResolver implementation.
 func (r *Resolver) SubscriberInput() SubscriberInputResolver { return &subscriberInputResolver{r} }
 
+type notificationsResolver struct{ *Resolver }
 type userResolver struct{ *Resolver }
+type notificationsInputResolver struct{ *Resolver }
 type subscriberInputResolver struct{ *Resolver }

@@ -24,6 +24,7 @@ import (
 const (
 	createHostJobName                     = "provisioning-create-host"
 	maxPollAttempts                       = 100
+	maxHostCreateAttempts                 = 3
 	provisioningCreateHostAttributePrefix = "evergreen.provisioning_create_host"
 )
 
@@ -69,12 +70,15 @@ func NewHostCreateJob(env evergreen.Environment, h host.Host, id string, buildIm
 	})
 	var wait time.Duration
 	var maxAttempts int
+
 	if h.ParentID != "" {
 		wait = time.Minute
 		maxAttempts = maxPollAttempts
-	} else {
+	} else if j.host.SpawnOptions.SpawnedByTask {
 		wait = 10 * time.Second
 		maxAttempts = j.host.SpawnOptions.Retries + 1
+	} else if j.host.StartedBy == evergreen.User {
+		maxAttempts = maxHostCreateAttempts
 	}
 	j.UpdateRetryInfo(amboy.JobRetryOptions{
 		Retryable:   utility.TruePtr(),
@@ -215,10 +219,11 @@ func (j *createHostJob) Run(ctx context.Context) {
 	defer func() {
 		if j.IsLastAttempt() && j.HasErrors() && (j.host.Status == evergreen.HostUninitialized || j.host.Status == evergreen.HostBuilding) {
 			grip.Error(message.WrapError(j.Error(), message.Fields{
-				"message": "no attempts remaining to create host",
-				"outcome": "giving up on creating this host",
-				"host_id": j.HostID,
-				"distro":  j.host.Distro.Id,
+				"message":      "no attempts remaining to create host",
+				"outcome":      "giving up on creating this host",
+				"host_id":      j.HostID,
+				"distro":       j.host.Distro.Id,
+				"max_attempts": j.RetryInfo().MaxAttempts,
 			}))
 
 			if j.host.SpawnOptions.SpawnedByTask {
@@ -362,8 +367,10 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 		"host_tag":     j.host.Tag,
 		"distro":       j.host.Distro.Id,
 		"provider":     j.host.Provider,
+		"subnet":       j.host.GetSubnetID(),
 		"job":          j.ID(),
 		"runtime_secs": time.Since(j.start).Seconds(),
+		"num_attempts": j.RetryInfo().CurrentAttempt,
 	})
 	span.SetAttributes(attribute.Bool(fmt.Sprintf("%s.spawned_host", provisioningCreateHostAttributePrefix), true))
 

@@ -395,6 +395,10 @@ func (r *versionResolver) TaskStatusStats(ctx context.Context, obj *restModel.AP
 
 // UpstreamProject is the resolver for the upstreamProject field.
 func (r *versionResolver) UpstreamProject(ctx context.Context, obj *restModel.APIVersion) (*UpstreamProject, error) {
+	if utility.FromStringPtr(obj.Requester) != evergreen.TriggerRequester {
+		return nil, nil
+	}
+
 	v, err := model.VersionFindOneId(utility.FromStringPtr(obj.Id))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
@@ -516,6 +520,28 @@ func (r *versionResolver) Warnings(ctx context.Context, obj *restModel.APIVersio
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", utility.FromStringPtr(obj.Id)))
 	}
 	return v.Warnings, nil
+}
+
+// WaterfallBuilds is the resolver for the waterfallBuilds field.
+func (r *versionResolver) WaterfallBuilds(ctx context.Context, obj *restModel.APIVersion) ([]*model.WaterfallBuild, error) {
+	versionId := utility.FromStringPtr(obj.Id)
+
+	// No need to fetch build variants for unactivated versions
+	if !utility.FromBoolPtr(obj.Activated) {
+		return nil, nil
+	}
+
+	versionBuilds := []*model.WaterfallBuild{}
+	builds, err := model.GetVersionBuilds(ctx, versionId)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting version build variants: %s", err.Error()))
+	}
+
+	for _, b := range builds {
+		bCopy := b
+		versionBuilds = append(versionBuilds, &bCopy)
+	}
+	return versionBuilds, nil
 }
 
 // Version returns VersionResolver implementation.

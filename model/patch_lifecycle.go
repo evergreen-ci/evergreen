@@ -9,8 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/thirdparty"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -221,7 +219,7 @@ func getPatchedProjectYAML(ctx context.Context, projectRef *ProjectRef, opts *Ge
 	if p.IsGithubPRPatch() {
 		hash = p.GithubPatchData.HeadHash
 	}
-	if p.IsGithubMergePatch() {
+	if p.IsMergeQueuePatch() {
 		hash = p.GithubMergeData.HeadSHA
 	}
 	opts.Revision = hash
@@ -856,7 +854,7 @@ func getLoadProjectOptsForPatch(p *patch.Patch) (*ProjectRef, *GetProjectOpts, e
 	if p.IsGithubPRPatch() {
 		hash = p.GithubPatchData.HeadHash
 	}
-	if p.IsGithubMergePatch() {
+	if p.IsMergeQueuePatch() {
 		hash = p.GithubMergeData.HeadSHA
 	}
 
@@ -996,43 +994,4 @@ func AbortPatchesWithGithubPatchData(ctx context.Context, createdBefore time.Tim
 	}
 
 	return errors.Wrap(catcher.Resolve(), "aborting patches")
-}
-
-func MakeCommitQueueDescription(patches []patch.ModulePatch, projectRef *ProjectRef, project *Project,
-	githubMergePatch bool, mergeGroup thirdparty.GithubMergeGroup) string {
-	commitFmtString := "'%s' into '%s/%s:%s'"
-	description := []string{}
-	for _, p := range patches {
-		// skip empty patches
-		if len(p.PatchSet.CommitMessages) == 0 {
-			continue
-		}
-		owner := projectRef.Owner
-		repo := projectRef.Repo
-		branch := projectRef.Branch
-		if p.ModuleName != "" {
-			module, err := project.GetModuleByName(p.ModuleName)
-			if err != nil {
-				continue
-			}
-			owner, repo, err = module.GetOwnerAndRepo()
-			if err != nil {
-				continue
-			}
-
-			branch = module.Branch
-		}
-
-		description = append(description, fmt.Sprintf(commitFmtString, strings.Join(p.PatchSet.CommitMessages, " <- "), owner, repo, branch))
-	}
-
-	if len(description) == 0 {
-		description = []string{"No Commits Added"}
-	}
-
-	if githubMergePatch {
-		return "GitHub Merge Queue: " + mergeGroup.HeadCommit + " (" + mergeGroup.HeadSHA[0:7] + ")"
-	} else {
-		return "Commit Queue Merge: " + strings.Join(description, " || ")
-	}
 }
