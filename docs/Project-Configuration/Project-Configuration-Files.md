@@ -416,7 +416,7 @@ which git revisions are being used. If no modules have been defined, the
 For mainline commits and [trigger versions](Project-and-Distro-Settings#project-triggers), a new 
 manifest will be created that uses the latest revision available for each module.
 
-For manual patches and GitHub PRs, by default, the git revisions in the
+For manual patches, GitHub PRs and periodic builds, by default, the git revisions in the
 version manifest will be inherited from its base version (i.e. the mainline commit version of the patch's base git revision). 
 You can change the git revision for modules by setting a module manually with 
 [evergreen set-module](../CLI/#operating-on-existing-patches) or
@@ -463,7 +463,7 @@ Fields:
     not specified, defaults to the latest revision that existed at the
     time of the Evergreen version creation)
 -   `auto_update`: if true, the latest revision for the module will be
-    dynamically retrieved for each Github PR and CLI patch submission
+    dynamically retrieved for each Github PR, CLI patch, and periodic build submission
 
 ### Pre and Post
 
