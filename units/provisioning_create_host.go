@@ -24,7 +24,7 @@ import (
 const (
 	createHostJobName                     = "provisioning-create-host"
 	maxPollAttempts                       = 100
-	maxHostCreateAttempts                 = 3
+	maxHostCreateAttempts                 = 5
 	provisioningCreateHostAttributePrefix = "evergreen.provisioning_create_host"
 )
 
