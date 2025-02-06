@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	modelUtil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
 	"github.com/stretchr/testify/assert"
@@ -22,9 +23,9 @@ import (
 )
 
 func numIdleHostsFound(ctx context.Context, env evergreen.Environment, t *testing.T) (int, []string) {
-	queue := queue.NewLocalLimitedSize(3, 1024)
+	queue := queue.NewLocalLimitedSize(100, 1024)
 	require.NoError(t, queue.Start(ctx))
-	defer queue.Runner().Close(ctx)
+	defer queue.Close(ctx)
 
 	jobs, err := idleHostJobs(ctx, env, time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC))
 	require.NoError(t, err)
@@ -69,7 +70,8 @@ func TestFlaggingIdleHosts(t *testing.T) {
 	defer cancel()
 	ctx = testutil.TestSpan(ctx, t)
 
-	env := evergreen.GetEnvironment()
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
 
 	t.Run("HostsCurrentlyRunningTasksShouldNeverBeFlagged", func(t *testing.T) {
 		tctx := testutil.TestSpan(ctx, t)
@@ -88,7 +90,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		// insert a host that is currently running a task - but whose
 		// creation time would otherwise indicate it has been idle a while
 		host1 := host.Host{
-			Id:           "h1",
+			Id:           utility.RandomString(),
 			Distro:       distro1,
 			Provider:     evergreen.ProviderNameMock,
 			CreationTime: time.Now().Add(-30 * time.Minute),
@@ -123,7 +125,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		require.NoError(t, distro1.Insert(tctx))
 
 		host1 := host.Host{
-			Id:                    "h1",
+			Id:                    utility.RandomString(),
 			Distro:                distro1,
 			Provider:              evergreen.ProviderNameMock,
 			CreationTime:          time.Now().Add(-30 * time.Minute),
@@ -161,7 +163,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		// Insert a host that recently ran a single host task group task but is
 		// currently idle.
 		host1 := host.Host{
-			Id:                    "h1",
+			Id:                    utility.RandomString(),
 			Distro:                distro1,
 			Provider:              evergreen.ProviderNameMock,
 			CreationTime:          time.Now().Add(-30 * time.Minute),
@@ -205,7 +207,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		// Insert a host that recently ran a single host task group task but
 		// has not moved onto the next task group task in a long time.
 		host1 := host.Host{
-			Id:                    "h1",
+			Id:                    utility.RandomString(),
 			Distro:                distro1,
 			Provider:              evergreen.ProviderNameMock,
 			CreationTime:          time.Now().Add(-30 * time.Minute),
@@ -251,7 +253,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 
 		// Insert a host that is running a task but has an outdated AMI.
 		host1 := host.Host{
-			Id:                    "h1",
+			Id:                    utility.RandomString(),
 			Distro:                distro1,
 			Provider:              evergreen.ProviderNameMock,
 			CreationTime:          time.Now().Add(-30 * time.Minute),
@@ -298,7 +300,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		// Insert a host that recently ran a task but is currently idle with an
 		// outdated AMI.
 		host1 := host.Host{
-			Id:                    "h1",
+			Id:                    utility.RandomString(),
 			Distro:                distro1,
 			Provider:              evergreen.ProviderNameMock,
 			CreationTime:          time.Now().Add(-30 * time.Minute),
@@ -322,7 +324,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 
 		num, hosts := numIdleHostsFound(tctx, env, t)
 		assert.Equal(t, 1, num, "should idle terminate host with outdated AMI that is not actively running a task")
-		assert.Contains(t, hosts, "h1")
+		assert.Contains(t, hosts, host1.Id)
 	})
 	t.Run("HostWithOutdatedAMIInBetweenSingleHostTaskGroupTasksShouldNotBeIdleTerminated", func(t *testing.T) {
 		tctx := testutil.TestSpan(ctx, t)
@@ -345,7 +347,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		// Insert a host that recently ran a single host task group task but has
 		// an outdated AMI.
 		host1 := host.Host{
-			Id:                    "h1",
+			Id:                    utility.RandomString(),
 			Distro:                distro1,
 			Provider:              evergreen.ProviderNameMock,
 			CreationTime:          time.Now().Add(-30 * time.Minute),
@@ -391,7 +393,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		require.NoError(t, distro1.Insert(tctx))
 
 		host1 := host.Host{
-			Id:                    "h1",
+			Id:                    utility.RandomString(),
 			Distro:                distro1,
 			Provider:              evergreen.ProviderNameMock,
 			LastTask:              "t1",
@@ -402,7 +404,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			Provisioned:           true,
 		}
 		host2 := host.Host{
-			Id:                    "h2",
+			Id:                    utility.RandomString(),
 			Distro:                distro1,
 			Provider:              evergreen.ProviderNameMock,
 			LastTask:              "t2",
@@ -417,7 +419,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 
 		num, hosts := numIdleHostsFound(tctx, env, t)
 		require.Equal(t, 1, num)
-		assert.Equal(t, "h1", hosts[0])
+		assert.Equal(t, host1.Id, hosts[0])
 	})
 	t.Run("HostsThatRecentlyRanTaskShouldBeFlaggedIfTheyHaveBeenIdleLongerThanIdleThreshold", func(t *testing.T) {
 		tctx := testutil.TestSpan(ctx, t)
@@ -434,7 +436,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		require.NoError(t, distro1.Insert(tctx))
 
 		host1 := host.Host{
-			Id:                    "h1",
+			Id:                    utility.RandomString(),
 			Distro:                distro1,
 			Provider:              evergreen.ProviderNameMock,
 			LastTask:              "t1",
@@ -445,7 +447,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			Provisioned:           true,
 		}
 		host2 := host.Host{
-			Id:                    "h2",
+			Id:                    utility.RandomString(),
 			Distro:                distro1,
 			Provider:              evergreen.ProviderNameMock,
 			LastTask:              "t2",
@@ -460,7 +462,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 
 		num, hosts := numIdleHostsFound(tctx, env, t)
 		require.Equal(t, 1, num)
-		assert.Equal(t, "h1", hosts[0])
+		assert.Equal(t, host1.Id, hosts[0])
 	})
 
 	t.Run("LegacyHostsThatNeedNewAgentsShouldNotBeMarkedIdle", func(t *testing.T) {
@@ -482,7 +484,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		require.NoError(t, distro1.Insert(tctx))
 
 		host1 := host.Host{
-			Id:                    "h1",
+			Id:                    utility.RandomString(),
 			Distro:                distro1,
 			Provider:              evergreen.ProviderNameMock,
 			Status:                evergreen.HostRunning,
@@ -517,7 +519,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		require.NoError(t, distro1.Insert(tctx))
 
 		host1 := host.Host{
-			Id:                    "h1",
+			Id:                    utility.RandomString(),
 			Distro:                distro1,
 			Provider:              evergreen.ProviderNameMock,
 			Status:                evergreen.HostRunning,
@@ -552,7 +554,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		require.NoError(t, distro1.Insert(tctx))
 
 		host1 := host.Host{
-			Id:                    "host1",
+			Id:                    utility.RandomString(),
 			Distro:                distro1,
 			Provider:              evergreen.ProviderNameMock,
 			Status:                evergreen.HostRunning,
@@ -566,7 +568,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		// finding idle hosts should not return the host
 		num, hosts := numIdleHostsFound(tctx, env, t)
 		require.Equal(t, 1, num)
-		assert.Equal(t, "host1", hosts[0])
+		assert.Equal(t, host1.Id, hosts[0])
 	})
 }
 
@@ -580,7 +582,8 @@ func TestFlaggingIdleHostsWithMissingDistroIDs(t *testing.T) {
 	defer cancel()
 	ctx = testutil.TestSpan(ctx, t)
 
-	env := evergreen.GetEnvironment()
+	env := &mock.Environment{}
+	assert.NoError(t, env.Configure(ctx))
 
 	t.Run("AddSomeHostsWithReferencedDistrosThatDoNotExistInTheDistroCollection", func(t *testing.T) {
 		tctx := testutil.TestSpan(ctx, t)
@@ -605,7 +608,7 @@ func TestFlaggingIdleHostsWithMissingDistroIDs(t *testing.T) {
 		require.NoError(t, distro2.Insert(tctx))
 
 		host1 := host.Host{
-			Id:                    "h1",
+			Id:                    utility.RandomString(),
 			Distro:                distro2,
 			Provider:              evergreen.ProviderNameMock,
 			CreationTime:          time.Now().Add(-10 * time.Minute),
@@ -614,7 +617,7 @@ func TestFlaggingIdleHostsWithMissingDistroIDs(t *testing.T) {
 			StartedBy:             evergreen.User,
 		}
 		host2 := host.Host{
-			Id:                    "h2",
+			Id:                    utility.RandomString(),
 			Distro:                distro1,
 			Provider:              evergreen.ProviderNameMock,
 			CreationTime:          time.Now().Add(-20 * time.Minute),
@@ -623,7 +626,7 @@ func TestFlaggingIdleHostsWithMissingDistroIDs(t *testing.T) {
 			StartedBy:             evergreen.User,
 		}
 		host3 := host.Host{
-			Id: "h3",
+			Id: utility.RandomString(),
 			Distro: distro.Distro{
 				Id:       "distroZ",
 				Provider: evergreen.ProviderNameMock,
@@ -635,7 +638,7 @@ func TestFlaggingIdleHostsWithMissingDistroIDs(t *testing.T) {
 			StartedBy:             evergreen.User,
 		}
 		host4 := host.Host{
-			Id: "h4",
+			Id: utility.RandomString(),
 			Distro: distro.Distro{
 				Id:       "distroA",
 				Provider: evergreen.ProviderNameMock,
@@ -647,7 +650,7 @@ func TestFlaggingIdleHostsWithMissingDistroIDs(t *testing.T) {
 			StartedBy:             evergreen.User,
 		}
 		host5 := host.Host{
-			Id: "h5",
+			Id: utility.RandomString(),
 			Distro: distro.Distro{
 				Id:       "distroC",
 				Provider: evergreen.ProviderNameMock,
@@ -669,9 +672,9 @@ func TestFlaggingIdleHostsWithMissingDistroIDs(t *testing.T) {
 		num, hosts := numIdleHostsFound(tctx, env, t)
 		assert.Equal(t, 3, num)
 
-		assert.Contains(t, hosts, "h3")
-		assert.Contains(t, hosts, "h4")
-		assert.Contains(t, hosts, "h5")
+		assert.Contains(t, hosts, host3.Id)
+		assert.Contains(t, hosts, host4.Id)
+		assert.Contains(t, hosts, host5.Id)
 	})
 }
 
@@ -685,7 +688,8 @@ func TestFlaggingIdleHostsWhenNonZeroMinimumHosts(t *testing.T) {
 	defer cancel()
 	ctx = testutil.TestSpan(ctx, t)
 
-	env := evergreen.GetEnvironment()
+	env := &mock.Environment{}
+	assert.NoError(t, env.Configure(ctx))
 
 	t.Run("NeitherHostShouldBeFlaggedAsIdleAsMinimumHostsIsTwo", func(t *testing.T) {
 		tctx := testutil.TestSpan(ctx, t)
@@ -702,7 +706,7 @@ func TestFlaggingIdleHostsWhenNonZeroMinimumHosts(t *testing.T) {
 		require.NoError(t, distro1.Insert(tctx))
 
 		host1 := host.Host{
-			Id:                    "h1",
+			Id:                    utility.RandomString(),
 			Distro:                distro1,
 			Provider:              evergreen.ProviderNameMock,
 			CreationTime:          time.Now().Add(-30 * time.Minute),
@@ -711,7 +715,7 @@ func TestFlaggingIdleHostsWhenNonZeroMinimumHosts(t *testing.T) {
 			StartedBy:             evergreen.User,
 		}
 		host2 := host.Host{
-			Id:                    "h2",
+			Id:                    utility.RandomString(),
 			Distro:                distro1,
 			Provider:              evergreen.ProviderNameMock,
 			CreationTime:          time.Now().Add(-20 * time.Minute),
@@ -742,7 +746,7 @@ func TestFlaggingIdleHostsWhenNonZeroMinimumHosts(t *testing.T) {
 		require.NoError(t, distro1.Insert(tctx))
 
 		host1 := host.Host{
-			Id:                    "h1",
+			Id:                    utility.RandomString(),
 			Distro:                distro1,
 			Provider:              evergreen.ProviderNameMock,
 			CreationTime:          time.Now().Add(-30 * time.Minute),
@@ -751,7 +755,7 @@ func TestFlaggingIdleHostsWhenNonZeroMinimumHosts(t *testing.T) {
 			StartedBy:             evergreen.User,
 		}
 		host2 := host.Host{
-			Id:                    "h2",
+			Id:                    utility.RandomString(),
 			Distro:                distro1,
 			Provider:              evergreen.ProviderNameMock,
 			CreationTime:          time.Now().Add(-20 * time.Minute),
@@ -760,7 +764,7 @@ func TestFlaggingIdleHostsWhenNonZeroMinimumHosts(t *testing.T) {
 			StartedBy:             evergreen.User,
 		}
 		host3 := host.Host{
-			Id:                    "h3",
+			Id:                    utility.RandomString(),
 			Distro:                distro1,
 			Provider:              evergreen.ProviderNameMock,
 			CreationTime:          time.Now().Add(-10 * time.Minute),
@@ -776,7 +780,7 @@ func TestFlaggingIdleHostsWhenNonZeroMinimumHosts(t *testing.T) {
 		// Only the oldest host not running a task should be flagged as idle.
 		num, hosts := numIdleHostsFound(tctx, env, t)
 		require.Equal(t, 1, num)
-		assert.Equal(t, "h1", hosts[0])
+		assert.Equal(t, host1.Id, hosts[0])
 	})
 }
 
@@ -785,7 +789,8 @@ func TestTearingDownIsNotConsideredIdle(t *testing.T) {
 	defer cancel()
 	ctx = testutil.TestSpan(ctx, t)
 
-	env := evergreen.GetEnvironment()
+	env := &mock.Environment{}
+	assert.NoError(t, env.Configure(ctx))
 
 	tctx := testutil.TestSpan(ctx, t)
 	testFlaggingIdleHostsSetupTest(t)
@@ -807,7 +812,7 @@ func TestTearingDownIsNotConsideredIdle(t *testing.T) {
 	require.NoError(t, distro1.Insert(tctx))
 
 	host1 := host.Host{
-		Id:                    "h1",
+		Id:                    utility.RandomString(),
 		Distro:                distro1,
 		Provider:              evergreen.ProviderNameMock,
 		CreationTime:          time.Now().Add(-30 * time.Minute),
@@ -816,7 +821,7 @@ func TestTearingDownIsNotConsideredIdle(t *testing.T) {
 		StartedBy:             evergreen.User,
 	}
 	host2 := host.Host{
-		Id:                         "h2",
+		Id:                         utility.RandomString(),
 		Distro:                     distro1,
 		Provider:                   evergreen.ProviderNameMock,
 		CreationTime:               time.Now().Add(-30 * time.Minute),
@@ -832,7 +837,7 @@ func TestTearingDownIsNotConsideredIdle(t *testing.T) {
 	// The host tearing down should not be flagged as idle.
 	num, hosts := numIdleHostsFound(tctx, env, t)
 	require.Equal(t, 1, num)
-	assert.Equal(t, "h1", hosts[0])
+	assert.Equal(t, host1.Id, hosts[0])
 
 }
 func TestPopulateIdleHostJobsCalculations(t *testing.T) {
@@ -845,7 +850,8 @@ func TestPopulateIdleHostJobsCalculations(t *testing.T) {
 	defer func() {
 		assert.NoError(db.DropCollections(host.Collection, distro.Collection, task.Collection))
 	}()
-	env := mock.Environment{}
+
+	env := &mock.Environment{}
 	assert.NoError(env.Configure(ctx))
 
 	require.NoError(t, db.EnsureIndex(host.Collection, mongo.IndexModel{
@@ -939,9 +945,9 @@ func TestPopulateIdleHostJobsCalculations(t *testing.T) {
 	assert.NoError(host5.Insert(ctx))
 	assert.NoError(host6.Insert(ctx))
 
-	distroHosts, err := host.IdleEphemeralGroupedByDistroID(ctx, &env)
+	distroHosts, err := host.IdleEphemeralGroupedByDistroID(ctx, env)
 	assert.NoError(err)
-	assert.Len(distroHosts, 2)
+	require.Len(t, distroHosts, 2)
 
 	distroIDsToFind := make([]string, 0, len(distroHosts))
 	for _, info := range distroHosts {
@@ -980,6 +986,7 @@ func TestPopulateIdleHostJobsCalculations(t *testing.T) {
 	// Confirm the RunningHostsCount and the number of idle hosts for the given distro
 	assert.Equal(4, info1.RunningHostsCount)
 	assert.Equal(3, nIdleHosts)
+	require.Len(t, info1.IdleHosts, 3)
 	// Confirm the hosts are sorted from oldest to newest CreationTime
 	assert.Equal("host4", info1.IdleHosts[0].Id)
 	assert.Equal("host1", info1.IdleHosts[1].Id)
