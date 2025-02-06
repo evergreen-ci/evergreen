@@ -171,8 +171,8 @@ func (s3pc *s3put) validate() error {
 		catcher.NewWhen(s3pc.AwsSecret != "", "AWS secret must be empty when using role ARN")
 		catcher.NewWhen(s3pc.AwsSessionToken != "", "AWS session token must be empty when using role ARN")
 	} else {
-		catcher.NewWhen(s3pc.AwsKey == "", "AWS key must be provided")
-		catcher.NewWhen(s3pc.AwsSecret == "", "AWS secret must be provided")
+		catcher.NewWhen(s3pc.AwsKey == "", "AWS key cannot be blank")
+		catcher.NewWhen(s3pc.AwsSecret == "", "AWS secret cannot be blank")
 	}
 
 	catcher.NewWhen(s3pc.AwsSessionToken != "" && s3pc.Visibility == artifact.Signed, "cannot use temporary AWS credentials with signed link visibility")
