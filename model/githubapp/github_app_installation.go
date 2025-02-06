@@ -2,6 +2,7 @@ package githubapp
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"sync"
 	"time"
@@ -11,9 +12,12 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/golang-jwt/jwt"
 	"github.com/google/go-github/v52/github"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 const (
@@ -105,6 +109,7 @@ func (g *GitHubClient) Close() {
 // This function cannot be moved to thirdparty because it is needed to set up the environment.
 // Couple this with a defered call with Close() to clean up the client.
 func getGitHubClientForAuth(authFields *GithubAppAuth) (*GitHubClient, error) {
+	// kim: TODO: remove once replaced with retry func
 	// retryConf := utility.NewDefaultHTTPRetryConf()
 	// retryConf.MaxDelay = GitHubRetryMaxDelay
 	// retryConf.BaseDelay = GitHubRetryMinDelay
@@ -137,7 +142,15 @@ func getGitHubClientForAuth(authFields *GithubAppAuth) (*GitHubClient, error) {
 }
 
 func githubClientShouldRetry() utility.HTTPRetryFunction {
+	defaultRetryableStatuses := utility.NewDefaultHTTPRetryConf().Statuses
+
 	return func(index int, req *http.Request, resp *http.Response, err error) bool {
+		_, span := tracer.Start(req.Context(), "githubClientShouldRetry")
+		defer span.End()
+
+		span.SetAttributes(attribute.Int(githubAppAttemptAttribute, index))
+		span.SetAttributes(attribute.String(githubAppURLAttribute, req.URL.String()))
+		span.SetAttributes(attribute.String(githubAppMethodAttribute, req.Method))
 		// kim: TODO: add custom logic for retrying on GitHub app errors. May
 		// unfortunately require reading the body depending on how the response
 		// is returned.
@@ -150,6 +163,63 @@ func githubClientShouldRetry() utility.HTTPRetryFunction {
 		// restore the response body and pass it along to the caller. Seems like
 		// most code here doesn't use the response body anyways, so it's
 		// probably fine to restore it.
+
+		// kim: TODO: add Splunk logs
+		// kim: TODO: add testing for Splunk logging
+
+		makeLogMsg := func(extraFields map[string]any) message.Fields {
+			msg := message.Fields{
+				"url":     req.URL.String(),
+				"method":  req.Method,
+				"attempt": index,
+				"op":      "githubClientShouldRetry",
+			}
+			for k, v := range extraFields {
+				msg[k] = v
+			}
+			return msg
+		}
+
+		if err != nil {
+			if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
+				return true
+			}
+			if utility.IsTemporaryError(err) {
+				return true
+			}
+
+			// TODO (DEVPROD-13567): retry in situations where there's no
+			// response but the error is still retryable (e.g. connection reset
+			// by peer).
+
+			grip.Error(message.WrapError(err, makeLogMsg(map[string]any{
+				"message": "GitHub endpoint encountered unretryable error",
+			})))
+
+			return false
+		}
+
+		if resp == nil {
+			grip.Error(message.WrapError(err, makeLogMsg(map[string]any{
+				"message": "GitHub app endpoint returned nil response",
+			})))
+			return true
+		}
+
+		for _, statusCode := range defaultRetryableStatuses {
+			if resp.StatusCode == statusCode {
+				return true
+			}
+		}
+
+		// TODO (DEVPROD-13567): retry when response from GitHub is non-OK due
+		// to a transient problem that is still retryable (e.g. secondary rate
+		// limit exceeded).
+		grip.ErrorWhen(resp.StatusCode >= http.StatusBadRequest, makeLogMsg(map[string]any{
+			"message":     "GitHub app endpoint returned response but is not retryable",
+			"status_code": resp.StatusCode,
+		}))
+
 		return false
 	}
 }
