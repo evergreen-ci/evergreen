@@ -130,7 +130,8 @@ func githubClientShouldRetry() utility.HTTPRetryFunction {
 	defaultRetryableStatuses := utility.NewDefaultHTTPRetryConf().Statuses
 
 	return func(index int, req *http.Request, resp *http.Response, err error) bool {
-		_, span := tracer.Start(req.Context(), "githubClientShouldRetry")
+		const op = "githubClientShouldRetry"
+		_, span := tracer.Start(req.Context(), op)
 		defer span.End()
 
 		span.SetAttributes(attribute.Int(githubAppAttemptAttribute, index))
@@ -142,7 +143,7 @@ func githubClientShouldRetry() utility.HTTPRetryFunction {
 				"url":     req.URL.String(),
 				"method":  req.Method,
 				"attempt": index,
-				"op":      "githubClientShouldRetry",
+				"op":      op,
 			}
 			for k, v := range extraFields {
 				msg[k] = v

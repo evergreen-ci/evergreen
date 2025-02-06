@@ -12,10 +12,12 @@ import (
 )
 
 const (
-	githubAppEndpointAttribute = "evergreen.githubapp.endpoint"
-	githubAppAttemptAttribute  = "evergreen.githubapp.attempt"
-	githubAppURLAttribute      = "evergreen.githubapp.url"
-	githubAppMethodAttribute   = "evergreen.githubapp.method"
+	githubAppEndpointAttribute   = "evergreen.githubapp.endpoint"
+	githubAppAttemptAttribute    = "evergreen.githubapp.attempt"
+	githubAppURLAttribute        = "evergreen.githubapp.url"
+	githubAppErrorAttribute      = "evergreen.githubapp.error"
+	githubAppMethodAttribute     = "evergreen.githubapp.method"
+	githubAppStatusCodeAttribute = "evergreen.githubapp.status_code"
 )
 
 // GithubAppAuth holds the appId and privateKey for the github app associated with the project.
@@ -150,7 +152,7 @@ func (g *GithubAppAuth) CreateInstallationToken(ctx context.Context, owner, repo
 // createInstallationTokenForID returns an installation token from GitHub given an installation ID.
 // This function cannot be moved to thirdparty because it is needed to set up the environment.
 func (g *GithubAppAuth) createInstallationTokenForID(ctx context.Context, installationID int64, opts *github.InstallationTokenOptions) (string, *github.InstallationPermissions, error) {
-	caller := "CreateInstallationToken"
+	const caller = "CreateInstallationToken"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubAppEndpointAttribute, caller),
 	))
@@ -165,15 +167,15 @@ func (g *GithubAppAuth) createInstallationTokenForID(ctx context.Context, instal
 	token, resp, err := client.Apps.CreateInstallationToken(ctx, installationID, opts)
 	if resp != nil {
 		defer resp.Body.Close()
-		span.SetAttributes(attribute.Int("status", resp.StatusCode))
+		span.SetAttributes(attribute.Int(githubAppStatusCodeAttribute, resp.StatusCode))
 	}
 	if err != nil {
-		span.SetAttributes(attribute.String("err", err.Error()))
+		span.SetAttributes(attribute.String(githubAppErrorAttribute, err.Error()))
 		return "", nil, errors.Wrapf(err, "creating installation token for installation id: %d", installationID)
 	}
 	if token == nil {
 		err := errors.Errorf("Installation token for installation 'id': %d not found", installationID)
-		span.SetAttributes(attribute.String("err", err.Error()))
+		span.SetAttributes(attribute.String(githubAppErrorAttribute, err.Error()))
 		return "", nil, err
 	}
 
