@@ -751,8 +751,8 @@ func constructManifest(v *Version, projectRef *ProjectRef, moduleList ModuleList
 	}
 
 	var baseManifest *manifest.Manifest
-	isPatch := utility.StringSliceContains(evergreen.PatchRequesters, v.Requester)
-	if isPatch || v.Requester == evergreen.AdHocRequester {
+	shouldUseBaseRevision := utility.StringSliceContains(evergreen.PatchRequesters, v.Requester) || v.Requester == evergreen.AdHocRequester
+	if shouldUseBaseRevision {
 		baseManifest, err = manifest.FindFromVersion(v.Id, v.Identifier, v.Revision, v.Requester)
 		if err != nil {
 			return nil, errors.Wrap(err, "getting base manifest")
@@ -761,7 +761,7 @@ func constructManifest(v *Version, projectRef *ProjectRef, moduleList ModuleList
 
 	modules := map[string]*manifest.Module{}
 	for _, module := range moduleList {
-		if isPatch && !module.AutoUpdate && baseManifest != nil {
+		if shouldUseBaseRevision && !module.AutoUpdate && baseManifest != nil {
 			if baseModule, ok := baseManifest.Modules[module.Name]; ok {
 				modules[module.Name] = baseModule
 				continue
