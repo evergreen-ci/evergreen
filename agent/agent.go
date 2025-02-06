@@ -223,6 +223,8 @@ func (a *Agent) Start(ctx context.Context) error {
 		a.tryCleanupDirectory(a.opts.WorkingDirectory)
 	}
 
+	a.opts
+
 	return errors.Wrap(a.loop(ctx), "executing main agent loop")
 }
 
