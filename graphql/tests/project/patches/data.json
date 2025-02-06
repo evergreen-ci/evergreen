@@ -18,54 +18,87 @@
   "patches": [
     {
       "branch": "spruce",
-      "_id": { "$oid": "5e4ff3abe3c3317e352062e4" },
+      "_id": {
+        "$oid": "5e4ff3abe3c3317e352062e4"
+      },
       "author": "regular_user",
-      "create_time": { "$date": "2020-01-01T00:00:01Z" },
+      "create_time": {
+        "$date": "2020-01-01T00:00:01Z"
+      },
       "desc": "1",
       "status": "created",
-      "alias": "__commit_queue"
+      "alias": "__commit_queue",
+      "github_merge_data": {
+        "head_sha": "5e4ff3a"
+      }
     },
     {
       "branch": "spruce",
-      "_id": { "$oid": "5e4ff3abe3c3317e352062e5" },
+      "_id": {
+        "$oid": "5e4ff3abe3c3317e352062e5"
+      },
       "author": "regular_user",
-      "create_time": { "$date": "2020-01-01T00:00:02Z" },
+      "create_time": {
+        "$date": "2020-01-01T00:00:02Z"
+      },
       "desc": "222",
       "status": "created",
-      "alias": "__commit_queue"
+      "alias": "__commit_queue",
+      "github_merge_data": {
+        "head_sha": "5e4ff3f"
+      }
     },
     {
       "branch": "spruce",
-      "_id": { "$oid": "5e4ff3abe3c3317e352062e6" },
+      "_id": {
+        "$oid": "5e4ff3abe3c3317e352062e6"
+      },
       "author": "regular_user",
-      "create_time": { "$date": "2020-01-01T00:00:03Z" },
+      "create_time": {
+        "$date": "2020-01-01T00:00:03Z"
+      },
       "desc": "1",
       "status": "created",
-      "alias": "__commit_queue"
+      "alias": "__commit_queue",
+      "github_merge_data": {
+        "head_sha": "3d4ff3a"
+      }
     },
     {
       "branch": "spruce",
-      "_id": { "$oid": "5e4ff3abe3c3317e352062e7" },
+      "_id": {
+        "$oid": "5e4ff3abe3c3317e352062e7"
+      },
       "author": "regular_user",
-      "create_time": { "$date": "2020-01-01T00:00:04Z" },
+      "create_time": {
+        "$date": "2020-01-01T00:00:04Z"
+      },
       "desc": "222",
       "status": "failed",
       "alias": "__github"
     },
     {
       "branch": "spruce",
-      "_id": { "$oid": "5e4ff3abe3c3317e352062e8" },
+      "_id": {
+        "$oid": "5e4ff3abe3c3317e352062e8"
+      },
       "author": "regular_user",
-      "create_time": { "$date": "2020-01-01T00:00:05Z" },
+      "create_time": {
+        "$date": "2020-01-01T00:00:05Z"
+      },
       "desc": "1",
       "status": "created",
       "alias": "__github"
     },
     {
       "branch": "spruce",
-      "_id": { "$oid": "5e4ff3abe3c3317e352062e9" },
+      "_id": {
+        "$oid": "5e4ff3abe3c3317e352062e9"
+      },
       "author": "regular_user",
-      "create_time": { "$date": "2019-01-01T00:00:06Z" },
+      "create_time": {
+        "$date": "2019-01-01T00:00:06Z"
+      },
       "desc": "222",
       "status": "failed",
       "alias": "__github"

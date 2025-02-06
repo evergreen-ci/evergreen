@@ -2,7 +2,6 @@
   user {
     patches(
       patchesInput: {
-        includeCommitQueue: true
         includeHidden: true
         statuses: ["failed", "succeeded"]
         patchName: "2"

@@ -2,8 +2,6 @@ package artifact
 
 import (
 	"context"
-	"fmt"
-	"net/http"
 	"net/url"
 	"path/filepath"
 	"strings"
@@ -14,7 +12,6 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"go.opentelemetry.io/otel/attribute"
 )
 
 const Collection = "artifact_files"
@@ -25,21 +22,6 @@ const (
 	Private = "private"
 	None    = "none"
 	Signed  = "signed"
-
-	artifactFileAttribute = "evergreen.artifact_file"
-)
-
-var (
-	fileNameAttribute       = fmt.Sprintf("%s.file_name", artifactFileAttribute)
-	bucketAttribute         = fmt.Sprintf("%s.bucket", artifactFileAttribute)
-	internalBucketAttribute = fmt.Sprintf("%s.internal_bucket", artifactFileAttribute)
-	fileKeyAttribute        = fmt.Sprintf("%s.file_key", artifactFileAttribute)
-	errorAttribute          = fmt.Sprintf("%s.error", artifactFileAttribute)
-	irsaErrorAttribute      = fmt.Sprintf("%s.irsa_error", artifactFileAttribute)
-
-	// TODO (DEVPROD-13973): Remove context cancelled attribute.
-	contextCancelledAttribute       = fmt.Sprintf("%s.context_cancelled", artifactFileAttribute)
-	contextCancelledBeforeAttribute = fmt.Sprintf("%s.context_cancelled_before", artifactFileAttribute)
 )
 
 var ValidVisibilities = []string{Public, Private, None, Signed, ""}
@@ -103,8 +85,6 @@ func (f *File) validate() error {
 // StripHiddenFiles is a helper for only showing users the files they are
 // allowed to see. It also pre-signs file URLs.
 func StripHiddenFiles(ctx context.Context, files []File, hasUser bool) ([]File, error) {
-	ctx, span := tracer.Start(ctx, "strip-hidden-files")
-	defer span.End()
 	publicFiles := []File{}
 	for _, file := range files {
 		switch {
@@ -127,44 +107,16 @@ func StripHiddenFiles(ctx context.Context, files []File, hasUser bool) ([]File, 
 }
 
 func presignFile(ctx context.Context, file File) (string, error) {
-	ctx, span := tracer.Start(ctx, "presign-file")
-	defer span.End()
-	isInternalBucket := isInternalBucket(file.Bucket)
-	span.SetAttributes(
-		attribute.String(fileNameAttribute, file.Name),
-		attribute.String(bucketAttribute, file.Bucket),
-		attribute.String(fileKeyAttribute, file.FileKey),
-		attribute.Bool(internalBucketAttribute, isInternalBucket),
-		// TODO (DEVPROD-13973): Remove context cancelled attribute.
-		attribute.Bool(contextCancelledBeforeAttribute, errors.Is(ctx.Err(), context.Canceled) || errors.Is(ctx.Err(), context.DeadlineExceeded)),
-	)
-	if err := errors.Wrap(file.validate(), "file validation error"); err != nil {
-		span.SetAttributes(attribute.String(errorAttribute, err.Error()))
-		return "", err
+	if err := file.validate(); err != nil {
+		return "", errors.Wrap(err, "file validation failed")
 	}
 
 	// If this bucket is a devprod owned one, we sign the URL
 	// with the app's server IRSA credentials (which is used
-	// when no credentials are provided). If it fails,
-	// we fallback to using the provided credentials.
-	if isInternalBucket {
-		requestParams := pail.PreSignRequestParams{
-			Bucket:                file.Bucket,
-			FileKey:               file.FileKey,
-			SignatureExpiryWindow: evergreen.PresignMinimumValidTime,
-		}
-		presignURL, err := pail.PreSign(ctx, requestParams)
-		if err = errors.Wrap(err, "presigning internal bucket file"); err != nil {
-			span.SetAttributes(attribute.String(errorAttribute, err.Error()))
-			return "", err
-		}
-		if err := verifyPresignURL(ctx, presignURL); err != nil {
-			// TODO (DEVPROD-13973): Remove context cancelled attribute.
-			span.SetAttributes(attribute.Bool(contextCancelledAttribute, errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)))
-			span.SetAttributes(attribute.String(irsaErrorAttribute, err.Error()))
-		} else {
-			return presignURL, nil
-		}
+	// when no credentials are provided).
+	if isInternalBucket(file.Bucket) {
+		file.AwsKey = ""
+		file.AwsSecret = ""
 	}
 
 	requestParams := pail.PreSignRequestParams{
@@ -174,34 +126,7 @@ func presignFile(ctx context.Context, file File) (string, error) {
 		AwsSecret:             file.AwsSecret,
 		SignatureExpiryWindow: evergreen.PresignMinimumValidTime,
 	}
-	presignURL, err := pail.PreSign(ctx, requestParams)
-	if err = errors.Wrap(err, "presigning file"); err != nil {
-		span.SetAttributes(attribute.String(errorAttribute, err.Error()))
-		return "", err
-	}
-	return presignURL, nil
-}
-
-func verifyPresignURL(ctx context.Context, url string) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return errors.Wrap(err, "creating request to presign URL")
-	}
-
-	client := utility.GetHTTPClient()
-	defer utility.PutHTTPClient(client)
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return errors.Wrap(err, "making request to presign URL")
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return errors.Errorf("presign URL returned status code '%d'", resp.StatusCode)
-	}
-
-	return nil
+	return pail.PreSign(ctx, requestParams)
 }
 
 func GetAllArtifacts(tasks []TaskIDAndExecution) ([]File, error) {

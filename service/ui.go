@@ -19,6 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/gorilla/csrf"
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/sessions"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
@@ -301,7 +302,12 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 
 	// GraphQL
 	app.AddRoute("/graphql").Wrap(allowsCORS, needsLogin).Handler(playground.ApolloSandboxHandler("GraphQL playground", "/graphql/query")).Get()
-	app.AddRoute("/graphql/query").Wrap(allowsCORS, needsLoginNoRedirect).Handler(graphql.Handler(uis.Settings.Api.URL)).Post().Get()
+	app.AddRoute("/graphql/query").
+		Wrap(allowsCORS, needsLoginNoRedirect).
+		Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			handlers.CompressHandler(http.HandlerFunc(graphql.Handler(uis.Settings.Api.URL))).ServeHTTP(w, r)
+		})).
+		Post().Get()
 
 	// Waterfall pages
 	app.AddRoute("/").Wrap(needsLogin, needsContext).Handler(uis.mainlineCommitsRedirect).Get().Head()

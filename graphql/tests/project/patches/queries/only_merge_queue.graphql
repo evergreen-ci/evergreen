@@ -1,9 +1,8 @@
 {
   project(projectIdentifier: "spruce") {
-    patches(patchesInput: { statuses: ["failed"] }) {
+    patches(patchesInput: { onlyMergeQueue: true }) {
       patches {
         id
-        status
       }
       filteredPatchCount
     }

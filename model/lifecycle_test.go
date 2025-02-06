@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -2267,6 +2268,11 @@ func TestDisplayTaskRestart(t *testing.T) {
 		assert.Equal(evergreen.TaskUndispatched, dbTask.Status, dbTask.Id)
 		assert.True(dbTask.Activated, dbTask.Id)
 		assert.Equal("caller", dbTask.ActivatedBy)
+
+		dbEvents, err := event.FindAllByResourceID(dbTask.Id)
+		require.NoError(t, err)
+		require.Len(t, dbEvents, 1)
+		assert.Equal(event.TaskRestarted, dbEvents[0].EventType)
 	}
 
 	// Test that restarting a display task with restartFailed correctly resets failed tasks.
@@ -2440,7 +2446,7 @@ func resetTaskData() error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	if err := db.ClearCollections(build.Collection, task.Collection, VersionCollection, task.OldCollection, user.Collection); err != nil {
+	if err := db.ClearCollections(build.Collection, task.Collection, VersionCollection, task.OldCollection, user.Collection, event.EventCollection); err != nil {
 		return err
 	}
 	v := &Version{
