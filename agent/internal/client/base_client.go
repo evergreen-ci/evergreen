@@ -941,9 +941,6 @@ func (c *baseCommunicator) CreateGitHubDynamicAccessToken(ctx context.Context, t
 		path:     fmt.Sprintf("task/%s/github_dynamic_access_token/%s/%s", td.ID, owner, repo),
 		taskData: &td,
 	}
-	// kim: NOTE: this doesn't call retryRequest but still times out requesting
-	// the route. Possibly it is getting 500 but still retrying due to HTTP
-	// client configuration
 	resp, err := c.request(ctx, info, permissions)
 	if err != nil {
 		return "", nil, errors.Wrapf(err, "creating github dynamic access token for '%s/%s'", owner, repo)

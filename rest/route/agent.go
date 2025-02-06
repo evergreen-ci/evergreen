@@ -1648,13 +1648,6 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 		Permissions: permissions,
 	})
 	if err != nil {
-		// kim: NOTE: it's not so easy to determine if the error is due to user
-		// error or if it's due to GitHub sucking, and we still have to retry
-		// when GitHub temporarily sucks. Alternative difficult possibility is
-		// to keep this as-is with returning 500 and somehow integrate the
-		// agent's client so it logs HTTP errors (HTTP client doesn't support
-		// this natively).
-		// See logs: https://mongodb.splunkcloud.com/en-US/app/search/search?q=search%20index%3Devergreen%20%2Frest%2Fv2%2Ftask%2F*%2Fgithub_dynamic_access_token%20AND%20status%3D500%20AND%20method%3DPOST%20AND%20%22request%20encountered%20internal%20error%22%20%0A%7C%20stats%20count%20by%20error.message&display.page.search.mode=verbose&dispatch.sample_ratio=1&workload_pool=&earliest=-30d%40d&latest=now&display.page.search.tab=statistics&display.general.type=statistics&sid=1738789170.18231874
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "creating installation token for '%s/%s'", h.owner, h.repo))
 	}
 	if token == "" {

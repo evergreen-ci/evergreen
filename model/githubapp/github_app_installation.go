@@ -109,26 +109,11 @@ func (g *GitHubClient) Close() {
 // This function cannot be moved to thirdparty because it is needed to set up the environment.
 // Couple this with a defered call with Close() to clean up the client.
 func getGitHubClientForAuth(authFields *GithubAppAuth) (*GitHubClient, error) {
-	// kim: TODO: remove once replaced with retry func
-	// retryConf := utility.NewDefaultHTTPRetryConf()
-	// retryConf.MaxDelay = GitHubRetryMaxDelay
-	// retryConf.BaseDelay = GitHubRetryMinDelay
-	// retryConf.MaxRetries = GitHubMaxRetries
-
 	key, err := jwt.ParseRSAPrivateKeyFromPEM(authFields.PrivateKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "parsing private key")
 	}
 
-	// kim: TODO: unsure if this is the same. Logically, it should be the same
-	// as before, but it wraps the GH auth transport in the rehttp transport,
-	// which means we can add custom retry logic on top of GH auth'd requests.
-	// httpClient := utility.GetHTTPClient(retryConf)
-	// kim: TODO: see if this can be wrapped in a rehttp.NewTransport, which
-	// accepts a RoundTripper. The transport returned from this already fulfills
-	// the RoundTripper interface.
-	// itr := ghinstallation.NewAppsTransportFromPrivateKey(httpClient.Transport, authFields.AppID, key)
-	// httpClient.Transport = itr
 	itr := ghinstallation.NewAppsTransportFromPrivateKey(utility.DefaultTransport(), authFields.AppID, key)
 	httpClient := utility.GetCustomHTTPRetryableClientWithTransport(itr, githubClientShouldRetry(), utility.RetryHTTPDelay(utility.RetryOptions{
 		MinDelay:    GitHubRetryMinDelay,
@@ -151,21 +136,6 @@ func githubClientShouldRetry() utility.HTTPRetryFunction {
 		span.SetAttributes(attribute.Int(githubAppAttemptAttribute, index))
 		span.SetAttributes(attribute.String(githubAppURLAttribute, req.URL.String()))
 		span.SetAttributes(attribute.String(githubAppMethodAttribute, req.Method))
-		// kim: TODO: add custom logic for retrying on GitHub app errors. May
-		// unfortunately require reading the body depending on how the response
-		// is returned.
-		// Found errors:
-		// * EOF
-		// * read: connection reset by peer
-		// * 504 We couldn't respond to your request in time. Sorry about that. Please try resubmitting your request and contact us if the problem persists.
-		// * 403 You have exceeded a secondary rate limit. Please wait a few minutes before you try again. If you reach out to GitHub Support for help, please include the request ID <REQUEST_ID>
-		// Note: may have to read the response body. Then either retry or
-		// restore the response body and pass it along to the caller. Seems like
-		// most code here doesn't use the response body anyways, so it's
-		// probably fine to restore it.
-
-		// kim: TODO: add Splunk logs
-		// kim: TODO: add testing for Splunk logging
 
 		makeLogMsg := func(extraFields map[string]any) message.Fields {
 			msg := message.Fields{
