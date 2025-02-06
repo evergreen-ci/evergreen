@@ -1676,7 +1676,7 @@ func TestCreateManifest(t *testing.T) {
 	}
 	require.NoError(t, projVars.Insert())
 
-	manifest, err := model.CreateManifest(&v, proj.Modules, projRef, settings)
+	manifest, err := model.CreateManifest(&v, proj.Modules, projRef)
 	assert.NoError(err)
 	assert.Equal(v.Id, manifest.Id)
 	assert.Equal(v.Revision, manifest.Revision)
@@ -1689,7 +1689,7 @@ func TestCreateManifest(t *testing.T) {
 	assert.Equal("b27779f856b211ffaf97cbc124b7082a20ea8bc0", module.Revision)
 
 	proj.Modules[0].AutoUpdate = true
-	manifest, err = model.CreateManifest(&patchVersion, proj.Modules, projRef, settings)
+	manifest, err = model.CreateManifest(&patchVersion, proj.Modules, projRef)
 	assert.NoError(err)
 	assert.Equal(patchVersion.Id, manifest.Id)
 	assert.Equal(patchVersion.Revision, manifest.Revision)
@@ -1716,7 +1716,7 @@ func TestCreateManifest(t *testing.T) {
 			},
 		},
 	}
-	manifest, err = model.CreateManifest(&v, proj.Modules, projRef, settings)
+	manifest, err = model.CreateManifest(&v, proj.Modules, projRef)
 	assert.NoError(err)
 	assert.Equal(v.Id, manifest.Id)
 	assert.Equal(v.Revision, manifest.Revision)
@@ -1741,7 +1741,7 @@ func TestCreateManifest(t *testing.T) {
 			},
 		},
 	}
-	manifest, err = model.CreateManifest(&v, proj.Modules, projRef, settings)
+	manifest, err = model.CreateManifest(&v, proj.Modules, projRef)
 	assert.Contains(err.Error(), "No commit found for SHA")
 }
 
