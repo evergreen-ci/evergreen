@@ -114,6 +114,10 @@ func (j *hostMonitorExternalStateCheckJob) handleUnresponsiveStaticHost(ctx cont
 		return nil
 	}
 
+	if j.host.Status == evergreen.HostRunning && j.host.NeedsReprovision != host.ReprovisionNone {
+		return nil
+	}
+
 	timeSinceLastCommunication := time.Since(j.host.LastCommunicationTime)
 	if timeSinceLastCommunication < host.MaxStaticHostUnresponsiveInterval {
 		return nil
