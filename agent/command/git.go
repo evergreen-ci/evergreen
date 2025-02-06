@@ -839,7 +839,6 @@ func getPatchCommands(modulePatch patch.ModulePatch, conf *internal.TaskConfig, 
 	if moduleDir != "" {
 		patchCommands = append(patchCommands, fmt.Sprintf("cd '%s'", moduleDir))
 	}
-	// I think it's this one
 	patchCommands = append(patchCommands, fmt.Sprintf("git reset --hard '%s'", modulePatch.Githash))
 
 	if modulePatch.PatchSet.Patch == "" {
