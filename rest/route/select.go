@@ -95,12 +95,13 @@ func (t *selectTestsHandler) Run(ctx context.Context) gimlet.Responder {
 		// conf.Host = "TEST_SELECTION_URL_WITHOUT_HTTPS_GOES_HERE"
 		// conf.Scheme = "https"
 		conf.Servers = testselection.ServerConfigurations{
-			{
+			testselection.ServerConfiguration{
 				URL:         "TEST_SELECTION_URL_WITH_HTTPS_GOES_HERE",
 				Description: "Test selection service",
 			},
 		}
 		c := testselection.NewAPIClient(conf)
+		c.TestSelectionAPI.SelectTestsApiTestSelectionSelectTestsProjectIdRequesterBuildVariantNameTaskIdTaskNameTestNamesGet(ctx, t.selectTests.Project, t.selectTests.Requester, t.selectTests.BuildVariant, t.selectTests.TaskID, t.selectTests.TaskName, t.selectTests.Tests)
 	}
 
 	return gimlet.NewJSONResponse(t.selectTests)

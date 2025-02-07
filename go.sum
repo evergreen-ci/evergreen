@@ -264,6 +264,8 @@ github.com/evergreen-ci/tarjan v0.0.0-20170824211642-fcd3f3321826 h1:oViYb1lmJN1
 github.com/evergreen-ci/tarjan v0.0.0-20170824211642-fcd3f3321826/go.mod h1:SnQ9F63VSR6kHbC4aFE+f7+iL3yANhjaN9TT9T4skao=
 github.com/evergreen-ci/test-selection-client v0.0.0-20250122193745-d515d2f81603 h1:vDYdRhhcGjGEdz51fEaxn3p2bVwzP2M/6I2X+HLBVUc=
 github.com/evergreen-ci/test-selection-client v0.0.0-20250122193745-d515d2f81603/go.mod h1:Ra1Gf+l44HQ3D1x7UBJTJZA/XdxJDVNT0GDxxpLc90Q=
+github.com/evergreen-ci/test-selection-client v0.0.0-20250206190336-a28b72987b05 h1:1l+hHvFGhI3x4wcY7IpEGeFUJkaXNmpYxkscPtR4Pw4=
+github.com/evergreen-ci/test-selection-client v0.0.0-20250206190336-a28b72987b05/go.mod h1:qg5e4Faft68yLXo/dGsCoaGqn4+IqLUtbdy1UM2BbKI=
 github.com/evergreen-ci/timber v0.0.0-20240509150854-9d66df03b40e h1:Ij3Ae+WjiZXFrWeYDS+OfEDDumu3i0wN/OG3bnFMjGc=
 github.com/evergreen-ci/timber v0.0.0-20240509150854-9d66df03b40e/go.mod h1:dOoy3WWaR/Qv/fjTKcxXhc8s2n1VjLIymz2GqUnYhmU=
 github.com/evergreen-ci/utility v0.0.0-20211026201827-97b21fa2660a/go.mod h1:fuEDytmDhOv+UCUwRPG/qD7mjVkUgx37KEv+thUgHVk=
