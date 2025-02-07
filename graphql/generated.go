@@ -74969,7 +74969,7 @@ func (ec *executionContext) unmarshalInputPatchesInput(ctx context.Context, obj 
 		asMap["statuses"] = []interface{}{}
 	}
 
-	fieldsInOrder := [...]string{"limit", "onlyCommitQueue", "onlyMergeQueue", "includeHidden", "page", "patchName", "statuses", "requesters"}
+	fieldsInOrder := [...]string{"limit", "onlyMergeQueue", "includeHidden", "page", "patchName", "statuses", "requesters"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -74983,13 +74983,6 @@ func (ec *executionContext) unmarshalInputPatchesInput(ctx context.Context, obj 
 				return it, err
 			}
 			it.Limit = data
-		case "onlyCommitQueue":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("onlyCommitQueue"))
-			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.OnlyCommitQueue = data
 		case "onlyMergeQueue":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("onlyMergeQueue"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)

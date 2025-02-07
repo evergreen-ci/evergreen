@@ -25,9 +25,6 @@ func (r *projectResolver) IsFavorite(ctx context.Context, obj *restModel.APIProj
 
 // Patches is the resolver for the patches field.
 func (r *projectResolver) Patches(ctx context.Context, obj *restModel.APIProjectRef, patchesInput PatchesInput) (*Patches, error) {
-	if patchesInput.OnlyMergeQueue == nil {
-		patchesInput.OnlyMergeQueue = patchesInput.OnlyCommitQueue
-	}
 	opts := patch.ByPatchNameStatusesMergeQueuePaginatedOptions{
 		Project:        obj.Id,
 		PatchName:      patchesInput.PatchName,
