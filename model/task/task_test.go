@@ -2376,8 +2376,9 @@ func TestActivateTasks(t *testing.T) {
 		}
 
 		updatedIDs := []string{"t0", "t3", "t4"}
-		err := ActivateTasks(ctx, []Task{tasks[0]}, time.Time{}, true, u.Id)
+		activatedDependencyIDs, err := ActivateTasks(ctx, []Task{tasks[0]}, time.Time{}, true, u.Id)
 		assert.NoError(t, err)
+		assert.ElementsMatch(t, updatedIDs, activatedDependencyIDs)
 
 		u, err = user.FindOne(user.ById(u.Id))
 		require.NoError(t, err)
@@ -2407,9 +2408,10 @@ func TestActivateTasks(t *testing.T) {
 			}
 		}
 
-		err = ActivateTasks(ctx, []Task{tasks[1]}, time.Time{}, true, u.Id)
+		activatedDependencyIDs, err = ActivateTasks(ctx, []Task{tasks[1]}, time.Time{}, true, u.Id)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), fmt.Sprintf("cannot schedule %d tasks, maximum hourly per-user limit is %d", 102, 100))
+		assert.Empty(t, activatedDependencyIDs)
 	})
 
 	t.Run("NoopActivatedTask", func(t *testing.T) {
@@ -2422,8 +2424,9 @@ func TestActivateTasks(t *testing.T) {
 		}
 		require.NoError(t, task.Insert())
 
-		err := ActivateTasks(ctx, []Task{task}, time.Now(), true, "abyssinian")
+		activatedDependencyIDs, err := ActivateTasks(ctx, []Task{task}, time.Now(), true, "abyssinian")
 		assert.NoError(t, err)
+		assert.Empty(t, activatedDependencyIDs)
 
 		events, err := event.FindAllByResourceID(task.Id)
 		require.NoError(t, err)

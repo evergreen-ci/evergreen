@@ -842,7 +842,7 @@ func TestAddNewPatch(t *testing.T) {
 		ActivationInfo: specificActivationInfo{},
 		GeneratedBy:    "",
 	}
-	_, err := addNewBuilds(context.Background(), creationInfo, nil)
+	_, _, err := addNewBuilds(ctx, creationInfo, nil)
 	assert.NoError(err)
 	dbBuild, err := build.FindOne(db.Q{})
 	assert.NoError(err)
@@ -855,7 +855,7 @@ func TestAddNewPatch(t *testing.T) {
 	assert.Equal("variant", dbVersion.BuildVariants[0].BuildVariant)
 	assert.Equal("My Variant Display", dbVersion.BuildVariants[0].DisplayName)
 
-	_, err = addNewTasksToExistingBuilds(context.Background(), creationInfo, []build.Build{*dbBuild}, "")
+	_, _, err = addNewTasksToExistingBuilds(ctx, creationInfo, []build.Build{*dbBuild}, "")
 	assert.NoError(err)
 	dbUser, err := user.FindOneById(u.Id)
 	assert.NoError(err)
@@ -943,14 +943,14 @@ func TestAddNewPatchWithMissingBaseVersion(t *testing.T) {
 		ActivationInfo: specificActivationInfo{},
 		GeneratedBy:    "",
 	}
-	_, err := addNewBuilds(context.Background(), creationInfo, nil)
+	_, _, err := addNewBuilds(context.Background(), creationInfo, nil)
 	assert.NoError(err)
 	dbBuild, err := build.FindOne(db.Q{})
 	assert.NoError(err)
 	assert.NotNil(dbBuild)
 	assert.Len(dbBuild.Tasks, 2)
 
-	_, err = addNewTasksToExistingBuilds(context.Background(), creationInfo, []build.Build{*dbBuild}, "")
+	_, _, err = addNewTasksToExistingBuilds(context.Background(), creationInfo, []build.Build{*dbBuild}, "")
 	assert.NoError(err)
 	dbTasks, err := task.FindAll(ctx, db.Query(task.ByBuildId(dbBuild.Id)))
 	assert.NoError(err)
