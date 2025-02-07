@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -159,9 +160,18 @@ func githubClientShouldRetry() utility.HTTPRetryFunction {
 				return true
 			}
 
-			// TODO (DEVPROD-13567): retry in situations where there's no
-			// response but the error is still retryable (e.g. connection reset
-			// by peer).
+			// kim: TODO: verify that this is the correct way to check for
+			// connection reset by peer errors (i.e. it's an err and not part of
+			// a proper response).
+			if strings.Contains(err.Error(), "connection reset by peer") {
+				return true
+			}
+
+			if errors.Is(err, &github.AbuseRateLimitError{}) {
+				// go-github documentation says it will return
+				// AbuseRateLimitError if a secondary rate limit is exceeded.
+				return true
+			}
 
 			grip.Error(message.WrapError(err, makeLogMsg(map[string]any{
 				"message": "GitHub endpoint encountered unretryable error",
@@ -183,9 +193,33 @@ func githubClientShouldRetry() utility.HTTPRetryFunction {
 			}
 		}
 
-		// TODO (DEVPROD-13567): retry when response from GitHub is non-OK due
-		// to a transient problem that is still retryable (e.g. secondary rate
-		// limit exceeded).
+		if resp.StatusCode == http.StatusForbidden {
+			// GitHub returns a 403 Forbidden if a secondary rate limit is
+			// exceeded.
+			// TODO (DEVPROD-13567): this is just an additional check for
+			// secondary rate limits and may be superfluous if the check above
+			// for AbuseRateLimitError is sufficient. Will remove in a follow-up
+			// PR if it proves to be unnecessary.
+			b, err := io.ReadAll(resp.Body)
+			if err != nil {
+				grip.Error(message.WrapError(err, makeLogMsg(map[string]any{
+					"message":     "could not read response body for 403 Forbidden to check if it is caused by a secondary rate limit error",
+					"status_code": resp.StatusCode,
+				})))
+			}
+			defer resp.Body.Close()
+
+			// Restore the body so callers can still consume it if needed.
+			resp.Body = io.NopCloser(strings.NewReader(string(b)))
+
+			grip.Error(makeLogMsg(map[string]any{
+				"message":       "GitHub app endpoint returned 403 Forbidden, indicating it may be a secondary rate limit error",
+				"response_body": b,
+				"status_code":   resp.StatusCode,
+			}))
+			return true
+		}
+
 		grip.ErrorWhen(resp.StatusCode >= http.StatusBadRequest, makeLogMsg(map[string]any{
 			"message":     "GitHub app endpoint returned response but is not retryable",
 			"status_code": resp.StatusCode,
