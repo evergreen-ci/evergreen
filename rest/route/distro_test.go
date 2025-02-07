@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"net/http"
 	"testing"
 	"time"
@@ -90,6 +91,7 @@ func (s *DistroPatchSetupByIDSuite) SetupSuite() {
 
 func (s *DistroPatchSetupByIDSuite) TestParseValidJSON() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 	json := []byte(`{"setup": "New set-up script"}`)
 	req, _ := http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/distros/fedora8/setup", bytes.NewBuffer(json))
 
@@ -100,6 +102,7 @@ func (s *DistroPatchSetupByIDSuite) TestParseValidJSON() {
 
 func (s *DistroPatchSetupByIDSuite) TestParseInvalidJSON() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 	json := []byte(`{"malform": "ed}`)
 	req, _ := http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/distros/fedora8/setup", bytes.NewBuffer(json))
 
@@ -108,7 +111,9 @@ func (s *DistroPatchSetupByIDSuite) TestParseInvalidJSON() {
 }
 
 func (s *DistroPatchSetupByIDSuite) TestRunValidId() {
+	s.NoError(db.ClearCollections(event.EventCollection))
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 	h := s.rm.(*distroIDChangeSetupHandler)
 	h.distroID = "fedora8"
 	h.Setup = "New set-up script"
@@ -120,10 +125,34 @@ func (s *DistroPatchSetupByIDSuite) TestRunValidId() {
 	apiDistro, ok := (resp.Data()).(*restModel.APIDistro)
 	s.Require().True(ok)
 	s.Equal(apiDistro.Setup, utility.ToStringPtr("New set-up script"))
+
+	dbEvents, err := event.FindAllByResourceID(h.distroID)
+	s.Require().NoError(err)
+	s.Require().Len(dbEvents, 1)
+	eventData, ok := dbEvents[0].Data.(*event.DistroEventData)
+	s.Require().True(ok)
+	s.Require().NotNil(eventData)
+
+	beforeVal := distro.DistroData{}
+	body, err := bson.Marshal(eventData.Before)
+	s.Require().NoError(err)
+	s.Require().NoError(bson.Unmarshal(body, &beforeVal))
+	s.Require().NotNil(beforeVal)
+
+	afterVal := distro.DistroData{}
+	body, err = bson.Marshal(eventData.After)
+	s.Require().NoError(err)
+	s.Require().NoError(bson.Unmarshal(body, &afterVal))
+	s.Require().NotNil(afterVal)
+
+	s.Equal(beforeVal.Distro.Setup, "Set-up script")
+	s.Equal(afterVal.Distro.Setup, "New set-up script")
+
 }
 
 func (s *DistroPatchSetupByIDSuite) TestRunInvalidId() {
 	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 	h := s.rm.(*distroIDChangeSetupHandler)
 	h.distroID = "invalid"
 	h.Setup = "New set-up script"
