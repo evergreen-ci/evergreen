@@ -724,6 +724,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 			VersionBuildStatus{
 				BuildVariant:     vt.Variant,
 				BuildId:          build.Id,
+				DisplayName:      build.DisplayName,
 				ActivationStatus: ActivationStatus{Activated: true},
 			},
 		)

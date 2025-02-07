@@ -787,6 +787,7 @@ func TestBatchTimes(t *testing.T) {
 			So(found, ShouldBeTrue)
 			So(bv2, ShouldNotBeNil)
 			So(bv2.Activated, ShouldBeTrue)
+			So(bv2.DisplayName, ShouldEqual, "bv2")
 			So(bv2.ActivateAt, ShouldResemble, bv1.ActivateAt)
 		})
 
@@ -1274,6 +1275,7 @@ tasks:
 	s.Len(v.BuildVariants, 2)
 	for _, bv := range v.BuildVariants {
 		if bv.BuildVariant == "bv" {
+			s.Equal(bv.DisplayName, "bv_display")
 			s.InDelta(bv.ActivateAt.Unix(), now.Unix(), 1)
 			s.Require().Len(bv.BatchTimeTasks, 2)
 			for _, t := range bv.BatchTimeTasks {
@@ -1290,6 +1292,7 @@ tasks:
 			}
 		}
 		if bv.BuildVariant == "bv2" {
+			s.Equal(bv.DisplayName, "bv2_display")
 			s.False(bv.Activated)
 			s.Empty(bv.BatchTimeTasks)
 		}
