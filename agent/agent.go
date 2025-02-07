@@ -1,9 +1,11 @@
 package agent
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -20,6 +22,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/thirdparty/docker"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
@@ -1223,6 +1226,9 @@ func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupC
 	}
 }
 
+// clearGitConfig removes up git files that were created in the home directory including
+// the global git config file and credentials file. It also unregisters any repositories
+// that were cloned with scalar to stop the background maintenance of the repositories.
 func (a *Agent) clearGitConfig(tc *taskContext) {
 	logger := grip.GetDefaultJournaler()
 	if tc.logger != nil && !tc.logger.Closed() {
@@ -1254,6 +1260,45 @@ func (a *Agent) clearGitConfig(tc *taskContext) {
 		return
 	}
 	logger.Info("Cleared git credentials.")
+
+	if err := unregisterScalar(); err != nil {
+		logger.Error(errors.Wrap(err, "unregistering scalar repositories"))
+		return
+	}
+}
+
+// unregisterScalar unregisters a repository that was cloned (and therefore registered with) Scalar.
+// This should be done for each repository after it is cloned with scalar to stop the background maintenance processes.
+func unregisterScalar() error {
+	isScalarAvailable, err := agentutil.IsGitVersionMinimum(thirdparty.RequiredScalarGitVersion)
+
+	if err != nil {
+		return errors.Wrap(err, "checking git version")
+	}
+	if !isScalarAvailable {
+		return nil
+	}
+
+	// Run scalar list to get all registered repositories
+	cmd := exec.Command("scalar", "list")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err = cmd.Run()
+	if err != nil {
+		return errors.Wrap(err, "running scalar list")
+	}
+	repoPaths := strings.Split(strings.TrimSpace(out.String()), "\n")
+
+	// Unregister each registered repository
+	for _, repoPath := range repoPaths {
+		c := exec.Command("scalar", "unregister", repoPath)
+		c.Stdout, c.Stderr = os.Stdout, os.Stderr
+		err = c.Run()
+		if err != nil {
+			return errors.Wrapf(err, "unregistering repo from scalar: %s", repoPath)
+		}
+	}
+	return nil
 }
 
 func (a *Agent) shouldKill(tc *taskContext, ignoreTaskGroupCheck bool) bool {
