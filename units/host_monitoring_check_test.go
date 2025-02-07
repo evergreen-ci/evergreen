@@ -137,6 +137,16 @@ func TestHandleUnresponsiveStaticHost(t *testing.T) {
 			require.NotZero(t, dbHost)
 			assert.Equal(t, evergreen.HostRunning, dbHost.Status)
 		},
+		"NoopsForStaticHostThatNeedsReprovision": func(ctx context.Context, h *host.Host, j *hostMonitorExternalStateCheckJob) {
+			h.NeedsReprovision = host.ReprovisionToNew
+			require.NoError(t, h.Insert(ctx))
+
+			assert.NoError(t, j.handleUnresponsiveStaticHost(ctx))
+			dbHost, err := host.FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Equal(t, evergreen.HostRunning, dbHost.Status)
+		},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
