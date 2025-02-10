@@ -191,10 +191,10 @@ func (c *s3get) Execute(ctx context.Context, comm client.Communicator, logger cl
 			RoleARN: c.TemporaryRoleARN,
 		})
 		if err != nil {
-			return errors.Wrap(err, "getting credentials for provided role arn")
+			return errors.Wrapf(err, "getting credentials for '%s' role arn", c.TemporaryRoleARN)
 		}
 		if creds == nil {
-			return errors.New("nil credentials returned for provided role arn")
+			return errors.Errorf("nil credentials returned for '%s' role arn", c.TemporaryRoleARN)
 		}
 		c.AwsKey = creds.AccessKeyID
 		c.AwsSecret = creds.SecretAccessKey
