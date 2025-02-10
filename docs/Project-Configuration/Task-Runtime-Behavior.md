@@ -230,7 +230,8 @@ needs.
 
 Note: This route must be called before the final task status has been set.
 For example, calling the route in a `teardown_group` will not work because 
-teardown groups run outside the context of their tasks.
+teardown groups run outside the context of their tasks. This also applies
+to the `post`, `timeout`, and `teardown_task` blocks.
 
 Posting a task status will not immediately stop the currently-running command.
 Once the current command completes, it will check if the task end status is
@@ -256,4 +257,31 @@ Example in a command:
         # Manually set task end status to setup-failed and append failure metadata tags.
         script: |
           curl -d '{"status":"failed", "type":"setup", "desc":"this should be set", "should_continue": false, "add_failure_metadata_tags": ["failure_tag"]}' -H "Content-Type: application/json" -X POST localhost:2285/task_status
+```
+
+### Manually Adding Metadata Tags to a Task
+
+The following endpoint was created as a workaround to the above `/task_status`
+agent endpoint for tasks that want to append extra metadata tags to a task after
+the final task status has already been set, such as in the `post`, `timeout`, 
+or `teardown_task` blocks. This endpoint may be called in any command block, and will
+append metadata tags to the existing list of task metadata tags. It can be used in
+conjunction with the `/task_status` endpoint and the `failure_metadata_tags` YAML field.
+
+    POST localhost:2285/metadata_tag
+
+| Name                      | Type     | Description                                                                                                                                                                          |
+|---------------------------|----------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+                                                                                               |
+| add_failure_metadata_tags | []string | If set, then additional metadata tags will be associated with the failing command. See [here](Project-Commands#basic-command-structure) for more details on `failure_metadata_tags`. |
+
+Example in a command:
+
+``` yaml
+- command: shell.exec
+     params:
+        shell: bash
+        # Manually append failure metadata tags.
+        script: |
+          curl -d '{"add_failure_metadata_tags": ["failure_tag"]}' -H "Content-Type: application/json" -X POST localhost:2285/task_status
 ```

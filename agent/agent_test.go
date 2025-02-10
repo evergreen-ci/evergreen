@@ -1835,7 +1835,14 @@ tasks:
 		AddFailureMetadataTags: []string{"failure_tag0", "failure_tag1", "failure_tag2"},
 	}
 	s.tc.setUserEndTaskResponse(resp)
+
 	s.NotNil(s.tc.userEndTaskRespOriginatingCommand)
+
+	addMetadataResp := &triggerAddMetadataTagResp{
+		AddFailureMetadataTags: []string{"failure_tag2", "failure_tag3", "failure_tag4"},
+	}
+	s.tc.setAddMetadataTagResponse(addMetadataResp)
+
 	s.Equal(userDefinedTaskStatusCmd.FullDisplayName(), s.tc.userEndTaskRespOriginatingCommand.FullDisplayName())
 
 	nextTask := &apimodels.NextTaskResponse{
@@ -1849,13 +1856,62 @@ tasks:
 	s.Equal(resp.Type, s.mockCommunicator.EndTaskResult.Detail.Type, "should set user-defined command failure type")
 	s.Equal(resp.Description, s.mockCommunicator.EndTaskResult.Detail.Description, "should set user-defined task description")
 	s.Equal(userDefinedTaskStatusCmd.FullDisplayName(), s.mockCommunicator.EndTaskResult.Detail.FailingCommand, "should set the failing command's display name to the user-defined resp's originating command")
-	s.ElementsMatch(append(userDefinedTaskStatusCmd.FailureMetadataTags(), "failure_tag0", "failure_tag1", "failure_tag2"), s.mockCommunicator.EndTaskResult.Detail.FailureMetadataTags, "should set the failing command's metadata tags along with the additional tags")
+	s.ElementsMatch(append(userDefinedTaskStatusCmd.FailureMetadataTags(), "failure_tag0", "failure_tag1", "failure_tag2", "failure_tag3", "failure_tag4"), s.mockCommunicator.EndTaskResult.Detail.FailureMetadataTags, "should set the failing command's metadata tags along with the additional tags")
 
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running task commands",
 		"Running command 'shell.exec' (step 1 of 2)",
 		"Task status set to 'failed' with HTTP endpoint.",
+		"Appending extra failure metadata tags set with HTTP endpoint.",
+	}, []string{
+		panicLog,
+		"Running 'shell.exec' (step 2 of 2)",
+	})
+}
+
+func (s *AgentSuite) TestRunTaskWithUserDefinedMetadataTags() {
+	projYml := `
+buildvariants:
+  - name: mock_build_variant
+
+tasks:
+  - name: this_is_a_task_name
+    commands:
+      - command: shell.exec
+        params:
+          script: exit 0
+      - command: shell.exec
+        params:
+          script: exit 0
+`
+	s.setupRunTask(projYml)
+
+	factory, ok := command.GetCommandFactory("command.mock")
+	s.Require().True(ok)
+	userDefinedTaskStatusCmd := factory()
+	userDefinedTaskStatusCmd.SetFullDisplayName("command.mock")
+	s.tc.setCurrentCommand(userDefinedTaskStatusCmd)
+
+	addMetadataResp := &triggerAddMetadataTagResp{
+		AddFailureMetadataTags: []string{"failure_tag1", "failure_tag2", "failure_tag2", "failure_tag3"},
+	}
+	s.tc.setAddMetadataTagResponse(addMetadataResp)
+
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:     s.tc.task.ID,
+		TaskSecret: s.tc.task.Secret,
+	}
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.testTmpDirName)
+	s.NoError(err)
+
+	s.ElementsMatch(append(userDefinedTaskStatusCmd.FailureMetadataTags(), "failure_tag1", "failure_tag2", "failure_tag3"), s.mockCommunicator.EndTaskResult.Detail.FailureMetadataTags, "should set the failing command's metadata tags along with the additional tags")
+
+	s.NoError(s.tc.logger.Close())
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Running task commands",
+		"Running command 'shell.exec' (step 1 of 2)",
+		"Appending extra failure metadata tags set with HTTP endpoint.",
 	}, []string{
 		panicLog,
 		"Running 'shell.exec' (step 2 of 2)",
