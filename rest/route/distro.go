@@ -112,7 +112,7 @@ func (h *distroIDChangeSetupHandler) Parse(ctx context.Context, r *http.Request)
 
 // Run updates the setup script for the given distroId.
 func (h *distroIDChangeSetupHandler) Run(ctx context.Context) gimlet.Responder {
-	user := MustHaveUser(ctx)
+	usr := MustHaveUser(ctx)
 	d, err := distro.FindOneId(ctx, h.distroID)
 	if err != nil || d == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
@@ -126,7 +126,7 @@ func (h *distroIDChangeSetupHandler) Run(ctx context.Context) gimlet.Responder {
 	if err = data.UpdateDistro(ctx, d, d); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "updating distro '%s'", h.distroID))
 	}
-	event.LogDistroModified(h.distroID, user.Username(), oldDistro.DistroData(), d.DistroData())
+	event.LogDistroModified(h.distroID, usr.Username(), oldDistro.DistroData(), d.DistroData())
 
 	apiDistro := &model.APIDistro{}
 	apiDistro.BuildFromService(*d)
