@@ -277,25 +277,9 @@ func clone(opts cloneOptions) error {
 	cloneArgs = append(cloneArgs, opts.rootDir)
 	grip.Debug(cloneArgs)
 
-	gitCommand := "git clone"
-
-	scalarAvailable, _ := isScalarAvailable()
-	useScalar := scalarAvailable && !(opts.depth > 0)
-	if useScalar {
-		gitCommand = "scalar clone --no-src"
-	}
-
-	c := exec.Command(gitCommand, cloneArgs...)
+	c := exec.Command("git", cloneArgs...)
 	c.Stdout, c.Stderr = os.Stdout, os.Stderr
 	err := c.Run()
-	if err != nil && useScalar {
-		c = exec.Command("git clone", cloneArgs...)
-		err = c.Run()
-		if err != nil {
-			return err
-		}
-	}
-
 	if err != nil {
 		return err
 	}
@@ -346,16 +330,6 @@ func clone(opts cloneOptions) error {
 	}
 
 	return nil
-}
-
-// isScalarAvailable checks if the installed Git version is later than the specified version.
-func isScalarAvailable() (bool, error) {
-	gitVersion, err := getGitVersion()
-	if err != nil {
-		return false, err
-	}
-
-	return !thirdparty.IsVersionMinimum(gitVersion, thirdparty.RequiredScalarGitVersion), nil
 }
 
 func cloneSource(task *service.RestTask, project *model.ProjectRef, config *model.Project,
