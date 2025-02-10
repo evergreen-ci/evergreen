@@ -138,7 +138,7 @@ type s3put struct {
 	bucket          pail.Bucket
 	internalBuckets []string
 
-	taskdata client.TaskData
+	taskData client.TaskData
 	base
 }
 
@@ -286,7 +286,7 @@ func (s3pc *s3put) isMulti() bool {
 // Implementation of Execute.  Expands the parameters, and then puts the
 // resource to s3.
 func (s3pc *s3put) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
-	s3pc.taskdata = client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
+	s3pc.taskData = client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 	s3pc.internalBuckets = conf.InternalBuckets
 
 	// expand necessary params
@@ -318,7 +318,7 @@ func (s3pc *s3put) Execute(ctx context.Context, comm client.Communicator, logger
 	)
 
 	if s3pc.TemporaryRoleARN != "" {
-		creds, err := comm.AssumeRole(ctx, s3pc.taskdata, apimodels.AssumeRoleRequest{
+		creds, err := comm.AssumeRole(ctx, s3pc.taskData, apimodels.AssumeRoleRequest{
 			RoleARN: s3pc.TemporaryRoleARN,
 		})
 		if err != nil {
@@ -584,7 +584,7 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, lo
 		})
 	}
 
-	err := comm.AttachFiles(ctx, s3pc.taskdata, files)
+	err := comm.AttachFiles(ctx, s3pc.taskData, files)
 	if err != nil {
 		return errors.Wrap(err, "attaching files")
 	}

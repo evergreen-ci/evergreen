@@ -85,7 +85,6 @@ type s3get struct {
 	bucket          pail.Bucket
 	internalBuckets []string
 
-	taskdata client.TaskData
 	base
 }
 
@@ -165,7 +164,6 @@ func (c *s3get) expandParams(conf *internal.TaskConfig) error {
 // Execute expands the parameters, and then fetches the
 // resource from s3.
 func (c *s3get) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
-	c.taskdata = client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 	c.internalBuckets = conf.InternalBuckets
 
 	// expand necessary params
@@ -188,7 +186,8 @@ func (c *s3get) Execute(ctx context.Context, comm client.Communicator, logger cl
 	)
 
 	if c.TemporaryRoleARN != "" {
-		creds, err := comm.AssumeRole(ctx, c.taskdata, apimodels.AssumeRoleRequest{
+		taskData := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
+		creds, err := comm.AssumeRole(ctx, taskData, apimodels.AssumeRoleRequest{
 			RoleARN: c.TemporaryRoleARN,
 		})
 		if err != nil {
