@@ -129,6 +129,12 @@ func getGitHubClientForAuth(authFields *GithubAppAuth) (*GitHubClient, error) {
 
 func githubClientShouldRetry() utility.HTTPRetryFunction {
 	defaultRetryableStatuses := utility.NewDefaultHTTPRetryConf().Statuses
+	// The GitHub API returns 403 Forbidden when a secondary rate limit is
+	// exceeded. This should ideally be covered already by checking for
+	// github.AbuseRateLimitError, but we don't fully trust that the check is
+	// comprehensive because GitHub doesn't document its error responses for
+	// secondary rate limits.
+	defaultRetryableStatuses = append(defaultRetryableStatuses, http.StatusForbidden)
 
 	return func(index int, req *http.Request, resp *http.Response, err error) bool {
 		const op = "githubClientShouldRetry"
@@ -161,16 +167,14 @@ func githubClientShouldRetry() utility.HTTPRetryFunction {
 				return true
 			}
 
-			// kim: TODO: verify that this is the correct way to check for
-			// connection reset by peer errors (i.e. it's an err and not part of
-			// a proper response).
 			if strings.Contains(err.Error(), "connection reset by peer") {
 				return true
 			}
 
 			if errors.Is(err, &github.AbuseRateLimitError{}) {
 				// go-github documentation says it will return
-				// AbuseRateLimitError if a secondary rate limit is exceeded.
+				// github.AbuseRateLimitError if it detects a secondary rate
+				// limit is exceeded.
 				return true
 			}
 
@@ -196,33 +200,6 @@ func githubClientShouldRetry() utility.HTTPRetryFunction {
 			if resp.StatusCode == statusCode {
 				return true
 			}
-		}
-
-		if resp.StatusCode == http.StatusForbidden {
-			// GitHub returns a 403 Forbidden if a secondary rate limit is
-			// exceeded.
-			// TODO (DEVPROD-13567): this is just an additional check for
-			// secondary rate limits and may be superfluous if the check above
-			// for AbuseRateLimitError is sufficient. Will remove in a follow-up
-			// PR if it proves to be unnecessary.
-			b, err := io.ReadAll(resp.Body)
-			if err != nil {
-				grip.Error(message.WrapError(err, makeLogMsg(map[string]any{
-					"message":     "could not read response body for 403 Forbidden to check if it is caused by a secondary rate limit error",
-					"status_code": resp.StatusCode,
-				})))
-			}
-			defer resp.Body.Close()
-
-			// Restore the body so callers can still consume it if needed.
-			resp.Body = io.NopCloser(strings.NewReader(string(b)))
-
-			grip.Error(makeLogMsg(map[string]any{
-				"message":       "GitHub app endpoint returned 403 Forbidden, indicating it may be a secondary rate limit error",
-				"response_body": b,
-				"status_code":   resp.StatusCode,
-			}))
-			return true
 		}
 
 		grip.ErrorWhen(resp.StatusCode >= http.StatusBadRequest, makeLogMsg(map[string]any{
