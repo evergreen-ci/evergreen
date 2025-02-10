@@ -1684,10 +1684,11 @@ type ComplexityRoot struct {
 	}
 
 	WaterfallPagination struct {
-		HasNextPage   func(childComplexity int) int
-		HasPrevPage   func(childComplexity int) int
-		NextPageOrder func(childComplexity int) int
-		PrevPageOrder func(childComplexity int) int
+		HasNextPage            func(childComplexity int) int
+		HasPrevPage            func(childComplexity int) int
+		MostRecentVersionOrder func(childComplexity int) int
+		NextPageOrder          func(childComplexity int) int
+		PrevPageOrder          func(childComplexity int) int
 	}
 
 	WaterfallTask struct {
@@ -10174,6 +10175,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.WaterfallPagination.HasPrevPage(childComplexity), true
+
+	case "WaterfallPagination.mostRecentVersionOrder":
+		if e.complexity.WaterfallPagination.MostRecentVersionOrder == nil {
+			break
+		}
+
+		return e.complexity.WaterfallPagination.MostRecentVersionOrder(childComplexity), true
 
 	case "WaterfallPagination.nextPageOrder":
 		if e.complexity.WaterfallPagination.NextPageOrder == nil {
@@ -69086,6 +69094,8 @@ func (ec *executionContext) fieldContext_Waterfall_pagination(_ context.Context,
 				return ec.fieldContext_WaterfallPagination_hasNextPage(ctx, field)
 			case "hasPrevPage":
 				return ec.fieldContext_WaterfallPagination_hasPrevPage(ctx, field)
+			case "mostRecentVersionOrder":
+				return ec.fieldContext_WaterfallPagination_mostRecentVersionOrder(ctx, field)
 			case "nextPageOrder":
 				return ec.fieldContext_WaterfallPagination_nextPageOrder(ctx, field)
 			case "prevPageOrder":
@@ -69600,6 +69610,50 @@ func (ec *executionContext) fieldContext_WaterfallPagination_hasPrevPage(_ conte
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WaterfallPagination_mostRecentVersionOrder(ctx context.Context, field graphql.CollectedField, obj *WaterfallPagination) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_WaterfallPagination_mostRecentVersionOrder(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MostRecentVersionOrder, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_WaterfallPagination_mostRecentVersionOrder(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WaterfallPagination",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -93622,6 +93676,11 @@ func (ec *executionContext) _WaterfallPagination(ctx context.Context, sel ast.Se
 			}
 		case "hasPrevPage":
 			out.Values[i] = ec._WaterfallPagination_hasPrevPage(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "mostRecentVersionOrder":
+			out.Values[i] = ec._WaterfallPagination_mostRecentVersionOrder(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
