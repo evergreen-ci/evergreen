@@ -308,15 +308,16 @@
     {
       "query_file": "no_versions.graphql",
       "result": {
-        "data": {
-          "waterfall": {
-            "versions": [],
-            "pagination": {
-              "nextPageOrder": 0,
-              "prevPageOrder": 0
+        "data": null,
+        "errors": [
+          {
+            "message": "fetching most recent waterfall version: could not find mainline commit for project 'evergreen'",
+            "path": ["waterfall"],
+            "extensions": {
+              "code": "INTERNAL_SERVER_ERROR"
             }
           }
-        }
+        ]
       }
     },
     {
