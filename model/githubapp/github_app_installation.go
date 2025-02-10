@@ -153,6 +153,7 @@ func githubClientShouldRetry() utility.HTTPRetryFunction {
 		}
 
 		if err != nil {
+			span.SetAttributes(attribute.String(githubAppErrorAttribute, err.Error()))
 			if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
 				return true
 			}
@@ -181,11 +182,15 @@ func githubClientShouldRetry() utility.HTTPRetryFunction {
 		}
 
 		if resp == nil {
+			errMsg := "GitHub app endpoint returned nil response"
+			span.SetAttributes(attribute.String(githubAppErrorAttribute, errMsg))
 			grip.Error(message.WrapError(err, makeLogMsg(map[string]any{
-				"message": "GitHub app endpoint returned nil response",
+				"message": errMsg,
 			})))
 			return true
 		}
+
+		span.SetAttributes(attribute.Int(githubAppStatusCodeAttribute, resp.StatusCode))
 
 		for _, statusCode := range defaultRetryableStatuses {
 			if resp.StatusCode == statusCode {
