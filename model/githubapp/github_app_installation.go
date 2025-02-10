@@ -168,6 +168,8 @@ func githubClientShouldRetry() utility.HTTPRetryFunction {
 			}
 
 			if strings.Contains(err.Error(), "connection reset by peer") {
+				// This has happened in the past when GitHub was having an
+				// outage, so it's worth retrying.
 				return true
 			}
 
