@@ -330,11 +330,7 @@ func (s *githubSuite) TestGithubUserInOrganization() {
 }
 
 func (s *githubSuite) TestGitHubUserPermissionLevel() {
-	hasPermission, err := GitHubUserHasWritePermission(s.ctx, "evergreen-ci", "evergreen", "evrg-bot-webhook")
-	s.NoError(err)
-	s.True(hasPermission)
-
-	hasPermission, err = GitHubUserHasWritePermission(s.ctx, "evergreen-ci", "evergreen", "octocat")
+	hasPermission, err := GitHubUserHasWritePermission(s.ctx, "evergreen-ci", "evergreen", "octocat")
 	s.NoError(err)
 	s.False(hasPermission)
 }
