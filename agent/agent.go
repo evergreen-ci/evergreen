@@ -378,30 +378,6 @@ func (a *Agent) processNextTask(ctx context.Context, nt *apimodels.NextTaskRespo
 	}
 	shouldSetupGroup, taskDirectory := a.finishPrevTask(ctx, nt, tc)
 
-	// Double check that the task is allowed to run on single task distros.
-	if len(a.opts.AllowedSingleTaskDistroTasks) > 0 {
-		// regex match the task name to the allowed single task distro tasks
-		allowed := false
-		for _, taskName := range a.opts.AllowedSingleTaskDistroTasks {
-			if matched, _ := filepath.Match(taskName, nt.TaskId); matched {
-				allowed = true
-				break
-			}
-		}
-		if !allowed {
-			msg := fmt.Sprintf("task '%s' is not allowed to run on single task distros", nt.TaskId)
-			span.SetStatus(codes.Error, msg)
-			span.RecordError(errors.New(msg), trace.WithAttributes(attribute.String("task.id", tc.task.ID)))
-			grip.Critical(message.Fields{
-				"message": "task is not allowed to run on single task distros",
-				"task":    tc.task.ID,
-			})
-			return processNextResponse{
-				noTaskToRun: true,
-			}, nil
-		}
-	}
-
 	tc, shouldExit, err := a.runTask(ctx, nil, nt, shouldSetupGroup, taskDirectory)
 	if err != nil {
 		span.SetStatus(codes.Error, "error running task")
