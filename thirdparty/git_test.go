@@ -87,3 +87,43 @@ func TestParseGitUrl(t *testing.T) {
 	assert.Equal("evergreen-ci", owner)
 	assert.Equal("sample", repo)
 }
+
+func TestIsVersionMinimum(t *testing.T) {
+	tests := []struct {
+		version    string
+		minVersion string
+		expected   bool
+	}{
+		{"2.37.0", "2.380", true},
+		{"2.38.0", "2.380", true},
+		{"2.38.0", "2.38.1", true},
+		{"2.38.1", "2.38.0", false},
+		{"2.38", "2.37.9", false},
+	}
+
+	for _, test := range tests {
+		t.Run(test.version+" < "+test.minVersion, func(t *testing.T) {
+			result := IsVersionMinimum(test.version, test.minVersion)
+			assert.Equal(t, test.expected, result)
+		})
+	}
+}
+
+func TestParseGitVersionString(t *testing.T) {
+	versionStrings := map[string]struct {
+		expectedVersion string
+		isApple         bool
+	}{
+		"git version 2.19.1":                   {"2.19.1", false},
+		"git version 2.24.3 (Apple Git-128)":   {"2.24.3", true},
+		"git version 2.21.1 (Apple Git-122.3)": {"2.21.1", true},
+		"git version 2.16.2.windows.1":         {"2.16.2.windows.1", false},
+	}
+
+	for versionString, expected := range versionStrings {
+		parsedVersion, isApple, err := ParseGitVersion(versionString)
+		assert.NoError(t, err)
+		assert.Equal(t, expected.expectedVersion, parsedVersion)
+		assert.Equal(t, expected.isApple, isApple)
+	}
+}

@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
+	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -35,7 +36,8 @@ const (
 	gitFetchProjectRetries = 5
 	defaultCommitterName   = "Evergreen Agent"
 	defaultCommitterEmail  = "no-reply@evergreen.mongodb.com"
-	shallowCloneDepth      = 100
+	//todo: shallow clone doesn't work with scalar
+	shallowCloneDepth = 100
 
 	gitGetProjectAttribute = "evergreen.command.git_get_project"
 
@@ -199,7 +201,18 @@ func (opts cloneOpts) buildHTTPCloneCommand(forApp bool) ([]string, error) {
 	} else {
 		gitURL = thirdparty.FormGitURL(urlLocation.Host, opts.owner, opts.repo, opts.token)
 	}
-	clone := fmt.Sprintf("git clone %s '%s'", gitURL, opts.dir)
+
+	scalarAvailable, err := agentutil.IsGitVersionMinimum(thirdparty.RequiredScalarGitVersion)
+	if err != nil {
+		return nil, errors.Wrap(err, "checking git version")
+	}
+	gitCommand := "scalar clone --no-src"
+	if !scalarAvailable {
+		gitCommand = "git clone"
+	}
+
+	clone := fmt.Sprintf("%s %s '%s'", gitCommand, gitURL, opts.dir)
+
 	if opts.recurseSubmodules {
 		clone = fmt.Sprintf("%s --recurse-submodules", clone)
 	}
@@ -311,6 +324,7 @@ func (c *gitFetchProject) buildSourceCloneCommand(conf *internal.TaskConfig, opt
 		}
 		gitCommands = append(gitCommands, fmt.Sprintf("git reset --hard %s", conf.Task.Revision))
 	}
+
 	gitCommands = append(gitCommands, "git log --oneline -n 10")
 
 	return gitCommands, nil

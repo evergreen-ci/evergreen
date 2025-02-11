@@ -9,7 +9,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"strings"
 	"text/template"
@@ -18,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -855,22 +855,9 @@ func getGitVersion() (string, error) {
 	if err != nil {
 		return "", errors.Wrap(err, "getting git version")
 	}
+	version, _, err := thirdparty.ParseGitVersion(strings.TrimSpace(versionString))
 
-	return parseGitVersion(strings.TrimSpace(versionString))
-}
-
-func parseGitVersion(version string) (string, error) {
-	matches := regexp.MustCompile(`^git version ` +
-		// capture the version major.minor(.patch(.build(.etc...)))
-		`(\w+(?:\.\w+)+)` +
-		// match and discard Apple git's addition to the version string
-		`(?: \(Apple Git-[\w\.]+\))?$`,
-	).FindStringSubmatch(version)
-	if len(matches) != 2 {
-		return "", errors.Errorf("could not parse git version number from version string '%s'", version)
-	}
-
-	return matches[1], nil
+	return version, err
 }
 
 func gitCmd(cmdName string, gitArgs ...string) (string, error) {
