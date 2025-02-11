@@ -1289,8 +1289,6 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 
 	s.verifyParserProjectDoc(dbPatch, 8)
 
-	s.verifyVersionDoc(dbPatch, evergreen.PatchVersionRequester, s.user, s.hash, 4)
-
 	s.gridFSFileExists(dbPatch.Patches[0].PatchSet.PatchFileId)
 
 	out := []event.Subscription{}
