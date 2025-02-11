@@ -634,6 +634,139 @@ func TestHostNextTask(t *testing.T) {
 	}
 }
 
+func TestSingleTaskDistroValidation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	colls := []string{model.ProjectRefCollection, host.Collection, task.Collection, model.TaskQueuesCollection, build.Collection,
+		evergreen.ConfigCollection, distro.Collection, model.VersionCollection}
+	require.NoError(t, db.ClearCollections(colls...))
+	defer func() {
+		assert.NoError(t, db.ClearCollections(colls...))
+	}()
+	require.NoError(t, modelUtil.AddTestIndexes(host.Collection, true, true, host.RunningTaskKey))
+
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(ctx))
+	env.EvergreenSettings.SingleTaskDistro = evergreen.SingleTaskDistroConfig{
+		ProjectTasksPairs: []evergreen.ProjectTasksPair{
+			{
+				ProjectID:    "exists",
+				AllowedTasks: []string{"task1", "task3"},
+			},
+		},
+	}
+	require.NoError(t, env.EvergreenSettings.SingleTaskDistro.Set(ctx))
+
+	d := &distro.Distro{
+		Id:               "singleTaskDistro",
+		SingleTaskDistro: true,
+		DispatcherSettings: distro.DispatcherSettings{
+			Version: evergreen.DispatcherVersionRevisedWithDependencies,
+		},
+	}
+
+	tq := &model.TaskQueue{
+		Distro: d.Id,
+		Queue: []model.TaskQueueItem{
+			{Id: "task1", DependenciesMet: true},
+			{Id: "task2", DependenciesMet: true},
+			{Id: "task3", DependenciesMet: true},
+		},
+	}
+
+	sampleHost := host.Host{
+		Id: "h1",
+		Distro: distro.Distro{
+			Id:               d.Id,
+			SingleTaskDistro: true,
+			DispatcherSettings: distro.DispatcherSettings{
+				Version: evergreen.DispatcherVersionRevisedWithDependencies,
+			},
+		},
+		Secret:        hostSecret,
+		Provisioned:   true,
+		Status:        evergreen.HostRunning,
+		AgentRevision: evergreen.AgentVersion,
+	}
+
+	b := build.Build{Id: "buildID"}
+
+	pref := &model.ProjectRef{
+		Id:         "exists",
+		Identifier: "exists",
+		Enabled:    true,
+	}
+	v := model.Version{
+		Id: "versionID",
+	}
+
+	task1 := task.Task{
+		Id:          "task1",
+		DisplayName: "task1",
+		Status:      evergreen.TaskUndispatched,
+		Activated:   true,
+		BuildId:     b.Id,
+		Project:     "exists",
+		StartTime:   utility.ZeroTime,
+		Version:     v.Id,
+	}
+	task2 := task.Task{
+		Id:          "task2",
+		DisplayName: "task2",
+		Status:      evergreen.TaskUndispatched,
+		Activated:   true,
+		Project:     "exists",
+		BuildId:     b.Id,
+		StartTime:   utility.ZeroTime,
+		Version:     v.Id,
+	}
+
+	require.NoError(t, d.Insert(ctx))
+	require.NoError(t, task1.Insert())
+	require.NoError(t, task2.Insert())
+	require.NoError(t, b.Insert())
+	require.NoError(t, pref.Insert())
+	require.NoError(t, sampleHost.Insert(ctx))
+	require.NoError(t, tq.Save())
+	require.NoError(t, v.Insert())
+
+	r, ok := makeHostAgentNextTask(env, nil, nil).(*hostAgentNextTask)
+	require.True(t, ok)
+
+	r.host = &sampleHost
+	r.details = &apimodels.GetNextTaskDetails{}
+	r.taskDispatcher = model.NewTaskDispatchService(time.Hour)
+
+	// task1 will correctly pass validation and be returned by next task.
+	resp := r.Run(ctx)
+	assert.NotNil(t, resp)
+	assert.Equal(t, http.StatusOK, resp.Status())
+	taskResp := resp.Data().(apimodels.NextTaskResponse)
+	assert.Equal(t, "task1", taskResp.TaskId)
+	h, err := host.FindOneId(ctx, sampleHost.Id)
+	require.NoError(t, err)
+	require.NotZero(t, h)
+	assert.Equal(t, "task1", h.RunningTask)
+
+	tq, err = model.LoadTaskQueue(d.Id)
+	require.NoError(t, err)
+	assert.Equal(t, 2, tq.Length())
+
+	require.NoError(t, sampleHost.ClearRunningTask(ctx))
+
+	// task2 should not be dispatched because it is not an allowed task.
+	resp = r.Run(ctx)
+	assert.NotNil(t, resp)
+	assert.Equal(t, http.StatusOK, resp.Status())
+	taskResp = resp.Data().(apimodels.NextTaskResponse)
+	assert.Equal(t, "", taskResp.TaskId)
+	h, err = host.FindOneId(ctx, sampleHost.Id)
+	require.NoError(t, err)
+	require.NotZero(t, h)
+	assert.Equal(t, "", h.RunningTask)
+}
+
 func TestHostEndTask(t *testing.T) {
 	const (
 		hostId    = "h1"
