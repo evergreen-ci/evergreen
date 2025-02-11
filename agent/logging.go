@@ -114,15 +114,17 @@ func (a *Agent) prepLogger(tc *taskContext, commandName string) client.LoggerCon
 		logDir = filepath.Join(logDir, commandName)
 		grip.Error(errors.Wrapf(os.MkdirAll(logDir, os.ModeDir|os.ModePerm), "making log directory '%s' for command '%s'", logDir, commandName))
 	}
-	redactorExpansions := tc.taskConfig.NewExpansions
+	// kim: TODO: remove
+	// redactorExpansions := tc.taskConfig.NewExpansions
 	// Add the host's secret to the internal agent expansions, so it can be redacted by our redacting logger later.
-	redactorExpansions.Put(globals.HostSecret, a.opts.HostSecret)
+	// redactorExpansions.Put(globals.HostSecret, a.opts.HostSecret)
 	config := client.LoggerConfig{
 		SendToGlobalSender: a.opts.SendTaskLogsToGlobalSender,
 		AWSCredentials:     pail.CreateAWSCredentials(tc.taskConfig.TaskOutput.Key, tc.taskConfig.TaskOutput.Secret, ""),
 		RedactorOpts: redactor.RedactionOptions{
-			Expansions: redactorExpansions,
-			Redacted:   tc.taskConfig.Redacted,
+			Expansions:           tc.taskConfig.NewExpansions,
+			Redacted:             tc.taskConfig.Redacted,
+			AdditionalRedactions: tc.taskConfig.InternalRedactions,
 		},
 	}
 	agentLog := client.LogOpts{

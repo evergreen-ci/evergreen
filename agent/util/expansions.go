@@ -9,9 +9,6 @@ import (
 // DynamicExpansions wraps expansions for safe concurrent access as they are
 // dynamically updated.
 // It also contains logic to redact values that should not be exposed.
-//
-// This should be expanded to support better expansion handling during a task
-// run.
 type DynamicExpansions struct {
 	util.Expansions
 	mu sync.RWMutex

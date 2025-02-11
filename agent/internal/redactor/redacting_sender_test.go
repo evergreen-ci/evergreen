@@ -16,6 +16,7 @@ func TestRedactingSender(t *testing.T) {
 	for name, test := range map[string]struct {
 		expansions         map[string]string
 		expansionsToRedact []string
+		internalRedactions map[string]string
 		inputString        string
 		expected           string
 	}{
@@ -62,7 +63,7 @@ func TestRedactingSender(t *testing.T) {
 			inputString:        "longer_value",
 			expected:           fmt.Sprintf(redactedVariableTemplate, "secret_key2"),
 		},
-		"NonexistantExpansion": {
+		"NonexistentExpansion": {
 			expansions: map[string]string{
 				"secret_key": "secret_val",
 			},
@@ -83,7 +84,13 @@ func TestRedactingSender(t *testing.T) {
 			wrappedSender, err := send.NewInternalLogger("", send.LevelInfo{Threshold: level.Info, Default: level.Info})
 			require.NoError(t, err)
 
-			NewRedactingSender(wrappedSender, RedactionOptions{Expansions: util.NewDynamicExpansions(test.expansions), Redacted: test.expansionsToRedact}).Send(message.NewDefaultMessage(level.Info, test.inputString))
+			opts := RedactionOptions{
+				Expansions: util.NewDynamicExpansions(test.expansions),
+				Redacted:   test.expansionsToRedact,
+				// kim: TODO: test additional redactions
+			}
+			s := NewRedactingSender(wrappedSender, opts)
+			s.Send(message.NewDefaultMessage(level.Info, test.inputString))
 			assert.Equal(t, test.expected, wrappedSender.GetMessage().Message.String())
 		})
 	}
