@@ -32,8 +32,8 @@ type RedactionOptions struct {
 	Redacted []string
 	// AdditionalRedactions specifies an additional set of strings that are not
 	// expansions that should be redacted from the logs (e.g. agent-internal
-	// secrets).
-	// kim: TODO: use this where needed to redact strings.
+	// secrets). All key-values in AdditionalRedactions are assumed to be
+	// sensitive.
 	AdditionalRedactions *util.DynamicExpansions
 }
 
@@ -49,8 +49,9 @@ func (r *redactingSender) Send(m message.Composer) {
 			allRedacted = append(allRedacted, util.RedactInfo{Key: expansion, Value: val})
 		}
 	}
-	// kim: TODO: verify that this is correct when combined with PutAndRedact.
-	allRedacted = append(allRedacted, r.additionalRedactions.GetRedacted()...)
+	for k, v := range r.additionalRedactions.Map() {
+		allRedacted = append(allRedacted, util.RedactInfo{Key: k, Value: v})
+	}
 
 	// Sort redacted info based on value length to ensure we're redacting longer values first.
 	sort.Slice(allRedacted, func(i, j int) bool {
@@ -65,7 +66,6 @@ func (r *redactingSender) Send(m message.Composer) {
 
 // NewRedactingSender wraps the provided sender with a sender that redacts
 // expansions in accordance with the reaction options.
-// kim: TODO: ensure all usages of redacting sender pass in internal redactions.
 func NewRedactingSender(sender send.Sender, opts RedactionOptions) send.Sender {
 	if opts.Expansions == nil {
 		opts.Expansions = &util.DynamicExpansions{}

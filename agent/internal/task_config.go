@@ -47,8 +47,6 @@ type TaskConfig struct {
 	// expansions available to tasks. Having this allows redaction of strings
 	// that cannot be exposed to tasks as expansions.
 	// This only reuses agentutil.DynamicExpansions for thread safety.
-	// kim: TODO: set internal redactions
-	// kim: TODO: double-check safety of concurrent access.
 	InternalRedactions *agentutil.DynamicExpansions
 	WorkDir            string
 	TaskOutputDir      *taskoutput.Directory
@@ -207,7 +205,7 @@ func NewTaskConfig(workDir string, d *apimodels.DistroView, p *model.Project, t 
 		Expansions:         e.Expansions,
 		NewExpansions:      agentutil.NewDynamicExpansions(e.Expansions),
 		DynamicExpansions:  util.Expansions{},
-		InternalRedactions: agentutil.NewDynamicExpansions(*util.NewExpansions(map[string]string{})),
+		InternalRedactions: agentutil.NewDynamicExpansions(map[string]string{}),
 		ProjectVars:        e.Vars,
 		Redacted:           redacted,
 		WorkDir:            workDir,

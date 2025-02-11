@@ -387,8 +387,6 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.
 	taskConfig.Task.TaskOutputInfo.TestLogs.AWSCredentials = awsCreds
 
 	if a.opts.HostSecret != "" {
-		// kim: NOTE: check if this makes sense. The host secret should already
-		// be set when the agent is initialized with opts.
 		taskConfig.InternalRedactions.PutAndRedact(globals.HostSecret, a.opts.HostSecret)
 	}
 
