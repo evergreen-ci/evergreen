@@ -189,6 +189,12 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 		Variant:   "^ubuntu2004$",
 		Task:      "^bynntask$",
 	}).Upsert())
+	s.NoError((&model.ProjectAlias{
+		ProjectID: "commit-queue-sandbox",
+		Alias:     evergreen.GithubPRAlias,
+		Variant:   "fake.*",
+		Task:      "fake.*",
+	}).Upsert())
 
 	s.NoError((&distro.Distro{Id: "ubuntu1604-test"}).Insert(s.ctx))
 	s.NoError((&distro.Distro{Id: "ubuntu1604-build"}).Insert(s.ctx))
@@ -244,28 +250,16 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 }
 
 func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithNoTasksAndVariants() {
-	resp, err := http.Get(s.diffURL)
-	s.Require().NoError(err)
-	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
-	s.Require().NoError(err)
-
-	intent, err := patch.NewCliIntent(patch.CLIIntentParams{
-		User:         s.user,
-		Project:      s.project,
-		BaseGitHash:  s.hash,
-		PatchContent: string(body),
-		Description:  s.desc,
-		Finalize:     true,
-		Alias:        "doesntexist",
-	})
+	intent, err := patch.NewGithubIntent("1", "", "", "", "3fda01fcb7b1eb880659ca30edad78fc840d8169", testutil.NewGithubPR(735, "evergreen-ci/commit-queue-sandbox", "3fda01fcb7b1eb880659ca30edad78fc840d8169", s.headRepo, "fc47de9ae8115246e2a17e475582fb2e27557428", "octocat", "title1"))
 	s.NoError(err)
-	s.Require().NotNil(intent)
+	s.NotNil(intent)
 	s.NoError(intent.Insert())
 
-	testutil.ConfigureIntegrationTest(s.T(), s.env.Settings())
-	j := NewPatchIntentProcessor(s.env, mgobson.NewObjectId(), intent).(*patchIntentProcessor)
+	patchID := mgobson.NewObjectId()
+	j, ok := NewPatchIntentProcessor(s.env, patchID, intent).(*patchIntentProcessor)
 	j.env = s.env
+	s.True(ok)
+	s.NotNil(j)
 
 	patchDoc := intent.NewPatch()
 	err = j.finishPatch(s.ctx, patchDoc)
