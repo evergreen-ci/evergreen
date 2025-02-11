@@ -80,8 +80,6 @@ type Options struct {
 	// sent to the global agent file log.
 	SendTaskLogsToGlobalSender bool
 	HomeDirectory              string
-	// AllowedSingleTaskDistroTasks will be empty if the distro is not a single task distro.
-	AllowedSingleTaskDistroTasks []string
 }
 
 // AddLoggableInfo is a helper to add relevant information about the agent
@@ -215,12 +213,6 @@ func (a *Agent) Start(ctx context.Context) error {
 	if a.opts.Cleanup {
 		a.tryCleanupDirectory(a.opts.WorkingDirectory)
 	}
-
-	allowedTasks, err := a.comm.AllowedSingleTaskDistroTasks(ctx)
-	if err != nil {
-		return errors.Wrap(err, "getting allowed single task distro tasks")
-	}
-	a.opts.AllowedSingleTaskDistroTasks = allowedTasks
 
 	return errors.Wrap(a.loop(ctx), "executing main agent loop")
 }
