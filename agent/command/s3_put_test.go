@@ -415,7 +415,7 @@ func TestContentTypeSaved(t *testing.T) {
 		Project:      model.Project{},
 		BuildVariant: model.BuildVariant{},
 	}
-	s.taskdata = client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
+	s.taskData = client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 
 	localFiles := []string{"file1", "file2"}
 	remoteFile := "remote file"

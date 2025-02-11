@@ -74,3 +74,7 @@ func getS3OpBackoff() *backoff.Backoff {
 		Jitter: true,
 	}
 }
+
+func shouldRunForVariant(bvs []string, bv string) bool {
+	return len(bvs) == 0 || utility.StringSliceContains(bvs, bv)
+}

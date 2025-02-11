@@ -27,7 +27,7 @@ func TestS3GetValidateParams(t *testing.T) {
 					"local_file":  "local",
 				}
 				So(cmd.ParseParams(params), ShouldNotBeNil)
-				So(cmd.validateParams(), ShouldNotBeNil)
+				So(cmd.validate(), ShouldNotBeNil)
 			})
 
 			Convey("a missing aws secret should cause an error", func() {
@@ -39,7 +39,7 @@ func TestS3GetValidateParams(t *testing.T) {
 					"local_file":  "local",
 				}
 				So(cmd.ParseParams(params), ShouldNotBeNil)
-				So(cmd.validateParams(), ShouldNotBeNil)
+				So(cmd.validate(), ShouldNotBeNil)
 
 			})
 
@@ -52,7 +52,7 @@ func TestS3GetValidateParams(t *testing.T) {
 					"local_file": "local",
 				}
 				So(cmd.ParseParams(params), ShouldNotBeNil)
-				So(cmd.validateParams(), ShouldNotBeNil)
+				So(cmd.validate(), ShouldNotBeNil)
 
 			})
 
@@ -65,7 +65,7 @@ func TestS3GetValidateParams(t *testing.T) {
 					"local_file":  "local",
 				}
 				So(cmd.ParseParams(params), ShouldNotBeNil)
-				So(cmd.validateParams(), ShouldNotBeNil)
+				So(cmd.validate(), ShouldNotBeNil)
 
 			})
 
@@ -79,7 +79,7 @@ func TestS3GetValidateParams(t *testing.T) {
 					"bucket":      "bck",
 				}
 				So(cmd.ParseParams(params), ShouldNotBeNil)
-				So(cmd.validateParams(), ShouldNotBeNil)
+				So(cmd.validate(), ShouldNotBeNil)
 
 			})
 
@@ -95,7 +95,7 @@ func TestS3GetValidateParams(t *testing.T) {
 					"extract_to":  "extract",
 				}
 				So(cmd.ParseParams(params), ShouldNotBeNil)
-				So(cmd.validateParams(), ShouldNotBeNil)
+				So(cmd.validate(), ShouldNotBeNil)
 
 			})
 
@@ -110,7 +110,7 @@ func TestS3GetValidateParams(t *testing.T) {
 					"optional":    true,
 				}
 				So(cmd.ParseParams(params), ShouldBeNil)
-				So(cmd.validateParams(), ShouldBeNil)
+				So(cmd.validate(), ShouldBeNil)
 
 			})
 
