@@ -740,9 +740,10 @@ func TestSingleTaskDistroValidation(t *testing.T) {
 
 	// task1 will correctly pass validation and be returned by next task.
 	resp := r.Run(ctx)
-	assert.NotNil(t, resp)
+	require.NotNil(t, resp)
 	assert.Equal(t, http.StatusOK, resp.Status())
-	taskResp := resp.Data().(apimodels.NextTaskResponse)
+	taskResp, ok := resp.Data().(apimodels.NextTaskResponse)
+	require.True(t, ok)
 	assert.Equal(t, "task1", taskResp.TaskId)
 	h, err := host.FindOneId(ctx, sampleHost.Id)
 	require.NoError(t, err)
@@ -751,15 +752,17 @@ func TestSingleTaskDistroValidation(t *testing.T) {
 
 	tq, err = model.LoadTaskQueue(d.Id)
 	require.NoError(t, err)
+	require.NotNil(t, tq)
 	assert.Equal(t, 2, tq.Length())
 
 	require.NoError(t, sampleHost.ClearRunningTask(ctx))
 
 	// task2 should not be dispatched because it is not an allowed task.
 	resp = r.Run(ctx)
-	assert.NotNil(t, resp)
+	require.NotNil(t, resp)
 	assert.Equal(t, http.StatusOK, resp.Status())
-	taskResp = resp.Data().(apimodels.NextTaskResponse)
+	taskResp, ok = resp.Data().(apimodels.NextTaskResponse)
+	require.True(t, ok)
 	assert.Equal(t, "", taskResp.TaskId)
 	h, err = host.FindOneId(ctx, sampleHost.Id)
 	require.NoError(t, err)
