@@ -610,7 +610,3 @@ func (c *Mock) UpsertCheckRun(ctx context.Context, td TaskData, checkRunOutput a
 func (c *Mock) AssumeRole(ctx context.Context, td TaskData, request apimodels.AssumeRoleRequest) (*apimodels.AWSCredentials, error) {
 	return c.AssumeRoleResponse, nil
 }
-
-func (c *Mock) AllowedSingleTaskDistroTasks(ctx context.Context) ([]string, error) {
-	return nil, nil
-}

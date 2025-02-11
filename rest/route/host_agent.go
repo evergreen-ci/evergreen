@@ -489,6 +489,15 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 			// If next task exists and the distro is a single task distro, check if the task is allowed on the distro.
 			allowedTasks, err := validator.GetAllowedSingleTaskDistroTasksForProject(ctx, nextTask.Project)
 			if err != nil {
+				errMsg = message.Fields{
+					"message":    "could not find allowed single task disto tasks for project",
+					"host_id":    currentHost.Id,
+					"distro_id":  nextTask.DistroId,
+					"task_id":    nextTask.Id,
+					"task_name":  nextTask.DisplayName,
+					"task_group": nextTask.TaskGroup,
+					"project":    projectRef.Id,
+				}
 				grip.Alert(message.WrapError(err, errMsg))
 				return nil, false, errors.Wrapf(err, "could not find allowed single task disto tasks for project '%s'", nextTask.Project)
 			}
@@ -496,6 +505,12 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 			for _, allowedTask := range allowedTasks {
 				matched, err = regexp.MatchString(allowedTask, nextTask.DisplayName)
 				if err != nil {
+					errMsg = message.Fields{
+						"message":      "could not process regex",
+						"task_id":      nextTask.Id,
+						"task_name":    nextTask.DisplayName,
+						"allowed_task": allowedTask,
+					}
 					grip.Alert(message.WrapError(err, errMsg))
 					return nil, false, errors.Wrapf(err, "could not process regex '%s'", allowedTask)
 				}
@@ -514,6 +529,23 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 					"project":            projectRef.Id,
 					"project_identifier": projectRef.Enabled,
 				})
+
+				// Mark task as system failed if it is not allowed on the distro.
+				details := &apimodels.TaskEndDetail{
+					Status:      evergreen.TaskSystemFailed,
+					Description: "Task not allowed to run on single task distros",
+				}
+
+				err = model.MarkEnd(ctx, env.Settings(), nextTask, evergreen.APIServerTaskActivator, time.Now(), details, false)
+				if err != nil {
+					errMsg = message.Fields{
+						"message":   "could not mark task as system failed",
+						"task_id":   nextTask.Id,
+						"task_name": nextTask.DisplayName,
+					}
+					grip.Alert(message.WrapError(err, errMsg))
+					return nil, false, errors.Wrapf(err, "could not mark task '%s' as system failed", nextTask.Id)
+				}
 				continue
 			}
 		}
