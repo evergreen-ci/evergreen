@@ -1,0 +1,374 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex,nofollow" />
+    <meta http-equiv="Accept-CH" content="Sec-CH-UA-Platform Sec-CH-UA-Platform-Version" />
+    <!-- Custom JS -->
+    <!-- <script src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script> -->
+    <!-- MongoDB Fonts -->
+    <link href='https://fonts.googleapis.com/css?family=Lexend Deca' rel='stylesheet'>
+    <!-- Styles generated from theme -->
+    <link href="/api/internal/brand/theme/style-sheet?touch-point=SIGN_IN_PAGE&amp;v=f55deda9bcf67d146891c3735c8e74886bdff5e14abce1465d6d1b7e09d6cbe3c8b4e1bab1b67d8a53b77925c6499bbb" rel="stylesheet" type="text/css">
+    <!-- Favicon from theme -->
+    <link rel="shortcut icon" href="https://ok5static.oktacdn.com/bc/image/fileStoreRecord?id=fs0jq9i9e0E4EFpjn297" type="image/x-icon"/>
+    <!-- FontAwesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.3.0/css/all.min.css" integrity="sha512-SzlrxWUlpfuzQ+pcUCosxcglQRNAq/DZjVsC0lE40xsADsfeQoEypE+enwcOiGjk/bSuGGKHEyjSoQ1zVisanQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />  
+<!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.3.0/js/all.min.js" integrity="sha512-2bMhOkE/ACz21dJT8zBOMgMecNxx0d37NND803ExktKiKdSzdwn+L7i9fdccw/3V06gM/DBWKbYmQvKMdAA9Nw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script> -->
+    <style>
+        .button {
+            background-color: #00ED64 !important;
+            border-color: #00ED64 !important;
+            color: #000000 !important;
+        }
+
+        .applogin-container {
+            color: #001E2B !important;
+        }
+      
+        #okta-sign-in .infobox {
+            hyphens: none !important;
+        }
+
+        #okta-sign-in .default-custom-button {
+            background-color: #011e2b !important;
+            border: 1px solid #011e2b !important;
+        }
+
+        #okta-sign-in.auth-container .button-primary {
+            box-shadow: none !important;
+        }
+
+        #okta-sign-in.auth-container .button {
+            box-shadow: none !important;
+        }
+        #okta-sign-in .default-custom-button.link-button {
+            border-radius: 150px !important;
+            box-sizing: border-box !important;
+            color: #fff !important;
+            display: block !important;
+            font-size: 14px !important;
+            line-height: 50px !important;
+            margin-top: 15px !important;
+            text-align: center !important;
+        }
+
+        a.link.js-factor-page-custom-link {
+            font-weight: bold !important;
+            color: #016BF8 !important;
+            font-size: larger !important;
+            text-align: center;
+            margin-bottom: 12px !important;
+        }
+
+        a.swal2-links {
+            color: #00684A;
+        }
+
+        .swal2-popup {
+          font-family: 'Lexend Deca';
+        }
+
+    </style>
+  
+    <title>MongoDB - Sign In</title>
+    <!-- Core widget js and css -->
+<script type="text/javascript"
+        src="https://ok5static.oktacdn.com/assets/js/sdk/okta-signin-widget/7.27.3/js/okta-sign-in.min.js" integrity="sha384-HkTvsen5LB+Dz1e3d1W0MUbtT3EosKtssDx7SLw8yxXK3vIkKjiaT1j+oAJClfc2" crossorigin="anonymous"></script>
+<link rel="stylesheet"
+      type="text/css"
+      href="https://ok5static.oktacdn.com/assets/js/sdk/okta-signin-widget/7.27.3/css/okta-sign-in.min.css"
+      integrity="sha384-EP+bLgs/1lgPpgiooihtXIaWRObg9E6WzegmmFcj54sEnISxo9rYjjI25Yl7tWWU"
+      crossorigin="anonymous">
+
+<!-- Customizable css theme options. Link your own stylesheet or override styles inline. -->
+<link rel="stylesheet"
+      type="text/css" href="" integrity="" crossorigin="anonymous">
+
+<!-- styles for custom sign in -->
+<link rel="stylesheet" type="text/css" href="https://ok5static.oktacdn.com/assets/loginpage/css/custom-signin.a91af2abfd04662e499bd3e151150dbf.css" integrity="sha384-BhMidK4jYIQaVFKNVHUvbfdgrt4NVlnlTZMsOMWLdWkme3j1JcshKDNQiMssd7sN" crossorigin="anonymous">
+
+
+</head>
+<body>
+    <div class="login-bg-image tb--background" style="background-image: url('https://ok5static.oktacdn.com/fs/bco/7/fs0jq9i9e9HKyK0Cu297')"></div>
+    <div id="okta-login-container"></div>
+
+    <!--
+        "OktaUtil" defines a global OktaUtil object
+        that contains methods used to complete the Okta login flow.
+     -->
+    
+<div id="okta-sign-in" class="auth-container main-container unsupported-message-container" style="display:none">
+    <div id="unsupported-cookie" class="unsupported-message" style="display:none">
+        <h2 class="o-form-head">Cookies are required</h2>
+        <p>Cookies are disabled on your browser. Please enable Cookies and refresh this page.</p>
+        <a class="button button-primary" target="_blank" href=".">
+            Refresh
+        </a>
+    </div>
+</div>
+<div id="inactive-tab-main-div" style="display:none;">
+    <div class="inactive-tab-container">
+        <div class="inactive-tab-header">
+            <img src="https://ok5static.oktacdn.com/fs/bco/1/fs0jq9i9coLeryBSy297" alt="MongoDB" class="report-org-logo">
+            <div class="divider"></div>
+        </div>
+        <div class="inactive-tab-content">
+            <h2 class="inactive-tab-content-title">The page has timed out</h2>
+            <p class="inactive-tab-details">If this page does not reload automatically, please refresh your browser.</p>
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript" nonce="">
+  var signInSuccessCallBackFunction;
+  var oktaData = {"redirectUri":"https\x3A\x2F\x2Fcorp.mongodb.com\x2Foauth2\x2Fv1\x2Fauthorize\x3Fclient_id\x3D0oa3e3dsu168G2pm3297\x26redirect_uri\x3Dhttps\x253A\x252F\x252Flogin.corp.mongodb.com\x252Flogin\x252Fokta\x252Fcallback\x26response_type\x3Dcode\x26scope\x3Dopenid\x2Bprofile\x2Bemail\x2Bgroups\x26state\x3D17ce8f25\x2D8a1a\x2D40dc\x2Dac73\x2Db41dcaf0df05","isMobileSso":false,"fromUri":"","isMobileClientLogin":false,"requestContext":{"app":{"type":"object","value":{"name":"oidc_client","label":"CorpSecure","id":"0oa3e3dsu168G2pm3297"}},"authentication":{"request":{"max_age":-1,"scope":"openid\x20profile\x20email\x20groups","display":"page","response_type":"code","redirect_uri":"https\x3A\x2F\x2Flogin.corp.mongodb.com\x2Flogin\x2Fokta\x2Fcallback","state":"17ce8f25\x2D8a1a\x2D40dc\x2Dac73\x2Db41dcaf0df05","response_mode":"query"},"protocol":{},"client":{"name":"oidc_client","label":"CorpSecure","id":"0oa3e3dsu168G2pm3297"},"type":"object","value":{"request":{"max_age":-1,"scope":"openid\x20profile\x20email\x20groups","display":"page","response_type":"code","redirect_uri":"https\x3A\x2F\x2Flogin.corp.mongodb.com\x2Flogin\x2Fokta\x2Fcallback","state":"17ce8f25\x2D8a1a\x2D40dc\x2Dac73\x2Db41dcaf0df05","response_mode":"query"},"protocol":{},"issuer":{"name":"MongoDB","uri":"https\x3A\x2F\x2Fcorp.mongodb.com"}},"issuer":{"name":"MongoDB","uri":"https\x3A\x2F\x2Fcorp.mongodb.com"}},"target":{"clientId":"0oa3e3dsu168G2pm3297","name":"oidc_client","label":"CorpSecure"}},"countryIso":"US","inactiveTab":{"elementId":"inactive\x2Dtab\x2Dmain\x2Ddiv","avoidPageRefresh":true,"enabled":true},"signIn":{"logoText":"MongoDB\x20logo","brandName":"MongoDB","language":"en","consent":{"cancel":function(){window.location.href='https\x3A\x2F\x2Fcorp.mongodb.com\x2Flogin\x2Ftoken\x2Fredirect\x3FstateToken\x3DeyJ6aXAiOiJERUYiLCJhbGlhcyI6ImVuY3J5cHRpb25rZXkiLCJ2ZXIiOiIxIiwib2lkIjoiMDBvMWJrcmg2eTdXU0hkQnkyOTciLCJlbmMiOiJBMjU2R0NNIiwiYWxnIjoiZGlyIn0..ITEctPU1htqAkATg.dcHu\x2DVA1ghHD4_9\x2DgVj5uhS84y6j9e_V\x2D3WnaSx1LJj1Dy0C\x2DQhiUADrgX3ezmHkvTVifY8t7eV5ffbWwcud\x2D6TEKU5bRPtqq16kvZoevvYjEiZ5OpveOibDrE8YG7nOotwji4xZKfUhO0dzh3eNIhQj_qDWX89PpT_zLQ\x2DCB0IYuXSKZB1L18PhLw85u6naMDqT8jWYp9rGmc5tlVLvWIEsoRRSWOHolK8ijwAMY6Ipwi19VYDbxIJbewy9Y7u61YCYfOmL3l2hZK8mHElZ0W1CGOMS1f2E7VkIhQitMyV4ddeoykrMaURcrPF6OLjt96ApWUB07FxM3GcNECPrHP\x2DIEFKYPlKyH3U1dCA0du6vZ7WVoxspQtMzpxLH6uHboYhgNUfU0HucJbmVawFwadGR0AtYFpTb\x2DeN9CwX0SXm_deyPMtrQqEwWBhtrlKNISJDkD3JefCPd\x2DXsD9apKulKhbnR09xnmA5nQCBBxr9vyYfKYc8av6Wa05nUPYHu6_yP410Z2v0rgIjkoThMftRaZB55CSwFCK1BeSQwkfWrOOfRckMTp3\x2DmAfjIsv8cIKUNGhlhUIvhjq23MsWm5Otmv9WxLy39ad6lIT35ep8Gf2F0BcYT3dFc\x2DC2GordckIH67x92yDGlgxClcp080muxf24a3gWKIyt6RyKMsXYDaX2E4X0dxPIr6\x2DwXsLzsL7Jd48_78yyGmexFrRT17UKl82tajMhGZF6Q908dFbXmhvqoS9wYvFo7mVWTs7DeSLBoH_ZXiRQ84tKbZcY4bEV0hx3T10YGKIHfBQpnK00ntUdwniyPM9P1Ovhv2QNfWuuZbXpqAHpSwScFBHvSsZdAgaAuNHqhuPksQAfj9bYU5AggsgeU5XjrS8k\x2Dyv6legjG_qEnQIUhDa_30PZw\x2DZCUgNoiebzziZZXvcqtDRcb9Q5PqpOJxR8\x2DW_tvjdM56Vd4wWn_GOOxTeX39zh5l7Qgv79J2_MELrd9YnydRYekf6e9qq3bUOwg05T2m_kADrMV1lMT6867\x2DvrzVxaobYtLYF0R4tcg2JdjWhmjRCKTI89KnXWM\x2D40r0xP_SAYfQNd6Y42oXcZNLFroKpqdib8G1gcnVwEM4ycdeeokJXXhx9i4FXHZBSh3ndvIhbE3zr3p7f0O9XXPWuDqsow6pj7ftNakGJBRCSnPXlWgbOq\x2DfitYTV2TLjxPOGPBQVJvKCmDH3WTxAbEAwBIkuGm_DTfgPuqR7ze8OBkrHwjTckvFfCu1No0XHdQIm5M9gL1J8q1B\x2D0K\x2DnkgEamNCFXWoXc\x2DzJcPj7ni0yNfjcYk0S5LvOCH\x2DzE4ihe2o9Zm0A1x7Aov4QNBD0\x2DeGjsG0bg6oHZZ3JNxeIReLOT_3ygjtxXqwVvelzyxq1ti8njILG8bF2M\x2D_J2SIvYTP\x2DEKg5\x2DvXQhYlViIaNxFnFfhwnpfPBDXS8JOBc87nCXgnXBa4Wb71IwjQgjZCYdcF8cl\x2D0n1myg9C1_oERF8AkXvie85rOOGOAD4riSzjfMBcd054UYTaX_TnW7A5\x2DIrU_DYaQvBfyAaNZQsASab4Ct7Y_lwld\x2D8jhXoBKO6Tna6fhcvTFaiPPJPGqthqn0uD_bpwwPRvQyXkY_C2Q3D0wWQWxzPqfF53QANVOsUCQ17S_3LXQoqgMxnutm576yR4z8S\x2DB2m\x2DU740Oj8OV6rYX41jM\x2D18ou_Z7qunCtcVyiCS6XCfdfRRWsaS2MXSzyjePiJrfTdZlGAyDec\x2DTiO3wTtfwEw36\x2DupKZxhVf6InTNH6cVkQSZhycfNe3PSw2WEpwKvR16OtsAGsyfRPcH2fgM_dt__1BLjgejHrcGkWdd04GAlHOdyJ3EuNqda07\x2DebUcupGz5bReCd\x2DSQDAw5FvewuKOiZYT84Y82YE6GvBm\x2DIVu2igebCjA4_lolZj_aNVS1SgbjPvRXNWJ7SXdxOqB\x2Dv8nVm2W23QvzjmViSCB\x2DV7bET\x2DFWHFOT10qwsxEkfxpk24dzFZpORkNYUsttrKi8okxAhYtiJi3zuxZ\x2DhNzyvslC7ya2_0Pd5TDAxJ1EMUIX26DL\x2D9yN3J47QNB0zjtXq69fB5uewQpLwQNu4O6skJZfadgDQVHRIbyqNZ75Ze61Y3P5E4PCo_LgmgvKrXWP92dx6Ll\x2DxjQlTh2NOYoedNal82tfAyUJsr39ib86i4FMprzBmwuLVKUGkPVrLrIKEUGDD3dnCuEXM94LQs404s3v1T3RbvUDIcv5QCTVouhpl34q4BN_jcOPZsIPkDjmAE4ESalEwS4YY\x2DyZQdfGgfgfQy1SyWBeuRrxsLLb91Sek8visWbShMAUi4B_iJcPAQxbGUubfYK7K3Sf6I5D1syenVjH1eqR\x2DF2r5A_a1sDda7CKUmR4dh9PcFkfxnlPh5WNXnFbWGKBuHbMGsh5iTjA2NC\x2DoFZTxwhcYIFHnamGdAjSfyEmr7NRyECM6IdiqAv3r15LZmCxk63bSoVRXRDc7aOXowYUXzyhirzdJkibSbwwsQstPgS1Istlty4cPb8w6J3Hh3QBc5fD2oexopKag0A7OZkgbATjzzmRxMN3yi8Rckj7dkmCgcG\x2DiuFh7r4E8Hh9tHB7DgmxyL6g7reomt6nXJ9SM9sBYhxUs4Q3EGL834jhbOWXGRHH2eRVhfzPpQrRKH5lnaJgcZpmWYq6cPrY2my_nhvw4mUekBq3jJ7LsyIfbhr_QXKsZ9vrPN1FpbTq8Jr90eBTsJ2um1nMFg2_yUEGY6TsipFG6ipKCSVXoiGewF4jdkKftOSc1wkfiualBYYlvakzqXLC4wDwrgjOuWKY41CC7mgyc6KyTRRCBYqTI5QXc9G4vIlFkTwAUgoiwz7SzTCi4\x2D5hAHJUhfGvoA4I0MRA6zufFbzJqtMK3a0kpLDSIhcMW83EdP3Ygivwhxu7Ki1l5fNfgLXuwzR1QgjPGUowTV06vDAPS9O1mOLY8BerQGJanaJua984NPXOnHDl8uPoUczfP0kPVzP13mzzBEuBmUo_v87O1r8svQlQyTYWdoapx7O6CteKqAr85frMV0Yc9ySuCTjz2BpHc9cSRkNbu1n_EJbNnUz10DQFYJOqAK6HQ0PebXbzdm_TEkQGaOpy1M62hc24S\x2DCK0X6P8zknxVfqRmK1VYVFU_2qFR86z_89c8QTJV4_ikulkYoiXANw\x2DIg5lXMO8XaC8FvWA4QtMAA36ys1P01cx8m4LjvhHN5TsW\x2DkSwGvHOFZiK8yQyJqsNmGs_yNkPNePcXW6xlVNxbkO4TxGfzU\x2DqmqCA08OZwgY6ZHtDzoYAkdFYThmk4rb8JfAQHlOn08S_WsjYdWCY9SOxxY2HGfFTteaQZ75q0ayMcsGH_Yjuy_BOCSnULGyy89MzVZjL9ghJtRtNAXo508fPniF44rQW3NMIQ.7fgTLw3DYJ7v76YbpUQqDA';}},"i18n":{"en":{"mfa.challenge.password.placeholder":"Password","help":"Contact\x20us\x20in\x20\x23ask\x2Dit","password.forgot.email.or.username.tooltip":"Email\x20or\x20Username","needhelp":"Need\x20help\x20signing\x20in\x3F","primaryauth.username.placeholder":"Username\x20\x28first.last\x40mongodb.com\x29","password.forgot.email.or.username.placeholder":"Email\x20or\x20Username","account.unlock.email.or.username.tooltip":"Email\x20or\x20Username","unlockaccount":"Unlock\x20my\x20account","account.unlock.email.or.username.placeholder":"Email\x20or\x20Username","primaryauth.password.placeholder":"Password","primaryauth.title":"Sign\x20In","forgotpassword":"Reset\x20my\x20password"}},"features":{"hideSignOutLinkInMFA":false,"emailRecovery":true,"deviceFingerprinting":true,"showIdentifier":true,"consent":true,"useDeviceFingerprintForSecurityImage":true,"customExpiredPassword":true,"router":true,"showPasswordToggleOnSignInPage":true,"securityImage":true,"autoPush":true,"smsRecovery":false,"idpDiscovery":false,"selfServiceUnlock":true,"webauthn":true,"passwordlessAuth":true,"showPasswordRequirementsAsHtmlList":true,"registration":false,"rememberMe":true,"callRecovery":false,"multiOptionalFactorEnroll":true},"baseUrl":"https\x3A\x2F\x2Fcorp.mongodb.com","helpSupportNumber":"\x2B353862099666","assets":{"baseUrl":"https\x3A\x2F\x2Fok5static.oktacdn.com\x2Fassets\x2Fjs\x2Fsdk\x2Fokta\x2Dsignin\x2Dwidget\x2F7.27.3"},"customButtons":[],"idpDiscovery":{"requestContext":"eyJ6aXAiOiJERUYiLCJhbGlhcyI6ImVuY3J5cHRpb25rZXkiLCJ2ZXIiOiIxIiwib2lkIjoiMDBvMWJrcmg2eTdXU0hkQnkyOTciLCJlbmMiOiJBMjU2R0NNIiwiYWxnIjoiZGlyIn0..ITEctPU1htqAkATg.dcHu\x2DVA1ghHD4_9\x2DgVj5uhS84y6j9e_V\x2D3WnaSx1LJj1Dy0C\x2DQhiUADrgX3ezmHkvTVifY8t7eV5ffbWwcud\x2D6TEKU5bRPtqq16kvZoevvYjEiZ5OpveOibDrE8YG7nOotwji4xZKfUhO0dzh3eNIhQj_qDWX89PpT_zLQ\x2DCB0IYuXSKZB1L18PhLw85u6naMDqT8jWYp9rGmc5tlVLvWIEsoRRSWOHolK8ijwAMY6Ipwi19VYDbxIJbewy9Y7u61YCYfOmL3l2hZK8mHElZ0W1CGOMS1f2E7VkIhQitMyV4ddeoykrMaURcrPF6OLjt96ApWUB07FxM3GcNECPrHP\x2DIEFKYPlKyH3U1dCA0du6vZ7WVoxspQtMzpxLH6uHboYhgNUfU0HucJbmVawFwadGR0AtYFpTb\x2DeN9CwX0SXm_deyPMtrQqEwWBhtrlKNISJDkD3JefCPd\x2DXsD9apKulKhbnR09xnmA5nQCBBxr9vyYfKYc8av6Wa05nUPYHu6_yP410Z2v0rgIjkoThMftRaZB55CSwFCK1BeSQwkfWrOOfRckMTp3\x2DmAfjIsv8cIKUNGhlhUIvhjq23MsWm5Otmv9WxLy39ad6lIT35ep8Gf2F0BcYT3dFc\x2DC2GordckIH67x92yDGlgxClcp080muxf24a3gWKIyt6RyKMsXYDaX2E4X0dxPIr6\x2DwXsLzsL7Jd48_78yyGmexFrRT17UKl82tajMhGZF6Q908dFbXmhvqoS9wYvFo7mVWTs7DeSLBoH_ZXiRQ84tKbZcY4bEV0hx3T10YGKIHfBQpnK00ntUdwniyPM9P1Ovhv2QNfWuuZbXpqAHpSwScFBHvSsZdAgaAuNHqhuPksQAfj9bYU5AggsgeU5XjrS8k\x2Dyv6legjG_qEnQIUhDa_30PZw\x2DZCUgNoiebzziZZXvcqtDRcb9Q5PqpOJxR8\x2DW_tvjdM56Vd4wWn_GOOxTeX39zh5l7Qgv79J2_MELrd9YnydRYekf6e9qq3bUOwg05T2m_kADrMV1lMT6867\x2DvrzVxaobYtLYF0R4tcg2JdjWhmjRCKTI89KnXWM\x2D40r0xP_SAYfQNd6Y42oXcZNLFroKpqdib8G1gcnVwEM4ycdeeokJXXhx9i4FXHZBSh3ndvIhbE3zr3p7f0O9XXPWuDqsow6pj7ftNakGJBRCSnPXlWgbOq\x2DfitYTV2TLjxPOGPBQVJvKCmDH3WTxAbEAwBIkuGm_DTfgPuqR7ze8OBkrHwjTckvFfCu1No0XHdQIm5M9gL1J8q1B\x2D0K\x2DnkgEamNCFXWoXc\x2DzJcPj7ni0yNfjcYk0S5LvOCH\x2DzE4ihe2o9Zm0A1x7Aov4QNBD0\x2DeGjsG0bg6oHZZ3JNxeIReLOT_3ygjtxXqwVvelzyxq1ti8njILG8bF2M\x2D_J2SIvYTP\x2DEKg5\x2DvXQhYlViIaNxFnFfhwnpfPBDXS8JOBc87nCXgnXBa4Wb71IwjQgjZCYdcF8cl\x2D0n1myg9C1_oERF8AkXvie85rOOGOAD4riSzjfMBcd054UYTaX_TnW7A5\x2DIrU_DYaQvBfyAaNZQsASab4Ct7Y_lwld\x2D8jhXoBKO6Tna6fhcvTFaiPPJPGqthqn0uD_bpwwPRvQyXkY_C2Q3D0wWQWxzPqfF53QANVOsUCQ17S_3LXQoqgMxnutm576yR4z8S\x2DB2m\x2DU740Oj8OV6rYX41jM\x2D18ou_Z7qunCtcVyiCS6XCfdfRRWsaS2MXSzyjePiJrfTdZlGAyDec\x2DTiO3wTtfwEw36\x2DupKZxhVf6InTNH6cVkQSZhycfNe3PSw2WEpwKvR16OtsAGsyfRPcH2fgM_dt__1BLjgejHrcGkWdd04GAlHOdyJ3EuNqda07\x2DebUcupGz5bReCd\x2DSQDAw5FvewuKOiZYT84Y82YE6GvBm\x2DIVu2igebCjA4_lolZj_aNVS1SgbjPvRXNWJ7SXdxOqB\x2Dv8nVm2W23QvzjmViSCB\x2DV7bET\x2DFWHFOT10qwsxEkfxpk24dzFZpORkNYUsttrKi8okxAhYtiJi3zuxZ\x2DhNzyvslC7ya2_0Pd5TDAxJ1EMUIX26DL\x2D9yN3J47QNB0zjtXq69fB5uewQpLwQNu4O6skJZfadgDQVHRIbyqNZ75Ze61Y3P5E4PCo_LgmgvKrXWP92dx6Ll\x2DxjQlTh2NOYoedNal82tfAyUJsr39ib86i4FMprzBmwuLVKUGkPVrLrIKEUGDD3dnCuEXM94LQs404s3v1T3RbvUDIcv5QCTVouhpl34q4BN_jcOPZsIPkDjmAE4ESalEwS4YY\x2DyZQdfGgfgfQy1SyWBeuRrxsLLb91Sek8visWbShMAUi4B_iJcPAQxbGUubfYK7K3Sf6I5D1syenVjH1eqR\x2DF2r5A_a1sDda7CKUmR4dh9PcFkfxnlPh5WNXnFbWGKBuHbMGsh5iTjA2NC\x2DoFZTxwhcYIFHnamGdAjSfyEmr7NRyECM6IdiqAv3r15LZmCxk63bSoVRXRDc7aOXowYUXzyhirzdJkibSbwwsQstPgS1Istlty4cPb8w6J3Hh3QBc5fD2oexopKag0A7OZkgbATjzzmRxMN3yi8Rckj7dkmCgcG\x2DiuFh7r4E8Hh9tHB7DgmxyL6g7reomt6nXJ9SM9sBYhxUs4Q3EGL834jhbOWXGRHH2eRVhfzPpQrRKH5lnaJgcZpmWYq6cPrY2my_nhvw4mUekBq3jJ7LsyIfbhr_QXKsZ9vrPN1FpbTq8Jr90eBTsJ2um1nMFg2_yUEGY6TsipFG6ipKCSVXoiGewF4jdkKftOSc1wkfiualBYYlvakzqXLC4wDwrgjOuWKY41CC7mgyc6KyTRRCBYqTI5QXc9G4vIlFkTwAUgoiwz7SzTCi4\x2D5hAHJUhfGvoA4I0MRA6zufFbzJqtMK3a0kpLDSIhcMW83EdP3Ygivwhxu7Ki1l5fNfgLXuwzR1QgjPGUowTV06vDAPS9O1mOLY8BerQGJanaJua984NPXOnHDl8uPoUczfP0kPVzP13mzzBEuBmUo_v87O1r8svQlQyTYWdoapx7O6CteKqAr85frMV0Yc9ySuCTjz2BpHc9cSRkNbu1n_EJbNnUz10DQFYJOqAK6HQ0PebXbzdm_TEkQGaOpy1M62hc24S\x2DCK0X6P8zknxVfqRmK1VYVFU_2qFR86z_89c8QTJV4_ikulkYoiXANw\x2DIg5lXMO8XaC8FvWA4QtMAA36ys1P01cx8m4LjvhHN5TsW\x2DkSwGvHOFZiK8yQyJqsNmGs_yNkPNePcXW6xlVNxbkO4TxGfzU\x2DqmqCA08OZwgY6ZHtDzoYAkdFYThmk4rb8JfAQHlOn08S_WsjYdWCY9SOxxY2HGfFTteaQZ75q0ayMcsGH_Yjuy_BOCSnULGyy89MzVZjL9ghJtRtNAXo508fPniF44rQW3NMIQ.7fgTLw3DYJ7v76YbpUQqDA"},"logo":"https\x3A\x2F\x2Fok5static.oktacdn.com\x2Ffs\x2Fbco\x2F1\x2Ffs0jq9i9coLeryBSy297","stateToken":"eyJ6aXAiOiJERUYiLCJhbGlhcyI6ImVuY3J5cHRpb25rZXkiLCJ2ZXIiOiIxIiwib2lkIjoiMDBvMWJrcmg2eTdXU0hkQnkyOTciLCJlbmMiOiJBMjU2R0NNIiwiYWxnIjoiZGlyIn0..ITEctPU1htqAkATg.dcHu\x2DVA1ghHD4_9\x2DgVj5uhS84y6j9e_V\x2D3WnaSx1LJj1Dy0C\x2DQhiUADrgX3ezmHkvTVifY8t7eV5ffbWwcud\x2D6TEKU5bRPtqq16kvZoevvYjEiZ5OpveOibDrE8YG7nOotwji4xZKfUhO0dzh3eNIhQj_qDWX89PpT_zLQ\x2DCB0IYuXSKZB1L18PhLw85u6naMDqT8jWYp9rGmc5tlVLvWIEsoRRSWOHolK8ijwAMY6Ipwi19VYDbxIJbewy9Y7u61YCYfOmL3l2hZK8mHElZ0W1CGOMS1f2E7VkIhQitMyV4ddeoykrMaURcrPF6OLjt96ApWUB07FxM3GcNECPrHP\x2DIEFKYPlKyH3U1dCA0du6vZ7WVoxspQtMzpxLH6uHboYhgNUfU0HucJbmVawFwadGR0AtYFpTb\x2DeN9CwX0SXm_deyPMtrQqEwWBhtrlKNISJDkD3JefCPd\x2DXsD9apKulKhbnR09xnmA5nQCBBxr9vyYfKYc8av6Wa05nUPYHu6_yP410Z2v0rgIjkoThMftRaZB55CSwFCK1BeSQwkfWrOOfRckMTp3\x2DmAfjIsv8cIKUNGhlhUIvhjq23MsWm5Otmv9WxLy39ad6lIT35ep8Gf2F0BcYT3dFc\x2DC2GordckIH67x92yDGlgxClcp080muxf24a3gWKIyt6RyKMsXYDaX2E4X0dxPIr6\x2DwXsLzsL7Jd48_78yyGmexFrRT17UKl82tajMhGZF6Q908dFbXmhvqoS9wYvFo7mVWTs7DeSLBoH_ZXiRQ84tKbZcY4bEV0hx3T10YGKIHfBQpnK00ntUdwniyPM9P1Ovhv2QNfWuuZbXpqAHpSwScFBHvSsZdAgaAuNHqhuPksQAfj9bYU5AggsgeU5XjrS8k\x2Dyv6legjG_qEnQIUhDa_30PZw\x2DZCUgNoiebzziZZXvcqtDRcb9Q5PqpOJxR8\x2DW_tvjdM56Vd4wWn_GOOxTeX39zh5l7Qgv79J2_MELrd9YnydRYekf6e9qq3bUOwg05T2m_kADrMV1lMT6867\x2DvrzVxaobYtLYF0R4tcg2JdjWhmjRCKTI89KnXWM\x2D40r0xP_SAYfQNd6Y42oXcZNLFroKpqdib8G1gcnVwEM4ycdeeokJXXhx9i4FXHZBSh3ndvIhbE3zr3p7f0O9XXPWuDqsow6pj7ftNakGJBRCSnPXlWgbOq\x2DfitYTV2TLjxPOGPBQVJvKCmDH3WTxAbEAwBIkuGm_DTfgPuqR7ze8OBkrHwjTckvFfCu1No0XHdQIm5M9gL1J8q1B\x2D0K\x2DnkgEamNCFXWoXc\x2DzJcPj7ni0yNfjcYk0S5LvOCH\x2DzE4ihe2o9Zm0A1x7Aov4QNBD0\x2DeGjsG0bg6oHZZ3JNxeIReLOT_3ygjtxXqwVvelzyxq1ti8njILG8bF2M\x2D_J2SIvYTP\x2DEKg5\x2DvXQhYlViIaNxFnFfhwnpfPBDXS8JOBc87nCXgnXBa4Wb71IwjQgjZCYdcF8cl\x2D0n1myg9C1_oERF8AkXvie85rOOGOAD4riSzjfMBcd054UYTaX_TnW7A5\x2DIrU_DYaQvBfyAaNZQsASab4Ct7Y_lwld\x2D8jhXoBKO6Tna6fhcvTFaiPPJPGqthqn0uD_bpwwPRvQyXkY_C2Q3D0wWQWxzPqfF53QANVOsUCQ17S_3LXQoqgMxnutm576yR4z8S\x2DB2m\x2DU740Oj8OV6rYX41jM\x2D18ou_Z7qunCtcVyiCS6XCfdfRRWsaS2MXSzyjePiJrfTdZlGAyDec\x2DTiO3wTtfwEw36\x2DupKZxhVf6InTNH6cVkQSZhycfNe3PSw2WEpwKvR16OtsAGsyfRPcH2fgM_dt__1BLjgejHrcGkWdd04GAlHOdyJ3EuNqda07\x2DebUcupGz5bReCd\x2DSQDAw5FvewuKOiZYT84Y82YE6GvBm\x2DIVu2igebCjA4_lolZj_aNVS1SgbjPvRXNWJ7SXdxOqB\x2Dv8nVm2W23QvzjmViSCB\x2DV7bET\x2DFWHFOT10qwsxEkfxpk24dzFZpORkNYUsttrKi8okxAhYtiJi3zuxZ\x2DhNzyvslC7ya2_0Pd5TDAxJ1EMUIX26DL\x2D9yN3J47QNB0zjtXq69fB5uewQpLwQNu4O6skJZfadgDQVHRIbyqNZ75Ze61Y3P5E4PCo_LgmgvKrXWP92dx6Ll\x2DxjQlTh2NOYoedNal82tfAyUJsr39ib86i4FMprzBmwuLVKUGkPVrLrIKEUGDD3dnCuEXM94LQs404s3v1T3RbvUDIcv5QCTVouhpl34q4BN_jcOPZsIPkDjmAE4ESalEwS4YY\x2DyZQdfGgfgfQy1SyWBeuRrxsLLb91Sek8visWbShMAUi4B_iJcPAQxbGUubfYK7K3Sf6I5D1syenVjH1eqR\x2DF2r5A_a1sDda7CKUmR4dh9PcFkfxnlPh5WNXnFbWGKBuHbMGsh5iTjA2NC\x2DoFZTxwhcYIFHnamGdAjSfyEmr7NRyECM6IdiqAv3r15LZmCxk63bSoVRXRDc7aOXowYUXzyhirzdJkibSbwwsQstPgS1Istlty4cPb8w6J3Hh3QBc5fD2oexopKag0A7OZkgbATjzzmRxMN3yi8Rckj7dkmCgcG\x2DiuFh7r4E8Hh9tHB7DgmxyL6g7reomt6nXJ9SM9sBYhxUs4Q3EGL834jhbOWXGRHH2eRVhfzPpQrRKH5lnaJgcZpmWYq6cPrY2my_nhvw4mUekBq3jJ7LsyIfbhr_QXKsZ9vrPN1FpbTq8Jr90eBTsJ2um1nMFg2_yUEGY6TsipFG6ipKCSVXoiGewF4jdkKftOSc1wkfiualBYYlvakzqXLC4wDwrgjOuWKY41CC7mgyc6KyTRRCBYqTI5QXc9G4vIlFkTwAUgoiwz7SzTCi4\x2D5hAHJUhfGvoA4I0MRA6zufFbzJqtMK3a0kpLDSIhcMW83EdP3Ygivwhxu7Ki1l5fNfgLXuwzR1QgjPGUowTV06vDAPS9O1mOLY8BerQGJanaJua984NPXOnHDl8uPoUczfP0kPVzP13mzzBEuBmUo_v87O1r8svQlQyTYWdoapx7O6CteKqAr85frMV0Yc9ySuCTjz2BpHc9cSRkNbu1n_EJbNnUz10DQFYJOqAK6HQ0PebXbzdm_TEkQGaOpy1M62hc24S\x2DCK0X6P8zknxVfqRmK1VYVFU_2qFR86z_89c8QTJV4_ikulkYoiXANw\x2DIg5lXMO8XaC8FvWA4QtMAA36ys1P01cx8m4LjvhHN5TsW\x2DkSwGvHOFZiK8yQyJqsNmGs_yNkPNePcXW6xlVNxbkO4TxGfzU\x2DqmqCA08OZwgY6ZHtDzoYAkdFYThmk4rb8JfAQHlOn08S_WsjYdWCY9SOxxY2HGfFTteaQZ75q0ayMcsGH_Yjuy_BOCSnULGyy89MzVZjL9ghJtRtNAXo508fPniF44rQW3NMIQ.7fgTLw3DYJ7v76YbpUQqDA","helpLinks":{"factorPage":{"text":"Reset\x20My\x20Okta\x20Verify\x2F2FA","href":"https\x3A\x2F\x2Fokta\x2Dprod\x2Dassets.s3.amazonaws.com\x2FHow\x2BTo\x2BReactivate\x2BOkta\x2BVerify.pdf"},"help":"https\x3A\x2F\x2Fmongodb.slack.com\x2Fmessages\x2FC6L9PBG2W","forgotPassword":"","unlock":"","custom":[]},"piv":{}},"accountChooserDiscoveryUrl":"https\x3A\x2F\x2Flogin.okta.com\x2Fdiscovery\x2Fiframe.html"};
+
+  var runLoginPage = function(fn) {
+    var mainScript = document.createElement('script');
+    mainScript.src = "https://ok5static.oktacdn.com/assets/js/mvc/loginpage/initLoginPage.pack.58de3be0c9b511a0fdfd7ea4f69b56fc.js";
+    mainScript.integrity = "sha384-cJ4LGViZBmIttMPH+ao2RyPuN5BztKWYWIa4smbm56r1cUhkU/Dr6vTS3UoPbKTI";
+    mainScript.crossOrigin = "anonymous";
+    document.getElementsByTagName('head')[0].appendChild(mainScript);
+    fn && mainScript.addEventListener('load', function () { setTimeout(fn, 1) });
+  };
+
+  var OktaUtil = {
+    _addClass: function(el, className) {
+      if(el) {
+        var elementClasses = el.className.split(" ");
+        if (elementClasses.indexOf(className) == -1) {
+          el.className += " " + className;
+        }
+      }
+    },
+
+    _removeElement: function(el) {
+      if(el) {
+        el.parentNode.removeChild(el);
+      }
+    },
+
+    _hideElement: function(el) {
+      if(el) {
+        el.style.display = 'none';
+      }
+    },
+
+    _isDocumentVisible: function() {
+      return document.visibilityState === 'visible';
+    },
+
+    addLoginContainerClass: function () {
+      this._addClass(document.getElementById('okta-login-container'), 'login-container');
+    },
+
+    showUnsupportedCookieWarning: function () {
+      document.getElementById('okta-sign-in').removeAttribute('style');
+      document.getElementById('unsupported-cookie').removeAttribute('style');
+    },
+
+    removeUnsupportedCookieWarning: function () {
+      this._removeElement(document.getElementById('okta-sign-in'));
+    },
+
+    hideOktaLoginContainer: function () {
+      this._hideElement(document.getElementById('okta-login-container'));
+    },
+
+    isChromeOs:  function () {
+      return /\bCrOS\b/.test(navigator.userAgent);
+    },
+
+    addChromeOSScript: function() {
+      var chromeOSScript = document.createElement('script');
+      chromeOSScript.src = "/js/google/users-1.0.js";
+      document.getElementsByTagName('head')[0].appendChild(chromeOSScript);
+    },
+
+    getSignInWidgetConfig: function () {
+        if (oktaData.inactiveTab && oktaData.inactiveTab.enabled && !this._isDocumentVisible() && !oktaData.inactiveTab.avoidPageRefresh) {
+            // Show a loading state and wait for the visibility event
+            this.hideOktaLoginContainer();
+            // remove stateToken so SIW does not attempt a login flow
+            oktaData.signIn.stateToken = undefined;
+        }
+        return oktaData.signIn;
+    },
+
+    completeLogin: function (res) {
+      signInSuccessCallBackFunction(res);
+    },
+
+    getRequestContext: function () {
+      return oktaData.requestContext;
+    },
+
+    setRedirectUri: function (uri) {
+      oktaData.redirectUri = uri;
+    },
+
+    init: function () {
+      if (!navigator.cookieEnabled) {
+        this.showUnsupportedCookieWarning();
+        this.hideOktaLoginContainer();
+      } else {
+        this.removeUnsupportedCookieWarning();
+
+        if (oktaData.inactiveTab && oktaData.inactiveTab.enabled && !this._isDocumentVisible()) {
+          try {
+            oktaData.inactiveTab.renderFnBackup = OktaSignIn.prototype.renderEl;
+          } catch (err) {
+            // no op - graceful handling OktaSignIn undefined case
+          }
+
+          // pause render sign-in widget when browser tab is inactive
+          if (!oktaData.inactiveTab.renderFnBackup) {
+            // for older SIW, renderFnBackup is undefined, fallback to full page reload
+            oktaData.inactiveTab.fallbackFullPageReload = true;
+            // Show a loading state and wait for the visibility event
+            this.hideOktaLoginContainer();
+            // remove stateToken so SIW does not attempt a login flow
+            oktaData.signIn.stateToken = undefined;
+          } else {
+            // for newer SIW, override renderEl function so SIW does not attempt a login flow
+            OktaSignIn.prototype.renderEl = function () {
+              oktaData.inactiveTab.renderArgsBackup = arguments;
+              oktaData.inactiveTab.signInInstance = this;
+              try {
+                return new Promise(function (resolve, reject) {
+                  oktaData.inactiveTab.renderResolve = resolve;
+                  oktaData.inactiveTab.renderReject = reject;
+                });
+              } catch (err) {
+                // return nothing if promise is not supported, since promise chaining won't work anyway
+              }
+            }
+          }
+
+          // event handler to resume render sign-in widget
+          document.addEventListener('visibilitychange', function checkVisibilityAndCallSuccess() {
+            if (document.visibilityState === 'visible') {
+              try {
+                document.removeEventListener('visibilitychange', checkVisibilityAndCallSuccess);
+                const inactiveTabDiv = document.getElementById(oktaData.inactiveTab.elementId);
+                inactiveTabDiv.style.display = 'none';
+
+                // resume render sign-in widget
+                if (oktaData.inactiveTab.renderFnBackup && oktaData.inactiveTab.renderArgsBackup) {
+                  OktaSignIn.prototype.renderEl = oktaData.inactiveTab.renderFnBackup;
+                  var result = oktaData.inactiveTab.signInInstance.renderEl.apply(oktaData.inactiveTab.signInInstance, oktaData.inactiveTab.renderArgsBackup);
+                  if (result && result.then) {
+                    result.then(oktaData.inactiveTab.renderResolve, oktaData.inactiveTab.renderReject);
+                  }
+                }
+              } catch (err) {
+                oktaData.inactiveTab.fallbackFullPageReload = true;
+              }
+              if (oktaData.inactiveTab.fallbackFullPageReload) {
+                location.reload();
+              }
+            }
+          });
+        }
+
+        // add class if app login banner is present
+        if (oktaData.isAppBannerVisible) {
+          this.addLoginContainerClass();
+        }
+
+        oktaData.isCustomSignIn = true;
+        oktaData.hasChromeOSFeature = this.isChromeOs();
+        if (oktaData.hasChromeOSFeature) {
+          this.addChromeOSScript();
+        }
+        runLoginPage(function () {
+          var res = OktaLogin.initLoginPage(oktaData);
+          oktaData.signIn = res.signIn;
+          signInSuccessCallBackFunction = res.signInSuccessCallbackFn;
+
+        });
+      }
+    }
+  };
+  OktaUtil.init();
+  //# sourceURL=OktaUtil.js
+</script>
+
+
+
+    <script type="text/javascript">
+        // "config" object contains default widget configuration
+        // with any custom overrides defined in your admin settings.
+        var config = OktaUtil.getSignInWidgetConfig();
+        config.features.skipIdpFactorVerificationBtn = true;
+        // config['features.registration'] = true;
+        config['i18n'][config.language]['errors.E0000069'] = "Your Okta account is locked. Please check your email for self-service unlock instructions. If you're unable to access your email, please contact us in #ask-it or email us at IT@mongodb.com.";
+        config['i18n'][config.language]['idx.error.user.not.assigned.to.app'] = "User is not assigned to this application.";
+        //config['i18n'][config.language]['security.access_denied_custom_message'] = "<strong>Denied.</strong>";
+        // config['i18n'][config.language]['errors.E0000006'] = "Access Denied. Your account or your device does not meet the requirements of this application.";
+        // config['i18n'][config.language]['errors.E0000006'] = custom_msg
+
+        //config['i18n'][config.language]['idx.error.code.access_denied.device_assurance.default'] = "Your device does not meet MongoDB's security requirements.";
+
+        factorPageCustomLink = {
+            text: 'Need help with Okta Verify/2FA?',
+            href: 'https://okta-prod-assets.s3.amazonaws.com/How+To+Reactivate+Okta+Verify.pdf'
+        };
+
+        config['helpLinks'] = {
+                'factorPage': factorPageCustomLink
+        };
+
+        // Render the Okta Sign-In Widget
+        var oktaSignIn = new OktaSignIn(config);
+
+        oktaSignIn.on('afterError', function (context, error) {
+            console.log("MARKER");
+            console.log(error);
+            console.log(context);
+        });
+
+        oktaSignIn.on('afterRender', function (context) {
+            console.log(context);
+        });
+
+        oktaSignIn.renderEl({ el: '#okta-login-container' },
+            OktaUtil.completeLogin,
+            function(error) {
+                // Logs errors that occur when configuring the widget.
+                // Remove or replace this with your own custom error handler.
+                console.log(error);
+                console.log("MARKER");
+            }
+        );
+
+
+    </script>
+
+    <script>
+
+        message = `This computer system is the property of MongoDB Cloud. It is for authorized use only by its employees and customers. By using this system, all users acknowledge notice of and agree to comply with applicable governing laws and privacy policy. Unauthorized or improper use of this system may result in administrative, disciplinary and/or legal action, civil charges/criminal penalties and/or other sanctions as set forth in the MongoDB Cloud Information Security Policy. By continuing to use this system you indicate your awareness of and consent to these terms and conditions of use.
+    • Information system usage may be monitored, recorded, and subject to audit;
+    • Unauthorized use of the information system is prohibited and subject to criminal and civil penalties; and
+    • Use of the information system indicates consent to monitoring and recording.`
+
+        function getClientId() {
+            if (!OktaUtil) return undefined;
+
+            var requestContext = OktaUtil.getRequestContext();
+            if (requestContext && requestContext.target && requestContext.target.name) {
+                return requestContext.target.name;
+            }
+        }
+
+        var clientId = getClientId();
+        if (clientId === 'mongodb_cloud_1'){
+            alert(message);
+        }
+
+    </script>
+</body>
+</html>

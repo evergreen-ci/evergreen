@@ -26,21 +26,21 @@ type selectTestsHandler struct {
 // this information directly to the test selector.
 type SelectTestsRequest struct {
 	// Project is the project identifier.
-	Project string `json:"project" bson:"project"`
+	Project string `json:"project"`
 	// Requester is the Evergreen requester type.
-	Requester string `json:"requester" bson:"requester"`
+	Requester string `json:"requester"`
 	// BuildVariant is the Evergreen build variant.
-	BuildVariant string `json:"build_variant" bson:"build_variant"`
+	BuildVariant string `json:"build_variant"`
 	// TaskID is the Evergreen task ID.
-	TaskID string `json:"task_id" bson:"task_id"`
+	TaskID string `json:"task_id"`
 	// TaskName is the Evergreen task name.
-	TaskName string `json:"task_name" bson:"task_name"`
+	TaskName string `json:"task_name"`
 	// Tests is a list of test names.
-	Tests []string `json:"tests" bson:"tests"`
+	Tests []string `json:"tests"`
 }
 
-func makeSelectTestsHandler() gimlet.RouteHandler {
-	return &selectTestsHandler{}
+func makeSelectTestsHandler(env evergreen.Environment) gimlet.RouteHandler {
+	return &selectTestsHandler{env: env}
 }
 
 // Factory creates an instance of the handler.
@@ -87,6 +87,10 @@ func (t *selectTestsHandler) Run(ctx context.Context) gimlet.Responder {
 	})
 
 	if url := t.env.Settings().TestSelection.URL; url != "" {
+		grip.Info(message.Fields{
+			"message": "kim: using real test selection service",
+			"url":     url,
+		})
 		// kim: NOTE: see more info: https://www.speakeasy.com/post/openapi-servers#servers-in-oas-3x---controlled-flexibility
 		httpClient := utility.GetHTTPClient()
 		defer utility.PutHTTPClient(httpClient)
@@ -96,13 +100,56 @@ func (t *selectTestsHandler) Run(ctx context.Context) gimlet.Responder {
 		// conf.Scheme = "https"
 		conf.Servers = testselection.ServerConfigurations{
 			testselection.ServerConfiguration{
-				URL:         "TEST_SELECTION_URL_WITH_HTTPS_GOES_HERE",
+				URL:         url,
 				Description: "Test selection service",
 			},
 		}
 		c := testselection.NewAPIClient(conf)
-		c.TestSelectionAPI.SelectTestsApiTestSelectionSelectTestsProjectIdRequesterBuildVariantNameTaskIdTaskNameTestNamesGet(ctx, t.selectTests.Project, t.selectTests.Requester, t.selectTests.BuildVariant, t.selectTests.TaskID, t.selectTests.TaskName, t.selectTests.Tests)
+		reqBody := testselection.BodySelectTestsApiTestSelectionSelectTestsProjectIdRequesterBuildVariantNameTaskIdTaskNamePost{
+			TestNames: t.selectTests.Tests,
+		}
+		selectedTests, resp, err := c.TestSelectionAPI.SelectTestsApiTestSelectionSelectTestsProjectIdRequesterBuildVariantNameTaskIdTaskNamePost(ctx, t.selectTests.Project, t.selectTests.Requester, t.selectTests.BuildVariant, t.selectTests.TaskID, t.selectTests.TaskName).
+			BodySelectTestsApiTestSelectionSelectTestsProjectIdRequesterBuildVariantNameTaskIdTaskNamePost(reqBody).
+			Execute()
+		msg := message.Fields{
+			"message": "kim: made request to real test selection service",
+			"url":     url,
+		}
+		if resp != nil {
+			defer resp.Body.Close()
+			respBody, err := io.ReadAll(resp.Body)
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "kim: could not read raw response body",
+			}))
+			if len(respBody) != 0 {
+				msg["tss_raw_response_body"] = string(respBody)
+			}
+		}
+		if err != nil {
+			msg["tss_error"] = err.Error()
+		}
+		if resp != nil {
+			msg["tss_status_code"] = resp.Status
+			msg["tss_content_type"] = resp.Header.Get("Content-Type")
+		}
+		if selectedTests != nil {
+			msg["selected_tests"] = selectedTests
+		}
+
+		grip.Info(msg)
+
+		if err != nil {
+			return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "test selection service"))
+		}
+
+		rhResp := t.selectTests
+		rhResp.Tests = selectedTests
+		return gimlet.NewJSONResponse(rhResp)
 	}
+
+	grip.Info(message.Fields{
+		"message": "kim: returning noop response without test selection service",
+	})
 
 	return gimlet.NewJSONResponse(t.selectTests)
 }
