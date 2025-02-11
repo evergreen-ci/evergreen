@@ -92,23 +92,11 @@ type cliIntent struct {
 }
 
 // BSON fields for the patches
-//
-//nolint:unused
 var (
-	cliDocumentIDKey    = bsonutil.MustHaveTag(cliIntent{}, "DocumentID")
-	cliPatchFileIDKey   = bsonutil.MustHaveTag(cliIntent{}, "PatchFileID")
-	cliDescriptionKey   = bsonutil.MustHaveTag(cliIntent{}, "Description")
-	cliBuildVariantsKey = bsonutil.MustHaveTag(cliIntent{}, "BuildVariants")
-	cliTasksKey         = bsonutil.MustHaveTag(cliIntent{}, "Tasks")
-	cliModuleKey        = bsonutil.MustHaveTag(cliIntent{}, "Module")
-	cliUserKey          = bsonutil.MustHaveTag(cliIntent{}, "User")
-	cliProjectIDKey     = bsonutil.MustHaveTag(cliIntent{}, "ProjectID")
-	cliBaseHashKey      = bsonutil.MustHaveTag(cliIntent{}, "BaseHash")
-	cliCreatedAtKey     = bsonutil.MustHaveTag(cliIntent{}, "CreatedAt")
-	cliProcessedKey     = bsonutil.MustHaveTag(cliIntent{}, "Processed")
-	cliProcessedAtKey   = bsonutil.MustHaveTag(cliIntent{}, "ProcessedAt")
-	cliIntentTypeKey    = bsonutil.MustHaveTag(cliIntent{}, "IntentType")
-	cliAliasKey         = bsonutil.MustHaveTag(cliIntent{}, "Alias")
+	cliDocumentIDKey  = bsonutil.MustHaveTag(cliIntent{}, "DocumentID")
+	cliProcessedKey   = bsonutil.MustHaveTag(cliIntent{}, "Processed")
+	cliProcessedAtKey = bsonutil.MustHaveTag(cliIntent{}, "ProcessedAt")
+	cliIntentTypeKey  = bsonutil.MustHaveTag(cliIntent{}, "IntentType")
 )
 
 func (c *cliIntent) Insert() error {
