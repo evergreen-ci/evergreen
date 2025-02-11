@@ -768,6 +768,17 @@ func TestSingleTaskDistroValidation(t *testing.T) {
 	require.NoError(t, err)
 	require.NotZero(t, h)
 	assert.Equal(t, "", h.RunningTask)
+
+	// task2 should be taken off the queue because it is not an allowed task.
+	tq, err = model.LoadTaskQueue(d.Id)
+	require.NoError(t, err)
+	require.NotNil(t, tq)
+	assert.Equal(t, 1, tq.Length())
+
+	t2, err := task.FindOneId(ctx, "task2")
+	require.NoError(t, err)
+	require.NotNil(t, t2)
+	assert.Equal(t, evergreen.TaskFailed, t2.Status)
 }
 
 func TestHostEndTask(t *testing.T) {

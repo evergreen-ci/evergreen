@@ -530,21 +530,27 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 					"project_identifier": projectRef.Enabled,
 				})
 
-				// Mark task as system failed if it is not allowed on the distro.
-				details := &apimodels.TaskEndDetail{
-					Status:      evergreen.TaskSystemFailed,
-					Description: "Task not allowed to run on single task distros",
-				}
-
-				err = model.MarkEnd(ctx, env.Settings(), nextTask, evergreen.APIServerTaskActivator, time.Now(), details, false)
+				err = nextTask.MarkSystemFailed(ctx, "Marking disallowed single task distro task as system failed")
 				if err != nil {
 					errMsg = message.Fields{
-						"message":   "could not mark task as system failed",
+						"message":   "could not mark disallowed single task distro task as system failed",
+						"distro_id": nextTask.DistroId,
 						"task_id":   nextTask.Id,
 						"task_name": nextTask.DisplayName,
 					}
 					grip.Alert(message.WrapError(err, errMsg))
-					return nil, false, errors.Wrapf(err, "could not mark task '%s' as system failed", nextTask.Id)
+					return nil, false, errors.Wrapf(err, "could not mark disallowed single task distro task '%s' as system failed", nextTask.Id)
+				}
+				err = taskQueue.DequeueTask(nextTask.Id)
+				if err != nil {
+					errMsg = message.Fields{
+						"message":   "could not dequeue disallowed single task distro task",
+						"distro_id": nextTask.DistroId,
+						"task_id":   nextTask.Id,
+						"task_name": nextTask.DisplayName,
+					}
+					grip.Alert(message.WrapError(err, errMsg))
+					return nil, false, errors.Wrapf(err, "could not dequeue disallowed single task distro task '%s'", nextTask.Id)
 				}
 				continue
 			}
