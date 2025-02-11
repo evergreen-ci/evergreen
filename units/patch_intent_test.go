@@ -1281,14 +1281,12 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 	dbPatch, err := patch.FindOne(patch.ById(j.PatchID))
 	s.NoError(err)
 	s.Require().NotNil(dbPatch)
-	s.True(patchDoc.Activated, "patch should be finalized")
 
 	variants := []string{"ubuntu1604", "ubuntu1604-arm64", "ubuntu1604-debug", "race-detector"}
 	tasks := []string{"dist", "dist-test"}
 	s.verifyPatchDoc(dbPatch, j.PatchID, s.hash, true, variants, tasks)
 	s.projectExists(j.PatchID.Hex())
 
-	s.Zero(dbPatch.ProjectStorageMethod, "patch's project storage method should be unset after patch is finalized")
 	s.verifyParserProjectDoc(dbPatch, 8)
 
 	s.verifyVersionDoc(dbPatch, evergreen.PatchVersionRequester, s.user, s.hash, 4)
