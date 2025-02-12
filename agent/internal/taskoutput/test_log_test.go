@@ -171,7 +171,7 @@ func TestTestLogDirectoryHandlerRun(t *testing.T) {
 			redactOpts: redactor.RedactionOptions{
 				Expansions:           util.NewDynamicExpansions(map[string]string{"secret_name": "DEADBEEF"}),
 				Redacted:             []string{"secret_name"},
-				AdditionalRedactions: util.NewDynamicExpansions(Expansions: map[string]string{"another_secret": "DEADC0DE"}),
+				AdditionalRedactions: util.NewDynamicExpansions(map[string]string{"another_secret": "DEADC0DE"}),
 			},
 		},
 	} {
