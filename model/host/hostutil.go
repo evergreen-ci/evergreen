@@ -298,9 +298,11 @@ func (h *Host) ForceReinstallJasperCommand(settings *evergreen.Settings) string 
 			user = `.\\` + user
 		}
 		params = append(params, fmt.Sprintf("--user=%s", user))
-		if h.ServicePassword != "" {
-			params = append(params, fmt.Sprintf("--password='%s'", h.ServicePassword))
-		}
+		// kim: TODO: move to env var if possible. I believe this is always a
+		// bash script, so it may work to just prepend the env to the command.
+		// if h.ServicePassword != "" {
+		//     params = append(params, fmt.Sprintf("--password='%s'", h.ServicePassword))
+		// }
 	} else if h.User != "" {
 		params = append(params, fmt.Sprintf("--user=%s", h.User))
 	}
@@ -341,24 +343,38 @@ func (h *Host) ForceReinstallJasperCommand(settings *evergreen.Settings) string 
 		params = append(params, fmt.Sprintf("--precondition=%s", ps.Path))
 	}
 
-	return h.jasperServiceCommand(settings.HostJasper, jcli.ServiceForceReinstallCommand, params...)
+	cmdEnv := map[string]string{}
+	if h.Distro.BootstrapSettings.ServiceUser != "" && h.ServicePassword != "" {
+		cmdEnv["JASPER_USER_PASSWORD"] = h.ServicePassword
+	}
+
+	return h.jasperServiceCommand(settings.HostJasper, cmdEnv, jcli.ServiceForceReinstallCommand, params...)
 }
 
 // RestartJasperCommand returns the command to restart the Jasper service with
 // the existing configuration.
 func (h *Host) RestartJasperCommand(config evergreen.HostJasperConfig) string {
-	return h.jasperServiceCommand(config, jcli.ServiceRestartCommand)
+	return h.jasperServiceCommand(config, nil, jcli.ServiceRestartCommand)
 }
 
 // QuietUninstallJasperCommand returns the command to uninstall the Jasper
 // service. If the service is already not installed, this no-ops.
 func (h *Host) QuietUninstallJasperCommand(config evergreen.HostJasperConfig) string {
-	return h.jasperServiceCommand(config, jcli.ServiceUninstallCommand, "--quiet")
+	return h.jasperServiceCommand(config, nil, jcli.ServiceUninstallCommand, "--quiet")
 }
 
-func (h *Host) jasperServiceCommand(config evergreen.HostJasperConfig, subCmd string, args ...string) string {
-	cmd := append(jcli.BuildServiceCommand(h.JasperBinaryFilePath(config)), subCmd, jcli.RPCService)
+// kim: TODO: test that command looks as expected (with and without service
+// password) in hostutil tests.
+func (h *Host) jasperServiceCommand(config evergreen.HostJasperConfig, env map[string]string, subCmd string, args ...string) string {
+	var cmd []string
+	for k, v := range env {
+		cmd = append(cmd, fmt.Sprintf("%s=%s", k, v))
+	}
+
+	cmd = append(cmd, jcli.BuildServiceCommand(h.JasperBinaryFilePath(config))...)
+	cmd = append(cmd, subCmd, jcli.RPCService)
 	cmd = append(cmd, args...)
+
 	// Jasper service commands generally need elevated privileges to execute. On
 	// Windows, this is assuming that the command is already being run by
 	// Administrator.
