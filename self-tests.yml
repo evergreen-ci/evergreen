@@ -186,6 +186,7 @@ variables:
 functions:
   get-project-and-modules:
     - command: github.generate_token
+      type: setup
       params:
         expansion_name: github_token
     - command: git.get_project
