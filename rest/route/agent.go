@@ -1648,7 +1648,7 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 		Permissions: permissions,
 	})
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "creating installation token for '%s/%s'", h.owner, h.repo))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "creating installation token for '%s/%s'", h.owner, h.repo))
 	}
 	if token == "" {
 		return gimlet.MakeJSONErrorResponder(errors.Errorf("no installation token returned for '%s/%s'", h.owner, h.repo))
@@ -1823,7 +1823,7 @@ func (h *awsS3Credentials) Run(ctx context.Context) gimlet.Responder {
 	}
 	policyJSON, err := json.Marshal(sessionPolicy)
 	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "marshalling session policy for task '%s'", h.taskID))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "marshalling session policy for task '%s'", h.taskID))
 	}
 	creds, err := h.stsManager.AssumeRole(ctx, h.taskID, cloud.AssumeRoleOptions{
 		RoleARN: h.callerARN,
