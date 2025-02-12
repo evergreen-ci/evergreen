@@ -938,7 +938,7 @@ func TestAWSAssumeRole(t *testing.T) {
 			t.Run("RunErrorsOnNilTask", func(t *testing.T) {
 				resp := handler.Run(ctx)
 				require.NotNil(t, resp)
-				require.Equal(t, http.StatusInternalServerError, resp.Status(), resp.Data())
+				require.Equal(t, http.StatusBadRequest, resp.Status(), resp.Data())
 			})
 
 			t.Run("RunSucceeds", func(t *testing.T) {

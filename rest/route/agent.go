@@ -1616,7 +1616,7 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 		AllPermissions: h.allPermissions,
 	})
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(err)
+		return gimlet.MakeJSONErrorResponder(err)
 	}
 	// If all permissions is true, we want to send an empty permissions object to the GitHub API.
 	permissions := &intersection.Permissions
@@ -1655,7 +1655,7 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "creating installation token for '%s/%s'", h.owner, h.repo))
 	}
 	if token == "" {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Errorf("no installation token returned for '%s/%s'", h.owner, h.repo))
+		return gimlet.MakeJSONErrorResponder(errors.Errorf("no installation token returned for '%s/%s'", h.owner, h.repo))
 	}
 
 	return gimlet.NewJSONResponse(&apimodels.Token{
@@ -1698,7 +1698,7 @@ func (h *revokeGitHubDynamicAccessToken) Parse(ctx context.Context, r *http.Requ
 
 func (h *revokeGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Responder {
 	if err := thirdparty.RevokeInstallationToken(ctx, h.body.Token); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "revoking token for task '%s'", h.taskID))
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "revoking token for task '%s'", h.taskID))
 	}
 
 	return gimlet.NewJSONResponse(struct{}{})
@@ -1745,7 +1745,7 @@ func (h *awsAssumeRole) Run(ctx context.Context) gimlet.Responder {
 		DurationSeconds: h.body.DurationSeconds,
 	})
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "assuming role for task '%s'", h.taskID))
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "assuming role for task '%s'", h.taskID))
 	}
 	return gimlet.NewJSONResponse(apimodels.AWSCredentials{
 		AccessKeyID:     creds.AccessKeyID,
@@ -1811,7 +1811,7 @@ func (h *awsS3Credentials) Run(ctx context.Context) gimlet.Responder {
 	if h.callerARN == "" {
 		h.callerARN, err = h.stsManager.GetCallerIdentityARN(ctx)
 		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting caller identity for task '%s'", h.taskID))
+			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "getting caller identity for task '%s'", h.taskID))
 		}
 	}
 	// TODO (DEVPROD-13978): Create correct session policy based off of provided task.
@@ -1834,7 +1834,7 @@ func (h *awsS3Credentials) Run(ctx context.Context) gimlet.Responder {
 		Policy:  aws.String(string(policyJSON)),
 	})
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "creating credentials for s3 access for task '%s'", h.taskID))
+		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "creating credentials for s3 access for task '%s'", h.taskID))
 	}
 
 	return gimlet.NewJSONResponse(apimodels.AWSCredentials{
