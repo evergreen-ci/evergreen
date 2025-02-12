@@ -1041,6 +1041,10 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 	}
 
 	waterfallVersions := groupInactiveVersions(allVersions)
+	mostRecentWaterfallVersion, err := model.GetMostRecentWaterfallVersion(ctx, projectId)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching most recent waterfall version: %s", err.Error()))
+	}
 
 	prevPageOrder := 0
 	nextPageOrder := 0
@@ -1049,10 +1053,6 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 		prevPageOrder = allVersions[0].RevisionOrderNumber
 		nextPageOrder = allVersions[len(allVersions)-1].RevisionOrderNumber
 
-		mostRecentWaterfallVersion, err := model.GetMostRecentWaterfallVersion(ctx, projectId)
-		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching most recent waterfall version: %s", err.Error()))
-		}
 		// There's no previous page to navigate to if we've reached the most recent commit.
 		if mostRecentWaterfallVersion.RevisionOrderNumber <= prevPageOrder {
 			prevPageOrder = 0
@@ -1074,10 +1074,11 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 		FlattenedVersions: flattenedVersions,
 		Versions:          waterfallVersions,
 		Pagination: &WaterfallPagination{
-			NextPageOrder: nextPageOrder,
-			PrevPageOrder: prevPageOrder,
-			HasNextPage:   nextPageOrder > 0,
-			HasPrevPage:   prevPageOrder > 0,
+			NextPageOrder:          nextPageOrder,
+			PrevPageOrder:          prevPageOrder,
+			MostRecentVersionOrder: mostRecentWaterfallVersion.RevisionOrderNumber,
+			HasNextPage:            nextPageOrder > 0,
+			HasPrevPage:            prevPageOrder > 0,
 		},
 	}
 

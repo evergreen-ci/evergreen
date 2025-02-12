@@ -317,7 +317,7 @@ func CheckProjectErrors(ctx context.Context, project *model.Project) ValidationE
 			projectErrorValidator(project)...)
 	}
 
-	allowedSingleTaskDistroTasks, err := getAllowedSingleTaskDistroTasksForProject(ctx, project.Identifier)
+	allowedSingleTaskDistroTasks, err := GetAllowedSingleTaskDistroTasksForProject(ctx, project.Identifier)
 	if err != nil {
 		return []ValidationError{{Message: errors.Wrap(err, "problem getting allowed tasks for single task distros").Error()}}
 	}
@@ -2272,10 +2272,10 @@ func checkBuildVariants(project *model.Project) ValidationErrors {
 	return errs
 }
 
-// getAllowedSingleTaskDistroTasksForProject returns a list of tasks that is
+// GetAllowedSingleTaskDistroTasksForProject returns a list of tasks that is
 // whitelisted for the given project and repo project. If both the project and
 // repo project have allowed tasks, the tasks are combined.
-func getAllowedSingleTaskDistroTasksForProject(ctx context.Context, identifier string) ([]string, error) {
+func GetAllowedSingleTaskDistroTasksForProject(ctx context.Context, identifier string) ([]string, error) {
 	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting evergreen settings")
