@@ -387,6 +387,10 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.
 	taskConfig.Task.TaskOutputInfo.TestLogs.AWSCredentials = awsCreds
 
 	if a.opts.HostSecret != "" {
+		// Redact the host secret from the logs. While the host secret isn't
+		// supposed to be logged anywhere nor is it accessible by the task, this
+		// is additional protection against leaking the secret due to situations
+		// like a bug that unintentionally logs it.
 		taskConfig.InternalRedactions.PutAndRedact(globals.HostSecret, a.opts.HostSecret)
 	}
 
