@@ -13,7 +13,6 @@ Based on the information in PatchesInput, we return a list of Patches for either
 """
 input PatchesInput {
   limit: Int! = 0
-  onlyCommitQueue: Boolean @deprecated(reason: "onlyCommitQueue is deprecated. Use onlyMergeQueue instead.")
   onlyMergeQueue: Boolean
   includeHidden: Boolean = false
   page: Int! = 0
