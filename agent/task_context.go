@@ -53,6 +53,10 @@ type taskContext struct {
 	// will overwrite the default end task response.
 	userEndTaskResp                   *triggerEndTaskResp
 	userEndTaskRespOriginatingCommand command.Command
+	// addMetadataTagResp is a user-definable response that contains a failure
+	// metadata tag payload, which can be appended to the final list of failure
+	// metadata tags in the end task response.
+	addMetadataTagResp *triggerAddMetadataTagResp
 	sync.RWMutex
 }
 
@@ -639,6 +643,27 @@ func (tc *taskContext) getUserEndTaskResponse() *triggerEndTaskResp {
 	defer tc.RUnlock()
 
 	return tc.userEndTaskResp
+}
+
+// setAddMetadataTagResponse sets the user-defined failure metadata tag data.
+func (tc *taskContext) setAddMetadataTagResponse(resp *triggerAddMetadataTagResp) {
+	tc.Lock()
+	defer tc.Unlock()
+	var existingTags []string
+	if tc.addMetadataTagResp != nil {
+		existingTags = tc.addMetadataTagResp.AddFailureMetadataTags
+	}
+	newTags := utility.UniqueStrings(append(existingTags, resp.AddFailureMetadataTags...))
+	tc.addMetadataTagResp = &triggerAddMetadataTagResp{
+		AddFailureMetadataTags: newTags,
+	}
+}
+
+// getAddMetadataTagResponse gets the user-defined failure metadata tag data.
+func (tc *taskContext) getAddMetadataTagResponse() *triggerAddMetadataTagResp {
+	tc.RLock()
+	defer tc.RUnlock()
+	return tc.addMetadataTagResp
 }
 
 func (tc *taskContext) getDeviceNames(ctx context.Context) error {

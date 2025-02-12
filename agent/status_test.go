@@ -17,6 +17,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/jasper"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -211,4 +212,13 @@ func TestUnmarshalTriggerEndTaskResp(t *testing.T) {
 	assert.Equal(t, "setup", resp.Type)
 	assert.Equal(t, "this should be set", resp.Description)
 	assert.True(t, resp.ShouldContinue)
+}
+
+func TestUnmarshalAddMetadataTagResp(t *testing.T) {
+	body := `{"add_failure_metadata_tags": ["failure_tag"]}`
+	resp := triggerAddMetadataTagResp{}
+
+	assert.NoError(t, json.Unmarshal([]byte(body), &resp))
+	require.Len(t, resp.AddFailureMetadataTags, 1)
+	assert.Equal(t, "failure_tag", resp.AddFailureMetadataTags[0])
 }

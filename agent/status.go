@@ -35,6 +35,7 @@ func (a *Agent) startStatusServer(ctx context.Context, port int) error {
 
 	app.AddMiddleware(gimlet.MakeRecoveryLogger())
 	app.AddRoute("/status").Handler(a.statusHandler()).Get()
+	app.AddRoute("/failure_metadata_tag").Handler(a.addMetadataTagHandler).Post()
 	app.AddRoute("/task_status").Handler(a.endTaskHandler).Post()
 	app.AddRoute("/oom/clear").Handler(http.RedirectHandler("/jasper/v1/list/oom", http.StatusMovedPermanently).ServeHTTP).Delete()
 	app.AddRoute("/oom/check").Handler(http.RedirectHandler("/jasper/v1/list/oom", http.StatusMovedPermanently).ServeHTTP).Get()
@@ -115,15 +116,16 @@ type triggerEndTaskResp struct {
 	ShouldContinue         bool     `json:"should_continue"`
 }
 
-func (a *Agent) endTaskHandler(w http.ResponseWriter, r *http.Request) {
-	defer func() {
-		_ = grip.GetSender().Close()
-	}()
+type triggerAddMetadataTagResp struct {
+	AddFailureMetadataTags []string `json:"add_failure_metadata_tags,omitempty"`
+}
 
+func (a *Agent) endTaskHandler(w http.ResponseWriter, r *http.Request) {
 	payload, err := io.ReadAll(r.Body)
 	if err != nil {
-		_, _ = w.Write([]byte(errors.Wrap(err, "reading end task request body").Error()))
+		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(errors.Wrap(err, "reading end task request body").Error()))
 		return
 	}
 
@@ -167,4 +169,35 @@ func buildResponse(opts Options) statusResponse {
 	}
 
 	return out
+}
+
+func (a *Agent) addMetadataTagHandler(w http.ResponseWriter, r *http.Request) {
+	payload, err := io.ReadAll(r.Body)
+	if err != nil {
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(errors.Wrap(err, "reading add metadata tag request body").Error()))
+		return
+	}
+
+	resp := triggerAddMetadataTagResp{}
+	if err := json.Unmarshal(payload, &resp); err != nil {
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(errors.Wrap(err, "unmarshalling add metadata tag request body as JSON").Error()))
+		return
+	}
+
+	a.addMetadataTagMutex.RLock()
+	addMetadataTag := a.addMetadataTagResp
+	a.addMetadataTagMutex.RUnlock()
+
+	if addMetadataTag == nil {
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(errors.Errorf("programmatic error: add metadata tag response setter is undefined").Error()))
+		return
+	}
+
+	addMetadataTag(&resp)
 }
