@@ -11,7 +11,6 @@ import (
 	testselection "github.com/evergreen-ci/test-selection-client"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -77,79 +76,36 @@ func (t *selectTestsHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (t *selectTestsHandler) Run(ctx context.Context) gimlet.Responder {
-	// TODO (DEVPROD-11879): remove this log once test ROI MVP no longer needs
-	// this to debug inputs.
-	grip.Debug(message.Fields{
-		"message": "received test selection request",
-		"route":   "/rest/v2/select/tests",
-		"request": t.selectTests,
-		"ticket":  "DEVPROD-11629",
-	})
-
-	if url := t.env.Settings().TestSelection.URL; url != "" {
-		grip.Info(message.Fields{
-			"message": "kim: using real test selection service",
-			"url":     url,
-		})
-		// kim: NOTE: see more info: https://www.speakeasy.com/post/openapi-servers#servers-in-oas-3x---controlled-flexibility
-		httpClient := utility.GetHTTPClient()
-		defer utility.PutHTTPClient(httpClient)
-		conf := testselection.NewConfiguration()
-		conf.HTTPClient = httpClient
-		// conf.Host = "TEST_SELECTION_URL_WITHOUT_HTTPS_GOES_HERE"
-		// conf.Scheme = "https"
-		conf.Servers = testselection.ServerConfigurations{
-			testselection.ServerConfiguration{
-				URL:         url,
-				Description: "Test selection service",
-			},
-		}
-		c := testselection.NewAPIClient(conf)
-		reqBody := testselection.BodySelectTestsApiTestSelectionSelectTestsProjectIdRequesterBuildVariantNameTaskIdTaskNamePost{
-			TestNames: t.selectTests.Tests,
-		}
-		selectedTests, resp, err := c.TestSelectionAPI.SelectTestsApiTestSelectionSelectTestsProjectIdRequesterBuildVariantNameTaskIdTaskNamePost(ctx, t.selectTests.Project, t.selectTests.Requester, t.selectTests.BuildVariant, t.selectTests.TaskID, t.selectTests.TaskName).
-			BodySelectTestsApiTestSelectionSelectTestsProjectIdRequesterBuildVariantNameTaskIdTaskNamePost(reqBody).
-			Execute()
-		msg := message.Fields{
-			"message": "kim: made request to real test selection service",
-			"url":     url,
-		}
-		if resp != nil {
-			defer resp.Body.Close()
-			respBody, err := io.ReadAll(resp.Body)
-			grip.Error(message.WrapError(err, message.Fields{
-				"message": "kim: could not read raw response body",
-			}))
-			if len(respBody) != 0 {
-				msg["tss_raw_response_body"] = string(respBody)
-			}
-		}
-		if err != nil {
-			msg["tss_error"] = err.Error()
-		}
-		if resp != nil {
-			msg["tss_status_code"] = resp.Status
-			msg["tss_content_type"] = resp.Header.Get("Content-Type")
-		}
-		if selectedTests != nil {
-			msg["selected_tests"] = selectedTests
-		}
-
-		grip.Info(msg)
-
-		if err != nil {
-			return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "test selection service"))
-		}
-
-		rhResp := t.selectTests
-		rhResp.Tests = selectedTests
-		return gimlet.NewJSONResponse(rhResp)
+	tssBaseURL := t.env.Settings().TestSelection.URL
+	if tssBaseURL == "" {
+		return gimlet.NewJSONResponse(t.selectTests)
 	}
 
-	grip.Info(message.Fields{
-		"message": "kim: returning noop response without test selection service",
-	})
+	httpClient := utility.GetHTTPClient()
+	defer utility.PutHTTPClient(httpClient)
+	conf := testselection.NewConfiguration()
+	conf.HTTPClient = httpClient
+	conf.Servers = testselection.ServerConfigurations{
+		testselection.ServerConfiguration{
+			URL:         tssBaseURL,
+			Description: "Test selection service",
+		},
+	}
+	c := testselection.NewAPIClient(conf)
+	reqBody := testselection.BodySelectTestsApiTestSelectionSelectTestsProjectIdRequesterBuildVariantNameTaskIdTaskNamePost{
+		TestNames: t.selectTests.Tests,
+	}
+	selectedTests, resp, err := c.TestSelectionAPI.SelectTestsApiTestSelectionSelectTestsProjectIdRequesterBuildVariantNameTaskIdTaskNamePost(ctx, t.selectTests.Project, t.selectTests.Requester, t.selectTests.BuildVariant, t.selectTests.TaskID, t.selectTests.TaskName).
+		BodySelectTestsApiTestSelectionSelectTestsProjectIdRequesterBuildVariantNameTaskIdTaskNamePost(reqBody).
+		Execute()
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "forwarding request to test selection service"))
+	}
 
-	return gimlet.NewJSONResponse(t.selectTests)
+	rhResp := t.selectTests
+	rhResp.Tests = selectedTests
+	return gimlet.NewJSONResponse(rhResp)
 }
