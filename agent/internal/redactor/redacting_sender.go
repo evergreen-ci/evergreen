@@ -49,9 +49,10 @@ func (r *redactingSender) Send(m message.Composer) {
 			allRedacted = append(allRedacted, util.RedactInfo{Key: expansion, Value: val})
 		}
 	}
-	for k, v := range r.additionalRedactions.Map() {
+	r.additionalRedactions.Range(func(k, v string) bool {
 		allRedacted = append(allRedacted, util.RedactInfo{Key: k, Value: v})
-	}
+		return true
+	})
 
 	// Sort redacted info based on value length to ensure we're redacting longer values first.
 	sort.Slice(allRedacted, func(i, j int) bool {

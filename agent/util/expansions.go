@@ -127,3 +127,18 @@ func (e *DynamicExpansions) Remove(expansion string) {
 
 	e.Expansions.Remove(expansion)
 }
+
+// Range iterates over all the expansions and calls the given function op for
+// each expansion key and value. op returns a boolean indicating whether to
+// continue iteration or not for each key-value pair. This is safe for
+// concurrent access and has no guaranteed iteration order.
+func (e *DynamicExpansions) Range(op func(key, value string) bool) {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	for k, v := range e.Expansions {
+		if !op(k, v) {
+			return
+		}
+	}
+}
