@@ -298,11 +298,6 @@ func (h *Host) ForceReinstallJasperCommand(settings *evergreen.Settings) string 
 			user = `.\\` + user
 		}
 		params = append(params, fmt.Sprintf("--user=%s", user))
-		// kim: TODO: move to env var if possible. I believe this is always a
-		// bash script, so it may work to just prepend the env to the command.
-		// if h.ServicePassword != "" {
-		//     params = append(params, fmt.Sprintf("--password='%s'", h.ServicePassword))
-		// }
 	} else if h.User != "" {
 		params = append(params, fmt.Sprintf("--user=%s", h.User))
 	}
@@ -363,8 +358,6 @@ func (h *Host) QuietUninstallJasperCommand(config evergreen.HostJasperConfig) st
 	return h.jasperServiceCommand(config, nil, jcli.ServiceUninstallCommand, "--quiet")
 }
 
-// kim: TODO: test that command looks as expected (with and without service
-// password) in hostutil tests.
 func (h *Host) jasperServiceCommand(config evergreen.HostJasperConfig, env map[string]string, subCmd string, args ...string) string {
 	var cmd []string
 	for k, v := range env {
