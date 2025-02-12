@@ -267,8 +267,10 @@ the final task status has already been set, such as in the `post`, `timeout`,
 or `teardown_task` blocks. This endpoint may be called in any command block, and will
 append metadata tags to the existing list of task metadata tags. It can be used in
 conjunction with the `/task_status` endpoint and the `failure_metadata_tags` YAML field.
+If this endpoint is called multiple times, new tags will be appended to the existing tags
+that were added previously.
 
-    POST localhost:2285/metadata_tag
+    POST localhost:2285/failure_metadata_tag
 
 | Name                      | Type     | Description                                                                                                                                                                          |
 |---------------------------|----------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -283,5 +285,5 @@ Example in a command:
         shell: bash
         # Manually append failure metadata tags.
         script: |
-          curl -d '{"add_failure_metadata_tags": ["failure_tag"]}' -H "Content-Type: application/json" -X POST localhost:2285/task_status
+          curl -d '{"add_failure_metadata_tags": ["failure_tag"]}' -H "Content-Type: application/json" -X POST localhost:2285/failure_metadata_tag
 ```

@@ -35,7 +35,7 @@ func (a *Agent) startStatusServer(ctx context.Context, port int) error {
 
 	app.AddMiddleware(gimlet.MakeRecoveryLogger())
 	app.AddRoute("/status").Handler(a.statusHandler()).Get()
-	app.AddRoute("/metadata_tag").Handler(a.addMetadataTagHandler).Post()
+	app.AddRoute("/failure_metadata_tag").Handler(a.addMetadataTagHandler).Post()
 	app.AddRoute("/task_status").Handler(a.endTaskHandler).Post()
 	app.AddRoute("/oom/clear").Handler(http.RedirectHandler("/jasper/v1/list/oom", http.StatusMovedPermanently).ServeHTTP).Delete()
 	app.AddRoute("/oom/check").Handler(http.RedirectHandler("/jasper/v1/list/oom", http.StatusMovedPermanently).ServeHTTP).Get()
@@ -121,14 +121,11 @@ type triggerAddMetadataTagResp struct {
 }
 
 func (a *Agent) endTaskHandler(w http.ResponseWriter, r *http.Request) {
-	defer func() {
-		_ = grip.GetSender().Close()
-	}()
-
 	payload, err := io.ReadAll(r.Body)
 	if err != nil {
-		_, _ = w.Write([]byte(errors.Wrap(err, "reading end task request body").Error()))
+		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(errors.Wrap(err, "reading end task request body").Error()))
 		return
 	}
 
@@ -175,14 +172,11 @@ func buildResponse(opts Options) statusResponse {
 }
 
 func (a *Agent) addMetadataTagHandler(w http.ResponseWriter, r *http.Request) {
-	defer func() {
-		_ = grip.GetSender().Close()
-	}()
-
 	payload, err := io.ReadAll(r.Body)
 	if err != nil {
-		_, _ = w.Write([]byte(errors.Wrap(err, "reading add metadata tag request body").Error()))
+		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(errors.Wrap(err, "reading add metadata tag request body").Error()))
 		return
 	}
 
