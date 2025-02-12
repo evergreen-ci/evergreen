@@ -199,8 +199,6 @@ functions:
       params:
         working_dir: evergreen
         include_expansions_in_env: ["GOROOT", "github_token"]
-        env:
-          GOPRIVATE: github.com/evergreen-ci/*
         shell: bash
         script: |
           # Set GitHub app dynamic token to ensure it can clone non-public repos for Go modules.
@@ -699,7 +697,6 @@ tasks:
           include_expansions_in_env: ["github_token"]
           env:
             GOROOT: /opt/golang/go1.23 # We use a newer version of Go to catch toolchain updates. This should be reverted in DEVPROD-3611.
-            GOPRIVATE: github.com/evergreen-ci/*
   - name: verify-merge-function-update
     tags: ["linter"]
     patch_only: true

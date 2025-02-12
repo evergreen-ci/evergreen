@@ -59,6 +59,10 @@ ifneq ($(lintCache),$(GOLANGCI_LINT_CACHE))
 export GOLANGCI_LINT_CACHE := $(lintCache)
 endif
 
+ifneq (,$(GOPRIVATE))
+export GOPRIVATE := github.com/evergreen-ci/*
+endif
+
 ifneq (,$(RACE_DETECTOR))
 # cgo is required for using the race detector.
 export CGO_ENABLED := 1
