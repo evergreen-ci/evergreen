@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -128,6 +129,12 @@ func getGitHubClientForAuth(authFields *GithubAppAuth) (*GitHubClient, error) {
 
 func githubClientShouldRetry() utility.HTTPRetryFunction {
 	defaultRetryableStatuses := utility.NewDefaultHTTPRetryConf().Statuses
+	// The GitHub API returns 403 Forbidden when a secondary rate limit is
+	// exceeded. This should ideally be covered already by checking for
+	// github.AbuseRateLimitError, but we don't fully trust that the check is
+	// comprehensive because GitHub doesn't document its error responses for
+	// secondary rate limits.
+	defaultRetryableStatuses = append(defaultRetryableStatuses, http.StatusForbidden)
 
 	return func(index int, req *http.Request, resp *http.Response, err error) bool {
 		const op = "githubClientShouldRetry"
@@ -152,6 +159,7 @@ func githubClientShouldRetry() utility.HTTPRetryFunction {
 		}
 
 		if err != nil {
+			span.SetAttributes(attribute.String(githubAppErrorAttribute, err.Error()))
 			if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
 				return true
 			}
@@ -159,9 +167,18 @@ func githubClientShouldRetry() utility.HTTPRetryFunction {
 				return true
 			}
 
-			// TODO (DEVPROD-13567): retry in situations where there's no
-			// response but the error is still retryable (e.g. connection reset
-			// by peer).
+			if strings.Contains(err.Error(), "connection reset by peer") {
+				// This has happened in the past when GitHub was having an
+				// outage, so it's worth retrying.
+				return true
+			}
+
+			if errors.Is(err, &github.AbuseRateLimitError{}) {
+				// go-github documentation says it will return
+				// github.AbuseRateLimitError if it detects a secondary rate
+				// limit is exceeded.
+				return true
+			}
 
 			grip.Error(message.WrapError(err, makeLogMsg(map[string]any{
 				"message": "GitHub endpoint encountered unretryable error",
@@ -171,11 +188,15 @@ func githubClientShouldRetry() utility.HTTPRetryFunction {
 		}
 
 		if resp == nil {
+			errMsg := "GitHub app endpoint returned nil response"
+			span.SetAttributes(attribute.String(githubAppErrorAttribute, errMsg))
 			grip.Error(message.WrapError(err, makeLogMsg(map[string]any{
-				"message": "GitHub app endpoint returned nil response",
+				"message": errMsg,
 			})))
 			return true
 		}
+
+		span.SetAttributes(attribute.Int(githubAppStatusCodeAttribute, resp.StatusCode))
 
 		for _, statusCode := range defaultRetryableStatuses {
 			if resp.StatusCode == statusCode {
@@ -183,9 +204,6 @@ func githubClientShouldRetry() utility.HTTPRetryFunction {
 			}
 		}
 
-		// TODO (DEVPROD-13567): retry when response from GitHub is non-OK due
-		// to a transient problem that is still retryable (e.g. secondary rate
-		// limit exceeded).
 		grip.ErrorWhen(resp.StatusCode >= http.StatusBadRequest, makeLogMsg(map[string]any{
 			"message":     "GitHub app endpoint returned response but is not retryable",
 			"status_code": resp.StatusCode,
