@@ -492,10 +492,17 @@ Parameters:
         - `redact`: if true, the expansion will be redacted in the task logs.
            By default, this is false. Setting this to false will not unredact
            the expansion if it was already redacted.
--   `file`: filename for a YAML file containing expansion updates
+-   `file`: filename for a YAML file containing expansion updates, one key-value
+    pair per expansion. For example, to set expansions `fruit=apple`
+    `vegetable=spinach`, and `bread=cornbread`, the file should look like:
+    ```yaml
+    fruit: apple
+    vegetable: spinach
+    bread: cornbread
+    ```
 -   `redact_file_expansions`: if true, the expansions added from the file will be redacted in the task logs.
      By default, this is false.
--   `ignore_missing_file`: do not error if the file is missing
+-   `ignore_missing_file`: do not error if the file is missing.
 
 ## expansions.write
 
@@ -512,8 +519,8 @@ security reasons.
 
 Parameters:
 
--   `file`: filename to write expansions to
--   `redacted`: include redacted project variables, defaults to false
+-   `file`: filename to write expansions to.
+-   `redacted`: include redacted project variables, defaults to false.
 
 For example, if the expansions are currently `fruit=apple`, `vegetable=spinach`,
 and `bread=cornbread`, then the output file will look like this:

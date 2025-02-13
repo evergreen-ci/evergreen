@@ -2,7 +2,9 @@ package githubapp
 
 import (
 	"context"
+	"io"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -11,9 +13,12 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/golang-jwt/jwt"
 	"github.com/google/go-github/v52/github"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 const (
@@ -105,22 +110,107 @@ func (g *GitHubClient) Close() {
 // This function cannot be moved to thirdparty because it is needed to set up the environment.
 // Couple this with a defered call with Close() to clean up the client.
 func getGitHubClientForAuth(authFields *GithubAppAuth) (*GitHubClient, error) {
-	retryConf := utility.NewDefaultHTTPRetryConf()
-	retryConf.MaxDelay = GitHubRetryMaxDelay
-	retryConf.BaseDelay = GitHubRetryMinDelay
-	retryConf.MaxRetries = GitHubMaxRetries
-
 	key, err := jwt.ParseRSAPrivateKeyFromPEM(authFields.PrivateKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "parsing private key")
 	}
 
-	httpClient := utility.GetHTTPRetryableClient(retryConf)
-	itr := ghinstallation.NewAppsTransportFromPrivateKey(httpClient.Transport, authFields.AppID, key)
-	httpClient.Transport = itr
+	itr := ghinstallation.NewAppsTransportFromPrivateKey(utility.DefaultTransport(), authFields.AppID, key)
+	httpClient := utility.GetCustomHTTPRetryableClientWithTransport(itr, githubClientShouldRetry(), utility.RetryHTTPDelay(utility.RetryOptions{
+		MinDelay:    GitHubRetryMinDelay,
+		MaxDelay:    GitHubRetryMaxDelay,
+		MaxAttempts: GitHubMaxRetries + 1,
+	}))
+
 	client := github.NewClient(httpClient)
 	wrappedClient := GitHubClient{Client: client}
 	return &wrappedClient, nil
+}
+
+func githubClientShouldRetry() utility.HTTPRetryFunction {
+	defaultRetryableStatuses := utility.NewDefaultHTTPRetryConf().Statuses
+	// The GitHub API returns 403 Forbidden when a secondary rate limit is
+	// exceeded. This should ideally be covered already by checking for
+	// github.AbuseRateLimitError, but we don't fully trust that the check is
+	// comprehensive because GitHub doesn't document its error responses for
+	// secondary rate limits.
+	defaultRetryableStatuses = append(defaultRetryableStatuses, http.StatusForbidden)
+
+	return func(index int, req *http.Request, resp *http.Response, err error) bool {
+		const op = "githubClientShouldRetry"
+		_, span := tracer.Start(req.Context(), op)
+		defer span.End()
+
+		span.SetAttributes(attribute.Int(githubAppAttemptAttribute, index))
+		span.SetAttributes(attribute.String(githubAppURLAttribute, req.URL.String()))
+		span.SetAttributes(attribute.String(githubAppMethodAttribute, req.Method))
+
+		makeLogMsg := func(extraFields map[string]any) message.Fields {
+			msg := message.Fields{
+				"url":     req.URL.String(),
+				"method":  req.Method,
+				"attempt": index,
+				"op":      op,
+			}
+			for k, v := range extraFields {
+				msg[k] = v
+			}
+			return msg
+		}
+
+		if err != nil {
+			span.SetAttributes(attribute.String(githubAppErrorAttribute, err.Error()))
+			if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
+				return true
+			}
+			if utility.IsTemporaryError(err) {
+				return true
+			}
+
+			if strings.Contains(err.Error(), "connection reset by peer") {
+				// This has happened in the past when GitHub was having an
+				// outage, so it's worth retrying.
+				return true
+			}
+
+			if errors.Is(err, &github.AbuseRateLimitError{}) {
+				// go-github documentation says it will return
+				// github.AbuseRateLimitError if it detects a secondary rate
+				// limit is exceeded.
+				return true
+			}
+
+			grip.Error(message.WrapError(err, makeLogMsg(map[string]any{
+				"message": "GitHub endpoint encountered unretryable error",
+			})))
+
+			return false
+		}
+
+		if resp == nil {
+			errMsg := "GitHub app endpoint returned nil response"
+			span.SetAttributes(attribute.String(githubAppErrorAttribute, errMsg))
+			grip.Error(message.WrapError(err, makeLogMsg(map[string]any{
+				"message": errMsg,
+			})))
+			return true
+		}
+
+		span.SetAttributes(attribute.Int(githubAppStatusCodeAttribute, resp.StatusCode))
+
+		for _, statusCode := range defaultRetryableStatuses {
+			if resp.StatusCode == statusCode {
+				return true
+			}
+		}
+
+		grip.ErrorWhen(resp.StatusCode >= http.StatusBadRequest, makeLogMsg(map[string]any{
+			"message":     "GitHub app endpoint returned response but is not retryable",
+			"status_code": resp.StatusCode,
+		}))
+
+		return false
+	}
 }
 
 // getInstallationIDFromGitHub returns an installation ID from GitHub given an owner and a repo.

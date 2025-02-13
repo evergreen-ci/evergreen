@@ -751,8 +751,8 @@ func constructManifest(v *Version, projectRef *ProjectRef, moduleList ModuleList
 	}
 
 	var baseManifest *manifest.Manifest
-	isPatch := utility.StringSliceContains(evergreen.PatchRequesters, v.Requester)
-	if isPatch {
+	shouldUseBaseRevision := utility.StringSliceContains(evergreen.PatchRequesters, v.Requester) || v.Requester == evergreen.AdHocRequester
+	if shouldUseBaseRevision {
 		baseManifest, err = manifest.FindFromVersion(v.Id, v.Identifier, v.Revision, v.Requester)
 		if err != nil {
 			return nil, errors.Wrap(err, "getting base manifest")
@@ -761,7 +761,7 @@ func constructManifest(v *Version, projectRef *ProjectRef, moduleList ModuleList
 
 	modules := map[string]*manifest.Module{}
 	for _, module := range moduleList {
-		if isPatch && !module.AutoUpdate && baseManifest != nil {
+		if shouldUseBaseRevision && !module.AutoUpdate && baseManifest != nil {
 			if baseModule, ok := baseManifest.Modules[module.Name]; ok {
 				modules[module.Name] = baseModule
 				continue
@@ -789,17 +789,19 @@ func getManifestModule(v *Version, projectRef *ProjectRef, module Module) (*mani
 		ghCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
 		defer cancel()
 
-		commit, err := thirdparty.GetCommitEvent(ghCtx, projectRef.Owner, projectRef.Repo, v.Revision)
-		if err != nil {
-			return nil, errors.Wrapf(err, "can't get commit '%s' on '%s/%s'", v.Revision, projectRef.Owner, projectRef.Repo)
-		}
-		if commit == nil || commit.Commit == nil || commit.Commit.Committer == nil {
-			return nil, errors.New("malformed GitHub commit response")
-		}
-		// If this is a mainline commit, retrieve the module's commit from the time of the mainline commit.
-		// Otherwise, retrieve the module's commit from the time of the patch creation.
 		revisionTime := time.Unix(0, 0)
-		if !evergreen.IsPatchRequester(v.Requester) {
+
+		// If this is a mainline commit, retrieve the module's commit from the time of the mainline commit.
+		// If this is a periodic build, retrieve the module's commit from the time of the periodic build.
+		// Otherwise, retrieve the module's commit from the time of the patch creation.
+		if !evergreen.IsPatchRequester(v.Requester) && v.Requester != evergreen.AdHocRequester {
+			commit, err := thirdparty.GetCommitEvent(ghCtx, projectRef.Owner, projectRef.Repo, v.Revision)
+			if err != nil {
+				return nil, errors.Wrapf(err, "can't get commit '%s' on '%s/%s'", v.Revision, projectRef.Owner, projectRef.Repo)
+			}
+			if commit == nil || commit.Commit == nil || commit.Commit.Committer == nil {
+				return nil, errors.New("malformed GitHub commit response")
+			}
 			revisionTime = commit.Commit.Committer.GetDate().Time
 		}
 
@@ -842,7 +844,7 @@ func getManifestModule(v *Version, projectRef *ProjectRef, module Module) (*mani
 }
 
 // CreateManifest inserts a newly constructed manifest into the DB.
-func CreateManifest(v *Version, modules ModuleList, projectRef *ProjectRef, settings *evergreen.Settings) (*manifest.Manifest, error) {
+func CreateManifest(v *Version, modules ModuleList, projectRef *ProjectRef) (*manifest.Manifest, error) {
 	newManifest, err := constructManifest(v, projectRef, modules)
 	if err != nil {
 		return nil, errors.Wrap(err, "constructing manifest")

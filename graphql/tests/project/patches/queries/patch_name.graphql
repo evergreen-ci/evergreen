@@ -1,6 +1,6 @@
 {
   project(projectIdentifier: "spruce") {
-    patches(patchesInput: { patchName: "22", onlyCommitQueue: false }) {
+    patches(patchesInput: { patchName: "22", onlyMergeQueue: false }) {
       patches {
         id
         description

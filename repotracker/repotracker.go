@@ -363,7 +363,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 			}
 		}
 
-		_, err = model.CreateManifest(v, pInfo.Project.Modules, ref, repoTracker.Settings)
+		_, err = model.CreateManifest(v, pInfo.Project.Modules, ref)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":            "error creating manifest",
@@ -971,6 +971,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		v.BuildVariants = append(v.BuildVariants, model.VersionBuildStatus{
 			BuildVariant:   buildvariant.Name,
 			BuildId:        b.Id,
+			DisplayName:    b.DisplayName,
 			BatchTimeTasks: taskStatuses,
 			ActivationStatus: model.ActivationStatus{
 				ActivateAt: activateVariantAt,

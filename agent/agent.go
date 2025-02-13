@@ -55,6 +55,11 @@ type Agent struct {
 	// user to override the final task status that would otherwise be used.
 	setEndTaskResp      func(*triggerEndTaskResp)
 	setEndTaskRespMutex sync.RWMutex
+	// addMetadataTagResp adds a failure metadata tag to the task, which can be
+	// appended to the final list of failure metadata tags that are set on task
+	// completion.
+	addMetadataTagResp  func(*triggerAddMetadataTagResp)
+	addMetadataTagMutex sync.RWMutex
 	tracer              trace.Tracer
 	otelGrpcConn        *grpc.ClientConn
 	closers             []closerOp
@@ -155,10 +160,11 @@ func newWithCommunicator(ctx context.Context, opts Options, comm client.Communic
 	}
 
 	a := &Agent{
-		opts:           opts,
-		comm:           comm,
-		jasper:         jpm,
-		setEndTaskResp: func(*triggerEndTaskResp) {},
+		opts:               opts,
+		comm:               comm,
+		jasper:             jpm,
+		setEndTaskResp:     func(*triggerEndTaskResp) {},
+		addMetadataTagResp: func(*triggerAddMetadataTagResp) {},
 	}
 
 	a.closers = append(a.closers, closerOp{
@@ -453,6 +459,10 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 	a.setEndTaskRespMutex.Lock()
 	a.setEndTaskResp = tc.setUserEndTaskResponse
 	a.setEndTaskRespMutex.Unlock()
+
+	a.addMetadataTagMutex.Lock()
+	a.addMetadataTagResp = tc.setAddMetadataTagResponse
+	a.addMetadataTagMutex.Unlock()
 
 	taskConfig, err := a.makeTaskConfig(setupCtx, tc)
 	if err != nil {
@@ -1007,6 +1017,11 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		if detail.Description == "" {
 			detail.Description = "task has invalid status"
 		}
+	}
+
+	if addedMetadataTagResp := tc.getAddMetadataTagResponse(); addedMetadataTagResp != nil {
+		tc.logger.Task().Infof("Appending extra failure metadata tags set with HTTP endpoint.")
+		detail.FailureMetadataTags = utility.UniqueStrings(append(detail.FailureMetadataTags, addedMetadataTagResp.AddFailureMetadataTags...))
 	}
 
 	// Attempt automatic task output ingestion if the task output directory
