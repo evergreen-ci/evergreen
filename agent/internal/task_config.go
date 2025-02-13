@@ -202,16 +202,14 @@ func NewTaskConfig(workDir string, d *apimodels.DistroView, p *model.Project, t 
 	}
 
 	taskConfig := &TaskConfig{
-		Distro:            d,
-		ProjectRef:        *r,
-		Project:           *p,
-		Task:              *t,
-		BuildVariant:      *bv,
-		Expansions:        e.Expansions,
-		NewExpansions:     agentutil.NewDynamicExpansions(e.Expansions),
-		DynamicExpansions: util.Expansions{},
-		// kim: TODO: verify manually that service password string is redacted
-		// from task logs.
+		Distro:             d,
+		ProjectRef:         *r,
+		Project:            *p,
+		Task:               *t,
+		BuildVariant:       *bv,
+		Expansions:         e.Expansions,
+		NewExpansions:      agentutil.NewDynamicExpansions(e.Expansions),
+		DynamicExpansions:  util.Expansions{},
 		InternalRedactions: agentutil.NewDynamicExpansions(internalRedactions),
 		ProjectVars:        e.Vars,
 		Redacted:           redacted,
