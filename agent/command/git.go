@@ -121,7 +121,6 @@ func (opts cloneOpts) validate() error {
 	// See https://git-scm.com/docs/scalar for more information.
 	catcher.NewWhen(opts.useScalar && opts.cloneDepth > 0, "cannot use scalar with clone depth")
 	catcher.NewWhen(opts.useScalar && opts.recurseSubmodules, "cannot use scalar with recurse submodules")
-	catcher.NewWhen(opts.useScalar && opts.shallowClone, "cannot use scalar with shallow clone")
 	catcher.NewWhen(opts.owner == "", "missing required owner")
 	catcher.NewWhen(opts.repo == "", "missing required repo")
 	catcher.NewWhen(opts.location == "", "missing required location")
