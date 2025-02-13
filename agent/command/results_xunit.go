@@ -193,9 +193,9 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *internal
 		}
 
 		opts := redactor.RedactionOptions{
-			Expansions:           conf.NewExpansions,
-			Redacted:             conf.Redacted,
-			AdditionalRedactions: conf.InternalRedactions,
+			Expansions:         conf.NewExpansions,
+			Redacted:           conf.Redacted,
+			InternalRedactions: conf.InternalRedactions,
 		}
 		if err := taskoutput.AppendTestLog(ctx, &conf.Task, opts, log); err != nil {
 			logger.Task().Error(errors.Wrap(err, "sending test log"))

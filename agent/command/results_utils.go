@@ -47,7 +47,7 @@ func sendTestLogsAndResults(ctx context.Context, comm client.Communicator, logge
 		if err := taskoutput.AppendTestLog(ctx, &conf.Task, redactor.RedactionOptions{
 			Expansions:           conf.NewExpansions,
 			Redacted:             conf.Redacted,
-			AdditionalRedactions: conf.InternalRedactions,
+			InternalRedactions: conf.InternalRedactions,
 		}, &log); err != nil {
 			// Continue on error to let the other logs get posted.
 			logger.Task().Error(errors.Wrap(err, "sending test log"))

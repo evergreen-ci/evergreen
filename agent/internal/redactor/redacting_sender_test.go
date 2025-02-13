@@ -14,17 +14,17 @@ import (
 
 func TestRedactingSender(t *testing.T) {
 	for name, test := range map[string]struct {
-		expansions           map[string]string
-		expansionsToRedact   []string
-		additionalRedactions map[string]string
-		inputString          string
-		expected             string
+		expansions         map[string]string
+		expansionsToRedact []string
+		internalRedactions map[string]string
+		inputString        string
+		expected           string
 	}{
 		"MultipleSubstitutions": {
 			expansions: map[string]string{
 				"secret_key": "secret_val",
 			},
-			additionalRedactions: map[string]string{
+			internalRedactions: map[string]string{
 				"another_secret_key": "another_secret_val",
 			},
 			expansionsToRedact: []string{"secret_key"},
@@ -36,7 +36,7 @@ func TestRedactingSender(t *testing.T) {
 				"secret_key1": "secret_val1",
 				"secret_key2": "secret_val2",
 			},
-			additionalRedactions: map[string]string{
+			internalRedactions: map[string]string{
 				"secret_key3": "secret_val3",
 			},
 			expansionsToRedact: []string{"secret_key1", "secret_key2"},
@@ -81,7 +81,7 @@ func TestRedactingSender(t *testing.T) {
 			expansions: map[string]string{
 				"secret_key": "secret_val",
 			},
-			additionalRedactions: map[string]string{
+			internalRedactions: map[string]string{
 				"another_secret_key": "another_secret_val",
 			},
 			expansionsToRedact: []string{"secret_key"},
@@ -94,9 +94,9 @@ func TestRedactingSender(t *testing.T) {
 			require.NoError(t, err)
 
 			opts := RedactionOptions{
-				Expansions:           util.NewDynamicExpansions(test.expansions),
-				Redacted:             test.expansionsToRedact,
-				AdditionalRedactions: util.NewDynamicExpansions(test.additionalRedactions),
+				Expansions:         util.NewDynamicExpansions(test.expansions),
+				Redacted:           test.expansionsToRedact,
+				InternalRedactions: util.NewDynamicExpansions(test.internalRedactions),
 			}
 			s := NewRedactingSender(wrappedSender, opts)
 			s.Send(message.NewDefaultMessage(level.Info, test.inputString))

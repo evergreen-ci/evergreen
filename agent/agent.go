@@ -487,9 +487,9 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 	// Set up a new task output directory regardless if the task is part of
 	// a task group.
 	redactorOpts := redactor.RedactionOptions{
-		Expansions:           tc.taskConfig.NewExpansions,
-		Redacted:             tc.taskConfig.Redacted,
-		AdditionalRedactions: tc.taskConfig.InternalRedactions,
+		Expansions:         tc.taskConfig.NewExpansions,
+		Redacted:           tc.taskConfig.Redacted,
+		InternalRedactions: tc.taskConfig.InternalRedactions,
 	}
 	tc.taskConfig.TaskOutputDir = taskoutput.NewDirectory(tc.taskConfig.WorkDir, &tc.taskConfig.Task, redactorOpts, tc.logger)
 	if err := tc.taskConfig.TaskOutputDir.Setup(); err != nil {
