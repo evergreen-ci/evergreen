@@ -213,12 +213,14 @@ func (opts cloneOpts) buildHTTPCloneCommand(logger client.LoggerProducer, forApp
 	if opts.useScalar {
 		scalarAvailable, err := agentutil.IsGitVersionMinimumForScalar(thirdparty.RequiredScalarGitVersion)
 		if err != nil {
-			return nil, errors.Wrap(err, "checking git version")
+			logger.Task().Errorf("checking git version failed, falling back to git clone instead of scalar clone: %s.", err)
 		}
-		if scalarAvailable {
+		if err != nil && scalarAvailable {
+			// use --no-src so that it doesn't put the repository into a src directory because
+			// this can break user expectations and cause scripts to fail
 			gitCommand = "scalar clone --no-src"
 		} else {
-			logger.Task().Infof("cannot use scalar, git version is below %s", thirdparty.RequiredScalarGitVersion)
+			logger.Task().Infof("cannot use scalar, git version is below '%s'", thirdparty.RequiredScalarGitVersion)
 		}
 	}
 
