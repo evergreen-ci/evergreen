@@ -369,9 +369,11 @@ const (
 	// indicating that there are still running tasks.
 	PRTasksRunningDescription = "tasks are running"
 
-	// HostServicePasswordExpansion is the expansion for the service password that is stored on the host,
-	// and is meant to be set as a private variable so that it will be redacted in all logs.
-	HostServicePasswordExpansion = "host_service_password"
+	// HostServicePasswordInternalRedaction is the service user's password on a
+	// host. This is for Evergreen internal use only, and while it should not
+	// typically be accessible, it should be redacted in any logs from the task
+	// if it does happen to appear.
+	HostServicePasswordInternalRedaction = "host_service_password"
 
 	// RedactedValue is the value that is shown in the REST API and UI for redacted values.
 	RedactedValue       = "{REDACTED}"

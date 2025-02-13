@@ -383,11 +383,16 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 	}
 
 	res := apimodels.ExpansionsAndVars{
-		Expansions:  e,
-		Parameters:  map[string]string{},
-		Vars:        map[string]string{},
-		PrivateVars: map[string]bool{},
-		RedactKeys:  h.settings.LoggerConfig.RedactKeys,
+		Expansions:         e,
+		Parameters:         map[string]string{},
+		Vars:               map[string]string{},
+		PrivateVars:        map[string]bool{},
+		RedactKeys:         h.settings.LoggerConfig.RedactKeys,
+		InternalRedactions: map[string]string{},
+	}
+
+	if foundHost != nil && foundHost.ServicePassword != "" {
+		res.InternalRedactions[evergreen.HostServicePasswordInternalRedaction] = foundHost.ServicePassword
 	}
 
 	projectVars, err := model.FindMergedProjectVars(t.Project)

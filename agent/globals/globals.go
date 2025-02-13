@@ -2,8 +2,6 @@ package globals
 
 import (
 	"time"
-
-	"github.com/evergreen-ci/evergreen"
 )
 
 const (
@@ -124,10 +122,6 @@ const (
 var (
 	// ExpansionsToRedact are expansion names that should be redacted from logs and expansion exports.
 	ExpansionsToRedact = []string{
-		// HostServicePasswordExpansion exists to redact the host's ServicePassword in the logs,
-		// which is used for some jasper commands for Windows hosts. It is populated as a default
-		// expansion only for tasks running on Windows hosts.
-		evergreen.HostServicePasswordExpansion,
 		AWSAccessKeyId,
 		AWSSecretAccessKey,
 		AWSSessionToken,
