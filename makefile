@@ -106,7 +106,9 @@ testSrcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*
 currentHash := $(shell git rev-parse HEAD)
 agentVersion := $(shell grep "AgentVersion" config.go | tr -d '\tAgentVersion = ' | tr -d '"')
 ldFlags := $(if $(DEBUG_ENABLED),,-w -s )-X=github.com/evergreen-ci/evergreen.BuildRevision=$(currentHash)
-gcFlags := $(if $(STAGING_ONLY),-N -l,)
+# gcFlags := $(if $(STAGING_ONLY),-N -l,)
+# kim: NOTE: this checks for all loopvar instances, regardless of whether they behave differently or not.
+gcFlags := all=-d=loopvar=2
 karmaFlags := $(if $(KARMA_REPORTER),--reporters $(KARMA_REPORTER),)
 
 goLintInstallerVersion := "v1.51.2"
