@@ -2893,7 +2893,7 @@ func checkMockLogs(t *testing.T, mc *client.Mock, taskID string, logsToFind []st
 // TestUnregisterScalar tests the unregisterScalar function without using a mock.
 func TestUnregisterScalar(t *testing.T) {
 	// Check if the Git version meets the minimum required version
-	isScalarAvailable, err := agentutil.IsGitVersionMinimum(thirdparty.RequiredScalarGitVersion)
+	isScalarAvailable, err := agentutil.IsGitVersionMinimumForScalar(thirdparty.RequiredScalarGitVersion)
 	require.NoError(t, err)
 	if !isScalarAvailable {
 		t.Skip("Git version does not meet the minimum required version for Scalar")

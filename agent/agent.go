@@ -1264,7 +1264,7 @@ func (a *Agent) clearGitConfig(tc *taskContext) {
 // unregisterScalar unregisters a repository that was cloned (and therefore registered) with Scalar.
 // This should be done for each repository after it is cloned with scalar to stop the background maintenance processes.
 func unregisterScalar() error {
-	isScalarAvailable, err := agentutil.IsGitVersionMinimum(thirdparty.RequiredScalarGitVersion)
+	isScalarAvailable, err := agentutil.IsGitVersionMinimumForScalar(thirdparty.RequiredScalarGitVersion)
 
 	if err != nil || !isScalarAvailable {
 		return errors.Wrap(err, "checking git version")

@@ -122,7 +122,7 @@ func TestParseGitVersionString(t *testing.T) {
 
 	for versionString, expected := range versionStrings {
 		parsedVersion, isApple, err := ParseGitVersion(versionString)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, expected.expectedVersion, parsedVersion)
 		assert.Equal(t, expected.isApple, isApple)
 	}

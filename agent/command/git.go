@@ -116,8 +116,12 @@ func validateCloneMethod(method string) error {
 
 func (opts cloneOpts) validate() error {
 	catcher := grip.NewBasicCatcher()
+	// git scalar does not have a --depth option or a --recurse-submodules option. We should therefore not
+	// let users combine scalar with recurse_submodules,clone_depth or shallow_clone (which uses depth).
+	// See https://git-scm.com/docs/scalar for more information.
 	catcher.NewWhen(opts.useScalar && opts.cloneDepth > 0, "cannot use scalar with clone depth")
 	catcher.NewWhen(opts.useScalar && opts.recurseSubmodules, "cannot use scalar with recurse submodules")
+	catcher.NewWhen(opts.useScalar && opts.shallowClone, "cannot use scalar with shallow clone")
 	catcher.NewWhen(opts.owner == "", "missing required owner")
 	catcher.NewWhen(opts.repo == "", "missing required repo")
 	catcher.NewWhen(opts.location == "", "missing required location")
@@ -208,7 +212,7 @@ func (opts cloneOpts) buildHTTPCloneCommand(logger client.LoggerProducer, forApp
 
 	gitCommand := "git clone"
 	if opts.useScalar {
-		scalarAvailable, err := agentutil.IsGitVersionMinimum(thirdparty.RequiredScalarGitVersion)
+		scalarAvailable, err := agentutil.IsGitVersionMinimumForScalar(thirdparty.RequiredScalarGitVersion)
 		if err != nil {
 			return nil, errors.Wrap(err, "checking git version")
 		}

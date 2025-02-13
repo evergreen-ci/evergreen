@@ -22,8 +22,8 @@ func getGitVersion() (string, bool, error) {
 	return thirdparty.ParseGitVersion(strings.TrimSpace(out.String()))
 }
 
-// IsGitVersionMinimum checks if the installed Git version is later than the specified version.
-func IsGitVersionMinimum(minVersion string) (bool, error) {
+// IsGitVersionMinimumForScalar checks if the installed Git version is later than the specified version.
+func IsGitVersionMinimumForScalar(minVersion string) (bool, error) {
 	gitVersion, isApple, err := getGitVersion()
 	if err != nil {
 		return false, err
