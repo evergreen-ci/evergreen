@@ -33,5 +33,5 @@ func IsGitVersionMinimumForScalar(minVersion string) (bool, error) {
 		return false, nil
 	}
 
-	return !thirdparty.IsVersionMinimum(gitVersion, minVersion), nil
+	return !thirdparty.VersionMeetsMinimum(gitVersion, minVersion), nil
 }

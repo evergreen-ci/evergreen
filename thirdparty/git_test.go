@@ -88,22 +88,23 @@ func TestParseGitUrl(t *testing.T) {
 	assert.Equal("sample", repo)
 }
 
-func TestIsVersionMinimum(t *testing.T) {
+func TestVersionMeetsMinimum(t *testing.T) {
+	// VersionMeetsMinimum should return true when version is greater than or equal to the minVersion
 	tests := []struct {
 		version    string
 		minVersion string
 		expected   bool
 	}{
-		{"2.37.0", "2.380", true},
-		{"2.38.0", "2.380", true},
-		{"2.38.0", "2.38.1", true},
-		{"2.38.1", "2.38.0", false},
-		{"2.38", "2.37.9", false},
+		{version: "2.37.0", minVersion: "2.38.0", expected: false},
+		{version: "2.38.0", minVersion: "2.38.0", expected: true},
+		{version: "2.38.0", minVersion: "2.38.1", expected: false},
+		{version: "2.38.1", minVersion: "2.38.0", expected: true},
+		{version: "2.38", minVersion: "2.37.9", expected: true},
 	}
 
 	for _, test := range tests {
 		t.Run(test.version+" < "+test.minVersion, func(t *testing.T) {
-			result := IsVersionMinimum(test.version, test.minVersion)
+			result := VersionMeetsMinimum(test.version, test.minVersion)
 			assert.Equal(t, test.expected, result)
 		})
 	}

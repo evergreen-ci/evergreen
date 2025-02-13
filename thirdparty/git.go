@@ -231,8 +231,8 @@ func ParseGitVersion(version string) (string, bool, error) {
 	return matches[1], isAppleGit, nil
 }
 
-// IsVersionMinimum checks if the version is less or equal to the minVersion.
-func IsVersionMinimum(version, minVersion string) bool {
+// VersionMeetsMinimum checks if the version is less or equal to the minVersion.
+func VersionMeetsMinimum(version, minVersion string) bool {
 	versionParts := strings.Split(version, ".")
 	minVersionParts := strings.Split(minVersion, ".")
 
@@ -251,12 +251,13 @@ func IsVersionMinimum(version, minVersion string) bool {
 			return false
 		}
 
-		if versionPart < minVersionPart {
+		if versionPart > minVersionPart {
 			return true
-		} else if versionPart > minVersionPart {
+		} else if versionPart < minVersionPart {
 			return false
 		}
 	}
 
-	return false
+	// the two are equal
+	return true
 }
