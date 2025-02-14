@@ -28,6 +28,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/trace"
 )
 
 var directoryHandlerFactories = map[string]directoryHandlerFactory{
@@ -44,7 +45,7 @@ type Directory struct {
 
 // NewDirectory returns a new task output directory with the specified root for
 // the given task.
-func NewDirectory(root string, tsk *task.Task, redactorOpts redactor.RedactionOptions, logger client.LoggerProducer) *Directory {
+func NewDirectory(root string, tsk *task.Task, redactorOpts redactor.RedactionOptions, logger client.LoggerProducer, tracer trace.Tracer) *Directory {
 	output := tsk.TaskOutputInfo
 	taskOpts := taskoutput.TaskOptions{
 		ProjectID: tsk.Project,
@@ -56,7 +57,7 @@ func NewDirectory(root string, tsk *task.Task, redactorOpts redactor.RedactionOp
 	handlers := map[string]directoryHandler{}
 	for name, factory := range directoryHandlerFactories {
 		dir := filepath.Join(root, name)
-		handlers[dir] = factory(dir, output, taskOpts, redactorOpts, logger)
+		handlers[dir] = factory(dir, output, taskOpts, redactorOpts, logger, tracer)
 	}
 
 	return &Directory{
@@ -103,8 +104,8 @@ func (d *Directory) Run(ctx context.Context) error {
 // directoryHandler abstracts the automatic handling of task output for
 // individual subdirectories.
 type directoryHandler interface {
-	run(ctx context.Context) error
+	run(context.Context) error
 }
 
 // directoryHandlerFactory abstracts the creation of a directory handler.
-type directoryHandlerFactory func(string, *taskoutput.TaskOutput, taskoutput.TaskOptions, redactor.RedactionOptions, client.LoggerProducer) directoryHandler
+type directoryHandlerFactory func(string, *taskoutput.TaskOutput, taskoutput.TaskOptions, redactor.RedactionOptions, client.LoggerProducer, trace.Tracer) directoryHandler
