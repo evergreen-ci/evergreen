@@ -525,12 +525,11 @@ func TestJasperCommandsWindows(t *testing.T) {
 			require.NoError(t, h.Insert(ctx))
 			require.NoError(t, h.CreateServicePassword(ctx))
 			cmd := h.ForceReinstallJasperCommand(settings)
-			assert.True(t, strings.HasPrefix(cmd, "/foo/jasper_cli.exe jasper service force-reinstall rpc"))
+			assert.True(t, strings.HasPrefix(cmd, fmt.Sprintf("JASPER_USER_PASSWORD=%s /foo/jasper_cli.exe jasper service force-reinstall rpc", h.ServicePassword)))
 			assert.Contains(t, cmd, "--host=0.0.0.0")
 			assert.Contains(t, cmd, fmt.Sprintf("--port=%d", settings.HostJasper.Port))
 			assert.Contains(t, cmd, fmt.Sprintf("--creds_path=%s", h.Distro.BootstrapSettings.JasperCredentialsPath))
 			assert.Contains(t, cmd, fmt.Sprintf(`--user=.\\%s`, h.Distro.BootstrapSettings.ServiceUser))
-			assert.Contains(t, cmd, fmt.Sprintf("--password='%s'", h.ServicePassword))
 		},
 		"WriteJasperCredentialsFileCommand": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			creds, err := newMockCredentials()
