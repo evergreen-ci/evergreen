@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -29,6 +30,8 @@ type Commit struct {
 	Message   string    `bson:"message"`
 	Patch     string    `bson:"patch"`
 }
+
+const RequiredScalarGitVersion = "2.38.0"
 
 // GitApplyNumstat attempts to apply a given patch; it returns the patch's bytes
 // if it is successful
@@ -209,4 +212,52 @@ func FormGitURLForApp(host, owner, repo, token string) string {
 	}
 
 	return fmt.Sprintf("https://%s/%s/%s.git", host, owner, repo)
+}
+
+// ParseGitVersion parses the git version number from the version string and returns a boolean indicating if it's an Apple Git version.
+func ParseGitVersion(version string) (string, bool, error) {
+	appleGitRegex := `(?: \(Apple Git-[\w\.]+\))?$`
+	matches := regexp.MustCompile(`^git version ` +
+		// capture the version major.minor(.patch(.build(.etc...)))
+		`(\w+(?:\.\w+)+)` +
+		// match and capture Apple git's addition to the version string
+		appleGitRegex,
+	).FindStringSubmatch(version)
+	if len(matches) != 2 {
+		return "", false, errors.Errorf("could not parse git version number from version string '%s'", version)
+	}
+
+	isAppleGit := strings.Contains(version, "Apple Git-")
+	return matches[1], isAppleGit, nil
+}
+
+// VersionMeetsMinimum checks if the version is greater than or equal to the minVersion.
+func VersionMeetsMinimum(version, minVersion string) bool {
+	versionParts := strings.Split(version, ".")
+	minVersionParts := strings.Split(minVersion, ".")
+
+	for i := 0; i < len(minVersionParts); i++ {
+		if i >= len(versionParts) {
+			return true
+		}
+
+		versionPart, err := strconv.Atoi(versionParts[i])
+		if err != nil {
+			return true
+		}
+
+		minVersionPart, err := strconv.Atoi(minVersionParts[i])
+		if err != nil {
+			return false
+		}
+
+		if versionPart > minVersionPart {
+			return true
+		} else if versionPart < minVersionPart {
+			return false
+		}
+	}
+
+	// the two are equal
+	return true
 }

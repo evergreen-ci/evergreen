@@ -1,11 +1,13 @@
 package agent
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"fmt"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -18,11 +20,13 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/agent/internal/testutil"
+	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/taskoutput"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -30,6 +34,7 @@ import (
 	"github.com/mongodb/jasper/mock"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.opentelemetry.io/otel"
 )
@@ -2939,4 +2944,44 @@ func checkMockLogs(t *testing.T, mc *client.Mock, taskID string, logsToFind []st
 	if displayLogs {
 		grip.Infof("Logs for task '%s':\n%s\n", taskID, strings.Join(allLogs, "\n"))
 	}
+}
+
+// TestUnregisterScalar tests the unregisterScalar function without using a mock.
+func TestUnregisterScalar(t *testing.T) {
+	// Check if the Git version meets the minimum required version
+	isScalarAvailable, err := agentutil.IsGitVersionMinimumForScalar(thirdparty.RequiredScalarGitVersion)
+	require.NoError(t, err)
+	if !isScalarAvailable {
+		t.Skip("Git version does not meet the minimum required version for Scalar")
+	}
+
+	// Create a temporary directory to act as the repository
+	tempDir, err := os.MkdirTemp("", "scalar-test")
+	require.NoError(t, err)
+	defer os.RemoveAll(tempDir)
+
+	// Clone the repository using Scalar
+	cmd := exec.Command("scalar", "clone", "https://github.com/evergreen-ci/sample", tempDir)
+	err = cmd.Run()
+	require.NoError(t, err)
+
+	// Verify that the repository is registered
+	cmd = exec.Command("scalar", "list")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err = cmd.Run()
+	require.NoError(t, err)
+	assert.Contains(t, out.String(), tempDir)
+
+	// Call unregisterScalar
+	err = unregisterScalar()
+	require.NoError(t, err)
+
+	// Verify that the repository is unregistered
+	cmd = exec.Command("scalar", "list")
+	out.Reset()
+	cmd.Stdout = &out
+	err = cmd.Run()
+	require.NoError(t, err)
+	assert.NotContains(t, out.String(), tempDir)
 }
