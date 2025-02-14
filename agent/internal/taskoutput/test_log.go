@@ -22,12 +22,13 @@ import (
 	"github.com/mongodb/grip/recovery"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/trace"
 	"gopkg.in/yaml.v2"
 )
 
 // AppendTestLog appends log lines to the specified test log for the given task
 // run.
-func AppendTestLog(ctx context.Context, tsk *task.Task, redactionOptions redactor.RedactionOptions, testLog *testlog.TestLog) error {
+func AppendTestLog(ctx context.Context, tsk *task.Task, redactionOpts redactor.RedactionOptions, testLog *testlog.TestLog) error {
 	taskOpts := taskoutput.TaskOptions{
 		ProjectID: tsk.Project,
 		TaskID:    tsk.Id,
@@ -37,7 +38,7 @@ func AppendTestLog(ctx context.Context, tsk *task.Task, redactionOptions redacto
 	if err != nil {
 		return errors.Wrapf(err, "creating Evergreen logger for test log '%s'", testLog.Name)
 	}
-	sender = redactor.NewRedactingSender(sender, redactionOptions)
+	sender = redactor.NewRedactingSender(sender, redactionOpts)
 	sender.Send(message.ConvertToComposer(level.Info, strings.Join(testLog.Lines, "\n")))
 
 	return errors.Wrapf(sender.Close(), "closing Evergreen logger for test result '%s'", testLog.Name)
@@ -48,6 +49,7 @@ func AppendTestLog(ctx context.Context, tsk *task.Task, redactionOptions redacto
 type testLogDirectoryHandler struct {
 	dir          string
 	logger       client.LoggerProducer
+	tracer       trace.Tracer
 	spec         testLogSpec
 	createSender func(context.Context, string) (send.Sender, error)
 	logFileCount int
@@ -55,10 +57,11 @@ type testLogDirectoryHandler struct {
 
 // newTestLogDirectoryHandler returns a new test log directory handler for the
 // specified task.
-func newTestLogDirectoryHandler(dir string, output *taskoutput.TaskOutput, taskOpts taskoutput.TaskOptions, redactionOptions redactor.RedactionOptions, logger client.LoggerProducer) directoryHandler {
+func newTestLogDirectoryHandler(dir string, output *taskoutput.TaskOutput, taskOpts taskoutput.TaskOptions, redactionOpts redactor.RedactionOptions, logger client.LoggerProducer, tracer trace.Tracer) directoryHandler {
 	h := &testLogDirectoryHandler{
 		dir:    dir,
 		logger: logger,
+		tracer: tracer,
 	}
 	h.createSender = func(ctx context.Context, logPath string) (send.Sender, error) {
 		evgSender, err := output.TestLogs.NewSender(ctx, taskOpts, taskoutput.EvergreenSenderOptions{
@@ -68,13 +71,16 @@ func newTestLogDirectoryHandler(dir string, output *taskoutput.TaskOutput, taskO
 		if err != nil {
 			return nil, errors.Wrap(err, "making test log sender")
 		}
-		return redactor.NewRedactingSender(evgSender, redactionOptions), nil
+		return redactor.NewRedactingSender(evgSender, redactionOpts), nil
 	}
 
 	return h
 }
 
 func (h *testLogDirectoryHandler) run(ctx context.Context) error {
+	ctx, span := h.tracer.Start(ctx, "test-log-ingestion")
+	defer span.End()
+
 	h.getSpecFile()
 
 	var wg sync.WaitGroup
