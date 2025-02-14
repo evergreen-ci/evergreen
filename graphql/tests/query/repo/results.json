@@ -1,0 +1,61 @@
+{
+  "tests": [
+    {
+      "query_file": "repo.graphql",
+      "result": {
+        "data": {
+          "repo": {
+            "id": "sandbox_repo_id",
+            "commitQueue": {
+              "enabled": true,
+              "mergeMethod": "squash"
+            },
+            "periodicBuilds": null,
+            "githubChecksEnabled": false,
+            "patchingDisabled": false,
+            "prTestingEnabled": true,
+            "stepbackDisabled": false,
+            "batchTime": 2,
+            "gitTagAuthorizedUsers": [
+              "ablack12"
+            ],
+            "gitTagAuthorizedTeams": null,
+            "triggers": [],
+            "patchTriggerAliases": null,
+            "perfEnabled": true,
+            "buildBaronSettings": {
+              "ticketCreateProject": "EVG",
+              "ticketSearchProjects": [
+                "EVG"
+              ],
+              "bfSuggestionFeaturesURL": "",
+              "bfSuggestionPassword": "",
+              "bfSuggestionServer": "",
+              "bfSuggestionTimeoutSecs": 0,
+              "bfSuggestionUsername": "",
+              "ticketCreateIssueType": ""
+            },
+            "taskAnnotationSettings": {
+              "fileTicketWebhook": {
+                "endpoint": "endpoint",
+                "secret": "shh"
+              }
+            },
+            "containerSizeDefinitions": [
+              {
+                "name": "size1",
+                "cpu": 1,
+                "memoryMb": 1024
+              },
+              {
+                "name": "size2",
+                "cpu": 2,
+                "memoryMb": 2048
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

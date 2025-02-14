@@ -56,6 +56,7 @@ type Query {
     before: Time
   ): ProjectEvents!
   projectSettings(projectIdentifier: String! @requireProjectAccess(permission: SETTINGS, access:VIEW)): ProjectSettings!
+  repo(repoId: String! @requireProjectAccess(permission: TASKS, access: VIEW)): RepoRef!
   repoEvents(repoId: String! @requireProjectAccess(permission: SETTINGS, access: VIEW), limit: Int = 0, before: Time): ProjectEvents!
   repoSettings(repoId: String! @requireProjectAccess(permission: SETTINGS, access: VIEW)): RepoSettings!
   viewableProjectRefs: [GroupedProjects!]!
