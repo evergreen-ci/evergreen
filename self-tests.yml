@@ -186,6 +186,7 @@ variables:
 functions:
   get-project-and-modules:
     - command: github.generate_token
+      type: setup
       params:
         expansion_name: github_token
     - command: git.get_project
@@ -198,14 +199,17 @@ functions:
       type: setup
       params:
         working_dir: evergreen
-        include_expansions_in_env: ["GOROOT"]
+        include_expansions_in_env: ["GOROOT", "github_token"]
         shell: bash
         script: |
+          # Set GitHub app dynamic token to ensure it can clone non-public repos for Go modules.
+          git config --global url."https://x-access-token:${github_token}@github.com/evergreen-ci/".insteadOf https://github.com/evergreen-ci/
+
           # Downloading modules is flaky in the ubuntu1604-arm64 distros, because the TCP connection is sometimes reset
           # by the peer for unknown reasons (this does not happen in other distros). Retry the module download multiple
           # times to reduce the flakiness.
           for i in {1..5}; do
-            make mod-tidy;
+            make mod-tidy
             [[ $? -eq 0 ]] && break;
           done
 
@@ -681,11 +685,17 @@ tasks:
         params:
           directory: evergreen
           token: ${github_token}
+      - command: shell.exec
+        params:
+          script: |
+            # Set GitHub app dynamic token to ensure it can clone non-public repos for Go modules.
+            git config --global url."https://x-access-token:${github_token}@github.com/evergreen-ci/".insteadOf https://github.com/evergreen-ci/
       - command: subprocess.exec
         params:
           working_dir: evergreen
           binary: make
           args: ["verify-mod-tidy"]
+          include_expansions_in_env: ["github_token"]
           env:
             GOROOT: /opt/golang/go1.23 # We use a newer version of Go to catch toolchain updates. This should be reverted in DEVPROD-3611.
   - name: verify-merge-function-update

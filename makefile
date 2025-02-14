@@ -59,6 +59,13 @@ ifneq ($(lintCache),$(GOLANGCI_LINT_CACHE))
 export GOLANGCI_LINT_CACHE := $(lintCache)
 endif
 
+ifneq (,$(GOPRIVATE))
+# Necessary because some evergreen-ci repos (e.g.
+# evergreen-ci/test-selection-client) are internal/private repos. Setting this
+# ensures go modules can be download from those repos.
+export GOPRIVATE := github.com/evergreen-ci/*
+endif
+
 ifneq (,$(RACE_DETECTOR))
 # cgo is required for using the race detector.
 export CGO_ENABLED := 1
