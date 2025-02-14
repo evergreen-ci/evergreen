@@ -518,7 +518,7 @@ type artifactDownload struct {
 
 func getArtifactFolderName(task *service.RestTask) string {
 	if evergreen.IsPatchRequester(task.Requester) {
-		return fmt.Sprintf("artifacts-patch-%v_%v_%v", task.PatchNumber, task.BuildVariant, task.DisplayName)
+		return fmt.Sprintf("artifacts-patch-%v_%v_%v", task.PatchNumber, task.BuildVariant[:100], task.DisplayName)
 	}
 
 	if len(task.Revision) >= 5 {
