@@ -214,8 +214,7 @@ func (opts cloneOpts) buildHTTPCloneCommand(logger client.LoggerProducer, forApp
 		scalarAvailable, err := agentutil.IsGitVersionMinimumForScalar(thirdparty.RequiredScalarGitVersion)
 		if err != nil {
 			logger.Task().Errorf("checking git version failed, falling back to git clone instead of scalar clone: %s.", err)
-		}
-		if err != nil && scalarAvailable {
+		} else if scalarAvailable {
 			// use --no-src so that it doesn't put the repository into a src directory because
 			// this can break user expectations and cause scripts to fail
 			gitCommand = "scalar clone --no-src"

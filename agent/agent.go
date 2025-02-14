@@ -1241,7 +1241,7 @@ func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupC
 	}
 }
 
-// clearGitConfig removes up git files that were created in the home directory including
+// clearGitConfig cleans up git files that were created in the home directory including
 // the global git config file and credentials file. It also unregisters any repositories
 // that were cloned with scalar to stop the background maintenance of the repositories.
 func (a *Agent) clearGitConfig(tc *taskContext) {
