@@ -32,8 +32,8 @@ type RedactionOptions struct {
 	Redacted []string
 	// InternalRedactions specifies an additional set of strings that are not
 	// expansions that should be redacted from the logs (e.g. agent-internal
-	// secrets). All key-values in InternalRedactions are assumed to be
-	// sensitive.
+	// secrets). All values in InternalRedactions are assumed to be
+	// sensitive and are replaced by their key.
 	InternalRedactions *util.DynamicExpansions
 }
 

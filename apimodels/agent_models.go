@@ -407,7 +407,7 @@ type ExpansionsAndVars struct {
 	// RedactKeys contain patterns to match against expansion keys for redaction
 	// in logs.
 	RedactKeys []string `json:"redact_keys"`
-	// InternalRedactions contain Evergreen-internal strings should not be
+	// InternalRedactions contain Evergreen-internal values that should not be
 	// usable by the task but should still be redacted from logs.
 	InternalRedactions map[string]string `json:"internal_redactions"`
 }

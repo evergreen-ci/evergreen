@@ -369,12 +369,6 @@ const (
 	// indicating that there are still running tasks.
 	PRTasksRunningDescription = "tasks are running"
 
-	// HostServicePasswordInternalRedaction is the service user's password on a
-	// host. This is for Evergreen internal use only, and while it should not
-	// typically be accessible, it should be redacted in any logs from the task
-	// if it does happen to appear.
-	HostServicePasswordInternalRedaction = "host_service_password"
-
 	// RedactedValue is the value that is shown in the REST API and UI for redacted values.
 	RedactedValue       = "{REDACTED}"
 	RedactedAfterValue  = "{REDACTED_AFTER}"
