@@ -91,6 +91,8 @@ func hostMonitoringJobs(ctx context.Context, env evergreen.Environment, ts time.
 
 	jobs := []amboy.Job{NewStrandedTaskCleanupJob(ts.Format(TSFormat))}
 	for _, host := range hosts {
+		// kim: NOTE: this is affected by loopvar but in practice, it doesn't
+		// matter because the remote job interchange only preserves the host ID.
 		jobs = append(jobs, NewHostMonitoringCheckJob(env, &host, ts.Format(TSFormat)))
 	}
 	return jobs, nil

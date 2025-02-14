@@ -192,6 +192,8 @@ func APITaskAnnotationToService(m APITaskAnnotation) *annotations.TaskAnnotation
 	out.CreatedIssues = BuildIssueLinks(m.CreatedIssues)
 	apiMetadataLinks := []*APIMetadataLink{}
 	for _, link := range m.MetadataLinks {
+		// kim: NOTE: this is a lurking loopvar bug that's fixed by upgrading
+		// go.
 		apiMetadataLinks = append(apiMetadataLinks, &link)
 	}
 	out.MetadataLinks = APIMetadataLinksToService(apiMetadataLinks)

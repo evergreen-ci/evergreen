@@ -466,6 +466,10 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		catcher.Add(err)
 	}
 	for _, buildDef := range h.newProjectRef.PeriodicBuilds {
+		// kim: NOTE: the buildDef's ID is set here if empty, but that doesn't
+		// actually fix the underlying project ref's periodic build ID because
+		// it modifies the copied buildDef rather than
+		// h.newProjectRef.PeriodicBuilds[i].
 		catcher.Wrapf(buildDef.Validate(), "invalid periodic build definition")
 	}
 	if catcher.HasErrors() {
