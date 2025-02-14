@@ -20,11 +20,9 @@ const (
 	Collection = "notifications"
 )
 
-//nolint:megacheck,unused
 var (
 	idKey         = bsonutil.MustHaveTag(Notification{}, "ID")
 	subscriberKey = bsonutil.MustHaveTag(Notification{}, "Subscriber")
-	payloadKey    = bsonutil.MustHaveTag(Notification{}, "Payload")
 	sentAtKey     = bsonutil.MustHaveTag(Notification{}, "SentAt")
 	errorKey      = bsonutil.MustHaveTag(Notification{}, "Error")
 )

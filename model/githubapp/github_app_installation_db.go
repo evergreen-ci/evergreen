@@ -15,7 +15,6 @@ import (
 // app credentials.
 const GitHubAppCollection = "github_hooks"
 
-//nolint:megacheck,unused
 var (
 	ownerKey = bsonutil.MustHaveTag(GitHubAppInstallation{}, "Owner")
 	repoKey  = bsonutil.MustHaveTag(GitHubAppInstallation{}, "Repo")

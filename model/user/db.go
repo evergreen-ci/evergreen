@@ -51,7 +51,6 @@ var (
 	BetaFeaturesKey           = bsonutil.MustHaveTag(DBUser{}, "BetaFeatures")
 )
 
-//nolint:megacheck,unused
 var (
 	GithubUserUIDKey         = bsonutil.MustHaveTag(GithubUser{}, "UID")
 	githubUserLastKnownAsKey = bsonutil.MustHaveTag(GithubUser{}, "LastKnownAs")

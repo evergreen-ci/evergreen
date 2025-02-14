@@ -59,13 +59,11 @@ func (ar *AlertRecord) Insert() error {
 	return db.Insert(Collection, ar)
 }
 
-//nolint:megacheck,unused
 var (
 	IdKey                  = bsonutil.MustHaveTag(AlertRecord{}, "Id")
 	subscriptionIDKey      = bsonutil.MustHaveTag(AlertRecord{}, "SubscriptionID")
 	TypeKey                = bsonutil.MustHaveTag(AlertRecord{}, "Type")
 	TaskIdKey              = bsonutil.MustHaveTag(AlertRecord{}, "TaskId")
-	taskStatusKey          = bsonutil.MustHaveTag(AlertRecord{}, "TaskStatus")
 	HostIdKey              = bsonutil.MustHaveTag(AlertRecord{}, "HostId")
 	VolumeIdKey            = bsonutil.MustHaveTag(AlertRecord{}, "VolumeId")
 	TaskNameKey            = bsonutil.MustHaveTag(AlertRecord{}, "TaskName")
