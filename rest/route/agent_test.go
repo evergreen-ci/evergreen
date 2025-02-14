@@ -86,7 +86,7 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 			require.True(t, ok)
 			assert.Equal(t, rh.taskID, data.Expansions.Get("task_id"))
 			assert.Equal(t, "distro_expansion_value", data.Expansions.Get("distro_expansion_key"))
-			assert.Equal(t, "password", data.Expansions.Get(evergreen.HostServicePasswordExpansion))
+			assert.Equal(t, "password", data.InternalRedactions[hostServicePasswordPlaceholder])
 			assert.Equal(t, map[string]string{"a": "1", "b": "3"}, data.Vars)
 			assert.Equal(t, map[string]string{"a": "4"}, data.Parameters)
 			assert.Equal(t, map[string]bool{"b": true}, data.PrivateVars)

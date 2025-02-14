@@ -196,6 +196,11 @@ func NewTaskConfig(workDir string, d *apimodels.DistroView, p *model.Project, t 
 		redacted = append(redacted, key)
 	}
 
+	internalRedactions := e.InternalRedactions
+	if internalRedactions == nil {
+		internalRedactions = map[string]string{}
+	}
+
 	taskConfig := &TaskConfig{
 		Distro:             d,
 		ProjectRef:         *r,
@@ -205,7 +210,7 @@ func NewTaskConfig(workDir string, d *apimodels.DistroView, p *model.Project, t 
 		Expansions:         e.Expansions,
 		NewExpansions:      agentutil.NewDynamicExpansions(e.Expansions),
 		DynamicExpansions:  util.Expansions{},
-		InternalRedactions: agentutil.NewDynamicExpansions(map[string]string{}),
+		InternalRedactions: agentutil.NewDynamicExpansions(internalRedactions),
 		ProjectVars:        e.Vars,
 		Redacted:           redacted,
 		WorkDir:            workDir,

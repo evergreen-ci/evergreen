@@ -2,6 +2,7 @@ package repotracker
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -1300,10 +1301,17 @@ tasks:
 }
 
 func (s *CreateVersionFromConfigSuite) TestCreateVersionItemsBatchtime() {
-	// Test that we correctly use the version create time to determine task
-	// batchtimes if the version create time is in the recent past, rather than
-	// the task create time.
-	configYml := `
+
+	for testName, requester := range map[string]string{
+		"RepotrackerVersion": evergreen.RepotrackerVersionRequester,
+		"TriggerVersion":     evergreen.TriggerRequester,
+		"PatchVersion":       evergreen.PatchVersionRequester,
+	} {
+		s.T().Run(testName, func(t *testing.T) {
+			// Test that we correctly use the version create time to determine task
+			// batchtimes if the version create time is in the recent past, rather than
+			// the task create time.
+			configYml := `
 buildvariants:
 - name: bv
   display_name: "bv_display"
@@ -1325,57 +1333,65 @@ tasks:
 - name: task2
 - name: task3
 `
-	p := &model.Project{}
-	pp, err := model.LoadProjectInto(s.ctx, []byte(configYml), nil, s.ref.Id, p)
-	s.NoError(err)
-	projectInfo := &model.ProjectInfo{
-		Ref:                 s.ref,
-		IntermediateProject: pp,
-		Project:             p,
-	}
-	metadata := model.VersionMetadata{Revision: *s.rev}
-	versionCreateTime := time.Now().Add(-10 * time.Minute)
+			p := &model.Project{}
+			pp, err := model.LoadProjectInto(s.ctx, []byte(configYml), nil, s.ref.Id, p)
+			s.NoError(err)
+			projectInfo := &model.ProjectInfo{
+				Ref:                 s.ref,
+				IntermediateProject: pp,
+				Project:             p,
+			}
+			metadata := model.VersionMetadata{Revision: *s.rev}
+			versionCreateTime := time.Now().Add(-10 * time.Minute)
 
-	v := &model.Version{
-		Id:                  "_abc",
-		CreateTime:          versionCreateTime,
-		Revision:            "abc",
-		Author:              "me",
-		RevisionOrderNumber: 12,
-		Owner:               "evergreen-ci",
-		Repo:                "evergreen",
-		Branch:              "main",
-		Requester:           evergreen.RepotrackerVersionRequester,
-	}
+			v := &model.Version{
+				Id:                  fmt.Sprintf("%s_version", requester),
+				CreateTime:          versionCreateTime,
+				Revision:            "abc",
+				Author:              "me",
+				RevisionOrderNumber: 12,
+				Owner:               "evergreen-ci",
+				Repo:                "evergreen",
+				Branch:              "main",
+				Requester:           requester,
+			}
+			s.NoError(createVersionItems(s.ctx, v, metadata, projectInfo, nil))
+			tasks, err := task.FindAllTaskIDsFromVersion(s.ctx, v.Id)
+			s.NoError(err)
+			s.Len(tasks, 4)
+			tomorrow := versionCreateTime.Add(time.Hour * 24) // next day
+			y, m, d := tomorrow.Date()
 
-	s.NoError(createVersionItems(s.ctx, v, metadata, projectInfo, nil))
-	tasks, err := task.FindAllTaskIDsFromVersion(s.ctx, v.Id)
-	s.NoError(err)
-	s.Len(tasks, 4)
-	tomorrow := versionCreateTime.Add(time.Hour * 24) // next day
-	y, m, d := tomorrow.Date()
-
-	s.Len(v.BuildVariants, 2)
-	for _, bv := range v.BuildVariants {
-		if bv.BuildVariant == "bv" {
-			s.Equal(versionCreateTime, bv.ActivateAt, "build variant activation should be based on version create time")
-			s.Require().Len(bv.BatchTimeTasks, 2)
-			for _, t := range bv.BatchTimeTasks {
-				if t.TaskName == "task1" {
-					s.Equal(versionCreateTime, t.ActivateAt, "task cron activation should be based on version create time because there is no previous task that ran the cron")
-				} else {
-					// ensure that "daily" cron is set for the next day
-					ty, tm, td := t.ActivateAt.Date()
-					s.Equal(y, ty)
-					s.Equal(m, tm)
-					s.Equal(d, td)
+			if requester == evergreen.PatchVersionRequester {
+				s.Len(v.BuildVariants, 2)
+				for _, bv := range v.BuildVariants {
+					s.NotEqual(versionCreateTime, bv.ActivateAt, "build variant activation should be based on version create time because patch")
+					s.Require().Len(bv.BatchTimeTasks, 0, "task cron activation should be empty because patch")
+				}
+			} else {
+				for _, bv := range v.BuildVariants {
+					if bv.BuildVariant == "bv" {
+						s.Equal(versionCreateTime, bv.ActivateAt, "build variant activation should be based on version create time")
+						s.Require().Len(bv.BatchTimeTasks, 2)
+						for _, t := range bv.BatchTimeTasks {
+							if t.TaskName == "task1" {
+								s.Equal(versionCreateTime, t.ActivateAt, "task cron activation should be based on version create time because there is no previous task that ran the cron")
+							} else {
+								// ensure that "daily" cron is set for the next day
+								ty, tm, td := t.ActivateAt.Date()
+								s.Equal(y, ty)
+								s.Equal(m, tm)
+								s.Equal(d, td)
+							}
+						}
+					}
+					if bv.BuildVariant == "bv2" {
+						s.False(bv.Activated)
+						s.Empty(bv.BatchTimeTasks)
+					}
 				}
 			}
-		}
-		if bv.BuildVariant == "bv2" {
-			s.False(bv.Activated)
-			s.Empty(bv.BatchTimeTasks)
-		}
+		})
 	}
 }
 
