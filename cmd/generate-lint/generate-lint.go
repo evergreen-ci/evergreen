@@ -148,7 +148,13 @@ func generateTasks() (*shrub.Configuration, error) {
 	}
 
 	group := conf.TaskGroup(lintGroup).SetMaxHosts(len(lintTargets))
-	group.SetupGroup.Command().Function("get-project-and-modules")
+	group.SetupGroup.Command().Type("setup").Command("git.get_project").Param("directory", "evergreen")
+	group.SetupGroup.Command().Type("setup").Command("subprocess.exec").ExtendParams(map[string]interface{}{
+		"working_dir":               "evergreen",
+		"binary":                    "make",
+		"args":                      []string{"mod-tidy"},
+		"include_expansions_in_env": []string{"GOROOT"},
+	})
 	group.SetupGroup.Command().Function("setup-credentials")
 	group.TeardownTask.Command().Function("attach-test-results")
 	group.TeardownTask.Command().Function("remove-test-results")

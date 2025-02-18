@@ -6,17 +6,15 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/gimlet"
-	testselection "github.com/evergreen-ci/test-selection-client"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
 type selectTestsHandler struct {
 	selectTests SelectTestsRequest
-	env         evergreen.Environment
 }
 
 // SelectTestsRequest represents a request to return a filtered set of tests to
@@ -25,21 +23,21 @@ type selectTestsHandler struct {
 // this information directly to the test selector.
 type SelectTestsRequest struct {
 	// Project is the project identifier.
-	Project string `json:"project"`
+	Project string `json:"project" bson:"project"`
 	// Requester is the Evergreen requester type.
-	Requester string `json:"requester"`
+	Requester string `json:"requester" bson:"requester"`
 	// BuildVariant is the Evergreen build variant.
-	BuildVariant string `json:"build_variant"`
+	BuildVariant string `json:"build_variant" bson:"build_variant"`
 	// TaskID is the Evergreen task ID.
-	TaskID string `json:"task_id"`
+	TaskID string `json:"task_id" bson:"task_id"`
 	// TaskName is the Evergreen task name.
-	TaskName string `json:"task_name"`
+	TaskName string `json:"task_name" bson:"task_name"`
 	// Tests is a list of test names.
-	Tests []string `json:"tests"`
+	Tests []string `json:"tests" bson:"tests"`
 }
 
-func makeSelectTestsHandler(env evergreen.Environment) gimlet.RouteHandler {
-	return &selectTestsHandler{env: env}
+func makeSelectTestsHandler() gimlet.RouteHandler {
+	return &selectTestsHandler{}
 }
 
 // Factory creates an instance of the handler.
@@ -52,7 +50,7 @@ func makeSelectTestsHandler(env evergreen.Environment) gimlet.RouteHandler {
 //	@Security		Api-User || Api-Key
 //	@Success		200	{object}	SelectTestsRequest
 func (t *selectTestsHandler) Factory() gimlet.RouteHandler {
-	return &selectTestsHandler{env: t.env}
+	return &selectTestsHandler{}
 }
 
 func (t *selectTestsHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -76,36 +74,13 @@ func (t *selectTestsHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (t *selectTestsHandler) Run(ctx context.Context) gimlet.Responder {
-	tssBaseURL := t.env.Settings().TestSelection.URL
-	if tssBaseURL == "" {
-		return gimlet.NewJSONResponse(t.selectTests)
-	}
-
-	httpClient := utility.GetHTTPClient()
-	defer utility.PutHTTPClient(httpClient)
-	conf := testselection.NewConfiguration()
-	conf.HTTPClient = httpClient
-	conf.Servers = testselection.ServerConfigurations{
-		testselection.ServerConfiguration{
-			URL:         tssBaseURL,
-			Description: "Test selection service",
-		},
-	}
-	c := testselection.NewAPIClient(conf)
-	reqBody := testselection.BodySelectTestsApiTestSelectionSelectTestsProjectIdRequesterBuildVariantNameTaskIdTaskNamePost{
-		TestNames: t.selectTests.Tests,
-	}
-	selectedTests, resp, err := c.TestSelectionAPI.SelectTestsApiTestSelectionSelectTestsProjectIdRequesterBuildVariantNameTaskIdTaskNamePost(ctx, t.selectTests.Project, t.selectTests.Requester, t.selectTests.BuildVariant, t.selectTests.TaskID, t.selectTests.TaskName).
-		BodySelectTestsApiTestSelectionSelectTestsProjectIdRequesterBuildVariantNameTaskIdTaskNamePost(reqBody).
-		Execute()
-	if resp != nil {
-		defer resp.Body.Close()
-	}
-	if err != nil {
-		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "forwarding request to test selection service"))
-	}
-
-	rhResp := t.selectTests
-	rhResp.Tests = selectedTests
-	return gimlet.NewJSONResponse(rhResp)
+	// TODO (DEVPROD-11879): remove this log once test ROI MVP no longer needs
+	// this to debug inputs.
+	grip.Debug(message.Fields{
+		"message": "received test selection request",
+		"route":   "/rest/v2/select/tests",
+		"request": t.selectTests,
+		"ticket":  "DEVPROD-11629",
+	})
+	return gimlet.NewJSONResponse(t.selectTests)
 }
