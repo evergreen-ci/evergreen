@@ -21,7 +21,6 @@ import (
 	"github.com/mongodb/grip/level"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.opentelemetry.io/otel"
 	"gopkg.in/yaml.v2"
 )
 
@@ -417,7 +416,7 @@ func setupTestTestLogDirectoryHandler(t *testing.T, comm *client.Mock, redactOpt
 		ProjectID: tsk.Project,
 		TaskID:    tsk.Id,
 		Execution: tsk.Execution,
-	}, redactOpts, logger, otel.GetTracerProvider().Tracer("noop-tracer"))
+	}, redactOpts, logger)
 
 	return tsk, h.(*testLogDirectoryHandler)
 }

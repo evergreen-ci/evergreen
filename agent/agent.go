@@ -504,7 +504,7 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 		Redacted:           tc.taskConfig.Redacted,
 		InternalRedactions: tc.taskConfig.InternalRedactions,
 	}
-	tc.taskConfig.TaskOutputDir = taskoutput.NewDirectory(tc.taskConfig.WorkDir, &tc.taskConfig.Task, redactorOpts, tc.logger, a.tracer)
+	tc.taskConfig.TaskOutputDir = taskoutput.NewDirectory(tc.taskConfig.WorkDir, &tc.taskConfig.Task, redactorOpts, tc.logger)
 	if err := tc.taskConfig.TaskOutputDir.Setup(); err != nil {
 		return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "creating task output directory"))
 	}

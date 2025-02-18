@@ -22,7 +22,6 @@ import (
 	"github.com/mongodb/grip/recovery"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
-	"go.opentelemetry.io/otel/trace"
 	"gopkg.in/yaml.v2"
 )
 
@@ -49,7 +48,6 @@ func AppendTestLog(ctx context.Context, tsk *task.Task, redactionOpts redactor.R
 type testLogDirectoryHandler struct {
 	dir          string
 	logger       client.LoggerProducer
-	tracer       trace.Tracer
 	spec         testLogSpec
 	createSender func(context.Context, string) (send.Sender, error)
 	logFileCount int
@@ -57,11 +55,10 @@ type testLogDirectoryHandler struct {
 
 // newTestLogDirectoryHandler returns a new test log directory handler for the
 // specified task.
-func newTestLogDirectoryHandler(dir string, output *taskoutput.TaskOutput, taskOpts taskoutput.TaskOptions, redactionOpts redactor.RedactionOptions, logger client.LoggerProducer, tracer trace.Tracer) directoryHandler {
+func newTestLogDirectoryHandler(dir string, output *taskoutput.TaskOutput, taskOpts taskoutput.TaskOptions, redactionOpts redactor.RedactionOptions, logger client.LoggerProducer) directoryHandler {
 	h := &testLogDirectoryHandler{
 		dir:    dir,
 		logger: logger,
-		tracer: tracer,
 	}
 	h.createSender = func(ctx context.Context, logPath string) (send.Sender, error) {
 		evgSender, err := output.TestLogs.NewSender(ctx, taskOpts, taskoutput.EvergreenSenderOptions{
@@ -78,7 +75,7 @@ func newTestLogDirectoryHandler(dir string, output *taskoutput.TaskOutput, taskO
 }
 
 func (h *testLogDirectoryHandler) run(ctx context.Context) error {
-	ctx, span := h.tracer.Start(ctx, "test-log-ingestion")
+	ctx, span := tracer.Start(ctx, "test-log-ingestion")
 	defer span.End()
 
 	h.getSpecFile()
