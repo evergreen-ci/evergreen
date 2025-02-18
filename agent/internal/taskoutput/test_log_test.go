@@ -64,11 +64,12 @@ func TestAppendTestLog(t *testing.T) {
 		},
 		{
 			name:           "Redacted",
-			input:          []string{"the secret is: DEADBEEF"},
-			expectedOutput: []string{"the secret is: <REDACTED:secret_name>"},
+			input:          []string{"the secret is: DEADBEEF, and the second secret is: DEADC0DE"},
+			expectedOutput: []string{"the secret is: <REDACTED:secret_name>, and the second secret is: <REDACTED:another_secret>"},
 			redactOpts: redactor.RedactionOptions{
-				Expansions: &util.DynamicExpansions{Expansions: map[string]string{"secret_name": "DEADBEEF"}},
-				Redacted:   []string{"secret_name"},
+				Expansions:         util.NewDynamicExpansions(map[string]string{"secret_name": "DEADBEEF"}),
+				Redacted:           []string{"secret_name"},
+				InternalRedactions: util.NewDynamicExpansions(map[string]string{"another_secret": "DEADC0DE"}),
 			},
 		},
 	} {
@@ -160,16 +161,17 @@ func TestTestLogDirectoryHandlerRun(t *testing.T) {
 				{
 					logPath: "secret.log",
 					inputLines: []string{
-						"This log contains a big secret: DEADBEEF",
+						"This log contains a big secret: DEADBEEF, and another bigger secret: DEADC0DE",
 					},
 					expectedLines: []string{
-						"This log contains a big secret: <REDACTED:secret_name>",
+						"This log contains a big secret: <REDACTED:secret_name>, and another bigger secret: <REDACTED:another_secret>",
 					},
 				},
 			},
 			redactOpts: redactor.RedactionOptions{
-				Expansions: &util.DynamicExpansions{Expansions: map[string]string{"secret_name": "DEADBEEF"}},
-				Redacted:   []string{"secret_name"},
+				Expansions:         util.NewDynamicExpansions(map[string]string{"secret_name": "DEADBEEF"}),
+				Redacted:           []string{"secret_name"},
+				InternalRedactions: util.NewDynamicExpansions(map[string]string{"another_secret": "DEADC0DE"}),
 			},
 		},
 	} {

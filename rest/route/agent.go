@@ -334,6 +334,11 @@ func (h *getExpansionsAndVarsHandler) Parse(ctx context.Context, r *http.Request
 	return nil
 }
 
+// hostServicePasswordPlaceholder is the placeholder name for a service user's
+// password on a host. If the service user's password is present in any task
+// logs, it will be replaced with this placeholder string.
+const hostServicePasswordPlaceholder = "host_service_password"
+
 func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder {
 	t, err := task.FindOneId(ctx, h.taskID)
 	if err != nil {
@@ -383,11 +388,16 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 	}
 
 	res := apimodels.ExpansionsAndVars{
-		Expansions:  e,
-		Parameters:  map[string]string{},
-		Vars:        map[string]string{},
-		PrivateVars: map[string]bool{},
-		RedactKeys:  h.settings.LoggerConfig.RedactKeys,
+		Expansions:         e,
+		Parameters:         map[string]string{},
+		Vars:               map[string]string{},
+		PrivateVars:        map[string]bool{},
+		RedactKeys:         h.settings.LoggerConfig.RedactKeys,
+		InternalRedactions: map[string]string{},
+	}
+
+	if foundHost != nil && foundHost.ServicePassword != "" {
+		res.InternalRedactions[hostServicePasswordPlaceholder] = foundHost.ServicePassword
 	}
 
 	projectVars, err := model.FindMergedProjectVars(t.Project)

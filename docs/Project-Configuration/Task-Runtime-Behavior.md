@@ -149,7 +149,11 @@ a task group, it will keep the task directory as long as it is running tasks
 in the same task group. Once all the task group tasks have finished, it will
 clean up the task directory.
 
-### Global Git Config and Git Credentials Cleanup
+
+### Global File Cleanup
+
+**Evergreen will only accept requests to clean up global files with clear security implications.**
+
 For tasks not in a task group, the global git config and git credentials will be reset 
 at the end of the task after all commands have finished running. This will be done by 
 deleting the .git-credentials and .gitconfig files from the home directory. 

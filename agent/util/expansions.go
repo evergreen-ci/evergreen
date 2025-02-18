@@ -9,9 +9,6 @@ import (
 // DynamicExpansions wraps expansions for safe concurrent access as they are
 // dynamically updated.
 // It also contains logic to redact values that should not be exposed.
-//
-// This should be expanded to support better expansion handling during a task
-// run.
 type DynamicExpansions struct {
 	util.Expansions
 	mu sync.RWMutex
@@ -129,4 +126,19 @@ func (e *DynamicExpansions) Remove(expansion string) {
 	defer e.mu.Unlock()
 
 	e.Expansions.Remove(expansion)
+}
+
+// Range iterates over all the expansions and calls the given function op for
+// each expansion key and value. op returns a boolean indicating whether to
+// continue iteration or not for each key-value pair. This is safe for
+// concurrent access and has no guaranteed iteration order.
+func (e *DynamicExpansions) Range(op func(key, value string) bool) {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	for k, v := range e.Expansions {
+		if !op(k, v) {
+			return
+		}
+	}
 }

@@ -39,9 +39,15 @@ type TaskConfig struct {
 	// and should persist throughout the task's execution.
 	DynamicExpansions util.Expansions
 
-	ProjectVars        map[string]string
-	Redacted           []string
-	RedactKeys         []string
+	ProjectVars map[string]string
+	Redacted    []string
+	RedactKeys  []string
+	// InternalRedactions contain string values that should be redacted because
+	// they are sensitive and for Evergreen-internal use only, but are not
+	// expansions available to tasks. Having this allows redaction of strings
+	// that cannot be exposed to tasks as expansions.
+	// This only reuses agentutil.DynamicExpansions for thread safety.
+	InternalRedactions *agentutil.DynamicExpansions
 	WorkDir            string
 	TaskOutputDir      *taskoutput.Directory
 	GithubPatchData    thirdparty.GithubPatch
@@ -190,19 +196,25 @@ func NewTaskConfig(workDir string, d *apimodels.DistroView, p *model.Project, t 
 		redacted = append(redacted, key)
 	}
 
+	internalRedactions := e.InternalRedactions
+	if internalRedactions == nil {
+		internalRedactions = map[string]string{}
+	}
+
 	taskConfig := &TaskConfig{
-		Distro:            d,
-		ProjectRef:        *r,
-		Project:           *p,
-		Task:              *t,
-		BuildVariant:      *bv,
-		Expansions:        e.Expansions,
-		NewExpansions:     agentutil.NewDynamicExpansions(e.Expansions),
-		DynamicExpansions: util.Expansions{},
-		ProjectVars:       e.Vars,
-		Redacted:          redacted,
-		WorkDir:           workDir,
-		TaskGroup:         taskGroup,
+		Distro:             d,
+		ProjectRef:         *r,
+		Project:            *p,
+		Task:               *t,
+		BuildVariant:       *bv,
+		Expansions:         e.Expansions,
+		NewExpansions:      agentutil.NewDynamicExpansions(e.Expansions),
+		DynamicExpansions:  util.Expansions{},
+		InternalRedactions: agentutil.NewDynamicExpansions(internalRedactions),
+		ProjectVars:        e.Vars,
+		Redacted:           redacted,
+		WorkDir:            workDir,
+		TaskGroup:          taskGroup,
 	}
 	if patchDoc != nil {
 		taskConfig.GithubPatchData = patchDoc.GithubPatchData
