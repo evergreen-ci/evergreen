@@ -1,9 +1,11 @@
 package agent
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -20,6 +22,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/thirdparty/docker"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
@@ -1243,6 +1246,9 @@ func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupC
 	}
 }
 
+// clearGitConfig cleans up git files that were created in the home directory including
+// the global git config file and credentials file. It also unregisters any repositories
+// that were cloned with scalar to stop the background maintenance of the repositories.
 func (a *Agent) clearGitConfig(tc *taskContext) {
 	logger := grip.GetDefaultJournaler()
 	if tc.logger != nil && !tc.logger.Closed() {
@@ -1254,26 +1260,61 @@ func (a *Agent) clearGitConfig(tc *taskContext) {
 	globalGitConfigPath := filepath.Join(a.opts.HomeDirectory, ".gitconfig")
 	if _, err := os.Stat(globalGitConfigPath); os.IsNotExist(err) {
 		logger.Info("Global git config file does not exist.")
-		return
-	}
-	if err := os.Remove(globalGitConfigPath); err != nil {
+	} else if err := os.Remove(globalGitConfigPath); err != nil {
 		logger.Error(errors.Wrap(err, "removing global git config file"))
-		return
+	} else {
+		logger.Info("Cleared git config.")
 	}
-
-	logger.Info("Cleared git config.")
 
 	logger.Infof("Clearing git credentials.")
 	globalGitCredentialsPath := filepath.Join(a.opts.HomeDirectory, ".git-credentials")
 	if _, err := os.Stat(globalGitCredentialsPath); os.IsNotExist(err) {
 		logger.Info("Global git credentials file does not exist.")
-		return
-	}
-	if err := os.Remove(globalGitCredentialsPath); err != nil {
+	} else if err := os.Remove(globalGitCredentialsPath); err != nil {
 		logger.Error(errors.Wrap(err, "removing global git credentials file"))
-		return
+	} else {
+		logger.Info("Cleared git credentials.")
 	}
-	logger.Info("Cleared git credentials.")
+
+	if err := unregisterScalar(); err != nil {
+		logger.Error(errors.Wrap(err, "unregistering scalar repositories"))
+	}
+}
+
+// unregisterScalar unregisters a repository that was cloned (and therefore registered) with Scalar.
+// This should be done for each repository after it is cloned with scalar to stop the background maintenance processes.
+func unregisterScalar() error {
+	isScalarAvailable, err := agentutil.IsGitVersionMinimumForScalar(thirdparty.RequiredScalarGitVersion)
+
+	if err != nil {
+		return errors.Wrap(err, "checking git version")
+	}
+	// If scalar is not available, don't unregister it (in this case it also wasn't used to clone the repo).
+	if !isScalarAvailable {
+		return nil
+	}
+
+	// Run scalar list to get all registered repositories
+	cmd := exec.Command("scalar", "list")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+
+	if err = cmd.Run(); err != nil {
+		return errors.Wrap(err, "running scalar list")
+	}
+	repoPaths := strings.Split(strings.TrimSpace(out.String()), "\n")
+
+	// Unregister each registered repository
+	catcher := grip.NewBasicCatcher()
+	for _, repoPath := range repoPaths {
+		c := exec.Command("scalar", "unregister", repoPath)
+		c.Stdout, c.Stderr = os.Stdout, os.Stderr
+
+		if err = c.Run(); err != nil {
+			catcher.Add(errors.Wrapf(err, "unregistering repo from scalar: %s", repoPath))
+		}
+	}
+	return catcher.Resolve()
 }
 
 func (a *Agent) shouldKill(tc *taskContext, ignoreTaskGroupCheck bool) bool {
