@@ -95,7 +95,7 @@ func TestArchiveAutoPackExecute(t *testing.T) {
 		},
 		"SucceedsAndCreatesArchive": func(ctx context.Context, t *testing.T, cmd *autoArchiveCreate, client client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) {
 			expectedEntriesInArchive := map[string]bool{}
-			require.NoError(t, filepath.Walk(cmd.SourceDir, func(path string, info fs.FileInfo, err error) error {
+			require.NoError(t, filepath.WalkDir(cmd.SourceDir, func(path string, di fs.DirEntry, err error) error {
 				if err != nil {
 					return err
 				}
@@ -114,7 +114,7 @@ func TestArchiveAutoPackExecute(t *testing.T) {
 			unarchiveDir := t.TempDir()
 			require.NoError(t, archiver.NewTarGz().Unarchive(cmd.Target, unarchiveDir))
 
-			require.NoError(t, filepath.Walk(unarchiveDir, func(path string, info fs.FileInfo, err error) error {
+			require.NoError(t, filepath.WalkDir(unarchiveDir, func(path string, di fs.DirEntry, err error) error {
 				if err != nil {
 					return err
 				}
@@ -157,7 +157,7 @@ func TestArchiveAutoPackExecute(t *testing.T) {
 			unarchiveDir := t.TempDir()
 			require.NoError(t, archiver.NewTarGz().Unarchive(cmd.Target, unarchiveDir))
 
-			require.NoError(t, filepath.Walk(unarchiveDir, func(path string, info fs.FileInfo, err error) error {
+			require.NoError(t, filepath.WalkDir(unarchiveDir, func(path string, di fs.DirEntry, err error) error {
 				if err != nil {
 					return err
 				}
@@ -211,7 +211,7 @@ func TestArchiveAutoPackExecute(t *testing.T) {
 			unarchiveDir := t.TempDir()
 			require.NoError(t, archiver.NewTarGz().Unarchive(cmd.Target, unarchiveDir))
 
-			require.NoError(t, filepath.Walk(unarchiveDir, func(path string, info fs.FileInfo, err error) error {
+			require.NoError(t, filepath.WalkDir(unarchiveDir, func(path string, di fs.DirEntry, err error) error {
 				if err != nil {
 					return err
 				}

@@ -13,6 +13,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -38,7 +39,12 @@ func getContents(paths []string, exclusions []string) <-chan archiveWorkUnit {
 
 	go func() {
 		for _, path := range paths {
-			err := filepath.Walk(path, func(p string, info os.FileInfo, err error) error {
+			err := filepath.WalkDir(path, func(p string, di fs.DirEntry, err error) error {
+				if err != nil {
+					return err
+				}
+
+				info, err := di.Info()
 				if err != nil {
 					return err
 				}

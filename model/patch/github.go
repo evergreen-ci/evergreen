@@ -99,23 +99,12 @@ type githubIntent struct {
 }
 
 // BSON fields for the patches
-//
-//nolint:unused
 var (
-	documentIDKey   = bsonutil.MustHaveTag(githubIntent{}, "DocumentID")
-	msgIDKey        = bsonutil.MustHaveTag(githubIntent{}, "MsgID")
-	createdAtKey    = bsonutil.MustHaveTag(githubIntent{}, "CreatedAt")
-	baseRepoNameKey = bsonutil.MustHaveTag(githubIntent{}, "BaseRepoName")
-	baseBranchKey   = bsonutil.MustHaveTag(githubIntent{}, "BaseBranch")
-	headRepoNameKey = bsonutil.MustHaveTag(githubIntent{}, "HeadRepoName")
-	prNumberKey     = bsonutil.MustHaveTag(githubIntent{}, "PRNumber")
-	userKey         = bsonutil.MustHaveTag(githubIntent{}, "User")
-	uidKey          = bsonutil.MustHaveTag(githubIntent{}, "UID")
-	headHashKey     = bsonutil.MustHaveTag(githubIntent{}, "HeadHash")
-	processedKey    = bsonutil.MustHaveTag(githubIntent{}, "Processed")
-	processedAtKey  = bsonutil.MustHaveTag(githubIntent{}, "ProcessedAt")
-	intentTypeKey   = bsonutil.MustHaveTag(githubIntent{}, "IntentType")
-	calledByKey     = bsonutil.MustHaveTag(githubIntent{}, "CalledBy")
+	documentIDKey  = bsonutil.MustHaveTag(githubIntent{}, "DocumentID")
+	headHashKey    = bsonutil.MustHaveTag(githubIntent{}, "HeadHash")
+	processedKey   = bsonutil.MustHaveTag(githubIntent{}, "Processed")
+	processedAtKey = bsonutil.MustHaveTag(githubIntent{}, "ProcessedAt")
+	intentTypeKey  = bsonutil.MustHaveTag(githubIntent{}, "IntentType")
 )
 
 // NewGithubIntent creates an Intent from a google/go-github PullRequestEvent,
