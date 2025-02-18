@@ -22,6 +22,7 @@ import (
 	"github.com/mongodb/grip/recovery"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/attribute"
 	"gopkg.in/yaml.v2"
 )
 
@@ -111,6 +112,8 @@ func (h *testLogDirectoryHandler) run(ctx context.Context) error {
 		return nil
 	})
 	wg.Wait()
+
+	span.SetAttributes(attribute.KeyValue{Key: "test_log_file_count", Value: attribute.IntValue(h.logFileCount)})
 
 	return err
 }
