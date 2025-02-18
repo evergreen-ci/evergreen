@@ -1281,8 +1281,12 @@ func (a *Agent) clearGitConfig(tc *taskContext) {
 func unregisterScalar() error {
 	isScalarAvailable, err := agentutil.IsGitVersionMinimumForScalar(thirdparty.RequiredScalarGitVersion)
 
-	if err != nil || !isScalarAvailable {
+	if err != nil {
 		return errors.Wrap(err, "checking git version")
+	}
+	// If scalar is not available, don't unregister it (in this case it also wasn't used to clone the repo).
+	if !isScalarAvailable {
+		return nil
 	}
 
 	// Run scalar list to get all registered repositories
