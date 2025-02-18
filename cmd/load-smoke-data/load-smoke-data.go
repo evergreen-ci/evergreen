@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"flag"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -28,7 +29,7 @@ const gridFSFileID = "5e4ff3ab850e6136624eaf95"
 
 func getFiles(root string) ([]string, error) {
 	out := []string{}
-	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+	err := filepath.WalkDir(root, func(path string, di fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}

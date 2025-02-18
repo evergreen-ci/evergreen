@@ -348,10 +348,10 @@ func findArchiveContents(ctx context.Context, rootPath string, includes, exclude
 			return nil, 0, errors.Wrapf(err, "canceled while streaming archive for include pattern '%s'", includePattern)
 		}
 
-		var walk filepath.WalkFunc
+		var walk fs.WalkDirFunc
 
 		if filematch == "**" {
-			walk = func(path string, info os.FileInfo, err error) error {
+			walk = func(path string, di fs.DirEntry, err error) error {
 				if err != nil {
 					return err
 				}
@@ -362,14 +362,19 @@ func findArchiveContents(ctx context.Context, rootPath string, includes, exclude
 					}
 				}
 
+				info, err := di.Info()
+				if err != nil {
+					return err
+				}
+
 				addUniqueFile(path, info)
 
 				return nil
 			}
-			catcher.Wrapf(filepath.Walk(dir, walk), "matching files included in filter '%s' for path '%s'", filematch, dir)
+			catcher.Wrapf(filepath.WalkDir(dir, walk), "matching files included in filter '%s' for path '%s'", filematch, dir)
 		} else if strings.Contains(filematch, "**") {
 			globSuffix := filematch[2:]
-			walk = func(path string, info os.FileInfo, err error) error {
+			walk = func(path string, di fs.DirEntry, err error) error {
 				if err != nil {
 					return err
 				}
@@ -381,13 +386,18 @@ func findArchiveContents(ctx context.Context, rootPath string, includes, exclude
 						}
 					}
 
+					info, err := di.Info()
+					if err != nil {
+						return err
+					}
+
 					addUniqueFile(path, info)
 				}
 				return nil
 			}
-			catcher.Wrapf(filepath.Walk(dir, walk), "matching files included in filter '%s' for path '%s'", filematch, dir)
+			catcher.Wrapf(filepath.WalkDir(dir, walk), "matching files included in filter '%s' for path '%s'", filematch, dir)
 		} else {
-			walk = func(path string, info os.FileInfo, err error) error {
+			walk = func(path string, di fs.DirEntry, err error) error {
 				if err != nil {
 					return err
 				}
@@ -405,12 +415,17 @@ func findArchiveContents(ctx context.Context, rootPath string, includes, exclude
 							}
 						}
 
+						info, err := di.Info()
+						if err != nil {
+							return err
+						}
+
 						addUniqueFile(path, info)
 					}
 				}
 				return nil
 			}
-			catcher.Wrapf(filepath.Walk(rootPath, walk), "matching files included in filter '%s' for patch '%s'", filematch, rootPath)
+			catcher.Wrapf(filepath.WalkDir(rootPath, walk), "matching files included in filter '%s' for patch '%s'", filematch, rootPath)
 		}
 	}
 

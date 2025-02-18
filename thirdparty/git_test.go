@@ -87,3 +87,44 @@ func TestParseGitUrl(t *testing.T) {
 	assert.Equal("evergreen-ci", owner)
 	assert.Equal("sample", repo)
 }
+
+func TestVersionMeetsMinimum(t *testing.T) {
+	// VersionMeetsMinimum should return true when version is greater than or equal to the minVersion
+	tests := []struct {
+		version    string
+		minVersion string
+		expected   bool
+	}{
+		{version: "2.37.0", minVersion: "2.38.0", expected: false},
+		{version: "2.38.0", minVersion: "2.38.0", expected: true},
+		{version: "2.38.0", minVersion: "2.38.1", expected: false},
+		{version: "2.38.1", minVersion: "2.38.0", expected: true},
+		{version: "2.38", minVersion: "2.37.9", expected: true},
+	}
+
+	for _, test := range tests {
+		t.Run(test.version+" < "+test.minVersion, func(t *testing.T) {
+			result := VersionMeetsMinimum(test.version, test.minVersion)
+			assert.Equal(t, test.expected, result)
+		})
+	}
+}
+
+func TestParseGitVersionString(t *testing.T) {
+	versionStrings := map[string]struct {
+		expectedVersion string
+		isApple         bool
+	}{
+		"git version 2.19.1":                   {"2.19.1", false},
+		"git version 2.24.3 (Apple Git-128)":   {"2.24.3", true},
+		"git version 2.21.1 (Apple Git-122.3)": {"2.21.1", true},
+		"git version 2.16.2.windows.1":         {"2.16.2.windows.1", false},
+	}
+
+	for versionString, expected := range versionStrings {
+		parsedVersion, isApple, err := ParseGitVersion(versionString)
+		require.NoError(t, err)
+		assert.Equal(t, expected.expectedVersion, parsedVersion)
+		assert.Equal(t, expected.isApple, isApple)
+	}
+}

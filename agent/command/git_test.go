@@ -183,7 +183,7 @@ func (s *GitGetProjectSuite) TestBuildSourceCommandUsesHTTPS() {
 		token:  c.Token,
 	}
 	s.Require().NoError(opts.setLocation())
-	cmds, _ := c.buildSourceCloneCommand(conf, opts)
+	cmds, _ := c.buildSourceCloneCommand(nil, conf, opts)
 	s.True(utility.StringSliceContains(cmds, "git clone https://PROJECTTOKEN:x-oauth-basic@github.com/evergreen-ci/sample.git 'dir' --branch 'main'"))
 }
 
@@ -246,7 +246,7 @@ func (s *GitGetProjectSuite) TestBuildSourceCommandCloneDepth() {
 		cloneDepth: 50,
 	}
 	s.Require().NoError(opts.setLocation())
-	cmds, err := c.buildSourceCloneCommand(conf, opts)
+	cmds, err := c.buildSourceCloneCommand(nil, conf, opts)
 	s.Require().NoError(err)
 	combined := strings.Join(cmds, " ")
 	s.Contains(combined, "--depth 50")
@@ -455,7 +455,7 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 		token:  projectGitHubToken,
 	}
 	s.Require().NoError(opts.setLocation())
-	cmds, err := opts.buildHTTPCloneCommand(false)
+	cmds, err := opts.buildHTTPCloneCommand(nil, false)
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
 	s.True(utility.ContainsOrderedSubset(cmds, []string{
@@ -467,7 +467,7 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 	}))
 	// build clone command to clone by http with token into 'dir' w/o specified branch
 	opts.branch = ""
-	cmds, err = opts.buildHTTPCloneCommand(false)
+	cmds, err = opts.buildHTTPCloneCommand(nil, false)
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
 	s.True(utility.ContainsOrderedSubset(cmds, []string{
@@ -482,7 +482,7 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 	// been forced to use https
 	opts.location = "http://github.com/evergreen-ci/sample.git"
 	opts.branch = projectRef.Branch
-	cmds, err = opts.buildHTTPCloneCommand(false)
+	cmds, err = opts.buildHTTPCloneCommand(nil, false)
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
 	s.True(utility.ContainsOrderedSubset(cmds, []string{
@@ -493,7 +493,7 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 	// ensure that we aren't sending the github oauth token to other
 	// servers
 	opts.location = "http://someothergithost.com/something/else.git"
-	cmds, err = opts.buildHTTPCloneCommand(false)
+	cmds, err = opts.buildHTTPCloneCommand(nil, false)
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
 	s.True(utility.ContainsOrderedSubset(cmds, []string{
@@ -522,7 +522,7 @@ func (s *GitGetProjectSuite) TestBuildSourceCommand() {
 	opts.method = cloneMethodOAuth
 	opts.token = c.Token
 	s.Require().NoError(opts.setLocation())
-	cmds, err := c.buildSourceCloneCommand(conf, opts)
+	cmds, err := c.buildSourceCloneCommand(nil, conf, opts)
 	s.NoError(err)
 	s.Require().Len(cmds, 11)
 	s.True(utility.ContainsOrderedSubset([]string{
@@ -557,7 +557,7 @@ func (s *GitGetProjectSuite) TestBuildSourceCommandForPullRequests() {
 	}
 	s.Require().NoError(opts.setLocation())
 
-	cmds, err := c.buildSourceCloneCommand(conf, opts)
+	cmds, err := c.buildSourceCloneCommand(nil, conf, opts)
 	s.NoError(err)
 	s.Require().Len(cmds, 13)
 	s.True(utility.StringSliceContainsOrderedPrefixSubset(cmds, []string{
@@ -584,7 +584,7 @@ func (s *GitGetProjectSuite) TestBuildSourceCommandForGitHubMergeQueue() {
 	}
 	s.Require().NoError(opts.setLocation())
 
-	cmds, err := c.buildSourceCloneCommand(conf, opts)
+	cmds, err := c.buildSourceCloneCommand(nil, conf, opts)
 	s.NoError(err)
 	s.Len(cmds, 13)
 	s.True(utility.StringSliceContainsOrderedPrefixSubset(cmds, []string{
@@ -613,7 +613,7 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 
 	// ensure module clone command with http URL injects token
 	s.Require().NoError(opts.setLocation())
-	cmds, err := c.buildModuleCloneCommand(conf, opts, "main", nil)
+	cmds, err := c.buildModuleCloneCommand(nil, conf, opts, "main", nil)
 	s.NoError(err)
 	s.Require().Len(cmds, 8)
 	s.True(utility.ContainsOrderedSubset(cmds, []string{
@@ -629,7 +629,7 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 
 	// ensure insecure github url is forced to use https
 	opts.location = "http://github.com/evergreen-ci/sample.git"
-	cmds, err = c.buildModuleCloneCommand(conf, opts, "main", nil)
+	cmds, err = c.buildModuleCloneCommand(nil, conf, opts, "main", nil)
 	s.NoError(err)
 	s.Require().Len(cmds, 8)
 	s.True(utility.ContainsOrderedSubset(cmds, []string{
@@ -648,7 +648,7 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	}
 	opts.method = cloneMethodAccessToken
 	s.Require().NoError(opts.setLocation())
-	cmds, err = c.buildModuleCloneCommand(conf, opts, "main", module)
+	cmds, err = c.buildModuleCloneCommand(nil, conf, opts, "main", module)
 	s.NoError(err)
 	s.Require().Len(cmds, 10)
 	s.True(utility.StringSliceContainsOrderedPrefixSubset(cmds, []string{
