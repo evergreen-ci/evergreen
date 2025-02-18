@@ -40,8 +40,11 @@ func (err GqlError) Send(ctx context.Context, message string) *gqlerror.Error {
 	case PartialError:
 		return formError(ctx, message, PartialError)
 	default:
-		//nolint:govet // gqlerror does not have a non-format version.
-		return gqlerror.ErrorPathf(graphql.GetFieldContext(ctx).Path(), message)
+		// The %s formatter is necessary in Go because formatting functions
+		// cannot be passed a non-constant format string, and gqlgen doesn't
+		// have a non-formatting variant of this function.
+		// See https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/printf#hdr-Examples
+		return gqlerror.ErrorPathf(graphql.GetFieldContext(ctx).Path(), "%s", message)
 	}
 }
 
