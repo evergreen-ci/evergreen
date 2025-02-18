@@ -1259,9 +1259,6 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 						}
 					} else {
 						bv.Tasks = append(bv.Tasks, t)
-						// kim: NOTE: this looks like a bug, t is not captured
-						// by the loop so the map key's will always point to
-						// will be the most recent iteration's value.
 						existing[t.Name] = &t
 					}
 				}
