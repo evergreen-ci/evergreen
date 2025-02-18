@@ -108,11 +108,12 @@ agentVersion := $(shell grep "AgentVersion" config.go | tr -d '\tAgentVersion = 
 ldFlags := $(if $(DEBUG_ENABLED),,-w -s )-X=github.com/evergreen-ci/evergreen.BuildRevision=$(currentHash)
 # gcFlags := $(if $(STAGING_ONLY),-N -l,)
 # kim: NOTE: this checks for all loopvar instances, regardless of whether they behave differently or not.
+# kim: TODO: remove once finished checking
 gcFlags := all=-d=loopvar=2
 karmaFlags := $(if $(KARMA_REPORTER),--reporters $(KARMA_REPORTER),)
 
-goLintInstallerVersion := "v1.51.2"
-goLintInstallerChecksum := "0e09dedc7e35f511b7924b885e50d7fe48eef25bec78c86f22f5b5abd24976cc"
+golangciLintVersion := "v1.64.5"
+golangciLintInstallerChecksum := "9e99d38f3213411a1b6175e5b535c72e37c7ed42ccf251d331385a3f97b695e7"
 # end evergreen specific configuration
 
 ######################################################################
@@ -207,9 +208,9 @@ curlRetryOpts := --retry 10 --retry-max-time 120
 $(buildDir)/.lintSetup:$(buildDir)/golangci-lint
 	@touch $@
 $(buildDir)/golangci-lint:
-	@curl $(curlRetryOpts) -o "$(buildDir)/install.sh" https://raw.githubusercontent.com/golangci/golangci-lint/$(goLintInstallerVersion)/install.sh
-	@echo "$(goLintInstallerChecksum) *$(buildDir)/install.sh" | shasum --check
-	@bash $(buildDir)/install.sh -b $(buildDir) $(goLintInstallerVersion) && touch $@
+	@curl $(curlRetryOpts) -o "$(buildDir)/install.sh" https://raw.githubusercontent.com/golangci/golangci-lint/$(golangciLintVersion)/install.sh
+	@echo "$(golangciLintInstallerChecksum) *$(buildDir)/install.sh" | shasum --check
+	@bash $(buildDir)/install.sh -b $(buildDir) $(golangciLintVersion) && touch $@
 $(buildDir)/run-linter:cmd/run-linter/run-linter.go $(buildDir)/.lintSetup
 	$(gobin) build -ldflags "-w" -o $@ $<
 # end lint setup targets

@@ -1,6 +1,6 @@
 module github.com/evergreen-ci/evergreen
 
-go 1.21
+go 1.24
 
 require (
 	github.com/99designs/gqlgen v0.17.49

@@ -118,22 +118,24 @@ func getAllTargets() ([]string, error) {
 
 // generateTasks returns a map of tasks to generate.
 func generateTasks() (*shrub.Configuration, error) {
-	changes, err := whatChanged()
+	// changes, err := whatChanged()
+	// if err != nil {
+	//     return nil, err
+	// }
+	// var targets []string
+	// if len(changes) == 0 {
+	// kim: NOTE: force all packages to be checked since we're upgrading go and
+	// golangci-lint.
+	targets, err := getAllTargets()
 	if err != nil {
 		return nil, err
 	}
-	var targets []string
-	if len(changes) == 0 {
-		targets, err = getAllTargets()
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		targets, err = targetsFromChangedFiles(changes)
-		if err != nil {
-			return nil, err
-		}
-	}
+	// } else {
+	//     targets, err = targetsFromChangedFiles(changes)
+	//     if err != nil {
+	//         return nil, err
+	//     }
+	// }
 
 	conf := &shrub.Configuration{}
 	if len(targets) == 0 {
