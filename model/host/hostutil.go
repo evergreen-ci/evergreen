@@ -284,6 +284,8 @@ func (h *Host) FetchAndReinstallJasperCommands(settings *evergreen.Settings) str
 	}, " && ")
 }
 
+const jasperServicePasswordEnvVarName = "JASPER_USER_PASSWORD"
+
 // ForceReinstallJasperCommand returns the command to stop the Jasper service
 // (if it's running), delete the current Jasper service configuration (if it
 // exists), install the new configuration, and restart the service.
@@ -340,7 +342,7 @@ func (h *Host) ForceReinstallJasperCommand(settings *evergreen.Settings) string 
 
 	cmdEnv := map[string]string{}
 	if h.Distro.BootstrapSettings.ServiceUser != "" && h.ServicePassword != "" {
-		cmdEnv["JASPER_USER_PASSWORD"] = h.ServicePassword
+		cmdEnv[jasperServicePasswordEnvVarName] = h.ServicePassword
 	}
 
 	return h.jasperServiceCommand(settings.HostJasper, cmdEnv, jcli.ServiceForceReinstallCommand, params...)
