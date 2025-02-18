@@ -201,7 +201,7 @@ require (
 	github.com/evergreen-ci/plank v0.0.0-20230207190607-5f47f8a30da1
 	github.com/evergreen-ci/tarjan v0.0.0-20170824211642-fcd3f3321826
 	github.com/gorilla/handlers v1.5.2
-	github.com/mongodb/jasper v0.0.0-20240903162551-472a0fcb2344
+	github.com/mongodb/jasper v0.0.0-20250218184730-a37dfa8d1314
 	github.com/shirou/gopsutil/v3 v3.24.5
 	go.uber.org/automaxprocs v1.6.0
 	gopkg.in/yaml.v3 v3.0.1
