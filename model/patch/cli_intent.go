@@ -43,9 +43,6 @@ type cliIntent struct {
 	// Parameters is a list of parameters to use with the task.
 	Parameters []Parameter `bson:"parameters,omitempty"`
 
-	// Finalize is whether or not the patch should finalized.
-	Finalize bool `bson:"finalize"`
-
 	// Module is the name of the module id as represented in the project's
 	// YAML configuration.
 	Module string `bson:"module"`
@@ -95,24 +92,11 @@ type cliIntent struct {
 }
 
 // BSON fields for the patches
-//
-//nolint:unused
 var (
-	cliDocumentIDKey    = bsonutil.MustHaveTag(cliIntent{}, "DocumentID")
-	cliPatchFileIDKey   = bsonutil.MustHaveTag(cliIntent{}, "PatchFileID")
-	cliDescriptionKey   = bsonutil.MustHaveTag(cliIntent{}, "Description")
-	cliBuildVariantsKey = bsonutil.MustHaveTag(cliIntent{}, "BuildVariants")
-	cliTasksKey         = bsonutil.MustHaveTag(cliIntent{}, "Tasks")
-	cliFinalizeKey      = bsonutil.MustHaveTag(cliIntent{}, "Finalize")
-	cliModuleKey        = bsonutil.MustHaveTag(cliIntent{}, "Module")
-	cliUserKey          = bsonutil.MustHaveTag(cliIntent{}, "User")
-	cliProjectIDKey     = bsonutil.MustHaveTag(cliIntent{}, "ProjectID")
-	cliBaseHashKey      = bsonutil.MustHaveTag(cliIntent{}, "BaseHash")
-	cliCreatedAtKey     = bsonutil.MustHaveTag(cliIntent{}, "CreatedAt")
-	cliProcessedKey     = bsonutil.MustHaveTag(cliIntent{}, "Processed")
-	cliProcessedAtKey   = bsonutil.MustHaveTag(cliIntent{}, "ProcessedAt")
-	cliIntentTypeKey    = bsonutil.MustHaveTag(cliIntent{}, "IntentType")
-	cliAliasKey         = bsonutil.MustHaveTag(cliIntent{}, "Alias")
+	cliDocumentIDKey  = bsonutil.MustHaveTag(cliIntent{}, "DocumentID")
+	cliProcessedKey   = bsonutil.MustHaveTag(cliIntent{}, "Processed")
+	cliProcessedAtKey = bsonutil.MustHaveTag(cliIntent{}, "ProcessedAt")
+	cliIntentTypeKey  = bsonutil.MustHaveTag(cliIntent{}, "IntentType")
 )
 
 func (c *cliIntent) Insert() error {
@@ -161,7 +145,10 @@ func (c *cliIntent) ID() string {
 }
 
 func (c *cliIntent) ShouldFinalizePatch() bool {
-	return c.Finalize
+	// We do not automatically finalize a patch. Instead, we determine if a patch should be finalized based on if
+	// a finalize flag was passed in and based on the user's response to a prompt if the number of tasks is greater
+	// than the largeNumFinalizedTasksThreshold.
+	return false
 }
 
 func (c *cliIntent) RepeatPreviousPatchDefinition() (string, bool) {
@@ -273,7 +260,6 @@ func NewCliIntent(params CLIIntentParams) (Intent, error) {
 		User:                params.User,
 		ProjectID:           params.Project,
 		BaseHash:            params.BaseGitHash,
-		Finalize:            params.Finalize,
 		Module:              params.Module,
 		Alias:               params.Alias,
 		TriggerAliases:      params.TriggerAliases,

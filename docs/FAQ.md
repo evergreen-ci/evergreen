@@ -1,6 +1,6 @@
 # FAQ
 
-Additional FAQ can be found [here](https://wiki.corp.mongodb.com/display/DBDEVPROD/Tag%3Aevergreen).
+Additional FAQ can be found [here](https://wiki.corp.mongodb.com/questions/topics/82870324/evergreen?&filter=recent).
 
 This FAQ is in progress. If there is anything you'd like to see added, please reach out in #ask-devprod-evergreen.
 

@@ -363,7 +363,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 			}
 		}
 
-		_, err = model.CreateManifest(v, pInfo.Project.Modules, ref, repoTracker.Settings)
+		_, err = model.CreateManifest(v, pInfo.Project.Modules, ref)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":            "error creating manifest",
@@ -934,7 +934,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 
 		activateVariantAt := time.Now()
 		taskStatuses := []model.BatchTimeTaskStatus{}
-		if v.Requester == evergreen.RepotrackerVersionRequester && evergreen.ShouldConsiderBatchtime(v.Requester) {
+		if evergreen.ShouldConsiderBatchtime(v.Requester) {
 			activateVariantAt, err = projectInfo.Ref.GetActivationTimeForVariant(&buildvariant, v.CreateTime, time.Now())
 			batchTimeCatcher.Add(errors.Wrapf(err, "unable to get activation time for variant '%s'", buildvariant.Name))
 			// add only tasks that require activation times
@@ -971,6 +971,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		v.BuildVariants = append(v.BuildVariants, model.VersionBuildStatus{
 			BuildVariant:   buildvariant.Name,
 			BuildId:        b.Id,
+			DisplayName:    b.DisplayName,
 			BatchTimeTasks: taskStatuses,
 			ActivationStatus: model.ActivationStatus{
 				ActivateAt: activateVariantAt,

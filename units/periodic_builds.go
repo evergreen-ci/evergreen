@@ -196,5 +196,18 @@ func (j *periodicBuildJob) addVersion(ctx context.Context, metadata model.Versio
 	if v == nil {
 		return errors.New("no version created")
 	}
+
+	_, err = model.CreateManifest(v, projectInfo.Project.Modules, projectInfo.Ref)
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":               "error creating manifest",
+			"runner":                periodicBuildJobName,
+			"project":               j.project.Id,
+			"project_identifier":    j.project.Identifier,
+			"revision":              metadata.Revision.Revision,
+			"revision_order_number": v.RevisionOrderNumber,
+		}))
+		return errors.Wrap(err, "creating manifest")
+	}
 	return nil
 }

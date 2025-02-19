@@ -100,17 +100,21 @@ func (j *hostMonitorExternalStateCheckJob) Run(ctx context.Context) {
 }
 
 // handleUnresponsiveStaticHost checks if a static host has been unresponsive
-// for a long time and if so, quarantines it. This is an imprecise check,
-// because static hosts do not have a reliable way to verify if they're actually
-// healthy and able to run tasks. That means that in some rare cases, this could
-// produce false positives (e.g. if Evergreen is down for hours, the static
-// hosts can't reach it) and false negatives (because it waits a very long time
-// before declaring a host unhealthy).
+// for a long time and if so, quarantines it. Hosts that are marked for reprovision
+// will be skipped. This is an imprecise check, because static hosts do not have a
+// reliable way to verify if they're actually healthy and able to run tasks.
+// That means that in some rare cases, this could produce false positives (e.g.
+// if Evergreen is down for hours, the static hosts can't reach it) and false negatives
+// (because it waits a very long time before declaring a host unhealthy).
 func (j *hostMonitorExternalStateCheckJob) handleUnresponsiveStaticHost(ctx context.Context) error {
 	if j.host.Provider != evergreen.ProviderNameStatic {
 		return nil
 	}
 	if utility.StringSliceContains(evergreen.DownHostStatus, j.host.Status) {
+		return nil
+	}
+
+	if j.host.Status == evergreen.HostRunning && j.host.NeedsReprovision != host.ReprovisionNone {
 		return nil
 	}
 

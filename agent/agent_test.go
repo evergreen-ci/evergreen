@@ -1,11 +1,13 @@
 package agent
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"fmt"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -18,11 +20,13 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/agent/internal/testutil"
+	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/taskoutput"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -30,6 +34,7 @@ import (
 	"github.com/mongodb/jasper/mock"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.opentelemetry.io/otel"
 )
@@ -1835,7 +1840,14 @@ tasks:
 		AddFailureMetadataTags: []string{"failure_tag0", "failure_tag1", "failure_tag2"},
 	}
 	s.tc.setUserEndTaskResponse(resp)
+
 	s.NotNil(s.tc.userEndTaskRespOriginatingCommand)
+
+	addMetadataResp := &triggerAddMetadataTagResp{
+		AddFailureMetadataTags: []string{"failure_tag2", "failure_tag3", "failure_tag4"},
+	}
+	s.tc.setAddMetadataTagResponse(addMetadataResp)
+
 	s.Equal(userDefinedTaskStatusCmd.FullDisplayName(), s.tc.userEndTaskRespOriginatingCommand.FullDisplayName())
 
 	nextTask := &apimodels.NextTaskResponse{
@@ -1849,13 +1861,62 @@ tasks:
 	s.Equal(resp.Type, s.mockCommunicator.EndTaskResult.Detail.Type, "should set user-defined command failure type")
 	s.Equal(resp.Description, s.mockCommunicator.EndTaskResult.Detail.Description, "should set user-defined task description")
 	s.Equal(userDefinedTaskStatusCmd.FullDisplayName(), s.mockCommunicator.EndTaskResult.Detail.FailingCommand, "should set the failing command's display name to the user-defined resp's originating command")
-	s.ElementsMatch(append(userDefinedTaskStatusCmd.FailureMetadataTags(), "failure_tag0", "failure_tag1", "failure_tag2"), s.mockCommunicator.EndTaskResult.Detail.FailureMetadataTags, "should set the failing command's metadata tags along with the additional tags")
+	s.ElementsMatch(append(userDefinedTaskStatusCmd.FailureMetadataTags(), "failure_tag0", "failure_tag1", "failure_tag2", "failure_tag3", "failure_tag4"), s.mockCommunicator.EndTaskResult.Detail.FailureMetadataTags, "should set the failing command's metadata tags along with the additional tags")
 
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
 		"Running task commands",
 		"Running command 'shell.exec' (step 1 of 2)",
 		"Task status set to 'failed' with HTTP endpoint.",
+		"Appending extra failure metadata tags set with HTTP endpoint.",
+	}, []string{
+		panicLog,
+		"Running 'shell.exec' (step 2 of 2)",
+	})
+}
+
+func (s *AgentSuite) TestRunTaskWithUserDefinedMetadataTags() {
+	projYml := `
+buildvariants:
+  - name: mock_build_variant
+
+tasks:
+  - name: this_is_a_task_name
+    commands:
+      - command: shell.exec
+        params:
+          script: exit 0
+      - command: shell.exec
+        params:
+          script: exit 0
+`
+	s.setupRunTask(projYml)
+
+	factory, ok := command.GetCommandFactory("command.mock")
+	s.Require().True(ok)
+	userDefinedTaskStatusCmd := factory()
+	userDefinedTaskStatusCmd.SetFullDisplayName("command.mock")
+	s.tc.setCurrentCommand(userDefinedTaskStatusCmd)
+
+	addMetadataResp := &triggerAddMetadataTagResp{
+		AddFailureMetadataTags: []string{"failure_tag1", "failure_tag2", "failure_tag2", "failure_tag3"},
+	}
+	s.tc.setAddMetadataTagResponse(addMetadataResp)
+
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:     s.tc.task.ID,
+		TaskSecret: s.tc.task.Secret,
+	}
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.testTmpDirName)
+	s.NoError(err)
+
+	s.ElementsMatch(append(userDefinedTaskStatusCmd.FailureMetadataTags(), "failure_tag1", "failure_tag2", "failure_tag3"), s.mockCommunicator.EndTaskResult.Detail.FailureMetadataTags, "should set the failing command's metadata tags along with the additional tags")
+
+	s.NoError(s.tc.logger.Close())
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Running task commands",
+		"Running command 'shell.exec' (step 1 of 2)",
+		"Appending extra failure metadata tags set with HTTP endpoint.",
 	}, []string{
 		panicLog,
 		"Running 'shell.exec' (step 2 of 2)",
@@ -2883,4 +2944,44 @@ func checkMockLogs(t *testing.T, mc *client.Mock, taskID string, logsToFind []st
 	if displayLogs {
 		grip.Infof("Logs for task '%s':\n%s\n", taskID, strings.Join(allLogs, "\n"))
 	}
+}
+
+// TestUnregisterScalar tests the unregisterScalar function without using a mock.
+func TestUnregisterScalar(t *testing.T) {
+	// Check if the Git version meets the minimum required version
+	isScalarAvailable, err := agentutil.IsGitVersionMinimumForScalar(thirdparty.RequiredScalarGitVersion)
+	require.NoError(t, err)
+	if !isScalarAvailable {
+		t.Skip("Git version does not meet the minimum required version for Scalar")
+	}
+
+	// Create a temporary directory to act as the repository
+	tempDir, err := os.MkdirTemp("", "scalar-test")
+	require.NoError(t, err)
+	defer os.RemoveAll(tempDir)
+
+	// Clone the repository using Scalar
+	cmd := exec.Command("scalar", "clone", "https://github.com/evergreen-ci/sample", tempDir)
+	err = cmd.Run()
+	require.NoError(t, err)
+
+	// Verify that the repository is registered
+	cmd = exec.Command("scalar", "list")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err = cmd.Run()
+	require.NoError(t, err)
+	assert.Contains(t, out.String(), tempDir)
+
+	// Call unregisterScalar
+	err = unregisterScalar()
+	require.NoError(t, err)
+
+	// Verify that the repository is unregistered
+	cmd = exec.Command("scalar", "list")
+	out.Reset()
+	cmd.Stdout = &out
+	err = cmd.Run()
+	require.NoError(t, err)
+	assert.NotContains(t, out.String(), tempDir)
 }

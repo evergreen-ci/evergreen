@@ -91,11 +91,11 @@ func addNewTasksAndBuildsForPatch(ctx context.Context, creationInfo TaskCreation
 	if err != nil {
 		return err
 	}
-	_, err = addNewBuilds(ctx, creationInfo, existingBuilds)
+	_, _, err = addNewBuilds(ctx, creationInfo, existingBuilds)
 	if err != nil {
 		return errors.Wrap(err, "adding new builds")
 	}
-	_, err = addNewTasksToExistingBuilds(ctx, creationInfo, existingBuilds, caller)
+	_, _, err = addNewTasksToExistingBuilds(ctx, creationInfo, existingBuilds, caller)
 	if err != nil {
 		return errors.Wrap(err, "adding new tasks")
 	}
@@ -724,6 +724,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 			VersionBuildStatus{
 				BuildVariant:     vt.Variant,
 				BuildId:          build.Id,
+				DisplayName:      build.DisplayName,
 				ActivationStatus: ActivationStatus{Activated: true},
 			},
 		)

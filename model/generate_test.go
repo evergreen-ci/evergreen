@@ -1249,7 +1249,7 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
 	generatorTask, err := task.FindOneId(ctx, tasksThatExist[0].Id)
 	s.NoError(err)
 	s.Require().NotNil(generatorTask)
-	s.Equal(1, generatorTask.NumActivatedGeneratedTasks)
+	s.Equal(3, generatorTask.NumActivatedGeneratedTasks)
 	s.Equal(4, generatorTask.NumGeneratedTasks)
 }
 

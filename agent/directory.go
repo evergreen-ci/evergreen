@@ -4,6 +4,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -85,7 +86,7 @@ func (a *Agent) removeTaskDirectory(tc *taskContext) {
 // an issue where some files may be marked read-only, which prevents
 // os.RemoveAll from deleting them.
 func (a *Agent) removeAll(dir string) error {
-	grip.Error(errors.Wrapf(filepath.Walk(dir, func(path string, _ os.FileInfo, err error) error {
+	grip.Error(errors.Wrapf(filepath.WalkDir(dir, func(path string, _ fs.DirEntry, err error) error {
 		if err != nil {
 			return nil
 		}
@@ -147,7 +148,7 @@ func (a *Agent) tryCleanupDirectory(dir string) {
 
 	paths := []string{}
 
-	err = filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+	err = filepath.WalkDir(dir, func(path string, di fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -156,11 +157,11 @@ func (a *Agent) tryCleanupDirectory(dir string) {
 			return nil
 		}
 
-		if strings.HasPrefix(info.Name(), ".") {
+		if strings.HasPrefix(di.Name(), ".") {
 			return nil
 		}
 
-		if info.IsDir() {
+		if di.IsDir() {
 			paths = append(paths, path)
 		}
 

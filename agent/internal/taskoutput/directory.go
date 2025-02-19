@@ -103,7 +103,7 @@ func (d *Directory) Run(ctx context.Context) error {
 // directoryHandler abstracts the automatic handling of task output for
 // individual subdirectories.
 type directoryHandler interface {
-	run(ctx context.Context) error
+	run(context.Context) error
 }
 
 // directoryHandlerFactory abstracts the creation of a directory handler.

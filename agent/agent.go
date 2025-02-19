@@ -1,9 +1,11 @@
 package agent
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -20,6 +22,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/thirdparty/docker"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
@@ -52,6 +55,11 @@ type Agent struct {
 	// user to override the final task status that would otherwise be used.
 	setEndTaskResp      func(*triggerEndTaskResp)
 	setEndTaskRespMutex sync.RWMutex
+	// addMetadataTagResp adds a failure metadata tag to the task, which can be
+	// appended to the final list of failure metadata tags that are set on task
+	// completion.
+	addMetadataTagResp  func(*triggerAddMetadataTagResp)
+	addMetadataTagMutex sync.RWMutex
 	tracer              trace.Tracer
 	otelGrpcConn        *grpc.ClientConn
 	closers             []closerOp
@@ -152,10 +160,11 @@ func newWithCommunicator(ctx context.Context, opts Options, comm client.Communic
 	}
 
 	a := &Agent{
-		opts:           opts,
-		comm:           comm,
-		jasper:         jpm,
-		setEndTaskResp: func(*triggerEndTaskResp) {},
+		opts:               opts,
+		comm:               comm,
+		jasper:             jpm,
+		setEndTaskResp:     func(*triggerEndTaskResp) {},
+		addMetadataTagResp: func(*triggerAddMetadataTagResp) {},
 	}
 
 	a.closers = append(a.closers, closerOp{
@@ -451,6 +460,10 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 	a.setEndTaskResp = tc.setUserEndTaskResponse
 	a.setEndTaskRespMutex.Unlock()
 
+	a.addMetadataTagMutex.Lock()
+	a.addMetadataTagResp = tc.setAddMetadataTagResponse
+	a.addMetadataTagMutex.Unlock()
+
 	taskConfig, err := a.makeTaskConfig(setupCtx, tc)
 	if err != nil {
 		tc.logger = client.NewSingleChannelLogHarness("agent.error", a.defaultLogger)
@@ -486,7 +499,12 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 
 	// Set up a new task output directory regardless if the task is part of
 	// a task group.
-	tc.taskConfig.TaskOutputDir = taskoutput.NewDirectory(tc.taskConfig.WorkDir, &tc.taskConfig.Task, redactor.RedactionOptions{Expansions: tc.taskConfig.NewExpansions, Redacted: tc.taskConfig.Redacted}, tc.logger)
+	redactorOpts := redactor.RedactionOptions{
+		Expansions:         tc.taskConfig.NewExpansions,
+		Redacted:           tc.taskConfig.Redacted,
+		InternalRedactions: tc.taskConfig.InternalRedactions,
+	}
+	tc.taskConfig.TaskOutputDir = taskoutput.NewDirectory(tc.taskConfig.WorkDir, &tc.taskConfig.Task, redactorOpts, tc.logger)
 	if err := tc.taskConfig.TaskOutputDir.Setup(); err != nil {
 		return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "creating task output directory"))
 	}
@@ -1006,11 +1024,18 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		}
 	}
 
+	if addedMetadataTagResp := tc.getAddMetadataTagResponse(); addedMetadataTagResp != nil {
+		tc.logger.Task().Infof("Appending extra failure metadata tags set with HTTP endpoint.")
+		detail.FailureMetadataTags = utility.UniqueStrings(append(detail.FailureMetadataTags, addedMetadataTagResp.AddFailureMetadataTags...))
+	}
+
 	// Attempt automatic task output ingestion if the task output directory
 	// was setup, regardless of the task status.
 	if tc.taskConfig != nil && tc.taskConfig.TaskOutputDir != nil {
-		tc.logger.Execution().Error(errors.Wrap(a.uploadTraces(ctx, tc.taskConfig.WorkDir), "uploading traces"))
-		tc.logger.Execution().Error(errors.Wrap(tc.taskConfig.TaskOutputDir.Run(ctx), "ingesting task output"))
+		toCtx, span := a.tracer.Start(ctx, "task-output-ingestion")
+		tc.logger.Execution().Error(errors.Wrap(a.uploadTraces(toCtx, tc.taskConfig.WorkDir), "uploading traces"))
+		tc.logger.Execution().Error(errors.Wrap(tc.taskConfig.TaskOutputDir.Run(toCtx), "ingesting task output"))
+		span.End()
 	}
 
 	a.killProcs(ctx, tc, false, "task is ending")
@@ -1223,6 +1248,9 @@ func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupC
 	}
 }
 
+// clearGitConfig cleans up git files that were created in the home directory including
+// the global git config file and credentials file. It also unregisters any repositories
+// that were cloned with scalar to stop the background maintenance of the repositories.
 func (a *Agent) clearGitConfig(tc *taskContext) {
 	logger := grip.GetDefaultJournaler()
 	if tc.logger != nil && !tc.logger.Closed() {
@@ -1234,26 +1262,61 @@ func (a *Agent) clearGitConfig(tc *taskContext) {
 	globalGitConfigPath := filepath.Join(a.opts.HomeDirectory, ".gitconfig")
 	if _, err := os.Stat(globalGitConfigPath); os.IsNotExist(err) {
 		logger.Info("Global git config file does not exist.")
-		return
-	}
-	if err := os.Remove(globalGitConfigPath); err != nil {
+	} else if err := os.Remove(globalGitConfigPath); err != nil {
 		logger.Error(errors.Wrap(err, "removing global git config file"))
-		return
+	} else {
+		logger.Info("Cleared git config.")
 	}
-
-	logger.Info("Cleared git config.")
 
 	logger.Infof("Clearing git credentials.")
 	globalGitCredentialsPath := filepath.Join(a.opts.HomeDirectory, ".git-credentials")
 	if _, err := os.Stat(globalGitCredentialsPath); os.IsNotExist(err) {
 		logger.Info("Global git credentials file does not exist.")
-		return
-	}
-	if err := os.Remove(globalGitCredentialsPath); err != nil {
+	} else if err := os.Remove(globalGitCredentialsPath); err != nil {
 		logger.Error(errors.Wrap(err, "removing global git credentials file"))
-		return
+	} else {
+		logger.Info("Cleared git credentials.")
 	}
-	logger.Info("Cleared git credentials.")
+
+	if err := unregisterScalar(); err != nil {
+		logger.Error(errors.Wrap(err, "unregistering scalar repositories"))
+	}
+}
+
+// unregisterScalar unregisters a repository that was cloned (and therefore registered) with Scalar.
+// This should be done for each repository after it is cloned with scalar to stop the background maintenance processes.
+func unregisterScalar() error {
+	isScalarAvailable, err := agentutil.IsGitVersionMinimumForScalar(thirdparty.RequiredScalarGitVersion)
+
+	if err != nil {
+		return errors.Wrap(err, "checking git version")
+	}
+	// If scalar is not available, don't unregister it (in this case it also wasn't used to clone the repo).
+	if !isScalarAvailable {
+		return nil
+	}
+
+	// Run scalar list to get all registered repositories
+	cmd := exec.Command("scalar", "list")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+
+	if err = cmd.Run(); err != nil {
+		return errors.Wrap(err, "running scalar list")
+	}
+	repoPaths := strings.Split(strings.TrimSpace(out.String()), "\n")
+
+	// Unregister each registered repository
+	catcher := grip.NewBasicCatcher()
+	for _, repoPath := range repoPaths {
+		c := exec.Command("scalar", "unregister", repoPath)
+		c.Stdout, c.Stderr = os.Stdout, os.Stderr
+
+		if err = c.Run(); err != nil {
+			catcher.Add(errors.Wrapf(err, "unregistering repo from scalar: %s", repoPath))
+		}
+	}
+	return catcher.Resolve()
 }
 
 func (a *Agent) shouldKill(tc *taskContext, ignoreTaskGroupCheck bool) bool {

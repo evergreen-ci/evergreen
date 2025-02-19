@@ -2,7 +2,7 @@ package command
 
 import (
 	"context"
-	"os"
+	"io/fs"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -150,7 +150,7 @@ func checkCommonExtractedArchiveContents(t *testing.T, targetDirectory string) {
 
 	// Check that the proper directory structure is created and contains the one
 	// extracted file.
-	err := filepath.Walk(targetDirectory, func(path string, info os.FileInfo, err error) error {
+	err := filepath.WalkDir(targetDirectory, func(path string, di fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}

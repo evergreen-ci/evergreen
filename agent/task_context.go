@@ -53,6 +53,10 @@ type taskContext struct {
 	// will overwrite the default end task response.
 	userEndTaskResp                   *triggerEndTaskResp
 	userEndTaskRespOriginatingCommand command.Command
+	// addMetadataTagResp is a user-definable response that contains a failure
+	// metadata tag payload, which can be appended to the final list of failure
+	// metadata tags in the end task response.
+	addMetadataTagResp *triggerAddMetadataTagResp
 	sync.RWMutex
 }
 
@@ -386,6 +390,14 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.
 	taskConfig.Task.TaskOutputInfo.TaskLogs.AWSCredentials = awsCreds
 	taskConfig.Task.TaskOutputInfo.TestLogs.AWSCredentials = awsCreds
 
+	if a.opts.HostSecret != "" {
+		// Redact the host secret from the logs. While the host secret isn't
+		// supposed to be logged anywhere nor is it accessible by the task, this
+		// is additional protection against leaking the secret due to situations
+		// like a bug that unintentionally logs it.
+		taskConfig.InternalRedactions.PutAndRedact(globals.HostSecret, a.opts.HostSecret)
+	}
+
 	return taskConfig, nil
 }
 
@@ -639,6 +651,27 @@ func (tc *taskContext) getUserEndTaskResponse() *triggerEndTaskResp {
 	defer tc.RUnlock()
 
 	return tc.userEndTaskResp
+}
+
+// setAddMetadataTagResponse sets the user-defined failure metadata tag data.
+func (tc *taskContext) setAddMetadataTagResponse(resp *triggerAddMetadataTagResp) {
+	tc.Lock()
+	defer tc.Unlock()
+	var existingTags []string
+	if tc.addMetadataTagResp != nil {
+		existingTags = tc.addMetadataTagResp.AddFailureMetadataTags
+	}
+	newTags := utility.UniqueStrings(append(existingTags, resp.AddFailureMetadataTags...))
+	tc.addMetadataTagResp = &triggerAddMetadataTagResp{
+		AddFailureMetadataTags: newTags,
+	}
+}
+
+// getAddMetadataTagResponse gets the user-defined failure metadata tag data.
+func (tc *taskContext) getAddMetadataTagResponse() *triggerAddMetadataTagResp {
+	tc.RLock()
+	defer tc.RUnlock()
+	return tc.addMetadataTagResp
 }
 
 func (tc *taskContext) getDeviceNames(ctx context.Context) error {
