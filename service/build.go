@@ -53,7 +53,7 @@ func (uis *UIServer) buildPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if RedirectSpruceUsers(w, r, fmt.Sprintf("%s/version/%s/tasks?variant=%s", uis.Settings.Ui.UIv2Url, projCtx.Version.Id, projCtx.Build.BuildVariant)) {
+	if RedirectSpruceUsers(w, r, fmt.Sprintf("%s/version/%s/tasks?variant=^%s$", uis.Settings.Ui.UIv2Url, projCtx.Version.Id, projCtx.Build.BuildVariant)) {
 		return
 	}
 
