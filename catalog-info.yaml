@@ -42,4 +42,4 @@ spec:
   owner: evergreen-app
   system: evergreen
   definition:
-    $json: https://mciuploads.s3.amazonaws.com/evergreen/latest/swagger.json
+    $text: https://mciuploads.s3.amazonaws.com/evergreen/latest/swagger.json
