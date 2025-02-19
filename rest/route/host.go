@@ -85,7 +85,7 @@ func (h *hostsChangeStatusesHandler) Run(ctx context.Context) gimlet.Responder {
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding host '%s' with owner '%s'", id, user.Id))
 		}
-		_, _, err = api.ModifyHostStatus(ctx, h.env, foundHost, status.Status, "", user)
+		_, _, err = api.ModifyHostStatus(ctx, h.env, foundHost, status.Status, "modified by REST API", user)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "modifying host '%s' status to '%s' from API", id, status.Status))
 		}
