@@ -27,6 +27,7 @@ spec:
   owner: evergreen-app
   lifecycle: production
   system: evergreen
+  domain: internal-tools
   providesApis:
     - evergreen-api
 
