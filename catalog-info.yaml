@@ -1,11 +1,45 @@
 apiVersion: backstage.io/v1alpha1
-kind: Component
+kind: System
 metadata:
   name: evergreen
   description: Internal CI System
+  tags:
+    - ci
+spec:
+  owner: evergreen-app
+  links:
+    - url: https://spruce.mongodb.com
+      title: Evergreen UI
+      icon: dashboard
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: evergreen-backend
+  description: Evergreen backend service
   annotations:
     evergreen/project-id: evergreen
+  tags:
+    - golang
 spec:
   type: service
   owner: evergreen-app
   lifecycle: production
+  system: evergreen
+  providesApis:
+    - evergreen-api
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: evergreen-api
+  description: Retrieve Evergreen Data
+spec:
+  type: openapi
+  lifecycle: production
+  owner: evergreen-app
+  system: evergreen
+  definition:
+    $json: https://mciuploads.s3.amazonaws.com/evergreen/latest/swagger.json
