@@ -1,0 +1,11 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: evergreen
+  description: Internal CI System.
+  annotations:
+    evergreen/project-id: evergreen
+spec:
+  type: website
+  owner: john@example.com
+  lifecycle: experimental
