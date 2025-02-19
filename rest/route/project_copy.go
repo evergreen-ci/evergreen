@@ -172,7 +172,7 @@ func (p *copyVariablesHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(struct{}{})
 }
 
-// returns the ID, and returns true if this is a project ref, and false if it's a repo.
+// getProjectOrRepoId returns the ID, and returns true if this is a project ref, and false otherwise.
 func getProjectOrRepoId(identifier string) (string, bool, error) {
 	id, err := model.GetIdForProject(identifier) // Ensure project is existing
 	if err != nil {
