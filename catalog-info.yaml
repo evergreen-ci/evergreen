@@ -5,12 +5,12 @@ metadata:
   description: Internal CI System
   tags:
     - ci
-spec:
-  owner: evergreen-app
   links:
     - url: https://spruce.mongodb.com
       title: Evergreen UI
       icon: dashboard
+spec:
+  owner: evergreen-app
 
 ---
 apiVersion: backstage.io/v1alpha1
