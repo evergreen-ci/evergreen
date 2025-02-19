@@ -6,6 +6,6 @@ metadata:
   annotations:
     evergreen/project-id: evergreen
 spec:
-  type: website
-  owner: john@example.com
-  lifecycle: experimental
+  type: service
+  owner: evergreen-app
+  lifecycle: production
