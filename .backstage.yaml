@@ -11,6 +11,7 @@ metadata:
       icon: dashboard
 spec:
   owner: evergreen-app
+  domain: internal-tools
 
 ---
 apiVersion: backstage.io/v1alpha1
