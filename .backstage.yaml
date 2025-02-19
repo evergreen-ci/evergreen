@@ -23,6 +23,10 @@ metadata:
     evergreen/project-id: evergreen
   tags:
     - golang
+  links:
+    - url: http://github.com/evergreen-ci/evergreen
+      title: evergreen-ci/evergreen
+      icon: github
 spec:
   type: service
   owner: evergreen-app
