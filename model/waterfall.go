@@ -52,18 +52,12 @@ type WaterfallOptions struct {
 	Variants   []string `bson:"-" json:"-"`
 }
 
-func getBuildDisplayNames(match bson.M) []bson.M {
-	withDisplayName := bson.M{}
-	for key := range match {
-		withDisplayName[key] = match[key]
-	}
-	withDisplayName[bsonutil.GetDottedKeyName(VersionBuildVariantsKey, VersionBuildStatusDisplayNameKey)] = bson.M{"$exists": true}
-
-	pipeline := []bson.M{bson.M{"$match": withDisplayName}}
-
-	// Older versions don't have their display names saved in the version document. For those missing it, look up this value.
+// Older versions don't have their build display names saved in the version document.
+// For those missing it, look up their build details.
+// This function can be removed after 7 February 2026, when the version TTL index applies and all versions include build display names.
+func getBuildDisplayNames(match bson.M) bson.M {
 	match[bsonutil.GetDottedKeyName(VersionBuildVariantsKey, VersionBuildStatusDisplayNameKey)] = bson.M{"$exists": false}
-	unionWith := bson.M{
+	return bson.M{
 		"$unionWith": bson.M{
 			"coll": VersionCollection,
 			"pipeline": []bson.M{
@@ -90,10 +84,6 @@ func getBuildDisplayNames(match bson.M) []bson.M {
 			},
 		},
 	}
-	pipeline = append(pipeline, unionWith)
-	return append(pipeline, bson.M{
-		"$sort": bson.M{VersionRevisionOrderNumberKey: -1},
-	})
 }
 
 // GetActiveWaterfallVersions returns at most `opts.limit` activated versions for a given project.
@@ -127,7 +117,17 @@ func GetActiveWaterfallVersions(ctx context.Context, projectId string, opts Wate
 	pipeline := []bson.M{}
 
 	if len(opts.Variants) > 0 {
-		pipeline = append(pipeline, getBuildDisplayNames(match)...)
+		match[bsonutil.GetDottedKeyName(VersionBuildVariantsKey, VersionBuildStatusDisplayNameKey)] = bson.M{"$exists": true}
+		pipeline = append(pipeline, bson.M{"$match": match})
+		matchCopy := bson.M{}
+		for key := range match {
+			matchCopy[key] = match[key]
+		}
+		pipeline = append(pipeline, getBuildDisplayNames(matchCopy))
+		pipeline = append(pipeline,
+			bson.M{
+				"$sort": bson.M{VersionRevisionOrderNumberKey: -1},
+			})
 
 		variantsAsRegex := strings.Join(opts.Variants, "|")
 		pipeline = append(pipeline, bson.M{
