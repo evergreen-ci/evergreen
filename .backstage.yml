@@ -34,13 +34,14 @@ spec:
   system: evergreen
   domain: internal-tools
   providesApis:
-    - evergreen-api
+    - evergreen-api-rest
+    - evergreen-api-graphql
 
 ---
 apiVersion: backstage.io/v1alpha1
 kind: API
 metadata:
-  name: evergreen-api
+  name: evergreen-api-rest
   description: Retrieve Evergreen Data
 spec:
   type: openapi
@@ -49,3 +50,17 @@ spec:
   system: evergreen
   definition:
     $text: https://mciuploads.s3.amazonaws.com/evergreen/latest/swagger.json
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: evergreen-api-graphql
+  description: Internal API for the Evergreen UI to fetch data from the backend
+spec:
+  type: graphql
+  lifecycle: experimental
+  owner: evergreen-ui
+  system: evergreen
+  definition:
+    $text: https://github.com/evergreen-ci/evergreen/blob/DPLATFORMS-390_backstage_entity/graphql/graphql/merged-schema.graph
