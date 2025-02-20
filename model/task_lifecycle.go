@@ -924,11 +924,9 @@ func attemptStepbackAndDeactivatePrevious(ctx context.Context, t *task.Task, sta
 		catcher.Add(err)
 	}
 
-	fmt.Printf("TASK STATUS: %s, REQUESTER: %s, ACTIVATOR: %s\n", t.Status, t.Requester, t.ActivatedBy)
 	// Deactivate previous occurrences of the same task only if this one passed on mainline commits.
 	if t.Status == evergreen.TaskSucceeded && t.Requester == evergreen.RepotrackerVersionRequester && t.ActivatedBy != evergreen.StepbackTaskActivator {
 		shouldDeactivatePrevious := getDeactivatePrevious(t, pRef, project)
-		fmt.Printf("SHOULD DEACTIVATE PREVIOUS")
 		if shouldDeactivatePrevious {
 			catcher.Add(DeactivatePreviousTasks(ctx, t, caller))
 		}
