@@ -394,7 +394,8 @@ type BuildVariant struct {
 	//   1. nil   = not overriding the project setting (default)
 	//   2. true  = overriding the project setting with true
 	//   3. false = overriding the project setting with false
-	Stepback *bool `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
+	Stepback           *bool `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
+	DeactivatePrevious *bool `yaml:"deactivate_previous,omitempty" bson:"deactivate_previous,omitempty"`
 
 	// the default distros.  will be used to run a task if no distro field is
 	// provided for the task

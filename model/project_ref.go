@@ -568,6 +568,12 @@ func (p *ProjectRef) ShouldDeactivatePrevious() bool {
 	return utility.FromBoolPtr(p.DeactivatePrevious)
 }
 
+// TODO: How does stepback work???
+// IsDeactivatePreviousDisabled returns true if this was purposefully disabled.
+func (p *ProjectRef) IsDeactivatePreviousDisabled() bool {
+	return !utility.FromBoolTPtr(p.DeactivatePrevious)
+}
+
 func (p *ProjectRef) ShouldNotifyOnBuildFailure() bool {
 	return utility.FromBoolPtr(p.NotifyOnBuildFailure)
 }
