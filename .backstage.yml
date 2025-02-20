@@ -37,8 +37,8 @@ spec:
     - evergreen-api-rest
     - evergreen-api-graphql
   dependsOn:
-    - Splunk
-    - Honeycomb
+    - component:default/Splunk
+    - component:default/Honeycomb
 
 ---
 apiVersion: backstage.io/v1alpha1
@@ -70,4 +70,4 @@ spec:
   owner: evergreen-ui
   system: evergreen
   definition:
-    $text: https://github.com/evergreen-ci/evergreen/blob/DPLATFORMS-390_backstage_entity/graphql/merged-schema.graph
+    $text: https://mciuploads.s3.amazonaws.com/evergreen/latest/merged-schema.graph
