@@ -307,11 +307,14 @@ func checkForLargeNumFinalizedTasks(ctx context.Context, comm client.Communicato
 	numTasksToFinalize := 0
 	for _, vt := range existingPatch.VariantsTasks {
 		for _, t := range vt.Tasks {
-			if _, ok := generatorTasks[t]; ok {
-				tvPairs = append(tvPairs, model.TVPair{
-					TaskName: t,
-					Variant:  vt.Variant,
-				})
+			if generateCommands, ok := generatorTasks[t]; ok {
+				hasValidGenerateTemplate := checkHasValidGenerateTemplate(generateCommands)
+				if hasValidGenerateTemplate {
+					tvPairs = append(tvPairs, model.TVPair{
+						TaskName: t,
+						Variant:  vt.Variant,
+					})
+				}
 			}
 		}
 		numTasksToFinalize += len(vt.Tasks)
@@ -327,6 +330,22 @@ func checkForLargeNumFinalizedTasks(ctx context.Context, comm client.Communicato
 		}
 	}
 	return true, nil
+}
+
+func checkHasValidGenerateTemplate(generateCommands []model.PluginCommandConf) bool {
+	for _, command := range generateCommands {
+		files, ok := command.Params["files"]
+		if ok {
+			if fileList, isStringSlice := files.([]string); isStringSlice {
+				for _, f := range fileList {
+					if isValidPath(f) {
+						return true
+					}
+				}
+			}
+		}
+	}
+	return false
 }
 
 func getParametersFromInput(params []string) ([]patch.Parameter, error) {

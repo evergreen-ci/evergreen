@@ -1840,31 +1840,31 @@ func (p *Project) GetAllVariantTasks() []patch.VariantTasks {
 
 // TasksThatCallCommand returns a map of tasks that call a given command to the
 // number of times the command is called in the task.
-func (p *Project) TasksThatCallCommand(find string) map[string]int {
+func (p *Project) TasksThatCallCommand(find string) map[string][]PluginCommandConf {
 	// get all functions that call the command.
-	fs := map[string]int{}
+	fs := map[string][]PluginCommandConf{}
 	for f, cmds := range p.Functions {
 		if cmds == nil {
 			continue
 		}
 		for _, c := range cmds.List() {
 			if c.Command == find {
-				fs[f] = fs[f] + 1
+				fs[f] = append(fs[f], c)
 			}
 		}
 	}
 
 	// get all tasks that call the command.
-	ts := map[string]int{}
+	ts := map[string][]PluginCommandConf{}
 	for _, t := range p.Tasks {
 		for _, c := range t.Commands {
 			if c.Function != "" {
-				if times, ok := fs[c.Function]; ok {
-					ts[t.Name] = ts[t.Name] + times
+				if functionCommands, ok := fs[c.Function]; ok {
+					ts[t.Name] = append(ts[t.Name], functionCommands...)
 				}
 			}
 			if c.Command == find {
-				ts[t.Name] = ts[t.Name] + 1
+				ts[t.Name] = append(ts[t.Name], c)
 			}
 		}
 	}
