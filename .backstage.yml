@@ -36,6 +36,9 @@ spec:
   providesApis:
     - evergreen-api-rest
     - evergreen-api-graphql
+  dependsOn:
+    - Splunk
+    - Honeycomb
 
 ---
 apiVersion: backstage.io/v1alpha1
@@ -57,6 +60,10 @@ kind: API
 metadata:
   name: evergreen-api-graphql
   description: Internal API for the Evergreen UI to fetch data from the backend
+  links:
+    - url: https://evergreen.mongodb.com/graphql
+      title: GraphQL Playground
+      icon: kind:api
 spec:
   type: graphql
   lifecycle: experimental
