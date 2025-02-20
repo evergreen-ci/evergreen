@@ -362,7 +362,7 @@ gqlgen:
 govul-install:
 	$(gobin) install golang.org/x/vuln/cmd/govulncheck@latest
 
-swaggo: 
+swaggo:
 	$(MAKE) swaggo-format swaggo-build swaggo-render
 
 swaggo-install:
