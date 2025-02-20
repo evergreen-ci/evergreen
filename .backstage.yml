@@ -70,4 +70,4 @@ spec:
   owner: evergreen-ui
   system: evergreen
   definition:
-    $text: https://mciuploads.s3.amazonaws.com/evergreen/latest/merged-schema.graph
+    $text: https://mciuploads.s3.amazonaws.com/evergreen/latest/merged-schema.graphql
