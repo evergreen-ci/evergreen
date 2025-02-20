@@ -944,6 +944,7 @@ func (c *awsClientImpl) AssumeRole(ctx context.Context, input *sts.AssumeRoleInp
 			msg := makeAWSLogMessage("AssumeRole", fmt.Sprintf("%T", c), input)
 			output, err = c.stsClient.AssumeRole(ctx, input)
 			if err != nil {
+				grip.Debug(message.WrapError(err, msg))
 				var apiErr smithy.APIError
 				if errors.As(err, &apiErr) {
 					if strings.Contains(apiErr.ErrorCode(), stsErrorAccessDenied) ||
@@ -951,7 +952,6 @@ func (c *awsClientImpl) AssumeRole(ctx context.Context, input *sts.AssumeRoleInp
 						// This means the role does not exist or our role does not have permission to assume it.
 						return false, err
 					}
-					grip.Debug(message.WrapError(apiErr, msg))
 				}
 				return true, err
 			}
