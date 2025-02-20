@@ -63,4 +63,4 @@ spec:
   owner: evergreen-ui
   system: evergreen
   definition:
-    $text: https://github.com/evergreen-ci/evergreen/blob/DPLATFORMS-390_backstage_entity/graphql/graphql/merged-schema.graph
+    $text: https://github.com/evergreen-ci/evergreen/blob/DPLATFORMS-390_backstage_entity/graphql/merged-schema.graph
