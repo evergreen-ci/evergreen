@@ -738,6 +738,84 @@
           }
         }
       }
+    },
+    {
+      "query_file": "variants.graphql",
+      "result": {
+        "data": {
+          "waterfall": {
+            "flattenedVersions": [
+              {
+                "id": "evergreen_version5",
+                "waterfallBuilds": [
+                  {
+                    "id": "evergreen_version3_build",
+                    "displayName": "03 Linter"
+                  }
+                ]
+              },
+              {
+                "id": "evergreen_version4",
+                "waterfallBuilds": null
+              },
+              {
+                "id": "evergreen_version3",
+                "waterfallBuilds": []
+              },
+              {
+                "id": "evergreen_version2",
+                "waterfallBuilds": [
+                  {
+                    "id": "evergreen_version2_build",
+                    "displayName": "02 Ubuntu 16.04"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "requesters.graphql",
+      "result": {
+        "data": {
+          "waterfall": {
+            "flattenedVersions": [
+              {
+                "id": "evergreen_version5",
+                "activated": true,
+                "requester": "gitter_request"
+              },
+              {
+                "id": "evergreen_version4",
+                "activated": false,
+                "requester": "gitter_request"
+              },
+              {
+                "id": "evergreen_version3",
+                "activated": true,
+                "requester": "gitter_request"
+              },
+              {
+                "id": "evergreen_version2",
+                "activated": true,
+                "requester": "gitter_request"
+              },
+              {
+                "id": "evergreen_version1",
+                "activated": true,
+                "requester": "git_tag_request"
+              },
+              {
+                "id": "evergreen_version0",
+                "activated": false,
+                "requester": "gitter_request"
+              }
+            ]
+          }
+        }
+      }
     }
   ]
 }

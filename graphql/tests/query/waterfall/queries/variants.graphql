@@ -1,0 +1,11 @@
+{
+  waterfall(options: { projectIdentifier: "spruce-identifier", limit: 1, variants: ["ubuntu"] }) {
+    flattenedVersions {
+      id
+      waterfallBuilds {
+        id
+        displayName
+      }
+    }
+  }
+}
