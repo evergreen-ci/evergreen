@@ -744,6 +744,9 @@
       "result": {
         "data": {
           "waterfall": {
+            "pagination": {
+              "activeVersionIds": ["evergreen_version2"]
+            },
             "flattenedVersions": [
               {
                 "id": "evergreen_version5",
@@ -781,6 +784,9 @@
       "result": {
         "data": {
           "waterfall": {
+            "pagination": {
+              "activeVersionIds": ["evergreen_version1"]
+            },
             "flattenedVersions": [
               {
                 "id": "evergreen_version5",

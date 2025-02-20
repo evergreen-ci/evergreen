@@ -1075,6 +1075,7 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 		FlattenedVersions: flattenedVersions,
 		Versions:          waterfallVersions,
 		Pagination: &WaterfallPagination{
+			ActiveVersionIds:       activeVersionIds,
 			NextPageOrder:          nextPageOrder,
 			PrevPageOrder:          prevPageOrder,
 			MostRecentVersionOrder: mostRecentWaterfallVersion.RevisionOrderNumber,

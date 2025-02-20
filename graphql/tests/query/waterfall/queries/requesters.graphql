@@ -5,5 +5,8 @@
       activated
       requester
     }
+    pagination {
+      activeVersionIds
+    }
   }
 }
