@@ -290,7 +290,8 @@ func (h *Host) FetchAndReinstallJasperCommands(settings *evergreen.Settings) str
 // file when Jasper is reinstalled on the host (e.g. when static hosts are
 // re-added to the host pool). The file is not used anymore, but still exists on
 // long-lived static hosts.
-// TODO (DEVPROD-XXX): remove this cleanup function after some time has passed.
+// TODO (DEVPROD-15116): remove this cleanup function after some time has
+// passed.
 func (h *Host) removeSplunkTokenFileCommand() string {
 	return fmt.Sprintf("rm -f %s", h.splunkTokenFilePath())
 }
