@@ -938,13 +938,12 @@ func (c *awsClientImpl) ChangeResourceRecordSets(ctx context.Context, input *rou
 func (c *awsClientImpl) AssumeRole(ctx context.Context, input *sts.AssumeRoleInput) (*sts.AssumeRoleOutput, error) {
 	var output *sts.AssumeRoleOutput
 	var err error
+	msg := makeAWSLogMessage("AssumeRole", fmt.Sprintf("%T", c), input)
 	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
-			msg := makeAWSLogMessage("AssumeRole", fmt.Sprintf("%T", c), input)
 			output, err = c.stsClient.AssumeRole(ctx, input)
 			if err != nil {
-				grip.Debug(message.WrapError(err, msg))
 				var apiErr smithy.APIError
 				if errors.As(err, &apiErr) {
 					if strings.Contains(apiErr.ErrorCode(), stsErrorAccessDenied) ||
@@ -959,6 +958,7 @@ func (c *awsClientImpl) AssumeRole(ctx context.Context, input *sts.AssumeRoleInp
 			return false, nil
 		}, awsClientDefaultRetryOptions())
 	if err != nil {
+		grip.Debug(message.WrapError(err, msg))
 		return nil, err
 	}
 	return output, nil
