@@ -938,10 +938,10 @@ func (c *awsClientImpl) ChangeResourceRecordSets(ctx context.Context, input *rou
 func (c *awsClientImpl) AssumeRole(ctx context.Context, input *sts.AssumeRoleInput) (*sts.AssumeRoleOutput, error) {
 	var output *sts.AssumeRoleOutput
 	var err error
+	msg := makeAWSLogMessage("AssumeRole", fmt.Sprintf("%T", c), input)
 	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
-			msg := makeAWSLogMessage("AssumeRole", fmt.Sprintf("%T", c), input)
 			output, err = c.stsClient.AssumeRole(ctx, input)
 			if err != nil {
 				var apiErr smithy.APIError
@@ -951,7 +951,6 @@ func (c *awsClientImpl) AssumeRole(ctx context.Context, input *sts.AssumeRoleInp
 						// This means the role does not exist or our role does not have permission to assume it.
 						return false, err
 					}
-					grip.Debug(message.WrapError(apiErr, msg))
 				}
 				return true, err
 			}
@@ -959,6 +958,7 @@ func (c *awsClientImpl) AssumeRole(ctx context.Context, input *sts.AssumeRoleInp
 			return false, nil
 		}, awsClientDefaultRetryOptions())
 	if err != nil {
+		grip.Debug(message.WrapError(err, msg))
 		return nil, err
 	}
 	return output, nil
