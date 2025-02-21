@@ -140,21 +140,27 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	// host-allocation phase
 	////////////////////////
 
-	existingHosts, err := host.AllActiveHosts(ctx, j.DistroID)
-	if err != nil {
-		j.AddError(errors.Wrap(err, "finding active hosts"))
-		return
-	}
-	// Total number of hosts with a status within evergreen.UpHostStatus
-	upHosts := existingHosts.Uphosts()
-
 	distroQueueInfo, err := model.GetDistroQueueInfo(j.DistroID)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "getting distro queue info for distro '%s'", j.DistroID))
 		return
 	}
 
+	existingHosts, err := host.AllActiveHosts(ctx, j.DistroID)
+	if err != nil {
+		j.AddError(errors.Wrap(err, "finding active hosts"))
+		return
+	}
+
 	hostAllocationBegins := time.Now()
+
+	if distro.SingleTaskDistro {
+		j.handleSingleTaskDistroAllocation(ctx, distro, distroQueueInfo, existingHosts)
+		return
+	}
+
+	// Total number of hosts with a status within evergreen.UpHostStatus
+	upHosts := existingHosts.Uphosts()
 
 	hostAllocator := scheduler.GetHostAllocator(config.Scheduler.HostAllocator)
 
@@ -342,6 +348,63 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		attribute.Float64(fmt.Sprintf("%s.runtime_secs", hostAllocatorAttributePrefix), distroQueueInfo.ExpectedDuration.Seconds()),
 		attribute.Float64(fmt.Sprintf("%s.time_to_empty_secs", hostAllocatorAttributePrefix), timeToEmpty.Seconds()),
 		attribute.Float64(fmt.Sprintf("%s.time_to_empty_no_spawns_secs", hostAllocatorAttributePrefix), timeToEmptyNoSpawns.Seconds()),
+	)
+}
+
+func (j *hostAllocatorJob) handleSingleTaskDistroAllocation(ctx context.Context, distro *distro.Distro, distroQueueInfo model.DistroQueueInfo, existingHosts host.HostGroup) {
+	// Spawn hosts for all tasks that are available to run on the queue.
+	hostsToSpawn := distroQueueInfo.LengthWithDependenciesMet - len(existingHosts.ProvisioningHosts())
+
+	hostSpawningBegins := time.Now()
+	hostsSpawned, err := scheduler.SpawnHosts(ctx, *distro, hostsToSpawn, nil)
+	if err != nil {
+		j.AddError(errors.Wrap(err, "spawning new hosts"))
+		return
+	}
+
+	grip.Info(message.Fields{
+		"runner":             hostAllocatorJobName,
+		"distro":             distro.Id,
+		"operation":          "runtime-stats",
+		"phase":              "host-spawning",
+		"single_task_distro": true,
+		"instance":           j.ID(),
+		"duration_secs":      time.Since(hostSpawningBegins).Seconds(),
+	})
+
+	if err := EnqueueHostCreateJobs(ctx, j.env, hostsSpawned); err != nil {
+		j.AddError(errors.Wrapf(err, "enqueueing host create jobs"))
+	}
+
+	grip.Info(message.Fields{
+		"message":                            "distro-scheduler-report",
+		"job_type":                           hostAllocatorJobName,
+		"distro":                             distro.Id,
+		"provider":                           distro.Provider,
+		"max_hosts":                          distro.HostAllocatorSettings.MaximumHosts,
+		"num_new_hosts":                      len(hostsSpawned),
+		"task_queue_length":                  distroQueueInfo.Length,
+		"task_queue_length_dependencies_met": distroQueueInfo.LengthWithDependenciesMet,
+		"num_hosts_running":                  len(existingHosts.Uphosts()),
+		"num_hosts_provisioning":             len(existingHosts.ProvisioningHosts()),
+		"instance":                           j.ID(),
+		"runner":                             scheduler.RunnerName,
+	})
+
+	span := trace.SpanFromContext(ctx)
+	span.SetAttributes(
+		attribute.String(evergreen.DistroIDOtelAttribute, distro.Id),
+		attribute.String(fmt.Sprintf("%s.distro_provider", hostAllocatorAttributePrefix), distro.Provider),
+		attribute.Int(fmt.Sprintf("%s.distro_max_hosts", hostAllocatorAttributePrefix), distro.HostAllocatorSettings.MaximumHosts),
+		attribute.Int(fmt.Sprintf("%s.hosts_requested", hostAllocatorAttributePrefix), len(hostsSpawned)),
+		attribute.Int(fmt.Sprintf("%s.hosts_running", hostAllocatorAttributePrefix), len(existingHosts.Uphosts())),
+		attribute.Int(fmt.Sprintf("%s.hosts_total", hostAllocatorAttributePrefix), existingHosts.Stats().Total),
+		attribute.Int(fmt.Sprintf("%s.hosts_active", hostAllocatorAttributePrefix), existingHosts.Stats().Active),
+		attribute.Int(fmt.Sprintf("%s.hosts_idle", hostAllocatorAttributePrefix), existingHosts.Stats().Idle),
+		attribute.Int(fmt.Sprintf("%s.hosts_provisioning", hostAllocatorAttributePrefix), existingHosts.Stats().Provisioning),
+		attribute.Int(fmt.Sprintf("%s.hosts_quarantined", hostAllocatorAttributePrefix), existingHosts.Stats().Quarantined),
+		attribute.Int(fmt.Sprintf("%s.hosts_decommissioned", hostAllocatorAttributePrefix), existingHosts.Stats().Decommissioned),
+		attribute.Int(fmt.Sprintf("%s.task_queue_length", hostAllocatorAttributePrefix), distroQueueInfo.Length),
 	)
 }
 
