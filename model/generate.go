@@ -839,7 +839,7 @@ func isNonZeroBV(bv parserBV) bool {
 		bv.Disable != nil || len(bv.Tags) > 0 ||
 		bv.BatchTime != nil || bv.Patchable != nil || bv.PatchOnly != nil ||
 		bv.AllowForGitTag != nil || bv.GitTagOnly != nil || len(bv.AllowedRequesters) > 0 ||
-		bv.Stepback != nil || len(bv.RunOn) > 0 {
+		bv.Stepback != nil || bv.DeactivatePrevious != nil || len(bv.RunOn) > 0 {
 		return true
 	}
 	return false

@@ -1247,17 +1247,6 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONResponse(endTaskResp)
 	}
 
-	projectRef, err := model.FindMergedProjectRef(t.Project, t.Version, true)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(err)
-	}
-	if projectRef == nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    "empty project ref for task",
-		})
-	}
-
 	// The order of operations here for clearing the task from the host and
 	// marking the task finished is critical and must be done in this particular
 	// order.
@@ -1287,7 +1276,6 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
 
-	deactivatePrevious := utility.FromBoolPtr(projectRef.DeactivatePrevious)
 	details := &h.details
 	if t.Aborted {
 		details = &apimodels.TaskEndDetail{
@@ -1295,7 +1283,8 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 			Description: evergreen.TaskDescriptionAborted,
 		}
 	}
-	err = model.MarkEnd(ctx, h.env.Settings(), t, evergreen.APIServerTaskActivator, finishTime, details, deactivatePrevious)
+
+	err = model.MarkEnd(ctx, h.env.Settings(), t, evergreen.APIServerTaskActivator, finishTime, details)
 	if err != nil {
 		err = errors.Wrapf(err, "calling mark finish on task '%s'", t.Id)
 		return gimlet.MakeJSONInternalErrorResponder(err)

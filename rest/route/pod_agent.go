@@ -492,8 +492,7 @@ func (h *podAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "clearing running task '%s' for pod '%s'", t.Id, p.ID))
 	}
 
-	deactivatePrevious := utility.FromBoolPtr(projectRef.DeactivatePrevious)
-	err = model.MarkEnd(ctx, h.env.Settings(), t, evergreen.APIServerTaskActivator, finishTime, &h.details, deactivatePrevious)
+	err = model.MarkEnd(ctx, h.env.Settings(), t, evergreen.APIServerTaskActivator, finishTime, &h.details)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "calling mark finish on task '%s'", t.Id))
 	}
