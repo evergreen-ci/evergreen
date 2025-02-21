@@ -490,6 +490,23 @@ func (r *queryResolver) ProjectSettings(ctx context.Context, projectIdentifier s
 	return res, nil
 }
 
+// Repo is the resolver for the repo fild.
+func (r *queryResolver) Repo(ctx context.Context, repoID string) (*restModel.APIProjectRef, error) {
+	repoRef, err := model.FindOneRepoRef(repoID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("looking in repo collection: %s", err.Error()))
+	}
+	if repoRef == nil {
+		return nil, ResourceNotFound.Send(ctx, "repo doesn't exist")
+	}
+	res := restModel.APIProjectRef{}
+	if err = res.BuildFromService(repoRef.ProjectRef); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APIProjectRef from service: %s", err.Error()))
+	}
+	res.DefaultUnsetBooleans()
+	return &res, nil
+}
+
 // RepoEvents is the resolver for the repoEvents field.
 func (r *queryResolver) RepoEvents(ctx context.Context, repoID string, limit *int, before *time.Time) (*ProjectEvents, error) {
 	timestamp := time.Now()
