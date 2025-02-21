@@ -1,0 +1,3056 @@
+###### INPUTS ######
+""" 
+IssueLinkInput is an input parameter to the annotation mutations.
+"""
+input IssueLinkInput {
+  confidenceScore: Float
+  issueKey: String!
+  url: String!
+}
+
+input MetadataLinkInput {
+  text: String!
+  url: String!
+}
+
+###### TYPES ######
+type IssueLink {
+  confidenceScore: Float
+  issueKey: String
+  jiraTicket: JiraTicket
+  source: Source
+  url: String
+}
+
+type MetadataLink {
+  url: String!
+  text: String!
+  source: Source
+}
+###### INPUTS ######
+"""
+PublicKeyInput is an input to the createPublicKey and updatePublicKey mutations.
+"""
+input PublicKeyInput {
+  key: String!
+  name: String!
+}
+
+input UpdateParsleySettingsInput {
+  parsleySettings: ParsleySettingsInput!
+}
+
+input ParsleySettingsInput {
+  sectionsEnabled: Boolean
+  jumpToFailingLineEnabled: Boolean
+}
+
+input UpdateBetaFeaturesInput {
+  betaFeatures: BetaFeaturesInput!
+}
+
+input BetaFeaturesInput {
+  spruceWaterfallEnabled: Boolean!
+}
+
+"""
+UserSettingsInput is the input to the updateUserSettings mutation.
+It is used to update user information such as GitHub or Slack username.
+"""
+input UserSettingsInput {
+  githubUser: GithubUserInput
+  notifications: NotificationsInput
+  region: String
+  slackUsername: String
+  slackMemberId: String
+  timezone: String
+  useSpruceOptions: UseSpruceOptionsInput
+  dateFormat: String
+  timeFormat: String
+}
+
+input GithubUserInput {
+  lastKnownAs: String
+}
+
+input NotificationsInput {
+  buildBreak: String
+  commitQueue: String
+  patchFinish: String
+  patchFirstFailure: String
+  spawnHostExpiration: String
+  spawnHostOutcome: String
+}
+
+input UseSpruceOptionsInput {
+  hasUsedMainlineCommitsBefore: Boolean
+  hasUsedSpruceBefore: Boolean
+  spruceV1: Boolean
+}
+
+"""
+SubscriptionInput is the input to the saveSubscription mutation.
+It stores information about a user's subscription to a version or task. For example, a user
+can have a subscription to send them a Slack message when a version finishes.
+"""
+input SubscriptionInput {
+  id: String
+  owner_type: String
+  owner: String
+  regex_selectors: [SelectorInput!]!
+  resource_type: String
+  selectors: [SelectorInput!]!
+  subscriber: SubscriberInput!
+  trigger_data: StringMap!
+  trigger: String
+}
+
+input SelectorInput {
+  data: String!
+  type: String!
+}
+
+input SubscriberInput {
+  target: String!
+  type: String!
+  webhookSubscriber: WebhookSubscriberInput
+  jiraIssueSubscriber: JiraIssueSubscriberInput
+}
+
+input AddFavoriteProjectInput {
+  projectIdentifier: String!
+}
+
+input RemoveFavoriteProjectInput {
+  projectIdentifier: String!
+}
+
+###### TYPES ######
+"""
+User is returned by the user query.
+It contains information about a user's id, name, email, and permissions.
+"""
+type User {
+  betaFeatures: BetaFeatures!
+  displayName: String!
+  emailAddress: String!
+  parsleyFilters: [ParsleyFilter!]!
+  parsleySettings: ParsleySettings!
+  patches(patchesInput: PatchesInput!): Patches! # user patches
+  permissions: Permissions!
+  settings: UserSettings!
+  subscriptions: [GeneralSubscription!]
+  userId: String!
+}
+
+"""
+PublicKey models a public key. Users can save/modify/delete their public keys.
+"""
+type PublicKey {
+  key: String!
+  name: String!
+}
+
+"""
+UserConfig is returned by the userConfig query.
+It contains configuration information such as the user's api key for the Evergreen CLI and a user's
+preferred UI (legacy vs Spruce).
+"""
+type UserConfig {
+  api_key: String!
+  api_server_host: String!
+  ui_server_host: String!
+  user: String!
+}
+
+type UpdateParsleySettingsPayload {
+  parsleySettings: ParsleySettings
+}
+
+type UpdateBetaFeaturesPayload {
+  betaFeatures: BetaFeatures
+}
+
+"""
+ParsleySettings contains information about a user's settings for Parsley.
+"""
+type ParsleySettings {
+  sectionsEnabled: Boolean!
+  jumpToFailingLineEnabled: Boolean!
+}
+
+type BetaFeatures {
+  spruceWaterfallEnabled: Boolean!
+}
+
+"""
+UserSettings is returned by the userSettings query.
+It contains information about a user's settings, such as their GitHub username or timezone.
+"""
+type UserSettings {
+  githubUser: GithubUser
+  notifications: Notifications
+  region: String
+  slackUsername: String
+  slackMemberId: String
+  timezone: String
+  useSpruceOptions: UseSpruceOptions
+  dateFormat: String
+  timeFormat: String
+}
+
+type GithubUser {
+  lastKnownAs: String
+  uid: Int
+}
+
+type Notifications {
+  buildBreak: String
+  buildBreakId: String
+  commitQueue: String
+  commitQueueId: String
+  patchFinish: String
+  patchFinishId: String
+  patchFirstFailure: String
+  patchFirstFailureId: String
+  spawnHostExpiration: String
+  spawnHostExpirationId: String
+  spawnHostOutcome: String
+  spawnHostOutcomeId: String
+}
+
+type UseSpruceOptions {
+  hasUsedMainlineCommitsBefore: Boolean
+  hasUsedSpruceBefore: Boolean
+  spruceV1: Boolean
+}
+###### INPUTS ######
+"""
+RepoSettingsInput is the input to the saveRepoSettingsForSection mutation.
+It contains information about repo settings (e.g. Build Baron configurations, subscriptions, etc) and is used to
+update the settings for a given project.
+"""
+input RepoSettingsInput {
+  repoId: String! @requireProjectAccess(permission: SETTINGS, access: EDIT)
+  aliases: [ProjectAliasInput!]
+  githubAppAuth: GithubAppAuthInput @redactSecrets
+  githubWebhooksEnabled: Boolean
+  projectRef: RepoRefInput ## use the repo ref here in order to have stronger types
+  subscriptions: [SubscriptionInput!]
+  vars: ProjectVarsInput @redactSecrets
+}
+
+###### TYPES ######
+"""
+RepoSettings models the settings for a given RepoRef.
+"""
+type RepoSettings {
+  aliases: [ProjectAlias!]
+  githubAppAuth: GithubAppAuth
+  githubWebhooksEnabled: Boolean!
+  projectRef: RepoRef @requireProjectSettingsAccess ## use the repo ref here in order to have stronger types
+  subscriptions: [GeneralSubscription!]
+  vars: ProjectVars
+}
+type GeneralSubscription {
+  id: String!
+  ownerType: String!
+  regexSelectors: [Selector!]!
+  resourceType: String!
+  selectors: [Selector!]!
+  subscriber: SubscriberWrapper
+  trigger: String!
+  triggerData: StringMap
+}
+
+type SubscriberWrapper {
+  subscriber: Subscriber!
+  type: String!
+}
+
+type Subscriber {
+  emailSubscriber: String
+  githubCheckSubscriber: GithubCheckSubscriber
+  githubPRSubscriber: GithubPRSubscriber
+  jiraCommentSubscriber: String
+  jiraIssueSubscriber: JiraIssueSubscriber
+  slackSubscriber: String
+  webhookSubscriber: WebhookSubscriber
+}
+
+type GithubPRSubscriber {
+  owner: String!
+  prNumber: Int
+  ref: String!
+  repo: String!
+}
+
+type GithubCheckSubscriber {
+  owner: String!
+  ref: String!
+  repo: String!
+}
+
+type WebhookSubscriber {
+  headers: [WebhookHeader!]!
+  secret: String!
+  url: String!
+  retries: Int!
+  minDelayMs: Int!
+  timeoutMs: Int!
+}
+
+type WebhookHeader {
+  key: String!
+  value: String!
+}
+
+type JiraIssueSubscriber {
+  issueType: String!
+  project: String!
+}
+
+input WebhookSubscriberInput {
+  headers: [WebhookHeaderInput!]!
+  secret: String! @redactSecrets
+  url: String!
+  retries: Int = 0
+  minDelayMs: Int = 0
+  timeoutMs: Int = 0
+}
+
+input WebhookHeaderInput {
+  key: String!
+  value: String!
+}
+
+input JiraIssueSubscriberInput {
+  issueType: String!
+  project: String!
+}
+###### INPUTS ######
+input ProjectVarsInput {
+  adminOnlyVarsList: [String!]
+  privateVarsList: [String!]
+  vars: StringMap
+}
+
+###### TYPES ######
+type ProjectVars {
+  adminOnlyVars: [String!]!
+  privateVars: [String!]!
+  vars: StringMap
+}
+##### TYPES #####
+type TicketFields {
+  assignedTeam: String
+  assigneeDisplayName: String
+  created: String!
+  resolutionName: String
+  status: JiraStatus!
+  summary: String!
+  updated: String!
+}
+
+type JiraStatus {
+  id: String!
+  name: String!
+}
+
+enum ProjectSettingsSection {
+  # Evergreen sections.
+  GENERAL
+  ACCESS
+  VARIABLES
+  NOTIFICATIONS
+  PATCH_ALIASES
+  WORKSTATION
+  TRIGGERS
+  PERIODIC_BUILDS
+  PLUGINS
+  CONTAINERS
+  VIEWS_AND_FILTERS
+
+  # GitHub sections.
+  GITHUB_AND_COMMIT_QUEUE
+  GITHUB_APP_SETTINGS
+  GITHUB_PERMISSIONS
+}
+
+###### INPUTS ######
+"""
+ProjectSettingsInput is the input to the saveProjectSettingsForSection mutation.
+It contains information about project settings (e.g. Build Baron configurations, subscriptions, etc) and is used to
+update the settings for a given project.
+"""
+input ProjectSettingsInput {
+  projectId: String! @requireProjectAccess(permission: SETTINGS, access: EDIT)
+  aliases: [ProjectAliasInput!]
+  githubAppAuth: GithubAppAuthInput @redactSecrets
+  githubWebhooksEnabled: Boolean
+  projectRef: ProjectInput
+  subscriptions: [SubscriptionInput!]
+  vars: ProjectVarsInput @redactSecrets
+}
+
+input ProjectInput {
+  id: String!
+  admins: [String!]
+  banner: ProjectBannerInput
+  batchTime: Int
+  branch: String
+  buildBaronSettings: BuildBaronSettingsInput
+  commitQueue: CommitQueueParamsInput
+  containerSizeDefinitions: [ContainerResourcesInput!]
+  deactivatePrevious: Boolean
+  disabledStatsCache: Boolean
+  dispatchingDisabled: Boolean
+  displayName: String
+  enabled: Boolean
+  externalLinks: [ExternalLinkInput!]
+  githubChecksEnabled: Boolean
+  githubDynamicTokenPermissionGroups: [GitHubDynamicTokenPermissionGroupInput!]
+  githubPermissionGroupByRequester: StringMap
+  githubTriggerAliases: [String!]
+  gitTagAuthorizedTeams: [String!]
+  gitTagAuthorizedUsers: [String!]
+  gitTagVersionsEnabled: Boolean
+  identifier: String
+  manualPrTestingEnabled: Boolean
+  notifyOnBuildFailure: Boolean
+  oldestAllowedMergeBase: String
+  owner: String
+  parsleyFilters: [ParsleyFilterInput!]
+  patchingDisabled: Boolean
+  patchTriggerAliases: [PatchTriggerAliasInput!]
+  perfEnabled: Boolean
+  periodicBuilds: [PeriodicBuildInput!]
+  projectHealthView: ProjectHealthView
+  prTestingEnabled: Boolean
+  remotePath: String
+  repo: String
+  repotrackerDisabled: Boolean
+  restricted: Boolean
+  spawnHostScriptPath: String
+  stepbackDisabled: Boolean
+  stepbackBisect: Boolean
+  taskAnnotationSettings: TaskAnnotationSettingsInput
+  tracksPushEvents: Boolean
+  triggers: [TriggerAliasInput!]
+  versionControlEnabled: Boolean
+  workstationConfig: WorkstationConfigInput
+}
+
+###### TYPES ######
+"""
+ProjectSettings models the settings for a given Project.
+"""
+type ProjectSettings {
+  aliases: [ProjectAlias!]
+  githubAppAuth: GithubAppAuth
+  githubWebhooksEnabled: Boolean!
+  projectRef: Project @requireProjectSettingsAccess
+  subscriptions: [GeneralSubscription!]
+  vars: ProjectVars
+}
+
+type Selector {
+  data: String!
+  type: String!
+}
+
+# shared by Project and RepoRef
+type TriggerAlias {
+  alias: String!
+  buildVariantRegex: String!
+  configFile: String!
+  dateCutoff: Int
+  level: String!
+  project: String!
+  status: String!
+  taskRegex: String!
+  unscheduleDownstreamVersions: Boolean
+}
+
+# shared by Project and RepoRef
+type ContainerResources {
+  name: String!
+  cpu: Int!
+  memoryMb: Int!
+}
+
+# shared by Project and RepoRef
+type PeriodicBuild {
+  id: String!
+  alias: String!
+  configFile: String!
+  intervalHours: Int!
+  cron: String!
+  message: String!
+  nextRunTime: Time!
+}
+
+# shared by Project and RepoRef
+type BuildBaronSettings {
+  bfSuggestionFeaturesURL: String
+  bfSuggestionPassword: String
+  bfSuggestionServer: String
+  bfSuggestionTimeoutSecs: Int
+  bfSuggestionUsername: String
+  ticketCreateProject: String!
+  ticketSearchProjects: [String!]
+  ticketCreateIssueType: String!
+}
+
+# shared by Project and RepoRef
+type TaskAnnotationSettings {
+  fileTicketWebhook: Webhook!
+}
+
+type Webhook {
+  endpoint: String!
+  secret: String!
+}
+
+"""
+ProjectEvents contains project event log entries that concern the history of changes related to project
+settings.
+Although RepoSettings uses RepoRef in practice to have stronger types, this can't be enforced
+or event logs because new fields could always be introduced that don't exist in the old event logs.
+"""
+type ProjectEvents {
+  count: Int!
+  eventLogEntries: [ProjectEventLogEntry!]!
+}
+
+type ProjectEventLogEntry {
+  after: ProjectEventSettings
+  before: ProjectEventSettings
+  timestamp: Time!
+  user: String!
+}
+
+type ProjectEventSettings {
+  aliases: [ProjectAlias!]
+  githubAppAuth: GithubAppAuth
+  githubWebhooksEnabled: Boolean!
+  projectRef: Project
+  subscriptions: [GeneralSubscription!]
+  vars: ProjectVars
+}
+
+type ProjectAlias {
+  id: String!
+  alias: String!
+  description: String
+  gitTag: String!
+  remotePath: String!
+  task: String!
+  taskTags: [String!]!
+  variant: String!
+  variantTags: [String!]!
+  parameters: [Parameter!]!
+}
+###### TYPES ######
+"""
+Annotation models the metadata that a user can add to a task.
+It is used as a field within the Task type.
+"""
+type Annotation {
+  id: String!
+  createdIssues: [IssueLink!]
+  issues: [IssueLink!]
+  note: Note
+  suspectedIssues: [IssueLink!]
+  metadataLinks: [MetadataLink!]
+  taskId: String!
+  taskExecution: Int!
+  webhookConfigured: Boolean!
+}
+
+type Note {
+  message: String!
+  source: Source!
+}
+
+type Source {
+  author: String!
+  requester: String!
+  time: Time!
+}
+
+"""
+Build Baron is a service that can be integrated into a project (see Confluence Wiki for more details).
+This type is returned from the buildBaron query, and contains information about Build Baron configurations and suggested
+tickets from JIRA for a given task on a given execution.
+"""
+type BuildBaron {
+  bbTicketCreationDefined: Boolean!
+  buildBaronConfigured: Boolean!
+  searchReturnInfo: SearchReturnInfo # contains array of suggested tickets from JIRA
+}
+
+type SearchReturnInfo {
+  featuresURL: String!
+  issues: [JiraTicket!]!
+  search: String!
+  source: String!
+}
+
+type JiraTicket {
+  fields: TicketFields!
+  key: String!
+}
+input WaterfallOptions {
+  date: Time
+  limit: Int = 5
+  "Return versions with an order greater than minOrder. Used for paginating backward."
+  minOrder: Int
+  "Return versions with an order lower than maxOrder. Used for paginating forward."
+  maxOrder: Int
+  projectIdentifier: String!
+    @requireProjectAccess(permission: TASKS, access: VIEW)
+  requesters: [String!]
+  revision: String
+}
+
+type WaterfallTask {
+  id: String!
+  displayName: String!
+  displayStatusCache: String!
+  execution: Int!
+  status: String!
+}
+
+type WaterfallBuild {
+  id: String!
+  buildVariant: String!
+  displayName: String!
+  version: String!
+  tasks: [WaterfallTask!]!
+}
+
+type WaterfallBuildVariant {
+  id: String!
+  builds: [WaterfallBuild!]!
+  displayName: String!
+  version: String!
+}
+
+type WaterfallVersion {
+  inactiveVersions: [Version!]
+  version: Version
+}
+
+type WaterfallPagination {
+  hasNextPage: Boolean!
+  hasPrevPage: Boolean!
+  mostRecentVersionOrder: Int!
+  nextPageOrder: Int!
+  prevPageOrder: Int!
+}
+
+type Waterfall {
+  buildVariants: [WaterfallBuildVariant!]!
+  versions: [WaterfallVersion!]!
+  flattenedVersions: [Version!]!
+  pagination: WaterfallPagination!
+}
+type Volume {
+  id: String!
+  availabilityZone: String!
+  createdBy: String!
+  creationTime: Time
+  deviceName: String
+  displayName: String!
+  expiration: Time
+  homeVolume: Boolean!
+  host: Host
+  hostID: String!
+  migrating: Boolean!
+  noExpiration: Boolean!
+  size: Int!
+  type: String!
+}
+###### INPUTS ######
+input RepoRefInput {
+  id: String!
+  admins: [String!]
+  batchTime: Int
+  buildBaronSettings: BuildBaronSettingsInput
+  commitQueue: CommitQueueParamsInput
+  deactivatePrevious: Boolean
+  disabledStatsCache: Boolean
+  dispatchingDisabled: Boolean
+  displayName: String
+  enabled: Boolean
+  externalLinks: [ExternalLinkInput!]
+  githubChecksEnabled: Boolean
+  githubDynamicTokenPermissionGroups: [GitHubDynamicTokenPermissionGroupInput!]
+  githubPermissionGroupByRequester: StringMap
+  githubTriggerAliases: [String!]
+  gitTagAuthorizedTeams: [String!]
+  gitTagAuthorizedUsers: [String!]
+  gitTagVersionsEnabled: Boolean
+  manualPrTestingEnabled: Boolean
+  notifyOnBuildFailure: Boolean
+  oldestAllowedMergeBase: String
+  owner: String
+  parsleyFilters: [ParsleyFilterInput!]
+  patchingDisabled: Boolean
+  patchTriggerAliases: [PatchTriggerAliasInput!]
+  perfEnabled: Boolean
+  periodicBuilds: [PeriodicBuildInput!]
+  prTestingEnabled: Boolean
+  remotePath: String
+  repo: String
+  repotrackerDisabled: Boolean
+  restricted: Boolean
+  spawnHostScriptPath: String
+  stepbackDisabled: Boolean
+  stepbackBisect: Boolean
+  taskAnnotationSettings: TaskAnnotationSettingsInput
+  tracksPushEvents: Boolean
+  triggers: [TriggerAliasInput!]
+  versionControlEnabled: Boolean
+  workstationConfig: WorkstationConfigInput
+  containerSizeDefinitions: [ContainerResourcesInput!]
+}
+
+###### TYPES ######
+"""
+RepoRef is technically a special kind of Project.
+Repo types have booleans defaulted, which is why it is necessary to redeclare the types despite them matching nearly
+exactly.
+"""
+type RepoRef {
+  id: String!
+  admins: [String!]!
+  batchTime: Int!
+  buildBaronSettings: BuildBaronSettings!
+  commitQueue: RepoCommitQueueParams!
+  containerSizeDefinitions: [ContainerResources!]
+  deactivatePrevious: Boolean!
+  disabledStatsCache: Boolean!
+  dispatchingDisabled: Boolean!
+  displayName: String!
+  enabled: Boolean!
+  githubChecksEnabled: Boolean!
+  githubDynamicTokenPermissionGroups: [GitHubDynamicTokenPermissionGroup!]!
+  githubPermissionGroupByRequester: StringMap
+  githubTriggerAliases: [String!]
+  gitTagAuthorizedTeams: [String!]
+  gitTagAuthorizedUsers: [String!]
+  gitTagVersionsEnabled: Boolean!
+  manualPrTestingEnabled: Boolean!
+  notifyOnBuildFailure: Boolean!
+  oldestAllowedMergeBase: String!
+  owner: String!
+  parsleyFilters: [ParsleyFilter!]
+  patchingDisabled: Boolean!
+  patchTriggerAliases: [PatchTriggerAlias!]
+  perfEnabled: Boolean!
+  periodicBuilds: [PeriodicBuild!]
+  prTestingEnabled: Boolean!
+  remotePath: String!
+  repo: String!
+  repotrackerDisabled: Boolean!
+  restricted: Boolean!
+  spawnHostScriptPath: String!
+  stepbackDisabled: Boolean!
+  stepbackBisect: Boolean
+  taskAnnotationSettings: TaskAnnotationSettings!
+  tracksPushEvents: Boolean!
+  triggers: [TriggerAlias!]!
+  versionControlEnabled: Boolean!
+  workstationConfig: RepoWorkstationConfig!
+  externalLinks: [ExternalLink!]
+}
+
+type RepoCommitQueueParams {
+  enabled: Boolean!
+  mergeMethod: String!
+  message: String!
+}
+
+type RepoWorkstationConfig {
+  gitClone: Boolean!
+  setupCommands: [WorkstationSetupCommand!]
+}
+
+type WorkstationSetupCommand {
+  command: String!
+  directory: String!
+}
+type LogkeeperTest {
+  id: String!
+  name: String!
+  buildId: String!
+  taskId: String!
+  taskExecution: Int!
+  phase: String!
+  command: String!
+}
+
+type LogkeeperBuild {
+  id: String!
+  builder: String!
+  buildNum: Int!
+  taskId: String!
+  taskExecution: Int!
+  tests: [LogkeeperTest!]!
+  task: Task!
+}
+enum HostSortBy {
+  ID
+  CURRENT_TASK
+  DISTRO
+  ELAPSED
+  IDLE_TIME
+  OWNER
+  STATUS
+  UPTIME
+}
+
+enum HostEventType {
+  HOST_CREATED
+  HOST_CREATED_ERROR
+  HOST_STARTED
+  HOST_STOPPED
+  HOST_MODIFIED
+  HOST_AGENT_DEPLOYED
+  HOST_AGENT_DEPLOY_FAILED
+  HOST_AGENT_MONITOR_DEPLOYED
+  HOST_AGENT_MONITOR_DEPLOY_FAILED
+  HOST_JASPER_RESTARTING
+  HOST_JASPER_RESTARTED
+  HOST_JASPER_RESTART_ERROR
+  HOST_CONVERTING_PROVISIONING
+  HOST_CONVERTED_PROVISIONING
+  HOST_CONVERTING_PROVISIONING_ERROR
+  HOST_STATUS_CHANGED
+  HOST_DNS_NAME_SET
+  HOST_PROVISION_ERROR
+  HOST_PROVISION_FAILED
+  HOST_PROVISIONED
+  HOST_RUNNING_TASK_SET
+  HOST_RUNNING_TASK_CLEARED
+  HOST_TASK_FINISHED
+  HOST_TERMINATED_EXTERNALLY
+  HOST_EXPIRATION_WARNING_SENT
+  HOST_TEMPORARY_EXEMPTION_EXPIRATION_WARNING_SENT
+  HOST_IDLE_NOTIFICATION
+  HOST_SCRIPT_EXECUTED
+  HOST_SCRIPT_EXECUTE_FAILED
+  SPAWN_HOST_CREATED_ERROR
+  VOLUME_EXPIRATION_WARNING_SENT
+  VOLUME_MIGRATION_FAILED
+}
+
+enum SortDirection {
+  ASC
+  DESC
+}
+
+enum TaskQueueItemType {
+  COMMIT
+  PATCH
+}
+
+type SleepSchedule {
+  dailyStartTime: String!
+  dailyStopTime: String!
+  nextStartTime: Time
+  nextStopTime: Time
+  permanentlyExempt: Boolean!
+  shouldKeepOff: Boolean!
+  timeZone: String!
+  temporarilyExemptUntil: Time
+  wholeWeekdaysOff: [Int!]!
+}
+
+input HostEventsInput {
+  limit: Int = 0
+  page: Int = 0
+  """
+  sort by timestamp
+  """
+  sortDir: SortDirection = DESC
+  eventTypes: [HostEventType!]
+}
+
+###### TYPES ######
+"""
+Host models a host, which are used for things like running tasks or as virtual workstations.
+"""
+type Host {
+  id: ID!
+  availabilityZone: String
+  ami: String
+  displayName: String
+  distro: DistroInfo
+  distroId: String
+  elapsed: Time # running task start time
+  """
+  events returns the event log entries for a given host.
+  """
+  events(opts: HostEventsInput!): HostEvents!
+  eventTypes: [HostEventType!]!
+  expiration: Time
+  hostUrl: String!
+  homeVolume: Volume
+  homeVolumeID: String
+  instanceType: String
+  instanceTags: [InstanceTag!]!
+  lastCommunicationTime: Time
+  noExpiration: Boolean!
+  persistentDnsName: String!
+  provider: String!
+  runningTask: TaskInfo
+  sleepSchedule: SleepSchedule
+  startedBy: String!
+  status: String!
+  tag: String!
+  totalIdleTime: Duration
+  uptime: Time # host creation time
+  user: String
+  volumes: [Volume!]!
+}
+
+type TaskInfo {
+  id: ID
+  name: String
+}
+
+type DistroInfo {
+  id: String
+  bootstrapMethod: String
+  isVirtualWorkStation: Boolean
+  isWindows: Boolean
+  user: String
+  workDir: String
+}
+
+type InstanceTag {
+  canBeModified: Boolean!
+  key: String!
+  value: String!
+}
+
+"""
+HostsResponse is the return value for the hosts query.
+It contains an array of Hosts matching the filter conditions, as well as some count information.
+"""
+type HostsResponse {
+  filteredHostsCount: Int
+  hosts: [Host!]!
+  totalHostsCount: Int!
+}
+
+"""
+HostEvents is the return value for the hostEvents query.
+It contains the event log entries for a given host.
+"""
+type HostEvents {
+  count: Int!
+  eventLogEntries: [HostEventLogEntry!]!
+}
+
+type HostEventLogEntry {
+  id: String!
+  data: HostEventLogData!
+  eventType: HostEventType
+  processedAt: Time!
+  resourceId: String!
+  resourceType: String!
+  timestamp: Time
+}
+
+type HostEventLogData {
+  agentBuild: String!
+  agentRevision: String!
+  duration: Duration!
+  execution: String!
+  hostname: String!
+  jasperRevision: String!
+  logs: String!
+  monitorOp: String!
+  newStatus: String!
+  oldStatus: String!
+  provisioningMethod: String!
+  successful: Boolean!
+  taskId: String!
+  taskPid: String!
+  taskStatus: String!
+  user: String!
+}
+enum TaskSortCategory {
+  NAME
+  STATUS
+  BASE_STATUS
+  VARIANT
+  DURATION
+}
+
+###### INPUTS ######
+"""
+PatchesInput is the input value to the patches field for the User and Project types.
+Based on the information in PatchesInput, we return a list of Patches for either an individual user or a project.
+"""
+input PatchesInput {
+  limit: Int! = 0
+  onlyMergeQueue: Boolean
+  includeHidden: Boolean = false
+  page: Int! = 0
+  patchName: String! = ""
+  statuses: [String!]! = []
+  requesters: [String!]
+}
+
+"""
+PatchConfigure is the input to the schedulePatch mutation.
+It contains information about how a user has configured their patch (e.g. name, tasks to run, etc).
+"""
+input PatchConfigure {
+  description: String!
+  parameters: [ParameterInput!]
+  patchTriggerAliases: [String!]
+  variantsTasks: [VariantTasks!]!
+}
+
+input VariantTasks {
+  displayTasks: [DisplayTask!]!
+  tasks: [String!]!
+  variant: String!
+}
+
+input DisplayTask {
+  ExecTasks: [String!]!
+  Name: String!
+}
+
+input ParameterInput {
+  key: String!
+  value: String!
+}
+
+###### TYPES ######
+"""
+Patch is a manually initiated version submitted to test local code changes.
+"""
+type Patch {
+  id: ID!
+  activated: Boolean!
+  alias: String
+  author: String!
+  authorDisplayName: String!
+  baseTaskStatuses: [String!]!
+  builds: [Build!]!
+  childPatchAliases: [ChildPatchAlias!]
+  childPatches: [Patch!]
+  createTime: Time
+  description: String!
+  duration: PatchDuration
+  generatedTaskCounts: [GeneratedTaskCountResults!]!
+  githash: String!
+  hidden: Boolean!
+  moduleCodeChanges: [ModuleCodeChange!]!
+  parameters: [Parameter!]!
+  patchNumber: Int!
+  patchTriggerAliases: [PatchTriggerAlias!]!
+  project: PatchProject
+  projectID: String!
+  projectIdentifier: String!
+  projectMetadata: Project
+  status: String!
+  taskCount: Int
+  tasks: [String!]!
+  taskStatuses: [String!]!
+  time: PatchTime
+  variants: [String!]!
+  variantsTasks: [VariantTask!]!
+  versionFull: Version
+}
+
+type ChildPatchAlias {
+  alias: String!
+  patchId: String!
+}
+
+# This is also used by the Project type
+type PatchTriggerAlias {
+  alias: String!
+  childProjectId: String!
+  childProjectIdentifier: String!
+  parentAsModule: String
+  status: String
+  downstreamRevision: String
+  taskSpecifiers: [TaskSpecifier!]
+  variantsTasks: [VariantTask!]!
+}
+
+# This is also used by the Project type
+type VariantTask {
+  name: String!
+  tasks: [String!]!
+}
+
+# This is also used by the Project type
+type TaskSpecifier {
+  patchAlias: String!
+  taskRegex: String!
+  variantRegex: String!
+}
+
+type PatchProject {
+  variants: [ProjectBuildVariant!]!
+}
+
+type ProjectBuildVariant {
+  displayName: String!
+  name: String!
+  tasks: [String!]!
+}
+
+type ModuleCodeChange {
+  branchName: String!
+  fileDiffs: [FileDiff!]!
+  htmlLink: String!
+  rawLink: String!
+}
+
+type GeneratedTaskCountResults {
+  buildVariantName: String
+  taskName: String
+  taskId: String
+  estimatedTasks: Int!
+}
+
+type FileDiff {
+  additions: Int!
+  deletions: Int!
+  description: String!
+  diffLink: String!
+  fileName: String!
+}
+
+type Parameter {
+  key: String!
+  value: String!
+}
+
+type PatchDuration {
+  makespan: String
+  time: PatchTime
+  timeTaken: String
+}
+
+type PatchTime {
+  finished: String
+  started: String
+  submittedAt: String!
+}
+
+type Build {
+  id: String!
+  actualMakespan: Duration!
+  buildVariant: String!
+  predictedMakespan: Duration!
+  status: String!
+}
+
+"""
+Patches is the return value of the patches field for the User and Project types.
+It contains an array Patches for either an individual user or a project.
+"""
+type Patches {
+  filteredPatchCount: Int!
+  patches: [Patch!]!
+}
+###### ENUMS ######
+enum ImageEventType {
+  OPERATING_SYSTEM
+  PACKAGE
+  TOOLCHAIN
+}
+
+enum ImageEventEntryAction {
+  ADDED
+  UPDATED
+  DELETED
+}
+
+###### INPUTS ######
+input OperatingSystemOpts {
+  name: String
+  limit: Int
+  page: Int
+}
+
+input PackageOpts {
+  name: String
+  manager: String
+  limit: Int
+  page: Int
+}
+
+input ToolchainOpts {
+  name: String
+  limit: Int
+  page: Int
+}
+
+###### TYPES ######
+"""
+Image is returned by the image query.
+It contains information about an image.
+"""
+type Image {
+  id: String!
+  ami: String!
+  distros: [Distro!]!
+  events(limit: Int!, page: Int!): ImageEventsPayload!
+  lastDeployed: Time!
+  latestTask: Task
+  operatingSystem(opts: OperatingSystemOpts!): ImageOperatingSystemPayload!
+  packages(opts: PackageOpts!): ImagePackagesPayload!
+  toolchains(opts: ToolchainOpts!): ImageToolchainsPayload!
+}
+
+type ImageOperatingSystemPayload {
+  data: [OSInfo!]!
+  filteredCount: Int!
+  totalCount: Int!
+}
+
+type OSInfo {
+  name: String!
+  version: String!
+}
+
+type ImagePackagesPayload {
+  data: [Package!]!
+  filteredCount: Int!
+  totalCount: Int!
+}
+
+type Package {
+  name: String!
+  manager: String!
+  version: String!
+}
+
+type ImageToolchainsPayload {
+  data: [Toolchain!]!
+  filteredCount: Int!
+  totalCount: Int!
+}
+
+type Toolchain {
+  name: String!
+  path: String!
+  version: String!
+}
+
+type ImageEvent {
+  entries: [ImageEventEntry!]!
+  timestamp: Time!
+  amiBefore: String
+  amiAfter: String!
+}
+
+type ImageEventsPayload {
+  count: Int!
+  eventLogEntries: [ImageEvent!]!
+}
+
+type ImageEventEntry {
+  name: String!
+  after: String!
+  before: String!
+  type: ImageEventType!
+  action: ImageEventEntryAction!
+}
+type Pod {
+  events(limit: Int = 0, page: Int = 0): PodEvents!
+  id: String!
+  status: String!
+  task: Task
+  taskContainerCreationOpts: TaskContainerCreationOpts!
+  type: String!
+}
+
+type TaskContainerCreationOpts {
+  image: String!
+  memoryMB: Int!
+  cpu: Int!
+  os: String!
+  arch: String!
+  workingDir: String!
+}
+
+"""
+PodEvents is the return value for the events query.
+It contains the event log entries for a pod.
+"""
+type PodEvents {
+  count: Int!
+  eventLogEntries: [PodEventLogEntry!]!
+}
+
+type PodEventLogEntry {
+  id: String!
+  data: PodEventLogData!
+  eventType: String
+  processedAt: Time!
+  resourceId: String!
+  resourceType: String!
+  timestamp: Time
+}
+
+type PodEventLogData {
+  oldStatus: String
+  newStatus: String
+  reason: String
+  taskID: String
+  taskExecution: Int
+  taskStatus: String
+  task: Task
+}
+enum TestSortCategory {
+  BASE_STATUS
+  STATUS
+  START_TIME
+  DURATION
+  TEST_NAME
+}
+
+###### INPUTS ######
+"""
+TestFilterOptions is an input for the task.Tests query.
+It's used to filter, sort, and paginate test results of a task.
+"""
+input TestFilterOptions {
+  testName: String
+  excludeDisplayNames: Boolean
+  statuses: [String!]
+  groupID: String
+  sort: [TestSortOptions!]
+  limit: Int
+  page: Int
+}
+
+"""
+TestSortOptions is an input for the task.Tests query.
+It's used to define sort criteria for test results of a task.
+"""
+input TestSortOptions {
+  sortBy: TestSortCategory!
+  direction: SortDirection!
+}
+
+"""
+TestFilter is an input value for the taskTestSample query.
+It's used to filter for tests with testName and status testStatus.
+"""
+input TestFilter {
+  testName: String!
+  testStatus: String!
+}
+
+###### TYPES ######
+"""
+Task models a task, the simplest unit of execution for Evergreen.
+"""
+type Task {
+  id: String!
+  aborted: Boolean!
+  abortInfo: AbortInfo
+  activated: Boolean!
+  activatedBy: String
+  activatedTime: Time
+  ami: String
+  annotation: Annotation
+  """
+  This is a base task's display status.
+  """
+  baseStatus: String
+  baseTask: Task
+  blocked: Boolean!
+  buildId: String!
+  buildVariant: String!
+  buildVariantDisplayName: String
+  canAbort: Boolean!
+  canDisable: Boolean!
+  canModifyAnnotation: Boolean!
+  canOverrideDependencies: Boolean!
+  canRestart: Boolean!
+  canSchedule: Boolean!
+  canSetPriority: Boolean!
+  canUnschedule: Boolean!
+  containerAllocatedTime: Time
+  createTime: Time
+  dependsOn: [Dependency!]
+  details: TaskEndDetail
+  dispatchTime: Time
+  displayName: String!
+  """
+  This is a task's display status and is what is commonly used on the UI.
+  """
+  displayStatus: String!
+  displayOnly: Boolean
+  displayTask: Task
+  distroId: String!
+  estimatedStart: Duration
+  execution: Int!
+  executionTasks: [String!]
+  executionTasksFull: [Task!]
+  expectedDuration: Duration
+  failedTestCount: Int!
+  finishTime: Time
+  files: TaskFiles!
+  generatedBy: String
+  generatedByName: String
+  generateTask: Boolean
+  hasCedarResults: Boolean!
+  hostId: String
+  imageId: String!
+  ingestTime: Time
+  isPerfPluginEnabled: Boolean!
+  latestExecution: Int!
+  logs: TaskLogLinks!
+  minQueuePosition: Int!
+  order: Int!
+  patch: Patch
+  patchNumber: Int
+  pod: Pod
+  priority: Int
+  project: Project
+  projectId: String!
+  projectIdentifier: String
+  requester: String!
+  resetWhenFinished: Boolean!
+  revision: String
+  scheduledTime: Time
+  spawnHostLink: String
+  startTime: Time
+  """
+  This is a task's original status. It is the status stored in the database, and is distinct from the displayStatus.
+  """
+  status: String!
+  tags: [String!]!
+  taskGroup: String
+  taskGroupMaxHosts: Int
+  """
+  taskLogs returns the tail 100 lines of the task's logs.
+  """
+  taskLogs: TaskLogs!
+  tests(opts: TestFilterOptions): TaskTestResult!
+  timeTaken: Duration
+  totalTestCount: Int!
+  versionMetadata: Version!
+  stepbackInfo: StepbackInfo
+}
+
+type AbortInfo {
+  buildVariantDisplayName: String!
+  newVersion: String!
+  prClosed: Boolean!
+  taskDisplayName: String!
+  taskID: String!
+  user: String!
+}
+
+type Dependency {
+  buildVariant: String!
+  metStatus: MetStatus!
+  name: String!
+  requiredStatus: RequiredStatus!
+  taskId: String!
+}
+
+enum MetStatus {
+  UNMET
+  MET
+  PENDING
+  STARTED
+}
+
+enum RequiredStatus {
+  MUST_FAIL
+  MUST_FINISH
+  MUST_SUCCEED
+}
+
+type TaskEndDetail {
+  description: String
+  failingCommand: String
+  oomTracker: OomTrackerInfo!
+  status: String!
+  timedOut: Boolean
+  timeoutType: String
+  type: String!
+  traceID: String
+  diskDevices: [String!]!
+}
+
+type OomTrackerInfo {
+  detected: Boolean!
+  pids: [Int!]
+}
+
+type TaskLogLinks {
+  agentLogLink: String
+  allLogLink: String
+  eventLogLink: String
+  systemLogLink: String
+  taskLogLink: String
+}
+
+type StepbackInfo {
+  lastFailingStepbackTaskId: String
+  lastPassingStepbackTaskId: String
+  nextStepbackTaskId: String
+  previousStepbackTaskId: String
+}
+
+"""
+TaskFiles is the return value for the taskFiles query.
+Some tasks generate files which are represented by this type.
+"""
+type TaskFiles {
+  fileCount: Int!
+  groupedFiles: [GroupedFiles!]!
+}
+
+type GroupedFiles {
+  files: [File!]
+  taskName: String
+  taskId: String!
+  execution: Int!
+}
+
+type File {
+  link: String!
+  name: String!
+  urlParsley: String
+  visibility: String!
+}
+
+"""
+TaskTestResult is the return value for the task.Tests resolver.
+It contains the test results for a task. For example, if there is a task to run all unit tests, then the test results
+could be the result of each individual unit test.
+"""
+type TaskTestResult {
+  testResults: [TestResult!]!
+  totalTestCount: Int!
+  filteredTestCount: Int!
+}
+
+type TestResult {
+  id: String!
+  baseStatus: String
+  duration: Float
+  endTime: Time
+  execution: Int
+  exitCode: Int
+  groupID: String
+  logs: TestLog!
+  startTime: Time
+  status: String!
+  taskId: String
+  testFile: String!
+}
+
+type TestLog {
+  lineNum: Int
+  url: String
+  urlParsley: String
+  urlRaw: String
+  renderingType: String
+  version: Int
+}
+
+"""
+TaskTestResultSample is the return value for the taskTestSample query.
+It is used to represent failing test results on the task history pages.
+"""
+type TaskTestResultSample {
+  execution: Int!
+  matchingFailedTestNames: [String!]!
+  taskId: String!
+  totalTestCount: Int!
+}
+###### TYPES ######
+"""
+TaskLogs is the return value for the task.taskLogs query.
+It contains the logs for a given task on a given execution.
+"""
+type TaskLogs {
+  agentLogs: [LogMessage!]!
+  allLogs: [LogMessage!]!
+  eventLogs: [TaskEventLogEntry!]!
+  execution: Int!
+  systemLogs: [LogMessage!]!
+  taskId: String!
+  taskLogs: [LogMessage!]!
+}
+
+type TaskEventLogEntry {
+  id: String!
+  data: TaskEventLogData!
+  eventType: String
+  processedAt: Time!
+  resourceId: String!
+  resourceType: String!
+  timestamp: Time
+}
+
+type TaskEventLogData {
+  hostId: String
+  podId: String
+  jiraIssue: String
+  jiraLink: String
+  priority: Int
+  status: String
+  timestamp: Time
+  userId: String
+  blockedOn: String
+}
+
+type LogMessage {
+  message: String
+  severity: String
+  timestamp: Time
+  type: String
+  version: Int
+}
+###### INPUTS ######
+"""
+BuildVariantOptions is an input to the mainlineCommits query.
+It stores values for statuses, tasks, and variants which are used to filter for matching versions.
+"""
+input BuildVariantOptions {
+  includeBaseTasks: Boolean
+  statuses: [String!]
+  tasks: [String!]
+  variants: [String!]
+}
+
+"""
+MainlineCommitsOptions is an input to the mainlineCommits query.
+Its fields determine what mainline commits we fetch for a given projectID.
+"""
+input MainlineCommitsOptions {
+  limit: Int = 7
+  projectIdentifier: String! @requireProjectAccess(permission: TASKS, access: VIEW)
+  requesters: [String!]
+  revision: String
+  shouldCollapse: Boolean = false # used to determine if unmatching active versions should be collapsed
+  skipOrderNumber: Int 
+}
+
+###### TYPES ######
+"""
+MainlineCommits is returned by the mainline commits query.
+It contains information about versions (both unactivated and activated) which is surfaced on the Project Health page.
+"""
+type MainlineCommits {
+  nextPageOrderNumber: Int # represents the last order number returned and is used for pagination
+  prevPageOrderNumber: Int # represents the order number of the previous page and is also used for pagination
+  versions: [MainlineCommitVersion!]! # array of unactivated and activated versions
+}
+
+type MainlineCommitVersion {
+  rolledUpVersions: [Version!]
+  version: Version
+}
+
+type BuildVariantTuple {
+  buildVariant: String!
+  displayName: String!
+}
+###### INPUTS ######
+"""
+VersionToRestart is the input to the restartVersions mutation.
+It contains an array of taskIds to restart for a given versionId.
+"""
+input VersionToRestart {
+  versionId: String!
+  taskIds: [String!]!
+}
+
+"""
+TaskFilterOptions defines the parameters that are used when fetching tasks from a Version.
+"""
+input TaskFilterOptions {
+  baseStatuses: [String!] = []
+  includeNeverActivatedTasks: Boolean = false
+  limit: Int = 0
+  page: Int = 0
+  sorts: [SortOrder!]
+  statuses: [String!] = []
+  taskName: String
+  variant: String
+}
+
+"""
+SortOrder[] is an input value for version.tasks. It is used to define whether to sort by ASC/DEC for a given sort key.
+"""
+input SortOrder {
+  Direction: SortDirection!
+  Key: TaskSortCategory!
+}
+
+###### TYPES ######
+"""
+Version models a commit within a project.
+"""
+type Version {
+  id: String!
+  activated: Boolean
+  author: String!
+  authorEmail: String!
+  baseTaskStatuses: [String!]!
+  baseVersion: Version
+  branch: String!
+  buildVariants(options: BuildVariantOptions!): [GroupedBuildVariant!]
+  buildVariantStats(options: BuildVariantOptions!): [GroupedTaskStatusCount!]
+  childVersions: [Version!]
+  createTime: Time!
+  errors: [String!]!
+  externalLinksForMetadata: [ExternalLinkForMetadata!]!
+  finishTime: Time
+  generatedTaskCounts: [GeneratedTaskCountResults!]!
+  gitTags: [GitTag!]
+  ignored: Boolean!
+  isPatch: Boolean!
+  manifest: Manifest
+  message: String!
+  order: Int!
+  parameters: [Parameter!]!
+  patch: Patch
+  previousVersion: Version
+  project: String!
+  projectIdentifier: String!
+  projectMetadata: Project
+  repo: String!
+  requester: String!
+  revision: String!
+  startTime: Time
+  status: String!
+  taskCount: Int
+  tasks(options: TaskFilterOptions!): VersionTasks!
+  taskStatuses: [String!]!
+  taskStatusStats(options: BuildVariantOptions!): TaskStats
+  upstreamProject: UpstreamProject
+  versionTiming: VersionTiming
+  warnings: [String!]!
+  waterfallBuilds: [WaterfallBuild!]
+}
+
+type VersionTasks {
+  count: Int!
+  data: [Task!]!
+}
+
+type TaskStats {
+  counts: [StatusCount!]
+  eta: Time
+}
+
+type StatusCount {
+  count: Int!
+  status: String!
+}
+
+type GroupedBuildVariant {
+  displayName: String!
+  tasks: [Task!]
+  variant: String!
+}
+
+type GroupedTaskStatusCount {
+  displayName: String!
+  statusCounts: [StatusCount!]!
+  variant: String!
+}
+
+type VersionTiming {
+  makespan: Duration
+  timeTaken: Duration
+}
+
+type Manifest {
+  id: String!
+  branch: String!
+  isBase: Boolean!
+  moduleOverrides: StringMap
+  modules: Map
+  project: String!
+  revision: String!
+}
+
+type UpstreamProject {
+  owner: String!
+  project: String!
+  repo: String!
+  resourceID: String! # ID of the UI linkable resource that triggered the upstream version (corresponds to a task ID or version ID)
+  revision: String!
+  task: Task
+  triggerID: String! # ID of the trigger that created the upstream version (corresponds to a task ID or build ID)
+  triggerType: String!
+  version: Version
+}
+
+type ExternalLinkForMetadata {
+  url: String!
+  displayName: String!
+}
+
+type GitTag {
+  tag: String!
+  pusher: String!
+}
+###### INPUTS ######
+"""
+CreateProjectInput is the input to the createProject mutation.
+It contains information about a new project to be created.
+"""
+input CreateProjectInput {
+  id: String
+  identifier: String!
+  owner: String!
+  repo: String!
+  repoRefId: String
+}
+
+"""
+CopyProjectInput is the input to the copyProject mutation.
+It contains information about a project to be duplicated.
+"""
+input CopyProjectInput {
+  newProjectId: String
+  newProjectIdentifier: String!
+  projectIdToCopy: String!
+}
+
+"""
+MoveProjectInput is the input to the attachProjectToNewRepo mutation.
+It contains information used to move a project to a a new owner and repo.
+"""
+input MoveProjectInput {
+  newOwner: String!
+  newRepo: String!
+  projectId: String! @requireProjectAccess(permission: SETTINGS, access: EDIT)
+}
+
+"""
+SetLastRevisionInput is the input to the setLastRevision mutation.
+It contains information used to fix the repotracker error of a project.
+"""
+input SetLastRevisionInput {
+  projectIdentifier: String!
+  revision: String!
+}
+
+type SetLastRevisionPayload {
+  mergeBaseRevision: String!
+}
+
+"""
+DeleteGithubAppCredentialsInput is the input to the deleteGithubAppCredentials mutation.
+"""
+input DeleteGithubAppCredentialsInput {
+  projectId: String! @requireProjectAccess(permission: SETTINGS, access: EDIT)
+}
+
+"""
+DeleteGithubAppCredentialsPayload is returned by the deleteGithubAppCredentials mutation.
+"""
+type DeleteGithubAppCredentialsPayload {
+  oldAppId: Int!
+}
+
+input ProjectAliasInput {
+  id: String!
+  alias: String!
+  description: String
+  gitTag: String!
+  remotePath: String!
+  task: String!
+  taskTags: [String!]!
+  variant: String!
+  variantTags: [String!]!
+  parameters: [ParameterInput!]
+}
+
+input PeriodicBuildInput {
+  id: String!
+  alias: String!
+  configFile: String!
+  cron: String
+  intervalHours: Int!
+  message: String!
+  nextRunTime: Time!
+}
+
+input ExternalLinkInput {
+  displayName: String!
+  requesters: [String!]!
+  urlTemplate: String!
+}
+
+input ParsleyFilterInput {
+  expression: String!
+  caseSensitive: Boolean!
+  exactMatch: Boolean!
+}
+
+input ProjectBannerInput {
+  text: String!
+  theme: BannerTheme!
+}
+
+input TaskAnnotationSettingsInput {
+  fileTicketWebhook: WebhookInput
+}
+
+input WebhookInput {
+  endpoint: String!
+  secret: String! @redactSecrets
+}
+
+input BuildBaronSettingsInput {
+  bfSuggestionFeaturesURL: String
+  bfSuggestionPassword: String
+  bfSuggestionServer: String
+  bfSuggestionTimeoutSecs: Int
+  bfSuggestionUsername: String
+  ticketCreateProject: String!
+  ticketSearchProjects: [String!]
+  ticketCreateIssueType: String
+}
+
+input TriggerAliasInput {
+  alias: String!
+  buildVariantRegex: String!
+  configFile: String!
+  dateCutoff: Int
+  level: String!
+  project: String!
+  status: String!
+  taskRegex: String!
+  unscheduleDownstreamVersions: Boolean
+}
+
+input ContainerResourcesInput {
+  name: String!
+  cpu: Int!
+  memoryMb: Int!
+}
+
+input PatchTriggerAliasInput {
+  alias: String!
+  childProjectIdentifier: String!
+  parentAsModule: String
+  status: String
+  downstreamRevision: String
+  taskSpecifiers: [TaskSpecifierInput!]!
+}
+
+input TaskSpecifierInput {
+  patchAlias: String!
+  taskRegex: String!
+  variantRegex: String!
+}
+
+input CommitQueueParamsInput {
+  enabled: Boolean
+  mergeMethod: String
+  message: String
+}
+
+input WorkstationConfigInput {
+  gitClone: Boolean
+  setupCommands: [WorkstationSetupCommandInput!]
+}
+
+input WorkstationSetupCommandInput {
+  command: String!
+  directory: String
+}
+
+input GitHubDynamicTokenPermissionGroupInput {
+  name: String!
+  permissions: StringMap!
+}
+
+"""
+DeactivateStepbackTaskInput is the input to the deactivateStepbackTask mutation.
+"""
+input DeactivateStepbackTaskInput {
+  projectId: String! @requireProjectAccess(permission: SETTINGS, access: EDIT)
+  buildVariantName: String!
+  taskName: String!
+}
+
+"""
+DefaultSectionToRepoInput is the input to the defaultSectionToRepo mutation.
+"""
+input DefaultSectionToRepoInput {
+  projectId: String! @requireProjectAccess(permission: SETTINGS, access: EDIT)
+  section: ProjectSettingsSection!
+}
+
+"""
+PromoteVarsToRepoInput is the input to the promoteVarsToRepo mutation.
+"""
+input PromoteVarsToRepoInput {
+  projectId: String! @requireProjectAccess(permission: SETTINGS, access: EDIT)
+  varNames: [String!]!
+}
+
+input GithubAppAuthInput {
+  appId: Int!
+  privateKey: String!
+}
+
+###### TYPES ######
+"""
+GroupedProjects is the return value for the projects & viewableProjectRefs queries.
+It contains an array of projects which are grouped under a groupDisplayName.
+"""
+type GroupedProjects {
+  groupDisplayName: String!
+  projects: [Project!]!
+  repo: RepoRef
+}
+
+"""
+GithubProjectConflicts is the return value for the githubProjectConflicts query.
+Its contains information about potential conflicts in the commit checks, the commit queue, and PR testing.
+"""
+type GithubProjectConflicts {
+  commitCheckIdentifiers: [String!]
+  commitQueueIdentifiers: [String!]
+  prTestingIdentifiers: [String!]
+}
+
+###### ENUMS ######
+enum BannerTheme {
+  ANNOUNCEMENT
+  INFORMATION
+  WARNING
+  IMPORTANT
+}
+
+enum ProjectHealthView {
+  ALL
+  FAILED
+}
+
+"""
+Project models single repository on GitHub.
+"""
+type Project {
+  id: String!
+  admins: [String!]
+  banner: ProjectBanner
+  batchTime: Int!
+  branch: String!
+  buildBaronSettings: BuildBaronSettings!
+  commitQueue: CommitQueueParams!
+  containerSizeDefinitions: [ContainerResources!]
+  deactivatePrevious: Boolean
+  disabledStatsCache: Boolean
+  dispatchingDisabled: Boolean
+  displayName: String!
+  enabled: Boolean
+  externalLinks: [ExternalLink!]
+  githubChecksEnabled: Boolean
+  githubDynamicTokenPermissionGroups: [GitHubDynamicTokenPermissionGroup!]!
+  githubPermissionGroupByRequester: StringMap
+  githubTriggerAliases: [String!]
+  gitTagAuthorizedTeams: [String!]
+  gitTagAuthorizedUsers: [String!]
+  gitTagVersionsEnabled: Boolean
+  hidden: Boolean
+  identifier: String!
+  isFavorite: Boolean!
+  manualPrTestingEnabled: Boolean
+  notifyOnBuildFailure: Boolean
+  oldestAllowedMergeBase: String!
+  owner: String!
+  parsleyFilters: [ParsleyFilter!]
+  patches(patchesInput: PatchesInput!): Patches! # project patches
+  patchingDisabled: Boolean
+  patchTriggerAliases: [PatchTriggerAlias!]
+  perfEnabled: Boolean
+  periodicBuilds: [PeriodicBuild!]
+  projectHealthView: ProjectHealthView!
+  prTestingEnabled: Boolean
+  remotePath: String!
+  repo: String!
+  repoRefId: String!
+  repotrackerDisabled: Boolean
+  repotrackerError: RepotrackerError
+  restricted: Boolean
+  spawnHostScriptPath: String!
+  stepbackDisabled: Boolean
+  stepbackBisect: Boolean
+  taskAnnotationSettings: TaskAnnotationSettings!
+  tracksPushEvents: Boolean
+  triggers: [TriggerAlias!]
+  versionControlEnabled: Boolean
+  workstationConfig: WorkstationConfig!
+}
+
+type GitHubDynamicTokenPermissionGroup {
+  name: String!
+  permissions: StringMap!
+}
+
+type RepotrackerError {
+  exists: Boolean!
+  invalidRevision: String!
+  mergeBaseRevision: String!
+}
+
+type CommitQueueParams {
+  enabled: Boolean
+  mergeMethod: String!
+  message: String!
+}
+
+type WorkstationConfig {
+  gitClone: Boolean
+  setupCommands: [WorkstationSetupCommand!]
+}
+
+type ExternalLink {
+  displayName: String!
+  requesters: [String!]!
+  urlTemplate: String!
+}
+
+type ProjectBanner {
+  text: String!
+  theme: BannerTheme!
+}
+
+type ParsleyFilter {
+  expression: String!
+  caseSensitive: Boolean!
+  exactMatch: Boolean!
+}
+
+type GithubAppAuth {
+  appId: Int
+  privateKey: String
+}
+input DistroPermissionsOptions {
+  distroId: String!
+}
+
+input ProjectPermissionsOptions {
+  projectIdentifier: String!
+}
+
+input RepoPermissionsOptions {
+  repoId: String!
+}
+
+type DistroPermissions {
+  admin: Boolean!
+  edit: Boolean!
+  view: Boolean!
+}
+
+type ProjectPermissions {
+  edit: Boolean!
+  view: Boolean!
+}
+
+type RepoPermissions {
+  edit: Boolean!
+  view: Boolean!
+}
+
+###### TYPES ######
+type Permissions {
+  canCreateDistro: Boolean!
+  canCreateProject: Boolean!
+  canEditAdminSettings: Boolean!
+  distroPermissions(options: DistroPermissionsOptions!): DistroPermissions!
+  projectPermissions(options: ProjectPermissionsOptions!): ProjectPermissions!
+  repoPermissions(options: RepoPermissionsOptions!): RepoPermissions!
+  userId: String!
+}
+enum SpawnHostStatusActions {
+  START
+  STOP
+  TERMINATE
+}
+
+###### INPUTS ######
+"""
+VolumeHost is the input to the attachVolumeToHost mutation.
+Its fields are used to attach the volume with volumeId to the host with hostId.
+"""
+input VolumeHost {
+  volumeId: String!
+  hostId: String!
+}
+
+input SleepScheduleInput {
+  dailyStartTime: String!
+  dailyStopTime: String!
+  permanentlyExempt: Boolean!
+  shouldKeepOff: Boolean!
+  timeZone: String!
+  temporarilyExemptUntil: Time
+  wholeWeekdaysOff: [Int!]!
+}
+
+input UpdateSpawnHostStatusInput {
+  action: SpawnHostStatusActions!
+  hostId: String!
+  shouldKeepOff: Boolean
+}
+
+"""
+SpawnHostInput is the input to the spawnHost mutation.
+Its fields determine the properties of the host that will be spawned.
+"""
+input SpawnHostInput {
+  distroId: String!
+  expiration: Time
+  homeVolumeSize: Int
+  isVirtualWorkStation: Boolean!
+  noExpiration: Boolean!
+  publicKey: PublicKeyInput!
+  region: String!
+  savePublicKey: Boolean!
+  setUpScript: String
+  sleepSchedule: SleepScheduleInput
+  spawnHostsStartedByTask: Boolean
+  taskId: String
+  useProjectSetupScript: Boolean
+  userDataScript: String
+  useTaskConfig: Boolean
+  volumeId: String
+}
+
+"""
+SpawnVolumeInput is the input to the spawnVolume mutation.
+Its fields determine the properties of the volume that will be spawned.
+"""
+input SpawnVolumeInput {
+  availabilityZone: String!
+  expiration: Time
+  host: String
+  noExpiration: Boolean
+  size: Int!
+  type: String!
+}
+
+"""
+UpdateVolumeInput is the input to the updateVolume mutation.
+Its fields determine how a given volume will be modified.
+"""
+input UpdateVolumeInput {
+  expiration: Time
+  name: String
+  noExpiration: Boolean
+  volumeId: String!
+}
+
+"""
+EditSpawnHostInput is the input to the editSpawnHost mutation.
+Its fields determine how a given host will be modified.
+"""
+input EditSpawnHostInput {
+  addedInstanceTags: [InstanceTagInput!]
+  deletedInstanceTags: [InstanceTagInput!]
+  displayName: String
+  expiration: Time
+  hostId: String!
+  instanceType: String
+  noExpiration: Boolean
+  publicKey: PublicKeyInput @redactSecrets
+  savePublicKey: Boolean
+  servicePassword: String @redactSecrets
+  sleepSchedule: SleepScheduleInput
+  volume: String
+}
+
+input InstanceTagInput {
+  key: String!
+  value: String!
+}
+"""
+TaskQueueItem[] is the return value for the distroTaskQueue query.
+It contains information about any particular item on the task queue, such as the name of the task, the build variant of the task,
+and how long it's expected to take to finish running.
+"""
+type TaskQueueItem {
+  id: ID!
+  buildVariant: String!
+  displayName: String!
+  expectedDuration: Duration!
+  priority: Int!
+  project: String!
+  # projectIdentifier can be null if the task is running on an untracked branch.
+  projectIdentifier: String
+  requester: TaskQueueItemType!
+  activatedBy: String!
+  revision: String!
+  version: String!
+}
+
+"""
+TaskQueueDistro[] is the return value for the taskQueueDistros query.
+It contains information about how many tasks and hosts are running on on a particular distro.
+"""
+type TaskQueueDistro {
+  id: ID!
+  hostCount: Int!
+  taskCount: Int!
+}
+###### TYPES ######
+"""
+SpruceConfig defines settings that apply to all users of Evergreen.
+For example, if the banner field is populated, then a sitewide banner will be shown to all users.
+"""
+type SpruceConfig {
+  banner: String
+  bannerTheme: String
+  containerPools: ContainerPoolsConfig
+  githubOrgs: [String!]!
+  jira: JiraConfig
+  providers: CloudProviderConfig
+  secretFields: [String!]!
+  slack: SlackConfig
+  spawnHost: SpawnHostConfig!
+  ui: UIConfig!
+}
+
+type ContainerPoolsConfig {
+  pools: [ContainerPool!]!
+}
+
+type ContainerPool {
+  id: String!
+  distro: String!
+  maxContainers: Int!
+  port: Int!
+}
+
+type UIConfig {
+  betaFeatures: BetaFeatures!
+  defaultProject: String!
+  userVoice: String
+}
+
+type SlackConfig {
+  name: String
+}
+
+type JiraConfig {
+  email: String
+  host: String
+}
+
+type CloudProviderConfig {
+  aws: AWSConfig
+}
+
+type AWSConfig {
+  maxVolumeSizePerUser: Int
+  pod: AWSPodConfig
+}
+
+type AWSPodConfig {
+  ecs: ECSConfig
+}
+
+type ECSConfig {
+  maxCPU: Int!
+  maxMemoryMb: Int!
+}
+
+type SpawnHostConfig {
+  spawnHostsPerUser: Int!
+  unexpirableHostsPerUser: Int!
+  unexpirableVolumesPerUser: Int!
+}
+
+"""
+ClientConfig stores information about the binaries for the Evergreen Command-Line Client that are available for
+download on Evergreen.
+"""
+type ClientConfig {
+  clientBinaries: [ClientBinary!]
+  latestRevision: String
+}
+
+type ClientBinary {
+  arch: String
+  displayName: String
+  os: String
+  url: String
+}
+###### ENUMS ######
+enum DistroOnSaveOperation {
+  DECOMMISSION
+  RESTART_JASPER
+  REPROVISION
+  NONE
+}
+
+enum FinderVersion {
+  LEGACY
+  PARALLEL
+  PIPELINE
+  ALTERNATE
+}
+
+enum PlannerVersion {
+  LEGACY
+  TUNABLE
+}
+
+enum Provider {
+  DOCKER
+  EC2_FLEET
+  EC2_ON_DEMAND
+  STATIC
+}
+
+enum DispatcherVersion {
+  REVISED_WITH_DEPENDENCIES
+}
+
+enum HostAllocatorVersion {
+  UTILIZATION
+}
+
+enum RoundingRule {
+  DOWN
+  UP
+  DEFAULT
+}
+
+enum FeedbackRule {
+  WAITS_OVER_THRESH
+  NO_FEEDBACK
+  DEFAULT
+}
+
+enum OverallocatedRule {
+  TERMINATE
+  IGNORE
+  DEFAULT
+}
+
+enum Arch {
+  LINUX_64_BIT
+  LINUX_ARM_64_BIT
+  LINUX_PPC_64_BIT
+  LINUX_ZSERIES
+  OSX_64_BIT
+  OSX_ARM_64_BIT
+  WINDOWS_64_BIT
+}
+
+enum CommunicationMethod {
+  LEGACY_SSH
+  SSH
+  RPC
+}
+
+enum BootstrapMethod {
+  LEGACY_SSH
+  SSH
+  USER_DATA
+}
+
+###### INPUTS ######
+"""
+CopyDistroInput is the input to the copyDistro mutation.
+It contains information about a distro to be duplicated.
+"""
+input CopyDistroInput {
+  newDistroId: String!
+  distroIdToCopy: String!
+}
+
+"""
+CreateDistroInput is the input to the createDistro mutation.
+"""
+input CreateDistroInput {
+  newDistroId: String!
+}
+
+"""
+DeleteDistroInput is the input to the deleteDistro mutation.
+"""
+input DeleteDistroInput {
+  distroId: String! @requireDistroAccess(access: ADMIN)
+}
+
+"""
+DistroEventsInput is the input to the distroEvents query.
+"""
+input DistroEventsInput {
+  before: Time
+  distroId: String! @requireDistroAccess(access: VIEW)
+  limit: Int
+}
+
+"""
+SaveDistroInput is the input to the saveDistro mutation.
+"""
+input SaveDistroInput {
+  distro: DistroInput!
+  onSave: DistroOnSaveOperation!
+}
+
+input DistroInput {
+  adminOnly: Boolean!
+  aliases: [String!]!
+  arch: Arch!
+  authorizedKeysFile: String!
+  bootstrapSettings: BootstrapSettingsInput!
+  containerPool: String!
+  disabled: Boolean!
+  disableShallowClone: Boolean!
+  dispatcherSettings: DispatcherSettingsInput!
+  execUser: String
+  expansions: [ExpansionInput!]!
+  finderSettings: FinderSettingsInput!
+  homeVolumeSettings: HomeVolumeSettingsInput!
+  hostAllocatorSettings: HostAllocatorSettingsInput!
+  iceCreamSettings: IceCreamSettingsInput!
+  imageId: String!
+  isCluster: Boolean!
+  isVirtualWorkStation: Boolean!
+  mountpoints: [String!]
+  name: String! @requireDistroAccess(access: EDIT)
+  note: String!
+  plannerSettings: PlannerSettingsInput!
+  provider: Provider!
+  providerSettingsList: [Map!]!
+  setup: String!
+  setupAsSudo: Boolean!
+  singleTaskDistro: Boolean
+  sshOptions: [String!]!
+  user: String!
+  userSpawnAllowed: Boolean!
+  validProjects: [String!]!
+  warningNote: String
+  workDir: String!
+}
+
+input BootstrapSettingsInput {
+  clientDir: String!
+  communication: CommunicationMethod!
+  env: [EnvVarInput!]!
+  jasperBinaryDir: String!
+  jasperCredentialsPath: String!
+  method: BootstrapMethod!
+  preconditionScripts: [PreconditionScriptInput!]!
+  resourceLimits: ResourceLimitsInput!
+  rootDir: String!
+  serviceUser: String!
+  shellPath: String!
+}
+
+input DispatcherSettingsInput {
+  version: DispatcherVersion!
+}
+
+input EnvVarInput {
+  key: String!
+  value: String!
+}
+
+input ExpansionInput {
+  key: String!
+  value: String!
+}
+
+input FinderSettingsInput {
+  version: FinderVersion!
+}
+
+input HomeVolumeSettingsInput {
+  formatCommand: String!
+}
+
+input HostAllocatorSettingsInput {
+  acceptableHostIdleTime: Int!
+  feedbackRule: FeedbackRule!
+  futureHostFraction: Float!
+  hostsOverallocatedRule: OverallocatedRule!
+  maximumHosts: Int!
+  minimumHosts: Int!
+  roundingRule: RoundingRule!
+  version: HostAllocatorVersion!
+}
+
+input IceCreamSettingsInput {
+  configPath: String!
+  schedulerHost: String!
+}
+
+input PlannerSettingsInput {
+  commitQueueFactor: Int!
+  expectedRuntimeFactor: Int!
+  generateTaskFactor: Int!
+  groupVersions: Boolean!
+  mainlineTimeInQueueFactor: Int!
+  numDependentsFactor: Float
+  patchFactor: Int!
+  patchTimeInQueueFactor: Int!
+  targetTime: Int!
+  version: PlannerVersion!
+}
+
+input PreconditionScriptInput {
+  path: String!
+  script: String!
+}
+
+input ResourceLimitsInput {
+  lockedMemoryKb: Int!
+  numFiles: Int!
+  numProcesses: Int!
+  numTasks: Int!
+  virtualMemoryKb: Int!
+}
+
+###### TYPES ######
+"""
+Return type representing whether a distro was created and any validation errors
+"""
+type NewDistroPayload {
+  newDistroId: String!
+}
+
+"""
+Return type representing whether a distro was deleted.
+"""
+type DeleteDistroPayload {
+  deletedDistroId: String!
+}
+
+type DistroEvent {
+  after: Map
+  before: Map
+  data: Map
+  timestamp: Time!
+  user: String!
+}
+
+type DistroEventsPayload {
+  count: Int!
+  eventLogEntries: [DistroEvent!]!
+}
+
+"""
+Return type representing the updated distro and the number of hosts that were updated.
+"""
+type SaveDistroPayload {
+  distro: Distro!
+  hostCount: Int!
+}
+
+"""
+Distro models an environment configuration for a host.
+"""
+type Distro {
+  adminOnly: Boolean!
+  aliases: [String!]!
+  arch: Arch!
+  authorizedKeysFile: String!
+  bootstrapSettings: BootstrapSettings!
+  containerPool: String!
+  disabled: Boolean!
+  disableShallowClone: Boolean!
+  dispatcherSettings: DispatcherSettings!
+  execUser: String!
+  expansions: [Expansion!]!
+  finderSettings: FinderSettings!
+  homeVolumeSettings: HomeVolumeSettings!
+  hostAllocatorSettings: HostAllocatorSettings!
+  iceCreamSettings: IceCreamSettings!
+  imageId: String!
+  isCluster: Boolean!
+  isVirtualWorkStation: Boolean!
+  mountpoints: [String!]!
+  name: String!
+  note: String!
+  plannerSettings: PlannerSettings!
+  provider: Provider!
+  providerSettingsList: [Map!]!
+  setup: String!
+  setupAsSudo: Boolean!
+  singleTaskDistro: Boolean!
+  sshOptions: [String!]!
+  user: String!
+  userSpawnAllowed: Boolean!
+  validProjects: [String!]!
+  warningNote: String!
+  workDir: String!
+}
+
+type BootstrapSettings {
+  clientDir: String!
+  communication: CommunicationMethod!
+  env: [EnvVar!]!
+  jasperBinaryDir: String!
+  jasperCredentialsPath: String!
+  method: BootstrapMethod!
+  preconditionScripts: [PreconditionScript!]!
+  resourceLimits: ResourceLimits!
+  rootDir: String!
+  serviceUser: String!
+  shellPath: String!
+}
+
+type DispatcherSettings {
+  version: DispatcherVersion!
+}
+
+type EnvVar {
+  key: String!
+  value: String!
+}
+
+type Expansion {
+  key: String!
+  value: String!
+}
+
+type FinderSettings {
+  version: FinderVersion!
+}
+
+type HomeVolumeSettings {
+  formatCommand: String!
+}
+
+type HostAllocatorSettings {
+  acceptableHostIdleTime: Duration!
+  feedbackRule: FeedbackRule!
+  futureHostFraction: Float!
+  hostsOverallocatedRule: OverallocatedRule!
+  maximumHosts: Int!
+  minimumHosts: Int!
+  roundingRule: RoundingRule!
+  version: HostAllocatorVersion!
+}
+
+type IceCreamSettings {
+  configPath: String!
+  schedulerHost: String!
+}
+
+type PlannerSettings {
+  commitQueueFactor: Int!
+  expectedRuntimeFactor: Int!
+  generateTaskFactor: Int!
+  numDependentsFactor: Float
+  groupVersions: Boolean!
+  mainlineTimeInQueueFactor: Int!
+  patchFactor: Int!
+  patchTimeInQueueFactor: Int!
+  targetTime: Duration!
+  version: PlannerVersion!
+}
+
+type PreconditionScript {
+  path: String!
+  script: String!
+}
+
+type ResourceLimits {
+  lockedMemoryKb: Int!
+  numFiles: Int!
+  numProcesses: Int!
+  numTasks: Int!
+  virtualMemoryKb: Int!
+}
+# This file lists all of the queries. The query definitions can be found in the corresponding files in the resolvers folder.
+type Query {
+  # annotations
+  bbGetCreatedTickets(taskId: String! @requireProjectAccess(permission: ANNOTATIONS, access: VIEW)): [JiraTicket!]!
+  buildBaron(taskId: String! @requireProjectAccess(permission: ANNOTATIONS, access: VIEW), execution: Int!): BuildBaron!
+
+  # config
+  awsRegions: [String!]
+  clientConfig: ClientConfig
+  instanceTypes: [String!]!
+  spruceConfig: SpruceConfig
+  subnetAvailabilityZones: [String!]!
+
+  # distros
+  distro(distroId: String! @requireDistroAccess(access: VIEW)): Distro
+  distroEvents(opts: DistroEventsInput!): DistroEventsPayload! # Has directive on DistroEventsInput.
+  distros(onlySpawnable: Boolean!): [Distro!]!
+  distroTaskQueue(distroId: String!): [TaskQueueItem!]!
+
+  # hosts
+  host(hostId: String!): Host
+  hostEvents(
+    hostId: String!
+    hostTag: String = ""
+    limit: Int = 0
+    page: Int = 0
+  ): HostEvents! @deprecated(reason: "Use host.events instead.")
+  hosts(
+    hostId: String = ""
+    distroId: String = ""
+    currentTaskId: String = ""
+    statuses: [String!] = []
+    startedBy: String = ""
+    sortBy: HostSortBy = STATUS
+    sortDir: SortDirection = ASC
+    page: Int = 0
+    limit: Int = 10
+  ): HostsResponse!
+  taskQueueDistros: [TaskQueueDistro!]!
+
+  # containers
+  pod(podId: String!): Pod!
+  
+  # patch
+  patch(patchId: String! @requireProjectAccess(permission: TASKS, access: VIEW)): Patch!
+
+  # project
+  githubProjectConflicts(projectId: String! @requireProjectAccess(permission: SETTINGS, access: VIEW)): GithubProjectConflicts!
+  ### The project query must use TASKS permission because we surface many key fields (e.g. patches and banners) from it.
+  ### Can be updated after completion of DEVPROD-6882.
+  project(projectIdentifier: String! @requireProjectAccess(permission: TASKS, access: VIEW)): Project!
+  projects: [GroupedProjects!]!
+  projectEvents(
+    projectIdentifier: String! @requireProjectAccess(permission: SETTINGS, access: VIEW)
+    limit: Int = 0
+    before: Time
+  ): ProjectEvents!
+  projectSettings(projectIdentifier: String! @requireProjectAccess(permission: SETTINGS, access:VIEW)): ProjectSettings!
+  repoEvents(repoId: String! @requireProjectAccess(permission: SETTINGS, access: VIEW), limit: Int = 0, before: Time): ProjectEvents!
+  repoSettings(repoId: String! @requireProjectAccess(permission: SETTINGS, access: VIEW)): RepoSettings!
+  viewableProjectRefs: [GroupedProjects!]!
+  isRepo(projectOrRepoId: String!): Boolean!
+
+  # spawn
+  myHosts: [Host!]!
+  myVolumes: [Volume!]!
+
+  # logkeeper
+  logkeeperBuildMetadata(buildId: String!): LogkeeperBuild!
+
+  # task
+  task(taskId: String! @requireProjectAccess(permission: TASKS, access: VIEW), execution: Int): Task
+  taskAllExecutions(taskId: String! @requireProjectAccess(permission: TASKS, access: VIEW)): [Task!]!
+  taskTestSample(
+    versionId: String! @requireProjectAccess(permission: TASKS, access: VIEW)
+    taskIds: [String!]!
+    filters: [TestFilter!]!
+  ): [TaskTestResultSample!]
+
+  # user
+  myPublicKeys: [PublicKey!]!
+  user(userId: String): User! 
+  userConfig: UserConfig
+  userSettings: UserSettings
+
+  # mainline commits
+  buildVariantsForTaskName(projectIdentifier: String! @requireProjectAccess(permission: TASKS, access: VIEW), taskName: String!): [BuildVariantTuple!]
+  mainlineCommits(options: MainlineCommitsOptions!, buildVariantOptions: BuildVariantOptions): MainlineCommits # Has directive on MainlineCommitsOptions.
+  taskNamesForBuildVariant(projectIdentifier: String! @requireProjectAccess(permission: TASKS, access: VIEW), buildVariant: String!): [String!]
+
+  # waterfall
+  waterfall(options: WaterfallOptions!): Waterfall!
+
+  # version
+  hasVersion(patchId: String!): Boolean!
+  version(versionId: String! @requireProjectAccess(permission: TASKS, access: VIEW)): Version!
+
+  # image
+  image(imageId: String!): Image
+  images: [String!]!
+}
+# This file lists all of the mutations. The mutation definitions can be found in the corresponding files in the resolvers folder.
+type Mutation {
+  # annotations
+  bbCreateTicket(
+    taskId: String! # Permissions are checked in the resolver.
+    execution: Int
+  ): Boolean!
+  addAnnotationIssue(
+    taskId: String! # Permissions are checked in the resolver.
+    execution: Int!
+    apiIssue: IssueLinkInput!
+    isIssue: Boolean!
+  ): Boolean!
+  editAnnotationNote(
+    taskId: String! # Permissions are checked in the resolver.
+    execution: Int!
+    originalMessage: String!
+    newMessage: String!
+  ): Boolean!
+  moveAnnotationIssue(
+    taskId: String! # Permissions are checked in the resolver.
+    execution: Int!
+    apiIssue: IssueLinkInput!
+    isIssue: Boolean!
+  ): Boolean!
+  removeAnnotationIssue(
+    taskId: String! # Permissions are checked in the resolver.
+    execution: Int!
+    apiIssue: IssueLinkInput!
+    isIssue: Boolean!
+  ): Boolean!
+  setAnnotationMetadataLinks(
+    taskId: String! # Permissions are checked in the resolver.
+    execution: Int!
+    metadataLinks: [MetadataLinkInput!]!
+  ): Boolean!
+
+  # distros
+  deleteDistro(opts: DeleteDistroInput!): DeleteDistroPayload! # Has directive on DeleteDistroInput.
+  copyDistro(opts: CopyDistroInput! @requireDistroAccess(access: CREATE)): NewDistroPayload!
+  createDistro(opts: CreateDistroInput! @requireDistroAccess(access: CREATE)): NewDistroPayload!
+  saveDistro(opts: SaveDistroInput!): SaveDistroPayload! # Has directive on SaveDistroInput.
+
+  # hosts
+  reprovisionToNew(hostIds: [String!]!): Int!
+  restartJasper(hostIds: [String!]!): Int!
+  updateHostStatus(
+    hostIds: [String!]!
+    status: String!
+    notes: String = ""
+  ): Int!
+
+  """
+  setPatchVisibility takes a list of patch ids and a boolean to set the visibility on the my patches queries
+  """
+  setPatchVisibility(patchIds: [String!]!, hidden: Boolean!): [Patch!]! # Permissions are checked in the resolver.
+  schedulePatch(patchId: String! @requireProjectAccess(permission: PATCHES, access: EDIT), configure: PatchConfigure!): Patch!
+
+  # project
+  attachProjectToNewRepo(project: MoveProjectInput!): Project! # Has directive on MoveProjectInput.
+  attachProjectToRepo(projectId: String! @requireProjectAccess(permission: SETTINGS, access: EDIT)): Project!
+  createProject(project: CreateProjectInput! @requireProjectAdmin, requestS3Creds: Boolean): Project! 
+  copyProject(project: CopyProjectInput! @requireProjectAdmin, requestS3Creds: Boolean): Project! 
+  deactivateStepbackTask(opts: DeactivateStepbackTaskInput!): Boolean!
+  defaultSectionToRepo(opts: DefaultSectionToRepoInput!): String
+  deleteGithubAppCredentials(opts: DeleteGithubAppCredentialsInput!): DeleteGithubAppCredentialsPayload
+  deleteProject(projectId: String! @requireProjectAdmin): Boolean!
+  detachProjectFromRepo(projectId: String! @requireProjectAccess(permission: SETTINGS, access: EDIT)): Project!
+  forceRepotrackerRun(projectId: String! @requireProjectAccess(permission: SETTINGS, access: EDIT)): Boolean!
+  promoteVarsToRepo(opts: PromoteVarsToRepoInput!): Boolean!
+  saveProjectSettingsForSection(projectSettings: ProjectSettingsInput, section: ProjectSettingsSection!): ProjectSettings! # Has directive on ProjectSettingsInput.
+  saveRepoSettingsForSection(repoSettings: RepoSettingsInput, section: ProjectSettingsSection!): RepoSettings! # Has directive on RepoSettingsInput.
+  setLastRevision(opts: SetLastRevisionInput! @requireProjectAdmin): SetLastRevisionPayload!
+
+  # spawn
+  attachVolumeToHost(volumeAndHost: VolumeHost!): Boolean!
+  detachVolumeFromHost(volumeId: String!): Boolean!
+  editSpawnHost(spawnHost: EditSpawnHostInput): Host!
+  migrateVolume(volumeId: String!, spawnHostInput: SpawnHostInput): Boolean!
+  spawnHost(spawnHostInput: SpawnHostInput): Host!
+  spawnVolume(spawnVolumeInput: SpawnVolumeInput!): Boolean!
+  removeVolume(volumeId: String!): Boolean!
+  updateSpawnHostStatus(updateSpawnHostStatusInput: UpdateSpawnHostStatusInput!): Host!
+  updateVolume(updateVolumeInput: UpdateVolumeInput!): Boolean!
+
+  # task
+  abortTask(taskId: String! @requireProjectAccess(permission: TASKS, access: EDIT)): Task!
+  overrideTaskDependencies(taskId: String! @requireProjectAccess(permission: TASKS, access: EDIT)): Task!
+  restartTask(taskId: String! @requireProjectAccess(permission: TASKS, access: EDIT), failedOnly: Boolean!): Task!
+  scheduleTasks(versionId: String! @requireProjectAccess(permission: TASKS, access: EDIT), taskIds: [String!]!): [Task!]!
+  setTaskPriority(taskId: String! @requireProjectAccess(permission: TASKS, access: EDIT), priority: Int!): Task!
+  unscheduleTask(taskId: String! @requireProjectAccess(permission: TASKS, access: EDIT)): Task!
+
+  # user
+  addFavoriteProject( opts: AddFavoriteProjectInput!): Project!
+  clearMySubscriptions: Int!
+  createPublicKey(publicKeyInput: PublicKeyInput!): [PublicKey!]!
+  deleteSubscriptions(subscriptionIds: [String!]!): Int!
+  removeFavoriteProject(opts: RemoveFavoriteProjectInput!): Project!
+  removePublicKey(keyName: String!): [PublicKey!]!
+  saveSubscription(subscription: SubscriptionInput!): Boolean!
+  updateBetaFeatures(opts: UpdateBetaFeaturesInput!): UpdateBetaFeaturesPayload
+  updateParsleySettings(opts: UpdateParsleySettingsInput!): UpdateParsleySettingsPayload
+  updatePublicKey(
+    targetKeyName: String!
+    updateInfo: PublicKeyInput!
+  ): [PublicKey!]!
+  updateUserSettings(userSettings: UserSettingsInput): Boolean!
+
+  # version
+  restartVersions(versionId: String! @requireProjectAccess(permission: TASKS, access: EDIT), abort: Boolean!, versionsToRestart: [VersionToRestart!]!): [Version!]
+  scheduleUndispatchedBaseTasks(versionId: String! @requireProjectAccess(permission: TASKS, access: EDIT)): [Task!]
+  setVersionPriority(versionId: String! @requireProjectAccess(permission: TASKS, access: EDIT), priority: Int!): String
+  unscheduleVersionTasks(versionId: String! @requireProjectAccess(permission: TASKS, access: EDIT), abort: Boolean!): String
+}
+# Define scalars used in other files.
+scalar Time
+scalar Duration
+scalar StringMap
+scalar Map"""
+requireProjectAdmin is used to restrict certain actions to admins.
+"""
+directive @requireProjectAdmin on ARGUMENT_DEFINITION
+
+"""
+requireProjectAccess is used to restrict admin, view, and edit access for projects.
+"""
+directive @requireProjectAccess(
+  permission: ProjectPermission!
+  access: AccessLevel!
+) on ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION | FIELD_DEFINITION
+
+enum ProjectPermission {
+  SETTINGS
+  TASKS
+  ANNOTATIONS
+  PATCHES
+  LOGS
+}
+
+enum AccessLevel {
+  ADMIN
+  EDIT
+  VIEW
+}
+
+"""
+requireProjectSettingsAccess is used to restrict view access for fields accessed within ProjectSettings (or RepoSettings) structs.
+"""
+directive @requireProjectSettingsAccess on FIELD_DEFINITION
+
+"""
+requireDistroAccess is used to restrict view, edit, admin, and create access for distros.
+"""
+directive @requireDistroAccess(
+  access: DistroSettingsAccess!
+) on ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION
+
+enum DistroSettingsAccess {
+  ADMIN
+  CREATE
+  EDIT
+  VIEW
+}
+
+"""
+redactSecrets is used to mark input fields that should not be logged or exposed in any way and should be redacted.
+"""
+directive @redactSecrets on INPUT_FIELD_DEFINITION | ARGUMENT_DEFINITION | INPUT_OBJECT
