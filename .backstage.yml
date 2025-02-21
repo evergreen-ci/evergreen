@@ -63,7 +63,7 @@ metadata:
   links:
     - url: https://evergreen.mongodb.com/graphql
       title: GraphQL Playground
-      icon: kind:api
+      icon: externalLink
 spec:
   type: graphql
   lifecycle: experimental
