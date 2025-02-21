@@ -2738,6 +2738,8 @@ func (hosts HostGroup) Uphosts() HostGroup {
 	return out
 }
 
+// ProvisioningHosts return a subset of the host group that contains hosts
+// that have started, but not have not yet completed the provisioning process.
 func (hosts HostGroup) ProvisioningHosts() HostGroup {
 	out := HostGroup{}
 
