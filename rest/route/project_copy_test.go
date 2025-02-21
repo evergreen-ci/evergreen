@@ -132,8 +132,9 @@ func (s *ProjectCopySuite) TestCopyToNewProject() {
 }
 
 type copyVariablesSuite struct {
-	route *copyVariablesHandler
-	ctx   context.Context
+	route  *copyVariablesHandler
+	ctx    context.Context
+	cancel context.CancelFunc
 
 	suite.Suite
 }
@@ -185,8 +186,13 @@ func (s *copyVariablesSuite) SetupTest() {
 	s.NoError(projectVar1.Insert())
 	s.NoError(projectVar2.Insert())
 	s.NoError(projectVar3.Insert())
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
 	s.ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
+	s.cancel = cancel
+}
+
+func (s *copyVariablesSuite) TearDownTest() {
+	s.cancel()
 }
 
 func (s *copyVariablesSuite) TestParse() {
