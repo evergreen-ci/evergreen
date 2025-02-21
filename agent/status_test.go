@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent/globals"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -93,6 +94,10 @@ func (s *StatusSuite) TestAgentFailsToStartTwice() {
 	s.testOpts.StatusPort = 2287
 	agt, err := newWithCommunicator(ctx, s.testOpts, client.NewMock("url"))
 	s.Require().NoError(err)
+
+	sender, err := agt.GetSender(ctx, globals.LogOutputStdout, "agent", "t", 0)
+	s.Require().NoError(err)
+	agt.SetDefaultLogger(sender)
 
 	mockCommunicator := agt.comm.(*client.Mock)
 	mockCommunicator.NextTaskIsNil = true
