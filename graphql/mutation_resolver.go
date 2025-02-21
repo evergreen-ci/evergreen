@@ -870,7 +870,7 @@ func (r *mutationResolver) UpdateVolume(ctx context.Context, updateVolumeInput U
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("finding volume by id '%s': %s", updateVolumeInput.VolumeID, err.Error()))
 	}
 	if volume == nil {
-		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find volume %s", updateVolumeInput.VolumeID))
+		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find volume '%s'", updateVolumeInput.VolumeID))
 	}
 	err = validateVolumeExpirationInput(ctx, updateVolumeInput.Expiration, updateVolumeInput.NoExpiration)
 	if err != nil {
@@ -894,18 +894,20 @@ func (r *mutationResolver) UpdateVolume(ctx context.Context, updateVolumeInput U
 		var newExpiration time.Time
 		newExpiration, err = restModel.FromTimePtr(updateVolumeInput.Expiration)
 		if err != nil {
-			return false, InternalServerError.Send(ctx, fmt.Sprintf("parsing time %s", err.Error()))
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("parsing time: %s", err.Error()))
 		}
 		updateOptions.Expiration = newExpiration
 	}
 	if updateVolumeInput.Name != nil {
-		updateOptions.NewName = *updateVolumeInput.Name
+		updateOptions.NewName = utility.FromStringPtr(updateVolumeInput.Name)
+	}
+	if updateVolumeInput.Size != nil {
+		updateOptions.Size = int32(utility.FromIntPtr(updateVolumeInput.Size))
 	}
 	err = applyVolumeOptions(ctx, *volume, updateOptions)
 	if err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("Unable to update volume %s: %s", volume.ID, err.Error()))
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("updating volume '%s': %s", volume.ID, err.Error()))
 	}
-
 	return true, nil
 }
 
