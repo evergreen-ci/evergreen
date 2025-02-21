@@ -257,11 +257,11 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/versions/{version_id}/restart").Version(2).Post().Wrap(requireUser, editTasks).RouteHandler(makeRestartVersion())
 	app.AddRoute("/versions/{version_id}/annotations").Version(2).Get().Wrap(requireUser, viewAnnotations).RouteHandler(makeFetchAnnotationsByVersion())
 
-	// Add an options method to every POST request to handle pre-flight Options requests.
+	// Add an options method to every GET, POST request to handle pre-flight Options requests.
 	// These requests must not check for credentials and just validate whether a route exists
 	// And allows requests from a origin.
 	for _, route := range app.Routes() {
-		if route.HasMethod(http.MethodPost) {
+		if route.HasMethod(http.MethodPost) || route.HasMethod(http.MethodGet) {
 			app.AddRoute(route.GetRoute()).Version(2).Options().RouteHandler(makeOptionsHandler())
 		}
 	}
