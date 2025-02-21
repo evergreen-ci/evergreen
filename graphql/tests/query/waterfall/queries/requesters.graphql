@@ -1,0 +1,12 @@
+{
+  waterfall(options: { projectIdentifier: "spruce-identifier", limit: 1, requesters: ["git_tag_request"] }) {
+    flattenedVersions {
+      id
+      activated
+      requester
+    }
+    pagination {
+      activeVersionIds
+    }
+  }
+}
