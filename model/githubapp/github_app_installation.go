@@ -2,8 +2,10 @@ package githubapp
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net/http"
+	"reflect"
 	"strings"
 	"sync"
 	"time"
@@ -255,23 +257,24 @@ func (c *cachedInstallationToken) isExpired(lifetime time.Duration) bool {
 // installationTokenCache is a concurrency-safe cache mapping the installation
 // ID to the cached GitHub installation token for it.
 type installationTokenCache struct {
-	cache map[int64]cachedInstallationToken
+	cache map[string]cachedInstallationToken
 	mu    sync.RWMutex
 }
 
 // ghInstallationTokenCache is the in-memory instance of the cache for GitHub
 // installation tokens.
 var ghInstallationTokenCache = installationTokenCache{
-	cache: make(map[int64]cachedInstallationToken),
+	cache: make(map[string]cachedInstallationToken),
 	mu:    sync.RWMutex{},
 }
 
 // get gets an installation token from the cache by its installation ID. It will
 // not return a token if the token will expire before the requested lifetime.
-func (c *installationTokenCache) get(installationID int64, lifetime time.Duration) string {
+func (c *installationTokenCache) get(installationID int64, permissions *github.InstallationPermissions, lifetime time.Duration) string {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	cachedToken, ok := c.cache[installationID]
+	id := createCacheID(installationID, permissions)
+	cachedToken, ok := c.cache[id]
 	if !ok {
 		return ""
 	}
@@ -286,11 +289,40 @@ func (c *installationTokenCache) get(installationID int64, lifetime time.Duratio
 // installation token can be used before it expires.
 const MaxInstallationTokenLifetime = time.Hour
 
-func (c *installationTokenCache) put(installationID int64, installationToken string, createdAt time.Time) {
+func (c *installationTokenCache) put(installationID int64, installationToken string, permissions *github.InstallationPermissions, createdAt time.Time) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.cache[installationID] = cachedInstallationToken{
+	id := createCacheID(installationID, permissions)
+	c.cache[id] = cachedInstallationToken{
 		installationToken: installationToken,
 		expiresAt:         createdAt.Add(MaxInstallationTokenLifetime),
 	}
+}
+
+// createCacheID creates an ID based on the installation ID and the token's permissions.
+// This allows us to put and get installation tokens from the cache based on the installation ID
+// and the permissions that the token is scoped to.
+// The format of the ID is: "<installationID>_<permissionKey-permissionValue>_<permissionKey-permissionValue>...".
+func createCacheID(installationID int64, permissions *github.InstallationPermissions) string {
+	id := fmt.Sprint(installationID)
+	if permissions == nil {
+		return id
+	}
+	val := reflect.ValueOf(permissions).Elem()
+	var p []string
+	for i := 0; i < val.NumField(); i++ {
+		field := val.Field(i)
+		if field.Kind() != reflect.Ptr || field.Elem().Kind() != reflect.String {
+			continue
+		}
+
+		if !field.IsNil() {
+			p = append(p, fmt.Sprintf("%s-%v", val.Type().Field(i).Name, *field.Interface().(*string)))
+		}
+	}
+	permissionsString := strings.ToLower(strings.Join(p, "_"))
+	if permissionsString != "" {
+		id += "_" + permissionsString
+	}
+	return id
 }
