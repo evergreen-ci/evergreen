@@ -286,11 +286,11 @@ func (h *Host) FetchAndReinstallJasperCommands(settings *evergreen.Settings) str
 
 // removeSplunkTokenFileCommand returns commands to clean up the Splunk token
 // file from file a host.
-// DEVPROD-14912: this removes the Splunk token file when Jasper is reinstalled
-// on the host. The file is not used anymore, but still exists on long-lived
-// static hosts. The intent of this is to remove the file from static hosts as
-// they're re-added to the host pool.
-// TODO (DEVPROD-XXX): remove this cleanup function after a few months.
+// DEVPROD-14912: this is a best-effort attempt to clean up the Splunk token
+// file when Jasper is reinstalled on the host (e.g. when static hosts are
+// re-added to the host pool). The file is not used anymore, but still exists on
+// long-lived static hosts.
+// TODO (DEVPROD-XXX): remove this cleanup function after some time has passed.
 func (h *Host) removeSplunkTokenFileCommand() string {
 	return fmt.Sprintf("rm -f %s", h.splunkTokenFilePath())
 }
