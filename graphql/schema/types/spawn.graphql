@@ -74,6 +74,7 @@ input UpdateVolumeInput {
   expiration: Time
   name: String
   noExpiration: Boolean
+  size: Int
   volumeId: String!
 }
 
