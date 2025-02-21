@@ -778,6 +778,7 @@ tasks:
           file: downstream_expansions_pine.yaml
   - name: generate-graphql-merged-schema
     commands:
+      - func: get-project-and-modules
       - command: shell.exec
         params:
           working_dir: evergreen
