@@ -77615,7 +77615,7 @@ func (ec *executionContext) unmarshalInputUpdateVolumeInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"expiration", "name", "noExpiration", "volumeId"}
+	fieldsInOrder := [...]string{"expiration", "name", "noExpiration", "size", "volumeId"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -77643,6 +77643,13 @@ func (ec *executionContext) unmarshalInputUpdateVolumeInput(ctx context.Context,
 				return it, err
 			}
 			it.NoExpiration = data
+		case "size":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("size"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Size = data
 		case "volumeId":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("volumeId"))
 			data, err := ec.unmarshalNString2string(ctx, v)

@@ -568,6 +568,7 @@ type UpdateVolumeInput struct {
 	Expiration   *time.Time `json:"expiration,omitempty"`
 	Name         *string    `json:"name,omitempty"`
 	NoExpiration *bool      `json:"noExpiration,omitempty"`
+	Size         *int       `json:"size,omitempty"`
 	VolumeID     string     `json:"volumeId"`
 }
 
