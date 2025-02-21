@@ -157,7 +157,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/host/get_processes").Version(2).Get().Wrap(requireUser).RouteHandler(makeHostGetProcesses(env))
 	app.AddRoute("/hosts").Version(2).Get().Wrap(requireUser).RouteHandler(makeFetchHosts(opts.URL))
 	app.AddRoute("/hosts").Version(2).Post().Wrap(requireUser).RouteHandler(makeSpawnHostCreateRoute(env))
-	app.AddRoute("/hosts").Version(2).Patch().Wrap(requireUser).RouteHandler(makeChangeHostsStatuses())
+	app.AddRoute("/hosts").Version(2).Patch().Wrap(requireUser).RouteHandler(makeChangeHostsStatuses(env))
 	app.AddRoute("/hosts/{host_id}").Version(2).Get().Wrap(requireUser).RouteHandler(makeGetHostByID())
 	app.AddRoute("/hosts/{host_id}").Version(2).Patch().Wrap(requireUser).RouteHandler(makeHostModifyRouteManager(env))
 	app.AddRoute("/hosts/{host_id}/stop").Version(2).Post().Wrap(requireUser).RouteHandler(makeHostStopManager(env))
