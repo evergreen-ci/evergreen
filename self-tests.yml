@@ -784,7 +784,8 @@ tasks:
           working_dir: evergreen
           shell: bash
           script: |
-            cat graphql/schema/**/*.graphql > docs/merged-schema.graphql
+            cat graphql/schema/types/*.graphql \
+            graphql/schema/*.graphql > docs/merged-schema.graphql
       - command: s3.put
         params:
           aws_key: ${AWS_ACCESS_KEY_ID}
