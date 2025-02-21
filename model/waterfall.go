@@ -96,10 +96,7 @@ func getBuildVariantFilterPipeline(variants []string, match bson.M) []bson.M {
 		matchCopy[key] = match[key]
 	}
 	pipeline = append(pipeline, getBuildDisplayNames(matchCopy))
-	pipeline = append(pipeline,
-		bson.M{
-			"$sort": bson.M{VersionRevisionOrderNumberKey: -1},
-		})
+	pipeline = append(pipeline, bson.M{"$sort": bson.M{VersionRevisionOrderNumberKey: -1}})
 
 	variantsAsRegex := strings.Join(variants, "|")
 	pipeline = append(pipeline, bson.M{
