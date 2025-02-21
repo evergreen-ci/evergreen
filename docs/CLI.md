@@ -92,7 +92,7 @@ Additionally, the default project for a directory is also tracked by the first s
 
 Prompts
 ---
-Many prompts will ask for a y/n (i.e. yes/no) response. If you hit enter, we will default to yes if the prompt specifies Y/n, and no if the prompt specifies y/N.
+Many prompts will ask for a y/n (i.e. yes/no) response. If you hit enter or use `--skip_confirm`, we will default to yes if the prompt specifies Y/n, and no if the prompt specifies y/N.
 
 Advanced Patch Tips
 --

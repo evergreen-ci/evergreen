@@ -1144,9 +1144,6 @@ func PopulateExpansions(ctx context.Context, t *task.Task, h *host.Host, appToke
 		for _, e := range h.Distro.Expansions {
 			expansions.Put(e.Key, e.Value)
 		}
-		if h.Distro.IsWindows() {
-			expansions.Put(evergreen.HostServicePasswordExpansion, h.ServicePassword)
-		}
 	}
 
 	return expansions, nil
