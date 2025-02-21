@@ -20,7 +20,7 @@ metadata:
   name: evergreen-backend
   description: Evergreen backend service
   annotations:
-    evergreen/project-id: evergreen
+    evergreen/project-id: evg
   tags:
     - golang
   links:
