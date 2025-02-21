@@ -9,6 +9,7 @@ input WaterfallOptions {
     @requireProjectAccess(permission: TASKS, access: VIEW)
   requesters: [String!]
   revision: String
+  variants: [String!]
 }
 
 type WaterfallTask {
@@ -40,6 +41,7 @@ type WaterfallVersion {
 }
 
 type WaterfallPagination {
+  activeVersionIds: [String!]!
   hasNextPage: Boolean!
   hasPrevPage: Boolean!
   mostRecentVersionOrder: Int!

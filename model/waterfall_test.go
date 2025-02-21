@@ -28,6 +28,12 @@ func TestGetActiveWaterfallVersions(t *testing.T) {
 	}
 	assert.NoError(t, p.Insert())
 
+	b := build.Build{
+		Id:          "b_1",
+		DisplayName: "Build Variant 1",
+	}
+	assert.NoError(t, b.Insert())
+
 	v := Version{
 		Id:                  "v_1",
 		Identifier:          "a_project",
@@ -35,6 +41,11 @@ func TestGetActiveWaterfallVersions(t *testing.T) {
 		RevisionOrderNumber: 10,
 		CreateTime:          start,
 		Activated:           utility.TruePtr(),
+		BuildVariants: []VersionBuildStatus{
+			{
+				BuildId: "b_1",
+			},
+		},
 	}
 	assert.NoError(t, v.Insert())
 	v = Version{
@@ -62,6 +73,12 @@ func TestGetActiveWaterfallVersions(t *testing.T) {
 		RevisionOrderNumber: 7,
 		CreateTime:          start.Add(-2 * time.Minute),
 		Activated:           utility.TruePtr(),
+		BuildVariants: []VersionBuildStatus{
+			{
+				BuildId:     "b_1",
+				DisplayName: "Build Variant 1",
+			},
+		},
 	}
 	assert.NoError(t, v.Insert())
 	v = Version{
@@ -113,6 +130,17 @@ func TestGetActiveWaterfallVersions(t *testing.T) {
 	assert.Nil(t, versions)
 	assert.Error(t, err)
 	assert.True(t, strings.HasPrefix(err.Error(), "invalid requester"))
+
+	versions, err = GetActiveWaterfallVersions(ctx, p.Id,
+		WaterfallOptions{
+			Limit:      4,
+			Requesters: evergreen.SystemVersionRequesterTypes,
+			Variants:   []string{"Build Variant 1"},
+		})
+	assert.NoError(t, err)
+	require.Len(t, versions, 2)
+	assert.EqualValues(t, "v_1", versions[0].Id)
+	assert.EqualValues(t, "v_4", versions[1].Id)
 }
 
 func TestGetAllWaterfallVersions(t *testing.T) {

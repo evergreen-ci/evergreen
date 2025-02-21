@@ -30,7 +30,7 @@
       "_id": "evergreen_version1",
       "gitspec": "revision1",
       "identifier": "spruce",
-      "r": "gitter_request",
+      "r": "git_tag_request",
       "activated": true,
       "author": "mohamed.khelif",
       "status": "success",
@@ -41,7 +41,8 @@
       "build_variants_status": {
         "activated": true,
         "build_id": "evergreen_version1_build",
-        "build_variant": "enterprise-ubuntu1604-64"
+        "build_variant": "enterprise-ubuntu1604-64",
+        "display_name": "01 Ubuntu 16.04"
       },
       "builds": [
         "evergreen_version1_build"
