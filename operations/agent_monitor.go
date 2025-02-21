@@ -235,39 +235,27 @@ func getAgentArgs(c *cli.Context, args []string) ([]string, error) {
 	return args[beginIndex+1 : endIndex], nil
 }
 
-// setupLogging sets up the monitor to log based on logPrefix. If the Splunk
-// credentials are available, it logs to splunk. If the logging is set to log
-// locally, it will log to standard output; otherwise it logs to a file.
+// setupLogging sets up the monitor to log based on logPrefix. If the logging is
+// set to log locally, it will log to standard output; otherwise it logs to a
+// file.
 func setupLogging(m *monitor) error {
 	senderOutput := m.logOutput
 	senderName := m.logPrefix
-	senders := []send.Sender{}
-
-	if splunkInfo := send.GetSplunkConnectionInfo(); splunkInfo.Populated() {
-		sender, err := send.NewSplunkLogger(
-			senderName,
-			splunkInfo,
-			send.LevelInfo{Default: level.Alert, Threshold: level.Alert},
-		)
-		if err != nil {
-			return errors.Wrap(err, "creating Splunk logger")
-		}
-		senders = append(senders, sender)
-	}
+	var sender send.Sender
 
 	switch senderOutput {
 	case globals.LogOutputStdout:
-		sender, err := send.NewNativeLogger(senderName, send.LevelInfo{Default: level.Info, Threshold: level.Debug})
+		nativeSender, err := send.NewNativeLogger(senderName, send.LevelInfo{Default: level.Info, Threshold: level.Debug})
 		if err != nil {
 			return errors.Wrap(err, "creating native console logger")
 		}
-		senders = append(senders, sender)
+		sender = nativeSender
 	default:
 		logDir := filepath.Dir(senderName)
 		if err := os.MkdirAll(logDir, 0777); err != nil {
 			return errors.Wrapf(err, "creating log directory '%s'", logDir)
 		}
-		sender, err := send.NewFileLogger(
+		fileSender, err := send.NewFileLogger(
 			senderName,
 			fmt.Sprintf("%s-%d-%d.log", senderName, os.Getpid(), getLogID()),
 			send.LevelInfo{Default: level.Info, Threshold: level.Debug},
@@ -275,10 +263,10 @@ func setupLogging(m *monitor) error {
 		if err != nil {
 			return errors.Wrap(err, "creating file logger")
 		}
-		senders = append(senders, sender)
+		sender = fileSender
 	}
 
-	return errors.Wrap(grip.SetSender(send.NewConfiguredMultiSender(senders...)), "setting logger")
+	return errors.Wrap(grip.SetSender(sender), "setting logger")
 }
 
 // handleMonitorSignals gracefully shuts down the monitor process when it

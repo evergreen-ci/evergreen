@@ -123,7 +123,7 @@ func (j *restartJasperJob) Run(ctx context.Context) {
 		return
 	}
 
-	writeCredentialsCmd, err := j.host.WriteJasperCredentialsFilesCommands(j.settings.Splunk.SplunkConnectionInfo, creds)
+	writeCredentialsCmd, err := j.host.WriteJasperCredentialsFilesCommands(creds)
 	if err != nil {
 		j.AddRetryableError(errors.Wrap(err, "building command to write Jasper credentials file"))
 		return

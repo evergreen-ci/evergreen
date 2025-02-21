@@ -241,7 +241,7 @@ func setupJasper(ctx context.Context, env evergreen.Environment, settings *everg
 		return errors.Wrapf(err, "creating Jasper directories: command returned: %s", logs)
 	}
 
-	if err := putJasperCredentials(ctx, env, settings, h); err != nil {
+	if err := putJasperCredentials(ctx, env, h); err != nil {
 		return errors.Wrap(err, "putting Jasper credentials on remote host")
 	}
 
@@ -258,13 +258,13 @@ func setupJasper(ctx context.Context, env evergreen.Environment, settings *everg
 
 // putJasperCredentials creates Jasper credentials for the host and puts the
 // credentials file on the host.
-func putJasperCredentials(ctx context.Context, env evergreen.Environment, settings *evergreen.Settings, h *host.Host) error {
+func putJasperCredentials(ctx context.Context, env evergreen.Environment, h *host.Host) error {
 	creds, err := h.GenerateJasperCredentials(ctx, env)
 	if err != nil {
 		return errors.Wrap(err, "generating credentials for host")
 	}
 
-	writeCmds, err := h.WriteJasperCredentialsFilesCommands(settings.Splunk.SplunkConnectionInfo, creds)
+	writeCmds, err := h.WriteJasperCredentialsFilesCommands(creds)
 	if err != nil {
 		return errors.Wrap(err, "getting command to write Jasper credentials file")
 	}
