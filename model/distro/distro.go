@@ -54,7 +54,8 @@ type Distro struct {
 	HomeVolumeSettings    HomeVolumeSettings    `bson:"home_volume_settings" json:"home_volume_settings" mapstructure:"home_volume_settings"`
 	IceCreamSettings      IceCreamSettings      `bson:"icecream_settings,omitempty" json:"icecream_settings,omitempty" mapstructure:"icecream_settings,omitempty"`
 	Mountpoints           []string              `bson:"mountpoints,omitempty" json:"mountpoints,omitempty" mapstructure:"mountpoints,omitempty"`
-	SingleTaskDistro      bool                  `bson:"single_task_distro,omitempty" json:"single_task_distro,omitempty" mapstructure:"single_task_distro,omitempty"`
+	// SingleTaskDistro is a bool that indicates whether the hosts with this distro will only be allowed to run one task.
+	SingleTaskDistro bool `bson:"single_task_distro,omitempty" json:"single_task_distro,omitempty" mapstructure:"single_task_distro,omitempty"`
 	// ImageID is not equivalent to AMI. It is the identifier of the base image for the distro.
 	ImageID string `bson:"image_id,omitempty" json:"image_id,omitempty" mapstructure:"image_id,omitempty"`
 
