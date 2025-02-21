@@ -239,6 +239,7 @@ func TestJasperCommands(t *testing.T) {
 				setupScript,
 				h.MakeJasperDirsCommand(),
 				h.FetchJasperCommand(settings.HostJasper),
+				h.removeSplunkTokenFileCommand(),
 				h.ForceReinstallJasperCommand(settings),
 				h.ChangeJasperDirsOwnerCommand(),
 				startAgentMonitor,
@@ -285,6 +286,7 @@ func TestJasperCommands(t *testing.T) {
 				setupScript,
 				h.MakeJasperDirsCommand(),
 				h.FetchJasperCommand(settings.HostJasper),
+				h.removeSplunkTokenFileCommand(),
 				h.ForceReinstallJasperCommand(settings),
 				h.ChangeJasperDirsOwnerCommand(),
 				setupSpawnHost,
@@ -444,6 +446,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 			expectedCmds = append(expectedCmds, checkRerun, setupUser, setupScript, writeCredentialsCmd)
 			expectedCmds = append(expectedCmds,
 				h.FetchJasperCommand(settings.HostJasper),
+				h.removeSplunkTokenFileCommand(),
 				h.ForceReinstallJasperCommand(settings),
 				h.ChangeJasperDirsOwnerCommand(),
 				startAgentMonitor,
@@ -492,6 +495,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 			expectedCmds = append(expectedCmds, checkRerun, setupUser, setupScript, writeCredentialsCmd)
 			expectedCmds = append(expectedCmds,
 				h.FetchJasperCommand(settings.HostJasper),
+				h.removeSplunkTokenFileCommand(),
 				h.ForceReinstallJasperCommand(settings),
 				h.ChangeJasperDirsOwnerCommand(),
 				setupSpawnHost,

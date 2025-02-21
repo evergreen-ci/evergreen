@@ -279,8 +279,20 @@ func (h *Host) runSSHCommandWithOutput(ctx context.Context, addCommands func(*ja
 func (h *Host) FetchAndReinstallJasperCommands(settings *evergreen.Settings) string {
 	return strings.Join([]string{
 		h.FetchJasperCommand(settings.HostJasper),
+		h.removeSplunkTokenFileCommand(),
 		h.ForceReinstallJasperCommand(settings),
 	}, " && ")
+}
+
+// removeSplunkTokenFileCommand returns commands to clean up the Splunk token
+// file from file a host.
+// DEVPROD-14912: this removes the Splunk token file when Jasper is reinstalled
+// on the host. The file is not used anymore, but still exists on long-lived
+// static hosts. The intent of this is to remove the file from static hosts as
+// they're re-added to the host pool.
+// TODO (DEVPROD-XXX): remove this cleanup function after a few months.
+func (h *Host) removeSplunkTokenFileCommand() string {
+	return fmt.Sprintf("rm -f %s", h.splunkTokenFilePath())
 }
 
 const jasperServicePasswordEnvVarName = "JASPER_USER_PASSWORD"
@@ -674,6 +686,13 @@ func (h *Host) WriteJasperCredentialsFilesCommands(creds *certdepot.Credentials)
 	}
 
 	return strings.Join(cmds, " && "), nil
+}
+
+func (h *Host) splunkTokenFilePath() string {
+	if h.Distro.BootstrapSettings.JasperCredentialsPath == "" {
+		return ""
+	}
+	return filepath.Join(filepath.Dir(h.Distro.BootstrapSettings.JasperCredentialsPath), "splunk.txt")
 }
 
 // WriteJasperPreconditionScriptsCommands returns the command to write the
