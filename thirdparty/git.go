@@ -31,7 +31,7 @@ type Commit struct {
 	Patch     string    `bson:"patch"`
 }
 
-const RequiredScalarGitVersion = "2.38.0"
+const RequiredScalarGitVersion = "2.42.1"
 
 // GitApplyNumstat attempts to apply a given patch; it returns the patch's bytes
 // if it is successful
@@ -227,8 +227,8 @@ func ParseGitVersion(version string) (string, bool, error) {
 		return "", false, errors.Errorf("could not parse git version number from version string '%s'", version)
 	}
 
-	isAppleGit := strings.Contains(version, "Apple Git-")
-	return matches[1], isAppleGit, nil
+	isAppleOrWindowsGit := strings.Contains(version, "Apple Git-") || strings.Contains(version, ".windows.")
+	return matches[1], isAppleOrWindowsGit, nil
 }
 
 // VersionMeetsMinimum checks if the version is greater than or equal to the minVersion.

@@ -95,8 +95,8 @@ func TestVersionMeetsMinimum(t *testing.T) {
 		minVersion string
 		expected   bool
 	}{
-		{version: "2.37.0", minVersion: "2.38.0", expected: false},
-		{version: "2.38.0", minVersion: "2.38.0", expected: true},
+		{version: "2.41.0", minVersion: "2.42.1", expected: false},
+		{version: "2.42.1", minVersion: "2.42.1", expected: true},
 		{version: "2.38.0", minVersion: "2.38.1", expected: false},
 		{version: "2.38.1", minVersion: "2.38.0", expected: true},
 		{version: "2.38", minVersion: "2.37.9", expected: true},
@@ -112,19 +112,20 @@ func TestVersionMeetsMinimum(t *testing.T) {
 
 func TestParseGitVersionString(t *testing.T) {
 	versionStrings := map[string]struct {
-		expectedVersion string
-		isApple         bool
+		expectedVersion  string
+		isAppleOrWindows bool
 	}{
 		"git version 2.19.1":                   {"2.19.1", false},
 		"git version 2.24.3 (Apple Git-128)":   {"2.24.3", true},
 		"git version 2.21.1 (Apple Git-122.3)": {"2.21.1", true},
-		"git version 2.16.2.windows.1":         {"2.16.2.windows.1", false},
+		"git version 2.16.2.windows.1":         {"2.16.2.windows.1", true},
+		"git version 2.47.1.windows.2":         {"2.47.1.windows.2", true},
 	}
 
 	for versionString, expected := range versionStrings {
-		parsedVersion, isApple, err := ParseGitVersion(versionString)
+		parsedVersion, isAppleOrWindows, err := ParseGitVersion(versionString)
 		require.NoError(t, err)
 		assert.Equal(t, expected.expectedVersion, parsedVersion)
-		assert.Equal(t, expected.isApple, isApple)
+		assert.Equal(t, expected.isAppleOrWindows, isAppleOrWindows)
 	}
 }

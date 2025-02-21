@@ -24,12 +24,12 @@ func getGitVersion() (string, bool, error) {
 
 // IsGitVersionMinimumForScalar checks if the installed Git version is later than the specified version.
 func IsGitVersionMinimumForScalar(minVersion string) (bool, error) {
-	gitVersion, isApple, err := getGitVersion()
+	gitVersion, isAppleOrWindows, err := getGitVersion()
 	if err != nil {
 		return false, err
 	}
-	// scalar is not bundled with Apple's Git version 2.38.0
-	if isApple {
+	// as of now, scalar is not bundled with Apple's or Windows Git version
+	if isAppleOrWindows {
 		return false, nil
 	}
 

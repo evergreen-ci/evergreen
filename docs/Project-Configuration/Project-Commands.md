@@ -665,7 +665,7 @@ Parameters:
     yaml. This token is *only* used for the source repository, not modules.
 -   `is_oauth`: If a project token is provided and that token is an OAuth token and not a
     GitHub app token, `is_oauth` must be set to true so that the clone command is formatted properly.
--   `use_scalar`: Clone using scalar, a tool that helps optimize clones for large repositories. It cannot be combined with `clone_depth`, `shallow_clone`, or `recurse_submodules`.
+-   `use_scalar`: Clone using scalar, a tool that helps optimize clones for large repositories. It cannot be combined with `clone_depth`, `shallow_clone`, or `recurse_submodules`. Scalar will only be used if the git version is above 2.42.1, and it's not Apple's or Windows' packaged versions of Git. 
 -   `clone_depth`: Clone with `git clone --depth <clone_depth>`. For
     patch builds, Evergreen will `git fetch --unshallow` if the base
     commit is older than `<clone_depth>` commits. `clone_depth` takes precedence over `shallow_clone`. It cannot be combined with `use_scalar`. 

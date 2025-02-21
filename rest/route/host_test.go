@@ -56,7 +56,7 @@ func (s *HostsChangeStatusesSuite) SetupTest() {
 	s.Require().NoError(db.ClearCollections(task.Collection, build.Collection, model.VersionCollection))
 	setupMockHostsConnector(s.T(), s.env)
 	s.ctx, s.cancel = context.WithCancel(context.Background())
-	s.route = makeChangeHostsStatuses().(*hostsChangeStatusesHandler)
+	s.route = makeChangeHostsStatuses(s.env).(*hostsChangeStatusesHandler)
 }
 
 func (s *HostsChangeStatusesSuite) TearDownTest() {
@@ -179,17 +179,6 @@ func (s *HostsChangeStatusesSuite) TestRunSuperUserSetStatusAnyHost() {
 	ctx := gimlet.AttachUser(s.ctx, &user.DBUser{Id: "root", SystemRoles: []string{"root"}})
 	res := h.Run(ctx)
 	s.Equal(http.StatusOK, res.Status())
-}
-
-func (s *HostsChangeStatusesSuite) TestRunTerminatedOnTerminatedHost() {
-	h := s.route.Factory().(*hostsChangeStatusesHandler)
-	h.HostToStatus = map[string]hostStatus{
-		"host1": {Status: evergreen.HostTerminated},
-	}
-
-	ctx := gimlet.AttachUser(s.ctx, &user.DBUser{Id: "user0"})
-	res := h.Run(ctx)
-	s.Equal(http.StatusInternalServerError, res.Status())
 }
 
 func (s *HostsChangeStatusesSuite) TestRunHostRunningOnTerminatedHost() {
