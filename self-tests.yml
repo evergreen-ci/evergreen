@@ -875,7 +875,6 @@ buildvariants:
       goos: linux
       goarch: amd64
       IS_DOCKER: true
-      # kim: NOTE: need to update container image to download go1.24.
       GOROOT: /usr/local/go
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2004-8.0.0.tgz
       mongosh_url: https://downloads.mongodb.com/compass/mongosh-2.0.2-linux-x64.tgz

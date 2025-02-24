@@ -284,7 +284,6 @@ func annotationByTaskPutOrPatchParser(ctx context.Context, r *http.Request) (str
 	}
 	apiMetadataLinks := []*restModel.APIMetadataLink{}
 	for _, link := range annotation.MetadataLinks {
-		// kim: NOTE: has loopvar issue, but maybe nobody uses this.
 		apiMetadataLinks = append(apiMetadataLinks, &link)
 	}
 	metadataLinks := restModel.APIMetadataLinksToService(apiMetadataLinks)
