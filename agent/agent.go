@@ -235,7 +235,9 @@ func (a *Agent) loop(ctx context.Context) error {
 	timer := time.NewTimer(0)
 	defer timer.Stop()
 
-	tc := &taskContext{}
+	tc := &taskContext{
+		logger: client.NewSingleChannelLogHarness("default", a.defaultLogger),
+	}
 	needTeardownGroup := false
 	defer func() {
 		if tc.logger != nil {
@@ -340,7 +342,9 @@ func (a *Agent) processNextTask(ctx context.Context, nt *apimodels.NextTaskRespo
 		return processNextResponse{
 			// Running the teardown group commands implies exiting the group, so
 			// destroy prior task information.
-			tc:                &taskContext{},
+			tc: &taskContext{
+				logger: client.NewSingleChannelLogHarness("default", a.defaultLogger),
+			},
 			needTeardownGroup: false,
 		}, nil
 	}
@@ -354,7 +358,9 @@ func (a *Agent) processNextTask(ctx context.Context, nt *apimodels.NextTaskRespo
 			needTeardownGroup: false,
 			// Running the teardown group commands implies exiting the group, so
 			// destroy prior task information.
-			tc:          &taskContext{},
+			tc: &taskContext{
+				logger: client.NewSingleChannelLogHarness("default", a.defaultLogger),
+			},
 			noTaskToRun: true,
 		}, nil
 	}
@@ -439,6 +445,7 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 			},
 			ranSetupGroup: !shouldSetupGroup,
 			oomTracker:    jasper.NewOOMTracker(),
+			logger:        client.NewSingleChannelLogHarness("default", a.defaultLogger),
 		}
 	} else {
 		tc = initialTC
@@ -1032,8 +1039,10 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 	// Attempt automatic task output ingestion if the task output directory
 	// was setup, regardless of the task status.
 	if tc.taskConfig != nil && tc.taskConfig.TaskOutputDir != nil {
-		tc.logger.Execution().Error(errors.Wrap(a.uploadTraces(ctx, tc.taskConfig.WorkDir), "uploading traces"))
-		tc.logger.Execution().Error(errors.Wrap(tc.taskConfig.TaskOutputDir.Run(ctx), "ingesting task output"))
+		toCtx, span := a.tracer.Start(ctx, "task-output-ingestion")
+		tc.logger.Execution().Error(errors.Wrap(a.uploadTraces(toCtx, tc.taskConfig.WorkDir), "uploading traces"))
+		tc.logger.Execution().Error(errors.Wrap(tc.taskConfig.TaskOutputDir.Run(toCtx), "ingesting task output"))
+		span.End()
 	}
 
 	a.killProcs(ctx, tc, false, "task is ending")

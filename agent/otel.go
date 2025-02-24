@@ -393,6 +393,9 @@ func addEnvironmentAttributes(ctx context.Context, r *resource.Resource) (*resou
 // [OTel JSON protobuf encoding] https://opentelemetry.io/docs/specs/otel/protocol/otlp/#json-protobuf-encoding
 // [file exporter] https://pkg.go.dev/github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter
 func (a *Agent) uploadTraces(ctx context.Context, taskDir string) error {
+	ctx, span := a.tracer.Start(ctx, "upload-traces")
+	defer span.End()
+
 	if a.otelGrpcConn == nil {
 		return errors.New("OTel gRPC connection has not been configured")
 	}

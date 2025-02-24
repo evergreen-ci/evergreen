@@ -517,14 +517,19 @@ type artifactDownload struct {
 }
 
 func getArtifactFolderName(task *service.RestTask) string {
-	if evergreen.IsPatchRequester(task.Requester) {
-		return fmt.Sprintf("artifacts-patch-%v_%v_%v", task.PatchNumber, task.BuildVariant, task.DisplayName)
+	bvTruncated := task.BuildVariant
+	if len(task.BuildVariant) > 99 {
+		bvTruncated = task.BuildVariant[:100]
 	}
 
-	if len(task.Revision) >= 5 {
-		return fmt.Sprintf("artifacts-%v-%v_%v", task.Revision[0:6], task.BuildVariant, task.DisplayName)
+	if evergreen.IsPatchRequester(task.Requester) {
+		return fmt.Sprintf("artifacts-patch-%v_%v_%v", task.PatchNumber, bvTruncated, task.DisplayName)
 	}
-	return fmt.Sprintf("artifacts-%v_%v", task.BuildVariant, task.DisplayName)
+
+	if len(task.Revision) > 5 {
+		return fmt.Sprintf("artifacts-%v-%v_%v", task.Revision[0:6], bvTruncated, task.DisplayName)
+	}
+	return fmt.Sprintf("artifacts-%v_%v", bvTruncated, task.DisplayName)
 }
 
 // getUrlsChannel takes a seed task, and returns a channel that streams all of the artifacts
