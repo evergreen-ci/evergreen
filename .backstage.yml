@@ -9,6 +9,8 @@ metadata:
     - url: https://spruce.mongodb.com
       title: Evergreen UI
       icon: dashboard
+  annotations:
+    backstage.io/techdocs-ref: dir:.
 spec:
   owner: evergreen-app
   domain: internal-tools
@@ -21,7 +23,6 @@ metadata:
   description: Evergreen backend service
   annotations:
     evergreen/project-id: evg
-    backstage.io/techdocs-ref: dir:.
   tags:
     - golang
   links:
