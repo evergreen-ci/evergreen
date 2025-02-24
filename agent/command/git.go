@@ -158,7 +158,8 @@ func getProjectMethodAndToken(ctx context.Context, comm client.Communicator, td 
 
 	owner := conf.ProjectRef.Owner
 	repo := conf.ProjectRef.Repo
-	appToken, err := comm.CreateInstallationToken(ctx, td, owner, repo)
+	// chaya
+	appToken, err := comm.CreateInstallationTokenForClone(ctx, td, owner, repo)
 	if err != nil {
 		return "", "", errors.Wrap(err, "creating app token")
 	}
@@ -650,7 +651,7 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 		opts.token = projectToken
 	} else {
 		// Otherwise, create an installation token for to clone the module.
-		appToken, err := comm.CreateInstallationToken(ctx, td, opts.owner, opts.repo)
+		appToken, err := comm.CreateInstallationTokenForClone(ctx, td, opts.owner, opts.repo)
 		if err != nil {
 			return errors.Wrap(err, "creating app token")
 		}
