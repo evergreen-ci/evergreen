@@ -686,6 +686,11 @@ tasks:
           directory: evergreen
           token: ${github_token}
           use_scalar: true
+      - command: shell.exec
+        params:
+          script: |
+            # Set GitHub app dynamic token to ensure it can clone non-public repos for Go modules.
+            git config --global url."https://x-access-token:${github_token}@github.com/evergreen-ci/".insteadOf https://github.com/evergreen-ci/
       - command: subprocess.exec
         params:
           working_dir: evergreen
