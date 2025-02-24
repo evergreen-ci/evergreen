@@ -541,15 +541,11 @@ func (c *gitFetchProject) retryFetch(ctx context.Context, logger client.LoggerPr
 			}
 			if err := fetch(opts); err != nil {
 				attemptNum++
-				if isSource {
-					switch attemptNum {
-					case 1:
-						logger.Execution().Warning("git source clone failed with cached merge SHA; re-requesting merge SHA from GitHub")
-					case 2:
-						if strings.Contains(err.Error(), githubMergeQueueInvalidRefError) {
-							return false, errors.Wrap(err, githubMergeQueueInvalidRefExternalError)
-						}
-					}
+				if isSource && attemptNum == 1 {
+					logger.Execution().Warning("git source clone failed with cached merge SHA; re-requesting merge SHA from GitHub")
+				}
+				if strings.Contains(err.Error(), githubMergeQueueInvalidRefError) {
+					return false, errors.Wrap(err, githubMergeQueueInvalidRefExternalError)
 				}
 				return true, errors.Wrapf(err, "attempt %d", attemptNum)
 			}
