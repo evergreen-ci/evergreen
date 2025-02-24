@@ -22,7 +22,6 @@ import (
 
 type ProjectCopySuite struct {
 	route  *projectCopyHandler
-	ctx    context.Context
 	cancel context.CancelFunc
 
 	suite.Suite
