@@ -194,7 +194,7 @@ functions:
       params:
         directory: evergreen
         token: ${github_token}
-        shallow_clone: true
+        use_scalar: true
     - command: shell.exec
       type: setup
       params:
@@ -628,7 +628,7 @@ tasks:
         params:
           directory: evergreen
           token: ${github_token}
-          shallow_clone: false
+          use_scalar: true
       - func: setup-credentials
       - func: setup-mongodb
       - func: run-make
@@ -685,11 +685,7 @@ tasks:
         params:
           directory: evergreen
           token: ${github_token}
-      - command: shell.exec
-        params:
-          script: |
-            # Set GitHub app dynamic token to ensure it can clone non-public repos for Go modules.
-            git config --global url."https://x-access-token:${github_token}@github.com/evergreen-ci/".insteadOf https://github.com/evergreen-ci/
+          use_scalar: true
       - command: subprocess.exec
         params:
           working_dir: evergreen
