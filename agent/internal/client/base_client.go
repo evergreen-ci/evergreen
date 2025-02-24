@@ -921,11 +921,11 @@ func (c *baseCommunicator) CreateInstallationTokenForClone(ctx context.Context, 
 	}
 	resp, err := c.request(ctx, info, nil)
 	if err != nil {
-		return "", errors.Wrapf(err, "creating installation token for '%s/%s'", owner, repo)
+		return "", errors.Wrapf(err, "creating installation token to clone '%s/%s'", owner, repo)
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return "", util.RespErrorf(resp, "creating installation token for '%s/%s'", owner, repo)
+		return "", util.RespErrorf(resp, "creating installation token to clone '%s/%s'", owner, repo)
 	}
 	token := apimodels.Token{}
 	if err := utility.ReadJSON(resp.Body, &token); err != nil {

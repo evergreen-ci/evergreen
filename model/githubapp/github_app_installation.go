@@ -282,12 +282,6 @@ func (c *installationTokenCache) get(installationID int64, permissions *github.I
 	if !ok {
 		return ""
 	}
-	grip.Info(message.Fields{
-		"msg":                                  "ChayaMTesting installationTokenCache.get ",
-		"id":                                   id,
-		"cachedToken.installationToken != '' ": cachedToken.installationToken != "",
-		"permissions == nil":                   permissions == nil,
-	})
 	if cachedToken.isExpired(lifetime) {
 		return ""
 	}
@@ -303,11 +297,6 @@ func (c *installationTokenCache) put(installationID int64, installationToken str
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	id, err := createCacheID(installationID, permissions)
-	grip.Info(message.Fields{
-		"msg":                "ChayaMTesting installationTokenCache.put ",
-		"id":                 id,
-		"permissions == nil": permissions == nil,
-	})
 	if err != nil {
 		return
 	}
