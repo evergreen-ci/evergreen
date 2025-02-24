@@ -140,24 +140,26 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	// host-allocation phase
 	////////////////////////
 
-	existingHosts, err := host.AllActiveHosts(ctx, j.DistroID)
-	if err != nil {
-		j.AddError(errors.Wrap(err, "finding active hosts"))
-		return
-	}
-	// Total number of hosts with a status within evergreen.UpHostStatus
-	upHosts := existingHosts.Uphosts()
-
 	distroQueueInfo, err := model.GetDistroQueueInfo(j.DistroID)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "getting distro queue info for distro '%s'", j.DistroID))
 		return
 	}
 
+	existingHosts, err := host.AllActiveHosts(ctx, j.DistroID)
+	if err != nil {
+		j.AddError(errors.Wrap(err, "finding active hosts"))
+		return
+	}
+
 	hostAllocationBegins := time.Now()
 
-	hostAllocator := scheduler.GetHostAllocator(config.Scheduler.HostAllocator)
+	// Total number of hosts with a status within evergreen.UpHostStatus
+	upHosts := existingHosts.Uphosts()
+	// Total number of hosts that started provisioning but are not yet up
+	provisioningHosts := existingHosts.ProvisioningHosts()
 
+	var nHosts, nHostsFree int
 	hostAllocatorData := scheduler.HostAllocatorData{
 		Distro:          *distro,
 		ExistingHosts:   upHosts,
@@ -166,22 +168,30 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		DistroQueueInfo: distroQueueInfo,
 	}
 
-	// nHosts is the number of additional hosts desired.
-	// nHostsFree is the sum of the number of hosts that are currently free and the
-	// number of hosts estimated to soon be free.
-	nHosts, nHostsFree, err := hostAllocator(ctx, &hostAllocatorData)
-	if err != nil {
-		j.AddError(errors.Wrapf(err, "calculating the number of new hosts required for distro '%s'", j.DistroID))
-		return
+	if distro.SingleTaskDistro {
+		// Single tasks distros should spawn a host for each task available to run in the queue.
+		nHosts = distroQueueInfo.LengthWithDependenciesMet - len(provisioningHosts)
+	} else {
+		hostAllocator := scheduler.GetHostAllocator(config.Scheduler.HostAllocator)
+
+		// nHosts is the number of additional hosts desired.
+		// nHostsFree is the sum of the number of hosts that are currently free and the
+		// number of hosts estimated to soon be free.
+		nHosts, nHostsFree, err = hostAllocator(ctx, &hostAllocatorData)
+		if err != nil {
+			j.AddError(errors.Wrapf(err, "calculating the number of new hosts required for distro '%s'", j.DistroID))
+			return
+		}
 	}
 
 	grip.Info(message.Fields{
-		"runner":        hostAllocatorJobName,
-		"distro":        j.DistroID,
-		"operation":     "runtime-stats",
-		"phase":         "host-allocation",
-		"instance":      j.ID(),
-		"duration_secs": time.Since(hostAllocationBegins).Seconds(),
+		"runner":             hostAllocatorJobName,
+		"distro":             j.DistroID,
+		"single_task_distro": distro.SingleTaskDistro,
+		"operation":          "runtime-stats",
+		"phase":              "host-allocation",
+		"instance":           j.ID(),
+		"duration_secs":      time.Since(hostAllocationBegins).Seconds(),
 	})
 
 	//////////////////////
@@ -197,12 +207,13 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	}
 
 	grip.Info(message.Fields{
-		"runner":        hostAllocatorJobName,
-		"distro":        distro.Id,
-		"operation":     "runtime-stats",
-		"phase":         "host-spawning",
-		"instance":      j.ID(),
-		"duration_secs": time.Since(hostSpawningBegins).Seconds(),
+		"runner":             hostAllocatorJobName,
+		"distro":             distro.Id,
+		"single_task_distro": distro.SingleTaskDistro,
+		"operation":          "runtime-stats",
+		"phase":              "host-spawning",
+		"instance":           j.ID(),
+		"duration_secs":      time.Since(hostSpawningBegins).Seconds(),
 	})
 
 	if err := EnqueueHostCreateJobs(ctx, j.env, hostsSpawned); err != nil {
@@ -299,6 +310,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		"message":                            "distro-scheduler-report",
 		"job_type":                           hostAllocatorJobName,
 		"distro":                             distro.Id,
+		"single_task_distro":                 distro.SingleTaskDistro,
 		"provider":                           distro.Provider,
 		"max_hosts":                          distro.HostAllocatorSettings.MaximumHosts,
 		"num_new_hosts":                      len(hostsSpawned),
@@ -306,6 +318,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		"task_queue_length":                  distroQueueInfo.Length,
 		"task_queue_length_dependencies_met": distroQueueInfo.LengthWithDependenciesMet,
 		"num_hosts_running":                  len(upHosts),
+		"num_hosts_provisioning":             len(provisioningHosts),
 		"overdue_tasks":                      distroQueueInfo.CountWaitOverThreshold,
 		"overdue_tasks_in_groups":            totalOverdueInTaskGroups,
 		"total_runtime":                      distroQueueInfo.ExpectedDuration.String(),
@@ -325,6 +338,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		attribute.String(evergreen.DistroIDOtelAttribute, distro.Id),
 		attribute.String(fmt.Sprintf("%s.distro_provider", hostAllocatorAttributePrefix), distro.Provider),
 		attribute.Int(fmt.Sprintf("%s.distro_max_hosts", hostAllocatorAttributePrefix), distro.HostAllocatorSettings.MaximumHosts),
+		attribute.Bool(fmt.Sprintf("%s.single_task_distro", hostAllocatorAttributePrefix), distro.SingleTaskDistro),
 		attribute.Int(fmt.Sprintf("%s.hosts_requested", hostAllocatorAttributePrefix), len(hostsSpawned)),
 		attribute.Int(fmt.Sprintf("%s.hosts_free", hostAllocatorAttributePrefix), nHostsFree),
 		attribute.Int(fmt.Sprintf("%s.hosts_running", hostAllocatorAttributePrefix), len(upHosts)),

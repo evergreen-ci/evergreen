@@ -1,11 +1,14 @@
 package operations
 
 import (
+	"fmt"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -142,4 +145,55 @@ func TestResetGitRemoteToSSH(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, string(output), "git@github.com:")
 	assert.NotContains(t, string(output), "https:")
+}
+
+func TestGetArtifactFolderName(t *testing.T) {
+	testCases := map[string]struct {
+		task     service.RestTask
+		expected string
+	}{
+		"ShortBuildVariant": {
+			task: service.RestTask{
+				BuildVariant: "variant",
+				Requester:    evergreen.PatchVersionRequester,
+				PatchNumber:  123,
+				DisplayName:  "display",
+			},
+			expected: "artifacts-patch-123_variant_display",
+		},
+		"LongBuildVariant": {
+			task: service.RestTask{
+				BuildVariant: strings.Repeat("a", 200),
+				Requester:    evergreen.PatchVersionRequester,
+				PatchNumber:  123,
+				DisplayName:  "display",
+			},
+			expected: fmt.Sprintf("artifacts-patch-123_%s_display", strings.Repeat("a", 100)),
+		},
+		"ShortRevision": {
+			task: service.RestTask{
+				BuildVariant: "variant",
+				Requester:    evergreen.RepotrackerVersionRequester,
+				Revision:     "abcde",
+				DisplayName:  "display",
+			},
+			expected: "artifacts-variant_display",
+		},
+		"LongRevision": {
+			task: service.RestTask{
+				BuildVariant: "variant",
+				Requester:    evergreen.RepotrackerVersionRequester,
+				Revision:     "abcde1234567",
+				DisplayName:  "display",
+			},
+			expected: "artifacts-abcde1-variant_display",
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			result := getArtifactFolderName(&tc.task)
+			assert.Equal(t, tc.expected, result)
+		})
+	}
 }

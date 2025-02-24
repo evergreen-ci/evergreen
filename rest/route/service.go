@@ -157,7 +157,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/host/get_processes").Version(2).Get().Wrap(requireUser).RouteHandler(makeHostGetProcesses(env))
 	app.AddRoute("/hosts").Version(2).Get().Wrap(requireUser).RouteHandler(makeFetchHosts(opts.URL))
 	app.AddRoute("/hosts").Version(2).Post().Wrap(requireUser).RouteHandler(makeSpawnHostCreateRoute(env))
-	app.AddRoute("/hosts").Version(2).Patch().Wrap(requireUser).RouteHandler(makeChangeHostsStatuses())
+	app.AddRoute("/hosts").Version(2).Patch().Wrap(requireUser).RouteHandler(makeChangeHostsStatuses(env))
 	app.AddRoute("/hosts/{host_id}").Version(2).Get().Wrap(requireUser).RouteHandler(makeGetHostByID())
 	app.AddRoute("/hosts/{host_id}").Version(2).Patch().Wrap(requireUser).RouteHandler(makeHostModifyRouteManager(env))
 	app.AddRoute("/hosts/{host_id}/stop").Version(2).Post().Wrap(requireUser).RouteHandler(makeHostStopManager(env))
@@ -216,7 +216,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/roles").Version(2).Post().Wrap(requireUser).RouteHandler(acl.NewUpdateRoleHandler(env.RoleManager()))
 	app.AddRoute("/roles/{role_id}/users").Version(2).Get().Wrap(requireUser).RouteHandler(makeGetUsersWithRole())
 	app.AddRoute("/scheduler/compare_tasks").Version(2).Post().Wrap(requireUser).RouteHandler(makeCompareTasksRoute())
-	app.AddRoute("/select/tests").Version(2).Post().Wrap(requireUser).RouteHandler(makeSelectTestsHandler())
+	app.AddRoute("/select/tests").Version(2).Post().Wrap(requireUser).RouteHandler(makeSelectTestsHandler(env))
 	app.AddRoute("/status/cli_version").Version(2).Get().Wrap(requireUser).RouteHandler(makeFetchCLIVersionRoute(env))
 	app.AddRoute("/status/hosts/distros").Version(2).Get().Wrap(requireUser).RouteHandler(makeHostStatusByDistroRoute())
 	app.AddRoute("/status/notifications").Version(2).Get().Wrap(requireUser).RouteHandler(makeFetchNotifcationStatusRoute())
@@ -257,11 +257,11 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/versions/{version_id}/restart").Version(2).Post().Wrap(requireUser, editTasks).RouteHandler(makeRestartVersion())
 	app.AddRoute("/versions/{version_id}/annotations").Version(2).Get().Wrap(requireUser, viewAnnotations).RouteHandler(makeFetchAnnotationsByVersion())
 
-	// Add an options method to every POST request to handle pre-flight Options requests.
+	// Add an options method to every GET, POST request to handle pre-flight Options requests.
 	// These requests must not check for credentials and just validate whether a route exists
 	// And allows requests from a origin.
 	for _, route := range app.Routes() {
-		if route.HasMethod(http.MethodPost) {
+		if route.HasMethod(http.MethodPost) || route.HasMethod(http.MethodGet) {
 			app.AddRoute(route.GetRoute()).Version(2).Options().RouteHandler(makeOptionsHandler())
 		}
 	}

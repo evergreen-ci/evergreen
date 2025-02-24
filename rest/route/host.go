@@ -8,8 +8,8 @@ import (
 	"strconv"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/api"
 	"github.com/evergreen-ci/evergreen/apimodels"
-	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -30,10 +30,13 @@ type hostStatus struct {
 
 type hostsChangeStatusesHandler struct {
 	HostToStatus map[string]hostStatus
+	env          evergreen.Environment
 }
 
-func makeChangeHostsStatuses() gimlet.RouteHandler {
-	return &hostsChangeStatusesHandler{}
+func makeChangeHostsStatuses(env evergreen.Environment) gimlet.RouteHandler {
+	return &hostsChangeStatusesHandler{
+		env: env,
+	}
 }
 
 // Factory creates an instance of the handler.
@@ -48,7 +51,9 @@ func makeChangeHostsStatuses() gimlet.RouteHandler {
 //	@Param			status		query		string	false	"A status of host to limit the results to"
 //	@Success		200			{object}	model.APIHost
 func (h *hostsChangeStatusesHandler) Factory() gimlet.RouteHandler {
-	return &hostsChangeStatusesHandler{}
+	return &hostsChangeStatusesHandler{
+		env: h.env,
+	}
 }
 
 func (h *hostsChangeStatusesHandler) Parse(ctx context.Context, r *http.Request) error {
@@ -80,16 +85,9 @@ func (h *hostsChangeStatusesHandler) Run(ctx context.Context) gimlet.Responder {
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding host '%s' with owner '%s'", id, user.Id))
 		}
-		switch status.Status {
-		case evergreen.HostTerminated:
-			err = errors.WithStack(cloud.TerminateSpawnHost(ctx, evergreen.GetEnvironment(), foundHost, user.Id, "terminated via REST API"))
-		case evergreen.HostQuarantined:
-			err = units.DisableAndNotifyPoisonedHost(ctx, evergreen.GetEnvironment(), foundHost, false, fmt.Sprintf("quarantined via REST API by user '%s'", user.Id), user.Id)
-		default:
-			err = foundHost.SetStatus(ctx, status.Status, user.Id, fmt.Sprintf("changed by %s from API", user.Id))
-		}
+		_, _, err = api.ModifyHostStatus(ctx, h.env, foundHost, status.Status, "modified by REST API", user)
 		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(err)
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "modifying host '%s' status to '%s' from API", id, status.Status))
 		}
 
 		h := &model.APIHost{}

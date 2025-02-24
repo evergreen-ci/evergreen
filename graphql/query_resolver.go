@@ -997,6 +997,7 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 		Requesters: requesters,
 		MaxOrder:   maxOrderOpt,
 		MinOrder:   minOrderOpt,
+		Variants:   options.Variants,
 	}
 
 	activeVersions, err := model.GetActiveWaterfallVersions(ctx, projectId, opts)
@@ -1091,6 +1092,7 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 		FlattenedVersions: flattenedVersions,
 		Versions:          waterfallVersions,
 		Pagination: &WaterfallPagination{
+			ActiveVersionIds:       activeVersionIds,
 			NextPageOrder:          nextPageOrder,
 			PrevPageOrder:          prevPageOrder,
 			MostRecentVersionOrder: mostRecentWaterfallVersion.RevisionOrderNumber,
