@@ -206,8 +206,9 @@ func TestCreateCacheID(t *testing.T) {
 
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
-			result := createCacheID(tc.installationID, tc.permissions)
+			result, err := createCacheID(tc.installationID, tc.permissions)
 			assert.Equal(t, tc.expected, result)
+			assert.NoError(t, err)
 		})
 	}
 }
