@@ -254,8 +254,9 @@ func (c *cachedInstallationToken) isExpired(lifetime time.Duration) bool {
 	return time.Until(c.expiresAt) < lifetime
 }
 
-// installationTokenCache is a concurrency-safe cache mapping the installation
-// ID to the cached GitHub installation token for it.
+// installationTokenCache is a concurrency-safe cache that maps a unique key
+// (composed of the installation ID and the token's permissions) to the cached
+// GitHub installation token.
 type installationTokenCache struct {
 	cache map[string]cachedInstallationToken
 	mu    sync.RWMutex
@@ -273,7 +274,10 @@ var ghInstallationTokenCache = installationTokenCache{
 func (c *installationTokenCache) get(installationID int64, permissions *github.InstallationPermissions, lifetime time.Duration) string {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	id := createCacheID(installationID, permissions)
+	id, err := createCacheID(installationID, permissions)
+	if err != nil {
+		return ""
+	}
 	cachedToken, ok := c.cache[id]
 	if !ok {
 		return ""
@@ -292,7 +296,10 @@ const MaxInstallationTokenLifetime = time.Hour
 func (c *installationTokenCache) put(installationID int64, installationToken string, permissions *github.InstallationPermissions, createdAt time.Time) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	id := createCacheID(installationID, permissions)
+	id, err := createCacheID(installationID, permissions)
+	if err != nil {
+		return
+	}
 	c.cache[id] = cachedInstallationToken{
 		installationToken: installationToken,
 		expiresAt:         createdAt.Add(MaxInstallationTokenLifetime),
@@ -302,27 +309,35 @@ func (c *installationTokenCache) put(installationID int64, installationToken str
 // createCacheID creates an ID based on the installation ID and the token's permissions.
 // This allows us to put and get installation tokens from the cache based on the installation ID
 // and the permissions that the token is scoped to.
-// The format of the ID is: "<installationID>_<permissionKey-permissionValue>_<permissionKey-permissionValue>...".
-func createCacheID(installationID int64, permissions *github.InstallationPermissions) string {
+// The format of the ID is: "<installationID>_<permissionKey:permissionValue>_<permissionKey:permissionValue>...".
+func createCacheID(installationID int64, permissions *github.InstallationPermissions) (string, error) {
 	id := fmt.Sprint(installationID)
 	if permissions == nil {
-		return id
+		return id, nil
 	}
-	val := reflect.ValueOf(permissions).Elem()
-	var p []string
-	for i := 0; i < val.NumField(); i++ {
-		field := val.Field(i)
+	permissionsStructVal := reflect.ValueOf(permissions).Elem()
+	var permissionPairs []string
+
+	// Iterate through the permissions struct and look for fields that are pointers to strings.
+	// If the field is not nil, add the field name and its value to the permissionPairs array to
+	// be concatenated into the cache ID.
+	for i := 0; i < permissionsStructVal.NumField(); i++ {
+		field := permissionsStructVal.Field(i)
 		if field.Kind() != reflect.Ptr || field.Elem().Kind() != reflect.String {
 			continue
 		}
 
 		if !field.IsNil() {
-			p = append(p, fmt.Sprintf("%s-%v", val.Type().Field(i).Name, *field.Interface().(*string)))
+			fieldValue, ok := field.Interface().(*string)
+			if !ok {
+				return "", errors.New("failed to convert permission field to string")
+			}
+			permissionPairs = append(permissionPairs, fmt.Sprintf("%s:%s", permissionsStructVal.Type().Field(i).Name, utility.FromStringPtr(fieldValue)))
 		}
 	}
-	permissionsString := strings.ToLower(strings.Join(p, "_"))
-	if permissionsString != "" {
-		id += "_" + permissionsString
+	concatenatedPermissions := strings.ToLower(strings.Join(permissionPairs, "_"))
+	if concatenatedPermissions != "" {
+		id += "_" + concatenatedPermissions
 	}
-	return id
+	return id, nil
 }
