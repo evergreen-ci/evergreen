@@ -21,6 +21,7 @@ metadata:
   description: Evergreen backend service
   annotations:
     evergreen/project-id: evg
+    backstage.io/techdocs-ref: dir:./docs
   tags:
     - golang
   links:
