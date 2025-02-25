@@ -28,8 +28,11 @@ type hostStatus struct {
 //
 // PATCH /rest/v2/hosts
 
+//lint:ignore U1000 Swagger-only type, included because this API route returns an external type
+type swaggerHostToStatus map[string]hostStatus
+
 type hostsChangeStatusesHandler struct {
-	HostToStatus map[string]hostStatus
+	HostToStatus swaggerHostToStatus
 	env          evergreen.Environment
 }
 
@@ -41,14 +44,12 @@ func makeChangeHostsStatuses(env evergreen.Environment) gimlet.RouteHandler {
 
 // Factory creates an instance of the handler.
 //
-//	@Summary		Fetch all hosts
-//	@Description	Returns a paginated list of all hosts in Evergreen
+//	@Summary		Modify host statuses
+//	@Description	Change statuses of given hosts
 //	@Tags			hosts
-//	@Router			/hosts [get]
+//	@Router			/hosts [patch]
 //	@Security		Api-User || Api-Key
-//	@Param			start_at	query		string	false	"The identifier of the host to start at in the pagination"
-//	@Param			limit		query		int		false	"The number of hosts to be returned per page of pagination. Defaults to 100"
-//	@Param			status		query		string	false	"A status of host to limit the results to"
+//	@Param			{object}	body		swaggerHostToStatus	false	"The host ID to status mapping"
 //	@Success		200			{object}	model.APIHost
 func (h *hostsChangeStatusesHandler) Factory() gimlet.RouteHandler {
 	return &hostsChangeStatusesHandler{
@@ -183,12 +184,12 @@ type hostGetHandler struct {
 
 // Factory creates an instance of the handler.
 //
-//	@Summary		Fetch hosts spawned by user
-//	@Description	Returns a list of hosts spawned by the given user.
+//	@Summary		Fetch all hosts or all hosts spawned by user
+//	@Description	Returns a list of hosts (spawned by the user if given).
 //	@Tags			hosts
-//	@Router			/users/{user_id}/hosts [get]
+//	@Router			/hosts || /users/{user_id}/hosts [get]
 //	@Security		Api-User || Api-Key
-//	@Param			user_id		path		string	true	"the user ID"
+//	@Param			user_id		path		string	false	"the user ID"
 //	@Param			start_at	query		string	false	"The identifier of the host to start at in the pagination"
 //	@Param			limit		query		int		false	"The number of hosts to be returned per page of pagination. Defaults to 100"
 //	@Param			status		query		string	false	"A status of host to limit the results to"
