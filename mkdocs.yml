@@ -1,4 +1,6 @@
-site_name: 'evergreen'
+site_name: 'Evergreen'
+site_url: https://spruce.mongodb.com/
+repo_url: https://github.com/evergreen-ci/evergreen
 exclude_docs: |
   README.md
   Home.md
