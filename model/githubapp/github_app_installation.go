@@ -269,7 +269,7 @@ var ghInstallationTokenCache = installationTokenCache{
 	mu:    sync.RWMutex{},
 }
 
-// get gets an installation token from the cache by its installation ID. It will
+// get gets an installation token from the cache by its installation ID and permissions. It will
 // not return a token if the token will expire before the requested lifetime.
 func (c *installationTokenCache) get(installationID int64, permissions *github.InstallationPermissions, lifetime time.Duration) string {
 	c.mu.RLock()
