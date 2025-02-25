@@ -194,7 +194,7 @@ functions:
       params:
         directory: evergreen
         token: ${github_token}
-        shallow_clone: true
+        use_scalar: true
     - command: shell.exec
       type: setup
       params:
@@ -627,7 +627,7 @@ tasks:
         params:
           directory: evergreen
           token: ${github_token}
-          shallow_clone: false
+          use_scalar: true
       - func: setup-credentials
       - func: setup-mongodb
       - func: run-make
@@ -683,6 +683,7 @@ tasks:
         params:
           directory: evergreen
           token: ${github_token}
+          use_scalar: true
       - command: shell.exec
         params:
           script: |
