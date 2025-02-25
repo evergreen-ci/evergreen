@@ -2738,6 +2738,19 @@ func (hosts HostGroup) Uphosts() HostGroup {
 	return out
 }
 
+// ProvisioningHosts return a subset of the host group that contains hosts
+// that have started, but not have not yet completed the provisioning process.
+func (hosts HostGroup) ProvisioningHosts() HostGroup {
+	out := HostGroup{}
+
+	for _, h := range hosts {
+		if utility.StringSliceContains(evergreen.ProvisioningHostStatus, h.Status) {
+			out = append(out, h)
+		}
+	}
+	return out
+}
+
 // getNumContainersOnParents returns a slice of running parents and their respective
 // number of current containers currently running in order of longest expected
 // finish time

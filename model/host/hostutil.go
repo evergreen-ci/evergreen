@@ -23,7 +23,6 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
-	"github.com/mongodb/grip/send"
 	"github.com/mongodb/jasper"
 	jcli "github.com/mongodb/jasper/cli"
 	"github.com/mongodb/jasper/options"
@@ -280,8 +279,21 @@ func (h *Host) runSSHCommandWithOutput(ctx context.Context, addCommands func(*ja
 func (h *Host) FetchAndReinstallJasperCommands(settings *evergreen.Settings) string {
 	return strings.Join([]string{
 		h.FetchJasperCommand(settings.HostJasper),
+		h.removeSplunkTokenFileCommand(),
 		h.ForceReinstallJasperCommand(settings),
 	}, " && ")
+}
+
+// removeSplunkTokenFileCommand returns commands to clean up the Splunk token
+// file from file a host.
+// DEVPROD-14912: this is a best-effort attempt to clean up the Splunk token
+// file when Jasper is reinstalled on the host (e.g. when static hosts are
+// re-added to the host pool). The file is not used anymore, but still exists on
+// long-lived static hosts.
+// TODO (DEVPROD-15116): remove this cleanup function after some time has
+// passed.
+func (h *Host) removeSplunkTokenFileCommand() string {
+	return fmt.Sprintf("rm -f %s", h.splunkTokenFilePath())
 }
 
 const jasperServicePasswordEnvVarName = "JASPER_USER_PASSWORD"
@@ -302,16 +314,6 @@ func (h *Host) ForceReinstallJasperCommand(settings *evergreen.Settings) string 
 		params = append(params, fmt.Sprintf("--user=%s", user))
 	} else if h.User != "" {
 		params = append(params, fmt.Sprintf("--user=%s", h.User))
-	}
-
-	if settings.Splunk.SplunkConnectionInfo.Populated() && h.StartedBy == evergreen.User {
-		params = append(params,
-			fmt.Sprintf("--splunk_url=%s", settings.Splunk.SplunkConnectionInfo.ServerURL),
-			fmt.Sprintf("--splunk_token_path=%s", h.Distro.AbsPathNotCygwinCompatible(h.splunkTokenFilePath())),
-		)
-		if settings.Splunk.SplunkConnectionInfo.Channel != "" {
-			params = append(params, fmt.Sprintf("--splunk_channel=%s", settings.Splunk.SplunkConnectionInfo.Channel))
-		}
 	}
 
 	for _, envVar := range h.Distro.BootstrapSettings.Env {
@@ -481,7 +483,7 @@ func (h *Host) GenerateUserDataProvisioningScript(ctx context.Context, settings 
 		return "", errors.Wrap(err, "creating setup script")
 	}
 
-	writeCredentialsCmds, err := h.WriteJasperCredentialsFilesCommands(settings.Splunk.SplunkConnectionInfo, creds)
+	writeCredentialsCmds, err := h.WriteJasperCredentialsFilesCommands(creds)
 	if err != nil {
 		return "", errors.Wrap(err, "creating commands to write Jasper credentials file")
 	}
@@ -669,8 +671,8 @@ func (h *Host) buildLocalJasperClientRequest(config evergreen.HostJasperConfig, 
 }
 
 // WriteJasperCredentialsFilesCommands builds the command to write the Jasper
-// credentials and Splunk credentials to files.
-func (h *Host) WriteJasperCredentialsFilesCommands(splunk send.SplunkConnectionInfo, creds *certdepot.Credentials) (string, error) {
+// credentials to a file.
+func (h *Host) WriteJasperCredentialsFilesCommands(creds *certdepot.Credentials) (string, error) {
 	exportedCreds, err := creds.Export()
 	if err != nil {
 		return "", errors.Wrap(err, "exporting host Jasper credentials to file format")
@@ -684,12 +686,14 @@ func (h *Host) WriteJasperCredentialsFilesCommands(splunk send.SplunkConnectionI
 		fmt.Sprintf("chmod 666 %s", h.Distro.BootstrapSettings.JasperCredentialsPath),
 	}
 
-	if splunk.Populated() && h.StartedBy == evergreen.User {
-		cmds = append(cmds, writeFileContentCmd(h.splunkTokenFilePath(), splunk.Token))
-		cmds = append(cmds, fmt.Sprintf("chmod 666 %s", h.splunkTokenFilePath()))
-	}
-
 	return strings.Join(cmds, " && "), nil
+}
+
+func (h *Host) splunkTokenFilePath() string {
+	if h.Distro.BootstrapSettings.JasperCredentialsPath == "" {
+		return ""
+	}
+	return filepath.Join(filepath.Dir(h.Distro.BootstrapSettings.JasperCredentialsPath), "splunk.txt")
 }
 
 // WriteJasperPreconditionScriptsCommands returns the command to write the
@@ -701,13 +705,6 @@ func (h *Host) WriteJasperPreconditionScriptsCommands() string {
 		cmds = append(cmds, fmt.Sprintf("chmod 755 %s", ps.Path))
 	}
 	return strings.Join(cmds, "\n")
-}
-
-func (h *Host) splunkTokenFilePath() string {
-	if h.Distro.BootstrapSettings.JasperCredentialsPath == "" {
-		return ""
-	}
-	return filepath.Join(filepath.Dir(h.Distro.BootstrapSettings.JasperCredentialsPath), "splunk.txt")
 }
 
 // RunJasperProcess makes a request to the host's Jasper service to create the

@@ -1,0 +1,75 @@
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: evergreen
+  description: Internal CI System
+  tags:
+    - ci
+  links:
+    - url: https://spruce.mongodb.com
+      title: Evergreen UI
+      icon: dashboard
+  annotations:
+    backstage.io/techdocs-ref: dir:.
+spec:
+  owner: evergreen-app
+  domain: internal-tools
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: evergreen-backend
+  description: Evergreen backend service
+  annotations:
+    evergreen/project-id: evg
+  tags:
+    - golang
+  links:
+    - url: http://github.com/evergreen-ci/evergreen
+      title: evergreen-ci/evergreen
+      icon: github
+spec:
+  type: service
+  owner: evergreen-app
+  lifecycle: production
+  system: evergreen
+  domain: internal-tools
+  providesApis:
+    - evergreen-api-rest
+    - evergreen-api-graphql
+  dependsOn:
+    - component:default/Splunk
+    - component:default/Honeycomb
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: evergreen-api-rest
+  description: Retrieve Evergreen Data
+spec:
+  type: openapi
+  lifecycle: production
+  owner: evergreen-app
+  system: evergreen
+  definition:
+    $text: https://mciuploads.s3.amazonaws.com/evergreen/latest/swagger.json
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: evergreen-api-graphql
+  description: Internal API for the Evergreen UI to fetch data from the backend
+  links:
+    - url: https://evergreen.mongodb.com/graphql
+      title: GraphQL Playground
+      icon: externalLink
+spec:
+  type: graphql
+  lifecycle: experimental
+  owner: evergreen-ui
+  system: evergreen
+  definition:
+    $text: https://mciuploads.s3.amazonaws.com/evergreen/latest/merged-schema.graphql

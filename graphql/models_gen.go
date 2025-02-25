@@ -634,14 +634,16 @@ type WaterfallOptions struct {
 	ProjectIdentifier string   `json:"projectIdentifier"`
 	Requesters        []string `json:"requesters,omitempty"`
 	Revision          *string  `json:"revision,omitempty"`
+	Variants          []string `json:"variants,omitempty"`
 }
 
 type WaterfallPagination struct {
-	HasNextPage            bool `json:"hasNextPage"`
-	HasPrevPage            bool `json:"hasPrevPage"`
-	MostRecentVersionOrder int  `json:"mostRecentVersionOrder"`
-	NextPageOrder          int  `json:"nextPageOrder"`
-	PrevPageOrder          int  `json:"prevPageOrder"`
+	ActiveVersionIds       []string `json:"activeVersionIds"`
+	HasNextPage            bool     `json:"hasNextPage"`
+	HasPrevPage            bool     `json:"hasPrevPage"`
+	MostRecentVersionOrder int      `json:"mostRecentVersionOrder"`
+	NextPageOrder          int      `json:"nextPageOrder"`
+	PrevPageOrder          int      `json:"prevPageOrder"`
 }
 
 type WaterfallVersion struct {

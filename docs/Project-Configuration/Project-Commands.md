@@ -665,7 +665,7 @@ Parameters:
     yaml. This token is *only* used for the source repository, not modules.
 -   `is_oauth`: If a project token is provided and that token is an OAuth token and not a
     GitHub app token, `is_oauth` must be set to true so that the clone command is formatted properly.
--   `use_scalar`: Clone using scalar, a tool that helps optimize clones for large repositories. It cannot be combined with `clone_depth`, `shallow_clone`, or `recurse_submodules`.
+-   `use_scalar`: Clone using scalar, a tool that helps optimize clones for large repositories. It cannot be combined with `clone_depth`, `shallow_clone`, or `recurse_submodules`. Scalar will only be used if the git version is above 2.42.1, and it's not Apple's or Windows' packaged versions of Git. 
 -   `clone_depth`: Clone with `git clone --depth <clone_depth>`. For
     patch builds, Evergreen will `git fetch --unshallow` if the base
     commit is older than `<clone_depth>` commits. `clone_depth` takes precedence over `shallow_clone`. It cannot be combined with `use_scalar`. 
@@ -1414,7 +1414,8 @@ distribution. **Files uploaded with this command will also be viewable within th
     remote_file: mongodb-mongo-master/${build_variant}/${revision}/binaries/mongo-${build_id}.${ext|tgz}
     bucket: mciuploads
     region: us-east-1
-    permissions: public-read
+    permissions: private
+    visibility: signed
     content_type: ${content_type|application/x-gzip}
     display_name: Binaries
 ```
@@ -1430,7 +1431,7 @@ Parameters:
 -   `bucket`: the S3 bucket to use. Note: buckets created after Sept.
     30, 2020 containing dots (".") are not supported.
 -   `permissions`: the S3 permissions string to upload with. See [S3 docs](https://docs.aws.amazon.com/AmazonS3/latest/userguide/acl-overview.html#canned-acl)
-    for allowed values.
+    for allowed values. We recommend you use private permissions.
 -   `content_type`: the MIME type of the file. Note it is important that this value accurately reflects the mime type of the file or else the behavior will be unpredictable.
 -   `optional`: boolean to indicate if failure to find or upload this
     file will result in a task failure. This is intended to be used
@@ -1449,13 +1450,12 @@ Parameters:
 -   `region`: AWS region for the bucket. We suggest us-east-1, since
     that is where ec2 hosts are located. If you would like to override,
     you can use this parameter.
--   `visibility`: one of "private", which allows logged-in users to
-    see the file; "public" (the default), which allows anyone to see
-    the file; "none", which hides the file from the UI for everybody;
-    or "signed", which creates a pre signed url, allowing logged-in
-    users to see the file (even if it's private on s3). Visibility:
-    signed should not be combined with permissions: public-read or
-    permissions: public-read-write.
+-   `visibility`: "public" (default) which provides a link to the
+    s3 path in the UI for all Evergreen users. "private" which is a legacy option that now does the
+    same as "public". "none" which hides the file from the UI for everybody.
+    "signed" which creates a pre signed url with the provided static credentials, allowing users to see the file (even if it's private on S3). Visibility: signed should not be combined with permissions: public-read or permissions: public-read-write, or aws_session_token.
+    Note: This parameter does not affect the underlying permissions of the file
+    on S3, only the visibility in the Evergreen UI. To change the permissions of the file on S3, use the `permissions` parameter.
 -   `patchable`: defaults to true. If set to false, the command will
     no-op for patches (i.e. continue without performing the s3 put).
 -   `patch_only`: defaults to false. If set to true, the command will
