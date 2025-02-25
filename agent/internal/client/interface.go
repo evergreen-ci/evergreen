@@ -117,8 +117,8 @@ type SharedCommunicator interface {
 
 	SetDownstreamParams(ctx context.Context, downstreamParams []patchmodel.Parameter, taskData TaskData) error
 
-	// CreateInstallationToken creates an installation token for the given owner and repo if there is a GitHub app installed.
-	CreateInstallationToken(ctx context.Context, td TaskData, owner, repo string) (string, error)
+	// CreateInstallationTokenForClone creates an installation token for the given owner and repo if there is a GitHub app installed.
+	CreateInstallationTokenForClone(ctx context.Context, td TaskData, owner, repo string) (string, error)
 
 	// CreateGitHubDynamicAccessToken creates a dynamic access token using the task's project's GitHub app.
 	// It intersects the permissions requested with the permissions set in the project settings for the requester

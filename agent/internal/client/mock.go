@@ -546,7 +546,7 @@ func (c *Mock) GetAdditionalPatches(ctx context.Context, patchId string, td Task
 	return []string{"555555555555555555555555"}, nil
 }
 
-func (c *Mock) CreateInstallationToken(ctx context.Context, td TaskData, owner, repo string) (string, error) {
+func (c *Mock) CreateInstallationTokenForClone(ctx context.Context, td TaskData, owner, repo string) (string, error) {
 	if c.CreateInstallationTokenFail {
 		return "", errors.New("failed to create token")
 	}
