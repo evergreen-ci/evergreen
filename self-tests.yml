@@ -783,6 +783,27 @@ tasks:
       - command: downstream_expansions.set
         params:
           file: downstream_expansions_pine.yaml
+  - name: generate-graphql-merged-schema
+    commands:
+      - func: get-project-and-modules
+      - command: shell.exec
+        params:
+          working_dir: evergreen
+          shell: bash
+          script: |
+            cat graphql/schema/types/*.graphql \
+            graphql/schema/*.graphql > docs/merged-schema.graphql
+      - command: s3.put
+        params:
+          aws_key: ${AWS_ACCESS_KEY_ID}
+          aws_secret: ${AWS_SECRET_ACCESS_KEY}
+          aws_session_token: ${AWS_SESSION_TOKEN}
+          local_file: evergreen/docs/merged-schema.graphql
+          remote_file: evergreen/latest/merged-schema.graphql
+          bucket: mciuploads
+          content_type: text/plain
+          permissions: public-read
+          display_name: merged-schema.graphql (latest)
   - <<: *build-and-push-client
     name: build-linux_amd64
     tags: ["build"]
@@ -852,6 +873,7 @@ buildvariants:
       - name: generate-api-docs
       - name: push-api-docs
       - name: write-downstream-expansions-for-pine
+      - name: generate-graphql-merged-schema
 
   - name: race-detector
     display_name: Race Detector
