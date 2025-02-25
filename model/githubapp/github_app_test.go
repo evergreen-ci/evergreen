@@ -192,7 +192,7 @@ func TestCreateCacheID(t *testing.T) {
 			permissions: &github.InstallationPermissions{
 				Contents: github.String("read"),
 			},
-			expected: "1234_contents-read",
+			expected: "1234_contents:read",
 		},
 		"MultiplePermissions": {
 			installationID: 1234,
@@ -200,7 +200,7 @@ func TestCreateCacheID(t *testing.T) {
 				Contents: github.String("read"),
 				Issues:   github.String("write"),
 			},
-			expected: "1234_contents-read_issues-write",
+			expected: "1234_contents:read_issues:write",
 		},
 	}
 

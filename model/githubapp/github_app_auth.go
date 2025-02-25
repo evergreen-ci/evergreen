@@ -112,7 +112,6 @@ func (g *GithubAppAuth) CreateCachedInstallationToken(ctx context.Context, owner
 	}
 
 	if cachedToken := ghInstallationTokenCache.get(installationID, opts.GetPermissions(), lifetime); cachedToken != "" {
-
 		return cachedToken, nil
 	}
 
