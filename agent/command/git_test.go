@@ -230,6 +230,27 @@ func (s *GitGetProjectSuite) TestRetryFetchAttemptsOnceOnSuccess() {
 	s.Require().NoError(err)
 }
 
+func (s *GitGetProjectSuite) TestRetryFetchStopsOnInvalidGitHubMergeQueueRef() {
+	c := &gitFetchProject{
+		Directory: "dir",
+		Token:     projectGitHubToken,
+	}
+	conf := s.taskConfig2
+	logger, err := s.comm.GetLoggerProducer(s.ctx, &conf.Task, nil)
+	s.Require().NoError(err)
+
+	opts := cloneOpts{}
+
+	attempt := 0
+	err = c.retryFetch(s.ctx, logger, true, opts, func(o cloneOpts) error {
+		attempt++
+		return errors.Errorf("fatel: %s", githubMergeQueueInvalidRefError)
+	})
+
+	s.Equal(1, attempt)
+	s.Require().ErrorContains(err, "the GitHub merge SHA is not available most likely because the merge completed or was aborted")
+}
+
 func (s *GitGetProjectSuite) TestBuildSourceCommandCloneDepth() {
 	c := &gitFetchProject{
 		Directory: "dir",

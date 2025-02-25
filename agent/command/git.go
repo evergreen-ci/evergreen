@@ -45,6 +45,10 @@ const (
 	cloneMethodAccessToken = "access-token"
 
 	generatedTokenKey = "EVERGREEN_GENERATED_GITHUB_TOKEN"
+
+	// githubMergeQueueInvalidRefError is the error message returned by Git when it fails to find
+	// a GitHub merge queue reference.
+	githubMergeQueueInvalidRefError = "couldn't find remote ref gh-readonly-queue"
 )
 
 var (
@@ -541,6 +545,9 @@ func (c *gitFetchProject) retryFetch(ctx context.Context, logger client.LoggerPr
 				attemptNum++
 				if isSource && attemptNum == 1 {
 					logger.Execution().Warning("git source clone failed with cached merge SHA; re-requesting merge SHA from GitHub")
+				}
+				if strings.Contains(err.Error(), githubMergeQueueInvalidRefError) {
+					return false, errors.Wrap(err, "the GitHub merge SHA is not available most likely because the merge completed or was aborted")
 				}
 				return true, errors.Wrapf(err, "attempt %d", attemptNum)
 			}
