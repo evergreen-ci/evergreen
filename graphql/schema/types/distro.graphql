@@ -14,7 +14,6 @@ enum FinderVersion {
 }
 
 enum PlannerVersion {
-  LEGACY
   TUNABLE
 }
 
