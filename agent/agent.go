@@ -235,7 +235,9 @@ func (a *Agent) loop(ctx context.Context) error {
 	timer := time.NewTimer(0)
 	defer timer.Stop()
 
-	tc := &taskContext{}
+	tc := &taskContext{
+		logger: client.NewSingleChannelLogHarness("default", a.defaultLogger),
+	}
 	needTeardownGroup := false
 	defer func() {
 		if tc.logger != nil {
@@ -340,7 +342,9 @@ func (a *Agent) processNextTask(ctx context.Context, nt *apimodels.NextTaskRespo
 		return processNextResponse{
 			// Running the teardown group commands implies exiting the group, so
 			// destroy prior task information.
-			tc:                &taskContext{},
+			tc: &taskContext{
+				logger: client.NewSingleChannelLogHarness("default", a.defaultLogger),
+			},
 			needTeardownGroup: false,
 		}, nil
 	}
@@ -354,7 +358,9 @@ func (a *Agent) processNextTask(ctx context.Context, nt *apimodels.NextTaskRespo
 			needTeardownGroup: false,
 			// Running the teardown group commands implies exiting the group, so
 			// destroy prior task information.
-			tc:          &taskContext{},
+			tc: &taskContext{
+				logger: client.NewSingleChannelLogHarness("default", a.defaultLogger),
+			},
 			noTaskToRun: true,
 		}, nil
 	}
@@ -439,6 +445,7 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 			},
 			ranSetupGroup: !shouldSetupGroup,
 			oomTracker:    jasper.NewOOMTracker(),
+			logger:        client.NewSingleChannelLogHarness("default", a.defaultLogger),
 		}
 	} else {
 		tc = initialTC
