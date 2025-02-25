@@ -42,6 +42,9 @@ func (s *APIPlannerSettings) BuildFromService(settings distro.PlannerSettings) {
 func (s *APIPlannerSettings) ToService() distro.PlannerSettings {
 	settings := distro.PlannerSettings{}
 	settings.Version = utility.FromStringPtr(s.Version)
+	if settings.Version == "" {
+		settings.Version = evergreen.PlannerVersionTunable
+	}
 	settings.TargetTime = s.TargetTime.ToDuration()
 	settings.GroupVersions = utility.ToBoolPtr(s.GroupVersions)
 	settings.PatchFactor = s.PatchFactor
