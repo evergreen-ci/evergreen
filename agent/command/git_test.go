@@ -244,7 +244,7 @@ func (s *GitGetProjectSuite) TestRetryFetchStopsOnInvalidGitHubMergeQueueRef() {
 	attempt := 0
 	err = c.retryFetch(s.ctx, logger, true, opts, func(o cloneOpts) error {
 		attempt++
-		return errors.Errorf("fatel: %s", "couldn't find remote ref gh-readonly-queue")
+		return errors.Errorf("fatel: %s", githubMergeQueueInvalidRefError)
 	})
 
 	s.Equal(1, attempt)
