@@ -244,11 +244,11 @@ func (s *GitGetProjectSuite) TestRetryFetchStopsOnInvalidGitHubMergeQueueRef() {
 	attempt := 0
 	err = c.retryFetch(s.ctx, logger, true, opts, func(o cloneOpts) error {
 		attempt++
-		return errors.Errorf("fatel: %s", githubMergeQueueInvalidRefError)
+		return errors.Errorf("fatel: %s", "couldn't find remote ref gh-readonly-queue")
 	})
 
 	s.Equal(1, attempt)
-	s.Require().ErrorContains(err, githubMergeQueueInvalidRefExternalError)
+	s.Require().ErrorContains(err, "the GitHub merge SHA is not available most likely because the merge completed or was aborted")
 }
 
 func (s *GitGetProjectSuite) TestBuildSourceCommandCloneDepth() {
