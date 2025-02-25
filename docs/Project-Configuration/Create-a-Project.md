@@ -6,6 +6,12 @@ This guide is meant to help users create their own projects on Evergreen.
 
 To have access to create a project you must be either a super user or the admin of an existing project.
 
+### Things to consider before creating a project
+1. Does Evergreen support the Github organization (e.g., mongodb, 10gen)? If the organization you need is not in the GitHub Organization drop-down, reach out to the Evergreen team to see if it can be supported. 
+2. Why do you need this project? Can this need be met by an existing project instead? 
+3. Is this project branching off of a large project? If yes, consider reaching out to the admins of that project to ensure that all edge cases are considered. 
+4. Are you creating more than one project at the same time? Is there a way to avoid this? 
+
 ### Steps to Request
 
 If you do not see the `New Project` button on the [project settings page](https://spruce.mongodb.com/project/YourProject/settings/general):
