@@ -71,7 +71,7 @@ func TestDistroAliases(t *testing.T) {
 		t.Run("UseLegacy", func(t *testing.T) {
 			require.NoError(t, db.Clear(model.TaskQueuesCollection))
 
-			distroOne.PlannerSettings.Version = evergreen.PlannerVersionLegacy
+			distroOne.PlannerSettings.Version = evergreen.PlannerVersionTunable
 			output, err := PrioritizeTasks(ctx, distroOne, tasks, TaskPlannerOptions{ID: "legacy-1"})
 			require.NoError(t, err)
 			require.Len(t, output, 2)
@@ -118,7 +118,7 @@ func TestDistroAliases(t *testing.T) {
 		t.Run("UseLegacy", func(t *testing.T) {
 			require.NoError(t, db.Clear(model.TaskSecondaryQueuesCollection))
 
-			distroTwo.PlannerSettings.Version = evergreen.PlannerVersionLegacy
+			distroTwo.PlannerSettings.Version = evergreen.PlannerVersionTunable
 			output, err := PrioritizeTasks(ctx, distroTwo, tasks, TaskPlannerOptions{ID: "legacy-0", IsSecondaryQueue: true})
 			require.NoError(t, err)
 			require.Len(t, output, 2)

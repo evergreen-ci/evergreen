@@ -2915,7 +2915,7 @@ func TestTryResetTaskWithTaskGroup(t *testing.T) {
 	d := &distro.Distro{
 		Id: "my_distro",
 		PlannerSettings: distro.PlannerSettings{
-			Version: evergreen.PlannerVersionLegacy,
+			Version: evergreen.PlannerVersionTunable,
 		},
 	}
 	assert.NoError(d.Insert(ctx))

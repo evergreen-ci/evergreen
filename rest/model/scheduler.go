@@ -1,8 +1,7 @@
 package model
 
 type CompareTasksRequest struct {
-	Tasks     []string `json:"tasks"`
-	UseLegacy bool     `json:"use_legacy"`
+	Tasks []string `json:"tasks"`
 }
 
 type CompareTasksResponse struct {

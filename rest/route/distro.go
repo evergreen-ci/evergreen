@@ -193,7 +193,7 @@ func (h *distroIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 			Version: utility.ToStringPtr(evergreen.FinderVersionLegacy),
 		},
 		PlannerSettings: model.APIPlannerSettings{
-			Version: utility.ToStringPtr(evergreen.PlannerVersionLegacy),
+			Version: utility.ToStringPtr(evergreen.PlannerVersionTunable),
 		},
 		DispatcherSettings: model.APIDispatcherSettings{
 			Version: utility.ToStringPtr(evergreen.DispatcherVersionRevisedWithDependencies),
