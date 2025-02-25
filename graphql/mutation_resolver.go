@@ -902,6 +902,11 @@ func (r *mutationResolver) UpdateVolume(ctx context.Context, updateVolumeInput U
 		updateOptions.NewName = utility.FromStringPtr(updateVolumeInput.Name)
 	}
 	if updateVolumeInput.Size != nil {
+		newSize := int32(utility.FromIntPtr(updateVolumeInput.Size))
+		if newSize < volume.Size {
+			// AWS does not allow decreasing volume size.
+			return false, InputValidationError.Send(ctx, fmt.Sprintf("new size must be equal to or greater than current size (%dGB)", volume.Size))
+		}
 		updateOptions.Size = int32(utility.FromIntPtr(updateVolumeInput.Size))
 	}
 	err = applyVolumeOptions(ctx, *volume, updateOptions)
