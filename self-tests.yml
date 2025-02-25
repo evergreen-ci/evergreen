@@ -384,8 +384,7 @@ functions:
         args: ["scripts/check-go-vulnerabilities.sh"]
         env:
           GOPATH: ${workdir}/gopath
-        include_expansions_in_env:
-          - GOROOT
+        include_expansions_in_env: ["GOROOT"]
 
   verify-client-version-update:
     - command: subprocess.exec
@@ -644,8 +643,7 @@ tasks:
           working_dir: evergreen
           env:
             GOPATH: ${workdir}/gopath
-          include_expansions_in_env:
-            - GOROOT
+          include_expansions_in_env: ["GOROOT"]
       - func: verify-swaggo-fmt
   - name: check-go-vulnerabilities
     disable: true # TODO: re-enable in DEVPROD-5453
@@ -696,9 +694,7 @@ tasks:
           working_dir: evergreen
           binary: make
           args: ["verify-mod-tidy"]
-          include_expansions_in_env: ["github_token"]
-          env:
-            GOROOT: /opt/golang/go1.23 # We use a newer version of Go to catch toolchain updates. This should be reverted in DEVPROD-3611.
+          include_expansions_in_env: ["GOROOT", "github_token"]
   - name: verify-merge-function-update
     tags: ["linter"]
     patch_only: true
@@ -842,7 +838,7 @@ buildvariants:
       goos: linux
       goarch: amd64
       nodebin: /opt/node/bin
-      GOROOT: /opt/golang/go1.20
+      GOROOT: /opt/golang/go1.24
       RUN_EC2_SPECIFIC_TESTS: true
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-8.0.0.tgz
       mongosh_url: https://downloads.mongodb.com/compass/mongosh-2.0.2-linux-x64.tgz
@@ -863,7 +859,7 @@ buildvariants:
       - ubuntu2204-small
       - ubuntu2204-large
     expansions:
-      GOROOT: /opt/golang/go1.20
+      GOROOT: /opt/golang/go1.24
       RUN_EC2_SPECIFIC_TESTS: true
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-8.0.0.tgz
       mongosh_url: https://downloads.mongodb.com/compass/mongosh-2.0.2-linux-x64.tgz
@@ -893,7 +889,7 @@ buildvariants:
       - ubuntu2204-small
       - ubuntu2204-large
     expansions:
-      GOROOT: /opt/golang/go1.20
+      GOROOT: /opt/golang/go1.24
     tasks:
       - name: generate-lint
 
@@ -903,7 +899,7 @@ buildvariants:
       - windows-vsCurrent-small
       - windows-vsCurrent-large
     expansions:
-      GOROOT: c:/golang/go1.20
+      GOROOT: C:/golang/go1.24
       RUN_EC2_SPECIFIC_TESTS: true
       mongodb_url: https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-8.0.0.zip
       mongosh_url: https://downloads.mongodb.com/compass/mongosh-2.0.2-win32-x64.zip
@@ -922,7 +918,7 @@ buildvariants:
       xc_build: yes
       goarch: arm64
       goos: linux
-      GOROOT: /opt/golang/go1.20
+      GOROOT: /opt/golang/go1.24
       RUN_EC2_SPECIFIC_TESTS: true
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu2204-8.0.0.tgz
       mongosh_url: https://downloads.mongodb.com/compass/mongosh-2.0.2-linux-arm64.tgz
@@ -935,7 +931,7 @@ buildvariants:
     run_on:
       - macos-1100-arm64
     expansions:
-      GOROOT: /opt/golang/go1.20
+      GOROOT: /opt/golang/go1.24
       mongodb_url: https://fastdl.mongodb.org/osx/mongodb-macos-arm64-8.0.0.tgz
       mongosh_url: https://downloads.mongodb.com/compass/mongosh-2.0.2-darwin-arm64.zip
       mongosh_decompress: unzip
@@ -954,7 +950,7 @@ buildvariants:
       - name: ".build-unsigned"
         activate: false
     expansions:
-      GOROOT: /opt/golang/go1.20
+      GOROOT: /opt/golang/go1.24
       notary_client_url: https://macos-notary-1628249594.s3.amazonaws.com/releases/client/v3.1.2/linux_amd64.zip
     display_tasks:
       - name: build-and-push
