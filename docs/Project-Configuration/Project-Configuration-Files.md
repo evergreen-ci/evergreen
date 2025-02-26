@@ -279,9 +279,9 @@ Fields:
     If this should only activate when manually scheduled or by
     stepback/dependencies, set activate to false.
 -   `stepback`: indicate if this variant should opt-in or out of stepback. 
-    (If disabled at the project-level, this value will be ignored.)
+    (If disabled at the project-level, this value will be ignored, otherwise it will override.)
 -   `deactivate_previous`: indicate if this variant should unschedule older 
-    mainline tasks on success (if disabled at the project-level, this value will be ignored.)
+    mainline tasks on success (if disabled at the project-level, this value will be ignored, otherwise it will override.)
 -   `batchtime`: interval of time in minutes that Evergreen should wait
     before activating this variant. The default is set on the project
     settings page. This cannot be set for individual tasks. 

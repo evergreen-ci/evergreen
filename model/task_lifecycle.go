@@ -846,12 +846,7 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 	}
 
 	// Stepback and deactivating previous tasks are non-essential, so we log but don't catch the error.
-	err = attemptStepbackAndDeactivatePrevious(ctx, t, status, caller)
-	grip.Error(message.WrapError(err, message.Fields{
-		"message": "problem evaluating stepback / deactivate previous",
-		"project": t.Project,
-		"task_id": t.Id,
-	}))
+	attemptStepbackAndDeactivatePrevious(ctx, t, status, caller)
 
 	catcher.Wrap(UpdateBuildAndVersionStatusForTask(ctx, t), "updating build/version status")
 	catcher.Wrap(logTaskEndStats(ctx, t), "logging task end stats")
@@ -895,21 +890,29 @@ func getDeactivatePrevious(t *task.Task, pRef *ProjectRef, project *Project) boo
 	return pRef.ShouldDeactivatePrevious()
 }
 
-func attemptStepbackAndDeactivatePrevious(ctx context.Context, t *task.Task, status, caller string) error {
+func attemptStepbackAndDeactivatePrevious(ctx context.Context, t *task.Task, status, caller string) {
+	catcher := grip.NewBasicCatcher()
 	pRef, err := FindMergedProjectRef(t.Project, t.Version, false)
 	if err != nil {
-		return errors.Wrapf(err, "finding merged project ref for task '%s'", t.Id)
+		catcher.Wrapf(err, "finding merged project ref for task '%s'", t.Id)
 	}
 	if pRef == nil {
-		return errors.Errorf("merged project ref for task '%s' is nil", t.Id)
+		catcher.Errorf("merged project ref for task '%s' is nil", t.Id)
 	}
 
 	project, err := FindProjectFromVersionID(t.Version)
 	if err != nil {
-		return errors.Wrapf(err, "finding project for task '%s'", t.Id)
+		catcher.Wrapf(err, "finding project for task '%s'", t.Id)
+	}
+	if catcher.HasErrors() {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "unable to perform stepback/deactivate previous",
+			"project": t.Project,
+			"task_id": t.Id,
+		}))
+		return
 	}
 
-	catcher := grip.NewBasicCatcher()
 	if !evergreen.IsPatchRequester(t.Requester) {
 		if t.IsPartOfDisplay(ctx) {
 			_, err = t.GetDisplayTask(ctx)
@@ -921,17 +924,24 @@ func attemptStepbackAndDeactivatePrevious(ctx context.Context, t *task.Task, sta
 		} else {
 			err = evalStepback(ctx, t, status, pRef, project)
 		}
-		catcher.Add(err)
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "problem evaluating stepback",
+			"project": t.Project,
+			"task_id": t.Id,
+		}))
 	}
 
 	// Deactivate previous occurrences of the same task only if this one passed on mainline commits.
 	if t.Status == evergreen.TaskSucceeded && t.Requester == evergreen.RepotrackerVersionRequester && t.ActivatedBy != evergreen.StepbackTaskActivator {
 		shouldDeactivatePrevious := getDeactivatePrevious(t, pRef, project)
 		if shouldDeactivatePrevious {
-			catcher.Add(DeactivatePreviousTasks(ctx, t, caller))
+			grip.Error(message.WrapError(DeactivatePreviousTasks(ctx, t, caller), message.Fields{
+				"message": "problem evaluating deactivate previous",
+				"project": t.Project,
+				"task_id": t.Id,
+			}))
 		}
 	}
-	return catcher.Resolve()
 }
 
 // logTaskEndStats logs information a task after it
