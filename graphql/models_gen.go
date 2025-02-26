@@ -98,11 +98,11 @@ type DisplayTask struct {
 }
 
 type DistroEvent struct {
-	After     map[string]interface{} `json:"after,omitempty"`
-	Before    map[string]interface{} `json:"before,omitempty"`
-	Data      map[string]interface{} `json:"data,omitempty"`
-	Timestamp time.Time              `json:"timestamp"`
-	User      string                 `json:"user"`
+	After     map[string]any `json:"after,omitempty"`
+	Before    map[string]any `json:"before,omitempty"`
+	Data      map[string]any `json:"data,omitempty"`
+	Timestamp time.Time      `json:"timestamp"`
+	User      string         `json:"user"`
 }
 
 // DistroEventsInput is the input to the distroEvents query.
@@ -248,13 +248,13 @@ type MainlineCommitsOptions struct {
 }
 
 type Manifest struct {
-	ID              string                 `json:"id"`
-	Branch          string                 `json:"branch"`
-	IsBase          bool                   `json:"isBase"`
-	ModuleOverrides map[string]string      `json:"moduleOverrides,omitempty"`
-	Modules         map[string]interface{} `json:"modules,omitempty"`
-	Project         string                 `json:"project"`
-	Revision        string                 `json:"revision"`
+	ID              string            `json:"id"`
+	Branch          string            `json:"branch"`
+	IsBase          bool              `json:"isBase"`
+	ModuleOverrides map[string]string `json:"moduleOverrides,omitempty"`
+	Modules         map[string]any    `json:"modules,omitempty"`
+	Project         string            `json:"project"`
+	Revision        string            `json:"revision"`
 }
 
 // MoveProjectInput is the input to the attachProjectToNewRepo mutation.
@@ -677,7 +677,7 @@ func (e AccessLevel) String() string {
 	return string(e)
 }
 
-func (e *AccessLevel) UnmarshalGQL(v interface{}) error {
+func (e *AccessLevel) UnmarshalGQL(v any) error {
 	str, ok := v.(string)
 	if !ok {
 		return fmt.Errorf("enums must be strings")
@@ -728,7 +728,7 @@ func (e Arch) String() string {
 	return string(e)
 }
 
-func (e *Arch) UnmarshalGQL(v interface{}) error {
+func (e *Arch) UnmarshalGQL(v any) error {
 	str, ok := v.(string)
 	if !ok {
 		return fmt.Errorf("enums must be strings")
@@ -771,7 +771,7 @@ func (e BootstrapMethod) String() string {
 	return string(e)
 }
 
-func (e *BootstrapMethod) UnmarshalGQL(v interface{}) error {
+func (e *BootstrapMethod) UnmarshalGQL(v any) error {
 	str, ok := v.(string)
 	if !ok {
 		return fmt.Errorf("enums must be strings")
@@ -814,7 +814,7 @@ func (e CommunicationMethod) String() string {
 	return string(e)
 }
 
-func (e *CommunicationMethod) UnmarshalGQL(v interface{}) error {
+func (e *CommunicationMethod) UnmarshalGQL(v any) error {
 	str, ok := v.(string)
 	if !ok {
 		return fmt.Errorf("enums must be strings")
@@ -853,7 +853,7 @@ func (e DispatcherVersion) String() string {
 	return string(e)
 }
 
-func (e *DispatcherVersion) UnmarshalGQL(v interface{}) error {
+func (e *DispatcherVersion) UnmarshalGQL(v any) error {
 	str, ok := v.(string)
 	if !ok {
 		return fmt.Errorf("enums must be strings")
@@ -898,7 +898,7 @@ func (e DistroOnSaveOperation) String() string {
 	return string(e)
 }
 
-func (e *DistroOnSaveOperation) UnmarshalGQL(v interface{}) error {
+func (e *DistroOnSaveOperation) UnmarshalGQL(v any) error {
 	str, ok := v.(string)
 	if !ok {
 		return fmt.Errorf("enums must be strings")
@@ -943,7 +943,7 @@ func (e DistroSettingsAccess) String() string {
 	return string(e)
 }
 
-func (e *DistroSettingsAccess) UnmarshalGQL(v interface{}) error {
+func (e *DistroSettingsAccess) UnmarshalGQL(v any) error {
 	str, ok := v.(string)
 	if !ok {
 		return fmt.Errorf("enums must be strings")
@@ -986,7 +986,7 @@ func (e FeedbackRule) String() string {
 	return string(e)
 }
 
-func (e *FeedbackRule) UnmarshalGQL(v interface{}) error {
+func (e *FeedbackRule) UnmarshalGQL(v any) error {
 	str, ok := v.(string)
 	if !ok {
 		return fmt.Errorf("enums must be strings")
@@ -1031,7 +1031,7 @@ func (e FinderVersion) String() string {
 	return string(e)
 }
 
-func (e *FinderVersion) UnmarshalGQL(v interface{}) error {
+func (e *FinderVersion) UnmarshalGQL(v any) error {
 	str, ok := v.(string)
 	if !ok {
 		return fmt.Errorf("enums must be strings")
@@ -1070,7 +1070,7 @@ func (e HostAllocatorVersion) String() string {
 	return string(e)
 }
 
-func (e *HostAllocatorVersion) UnmarshalGQL(v interface{}) error {
+func (e *HostAllocatorVersion) UnmarshalGQL(v any) error {
 	str, ok := v.(string)
 	if !ok {
 		return fmt.Errorf("enums must be strings")
@@ -1123,7 +1123,7 @@ func (e HostSortBy) String() string {
 	return string(e)
 }
 
-func (e *HostSortBy) UnmarshalGQL(v interface{}) error {
+func (e *HostSortBy) UnmarshalGQL(v any) error {
 	str, ok := v.(string)
 	if !ok {
 		return fmt.Errorf("enums must be strings")
@@ -1168,7 +1168,7 @@ func (e MetStatus) String() string {
 	return string(e)
 }
 
-func (e *MetStatus) UnmarshalGQL(v interface{}) error {
+func (e *MetStatus) UnmarshalGQL(v any) error {
 	str, ok := v.(string)
 	if !ok {
 		return fmt.Errorf("enums must be strings")
@@ -1211,7 +1211,7 @@ func (e OverallocatedRule) String() string {
 	return string(e)
 }
 
-func (e *OverallocatedRule) UnmarshalGQL(v interface{}) error {
+func (e *OverallocatedRule) UnmarshalGQL(v any) error {
 	str, ok := v.(string)
 	if !ok {
 		return fmt.Errorf("enums must be strings")
@@ -1252,7 +1252,7 @@ func (e PlannerVersion) String() string {
 	return string(e)
 }
 
-func (e *PlannerVersion) UnmarshalGQL(v interface{}) error {
+func (e *PlannerVersion) UnmarshalGQL(v any) error {
 	str, ok := v.(string)
 	if !ok {
 		return fmt.Errorf("enums must be strings")
@@ -1299,7 +1299,7 @@ func (e ProjectPermission) String() string {
 	return string(e)
 }
 
-func (e *ProjectPermission) UnmarshalGQL(v interface{}) error {
+func (e *ProjectPermission) UnmarshalGQL(v any) error {
 	str, ok := v.(string)
 	if !ok {
 		return fmt.Errorf("enums must be strings")
@@ -1364,7 +1364,7 @@ func (e ProjectSettingsSection) String() string {
 	return string(e)
 }
 
-func (e *ProjectSettingsSection) UnmarshalGQL(v interface{}) error {
+func (e *ProjectSettingsSection) UnmarshalGQL(v any) error {
 	str, ok := v.(string)
 	if !ok {
 		return fmt.Errorf("enums must be strings")
@@ -1409,7 +1409,7 @@ func (e Provider) String() string {
 	return string(e)
 }
 
-func (e *Provider) UnmarshalGQL(v interface{}) error {
+func (e *Provider) UnmarshalGQL(v any) error {
 	str, ok := v.(string)
 	if !ok {
 		return fmt.Errorf("enums must be strings")
@@ -1452,7 +1452,7 @@ func (e RequiredStatus) String() string {
 	return string(e)
 }
 
-func (e *RequiredStatus) UnmarshalGQL(v interface{}) error {
+func (e *RequiredStatus) UnmarshalGQL(v any) error {
 	str, ok := v.(string)
 	if !ok {
 		return fmt.Errorf("enums must be strings")
@@ -1495,7 +1495,7 @@ func (e RoundingRule) String() string {
 	return string(e)
 }
 
-func (e *RoundingRule) UnmarshalGQL(v interface{}) error {
+func (e *RoundingRule) UnmarshalGQL(v any) error {
 	str, ok := v.(string)
 	if !ok {
 		return fmt.Errorf("enums must be strings")
@@ -1536,7 +1536,7 @@ func (e SortDirection) String() string {
 	return string(e)
 }
 
-func (e *SortDirection) UnmarshalGQL(v interface{}) error {
+func (e *SortDirection) UnmarshalGQL(v any) error {
 	str, ok := v.(string)
 	if !ok {
 		return fmt.Errorf("enums must be strings")
@@ -1579,7 +1579,7 @@ func (e SpawnHostStatusActions) String() string {
 	return string(e)
 }
 
-func (e *SpawnHostStatusActions) UnmarshalGQL(v interface{}) error {
+func (e *SpawnHostStatusActions) UnmarshalGQL(v any) error {
 	str, ok := v.(string)
 	if !ok {
 		return fmt.Errorf("enums must be strings")
@@ -1620,7 +1620,7 @@ func (e TaskQueueItemType) String() string {
 	return string(e)
 }
 
-func (e *TaskQueueItemType) UnmarshalGQL(v interface{}) error {
+func (e *TaskQueueItemType) UnmarshalGQL(v any) error {
 	str, ok := v.(string)
 	if !ok {
 		return fmt.Errorf("enums must be strings")
@@ -1667,7 +1667,7 @@ func (e TaskSortCategory) String() string {
 	return string(e)
 }
 
-func (e *TaskSortCategory) UnmarshalGQL(v interface{}) error {
+func (e *TaskSortCategory) UnmarshalGQL(v any) error {
 	str, ok := v.(string)
 	if !ok {
 		return fmt.Errorf("enums must be strings")
@@ -1714,7 +1714,7 @@ func (e TestSortCategory) String() string {
 	return string(e)
 }
 
-func (e *TestSortCategory) UnmarshalGQL(v interface{}) error {
+func (e *TestSortCategory) UnmarshalGQL(v any) error {
 	str, ok := v.(string)
 	if !ok {
 		return fmt.Errorf("enums must be strings")
