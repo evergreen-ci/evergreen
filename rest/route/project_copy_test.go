@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
+
 	"github.com/evergreen-ci/evergreen/cloud/parameterstore/fakeparameter"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
@@ -31,7 +33,8 @@ func TestProjectCopySuite(t *testing.T) {
 }
 
 func (s *ProjectCopySuite) SetupSuite() {
-	s.NoError(db.ClearCollections(model.ProjectRefCollection, user.Collection, model.ProjectVarsCollection, fakeparameter.Collection))
+	s.NoError(db.ClearCollections(model.ProjectRefCollection, user.Collection, model.ProjectVarsCollection, fakeparameter.Collection,
+		evergreen.ScopeCollection, evergreen.RoleCollection))
 	pRefs := []model.ProjectRef{
 		{
 			Id:         "12345",
@@ -114,8 +117,12 @@ func (s *ProjectCopySuite) TestCopyToNewProject() {
 	s.Equal("projectC", utility.FromStringPtr(newProject.Identifier))
 	s.Equal("abcd", utility.FromStringPtr(newProject.Branch))
 	s.False(*newProject.Enabled)
-	s.Require().Len(newProject.Admins, 1)
-	s.Equal("my-user", utility.FromStringPtr(newProject.Admins[0]))
+	s.Require().Len(newProject.Admins, 2)
+	s.Contains(utility.FromStringPtrSlice(newProject.Admins), "my-user")
+	s.Contains(utility.FromStringPtrSlice(newProject.Admins), "me")
+	usrs, err := user.FindByRole(model.GetProjectAdminRole(utility.FromStringPtr(newProject.Id)))
+	s.NoError(err)
+	s.Len(usrs, 2)
 
 	res, err := data.FindProjectById("projectC", false, false)
 	s.NoError(err)
