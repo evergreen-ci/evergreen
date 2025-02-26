@@ -828,7 +828,11 @@ func (e *envState) initThirdPartySenders(ctx context.Context, tracer trace.Trace
 				"message": "setting up Slack logger",
 			}))
 		}
-		if sender != nil {
+		if sender == nil {
+			grip.Error(message.Fields{
+				"message": "failed to create Slack logger",
+			})
+		} else {
 			e.senders[SenderSlack] = sender
 		}
 	}
