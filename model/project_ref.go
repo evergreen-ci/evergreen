@@ -662,7 +662,7 @@ func (p *ProjectRef) Add(creator *user.DBUser) error {
 	}
 	// Default to adding the creator as the admin; the permissions themselves will be handled in the add function.
 	if creator != nil {
-		p.Admins = []string{creator.Id}
+		p.Admins = utility.UniqueStrings(append(p.Admins, creator.Id))
 	}
 	// Ensure that any new project is originally explicitly disabled and set to private.
 	p.Enabled = false
