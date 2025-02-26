@@ -57,7 +57,7 @@ func (r *queryResolver) BuildBaron(ctx context.Context, taskID string, execution
 
 // AWSRegions is the resolver for the awsRegions field.
 func (r *queryResolver) AWSRegions(ctx context.Context) ([]string, error) {
-	panic(fmt.Errorf("not implemented: AWSRegions - awsRegions"))
+	return evergreen.GetEnvironment().Settings().Providers.AWS.AllowedRegions, nil
 }
 
 // ClientConfig is the resolver for the clientConfig field.
