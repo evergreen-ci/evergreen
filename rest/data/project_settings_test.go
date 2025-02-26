@@ -1304,7 +1304,7 @@ func TestCopyProject(t *testing.T) {
 
 	for name, test := range map[string]func(t *testing.T, ref model.ProjectRef){
 		"SuccessfullyCopiesProject": func(t *testing.T, ref model.ProjectRef) {
-			copyProjectOpts := CopyProjectOpts{
+			copyProjectOpts := restModel.CopyProjectOpts{
 				ProjectIdToCopy:      ref.Id,
 				NewProjectIdentifier: "myNewProject",
 				NewProjectId:         "12345",
@@ -1346,7 +1346,7 @@ func TestCopyProject(t *testing.T) {
 			}
 		},
 		"CopiesProjectWithPartialError": func(t *testing.T, ref model.ProjectRef) {
-			copyProjectOpts := CopyProjectOpts{
+			copyProjectOpts := restModel.CopyProjectOpts{
 				ProjectIdToCopy:      "myIdTwo",
 				NewProjectIdentifier: "mySecondProject",
 			}
@@ -1356,7 +1356,7 @@ func TestCopyProject(t *testing.T) {
 			assert.Equal(t, "mySecondProject", utility.FromStringPtr(newProject.Identifier))
 		},
 		"DoesNotCopyProjectWithFatalError": func(t *testing.T, ref model.ProjectRef) {
-			copyProjectOpts := CopyProjectOpts{
+			copyProjectOpts := restModel.CopyProjectOpts{
 				ProjectIdToCopy:      "nonexistentId",
 				NewProjectIdentifier: "myThirdProject",
 			}
