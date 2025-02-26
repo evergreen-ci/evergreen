@@ -3125,6 +3125,7 @@ func TestAddEmptyBranch(t *testing.T) {
 	assert.NoError(t, p.Add(&u))
 	assert.NotEmpty(t, p.Id)
 	assert.Empty(t, p.Branch)
+	assert.Equal(t, []string{u.Id}, p.Admins)
 }
 
 func TestAddPermissions(t *testing.T) {
@@ -3147,6 +3148,7 @@ func TestAddPermissions(t *testing.T) {
 	}
 	assert.NoError(p.Add(&u))
 	assert.NotEmpty(p.Id)
+	assert.Equal(t, []string{u.Id}, p.Admins)
 	assert.True(mgobson.IsObjectIdHex(p.Id))
 
 	rm := env.RoleManager()
@@ -3173,6 +3175,7 @@ func TestAddPermissions(t *testing.T) {
 	p.Id = ""
 	assert.NoError(p.Add(&u))
 	assert.NotEmpty(p.Id)
+	assert.Equal(t, []string{u.Id}, p.Admins)
 	assert.True(mgobson.IsObjectIdHex(p.Id))
 	assert.Equal(projectId, p.Id)
 

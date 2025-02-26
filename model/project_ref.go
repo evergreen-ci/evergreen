@@ -660,6 +660,10 @@ func (p *ProjectRef) Add(creator *user.DBUser) error {
 	if p.Id == "" {
 		p.Id = mgobson.NewObjectId().Hex()
 	}
+	// Default to adding the creator as the admin; the permissions themselves will be handled in the add function.
+	if creator != nil {
+		p.Admins = []string{creator.Id}
+	}
 	// Ensure that any new project is originally explicitly disabled and set to private.
 	p.Enabled = false
 
@@ -675,11 +679,8 @@ func (p *ProjectRef) Add(creator *user.DBUser) error {
 			if err != nil {
 				return errors.Wrapf(err, "upserting project ref '%s'", hidden.Id)
 			}
-			if creator != nil {
-				_, err = p.UpdateAdminRoles([]string{creator.Id}, nil)
-				return err
-			}
-			return nil
+			_, err = p.UpdateAdminRoles(p.Admins, nil)
+			return err
 		}
 	}
 
