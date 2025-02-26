@@ -108,6 +108,9 @@ func (h *slackNotificationPostHandler) Run(ctx context.Context) gimlet.Responder
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting Slack sender"))
 	}
+	if s == nil {
+		return gimlet.MakeJSONErrorResponder(errors.New("slack sender is not configured"))
+	}
 
 	h.sender = s
 	h.sender.Send(h.composer)
