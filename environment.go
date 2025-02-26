@@ -822,9 +822,19 @@ func (e *envState) initThirdPartySenders(ctx context.Context, tracer trace.Trace
 			Username: "Evergreen",
 		}, slack.Token, levelInfo)
 		if err != nil {
-			return errors.Wrap(err, "setting up Slack logger")
+			// Don't return error when so we can continue to initialize environment
+			// during Slack outages.
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "setting up Slack logger",
+			}))
 		}
-		e.senders[SenderSlack] = sender
+		if sender == nil {
+			grip.Error(message.Fields{
+				"message": "failed to create Slack logger",
+			})
+		} else {
+			e.senders[SenderSlack] = sender
+		}
 	}
 
 	sender, err = util.NewEvergreenWebhookLogger()
