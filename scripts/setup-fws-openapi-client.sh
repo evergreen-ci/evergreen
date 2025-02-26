@@ -39,9 +39,8 @@ fi
 
 cd ..
 
-# Update the PATH to include Maven and Java
 export PATH="${PWD}/bin/${MAVEN_DIR}/bin:${PATH}"
 export PATH="/opt/bin/java/jdk21/bin:${PATH}"
 
 # Generate the OpenAPI client
-"$OPENAPI_GENERATOR" generate -i "$OPENAPI_HARDCODED_CONFIG" -g java -o "$OPENAPI_OUTPUT_DIR"
+"$OPENAPI_GENERATOR" generate -i "$OPENAPI_HARDCODED_CONFIG" -g go -o "$OPENAPI_OUTPUT_DIR"
