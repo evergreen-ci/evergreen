@@ -50,10 +50,6 @@ type FileDecodeError struct {
 	Message string
 }
 
-func (f FileDecodeError) Error() string {
-	return fmt.Sprintf("file decoding failed: %v", f.Message)
-}
-
 type YAMLFormatError struct {
 	Message string
 }

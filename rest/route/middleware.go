@@ -196,14 +196,10 @@ func (m *canCreateMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request,
 	next(rw, r)
 }
 
-// This middleware is more restrictive than checkProjectAdmin, as branch admins do not have access
-func NewRepoAdminMiddleware() gimlet.Middleware {
-	return &projectRepoMiddleware{}
-}
-
 type projectRepoMiddleware struct {
 }
 
+// ServeHTTP is needed despite not being used because because it needs to be implemented for projectRepoMiddleware
 func (m *projectRepoMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	ctx := r.Context()
 	u := MustHaveUser(ctx)
