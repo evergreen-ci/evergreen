@@ -46,10 +46,6 @@ func IsFileNotFound(err error) bool {
 	return ok
 }
 
-type FileDecodeError struct {
-	Message string
-}
-
 type YAMLFormatError struct {
 	Message string
 }
