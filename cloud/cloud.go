@@ -113,10 +113,8 @@ type BatchManager interface {
 // ManagerOpts is a struct containing the fields needed to get a new cloud manager
 // of the proper type.
 type ManagerOpts struct {
-	Provider       string
-	Region         string
-	ProviderKey    string
-	ProviderSecret string
+	Provider string
+	Region   string
 }
 
 // GetSettings returns an uninitialized ProviderSettings based on the given
@@ -145,20 +143,16 @@ func GetManager(ctx context.Context, env evergreen.Environment, mgrOpts ManagerO
 		provider = &ec2Manager{
 			env: env,
 			EC2ManagerOptions: &EC2ManagerOptions{
-				client:         &awsClientImpl{},
-				region:         mgrOpts.Region,
-				providerKey:    mgrOpts.ProviderKey,
-				providerSecret: mgrOpts.ProviderSecret,
+				client: &awsClientImpl{},
+				region: mgrOpts.Region,
 			},
 		}
 	case evergreen.ProviderNameEc2Fleet:
 		provider = &ec2FleetManager{
 			env: env,
 			EC2FleetManagerOptions: &EC2FleetManagerOptions{
-				client:         &awsClientImpl{},
-				region:         mgrOpts.Region,
-				providerKey:    mgrOpts.ProviderKey,
-				providerSecret: mgrOpts.ProviderSecret,
+				client: &awsClientImpl{},
+				region: mgrOpts.Region,
 			},
 		}
 	case evergreen.ProviderNameStatic:
