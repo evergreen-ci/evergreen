@@ -75,7 +75,7 @@ func findAllTasksByIds(ctx context.Context, taskIDs ...string) ([]task.Task, err
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
 	if len(tasks) == 0 {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("no tasks found"))
+		return nil, ResourceNotFound.Send(ctx, "no tasks found")
 	}
 	if len(tasks) != len(taskIDs) {
 		foundTaskIds := []string{}
