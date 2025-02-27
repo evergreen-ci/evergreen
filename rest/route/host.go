@@ -169,6 +169,7 @@ func (h *hostIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 //
 // GET /hosts
 // GET /users/{user_id}/hosts
+// Documentation on two different functions for swagger documentation
 
 func makeFetchHosts(url string) gimlet.RouteHandler {
 	return &hostGetHandler{url: url}
@@ -187,9 +188,8 @@ type hostGetHandler struct {
 //	@Summary		Fetch all hosts or all hosts spawned by user
 //	@Description	Returns a list of hosts (spawned by the user if given).
 //	@Tags			hosts
-//	@Router			/hosts || /users/{user_id}/hosts [get]
+//	@Router			/hosts [get]
 //	@Security		Api-User || Api-Key
-//	@Param			user_id		path		string	false	"the user ID"
 //	@Param			start_at	query		string	false	"The identifier of the host to start at in the pagination"
 //	@Param			limit		query		int		false	"The number of hosts to be returned per page of pagination. Defaults to 100"
 //	@Param			status		query		string	false	"A status of host to limit the results to"
@@ -198,6 +198,18 @@ func (hgh *hostGetHandler) Factory() gimlet.RouteHandler {
 	return &hostGetHandler{url: hgh.url}
 }
 
+// Parse reads the parameter for the route.
+//
+//	@Summary		Fetch all hosts spawned by user
+//	@Description	Returns a list of hosts spawned by the user.
+//	@Tags			hosts
+//	@Router			/users/{user_id}/hosts [get]
+//	@Security		Api-User || Api-Key
+//	@Param			user_id		path		string	true	"the user ID"
+//	@Param			start_at	query		string	false	"The identifier of the host to start at in the pagination"
+//	@Param			limit		query		int		false	"The number of hosts to be returned per page of pagination. Defaults to 100"
+//	@Param			status		query		string	false	"A status of host to limit the results to"
+//	@Success		200			{object}	model.APIHost
 func (hgh *hostGetHandler) Parse(ctx context.Context, r *http.Request) error {
 	vals := r.URL.Query()
 	hgh.status = vals.Get("status")
