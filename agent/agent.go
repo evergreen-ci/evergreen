@@ -833,11 +833,15 @@ func (a *Agent) runTaskCommands(ctx context.Context, tc *taskContext) error {
 	task := tc.taskConfig.Project.FindProjectTask(tc.taskConfig.Task.DisplayName)
 
 	if task == nil {
-		return errors.Errorf("unable to find task '%s' in project '%s'", tc.taskConfig.Task.DisplayName, tc.taskConfig.Task.Project)
+		err := errors.Errorf("unable to find task '%s' in project '%s'", tc.taskConfig.Task.DisplayName, tc.taskConfig.Task.Project)
+		tc.logger.Execution().Error(err)
+		return err
 	}
 
 	if err := ctx.Err(); err != nil {
-		return errors.Wrap(err, "canceled while running task commands")
+		err = errors.Wrap(err, "canceled before running task commands")
+		tc.logger.Execution().Error(err)
+		return err
 	}
 
 	mainTask := commandBlock{
