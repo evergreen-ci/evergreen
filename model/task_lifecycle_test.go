@@ -1996,7 +1996,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 		Convey("task should not fail if there are no failed test", func() {
 			reset()
 			testTask.ResultsService = testresult.TestResultsServiceLocal
-			So(MarkEnd(ctx, settings, testTask, "", time.Now(), detail, true), ShouldBeNil)
+			So(MarkEnd(ctx, settings, testTask, "", time.Now(), detail), ShouldBeNil)
 
 			v, err := VersionFindOneId(v.Id)
 			So(err, ShouldBeNil)
@@ -2015,7 +2015,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			reset()
 			testTask.ResultsService = testresult.TestResultsServiceLocal
 			testTask.ResultsFailed = true
-			So(MarkEnd(ctx, settings, testTask, "", time.Now(), detail, true), ShouldBeNil)
+			So(MarkEnd(ctx, settings, testTask, "", time.Now(), detail), ShouldBeNil)
 
 			v, err := VersionFindOneId(v.Id)
 			So(err, ShouldBeNil)
@@ -2042,7 +2042,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			}
 			So(b2.Insert(), ShouldBeNil)
 			detail.Status = evergreen.TaskFailed
-			So(MarkEnd(ctx, settings, testTask, "", time.Now(), detail, true), ShouldBeNil)
+			So(MarkEnd(ctx, settings, testTask, "", time.Now(), detail), ShouldBeNil)
 
 			v, err := VersionFindOneId(v.Id)
 			So(err, ShouldBeNil)
@@ -2121,7 +2121,7 @@ func TestMarkEnd(t *testing.T) {
 		Status: evergreen.TaskFailed,
 	}
 	settings := testutil.TestConfig()
-	assert.NoError(MarkEnd(ctx, settings, &testTask, userName, time.Now(), &details, false))
+	assert.NoError(MarkEnd(ctx, settings, &testTask, userName, time.Now(), &details))
 
 	b, err := build.FindOneId(b.Id)
 	assert.NoError(err)
@@ -2187,7 +2187,7 @@ func TestMarkEnd(t *testing.T) {
 			Status: evergreen.TaskSucceeded,
 		}
 		endTime := time.Now().Round(time.Second)
-		So(MarkEnd(ctx, settings, t1, "test", endTime, detail, false), ShouldBeNil)
+		So(MarkEnd(ctx, settings, t1, "test", endTime, detail), ShouldBeNil)
 		t1FromDb, err := task.FindOne(ctx, db.Query(task.ById(t1.Id)))
 		So(err, ShouldBeNil)
 		So(t1FromDb.Status, ShouldEqual, evergreen.TaskSucceeded)
@@ -2197,7 +2197,7 @@ func TestMarkEnd(t *testing.T) {
 
 		// Ensure that calling MarkEnd on a non-aborted finished task returns early
 		// by checking that its finish_time hasn't changed
-		So(MarkEnd(ctx, settings, t1, "test", time.Now().Add(time.Minute), detail, false), ShouldBeNil)
+		So(MarkEnd(ctx, settings, t1, "test", time.Now().Add(time.Minute), detail), ShouldBeNil)
 		t1FromDb, err = task.FindOne(ctx, db.Query(task.ById(t1.Id)))
 		So(err, ShouldBeNil)
 		So(t1FromDb.FinishTime, ShouldEqual, endTime)
@@ -2208,7 +2208,7 @@ func TestMarkEnd(t *testing.T) {
 		t2FromDb, err := task.FindOne(ctx, db.Query(task.ById(t2.Id)))
 		So(err, ShouldBeNil)
 		So(t2FromDb.FinishTime, ShouldEqual, time.Time{})
-		So(MarkEnd(ctx, settings, t2FromDb, "test", endTime, &t2FromDb.Details, false), ShouldBeNil)
+		So(MarkEnd(ctx, settings, t2FromDb, "test", endTime, &t2FromDb.Details), ShouldBeNil)
 		t2FromDb, err = task.FindOne(ctx, db.Query(task.ById(t2.Id)))
 		So(err, ShouldBeNil)
 		So(t2FromDb.FinishTime, ShouldEqual, endTime)
@@ -2255,7 +2255,7 @@ func TestMarkEndWithTaskGroup(t *testing.T) {
 	settings := testutil.TestConfig()
 	for name, test := range map[string]func(*testing.T){
 		"NotResetWhenFinished": func(t *testing.T) {
-			assert.NoError(t, MarkEnd(ctx, settings, runningTask, "test", time.Now(), detail, false))
+			assert.NoError(t, MarkEnd(ctx, settings, runningTask, "test", time.Now(), detail))
 			runningTaskDB, err := task.FindOneId(ctx, runningTask.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, runningTaskDB)
@@ -2263,7 +2263,7 @@ func TestMarkEndWithTaskGroup(t *testing.T) {
 		},
 		"ResetWhenFinished": func(t *testing.T) {
 			assert.NoError(t, runningTask.SetResetWhenFinished(ctx, "test"))
-			assert.NoError(t, MarkEnd(ctx, settings, runningTask, "test", time.Now(), detail, false))
+			assert.NoError(t, MarkEnd(ctx, settings, runningTask, "test", time.Now(), detail))
 
 			runningTaskDB, err := task.FindOneId(ctx, runningTask.Id)
 			assert.NoError(t, err)
@@ -2422,7 +2422,7 @@ func TestMarkEndIsAutomaticRestart(t *testing.T) {
 	}
 	for name, test := range map[string]func(*testing.T){
 		"ResetsSingleTask": func(t *testing.T) {
-			assert.NoError(t, MarkEnd(ctx, &evergreen.Settings{}, runningTask, "test", time.Now(), detail, false))
+			assert.NoError(t, MarkEnd(ctx, &evergreen.Settings{}, runningTask, "test", time.Now(), detail))
 			runningTaskDB, err := task.FindOneId(ctx, runningTask.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, runningTaskDB)
@@ -2431,7 +2431,7 @@ func TestMarkEndIsAutomaticRestart(t *testing.T) {
 
 			// Check that trying to automatically reset again does not reset the task again.
 			runningTaskDB.HostId = "h1"
-			assert.NoError(t, MarkEnd(ctx, &evergreen.Settings{}, runningTaskDB, "test", time.Now(), detail, false))
+			assert.NoError(t, MarkEnd(ctx, &evergreen.Settings{}, runningTaskDB, "test", time.Now(), detail))
 			runningTaskDB, err = task.FindOneId(ctx, runningTask.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, runningTaskDB)
@@ -2440,7 +2440,7 @@ func TestMarkEndIsAutomaticRestart(t *testing.T) {
 		},
 		"ResetsDisplayTask": func(t *testing.T) {
 			// Check that marking a single execution task as retryable does not yet reset the display task.
-			assert.NoError(t, MarkEnd(ctx, &evergreen.Settings{}, execTask0, "test", time.Now(), detail, false))
+			assert.NoError(t, MarkEnd(ctx, &evergreen.Settings{}, execTask0, "test", time.Now(), detail))
 			displayTaskDB, err := task.FindOneId(ctx, displayTask.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, displayTaskDB)
@@ -2448,7 +2448,7 @@ func TestMarkEndIsAutomaticRestart(t *testing.T) {
 			assert.Equal(t, evergreen.TaskStarted, displayTaskDB.Status)
 
 			// Check that the display task is reset when the second execution task completes.
-			assert.NoError(t, MarkEnd(ctx, &evergreen.Settings{}, execTask1, "test", time.Now(), detail, false))
+			assert.NoError(t, MarkEnd(ctx, &evergreen.Settings{}, execTask1, "test", time.Now(), detail))
 			displayTaskDB, err = task.FindOneId(ctx, displayTask.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, displayTaskDB)
@@ -2457,7 +2457,7 @@ func TestMarkEndIsAutomaticRestart(t *testing.T) {
 
 		},
 		"ResetsSingleHostTaskGroupWithFailure": func(t *testing.T) {
-			assert.NoError(t, MarkEnd(ctx, &evergreen.Settings{}, tgTask1, "test", time.Now(), detail, false))
+			assert.NoError(t, MarkEnd(ctx, &evergreen.Settings{}, tgTask1, "test", time.Now(), detail))
 			tasks, err := task.FindTaskGroupFromBuild(ctx, tgTask1.BuildId, tgTask1.TaskGroup)
 			assert.NoError(t, err)
 			require.Len(t, tasks, 2)
@@ -2557,7 +2557,7 @@ func TestMarkEndWithDisplayTaskResetWhenFinished(t *testing.T) {
 	}
 	assert.NoError(t, h.Insert(ctx))
 
-	assert.NoError(t, MarkEnd(ctx, testutil.TestConfig(), &et, "", time.Now(), &apimodels.TaskEndDetail{Status: evergreen.TaskSucceeded}, false))
+	assert.NoError(t, MarkEnd(ctx, testutil.TestConfig(), &et, "", time.Now(), &apimodels.TaskEndDetail{Status: evergreen.TaskSucceeded}))
 
 	restartedDisplayTask, err := task.FindOneId(ctx, dtID)
 	assert.NoError(t, err)
@@ -3227,6 +3227,8 @@ buildvariants:
 		pp.Id = "version_id"
 		assert.NoError(t, pp.Insert())
 
+		project, err := TranslateProject(pp)
+		assert.NoError(t, err)
 		ver := &Version{
 			Id:         "version_id",
 			Identifier: "p1",
@@ -3242,7 +3244,7 @@ buildvariants:
 			projRef.StepbackDisabled = utility.TruePtr()
 			So(projRef.Upsert(), ShouldBeNil)
 			Convey("then the value should be false", func() {
-				val, err := getStepback(ctx, testTask.Id)
+				val, err := getStepback(ctx, testTask.Id, projRef, project)
 				So(err, ShouldBeNil)
 				So(val.shouldStepback, ShouldBeFalse)
 			})
@@ -3251,7 +3253,7 @@ buildvariants:
 			testTask := &task.Task{Id: "t1", DisplayName: "nil", Project: projRef.Id, Version: ver.Id}
 			So(testTask.Insert(), ShouldBeNil)
 			Convey("then the value should be true", func() {
-				val, err := getStepback(ctx, testTask.Id)
+				val, err := getStepback(ctx, testTask.Id, projRef, project)
 				So(err, ShouldBeNil)
 				So(val.shouldStepback, ShouldBeTrue)
 			})
@@ -3261,7 +3263,7 @@ buildvariants:
 			testTask := &task.Task{Id: "t2", DisplayName: "true", Project: projRef.Id, Version: ver.Id}
 			So(testTask.Insert(), ShouldBeNil)
 			Convey("then the value should be true", func() {
-				val, err := getStepback(ctx, testTask.Id)
+				val, err := getStepback(ctx, testTask.Id, projRef, project)
 				So(err, ShouldBeNil)
 				So(val.shouldStepback, ShouldBeTrue)
 			})
@@ -3271,7 +3273,7 @@ buildvariants:
 			testTask := &task.Task{Id: "t3", DisplayName: "false", Project: projRef.Id, Version: ver.Id}
 			So(testTask.Insert(), ShouldBeNil)
 			Convey("then the value should be false", func() {
-				val, err := getStepback(ctx, testTask.Id)
+				val, err := getStepback(ctx, testTask.Id, projRef, project)
 				So(err, ShouldBeNil)
 				So(val.shouldStepback, ShouldBeFalse)
 			})
@@ -3281,7 +3283,7 @@ buildvariants:
 			testTask := &task.Task{Id: "t4", DisplayName: "bvnil", BuildVariant: "sbnil", Project: projRef.Id, Version: ver.Id}
 			So(testTask.Insert(), ShouldBeNil)
 			Convey("then the value should be true", func() {
-				val, err := getStepback(ctx, testTask.Id)
+				val, err := getStepback(ctx, testTask.Id, projRef, project)
 				So(err, ShouldBeNil)
 				So(val.shouldStepback, ShouldBeTrue)
 			})
@@ -3291,7 +3293,7 @@ buildvariants:
 			testTask := &task.Task{Id: "t5", DisplayName: "bvtrue", BuildVariant: "sbtrue", Project: projRef.Id, Version: ver.Id}
 			So(testTask.Insert(), ShouldBeNil)
 			Convey("then the value should be true", func() {
-				val, err := getStepback(ctx, testTask.Id)
+				val, err := getStepback(ctx, testTask.Id, projRef, project)
 				So(err, ShouldBeNil)
 				So(val.shouldStepback, ShouldBeTrue)
 			})
@@ -3301,7 +3303,7 @@ buildvariants:
 			testTask := &task.Task{Id: "t6", DisplayName: "bvfalse", BuildVariant: "sbfalse", Project: projRef.Id, Version: ver.Id}
 			So(testTask.Insert(), ShouldBeNil)
 			Convey("then the value should be false", func() {
-				val, err := getStepback(ctx, testTask.Id)
+				val, err := getStepback(ctx, testTask.Id, projRef, project)
 				So(err, ShouldBeNil)
 				So(val.shouldStepback, ShouldBeFalse)
 			})
@@ -4114,7 +4116,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 
 	settings := testutil.TestConfig()
 
-	assert.NoError(MarkEnd(ctx, settings, testTask, "", time.Now(), details, false))
+	assert.NoError(MarkEnd(ctx, settings, testTask, "", time.Now(), details))
 	var err error
 	v, err = VersionFindOneId(v.Id)
 	assert.NoError(err)
@@ -4124,7 +4126,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(evergreen.BuildStarted, b.Status)
 
-	assert.NoError(MarkEnd(ctx, settings, anotherTask, "", time.Now(), details, false))
+	assert.NoError(MarkEnd(ctx, settings, anotherTask, "", time.Now(), details))
 	v, err = VersionFindOneId(v.Id)
 	assert.NoError(err)
 	assert.Equal(evergreen.VersionStarted, v.Status)
@@ -4133,7 +4135,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(evergreen.BuildStarted, b.Status)
 
-	assert.NoError(MarkEnd(ctx, settings, exeTask0, "", time.Now(), details, false))
+	assert.NoError(MarkEnd(ctx, settings, exeTask0, "", time.Now(), details))
 	v, err = VersionFindOneId(v.Id)
 	assert.NoError(err)
 	assert.Equal(evergreen.VersionStarted, v.Status)
@@ -4144,7 +4146,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 
 	exeTask1.DisplayTask = nil
 	assert.NoError(err)
-	assert.NoError(MarkEnd(ctx, settings, exeTask1, "", time.Now(), details, false))
+	assert.NoError(MarkEnd(ctx, settings, exeTask1, "", time.Now(), details))
 	v, err = VersionFindOneId(v.Id)
 	assert.NoError(err)
 	assert.Equal(evergreen.VersionFailed, v.Status)
@@ -4224,7 +4226,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatusWithCompileTask(t *te
 
 	settings := testutil.TestConfig()
 
-	assert.NoError(MarkEnd(ctx, settings, &testTask, "", time.Now(), details, false))
+	assert.NoError(MarkEnd(ctx, settings, &testTask, "", time.Now(), details))
 	var err error
 	v, err = VersionFindOneId(v.Id)
 	assert.NoError(err)
@@ -4304,7 +4306,7 @@ func TestMarkEndWithBlockedDependenciesTriggersNotifications(t *testing.T) {
 		Type:   "test",
 	}
 	settings := testutil.TestConfig()
-	assert.NoError(MarkEnd(ctx, settings, &testTask, "", time.Now(), details, false))
+	assert.NoError(MarkEnd(ctx, settings, &testTask, "", time.Now(), details))
 
 	var err error
 	v, err = VersionFindOneId(v.Id)
@@ -5335,14 +5337,14 @@ func TestMarkEndWithNoResults(t *testing.T) {
 	}
 
 	settings := testutil.TestConfig()
-	err := MarkEnd(ctx, settings, &testTask1, "", time.Now(), details, false)
+	err := MarkEnd(ctx, settings, &testTask1, "", time.Now(), details)
 	assert.NoError(t, err)
 	dbTask, err := task.FindOneId(ctx, testTask1.Id)
 	assert.NoError(t, err)
 	assert.Equal(t, evergreen.TaskFailed, dbTask.Status)
 	assert.Equal(t, evergreen.TaskDescriptionNoResults, dbTask.Details.Description)
 
-	err = MarkEnd(ctx, settings, &testTask2, "", time.Now(), details, false)
+	err = MarkEnd(ctx, settings, &testTask2, "", time.Now(), details)
 	assert.NoError(t, err)
 	dbTask, err = task.FindOneId(ctx, testTask2.Id)
 	assert.NoError(t, err)
@@ -5807,7 +5809,7 @@ func TestAbortedTaskDelayedRestart(t *testing.T) {
 		Status: evergreen.TaskFailed,
 	}
 	settings := testutil.TestConfig()
-	assert.NoError(t, MarkEnd(ctx, settings, &task1, "test", time.Now(), detail, false))
+	assert.NoError(t, MarkEnd(ctx, settings, &task1, "test", time.Now(), detail))
 	newTask, err := task.FindOneId(ctx, task1.Id)
 	assert.NoError(t, err)
 	assert.Equal(t, evergreen.TaskUndispatched, newTask.Status)
@@ -5904,7 +5906,8 @@ func TestMarkEndDeactivatesPrevious(t *testing.T) {
 	}
 	require.NoError(t, taskHost2.Insert(ctx))
 	proj := ProjectRef{
-		Id: "proj",
+		Id:                 "proj",
+		DeactivatePrevious: utility.TruePtr(),
 	}
 	require.NoError(t, proj.Insert())
 	d := distro.Distro{
@@ -5966,7 +5969,7 @@ func TestMarkEndDeactivatesPrevious(t *testing.T) {
 	detail := &apimodels.TaskEndDetail{
 		Status: evergreen.TaskSucceeded,
 	}
-	assert.NoError(MarkEnd(ctx, settings, finishedTask, "test", time.Now().Add(time.Minute), detail, true))
+	assert.NoError(MarkEnd(ctx, settings, finishedTask, "test", time.Now().Add(time.Minute), detail))
 	checkTask, err := task.FindOneId(ctx, stepbackTask.Id)
 	assert.NoError(err)
 	assert.True(checkTask.Activated)
@@ -5975,10 +5978,84 @@ func TestMarkEndDeactivatesPrevious(t *testing.T) {
 		bson.M{"$set": bson.M{"status": evergreen.TaskUndispatched}}))
 	finishedTask.Requester = evergreen.RepotrackerVersionRequester
 	finishedTask.Status = evergreen.TaskUndispatched
-	assert.NoError(MarkEnd(ctx, settings, finishedTask, "test", time.Now().Add(time.Minute), detail, true))
+	assert.NoError(MarkEnd(ctx, settings, finishedTask, "test", time.Now().Add(time.Minute), detail))
 	checkTask, err = task.FindOneId(ctx, stepbackTask.Id)
 	assert.NoError(err)
 	assert.False(checkTask.Activated)
+}
+
+func TestGetDeactivatePrevious(t *testing.T) {
+	config := `
+tasks:
+ - name: my_task
+buildvariants:
+ - name: deactivate_nil
+ - name: deactivate_true
+   deactivate_previous: true 
+ - name: deactivate_false
+   deactivate_previous: false
+`
+	pp := &ParserProject{}
+	err := util.UnmarshalYAMLWithFallback([]byte(config), &pp)
+	assert.NoError(t, err)
+
+	project, err := TranslateProject(pp)
+	assert.NoError(t, err)
+	for tName, testCase := range map[string]func(t *testing.T){
+		"TrueVariantDeactivatesPrevious": func(t *testing.T) {
+			deactivateTask := &task.Task{
+				Id:           "t1",
+				DisplayName:  "my_task",
+				BuildVariant: "deactivate_true",
+			}
+			pRef := &ProjectRef{
+				Id:                 "proj",
+				DeactivatePrevious: nil,
+			}
+			assert.True(t, getDeactivatePrevious(deactivateTask, pRef, project))
+		},
+		"TrueVariantOverriddenByFalseProject": func(t *testing.T) {
+			deactivateTask := &task.Task{
+				Id:           "t1",
+				DisplayName:  "my_task",
+				BuildVariant: "deactivate_true",
+			}
+			pRef := &ProjectRef{
+				Id:                 "proj",
+				DeactivatePrevious: utility.FalsePtr(),
+			}
+			assert.False(t, getDeactivatePrevious(deactivateTask, pRef, project))
+		},
+		"FalseVariantOverridesTrueProject": func(t *testing.T) {
+			deactivateTask := &task.Task{
+				Id:           "t1",
+				DisplayName:  "my_task",
+				BuildVariant: "deactivate_false",
+			}
+			pRef := &ProjectRef{
+				Id:                 "proj",
+				DeactivatePrevious: utility.TruePtr(),
+			}
+			assert.False(t, getDeactivatePrevious(deactivateTask, pRef, project))
+		},
+		"NilVariantDefaultsToProject": func(t *testing.T) {
+			deactivateTask := &task.Task{
+				Id:           "t1",
+				DisplayName:  "my_task",
+				BuildVariant: "deactivate_nil",
+			}
+			pRef := &ProjectRef{
+				Id:                 "proj",
+				DeactivatePrevious: utility.TruePtr(),
+			}
+			assert.True(t, getDeactivatePrevious(deactivateTask, pRef, project))
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			testCase(t)
+		})
+	}
+
 }
 
 func TestEvalBisectStepback(t *testing.T) {
@@ -5991,37 +6068,37 @@ func TestEvalBisectStepback(t *testing.T) {
 	// ('-' is failed, '?' is undispatched, '+' is succeeded).
 	// t1  t2  t3  t4  t5  t6  t7  t8  t9  t10
 	// -   ?   ?   ?   ?   ?   ?   ?   ?   +
-	for tName, tCase := range map[string]func(t *testing.T, t10 task.Task){
-		"NoPreviousSuccessfulTask": func(t *testing.T, t10 task.Task) {
+	for tName, tCase := range map[string]func(t *testing.T, t10 task.Task, pRef *ProjectRef, project *Project){
+		"NoPreviousSuccessfulTask": func(t *testing.T, t10 task.Task, pRef *ProjectRef, project *Project) {
 			// Set the first task to failed status.
 			require.NoError(task.UpdateOne(ctx, bson.M{"_id": "t1"},
 				bson.M{"$set": bson.M{"status": evergreen.TaskFailed}}))
-			require.NoError(evalStepback(ctx, &t10, evergreen.TaskFailed))
+			require.NoError(evalStepback(ctx, &t10, evergreen.TaskFailed, pRef, project))
 			midTask, err := task.ByBeforeMidwayTaskFromIds(ctx, "t10", "t1")
 			require.NoError(err)
 			assert.False(midTask.Activated)
 		},
-		"MissingTask": func(t *testing.T, t10 task.Task) {
+		"MissingTask": func(t *testing.T, t10 task.Task, pRef *ProjectRef, project *Project) {
 			// If t5 is missing, t4 should be used.
 			require.NoError(task.Remove(ctx, "t5"))
-			require.NoError(evalStepback(ctx, &t10, evergreen.TaskFailed))
+			require.NoError(evalStepback(ctx, &t10, evergreen.TaskFailed, pRef, project))
 			midTask, err := task.ByBeforeMidwayTaskFromIds(ctx, "t10", "t1")
 			require.NoError(err)
 			assert.True(midTask.Activated)
 			assert.Equal("t4", midTask.Id)
 		},
-		"ManyMissingTasks": func(t *testing.T, t10 task.Task) {
+		"ManyMissingTasks": func(t *testing.T, t10 task.Task, pRef *ProjectRef, project *Project) {
 			// If t5, t4, t3 are missing, t2 should be used.
 			require.NoError(task.Remove(ctx, "t5"))
 			require.NoError(task.Remove(ctx, "t4"))
 			require.NoError(task.Remove(ctx, "t3"))
-			require.NoError(evalStepback(ctx, &t10, evergreen.TaskFailed))
+			require.NoError(evalStepback(ctx, &t10, evergreen.TaskFailed, pRef, project))
 			midTask, err := task.ByBeforeMidwayTaskFromIds(ctx, "t10", "t1")
 			require.NoError(err)
 			assert.True(midTask.Activated)
 			assert.Equal("t2", midTask.Id)
 		},
-		"AllMissingTasks": func(t *testing.T, t10 task.Task) {
+		"AllMissingTasks": func(t *testing.T, t10 task.Task, pRef *ProjectRef, project *Project) {
 			// If t5, t4, t3, t2 are missing then stepback has
 			// no task to step back to and it should
 			// no-op (and not re-activate t1).
@@ -6029,14 +6106,14 @@ func TestEvalBisectStepback(t *testing.T) {
 			require.NoError(task.Remove(ctx, "t4"))
 			require.NoError(task.Remove(ctx, "t3"))
 			require.NoError(task.Remove(ctx, "t2"))
-			require.NoError(evalStepback(ctx, &t10, evergreen.TaskFailed))
+			require.NoError(evalStepback(ctx, &t10, evergreen.TaskFailed, pRef, project))
 			midTask, err := task.ByBeforeMidwayTaskFromIds(ctx, "t10", "t1")
 			require.NoError(err)
 			assert.False(midTask.Activated)
 			assert.Equal("t1", midTask.Id)
 		},
-		"FailedTaskInStepback": func(t *testing.T, t10 task.Task) {
-			require.NoError(evalStepback(ctx, &t10, evergreen.TaskFailed))
+		"FailedTaskInStepback": func(t *testing.T, t10 task.Task, pRef *ProjectRef, project *Project) {
+			require.NoError(evalStepback(ctx, &t10, evergreen.TaskFailed, pRef, project))
 			midTask, err := task.ByBeforeMidwayTaskFromIds(ctx, "t10", "t1")
 			prevTask := *midTask
 			require.NoError(err)
@@ -6066,7 +6143,7 @@ func TestEvalBisectStepback(t *testing.T) {
 			require.NoError(task.UpdateOne(ctx, bson.M{"_id": midTask.Id},
 				bson.M{"$set": bson.M{"status": evergreen.TaskFailed}}))
 			// Activate next stepback
-			require.NoError(evalStepback(ctx, &prevTask, evergreen.TaskFailed))
+			require.NoError(evalStepback(ctx, &prevTask, evergreen.TaskFailed, pRef, project))
 			midTask, err = task.ByBeforeMidwayTaskFromIds(ctx, prevTask.Id, "t1")
 			require.NoError(err)
 			assert.True(midTask.Activated)
@@ -6089,8 +6166,8 @@ func TestEvalBisectStepback(t *testing.T) {
 			require.NoError(err)
 			require.Nil(lastPassing.StepbackInfo)
 		},
-		"PassedTaskInStepback": func(t *testing.T, t10 task.Task) {
-			require.NoError(evalStepback(ctx, &t10, evergreen.TaskFailed))
+		"PassedTaskInStepback": func(t *testing.T, t10 task.Task, pRef *ProjectRef, project *Project) {
+			require.NoError(evalStepback(ctx, &t10, evergreen.TaskFailed, pRef, project))
 			midTask, err := task.ByBeforeMidwayTaskFromIds(ctx, "t10", "t1")
 			require.NoError(err)
 			assert.True(midTask.Activated)
@@ -6120,7 +6197,7 @@ func TestEvalBisectStepback(t *testing.T) {
 			require.NoError(task.UpdateOne(ctx, bson.M{"_id": midTask.Id},
 				bson.M{"$set": bson.M{"status": evergreen.TaskSucceeded}}))
 			// Activate next stepback
-			require.NoError(evalStepback(ctx, midTask, evergreen.TaskSucceeded))
+			require.NoError(evalStepback(ctx, midTask, evergreen.TaskSucceeded, pRef, project))
 			midTask, err = task.ByBeforeMidwayTaskFromIds(ctx, "t10", prevTask.Id)
 			require.NoError(err)
 			assert.True(midTask.Activated)
@@ -6147,7 +6224,7 @@ func TestEvalBisectStepback(t *testing.T) {
 			assert.Equal(midTask.Id, lastPassing.StepbackInfo.NextStepbackTaskId)
 			assert.Equal("t10", lastPassing.StepbackInfo.PreviousStepbackTaskId)
 		},
-		"GeneratedTasksStepbackGenerator": func(t *testing.T, t10 task.Task) {
+		"GeneratedTasksStepbackGenerator": func(t *testing.T, t10 task.Task, pRef *ProjectRef, project *Project) {
 			// Make all generator tasks pass.
 			for i := 1; i <= 10; i++ {
 				require.NoError(task.UpdateOne(ctx, bson.M{"_id": fmt.Sprintf("t%d", i)},
@@ -6201,8 +6278,8 @@ func TestEvalBisectStepback(t *testing.T) {
 			generated2Tasks[9].Status = evergreen.TaskFailed
 			require.NoError(task.UpdateOne(ctx, bson.M{"_id": generated2Tasks[9].Id},
 				bson.M{"$set": bson.M{"status": generated2Tasks[9].Status}}))
-			require.NoError(evalStepback(ctx, &generated1Tasks[9], evergreen.TaskFailed))
-			require.NoError(evalStepback(ctx, &generated2Tasks[9], evergreen.TaskFailed))
+			require.NoError(evalStepback(ctx, &generated1Tasks[9], evergreen.TaskFailed, pRef, project))
+			require.NoError(evalStepback(ctx, &generated2Tasks[9], evergreen.TaskFailed, pRef, project))
 			midTask, err := task.ByBeforeMidwayTaskFromIds(ctx, "t10", "t1")
 			require.NoError(err)
 			assert.True(midTask.Activated)
@@ -6268,8 +6345,8 @@ func TestEvalBisectStepback(t *testing.T) {
 
 			prevTask := *midTask
 			// Activate g1 next stepback
-			require.NoError(evalStepback(ctx, midTaskG1, evergreen.TaskSucceeded))
-			require.NoError(evalStepback(ctx, midTaskG2, evergreen.TaskFailed))
+			require.NoError(evalStepback(ctx, midTaskG1, evergreen.TaskSucceeded, pRef, project))
+			require.NoError(evalStepback(ctx, midTaskG2, evergreen.TaskFailed, pRef, project))
 
 			// Check mid task stepback info relating to generated task 1.
 			midTask, err = task.ByBeforeMidwayTaskFromIds(ctx, "t10", prevTask.Id)
@@ -6318,11 +6395,11 @@ func TestEvalBisectStepback(t *testing.T) {
 	} {
 		t.Run(tName, func(t *testing.T) {
 			assert.NoError(db.ClearCollections(task.Collection, ProjectRefCollection, ParserProjectCollection, distro.Collection, build.Collection, VersionCollection))
-			proj := ProjectRef{
+			pRef := &ProjectRef{
 				Id:             "proj",
 				StepbackBisect: utility.TruePtr(),
 			}
-			require.NoError(proj.Insert())
+			require.NoError(pRef.Insert())
 			d := distro.Distro{
 				Id: "distro",
 			}
@@ -6368,6 +6445,8 @@ func TestEvalBisectStepback(t *testing.T) {
 				Stepback: utility.TruePtr(),
 			}
 			assert.NoError(pp.Insert())
+			project, err := TranslateProject(pp)
+			assert.NoError(err)
 			// First task (which has passed).
 			t1 := task.Task{
 				Id:                  "t1",
@@ -6416,7 +6495,7 @@ func TestEvalBisectStepback(t *testing.T) {
 				BuildVariant: "bv",
 			}
 			assert.NoError(b10.Insert())
-			tCase(t, t10)
+			tCase(t, t10, pRef, project)
 		})
 	}
 }
@@ -6439,10 +6518,10 @@ tasks:
 - name: task
 - name: generator
   `
-	proj := ProjectRef{
+	pRef := &ProjectRef{
 		Id: "proj",
 	}
-	require.NoError(t, proj.Insert())
+	require.NoError(t, pRef.Insert())
 	d := distro.Distro{
 		Id: "distro",
 	}
@@ -6455,8 +6534,10 @@ tasks:
 	pp := &ParserProject{}
 	err := util.UnmarshalYAMLWithFallback([]byte(yml), &pp)
 	assert.NoError(err)
-	pp.Id = v.Id
-	assert.NoError(pp.Insert())
+	//pp.Id = v.Id
+	//assert.NoError(pp.Insert())
+	project, err := TranslateProject(pp)
+	assert.NoError(err)
 	stepbackTask := task.Task{
 		Id:                  "t2",
 		BuildId:             "b2",
@@ -6496,7 +6577,7 @@ tasks:
 	assert.NoError(b3.Insert())
 
 	// should not step back if there was never a successful task
-	assert.NoError(evalStepback(ctx, &finishedTask, evergreen.TaskFailed))
+	assert.NoError(evalStepback(ctx, &finishedTask, evergreen.TaskFailed, pRef, project))
 	checkTask, err := task.FindOneId(ctx, stepbackTask.Id)
 	assert.NoError(err)
 	assert.False(checkTask.Activated)
@@ -6520,7 +6601,7 @@ tasks:
 		BuildVariant: "bv",
 	}
 	assert.NoError(b1.Insert())
-	assert.NoError(evalStepback(ctx, &finishedTask, evergreen.TaskFailed))
+	assert.NoError(evalStepback(ctx, &finishedTask, evergreen.TaskFailed, pRef, project))
 	checkTask, err = task.FindOneId(ctx, stepbackTask.Id)
 	require.NoError(t, err)
 	assert.True(checkTask.Activated)
@@ -6593,14 +6674,14 @@ tasks:
 	}
 	assert.NoError(b5.Insert())
 	// Ensure system failure doesn't cause a stepback unless we're already stepping back.
-	assert.NoError(evalStepback(ctx, &generated, evergreen.TaskSystemFailed))
+	assert.NoError(evalStepback(ctx, &generated, evergreen.TaskSystemFailed, pRef, project))
 	checkTask, err = task.FindOneId(ctx, stepbackTask.Id)
 	assert.NoError(err)
 	assert.False(checkTask.Activated)
 
 	// System failure steps back since activated by stepback (and steps back generator).
 	generated.ActivatedBy = evergreen.StepbackTaskActivator
-	assert.NoError(evalStepback(ctx, &generated, evergreen.TaskSystemFailed))
+	assert.NoError(evalStepback(ctx, &generated, evergreen.TaskSystemFailed, pRef, project))
 	checkTask, err = task.FindOneId(ctx, stepbackTask.Id)
 	assert.NoError(err)
 	assert.True(checkTask.Activated)
@@ -6623,20 +6704,17 @@ func TestEvalStepbackTaskGroup(t *testing.T) {
 		Id:        "prev_success_v1",
 		Requester: evergreen.RepotrackerVersionRequester,
 	}
+	require.NoError(t, db.InsertMany(VersionCollection, v1, v2, v3))
 	pp := ParserProject{
 		Stepback: utility.TruePtr(),
 	}
-	pp.Id = "v1"
-	require.NoError(t, pp.Insert())
-	pp.Id = "prev_v1"
-	require.NoError(t, pp.Insert())
-	pp.Id = "prev_success_v1"
-	require.NoError(t, pp.Insert())
-	require.NoError(t, db.InsertMany(VersionCollection, v1, v2, v3))
-	p1 := ProjectRef{
+	project, err := TranslateProject(&pp)
+	require.NoError(t, err)
+
+	pRef := &ProjectRef{
 		Id: "p1",
 	}
-	require.NoError(t, p1.Insert())
+	require.NoError(t, pRef.Insert())
 	b1 := build.Build{
 		Id: "prev_b1",
 	}
@@ -6646,7 +6724,7 @@ func TestEvalStepbackTaskGroup(t *testing.T) {
 	require.NoError(t, db.InsertMany(build.Collection, b1, b2))
 	t1 := task.Task{
 		Id:                  "t1",
-		Project:             p1.Id,
+		Project:             pRef.Id,
 		BuildId:             "b1",
 		Version:             "v1",
 		TaskGroup:           "my_group",
@@ -6660,7 +6738,7 @@ func TestEvalStepbackTaskGroup(t *testing.T) {
 	}
 	t2 := task.Task{
 		Id:                  "t2",
-		Project:             p1.Id,
+		Project:             pRef.Id,
 		BuildId:             "b1",
 		Version:             "v1",
 		TaskGroup:           "my_group",
@@ -6676,7 +6754,7 @@ func TestEvalStepbackTaskGroup(t *testing.T) {
 		Id:                  "t3",
 		BuildId:             "b1",
 		Version:             "v1",
-		Project:             p1.Id,
+		Project:             pRef.Id,
 		TaskGroup:           "my_group",
 		TaskGroupMaxHosts:   1,
 		BuildVariant:        "bv",
@@ -6690,7 +6768,7 @@ func TestEvalStepbackTaskGroup(t *testing.T) {
 		Id:                  "prev_t1",
 		BuildId:             "prev_b1",
 		Version:             "prev_v1",
-		Project:             p1.Id,
+		Project:             pRef.Id,
 		TaskGroup:           "my_group",
 		BuildVariant:        "bv",
 		DisplayName:         "first",
@@ -6703,7 +6781,7 @@ func TestEvalStepbackTaskGroup(t *testing.T) {
 		Id:                  "prev_t2",
 		BuildId:             "prev_b1",
 		Version:             "prev_v1",
-		Project:             p1.Id,
+		Project:             pRef.Id,
 		TaskGroup:           "my_group",
 		BuildVariant:        "bv",
 		DisplayName:         "second",
@@ -6716,7 +6794,7 @@ func TestEvalStepbackTaskGroup(t *testing.T) {
 		Id:                  "prev_t3",
 		BuildId:             "prev_b1",
 		Version:             "prev_v1",
-		Project:             p1.Id,
+		Project:             pRef.Id,
 		TaskGroup:           "my_group",
 		BuildVariant:        "bv",
 		DisplayName:         "third",
@@ -6729,7 +6807,7 @@ func TestEvalStepbackTaskGroup(t *testing.T) {
 		Id:                  "prev_success_t1",
 		BuildId:             "prev_success_b1",
 		Version:             "prev_success_v1",
-		Project:             p1.Id,
+		Project:             pRef.Id,
 		TaskGroup:           "my_group",
 		BuildVariant:        "bv",
 		DisplayName:         "first",
@@ -6742,7 +6820,7 @@ func TestEvalStepbackTaskGroup(t *testing.T) {
 		Id:                  "prev_success_t2",
 		BuildId:             "prev_success_b1",
 		Version:             "prev_success_v1",
-		Project:             p1.Id,
+		Project:             pRef.Id,
 		TaskGroup:           "my_group",
 		BuildVariant:        "bv",
 		DisplayName:         "second",
@@ -6755,7 +6833,7 @@ func TestEvalStepbackTaskGroup(t *testing.T) {
 		Id:                  "prev_success_t3",
 		BuildId:             "prev_success_b1",
 		Version:             "prev_success_v1",
-		Project:             p1.Id,
+		Project:             pRef.Id,
 		TaskGroup:           "my_group",
 		BuildVariant:        "bv",
 		DisplayName:         "third",
@@ -6765,7 +6843,7 @@ func TestEvalStepbackTaskGroup(t *testing.T) {
 		RevisionOrderNumber: 1,
 	}
 	assert.NoError(t, db.InsertMany(task.Collection, t1, t2, t3, prevT1, prevT2, prevT3, prevSuccessT1, prevSuccessT2, prevSuccessT3))
-	assert.NoError(t, evalStepback(ctx, &t2, evergreen.TaskFailed))
+	assert.NoError(t, evalStepback(ctx, &t2, evergreen.TaskFailed, pRef, project))
 
 	// verify only the previous t1 and t2 are stepped back
 	prevT1FromDb, err := task.FindOneId(ctx, prevT1.Id)
@@ -6779,7 +6857,7 @@ func TestEvalStepbackTaskGroup(t *testing.T) {
 	assert.False(t, prevT3FromDb.Activated)
 
 	// stepping back t3 should now also stepback t3 and not error on earlier activated tasks
-	assert.NoError(t, evalStepback(ctx, &t3, evergreen.TaskFailed))
+	assert.NoError(t, evalStepback(ctx, &t3, evergreen.TaskFailed, pRef, project))
 	prevT3FromDb, err = task.FindOneId(ctx, prevT3.Id)
 	assert.NoError(t, err)
 	assert.True(t, prevT3FromDb.Activated)
