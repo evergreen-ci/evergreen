@@ -332,7 +332,10 @@ includes. This will accept a list of filenames and module names. If the
 include isn't given, we will only use the main project configuration
 file.
 
-Note: included files do not support [version-controlled project settings configuration](Project-and-Distro-Settings#version-control)
+Note: [version-controlled project settings configurations](Project-and-Distro-Settings#version-control)
+will not be recognized if they are put in included files. In order for any of the supported version-controlled
+YAML settings to take effect, they must exist in the main config file.
+
 
 ``` yaml
 include: 
