@@ -1047,13 +1047,6 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 
 	a.killProcs(ctx, tc, false, "task is ending")
 
-	if tc.logger != nil {
-		tc.logger.Execution().Infof("Sending final task status: '%s'.", detail.Status)
-		flushCtx, cancel := context.WithTimeout(ctx, time.Minute)
-		defer cancel()
-		grip.Error(errors.Wrap(tc.logger.Flush(flushCtx), "flushing logs"))
-	}
-
 	grip.Infof("Sending final task status: '%s'.", detail.Status)
 	resp, err := a.comm.EndTask(ctx, detail, tc.task)
 	if err != nil {
@@ -1065,6 +1058,13 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 	if err != nil {
 		grip.Error(errors.Wrap(err, "upserting check run"))
 		tc.logger.Task().Errorf("Error upserting check run: '%s'", err.Error())
+	}
+
+	if tc.logger != nil {
+		tc.logger.Execution().Infof("Sending final task status: '%s'.", detail.Status)
+		flushCtx, cancel := context.WithTimeout(ctx, time.Minute)
+		defer cancel()
+		grip.Error(errors.Wrap(tc.logger.Flush(flushCtx), "flushing logs"))
 	}
 
 	span := trace.SpanFromContext(ctx)
