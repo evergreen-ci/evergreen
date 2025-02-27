@@ -1,6 +1,7 @@
 package operations
 
 import (
+	"context"
 	"os"
 	"testing"
 
@@ -264,4 +265,22 @@ func (s *PatchUtilTestSuite) TestGetRemoteFromOutput() {
 	repo, err = getRemoteFromOutput(out, "Evergreen-CI", "evergreen")
 	s.Require().NoError(err)
 	s.Equal("upstream", repo)
+}
+
+func (s *PatchUtilTestSuite) TestValidatePatchCommand() {
+	conf, err := NewClientSettings(s.testConfigFile)
+	s.Require().NoError(err)
+
+	// uncommitted and ref should not be combined
+	p := patchParams{
+		Project:     "mci",
+		Finalize:    true,
+		Uncommitted: true,
+		Ref:         "myref",
+	}
+
+	assertRef, err := p.validatePatchCommand(context.Background(), conf, nil, nil)
+	s.Error(err, "expected error due to uncommitted and ref being set")
+	s.Nil(assertRef)
+
 }
