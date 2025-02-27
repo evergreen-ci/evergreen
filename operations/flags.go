@@ -230,7 +230,7 @@ func addDbSettingsFlags(flags ...cli.Flag) []cli.Flag {
 func addRefFlag(flags ...cli.Flag) []cli.Flag {
 	return append(flags, cli.StringFlag{
 		Name:  refFlagName,
-		Usage: "diff with `REF`",
+		Usage: "specify a commit on top of the merge-base to test",
 		Value: "HEAD",
 	})
 }
