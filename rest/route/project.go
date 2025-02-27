@@ -252,7 +252,7 @@ func (h *detachProjectFromRepoHandler) Parse(ctx context.Context, r *http.Reques
 }
 
 func (h *detachProjectFromRepoHandler) Run(ctx context.Context) gimlet.Responder {
-	if err := h.project.DetachFromRepo(h.user); err != nil {
+	if err := h.project.DetachFromRepo(ctx, h.user); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "detaching repo from project"))
 	}
 
@@ -361,7 +361,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "validating project repotracker"))
 	}
 
-	before, err := dbModel.GetProjectSettings(h.newProjectRef)
+	before, err := dbModel.GetProjectSettings(ctx, h.newProjectRef)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting original project settings for project '%s'", h.newProjectRef.Identifier))
 	}
@@ -590,7 +590,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "deleting subscriptions for project '%s'", h.project))
 	}
 
-	after, err := dbModel.GetProjectSettings(h.newProjectRef)
+	after, err := dbModel.GetProjectSettings(ctx, h.newProjectRef)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting project settings after update for project '%s'", h.project))
 	}

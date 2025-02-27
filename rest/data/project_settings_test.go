@@ -482,7 +482,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, settings)
 
-			githubAppFromDB, err := githubapp.FindOneGitHubAppAuth(ref.Id)
+			githubAppFromDB, err := githubapp.FindOneGitHubAppAuth(t.Context(), ref.Id)
 			assert.NoError(t, err)
 			require.NotNil(t, githubAppFromDB)
 			assert.Equal(t, int64(12345), githubAppFromDB.AppID)
@@ -499,7 +499,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, settings)
 
-			githubAppFromDB, err = githubapp.FindOneGitHubAppAuth(ref.Id)
+			githubAppFromDB, err = githubapp.FindOneGitHubAppAuth(t.Context(), ref.Id)
 			assert.NoError(t, err)
 			require.NotNil(t, githubAppFromDB)
 			assert.Equal(t, int64(12345), githubAppFromDB.AppID)
@@ -516,7 +516,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, settings)
 
-			githubAppFromDB, err = githubapp.FindOneGitHubAppAuth(ref.Id)
+			githubAppFromDB, err = githubapp.FindOneGitHubAppAuth(t.Context(), ref.Id)
 			assert.NoError(t, err)
 			require.NotNil(t, githubAppFromDB)
 			assert.Equal(t, int64(12345), githubAppFromDB.AppID)
@@ -533,7 +533,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, settings)
 
-			githubAppFromDB, err = githubapp.FindOneGitHubAppAuth(ref.Id)
+			githubAppFromDB, err = githubapp.FindOneGitHubAppAuth(t.Context(), ref.Id)
 			assert.NoError(t, err)
 			assert.Nil(t, githubAppFromDB)
 
@@ -1109,7 +1109,7 @@ func TestPromoteVarsToRepo(t *testing.T) {
 	for name, test := range map[string]func(t *testing.T, ref model.ProjectRef){
 		"SuccessfullyPromotesAllVariables": func(t *testing.T, ref model.ProjectRef) {
 			varsToPromote := []string{"a", "b", "c"}
-			err := PromoteVarsToRepo(ref.Id, varsToPromote, "u")
+			err := PromoteVarsToRepo(t.Context(), ref.Id, varsToPromote, "u")
 			assert.NoError(t, err)
 
 			projectVarsFromDB, err := model.FindOneProjectVars(ref.Id)
@@ -1137,7 +1137,7 @@ func TestPromoteVarsToRepo(t *testing.T) {
 		},
 		"SuccessfullyPromotesSomeVariables": func(t *testing.T, ref model.ProjectRef) {
 			varsToPromote := []string{"a", "b"}
-			err := PromoteVarsToRepo(ref.Id, varsToPromote, "u")
+			err := PromoteVarsToRepo(t.Context(), ref.Id, varsToPromote, "u")
 			assert.NoError(t, err)
 
 			varsFromDB, err := model.FindOneProjectVars(ref.Id)
@@ -1166,7 +1166,7 @@ func TestPromoteVarsToRepo(t *testing.T) {
 		},
 		"CorrectlyPromotesNoVariables": func(t *testing.T, ref model.ProjectRef) {
 			varsToPromote := []string{}
-			err := PromoteVarsToRepo(ref.Id, varsToPromote, "u")
+			err := PromoteVarsToRepo(t.Context(), ref.Id, varsToPromote, "u")
 			assert.NoError(t, err)
 
 			varsFromDB, err := model.FindOneProjectVars(ref.Id)
@@ -1196,12 +1196,12 @@ func TestPromoteVarsToRepo(t *testing.T) {
 		},
 		"FailsOnUnattachedRepo": func(t *testing.T, ref model.ProjectRef) {
 			varsToPromote := []string{"test"}
-			err := PromoteVarsToRepo("pUnattached", varsToPromote, "u")
+			err := PromoteVarsToRepo(t.Context(), "pUnattached", varsToPromote, "u")
 			assert.Error(t, err)
 		},
 		"IgnoresNonexistentVars": func(t *testing.T, ref model.ProjectRef) {
 			varsToPromote := []string{"test"}
-			err := PromoteVarsToRepo(ref.Id, varsToPromote, "u")
+			err := PromoteVarsToRepo(t.Context(), ref.Id, varsToPromote, "u")
 			assert.NoError(t, err)
 
 			varsFromDB, err := model.FindOneProjectVars(ref.Id)

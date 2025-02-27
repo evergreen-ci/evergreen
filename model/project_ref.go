@@ -191,8 +191,8 @@ func (p *ProjectRef) GetGitHubPermissionGroup(requester string) (GitHubDynamicTo
 
 // GetGitHubAppAuth returns the App auth for the given project.
 // If the project defaults to the repo and the app is not defined on the project, it will return the app from the repo.
-func (p *ProjectRef) GetGitHubAppAuth() (*githubapp.GithubAppAuth, error) {
-	appAuth, err := githubapp.FindOneGitHubAppAuth(p.Id)
+func (p *ProjectRef) GetGitHubAppAuth(ctx context.Context) (*githubapp.GithubAppAuth, error) {
+	appAuth, err := githubapp.FindOneGitHubAppAuth(ctx, p.Id)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding GitHub app auth")
 	}
@@ -202,7 +202,7 @@ func (p *ProjectRef) GetGitHubAppAuth() (*githubapp.GithubAppAuth, error) {
 	if !p.UseRepoSettings() {
 		return nil, nil
 	}
-	appAuth, err = githubapp.FindOneGitHubAppAuth(p.RepoRefId)
+	appAuth, err = githubapp.FindOneGitHubAppAuth(ctx, p.RepoRefId)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding GitHub app auth")
 	}
@@ -743,14 +743,14 @@ func (p *ProjectRef) MergeWithProjectConfig(version string) (err error) {
 // SetGitHubAppCredentials updates or creates an entry in
 // GithubAppAuth for the project ref. If the provided values
 // are empty, the entry is deleted.
-func (p *ProjectRef) SetGithubAppCredentials(appID int64, privateKey []byte) error {
+func (p *ProjectRef) SetGithubAppCredentials(ctx context.Context, appID int64, privateKey []byte) error {
 	if appID == 0 && len(privateKey) == 0 {
-		ghApp, err := githubapp.FindOneGitHubAppAuth(p.Id)
+		ghApp, err := githubapp.FindOneGitHubAppAuth(ctx, p.Id)
 		if err != nil {
 			return errors.Wrap(err, "finding GitHub app auth")
 		}
 		if ghApp != nil {
-			return githubapp.RemoveGitHubAppAuth(ghApp)
+			return githubapp.RemoveGitHubAppAuth(ctx, ghApp)
 		}
 	}
 
@@ -762,23 +762,23 @@ func (p *ProjectRef) SetGithubAppCredentials(appID int64, privateKey []byte) err
 		AppID:      appID,
 		PrivateKey: privateKey,
 	}
-	return githubapp.UpsertGitHubAppAuth(&auth)
+	return githubapp.UpsertGitHubAppAuth(ctx, &auth)
 }
 
 // DefaultGithubAppCredentialsToRepo defaults the app credentials to the repo by
 // removing the GithubAppAuth entry for the project.
-func DefaultGithubAppCredentialsToRepo(projectId string) error {
+func DefaultGithubAppCredentialsToRepo(ctx context.Context, projectId string) error {
 	p, err := FindBranchProjectRef(projectId)
 	if err != nil {
 		return errors.Wrap(err, "finding project ref")
 	}
 
-	ghApp, err := githubapp.FindOneGitHubAppAuth(p.Id)
+	ghApp, err := githubapp.FindOneGitHubAppAuth(ctx, p.Id)
 	if err != nil {
 		return errors.Wrap(err, "finding GitHub app auth")
 	}
 	if ghApp != nil {
-		return githubapp.RemoveGitHubAppAuth(ghApp)
+		return githubapp.RemoveGitHubAppAuth(ctx, ghApp)
 	}
 	return nil
 }
@@ -817,8 +817,8 @@ func (p *ProjectRef) AddToRepoScope(u *user.DBUser) error {
 
 // DetachFromRepo removes the branch from the relevant repo scopes, and updates the project to not point to the repo.
 // Any values that previously defaulted to repo will have the repo value explicitly set.
-func (p *ProjectRef) DetachFromRepo(u *user.DBUser) error {
-	before, err := GetProjectSettingsById(p.Id, false)
+func (p *ProjectRef) DetachFromRepo(ctx context.Context, u *user.DBUser) error {
+	before, err := GetProjectSettingsById(ctx, p.Id, false)
 	if err != nil {
 		return errors.Wrap(err, "getting before project settings event")
 	}
@@ -901,7 +901,7 @@ func (p *ProjectRef) DetachFromRepo(u *user.DBUser) error {
 	}
 	catcher.Add(UpsertAliasesForProject(repoAliasesToCopy, p.Id))
 
-	catcher.Add(GetAndLogProjectRepoAttachment(p.Id, u.Id, event.EventTypeProjectDetachedFromRepo, false, before))
+	catcher.Add(GetAndLogProjectRepoAttachment(ctx, p.Id, u.Id, event.EventTypeProjectDetachedFromRepo, false, before))
 	return catcher.Resolve()
 }
 
@@ -917,7 +917,7 @@ func (p *ProjectRef) AttachToRepo(ctx context.Context, u *user.DBUser) error {
 	if err := p.ValidateOwnerAndRepo(config.GithubOrgs); err != nil {
 		return errors.Wrap(err, "validating new owner/repo")
 	}
-	before, err := GetProjectSettingsById(p.Id, false)
+	before, err := GetProjectSettingsById(ctx, p.Id, false)
 	if err != nil {
 		return errors.Wrap(err, "getting before project settings event")
 	}
@@ -936,14 +936,14 @@ func (p *ProjectRef) AttachToRepo(ctx context.Context, u *user.DBUser) error {
 		return errors.Wrap(err, "attaching repo to scope")
 	}
 
-	return GetAndLogProjectRepoAttachment(p.Id, u.Id, event.EventTypeProjectAttachedToRepo, false, before)
+	return GetAndLogProjectRepoAttachment(ctx, p.Id, u.Id, event.EventTypeProjectAttachedToRepo, false, before)
 }
 
 // AttachToNewRepo modifies the project's owner/repo, updates the old and new repo scopes (if relevant), and
 // updates the project to point to the new repo. Any Github project conflicts are disabled.
 // If no repo ref currently exists for the new repo, the user attaching it will be added as the repo ref admin.
-func (p *ProjectRef) AttachToNewRepo(u *user.DBUser) error {
-	before, err := GetProjectSettingsById(p.Id, false)
+func (p *ProjectRef) AttachToNewRepo(ctx context.Context, u *user.DBUser) error {
+	before, err := GetProjectSettingsById(ctx, p.Id, false)
 	if err != nil {
 		return errors.Wrap(err, "getting before project settings event")
 	}
@@ -977,7 +977,7 @@ func (p *ProjectRef) AttachToNewRepo(u *user.DBUser) error {
 		return errors.Wrap(err, "updating owner/repo in the DB")
 	}
 
-	return GetAndLogProjectRepoAttachment(p.Id, u.Id, event.EventTypeProjectAttachedToRepo, false, before)
+	return GetAndLogProjectRepoAttachment(ctx, p.Id, u.Id, event.EventTypeProjectAttachedToRepo, false, before)
 }
 
 // addGithubConflictsToUpdate turns off any settings that may introduce conflicts by
@@ -2014,7 +2014,7 @@ func FindMergedProjectRefsForRepo(repoRef *RepoRef) ([]ProjectRef, error) {
 	return projectRefs, nil
 }
 
-func GetProjectSettingsById(projectId string, isRepo bool) (*ProjectSettings, error) {
+func GetProjectSettingsById(ctx context.Context, projectId string, isRepo bool) (*ProjectSettings, error) {
 	var pRef *ProjectRef
 	var err error
 	if isRepo {
@@ -2025,7 +2025,7 @@ func GetProjectSettingsById(projectId string, isRepo bool) (*ProjectSettings, er
 		if repoRef == nil {
 			return nil, errors.Errorf("repo ref '%s' not found", projectId)
 		}
-		return GetProjectSettings(&repoRef.ProjectRef)
+		return GetProjectSettings(ctx, &repoRef.ProjectRef)
 	}
 
 	pRef, err = FindBranchProjectRef(projectId)
@@ -2036,11 +2036,11 @@ func GetProjectSettingsById(projectId string, isRepo bool) (*ProjectSettings, er
 		return nil, errors.Errorf("project ref '%s' not found", projectId)
 	}
 
-	return GetProjectSettings(pRef)
+	return GetProjectSettings(ctx, pRef)
 }
 
 // GetProjectSettings returns the ProjectSettings of the given identifier and ProjectRef
-func GetProjectSettings(p *ProjectRef) (*ProjectSettings, error) {
+func GetProjectSettings(ctx context.Context, p *ProjectRef) (*ProjectSettings, error) {
 	// Don't error even if there is problem with verifying the GitHub app installation
 	// because a GitHub outage could cause project settings page to not load.
 	hasEvergreenAppInstalled, _ := githubapp.CreateGitHubAppAuth(evergreen.GetEnvironment().Settings()).IsGithubAppInstalledOnRepo(context.Background(), p.Owner, p.Repo)
@@ -2061,7 +2061,7 @@ func GetProjectSettings(p *ProjectRef) (*ProjectSettings, error) {
 		return nil, errors.Wrapf(err, "finding subscription for project '%s'", p.Id)
 	}
 
-	githubApp, err := githubapp.FindOneGitHubAppAuth(p.Id)
+	githubApp, err := githubapp.FindOneGitHubAppAuth(ctx, p.Id)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding GitHub app for project '%s'", p.Id)
 	}
@@ -2346,8 +2346,8 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 // This subset is based on the pages used in Spruce.
 // If project settings aren't given, we should assume we're defaulting to repo and we need
 // to create our own project settings event  after completing the update.
-func DefaultSectionToRepo(projectId string, section ProjectPageSection, userId string) error {
-	before, err := GetProjectSettingsById(projectId, false)
+func DefaultSectionToRepo(ctx context.Context, projectId string, section ProjectPageSection, userId string) error {
+	before, err := GetProjectSettingsById(ctx, projectId, false)
 	if err != nil {
 		return errors.Wrap(err, "getting before project settings event")
 	}
@@ -2408,7 +2408,7 @@ func DefaultSectionToRepo(projectId string, section ProjectPageSection, userId s
 			}
 		}
 	case ProjectPageGithubAppSettingsSection:
-		err = DefaultGithubAppCredentialsToRepo(projectId)
+		err = DefaultGithubAppCredentialsToRepo(ctx, projectId)
 		if err == nil {
 			modified = true
 		}
@@ -2418,7 +2418,7 @@ func DefaultSectionToRepo(projectId string, section ProjectPageSection, userId s
 		catcher.Wrapf(err, "defaulting the github permissions as part of defaulting section '%s'", section)
 	}
 	if modified {
-		catcher.Add(GetAndLogProjectModified(projectId, userId, false, before))
+		catcher.Add(GetAndLogProjectModified(ctx, projectId, userId, false, before))
 	}
 
 	return errors.Wrapf(catcher.Resolve(), "defaulting to repo for section '%s'", section)
