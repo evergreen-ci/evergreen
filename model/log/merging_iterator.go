@@ -136,7 +136,7 @@ func (h logIteratorHeap) Swap(i, j int) { h.its[i], h.its[j] = h.its[j], h.its[i
 
 // Push appends a new object of type LogIterator to the heap. Note that if x is
 // not a LogIterator nothing happens.
-func (h *logIteratorHeap) Push(x interface{}) {
+func (h *logIteratorHeap) Push(x any) {
 	it, ok := x.(LogIterator)
 	if !ok {
 		return
@@ -147,7 +147,7 @@ func (h *logIteratorHeap) Push(x interface{}) {
 
 // Pop returns the next object (as an empty interface) from the heap. Note that
 // if the heap is empty this will panic.
-func (h *logIteratorHeap) Pop() interface{} {
+func (h *logIteratorHeap) Pop() any {
 	old := h.its
 	n := len(old)
 	x := old[n-1]

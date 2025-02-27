@@ -86,7 +86,7 @@ func (s *ProjectEventsTestSuite) TestGetProjectEvents() {
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
 
-	responseData, ok := resp.Data().([]interface{})
+	responseData, ok := resp.Data().([]any)
 	s.Require().True(ok)
 	apiEvent := responseData[0].(*restModel.APIProjectEvent)
 	s.Equal(s.event.Before.ProjectRef.Identifier, *apiEvent.Before.ProjectRef.Identifier)

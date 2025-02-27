@@ -84,7 +84,7 @@ func shellExecFactory() Command { return &shellExec{} }
 func (*shellExec) Name() string { return evergreen.ShellExecCommandName }
 
 // ParseParams reads in the command's parameters.
-func (c *shellExec) ParseParams(params map[string]interface{}) error {
+func (c *shellExec) ParseParams(params map[string]any) error {
 	if params == nil {
 		return errors.New("params cannot be nil")
 	}

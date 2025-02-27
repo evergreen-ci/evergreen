@@ -23,7 +23,7 @@ type zipExtract struct {
 
 func zipExtractFactory() Command   { return &zipExtract{} }
 func (e *zipExtract) Name() string { return "archive.zip_extract" }
-func (e *zipExtract) ParseParams(params map[string]interface{}) error {
+func (e *zipExtract) ParseParams(params map[string]any) error {
 	if err := mapstructure.Decode(params, e); err != nil {
 		return errors.Wrapf(err, "decoding mapstructure params")
 	}

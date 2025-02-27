@@ -16,7 +16,7 @@ type APIHostCreateDetail struct {
 	Error  *string `bson:"error" json:"error"`
 }
 
-func (a *APIHostCreateDetail) BuildFromService(t interface{}) error {
+func (a *APIHostCreateDetail) BuildFromService(t any) error {
 	switch v := t.(type) {
 	case task.HostCreateDetail:
 		a.HostId = utility.ToStringPtr(v.HostId)
@@ -27,6 +27,6 @@ func (a *APIHostCreateDetail) BuildFromService(t interface{}) error {
 	return nil
 }
 
-func (a *APIHostCreateDetail) ToService() (interface{}, error) {
+func (a *APIHostCreateDetail) ToService() (any, error) {
 	return nil, errors.New("ToService() is not implemented for APIHostCreateDetail")
 }

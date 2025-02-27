@@ -207,7 +207,7 @@ func (g *githubIntent) SetProcessed() error {
 }
 
 // updateOne updates one patch intent.
-func updateOneIntent(query interface{}, update interface{}) error {
+func updateOneIntent(query any, update any) error {
 	return db.Update(
 		IntentCollection,
 		query,

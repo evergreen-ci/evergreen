@@ -102,7 +102,7 @@ func Find(query db.Q) ([]DBUser, error) {
 }
 
 // UpdateOne updates one user.
-func UpdateOne(query interface{}, update interface{}) error {
+func UpdateOne(query any, update any) error {
 	return db.Update(
 		Collection,
 		query,
@@ -111,7 +111,7 @@ func UpdateOne(query interface{}, update interface{}) error {
 }
 
 // UpdateAll updates all users.
-func UpdateAll(query interface{}, update interface{}) error {
+func UpdateAll(query any, update any) error {
 	_, err := db.UpdateAll(
 		Collection,
 		query,
@@ -121,7 +121,7 @@ func UpdateAll(query interface{}, update interface{}) error {
 }
 
 // UpsertOne upserts a user.
-func UpsertOne(query interface{}, update interface{}) (*adb.ChangeInfo, error) {
+func UpsertOne(query any, update any) (*adb.ChangeInfo, error) {
 	return db.Upsert(
 		Collection,
 		query,

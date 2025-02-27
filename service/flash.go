@@ -33,7 +33,7 @@ func NewErrorFlash(message string) flashMessage {
 	return flashMessage{Severity: FlashSeverityError, Message: message}
 }
 
-func PopFlashes(store *sessions.CookieStore, r *http.Request, w http.ResponseWriter) []interface{} {
+func PopFlashes(store *sessions.CookieStore, r *http.Request, w http.ResponseWriter) []any {
 	session, _ := store.Get(r, FlashSession)
 	flashes := session.Flashes()
 	grip.Warning(session.Save(r, w))

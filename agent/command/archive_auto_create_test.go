@@ -27,10 +27,10 @@ func TestArchiveAutoPackParseParams(t *testing.T) {
 			assert.Error(t, cmd.ParseParams(nil))
 		},
 		"FailsWithEmptyParams": func(t *testing.T, cmd Command) {
-			assert.Error(t, cmd.ParseParams(map[string]interface{}{}))
+			assert.Error(t, cmd.ParseParams(map[string]any{}))
 		},
 		"FailsWithInvalidParamTypes": func(t *testing.T, cmd Command) {
-			assert.Error(t, cmd.ParseParams(map[string]interface{}{
+			assert.Error(t, cmd.ParseParams(map[string]any{
 				"target":        1,
 				"source_dir":    2,
 				"include":       3,
@@ -38,11 +38,11 @@ func TestArchiveAutoPackParseParams(t *testing.T) {
 			}))
 		},
 		"SucceedsWithValidParams": func(t *testing.T, cmd Command) {
-			assert.NoError(t, cmd.ParseParams(map[string]interface{}{
+			assert.NoError(t, cmd.ParseParams(map[string]any{
 				"target":     "some_target",
 				"source_dir": "some_source_dir",
 			}))
-			assert.NoError(t, cmd.ParseParams(map[string]interface{}{
+			assert.NoError(t, cmd.ParseParams(map[string]any{
 				"target":        "some_target",
 				"source_dir":    "some_source_dir",
 				"include":       []string{"included_file"},
@@ -50,21 +50,21 @@ func TestArchiveAutoPackParseParams(t *testing.T) {
 			}))
 		},
 		"FailsWithoutSource": func(t *testing.T, cmd Command) {
-			assert.Error(t, cmd.ParseParams(map[string]interface{}{
+			assert.Error(t, cmd.ParseParams(map[string]any{
 				"target":  "some_target",
 				"include": []string{"included_file"},
 				"exclude": []string{"excluded_file"},
 			}))
 		},
 		"FailsWithoutTarget": func(t *testing.T, cmd Command) {
-			assert.Error(t, cmd.ParseParams(map[string]interface{}{
+			assert.Error(t, cmd.ParseParams(map[string]any{
 				"source_dir": "some_source_dir",
 				"include":    []string{"included_file"},
 				"exclude":    []string{"excluded_file"},
 			}))
 		},
 		"FailsWithExcludedFilesButNoIncludedFiles": func(t *testing.T, cmd Command) {
-			assert.Error(t, cmd.ParseParams(map[string]interface{}{
+			assert.Error(t, cmd.ParseParams(map[string]any{
 				"target":        "some_target",
 				"source_dir":    "some_source_dir",
 				"exclude_files": []string{"excluded_file"},

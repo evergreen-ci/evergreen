@@ -27,7 +27,7 @@ func makeNotificationID(eventID, trigger string, subscriber *event.Subscriber) s
 }
 
 // New returns a new Notification, with a correctly initialised ID
-func New(eventID, trigger string, subscriber *event.Subscriber, payload interface{}) (*Notification, error) {
+func New(eventID, trigger string, subscriber *event.Subscriber, payload any) (*Notification, error) {
 	if len(trigger) == 0 {
 		return nil, errors.New("cannot create notification from nil trigger")
 	}
@@ -48,7 +48,7 @@ func New(eventID, trigger string, subscriber *event.Subscriber, payload interfac
 type Notification struct {
 	ID         string           `bson:"_id"`
 	Subscriber event.Subscriber `bson:"subscriber"`
-	Payload    interface{}      `bson:"payload"`
+	Payload    any              `bson:"payload"`
 
 	SentAt   time.Time            `bson:"sent_at,omitempty"`
 	Error    string               `bson:"error,omitempty"`

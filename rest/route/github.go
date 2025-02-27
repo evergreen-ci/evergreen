@@ -63,7 +63,7 @@ type githubHookApi struct {
 	queue  amboy.Queue
 	secret []byte
 
-	event     interface{}
+	event     any
 	eventType string
 	msgID     string
 	sc        data.Connector

@@ -48,7 +48,7 @@ func tarballCreateFactory() Command   { return &tarballCreate{} }
 func (c *tarballCreate) Name() string { return "archive.targz_pack" }
 
 // ParseParams reads in the given parameters for the command.
-func (c *tarballCreate) ParseParams(params map[string]interface{}) error {
+func (c *tarballCreate) ParseParams(params map[string]any) error {
 	if err := mapstructure.Decode(params, c); err != nil {
 		return errors.Wrap(err, "decoding mapstructure params")
 	}

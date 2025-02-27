@@ -143,7 +143,7 @@ func (s *AdminSuite) TestBaseConfig() {
 		GithubPRCreatorOrg:  "org",
 		GithubOrgs:          []string{"evergreen-ci"},
 		LogPath:             "logpath",
-		Plugins:             map[string]map[string]interface{}{"k4": {"k5": "v5"}},
+		Plugins:             map[string]map[string]any{"k4": {"k5": "v5"}},
 		PprofPort:           "port",
 		SSHKeyDirectory:     "/ssh_key_directory",
 		SSHKeyPairs:         []SSHKeyPair{{Name: "key", Public: "public", Private: "private"}},

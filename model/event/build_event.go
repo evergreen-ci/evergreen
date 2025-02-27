@@ -8,7 +8,7 @@ import (
 )
 
 func init() {
-	registry.AddType(ResourceTypeBuild, func() interface{} { return &BuildEventData{} })
+	registry.AddType(ResourceTypeBuild, func() any { return &BuildEventData{} })
 
 	registry.AllowSubscription(ResourceTypeBuild, BuildStateChange)
 	registry.AllowSubscription(ResourceTypeBuild, BuildGithubCheckFinished)

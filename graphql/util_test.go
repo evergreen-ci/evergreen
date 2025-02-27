@@ -551,14 +551,14 @@ func TestGroupInactiveVersions(t *testing.T) {
 }
 
 func TestFlattenOtelVariables(t *testing.T) {
-	nestedVars := map[string]interface{}{
+	nestedVars := map[string]any{
 		"k1": "v1",
-		"k2": map[string]interface{}{
+		"k2": map[string]any{
 			"nested_k3": "v3",
 			"nested_k4": "v4",
 		},
 		"k5": "v5",
-		"k6": map[string]interface{}{
+		"k6": map[string]any{
 			"nested_k7": "v7",
 		},
 	}

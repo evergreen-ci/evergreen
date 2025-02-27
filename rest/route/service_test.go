@@ -91,7 +91,7 @@ func TestHostPaginator(t *testing.T) {
 				" a full next and previous page and a full set of models", func() {
 				hostToStartAt := 100
 				limit := 100
-				expectedHosts := []interface{}{}
+				expectedHosts := []any{}
 				for i := hostToStartAt; i < hostToStartAt+limit; i++ {
 					prefix := int(math.Log10(float64(i)))
 					if i == 0 {
@@ -146,7 +146,7 @@ func TestHostPaginator(t *testing.T) {
 				" a limited next and full previous page and a full set of models", func() {
 				hostToStartAt := 150
 				limit := 100
-				expectedHosts := []interface{}{}
+				expectedHosts := []any{}
 				for i := hostToStartAt; i < hostToStartAt+limit; i++ {
 					prefix := int(math.Log10(float64(i)))
 					if i == 0 {
@@ -202,7 +202,7 @@ func TestHostPaginator(t *testing.T) {
 				" a full next and a limited previous page and a full set of models", func() {
 				hostToStartAt := 50
 				limit := 100
-				expectedHosts := []interface{}{}
+				expectedHosts := []any{}
 				for i := hostToStartAt; i < hostToStartAt+limit; i++ {
 					prefix := int(math.Log10(float64(i)))
 					if i == 0 {
@@ -257,7 +257,7 @@ func TestHostPaginator(t *testing.T) {
 				" page and a full set of models", func() {
 				hostToStartAt := 0
 				limit := 100
-				expectedHosts := []interface{}{}
+				expectedHosts := []any{}
 				for i := hostToStartAt; i < hostToStartAt+limit; i++ {
 					prefix := int(math.Log10(float64(i)))
 					if i == 0 {
@@ -350,7 +350,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 				" a full next and previous page and a full set of models", func() {
 				taskToStartAt := 100
 				limit := 100
-				expectedTasks := []interface{}{}
+				expectedTasks := []any{}
 				for i := taskToStartAt; i < taskToStartAt+limit; i++ {
 					prefix := int(math.Log10(float64(i)))
 					if i == 0 {
@@ -392,7 +392,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 				" a limited next and full previous page and a full set of models", func() {
 				taskToStartAt := 150
 				limit := 100
-				expectedTasks := []interface{}{}
+				expectedTasks := []any{}
 				for i := taskToStartAt; i < taskToStartAt+limit; i++ {
 					prefix := int(math.Log10(float64(i)))
 					if i == 0 {
@@ -439,7 +439,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 				" a full next and a limited previous page and a full set of models", func() {
 				taskToStartAt := 50
 				limit := 100
-				expectedTasks := []interface{}{}
+				expectedTasks := []any{}
 				for i := taskToStartAt; i < taskToStartAt+limit; i++ {
 					prefix := int(math.Log10(float64(i)))
 					if i == 0 {
@@ -482,7 +482,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 				" page and a full set of models", func() {
 				taskToStartAt := 0
 				limit := 100
-				expectedTasks := []interface{}{}
+				expectedTasks := []any{}
 				for i := taskToStartAt; i < taskToStartAt+limit; i++ {
 					prefix := int(math.Log10(float64(i)))
 					if i == 0 {
@@ -604,7 +604,7 @@ func TestTaskByBuildPaginator(t *testing.T) {
 				" a full next and previous page and a full set of models", func() {
 				taskToStartAt := 100
 				limit := 100
-				expectedTasks := []interface{}{}
+				expectedTasks := []any{}
 				for i := taskToStartAt; i < taskToStartAt+limit; i++ {
 					prefix := int(math.Log10(float64(i)))
 					if i == 0 {
@@ -648,7 +648,7 @@ func TestTaskByBuildPaginator(t *testing.T) {
 				" a limited next and full previous page and a full set of models", func() {
 				taskToStartAt := 150
 				limit := 100
-				expectedTasks := []interface{}{}
+				expectedTasks := []any{}
 				for i := taskToStartAt; i < taskToStartAt+limit; i++ {
 					prefix := int(math.Log10(float64(i)))
 					if i == 0 {
@@ -692,7 +692,7 @@ func TestTaskByBuildPaginator(t *testing.T) {
 				" a full next and a limited previous page and a full set of models", func() {
 				taskToStartAt := 50
 				limit := 100
-				expectedTasks := []interface{}{}
+				expectedTasks := []any{}
 				for i := taskToStartAt; i < taskToStartAt+limit; i++ {
 					prefix := int(math.Log10(float64(i)))
 					if i == 0 {
@@ -736,7 +736,7 @@ func TestTaskByBuildPaginator(t *testing.T) {
 				" page and a full set of models", func() {
 				taskToStartAt := 0
 				limit := 100
-				expectedTasks := []interface{}{}
+				expectedTasks := []any{}
 				for i := taskToStartAt; i < taskToStartAt+limit; i++ {
 					prefix := int(math.Log10(float64(i)))
 					if i == 0 {
@@ -776,7 +776,7 @@ func TestTaskByBuildPaginator(t *testing.T) {
 			})
 
 			Convey("pagination with tasks with previous executions", func() {
-				expectedTasks := []interface{}{}
+				expectedTasks := []any{}
 				serviceModel := &task.Task{
 					Id: "0build0",
 				}
@@ -1276,7 +1276,7 @@ func TestParentTaskInfo(t *testing.T) {
 	assert.True(t, tbh.fetchParentIds)
 
 	resp := tbh.Run(ctx)
-	data, ok := resp.Data().([]interface{})
+	data, ok := resp.Data().([]any)
 	assert.True(t, ok)
 	assert.Len(t, data, 3)
 
@@ -1305,7 +1305,7 @@ func TestOptionsRequest(t *testing.T) {
 
 }
 
-func validatePaginatedResponse(t *testing.T, h gimlet.RouteHandler, expected []interface{}, pages *gimlet.ResponsePages) {
+func validatePaginatedResponse(t *testing.T, h gimlet.RouteHandler, expected []any, pages *gimlet.ResponsePages) {
 	require.NotNil(t, h)
 	require.NotNil(t, pages)
 
@@ -1332,7 +1332,7 @@ func validatePaginatedResponse(t *testing.T, h gimlet.RouteHandler, expected []i
 
 	assert.EqualValues(t, pages, rpg)
 
-	data, ok := resp.Data().([]interface{})
+	data, ok := resp.Data().([]any)
 	assert.True(t, ok)
 
 	if !assert.Equal(t, len(expected), len(data)) {

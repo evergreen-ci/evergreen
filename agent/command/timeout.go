@@ -16,7 +16,7 @@ type timeout struct {
 	TimeoutSecs     int `mapstructure:"timeout_secs"`
 	ExecTimeoutSecs int `mapstructure:"exec_timeout_secs"`
 
-	params map[string]interface{}
+	params map[string]any
 
 	base
 }
@@ -33,7 +33,7 @@ func timeoutUpdateFactory() Command { return &timeout{} }
 func (c *timeout) Name() string     { return "timeout.update" }
 
 // ParseParams parses the params into the the timeout struct.
-func (c *timeout) ParseParams(params map[string]interface{}) error {
+func (c *timeout) ParseParams(params map[string]any) error {
 	c.params = params
 	return nil
 }

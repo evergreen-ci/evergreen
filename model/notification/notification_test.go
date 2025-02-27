@@ -278,7 +278,7 @@ func (s *notificationSuite) TestJIRAIssuePayload() {
 		Assignee:    "4",
 		Components:  []string{"6"},
 		Labels:      []string{"7"},
-		Fields: map[string]interface{}{
+		Fields: map[string]any{
 			"8":  "9",
 			"10": "11",
 		},

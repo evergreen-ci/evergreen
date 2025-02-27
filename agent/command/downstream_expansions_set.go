@@ -30,7 +30,7 @@ func (c *setDownstream) Name() string { return "downstream_expansions.set" }
 
 // ParseParams validates the input to setDownstream, returning and error
 // if something is incorrect. Fulfills Command interface.
-func (c *setDownstream) ParseParams(params map[string]interface{}) error {
+func (c *setDownstream) ParseParams(params map[string]any) error {
 	err := mapstructure.Decode(params, c)
 	if err != nil {
 		return errors.Wrap(err, "decoding mapstructure params")

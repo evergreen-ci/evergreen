@@ -190,7 +190,7 @@ type matrixDefinitions []matrixDefinition
 
 // UnmarshalYAML allows the YAML parser to read both a single def or
 // an array of them into a slice.
-func (mds *matrixDefinitions) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (mds *matrixDefinitions) UnmarshalYAML(unmarshal func(any) error) error {
 	var single matrixDefinition
 	if err := unmarshal(&single); err == nil {
 		*mds = matrixDefinitions{single}

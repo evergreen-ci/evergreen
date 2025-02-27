@@ -23,7 +23,7 @@ func TestGetAliasesHandler(t *testing.T) {
 			resp := h.Run(ctx)
 			assert.Equal(t, http.StatusOK, resp.Status())
 
-			payload := resp.Data().([]interface{})
+			payload := resp.Data().([]any)
 			require.Len(t, payload, 1)
 			foundAlias := payload[0].(model.APIProjectAlias)
 			assert.Equal(t, "project_alias", utility.FromStringPtr(foundAlias.Alias))
@@ -41,7 +41,7 @@ func TestGetAliasesHandler(t *testing.T) {
 			resp := h.Run(ctx)
 			assert.Equal(t, http.StatusOK, resp.Status())
 
-			payload := resp.Data().([]interface{})
+			payload := resp.Data().([]any)
 			require.Len(t, payload, 1)
 			foundAlias := payload[0].(model.APIProjectAlias)
 			assert.Equal(t, "repo_alias", utility.FromStringPtr(foundAlias.Alias))
@@ -56,7 +56,7 @@ func TestGetAliasesHandler(t *testing.T) {
 			resp := h.Run(ctx)
 			assert.Equal(t, http.StatusOK, resp.Status())
 
-			payload := resp.Data().([]interface{})
+			payload := resp.Data().([]any)
 			require.Empty(t, payload)
 		},
 		"ReturnsConfigLevelAliases": func(ctx context.Context, t *testing.T, h *aliasGetHandler) {
@@ -69,7 +69,7 @@ func TestGetAliasesHandler(t *testing.T) {
 			resp := h.Run(ctx)
 			assert.Equal(t, http.StatusOK, resp.Status())
 
-			payload := resp.Data().([]interface{})
+			payload := resp.Data().([]any)
 			require.Len(t, payload, 1)
 			foundAlias := payload[0].(model.APIProjectAlias)
 			assert.Equal(t, "project_config_alias", utility.FromStringPtr(foundAlias.Alias))

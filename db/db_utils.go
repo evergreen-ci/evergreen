@@ -18,11 +18,11 @@ import (
 )
 
 var (
-	NoProjection             = bson.M{}
-	NoSort                   = []string{}
-	NoSkip                   = 0
-	NoLimit                  = 0
-	NoHint       interface{} = nil
+	NoProjection     = bson.M{}
+	NoSort           = []string{}
+	NoSkip           = 0
+	NoLimit          = 0
+	NoHint       any = nil
 )
 
 type SessionFactory interface {
@@ -78,7 +78,7 @@ func (s *shimFactoryImpl) GetContextSession(ctx context.Context) (db.Session, db
 }
 
 // Insert inserts the specified item into the specified collection.
-func Insert(collection string, item interface{}) error {
+func Insert(collection string, item any) error {
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
 		return errors.WithStack(err)
@@ -88,7 +88,7 @@ func Insert(collection string, item interface{}) error {
 	return db.C(collection).Insert(item)
 }
 
-func InsertMany(collection string, items ...interface{}) error {
+func InsertMany(collection string, items ...any) error {
 	if len(items) == 0 {
 		return nil
 	}
@@ -101,7 +101,7 @@ func InsertMany(collection string, items ...interface{}) error {
 	return db.C(collection).Insert(items...)
 }
 
-func InsertManyUnordered(c string, items ...interface{}) error {
+func InsertManyUnordered(c string, items ...any) error {
 	if len(items) == 0 {
 		return nil
 	}
@@ -198,7 +198,7 @@ func EnsureIndex(collection string, index mongo.IndexModel) error {
 }
 
 // Remove removes one item matching the query from the specified collection.
-func Remove(collection string, query interface{}) error {
+func Remove(collection string, query any) error {
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
 		return err
@@ -208,7 +208,7 @@ func Remove(collection string, query interface{}) error {
 	return db.C(collection).Remove(query)
 }
 
-func RemoveContext(ctx context.Context, collection string, query interface{}) error {
+func RemoveContext(ctx context.Context, collection string, query any) error {
 	session, db, err := GetGlobalSessionFactory().GetContextSession(ctx)
 	if err != nil {
 		return err
@@ -219,7 +219,7 @@ func RemoveContext(ctx context.Context, collection string, query interface{}) er
 }
 
 // RemoveAll removes all items matching the query from the specified collection.
-func RemoveAll(collection string, query interface{}) error {
+func RemoveAll(collection string, query any) error {
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
 		return err
@@ -231,7 +231,7 @@ func RemoveAll(collection string, query interface{}) error {
 }
 
 // Update updates one matching document in the collection.
-func Update(collection string, query interface{}, update interface{}) error {
+func Update(collection string, query any, update any) error {
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
 		grip.Errorf("error establishing db connection: %+v", err)
@@ -244,7 +244,7 @@ func Update(collection string, query interface{}, update interface{}) error {
 }
 
 // Update updates one matching document in the collection.
-func UpdateContext(ctx context.Context, collection string, query interface{}, update interface{}) error {
+func UpdateContext(ctx context.Context, collection string, query any, update any) error {
 	res, err := evergreen.GetEnvironment().DB().Collection(collection).UpdateOne(ctx,
 		query,
 		update,
@@ -259,7 +259,7 @@ func UpdateContext(ctx context.Context, collection string, query interface{}, up
 	return nil
 }
 
-func UpdateAllContext(ctx context.Context, collection string, query interface{}, update interface{}) (*db.ChangeInfo, error) {
+func UpdateAllContext(ctx context.Context, collection string, query any, update any) (*db.ChangeInfo, error) {
 	switch query.(type) {
 	case *Q, Q:
 		grip.EmergencyPanic(message.Fields{
@@ -288,7 +288,7 @@ func UpdateAllContext(ctx context.Context, collection string, query interface{},
 }
 
 // UpdateId updates one _id-matching document in the collection.
-func UpdateId(collection string, id, update interface{}) error {
+func UpdateId(collection string, id, update any) error {
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
 		grip.Errorf("error establishing db connection: %+v", err)
@@ -301,7 +301,7 @@ func UpdateId(collection string, id, update interface{}) error {
 }
 
 // UpdateAll updates all matching documents in the collection.
-func UpdateAll(collection string, query interface{}, update interface{}) (*db.ChangeInfo, error) {
+func UpdateAll(collection string, query any, update any) (*db.ChangeInfo, error) {
 	switch query.(type) {
 	case *Q, Q:
 		grip.EmergencyPanic(message.Fields{
@@ -330,7 +330,7 @@ func UpdateAll(collection string, query interface{}, update interface{}) (*db.Ch
 }
 
 // Upsert run the specified update against the collection as an upsert operation.
-func Upsert(collection string, query interface{}, update interface{}) (*db.ChangeInfo, error) {
+func Upsert(collection string, query any, update any) (*db.ChangeInfo, error) {
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
 		grip.Errorf("error establishing db connection: %+v", err)
@@ -343,7 +343,7 @@ func Upsert(collection string, query interface{}, update interface{}) (*db.Chang
 }
 
 // Count run a count command with the specified query against the collection.
-func Count(collection string, query interface{}) (int, error) {
+func Count(collection string, query any) (int, error) {
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
 		grip.Errorf("error establishing db connection: %+v", err)
@@ -356,7 +356,7 @@ func Count(collection string, query interface{}) (int, error) {
 }
 
 // Count run a count command with the specified query against the collection.
-func CountContext(ctx context.Context, collection string, query interface{}) (int, error) {
+func CountContext(ctx context.Context, collection string, query any) (int, error) {
 	session, db, err := GetGlobalSessionFactory().GetContextSession(ctx)
 	if err != nil {
 		grip.Errorf("error establishing db connection: %+v", err)
@@ -370,7 +370,7 @@ func CountContext(ctx context.Context, collection string, query interface{}) (in
 
 // FindAndModify runs the specified query and change against the collection,
 // unmarshaling the result into the specified interface.
-func FindAndModify(collection string, query interface{}, sort []string, change db.Change, out interface{}) (*db.ChangeInfo, error) {
+func FindAndModify(collection string, query any, sort []string, change db.Change, out any) (*db.ChangeInfo, error) {
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
 		grip.Errorf("error establishing db connection: %+v", err)
@@ -422,7 +422,7 @@ func ClearGridCollections(fsPrefix string) error {
 // Aggregate runs an aggregation pipeline on a collection and unmarshals
 // the results to the given "out" interface (usually a pointer
 // to an array of structs/bson.M)
-func Aggregate(collection string, pipeline interface{}, out interface{}) error {
+func Aggregate(collection string, pipeline any, out any) error {
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
 		err = errors.Wrap(err, "establishing db connection")
@@ -439,7 +439,7 @@ func Aggregate(collection string, pipeline interface{}, out interface{}) error {
 // AggregateContext runs an aggregation pipeline on a collection and unmarshals
 // the results to the given "out" interface (usually a pointer
 // to an array of structs/bson.M)
-func AggregateContext(ctx context.Context, collection string, pipeline interface{}, out interface{}) error {
+func AggregateContext(ctx context.Context, collection string, pipeline any, out any) error {
 	session, db, err := GetGlobalSessionFactory().GetContextSession(ctx)
 	if err != nil {
 		err = errors.Wrap(err, "establishing db connection")
@@ -455,7 +455,7 @@ func AggregateContext(ctx context.Context, collection string, pipeline interface
 
 // AggregateWithMaxTime runs aggregate and specifies a max query time which
 // ensures the query won't go on indefinitely when the request is cancelled.
-func AggregateWithMaxTime(collection string, pipeline interface{}, out interface{}, maxTime time.Duration) error {
+func AggregateWithMaxTime(collection string, pipeline any, out any, maxTime time.Duration) error {
 	session, database, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
 		err = errors.Wrap(err, "establishing DB connection")

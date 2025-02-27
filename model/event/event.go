@@ -18,11 +18,11 @@ type EventLogEntry struct {
 	ResourceType string    `bson:"r_type,omitempty" json:"resource_type,omitempty"`
 	ProcessedAt  time.Time `bson:"processed_at" json:"processed_at"`
 
-	Timestamp  time.Time   `bson:"ts" json:"timestamp"`
-	Expirable  bool        `bson:"expirable,omitempty" json:"expirable,omitempty"`
-	ResourceId string      `bson:"r_id" json:"resource_id"`
-	EventType  string      `bson:"e_type" json:"event_type"`
-	Data       interface{} `bson:"data" json:"data"`
+	Timestamp  time.Time `bson:"ts" json:"timestamp"`
+	Expirable  bool      `bson:"expirable,omitempty" json:"expirable,omitempty"`
+	ResourceId string    `bson:"r_id" json:"resource_id"`
+	EventType  string    `bson:"e_type" json:"event_type"`
+	Data       any       `bson:"data" json:"data"`
 }
 
 // Processed is whether or not this event has been processed. An event
@@ -36,9 +36,9 @@ func (e *EventLogEntry) Processed() (bool, time.Time) {
 }
 
 type UnmarshalEventLogEntry struct {
-	ID           interface{} `bson:"_id" json:"-"`
-	ResourceType string      `bson:"r_type,omitempty" json:"resource_type,omitempty"`
-	ProcessedAt  time.Time   `bson:"processed_at" json:"processed_at"`
+	ID           any       `bson:"_id" json:"-"`
+	ResourceType string    `bson:"r_type,omitempty" json:"resource_type,omitempty"`
+	ProcessedAt  time.Time `bson:"processed_at" json:"processed_at"`
 
 	Timestamp  time.Time   `bson:"ts" json:"timestamp"`
 	Expirable  bool        `bson:"expirable,omitempty" json:"expirable,omitempty"`

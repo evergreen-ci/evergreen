@@ -47,28 +47,28 @@ func TestRequireProjectAccess(t *testing.T) {
 
 	// callCount keeps track of how many times the function is called
 	callCount := 0
-	next := func(rctx context.Context) (interface{}, error) {
+	next := func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
 		callCount++
 		return nil, nil
 	}
 
 	// error if input is invalid
-	obj := interface{}(nil)
+	obj := any(nil)
 	res, err := config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionSettings, AccessLevelEdit)
 	require.EqualError(t, err, "input: converting args into map")
 	require.Nil(t, res)
 	require.Equal(t, 0, callCount)
 
 	// error if no valid parameters
-	obj = interface{}(map[string]interface{}(nil))
+	obj = any(map[string]any(nil))
 	res, err = config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionSettings, AccessLevelEdit)
 	require.EqualError(t, err, "input: params map is empty")
 	require.Nil(t, res)
 	require.Equal(t, 0, callCount)
 
 	// error if invalid permission and access combination
-	obj = interface{}(map[string]interface{}(nil))
+	obj = any(map[string]any(nil))
 	res, err = config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionAnnotations, AccessLevelAdmin)
 	require.EqualError(t, err, "input: invalid permission and access level configuration: invalid access level for project_task_annotations")
 	require.Nil(t, res)
@@ -89,7 +89,7 @@ func TestRequireProjectAccessForSettings(t *testing.T) {
 
 	// callCount keeps track of how many times the function is called
 	callCount := 0
-	next := func(rctx context.Context) (interface{}, error) {
+	next := func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
 		callCount++
 		return nil, nil
@@ -109,13 +109,13 @@ func TestRequireProjectAccessForSettings(t *testing.T) {
 	err = repoRef.Upsert()
 	require.NoError(t, err)
 
-	obj := interface{}(map[string]interface{}{"projectIdentifier": "invalid_identifier"})
+	obj := any(map[string]any{"projectIdentifier": "invalid_identifier"})
 	res, err := config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionSettings, AccessLevelEdit)
 	require.EqualError(t, err, "input: project 'invalid_identifier' not found")
 	require.Nil(t, res)
 	require.Equal(t, 0, callCount)
 
-	obj = interface{}(map[string]interface{}{"projectIdentifier": projectRef.Identifier})
+	obj = any(map[string]any{"projectIdentifier": projectRef.Identifier})
 	res, err = config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionSettings, AccessLevelEdit)
 	require.EqualError(t, err, "input: user 'test_user' does not have permission to 'edit project settings' for the project 'project_id'")
 	require.Nil(t, res)
@@ -142,20 +142,20 @@ func TestRequireProjectAccessForSettings(t *testing.T) {
 	require.Nil(t, res)
 	require.Equal(t, 2, callCount)
 
-	obj = interface{}(map[string]interface{}{"projectIdentifier": projectRef.Identifier})
+	obj = any(map[string]any{"projectIdentifier": projectRef.Identifier})
 	res, err = config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionSettings, AccessLevelEdit)
 	require.NoError(t, err)
 	require.Nil(t, res)
 	require.Equal(t, 3, callCount)
 
 	// Verify that user with only branch permission can view the repo page but not edit.
-	obj = interface{}(map[string]interface{}{"repoId": repoRef.ProjectRef.Id})
+	obj = any(map[string]any{"repoId": repoRef.ProjectRef.Id})
 	res, err = config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionSettings, AccessLevelEdit)
 	require.EqualError(t, err, "input: user 'test_user' does not have permission to 'edit project settings' for the project 'repo_id'")
 	require.Nil(t, res)
 	require.Equal(t, 3, callCount)
 
-	obj = interface{}(map[string]interface{}{"repoId": repoRef.ProjectRef.Id})
+	obj = any(map[string]any{"repoId": repoRef.ProjectRef.Id})
 	res, err = config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionSettings, AccessLevelView)
 	require.NoError(t, err)
 	require.Nil(t, res)
@@ -191,7 +191,7 @@ func TestRequireProjectAccessForTasks(t *testing.T) {
 	const refreshToken = "refresh_token"
 	config := New("/graphql")
 	require.NotNil(t, config)
-	obj := interface{}(map[string]interface{}{"taskId": task.Id})
+	obj := any(map[string]any{"taskId": task.Id})
 
 	usr, err := user.GetOrCreateUser(testUser, "User Name", email, accessToken, refreshToken, []string{})
 	require.NoError(t, err)
@@ -202,7 +202,7 @@ func TestRequireProjectAccessForTasks(t *testing.T) {
 
 	// callCount keeps track of how many times the function is called
 	callCount := 0
-	next := func(rctx context.Context) (interface{}, error) {
+	next := func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
 		callCount++
 		return nil, nil
@@ -321,7 +321,7 @@ func TestRequireProjectAccessForAnnotations(t *testing.T) {
 	const refreshToken = "refresh_token"
 	config := New("/graphql")
 	require.NotNil(t, config)
-	obj := interface{}(map[string]interface{}{"taskId": task.Id})
+	obj := any(map[string]any{"taskId": task.Id})
 
 	usr, err := user.GetOrCreateUser(testUser, "User Name", email, accessToken, refreshToken, []string{})
 	require.NoError(t, err)
@@ -332,7 +332,7 @@ func TestRequireProjectAccessForAnnotations(t *testing.T) {
 
 	// callCount keeps track of how many times the function is called
 	callCount := 0
-	next := func(rctx context.Context) (interface{}, error) {
+	next := func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
 		callCount++
 		return nil, nil
@@ -415,7 +415,7 @@ func TestRequireProjectAccessForPatches(t *testing.T) {
 	const refreshToken = "refresh_token"
 	config := New("/graphql")
 	require.NotNil(t, config)
-	obj := interface{}(map[string]interface{}{"patchId": patch.Id.Hex()})
+	obj := any(map[string]any{"patchId": patch.Id.Hex()})
 
 	usr, err := user.GetOrCreateUser(testUser, "User Name", email, accessToken, refreshToken, []string{})
 	require.NoError(t, err)
@@ -426,7 +426,7 @@ func TestRequireProjectAccessForPatches(t *testing.T) {
 
 	// callCount keeps track of how many times the function is called
 	callCount := 0
-	next := func(rctx context.Context) (interface{}, error) {
+	next := func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
 		callCount++
 		return nil, nil
@@ -503,7 +503,7 @@ func TestRequireProjectAccessForLogs(t *testing.T) {
 	const refreshToken = "refresh_token"
 	config := New("/graphql")
 	require.NotNil(t, config)
-	obj := interface{}(map[string]interface{}{"projectId": project.Id})
+	obj := any(map[string]any{"projectId": project.Id})
 
 	usr, err := user.GetOrCreateUser(testUser, "User Name", email, accessToken, refreshToken, []string{})
 	require.NoError(t, err)
@@ -514,7 +514,7 @@ func TestRequireProjectAccessForLogs(t *testing.T) {
 
 	// callCount keeps track of how many times the function is called
 	callCount := 0
-	next := func(rctx context.Context) (interface{}, error) {
+	next := func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
 		callCount++
 		return nil, nil

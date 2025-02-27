@@ -28,7 +28,7 @@ type AutoExtractSuite struct {
 
 	cmd            *autoExtract
 	targetLocation string
-	params         map[string]interface{}
+	params         map[string]any
 
 	suite.Suite
 }
@@ -53,7 +53,7 @@ func (s *AutoExtractSuite) SetupTest() {
 	s.Require().NoError(err)
 
 	s.cmd = &autoExtract{}
-	s.params = map[string]interface{}{}
+	s.params = map[string]any{}
 }
 
 func (s *AutoExtractSuite) TearDownTest() {

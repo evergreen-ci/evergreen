@@ -19,7 +19,7 @@ type PerfPlugin struct{}
 // Name implements Plugin Interface.
 func (pp *PerfPlugin) Name() string { return "perf" }
 
-func (pp *PerfPlugin) Configure(map[string]interface{}) error { return nil }
+func (pp *PerfPlugin) Configure(map[string]any) error { return nil }
 
 func (pp *PerfPlugin) GetPanelConfig() (*PanelConfig, error) {
 	panelHTML, err := os.ReadFile(filepath.Join(TemplateRoot(), "task_perf_data.html"))
@@ -39,7 +39,7 @@ func (pp *PerfPlugin) GetPanelConfig() (*PanelConfig, error) {
 				Page:      TaskPage,
 				Position:  PageCenter,
 				PanelHTML: template.HTML(panelHTML),
-				DataFunc: func(context UIContext) (interface{}, error) {
+				DataFunc: func(context UIContext) (any, error) {
 					enabled := model.IsPerfEnabledForProject(context.ProjectRef.Id)
 					return struct {
 						Enabled bool `json:"enabled"`

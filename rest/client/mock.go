@@ -143,7 +143,7 @@ func (c *Mock) GetSettings(ctx context.Context) (*evergreen.Settings, error)    
 func (c *Mock) UpdateSettings(ctx context.Context, update *model.APIAdminSettings) (*model.APIAdminSettings, error) {
 	return nil, nil
 }
-func (c *Mock) GetEvents(ctx context.Context, ts time.Time, limit int) ([]interface{}, error) {
+func (c *Mock) GetEvents(ctx context.Context, ts time.Time, limit int) ([]any, error) {
 	return nil, nil
 }
 func (c *Mock) RevertSettings(ctx context.Context, guid string) error { return nil }
@@ -232,7 +232,7 @@ func (c *Mock) GetSubscriptions(_ context.Context) ([]event.Subscription, error)
 	}, nil
 }
 
-func (c *Mock) SendNotification(_ context.Context, _ string, _ interface{}) error {
+func (c *Mock) SendNotification(_ context.Context, _ string, _ any) error {
 	return nil
 }
 

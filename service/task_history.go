@@ -213,7 +213,7 @@ func (uis *UIServer) variantHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	uis.render.WriteResponse(w, http.StatusOK, struct {
-		Data interface{}
+		Data any
 		ViewData
 	}{data, uis.GetCommonViewData(w, r, false, true)}, "base",
 		"build_variant_history.html", "base_angular.html", "menu.html")

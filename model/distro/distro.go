@@ -66,14 +66,14 @@ type Distro struct {
 // DistroData is the same as a distro, with the only difference being that all
 // the provider settings are stored as maps instead of Birch BSON documents.
 type DistroData struct {
-	Distro              Distro                   `bson:",inline"`
-	ProviderSettingsMap []map[string]interface{} `bson:"provider_settings_list" json:"provider_settings_list"`
+	Distro              Distro           `bson:",inline"`
+	ProviderSettingsMap []map[string]any `bson:"provider_settings_list" json:"provider_settings_list"`
 }
 
 // DistroData creates distro data from this distro. The provider settings are
 // converted into maps instead of Birch BSON documents.
 func (d *Distro) DistroData() DistroData {
-	res := DistroData{ProviderSettingsMap: []map[string]interface{}{}}
+	res := DistroData{ProviderSettingsMap: []map[string]any{}}
 	res.Distro = *d
 	for _, each := range d.ProviderSettingsList {
 		res.ProviderSettingsMap = append(res.ProviderSettingsMap, each.ExportMap())
@@ -527,7 +527,7 @@ func (d *Distro) GetPoolSize() int {
 	switch d.Provider {
 	case evergreen.ProviderNameStatic:
 		if len(d.ProviderSettingsList) > 0 {
-			hosts, ok := d.ProviderSettingsList[0].Lookup("hosts").Interface().([]interface{})
+			hosts, ok := d.ProviderSettingsList[0].Lookup("hosts").Interface().([]any)
 			if !ok {
 				return 0
 			}

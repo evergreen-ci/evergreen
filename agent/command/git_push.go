@@ -32,7 +32,7 @@ type gitPush struct {
 func gitPushFactory() Command   { return &gitPush{} }
 func (c *gitPush) Name() string { return "git.push" }
 
-func (c *gitPush) ParseParams(params map[string]interface{}) error {
+func (c *gitPush) ParseParams(params map[string]any) error {
 	err := mapstructure.Decode(params, c)
 	if err != nil {
 		return errors.Wrap(err, "decoding mapstructure params")

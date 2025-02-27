@@ -683,7 +683,7 @@ func (c *communicatorImpl) UpdateSettings(ctx context.Context, update *model.API
 	return newSettings, nil
 }
 
-func (c *communicatorImpl) GetEvents(ctx context.Context, ts time.Time, limit int) ([]interface{}, error) {
+func (c *communicatorImpl) GetEvents(ctx context.Context, ts time.Time, limit int) ([]any, error) {
 	info := requestInfo{
 		method: http.MethodGet,
 		path:   fmt.Sprintf("admin/events?ts=%s&limit=%d", ts.Format(time.RFC3339), limit),
@@ -694,7 +694,7 @@ func (c *communicatorImpl) GetEvents(ctx context.Context, ts time.Time, limit in
 	}
 	defer resp.Body.Close()
 
-	events := []interface{}{}
+	events := []any{}
 	err = utility.ReadJSON(resp.Body, &events)
 	if err != nil {
 		return nil, errors.Wrap(err, "reading JSON response body")
@@ -1062,7 +1062,7 @@ func (c *communicatorImpl) GetSubscriptions(ctx context.Context) ([]event.Subscr
 	return subs, nil
 }
 
-func (c *communicatorImpl) SendNotification(ctx context.Context, notificationType string, data interface{}) error {
+func (c *communicatorImpl) SendNotification(ctx context.Context, notificationType string, data any) error {
 	info := requestInfo{
 		method: http.MethodPost,
 		path:   "notifications/" + notificationType,

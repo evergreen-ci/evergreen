@@ -126,7 +126,7 @@ func (t *hostTriggers) Fetch(ctx context.Context, e *event.EventLogEntry) error 
 }
 
 func (t *hostTriggers) generateExpiration(sub *event.Subscription) (*notification.Notification, error) {
-	var payload interface{}
+	var payload any
 	var err error
 	switch sub.Subscriber.Type {
 	case event.EmailSubscriberType:
@@ -144,7 +144,7 @@ func (t *hostTriggers) generateExpiration(sub *event.Subscription) (*notificatio
 }
 
 func (t *hostTriggers) generateTemporaryExemptionExpiration(sub *event.Subscription) (*notification.Notification, error) {
-	var payload interface{}
+	var payload any
 	var err error
 	switch sub.Subscriber.Type {
 	case event.EmailSubscriberType:

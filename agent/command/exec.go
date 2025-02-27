@@ -82,7 +82,7 @@ type subprocessExec struct {
 func subprocessExecFactory() Command   { return &subprocessExec{} }
 func (c *subprocessExec) Name() string { return "subprocess.exec" }
 
-func (c *subprocessExec) ParseParams(params map[string]interface{}) error {
+func (c *subprocessExec) ParseParams(params map[string]any) error {
 	err := mapstructure.Decode(params, c)
 	if err != nil {
 		return errors.Wrap(err, "decoding mapstructure params")

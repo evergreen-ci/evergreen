@@ -184,7 +184,7 @@ func (tgh *testGetHandler) buildResponse(results []testresult.TestResult, key st
 	return resp
 }
 
-func (tgh *testGetHandler) addDataToResponse(resp gimlet.Responder, result interface{}) error {
+func (tgh *testGetHandler) addDataToResponse(resp gimlet.Responder, result any) error {
 	at := &model.APITest{}
 	if err := at.BuildFromService(tgh.taskID); err != nil {
 		return gimlet.ErrorResponse{

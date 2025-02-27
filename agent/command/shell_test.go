@@ -73,7 +73,7 @@ func (s *shellExecuteCommandSuite) TestWorksWithEmptyShell() {
 	}
 	cmd.SetJasperManager(s.jasper)
 	s.Empty(cmd.Shell)
-	s.NoError(cmd.ParseParams(map[string]interface{}{}))
+	s.NoError(cmd.ParseParams(map[string]any{}))
 	s.NotEmpty(cmd.Shell)
 	s.NoError(cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 }
@@ -83,12 +83,12 @@ func (s *shellExecuteCommandSuite) TestSilentAndRedirectToStdOutError() {
 		Script: "exit 0",
 	}
 
-	s.NoError(cmd.ParseParams(map[string]interface{}{}))
+	s.NoError(cmd.ParseParams(map[string]any{}))
 	s.False(cmd.IgnoreStandardError)
 	s.False(cmd.IgnoreStandardOutput)
 	cmd.Silent = true
 
-	s.NoError(cmd.ParseParams(map[string]interface{}{}))
+	s.NoError(cmd.ParseParams(map[string]any{}))
 	s.True(cmd.IgnoreStandardError)
 	s.True(cmd.IgnoreStandardOutput)
 }

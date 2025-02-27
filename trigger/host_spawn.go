@@ -127,7 +127,7 @@ func (t *spawnHostProvisioningTriggers) email() *message.Email {
 	}
 }
 
-func (t *spawnHostProvisioningTriggers) makePayload(sub *event.Subscription) interface{} {
+func (t *spawnHostProvisioningTriggers) makePayload(sub *event.Subscription) any {
 	switch sub.Subscriber.Type {
 	case event.SlackSubscriberType:
 		return t.slack()
@@ -203,7 +203,7 @@ func (t *spawnHostStateChangeTriggers) spawnHostStateChangeOutcome(ctx context.C
 	return notification.New(t.event.ID, sub.Trigger, &sub.Subscriber, payload)
 }
 
-func (t *spawnHostStateChangeTriggers) makePayload(sub *event.Subscription) (interface{}, error) {
+func (t *spawnHostStateChangeTriggers) makePayload(sub *event.Subscription) (any, error) {
 	var action string
 	switch t.event.EventType {
 	case event.EventSpawnHostCreatedError, event.EventHostCreatedError:
@@ -300,7 +300,7 @@ func (t *spawnHostSetupScriptTriggers) spawnHostSetupScriptOutcome(ctx context.C
 	return notification.New(t.event.ID, sub.Trigger, &sub.Subscriber, payload)
 }
 
-func (t *spawnHostSetupScriptTriggers) makePayload(ctx context.Context, sub *event.Subscription) (interface{}, error) {
+func (t *spawnHostSetupScriptTriggers) makePayload(ctx context.Context, sub *event.Subscription) (any, error) {
 	var result string
 	switch t.event.EventType {
 	case event.EventHostScriptExecuted:

@@ -45,7 +45,7 @@ func MarshalAPIDuration(b APIDuration) graphql.Marshaler {
 	})
 }
 
-func UnmarshalAPIDuration(v interface{}) (APIDuration, error) {
+func UnmarshalAPIDuration(v any) (APIDuration, error) {
 	switch v := v.(type) {
 	case int:
 		return APIDuration(v), nil

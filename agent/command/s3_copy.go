@@ -100,7 +100,7 @@ type s3Loc struct {
 func s3CopyFactory() Command   { return &s3copy{} }
 func (c *s3copy) Name() string { return "s3Copy.copy" }
 
-func (c *s3copy) ParseParams(params map[string]interface{}) error {
+func (c *s3copy) ParseParams(params map[string]any) error {
 	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
 		WeaklyTypedInput: true,
 		Result:           c,

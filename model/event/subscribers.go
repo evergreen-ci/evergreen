@@ -41,7 +41,7 @@ var SubscriberTypes = []string{
 type Subscriber struct {
 	Type string `bson:"type"`
 	// sad violin
-	Target interface{} `bson:"target"`
+	Target any `bson:"target"`
 }
 
 type unmarshalSubscriber struct {

@@ -328,7 +328,7 @@ func VersionCount(query db.Q) (int, error) {
 }
 
 // UpdateOne updates one version.
-func VersionUpdateOne(query interface{}, update interface{}) error {
+func VersionUpdateOne(query any, update any) error {
 	return db.Update(
 		VersionCollection,
 		query,
