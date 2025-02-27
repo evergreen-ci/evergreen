@@ -242,6 +242,10 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 		grip.Warningf("warning - failed to set default parameters: %s\n", err)
 	}
 
+	if p.Uncommitted && p.Ref != "" {
+		return nil, errors.Errorf("cannot specify both --uncommitted and --ref")
+	}
+
 	if p.Uncommitted || conf.UncommittedChanges {
 		p.Ref = ""
 	}
