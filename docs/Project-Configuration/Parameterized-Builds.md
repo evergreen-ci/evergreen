@@ -89,6 +89,11 @@ Can parameters be changed after a patch is finalized?
 
 * No, parameters are **not configurable** after the patch is finalized (i.e. after Schedule Patch is pressed, or `--finalize` is used when creating the patch from the CLI). Dynamically modifying parameters in a patch could affect task runtime and result in difficulty reproducing task behavior.
 
+Can I define separate parameters for PR patches?
+
+* No, it's only possible to configure parameters from the CLI or the configure page, 
+but PR patches are finalized immediately, so this latter option isn't available.
+
 There's another feature I'd like for parameters that don't exist. What should I do?
 
 * File a ticket for the Evergreen project! There's room to make parameters even more configurable; if you have a use case that isn't covered let us know!
