@@ -173,6 +173,8 @@ func TestHostTerminationJob(t *testing.T) {
 			assert.NotEqual(t, evergreen.HostRunning, dbHost.Status)
 		},
 		"MarksUninitializedIntentHostAsTerminated": func(ctx context.Context, t *testing.T, env evergreen.Environment, mcp cloud.MockProvider, h *host.Host) {
+			// The ID must be a valid intent host ID.
+			h.Id = h.Distro.GenerateName()
 			h.Status = evergreen.HostUninitialized
 			require.NoError(t, h.Insert(ctx))
 
@@ -192,6 +194,8 @@ func TestHostTerminationJob(t *testing.T) {
 			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
 		},
 		"MarksBuildingIntentHostAsTerminated": func(ctx context.Context, t *testing.T, env evergreen.Environment, mcp cloud.MockProvider, h *host.Host) {
+			// The ID must be a valid intent host ID.
+			h.Id = h.Distro.GenerateName()
 			h.Status = evergreen.HostBuilding
 			require.NoError(t, h.Insert(ctx))
 
@@ -211,7 +215,30 @@ func TestHostTerminationJob(t *testing.T) {
 			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
 		},
 		"MarksBuildingFailedIntentHostAsTerminated": func(ctx context.Context, t *testing.T, env evergreen.Environment, mcp cloud.MockProvider, h *host.Host) {
+			// The ID must be a valid intent host ID.
+			h.Id = h.Distro.GenerateName()
 			h.Status = evergreen.HostBuildingFailed
+			require.NoError(t, h.Insert(ctx))
+
+			const reason = "foo"
+			j := NewHostTerminationJob(env, h, HostTerminationOptions{
+				TerminateIfBusy:   true,
+				TerminationReason: reason,
+			})
+			j.Run(ctx)
+			require.NoError(t, j.Error())
+
+			checkTerminationEvent(t, h.Id, reason)
+
+			dbHost, err := host.FindOneId(ctx, h.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
+		},
+		"MarksDecommissionedIntentHostAsTerminated": func(ctx context.Context, t *testing.T, env evergreen.Environment, mcp cloud.MockProvider, h *host.Host) {
+			// The ID must be a valid intent host ID.
+			h.Id = h.Distro.GenerateName()
+			h.Status = evergreen.HostDecommissioned
 			require.NoError(t, h.Insert(ctx))
 
 			const reason = "foo"
