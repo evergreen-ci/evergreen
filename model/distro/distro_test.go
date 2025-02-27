@@ -329,7 +329,7 @@ func TestGetResolvedHostAllocatorSettings(t *testing.T) {
 		HostsOverallocatedRule:        evergreen.HostsOverallocatedIgnore,
 		FutureHostFraction:            .1,
 		CacheDurationSeconds:          60,
-		Planner:                       evergreen.PlannerVersionLegacy,
+		Planner:                       evergreen.PlannerVersionTunable,
 		TargetTimeSeconds:             112358,
 		AcceptableHostIdleTimeSeconds: 123,
 		GroupVersions:                 false,
@@ -392,7 +392,7 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 		HostAllocator:                 evergreen.HostAllocatorUtilization,
 		FutureHostFraction:            .1,
 		CacheDurationSeconds:          60,
-		Planner:                       evergreen.PlannerVersionLegacy,
+		Planner:                       evergreen.PlannerVersionTunable,
 		TargetTimeSeconds:             112358,
 		AcceptableHostIdleTimeSeconds: 132134,
 		GroupVersions:                 false,
@@ -410,7 +410,7 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 
 	resolved0, err := d0.GetResolvedPlannerSettings(settings0)
 	assert.NoError(t, err)
-	assert.Equal(t, evergreen.PlannerVersionLegacy, resolved0.Version)
+	assert.Equal(t, evergreen.PlannerVersionTunable, resolved0.Version)
 	assert.Equal(t, time.Duration(112358)*time.Second, resolved0.TargetTime)
 	// Fallback to the SchedulerConfig.GroupVersions as PlannerSettings.GroupVersions is nil.
 	assert.False(t, *resolved0.GroupVersions)
@@ -449,7 +449,7 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 		HostAllocator:                 evergreen.HostAllocatorUtilization,
 		FutureHostFraction:            .1,
 		CacheDurationSeconds:          60,
-		Planner:                       evergreen.PlannerVersionLegacy,
+		Planner:                       evergreen.PlannerVersionTunable,
 		TargetTimeSeconds:             10,
 		AcceptableHostIdleTimeSeconds: 60,
 		GroupVersions:                 false,
@@ -500,7 +500,7 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 		HostAllocator:                 "",
 		FutureHostFraction:            .1,
 		CacheDurationSeconds:          60,
-		Planner:                       evergreen.PlannerVersionLegacy,
+		Planner:                       evergreen.PlannerVersionTunable,
 		TargetTimeSeconds:             12345,
 		AcceptableHostIdleTimeSeconds: 67890,
 		GroupVersions:                 false,
@@ -516,13 +516,12 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 
 	resolved2, err := d2.GetResolvedPlannerSettings(settings2)
 	require.NoError(t, err)
-	// d2.PlannerSetting.Version is an empty string -- fallback on the SchedulerConfig.PlannerVersion value
-	assert.Equal(t, evergreen.PlannerVersionLegacy, resolved2.Version)
 
 	// d2.PlannerSetting.TargetTime is 0 -- fallback on the equivalent SchedulerConfig field value
 	assert.Equal(t, time.Duration(12345)*time.Second, resolved2.TargetTime)
 	// d2.PlannerSetting.GroupVersions is nil -- fallback on the SchedulerConfig.PlannerVersion.GroupVersions value
 	assert.False(t, *resolved2.GroupVersions)
+	assert.Equal(t, evergreen.PlannerVersionTunable, resolved2.Version)
 	assert.EqualValues(t, 19, resolved2.PatchFactor)
 	assert.EqualValues(t, 0, resolved2.PatchTimeInQueueFactor)
 	assert.EqualValues(t, 0, resolved2.CommitQueueFactor)

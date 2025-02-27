@@ -26,10 +26,9 @@ type APIPlannerSettings struct {
 
 // BuildFromService converts from service level distro.PlannerSetting to an APIPlannerSettings
 func (s *APIPlannerSettings) BuildFromService(settings distro.PlannerSettings) {
+	s.Version = utility.ToStringPtr(settings.Version)
 	if settings.Version == "" {
-		s.Version = utility.ToStringPtr(evergreen.PlannerVersionLegacy)
-	} else {
-		s.Version = utility.ToStringPtr(settings.Version)
+		s.Version = utility.ToStringPtr(evergreen.PlannerVersionTunable)
 	}
 	s.TargetTime = NewAPIDuration(settings.TargetTime)
 	s.GroupVersions = utility.FromBoolPtr(settings.GroupVersions)
@@ -47,7 +46,7 @@ func (s *APIPlannerSettings) ToService() distro.PlannerSettings {
 	settings := distro.PlannerSettings{}
 	settings.Version = utility.FromStringPtr(s.Version)
 	if settings.Version == "" {
-		settings.Version = evergreen.PlannerVersionLegacy
+		settings.Version = evergreen.PlannerVersionTunable
 	}
 	settings.TargetTime = s.TargetTime.ToDuration()
 	settings.GroupVersions = utility.ToBoolPtr(s.GroupVersions)

@@ -214,8 +214,6 @@ func (r *plannerSettingsResolver) Version(ctx context.Context, obj *model.APIPla
 	}
 
 	switch utility.FromStringPtr(obj.Version) {
-	case evergreen.PlannerVersionLegacy:
-		return PlannerVersionLegacy, nil
 	case evergreen.PlannerVersionTunable:
 		return PlannerVersionTunable, nil
 	default:
@@ -410,8 +408,6 @@ func (r *plannerSettingsInputResolver) TargetTime(ctx context.Context, obj *mode
 // Version is the resolver for the version field.
 func (r *plannerSettingsInputResolver) Version(ctx context.Context, obj *model.APIPlannerSettings, data PlannerVersion) error {
 	switch data {
-	case PlannerVersionLegacy:
-		obj.Version = utility.ToStringPtr(evergreen.PlannerVersionLegacy)
 	case PlannerVersionTunable:
 		obj.Version = utility.ToStringPtr(evergreen.PlannerVersionTunable)
 	default:

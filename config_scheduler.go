@@ -124,8 +124,8 @@ func (c *SchedulerConfig) ValidateAndDefault() error {
 	}
 
 	if c.Planner == "" {
-		// default to 'legacy'
-		c.Planner = PlannerVersionLegacy
+		// default to 'tunable'
+		c.Planner = PlannerVersionTunable
 	}
 
 	if !utility.StringSliceContains(ValidTaskPlannerVersions, c.Planner) {

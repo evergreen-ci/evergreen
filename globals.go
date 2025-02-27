@@ -272,7 +272,6 @@ const (
 	PowerShellSetupScriptName     = "setup.ps1"
 	PowerShellTempSetupScriptName = "setup-temp.ps1"
 
-	PlannerVersionLegacy  = "legacy"
 	PlannerVersionTunable = "tunable"
 
 	DispatcherVersionRevisedWithDependencies = "revised-with-dependencies"
@@ -980,7 +979,6 @@ var (
 
 	// Set of valid PlannerSettings.Version strings that can be user set via the API
 	ValidTaskPlannerVersions = []string{
-		PlannerVersionLegacy,
 		PlannerVersionTunable,
 	}
 

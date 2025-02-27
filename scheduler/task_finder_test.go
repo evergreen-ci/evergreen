@@ -90,7 +90,7 @@ func (s *TaskFinderSuite) SetupTest() {
 		Enabled: true,
 	}
 
-	s.distro.PlannerSettings.Version = evergreen.PlannerVersionLegacy
+	s.distro.PlannerSettings.Version = evergreen.PlannerVersionTunable
 	s.NoError(ref.Insert())
 
 	s.ctx, s.cancel = context.WithCancel(context.Background())
@@ -267,7 +267,7 @@ func (s *TaskFinderComparisonSuite) SetupSuite() {
 
 	s.NoError(ref.Insert())
 
-	s.distro.PlannerSettings.Version = evergreen.PlannerVersionLegacy
+	s.distro.PlannerSettings.Version = evergreen.PlannerVersionTunable
 }
 
 func (s *TaskFinderComparisonSuite) TearDownSuite() {
