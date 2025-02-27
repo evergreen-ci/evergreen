@@ -1483,7 +1483,7 @@ Parameters:
     if max hosts is less than 1 (apart from -1) or greater than the number of 
     tasks in task group. When max hosts is 1, this is a special case where the
     tasks will run serially on a single host. If any task fails, the task group
-    will stop, so the remaining tasks after the failed one will not run.
+    will stop, so the remaining tasks after the failed one will not run. Please see [special considerations for single host task groups](Project-Configuration/Project-Configuration-Files#the-following-constraints-apply-to-single-host-task-groups). 
 -   `timeout`: timeout handler which will be called instead of the top-level
     timeout handler. If it is not present, the top-level timeout handler will
     run if a top-level timeout handler exists. See [timeout
@@ -1501,7 +1501,7 @@ discourage relying on it for anything critical in general.
 
 For that same reason, teardown groups also cannot run the [manually set task status](Project-Configuration/Task-Runtime-Behavior#manually-set-task-status) route. 
 
-The following constraints apply:
+#### The following constraints apply to all task groups:
 
 -   Tasks can appear in multiple task groups. However, no task can be
     assigned to a build variant more than once.
@@ -1514,6 +1514,10 @@ The following constraints apply:
     tasks within a task group using [task dependencies](#task-dependencies).
 -   Task groups cannot have tags applied to them and cannot be selected by
     tags.
+
+#### The following constraints apply to single host task groups:
+
+-   If tasks in a single host task groups have dependencies on another task outside the group that task should be the first task in the group. Only the first task in the group should have dependencies outside of the group to avoid the host being blocked and hitting an idle timeout while waiting for that external dependency to complete. 
 
 Tasks in a group will be displayed as
 separate tasks. Users can use display tasks if they wish to group the
