@@ -98,7 +98,7 @@ UI](https://spruce.mongodb.com/spawn/host) by pressing the "edit" button your ho
 In the Spruce UI, you can pick a sleep schedule for your host when creating the unexpirable host or editing an existing
 unexpirable host:
 
-_![Sleep schedule](../images/set_sleep_schedule.png)_
+![Sleep schedule](../images/set_sleep_schedule.png)
 
 The example sleep schedule above will automatically turn the host on from 8am to 8pm on Monday to Friday (Eastern Time).
 The host will be automatically turned off overnight from 8pm to 8am on Monday to Friday, and will be off for the entire

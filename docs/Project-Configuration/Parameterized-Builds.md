@@ -102,7 +102,7 @@ Can parameters be changed after a patch is finalized?
 Can I define separate parameters for PR patches?
 
 * No, it's only possible to configure parameters from the CLI or the configure page, 
-but PR patches are finalized immediately, so this latter option isn't available.
+but PR patches are finalized immediately, so modifying from the configure page is unavailable.
 
 There's another feature I'd like for parameters that don't exist. What should I do?
 
