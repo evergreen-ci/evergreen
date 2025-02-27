@@ -126,6 +126,7 @@ type Task {
   taskLogs returns the tail 100 lines of the task's logs.
   """
   taskLogs: TaskLogs!
+  taskOwnerTeam: TaskOwnerTeam
   tests(opts: TestFilterOptions): TaskTestResult!
   timeTaken: Duration
   totalTestCount: Int!
@@ -204,6 +205,7 @@ type TaskFiles {
   groupedFiles: [GroupedFiles!]!
 }
 
+
 type GroupedFiles {
   files: [File!]
   taskName: String
@@ -262,4 +264,15 @@ type TaskTestResultSample {
   matchingFailedTestNames: [String!]!
   taskId: String!
   totalTestCount: Int!
+}
+
+"""
+TaskOwnerTeam is the return value for the taskOwnerTeam query.
+It is used to identify the team that owns a task. Based on the FWS team assignment.
+"""
+type TaskOwnerTeam {
+  assignmentType: String!
+  messages: String!
+  teamName: String!
+  jiraProject: String!
 }
