@@ -488,6 +488,15 @@ type TaskLogs struct {
 	TaskLogs   []*apimodels.LogMessage       `json:"taskLogs"`
 }
 
+// TaskOwnerTeam is the return value for the taskOwnerTeam query.
+// It is used to identify the team that owns a task. Based on the FWS team assignment.
+type TaskOwnerTeam struct {
+	AssignmentType string `json:"assignmentType"`
+	Messages       string `json:"messages"`
+	TeamName       string `json:"teamName"`
+	JiraProject    string `json:"jiraProject"`
+}
+
 // TaskQueueDistro[] is the return value for the taskQueueDistros query.
 // It contains information about how many tasks and hosts are running on on a particular distro.
 type TaskQueueDistro struct {

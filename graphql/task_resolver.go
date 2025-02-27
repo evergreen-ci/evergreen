@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/thirdparty/clients/fws"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 )
@@ -567,6 +568,25 @@ func (r *taskResolver) TaskLogs(ctx context.Context, obj *restModel.APITask) (*T
 	// We can avoid the overhead of fetching task logs that we will not view
 	// and we can avoid handling errors that we will not see
 	return &TaskLogs{TaskID: *obj.Id, Execution: obj.Execution}, nil
+}
+
+// TaskOwnerTeam is the resolver for the taskOwnerTeam field.
+func (r *taskResolver) TaskOwnerTeam(ctx context.Context, obj *restModel.APITask) (*TaskOwnerTeam, error) {
+	cfg := fws.NewConfiguration()
+	cfg.UserAgent = "Evergreen OPENAPI-client 1.0.0"
+	cfg.Host = "https://foliage-web-services.cloud-build.staging.corp.mongodb.com"
+	client := fws.NewAPIClient(cfg)
+	req := client.OwnerAPI.ByFoliageLogicApiOwnerByFoliageLogicTaskIdGet(ctx, *obj.Id)
+	results, _, err := req.Execute()
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting task owner team: %s", err.Error()))
+	}
+	teamName := results.SelectedAssignment.GetTeamDataWithOwner().TeamData.TeamName
+	return &TaskOwnerTeam{
+		TeamName:       teamName,
+		AssignmentType: string(results.SelectedAssignment.GetAssignmentType()),
+		Messages:       results.SelectedAssignment.GetMessages(),
+	}, nil
 }
 
 // Tests is the resolver for the tests field.
