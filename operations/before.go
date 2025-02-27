@@ -5,7 +5,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
@@ -145,21 +144,6 @@ func requireStringFlag(name string) cli.BeforeFunc {
 			return errors.Errorf("flag '--%s' was not specified", name)
 		}
 		return nil
-	}
-}
-
-//nolint:unused
-func requireStringSliceValueChoices(name string, options []string) cli.BeforeFunc {
-	return func(c *cli.Context) error {
-		catcher := grip.NewBasicCatcher()
-		for _, val := range c.StringSlice(name) {
-			if !utility.StringSliceContains(options, val) {
-				catcher.Add(errors.Errorf("flag '--%s' value of '%s' is not an acceptable value %s",
-					name, val, options))
-			}
-		}
-
-		return catcher.Resolve()
 	}
 }
 
