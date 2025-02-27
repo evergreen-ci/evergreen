@@ -13,8 +13,11 @@ import (
 // IsFavorite is the resolver for the isFavorite field.
 func (r *projectResolver) IsFavorite(ctx context.Context, obj *restModel.APIProjectRef) (bool, error) {
 	p, err := model.FindBranchProjectRef(*obj.Identifier)
-	if err != nil || p == nil {
-		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find project: %s : %s", *obj.Identifier, err.Error()))
+	if err != nil {
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", utility.FromStringPtr(obj.Identifier), err.Error()))
+	}
+	if p == nil {
+		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("project '%s' not found", utility.FromStringPtr(obj.Identifier)))
 	}
 	usr := mustHaveUser(ctx)
 	if utility.StringSliceContains(usr.FavoriteProjects, *obj.Identifier) {
@@ -45,7 +48,7 @@ func (r *projectResolver) Patches(ctx context.Context, obj *restModel.APIProject
 		apiPatch := restModel.APIPatch{}
 		err = apiPatch.BuildFromService(p, nil) // Injecting DB info into APIPatch is handled by the resolvers.
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem building APIPatch from service for patch: %s : %s", p.Id.Hex(), err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem building APIPatch from service for patch '%s': %s", p.Id.Hex(), err.Error()))
 		}
 		apiPatches = append(apiPatches, &apiPatch)
 	}

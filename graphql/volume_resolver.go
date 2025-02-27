@@ -14,12 +14,13 @@ func (r *volumeResolver) Host(ctx context.Context, obj *restModel.APIVolume) (*r
 	if obj.HostID == nil || *obj.HostID == "" {
 		return nil, nil
 	}
-	h, err := host.FindOneId(ctx, *obj.HostID)
+	hostId := utility.FromStringPtr(obj.HostID)
+	h, err := host.FindOneId(ctx, hostId)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding host '%s': %s", utility.FromStringPtr(obj.HostID), err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding host '%s': %s", hostId, err.Error()))
 	}
 	if h == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find host %s", *obj.HostID))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("host '%s' not found", hostId))
 	}
 	apiHost := restModel.APIHost{}
 	apiHost.BuildFromService(h, nil)

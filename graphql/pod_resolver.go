@@ -14,7 +14,7 @@ import (
 func (r *podResolver) Events(ctx context.Context, obj *model.APIPod, limit *int, page *int) (*PodEvents, error) {
 	events, count, err := event.MostRecentPaginatedPodEvents(utility.FromStringPtr(obj.ID), *limit, *page)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching pod events: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching pod events for pod '%s': %s", utility.FromStringPtr(obj.ID), err.Error()))
 	}
 	apiEventLogEntries := []*model.PodAPIEventLogEntry{}
 	for _, e := range events {
@@ -41,7 +41,7 @@ func (r *podResolver) Status(ctx context.Context, obj *model.APIPod) (string, er
 func (r *podResolver) Task(ctx context.Context, obj *model.APIPod) (*model.APITask, error) {
 	task, err := task.FindByIdExecution(ctx, utility.FromStringPtr(obj.TaskRuntimeInfo.RunningTaskID), obj.TaskRuntimeInfo.RunningTaskExecution)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding task '%s': %s", utility.FromStringPtr(obj.TaskRuntimeInfo.RunningTaskID), err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task '%s': %s", utility.FromStringPtr(obj.TaskRuntimeInfo.RunningTaskID), err.Error()))
 	}
 	if task == nil {
 		return nil, nil
@@ -51,7 +51,7 @@ func (r *podResolver) Task(ctx context.Context, obj *model.APIPod) (*model.APITa
 		LogURL: r.sc.GetURL(),
 	})
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("building API task from service: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("building API task from service for task '%s': %s", task.Id, err.Error()))
 	}
 	return apiTask, nil
 }

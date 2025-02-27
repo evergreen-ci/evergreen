@@ -7,16 +7,18 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/utility"
 )
 
 // WebhookConfigured is the resolver for the webhookConfigured field.
 func (r *annotationResolver) WebhookConfigured(ctx context.Context, obj *restModel.APITaskAnnotation) (bool, error) {
-	t, err := task.FindOneId(ctx, *obj.TaskId)
+	taskId := utility.FromStringPtr(obj.TaskId)
+	t, err := task.FindOneId(ctx, taskId)
 	if err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("finding task: %s", err.Error()))
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("finding task '%s': %s", taskId, err.Error()))
 	}
 	if t == nil {
-		return false, ResourceNotFound.Send(ctx, "finding task for the task annotation")
+		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("task '%s' not found", taskId))
 	}
 	_, ok, _ := model.IsWebhookConfigured(t.Project, t.Version)
 	return ok, nil

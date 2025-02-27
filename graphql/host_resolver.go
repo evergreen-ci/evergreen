@@ -20,7 +20,7 @@ func (r *hostResolver) Ami(ctx context.Context, obj *restModel.APIHost) (*string
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding host '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
 	}
 	if host == nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not find host %s", utility.FromStringPtr(obj.Id)))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("host '%s' not found", utility.FromStringPtr(obj.Id)))
 	}
 	return utility.ToStringPtr(host.GetAMI()), nil
 }
@@ -102,12 +102,13 @@ func (r *hostResolver) HomeVolume(ctx context.Context, obj *restModel.APIHost) (
 
 // SleepSchedule is the resolver for the sleepSchedule field.
 func (r *hostResolver) SleepSchedule(ctx context.Context, obj *restModel.APIHost) (*host.SleepScheduleInfo, error) {
-	h, err := host.FindOne(ctx, host.ById(utility.FromStringPtr(obj.Id)))
+	hostId := utility.FromStringPtr(obj.Id)
+	h, err := host.FindOne(ctx, host.ById(hostId))
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting host %s", utility.FromStringPtr(obj.Id)))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting host '%s': %s", hostId, err.Error()))
 	}
 	if h == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find host %s", utility.FromStringPtr(obj.Id)))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("host '%s' not found", hostId))
 	}
 	return &h.SleepSchedule, nil
 }

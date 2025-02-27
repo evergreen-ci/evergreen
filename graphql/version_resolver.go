@@ -3,7 +3,6 @@ package graphql
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"strings"
 	"time"
 
@@ -16,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	werrors "github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -60,7 +58,7 @@ func (r *versionResolver) BuildVariants(ctx context.Context, obj *restModel.APIV
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
 		}
 		if err = setVersionActivationStatus(ctx, version); err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting version activation status: %s", err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting version activation status for version '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
 		}
 		obj.Activated = version.Activated
 	}
@@ -85,7 +83,7 @@ func (r *versionResolver) BuildVariantStats(ctx context.Context, obj *restModel.
 	}
 	stats, err := task.GetGroupedTaskStatsByVersion(ctx, utility.FromStringPtr(obj.Id), opts)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting version task stats: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting task stats for version '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
 	}
 	return stats, nil
 }
@@ -100,13 +98,10 @@ func (r *versionResolver) ChildVersions(ctx context.Context, obj *restModel.APIV
 	}
 	foundPatch, err := patch.FindOneId(*obj.Id)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Couldn't find a patch with id '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
 	}
 	if foundPatch == nil {
-		return nil, gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("patch with id '%s' not found", utility.FromStringPtr(obj.Id)),
-		}
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("patch '%s' not found", utility.FromStringPtr(obj.Id)))
 	}
 	childPatchIds := foundPatch.Triggers.ChildPatches
 	if len(childPatchIds) > 0 {
@@ -119,14 +114,14 @@ func (r *versionResolver) ChildVersions(ctx context.Context, obj *restModel.APIV
 				// fetch the child patch to see if it's activated
 				p, err := patch.FindOneId(cp)
 				if err != nil {
-					return nil, InternalServerError.Send(ctx, fmt.Sprintf("Encountered an error while fetching a child patch: %s", err.Error()))
+					return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching child patch '%s': %s", cp, err.Error()))
 				}
 				if p == nil {
-					return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find child patch %s", cp))
+					return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("child patch '%s' not found", cp))
 				}
 				if p.Version != "" {
 					// only return the error if the version is activated (and we therefore expect it to be there)
-					return nil, InternalServerError.Send(ctx, "An unexpected error occurred. Could not find a child version and expected one.")
+					return nil, InternalServerError.Send(ctx, fmt.Sprintf("child patch '%s' has empty version", cp))
 				}
 			}
 			if cv != nil {
@@ -145,7 +140,7 @@ func (r *versionResolver) ExternalLinksForMetadata(ctx context.Context, obj *res
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding project '%s': %s", utility.FromStringPtr(obj.Project), err.Error()))
 	}
 	if pRef == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Project `%s` not found", *obj.Project))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("project '%s' not found", *obj.Project))
 	}
 	var externalLinks []*ExternalLinkForMetadata
 
@@ -167,10 +162,10 @@ func (r *versionResolver) GeneratedTaskCounts(ctx context.Context, obj *restMode
 	versionID := utility.FromStringPtr(obj.Id)
 	v, err := model.VersionFindOneId(versionID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version with id '%s': %s", versionID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version '%s': %s", versionID, err.Error()))
 	}
 	if v == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' does not exist", versionID))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", versionID))
 	}
 
 	var res []*GeneratedTaskCountResults
@@ -228,7 +223,7 @@ func (r *versionResolver) Patch(ctx context.Context, obj *restModel.APIVersion) 
 	}
 	apiPatch, err := data.FindPatchById(*obj.Id)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Couldn't find a patch with id '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
 	}
 	return apiPatch, nil
 }
@@ -265,7 +260,7 @@ func (r *versionResolver) Status(ctx context.Context, obj *restModel.APIVersion)
 		return "", InternalServerError.Send(ctx, fmt.Sprintf("finding version '%s': %s", versionId, err.Error()))
 	}
 	if v == nil {
-		return "", ResourceNotFound.Send(ctx, fmt.Sprintf("Version '%s' not found", versionId))
+		return "", ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", versionId))
 	}
 	return getDisplayStatus(v)
 }
@@ -316,7 +311,7 @@ func (r *versionResolver) Tasks(ctx context.Context, obj *restModel.APIVersion, 
 			case TaskSortCategoryDuration:
 				key = task.TimeTakenKey
 			default:
-				return nil, InputValidationError.Send(ctx, fmt.Sprintf("invalid sort key: '%s'", singleSort.Key))
+				return nil, InputValidationError.Send(ctx, fmt.Sprintf("invalid sort key '%s'", singleSort.Key))
 			}
 			order := 1
 			if singleSort.Direction == SortDirectionDesc {
@@ -328,7 +323,7 @@ func (r *versionResolver) Tasks(ctx context.Context, obj *restModel.APIVersion, 
 	baseVersionID := ""
 	baseVersion, err := model.FindBaseVersionForVersion(utility.FromStringPtr(obj.Id))
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding base version id for version '%s': %s", versionId, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding base version for version '%s': %s", versionId, err.Error()))
 	}
 	if baseVersion != nil {
 		baseVersionID = baseVersion.Id
@@ -347,7 +342,7 @@ func (r *versionResolver) Tasks(ctx context.Context, obj *restModel.APIVersion, 
 	}
 	tasks, count, err := task.GetTasksByVersion(ctx, versionId, opts)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting tasks for version with id '%s': %s", versionId, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting tasks for version '%s': %s", versionId, err.Error()))
 	}
 
 	var apiTasks []*restModel.APITask
@@ -355,7 +350,7 @@ func (r *versionResolver) Tasks(ctx context.Context, obj *restModel.APIVersion, 
 		apiTask := restModel.APITask{}
 		err := apiTask.BuildFromService(ctx, &t, nil)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting task item db model to api model: %s", err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s''to API model: %s", t.Id, err.Error()))
 		}
 		apiTasks = append(apiTasks, &apiTask)
 	}
@@ -370,7 +365,7 @@ func (r *versionResolver) Tasks(ctx context.Context, obj *restModel.APIVersion, 
 func (r *versionResolver) TaskStatuses(ctx context.Context, obj *restModel.APIVersion) ([]string, error) {
 	statuses, err := task.GetTaskStatusesByVersion(ctx, *obj.Id)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting task statuses for version with id '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting task statuses for version '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
 	}
 	return statuses, nil
 }
@@ -388,7 +383,7 @@ func (r *versionResolver) TaskStatusStats(ctx context.Context, obj *restModel.AP
 
 	stats, err := task.GetTaskStatsByVersion(ctx, *obj.Id, opts)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting version task status stats: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting task status stats for version '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
 	}
 	return stats, nil
 }
@@ -415,15 +410,15 @@ func (r *versionResolver) UpstreamProject(ctx context.Context, obj *restModel.AP
 	if v.TriggerType == model.ProjectTriggerLevelTask {
 		upstreamTask, err := task.FindOneId(ctx, v.TriggerID)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding upstream task %s: '%s'", v.TriggerID, err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding upstream task '%s': %s", v.TriggerID, err.Error()))
 		}
 		if upstreamTask == nil {
-			return nil, ResourceNotFound.Send(ctx, "upstream task not found")
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("upstream task '%s' not found", v.TriggerID))
 		}
 
 		apiTask := restModel.APITask{}
 		if err = apiTask.BuildFromService(ctx, upstreamTask, nil); err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APITask from service for '%s': %s", upstreamTask.Id, err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APITask '%s' from service: %s", upstreamTask.Id, err.Error()))
 		}
 
 		projectID = upstreamTask.Project
@@ -434,10 +429,10 @@ func (r *versionResolver) UpstreamProject(ctx context.Context, obj *restModel.AP
 	} else if v.TriggerType == model.ProjectTriggerLevelBuild {
 		upstreamBuild, err := build.FindOneId(v.TriggerID)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding upstream build %s: '%s'", v.TriggerID, err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding upstream build '%s': %s", v.TriggerID, err.Error()))
 		}
 		if upstreamBuild == nil {
-			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Upstream build %s not found", v.TriggerID))
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("upstream build '%s' not found", v.TriggerID))
 		}
 
 		upstreamVersion, err := model.VersionFindOneId(utility.FromStringPtr(&upstreamBuild.Version))
@@ -464,10 +459,10 @@ func (r *versionResolver) UpstreamProject(ctx context.Context, obj *restModel.AP
 	}
 	upstreamProjectRef, err := model.FindBranchProjectRef(projectID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding upstream project, project: %s, error: '%s'", projectID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding upstream project '%s': %s", projectID, err.Error()))
 	}
 	if upstreamProjectRef == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Upstream project %s not found", projectID))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("upstream project '%s' not found", projectID))
 	}
 
 	upstreamProject.Owner = upstreamProjectRef.Owner
@@ -485,7 +480,7 @@ func (r *versionResolver) VersionTiming(ctx context.Context, obj *restModel.APIV
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
 	}
 	if v == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("finding version '%s'", utility.FromStringPtr(obj.Id)))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", utility.FromStringPtr(obj.Id)))
 	}
 	timeTaken, makespan, err := v.GetTimeSpent(ctx)
 	if err != nil {
@@ -514,7 +509,7 @@ func (r *versionResolver) VersionTiming(ctx context.Context, obj *restModel.APIV
 func (r *versionResolver) Warnings(ctx context.Context, obj *restModel.APIVersion) ([]string, error) {
 	v, err := model.VersionFindOneId(utility.FromStringPtr(obj.Id))
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version with id `%s`: %s", utility.FromStringPtr(obj.Id), err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
 	}
 	if v == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", utility.FromStringPtr(obj.Id)))
@@ -534,7 +529,7 @@ func (r *versionResolver) WaterfallBuilds(ctx context.Context, obj *restModel.AP
 	versionBuilds := []*model.WaterfallBuild{}
 	builds, err := model.GetVersionBuilds(ctx, versionId)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting version build variants: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting build variants for version '%s': %s", versionId, err.Error()))
 	}
 
 	for _, b := range builds {
