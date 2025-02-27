@@ -308,8 +308,6 @@ func TestFindStartingHostsByClient(t *testing.T) {
 				case ClientOptions{
 					Provider: evergreen.ProviderNameEc2Fleet,
 					Region:   "us-west-1",
-					Key:      "key1",
-					Secret:   "secret1",
 				}:
 					require.Len(t, foundHosts, 1)
 					compareHosts(t, hosts[1], foundHosts[0])

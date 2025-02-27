@@ -319,19 +319,21 @@ func (ts *taskSelector) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 // parserBV is a helper type storing intermediary variant definitions.
 type parserBV struct {
-	Name          string             `yaml:"name,omitempty" bson:"name,omitempty"`
-	DisplayName   string             `yaml:"display_name,omitempty" bson:"display_name,omitempty"`
-	Expansions    util.Expansions    `yaml:"expansions,omitempty" bson:"expansions,omitempty"`
-	Tags          parserStringSlice  `yaml:"tags,omitempty,omitempty" bson:"tags,omitempty"`
-	Modules       parserStringSlice  `yaml:"modules,omitempty" bson:"modules,omitempty"`
-	Disable       *bool              `yaml:"disable,omitempty" bson:"disable,omitempty"`
-	BatchTime     *int               `yaml:"batchtime,omitempty" bson:"batchtime,omitempty"`
-	CronBatchTime string             `yaml:"cron,omitempty" bson:"cron,omitempty"`
-	Stepback      *bool              `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
-	RunOn         parserStringSlice  `yaml:"run_on,omitempty" bson:"run_on,omitempty"`
-	Tasks         parserBVTaskUnits  `yaml:"tasks,omitempty" bson:"tasks,omitempty"`
-	DisplayTasks  []displayTask      `yaml:"display_tasks,omitempty" bson:"display_tasks,omitempty"`
-	DependsOn     parserDependencies `yaml:"depends_on,omitempty" bson:"depends_on,omitempty"`
+	Name               string            `yaml:"name,omitempty" bson:"name,omitempty"`
+	DisplayName        string            `yaml:"display_name,omitempty" bson:"display_name,omitempty"`
+	Expansions         util.Expansions   `yaml:"expansions,omitempty" bson:"expansions,omitempty"`
+	Tags               parserStringSlice `yaml:"tags,omitempty,omitempty" bson:"tags,omitempty"`
+	Modules            parserStringSlice `yaml:"modules,omitempty" bson:"modules,omitempty"`
+	Disable            *bool             `yaml:"disable,omitempty" bson:"disable,omitempty"`
+	BatchTime          *int              `yaml:"batchtime,omitempty" bson:"batchtime,omitempty"`
+	CronBatchTime      string            `yaml:"cron,omitempty" bson:"cron,omitempty"`
+	Stepback           *bool             `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
+	DeactivatePrevious *bool             `yaml:"deactivate_previous,omitempty" bson:"deactivate_previous,omitempty"`
+
+	RunOn        parserStringSlice  `yaml:"run_on,omitempty" bson:"run_on,omitempty"`
+	Tasks        parserBVTaskUnits  `yaml:"tasks,omitempty" bson:"tasks,omitempty"`
+	DisplayTasks []displayTask      `yaml:"display_tasks,omitempty" bson:"display_tasks,omitempty"`
+	DependsOn    parserDependencies `yaml:"depends_on,omitempty" bson:"depends_on,omitempty"`
 	// If Activate is set to false, then we don't initially activate the build variant.
 	Activate          *bool                     `yaml:"activate,omitempty" bson:"activate,omitempty"`
 	Patchable         *bool                     `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
@@ -399,6 +401,7 @@ func (pbv *parserBV) canMerge() bool {
 		pbv.BatchTime == nil &&
 		pbv.CronBatchTime == "" &&
 		pbv.Stepback == nil &&
+		pbv.DeactivatePrevious == nil &&
 		pbv.RunOn == nil &&
 		pbv.DependsOn == nil &&
 		pbv.Activate == nil &&
@@ -1191,21 +1194,22 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 	var evalErrs, errs []error
 	for _, pbv := range pbvs {
 		bv := BuildVariant{
-			DisplayName:    pbv.DisplayName,
-			Name:           pbv.Name,
-			Expansions:     pbv.Expansions,
-			Modules:        pbv.Modules,
-			Disable:        pbv.Disable,
-			BatchTime:      pbv.BatchTime,
-			CronBatchTime:  pbv.CronBatchTime,
-			Activate:       pbv.Activate,
-			Patchable:      pbv.Patchable,
-			PatchOnly:      pbv.PatchOnly,
-			AllowForGitTag: pbv.AllowForGitTag,
-			GitTagOnly:     pbv.GitTagOnly,
-			Stepback:       pbv.Stepback,
-			RunOn:          pbv.RunOn,
-			Tags:           pbv.Tags,
+			DisplayName:        pbv.DisplayName,
+			Name:               pbv.Name,
+			Expansions:         pbv.Expansions,
+			Modules:            pbv.Modules,
+			Disable:            pbv.Disable,
+			BatchTime:          pbv.BatchTime,
+			CronBatchTime:      pbv.CronBatchTime,
+			Activate:           pbv.Activate,
+			Patchable:          pbv.Patchable,
+			PatchOnly:          pbv.PatchOnly,
+			AllowForGitTag:     pbv.AllowForGitTag,
+			GitTagOnly:         pbv.GitTagOnly,
+			Stepback:           pbv.Stepback,
+			DeactivatePrevious: pbv.DeactivatePrevious,
+			RunOn:              pbv.RunOn,
+			Tags:               pbv.Tags,
 		}
 		bv.AllowedRequesters = pbv.AllowedRequesters
 		bv.Tasks, unmatchedSelectors, unmatchedCriteria, errs = evaluateBVTasks(tse, tgse, vse, pbv, tasks)

@@ -269,8 +269,8 @@ Fields:
     non-module related build variant fields ([context](../decisions/2024-07-18_allow_module_expansions)).
 -   `tasks`: a list of tasks to run, referenced either by task name or by tags.
     Tasks listed here can also include other task-level fields, such as
-    `batchtime`, `cron`, `activate`, `depends_on`, and `run_on`. We can also
-    [define when a task will run](#limiting-when-a-task-or-variant-will-run). If there are
+    `batchtime`, `cron`, `activate`, `depends_on`, `stepback`, and `run_on`. 
+    We can also [define when a task will run](#limiting-when-a-task-or-variant-will-run). If there are
     conflicting settings definitions at different levels, the order of priority
     is defined [here](#task-fields-override-hierarchy).
 -   `activate`: by default, we'll activate if the whole version is
@@ -278,6 +278,10 @@ Fields:
     we instead want to activate immediately, then set activate to true.
     If this should only activate when manually scheduled or by
     stepback/dependencies, set activate to false.
+-   `stepback`: indicate if this variant should opt-in or out of stepback. 
+    (If disabled at the project-level, this value will be ignored, otherwise it will override.)
+-   `deactivate_previous`: indicate if this variant should unschedule older 
+    mainline tasks on success (if disabled at the project-level, this value will be ignored, otherwise it will override.)
 -   `batchtime`: interval of time in minutes that Evergreen should wait
     before activating this variant. The default is set on the project
     settings page. This cannot be set for individual tasks. 
@@ -328,7 +332,10 @@ includes. This will accept a list of filenames and module names. If the
 include isn't given, we will only use the main project configuration
 file.
 
-Note: included files do not support [version-controlled project settings configuration](Project-and-Distro-Settings#version-control)
+Note: [version-controlled project settings configurations](Project-and-Distro-Settings#version-control)
+will not be recognized if they are put in included files. In order for any of the supported version-controlled
+YAML settings to take effect, they must exist in the main config file.
+
 
 ``` yaml
 include: 
