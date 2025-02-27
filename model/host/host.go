@@ -1334,13 +1334,6 @@ func (h *Host) SetDNSName(ctx context.Context, dnsName string) error {
 	)
 	if err == nil {
 		h.Host = dnsName
-		event.LogHostDNSNameSet(h.Id, dnsName)
-		grip.Info(message.Fields{
-			"message":  "set host DNS name",
-			"host_id":  h.Id,
-			"host_tag": h.Tag,
-			"dns_name": dnsName,
-		})
 	}
 	if adb.ResultsNotFound(err) {
 		return nil

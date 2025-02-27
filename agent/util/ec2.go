@@ -18,16 +18,44 @@ const metadataBaseURL = "http://169.254.169.254/latest/meta-data"
 // GetEC2InstanceID returns the instance ID from the metadata endpoint if it's
 // an EC2 instance.
 func GetEC2InstanceID(ctx context.Context) (string, error) {
-	url := fmt.Sprintf("%s/instance-id", metadataBaseURL)
+	return getEC2Metadata(ctx, "instance-id", func(resp *http.Response) (string, error) {
+		instanceID, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return "", errors.Wrap(err, "reading response body")
+		}
+
+		return string(instanceID), nil
+	})
+}
+
+// GetEC2Hostname returns the public hostname from the metadata endpoint if it's
+// an EC2 instance.
+// kim: TODO: test on EC2 hosts in staging.
+func GetEC2Hostname(ctx context.Context) (string, error) {
+	return getEC2Metadata(ctx, "public-hostname", func(resp *http.Response) (string, error) {
+		instanceID, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return "", errors.Wrap(err, "reading response body")
+		}
+
+		return string(instanceID), nil
+	})
+}
+
+// getEC2Metadata gets the EC2 metadata for the subpath.
+func getEC2Metadata[Output any](ctx context.Context, metadataSubpath string, parseOutput func(resp *http.Response) (Output, error)) (Output, error) {
 	c := utility.GetHTTPClient()
 	defer utility.PutHTTPClient(c)
 
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
+	url := fmt.Sprintf("%s/%s", metadataBaseURL, metadataSubpath)
+
+	var zeroOutput Output
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		return "", errors.Wrap(err, "creating metadata request")
+		return zeroOutput, errors.Wrap(err, "creating metadata request")
 	}
 
 	const (
@@ -46,13 +74,8 @@ func GetEC2InstanceID(ctx context.Context) (string, error) {
 		defer resp.Body.Close()
 	}
 	if err != nil {
-		return "", errors.Wrap(err, "requesting EC2 instance ID from metadata endpoint")
+		return zeroOutput, errors.Wrap(err, "requesting EC2 instance ID from metadata endpoint")
 	}
 
-	instanceID, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", errors.Wrap(err, "reading response body")
-	}
-
-	return string(instanceID), nil
+	return parseOutput(resp)
 }
