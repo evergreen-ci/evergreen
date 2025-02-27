@@ -49,3 +49,9 @@ if [ -n "$ADDITIONAL_PROPERTIES" ]; then
 else
     "$OPENAPI_GENERATOR" generate -i "$OPENAPI_HARDCODED_CONFIG" -g go -o "$OPENAPI_OUTPUT_DIR"
 fi
+
+# Delete the generate go.mod file as it is not needed
+rm -f "$OPENAPI_OUTPUT_DIR/go.mod"
+rm -f "$OPENAPI_OUTPUT_DIR/go.sum"
+
+
