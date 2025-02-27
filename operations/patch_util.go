@@ -242,6 +242,10 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 		grip.Warningf("warning - failed to set default parameters: %s\n", err)
 	}
 
+	if p.Uncommitted && p.Ref != "" {
+		return nil, errors.Errorf("cannot specify both --uncommitted and --ref")
+	}
+
 	if p.Uncommitted || conf.UncommittedChanges {
 		p.Ref = ""
 	}
@@ -499,13 +503,18 @@ func (p *patchParams) getModulePath(conf *ClientSettings, module string) (string
 	if modulePath == "" {
 		return "", errors.Errorf("no module path given")
 	}
+	// Set path locally regardless of auto defaulting, so that its cached for the rest of the command.
+	conf.setModulePath(p.Project, module, modulePath)
 
 	if !conf.DisableAutoDefaulting {
 		// Verify that the path is correct before auto defaulting
 		if _, err := gitUncommittedChanges(modulePath); err != nil {
 			return "", errors.Wrapf(err, "verifying module '%s''", module)
 		}
-		conf.setModulePath(p.Project, module, modulePath)
+
+		grip.Infof("Project module '%s' will be set to use path '%s'. "+
+			"To disable automatic defaulting, set 'disable_auto_defaulting' to true.", module, modulePath)
+
 		if err := conf.Write(""); err != nil {
 			grip.Errorf("problem setting module '%s' path in config: %s", module, err.Error())
 		}
