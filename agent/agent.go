@@ -1071,6 +1071,12 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 		tc.logger.Task().Errorf("Error upserting check run: '%s'", err.Error())
 	}
 
+	if tc.logger != nil {
+		flushCtx, cancel := context.WithTimeout(ctx, time.Minute)
+		defer cancel()
+		grip.Error(errors.Wrap(tc.logger.Flush(flushCtx), "flushing logs"))
+	}
+
 	span := trace.SpanFromContext(ctx)
 	span.SetAttributes(attribute.String(evergreen.TaskStatusOtelAttribute, detail.Status))
 	if detail.Status != evergreen.TaskSucceeded {
