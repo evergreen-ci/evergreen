@@ -948,7 +948,7 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 					"tag":     tag,
 				})
 
-				if err = model.AddGitTag(existingVersion.Id, tag); err != nil {
+				if err = model.AddGitTag(ctx, existingVersion.Id, tag); err != nil {
 					catcher.Wrapf(err, "adding tag '%s' to version '%s''", tag.Tag, existingVersion.Id)
 					continue
 				}

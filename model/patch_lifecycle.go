@@ -156,7 +156,7 @@ func ConfigurePatch(ctx context.Context, settings *evergreen.Settings, p *patch.
 		}
 
 		if version.Message != patchUpdateReq.Description {
-			if err = UpdateVersionMessage(p.Version, patchUpdateReq.Description); err != nil {
+			if err = UpdateVersionMessage(ctx, p.Version, patchUpdateReq.Description); err != nil {
 				return http.StatusInternalServerError, errors.Wrap(err, "setting version message")
 			}
 		}

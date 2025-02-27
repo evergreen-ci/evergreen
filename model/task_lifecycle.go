@@ -1545,7 +1545,7 @@ func updateVersionGithubStatus(v *Version, builds []build.Build) error {
 // its constituent builds, as well as a boolean indicating if any of them have
 // unfinished essential tasks. It assumes that the build statuses have already
 // been updated prior to this.
-func updateVersionStatus(v *Version) (string, error) {
+func updateVersionStatus(ctx context.Context, v *Version) (string, error) {
 	builds, err := build.Find(build.ByVersion(v.Id))
 	if err != nil {
 		return "", errors.Wrapf(err, "getting builds for version '%s'", v.Id)
@@ -1559,7 +1559,7 @@ func updateVersionStatus(v *Version) (string, error) {
 	versionActivated, versionStatus := getVersionActivationAndStatus(builds)
 	// If all the builds are unscheduled and nothing has run, set active to false
 	if versionStatus == evergreen.VersionCreated && !versionActivated {
-		if err = v.SetActivated(false); err != nil {
+		if err = v.SetActivated(ctx, false); err != nil {
 			return "", errors.Wrapf(err, "setting version '%s' as inactive", v.Id)
 		}
 	}
@@ -1577,7 +1577,7 @@ func updateVersionStatus(v *Version) (string, error) {
 		}
 	}
 	if isAborted != v.Aborted {
-		if err = v.SetAborted(isAborted); err != nil {
+		if err = v.SetAborted(ctx, isAborted); err != nil {
 			return "", errors.Wrapf(err, "setting version '%s' as aborted", v.Id)
 		}
 	}
@@ -1585,11 +1585,11 @@ func updateVersionStatus(v *Version) (string, error) {
 	event.LogVersionStateChangeEvent(v.Id, versionStatus)
 
 	if evergreen.IsFinishedVersionStatus(versionStatus) {
-		if err = v.MarkFinished(versionStatus, time.Now()); err != nil {
+		if err = v.MarkFinished(ctx, versionStatus, time.Now()); err != nil {
 			return "", errors.Wrapf(err, "marking version '%s' as finished with status '%s'", v.Id, versionStatus)
 		}
 	} else {
-		if err = v.UpdateStatus(versionStatus); err != nil {
+		if err = v.UpdateStatus(ctx, versionStatus); err != nil {
 			return "", errors.Wrapf(err, "updating version '%s' with status '%s'", v.Id, versionStatus)
 		}
 	}
@@ -1664,7 +1664,7 @@ func UpdateBuildAndVersionStatusForTask(ctx context.Context, t *task.Task) error
 		return errors.Errorf("no version '%s' found for task '%s'", t.Version, t.Id)
 	}
 
-	newVersionStatus, err := updateVersionStatus(taskVersion)
+	newVersionStatus, err := updateVersionStatus(ctx, taskVersion)
 	if err != nil {
 		return errors.Wrapf(err, "updating version '%s' status", taskVersion.Id)
 	}
@@ -1761,7 +1761,7 @@ func UpdateVersionAndPatchStatusForBuilds(ctx context.Context, buildIds []string
 		if buildVersion == nil {
 			return errors.Errorf("no version '%s' found", versionId)
 		}
-		newVersionStatus, err := updateVersionStatus(buildVersion)
+		newVersionStatus, err := updateVersionStatus(ctx, buildVersion)
 		if err != nil {
 			return errors.Wrapf(err, "updating version '%s' status", buildVersion.Id)
 		}
@@ -1800,7 +1800,7 @@ func MarkStart(ctx context.Context, t *task.Task, updates *StatusChanges) error 
 	}
 
 	// ensure the appropriate version is marked as started if necessary
-	if err = TryMarkVersionStarted(t.Version, startTime); err != nil {
+	if err = TryMarkVersionStarted(ctx, t.Version, startTime); err != nil {
 		return errors.Wrap(err, "marking version started")
 	}
 

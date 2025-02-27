@@ -41,7 +41,7 @@ func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 		return nil, errors.Wrap(err, "creating version")
 	}
 	if args.SourceVersion != nil {
-		if err = args.SourceVersion.AddSatisfiedTrigger(args.DefinitionID); err != nil {
+		if err = args.SourceVersion.AddSatisfiedTrigger(ctx, args.DefinitionID); err != nil {
 			return nil, err
 		}
 	}
