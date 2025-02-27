@@ -185,8 +185,8 @@ type hostGetHandler struct {
 
 // Factory creates an instance of the handler.
 //
-//	@Summary		Fetch all hosts or all hosts spawned by user
-//	@Description	Returns a list of hosts (spawned by the user if given).
+//	@Summary		Fetch hosts
+//	@Description	Returns a list of hosts.
 //	@Tags			hosts
 //	@Router			/hosts [get]
 //	@Security		Api-User || Api-Key
