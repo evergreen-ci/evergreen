@@ -560,10 +560,11 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 	// Under the hood, this is updating the container secrets in the DB project
 	// ref, but this function's copy of the in-memory project ref won't reflect
-	// those changes.
-	if err := data.UpsertContainerSecrets(ctx, vault, allContainerSecrets); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "upserting container secrets"))
-	}
+	// those changes. We log an error here instead of returning, so that this
+	// doesn't prevent the rest of the operations.
+	grip.Error(message.WrapError(data.UpsertContainerSecrets(ctx, vault, allContainerSecrets), message.Fields{
+		"message": "problem upserting container secrets",
+	}))
 
 	if err = data.UpdateProjectVars(h.newProjectRef.Id, &h.apiNewProjectRef.Variables, false); err != nil { // destructively modifies h.apiNewProjectRef.Variables
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "updating variables for project '%s'", h.project))

@@ -189,10 +189,11 @@ func tryCopyingContainerSecrets(ctx context.Context, settings *evergreen.Setting
 
 	// Under the hood, this is updating the container secrets in the DB project
 	// ref, but this function's copy of the in-memory project ref won't reflect
-	// those changes.
-	if err := UpsertContainerSecrets(ctx, vault, secrets); err != nil {
-		return errors.Wrapf(err, "upserting container secrets")
-	}
+	// those changes. We log an error here instead of returning, so that this
+	// doesn't prevent the rest of the operations.
+	grip.Error(message.WrapError(UpsertContainerSecrets(ctx, vault, secrets), message.Fields{
+		"message": "problem upserting container secrets",
+	}))
 
 	return nil
 }
