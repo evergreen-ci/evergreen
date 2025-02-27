@@ -20,7 +20,9 @@ import (
 )
 
 type TaskConfig struct {
+	// kim: TODO: add hostname as data to fetch for task.
 	Distro       *apimodels.DistroView
+	Host         *apimodels.HostView
 	ProjectRef   model.ProjectRef
 	Project      model.Project
 	Task         task.Task
@@ -144,6 +146,18 @@ func (t *TaskConfig) GetExecTimeout() int {
 	return t.Timeout.ExecTimeoutSecs
 }
 
+type TaskConfigOptions struct {
+	WorkDir           string
+	Distro            *apimodels.DistroView
+	Host              *apimodels.HostView
+	Project           *model.Project
+	Task              *task.Task
+	ProjectRef        *model.ProjectRef
+	Patch             *patch.Patch
+	Version           *model.Version
+	ExpansionsAndVars *apimodels.ExpansionsAndVars
+}
+
 // NewTaskConfig validates that the required inputs are given and populates the
 // information necessary for a task to run. It is generally preferred to use
 // this function over initializing the TaskConfig struct manually.
@@ -152,76 +166,77 @@ func (t *TaskConfig) GetExecTimeout() int {
 // the task config and otel attributes.
 // If the patchDoc is nil, a versionDoc should be provided (optional as well)
 // to get the version description for the otel attributes.
-func NewTaskConfig(workDir string, d *apimodels.DistroView, p *model.Project, t *task.Task, r *model.ProjectRef, patchDoc *patch.Patch, versionDoc *model.Version, e *apimodels.ExpansionsAndVars) (*TaskConfig, error) {
-	if p == nil {
-		return nil, errors.Errorf("project '%s' is nil", t.Project)
-	}
-	if r == nil {
-		return nil, errors.Errorf("project ref '%s' is nil", p.Identifier)
-	}
-	if t == nil {
+func NewTaskConfig(opts TaskConfigOptions) (*TaskConfig, error) {
+	if opts.Task == nil {
 		return nil, errors.Errorf("task cannot be nil")
 	}
+	if opts.Project == nil {
+		return nil, errors.Errorf("project '%s' is nil", opts.Task.Project)
+	}
+	if opts.ProjectRef == nil {
+		return nil, errors.Errorf("project ref '%s' is nil", opts.Project.Identifier)
+	}
 
-	bv := p.FindBuildVariant(t.BuildVariant)
+	bv := opts.Project.FindBuildVariant(opts.Task.BuildVariant)
 	if bv == nil {
-		return nil, errors.Errorf("cannot find build variant '%s' for task in project '%s'", t.BuildVariant, t.Project)
+		return nil, errors.Errorf("cannot find build variant '%s' for task in project '%s'", opts.Task.BuildVariant, opts.Task.Project)
 	}
 
 	var taskGroup *model.TaskGroup
-	if t.TaskGroup != "" {
-		taskGroup = p.FindTaskGroup(t.TaskGroup)
+	if opts.Task.TaskGroup != "" {
+		taskGroup = opts.Project.FindTaskGroup(opts.Task.TaskGroup)
 		if taskGroup == nil {
-			return nil, errors.Errorf("task is part of task group '%s' but no such task group is defined in the project", t.TaskGroup)
+			return nil, errors.Errorf("task is part of task group '%s' but no such task group is defined in the project", opts.Task.TaskGroup)
 		}
 	}
 
 	// Add keys matching redact patterns to private vars.
-	for key := range e.Vars {
-		if ok := e.PrivateVars[key]; ok {
+	for key := range opts.ExpansionsAndVars.Vars {
+		if ok := opts.ExpansionsAndVars.PrivateVars[key]; ok {
 			// Skip since the key is already private.
 			continue
 		}
 
-		for _, pattern := range e.RedactKeys {
+		for _, pattern := range opts.ExpansionsAndVars.RedactKeys {
 			if strings.Contains(strings.ToLower(key), pattern) {
-				e.PrivateVars[key] = true
+				opts.ExpansionsAndVars.PrivateVars[key] = true
 				break
 			}
 		}
 	}
 
 	var redacted []string
-	for key := range e.PrivateVars {
+	for key := range opts.ExpansionsAndVars.PrivateVars {
 		redacted = append(redacted, key)
 	}
 
-	internalRedactions := e.InternalRedactions
+	internalRedactions := opts.ExpansionsAndVars.InternalRedactions
 	if internalRedactions == nil {
 		internalRedactions = map[string]string{}
 	}
 
 	taskConfig := &TaskConfig{
-		Distro:             d,
-		ProjectRef:         *r,
-		Project:            *p,
-		Task:               *t,
+		Distro:             opts.Distro,
+		Host:               opts.Host,
+		ProjectRef:         *opts.ProjectRef,
+		Project:            *opts.Project,
+		Task:               *opts.Task,
 		BuildVariant:       *bv,
-		Expansions:         e.Expansions,
-		NewExpansions:      agentutil.NewDynamicExpansions(e.Expansions),
+		Expansions:         opts.ExpansionsAndVars.Expansions,
+		NewExpansions:      agentutil.NewDynamicExpansions(opts.ExpansionsAndVars.Expansions),
 		DynamicExpansions:  util.Expansions{},
 		InternalRedactions: agentutil.NewDynamicExpansions(internalRedactions),
-		ProjectVars:        e.Vars,
+		ProjectVars:        opts.ExpansionsAndVars.Vars,
 		Redacted:           redacted,
-		WorkDir:            workDir,
+		WorkDir:            opts.WorkDir,
 		TaskGroup:          taskGroup,
 	}
-	if patchDoc != nil {
-		taskConfig.GithubPatchData = patchDoc.GithubPatchData
-		taskConfig.GithubMergeData = patchDoc.GithubMergeData
-		taskConfig.PatchOrVersionDescription = patchDoc.Description
-	} else if versionDoc != nil {
-		taskConfig.PatchOrVersionDescription = versionDoc.Message
+	if opts.Patch != nil {
+		taskConfig.GithubPatchData = opts.Patch.GithubPatchData
+		taskConfig.GithubMergeData = opts.Patch.GithubMergeData
+		taskConfig.PatchOrVersionDescription = opts.Patch.Description
+	} else if opts.Patch != nil {
+		taskConfig.PatchOrVersionDescription = opts.Version.Message
 	}
 
 	return taskConfig, nil
@@ -245,6 +260,10 @@ func (tc *TaskConfig) TaskAttributeMap() map[string]string {
 	}
 	if tc.GithubPatchData.PRNumber != 0 {
 		attributes[evergreen.VersionPRNumOtelAttribute] = strconv.Itoa(tc.GithubPatchData.PRNumber)
+	}
+	if tc.Host != nil {
+		// kim: TODO: test this attribute appears in staging.
+		attributes[evergreen.HostnameOtelAttribute] = tc.Host.Hostname
 	}
 	return attributes
 }

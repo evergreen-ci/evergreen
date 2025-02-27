@@ -212,6 +212,10 @@ func (c *Mock) GetDistroView(context.Context, TaskData) (*apimodels.DistroView, 
 	return &apimodels.DistroView{}, nil
 }
 
+func (c *Mock) GetHostView(context.Context, TaskData) (*apimodels.HostView, error) {
+	return &apimodels.HostView{}, nil
+}
+
 func (c *Mock) GetDistroAMI(context.Context, string, string, TaskData) (string, error) {
 	return "ami-mock", nil
 }

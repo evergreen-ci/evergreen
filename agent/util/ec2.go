@@ -23,7 +23,6 @@ func GetEC2InstanceID(ctx context.Context) (string, error) {
 		if err != nil {
 			return "", errors.Wrap(err, "reading response body")
 		}
-
 		instanceID := string(b)
 		if instanceID == "" {
 			return "", errors.New("instance ID from response is empty")

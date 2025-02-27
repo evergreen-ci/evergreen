@@ -515,6 +515,7 @@ const (
 	ProjectIDOtelAttribute         = "evergreen.project.id"
 	DistroIDOtelAttribute          = "evergreen.distro.id"
 	HostIDOtelAttribute            = "evergreen.host.id"
+	HostnameOtelAttribute          = "evergreen.host.hostname"
 	HostStartedByOtelAttribute     = "evergreen.host.started_by"
 	HostNoExpirationOtelAttribute  = "evergreen.host.no_expiration"
 	HostInstanceTypeOtelAttribute  = "evergreen.host.instance_type"

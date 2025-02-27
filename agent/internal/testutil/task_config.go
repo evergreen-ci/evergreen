@@ -19,7 +19,16 @@ func MakeTaskConfigFromModelData(ctx context.Context, settings *evergreen.Settin
 	if err != nil {
 		return nil, errors.Wrap(err, "populating expansions")
 	}
-	config, err := internal.NewTaskConfig(data.Host.Distro.WorkDir, &apimodels.DistroView{}, data.Project, data.Task, data.ProjectRef, nil, nil, &apimodels.ExpansionsAndVars{Expansions: exp})
+	tcOpts := internal.TaskConfigOptions{
+		WorkDir:           data.Host.Distro.WorkDir,
+		Distro:            &apimodels.DistroView{},
+		Host:              &apimodels.HostView{},
+		Project:           data.Project,
+		ProjectRef:        data.ProjectRef,
+		Task:              data.Task,
+		ExpansionsAndVars: &apimodels.ExpansionsAndVars{Expansions: exp},
+	}
+	config, err := internal.NewTaskConfig(tcOpts)
 	if err != nil {
 		return nil, errors.Wrap(err, "making task config from test model data")
 	}
