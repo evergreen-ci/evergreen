@@ -487,7 +487,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		modified = true
 	}
 
-	modifiedProjectRef, err := model.SaveProjectPageForSection(projectId, newProjectRef, section, isRepo)
+	modifiedProjectRef, err := model.SaveProjectPageForSection(ctx, projectId, newProjectRef, section, isRepo)
 	if err != nil {
 		return nil, errors.Wrapf(err, "saving project for section '%s'", section)
 	}

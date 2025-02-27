@@ -2461,7 +2461,7 @@ func TestFindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(t *testing.T) {
 	assert.Nil(projectRef)
 
 	doc.CommitQueue.Enabled = utility.TruePtr()
-	require.NoError(db.Update(ProjectRefCollection, mgobson.M{ProjectRefIdKey: "mci"}, doc))
+	require.NoError(db.UpdateContext(t.Context(), ProjectRefCollection, mgobson.M{ProjectRefIdKey: "mci"}, doc))
 
 	projectRef, err = FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch("mongodb", "mci", "main")
 	assert.NoError(err)
@@ -3400,7 +3400,7 @@ func TestUpdateNextPeriodicBuild(t *testing.T) {
 			assert.NoError(p.Insert())
 			assert.NoError(repoRef.Upsert())
 
-			assert.NoError(UpdateNextPeriodicBuild("proj", &p.PeriodicBuilds[1]))
+			assert.NoError(UpdateNextPeriodicBuild(t.Context(), "proj", &p.PeriodicBuilds[1]))
 			dbProject, err := FindBranchProjectRef(p.Id)
 			assert.NoError(err)
 			require.NotNil(dbProject)
@@ -3427,7 +3427,7 @@ func TestUpdateNextPeriodicBuild(t *testing.T) {
 			}}
 			assert.NoError(p.Insert())
 			assert.NoError(repoRef.Upsert())
-			assert.NoError(UpdateNextPeriodicBuild("proj", &repoRef.PeriodicBuilds[0]))
+			assert.NoError(UpdateNextPeriodicBuild(t.Context(), "proj", &repoRef.PeriodicBuilds[0]))
 
 			// Repo is updated because the branch project doesn't have any periodic build override defined.
 			dbRepo, err := FindOneRepoRef(p.RepoRefId)
@@ -3451,7 +3451,7 @@ func TestUpdateNextPeriodicBuild(t *testing.T) {
 			assert.NoError(repoRef.Upsert())
 			// Should error because definition isn't relevant for this project, since
 			// we ignore repo definitions when the project has any override defined.
-			assert.Error(UpdateNextPeriodicBuild("proj", &repoRef.PeriodicBuilds[0]))
+			assert.Error(UpdateNextPeriodicBuild(t.Context(), "proj", &repoRef.PeriodicBuilds[0]))
 
 			dbRepo, err := FindOneRepoRef(p.RepoRefId)
 			assert.NoError(err)
@@ -3480,7 +3480,7 @@ func TestUpdateNextPeriodicBuild(t *testing.T) {
 			assert.NoError(p.Insert())
 			assert.NoError(repoRef.Upsert())
 
-			assert.NoError(UpdateNextPeriodicBuild("proj", &p.PeriodicBuilds[0]))
+			assert.NoError(UpdateNextPeriodicBuild(t.Context(), "proj", &p.PeriodicBuilds[0]))
 			dbProject, err := FindBranchProjectRef(p.Id)
 			assert.NoError(err)
 			require.NotNil(dbProject)
@@ -3488,7 +3488,7 @@ func TestUpdateNextPeriodicBuild(t *testing.T) {
 			assert.True(laterRunTime.Equal(dbProject.PeriodicBuilds[1].NextRunTime))
 
 			// Even with a different runtime we get the same result, since we're using a cron.
-			assert.NoError(UpdateNextPeriodicBuild("proj", &p.PeriodicBuilds[1]))
+			assert.NoError(UpdateNextPeriodicBuild(t.Context(), "proj", &p.PeriodicBuilds[1]))
 			dbProject, err = FindBranchProjectRef(p.Id)
 			assert.NoError(err)
 			require.NotNil(dbProject)
@@ -3801,7 +3801,7 @@ func TestSaveProjectPageForSection(t *testing.T) {
 		Owner:   "evergreen-ci",
 		Repo:    "test",
 	}
-	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGeneralSection, false)
+	_, err = SaveProjectPageForSection(t.Context(), "iden_", update, ProjectPageGeneralSection, false)
 	assert.NoError(err)
 
 	// Verify that Parsley filters and project health view are saved correctly.
@@ -3811,7 +3811,7 @@ func TestSaveProjectPageForSection(t *testing.T) {
 		},
 		ProjectHealthView: ProjectHealthViewAll,
 	}
-	_, err = SaveProjectPageForSection("iden_", update, ProjectPageViewsAndFiltersSection, false)
+	_, err = SaveProjectPageForSection(t.Context(), "iden_", update, ProjectPageViewsAndFiltersSection, false)
 	assert.NoError(err)
 
 	projectRef, err = FindBranchProjectRef("iden_")
@@ -3824,7 +3824,7 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	update = &ProjectRef{
 		Restricted: utility.TruePtr(),
 	}
-	_, err = SaveProjectPageForSection("iden_", update, ProjectPageAccessSection, false)
+	_, err = SaveProjectPageForSection(t.Context(), "iden_", update, ProjectPageAccessSection, false)
 	assert.NoError(err)
 
 	projectRef, err = FindBranchProjectRef("iden_")
@@ -3843,7 +3843,7 @@ func TestSaveProjectPageForSection(t *testing.T) {
 			},
 		},
 	}
-	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGithubPermissionsSection, false)
+	_, err = SaveProjectPageForSection(t.Context(), "iden_", update, ProjectPageGithubPermissionsSection, false)
 	assert.NoError(err)
 
 	projectRef, err = FindBranchProjectRef("iden_")
@@ -3859,7 +3859,7 @@ func TestSaveProjectPageForSection(t *testing.T) {
 			evergreen.PatchVersionRequester: "some-group",
 		},
 	}
-	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGithubAppSettingsSection, false)
+	_, err = SaveProjectPageForSection(t.Context(), "iden_", update, ProjectPageGithubAppSettingsSection, false)
 	assert.NoError(err)
 
 	projectRef, err = FindBranchProjectRef("iden_")

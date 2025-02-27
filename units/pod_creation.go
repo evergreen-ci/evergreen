@@ -105,7 +105,7 @@ func (j *podCreationJob) Run(ctx context.Context) {
 
 		// Wait for the pod definition to be asynchronously created. If the pod
 		// definition is not ready yet, retry again later.
-		podDef, err := j.checkForPodDefinition(j.pod.Family)
+		podDef, err := j.checkForPodDefinition(ctx, j.pod.Family)
 		if err != nil {
 			j.AddRetryableError(errors.Wrap(err, "waiting for pod definition to be created"))
 			return
@@ -183,7 +183,7 @@ func (j *podCreationJob) populateIfUnset(ctx context.Context) error {
 	return nil
 }
 
-func (j *podCreationJob) checkForPodDefinition(family string) (*definition.PodDefinition, error) {
+func (j *podCreationJob) checkForPodDefinition(ctx context.Context, family string) (*definition.PodDefinition, error) {
 	podDef, err := definition.FindOneByFamily(family)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding pod definition with family '%s'", family)
@@ -199,7 +199,7 @@ func (j *podCreationJob) checkForPodDefinition(family string) (*definition.PodDe
 		"job":            j.ID(),
 	})
 
-	if err := podDef.UpdateLastAccessed(); err != nil {
+	if err := podDef.UpdateLastAccessed(ctx); err != nil {
 		return nil, errors.Wrapf(err, "updating last access time for pod definition '%s'", podDef.ID)
 	}
 

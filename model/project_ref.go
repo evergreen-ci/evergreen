@@ -2095,20 +2095,6 @@ func IsPerfEnabledForProject(projectId string) bool {
 	return projectRef.IsPerfEnabled()
 }
 
-func UpdateOwnerAndRepoForBranchProjects(repoId, owner, repo string) error {
-	return db.Update(
-		ProjectRefCollection,
-		bson.M{
-			ProjectRefRepoRefIdKey: repoId,
-		},
-		bson.M{
-			"$set": bson.M{
-				ProjectRefOwnerKey: owner,
-				ProjectRefRepoKey:  repo,
-			},
-		})
-}
-
 // FindPeriodicProjects returns a list of merged projects that have periodic builds defined.
 func FindPeriodicProjects() ([]ProjectRef, error) {
 	res := []ProjectRef{}
@@ -2180,7 +2166,7 @@ func (p *ProjectRef) SetContainerSecrets(secrets []ContainerSecret) error {
 }
 
 // SaveProjectPageForSection updates the project or repo ref variables for the section (if no project is given, we unset to default to repo).
-func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectPageSection, isRepo bool) (bool, error) {
+func SaveProjectPageForSection(ctx context.Context, projectId string, p *ProjectRef, section ProjectPageSection, isRepo bool) (bool, error) {
 	coll := ProjectRefCollection
 	if isRepo {
 		coll = RepoRefCollection
@@ -2228,13 +2214,13 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 			setUpdate[ProjectRefDisplayNameKey] = p.DisplayName
 			setUpdate[ProjectRefIdentifierKey] = p.Identifier
 		}
-		err = db.Update(coll,
+		err = db.UpdateContext(ctx, coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": setUpdate,
 			})
 	case ProjectPagePluginSection:
-		err = db.Update(coll,
+		err = db.UpdateContext(ctx, coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{
@@ -2245,7 +2231,7 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 				},
 			})
 	case ProjectPageAccessSection:
-		err = db.Update(coll,
+		err = db.UpdateContext(ctx, coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{
@@ -2254,7 +2240,7 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 				},
 			})
 	case ProjectPageGithubAndCQSection:
-		err = db.Update(coll,
+		err = db.UpdateContext(ctx, coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{
@@ -2269,20 +2255,20 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 				},
 			})
 	case ProjectPageNotificationsSection:
-		err = db.Update(coll,
+		err = db.UpdateContext(ctx, coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{projectRefNotifyOnFailureKey: p.NotifyOnBuildFailure,
 					projectRefBannerKey: p.Banner},
 			})
 	case ProjectPageWorkstationsSection:
-		err = db.Update(coll,
+		err = db.UpdateContext(ctx, coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{projectRefWorkstationConfigKey: p.WorkstationConfig},
 			})
 	case ProjectPageTriggersSection:
-		err = db.Update(coll,
+		err = db.UpdateContext(ctx, coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{
@@ -2290,7 +2276,7 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 				},
 			})
 	case ProjectPagePatchAliasSection:
-		err = db.Update(coll,
+		err = db.UpdateContext(ctx, coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{
@@ -2299,19 +2285,19 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 				},
 			})
 	case ProjectPagePeriodicBuildsSection:
-		err = db.Update(coll,
+		err = db.UpdateContext(ctx, coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{projectRefPeriodicBuildsKey: p.PeriodicBuilds},
 			})
 	case ProjectPageContainerSection:
-		err = db.Update(coll,
+		err = db.UpdateContext(ctx, coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{projectRefContainerSizeDefinitionsKey: p.ContainerSizeDefinitions},
 			})
 	case ProjectPageViewsAndFiltersSection:
-		err = db.Update(coll,
+		err = db.UpdateContext(ctx, coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{
@@ -2320,7 +2306,7 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 				},
 			})
 	case ProjectPageGithubAppSettingsSection:
-		err = db.Update(coll,
+		err = db.UpdateContext(ctx, coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{
@@ -2328,7 +2314,7 @@ func SaveProjectPageForSection(projectId string, p *ProjectRef, section ProjectP
 				},
 			})
 	case ProjectPageGithubPermissionsSection:
-		err = db.Update(coll,
+		err = db.UpdateContext(ctx, coll,
 			bson.M{ProjectRefIdKey: projectId},
 			bson.M{
 				"$set": bson.M{
@@ -2358,7 +2344,7 @@ func DefaultSectionToRepo(ctx context.Context, projectId string, section Project
 		return errors.Wrap(err, "getting before project settings event")
 	}
 
-	modified, err := SaveProjectPageForSection(projectId, nil, section, false)
+	modified, err := SaveProjectPageForSection(ctx, projectId, nil, section, false)
 	if err != nil {
 		return errors.Wrapf(err, "defaulting project ref to repo for section '%s'", section)
 	}
@@ -2420,7 +2406,7 @@ func DefaultSectionToRepo(ctx context.Context, projectId string, section Project
 		}
 		catcher.Wrapf(err, "defaulting to repo for section '%s'", section)
 		// also default the permission groups when defaulting to the repo
-		_, err = SaveProjectPageForSection(projectId, nil, ProjectPageGithubPermissionsSection, false)
+		_, err = SaveProjectPageForSection(ctx, projectId, nil, ProjectPageGithubPermissionsSection, false)
 		catcher.Wrapf(err, "defaulting the github permissions as part of defaulting section '%s'", section)
 	}
 	if modified {
@@ -2537,7 +2523,7 @@ func (p *ProjectRef) GetActivationTimeForVariant(variant *BuildVariant, versionC
 // CheckAndUpdateAutoRestartLimit checks if auto restarting a task for a project is allowed given
 // the global per-project daily auto restarting limit, and updates relevant timestamp and counter used
 // to track the project's usage.
-func (p *ProjectRef) CheckAndUpdateAutoRestartLimit(maxDailyAutoRestarts int) error {
+func (p *ProjectRef) CheckAndUpdateAutoRestartLimit(ctx context.Context, maxDailyAutoRestarts int) error {
 	if maxDailyAutoRestarts == 0 {
 		return nil
 	}
@@ -2563,7 +2549,7 @@ func (p *ProjectRef) CheckAndUpdateAutoRestartLimit(maxDailyAutoRestarts int) er
 			},
 		}
 	}
-	return errors.Wrap(db.Update(ProjectRefCollection, bson.M{ProjectRefIdKey: p.Id}, update), "updating project's auto-restart limit")
+	return errors.Wrap(db.UpdateContext(ctx, ProjectRefCollection, bson.M{ProjectRefIdKey: p.Id}, update), "updating project's auto-restart limit")
 }
 
 // isActiveCronTimeRange checks that the proposed cron should activate now or
@@ -3024,7 +3010,7 @@ func (p *ProjectRef) GetProjectSetupCommands(opts apimodels.WorkstationSetupComm
 
 // UpdateNextPeriodicBuild updates the periodic build run time for either the project
 // or repo ref depending on where it's defined.
-func UpdateNextPeriodicBuild(projectId string, definition *PeriodicBuildDefinition) error {
+func UpdateNextPeriodicBuild(ctx context.Context, projectId string, definition *PeriodicBuildDefinition) error {
 	var nextRunTime time.Time
 	var err error
 	baseTime := definition.NextRunTime
@@ -3086,7 +3072,7 @@ func UpdateNextPeriodicBuild(projectId string, definition *PeriodicBuildDefiniti
 		},
 	}
 
-	return errors.Wrapf(db.Update(collection, filter, update), "updating collection '%s'", collection)
+	return errors.Wrapf(db.UpdateContext(ctx, collection, filter, update), "updating collection '%s'", collection)
 }
 
 func (p *ProjectRef) CommitQueueIsOn() error {
@@ -3436,11 +3422,11 @@ var lookupRepoStep = bson.M{"$lookup": bson.M{
 type ContainerSecretCache struct{}
 
 // Put sets the external ID for a project ref's container secret by its name.
-func (c ContainerSecretCache) Put(_ context.Context, sc cocoa.SecretCacheItem) error {
+func (c ContainerSecretCache) Put(ctx context.Context, sc cocoa.SecretCacheItem) error {
 	externalNameKey := bsonutil.GetDottedKeyName(projectRefContainerSecretsKey, containerSecretExternalNameKey)
 	externalIDKey := bsonutil.GetDottedKeyName(projectRefContainerSecretsKey, containerSecretExternalIDKey)
 	externalIDUpdateKey := bsonutil.GetDottedKeyName(projectRefContainerSecretsKey, "$", containerSecretExternalIDKey)
-	return db.Update(ProjectRefCollection, bson.M{
+	return db.UpdateContext(ctx, ProjectRefCollection, bson.M{
 		externalNameKey: sc.Name,
 		externalIDKey: bson.M{
 			"$in": []interface{}{"", sc.ID},
@@ -3454,9 +3440,9 @@ func (c ContainerSecretCache) Put(_ context.Context, sc cocoa.SecretCacheItem) e
 
 // Delete deletes a container secret from the project ref by its external
 // identifier.
-func (c ContainerSecretCache) Delete(_ context.Context, externalID string) error {
+func (c ContainerSecretCache) Delete(ctx context.Context, externalID string) error {
 	externalIDKey := bsonutil.GetDottedKeyName(projectRefContainerSecretsKey, containerSecretExternalIDKey)
-	err := db.Update(ProjectRefCollection, bson.M{
+	err := db.UpdateContext(ctx, ProjectRefCollection, bson.M{
 		externalIDKey: externalID,
 	}, bson.M{
 		"$pull": bson.M{
