@@ -660,6 +660,10 @@ func (p *ProjectRef) Add(creator *user.DBUser) error {
 	if p.Id == "" {
 		p.Id = mgobson.NewObjectId().Hex()
 	}
+	// Default to adding the creator as the admin; the permissions themselves will be handled in the add function.
+	if creator != nil {
+		p.Admins = utility.UniqueStrings(append(p.Admins, creator.Id))
+	}
 	// Ensure that any new project is originally explicitly disabled and set to private.
 	p.Enabled = false
 
@@ -675,11 +679,8 @@ func (p *ProjectRef) Add(creator *user.DBUser) error {
 			if err != nil {
 				return errors.Wrapf(err, "upserting project ref '%s'", hidden.Id)
 			}
-			if creator != nil {
-				_, err = p.UpdateAdminRoles([]string{creator.Id}, nil)
-				return err
-			}
-			return nil
+			_, err = p.UpdateAdminRoles(p.Admins, nil)
+			return err
 		}
 	}
 
@@ -1059,7 +1060,7 @@ func (p *ProjectRef) addPermissions(creator *user.DBUser) error {
 		return errors.Wrapf(err, "adding scope for project '%s'", p.Id)
 	}
 	newRole := gimlet.Role{
-		ID:          fmt.Sprintf("admin_project_%s", p.Id),
+		ID:          GetProjectAdminRole(p.Id),
 		Scope:       newScope.ID,
 		Permissions: adminPermissions,
 	}
@@ -3597,4 +3598,9 @@ func ProjectCanDispatchTask(pRef *ProjectRef, t *task.Task) (canDispatch bool, r
 	}
 
 	return true, reason
+}
+
+// GetProjectAdminRole returns the project admin role ID for the given project.
+func GetProjectAdminRole(projectId string) string {
+	return fmt.Sprintf("admin_project_%s", projectId)
 }
