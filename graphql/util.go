@@ -593,7 +593,7 @@ func validateVolumeName(ctx context.Context, name *string) error {
 		return InputValidationError.Send(ctx, "Name cannot be empty.")
 	}
 	usr := mustHaveUser(ctx)
-	myVolumes, err := host.FindSortedVolumesByUser(usr.Id)
+	myVolumes, err := host.FindSortedVolumesByUser(ctx, usr.Id)
 	if err != nil {
 		return err
 	}

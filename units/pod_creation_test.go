@@ -94,7 +94,7 @@ func TestPodCreationJob(t *testing.T) {
 		},
 		"FailsWithStartingStatus": func(ctx context.Context, t *testing.T, j *podCreationJob) {
 			require.NoError(t, j.pod.Insert())
-			require.NoError(t, j.pod.UpdateStatus(pod.StatusStarting, ""))
+			require.NoError(t, j.pod.UpdateStatus(ctx, pod.StatusStarting, ""))
 			assert.Equal(t, pod.StatusStarting, j.pod.Status)
 
 			j.Run(ctx)
@@ -110,7 +110,7 @@ func TestPodCreationJob(t *testing.T) {
 		},
 		"FailsWithRunningStatus": func(ctx context.Context, t *testing.T, j *podCreationJob) {
 			require.NoError(t, j.pod.Insert())
-			require.NoError(t, j.pod.UpdateStatus(pod.StatusRunning, ""))
+			require.NoError(t, j.pod.UpdateStatus(ctx, pod.StatusRunning, ""))
 			assert.Equal(t, pod.StatusRunning, j.pod.Status)
 
 			j.Run(ctx)
@@ -126,7 +126,7 @@ func TestPodCreationJob(t *testing.T) {
 		},
 		"FailsWithTerminatedStatus": func(ctx context.Context, t *testing.T, j *podCreationJob) {
 			require.NoError(t, j.pod.Insert())
-			require.NoError(t, j.pod.UpdateStatus(pod.StatusTerminated, ""))
+			require.NoError(t, j.pod.UpdateStatus(ctx, pod.StatusTerminated, ""))
 
 			j.Run(ctx)
 			require.Error(t, j.Error())

@@ -391,7 +391,7 @@ func TestPodAgentEndTask(t *testing.T) {
 			endTaskResp, ok := resp.Data().(*apimodels.EndTaskResponse)
 			require.True(t, ok)
 			assert.Equal(t, &apimodels.EndTaskResponse{}, endTaskResp)
-			require.NoError(t, podToInsert.UpdateStatus(pod.StatusStarting, ""))
+			require.NoError(t, podToInsert.UpdateStatus(ctx, pod.StatusStarting, ""))
 			resp = rh.Run(ctx)
 			endTaskResp, ok = resp.Data().(*apimodels.EndTaskResponse)
 			require.True(t, ok)

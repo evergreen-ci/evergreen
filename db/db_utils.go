@@ -300,6 +300,21 @@ func UpdateId(collection string, id, update interface{}) error {
 	return db.C(collection).UpdateId(id, update)
 }
 
+func UpdateIdContext(ctx context.Context, collection string, id, update interface{}) error {
+	res, err := evergreen.GetEnvironment().DB().Collection(collection).UpdateOne(ctx,
+		bson.D{{Key: "_id", Value: id}},
+		update,
+	)
+	if err != nil {
+		return errors.Wrapf(err, "updating task")
+	}
+	if res.MatchedCount == 0 {
+		return db.ErrNotFound
+	}
+
+	return nil
+}
+
 // UpdateAll updates all matching documents in the collection.
 func UpdateAll(collection string, query interface{}, update interface{}) (*db.ChangeInfo, error) {
 	switch query.(type) {

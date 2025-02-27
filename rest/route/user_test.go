@@ -865,7 +865,7 @@ func TestRenameUser(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Len(t, hosts, 1)
 
-			volumes, err := host.FindVolumesByUser("new_me")
+			volumes, err := host.FindVolumesByUser(ctx, "new_me")
 			assert.NoError(t, err)
 			assert.Len(t, volumes, 1)
 
@@ -902,7 +902,7 @@ func TestRenameUser(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Len(t, hosts, 1)
 
-			volumes, err := host.FindVolumesByUser("new_me")
+			volumes, err := host.FindVolumesByUser(ctx, "new_me")
 			assert.NoError(t, err)
 			assert.Len(t, volumes, 1)
 

@@ -71,7 +71,7 @@ func (j *volumeExpirationWarningsJob) Run(ctx context.Context) {
 	// Do alerts for volumes - collect all volumes that are unattached.
 	// The trigger logic will filter out any volumes that aren't in a notification window, or have
 	// already have alerts sent.
-	unattachedVolumes, err := host.FindUnattachedExpirableVolumes()
+	unattachedVolumes, err := host.FindUnattachedExpirableVolumes(ctx)
 	if err != nil {
 		j.AddError(errors.WithStack(err))
 		return

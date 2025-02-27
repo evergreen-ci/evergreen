@@ -1216,7 +1216,7 @@ func (h *Host) AddVolumeToHost(ctx context.Context, newVolume *VolumeAttachment)
 		return errors.Wrap(err, "decoding host")
 	}
 
-	grip.Error(message.WrapError((&Volume{ID: newVolume.VolumeID}).SetHost(h.Id),
+	grip.Error(message.WrapError((&Volume{ID: newVolume.VolumeID}).SetHost(ctx, h.Id),
 		message.Fields{
 			"host_id":   h.Id,
 			"volume_id": newVolume.VolumeID,
@@ -1244,7 +1244,7 @@ func (h *Host) RemoveVolumeFromHost(ctx context.Context, volumeId string) error 
 		return errors.Wrap(err, "decoding host")
 	}
 
-	grip.Error(message.WrapError(UnsetVolumeHost(volumeId),
+	grip.Error(message.WrapError(UnsetVolumeHost(ctx, volumeId),
 		message.Fields{
 			"host_id":   h.Id,
 			"volume_id": volumeId,
@@ -1256,9 +1256,9 @@ func (h *Host) RemoveVolumeFromHost(ctx context.Context, volumeId string) error 
 }
 
 // FindOne gets one Volume for the given query.
-func FindOneVolume(query interface{}) (*Volume, error) {
+func FindOneVolume(ctx context.Context, query interface{}) (*Volume, error) {
 	v := &Volume{}
-	err := db.FindOneQ(VolumesCollection, db.Query(query), v)
+	err := db.FindOneQContext(ctx, VolumesCollection, db.Query(query), v)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -1282,9 +1282,9 @@ func FindDistroForHost(ctx context.Context, hostID string) (string, error) {
 	return h.Distro.Id, nil
 }
 
-func findVolumes(q bson.M) ([]Volume, error) {
+func findVolumes(ctx context.Context, q bson.M) ([]Volume, error) {
 	volumes := []Volume{}
-	return volumes, db.FindAllQ(VolumesCollection, db.Query(q), &volumes)
+	return volumes, db.FindAllQContext(ctx, VolumesCollection, db.Query(q), &volumes)
 }
 
 type ClientOptions struct {

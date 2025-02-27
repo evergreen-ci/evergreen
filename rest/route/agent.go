@@ -1333,7 +1333,7 @@ func (h *setDownstreamParamsHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	if err = p.SetDownstreamParameters(h.downstreamParams); err != nil {
+	if err = p.SetDownstreamParameters(ctx, h.downstreamParams); err != nil {
 		errorMessage := fmt.Sprintf("setting patch parameters: %s", err.Error())
 		grip.Error(message.Fields{
 			"message": errorMessage,

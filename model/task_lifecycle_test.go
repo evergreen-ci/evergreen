@@ -1918,7 +1918,7 @@ func TestUpdateBuildGithubStatus(t *testing.T) {
 		{IsGithubCheck: false, Status: evergreen.TaskUndispatched},
 	}
 
-	assert.NoError(t, updateBuildGithubStatus(b, tasks))
+	assert.NoError(t, updateBuildGithubStatus(t.Context(), b, tasks))
 
 	b, err := build.FindOneId(buildID)
 	assert.NoError(t, err)

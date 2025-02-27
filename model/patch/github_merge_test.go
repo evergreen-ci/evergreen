@@ -72,7 +72,7 @@ func TestGithubMergeIntent(t *testing.T) {
 			assert.NotNil(t, intent)
 			assert.NoError(t, err)
 			assert.NoError(t, intent.Insert())
-			assert.NoError(t, intent.SetProcessed())
+			assert.NoError(t, intent.SetProcessed(t.Context()))
 			intents := []githubMergeIntent{}
 			err = db.FindAllQ(IntentCollection, db.Query(bson.M{}), &intents)
 			assert.NoError(t, err)

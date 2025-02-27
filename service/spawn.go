@@ -217,7 +217,7 @@ func (uis *UIServer) listSpawnableDistros(w http.ResponseWriter, r *http.Request
 
 func (uis *UIServer) getVolumes(w http.ResponseWriter, r *http.Request) {
 	usr := MustHaveUser(r)
-	volumes, err := host.FindSortedVolumesByUser(usr.Username())
+	volumes, err := host.FindSortedVolumesByUser(r.Context(), usr.Username())
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "error getting volumes for '%s'", usr.Username()))
 		return
@@ -544,7 +544,7 @@ func (uis *UIServer) modifyVolume(w http.ResponseWriter, r *http.Request) {
 	}
 
 	volumeID := gimlet.GetVars(r)["volume_id"]
-	vol, err := host.FindVolumeByID(volumeID)
+	vol, err := host.FindVolumeByID(ctx, volumeID)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "error finding volume '%s'", volumeID))
 		return
@@ -568,7 +568,7 @@ func (uis *UIServer) modifyVolume(w http.ResponseWriter, r *http.Request) {
 	// take the specified action
 	switch *updateParams.Action {
 	case VolumeRename:
-		uis.LoggedError(w, r, http.StatusUnauthorized, errors.Wrapf(vol.SetDisplayName(*updateParams.NewName), "can't set display name of '%s' to '%s'", vol.ID, *updateParams.NewName))
+		uis.LoggedError(w, r, http.StatusUnauthorized, errors.Wrapf(vol.SetDisplayName(ctx, *updateParams.NewName), "can't set display name of '%s' to '%s'", vol.ID, *updateParams.NewName))
 
 	case VolumeExtendExpiration:
 		if updateParams.Expiration == nil {

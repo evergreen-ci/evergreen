@@ -286,8 +286,8 @@ func CheckUnexpirableHostLimitExceeded(ctx context.Context, userId string, maxHo
 	return nil
 }
 
-func checkVolumeLimitExceeded(user string, newSize int, maxSize int) error {
-	totalSize, err := host.FindTotalVolumeSizeByUser(user)
+func checkVolumeLimitExceeded(ctx context.Context, user string, newSize int, maxSize int) error {
+	totalSize, err := host.FindTotalVolumeSizeByUser(ctx, user)
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -543,7 +543,7 @@ func (h *attachVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Errorf("attachment '%s' is already attached to a host", h.attachment.VolumeID))
 	}
 
-	v, err := host.FindVolumeByID(h.attachment.VolumeID)
+	v, err := host.FindVolumeByID(ctx, h.attachment.VolumeID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "checking whether attachment '%s' exists", h.attachment.VolumeID))
 	}
@@ -720,7 +720,7 @@ func (h *createVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	maxVolumeFromSettings := h.env.Settings().Providers.AWS.MaxVolumeSizePerUser
-	if err := checkVolumeLimitExceeded(u.Username(), int(h.volume.Size), maxVolumeFromSettings); err != nil {
+	if err := checkVolumeLimitExceeded(ctx, u.Username(), int(h.volume.Size), maxVolumeFromSettings); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "checking volume limit"))
 	}
 
@@ -769,7 +769,7 @@ func (h *deleteVolumeHandler) Parse(ctx context.Context, r *http.Request) error 
 
 func (h *deleteVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
-	volume, err := host.FindVolumeByID(h.VolumeID)
+	volume, err := host.FindVolumeByID(ctx, h.VolumeID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
@@ -854,7 +854,7 @@ func (h *modifyVolumeHandler) Parse(ctx context.Context, r *http.Request) error 
 
 func (h *modifyVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
-	volume, err := host.FindVolumeByID(h.volumeID)
+	volume, err := host.FindVolumeByID(ctx, h.volumeID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding volume '%s'", h.volumeID))
 	}
@@ -874,7 +874,7 @@ func (h *modifyVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	if h.opts.NewName != "" {
-		if err = volume.SetDisplayName(h.opts.NewName); err != nil {
+		if err = volume.SetDisplayName(ctx, h.opts.NewName); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "setting new volume name '%s'", h.opts.NewName))
 		}
 	}
@@ -885,7 +885,7 @@ func (h *modifyVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONErrorResponder(errors.Errorf("volumes can only be sized up (current size is %d GiB)", volume.Size))
 		}
 		maxVolumeFromSettings := h.env.Settings().Providers.AWS.MaxVolumeSizePerUser
-		if err = checkVolumeLimitExceeded(u.Username(), int(sizeIncrease), maxVolumeFromSettings); err != nil {
+		if err = checkVolumeLimitExceeded(ctx, u.Username(), int(sizeIncrease), maxVolumeFromSettings); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "checking volume limit"))
 		}
 	}
@@ -908,7 +908,7 @@ func (h *modifyVolumeHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONErrorResponder(errors.New("cannot specify both having an expiration and no expiration"))
 		}
 		var unexpirableVolumesForUser int
-		unexpirableVolumesForUser, err = host.CountNoExpirationVolumesForUser(u.Id)
+		unexpirableVolumesForUser, err = host.CountNoExpirationVolumesForUser(ctx, u.Id)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "counting number of unexpirable volumes already owned by user '%s'", u.Id))
 		}
@@ -956,7 +956,7 @@ func (h *getVolumesHandler) Parse(ctx context.Context, r *http.Request) error {
 
 func (h *getVolumesHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
-	volumes, err := host.FindVolumesByUser(u.Username())
+	volumes, err := host.FindVolumesByUser(ctx, u.Username())
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding volumes for user '%s'", u.Username()))
 	}
@@ -1010,7 +1010,7 @@ func (h *getVolumeByIDHandler) Parse(ctx context.Context, r *http.Request) error
 }
 
 func (h *getVolumeByIDHandler) Run(ctx context.Context) gimlet.Responder {
-	v, err := host.FindVolumeByID(h.volumeID)
+	v, err := host.FindVolumeByID(ctx, h.volumeID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding volume '%s'", h.volumeID))
 	}

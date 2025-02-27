@@ -122,7 +122,7 @@ func (r *mutationResolver) RemoveAnnotationIssue(ctx context.Context, taskID str
 		}
 		return true, nil
 	} else {
-		if err := annotations.RemoveSuspectedIssueFromAnnotation(taskID, execution, *issue); err != nil {
+		if err := annotations.RemoveSuspectedIssueFromAnnotation(ctx, taskID, execution, *issue); err != nil {
 			return false, InternalServerError.Send(ctx, fmt.Sprintf("couldn't delete suspected issue: %s", err.Error()))
 		}
 		return true, nil
@@ -306,7 +306,7 @@ func (r *mutationResolver) SetPatchVisibility(ctx context.Context, patchIds []st
 		if !userCanModifyPatch(user, p) {
 			return nil, Forbidden.Send(ctx, fmt.Sprintf("not authorized to change patch '%s' visibility", p.Id))
 		}
-		err = p.SetPatchVisibility(hidden)
+		err = p.SetPatchVisibility(ctx, hidden)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting visibility for patch '%s': %s", p.Id, err.Error()))
 		}
@@ -677,7 +677,7 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *EditSpa
 		opts.DeleteInstanceTags = deletedTags
 	}
 	if spawnHost.Volume != nil {
-		v, err = host.FindVolumeByID(*spawnHost.Volume)
+		v, err = host.FindVolumeByID(ctx, *spawnHost.Volume)
 		if err != nil {
 			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("finding requested volume id: %s", err.Error()))
 		}
@@ -865,7 +865,7 @@ func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, updateSpaw
 
 // UpdateVolume is the resolver for the updateVolume field.
 func (r *mutationResolver) UpdateVolume(ctx context.Context, updateVolumeInput UpdateVolumeInput) (bool, error) {
-	volume, err := host.FindVolumeByID(updateVolumeInput.VolumeID)
+	volume, err := host.FindVolumeByID(ctx, updateVolumeInput.VolumeID)
 	if err != nil {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("finding volume by id '%s': %s", updateVolumeInput.VolumeID, err.Error()))
 	}

@@ -1,6 +1,7 @@
 package patch
 
 import (
+	"context"
 	"strings"
 	"time"
 
@@ -120,10 +121,11 @@ func (c *cliIntent) Insert() error {
 	return nil
 }
 
-func (c *cliIntent) SetProcessed() error {
+func (c *cliIntent) SetProcessed(ctx context.Context) error {
 	c.Processed = true
 	c.ProcessedAt = time.Now().UTC().Round(time.Millisecond)
 	return updateOneIntent(
+		ctx,
 		bson.M{cliDocumentIDKey: c.DocumentID},
 		bson.M{"$set": bson.M{
 			cliProcessedKey:   c.Processed,

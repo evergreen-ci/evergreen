@@ -76,7 +76,7 @@ func (j *podCreationJob) Run(ctx context.Context) {
 		j.MarkComplete()
 
 		if j.pod != nil && j.pod.Status == pod.StatusInitializing && j.IsLastAttempt() {
-			j.AddError(errors.Wrap(j.pod.UpdateStatus(pod.StatusDecommissioned, "pod failed to start and will not retry"), "updating pod status to decommissioned after pod failed to start"))
+			j.AddError(errors.Wrap(j.pod.UpdateStatus(ctx, pod.StatusDecommissioned, "pod failed to start and will not retry"), "updating pod status to decommissioned after pod failed to start"))
 
 			terminationJob := NewPodTerminationJob(j.PodID, fmt.Sprintf("pod creation job hit max attempts %d", j.RetryInfo().MaxAttempts), time.Now())
 			if err := amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), terminationJob); err != nil {
@@ -120,17 +120,17 @@ func (j *podCreationJob) Run(ctx context.Context) {
 		j.ecsPod = p
 
 		res := p.Resources()
-		if err := j.pod.UpdateResources(cloud.ImportECSPodResources(res)); err != nil {
+		if err := j.pod.UpdateResources(ctx, cloud.ImportECSPodResources(res)); err != nil {
 			j.AddError(errors.Wrap(err, "updating pod resources"))
 		}
 
 		// Bump the last communication time to ensure that the pod has a
 		// sufficient grace period to start up.
-		if err := j.pod.UpdateLastCommunicated(); err != nil {
+		if err := j.pod.UpdateLastCommunicated(ctx); err != nil {
 			j.AddError(errors.Wrap(err, "updating pod last communication time"))
 		}
 
-		if err := j.pod.UpdateStatus(pod.StatusStarting, "pod successfully started"); err != nil {
+		if err := j.pod.UpdateStatus(ctx, pod.StatusStarting, "pod successfully started"); err != nil {
 			j.AddError(errors.Wrap(err, "marking pod as starting"))
 		}
 

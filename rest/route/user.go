@@ -945,7 +945,7 @@ func (h *renameUserHandler) Run(ctx context.Context) gimlet.Responder {
 	newUsr.Settings.GithubUser.UID = githubUID
 	catcher.Add(newUsr.UpdateSettings(newUsr.Settings))
 
-	catcher.Add(patch.ConsolidatePatchesForUser(h.oldUsr.Id, newUsr))
+	catcher.Add(patch.ConsolidatePatchesForUser(ctx, h.oldUsr.Id, newUsr))
 	catcher.Add(host.ConsolidateHostsForUser(ctx, h.oldUsr.Id, newUsr.Id))
 
 	if catcher.HasErrors() {
@@ -1045,7 +1045,7 @@ func (ch *offboardUserHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "getting user hosts from options"))
 	}
 
-	volumes, err := host.FindVolumesByUser(ch.user)
+	volumes, err := host.FindVolumesByUser(ctx, ch.user)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "finding user volumes"))
 	}
@@ -1068,7 +1068,7 @@ func (ch *offboardUserHandler) Run(ctx context.Context) gimlet.Responder {
 	for _, v := range volumes {
 		if v.NoExpiration {
 			if !ch.dryRun {
-				catcher.Wrapf(v.SetNoExpiration(false), "marking volume '%s' expirable", v.ID)
+				catcher.Wrapf(v.SetNoExpiration(ctx, false), "marking volume '%s' expirable", v.ID)
 			}
 			toTerminate.TerminatedVolumes = append(toTerminate.TerminatedVolumes, v.ID)
 		}

@@ -1237,9 +1237,9 @@ func evalBisectStepback(ctx context.Context, t *task.Task, newStepback bool) err
 
 // updateMakespans updates the predicted and actual makespans for the tasks in
 // the build.
-func updateMakespans(b *build.Build, buildTasks []task.Task) error {
+func updateMakespans(ctx context.Context, b *build.Build, buildTasks []task.Task) error {
 	depPath := FindPredictedMakespan(buildTasks)
-	return errors.WithStack(b.UpdateMakespans(depPath.TotalTime, CalculateActualMakespan(buildTasks)))
+	return errors.WithStack(b.UpdateMakespans(ctx, depPath.TotalTime, CalculateActualMakespan(buildTasks)))
 }
 
 type buildStatus struct {
@@ -1333,7 +1333,7 @@ func getBuildStatus(buildTasks []task.Task) buildStatus {
 // updateBuildGithubStatus updates the GitHub check status for a build. If the
 // build has no GitHub checks, then it is a no-op. Note that this is for GitHub
 // checks, which are *not* the same as GitHub PR statuses.
-func updateBuildGithubStatus(b *build.Build, buildTasks []task.Task) error {
+func updateBuildGithubStatus(ctx context.Context, b *build.Build, buildTasks []task.Task) error {
 	githubStatusTasks := make([]task.Task, 0, len(buildTasks))
 	for _, t := range buildTasks {
 		if t.IsGithubCheck {
@@ -1354,7 +1354,7 @@ func updateBuildGithubStatus(b *build.Build, buildTasks []task.Task) error {
 		event.LogBuildGithubCheckFinishedEvent(b.Id, buildStatus.status)
 	}
 
-	return b.UpdateGithubCheckStatus(buildStatus.status)
+	return b.UpdateGithubCheckStatus(ctx, buildStatus.status)
 }
 
 // checkUpdateBuildPRStatusPending checks if the build is coming from a PR, and if so
@@ -1401,19 +1401,19 @@ func updateBuildStatus(ctx context.Context, b *build.Build) (bool, error) {
 	buildStatus := getBuildStatus(buildTasks)
 	// If all the tasks are unscheduled, set active to false
 	if buildStatus.allTasksUnscheduled {
-		if err = b.SetActivated(false); err != nil {
+		if err = b.SetActivated(ctx, false); err != nil {
 			return true, errors.Wrapf(err, "setting build '%s' as inactive", b.Id)
 		}
 		return true, nil
 	}
 
-	if err := b.SetHasUnfinishedEssentialTask(buildStatus.hasUnfinishedEssentialTask); err != nil {
+	if err := b.SetHasUnfinishedEssentialTask(ctx, buildStatus.hasUnfinishedEssentialTask); err != nil {
 		return false, errors.Wrapf(err, "setting unfinished essential task state to %t for build '%s'", buildStatus.hasUnfinishedEssentialTask, b.Id)
 	}
 
 	blockedChanged := buildStatus.allTasksBlocked != b.AllTasksBlocked
 
-	if err = b.SetAllTasksBlocked(buildStatus.allTasksBlocked); err != nil {
+	if err = b.SetAllTasksBlocked(ctx, buildStatus.allTasksBlocked); err != nil {
 		return false, errors.Wrapf(err, "setting build '%s' as blocked", b.Id)
 	}
 
@@ -1433,7 +1433,7 @@ func updateBuildStatus(ctx context.Context, b *build.Build) (bool, error) {
 	}
 	isAborted = len(utility.StringSliceIntersection(taskStatuses, evergreen.TaskFailureStatuses)) == 0 && isAborted
 	if isAborted != b.Aborted {
-		if err = b.SetAborted(isAborted); err != nil {
+		if err = b.SetAborted(ctx, isAborted); err != nil {
 			return false, errors.Wrapf(err, "setting build '%s' as aborted", b.Id)
 		}
 	}
@@ -1444,25 +1444,25 @@ func updateBuildStatus(ctx context.Context, b *build.Build) (bool, error) {
 
 	// if the status has changed, re-activate the build if it's not blocked
 	if shouldActivate {
-		if err = b.SetActivated(true); err != nil {
+		if err = b.SetActivated(ctx, true); err != nil {
 			return true, errors.Wrapf(err, "setting build '%s' as active", b.Id)
 		}
 	}
 
 	if evergreen.IsFinishedBuildStatus(buildStatus.status) {
-		if err = b.MarkFinished(buildStatus.status, time.Now()); err != nil {
+		if err = b.MarkFinished(ctx, buildStatus.status, time.Now()); err != nil {
 			return true, errors.Wrapf(err, "marking build as finished with status '%s'", buildStatus.status)
 		}
-		if err = updateMakespans(b, buildTasks); err != nil {
+		if err = updateMakespans(ctx, b, buildTasks); err != nil {
 			return true, errors.Wrapf(err, "updating makespan information for '%s'", b.Id)
 		}
 	} else {
-		if err = b.UpdateStatus(buildStatus.status); err != nil {
+		if err = b.UpdateStatus(ctx, buildStatus.status); err != nil {
 			return true, errors.Wrap(err, "updating build status")
 		}
 	}
 
-	if err = updateBuildGithubStatus(b, buildTasks); err != nil {
+	if err = updateBuildGithubStatus(ctx, b, buildTasks); err != nil {
 		return true, errors.Wrap(err, "updating build GitHub status")
 	}
 
@@ -1606,10 +1606,10 @@ func UpdatePatchStatus(ctx context.Context, p *patch.Patch, status string) error
 	event.LogPatchStateChangeEvent(p.Version, status)
 
 	if evergreen.IsFinishedVersionStatus(status) {
-		if err := p.MarkFinished(status, time.Now()); err != nil {
+		if err := p.MarkFinished(ctx, status, time.Now()); err != nil {
 			return errors.Wrapf(err, "marking patch '%s' as finished with status '%s'", p.Id.Hex(), status)
 		}
-	} else if err := p.UpdateStatus(status); err != nil {
+	} else if err := p.UpdateStatus(ctx, status); err != nil {
 		return errors.Wrapf(err, "updating patch '%s' with status '%s'", p.Id.Hex(), status)
 	}
 
@@ -1795,7 +1795,7 @@ func MarkStart(ctx context.Context, t *task.Task, updates *StatusChanges) error 
 	event.LogTaskStarted(t.Id, t.Execution)
 
 	// ensure the appropriate build is marked as started if necessary
-	if err = build.TryMarkStarted(t.BuildId, startTime); err != nil {
+	if err = build.TryMarkStarted(ctx, t.BuildId, startTime); err != nil {
 		return errors.Wrap(err, "marking build started")
 	}
 
@@ -1806,7 +1806,7 @@ func MarkStart(ctx context.Context, t *task.Task, updates *StatusChanges) error 
 
 	// if it's a patch, mark the patch as started if necessary
 	if evergreen.IsPatchRequester(t.Requester) {
-		err := patch.TryMarkStarted(t.Version, startTime)
+		err := patch.TryMarkStarted(ctx, t.Version, startTime)
 		if err == nil {
 			updates.PatchNewStatus = evergreen.VersionStarted
 
@@ -2043,7 +2043,7 @@ func ClearAndResetStrandedContainerTask(ctx context.Context, settings *evergreen
 	// the stranded task fails to reset.
 	// In this case, there are other cleanup jobs to detect when a task is
 	// stranded on a terminated pod.
-	if err := p.ClearRunningTask(); err != nil {
+	if err := p.ClearRunningTask(ctx); err != nil {
 		return errors.Wrapf(err, "clearing running task '%s' execution %d from pod '%s'", runningTaskID, runningTaskExecution, p.ID)
 	}
 

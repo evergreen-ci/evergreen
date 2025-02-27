@@ -133,18 +133,18 @@ func ConfigurePatch(ctx context.Context, settings *evergreen.Settings, p *patch.
 
 	// only modify parameters if the patch hasn't been finalized
 	if len(patchUpdateReq.Parameters) > 0 && p.Version == "" {
-		if err = p.SetParameters(patchUpdateReq.Parameters); err != nil {
+		if err = p.SetParameters(ctx, patchUpdateReq.Parameters); err != nil {
 			return http.StatusInternalServerError, errors.Wrap(err, "setting patch parameters")
 		}
 	}
 	// update the description for both reconfigured and new patches
-	if err = p.SetDescription(patchUpdateReq.Description); err != nil {
+	if err = p.SetDescription(ctx, patchUpdateReq.Description); err != nil {
 		return http.StatusInternalServerError, errors.Wrap(err, "setting description")
 	}
 
 	patchVariantTasks := tasks.TVPairsToVariantTasks()
 	if len(patchVariantTasks) > 0 {
-		if err = p.SetVariantsTasks(patchVariantTasks); err != nil {
+		if err = p.SetVariantsTasks(ctx, patchVariantTasks); err != nil {
 			return http.StatusInternalServerError, errors.Wrap(err, "setting description")
 		}
 	}
@@ -576,7 +576,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 
 	var parentPatchNumber int
 	if p.IsChild() {
-		parentPatch, err := p.SetParametersFromParent()
+		parentPatch, err := p.SetParametersFromParent(ctx)
 		if err != nil {
 			return nil, errors.Wrap(err, "getting parameters from parent patch")
 		}

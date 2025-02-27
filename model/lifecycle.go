@@ -473,7 +473,7 @@ func RefreshTasksCache(ctx context.Context, buildId string) error {
 	}
 
 	cache := CreateTasksCache(tasks)
-	return errors.WithStack(build.SetTasksCache(buildId, cache))
+	return errors.WithStack(build.SetTasksCache(ctx, buildId, cache))
 }
 
 // addTasksToBuild creates/activates the tasks for the given existing build.
@@ -519,11 +519,11 @@ func addTasksToBuild(ctx context.Context, creationInfo TaskCreationInfo) (*build
 		}
 	}
 	if hasGitHubCheck {
-		if err := creationInfo.Build.SetIsGithubCheck(); err != nil {
+		if err := creationInfo.Build.SetIsGithubCheck(ctx); err != nil {
 			return nil, nil, errors.Wrapf(err, "setting build '%s' as a GitHub check", creationInfo.Build.Id)
 		}
 	}
-	if err := creationInfo.Build.SetHasUnfinishedEssentialTask(hasUnfinishedEssentialTask); err != nil {
+	if err := creationInfo.Build.SetHasUnfinishedEssentialTask(ctx, hasUnfinishedEssentialTask); err != nil {
 		return nil, nil, errors.Wrapf(err, "setting build '%s' as having an unfinished essential task", creationInfo.Build.Id)
 	}
 
