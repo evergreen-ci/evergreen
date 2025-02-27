@@ -30,7 +30,7 @@
       "result": {
         "errors": [
           {
-            "message": "Cannot apply an expiration time AND set volume as non-expirable",
+            "message": "cannot apply an expiration time AND set volume as non-expirable",
             "path": ["spawnVolume"],
             "extensions": { "code": "INPUT_VALIDATION_ERROR" }
           }

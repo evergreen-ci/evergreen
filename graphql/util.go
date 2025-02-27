@@ -75,7 +75,7 @@ func findAllTasksByIds(ctx context.Context, taskIDs ...string) ([]task.Task, err
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
 	if len(tasks) == 0 {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("tasks '%s' not found", taskIDs))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("no tasks found"))
 	}
 	if len(tasks) != len(taskIDs) {
 		foundTaskIds := []string{}
@@ -501,7 +501,7 @@ func getResourceTypeAndIdFromSubscriptionSelectors(ctx context.Context, selector
 
 func savePublicKey(ctx context.Context, publicKeyInput PublicKeyInput) error {
 	if doesPublicKeyNameAlreadyExist(ctx, publicKeyInput.Name) {
-		return InputValidationError.Send(ctx, fmt.Sprintf("provided key name '%s' already exists.", publicKeyInput.Name))
+		return InputValidationError.Send(ctx, fmt.Sprintf("provided key name '%s' already exists", publicKeyInput.Name))
 	}
 	err := verifyPublicKey(ctx, publicKeyInput)
 	if err != nil {

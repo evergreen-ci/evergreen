@@ -562,7 +562,7 @@ func (r *mutationResolver) SaveProjectSettingsForSection(ctx context.Context, pr
 	usr := mustHaveUser(ctx)
 	changes, err := data.SaveProjectSettingsForSection(ctx, projectId, projectSettings, model.ProjectPageSection(section), false, usr.Username())
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("saving section '%s' for project '%s': %s", section, projectId, err.Error()))
+		return nil, InternalServerError.Send(ctx, err.Error())
 	}
 	return changes, nil
 }
@@ -573,7 +573,7 @@ func (r *mutationResolver) SaveRepoSettingsForSection(ctx context.Context, repoS
 	usr := mustHaveUser(ctx)
 	changes, err := data.SaveProjectSettingsForSection(ctx, projectId, repoSettings, model.ProjectPageSection(section), true, usr.Username())
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("saving section '%s' for repo '%s': %s", section, projectId, err.Error()))
+		return nil, InternalServerError.Send(ctx, err.Error())
 	}
 	return changes, nil
 }
@@ -642,7 +642,7 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *EditSpa
 	}
 
 	if !host.CanUpdateSpawnHost(h, usr) {
-		return nil, Forbidden.Send(ctx, fmt.Sprintf("not authorized to modify this host '%s'", spawnHost.HostID))
+		return nil, Forbidden.Send(ctx, fmt.Sprintf("not authorized to modify host '%s'", spawnHost.HostID))
 	}
 
 	opts := host.HostModifyOptions{}
@@ -694,7 +694,7 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *EditSpa
 	}
 	if spawnHost.PublicKey != nil {
 		if h.Status != evergreen.HostRunning {
-			return nil, InputValidationError.Send(ctx, fmt.Sprintf("host must be running to add a public key but is '%s'", h.Status))
+			return nil, InputValidationError.Send(ctx, fmt.Sprintf("host must be running to add a public key but is %s", h.Status))
 		}
 		if utility.FromBoolPtr(spawnHost.SavePublicKey) {
 			if err = savePublicKey(ctx, *spawnHost.PublicKey); err != nil {
@@ -835,7 +835,7 @@ func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, updateSpaw
 	env := evergreen.GetEnvironment()
 
 	if !host.CanUpdateSpawnHost(h, usr) {
-		return nil, Forbidden.Send(ctx, fmt.Sprintf("not authorized to modify this host '%s'", hostID))
+		return nil, Forbidden.Send(ctx, fmt.Sprintf("not authorized to modify host '%s'", hostID))
 	}
 
 	var httpStatus int
