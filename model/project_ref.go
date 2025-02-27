@@ -1958,8 +1958,8 @@ func FindNonHiddenProjects(key string, limit int, sortDir int) ([]ProjectRef, er
 }
 
 // UpdateProjectRevision updates the given project's revision
-func UpdateProjectRevision(projectID, revision string) error {
-	if err := UpdateLastRevision(projectID, revision); err != nil {
+func UpdateProjectRevision(ctx context.Context, projectID, revision string) error {
+	if err := UpdateLastRevision(ctx, projectID, revision); err != nil {
 		return errors.Wrapf(err, "updating revision for project '%s'", projectID)
 	}
 
@@ -2362,7 +2362,7 @@ func DefaultSectionToRepo(ctx context.Context, projectId string, section Project
 			return errors.Errorf("project vars for project '%s' not found", projectId)
 		}
 
-		err = vars.Clear()
+		err = vars.Clear(ctx)
 		if err == nil {
 			modified = true
 		}

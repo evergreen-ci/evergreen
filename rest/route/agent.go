@@ -139,7 +139,7 @@ func (h *updatePushStatusHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	err = errors.Wrapf(h.pushLog.UpdateStatus(h.pushLog.Status),
+	err = errors.Wrapf(h.pushLog.UpdateStatus(ctx, h.pushLog.Status),
 		"updating pushlog status failed for task %s", t.Id)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{

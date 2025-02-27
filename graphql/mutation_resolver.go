@@ -586,7 +586,7 @@ func (r *mutationResolver) SetLastRevision(ctx context.Context, opts SetLastRevi
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("project '%s' not found", opts.ProjectIdentifier))
 	}
 
-	if err = model.UpdateLastRevision(project.Id, opts.Revision); err != nil {
+	if err = model.UpdateLastRevision(ctx, project.Id, opts.Revision); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("updating last revision for '%s': %s", opts.ProjectIdentifier, err.Error()))
 	}
 

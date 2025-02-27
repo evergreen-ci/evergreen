@@ -80,7 +80,7 @@ func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 			break
 		}
 	}
-	err = model.UpdateLastRevision(v.Identifier, v.Revision)
+	err = model.UpdateLastRevision(ctx, v.Identifier, v.Revision)
 	if err != nil {
 		return nil, errors.Wrap(err, "updating last revision")
 	}
