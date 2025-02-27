@@ -27,14 +27,8 @@ import (
 // This file is used to combine operations across data connectors, to avoid
 // duplicated connector usage across the codebase.
 
-type CopyProjectOpts struct {
-	ProjectIdToCopy      string
-	NewProjectIdentifier string
-	NewProjectId         string
-}
-
 // CopyProject copies the passed in project with the given project identifier, and returns the new project.
-func CopyProject(ctx context.Context, env evergreen.Environment, opts CopyProjectOpts) (*restModel.APIProjectRef, error) {
+func CopyProject(ctx context.Context, env evergreen.Environment, opts restModel.CopyProjectOpts) (*restModel.APIProjectRef, error) {
 	projectToCopy, err := FindProjectById(opts.ProjectIdToCopy, false, false)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding project '%s'", opts.ProjectIdToCopy)

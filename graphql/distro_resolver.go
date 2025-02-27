@@ -110,7 +110,7 @@ func (r *distroResolver) Provider(ctx context.Context, obj *model.APIDistro) (Pr
 }
 
 // ProviderSettingsList is the resolver for the providerSettingsList field.
-func (r *distroResolver) ProviderSettingsList(ctx context.Context, obj *model.APIDistro) ([]map[string]interface{}, error) {
+func (r *distroResolver) ProviderSettingsList(ctx context.Context, obj *model.APIDistro) ([]map[string]any, error) {
 	settings := []map[string]interface{}{}
 	for _, entry := range obj.ProviderSettingsList {
 		settings = append(settings, entry.ExportMap())
@@ -305,7 +305,7 @@ func (r *distroInputResolver) Provider(ctx context.Context, obj *model.APIDistro
 }
 
 // ProviderSettingsList is the resolver for the providerSettingsList field.
-func (r *distroInputResolver) ProviderSettingsList(ctx context.Context, obj *model.APIDistro, data []map[string]interface{}) error {
+func (r *distroInputResolver) ProviderSettingsList(ctx context.Context, obj *model.APIDistro, data []map[string]any) error {
 	settings := []*birch.Document{}
 	for _, entry := range data {
 		newEntry, err := json.Marshal(entry)

@@ -162,7 +162,7 @@ func (r *mutationResolver) DeleteDistro(ctx context.Context, opts DeleteDistroIn
 }
 
 // CopyDistro is the resolver for the copyDistro field.
-func (r *mutationResolver) CopyDistro(ctx context.Context, opts data.CopyDistroOpts) (*NewDistroPayload, error) {
+func (r *mutationResolver) CopyDistro(ctx context.Context, opts restModel.CopyDistroOpts) (*NewDistroPayload, error) {
 	usr := mustHaveUser(ctx)
 
 	if err := data.CopyDistro(ctx, usr, opts); err != nil {
@@ -424,7 +424,7 @@ func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.
 }
 
 // CopyProject is the resolver for the copyProject field.
-func (r *mutationResolver) CopyProject(ctx context.Context, project data.CopyProjectOpts, requestS3Creds *bool) (*restModel.APIProjectRef, error) {
+func (r *mutationResolver) CopyProject(ctx context.Context, project restModel.CopyProjectOpts, requestS3Creds *bool) (*restModel.APIProjectRef, error) {
 	projectRef, err := data.CopyProject(ctx, evergreen.GetEnvironment(), project)
 	if projectRef == nil && err != nil {
 		apiErr, ok := err.(gimlet.ErrorResponse) // make sure bad request errors are handled correctly; all else should be treated as internal server error

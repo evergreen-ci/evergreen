@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
@@ -54,7 +55,7 @@ func (p *projectCopyHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (p *projectCopyHandler) Run(ctx context.Context) gimlet.Responder {
-	opts := data.CopyProjectOpts{
+	opts := restModel.CopyProjectOpts{
 		ProjectIdToCopy:      p.oldProject,
 		NewProjectIdentifier: p.newProject,
 	}
