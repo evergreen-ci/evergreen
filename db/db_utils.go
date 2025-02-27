@@ -350,7 +350,7 @@ func UpsertContext(ctx context.Context, collection string, query interface{}, up
 		options.Update().SetUpsert(true),
 	)
 	if err != nil {
-		return nil, errors.Wrapf(err, "updating task")
+		return nil, errors.Wrapf(err, "updating")
 	}
 
 	return &db.ChangeInfo{Updated: int(res.UpsertedCount) + int(res.ModifiedCount), UpsertedId: res.UpsertedID}, nil
