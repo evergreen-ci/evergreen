@@ -5,12 +5,14 @@
       "test_user_id": "regular_user",
       "result": {
         "data": {
-          "userSettings": {
-            "timezone": "America/New_York",
-            "region": "",
-            "githubUser": { "lastKnownAs": "" },
-            "slackUsername": "regular_slackuser",
-            "slackMemberId": "12345member"
+          "user": {
+            "settings": {
+              "timezone": "America/New_York",
+              "region": "",
+              "githubUser": { "lastKnownAs": "" },
+              "slackUsername": "regular_slackuser",
+              "slackMemberId": "12345member"
+            }
           }
         }
       }

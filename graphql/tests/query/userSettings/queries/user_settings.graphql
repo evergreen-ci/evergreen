@@ -1,11 +1,13 @@
 query {
-  userSettings {
-    timezone
-    region
-    githubUser {
-      lastKnownAs
+  user {
+    settings {
+      timezone
+      region
+      githubUser {
+        lastKnownAs
+      }
+      slackUsername
+      slackMemberId
     }
-    slackUsername
-    slackMemberId
   }
 }
