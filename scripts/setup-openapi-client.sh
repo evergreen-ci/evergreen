@@ -3,8 +3,8 @@
 set -eo pipefail
 
 # Check if the correct number of arguments is provided
-if [ "$#" -ne 3 ]; then
-    echo "Usage: $0 <config_file> <output_directory> <openapi_generator_script>"
+if [ "$#" -lt 3 ] || [ "$#" -gt 4 ]; then
+    echo "Usage: $0 <config_file> <output_directory> <openapi_generator_script> [<additional_properties>]"
     exit 1
 fi
 
@@ -12,6 +12,7 @@ fi
 OPENAPI_HARDCODED_CONFIG="$1"
 OPENAPI_OUTPUT_DIR="$2"
 OPENAPI_GENERATOR="$3"
+ADDITIONAL_PROPERTIES="$4"
 
 # Create the bin directory if it doesn't exist
 mkdir -p bin
@@ -43,4 +44,8 @@ export PATH="${PWD}/bin/${MAVEN_DIR}/bin:${PATH}"
 export PATH="/opt/bin/java/jdk21/bin:${PATH}"
 
 # Generate the OpenAPI client
-"$OPENAPI_GENERATOR" generate -i "$OPENAPI_HARDCODED_CONFIG" -g go -o "$OPENAPI_OUTPUT_DIR"
+if [ -n "$ADDITIONAL_PROPERTIES" ]; then
+    "$OPENAPI_GENERATOR" generate -i "$OPENAPI_HARDCODED_CONFIG" -g go -o "$OPENAPI_OUTPUT_DIR" --additional-properties "$ADDITIONAL_PROPERTIES"
+else
+    "$OPENAPI_GENERATOR" generate -i "$OPENAPI_HARDCODED_CONFIG" -g go -o "$OPENAPI_OUTPUT_DIR"
+fi
