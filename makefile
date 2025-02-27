@@ -379,9 +379,10 @@ swaggo-render:
 
 
 # Variables
-OPENAPI_CONFIG_URL := https://foliage-web-services.cloud-build.prod.corp.mongodb.com/foliage_web_services.json
-OPENAPI_HARDCODED_CONFIG := thirdparty/clients/fws/foliage_web_services.json
-OPENAPI_OUTPUT_DIR := thirdparty/clients/fws
+OPENAPI_FWS_CONFIG_URL := https://foliage-web-services.cloud-build.prod.corp.mongodb.com/foliage_web_services.json
+OPENAPI_FWS_HARDCODED_CONFIG := thirdparty/clients/fws/foliage_web_services.json
+OPENAPI_FWS_OUTPUT_DIR := thirdparty/clients/fws
+OPENAPI_FWS_CONFIG := packageName=thirdparty_fws,packageVersion=1.0.0,packageTitle=FoliageWebServices
 OPENAPI_GENERATOR := bin/openapi-generator-cli.sh
 
 # Main rule for generating the client
@@ -395,7 +396,7 @@ download-fws-config:
 
 generate-fws-client:
 	@echo "Generating OpenAPI client..."
-	scripts/setup-fws-openapi-client.sh $(OPENAPI_HARDCODED_CONFIG) $(OPENAPI_OUTPUT_DIR) $(OPENAPI_GENERATOR)
+	scripts/setup-openapi-client.sh $(OPENAPI_FWS_HARDCODED_CONFIG) $(OPENAPI_FWS_OUTPUT_DIR) $(OPENAPI_GENERATOR) $(OPENAPI_FWS_CONFIG)
 
 phony += swaggo swaggo-install swaggo-format swaggo-build swaggo-render fws-client download-config generate-fws-client
 
