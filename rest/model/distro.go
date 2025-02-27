@@ -27,6 +27,9 @@ type APIPlannerSettings struct {
 // BuildFromService converts from service level distro.PlannerSetting to an APIPlannerSettings
 func (s *APIPlannerSettings) BuildFromService(settings distro.PlannerSettings) {
 	s.Version = utility.ToStringPtr(settings.Version)
+	if settings.Version == "" {
+		s.Version = utility.ToStringPtr(evergreen.PlannerVersionTunable)
+	}
 	s.TargetTime = NewAPIDuration(settings.TargetTime)
 	s.GroupVersions = utility.FromBoolPtr(settings.GroupVersions)
 	s.PatchFactor = settings.PatchFactor

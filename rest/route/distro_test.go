@@ -732,7 +732,6 @@ func (s *DistroPatchByIDSuite) TestRunProviderSettingsList() {
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
 	s.Equal(http.StatusOK, resp.Status())
-	fmt.Println(resp.Data())
 
 	apiDistro, ok := (resp.Data()).(*restModel.APIDistro)
 	s.Require().True(ok)
