@@ -166,21 +166,6 @@ func TestGitPush(t *testing.T) {
 			lines := comm.GetTaskLogs("")
 			assert.Equal(t, "The key: [redacted github token]", lines[len(lines)-1].Data)
 		},
-		"RevParse": func(*testing.T) {
-			manager := &mock.Manager{}
-			c.base.jasper = manager
-			_, err = c.revParse(context.Background(), conf, logger, "main@{upstream}")
-			assert.NoError(t, err)
-			commands := []string{"git rev-parse main@{upstream}"}
-
-			require.Len(t, manager.Procs, len(commands))
-			for i, proc := range manager.Procs {
-				args := proc.(*mock.Process).ProcInfo.Options.Args
-				splitCommand, err = shlex.Split(commands[i])
-				assert.NoError(t, err)
-				assert.Equal(t, splitCommand, args)
-			}
-		},
 	} {
 		c.DryRun = false
 		t.Run(name, test)
