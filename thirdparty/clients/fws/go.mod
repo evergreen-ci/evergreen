@@ -1,4 +1,4 @@
-module github.com/GIT_USER_ID/GIT_REPO_ID
+module github.com/evergreen-ci/evergreen/thirdparty/clients/fws
 
 go 1.18
 
