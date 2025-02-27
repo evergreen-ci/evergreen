@@ -40,7 +40,7 @@ Exceptions to this behavior:
 
 ## How to Use PR Testing for Untracked Branches
 
-You may allow PR testing to be possible for untracked branches (i.e. branches without an explicit project, waterfall, etc). To create PR patches for any Github PR for a repo, ensure
+You may allow PR testing to be possible for untracked branches (i.e. branches without an explicit project, waterfall, etc). To create PR patches for any Github PR for a repo, ensure 
 a config file path is set at the repo level (PRs for untracked branches will use this file). Additionally, at the repo level ensure that PR aliases are defined, and PR testing is enabled.
 
 If you are setting this up for the first time and have an existing project, ensure that you attach your existing project to the new repo, copy the Github PR aliases from your project to the repo
