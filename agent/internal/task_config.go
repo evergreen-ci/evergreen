@@ -20,7 +20,6 @@ import (
 )
 
 type TaskConfig struct {
-	// kim: TODO: add hostname as data to fetch for task.
 	Distro       *apimodels.DistroView
 	ProjectRef   model.ProjectRef
 	Project      model.Project
@@ -230,19 +229,18 @@ func NewTaskConfig(workDir string, d *apimodels.DistroView, p *model.Project, t 
 
 func (tc *TaskConfig) TaskAttributeMap() map[string]string {
 	attributes := map[string]string{
-		evergreen.TaskIDOtelAttribute:            tc.Task.Id,
-		evergreen.TaskNameOtelAttribute:          tc.Task.DisplayName,
-		evergreen.TaskExecutionOtelAttribute:     strconv.Itoa(tc.Task.Execution),
-		evergreen.VersionIDOtelAttribute:         tc.Task.Version,
-		evergreen.VersionRequesterOtelAttribute:  tc.Task.Requester,
-		evergreen.BuildIDOtelAttribute:           tc.Task.BuildId,
-		evergreen.BuildNameOtelAttribute:         tc.Task.BuildVariant,
-		evergreen.ProjectIdentifierOtelAttribute: tc.ProjectRef.Identifier,
-		evergreen.ProjectOrgOtelAttribute:        tc.ProjectRef.Owner,
-		evergreen.ProjectRepoOtelAttribute:       tc.ProjectRef.Repo,
-		evergreen.ProjectIDOtelAttribute:         tc.ProjectRef.Id,
-		evergreen.DistroIDOtelAttribute:          tc.Task.DistroId,
-		// kim: TODO: add hostname attribute fetched from Evergreen.
+		evergreen.TaskIDOtelAttribute:             tc.Task.Id,
+		evergreen.TaskNameOtelAttribute:           tc.Task.DisplayName,
+		evergreen.TaskExecutionOtelAttribute:      strconv.Itoa(tc.Task.Execution),
+		evergreen.VersionIDOtelAttribute:          tc.Task.Version,
+		evergreen.VersionRequesterOtelAttribute:   tc.Task.Requester,
+		evergreen.BuildIDOtelAttribute:            tc.Task.BuildId,
+		evergreen.BuildNameOtelAttribute:          tc.Task.BuildVariant,
+		evergreen.ProjectIdentifierOtelAttribute:  tc.ProjectRef.Identifier,
+		evergreen.ProjectOrgOtelAttribute:         tc.ProjectRef.Owner,
+		evergreen.ProjectRepoOtelAttribute:        tc.ProjectRef.Repo,
+		evergreen.ProjectIDOtelAttribute:          tc.ProjectRef.Id,
+		evergreen.DistroIDOtelAttribute:           tc.Task.DistroId,
 		evergreen.VersionDescriptionOtelAttribute: tc.PatchOrVersionDescription,
 	}
 	if tc.GithubPatchData.PRNumber != 0 {

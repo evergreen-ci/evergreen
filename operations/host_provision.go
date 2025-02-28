@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
@@ -123,17 +124,17 @@ func postHostIsUp(ctx context.Context, comm client.Communicator, hostID, cloudPr
 	if cloud.IsEC2InstanceID(hostID) {
 		ec2InstanceID = hostID
 	} else if evergreen.IsEc2Provider(cloudProvider) {
+		fetchEC2InfoCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+		defer cancel()
 		var err error
-		ec2InstanceID, err = agentutil.GetEC2InstanceID(ctx)
+
+		ec2InstanceID, err = agentutil.GetEC2InstanceID(fetchEC2InfoCtx)
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":        "could not fetch EC2 instance ID dynamically",
 			"host_id":        hostID,
 			"cloud_provider": cloudProvider,
 		}))
-		// kim: TODO: test that EC2 host in staging includes public hostname for:
-		// - task host
-		// - spawn host
-		hostname, err = agentutil.GetEC2Hostname(ctx)
+		hostname, err = agentutil.GetEC2Hostname(fetchEC2InfoCtx)
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":        "could not fetch EC2 hostname dynamically",
 			"host_id":        hostID,

@@ -30,7 +30,6 @@ func GetEC2InstanceID(ctx context.Context) (string, error) {
 
 // GetEC2Hostname returns the public hostname from the metadata endpoint if it's
 // an EC2 instance.
-// kim: TODO: test on EC2 hosts in staging.
 func GetEC2Hostname(ctx context.Context) (string, error) {
 	return getEC2Metadata(ctx, "public-hostname", func(resp *http.Response) (string, error) {
 		instanceID, err := io.ReadAll(resp.Body)

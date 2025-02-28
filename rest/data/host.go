@@ -313,7 +313,6 @@ func PostHostIsUp(ctx context.Context, env evergreen.Environment, params restmod
 		}
 	}
 
-	// kim: TODO: add unit test for setting hostname.
 	if err := setHostname(ctx, h, params.Hostname); err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
