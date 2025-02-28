@@ -563,7 +563,9 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	// those changes. We log an error here instead of returning, so that this
 	// doesn't prevent the rest of the operations.
 	grip.Error(message.WrapError(data.UpsertContainerSecrets(ctx, vault, allContainerSecrets), message.Fields{
-		"message": "problem upserting container secrets",
+		"message":            "problem upserting container secrets",
+		"project_id":         h.newProjectRef.Id,
+		"project_identifier": h.newProjectRef.Identifier,
 	}))
 
 	if err = data.UpdateProjectVars(h.newProjectRef.Id, &h.apiNewProjectRef.Variables, false); err != nil { // destructively modifies h.apiNewProjectRef.Variables

@@ -192,7 +192,9 @@ func tryCopyingContainerSecrets(ctx context.Context, settings *evergreen.Setting
 	// those changes. We log an error here instead of returning, so that this
 	// doesn't prevent the rest of the operations.
 	grip.Error(message.WrapError(UpsertContainerSecrets(ctx, vault, secrets), message.Fields{
-		"message": "problem upserting container secrets",
+		"message":            "problem upserting container secrets",
+		"project_id":         pRef.Id,
+		"project_identifier": pRef.Identifier,
 	}))
 
 	return nil
