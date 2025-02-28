@@ -117,7 +117,7 @@ func CopyDistro(ctx context.Context, u *user.DBUser, opts restModel.CopyDistroOp
 
 // CreateDistro creates a new distro with the provided ID using the default settings specified here.
 // It returns an error if one is encountered.
-func CreateDistro(ctx context.Context, u *user.DBUser, newDistroId string) error {
+func CreateDistro(ctx context.Context, u *user.DBUser, newDistroId string, singleTaskDistro bool) error {
 	defaultDistro := &distro.Distro{
 		Id:   newDistroId,
 		Arch: evergreen.ArchLinuxAmd64,
@@ -137,9 +137,10 @@ func CreateDistro(ctx context.Context, u *user.DBUser, newDistroId string) error
 		PlannerSettings: distro.PlannerSettings{
 			Version: evergreen.PlannerVersionTunable,
 		},
-		Provider: evergreen.ProviderNameStatic,
-		WorkDir:  "/data/mci",
-		User:     "ubuntu",
+		Provider:         evergreen.ProviderNameStatic,
+		SingleTaskDistro: singleTaskDistro,
+		User:             "ubuntu",
+		WorkDir:          "/data/mci",
 	}
 
 	return newDistro(ctx, defaultDistro, u)

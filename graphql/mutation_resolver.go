@@ -182,7 +182,7 @@ func (r *mutationResolver) CopyDistro(ctx context.Context, opts restModel.CopyDi
 func (r *mutationResolver) CreateDistro(ctx context.Context, opts CreateDistroInput) (*NewDistroPayload, error) {
 	usr := mustHaveUser(ctx)
 
-	if err := data.CreateDistro(ctx, usr, opts.NewDistroID); err != nil {
+	if err := data.CreateDistro(ctx, usr, opts.NewDistroID, utility.FromBoolPtr(opts.SingleTaskDistro)); err != nil {
 		gimletErr, ok := err.(gimlet.ErrorResponse)
 		if ok {
 			return nil, mapHTTPStatusToGqlError(ctx, gimletErr.StatusCode, err)
