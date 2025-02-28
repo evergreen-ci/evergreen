@@ -271,12 +271,9 @@ func (s *ClientSettings) getModulePath(project, moduleName string) string {
 	return modulePath
 }
 
+// setModulePath updates the given client settings to include the new module path. It does this
+// regardless of whether auto updating is disabled, so that the path is cached locally in case of include files.
 func (s *ClientSettings) setModulePath(project, moduleName, modulePath string) {
-	if s.DisableAutoDefaulting {
-		return
-	}
-	grip.Infof("Project module '%s' will be set to use path '%s'. "+
-		"To disable automatic defaulting, set 'disable_auto_defaulting' to true.", moduleName, modulePath)
 	for i, p := range s.Projects {
 		if p.Name == project {
 			if s.Projects[i].ModulePaths == nil {
