@@ -1227,6 +1227,35 @@ func TestHostIsUpPostHandler(t *testing.T) {
 			assert.False(t, dbHost.NeedsNewAgentMonitor)
 			assert.Equal(t, rh.params.Hostname, dbHost.Host)
 		},
+		"DoesNotUnsetExistingHostnameIfHostnameNotProvided": func(ctx context.Context, t *testing.T, rh *hostIsUpPostHandler, h *host.Host) {
+			instanceID := generateFakeEC2InstanceID()
+			h.Id = instanceID
+			h.Host = "hostname"
+			h.Status = evergreen.HostStarting
+			require.NoError(t, h.Insert(ctx))
+
+			rh.params = restmodel.APIHostIsUpOptions{
+				HostID:        instanceID,
+				EC2InstanceID: instanceID,
+			}
+
+			resp := rh.Run(ctx)
+
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusOK, resp.Status())
+			apiHost, ok := resp.Data().(*restmodel.APIHost)
+			require.True(t, ok, resp.Data())
+			require.NotZero(t, apiHost)
+			assert.Equal(t, instanceID, utility.FromStringPtr(apiHost.Id))
+			assert.Equal(t, evergreen.HostStarting, utility.FromStringPtr(apiHost.Status))
+
+			dbHost, err := host.FindOneId(ctx, instanceID)
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+			assert.Equal(t, evergreen.HostStarting, dbHost.Status, "host should not be modified if it's not an intent host")
+			assert.False(t, dbHost.NeedsNewAgentMonitor)
+			assert.Equal(t, "hostname", dbHost.Host, "should retain hostname if it is not provided in request")
+		},
 		"MarksHostAsNeedingNewAgentMonitorForReprovisioning": func(ctx context.Context, t *testing.T, rh *hostIsUpPostHandler, h *host.Host) {
 			instanceID := generateFakeEC2InstanceID()
 			h.Id = instanceID

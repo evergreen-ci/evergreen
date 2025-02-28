@@ -1318,27 +1318,30 @@ func (h *Host) Terminate(ctx context.Context, user, reason string) error {
 	return nil
 }
 
-// SetDNSName updates the DNS name for a given host once
+// SetDNSName updates the DNS name for a given host. If the dnsName is empty,
+// this will no-op and will not unset the existing DNS name.
 func (h *Host) SetDNSName(ctx context.Context, dnsName string) error {
-	err := UpdateOne(
+	if h.Host == dnsName || dnsName == "" {
+		return nil
+	}
+
+	if err := UpdateOne(
 		ctx,
 		bson.M{
-			IdKey:  h.Id,
-			DNSKey: "",
+			IdKey: h.Id,
 		},
 		bson.M{
 			"$set": bson.M{
 				DNSKey: dnsName,
 			},
 		},
-	)
-	if err == nil {
-		h.Host = dnsName
+	); err != nil {
+		return err
 	}
-	if adb.ResultsNotFound(err) {
-		return nil
-	}
-	return err
+
+	h.Host = dnsName
+
+	return nil
 }
 
 // probably don't want to store the port mapping exactly this way

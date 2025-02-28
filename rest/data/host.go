@@ -313,7 +313,7 @@ func PostHostIsUp(ctx context.Context, env evergreen.Environment, params restmod
 		}
 	}
 
-	if err := setHostname(ctx, h, params.Hostname); err != nil {
+	if err := h.SetDNSName(ctx, params.Hostname); err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrap(err, "setting hostname").Error(),
@@ -375,16 +375,6 @@ func fixProvisioningIntentHost(ctx context.Context, h *host.Host, instanceID str
 	default:
 		return errors.Errorf("logical error: intent host is in state '%s', which should be impossible when host is up and provisioning", h.Status)
 	}
-}
-
-// setHostname sets the host's self-reported hostname after it's been marked as
-// up. This only applies to hosts that can determine their own hostname.
-func setHostname(ctx context.Context, h *host.Host, hostname string) error {
-	if hostname == "" {
-		return nil
-	}
-
-	return h.SetDNSName(ctx, hostname)
 }
 
 // transitionIntentHostToStarting converts an intent host to a real host because
