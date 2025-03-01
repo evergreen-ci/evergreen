@@ -248,22 +248,6 @@ func writeFileWithContentsAndPermission(path string, contents io.Reader, mode fs
 	return errors.Wrapf(os.Chmod(f.Name(), mode), "changing file '%s' mode to %d", f.Name(), mode)
 }
 
-// tarGzReader returns a file, gzip reader, and tar reader for the given path.
-// The tar reader wraps the gzip reader, which wraps the file.
-func tarGzReader(path string) (f, gz io.ReadCloser, tarReader *tar.Reader, err error) {
-	f, err = os.Open(path)
-	if err != nil {
-		return nil, nil, nil, errors.Wrapf(err, "opening file '%s'", path)
-	}
-	gz, err = pgzip.NewReader(f)
-	if err != nil {
-		defer f.Close()
-		return nil, nil, nil, errors.Wrap(err, "initializing gzip reader")
-	}
-	tarReader = tar.NewReader(gz)
-	return f, gz, tarReader, nil
-}
-
 // tarGzWriter returns a file, gzip writer, and tarWriter for the path.
 // The tar writer wraps the gzip writer, which wraps the file. If
 // useParallelGzip is true, then it will use the parallel gzip algorithm;

@@ -22,19 +22,6 @@ const (
 	MergePatch
 )
 
-func (m PatchTestMode) String() string {
-	switch m {
-	case NoPatch:
-		return "none"
-	case InlinePatch:
-		return "inline"
-	case ExternalPatch:
-		return "external"
-	}
-
-	return "unknown"
-}
-
 type PatchRequest struct {
 	ModuleName string
 	FilePath   string

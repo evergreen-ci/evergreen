@@ -299,6 +299,11 @@ There are two options for aliases:
     tags** to use with the existing project configuration (as you would
     for other aliases).
 
+3. **Ensure that a valid waterfall version is created for the commit you're tagging.** 
+
+Evergreen uses the existing yaml to validate that this is a valid project and simplify internal logic, 
+as well as to ensure that the tagged commit is tested.
+
 Example:
 ![git_tag_aliases.png](../images/git_tag_aliases.png)
 

@@ -11,10 +11,6 @@ func ArrstringArrstring(t []string) []string {
 	return m
 }
 
-func BoolBool(in bool) bool {
-	return bool(in)
-}
-
 func StringString(in string) string {
 	return string(in)
 }

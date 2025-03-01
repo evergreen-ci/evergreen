@@ -1800,7 +1800,7 @@ func (s *FindProjectsSuite) TestGetProjectSettings() {
 		Admins:  []string{},
 		Repo:    "SomeRepo",
 	}
-	projectSettingsEvent, err := GetProjectSettings(projRef)
+	projectSettingsEvent, err := GetProjectSettings(s.T().Context(), projRef)
 	s.NoError(err)
 	s.NotNil(projectSettingsEvent)
 }
@@ -1812,7 +1812,7 @@ func (s *FindProjectsSuite) TestGetProjectSettingsNoRepo() {
 		Id:      projectId,
 		Admins:  []string{},
 	}
-	projectSettingsEvent, err := GetProjectSettings(projRef)
+	projectSettingsEvent, err := GetProjectSettings(s.T().Context(), projRef)
 	s.NoError(err)
 	s.NotNil(projectSettingsEvent)
 	s.False(projectSettingsEvent.GithubHooksEnabled)

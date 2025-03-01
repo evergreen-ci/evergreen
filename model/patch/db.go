@@ -354,26 +354,6 @@ func PatchesByProject(projectId string, ts time.Time, limit int) db.Q {
 	}).Sort([]string{"-" + CreateTimeKey}).Limit(limit)
 }
 
-// FindFailedCommitQueuePatchesInTimeRange returns failed patches if they started or failed within range.
-func FindFailedCommitQueuePatchesInTimeRange(projectID string, startTime, endTime time.Time) ([]Patch, error) {
-	query := bson.M{
-		ProjectKey: projectID,
-		StatusKey:  evergreen.VersionFailed,
-		AliasKey:   evergreen.CommitQueueAlias,
-		"$or": []bson.M{
-			{"$and": []bson.M{
-				{StartTimeKey: bson.M{"$lte": endTime}},
-				{StartTimeKey: bson.M{"$gte": startTime}},
-			}},
-			{"$and": []bson.M{
-				{FinishTimeKey: bson.M{"$lte": endTime}},
-				{FinishTimeKey: bson.M{"$gte": startTime}},
-			}},
-		},
-	}
-	return Find(db.Query(query).Sort([]string{CreateTimeKey}))
-}
-
 // ByGithubPRAndCreatedBefore finds all patches that were created for a GitHub
 // PR before the given timestamp.
 func ByGithubPRAndCreatedBefore(t time.Time, owner, repo string, prNumber int) db.Q {

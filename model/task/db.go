@@ -632,20 +632,6 @@ func ByStatuses(statuses []string, buildVariant, displayName, project, requester
 	}
 }
 
-// ByDifferentFailedBuildVariants returns a query for all failed tasks on a revision that are not of a buildVariant
-func ByDifferentFailedBuildVariants(revision, buildVariant, displayName, project, requester string) bson.M {
-	return bson.M{
-		BuildVariantKey: bson.M{
-			"$ne": buildVariant,
-		},
-		DisplayNameKey: displayName,
-		StatusKey:      evergreen.TaskFailed,
-		ProjectKey:     project,
-		RequesterKey:   requester,
-		RevisionKey:    revision,
-	}
-}
-
 func ByExecutionTask(taskId string) bson.M {
 	return bson.M{
 		ExecutionTasksKey: taskId,

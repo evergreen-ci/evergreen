@@ -67,13 +67,13 @@ lifetime up to 30 days past host creation.
 If you'd like to get a notification before a host expires, you can [set up a
 notification](../Project-Configuration/Notifications#spawn-host-expiration) for it.
 
-## Unexpirable Host Sleep Schedules
+## Unexpirable Host Uptime Schedules
 
-Unexpirable hosts have a feature (which is enabled by default) called a sleep schedule that allows you to control when
-you'd like your unexpirable host to be automatically turned on or off. A sleep schedule lets you choose recurring times
+Unexpirable hosts have a feature (which is enabled by default) called an uptime schedule that allows you to control when
+you'd like your unexpirable host to be automatically turned on or off. An uptime schedule lets you choose recurring times
 of the week when you want your host to be on, and when it's okay for it to be turned off. For example, you could set a
-sleep schedule where your host is up and running during your work hours from 10 am to 6 pm between Monday and Friday and
-otherwise let it turn it off overnight and during weekends. Setting a sleep schedule ensures your host is on during your
+uptime schedule where your host is up and running during your work hours from 10 am to 6 pm between Monday and Friday and
+otherwise let it turn it off overnight and during weekends. Setting an uptime schedule ensures your host is on during your
 working hours, while also stopping the host when it's not being actively used. Powering down hosts when they're not
 being used is important to ensure that hosts are being efficiently utilized and to avoid over-spending on idle
 long-lived hosts.
@@ -81,26 +81,26 @@ long-lived hosts.
 Note that stopping the host during off hours means **shutting down the host**, not hibernating the host. If needed, see
 [the FAQ](#faq) for more info.
 
-**All users are assigned a default sleep schedule. If you'd like your
+**All users are assigned a default uptime schedule. If you'd like your
 unexpirable host to use something other than the default settings, your options are:**
 
-1. [Set a sleep schedule](#sleep-schedule) (Recommended for most users): Set a sleep schedule for each of your existing
+1. [Set an uptime schedule](#uptime-schedule) (Recommended for most users): Set an uptime schedule for each of your existing
    unexpirable hosts on by [pressing the "edit" button on the spawn host page](https://spruce.mongodb.com/spawn/host).
 2. [Permanently exempt your host](#permanent-exemption): If you have a reason that your host cannot use the sleep
    schedule, you can request a permanent exemption for your host.
 
-### Option 1: Sleep Schedule {#sleep-schedule}
+### Option 1: Uptime Schedule {#uptime-schedule}
 
 This is the feature described [above](#unexpirable-host-sleep-schedules) to set times of the week when you want your
-host to be on or off. You can set a recurring sleep schedule on your host from [the
+host to be on or off. You can set a recurring uptime schedule on your host from [the
 UI](https://spruce.mongodb.com/spawn/host) by pressing the "edit" button your host.
 
-In the Spruce UI, you can pick a sleep schedule for your host when creating the unexpirable host or editing an existing
+In the Spruce UI, you can pick an uptime schedule for your host when creating the unexpirable host or editing an existing
 unexpirable host:
 
-![Sleep schedule](../images/set_sleep_schedule.png)
+![Uptime schedule](../images/set_sleep_schedule.png)
 
-The example sleep schedule above will automatically turn the host on from 8am to 8pm on Monday to Friday (Eastern Time).
+The example uptime schedule above will automatically turn the host on from 8am to 8pm on Monday to Friday (Eastern Time).
 The host will be automatically turned off overnight from 8pm to 8am on Monday to Friday, and will be off for the entire
 weekend.
 
@@ -109,14 +109,14 @@ host to be on for those days, and the time zone of the schedule. You can edit th
 
 #### Temporary Exemptions
 
-If you need your host to temporarily ignore its sleep schedule, you can request a temporary exemption for your host.
-During a temporary exemption, the sleep schedule will not take effect at all, so Evergreen will not stop/start your host
+If you need your host to temporarily ignore its uptime schedule, you can request a temporary exemption for your host.
+During a temporary exemption, the uptime schedule will not take effect at all, so Evergreen will not stop/start your host
 unless you stop/start it manually. This is useful if you have a one-off need to keep your host on without interruption.
 For example, if you're running a test overnight on the host and you don't want the host to be stopped, you can use a
 temporary exemption until tomorrow to keep the host on. Another example is if it's outside your working hours (and the
-host has already automatically stopped for the night for its sleep schedule) but you want to check a file in your host,
-you can request a temporary exemption and then turn your host on. The sleep schedule will let your host stay on, and
-will ignore the host's sleep schedule until the temporary exemption ends.
+host has already automatically stopped for the night for its uptime schedule) but you want to check a file in your host,
+you can request a temporary exemption and then turn your host on. The uptime schedule will let your host stay on, and
+will ignore the host's uptime schedule until the temporary exemption ends.
 
 You can set a temporary exemption in the Spruce edit host modal:
 
@@ -128,17 +128,17 @@ Alternatively, you can set a temporary exemption from the CLI:
 evergreen host modify --host <HOST_ID> --extend-temporary-exemption <NUM_HOURS>
 ```
 
-You can temporarily exempt your host from the sleep schedule for up to a month from today.
+You can temporarily exempt your host from the uptime schedule for up to a month from today.
 
 #### Keeping a Host Off
 
-Your host's sleep schedule will regularly stop and start your host. However, there can be some use cases where you may
+Your host's uptime schedule will regularly stop and start your host. However, there can be some use cases where you may
 wish to turn your host off for an extended period of time. For example, if you are about to go on leave, you may wish to
 leave your host off for the entire time since you won't need it.
 
 To accommodate this, Evergreen offers an option to keeping the host off until the next time you start it back up
 yourself. If you choose this option, Evergreen will let the host will remain off and will not start or stop your host
-automatically for its sleep schedule. The sleep schedule will only take effect again when you start the host back up
+automatically for its uptime schedule. The schedule will only take effect again when you start the host back up
 manually.
 
 If you'd like to manually turn off your host and keep it off until the next time you start it back up, you can press
@@ -158,7 +158,7 @@ evergreen host stop --host <host_id> --keep-off
 A: Yes! Even though Evergreen will automatically stop and start your host on the configured schedule, you can still
 manually stop and start your host whenever you need to. If you do this, it's recommended, you also [set a temporary
 exemption](#temporary-exemptions) to ensure that you can use your host without being accidentally interrupted when the
-sleep schedule tries to automatically stop/start your host.
+uptime schedule tries to automatically stop/start your host.
 
 **Q: Will the hostname change between restarts?**
 
@@ -187,14 +187,14 @@ exemption](#permanent-exemption).
 
 ### Option 2: Requesting a Permanent Exemption {#permanent-exemption}
 
-If for some reason your host cannot use a sleep schedule at all or your regular workflow is impacted by using it, you
-can request that your host be permanently exempt from the sleep schedule feature. If your host is permanently exempt, it
-won't have any sleep schedule set and Evergreen will not stop/start your host according to a recurring sleep schedule. A
-permanent exemption from setting a sleep schedule would allow your host to be kept on 24/7.
+If for some reason your host cannot use an uptime schedule at all or your regular workflow is impacted by using it, you
+can request that your host be permanently exempt from the uptime schedule feature. If your host is permanently exempt, it
+won't have any uptime schedule set and Evergreen will not stop/start your host according to a recurring uptime schedule. A
+permanent exemption from setting an uptime schedule would allow your host to be kept on 24/7.
 
 If you'd like to request a permanent exemption, please file a DEVPROD ticket with the title "Permanent Exemption
 Request" and set Evergreen App as the Dev Prod service. In it, please include your host ID and a brief description of
-why you'd like your host to be permanently exempt from the sleep schedule.
+why you'd like your host to be permanently exempt from the uptime schedule.
 
 ## Hosts Page
 

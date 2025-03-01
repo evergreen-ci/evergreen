@@ -20,7 +20,7 @@ func (r *projectSettingsResolver) Aliases(ctx context.Context, obj *restModel.AP
 
 // GithubAppAuth is the resolver for the githubAppAuth field.
 func (r *projectSettingsResolver) GithubAppAuth(ctx context.Context, obj *restModel.APIProjectSettings) (*restModel.APIGithubAppAuth, error) {
-	app, err := githubapp.FindOneGitHubAppAuth(utility.FromStringPtr(obj.ProjectRef.Id))
+	app, err := githubapp.FindOneGitHubAppAuth(ctx, utility.FromStringPtr(obj.ProjectRef.Id))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding GitHub app for project '%s': %s", utility.FromStringPtr(obj.ProjectRef.Id), err.Error()))
 	}

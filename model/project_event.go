@@ -2,6 +2,7 @@ package model
 
 import (
 	"bytes"
+	"context"
 	"reflect"
 	"time"
 
@@ -364,8 +365,8 @@ func LogProjectAdded(projectId, username string) error {
 }
 
 // GetAndLogProjectModified retrieves the project settings before and after some change, and logs an event for the modification.
-func GetAndLogProjectModified(id, userId string, isRepo bool, before *ProjectSettings) error {
-	after, err := GetProjectSettingsById(id, isRepo)
+func GetAndLogProjectModified(ctx context.Context, id, userId string, isRepo bool, before *ProjectSettings) error {
+	after, err := GetProjectSettingsById(ctx, id, isRepo)
 	if err != nil {
 		return errors.Wrap(err, "getting after project settings event")
 	}
@@ -374,8 +375,8 @@ func GetAndLogProjectModified(id, userId string, isRepo bool, before *ProjectSet
 
 // GetAndLogProjectRepoAttachment retrieves the project settings before and after the change, and logs the modification
 // as a repo attachment/detachment event.
-func GetAndLogProjectRepoAttachment(id, userId, attachmentType string, isRepo bool, before *ProjectSettings) error {
-	after, err := GetProjectSettingsById(id, isRepo)
+func GetAndLogProjectRepoAttachment(ctx context.Context, id, userId, attachmentType string, isRepo bool, before *ProjectSettings) error {
+	after, err := GetProjectSettingsById(ctx, id, isRepo)
 	if err != nil {
 		return errors.Wrap(err, "getting after project settings event")
 	}

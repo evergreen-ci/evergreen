@@ -11,7 +11,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
@@ -498,26 +497,6 @@ func (ac *legacyClient) ListVariants(project string) ([]model.BuildVariant, erro
 	return variants, nil
 }
 
-func (ac *legacyClient) ListDistros() ([]distro.Distro, error) {
-	resp, err := ac.get2("distros", nil)
-	if err != nil {
-		return nil, errors.Wrap(err, "making request to get distros")
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, NewAuthError(resp)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, errors.Wrap(NewAPIError(resp), "received non-OK status from API server")
-	}
-	distros := []distro.Distro{}
-	if err := utility.ReadJSON(resp.Body, &distros); err != nil {
-		return nil, errors.Wrap(err, "reading JSON from response body")
-	}
-	return distros, nil
-}
-
 // PutPatch submits a new patch for the given project to the API server. If successful, returns
 // the patch object itself.
 func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, error) {
@@ -622,36 +601,6 @@ func (ac *legacyClient) GetTask(taskId string) (*service.RestTask, error) {
 		return nil, err
 	}
 	return &reply, nil
-}
-
-// GetPatchModules retrieves a list of modules available for a given patch, along with the project identifier.
-func (ac *legacyClient) GetPatchModules(patchId, projectId string) ([]string, string, error) {
-	var out []string
-
-	resp, err := ac.get(fmt.Sprintf("patches/%s/%s/modules", patchId, projectId), nil)
-	if err != nil {
-		return out, "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, "", NewAuthError(resp)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return out, "", NewAPIError(resp)
-	}
-
-	data := struct {
-		Project string   `json:"project"`
-		Modules []string `json:"modules"`
-	}{}
-
-	err = utility.ReadJSON(resp.Body, &data)
-	if err != nil {
-		return out, "", err
-	}
-
-	return data.Modules, data.Project, nil
 }
 
 // GetRecentVersions retrieves a list of recent versions for a project,

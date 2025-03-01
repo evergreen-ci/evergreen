@@ -739,14 +739,6 @@ func (r *queryResolver) UserConfig(ctx context.Context) (*UserConfig, error) {
 	return config, nil
 }
 
-// UserSettings is the resolver for the userSettings field.
-func (r *queryResolver) UserSettings(ctx context.Context) (*restModel.APIUserSettings, error) {
-	usr := mustHaveUser(ctx)
-	userSettings := restModel.APIUserSettings{}
-	userSettings.BuildFromService(usr.Settings)
-	return &userSettings, nil
-}
-
 // BuildVariantsForTaskName is the resolver for the buildVariantsForTaskName field.
 func (r *queryResolver) BuildVariantsForTaskName(ctx context.Context, projectIdentifier string, taskName string) ([]*task.BuildVariantTuple, error) {
 	pid, err := model.GetIdForProject(projectIdentifier)

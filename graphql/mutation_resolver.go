@@ -350,7 +350,7 @@ func (r *mutationResolver) AttachProjectToNewRepo(ctx context.Context, project M
 	pRef.Owner = project.NewOwner
 	pRef.Repo = project.NewRepo
 
-	if err = pRef.AttachToNewRepo(usr); err != nil {
+	if err = pRef.AttachToNewRepo(ctx, usr); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("updating owner/repo: %s", err.Error()))
 	}
 
@@ -464,7 +464,7 @@ func (r *mutationResolver) DeactivateStepbackTask(ctx context.Context, opts Deac
 // DefaultSectionToRepo is the resolver for the defaultSectionToRepo field.
 func (r *mutationResolver) DefaultSectionToRepo(ctx context.Context, opts DefaultSectionToRepoInput) (*string, error) {
 	usr := mustHaveUser(ctx)
-	if err := model.DefaultSectionToRepo(opts.ProjectID, model.ProjectPageSection(opts.Section), usr.Username()); err != nil {
+	if err := model.DefaultSectionToRepo(ctx, opts.ProjectID, model.ProjectPageSection(opts.Section), usr.Username()); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("defaulting to repo for section: %s", err.Error()))
 	}
 	return &opts.ProjectID, nil
@@ -473,14 +473,14 @@ func (r *mutationResolver) DefaultSectionToRepo(ctx context.Context, opts Defaul
 // DeleteGithubAppCredentials is the resolver for the deleteGithubAppCredentials field.
 func (r *mutationResolver) DeleteGithubAppCredentials(ctx context.Context, opts DeleteGithubAppCredentialsInput) (*DeleteGithubAppCredentialsPayload, error) {
 	usr := mustHaveUser(ctx)
-	app, err := githubapp.FindOneGitHubAppAuth(opts.ProjectID)
+	app, err := githubapp.FindOneGitHubAppAuth(ctx, opts.ProjectID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding GitHub app for project '%s': %s", opts.ProjectID, err.Error()))
 	}
 	if app == nil {
 		return nil, InputValidationError.Send(ctx, fmt.Sprintf("project '%s' does not have a GitHub app defined", opts.ProjectID))
 	}
-	if err = githubapp.RemoveGitHubAppAuth(app); err != nil {
+	if err = githubapp.RemoveGitHubAppAuth(ctx, app); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("removing GitHub app auth for project '%s': %s", opts.ProjectID, err.Error()))
 	}
 	before := model.ProjectSettings{
@@ -519,7 +519,7 @@ func (r *mutationResolver) DetachProjectFromRepo(ctx context.Context, projectID 
 	if pRef == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("cannot find project %s", projectID))
 	}
-	if err = pRef.DetachFromRepo(usr); err != nil {
+	if err = pRef.DetachFromRepo(ctx, usr); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("detaching from repo: %s", err.Error()))
 	}
 
@@ -543,7 +543,7 @@ func (r *mutationResolver) ForceRepotrackerRun(ctx context.Context, projectID st
 // PromoteVarsToRepo is the resolver for the promoteVarsToRepo field.
 func (r *mutationResolver) PromoteVarsToRepo(ctx context.Context, opts PromoteVarsToRepoInput) (bool, error) {
 	usr := mustHaveUser(ctx)
-	if err := data.PromoteVarsToRepo(opts.ProjectID, opts.VarNames, usr.Username()); err != nil {
+	if err := data.PromoteVarsToRepo(ctx, opts.ProjectID, opts.VarNames, usr.Username()); err != nil {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("promoting variables to repo for project '%s': %s", opts.ProjectID, err.Error()))
 
 	}

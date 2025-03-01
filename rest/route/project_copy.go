@@ -157,7 +157,7 @@ func (p *copyVariablesHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONResponse(varsToCopy)
 	}
 
-	projectBefore, err := model.GetProjectSettingsById(copyToProjectId, !copyIdIsProject)
+	projectBefore, err := model.GetProjectSettingsById(ctx, copyToProjectId, !copyIdIsProject)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting settings for project '%s' before copying variables", copyToProjectId))
 	}
@@ -166,7 +166,7 @@ func (p *copyVariablesHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "copying project vars from source project '%s' to target project '%s'", p.copyFrom, p.opts.CopyTo))
 	}
 
-	if err = model.GetAndLogProjectModified(copyToProjectId, p.usr.Id, !copyIdIsProject, projectBefore); err != nil {
+	if err = model.GetAndLogProjectModified(ctx, copyToProjectId, p.usr.Id, !copyIdIsProject, projectBefore); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "logging project '%s' variables copied", copyToProjectId))
 	}
 
