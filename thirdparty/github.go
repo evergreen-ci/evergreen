@@ -719,46 +719,6 @@ func GetCommitEvent(ctx context.Context, owner, repo, githash string) (*github.R
 	return commit, nil
 }
 
-// GetCommitDiff gets the diff of the specified commit via an API call to GitHub
-func GetCommitDiff(ctx context.Context, owner, repo, sha string) (string, error) {
-	caller := "GetCommitDiff"
-	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
-		attribute.String(githubEndpointAttribute, caller),
-		attribute.String(githubOwnerAttribute, owner),
-		attribute.String(githubRepoAttribute, repo),
-		attribute.String(githubRefAttribute, sha),
-	))
-	defer span.End()
-
-	var err error
-	token, err := getInstallationToken(ctx, owner, repo, nil)
-	if err != nil {
-		return "", errors.Wrap(err, "getting installation token")
-	}
-	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
-	defer githubClient.Close()
-
-	commit, resp, err := githubClient.Repositories.GetCommitRaw(ctx, owner, repo, sha, github.RawOptions{Type: github.Diff})
-	if resp != nil {
-		defer resp.Body.Close()
-		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
-		if err != nil {
-			return "", parseGithubErrorResponse(resp)
-		}
-	} else {
-		errMsg := fmt.Sprintf("nil response from '%s/%s': sha: '%s': %v", owner, repo, sha, err)
-		grip.Error(message.Fields{
-			"message": errMsg,
-			"owner":   owner,
-			"repo":    repo,
-			"sha":     sha,
-		})
-		return "", APIResponseError{errMsg}
-	}
-
-	return commit, nil
-}
-
 // GetBranchEvent gets the head of the a given branch via an API call to GitHub
 func GetBranchEvent(ctx context.Context, owner, repo, branch string) (*github.Branch, error) {
 	caller := "GetBranchEvent"

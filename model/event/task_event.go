@@ -247,9 +247,3 @@ func LogTaskDependenciesOverridden(taskId string, execution int, userID string) 
 	logTaskEvent(taskId, TaskDependenciesOverridden,
 		TaskEventData{Execution: execution, UserId: userID})
 }
-
-// LogMergeTaskUnscheduled updates the DB with a merge task unscheduled event.
-func LogMergeTaskUnscheduled(taskId string, execution int, userID string) {
-	logTaskEvent(taskId, MergeTaskUnscheduled,
-		TaskEventData{Execution: execution, UserId: userID})
-}
