@@ -34,7 +34,7 @@ func (r *taskResolver) AbortInfo(ctx context.Context, obj *restModel.APITask) (*
 	if len(obj.AbortInfo.TaskID) > 0 {
 		abortedTask, err := task.FindOneId(ctx, obj.AbortInfo.TaskID)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task '%s': %s", obj.AbortInfo.TaskID, err.Error()))
 		}
 		if abortedTask == nil {
 			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("task '%s' not found", obj.AbortInfo.TaskID))
@@ -63,17 +63,18 @@ func (r *taskResolver) Ami(ctx context.Context, obj *restModel.APITask) (*string
 
 // Annotation is the resolver for the annotation field.
 func (r *taskResolver) Annotation(ctx context.Context, obj *restModel.APITask) (*restModel.APITaskAnnotation, error) {
+	taskID := utility.FromStringPtr(obj.Id)
 	hasPermission, err := hasAnnotationPermission(ctx, obj, evergreen.AnnotationsView.Value)
 	if err != nil {
 		return nil, err
 	}
 	if !hasPermission {
-		return nil, Forbidden.Send(ctx, fmt.Sprintf("not authorized to view annotations for task '%s'", utility.FromStringPtr(obj.Id)))
+		return nil, Forbidden.Send(ctx, fmt.Sprintf("not authorized to view annotations for task '%s'", taskID))
 	}
 
-	annotation, err := annotations.FindOneByTaskIdAndExecution(*obj.Id, obj.Execution)
+	annotation, err := annotations.FindOneByTaskIdAndExecution(taskID, obj.Execution)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding annotation for task '%s' and execution '%d': %s", utility.FromStringPtr(obj.Id), obj.Execution, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding annotation for task '%s' with execution %d: %s", taskID, obj.Execution, err.Error()))
 	}
 	if annotation == nil {
 		return nil, nil
@@ -117,12 +118,12 @@ func (r *taskResolver) BaseTask(ctx context.Context, obj *restModel.APITask) (*r
 		if evergreen.IsPatchRequester(t.Requester) {
 			baseTask, err = t.FindTaskOnBaseCommit(ctx)
 			if err != nil {
-				return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding task '%s' on base commit: %s", utility.FromStringPtr(obj.Id), err.Error()))
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding task '%s' on base commit: %s", utility.FromStringPtr(obj.DisplayName), err.Error()))
 			}
 		} else {
 			baseTask, err = t.FindTaskOnPreviousCommit(ctx)
 			if err != nil {
-				return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding task '%s' on previous commit: %s", utility.FromStringPtr(obj.Id), err.Error()))
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding task '%s' on previous commit: %s", utility.FromStringPtr(obj.DisplayName), err.Error()))
 			}
 		}
 	}
@@ -152,7 +153,7 @@ func (r *taskResolver) BuildVariantDisplayName(ctx context.Context, obj *restMod
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding build '%s': %s", buildID, err.Error()))
 	}
 	if b == nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("build '%s' not found", buildID))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("build '%s' not found", buildID))
 	}
 	displayName := b.DisplayName
 	return &displayName, nil
@@ -160,7 +161,8 @@ func (r *taskResolver) BuildVariantDisplayName(ctx context.Context, obj *restMod
 
 // CanAbort is the resolver for the canAbort field.
 func (r *taskResolver) CanAbort(ctx context.Context, obj *restModel.APITask) (bool, error) {
-	return *obj.Status == evergreen.TaskDispatched || *obj.Status == evergreen.TaskStarted, nil
+	taskStatus := utility.FromStringPtr(obj.Status)
+	return taskStatus == evergreen.TaskDispatched || taskStatus == evergreen.TaskStarted, nil
 }
 
 // CanDisable is the resolver for the canDisable field.
@@ -187,7 +189,7 @@ func (r *taskResolver) CanOverrideDependencies(ctx context.Context, obj *restMod
 		ResourceType:  evergreen.ProjectResourceType,
 		Permission:    evergreen.PermissionTasks,
 		RequiredLevel: evergreen.TasksAdmin.Value,
-		Resource:      *obj.ProjectId,
+		Resource:      utility.FromStringPtr(obj.ProjectId),
 	}
 	overrideRequesters := []string{
 		evergreen.PatchVersionRequester,
@@ -204,7 +206,7 @@ func (r *taskResolver) CanOverrideDependencies(ctx context.Context, obj *restMod
 func (r *taskResolver) CanRestart(ctx context.Context, obj *restModel.APITask) (bool, error) {
 	t, err := obj.ToService()
 	if err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' to service", utility.FromStringPtr(obj.Id)))
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' to service: %s", utility.FromStringPtr(obj.Id), err.Error()))
 	}
 	return canRestartTask(ctx, t), nil
 }
@@ -213,14 +215,14 @@ func (r *taskResolver) CanRestart(ctx context.Context, obj *restModel.APITask) (
 func (r *taskResolver) CanSchedule(ctx context.Context, obj *restModel.APITask) (bool, error) {
 	t, err := obj.ToService()
 	if err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' to service", utility.FromStringPtr(obj.Id)))
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' to service: %s", utility.FromStringPtr(obj.Id), err.Error()))
 	}
 	return canScheduleTask(ctx, t), nil
 }
 
 // CanSetPriority is the resolver for the canSetPriority field.
 func (r *taskResolver) CanSetPriority(ctx context.Context, obj *restModel.APITask) (bool, error) {
-	if *obj.Status == evergreen.TaskUndispatched {
+	if utility.FromStringPtr(obj.Status) == evergreen.TaskUndispatched {
 		return true, nil
 	}
 	if len(obj.ExecutionTasks) != 0 && !evergreen.IsFinishedTaskStatus(utility.FromStringPtr(obj.Status)) {
@@ -256,7 +258,7 @@ func (r *taskResolver) DependsOn(ctx context.Context, obj *restModel.APITask) ([
 	dependencyTasks, err := task.FindWithFields(ctx, task.ByIds(depIds), task.DisplayNameKey, task.StatusKey,
 		task.ActivatedKey, task.BuildVariantKey, task.DetailsKey, task.DependsOnKey)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding dependency tasks for task '%s': %s", *obj.Id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding dependency tasks for task '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
 	}
 
 	taskMap := map[string]*task.Task{}
@@ -309,12 +311,13 @@ func (r *taskResolver) DependsOn(ctx context.Context, obj *restModel.APITask) ([
 
 // DisplayTask is the resolver for the displayTask field.
 func (r *taskResolver) DisplayTask(ctx context.Context, obj *restModel.APITask) (*restModel.APITask, error) {
-	t, err := task.FindOneId(ctx, *obj.Id)
+	taskID := utility.FromStringPtr(obj.Id)
+	t, err := task.FindOneId(ctx, taskID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding task '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding task '%s': %s", taskID, err.Error()))
 	}
 	if t == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("task '%s' not found", utility.FromStringPtr(obj.Id)))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("task '%s' not found", taskID))
 	}
 	dt, err := t.GetDisplayTask(ctx)
 	if dt == nil || err != nil {
@@ -322,7 +325,7 @@ func (r *taskResolver) DisplayTask(ctx context.Context, obj *restModel.APITask) 
 	}
 	apiTask := &restModel.APITask{}
 	if err = apiTask.BuildFromService(ctx, dt, nil); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting display task '%s' to APITask", dt.Id))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting display task '%s' to APITask: %s", dt.Id, err.Error()))
 	}
 	return apiTask, nil
 }
@@ -335,7 +338,7 @@ func (r *taskResolver) EstimatedStart(ctx context.Context, obj *restModel.APITas
 	}
 	start, err := model.GetEstimatedStartTime(ctx, *t)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting estimated start time for '%s'", utility.FromStringPtr(obj.Id)))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting estimated start time for task '%s'", utility.FromStringPtr(obj.Id)))
 	}
 	duration := restModel.NewAPIDuration(start)
 	return &duration, nil
@@ -400,7 +403,7 @@ func (r *taskResolver) Files(ctx context.Context, obj *restModel.APITask) (*Task
 			groupedFilesList = append(groupedFilesList, groupedFiles)
 		}
 	} else {
-		groupedFiles, err := getGroupedFiles(ctx, *obj.DisplayName, *obj.Id, obj.Execution)
+		groupedFiles, err := getGroupedFiles(ctx, utility.FromStringPtr(obj.DisplayName), utility.FromStringPtr(obj.Id), obj.Execution)
 		if err != nil {
 			return &emptyTaskFiles, err
 		}
@@ -421,7 +424,7 @@ func (r *taskResolver) GeneratedByName(ctx context.Context, obj *restModel.APITa
 	}
 	generator, err := task.FindOneIdWithFields(ctx, obj.GeneratedBy, task.DisplayNameKey)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("find generator task for task '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("find generator for task '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
 	}
 	if generator == nil {
 		return nil, nil
@@ -450,7 +453,7 @@ func (r *taskResolver) IsPerfPluginEnabled(ctx context.Context, obj *restModel.A
 	if !evergreen.IsFinishedTaskStatus(utility.FromStringPtr(obj.Status)) {
 		return false, nil
 	}
-	if !model.IsPerfEnabledForProject(*obj.ProjectId) {
+	if !model.IsPerfEnabledForProject(utility.FromStringPtr(obj.ProjectId)) {
 		return false, nil
 	}
 	opts := apimodels.GetPerfCountOptions{
@@ -474,14 +477,15 @@ func (r *taskResolver) IsPerfPluginEnabled(ctx context.Context, obj *restModel.A
 
 // LatestExecution is the resolver for the latestExecution field.
 func (r *taskResolver) LatestExecution(ctx context.Context, obj *restModel.APITask) (int, error) {
-	return task.GetLatestExecution(ctx, *obj.Id)
+	return task.GetLatestExecution(ctx, utility.FromStringPtr(obj.Id))
 }
 
 // MinQueuePosition is the resolver for the minQueuePosition field.
 func (r *taskResolver) MinQueuePosition(ctx context.Context, obj *restModel.APITask) (int, error) {
-	position, err := model.FindMinimumQueuePositionForTask(*obj.Id)
+	taskID := utility.FromStringPtr(obj.Id)
+	position, err := model.FindMinimumQueuePositionForTask(taskID)
 	if err != nil {
-		return 0, InternalServerError.Send(ctx, fmt.Sprintf("finding minimum queue position for task '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
+		return 0, InternalServerError.Send(ctx, fmt.Sprintf("finding minimum queue position for task '%s': %s", taskID, err.Error()))
 	}
 	if position < 0 {
 		return 0, nil
@@ -491,12 +495,12 @@ func (r *taskResolver) MinQueuePosition(ctx context.Context, obj *restModel.APIT
 
 // Patch is the resolver for the patch field.
 func (r *taskResolver) Patch(ctx context.Context, obj *restModel.APITask) (*restModel.APIPatch, error) {
-	if !evergreen.IsPatchRequester(*obj.Requester) {
+	if !evergreen.IsPatchRequester(utility.FromStringPtr(obj.Requester)) {
 		return nil, nil
 	}
-	apiPatch, err := data.FindPatchById(*obj.Version)
+	apiPatch, err := data.FindPatchById(utility.FromStringPtr(obj.Version))
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Couldn't find a patch with id '%s': %s", utility.FromStringPtr(obj.Version), err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding patch '%s': %s", utility.FromStringPtr(obj.Version), err.Error()))
 	}
 	return apiPatch, nil
 }
@@ -509,28 +513,30 @@ func (r *taskResolver) PatchNumber(ctx context.Context, obj *restModel.APITask) 
 
 // Pod is the resolver for the pod field.
 func (r *taskResolver) Pod(ctx context.Context, obj *restModel.APITask) (*restModel.APIPod, error) {
-	if utility.FromStringPtr(obj.PodID) == "" {
+	podID := utility.FromStringPtr(obj.PodID)
+	if podID == "" {
 		return nil, nil
 	}
-	pod, err := data.FindAPIPodByID(utility.FromStringPtr(obj.PodID))
+	pod, err := data.FindAPIPodByID(podID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding pod: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding pod '%s': %s", podID, err.Error()))
 	}
 	return pod, nil
 }
 
 // Project is the resolver for the project field.
 func (r *taskResolver) Project(ctx context.Context, obj *restModel.APITask) (*restModel.APIProjectRef, error) {
-	pRef, err := data.FindProjectById(*obj.ProjectId, true, false)
+	projectID := utility.FromStringPtr(obj.ProjectId)
+	pRef, err := data.FindProjectById(projectID, true, false)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding project ref for project '%s': %s", utility.FromStringPtr(obj.ProjectId), err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding project '%s': %s", projectID, err.Error()))
 	}
 	if pRef == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("project ref for project '%s' not found", utility.FromStringPtr(obj.ProjectId)))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("project '%s' not found", projectID))
 	}
 	apiProjectRef := restModel.APIProjectRef{}
 	if err = apiProjectRef.BuildFromService(*pRef); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APIProject from service for project '%s': %s", utility.FromStringPtr(obj.ProjectId), err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APIProject '%s' from service: %s", projectID, err.Error()))
 	}
 	return &apiProjectRef, nil
 }
@@ -543,15 +549,17 @@ func (r *taskResolver) ProjectIdentifier(ctx context.Context, obj *restModel.API
 
 // SpawnHostLink is the resolver for the spawnHostLink field.
 func (r *taskResolver) SpawnHostLink(ctx context.Context, obj *restModel.APITask) (*string, error) {
-	host, err := host.FindOne(ctx, host.ById(*obj.HostId))
+	hostID := utility.FromStringPtr(obj.HostId)
+	taskID := utility.FromStringPtr(obj.Id)
+	host, err := host.FindOne(ctx, host.ById(hostID))
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding host for task '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding host '%s' for task '%s': %s", hostID, taskID, err.Error()))
 	}
 	if host == nil {
 		return nil, nil
 	}
 	if host.Distro.SpawnAllowed && utility.StringSliceContains(evergreen.ProviderUserSpawnable, host.Distro.Provider) {
-		link := fmt.Sprintf("%s/spawn?distro_id=%s&task_id=%s", evergreen.GetEnvironment().Settings().Ui.Url, host.Distro.Id, *obj.Id)
+		link := fmt.Sprintf("%s/spawn?distro_id=%s&task_id=%s", evergreen.GetEnvironment().Settings().Ui.Url, host.Distro.Id, taskID)
 		return &link, nil
 	}
 	return nil, nil
@@ -566,14 +574,15 @@ func (r *taskResolver) TaskLogs(ctx context.Context, obj *restModel.APITask) (*T
 	// Let the individual TaskLogs resolvers handle fetching logs for the task
 	// We can avoid the overhead of fetching task logs that we will not view
 	// and we can avoid handling errors that we will not see
-	return &TaskLogs{TaskID: *obj.Id, Execution: obj.Execution}, nil
+	return &TaskLogs{TaskID: utility.FromStringPtr(obj.Id), Execution: obj.Execution}, nil
 }
 
 // Tests is the resolver for the tests field.
 func (r *taskResolver) Tests(ctx context.Context, obj *restModel.APITask, opts *TestFilterOptions) (*TaskTestResult, error) {
-	dbTask, err := task.FindOneIdAndExecution(ctx, utility.FromStringPtr(obj.Id), obj.Execution)
+	taskID := utility.FromStringPtr(obj.Id)
+	dbTask, err := task.FindOneIdAndExecution(ctx, taskID, obj.Execution)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting service model for APITask '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting service model for APITask '%s': %s", taskID, err.Error()))
 	}
 
 	filterOpts, err := convertTestFilterOptions(ctx, dbTask, opts)
@@ -623,12 +632,13 @@ func (r *taskResolver) TotalTestCount(ctx context.Context, obj *restModel.APITas
 
 // VersionMetadata is the resolver for the versionMetadata field.
 func (r *taskResolver) VersionMetadata(ctx context.Context, obj *restModel.APITask) (*restModel.APIVersion, error) {
-	v, err := model.VersionFindOneId(utility.FromStringPtr(obj.Version))
+	versionID := utility.FromStringPtr(obj.Version)
+	v, err := model.VersionFindOneId(versionID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version '%s': %s", utility.FromStringPtr(obj.Version), utility.FromStringPtr(obj.Id)))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version '%s': %s", versionID, utility.FromStringPtr(obj.Id)))
 	}
 	if v == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", utility.FromStringPtr(obj.Version)))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", versionID))
 	}
 	apiVersion := &restModel.APIVersion{}
 	apiVersion.BuildFromService(*v)

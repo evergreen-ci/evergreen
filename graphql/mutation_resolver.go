@@ -141,7 +141,7 @@ func (r *mutationResolver) SetAnnotationMetadataLinks(ctx context.Context, taskI
 		return false, InputValidationError.Send(ctx, fmt.Sprintf("invalid metadata link: %s", err.Error()))
 	}
 	if err := annotations.SetAnnotationMetadataLinks(ctx, taskID, execution, usr.Username(), modelMetadataLinks...); err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("adding metadata link: %s", err.Error()))
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("setting metadata link: %s", err.Error()))
 	}
 	return true, nil
 }
@@ -154,7 +154,7 @@ func (r *mutationResolver) DeleteDistro(ctx context.Context, opts DeleteDistroIn
 		if ok {
 			return nil, mapHTTPStatusToGqlError(ctx, gimletErr.StatusCode, err)
 		}
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("deleting distro: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("deleting distro '%s': %s", opts.DistroID, err.Error()))
 	}
 	return &DeleteDistroPayload{
 		DeletedDistroID: opts.DistroID,
@@ -209,7 +209,7 @@ func (r *mutationResolver) SaveDistro(ctx context.Context, opts SaveDistroInput)
 
 	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Evergreen settings: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Evergreen configuration: %s", err.Error()))
 	}
 	validationErrs, err := validator.CheckDistro(ctx, d, settings, false)
 	if err != nil {
@@ -383,7 +383,7 @@ func (r *mutationResolver) AttachProjectToRepo(ctx context.Context, projectID st
 
 	res := &restModel.APIProjectRef{}
 	if err := res.BuildFromService(*pRef); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("building project '%s' from service: %s", projectID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APIProjectRef '%s' from service: %s", projectID, err.Error()))
 	}
 	return res, nil
 }
@@ -409,16 +409,17 @@ func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.
 		graphql.AddError(ctx, PartialError.Send(ctx, err.Error()))
 	}
 
-	projectRef, err := model.FindBranchProjectRef(*project.Identifier)
+	projectIdentifier := utility.FromStringPtr(project.Identifier)
+	projectRef, err := model.FindBranchProjectRef(projectIdentifier)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", utility.FromStringPtr(project.Id), err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", projectIdentifier, err.Error()))
 	}
 	if projectRef == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("project '%s' not found", utility.FromStringPtr(project.Id)))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("project '%s' not found", projectIdentifier))
 	}
 	apiProjectRef := restModel.APIProjectRef{}
 	if err = apiProjectRef.BuildFromService(*projectRef); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APIProjectRef from service for project '%s': %s", utility.FromStringPtr(project.Id), err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APIProjectRef from service for project '%s': %s", projectIdentifier, err.Error()))
 	}
 
 	if utility.FromBoolPtr(requestS3Creds) {
@@ -496,7 +497,7 @@ func (r *mutationResolver) DeleteGithubAppCredentials(ctx context.Context, opts 
 		GitHubAppAuth: githubapp.GithubAppAuth{},
 	}
 	if err = model.LogProjectModified(opts.ProjectID, usr.Id, &before, &after); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("logging project modification for project '%s': %s", opts.ProjectID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("logging modification for project '%s': %s", opts.ProjectID, err.Error()))
 	}
 	return &DeleteGithubAppCredentialsPayload{
 		OldAppID: int(app.AppID),
@@ -531,7 +532,7 @@ func (r *mutationResolver) DetachProjectFromRepo(ctx context.Context, projectID 
 
 	res := &restModel.APIProjectRef{}
 	if err := res.BuildFromService(*pRef); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("building project '%s' from service: %s", projectID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APIProjectRef '%s' from service: %s", projectID, err.Error()))
 	}
 	return res, nil
 }
@@ -635,7 +636,7 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *EditSpa
 	usr := mustHaveUser(ctx)
 	h, err := host.FindOneByIdOrTag(ctx, spawnHost.HostID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching host '%s'': %s", spawnHost.HostID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching host '%s': %s", spawnHost.HostID, err.Error()))
 	}
 	if h == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("host '%s' not found", spawnHost.HostID))
@@ -659,13 +660,13 @@ func (r *mutationResolver) EditSpawnHost(ctx context.Context, spawnHost *EditSpa
 		var config *evergreen.Settings
 		config, err = evergreen.GetConfig(ctx)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching Evergreen settings: %s", err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Evergreen configuration: %s", err.Error()))
 		}
 		allowedTypes := config.Providers.AWS.AllowedInstanceTypes
 
-		err = cloud.CheckInstanceTypeValid(ctx, h.Distro, *spawnHost.InstanceType, allowedTypes)
+		err = cloud.CheckInstanceTypeValid(ctx, h.Distro, utility.FromStringPtr(spawnHost.InstanceType), allowedTypes)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("validating instance type: %s", err.Error()))
+			return nil, InputValidationError.Send(ctx, fmt.Sprintf("invalid instance type '%s': %s", utility.FromStringPtr(spawnHost.InstanceType), err.Error()))
 		}
 		opts.InstanceType = *spawnHost.InstanceType
 	}
@@ -801,7 +802,7 @@ func (r *mutationResolver) SpawnVolume(ctx context.Context, spawnVolumeInput Spa
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("applying expiration options to volume '%s': %s", vol.ID, err.Error()))
 	}
 	if spawnVolumeInput.Host != nil {
-		statusCode, err := cloud.AttachVolume(ctx, vol.ID, *spawnVolumeInput.Host)
+		statusCode, err := cloud.AttachVolume(ctx, vol.ID, utility.FromStringPtr(spawnVolumeInput.Host))
 		if err != nil {
 			return false, mapHTTPStatusToGqlError(ctx, statusCode, werrors.Wrapf(err, "attaching volume '%s' to host: %s", vol.ID, err.Error()))
 		}
@@ -847,7 +848,7 @@ func (r *mutationResolver) UpdateSpawnHostStatus(ctx context.Context, updateSpaw
 	case SpawnHostStatusActionsTerminate:
 		httpStatus, err = data.TerminateSpawnHost(ctx, env, usr, h)
 	default:
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("finding matching status for action: %s", action))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("finding matching status for action '%s'", action))
 	}
 	if err != nil {
 		if httpStatus == http.StatusInternalServerError {
@@ -1252,7 +1253,7 @@ func (r *mutationResolver) UpdatePublicKey(ctx context.Context, targetKeyName st
 	usr := mustHaveUser(ctx)
 	err = usr.UpdatePublicKey(targetKeyName, updateInfo.Name, updateInfo.Key)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("updating public key, '%s': %s", targetKeyName, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("updating public key '%s': %s", targetKeyName, err.Error()))
 	}
 	myPublicKeys := getMyPublicKeys(ctx)
 	return myPublicKeys, nil
@@ -1276,7 +1277,7 @@ func (r *mutationResolver) UpdateUserSettings(ctx context.Context, userSettings 
 // RestartVersions is the resolver for the restartVersions field.
 func (r *mutationResolver) RestartVersions(ctx context.Context, versionID string, abort bool, versionsToRestart []*model.VersionToRestart) ([]*restModel.APIVersion, error) {
 	if len(versionsToRestart) == 0 {
-		return nil, InputValidationError.Send(ctx, "No versions provided. You must provide at least one version to restart")
+		return nil, InputValidationError.Send(ctx, "No versions provided. You must provide at least one version to restart.")
 	}
 	modifications := model.VersionModification{
 		Action:            evergreen.RestartAction,
@@ -1290,12 +1291,13 @@ func (r *mutationResolver) RestartVersions(ctx context.Context, versionID string
 	versions := []*restModel.APIVersion{}
 	for _, version := range versionsToRestart {
 		if version.VersionId != nil {
-			v, versionErr := model.VersionFindOneId(*version.VersionId)
+			currVersionID := utility.FromStringPtr(version.VersionId)
+			v, versionErr := model.VersionFindOneId(currVersionID)
 			if versionErr != nil {
-				return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", utility.FromStringPtr(version.VersionId), versionErr.Error()))
+				return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", currVersionID, versionErr.Error()))
 			}
 			if v == nil {
-				return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", *version.VersionId))
+				return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", currVersionID))
 			}
 			apiVersion := restModel.APIVersion{}
 			apiVersion.BuildFromService(*v)
@@ -1334,7 +1336,7 @@ func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, ve
 			if baseTask == nil {
 				generatorTask, err := task.FindByIdExecution(ctx, t.GeneratedBy, nil)
 				if err != nil {
-					return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching the generator task: %s", err.Error()))
+					return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching generator task '%s': %s", t.GeneratedBy, err.Error()))
 				}
 				if generatorTask != nil {
 					baseGeneratorTask, _ := generatorTask.FindTaskOnBaseCommit(ctx)
@@ -1342,7 +1344,7 @@ func (r *mutationResolver) ScheduleUndispatchedBaseTasks(ctx context.Context, ve
 					if baseGeneratorTask != nil && baseGeneratorTask.Status == evergreen.TaskUndispatched {
 						err = baseGeneratorTask.SetGeneratedTasksToActivate(ctx, t.BuildVariant, t.DisplayName)
 						if err != nil {
-							return nil, InternalServerError.Send(ctx, fmt.Sprintf("activating generated task: %s", err.Error()))
+							return nil, InternalServerError.Send(ctx, fmt.Sprintf("activating generated tasks: %s", err.Error()))
 						}
 						tasksToSchedule[baseGeneratorTask.Id] = true
 

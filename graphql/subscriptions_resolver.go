@@ -19,7 +19,7 @@ func (r *subscriberWrapperResolver) Subscriber(ctx context.Context, obj *model.A
 	case event.GithubPullRequestSubscriberType:
 		sub := model.APIGithubPRSubscriber{}
 		if err := mapstructure.Decode(obj.Target, &sub); err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting '%s; subscriber: %s",
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("building '%s' subscriber from service: %s",
 				event.GithubPullRequestSubscriberType, err.Error()))
 		}
 		res.GithubPRSubscriber = &sub

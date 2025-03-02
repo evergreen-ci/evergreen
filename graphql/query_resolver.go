@@ -71,7 +71,7 @@ func (r *queryResolver) ClientConfig(ctx context.Context) (*restModel.APIClientC
 func (r *queryResolver) InstanceTypes(ctx context.Context) ([]string, error) {
 	config, err := evergreen.GetConfig(ctx)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching Evergreen settings: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Evergreen configuration: %s", err.Error()))
 	}
 	return config.Providers.AWS.AllowedInstanceTypes, nil
 }
@@ -80,7 +80,7 @@ func (r *queryResolver) InstanceTypes(ctx context.Context) ([]string, error) {
 func (r *queryResolver) SpruceConfig(ctx context.Context) (*restModel.APIAdminSettings, error) {
 	config, err := evergreen.GetConfig(ctx)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching Evergreen settings: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Evergreen configuration: %s", err.Error()))
 	}
 
 	spruceConfig := restModel.APIAdminSettings{}
@@ -104,7 +104,7 @@ func (r *queryResolver) SubnetAvailabilityZones(ctx context.Context) ([]string, 
 func (r *queryResolver) Distro(ctx context.Context, distroID string) (*restModel.APIDistro, error) {
 	d, err := distro.FindOneId(ctx, distroID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching distro '%s': %s", distroID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding distro '%s': %s", distroID, err.Error()))
 	}
 	if d == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("distro '%s' not found", distroID))
@@ -439,11 +439,11 @@ func (r *queryResolver) Projects(ctx context.Context) ([]*GroupedProjects, error
 	usr := mustHaveUser(ctx)
 	viewableProjectIds, err := usr.GetViewableProjects(ctx)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting viewable projects for user '%s': %s", usr.DispName, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting viewable projects for user '%s': %s", usr.Username(), err.Error()))
 	}
 	allProjects, err := model.FindMergedEnabledProjectRefsByIds(viewableProjectIds...)
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("getting merged enabled project refs for user '%s': %s", usr.DispName, err.Error()))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("getting merged enabled project refs for user '%s': %s", usr.Username(), err.Error()))
 	}
 	groupedProjects, err := groupProjects(allProjects, false)
 	if err != nil {
@@ -530,7 +530,7 @@ func (r *queryResolver) ViewableProjectRefs(ctx context.Context) ([]*GroupedProj
 	usr := mustHaveUser(ctx)
 	projectIds, err := usr.GetViewableProjectSettings(ctx)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting viewable projects for user '%s': %s", usr.DispName, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting viewable projects for user '%s': %s", usr.Username(), err.Error()))
 	}
 
 	projects, err := model.FindProjectRefsByIds(projectIds...)
@@ -624,15 +624,15 @@ func (r *queryResolver) TaskAllExecutions(ctx context.Context, taskID string) ([
 		var dbTask *task.Task
 		dbTask, err = task.FindByIdExecution(ctx, taskID, &i)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task '%s' with execution '%d': %s", taskID, i, err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task '%s' with execution %d: %s", taskID, i, err.Error()))
 		}
 		if dbTask == nil {
-			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("task '%s' with execution '%d' not found", taskID, i))
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("task '%s' with execution %d not found", taskID, i))
 		}
 		var apiTask *restModel.APITask
 		apiTask, err = getAPITaskFromTask(ctx, r.sc.GetURL(), *dbTask)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' with execution '%d' to API task", taskID, i))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' with execution %d to API task", taskID, i))
 		}
 		allTasks = append(allTasks, apiTask)
 	}
@@ -712,7 +712,7 @@ func (r *queryResolver) User(ctx context.Context, userID *string) (*restModel.AP
 	usr := mustHaveUser(ctx)
 	var err error
 	if userID != nil {
-		usr, err = user.FindOneById(*userID)
+		usr, err = user.FindOneById(utility.FromStringPtr(userID))
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching user '%s': %s", utility.FromStringPtr(userID), err.Error()))
 		}
@@ -753,7 +753,7 @@ func (r *queryResolver) BuildVariantsForTaskName(ctx context.Context, projectIde
 	}
 	taskBuildVariants, err := task.FindUniqueBuildVariantNamesByTask(ctx, pid, taskName, repo.RevisionOrderNumber)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting build variant tasks for task '%s': %s", taskName, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting build variants for task '%s': %s", taskName, err.Error()))
 	}
 	return taskBuildVariants, nil
 }

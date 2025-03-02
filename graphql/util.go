@@ -100,7 +100,7 @@ func setManyTasksScheduled(ctx context.Context, url string, isActive bool, taskI
 	}
 	for _, t := range tasks {
 		if evergreen.IsGithubMergeQueueRequester(t.Requester) && isActive {
-			return nil, InputValidationError.Send(ctx, "commit queue tasks cannot be manually scheduled")
+			return nil, InputValidationError.Send(ctx, "Commit queue tasks cannot be manually scheduled.")
 		}
 	}
 	if err = model.SetActiveState(ctx, usr.Username(), isActive, tasks...); err != nil {
@@ -166,7 +166,7 @@ func getDisplayStatus(v *model.Version) (string, error) {
 	for _, cp := range p.Triggers.ChildPatches {
 		cpVersion, err := model.VersionFindOneId(cp)
 		if err != nil {
-			return "", errors.Wrapf(err, "fetching version for patch '%s': %s", v.Id, err.Error())
+			return "", errors.Wrapf(err, "fetching version for child patch '%s': %s", cp, err.Error())
 		}
 		if cpVersion == nil {
 			continue
@@ -232,7 +232,7 @@ func getPatchProjectVariantsAndTasksForUI(ctx context.Context, apiPatch *restMod
 	}
 	patchProjectVariantsAndTasks, err := model.GetVariantsAndTasksFromPatchProject(ctx, evergreen.GetEnvironment().Settings(), &p)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting project variants and tasks for patch '%s': %s", *apiPatch.Id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting project variants and tasks for patch '%s': %s", utility.FromStringPtr(apiPatch.Id), err.Error()))
 	}
 
 	// convert variants to UI data structure
@@ -303,7 +303,7 @@ func getAPITaskFromTask(ctx context.Context, url string, task task.Task) (*restM
 		LogURL: url,
 	})
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APITask from task '%s': %s", task.Id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' to APITask: %s", task.Id, err.Error()))
 	}
 	return &apiTask, nil
 }
@@ -356,7 +356,7 @@ func generateBuildVariants(ctx context.Context, versionId string, buildVariantOp
 
 	tasks, _, err := task.GetTasksByVersion(ctx, versionId, opts)
 	if err != nil {
-		return nil, errors.Wrapf(err, "getting tasks for patch '%s'", versionId)
+		return nil, errors.Wrapf(err, "getting tasks for version '%s'", versionId)
 	}
 
 	for _, t := range tasks {
@@ -748,7 +748,7 @@ func groupProjects(projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*Gr
 			} else {
 				apiRepoRef := restModel.APIProjectRef{}
 				if err := apiRepoRef.BuildFromService(repoRef.ProjectRef); err != nil {
-					return nil, errors.Wrap(err, fmt.Sprintf("building repo '%s' ProjectRef from service", repoRef.ProjectRef.Id))
+					return nil, errors.Wrap(err, fmt.Sprintf("building APIProjectRef '%s' from service", repoRef.ProjectRef.Id))
 				}
 				gp.Repo = &apiRepoRef
 				if repoRef.ProjectRef.DisplayName != "" {
@@ -865,14 +865,14 @@ func getHostRequestOptions(ctx context.Context, usr *user.DBUser, spawnHostInput
 
 	if utility.FromBoolPtr(spawnHostInput.UseProjectSetupScript) {
 		if t == nil {
-			return nil, InputValidationError.Send(ctx, "A valid task ID must be supplied when useProjectSetupScript is set to true")
+			return nil, InputValidationError.Send(ctx, "A valid task ID must be supplied when useProjectSetupScript is set to true.")
 		}
 		options.UseProjectSetupScript = *spawnHostInput.UseProjectSetupScript
 	}
 
 	if utility.FromBoolPtr(spawnHostInput.SpawnHostsStartedByTask) {
 		if t == nil {
-			return nil, InputValidationError.Send(ctx, "A valid task ID must be supplied when SpawnHostsStartedByTask is set to true")
+			return nil, InputValidationError.Send(ctx, "A valid task ID must be supplied when SpawnHostsStartedByTask is set to true.")
 		}
 		if err = data.CreateHostsFromTask(ctx, evergreen.GetEnvironment(), t, *usr, spawnHostInput.PublicKey.Key); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("spawning hosts from task '%s': %s", *spawnHostInput.TaskID, err.Error()))
@@ -884,14 +884,14 @@ func getHostRequestOptions(ctx context.Context, usr *user.DBUser, spawnHostInput
 func getProjectMetadata(ctx context.Context, projectId *string, patchId *string) (*restModel.APIProjectRef, error) {
 	projectRef, err := model.FindMergedProjectRef(*projectId, *patchId, false)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding project ref for project '%s': %s", utility.FromStringPtr(projectId), err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding merged project ref for project '%s': %s", utility.FromStringPtr(projectId), err.Error()))
 	}
 	if projectRef == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("project ref for project '%s': not found", utility.FromStringPtr(projectId)))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("merged project ref for project '%s' not found", utility.FromStringPtr(projectId)))
 	}
 	apiProjectRef := restModel.APIProjectRef{}
 	if err = apiProjectRef.BuildFromService(*projectRef); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APIProjectRef from service for '%s': %s", projectRef.Id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APIProjectRef from service for project '%s': %s", projectRef.Id, err.Error()))
 	}
 	return &apiProjectRef, nil
 }
@@ -1258,14 +1258,14 @@ func getProjectPermissionLevel(projectPermission ProjectPermission, access Acces
 
 func isPatchAuthorForTask(ctx context.Context, obj *restModel.APITask) (bool, error) {
 	authUser := gimlet.GetUser(ctx)
-	taskId := utility.FromStringPtr(obj.Version)
+	patchID := utility.FromStringPtr(obj.Version)
 	if utility.StringSliceContains(evergreen.PatchRequesters, utility.FromStringPtr(obj.Requester)) {
-		p, err := patch.FindOneId(taskId)
+		p, err := patch.FindOneId(patchID)
 		if err != nil {
-			return false, InternalServerError.Send(ctx, fmt.Sprintf("finding patch for task '%s': %s", taskId, err.Error()))
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("finding patch '%s': %s", patchID, err.Error()))
 		}
 		if p == nil {
-			return false, ResourceNotFound.Send(ctx, fmt.Sprintf("patch for task '%s' not found", taskId))
+			return false, ResourceNotFound.Send(ctx, fmt.Sprintf("patch '%s' not found", patchID))
 		}
 		if p.Author == authUser.Username() {
 			return true, nil
