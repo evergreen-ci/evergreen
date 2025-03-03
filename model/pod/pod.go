@@ -592,9 +592,9 @@ func (p *Pod) Remove() error {
 }
 
 // UpdateStatus updates the pod status.
-func (p *Pod) UpdateStatus(s Status, reason string) error {
+func (p *Pod) UpdateStatus(ctx context.Context, s Status, reason string) error {
 	ts := utility.BSONTime(time.Now())
-	if err := UpdateOneStatus(p.ID, p.Status, s, ts, reason); err != nil {
+	if err := UpdateOneStatus(ctx, p.ID, p.Status, s, ts, reason); err != nil {
 		return errors.Wrap(err, "updating status")
 	}
 
@@ -610,12 +610,12 @@ func (p *Pod) UpdateStatus(s Status, reason string) error {
 }
 
 // UpdateResources updates the pod resources.
-func (p *Pod) UpdateResources(info ResourceInfo) error {
+func (p *Pod) UpdateResources(ctx context.Context, info ResourceInfo) error {
 	setFields := bson.M{
 		ResourcesKey: info,
 	}
 
-	if err := UpdateOne(ByID(p.ID), bson.M{
+	if err := UpdateOne(ctx, ByID(p.ID), bson.M{
 		"$set": setFields,
 	}); err != nil {
 		return err
@@ -682,7 +682,7 @@ func (p *Pod) SetRunningTask(ctx context.Context, env evergreen.Environment, tas
 }
 
 // ClearRunningTask clears the current task dispatched to the pod, if one is set.
-func (p *Pod) ClearRunningTask() error {
+func (p *Pod) ClearRunningTask(ctx context.Context) error {
 	if p.TaskRuntimeInfo.RunningTaskID == "" {
 		return nil
 	}
@@ -702,7 +702,7 @@ func (p *Pod) ClearRunningTask() error {
 		query[runningTaskExecutionKey] = p.TaskRuntimeInfo.RunningTaskExecution
 	}
 
-	if err := UpdateOne(query, bson.M{
+	if err := UpdateOne(ctx, query, bson.M{
 		"$unset": bson.M{
 			runningTaskIDKey:        1,
 			runningTaskExecutionKey: 1,
@@ -720,9 +720,9 @@ func (p *Pod) ClearRunningTask() error {
 }
 
 // UpdateAgentStartTime updates the time when the pod's agent started to now.
-func (p *Pod) UpdateAgentStartTime() error {
+func (p *Pod) UpdateAgentStartTime(ctx context.Context) error {
 	ts := utility.BSONTime(time.Now())
-	if err := UpdateOne(ByID(p.ID), bson.M{
+	if err := UpdateOne(ctx, ByID(p.ID), bson.M{
 		"$set": bson.M{
 			bsonutil.GetDottedKeyName(TimeInfoKey, TimeInfoAgentStartedKey): ts,
 		},
@@ -737,9 +737,9 @@ func (p *Pod) UpdateAgentStartTime() error {
 
 // UpdateLastCommunicated updates the last time that the pod and app server
 // successfully communicated to now, indicating that the pod is currently alive.
-func (p *Pod) UpdateLastCommunicated() error {
+func (p *Pod) UpdateLastCommunicated(ctx context.Context) error {
 	ts := utility.BSONTime(time.Now())
-	if err := UpdateOne(ByID(p.ID), bson.M{
+	if err := UpdateOne(ctx, ByID(p.ID), bson.M{
 		"$set": bson.M{
 			bsonutil.GetDottedKeyName(TimeInfoKey, TimeInfoLastCommunicatedKey): ts,
 		},

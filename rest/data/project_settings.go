@@ -78,7 +78,7 @@ func CopyProject(ctx context.Context, env evergreen.Environment, opts restModel.
 		catcher.Wrapf(err, "copying subscriptions from project '%s'", oldIdentifier)
 	}
 	// Set the same admin roles from the old project on the newly copied project.
-	if err := model.UpdateAdminRoles(projectToCopy, projectToCopy.Admins, nil); err != nil {
+	if err := model.UpdateAdminRoles(ctx, projectToCopy, projectToCopy.Admins, nil); err != nil {
 		catcher.Wrapf(err, "updating admins for project '%s'", opts.NewProjectIdentifier)
 	}
 
@@ -328,7 +328,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 			modified = true
 			// For repos, we need to use the repo ref functions, as they update different scopes/roles.
 			repoRef := &model.RepoRef{ProjectRef: *newProjectRef}
-			if err = repoRef.UpdateAdminRoles(adminsToAdd, adminsToDelete); err != nil {
+			if err = repoRef.UpdateAdminRoles(ctx, adminsToAdd, adminsToDelete); err != nil {
 				catcher.Wrap(err, "updating repo admin roles")
 			}
 			newProjectRef.Admins = repoRef.Admins
@@ -343,7 +343,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 				catcher.Wrap(repoRef.MakeUnrestricted(branchProjects), "making repo unrestricted")
 			}
 		} else {
-			if modified, err = newProjectRef.UpdateAdminRoles(adminsToAdd, adminsToDelete); err != nil {
+			if modified, err = newProjectRef.UpdateAdminRoles(ctx, adminsToAdd, adminsToDelete); err != nil {
 				catcher.Wrap(err, "error updating project admin roles")
 				if !modified { // return before we save any admin updates to the project ref collection
 					return nil, catcher.Resolve()
@@ -487,7 +487,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		modified = true
 	}
 
-	modifiedProjectRef, err := model.SaveProjectPageForSection(projectId, newProjectRef, section, isRepo)
+	modifiedProjectRef, err := model.SaveProjectPageForSection(ctx, projectId, newProjectRef, section, isRepo)
 	if err != nil {
 		return nil, errors.Wrapf(err, "saving project for section '%s'", section)
 	}

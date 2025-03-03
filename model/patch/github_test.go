@@ -183,7 +183,7 @@ func (s *GithubSuite) TestSetProcessed() {
 	s.NoError(err)
 	s.NotNil(intent)
 	s.NoError(intent.Insert())
-	s.NoError(intent.SetProcessed())
+	s.NoError(intent.SetProcessed(s.T().Context()))
 
 	found, err := FindUnprocessedGithubIntents()
 	s.NoError(err)

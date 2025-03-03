@@ -378,7 +378,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 		newestVersion = v
 	}
 	if newestVersion != nil {
-		err := model.UpdateLastRevision(newestVersion.Identifier, newestVersion.Revision)
+		err := model.UpdateLastRevision(ctx, newestVersion.Identifier, newestVersion.Revision)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":            "problem updating last revision for repository",

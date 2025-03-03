@@ -53,7 +53,7 @@ func DeleteVolume(ctx context.Context, volumeId string) (int, error) {
 		return http.StatusBadRequest, errors.New("must specify volume ID")
 	}
 
-	vol, err := host.FindVolumeByID(volumeId)
+	vol, err := host.FindVolumeByID(ctx, volumeId)
 	if err != nil {
 		return http.StatusInternalServerError, errors.Wrapf(err, "getting volume '%s'", volumeId)
 	}
@@ -81,7 +81,7 @@ func AttachVolume(ctx context.Context, volumeId string, hostId string) (int, err
 	if volumeId == "" {
 		return http.StatusBadRequest, errors.New("must specify volume ID")
 	}
-	vol, err := host.FindVolumeByID(volumeId)
+	vol, err := host.FindVolumeByID(ctx, volumeId)
 	if err != nil {
 		return http.StatusInternalServerError, errors.Wrapf(err, "getting volume '%s'", volumeId)
 	}
@@ -116,7 +116,7 @@ func DetachVolume(ctx context.Context, volumeId string) (int, error) {
 	if volumeId == "" {
 		return http.StatusBadRequest, errors.New("must specify volume ID")
 	}
-	vol, err := host.FindVolumeByID(volumeId)
+	vol, err := host.FindVolumeByID(ctx, volumeId)
 	if err != nil {
 		return http.StatusInternalServerError, errors.Wrapf(err, "getting volume '%s'", volumeId)
 	}
@@ -135,7 +135,7 @@ func DetachVolume(ctx context.Context, volumeId string) (int, error) {
 		return http.StatusInternalServerError, errors.Wrapf(err, "can't get host '%s' for volume '%s'", vol.Host, vol.ID)
 	}
 	if h == nil {
-		if err = host.UnsetVolumeHost(vol.ID); err != nil {
+		if err = host.UnsetVolumeHost(ctx, vol.ID); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": fmt.Sprintf("can't clear host '%s' from volume '%s'", vol.Host, vol.ID),
 				"route":   "graphql/util",

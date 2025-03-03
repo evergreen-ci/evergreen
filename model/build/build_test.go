@@ -223,6 +223,7 @@ func TestGenericBuildUpdating(t *testing.T) {
 			So(buildOne.Insert(), ShouldBeNil)
 
 			err := UpdateOne(
+				t.Context(),
 				bson.M{IdKey: buildOne.Id},
 				bson.M{"$set": bson.M{ProjectKey: "blah"}},
 			)
@@ -248,7 +249,7 @@ func TestBuildUpdateStatus(t *testing.T) {
 
 		Convey("setting its status should update it both in-memory and"+
 			" in the database", func() {
-			So(build.UpdateStatus(evergreen.BuildSucceeded), ShouldBeNil)
+			So(build.UpdateStatus(t.Context(), evergreen.BuildSucceeded), ShouldBeNil)
 			So(build.Status, ShouldEqual, evergreen.BuildSucceeded)
 			build, err = FindOne(ById(build.Id))
 			So(err, ShouldBeNil)
@@ -263,12 +264,12 @@ func TestBuildSetHasUnfinishedEssentialTask(t *testing.T) {
 	}()
 	for tName, tCase := range map[string]func(t *testing.T, b Build){
 		"FailsWithNonexistentBuild": func(t *testing.T, b Build) {
-			assert.Error(t, b.SetHasUnfinishedEssentialTask(true))
+			assert.Error(t, b.SetHasUnfinishedEssentialTask(t.Context(), true))
 			assert.False(t, b.HasUnfinishedEssentialTask)
 		},
 		"NoopsWithSameValue": func(t *testing.T, b Build) {
 			require.NoError(t, b.Insert())
-			require.NoError(t, b.SetHasUnfinishedEssentialTask(false))
+			require.NoError(t, b.SetHasUnfinishedEssentialTask(t.Context(), false))
 			assert.False(t, b.HasUnfinishedEssentialTask)
 
 			dbBuild, err := FindOneId(b.Id)
@@ -278,7 +279,7 @@ func TestBuildSetHasUnfinishedEssentialTask(t *testing.T) {
 		},
 		"SetsFlag": func(t *testing.T, b Build) {
 			require.NoError(t, b.Insert())
-			require.NoError(t, b.SetHasUnfinishedEssentialTask(true))
+			require.NoError(t, b.SetHasUnfinishedEssentialTask(t.Context(), true))
 			assert.True(t, b.HasUnfinishedEssentialTask)
 
 			dbBuild, err := FindOneId(b.Id)
@@ -289,7 +290,7 @@ func TestBuildSetHasUnfinishedEssentialTask(t *testing.T) {
 		"ClearsFlag": func(t *testing.T, b Build) {
 			b.HasUnfinishedEssentialTask = true
 			require.NoError(t, b.Insert())
-			require.NoError(t, b.SetHasUnfinishedEssentialTask(false))
+			require.NoError(t, b.SetHasUnfinishedEssentialTask(t.Context(), false))
 			assert.False(t, b.HasUnfinishedEssentialTask)
 
 			dbBuild, err := FindOneId(b.Id)

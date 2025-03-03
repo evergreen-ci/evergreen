@@ -133,18 +133,18 @@ func ConfigurePatch(ctx context.Context, settings *evergreen.Settings, p *patch.
 
 	// only modify parameters if the patch hasn't been finalized
 	if len(patchUpdateReq.Parameters) > 0 && p.Version == "" {
-		if err = p.SetParameters(patchUpdateReq.Parameters); err != nil {
+		if err = p.SetParameters(ctx, patchUpdateReq.Parameters); err != nil {
 			return http.StatusInternalServerError, errors.Wrap(err, "setting patch parameters")
 		}
 	}
 	// update the description for both reconfigured and new patches
-	if err = p.SetDescription(patchUpdateReq.Description); err != nil {
+	if err = p.SetDescription(ctx, patchUpdateReq.Description); err != nil {
 		return http.StatusInternalServerError, errors.Wrap(err, "setting description")
 	}
 
 	patchVariantTasks := tasks.TVPairsToVariantTasks()
 	if len(patchVariantTasks) > 0 {
-		if err = p.SetVariantsTasks(patchVariantTasks); err != nil {
+		if err = p.SetVariantsTasks(ctx, patchVariantTasks); err != nil {
 			return http.StatusInternalServerError, errors.Wrap(err, "setting description")
 		}
 	}
@@ -156,7 +156,7 @@ func ConfigurePatch(ctx context.Context, settings *evergreen.Settings, p *patch.
 		}
 
 		if version.Message != patchUpdateReq.Description {
-			if err = UpdateVersionMessage(p.Version, patchUpdateReq.Description); err != nil {
+			if err = UpdateVersionMessage(ctx, p.Version, patchUpdateReq.Description); err != nil {
 				return http.StatusInternalServerError, errors.Wrap(err, "setting version message")
 			}
 		}
@@ -576,7 +576,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 
 	var parentPatchNumber int
 	if p.IsChild() {
-		parentPatch, err := p.SetParametersFromParent()
+		parentPatch, err := p.SetParametersFromParent(ctx)
 		if err != nil {
 			return nil, errors.Wrap(err, "getting parameters from parent patch")
 		}
@@ -738,7 +738,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 			numActivatedTasks += utility.FromIntPtr(t.EstimatedNumActivatedGeneratedTasks)
 		}
 	}
-	if err = task.UpdateSchedulingLimit(creationInfo.Version.Author, creationInfo.Version.Requester, numActivatedTasks, true); err != nil {
+	if err = task.UpdateSchedulingLimit(ctx, creationInfo.Version.Author, creationInfo.Version.Requester, numActivatedTasks, true); err != nil {
 		return nil, errors.Wrapf(err, "fetching user '%s' and updating their scheduling limit", creationInfo.Version.Author)
 	}
 

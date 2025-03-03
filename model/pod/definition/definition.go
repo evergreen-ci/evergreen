@@ -46,8 +46,8 @@ func (pd *PodDefinition) Remove() error {
 
 // UpdateLastAccessed updates the time this pod definition was last accessed to
 // now.
-func (pd *PodDefinition) UpdateLastAccessed() error {
-	return UpdateOne(ByID(pd.ID), bson.M{
+func (pd *PodDefinition) UpdateLastAccessed(ctx context.Context) error {
+	return UpdateOne(ctx, ByID(pd.ID), bson.M{
 		"$set": bson.M{
 			LastAccessedKey: time.Now(),
 		},
@@ -60,7 +60,7 @@ type PodDefinitionCache struct{}
 
 // Put inserts a new pod definition; if an identical one already exists, this is
 // a no-op.
-func (pdc PodDefinitionCache) Put(_ context.Context, item cocoa.ECSPodDefinitionItem) error {
+func (pdc PodDefinitionCache) Put(ctx context.Context, item cocoa.ECSPodDefinitionItem) error {
 	family := utility.FromStringPtr(item.DefinitionOpts.Name)
 	idAndFamily := bson.M{
 		ExternalIDKey: item.ID,
@@ -76,7 +76,7 @@ func (pdc PodDefinitionCache) Put(_ context.Context, item cocoa.ECSPodDefinition
 			IDKey: primitive.NewObjectID().Hex(),
 		},
 	}
-	if _, err := UpsertOne(idAndFamily, newPodDef); err != nil {
+	if _, err := UpsertOne(ctx, idAndFamily, newPodDef); err != nil {
 		return errors.Wrap(err, "upserting pod definition")
 	}
 	return nil

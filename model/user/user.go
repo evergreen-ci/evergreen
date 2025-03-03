@@ -138,9 +138,9 @@ func (u *DBUser) GetPublicKey(keyname string) (string, error) {
 }
 
 // UpdateAPIKey updates the API key stored for the user.
-func (u *DBUser) UpdateAPIKey(newKey string) error {
+func (u *DBUser) UpdateAPIKey(ctx context.Context, newKey string) error {
 	update := bson.M{"$set": bson.M{APIKeyKey: newKey}}
-	if err := UpdateOne(bson.M{IdKey: u.Id}, update); err != nil {
+	if err := UpdateOneContext(ctx, bson.M{IdKey: u.Id}, update); err != nil {
 		return errors.Wrapf(err, "setting API key for user '%s'", u.Id)
 	}
 	u.APIKey = newKey
@@ -148,9 +148,9 @@ func (u *DBUser) UpdateAPIKey(newKey string) error {
 }
 
 // UpdateSettings updates the user's settings.
-func (u *DBUser) UpdateSettings(settings UserSettings) error {
+func (u *DBUser) UpdateSettings(ctx context.Context, settings UserSettings) error {
 	update := bson.M{"$set": bson.M{SettingsKey: settings}}
-	if err := UpdateOne(bson.M{IdKey: u.Id}, update); err != nil {
+	if err := UpdateOneContext(ctx, bson.M{IdKey: u.Id}, update); err != nil {
 		return errors.Wrapf(err, "saving user settings for user '%s'", u.Id)
 	}
 	u.Settings = settings
@@ -158,9 +158,9 @@ func (u *DBUser) UpdateSettings(settings UserSettings) error {
 }
 
 // UpdateParsleySettings updates a user's settings for Parsley.
-func (u *DBUser) UpdateParsleySettings(settings parsley.Settings) error {
+func (u *DBUser) UpdateParsleySettings(ctx context.Context, settings parsley.Settings) error {
 	update := bson.M{"$set": bson.M{ParsleySettingsKey: settings}}
-	if err := UpdateOne(bson.M{IdKey: u.Id}, update); err != nil {
+	if err := UpdateOneContext(ctx, bson.M{IdKey: u.Id}, update); err != nil {
 		return errors.Wrapf(err, "saving Parsley settings for user '%s'", u.Id)
 	}
 	u.ParsleySettings = settings
@@ -168,9 +168,9 @@ func (u *DBUser) UpdateParsleySettings(settings parsley.Settings) error {
 }
 
 // UpdateBetaFeatures updates a user's beta feature settings.
-func (u *DBUser) UpdateBetaFeatures(betaFeatures evergreen.BetaFeatures) error {
+func (u *DBUser) UpdateBetaFeatures(ctx context.Context, betaFeatures evergreen.BetaFeatures) error {
 	update := bson.M{"$set": bson.M{BetaFeaturesKey: betaFeatures}}
-	if err := UpdateOne(bson.M{IdKey: u.Id}, update); err != nil {
+	if err := UpdateOneContext(ctx, bson.M{IdKey: u.Id}, update); err != nil {
 		return errors.Wrapf(err, "saving beta feature settings for user '%s'", u.Id)
 	}
 	u.BetaFeatures = betaFeatures
@@ -181,7 +181,7 @@ func (u *DBUser) UpdateBetaFeatures(betaFeatures evergreen.BetaFeatures) error {
 // the global per-user hourly task scheduling limit, and updates relevant timestamp and counter info used
 // to track the user's hourly scheduling usage. The activated parameter being false signifies
 // the user is deactivating tasks, which frees up space in their scheduling limit.
-func (u *DBUser) CheckAndUpdateSchedulingLimit(maxScheduledTasks, numTasksModified int, activated bool) error {
+func (u *DBUser) CheckAndUpdateSchedulingLimit(ctx context.Context, maxScheduledTasks, numTasksModified int, activated bool) error {
 	var update bson.M
 	if activated && numTasksModified > maxScheduledTasks {
 		return errors.Errorf("cannot schedule %d tasks, maximum hourly per-user limit is %d", numTasksModified, maxScheduledTasks)
@@ -209,7 +209,7 @@ func (u *DBUser) CheckAndUpdateSchedulingLimit(maxScheduledTasks, numTasksModifi
 			},
 		}
 	}
-	return UpdateOne(bson.M{IdKey: u.Id}, update)
+	return UpdateOneContext(ctx, bson.M{IdKey: u.Id}, update)
 }
 
 // getNewNumScheduledTasksCounter takes in the current number of tasks a user has scheduled within the
@@ -226,7 +226,7 @@ func getNewNumScheduledTasksCounter(currentCounter, numTasksModified int, activa
 	return subtraction
 }
 
-func (u *DBUser) AddPublicKey(keyName, keyValue string) error {
+func (u *DBUser) AddPublicKey(ctx context.Context, keyName, keyValue string) error {
 	key := PubKey{
 		Name:      keyName,
 		Key:       keyValue,
@@ -240,7 +240,7 @@ func (u *DBUser) AddPublicKey(keyName, keyValue string) error {
 		"$push": bson.M{PubKeysKey: key},
 	}
 
-	if err := UpdateOne(userWithoutKey, update); err != nil {
+	if err := UpdateOneContext(ctx, userWithoutKey, update); err != nil {
 		return err
 	}
 
@@ -340,14 +340,14 @@ func (u *DBUser) IncPatchNumber() (int, error) {
 }
 
 // AddFavoritedProject adds a project ID to the user favorites in user DB model
-func (u *DBUser) AddFavoritedProject(identifier string) error {
+func (u *DBUser) AddFavoritedProject(ctx context.Context, identifier string) error {
 	if utility.StringSliceContains(u.FavoriteProjects, identifier) {
 		return errors.Errorf("cannot add duplicate project '%s'", identifier)
 	}
 	update := bson.M{
 		"$push": bson.M{FavoriteProjectsKey: identifier},
 	}
-	if err := UpdateOne(bson.M{IdKey: u.Id}, update); err != nil {
+	if err := UpdateOneContext(ctx, bson.M{IdKey: u.Id}, update); err != nil {
 		return err
 	}
 
@@ -357,7 +357,7 @@ func (u *DBUser) AddFavoritedProject(identifier string) error {
 }
 
 // RemoveFavoriteProject removes a project ID from the user favorites in user DB model
-func (u *DBUser) RemoveFavoriteProject(identifier string) error {
+func (u *DBUser) RemoveFavoriteProject(ctx context.Context, identifier string) error {
 	if !utility.StringSliceContains(u.FavoriteProjects, identifier) {
 		return errors.Errorf("project '%s' does not exist in user's favorites", identifier)
 	}
@@ -365,7 +365,7 @@ func (u *DBUser) RemoveFavoriteProject(identifier string) error {
 	update := bson.M{
 		"$pull": bson.M{FavoriteProjectsKey: identifier},
 	}
-	if err := UpdateOne(bson.M{IdKey: u.Id}, update); err != nil {
+	if err := UpdateOneContext(ctx, bson.M{IdKey: u.Id}, update); err != nil {
 		return err
 	}
 
@@ -378,14 +378,14 @@ func (u *DBUser) RemoveFavoriteProject(identifier string) error {
 	return nil
 }
 
-func (u *DBUser) AddRole(role string) error {
+func (u *DBUser) AddRole(ctx context.Context, role string) error {
 	if utility.StringSliceContains(u.SystemRoles, role) {
 		return nil
 	}
 	update := bson.M{
 		"$addToSet": bson.M{RolesKey: role},
 	}
-	if err := UpdateOne(bson.M{IdKey: u.Id}, update); err != nil {
+	if err := UpdateOneContext(ctx, bson.M{IdKey: u.Id}, update); err != nil {
 		return err
 	}
 	u.SystemRoles = append(u.SystemRoles, role)
@@ -393,12 +393,12 @@ func (u *DBUser) AddRole(role string) error {
 	return event.LogUserEvent(u.Id, event.UserEventTypeRolesUpdate, u.SystemRoles[:len(u.SystemRoles)-1], u.SystemRoles)
 }
 
-func (u *DBUser) RemoveRole(role string) error {
+func (u *DBUser) RemoveRole(ctx context.Context, role string) error {
 	before := u.SystemRoles
 	update := bson.M{
 		"$pull": bson.M{RolesKey: role},
 	}
-	if err := UpdateOne(bson.M{IdKey: u.Id}, update); err != nil {
+	if err := UpdateOneContext(ctx, bson.M{IdKey: u.Id}, update); err != nil {
 		return err
 	}
 	for i := len(u.SystemRoles) - 1; i >= 0; i-- {

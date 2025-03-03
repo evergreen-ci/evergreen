@@ -209,8 +209,9 @@ func Find(query db.Q) ([]Build, error) {
 }
 
 // UpdateOne updates one build.
-func UpdateOne(query interface{}, update interface{}) error {
-	return db.Update(
+func UpdateOne(ctx context.Context, query interface{}, update interface{}) error {
+	return db.UpdateContext(
+		ctx,
 		Collection,
 		query,
 		update,

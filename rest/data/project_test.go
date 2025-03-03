@@ -637,7 +637,7 @@ func TestHideBranch(t *testing.T) {
 	}
 	require.NoError(t, vars.Insert())
 
-	err := HideBranch(project.Id)
+	err := HideBranch(t.Context(), project.Id)
 	assert.NoError(t, err)
 
 	hiddenProj, err := model.FindMergedProjectRef(project.Id, "", true)

@@ -1,6 +1,7 @@
 package data
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strings"
@@ -13,7 +14,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func UpdateSettings(dbUser *user.DBUser, settings user.UserSettings) error {
+func UpdateSettings(ctx context.Context, dbUser *user.DBUser, settings user.UserSettings) error {
 	if strings.HasPrefix(settings.SlackUsername, "#") {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -122,7 +123,7 @@ func UpdateSettings(dbUser *user.DBUser, settings user.UserSettings) error {
 		settings.Notifications.SpawnHostOutcomeID = ""
 	}
 
-	return dbUser.UpdateSettings(settings)
+	return dbUser.UpdateSettings(ctx, settings)
 }
 
 func SubmitFeedback(in restModel.APIFeedbackSubmission) error {

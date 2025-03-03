@@ -154,29 +154,6 @@ func GetAllArtifacts(tasks []TaskIDAndExecution) ([]File, error) {
 	return files, nil
 }
 
-func RotateSecrets(toReplace, replacement string, dryRun bool) (map[TaskIDAndExecution][]string, error) {
-	catcher := grip.NewBasicCatcher()
-	artifacts, err := FindAll(BySecret(toReplace))
-	catcher.Wrap(err, "finding artifact files by secret")
-	changes := map[TaskIDAndExecution][]string{}
-	for i, artifact := range artifacts {
-		for j, file := range artifact.Files {
-			if file.AwsSecret == toReplace {
-				if !dryRun {
-					artifacts[i].Files[j].AwsSecret = replacement
-					catcher.Wrapf(artifacts[i].Update(), "updating artifact file info for task '%s', execution %d", artifact.TaskId, artifact.Execution)
-				}
-				key := TaskIDAndExecution{
-					TaskID:    artifact.TaskId,
-					Execution: artifact.Execution,
-				}
-				changes[key] = append(changes[key], file.Name)
-			}
-		}
-	}
-	return changes, catcher.Resolve()
-}
-
 // EscapeFiles escapes the base of the file link to avoid issues opening links
 // with special characters in the UI.
 // For example, "url.com/something/file#1.tar.gz" will be escaped to "url.com/something/file%231.tar.gz".

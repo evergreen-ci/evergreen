@@ -212,7 +212,7 @@ func (s *UserTestSuite) TestGetPublicKeyThatDoesntExist() {
 }
 
 func (s *UserTestSuite) TestAddKey() {
-	s.Require().NoError(s.users[0].AddPublicKey("key1", "ssh-mock 67890"))
+	s.Require().NoError(s.users[0].AddPublicKey(s.T().Context(), "key1", "ssh-mock 67890"))
 	key, err := s.users[0].GetPublicKey("key1")
 	s.Require().NoError(err)
 	s.Equal("ssh-mock 67890", key)
@@ -232,21 +232,21 @@ func (s *UserTestSuite) TestCheckAndUpdateSchedulingLimit() {
 	maxScheduledTasks := 100
 
 	// Should not be able to go to a negative counter
-	s.Require().NoError(u.CheckAndUpdateSchedulingLimit(maxScheduledTasks, 100, false))
+	s.Require().NoError(u.CheckAndUpdateSchedulingLimit(s.T().Context(), maxScheduledTasks, 100, false))
 	u, err := FindOne(ById(u.Id))
 	s.Require().NoError(err)
 	s.Require().NotNil(u)
 	s.Equal(0, u.NumScheduledPatchTasks)
 
 	// Confirm scheduling tasks less than the limit is allowed
-	s.Require().NoError(u.CheckAndUpdateSchedulingLimit(maxScheduledTasks, 99, true))
+	s.Require().NoError(u.CheckAndUpdateSchedulingLimit(s.T().Context(), maxScheduledTasks, 99, true))
 	u, err = FindOne(ById(u.Id))
 	s.Require().NoError(err)
 	s.Require().NotNil(u)
 	s.Equal(99, u.NumScheduledPatchTasks)
 
 	// Confirm NumScheduledPatchTasks is unchanged and we receive an error after breaching the limit
-	err = u.CheckAndUpdateSchedulingLimit(maxScheduledTasks, 1, true)
+	err = u.CheckAndUpdateSchedulingLimit(s.T().Context(), maxScheduledTasks, 1, true)
 	s.Require().Error(err)
 	s.Contains(err.Error(), fmt.Sprintf("user '%s' has scheduled %d out of %d allowed tasks in the past hour", u.Id, u.NumScheduledPatchTasks, maxScheduledTasks))
 	u, err = FindOne(ById(u.Id))
@@ -255,7 +255,7 @@ func (s *UserTestSuite) TestCheckAndUpdateSchedulingLimit() {
 	s.Equal(99, u.NumScheduledPatchTasks)
 
 	// Confirm unscheduling one task brings the count-down to 98
-	err = u.CheckAndUpdateSchedulingLimit(maxScheduledTasks, 1, false)
+	err = u.CheckAndUpdateSchedulingLimit(s.T().Context(), maxScheduledTasks, 1, false)
 	s.Require().NoError(err)
 	u, err = FindOne(ById(u.Id))
 	s.Require().NoError(err)
@@ -263,7 +263,7 @@ func (s *UserTestSuite) TestCheckAndUpdateSchedulingLimit() {
 	s.Equal(98, u.NumScheduledPatchTasks)
 
 	// Confirm that scheduling one more task is now possible
-	err = u.CheckAndUpdateSchedulingLimit(maxScheduledTasks, 1, true)
+	err = u.CheckAndUpdateSchedulingLimit(s.T().Context(), maxScheduledTasks, 1, true)
 	s.Require().NoError(err)
 	u, err = FindOne(ById(u.Id))
 	s.Require().NoError(err)
@@ -273,7 +273,7 @@ func (s *UserTestSuite) TestCheckAndUpdateSchedulingLimit() {
 	// When the last time the user has scheduled tasks falls out of the hour, we should reset the
 	// counter, and we should not be able to go negative
 	u.LastScheduledTasksAt = time.Now().Add(-1 * time.Hour)
-	err = u.CheckAndUpdateSchedulingLimit(maxScheduledTasks, 5, true)
+	err = u.CheckAndUpdateSchedulingLimit(s.T().Context(), maxScheduledTasks, 5, true)
 	s.Require().NoError(err)
 	u, err = FindOne(ById(u.Id))
 	s.Require().NoError(err)
@@ -283,7 +283,7 @@ func (s *UserTestSuite) TestCheckAndUpdateSchedulingLimit() {
 	// When the last time the user has scheduled tasks falls out of the hour, we should reset the
 	// counter, and we should not be able to go negative
 	u.LastScheduledTasksAt = time.Now().Add(-1 * time.Hour)
-	err = u.CheckAndUpdateSchedulingLimit(maxScheduledTasks, 5, false)
+	err = u.CheckAndUpdateSchedulingLimit(s.T().Context(), maxScheduledTasks, 5, false)
 	s.Require().NoError(err)
 	u, err = FindOne(ById(u.Id))
 	s.Require().NoError(err)
@@ -292,7 +292,7 @@ func (s *UserTestSuite) TestCheckAndUpdateSchedulingLimit() {
 
 	// Confirm you cannot schedule more tasks than the limit, even if your counter is zero
 	u.LastScheduledTasksAt = time.Now().Add(-1 * time.Hour)
-	err = u.CheckAndUpdateSchedulingLimit(maxScheduledTasks, 101, true)
+	err = u.CheckAndUpdateSchedulingLimit(s.T().Context(), maxScheduledTasks, 101, true)
 	s.Require().Error(err)
 	s.Contains(err.Error(), fmt.Sprintf("cannot schedule %d tasks, maximum hourly per-user limit is %d", 101, 100))
 	u, err = FindOne(ById(u.Id))
@@ -304,8 +304,8 @@ func (s *UserTestSuite) TestCheckAndUpdateSchedulingLimit() {
 	u.LastScheduledTasksAt = time.Now().Add(-1 * time.Minute)
 	u.NumScheduledPatchTasks = 120
 	update := bson.M{"$set": bson.M{NumScheduledPatchTasksKey: 120}}
-	s.Require().NoError(UpdateOne(bson.M{IdKey: u.Id}, update))
-	err = u.CheckAndUpdateSchedulingLimit(maxScheduledTasks, 10, false)
+	s.Require().NoError(UpdateOneContext(s.T().Context(), bson.M{IdKey: u.Id}, update))
+	err = u.CheckAndUpdateSchedulingLimit(s.T().Context(), maxScheduledTasks, 10, false)
 	s.Require().NoError(err)
 	u, err = FindOne(ById(u.Id))
 	s.Require().NoError(err)
@@ -314,7 +314,7 @@ func (s *UserTestSuite) TestCheckAndUpdateSchedulingLimit() {
 }
 
 func (s *UserTestSuite) TestAddDuplicateKeyFails() {
-	err := s.users[1].AddPublicKey("key1", "ssh-mock 67890")
+	err := s.users[1].AddPublicKey(s.T().Context(), "key1", "ssh-mock 67890")
 	s.Error(err)
 	s.Contains(err.Error(), "not found")
 
@@ -573,17 +573,17 @@ func (s *UserTestSuite) TestGetSlackMemberId() {
 func (s *UserTestSuite) TestRoles() {
 	u := s.users[0]
 	for i := 1; i <= 3; i++ {
-		s.NoError(u.AddRole(strconv.Itoa(i)))
+		s.NoError(u.AddRole(s.T().Context(), strconv.Itoa(i)))
 	}
 	dbUser, err := FindOneById(u.Id)
 	s.NoError(err)
 	s.EqualValues(dbUser.SystemRoles, u.SystemRoles)
 
-	s.NoError(u.RemoveRole("2"))
+	s.NoError(u.RemoveRole(s.T().Context(), "2"))
 	dbUser, err = FindOneById(u.Id)
 	s.NoError(err)
 	s.EqualValues(dbUser.SystemRoles, u.SystemRoles)
-	s.NoError(u.RemoveRole("definitely non-existent role"))
+	s.NoError(u.RemoveRole(s.T().Context(), "definitely non-existent role"))
 }
 
 func (s *UserTestSuite) TestFavoriteProjects() {
@@ -592,24 +592,24 @@ func (s *UserTestSuite) TestFavoriteProjects() {
 	expected := []string{projID}
 
 	// add a project
-	err := u.AddFavoritedProject(projID)
+	err := u.AddFavoritedProject(s.T().Context(), projID)
 	s.NoError(err)
 	s.EqualValues(expected, u.FavoriteProjects)
 
 	// try to add the same project again
-	err = u.AddFavoritedProject(projID)
+	err = u.AddFavoritedProject(s.T().Context(), projID)
 	s.Require().Error(err)
 	s.EqualValues(expected, u.FavoriteProjects)
 
 	// remove a project
 	expected = []string{}
 
-	err = u.RemoveFavoriteProject(projID)
+	err = u.RemoveFavoriteProject(s.T().Context(), projID)
 	s.NoError(err)
 	s.EqualValues(expected, u.FavoriteProjects)
 
 	// try to remove a project that does not exist
-	err = u.RemoveFavoriteProject(projID)
+	err = u.RemoveFavoriteProject(s.T().Context(), projID)
 	s.Require().Error(err)
 	s.EqualValues(expected, u.FavoriteProjects)
 }
@@ -622,7 +622,7 @@ func (s *UserTestSuite) TestHasPermission() {
 	s.False(hasPermission)
 
 	// has a role with explicit permission to the resource
-	s.NoError(u.AddRole("r1p1"))
+	s.NoError(u.AddRole(s.T().Context(), "r1p1"))
 	hasPermission = u.HasPermission(gimlet.PermissionOpts{Resource: "resource1", Permission: "permission", RequiredLevel: 1})
 	s.True(hasPermission)
 	hasPermission = u.HasPermission(gimlet.PermissionOpts{Resource: "resource1", Permission: "permission", RequiredLevel: 0})
@@ -633,7 +633,7 @@ func (s *UserTestSuite) TestHasPermission() {
 	s.False(hasPermission)
 
 	// role with a parent scope
-	s.NoError(u.AddRole("r12p1"))
+	s.NoError(u.AddRole(s.T().Context(), "r12p1"))
 	hasPermission = u.HasPermission(gimlet.PermissionOpts{Resource: "resource2", Permission: "permission", RequiredLevel: 1})
 	s.True(hasPermission)
 
@@ -642,9 +642,9 @@ func (s *UserTestSuite) TestHasPermission() {
 	s.False(hasPermission)
 
 	// permission to everything
-	s.NoError(u.RemoveRole("r1p1"))
-	s.NoError(u.RemoveRole("r12p1"))
-	s.NoError(u.AddRole("r1234p2"))
+	s.NoError(u.RemoveRole(s.T().Context(), "r1p1"))
+	s.NoError(u.RemoveRole(s.T().Context(), "r12p1"))
+	s.NoError(u.AddRole(s.T().Context(), "r1234p2"))
 	hasPermission = u.HasPermission(gimlet.PermissionOpts{Resource: "resource4", Permission: "permission", RequiredLevel: 2})
 	s.True(hasPermission)
 }
@@ -890,7 +890,7 @@ func TestViewableProject(t *testing.T) {
 		Id: "me",
 	}
 	assert.NoError(t, myUser.Insert())
-	err = myUser.AddRole(evergreen.BasicProjectAccessRole)
+	err = myUser.AddRole(t.Context(), evergreen.BasicProjectAccessRole)
 	assert.NoError(t, err)
 
 	// assert that viewable projects contains the edit projects and the view projects
@@ -901,7 +901,7 @@ func TestViewableProject(t *testing.T) {
 	assert.Contains(t, projects, "spruce")
 
 	// assert that adding a role to the user allows them to view the restricted project they didn't have access to before
-	err = myUser.AddRole(parsleyAccessRoleId)
+	err = myUser.AddRole(t.Context(), parsleyAccessRoleId)
 	assert.NoError(t, err)
 
 	projects, err = myUser.GetViewableProjects(ctx)
@@ -966,9 +966,9 @@ func TestViewableProjectSettings(t *testing.T) {
 		Id: "me",
 	}
 	assert.NoError(t, myUser.Insert())
-	assert.NoError(t, myUser.AddRole(viewRole.ID))
-	assert.NoError(t, myUser.AddRole(editRole.ID))
-	assert.NoError(t, myUser.AddRole(otherRole.ID))
+	assert.NoError(t, myUser.AddRole(t.Context(), viewRole.ID))
+	assert.NoError(t, myUser.AddRole(t.Context(), editRole.ID))
+	assert.NoError(t, myUser.AddRole(t.Context(), otherRole.ID))
 
 	// assert that viewable projects contains the edit projects and the view projects
 	projects, err := myUser.GetViewableProjectSettings(ctx)
@@ -991,7 +991,7 @@ func TestUpdateParsleySettings(t *testing.T) {
 	newSettings := parsley.Settings{
 		SectionsEnabled: utility.FalsePtr(),
 	}
-	err := usr.UpdateParsleySettings(newSettings)
+	err := usr.UpdateParsleySettings(t.Context(), newSettings)
 	require.NoError(t, err)
 	assert.False(t, utility.FromBoolPtr(usr.ParsleySettings.SectionsEnabled))
 
@@ -1017,7 +1017,7 @@ func TestUpdateBetaFeatures(t *testing.T) {
 	newBetaFeatureSettings := evergreen.BetaFeatures{
 		SpruceWaterfallEnabled: true,
 	}
-	err = usr.UpdateBetaFeatures(newBetaFeatureSettings)
+	err = usr.UpdateBetaFeatures(t.Context(), newBetaFeatureSettings)
 	require.NoError(t, err)
 	assert.True(t, usr.BetaFeatures.SpruceWaterfallEnabled)
 
@@ -1029,7 +1029,7 @@ func TestUpdateBetaFeatures(t *testing.T) {
 
 func (s *UserTestSuite) TestClearUser() {
 	// Error on non-existent user.
-	s.Error(ClearUser("asdf"))
+	s.Error(ClearUser(s.T().Context(), "asdf"))
 
 	u, err := FindOneById(s.users[0].Id)
 	s.NoError(err)
@@ -1037,11 +1037,11 @@ func (s *UserTestSuite) TestClearUser() {
 	s.NotEmpty(u.Settings)
 	s.Equal("Test1", u.Id)
 	s.True(u.Settings.UseSpruceOptions.SpruceV1)
-	s.NoError(u.AddRole("r1p1"))
+	s.NoError(u.AddRole(s.T().Context(), "r1p1"))
 	s.NotEmpty(u.SystemRoles)
 	s.NotEmpty(u.APIKey)
 
-	s.NoError(ClearUser(u.Id))
+	s.NoError(ClearUser(s.T().Context(), u.Id))
 
 	// Sensitive settings and roles should now be empty.
 	u, err = FindOneById(s.users[0].Id)
@@ -1063,7 +1063,7 @@ func (s *UserTestSuite) TestClearUser() {
 	s.NoError(err)
 	s.NotNil(u)
 	s.False(u.Settings.UseSpruceOptions.SpruceV1)
-	s.NoError(ClearUser(u.Id))
+	s.NoError(ClearUser(s.T().Context(), u.Id))
 	u, err = FindOneById(s.users[1].Id)
 	s.NoError(err)
 	s.True(u.Settings.UseSpruceOptions.SpruceV1)

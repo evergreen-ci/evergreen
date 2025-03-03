@@ -224,28 +224,17 @@ func (p *Patch) IsFinished() bool {
 }
 
 // SetDescription sets a patch's description in the database
-func (p *Patch) SetDescription(desc string) error {
+func (p *Patch) SetDescription(ctx context.Context, desc string) error {
 	if p.Description == desc {
 		return nil
 	}
 	p.Description = desc
 	return UpdateOne(
+		ctx,
 		bson.M{IdKey: p.Id},
 		bson.M{
 			"$set": bson.M{
 				DescriptionKey: desc,
-			},
-		},
-	)
-}
-
-func (p *Patch) SetMergePatch(newPatchID string) error {
-	p.MergePatch = newPatchID
-	return UpdateOne(
-		bson.M{IdKey: p.Id},
-		bson.M{
-			"$set": bson.M{
-				MergePatchKey: newPatchID,
 			},
 		},
 	)
@@ -324,9 +313,10 @@ func (p *Patch) UpdateVariantsTasks(variantsTasks []VariantTasks) {
 	p.VariantsTasks = variantsTasks
 }
 
-func (p *Patch) SetParameters(parameters []Parameter) error {
+func (p *Patch) SetParameters(ctx context.Context, parameters []Parameter) error {
 	p.Parameters = parameters
 	return UpdateOne(
+		ctx,
 		bson.M{IdKey: p.Id},
 		bson.M{
 			"$set": bson.M{
@@ -336,11 +326,12 @@ func (p *Patch) SetParameters(parameters []Parameter) error {
 	)
 }
 
-func (p *Patch) SetDownstreamParameters(parameters []Parameter) error {
+func (p *Patch) SetDownstreamParameters(ctx context.Context, parameters []Parameter) error {
 	p.Triggers.DownstreamParameters = append(p.Triggers.DownstreamParameters, parameters...)
 
 	triggersKey := bsonutil.GetDottedKeyName(TriggersKey, TriggerInfoDownstreamParametersKey)
 	return UpdateOne(
+		ctx,
 		bson.M{IdKey: p.Id},
 		bson.M{
 			"$push": bson.M{triggersKey: bson.M{"$each": parameters}},
@@ -378,9 +369,10 @@ func ResolveVariantTasks(vts []VariantTasks) (bvs []string, tasks []string) {
 // SetVariantsTasks updates the variant/tasks pairs in the database.
 // Also updates the Tasks and Variants fields to maintain backwards compatibility between
 // the old and new fields.
-func (p *Patch) SetVariantsTasks(variantsTasks []VariantTasks) error {
+func (p *Patch) SetVariantsTasks(ctx context.Context, variantsTasks []VariantTasks) error {
 	p.UpdateVariantsTasks(variantsTasks)
 	return UpdateOne(
+		ctx,
 		bson.M{IdKey: p.Id},
 		bson.M{
 			"$set": bson.M{
@@ -419,9 +411,10 @@ func (p *Patch) AddTasks(tasks []string) error {
 }
 
 // UpdateRepeatPatchId updates the repeat patch Id value to be used for subsequent pr patches
-func (p *Patch) UpdateRepeatPatchId(patchId string) error {
+func (p *Patch) UpdateRepeatPatchId(ctx context.Context, patchId string) error {
 	repeatKey := bsonutil.GetDottedKeyName(githubPatchDataKey, thirdparty.RepeatPatchIdNextPatchKey)
 	return UpdateOne(
+		ctx,
 		bson.M{IdKey: p.Id},
 		bson.M{
 			"$set": bson.M{
@@ -442,7 +435,7 @@ func (p *Patch) FindModule(moduleName string) *ModulePatch {
 
 // TryMarkStarted attempts to mark a patch as started if it
 // isn't already marked as such
-func TryMarkStarted(versionId string, startTime time.Time) error {
+func TryMarkStarted(ctx context.Context, versionId string, startTime time.Time) error {
 	filter := bson.M{
 		VersionKey: versionId,
 		StatusKey:  evergreen.VersionCreated,
@@ -453,7 +446,7 @@ func TryMarkStarted(versionId string, startTime time.Time) error {
 			StatusKey:    evergreen.VersionStarted,
 		},
 	}
-	return UpdateOne(filter, update)
+	return UpdateOne(ctx, filter, update)
 }
 
 // Insert inserts the patch into the db, returning any errors that occur
@@ -461,7 +454,7 @@ func (p *Patch) Insert() error {
 	return db.Insert(Collection, p)
 }
 
-func (p *Patch) UpdateStatus(newStatus string) error {
+func (p *Patch) UpdateStatus(ctx context.Context, newStatus string) error {
 	if p.Status == newStatus {
 		return nil
 	}
@@ -472,13 +465,14 @@ func (p *Patch) UpdateStatus(newStatus string) error {
 			StatusKey: newStatus,
 		},
 	}
-	return UpdateOne(bson.M{IdKey: p.Id}, update)
+	return UpdateOne(ctx, bson.M{IdKey: p.Id}, update)
 }
 
-func (p *Patch) MarkFinished(status string, finishTime time.Time) error {
+func (p *Patch) MarkFinished(ctx context.Context, status string, finishTime time.Time) error {
 	p.Status = status
 	p.FinishTime = finishTime
 	return UpdateOne(
+		ctx,
 		bson.M{IdKey: p.Id},
 		bson.M{"$set": bson.M{
 			FinishTimeKey: finishTime,
@@ -541,9 +535,10 @@ func (p *Patch) SetFinalized(ctx context.Context, versionId string) error {
 }
 
 // SetTriggerAliases appends the names of invoked trigger aliases to the DB
-func (p *Patch) SetTriggerAliases() error {
+func (p *Patch) SetTriggerAliases(ctx context.Context) error {
 	triggersKey := bsonutil.GetDottedKeyName(TriggersKey, TriggerInfoAliasesKey)
 	return UpdateOne(
+		ctx,
 		bson.M{IdKey: p.Id},
 		bson.M{
 			"$addToSet": bson.M{triggersKey: bson.M{"$each": p.Triggers.Aliases}},
@@ -552,9 +547,10 @@ func (p *Patch) SetTriggerAliases() error {
 }
 
 // SetChildPatches appends the IDs of downstream patches to the db
-func (p *Patch) SetChildPatches() error {
+func (p *Patch) SetChildPatches(ctx context.Context) error {
 	triggersKey := bsonutil.GetDottedKeyName(TriggersKey, TriggerInfoChildPatchesKey)
 	return UpdateOne(
+		ctx,
 		bson.M{IdKey: p.Id},
 		bson.M{
 			"$addToSet": bson.M{triggersKey: bson.M{"$each": p.Triggers.ChildPatches}},
@@ -564,9 +560,10 @@ func (p *Patch) SetChildPatches() error {
 
 // SetActivation sets the patch to the desired activation state without
 // modifying the activation status of the possibly corresponding version.
-func (p *Patch) SetActivation(activated bool) error {
+func (p *Patch) SetActivation(ctx context.Context, activated bool) error {
 	p.Activated = activated
 	return UpdateOne(
+		ctx,
 		bson.M{IdKey: p.Id},
 		bson.M{
 			"$set": bson.M{
@@ -578,12 +575,13 @@ func (p *Patch) SetActivation(activated bool) error {
 
 // SetPatchVisibility set the patch visibility to the desired state.
 // This is used to hide patches that the user does not need to see.
-func (p *Patch) SetPatchVisibility(hidden bool) error {
+func (p *Patch) SetPatchVisibility(ctx context.Context, hidden bool) error {
 	if p.Hidden == hidden {
 		return nil
 	}
 	p.Hidden = hidden
 	return UpdateOne(
+		ctx,
 		bson.M{IdKey: p.Id},
 		bson.M{
 			"$set": bson.M{
@@ -594,7 +592,7 @@ func (p *Patch) SetPatchVisibility(hidden bool) error {
 }
 
 // UpdateModulePatch adds or updates a module within a patch.
-func (p *Patch) UpdateModulePatch(modulePatch ModulePatch) error {
+func (p *Patch) UpdateModulePatch(ctx context.Context, modulePatch ModulePatch) error {
 	// update the in-memory patch
 	patchFound := false
 	for i, patch := range p.Patches {
@@ -628,11 +626,11 @@ func (p *Patch) UpdateModulePatch(modulePatch ModulePatch) error {
 	update = bson.M{
 		"$push": bson.M{PatchesKey: modulePatch},
 	}
-	return UpdateOne(query, update)
+	return UpdateOne(ctx, query, update)
 }
 
 // RemoveModulePatch removes a module that's part of a patch request
-func (p *Patch) RemoveModulePatch(moduleName string) error {
+func (p *Patch) RemoveModulePatch(ctx context.Context, moduleName string) error {
 	// check that a patch for this module exists
 	query := bson.M{
 		IdKey: p.Id,
@@ -642,10 +640,10 @@ func (p *Patch) RemoveModulePatch(moduleName string) error {
 			PatchesKey: bson.M{ModulePatchNameKey: moduleName},
 		},
 	}
-	return UpdateOne(query, update)
+	return UpdateOne(ctx, query, update)
 }
 
-func (p *Patch) UpdateGithashProjectAndTasks() error {
+func (p *Patch) UpdateGithashProjectAndTasks(ctx context.Context) error {
 	query := bson.M{
 		IdKey: p.Id,
 	}
@@ -661,7 +659,7 @@ func (p *Patch) UpdateGithashProjectAndTasks() error {
 		},
 	}
 
-	return UpdateOne(query, update)
+	return UpdateOne(ctx, query, update)
 }
 
 func (p *Patch) IsGithubPRPatch() bool {
@@ -824,7 +822,7 @@ func (p *Patch) GetPatchFamily() ([]string, *Patch, error) {
 	return childrenOrSiblings, parentPatch, nil
 }
 
-func (p *Patch) SetParametersFromParent() (*Patch, error) {
+func (p *Patch) SetParametersFromParent(ctx context.Context) (*Patch, error) {
 	parentPatchId := p.Triggers.ParentPatch
 	parentPatch, err := FindOneId(parentPatchId)
 	if err != nil {
@@ -835,7 +833,7 @@ func (p *Patch) SetParametersFromParent() (*Patch, error) {
 	}
 
 	if downstreamParams := parentPatch.Triggers.DownstreamParameters; len(downstreamParams) > 0 {
-		err = p.SetParameters(downstreamParams)
+		err = p.SetParameters(ctx, downstreamParams)
 		if err != nil {
 			return nil, errors.Wrap(err, "setting downstream parameters")
 		}

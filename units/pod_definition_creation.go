@@ -76,7 +76,7 @@ func (j *podDefinitionCreationJob) Run(ctx context.Context) {
 
 	defer func() {
 		if j.HasErrors() && j.IsLastAttempt() {
-			j.AddError(errors.Wrap(j.decommissionDependentIntentPods(), "decommissioning intent pods after pod definition creation failed"))
+			j.AddError(errors.Wrap(j.decommissionDependentIntentPods(ctx), "decommissioning intent pods after pod definition creation failed"))
 		}
 	}()
 
@@ -157,7 +157,7 @@ func (j *podDefinitionCreationJob) populateIfUnset(ctx context.Context) error {
 
 // decommissionDependentIntentPods decommissions all intent pods that depend on
 // the pod definition created by this job.
-func (j *podDefinitionCreationJob) decommissionDependentIntentPods() error {
+func (j *podDefinitionCreationJob) decommissionDependentIntentPods(ctx context.Context) error {
 	podsToDecommission, err := pod.FindIntentByFamily(j.Family)
 	if err != nil {
 		return errors.Wrap(err, "finding intent pods to decommission")
@@ -165,7 +165,7 @@ func (j *podDefinitionCreationJob) decommissionDependentIntentPods() error {
 	catcher := grip.NewBasicCatcher()
 	var podIDs []string
 	for _, p := range podsToDecommission {
-		catcher.Wrapf(p.UpdateStatus(pod.StatusDecommissioned, "pod definition could not be created"), "pod '%s'", p.ID)
+		catcher.Wrapf(p.UpdateStatus(ctx, pod.StatusDecommissioned, "pod definition could not be created"), "pod '%s'", p.ID)
 		podIDs = append(podIDs, p.ID)
 	}
 

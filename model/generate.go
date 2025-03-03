@@ -207,7 +207,7 @@ func updateParserProject(ctx context.Context, settings *evergreen.Settings, v *V
 		if err != nil {
 			return errors.Wrapf(err, "upserting pre-generation parser project '%s'", oldPP.Id)
 		}
-		if err = v.UpdatePreGenerationProjectStorageMethod(preGenerationStorageMethod); err != nil {
+		if err = v.UpdatePreGenerationProjectStorageMethod(ctx, preGenerationStorageMethod); err != nil {
 			return errors.Wrapf(err, "updating version's parser project pre-generation storage method from '%s' to '%s'", v.ProjectStorageMethod, preGenerationStorageMethod)
 		}
 	}
@@ -218,7 +218,7 @@ func updateParserProject(ctx context.Context, settings *evergreen.Settings, v *V
 	if err != nil {
 		return errors.Wrapf(err, "upserting parser project '%s'", pp.Id)
 	}
-	if err := v.UpdateProjectStorageMethod(ppStorageMethod); err != nil {
+	if err := v.UpdateProjectStorageMethod(ctx, ppStorageMethod); err != nil {
 		return errors.Wrapf(err, "updating version's parser project storage method from '%s' to '%s'", v.ProjectStorageMethod, ppStorageMethod)
 	}
 

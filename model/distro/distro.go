@@ -765,10 +765,10 @@ func (d *Distro) Add(ctx context.Context, creator *user.DBUser) error {
 	if err != nil {
 		return errors.Wrap(err, "Error inserting distro")
 	}
-	return d.AddPermissions(creator)
+	return d.AddPermissions(ctx, creator)
 }
 
-func (d *Distro) AddPermissions(creator *user.DBUser) error {
+func (d *Distro) AddPermissions(ctx context.Context, creator *user.DBUser) error {
 	rm := evergreen.GetEnvironment().RoleManager()
 	if err := rm.AddResourceToScope(evergreen.AllDistrosScope, d.Id); err != nil {
 		return errors.Wrapf(err, "adding distro '%s' to permissions scope containing all distros", d.Id)
@@ -796,7 +796,7 @@ func (d *Distro) AddPermissions(creator *user.DBUser) error {
 		return errors.Wrapf(err, "adding admin role for distro '%s'", d.Id)
 	}
 	if creator != nil {
-		if err := creator.AddRole(newRole.ID); err != nil {
+		if err := creator.AddRole(ctx, newRole.ID); err != nil {
 			return errors.Wrapf(err, "adding role '%s' to user '%s'", newRole.ID, creator.Id)
 		}
 	}

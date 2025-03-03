@@ -38,7 +38,7 @@ type volumeTriggers struct {
 
 func (t *volumeTriggers) Fetch(ctx context.Context, e *event.EventLogEntry) error {
 	var err error
-	t.volume, err = host.FindVolumeByID(e.ResourceId)
+	t.volume, err = host.FindVolumeByID(ctx, e.ResourceId)
 	if err != nil {
 		return errors.Wrapf(err, "finding volume '%s'", e.ResourceId)
 	}

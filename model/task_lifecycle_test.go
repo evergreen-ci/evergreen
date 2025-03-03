@@ -1543,7 +1543,7 @@ func TestUpdateVersionStatusForGithubChecks(t *testing.T) {
 		Status: evergreen.VersionStarted,
 	}
 	assert.NoError(t, v1.Insert())
-	versionStatus, err := updateVersionStatus(&v1)
+	versionStatus, err := updateVersionStatus(t.Context(), &v1)
 	assert.NoError(t, err)
 	assert.Equal(t, versionStatus, v1.Status) // version status hasn't changed
 
@@ -1632,7 +1632,7 @@ func TestUpdateVersionStatus(t *testing.T) {
 				require.NoError(t, b.Insert())
 			}
 
-			status, err := updateVersionStatus(v)
+			status, err := updateVersionStatus(t.Context(), v)
 			require.NoError(t, err)
 			assert.Equal(t, test.expectedVersionStatus, status)
 
@@ -1918,7 +1918,7 @@ func TestUpdateBuildGithubStatus(t *testing.T) {
 		{IsGithubCheck: false, Status: evergreen.TaskUndispatched},
 	}
 
-	assert.NoError(t, updateBuildGithubStatus(b, tasks))
+	assert.NoError(t, updateBuildGithubStatus(t.Context(), b, tasks))
 
 	b, err := build.FindOneId(buildID)
 	assert.NoError(t, err)

@@ -313,7 +313,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 			CommitMessages: commitMessages,
 		},
 	}
-	if err = p.UpdateModulePatch(modulePatch); err != nil {
+	if err = p.UpdateModulePatch(r.Context(), modulePatch); err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
@@ -377,7 +377,7 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 	// dispatch to handlers based on specified action
 	switch action {
 	case "update":
-		err = p.SetDescription(desc)
+		err = p.SetDescription(ctx, desc)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
@@ -509,7 +509,7 @@ func (as *APIServer) deletePatchModule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = p.RemoveModulePatch(moduleName)
+	err = p.RemoveModulePatch(r.Context(), moduleName)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return

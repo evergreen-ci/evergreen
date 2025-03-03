@@ -221,7 +221,7 @@ func TestUserHasDistroCreatePermission(t *testing.T) {
 		Permissions: map[string]int{"distro_create": 10},
 	}
 	require.NoError(t, roleManager.UpdateRole(createRole))
-	require.NoError(t, usr.AddRole("create_distro"))
+	require.NoError(t, usr.AddRole(t.Context(), "create_distro"))
 
 	superUserScope := gimlet.Scope{
 		ID:        "superuser_scope",
@@ -453,7 +453,7 @@ func TestHasLogViewPermission(t *testing.T) {
 			}
 			require.NoError(t, roleManager.UpdateRole(logViewRole))
 
-			require.NoError(t, userWithRole.AddRole("view_log"))
+			require.NoError(t, userWithRole.AddRole(t.Context(), "view_log"))
 			require.NoError(t, err)
 
 			tCase(ctx, t, &userWithRole, &userWithoutRole)
@@ -512,7 +512,7 @@ func TestHasAnnotationPermission(t *testing.T) {
 			}
 			require.NoError(t, roleManager.UpdateRole(annotationViewRole))
 
-			require.NoError(t, usr.AddRole("view_annotation"))
+			require.NoError(t, usr.AddRole(t.Context(), "view_annotation"))
 			require.NoError(t, err)
 
 			tCase(ctx, t)

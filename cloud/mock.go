@@ -387,7 +387,7 @@ func (m *mockManager) DeleteVolume(ctx context.Context, volume *host.Volume) err
 	l.Lock()
 	defer l.Unlock()
 	delete(m.Volumes, volume.ID)
-	return errors.WithStack(volume.Remove())
+	return errors.WithStack(volume.Remove(ctx))
 }
 
 func (m *mockManager) ModifyVolume(ctx context.Context, volume *host.Volume, opts *model.VolumeModifyOptions) error {
@@ -412,7 +412,7 @@ func (m *mockManager) ModifyVolume(ctx context.Context, volume *host.Volume, opt
 		volume.NoExpiration = false
 	}
 	if opts.NewName != "" {
-		err := volume.SetDisplayName(opts.NewName)
+		err := volume.SetDisplayName(ctx, opts.NewName)
 		if err != nil {
 			return err
 		}

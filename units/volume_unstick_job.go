@@ -58,7 +58,7 @@ func (j *volumeUnstickJob) Run(ctx context.Context) {
 		j.env = evergreen.GetEnvironment()
 	}
 
-	if err := host.UnsetVolumeHost(j.VolumeID); err != nil {
+	if err := host.UnsetVolumeHost(ctx, j.VolumeID); err != nil {
 		j.AddError(errors.Wrapf(err, "unsetting terminated host for volume '%s'", j.VolumeID))
 		return
 	}

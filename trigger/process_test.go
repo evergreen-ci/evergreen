@@ -331,7 +331,7 @@ func TestProjectTriggerIntegration(t *testing.T) {
 	_, err := model.GetNewRevisionOrderNumber(downstreamProjectRef.Id)
 	assert.NoError(err)
 	downstreamRevision := "9338711cc1acc94ff75889a3b53a936a00e8c385"
-	assert.NoError(model.UpdateLastRevision(downstreamProjectRef.Id, downstreamRevision))
+	assert.NoError(model.UpdateLastRevision(t.Context(), downstreamProjectRef.Id, downstreamRevision))
 
 	downstreamVersions, err := EvalProjectTriggers(ctx, &e, TriggerDownstreamVersion)
 	assert.NoError(err)
@@ -464,7 +464,7 @@ func TestProjectTriggerIntegrationForBuild(t *testing.T) {
 	_, err := model.GetNewRevisionOrderNumber(downstreamProjectRef.Id)
 	assert.NoError(err)
 	downstreamRevision := "9338711cc1acc94ff75889a3b53a936a00e8c385"
-	assert.NoError(model.UpdateLastRevision(downstreamProjectRef.Id, downstreamRevision))
+	assert.NoError(model.UpdateLastRevision(t.Context(), downstreamProjectRef.Id, downstreamRevision))
 
 	downstreamVersions, err := EvalProjectTriggers(ctx, &e, TriggerDownstreamVersion)
 	assert.NoError(err)
@@ -571,7 +571,7 @@ func TestProjectTriggerIntegrationForPush(t *testing.T) {
 	_, err := model.GetNewRevisionOrderNumber(downstreamProjectRef.Id)
 	assert.NoError(err)
 	downstreamRevision := "cf46076567e4949f9fc68e0634139d4ac495c89b"
-	assert.NoError(model.UpdateLastRevision(downstreamProjectRef.Id, downstreamRevision))
+	assert.NoError(model.UpdateLastRevision(t.Context(), downstreamProjectRef.Id, downstreamRevision))
 
 	pushEvent := &github.PushEvent{
 		HeadCommit: &github.HeadCommit{

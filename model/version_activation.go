@@ -152,5 +152,5 @@ func ActivateElapsedBuildsAndTasks(ctx context.Context, v *Version) (bool, error
 		}
 	}
 	// Update the stored version so that we don't attempt to reactivate any variants/tasks
-	return true, v.ActivateAndSetBuildVariants()
+	return true, v.ActivateAndSetBuildVariants(ctx)
 }

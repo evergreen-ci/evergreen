@@ -213,7 +213,7 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(revision string, ma
 			"project":            gRepoPoller.ProjectRef.Id,
 			"project_identifier": gRepoPoller.ProjectRef.Identifier,
 		})
-		if err = model.UpdateLastRevision(gRepoPoller.ProjectRef.Id, baseRevision); err != nil {
+		if err = model.UpdateLastRevision(ctx, gRepoPoller.ProjectRef.Id, baseRevision); err != nil {
 			return nil, errors.Wrapf(err, "updating last revision to base revision '%s'", baseRevision)
 		}
 	}

@@ -341,8 +341,8 @@ func UpdateAll(query interface{}, update interface{}) (info *adb.ChangeInfo, err
 }
 
 // UpdateOne runs an update on a single patch document.
-func UpdateOne(query interface{}, update interface{}) error {
-	return db.Update(Collection, query, update)
+func UpdateOne(ctx context.Context, query interface{}, update interface{}) error {
+	return db.UpdateContext(ctx, Collection, query, update)
 }
 
 // PatchesByProject builds a query for patches that match the given
@@ -369,7 +369,7 @@ func ByGithubPRAndCreatedBefore(t time.Time, owner, repo string, prNumber int) d
 
 // ConsolidatePatchesForUser updates all patches authored by oldAuthor to be authored by newAuthor,
 // and if any patches have been authored by the new author already, update the patch numbers to come after the new author.
-func ConsolidatePatchesForUser(oldAuthor string, newUsr *user.DBUser) error {
+func ConsolidatePatchesForUser(ctx context.Context, oldAuthor string, newUsr *user.DBUser) error {
 
 	// It's not likely that the user would've already created patches for the new user, but if there are any, make
 	// sure that they don't have overlapping patch numbers.
@@ -384,7 +384,7 @@ func ConsolidatePatchesForUser(oldAuthor string, newUsr *user.DBUser) error {
 				return errors.Wrap(err, "incrementing patch number to resolve existing patches")
 			}
 			update := bson.M{"$set": bson.M{NumberKey: patchNum}}
-			if err := UpdateOne(bson.M{IdKey: p.Id}, update); err != nil {
+			if err := UpdateOne(ctx, bson.M{IdKey: p.Id}, update); err != nil {
 				return errors.Wrap(err, "updating patch number")
 			}
 		}

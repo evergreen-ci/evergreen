@@ -116,34 +116,6 @@ func (e Entry) Upsert() error {
 	return err
 }
 
-func (e Entry) Update() error {
-	update := bson.M{
-		TaskIdKey:   e.TaskId,
-		TaskNameKey: e.TaskDisplayName,
-		BuildIdKey:  e.BuildId,
-	}
-	if e.Execution == 0 {
-		update["$or"] = []bson.M{
-			bson.M{ExecutionKey: bson.M{"$exists": false}},
-			bson.M{ExecutionKey: 0},
-		}
-	} else {
-		update[ExecutionKey] = e.Execution
-	}
-
-	err := db.Update(
-		Collection,
-		update,
-		bson.M{
-			"$set": bson.M{
-				FilesKey: e.Files,
-			},
-		},
-	)
-
-	return err
-}
-
 // FindOne gets one Entry for the given query
 func FindOne(query db.Q) (*Entry, error) {
 	entry := &Entry{}

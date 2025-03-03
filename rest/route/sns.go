@@ -524,7 +524,7 @@ func (sns *ecsSNS) handleStoppedPod(ctx context.Context, p *pod.Pod, reason stri
 		return nil
 	}
 
-	if err := p.UpdateStatus(pod.StatusDecommissioned, reason); err != nil {
+	if err := p.UpdateStatus(ctx, pod.StatusDecommissioned, reason); err != nil {
 		return err
 	}
 

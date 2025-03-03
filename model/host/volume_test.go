@@ -23,7 +23,7 @@ func TestFindVolumesToDelete(t *testing.T) {
 		require.NoError(t, vol.Insert())
 	}
 
-	toDelete, err := FindVolumesToDelete(time.Date(2010, time.November, 10, 23, 0, 0, 0, time.UTC))
+	toDelete, err := FindVolumesToDelete(t.Context(), time.Date(2010, time.November, 10, 23, 0, 0, 0, time.UTC))
 	assert.NoError(t, err)
 	assert.Len(t, toDelete, 1)
 	assert.Equal(t, "v2", toDelete[0].ID)
@@ -43,7 +43,7 @@ func TestFindVolumesWithNoExpirationToExtend(t *testing.T) {
 		require.NoError(t, vol.Insert())
 	}
 
-	volumesToExtend, err := FindVolumesWithNoExpirationToExtend()
+	volumesToExtend, err := FindVolumesWithNoExpirationToExtend(t.Context())
 	assert.NoError(t, err)
 	assert.Len(t, volumesToExtend, 1)
 	assert.Equal(t, "v0", volumesToExtend[0].ID)
@@ -61,7 +61,7 @@ func TestCountNoExpirationVolumesForUser(t *testing.T) {
 		require.NoError(t, vol.Insert())
 	}
 
-	count, err := CountNoExpirationVolumesForUser("me")
+	count, err := CountNoExpirationVolumesForUser(t.Context(), "me")
 	assert.NoError(t, err)
 	assert.Equal(t, 1, count)
 }
@@ -84,7 +84,7 @@ func TestFindVolumesWithTerminatedHost(t *testing.T) {
 	for _, h := range hosts {
 		require.NoError(t, h.Insert(context.Background()))
 	}
-	volumes, err := FindVolumesWithTerminatedHost()
+	volumes, err := FindVolumesWithTerminatedHost(t.Context())
 	assert.NoError(t, err)
 	require.Len(t, volumes, 1)
 	assert.Equal(t, "v1", volumes[0].ID)

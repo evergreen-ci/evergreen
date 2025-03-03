@@ -135,48 +135,52 @@ func UpdateActivation(buildIds []string, active bool, caller string) error {
 }
 
 // UpdateStatus sets the build status to the given string.
-func (b *Build) UpdateStatus(status string) error {
+func (b *Build) UpdateStatus(ctx context.Context, status string) error {
 	if b.Status == status {
 		return nil
 	}
 	b.Status = status
 	return UpdateOne(
+		ctx,
 		bson.M{IdKey: b.Id},
 		bson.M{"$set": bson.M{StatusKey: status}},
 	)
 }
 
 // SetAborted sets the build aborted field to the given boolean.
-func (b *Build) SetAborted(aborted bool) error {
+func (b *Build) SetAborted(ctx context.Context, aborted bool) error {
 	if b.Aborted == aborted {
 		return nil
 	}
 	b.Aborted = aborted
 	return UpdateOne(
+		ctx,
 		bson.M{IdKey: b.Id},
 		bson.M{"$set": bson.M{AbortedKey: aborted}},
 	)
 }
 
 // SetActivated sets the build activated field to the given boolean.
-func (b *Build) SetActivated(activated bool) error {
+func (b *Build) SetActivated(ctx context.Context, activated bool) error {
 	if b.Activated == activated {
 		return nil
 	}
 	b.Activated = activated
 	return UpdateOne(
+		ctx,
 		bson.M{IdKey: b.Id},
 		bson.M{"$set": bson.M{ActivatedKey: activated}},
 	)
 }
 
 // SetAllTasksBlocked sets the build AllTasksBlocked field to the given boolean.
-func (b *Build) SetAllTasksBlocked(blocked bool) error {
+func (b *Build) SetAllTasksBlocked(ctx context.Context, blocked bool) error {
 	if b.AllTasksBlocked == blocked {
 		return nil
 	}
 	b.AllTasksBlocked = blocked
 	return UpdateOne(
+		ctx,
 		bson.M{IdKey: b.Id},
 		bson.M{"$set": bson.M{AllTasksBlockedKey: blocked}},
 	)
@@ -184,30 +188,33 @@ func (b *Build) SetAllTasksBlocked(blocked bool) error {
 
 // SetTasksCache updates one build with the given id
 // to contain the given task caches.
-func SetTasksCache(buildId string, tasks []TaskCache) error {
+func SetTasksCache(ctx context.Context, buildId string, tasks []TaskCache) error {
 	return UpdateOne(
+		ctx,
 		bson.M{IdKey: buildId},
 		bson.M{"$set": bson.M{TasksKey: tasks}},
 	)
 }
 
-func (b *Build) UpdateGithubCheckStatus(status string) error {
+func (b *Build) UpdateGithubCheckStatus(ctx context.Context, status string) error {
 	if b.GithubCheckStatus == status {
 		return nil
 	}
 	b.GithubCheckStatus = status
 	return UpdateOne(
+		ctx,
 		bson.M{IdKey: b.Id},
 		bson.M{"$set": bson.M{GithubCheckStatusKey: status}},
 	)
 }
 
-func (b *Build) SetIsGithubCheck() error {
+func (b *Build) SetIsGithubCheck(ctx context.Context) error {
 	if b.IsGithubCheck {
 		return nil
 	}
 	b.IsGithubCheck = true
 	return UpdateOne(
+		ctx,
 		bson.M{IdKey: b.Id},
 		bson.M{"$set": bson.M{IsGithubCheckKey: true}},
 	)
@@ -215,11 +222,12 @@ func (b *Build) SetIsGithubCheck() error {
 
 // SetHasUnfinishedEssentialTask sets whether or not the build has at least one
 // unfinished essential task.
-func (b *Build) SetHasUnfinishedEssentialTask(hasUnfinishedEssentialTask bool) error {
+func (b *Build) SetHasUnfinishedEssentialTask(ctx context.Context, hasUnfinishedEssentialTask bool) error {
 	if b.HasUnfinishedEssentialTask == hasUnfinishedEssentialTask {
 		return nil
 	}
 	if err := UpdateOne(
+		ctx,
 		bson.M{IdKey: b.Id},
 		bson.M{"$set": bson.M{HasUnfinishedEssentialTaskKey: hasUnfinishedEssentialTask}},
 	); err != nil {
@@ -232,11 +240,12 @@ func (b *Build) SetHasUnfinishedEssentialTask(hasUnfinishedEssentialTask bool) e
 }
 
 // UpdateMakespans sets the builds predicted and actual makespans to given durations
-func (b *Build) UpdateMakespans(predictedMakespan, actualMakespan time.Duration) error {
+func (b *Build) UpdateMakespans(ctx context.Context, predictedMakespan, actualMakespan time.Duration) error {
 	b.PredictedMakespan = predictedMakespan
 	b.ActualMakespan = actualMakespan
 
 	return UpdateOne(
+		ctx,
 		bson.M{IdKey: b.Id},
 		bson.M{"$set": bson.M{PredictedMakespanKey: predictedMakespan, ActualMakespanKey: actualMakespan}},
 	)
@@ -244,7 +253,7 @@ func (b *Build) UpdateMakespans(predictedMakespan, actualMakespan time.Duration)
 
 // TryMarkStarted attempts to mark a build as started if it
 // isn't already marked as such
-func TryMarkStarted(buildId string, startTime time.Time) error {
+func TryMarkStarted(ctx context.Context, buildId string, startTime time.Time) error {
 	selector := bson.M{
 		IdKey:     buildId,
 		StatusKey: bson.M{"$ne": evergreen.BuildStarted},
@@ -253,7 +262,7 @@ func TryMarkStarted(buildId string, startTime time.Time) error {
 		StatusKey:    evergreen.BuildStarted,
 		StartTimeKey: startTime,
 	}}
-	err := UpdateOne(selector, update)
+	err := UpdateOne(ctx, selector, update)
 	if adb.ResultsNotFound(err) {
 		return nil
 	}
@@ -262,11 +271,12 @@ func TryMarkStarted(buildId string, startTime time.Time) error {
 
 // MarkFinished sets the build to finished status in the database (this does
 // not update task or version data).
-func (b *Build) MarkFinished(status string, finishTime time.Time) error {
+func (b *Build) MarkFinished(ctx context.Context, status string, finishTime time.Time) error {
 	b.Status = status
 	b.FinishTime = finishTime
 	b.TimeTaken = finishTime.Sub(b.StartTime)
 	return UpdateOne(
+		ctx,
 		bson.M{IdKey: b.Id},
 		bson.M{
 			"$set": bson.M{

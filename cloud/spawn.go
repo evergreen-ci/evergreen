@@ -159,7 +159,7 @@ func CreateSpawnHost(ctx context.Context, so SpawnOptions, settings *evergreen.S
 		}
 	}
 
-	d.ProviderSettingsList, err = modifySpawnHostProviderSettings(*d, settings, so.Region, so.HomeVolumeID)
+	d.ProviderSettingsList, err = modifySpawnHostProviderSettings(ctx, *d, settings, so.Region, so.HomeVolumeID)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting new provider settings")
 	}
@@ -346,14 +346,14 @@ func MakeExtendedSpawnHostExpiration(host *host.Host, extendBy time.Duration) (t
 	return newExp, nil
 }
 
-func modifySpawnHostProviderSettings(d distro.Distro, settings *evergreen.Settings, region, volumeID string) ([]*birch.Document, error) {
+func modifySpawnHostProviderSettings(ctx context.Context, d distro.Distro, settings *evergreen.Settings, region, volumeID string) ([]*birch.Document, error) {
 	ec2Settings := EC2ProviderSettings{}
 	if err := ec2Settings.FromDistroSettings(d, region); err != nil {
 		return nil, errors.Wrapf(err, "getting ec2 provider from distro")
 	}
 
 	if volumeID != "" {
-		volume, err := host.FindVolumeByID(volumeID)
+		volume, err := host.FindVolumeByID(ctx, volumeID)
 		if err != nil {
 			return nil, errors.Wrapf(err, "getting volume '%s'", volumeID)
 		}

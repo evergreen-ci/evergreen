@@ -1,6 +1,7 @@
 package definition
 
 import (
+	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
@@ -37,13 +38,13 @@ func FindOne(q db.Q) (*PodDefinition, error) {
 
 // UpsertOne updates an existing pod definition if it exists based on the
 // query; otherwise, it inserts a new pod definition.
-func UpsertOne(query, update interface{}) (*adb.ChangeInfo, error) {
-	return db.Upsert(Collection, query, update)
+func UpsertOne(ctx context.Context, query, update interface{}) (*adb.ChangeInfo, error) {
+	return db.UpsertContext(ctx, Collection, query, update)
 }
 
 // UpdateOne updates an existing pod definition.
-func UpdateOne(query, update interface{}) error {
-	return db.Update(Collection, query, update)
+func UpdateOne(ctx context.Context, query, update interface{}) error {
+	return db.UpdateContext(ctx, Collection, query, update)
 }
 
 // FindOneID returns a query to find a pod definition with the given ID.

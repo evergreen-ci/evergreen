@@ -397,7 +397,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 				"project": nextTask.Project,
 			})
 			// Dequeue the task so we don't get it on another iteration of the loop.
-			grip.Warning(message.WrapError(taskQueue.DequeueTask(nextTask.Id), message.Fields{
+			grip.Warning(message.WrapError(taskQueue.DequeueTask(ctx, nextTask.Id), message.Fields{
 				"message":   "nextTask.IsHostDispatchable() is false, but there was an issue dequeuing the task",
 				"distro_id": d.Id,
 				"task_id":   nextTask.Id,
@@ -433,7 +433,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 		}
 
 		if isDisabled {
-			grip.Warning(message.WrapError(taskQueue.DequeueTask(nextTask.Id), message.Fields{
+			grip.Warning(message.WrapError(taskQueue.DequeueTask(ctx, nextTask.Id), message.Fields{
 				"message":              "project has dispatching disabled, but there was an issue dequeuing the task",
 				"distro_id":            nextTask.DistroId,
 				"task_id":              nextTask.Id,
@@ -457,7 +457,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 				"project":            projectRef.Id,
 				"project_identifier": projectRef.Enabled,
 			})
-			grip.Warning(message.WrapError(taskQueue.DequeueTask(nextTask.Id), message.Fields{
+			grip.Warning(message.WrapError(taskQueue.DequeueTask(ctx, nextTask.Id), message.Fields{
 				"message":            "top task queue task is blocked, but there was an issue dequeuing the task",
 				"host_id":            currentHost.Id,
 				"distro_id":          nextTask.DistroId,
@@ -541,7 +541,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 					grip.Alert(message.WrapError(err, errMsg))
 					return nil, false, errors.Wrapf(err, "could not mark disallowed single task distro task '%s' as system failed", nextTask.Id)
 				}
-				err = taskQueue.DequeueTask(nextTask.Id)
+				err = taskQueue.DequeueTask(ctx, nextTask.Id)
 				if err != nil {
 					errMsg = message.Fields{
 						"message":   "could not dequeue disallowed single task distro task",
@@ -603,7 +603,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 		}
 
 		// Dequeue the task so we don't get it on another iteration of the loop.
-		grip.Warning(message.WrapError(taskQueue.DequeueTask(nextTask.Id), message.Fields{
+		grip.Warning(message.WrapError(taskQueue.DequeueTask(ctx, nextTask.Id), message.Fields{
 			"message":   "updated the relevant running task fields for the given host, but there was an issue dequeuing the task",
 			"distro_id": nextTask.DistroId,
 			"task_id":   nextTask.Id,
