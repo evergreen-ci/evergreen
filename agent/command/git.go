@@ -86,7 +86,8 @@ type gitFetchProject struct {
 
 	RecurseSubmodules bool `mapstructure:"recurse_submodules"`
 
-	UseScalar bool `mapstructure:"use_scalar"`
+	UseScalar          bool `mapstructure:"use_scalar"`
+	UseScalarFullClone bool `mapstructure:"use_scalar_full_clone"`
 
 	CommitterName string `mapstructure:"committer_name"`
 
@@ -96,17 +97,18 @@ type gitFetchProject struct {
 }
 
 type cloneOpts struct {
-	method            string
-	location          string
-	owner             string
-	repo              string
-	branch            string
-	dir               string
-	token             string
-	recurseSubmodules bool
-	useVerbose        bool
-	useScalar         bool
-	cloneDepth        int
+	method             string
+	location           string
+	owner              string
+	repo               string
+	branch             string
+	dir                string
+	token              string
+	recurseSubmodules  bool
+	useVerbose         bool
+	useScalar          bool
+	useScalarFullClone bool
+	cloneDepth         int
 }
 
 // validateCloneMethod checks that the clone mechanism is one of the supported
@@ -123,8 +125,9 @@ func (opts cloneOpts) validate() error {
 	// git scalar does not have a --depth option or a --recurse-submodules option. We should therefore not
 	// let users combine scalar with recurse_submodules,clone_depth or shallow_clone (which uses depth).
 	// See https://git-scm.com/docs/scalar for more information.
-	catcher.NewWhen(opts.useScalar && opts.cloneDepth > 0, "cannot use scalar with clone depth")
-	catcher.NewWhen(opts.useScalar && opts.recurseSubmodules, "cannot use scalar with recurse submodules")
+	usesScalar := opts.useScalar || opts.useScalarFullClone
+	catcher.NewWhen(usesScalar && opts.cloneDepth > 0, "cannot use scalar with clone depth")
+	catcher.NewWhen(usesScalar && opts.recurseSubmodules, "cannot use scalar with recurse submodules")
 	catcher.NewWhen(opts.owner == "", "missing required owner")
 	catcher.NewWhen(opts.repo == "", "missing required repo")
 	catcher.NewWhen(opts.location == "", "missing required location")
@@ -215,16 +218,19 @@ func (opts cloneOpts) buildHTTPCloneCommand(logger client.LoggerProducer, forApp
 	}
 
 	gitCommand := "git clone"
-	if opts.useScalar {
+	// use --no-src so that it doesn't put the repository into a src directory because
+	// this can break user expectations and cause scripts to fail
+	scalarBaseCommand := "scalar clone --no-src"
+	if opts.useScalar || opts.useScalarFullClone {
 		scalarAvailable, err := agentutil.IsGitVersionMinimumForScalar(thirdparty.RequiredScalarGitVersion)
 		if err != nil {
 			logger.Task().Errorf("checking git version failed, falling back to git clone instead of scalar clone: %s.", err)
-		} else if scalarAvailable {
-			// use --no-src so that it doesn't put the repository into a src directory because
-			// this can break user expectations and cause scripts to fail
-			gitCommand = "scalar clone --no-src"
-		} else {
+		} else if !scalarAvailable {
 			logger.Task().Infof("cannot use scalar, git version is below '%s'", thirdparty.RequiredScalarGitVersion)
+		} else if opts.useScalarFullClone {
+			gitCommand = scalarBaseCommand + " --full-clone"
+		} else {
+			gitCommand = scalarBaseCommand
 		}
 	}
 
@@ -297,13 +303,17 @@ func (c *gitFetchProject) ParseParams(params map[string]interface{}) error {
 
 func (c *gitFetchProject) validate() error {
 	catcher := grip.NewSimpleCatcher()
-	if c.UseScalar && c.CloneDepth > 0 {
+	if c.UseScalar && c.UseScalarFullClone {
+		catcher.New("use_scalar cannot be combined with use_scalar_full_clone")
+	}
+	usesScalar := c.UseScalar || c.UseScalarFullClone
+	if usesScalar && c.CloneDepth > 0 {
 		catcher.New("use_scalar cannot be combined with clone_depth")
 	}
-	if c.UseScalar && c.RecurseSubmodules {
+	if usesScalar && c.RecurseSubmodules {
 		catcher.New("use_scalar cannot be combined with recurse_submodules")
 	}
-	if c.UseScalar && c.ShallowClone {
+	if usesScalar && c.ShallowClone {
 		catcher.New("use_scalar cannot be combined with shallow_clone")
 	}
 	return catcher.Resolve()
@@ -399,14 +409,15 @@ func (c *gitFetchProject) buildModuleCloneCommand(logger client.LoggerProducer, 
 func (c *gitFetchProject) opts(projectMethod, projectToken string, logger client.LoggerProducer, conf *internal.TaskConfig) (cloneOpts, error) {
 	shallowCloneEnabled := conf.Distro == nil || !conf.Distro.DisableShallowClone
 	opts := cloneOpts{
-		method:            projectMethod,
-		owner:             conf.ProjectRef.Owner,
-		repo:              conf.ProjectRef.Repo,
-		branch:            conf.ProjectRef.Branch,
-		dir:               c.Directory,
-		token:             projectToken,
-		recurseSubmodules: c.RecurseSubmodules,
-		useScalar:         c.UseScalar,
+		method:             projectMethod,
+		owner:              conf.ProjectRef.Owner,
+		repo:               conf.ProjectRef.Repo,
+		branch:             conf.ProjectRef.Branch,
+		dir:                c.Directory,
+		token:              projectToken,
+		recurseSubmodules:  c.RecurseSubmodules,
+		useScalar:          c.UseScalar,
+		useScalarFullClone: c.UseScalarFullClone,
 	}
 	cloneDepth := c.CloneDepth
 	if cloneDepth == 0 && c.ShallowClone {
