@@ -507,7 +507,7 @@ func savePublicKey(ctx context.Context, publicKeyInput PublicKeyInput) error {
 	if err != nil {
 		return err
 	}
-	err = mustHaveUser(ctx).AddPublicKey(publicKeyInput.Name, publicKeyInput.Key)
+	err = mustHaveUser(ctx).AddPublicKey(ctx, publicKeyInput.Name, publicKeyInput.Key)
 	if err != nil {
 		return InternalServerError.Send(ctx, fmt.Sprintf("Error saving public key: %s", err.Error()))
 	}

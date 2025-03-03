@@ -499,7 +499,7 @@ func (r *mutationResolver) DeleteGithubAppCredentials(ctx context.Context, opts 
 
 // DeleteProject is the resolver for the deleteProject field.
 func (r *mutationResolver) DeleteProject(ctx context.Context, projectID string) (bool, error) {
-	if err := data.HideBranch(projectID); err != nil {
+	if err := data.HideBranch(ctx, projectID); err != nil {
 		gimletErr, ok := err.(gimlet.ErrorResponse)
 		if ok {
 			return false, mapHTTPStatusToGqlError(ctx, gimletErr.StatusCode, err)
@@ -1060,7 +1060,7 @@ func (r *mutationResolver) AddFavoriteProject(ctx context.Context, opts AddFavor
 	}
 
 	usr := mustHaveUser(ctx)
-	err = usr.AddFavoritedProject(opts.ProjectIdentifier)
+	err = usr.AddFavoritedProject(ctx, opts.ProjectIdentifier)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
@@ -1117,7 +1117,7 @@ func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, opts Remov
 	}
 
 	usr := mustHaveUser(ctx)
-	err = usr.RemoveFavoriteProject(opts.ProjectIdentifier)
+	err = usr.RemoveFavoriteProject(ctx, opts.ProjectIdentifier)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("removing project '%s': %s", opts.ProjectIdentifier, err.Error()))
 	}
@@ -1198,7 +1198,7 @@ func (r *mutationResolver) UpdateBetaFeatures(ctx context.Context, opts UpdateBe
 	usr := mustHaveUser(ctx)
 	newBetaFeatureSettings := opts.BetaFeatures.ToService()
 
-	if err := usr.UpdateBetaFeatures(newBetaFeatureSettings); err != nil {
+	if err := usr.UpdateBetaFeatures(ctx, newBetaFeatureSettings); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("updating beta features: %s", err.Error()))
 	}
 
@@ -1215,7 +1215,7 @@ func (r *mutationResolver) UpdateParsleySettings(ctx context.Context, opts Updat
 	newSettings := opts.ParsleySettings.ToService()
 
 	changes := parsley.MergeExistingParsleySettings(usr.ParsleySettings, newSettings)
-	if err := usr.UpdateParsleySettings(changes); err != nil {
+	if err := usr.UpdateParsleySettings(ctx, changes); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("updating Parsley settings: %s", err.Error()))
 	}
 
@@ -1255,7 +1255,7 @@ func (r *mutationResolver) UpdateUserSettings(ctx context.Context, userSettings 
 	if err != nil {
 		return false, InternalServerError.Send(ctx, err.Error())
 	}
-	err = data.UpdateSettings(usr, *updatedUserSettings)
+	err = data.UpdateSettings(ctx, usr, *updatedUserSettings)
 	if err != nil {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("saving user settings: %s", err.Error()))
 	}

@@ -661,7 +661,7 @@ func (projectRef *ProjectRef) Insert() error {
 	return db.Insert(ProjectRefCollection, projectRef)
 }
 
-func (p *ProjectRef) Add(creator *user.DBUser) error {
+func (p *ProjectRef) Add(ctx context.Context, creator *user.DBUser) error {
 	if p.Id == "" {
 		p.Id = mgobson.NewObjectId().Hex()
 	}
@@ -684,7 +684,7 @@ func (p *ProjectRef) Add(creator *user.DBUser) error {
 			if err != nil {
 				return errors.Wrapf(err, "upserting project ref '%s'", hidden.Id)
 			}
-			_, err = p.UpdateAdminRoles(p.Admins, nil)
+			_, err = p.UpdateAdminRoles(ctx, p.Admins, nil)
 			return err
 		}
 	}
@@ -700,7 +700,7 @@ func (p *ProjectRef) Add(creator *user.DBUser) error {
 	if err = newProjectVars.Insert(); err != nil {
 		return errors.Wrapf(err, "adding project variables for project '%s'", p.Id)
 	}
-	return p.addPermissions(creator)
+	return p.addPermissions(ctx, creator)
 }
 
 func (p *ProjectRef) GetPatchTriggerAlias(aliasName string) (patch.PatchTriggerDefinition, bool) {
@@ -792,14 +792,14 @@ func DefaultGithubAppCredentialsToRepo(ctx context.Context, projectId string) er
 // AddToRepoScope validates that the branch can be attached to the matching repo,
 // adds the branch to the unrestricted branches under repo scope, and
 // adds repo view permission for branch admins, and adds branch edit access for repo admins.
-func (p *ProjectRef) AddToRepoScope(u *user.DBUser) error {
+func (p *ProjectRef) AddToRepoScope(ctx context.Context, u *user.DBUser) error {
 	rm := evergreen.GetEnvironment().RoleManager()
 	repoRef, err := FindRepoRefByOwnerAndRepo(p.Owner, p.Repo)
 	if err != nil {
 		return errors.Wrapf(err, "finding repo ref '%s'", p.RepoRefId)
 	}
 	if repoRef == nil {
-		repoRef, err = p.createNewRepoRef(u)
+		repoRef, err = p.createNewRepoRef(ctx, u)
 		if err != nil {
 			return errors.Wrapf(err, "creating new repo ref")
 		}
@@ -927,7 +927,7 @@ func (p *ProjectRef) AttachToRepo(ctx context.Context, u *user.DBUser) error {
 	if err != nil {
 		return errors.Wrap(err, "getting before project settings event")
 	}
-	if err := p.AddToRepoScope(u); err != nil {
+	if err := p.AddToRepoScope(ctx, u); err != nil {
 		return err
 	}
 	update := bson.M{
@@ -963,7 +963,7 @@ func (p *ProjectRef) AttachToNewRepo(ctx context.Context, u *user.DBUser) error 
 		if err := p.RemoveFromRepoScope(); err != nil {
 			return errors.Wrap(err, "removing project from old repo scope")
 		}
-		if err := p.AddToRepoScope(u); err != nil {
+		if err := p.AddToRepoScope(ctx, u); err != nil {
 			return errors.Wrap(err, "adding project to new repo scope")
 		}
 	}
@@ -1044,7 +1044,7 @@ func (p *ProjectRef) RemoveFromRepoScope() error {
 
 // addPermissions adds the project ref to the general scope (and repo scope if applicable) and
 // gives the inputted creator admin permissions.
-func (p *ProjectRef) addPermissions(creator *user.DBUser) error {
+func (p *ProjectRef) addPermissions(ctx context.Context, creator *user.DBUser) error {
 	rm := evergreen.GetEnvironment().RoleManager()
 	parentScope := evergreen.UnrestrictedProjectsScope
 	if p.IsRestricted() {
@@ -1076,12 +1076,12 @@ func (p *ProjectRef) addPermissions(creator *user.DBUser) error {
 		return errors.Wrapf(err, "adding admin role for project '%s'", p.Id)
 	}
 	if creator != nil {
-		if err := creator.AddRole(newRole.ID); err != nil {
+		if err := creator.AddRole(ctx, newRole.ID); err != nil {
 			return errors.Wrapf(err, "adding role '%s' to user '%s'", newRole.ID, creator.Id)
 		}
 	}
 	if p.UseRepoSettings() {
-		if err := p.AddToRepoScope(creator); err != nil {
+		if err := p.AddToRepoScope(ctx, creator); err != nil {
 			return errors.Wrapf(err, "adding project to repo '%s'", p.RepoRefId)
 		}
 	}
@@ -1245,7 +1245,7 @@ func setRepoFieldsFromProjects(repoRef *RepoRef, projectRefs []ProjectRef) {
 	}
 }
 
-func (p *ProjectRef) createNewRepoRef(u *user.DBUser) (repoRef *RepoRef, err error) {
+func (p *ProjectRef) createNewRepoRef(ctx context.Context, u *user.DBUser) (repoRef *RepoRef, err error) {
 	allEnabledProjects, err := FindMergedEnabledProjectRefsByOwnerAndRepo(p.Owner, p.Repo)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding all enabled projects")
@@ -1267,7 +1267,7 @@ func (p *ProjectRef) createNewRepoRef(u *user.DBUser) (repoRef *RepoRef, err err
 	// Set explicitly in case no project is enabled.
 	repoRef.Owner = p.Owner
 	repoRef.Repo = p.Repo
-	_, err = SetTracksPushEvents(context.Background(), &repoRef.ProjectRef)
+	_, err = SetTracksPushEvents(ctx, &repoRef.ProjectRef)
 	if err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
 			"message": "error setting project tracks push events",
@@ -1278,7 +1278,7 @@ func (p *ProjectRef) createNewRepoRef(u *user.DBUser) (repoRef *RepoRef, err err
 	}
 
 	// Creates scope and give user admin access to repo.
-	if err = repoRef.Add(u); err != nil {
+	if err = repoRef.Add(ctx, u); err != nil {
 		return nil, errors.Wrapf(err, "adding new repo repo ref for '%s/%s'", p.Owner, p.Repo)
 	}
 	err = LogProjectAdded(repoRef.Id, u.DisplayName())
@@ -1766,7 +1766,7 @@ func FindDownstreamProjects(project string) ([]ProjectRef, error) {
 
 // FindOneProjectRefByRepoAndBranchWithPRTesting finds a single ProjectRef with matching
 // repo/branch that is enabled and setup for PR testing.
-func FindOneProjectRefByRepoAndBranchWithPRTesting(owner, repo, branch, calledBy string) (*ProjectRef, error) {
+func FindOneProjectRefByRepoAndBranchWithPRTesting(ctx context.Context, owner, repo, branch, calledBy string) (*ProjectRef, error) {
 	projectRefs, err := FindMergedEnabledProjectRefsByRepoAndBranch(owner, repo, branch)
 	if err != nil {
 		return nil, errors.Wrapf(err, "fetching project ref for repo '%s/%s' with branch '%s'",
@@ -1855,7 +1855,7 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(owner, repo, branch, calledBy
 			Enabled:   false,
 			Hidden:    utility.TruePtr(),
 		}
-		if err = hiddenProject.Add(nil); err != nil {
+		if err = hiddenProject.Add(ctx, nil); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"source":  "find project ref for PR testing",
 				"message": "hidden project could not be added",
@@ -1928,11 +1928,11 @@ func SetTracksPushEvents(ctx context.Context, projectRef *ProjectRef) (bool, err
 	return true, nil
 }
 
-func UpdateAdminRoles(project *ProjectRef, toAdd, toDelete []string) error {
+func UpdateAdminRoles(ctx context.Context, project *ProjectRef, toAdd, toDelete []string) error {
 	if project == nil {
 		return errors.New("no project found")
 	}
-	_, err := project.UpdateAdminRoles(toAdd, toDelete)
+	_, err := project.UpdateAdminRoles(ctx, toAdd, toDelete)
 	return err
 }
 
@@ -2856,7 +2856,7 @@ func (p *ProjectRef) MakeUnrestricted() error {
 }
 
 // UpdateAdminRoles returns true if any admins have been modified/removed, regardless of errors.
-func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) (bool, error) {
+func (p *ProjectRef) UpdateAdminRoles(ctx context.Context, toAdd, toRemove []string) (bool, error) {
 	if len(toAdd) == 0 && len(toRemove) == 0 {
 		return false, nil
 	}
@@ -2882,7 +2882,7 @@ func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) (bool, error) {
 			p.removeFromAdminsList(addedUser)
 			continue
 		}
-		if err = adminUser.AddRole(role.ID); err != nil {
+		if err = adminUser.AddRole(ctx, role.ID); err != nil {
 			catcher.Wrapf(err, "adding role '%s' to user '%s'", role.ID, addedUser)
 			p.removeFromAdminsList(addedUser)
 			continue
@@ -2898,7 +2898,7 @@ func (p *ProjectRef) UpdateAdminRoles(toAdd, toRemove []string) (bool, error) {
 			continue
 		}
 
-		if err = adminUser.RemoveRole(role.ID); err != nil {
+		if err = adminUser.RemoveRole(ctx, role.ID); err != nil {
 			catcher.Wrapf(err, "removing role '%s' from user '%s'", role.ID, removedUser)
 			p.Admins = append(p.Admins, removedUser)
 			continue

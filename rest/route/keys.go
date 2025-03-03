@@ -137,7 +137,7 @@ func (h *keysPostHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Errorf("public key '%s' already exists for user '%s'", h.keyName, u.Username()))
 	}
 
-	if err := u.AddPublicKey(h.keyName, h.keyValue); err != nil {
+	if err := u.AddPublicKey(ctx, h.keyName, h.keyValue); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "adding public key"))
 	}
 

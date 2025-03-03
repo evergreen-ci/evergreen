@@ -50,7 +50,7 @@ func (h *userSettingsPostHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "updating user settings for user '%s'", u.Username()))
 	}
 
-	if err = data.UpdateSettings(u, *userSettings); err != nil {
+	if err = data.UpdateSettings(ctx, u, *userSettings); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "saving updated settings for user '%s'", u.Username()))
 	}
 
@@ -207,7 +207,7 @@ func (h *userPermissionsPostHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.NewTextInternalErrorResponse(err.Error())
 	}
-	if err = u.AddRole(newRole.ID); err != nil {
+	if err = u.AddRole(ctx, newRole.ID); err != nil {
 		return gimlet.NewTextInternalErrorResponse(err.Error())
 	}
 
@@ -670,12 +670,12 @@ func (h *userRolesPostHandler) Run(ctx context.Context) gimlet.Responder {
 
 	catcher := grip.NewBasicCatcher()
 	for _, toAdd := range h.rolesToAdd {
-		if err = u.AddRole(toAdd); err != nil {
+		if err = u.AddRole(ctx, toAdd); err != nil {
 			catcher.Wrapf(err, "adding role '%s' to user '%s'", toAdd, u.Username())
 		}
 	}
 	for _, toRemove := range h.rolesToRemove {
-		if err = u.RemoveRole(toRemove); err != nil {
+		if err = u.RemoveRole(ctx, toRemove); err != nil {
 			catcher.Wrapf(err, "removing the role '%s' from user '%s'", toRemove, u.Username())
 		}
 	}
@@ -941,9 +941,9 @@ func (h *renameUserHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	catcher := grip.NewBasicCatcher()
-	catcher.Add(user.ClearUser(h.oldUsr.Id))
+	catcher.Add(user.ClearUser(ctx, h.oldUsr.Id))
 	newUsr.Settings.GithubUser.UID = githubUID
-	catcher.Add(newUsr.UpdateSettings(newUsr.Settings))
+	catcher.Add(newUsr.UpdateSettings(ctx, newUsr.Settings))
 
 	catcher.Add(patch.ConsolidatePatchesForUser(ctx, h.oldUsr.Id, newUsr))
 	catcher.Add(host.ConsolidateHostsForUser(ctx, h.oldUsr.Id, newUsr.Id))
@@ -1093,7 +1093,7 @@ func (ch *offboardUserHandler) Run(ctx context.Context) gimlet.Responder {
 			"context": "user offboarding",
 			"user":    ch.user,
 		}))
-		err = user.ClearUser(ch.user)
+		err = user.ClearUser(ctx, ch.user)
 		catcher.Wrapf(err, "clearing user '%s'", ch.user)
 	}
 

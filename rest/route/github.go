@@ -713,7 +713,7 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 	// Verify that the owner/repo uses PR testing before inserting the intent.
 	baseRepoName := pr.Base.Repo.GetFullName()
 	baseRepo := strings.Split(baseRepoName, "/")
-	projectRef, err := model.FindOneProjectRefByRepoAndBranchWithPRTesting(baseRepo[0],
+	projectRef, err := model.FindOneProjectRefByRepoAndBranchWithPRTesting(ctx, baseRepo[0],
 		baseRepo[1], pr.Base.GetRef(), calledBy)
 	if err != nil {
 		return errors.Wrap(err, "finding project ref for patch")
