@@ -189,12 +189,6 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 		Variant:   "^ubuntu2004$",
 		Task:      "^bynntask$",
 	}).Upsert())
-	s.NoError((&model.ProjectAlias{
-		ProjectID: "commit-queue-sandbox",
-		Alias:     evergreen.GithubPRAlias,
-		Variant:   "fake.*",
-		Task:      "fake.*",
-	}).Upsert())
 
 	s.NoError((&distro.Distro{Id: "ubuntu1604-test"}).Insert(s.ctx))
 	s.NoError((&distro.Distro{Id: "ubuntu1604-build"}).Insert(s.ctx))
@@ -250,16 +244,28 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 }
 
 func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithNoTasksAndVariants() {
-	intent, err := patch.NewGithubIntent("1", "", "", "", "3fda01fcb7b1eb880659ca30edad78fc840d8169", testutil.NewGithubPR(735, "evergreen-ci/commit-queue-sandbox", "3fda01fcb7b1eb880659ca30edad78fc840d8169", s.headRepo, "fc47de9ae8115246e2a17e475582fb2e27557428", "octocat", "title1"))
+	resp, err := http.Get(s.diffURL)
+	s.Require().NoError(err)
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	s.Require().NoError(err)
+
+	intent, err := patch.NewCliIntent(patch.CLIIntentParams{
+		User:         s.user,
+		Project:      s.project,
+		BaseGitHash:  s.hash,
+		PatchContent: string(body),
+		Description:  s.desc,
+		Finalize:     true,
+		Alias:        "doesntexist",
+	})
 	s.NoError(err)
-	s.NotNil(intent)
+	s.Require().NotNil(intent)
 	s.NoError(intent.Insert())
 
-	patchID := mgobson.NewObjectId()
-	j, ok := NewPatchIntentProcessor(s.env, patchID, intent).(*patchIntentProcessor)
+	testutil.ConfigureIntegrationTest(s.T(), s.env.Settings())
+	j := NewPatchIntentProcessor(s.env, mgobson.NewObjectId(), intent).(*patchIntentProcessor)
 	j.env = s.env
-	s.True(ok)
-	s.NotNil(j)
 
 	patchDoc := intent.NewPatch()
 	err = j.finishPatch(s.ctx, patchDoc)
@@ -1281,13 +1287,17 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 	dbPatch, err := patch.FindOne(patch.ById(j.PatchID))
 	s.NoError(err)
 	s.Require().NotNil(dbPatch)
+	s.True(patchDoc.Activated, "patch should be finalized")
 
 	variants := []string{"ubuntu1604", "ubuntu1604-arm64", "ubuntu1604-debug", "race-detector"}
 	tasks := []string{"dist", "dist-test"}
 	s.verifyPatchDoc(dbPatch, j.PatchID, s.hash, true, variants, tasks)
 	s.projectExists(j.PatchID.Hex())
 
+	s.Zero(dbPatch.ProjectStorageMethod, "patch's project storage method should be unset after patch is finalized")
 	s.verifyParserProjectDoc(dbPatch, 8)
+
+	s.verifyVersionDoc(dbPatch, evergreen.PatchVersionRequester, s.user, s.hash, 4)
 
 	s.gridFSFileExists(dbPatch.Patches[0].PatchSet.PatchFileId)
 
