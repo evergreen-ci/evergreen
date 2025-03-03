@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -243,14 +244,48 @@ func Update(collection string, query interface{}, update interface{}) error {
 	return db.C(collection).Update(query, update)
 }
 
-// Update updates one matching document in the collection.
+// UpdateContext updates one matching document in the collection.
 func UpdateContext(ctx context.Context, collection string, query interface{}, update interface{}) error {
+	doc, err := transformDocument(update)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	if hasDollarKey(doc) {
+		return updateContext(ctx, collection, query, update)
+	} else {
+		msg := "update document must contain a key beginning with '$'"
+		grip.Debug(message.Fields{
+			"message": msg,
+			"error":   errors.WithStack(errors.New(msg)),
+		})
+		return ReplaceContext(ctx, collection, query, update)
+	}
+}
+
+func updateContext(ctx context.Context, collection string, query interface{}, update interface{}) error {
 	res, err := evergreen.GetEnvironment().DB().Collection(collection).UpdateOne(ctx,
 		query,
 		update,
 	)
 	if err != nil {
 		return errors.Wrapf(err, "updating task")
+	}
+	if res.MatchedCount == 0 {
+		return db.ErrNotFound
+	}
+
+	return nil
+}
+
+// ReplaceContext replaces one matching document in the collection.
+func ReplaceContext(ctx context.Context, collection string, query interface{}, replacement interface{}) error {
+	res, err := evergreen.GetEnvironment().DB().Collection(collection).ReplaceOne(ctx,
+		query,
+		replacement,
+	)
+	if err != nil {
+		return errors.Wrapf(err, "replacing task")
 	}
 	if res.MatchedCount == 0 {
 		return db.ErrNotFound
@@ -494,4 +529,25 @@ func AggregateWithMaxTime(collection string, pipeline interface{}, out interface
 	defer session.Close()
 
 	return database.C(collection).Pipe(pipeline).MaxTime(maxTime).All(out)
+}
+
+func transformDocument(val interface{}) (bson.Raw, error) {
+	if val == nil {
+		return nil, errors.WithStack(mongo.ErrNilDocument)
+	}
+
+	b, err := bson.Marshal(val)
+	if err != nil {
+		return nil, mongo.MarshalError{Value: val, Err: err}
+	}
+
+	return bson.Raw(b), nil
+}
+
+func hasDollarKey(doc bson.Raw) bool {
+	if elem, err := doc.IndexErr(0); err == nil && strings.HasPrefix(elem.Key(), "$") {
+		return true
+	}
+
+	return false
 }
