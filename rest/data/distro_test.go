@@ -282,7 +282,7 @@ func TestCreateDistro(t *testing.T) {
 
 	for tName, tCase := range map[string]func(t *testing.T, ctx context.Context, u user.DBUser){
 		"Successfully creates distro": func(t *testing.T, ctx context.Context, u user.DBUser) {
-			assert.NoError(t, CreateDistro(ctx, &u, "new-distro"))
+			assert.NoError(t, CreateDistro(ctx, &u, "new-distro", false))
 
 			newDistro, err := distro.FindOneId(ctx, "new-distro")
 			assert.NoError(t, err)
@@ -291,9 +291,24 @@ func TestCreateDistro(t *testing.T) {
 			events, err := event.FindLatestPrimaryDistroEvents("new-distro", 10, utility.ZeroTime)
 			assert.NoError(t, err)
 			assert.Len(t, events, 1)
+
+			assert.False(t, newDistro.SingleTaskDistro, "expected distro to not be a single task distro")
+		},
+		"Successfully creates single task distro": func(t *testing.T, ctx context.Context, u user.DBUser) {
+			assert.NoError(t, CreateDistro(ctx, &u, "new-distro", true))
+
+			newDistro, err := distro.FindOneId(ctx, "new-distro")
+			assert.NoError(t, err)
+			assert.NotNil(t, newDistro)
+
+			events, err := event.FindLatestPrimaryDistroEvents("new-distro", 10, utility.ZeroTime)
+			assert.NoError(t, err)
+			assert.Len(t, events, 1)
+
+			assert.True(t, newDistro.SingleTaskDistro, "expected distro to be a single task distro")
 		},
 		"Fails when the validator encounters an error": func(t *testing.T, ctx context.Context, u user.DBUser) {
-			err := CreateDistro(ctx, &u, "distro")
+			err := CreateDistro(ctx, &u, "distro", false)
 			assert.Error(t, err)
 			assert.Equal(t, "validator encountered errors: 'ERROR: distro 'distro' uses an existing identifier'", err.Error())
 

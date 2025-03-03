@@ -48,7 +48,8 @@ type BuildVariantOptions struct {
 
 // CreateDistroInput is the input to the createDistro mutation.
 type CreateDistroInput struct {
-	NewDistroID string `json:"newDistroId"`
+	NewDistroID      string `json:"newDistroId"`
+	SingleTaskDistro *bool  `json:"singleTaskDistro,omitempty"`
 }
 
 // DeactivateStepbackTaskInput is the input to the deactivateStepbackTask mutation.

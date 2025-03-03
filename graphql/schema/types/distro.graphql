@@ -88,6 +88,7 @@ CreateDistroInput is the input to the createDistro mutation.
 """
 input CreateDistroInput {
   newDistroId: String!
+  singleTaskDistro: Boolean
 }
 
 """

@@ -1,5 +1,5 @@
 mutation {
-  createDistro(opts: { newDistroId: "my-new-distro" }) {
+  createDistro(opts: { newDistroId: "my-new-distro", singleTaskDistro: true }) {
     newDistroId
   }
 }
