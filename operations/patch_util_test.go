@@ -283,7 +283,7 @@ func (s *PatchUtilTestSuite) TestValidatePatchCommand() {
 	s.Error(err, "expected error due to uncommitted and ref being set")
 	s.Nil(assertRef)
 
-	// conf.Uncommited should be considered
+	// conf.Uncommitted should be considered
 	p = patchParams{
 		Project:  "mci",
 		Finalize: true,
