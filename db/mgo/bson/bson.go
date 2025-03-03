@@ -64,7 +64,7 @@ import (
 // If GetBSON returns return a non-nil error, the marshalling procedure
 // will stop and error out with the provided value.
 type Getter interface {
-	GetBSON() (interface{}, error)
+	GetBSON() (any, error)
 }
 
 // A value implementing the bson.Setter interface will receive the BSON
@@ -110,7 +110,7 @@ var SetZero = errors.New("set to zero")
 // There's no special handling for this type in addition to what's done anyway
 // for an equivalent map type.  Elements in the map will be dumped in an
 // undefined ordered. See also the bson.D type for an ordered alternative.
-type M map[string]interface{}
+type M map[string]any
 
 // D represents a BSON document containing ordered elements. For example:
 //
@@ -124,7 +124,7 @@ type D []DocElem
 // DocElem is an element of the bson.D document representation.
 type DocElem struct {
 	Name  string
-	Value interface{}
+	Value any
 }
 
 // Map returns a map out of the ordered element name/value pairs in d.
@@ -420,7 +420,7 @@ type RegEx struct {
 // used when evaluating the provided Code.
 type JavaScript struct {
 	Code  string
-	Scope interface{}
+	Scope any
 }
 
 // DBPointer refers to a document id in a namespace.
@@ -485,7 +485,7 @@ func handleErr(err *error) {
 //	    E int64  ",minsize"
 //	    F int64  "myf,omitempty,minsize"
 //	}
-func Marshal(in interface{}) (out []byte, err error) {
+func Marshal(in any) (out []byte, err error) {
 	defer handleErr(&err)
 	e := &encoder{make([]byte, 0, initialBufferSize)}
 	e.addDoc(reflect.ValueOf(in))
@@ -527,7 +527,7 @@ func Marshal(in interface{}) (out []byte, err error) {
 // silently skipped.
 //
 // Pointer values are initialized when necessary.
-func Unmarshal(in []byte, out interface{}) (err error) {
+func Unmarshal(in []byte, out any) (err error) {
 	if raw, ok := out.(*Raw); ok {
 		raw.Kind = 3
 		raw.Data = in
@@ -557,7 +557,7 @@ func Unmarshal(in []byte, out interface{}) (err error) {
 //
 // See the Unmarshal function documentation for more details on the
 // unmarshalling process.
-func (raw Raw) Unmarshal(out interface{}) (err error) {
+func (raw Raw) Unmarshal(out any) (err error) {
 	defer handleErr(&err)
 	v := reflect.ValueOf(out)
 	switch v.Kind() {

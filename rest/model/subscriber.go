@@ -17,7 +17,7 @@ type APISubscriber struct {
 	// Target can be either a slice or a string. However, since swaggo does not
 	// support the OpenAPI `oneOf` keyword, we set `swaggerignore` and document
 	// the field manually in the "Fetch all projects" endpoint.
-	Target              interface{}             `json:"target" swaggerignore:"true"`
+	Target              any                     `json:"target" swaggerignore:"true"`
 	WebhookSubscriber   *APIWebhookSubscriber   `json:"-"`
 	JiraIssueSubscriber *APIJIRAIssueSubscriber `json:"-"`
 }
@@ -58,7 +58,7 @@ type APIWebhookHeader struct {
 // BuildFromService for APISubscriber needs to return an error so that we can validate the target interface type.
 func (s *APISubscriber) BuildFromService(in event.Subscriber) error {
 	s.Type = utility.ToStringPtr(in.Type)
-	var target interface{}
+	var target any
 
 	switch in.Type {
 	case event.GithubPullRequestSubscriberType:
@@ -116,7 +116,7 @@ func (s *APISubscriber) BuildFromService(in event.Subscriber) error {
 }
 
 func (s *APISubscriber) ToService() (event.Subscriber, error) {
-	var target interface{}
+	var target any
 	var err error
 	out := event.Subscriber{
 		Type: utility.FromStringPtr(s.Type),
@@ -195,7 +195,7 @@ func (s *APISubscriber) ToService() (event.Subscriber, error) {
 	return out, nil
 }
 
-func (s *APIGithubPRSubscriber) BuildFromService(h interface{}) error {
+func (s *APIGithubPRSubscriber) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case *event.GithubPullRequestSubscriber:
 		s.Owner = utility.ToStringPtr(v.Owner)
@@ -218,7 +218,7 @@ func (s *APIGithubCheckSubscriber) ToService() event.GithubCheckSubscriber {
 	}
 }
 
-func (s *APIGithubCheckSubscriber) BuildFromService(h interface{}) error {
+func (s *APIGithubCheckSubscriber) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case *event.GithubCheckSubscriber:
 		s.Owner = utility.ToStringPtr(v.Owner)
@@ -240,7 +240,7 @@ func (s *APIGithubMergeSubscriber) ToService() event.GithubMergeSubscriber {
 	}
 }
 
-func (s *APIGithubMergeSubscriber) BuildFromService(h interface{}) error {
+func (s *APIGithubMergeSubscriber) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case *event.GithubMergeSubscriber:
 		s.Owner = utility.ToStringPtr(v.Owner)
@@ -263,7 +263,7 @@ func (s *APIGithubPRSubscriber) ToService() event.GithubPullRequestSubscriber {
 	}
 }
 
-func (s *APIWebhookSubscriber) BuildFromService(h interface{}) error {
+func (s *APIWebhookSubscriber) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case *event.WebhookSubscriber:
 		s.URL = utility.ToStringPtr(v.URL)
@@ -321,7 +321,7 @@ type APIJIRAIssueSubscriber struct {
 	IssueType *string `json:"issue_type" mapstructure:"issue_type"`
 }
 
-func (s *APIJIRAIssueSubscriber) BuildFromService(h interface{}) error {
+func (s *APIJIRAIssueSubscriber) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case *event.JIRAIssueSubscriber:
 		s.Project = utility.ToStringPtr(v.Project)

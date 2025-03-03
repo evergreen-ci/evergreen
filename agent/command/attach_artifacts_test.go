@@ -78,27 +78,27 @@ func (s *ArtifactsSuite) TearDownTest() {
 func (s *ArtifactsSuite) TestParseErrorWorks() {
 	s.cmd.Files = []string{"foo"}
 
-	s.NoError(s.cmd.ParseParams(map[string]interface{}{}))
+	s.NoError(s.cmd.ParseParams(map[string]any{}))
 }
 
 func (s *ArtifactsSuite) TestParseErrorsIfTypesDoNotMatch() {
-	s.Error(s.cmd.ParseParams(map[string]interface{}{
+	s.Error(s.cmd.ParseParams(map[string]any{
 		"files": 1,
 	}))
 
-	s.Error(s.cmd.ParseParams(map[string]interface{}{
+	s.Error(s.cmd.ParseParams(map[string]any{
 		"files": []int{1, 3, 7},
 	}))
 }
 
 func (s *ArtifactsSuite) TestParseErrorIfNothingIsSet() {
 	s.Empty(s.cmd.Files)
-	s.Error(s.cmd.ParseParams(map[string]interface{}{}))
+	s.Error(s.cmd.ParseParams(map[string]any{}))
 }
 
 func (s *ArtifactsSuite) TestArtifactErrorsWithInvalidExpansions() {
 	s.Empty(s.cmd.Files)
-	s.NoError(s.cmd.ParseParams(map[string]interface{}{
+	s.NoError(s.cmd.ParseParams(map[string]any{
 		"files": []string{
 			"fo${bar",
 		},

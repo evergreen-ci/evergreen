@@ -182,8 +182,8 @@ func (pd *PodDispatcher) dispatchTaskAtomically(ctx context.Context, env evergre
 	return nil
 }
 
-func (pd *PodDispatcher) dispatchTask(env evergreen.Environment, p *pod.Pod, t *task.Task) func(mongo.SessionContext) (interface{}, error) {
-	return func(sessCtx mongo.SessionContext) (interface{}, error) {
+func (pd *PodDispatcher) dispatchTask(env evergreen.Environment, p *pod.Pod, t *task.Task) func(mongo.SessionContext) (any, error) {
+	return func(sessCtx mongo.SessionContext) (any, error) {
 		if err := p.SetRunningTask(sessCtx, env, t.Id, t.Execution); err != nil {
 			return nil, errors.Wrapf(err, "setting pod's running task")
 		}

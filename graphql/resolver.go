@@ -35,7 +35,7 @@ func New(apiURL string) Config {
 			sc: dbConnector,
 		},
 	}
-	c.Directives.RequireDistroAccess = func(ctx context.Context, obj interface{}, next graphql.Resolver, access DistroSettingsAccess) (interface{}, error) {
+	c.Directives.RequireDistroAccess = func(ctx context.Context, obj any, next graphql.Resolver, access DistroSettingsAccess) (any, error) {
 		user := mustHaveUser(ctx)
 
 		// If directive is checking for create permissions, no distro ID is required.
@@ -46,7 +46,7 @@ func New(apiURL string) Config {
 			return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have create distro permissions", user.Username()))
 		}
 
-		args, isStringMap := obj.(map[string]interface{})
+		args, isStringMap := obj.(map[string]any)
 		if !isStringMap {
 			return nil, ResourceNotFound.Send(ctx, "distro not specified")
 		}
@@ -76,7 +76,7 @@ func New(apiURL string) Config {
 		}
 		return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have permission to access settings for the distro '%s'", user.Username(), distroId))
 	}
-	c.Directives.RequireProjectAdmin = func(ctx context.Context, obj interface{}, next graphql.Resolver) (interface{}, error) {
+	c.Directives.RequireProjectAdmin = func(ctx context.Context, obj any, next graphql.Resolver) (any, error) {
 		// Allow if user is superuser.
 		user := mustHaveUser(ctx)
 		opts := gimlet.PermissionOpts{
@@ -110,13 +110,13 @@ func New(apiURL string) Config {
 			}
 		}
 
-		args, isStringMap := obj.(map[string]interface{})
+		args, isStringMap := obj.(map[string]any)
 		if !isStringMap {
 			return nil, ResourceNotFound.Send(ctx, "Project not specified")
 		}
 
 		if operationContext == CopyProjectMutation {
-			projectIdToCopy, ok := args["project"].(map[string]interface{})["projectIdToCopy"].(string)
+			projectIdToCopy, ok := args["project"].(map[string]any)["projectIdToCopy"].(string)
 			if !ok {
 				return nil, InternalServerError.Send(ctx, "finding projectIdToCopy for copy project operation")
 			}
@@ -138,7 +138,7 @@ func New(apiURL string) Config {
 		}
 
 		if operationContext == SetLastRevisionMutation {
-			projectIdentifier, ok := args["opts"].(map[string]interface{})["projectIdentifier"].(string)
+			projectIdentifier, ok := args["opts"].(map[string]any)["projectIdentifier"].(string)
 			if !ok {
 				return nil, InternalServerError.Send(ctx, "finding projectIdentifier for set last revision operation")
 			}
@@ -157,10 +157,10 @@ func New(apiURL string) Config {
 
 		return nil, Forbidden.Send(ctx, fmt.Sprintf("user %s does not have permission to access the %s resolver", user.Username(), operationContext))
 	}
-	c.Directives.RequireProjectAccess = func(ctx context.Context, obj interface{}, next graphql.Resolver, permission ProjectPermission, access AccessLevel) (interface{}, error) {
+	c.Directives.RequireProjectAccess = func(ctx context.Context, obj any, next graphql.Resolver, permission ProjectPermission, access AccessLevel) (any, error) {
 		usr := mustHaveUser(ctx)
 
-		args, isMap := obj.(map[string]interface{})
+		args, isMap := obj.(map[string]any)
 		if !isMap {
 			return nil, InternalServerError.Send(ctx, "converting args into map")
 		}
@@ -203,7 +203,7 @@ func New(apiURL string) Config {
 
 		return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have permission to '%s' for the project '%s'", usr.Username(), strings.ToLower(permissionInfo.Description), projectId))
 	}
-	c.Directives.RequireProjectSettingsAccess = func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error) {
+	c.Directives.RequireProjectSettingsAccess = func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error) {
 		usr := mustHaveUser(ctx)
 
 		projectSettings, isProjectSettings := obj.(*restModel.APIProjectSettings)
@@ -238,7 +238,7 @@ func New(apiURL string) Config {
 
 		return nil, Forbidden.Send(ctx, fmt.Sprintf("user does not have permission to access the field '%s' for project with ID '%s'", graphql.GetFieldContext(ctx).Path(), projectId))
 	}
-	c.Directives.RedactSecrets = func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error) {
+	c.Directives.RedactSecrets = func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error) {
 		return next(ctx)
 	}
 	return c

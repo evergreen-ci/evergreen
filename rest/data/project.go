@@ -74,7 +74,7 @@ func RequestS3Creds(ctx context.Context, projectIdentifier, userEmail string) er
 		Summary:     summary,
 		Description: description,
 		Reporter:    userEmail,
-		Fields: map[string]interface{}{
+		Fields: map[string]any{
 			evergreen.DevProdServiceFieldName: evergreen.DevProdJiraServiceField,
 		},
 	}

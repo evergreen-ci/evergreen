@@ -69,7 +69,7 @@ type ValidationError struct {
 
 type ValidationErrors []ValidationError
 
-func (v ValidationErrors) Raw() interface{} {
+func (v ValidationErrors) Raw() any {
 	return v
 }
 func (v ValidationErrors) Loggable() bool {
@@ -86,7 +86,7 @@ func (v ValidationErrors) String() string {
 
 	return out
 }
-func (v ValidationErrors) Annotate(key string, value interface{}) error {
+func (v ValidationErrors) Annotate(key string, value any) error {
 	return nil
 }
 func (v ValidationErrors) Priority() level.Priority {
@@ -1925,7 +1925,7 @@ func validateDuplicateBVTasks(p *model.Project) ValidationErrors {
 	errors := []ValidationError{}
 
 	for _, bv := range p.BuildVariants {
-		tasksFound := map[string]interface{}{}
+		tasksFound := map[string]any{}
 		for _, t := range bv.Tasks {
 
 			if t.IsGroup {
@@ -1952,7 +1952,7 @@ func validateDuplicateBVTasks(p *model.Project) ValidationErrors {
 	return errors
 }
 
-func checkOrAddTask(task, variant string, tasksFound map[string]interface{}) *ValidationError {
+func checkOrAddTask(task, variant string, tasksFound map[string]any) *ValidationError {
 	if _, found := tasksFound[task]; found {
 		return &ValidationError{
 			Level:   Error,

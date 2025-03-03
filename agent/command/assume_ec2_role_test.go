@@ -20,21 +20,21 @@ func TestEC2AssumeRoleParse(t *testing.T) {
 	for tName, tCase := range map[string]func(t *testing.T){
 		"FailsWithNoARN": func(t *testing.T) {
 			c := &ec2AssumeRole{}
-			assert.Error(t, c.ParseParams(map[string]interface{}{}))
+			assert.Error(t, c.ParseParams(map[string]any{}))
 		},
 		"FailsWithInvalidDuration": func(t *testing.T) {
 			c := &ec2AssumeRole{
 				RoleARN:         "randomRoleArn1234567890",
 				DurationSeconds: -10,
 			}
-			assert.Error(t, c.ParseParams(map[string]interface{}{}))
+			assert.Error(t, c.ParseParams(map[string]any{}))
 		},
 		"SucceedsWithValidParams": func(t *testing.T) {
 			c := &ec2AssumeRole{
 				RoleARN:         "randomRoleArn1234567890",
 				DurationSeconds: 10,
 			}
-			assert.NoError(t, c.ParseParams(map[string]interface{}{}))
+			assert.NoError(t, c.ParseParams(map[string]any{}))
 		},
 	} {
 		t.Run(tName, tCase)

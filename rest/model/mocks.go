@@ -15,18 +15,18 @@ type MockSubStruct struct {
 	SubInt int
 }
 
-func (m *MockModel) ToService() (interface{}, error) {
+func (m *MockModel) ToService() (any, error) {
 	return nil, nil
 }
 
-func (m *MockModel) BuildFromService(in interface{}) error {
+func (m *MockModel) BuildFromService(in any) error {
 	return nil
 }
 
 type MockScalars struct {
 	TimeType time.Time
-	MapType  map[string]interface{}
-	AnyType  interface{}
+	MapType  map[string]any
+	AnyType  any
 }
 
 type MockEmbedded struct {

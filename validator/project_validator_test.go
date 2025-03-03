@@ -3112,8 +3112,8 @@ func TestCheckTaskCommands(t *testing.T) {
 							Commands: []model.PluginCommandConf{
 								{
 									Command: "gotest.parse_files",
-									Params: map[string]interface{}{
-										"files": []interface{}{"test"},
+									Params: map[string]any{
+										"files": []any{"test"},
 									},
 								},
 							},
@@ -3132,8 +3132,8 @@ func TestCheckTaskCommands(t *testing.T) {
 								{
 									Command: "gotest.parse_files",
 									Type:    "setup",
-									Params: map[string]interface{}{
-										"files": []interface{}{"test"},
+									Params: map[string]any{
+										"files": []any{"test"},
 									},
 								},
 							},
@@ -3463,7 +3463,7 @@ func TestValidatePluginCommands(t *testing.T) {
 							{
 								Function: "",
 								Command:  "a.b",
-								Params:   map[string]interface{}{},
+								Params:   map[string]any{},
 							},
 						},
 					},
@@ -3478,8 +3478,8 @@ func TestValidatePluginCommands(t *testing.T) {
 					"funcOne": {
 						SingleCommand: &model.PluginCommandConf{
 							Command: "gotest.parse_files",
-							Params: map[string]interface{}{
-								"blah": []interface{}{"test"},
+							Params: map[string]any{
+								"blah": []any{"test"},
 							},
 						},
 					},
@@ -3516,8 +3516,8 @@ tasks:
 						SingleCommand: &model.PluginCommandConf{
 							Command: "shell.exec",
 							Type:    "system",
-							Params: map[string]interface{}{
-								"files": []interface{}{"test"},
+							Params: map[string]any{
+								"files": []any{"test"},
 							},
 						},
 					},
@@ -3535,7 +3535,7 @@ tasks:
 						SingleCommand: &model.PluginCommandConf{
 							Command: "shell.exec",
 							Type:    "system",
-							Params: map[string]interface{}{
+							Params: map[string]any{
 								"script": "echo hi",
 							},
 						},
@@ -3568,8 +3568,8 @@ tasks:
 					"funcOne": {
 						SingleCommand: &model.PluginCommandConf{
 							Command: "gotest.parse_files",
-							Params: map[string]interface{}{
-								"files": []interface{}{"test"},
+							Params: map[string]any{
+								"files": []any{"test"},
 							},
 						},
 					},
@@ -3581,8 +3581,8 @@ tasks:
 							{
 								Function: "funcOne",
 								Command:  "gotest.parse_files",
-								Params: map[string]interface{}{
-									"files": []interface{}{"test"},
+								Params: map[string]any{
+									"files": []any{"test"},
 								},
 							},
 						},
@@ -3598,8 +3598,8 @@ tasks:
 				Functions: map[string]*model.YAMLCommandSet{
 					"funcOne": {
 						SingleCommand: &model.PluginCommandConf{
-							Params: map[string]interface{}{
-								"blah": []interface{}{"test"},
+							Params: map[string]any{
+								"blah": []any{"test"},
 							},
 						},
 					},
@@ -3614,8 +3614,8 @@ tasks:
 					"funcOne": {
 						SingleCommand: &model.PluginCommandConf{
 							Command: "gotest.parse_files",
-							Params: map[string]interface{}{
-								"files": []interface{}{"test"},
+							Params: map[string]any{
+								"files": []any{"test"},
 							},
 						},
 					},
@@ -3631,16 +3631,16 @@ tasks:
 						SingleCommand: &model.PluginCommandConf{
 							Function: "b",
 							Command:  "gotest.parse_files",
-							Params: map[string]interface{}{
-								"files": []interface{}{"test"},
+							Params: map[string]any{
+								"files": []any{"test"},
 							},
 						},
 					},
 					"b": {
 						SingleCommand: &model.PluginCommandConf{
 							Command: "gotest.parse_files",
-							Params: map[string]interface{}{
-								"files": []interface{}{"test"},
+							Params: map[string]any{
+								"files": []any{"test"},
 							},
 						},
 					},
@@ -3657,8 +3657,8 @@ tasks:
 						SingleCommand: &model.PluginCommandConf{
 							Function: "b",
 							Command:  "gotest.parse_files",
-							Params: map[string]interface{}{
-								"files": []interface{}{"test"},
+							Params: map[string]any{
+								"files": []any{"test"},
 							},
 						},
 					},
@@ -3674,7 +3674,7 @@ tasks:
 					MultiCommand: []model.PluginCommandConf{
 						{
 							Command: "gotest.parse_files",
-							Params:  map[string]interface{}{},
+							Params:  map[string]any{},
 						},
 					},
 				},
@@ -3689,8 +3689,8 @@ tasks:
 						{
 							Function: "",
 							Command:  "gotest.parse_files",
-							Params: map[string]interface{}{
-								"files": []interface{}{"test"},
+							Params: map[string]any{
+								"files": []any{"test"},
 							},
 						},
 					},
@@ -3705,7 +3705,7 @@ tasks:
 						{
 							Function: "",
 							Command:  "gotest.parse_files",
-							Params:   map[string]interface{}{},
+							Params:   map[string]any{},
 						},
 					},
 				},
@@ -3720,8 +3720,8 @@ tasks:
 						{
 							Function: "",
 							Command:  "gotest.parse_files",
-							Params: map[string]interface{}{
-								"files": []interface{}{"test"},
+							Params: map[string]any{
+								"files": []any{"test"},
 							},
 						},
 					},
@@ -3736,7 +3736,7 @@ tasks:
 						{
 							Function: "",
 							Command:  "gotest.parse_files",
-							Params:   map[string]interface{}{},
+							Params:   map[string]any{},
 						},
 					},
 				},
@@ -3751,8 +3751,8 @@ tasks:
 						{
 							Function: "",
 							Command:  "gotest.parse_files",
-							Params: map[string]interface{}{
-								"files": []interface{}{"test"},
+							Params: map[string]any{
+								"files": []any{"test"},
 							},
 						},
 					},
@@ -3770,7 +3770,7 @@ tasks:
 							{
 								Function: "",
 								Command:  "archive.targz_pack",
-								Params: map[string]interface{}{
+								Params: map[string]any{
 									"target":     "tgz",
 									"source_dir": "src",
 									"include":    []string{":"},
@@ -3791,7 +3791,7 @@ tasks:
 							{
 								Function: "",
 								Command:  "archive.targz_pack",
-								Params: map[string]interface{}{
+								Params: map[string]any{
 									"target":     "tgz",
 									"source_dir": "src",
 									"include":    []string{":"},
@@ -3805,16 +3805,16 @@ tasks:
 			So(validatePluginCommands(project), ShouldResemble, ValidationErrors{})
 		})
 		Convey("an error should be thrown if a referenced plugin contains invalid parameters", func() {
-			params := map[string]interface{}{
+			params := map[string]any{
 				"aws_key":    "key",
 				"aws_secret": "sec",
-				"s3_copy_files": []interface{}{
-					map[string]interface{}{
-						"source": map[string]interface{}{
+				"s3_copy_files": []any{
+					map[string]any{
+						"source": map[string]any{
 							"bucket": "long3nough",
 							"path":   "fghij",
 						},
-						"destination": map[string]interface{}{
+						"destination": map[string]any{
 							"bucket": "..long-but-invalid",
 							"path":   "fghij",
 						},
@@ -3841,16 +3841,16 @@ tasks:
 		Convey("no error should be thrown if a referenced plugin that "+
 			"exists contains params that appear invalid but are in expansions",
 			func() {
-				params := map[string]interface{}{
+				params := map[string]any{
 					"aws_key":    "key",
 					"aws_secret": "sec",
-					"s3_copy_files": []interface{}{
-						map[string]interface{}{
-							"source": map[string]interface{}{
+					"s3_copy_files": []any{
+						map[string]any{
+							"source": map[string]any{
 								"bucket": "long3nough",
 								"path":   "fghij",
 							},
-							"destination": map[string]interface{}{
+							"destination": map[string]any{
 								"bucket": "${..longButInvalid}",
 								"path":   "fghij",
 							},
@@ -3875,16 +3875,16 @@ tasks:
 			})
 		Convey("no error should be thrown if a referenced plugin contains all "+
 			"the necessary and valid parameters", func() {
-			params := map[string]interface{}{
+			params := map[string]any{
 				"aws_key":    "key",
 				"aws_secret": "sec",
-				"s3_copy_files": []interface{}{
-					map[string]interface{}{
-						"source": map[string]interface{}{
+				"s3_copy_files": []any{
+					map[string]any{
+						"source": map[string]any{
 							"bucket": "abcde",
 							"path":   "fghij",
 						},
-						"destination": map[string]interface{}{
+						"destination": map[string]any{
 							"bucket": "abcde",
 							"path":   "fghij",
 						},

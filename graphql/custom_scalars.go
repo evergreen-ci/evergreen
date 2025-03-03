@@ -23,9 +23,9 @@ func MarshalStringMap(val map[string]string) graphql.Marshaler {
 }
 
 // UnmarshalStringMap handles unmarshaling StringMap
-func UnmarshalStringMap(v interface{}) (map[string]string, error) {
+func UnmarshalStringMap(v any) (map[string]string, error) {
 	stringMap := make(map[string]string)
-	stringInterface, ok := v.(map[string]interface{})
+	stringInterface, ok := v.(map[string]any)
 	if !ok {
 		return nil, fmt.Errorf("%T is not a StringMap", v)
 	}

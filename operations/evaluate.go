@@ -67,12 +67,12 @@ func Evaluate() cli.Command {
 				p.BuildVariants = model.BuildVariants(sortBuildVariantsByName)
 			}
 
-			var out interface{}
+			var out any
 			if showTasks || showVariants {
 				tmp := struct {
-					Functions interface{} `yaml:"functions,omitempty"`
-					Tasks     interface{} `yaml:"tasks,omitempty"`
-					Variants  interface{} `yaml:"buildvariants,omitempty"`
+					Functions any `yaml:"functions,omitempty"`
+					Tasks     any `yaml:"tasks,omitempty"`
+					Variants  any `yaml:"buildvariants,omitempty"`
 				}{}
 				if showTasks {
 					tmp.Functions = p.Functions

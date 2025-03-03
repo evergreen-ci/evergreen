@@ -23,7 +23,7 @@ func (c *keyValInc) Name() string { return "keyval.inc" }
 
 // ParseParams validates the input to the keyValInc, returning an error
 // if something is incorrect. Fulfills Command interface.
-func (c *keyValInc) ParseParams(params map[string]interface{}) error {
+func (c *keyValInc) ParseParams(params map[string]any) error {
 	err := mapstructure.Decode(params, c)
 	if err != nil {
 		return errors.Wrap(err, "decoding mapstructure params")

@@ -33,7 +33,7 @@ func TestTarGzPackParseParams(t *testing.T) {
 
 			Convey("a missing target should cause an error", func() {
 
-				params := map[string]interface{}{
+				params := map[string]any{
 					"source_dir": "s",
 					"include":    []string{"i"},
 				}
@@ -43,7 +43,7 @@ func TestTarGzPackParseParams(t *testing.T) {
 
 			Convey("a missing source_dir should cause an error", func() {
 
-				params := map[string]interface{}{
+				params := map[string]any{
 					"target":  "t",
 					"include": []string{"i"},
 				}
@@ -53,7 +53,7 @@ func TestTarGzPackParseParams(t *testing.T) {
 
 			Convey("an empty include field should cause an error", func() {
 
-				params := map[string]interface{}{
+				params := map[string]any{
 					"target":     "t",
 					"source_dir": "s",
 				}
@@ -64,7 +64,7 @@ func TestTarGzPackParseParams(t *testing.T) {
 			Convey("a valid set of params should be parsed into the"+
 				" corresponding fields of the targz pack command", func() {
 
-				params := map[string]interface{}{
+				params := map[string]any{
 					"target":        "t",
 					"source_dir":    "s",
 					"include":       []string{"i", "j"},
@@ -108,7 +108,7 @@ func TestTarGzCommandMakeArchive(t *testing.T) {
 				require.NoError(t, target.Close())
 				outputDir := t.TempDir()
 
-				params := map[string]interface{}{
+				params := map[string]any{
 					"target":        target.Name(),
 					"source_dir":    testDataDir,
 					"include":       []string{"targz_me/dir1/**"},

@@ -1350,7 +1350,7 @@ func getMockDistrosdata() error {
 						birch.EC.String("virtual_name", "ephemeral0"),
 					)),
 				)),
-				birch.EC.Interface("mount_points", map[string]interface{}{
+				birch.EC.Interface("mount_points", map[string]any{
 					"device_name":  "/dev/xvdb",
 					"virtual_name": "ephemeral0"}),
 			)},

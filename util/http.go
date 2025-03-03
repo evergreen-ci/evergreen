@@ -28,7 +28,7 @@ func GetIntValue(r *http.Request, valueKey string, defaultValue int) (int, error
 // JSON. If successful, it returns the gimlet.ErrorResponse wrapped with the
 // HTTP status code and the formatted error message. Otherwise, it returns an
 // error message with the HTTP status and raw response body.
-func RespErrorf(resp *http.Response, format string, args ...interface{}) error {
+func RespErrorf(resp *http.Response, format string, args ...any) error {
 	return RespError(resp, fmt.Sprintf(format, args...))
 }
 

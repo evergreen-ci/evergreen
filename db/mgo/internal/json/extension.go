@@ -8,9 +8,9 @@ import (
 // strict JSON or JSON-like content.
 type Extension struct {
 	funcs  map[string]funcExt
-	consts map[string]interface{}
-	keyed  map[string]func([]byte) (interface{}, error)
-	encode map[reflect.Type]func(v interface{}) ([]byte, error)
+	consts map[string]any
+	keyed  map[string]func([]byte) (any, error)
+	encode map[reflect.Type]func(v any) ([]byte, error)
 
 	unquotedKeys   bool
 	trailingCommas bool
@@ -40,7 +40,7 @@ func (e *Extension) Extend(ext *Extension) {
 	}
 	for typ, encode := range ext.encode {
 		if e.encode == nil {
-			e.encode = make(map[reflect.Type]func(v interface{}) ([]byte, error))
+			e.encode = make(map[reflect.Type]func(v any) ([]byte, error))
 		}
 		e.encode[typ] = encode
 	}
@@ -58,9 +58,9 @@ func (e *Extension) DecodeFunc(name string, key string, args ...string) {
 
 // DecodeConst defines a constant name that may be observed inside JSON content
 // and will be decoded with the provided value.
-func (e *Extension) DecodeConst(name string, value interface{}) {
+func (e *Extension) DecodeConst(name string, value any) {
 	if e.consts == nil {
-		e.consts = make(map[string]interface{})
+		e.consts = make(map[string]any)
 	}
 	e.consts[name] = value
 }
@@ -68,9 +68,9 @@ func (e *Extension) DecodeConst(name string, value interface{}) {
 // DecodeKeyed defines a key that when observed as the first element inside a
 // JSON document triggers the decoding of that document via the provided
 // decode function.
-func (e *Extension) DecodeKeyed(key string, decode func(data []byte) (interface{}, error)) {
+func (e *Extension) DecodeKeyed(key string, decode func(data []byte) (any, error)) {
 	if e.keyed == nil {
-		e.keyed = make(map[string]func([]byte) (interface{}, error))
+		e.keyed = make(map[string]func([]byte) (any, error))
 	}
 	e.keyed[key] = decode
 }
@@ -87,9 +87,9 @@ func (e *Extension) DecodeTrailingCommas(accept bool) {
 
 // EncodeType registers a function to encode values with the same type of the
 // provided sample.
-func (e *Extension) EncodeType(sample interface{}, encode func(v interface{}) ([]byte, error)) {
+func (e *Extension) EncodeType(sample any, encode func(v any) ([]byte, error)) {
 	if e.encode == nil {
-		e.encode = make(map[reflect.Type]func(v interface{}) ([]byte, error))
+		e.encode = make(map[reflect.Type]func(v any) ([]byte, error))
 	}
 	e.encode[reflect.TypeOf(sample)] = encode
 }

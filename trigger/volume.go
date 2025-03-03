@@ -77,7 +77,7 @@ func makeVolumeTriggers() eventHandler {
 }
 
 func (t *volumeTriggers) generate(sub *event.Subscription) (*notification.Notification, error) {
-	var payload interface{}
+	var payload any
 	var err error
 	switch sub.Subscriber.Type {
 	case event.EmailSubscriberType:

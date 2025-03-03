@@ -799,7 +799,7 @@ func (s *ProjectGetSuite) TestPaginatorShouldReturnResultsIfDataExists() {
 
 	resp := s.route.Run(ctx)
 	s.NotNil(resp)
-	payload := resp.Data().([]interface{})
+	payload := resp.Data().([]any)
 
 	s.Len(payload, 1)
 	s.Equal(utility.ToStringPtr("projectC"), (payload[0]).(*model.APIProjectRef).Id)
@@ -819,7 +819,7 @@ func (s *ProjectGetSuite) TestPaginatorShouldReturnEmptyResultsIfDataIsEmpty() {
 
 	resp := s.route.Run(ctx)
 	s.NotNil(resp)
-	payload := resp.Data().([]interface{})
+	payload := resp.Data().([]any)
 
 	s.Len(payload, 6)
 	s.Equal(utility.ToStringPtr("projectA"), (payload[0]).(*model.APIProjectRef).Id, payload[0])

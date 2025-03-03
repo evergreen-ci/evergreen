@@ -73,7 +73,7 @@ func (w *evergreenWebhookMessage) Loggable() bool {
 	return err == nil
 }
 
-func (w *evergreenWebhookMessage) Raw() interface{} {
+func (w *evergreenWebhookMessage) Raw() any {
 	return &w.raw
 }
 

@@ -47,7 +47,7 @@ type TestLogs struct {
 	Version       int32   `json:"version"`
 }
 
-func (at *APITest) BuildFromService(st interface{}) error {
+func (at *APITest) BuildFromService(st any) error {
 	env := evergreen.GetEnvironment()
 
 	switch v := st.(type) {
@@ -88,7 +88,7 @@ func (at *APITest) BuildFromService(st interface{}) error {
 	return nil
 }
 
-func (at *APITest) ToService() (interface{}, error) {
+func (at *APITest) ToService() (any, error) {
 	// It is not valid translate an APITest object to a TestResult object
 	// due to data loss.
 	return nil, errors.New("not implemented")

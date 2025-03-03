@@ -757,7 +757,7 @@ func GetBranchEvent(ctx context.Context, owner, repo, branch string) (*github.Br
 }
 
 // githubRequest performs the specified http request. If the oauth token field is empty it will not use oauth
-func githubRequest(ctx context.Context, method string, url string, oauthToken string, data interface{}) (*http.Response, error) {
+func githubRequest(ctx context.Context, method string, url string, oauthToken string, data any) (*http.Response, error) {
 	req, err := http.NewRequest(method, url, nil)
 	if err != nil {
 		return nil, err
@@ -790,7 +790,7 @@ func githubRequest(ctx context.Context, method string, url string, oauthToken st
 }
 
 // tryGithubPost posts the data to the Github api endpoint with the url given
-func tryGithubPost(ctx context.Context, url string, oauthToken string, data interface{}) (resp *http.Response, err error) {
+func tryGithubPost(ctx context.Context, url string, oauthToken string, data any) (resp *http.Response, err error) {
 	err = utility.Retry(ctx, func() (bool, error) {
 		grip.Info(message.Fields{
 			"message": "Attempting GitHub API POST",

@@ -38,7 +38,7 @@ func TestS3PutValidateParams(t *testing.T) {
 
 			Convey("a missing aws key should cause an error", func() {
 
-				params := map[string]interface{}{
+				params := map[string]any{
 					"aws_secret":   "secret",
 					"local_file":   "local",
 					"remote_file":  "remote",
@@ -53,7 +53,7 @@ func TestS3PutValidateParams(t *testing.T) {
 			})
 			Convey("a defined local file and inclusion filter should cause an error", func() {
 
-				params := map[string]interface{}{
+				params := map[string]any{
 					"aws_secret":                 "secret",
 					"aws_key":                    "key",
 					"local_file":                 "local",
@@ -70,7 +70,7 @@ func TestS3PutValidateParams(t *testing.T) {
 			})
 			Convey("a defined inclusion filter with optional upload should cause an error", func() {
 
-				params := map[string]interface{}{
+				params := map[string]any{
 					"aws_secret":                 "secret",
 					"aws_key":                    "key",
 					"local_files_include_filter": []string{"local"},
@@ -101,7 +101,7 @@ func TestS3PutValidateParams(t *testing.T) {
 
 			Convey("a missing aws secret should cause an error", func() {
 
-				params := map[string]interface{}{
+				params := map[string]any{
 					"aws_key":      "key",
 					"local_file":   "local",
 					"remote_file":  "remote",
@@ -117,7 +117,7 @@ func TestS3PutValidateParams(t *testing.T) {
 
 			Convey("a missing local file should cause an error", func() {
 
-				params := map[string]interface{}{
+				params := map[string]any{
 					"aws_key":      "key",
 					"aws_secret":   "secret",
 					"remote_file":  "remote",
@@ -133,7 +133,7 @@ func TestS3PutValidateParams(t *testing.T) {
 
 			Convey("a missing remote file should cause an error", func() {
 
-				params := map[string]interface{}{
+				params := map[string]any{
 					"aws_key":      "key",
 					"aws_secret":   "secret",
 					"local_file":   "local",
@@ -149,7 +149,7 @@ func TestS3PutValidateParams(t *testing.T) {
 
 			Convey("a missing bucket should cause an error", func() {
 
-				params := map[string]interface{}{
+				params := map[string]any{
 					"aws_key":      "key",
 					"aws_secret":   "secret",
 					"local_file":   "local",
@@ -165,7 +165,7 @@ func TestS3PutValidateParams(t *testing.T) {
 
 			Convey("a missing s3 permission should cause an error", func() {
 
-				params := map[string]interface{}{
+				params := map[string]any{
 					"aws_key":      "key",
 					"aws_secret":   "secret",
 					"local_file":   "local",
@@ -181,7 +181,7 @@ func TestS3PutValidateParams(t *testing.T) {
 
 			Convey("an invalid s3 permission should cause an error", func() {
 
-				params := map[string]interface{}{
+				params := map[string]any{
 					"aws_key":      "key",
 					"aws_secret":   "secret",
 					"local_file":   "local",
@@ -198,7 +198,7 @@ func TestS3PutValidateParams(t *testing.T) {
 
 			Convey("a missing content type should cause an error", func() {
 
-				params := map[string]interface{}{
+				params := map[string]any{
 					"aws_key":      "key",
 					"aws_secret":   "secret",
 					"local_file":   "local",
@@ -214,7 +214,7 @@ func TestS3PutValidateParams(t *testing.T) {
 
 			Convey("an invalid visibility type should cause an error", func() {
 
-				params := map[string]interface{}{
+				params := map[string]any{
 					"aws_key":      "key",
 					"aws_secret":   "secret",
 					"local_file":   "local",
@@ -232,7 +232,7 @@ func TestS3PutValidateParams(t *testing.T) {
 
 			Convey("a valid set of params should not cause an error", func() {
 
-				params := map[string]interface{}{
+				params := map[string]any{
 					"aws_key":      "key",
 					"aws_secret":   "secret",
 					"local_file":   "local",
@@ -253,7 +253,7 @@ func TestS3PutValidateParams(t *testing.T) {
 			})
 
 			Convey("combining temporary credentials with signed visibility should cause an error", func() {
-				params := map[string]interface{}{
+				params := map[string]any{
 					"aws_key":           "key",
 					"aws_secret":        "secret",
 					"aws_session_token": "temporary_token",

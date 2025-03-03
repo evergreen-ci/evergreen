@@ -445,7 +445,7 @@ func (s *eventSuite) TestCountUnprocessedEvents() {
 // If not, this function returns false. If it the struct had "r_type" (without
 // omitempty), it will return that field's value, otherwise it returns an
 // empty string
-func findResourceTypeIn(data interface{}) (bool, string) {
+func findResourceTypeIn(data any) (bool, string) {
 	const resourceTypeKeyWithOmitEmpty = resourceTypeKey + ",omitempty"
 
 	if data == nil {

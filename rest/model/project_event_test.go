@@ -202,7 +202,7 @@ func checkSubscriptions(suite *ProjectEventSuite, in []event.Subscription, out [
 	}
 }
 
-func checkSubscriptionTarget(suite *ProjectEventSuite, inTarget interface{}, outTarget interface{}) {
+func checkSubscriptionTarget(suite *ProjectEventSuite, inTarget any, outTarget any) {
 	switch v := inTarget.(type) {
 	case *event.GithubPullRequestSubscriber:
 		outTargetGithub, ok := outTarget.(APIGithubPRSubscriber)

@@ -135,7 +135,7 @@ func TestGetRecentVersions(t *testing.T) {
 		So(response.Code, ShouldEqual, http.StatusOK)
 
 		Convey("response should match contents of database", func() {
-			var jsonBody map[string]interface{}
+			var jsonBody map[string]any
 			err = json.Unmarshal(response.Body.Bytes(), &jsonBody)
 			So(err, ShouldBeNil)
 			link := response.Header().Get("Link")
@@ -149,7 +149,7 @@ func TestGetRecentVersions(t *testing.T) {
 
 			So(jsonBody["project"], ShouldEqual, projectName)
 
-			var jsonVersions []map[string]interface{}
+			var jsonVersions []map[string]any
 			err = json.Unmarshal(*rawJsonBody["versions"], &jsonVersions)
 			So(err, ShouldBeNil)
 			So(len(jsonVersions), ShouldEqual, len(versions))
@@ -164,13 +164,13 @@ func TestGetRecentVersions(t *testing.T) {
 
 				_jsonBuilds, ok := jsonVersion["builds"]
 				So(ok, ShouldBeTrue)
-				jsonBuilds, ok := _jsonBuilds.(map[string]interface{})
+				jsonBuilds, ok := _jsonBuilds.(map[string]any)
 				So(ok, ShouldBeTrue)
 				So(len(jsonBuilds), ShouldEqual, 1)
 
 				_jsonBuild, ok := jsonBuilds[builds[i].BuildVariant]
 				So(ok, ShouldBeTrue)
-				jsonBuild, ok := _jsonBuild.(map[string]interface{})
+				jsonBuild, ok := _jsonBuild.(map[string]any)
 				So(ok, ShouldBeTrue)
 
 				So(jsonBuild["build_id"], ShouldEqual, builds[i].Id)
@@ -178,13 +178,13 @@ func TestGetRecentVersions(t *testing.T) {
 
 				_jsonTasks, ok := jsonBuild["tasks"]
 				So(ok, ShouldBeTrue)
-				jsonTasks, ok := _jsonTasks.(map[string]interface{})
+				jsonTasks, ok := _jsonTasks.(map[string]any)
 				So(ok, ShouldBeTrue)
 				So(len(jsonTasks), ShouldEqual, 1)
 
 				_jsonTask, ok := jsonTasks[tasks[i].DisplayName]
 				So(ok, ShouldBeTrue)
-				jsonTask, ok := _jsonTask.(map[string]interface{})
+				jsonTask, ok := _jsonTask.(map[string]any)
 				So(ok, ShouldBeTrue)
 
 				So(jsonTask["task_id"], ShouldEqual, tasks[i].Id)
@@ -211,7 +211,7 @@ func TestGetRecentVersions(t *testing.T) {
 		So(response.Code, ShouldEqual, http.StatusOK)
 
 		Convey("response should contain no versions", func() {
-			var jsonBody map[string]interface{}
+			var jsonBody map[string]any
 			err = json.Unmarshal(response.Body.Bytes(), &jsonBody)
 			So(err, ShouldBeNil)
 
@@ -221,7 +221,7 @@ func TestGetRecentVersions(t *testing.T) {
 
 			So(jsonBody["project"], ShouldEqual, projectName)
 
-			var jsonVersions []map[string]interface{}
+			var jsonVersions []map[string]any
 			err = json.Unmarshal(*rawJsonBody["versions"], &jsonVersions)
 			So(err, ShouldBeNil)
 			So(jsonVersions, ShouldBeEmpty)
@@ -314,7 +314,7 @@ func TestGetVersionInfo(t *testing.T) {
 		So(response.Code, ShouldEqual, http.StatusNotFound)
 
 		Convey("response should contain a sensible error message", func() {
-			var jsonBody map[string]interface{}
+			var jsonBody map[string]any
 			err = json.Unmarshal(response.Body.Bytes(), &jsonBody)
 			So(err, ShouldBeNil)
 			So(len(jsonBody["message"].(string)), ShouldBeGreaterThan, 0)
@@ -400,7 +400,7 @@ func TestGetVersionInfoViaRevision(t *testing.T) {
 		So(response.Code, ShouldEqual, http.StatusNotFound)
 
 		Convey("response should contain a sensible error message", func() {
-			var jsonBody map[string]interface{}
+			var jsonBody map[string]any
 			err = json.Unmarshal(response.Body.Bytes(), &jsonBody)
 			So(err, ShouldBeNil)
 			So(len(jsonBody["message"].(string)), ShouldBeGreaterThan, 0)
@@ -462,7 +462,7 @@ func TestActivateVersion(t *testing.T) {
 
 		url := "/rest/v1/versions/" + versionId
 
-		var body = map[string]interface{}{
+		var body = map[string]any{
 			"activated": true,
 		}
 		jsonBytes, err := json.Marshal(body)
@@ -489,7 +489,7 @@ func TestActivateVersion(t *testing.T) {
 
 		url := "/rest/v1/versions/" + versionId
 
-		var body = map[string]interface{}{
+		var body = map[string]any{
 			"activated": true,
 		}
 		jsonBytes, err := json.Marshal(body)
@@ -507,7 +507,7 @@ func TestActivateVersion(t *testing.T) {
 		So(response.Code, ShouldEqual, http.StatusNotFound)
 
 		Convey("response should contain a sensible error message", func() {
-			var jsonBody map[string]interface{}
+			var jsonBody map[string]any
 			err = json.Unmarshal(response.Body.Bytes(), &jsonBody)
 			So(err, ShouldBeNil)
 			So(len(jsonBody["message"].(string)), ShouldBeGreaterThan, 0)
@@ -519,7 +519,7 @@ func TestActivateVersion(t *testing.T) {
 
 		url := "/rest/v1/versions/" + versionId
 
-		var body = map[string]interface{}{
+		var body = map[string]any{
 			"activated": true,
 		}
 		jsonBytes, err := json.Marshal(body)
@@ -587,7 +587,7 @@ func TestGetVersionStatus(t *testing.T) {
 			So(response.Code, ShouldEqual, http.StatusOK)
 
 			Convey("response should match contents of database", func() {
-				var jsonBody map[string]interface{}
+				var jsonBody map[string]any
 				err = json.Unmarshal(response.Body.Bytes(), &jsonBody)
 				So(err, ShouldBeNil)
 
@@ -595,18 +595,18 @@ func TestGetVersionStatus(t *testing.T) {
 
 				_jsonTasks, ok := jsonBody["tasks"]
 				So(ok, ShouldBeTrue)
-				jsonTasks, ok := _jsonTasks.(map[string]interface{})
+				jsonTasks, ok := _jsonTasks.(map[string]any)
 				So(ok, ShouldBeTrue)
 				So(len(jsonTasks), ShouldEqual, 1)
 
 				_jsonTask, ok := jsonTasks[task.DisplayName]
 				So(ok, ShouldBeTrue)
-				jsonTask, ok := _jsonTask.(map[string]interface{})
+				jsonTask, ok := _jsonTask.(map[string]any)
 				So(ok, ShouldBeTrue)
 
 				_jsonBuild, ok := jsonTask[task.BuildVariant]
 				So(ok, ShouldBeTrue)
-				jsonBuild, ok := _jsonBuild.(map[string]interface{})
+				jsonBuild, ok := _jsonBuild.(map[string]any)
 				So(ok, ShouldBeTrue)
 
 				So(jsonBuild["task_id"], ShouldEqual, task.Id)
@@ -648,7 +648,7 @@ func TestGetVersionStatus(t *testing.T) {
 			So(response.Code, ShouldEqual, http.StatusOK)
 
 			Convey("response should match contents of database", func() {
-				var jsonBody map[string]interface{}
+				var jsonBody map[string]any
 				err = json.Unmarshal(response.Body.Bytes(), &jsonBody)
 				So(err, ShouldBeNil)
 
@@ -656,18 +656,18 @@ func TestGetVersionStatus(t *testing.T) {
 
 				_jsonBuilds, ok := jsonBody["builds"]
 				So(ok, ShouldBeTrue)
-				jsonBuilds, ok := _jsonBuilds.(map[string]interface{})
+				jsonBuilds, ok := _jsonBuilds.(map[string]any)
 				So(ok, ShouldBeTrue)
 				So(len(jsonBuilds), ShouldEqual, 1)
 
 				_jsonBuild, ok := jsonBuilds[build.BuildVariant]
 				So(ok, ShouldBeTrue)
-				jsonBuild, ok := _jsonBuild.(map[string]interface{})
+				jsonBuild, ok := _jsonBuild.(map[string]any)
 				So(ok, ShouldBeTrue)
 
 				_jsonTask, ok := jsonBuild[task.DisplayName]
 				So(ok, ShouldBeTrue)
-				jsonTask, ok := _jsonTask.(map[string]interface{})
+				jsonTask, ok := _jsonTask.(map[string]any)
 				So(ok, ShouldBeTrue)
 
 				So(jsonTask["task_id"], ShouldEqual, task.Id)
@@ -692,7 +692,7 @@ func TestGetVersionStatus(t *testing.T) {
 
 			So(response.Code, ShouldEqual, http.StatusBadRequest)
 
-			var jsonBody map[string]interface{}
+			var jsonBody map[string]any
 			err = json.Unmarshal(response.Body.Bytes(), &jsonBody)
 			So(err, ShouldBeNil)
 
@@ -721,13 +721,13 @@ func TestGetVersionStatus(t *testing.T) {
 			So(response.Code, ShouldEqual, http.StatusOK)
 
 			Convey("response should contain a sensible error message", func() {
-				var jsonBody map[string]interface{}
+				var jsonBody map[string]any
 				err = json.Unmarshal(response.Body.Bytes(), &jsonBody)
 				So(err, ShouldBeNil)
 
 				_jsonTasks, ok := jsonBody["tasks"]
 				So(ok, ShouldBeTrue)
-				jsonTasks, ok := _jsonTasks.(map[string]interface{})
+				jsonTasks, ok := _jsonTasks.(map[string]any)
 				So(ok, ShouldBeTrue)
 				So(jsonTasks, ShouldBeEmpty)
 			})
@@ -751,13 +751,13 @@ func TestGetVersionStatus(t *testing.T) {
 			So(response.Code, ShouldEqual, http.StatusOK)
 
 			Convey("response should contain a sensible error message", func() {
-				var jsonBody map[string]interface{}
+				var jsonBody map[string]any
 				err = json.Unmarshal(response.Body.Bytes(), &jsonBody)
 				So(err, ShouldBeNil)
 
 				_jsonBuilds, ok := jsonBody["builds"]
 				So(ok, ShouldBeTrue)
-				jsonBuilds, ok := _jsonBuilds.(map[string]interface{})
+				jsonBuilds, ok := _jsonBuilds.(map[string]any)
 				So(ok, ShouldBeTrue)
 				So(jsonBuilds, ShouldBeEmpty)
 			})
@@ -767,7 +767,7 @@ func TestGetVersionStatus(t *testing.T) {
 
 func validateVersionInfo(v *model.Version, response *httptest.ResponseRecorder) {
 	Convey("response should match contents of database", func() {
-		var jsonBody map[string]interface{}
+		var jsonBody map[string]any
 		err := json.Unmarshal(response.Body.Bytes(), &jsonBody)
 		So(err, ShouldBeNil)
 

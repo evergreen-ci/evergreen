@@ -126,7 +126,7 @@ func GetProjectIdFromParams(ctx context.Context, paramsMap map[string]string) (s
 
 // BuildProjectParameterMapForGraphQL builds the parameters map that can be used as an input to GetProjectIdFromParams.
 // It is used by the GraphQL @requireProjectAccess directive.
-func BuildProjectParameterMapForGraphQL(args map[string]interface{}) (map[string]string, error) {
+func BuildProjectParameterMapForGraphQL(args map[string]any) (map[string]string, error) {
 	paramsMap := map[string]string{}
 
 	if projectIdentifier, hasProjectIdentifier := args[projectIdentifierKey].(string); hasProjectIdentifier {

@@ -395,7 +395,7 @@ func TestAPIServiceFlagsModelInterface(t *testing.T) {
 	allStructFieldsTrue(t, &newFlags)
 }
 
-func allStructFieldsTrue(t *testing.T, s interface{}) {
+func allStructFieldsTrue(t *testing.T, s any) {
 	elem := reflect.ValueOf(s).Elem()
 	for i := 0; i < elem.NumField(); i++ {
 		f := elem.Field(i)

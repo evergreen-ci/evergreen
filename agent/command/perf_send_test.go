@@ -13,17 +13,17 @@ import (
 func TestPerfSendParseParams(t *testing.T) {
 	for _, test := range []struct {
 		name   string
-		params map[string]interface{}
+		params map[string]any
 		hasErr bool
 	}{
 		{
 			name:   "MissingFile",
-			params: map[string]interface{}{},
+			params: map[string]any{},
 			hasErr: true,
 		},
 		{
 			name:   "FileOnly",
-			params: map[string]interface{}{"file": "fn"},
+			params: map[string]any{"file": "fn"},
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {

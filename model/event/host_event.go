@@ -11,7 +11,7 @@ import (
 )
 
 func init() {
-	registry.AddType(ResourceTypeHost, func() interface{} { return &HostEventData{} })
+	registry.AddType(ResourceTypeHost, func() any { return &HostEventData{} })
 	registry.AllowSubscription(ResourceTypeHost, EventHostExpirationWarningSent)
 	registry.AllowSubscription(ResourceTypeHost, EventHostTemporaryExemptionExpirationWarningSent)
 	registry.AllowSubscription(ResourceTypeHost, EventVolumeExpirationWarningSent)

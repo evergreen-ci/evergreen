@@ -25,7 +25,7 @@ type hostsData struct {
 type pluginData struct {
 	Includes []template.HTML
 	Panels   plugin.PanelLayout
-	Data     map[string]interface{}
+	Data     map[string]any
 }
 
 type uiVersion struct {
@@ -51,7 +51,7 @@ type uiUpstreamData struct {
 
 type uiPatch struct {
 	Patch       patch.Patch
-	StatusDiffs interface{}
+	StatusDiffs any
 
 	// only used on task pages
 	BaseTimeTaken time.Duration `json:"base_time_taken"`

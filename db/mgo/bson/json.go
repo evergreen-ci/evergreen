@@ -13,7 +13,7 @@ import (
 // jdec is used internally by the JSON decoding functions
 // so they may unmarshal functions without getting into endless
 // recursion due to keyed objects.
-func jdec(data []byte, value interface{}) error {
+func jdec(data []byte, value any) error {
 	d := json.NewDecoder(bytes.NewBuffer(data))
 	d.Extend(&funcExt)
 	return d.Decode(value)
@@ -76,13 +76,13 @@ func init() {
 	jsonExt.Extend(&funcExt)
 }
 
-func fbytes(format string, args ...interface{}) []byte {
+func fbytes(format string, args ...any) []byte {
 	var buf bytes.Buffer
 	fmt.Fprintf(&buf, format, args...)
 	return buf.Bytes()
 }
 
-func jdecBinary(data []byte) (interface{}, error) {
+func jdecBinary(data []byte) (any, error) {
 	var v struct {
 		Binary []byte `json:"$binary"`
 		Type   string `json:"$type"`
@@ -121,14 +121,14 @@ func jdecBinary(data []byte) (interface{}, error) {
 	return Binary{Kind: byte(binKind), Data: binData}, nil
 }
 
-func jencBinarySlice(v interface{}) ([]byte, error) {
+func jencBinarySlice(v any) ([]byte, error) {
 	in := v.([]byte)
 	out := make([]byte, base64.StdEncoding.EncodedLen(len(in)))
 	base64.StdEncoding.Encode(out, in)
 	return fbytes(`{"$binary":"%s","$type":"0x0"}`, out), nil
 }
 
-func jencBinaryType(v interface{}) ([]byte, error) {
+func jencBinaryType(v any) ([]byte, error) {
 	in := v.(Binary)
 	out := make([]byte, base64.StdEncoding.EncodedLen(len(in.Data)))
 	base64.StdEncoding.Encode(out, in.Data)
@@ -137,7 +137,7 @@ func jencBinaryType(v interface{}) ([]byte, error) {
 
 const jdateFormat = "2006-01-02T15:04:05.999Z"
 
-func jdecDate(data []byte) (interface{}, error) {
+func jdecDate(data []byte) (any, error) {
 	var v struct {
 		S    string `json:"$date"`
 		Func struct {
@@ -177,12 +177,12 @@ func jdecDate(data []byte) (interface{}, error) {
 	return time.Unix(n/1000, n%1000*1e6).UTC(), nil
 }
 
-func jencDate(v interface{}) ([]byte, error) {
+func jencDate(v any) ([]byte, error) {
 	t := v.(time.Time)
 	return fbytes(`{"$date":%q}`, t.Format(jdateFormat)), nil
 }
 
-func jdecTimestamp(data []byte) (interface{}, error) {
+func jdecTimestamp(data []byte) (any, error) {
 	var v struct {
 		Func struct {
 			T int32 `json:"t"`
@@ -196,12 +196,12 @@ func jdecTimestamp(data []byte) (interface{}, error) {
 	return MongoTimestamp(uint64(v.Func.T)<<32 | uint64(uint32(v.Func.I))), nil
 }
 
-func jencTimestamp(v interface{}) ([]byte, error) {
+func jencTimestamp(v any) ([]byte, error) {
 	ts := uint64(v.(MongoTimestamp))
 	return fbytes(`{"$timestamp":{"t":%d,"i":%d}}`, ts>>32, uint32(ts)), nil
 }
 
-func jdecRegEx(data []byte) (interface{}, error) {
+func jdecRegEx(data []byte) (any, error) {
 	var v struct {
 		Regex   string `json:"$regex"`
 		Options string `json:"$options"`
@@ -213,7 +213,7 @@ func jdecRegEx(data []byte) (interface{}, error) {
 	return RegEx{v.Regex, v.Options}, nil
 }
 
-func jencRegEx(v interface{}) ([]byte, error) {
+func jencRegEx(v any) ([]byte, error) {
 	re := v.(RegEx)
 	type regex struct {
 		Regex   string `json:"$regex"`
@@ -222,7 +222,7 @@ func jencRegEx(v interface{}) ([]byte, error) {
 	return json.Marshal(regex{re.Pattern, re.Options})
 }
 
-func jdecObjectId(data []byte) (interface{}, error) {
+func jdecObjectId(data []byte) (any, error) {
 	var v struct {
 		Id   string `json:"$oid"`
 		Func struct {
@@ -239,17 +239,17 @@ func jdecObjectId(data []byte) (interface{}, error) {
 	return ObjectIdHex(v.Id), nil
 }
 
-func jencObjectId(v interface{}) ([]byte, error) {
+func jencObjectId(v any) ([]byte, error) {
 	return fbytes(`{"$oid":"%s"}`, v.(ObjectId).Hex()), nil
 }
 
-func jdecDBRef(data []byte) (interface{}, error) {
+func jdecDBRef(data []byte) (any, error) {
 	// TODO Support unmarshaling $ref and $id into the input value.
 	var v struct {
-		Obj map[string]interface{} `json:"$dbrefFunc"`
+		Obj map[string]any `json:"$dbrefFunc"`
 	}
 	// TODO Fix this. Must not be required.
-	v.Obj = make(map[string]interface{})
+	v.Obj = make(map[string]any)
 	err := jdec(data, &v)
 	if err != nil {
 		return nil, err
@@ -257,7 +257,7 @@ func jdecDBRef(data []byte) (interface{}, error) {
 	return v.Obj, nil
 }
 
-func jdecNumberLong(data []byte) (interface{}, error) {
+func jdecNumberLong(data []byte) (any, error) {
 	var v struct {
 		N    int64 `json:"$numberLong,string"`
 		Func struct {
@@ -285,7 +285,7 @@ func jdecNumberLong(data []byte) (interface{}, error) {
 	return v.Func.N, nil
 }
 
-func jencNumberLong(v interface{}) ([]byte, error) {
+func jencNumberLong(v any) ([]byte, error) {
 	n := v.(int64)
 	f := `{"$numberLong":"%d"}`
 	if n <= 1<<53 {
@@ -294,7 +294,7 @@ func jencNumberLong(v interface{}) ([]byte, error) {
 	return fbytes(f, n), nil
 }
 
-func jencInt(v interface{}) ([]byte, error) {
+func jencInt(v any) ([]byte, error) {
 	n := v.(int)
 	f := `{"$numberLong":"%d"}`
 	if int64(n) <= 1<<53 {
@@ -303,7 +303,7 @@ func jencInt(v interface{}) ([]byte, error) {
 	return fbytes(f, n), nil
 }
 
-func jdecMinKey(data []byte) (interface{}, error) {
+func jdecMinKey(data []byte) (any, error) {
 	var v struct {
 		N int64 `json:"$minKey"`
 	}
@@ -317,7 +317,7 @@ func jdecMinKey(data []byte) (interface{}, error) {
 	return MinKey, nil
 }
 
-func jdecMaxKey(data []byte) (interface{}, error) {
+func jdecMaxKey(data []byte) (any, error) {
 	var v struct {
 		N int64 `json:"$maxKey"`
 	}
@@ -331,7 +331,7 @@ func jdecMaxKey(data []byte) (interface{}, error) {
 	return MaxKey, nil
 }
 
-func jencMinMaxKey(v interface{}) ([]byte, error) {
+func jencMinMaxKey(v any) ([]byte, error) {
 	switch v.(orderKey) {
 	case MinKey:
 		return []byte(`{"$minKey":1}`), nil
@@ -341,7 +341,7 @@ func jencMinMaxKey(v interface{}) ([]byte, error) {
 	panic(fmt.Sprintf("invalid $minKey/$maxKey value: %d", v))
 }
 
-func jdecUndefined(data []byte) (interface{}, error) {
+func jdecUndefined(data []byte) (any, error) {
 	var v struct {
 		B bool `json:"$undefined"`
 	}
@@ -355,6 +355,6 @@ func jdecUndefined(data []byte) (interface{}, error) {
 	return Undefined, nil
 }
 
-func jencUndefined(v interface{}) ([]byte, error) {
+func jencUndefined(v any) ([]byte, error) {
 	return []byte(`{"$undefined":true}`), nil
 }

@@ -24,7 +24,7 @@ type ZipExtractSuite struct {
 
 	cmd            *zipExtract
 	targetLocation string
-	params         map[string]interface{}
+	params         map[string]any
 
 	suite.Suite
 }
@@ -49,7 +49,7 @@ func (s *ZipExtractSuite) SetupTest() {
 	s.NoError(err)
 
 	s.cmd = &zipExtract{}
-	s.params = map[string]interface{}{}
+	s.params = map[string]any{}
 }
 
 func (s *ZipExtractSuite) TearDownTest() {

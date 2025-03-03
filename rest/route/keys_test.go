@@ -69,7 +69,7 @@ func (s *UserConnectorSuite) TestGetSSHKeys() {
 	resp := s.get.Run(ctx)
 
 	s.Equal(http.StatusOK, resp.Status())
-	payload := resp.Data().([]interface{})
+	payload := resp.Data().([]any)
 	s.Len(payload, 2)
 	for i, result := range payload {
 		s.IsType(new(model.APIPubKey), result)

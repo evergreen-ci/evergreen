@@ -3443,7 +3443,7 @@ func (c ContainerSecretCache) Put(_ context.Context, sc cocoa.SecretCacheItem) e
 	return db.Update(ProjectRefCollection, bson.M{
 		externalNameKey: sc.Name,
 		externalIDKey: bson.M{
-			"$in": []interface{}{"", sc.ID},
+			"$in": []any{"", sc.ID},
 		},
 	}, bson.M{
 		"$set": bson.M{

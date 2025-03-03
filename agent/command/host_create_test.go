@@ -18,7 +18,7 @@ import (
 )
 
 type createHostSuite struct {
-	params map[string]interface{}
+	params map[string]any
 	cmd    createHost
 	conf   *internal.TaskConfig
 	comm   client.Communicator
@@ -46,7 +46,7 @@ func (s *createHostSuite) SetupSuite() {
 }
 
 func (s *createHostSuite) SetupTest() {
-	s.params = map[string]interface{}{
+	s.params = map[string]any{
 		"distro":    "myDistro",
 		"scope":     "task",
 		"subnet_id": "${subnet_id}",
@@ -80,14 +80,14 @@ func (s *createHostSuite) TestParseFromFile() {
 
 	//file for testing parsing from a json file
 	tmpdir := s.T().TempDir()
-	ebsDevice := []map[string]interface{}{
+	ebsDevice := []map[string]any{
 		{
 			"device_name": "myDevice",
 			"ebs_size":    1,
 		},
 	}
 	path := filepath.Join(tmpdir, "example.json")
-	fileContent := map[string]interface{}{
+	fileContent := map[string]any{
 		"distro":           "myDistro",
 		"scope":            "task",
 		"subnet_id":        "${subnet_id}",
@@ -98,7 +98,7 @@ func (s *createHostSuite) TestParseFromFile() {
 	s.NoError(utility.WriteJSONFile(path, fileContent))
 	_, err := os.Stat(path)
 	s.Require().False(os.IsNotExist(err))
-	s.params = map[string]interface{}{
+	s.params = map[string]any{
 		"file": path,
 	}
 
@@ -116,7 +116,7 @@ func (s *createHostSuite) TestParseFromFile() {
 	s.NoError(utility.WriteYAMLFile(path, fileContent))
 	_, err = os.Stat(path)
 	s.Require().False(os.IsNotExist(err))
-	s.params = map[string]interface{}{
+	s.params = map[string]any{
 		"file": path,
 	}
 
@@ -130,7 +130,7 @@ func (s *createHostSuite) TestParseFromFile() {
 	s.Equal("myDevice", s.cmd.CreateHost.EBSDevices[0].DeviceName)
 
 	//test with both file and other params
-	s.params = map[string]interface{}{
+	s.params = map[string]any{
 		"file":   path,
 		"distro": "myDistro",
 	}

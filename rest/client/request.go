@@ -26,7 +26,7 @@ type requestInfo struct {
 // suggest logging in again as a possible solution to the error.
 var AuthError = "Possibly user credentials are expired, try logging in again via the Evergreen web UI."
 
-func (c *communicatorImpl) newRequest(method, path string, data interface{}) (*http.Request, error) {
+func (c *communicatorImpl) newRequest(method, path string, data any) (*http.Request, error) {
 	url := c.getPath(path)
 	r, err := http.NewRequest(method, url, nil)
 	if err != nil {
@@ -61,7 +61,7 @@ func (c *communicatorImpl) newRequest(method, path string, data interface{}) (*h
 	return r, nil
 }
 
-func (c *communicatorImpl) createRequest(info requestInfo, data interface{}) (*http.Request, error) {
+func (c *communicatorImpl) createRequest(info requestInfo, data any) (*http.Request, error) {
 	if info.method == http.MethodPost && data == nil {
 		return nil, errors.New("cannot make a POST request without a body")
 	}
@@ -77,7 +77,7 @@ func (c *communicatorImpl) createRequest(info requestInfo, data interface{}) (*h
 	return r, nil
 }
 
-func (c *communicatorImpl) request(ctx context.Context, info requestInfo, data interface{}) (*http.Response, error) {
+func (c *communicatorImpl) request(ctx context.Context, info requestInfo, data any) (*http.Response, error) {
 	r, err := c.createRequest(info, data)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -107,7 +107,7 @@ func (c *communicatorImpl) doRequest(ctx context.Context, r *http.Request) (*htt
 	return response, nil
 }
 
-func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, data interface{}) (*http.Response, error) {
+func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, data any) (*http.Response, error) {
 	var err error
 
 	var out []byte

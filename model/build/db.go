@@ -209,7 +209,7 @@ func Find(query db.Q) ([]Build, error) {
 }
 
 // UpdateOne updates one build.
-func UpdateOne(query interface{}, update interface{}) error {
+func UpdateOne(query any, update any) error {
 	return db.Update(
 		Collection,
 		query,
@@ -217,7 +217,7 @@ func UpdateOne(query interface{}, update interface{}) error {
 	)
 }
 
-func UpdateAllBuilds(query interface{}, update interface{}) error {
+func UpdateAllBuilds(query any, update any) error {
 	_, err := db.UpdateAll(
 		Collection,
 		query,

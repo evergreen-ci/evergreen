@@ -828,7 +828,7 @@ func createTestProject(override1, override2 *int) *model.ParserProject {
 
 	pp.AddTask("t1", []model.PluginCommandConf{{
 		Command: "shell.exec",
-		Params: map[string]interface{}{
+		Params: map[string]any{
 			"script": "echo hi",
 		},
 	}})

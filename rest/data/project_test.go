@@ -545,7 +545,7 @@ func TestGetLegacyProjectEvents(t *testing.T) {
 		ResourceType: event.EventResourceTypeProject,
 		EventType:    event.EventTypeProjectModified,
 		ResourceId:   projectId,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"user":   username,
 			"before": model.NewProjectSettingsEvent(before),
 			"after":  model.NewProjectSettingsEvent(after),

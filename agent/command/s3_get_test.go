@@ -20,7 +20,7 @@ func TestS3GetValidateParams(t *testing.T) {
 
 			Convey("a missing aws key should cause an error", func() {
 
-				params := map[string]interface{}{
+				params := map[string]any{
 					"aws_secret":  "secret",
 					"remote_file": "remote",
 					"bucket":      "bck",
@@ -32,7 +32,7 @@ func TestS3GetValidateParams(t *testing.T) {
 
 			Convey("a missing aws secret should cause an error", func() {
 
-				params := map[string]interface{}{
+				params := map[string]any{
 					"aws_key":     "key",
 					"remote_file": "remote",
 					"bucket":      "bck",
@@ -45,7 +45,7 @@ func TestS3GetValidateParams(t *testing.T) {
 
 			Convey("a missing remote file should cause an error", func() {
 
-				params := map[string]interface{}{
+				params := map[string]any{
 					"aws_key":    "key",
 					"aws_secret": "secret",
 					"bucket":     "bck",
@@ -58,7 +58,7 @@ func TestS3GetValidateParams(t *testing.T) {
 
 			Convey("a missing bucket should cause an error", func() {
 
-				params := map[string]interface{}{
+				params := map[string]any{
 					"aws_key":     "key",
 					"aws_secret":  "secret",
 					"remote_file": "remote",
@@ -72,7 +72,7 @@ func TestS3GetValidateParams(t *testing.T) {
 			Convey("having neither a local file nor extract-to specified"+
 				" should cause an error", func() {
 
-				params := map[string]interface{}{
+				params := map[string]any{
 					"aws_key":     "key",
 					"aws_secret":  "secret",
 					"remote_file": "remote",
@@ -86,7 +86,7 @@ func TestS3GetValidateParams(t *testing.T) {
 			Convey("having both a local file and an extract-to specified"+
 				" should cause an error", func() {
 
-				params := map[string]interface{}{
+				params := map[string]any{
 					"aws_key":     "key",
 					"aws_secret":  "secret",
 					"remote_file": "remote",
@@ -101,7 +101,7 @@ func TestS3GetValidateParams(t *testing.T) {
 
 			Convey("a valid set of params should not cause an error", func() {
 
-				params := map[string]interface{}{
+				params := map[string]any{
 					"aws_key":     "key",
 					"aws_secret":  "secret",
 					"remote_file": "remote",
