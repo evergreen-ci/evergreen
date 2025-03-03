@@ -1,0 +1,581 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "Foliage Web Services",
+        "description": "Foliage web services, owner: DevProd Services & Integrations team",
+        "version": "1.0.0"
+    },
+    "paths": {
+        "/api/mothra/team_by_tag/{tag}": {
+            "get": {
+                "tags": [
+                    "mothra"
+                ],
+                "summary": "Get Team By Tag",
+                "description": "Get team by tag from mothra.",
+                "operationId": "get_team_by_tag_api_mothra_team_by_tag__tag__get",
+                "parameters": [
+                    {
+                        "name": "tag",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Tag"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TeamData"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/mothra/team_by_name_and_project/{name}/{project}": {
+            "get": {
+                "tags": [
+                    "mothra"
+                ],
+                "summary": "Get Team By Name And Project",
+                "description": "Get team by name and project from mothra.",
+                "operationId": "get_team_by_name_and_project_api_mothra_team_by_name_and_project__name___project__get",
+                "parameters": [
+                    {
+                        "name": "name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Name"
+                        }
+                    },
+                    {
+                        "name": "project",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Project"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TeamData"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/mothra/team_projects_by_name/{name}": {
+            "get": {
+                "tags": [
+                    "mothra"
+                ],
+                "summary": "Get Team Projects By Name",
+                "description": "Get team projects by name from mothra.",
+                "operationId": "get_team_projects_by_name_api_mothra_team_projects_by_name__name__get",
+                "parameters": [
+                    {
+                        "name": "name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Name"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "$ref": "#/components/schemas/TeamData"
+                                    },
+                                    "title": "Response Get Team Projects By Name Api Mothra Team Projects By Name  Name  Get"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/mothra/all_teams": {
+            "get": {
+                "tags": [
+                    "mothra"
+                ],
+                "summary": "Get All Teams",
+                "description": "Get all teams from mothra.",
+                "operationId": "get_all_teams_api_mothra_all_teams_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "items": {
+                                        "$ref": "#/components/schemas/TeamData"
+                                    },
+                                    "type": "array",
+                                    "title": "Response Get All Teams Api Mothra All Teams Get"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/owner/by_foliage_logic/{task_id}": {
+            "get": {
+                "tags": [
+                    "owner"
+                ],
+                "summary": "By Foliage Logic",
+                "description": "Get the owner of a task by foliage logic.\n\n:param task_id: The task id.\n:param test_file_name: The test file name.\n:param offending_version_id: The offending version id.\n:return: The owning team data according to the foliage logic.",
+                "operationId": "by_foliage_logic_api_owner_by_foliage_logic__task_id__get",
+                "parameters": [
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Task Id"
+                        }
+                    },
+                    {
+                        "name": "test_file_name",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "Test File Name"
+                        }
+                    },
+                    {
+                        "name": "offending_version_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "Offending Version Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/FinalAssignmentResults"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/owner/by_jira_key/{jira_key}": {
+            "get": {
+                "tags": [
+                    "owner"
+                ],
+                "summary": "By Jira Key",
+                "description": "Get the owner by a Jira key.\n\n:param jira_key: The Jira key.\n:param project_id: The project id, optional for avoiding getting bot user emails.\n:return: The owning team data according to the Jira key.",
+                "operationId": "by_jira_key_api_owner_by_jira_key__jira_key__get",
+                "parameters": [
+                    {
+                        "name": "jira_key",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Jira Key"
+                        }
+                    },
+                    {
+                        "name": "project_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "title": "Project Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TeamDataWithOwner"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/owner/regex_by_project/{project_id}": {
+            "get": {
+                "tags": [
+                    "owner"
+                ],
+                "summary": "Get Regex Mapping",
+                "description": "Get a mapping from a test file regular expression to the owning team\n\n:param project_id: The project identifier.\n:return: The mapping from test file regular expression to the owning team data.",
+                "operationId": "get_regex_mapping_api_owner_regex_by_project__project_id__get",
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Project Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "anyOf": [
+                                                    {
+                                                        "$ref": "#/components/schemas/TeamData"
+                                                    },
+                                                    {
+                                                        "type": "null"
+                                                    }
+                                                ]
+                                            }
+                                        },
+                                        {
+                                            "type": "null"
+                                        }
+                                    ],
+                                    "title": "Response Get Regex Mapping Api Owner Regex By Project  Project Id  Get"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "AssignmentResult": {
+                "properties": {
+                    "assignment_type": {
+                        "$ref": "#/components/schemas/AssignmentTypeEnum"
+                    },
+                    "messages": {
+                        "type": "string",
+                        "title": "Messages"
+                    },
+                    "team_data_with_owner": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/TeamDataWithOwner"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "assignment_type",
+                    "messages"
+                ],
+                "title": "AssignmentResult",
+                "description": "Result for assignment."
+            },
+            "AssignmentTypeEnum": {
+                "type": "string",
+                "enum": [
+                    "offending version id",
+                    "failure metadata tag",
+                    "system and setup failure",
+                    "test file name",
+                    "task tag",
+                    "build variant tag",
+                    "task to team mapping",
+                    "default team"
+                ],
+                "title": "AssignmentTypeEnum",
+                "description": "Enum for assignment types."
+            },
+            "FinalAssignmentResults": {
+                "properties": {
+                    "all_assignment_results": {
+                        "items": {
+                            "$ref": "#/components/schemas/AssignmentResult"
+                        },
+                        "type": "array",
+                        "title": "All Assignment Results"
+                    },
+                    "all_messages": {
+                        "type": "string",
+                        "title": "All Messages"
+                    },
+                    "selected_assignment": {
+                        "$ref": "#/components/schemas/AssignmentResult"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "all_assignment_results",
+                    "all_messages",
+                    "selected_assignment"
+                ],
+                "title": "FinalAssignmentResults",
+                "description": "Results for multiple assignments."
+            },
+            "HTTPValidationError": {
+                "properties": {
+                    "detail": {
+                        "items": {
+                            "$ref": "#/components/schemas/ValidationError"
+                        },
+                        "type": "array",
+                        "title": "Detail"
+                    }
+                },
+                "type": "object",
+                "title": "HTTPValidationError"
+            },
+            "TeamData": {
+                "properties": {
+                    "team_name": {
+                        "type": "string",
+                        "title": "Team Name"
+                    },
+                    "jira_project": {
+                        "type": "string",
+                        "title": "Jira Project"
+                    },
+                    "slack_channel_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Slack Channel Id"
+                    },
+                    "evergreen_tag_name": {
+                        "type": "string",
+                        "title": "Evergreen Tag Name"
+                    },
+                    "triage_team_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Triage Team Name"
+                    },
+                    "slack_group_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Slack Group Id"
+                    },
+                    "triaged_team_names": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Triaged Team Names"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "team_name",
+                    "jira_project",
+                    "slack_channel_id",
+                    "evergreen_tag_name"
+                ],
+                "title": "TeamData",
+                "description": "This dataclass holds the team data for a specific team."
+            },
+            "TeamDataWithOwner": {
+                "properties": {
+                    "team_data": {
+                        "$ref": "#/components/schemas/TeamData"
+                    },
+                    "owning_user": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Owning User"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "team_data"
+                ],
+                "title": "TeamDataWithOwner",
+                "description": "Team data with owner information."
+            },
+            "ValidationError": {
+                "properties": {
+                    "loc": {
+                        "items": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "integer"
+                                }
+                            ]
+                        },
+                        "type": "array",
+                        "title": "Location"
+                    },
+                    "msg": {
+                        "type": "string",
+                        "title": "Message"
+                    },
+                    "type": {
+                        "type": "string",
+                        "title": "Error Type"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "loc",
+                    "msg",
+                    "type"
+                ],
+                "title": "ValidationError"
+            }
+        }
+    }
+}
