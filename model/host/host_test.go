@@ -528,41 +528,33 @@ func TestSetHostTerminated(t *testing.T) {
 }
 
 func TestHostSetDNSName(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
+	require.NoError(t, db.ClearCollections(Collection))
+	defer func() {
+		assert.NoError(t, db.ClearCollections(Collection))
+	}()
 
-	var err error
+	h := &Host{
+		Id: "host_id",
+	}
+	require.NoError(t, h.Insert(ctx))
 
-	Convey("With a host", t, func() {
+	const newHostname = "hostname"
+	require.NoError(t, h.SetDNSName(ctx, newHostname))
+	assert.Equal(t, newHostname, h.Host)
 
-		require.NoError(t, db.Clear(Collection))
+	dbHost, err := FindOneId(ctx, h.Id)
+	require.NoError(t, err)
+	require.NotZero(t, dbHost)
+	assert.Equal(t, newHostname, dbHost.Host)
 
-		host := &Host{
-			Id: "hostOne",
-		}
+	require.NoError(t, h.SetDNSName(ctx, ""))
+	assert.Equal(t, newHostname, h.Host, "existing hostname should be retained even if an empty string is passed")
 
-		So(host.Insert(ctx), ShouldBeNil)
-
-		Convey("setting the hostname should update both the in-memory and"+
-			" database copies of the host", func() {
-
-			So(host.SetDNSName(ctx, "hostname"), ShouldBeNil)
-			So(host.Host, ShouldEqual, "hostname")
-			host, err = FindOne(ctx, ById(host.Id))
-			So(err, ShouldBeNil)
-			So(host.Host, ShouldEqual, "hostname")
-
-			// if the host is already updated, no new updates should work
-			So(host.SetDNSName(ctx, "hostname2"), ShouldBeNil)
-			So(host.Host, ShouldEqual, "hostname")
-
-			host, err = FindOne(ctx, ById(host.Id))
-			So(err, ShouldBeNil)
-			So(host.Host, ShouldEqual, "hostname")
-
-		})
-
-	})
+	dbHost, err = FindOneId(ctx, h.Id)
+	require.NoError(t, err)
+	require.NotZero(t, dbHost)
+	assert.Equal(t, newHostname, dbHost.Host, "existing hostname should be retained even if an empty string is passed")
 }
 
 func TestMarkAsProvisioned(t *testing.T) {

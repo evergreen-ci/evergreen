@@ -531,7 +531,7 @@ type hostHealthCheck struct {
 }
 
 func (m *monitor) getHostHealth(ctx context.Context) (hostHealthCheck, error) {
-	apiHost, err := m.comm.PostHostIsUp(ctx, "")
+	apiHost, err := m.comm.PostHostIsUp(ctx, "", "")
 	if err != nil {
 		return hostHealthCheck{
 			shouldExit: false,

@@ -421,7 +421,7 @@ func (rh *hostProvisioningOptionsGetHandler) Run(ctx context.Context) gimlet.Res
 	return gimlet.NewJSONResponse(apiOpts)
 }
 
-// GET /hosts/{host_id}/is_up
+// POST /hosts/{host_id}/is_up
 
 type hostIsUpPostHandler struct {
 	params model.APIHostIsUpOptions

@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
@@ -119,21 +120,29 @@ func hostProvision() cli.Command {
 
 func postHostIsUp(ctx context.Context, comm client.Communicator, hostID, cloudProvider string) (*restmodel.APIHost, error) {
 	var ec2InstanceID string
+	var hostname string
 	if cloud.IsEC2InstanceID(hostID) {
 		ec2InstanceID = hostID
-	} else if cloudProvider != "" && evergreen.IsEc2Provider(cloudProvider) {
+	} else if evergreen.IsEc2Provider(cloudProvider) {
+		fetchEC2InfoCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+		defer cancel()
 		var err error
-		ec2InstanceID, err = agentutil.GetEC2InstanceID(ctx)
-		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message":        "could not fetch EC2 instance ID dynamically",
-				"host_id":        hostID,
-				"cloud_provider": cloudProvider,
-			}))
-		}
+
+		ec2InstanceID, err = agentutil.GetEC2InstanceID(fetchEC2InfoCtx)
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":        "could not fetch EC2 instance ID dynamically",
+			"host_id":        hostID,
+			"cloud_provider": cloudProvider,
+		}))
+		hostname, err = agentutil.GetEC2Hostname(fetchEC2InfoCtx)
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":        "could not fetch EC2 hostname dynamically",
+			"host_id":        hostID,
+			"cloud_provider": cloudProvider,
+		}))
 	}
 
-	h, err := comm.PostHostIsUp(ctx, ec2InstanceID)
+	h, err := comm.PostHostIsUp(ctx, ec2InstanceID, hostname)
 	if err != nil {
 		return nil, errors.Wrap(err, "posting that the host is up")
 	}
