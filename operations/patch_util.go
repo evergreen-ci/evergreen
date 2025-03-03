@@ -49,6 +49,8 @@ Base Commit : {{.Githash}}
 {{end}}
 `))
 
+const head = "HEAD"
+
 type localDiff struct {
 	fullPatch    string
 	patchSummary string
@@ -242,7 +244,12 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 		grip.Warningf("warning - failed to set default parameters: %s\n", err)
 	}
 
-	if p.Uncommitted || conf.UncommittedChanges {
+	useUncommitted := p.Uncommitted || conf.UncommittedChanges
+	if useUncommitted && p.Ref != head {
+		return nil, errors.Errorf("cannot specify both --uncommitted and --ref")
+	}
+
+	if useUncommitted {
 		p.Ref = ""
 	}
 
@@ -635,7 +642,7 @@ func getFeatureBranch(ref, commits string) string {
 		// if one commit, this returns just that commit, else the first commit in the range
 		return strings.Split(commits, "..")[0]
 	}
-	return "HEAD"
+	return head
 }
 
 func confirmUncommittedChanges(dir string, preserveCommits, includeUncommitedChanges bool) (bool, error) {
@@ -795,12 +802,12 @@ func gitLog(dir, base, ref, commits string) (string, error) {
 
 // assumes base includes @{upstream}
 func gitLastCommitMessage() (string, error) {
-	args := []string{"HEAD", "--no-show-signature", "--pretty=format:%s", "-n 1"}
+	args := []string{head, "--no-show-signature", "--pretty=format:%s", "-n 1"}
 	return gitCmd("log", args...)
 }
 
 func gitBranch() (string, error) {
-	args := []string{"--abbrev-ref", "HEAD"}
+	args := []string{"--abbrev-ref", head}
 	return gitCmd("rev-parse", args...)
 }
 
