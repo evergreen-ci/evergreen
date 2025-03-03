@@ -29,7 +29,7 @@
       "result": {
         "errors": [
           {
-            "message": "unable to find user from user ID",
+            "message": "user 'nonexistent-userid' not found",
             "path": ["user"],
             "extensions": {
               "code": "RESOURCE_NOT_FOUND"

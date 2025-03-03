@@ -15,12 +15,13 @@ import (
 
 // Ami is the resolver for the ami field.
 func (r *hostResolver) Ami(ctx context.Context, obj *restModel.APIHost) (*string, error) {
-	host, err := host.FindOneId(ctx, utility.FromStringPtr(obj.Id))
+	hostID := utility.FromStringPtr(obj.Id)
+	host, err := host.FindOneId(ctx, hostID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding host '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding host '%s': %s", hostID, err.Error()))
 	}
 	if host == nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Could not find host %s", utility.FromStringPtr(obj.Id)))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("host '%s' not found", hostID))
 	}
 	return utility.ToStringPtr(host.GetAMI()), nil
 }
@@ -51,7 +52,7 @@ func (r *hostResolver) Events(ctx context.Context, obj *restModel.APIHost, opts 
 	}
 	events, count, err := event.GetPaginatedHostEvents(hostQueryOpts)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching host events for '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching events for host '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
 	}
 	apiEventLogPointers := []*restModel.HostAPIEventLogEntry{}
 	for _, e := range events {
@@ -80,16 +81,16 @@ func (r *hostResolver) EventTypes(ctx context.Context, obj *restModel.APIHost) (
 // HomeVolume is the resolver for the homeVolume field.
 func (r *hostResolver) HomeVolume(ctx context.Context, obj *restModel.APIHost) (*restModel.APIVolume, error) {
 	if utility.FromStringPtr(obj.HomeVolumeID) != "" {
-		volId := utility.FromStringPtr(obj.HomeVolumeID)
-		volume, err := host.FindVolumeByID(volId)
+		volumeID := utility.FromStringPtr(obj.HomeVolumeID)
+		volume, err := host.FindVolumeByID(volumeID)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting volume '%s': %s", volId, err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding volume '%s': %s", volumeID, err.Error()))
 		}
 		if volume == nil {
 			grip.Error(message.Fields{
 				"message":   "could not find the volume associated with this host",
 				"host_id":   obj.Id,
-				"volume_id": volId,
+				"volume_id": volumeID,
 			})
 			return nil, nil
 		}
@@ -102,12 +103,13 @@ func (r *hostResolver) HomeVolume(ctx context.Context, obj *restModel.APIHost) (
 
 // SleepSchedule is the resolver for the sleepSchedule field.
 func (r *hostResolver) SleepSchedule(ctx context.Context, obj *restModel.APIHost) (*host.SleepScheduleInfo, error) {
-	h, err := host.FindOne(ctx, host.ById(utility.FromStringPtr(obj.Id)))
+	hostID := utility.FromStringPtr(obj.Id)
+	h, err := host.FindOne(ctx, host.ById(hostID))
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting host %s", utility.FromStringPtr(obj.Id)))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting host '%s': %s", hostID, err.Error()))
 	}
 	if h == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find host %s", utility.FromStringPtr(obj.Id)))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("host '%s' not found", hostID))
 	}
 	return &h.SleepSchedule, nil
 }
@@ -120,10 +122,10 @@ func (r *hostResolver) Uptime(ctx context.Context, obj *restModel.APIHost) (*tim
 // Volumes is the resolver for the volumes field.
 func (r *hostResolver) Volumes(ctx context.Context, obj *restModel.APIHost) ([]*restModel.APIVolume, error) {
 	volumes := make([]*restModel.APIVolume, 0, len(obj.AttachedVolumeIDs))
-	for _, volId := range obj.AttachedVolumeIDs {
-		volume, err := host.FindVolumeByID(volId)
+	for _, volumeID := range obj.AttachedVolumeIDs {
+		volume, err := host.FindVolumeByID(volumeID)
 		if err != nil {
-			return volumes, InternalServerError.Send(ctx, fmt.Sprintf("getting volume '%s': %s", volId, err.Error()))
+			return volumes, InternalServerError.Send(ctx, fmt.Sprintf("getting volume '%s': %s", volumeID, err.Error()))
 		}
 		if volume == nil {
 			continue

@@ -21,7 +21,7 @@
       "result": {
         "errors": [
           {
-            "message": "cannot find task with id not-real",
+            "message": "task 'not-real' not found",
             "path": ["saveSubscription"],
             "extensions": { "code": "RESOURCE_NOT_FOUND" }
           }
@@ -43,7 +43,7 @@
       "result": {
         "errors": [
           {
-            "message": "cannot find build with id not-real",
+            "message": "build 'not-real' not found",
             "path": ["saveSubscription"],
             "extensions": { "code": "RESOURCE_NOT_FOUND" }
           }
@@ -56,7 +56,7 @@
       "result": {
         "errors": [
           {
-            "message": "finding project by id 'not-real': 404 (Not Found): project 'not-real' not found",
+            "message": "fetching project 'not-real': 404 (Not Found): project 'not-real' not found",
             "path": ["saveSubscription"],
             "extensions": { "code": "INTERNAL_SERVER_ERROR" }
           }
@@ -69,7 +69,7 @@
       "result": {
         "errors": [
           {
-            "message": "cannot find version with id not-real",
+            "message": "version 'not-real' not found",
             "path": ["saveSubscription"],
             "extensions": { "code": "RESOURCE_NOT_FOUND" }
           }
@@ -108,7 +108,7 @@
       "result": {
         "errors": [
           {
-            "message": "Selectors do not indicate a target version, build, project, or task ID",
+            "message": "selectors do not include a target version, build, project, or task ID",
             "path": ["saveSubscription"],
             "extensions": { "code": "INPUT_VALIDATION_ERROR" }
           }
@@ -121,7 +121,7 @@
       "result": {
         "errors": [
           {
-            "message": "Selectors do not indicate a target version, build, project, or task ID",
+            "message": "selectors do not include a target version, build, project, or task ID",
             "path": ["saveSubscription"],
             "extensions": { "code": "INPUT_VALIDATION_ERROR" }
           }
@@ -134,7 +134,7 @@
       "result": {
         "errors": [
           {
-            "message": "Selectors do not indicate a target version, build, project, or task ID",
+            "message": "selectors do not include a target version, build, project, or task ID",
             "path": ["saveSubscription"],
             "extensions": { "code": "INPUT_VALIDATION_ERROR" }
           }

@@ -5,7 +5,7 @@
       "result": {
         "errors": [
           {
-            "message": "Cannot apply an expiration time AND set volume as non-expirable",
+            "message": "cannot apply an expiration time AND set volume as non-expirable",
             "path": ["updateVolume"],
             "extensions": { "code": "INPUT_VALIDATION_ERROR" }
           }
@@ -27,7 +27,7 @@
         "data": null,
         "errors": [
           {
-            "message": "new size must be equal to or greater than current size (500GB)",
+            "message": "new size must be equal to or greater than current size (500GiB)",
             "path": ["updateVolume"],
             "extensions": {
               "code": "INPUT_VALIDATION_ERROR"

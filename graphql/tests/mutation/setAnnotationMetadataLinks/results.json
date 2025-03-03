@@ -15,7 +15,7 @@
         "data": null,
         "errors": [
           {
-            "message": "insufficient permission for modifying annotation",
+            "message": "not authorized to modify annotation for task 'no_permissions'",
             "path": ["setAnnotationMetadataLinks"],
             "extensions": {
               "code": "FORBIDDEN"

@@ -53,7 +53,7 @@ func ModifyVersion(ctx context.Context, version Version, user user.DBUser, modif
 				RequiredLevel: evergreen.TasksAdmin.Value,
 			}
 			if !user.HasPermission(requiredPermission) {
-				return http.StatusUnauthorized, errors.Errorf("insufficient access to set priority %d, can only set priority less than or equal to %d", modifications.Priority, evergreen.MaxTaskPriority)
+				return http.StatusUnauthorized, errors.Errorf("not authorized to set priority %d, can only set priority less than or equal to %d", modifications.Priority, evergreen.MaxTaskPriority)
 			}
 		}
 		if err := SetVersionsPriority(ctx, []string{version.Id}, modifications.Priority, user.Id); err != nil {

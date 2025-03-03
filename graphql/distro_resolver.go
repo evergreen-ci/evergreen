@@ -27,7 +27,7 @@ func (r *bootstrapSettingsResolver) Communication(ctx context.Context, obj *mode
 	case distro.CommunicationMethodRPC:
 		return CommunicationMethodRPC, nil
 	default:
-		return "", InternalServerError.Send(ctx, fmt.Sprintf("communication method '%s' is invalid", utility.FromStringPtr(obj.Communication)))
+		return "", InputValidationError.Send(ctx, fmt.Sprintf("communication method '%s' is invalid", utility.FromStringPtr(obj.Communication)))
 	}
 }
 
@@ -45,7 +45,7 @@ func (r *bootstrapSettingsResolver) Method(ctx context.Context, obj *model.APIBo
 	case distro.BootstrapMethodUserData:
 		return BootstrapMethodUserData, nil
 	default:
-		return "", InternalServerError.Send(ctx, fmt.Sprintf("bootstrap method '%s' is invalid", utility.FromStringPtr(obj.Method)))
+		return "", InputValidationError.Send(ctx, fmt.Sprintf("bootstrap method '%s' is invalid", utility.FromStringPtr(obj.Method)))
 	}
 }
 
@@ -59,7 +59,7 @@ func (r *dispatcherSettingsResolver) Version(ctx context.Context, obj *model.API
 	case evergreen.DispatcherVersionRevisedWithDependencies:
 		return DispatcherVersionRevisedWithDependencies, nil
 	default:
-		return "", InternalServerError.Send(ctx, fmt.Sprintf("dispatcher version '%s' is invalid", utility.FromStringPtr(obj.Version)))
+		return "", InputValidationError.Send(ctx, fmt.Sprintf("dispatcher version '%s' is invalid", utility.FromStringPtr(obj.Version)))
 	}
 }
 
@@ -85,7 +85,7 @@ func (r *distroResolver) Arch(ctx context.Context, obj *model.APIDistro) (Arch, 
 	case evergreen.ArchWindowsAmd64:
 		return ArchWindows64Bit, nil
 	default:
-		return "", InternalServerError.Send(ctx, fmt.Sprintf("arch '%s' is invalid", utility.FromStringPtr(obj.Arch)))
+		return "", InputValidationError.Send(ctx, fmt.Sprintf("arch '%s' is invalid", utility.FromStringPtr(obj.Arch)))
 	}
 }
 
@@ -105,7 +105,7 @@ func (r *distroResolver) Provider(ctx context.Context, obj *model.APIDistro) (Pr
 	case evergreen.ProviderNameStatic:
 		return ProviderStatic, nil
 	default:
-		return "", InternalServerError.Send(ctx, fmt.Sprintf("provider '%s' is invalid", utility.FromStringPtr(obj.Provider)))
+		return "", InputValidationError.Send(ctx, fmt.Sprintf("provider '%s' is invalid", utility.FromStringPtr(obj.Provider)))
 	}
 }
 
@@ -135,7 +135,7 @@ func (r *finderSettingsResolver) Version(ctx context.Context, obj *model.APIFind
 	case evergreen.FinderVersionAlternate:
 		return FinderVersionAlternate, nil
 	default:
-		return "", InternalServerError.Send(ctx, fmt.Sprintf("finder version '%s' is invalid", utility.FromStringPtr(obj.Version)))
+		return "", InputValidationError.Send(ctx, fmt.Sprintf("finder version '%s' is invalid", utility.FromStringPtr(obj.Version)))
 	}
 }
 
@@ -153,7 +153,7 @@ func (r *hostAllocatorSettingsResolver) FeedbackRule(ctx context.Context, obj *m
 	case evergreen.HostAllocatorUseDefaultFeedback:
 		return FeedbackRuleDefault, nil
 	default:
-		return "", InternalServerError.Send(ctx, fmt.Sprintf("feedback rule '%s' is invalid", utility.FromStringPtr(obj.FeedbackRule)))
+		return "", InputValidationError.Send(ctx, fmt.Sprintf("feedback rule '%s' is invalid", utility.FromStringPtr(obj.FeedbackRule)))
 	}
 }
 
@@ -171,7 +171,7 @@ func (r *hostAllocatorSettingsResolver) HostsOverallocatedRule(ctx context.Conte
 	case evergreen.HostsOverallocatedUseDefault:
 		return OverallocatedRuleDefault, nil
 	default:
-		return "", InternalServerError.Send(ctx, fmt.Sprintf("overallocated rule '%s' is invalid", utility.FromStringPtr(obj.HostsOverallocatedRule)))
+		return "", InputValidationError.Send(ctx, fmt.Sprintf("overallocated rule '%s' is invalid", utility.FromStringPtr(obj.HostsOverallocatedRule)))
 	}
 }
 
@@ -189,7 +189,7 @@ func (r *hostAllocatorSettingsResolver) RoundingRule(ctx context.Context, obj *m
 	case evergreen.HostAllocatorRoundDefault:
 		return RoundingRuleDefault, nil
 	default:
-		return "", InternalServerError.Send(ctx, fmt.Sprintf("rounding rule '%s' is invalid", utility.FromStringPtr(obj.RoundingRule)))
+		return "", InputValidationError.Send(ctx, fmt.Sprintf("rounding rule '%s' is invalid", utility.FromStringPtr(obj.RoundingRule)))
 	}
 }
 
@@ -203,7 +203,7 @@ func (r *hostAllocatorSettingsResolver) Version(ctx context.Context, obj *model.
 	case evergreen.HostAllocatorUtilization:
 		return HostAllocatorVersionUtilization, nil
 	default:
-		return "", InternalServerError.Send(ctx, fmt.Sprintf("host allocator version '%s' is invalid", utility.FromStringPtr(obj.Version)))
+		return "", InputValidationError.Send(ctx, fmt.Sprintf("host allocator version '%s' is invalid", utility.FromStringPtr(obj.Version)))
 	}
 }
 
@@ -219,7 +219,7 @@ func (r *plannerSettingsResolver) Version(ctx context.Context, obj *model.APIPla
 	case evergreen.PlannerVersionTunable:
 		return PlannerVersionTunable, nil
 	default:
-		return "", InternalServerError.Send(ctx, fmt.Sprintf("planner version '%s' is invalid", utility.FromStringPtr(obj.Version)))
+		return "", InputValidationError.Send(ctx, fmt.Sprintf("planner version '%s' is invalid", utility.FromStringPtr(obj.Version)))
 	}
 }
 

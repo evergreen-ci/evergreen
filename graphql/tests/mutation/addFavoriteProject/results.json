@@ -1,34 +1,32 @@
 {
-    "tests": [
-        {
-            "query_file": "success.graphql",
-            "result": {
-                "data": {
-                    "addFavoriteProject": {
-                        "identifier": "buildhost-test",
-                        "displayName": "buildhost-test",
-                        "repo": "buildhost-configuration",
-                        "owner": "annie.black"
-                    }
-                }
-            }
-        },
-        {
-            "query_file": "nonexistent.graphql",
-            "result": {
-                "errors": [
-                    {
-                        "message": "could not find project 'i-dont-exist'",
-                        "path": [
-                            "addFavoriteProject"
-                        ],
-                        "extensions": {
-                            "code": "RESOURCE_NOT_FOUND"
-                        }
-                    }
-                ],
-                "data": null
-            }
+  "tests": [
+    {
+      "query_file": "success.graphql",
+      "result": {
+        "data": {
+          "addFavoriteProject": {
+            "identifier": "buildhost-test",
+            "displayName": "buildhost-test",
+            "repo": "buildhost-configuration",
+            "owner": "annie.black"
+          }
         }
-    ]
+      }
+    },
+    {
+      "query_file": "nonexistent.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "project 'i-dont-exist' not found",
+            "path": ["addFavoriteProject"],
+            "extensions": {
+              "code": "RESOURCE_NOT_FOUND"
+            }
+          }
+        ],
+        "data": null
+      }
+    }
+  ]
 }
