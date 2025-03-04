@@ -619,14 +619,14 @@ func (uis *UIServer) waterfallPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	newUILink := fmt.Sprintf("%s/commits/%s", uis.Settings.Ui.UIv2Url, project.Identifier)
+	newUILink := fmt.Sprintf("%s/project/%s/waterfall", uis.Settings.Ui.UIv2Url, project.Identifier)
 
 	u := gimlet.GetUser(r.Context())
 	if u != nil {
 		usr, ok := u.(*user.DBUser)
 		if ok {
-			if usr.BetaFeatures.SpruceWaterfallEnabled {
-				newUILink = fmt.Sprintf("%s/project/%s/waterfall", uis.Settings.Ui.UIv2Url, project.Identifier)
+			if !usr.BetaFeatures.SpruceWaterfallEnabled {
+				newUILink = fmt.Sprintf("%s/commits/%s", uis.Settings.Ui.UIv2Url, project.Identifier)
 			}
 		}
 	}
