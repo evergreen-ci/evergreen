@@ -19,25 +19,33 @@ const metadataBaseURL = "http://169.254.169.254/latest/meta-data"
 // an EC2 instance.
 func GetEC2InstanceID(ctx context.Context) (string, error) {
 	return getEC2Metadata(ctx, "instance-id", func(resp *http.Response) (string, error) {
-		instanceID, err := io.ReadAll(resp.Body)
+		b, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return "", errors.Wrap(err, "reading response body")
 		}
 
+		instanceID := string(b)
+		if instanceID == "" {
+			return "", errors.New("instance ID from response is empty")
+		}
 		return string(instanceID), nil
 	})
 }
 
-// GetEC2Hostname returns the public hostname from the metadata endpoint if it's
-// an EC2 instance.
-func GetEC2Hostname(ctx context.Context) (string, error) {
+// GetEC2HostName returns the public host name from the metadata endpoint if
+// it's an EC2 instance.
+func GetEC2HostName(ctx context.Context) (string, error) {
 	return getEC2Metadata(ctx, "public-hostname", func(resp *http.Response) (string, error) {
-		instanceID, err := io.ReadAll(resp.Body)
+		b, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return "", errors.Wrap(err, "reading response body")
 		}
 
-		return string(instanceID), nil
+		hostName := string(b)
+		if hostName == "" {
+			return "", errors.New("host name from response is empty")
+		}
+		return string(hostName), nil
 	})
 }
 
