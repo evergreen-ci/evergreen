@@ -5,8 +5,10 @@ import (
 	"context"
 	"io"
 	"io/fs"
+	"math"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -69,8 +71,8 @@ func newTestLogDirectoryHandler(dir string, output *taskoutput.TaskOutput, taskO
 		if err != nil {
 			return nil, errors.Wrap(err, "making test log sender")
 		}
-		return evgSender, nil
-		//return redactor.NewRedactingSender(evgSender, redactionOpts), nil
+		//return evgSender, nil
+		return redactor.NewRedactingSender(evgSender, redactionOpts), nil
 	}
 
 	return h
@@ -100,15 +102,30 @@ func (h *testLogDirectoryHandler) run(ctx context.Context) error {
 		}
 
 		h.logFileCount++
-		wg.Add(1)
-		go func() {
-			defer func() {
-				h.logger.Task().Critical(recovery.HandlePanicWithError(recover(), nil, "ingesting test log"))
-			}()
-			defer wg.Done()
 
-			h.ingest(ctx, path)
-		}()
+		fileInfo, err := info.Info()
+		if err != nil {
+			h.logger.Execution().Warning(errors.Wrap(err, "getting test log file info"))
+			return nil
+		}
+
+		// TODO: probably want to only break up the file if it's large.
+		var currentByte int64
+		fileSize := fileInfo.Size()
+		chunkSize := int64(math.Ceil(float64(fileSize) / float64(runtime.NumCPU())))
+		for currentByte < fileSize {
+			wg.Add(1)
+			go func(offset, limit int64) {
+				defer func() {
+					h.logger.Task().Critical(recovery.HandlePanicWithError(recover(), nil, "ingesting test log"))
+				}()
+				defer wg.Done()
+
+				h.ingest(ctx, path, offset, limit)
+			}(currentByte, currentByte+chunkSize)
+
+			currentByte += chunkSize
+		}
 
 		return nil
 	})
@@ -141,7 +158,7 @@ func (h *testLogDirectoryHandler) getSpecFile() {
 }
 
 // ingest reads and ships a test log file.
-func (h *testLogDirectoryHandler) ingest(ctx context.Context, path string) {
+func (h *testLogDirectoryHandler) ingest(ctx context.Context, path string, offset, limit int64) {
 	h.logger.Task().Infof("new test log file '%s' found, initiating automated ingestion", path)
 
 	// The persisted log path should be relative to the reserved directory
@@ -171,9 +188,36 @@ func (h *testLogDirectoryHandler) ingest(ctx context.Context, path string) {
 		return
 	}
 
+	if offset > 0 {
+		_, err := f.Seek(offset-1, io.SeekStart)
+		if err != nil {
+			h.logger.Task().Error(errors.Wrapf(err, "seeking offset for test log '%s'", path))
+			return
+		}
+	}
 	r := bufio.NewReader(f)
-	for {
-		line, err := r.ReadString('\n')
+	data, err := r.Peek(1)
+	if err == io.EOF {
+		return
+	}
+	if err != nil {
+		h.logger.Task().Error(errors.Wrapf(err, "reading test log '%s'", path))
+		return
+	}
+	currentPos := offset
+	if offset > 0 && data[0] != '\n' {
+		data, err := r.ReadBytes('\n')
+		if err == io.EOF {
+			return
+		}
+		if err != nil {
+			h.logger.Task().Error(errors.Wrapf(err, "reading test log '%s'", path))
+			return
+		}
+		currentPos += int64(len(data)) + 1
+	}
+	for currentPos < limit {
+		data, err := r.ReadBytes('\n')
 		if err == io.EOF {
 			break
 		}
@@ -181,8 +225,12 @@ func (h *testLogDirectoryHandler) ingest(ctx context.Context, path string) {
 			h.logger.Task().Error(errors.Wrapf(err, "reading test log '%s'", path))
 			return
 		}
+		if len(data) == 0 {
+			continue
+		}
+		currentPos += int64(len(data)) + 1
 
-		sender.Send(message.NewDefaultMessage(level.Info, line))
+		sender.Send(message.NewDefaultMessage(level.Info, string(data)))
 	}
 	if err = sender.Close(); err != nil {
 		h.logger.Task().Error(errors.Wrapf(err, "closing Sender for test log '%s'", path))
