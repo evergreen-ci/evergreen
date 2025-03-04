@@ -1939,7 +1939,7 @@ func ActivateTasks(ctx context.Context, tasks []Task, activationTime time.Time, 
 	// Tasks passed into this function will all be from the same version or build, so we can assume
 	// all tasks also share the same requester field.
 	numTasksModified := len(taskIDs) + len(depTaskIDsToUpdate) + numEstimatedActivatedGeneratedTasks
-	if err = UpdateSchedulingLimit(caller, tasks[0].Requester, numTasksModified, true); err != nil {
+	if err = UpdateSchedulingLimit(ctx, caller, tasks[0].Requester, numTasksModified, true); err != nil {
 		return nil, err
 	}
 	err = activateTasks(ctx, taskIDs, caller, activationTime)
@@ -1969,7 +1969,7 @@ func ActivateTasks(ctx context.Context, tasks []Task, activationTime time.Time, 
 
 // UpdateSchedulingLimit retrieves a user from the DB and updates their hourly scheduling limit info
 // if they are not a service user.
-func UpdateSchedulingLimit(username, requester string, numTasksModified int, activated bool) error {
+func UpdateSchedulingLimit(ctx context.Context, username, requester string, numTasksModified int, activated bool) error {
 	if evergreen.IsSystemActivator(username) || !evergreen.IsPatchRequester(requester) || numTasksModified == 0 {
 		return nil
 	}
@@ -1983,7 +1983,7 @@ func UpdateSchedulingLimit(username, requester string, numTasksModified int, act
 		return errors.Wrap(err, "getting user")
 	}
 	if u != nil && !u.OnlyAPI {
-		return errors.Wrapf(u.CheckAndUpdateSchedulingLimit(maxScheduledTasks, numTasksModified, activated), "checking task scheduling limit for user '%s'", u.Id)
+		return errors.Wrapf(u.CheckAndUpdateSchedulingLimit(ctx, maxScheduledTasks, numTasksModified, activated), "checking task scheduling limit for user '%s'", u.Id)
 	}
 	return nil
 }
@@ -2208,7 +2208,7 @@ func DeactivateTasks(ctx context.Context, tasks []Task, updateDependencies bool,
 	// Tasks passed into this function will all be from the same version or build, so we can assume
 	// all tasks also share the same requester field.
 	numTasksModified := len(taskIDs) + len(depTaskIDsToUpdate) + numEstimatedActivatedGeneratedTasks
-	if err = UpdateSchedulingLimit(caller, tasks[0].Requester, numTasksModified, false); err != nil {
+	if err = UpdateSchedulingLimit(ctx, caller, tasks[0].Requester, numTasksModified, false); err != nil {
 		return err
 	}
 
@@ -3442,7 +3442,7 @@ func CheckUsersPatchTaskLimit(ctx context.Context, requester, username string, i
 			numTasksToActivate += utility.FromIntPtr(t.EstimatedNumActivatedGeneratedTasks)
 		}
 	}
-	return UpdateSchedulingLimit(username, requester, numTasksToActivate, true)
+	return UpdateSchedulingLimit(ctx, username, requester, numTasksToActivate, true)
 }
 
 func FindExecTasksToReset(ctx context.Context, t *Task) ([]string, error) {

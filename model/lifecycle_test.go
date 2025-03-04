@@ -764,7 +764,7 @@ func TestBuildMarkStarted(t *testing.T) {
 			" start time, both in memory and in the database", func() {
 
 			startTime := time.Now()
-			So(build.TryMarkStarted(b.Id, startTime), ShouldBeNil)
+			So(build.TryMarkStarted(t.Context(), b.Id, startTime), ShouldBeNil)
 
 			// refresh from db and check again
 			var err error
@@ -796,7 +796,7 @@ func TestBuildMarkFinished(t *testing.T) {
 			" database", func() {
 
 			finishTime := time.Now()
-			So(b.MarkFinished(evergreen.BuildSucceeded, finishTime), ShouldBeNil)
+			So(b.MarkFinished(t.Context(), evergreen.BuildSucceeded, finishTime), ShouldBeNil)
 			So(b.Status, ShouldEqual, evergreen.BuildSucceeded)
 			So(b.FinishTime.Equal(finishTime), ShouldBeTrue)
 			So(b.TimeTaken, ShouldEqual, finishTime.Sub(startTime))

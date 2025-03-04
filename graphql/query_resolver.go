@@ -586,7 +586,7 @@ func (r *queryResolver) MyHosts(ctx context.Context) ([]*restModel.APIHost, erro
 // MyVolumes is the resolver for the myVolumes field.
 func (r *queryResolver) MyVolumes(ctx context.Context) ([]*restModel.APIVolume, error) {
 	usr := mustHaveUser(ctx)
-	volumes, err := host.FindSortedVolumesByUser(usr.Username())
+	volumes, err := host.FindSortedVolumesByUser(ctx, usr.Username())
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}

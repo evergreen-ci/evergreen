@@ -507,7 +507,7 @@ func savePublicKey(ctx context.Context, publicKeyInput PublicKeyInput) error {
 	if err != nil {
 		return err
 	}
-	err = mustHaveUser(ctx).AddPublicKey(publicKeyInput.Name, publicKeyInput.Key)
+	err = mustHaveUser(ctx).AddPublicKey(ctx, publicKeyInput.Name, publicKeyInput.Key)
 	if err != nil {
 		return InternalServerError.Send(ctx, fmt.Sprintf("saving public key: %s", err.Error()))
 	}
@@ -593,7 +593,7 @@ func validateVolumeName(ctx context.Context, name *string) error {
 		return InputValidationError.Send(ctx, "name cannot be empty")
 	}
 	usr := mustHaveUser(ctx)
-	myVolumes, err := host.FindSortedVolumesByUser(usr.Id)
+	myVolumes, err := host.FindSortedVolumesByUser(ctx, usr.Id)
 	if err != nil {
 		return err
 	}
@@ -631,7 +631,7 @@ func setVersionActivationStatus(ctx context.Context, version *model.Version) err
 	if err != nil {
 		return errors.Wrapf(err, "getting tasks for version '%s'", version.Id)
 	}
-	return errors.Wrapf(version.SetActivated(task.AnyActiveTasks(tasks)), "updating version activated status for '%s'", version.Id)
+	return errors.Wrapf(version.SetActivated(ctx, task.AnyActiveTasks(tasks)), "updating version activated status for '%s'", version.Id)
 }
 
 func isPopulated(buildVariantOptions *BuildVariantOptions) bool {

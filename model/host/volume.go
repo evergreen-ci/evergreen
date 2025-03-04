@@ -34,8 +34,8 @@ func (v *Volume) Insert() error {
 	return db.Insert(VolumesCollection, v)
 }
 
-func (v *Volume) SetHost(id string) error {
-	err := db.Update(VolumesCollection,
+func (v *Volume) SetHost(ctx context.Context, id string) error {
+	err := db.UpdateContext(ctx, VolumesCollection,
 		bson.M{VolumeIDKey: v.ID},
 		bson.M{"$set": bson.M{VolumeHostKey: id}})
 
@@ -47,14 +47,14 @@ func (v *Volume) SetHost(id string) error {
 	return nil
 }
 
-func UnsetVolumeHost(id string) error {
-	return errors.WithStack(db.Update(VolumesCollection,
+func UnsetVolumeHost(ctx context.Context, id string) error {
+	return errors.WithStack(db.UpdateContext(ctx, VolumesCollection,
 		bson.M{VolumeIDKey: id},
 		bson.M{"$unset": bson.M{VolumeHostKey: true}}))
 }
 
-func (v *Volume) SetDisplayName(displayName string) error {
-	err := db.Update(VolumesCollection,
+func (v *Volume) SetDisplayName(ctx context.Context, displayName string) error {
+	err := db.UpdateContext(ctx, VolumesCollection,
 		bson.M{VolumeIDKey: v.ID},
 		bson.M{"$set": bson.M{VolumeDisplayNameKey: displayName}})
 	if err != nil {
@@ -64,8 +64,8 @@ func (v *Volume) SetDisplayName(displayName string) error {
 	return nil
 }
 
-func (v *Volume) SetSize(size int32) error {
-	err := db.Update(VolumesCollection,
+func (v *Volume) SetSize(ctx context.Context, size int32) error {
+	err := db.UpdateContext(ctx, VolumesCollection,
 		bson.M{VolumeIDKey: v.ID},
 		bson.M{"$set": bson.M{VolumeSizeKey: size}})
 	if err != nil {
@@ -75,8 +75,8 @@ func (v *Volume) SetSize(size int32) error {
 	return nil
 }
 
-func (v *Volume) SetMigrating(migrating bool) error {
-	err := db.Update(VolumesCollection,
+func (v *Volume) SetMigrating(ctx context.Context, migrating bool) error {
+	err := db.UpdateContext(ctx, VolumesCollection,
 		bson.M{VolumeIDKey: v.ID},
 		bson.M{"$set": bson.M{VolumeMigratingKey: migrating}})
 	if err != nil {
@@ -89,8 +89,9 @@ func (v *Volume) SetMigrating(migrating bool) error {
 // Remove a volume from the volumes collection.
 // Note this shouldn't be used when you want to
 // remove from AWS itself.
-func (v *Volume) Remove() error {
-	return db.Remove(
+func (v *Volume) Remove(ctx context.Context) error {
+	return db.RemoveContext(
+		ctx,
 		VolumesCollection,
 		bson.M{
 			VolumeIDKey: v.ID,
@@ -98,36 +99,38 @@ func (v *Volume) Remove() error {
 	)
 }
 
-func (v *Volume) SetExpiration(expiration time.Time) error {
+func (v *Volume) SetExpiration(ctx context.Context, expiration time.Time) error {
 	v.Expiration = expiration
 
-	return db.UpdateId(
+	return db.UpdateIdContext(
+		ctx,
 		VolumesCollection,
 		v.ID,
 		bson.M{"$set": bson.M{VolumeExpirationKey: v.Expiration}})
 }
 
-func (v *Volume) SetNoExpiration(noExpiration bool) error {
+func (v *Volume) SetNoExpiration(ctx context.Context, noExpiration bool) error {
 	v.NoExpiration = noExpiration
 
-	return db.UpdateId(
+	return db.UpdateIdContext(
+		ctx,
 		VolumesCollection,
 		v.ID,
 		bson.M{"$set": bson.M{VolumeNoExpirationKey: noExpiration}})
 }
 
-func FindVolumesToDelete(expirationTime time.Time) ([]Volume, error) {
+func FindVolumesToDelete(ctx context.Context, expirationTime time.Time) ([]Volume, error) {
 	q := bson.M{
 		VolumeExpirationKey: bson.M{"$lte": expirationTime},
 		VolumeHostKey:       bson.M{"$exists": false},
 	}
 
-	return findVolumes(q)
+	return findVolumes(ctx, q)
 }
 
 // FindVolumesWithTerminatedHost finds volumes that are attached to a host we have marked as terminated, indicating the
 // volume is stuck in an invalid state.
-func FindVolumesWithTerminatedHost() ([]Volume, error) {
+func FindVolumesWithTerminatedHost(ctx context.Context) ([]Volume, error) {
 	match := bson.M{
 		"$match": bson.M{
 			VolumeHostKey: bson.M{"$exists": true},
@@ -146,31 +149,31 @@ func FindVolumesWithTerminatedHost() ([]Volume, error) {
 	project := bson.M{"$project": bson.M{"host_doc": 0}}
 	pipeline := []bson.M{match, lookup, matchTerminatedHosts, project}
 	volumes := []Volume{}
-	if err := db.Aggregate(VolumesCollection, pipeline, &volumes); err != nil {
+	if err := db.AggregateContext(ctx, VolumesCollection, pipeline, &volumes); err != nil {
 		return nil, err
 	}
 	return volumes, nil
 }
 
-func FindUnattachedExpirableVolumes() ([]Volume, error) {
+func FindUnattachedExpirableVolumes(ctx context.Context) ([]Volume, error) {
 	q := bson.M{
 		NoExpirationKey: bson.M{"$ne": true},
 		VolumeHostKey:   bson.M{"$exists": false},
 	}
 
-	return findVolumes(q)
+	return findVolumes(ctx, q)
 }
 
 // FindVolumeByID finds a volume by its ID field.
-func FindVolumeByID(id string) (*Volume, error) {
-	return FindOneVolume(bson.M{VolumeIDKey: id})
+func FindVolumeByID(ctx context.Context, id string) (*Volume, error) {
+	return FindOneVolume(ctx, bson.M{VolumeIDKey: id})
 }
 
 type volumeSize struct {
 	TotalVolumeSize int `bson:"total"`
 }
 
-func FindTotalVolumeSizeByUser(user string) (int, error) {
+func FindTotalVolumeSizeByUser(ctx context.Context, user string) (int, error) {
 	pipeline := []bson.M{
 		{"$match": bson.M{
 			VolumeCreatedByKey: user,
@@ -182,7 +185,7 @@ func FindTotalVolumeSizeByUser(user string) (int, error) {
 	}
 
 	out := []volumeSize{}
-	err := db.Aggregate(VolumesCollection, pipeline, &out)
+	err := db.AggregateContext(ctx, VolumesCollection, pipeline, &out)
 	if err != nil || len(out) == 0 {
 		return 0, err
 	}
@@ -190,25 +193,25 @@ func FindTotalVolumeSizeByUser(user string) (int, error) {
 	return out[0].TotalVolumeSize, nil
 }
 
-func FindVolumesWithNoExpirationToExtend() ([]Volume, error) {
+func FindVolumesWithNoExpirationToExtend(ctx context.Context) ([]Volume, error) {
 	query := bson.M{
 		VolumeNoExpirationKey: true,
 		VolumeHostKey:         bson.M{"$exists": false},
 		VolumeExpirationKey:   bson.M{"$lte": time.Now().Add(24 * time.Hour)},
 	}
 
-	return findVolumes(query)
+	return findVolumes(ctx, query)
 }
 
-func FindVolumesByUser(userID string) ([]Volume, error) {
+func FindVolumesByUser(ctx context.Context, userID string) ([]Volume, error) {
 	query := bson.M{
 		VolumeCreatedByKey: userID,
 	}
-	return findVolumes(query)
+	return findVolumes(ctx, query)
 }
 
-func FindSortedVolumesByUser(userID string) ([]Volume, error) {
-	volumes, err := FindVolumesByUser(userID)
+func FindSortedVolumesByUser(ctx context.Context, userID string) ([]Volume, error) {
+	volumes, err := FindVolumesByUser(ctx, userID)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting volumes for user '%s'", userID)
 	}
@@ -228,7 +231,7 @@ func FindSortedVolumesByUser(userID string) ([]Volume, error) {
 }
 
 func ValidateVolumeCanBeAttached(ctx context.Context, volumeID string) (*Volume, error) {
-	volume, err := FindVolumeByID(volumeID)
+	volume, err := FindVolumeByID(ctx, volumeID)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting volume '%s'", volumeID)
 	}
@@ -246,8 +249,8 @@ func ValidateVolumeCanBeAttached(ctx context.Context, volumeID string) (*Volume,
 	return volume, nil
 }
 
-func CountNoExpirationVolumesForUser(userID string) (int, error) {
-	return db.Count(VolumesCollection, bson.M{
+func CountNoExpirationVolumesForUser(ctx context.Context, userID string) (int, error) {
+	return db.CountContext(ctx, VolumesCollection, bson.M{
 		VolumeNoExpirationKey: true,
 		VolumeCreatedByKey:    userID,
 	})

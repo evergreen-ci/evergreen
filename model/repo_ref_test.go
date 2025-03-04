@@ -43,7 +43,7 @@ func TestRepoRefUpdateAdminRoles(t *testing.T) {
 	}
 	require.NoError(t, newAdmin.Insert())
 
-	assert.NoError(t, r.UpdateAdminRoles([]string{newAdmin.Id}, []string{oldAdmin.Id}))
+	assert.NoError(t, r.UpdateAdminRoles(t.Context(), []string{newAdmin.Id}, []string{oldAdmin.Id}))
 	oldAdminFromDB, err := user.FindOneById(oldAdmin.Id)
 	assert.NoError(t, err)
 	assert.Empty(t, oldAdminFromDB.Roles())

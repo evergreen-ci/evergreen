@@ -49,7 +49,7 @@ func TestMetadataFromArgsWithVersion(t *testing.T) {
 
 	_, err = model.GetNewRevisionOrderNumber(ref.Id)
 	assert.NoError(err)
-	assert.NoError(model.UpdateLastRevision(ref.Id, "def"))
+	assert.NoError(model.UpdateLastRevision(t.Context(), ref.Id, "def"))
 
 	metadata, err := getMetadataFromArgs(args)
 	assert.NoError(err)
@@ -82,7 +82,7 @@ func TestMetadataFromArgsWithoutVersion(t *testing.T) {
 
 	_, err = model.GetNewRevisionOrderNumber(ref.Id)
 	assert.NoError(err)
-	assert.NoError(model.UpdateLastRevision(ref.Id, "def"))
+	assert.NoError(model.UpdateLastRevision(t.Context(), ref.Id, "def"))
 	metadata, err := getMetadataFromArgs(args)
 	assert.NoError(err)
 	assert.True(metadata.Activate)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -243,8 +244,29 @@ func Update(collection string, query interface{}, update interface{}) error {
 	return db.C(collection).Update(query, update)
 }
 
-// Update updates one matching document in the collection.
+// UpdateContext updates one matching document in the collection.
 func UpdateContext(ctx context.Context, collection string, query interface{}, update interface{}) error {
+	// Temporarily, we check if the document has a key beginning with '$', this would
+	// indicate a proper update operation. If not, it's a document intended for replacement.
+	// If the document is unable to be transformed (aka err != nil, e.g. a pipeline), we
+	// also default to an update operation.
+	// This will be removed in DEVPROD-15419.
+
+	doc, err := transformDocument(update)
+	if err != nil || hasDollarKey(doc) {
+		return updateContext(ctx, collection, query, update)
+	}
+
+	msg := "update document must contain a key beginning with '$'"
+	grip.Debug(message.Fields{
+		"message": msg,
+		"error":   errors.New(msg),
+		"ticket":  "DEVPROD-15419",
+	})
+	return ReplaceContext(ctx, collection, query, update)
+}
+
+func updateContext(ctx context.Context, collection string, query interface{}, update interface{}) error {
 	res, err := evergreen.GetEnvironment().DB().Collection(collection).UpdateOne(ctx,
 		query,
 		update,
@@ -259,6 +281,23 @@ func UpdateContext(ctx context.Context, collection string, query interface{}, up
 	return nil
 }
 
+// ReplaceContext replaces one matching document in the collection.
+func ReplaceContext(ctx context.Context, collection string, query interface{}, replacement interface{}) error {
+	res, err := evergreen.GetEnvironment().DB().Collection(collection).ReplaceOne(ctx,
+		query,
+		replacement,
+	)
+	if err != nil {
+		return errors.Wrapf(err, "replacing task")
+	}
+	if res.MatchedCount == 0 {
+		return db.ErrNotFound
+	}
+
+	return nil
+}
+
+// UpdateAllContext updates all matching documents in the collection.
 func UpdateAllContext(ctx context.Context, collection string, query interface{}, update interface{}) (*db.ChangeInfo, error) {
 	switch query.(type) {
 	case *Q, Q:
@@ -298,6 +337,22 @@ func UpdateId(collection string, id, update interface{}) error {
 	defer session.Close()
 
 	return db.C(collection).UpdateId(id, update)
+}
+
+// UpdateIdContext updates one _id-matching document in the collection.
+func UpdateIdContext(ctx context.Context, collection string, id, update interface{}) error {
+	res, err := evergreen.GetEnvironment().DB().Collection(collection).UpdateOne(ctx,
+		bson.D{{Key: "_id", Value: id}},
+		update,
+	)
+	if err != nil {
+		return errors.Wrapf(err, "updating task")
+	}
+	if res.MatchedCount == 0 {
+		return db.ErrNotFound
+	}
+
+	return nil
 }
 
 // UpdateAll updates all matching documents in the collection.
@@ -350,7 +405,7 @@ func UpsertContext(ctx context.Context, collection string, query interface{}, up
 		options.Update().SetUpsert(true),
 	)
 	if err != nil {
-		return nil, errors.Wrapf(err, "updating")
+		return nil, errors.Wrapf(err, "upserting")
 	}
 
 	return &db.ChangeInfo{Updated: int(res.UpsertedCount) + int(res.ModifiedCount), UpsertedId: res.UpsertedID}, nil
@@ -479,4 +534,25 @@ func AggregateWithMaxTime(collection string, pipeline interface{}, out interface
 	defer session.Close()
 
 	return database.C(collection).Pipe(pipeline).MaxTime(maxTime).All(out)
+}
+
+func transformDocument(val interface{}) (bson.Raw, error) {
+	if val == nil {
+		return nil, errors.WithStack(mongo.ErrNilDocument)
+	}
+
+	b, err := bson.Marshal(val)
+	if err != nil {
+		return nil, mongo.MarshalError{Value: val, Err: err}
+	}
+
+	return bson.Raw(b), nil
+}
+
+func hasDollarKey(doc bson.Raw) bool {
+	if elem, err := doc.IndexErr(0); err == nil && strings.HasPrefix(elem.Key(), "$") {
+		return true
+	}
+
+	return false
 }

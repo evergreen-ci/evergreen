@@ -139,7 +139,7 @@ func (h *updatePushStatusHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	err = errors.Wrapf(h.pushLog.UpdateStatus(h.pushLog.Status),
+	err = errors.Wrapf(h.pushLog.UpdateStatus(ctx, h.pushLog.Status),
 		"updating pushlog status failed for task %s", t.Id)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
@@ -294,7 +294,7 @@ func (h *markTaskForRestartHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting admin settings"))
 	}
 	maxDailyAutoRestarts := settings.TaskLimits.MaxDailyAutomaticRestarts
-	if err = projectRef.CheckAndUpdateAutoRestartLimit(maxDailyAutoRestarts); err != nil {
+	if err = projectRef.CheckAndUpdateAutoRestartLimit(ctx, maxDailyAutoRestarts); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "checking auto restart limit for '%s'", projectRef.Id))
 	}
 	if err = taskToRestart.SetResetWhenFinishedWithInc(ctx); err != nil {
@@ -1333,7 +1333,7 @@ func (h *setDownstreamParamsHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	if err = p.SetDownstreamParameters(h.downstreamParams); err != nil {
+	if err = p.SetDownstreamParameters(ctx, h.downstreamParams); err != nil {
 		errorMessage := fmt.Sprintf("setting patch parameters: %s", err.Error())
 		grip.Error(message.Fields{
 			"message": errorMessage,

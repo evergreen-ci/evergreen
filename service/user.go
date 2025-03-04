@@ -108,7 +108,7 @@ func (uis *UIServer) userGetKey(w http.ResponseWriter, r *http.Request) {
 	key := u.GetAPIKey()
 	if key == "" {
 		key = utility.RandomString()
-		if err := dbUser.UpdateAPIKey(key); err != nil {
+		if err := dbUser.UpdateAPIKey(r.Context(), key); err != nil {
 			gimlet.WriteResponse(w, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 				Message:    "could not generate key",
 				StatusCode: http.StatusInternalServerError,
@@ -154,7 +154,7 @@ func (uis *UIServer) logout(w http.ResponseWriter, r *http.Request) {
 func (uis *UIServer) newAPIKey(w http.ResponseWriter, r *http.Request) {
 	currentUser := MustHaveUser(r)
 	newKey := utility.RandomString()
-	if err := currentUser.UpdateAPIKey(newKey); err != nil {
+	if err := currentUser.UpdateAPIKey(r.Context(), newKey); err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "failed saving key"))
 		return
 	}

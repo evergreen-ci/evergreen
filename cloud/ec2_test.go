@@ -1469,7 +1469,7 @@ func (s *EC2Suite) TestCreateVolume() {
 	input := *mock.CreateVolumeInput
 	s.EqualValues("standard", input.VolumeType)
 
-	foundVolume, err := host.FindVolumeByID(volume.ID)
+	foundVolume, err := host.FindVolumeByID(ctx, volume.ID)
 	s.NotNil(foundVolume)
 	s.NoError(err)
 }
@@ -1489,7 +1489,7 @@ func (s *EC2Suite) TestDeleteVolume() {
 	input := *mock.DeleteVolumeInput
 	s.Equal("test-volume", *input.VolumeId)
 
-	foundVolume, err := host.FindVolumeByID(s.volume.ID)
+	foundVolume, err := host.FindVolumeByID(ctx, s.volume.ID)
 	s.Nil(foundVolume)
 	s.NoError(err)
 }
@@ -1570,7 +1570,7 @@ func (s *EC2Suite) TestModifyVolumeExpiration() {
 	newExpiration := s.volume.Expiration.Add(time.Hour)
 	s.NoError(s.onDemandManager.ModifyVolume(context.Background(), s.volume, &restmodel.VolumeModifyOptions{Expiration: newExpiration}))
 
-	vol, err := host.FindVolumeByID(s.volume.ID)
+	vol, err := host.FindVolumeByID(s.ctx, s.volume.ID)
 	s.NoError(err)
 	s.True(newExpiration.Equal(vol.Expiration))
 
@@ -1588,7 +1588,7 @@ func (s *EC2Suite) TestModifyVolumeNoExpiration() {
 	s.NoError(s.volume.Insert())
 	s.NoError(s.onDemandManager.ModifyVolume(context.Background(), s.volume, &restmodel.VolumeModifyOptions{NoExpiration: true}))
 
-	vol, err := host.FindVolumeByID(s.volume.ID)
+	vol, err := host.FindVolumeByID(s.ctx, s.volume.ID)
 	s.NoError(err)
 	s.Less(time.Now().Add(evergreen.SpawnHostNoExpirationDuration).Sub(vol.Expiration), time.Minute)
 
@@ -1606,7 +1606,7 @@ func (s *EC2Suite) TestModifyVolumeSize() {
 	s.NoError(s.volume.Insert())
 	s.NoError(s.onDemandManager.ModifyVolume(context.Background(), s.volume, &restmodel.VolumeModifyOptions{Size: 100}))
 
-	vol, err := host.FindVolumeByID(s.volume.ID)
+	vol, err := host.FindVolumeByID(s.ctx, s.volume.ID)
 	s.NoError(err)
 	s.EqualValues(100, vol.Size)
 
@@ -1623,7 +1623,7 @@ func (s *EC2Suite) TestModifyVolumeName() {
 	s.NoError(s.volume.Insert())
 	s.NoError(s.onDemandManager.ModifyVolume(context.Background(), s.volume, &restmodel.VolumeModifyOptions{NewName: "Some new thang"}))
 
-	vol, err := host.FindVolumeByID(s.volume.ID)
+	vol, err := host.FindVolumeByID(s.ctx, s.volume.ID)
 	s.NoError(err)
 	s.Equal("Some new thang", vol.DisplayName)
 }

@@ -110,6 +110,15 @@ func UpdateOne(query interface{}, update interface{}) error {
 	)
 }
 
+func UpdateOneContext(ctx context.Context, query interface{}, update interface{}) error {
+	return db.UpdateContext(
+		ctx,
+		Collection,
+		query,
+		update,
+	)
+}
+
 // UpdateAll updates all users.
 func UpdateAll(query interface{}, update interface{}) error {
 	_, err := db.UpdateAll(
@@ -349,7 +358,7 @@ func GetOrCreateUser(userId, displayName, email, accessToken, refreshToken strin
 
 	}
 
-	if err := setSlackInformation(env, u); err != nil {
+	if err := setSlackInformation(ctx, env, u); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":       "could not set Slack information for user",
 			"user_id":       u.Id,
@@ -361,7 +370,7 @@ func GetOrCreateUser(userId, displayName, email, accessToken, refreshToken strin
 	return u, nil
 }
 
-func setSlackInformation(env evergreen.Environment, u *DBUser) error {
+func setSlackInformation(ctx context.Context, env evergreen.Environment, u *DBUser) error {
 	if u.Settings.SlackMemberId != "" {
 		// user already has a slack member id set
 		return nil
@@ -394,7 +403,7 @@ func setSlackInformation(env evergreen.Environment, u *DBUser) error {
 
 	update := bson.M{"$set": slackFields}
 
-	if err := UpdateOne(bson.M{IdKey: u.Id}, update); err != nil {
+	if err := UpdateOneContext(ctx, bson.M{IdKey: u.Id}, update); err != nil {
 		return errors.Wrap(err, "updating slack information")
 	}
 
@@ -496,7 +505,7 @@ func ClearLoginCache(user gimlet.User) error {
 
 // ClearUser clears the users settings, roles and invalidates their login cache.
 // It also sets their settings to use Spruce so rehires have Spruce enabled by default.
-func ClearUser(userId string) error {
+func ClearUser(ctx context.Context, userId string) error {
 	unsetUpdate := bson.M{
 		"$unset": bson.M{
 			SettingsKey:   1,
@@ -507,7 +516,7 @@ func ClearUser(userId string) error {
 		},
 	}
 	query := bson.M{IdKey: userId}
-	if err := UpdateOne(query, unsetUpdate); err != nil {
+	if err := UpdateOneContext(ctx, query, unsetUpdate); err != nil {
 		return errors.Wrap(err, "unsetting user settings")
 	}
 	setUpdate := bson.M{
@@ -519,7 +528,7 @@ func ClearUser(userId string) error {
 			},
 		},
 	}
-	return errors.Wrap(UpdateOne(query, setUpdate), "defaulting spruce setting")
+	return errors.Wrap(UpdateOneContext(ctx, query, setUpdate), "defaulting spruce setting")
 }
 
 // ClearAllLoginCaches clears all users' login caches, forcibly logging them

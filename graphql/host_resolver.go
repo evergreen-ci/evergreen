@@ -82,7 +82,7 @@ func (r *hostResolver) EventTypes(ctx context.Context, obj *restModel.APIHost) (
 func (r *hostResolver) HomeVolume(ctx context.Context, obj *restModel.APIHost) (*restModel.APIVolume, error) {
 	if utility.FromStringPtr(obj.HomeVolumeID) != "" {
 		volumeID := utility.FromStringPtr(obj.HomeVolumeID)
-		volume, err := host.FindVolumeByID(volumeID)
+		volume, err := host.FindVolumeByID(ctx, volumeID)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding volume '%s': %s", volumeID, err.Error()))
 		}
@@ -123,7 +123,7 @@ func (r *hostResolver) Uptime(ctx context.Context, obj *restModel.APIHost) (*tim
 func (r *hostResolver) Volumes(ctx context.Context, obj *restModel.APIHost) ([]*restModel.APIVolume, error) {
 	volumes := make([]*restModel.APIVolume, 0, len(obj.AttachedVolumeIDs))
 	for _, volumeID := range obj.AttachedVolumeIDs {
-		volume, err := host.FindVolumeByID(volumeID)
+		volume, err := host.FindVolumeByID(ctx, volumeID)
 		if err != nil {
 			return volumes, InternalServerError.Send(ctx, fmt.Sprintf("getting volume '%s': %s", volumeID, err.Error()))
 		}

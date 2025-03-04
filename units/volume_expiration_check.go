@@ -65,7 +65,7 @@ func (j *volumeExpirationCheckJob) Run(ctx context.Context) {
 	}
 
 	if j.volume == nil {
-		j.volume, err = host.FindVolumeByID(j.VolumeID)
+		j.volume, err = host.FindVolumeByID(ctx, j.VolumeID)
 		if err != nil {
 			j.AddError(errors.Wrapf(err, "finding volume '%s'", j.VolumeID))
 			return

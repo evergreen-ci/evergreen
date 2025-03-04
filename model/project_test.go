@@ -449,7 +449,7 @@ func TestPopulateExpansions(t *testing.T) {
 	assert.False(expansions.Exists("github_repo"))
 	assert.False(expansions.Exists("github_author"))
 
-	assert.NoError(VersionUpdateOne(bson.M{VersionIdKey: v.Id}, bson.M{
+	assert.NoError(VersionUpdateOne(ctx, bson.M{VersionIdKey: v.Id}, bson.M{
 		"$set": bson.M{VersionRequesterKey: evergreen.PatchVersionRequester},
 	}))
 	p := patch.Patch{
@@ -469,7 +469,7 @@ func TestPopulateExpansions(t *testing.T) {
 	assert.False(expansions.Exists("triggered_by_git_tag"))
 	require.NoError(t, db.ClearCollections(patch.Collection))
 
-	assert.NoError(VersionUpdateOne(bson.M{VersionIdKey: v.Id}, bson.M{
+	assert.NoError(VersionUpdateOne(ctx, bson.M{VersionIdKey: v.Id}, bson.M{
 		"$set": bson.M{VersionRequesterKey: evergreen.GithubMergeRequester},
 	}))
 	p = patch.Patch{
@@ -494,7 +494,7 @@ func TestPopulateExpansions(t *testing.T) {
 	assert.Equal("merge_head_branch", expansions.Get("github_head_branch"))
 	require.NoError(t, db.ClearCollections(patch.Collection))
 
-	assert.NoError(VersionUpdateOne(bson.M{VersionIdKey: v.Id}, bson.M{
+	assert.NoError(VersionUpdateOne(ctx, bson.M{VersionIdKey: v.Id}, bson.M{
 		"$set": bson.M{VersionRequesterKey: evergreen.GithubPRRequester},
 	}))
 	p = patch.Patch{

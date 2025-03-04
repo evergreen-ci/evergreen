@@ -174,7 +174,7 @@ func TestDistros(t *testing.T) {
 	assert.Contains(t, distroNames, "ubuntu1604-large")
 
 	// Call distros resolver when user is an admin.
-	require.NoError(t, usr.AddRole("superuser"))
+	require.NoError(t, usr.AddRole(t.Context(), "superuser"))
 	res, err = config.Resolvers.Image().Distros(ctx, &image)
 	require.NoError(t, err)
 	require.Len(t, res, 3)
