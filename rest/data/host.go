@@ -313,6 +313,13 @@ func PostHostIsUp(ctx context.Context, env evergreen.Environment, params restmod
 		}
 	}
 
+	if err := h.SetDNSName(ctx, params.Hostname); err != nil {
+		return nil, gimlet.ErrorResponse{
+			StatusCode: http.StatusInternalServerError,
+			Message:    errors.Wrap(err, "setting hostname").Error(),
+		}
+	}
+
 	if err := setReadyForReprovisioning(ctx, env, h); err != nil {
 		// It's okay to continue even if this errors because if the host needs
 		// to reprovision, the agent monitor will eventually shut itself down or

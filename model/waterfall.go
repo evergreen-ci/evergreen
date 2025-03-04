@@ -248,9 +248,6 @@ func getVersionTasksPipeline() []bson.M {
 							},
 						},
 					},
-					{
-						"$sort": bson.M{task.IdKey: 1},
-					},
 					// The following projection should exactly match the index on the tasks collection in order to function as a covered query
 					{
 						"$project": bson.M{
@@ -260,6 +257,9 @@ func getVersionTasksPipeline() []bson.M {
 							task.ExecutionKey:          1,
 							task.StatusKey:             1,
 						},
+					},
+					{
+						"$sort": bson.M{task.DisplayNameKey: 1},
 					},
 				},
 				"as": bsonutil.GetDottedKeyName(buildsKey, build.TasksKey),

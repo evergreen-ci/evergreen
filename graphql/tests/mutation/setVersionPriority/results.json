@@ -24,7 +24,7 @@
         },
         "errors": [
           {
-            "message": "insufficient access to set priority 999, can only set priority less than or equal to 100",
+            "message": "not authorized to set priority 999, can only set priority less than or equal to 100",
             "path": ["setVersionPriority"],
             "extensions": {
               "code": "FORBIDDEN"

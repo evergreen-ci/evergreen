@@ -1,11 +1,9 @@
 package util
 
 import (
-	"context"
 	"os"
 	"strconv"
 	"testing"
-	"time"
 
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/stretchr/testify/assert"
@@ -15,13 +13,19 @@ import (
 func TestGetEC2InstanceID(t *testing.T) {
 	skipEC2TestOnNonEC2Instance(t)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	instanceID, err := GetEC2InstanceID(ctx)
+	instanceID, err := GetEC2InstanceID(t.Context())
 	require.NoError(t, err)
 	assert.NotZero(t, instanceID)
 	assert.True(t, cloud.IsEC2InstanceID(instanceID))
+}
+
+func TestGetEC2Hostname(t *testing.T) {
+	skipEC2TestOnNonEC2Instance(t)
+
+	hostname, err := GetEC2HostName(t.Context())
+	require.NoError(t, err)
+	assert.NotZero(t, hostname)
+	assert.Contains(t, hostname, "amazonaws.com")
 }
 
 // skipEC2TestOnNonEC2Instance skips a test that can only be run on an EC2
