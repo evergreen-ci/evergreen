@@ -398,9 +398,16 @@ func TestTestLogFormatValidate(t *testing.T) {
 }
 
 func TestTestLogBenchmark(t *testing.T) {
+	expansions := map[string]string{}
+	keys := make([]string, 40)
+	for i := 0; i < 40; i++ {
+		key := fmt.Sprintf("secret_%d", i)
+		expansions[key] = "abcdefghijklmnopqrstuvwxyz"
+		keys[i] = key
+	}
 	tsk, h := setupTestTestLogDirectoryHandler(t, client.NewMock("url"), redactor.RedactionOptions{
-		Expansions:         util.NewDynamicExpansions(map[string]string{"secret_name": "DEADBEEF"}),
-		Redacted:           []string{"secret_name"},
+		Expansions:         util.NewDynamicExpansions(expansions),
+		Redacted:           keys,
 		InternalRedactions: util.NewDynamicExpansions(map[string]string{"another_secret": "DEADC0DE"}),
 	})
 	//tsk, h := setupTestTestLogDirectoryHandler(t, client.NewMock("url"), redactor.RedactionOptions{})
@@ -408,14 +415,16 @@ func TestTestLogBenchmark(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(filepath.Join(h.dir, testLogSpecFilename), data, 0777))
 
-	src, err := os.Open("benchmark_log.txt")
-	require.NoError(t, err)
-	dst, err := os.Create(filepath.Join(h.dir, "benchmark_log.txt"))
-	require.NoError(t, err)
-	_, err = io.Copy(dst, src)
-	require.NoError(t, err)
-	require.NoError(t, src.Close())
-	require.NoError(t, dst.Close())
+	for _, fn := range []string{"benchmark_log.txt", "benchmark_log2.txt", "benchmark_log3.txt"} {
+		src, err := os.Open(fn)
+		require.NoError(t, err)
+		dst, err := os.Create(filepath.Join(h.dir, fn))
+		require.NoError(t, err)
+		_, err = io.Copy(dst, src)
+		require.NoError(t, err)
+		require.NoError(t, src.Close())
+		require.NoError(t, dst.Close())
+	}
 
 	start := time.Now()
 	assert.NoError(t, h.run(context.Background()))
@@ -442,7 +451,7 @@ func setupTestTestLogDirectoryHandler(t *testing.T, comm *client.Mock, redactOpt
 				BucketConfig: evergreen.BucketConfig{
 					//Name: t.TempDir(),
 					//Type: evergreen.BucketTypeLocal,
-					Name: "airbyte-devprod-test",
+					Name: "julian-push-test",
 					Type: evergreen.BucketTypeS3,
 				},
 			},
