@@ -14,14 +14,14 @@
                     "id": "evergreen_version1_build",
                     "tasks": [
                       {
-                        "displayName": "Some Task",
+                        "displayName": "Task A",
                         "displayStatusCache": "success",
                         "execution": 0,
                         "id": "task_1",
                         "status": "success"
                       },
                       {
-                        "displayName": "Some Other Task",
+                        "displayName": "Task B",
                         "displayStatusCache": "success",
                         "execution": 1,
                         "id": "task_2",
@@ -34,14 +34,14 @@
                     "id": "evergreen_version2_build",
                     "tasks": [
                       {
-                        "displayName": "Some Task",
+                        "displayName": "Task A",
                         "displayStatusCache": "setup-failed",
                         "execution": 0,
                         "id": "task_3",
                         "status": "failed"
                       },
                       {
-                        "displayName": "Some Other Task",
+                        "displayName": "Task B",
                         "displayStatusCache": "success",
                         "execution": 0,
                         "id": "task_4",
@@ -58,7 +58,7 @@
                     "id": "evergreen_version3_build",
                     "tasks": [
                       {
-                        "displayName": "Task Number 5",
+                        "displayName": "Task C",
                         "displayStatusCache": "success",
                         "execution": 0,
                         "id": "task_5",
@@ -669,7 +669,7 @@
                     "tasks": [
                       {
                         "id": "task_5",
-                        "displayName": "Task Number 5"
+                        "displayName": "Task C"
                       }
                     ],
                     "version": "evergreen_version5"
@@ -694,11 +694,11 @@
                     "tasks": [
                       {
                         "id": "task_3",
-                        "displayName": "Some Task"
+                        "displayName": "Task A"
                       },
                       {
                         "id": "task_4",
-                        "displayName": "Some Other Task"
+                        "displayName": "Task B"
                       }
                     ],
                     "version": "evergreen_version2"
@@ -715,11 +715,11 @@
                     "tasks": [
                       {
                         "id": "task_1",
-                        "displayName": "Some Task"
+                        "displayName": "Task A"
                       },
                       {
                         "id": "task_2",
-                        "displayName": "Some Other Task"
+                        "displayName": "Task B"
                       }
                     ],
                     "version": "evergreen_version1"
