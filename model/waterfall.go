@@ -108,13 +108,19 @@ func getBuildVariantFilterPipeline(ctx context.Context, variants []string, match
 	if mostRecentVersion.RevisionOrderNumber < MaxWaterfallVersionLimit {
 		pipeline = append(pipeline, getBuildDisplayNames(matchCopy))
 	} else {
-		lastSearchableVersion, err := VersionFindOne(VersionByProjectIdAndOrder(utility.FromStringPtr(&mostRecentVersion.Identifier), mostRecentVersion.RevisionOrderNumber-MaxWaterfallVersionLimit))
+		lastSearchableVersion, err := VersionFindOne(VersionByProjectIdAndOrder(mostRecentVersion.Identifier, mostRecentVersion.RevisionOrderNumber-MaxWaterfallVersionLimit))
 		if err != nil {
 			return []bson.M{}, errors.Wrap(err, "fetching version")
 		}
 
 		buildVariantStatusDate := time.Date(2025, time.February, 7, 0, 0, 0, 0, time.UTC)
-		if lastSearchableVersion.CreateTime.Before(buildVariantStatusDate) {
+		if lastSearchableVersion == nil {
+			lastSearchableVersion, err = VersionFindOne(VersionByProjectIdAndOrder(mostRecentVersion.Identifier, 1))
+			if err != nil {
+				return []bson.M{}, errors.Wrap(err, "fetching version order #1")
+			}
+		}
+		if lastSearchableVersion != nil && lastSearchableVersion.CreateTime.Before(buildVariantStatusDate) {
 			pipeline = append(pipeline, getBuildDisplayNames(matchCopy))
 		}
 	}
