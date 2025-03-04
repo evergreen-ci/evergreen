@@ -297,6 +297,7 @@ func ReplaceContext(ctx context.Context, collection string, query interface{}, r
 	return nil
 }
 
+// UpdateAllContext updates all matching documents in the collection.
 func UpdateAllContext(ctx context.Context, collection string, query interface{}, update interface{}) (*db.ChangeInfo, error) {
 	switch query.(type) {
 	case *Q, Q:
@@ -338,6 +339,7 @@ func UpdateId(collection string, id, update interface{}) error {
 	return db.C(collection).UpdateId(id, update)
 }
 
+// UpdateIdContext updates one _id-matching document in the collection.
 func UpdateIdContext(ctx context.Context, collection string, id, update interface{}) error {
 	res, err := evergreen.GetEnvironment().DB().Collection(collection).UpdateOne(ctx,
 		bson.D{{Key: "_id", Value: id}},
