@@ -28,7 +28,7 @@ func GetEC2InstanceID(ctx context.Context) (string, error) {
 		if instanceID == "" {
 			return "", errors.New("instance ID from response is empty")
 		}
-		return string(instanceID), nil
+		return instanceID, nil
 	})
 }
 
@@ -45,7 +45,7 @@ func GetEC2HostName(ctx context.Context) (string, error) {
 		if hostName == "" {
 			return "", errors.New("host name from response is empty")
 		}
-		return string(hostName), nil
+		return hostName, nil
 	})
 }
 
