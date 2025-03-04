@@ -88,10 +88,8 @@ clientsLoop:
 			continue
 		}
 		mgrOpts := cloud.ManagerOpts{
-			Provider:       clientOpts.Provider,
-			Region:         clientOpts.Region,
-			ProviderKey:    clientOpts.Key,
-			ProviderSecret: clientOpts.Secret,
+			Provider: clientOpts.Provider,
+			Region:   clientOpts.Region,
 		}
 		m, err := cloud.GetManager(ctx, j.env, mgrOpts)
 		if err != nil {

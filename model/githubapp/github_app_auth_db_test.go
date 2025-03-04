@@ -23,18 +23,18 @@ func TestUpsertGitHubAppAuth(t *testing.T) {
 		AppID:      1234,
 		PrivateKey: key,
 	}
-	require.NoError(t, UpsertGitHubAppAuth(appAuth))
+	require.NoError(t, UpsertGitHubAppAuth(ctx, appAuth))
 
-	dbAppAuth, err := FindOneGitHubAppAuth(projectID)
+	dbAppAuth, err := FindOneGitHubAppAuth(ctx, projectID)
 	require.NoError(t, err)
 	require.NotZero(t, dbAppAuth)
 	checkParameterMatchesPrivateKey(ctx, t, dbAppAuth)
 	paramName := appAuth.PrivateKeyParameter
 
 	appAuth.PrivateKey = []byte("new_private_key")
-	require.NoError(t, UpsertGitHubAppAuth(appAuth))
+	require.NoError(t, UpsertGitHubAppAuth(ctx, appAuth))
 
-	dbAppAuth, err = FindOneGitHubAppAuth(projectID)
+	dbAppAuth, err = FindOneGitHubAppAuth(ctx, projectID)
 	require.NoError(t, err)
 	require.NotZero(t, dbAppAuth)
 	checkParameterMatchesPrivateKey(ctx, t, dbAppAuth)
@@ -42,8 +42,6 @@ func TestUpsertGitHubAppAuth(t *testing.T) {
 }
 
 func TestRemoveGitHubAppAuth(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	require.NoError(t, db.ClearCollections(GitHubAppAuthCollection, fakeparameter.Collection))
 
 	const projectID = "mongodb"
@@ -53,21 +51,21 @@ func TestRemoveGitHubAppAuth(t *testing.T) {
 		AppID:      1234,
 		PrivateKey: key,
 	}
-	require.NoError(t, UpsertGitHubAppAuth(appAuth))
+	require.NoError(t, UpsertGitHubAppAuth(t.Context(), appAuth))
 
-	dbAppAuth, err := FindOneGitHubAppAuth(projectID)
+	dbAppAuth, err := FindOneGitHubAppAuth(t.Context(), projectID)
 	require.NoError(t, err)
 	require.NotZero(t, dbAppAuth)
-	checkParameterMatchesPrivateKey(ctx, t, appAuth)
+	checkParameterMatchesPrivateKey(t.Context(), t, appAuth)
 	paramName := appAuth.PrivateKeyParameter
 
-	require.NoError(t, RemoveGitHubAppAuth(dbAppAuth))
+	require.NoError(t, RemoveGitHubAppAuth(t.Context(), dbAppAuth))
 
-	dbAppAuth, err = FindOneGitHubAppAuth(projectID)
+	dbAppAuth, err = FindOneGitHubAppAuth(t.Context(), projectID)
 	assert.NoError(t, err)
 	assert.Zero(t, dbAppAuth)
 
-	fakeParams, err := fakeparameter.FindByIDs(ctx, paramName)
+	fakeParams, err := fakeparameter.FindByIDs(t.Context(), paramName)
 	assert.NoError(t, err)
 	assert.Empty(t, fakeParams, "private key parameter should be deleted")
 }

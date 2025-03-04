@@ -31,6 +31,7 @@ type WaterfallTask struct {
 
 type WaterfallBuild struct {
 	Id           string          `bson:"_id" json:"_id"`
+	Activated    bool            `bson:"activated" json:"activated"`
 	BuildVariant string          `bson:"build_variant" json:"build_variant"`
 	DisplayName  string          `bson:"display_name" json:"display_name"`
 	Version      string          `bson:"version" json:"version"`
@@ -247,9 +248,6 @@ func getVersionTasksPipeline() []bson.M {
 							},
 						},
 					},
-					{
-						"$sort": bson.M{task.IdKey: 1},
-					},
 					// The following projection should exactly match the index on the tasks collection in order to function as a covered query
 					{
 						"$project": bson.M{
@@ -259,6 +257,9 @@ func getVersionTasksPipeline() []bson.M {
 							task.ExecutionKey:          1,
 							task.StatusKey:             1,
 						},
+					},
+					{
+						"$sort": bson.M{task.DisplayNameKey: 1},
 					},
 				},
 				"as": bsonutil.GetDottedKeyName(buildsKey, build.TasksKey),

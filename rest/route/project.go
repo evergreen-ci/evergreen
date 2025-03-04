@@ -252,7 +252,7 @@ func (h *detachProjectFromRepoHandler) Parse(ctx context.Context, r *http.Reques
 }
 
 func (h *detachProjectFromRepoHandler) Run(ctx context.Context) gimlet.Responder {
-	if err := h.project.DetachFromRepo(h.user); err != nil {
+	if err := h.project.DetachFromRepo(ctx, h.user); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "detaching repo from project"))
 	}
 
@@ -361,7 +361,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "validating project repotracker"))
 	}
 
-	before, err := dbModel.GetProjectSettings(h.newProjectRef)
+	before, err := dbModel.GetProjectSettings(ctx, h.newProjectRef)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting original project settings for project '%s'", h.newProjectRef.Identifier))
 	}
@@ -560,10 +560,13 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 	// Under the hood, this is updating the container secrets in the DB project
 	// ref, but this function's copy of the in-memory project ref won't reflect
-	// those changes.
-	if err := data.UpsertContainerSecrets(ctx, vault, allContainerSecrets); err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "upserting container secrets"))
-	}
+	// those changes. We log an error here instead of returning, so that this
+	// doesn't prevent the rest of the operations.
+	grip.Error(message.WrapError(data.UpsertContainerSecrets(ctx, vault, allContainerSecrets), message.Fields{
+		"message":            "problem upserting container secrets",
+		"project_id":         h.newProjectRef.Id,
+		"project_identifier": h.newProjectRef.Identifier,
+	}))
 
 	if err = data.UpdateProjectVars(h.newProjectRef.Id, &h.apiNewProjectRef.Variables, false); err != nil { // destructively modifies h.apiNewProjectRef.Variables
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "updating variables for project '%s'", h.project))
@@ -590,7 +593,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "deleting subscriptions for project '%s'", h.project))
 	}
 
-	after, err := dbModel.GetProjectSettings(h.newProjectRef)
+	after, err := dbModel.GetProjectSettings(ctx, h.newProjectRef)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting project settings after update for project '%s'", h.project))
 	}

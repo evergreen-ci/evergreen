@@ -228,12 +228,6 @@ type EC2ManagerOptions struct {
 
 	// region is the AWS region specified by distro
 	region string
-
-	// providerKey is the AWS credential key
-	providerKey string
-
-	// providerSecret is the AWS credential secret
-	providerSecret string
 }
 
 // ec2Manager starts and configures instances in EC2.

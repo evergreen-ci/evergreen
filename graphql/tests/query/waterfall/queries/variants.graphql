@@ -4,6 +4,7 @@
       id
       waterfallBuilds {
         id
+        activated
         displayName
       }
     }
