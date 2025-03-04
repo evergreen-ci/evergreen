@@ -81,7 +81,6 @@ type Query {
   myPublicKeys: [PublicKey!]!
   user(userId: String): User! 
   userConfig: UserConfig
-  userSettings: UserSettings
 
   # mainline commits
   buildVariantsForTaskName(projectIdentifier: String! @requireProjectAccess(permission: TASKS, access: VIEW), taskName: String!): [BuildVariantTuple!]

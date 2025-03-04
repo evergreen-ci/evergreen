@@ -1,7 +1,6 @@
 package model
 
 import (
-	"context"
 	"strings"
 	"testing"
 	"time"
@@ -17,8 +16,6 @@ import (
 )
 
 func TestGetActiveWaterfallVersions(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	assert.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection, ProjectRefCollection))
 	start := time.Now()
@@ -104,7 +101,7 @@ func TestGetActiveWaterfallVersions(t *testing.T) {
 	}
 	assert.NoError(t, v.Insert())
 
-	versions, err := GetActiveWaterfallVersions(ctx, p.Id, WaterfallOptions{
+	versions, err := GetActiveWaterfallVersions(t.Context(), p.Id, WaterfallOptions{
 		Limit:      4,
 		Requesters: evergreen.SystemVersionRequesterTypes,
 	})
@@ -115,7 +112,7 @@ func TestGetActiveWaterfallVersions(t *testing.T) {
 	assert.EqualValues(t, "v_4", versions[2].Id)
 	assert.EqualValues(t, "v_5", versions[3].Id)
 
-	versions, err = GetActiveWaterfallVersions(ctx, p.Id, WaterfallOptions{
+	versions, err = GetActiveWaterfallVersions(t.Context(), p.Id, WaterfallOptions{
 		Limit:      2,
 		Requesters: evergreen.SystemVersionRequesterTypes,
 		MaxOrder:   9,
@@ -125,7 +122,7 @@ func TestGetActiveWaterfallVersions(t *testing.T) {
 	assert.EqualValues(t, "v_3", versions[0].Id)
 	assert.EqualValues(t, "v_4", versions[1].Id)
 
-	versions, err = GetActiveWaterfallVersions(ctx, p.Id, WaterfallOptions{
+	versions, err = GetActiveWaterfallVersions(t.Context(), p.Id, WaterfallOptions{
 		Limit:      5,
 		Requesters: evergreen.SystemVersionRequesterTypes,
 		MinOrder:   7,
@@ -135,7 +132,7 @@ func TestGetActiveWaterfallVersions(t *testing.T) {
 	assert.EqualValues(t, "v_1", versions[0].Id)
 	assert.EqualValues(t, "v_3", versions[1].Id)
 
-	versions, err = GetActiveWaterfallVersions(ctx, p.Id,
+	versions, err = GetActiveWaterfallVersions(t.Context(), p.Id,
 		WaterfallOptions{
 			Limit:      4,
 			Requesters: []string{"foo"},
@@ -144,7 +141,7 @@ func TestGetActiveWaterfallVersions(t *testing.T) {
 	assert.Error(t, err)
 	assert.True(t, strings.HasPrefix(err.Error(), "invalid requester"))
 
-	versions, err = GetActiveWaterfallVersions(ctx, p.Id,
+	versions, err = GetActiveWaterfallVersions(t.Context(), p.Id,
 		WaterfallOptions{
 			Limit:      4,
 			Requesters: evergreen.SystemVersionRequesterTypes,
@@ -155,7 +152,7 @@ func TestGetActiveWaterfallVersions(t *testing.T) {
 	assert.EqualValues(t, "v_1", versions[0].Id)
 	assert.EqualValues(t, "v_4", versions[1].Id)
 
-	versions, err = GetActiveWaterfallVersions(ctx, p.Id,
+	versions, err = GetActiveWaterfallVersions(t.Context(), p.Id,
 		WaterfallOptions{
 			Limit:      4,
 			Requesters: evergreen.SystemVersionRequesterTypes,
@@ -166,9 +163,6 @@ func TestGetActiveWaterfallVersions(t *testing.T) {
 }
 
 func TestGetAllWaterfallVersions(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	assert.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection, ProjectRefCollection))
 	start := time.Now()
 	p := ProjectRef{
@@ -223,35 +217,32 @@ func TestGetAllWaterfallVersions(t *testing.T) {
 	}
 	assert.NoError(t, v.Insert())
 
-	versions, err := GetAllWaterfallVersions(ctx, p.Id, 7, 9)
+	versions, err := GetAllWaterfallVersions(t.Context(), p.Id, 7, 9)
 	assert.NoError(t, err)
 	require.Len(t, versions, 3)
 	assert.EqualValues(t, "v_2", versions[0].Id)
 	assert.EqualValues(t, "v_3", versions[1].Id)
 	assert.EqualValues(t, "v_4", versions[2].Id)
 
-	versions, err = GetAllWaterfallVersions(ctx, p.Id, 2, 3)
+	versions, err = GetAllWaterfallVersions(t.Context(), p.Id, 2, 3)
 	assert.NoError(t, err)
 	assert.Empty(t, versions)
 
-	versions, err = GetAllWaterfallVersions(ctx, p.Id, 9, 8)
+	versions, err = GetAllWaterfallVersions(t.Context(), p.Id, 9, 8)
 	assert.Error(t, err)
 	assert.Empty(t, versions)
 
-	versions, err = GetAllWaterfallVersions(ctx, p.Id, 10, 12)
+	versions, err = GetAllWaterfallVersions(t.Context(), p.Id, 10, 12)
 	assert.NoError(t, err)
 	require.Len(t, versions, 1)
 	assert.EqualValues(t, "v_1", versions[0].Id)
 
-	versions, err = GetAllWaterfallVersions(ctx, p.Id, 0, 0)
+	versions, err = GetAllWaterfallVersions(t.Context(), p.Id, 0, 0)
 	assert.NoError(t, err)
 	require.Len(t, versions, 5)
 }
 
 func TestGetWaterfallBuildVariants(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	assert.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection, ProjectRefCollection))
 	start := time.Now()
 	p := ProjectRef{
@@ -708,11 +699,11 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 	assert.NoError(t, tsk.Insert())
 	tsk = task.Task{Id: "t_12", DisplayName: "Task 12", Status: evergreen.TaskWillRun}
 	assert.NoError(t, tsk.Insert())
-	tsk = task.Task{Id: "t_66", DisplayName: "Task 66", Status: evergreen.TaskWillRun, Requester: evergreen.RepotrackerVersionRequester}
+	tsk = task.Task{Id: "t_66", DisplayName: "A_first_task", DisplayStatusCache: evergreen.TaskStatusBlocked, Status: evergreen.TaskUndispatched, Requester: evergreen.RepotrackerVersionRequester}
 	assert.NoError(t, tsk.Insert())
-	tsk = task.Task{Id: "t_89", DisplayName: "Task 89", Status: evergreen.TaskWillRun, Requester: evergreen.RepotrackerVersionRequester}
+	tsk = task.Task{Id: "t_89", DisplayName: "B_second_task", Status: evergreen.TaskWillRun, Requester: evergreen.RepotrackerVersionRequester}
 	assert.NoError(t, tsk.Insert())
-	tsk = task.Task{Id: "t_32", DisplayName: "Task 32", DisplayStatusCache: evergreen.TaskSystemTimedOut, Status: evergreen.TaskFailed, Details: apimodels.TaskEndDetail{
+	tsk = task.Task{Id: "t_32", DisplayName: "C_third_task", DisplayStatusCache: evergreen.TaskSystemTimedOut, Status: evergreen.TaskFailed, Details: apimodels.TaskEndDetail{
 		Type:     evergreen.CommandTypeSystem,
 		TimedOut: true,
 	}, Requester: evergreen.RepotrackerVersionRequester}
@@ -790,11 +781,11 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 	tsk = task.Task{Id: "t_394", DisplayName: "Task 394", Status: evergreen.TaskSucceeded}
 	assert.NoError(t, tsk.Insert())
 
-	buildVariants, err := GetWaterfallBuildVariants(ctx, []string{v1.Id, v2.Id, v3.Id, v4.Id})
+	buildVariants, err := GetWaterfallBuildVariants(t.Context(), []string{v1.Id, v2.Id, v3.Id, v4.Id})
 	assert.NoError(t, err)
 	assert.Len(t, buildVariants, 3)
 
-	// Assert build variants are sorted alphabetically
+	// Assert build variants are sorted alphabetically by display name.
 	assert.Equal(t, "01 Build A", buildVariants[0].DisplayName)
 	assert.Equal(t, "02 Build C", buildVariants[1].DisplayName)
 	assert.Equal(t, "03 Build B", buildVariants[2].DisplayName)
@@ -809,18 +800,33 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 	assert.Len(t, buildVariants[1].Builds, 4)
 	assert.Len(t, buildVariants[2].Builds, 4)
 
+	// Check first build of first build variant.
 	assert.Equal(t, "b_c", buildVariants[0].Builds[0].Id)
 	assert.Len(t, buildVariants[0].Builds[0].Tasks, 3)
-	assert.Equal(t, "t_32", buildVariants[0].Builds[0].Tasks[0].Id)
-	assert.Equal(t, evergreen.TaskFailed, buildVariants[0].Builds[0].Tasks[0].Status)
-	assert.Equal(t, evergreen.TaskSystemTimedOut, buildVariants[0].Builds[0].Tasks[0].DisplayStatusCache)
-	assert.Equal(t, "t_66", buildVariants[0].Builds[0].Tasks[1].Id)
-	assert.Equal(t, "t_89", buildVariants[0].Builds[0].Tasks[2].Id)
+
+	// Assert tasks are sorted alphabetically by display name.
+	assert.Equal(t, "t_66", buildVariants[0].Builds[0].Tasks[0].Id)
+	assert.Equal(t, "A_first_task", buildVariants[0].Builds[0].Tasks[0].DisplayName)
+	assert.Equal(t, evergreen.TaskUndispatched, buildVariants[0].Builds[0].Tasks[0].Status)
+	assert.Equal(t, evergreen.TaskStatusBlocked, buildVariants[0].Builds[0].Tasks[0].DisplayStatusCache)
+
+	assert.Equal(t, "t_89", buildVariants[0].Builds[0].Tasks[1].Id)
+	assert.Equal(t, "B_second_task", buildVariants[0].Builds[0].Tasks[1].DisplayName)
+	assert.Equal(t, evergreen.TaskWillRun, buildVariants[0].Builds[0].Tasks[1].Status)
+	assert.Equal(t, "", buildVariants[0].Builds[0].Tasks[1].DisplayStatusCache)
+
+	assert.Equal(t, "t_32", buildVariants[0].Builds[0].Tasks[2].Id)
+	assert.Equal(t, "C_third_task", buildVariants[0].Builds[0].Tasks[2].DisplayName)
+	assert.Equal(t, evergreen.TaskFailed, buildVariants[0].Builds[0].Tasks[2].Status)
+	assert.Equal(t, evergreen.TaskSystemTimedOut, buildVariants[0].Builds[0].Tasks[2].DisplayStatusCache)
+
+	// Check second build of first build variant.
 	assert.Equal(t, "b_e", buildVariants[0].Builds[1].Id)
 	assert.Len(t, buildVariants[0].Builds[1].Tasks, 2)
 	assert.Equal(t, "t_473", buildVariants[0].Builds[1].Tasks[0].Id)
 	assert.Equal(t, "t_995", buildVariants[0].Builds[1].Tasks[1].Id)
 
+	// Check third build of first build variant.
 	assert.Equal(t, "b_g", buildVariants[0].Builds[2].Id)
 	assert.Len(t, buildVariants[0].Builds[2].Tasks, 4)
 	assert.Equal(t, "b_k", buildVariants[0].Builds[3].Id)
@@ -828,9 +834,6 @@ func TestGetWaterfallBuildVariants(t *testing.T) {
 }
 
 func TestGetVersionBuilds(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	assert.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection, ProjectRefCollection))
 	start := time.Now()
 	p := ProjectRef{
@@ -846,14 +849,14 @@ func TestGetVersionBuilds(t *testing.T) {
 		RevisionOrderNumber: 10,
 		CreateTime:          start,
 		Activated:           utility.TruePtr(),
-		BuildIds:            []string{"b_a", "b_b"},
+		BuildIds:            []string{"a", "b"},
 	}
 	assert.NoError(t, v.Insert())
 
 	b := build.Build{
-		Id:          "b_a",
+		Id:          "b",
 		Activated:   true,
-		DisplayName: "02 Build C",
+		DisplayName: "Lint",
 		Version:     "v_1",
 		Tasks: []build.TaskCache{
 			{
@@ -872,7 +875,7 @@ func TestGetVersionBuilds(t *testing.T) {
 	}
 	assert.NoError(t, b.Insert())
 	b = build.Build{
-		Id:          "b_b",
+		Id:          "a",
 		Activated:   true,
 		DisplayName: "Ubuntu 2204",
 		Version:     "v_1",
@@ -905,15 +908,16 @@ func TestGetVersionBuilds(t *testing.T) {
 	tsk = task.Task{Id: "t_66", DisplayName: "Task 66", Status: evergreen.TaskWillRun, Requester: evergreen.RepotrackerVersionRequester}
 	assert.NoError(t, tsk.Insert())
 
-	builds, err := GetVersionBuilds(ctx, v.Id)
+	builds, err := GetVersionBuilds(t.Context(), v.Id)
 	assert.NoError(t, err)
 	assert.Len(t, builds, 2)
+
+	// Assert build variants are sorted alphabetically by display name.
+	assert.Equal(t, "Lint", builds[0].DisplayName)
+	assert.Equal(t, "Ubuntu 2204", builds[1].DisplayName)
 }
 
 func TestGetNewerActiveWaterfallVersion(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	assert.NoError(t, db.ClearCollections(VersionCollection, ProjectRefCollection))
 	start := time.Now()
 	p := ProjectRef{
@@ -969,16 +973,13 @@ func TestGetNewerActiveWaterfallVersion(t *testing.T) {
 	}
 	assert.NoError(t, v.Insert())
 
-	version, err := GetNewerActiveWaterfallVersion(ctx, p.Id, v)
+	version, err := GetNewerActiveWaterfallVersion(t.Context(), p.Id, v)
 	assert.NoError(t, err)
 	require.NotNil(t, version)
 	assert.Equal(t, "v_1", version.Id)
 }
 
 func TestGetOlderActiveWaterfallVersion(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	assert.NoError(t, db.ClearCollections(VersionCollection, ProjectRefCollection))
 	start := time.Now()
 	p := ProjectRef{
@@ -1034,7 +1035,7 @@ func TestGetOlderActiveWaterfallVersion(t *testing.T) {
 	}
 	assert.NoError(t, v.Insert())
 
-	version, err := GetOlderActiveWaterfallVersion(ctx, p.Id, v)
+	version, err := GetOlderActiveWaterfallVersion(t.Context(), p.Id, v)
 	assert.NoError(t, err)
 	require.NotNil(t, version)
 	assert.Equal(t, "v_4", version.Id)

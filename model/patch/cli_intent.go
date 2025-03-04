@@ -43,6 +43,9 @@ type cliIntent struct {
 	// Parameters is a list of parameters to use with the task.
 	Parameters []Parameter `bson:"parameters,omitempty"`
 
+	// Finalize is whether or not the patch should finalized.
+	Finalize bool `bson:"finalize"`
+
 	// Module is the name of the module id as represented in the project's
 	// YAML configuration.
 	Module string `bson:"module"`
@@ -145,10 +148,7 @@ func (c *cliIntent) ID() string {
 }
 
 func (c *cliIntent) ShouldFinalizePatch() bool {
-	// We do not automatically finalize a patch. Instead, we determine if a patch should be finalized based on if
-	// a finalize flag was passed in and based on the user's response to a prompt if the number of tasks is greater
-	// than the largeNumFinalizedTasksThreshold.
-	return false
+	return c.Finalize
 }
 
 func (c *cliIntent) RepeatPreviousPatchDefinition() (string, bool) {
@@ -260,6 +260,7 @@ func NewCliIntent(params CLIIntentParams) (Intent, error) {
 		User:                params.User,
 		ProjectID:           params.Project,
 		BaseHash:            params.BaseGitHash,
+		Finalize:            params.Finalize,
 		Module:              params.Module,
 		Alias:               params.Alias,
 		TriggerAliases:      params.TriggerAliases,
