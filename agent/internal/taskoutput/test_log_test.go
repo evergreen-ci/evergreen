@@ -3,6 +3,7 @@ package taskoutput
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -396,6 +397,41 @@ func TestTestLogFormatValidate(t *testing.T) {
 	}
 }
 
+func TestTestLogBenchmark(t *testing.T) {
+	tsk, h := setupTestTestLogDirectoryHandler(t, client.NewMock("url"), redactor.RedactionOptions{
+		Expansions:         util.NewDynamicExpansions(map[string]string{"secret_name": "DEADBEEF"}),
+		Redacted:           []string{"secret_name"},
+		InternalRedactions: util.NewDynamicExpansions(map[string]string{"another_secret": "DEADC0DE"}),
+	})
+	//tsk, h := setupTestTestLogDirectoryHandler(t, client.NewMock("url"), redactor.RedactionOptions{})
+	data, err := yaml.Marshal(testLogSpec{Format: testLogFormatTextTimestamp})
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(filepath.Join(h.dir, testLogSpecFilename), data, 0777))
+
+	src, err := os.Open("benchmark_log.txt")
+	require.NoError(t, err)
+	dst, err := os.Create(filepath.Join(h.dir, "benchmark_log.txt"))
+	require.NoError(t, err)
+	_, err = io.Copy(dst, src)
+	require.NoError(t, err)
+	require.NoError(t, src.Close())
+	require.NoError(t, dst.Close())
+
+	start := time.Now()
+	assert.NoError(t, h.run(context.Background()))
+	duration := time.Since(start)
+	fmt.Println(duration.Minutes())
+
+	it, err := tsk.GetTestLogs(context.Background(), taskoutput.TestLogGetOptions{LogPaths: []string{"benchmark_log.txt"}, TailN: 10})
+	require.NoError(t, err)
+	defer func() {
+		assert.NoError(t, it.Close())
+	}()
+	for it.Next() {
+		fmt.Println(it.Item())
+	}
+}
+
 func setupTestTestLogDirectoryHandler(t *testing.T, comm *client.Mock, redactOpts redactor.RedactionOptions) (*task.Task, *testLogDirectoryHandler) {
 	tsk := &task.Task{
 		Project: "project",
@@ -404,8 +440,10 @@ func setupTestTestLogDirectoryHandler(t *testing.T, comm *client.Mock, redactOpt
 			TestLogs: taskoutput.TestLogOutput{
 				Version: 1,
 				BucketConfig: evergreen.BucketConfig{
-					Name: t.TempDir(),
-					Type: evergreen.BucketTypeLocal,
+					//Name: t.TempDir(),
+					//Type: evergreen.BucketTypeLocal,
+					Name: "airbyte-devprod-test",
+					Type: evergreen.BucketTypeS3,
 				},
 			},
 		},
