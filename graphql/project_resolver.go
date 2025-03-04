@@ -49,7 +49,7 @@ func (r *projectResolver) Patches(ctx context.Context, obj *restModel.APIProject
 		apiPatch := restModel.APIPatch{}
 		err = apiPatch.BuildFromService(p, nil) // Injecting DB info into APIPatch is handled by the resolvers.
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APIPatch '%s' from service: %s", p.Id.Hex(), err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting patch '%s' to APIPatch: %s", p.Id.Hex(), err.Error()))
 		}
 		apiPatches = append(apiPatches, &apiPatch)
 	}

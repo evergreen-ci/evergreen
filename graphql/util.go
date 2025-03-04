@@ -72,7 +72,7 @@ func getGroupedFiles(ctx context.Context, name string, taskID string, execution 
 func findAllTasksByIds(ctx context.Context, taskIDs ...string) ([]task.Task, error) {
 	tasks, err := task.FindAll(ctx, db.Query(task.ByIds(taskIDs)))
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, err.Error())
+		return nil, InternalServerError.Send(ctx, err.Error())
 	}
 	if len(tasks) == 0 {
 		return nil, ResourceNotFound.Send(ctx, "no tasks found")
@@ -157,7 +157,7 @@ func getDisplayStatus(v *model.Version) (string, error) {
 
 	p, err := patch.FindOneId(v.Id)
 	if err != nil {
-		return "", errors.Wrapf(err, "fetching patch '%s': %s", v.Id, err.Error())
+		return "", errors.Wrapf(err, "finding patch '%s': %s", v.Id, err.Error())
 	}
 	if p == nil {
 		return "", errors.Errorf("patch '%s' not found", v.Id)
@@ -166,7 +166,7 @@ func getDisplayStatus(v *model.Version) (string, error) {
 	for _, cp := range p.Triggers.ChildPatches {
 		cpVersion, err := model.VersionFindOneId(cp)
 		if err != nil {
-			return "", errors.Wrapf(err, "fetching version for child patch '%s': %s", cp, err.Error())
+			return "", errors.Wrapf(err, "finding version for child patch '%s': %s", cp, err.Error())
 		}
 		if cpVersion == nil {
 			continue
@@ -228,7 +228,7 @@ func userCanModifyPatch(u *user.DBUser, patch patch.Patch) bool {
 func getPatchProjectVariantsAndTasksForUI(ctx context.Context, apiPatch *restModel.APIPatch) (*PatchProject, error) {
 	p, err := apiPatch.ToService()
 	if err != nil {
-		return nil, errors.Wrap(err, "building patch")
+		return nil, errors.Wrap(err, fmt.Sprintf("converting APIPatch '%s' to service", utility.FromStringPtr(apiPatch.Id)))
 	}
 	patchProjectVariantsAndTasks, err := model.GetVariantsAndTasksFromPatchProject(ctx, evergreen.GetEnvironment().Settings(), &p)
 	if err != nil {
@@ -312,7 +312,7 @@ func getAPITaskFromTask(ctx context.Context, url string, task task.Task) (*restM
 func getTask(ctx context.Context, taskID string, execution *int, apiURL string) (*restModel.APITask, error) {
 	dbTask, err := task.FindOneIdAndExecutionWithDisplayStatus(ctx, taskID, execution)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task '%s': %s", taskID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding task '%s': %s", taskID, err.Error()))
 	}
 	if dbTask == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("task '%s' not found", taskID))
@@ -338,7 +338,7 @@ func generateBuildVariants(ctx context.Context, versionId string, buildVariantOp
 	if utility.FromBoolPtr(buildVariantOpts.IncludeBaseTasks) {
 		baseVersion, err := model.FindBaseVersionForVersion(versionId)
 		if err != nil {
-			return nil, errors.Wrapf(err, "getting base version for version '%s'", versionId)
+			return nil, errors.Wrapf(err, "finding base version for version '%s'", versionId)
 		}
 		if baseVersion != nil {
 			baseVersionID = baseVersion.Id
@@ -365,7 +365,7 @@ func generateBuildVariants(ctx context.Context, versionId string, buildVariantOp
 			LogURL: logURL,
 		})
 		if err != nil {
-			return nil, errors.Wrapf(err, "building APITask from task '%s': %s", t.Id, err.Error())
+			return nil, errors.Wrapf(err, "converting task '%s' to APITask: %s", t.Id, err.Error())
 		}
 		variantDisplayName[t.BuildVariant] = t.BuildVariantDisplayName
 		tasksByVariant[t.BuildVariant] = append(tasksByVariant[t.BuildVariant], &apiTask)
@@ -679,7 +679,7 @@ func getAPISubscriptionsForOwner(ctx context.Context, ownerId string, ownerType 
 	for _, sub := range subscriptions {
 		apiSubscription := restModel.APISubscription{}
 		if err = apiSubscription.BuildFromService(sub); err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APISubscription '%s' from service: %s",
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting subscription '%s' to APISubscription: %s",
 				sub.ID, err.Error()))
 		}
 		res = append(res, &apiSubscription)
@@ -714,7 +714,7 @@ func groupProjects(projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*Gr
 
 		apiProjectRef := restModel.APIProjectRef{}
 		if err := apiProjectRef.BuildFromService(p); err != nil {
-			return nil, errors.Wrap(err, fmt.Sprintf("building APIProjectRef '%s' from service", p.Id))
+			return nil, errors.Wrap(err, fmt.Sprintf("converting project '%s' to APIProjectRef", p.Id))
 		}
 
 		if projs, ok := groupsMap[groupName]; ok {
@@ -748,7 +748,7 @@ func groupProjects(projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*Gr
 			} else {
 				apiRepoRef := restModel.APIProjectRef{}
 				if err := apiRepoRef.BuildFromService(repoRef.ProjectRef); err != nil {
-					return nil, errors.Wrap(err, fmt.Sprintf("building APIProjectRef '%s' from service", repoRef.ProjectRef.Id))
+					return nil, errors.Wrap(err, fmt.Sprintf("converting repo '%s' to APIProjectRef", repoRef.ProjectRef.Id))
 				}
 				gp.Repo = &apiRepoRef
 				if repoRef.ProjectRef.DisplayName != "" {
@@ -891,7 +891,7 @@ func getProjectMetadata(ctx context.Context, projectId *string, patchId *string)
 	}
 	apiProjectRef := restModel.APIProjectRef{}
 	if err = apiProjectRef.BuildFromService(*projectRef); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APIProjectRef from service for project '%s': %s", projectRef.Id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting project '%s' to APIProjectRef: %s", projectRef.Id, err.Error()))
 	}
 	return &apiProjectRef, nil
 }
@@ -1366,7 +1366,7 @@ func getRevisionOrder(revision string, projectId string, limit int) (int, error)
 
 	found, err := model.VersionFindOne(model.VersionByProjectIdAndRevisionPrefix(projectId, revision))
 	if err != nil {
-		return 0, errors.New(fmt.Sprintf("getting version with revision '%s': %s", revision, err))
+		return 0, errors.New(fmt.Sprintf("finding version with revision '%s': %s", revision, err))
 	} else if found == nil {
 		return 0, errors.New(fmt.Sprintf("version with revision '%s' not found", revision))
 	}

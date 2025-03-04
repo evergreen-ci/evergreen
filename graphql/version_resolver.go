@@ -56,7 +56,7 @@ func (r *versionResolver) BuildVariants(ctx context.Context, obj *restModel.APIV
 	if obj.Activated == nil {
 		version, err := model.VersionFindOne(model.VersionById(versionID))
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", versionID, err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version '%s': %s", versionID, err.Error()))
 		}
 		if err = setVersionActivationStatus(ctx, version); err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting version activation status for version '%s': %s", versionID, err.Error()))
@@ -141,7 +141,7 @@ func (r *versionResolver) ExternalLinksForMetadata(ctx context.Context, obj *res
 	projectID := utility.FromStringPtr(obj.Project)
 	pRef, err := data.FindProjectById(projectID, false, false)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding project '%s': %s", projectID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", projectID, err.Error()))
 	}
 	if pRef == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("project '%s' not found", projectID))
@@ -166,7 +166,7 @@ func (r *versionResolver) GeneratedTaskCounts(ctx context.Context, obj *restMode
 	versionID := utility.FromStringPtr(obj.Id)
 	v, err := model.VersionFindOneId(versionID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version '%s': %s", versionID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", versionID, err.Error()))
 	}
 	if v == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", versionID))
@@ -199,7 +199,7 @@ func (r *versionResolver) Manifest(ctx context.Context, obj *restModel.APIVersio
 	versionID := utility.FromStringPtr(obj.Id)
 	m, err := manifest.FindFromVersion(versionID, utility.FromStringPtr(obj.Project), utility.FromStringPtr(obj.Revision), utility.FromStringPtr(obj.Requester))
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching manifest for version '%s': %s", versionID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting manifest for version '%s': %s", versionID, err.Error()))
 	}
 	if m == nil {
 		return nil, nil
@@ -229,7 +229,7 @@ func (r *versionResolver) Patch(ctx context.Context, obj *restModel.APIVersion) 
 	patchID := utility.FromStringPtr(obj.Id)
 	apiPatch, err := data.FindPatchById(patchID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch '%s': %s", patchID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding patch '%s': %s", patchID, err.Error()))
 	}
 	return apiPatch, nil
 }
@@ -263,7 +263,7 @@ func (r *versionResolver) Status(ctx context.Context, obj *restModel.APIVersion)
 	versionID := utility.FromStringPtr(obj.Id)
 	v, err := model.VersionFindOneId(versionID)
 	if err != nil {
-		return "", InternalServerError.Send(ctx, fmt.Sprintf("finding version '%s': %s", versionID, err.Error()))
+		return "", InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", versionID, err.Error()))
 	}
 	if v == nil {
 		return "", ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", versionID))
@@ -357,7 +357,7 @@ func (r *versionResolver) Tasks(ctx context.Context, obj *restModel.APIVersion, 
 		apiTask := restModel.APITask{}
 		err := apiTask.BuildFromService(ctx, &t, nil)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' to API model: %s", t.Id, err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' to APITask: %s", t.Id, err.Error()))
 		}
 		apiTasks = append(apiTasks, &apiTask)
 	}
@@ -406,7 +406,7 @@ func (r *versionResolver) UpstreamProject(ctx context.Context, obj *restModel.AP
 	versionID := utility.FromStringPtr(obj.Id)
 	v, err := model.VersionFindOneId(versionID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version '%s': %s", versionID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", versionID, err.Error()))
 	}
 	if v == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", versionID))
@@ -420,7 +420,7 @@ func (r *versionResolver) UpstreamProject(ctx context.Context, obj *restModel.AP
 	if v.TriggerType == model.ProjectTriggerLevelTask {
 		upstreamTask, err := task.FindOneId(ctx, v.TriggerID)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding upstream task '%s': %s", v.TriggerID, err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching upstream task '%s': %s", v.TriggerID, err.Error()))
 		}
 		if upstreamTask == nil {
 			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("upstream task '%s' not found", v.TriggerID))
@@ -428,7 +428,7 @@ func (r *versionResolver) UpstreamProject(ctx context.Context, obj *restModel.AP
 
 		apiTask := restModel.APITask{}
 		if err = apiTask.BuildFromService(ctx, upstreamTask, nil); err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APITask '%s' from service: %s", upstreamTask.Id, err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' to APITask: %s", upstreamTask.Id, err.Error()))
 		}
 
 		projectID = upstreamTask.Project
@@ -439,7 +439,7 @@ func (r *versionResolver) UpstreamProject(ctx context.Context, obj *restModel.AP
 	} else if v.TriggerType == model.ProjectTriggerLevelBuild {
 		upstreamBuild, err := build.FindOneId(v.TriggerID)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding upstream build '%s': %s", v.TriggerID, err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching upstream build '%s': %s", v.TriggerID, err.Error()))
 		}
 		if upstreamBuild == nil {
 			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("upstream build '%s' not found", v.TriggerID))
@@ -447,7 +447,7 @@ func (r *versionResolver) UpstreamProject(ctx context.Context, obj *restModel.AP
 
 		upstreamVersion, err := model.VersionFindOneId(upstreamBuild.Version)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding upstream version '%s': %s", upstreamBuild.Version, err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching upstream version '%s': %s", upstreamBuild.Version, err.Error()))
 		}
 		if upstreamVersion == nil {
 			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("upstream version '%s' not found", upstreamBuild.Version))
@@ -469,7 +469,7 @@ func (r *versionResolver) UpstreamProject(ctx context.Context, obj *restModel.AP
 	}
 	upstreamProjectRef, err := model.FindBranchProjectRef(projectID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding upstream project '%s': %s", projectID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching upstream project '%s': %s", projectID, err.Error()))
 	}
 	if upstreamProjectRef == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("upstream project '%s' not found", projectID))
@@ -488,7 +488,7 @@ func (r *versionResolver) VersionTiming(ctx context.Context, obj *restModel.APIV
 	versionID := utility.FromStringPtr(obj.Id)
 	v, err := model.VersionFindOneId(versionID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version '%s': %s", versionID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", versionID, err.Error()))
 	}
 	if v == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", versionID))
@@ -521,7 +521,7 @@ func (r *versionResolver) Warnings(ctx context.Context, obj *restModel.APIVersio
 	versionID := utility.FromStringPtr(obj.Id)
 	v, err := model.VersionFindOneId(versionID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version '%s': %s", versionID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", versionID, err.Error()))
 	}
 	if v == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", versionID))

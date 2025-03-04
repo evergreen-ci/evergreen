@@ -108,7 +108,7 @@ func (r *taskResolver) BaseTask(ctx context.Context, obj *restModel.APITask) (*r
 	if t.BaseTask.Id != "" {
 		baseTask, err = task.FindOneId(ctx, t.BaseTask.Id)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding task '%s': %s", t.BaseTask.Id, err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task '%s': %s", t.BaseTask.Id, err.Error()))
 		}
 		if baseTask == nil {
 			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("task '%s' not found", t.BaseTask.Id))
@@ -150,7 +150,7 @@ func (r *taskResolver) BuildVariantDisplayName(ctx context.Context, obj *restMod
 	buildID := utility.FromStringPtr(obj.BuildId)
 	b, err := build.FindOneId(buildID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding build '%s': %s", buildID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching build '%s': %s", buildID, err.Error()))
 	}
 	if b == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("build '%s' not found", buildID))
@@ -206,7 +206,7 @@ func (r *taskResolver) CanOverrideDependencies(ctx context.Context, obj *restMod
 func (r *taskResolver) CanRestart(ctx context.Context, obj *restModel.APITask) (bool, error) {
 	t, err := obj.ToService()
 	if err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' to service: %s", utility.FromStringPtr(obj.Id), err.Error()))
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("converting APITask '%s' to service: %s", utility.FromStringPtr(obj.Id), err.Error()))
 	}
 	return canRestartTask(ctx, t), nil
 }
@@ -215,7 +215,7 @@ func (r *taskResolver) CanRestart(ctx context.Context, obj *restModel.APITask) (
 func (r *taskResolver) CanSchedule(ctx context.Context, obj *restModel.APITask) (bool, error) {
 	t, err := obj.ToService()
 	if err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' to service: %s", utility.FromStringPtr(obj.Id), err.Error()))
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("converting APITask '%s' to service: %s", utility.FromStringPtr(obj.Id), err.Error()))
 	}
 	return canScheduleTask(ctx, t), nil
 }
@@ -314,7 +314,7 @@ func (r *taskResolver) DisplayTask(ctx context.Context, obj *restModel.APITask) 
 	taskID := utility.FromStringPtr(obj.Id)
 	t, err := task.FindOneId(ctx, taskID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding task '%s': %s", taskID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task '%s': %s", taskID, err.Error()))
 	}
 	if t == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("task '%s' not found", taskID))
@@ -334,7 +334,7 @@ func (r *taskResolver) DisplayTask(ctx context.Context, obj *restModel.APITask) 
 func (r *taskResolver) EstimatedStart(ctx context.Context, obj *restModel.APITask) (*restModel.APIDuration, error) {
 	t, err := obj.ToService()
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' to service", utility.FromStringPtr(obj.Id)))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting APITask '%s' to service", utility.FromStringPtr(obj.Id)))
 	}
 	start, err := model.GetEstimatedStartTime(ctx, *t)
 	if err != nil {
@@ -369,7 +369,7 @@ func (r *taskResolver) ExecutionTasksFull(ctx context.Context, obj *restModel.AP
 func (r *taskResolver) FailedTestCount(ctx context.Context, obj *restModel.APITask) (int, error) {
 	dbTask, err := obj.ToService()
 	if err != nil {
-		return 0, InternalServerError.Send(ctx, fmt.Sprintf("getting service model for APITask '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
+		return 0, InternalServerError.Send(ctx, fmt.Sprintf("converting APITask '%s' to service: %s", utility.FromStringPtr(obj.Id), err.Error()))
 	}
 
 	stats, err := dbTask.GetTestResultsStats(ctx, evergreen.GetEnvironment())
@@ -424,7 +424,7 @@ func (r *taskResolver) GeneratedByName(ctx context.Context, obj *restModel.APITa
 	}
 	generator, err := task.FindOneIdWithFields(ctx, obj.GeneratedBy, task.DisplayNameKey)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("find generator for task '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding generator for task '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
 	}
 	if generator == nil {
 		return nil, nil
@@ -529,14 +529,14 @@ func (r *taskResolver) Project(ctx context.Context, obj *restModel.APITask) (*re
 	projectID := utility.FromStringPtr(obj.ProjectId)
 	pRef, err := data.FindProjectById(projectID, true, false)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding project '%s': %s", projectID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", projectID, err.Error()))
 	}
 	if pRef == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("project '%s' not found", projectID))
 	}
 	apiProjectRef := restModel.APIProjectRef{}
 	if err = apiProjectRef.BuildFromService(*pRef); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APIProject '%s' from service: %s", projectID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting project '%s' to APIProjectRef: %s", projectID, err.Error()))
 	}
 	return &apiProjectRef, nil
 }
@@ -582,7 +582,7 @@ func (r *taskResolver) Tests(ctx context.Context, obj *restModel.APITask, opts *
 	taskID := utility.FromStringPtr(obj.Id)
 	dbTask, err := task.FindOneIdAndExecution(ctx, taskID, obj.Execution)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting service model for APITask '%s': %s", taskID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting task '%s' with execution %d: %s", taskID, obj.Execution, err.Error()))
 	}
 
 	filterOpts, err := convertTestFilterOptions(ctx, dbTask, opts)
@@ -619,7 +619,7 @@ func (r *taskResolver) Tests(ctx context.Context, obj *restModel.APITask, opts *
 func (r *taskResolver) TotalTestCount(ctx context.Context, obj *restModel.APITask) (int, error) {
 	dbTask, err := obj.ToService()
 	if err != nil {
-		return 0, InternalServerError.Send(ctx, fmt.Sprintf("getting service model for APITask '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
+		return 0, InternalServerError.Send(ctx, fmt.Sprintf("converting APITask '%s' to service: %s", utility.FromStringPtr(obj.Id), err.Error()))
 	}
 
 	stats, err := dbTask.GetTestResultsStats(ctx, evergreen.GetEnvironment())
@@ -635,7 +635,7 @@ func (r *taskResolver) VersionMetadata(ctx context.Context, obj *restModel.APITa
 	versionID := utility.FromStringPtr(obj.Version)
 	v, err := model.VersionFindOneId(versionID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version '%s': %s", versionID, utility.FromStringPtr(obj.Id)))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", versionID, utility.FromStringPtr(obj.Id)))
 	}
 	if v == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", versionID))

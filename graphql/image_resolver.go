@@ -80,7 +80,7 @@ func (r *imageResolver) LatestTask(ctx context.Context, obj *model.APIImage) (*m
 		IncludeAMI: true,
 	})
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("building API task '%s' from service: %s", latestTask.Id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' to APITask: %s", latestTask.Id, err.Error()))
 	}
 	return apiLatestTask, nil
 }

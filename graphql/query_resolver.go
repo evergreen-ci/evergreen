@@ -104,7 +104,7 @@ func (r *queryResolver) SubnetAvailabilityZones(ctx context.Context) ([]string, 
 func (r *queryResolver) Distro(ctx context.Context, distroID string) (*restModel.APIDistro, error) {
 	d, err := distro.FindOneId(ctx, distroID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding distro '%s': %s", distroID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching distro '%s': %s", distroID, err.Error()))
 	}
 	if d == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("distro '%s' not found", distroID))
@@ -429,7 +429,7 @@ func (r *queryResolver) Project(ctx context.Context, projectIdentifier string) (
 	apiProjectRef := restModel.APIProjectRef{}
 	err = apiProjectRef.BuildFromService(*project)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APIProject '%s' from service: %s", projectIdentifier, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting project '%s' to APIProjectRef: %s", projectIdentifier, err.Error()))
 	}
 	return &apiProjectRef, nil
 }
@@ -480,7 +480,7 @@ func (r *queryResolver) ProjectSettings(ctx context.Context, projectIdentifier s
 		ProjectRef: restModel.APIProjectRef{},
 	}
 	if err = res.ProjectRef.BuildFromService(*projectRef); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APIProjectRef '%s' from service: %s", projectIdentifier, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting project '%s' to APIProjectRef: %s", projectIdentifier, err.Error()))
 	}
 	if !projectRef.UseRepoSettings() {
 		// Default values so the UI understands what to do with nil values.
@@ -517,7 +517,7 @@ func (r *queryResolver) RepoSettings(ctx context.Context, repoID string) (*restM
 		ProjectRef: restModel.APIProjectRef{},
 	}
 	if err = res.ProjectRef.BuildFromService(repoRef.ProjectRef); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APIProjectRef '%s' from service: %s", repoID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting repo '%s' to APIProjectRef: %s", repoID, err.Error()))
 	}
 
 	// Default values so the UI understands what to do with nil values.
@@ -632,13 +632,13 @@ func (r *queryResolver) TaskAllExecutions(ctx context.Context, taskID string) ([
 		var apiTask *restModel.APITask
 		apiTask, err = getAPITaskFromTask(ctx, r.sc.GetURL(), *dbTask)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' with execution %d to API task", taskID, i))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' with execution %d to APITask", taskID, i))
 		}
 		allTasks = append(allTasks, apiTask)
 	}
 	apiTask, err := getAPITaskFromTask(ctx, r.sc.GetURL(), *latestTask)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting latest execution of task '%s' to API task", taskID))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting latest execution of task '%s' to APITask", taskID))
 	}
 	allTasks = append(allTasks, apiTask)
 	return allTasks, nil
