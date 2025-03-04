@@ -3,6 +3,7 @@ package model
 import (
 	"context"
 	"strings"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -89,7 +90,7 @@ func getBuildDisplayNames(match bson.M) bson.M {
 }
 
 // This pipeline matches on versions that have a build with an ID or display name that matches variants
-func getBuildVariantFilterPipeline(variants []string, match bson.M) []bson.M {
+func getBuildVariantFilterPipeline(ctx context.Context, variants []string, match bson.M, projectId string) ([]bson.M, error) {
 	pipeline := []bson.M{}
 	match[bsonutil.GetDottedKeyName(VersionBuildVariantsKey, VersionBuildStatusDisplayNameKey)] = bson.M{"$exists": true}
 	pipeline = append(pipeline, bson.M{"$match": match})
@@ -97,7 +98,26 @@ func getBuildVariantFilterPipeline(variants []string, match bson.M) []bson.M {
 	for key := range match {
 		matchCopy[key] = match[key]
 	}
-	pipeline = append(pipeline, getBuildDisplayNames(matchCopy))
+
+	// TODO DEVPROD-15118: Delete conditional getBuildDisplayNames check
+	mostRecentVersion, err := GetMostRecentWaterfallVersion(ctx, projectId)
+	if err != nil {
+		return []bson.M{}, errors.Wrap(err, "getting most recent version")
+	}
+
+	if mostRecentVersion.RevisionOrderNumber < MaxWaterfallVersionLimit {
+		pipeline = append(pipeline, getBuildDisplayNames(matchCopy))
+	} else {
+		lastSearchableVersion, err := VersionFindOne(VersionByProjectIdAndOrder(utility.FromStringPtr(&mostRecentVersion.Identifier), mostRecentVersion.RevisionOrderNumber-MaxWaterfallVersionLimit))
+		if err != nil {
+			return []bson.M{}, errors.Wrap(err, "fetching version")
+		}
+
+		buildVariantStatusDate := time.Date(2025, time.February, 7, 0, 0, 0, 0, time.UTC)
+		if lastSearchableVersion.CreateTime.Before(buildVariantStatusDate) {
+			pipeline = append(pipeline, getBuildDisplayNames(matchCopy))
+		}
+	}
 	pipeline = append(pipeline, bson.M{"$sort": bson.M{VersionRevisionOrderNumberKey: -1}})
 
 	variantsAsRegex := strings.Join(variants, "|")
@@ -113,7 +133,7 @@ func getBuildVariantFilterPipeline(variants []string, match bson.M) []bson.M {
 			},
 		},
 	})
-	return pipeline
+	return pipeline, nil
 }
 
 // GetActiveWaterfallVersions returns at most `opts.limit` activated versions for a given project.
@@ -147,7 +167,11 @@ func GetActiveWaterfallVersions(ctx context.Context, projectId string, opts Wate
 	pipeline := []bson.M{}
 
 	if len(opts.Variants) > 0 {
-		pipeline = append(pipeline, getBuildVariantFilterPipeline(opts.Variants, match)...)
+		buildVariantPipeline, err := getBuildVariantFilterPipeline(ctx, opts.Variants, match, projectId)
+		if err != nil {
+			return nil, errors.Wrap(err, "creating build variant filter pipeline")
+		}
+		pipeline = append(pipeline, buildVariantPipeline...)
 	} else {
 		pipeline = append(pipeline, bson.M{"$match": match})
 	}
