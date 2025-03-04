@@ -2,11 +2,12 @@
     "tests": [
         {
             "query_file": "terminate_host.graphql",
+            "test_user_id": "regular_user",
             "result": {
                 "data": null,
                 "errors": [
                   {
-                    "message": "user 'testuser' does not have permission to access host 'i-085085e236d598a60'",
+                    "message": "user 'regular_user' does not have permission to access host 'i-085085e236d598a60'",
                     "path": [
                       "updateSpawnHostStatus",
                       "updateSpawnHostStatusInput",
@@ -21,11 +22,12 @@
         },
         {
             "query_file": "stop_host.graphql",
+            "test_user_id": "regular_user",
             "result": {
                 "data": null,
                 "errors": [
                   {
-                    "message": "user 'testuser' does not have permission to access host 'i-085085e236d598a60'",
+                    "message": "user 'regular_user' does not have permission to access host 'i-085085e236d598a60'",
                     "path": [
                       "updateSpawnHostStatus",
                       "updateSpawnHostStatusInput",

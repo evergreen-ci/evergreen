@@ -251,12 +251,12 @@ func TestRequireHostAccess(t *testing.T) {
 		"ViewFailsWhenUserDoesNotHaveViewPermission": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (interface{}, error), config Config, usr *user.DBUser) {
 			obj := interface{}(map[string]interface{}{"hostId": "host1"})
 			_, err := config.Directives.RequireHostAccess(ctx, obj, next, HostAccessLevelView)
-			assert.EqualError(t, err, "input: user 'testuser' does not have permission to access host 'host1'")
+			assert.EqualError(t, err, "input: user 'test_user' does not have permission to access host 'host1'")
 		},
 		"EditFailsWhenUserDoesNotHaveEditPermission": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (interface{}, error), config Config, usr *user.DBUser) {
 			obj := interface{}(map[string]interface{}{"hostId": "host1"})
 			_, err := config.Directives.RequireHostAccess(ctx, obj, next, HostAccessLevelEdit)
-			assert.EqualError(t, err, "input: user 'testuser' does not have permission to access host 'host1'")
+			assert.EqualError(t, err, "input: user 'test_user' does not have permission to access host 'host1'")
 		},
 		"ViewSucceedsWhenUserHasViewPermission": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (interface{}, error), config Config, usr *user.DBUser) {
 			assert.NoError(t, usr.AddRole("view_host-id"))
@@ -329,7 +329,7 @@ func TestRequireHostAccess(t *testing.T) {
 			assert.NoError(t, h1.Insert(ctx))
 			h2 := host.Host{
 				Id:        "host2",
-				StartedBy: "testuser",
+				StartedBy: testUser,
 				Distro: distro.Distro{
 					Id: "distro-id",
 				},
