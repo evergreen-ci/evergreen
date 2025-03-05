@@ -66,6 +66,12 @@ const (
 
 	// EndTaskMessageLimit is the length limit of a user-defined end task response.
 	EndTaskMessageLimit = 500
+
+	// MaxTaskDirCleanupFailures is the maximum number of times the agent can
+	// fail to clean up the task directory before the host is declared
+	// unhealthy. This is to reduce the likelihood of later tasks failing due to
+	// lack of disk space from task directories that were left behind.
+	MaxTaskDirCleanupFailures = 3
 )
 
 // TimeoutType indicates the type of task timeout.

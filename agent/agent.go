@@ -60,9 +60,12 @@ type Agent struct {
 	// completion.
 	addMetadataTagResp  func(*triggerAddMetadataTagResp)
 	addMetadataTagMutex sync.RWMutex
-	tracer              trace.Tracer
-	otelGrpcConn        *grpc.ClientConn
-	closers             []closerOp
+	// numTaskDirCleanupFailures is the number of times the agent has tried and
+	// failed to clean up the task directory.
+	numTaskDirCleanupFailures int
+	tracer                    trace.Tracer
+	otelGrpcConn              *grpc.ClientConn
+	closers                   []closerOp
 }
 
 // Options contains startup options for an Agent.
@@ -220,7 +223,7 @@ func (a *Agent) Start(ctx context.Context) error {
 		return errors.Wrap(err, "starting status server")
 	}
 	if a.opts.Cleanup {
-		a.tryCleanupDirectory(a.opts.WorkingDirectory)
+		a.tryCleanupDirectory(ctx, a.opts.WorkingDirectory)
 	}
 
 	return errors.Wrap(a.loop(ctx), "executing main agent loop")
@@ -901,7 +904,7 @@ func (a *Agent) runPostOrTeardownTaskCommands(ctx context.Context, tc *taskConte
 }
 
 func (a *Agent) runTeardownGroupCommands(ctx context.Context, tc *taskContext) {
-	defer a.removeTaskDirectory(tc)
+	defer a.removeTaskDirectory(ctx, tc)
 	if tc.taskConfig == nil {
 		return
 	}
@@ -1243,6 +1246,8 @@ func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupC
 		if err := agentutil.KillSpawnedProcs(ctx, tc.task.ID, tc.taskConfig.WorkDir, tc.taskConfig.Distro.ExecUser, logger); err != nil {
 			// If the host is in a state where ps is timing out we need human intervention.
 			if psErr := errors.Cause(err); psErr == agentutil.ErrPSTimeout {
+				// kim: NOTE: can reuse DisableHost if num cleanup failures
+				// exceeds limit.
 				disableErr := a.comm.DisableHost(ctx, a.opts.HostID, apimodels.DisableInfo{Reason: psErr.Error()})
 				logger.CriticalWhen(disableErr != nil, errors.Wrap(err, "disabling host due to ps timeout"))
 			}

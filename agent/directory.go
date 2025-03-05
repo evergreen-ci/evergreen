@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
@@ -9,7 +10,10 @@ import (
 	"os/user"
 	"path/filepath"
 	"strings"
+	"time"
 
+	"github.com/evergreen-ci/evergreen/agent/globals"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
@@ -56,7 +60,7 @@ func (a *Agent) createTaskDirectory(tc *taskContext, taskDir string) (string, er
 // was executing. It does not return an error because it is executed at the end of
 // a task run, and the agent loop will start another task regardless of how this
 // exits.
-func (a *Agent) removeTaskDirectory(tc *taskContext) {
+func (a *Agent) removeTaskDirectory(ctx context.Context, tc *taskContext) {
 	if tc.taskConfig == nil || tc.taskConfig.WorkDir == "" {
 		grip.Info("Task directory is not set, not removing.")
 		return
@@ -73,12 +77,37 @@ func (a *Agent) removeTaskDirectory(tc *taskContext) {
 		grip.Critical(errors.Wrapf(err, "getting absolute path for task directory '%s'", dir))
 		return
 	}
-	err = a.removeAll(abs)
-	grip.Critical(errors.Wrapf(err, "removing task directory '%s'", dir))
-	grip.InfoWhen(err == nil, message.Fields{
-		"message":   "Successfully deleted directory for completed task.",
-		"directory": tc.taskConfig.WorkDir,
-	})
+	if err := a.removeAllAndCheck(ctx, abs); err != nil {
+		a.numTaskDirCleanupFailures++
+		grip.Critical(errors.Wrapf(err, "removing task directory '%s'", dir))
+	} else {
+		grip.Info(message.Fields{
+			"message":   "Successfully deleted directory for completed task.",
+			"directory": tc.taskConfig.WorkDir,
+		})
+	}
+}
+
+// removeAllAndCheck removes the directory and checks the data directory
+// usage afterwards. If the data directory is unhealthy, the host is disabled.
+func (a *Agent) removeAllAndCheck(ctx context.Context, dir string) error {
+	removeErr := a.removeAll(dir)
+	if removeErr == nil {
+		return nil
+	}
+
+	a.numTaskDirCleanupFailures++
+
+	checkCtx, checkCancel := context.WithTimeout(ctx, time.Minute)
+	defer checkCancel()
+	if err := a.checkDataDirectoryHealth(checkCtx); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":               "failed to check data directory usage",
+			"unremovable_directory": dir,
+		}))
+	}
+
+	return removeErr
 }
 
 // removeAll is the same as os.RemoveAll, but recursively changes permissions
@@ -113,7 +142,7 @@ func (a *Agent) removeAll(dir string) error {
 // management, and only attempts to clean up the agent's working
 // directory, so files not located in a directory may still cause
 // issues.
-func (a *Agent) tryCleanupDirectory(dir string) {
+func (a *Agent) tryCleanupDirectory(ctx context.Context, dir string) {
 	defer recovery.LogStackTraceAndContinue("clean up directories")
 
 	if dir == "" {
@@ -174,10 +203,28 @@ func (a *Agent) tryCleanupDirectory(dir string) {
 
 	grip.Infof("Attempting to clean up directory '%s'.", dir)
 	for _, p := range paths {
-		if err = a.removeAll(p); err != nil {
-			grip.Notice(errors.Wrapf(err, "removing path '%s'", p))
+		if err = a.removeAllAndCheck(ctx, p); err != nil {
+			grip.Critical(errors.Wrapf(err, "removing path '%s'", p))
 		}
 	}
+}
+
+// kim: TODO: test in staging
+func (a *Agent) checkDataDirectoryHealth(ctx context.Context) error {
+	if a.numTaskDirCleanupFailures >= globals.MaxTaskDirCleanupFailures {
+		err := a.comm.DisableHost(ctx, a.opts.HostID, apimodels.DisableInfo{
+			Reason: fmt.Sprintf("agent has tried and failed to clean up task directories %d times", a.numTaskDirCleanupFailures),
+		})
+		if err != nil {
+			return err
+		}
+	}
+
+	// TODO (DEVPROD-14995): also check remaining disk space when task directory
+	// fails to clean up. If there's too little disk space to run another task,
+	// disable the host.
+
+	return nil
 }
 
 // SetHomeDirectory sets the agent's home directory to the user's home directory
