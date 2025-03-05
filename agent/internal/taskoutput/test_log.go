@@ -109,27 +109,72 @@ func (h *testLogDirectoryHandler) run(ctx context.Context) error {
 			return nil
 		}
 
-		// TODO: probably want to only break up the file if it's large.
+		seqSize := int64(1e7)
+		fileSize := fileInfo.Size()
+		type workInfo struct {
+			sequence int
+			offset   int64
+			limit    int64
+		}
+		work := make(chan workInfo, int(math.Ceil(float64(fileSize)/float64(seqSize))))
 		var (
 			currentByte int64
 			sequence    int
 		)
-		fileSize := fileInfo.Size()
-		chunkSize := int64(math.Ceil(float64(fileSize) / float64(runtime.NumCPU())))
 		for currentByte < fileSize {
-			wg.Add(1)
-			go func(sequence int, offset, limit int64) {
-				defer func() {
-					h.logger.Task().Critical(recovery.HandlePanicWithError(recover(), nil, "ingesting test log"))
-				}()
-				defer wg.Done()
+			work <- workInfo{
+				sequence: sequence,
+				offset:   currentByte,
+				limit:    currentByte + seqSize,
+			}
 
-				h.ingest(ctx, path, sequence, offset, limit)
-			}(sequence, currentByte, currentByte+chunkSize)
-
-			currentByte += chunkSize
+			currentByte += seqSize
 			sequence++
 		}
+		close(work)
+
+		for i := 0; i < runtime.NumCPU(); i++ {
+			wg.Add(1)
+			go func() {
+				defer func() {
+					h.logger.Task().Critical(recovery.HandlePanicWithError(recover(), nil, "test log ingestion worker"))
+					wg.Done()
+				}()
+
+				for chunk := range work {
+					if err := ctx.Err(); err != nil {
+						h.logger.Execution().Warning(errors.Wrap(err, "context error test log ingestion worker"))
+						return
+					}
+
+					h.ingest(ctx, path, chunk.sequence, chunk.offset, chunk.limit)
+				}
+			}()
+		}
+
+		/*
+			// TODO: probably want to only break up the file if it's large.
+			var (
+				currentByte int64
+				sequence    int
+			)
+			fileSize := fileInfo.Size()
+			chunkSize := int64(math.Ceil(float64(fileSize) / float64(runtime.NumCPU())))
+			for currentByte < fileSize {
+				wg.Add(1)
+				go func(sequence int, offset, limit int64) {
+					defer func() {
+						h.logger.Task().Critical(recovery.HandlePanicWithError(recover(), nil, "ingesting test log"))
+					}()
+					defer wg.Done()
+
+					h.ingest(ctx, path, sequence, offset, limit)
+				}(sequence, currentByte, currentByte+chunkSize)
+
+				currentByte += chunkSize
+				sequence++
+			}
+		*/
 
 		return nil
 	})
@@ -229,7 +274,6 @@ func (h *testLogDirectoryHandler) ingest(ctx context.Context, path string, seque
 			h.logger.Task().Error(errors.Wrapf(err, "reading test log '%s'", path))
 			return
 		}
-
 		currentPos += int64(len(data)) - 1
 
 		sender.Send(message.NewDefaultMessage(level.Info, string(data)))
