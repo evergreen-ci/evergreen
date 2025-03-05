@@ -251,7 +251,7 @@ func (s *ProjectPatchByIDSuite) TestRunWithInvalidBbConfig() {
 	s.NotNil(resp.Data())
 	s.Require().Equal(http.StatusBadRequest, resp.Status())
 	errResp := (resp.Data()).(gimlet.ErrorResponse)
-	s.Equal("Must provide projects to search", errResp.Message)
+	s.Contains(errResp.Message, "validating build baron config: Must provide projects to search")
 }
 
 func (s *ProjectPatchByIDSuite) TestGitTagVersionsEnabled() {
@@ -312,7 +312,7 @@ func (s *ProjectPatchByIDSuite) TestUpdateParsleyFilters() {
 	s.NotNil(resp.Data())
 	s.Require().Equal(http.StatusBadRequest, resp.Status())
 	errResp := (resp.Data()).(gimlet.ErrorResponse)
-	s.Equal("filter expression must be non-empty", errResp.Message)
+	s.Contains(errResp.Message, "filter expression must be non-empty")
 
 	// fail - invalid regular expression
 	jsonBody = []byte(`{"parsley_filters": [{"expression": "*", "case_sensitive": true, "exact_match": false}]}`)

@@ -1,14 +1,15 @@
 package evergreen
 
 import (
+	"bytes"
 	"context"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 func TestGetSectionsBSON(t *testing.T) {
@@ -239,7 +240,9 @@ func TestOverrideConfig(t *testing.T) {
 			assert.NoError(t, err)
 			require.Len(t, newDocs, 1)
 			var doc bson.M
-			require.NoError(t, bson.Unmarshal(newDocs[0], &doc))
+			decoder := bson.NewDecoder(bson.NewDocumentReader(bytes.NewBuffer(newDocs[0])))
+			decoder.DefaultDocumentM()
+			assert.NoError(t, decoder.Decode(&doc))
 			assert.Equal(t, testCase.expected, doc)
 		})
 	}

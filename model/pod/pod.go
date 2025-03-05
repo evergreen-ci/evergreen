@@ -16,7 +16,6 @@ import (
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 // Pod represents a related collection of containers. This model holds metadata
@@ -92,7 +91,7 @@ func (o *TaskIntentPodOptions) Validate(ecsConf evergreen.ECSConfig) error {
 	}
 
 	if o.ID == "" {
-		o.ID = primitive.NewObjectID().Hex()
+		o.ID = bson.NewObjectId().Hex()
 	}
 
 	return nil

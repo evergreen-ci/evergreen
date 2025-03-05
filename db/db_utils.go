@@ -13,9 +13,9 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 var (
@@ -402,7 +402,7 @@ func UpsertContext(ctx context.Context, collection string, query interface{}, up
 	res, err := evergreen.GetEnvironment().DB().Collection(collection).UpdateOne(ctx,
 		query,
 		update,
-		options.Update().SetUpsert(true),
+		options.UpdateOne().SetUpsert(true),
 	)
 	if err != nil {
 		return nil, errors.Wrapf(err, "upserting")
@@ -525,7 +525,10 @@ func AggregateContext(ctx context.Context, collection string, pipeline interface
 // AggregateWithMaxTime runs aggregate and specifies a max query time which
 // ensures the query won't go on indefinitely when the request is cancelled.
 func AggregateWithMaxTime(collection string, pipeline interface{}, out interface{}, maxTime time.Duration) error {
-	session, database, err := GetGlobalSessionFactory().GetSession()
+	ctx, cancel := context.WithTimeout(context.Background(), maxTime)
+	defer cancel()
+
+	session, database, err := GetGlobalSessionFactory().GetContextSession(ctx)
 	if err != nil {
 		err = errors.Wrap(err, "establishing DB connection")
 		grip.Error(err)
@@ -533,7 +536,7 @@ func AggregateWithMaxTime(collection string, pipeline interface{}, out interface
 	}
 	defer session.Close()
 
-	return database.C(collection).Pipe(pipeline).MaxTime(maxTime).All(out)
+	return database.C(collection).Pipe(pipeline).All(out)
 }
 
 func transformDocument(val interface{}) (bson.Raw, error) {

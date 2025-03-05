@@ -16,8 +16,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
 // PodDispatcher represents a set of tasks that are dispatched to a set of pods
@@ -42,7 +40,7 @@ type PodDispatcher struct {
 // NewPodDispatcher returns a new pod dispatcher.
 func NewPodDispatcher(groupID string, taskIDs, podIDs []string) PodDispatcher {
 	return PodDispatcher{
-		ID:                primitive.NewObjectID().Hex(),
+		ID:                bson.NewObjectId().Hex(),
 		GroupID:           groupID,
 		PodIDs:            podIDs,
 		TaskIDs:           taskIDs,
@@ -182,17 +180,17 @@ func (pd *PodDispatcher) dispatchTaskAtomically(ctx context.Context, env evergre
 	return nil
 }
 
-func (pd *PodDispatcher) dispatchTask(env evergreen.Environment, p *pod.Pod, t *task.Task) func(mongo.SessionContext) (interface{}, error) {
-	return func(sessCtx mongo.SessionContext) (interface{}, error) {
-		if err := p.SetRunningTask(sessCtx, env, t.Id, t.Execution); err != nil {
+func (pd *PodDispatcher) dispatchTask(env evergreen.Environment, p *pod.Pod, t *task.Task) func(ctx context.Context) (interface{}, error) {
+	return func(ctx context.Context) (interface{}, error) {
+		if err := p.SetRunningTask(ctx, env, t.Id, t.Execution); err != nil {
 			return nil, errors.Wrapf(err, "setting pod's running task")
 		}
 
-		if err := t.MarkAsContainerDispatched(sessCtx, env, p.ID, p.AgentVersion); err != nil {
+		if err := t.MarkAsContainerDispatched(ctx, env, p.ID, p.AgentVersion); err != nil {
 			return nil, errors.Wrapf(err, "marking task as dispatched")
 		}
 
-		if err := pd.dequeue(sessCtx, env); err != nil {
+		if err := pd.dequeue(ctx, env); err != nil {
 			return nil, errors.Wrapf(err, "dequeueing task")
 		}
 

@@ -5,7 +5,7 @@ import (
 
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 // ParameterStoreConfig stores configuration for using SSM Parameter Store.

@@ -220,7 +220,7 @@ func Agent() cli.Command {
 	}
 }
 
-func hardShutdownForSignals(ctx context.Context, serviceCanceler context.CancelFunc, closeAgent func(ctx context.Context)) {
+func hardShutdownForSignals(ctx context.Context, serviceCanceler context.CancelFunc, closeAgent func(context.Context)) {
 	defer recovery.LogStackTraceAndExit("agent signal handler")
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGTERM)

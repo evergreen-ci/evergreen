@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -17,7 +18,6 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func TestUpsertAtomically(t *testing.T) {
@@ -59,7 +59,7 @@ func TestUpsertAtomically(t *testing.T) {
 			require.NoError(t, pd.Insert())
 
 			modified := pd
-			modified.ID = primitive.NewObjectID().Hex()
+			modified.ID = bson.NewObjectId().Hex()
 			modified.PodIDs = []string{"modified-pod0"}
 			modified.TaskIDs = []string{"modified-task0"}
 

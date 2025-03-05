@@ -7,9 +7,9 @@ import (
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 // Collection holds metadata information about parameters.
@@ -36,7 +36,7 @@ func BumpParameterRecord(ctx context.Context, db *mongo.Database, name string, l
 		"$setOnInsert": bson.M{
 			nameKey: name,
 		},
-	}, options.Update().SetUpsert(true))
+	}, options.UpdateOne().SetUpsert(true))
 	if err != nil {
 		return err
 	}

@@ -6,7 +6,7 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 const EventCollection = "events"
@@ -85,7 +85,7 @@ func (e *EventLogEntry) SetBSON(raw mgobson.Raw) error {
 		e.ID = v
 	case mgobson.ObjectId:
 		e.ID = v.Hex()
-	case primitive.ObjectID:
+	case bson.ObjectID:
 		e.ID = v.Hex()
 	default:
 		return errors.Errorf("unrecognized ID format for event %v", v)
