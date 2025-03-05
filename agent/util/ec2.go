@@ -31,20 +31,20 @@ func GetEC2InstanceID(ctx context.Context) (string, error) {
 	})
 }
 
-// GetEC2HostName returns the public host name from the metadata endpoint if
+// GetEC2Hostname returns the public host name from the metadata endpoint if
 // it's an EC2 instance.
-func GetEC2HostName(ctx context.Context) (string, error) {
+func GetEC2Hostname(ctx context.Context) (string, error) {
 	return getEC2Metadata(ctx, "public-hostname", func(resp *http.Response) (string, error) {
 		b, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return "", errors.Wrap(err, "reading response body")
 		}
 
-		hostName := string(b)
-		if hostName == "" {
-			return "", errors.New("host name from response is empty")
+		hostname := string(b)
+		if hostname == "" {
+			return "", errors.New("hostname from response is empty")
 		}
-		return hostName, nil
+		return hostname, nil
 	})
 }
 

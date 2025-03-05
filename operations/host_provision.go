@@ -134,7 +134,7 @@ func postHostIsUp(ctx context.Context, comm client.Communicator, hostID, cloudPr
 			"host_id":        hostID,
 			"cloud_provider": cloudProvider,
 		}))
-		hostname, err = agentutil.GetEC2HostName(fetchEC2InfoCtx)
+		hostname, err = agentutil.GetEC2Hostname(fetchEC2InfoCtx)
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":        "could not fetch EC2 hostname dynamically",
 			"host_id":        hostID,
