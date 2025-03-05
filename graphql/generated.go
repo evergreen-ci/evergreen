@@ -75920,7 +75920,7 @@ func (ec *executionContext) unmarshalInputCreateDistroInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"newDistroId"}
+	fieldsInOrder := [...]string{"newDistroId", "singleTaskDistro"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -75934,6 +75934,13 @@ func (ec *executionContext) unmarshalInputCreateDistroInput(ctx context.Context,
 				return it, err
 			}
 			it.NewDistroID = data
+		case "singleTaskDistro":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("singleTaskDistro"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SingleTaskDistro = data
 		}
 	}
 
