@@ -1731,8 +1731,7 @@ func SetGeneratedStepbackInfoForGenerator(ctx context.Context, taskId string, s 
 				bsonutil.GetDottedKeyName("elem", DisplayNameKey):  s.DisplayName,
 				bsonutil.GetDottedKeyName("elem", BuildVariantKey): s.BuildVariant,
 			},
-		},
-		),
+		}),
 	)
 	// If no documents were modified, fallback to adding the new StepbackInfo.
 	if r.ModifiedCount == 0 {
