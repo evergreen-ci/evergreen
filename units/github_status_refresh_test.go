@@ -112,7 +112,7 @@ func (s *githubStatusRefreshSuite) TestFetch() {
 	}
 	s.NoError(childPatch.Insert())
 	s.patchDoc.Triggers.ChildPatches = []string{childPatch.Id.Hex()}
-	s.NoError(s.patchDoc.SetChildPatches())
+	s.NoError(s.patchDoc.SetChildPatches(s.ctx))
 
 	job, ok := NewGithubStatusRefreshJob(s.patchDoc).(*githubStatusRefreshJob)
 	s.Require().NotNil(job)

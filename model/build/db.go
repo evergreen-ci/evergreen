@@ -10,7 +10,7 @@ import (
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 // The MongoDB collection for build documents.
@@ -209,8 +209,9 @@ func Find(query db.Q) ([]Build, error) {
 }
 
 // UpdateOne updates one build.
-func UpdateOne(query interface{}, update interface{}) error {
-	return db.Update(
+func UpdateOne(ctx context.Context, query interface{}, update interface{}) error {
+	return db.UpdateContext(
+		ctx,
 		Collection,
 		query,
 		update,

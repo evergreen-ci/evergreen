@@ -19,14 +19,14 @@ func (r *subscriberWrapperResolver) Subscriber(ctx context.Context, obj *model.A
 	case event.GithubPullRequestSubscriberType:
 		sub := model.APIGithubPRSubscriber{}
 		if err := mapstructure.Decode(obj.Target, &sub); err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem converting %s subscriber: %s",
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("building '%s' subscriber from service: %s",
 				event.GithubPullRequestSubscriberType, err.Error()))
 		}
 		res.GithubPRSubscriber = &sub
 	case event.GithubCheckSubscriberType:
 		sub := model.APIGithubCheckSubscriber{}
 		if err := mapstructure.Decode(obj.Target, &sub); err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem building %s subscriber from service: %s",
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("building '%s' subscriber from service: %s",
 				event.GithubCheckSubscriberType, err.Error()))
 		}
 		res.GithubCheckSubscriber = &sub
@@ -34,7 +34,7 @@ func (r *subscriberWrapperResolver) Subscriber(ctx context.Context, obj *model.A
 	case event.EvergreenWebhookSubscriberType:
 		sub := model.APIWebhookSubscriber{}
 		if err := mapstructure.Decode(obj.Target, &sub); err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem building %s subscriber from service: %s",
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("building '%s' subscriber from service: %s",
 				event.EvergreenWebhookSubscriberType, err.Error()))
 		}
 		res.WebhookSubscriber = &sub
@@ -42,7 +42,7 @@ func (r *subscriberWrapperResolver) Subscriber(ctx context.Context, obj *model.A
 	case event.JIRAIssueSubscriberType:
 		sub := &model.APIJIRAIssueSubscriber{}
 		if err := mapstructure.Decode(obj.Target, &sub); err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem building %s subscriber from service: %s",
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("building '%s' subscriber from service: %s",
 				event.JIRAIssueSubscriberType, err.Error()))
 		}
 		res.JiraIssueSubscriber = sub
@@ -53,7 +53,7 @@ func (r *subscriberWrapperResolver) Subscriber(ctx context.Context, obj *model.A
 	case event.SlackSubscriberType:
 		res.SlackSubscriber = obj.Target.(*string)
 	default:
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("encountered unknown subscriber type '%s'", subscriberType))
+		return nil, InputValidationError.Send(ctx, fmt.Sprintf("encountered unknown subscriber type '%s'", subscriberType))
 	}
 
 	return res, nil

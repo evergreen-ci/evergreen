@@ -58,11 +58,11 @@ func (s *ProjectPatchByIDSuite) SetupTest() {
 		SystemRoles: []string{"admin"},
 	}
 	s.NoError(user.Insert())
-	s.NoError(getTestProjectRef().Add(&user))
+	s.NoError(getTestProjectRef().Add(s.T().Context(), &user))
 	project2 := getTestProjectRef()
 	project2.Id = "project2"
 	project2.Identifier = "project2"
-	s.NoError(project2.Add(&user))
+	s.NoError(project2.Add(s.T().Context(), &user))
 
 	_, err := getTestVar().Upsert()
 	s.NoError(err)
@@ -251,7 +251,7 @@ func (s *ProjectPatchByIDSuite) TestRunWithInvalidBbConfig() {
 	s.NotNil(resp.Data())
 	s.Require().Equal(http.StatusBadRequest, resp.Status())
 	errResp := (resp.Data()).(gimlet.ErrorResponse)
-	s.Equal("Must provide projects to search", errResp.Message)
+	s.Contains(errResp.Message, "validating build baron config: Must provide projects to search")
 }
 
 func (s *ProjectPatchByIDSuite) TestGitTagVersionsEnabled() {
@@ -273,7 +273,7 @@ func (s *ProjectPatchByIDSuite) TestGitTagVersionsEnabled() {
 		GitTagAuthorizedUsers: []string{"special"},
 		Restricted:            utility.FalsePtr(),
 	}}
-	s.NoError(repoRef.Add(nil))
+	s.NoError(repoRef.Add(s.T().Context(), nil))
 
 	jsonBody = []byte(`{"enabled": true, "git_tag_versions_enabled": true, "aliases": [{"alias": "__git_tag", "git_tag": "my_git_tag", "variant": ".*", "task": ".*", "tag": ".*"}]}`)
 	req, _ = http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/projects/dimoxinil", bytes.NewBuffer(jsonBody))
@@ -312,7 +312,7 @@ func (s *ProjectPatchByIDSuite) TestUpdateParsleyFilters() {
 	s.NotNil(resp.Data())
 	s.Require().Equal(http.StatusBadRequest, resp.Status())
 	errResp := (resp.Data()).(gimlet.ErrorResponse)
-	s.Equal("filter expression must be non-empty", errResp.Message)
+	s.Contains(errResp.Message, "filter expression must be non-empty")
 
 	// fail - invalid regular expression
 	jsonBody = []byte(`{"parsley_filters": [{"expression": "*", "case_sensitive": true, "exact_match": false}]}`)
@@ -1068,7 +1068,7 @@ func TestDeleteProject(t *testing.T) {
 		}
 
 		projects = append(projects, project)
-		require.NoError(t, project.Add(&u))
+		require.NoError(t, project.Add(t.Context(), &u))
 	}
 
 	numAliases := 2
@@ -1246,7 +1246,7 @@ func TestDetachProjectFromRepo(t *testing.T) {
 		Repo:                  "evergreen",
 		GitTagVersionsEnabled: utility.TruePtr(),
 	}}
-	assert.NoError(t, repoRef.Add(u))
+	assert.NoError(t, repoRef.Add(t.Context(), u))
 	// assert that user _did_ have the right roles
 	assert.Contains(t, u.Roles(), serviceModel.GetRepoAdminRole(repoRef.Id))
 

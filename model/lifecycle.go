@@ -20,7 +20,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 const (
@@ -61,7 +61,7 @@ func SetVersionActivation(ctx context.Context, versionId string, active bool, ca
 	var err error
 	// If activating a task, set the ActivatedBy field to be the caller.
 	if active {
-		if err := SetVersionActivated(versionId, active); err != nil {
+		if err := SetVersionActivated(ctx, versionId, active); err != nil {
 			return errors.Wrapf(err, "setting activated for version '%s'", versionId)
 		}
 		tasksToModify, err = task.FindAll(ctx, db.Query(q).WithFields(task.IdKey, task.DependsOnKey, task.ExecutionKey, task.BuildIdKey, task.ActivatedKey))
@@ -191,8 +191,9 @@ func AbortBuild(ctx context.Context, buildId string, caller string) error {
 	return errors.Wrapf(task.AbortBuildTasks(ctx, buildId, task.AbortInfo{User: caller}), "aborting tasks for build '%s'", buildId)
 }
 
-func TryMarkVersionStarted(versionId string, startTime time.Time) error {
+func TryMarkVersionStarted(ctx context.Context, versionId string, startTime time.Time) error {
 	err := VersionUpdateOne(
+		ctx,
 		bson.M{
 			VersionIdKey:     versionId,
 			VersionStatusKey: bson.M{"$ne": evergreen.VersionStarted},
@@ -432,7 +433,7 @@ func restartTasks(ctx context.Context, allFinishedTasks []task.Task, caller, ver
 			return errors.Wrapf(err, "updating build '%s' PR status", b.Id)
 		}
 	}
-	return errors.Wrap(setVersionStatus(versionId, evergreen.VersionStarted), "changing version status")
+	return errors.Wrap(setVersionStatus(ctx, versionId, evergreen.VersionStarted), "changing version status")
 }
 
 func CreateTasksCache(tasks []task.Task) []build.TaskCache {
@@ -473,7 +474,7 @@ func RefreshTasksCache(ctx context.Context, buildId string) error {
 	}
 
 	cache := CreateTasksCache(tasks)
-	return errors.WithStack(build.SetTasksCache(buildId, cache))
+	return errors.WithStack(build.SetTasksCache(ctx, buildId, cache))
 }
 
 // addTasksToBuild creates/activates the tasks for the given existing build.
@@ -519,11 +520,11 @@ func addTasksToBuild(ctx context.Context, creationInfo TaskCreationInfo) (*build
 		}
 	}
 	if hasGitHubCheck {
-		if err := creationInfo.Build.SetIsGithubCheck(); err != nil {
+		if err := creationInfo.Build.SetIsGithubCheck(ctx); err != nil {
 			return nil, nil, errors.Wrapf(err, "setting build '%s' as a GitHub check", creationInfo.Build.Id)
 		}
 	}
-	if err := creationInfo.Build.SetHasUnfinishedEssentialTask(hasUnfinishedEssentialTask); err != nil {
+	if err := creationInfo.Build.SetHasUnfinishedEssentialTask(ctx, hasUnfinishedEssentialTask); err != nil {
 		return nil, nil, errors.Wrapf(err, "setting build '%s' as having an unfinished essential task", creationInfo.Build.Id)
 	}
 
@@ -1606,7 +1607,7 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 		return nil, nil, errors.Wrap(err, "inserting tasks")
 	}
 	numTasksModified := numEstimatedActivatedGeneratedTasks + len(newActivatedTaskIds)
-	if err = task.UpdateSchedulingLimit(creationInfo.Version.Author, creationInfo.Version.Requester, numTasksModified, true); err != nil {
+	if err = task.UpdateSchedulingLimit(ctx, creationInfo.Version.Author, creationInfo.Version.Requester, numTasksModified, true); err != nil {
 		return nil, nil, errors.Wrapf(err, "fetching user '%s' and updating their scheduling limit", creationInfo.Version.Author)
 	}
 	grip.Error(message.WrapError(batchTimeCatcher.Resolve(), message.Fields{
@@ -1616,6 +1617,7 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 	}))
 
 	err = errors.WithStack(VersionUpdateOne(
+		ctx,
 		bson.M{VersionIdKey: creationInfo.Version.Id},
 		bson.M{
 			"$push": bson.M{
@@ -1750,11 +1752,11 @@ func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationI
 		}
 	}
 	if creationInfo.ActivationInfo.hasActivationTasks() {
-		if err = creationInfo.Version.ActivateAndSetBuildVariants(); err != nil {
+		if err = creationInfo.Version.ActivateAndSetBuildVariants(ctx); err != nil {
 			return nil, nil, errors.Wrap(err, "activating version and adding batchtime tasks")
 		}
 	} else {
-		if err = creationInfo.Version.SetActivated(true); err != nil {
+		if err = creationInfo.Version.SetActivated(ctx, true); err != nil {
 			return nil, nil, errors.Wrap(err, "setting version activation to true")
 		}
 	}

@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -9,7 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 const PushlogCollection = "pushes"
@@ -58,8 +59,9 @@ func (pl *PushLog) Insert() error {
 	return db.Insert(PushlogCollection, pl)
 }
 
-func (pl *PushLog) UpdateStatus(newStatus string) error {
-	return db.Update(
+func (pl *PushLog) UpdateStatus(ctx context.Context, newStatus string) error {
+	return db.UpdateContext(
+		ctx,
 		PushlogCollection,
 		bson.M{
 			PushLogIdKey: pl.Id,

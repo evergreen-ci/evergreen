@@ -48,7 +48,7 @@ func (uis *UIServer) setRevision(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// update the latest revision to be the revision id
-	err = model.UpdateLastRevision(projectRef.Id, revision)
+	err = model.UpdateLastRevision(r.Context(), projectRef.Id, revision)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return

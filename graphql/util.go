@@ -72,10 +72,10 @@ func getGroupedFiles(ctx context.Context, name string, taskID string, execution 
 func findAllTasksByIds(ctx context.Context, taskIDs ...string) ([]task.Task, error) {
 	tasks, err := task.FindAll(ctx, db.Query(task.ByIds(taskIDs)))
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, err.Error())
+		return nil, InternalServerError.Send(ctx, err.Error())
 	}
 	if len(tasks) == 0 {
-		return nil, ResourceNotFound.Send(ctx, errors.New("tasks not found").Error())
+		return nil, ResourceNotFound.Send(ctx, "no tasks found")
 	}
 	if len(tasks) != len(taskIDs) {
 		foundTaskIds := []string{}
@@ -100,7 +100,7 @@ func setManyTasksScheduled(ctx context.Context, url string, isActive bool, taskI
 	}
 	for _, t := range tasks {
 		if evergreen.IsGithubMergeQueueRequester(t.Requester) && isActive {
-			return nil, InputValidationError.Send(ctx, "commit queue tasks cannot be manually scheduled")
+			return nil, InputValidationError.Send(ctx, "Commit queue tasks cannot be manually scheduled.")
 		}
 	}
 	if err = model.SetActiveState(ctx, usr.Username(), isActive, tasks...); err != nil {
@@ -157,16 +157,16 @@ func getDisplayStatus(v *model.Version) (string, error) {
 
 	p, err := patch.FindOneId(v.Id)
 	if err != nil {
-		return "", errors.Wrapf(err, "fetching patch '%s'", v.Id)
+		return "", errors.Wrapf(err, "finding patch '%s': %s", v.Id, err.Error())
 	}
 	if p == nil {
-		return "", errors.Errorf("patch '%s' doesn't exist", v.Id)
+		return "", errors.Errorf("patch '%s' not found", v.Id)
 	}
 	allStatuses := []string{status}
 	for _, cp := range p.Triggers.ChildPatches {
 		cpVersion, err := model.VersionFindOneId(cp)
 		if err != nil {
-			return "", errors.Wrapf(err, "fetching version for patch '%s'", v.Id)
+			return "", errors.Wrapf(err, "finding version for child patch '%s': %s", cp, err.Error())
 		}
 		if cpVersion == nil {
 			continue
@@ -228,11 +228,11 @@ func userCanModifyPatch(u *user.DBUser, patch patch.Patch) bool {
 func getPatchProjectVariantsAndTasksForUI(ctx context.Context, apiPatch *restModel.APIPatch) (*PatchProject, error) {
 	p, err := apiPatch.ToService()
 	if err != nil {
-		return nil, errors.Wrap(err, "building patch")
+		return nil, errors.Wrap(err, fmt.Sprintf("converting APIPatch '%s' to service", utility.FromStringPtr(apiPatch.Id)))
 	}
 	patchProjectVariantsAndTasks, err := model.GetVariantsAndTasksFromPatchProject(ctx, evergreen.GetEnvironment().Settings(), &p)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting project variants and tasks for patch %s: %s", *apiPatch.Id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting project variants and tasks for patch '%s': %s", utility.FromStringPtr(apiPatch.Id), err.Error()))
 	}
 
 	// convert variants to UI data structure
@@ -303,7 +303,7 @@ func getAPITaskFromTask(ctx context.Context, url string, task task.Task) (*restM
 		LogURL: url,
 	})
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error building apiTask from task %s: %s", task.Id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' to APITask: %s", task.Id, err.Error()))
 	}
 	return &apiTask, nil
 }
@@ -312,14 +312,14 @@ func getAPITaskFromTask(ctx context.Context, url string, task task.Task) (*restM
 func getTask(ctx context.Context, taskID string, execution *int, apiURL string) (*restModel.APITask, error) {
 	dbTask, err := task.FindOneIdAndExecutionWithDisplayStatus(ctx, taskID, execution)
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, err.Error())
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding task '%s': %s", taskID, err.Error()))
 	}
 	if dbTask == nil {
-		return nil, errors.Errorf("unable to find task %s", taskID)
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("task '%s' not found", taskID))
 	}
 	apiTask, err := getAPITaskFromTask(ctx, apiURL, *dbTask)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, "error converting task")
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' to APITask: %s", taskID, err.Error()))
 	}
 	return apiTask, err
 }
@@ -338,7 +338,7 @@ func generateBuildVariants(ctx context.Context, versionId string, buildVariantOp
 	if utility.FromBoolPtr(buildVariantOpts.IncludeBaseTasks) {
 		baseVersion, err := model.FindBaseVersionForVersion(versionId)
 		if err != nil {
-			return nil, errors.Wrapf(err, "Error getting base version for version '%s'", versionId)
+			return nil, errors.Wrapf(err, "finding base version for version '%s'", versionId)
 		}
 		if baseVersion != nil {
 			baseVersionID = baseVersion.Id
@@ -356,7 +356,7 @@ func generateBuildVariants(ctx context.Context, versionId string, buildVariantOp
 
 	tasks, _, err := task.GetTasksByVersion(ctx, versionId, opts)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error getting tasks for patch '%s'", versionId)
+		return nil, errors.Wrapf(err, "getting tasks for version '%s'", versionId)
 	}
 
 	for _, t := range tasks {
@@ -365,7 +365,7 @@ func generateBuildVariants(ctx context.Context, versionId string, buildVariantOp
 			LogURL: logURL,
 		})
 		if err != nil {
-			return nil, errors.Wrapf(err, "error building apiTask from task: '%s'", t.Id)
+			return nil, errors.Wrapf(err, "converting task '%s' to APITask: %s", t.Id, err.Error())
 		}
 		variantDisplayName[t.BuildVariant] = t.BuildVariantDisplayName
 		tasksByVariant[t.BuildVariant] = append(tasksByVariant[t.BuildVariant], &apiTask)
@@ -394,10 +394,10 @@ func generateBuildVariants(ctx context.Context, versionId string, buildVariantOp
 func modifyVersionHandler(ctx context.Context, versionID string, modification model.VersionModification) error {
 	v, err := model.VersionFindOneId(versionID)
 	if err != nil {
-		return ResourceNotFound.Send(ctx, fmt.Sprintf("error finding version %s: %s", versionID, err.Error()))
+		return ResourceNotFound.Send(ctx, fmt.Sprintf("finding version '%s': %s", versionID, err.Error()))
 	}
 	if v == nil {
-		return ResourceNotFound.Send(ctx, fmt.Sprintf("Unable to find version with id: `%s`", versionID))
+		return ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", versionID))
 	}
 	user := mustHaveUser(ctx)
 	httpStatus, err := model.ModifyVersion(ctx, *v, *user, modification)
@@ -494,33 +494,33 @@ func getResourceTypeAndIdFromSubscriptionSelectors(ctx context.Context, selector
 		}
 	}
 	if idType == "" || id == "" {
-		return "", "", InputValidationError.Send(ctx, "Selectors do not indicate a target version, build, project, or task ID")
+		return "", "", InputValidationError.Send(ctx, "selectors do not include a target version, build, project, or task ID")
 	}
 	return idType, id, nil
 }
 
 func savePublicKey(ctx context.Context, publicKeyInput PublicKeyInput) error {
 	if doesPublicKeyNameAlreadyExist(ctx, publicKeyInput.Name) {
-		return InputValidationError.Send(ctx, fmt.Sprintf("Provided key name, %s, already exists.", publicKeyInput.Name))
+		return InputValidationError.Send(ctx, fmt.Sprintf("provided key name '%s' already exists", publicKeyInput.Name))
 	}
 	err := verifyPublicKey(ctx, publicKeyInput)
 	if err != nil {
 		return err
 	}
-	err = mustHaveUser(ctx).AddPublicKey(publicKeyInput.Name, publicKeyInput.Key)
+	err = mustHaveUser(ctx).AddPublicKey(ctx, publicKeyInput.Name, publicKeyInput.Key)
 	if err != nil {
-		return InternalServerError.Send(ctx, fmt.Sprintf("Error saving public key: %s", err.Error()))
+		return InternalServerError.Send(ctx, fmt.Sprintf("saving public key: %s", err.Error()))
 	}
 	return nil
 }
 
 func verifyPublicKey(ctx context.Context, publicKey PublicKeyInput) error {
 	if publicKey.Name == "" {
-		return InputValidationError.Send(ctx, "Provided public key name cannot be empty.")
+		return InputValidationError.Send(ctx, "public key name cannot be empty")
 	}
 	_, _, _, _, err := ssh.ParseAuthorizedKey([]byte(publicKey.Key))
 	if err != nil {
-		return InputValidationError.Send(ctx, fmt.Sprintf("Provided public key is invalid : %s", err.Error()))
+		return InputValidationError.Send(ctx, fmt.Sprintf("provided public key is invalid: %s", err.Error()))
 	}
 	return nil
 }
@@ -580,7 +580,7 @@ func mustHaveUser(ctx context.Context) *user.DBUser {
 
 func validateVolumeExpirationInput(ctx context.Context, expirationTime *time.Time, noExpiration *bool) error {
 	if expirationTime != nil && noExpiration != nil && *noExpiration {
-		return InputValidationError.Send(ctx, "Cannot apply an expiration time AND set volume as non-expirable")
+		return InputValidationError.Send(ctx, "cannot apply an expiration time AND set volume as non-expirable")
 	}
 	return nil
 }
@@ -590,16 +590,16 @@ func validateVolumeName(ctx context.Context, name *string) error {
 		return nil
 	}
 	if *name == "" {
-		return InputValidationError.Send(ctx, "Name cannot be empty.")
+		return InputValidationError.Send(ctx, "name cannot be empty")
 	}
 	usr := mustHaveUser(ctx)
-	myVolumes, err := host.FindSortedVolumesByUser(usr.Id)
+	myVolumes, err := host.FindSortedVolumesByUser(ctx, usr.Id)
 	if err != nil {
 		return err
 	}
 	for _, vol := range myVolumes {
 		if *name == vol.ID || *name == vol.DisplayName {
-			return InputValidationError.Send(ctx, "The provided volume name is already in use")
+			return InputValidationError.Send(ctx, "provided volume name is already in use")
 		}
 	}
 	return nil
@@ -614,7 +614,7 @@ func applyVolumeOptions(ctx context.Context, volume host.Volume, volumeOptions r
 		}
 		err = mgr.ModifyVolume(ctx, &volume, &volumeOptions)
 		if err != nil {
-			return InternalServerError.Send(ctx, fmt.Sprintf("Unable to apply expiration options to volume %s: %s", volume.ID, err.Error()))
+			return InternalServerError.Send(ctx, fmt.Sprintf("applying expiration options to volume '%s': %s", volume.ID, err.Error()))
 		}
 	}
 	return nil
@@ -631,7 +631,7 @@ func setVersionActivationStatus(ctx context.Context, version *model.Version) err
 	if err != nil {
 		return errors.Wrapf(err, "getting tasks for version '%s'", version.Id)
 	}
-	return errors.Wrapf(version.SetActivated(task.AnyActiveTasks(tasks)), "Updating version activated status for `%s`", version.Id)
+	return errors.Wrapf(version.SetActivated(ctx, task.AnyActiveTasks(tasks)), "updating version activated status for '%s'", version.Id)
 }
 
 func isPopulated(buildVariantOptions *BuildVariantOptions) bool {
@@ -644,10 +644,10 @@ func isPopulated(buildVariantOptions *BuildVariantOptions) bool {
 func getRedactedAPIVarsForProject(ctx context.Context, projectId string) (*restModel.APIProjectVars, error) {
 	vars, err := model.FindOneProjectVars(projectId)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding project vars for '%s': %s", projectId, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding vars for project '%s': %s", projectId, err.Error()))
 	}
 	if vars == nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("vars for '%s' don't exist", projectId))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("vars for project '%s' not found", projectId))
 	}
 	vars = vars.RedactPrivateVars()
 	res := &restModel.APIProjectVars{}
@@ -658,7 +658,7 @@ func getRedactedAPIVarsForProject(ctx context.Context, projectId string) (*restM
 func getAPIAliasesForProject(ctx context.Context, projectId string) ([]*restModel.APIProjectAlias, error) {
 	aliases, err := model.FindAliasesForProjectFromDb(projectId)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding aliases for project: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding aliases for project '%s': %s", projectId, err.Error()))
 	}
 	res := []*restModel.APIProjectAlias{}
 	for _, alias := range aliases {
@@ -672,14 +672,14 @@ func getAPIAliasesForProject(ctx context.Context, projectId string) ([]*restMode
 func getAPISubscriptionsForOwner(ctx context.Context, ownerId string, ownerType event.OwnerType) ([]*restModel.APISubscription, error) {
 	subscriptions, err := event.FindSubscriptionsByOwner(ownerId, ownerType)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("error finding subscription for project: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding subscription for owner '%s' and type '%s': %s", ownerId, ownerType, err.Error()))
 	}
 
 	res := []*restModel.APISubscription{}
 	for _, sub := range subscriptions {
 		apiSubscription := restModel.APISubscription{}
 		if err = apiSubscription.BuildFromService(sub); err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem building APISubscription %s from service: %s",
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting subscription '%s' to APISubscription: %s",
 				sub.ID, err.Error()))
 		}
 		res = append(res, &apiSubscription)
@@ -714,7 +714,7 @@ func groupProjects(projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*Gr
 
 		apiProjectRef := restModel.APIProjectRef{}
 		if err := apiProjectRef.BuildFromService(p); err != nil {
-			return nil, errors.Wrap(err, "error building APIProjectRef from service")
+			return nil, errors.Wrap(err, fmt.Sprintf("converting project '%s' to APIProjectRef", p.Id))
 		}
 
 		if projs, ok := groupsMap[groupName]; ok {
@@ -748,7 +748,7 @@ func groupProjects(projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*Gr
 			} else {
 				apiRepoRef := restModel.APIProjectRef{}
 				if err := apiRepoRef.BuildFromService(repoRef.ProjectRef); err != nil {
-					return nil, errors.Wrap(err, "error building the repo's ProjectRef from service")
+					return nil, errors.Wrap(err, fmt.Sprintf("converting repo '%s' to APIProjectRef", repoRef.ProjectRef.Id))
 				}
 				gp.Repo = &apiRepoRef
 				if repoRef.ProjectRef.DisplayName != "" {
@@ -816,10 +816,10 @@ func getHostRequestOptions(ctx context.Context, usr *user.DBUser, spawnHostInput
 	}
 	dist, err := distro.FindOneId(ctx, spawnHostInput.DistroID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("trying to find distro with id: %s, err:  `%s`", spawnHostInput.DistroID, err))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding distro '%s': %s", spawnHostInput.DistroID, err.Error()))
 	}
 	if dist == nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Could not find Distro with id: %s", spawnHostInput.DistroID))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("distro '%s' not found", spawnHostInput.DistroID))
 	}
 
 	options := &restModel.HostRequestOptions{
@@ -859,23 +859,23 @@ func getHostRequestOptions(ctx context.Context, usr *user.DBUser, spawnHostInput
 	if spawnHostInput.TaskID != nil && *spawnHostInput.TaskID != "" {
 		options.TaskID = *spawnHostInput.TaskID
 		if t, err = task.FindOneId(ctx, *spawnHostInput.TaskID); err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding task %s: %s", *spawnHostInput.TaskID, err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding task '%s': %s", *spawnHostInput.TaskID, err.Error()))
 		}
 	}
 
 	if utility.FromBoolPtr(spawnHostInput.UseProjectSetupScript) {
 		if t == nil {
-			return nil, ResourceNotFound.Send(ctx, "A valid task id must be supplied when useProjectSetupScript is set to true")
+			return nil, InputValidationError.Send(ctx, "A valid task ID must be supplied when useProjectSetupScript is set to true.")
 		}
 		options.UseProjectSetupScript = *spawnHostInput.UseProjectSetupScript
 	}
 
 	if utility.FromBoolPtr(spawnHostInput.SpawnHostsStartedByTask) {
 		if t == nil {
-			return nil, ResourceNotFound.Send(ctx, "A valid task id must be supplied when SpawnHostsStartedByTask is set to true")
+			return nil, InputValidationError.Send(ctx, "A valid task ID must be supplied when SpawnHostsStartedByTask is set to true.")
 		}
 		if err = data.CreateHostsFromTask(ctx, evergreen.GetEnvironment(), t, *usr, spawnHostInput.PublicKey.Key); err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("spawning hosts from task %s: %s", *spawnHostInput.TaskID, err))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("spawning hosts from task '%s': %s", *spawnHostInput.TaskID, err.Error()))
 		}
 	}
 	return options, nil
@@ -884,14 +884,14 @@ func getHostRequestOptions(ctx context.Context, usr *user.DBUser, spawnHostInput
 func getProjectMetadata(ctx context.Context, projectId *string, patchId *string) (*restModel.APIProjectRef, error) {
 	projectRef, err := model.FindMergedProjectRef(*projectId, *patchId, false)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding project ref for project `%s`: %s", *projectId, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding merged project ref for project '%s': %s", utility.FromStringPtr(projectId), err.Error()))
 	}
 	if projectRef == nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding project ref for project `%s`: %s", *projectId, "Project not found"))
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("merged project ref for project '%s' not found", utility.FromStringPtr(projectId)))
 	}
 	apiProjectRef := restModel.APIProjectRef{}
 	if err = apiProjectRef.BuildFromService(*projectRef); err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APIProjectRef from service for `%s`: %s", projectRef.Id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting project '%s' to APIProjectRef: %s", projectRef.Id, err.Error()))
 	}
 	return &apiProjectRef, nil
 }
@@ -903,7 +903,7 @@ func getProjectMetadata(ctx context.Context, projectId *string, patchId *string)
 func getTaskLogs(ctx context.Context, obj *TaskLogs, logType taskoutput.TaskLogType) ([]*apimodels.LogMessage, error) {
 	dbTask, err := task.FindOneIdAndExecution(ctx, obj.TaskID, obj.Execution)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Finding task '%s': %s", obj.TaskID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding task '%s': %s", obj.TaskID, err.Error()))
 	}
 	if evergreen.IsUnstartedTaskStatus(dbTask.Status) {
 		return []*apimodels.LogMessage{}, nil
@@ -914,12 +914,12 @@ func getTaskLogs(ctx context.Context, obj *TaskLogs, logType taskoutput.TaskLogT
 		TailN:   100,
 	})
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Getting logs for task '%s': %s", dbTask.Id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting logs for task '%s': %s", dbTask.Id, err.Error()))
 	}
 
 	lines, err := apimodels.ReadLogToSlice(it)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Reading logs for task '%s': %s", dbTask.Id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("reading logs for task '%s': %s", dbTask.Id, err.Error()))
 	}
 
 	return lines, nil
@@ -998,13 +998,13 @@ func getBaseTaskTestResultsOptions(ctx context.Context, dbTask *task.Task) ([]te
 		baseTask, err = dbTask.FindTaskOnBaseCommit(ctx)
 	}
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error finding base task for task '%s': %s", dbTask.Id, err))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding base task for task '%s': %s", dbTask.Id, err.Error()))
 	}
 
 	if baseTask != nil && baseTask.ResultsService == dbTask.ResultsService {
 		taskOpts, err = baseTask.CreateTestResultsTaskOptions(ctx)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error creating test results task options for base task '%s': %s", baseTask.Id, err))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("creating test results task options for base task '%s': %s", baseTask.Id, err.Error()))
 		}
 	}
 
@@ -1038,7 +1038,7 @@ func handleDistroOnSaveOperation(ctx context.Context, distroID string, onSave Di
 			}
 		}
 		if len(failed) > 0 {
-			return len(hosts) - len(failed), errors.New(fmt.Sprintf("failed to mark the following hosts for reprovision: %s", strings.Join(failed, ", ")))
+			return len(hosts) - len(failed), errors.New(fmt.Sprintf("marking the following hosts for reprovision: %s", strings.Join(failed, ", ")))
 		}
 	case DistroOnSaveOperationRestartJasper:
 		failed := []string{}
@@ -1048,7 +1048,7 @@ func handleDistroOnSaveOperation(ctx context.Context, distroID string, onSave Di
 			}
 		}
 		if len(failed) > 0 {
-			return len(hosts) - len(failed), errors.New(fmt.Sprintf("failed to mark the following hosts for Jasper service restart: %s", strings.Join(failed, ", ")))
+			return len(hosts) - len(failed), errors.New(fmt.Sprintf("marking the following hosts for Jasper service restart: %s", strings.Join(failed, ", ")))
 		}
 	}
 
@@ -1258,13 +1258,14 @@ func getProjectPermissionLevel(projectPermission ProjectPermission, access Acces
 
 func isPatchAuthorForTask(ctx context.Context, obj *restModel.APITask) (bool, error) {
 	authUser := gimlet.GetUser(ctx)
+	patchID := utility.FromStringPtr(obj.Version)
 	if utility.StringSliceContains(evergreen.PatchRequesters, utility.FromStringPtr(obj.Requester)) {
-		p, err := patch.FindOneId(utility.FromStringPtr(obj.Version))
+		p, err := patch.FindOneId(patchID)
 		if err != nil {
-			return false, InternalServerError.Send(ctx, fmt.Sprintf("finding patch for task: %s", err.Error()))
+			return false, InternalServerError.Send(ctx, fmt.Sprintf("finding patch '%s': %s", patchID, err.Error()))
 		}
 		if p == nil {
-			return false, InternalServerError.Send(ctx, "patch for task doesn't exist")
+			return false, ResourceNotFound.Send(ctx, fmt.Sprintf("patch '%s' not found", patchID))
 		}
 		if p.Author == authUser.Username() {
 			return true, nil
@@ -1308,7 +1309,7 @@ func annotationPermissionHelper(ctx context.Context, taskID string, execution *i
 		return err
 	}
 	if !canModify {
-		return Forbidden.Send(ctx, "insufficient permission for modifying annotation")
+		return Forbidden.Send(ctx, fmt.Sprintf("not authorized to modify annotation for task '%s'", taskID))
 	}
 	return nil
 }
@@ -1365,7 +1366,7 @@ func getRevisionOrder(revision string, projectId string, limit int) (int, error)
 
 	found, err := model.VersionFindOne(model.VersionByProjectIdAndRevisionPrefix(projectId, revision))
 	if err != nil {
-		return 0, errors.New(fmt.Sprintf("getting version with revision '%s': %s", revision, err))
+		return 0, errors.New(fmt.Sprintf("finding version with revision '%s': %s", revision, err))
 	} else if found == nil {
 		return 0, errors.New(fmt.Sprintf("version with revision '%s' not found", revision))
 	}

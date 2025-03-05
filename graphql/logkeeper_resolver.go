@@ -2,7 +2,6 @@ package graphql
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/plank"
@@ -12,7 +11,7 @@ import (
 func (r *logkeeperBuildResolver) Task(ctx context.Context, obj *plank.Build) (*model.APITask, error) {
 	task, err := getTask(ctx, obj.TaskID, &obj.TaskExecution, r.sc.GetURL())
 	if err != nil {
-		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("Finding task %s for buildId: %s: %s", obj.TaskID, obj.ID, err.Error()))
+		return nil, err
 	}
 	return task, nil
 }

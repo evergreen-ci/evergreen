@@ -14,7 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/stretchr/testify/suite"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 func TestPatchTriggers(t *testing.T) {
@@ -163,7 +163,7 @@ func (s *patchSuite) TestAllTriggers() {
 
 	s.patch.Status = evergreen.VersionSucceeded
 	s.data.Status = evergreen.VersionSucceeded
-	s.NoError(db.Update(patch.Collection, bson.M{"_id": s.patch.Id}, &s.patch))
+	s.NoError(db.ReplaceContext(s.ctx, patch.Collection, bson.M{"_id": s.patch.Id}, &s.patch))
 
 	n, err = NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)
@@ -171,7 +171,7 @@ func (s *patchSuite) TestAllTriggers() {
 
 	s.patch.Status = evergreen.VersionFailed
 	s.data.Status = evergreen.VersionFailed
-	s.NoError(db.Update(patch.Collection, bson.M{"_id": s.patch.Id}, &s.patch))
+	s.NoError(db.ReplaceContext(s.ctx, patch.Collection, bson.M{"_id": s.patch.Id}, &s.patch))
 
 	n, err = NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)

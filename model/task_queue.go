@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
@@ -10,7 +11,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 const (
@@ -446,7 +447,7 @@ func FindDistroSecondaryTaskQueue(distroID string) (TaskQueue, error) {
 
 // pull out the task with the specified id from both the in-memory and db
 // versions of the task queue
-func (tq *TaskQueue) DequeueTask(taskId string) error {
+func (tq *TaskQueue) DequeueTask(ctx context.Context, taskId string) error {
 	// first, remove it from the in-memory queue if it is present
 outer:
 	for {
@@ -464,7 +465,7 @@ outer:
 	// only no longer be present after the TTL has passed, and each app server
 	// has re-created its in-memory queue.
 
-	err := dequeue(taskId, tq.Distro)
+	err := dequeue(ctx, taskId, tq.Distro)
 	if adb.ResultsNotFound(err) {
 		return nil
 	}
@@ -472,10 +473,11 @@ outer:
 	return errors.WithStack(err)
 }
 
-func dequeue(taskId, distroId string) error {
+func dequeue(ctx context.Context, taskId, distroId string) error {
 	itemKey := bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemIdKey)
 
-	return errors.WithStack(db.Update(
+	return errors.WithStack(db.UpdateContext(
+		ctx,
 		TaskQueuesCollection,
 		bson.M{
 			taskQueueDistroKey: distroId,

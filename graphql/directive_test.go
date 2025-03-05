@@ -261,17 +261,17 @@ func TestRequireDistroAccess(t *testing.T) {
 	assert.EqualError(t, err, "input: user 'test_user' does not have create distro permissions")
 
 	// superuser should be successful for create with no distro ID specified
-	require.NoError(t, usr.AddRole("superuser"))
+	require.NoError(t, usr.AddRole(t.Context(), "superuser"))
 
 	res, err := config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessCreate)
 	assert.NoError(t, err)
 	assert.Nil(t, res)
 	assert.Equal(t, 1, callCount)
 
-	require.NoError(t, usr.RemoveRole("superuser"))
+	require.NoError(t, usr.RemoveRole(t.Context(), "superuser"))
 
 	// superuser_distro_access is successful for admin, edit, view
-	require.NoError(t, usr.AddRole("superuser_distro_access"))
+	require.NoError(t, usr.AddRole(t.Context(), "superuser_distro_access"))
 
 	obj = interface{}(map[string]interface{}{"distroId": "distro-id"})
 	res, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessAdmin)
@@ -289,10 +289,10 @@ func TestRequireDistroAccess(t *testing.T) {
 	assert.Nil(t, res)
 	assert.Equal(t, 4, callCount)
 
-	require.NoError(t, usr.RemoveRole("superuser_distro_access"))
+	require.NoError(t, usr.RemoveRole(t.Context(), "superuser_distro_access"))
 
 	// admin access is successful for admin, edit, view
-	require.NoError(t, usr.AddRole("admin_distro-id"))
+	require.NoError(t, usr.AddRole(t.Context(), "admin_distro-id"))
 
 	res, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessAdmin)
 	assert.NoError(t, err)
@@ -309,10 +309,10 @@ func TestRequireDistroAccess(t *testing.T) {
 	assert.Nil(t, res)
 	assert.Equal(t, 7, callCount)
 
-	require.NoError(t, usr.RemoveRole("admin_distro-id"))
+	require.NoError(t, usr.RemoveRole(t.Context(), "admin_distro-id"))
 
 	// edit access fails for admin, is successful for edit & view
-	require.NoError(t, usr.AddRole("edit_distro-id"))
+	require.NoError(t, usr.AddRole(t.Context(), "edit_distro-id"))
 
 	res, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessAdmin)
 	assert.Nil(t, res)
@@ -329,10 +329,10 @@ func TestRequireDistroAccess(t *testing.T) {
 	assert.Nil(t, res)
 	assert.Equal(t, 9, callCount)
 
-	require.NoError(t, usr.RemoveRole("edit_distro-id"))
+	require.NoError(t, usr.RemoveRole(t.Context(), "edit_distro-id"))
 
 	// view access fails for admin & edit, is successful for view
-	require.NoError(t, usr.AddRole("view_distro-id"))
+	require.NoError(t, usr.AddRole(t.Context(), "view_distro-id"))
 
 	_, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessAdmin)
 	assert.Equal(t, 9, callCount)
@@ -347,7 +347,7 @@ func TestRequireDistroAccess(t *testing.T) {
 	assert.Nil(t, res)
 	assert.Equal(t, 10, callCount)
 
-	require.NoError(t, usr.RemoveRole("view_distro-id"))
+	require.NoError(t, usr.RemoveRole(t.Context(), "view_distro-id"))
 
 	// no access fails all query attempts
 	_, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessAdmin)
@@ -407,7 +407,7 @@ func TestRequireProjectAdmin(t *testing.T) {
 	require.NoError(t, err)
 
 	// superuser should always be successful, no matter the resolver
-	err = usr.AddRole("superuser")
+	err = usr.AddRole(t.Context(), "superuser")
 	require.NoError(t, err)
 
 	res, err := config.Directives.RequireProjectAdmin(ctx, obj, next)
@@ -415,7 +415,7 @@ func TestRequireProjectAdmin(t *testing.T) {
 	assert.Nil(t, res)
 	assert.Equal(t, 1, callCount)
 
-	err = usr.RemoveRole("superuser")
+	err = usr.RemoveRole(t.Context(), "superuser")
 	require.NoError(t, err)
 
 	// CreateProject - permission denied
@@ -434,7 +434,7 @@ func TestRequireProjectAdmin(t *testing.T) {
 	assert.Equal(t, 1, callCount)
 
 	// CreateProject - successful
-	err = usr.AddRole("admin_project")
+	err = usr.AddRole(t.Context(), "admin_project")
 	require.NoError(t, err)
 	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
 	assert.NoError(t, err)
@@ -525,7 +525,7 @@ func TestRequireProjectAdmin(t *testing.T) {
 			"projectIdentifier": "project_identifier",
 		},
 	}
-	require.NoError(t, usr.RemoveRole("admin_project"))
+	require.NoError(t, usr.RemoveRole(t.Context(), "admin_project"))
 	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
 	assert.EqualError(t, err, "input: user test_user does not have permission to access the SetLastRevision resolver")
 	assert.Nil(t, res)
@@ -628,7 +628,7 @@ func TestRequireProjectSettingsAccess(t *testing.T) {
 	assert.Nil(t, res)
 	assert.Equal(t, 0, callCount)
 
-	err = usr.AddRole("view_project")
+	err = usr.AddRole(t.Context(), "view_project")
 	require.NoError(t, err)
 
 	res, err = config.Directives.RequireProjectSettingsAccess(ctx, validApiProjectSettings, next)

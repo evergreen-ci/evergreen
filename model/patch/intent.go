@@ -1,9 +1,11 @@
 package patch
 
 import (
+	"context"
+
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 // Intent represents an intent to create a patch build and is processed by an amboy queue.
@@ -16,7 +18,7 @@ type Intent interface {
 	Insert() error
 
 	// SetProcessed should be called by an amboy queue after creating a patch from an intent.
-	SetProcessed() error
+	SetProcessed(ctx context.Context) error
 
 	// IsProcessed returns whether a patch exists for this intent.
 	IsProcessed() bool

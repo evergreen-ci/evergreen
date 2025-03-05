@@ -7,7 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/stretchr/testify/suite"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 type CliIntentSuite struct {
@@ -253,7 +253,7 @@ func (s *CliIntentSuite) TestSetProcessed() {
 	s.NotNil(intent)
 	s.Require().NoError(intent.Insert())
 
-	s.Require().NoError(intent.SetProcessed())
+	s.Require().NoError(intent.SetProcessed(s.T().Context()))
 	s.True(intent.IsProcessed())
 
 	var intents []*cliIntent

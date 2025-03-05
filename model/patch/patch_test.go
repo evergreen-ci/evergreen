@@ -160,7 +160,7 @@ func (s *patchSuite) TestUpdateGithashProjectAndTasks() {
 		},
 	}
 
-	s.NoError(patch.UpdateGithashProjectAndTasks())
+	s.NoError(patch.UpdateGithashProjectAndTasks(s.T().Context()))
 
 	dbPatch, err := FindOne(ById(patch.Id))
 	s.NoError(err)
@@ -358,7 +358,7 @@ func TestSetParametersFromParent(t *testing.T) {
 		},
 	}
 	assert.NoError(p.Insert())
-	_, err := p.SetParametersFromParent()
+	_, err := p.SetParametersFromParent(t.Context())
 	assert.NoError(err)
 	assert.Equal(parentPatch.Triggers.DownstreamParameters[0].Key, p.Parameters[0].Key)
 }
@@ -391,7 +391,7 @@ func TestSetDownstreamParameters(t *testing.T) {
 		},
 	}
 
-	assert.NoError(p.SetDownstreamParameters(paramsToAdd))
+	assert.NoError(p.SetDownstreamParameters(t.Context(), paramsToAdd))
 	assert.Equal("key_0", p.Triggers.DownstreamParameters[0].Key)
 	assert.Equal("key_1", p.Triggers.DownstreamParameters[1].Key)
 	assert.Equal("key_2", p.Triggers.DownstreamParameters[2].Key)
@@ -414,7 +414,7 @@ func TestSetTriggerAliases(t *testing.T) {
 		"alias_2",
 	}
 
-	assert.NoError(p.SetTriggerAliases())
+	assert.NoError(p.SetTriggerAliases(t.Context()))
 
 	dbPatch, err := FindOne(ById(p.Id))
 	assert.NoError(err)
@@ -440,7 +440,7 @@ func TestSetChildPatches(t *testing.T) {
 		"id_2",
 	}
 
-	assert.NoError(p.SetChildPatches())
+	assert.NoError(p.SetChildPatches(t.Context()))
 
 	dbPatch, err := FindOne(ById(p.Id))
 	assert.NoError(err)

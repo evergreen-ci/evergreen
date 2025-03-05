@@ -27,9 +27,8 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"gonum.org/v1/gonum/graph"
@@ -926,9 +925,9 @@ func (t *Task) MarkDependenciesFinished(ctx context.Context, finished bool) erro
 				bsonutil.GetDottedKeyName(DependsOnKey, "$[elem]", DependencyFinishedAtKey): finishedAt,
 			},
 		},
-		options.Update().SetArrayFilters(options.ArrayFilters{Filters: []interface{}{
+		options.UpdateMany().SetArrayFilters([]interface{}{
 			bson.M{bsonutil.GetDottedKeyName("elem", DependencyTaskIdKey): t.Id},
-		}}),
+		}),
 	)
 	if err != nil {
 		return errors.Wrap(err, "marking finished dependencies")
@@ -1727,12 +1726,10 @@ func SetGeneratedStepbackInfoForGenerator(ctx context.Context, taskId string, s 
 				bsonutil.GetDottedKeyName(StepbackInfoKey, GeneratedStepbackInfoKey, "$[elem]", PreviousStepbackTaskIdKey):    s.PreviousStepbackTaskId,
 			},
 		},
-		options.Update().SetArrayFilters(options.ArrayFilters{
-			Filters: []interface{}{
-				bson.M{
-					bsonutil.GetDottedKeyName("elem", DisplayNameKey):  s.DisplayName,
-					bsonutil.GetDottedKeyName("elem", BuildVariantKey): s.BuildVariant,
-				},
+		options.UpdateOne().SetArrayFilters([]interface{}{
+			bson.M{
+				bsonutil.GetDottedKeyName("elem", DisplayNameKey):  s.DisplayName,
+				bsonutil.GetDottedKeyName("elem", BuildVariantKey): s.BuildVariant,
 			},
 		}),
 	)
@@ -1939,7 +1936,7 @@ func ActivateTasks(ctx context.Context, tasks []Task, activationTime time.Time, 
 	// Tasks passed into this function will all be from the same version or build, so we can assume
 	// all tasks also share the same requester field.
 	numTasksModified := len(taskIDs) + len(depTaskIDsToUpdate) + numEstimatedActivatedGeneratedTasks
-	if err = UpdateSchedulingLimit(caller, tasks[0].Requester, numTasksModified, true); err != nil {
+	if err = UpdateSchedulingLimit(ctx, caller, tasks[0].Requester, numTasksModified, true); err != nil {
 		return nil, err
 	}
 	err = activateTasks(ctx, taskIDs, caller, activationTime)
@@ -1969,7 +1966,7 @@ func ActivateTasks(ctx context.Context, tasks []Task, activationTime time.Time, 
 
 // UpdateSchedulingLimit retrieves a user from the DB and updates their hourly scheduling limit info
 // if they are not a service user.
-func UpdateSchedulingLimit(username, requester string, numTasksModified int, activated bool) error {
+func UpdateSchedulingLimit(ctx context.Context, username, requester string, numTasksModified int, activated bool) error {
 	if evergreen.IsSystemActivator(username) || !evergreen.IsPatchRequester(requester) || numTasksModified == 0 {
 		return nil
 	}
@@ -1983,7 +1980,7 @@ func UpdateSchedulingLimit(username, requester string, numTasksModified int, act
 		return errors.Wrap(err, "getting user")
 	}
 	if u != nil && !u.OnlyAPI {
-		return errors.Wrapf(u.CheckAndUpdateSchedulingLimit(maxScheduledTasks, numTasksModified, activated), "checking task scheduling limit for user '%s'", u.Id)
+		return errors.Wrapf(u.CheckAndUpdateSchedulingLimit(ctx, maxScheduledTasks, numTasksModified, activated), "checking task scheduling limit for user '%s'", u.Id)
 	}
 	return nil
 }
@@ -2208,7 +2205,7 @@ func DeactivateTasks(ctx context.Context, tasks []Task, updateDependencies bool,
 	// Tasks passed into this function will all be from the same version or build, so we can assume
 	// all tasks also share the same requester field.
 	numTasksModified := len(taskIDs) + len(depTaskIDsToUpdate) + numEstimatedActivatedGeneratedTasks
-	if err = UpdateSchedulingLimit(caller, tasks[0].Requester, numTasksModified, false); err != nil {
+	if err = UpdateSchedulingLimit(ctx, caller, tasks[0].Requester, numTasksModified, false); err != nil {
 		return err
 	}
 
@@ -3106,17 +3103,17 @@ func archiveAll(ctx context.Context, taskIds, execTaskIds, toRestartExecTaskIds 
 	}
 	defer session.EndSession(ctx)
 
-	txFunc := func(sessCtx mongo.SessionContext) (interface{}, error) {
+	txFunc := func(ctx context.Context) (interface{}, error) {
 		var err error
 		if len(archivedTasks) > 0 {
 			oldTaskColl := evergreen.GetEnvironment().DB().Collection(OldCollection)
-			_, err = oldTaskColl.InsertMany(sessCtx, archivedTasks)
+			_, err = oldTaskColl.InsertMany(ctx, archivedTasks)
 			if err != nil {
 				return nil, errors.Wrap(err, "archiving tasks")
 			}
 		}
 		if len(taskIds) > 0 {
-			_, err = evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(sessCtx,
+			_, err = evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(ctx,
 				bson.M{
 					IdKey:     bson.M{"$in": taskIds},
 					StatusKey: bson.M{"$in": evergreen.TaskCompletedStatuses},
@@ -3140,7 +3137,7 @@ func archiveAll(ctx context.Context, taskIds, execTaskIds, toRestartExecTaskIds 
 			}
 		}
 		if len(execTaskIds) > 0 {
-			_, err = evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(sessCtx,
+			_, err = evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(ctx,
 				bson.M{IdKey: bson.M{"$in": execTaskIds}}, // Query all execution tasks
 				bson.A{ // Pipeline
 					bson.M{"$set": bson.M{ // Sets LatestParentExecution (LPE) = LPE + 1
@@ -3156,7 +3153,7 @@ func archiveAll(ctx context.Context, taskIds, execTaskIds, toRestartExecTaskIds 
 			}
 
 			// Call to update all tasks that are actually restarting
-			_, err = evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(sessCtx,
+			_, err = evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(ctx,
 				bson.M{IdKey: bson.M{"$in": toRestartExecTaskIds}}, // Query all archiving/restarting execution tasks
 				bson.A{ // Pipeline
 					bson.M{"$set": bson.M{ // Execution = LPE
@@ -3442,7 +3439,7 @@ func CheckUsersPatchTaskLimit(ctx context.Context, requester, username string, i
 			numTasksToActivate += utility.FromIntPtr(t.EstimatedNumActivatedGeneratedTasks)
 		}
 	}
-	return UpdateSchedulingLimit(username, requester, numTasksToActivate, true)
+	return UpdateSchedulingLimit(ctx, username, requester, numTasksToActivate, true)
 }
 
 func FindExecTasksToReset(ctx context.Context, t *Task) ([]string, error) {

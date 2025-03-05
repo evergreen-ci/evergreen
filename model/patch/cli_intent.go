@@ -1,6 +1,7 @@
 package patch
 
 import (
+	"context"
 	"strings"
 	"time"
 
@@ -9,7 +10,7 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 const CliIntentType = "cli"
@@ -123,10 +124,11 @@ func (c *cliIntent) Insert() error {
 	return nil
 }
 
-func (c *cliIntent) SetProcessed() error {
+func (c *cliIntent) SetProcessed(ctx context.Context) error {
 	c.Processed = true
 	c.ProcessedAt = time.Now().UTC().Round(time.Millisecond)
 	return updateOneIntent(
+		ctx,
 		bson.M{cliDocumentIDKey: c.DocumentID},
 		bson.M{"$set": bson.M{
 			cliProcessedKey:   c.Processed,

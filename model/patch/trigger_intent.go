@@ -1,12 +1,14 @@
 package patch
 
 import (
+	"context"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 const TriggerIntentType = "trigger"
@@ -41,9 +43,10 @@ func (t *TriggerIntent) Insert() error {
 	return errors.Wrap(db.Insert(IntentCollection, t), "inserting trigger intent")
 }
 
-func (t *TriggerIntent) SetProcessed() error {
+func (t *TriggerIntent) SetProcessed(ctx context.Context) error {
 	t.Processed = true
 	return updateOneIntent(
+		ctx,
 		bson.M{triggerIDKey: t.Id},
 		bson.M{"$set": bson.M{
 			triggerProcessedKey: true,

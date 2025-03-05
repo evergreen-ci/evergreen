@@ -1,6 +1,7 @@
 package patch
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -12,7 +13,7 @@ import (
 	"github.com/google/go-github/v52/github"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 const (
@@ -194,10 +195,11 @@ func getRepeatPatchId(owner, repo string, prNumber int) (string, error) {
 }
 
 // SetProcessed should be called by an amboy queue after creating a patch from an intent.
-func (g *githubIntent) SetProcessed() error {
+func (g *githubIntent) SetProcessed(ctx context.Context) error {
 	g.Processed = true
 	g.ProcessedAt = time.Now().UTC().Round(time.Millisecond)
 	return updateOneIntent(
+		ctx,
 		bson.M{documentIDKey: g.DocumentID},
 		bson.M{"$set": bson.M{
 			processedKey:   g.Processed,
@@ -207,8 +209,9 @@ func (g *githubIntent) SetProcessed() error {
 }
 
 // updateOne updates one patch intent.
-func updateOneIntent(query interface{}, update interface{}) error {
-	return db.Update(
+func updateOneIntent(ctx context.Context, query interface{}, update interface{}) error {
+	return db.UpdateContext(
+		ctx,
 		IntentCollection,
 		query,
 		update,

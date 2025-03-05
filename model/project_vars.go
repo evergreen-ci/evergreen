@@ -25,7 +25,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 var (
@@ -642,7 +642,7 @@ func (projectVars *ProjectVars) findAndModifyParameterStore(ctx context.Context,
 }
 
 // Clears clears all variables for a project.
-func (projectVars *ProjectVars) Clear() error {
+func (projectVars *ProjectVars) Clear(ctx context.Context) error {
 	projectVars.Vars = map[string]string{}
 	projectVars.PrivateVars = map[string]bool{}
 	projectVars.AdminOnlyVars = map[string]bool{}
@@ -653,7 +653,7 @@ func (projectVars *ProjectVars) Clear() error {
 		return errors.Wrap(err, "clearing project vars from Parameter Store")
 	}
 
-	err := db.Update(ProjectVarsCollection,
+	err := db.UpdateContext(ctx, ProjectVarsCollection,
 		bson.M{ProjectRefIdKey: projectVars.Id},
 		bson.M{
 			"$unset": bson.M{

@@ -32,9 +32,9 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 type Host struct {
@@ -1318,34 +1318,30 @@ func (h *Host) Terminate(ctx context.Context, user, reason string) error {
 	return nil
 }
 
-// SetDNSName updates the DNS name for a given host once
+// SetDNSName updates the DNS name for a given host. If the dnsName is empty,
+// this will no-op and will not unset the existing DNS name.
 func (h *Host) SetDNSName(ctx context.Context, dnsName string) error {
-	err := UpdateOne(
+	if h.Host == dnsName || dnsName == "" {
+		return nil
+	}
+
+	if err := UpdateOne(
 		ctx,
 		bson.M{
-			IdKey:  h.Id,
-			DNSKey: "",
+			IdKey: h.Id,
 		},
 		bson.M{
 			"$set": bson.M{
 				DNSKey: dnsName,
 			},
 		},
-	)
-	if err == nil {
-		h.Host = dnsName
-		event.LogHostDNSNameSet(h.Id, dnsName)
-		grip.Info(message.Fields{
-			"message":  "set host DNS name",
-			"host_id":  h.Id,
-			"host_tag": h.Tag,
-			"dns_name": dnsName,
-		})
+	); err != nil {
+		return err
 	}
-	if adb.ResultsNotFound(err) {
-		return nil
-	}
-	return err
+
+	h.Host = dnsName
+
+	return nil
 }
 
 // probably don't want to store the port mapping exactly this way

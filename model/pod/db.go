@@ -1,6 +1,7 @@
 package pod
 
 import (
+	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
@@ -8,7 +9,7 @@ import (
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 const (
@@ -97,8 +98,9 @@ func FindOneByID(id string) (*Pod, error) {
 }
 
 // UpdateOne updates one pod.
-func UpdateOne(query interface{}, update interface{}) error {
-	return db.Update(
+func UpdateOne(ctx context.Context, query interface{}, update interface{}) error {
+	return db.UpdateContext(
+		ctx,
 		Collection,
 		query,
 		update,
@@ -162,7 +164,7 @@ func FindIntentByFamily(family string) ([]Pod, error) {
 // information about the status update. If the current status is identical to
 // the updated one, this will no-op. If the current status does not match the
 // stored status, this will error.
-func UpdateOneStatus(id string, current, updated Status, ts time.Time, reason string) error {
+func UpdateOneStatus(ctx context.Context, id string, current, updated Status, ts time.Time, reason string) error {
 	if current == updated {
 		return nil
 	}
@@ -178,7 +180,7 @@ func UpdateOneStatus(id string, current, updated Status, ts time.Time, reason st
 		setFields[bsonutil.GetDottedKeyName(TimeInfoKey, TimeInfoStartingKey)] = ts
 	}
 
-	if err := UpdateOne(byIDAndStatus, bson.M{
+	if err := UpdateOne(ctx, byIDAndStatus, bson.M{
 		"$set": setFields,
 	}); err != nil {
 		return err

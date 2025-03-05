@@ -24,7 +24,7 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 const hostSecret = "secret"
@@ -326,7 +326,7 @@ func TestHostNextTask(t *testing.T) {
 					nonLegacyHost, err := host.FindOneId(ctx, "nonLegacyHost")
 					require.NoError(t, err)
 					// setup host
-					require.NoError(t, db.Update(host.Collection, bson.M{host.IdKey: nonLegacyHost.Id}, bson.M{"$set": bson.M{host.StatusKey: evergreen.HostStarting}}))
+					require.NoError(t, db.UpdateContext(ctx, host.Collection, bson.M{host.IdKey: nonLegacyHost.Id}, bson.M{"$set": bson.M{host.StatusKey: evergreen.HostStarting}}))
 					dbHost, err := host.FindOneId(ctx, nonLegacyHost.Id)
 					require.NoError(t, err)
 					assert.Equal(t, evergreen.HostStarting, dbHost.Status)
