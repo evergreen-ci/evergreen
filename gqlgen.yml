@@ -57,9 +57,9 @@ models:
   ContainerPoolsConfig:
     model: github.com/evergreen-ci/evergreen/rest/model.APIContainerPoolsConfig
   CopyDistroInput:
-    model: github.com/evergreen-ci/evergreen/rest/data.CopyDistroOpts
+    model: github.com/evergreen-ci/evergreen/rest/model.CopyDistroOpts
   CopyProjectInput:
-    model: github.com/evergreen-ci/evergreen/rest/data.CopyProjectOpts
+    model: github.com/evergreen-ci/evergreen/rest/model.CopyProjectOpts
   CreateProjectInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectRef
   DispatcherSettings:

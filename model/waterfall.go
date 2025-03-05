@@ -31,6 +31,7 @@ type WaterfallTask struct {
 
 type WaterfallBuild struct {
 	Id           string          `bson:"_id" json:"_id"`
+	Activated    bool            `bson:"activated" json:"activated"`
 	BuildVariant string          `bson:"build_variant" json:"build_variant"`
 	DisplayName  string          `bson:"display_name" json:"display_name"`
 	Version      string          `bson:"version" json:"version"`
@@ -73,9 +74,10 @@ func getBuildDisplayNames(match bson.M) bson.M {
 						"pipeline": []bson.M{
 							bson.M{
 								"$project": bson.M{
-									build.DisplayNameKey:    1,
-									VersionBuildStatusIdKey: build.IdKey,
-									build.BuildVariantKey:   1,
+									build.DisplayNameKey:           1,
+									VersionBuildStatusActivatedKey: 1,
+									VersionBuildStatusIdKey:        build.IdKey,
+									build.BuildVariantKey:          1,
 								},
 							},
 						},
@@ -102,8 +104,12 @@ func getBuildVariantFilterPipeline(variants []string, match bson.M) []bson.M {
 	pipeline = append(pipeline, bson.M{
 		"$match": bson.M{
 			"$or": []bson.M{
-				{bsonutil.GetDottedKeyName(VersionBuildVariantsKey, VersionBuildStatusVariantKey): bson.M{"$regex": variantsAsRegex, "$options": "i"}},
-				{bsonutil.GetDottedKeyName(VersionBuildVariantsKey, VersionBuildStatusDisplayNameKey): bson.M{"$regex": variantsAsRegex, "$options": "i"}},
+				{bsonutil.GetDottedKeyName(VersionBuildVariantsKey, VersionBuildStatusVariantKey): bson.M{"$regex": variantsAsRegex, "$options": "i"},
+					bsonutil.GetDottedKeyName(VersionBuildVariantsKey, VersionBuildStatusActivatedKey): true,
+				},
+				{bsonutil.GetDottedKeyName(VersionBuildVariantsKey, VersionBuildStatusDisplayNameKey): bson.M{"$regex": variantsAsRegex, "$options": "i"},
+					bsonutil.GetDottedKeyName(VersionBuildVariantsKey, VersionBuildStatusActivatedKey): true,
+				},
 			},
 		},
 	})

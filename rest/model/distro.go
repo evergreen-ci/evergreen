@@ -503,3 +503,17 @@ func (e *APIExpansion) ToService() distro.Expansion {
 
 	return d
 }
+
+// CopyDistroOpts is input for the data.CopyDistro function. It includes the ID
+//
+// of the distro to be copied and the new distro's ID.
+// This options struct doesn't really belong in this package according to
+// Evergreen's conventions, and should instead go in rest/data. Unfortunately,
+// it has to be here as a necessary hack for the GraphQL generated models.
+// gqlgen introduced a breaking change in v0.17.50 that codegenerates ambiguous
+// code that initializes a zero value variable called data, and that variable
+// declaration shadows the rest/data import package name.
+type CopyDistroOpts struct {
+	DistroIdToCopy string
+	NewDistroId    string
+}

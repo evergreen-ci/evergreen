@@ -1290,8 +1290,6 @@ func findVolumes(q bson.M) ([]Volume, error) {
 type ClientOptions struct {
 	Provider string `bson:"provider"`
 	Region   string `bson:"region"`
-	Key      string `bson:"key"`
-	Secret   string `bson:"secret"`
 }
 
 type EC2ProviderSettings struct {

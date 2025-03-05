@@ -18,9 +18,30 @@
       "result": { "data": { "updateVolume": true } }
     },
     {
+      "query_file": "update_size.graphql",
+      "result": { "data": { "updateVolume": true } }
+    },
+    {
+      "query_file": "invalid_size.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "new size must be equal to or greater than current size (500GB)",
+            "path": ["updateVolume"],
+            "extensions": {
+              "code": "INPUT_VALIDATION_ERROR"
+            }
+          }
+        ]
+      }
+    },
+    {
       "query_file": "check_update.graphql",
       "result": {
-        "data": { "myVolumes": [{ "displayName": "i like turtles" }] }
+        "data": {
+          "myVolumes": [{ "displayName": "i like turtles" }]
+        }
       }
     },
     {

@@ -1,0 +1,4 @@
+site_name: 'Evergreen'
+exclude_docs: |
+  README.md
+  Home.md

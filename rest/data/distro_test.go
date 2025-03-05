@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 )
@@ -107,7 +108,7 @@ func TestCopyDistro(t *testing.T) {
 	for tName, tCase := range map[string]func(t *testing.T, ctx context.Context, u user.DBUser){
 		"Successfully copies distro": func(t *testing.T, ctx context.Context, u user.DBUser) {
 
-			opts := CopyDistroOpts{
+			opts := restModel.CopyDistroOpts{
 				DistroIdToCopy: "distro",
 				NewDistroId:    "new-distro",
 			}
@@ -122,7 +123,7 @@ func TestCopyDistro(t *testing.T) {
 			assert.Len(t, events, 1)
 		},
 		"Fails when the validator encounters an error": func(t *testing.T, ctx context.Context, u user.DBUser) {
-			opts := CopyDistroOpts{
+			opts := restModel.CopyDistroOpts{
 				DistroIdToCopy: "distro",
 				NewDistroId:    "distro2",
 			}
@@ -136,7 +137,7 @@ func TestCopyDistro(t *testing.T) {
 			assert.Empty(t, events)
 		},
 		"Fails with 400 when providing the same ID for original and output": func(t *testing.T, ctx context.Context, u user.DBUser) {
-			opts := CopyDistroOpts{
+			opts := restModel.CopyDistroOpts{
 				DistroIdToCopy: "distro",
 				NewDistroId:    "distro",
 			}
@@ -149,7 +150,7 @@ func TestCopyDistro(t *testing.T) {
 			assert.Empty(t, events)
 		},
 		"Fails when distro to copy does not exist": func(t *testing.T, ctx context.Context, u user.DBUser) {
-			opts := CopyDistroOpts{
+			opts := restModel.CopyDistroOpts{
 				DistroIdToCopy: "my-distro",
 				NewDistroId:    "new-distro",
 			}

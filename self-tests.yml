@@ -194,7 +194,7 @@ functions:
       params:
         directory: evergreen
         token: ${github_token}
-        shallow_clone: true
+        use_scalar: true
     - command: shell.exec
       type: setup
       params:
@@ -384,8 +384,7 @@ functions:
         args: ["scripts/check-go-vulnerabilities.sh"]
         env:
           GOPATH: ${workdir}/gopath
-        include_expansions_in_env:
-          - GOROOT
+        include_expansions_in_env: ["GOROOT"]
 
   verify-client-version-update:
     - command: subprocess.exec
@@ -628,7 +627,7 @@ tasks:
         params:
           directory: evergreen
           token: ${github_token}
-          shallow_clone: false
+          use_scalar: true
       - func: setup-credentials
       - func: setup-mongodb
       - func: run-make
@@ -644,8 +643,7 @@ tasks:
           working_dir: evergreen
           env:
             GOPATH: ${workdir}/gopath
-          include_expansions_in_env:
-            - GOROOT
+          include_expansions_in_env: ["GOROOT"]
       - func: verify-swaggo-fmt
   - name: check-go-vulnerabilities
     disable: true # TODO: re-enable in DEVPROD-5453
@@ -685,6 +683,7 @@ tasks:
         params:
           directory: evergreen
           token: ${github_token}
+          use_scalar: true
       - command: shell.exec
         params:
           script: |
@@ -695,9 +694,7 @@ tasks:
           working_dir: evergreen
           binary: make
           args: ["verify-mod-tidy"]
-          include_expansions_in_env: ["github_token"]
-          env:
-            GOROOT: /opt/golang/go1.23 # We use a newer version of Go to catch toolchain updates. This should be reverted in DEVPROD-3611.
+          include_expansions_in_env: ["GOROOT", "github_token"]
   - name: verify-merge-function-update
     tags: ["linter"]
     patch_only: true
@@ -786,6 +783,27 @@ tasks:
       - command: downstream_expansions.set
         params:
           file: downstream_expansions_pine.yaml
+  - name: generate-graphql-merged-schema
+    commands:
+      - func: get-project-and-modules
+      - command: shell.exec
+        params:
+          working_dir: evergreen
+          shell: bash
+          script: |
+            cat graphql/schema/types/*.graphql \
+            graphql/schema/*.graphql > docs/merged-schema.graphql
+      - command: s3.put
+        params:
+          aws_key: ${AWS_ACCESS_KEY_ID}
+          aws_secret: ${AWS_SECRET_ACCESS_KEY}
+          aws_session_token: ${AWS_SESSION_TOKEN}
+          local_file: evergreen/docs/merged-schema.graphql
+          remote_file: evergreen/latest/merged-schema.graphql
+          bucket: mciuploads
+          content_type: text/plain
+          permissions: public-read
+          display_name: merged-schema.graphql (latest)
   - <<: *build-and-push-client
     name: build-linux_amd64
     tags: ["build"]
@@ -841,7 +859,7 @@ buildvariants:
       goos: linux
       goarch: amd64
       nodebin: /opt/node/bin
-      GOROOT: /opt/golang/go1.20
+      GOROOT: /opt/golang/go1.24
       RUN_EC2_SPECIFIC_TESTS: true
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-8.0.0.tgz
       mongosh_url: https://downloads.mongodb.com/compass/mongosh-2.0.2-linux-x64.tgz
@@ -855,6 +873,7 @@ buildvariants:
       - name: generate-api-docs
       - name: push-api-docs
       - name: write-downstream-expansions-for-pine
+      - name: generate-graphql-merged-schema
 
   - name: race-detector
     display_name: Race Detector
@@ -862,7 +881,7 @@ buildvariants:
       - ubuntu2204-small
       - ubuntu2204-large
     expansions:
-      GOROOT: /opt/golang/go1.20
+      GOROOT: /opt/golang/go1.24
       RUN_EC2_SPECIFIC_TESTS: true
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-8.0.0.tgz
       mongosh_url: https://downloads.mongodb.com/compass/mongosh-2.0.2-linux-x64.tgz
@@ -892,7 +911,7 @@ buildvariants:
       - ubuntu2204-small
       - ubuntu2204-large
     expansions:
-      GOROOT: /opt/golang/go1.20
+      GOROOT: /opt/golang/go1.24
     tasks:
       - name: generate-lint
 
@@ -902,7 +921,7 @@ buildvariants:
       - windows-vsCurrent-small
       - windows-vsCurrent-large
     expansions:
-      GOROOT: c:/golang/go1.20
+      GOROOT: C:/golang/go1.24
       RUN_EC2_SPECIFIC_TESTS: true
       mongodb_url: https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-8.0.0.zip
       mongosh_url: https://downloads.mongodb.com/compass/mongosh-2.0.2-win32-x64.zip
@@ -921,7 +940,7 @@ buildvariants:
       xc_build: yes
       goarch: arm64
       goos: linux
-      GOROOT: /opt/golang/go1.20
+      GOROOT: /opt/golang/go1.24
       RUN_EC2_SPECIFIC_TESTS: true
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu2204-8.0.0.tgz
       mongosh_url: https://downloads.mongodb.com/compass/mongosh-2.0.2-linux-arm64.tgz
@@ -934,7 +953,7 @@ buildvariants:
     run_on:
       - macos-1100-arm64
     expansions:
-      GOROOT: /opt/golang/go1.20
+      GOROOT: /opt/golang/go1.24
       mongodb_url: https://fastdl.mongodb.org/osx/mongodb-macos-arm64-8.0.0.tgz
       mongosh_url: https://downloads.mongodb.com/compass/mongosh-2.0.2-darwin-arm64.zip
       mongosh_decompress: unzip
@@ -953,7 +972,7 @@ buildvariants:
       - name: ".build-unsigned"
         activate: false
     expansions:
-      GOROOT: /opt/golang/go1.20
+      GOROOT: /opt/golang/go1.24
       notary_client_url: https://macos-notary-1628249594.s3.amazonaws.com/releases/client/v3.1.2/linux_amd64.zip
     display_tasks:
       - name: build-and-push

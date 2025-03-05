@@ -342,6 +342,20 @@ func Upsert(collection string, query interface{}, update interface{}) (*db.Chang
 	return db.C(collection).Upsert(query, update)
 }
 
+// UpsertContext run the specified update against the collection as an upsert operation.
+func UpsertContext(ctx context.Context, collection string, query interface{}, update interface{}) (*db.ChangeInfo, error) {
+	res, err := evergreen.GetEnvironment().DB().Collection(collection).UpdateOne(ctx,
+		query,
+		update,
+		options.Update().SetUpsert(true),
+	)
+	if err != nil {
+		return nil, errors.Wrapf(err, "updating")
+	}
+
+	return &db.ChangeInfo{Updated: int(res.UpsertedCount) + int(res.ModifiedCount), UpsertedId: res.UpsertedID}, nil
+}
+
 // Count run a count command with the specified query against the collection.
 func Count(collection string, query interface{}) (int, error) {
 	session, db, err := GetGlobalSessionFactory().GetSession()

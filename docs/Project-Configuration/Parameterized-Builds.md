@@ -18,9 +18,11 @@ Parameters can be defined in multiple different places, and can overwrite existi
 
 * Project-specific default parameters defined in the user’s local configuration.
 
+* Default parameters defined for the patch alias on the Project Page, if applicable (only project admins have access to these). 
+
 * Default parameters defined in the project YAML.
 
-* Project variables defined for the project (Only project admins have access to these).
+* Project variables defined for the project (only project admins have access to these).
 
 * Evergreen default expansions and build variant expansions.
 
@@ -55,6 +57,14 @@ project:
 
 If defaults are defined here, they will overwrite defaults in the project YAML. 
 
+### Project Page Usage
+
+You can default parameters for specific patch aliases from the Project Page. 
+This is only available for CLI patches, not for PR patches. As detailed in the hierarchy, 
+these can be overwritten by users.
+
+![patch_parameters](../images/project_page_parameters.png)
+
 #### List Parameters
 
 This is the only place where description is used by Evergreen.
@@ -88,6 +98,11 @@ If parameters override a private/restricted project variable, are they still pri
 Can parameters be changed after a patch is finalized?
 
 * No, parameters are **not configurable** after the patch is finalized (i.e. after Schedule Patch is pressed, or `--finalize` is used when creating the patch from the CLI). Dynamically modifying parameters in a patch could affect task runtime and result in difficulty reproducing task behavior.
+
+Can I define separate parameters for PR patches?
+
+* No, it's only possible to configure parameters from the CLI or the configure page, 
+but PR patches are finalized immediately, so modifying from the configure page is unavailable.
 
 There's another feature I'd like for parameters that don't exist. What should I do?
 

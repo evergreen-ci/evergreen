@@ -1008,3 +1008,17 @@ func recursivelyDefaultBooleans(structToSet reflect.Value) {
 		}
 	}
 }
+
+// CopyProjectOpts is input for the data.CopyProject function.
+//
+// This options struct doesn't really belong in this package according to
+// Evergreen's conventions, and should instead go in rest/data. Unfortunately,
+// it has to be here as a necessary hack for the GraphQL generated models.
+// gqlgen introduced a breaking change in v0.17.50 that codegenerates ambiguous
+// code that initializes a zero value variable called data, and that variable
+// declaration shadows the rest/data import package name.
+type CopyProjectOpts struct {
+	ProjectIdToCopy      string
+	NewProjectIdentifier string
+	NewProjectId         string
+}

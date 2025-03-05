@@ -753,6 +753,7 @@
                 "waterfallBuilds": [
                   {
                     "id": "evergreen_version3_build",
+                    "activated": true,
                     "displayName": "03 Linter"
                   }
                 ]
@@ -770,6 +771,7 @@
                 "waterfallBuilds": [
                   {
                     "id": "evergreen_version2_build",
+                    "activated": true,
                     "displayName": "02 Ubuntu 16.04"
                   }
                 ]

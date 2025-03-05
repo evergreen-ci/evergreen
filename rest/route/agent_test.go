@@ -619,8 +619,8 @@ func TestCreateInstallationToken(t *testing.T) {
 	validOwner := "owner"
 	validRepo := "repo"
 
-	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, gh *createInstallationToken){
-		"ParseErrorsOnEmptyOwnerAndRepo": func(ctx context.Context, t *testing.T, handler *createInstallationToken) {
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, gh *createInstallationTokenForClone){
+		"ParseErrorsOnEmptyOwnerAndRepo": func(ctx context.Context, t *testing.T, handler *createInstallationTokenForClone) {
 			url := fmt.Sprintf("/task/{task_id}/installation_token/%s/%s", "", "")
 			request, err := http.NewRequest(http.MethodGet, url, bytes.NewReader(nil))
 			assert.NoError(t, err)
@@ -630,7 +630,7 @@ func TestCreateInstallationToken(t *testing.T) {
 
 			assert.Error(t, handler.Parse(ctx, request))
 		},
-		"ParseErrorsOnEmptyOwner": func(ctx context.Context, t *testing.T, handler *createInstallationToken) {
+		"ParseErrorsOnEmptyOwner": func(ctx context.Context, t *testing.T, handler *createInstallationTokenForClone) {
 			url := fmt.Sprintf("/task/{task_id}/installation_token/%s/%s", "", validRepo)
 			request, err := http.NewRequest(http.MethodGet, url, bytes.NewReader(nil))
 			assert.NoError(t, err)
@@ -640,7 +640,7 @@ func TestCreateInstallationToken(t *testing.T) {
 
 			assert.ErrorContains(t, handler.Parse(ctx, request), "missing owner")
 		},
-		"ParseErrorsOnEmptyRepo": func(ctx context.Context, t *testing.T, handler *createInstallationToken) {
+		"ParseErrorsOnEmptyRepo": func(ctx context.Context, t *testing.T, handler *createInstallationTokenForClone) {
 			url := fmt.Sprintf("/task/{task_id}/installation_token/%s/%s", validOwner, "")
 			request, err := http.NewRequest(http.MethodGet, url, bytes.NewReader(nil))
 			assert.NoError(t, err)
@@ -650,7 +650,7 @@ func TestCreateInstallationToken(t *testing.T) {
 
 			assert.ErrorContains(t, handler.Parse(ctx, request), "missing repo")
 		},
-		"ParseSucceeds": func(ctx context.Context, t *testing.T, handler *createInstallationToken) {
+		"ParseSucceeds": func(ctx context.Context, t *testing.T, handler *createInstallationTokenForClone) {
 			url := fmt.Sprintf("/task/{task_id}/installation_token/%s/%s", validOwner, validRepo)
 			request, err := http.NewRequest(http.MethodGet, url, bytes.NewReader(nil))
 			assert.NoError(t, err)
@@ -668,7 +668,7 @@ func TestCreateInstallationToken(t *testing.T) {
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
 
-			r, ok := makeCreateInstallationToken(env).(*createInstallationToken)
+			r, ok := makeCreateInstallationToken(env).(*createInstallationTokenForClone)
 			require.True(t, ok)
 
 			tCase(ctx, t, r)

@@ -1350,7 +1350,7 @@ func (h *setDownstreamParamsHandler) Run(ctx context.Context) gimlet.Responder {
 // and only meant for internal use.
 // It returns an installation token that's attached to Evergreen's GitHub app.
 // See createGitHubDynamicAccessToken or tokens created for users using their GitHub app.
-type createInstallationToken struct {
+type createInstallationTokenForClone struct {
 	owner string
 	repo  string
 
@@ -1358,18 +1358,18 @@ type createInstallationToken struct {
 }
 
 func makeCreateInstallationToken(env evergreen.Environment) gimlet.RouteHandler {
-	return &createInstallationToken{
+	return &createInstallationTokenForClone{
 		env: env,
 	}
 }
 
-func (g *createInstallationToken) Factory() gimlet.RouteHandler {
-	return &createInstallationToken{
+func (g *createInstallationTokenForClone) Factory() gimlet.RouteHandler {
+	return &createInstallationTokenForClone{
 		env: g.env,
 	}
 }
 
-func (g *createInstallationToken) Parse(ctx context.Context, r *http.Request) error {
+func (g *createInstallationTokenForClone) Parse(ctx context.Context, r *http.Request) error {
 	if g.owner = gimlet.GetVars(r)["owner"]; g.owner == "" {
 		return errors.New("missing owner")
 	}
@@ -1381,9 +1381,15 @@ func (g *createInstallationToken) Parse(ctx context.Context, r *http.Request) er
 	return nil
 }
 
-func (g *createInstallationToken) Run(ctx context.Context) gimlet.Responder {
+func (g *createInstallationTokenForClone) Run(ctx context.Context) gimlet.Responder {
 	const lifetime = 50 * time.Minute
-	token, err := githubapp.CreateGitHubAppAuth(g.env.Settings()).CreateCachedInstallationToken(ctx, g.owner, g.repo, lifetime, nil)
+	// because this token will be used for cloning, restrict the token to read only
+	opts := &github.InstallationTokenOptions{
+		Permissions: &github.InstallationPermissions{
+			Contents: utility.ToStringPtr(thirdparty.GithubPermissionRead),
+		},
+	}
+	token, err := githubapp.CreateGitHubAppAuth(g.env.Settings()).CreateCachedInstallationToken(ctx, g.owner, g.repo, lifetime, opts)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "creating installation token for '%s/%s'", g.owner, g.repo))
 	}
@@ -1640,7 +1646,7 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 	}
 
 	// The token also should use the project's GitHub app.
-	githubAppAuth, err := p.GetGitHubAppAuth()
+	githubAppAuth, err := p.GetGitHubAppAuth(ctx)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}

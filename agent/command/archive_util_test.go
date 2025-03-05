@@ -13,7 +13,9 @@ import (
 
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
+	"github.com/klauspost/pgzip"
 	"github.com/mongodb/grip/logging"
+	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -99,6 +101,22 @@ func getDirectoryOfFile() string {
 	_, file, _, _ := runtime.Caller(1)
 
 	return filepath.Dir(file)
+}
+
+// tarGzReader returns a file, gzip reader, and tar reader for the given path.
+// The tar reader wraps the gzip reader, which wraps the file.
+func tarGzReader(path string) (f, gz io.ReadCloser, tarReader *tar.Reader, err error) {
+	f, err = os.Open(path)
+	if err != nil {
+		return nil, nil, nil, errors.Wrapf(err, "opening file '%s'", path)
+	}
+	gz, err = pgzip.NewReader(f)
+	if err != nil {
+		defer f.Close()
+		return nil, nil, nil, errors.Wrap(err, "initializing gzip reader")
+	}
+	tarReader = tar.NewReader(gz)
+	return f, gz, tarReader, nil
 }
 
 func TestArchiveExtract(t *testing.T) {

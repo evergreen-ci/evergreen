@@ -27,14 +27,8 @@ import (
 // This file is used to combine operations across data connectors, to avoid
 // duplicated connector usage across the codebase.
 
-type CopyProjectOpts struct {
-	ProjectIdToCopy      string
-	NewProjectIdentifier string
-	NewProjectId         string
-}
-
 // CopyProject copies the passed in project with the given project identifier, and returns the new project.
-func CopyProject(ctx context.Context, env evergreen.Environment, opts CopyProjectOpts) (*restModel.APIProjectRef, error) {
+func CopyProject(ctx context.Context, env evergreen.Environment, opts restModel.CopyProjectOpts) (*restModel.APIProjectRef, error) {
 	projectToCopy, err := FindProjectById(opts.ProjectIdToCopy, false, false)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding project '%s'", opts.ProjectIdToCopy)
@@ -90,7 +84,7 @@ func CopyProject(ctx context.Context, env evergreen.Environment, opts CopyProjec
 
 	// Since this is a new project we want to log all settings that were copied,
 	// so we pass in an empty ProjectSettings struct for the original project state.
-	if err := model.GetAndLogProjectModified(projectToCopy.Id, u.Id, false, &model.ProjectSettings{}); err != nil {
+	if err := model.GetAndLogProjectModified(ctx, projectToCopy.Id, u.Id, false, &model.ProjectSettings{}); err != nil {
 		catcher.Wrapf(err, "logging project modified")
 	}
 	// Since the errors above are nonfatal and still permit copying the project, return both the new project and any errors that were encountered.
@@ -108,8 +102,8 @@ func disableStartingSettings(p *model.ProjectRef) {
 // PromoteVarsToRepo moves variables from an attached project to its repo.
 // Promoted vars are removed from the project as part of this operation.
 // Variables whose names already appear in the repo settings will be overwritten.
-func PromoteVarsToRepo(projectIdentifier string, varNames []string, userId string) error {
-	project, err := model.GetProjectSettingsById(projectIdentifier, false)
+func PromoteVarsToRepo(ctx context.Context, projectIdentifier string, varNames []string, userId string) error {
+	project, err := model.GetProjectSettingsById(ctx, projectIdentifier, false)
 	if err != nil {
 		return errors.Wrapf(err, "getting project settings for project '%s'", projectIdentifier)
 	}
@@ -122,7 +116,7 @@ func PromoteVarsToRepo(projectIdentifier string, varNames []string, userId strin
 		return errors.Wrapf(err, "getting project variables for project '%s'", projectIdentifier)
 	}
 
-	repo, err := model.GetProjectSettingsById(repoId, true)
+	repo, err := model.GetProjectSettingsById(ctx, repoId, true)
 	if err != nil {
 		return errors.Wrapf(err, "getting repo settings for repo '%s'", repoId)
 	}
@@ -154,7 +148,7 @@ func PromoteVarsToRepo(projectIdentifier string, varNames []string, userId strin
 	}
 
 	// Log repo update
-	repoAfter, err := model.GetProjectSettingsById(repoId, true)
+	repoAfter, err := model.GetProjectSettingsById(ctx, repoId, true)
 	if err != nil {
 		return errors.Wrapf(err, "getting settings for repo '%s' after adding promoted variables", repoId)
 	}
@@ -190,7 +184,7 @@ func PromoteVarsToRepo(projectIdentifier string, varNames []string, userId strin
 		return errors.Wrapf(err, "removing promoted project variables from project '%s'", projectIdentifier)
 	}
 
-	projectAfter, err := model.GetProjectSettingsById(projectId, false)
+	projectAfter, err := model.GetProjectSettingsById(ctx, projectId, false)
 	if err != nil {
 		return errors.Wrapf(err, "getting settings for project '%s' after removing promoted variables", projectIdentifier)
 	}
@@ -205,7 +199,7 @@ func PromoteVarsToRepo(projectIdentifier string, varNames []string, userId strin
 // RepoRef related functions and collection instead of ProjectRef.
 func SaveProjectSettingsForSection(ctx context.Context, projectId string, changes *restModel.APIProjectSettings,
 	section model.ProjectPageSection, isRepo bool, userId string) (*restModel.APIProjectSettings, error) {
-	before, err := model.GetProjectSettingsById(projectId, isRepo)
+	before, err := model.GetProjectSettingsById(ctx, projectId, isRepo)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting before project settings event")
 	}
@@ -476,7 +470,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 			// this function. To avoid overwriting the actual private key, we should not update the credentials
 			// if the private key is equal to the {REDACTED} placeholder.
 			if !privateKeyRedacted {
-				if err = mergedSection.SetGithubAppCredentials(int64(changes.GithubAppAuth.AppID), []byte(utility.FromStringPtr(changes.GithubAppAuth.PrivateKey))); err != nil {
+				if err = mergedSection.SetGithubAppCredentials(ctx, int64(changes.GithubAppAuth.AppID), []byte(utility.FromStringPtr(changes.GithubAppAuth.PrivateKey))); err != nil {
 					return nil, errors.Wrap(err, "updating GitHub app credentials")
 				}
 			}
@@ -499,7 +493,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 	}
 	res := restModel.APIProjectSettings{}
 	if modified || modifiedProjectRef {
-		after, err := model.GetProjectSettingsById(projectId, isRepo)
+		after, err := model.GetProjectSettingsById(ctx, projectId, isRepo)
 		if err != nil {
 			catcher.Wrapf(err, "getting after project settings event")
 		} else {

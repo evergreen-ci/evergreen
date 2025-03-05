@@ -7,9 +7,12 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
+
 	"github.com/evergreen-ci/evergreen/cloud/parameterstore/fakeparameter"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
@@ -31,7 +34,8 @@ func TestProjectCopySuite(t *testing.T) {
 }
 
 func (s *ProjectCopySuite) SetupSuite() {
-	s.NoError(db.ClearCollections(model.ProjectRefCollection, user.Collection, model.ProjectVarsCollection, fakeparameter.Collection))
+	s.NoError(db.ClearCollections(model.ProjectRefCollection, user.Collection, model.ProjectVarsCollection, fakeparameter.Collection,
+		evergreen.ScopeCollection, evergreen.RoleCollection))
 	pRefs := []model.ProjectRef{
 		{
 			Id:         "12345",
@@ -114,8 +118,12 @@ func (s *ProjectCopySuite) TestCopyToNewProject() {
 	s.Equal("projectC", utility.FromStringPtr(newProject.Identifier))
 	s.Equal("abcd", utility.FromStringPtr(newProject.Branch))
 	s.False(*newProject.Enabled)
-	s.Require().Len(newProject.Admins, 1)
-	s.Equal("my-user", utility.FromStringPtr(newProject.Admins[0]))
+	s.Require().Len(newProject.Admins, 2)
+	s.Contains(utility.FromStringPtrSlice(newProject.Admins), "my-user")
+	s.Contains(utility.FromStringPtrSlice(newProject.Admins), "me")
+	usrs, err := user.FindByRole(model.GetProjectAdminRole(utility.FromStringPtr(newProject.Id)))
+	s.NoError(err)
+	s.Len(usrs, 2)
 
 	res, err := data.FindProjectById("projectC", false, false)
 	s.NoError(err)
@@ -130,7 +138,9 @@ func (s *ProjectCopySuite) TestCopyToNewProject() {
 }
 
 type copyVariablesSuite struct {
-	route *copyVariablesHandler
+	route  *copyVariablesHandler
+	ctx    context.Context
+	cancel context.CancelFunc
 
 	suite.Suite
 }
@@ -140,8 +150,8 @@ func TestCopyVariablesSuite(t *testing.T) {
 }
 
 func (s *copyVariablesSuite) SetupTest() {
-	s.route = &copyVariablesHandler{}
-	s.NoError(db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameter.Collection, model.RepoRefCollection))
+	s.route = &copyVariablesHandler{usr: &user.DBUser{Id: "admin"}}
+	s.NoError(db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameter.Collection, model.RepoRefCollection, event.EventCollection))
 	pRefs := []model.ProjectRef{
 		{
 			Id:      "projectA",
@@ -182,14 +192,21 @@ func (s *copyVariablesSuite) SetupTest() {
 	s.NoError(projectVar1.Insert())
 	s.NoError(projectVar2.Insert())
 	s.NoError(projectVar3.Insert())
+	ctx, cancel := context.WithCancel(context.Background())
+	s.ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
+	s.cancel = cancel
+}
+
+func (s *copyVariablesSuite) TearDownTest() {
+	s.cancel()
 }
 
 func (s *copyVariablesSuite) TestParse() {
-	ctx := context.Background()
 	opts := copyVariablesOptions{
 		DryRun: true,
 		CopyTo: "projectB",
 	}
+	s.route.usr = nil
 	jsonBytes, err := json.Marshal(opts)
 	s.NoError(err)
 	body := bytes.NewReader(jsonBytes)
@@ -197,15 +214,16 @@ func (s *copyVariablesSuite) TestParse() {
 	options := map[string]string{"project_id": "projectA"}
 	request = gimlet.SetURLVars(request, options)
 	s.NoError(err)
-	s.NoError(s.route.Parse(ctx, request))
+	s.NoError(s.route.Parse(s.ctx, request))
 	s.Equal("projectA", s.route.copyFrom)
 	s.Equal("projectB", s.route.opts.CopyTo)
 	s.True(s.route.opts.DryRun)
 	s.False(s.route.opts.Overwrite)
+	s.Require().NotNil(s.route.usr)
+	s.Equal("me", s.route.usr.Id)
 }
 
 func (s *copyVariablesSuite) TestCopyAllVariables() {
-	ctx := context.Background()
 	s.route.copyFrom = "projectA"
 	s.route.opts = copyVariablesOptions{
 		CopyTo:         "projectB",
@@ -219,15 +237,18 @@ func (s *copyVariablesSuite) TestCopyAllVariables() {
 	}
 	_, err := newProjectVar.Upsert()
 	s.NoError(err)
-	resp := s.route.Run(ctx)
+	resp := s.route.Run(s.ctx)
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
 	projectVars, err := model.FindOneProjectVars("projectB")
 	s.NoError(err)
 	s.Len(projectVars.Vars, 1)
+	events, err := model.MostRecentProjectEvents(s.route.opts.CopyTo, 100)
+	s.NoError(err)
+	s.Len(events, 0)
 
 	s.route.opts.DryRun = false
-	resp = s.route.Run(ctx)
+	resp = s.route.Run(s.ctx)
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
 	projectVars, err = model.FindOneProjectVars("projectB")
@@ -236,26 +257,31 @@ func (s *copyVariablesSuite) TestCopyAllVariables() {
 	s.Equal("world", projectVars.Vars["hello"])
 	s.Equal("red", projectVars.Vars["apple"])
 	s.True(projectVars.PrivateVars["hello"])
+	events, err = model.MostRecentProjectEvents(s.route.opts.CopyTo, 100)
+	s.NoError(err)
+	s.Len(events, 1)
 }
 
 func (s *copyVariablesSuite) TestCopyAllVariablesWithOverlap() {
-	ctx := context.Background()
 	s.route.copyFrom = "projectA"
 	s.route.opts = copyVariablesOptions{
 		CopyTo:         "projectB",
 		DryRun:         true,
 		IncludePrivate: true,
 	}
-	resp := s.route.Run(ctx)
+	resp := s.route.Run(s.ctx)
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
 	result := (resp.Data()).(*restmodel.APIProjectVars)
 	s.Len(result.Vars, 2)
 	s.Equal("", result.Vars["hello"]) // redacted
 	s.Equal("red", result.Vars["apple"])
+	events, err := model.MostRecentProjectEvents(s.route.opts.CopyTo, 100)
+	s.NoError(err)
+	s.Len(events, 0)
 
 	s.route.opts.DryRun = false
-	resp = s.route.Run(ctx)
+	resp = s.route.Run(s.ctx)
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
 	projectVars, err := model.FindOneProjectVars("projectB")
@@ -266,11 +292,13 @@ func (s *copyVariablesSuite) TestCopyAllVariablesWithOverlap() {
 	s.Equal("red", projectVars.Vars["apple"])
 	s.False(projectVars.PrivateVars["apple"])
 	s.Equal("yellow", projectVars.Vars["banana"]) // unchanged
+	events, err = model.MostRecentProjectEvents(s.route.opts.CopyTo, 100)
+	s.NoError(err)
+	s.Len(events, 1)
 
 }
 
 func (s *copyVariablesSuite) TestCopyVariablesWithOverwrite() {
-	ctx := context.Background()
 	s.route.copyFrom = "projectA"
 	s.route.opts = copyVariablesOptions{
 		CopyTo:         "projectB",
@@ -278,16 +306,19 @@ func (s *copyVariablesSuite) TestCopyVariablesWithOverwrite() {
 		IncludePrivate: true,
 		Overwrite:      true,
 	}
-	resp := s.route.Run(ctx)
+	resp := s.route.Run(s.ctx)
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
 	result := (resp.Data()).(*restmodel.APIProjectVars)
 	s.Len(result.Vars, 2)
 	s.Equal("", result.Vars["hello"]) // redacted
 	s.Equal("red", result.Vars["apple"])
+	events, err := model.MostRecentProjectEvents(s.route.opts.CopyTo, 100)
+	s.NoError(err)
+	s.Len(events, 0)
 
 	s.route.opts.DryRun = false
-	resp = s.route.Run(ctx)
+	resp = s.route.Run(s.ctx)
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
 	projectVars, err := model.FindOneProjectVars("projectB")
@@ -299,16 +330,18 @@ func (s *copyVariablesSuite) TestCopyVariablesWithOverwrite() {
 	s.False(projectVars.PrivateVars["apple"])
 	_, ok := projectVars.Vars["banana"] // no longer exists
 	s.False(ok)
+	events, err = model.MostRecentProjectEvents(s.route.opts.CopyTo, 100)
+	s.NoError(err)
+	s.Len(events, 1)
 }
 
 func (s *copyVariablesSuite) TestCopyToRepo() {
-	ctx := context.Background()
 	s.route.copyFrom = "projectA"
 	s.route.opts = copyVariablesOptions{
 		CopyTo:         "repoRef",
 		IncludePrivate: true,
 	}
-	resp := s.route.Run(ctx)
+	resp := s.route.Run(s.ctx)
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
 	projectVars, err := model.FindOneProjectVars("repoRef")
@@ -318,16 +351,18 @@ func (s *copyVariablesSuite) TestCopyToRepo() {
 	s.Equal("red", projectVars.Vars["apple"])
 	s.Equal("cubs", projectVars.Vars["chicago"])
 	s.True(projectVars.PrivateVars["hello"])
+	events, err := model.MostRecentProjectEvents(s.route.opts.CopyTo, 100)
+	s.NoError(err)
+	s.Len(events, 1)
 }
 
 func (s *copyVariablesSuite) TestCopyFromRepo() {
-	ctx := context.Background()
 	s.route.copyFrom = "repoRef"
 	s.route.opts = copyVariablesOptions{
 		CopyTo:         "projectA",
 		IncludePrivate: true,
 	}
-	resp := s.route.Run(ctx)
+	resp := s.route.Run(s.ctx)
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
 	projectVars, err := model.FindOneProjectVars("projectA")
@@ -337,4 +372,7 @@ func (s *copyVariablesSuite) TestCopyFromRepo() {
 	s.Equal("red", projectVars.Vars["apple"])
 	s.Equal("cubs", projectVars.Vars["chicago"])
 	s.True(projectVars.PrivateVars["hello"])
+	events, err := model.MostRecentProjectEvents(s.route.opts.CopyTo, 100)
+	s.NoError(err)
+	s.Len(events, 1)
 }

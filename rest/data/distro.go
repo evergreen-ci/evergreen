@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
@@ -90,15 +91,9 @@ func DeleteDistroById(ctx context.Context, u *user.DBUser, distroId string) erro
 	return nil
 }
 
-// CopyDistroOpts is input for the CopyDistro function. It includes the ID of the distro to be copied and the new distro's ID.
-type CopyDistroOpts struct {
-	DistroIdToCopy string
-	NewDistroId    string
-}
-
 // CopyDistro duplicates a given distro in the database given options specifying the existing and new distro ID.
 // It returns an error if one is encountered.
-func CopyDistro(ctx context.Context, u *user.DBUser, opts CopyDistroOpts) error {
+func CopyDistro(ctx context.Context, u *user.DBUser, opts restModel.CopyDistroOpts) error {
 	if opts.DistroIdToCopy == opts.NewDistroId {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
