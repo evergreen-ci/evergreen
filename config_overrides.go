@@ -1,6 +1,7 @@
 package evergreen
 
 import (
+	"bytes"
 	"context"
 	"strings"
 
@@ -85,8 +86,10 @@ func (c *OverridesConfig) overrideDoc(originalDoc bson.Raw) (bson.Raw, error) {
 	}
 
 	if sectionOverrides := c.sectionOverrides(id); len(sectionOverrides) > 0 {
+		decoder := bson.NewDecoder(bson.NewDocumentReader(bytes.NewBuffer(originalDoc)))
+		decoder.DefaultDocumentM()
 		var originalM bson.M
-		if err := bson.Unmarshal(originalDoc, &originalM); err != nil {
+		if err := decoder.Decode(&originalM); err != nil {
 			return nil, errors.Wrap(err, "unmarshalling original document")
 		}
 
