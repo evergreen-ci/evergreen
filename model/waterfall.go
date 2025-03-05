@@ -99,30 +99,26 @@ func getBuildVariantFilterPipeline(ctx context.Context, variants []string, match
 		matchCopy[key] = match[key]
 	}
 
-	// TODO DEVPROD-15118: Delete conditional getBuildDisplayNames check
 	mostRecentVersion, err := GetMostRecentWaterfallVersion(ctx, projectId)
 	if err != nil {
 		return []bson.M{}, errors.Wrap(err, "getting most recent version")
 	}
 
-	if mostRecentVersion.RevisionOrderNumber < MaxWaterfallVersionLimit {
-		pipeline = append(pipeline, getBuildDisplayNames(matchCopy))
-	} else {
-		lastSearchableVersion, err := VersionFindOne(VersionByProjectIdAndOrder(mostRecentVersion.Identifier, mostRecentVersion.RevisionOrderNumber-MaxWaterfallVersionLimit))
-		if err != nil {
-			return []bson.M{}, errors.Wrap(err, "fetching version")
-		}
+	// TODO DEVPROD-15118: Delete conditional getBuildDisplayNames check
+	lastSearchableVersion, err := VersionFindOne(VersionByProjectIdAndOrder(mostRecentVersion.Identifier, mostRecentVersion.RevisionOrderNumber-MaxWaterfallVersionLimit))
+	if err != nil {
+		return []bson.M{}, errors.Wrap(err, "fetching version")
+	}
 
-		buildVariantStatusDate := time.Date(2025, time.February, 7, 0, 0, 0, 0, time.UTC)
-		if lastSearchableVersion == nil {
-			lastSearchableVersion, err = VersionFindOne(VersionByProjectIdAndOrder(mostRecentVersion.Identifier, 1))
-			if err != nil {
-				return []bson.M{}, errors.Wrap(err, "fetching version order #1")
-			}
+	buildVariantStatusDate := time.Date(2025, time.February, 7, 0, 0, 0, 0, time.UTC)
+	if lastSearchableVersion == nil {
+		lastSearchableVersion, err = VersionFindOne(VersionByProjectIdAndOrder(mostRecentVersion.Identifier, 1))
+		if err != nil {
+			return []bson.M{}, errors.Wrap(err, "fetching version order #1")
 		}
-		if lastSearchableVersion != nil && lastSearchableVersion.CreateTime.Before(buildVariantStatusDate) {
-			pipeline = append(pipeline, getBuildDisplayNames(matchCopy))
-		}
+	}
+	if lastSearchableVersion != nil && lastSearchableVersion.CreateTime.Before(buildVariantStatusDate) {
+		pipeline = append(pipeline, getBuildDisplayNames(matchCopy))
 	}
 	pipeline = append(pipeline, bson.M{"$sort": bson.M{VersionRevisionOrderNumberKey: -1}})
 
