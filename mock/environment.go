@@ -96,7 +96,10 @@ func (e *Environment) Configure(ctx context.Context) error {
 		ApplyURI(e.EvergreenSettings.Database.Url).
 		SetWriteConcern(e.EvergreenSettings.Database.WriteConcernSettings.Resolve()).
 		SetReadConcern(e.EvergreenSettings.Database.ReadConcernSettings.Resolve()).
-		SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false))))
+		SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false))).
+		SetBSONOptions(&options.BSONOptions{
+			ObjectIDAsHexString: true,
+		}))
 
 	if err != nil {
 		return errors.WithStack(err)
