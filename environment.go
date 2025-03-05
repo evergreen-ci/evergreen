@@ -378,7 +378,7 @@ func redactSensitiveCollections(command bson.Raw) bson.Raw {
 }
 
 func (e *envState) initDB(ctx context.Context, settings DBSettings, tracer trace.Tracer) error {
-	ctx, span := tracer.Start(ctx, "InitDB")
+	_, span := tracer.Start(ctx, "InitDB")
 	defer span.End()
 
 	var err error
