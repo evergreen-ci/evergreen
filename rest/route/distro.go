@@ -193,7 +193,7 @@ func (h *distroIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 			Version: utility.ToStringPtr(evergreen.FinderVersionLegacy),
 		},
 		PlannerSettings: model.APIPlannerSettings{
-			Version: utility.ToStringPtr(evergreen.PlannerVersionLegacy),
+			Version: utility.ToStringPtr(evergreen.PlannerVersionTunable),
 		},
 		DispatcherSettings: model.APIDispatcherSettings{
 			Version: utility.ToStringPtr(evergreen.DispatcherVersionRevisedWithDependencies),
@@ -361,6 +361,7 @@ func (h *distroIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	if err = json.Unmarshal(h.body, apiDistro); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "unmarshalling request body into distro API model"))
 	}
+
 	if len(apiDistro.ProviderSettingsList) == 0 {
 		apiDistro.ProviderSettingsList = oldSettingsList
 	}
@@ -556,7 +557,6 @@ func validateDistro(ctx context.Context, apiDistro *model.APIDistro, resourceID 
 			Message:    fmt.Sprintf("distro name '%s' is immutable so it cannot be renamed to '%s'", id, resourceID),
 		})
 	}
-
 	vErrors, err := validator.CheckDistro(ctx, d, settings, isNewDistro)
 	if err != nil {
 		return nil, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{

@@ -258,7 +258,7 @@ func TestUpdateDistro(t *testing.T) {
 			updatedDistro := distro.Distro{
 				Id: "distro",
 				PlannerSettings: distro.PlannerSettings{
-					Version: evergreen.PlannerVersionLegacy,
+					Version: evergreen.PlannerVersionTunable,
 				},
 				Provider: evergreen.ProviderNameEc2OnDemand,
 				WorkDir:  "/tmp2",
