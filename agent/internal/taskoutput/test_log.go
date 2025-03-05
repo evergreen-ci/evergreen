@@ -63,11 +63,11 @@ func newTestLogDirectoryHandler(dir string, output *taskoutput.TaskOutput, taskO
 		dir:    dir,
 		logger: logger,
 	}
-	h.createSender = func(ctx context.Context, logPath string, chunkGroup int) (send.Sender, error) {
+	h.createSender = func(ctx context.Context, logPath string, sequence int) (send.Sender, error) {
 		evgSender, err := output.TestLogs.NewSender(ctx, taskOpts, taskoutput.EvergreenSenderOptions{
 			Local: logger.Task().GetSender(),
 			Parse: h.spec.getParser(),
-		}, logPath, chunkGroup)
+		}, logPath, sequence)
 		if err != nil {
 			return nil, errors.Wrap(err, "making test log sender")
 		}
@@ -112,23 +112,23 @@ func (h *testLogDirectoryHandler) run(ctx context.Context) error {
 		// TODO: probably want to only break up the file if it's large.
 		var (
 			currentByte int64
-			chunkGroup  int
+			sequence    int
 		)
 		fileSize := fileInfo.Size()
 		chunkSize := int64(math.Ceil(float64(fileSize) / float64(runtime.NumCPU())))
 		for currentByte < fileSize {
 			wg.Add(1)
-			go func(offset, limit int64) {
+			go func(sequence int, offset, limit int64) {
 				defer func() {
 					h.logger.Task().Critical(recovery.HandlePanicWithError(recover(), nil, "ingesting test log"))
 				}()
 				defer wg.Done()
 
-				h.ingest(ctx, path, chunkGroup, offset, limit)
-			}(currentByte, currentByte+chunkSize)
+				h.ingest(ctx, path, sequence, offset, limit)
+			}(sequence, currentByte, currentByte+chunkSize)
 
 			currentByte += chunkSize
-			chunkGroup++
+			sequence++
 		}
 
 		return nil
@@ -162,7 +162,7 @@ func (h *testLogDirectoryHandler) getSpecFile() {
 }
 
 // ingest reads and ships a test log file.
-func (h *testLogDirectoryHandler) ingest(ctx context.Context, path string, chunkGroup int, offset, limit int64) {
+func (h *testLogDirectoryHandler) ingest(ctx context.Context, path string, sequence int, offset, limit int64) {
 	h.logger.Task().Infof("new test log file '%s' found, initiating automated ingestion", path)
 
 	// The persisted log path should be relative to the reserved directory
@@ -186,7 +186,7 @@ func (h *testLogDirectoryHandler) ingest(ctx context.Context, path string, chunk
 		}
 	}()
 
-	sender, err := h.createSender(ctx, logPath, chunkGroup)
+	sender, err := h.createSender(ctx, logPath, sequence)
 	if err != nil {
 		h.logger.Task().Error(errors.Wrapf(err, "creating Sender for test log '%s'", path))
 		return
@@ -218,7 +218,7 @@ func (h *testLogDirectoryHandler) ingest(ctx context.Context, path string, chunk
 			h.logger.Task().Error(errors.Wrapf(err, "reading test log '%s'", path))
 			return
 		}
-		currentPos += int64(len(data)) + 1
+		currentPos += int64(len(data)) - 1
 	}
 	for currentPos < limit {
 		data, err := r.ReadBytes('\n')
@@ -229,13 +229,12 @@ func (h *testLogDirectoryHandler) ingest(ctx context.Context, path string, chunk
 			h.logger.Task().Error(errors.Wrapf(err, "reading test log '%s'", path))
 			return
 		}
-		if len(data) == 0 {
-			continue
-		}
-		currentPos += int64(len(data)) + 1
+
+		currentPos += int64(len(data)) - 1
 
 		sender.Send(message.NewDefaultMessage(level.Info, string(data)))
 	}
+
 	if err = sender.Close(); err != nil {
 		h.logger.Task().Error(errors.Wrapf(err, "closing Sender for test log '%s'", path))
 	}

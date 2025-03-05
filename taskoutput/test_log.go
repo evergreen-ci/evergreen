@@ -48,14 +48,14 @@ type TestLogGetOptions struct {
 }
 
 // NewSender returns a new test log sender for the given task run.
-func (o TestLogOutput) NewSender(ctx context.Context, taskOpts TaskOptions, senderOpts EvergreenSenderOptions, logPath string, chunkGroup int) (send.Sender, error) {
+func (o TestLogOutput) NewSender(ctx context.Context, taskOpts TaskOptions, senderOpts EvergreenSenderOptions, logPath string, sequence int) (send.Sender, error) {
 	svc, err := o.getLogService(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting log service")
 	}
 
 	senderOpts.appendLines = func(ctx context.Context, lines []log.LogLine) error {
-		return svc.Append(ctx, o.getLogNames(taskOpts, []string{logPath})[0], chunkGroup, lines)
+		return svc.Append(ctx, o.getLogNames(taskOpts, []string{logPath})[0], sequence, lines)
 	}
 
 	return newEvergreenSender(ctx, fmt.Sprintf("%s-%s", taskOpts.TaskID, logPath), senderOpts)

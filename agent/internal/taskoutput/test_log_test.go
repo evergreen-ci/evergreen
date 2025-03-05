@@ -449,10 +449,10 @@ func setupTestTestLogDirectoryHandler(t *testing.T, comm *client.Mock, redactOpt
 			TestLogs: taskoutput.TestLogOutput{
 				Version: 1,
 				BucketConfig: evergreen.BucketConfig{
-					Name: t.TempDir(),
-					Type: evergreen.BucketTypeLocal,
-					//Name: "julian-push-test",
-					//Type: evergreen.BucketTypeS3,
+					//Name: t.TempDir(),
+					//Type: evergreen.BucketTypeLocal,
+					Name: "julian-push-test",
+					Type: evergreen.BucketTypeS3,
 				},
 			},
 		},

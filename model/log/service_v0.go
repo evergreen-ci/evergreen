@@ -65,7 +65,7 @@ func (s *logServiceV0) Get(ctx context.Context, getOpts GetOptions) (LogIterator
 	return it, nil
 }
 
-func (s *logServiceV0) Append(ctx context.Context, logName string, chunkGroup int, lines []LogLine) error {
+func (s *logServiceV0) Append(ctx context.Context, logName string, sequence int, lines []LogLine) error {
 	if len(lines) == 0 {
 		return nil
 	}
@@ -75,7 +75,7 @@ func (s *logServiceV0) Append(ctx context.Context, logName string, chunkGroup in
 		rawLines = append(rawLines, []byte(s.formatRawLine(line))...)
 	}
 
-	key := fmt.Sprintf("%s/%s", logName, s.createChunkKey(chunkGroup, lines[0].Timestamp, lines[len(lines)-1].Timestamp, len(lines)))
+	key := fmt.Sprintf("%s/%s", logName, s.createChunkKey(sequence, lines[0].Timestamp, lines[len(lines)-1].Timestamp, len(lines)))
 	return errors.Wrap(s.bucket.Put(ctx, key, bytes.NewReader(rawLines)), "writing log chunk to bucket")
 }
 
@@ -137,10 +137,14 @@ func (s *logServiceV0) getLogChunks(ctx context.Context, logNames []string) ([]c
 		// Sort each set of chunks by start order for log iterating and
 		// find the first specified log's time range.
 		sort.Slice(chunks, func(i, j int) bool {
-			if chunks[i].start == chunks[j].start {
+			switch {
+			case chunks[i].sequence != chunks[j].sequence:
+				return chunks[i].sequence < chunks[j].sequence
+			case chunks[i].start != chunks[j].start:
+				return chunks[i].start < chunks[j].start
+			default:
 				return chunks[i].upload < chunks[j].upload
 			}
-			return chunks[i].start < chunks[j].start
 		})
 		if strings.HasPrefix(name, logNames[0]) {
 			if start == 0 || (start > 0 && start > chunks[0].start) {
@@ -170,8 +174,8 @@ func (s *logServiceV0) getLogChunks(ctx context.Context, logNames []string) ([]c
 //
 // The chunk key is encoded with the chunk info metadata to optimize storage
 // and lookup performance.
-func (s *logServiceV0) createChunkKey(chunkGroup int, start, end int64, numLines int) string {
-	return fmt.Sprintf("%d_%d_%d_%d_%d", chunkGroup, start, end, numLines, time.Now().UnixNano())
+func (s *logServiceV0) createChunkKey(sequence int, start, end int64, numLines int) string {
+	return fmt.Sprintf("%d_%d_%d_%d_%d", sequence, start, end, numLines, time.Now().UnixNano())
 }
 
 // parseChunkKey returns the chunk info encoded in the given key.
@@ -181,8 +185,15 @@ func (s *logServiceV0) parseChunkKey(prefix, key string) (chunkInfo, error) {
 		return chunkInfo{}, errors.New("invalid key format")
 	}
 
-	var idxOffset int
+	var (
+		sequence, idxOffset int
+		err                 error
+	)
 	if len(parsedKey) == 5 {
+		sequence, err = strconv.Atoi(parsedKey[0])
+		if err != nil {
+			return chunkInfo{}, errors.Wrap(err, "parsing sequence")
+		}
 		idxOffset = 1
 	}
 	start, err := strconv.ParseInt(parsedKey[idxOffset+0], 10, 64)
@@ -207,6 +218,7 @@ func (s *logServiceV0) parseChunkKey(prefix, key string) (chunkInfo, error) {
 
 	return chunkInfo{
 		key:      prefix + "/" + key,
+		sequence: sequence,
 		start:    start,
 		end:      end,
 		numLines: numLines,
