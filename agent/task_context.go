@@ -379,8 +379,6 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.
 	}
 
 	grip.Info("Constructing task config.")
-	// kim: TODO: manually test that hostview is set with hostname in staging.
-	// Can just log to task log.
 	tcOpts := internal.TaskConfigOptions{
 		WorkDir:           a.opts.WorkingDirectory,
 		Distro:            confDistro,

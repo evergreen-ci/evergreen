@@ -20,7 +20,6 @@ import (
 )
 
 type TaskConfig struct {
-	// kim: TODO: add hostname as data to fetch for task.
 	Distro       *apimodels.DistroView
 	Host         *apimodels.HostView
 	ProjectRef   model.ProjectRef
@@ -262,7 +261,6 @@ func (tc *TaskConfig) TaskAttributeMap() map[string]string {
 		attributes[evergreen.VersionPRNumOtelAttribute] = strconv.Itoa(tc.GithubPatchData.PRNumber)
 	}
 	if tc.Host != nil && tc.Host.Hostname != "" {
-		// kim: TODO: test this attribute appears in staging.
 		attributes[evergreen.HostnameOtelAttribute] = tc.Host.Hostname
 	}
 	return attributes
