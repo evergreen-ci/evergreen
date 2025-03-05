@@ -19,6 +19,13 @@ require (
 	github.com/docker/go-connections v0.5.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/evergreen-ci/birch v0.0.0-20250224221624-64f481f4b888
+	github.com/evergreen-ci/certdepot v0.0.0-20250304195821-c4871b667baf
+	github.com/evergreen-ci/cocoa v0.0.0-20250225172339-717c91acad92
+	github.com/evergreen-ci/gimlet v0.0.0-20250227195544-4800fc7e312f
+	github.com/evergreen-ci/juniper v0.0.0-20230901183147-c805ea7351aa
+	github.com/evergreen-ci/pail v0.0.0-20250225193021-6429390aa3ce
+	github.com/evergreen-ci/poplar v0.0.0-20250226220147-608ee5d893b2
+	github.com/evergreen-ci/shrub v0.0.0-20250224222152-c8b72a51163b
 	github.com/evergreen-ci/timber v0.0.0-20250225175618-52d1e1841945
 	github.com/evergreen-ci/utility v0.0.0-20250224222128-c2a9c8dfbc87
 	github.com/golang-jwt/jwt v3.2.2+incompatible
@@ -33,6 +40,8 @@ require (
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/mapstructure v1.5.0
+	github.com/mongodb/amboy v0.0.0-20250303191223-d8329aeac5c7
+	github.com/mongodb/anser v0.0.0-20250304192308-25ea0fd7a126
 	github.com/mongodb/grip v0.0.0-20250224221724-fc8adcb1fe8e
 	github.com/pkg/errors v0.9.1
 	github.com/ravilushqa/otelgqlgen v0.15.0
@@ -184,20 +193,11 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.58.3
 	github.com/aws/aws-sdk-go-v2/service/ssm v1.52.3
 	github.com/bradleyfalzon/ghinstallation v1.1.1
-	github.com/evergreen-ci/certdepot v0.0.0-20250304195821-c4871b667baf
-	github.com/evergreen-ci/cocoa v0.0.0-20250225172339-717c91acad92
 	github.com/evergreen-ci/evg-lint v0.0.0-20211115144425-3b19c8e83a57
-	github.com/evergreen-ci/gimlet v0.0.0-20250227195544-4800fc7e312f
-	github.com/evergreen-ci/juniper v0.0.0-20230901183147-c805ea7351aa
-	github.com/evergreen-ci/pail v0.0.0-20250225193021-6429390aa3ce
 	github.com/evergreen-ci/plank v0.0.0-20230207190607-5f47f8a30da1
-	github.com/evergreen-ci/poplar v0.0.0-20250226220147-608ee5d893b2
-	github.com/evergreen-ci/shrub v0.0.0-20250224222152-c8b72a51163b
 	github.com/evergreen-ci/tarjan v0.0.0-20170824211642-fcd3f3321826
 	github.com/evergreen-ci/test-selection-client v0.0.0-20250211161638-10b5478f11ff
 	github.com/gorilla/handlers v1.5.2
-	github.com/mongodb/amboy v0.0.0-20250303191223-d8329aeac5c7
-	github.com/mongodb/anser v0.0.0-20250304192308-25ea0fd7a126
 	github.com/mongodb/jasper v0.0.0-20250304205544-71af207b4383
 	github.com/shirou/gopsutil/v3 v3.24.5
 	go.uber.org/automaxprocs v1.6.0
