@@ -65,7 +65,7 @@ func (s *logServiceV0) Get(ctx context.Context, getOpts GetOptions) (LogIterator
 	return it, nil
 }
 
-func (s *logServiceV0) Append(ctx context.Context, logName string, lines []LogLine) error {
+func (s *logServiceV0) Append(ctx context.Context, logName string, chunkGroup int, lines []LogLine) error {
 	if len(lines) == 0 {
 		return nil
 	}
@@ -75,7 +75,7 @@ func (s *logServiceV0) Append(ctx context.Context, logName string, lines []LogLi
 		rawLines = append(rawLines, []byte(s.formatRawLine(line))...)
 	}
 
-	key := fmt.Sprintf("%s/%s", logName, s.createChunkKey(lines[0].Timestamp, lines[len(lines)-1].Timestamp, len(lines)))
+	key := fmt.Sprintf("%s/%s", logName, s.createChunkKey(chunkGroup, lines[0].Timestamp, lines[len(lines)-1].Timestamp, len(lines)))
 	return errors.Wrap(s.bucket.Put(ctx, key, bytes.NewReader(rawLines)), "writing log chunk to bucket")
 }
 
@@ -170,32 +170,36 @@ func (s *logServiceV0) getLogChunks(ctx context.Context, logNames []string) ([]c
 //
 // The chunk key is encoded with the chunk info metadata to optimize storage
 // and lookup performance.
-func (s *logServiceV0) createChunkKey(start, end int64, numLines int) string {
-	return fmt.Sprintf("%d_%d_%d_%d", start, end, numLines, time.Now().UnixNano())
+func (s *logServiceV0) createChunkKey(chunkGroup int, start, end int64, numLines int) string {
+	return fmt.Sprintf("%d_%d_%d_%d_%d", chunkGroup, start, end, numLines, time.Now().UnixNano())
 }
 
 // parseChunkKey returns the chunk info encoded in the given key.
 func (s *logServiceV0) parseChunkKey(prefix, key string) (chunkInfo, error) {
 	parsedKey := strings.Split(key, "_")
-	if len(parsedKey) != 3 && len(parsedKey) != 4 {
+	if len(parsedKey) < 3 || len(parsedKey) > 5 {
 		return chunkInfo{}, errors.New("invalid key format")
 	}
 
-	start, err := strconv.ParseInt(parsedKey[0], 10, 64)
+	var idxOffset int
+	if len(parsedKey) == 5 {
+		idxOffset = 1
+	}
+	start, err := strconv.ParseInt(parsedKey[idxOffset+0], 10, 64)
 	if err != nil {
 		return chunkInfo{}, errors.Wrap(err, "parsing start time")
 	}
-	end, err := strconv.ParseInt(parsedKey[1], 10, 64)
+	end, err := strconv.ParseInt(parsedKey[idxOffset+1], 10, 64)
 	if err != nil {
 		return chunkInfo{}, errors.Wrap(err, "parsing end time")
 	}
-	numLines, err := strconv.Atoi(parsedKey[2])
+	numLines, err := strconv.Atoi(parsedKey[idxOffset+2])
 	if err != nil {
 		return chunkInfo{}, errors.Wrap(err, "parsing num lines")
 	}
 	var upload int64
 	if len(parsedKey) == 4 {
-		upload, err = strconv.ParseInt(parsedKey[3], 10, 64)
+		upload, err = strconv.ParseInt(parsedKey[idxOffset+3], 10, 64)
 		if err != nil {
 			return chunkInfo{}, errors.Wrap(err, "parsing upload time")
 		}

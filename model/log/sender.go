@@ -22,6 +22,8 @@ type SenderOptions struct {
 	// LogName is the identifying name of the log to use when persisting
 	// data.
 	LogName string
+	// TODO: add documentation
+	ChunkGroup int
 	// Parse is the function for parsing raw log lines collected by the
 	// sender.
 	// The injectable line parser allows the sender to be agnostic to the
@@ -168,7 +170,7 @@ func (s *sender) timedFlush() {
 }
 
 func (s *sender) flush(ctx context.Context) error {
-	if err := s.svc.Append(ctx, s.opts.LogName, s.buffer); err != nil {
+	if err := s.svc.Append(ctx, s.opts.LogName, s.opts.ChunkGroup, s.buffer); err != nil {
 		return errors.Wrap(err, "appending lines to log")
 	}
 

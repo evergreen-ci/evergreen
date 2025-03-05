@@ -36,7 +36,7 @@ func AppendTestLog(ctx context.Context, tsk *task.Task, redactionOpts redactor.R
 		TaskID:    tsk.Id,
 		Execution: tsk.Execution,
 	}
-	sender, err := tsk.TaskOutputInfo.TestLogs.NewSender(ctx, taskOpts, taskoutput.EvergreenSenderOptions{}, testLog.Name)
+	sender, err := tsk.TaskOutputInfo.TestLogs.NewSender(ctx, taskOpts, taskoutput.EvergreenSenderOptions{}, testLog.Name, 0)
 	if err != nil {
 		return errors.Wrapf(err, "creating Evergreen logger for test log '%s'", testLog.Name)
 	}
@@ -52,7 +52,7 @@ type testLogDirectoryHandler struct {
 	dir          string
 	logger       client.LoggerProducer
 	spec         testLogSpec
-	createSender func(context.Context, string) (send.Sender, error)
+	createSender func(context.Context, string, int) (send.Sender, error)
 	logFileCount int
 }
 
@@ -63,16 +63,16 @@ func newTestLogDirectoryHandler(dir string, output *taskoutput.TaskOutput, taskO
 		dir:    dir,
 		logger: logger,
 	}
-	h.createSender = func(ctx context.Context, logPath string) (send.Sender, error) {
+	h.createSender = func(ctx context.Context, logPath string, chunkGroup int) (send.Sender, error) {
 		evgSender, err := output.TestLogs.NewSender(ctx, taskOpts, taskoutput.EvergreenSenderOptions{
 			Local: logger.Task().GetSender(),
 			Parse: h.spec.getParser(),
-		}, logPath)
+		}, logPath, chunkGroup)
 		if err != nil {
 			return nil, errors.Wrap(err, "making test log sender")
 		}
-		//return evgSender, nil
-		return redactor.NewRedactingSender(evgSender, redactionOpts), nil
+		return evgSender, nil
+		//return redactor.NewRedactingSender(evgSender, redactionOpts), nil
 	}
 
 	return h
@@ -110,7 +110,10 @@ func (h *testLogDirectoryHandler) run(ctx context.Context) error {
 		}
 
 		// TODO: probably want to only break up the file if it's large.
-		var currentByte int64
+		var (
+			currentByte int64
+			chunkGroup  int
+		)
 		fileSize := fileInfo.Size()
 		chunkSize := int64(math.Ceil(float64(fileSize) / float64(runtime.NumCPU())))
 		for currentByte < fileSize {
@@ -121,10 +124,11 @@ func (h *testLogDirectoryHandler) run(ctx context.Context) error {
 				}()
 				defer wg.Done()
 
-				h.ingest(ctx, path, offset, limit)
+				h.ingest(ctx, path, chunkGroup, offset, limit)
 			}(currentByte, currentByte+chunkSize)
 
 			currentByte += chunkSize
+			chunkGroup++
 		}
 
 		return nil
@@ -158,7 +162,7 @@ func (h *testLogDirectoryHandler) getSpecFile() {
 }
 
 // ingest reads and ships a test log file.
-func (h *testLogDirectoryHandler) ingest(ctx context.Context, path string, offset, limit int64) {
+func (h *testLogDirectoryHandler) ingest(ctx context.Context, path string, chunkGroup int, offset, limit int64) {
 	h.logger.Task().Infof("new test log file '%s' found, initiating automated ingestion", path)
 
 	// The persisted log path should be relative to the reserved directory
@@ -182,7 +186,7 @@ func (h *testLogDirectoryHandler) ingest(ctx context.Context, path string, offse
 		}
 	}()
 
-	sender, err := h.createSender(ctx, logPath)
+	sender, err := h.createSender(ctx, logPath, chunkGroup)
 	if err != nil {
 		h.logger.Task().Error(errors.Wrapf(err, "creating Sender for test log '%s'", path))
 		return

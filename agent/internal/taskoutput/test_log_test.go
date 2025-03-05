@@ -437,7 +437,7 @@ func TestTestLogBenchmark(t *testing.T) {
 		assert.NoError(t, it.Close())
 	}()
 	for it.Next() {
-		fmt.Println(it.Item())
+		fmt.Println(it.Item().Data)
 	}
 }
 
@@ -449,10 +449,10 @@ func setupTestTestLogDirectoryHandler(t *testing.T, comm *client.Mock, redactOpt
 			TestLogs: taskoutput.TestLogOutput{
 				Version: 1,
 				BucketConfig: evergreen.BucketConfig{
-					//Name: t.TempDir(),
-					//Type: evergreen.BucketTypeLocal,
-					Name: "julian-push-test",
-					Type: evergreen.BucketTypeS3,
+					Name: t.TempDir(),
+					Type: evergreen.BucketTypeLocal,
+					//Name: "julian-push-test",
+					//Type: evergreen.BucketTypeS3,
 				},
 			},
 		},
