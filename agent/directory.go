@@ -78,7 +78,6 @@ func (a *Agent) removeTaskDirectory(ctx context.Context, tc *taskContext) {
 		return
 	}
 	if err := a.removeAllAndCheck(ctx, abs); err != nil {
-		a.numTaskDirCleanupFailures++
 		grip.Critical(errors.Wrapf(err, "removing task directory '%s'", dir))
 	} else {
 		grip.Info(message.Fields{
