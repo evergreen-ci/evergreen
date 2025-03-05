@@ -27,9 +27,8 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"gonum.org/v1/gonum/graph"
@@ -926,9 +925,9 @@ func (t *Task) MarkDependenciesFinished(ctx context.Context, finished bool) erro
 				bsonutil.GetDottedKeyName(DependsOnKey, "$[elem]", DependencyFinishedAtKey): finishedAt,
 			},
 		},
-		options.Update().SetArrayFilters(options.ArrayFilters{Filters: []interface{}{
+		options.UpdateMany().SetArrayFilters([]interface{}{
 			bson.M{bsonutil.GetDottedKeyName("elem", DependencyTaskIdKey): t.Id},
-		}}),
+		}),
 	)
 	if err != nil {
 		return errors.Wrap(err, "marking finished dependencies")
@@ -1727,14 +1726,13 @@ func SetGeneratedStepbackInfoForGenerator(ctx context.Context, taskId string, s 
 				bsonutil.GetDottedKeyName(StepbackInfoKey, GeneratedStepbackInfoKey, "$[elem]", PreviousStepbackTaskIdKey):    s.PreviousStepbackTaskId,
 			},
 		},
-		options.Update().SetArrayFilters(options.ArrayFilters{
-			Filters: []interface{}{
-				bson.M{
-					bsonutil.GetDottedKeyName("elem", DisplayNameKey):  s.DisplayName,
-					bsonutil.GetDottedKeyName("elem", BuildVariantKey): s.BuildVariant,
-				},
+		options.UpdateOne().SetArrayFilters([]interface{}{
+			bson.M{
+				bsonutil.GetDottedKeyName("elem", DisplayNameKey):  s.DisplayName,
+				bsonutil.GetDottedKeyName("elem", BuildVariantKey): s.BuildVariant,
 			},
-		}),
+		},
+		),
 	)
 	// If no documents were modified, fallback to adding the new StepbackInfo.
 	if r.ModifiedCount == 0 {
@@ -3106,17 +3104,17 @@ func archiveAll(ctx context.Context, taskIds, execTaskIds, toRestartExecTaskIds 
 	}
 	defer session.EndSession(ctx)
 
-	txFunc := func(sessCtx mongo.SessionContext) (interface{}, error) {
+	txFunc := func(ctx context.Context) (interface{}, error) {
 		var err error
 		if len(archivedTasks) > 0 {
 			oldTaskColl := evergreen.GetEnvironment().DB().Collection(OldCollection)
-			_, err = oldTaskColl.InsertMany(sessCtx, archivedTasks)
+			_, err = oldTaskColl.InsertMany(ctx, archivedTasks)
 			if err != nil {
 				return nil, errors.Wrap(err, "archiving tasks")
 			}
 		}
 		if len(taskIds) > 0 {
-			_, err = evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(sessCtx,
+			_, err = evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(ctx,
 				bson.M{
 					IdKey:     bson.M{"$in": taskIds},
 					StatusKey: bson.M{"$in": evergreen.TaskCompletedStatuses},
@@ -3140,7 +3138,7 @@ func archiveAll(ctx context.Context, taskIds, execTaskIds, toRestartExecTaskIds 
 			}
 		}
 		if len(execTaskIds) > 0 {
-			_, err = evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(sessCtx,
+			_, err = evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(ctx,
 				bson.M{IdKey: bson.M{"$in": execTaskIds}}, // Query all execution tasks
 				bson.A{ // Pipeline
 					bson.M{"$set": bson.M{ // Sets LatestParentExecution (LPE) = LPE + 1
@@ -3156,7 +3154,7 @@ func archiveAll(ctx context.Context, taskIds, execTaskIds, toRestartExecTaskIds 
 			}
 
 			// Call to update all tasks that are actually restarting
-			_, err = evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(sessCtx,
+			_, err = evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(ctx,
 				bson.M{IdKey: bson.M{"$in": toRestartExecTaskIds}}, // Query all archiving/restarting execution tasks
 				bson.A{ // Pipeline
 					bson.M{"$set": bson.M{ // Execution = LPE

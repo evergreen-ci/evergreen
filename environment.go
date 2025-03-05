@@ -26,8 +26,8 @@ import (
 	"github.com/mongodb/grip/send"
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
@@ -382,13 +382,13 @@ func (e *envState) initDB(ctx context.Context, settings DBSettings, tracer trace
 	defer span.End()
 
 	var err error
-	e.client, err = mongo.Connect(ctx, settings.mongoOptions(settings.Url))
+	e.client, err = mongo.Connect(settings.mongoOptions(settings.Url))
 	if err != nil {
 		return errors.Wrap(err, "connecting to the Evergreen DB")
 	}
 
 	if settings.SharedURL != "" {
-		e.sharedDBClient, err = mongo.Connect(ctx, settings.mongoOptions(settings.SharedURL))
+		e.sharedDBClient, err = mongo.Connect(settings.mongoOptions(settings.SharedURL))
 		if err != nil {
 			return errors.Wrap(err, "connecting to the shared Evergreen database")
 		}
@@ -405,7 +405,7 @@ func (e *envState) createRemoteQueues(ctx context.Context, tracer trace.Tracer) 
 	if url == "" {
 		url = DefaultAmboyDatabaseURL
 	}
-	client, err := mongo.Connect(ctx, e.settings.Database.mongoOptions(url))
+	client, err := mongo.Connect(e.settings.Database.mongoOptions(url))
 	if err != nil {
 		return errors.Wrap(err, "connecting to the Amboy database")
 	}

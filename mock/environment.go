@@ -23,8 +23,8 @@ import (
 	"github.com/mongodb/grip/send"
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 // this is just a hack to ensure that compile breaks clearly if the
@@ -92,7 +92,7 @@ func (e *Environment) Configure(ctx context.Context) error {
 
 	e.JasperProcessManager = jpm
 
-	e.MongoClient, err = mongo.Connect(ctx, options.Client().
+	e.MongoClient, err = mongo.Connect(options.Client().
 		ApplyURI(e.EvergreenSettings.Database.Url).
 		SetWriteConcern(e.EvergreenSettings.Database.WriteConcernSettings.Resolve()).
 		SetReadConcern(e.EvergreenSettings.Database.ReadConcernSettings.Resolve()).

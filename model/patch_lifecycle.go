@@ -21,7 +21,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/mongo"
 	"gopkg.in/yaml.v2"
 )
 
@@ -750,30 +749,30 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 	}
 	defer session.EndSession(ctx)
 
-	txFunc := func(sessCtx mongo.SessionContext) (interface{}, error) {
+	txFunc := func(ctx context.Context) (interface{}, error) {
 		db := env.DB()
-		_, err = db.Collection(VersionCollection).InsertOne(sessCtx, patchVersion)
+		_, err = db.Collection(VersionCollection).InsertOne(ctx, patchVersion)
 		if err != nil {
 			return nil, errors.Wrapf(err, "inserting version '%s'", patchVersion.Id)
 		}
 		if config != nil {
-			_, err = db.Collection(ProjectConfigCollection).InsertOne(sessCtx, config)
+			_, err = db.Collection(ProjectConfigCollection).InsertOne(ctx, config)
 			if err != nil {
 				return nil, errors.Wrapf(err, "inserting project config for version '%s'", patchVersion.Id)
 			}
 		}
 		if mfst != nil {
-			if err = mfst.InsertWithContext(sessCtx); err != nil {
+			if err = mfst.InsertWithContext(ctx); err != nil {
 				return nil, errors.Wrapf(err, "inserting manifest for version '%s'", patchVersion.Id)
 			}
 		}
-		if err = buildsToInsert.InsertMany(sessCtx, false); err != nil {
+		if err = buildsToInsert.InsertMany(ctx, false); err != nil {
 			return nil, errors.Wrapf(err, "inserting builds for version '%s'", patchVersion.Id)
 		}
-		if err = tasksToInsert.InsertUnordered(sessCtx); err != nil {
+		if err = tasksToInsert.InsertUnordered(ctx); err != nil {
 			return nil, errors.Wrapf(err, "inserting tasks for version '%s'", patchVersion.Id)
 		}
-		if err = p.SetFinalized(sessCtx, patchVersion.Id); err != nil {
+		if err = p.SetFinalized(ctx, patchVersion.Id); err != nil {
 			return nil, errors.Wrapf(err, "activating patch '%s'", patchVersion.Id)
 		}
 		return nil, err

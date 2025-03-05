@@ -23,7 +23,6 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/mongo"
 	"go.opentelemetry.io/otel/attribute"
 )
 
@@ -745,14 +744,14 @@ func dispatchHostTaskAtomically(ctx context.Context, env evergreen.Environment, 
 	return nil
 }
 
-func dispatchHostTask(env evergreen.Environment, h *host.Host, t *task.Task) func(mongo.SessionContext) (interface{}, error) {
-	return func(sessCtx mongo.SessionContext) (interface{}, error) {
-		if err := h.UpdateRunningTaskWithContext(sessCtx, env, t); err != nil {
+func dispatchHostTask(env evergreen.Environment, h *host.Host, t *task.Task) func(context.Context) (interface{}, error) {
+	return func(ctx context.Context) (interface{}, error) {
+		if err := h.UpdateRunningTaskWithContext(ctx, env, t); err != nil {
 			return nil, errors.Wrapf(err, "updating running task for host '%s' to '%s'", h.Id, t.Id)
 		}
 
 		dispatchedAt := time.Now()
-		if err := t.MarkAsHostDispatchedWithContext(sessCtx, env, h.Id, h.Distro.Id, h.AgentRevision, dispatchedAt); err != nil {
+		if err := t.MarkAsHostDispatchedWithContext(ctx, env, h.Id, h.Distro.Id, h.AgentRevision, dispatchedAt); err != nil {
 			return nil, errors.Wrapf(err, "marking task '%s' as dispatched to host '%s'", t.Id, h.Id)
 		}
 
@@ -799,12 +798,12 @@ func undoHostTaskDispatchAtomically(ctx context.Context, env evergreen.Environme
 	return nil
 }
 
-func undoHostTaskDispatch(env evergreen.Environment, h *host.Host, t *task.Task) func(mongo.SessionContext) (interface{}, error) {
-	return func(sessCtx mongo.SessionContext) (interface{}, error) {
-		if err := h.ClearRunningTaskWithContext(sessCtx, env); err != nil {
+func undoHostTaskDispatch(env evergreen.Environment, h *host.Host, t *task.Task) func(context.Context) (interface{}, error) {
+	return func(ctx context.Context) (interface{}, error) {
+		if err := h.ClearRunningTaskWithContext(ctx, env); err != nil {
 			return nil, errors.Wrapf(err, "clearing running task '%s' execution '%d' from host '%s'", h.RunningTask, h.RunningTaskExecution, h.Id)
 		}
-		if err := t.MarkAsHostUndispatchedWithContext(sessCtx, env); err != nil {
+		if err := t.MarkAsHostUndispatchedWithContext(ctx, env); err != nil {
 			return nil, errors.Wrapf(err, "marking task '%s' as no longer dispatched", t.Id)
 		}
 		return nil, nil
