@@ -5,7 +5,6 @@ import (
 	"context"
 	"io"
 	"io/fs"
-	"math"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -85,6 +84,14 @@ func (h *testLogDirectoryHandler) run(ctx context.Context) error {
 	h.getSpecFile()
 
 	var wg sync.WaitGroup
+	type workFragment struct {
+		path     string
+		sequence int
+		offset   int64
+		limit    int64
+	}
+	var workFragments []workFragment
+	seqSize := int64(1e7)
 	ignore := filepath.Join(h.dir, testLogSpecFilename)
 	err := filepath.WalkDir(h.dir, func(path string, info fs.DirEntry, err error) error {
 		if err != nil {
@@ -109,47 +116,21 @@ func (h *testLogDirectoryHandler) run(ctx context.Context) error {
 			return nil
 		}
 
-		seqSize := int64(1e7)
 		fileSize := fileInfo.Size()
-		type workInfo struct {
-			sequence int
-			offset   int64
-			limit    int64
-		}
-		work := make(chan workInfo, int(math.Ceil(float64(fileSize)/float64(seqSize))))
 		var (
 			currentByte int64
 			sequence    int
 		)
 		for currentByte < fileSize {
-			work <- workInfo{
+			workFragments = append(workFragments, workFragment{
+				path:     path,
 				sequence: sequence,
 				offset:   currentByte,
 				limit:    currentByte + seqSize,
-			}
+			})
 
 			currentByte += seqSize
 			sequence++
-		}
-		close(work)
-
-		for i := 0; i < runtime.NumCPU(); i++ {
-			wg.Add(1)
-			go func() {
-				defer func() {
-					h.logger.Task().Critical(recovery.HandlePanicWithError(recover(), nil, "test log ingestion worker"))
-					wg.Done()
-				}()
-
-				for chunk := range work {
-					if err := ctx.Err(); err != nil {
-						h.logger.Execution().Warning(errors.Wrap(err, "context error test log ingestion worker"))
-						return
-					}
-
-					h.ingest(ctx, path, chunk.sequence, chunk.offset, chunk.limit)
-				}
-			}()
 		}
 
 		/*
@@ -178,6 +159,30 @@ func (h *testLogDirectoryHandler) run(ctx context.Context) error {
 
 		return nil
 	})
+
+	work := make(chan workFragment, len(workFragments))
+	for _, fragment := range workFragments {
+		work <- fragment
+	}
+	close(work)
+	for i := 0; i < runtime.NumCPU(); i++ {
+		wg.Add(1)
+		go func() {
+			defer func() {
+				h.logger.Task().Critical(recovery.HandlePanicWithError(recover(), nil, "test log ingestion worker"))
+				wg.Done()
+			}()
+
+			for chunk := range work {
+				if err := ctx.Err(); err != nil {
+					h.logger.Execution().Warning(errors.Wrap(err, "context error test log ingestion worker"))
+					return
+				}
+
+				h.ingest(ctx, chunk.path, chunk.sequence, chunk.offset, chunk.limit)
+			}
+		}()
+	}
 	wg.Wait()
 
 	span.SetAttributes(attribute.KeyValue{Key: "test_log_file_count", Value: attribute.IntValue(h.logFileCount)})
