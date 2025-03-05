@@ -261,7 +261,7 @@ func (tc *TaskConfig) TaskAttributeMap() map[string]string {
 	if tc.GithubPatchData.PRNumber != 0 {
 		attributes[evergreen.VersionPRNumOtelAttribute] = strconv.Itoa(tc.GithubPatchData.PRNumber)
 	}
-	if tc.Host != nil {
+	if tc.Host != nil && tc.Host.Hostname != "" {
 		// kim: TODO: test this attribute appears in staging.
 		attributes[evergreen.HostnameOtelAttribute] = tc.Host.Hostname
 	}
