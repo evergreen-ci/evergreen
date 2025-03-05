@@ -279,11 +279,12 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 		return errors.Wrap(err, "creating host")
 	}
 	grip.Info(message.Fields{
-		"message":      "attempting to start host",
-		"host_id":      j.host.Id,
-		"job":          j.ID(),
-		"attempt":      j.RetryInfo().CurrentAttempt,
-		"max_attempts": j.RetryInfo().MaxAttempts,
+		"message":            "attempting to start host",
+		"host_id":            j.host.Id,
+		"single_task_distro": j.host.Distro.SingleTaskDistro,
+		"job":                j.ID(),
+		"attempt":            j.RetryInfo().CurrentAttempt,
+		"max_attempts":       j.RetryInfo().MaxAttempts,
 	})
 
 	span := trace.SpanFromContext(ctx)
@@ -362,15 +363,16 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 	}
 
 	grip.Info(message.Fields{
-		"message":      "successfully started host",
-		"host_id":      j.host.Id,
-		"host_tag":     j.host.Tag,
-		"distro":       j.host.Distro.Id,
-		"provider":     j.host.Provider,
-		"subnet":       j.host.GetSubnetID(),
-		"job":          j.ID(),
-		"runtime_secs": time.Since(j.start).Seconds(),
-		"num_attempts": j.RetryInfo().CurrentAttempt,
+		"message":            "successfully started host",
+		"host_id":            j.host.Id,
+		"host_tag":           j.host.Tag,
+		"distro":             j.host.Distro.Id,
+		"single_task_distro": j.host.Distro.SingleTaskDistro,
+		"provider":           j.host.Provider,
+		"subnet":             j.host.GetSubnetID(),
+		"job":                j.ID(),
+		"runtime_secs":       time.Since(j.start).Seconds(),
+		"num_attempts":       j.RetryInfo().CurrentAttempt,
 	})
 	span.SetAttributes(attribute.Bool(fmt.Sprintf("%s.spawned_host", provisioningCreateHostAttributePrefix), true))
 
