@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
+	"golang.org/x/sync/errgroup"
 )
 
 type createHost struct {
@@ -113,6 +114,25 @@ func (c *createHost) Execute(ctx context.Context, comm client.Communicator,
 		if err = c.getLogsFromNewDockerHost(ctx, logger, comm, ids, startTime, conf); err != nil {
 			return errors.Wrap(err, "getting logs from created host")
 		}
+	}
+
+	should, err := c.CreateHost.ShouldWaitForUserDataScript()
+	if err != nil {
+		return errors.Wrap(err, "checking if we should wait for user data script")
+	}
+	if should {
+		logger.Task().Info("host.create: waiting for user data script to finish...")
+		errGroup, ctx := errgroup.WithContext(ctx)
+		for _, id := range ids {
+			errGroup.Go(func() error {
+				logger.Task().Infof("host.create: checking user data script status for host '%s'", id)
+				return comm.IsUserDataScriptFinished(ctx, taskData, id)
+			})
+		}
+		if err := errGroup.Wait(); err != nil {
+			return errors.Wrap(err, "waiting for user data script to finish")
+		}
+		logger.Task().Info("host.create: user data script finished.")
 	}
 
 	return nil

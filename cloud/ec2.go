@@ -1311,6 +1311,33 @@ func (m *ec2Manager) GetDNSName(ctx context.Context, h *host.Host) (string, erro
 	return m.client.GetPublicDNSName(ctx, h)
 }
 
+func (m *ec2Manager) IsUserDataFinished(ctx context.Context, host *host.Host) (bool, error) {
+	if err := m.client.Create(ctx, m.region); err != nil {
+		return false, errors.Wrap(err, "creating client")
+	}
+	logs, err := m.client.GetConsoleOutput(ctx, host.Id)
+	if err != nil {
+		return false, errors.Wrap(err, "getting console output")
+	}
+
+	// TODO: Decide if logs has the required things
+	grip.Debug(message.Fields{
+		"message": "checking if user data is finished",
+		"host_id": host.Id,
+		"logs":    logs,
+	})
+	return true, nil
+}
+
+// GetConsoleOutput returns the console output for the host.
+func (m *ec2Manager) GetConsoleOutput(ctx context.Context, hostId string) (string, error) {
+	if err := m.client.Create(ctx, m.region); err != nil {
+		return "", errors.Wrap(err, "creating client")
+	}
+
+	return m.client.GetConsoleOutput(ctx, hostId)
+}
+
 // TimeTilNextPayment returns how long until the next payment is due for a host.
 func (m *ec2Manager) TimeTilNextPayment(host *host.Host) time.Duration {
 	return timeTilNextEC2Payment(host)

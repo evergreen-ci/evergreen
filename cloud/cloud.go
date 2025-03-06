@@ -53,6 +53,9 @@ type Manager interface {
 	// GetDNSName returns the DNS name of a host.
 	GetDNSName(context.Context, *host.Host) (string, error)
 
+	// IsUserDataFinished checks if a host's user data script has finished running.
+	IsUserDataFinished(context.Context, *host.Host) (bool, error)
+
 	// AttachVolume attaches a volume to a host.
 	AttachVolume(context.Context, *host.Host, *host.VolumeAttachment) error
 

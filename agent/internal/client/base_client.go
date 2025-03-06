@@ -761,6 +761,22 @@ func (c *baseCommunicator) CreateHost(ctx context.Context, td TaskData, options 
 	return ids, nil
 }
 
+// IsUserDataScriptFinished checks if the user data script has finished executing
+// for a given host.
+func (c *baseCommunicator) IsUserDataScriptFinished(ctx context.Context, td TaskData, id string) error {
+	info := requestInfo{
+		method:   http.MethodPost,
+		taskData: &td,
+	}
+	info.path = fmt.Sprintf("hosts/%s/is_user_data_script_finished", td.ID)
+	resp, err := c.retryRequest(ctx, info, id)
+	if err != nil {
+		return util.RespError(resp, errors.Wrap(err, "sending host.create request").Error())
+	}
+
+	return nil
+}
+
 func (c *baseCommunicator) ListHosts(ctx context.Context, td TaskData) (restmodel.HostListResults, error) {
 	info := requestInfo{
 		method:   http.MethodGet,

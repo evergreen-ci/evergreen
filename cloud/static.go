@@ -76,6 +76,10 @@ func (staticMgr *staticManager) GetDNSName(ctx context.Context, host *host.Host)
 	return host.Id, nil
 }
 
+func (staticMgr *staticManager) IsUserDataFinished(ctx context.Context, host *host.Host) (bool, error) {
+	return true, nil
+}
+
 func (m *staticManager) SetPortMappings(context.Context, *host.Host, *host.Host) error {
 	return errors.New("can't set port mappings with static provider")
 }

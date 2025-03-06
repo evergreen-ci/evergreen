@@ -530,6 +530,10 @@ func (c *Mock) CreateHost(ctx context.Context, td TaskData, options apimodels.Cr
 	return []string{"id"}, options.Validate(ctx)
 }
 
+func (c *Mock) IsUserDataScriptFinished(ctx context.Context, td TaskData, id string) error {
+	return nil
+}
+
 func (c *Mock) ListHosts(_ context.Context, _ TaskData) (model.HostListResults, error) {
 	return model.HostListResults{}, nil
 }

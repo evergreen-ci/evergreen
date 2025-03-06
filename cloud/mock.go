@@ -262,6 +262,10 @@ func (m *mockManager) GetDNSName(ctx context.Context, host *host.Host) (string, 
 	return instance.DNSName, nil
 }
 
+func (m *mockManager) IsUserDataFinished(ctx context.Context, host *host.Host) (bool, error) {
+	return true, nil
+}
+
 // terminate an instance
 func (m *mockManager) TerminateInstance(ctx context.Context, host *host.Host, user, reason string) error {
 	l := m.mutex
