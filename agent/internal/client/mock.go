@@ -23,6 +23,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/testlog"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
@@ -218,6 +219,10 @@ func (c *Mock) GetHostView(context.Context, TaskData) (*apimodels.HostView, erro
 
 func (c *Mock) GetDistroAMI(context.Context, string, string, TaskData) (string, error) {
 	return "ami-mock", nil
+}
+
+func (c *Mock) GetDistroByName(context.Context, string) (*restmodel.APIDistro, error) {
+	return &restmodel.APIDistro{}, nil
 }
 
 // GetProject returns the mock project. If an explicit GetProjectResponse is
