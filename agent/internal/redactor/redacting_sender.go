@@ -46,7 +46,14 @@ func (r *redactingSender) Send(m message.Composer) {
 
 	msg := m.String()
 
-	for _, info := range r.allRedacted {
+	var allRedacted []util.RedactInfo
+	if len(r.allRedacted) > 0 {
+		allRedacted = r.allRedacted
+	} else {
+		allRedacted = getAllRedacted(r.expansions, r.internalRedactions, r.expansionsToRedact)
+	}
+
+	for _, info := range allRedacted {
 		msg = strings.ReplaceAll(msg, info.Value, fmt.Sprintf(redactedVariableTemplate, info.Key))
 	}
 
@@ -63,19 +70,19 @@ func NewRedactingSender(sender send.Sender, opts RedactionOptions) send.Sender {
 		opts.InternalRedactions = &util.DynamicExpansions{}
 	}
 
-	expansions := opts.Expansions
-	expansionsToRedact := append(opts.Redacted, globals.ExpansionsToRedact...)
-	internalRedactions := opts.InternalRedactions
-
-	if !opts.PreloadExpansions {
-		return &redactingSender{
-			expansions:         opts.Expansions,
-			expansionsToRedact: append(opts.Redacted, globals.ExpansionsToRedact...),
-			internalRedactions: opts.InternalRedactions,
-			Sender:             sender,
-		}
+	redacter := &redactingSender{
+		expansions:         opts.Expansions,
+		expansionsToRedact: append(opts.Redacted, globals.ExpansionsToRedact...),
+		internalRedactions: opts.InternalRedactions,
+		Sender:             sender,
 	}
+	if opts.PreloadExpansions {
+		redacter.allRedacted = getAllRedacted(redacter.expansions, redacter.internalRedactions, redacter.expansionsToRedact)
+	}
+	return redacter
+}
 
+func getAllRedacted(expansions, internalRedactions *util.DynamicExpansions, expansionsToRedact []string) []util.RedactInfo {
 	allRedacted := expansions.GetRedacted()
 	for _, expansion := range expansionsToRedact {
 		if val := expansions.Get(expansion); val != "" {
@@ -91,9 +98,5 @@ func NewRedactingSender(sender send.Sender, opts RedactionOptions) send.Sender {
 	sort.Slice(allRedacted, func(i, j int) bool {
 		return len(allRedacted[i].Value) > len(allRedacted[j].Value)
 	})
-
-	return &redactingSender{
-		allRedacted: allRedacted,
-		Sender:      sender,
-	}
+	return allRedacted
 }
