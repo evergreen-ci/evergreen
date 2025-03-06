@@ -69,6 +69,7 @@ func newTestLogDirectoryHandler(dir string, output *taskoutput.TaskOutput, taskO
 		if err != nil {
 			return nil, errors.Wrap(err, "making test log sender")
 		}
+		redactionOpts.PreloadRedactions = true
 		return redactor.NewRedactingSender(evgSender, redactionOpts), nil
 	}
 
