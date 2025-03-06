@@ -915,10 +915,11 @@ func attemptStepbackAndDeactivatePrevious(ctx context.Context, t *task.Task, sta
 
 	if !evergreen.IsPatchRequester(t.Requester) {
 		if t.IsPartOfDisplay(ctx) {
-			_, err = t.GetDisplayTask(ctx)
+			var dt *task.Task
+			dt, err = t.GetDisplayTask(ctx)
 			if err != nil {
 				err = errors.Wrap(err, "getting display task")
-			} else {
+			} else if dt != nil {
 				err = evalStepback(ctx, t.DisplayTask, status, pRef, project)
 			}
 		} else {
