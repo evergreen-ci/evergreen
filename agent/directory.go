@@ -56,10 +56,11 @@ func (a *Agent) createTaskDirectory(tc *taskContext, taskDir string) (string, er
 	return taskDir, nil
 }
 
-// removeTaskDirectory removes the folder the agent created for the task it
-// was executing. It does not return an error because it is executed at the end of
-// a task run, and the agent loop will start another task regardless of how this
-// exits.
+// removeTaskDirectory removes the folder the agent created for the task it was
+// executing. It does not return an error because it is executed at the end of a
+// task run, and the agent loop will start another task regardless of how this
+// exits. If it cannot remove the task directory, the agent may disable the host
+// because leaving the task directory behind could impact later tasks.
 func (a *Agent) removeTaskDirectory(ctx context.Context, tc *taskContext) {
 	if tc.taskConfig == nil || tc.taskConfig.WorkDir == "" {
 		grip.Info("Task directory is not set, not removing.")
@@ -208,7 +209,6 @@ func (a *Agent) tryCleanupDirectory(ctx context.Context, dir string) {
 	}
 }
 
-// kim: TODO: test in staging
 func (a *Agent) checkDataDirectoryHealth(ctx context.Context) error {
 	if a.numTaskDirCleanupFailures >= globals.MaxTaskDirCleanupFailures {
 		err := a.comm.DisableHost(ctx, a.opts.HostID, apimodels.DisableInfo{
