@@ -52,6 +52,7 @@ type testLogDirectoryHandler struct {
 	logger       client.LoggerProducer
 	spec         testLogSpec
 	createSender func(context.Context, string, int) (send.Sender, error)
+	sequenceSize int64
 	logFileCount int
 }
 
@@ -70,8 +71,6 @@ func newTestLogDirectoryHandler(dir string, output *taskoutput.TaskOutput, taskO
 		if err != nil {
 			return nil, errors.Wrap(err, "making test log sender")
 		}
-		//return evgSender, nil
-		redactionOpts.PreloadExpansions = true
 		return redactor.NewRedactingSender(evgSender, redactionOpts), nil
 	}
 
@@ -81,6 +80,11 @@ func newTestLogDirectoryHandler(dir string, output *taskoutput.TaskOutput, taskO
 func (h *testLogDirectoryHandler) run(ctx context.Context) error {
 	ctx, span := tracer.Start(ctx, "test-log-ingestion")
 	defer span.End()
+
+	if h.sequenceSize <= 0 {
+		// Default sequence size to 10MB.
+		h.sequenceSize = 1e7
+	}
 
 	h.getSpecFile()
 
@@ -92,7 +96,6 @@ func (h *testLogDirectoryHandler) run(ctx context.Context) error {
 		limit    int64
 	}
 	var workFragments []workFragment
-	seqSize := int64(1e7)
 	ignore := filepath.Join(h.dir, testLogSpecFilename)
 	err := filepath.WalkDir(h.dir, func(path string, info fs.DirEntry, err error) error {
 		if err != nil {
@@ -127,10 +130,10 @@ func (h *testLogDirectoryHandler) run(ctx context.Context) error {
 				path:     path,
 				sequence: sequence,
 				offset:   currentByte,
-				limit:    currentByte + seqSize,
+				limit:    currentByte + h.sequenceSize,
 			})
 
-			currentByte += seqSize
+			currentByte += h.sequenceSize
 			sequence++
 		}
 
