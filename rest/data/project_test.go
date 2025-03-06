@@ -25,7 +25,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 ////////////////////////////////////////////////////////////////////////
@@ -478,7 +478,7 @@ func TestCreateProject(t *testing.T) {
 			assert.Equal(t, pRef.Identifier, dbProjRef.Identifier)
 		},
 		"SucceedsWithObjectIDAsProjectID": func(ctx context.Context, t *testing.T, env *mock.Environment, pRef model.ProjectRef, u user.DBUser) {
-			pRef.Id = primitive.NewObjectID().Hex()
+			pRef.Id = bson.NewObjectID().Hex()
 			created, err := CreateProject(ctx, env, &pRef, &u)
 			require.NoError(t, err)
 			require.True(t, created)
@@ -637,7 +637,7 @@ func TestHideBranch(t *testing.T) {
 	}
 	require.NoError(t, vars.Insert())
 
-	err := HideBranch(project.Id)
+	err := HideBranch(t.Context(), project.Id)
 	assert.NoError(t, err)
 
 	hiddenProj, err := model.FindMergedProjectRef(project.Id, "", true)

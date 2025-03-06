@@ -12,8 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	"go.opentelemetry.io/otel/trace/noop"
 )
 
@@ -802,7 +802,7 @@ func (s *AdminSuite) TestAddEC2RegionToSSHKey() {
 		idKey: ConfigDocID,
 	}, bson.M{
 		"$set": bson.M{sshKeyPairsKey: pairs},
-	}, options.Update().SetUpsert(true))
+	}, options.UpdateOne().SetUpsert(true))
 	s.Require().NoError(err)
 
 	region0 := "region0"

@@ -44,9 +44,7 @@
         "build_variant": "enterprise-ubuntu1604-64",
         "display_name": "01 Ubuntu 16.04"
       },
-      "builds": [
-        "evergreen_version1_build"
-      ]
+      "builds": ["evergreen_version1_build"]
     },
     {
       "_id": "evergreen_version2",
@@ -65,9 +63,7 @@
         "build_id": "evergreen_version2_build",
         "build_variant": "enterprise-ubuntu1604-64"
       },
-      "builds": [
-        "evergreen_version2_build"
-      ]
+      "builds": ["evergreen_version2_build"]
     },
     {
       "_id": "evergreen_version3",
@@ -95,7 +91,7 @@
       "activated": false,
       "author": "mohamed.khelif",
       "status": "created",
-      "order": 44,
+      "order": 645,
       "create_time": {
         "$date": "2020-01-04T08:15:00Z"
       }
@@ -108,13 +104,11 @@
       "activated": true,
       "author": "mohamed.khelif",
       "status": "created",
-      "order": 45,
+      "order": 945,
       "create_time": {
         "$date": "2020-01-05T12:00:00Z"
       },
-      "builds": [
-        "evergreen_version3_build"
-      ]
+      "builds": ["evergreen_version3_build"]
     },
     {
       "_id": "inactive1",
@@ -186,7 +180,7 @@
       "version": "evergreen_version1",
       "status": "success",
       "display_status_cache": "success",
-      "display_name": "Some Task",
+      "display_name": "Task A",
       "activated": true,
       "build_variant": "enterprise-ubuntu1604-64",
       "build_variant_display_name": "Ubuntu 16.04",
@@ -203,7 +197,7 @@
       "version": "evergreen_version1",
       "status": "success",
       "display_status_cache": "success",
-      "display_name": "Some Other Task",
+      "display_name": "Task B",
       "activated": true,
       "build_variant": "enterprise-ubuntu1604-64",
       "build_variant_display_name": "Ubuntu 16.04",
@@ -223,7 +217,7 @@
       "details": {
         "type": "setup"
       },
-      "display_name": "Some Task",
+      "display_name": "Task A",
       "activated": true,
       "build_variant": "enterprise-ubuntu1604-64",
       "build_variant_display_name": "Ubuntu 16.04",
@@ -240,7 +234,7 @@
       "version": "evergreen_version2",
       "status": "success",
       "display_status_cache": "success",
-      "display_name": "Some Other Task",
+      "display_name": "Task B",
       "activated": true,
       "build_variant": "enterprise-ubuntu1604-64",
       "build_variant_display_name": "Ubuntu 16.04",
@@ -257,7 +251,7 @@
       "version": "evergreen_version5",
       "status": "success",
       "display_status_cache": "success",
-      "display_name": "Task Number 5",
+      "display_name": "Task C",
       "activated": true,
       "build_variant": "lint",
       "build_variant_display_name": "Linter",

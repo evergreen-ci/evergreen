@@ -15,7 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/suite"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 func TestVersionTriggers(t *testing.T) {
@@ -151,7 +151,7 @@ func (s *VersionSuite) TestAllTriggers() {
 
 	s.version.Status = evergreen.VersionSucceeded
 	s.data.Status = evergreen.VersionSucceeded
-	s.NoError(db.Update(model.VersionCollection, bson.M{"_id": s.version.Id}, &s.version))
+	s.NoError(db.ReplaceContext(s.ctx, model.VersionCollection, bson.M{"_id": s.version.Id}, &s.version))
 
 	n, err = NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)
@@ -159,7 +159,7 @@ func (s *VersionSuite) TestAllTriggers() {
 
 	s.version.Status = evergreen.VersionFailed
 	s.data.Status = evergreen.VersionFailed
-	s.NoError(db.Update(model.VersionCollection, bson.M{"_id": s.version.Id}, &s.version))
+	s.NoError(db.ReplaceContext(s.ctx, model.VersionCollection, bson.M{"_id": s.version.Id}, &s.version))
 
 	n, err = NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)
@@ -167,7 +167,7 @@ func (s *VersionSuite) TestAllTriggers() {
 
 	s.version.Status = evergreen.VersionFailed
 	s.data.Status = evergreen.VersionCreated
-	s.NoError(db.Update(model.VersionCollection, bson.M{"_id": s.version.Id}, &s.version))
+	s.NoError(db.ReplaceContext(s.ctx, model.VersionCollection, bson.M{"_id": s.version.Id}, &s.version))
 
 	n, err = NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)

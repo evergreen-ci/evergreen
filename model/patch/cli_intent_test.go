@@ -7,7 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/stretchr/testify/suite"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 type CliIntentSuite struct {
@@ -61,7 +61,7 @@ func (s *CliIntentSuite) TestNewCliIntent() {
 	s.NotNil(intent)
 	s.NoError(err)
 	s.Implements((*Intent)(nil), intent)
-	s.False(intent.ShouldFinalizePatch())
+	s.True(intent.ShouldFinalizePatch())
 	s.Equal(CliIntentType, intent.GetType())
 	s.False(intent.IsProcessed())
 	s.Equal(evergreen.PatchVersionRequester, intent.RequesterIdentity())
@@ -74,6 +74,7 @@ func (s *CliIntentSuite) TestNewCliIntent() {
 	s.Equal(s.module, cIntent.Module)
 	s.Equal(s.patchContent, cIntent.PatchContent)
 	s.Equal(s.description, cIntent.Description)
+	s.True(cIntent.Finalize)
 	s.Equal(s.variants, cIntent.BuildVariants)
 	s.Equal(s.tasks, cIntent.Tasks)
 	s.Zero(cIntent.ProcessedAt)
@@ -252,7 +253,7 @@ func (s *CliIntentSuite) TestSetProcessed() {
 	s.NotNil(intent)
 	s.Require().NoError(intent.Insert())
 
-	s.Require().NoError(intent.SetProcessed())
+	s.Require().NoError(intent.SetProcessed(s.T().Context()))
 	s.True(intent.IsProcessed())
 
 	var intents []*cliIntent

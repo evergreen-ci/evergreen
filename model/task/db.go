@@ -14,8 +14,8 @@ import (
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -1666,7 +1666,7 @@ func UpdateAll(ctx context.Context, query interface{}, update interface{}) (*adb
 }
 
 func UpdateAllWithHint(ctx context.Context, query interface{}, update interface{}, hint interface{}) (*adb.ChangeInfo, error) {
-	res, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(ctx, query, update, options.Update().SetHint(hint))
+	res, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(ctx, query, update, options.UpdateMany().SetHint(hint))
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}

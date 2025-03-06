@@ -22,7 +22,7 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 func insertTaskForTesting(ctx context.Context, env evergreen.Environment, taskId, versionId, projectName string, testResults []testresult.TestResult) (*task.Task, error) {
@@ -418,7 +418,7 @@ func TestGetDisplayTaskInfo(t *testing.T) {
 	displayTask, err := insertTaskForTesting(ctx, env, displayTaskId, versionId, projectName, nil)
 	assert.NoError(err)
 	displayTask.ExecutionTasks = []string{executionTaskId}
-	err = db.Update(task.Collection,
+	err = db.UpdateContext(t.Context(), task.Collection,
 		bson.M{task.IdKey: displayTaskId},
 		bson.M{"$set": bson.M{
 			task.ExecutionTasksKey: []string{executionTaskId},

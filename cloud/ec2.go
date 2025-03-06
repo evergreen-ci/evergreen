@@ -20,7 +20,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 // EC2ProviderSettings describes properties of managed instances.
@@ -903,7 +903,7 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 	}
 
 	for _, vol := range h.Volumes {
-		volDB, err := host.FindVolumeByID(vol.VolumeID)
+		volDB, err := host.FindVolumeByID(ctx, vol.VolumeID)
 		if err != nil {
 			return errors.Wrap(err, "finding volumes for host")
 		}
@@ -923,7 +923,7 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 			}
 		}
 
-		if err = host.UnsetVolumeHost(volDB.ID); err != nil {
+		if err = host.UnsetVolumeHost(ctx, volDB.ID); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"host_id":   h.Id,
 				"volume_id": volDB.ID,
@@ -1103,7 +1103,7 @@ func (m *ec2Manager) AttachVolume(ctx context.Context, h *host.Host, attachment 
 }
 
 func (m *ec2Manager) DetachVolume(ctx context.Context, h *host.Host, volumeID string) error {
-	v, err := host.FindVolumeByID(volumeID)
+	v, err := host.FindVolumeByID(ctx, volumeID)
 	if err != nil {
 		return errors.Wrapf(err, "getting volume '%s'", volumeID)
 	}
@@ -1190,7 +1190,7 @@ func (m *ec2Manager) DeleteVolume(ctx context.Context, volume *host.Volume) erro
 		return errors.Wrapf(err, "deleting volume '%s' in client", volume.ID)
 	}
 
-	return errors.Wrapf(volume.Remove(), "deleting volume '%s' in DB", volume.ID)
+	return errors.Wrapf(volume.Remove(ctx), "deleting volume '%s' in DB", volume.ID)
 }
 
 func (m *ec2Manager) GetVolumeAttachment(ctx context.Context, volumeID string) (*VolumeAttachment, error) {
@@ -1231,7 +1231,7 @@ func (m *ec2Manager) GetVolumeAttachment(ctx context.Context, volumeID string) (
 }
 
 func (m *ec2Manager) modifyVolumeExpiration(ctx context.Context, volume *host.Volume, newExpiration time.Time) error {
-	if err := volume.SetExpiration(newExpiration); err != nil {
+	if err := volume.SetExpiration(ctx, newExpiration); err != nil {
 		return errors.Wrapf(err, "updating expiration for volume '%s'", volume.ID)
 	}
 
@@ -1257,7 +1257,7 @@ func (m *ec2Manager) ModifyVolume(ctx context.Context, volume *host.Volume, opts
 		if err := m.modifyVolumeExpiration(ctx, volume, opts.Expiration); err != nil {
 			return errors.Wrapf(err, "modifying volume '%s' expiration", volume.ID)
 		}
-		if err := volume.SetNoExpiration(false); err != nil {
+		if err := volume.SetNoExpiration(ctx, false); err != nil {
 			return errors.Wrapf(err, "clearing volume '%s' no-expiration in DB", volume.ID)
 		}
 	}
@@ -1270,13 +1270,13 @@ func (m *ec2Manager) ModifyVolume(ctx context.Context, volume *host.Volume, opts
 		if err := m.modifyVolumeExpiration(ctx, volume, time.Now().Add(evergreen.SpawnHostNoExpirationDuration)); err != nil {
 			return errors.Wrapf(err, "modifying volume '%s' background expiration", volume.ID)
 		}
-		if err := volume.SetNoExpiration(true); err != nil {
+		if err := volume.SetNoExpiration(ctx, true); err != nil {
 			return errors.Wrapf(err, "setting volume '%s' no-expiration in DB", volume.ID)
 		}
 	}
 
 	if opts.HasExpiration {
-		if err := volume.SetNoExpiration(false); err != nil {
+		if err := volume.SetNoExpiration(ctx, false); err != nil {
 			return errors.Wrapf(err, "clearing volume '%s' no-expiration in DB", volume.ID)
 		}
 	}
@@ -1289,13 +1289,13 @@ func (m *ec2Manager) ModifyVolume(ctx context.Context, volume *host.Volume, opts
 		if err != nil {
 			return errors.Wrapf(err, "modifying volume '%s' size in client", volume.ID)
 		}
-		if err = volume.SetSize(opts.Size); err != nil {
+		if err = volume.SetSize(ctx, opts.Size); err != nil {
 			return errors.Wrapf(err, "modifying volume '%s' size in DB", volume.ID)
 		}
 	}
 
 	if opts.NewName != "" {
-		if err := volume.SetDisplayName(opts.NewName); err != nil {
+		if err := volume.SetDisplayName(ctx, opts.NewName); err != nil {
 			return errors.Wrapf(err, "modifying volume '%s' name in DB", volume.ID)
 		}
 	}

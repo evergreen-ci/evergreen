@@ -247,7 +247,7 @@ func (s *userPermissionPostSuite) TestValidInput() {
 	dbUser, err = user.FindOneById(s.u.Id)
 	s.NoError(err)
 	for _, role := range dbUser.Roles() {
-		s.NoError(dbUser.RemoveRole(role))
+		s.NoError(dbUser.RemoveRole(s.T().Context(), role))
 	}
 	_ = s.h.Run(ctx)
 	roles, err = s.env.RoleManager().GetAllRoles()
@@ -865,7 +865,7 @@ func TestRenameUser(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Len(t, hosts, 1)
 
-			volumes, err := host.FindVolumesByUser("new_me")
+			volumes, err := host.FindVolumesByUser(ctx, "new_me")
 			assert.NoError(t, err)
 			assert.Len(t, volumes, 1)
 
@@ -902,7 +902,7 @@ func TestRenameUser(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Len(t, hosts, 1)
 
-			volumes, err := host.FindVolumesByUser("new_me")
+			volumes, err := host.FindVolumesByUser(ctx, "new_me")
 			assert.NoError(t, err)
 			assert.Len(t, volumes, 1)
 

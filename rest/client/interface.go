@@ -111,12 +111,9 @@ type Communicator interface {
 
 	// PostHostIsUp indicates to the app server that the task host is up and
 	// running.
-	PostHostIsUp(ctx context.Context, instanceID string) (*restmodel.APIHost, error)
+	PostHostIsUp(ctx context.Context, instanceID, hostname string) (*restmodel.APIHost, error)
 	// GetHostProvisioningOptions gets the options to provision a host.
 	GetHostProvisioningOptions(ctx context.Context) (*restmodel.APIHostProvisioningOptions, error)
-
-	// CompareTasks returns the order that the given tasks would be scheduled, along with the scheduling logic.
-	CompareTasks(context.Context, []string, bool) ([]string, map[string]map[string]string, error)
 
 	// GetRawPatchWithModules fetches the raw patch and module diffs for a given patch ID.
 	GetRawPatchWithModules(ctx context.Context, patchId string) (*restmodel.APIRawPatch, error)

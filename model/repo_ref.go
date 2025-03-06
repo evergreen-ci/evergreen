@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/evergreen-ci/evergreen"
@@ -11,7 +12,7 @@ import (
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 const RepoRefCollection = "repo_ref"
@@ -32,11 +33,11 @@ var (
 	RepoRefTriggersKey       = bsonutil.MustHaveTag(RepoRef{}, "Triggers")
 )
 
-func (r *RepoRef) Add(creator *user.DBUser) error {
+func (r *RepoRef) Add(ctx context.Context, creator *user.DBUser) error {
 	if err := r.Upsert(); err != nil {
 		return errors.Wrap(err, "upserting repo ref")
 	}
-	return r.addPermissions(creator)
+	return r.addPermissions(ctx, creator)
 }
 
 // Insert is included here so ProjectRef.Insert() isn't mistakenly used.
@@ -89,7 +90,7 @@ func FindRepoRefByOwnerAndRepo(owner, repoName string) (*RepoRef, error) {
 
 // addPermissions adds the repo ref to the general scope and gives the inputted creator admin permissions
 // for the repo and branches.
-func (r *RepoRef) addPermissions(creator *user.DBUser) error {
+func (r *RepoRef) addPermissions(ctx context.Context, creator *user.DBUser) error {
 	rm := evergreen.GetEnvironment().RoleManager()
 	// Add to the general scope.
 	if err := rm.AddResourceToScope(evergreen.AllProjectsScope, r.Id); err != nil {
@@ -125,7 +126,7 @@ func (r *RepoRef) addPermissions(creator *user.DBUser) error {
 		return errors.Wrapf(err, "adding admin role for repo project '%s'", r.Id)
 	}
 	if creator != nil {
-		if err := creator.AddRole(newAdminRole.ID); err != nil {
+		if err := creator.AddRole(ctx, newAdminRole.ID); err != nil {
 			return errors.Wrapf(err, "adding role '%s' to user '%s'", newAdminRole.ID, creator.Id)
 		}
 	}
@@ -175,7 +176,7 @@ func (r *RepoRef) MakeUnrestricted(branchProjects []ProjectRef) error {
 	return nil
 }
 
-func (r *RepoRef) UpdateAdminRoles(toAdd, toRemove []string) error {
+func (r *RepoRef) UpdateAdminRoles(ctx context.Context, toAdd, toRemove []string) error {
 	if len(toAdd) == 0 && len(toRemove) == 0 {
 		return nil
 	}
@@ -194,7 +195,7 @@ func (r *RepoRef) UpdateAdminRoles(toAdd, toRemove []string) error {
 			r.removeFromAdminsList(addedUser)
 			continue
 		}
-		if err = adminUser.AddRole(adminRole); err != nil {
+		if err = adminUser.AddRole(ctx, adminRole); err != nil {
 			catcher.Wrapf(err, "adding role '%s' to user '%s'", adminRole, addedUser)
 			r.removeFromAdminsList(addedUser)
 			continue
@@ -211,7 +212,7 @@ func (r *RepoRef) UpdateAdminRoles(toAdd, toRemove []string) error {
 			continue
 		}
 
-		if err = adminUser.RemoveRole(adminRole); err != nil {
+		if err = adminUser.RemoveRole(ctx, adminRole); err != nil {
 			catcher.Wrapf(err, "removing role '%s' from user '%s'", adminRole, removedUser)
 			r.Admins = append(r.Admins, removedUser)
 			continue

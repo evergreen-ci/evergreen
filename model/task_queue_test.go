@@ -28,7 +28,7 @@ func TestDequeueTask(t *testing.T) {
 
 		Convey("if the task queue is empty, an error should not be thrown", func() {
 			So(taskQueue.Save(), ShouldBeNil)
-			So(taskQueue.DequeueTask(taskIds[0]), ShouldBeNil)
+			So(taskQueue.DequeueTask(t.Context(), taskIds[0]), ShouldBeNil)
 		})
 
 		Convey("if the task is not present in the queue, an error should not be"+
@@ -36,7 +36,7 @@ func TestDequeueTask(t *testing.T) {
 			taskQueue.Queue = append(taskQueue.Queue,
 				TaskQueueItem{Id: taskIds[1]})
 			So(taskQueue.Save(), ShouldBeNil)
-			So(taskQueue.DequeueTask(taskIds[0]), ShouldBeNil)
+			So(taskQueue.DequeueTask(t.Context(), taskIds[0]), ShouldBeNil)
 		})
 
 		Convey("if the task is present in the in-memory queue but not in the db queue"+
@@ -46,7 +46,7 @@ func TestDequeueTask(t *testing.T) {
 			So(taskQueue.Save(), ShouldBeNil)
 			taskQueue.Queue = append(taskQueue.Queue,
 				TaskQueueItem{Id: taskIds[0]})
-			So(taskQueue.DequeueTask(taskIds[0]), ShouldBeNil)
+			So(taskQueue.DequeueTask(t.Context(), taskIds[0]), ShouldBeNil)
 		})
 
 		Convey("if the task is present in the queue, it should be removed"+
@@ -57,7 +57,7 @@ func TestDequeueTask(t *testing.T) {
 				{Id: taskIds[2]},
 			}
 			So(taskQueue.Save(), ShouldBeNil)
-			So(taskQueue.DequeueTask(taskIds[1]), ShouldBeNil)
+			So(taskQueue.DequeueTask(t.Context(), taskIds[1]), ShouldBeNil)
 
 			// make sure the queue was updated in memory
 			So(taskQueue.Length(), ShouldEqual, 2)
@@ -73,13 +73,13 @@ func TestDequeueTask(t *testing.T) {
 			So(taskQueue.Queue[1].Id, ShouldEqual, taskIds[2])
 
 			// should be safe to remove the last item
-			So(taskQueue.DequeueTask(taskIds[2]), ShouldBeNil)
+			So(taskQueue.DequeueTask(t.Context(), taskIds[2]), ShouldBeNil)
 			So(taskQueue.Length(), ShouldEqual, 1)
 
-			So(taskQueue.DequeueTask(taskIds[0]), ShouldBeNil)
+			So(taskQueue.DequeueTask(t.Context(), taskIds[0]), ShouldBeNil)
 			So(taskQueue.Length(), ShouldEqual, 0)
 
-			So(taskQueue.DequeueTask("foo"), ShouldBeNil)
+			So(taskQueue.DequeueTask(t.Context(), "foo"), ShouldBeNil)
 			So(taskQueue.Length(), ShouldEqual, 0)
 		})
 		Convey("modern: duplicate tasks shouldn't lead to anics", func() {
@@ -90,7 +90,7 @@ func TestDequeueTask(t *testing.T) {
 			}
 			So(taskQueue.Save(), ShouldBeNil)
 
-			So(taskQueue.DequeueTask(taskIds[0]), ShouldBeNil)
+			So(taskQueue.DequeueTask(t.Context(), taskIds[0]), ShouldBeNil)
 			So(taskQueue.Length(), ShouldEqual, 1)
 		})
 	})

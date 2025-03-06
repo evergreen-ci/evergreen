@@ -485,7 +485,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 	newRevision := utility.FromStringPtr(h.apiNewProjectRef.Revision)
 	if newRevision != "" {
-		if err = dbModel.UpdateProjectRevision(h.project, newRevision); err != nil {
+		if err = dbModel.UpdateProjectRevision(ctx, h.project, newRevision); err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
 		h.newProjectRef.RepotrackerError = &dbModel.RepositoryErrorDetails{
@@ -548,7 +548,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		if err = h.newProjectRef.RemoveFromRepoScope(); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "removing project from old repo scope"))
 		}
-		if err = h.newProjectRef.AddToRepoScope(h.user); err != nil { // will re-add using the new owner/repo
+		if err = h.newProjectRef.AddToRepoScope(ctx, h.user); err != nil { // will re-add using the new owner/repo
 			return gimlet.MakeJSONInternalErrorResponder(err)
 		}
 	}
@@ -575,7 +575,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "updating aliases for project '%s'", h.project))
 	}
 
-	if err = dbModel.UpdateAdminRoles(h.newProjectRef, adminsToAdd, adminsToDelete); err != nil {
+	if err = dbModel.UpdateAdminRoles(ctx, h.newProjectRef, adminsToAdd, adminsToDelete); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "updating admins for project '%s'", h.project))
 	}
 
@@ -796,7 +796,7 @@ func (h *projectDeleteHandler) Parse(ctx context.Context, r *http.Request) error
 }
 
 func (h *projectDeleteHandler) Run(ctx context.Context) gimlet.Responder {
-	if err := data.HideBranch(h.projectName); err != nil {
+	if err := data.HideBranch(ctx, h.projectName); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
 	return gimlet.NewJSONResponse(struct{}{})

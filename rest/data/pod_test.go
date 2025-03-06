@@ -89,7 +89,7 @@ func TestFindAPIPodByID(t *testing.T) {
 func TestCheckPodSecret(t *testing.T) {
 	for tName, tCase := range map[string]func(t *testing.T, p pod.Pod, secret string){
 		"Succeeds": func(t *testing.T, p pod.Pod, secret string) {
-			assert.NoError(t, CheckPodSecret(p.ID, secret))
+			assert.NoError(t, CheckPodSecret(t.Context(), p.ID, secret))
 
 			dbPod, err := pod.FindOneByID(p.ID)
 			require.NoError(t, err)
@@ -97,7 +97,7 @@ func TestCheckPodSecret(t *testing.T) {
 			assert.NotZero(t, dbPod.TimeInfo.LastCommunicated)
 		},
 		"FailsWithoutID": func(t *testing.T, p pod.Pod, secret string) {
-			assert.Error(t, CheckPodSecret("", secret))
+			assert.Error(t, CheckPodSecret(t.Context(), "", secret))
 
 			dbPod, err := pod.FindOneByID(p.ID)
 			require.NoError(t, err)
@@ -105,7 +105,7 @@ func TestCheckPodSecret(t *testing.T) {
 			assert.Zero(t, dbPod.TimeInfo.LastCommunicated)
 		},
 		"FailsWithoutSecret": func(t *testing.T, p pod.Pod, secret string) {
-			assert.Error(t, CheckPodSecret(p.ID, ""))
+			assert.Error(t, CheckPodSecret(t.Context(), p.ID, ""))
 
 			dbPod, err := pod.FindOneByID(p.ID)
 			require.NoError(t, err)
@@ -113,7 +113,7 @@ func TestCheckPodSecret(t *testing.T) {
 			assert.Zero(t, dbPod.TimeInfo.LastCommunicated)
 		},
 		"FailsWithBadID": func(t *testing.T, p pod.Pod, secret string) {
-			assert.Error(t, CheckPodSecret("bad_id", secret))
+			assert.Error(t, CheckPodSecret(t.Context(), "bad_id", secret))
 
 			dbPod, err := pod.FindOneByID(p.ID)
 			require.NoError(t, err)
@@ -121,7 +121,7 @@ func TestCheckPodSecret(t *testing.T) {
 			assert.Zero(t, dbPod.TimeInfo.LastCommunicated)
 		},
 		"FailsWithBadSecret": func(t *testing.T, p pod.Pod, secret string) {
-			assert.Error(t, CheckPodSecret(p.ID, "bad_secret"))
+			assert.Error(t, CheckPodSecret(t.Context(), p.ID, "bad_secret"))
 
 			dbPod, err := pod.FindOneByID(p.ID)
 			require.NoError(t, err)

@@ -1327,13 +1327,14 @@ func (c *communicatorImpl) GetClientURLs(ctx context.Context, distroID string) (
 	return urls, nil
 }
 
-func (c *communicatorImpl) PostHostIsUp(ctx context.Context, ec2InstanceID string) (*restmodel.APIHost, error) {
+func (c *communicatorImpl) PostHostIsUp(ctx context.Context, ec2InstanceID, hostname string) (*restmodel.APIHost, error) {
 	info := requestInfo{
 		method: http.MethodPost,
 		path:   fmt.Sprintf("/hosts/%s/is_up", c.hostID),
 	}
 	opts := restmodel.APIHostIsUpOptions{
 		HostID:        c.hostID,
+		Hostname:      hostname,
 		EC2InstanceID: ec2InstanceID,
 	}
 	r, err := c.createRequest(info, opts)
@@ -1389,35 +1390,6 @@ func (c *communicatorImpl) GetHostProvisioningOptions(ctx context.Context) (*res
 		return nil, errors.Wrap(err, "reading JSON response body")
 	}
 	return &opts, nil
-}
-
-func (c *communicatorImpl) CompareTasks(ctx context.Context, tasks []string, useLegacy bool) ([]string, map[string]map[string]string, error) {
-	info := requestInfo{
-		method: http.MethodPost,
-		path:   "/scheduler/compare_tasks",
-	}
-	body := restmodel.CompareTasksRequest{
-		Tasks:     tasks,
-		UseLegacy: useLegacy,
-	}
-	r, err := c.createRequest(info, body)
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "creating request")
-	}
-	resp, err := c.doRequest(ctx, r)
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "sending request to get task comparison")
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, nil, util.RespError(resp, "getting task comparison")
-	}
-	var results restmodel.CompareTasksResponse
-	if err = utility.ReadJSON(resp.Body, &results); err != nil {
-		return nil, nil, errors.Wrap(err, "reading JSON response body")
-	}
-
-	return results.Order, results.Logic, nil
 }
 
 // FindHostByIpAddress queries the database for the host with ip matching the ip address

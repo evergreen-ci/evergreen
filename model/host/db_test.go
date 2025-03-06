@@ -11,7 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 func TestConsolidateHostsForUser(t *testing.T) {
@@ -67,16 +67,16 @@ func TestConsolidateHostsForUser(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotEqual(t, "new_me", hostFromDB.StartedBy)
 
-	volumes, err := FindVolumesByUser("me")
+	volumes, err := FindVolumesByUser(t.Context(), "me")
 	assert.NoError(t, err)
 	assert.Empty(t, volumes)
 
-	volumes, err = FindVolumesByUser("new_me")
+	volumes, err = FindVolumesByUser(t.Context(), "new_me")
 	assert.NoError(t, err)
 	require.Len(t, volumes, 1)
 	assert.Equal(t, "v1", volumes[0].ID)
 
-	volumes, err = FindVolumesByUser("NOT me")
+	volumes, err = FindVolumesByUser(t.Context(), "NOT me")
 	assert.NoError(t, err)
 	require.Len(t, volumes, 1)
 	assert.Equal(t, "v2", volumes[0].ID)

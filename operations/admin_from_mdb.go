@@ -7,17 +7,15 @@ import (
 	"context"
 	"io"
 	"os"
-	"time"
 
 	"github.com/evergreen-ci/birch"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 func toMdbForLocal() cli.Command {
@@ -62,15 +60,9 @@ func toMdbForLocal() cli.Command {
 			url := c.String(urlFlagName)
 			infn := c.String(inputFlagName)
 
-			client, err := mongo.Connect(ctx, options.Client().ApplyURI(url))
+			client, err := mongo.Connect(options.Client().ApplyURI(url))
 			if err != nil {
 				return errors.Wrap(err, "creating MongoDB client")
-			}
-
-			connCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
-			defer cancel()
-			if err = client.Connect(connCtx); err != nil {
-				return errors.Wrap(err, "connecting to MongoDB")
 			}
 
 			f, err := os.Open(infn)
@@ -192,15 +184,9 @@ func fromMdbForLocal() cli.Command {
 				}
 			}
 
-			client, err := mongo.Connect(ctx, options.Client().ApplyURI(url))
+			client, err := mongo.Connect(options.Client().ApplyURI(url))
 			if err != nil {
 				return errors.Wrap(err, "creating MongoDB client")
-			}
-
-			connCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
-			defer cancel()
-			if err = client.Connect(connCtx); err != nil {
-				return errors.Wrap(err, "connecting to MongoDB")
 			}
 
 			for _, collection := range collections {
@@ -255,7 +241,7 @@ func fromMdbForLocal() cli.Command {
 	}
 }
 
-func processCollection(ctx context.Context, collBuf *bytes.Buffer, client *mongo.Client, filters map[string]primitive.M, dbName, collection string) error {
+func processCollection(ctx context.Context, collBuf *bytes.Buffer, client *mongo.Client, filters map[string]bson.M, dbName, collection string) error {
 	var filter bson.M
 	var ok bool
 

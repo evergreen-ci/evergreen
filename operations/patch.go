@@ -380,7 +380,6 @@ func PatchFile() cli.Command {
 		),
 		Before: mergeBeforeFuncs(
 			autoUpdateCLI,
-			setPlainLogger,
 			mutuallyExclusiveArgs(false, patchDescriptionFlagName, autoDescriptionFlag),
 			mutuallyExclusiveArgs(false, diffPathFlagName, diffPatchIdFlagName),
 			mutuallyExclusiveArgs(false, allowEmptyFlagName, diffPatchIdFlagName),
@@ -397,21 +396,12 @@ func PatchFile() cli.Command {
 				}
 			}
 			confPath := c.Parent().String(confFlagName)
-			outputJSON := c.Bool(jsonFlagName)
-			if outputJSON {
-				// If outputting the patch data as JSON, suppress any non-error
-				// logs since the logs won't be in JSON format. Errors should
-				// still appear so users can diagnose issues.
-				l := grip.GetSender().Level()
-				l.Threshold = level.Error
-				grip.Error(errors.Wrap(grip.SetLevel(l), "increasing log level to suppress non-errors for JSON output"))
-			}
 			params := &patchParams{
 				Project:          c.String(projectFlagName),
 				Variants:         utility.SplitCommas(c.StringSlice(variantsFlagName)),
 				Tasks:            utility.SplitCommas(c.StringSlice(tasksFlagName)),
 				Alias:            c.String(patchAliasFlagName),
-				SkipConfirm:      c.Bool(skipConfirmFlagName) || outputJSON,
+				SkipConfirm:      c.Bool(skipConfirmFlagName),
 				Description:      c.String(patchDescriptionFlagName),
 				AutoDescription:  c.Bool(autoDescriptionFlag),
 				ShowSummary:      c.Bool(patchVerboseFlagName),
@@ -439,7 +429,7 @@ func PatchFile() cli.Command {
 				return errors.Wrap(err, "loading configuration")
 			}
 
-			comm, err := conf.setupRestCommunicator(ctx, !outputJSON)
+			comm, err := conf.setupRestCommunicator(ctx, true)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}
@@ -519,7 +509,7 @@ func PatchFile() cli.Command {
 			outputParams := outputPatchParams{
 				patches:    []patch.Patch{*newPatch},
 				uiHost:     conf.UIServerHost,
-				outputJSON: outputJSON,
+				outputJSON: c.Bool(jsonFlagName),
 			}
 
 			return params.displayPatch(ac, outputParams)

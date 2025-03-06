@@ -14,7 +14,7 @@
         "data": null,
         "errors": [
           {
-            "message": "couldn't update note: note is out of sync, please try again",
+            "message": "updating note: note is out of sync, please try again",
             "path": ["editAnnotationNote"],
             "extensions": {
               "code": "INTERNAL_SERVER_ERROR"
@@ -30,7 +30,7 @@
         "data": null,
         "errors": [
           {
-            "message": "insufficient permission for modifying annotation",
+            "message": "not authorized to modify annotation for task 'no_permissions'",
             "path": ["editAnnotationNote"],
             "extensions": {
               "code": "FORBIDDEN"

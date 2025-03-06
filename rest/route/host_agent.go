@@ -23,7 +23,6 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/mongo"
 	"go.opentelemetry.io/otel/attribute"
 )
 
@@ -397,7 +396,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 				"project": nextTask.Project,
 			})
 			// Dequeue the task so we don't get it on another iteration of the loop.
-			grip.Warning(message.WrapError(taskQueue.DequeueTask(nextTask.Id), message.Fields{
+			grip.Warning(message.WrapError(taskQueue.DequeueTask(ctx, nextTask.Id), message.Fields{
 				"message":   "nextTask.IsHostDispatchable() is false, but there was an issue dequeuing the task",
 				"distro_id": d.Id,
 				"task_id":   nextTask.Id,
@@ -433,7 +432,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 		}
 
 		if isDisabled {
-			grip.Warning(message.WrapError(taskQueue.DequeueTask(nextTask.Id), message.Fields{
+			grip.Warning(message.WrapError(taskQueue.DequeueTask(ctx, nextTask.Id), message.Fields{
 				"message":              "project has dispatching disabled, but there was an issue dequeuing the task",
 				"distro_id":            nextTask.DistroId,
 				"task_id":              nextTask.Id,
@@ -457,7 +456,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 				"project":            projectRef.Id,
 				"project_identifier": projectRef.Enabled,
 			})
-			grip.Warning(message.WrapError(taskQueue.DequeueTask(nextTask.Id), message.Fields{
+			grip.Warning(message.WrapError(taskQueue.DequeueTask(ctx, nextTask.Id), message.Fields{
 				"message":            "top task queue task is blocked, but there was an issue dequeuing the task",
 				"host_id":            currentHost.Id,
 				"distro_id":          nextTask.DistroId,
@@ -541,7 +540,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 					grip.Alert(message.WrapError(err, errMsg))
 					return nil, false, errors.Wrapf(err, "could not mark disallowed single task distro task '%s' as system failed", nextTask.Id)
 				}
-				err = taskQueue.DequeueTask(nextTask.Id)
+				err = taskQueue.DequeueTask(ctx, nextTask.Id)
 				if err != nil {
 					errMsg = message.Fields{
 						"message":   "could not dequeue disallowed single task distro task",
@@ -603,7 +602,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 		}
 
 		// Dequeue the task so we don't get it on another iteration of the loop.
-		grip.Warning(message.WrapError(taskQueue.DequeueTask(nextTask.Id), message.Fields{
+		grip.Warning(message.WrapError(taskQueue.DequeueTask(ctx, nextTask.Id), message.Fields{
 			"message":   "updated the relevant running task fields for the given host, but there was an issue dequeuing the task",
 			"distro_id": nextTask.DistroId,
 			"task_id":   nextTask.Id,
@@ -745,14 +744,14 @@ func dispatchHostTaskAtomically(ctx context.Context, env evergreen.Environment, 
 	return nil
 }
 
-func dispatchHostTask(env evergreen.Environment, h *host.Host, t *task.Task) func(mongo.SessionContext) (interface{}, error) {
-	return func(sessCtx mongo.SessionContext) (interface{}, error) {
-		if err := h.UpdateRunningTaskWithContext(sessCtx, env, t); err != nil {
+func dispatchHostTask(env evergreen.Environment, h *host.Host, t *task.Task) func(context.Context) (interface{}, error) {
+	return func(ctx context.Context) (interface{}, error) {
+		if err := h.UpdateRunningTaskWithContext(ctx, env, t); err != nil {
 			return nil, errors.Wrapf(err, "updating running task for host '%s' to '%s'", h.Id, t.Id)
 		}
 
 		dispatchedAt := time.Now()
-		if err := t.MarkAsHostDispatchedWithContext(sessCtx, env, h.Id, h.Distro.Id, h.AgentRevision, dispatchedAt); err != nil {
+		if err := t.MarkAsHostDispatchedWithContext(ctx, env, h.Id, h.Distro.Id, h.AgentRevision, dispatchedAt); err != nil {
 			return nil, errors.Wrapf(err, "marking task '%s' as dispatched to host '%s'", t.Id, h.Id)
 		}
 
@@ -799,12 +798,12 @@ func undoHostTaskDispatchAtomically(ctx context.Context, env evergreen.Environme
 	return nil
 }
 
-func undoHostTaskDispatch(env evergreen.Environment, h *host.Host, t *task.Task) func(mongo.SessionContext) (interface{}, error) {
-	return func(sessCtx mongo.SessionContext) (interface{}, error) {
-		if err := h.ClearRunningTaskWithContext(sessCtx, env); err != nil {
+func undoHostTaskDispatch(env evergreen.Environment, h *host.Host, t *task.Task) func(context.Context) (interface{}, error) {
+	return func(ctx context.Context) (interface{}, error) {
+		if err := h.ClearRunningTaskWithContext(ctx, env); err != nil {
 			return nil, errors.Wrapf(err, "clearing running task '%s' execution '%d' from host '%s'", h.RunningTask, h.RunningTaskExecution, h.Id)
 		}
-		if err := t.MarkAsHostUndispatchedWithContext(sessCtx, env); err != nil {
+		if err := t.MarkAsHostUndispatchedWithContext(ctx, env); err != nil {
 			return nil, errors.Wrapf(err, "marking task '%s' as no longer dispatched", t.Id)
 		}
 		return nil, nil

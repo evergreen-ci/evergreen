@@ -121,7 +121,7 @@ func TestRequireProjectAccessForSettings(t *testing.T) {
 	require.Nil(t, res)
 	require.Equal(t, 0, callCount)
 
-	err = usr.AddRole("view_project")
+	err = usr.AddRole(t.Context(), "view_project")
 	require.NoError(t, err)
 
 	res, err = config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionSettings, AccessLevelEdit)
@@ -134,7 +134,7 @@ func TestRequireProjectAccessForSettings(t *testing.T) {
 	require.Nil(t, res)
 	require.Equal(t, 1, callCount)
 
-	err = usr.AddRole("admin_project")
+	err = usr.AddRole(t.Context(), "admin_project")
 	require.NoError(t, err)
 
 	res, err = config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionSettings, AccessLevelEdit)
@@ -209,7 +209,7 @@ func TestRequireProjectAccessForTasks(t *testing.T) {
 	}
 
 	// superuser should be successful for admin, edit, view
-	require.NoError(t, usr.AddRole("admin_project_access"))
+	require.NoError(t, usr.AddRole(t.Context(), "admin_project_access"))
 	res, err := config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionTasks, AccessLevelAdmin)
 	require.NoError(t, err)
 	require.Nil(t, res)
@@ -224,10 +224,10 @@ func TestRequireProjectAccessForTasks(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, res)
 	require.Equal(t, 3, callCount)
-	require.NoError(t, usr.RemoveRole("admin_project_access"))
+	require.NoError(t, usr.RemoveRole(t.Context(), "admin_project_access"))
 
 	// admin access is successful for admin, edit, view
-	require.NoError(t, usr.AddRole("admin_task"))
+	require.NoError(t, usr.AddRole(t.Context(), "admin_task"))
 	res, err = config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionTasks, AccessLevelAdmin)
 	require.NoError(t, err)
 	require.Nil(t, res)
@@ -242,10 +242,10 @@ func TestRequireProjectAccessForTasks(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, res)
 	require.Equal(t, 6, callCount)
-	require.NoError(t, usr.RemoveRole("admin_task"))
+	require.NoError(t, usr.RemoveRole(t.Context(), "admin_task"))
 
 	// edit access fails for admin, is successful for edit & view
-	require.NoError(t, usr.AddRole("edit_task"))
+	require.NoError(t, usr.AddRole(t.Context(), "edit_task"))
 	res, err = config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionTasks, AccessLevelAdmin)
 	require.Nil(t, res)
 	require.EqualError(t, err, "input: user 'test_user' does not have permission to 'edit tasks and override dependencies' for the project 'project_id'")
@@ -260,10 +260,10 @@ func TestRequireProjectAccessForTasks(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, res)
 	require.Equal(t, 8, callCount)
-	require.NoError(t, usr.RemoveRole("edit_task"))
+	require.NoError(t, usr.RemoveRole(t.Context(), "edit_task"))
 
 	// view access fails for admin & edit, is successful for view
-	require.NoError(t, usr.AddRole("view_task"))
+	require.NoError(t, usr.AddRole(t.Context(), "view_task"))
 	_, err = config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionTasks, AccessLevelAdmin)
 	require.Equal(t, 8, callCount)
 	require.EqualError(t, err, "input: user 'test_user' does not have permission to 'edit tasks and override dependencies' for the project 'project_id'")
@@ -276,7 +276,7 @@ func TestRequireProjectAccessForTasks(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, res)
 	require.Equal(t, 9, callCount)
-	require.NoError(t, usr.RemoveRole("view_task"))
+	require.NoError(t, usr.RemoveRole(t.Context(), "view_task"))
 
 	// no access fails all query attempts
 	_, err = config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionTasks, AccessLevelAdmin)
@@ -339,7 +339,7 @@ func TestRequireProjectAccessForAnnotations(t *testing.T) {
 	}
 
 	// superuser should be successful for edit, view
-	require.NoError(t, usr.AddRole("admin_project_access"))
+	require.NoError(t, usr.AddRole(t.Context(), "admin_project_access"))
 	res, err := config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionAnnotations, AccessLevelEdit)
 	require.NoError(t, err)
 	require.Nil(t, res)
@@ -349,10 +349,10 @@ func TestRequireProjectAccessForAnnotations(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, res)
 	require.Equal(t, 2, callCount)
-	require.NoError(t, usr.RemoveRole("admin_project_access"))
+	require.NoError(t, usr.RemoveRole(t.Context(), "admin_project_access"))
 
 	// edit access is successful for edit, view
-	require.NoError(t, usr.AddRole("edit_annotation"))
+	require.NoError(t, usr.AddRole(t.Context(), "edit_annotation"))
 	res, err = config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionAnnotations, AccessLevelEdit)
 	require.NoError(t, err)
 	require.Nil(t, res)
@@ -362,10 +362,10 @@ func TestRequireProjectAccessForAnnotations(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, res)
 	require.Equal(t, 4, callCount)
-	require.NoError(t, usr.RemoveRole("edit_annotation"))
+	require.NoError(t, usr.RemoveRole(t.Context(), "edit_annotation"))
 
 	// view access fails for edit, is successful for view
-	require.NoError(t, usr.AddRole("view_annotation"))
+	require.NoError(t, usr.AddRole(t.Context(), "view_annotation"))
 	res, err = config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionAnnotations, AccessLevelEdit)
 	require.Nil(t, res)
 	require.EqualError(t, err, "input: user 'test_user' does not have permission to 'modify annotations' for the project 'project_id'")
@@ -375,7 +375,7 @@ func TestRequireProjectAccessForAnnotations(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, res)
 	require.Equal(t, 5, callCount)
-	require.NoError(t, usr.RemoveRole("view_annotation"))
+	require.NoError(t, usr.RemoveRole(t.Context(), "view_annotation"))
 
 	// no access fails all query attempts
 	_, err = config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionAnnotations, AccessLevelEdit)
@@ -433,7 +433,7 @@ func TestRequireProjectAccessForPatches(t *testing.T) {
 	}
 
 	// superuser should be successful for admin, edit
-	require.NoError(t, usr.AddRole("admin_project_access"))
+	require.NoError(t, usr.AddRole(t.Context(), "admin_project_access"))
 	res, err := config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionPatches, AccessLevelAdmin)
 	require.NoError(t, err)
 	require.Nil(t, res)
@@ -443,10 +443,10 @@ func TestRequireProjectAccessForPatches(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, res)
 	require.Equal(t, 2, callCount)
-	require.NoError(t, usr.RemoveRole("admin_project_access"))
+	require.NoError(t, usr.RemoveRole(t.Context(), "admin_project_access"))
 
 	// admin access is successful for admin, edit
-	require.NoError(t, usr.AddRole("admin_patch"))
+	require.NoError(t, usr.AddRole(t.Context(), "admin_patch"))
 	res, err = config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionPatches, AccessLevelAdmin)
 	require.NoError(t, err)
 	require.Nil(t, res)
@@ -456,10 +456,10 @@ func TestRequireProjectAccessForPatches(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, res)
 	require.Equal(t, 4, callCount)
-	require.NoError(t, usr.RemoveRole("admin_patch"))
+	require.NoError(t, usr.RemoveRole(t.Context(), "admin_patch"))
 
 	// edit access fails for admin, is successful for edit
-	require.NoError(t, usr.AddRole("edit_patch"))
+	require.NoError(t, usr.AddRole(t.Context(), "edit_patch"))
 	res, err = config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionPatches, AccessLevelAdmin)
 	require.Nil(t, res)
 	require.EqualError(t, err, "input: user 'test_user' does not have permission to 'submit/edit patches, and submit patches on behalf of users' for the project 'project_id'")
@@ -469,7 +469,7 @@ func TestRequireProjectAccessForPatches(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, res)
 	require.Equal(t, 5, callCount)
-	require.NoError(t, usr.RemoveRole("edit_patch"))
+	require.NoError(t, usr.RemoveRole(t.Context(), "edit_patch"))
 
 	// no access fails all query attempts
 	_, err = config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionPatches, AccessLevelAdmin)
@@ -521,20 +521,20 @@ func TestRequireProjectAccessForLogs(t *testing.T) {
 	}
 
 	// superuser should be successful for view
-	require.NoError(t, usr.AddRole("admin_project_access"))
+	require.NoError(t, usr.AddRole(t.Context(), "admin_project_access"))
 	res, err := config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionLogs, AccessLevelView)
 	require.NoError(t, err)
 	require.Nil(t, res)
 	require.Equal(t, 1, callCount)
-	require.NoError(t, usr.RemoveRole("admin_project_access"))
+	require.NoError(t, usr.RemoveRole(t.Context(), "admin_project_access"))
 
 	// view access is successful for view
-	require.NoError(t, usr.AddRole("view_logs"))
+	require.NoError(t, usr.AddRole(t.Context(), "view_logs"))
 	res, err = config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionLogs, AccessLevelView)
 	require.NoError(t, err)
 	require.Nil(t, res)
 	require.Equal(t, 2, callCount)
-	require.NoError(t, usr.RemoveRole("view_logs"))
+	require.NoError(t, usr.RemoveRole(t.Context(), "view_logs"))
 
 	// no access fails all query attempts
 	_, err = config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionLogs, AccessLevelView)

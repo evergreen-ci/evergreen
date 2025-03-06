@@ -10,10 +10,9 @@ import (
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 const (
@@ -77,7 +76,7 @@ func DeleteTestLogsWithLimit(ctx context.Context, env evergreen.Environment, ts 
 		return 0, errors.Errorf("cannot delete more than %d documents in a single operation", maxDeleteCount)
 	}
 
-	docsToDelete, err := findAllTestLogs(db.Query(bson.M{TestLogIdKey: bson.M{"$lt": primitive.NewObjectIDFromTimestamp(ts).Hex()}}).WithFields(TestLogIdKey).Limit(limit))
+	docsToDelete, err := findAllTestLogs(db.Query(bson.M{TestLogIdKey: bson.M{"$lt": bson.NewObjectIDFromTimestamp(ts).Hex()}}).WithFields(TestLogIdKey).Limit(limit))
 	if err != nil {
 		return 0, errors.Wrap(err, "getting docs to delete")
 	}

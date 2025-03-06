@@ -139,7 +139,7 @@ func (h *updatePushStatusHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	err = errors.Wrapf(h.pushLog.UpdateStatus(h.pushLog.Status),
+	err = errors.Wrapf(h.pushLog.UpdateStatus(ctx, h.pushLog.Status),
 		"updating pushlog status failed for task %s", t.Id)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
@@ -294,7 +294,7 @@ func (h *markTaskForRestartHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting admin settings"))
 	}
 	maxDailyAutoRestarts := settings.TaskLimits.MaxDailyAutomaticRestarts
-	if err = projectRef.CheckAndUpdateAutoRestartLimit(maxDailyAutoRestarts); err != nil {
+	if err = projectRef.CheckAndUpdateAutoRestartLimit(ctx, maxDailyAutoRestarts); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "checking auto restart limit for '%s'", projectRef.Id))
 	}
 	if err = taskToRestart.SetResetWhenFinishedWithInc(ctx); err != nil {
@@ -575,6 +575,44 @@ func (h *getDistroViewHandler) Run(ctx context.Context) gimlet.Responder {
 		ExecUser:            host.Distro.ExecUser,
 	}
 	return gimlet.NewJSONResponse(dv)
+}
+
+// GET /task/{task_id}/host_view
+type getHostViewHandler struct {
+	hostID string
+}
+
+func makeGetHostView() gimlet.RouteHandler {
+	return &getHostViewHandler{}
+}
+
+func (rh *getHostViewHandler) Factory() gimlet.RouteHandler {
+	return &getHostViewHandler{}
+}
+
+func (rh *getHostViewHandler) Parse(ctx context.Context, r *http.Request) error {
+	if rh.hostID = r.Header.Get(evergreen.HostHeader); rh.hostID == "" {
+		return errors.New("missing host ID")
+	}
+	return nil
+}
+
+func (rh *getHostViewHandler) Run(ctx context.Context) gimlet.Responder {
+	h, err := host.FindOneId(ctx, rh.hostID)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting host"))
+	}
+	if h == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("host '%s' not found", rh.hostID)},
+		)
+	}
+
+	hv := apimodels.HostView{
+		Hostname: h.Host,
+	}
+	return gimlet.NewJSONResponse(hv)
 }
 
 // POST /task/{task_id}/files
@@ -1333,7 +1371,7 @@ func (h *setDownstreamParamsHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	if err = p.SetDownstreamParameters(h.downstreamParams); err != nil {
+	if err = p.SetDownstreamParameters(ctx, h.downstreamParams); err != nil {
 		errorMessage := fmt.Sprintf("setting patch parameters: %s", err.Error())
 		grip.Error(message.Fields{
 			"message": errorMessage,

@@ -4,7 +4,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 const KeyValCollection = "keyval_plugin"

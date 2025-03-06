@@ -12,7 +12,7 @@ import (
 	amboyRegistry "github.com/mongodb/amboy/registry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 type eventSuite struct {
@@ -274,9 +274,9 @@ func (s *eventSuite) TestMarkProcessed() {
 	s.False(processed)
 	s.Zero(ptime)
 
-	s.EqualError(event.MarkProcessed(), "event has no ID")
+	s.EqualError(event.MarkProcessed(s.T().Context()), "event has no ID")
 	event.ID = mgobson.NewObjectId().Hex()
-	s.EqualError(event.MarkProcessed(), "updating 'processed at' time: document not found")
+	s.EqualError(event.MarkProcessed(s.T().Context()), "updating 'processed at' time: document not found")
 	s.NoError(event.Log())
 
 	s.NoError(db.UpdateId(EventCollection, event.ID, bson.M{
@@ -293,7 +293,7 @@ func (s *eventSuite) TestMarkProcessed() {
 	s.Zero(ptime)
 
 	time.Sleep(time.Millisecond)
-	s.NoError(fetchedEvent.MarkProcessed())
+	s.NoError(fetchedEvent.MarkProcessed(s.T().Context()))
 	processed, ptime = fetchedEvent.Processed()
 	s.True(processed)
 	s.True(ptime.After(startTime))

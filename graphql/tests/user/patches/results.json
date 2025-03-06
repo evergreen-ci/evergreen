@@ -160,10 +160,8 @@
       "result": {
         "errors": [
           {
-            "message": "unable to find user from user ID",
-            "path": [
-              "user"
-            ],
+            "message": "user 'nonexistent user' not found",
+            "path": ["user"],
             "extensions": {
               "code": "RESOURCE_NOT_FOUND"
             }

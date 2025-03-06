@@ -5,7 +5,7 @@ import (
 
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 // SchedulerConfig holds relevant settings for the scheduler process.
@@ -124,8 +124,8 @@ func (c *SchedulerConfig) ValidateAndDefault() error {
 	}
 
 	if c.Planner == "" {
-		// default to 'legacy'
-		c.Planner = PlannerVersionLegacy
+		// default to 'tunable'
+		c.Planner = PlannerVersionTunable
 	}
 
 	if !utility.StringSliceContains(ValidTaskPlannerVersions, c.Planner) {

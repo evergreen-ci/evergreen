@@ -57,6 +57,8 @@ type SharedCommunicator interface {
 	GetProjectRef(context.Context, TaskData) (*model.ProjectRef, error)
 	// GetDistroView returns the view of the distro information for the task.
 	GetDistroView(context.Context, TaskData) (*apimodels.DistroView, error)
+	// GetHostView returns the view of host information for the task.
+	GetHostView(context.Context, TaskData) (*apimodels.HostView, error)
 	// GetDistroAMI gets the AMI for the given distro/region
 	GetDistroAMI(context.Context, string, string, TaskData) (string, error)
 	// GetProject loads the project using the task's version ID.

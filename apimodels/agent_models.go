@@ -393,6 +393,11 @@ type DistroView struct {
 	ExecUser            string   `json:"exec_user"`
 }
 
+// HostView includes a relevant subset of information the agent's own host.
+type HostView struct {
+	Hostname string `json:"hostname"`
+}
+
 // ExpansionsAndVars represents expansions, project variables, and parameters
 // used when running a task.
 type ExpansionsAndVars struct {

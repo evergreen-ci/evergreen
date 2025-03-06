@@ -23,7 +23,7 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 ////////////////////////////////////////////////////////////////////////
@@ -622,6 +622,9 @@ func (s *DistroPatchByIDSuite) SetupTest() {
 				"BatchMode=yes",
 				"ConnectTimeout=10"},
 			SpawnAllowed: false,
+			PlannerSettings: distro.PlannerSettings{
+				Version: evergreen.PlannerVersionTunable,
+			},
 			Expansions: []distro.Expansion{
 				{
 					Key:   "decompress",
@@ -916,7 +919,7 @@ func (s *DistroPatchByIDSuite) TestRunValidContainer() {
 	apiDistro, ok := (resp.Data()).(*restModel.APIDistro)
 	s.Require().True(ok)
 	s.Equal(apiDistro.ContainerPool, utility.ToStringPtr(""))
-	s.Equal(apiDistro.PlannerSettings.Version, utility.ToStringPtr("legacy"))
+	s.Equal(utility.ToStringPtr(evergreen.PlannerVersionTunable), apiDistro.PlannerSettings.Version)
 }
 
 func (s *DistroPatchByIDSuite) TestRunInvalidEmptyStringValues() {
@@ -999,7 +1002,7 @@ func (s *DistroPatchByIDSuite) TestRunValidFinderSettingsVersion() {
 	s.Equal(http.StatusOK, resp.Status())
 	apiDistro, ok := (resp.Data()).(*restModel.APIDistro)
 	s.Require().True(ok)
-	s.Equal(utility.ToStringPtr("legacy"), apiDistro.PlannerSettings.Version)
+	s.Equal(utility.ToStringPtr(evergreen.PlannerVersionTunable), apiDistro.PlannerSettings.Version)
 }
 
 func (s *DistroPatchByIDSuite) TestRunValidBootstrapMethod() {
