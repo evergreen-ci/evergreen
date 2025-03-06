@@ -397,6 +397,24 @@ func (m *ec2FleetManager) GetDNSName(ctx context.Context, h *host.Host) (string,
 	return m.client.GetPublicDNSName(ctx, h)
 }
 
+func (m *ec2FleetManager) IsUserDataFinished(ctx context.Context, host *host.Host) (bool, error) {
+	if err := m.client.Create(ctx, m.region); err != nil {
+		return false, errors.Wrap(err, "creating client")
+	}
+	logs, err := m.client.GetConsoleOutput(ctx, host.Id)
+	if err != nil {
+		return false, errors.Wrap(err, "getting console output")
+	}
+
+	// TODO: Decide if logs has the required things
+	grip.Debug(message.Fields{
+		"message": "checking if user data is finished",
+		"host_id": host.Id,
+		"logs":    logs,
+	})
+	return true, nil
+}
+
 func (m *ec2FleetManager) TimeTilNextPayment(h *host.Host) time.Duration {
 	return timeTilNextEC2Payment(h)
 }

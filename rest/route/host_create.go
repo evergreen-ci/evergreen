@@ -10,6 +10,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -178,6 +179,86 @@ func (h *hostListHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return gimlet.NewJSONResponse(result)
+}
+
+// /////////////////////////////////////////////////////////////////////////////
+//
+// POST /hosts/{task_id}/wait_for_user_data_script
+type hostWaitForUserDataScriptHandler struct {
+	env evergreen.Environment
+
+	taskID string
+	hostID string
+}
+
+func makeHostWaitForUserDataScript(env evergreen.Environment) gimlet.RouteHandler {
+	return &hostWaitForUserDataScriptHandler{env: env}
+}
+
+func (h *hostWaitForUserDataScriptHandler) Factory() gimlet.RouteHandler {
+	return &hostWaitForUserDataScriptHandler{env: h.env}
+}
+
+func (h *hostWaitForUserDataScriptHandler) Parse(ctx context.Context, r *http.Request) error {
+	taskID := gimlet.GetVars(r)["task_id"]
+	if taskID == "" {
+		return errors.New("must provide task ID")
+	}
+	h.taskID = taskID
+
+	if err := utility.ReadJSON(r.Body, &h.hostID); err != nil {
+		return errors.Wrap(err, "reading host ID from request body")
+	}
+	return nil
+}
+
+func (h *hostWaitForUserDataScriptHandler) Run(ctx context.Context) gimlet.Responder {
+	t, err := task.FindOneId(ctx, h.taskID)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
+	}
+	if t == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
+		})
+	}
+	hosts, err := data.ListHostsForTask(ctx, h.taskID)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "listing hosts for task '%s'", h.taskID))
+	}
+	var host *host.Host
+	for _, taskHost := range hosts {
+		if taskHost.Id == h.hostID {
+			host = &taskHost
+			break
+		}
+	}
+	if host == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("host '%s' not found for task '%s'", h.hostID, h.taskID),
+		})
+	}
+
+	mgrOpts, err := cloud.GetManagerOptions(host.Distro)
+	if err != nil {
+		return gimlet.NewJSONErrorResponse(errors.Wrapf(err, "getting cloud manager options for distro '%s'", host.Distro.Id))
+	}
+	mgr, err := cloud.GetManager(ctx, h.env, mgrOpts)
+	if err != nil {
+		return gimlet.NewJSONErrorResponse(errors.Wrap(err, "getting cloud manager"))
+	}
+	finished, err := mgr.IsUserDataFinished(ctx, host)
+	if err != nil {
+		return gimlet.NewJSONErrorResponse(errors.Wrapf(err, "checking user data script finished for host '%s'", host.Id))
+	}
+	if !finished {
+		// If the user data script is not finished, we return an internal error so the agent retries the request.
+		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "user data script not finished for host '%s'", host.Id))
+	}
+
+	return gimlet.NewJSONResponse(struct{}{})
 }
 
 ////////////////////////////////////////////////////////////////////////

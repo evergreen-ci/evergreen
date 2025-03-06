@@ -112,6 +112,9 @@ type AWSClient interface {
 
 	GetPublicDNSName(ctx context.Context, h *host.Host) (string, error)
 
+	// GetConsoleOutput is a wrapper for ec2.GetConsoleOutput.
+	GetConsoleOutput(ctx context.Context, hostId string) (string, error)
+
 	// ChangeResourceRecordSets is a wrapper for route53.ChangeResourceRecordSets.
 	ChangeResourceRecordSets(context.Context, *route53.ChangeResourceRecordSetsInput) (*route53.ChangeResourceRecordSetsOutput, error)
 
@@ -901,6 +904,20 @@ func (c *awsClientImpl) GetPublicDNSName(ctx context.Context, h *host.Host) (str
 	return *instance.PublicDnsName, nil
 }
 
+func (c *awsClientImpl) GetConsoleOutput(ctx context.Context, hostId string) (string, error) {
+	resp, err := c.ec2Client.GetConsoleOutput(ctx, &ec2.GetConsoleOutputInput{
+		InstanceId: &hostId,
+		Latest:     utility.TruePtr(),
+	})
+	if err != nil {
+		return "", errors.Wrap(err, "getting console output")
+	}
+	if resp.Output == nil {
+		return "", errors.New("console output is nil")
+	}
+	return *resp.Output, nil
+}
+
 func (c *awsClientImpl) ChangeResourceRecordSets(ctx context.Context, input *route53.ChangeResourceRecordSetsInput) (*route53.ChangeResourceRecordSetsOutput, error) {
 	var output *route53.ChangeResourceRecordSetsOutput
 	var err error
@@ -1339,6 +1356,10 @@ func (c *awsClientMock) GetPublicDNSName(ctx context.Context, h *host.Host) (str
 	}
 
 	return "public_dns_name", nil
+}
+
+func (c *awsClientMock) GetConsoleOutput(ctx context.Context, hostId string) (string, error) {
+	return "", nil
 }
 
 func (c *awsClientMock) ChangeResourceRecordSets(ctx context.Context, input *route53.ChangeResourceRecordSetsInput) (*route53.ChangeResourceRecordSetsOutput, error) {

@@ -140,7 +140,7 @@ type EndTaskResponse struct {
 }
 
 type CreateHost struct {
-	// agent-controlled settings
+	// Agent-controlled settings.
 	CloudProvider       string `mapstructure:"provider" json:"provider" yaml:"provider" plugin:"expand"`
 	NumHosts            string `mapstructure:"num_hosts" json:"num_hosts" yaml:"num_hosts" plugin:"expand"`
 	Scope               string `mapstructure:"scope" json:"scope" yaml:"scope" plugin:"expand"`
@@ -148,7 +148,10 @@ type CreateHost struct {
 	TeardownTimeoutSecs int    `mapstructure:"timeout_teardown_secs" json:"timeout_teardown_secs" yaml:"timeout_teardown_secs"`
 	Retries             int    `mapstructure:"retries" json:"retries" yaml:"retries"`
 
-	// EC2-related settings
+	// Agent only settings.
+	WaitForUserDataScript string `mapstructure:"wait_for_user_data_script" yaml:"wait_for_user_data_script"`
+
+	// EC2-related settings.
 	AMI            string               `mapstructure:"ami" json:"ami" yaml:"ami" plugin:"expand"`
 	Distro         string               `mapstructure:"distro" json:"distro" yaml:"distro" plugin:"expand"`
 	EBSDevices     []EbsDevice          `mapstructure:"ebs_block_device" json:"ebs_block_device" yaml:"ebs_block_device" plugin:"expand"`
@@ -163,7 +166,7 @@ type CreateHost struct {
 	// set this directly, instead they pass in a userdata file.
 	UserdataCommand string `json:"userdata_command" yaml:"userdata_command" plugin:"expand"`
 
-	// docker-related settings
+	// Docker-related settings.
 	Image                    string           `mapstructure:"image" json:"image" yaml:"image" plugin:"expand"`
 	Command                  string           `mapstructure:"command" json:"command" yaml:"command" plugin:"expand"`
 	PublishPorts             bool             `mapstructure:"publish_ports" json:"publish_ports" yaml:"publish_ports"`
@@ -364,6 +367,10 @@ func (ch *CreateHost) setNumHosts() error {
 }
 
 func (ch *CreateHost) Validate(ctx context.Context) error {
+	if _, err := ch.ShouldWaitForUserDataScript(); err != nil {
+		return err
+	}
+
 	if ch.CloudProvider == ProviderEC2 || ch.CloudProvider == "" { //default
 		ch.CloudProvider = ProviderEC2
 		return ch.validateEC2()
@@ -378,6 +385,14 @@ func (ch *CreateHost) Validate(ctx context.Context) error {
 
 func (ch *CreateHost) Expand(exp *util.Expansions) error {
 	return errors.Wrap(util.ExpandValues(ch, exp), "error expanding host.create")
+}
+
+func (ch *CreateHost) ShouldWaitForUserDataScript() (bool, error) {
+	if ch.WaitForUserDataScript == "" {
+		return false, nil
+	}
+	should, err := strconv.ParseBool(ch.WaitForUserDataScript)
+	return should, errors.Wrap(err, "parsing wait_for_user_data_script parameter as a boolean")
 }
 
 type GeneratePollResponse struct {

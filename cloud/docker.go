@@ -244,6 +244,10 @@ func (m *dockerManager) GetDNSName(ctx context.Context, h *host.Host) (string, e
 	return "", nil
 }
 
+func (m *dockerManager) IsUserDataFinished(_ context.Context, _ *host.Host) (bool, error) {
+	return true, nil
+}
+
 // TerminateInstance destroys a container.
 func (m *dockerManager) TerminateInstance(ctx context.Context, h *host.Host, user, reason string) error {
 	if h.Status == evergreen.HostTerminated {
