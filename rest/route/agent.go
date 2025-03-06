@@ -570,6 +570,7 @@ func (h *getDistroViewHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	dv := apimodels.DistroView{
+		DataDir:             host.Distro.DataDir,
 		DisableShallowClone: host.Distro.DisableShallowClone,
 		Mountpoints:         host.Distro.Mountpoints,
 		ExecUser:            host.Distro.ExecUser,

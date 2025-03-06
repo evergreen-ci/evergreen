@@ -24,11 +24,16 @@ import (
 )
 
 type Distro struct {
-	Id                    string                `bson:"_id" json:"_id,omitempty" mapstructure:"_id,omitempty"`
-	AdminOnly             bool                  `bson:"admin_only,omitempty" json:"admin_only,omitempty" mapstructure:"admin_only,omitempty"`
-	Aliases               []string              `bson:"aliases,omitempty" json:"aliases,omitempty" mapstructure:"aliases,omitempty"`
-	Arch                  string                `bson:"arch" json:"arch,omitempty" mapstructure:"arch,omitempty"`
-	WorkDir               string                `bson:"work_dir" json:"work_dir,omitempty" mapstructure:"work_dir,omitempty"`
+	Id        string   `bson:"_id" json:"_id,omitempty" mapstructure:"_id,omitempty"`
+	AdminOnly bool     `bson:"admin_only,omitempty" json:"admin_only,omitempty" mapstructure:"admin_only,omitempty"`
+	Aliases   []string `bson:"aliases,omitempty" json:"aliases,omitempty" mapstructure:"aliases,omitempty"`
+	Arch      string   `bson:"arch" json:"arch,omitempty" mapstructure:"arch,omitempty"`
+	// WorkDir is the working directory for the Evergreen agent. Typically, this
+	// is a subdirectory of DataDir.
+	WorkDir string `bson:"work_dir" json:"work_dir,omitempty" mapstructure:"work_dir,omitempty"`
+	// DataDir is the directory where data is stored on a host (e.g. task data
+	// for a task host).
+	DataDir               string                `bson:"data_dir" json:"data_dir,omitempty" mapstructure:"data_dir,omitempty"`
 	Provider              string                `bson:"provider" json:"provider,omitempty" mapstructure:"provider,omitempty"`
 	ProviderSettingsList  []*birch.Document     `bson:"provider_settings,omitempty" json:"provider_settings,omitempty" mapstructure:"provider_settings,omitempty"`
 	SetupAsSudo           bool                  `bson:"setup_as_sudo,omitempty" json:"setup_as_sudo,omitempty" mapstructure:"setup_as_sudo,omitempty"`

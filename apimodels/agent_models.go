@@ -388,6 +388,7 @@ type GeneratePollResponse struct {
 // DistroView represents the view of data that the agent uses from the distro
 // it is running on.
 type DistroView struct {
+	DataDir             string   `json:"data_dir"`
 	DisableShallowClone bool     `json:"disable_shallow_clone"`
 	Mountpoints         []string `json:"mountpoints"`
 	ExecUser            string   `json:"exec_user"`
