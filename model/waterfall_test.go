@@ -36,7 +36,7 @@ func TestGetActiveWaterfallVersions(t *testing.T) {
 		Id:                  "v_1",
 		Identifier:          "a_project",
 		Requester:           evergreen.RepotrackerVersionRequester,
-		RevisionOrderNumber: 10,
+		RevisionOrderNumber: 1000,
 		CreateTime:          start,
 		Activated:           utility.TruePtr(),
 		BuildVariants: []VersionBuildStatus{
@@ -50,7 +50,7 @@ func TestGetActiveWaterfallVersions(t *testing.T) {
 		Id:                  "v_2",
 		Identifier:          "a_project",
 		Requester:           evergreen.RepotrackerVersionRequester,
-		RevisionOrderNumber: 9,
+		RevisionOrderNumber: 999,
 		CreateTime:          start.Add(-2 * time.Minute),
 		Activated:           utility.FalsePtr(),
 	}
@@ -59,7 +59,7 @@ func TestGetActiveWaterfallVersions(t *testing.T) {
 		Id:                  "v_3",
 		Identifier:          "a_project",
 		Requester:           evergreen.RepotrackerVersionRequester,
-		RevisionOrderNumber: 8,
+		RevisionOrderNumber: 998,
 		CreateTime:          start.Add(-2 * time.Minute),
 		Activated:           utility.TruePtr(),
 		BuildVariants: []VersionBuildStatus{
@@ -77,7 +77,7 @@ func TestGetActiveWaterfallVersions(t *testing.T) {
 		Id:                  "v_4",
 		Identifier:          "a_project",
 		Requester:           evergreen.RepotrackerVersionRequester,
-		RevisionOrderNumber: 7,
+		RevisionOrderNumber: 997,
 		CreateTime:          start.Add(-2 * time.Minute),
 		Activated:           utility.TruePtr(),
 		BuildVariants: []VersionBuildStatus{
@@ -95,7 +95,7 @@ func TestGetActiveWaterfallVersions(t *testing.T) {
 		Id:                  "v_5",
 		Identifier:          "a_project",
 		Requester:           evergreen.RepotrackerVersionRequester,
-		RevisionOrderNumber: 6,
+		RevisionOrderNumber: 996,
 		CreateTime:          start.Add(-2 * time.Minute),
 		Activated:           utility.TruePtr(),
 	}
@@ -115,7 +115,7 @@ func TestGetActiveWaterfallVersions(t *testing.T) {
 	versions, err = GetActiveWaterfallVersions(t.Context(), p.Id, WaterfallOptions{
 		Limit:      2,
 		Requesters: evergreen.SystemVersionRequesterTypes,
-		MaxOrder:   9,
+		MaxOrder:   999,
 	})
 	assert.NoError(t, err)
 	require.Len(t, versions, 2)
@@ -125,7 +125,7 @@ func TestGetActiveWaterfallVersions(t *testing.T) {
 	versions, err = GetActiveWaterfallVersions(t.Context(), p.Id, WaterfallOptions{
 		Limit:      5,
 		Requesters: evergreen.SystemVersionRequesterTypes,
-		MinOrder:   7,
+		MinOrder:   997,
 	})
 	assert.NoError(t, err)
 	require.Len(t, versions, 2)
@@ -148,6 +148,26 @@ func TestGetActiveWaterfallVersions(t *testing.T) {
 			Variants:   []string{"Build Variant 1"},
 		})
 	assert.NoError(t, err)
+	require.Len(t, versions, 1)
+	assert.EqualValues(t, "v_4", versions[0].Id)
+
+	// Inserting this version causes the pipeline to run a $unionWith stage that fetches build display names from the builds collection
+	v = Version{
+		Id:                  "v_6",
+		Identifier:          "a_project",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		RevisionOrderNumber: 1,
+		CreateTime:          time.Date(2024, time.February, 7, 0, 0, 0, 0, time.UTC),
+		Activated:           utility.TruePtr(),
+	}
+	assert.NoError(t, v.Insert())
+
+	versions, err = GetActiveWaterfallVersions(t.Context(), p.Id,
+		WaterfallOptions{
+			Limit:      4,
+			Requesters: evergreen.SystemVersionRequesterTypes,
+			Variants:   []string{"Build Variant 1"},
+		})
 	require.Len(t, versions, 2)
 	assert.EqualValues(t, "v_1", versions[0].Id)
 	assert.EqualValues(t, "v_4", versions[1].Id)
