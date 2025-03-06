@@ -68,22 +68,6 @@ func BenchmarkTestLog(b *testing.B) {
 	// Number of files (with old way).
 }
 
-func benchmarkTestLog(b *testing.B, config testLogBenchmarkConfiguration) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	h := setupTestLogBenchmark(b, testLogBenchmarkConfiguration{
-		filePath:          "benchmark_log.txt",
-		sequenceSize:      1e7,
-		numRedactionKeys:  40,
-		preloadRedactions: true,
-	})
-
-	for n := 0; n < b.N; n++ {
-		require.NoError(b, h.run(ctx))
-	}
-}
-
 type testLogBenchmarkConfiguration struct {
 	filePath          string
 	sequenceSize      int64

@@ -396,53 +396,6 @@ func TestTestLogFormatValidate(t *testing.T) {
 	}
 }
 
-/*
-func TestTestLogBenchmark(t *testing.T) {
-	expansions := map[string]string{}
-	keys := make([]string, 40)
-	for i := 0; i < 40; i++ {
-		key := fmt.Sprintf("secret_%d", i)
-		expansions[key] = "abcdefghijklmnopqrstuvwxyz"
-		keys[i] = key
-	}
-	tsk, h := setupTestTestLogDirectoryHandler(t, client.NewMock("url"), redactor.RedactionOptions{
-		Expansions:         util.NewDynamicExpansions(expansions),
-		Redacted:           keys,
-		InternalRedactions: util.NewDynamicExpansions(map[string]string{"another_secret": "DEADC0DE"}),
-	})
-	//tsk, h := setupTestTestLogDirectoryHandler(t, client.NewMock("url"), redactor.RedactionOptions{})
-	data, err := yaml.Marshal(testLogSpec{Format: testLogFormatTextTimestamp})
-	require.NoError(t, err)
-	require.NoError(t, os.WriteFile(filepath.Join(h.dir, testLogSpecFilename), data, 0777))
-
-	//for _, fn := range []string{"benchmark_log.txt", "benchmark_log2.txt", "benchmark_log3.txt"} {
-	for _, fn := range []string{"benchmark_log.txt"} {
-		src, err := os.Open(fn)
-		require.NoError(t, err)
-		dst, err := os.Create(filepath.Join(h.dir, fn))
-		require.NoError(t, err)
-		_, err = io.Copy(dst, src)
-		require.NoError(t, err)
-		require.NoError(t, src.Close())
-		require.NoError(t, dst.Close())
-	}
-
-	start := time.Now()
-	assert.NoError(t, h.run(context.Background()))
-	duration := time.Since(start)
-	fmt.Println(duration)
-
-	it, err := tsk.GetTestLogs(context.Background(), taskoutput.TestLogGetOptions{LogPaths: []string{"benchmark_log.txt"}, TailN: 10})
-	require.NoError(t, err)
-	defer func() {
-		assert.NoError(t, it.Close())
-	}()
-	for it.Next() {
-		fmt.Println(it.Item().Data)
-	}
-}
-*/
-
 func setupTestTestLogDirectoryHandler(t *testing.T, comm *client.Mock, redactOpts redactor.RedactionOptions) (*task.Task, *testLogDirectoryHandler) {
 	tsk := &task.Task{
 		Project: "project",
@@ -453,8 +406,6 @@ func setupTestTestLogDirectoryHandler(t *testing.T, comm *client.Mock, redactOpt
 				BucketConfig: evergreen.BucketConfig{
 					Name: t.TempDir(),
 					Type: evergreen.BucketTypeLocal,
-					//Name: "julian-push-test",
-					//Type: evergreen.BucketTypeS3,
 				},
 			},
 		},
