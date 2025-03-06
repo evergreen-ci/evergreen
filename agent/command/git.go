@@ -220,9 +220,9 @@ func (opts cloneOpts) buildHTTPCloneCommand(logger client.LoggerProducer, forApp
 	gitCommand := "git clone"
 	// use --no-src so that it doesn't put the repository into a src directory because
 	// this can break user expectations and cause scripts to fail
-	scalarBaseCommand := "scalar clone --no-src"
 	if opts.useScalar || opts.useScalarFullClone {
 		scalarAvailable, err := agentutil.IsGitVersionMinimumForScalar(thirdparty.RequiredScalarGitVersion)
+		scalarBaseCommand := "scalar clone --no-src"
 		if err != nil {
 			logger.Task().Errorf("checking git version failed, falling back to git clone instead of scalar clone: %s.", err)
 		} else if !scalarAvailable {
@@ -303,9 +303,6 @@ func (c *gitFetchProject) ParseParams(params map[string]interface{}) error {
 
 func (c *gitFetchProject) validate() error {
 	catcher := grip.NewSimpleCatcher()
-	if c.UseScalar && c.UseScalarFullClone {
-		catcher.New("use_scalar cannot be combined with use_scalar_full_clone")
-	}
 	usesScalar := c.UseScalar || c.UseScalarFullClone
 	if usesScalar && c.CloneDepth > 0 {
 		catcher.New("use_scalar cannot be combined with clone_depth")
