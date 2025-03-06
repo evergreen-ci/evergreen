@@ -19,6 +19,7 @@ type redactingSender struct {
 	expansions         *util.DynamicExpansions
 	expansionsToRedact []string
 	internalRedactions *util.DynamicExpansions
+	allRedacted        []util.RedactInfo
 
 	send.Sender
 }
@@ -43,22 +44,8 @@ func (r *redactingSender) Send(m message.Composer) {
 	}
 
 	msg := m.String()
-	allRedacted := r.expansions.GetRedacted()
-	for _, expansion := range r.expansionsToRedact {
-		if val := r.expansions.Get(expansion); val != "" {
-			allRedacted = append(allRedacted, util.RedactInfo{Key: expansion, Value: val})
-		}
-	}
-	r.internalRedactions.Range(func(k, v string) bool {
-		allRedacted = append(allRedacted, util.RedactInfo{Key: k, Value: v})
-		return true
-	})
 
-	// Sort redacted info based on value length to ensure we're redacting longer values first.
-	sort.Slice(allRedacted, func(i, j int) bool {
-		return len(allRedacted[i].Value) > len(allRedacted[j].Value)
-	})
-	for _, info := range allRedacted {
+	for _, info := range r.allRedacted {
 		msg = strings.ReplaceAll(msg, info.Value, fmt.Sprintf(redactedVariableTemplate, info.Key))
 	}
 
@@ -74,10 +61,32 @@ func NewRedactingSender(sender send.Sender, opts RedactionOptions) send.Sender {
 	if opts.InternalRedactions == nil {
 		opts.InternalRedactions = &util.DynamicExpansions{}
 	}
+
+	expansions := opts.Expansions
+	expansionsToRedact := append(opts.Redacted, globals.ExpansionsToRedact...)
+	internalRedactions := opts.InternalRedactions
+
+	allRedacted := expansions.GetRedacted()
+	for _, expansion := range expansionsToRedact {
+		if val := expansions.Get(expansion); val != "" {
+			allRedacted = append(allRedacted, util.RedactInfo{Key: expansion, Value: val})
+		}
+	}
+	internalRedactions.Range(func(k, v string) bool {
+		allRedacted = append(allRedacted, util.RedactInfo{Key: k, Value: v})
+		return true
+	})
+
+	// Sort redacted info based on value length to ensure we're redacting longer values first.
+	sort.Slice(allRedacted, func(i, j int) bool {
+		return len(allRedacted[i].Value) > len(allRedacted[j].Value)
+	})
+
 	return &redactingSender{
-		expansions:         opts.Expansions,
-		expansionsToRedact: append(opts.Redacted, globals.ExpansionsToRedact...),
-		internalRedactions: opts.InternalRedactions,
+		expansions:         expansions,
+		expansionsToRedact: expansionsToRedact,
+		internalRedactions: internalRedactions,
+		allRedacted:        allRedacted,
 		Sender:             sender,
 	}
 }
