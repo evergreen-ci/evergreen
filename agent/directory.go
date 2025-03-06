@@ -110,6 +110,8 @@ func (a *Agent) removeAllAndCheck(ctx context.Context, dir string) error {
 	return removeErr
 }
 
+// kim: TODO: need removeAllAndCheck to add on logic to look at disk usage.
+
 // removeAll is the same as os.RemoveAll, but recursively changes permissions
 // for subdirectories and contents before removing. The permissions change fixes
 // an issue where some files may be marked read-only, which prevents
