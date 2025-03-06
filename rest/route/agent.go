@@ -577,6 +577,44 @@ func (h *getDistroViewHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(dv)
 }
 
+// GET /task/{task_id}/host_view
+type getHostViewHandler struct {
+	hostID string
+}
+
+func makeGetHostView() gimlet.RouteHandler {
+	return &getHostViewHandler{}
+}
+
+func (rh *getHostViewHandler) Factory() gimlet.RouteHandler {
+	return &getHostViewHandler{}
+}
+
+func (rh *getHostViewHandler) Parse(ctx context.Context, r *http.Request) error {
+	if rh.hostID = r.Header.Get(evergreen.HostHeader); rh.hostID == "" {
+		return errors.New("missing host ID")
+	}
+	return nil
+}
+
+func (rh *getHostViewHandler) Run(ctx context.Context) gimlet.Responder {
+	h, err := host.FindOneId(ctx, rh.hostID)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting host"))
+	}
+	if h == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("host '%s' not found", rh.hostID)},
+		)
+	}
+
+	hv := apimodels.HostView{
+		Hostname: h.Host,
+	}
+	return gimlet.NewJSONResponse(hv)
+}
+
 // POST /task/{task_id}/files
 type attachFilesHandler struct {
 	taskID string

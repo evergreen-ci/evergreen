@@ -238,15 +238,21 @@ func TestArchiveAutoPackExecute(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			conf, err := internal.NewTaskConfig(t.TempDir(),
-				&apimodels.DistroView{},
-				&model.Project{BuildVariants: []model.BuildVariant{{Name: "bv"}}},
-				&task.Task{BuildVariant: "bv"},
-				&model.ProjectRef{},
-				&patch.Patch{},
-				nil,
-				&apimodels.ExpansionsAndVars{},
-			)
+			tcOpts := internal.TaskConfigOptions{
+				WorkDir: t.TempDir(),
+				Distro:  &apimodels.DistroView{},
+				Host:    &apimodels.HostView{},
+				Project: &model.Project{
+					BuildVariants: []model.BuildVariant{{Name: "bv"}},
+				},
+				ProjectRef: &model.ProjectRef{},
+				Task: &task.Task{
+					BuildVariant: "bv",
+				},
+				Patch:             &patch.Patch{},
+				ExpansionsAndVars: &apimodels.ExpansionsAndVars{},
+			}
+			conf, err := internal.NewTaskConfig(tcOpts)
 			require.NoError(t, err)
 			comm := client.NewMock("url")
 			logger, err := comm.GetLoggerProducer(ctx, &conf.Task, nil)

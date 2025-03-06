@@ -145,10 +145,22 @@ func (s *AgentSuite) SetupTest() {
 		},
 		BuildVariants: []model.BuildVariant{{Name: bvName}},
 	}
-	taskConfig, err := internal.NewTaskConfig(s.testTmpDirName, &apimodels.DistroView{}, project, &s.task, &model.ProjectRef{
-		Id:         "project_id",
-		Identifier: "project_identifier",
-	}, &patch.Patch{}, nil, &apimodels.ExpansionsAndVars{Expansions: util.Expansions{}})
+	tcOpts := internal.TaskConfigOptions{
+		WorkDir: s.testTmpDirName,
+		Distro:  &apimodels.DistroView{},
+		Host:    &apimodels.HostView{},
+		Project: project,
+		Task:    &s.task,
+		ProjectRef: &model.ProjectRef{
+			Id:         "project_id",
+			Identifier: "project_identifier",
+		},
+		Patch: &patch.Patch{},
+		ExpansionsAndVars: &apimodels.ExpansionsAndVars{
+			Expansions: util.Expansions{},
+		},
+	}
+	taskConfig, err := internal.NewTaskConfig(tcOpts)
 	s.Require().NoError(err)
 
 	s.tc = &taskContext{
