@@ -783,6 +783,30 @@ func (c *baseCommunicator) GetDistroByName(ctx context.Context, id string) (*res
 
 }
 
+// GetDistroByHost gets the distro from the host ID
+func (c *baseCommunicator) GetDistroByHostID(ctx context.Context, id string) (*restmodel.APIDistro, error) {
+	info := requestInfo{
+		method: http.MethodGet,
+		path:   fmt.Sprintf("host/%s", id),
+	}
+
+	resp, err := c.retryRequest(ctx, info, nil)
+	if err != nil {
+		return nil, util.RespError(resp, errors.Wrapf(err, "getting host '%s'", id).Error())
+	}
+
+	h := &restmodel.APIHost{}
+	if err = utility.ReadJSON(resp.Body, &h); err != nil {
+		return nil, errors.Wrapf(err, "reading host '%s' from response", id)
+	}
+
+	if utility.FromStringPtr(h.Distro.Id) == "" {
+		return nil, errors.Errorf("host '%s' has no distro", id)
+	}
+
+	return c.GetDistroByName(ctx, utility.FromStringPtr(h.Distro.Id))
+}
+
 // StartTask marks the task as started.
 func (c *baseCommunicator) StartTask(ctx context.Context, taskData TaskData) error {
 	grip.Info(message.Fields{

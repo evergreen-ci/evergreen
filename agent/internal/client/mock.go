@@ -221,6 +221,10 @@ func (c *Mock) GetDistroByName(context.Context, string) (*restmodel.APIDistro, e
 	return &restmodel.APIDistro{}, nil
 }
 
+func (c *Mock) GetDistroByHostID(context.Context, string) (*restmodel.APIDistro, error) {
+	return &restmodel.APIDistro{}, nil
+}
+
 // GetProject returns the mock project. If an explicit GetProjectResponse is
 // specified, it will return that. Otherwise, by default, it will load data from
 // the agent's testdata directory, which contains project YAML files for

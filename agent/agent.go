@@ -225,10 +225,11 @@ func (a *Agent) Start(ctx context.Context) error {
 		a.tryCleanupDirectory(a.opts.WorkingDirectory)
 	}
 
-	distro, err := a.comm.GetDistroByName(ctx, a.opts.DistroID)
+	distro, err := a.comm.GetDistroByHostID(ctx, a.opts.HostID)
 	if err != nil {
 		return errors.Wrapf(err, "getting distro '%s'", a.opts.DistroID)
 	}
+	a.opts.DistroID = utility.FromStringPtr(distro.Name)
 	a.opts.SingleTaskDistro = distro.SingleTaskDistro
 
 	return errors.Wrap(a.loop(ctx), "executing main agent loop")

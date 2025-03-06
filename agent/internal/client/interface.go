@@ -61,6 +61,8 @@ type SharedCommunicator interface {
 	GetDistroAMI(context.Context, string, string, TaskData) (string, error)
 	// GetDistroByName returns a distro given a distro ID.
 	GetDistroByName(context.Context, string) (*restmodel.APIDistro, error)
+	// GetDistroByHostID returns a distro given a host ID.
+	GetDistroByHostID(context.Context, string) (*restmodel.APIDistro, error)
 	// GetProject loads the project using the task's version ID.
 	GetProject(context.Context, TaskData) (*model.Project, error)
 	// Heartbeat will return a non-empty task status if the agent should stop running the task.
