@@ -51,6 +51,8 @@ type WaterfallOptions struct {
 	MaxOrder   int      `bson:"-" json:"-"`
 	MinOrder   int      `bson:"-" json:"-"`
 	Requesters []string `bson:"-" json:"-"`
+	Statuses   []string `bson:"-" json:"-"`
+	Tasks      []string `bson:"-" json:"-"`
 	Variants   []string `bson:"-" json:"-"`
 }
 
@@ -132,6 +134,77 @@ func getBuildVariantFilterPipeline(ctx context.Context, variants []string, match
 		},
 	})
 	return pipeline, nil
+}
+
+// GetVersionByTaskDetails returns limit versions that satisfy either/both task name or status filters.
+// If neither of these filters is specified, use GetActiveWaterfallVersions: it's faster.
+func GetVersionsByTaskDetails(ctx context.Context, projectId string, opts WaterfallOptions, mostRecentVersionOrder int) ([]Version, error) {
+	match := bson.M{
+		task.ProjectKey: projectId,
+		task.RequesterKey: bson.M{
+			"$in": opts.Requesters,
+		},
+		task.ActivatedKey:           true,
+		task.RevisionOrderNumberKey: bson.M{"$gte": mostRecentVersionOrder - MaxWaterfallVersionLimit},
+	}
+
+	if len(opts.Statuses) > 0 {
+		match[task.DisplayStatusCacheKey] = bson.M{"$in": opts.Statuses}
+	}
+
+	if len(opts.Tasks) > 0 {
+		taskNamesAsRegex := strings.Join(opts.Tasks, "|")
+		match[task.DisplayNameKey] = bson.M{"$regex": taskNamesAsRegex, "$options": "i"}
+	}
+
+	if len(opts.Variants) > 0 {
+		variantsAsRegex := strings.Join(opts.Variants, "|")
+		match["$or"] = []bson.M{
+			{task.BuildVariantKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
+			{task.BuildVariantDisplayNameKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
+		}
+	}
+
+	pipeline := []bson.M{{"$match": match}}
+
+	pipeline = append(pipeline, bson.M{
+		"$group": bson.M{
+			task.IdKey: "$" + task.VersionKey,
+			// All tasks the same version key should have the same order number, but $max is the safest way to ensure we can sort from newest to oldest upon grouping.
+			task.RevisionOrderNumberKey: bson.M{
+				"$max": "$" + task.RevisionOrderNumberKey,
+			},
+		},
+	})
+
+	pipeline = append(pipeline, bson.M{"$sort": bson.M{task.RevisionOrderNumberKey: -1}})
+	pipeline = append(pipeline, bson.M{"$limit": opts.Limit})
+	versionLookupKey := "version"
+	pipeline = append(pipeline, bson.M{
+		"$lookup": bson.M{
+			"from":         VersionCollection,
+			"localField":   task.IdKey,
+			"foreignField": VersionIdKey,
+			"as":           versionLookupKey,
+		},
+	})
+	pipeline = append(pipeline, bson.M{
+		"$replaceRoot": bson.M{
+			"newRoot": bson.M{"$arrayElemAt": bson.A{"$" + versionLookupKey, 0}},
+		},
+	})
+
+	res := []Version{}
+	env := evergreen.GetEnvironment()
+	cursor, err := env.DB().Collection(task.Collection).Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, errors.Wrap(err, "finding versions matching tasks")
+	}
+	if err = cursor.All(ctx, &res); err != nil {
+		return nil, err
+	}
+
+	return res, nil
 }
 
 // GetActiveWaterfallVersions returns at most `opts.limit` activated versions for a given project.

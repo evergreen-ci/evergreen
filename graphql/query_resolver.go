@@ -968,15 +968,33 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 
 	opts := model.WaterfallOptions{
 		Limit:      limit,
-		Requesters: requesters,
 		MaxOrder:   maxOrderOpt,
 		MinOrder:   minOrderOpt,
-		Variants:   options.Variants,
+		Requesters: requesters,
+		Statuses:   utility.FilterSlice(options.Statuses, func(s string) bool { return s != "" }),
+		Tasks:      utility.FilterSlice(options.Tasks, func(s string) bool { return s != "" }),
+		Variants:   utility.FilterSlice(options.Variants, func(s string) bool { return s != "" }),
 	}
 
-	activeVersions, err := model.GetActiveWaterfallVersions(ctx, projectId, opts)
+	mostRecentWaterfallVersion, err := model.GetMostRecentWaterfallVersion(ctx, projectId)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting active waterfall versions: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching most recent waterfall version: %s", err.Error()))
+	}
+	if mostRecentWaterfallVersion == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("no versions found for project '%s'", projectId))
+	}
+
+	var activeVersions []model.Version
+	if len(opts.Tasks) > 0 || len(opts.Statuses) > 0 {
+		activeVersions, err = model.GetVersionsByTaskDetails(ctx, projectId, opts, mostRecentWaterfallVersion.RevisionOrderNumber)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting active waterfall versions: %s", err.Error()))
+		}
+	} else {
+		activeVersions, err = model.GetActiveWaterfallVersions(ctx, projectId, opts)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting active waterfall versions: %s", err.Error()))
+		}
 	}
 
 	// Since GetAllWaterfallVersions uses an inclusive order range ($gte instead of $gt), add 1 to our minimum range
@@ -1033,10 +1051,6 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 	}
 
 	waterfallVersions := groupInactiveVersions(allVersions)
-	mostRecentWaterfallVersion, err := model.GetMostRecentWaterfallVersion(ctx, projectId)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching most recent waterfall version: %s", err.Error()))
-	}
 
 	prevPageOrder := 0
 	nextPageOrder := 0

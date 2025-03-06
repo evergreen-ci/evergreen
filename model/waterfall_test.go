@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"strings"
 	"testing"
 	"time"
@@ -1059,4 +1060,217 @@ func TestGetOlderActiveWaterfallVersion(t *testing.T) {
 	assert.NoError(t, err)
 	require.NotNil(t, version)
 	assert.Equal(t, "v_4", version.Id)
+}
+
+func TestGetVersionsByTaskDetails(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(task.Collection, VersionCollection, build.Collection))
+	}()
+
+	for tName, tCase := range map[string]func(t *testing.T, ctx context.Context){
+		"Finds versions with active tasks within the correct order range": func(t *testing.T, ctx context.Context) {
+			versions, err := GetVersionsByTaskDetails(ctx, "a_project",
+				WaterfallOptions{
+					Limit:      5,
+					Requesters: evergreen.SystemVersionRequesterTypes,
+				}, 1001)
+			assert.NoError(t, err)
+			assert.Len(t, versions, 2)
+		},
+		"Applies a task name filter": func(t *testing.T, ctx context.Context) {
+			versions, err := GetVersionsByTaskDetails(ctx, "a_project",
+				WaterfallOptions{
+					Limit:      5,
+					Requesters: evergreen.SystemVersionRequesterTypes,
+					Tasks:      []string{"Task 80"},
+				}, 1001)
+			assert.NoError(t, err)
+			assert.Len(t, versions, 1)
+			assert.Equal(t, versions[0].Id, "v_1")
+		},
+		"Applies a task status filter": func(t *testing.T, ctx context.Context) {
+			versions, err := GetVersionsByTaskDetails(ctx, "a_project",
+				WaterfallOptions{
+					Limit:      5,
+					Requesters: evergreen.SystemVersionRequesterTypes,
+					Statuses:   []string{evergreen.TaskFailed},
+				}, 1001)
+			assert.NoError(t, err)
+			assert.Len(t, versions, 2)
+			assert.Equal(t, versions[0].Id, "v_2")
+			assert.Equal(t, versions[1].Id, "v_1")
+		},
+		"Applies a task name and task status filter with no matches": func(t *testing.T, ctx context.Context) {
+			versions, err := GetVersionsByTaskDetails(ctx, "a_project",
+				WaterfallOptions{
+					Limit:      5,
+					Requesters: evergreen.SystemVersionRequesterTypes,
+					Statuses:   []string{evergreen.TaskFailed},
+					Tasks:      []string{"Task 80"},
+				}, 1001)
+			assert.NoError(t, err)
+			assert.Len(t, versions, 0)
+		},
+		"Applies a task name and task status filter": func(t *testing.T, ctx context.Context) {
+			versions, err := GetVersionsByTaskDetails(ctx, "a_project",
+				WaterfallOptions{
+					Limit:      5,
+					Requesters: evergreen.SystemVersionRequesterTypes,
+					Statuses:   []string{evergreen.TaskFailed},
+					Tasks:      []string{"Task 120"},
+				}, 1001)
+			assert.NoError(t, err)
+			assert.Len(t, versions, 1)
+			assert.Equal(t, versions[0].Id, "v_2")
+		},
+		"Applies a task name and build variant filter": func(t *testing.T, ctx context.Context) {
+			versions, err := GetVersionsByTaskDetails(ctx, "a_project",
+				WaterfallOptions{
+					Limit:      5,
+					Requesters: evergreen.SystemVersionRequesterTypes,
+					Tasks:      []string{"Task 100"},
+					Variants:   []string{"Build Variant 1"},
+				}, 1001)
+			assert.NoError(t, err)
+			assert.Len(t, versions, 1)
+			assert.Equal(t, versions[0].Id, "v_1")
+		},
+		"Applies a task status and build variant filter": func(t *testing.T, ctx context.Context) {
+			versions, err := GetVersionsByTaskDetails(ctx, "a_project",
+				WaterfallOptions{
+					Limit:      5,
+					Requesters: evergreen.SystemVersionRequesterTypes,
+					Statuses:   []string{evergreen.TaskFailed},
+					Variants:   []string{"bv_2"},
+				}, 1001)
+			assert.NoError(t, err)
+			assert.Len(t, versions, 1)
+			assert.Equal(t, versions[0].Id, "v_2")
+		},
+		"Applies a task name, task status, requester, and build variant filter": func(t *testing.T, ctx context.Context) {
+			versions, err := GetVersionsByTaskDetails(ctx, "a_project",
+				WaterfallOptions{
+					Limit:      5,
+					Requesters: []string{evergreen.RepotrackerVersionRequester},
+					Statuses:   []string{evergreen.TaskSucceeded},
+					Tasks:      []string{"Task 80"},
+					Variants:   []string{"bv_1"},
+				}, 1001)
+			assert.NoError(t, err)
+			assert.Len(t, versions, 1)
+			assert.Equal(t, versions[0].Id, "v_1")
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			assert.NoError(t, db.ClearCollections(task.Collection, VersionCollection, build.Collection))
+
+			start := time.Now()
+			b := build.Build{
+				Id:          "b_1",
+				DisplayName: "Build Variant 1",
+				Activated:   true,
+			}
+			assert.NoError(t, b.Insert())
+
+			v := Version{
+				Id:                  "v_1",
+				Identifier:          "a_project",
+				Requester:           evergreen.RepotrackerVersionRequester,
+				RevisionOrderNumber: 1000,
+				CreateTime:          start,
+				Activated:           utility.TruePtr(),
+			}
+			assert.NoError(t, v.Insert())
+
+			v = Version{
+				Id:                  "v_2",
+				Identifier:          "a_project",
+				Requester:           evergreen.GitTagRequester,
+				RevisionOrderNumber: 1001,
+				CreateTime:          start,
+				Activated:           utility.TruePtr(),
+				BuildVariants: []VersionBuildStatus{
+					{
+						BuildId:     "b_2",
+						DisplayName: "Build Variant 2",
+						ActivationStatus: ActivationStatus{
+							Activated: false,
+						},
+					},
+				},
+			}
+			assert.NoError(t, v.Insert())
+
+			v = Version{
+				Id:                  "v_3",
+				Identifier:          "a_project",
+				Requester:           evergreen.RepotrackerVersionRequester,
+				RevisionOrderNumber: 600,
+				CreateTime:          start,
+				Activated:           utility.TruePtr(),
+			}
+			assert.NoError(t, v.Insert())
+
+			tsk := task.Task{
+				Id:                      "t_80",
+				Activated:               true,
+				DisplayName:             "Task 80",
+				Status:                  evergreen.TaskSucceeded,
+				DisplayStatusCache:      evergreen.TaskSucceeded,
+				Project:                 "a_project",
+				Requester:               evergreen.RepotrackerVersionRequester,
+				Version:                 "v_1",
+				RevisionOrderNumber:     1000,
+				BuildVariant:            "bv_1",
+				BuildVariantDisplayName: "Build Variant 1",
+			}
+			assert.NoError(t, tsk.Insert())
+
+			tsk = task.Task{
+				Id:                      "t_100",
+				Activated:               true,
+				DisplayName:             "Task 100",
+				Status:                  evergreen.TaskFailed,
+				DisplayStatusCache:      evergreen.TaskFailed,
+				Project:                 "a_project",
+				Requester:               evergreen.RepotrackerVersionRequester,
+				Version:                 "v_1",
+				RevisionOrderNumber:     1000,
+				BuildVariant:            "bv_1",
+				BuildVariantDisplayName: "Build Variant 1",
+			}
+			assert.NoError(t, tsk.Insert())
+
+			tsk = task.Task{
+				Id:                      "t_120",
+				Activated:               true,
+				DisplayName:             "Task 120",
+				Status:                  evergreen.TaskFailed,
+				DisplayStatusCache:      evergreen.TaskFailed,
+				Project:                 "a_project",
+				Requester:               evergreen.RepotrackerVersionRequester,
+				Version:                 "v_2",
+				RevisionOrderNumber:     1001,
+				BuildVariant:            "bv_2",
+				BuildVariantDisplayName: "Build Variant 2",
+			}
+			assert.NoError(t, tsk.Insert())
+
+			tsk = task.Task{
+				Id:                      "t_80_2",
+				Activated:               true,
+				DisplayName:             "Task 80",
+				Status:                  evergreen.TaskFailed,
+				DisplayStatusCache:      evergreen.TaskFailed,
+				Project:                 "a_project",
+				Requester:               evergreen.RepotrackerVersionRequester,
+				Version:                 "v_1",
+				RevisionOrderNumber:     1000,
+				BuildVariant:            "bv_1",
+				BuildVariantDisplayName: "Build Variant 1",
+			}
+
+			tCase(t, t.Context())
+		})
+	}
 }
