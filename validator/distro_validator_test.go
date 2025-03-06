@@ -133,45 +133,6 @@ func TestCheckDistro(t *testing.T) {
 			So(verrs, ShouldResemble, ValidationErrors{})
 		})
 
-		Convey("if a new distro is valid but has a warning, only a warning should be returned", func() {
-			d := &distro.Distro{
-				Id:       "a",
-				Arch:     "linux_amd64",
-				User:     "a",
-				WorkDir:  "a",
-				Provider: evergreen.ProviderNameEc2OnDemand,
-				ProviderSettingsList: []*birch.Document{birch.NewDocument(
-					birch.EC.String("ami", "a"),
-					birch.EC.String("key_name", "a"),
-					birch.EC.String("instance_type", "a"),
-					birch.EC.SliceString("security_group_ids", []string{"a"}),
-				)},
-				PlannerSettings: distro.PlannerSettings{
-					Version: evergreen.PlannerVersionTunable,
-				},
-				BootstrapSettings: distro.BootstrapSettings{
-					Method:        distro.BootstrapMethodLegacySSH,
-					Communication: distro.CommunicationMethodLegacySSH,
-				},
-				FinderSettings: distro.FinderSettings{
-					Version: evergreen.FinderVersionLegacy,
-				},
-				DispatcherSettings: distro.DispatcherSettings{
-					Version: evergreen.DispatcherVersionRevisedWithDependencies,
-				},
-				HostAllocatorSettings: distro.HostAllocatorSettings{
-					Version:      evergreen.HostAllocatorUtilization,
-					MinimumHosts: 10,
-					MaximumHosts: 20,
-				},
-			}
-			verrs, err := CheckDistro(ctx, d, conf, true)
-			So(err, ShouldBeNil)
-			So(len(verrs), ShouldEqual, 1)
-			So(verrs[0].Level, ShouldEqual, Warning)
-			So(verrs[0].Message, ShouldContainSubstring, "data_dir")
-		})
-
 		Convey("if an existing distro fails a validation test, an error should be returned", func() {
 			d := &distro.Distro{
 				Id:       "a",
@@ -274,7 +235,6 @@ func TestEnsureHasRequiredFields(t *testing.T) {
 			{Id: "a"},
 			{Id: "a", Arch: "linux_amd64"},
 			{Id: "a", Arch: "linux_amd64", User: "a"},
-			{Id: "a", Arch: "linux_amd64", User: "a", WorkDir: "a"},
 			{Id: "a", Arch: "linux_amd64", User: "a", WorkDir: "a", DataDir: "a"},
 			{Id: "a", Arch: "linux_amd64", User: "a", WorkDir: "a", DataDir: "a", Provider: "a"},
 			{Id: "a", Arch: "linux_amd64", User: "a", WorkDir: "a", DataDir: "a", Provider: evergreen.ProviderNameEc2OnDemand},
@@ -313,9 +273,6 @@ func TestEnsureHasRequiredFields(t *testing.T) {
 			So(ensureHasRequiredFields(ctx, &d[i], conf), ShouldNotResemble, ValidationErrors{})
 		})
 		Convey("an error should be returned if the distro does not contain a user", func() {
-			So(ensureHasRequiredFields(ctx, &d[i], conf), ShouldNotResemble, ValidationErrors{})
-		})
-		Convey("a warning should be returned if the distro does not contain a working directory", func() {
 			So(ensureHasRequiredFields(ctx, &d[i], conf), ShouldNotResemble, ValidationErrors{})
 		})
 		Convey("an error should be returned if the distro does not contain a working directory", func() {
