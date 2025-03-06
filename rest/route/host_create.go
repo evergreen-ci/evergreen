@@ -183,23 +183,23 @@ func (h *hostListHandler) Run(ctx context.Context) gimlet.Responder {
 
 // /////////////////////////////////////////////////////////////////////////////
 //
-// POST /hosts/{task_id}/wait_for_user_data_script
-type hostWaitForUserDataScriptHandler struct {
+// POST /hosts/{task_id}/is_user_data_script_finished
+type hostIsUserDataScriptFinished struct {
 	env evergreen.Environment
 
 	taskID string
 	hostID string
 }
 
-func makeHostWaitForUserDataScript(env evergreen.Environment) gimlet.RouteHandler {
-	return &hostWaitForUserDataScriptHandler{env: env}
+func makeHostIsUserDataScriptFinished(env evergreen.Environment) gimlet.RouteHandler {
+	return &hostIsUserDataScriptFinished{env: env}
 }
 
-func (h *hostWaitForUserDataScriptHandler) Factory() gimlet.RouteHandler {
-	return &hostWaitForUserDataScriptHandler{env: h.env}
+func (h *hostIsUserDataScriptFinished) Factory() gimlet.RouteHandler {
+	return &hostIsUserDataScriptFinished{env: h.env}
 }
 
-func (h *hostWaitForUserDataScriptHandler) Parse(ctx context.Context, r *http.Request) error {
+func (h *hostIsUserDataScriptFinished) Parse(ctx context.Context, r *http.Request) error {
 	taskID := gimlet.GetVars(r)["task_id"]
 	if taskID == "" {
 		return errors.New("must provide task ID")
@@ -212,7 +212,7 @@ func (h *hostWaitForUserDataScriptHandler) Parse(ctx context.Context, r *http.Re
 	return nil
 }
 
-func (h *hostWaitForUserDataScriptHandler) Run(ctx context.Context) gimlet.Responder {
+func (h *hostIsUserDataScriptFinished) Run(ctx context.Context) gimlet.Responder {
 	t, err := task.FindOneId(ctx, h.taskID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
