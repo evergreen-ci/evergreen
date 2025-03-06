@@ -36,6 +36,7 @@ type RedactionOptions struct {
 	// secrets). All values in InternalRedactions are assumed to be
 	// sensitive and are replaced by their key.
 	InternalRedactions *util.DynamicExpansions
+	PreloadExpansions  bool
 }
 
 func (r *redactingSender) Send(m message.Composer) {
@@ -66,6 +67,15 @@ func NewRedactingSender(sender send.Sender, opts RedactionOptions) send.Sender {
 	expansionsToRedact := append(opts.Redacted, globals.ExpansionsToRedact...)
 	internalRedactions := opts.InternalRedactions
 
+	if !opts.PreloadExpansions {
+		return &redactingSender{
+			expansions:         opts.Expansions,
+			expansionsToRedact: append(opts.Redacted, globals.ExpansionsToRedact...),
+			internalRedactions: opts.InternalRedactions,
+			Sender:             sender,
+		}
+	}
+
 	allRedacted := expansions.GetRedacted()
 	for _, expansion := range expansionsToRedact {
 		if val := expansions.Get(expansion); val != "" {
@@ -83,10 +93,7 @@ func NewRedactingSender(sender send.Sender, opts RedactionOptions) send.Sender {
 	})
 
 	return &redactingSender{
-		expansions:         expansions,
-		expansionsToRedact: expansionsToRedact,
-		internalRedactions: internalRedactions,
-		allRedacted:        allRedacted,
-		Sender:             sender,
+		allRedacted: allRedacted,
+		Sender:      sender,
 	}
 }
