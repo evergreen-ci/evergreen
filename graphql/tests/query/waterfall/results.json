@@ -658,6 +658,15 @@
       "result": {
         "data": {
           "waterfall": {
+            "pagination": {
+              "activeVersionIds": [
+                "evergreen_version5",
+                "evergreen_version3",
+                "evergreen_version2",
+                "evergreen_version1",
+                "evergreen_version39"
+              ]
+            },
             "flattenedVersions": [
               {
                 "id": "evergreen_version5",
@@ -750,13 +759,7 @@
             "flattenedVersions": [
               {
                 "id": "evergreen_version5",
-                "waterfallBuilds": [
-                  {
-                    "id": "evergreen_version3_build",
-                    "activated": true,
-                    "displayName": "03 Linter"
-                  }
-                ]
+                "waterfallBuilds": null
               },
               {
                 "id": "evergreen_version4",
@@ -764,7 +767,7 @@
               },
               {
                 "id": "evergreen_version3",
-                "waterfallBuilds": []
+                "waterfallBuilds": null
               },
               {
                 "id": "evergreen_version2",

@@ -1232,18 +1232,16 @@ func (e OverallocatedRule) MarshalGQL(w io.Writer) {
 type PlannerVersion string
 
 const (
-	PlannerVersionLegacy  PlannerVersion = "LEGACY"
 	PlannerVersionTunable PlannerVersion = "TUNABLE"
 )
 
 var AllPlannerVersion = []PlannerVersion{
-	PlannerVersionLegacy,
 	PlannerVersionTunable,
 }
 
 func (e PlannerVersion) IsValid() bool {
 	switch e {
-	case PlannerVersionLegacy, PlannerVersionTunable:
+	case PlannerVersionTunable:
 		return true
 	}
 	return false

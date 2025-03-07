@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
@@ -536,6 +537,15 @@ func (r *versionResolver) WaterfallBuilds(ctx context.Context, obj *restModel.AP
 	// No need to fetch build variants for unactivated versions
 	if !utility.FromBoolPtr(obj.Activated) {
 		return nil, nil
+	}
+
+	parentWaterfall, ok := graphql.GetFieldContext(ctx).Parent.Parent.Parent.Result.(*Waterfall)
+	if ok {
+		// If we can't find the activeVersionIds in the parent query, eagerly continue with this aggregation.
+		activeVersionIds := parentWaterfall.Pagination.ActiveVersionIds
+		if !utility.StringSliceContains(activeVersionIds, versionID) {
+			return nil, nil
+		}
 	}
 
 	versionBuilds := []*model.WaterfallBuild{}
