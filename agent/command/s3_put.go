@@ -11,6 +11,7 @@ import (
 	"time"
 
 	s3Types "github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/aws/smithy-go"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
@@ -117,7 +118,9 @@ type s3put struct {
 	// PatchOnly defaults to false. If set to true, this command will noop without error for non-patch tasks.
 	PatchOnly string `mapstructure:"patch_only" plugin:"patch_only"`
 
-	// SkipExisting, when set to true, will not upload files if they already exist in s3.
+	// SkipExisting, when set to 'true', will not upload files if they already
+	// exist in s3. This will not cause the s3.put command to fail. This
+	// behavior respects s3's strong read-after-write consistency model.
 	SkipExisting string `mapstructure:"skip_existing" plugin:"expand"`
 
 	// TemporaryRoleARN is not meant to be used in production. It is used for testing purposes
@@ -463,18 +466,6 @@ retryLoop:
 
 				fpath = filepath.Join(filepath.Join(s3pc.workDir, s3pc.LocalFilesIncludeFilterPrefix), fpath)
 
-				if s3pc.skipExistingBool {
-					exists, err := s3pc.remoteFileExists(ctx, remoteName)
-					if err != nil {
-						return errors.Wrapf(err, "checking if file '%s' exists", remoteName)
-					}
-					if exists {
-						skippedFilesCount++
-
-						logger.Task().Infof("Not uploading file '%s' because remote file '%s' already exists. Continuing to upload other files.", fpath, remoteName)
-						continue uploadLoop
-					}
-				}
 				err = s3pc.bucket.Upload(ctx, remoteName, fpath)
 				if err != nil {
 					// retry errors other than "file doesn't exist", which we handle differently based on what
@@ -492,6 +483,21 @@ retryLoop:
 						} else {
 							// single required uploads should return an error asap.
 							return errors.Wrapf(err, "missing file '%s'", fpath)
+						}
+					}
+
+					if s3pc.skipExistingBool {
+						var ae smithy.APIError
+
+						if errors.As(err, &ae) {
+							// This is the error that S3 reports back when
+							// the key already exists and we have
+							// IfNoneExists set on the put request.
+							if ae.ErrorCode() == "PreconditionFailed" {
+								skippedFilesCount++
+
+								logger.Task().Infof("Not uploading file '%s' because remote file '%s' already exists. Continuing to upload other files.", fpath, remoteName)
+							}
 						}
 					}
 
@@ -603,6 +609,11 @@ func (s3pc *s3put) createPailBucket(ctx context.Context, httpClient *http.Client
 		Permissions: pail.S3Permissions(s3pc.Permissions),
 		ContentType: s3pc.ContentType,
 	}
+
+	if s3pc.skipExistingBool {
+		opts.IfNotExists = true
+	}
+
 	bucket, err := pail.NewS3MultiPartBucketWithHTTPClient(ctx, httpClient, opts)
 	s3pc.bucket = bucket
 	return err
@@ -618,17 +629,4 @@ func (s3pc *s3put) isPrivate(visibility string) bool {
 func (s3pc *s3put) isPublic() bool {
 	return (s3pc.Visibility == "" || s3pc.Visibility == artifact.Public) &&
 		(s3pc.Permissions == string(s3Types.BucketCannedACLPublicRead) || s3pc.Permissions == string(s3Types.BucketCannedACLPublicReadWrite))
-}
-
-func (s3pc *s3put) remoteFileExists(ctx context.Context, remoteName string) (bool, error) {
-	opts := pail.S3Options{
-		Name:        s3pc.Bucket,
-		Credentials: pail.CreateAWSCredentials(s3pc.AwsKey, s3pc.AwsSecret, s3pc.AwsSessionToken),
-		Region:      s3pc.Region,
-	}
-	bucket, err := pail.NewS3Bucket(ctx, opts)
-	if err != nil {
-		return false, errors.Wrap(err, "creating S3 bucket")
-	}
-	return bucket.Exists(ctx, remoteName)
 }
