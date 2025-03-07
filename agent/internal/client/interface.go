@@ -82,7 +82,7 @@ type SharedCommunicator interface {
 	SetResultsInfo(context.Context, TaskData, string, bool) error
 
 	// DisableHost signals to the app server that the host should be disabled.
-	DisableHost(context.Context, string, apimodels.DisableInfo) error
+	DisableHost(ctx context.Context, hostID string, info apimodels.DisableInfo) error
 
 	// GetLoggerProducer constructs a new LogProducer instance for use by tasks.
 	GetLoggerProducer(context.Context, *task.Task, *LoggerConfig) (LoggerProducer, error)
