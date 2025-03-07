@@ -23,7 +23,7 @@ type autoExtract struct {
 
 func autoExtractFactory() Command   { return &autoExtract{} }
 func (e *autoExtract) Name() string { return "archive.auto_extract" }
-func (e *autoExtract) ParseParams(params map[string]interface{}) error {
+func (e *autoExtract) ParseParams(params map[string]any) error {
 	if err := mapstructure.Decode(params, e); err != nil {
 		return errors.Wrap(err, "decoding mapstructure params")
 	}

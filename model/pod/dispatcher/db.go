@@ -46,7 +46,7 @@ func Find(q db.Q) ([]PodDispatcher, error) {
 
 // UpsertOne updates an existing pod dispatcher if it exists based on the
 // query; otherwise, it inserts a new pod dispatcher.
-func UpsertOne(query, update interface{}) (*adb.ChangeInfo, error) {
+func UpsertOne(query, update any) (*adb.ChangeInfo, error) {
 	return db.Upsert(Collection, query, update)
 }
 
@@ -90,7 +90,7 @@ func Allocate(ctx context.Context, env evergreen.Environment, t *task.Task, p *p
 	defer session.EndSession(ctx)
 
 	pd := &PodDispatcher{}
-	allocateDispatcher := func(ctx context.Context) (interface{}, error) {
+	allocateDispatcher := func(ctx context.Context) (any, error) {
 		groupID := GetGroupID(t)
 		if err := env.DB().Collection(Collection).FindOne(ctx, ByGroupID(groupID)).Decode(pd); err != nil && !adb.ResultsNotFound(err) {
 			return nil, errors.Wrap(err, "checking for existing pod dispatcher")

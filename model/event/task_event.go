@@ -11,7 +11,7 @@ import (
 )
 
 func init() {
-	registry.AddType(ResourceTypeTask, func() interface{} { return &TaskEventData{} })
+	registry.AddType(ResourceTypeTask, func() any { return &TaskEventData{} })
 	registry.AllowSubscription(ResourceTypeTask, TaskStarted)
 	registry.AllowSubscription(ResourceTypeTask, TaskFinished)
 	registry.AllowSubscription(ResourceTypeTask, TaskBlocked)

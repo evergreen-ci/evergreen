@@ -74,7 +74,7 @@ func (pl *PushLog) UpdateStatus(ctx context.Context, newStatus string) error {
 	)
 }
 
-func FindOnePushLog(query interface{}, projection interface{},
+func FindOnePushLog(query any, projection any,
 	sort []string) (*PushLog, error) {
 	pushLog := &PushLog{}
 	q := db.Query(query).Project(projection).Sort(sort)

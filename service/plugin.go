@@ -28,7 +28,7 @@ func (uis *UIServer) GetPluginHandler(uiPage *plugin.UIPage) func(http.ResponseW
 			return
 		}
 		data := struct {
-			Data interface{}
+			Data any
 			ViewData
 		}{pluginData, uis.GetCommonViewData(w, r, false, true)}
 

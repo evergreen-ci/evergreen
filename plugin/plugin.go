@@ -18,7 +18,7 @@ type Plugin interface {
 	GetPanelConfig() (*PanelConfig, error)
 
 	// Configure reads in a settings map from the Evergreen config file.
-	Configure(conf map[string]interface{}) error
+	Configure(conf map[string]any) error
 }
 
 // Publish is called in a plugin's "init" func to

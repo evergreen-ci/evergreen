@@ -22,7 +22,7 @@ type depTask struct {
 func TestDependencyBSON(t *testing.T) {
 	Convey("With BSON bytes", t, func() {
 		Convey("representing legacy dependency format (i.e. just strings)", func() {
-			bytes, err := mgobson.Marshal(map[string]interface{}{
+			bytes, err := mgobson.Marshal(map[string]any{
 				"depends_on": []string{"t1", "t2", "t3"},
 			})
 			require.NoError(t, err, "failed to marshal test BSON")

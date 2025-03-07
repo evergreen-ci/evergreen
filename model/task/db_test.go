@@ -1212,7 +1212,7 @@ func TestGetTasksByVersionErrorHandling(t *testing.T) {
 	}
 
 	for i := 0; i < 40; i++ {
-		tasksToInsert := []interface{}{}
+		tasksToInsert := []any{}
 		for j := 0; j < 1000; j++ {
 			task.Id = fmt.Sprintf("t_%d_%d", i, j)
 			task.BuildVariant = fmt.Sprintf("bv_%d", j)

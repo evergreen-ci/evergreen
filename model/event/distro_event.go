@@ -9,7 +9,7 @@ import (
 )
 
 func init() {
-	registry.AddType(ResourceTypeDistro, func() interface{} { return &DistroEventData{} })
+	registry.AddType(ResourceTypeDistro, func() any { return &DistroEventData{} })
 	registry.setUnexpirable(ResourceTypeDistro, EventDistroAdded)
 	registry.setUnexpirable(ResourceTypeDistro, EventDistroModified)
 	registry.setUnexpirable(ResourceTypeDistro, EventDistroAMIModfied)
@@ -29,14 +29,14 @@ const (
 
 // DistroEventData implements EventData.
 type DistroEventData struct {
-	DistroId string      `bson:"d_id,omitempty" json:"d_id,omitempty"`
-	User     string      `bson:"user,omitempty" json:"user,omitempty"`
-	Before   interface{} `bson:"before" json:"before"`
-	After    interface{} `bson:"after" json:"after"`
+	DistroId string `bson:"d_id,omitempty" json:"d_id,omitempty"`
+	User     string `bson:"user,omitempty" json:"user,omitempty"`
+	Before   any    `bson:"before" json:"before"`
+	After    any    `bson:"after" json:"after"`
 
 	// Fields used by legacy UI
-	Data   interface{} `bson:"dstr,omitempty" json:"dstr,omitempty"`
-	UserId string      `bson:"u_id,omitempty" json:"u_id,omitempty"`
+	Data   any    `bson:"dstr,omitempty" json:"dstr,omitempty"`
+	UserId string `bson:"u_id,omitempty" json:"u_id,omitempty"`
 }
 
 func LogDistroEvent(distroId string, eventType string, eventData DistroEventData) {
@@ -58,12 +58,12 @@ func LogDistroEvent(distroId string, eventType string, eventData DistroEventData
 }
 
 // LogDistroAdded should take in DistroData in order to preserve the ProviderSettingsList
-func LogDistroAdded(distroId, userId string, data interface{}) {
+func LogDistroAdded(distroId, userId string, data any) {
 	LogDistroEvent(distroId, EventDistroAdded, DistroEventData{UserId: userId, Data: data})
 }
 
 // LogDistroModified should take in DistroData in order to preserve the ProviderSettingsList
-func LogDistroModified(distroId, userId string, before, after interface{}) {
+func LogDistroModified(distroId, userId string, before, after any) {
 	// Stop if there are no changes
 	if reflect.DeepEqual(before, after) {
 		grip.Info(message.Fields{
@@ -85,7 +85,7 @@ func LogDistroModified(distroId, userId string, before, after interface{}) {
 }
 
 // LogDistroRemoved should take in DistroData in order to preserve the ProviderSettingsList
-func LogDistroRemoved(distroId, userId string, data interface{}) {
+func LogDistroRemoved(distroId, userId string, data any) {
 	LogDistroEvent(distroId, EventDistroRemoved, DistroEventData{UserId: userId, Data: data})
 }
 

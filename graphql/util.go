@@ -1120,12 +1120,12 @@ func makeDistroEvent(ctx context.Context, entry event.EventLogEntry) (*DistroEve
 	}, nil
 }
 
-func interfaceToMap(ctx context.Context, data interface{}) (map[string]interface{}, error) {
+func interfaceToMap(ctx context.Context, data any) (map[string]any, error) {
 	if data == nil {
 		return nil, nil
 	}
 
-	mapField := map[string]interface{}{}
+	mapField := map[string]any{}
 	marshalledData, err := bson.Marshal(data)
 	if err != nil {
 		return nil, errors.Wrapf(err, "marshalling data")
@@ -1345,10 +1345,10 @@ func groupInactiveVersions(versions []model.Version) []*WaterfallVersion {
 }
 
 // flattenOtelVariables "flattens" one level of a string map. Any maps that are found as a value within the map are moved to the top level of the map, with "topkey.nestedkey" as their new key, in line with Honeycomb best practices.
-func flattenOtelVariables(vars map[string]interface{}) map[string]interface{} {
-	flattenedVars := map[string]interface{}{}
+func flattenOtelVariables(vars map[string]any) map[string]any {
+	flattenedVars := map[string]any{}
 	for k, v := range vars {
-		if valueMap, isMap := v.(map[string]interface{}); isMap {
+		if valueMap, isMap := v.(map[string]any); isMap {
 			for nestedKey, nestedValue := range valueMap {
 				flattenedVars[k+"."+nestedKey] = nestedValue
 			}

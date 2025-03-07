@@ -10,7 +10,7 @@ import (
 // It uses json marshalling to do so, so the src and copy params must be
 // json encodable and decodable.
 // It only works with public fields.
-func DeepCopy(src, copy interface{}) error {
+func DeepCopy(src, copy any) error {
 	b, err := json.Marshal(src)
 	if err != nil {
 		return errors.Wrap(err, "marshalling source")

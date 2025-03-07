@@ -48,7 +48,7 @@ func (e *EventLogEntry) MarkProcessed(ctx context.Context) error {
 
 func LogManyEvents(events []EventLogEntry) error {
 	catcher := grip.NewBasicCatcher()
-	interfaces := make([]interface{}, len(events))
+	interfaces := make([]any, len(events))
 	for i := range events {
 		e := &events[i]
 		if err := e.validateEvent(); err != nil {
@@ -68,7 +68,7 @@ func LogManyEvents(events []EventLogEntry) error {
 // insertion. Do not use this if the events must be inserted in order.
 func LogManyUnorderedEventsWithContext(ctx context.Context, events []EventLogEntry) error {
 	catcher := grip.NewBasicCatcher()
-	interfaces := make([]interface{}, len(events))
+	interfaces := make([]any, len(events))
 	for i := range events {
 		e := &events[i]
 		if err := e.validateEvent(); err != nil {

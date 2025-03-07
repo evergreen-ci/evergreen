@@ -236,11 +236,11 @@ func TestRequireDistroAccess(t *testing.T) {
 	config := New("/graphql")
 	require.NotNil(t, config)
 	ctx := context.Background()
-	obj := interface{}(nil)
+	obj := any(nil)
 
 	// callCount keeps track of how many times the function is called
 	callCount := 0
-	next := func(rctx context.Context) (interface{}, error) {
+	next := func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
 		callCount++
 		return nil, nil
@@ -273,7 +273,7 @@ func TestRequireDistroAccess(t *testing.T) {
 	// superuser_distro_access is successful for admin, edit, view
 	require.NoError(t, usr.AddRole(t.Context(), "superuser_distro_access"))
 
-	obj = interface{}(map[string]interface{}{"distroId": "distro-id"})
+	obj = any(map[string]any{"distroId": "distro-id"})
 	res, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessAdmin)
 	assert.NoError(t, err)
 	assert.Nil(t, res)
@@ -382,11 +382,11 @@ func TestRequireProjectAdmin(t *testing.T) {
 	config := New("/graphql")
 	require.NotNil(t, config)
 	ctx := context.Background()
-	obj := interface{}(nil)
+	obj := any(nil)
 
 	// callCount keeps track of how many times the function is called
 	callCount := 0
-	next := func(rctx context.Context) (interface{}, error) {
+	next := func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
 		callCount++
 		return nil, nil
@@ -423,8 +423,8 @@ func TestRequireProjectAdmin(t *testing.T) {
 		OperationName: CreateProjectMutation,
 	}
 	ctx = graphql.WithOperationContext(ctx, operationContext)
-	obj = map[string]interface{}{
-		"project": map[string]interface{}{
+	obj = map[string]any{
+		"project": map[string]any{
 			"identifier": "anything",
 		},
 	}
@@ -446,8 +446,8 @@ func TestRequireProjectAdmin(t *testing.T) {
 		OperationName: CopyProjectMutation,
 	}
 	ctx = graphql.WithOperationContext(ctx, operationContext)
-	obj = map[string]interface{}{
-		"project": map[string]interface{}{
+	obj = map[string]any{
+		"project": map[string]any{
 			"projectIdToCopy": "anything",
 		},
 	}
@@ -457,8 +457,8 @@ func TestRequireProjectAdmin(t *testing.T) {
 	assert.Equal(t, 2, callCount)
 
 	// CopyProject - successful
-	obj = map[string]interface{}{
-		"project": map[string]interface{}{
+	obj = map[string]any{
+		"project": map[string]any{
 			"projectIdToCopy": "project_id",
 		},
 	}
@@ -472,14 +472,14 @@ func TestRequireProjectAdmin(t *testing.T) {
 		OperationName: DeleteProjectMutation,
 	}
 	ctx = graphql.WithOperationContext(ctx, operationContext)
-	obj = map[string]interface{}{"projectId": "anything"}
+	obj = map[string]any{"projectId": "anything"}
 	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
 	assert.EqualError(t, err, "input: user test_user does not have permission to access the DeleteProject resolver")
 	assert.Nil(t, res)
 	assert.Equal(t, 3, callCount)
 
 	// DeleteProject - successful
-	obj = map[string]interface{}{"projectId": "project_id"}
+	obj = map[string]any{"projectId": "project_id"}
 	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
 	assert.NoError(t, err)
 	assert.Nil(t, res)
@@ -490,8 +490,8 @@ func TestRequireProjectAdmin(t *testing.T) {
 		OperationName: SetLastRevisionMutation,
 	}
 	ctx = graphql.WithOperationContext(ctx, operationContext)
-	obj = map[string]interface{}{
-		"opts": map[string]interface{}{
+	obj = map[string]any{
+		"opts": map[string]any{
 			"projectIdentifier": "project_identifier",
 		},
 	}
@@ -505,8 +505,8 @@ func TestRequireProjectAdmin(t *testing.T) {
 		OperationName: SetLastRevisionMutation,
 	}
 	ctx = graphql.WithOperationContext(ctx, operationContext)
-	obj = map[string]interface{}{
-		"opts": map[string]interface{}{
+	obj = map[string]any{
+		"opts": map[string]any{
 			"projectIdentifier": "project_whatever",
 		},
 	}
@@ -520,8 +520,8 @@ func TestRequireProjectAdmin(t *testing.T) {
 		OperationName: SetLastRevisionMutation,
 	}
 	ctx = graphql.WithOperationContext(ctx, operationContext)
-	obj = map[string]interface{}{
-		"opts": map[string]interface{}{
+	obj = map[string]any{
+		"opts": map[string]any{
 			"projectIdentifier": "project_identifier",
 		},
 	}
@@ -565,7 +565,7 @@ func TestRequireProjectSettingsAccess(t *testing.T) {
 
 	// callCount keeps track of how many times the function is called
 	callCount := 0
-	next := func(rctx context.Context) (interface{}, error) {
+	next := func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
 		callCount++
 		return nil, nil
@@ -594,7 +594,7 @@ func TestRequireProjectSettingsAccess(t *testing.T) {
 	}
 	ctx = graphql.WithFieldContext(ctx, fieldCtx)
 
-	res, err := config.Directives.RequireProjectSettingsAccess(ctx, interface{}(nil), next)
+	res, err := config.Directives.RequireProjectSettingsAccess(ctx, any(nil), next)
 	assert.EqualError(t, err, "input: project not valid")
 	assert.Nil(t, res)
 	assert.Equal(t, 0, callCount)

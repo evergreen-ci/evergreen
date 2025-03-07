@@ -53,7 +53,7 @@ type commonTemplateData struct {
 	ProjectRef *model.ProjectRef
 	Build      *build.Build
 
-	apiModel interface{}
+	apiModel any
 	slack    []message.SlackAttachment
 
 	githubContext     string
@@ -297,7 +297,7 @@ func emailPayload(t *commonTemplateData) (*message.Email, error) {
 	return &m, nil
 }
 
-func webhookPayload(api interface{}, headers http.Header) (*util.EvergreenWebhook, error) {
+func webhookPayload(api any, headers http.Header) (*util.EvergreenWebhook, error) {
 	bytes, err := json.Marshal(api)
 	if err != nil {
 		return nil, errors.Wrap(err, "building JSON model")
@@ -397,7 +397,7 @@ func truncateString(s string, capacity int) (string, string) {
 }
 
 func makeCommonPayload(sub *event.Subscription, eventAttributes event.Attributes,
-	data *commonTemplateData) (interface{}, error) {
+	data *commonTemplateData) (any, error) {
 	var err error
 	headerMap := eventAttributes.ToSelectorMap()
 	headerMap["trigger"] = append(headerMap["trigger"], sub.Trigger)

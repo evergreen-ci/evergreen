@@ -925,7 +925,7 @@ func (t *Task) MarkDependenciesFinished(ctx context.Context, finished bool) erro
 				bsonutil.GetDottedKeyName(DependsOnKey, "$[elem]", DependencyFinishedAtKey): finishedAt,
 			},
 		},
-		options.UpdateMany().SetArrayFilters([]interface{}{
+		options.UpdateMany().SetArrayFilters([]any{
 			bson.M{bsonutil.GetDottedKeyName("elem", DependencyTaskIdKey): t.Id},
 		}),
 	)
@@ -1726,7 +1726,7 @@ func SetGeneratedStepbackInfoForGenerator(ctx context.Context, taskId string, s 
 				bsonutil.GetDottedKeyName(StepbackInfoKey, GeneratedStepbackInfoKey, "$[elem]", PreviousStepbackTaskIdKey):    s.PreviousStepbackTaskId,
 			},
 		},
-		options.UpdateOne().SetArrayFilters([]interface{}{
+		options.UpdateOne().SetArrayFilters([]any{
 			bson.M{
 				bsonutil.GetDottedKeyName("elem", DisplayNameKey):  s.DisplayName,
 				bsonutil.GetDottedKeyName("elem", BuildVariantKey): s.BuildVariant,
@@ -3049,7 +3049,7 @@ func ArchiveMany(ctx context.Context, tasks []Task) error {
 	allTaskIds := []string{}          // Contains all tasks and display tasks IDs
 	execTaskIds := []string{}         // Contains all exec tasks IDs
 	toUpdateExecTaskIds := []string{} // Contains all exec tasks IDs that should update and have new execution
-	archivedTasks := []interface{}{}  // Contains all archived tasks (task, display, and execution). Created by Task.makeArchivedTask()
+	archivedTasks := []any{}          // Contains all archived tasks (task, display, and execution). Created by Task.makeArchivedTask()
 
 	for _, t := range tasks {
 		if !utility.StringSliceContains(evergreen.TaskCompletedStatuses, t.Status) {
@@ -3095,7 +3095,7 @@ func ArchiveMany(ctx context.Context, tasks []Task) error {
 // - execTaskIds            : All execution task IDs
 // - toRestartExecTaskIds   : All execution task IDs for execution tasks that will be archived/restarted
 // - archivedTasks          : All archived tasks created by Task.makeArchivedTask()
-func archiveAll(ctx context.Context, taskIds, execTaskIds, toRestartExecTaskIds []string, archivedTasks []interface{}) error {
+func archiveAll(ctx context.Context, taskIds, execTaskIds, toRestartExecTaskIds []string, archivedTasks []any) error {
 	mongoClient := evergreen.GetEnvironment().Client()
 	session, err := mongoClient.StartSession()
 	if err != nil {
@@ -3103,7 +3103,7 @@ func archiveAll(ctx context.Context, taskIds, execTaskIds, toRestartExecTaskIds 
 	}
 	defer session.EndSession(ctx)
 
-	txFunc := func(ctx context.Context) (interface{}, error) {
+	txFunc := func(ctx context.Context) (any, error) {
 		var err error
 		if len(archivedTasks) > 0 {
 			oldTaskColl := evergreen.GetEnvironment().DB().Collection(OldCollection)
@@ -4004,7 +4004,7 @@ func (t *Task) UpdateDependsOn(ctx context.Context, status string, newDependency
 		[]bson.M{
 			bson.M{"$set": bson.M{
 				DependsOnKey: bson.M{
-					"$concatArrays": []interface{}{"$" + DependsOnKey, newDependencies},
+					"$concatArrays": []any{"$" + DependsOnKey, newDependencies},
 				},
 			}},
 			addDisplayStatusCache,

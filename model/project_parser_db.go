@@ -65,7 +65,7 @@ func parserProjectById(id string) db.Q {
 }
 
 // parserProjectUpsertOne updates one parser project in the DB.
-func parserProjectUpsertOne(query interface{}, update interface{}) error {
+func parserProjectUpsertOne(query any, update any) error {
 	_, err := db.Upsert(
 		ParserProjectCollection,
 		query,
