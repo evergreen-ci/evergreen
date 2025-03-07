@@ -110,6 +110,12 @@ func ensureHasRequiredFields(ctx context.Context, d *distro.Distro, _ *evergreen
 			Level:   Error,
 		})
 	}
+	if d.DataDir == "" {
+		errs = append(errs, ValidationError{
+			Message: fmt.Sprintf("distro '%s' should not be blank", distro.DataDirKey),
+			Level:   Warning,
+		})
+	}
 
 	if d.Provider == "" {
 		return append(errs, ValidationError{
