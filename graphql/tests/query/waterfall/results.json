@@ -59,10 +59,10 @@
                     "tasks": [
                       {
                         "displayName": "Task C",
-                        "displayStatusCache": "success",
+                        "displayStatusCache": "system-failed",
                         "execution": 0,
                         "id": "task_5",
-                        "status": "success"
+                        "status": "failed"
                       }
                     ],
                     "version": "evergreen_version5"
@@ -79,7 +79,7 @@
                   "activated": true,
                   "author": "mohamed.khelif",
                   "id": "evergreen_version5",
-                  "order": 945
+                  "order": 45
                 }
               },
               {
@@ -88,7 +88,7 @@
                     "activated": false,
                     "author": "mohamed.khelif",
                     "id": "evergreen_version4",
-                    "order": 645
+                    "order": 44
                   }
                 ],
                 "version": null
@@ -142,7 +142,7 @@
               }
             ],
             "pagination": {
-              "mostRecentVersionOrder": 945,
+              "mostRecentVersionOrder": 45,
               "nextPageOrder": 39,
               "prevPageOrder": 0
             }
@@ -162,7 +162,7 @@
                     "activated": false,
                     "author": "mohamed.khelif",
                     "id": "evergreen_version4",
-                    "order": 645
+                    "order": 44
                   }
                 ],
                 "version": null
@@ -217,7 +217,7 @@
             ],
             "pagination": {
               "nextPageOrder": 39,
-              "prevPageOrder": 645
+              "prevPageOrder": 44
             }
           }
         }
@@ -235,7 +235,7 @@
                   "activated": true,
                   "author": "mohamed.khelif",
                   "id": "evergreen_version5",
-                  "order": 945
+                  "order": 45
                 }
               },
               {
@@ -244,7 +244,7 @@
                     "activated": false,
                     "author": "mohamed.khelif",
                     "id": "evergreen_version4",
-                    "order": 645
+                    "order": 44
                   }
                 ],
                 "version": null
@@ -370,7 +370,7 @@
               {
                 "version": {
                   "id": "evergreen_version5",
-                  "order": 945,
+                  "order": 45,
                   "revision": "revision5"
                 },
                 "inactiveVersions": null
@@ -380,7 +380,7 @@
                 "inactiveVersions": [
                   {
                     "id": "evergreen_version4",
-                    "order": 645,
+                    "order": 44,
                     "revision": "revision4"
                   }
                 ]
@@ -488,7 +488,7 @@
                 "version": {
                   "createTime": "2020-01-05T07:00:00-05:00",
                   "id": "evergreen_version5",
-                  "order": 945
+                  "order": 45
                 },
                 "inactiveVersions": null
               },
@@ -498,7 +498,7 @@
                   {
                     "createTime": "2020-01-04T03:15:00-05:00",
                     "id": "evergreen_version4",
-                    "order": 645
+                    "order": 44
                   }
                 ]
               },
@@ -572,13 +572,13 @@
                 "activated": true,
                 "author": "mohamed.khelif",
                 "id": "evergreen_version5",
-                "order": 945
+                "order": 45
               },
               {
                 "activated": false,
                 "author": "mohamed.khelif",
                 "id": "evergreen_version4",
-                "order": 645
+                "order": 44
               },
               {
                 "activated": true,
@@ -821,6 +821,58 @@
                 "requester": "gitter_request"
               }
             ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "tasks.graphql",
+      "result": {
+        "data": {
+          "waterfall": {
+            "flattenedVersions": [
+              {
+                "id": "evergreen_version5",
+                "activated": true,
+                "requester": "gitter_request"
+              },
+              {
+                "id": "evergreen_version4",
+                "activated": false,
+                "requester": "gitter_request"
+              }
+            ],
+            "pagination": {
+              "activeVersionIds": [
+                "evergreen_version5"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "task-status.graphql",
+      "result": {
+        "data": {
+          "waterfall": {
+            "flattenedVersions": [
+              {
+                "id": "evergreen_version5",
+                "activated": true,
+                "requester": "gitter_request"
+              },
+              {
+                "id": "evergreen_version4",
+                "activated": false,
+                "requester": "gitter_request"
+              }
+            ],
+            "pagination": {
+              "activeVersionIds": [
+                "evergreen_version5"
+              ]
+            }
           }
         }
       }

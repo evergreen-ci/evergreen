@@ -1062,14 +1062,14 @@ func TestGetOlderActiveWaterfallVersion(t *testing.T) {
 	assert.Equal(t, "v_4", version.Id)
 }
 
-func TestGetVersionsByTaskDetails(t *testing.T) {
+func TestGetActiveVersionsByTaskFilters(t *testing.T) {
 	defer func() {
 		assert.NoError(t, db.ClearCollections(task.Collection, VersionCollection, build.Collection))
 	}()
 
 	for tName, tCase := range map[string]func(t *testing.T, ctx context.Context){
 		"Finds versions with active tasks within the correct order range": func(t *testing.T, ctx context.Context) {
-			versions, err := GetVersionsByTaskDetails(ctx, "a_project",
+			versions, err := GetActiveVersionsByTaskFilters(ctx, "a_project",
 				WaterfallOptions{
 					Limit:      5,
 					Requesters: evergreen.SystemVersionRequesterTypes,
@@ -1078,7 +1078,7 @@ func TestGetVersionsByTaskDetails(t *testing.T) {
 			assert.Len(t, versions, 2)
 		},
 		"Applies a task name filter": func(t *testing.T, ctx context.Context) {
-			versions, err := GetVersionsByTaskDetails(ctx, "a_project",
+			versions, err := GetActiveVersionsByTaskFilters(ctx, "a_project",
 				WaterfallOptions{
 					Limit:      5,
 					Requesters: evergreen.SystemVersionRequesterTypes,
@@ -1089,7 +1089,7 @@ func TestGetVersionsByTaskDetails(t *testing.T) {
 			assert.Equal(t, versions[0].Id, "v_1")
 		},
 		"Applies a task status filter": func(t *testing.T, ctx context.Context) {
-			versions, err := GetVersionsByTaskDetails(ctx, "a_project",
+			versions, err := GetActiveVersionsByTaskFilters(ctx, "a_project",
 				WaterfallOptions{
 					Limit:      5,
 					Requesters: evergreen.SystemVersionRequesterTypes,
@@ -1101,7 +1101,7 @@ func TestGetVersionsByTaskDetails(t *testing.T) {
 			assert.Equal(t, versions[1].Id, "v_1")
 		},
 		"Applies a task name and task status filter with no matches": func(t *testing.T, ctx context.Context) {
-			versions, err := GetVersionsByTaskDetails(ctx, "a_project",
+			versions, err := GetActiveVersionsByTaskFilters(ctx, "a_project",
 				WaterfallOptions{
 					Limit:      5,
 					Requesters: evergreen.SystemVersionRequesterTypes,
@@ -1112,7 +1112,7 @@ func TestGetVersionsByTaskDetails(t *testing.T) {
 			assert.Len(t, versions, 0)
 		},
 		"Applies a task name and task status filter": func(t *testing.T, ctx context.Context) {
-			versions, err := GetVersionsByTaskDetails(ctx, "a_project",
+			versions, err := GetActiveVersionsByTaskFilters(ctx, "a_project",
 				WaterfallOptions{
 					Limit:      5,
 					Requesters: evergreen.SystemVersionRequesterTypes,
@@ -1124,7 +1124,7 @@ func TestGetVersionsByTaskDetails(t *testing.T) {
 			assert.Equal(t, versions[0].Id, "v_2")
 		},
 		"Applies a task name and build variant filter": func(t *testing.T, ctx context.Context) {
-			versions, err := GetVersionsByTaskDetails(ctx, "a_project",
+			versions, err := GetActiveVersionsByTaskFilters(ctx, "a_project",
 				WaterfallOptions{
 					Limit:      5,
 					Requesters: evergreen.SystemVersionRequesterTypes,
@@ -1136,7 +1136,7 @@ func TestGetVersionsByTaskDetails(t *testing.T) {
 			assert.Equal(t, versions[0].Id, "v_1")
 		},
 		"Applies a task status and build variant filter": func(t *testing.T, ctx context.Context) {
-			versions, err := GetVersionsByTaskDetails(ctx, "a_project",
+			versions, err := GetActiveVersionsByTaskFilters(ctx, "a_project",
 				WaterfallOptions{
 					Limit:      5,
 					Requesters: evergreen.SystemVersionRequesterTypes,
@@ -1148,7 +1148,7 @@ func TestGetVersionsByTaskDetails(t *testing.T) {
 			assert.Equal(t, versions[0].Id, "v_2")
 		},
 		"Applies a task name, task status, requester, and build variant filter": func(t *testing.T, ctx context.Context) {
-			versions, err := GetVersionsByTaskDetails(ctx, "a_project",
+			versions, err := GetActiveVersionsByTaskFilters(ctx, "a_project",
 				WaterfallOptions{
 					Limit:      5,
 					Requesters: []string{evergreen.RepotrackerVersionRequester},

@@ -986,7 +986,8 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 
 	var activeVersions []model.Version
 	if len(opts.Tasks) > 0 || len(opts.Statuses) > 0 {
-		activeVersions, err = model.GetVersionsByTaskDetails(ctx, projectId, opts, mostRecentWaterfallVersion.RevisionOrderNumber)
+		activeVersions, err = model.GetActiveVersionsByTaskFilters(ctx, projectId, opts, mostRecentWaterfallVersion.RevisionOrderNumber)
+		fmt.Println("heheh", len(activeVersions))
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting active waterfall versions: %s", err.Error()))
 		}

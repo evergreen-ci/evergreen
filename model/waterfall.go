@@ -136,9 +136,9 @@ func getBuildVariantFilterPipeline(ctx context.Context, variants []string, match
 	return pipeline, nil
 }
 
-// GetVersionByTaskDetails returns limit versions that satisfy either/both task name or status filters.
+// GetActiveVersionsByTaskFilters returns limit versions that satisfy a task name or status filter. It also applies any requester and build variant filters.
 // If neither of these filters is specified, use GetActiveWaterfallVersions: it's faster.
-func GetVersionsByTaskDetails(ctx context.Context, projectId string, opts WaterfallOptions, mostRecentVersionOrder int) ([]Version, error) {
+func GetActiveVersionsByTaskFilters(ctx context.Context, projectId string, opts WaterfallOptions, mostRecentVersionOrder int) ([]Version, error) {
 	match := bson.M{
 		task.ProjectKey: projectId,
 		task.RequesterKey: bson.M{
@@ -170,7 +170,7 @@ func GetVersionsByTaskDetails(ctx context.Context, projectId string, opts Waterf
 	pipeline = append(pipeline, bson.M{
 		"$group": bson.M{
 			task.IdKey: "$" + task.VersionKey,
-			// All tasks the same version key should have the same order number, but $max is the safest way to ensure we can sort from newest to oldest upon grouping.
+			// All tasks with the same version key should have the same order number, but $max is the safest way to ensure we can sort from newest to oldest upon grouping.
 			task.RevisionOrderNumberKey: bson.M{
 				"$max": "$" + task.RevisionOrderNumberKey,
 			},
@@ -179,7 +179,10 @@ func GetVersionsByTaskDetails(ctx context.Context, projectId string, opts Waterf
 
 	pipeline = append(pipeline, bson.M{"$sort": bson.M{task.RevisionOrderNumberKey: -1}})
 	pipeline = append(pipeline, bson.M{"$limit": opts.Limit})
+
 	versionLookupKey := "version"
+
+	// Get version documents
 	pipeline = append(pipeline, bson.M{
 		"$lookup": bson.M{
 			"from":         VersionCollection,
@@ -188,6 +191,8 @@ func GetVersionsByTaskDetails(ctx context.Context, projectId string, opts Waterf
 			"as":           versionLookupKey,
 		},
 	})
+
+	// Reroot to only return version docs
 	pipeline = append(pipeline, bson.M{
 		"$replaceRoot": bson.M{
 			"newRoot": bson.M{"$arrayElemAt": bson.A{"$" + versionLookupKey, 0}},
@@ -198,7 +203,7 @@ func GetVersionsByTaskDetails(ctx context.Context, projectId string, opts Waterf
 	env := evergreen.GetEnvironment()
 	cursor, err := env.DB().Collection(task.Collection).Aggregate(ctx, pipeline)
 	if err != nil {
-		return nil, errors.Wrap(err, "finding versions matching tasks")
+		return nil, errors.Wrap(err, "finding versions matching task filters")
 	}
 	if err = cursor.All(ctx, &res); err != nil {
 		return nil, err
@@ -208,6 +213,7 @@ func GetVersionsByTaskDetails(ctx context.Context, projectId string, opts Waterf
 }
 
 // GetActiveWaterfallVersions returns at most `opts.limit` activated versions for a given project.
+// It performantly applies build variant and requester filters; for task-related filters, see GetActiveVErsionsByTaskFilters.
 func GetActiveWaterfallVersions(ctx context.Context, projectId string, opts WaterfallOptions) ([]Version, error) {
 	invalidRequesters, _ := utility.StringSliceSymmetricDifference(opts.Requesters, evergreen.SystemVersionRequesterTypes)
 	if len(invalidRequesters) > 0 {
