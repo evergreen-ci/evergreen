@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -36,7 +37,16 @@ func (a *Agent) createTaskDirectory(tc *taskContext, taskDir string) (string, er
 			return "", err
 		}
 
-		dirName := hex.EncodeToString(h.Sum(nil))
+		md5Sum := h.Sum(nil)
+
+		dirName := hex.EncodeToString(md5Sum)
+		if runtime.GOOS == "windows" {
+			// Windows has a max filepath length which can cause issues for some
+			// tasks that hit the length limit. Shortening the typical
+			// 32-character directory name reduces the problem.
+			dirName = dirName[:3]
+		}
+
 		taskDir = filepath.Join(a.opts.WorkingDirectory, dirName)
 	}
 
