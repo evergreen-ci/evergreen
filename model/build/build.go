@@ -311,10 +311,10 @@ func (b *Build) Insert() error {
 
 type Builds []*Build
 
-func (b Builds) getPayload() []interface{} {
-	payload := make([]interface{}, len(b))
+func (b Builds) getPayload() []any {
+	payload := make([]any, len(b))
 	for idx := range b {
-		payload[idx] = interface{}(b[idx])
+		payload[idx] = any(b[idx])
 	}
 
 	return payload

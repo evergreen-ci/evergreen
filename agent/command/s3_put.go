@@ -149,7 +149,7 @@ func s3PutFactory() Command      { return &s3put{} }
 func (s3pc *s3put) Name() string { return "s3.put" }
 
 // s3put-specific implementation of ParseParams.
-func (s3pc *s3put) ParseParams(params map[string]interface{}) error {
+func (s3pc *s3put) ParseParams(params map[string]any) error {
 	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
 		WeaklyTypedInput: true,
 		Result:           s3pc,

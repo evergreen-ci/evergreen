@@ -98,7 +98,7 @@ func FindOneByID(id string) (*Pod, error) {
 }
 
 // UpdateOne updates one pod.
-func UpdateOne(ctx context.Context, query interface{}, update interface{}) error {
+func UpdateOne(ctx context.Context, query any, update any) error {
 	return db.UpdateContext(
 		ctx,
 		Collection,

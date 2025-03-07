@@ -38,12 +38,12 @@ func FindOne(q db.Q) (*PodDefinition, error) {
 
 // UpsertOne updates an existing pod definition if it exists based on the
 // query; otherwise, it inserts a new pod definition.
-func UpsertOne(ctx context.Context, query, update interface{}) (*adb.ChangeInfo, error) {
+func UpsertOne(ctx context.Context, query, update any) (*adb.ChangeInfo, error) {
 	return db.UpsertContext(ctx, Collection, query, update)
 }
 
 // UpdateOne updates an existing pod definition.
-func UpdateOne(ctx context.Context, query, update interface{}) error {
+func UpdateOne(ctx context.Context, query, update any) error {
 	return db.UpdateContext(ctx, Collection, query, update)
 }
 

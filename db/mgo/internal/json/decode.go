@@ -82,7 +82,7 @@ import (
 // invalid UTF-16 surrogate pairs are not treated as an error.
 // Instead, they are replaced by the Unicode replacement
 // character U+FFFD.
-func Unmarshal(data []byte, v interface{}) error {
+func Unmarshal(data []byte, v any) error {
 	// Check for well-formedness.
 	// Avoids filling out half a data structure
 	// before discovering a JSON syntax error.
@@ -147,7 +147,7 @@ func (e *InvalidUnmarshalError) Error() string {
 	return "json: Unmarshal(nil " + e.Type.String() + ")"
 }
 
-func (d *decodeState) unmarshal(v interface{}) (err error) {
+func (d *decodeState) unmarshal(v any) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			if _, ok := r.(runtime.Error); ok {
@@ -385,7 +385,7 @@ type unquotedValue struct{}
 // quoted string literal or literal null into an interface value.
 // If it finds anything other than a quoted string literal or null,
 // valueQuoted returns unquotedValue{}.
-func (d *decodeState) valueQuoted() interface{} {
+func (d *decodeState) valueQuoted() any {
 	switch op := d.scanWhile(scanSkipSpace); op {
 	default:
 		d.error(errPhase)
@@ -1013,7 +1013,7 @@ func (d *decodeState) name(v reflect.Value) {
 
 // keyed attempts to decode an object or function using a keyed doc extension,
 // and returns the value and true on success, or nil and false otherwise.
-func (d *decodeState) keyed() (interface{}, bool) {
+func (d *decodeState) keyed() (any, bool) {
 	if len(d.ext.keyed) == 0 {
 		return nil, false
 	}
@@ -1082,7 +1082,7 @@ var (
 	nullBytes  = []byte("null")
 )
 
-func (d *decodeState) storeValue(v reflect.Value, from interface{}) {
+func (d *decodeState) storeValue(v reflect.Value, from any) {
 	switch from {
 	case nil:
 		d.literalStore(nullBytes, v, false)
@@ -1112,7 +1112,7 @@ func (d *decodeState) storeValue(v reflect.Value, from interface{}) {
 	}
 }
 
-func (d *decodeState) convertLiteral(name []byte) (interface{}, bool) {
+func (d *decodeState) convertLiteral(name []byte) (any, bool) {
 	if len(name) == 0 {
 		return nil, false
 	}
@@ -1153,7 +1153,7 @@ func (d *decodeState) literal(v reflect.Value) {
 
 // convertNumber converts the number literal s to a float64 or a Number
 // depending on the setting of d.useNumber.
-func (d *decodeState) convertNumber(s string) (interface{}, error) {
+func (d *decodeState) convertNumber(s string) (any, error) {
 	if d.useNumber {
 		return Number(s), nil
 	}
@@ -1340,7 +1340,7 @@ func (d *decodeState) literalStore(item []byte, v reflect.Value, fromQuoted bool
 // but they avoid the weight of reflection in this common case.
 
 // valueInterface is like value but returns interface{}
-func (d *decodeState) valueInterface() interface{} {
+func (d *decodeState) valueInterface() any {
 	switch d.scanWhile(scanSkipSpace) {
 	default:
 		d.error(errPhase)
@@ -1362,8 +1362,8 @@ func (d *decodeState) syntaxError(expected string) {
 }
 
 // arrayInterface is like array but returns []interface{}.
-func (d *decodeState) arrayInterface() []interface{} {
-	var v = make([]interface{}, 0)
+func (d *decodeState) arrayInterface() []any {
+	var v = make([]any, 0)
 	for {
 		// Look ahead for ] - can only happen on first iteration.
 		op := d.scanWhile(scanSkipSpace)
@@ -1393,13 +1393,13 @@ func (d *decodeState) arrayInterface() []interface{} {
 }
 
 // objectInterface is like object but returns map[string]interface{}.
-func (d *decodeState) objectInterface() interface{} {
+func (d *decodeState) objectInterface() any {
 	v, ok := d.keyed()
 	if ok {
 		return v
 	}
 
-	m := make(map[string]interface{})
+	m := make(map[string]any)
 	for {
 		// Read opening " of string key or closing }.
 		op := d.scanWhile(scanSkipSpace)
@@ -1457,7 +1457,7 @@ func (d *decodeState) objectInterface() interface{} {
 }
 
 // literalInterface is like literal but returns an interface value.
-func (d *decodeState) literalInterface() interface{} {
+func (d *decodeState) literalInterface() any {
 	// All bytes inside literal return scanContinue op code.
 	start := d.off - 1
 	op := d.scanWhile(scanContinue)
@@ -1494,7 +1494,7 @@ func (d *decodeState) literalInterface() interface{} {
 }
 
 // nameInterface is like function but returns map[string]interface{}.
-func (d *decodeState) nameInterface() interface{} {
+func (d *decodeState) nameInterface() any {
 	v, ok := d.keyed()
 	if ok {
 		return v
@@ -1521,7 +1521,7 @@ func (d *decodeState) nameInterface() interface{} {
 		d.error(fmt.Errorf("json: unknown function %q", funcName))
 	}
 
-	m := make(map[string]interface{})
+	m := make(map[string]any)
 	for i := 0; ; i++ {
 		// Look ahead for ) - can only happen on first iteration.
 		op := d.scanWhile(scanSkipSpace)
@@ -1547,7 +1547,7 @@ func (d *decodeState) nameInterface() interface{} {
 			d.error(errPhase)
 		}
 	}
-	return map[string]interface{}{funcData.key: m}
+	return map[string]any{funcData.key: m}
 }
 
 // getu4 decodes \uXXXX from the beginning of s, returning the hex value,

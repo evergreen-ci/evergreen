@@ -264,7 +264,7 @@ func (tg TaskGroupsByName) Less(i, j int) bool { return tg[i].Name < tg[j].Name 
 // UnmarshalYAML allows tasks to be referenced as single selector strings.
 // This works by first attempting to unmarshal the YAML into a string
 // and then falling back to the BuildVariantTaskUnit struct.
-func (bvt *BuildVariantTaskUnit) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (bvt *BuildVariantTaskUnit) UnmarshalYAML(unmarshal func(any) error) error {
 	// first, attempt to unmarshal just a selector string
 	var onlySelector string
 	if err := unmarshal(&onlySelector); err == nil {
@@ -528,7 +528,7 @@ type PluginCommandConf struct {
 
 	// Params is used to define params in the yaml and parser project,
 	// but is not stored in the DB (instead see ParamsYAML).
-	Params map[string]interface{} `yaml:"params,omitempty" bson:"-"`
+	Params map[string]any `yaml:"params,omitempty" bson:"-"`
 
 	// ParamsYAML is the marshalled Params to store in the database, to preserve nested interfaces.
 	ParamsYAML string `yaml:"params_yaml,omitempty" bson:"params_yaml,omitempty"`
@@ -548,7 +548,7 @@ type PluginCommandConf struct {
 }
 
 func (c *PluginCommandConf) resolveParams() error {
-	out := map[string]interface{}{}
+	out := map[string]any{}
 	if c == nil {
 		return nil
 	}
@@ -561,19 +561,19 @@ func (c *PluginCommandConf) resolveParams() error {
 	return nil
 }
 
-func (c *PluginCommandConf) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (c *PluginCommandConf) UnmarshalYAML(unmarshal func(any) error) error {
 	temp := struct {
-		Function            string                 `yaml:"func,omitempty" bson:"func,omitempty"`
-		Type                string                 `yaml:"type,omitempty" bson:"type,omitempty"`
-		DisplayName         string                 `yaml:"display_name,omitempty" bson:"display_name,omitempty"`
-		Command             string                 `yaml:"command,omitempty" bson:"command,omitempty"`
-		Variants            []string               `yaml:"variants,omitempty" bson:"variants,omitempty"`
-		TimeoutSecs         int                    `yaml:"timeout_secs,omitempty" bson:"timeout_secs,omitempty"`
-		Params              map[string]interface{} `yaml:"params,omitempty" bson:"params,omitempty"`
-		ParamsYAML          string                 `yaml:"params_yaml,omitempty" bson:"params_yaml,omitempty"`
-		Vars                map[string]string      `yaml:"vars,omitempty" bson:"vars,omitempty"`
-		RetryOnFailure      bool                   `yaml:"retry_on_failure,omitempty" bson:"retry_on_failure,omitempty"`
-		FailureMetadataTags []string               `yaml:"failure_metadata_tags,omitempty" bson:"failure_metadata_tags,omitempty"`
+		Function            string            `yaml:"func,omitempty" bson:"func,omitempty"`
+		Type                string            `yaml:"type,omitempty" bson:"type,omitempty"`
+		DisplayName         string            `yaml:"display_name,omitempty" bson:"display_name,omitempty"`
+		Command             string            `yaml:"command,omitempty" bson:"command,omitempty"`
+		Variants            []string          `yaml:"variants,omitempty" bson:"variants,omitempty"`
+		TimeoutSecs         int               `yaml:"timeout_secs,omitempty" bson:"timeout_secs,omitempty"`
+		Params              map[string]any    `yaml:"params,omitempty" bson:"params,omitempty"`
+		ParamsYAML          string            `yaml:"params_yaml,omitempty" bson:"params_yaml,omitempty"`
+		Vars                map[string]string `yaml:"vars,omitempty" bson:"vars,omitempty"`
+		RetryOnFailure      bool              `yaml:"retry_on_failure,omitempty" bson:"retry_on_failure,omitempty"`
+		FailureMetadataTags []string          `yaml:"failure_metadata_tags,omitempty" bson:"failure_metadata_tags,omitempty"`
 	}{}
 
 	if err := unmarshal(&temp); err != nil {
@@ -604,7 +604,7 @@ func (c *PluginCommandConf) UnmarshalBSON(in []byte) error {
 // If params is passed, then it means that we haven't yet stored this in the DB.
 func (c *PluginCommandConf) unmarshalParams() error {
 	if c.ParamsYAML != "" {
-		out := map[string]interface{}{}
+		out := map[string]any{}
 		if err := yaml.Unmarshal([]byte(c.ParamsYAML), &out); err != nil {
 			return errors.Wrap(err, "unmarshalling params from YAML")
 		}
@@ -636,7 +636,7 @@ func (c *YAMLCommandSet) List() []PluginCommandConf {
 	return []PluginCommandConf{}
 }
 
-func (c *YAMLCommandSet) MarshalYAML() (interface{}, error) {
+func (c *YAMLCommandSet) MarshalYAML() (any, error) {
 	if c == nil {
 		return nil, nil
 	}
@@ -649,7 +649,7 @@ func (c *YAMLCommandSet) MarshalYAML() (interface{}, error) {
 	return res, nil
 }
 
-func (c *YAMLCommandSet) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (c *YAMLCommandSet) UnmarshalYAML(unmarshal func(any) error) error {
 	err1 := unmarshal(&(c.MultiCommand))
 	err2 := unmarshal(&(c.SingleCommand))
 	if err1 == nil || err2 == nil {
@@ -671,7 +671,7 @@ type TaskUnitDependency struct {
 // UnmarshalYAML allows tasks to be referenced as single selector strings.
 // This works by first attempting to unmarshal the YAML into a string
 // and then falling back to the TaskUnitDependency struct.
-func (td *TaskUnitDependency) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (td *TaskUnitDependency) UnmarshalYAML(unmarshal func(any) error) error {
 	// first, attempt to unmarshal just a selector string
 	var onlySelector string
 	if err := unmarshal(&onlySelector); err == nil {

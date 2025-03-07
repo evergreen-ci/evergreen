@@ -99,8 +99,8 @@ func GetResultCounts(tasks []Task) *ResultCounts {
 	return &out
 }
 
-func (c *ResultCounts) Raw() interface{} { _ = c.Collect(true); return c }
-func (c *ResultCounts) Loggable() bool   { return c.loggable }
+func (c *ResultCounts) Raw() any       { _ = c.Collect(true); return c }
+func (c *ResultCounts) Loggable() bool { return c.loggable }
 func (c *ResultCounts) String() string {
 	if !c.Loggable() {
 		return ""

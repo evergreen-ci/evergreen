@@ -75,11 +75,11 @@ func (s *generateSuite) TearDownTest() {
 }
 
 func (s *generateSuite) TestParseParamsWithNoFiles() {
-	s.Error(s.g.ParseParams(map[string]interface{}{}))
+	s.Error(s.g.ParseParams(map[string]any{}))
 }
 
 func (s *generateSuite) TestParseParamsWithFiles() {
-	s.NoError(s.g.ParseParams(map[string]interface{}{
+	s.NoError(s.g.ParseParams(map[string]any{
 		"files": []string{"foo", "bar", "baz"},
 	}))
 	s.Equal([]string{"foo", "bar", "baz"}, s.g.Files)
@@ -148,7 +148,7 @@ func (s *generateSuite) TestExecuteSuccessWithValidGlobbing() {
 
 func (s *generateSuite) TestErrorWithInvalidExpansions() {
 	s.Empty(s.g.Files)
-	s.NoError(s.g.ParseParams(map[string]interface{}{
+	s.NoError(s.g.ParseParams(map[string]any{
 		"files": []string{
 			"fo${bar",
 		},
@@ -174,7 +174,7 @@ func (s *generateSuite) TestNoErrorWithValidExpansions() {
 	s.NoError(f.Close())
 
 	s.Empty(s.g.Files)
-	s.NoError(s.g.ParseParams(map[string]interface{}{
+	s.NoError(s.g.ParseParams(map[string]any{
 		"files": []string{
 			"${bar}",
 		},

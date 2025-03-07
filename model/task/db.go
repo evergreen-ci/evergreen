@@ -178,7 +178,7 @@ var (
 		"$reduce": bson.M{
 			"input":        "$" + DependsOnKey,
 			"initialValue": false,
-			"in":           bson.M{"$or": []interface{}{"$$value", bsonutil.GetDottedKeyName("$$this", DependencyUnattainableKey)}},
+			"in":           bson.M{"$or": []any{"$$value", bsonutil.GetDottedKeyName("$$this", DependencyUnattainableKey)}},
 		},
 	}
 
@@ -214,13 +214,13 @@ var (
 			"branches": []bson.M{
 				{
 					"case": bson.M{
-						"$eq": []interface{}{"$" + HasAnnotationsKey, true},
+						"$eq": []any{"$" + HasAnnotationsKey, true},
 					},
 					"then": evergreen.TaskKnownIssue,
 				},
 				{
 					"case": bson.M{
-						"$eq": []interface{}{"$" + AbortedKey, true},
+						"$eq": []any{"$" + AbortedKey, true},
 					},
 					"then": evergreen.TaskAborted,
 				},
@@ -240,7 +240,7 @@ var (
 					"case": bson.M{
 						"$and": []bson.M{
 							{"$eq": []string{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailType), evergreen.CommandTypeSystem}},
-							{"$eq": []interface{}{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailTimedOut), true}},
+							{"$eq": []any{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailTimedOut), true}},
 							{"$eq": []string{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailDescription), evergreen.TaskDescriptionHeartbeat}},
 						},
 					},
@@ -250,7 +250,7 @@ var (
 					"case": bson.M{
 						"$and": []bson.M{
 							{"$eq": []string{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailType), evergreen.CommandTypeSystem}},
-							{"$eq": []interface{}{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailTimedOut), true}},
+							{"$eq": []any{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailTimedOut), true}},
 						},
 					},
 					"then": evergreen.TaskSystemTimedOut,
@@ -263,7 +263,7 @@ var (
 				},
 				{
 					"case": bson.M{
-						"$eq": []interface{}{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailTimedOut), true},
+						"$eq": []any{"$" + bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailTimedOut), true},
 					},
 					"then": evergreen.TaskTimedOut,
 				},
@@ -271,7 +271,7 @@ var (
 				{
 					"case": bson.M{
 						"$and": []bson.M{
-							{"$eq": []interface{}{"$" + ActivatedKey, false}},
+							{"$eq": []any{"$" + ActivatedKey, false}},
 							{"$eq": []string{"$" + StatusKey, evergreen.TaskUndispatched}},
 						},
 					},
@@ -282,7 +282,7 @@ var (
 					"case": bson.M{
 						"$and": []bson.M{
 							{"$eq": []string{"$" + StatusKey, evergreen.TaskUndispatched}},
-							{"$ne": []interface{}{"$" + OverrideDependenciesKey, true}},
+							{"$ne": []any{"$" + OverrideDependenciesKey, true}},
 							isUnattainable,
 						},
 					},
@@ -293,7 +293,7 @@ var (
 					"case": bson.M{
 						"$and": []bson.M{
 							{"$eq": []string{"$" + StatusKey, evergreen.TaskUndispatched}},
-							{"$eq": []interface{}{"$" + ActivatedKey, true}},
+							{"$eq": []any{"$" + ActivatedKey, true}},
 						},
 					},
 					"then": evergreen.TaskWillRun,
@@ -1647,7 +1647,7 @@ func FindAllOld(ctx context.Context, query db.Q) ([]Task, error) {
 }
 
 // UpdateOne updates one task.
-func UpdateOne(ctx context.Context, query interface{}, update interface{}) error {
+func UpdateOne(ctx context.Context, query any, update any) error {
 	return db.UpdateContext(
 		ctx,
 		Collection,
@@ -1656,7 +1656,7 @@ func UpdateOne(ctx context.Context, query interface{}, update interface{}) error
 	)
 }
 
-func UpdateAll(ctx context.Context, query interface{}, update interface{}) (*adb.ChangeInfo, error) {
+func UpdateAll(ctx context.Context, query any, update any) (*adb.ChangeInfo, error) {
 	return db.UpdateAllContext(
 		ctx,
 		Collection,
@@ -1665,7 +1665,7 @@ func UpdateAll(ctx context.Context, query interface{}, update interface{}) (*adb
 	)
 }
 
-func UpdateAllWithHint(ctx context.Context, query interface{}, update interface{}, hint interface{}) (*adb.ChangeInfo, error) {
+func UpdateAllWithHint(ctx context.Context, query any, update any, hint any) (*adb.ChangeInfo, error) {
 	res, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(ctx, query, update, options.UpdateMany().SetHint(hint))
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -1683,7 +1683,7 @@ func Remove(ctx context.Context, id string) error {
 	)
 }
 
-func Aggregate(ctx context.Context, pipeline []bson.M, results interface{}) error {
+func Aggregate(ctx context.Context, pipeline []bson.M, results any) error {
 	return db.AggregateContext(ctx,
 		Collection,
 		pipeline,
@@ -1825,13 +1825,13 @@ func addStatusColorSort(key string) bson.M {
 					"branches": []bson.M{
 						{
 							"case": bson.M{
-								"$in": []interface{}{"$" + key, []string{evergreen.TaskFailed, evergreen.TaskTestTimedOut, evergreen.TaskTimedOut}},
+								"$in": []any{"$" + key, []string{evergreen.TaskFailed, evergreen.TaskTestTimedOut, evergreen.TaskTimedOut}},
 							},
 							"then": 1, // red
 						},
 						{
 							"case": bson.M{
-								"$in": []interface{}{"$" + key, []string{evergreen.TaskKnownIssue}},
+								"$in": []any{"$" + key, []string{evergreen.TaskKnownIssue}},
 							},
 							"then": 2,
 						},
@@ -1843,13 +1843,13 @@ func addStatusColorSort(key string) bson.M {
 						},
 						{
 							"case": bson.M{
-								"$in": []interface{}{"$" + key, evergreen.TaskSystemFailureStatuses},
+								"$in": []any{"$" + key, evergreen.TaskSystemFailureStatuses},
 							},
 							"then": 4, // purple
 						},
 						{
 							"case": bson.M{
-								"$in": []interface{}{"$" + key, []string{evergreen.TaskStarted, evergreen.TaskDispatched}},
+								"$in": []any{"$" + key, []string{evergreen.TaskStarted, evergreen.TaskDispatched}},
 							},
 							"then": 5, // yellow
 						},
@@ -1861,7 +1861,7 @@ func addStatusColorSort(key string) bson.M {
 						},
 						{
 							"case": bson.M{
-								"$in": []interface{}{"$" + key, []string{evergreen.TaskUnscheduled, evergreen.TaskInactive, evergreen.TaskStatusBlocked, evergreen.TaskAborted}},
+								"$in": []any{"$" + key, []string{evergreen.TaskUnscheduled, evergreen.TaskInactive, evergreen.TaskStatusBlocked, evergreen.TaskAborted}},
 							},
 							"then": 11, // light grey
 						},
@@ -1883,7 +1883,7 @@ func recalculateTimeTaken() bson.M {
 					},
 					// Time taken for a task is in nanoseconds. Since subtracting two dates in MongoDB yields milliseconds, we have
 					// to multiply by time.Millisecond (1000000) to keep time taken consistently in nanoseconds.
-					"then": bson.M{"$multiply": []interface{}{time.Millisecond, bson.M{"$subtract": []interface{}{"$$NOW", "$" + StartTimeKey}}}},
+					"then": bson.M{"$multiply": []any{time.Millisecond, bson.M{"$subtract": []any{"$$NOW", "$" + StartTimeKey}}}},
 					"else": "$" + TimeTakenKey,
 				},
 			},
@@ -2094,8 +2094,8 @@ func GetTaskStatsByVersion(ctx context.Context, versionID string, opts GetTasksB
 		{
 			"$project": bson.M{
 				"eta": bson.M{
-					"$add": []interface{}{
-						bson.M{"$divide": []interface{}{"$" + ExpectedDurationKey, time.Millisecond}},
+					"$add": []any{
+						bson.M{"$divide": []any{"$" + ExpectedDurationKey, time.Millisecond}},
 						"$" + StartTimeKey,
 					},
 				},

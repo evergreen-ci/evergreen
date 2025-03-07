@@ -24,8 +24,8 @@ type displayTaskFiles struct {
 
 // Name returns the name of this plugin - it serves to satisfy
 // the 'Plugin' interface
-func (ap *AttachPlugin) Name() string                           { return AttachPluginName }
-func (ap *AttachPlugin) Configure(map[string]interface{}) error { return nil }
+func (ap *AttachPlugin) Name() string                   { return AttachPluginName }
+func (ap *AttachPlugin) Configure(map[string]any) error { return nil }
 
 // GetPanelConfig returns a plugin.PanelConfig struct representing panels
 // that will be added to the Task and Build pages.
@@ -37,7 +37,7 @@ func (ap *AttachPlugin) GetPanelConfig() (*PanelConfig, error) {
 				Position: PageLeft,
 				PanelHTML: "<div ng-include=\"'/static/plugins/attach/partials/task_files_panel.html'\" " +
 					"ng-init='entries=plugins.attach' ng-show='plugins.attach.length'></div>",
-				DataFunc: func(uiCtx UIContext) (interface{}, error) {
+				DataFunc: func(uiCtx UIContext) (any, error) {
 					if uiCtx.Task == nil {
 						return nil, nil
 					}
@@ -104,7 +104,7 @@ func (ap *AttachPlugin) GetPanelConfig() (*PanelConfig, error) {
 				Position: PageLeft,
 				PanelHTML: "<div ng-include=\"'/static/plugins/attach/partials/build_files_panel.html'\" " +
 					"ng-init='filesByTask=plugins.attach' ng-show='plugins.attach.length'></div>",
-				DataFunc: func(uiCtx UIContext) (interface{}, error) {
+				DataFunc: func(uiCtx UIContext) (any, error) {
 					if uiCtx.Build == nil {
 						return nil, nil
 					}
