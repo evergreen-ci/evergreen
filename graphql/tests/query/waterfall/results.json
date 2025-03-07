@@ -658,6 +658,15 @@
       "result": {
         "data": {
           "waterfall": {
+            "pagination": {
+              "activeVersionIds": [
+                "evergreen_version5",
+                "evergreen_version3",
+                "evergreen_version2",
+                "evergreen_version1",
+                "evergreen_version39"
+              ]
+            },
             "flattenedVersions": [
               {
                 "id": "evergreen_version5",
