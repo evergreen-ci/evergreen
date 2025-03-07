@@ -104,7 +104,7 @@ func toMdbForLocal() cli.Command {
 					_, _ = io.Copy(buf, tr)
 				}
 
-				docs := []interface{}{}
+				docs := []any{}
 				for {
 					doc := &birch.Document{}
 					if _, err := doc.ReadFrom(buf); err != nil {

@@ -3028,8 +3028,8 @@ func AggregateSpawnhostData(ctx context.Context) (*SpawnHostUsage, error) {
 		{"$group": bson.M{
 			"_id":         nil,
 			"hosts":       bson.M{"$sum": 1},
-			"stopped":     bson.M{"$sum": bson.M{"$cond": []interface{}{bson.M{"$eq": []string{"$" + StatusKey, evergreen.HostStopped}}, 1, 0}}},
-			"unexpirable": bson.M{"$sum": bson.M{"$cond": []interface{}{"$" + NoExpirationKey, 1, 0}}},
+			"stopped":     bson.M{"$sum": bson.M{"$cond": []any{bson.M{"$eq": []string{"$" + StatusKey, evergreen.HostStopped}}, 1, 0}}},
+			"unexpirable": bson.M{"$sum": bson.M{"$cond": []any{"$" + NoExpirationKey, 1, 0}}},
 			"users":       bson.M{"$addToSet": "$" + StartedByKey},
 		}},
 		{"$project": bson.M{

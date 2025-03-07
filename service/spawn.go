@@ -202,10 +202,10 @@ func (uis *UIServer) listSpawnableDistros(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	distroList := []map[string]interface{}{}
+	distroList := []map[string]any{}
 	for _, d := range distros {
 		regions := d.GetRegionsList(uis.Settings.Providers.AWS.AllowedRegions)
-		distroList = append(distroList, map[string]interface{}{
+		distroList = append(distroList, map[string]any{
 			"name":                        d.Id,
 			"virtual_workstation_allowed": d.IsVirtualWorkstation,
 			"is_cluster":                  d.IsCluster,

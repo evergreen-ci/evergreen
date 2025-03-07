@@ -70,7 +70,7 @@ type attachResults struct {
 func attachResultsFactory() Command   { return &attachResults{} }
 func (c *attachResults) Name() string { return evergreen.AttachResultsCommandName }
 
-func (c *attachResults) ParseParams(params map[string]interface{}) error {
+func (c *attachResults) ParseParams(params map[string]any) error {
 	if err := mapstructure.Decode(params, c); err != nil {
 		return errors.Wrap(err, "decoding mapstructure params")
 	}

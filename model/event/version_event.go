@@ -14,7 +14,7 @@ func init() {
 	registry.AllowSubscription(ResourceTypeVersion, VersionChildrenCompletion)
 }
 
-func versionEventDataFactory() interface{} {
+func versionEventDataFactory() any {
 	return &VersionEventData{}
 }
 

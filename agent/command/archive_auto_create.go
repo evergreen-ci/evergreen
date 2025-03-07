@@ -37,7 +37,7 @@ func autoArchiveCreateFactory() Command { return &autoArchiveCreate{} }
 
 func (c *autoArchiveCreate) Name() string { return "archive.auto_pack" }
 
-func (c *autoArchiveCreate) ParseParams(params map[string]interface{}) error {
+func (c *autoArchiveCreate) ParseParams(params map[string]any) error {
 	if err := mapstructure.Decode(params, c); err != nil {
 		return errors.Wrap(err, "decoding mapstructure params")
 	}

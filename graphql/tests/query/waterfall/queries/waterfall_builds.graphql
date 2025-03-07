@@ -1,5 +1,8 @@
 {
   waterfall(options: { projectIdentifier: "spruce-identifier" }) {
+    pagination {
+      activeVersionIds
+    }
     flattenedVersions {
       id
       waterfallBuilds {

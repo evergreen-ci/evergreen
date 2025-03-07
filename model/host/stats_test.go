@@ -11,7 +11,7 @@ import (
 )
 
 func insertTestDocuments() error {
-	input := []interface{}{
+	input := []any{
 		Host{
 			Id:     "one",
 			Status: evergreen.HostRunning,

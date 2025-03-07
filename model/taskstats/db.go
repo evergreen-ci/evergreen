@@ -73,7 +73,7 @@ var (
 )
 
 // Convenient type to use for arrays in pipeline definitions.
-type Array []interface{}
+type Array []any
 
 //////////////////
 // Stats Status //
@@ -320,7 +320,7 @@ func buildGroupId(groupBy GroupBy) bson.M {
 }
 
 // BuildMatchArrayExpression builds an expression to match any of the values in the array argument.
-func BuildMatchArrayExpression(values []string) interface{} {
+func BuildMatchArrayExpression(values []string) any {
 	if len(values) == 1 {
 		return values[0]
 	} else if len(values) > 1 {
@@ -428,7 +428,7 @@ func (filter StatsFilter) buildMatchStageForTask() bson.M {
 // BuildTaskPaginationOrBranches builds an expression for the conditions imposed by the filter StartAt field.
 func (filter StatsFilter) buildTaskPaginationOrBranches() []bson.M {
 	var dateDescending = filter.Sort == SortLatestFirst
-	var nextDate interface{}
+	var nextDate any
 
 	if filter.GroupNumDays > 1 {
 		nextDate = filter.getNextDate()
@@ -515,13 +515,13 @@ type PaginationField struct {
 	Field      string
 	Descending bool
 	Strict     bool
-	Value      interface{}
-	NextValue  interface{}
+	Value      any
+	NextValue  any
 }
 
 // GetEqExpression returns an expression that can be used to match the documents which have the same field value or
 // are in the same range as this PaginationField.
-func (pf PaginationField) GetEqExpression() interface{} {
+func (pf PaginationField) GetEqExpression() any {
 	if pf.NextValue == nil {
 		return pf.Value
 	}
@@ -542,7 +542,7 @@ func (pf PaginationField) GetEqExpression() interface{} {
 // greater or smaller than the this PaginationField.
 func (pf PaginationField) GetNextExpression() bson.M {
 	var operator string
-	var value interface{}
+	var value any
 	var strict bool
 
 	if pf.NextValue != nil {

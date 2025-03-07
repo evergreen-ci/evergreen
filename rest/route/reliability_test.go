@@ -59,7 +59,7 @@ func truncatedTime(deltaHours time.Duration) time.Time {
 	return time.Now().UTC().Add(deltaHours).Truncate(24 * time.Hour)
 }
 
-func getURL(projectID string, parameters map[string]interface{}) string {
+func getURL(projectID string, parameters map[string]any) string {
 	url := fmt.Sprintf("https://example.net/api/rest/v2/projects/%s/logs/task_reliability", projectID)
 	params := []string{}
 	for key, value := range parameters {
@@ -438,7 +438,7 @@ func TestReliabilityParse(t *testing.T) {
 					err := setupTest(t)
 					require.NoError(t, err)
 
-					url := getURL(projectID, map[string]interface{}{
+					url := getURL(projectID, map[string]any{
 						"tasks":         "aggregation_expression_multiversion_fuzzer",
 						"after_date":    "2019-01-02",
 						"group_by_days": "10",
@@ -521,7 +521,7 @@ func TestReliabilityRun(t *testing.T) {
 
 					require.NotNil(t, resp)
 					require.Equal(t, http.StatusOK, resp.Status())
-					data := resp.Data().([]interface{})
+					data := resp.Data().([]any)
 					require.Empty(t, data)
 					require.Nil(t, resp.Pages())
 				},
@@ -565,7 +565,7 @@ func TestReliabilityRun(t *testing.T) {
 
 					require.NotNil(t, resp)
 					require.Equal(t, http.StatusOK, resp.Status())
-					data := resp.Data().([]interface{})
+					data := resp.Data().([]any)
 					require.Len(t, data, 1)
 					require.NotNil(t, resp.Pages())
 				},
@@ -609,7 +609,7 @@ func TestReliabilityRun(t *testing.T) {
 
 					require.NotNil(t, resp)
 					require.Equal(t, http.StatusOK, resp.Status())
-					data := resp.Data().([]interface{})
+					data := resp.Data().([]any)
 					require.Len(t, data, handler.filter.StatsFilter.Limit)
 					require.NotNil(t, resp.Pages())
 				},
@@ -658,7 +658,7 @@ func TestReliabilityRun(t *testing.T) {
 
 					require.NotNil(t, resp)
 					require.Equal(t, http.StatusOK, resp.Status())
-					data := resp.Data().([]interface{})
+					data := resp.Data().([]any)
 					require.Len(t, data, handler.filter.StatsFilter.Limit-1)
 					require.Nil(t, resp.Pages())
 				},
@@ -707,7 +707,7 @@ func TestReliabilityRun(t *testing.T) {
 
 					require.NotNil(t, resp)
 					require.Equal(t, http.StatusOK, resp.Status())
-					respData := resp.Data().([]interface{})
+					respData := resp.Data().([]any)
 					require.Len(t, respData, handler.filter.StatsFilter.Limit)
 					require.NotNil(t, resp.Pages())
 					docs, err := data.GetTaskReliabilityScores(handler.filter)
@@ -772,7 +772,7 @@ func TestReliability(t *testing.T) {
 				"Less Than One Page": func(ctx context.Context, t *testing.T) {
 					err := setupTest(t)
 					require.NoError(t, err)
-					url := getURL(projectID, map[string]interface{}{
+					url := getURL(projectID, map[string]any{
 						"tasks":         "aggregation_expression_multiversion_fuzzer",
 						"after_date":    "2019-01-02",
 						"group_by_days": "10",
@@ -821,7 +821,7 @@ func TestReliability(t *testing.T) {
 				"Exactly One Page": func(ctx context.Context, t *testing.T) {
 					err := setupTest(t)
 					require.NoError(t, err)
-					url := getURL(projectID, map[string]interface{}{
+					url := getURL(projectID, map[string]any{
 						"tasks":         "aggregation_expression_multiversion_fuzzer",
 						"after_date":    "2019-01-02",
 						"group_by_days": "10",
@@ -874,7 +874,7 @@ func TestReliability(t *testing.T) {
 				"More Than One Page": func(ctx context.Context, t *testing.T) {
 					err := setupTest(t)
 					require.NoError(t, err)
-					url := getURL(projectID, map[string]interface{}{
+					url := getURL(projectID, map[string]any{
 						"tasks":         "aggregation_expression_multiversion_fuzzer",
 						"after_date":    "2019-01-02",
 						"group_by_days": "10",

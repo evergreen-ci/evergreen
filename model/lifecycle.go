@@ -1040,7 +1040,7 @@ func getAllNodesInDepGraph(startTaskId, startKey, linkKey string) []bson.M {
 		{
 			"$addFields": bson.M{
 				"dep_graph": bson.M{
-					"$concatArrays": []interface{}{"$dep_graph", []string{"$$ROOT"}},
+					"$concatArrays": []any{"$dep_graph", []string{"$$ROOT"}},
 				},
 			},
 		},

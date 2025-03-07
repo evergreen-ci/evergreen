@@ -51,7 +51,7 @@ func (c *update) Name() string         { return "expansions.update" }
 
 // ParseParams validates the input to the update, returning and error
 // if something is incorrect. Fulfills Command interface.
-func (c *update) ParseParams(params map[string]interface{}) error {
+func (c *update) ParseParams(params map[string]any) error {
 	err := mapstructure.Decode(params, c)
 	if err != nil {
 		return errors.Wrap(err, "decoding mapstructure params")

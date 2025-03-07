@@ -20,29 +20,29 @@ func TestGitHubGenerateTokenParseParams(t *testing.T) {
 			assert.Error(t, cmd.ParseParams(nil))
 		},
 		"FailsWithEmptyParams": func(t *testing.T, cmd *githubGenerateToken) {
-			assert.Error(t, cmd.ParseParams(map[string]interface{}{}))
+			assert.Error(t, cmd.ParseParams(map[string]any{}))
 		},
 		"FailsWithInvalidParamTypes": func(t *testing.T, cmd *githubGenerateToken) {
-			assert.Error(t, cmd.ParseParams(map[string]interface{}{
+			assert.Error(t, cmd.ParseParams(map[string]any{
 				"owner": 1,
 			}))
 		},
 		"FailsWithInvalidPermissions": func(t *testing.T, cmd *githubGenerateToken) {
-			assert.Error(t, cmd.ParseParams(map[string]interface{}{
+			assert.Error(t, cmd.ParseParams(map[string]any{
 				"expansion_name": "expansion_name",
-				"permissions": map[string]interface{}{
+				"permissions": map[string]any{
 					"invalid": "test",
 				},
 			}))
-			assert.Error(t, cmd.ParseParams(map[string]interface{}{
+			assert.Error(t, cmd.ParseParams(map[string]any{
 				"expansion_name": "expansion_name",
-				"permissions": map[string]interface{}{
+				"permissions": map[string]any{
 					"invalid": 1,
 				},
 			}))
 		},
 		"SucceedsWithValidParamsNoPermissions": func(t *testing.T, cmd *githubGenerateToken) {
-			assert.NoError(t, cmd.ParseParams(map[string]interface{}{
+			assert.NoError(t, cmd.ParseParams(map[string]any{
 				"owner":          "owner",
 				"repo":           "repo",
 				"expansion_name": "expansion_name",
@@ -50,20 +50,20 @@ func TestGitHubGenerateTokenParseParams(t *testing.T) {
 			assert.Nil(t, cmd.Permissions)
 		},
 		"SucceedsWithValidParamsEmptyPermissions": func(t *testing.T, cmd *githubGenerateToken) {
-			assert.NoError(t, cmd.ParseParams(map[string]interface{}{
+			assert.NoError(t, cmd.ParseParams(map[string]any{
 				"owner":          "owner",
 				"repo":           "repo",
 				"expansion_name": "expansion_name",
-				"permissions":    map[string]interface{}{},
+				"permissions":    map[string]any{},
 			}))
 			assert.Nil(t, cmd.Permissions)
 		},
 		"SucceedsWithValidParamsSomePermissions": func(t *testing.T, cmd *githubGenerateToken) {
-			assert.NoError(t, cmd.ParseParams(map[string]interface{}{
+			assert.NoError(t, cmd.ParseParams(map[string]any{
 				"owner":          "owner",
 				"repo":           "repo",
 				"expansion_name": "expansion_name",
-				"permissions": map[string]interface{}{
+				"permissions": map[string]any{
 					"actions": "actions",
 					"checks":  "checks",
 				},
@@ -74,7 +74,7 @@ func TestGitHubGenerateTokenParseParams(t *testing.T) {
 			assert.Nil(t, cmd.Permissions.Administration)
 		},
 		"FailsWithoutExpansionName": func(t *testing.T, cmd *githubGenerateToken) {
-			assert.Error(t, cmd.ParseParams(map[string]interface{}{
+			assert.Error(t, cmd.ParseParams(map[string]any{
 				"owner": "owner",
 				"repo":  "repo",
 			}))
