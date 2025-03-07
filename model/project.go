@@ -1035,8 +1035,10 @@ func PopulateExpansions(ctx context.Context, t *task.Task, h *host.Host, appToke
 	expansions.Put("github_commit", t.Revision)
 	expansions.Put(evergreen.GithubKnownHosts, knownHosts)
 	expansions.Put("project", projectRef.Identifier)
-	expansions.Put("project_identifier", projectRef.Identifier) // TODO: deprecate
+	expansions.Put("project_identifier", projectRef.Identifier)
 	expansions.Put("project_id", projectRef.Id)
+	expansions.Put("github_org", projectRef.Owner)
+	expansions.Put("github_repo", projectRef.Repo)
 	if h != nil {
 		expansions.Put("distro_id", h.Distro.Id)
 	}
@@ -1121,20 +1123,13 @@ func PopulateExpansions(ctx context.Context, t *task.Task, h *host.Host, appToke
 		expansions.Put("revision_order_id", fmt.Sprintf("%s_%d", v.Author, v.RevisionOrderNumber))
 		expansions.Put("alias", p.Alias)
 
-		if v.Requester == evergreen.GithubMergeRequester {
-			expansions.Put("is_commit_queue", "true")
-		}
-
 		if v.Requester == evergreen.GithubPRRequester {
 			expansions.Put("github_pr_number", fmt.Sprintf("%d", p.GithubPatchData.PRNumber))
-			expansions.Put("github_org", p.GithubPatchData.BaseOwner)
-			expansions.Put("github_repo", p.GithubPatchData.BaseRepo)
 			expansions.Put("github_author", p.GithubPatchData.Author)
 			expansions.Put("github_commit", p.GithubPatchData.HeadHash)
 		}
 		if p.IsMergeQueuePatch() {
-			expansions.Put("github_org", p.GithubMergeData.Org)
-			expansions.Put("github_repo", p.GithubMergeData.Repo)
+			expansions.Put("is_commit_queue", "true")
 			// this looks like "gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056"
 			expansions.Put("github_head_branch", p.GithubMergeData.HeadBranch)
 		}
