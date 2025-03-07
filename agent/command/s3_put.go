@@ -497,6 +497,7 @@ retryLoop:
 								skippedFilesCount++
 
 								logger.Task().Infof("Not uploading file '%s' because remote file '%s' already exists. Continuing to upload other files.", fpath, remoteName)
+								continue uploadLoop
 							}
 						}
 					}
