@@ -165,7 +165,6 @@ func getProjectMethodAndToken(ctx context.Context, comm client.Communicator, td 
 
 	owner := conf.ProjectRef.Owner
 	repo := conf.ProjectRef.Repo
-	// chaya
 	appToken, err := comm.CreateInstallationTokenForClone(ctx, td, owner, repo)
 	if err != nil {
 		return "", "", errors.Wrap(err, "creating app token")
