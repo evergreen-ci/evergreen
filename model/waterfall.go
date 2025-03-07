@@ -90,7 +90,7 @@ func getBuildDisplayNames(match bson.M) bson.M {
 }
 
 // This pipeline matches on versions that have a build with an ID or display name that matches variants
-func getBuildVariantFilterPipeline(ctx context.Context, variants []string, match bson.M, projectId string) ([]bson.M, error) {
+func getBuildVariantFilterPipeline(ctx context.Context, variants []string, match bson.M, projectId string, searchOffset int) ([]bson.M, error) {
 	pipeline := []bson.M{}
 	match[bsonutil.GetDottedKeyName(VersionBuildVariantsKey, VersionBuildStatusDisplayNameKey)] = bson.M{"$exists": true}
 	pipeline = append(pipeline, bson.M{"$match": match})
@@ -99,15 +99,10 @@ func getBuildVariantFilterPipeline(ctx context.Context, variants []string, match
 		matchCopy[key] = match[key]
 	}
 
-	mostRecentVersion, err := GetMostRecentWaterfallVersion(ctx, projectId)
-	if err != nil {
-		return []bson.M{}, errors.Wrap(err, "getting most recent version")
-	}
-
 	// TODO DEVPROD-15118: Delete conditional getBuildDisplayNames check
 
-	searchOrder := max(mostRecentVersion.RevisionOrderNumber-MaxWaterfallVersionLimit, 1)
-	lastSearchableVersion, err := VersionFindOne(VersionByProjectIdAndOrder(mostRecentVersion.Identifier, searchOrder))
+	searchOrder := max(searchOffset-MaxWaterfallVersionLimit, 1)
+	lastSearchableVersion, err := VersionFindOne(VersionByProjectIdAndOrder(projectId, searchOrder))
 	if err != nil {
 		return []bson.M{}, errors.Wrap(err, "fetching version")
 	}
@@ -166,7 +161,21 @@ func GetActiveWaterfallVersions(ctx context.Context, projectId string, opts Wate
 	pipeline := []bson.M{}
 
 	if len(opts.Variants) > 0 {
-		buildVariantPipeline, err := getBuildVariantFilterPipeline(ctx, opts.Variants, match, projectId)
+		var searchOffset int
+		if pagingForward {
+			searchOffset = opts.MaxOrder
+		} else if pagingBackward {
+			searchOffset = opts.MinOrder
+		} else {
+
+			mostRecentVersion, err := GetMostRecentWaterfallVersion(ctx, projectId)
+			if err != nil {
+				return nil, errors.Wrap(err, "getting most recent version")
+			}
+			searchOffset = mostRecentVersion.RevisionOrderNumber
+		}
+
+		buildVariantPipeline, err := getBuildVariantFilterPipeline(ctx, opts.Variants, match, projectId, searchOffset)
 		if err != nil {
 			return nil, errors.Wrap(err, "creating build variant filter pipeline")
 		}
