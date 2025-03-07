@@ -8,7 +8,7 @@
       "activated": true,
       "author": "mohamed.khelif",
       "status": "failed",
-      "order": 39,
+      "order": 1,
       "create_time": {
         "$date": "2019-12-30T00:00:03Z"
       }
@@ -28,7 +28,7 @@
     },
     {
       "_id": "evergreen_version1",
-      "gitspec": "revision1",
+      "gitspec": "d7b7a086cc4f4edeb9a5eb59f3dd4f2f7c3f7ddb",
       "identifier": "spruce",
       "r": "git_tag_request",
       "activated": true,
