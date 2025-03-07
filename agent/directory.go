@@ -79,10 +79,7 @@ func (a *Agent) removeTaskDirectory(ctx context.Context, tc *taskContext) {
 		grip.Critical(errors.Wrapf(err, "getting absolute path for task directory '%s'", dir))
 		return
 	}
-	// kim: TODO: determine if datadir is even needed at all. It's possible
-	// gopsutil can determine total disk usage just by df'ing the agent's
-	// working directory.
-	if err := a.removeAllAndCheck(ctx, tc.taskConfig.Distro.DataDir, abs); err != nil {
+	if err := a.removeAllAndCheck(ctx, abs); err != nil {
 		grip.Critical(errors.Wrapf(err, "removing task directory '%s'", dir))
 	} else {
 		grip.Info(message.Fields{
@@ -94,7 +91,7 @@ func (a *Agent) removeTaskDirectory(ctx context.Context, tc *taskContext) {
 
 // removeAllAndCheck removes the directory and checks the data directory
 // usage afterwards. If the data directory is unhealthy, the host is disabled.
-func (a *Agent) removeAllAndCheck(ctx context.Context, dataDir, dir string) error {
+func (a *Agent) removeAllAndCheck(ctx context.Context, dir string) error {
 	removeErr := a.removeAll(dir)
 	if removeErr == nil {
 		return nil
@@ -104,7 +101,7 @@ func (a *Agent) removeAllAndCheck(ctx context.Context, dataDir, dir string) erro
 
 	checkCtx, checkCancel := context.WithTimeout(ctx, time.Minute)
 	defer checkCancel()
-	if err := a.checkDataDirectoryHealth(checkCtx, dataDir); err != nil {
+	if err := a.checkDataDirectoryHealth(checkCtx); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":               "failed to check data directory usage",
 			"unremovable_directory": dir,
@@ -207,13 +204,13 @@ func (a *Agent) tryCleanupDirectory(ctx context.Context, dir string) {
 
 	grip.Infof("Attempting to clean up directory '%s'.", dir)
 	for _, p := range paths {
-		if err = a.removeAllAndCheck(ctx, "", p); err != nil {
+		if err = a.removeAllAndCheck(ctx, p); err != nil {
 			grip.Critical(errors.Wrapf(err, "removing path '%s'", p))
 		}
 	}
 }
 
-func (a *Agent) checkDataDirectoryHealth(ctx context.Context, dataDir string) error {
+func (a *Agent) checkDataDirectoryHealth(ctx context.Context) error {
 	if a.numTaskDirCleanupFailures >= globals.MaxTaskDirCleanupFailures {
 		err := a.comm.DisableHost(ctx, a.opts.HostID, apimodels.DisableInfo{
 			Reason: fmt.Sprintf("agent has tried and failed to clean up task directories %d times", a.numTaskDirCleanupFailures),
@@ -222,15 +219,12 @@ func (a *Agent) checkDataDirectoryHealth(ctx context.Context, dataDir string) er
 			return err
 		}
 	}
-	if dataDir == "" {
-		return nil
-	}
 
-	usage, err := disk.UsageWithContext(ctx, dataDir)
+	usage, err := disk.UsageWithContext(ctx, a.opts.WorkingDirectory)
 	if err != nil {
 		return errors.Wrap(err, "getting disk usage")
 	}
-	if usage.UsedPercent > globals.MaxPercentageDataDirectoryUsage {
+	if usage.UsedPercent > globals.MaxPercentageDataVolumeUsage {
 		err := a.comm.DisableHost(ctx, a.opts.HostID, apimodels.DisableInfo{
 			Reason: fmt.Sprintf("data directory usage (%f%%) is too high to run a new task", usage.UsedPercent),
 		})
