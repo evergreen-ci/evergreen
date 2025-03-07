@@ -18,6 +18,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
+	"github.com/shirou/gopsutil/v3/disk"
 )
 
 // createTaskDirectory makes a directory for the agent to execute the current
@@ -219,9 +220,18 @@ func (a *Agent) checkDataDirectoryHealth(ctx context.Context) error {
 		}
 	}
 
-	// TODO (DEVPROD-14995): also check remaining disk space when task directory
-	// fails to clean up. If there's too little disk space to run another task,
-	// disable the host.
+	usage, err := disk.UsageWithContext(ctx, a.opts.WorkingDirectory)
+	if err != nil {
+		return errors.Wrap(err, "getting disk usage")
+	}
+	if usage.UsedPercent > globals.MaxPercentageDataVolumeUsage {
+		err := a.comm.DisableHost(ctx, a.opts.HostID, apimodels.DisableInfo{
+			Reason: fmt.Sprintf("data directory usage (%f%%) is too high to run a new task", usage.UsedPercent),
+		})
+		if err != nil {
+			return err
+		}
+	}
 
 	return nil
 }
