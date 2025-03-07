@@ -85,35 +85,35 @@ func ensureHasRequiredFields(ctx context.Context, d *distro.Distro, _ *evergreen
 
 	if d.Id == "" {
 		errs = append(errs, ValidationError{
-			Message: fmt.Sprintf("distro '%v' cannot be blank", distro.IdKey),
+			Message: fmt.Sprintf("distro '%s' cannot be blank", distro.IdKey),
 			Level:   Error,
 		})
 	}
 
 	if d.Arch == "" {
 		errs = append(errs, ValidationError{
-			Message: fmt.Sprintf("distro '%v' cannot be blank", distro.ArchKey),
+			Message: fmt.Sprintf("distro '%s' cannot be blank", distro.ArchKey),
 			Level:   Error,
 		})
 	}
 
 	if d.User == "" {
 		errs = append(errs, ValidationError{
-			Message: fmt.Sprintf("distro '%v' cannot be blank", distro.UserKey),
+			Message: fmt.Sprintf("distro '%s' cannot be blank", distro.UserKey),
 			Level:   Error,
 		})
 	}
 
 	if d.WorkDir == "" {
 		errs = append(errs, ValidationError{
-			Message: fmt.Sprintf("distro '%v' cannot be blank", distro.WorkDirKey),
+			Message: fmt.Sprintf("distro '%s' cannot be blank", distro.WorkDirKey),
 			Level:   Error,
 		})
 	}
 
 	if d.Provider == "" {
 		return append(errs, ValidationError{
-			Message: fmt.Sprintf("distro '%v' cannot be blank", distro.ProviderKey),
+			Message: fmt.Sprintf("distro '%s' cannot be blank", distro.ProviderKey),
 			Level:   Error,
 		})
 	}
