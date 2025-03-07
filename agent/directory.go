@@ -79,6 +79,9 @@ func (a *Agent) removeTaskDirectory(ctx context.Context, tc *taskContext) {
 		grip.Critical(errors.Wrapf(err, "getting absolute path for task directory '%s'", dir))
 		return
 	}
+	// kim: TODO: determine if datadir is even needed at all. It's possible
+	// gopsutil can determine total disk usage just by df'ing the agent's
+	// working directory.
 	if err := a.removeAllAndCheck(ctx, tc.taskConfig.Distro.DataDir, abs); err != nil {
 		grip.Critical(errors.Wrapf(err, "removing task directory '%s'", dir))
 	} else {
