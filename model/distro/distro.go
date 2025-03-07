@@ -716,7 +716,7 @@ func (d *Distro) GetResolvedPlannerSettings(s *evergreen.Settings) (PlannerSetti
 	}
 
 	if resolved.Version == "" {
-		resolved.Version = config.Planner
+		resolved.Version = evergreen.PlannerVersionTunable
 	}
 	if !utility.StringSliceContains(evergreen.ValidTaskPlannerVersions, resolved.Version) {
 		catcher.Errorf("'%s' is not a valid planner version", resolved.Version)
