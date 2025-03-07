@@ -513,7 +513,7 @@ func setupDBData(ctx context.Context, env evergreen.Environment, data map[string
 		// The docs to insert as part of setup need to be deserialized
 		// as extended JSON, whereas the rest of the test spec is
 		// normal JSON.
-		var docs []interface{}
+		var docs []any
 		catcher.Add(bson.UnmarshalExtJSON(d, false, &docs))
 		_, err := env.DB().Collection(coll).InsertMany(ctx, docs)
 		catcher.Add(err)

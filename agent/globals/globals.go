@@ -72,6 +72,16 @@ const (
 	// unhealthy. This is to reduce the likelihood of later tasks failing due to
 	// lack of disk space from task directories that were left behind.
 	MaxTaskDirCleanupFailures = 3
+	// MaxPercentageDataVolumeUsage is the maximum percentage of usage on the
+	// data volume that the agent permits after running a task and cleaning up
+	// after it. If the current disk usage still exceeds this threshold after
+	// task cleanup, there is too little disk space to run a new task and so it
+	// is considered unhealthy.
+	// Excessive disk usage could happen in some scenarios where the agent can't
+	// clean up state left behind by previous tasks, like if the task writes a
+	// lot of data outside of the task directory or if the agent fails to clean
+	// up the task directory.
+	MaxPercentageDataVolumeUsage = 50
 )
 
 // TimeoutType indicates the type of task timeout.

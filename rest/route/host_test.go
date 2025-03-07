@@ -1002,7 +1002,7 @@ func TestHostFilterGetHandler(t *testing.T) {
 	}
 	resp := handler.Run(gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user0"}))
 	assert.Equal(t, http.StatusOK, resp.Status())
-	hosts := resp.Data().([]interface{})
+	hosts := resp.Data().([]any)
 	require.Len(t, hosts, 1)
 	assert.Equal(t, "h0", utility.FromStringPtr(hosts[0].(*restmodel.APIHost).Id))
 
@@ -1011,7 +1011,7 @@ func TestHostFilterGetHandler(t *testing.T) {
 	}
 	resp = handler.Run(gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user0"}))
 	assert.Equal(t, http.StatusOK, resp.Status())
-	hosts = resp.Data().([]interface{})
+	hosts = resp.Data().([]any)
 	require.Len(t, hosts, 1)
 	assert.Equal(t, "h1", utility.FromStringPtr(hosts[0].(*restmodel.APIHost).Id))
 
@@ -1020,7 +1020,7 @@ func TestHostFilterGetHandler(t *testing.T) {
 	}
 	resp = handler.Run(gimlet.AttachUser(context.Background(), &user.DBUser{Id: "user1"}))
 	assert.Equal(t, http.StatusOK, resp.Status())
-	hosts = resp.Data().([]interface{})
+	hosts = resp.Data().([]any)
 	require.Len(t, hosts, 1)
 	assert.Equal(t, "h2", utility.FromStringPtr(hosts[0].(*restmodel.APIHost).Id))
 }

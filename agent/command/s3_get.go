@@ -92,7 +92,7 @@ func s3GetFactory() Command   { return &s3get{} }
 func (c *s3get) Name() string { return "s3.get" }
 
 // s3get implementation of ParseParams.
-func (c *s3get) ParseParams(params map[string]interface{}) error {
+func (c *s3get) ParseParams(params map[string]any) error {
 	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
 		WeaklyTypedInput: true,
 		Result:           c,

@@ -30,7 +30,7 @@ func NewConfigModel() *APIAdminSettings {
 		Notify:              &APINotifyConfig{},
 		Overrides:           &APIOverridesConfig{},
 		ParameterStore:      &APIParameterStoreConfig{},
-		Plugins:             map[string]map[string]interface{}{},
+		Plugins:             map[string]map[string]any{},
 		PodLifecycle:        &APIPodLifecycleConfig{},
 		ProjectCreation:     &APIProjectCreationConfig{},
 		Providers:           &APICloudProviders{},
@@ -54,61 +54,61 @@ func NewConfigModel() *APIAdminSettings {
 
 // APIAdminSettings is the structure of a response to the admin route
 type APIAdminSettings struct {
-	Amboy               *APIAmboyConfig                   `json:"amboy,omitempty"`
-	AmboyDB             *APIAmboyDBConfig                 `json:"amboy_db,omitempty"`
-	Api                 *APIapiConfig                     `json:"api,omitempty"`
-	AWSInstanceRole     *string                           `json:"aws_instance_role,omitempty"`
-	AuthConfig          *APIAuthConfig                    `json:"auth,omitempty"`
-	Banner              *string                           `json:"banner,omitempty"`
-	BannerTheme         *string                           `json:"banner_theme,omitempty"`
-	Buckets             *APIBucketsConfig                 `json:"buckets,omitempty"`
-	Cedar               *APICedarConfig                   `json:"cedar,omitempty"`
-	ConfigDir           *string                           `json:"configdir,omitempty"`
-	ContainerPools      *APIContainerPoolsConfig          `json:"container_pools,omitempty"`
-	DomainName          *string                           `json:"domain_name,omitempty"`
-	Expansions          map[string]string                 `json:"expansions,omitempty"`
-	GithubPRCreatorOrg  *string                           `json:"github_pr_creator_org,omitempty"`
-	GithubOrgs          []string                          `json:"github_orgs,omitempty"`
-	GithubWebhookSecret *string                           `json:"github_webhook_secret,omitempty"`
-	DisabledGQLQueries  []string                          `json:"disabled_gql_queries"`
-	HostInit            *APIHostInitConfig                `json:"hostinit,omitempty"`
-	HostJasper          *APIHostJasperConfig              `json:"host_jasper,omitempty"`
-	Jira                *APIJiraConfig                    `json:"jira,omitempty"`
-	JIRANotifications   *APIJIRANotificationsConfig       `json:"jira_notifications,omitempty"`
-	KanopySSHKeyPath    *string                           `json:"kanopy_ssh_key_path,omitempty"`
-	LoggerConfig        *APILoggerConfig                  `json:"logger_config,omitempty"`
-	LogPath             *string                           `json:"log_path,omitempty"`
-	NewRelic            *APINewRelicConfig                `json:"newrelic,omitempty"`
-	Notify              *APINotifyConfig                  `json:"notify,omitempty"`
-	Overrides           *APIOverridesConfig               `json:"overrides,omitempty"`
-	ParameterStore      *APIParameterStoreConfig          `json:"parameter_store,omitempty"`
-	Plugins             map[string]map[string]interface{} `json:"plugins,omitempty"`
-	PodLifecycle        *APIPodLifecycleConfig            `json:"pod_lifecycle,omitempty"`
-	PprofPort           *string                           `json:"pprof_port,omitempty"`
-	ProjectCreation     *APIProjectCreationConfig         `json:"project_creation,omitempty"`
-	Providers           *APICloudProviders                `json:"providers,omitempty"`
-	RepoTracker         *APIRepoTrackerConfig             `json:"repotracker,omitempty"`
-	RuntimeEnvironments *APIRuntimeEnvironmentsConfig     `json:"runtime_environments,omitempty"`
-	Scheduler           *APISchedulerConfig               `json:"scheduler,omitempty"`
-	ServiceFlags        *APIServiceFlags                  `json:"service_flags,omitempty"`
-	SingleTaskDistro    *APISingleTaskDistroConfig        `json:"single_task_distro,omitempty"`
-	Slack               *APISlackConfig                   `json:"slack,omitempty"`
-	SleepSchedule       *APISleepScheduleConfig           `json:"sleep_schedule,omitempty"`
-	SSHKeyDirectory     *string                           `json:"ssh_key_directory,omitempty"`
-	SSHKeyPairs         []APISSHKeyPair                   `json:"ssh_key_pairs,omitempty"`
-	Splunk              *APISplunkConfig                  `json:"splunk,omitempty"`
-	TaskLimits          *APITaskLimitsConfig              `json:"task_limits,omitempty"`
-	TestSelection       *APITestSelectionConfig           `json:"test_selection,omitempty"`
-	Triggers            *APITriggerConfig                 `json:"triggers,omitempty"`
-	Ui                  *APIUIConfig                      `json:"ui,omitempty"`
-	Spawnhost           *APISpawnHostConfig               `json:"spawnhost,omitempty"`
-	Tracer              *APITracerSettings                `json:"tracer,omitempty"`
-	GitHubCheckRun      *APIGitHubCheckRunConfig          `json:"github_check_run,omitempty"`
-	ShutdownWaitSeconds *int                              `json:"shutdown_wait_seconds,omitempty"`
+	Amboy               *APIAmboyConfig               `json:"amboy,omitempty"`
+	AmboyDB             *APIAmboyDBConfig             `json:"amboy_db,omitempty"`
+	Api                 *APIapiConfig                 `json:"api,omitempty"`
+	AWSInstanceRole     *string                       `json:"aws_instance_role,omitempty"`
+	AuthConfig          *APIAuthConfig                `json:"auth,omitempty"`
+	Banner              *string                       `json:"banner,omitempty"`
+	BannerTheme         *string                       `json:"banner_theme,omitempty"`
+	Buckets             *APIBucketsConfig             `json:"buckets,omitempty"`
+	Cedar               *APICedarConfig               `json:"cedar,omitempty"`
+	ConfigDir           *string                       `json:"configdir,omitempty"`
+	ContainerPools      *APIContainerPoolsConfig      `json:"container_pools,omitempty"`
+	DomainName          *string                       `json:"domain_name,omitempty"`
+	Expansions          map[string]string             `json:"expansions,omitempty"`
+	GithubPRCreatorOrg  *string                       `json:"github_pr_creator_org,omitempty"`
+	GithubOrgs          []string                      `json:"github_orgs,omitempty"`
+	GithubWebhookSecret *string                       `json:"github_webhook_secret,omitempty"`
+	DisabledGQLQueries  []string                      `json:"disabled_gql_queries"`
+	HostInit            *APIHostInitConfig            `json:"hostinit,omitempty"`
+	HostJasper          *APIHostJasperConfig          `json:"host_jasper,omitempty"`
+	Jira                *APIJiraConfig                `json:"jira,omitempty"`
+	JIRANotifications   *APIJIRANotificationsConfig   `json:"jira_notifications,omitempty"`
+	KanopySSHKeyPath    *string                       `json:"kanopy_ssh_key_path,omitempty"`
+	LoggerConfig        *APILoggerConfig              `json:"logger_config,omitempty"`
+	LogPath             *string                       `json:"log_path,omitempty"`
+	NewRelic            *APINewRelicConfig            `json:"newrelic,omitempty"`
+	Notify              *APINotifyConfig              `json:"notify,omitempty"`
+	Overrides           *APIOverridesConfig           `json:"overrides,omitempty"`
+	ParameterStore      *APIParameterStoreConfig      `json:"parameter_store,omitempty"`
+	Plugins             map[string]map[string]any     `json:"plugins,omitempty"`
+	PodLifecycle        *APIPodLifecycleConfig        `json:"pod_lifecycle,omitempty"`
+	PprofPort           *string                       `json:"pprof_port,omitempty"`
+	ProjectCreation     *APIProjectCreationConfig     `json:"project_creation,omitempty"`
+	Providers           *APICloudProviders            `json:"providers,omitempty"`
+	RepoTracker         *APIRepoTrackerConfig         `json:"repotracker,omitempty"`
+	RuntimeEnvironments *APIRuntimeEnvironmentsConfig `json:"runtime_environments,omitempty"`
+	Scheduler           *APISchedulerConfig           `json:"scheduler,omitempty"`
+	ServiceFlags        *APIServiceFlags              `json:"service_flags,omitempty"`
+	SingleTaskDistro    *APISingleTaskDistroConfig    `json:"single_task_distro,omitempty"`
+	Slack               *APISlackConfig               `json:"slack,omitempty"`
+	SleepSchedule       *APISleepScheduleConfig       `json:"sleep_schedule,omitempty"`
+	SSHKeyDirectory     *string                       `json:"ssh_key_directory,omitempty"`
+	SSHKeyPairs         []APISSHKeyPair               `json:"ssh_key_pairs,omitempty"`
+	Splunk              *APISplunkConfig              `json:"splunk,omitempty"`
+	TaskLimits          *APITaskLimitsConfig          `json:"task_limits,omitempty"`
+	TestSelection       *APITestSelectionConfig       `json:"test_selection,omitempty"`
+	Triggers            *APITriggerConfig             `json:"triggers,omitempty"`
+	Ui                  *APIUIConfig                  `json:"ui,omitempty"`
+	Spawnhost           *APISpawnHostConfig           `json:"spawnhost,omitempty"`
+	Tracer              *APITracerSettings            `json:"tracer,omitempty"`
+	GitHubCheckRun      *APIGitHubCheckRunConfig      `json:"github_check_run,omitempty"`
+	ShutdownWaitSeconds *int                          `json:"shutdown_wait_seconds,omitempty"`
 }
 
 // BuildFromService builds a model from the service layer
-func (as *APIAdminSettings) BuildFromService(h interface{}) error {
+func (as *APIAdminSettings) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case *evergreen.Settings:
 		if v == nil {
@@ -209,7 +209,7 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 }
 
 // ToService returns a service model from an API model
-func (as *APIAdminSettings) ToService() (interface{}, error) {
+func (as *APIAdminSettings) ToService() (any, error) {
 	settings := evergreen.Settings{
 		Expansions:         map[string]string{},
 		Plugins:            evergreen.PluginConfig{},
@@ -269,7 +269,7 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 	}
 	settings.KanopySSHKeyPath = utility.FromStringPtr(as.KanopySSHKeyPath)
 	for k, v := range as.Plugins {
-		settings.Plugins[k] = map[string]interface{}{}
+		settings.Plugins[k] = map[string]any{}
 		for k2, v2 := range v {
 			settings.Plugins[k][k2] = v2
 		}
@@ -294,7 +294,7 @@ type APISESConfig struct {
 	SenderAddress *string `json:"sender_address"`
 }
 
-func (a *APISESConfig) BuildFromService(h interface{}) error {
+func (a *APISESConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.SESConfig:
 		a.SenderAddress = utility.ToStringPtr(v.SenderAddress)
@@ -304,7 +304,7 @@ func (a *APISESConfig) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (a *APISESConfig) ToService() (interface{}, error) {
+func (a *APISESConfig) ToService() (any, error) {
 	if a == nil {
 		return nil, nil
 	}
@@ -330,7 +330,7 @@ type APIAmboyConfig struct {
 	NamedQueues                           []APIAmboyNamedQueueConfig `json:"named_queues,omitempty"`
 }
 
-func (a *APIAmboyConfig) BuildFromService(h interface{}) error {
+func (a *APIAmboyConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.AmboyConfig:
 		a.Name = utility.ToStringPtr(v.Name)
@@ -358,7 +358,7 @@ func (a *APIAmboyConfig) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (a *APIAmboyConfig) ToService() (interface{}, error) {
+func (a *APIAmboyConfig) ToService() (any, error) {
 	i, err := a.Retry.ToService()
 	if err != nil {
 		return nil, errors.Wrap(err, "converting Amboy retry settings to service model")
@@ -394,7 +394,7 @@ type APIAmboyDBConfig struct {
 	Database *string `json:"database"`
 }
 
-func (a *APIAmboyDBConfig) BuildFromService(h interface{}) error {
+func (a *APIAmboyDBConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.AmboyDBConfig:
 		a.URL = utility.ToStringPtr(v.URL)
@@ -405,7 +405,7 @@ func (a *APIAmboyDBConfig) BuildFromService(h interface{}) error {
 	}
 }
 
-func (a *APIAmboyDBConfig) ToService() (interface{}, error) {
+func (a *APIAmboyDBConfig) ToService() (any, error) {
 	return evergreen.AmboyDBConfig{
 		URL:      utility.FromStringPtr(a.URL),
 		Database: utility.FromStringPtr(a.Database),
@@ -421,7 +421,7 @@ type APIAmboyRetryConfig struct {
 	StaleRetryingMonitorIntervalSeconds int `json:"stale_retrying_monitor_interval_seconds,omitempty"`
 }
 
-func (a *APIAmboyRetryConfig) BuildFromService(h interface{}) error {
+func (a *APIAmboyRetryConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.AmboyRetryConfig:
 		a.NumWorkers = v.NumWorkers
@@ -436,7 +436,7 @@ func (a *APIAmboyRetryConfig) BuildFromService(h interface{}) error {
 	}
 }
 
-func (a *APIAmboyRetryConfig) ToService() (interface{}, error) {
+func (a *APIAmboyRetryConfig) ToService() (any, error) {
 	return evergreen.AmboyRetryConfig{
 		NumWorkers:                          a.NumWorkers,
 		MaxCapacity:                         a.MaxCapacity,
@@ -479,7 +479,7 @@ type APIapiConfig struct {
 	URL            *string `json:"url"`
 }
 
-func (a *APIapiConfig) BuildFromService(h interface{}) error {
+func (a *APIapiConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.APIConfig:
 		a.HttpListenAddr = utility.ToStringPtr(v.HttpListenAddr)
@@ -490,7 +490,7 @@ func (a *APIapiConfig) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (a *APIapiConfig) ToService() (interface{}, error) {
+func (a *APIapiConfig) ToService() (any, error) {
 	return evergreen.APIConfig{
 		HttpListenAddr: utility.FromStringPtr(a.HttpListenAddr),
 		URL:            utility.FromStringPtr(a.URL),
@@ -508,7 +508,7 @@ type APIAuthConfig struct {
 	AllowServiceUsers       bool                 `json:"allow_service_users"`
 }
 
-func (a *APIAuthConfig) BuildFromService(h interface{}) error {
+func (a *APIAuthConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.AuthConfig:
 		if v.Okta != nil {
@@ -550,7 +550,7 @@ func (a *APIAuthConfig) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (a *APIAuthConfig) ToService() (interface{}, error) {
+func (a *APIAuthConfig) ToService() (any, error) {
 	var okta *evergreen.OktaConfig
 	var naive *evergreen.NaiveAuthConfig
 	var github *evergreen.GithubAuthConfig
@@ -637,7 +637,7 @@ type APIBucketConfig struct {
 	DBName *string `json:"db_name"`
 }
 
-func (a *APIBucketsConfig) BuildFromService(h interface{}) error {
+func (a *APIBucketsConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.BucketsConfig:
 		a.LogBucket.Name = utility.ToStringPtr(v.LogBucket.Name)
@@ -657,7 +657,7 @@ func (a *APIBucketsConfig) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (a *APIBucketsConfig) ToService() (interface{}, error) {
+func (a *APIBucketsConfig) ToService() (any, error) {
 	i, err := a.Credentials.ToService()
 	if err != nil {
 		return nil, errors.Wrap(err, "converting S3 credentials to service model")
@@ -688,7 +688,7 @@ type APICedarConfig struct {
 	SPSKanopyURL *string `json:"sps_kanopy_url"`
 }
 
-func (a *APICedarConfig) BuildFromService(h interface{}) error {
+func (a *APICedarConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.CedarConfig:
 		a.BaseURL = utility.ToStringPtr(v.BaseURL)
@@ -704,7 +704,7 @@ func (a *APICedarConfig) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (a *APICedarConfig) ToService() (interface{}, error) {
+func (a *APICedarConfig) ToService() (any, error) {
 	return evergreen.CedarConfig{
 		BaseURL:      utility.FromStringPtr(a.BaseURL),
 		GRPCBaseURL:  utility.FromStringPtr(a.GRPCBaseURL),
@@ -725,7 +725,7 @@ type APIOktaConfig struct {
 	ExpireAfterMinutes int      `json:"expire_after_minutes"`
 }
 
-func (a *APIOktaConfig) BuildFromService(h interface{}) error {
+func (a *APIOktaConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case *evergreen.OktaConfig:
 		if v == nil {
@@ -743,7 +743,7 @@ func (a *APIOktaConfig) BuildFromService(h interface{}) error {
 	}
 }
 
-func (a *APIOktaConfig) ToService() (interface{}, error) {
+func (a *APIOktaConfig) ToService() (any, error) {
 	if a == nil {
 		return nil, nil
 	}
@@ -761,7 +761,7 @@ type APINaiveAuthConfig struct {
 	Users []APIAuthUser `json:"users"`
 }
 
-func (a *APINaiveAuthConfig) BuildFromService(h interface{}) error {
+func (a *APINaiveAuthConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case *evergreen.NaiveAuthConfig:
 		if v == nil {
@@ -780,7 +780,7 @@ func (a *APINaiveAuthConfig) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (a *APINaiveAuthConfig) ToService() (interface{}, error) {
+func (a *APINaiveAuthConfig) ToService() (any, error) {
 	if a == nil {
 		return nil, nil
 	}
@@ -806,7 +806,7 @@ type APIAuthUser struct {
 	Email       *string `json:"email"`
 }
 
-func (a *APIAuthUser) BuildFromService(h interface{}) error {
+func (a *APIAuthUser) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.AuthUser:
 		a.Username = utility.ToStringPtr(v.Username)
@@ -819,7 +819,7 @@ func (a *APIAuthUser) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (a *APIAuthUser) ToService() (interface{}, error) {
+func (a *APIAuthUser) ToService() (any, error) {
 	if a == nil {
 		return nil, nil
 	}
@@ -841,7 +841,7 @@ type APIGithubAuthConfig struct {
 	Users        []*string `json:"users"`
 }
 
-func (a *APIGithubAuthConfig) BuildFromService(h interface{}) error {
+func (a *APIGithubAuthConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case *evergreen.GithubAuthConfig:
 		if v == nil {
@@ -862,7 +862,7 @@ func (a *APIGithubAuthConfig) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (a *APIGithubAuthConfig) ToService() (interface{}, error) {
+func (a *APIGithubAuthConfig) ToService() (any, error) {
 	if a == nil {
 		return nil, nil
 	}
@@ -885,7 +885,7 @@ type APIMultiAuthConfig struct {
 	ReadOnly  []string `json:"read_only"`
 }
 
-func (a *APIMultiAuthConfig) BuildFromService(h interface{}) error {
+func (a *APIMultiAuthConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case *evergreen.MultiAuthConfig:
 		if v == nil {
@@ -899,7 +899,7 @@ func (a *APIMultiAuthConfig) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (a *APIMultiAuthConfig) ToService() (interface{}, error) {
+func (a *APIMultiAuthConfig) ToService() (any, error) {
 	if a == nil {
 		return nil, nil
 	}
@@ -915,7 +915,7 @@ type APIKanopyAuthConfig struct {
 	KeysetURL  *string `json:"keyset_url"`
 }
 
-func (a *APIKanopyAuthConfig) BuildFromService(h interface{}) error {
+func (a *APIKanopyAuthConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case *evergreen.KanopyAuthConfig:
 		if v == nil {
@@ -930,7 +930,7 @@ func (a *APIKanopyAuthConfig) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (a *APIKanopyAuthConfig) ToService() (interface{}, error) {
+func (a *APIKanopyAuthConfig) ToService() (any, error) {
 	if a == nil {
 		return nil, nil
 	}
@@ -959,7 +959,7 @@ type APIHostInitConfig struct {
 	MaxTotalDynamicHosts int `json:"max_total_dynamic_hosts"`
 }
 
-func (a *APIHostInitConfig) BuildFromService(h interface{}) error {
+func (a *APIHostInitConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.HostInitConfig:
 		a.HostThrottle = v.HostThrottle
@@ -972,7 +972,7 @@ func (a *APIHostInitConfig) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (a *APIHostInitConfig) ToService() (interface{}, error) {
+func (a *APIHostInitConfig) ToService() (any, error) {
 	return evergreen.HostInitConfig{
 		HostThrottle:         a.HostThrottle,
 		ProvisioningThrottle: a.ProvisioningThrottle,
@@ -987,7 +987,7 @@ type APIPodLifecycleConfig struct {
 	MaxSecretCleanupRate        int `json:"max_secret_cleanup_rate"`
 }
 
-func (a *APIPodLifecycleConfig) BuildFromService(h interface{}) error {
+func (a *APIPodLifecycleConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.PodLifecycleConfig:
 		a.MaxParallelPodRequests = v.MaxParallelPodRequests
@@ -999,7 +999,7 @@ func (a *APIPodLifecycleConfig) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (a *APIPodLifecycleConfig) ToService() (interface{}, error) {
+func (a *APIPodLifecycleConfig) ToService() (any, error) {
 	return evergreen.PodLifecycleConfig{
 		MaxParallelPodRequests:      a.MaxParallelPodRequests,
 		MaxPodDefinitionCleanupRate: a.MaxPodDefinitionCleanupRate,
@@ -1015,7 +1015,7 @@ type APIJiraConfig struct {
 	OAuth1Config    *APIJiraOAuth1    `json:"oauth1"`
 }
 
-func (a *APIJiraConfig) BuildFromService(h interface{}) error {
+func (a *APIJiraConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.JiraConfig:
 		a.Host = utility.ToStringPtr(v.Host)
@@ -1030,7 +1030,7 @@ func (a *APIJiraConfig) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (a *APIJiraConfig) ToService() (interface{}, error) {
+func (a *APIJiraConfig) ToService() (any, error) {
 	c := evergreen.JiraConfig{
 		Host:  utility.FromStringPtr(a.Host),
 		Email: utility.FromStringPtr(a.Email),
@@ -1092,7 +1092,7 @@ type APILoggerConfig struct {
 	RedactKeys     []*string        `json:"redact_keys"`
 }
 
-func (a *APILoggerConfig) BuildFromService(h interface{}) error {
+func (a *APILoggerConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.LoggerConfig:
 		a.DefaultLevel = utility.ToStringPtr(v.DefaultLevel)
@@ -1109,7 +1109,7 @@ func (a *APILoggerConfig) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (a *APILoggerConfig) ToService() (interface{}, error) {
+func (a *APILoggerConfig) ToService() (any, error) {
 	config := evergreen.LoggerConfig{
 		DefaultLevel:   utility.FromStringPtr(a.DefaultLevel),
 		ThresholdLevel: utility.FromStringPtr(a.ThresholdLevel),
@@ -1132,7 +1132,7 @@ type APILogBuffering struct {
 	IncomingBufferFactor int  `json:"incoming_buffer_factor"`
 }
 
-func (a *APILogBuffering) BuildFromService(h interface{}) error {
+func (a *APILogBuffering) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.LogBuffering:
 		a.UseAsync = v.UseAsync
@@ -1145,7 +1145,7 @@ func (a *APILogBuffering) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (a *APILogBuffering) ToService() (interface{}, error) {
+func (a *APILogBuffering) ToService() (any, error) {
 	return evergreen.LogBuffering{
 		UseAsync:             a.UseAsync,
 		DurationSeconds:      a.DurationSeconds,
@@ -1160,7 +1160,7 @@ type APINotifyConfig struct {
 	SES                     APISESConfig `json:"ses"`
 }
 
-func (a *APINotifyConfig) BuildFromService(h interface{}) error {
+func (a *APINotifyConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.NotifyConfig:
 		a.SES = APISESConfig{}
@@ -1175,7 +1175,7 @@ func (a *APINotifyConfig) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (a *APINotifyConfig) ToService() (interface{}, error) {
+func (a *APINotifyConfig) ToService() (any, error) {
 	ses, err := a.SES.ToService()
 	if err != nil {
 		return nil, err
@@ -1192,7 +1192,7 @@ type APIOverridesConfig struct {
 	Overrides []APIOverride `json:"overrides"`
 }
 
-func (a *APIOverridesConfig) BuildFromService(h interface{}) error {
+func (a *APIOverridesConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.OverridesConfig:
 		var overrides []APIOverride
@@ -1210,7 +1210,7 @@ func (a *APIOverridesConfig) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (a *APIOverridesConfig) ToService() (interface{}, error) {
+func (a *APIOverridesConfig) ToService() (any, error) {
 	var overrides []evergreen.Override
 	for _, apiOverride := range a.Overrides {
 		overrideInterface, err := apiOverride.ToService()
@@ -1229,9 +1229,9 @@ func (a *APIOverridesConfig) ToService() (interface{}, error) {
 }
 
 type APIOverride struct {
-	SectionID *string     `bson:"section_id" json:"section_id"`
-	Field     *string     `bson:"field" json:"field"`
-	Value     interface{} `bson:"value" json:"value"`
+	SectionID *string `bson:"section_id" json:"section_id"`
+	Field     *string `bson:"field" json:"field"`
+	Value     any     `bson:"value" json:"value"`
 }
 
 // MarshalJSON is a custom JSON marshaler function to satisfy the [json.Marshaler] interface.
@@ -1246,7 +1246,7 @@ func (a *APIOverride) UnmarshalJSON(data []byte) error {
 	return bson.UnmarshalExtJSON(data, false, a)
 }
 
-func (a *APIOverride) BuildFromService(h interface{}) error {
+func (a *APIOverride) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.Override:
 		a.SectionID = utility.ToStringPtr(v.SectionID)
@@ -1258,7 +1258,7 @@ func (a *APIOverride) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (a *APIOverride) ToService() (interface{}, error) {
+func (a *APIOverride) ToService() (any, error) {
 	override := evergreen.Override{
 		SectionID: utility.FromStringPtr(a.SectionID),
 		Field:     utility.FromStringPtr(a.Field),
@@ -1271,7 +1271,7 @@ type APIParameterStoreConfig struct {
 	Prefix *string `json:"prefix"`
 }
 
-func (a *APIParameterStoreConfig) BuildFromService(h interface{}) error {
+func (a *APIParameterStoreConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.ParameterStoreConfig:
 		a.Prefix = utility.ToStringPtr(v.Prefix)
@@ -1281,7 +1281,7 @@ func (a *APIParameterStoreConfig) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (a *APIParameterStoreConfig) ToService() (interface{}, error) {
+func (a *APIParameterStoreConfig) ToService() (any, error) {
 	return evergreen.ParameterStoreConfig{
 		Prefix: utility.FromStringPtr(a.Prefix),
 	}, nil
@@ -1292,7 +1292,7 @@ type APIOwnerRepo struct {
 	Repo  *string `json:"repo"`
 }
 
-func (a *APIOwnerRepo) BuildFromService(h interface{}) error {
+func (a *APIOwnerRepo) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.OwnerRepo:
 		a.Owner = utility.ToStringPtr(v.Owner)
@@ -1303,7 +1303,7 @@ func (a *APIOwnerRepo) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (a *APIOwnerRepo) ToService() (interface{}, error) {
+func (a *APIOwnerRepo) ToService() (any, error) {
 	res := evergreen.OwnerRepo{}
 	res.Owner = utility.FromStringPtr(a.Owner)
 	res.Repo = utility.FromStringPtr(a.Repo)
@@ -1317,7 +1317,7 @@ type APIProjectCreationConfig struct {
 	JiraProject       string         `json:"jira_project"`
 }
 
-func (a *APIProjectCreationConfig) BuildFromService(h interface{}) error {
+func (a *APIProjectCreationConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.ProjectCreationConfig:
 		for _, ownerRepo := range v.RepoExceptions {
@@ -1337,7 +1337,7 @@ func (a *APIProjectCreationConfig) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (a *APIProjectCreationConfig) ToService() (interface{}, error) {
+func (a *APIProjectCreationConfig) ToService() (any, error) {
 	if a == nil {
 		return nil, nil
 	}
@@ -1368,7 +1368,7 @@ type APICloudProviders struct {
 	Docker *APIDockerConfig `json:"docker"`
 }
 
-func (a *APICloudProviders) BuildFromService(h interface{}) error {
+func (a *APICloudProviders) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.CloudProviders:
 		a.AWS = &APIAWSConfig{}
@@ -1385,7 +1385,7 @@ func (a *APICloudProviders) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (a *APICloudProviders) ToService() (interface{}, error) {
+func (a *APICloudProviders) ToService() (any, error) {
 	aws, err := a.AWS.ToService()
 	if err != nil {
 		return nil, err
@@ -1404,7 +1404,7 @@ type APIContainerPoolsConfig struct {
 	Pools []APIContainerPool `json:"pools"`
 }
 
-func (a *APIContainerPoolsConfig) BuildFromService(h interface{}) error {
+func (a *APIContainerPoolsConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.ContainerPoolsConfig:
 		for _, pool := range v.Pools {
@@ -1420,7 +1420,7 @@ func (a *APIContainerPoolsConfig) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (a *APIContainerPoolsConfig) ToService() (interface{}, error) {
+func (a *APIContainerPoolsConfig) ToService() (any, error) {
 	if a == nil {
 		return nil, nil
 	}
@@ -1443,7 +1443,7 @@ type APIContainerPool struct {
 	Port          uint16  `json:"port"`
 }
 
-func (a *APIContainerPool) BuildFromService(h interface{}) error {
+func (a *APIContainerPool) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.ContainerPool:
 		a.Distro = utility.ToStringPtr(v.Distro)
@@ -1456,7 +1456,7 @@ func (a *APIContainerPool) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (a *APIContainerPool) ToService() (interface{}, error) {
+func (a *APIContainerPool) ToService() (any, error) {
 	return evergreen.ContainerPool{
 		Distro:        utility.FromStringPtr(a.Distro),
 		Id:            utility.FromStringPtr(a.Id),
@@ -1472,7 +1472,7 @@ type APIEC2Key struct {
 	Secret *string `json:"secret"`
 }
 
-func (a *APIEC2Key) BuildFromService(h interface{}) error {
+func (a *APIEC2Key) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.EC2Key:
 		a.Name = utility.ToStringPtr(v.Name)
@@ -1485,7 +1485,7 @@ func (a *APIEC2Key) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (a *APIEC2Key) ToService() (interface{}, error) {
+func (a *APIEC2Key) ToService() (any, error) {
 	res := evergreen.EC2Key{}
 	res.Name = utility.FromStringPtr(a.Name)
 	res.Region = utility.FromStringPtr(a.Region)
@@ -1499,7 +1499,7 @@ type APISubnet struct {
 	SubnetID *string `json:"subnet_id"`
 }
 
-func (a *APISubnet) BuildFromService(h interface{}) error {
+func (a *APISubnet) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.Subnet:
 		a.AZ = utility.ToStringPtr(v.AZ)
@@ -1510,7 +1510,7 @@ func (a *APISubnet) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (a *APISubnet) ToService() (interface{}, error) {
+func (a *APISubnet) ToService() (any, error) {
 	res := evergreen.Subnet{}
 	res.AZ = utility.FromStringPtr(a.AZ)
 	res.SubnetID = utility.FromStringPtr(a.SubnetID)
@@ -1529,7 +1529,7 @@ type APIAWSConfig struct {
 	Pod                  *APIAWSPodConfig          `json:"pod"`
 }
 
-func (a *APIAWSConfig) BuildFromService(h interface{}) error {
+func (a *APIAWSConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.AWSConfig:
 		for _, key := range v.EC2Keys {
@@ -1574,7 +1574,7 @@ func (a *APIAWSConfig) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (a *APIAWSConfig) ToService() (interface{}, error) {
+func (a *APIAWSConfig) ToService() (any, error) {
 	if a == nil {
 		return nil, nil
 	}
@@ -1583,7 +1583,7 @@ func (a *APIAWSConfig) ToService() (interface{}, error) {
 		MaxVolumeSizePerUser: evergreen.DefaultMaxVolumeSizePerUser,
 	}
 
-	var i interface{}
+	var i any
 	var err error
 	var ok bool
 
@@ -1659,7 +1659,7 @@ type APIS3Credentials struct {
 	Bucket *string `json:"bucket"`
 }
 
-func (a *APIS3Credentials) BuildFromService(h interface{}) error {
+func (a *APIS3Credentials) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.S3Credentials:
 		a.Key = utility.ToStringPtr(v.Key)
@@ -1671,7 +1671,7 @@ func (a *APIS3Credentials) BuildFromService(h interface{}) error {
 	}
 }
 
-func (a *APIS3Credentials) ToService() (interface{}, error) {
+func (a *APIS3Credentials) ToService() (any, error) {
 	if a == nil {
 		return nil, nil
 	}
@@ -1690,7 +1690,7 @@ type APIParserProjectS3Config struct {
 	GeneratedJSONPrefix *string `json:"generated_json_prefix"`
 }
 
-func (a *APIParserProjectS3Config) BuildFromService(h interface{}) error {
+func (a *APIParserProjectS3Config) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.ParserProjectS3Config:
 		a.Key = utility.ToStringPtr(v.Key)
@@ -1704,7 +1704,7 @@ func (a *APIParserProjectS3Config) BuildFromService(h interface{}) error {
 	}
 }
 
-func (a *APIParserProjectS3Config) ToService() (interface{}, error) {
+func (a *APIParserProjectS3Config) ToService() (any, error) {
 	if a == nil {
 		return nil, nil
 	}
@@ -1726,7 +1726,7 @@ type APIPersistentDNSConfig struct {
 	Domain       *string `json:"domain"`
 }
 
-func (a *APIPersistentDNSConfig) BuildFromService(h interface{}) error {
+func (a *APIPersistentDNSConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.PersistentDNSConfig:
 		a.HostedZoneID = utility.ToStringPtr(v.HostedZoneID)
@@ -1737,7 +1737,7 @@ func (a *APIPersistentDNSConfig) BuildFromService(h interface{}) error {
 	}
 }
 
-func (a *APIPersistentDNSConfig) ToService() (interface{}, error) {
+func (a *APIPersistentDNSConfig) ToService() (any, error) {
 	if a == nil {
 		return nil, nil
 	}
@@ -1975,7 +1975,7 @@ type APIDockerConfig struct {
 	APIVersion *string `json:"api_version"`
 }
 
-func (a *APIDockerConfig) BuildFromService(h interface{}) error {
+func (a *APIDockerConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.DockerConfig:
 		a.APIVersion = utility.ToStringPtr(v.APIVersion)
@@ -1985,7 +1985,7 @@ func (a *APIDockerConfig) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (a *APIDockerConfig) ToService() (interface{}, error) {
+func (a *APIDockerConfig) ToService() (any, error) {
 	return evergreen.DockerConfig{
 		APIVersion: utility.FromStringPtr(a.APIVersion),
 	}, nil
@@ -1997,7 +1997,7 @@ type APIRepoTrackerConfig struct {
 	MaxConcurrentRequests      int `json:"max_con_requests"`
 }
 
-func (a *APIRepoTrackerConfig) BuildFromService(h interface{}) error {
+func (a *APIRepoTrackerConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.RepoTrackerConfig:
 		a.NumNewRepoRevisionsToFetch = v.NumNewRepoRevisionsToFetch
@@ -2009,7 +2009,7 @@ func (a *APIRepoTrackerConfig) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (a *APIRepoTrackerConfig) ToService() (interface{}, error) {
+func (a *APIRepoTrackerConfig) ToService() (any, error) {
 	return evergreen.RepoTrackerConfig{
 		NumNewRepoRevisionsToFetch: a.NumNewRepoRevisionsToFetch,
 		MaxConcurrentRequests:      a.MaxConcurrentRequests,
@@ -2025,7 +2025,6 @@ type APISchedulerConfig struct {
 	HostsOverallocatedRule        *string `json:"hosts_overallocated_rule"`
 	FutureHostFraction            float64 `json:"free_host_fraction"`
 	CacheDurationSeconds          int     `json:"cache_duration_seconds"`
-	Planner                       *string `json:"planner"`
 	TargetTimeSeconds             int     `json:"target_time_seconds"`
 	AcceptableHostIdleTimeSeconds int     `json:"acceptable_host_idle_time_seconds"`
 	GroupVersions                 bool    `json:"group_versions"`
@@ -2039,7 +2038,7 @@ type APISchedulerConfig struct {
 	StepbackTaskFactor            int64   `json:"stepback_task_factor"`
 }
 
-func (a *APISchedulerConfig) BuildFromService(h interface{}) error {
+func (a *APISchedulerConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.SchedulerConfig:
 		a.TaskFinder = utility.ToStringPtr(v.TaskFinder)
@@ -2048,7 +2047,6 @@ func (a *APISchedulerConfig) BuildFromService(h interface{}) error {
 		a.HostsOverallocatedRule = utility.ToStringPtr(v.HostsOverallocatedRule)
 		a.FutureHostFraction = v.FutureHostFraction
 		a.CacheDurationSeconds = v.CacheDurationSeconds
-		a.Planner = utility.ToStringPtr(v.Planner)
 		a.TargetTimeSeconds = v.TargetTimeSeconds
 		a.AcceptableHostIdleTimeSeconds = v.AcceptableHostIdleTimeSeconds
 		a.GroupVersions = v.GroupVersions
@@ -2066,7 +2064,7 @@ func (a *APISchedulerConfig) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (a *APISchedulerConfig) ToService() (interface{}, error) {
+func (a *APISchedulerConfig) ToService() (any, error) {
 	return evergreen.SchedulerConfig{
 		TaskFinder:                    utility.FromStringPtr(a.TaskFinder),
 		HostAllocator:                 utility.FromStringPtr(a.HostAllocator),
@@ -2074,7 +2072,6 @@ func (a *APISchedulerConfig) ToService() (interface{}, error) {
 		HostsOverallocatedRule:        utility.FromStringPtr(a.HostsOverallocatedRule),
 		FutureHostFraction:            a.FutureHostFraction,
 		CacheDurationSeconds:          a.CacheDurationSeconds,
-		Planner:                       utility.FromStringPtr(a.Planner),
 		TargetTimeSeconds:             a.TargetTimeSeconds,
 		AcceptableHostIdleTimeSeconds: a.AcceptableHostIdleTimeSeconds,
 		GroupVersions:                 a.GroupVersions,
@@ -2133,7 +2130,7 @@ type APIProjectTasksPair struct {
 	AllowedTasks []string `json:"allowed_tasks"`
 }
 
-func (a *APIProjectTasksPair) BuildFromService(h interface{}) error {
+func (a *APIProjectTasksPair) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.ProjectTasksPair:
 		a.ProjectID = v.ProjectID
@@ -2144,7 +2141,7 @@ func (a *APIProjectTasksPair) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (a *APIProjectTasksPair) ToService() (interface{}, error) {
+func (a *APIProjectTasksPair) ToService() (any, error) {
 	return evergreen.ProjectTasksPair{
 		ProjectID:    a.ProjectID,
 		AllowedTasks: a.AllowedTasks,
@@ -2155,7 +2152,7 @@ type APISingleTaskDistroConfig struct {
 	ProjectTasksPairs []APIProjectTasksPair `json:"project_tasks_pair"`
 }
 
-func (a *APISingleTaskDistroConfig) BuildFromService(h interface{}) error {
+func (a *APISingleTaskDistroConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.SingleTaskDistroConfig:
 		apiPairs := []APIProjectTasksPair{}
@@ -2173,7 +2170,7 @@ func (a *APISingleTaskDistroConfig) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (a *APISingleTaskDistroConfig) ToService() (interface{}, error) {
+func (a *APISingleTaskDistroConfig) ToService() (any, error) {
 	pairs := []evergreen.ProjectTasksPair{}
 	for _, pair := range a.ProjectTasksPairs {
 		p, err := pair.ToService()
@@ -2200,7 +2197,7 @@ type APISlackConfig struct {
 	Name    *string          `json:"name"`
 }
 
-func (a *APISlackConfig) BuildFromService(h interface{}) error {
+func (a *APISlackConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.SlackConfig:
 		a.Token = utility.ToStringPtr(v.Token)
@@ -2218,7 +2215,7 @@ func (a *APISlackConfig) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (a *APISlackConfig) ToService() (interface{}, error) {
+func (a *APISlackConfig) ToService() (any, error) {
 	i, err := a.Options.ToService()
 	if err != nil {
 		return nil, err
@@ -2243,7 +2240,7 @@ type APISlackOptions struct {
 	FieldsSet     map[string]bool `json:"fields"`
 }
 
-func (a *APISlackOptions) BuildFromService(h interface{}) error {
+func (a *APISlackOptions) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case send.SlackOptions:
 		a.Channel = utility.ToStringPtr(v.Channel)
@@ -2260,7 +2257,7 @@ func (a *APISlackOptions) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (a *APISlackOptions) ToService() (interface{}, error) {
+func (a *APISlackOptions) ToService() (any, error) {
 	if a == nil {
 		return send.SlackOptions{}, nil
 	}
@@ -2280,7 +2277,7 @@ type APISleepScheduleConfig struct {
 	PermanentlyExemptHosts []string `json:"permanently_exempt_hosts"`
 }
 
-func (a *APISleepScheduleConfig) BuildFromService(h interface{}) error {
+func (a *APISleepScheduleConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.SleepScheduleConfig:
 		a.PermanentlyExemptHosts = v.PermanentlyExemptHosts
@@ -2290,7 +2287,7 @@ func (a *APISleepScheduleConfig) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (a *APISleepScheduleConfig) ToService() (interface{}, error) {
+func (a *APISleepScheduleConfig) ToService() (any, error) {
 	if a == nil {
 		return evergreen.SleepScheduleConfig{}, nil
 	}
@@ -2303,7 +2300,7 @@ type APISplunkConfig struct {
 	SplunkConnectionInfo *APISplunkConnectionInfo `json:"splunk_connection_info"`
 }
 
-func (a *APISplunkConfig) BuildFromService(h interface{}) error {
+func (a *APISplunkConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.SplunkConfig:
 		a.SplunkConnectionInfo = &APISplunkConnectionInfo{}
@@ -2314,7 +2311,7 @@ func (a *APISplunkConfig) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (a *APISplunkConfig) ToService() (interface{}, error) {
+func (a *APISplunkConfig) ToService() (any, error) {
 	c := evergreen.SplunkConfig{}
 	if a.SplunkConnectionInfo != nil {
 		c.SplunkConnectionInfo = a.SplunkConnectionInfo.ToService()
@@ -2360,7 +2357,7 @@ type APIUIConfig struct {
 	StagingEnvironment        *string         `json:"staging_environment"`
 }
 
-func (a *APIUIConfig) BuildFromService(h interface{}) error {
+func (a *APIUIConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.UIConfig:
 		a.Url = utility.ToStringPtr(v.Url)
@@ -2387,7 +2384,7 @@ func (a *APIUIConfig) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (a *APIUIConfig) ToService() (interface{}, error) {
+func (a *APIUIConfig) ToService() (any, error) {
 	return evergreen.UIConfig{
 		Url:                       utility.FromStringPtr(a.Url),
 		HelpUrl:                   utility.FromStringPtr(a.HelpUrl),
@@ -2416,7 +2413,7 @@ type APINewRelicConfig struct {
 }
 
 // BuildFromService builds a model from the service layer
-func (a *APINewRelicConfig) BuildFromService(h interface{}) error {
+func (a *APINewRelicConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.NewRelicConfig:
 		a.AccountID = utility.ToStringPtr(v.AccountID)
@@ -2431,7 +2428,7 @@ func (a *APINewRelicConfig) BuildFromService(h interface{}) error {
 }
 
 // ToService returns a service model from an API model
-func (a *APINewRelicConfig) ToService() (interface{}, error) {
+func (a *APINewRelicConfig) ToService() (any, error) {
 	return evergreen.NewRelicConfig{
 		AccountID:     utility.FromStringPtr(a.AccountID),
 		TrustKey:      utility.FromStringPtr(a.TrustKey),
@@ -2448,7 +2445,7 @@ type RestartResponse struct {
 }
 
 // BuildFromService builds a model from the service layer
-func (ab *APIBanner) BuildFromService(h interface{}) error {
+func (ab *APIBanner) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case APIBanner:
 		ab.Text = v.Text
@@ -2460,12 +2457,12 @@ func (ab *APIBanner) BuildFromService(h interface{}) error {
 }
 
 // ToService is not yet implemented
-func (ab *APIBanner) ToService() (interface{}, error) {
+func (ab *APIBanner) ToService() (any, error) {
 	return ab, nil
 }
 
 // BuildFromService builds a model from the service layer
-func (as *APIServiceFlags) BuildFromService(h interface{}) error {
+func (as *APIServiceFlags) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.ServiceFlags:
 		as.TaskDispatchDisabled = v.TaskDispatchDisabled
@@ -2508,7 +2505,7 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 }
 
 // ToService returns a service model from an API model
-func (as *APIServiceFlags) ToService() (interface{}, error) {
+func (as *APIServiceFlags) ToService() (any, error) {
 	return evergreen.ServiceFlags{
 		TaskDispatchDisabled:            as.TaskDispatchDisabled,
 		HostInitDisabled:                as.HostInitDisabled,
@@ -2547,7 +2544,7 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 }
 
 // BuildFromService builds a model from the service layer
-func (rtr *RestartResponse) BuildFromService(h interface{}) error {
+func (rtr *RestartResponse) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case *RestartResponse:
 		rtr.ItemsRestarted = v.ItemsRestarted
@@ -2559,7 +2556,7 @@ func (rtr *RestartResponse) BuildFromService(h interface{}) error {
 }
 
 // ToService is not implemented for /admin/restart
-func (rtr *RestartResponse) ToService() (interface{}, error) {
+func (rtr *RestartResponse) ToService() (any, error) {
 	return nil, errors.New("ToService not implemented for RestartTasksResponse")
 }
 
@@ -2612,7 +2609,7 @@ type APIJIRANotificationsProject struct {
 	Labels     []string          `json:"labels,omitempty"`
 }
 
-func (j *APIJIRANotificationsConfig) BuildFromService(h interface{}) error {
+func (j *APIJIRANotificationsConfig) BuildFromService(h any) error {
 	var config *evergreen.JIRANotificationsConfig
 	switch v := h.(type) {
 	case *evergreen.JIRANotificationsConfig:
@@ -2636,7 +2633,7 @@ func (j *APIJIRANotificationsConfig) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (j *APIJIRANotificationsConfig) ToService() (interface{}, error) {
+func (j *APIJIRANotificationsConfig) ToService() (any, error) {
 	service := evergreen.JIRANotificationsConfig{}
 	if len(j.CustomFields) == 0 {
 		return service, nil
@@ -2656,7 +2653,7 @@ func (j *APIJIRANotificationsConfig) ToService() (interface{}, error) {
 	return service, nil
 }
 
-func (j *APIJIRANotificationsProject) BuildFromService(h interface{}) error {
+func (j *APIJIRANotificationsProject) BuildFromService(h any) error {
 	serviceProject, ok := h.(evergreen.JIRANotificationsProject)
 	if !ok {
 		return errors.Errorf("programmatic error: expected Jira project notifications config but got type %T", h)
@@ -2673,7 +2670,7 @@ func (j *APIJIRANotificationsProject) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (j *APIJIRANotificationsProject) ToService() (interface{}, error) {
+func (j *APIJIRANotificationsProject) ToService() (any, error) {
 	service := evergreen.JIRANotificationsProject{}
 	for field, template := range j.Fields {
 		service.Fields = append(service.Fields, evergreen.JIRANotificationsCustomField{Field: field, Template: template})
@@ -2688,7 +2685,7 @@ type APITriggerConfig struct {
 	GenerateTaskDistro *string `json:"generate_distro"`
 }
 
-func (c *APITriggerConfig) BuildFromService(h interface{}) error {
+func (c *APITriggerConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.TriggerConfig:
 		c.GenerateTaskDistro = utility.ToStringPtr(v.GenerateTaskDistro)
@@ -2697,7 +2694,7 @@ func (c *APITriggerConfig) BuildFromService(h interface{}) error {
 	}
 	return nil
 }
-func (c *APITriggerConfig) ToService() (interface{}, error) {
+func (c *APITriggerConfig) ToService() (any, error) {
 	return evergreen.TriggerConfig{
 		GenerateTaskDistro: utility.FromStringPtr(c.GenerateTaskDistro),
 	}, nil
@@ -2711,7 +2708,7 @@ type APIHostJasperConfig struct {
 	Version          *string `json:"version,omitempty"`
 }
 
-func (c *APIHostJasperConfig) BuildFromService(h interface{}) error {
+func (c *APIHostJasperConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.HostJasperConfig:
 		c.BinaryName = utility.ToStringPtr(v.BinaryName)
@@ -2725,7 +2722,7 @@ func (c *APIHostJasperConfig) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (c *APIHostJasperConfig) ToService() (interface{}, error) {
+func (c *APIHostJasperConfig) ToService() (any, error) {
 	return evergreen.HostJasperConfig{
 		BinaryName:       utility.FromStringPtr(c.BinaryName),
 		DownloadFileName: utility.FromStringPtr(c.DownloadFileName),
@@ -2741,7 +2738,7 @@ type APISpawnHostConfig struct {
 	SpawnHostsPerUser         *int `json:"spawn_hosts_per_user"`
 }
 
-func (c *APISpawnHostConfig) BuildFromService(h interface{}) error {
+func (c *APISpawnHostConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.SpawnHostConfig:
 		c.UnexpirableHostsPerUser = &v.UnexpirableHostsPerUser
@@ -2753,7 +2750,7 @@ func (c *APISpawnHostConfig) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (c *APISpawnHostConfig) ToService() (interface{}, error) {
+func (c *APISpawnHostConfig) ToService() (any, error) {
 	config := evergreen.SpawnHostConfig{
 		UnexpirableHostsPerUser:   evergreen.DefaultUnexpirableHostsPerUser,
 		UnexpirableVolumesPerUser: evergreen.DefaultUnexpirableVolumesPerUser,
@@ -2779,7 +2776,7 @@ type APITracerSettings struct {
 	CollectorAPIKey           *string `json:"collector_api_key"`
 }
 
-func (c *APITracerSettings) BuildFromService(h interface{}) error {
+func (c *APITracerSettings) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.TracerConfig:
 		c.Enabled = &v.Enabled
@@ -2792,7 +2789,7 @@ func (c *APITracerSettings) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (c *APITracerSettings) ToService() (interface{}, error) {
+func (c *APITracerSettings) ToService() (any, error) {
 	config := evergreen.TracerConfig{
 		Enabled:                   utility.FromBoolPtr(c.Enabled),
 		CollectorEndpoint:         utility.FromStringPtr(c.CollectorEndpoint),
@@ -2807,7 +2804,7 @@ type APIGitHubCheckRunConfig struct {
 	CheckRunLimit *int `json:"check_run_limit"`
 }
 
-func (c *APIGitHubCheckRunConfig) BuildFromService(h interface{}) error {
+func (c *APIGitHubCheckRunConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.GitHubCheckRunConfig:
 		c.CheckRunLimit = utility.ToIntPtr(v.CheckRunLimit)
@@ -2817,7 +2814,7 @@ func (c *APIGitHubCheckRunConfig) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (c *APIGitHubCheckRunConfig) ToService() (interface{}, error) {
+func (c *APIGitHubCheckRunConfig) ToService() (any, error) {
 	config := evergreen.GitHubCheckRunConfig{
 		CheckRunLimit: utility.FromIntPtr(c.CheckRunLimit),
 	}
@@ -2856,7 +2853,7 @@ type APITaskLimitsConfig struct {
 	MaxDailyAutomaticRestarts *int `json:"max_daily_automatic_restarts"`
 }
 
-func (c *APITaskLimitsConfig) BuildFromService(h interface{}) error {
+func (c *APITaskLimitsConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.TaskLimitsConfig:
 		c.MaxTasksPerVersion = utility.ToIntPtr(v.MaxTasksPerVersion)
@@ -2877,7 +2874,7 @@ func (c *APITaskLimitsConfig) BuildFromService(h interface{}) error {
 	}
 }
 
-func (c *APITaskLimitsConfig) ToService() (interface{}, error) {
+func (c *APITaskLimitsConfig) ToService() (any, error) {
 	return evergreen.TaskLimitsConfig{
 		MaxTasksPerVersion:                               utility.FromIntPtr(c.MaxTasksPerVersion),
 		MaxIncludesPerVersion:                            utility.FromIntPtr(c.MaxIncludesPerVersion),
@@ -2898,7 +2895,7 @@ type APITestSelectionConfig struct {
 	URL *string `json:"url"`
 }
 
-func (c *APITestSelectionConfig) BuildFromService(h interface{}) error {
+func (c *APITestSelectionConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.TestSelectionConfig:
 		c.URL = utility.ToStringPtr(v.URL)
@@ -2908,7 +2905,7 @@ func (c *APITestSelectionConfig) BuildFromService(h interface{}) error {
 	}
 }
 
-func (c *APITestSelectionConfig) ToService() (interface{}, error) {
+func (c *APITestSelectionConfig) ToService() (any, error) {
 	return evergreen.TestSelectionConfig{
 		URL: utility.FromStringPtr(c.URL),
 	}, nil
@@ -2919,7 +2916,7 @@ type APIRuntimeEnvironmentsConfig struct {
 	APIKey  *string `json:"api_key"`
 }
 
-func (a *APIRuntimeEnvironmentsConfig) BuildFromService(h interface{}) error {
+func (a *APIRuntimeEnvironmentsConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.RuntimeEnvironmentsConfig:
 		a.BaseURL = utility.ToStringPtr(v.BaseURL)
@@ -2930,7 +2927,7 @@ func (a *APIRuntimeEnvironmentsConfig) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (a *APIRuntimeEnvironmentsConfig) ToService() (interface{}, error) {
+func (a *APIRuntimeEnvironmentsConfig) ToService() (any, error) {
 	return evergreen.RuntimeEnvironmentsConfig{
 		BaseURL: utility.FromStringPtr(a.BaseURL),
 		APIKey:  utility.FromStringPtr(a.APIKey),

@@ -185,7 +185,7 @@ func TestECSSNSHandleNotification(t *testing.T) {
 		taskARN = "external_id"
 	)
 
-	makeJSON := func(t *testing.T, i interface{}) json.RawMessage {
+	makeJSON := func(t *testing.T, i any) json.RawMessage {
 		b, err := json.Marshal(i)
 		require.NoError(t, err)
 		return json.RawMessage(b)

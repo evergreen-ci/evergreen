@@ -32,7 +32,7 @@ type ec2AssumeRole struct {
 func ec2AssumeRoleFactory() Command   { return &ec2AssumeRole{} }
 func (r *ec2AssumeRole) Name() string { return "ec2.assume_role" }
 
-func (r *ec2AssumeRole) ParseParams(params map[string]interface{}) error {
+func (r *ec2AssumeRole) ParseParams(params map[string]any) error {
 	if err := mapstructure.Decode(params, r); err != nil {
 		return errors.Wrap(err, "decoding mapstructure params")
 	}

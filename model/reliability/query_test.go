@@ -165,7 +165,7 @@ func clearCollection() error {
 	return db.Clear(taskstats.DailyTaskStatsCollection)
 }
 
-func InsertDailyTaskStats(taskStats ...interface{}) error {
+func InsertDailyTaskStats(taskStats ...any) error {
 	err := db.InsertManyUnordered(taskstats.DailyTaskStatsCollection, taskStats...)
 	return err
 }
@@ -180,7 +180,7 @@ func handleNoFormat(format string, i int) string {
 
 func InsertManyDailyTaskStats(many int, prototype taskstats.DBTaskStats, projectFmt string, requesterFmt string, taskNameFmt string, variantFmt string, distroFmt string) error {
 
-	items := make([]interface{}, many)
+	items := make([]any, many)
 	for i := 0; i < many; i++ {
 		item := prototype
 		item.Id.Project = handleNoFormat(projectFmt, i)

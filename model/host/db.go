@@ -213,7 +213,7 @@ func IdleEphemeralGroupedByDistroID(ctx context.Context, env evergreen.Environme
 			"$group": bson.M{
 				"_id":                             "$" + bsonutil.GetDottedKeyName(DistroKey, distro.IdKey),
 				HostsByDistroRunningHostsCountKey: bson.M{"$sum": 1},
-				HostsByDistroIdleHostsKey:         bson.M{"$push": bson.M{"$cond": []interface{}{bson.M{"$eq": []interface{}{"$running_task", bson.Undefined{}}}, "$$ROOT", bson.Undefined{}}}},
+				HostsByDistroIdleHostsKey:         bson.M{"$push": bson.M{"$cond": []any{bson.M{"$eq": []any{"$running_task", bson.Undefined{}}}, "$$ROOT", bson.Undefined{}}}},
 			},
 		},
 		{
@@ -981,7 +981,7 @@ func InsertMany(ctx context.Context, hosts []Host) error {
 		return nil
 	}
 
-	docs := make([]interface{}, len(hosts))
+	docs := make([]any, len(hosts))
 	for idx := range hosts {
 		docs[idx] = &hosts[idx]
 	}
@@ -1007,7 +1007,7 @@ func DeleteMany(ctx context.Context, filter bson.M, options ...options.Lister[op
 }
 
 func GetHostsByFromIDWithStatus(ctx context.Context, id, status, user string, limit int) ([]Host, error) {
-	var statusMatch interface{}
+	var statusMatch any
 	if status != "" {
 		statusMatch = status
 	} else {
@@ -1042,7 +1042,7 @@ type HostsInRangeParams struct {
 
 // FindHostsInRange is a method to find a filtered list of hosts
 func FindHostsInRange(ctx context.Context, params HostsInRangeParams) ([]Host, error) {
-	var statusMatch interface{}
+	var statusMatch any
 	if params.Status != "" {
 		statusMatch = params.Status
 	} else {
@@ -1149,9 +1149,9 @@ func lastContainerFinishTimePipeline() []bson.M {
 				output: bson.M{
 					// computes last container finish time for each host
 					"$max": bson.M{
-						"$add": []interface{}{bsonutil.GetDottedKeyName("$task", "start_time"),
+						"$add": []any{bsonutil.GetDottedKeyName("$task", "start_time"),
 							// divide by 1000000 to treat duration as milliseconds rather than as nanoseconds
-							bson.M{"$divide": []interface{}{bsonutil.GetDottedKeyName("$task", "duration_prediction", "value"), 1000000}},
+							bson.M{"$divide": []any{bsonutil.GetDottedKeyName("$task", "duration_prediction", "value"), 1000000}},
 						},
 					},
 				},
@@ -1255,7 +1255,7 @@ func (h *Host) RemoveVolumeFromHost(ctx context.Context, volumeId string) error 
 }
 
 // FindOne gets one Volume for the given query.
-func FindOneVolume(ctx context.Context, query interface{}) (*Volume, error) {
+func FindOneVolume(ctx context.Context, query any) (*Volume, error) {
 	v := &Volume{}
 	err := db.FindOneQContext(ctx, VolumesCollection, db.Query(query), v)
 	if adb.ResultsNotFound(err) {
@@ -1427,7 +1427,7 @@ func UnsafeReplace(ctx context.Context, env evergreen.Environment, idToRemove st
 	}
 	defer sess.EndSession(ctx)
 
-	replaceHost := func(sessCtx context.Context) (interface{}, error) {
+	replaceHost := func(sessCtx context.Context) (any, error) {
 		if err := RemoveStrict(sessCtx, env, idToRemove); err != nil {
 			return nil, errors.Wrapf(err, "removing old host '%s'", idToRemove)
 		}
@@ -1569,7 +1569,7 @@ func isSleepScheduleEnabledQuery(q bson.M, now time.Time) bson.M {
 		},
 	}
 
-	andClauses := []interface{}{bson.M{"$or": notTemporarilyExempt}}
+	andClauses := []any{bson.M{"$or": notTemporarilyExempt}}
 	if andClause, ok := q["$and"]; ok {
 		// Combine $and/$or clauses in case $and is already defined.
 		andClauses = append(andClauses, andClause)

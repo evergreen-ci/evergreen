@@ -120,9 +120,9 @@ func (jiraHandler *JiraHandler) JiraHost() string { return jiraHandler.opts.Base
 
 // CreateTicket takes a map of fields to initialize a JIRA ticket with. Returns a response containing the
 // new ticket's key, id, and API URL. See the JIRA API documentation for help.
-func (jiraHandler *JiraHandler) CreateTicket(fields map[string]interface{}) (*JiraCreateTicketResponse, error) {
+func (jiraHandler *JiraHandler) CreateTicket(fields map[string]any) (*JiraCreateTicketResponse, error) {
 	postArgs := struct {
-		Fields map[string]interface{} `json:"fields"`
+		Fields map[string]any `json:"fields"`
 	}{fields}
 	apiEndpoint := fmt.Sprintf("%s/rest/api/2/issue", jiraHandler.JiraHost())
 	body := &bytes.Buffer{}
@@ -157,10 +157,10 @@ func (jiraHandler *JiraHandler) CreateTicket(fields map[string]interface{}) (*Ji
 }
 
 // UpdateTicket sets the given fields of the ticket with the given key. Returns any errors JIRA returns.
-func (jiraHandler *JiraHandler) UpdateTicket(key string, fields map[string]interface{}) error {
+func (jiraHandler *JiraHandler) UpdateTicket(key string, fields map[string]any) error {
 	apiEndpoint := fmt.Sprintf("%s/rest/api/2/issue/%v", jiraHandler.JiraHost(), url.QueryEscape(key))
 	putArgs := struct {
-		Fields map[string]interface{} `json:"fields"`
+		Fields map[string]any `json:"fields"`
 	}{fields}
 	body := &bytes.Buffer{}
 	if err := json.NewEncoder(body).Encode(putArgs); err != nil {

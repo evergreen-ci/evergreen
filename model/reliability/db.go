@@ -57,7 +57,7 @@ func (filter TaskReliabilityFilter) dateBoundaries() []time.Time {
 // BuildTaskPaginationOrBranches builds an expression for the conditions imposed by the filter StartAt field.
 func (filter TaskReliabilityFilter) buildTaskPaginationOrBranches() []bson.M {
 	var dateDescending = filter.Sort == taskstats.SortLatestFirst
-	var nextDate interface{}
+	var nextDate any
 
 	if filter.GroupNumDays > 1 {
 		nextDate = filter.StartAt.Date
@@ -122,7 +122,7 @@ func (filter TaskReliabilityFilter) buildMatchStageForTask() bson.M {
 
 // buildDateStageGroupID builds the date of the grouped
 // period the stats document belongs in.
-func (filter TaskReliabilityFilter) buildDateStageGroupID(inputDateFieldName string) interface{} {
+func (filter TaskReliabilityFilter) buildDateStageGroupID(inputDateFieldName string) any {
 	numDays := filter.GroupNumDays
 	inputDateFieldRef := "$" + inputDateFieldName
 	if numDays <= 1 {

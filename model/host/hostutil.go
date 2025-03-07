@@ -653,7 +653,7 @@ func ValidateRDPPassword(password string) bool {
 // assuming the CLI is on the same local machine as the Jasper service. To make
 // requests to a remote Jasper service using RPC, make the request through
 // JasperClient instead.
-func (h *Host) buildLocalJasperClientRequest(config evergreen.HostJasperConfig, subCmd string, input interface{}) (string, error) {
+func (h *Host) buildLocalJasperClientRequest(config evergreen.HostJasperConfig, subCmd string, input any) (string, error) {
 	inputBytes, err := json.Marshal(input)
 	if err != nil {
 		return "", errors.Wrap(err, "marshalling input as JSON")

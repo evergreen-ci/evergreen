@@ -1869,9 +1869,9 @@ func (h *awsS3Credentials) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 	// TODO (DEVPROD-13978): Create correct session policy based off of provided task.
-	sessionPolicy := map[string]interface{}{
+	sessionPolicy := map[string]any{
 		"Version": "2012-10-17",
-		"Statement": []map[string]interface{}{
+		"Statement": []map[string]any{
 			{
 				"Effect":   "Deny",
 				"Action":   "*",

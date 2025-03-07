@@ -37,7 +37,7 @@ func (c *goTestResults) Name() string { return "gotest.parse_files" }
 
 // ParseParams reads the specified map of parameters into the goTestResults struct, and
 // validates that at least one file pattern is specified.
-func (c *goTestResults) ParseParams(params map[string]interface{}) error {
+func (c *goTestResults) ParseParams(params map[string]any) error {
 	var err error
 	if err = mapstructure.Decode(params, c); err != nil {
 		return errors.Wrap(err, "decoding mapstructure params")

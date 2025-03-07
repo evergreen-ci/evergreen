@@ -213,7 +213,7 @@ func (r *versionResolver) Manifest(ctx context.Context, obj *restModel.APIVersio
 		IsBase:          m.IsBase,
 		ModuleOverrides: m.ModuleOverrides,
 	}
-	modules := map[string]interface{}{}
+	modules := map[string]any{}
 	for key, module := range m.Modules {
 		modules[key] = module
 	}
