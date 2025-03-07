@@ -782,9 +782,9 @@ Every task has some expansions available by default:
     the patch run
 -   `${github_known_hosts}` is GitHub's SSH key fingerprint
 -   `${github_org}` is the GitHub organization for the repo for the project
+-   `${github_repo}` is the GitHub repo for the project
 -   `${github_pr_number}` is the Github PR number associated with PR
     patches and PR triggered merge queue items
--   `${github_repo}` is the GitHub repo for the project
 -   `${is_commit_queue}` is the string "true" if this is a merge
     queue task
 -   `${is_patch}` is "true" if the running task is in a patch build and
