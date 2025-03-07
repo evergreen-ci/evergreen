@@ -29,7 +29,6 @@ var (
 	BootstrapSettingsKey     = bsonutil.MustHaveTag(Distro{}, "BootstrapSettings")
 	DispatcherSettingsKey    = bsonutil.MustHaveTag(Distro{}, "DispatcherSettings")
 	WorkDirKey               = bsonutil.MustHaveTag(Distro{}, "WorkDir")
-	DataDirKey               = bsonutil.MustHaveTag(Distro{}, "DataDir")
 	SpawnAllowedKey          = bsonutil.MustHaveTag(Distro{}, "SpawnAllowed")
 	ExpansionsKey            = bsonutil.MustHaveTag(Distro{}, "Expansions")
 	DisabledKey              = bsonutil.MustHaveTag(Distro{}, "Disabled")
