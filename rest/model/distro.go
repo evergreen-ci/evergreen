@@ -343,7 +343,6 @@ type APIDistro struct {
 	Provider              *string                  `json:"provider"`
 	ProviderSettingsList  []*birch.Document        `json:"provider_settings" swaggertype:"object"`
 	Arch                  *string                  `json:"arch"`
-	DataDir               *string                  `json:"data_dir"`
 	WorkDir               *string                  `json:"work_dir"`
 	SetupAsSudo           bool                     `json:"setup_as_sudo"`
 	Setup                 *string                  `json:"setup"`
@@ -381,7 +380,6 @@ func (apiDistro *APIDistro) BuildFromService(d distro.Distro) {
 	apiDistro.Provider = utility.ToStringPtr(d.Provider)
 	apiDistro.ProviderSettingsList = d.ProviderSettingsList
 	apiDistro.Arch = utility.ToStringPtr(d.Arch)
-	apiDistro.DataDir = utility.ToStringPtr(d.DataDir)
 	apiDistro.WorkDir = utility.ToStringPtr(d.WorkDir)
 	apiDistro.SetupAsSudo = d.SetupAsSudo
 	apiDistro.Setup = utility.ToStringPtr(d.Setup)
@@ -445,7 +443,6 @@ func (apiDistro *APIDistro) ToService() *distro.Distro {
 	d.AdminOnly = apiDistro.AdminOnly
 	d.Aliases = apiDistro.Aliases
 	d.Arch = utility.FromStringPtr(apiDistro.Arch)
-	d.DataDir = utility.FromStringPtr(apiDistro.DataDir)
 	d.WorkDir = utility.FromStringPtr(apiDistro.WorkDir)
 	d.Provider = utility.FromStringPtr(apiDistro.Provider)
 	d.ProviderSettingsList = apiDistro.ProviderSettingsList
