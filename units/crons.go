@@ -22,7 +22,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 const (
@@ -897,7 +897,7 @@ func PopulateCloudCleanupJob(env evergreen.Environment) amboy.QueueOperation {
 
 func PopulateVolumeExpirationCheckJob() amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
-		volumes, err := host.FindVolumesWithNoExpirationToExtend()
+		volumes, err := host.FindVolumesWithNoExpirationToExtend(ctx)
 		if err != nil {
 			return errors.Wrap(err, "finding expired volumes")
 		}
@@ -914,7 +914,7 @@ func PopulateVolumeExpirationCheckJob() amboy.QueueOperation {
 
 func PopulateVolumeExpirationJob() amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
-		volumes, err := host.FindVolumesToDelete(time.Now())
+		volumes, err := host.FindVolumesToDelete(ctx, time.Now())
 		if err != nil {
 			return errors.Wrap(err, "finding volumes to delete")
 		}
@@ -934,7 +934,7 @@ func PopulateVolumeExpirationJob() amboy.QueueOperation {
 func PopulateUnstickVolumesJob() amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		catcher := grip.NewBasicCatcher()
-		volumes, err := host.FindVolumesWithTerminatedHost()
+		volumes, err := host.FindVolumesWithTerminatedHost(ctx)
 		if err != nil {
 			return errors.Wrap(err, "finding volumes to delete")
 

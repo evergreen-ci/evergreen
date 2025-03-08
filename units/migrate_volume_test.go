@@ -53,7 +53,7 @@ func TestVolumeMigrateJob(t *testing.T) {
 			assert.True(t, ok)
 			assert.NoError(t, j.Error())
 
-			volume, err := host.FindVolumeByID(v.ID)
+			volume, err := host.FindVolumeByID(ctx, v.ID)
 			assert.NoError(t, err)
 			assert.NotNil(t, volume)
 			assert.NotEqual(t, volume.Host, h.Id)
@@ -122,7 +122,7 @@ func TestVolumeMigrateJob(t *testing.T) {
 			assert.Contains(t, j.Error().Error(), "not yet stopped")
 
 			// Verify volume remains attached to initial host
-			volume, err := host.FindVolumeByID(v.ID)
+			volume, err := host.FindVolumeByID(ctx, v.ID)
 			assert.NoError(t, err)
 			assert.NotNil(t, volume)
 			assert.Equal(t, h.Id, volume.Host)
@@ -166,7 +166,7 @@ func TestVolumeMigrateJob(t *testing.T) {
 			assert.Contains(t, j.Error().Error(), "creating new intent host")
 
 			// Should finish with initial host stopped and volume detached
-			volume, err := host.FindVolumeByID(v.ID)
+			volume, err := host.FindVolumeByID(ctx, v.ID)
 			assert.NoError(t, err)
 			assert.NotNil(t, volume)
 			assert.Equal(t, "", volume.Host)
@@ -198,7 +198,7 @@ func TestVolumeMigrateJob(t *testing.T) {
 			require.True(t, amboy.WaitInterval(ctx, env.RemoteQueue(), 1000*time.Millisecond))
 			assert.NoError(t, j.Error())
 
-			volume, err := host.FindVolumeByID(v.ID)
+			volume, err := host.FindVolumeByID(ctx, v.ID)
 			assert.NoError(t, err)
 			assert.NotNil(t, volume)
 			assert.NotEqual(t, volume.Host, h.Id)

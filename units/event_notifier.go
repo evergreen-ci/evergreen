@@ -104,7 +104,7 @@ func (j *eventNotifierJob) processEvent(ctx context.Context, e *event.EventLogEn
 
 	n, err := j.processEventTriggers(ctx, e)
 	catcher.Add(err)
-	catcher.Add(e.MarkProcessed())
+	catcher.Add(e.MarkProcessed(ctx))
 
 	if err = notification.InsertMany(n...); err != nil {
 		// Consider that duplicate key errors are expected.

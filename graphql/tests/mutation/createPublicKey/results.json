@@ -5,7 +5,7 @@
       "result": {
         "errors": [
           {
-            "message": "Provided key name, z, already exists.",
+            "message": "provided key name 'z' already exists",
             "path": ["createPublicKey"],
             "extensions": { "code": "INPUT_VALIDATION_ERROR" }
           }
@@ -18,7 +18,7 @@
       "result": {
         "errors": [
           {
-            "message": "Provided public key is invalid : ssh: no key found",
+            "message": "provided public key is invalid: ssh: no key found",
             "path": ["createPublicKey"],
             "extensions": { "code": "INPUT_VALIDATION_ERROR" }
           }

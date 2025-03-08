@@ -5,7 +5,7 @@ import (
 	"sync"
 )
 
-type eventDataFactory func() interface{}
+type eventDataFactory func() any
 
 type eventRegistry struct {
 	lock sync.RWMutex
@@ -99,7 +99,7 @@ func (r *eventRegistry) isExpirable(resourceType, eventType string) bool {
 	return !r.unexpirable[e]
 }
 
-func (r *eventRegistry) newEventFromType(resourceType string) interface{} {
+func (r *eventRegistry) newEventFromType(resourceType string) any {
 	registry.lock.RLock()
 	defer registry.lock.RUnlock()
 

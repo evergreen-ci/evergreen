@@ -25,7 +25,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 const (
@@ -216,7 +216,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		}
 		catcher.Wrap(err, "building GitHub patch document")
 	case patch.GithubMergeIntentType:
-		if err := j.buildGithubMergeDoc(patchDoc); err != nil {
+		if err := j.buildGithubMergeDoc(ctx, patchDoc); err != nil {
 			catcher.Wrap(err, "building GitHub merge queue patch document")
 		}
 	case patch.TriggerIntentType:
@@ -767,7 +767,7 @@ func ProcessTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *mode
 		triggerIntents = append(triggerIntents, triggerIntent)
 		p.Triggers.ChildPatches = append(p.Triggers.ChildPatches, triggerIntent.ID())
 	}
-	if err := p.SetChildPatches(); err != nil {
+	if err := p.SetChildPatches(ctx); err != nil {
 		return errors.Wrap(err, "setting child patch IDs")
 	}
 
@@ -797,7 +797,7 @@ func ProcessTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *mode
 
 func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *patch.Patch) error {
 	defer func() {
-		grip.Error(message.WrapError(j.intent.SetProcessed(), message.Fields{
+		grip.Error(message.WrapError(j.intent.SetProcessed(ctx), message.Fields{
 			"message":     "could not mark patch intent as processed",
 			"intent_id":   j.IntentID,
 			"intent_type": j.IntentType,
@@ -872,7 +872,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 		return false, errors.New("not processing PR because GitHub PR testing is disabled")
 	}
 	defer func() {
-		grip.Error(message.WrapError(j.intent.SetProcessed(), message.Fields{
+		grip.Error(message.WrapError(j.intent.SetProcessed(ctx), message.Fields{
 			"message":     "could not mark patch intent as processed",
 			"intent_id":   j.IntentID,
 			"intent_type": j.IntentType,
@@ -887,7 +887,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 		return false, errors.New("GitHub PR testing is not configured correctly because it requires a GitHub org to authenticate against")
 	}
 
-	projectRef, err := model.FindOneProjectRefByRepoAndBranchWithPRTesting(patchDoc.GithubPatchData.BaseOwner,
+	projectRef, err := model.FindOneProjectRefByRepoAndBranchWithPRTesting(ctx, patchDoc.GithubPatchData.BaseOwner,
 		patchDoc.GithubPatchData.BaseRepo, patchDoc.GithubPatchData.BaseBranch, j.intent.GetCalledBy())
 	if err != nil {
 		return false, errors.Wrapf(err, "fetching project ref for repo '%s/%s' with branch '%s'",
@@ -966,9 +966,9 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 	return isMember, nil
 }
 
-func (j *patchIntentProcessor) buildGithubMergeDoc(patchDoc *patch.Patch) error {
+func (j *patchIntentProcessor) buildGithubMergeDoc(ctx context.Context, patchDoc *patch.Patch) error {
 	defer func() {
-		grip.Error(message.WrapError(j.intent.SetProcessed(), message.Fields{
+		grip.Error(message.WrapError(j.intent.SetProcessed(ctx), message.Fields{
 			"message":     "could not mark patch intent as processed",
 			"intent_id":   j.IntentID,
 			"intent_type": j.IntentType,
@@ -1008,7 +1008,7 @@ func makeMergeQueueDescription(mergeGroup thirdparty.GithubMergeGroup) string {
 
 func (j *patchIntentProcessor) buildTriggerPatchDoc(ctx context.Context, patchDoc *patch.Patch) (*model.Project, *model.ParserProject, error) {
 	defer func() {
-		grip.Error(message.WrapError(j.intent.SetProcessed(), message.Fields{
+		grip.Error(message.WrapError(j.intent.SetProcessed(ctx), message.Fields{
 			"message":     "could not mark patch intent as processed",
 			"intent_id":   j.IntentID,
 			"intent_type": j.IntentType,

@@ -8,8 +8,8 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 func (e *EventLogEntry) Log() error {
@@ -20,7 +20,7 @@ func (e *EventLogEntry) Log() error {
 	return errors.Wrap(db.Insert(EventCollection, e), "inserting event")
 }
 
-func (e *EventLogEntry) MarkProcessed() error {
+func (e *EventLogEntry) MarkProcessed(ctx context.Context) error {
 	if e.ID == "" {
 		return errors.New("event has no ID")
 	}
@@ -38,7 +38,7 @@ func (e *EventLogEntry) MarkProcessed() error {
 		},
 	}
 
-	if err := db.Update(EventCollection, filter, update); err != nil {
+	if err := db.UpdateContext(ctx, EventCollection, filter, update); err != nil {
 		return errors.Wrap(err, "updating 'processed at' time")
 	}
 
@@ -48,7 +48,7 @@ func (e *EventLogEntry) MarkProcessed() error {
 
 func LogManyEvents(events []EventLogEntry) error {
 	catcher := grip.NewBasicCatcher()
-	interfaces := make([]interface{}, len(events))
+	interfaces := make([]any, len(events))
 	for i := range events {
 		e := &events[i]
 		if err := e.validateEvent(); err != nil {
@@ -68,7 +68,7 @@ func LogManyEvents(events []EventLogEntry) error {
 // insertion. Do not use this if the events must be inserted in order.
 func LogManyUnorderedEventsWithContext(ctx context.Context, events []EventLogEntry) error {
 	catcher := grip.NewBasicCatcher()
-	interfaces := make([]interface{}, len(events))
+	interfaces := make([]any, len(events))
 	for i := range events {
 		e := &events[i]
 		if err := e.validateEvent(); err != nil {

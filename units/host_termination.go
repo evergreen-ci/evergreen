@@ -310,6 +310,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		"message":            "host successfully terminated",
 		"host_id":            j.host.Id,
 		"distro":             j.host.Distro.Id,
+		"single_task_distro": j.host.Distro.SingleTaskDistro,
 		"job":                j.ID(),
 		"reason":             j.TerminationReason,
 		"total_idle_secs":    j.host.TotalIdleTime.Seconds(),

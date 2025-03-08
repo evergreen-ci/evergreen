@@ -18,7 +18,7 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 type Version struct {
@@ -124,8 +124,9 @@ func (v *Version) LastSuccessful() (*Version, error) {
 }
 
 // ActivateAndSetBuildVariants activates the version and sets its build variants.
-func (v *Version) ActivateAndSetBuildVariants() error {
+func (v *Version) ActivateAndSetBuildVariants(ctx context.Context) error {
 	return VersionUpdateOne(
+		ctx,
 		bson.M{VersionIdKey: v.Id},
 		bson.M{
 			"$set": bson.M{
@@ -137,17 +138,18 @@ func (v *Version) ActivateAndSetBuildVariants() error {
 }
 
 // SetActivated sets version activated field to specified boolean.
-func (v *Version) SetActivated(activated bool) error {
+func (v *Version) SetActivated(ctx context.Context, activated bool) error {
 	if utility.FromBoolPtr(v.Activated) == activated {
 		return nil
 	}
 	v.Activated = utility.ToBoolPtr(activated)
-	return SetVersionActivated(v.Id, activated)
+	return SetVersionActivated(ctx, v.Id, activated)
 }
 
 // SetVersionActivated sets version activated field to specified boolean given a version id.
-func SetVersionActivated(versionId string, activated bool) error {
+func SetVersionActivated(ctx context.Context, versionId string, activated bool) error {
 	return VersionUpdateOne(
+		ctx,
 		bson.M{VersionIdKey: versionId},
 		bson.M{
 			"$set": bson.M{
@@ -158,9 +160,10 @@ func SetVersionActivated(versionId string, activated bool) error {
 }
 
 // SetAborted sets the version as aborted.
-func (v *Version) SetAborted(aborted bool) error {
+func (v *Version) SetAborted(ctx context.Context, aborted bool) error {
 	v.Aborted = aborted
 	return VersionUpdateOne(
+		ctx,
 		bson.M{VersionIdKey: v.Id},
 		bson.M{
 			"$set": bson.M{
@@ -191,25 +194,26 @@ func (v *Version) GetParentVersion() (*Version, error) {
 	return parentVersion, nil
 }
 
-func (v *Version) AddSatisfiedTrigger(definitionID string) error {
+func (v *Version) AddSatisfiedTrigger(ctx context.Context, definitionID string) error {
 	if v.SatisfiedTriggers == nil {
 		v.SatisfiedTriggers = []string{}
 	}
 	v.SatisfiedTriggers = append(v.SatisfiedTriggers, definitionID)
-	return errors.Wrap(AddSatisfiedTrigger(v.Id, definitionID), "adding satisfied trigger")
+	return errors.Wrap(AddSatisfiedTrigger(ctx, v.Id, definitionID), "adding satisfied trigger")
 }
 
-func (v *Version) UpdateStatus(newStatus string) error {
+func (v *Version) UpdateStatus(ctx context.Context, newStatus string) error {
 	if v.Status == newStatus {
 		return nil
 	}
 
 	v.Status = newStatus
-	return setVersionStatus(v.Id, newStatus)
+	return setVersionStatus(ctx, v.Id, newStatus)
 }
 
-func setVersionStatus(versionId, newStatus string) error {
+func setVersionStatus(ctx context.Context, versionId, newStatus string) error {
 	return VersionUpdateOne(
+		ctx,
 		bson.M{VersionIdKey: versionId},
 		bson.M{"$set": bson.M{
 			VersionStatusKey: newStatus,
@@ -234,10 +238,11 @@ func (v *Version) GetTimeSpent(ctx context.Context) (time.Duration, time.Duratio
 	return timeTaken, makespan, nil
 }
 
-func (v *Version) MarkFinished(status string, finishTime time.Time) error {
+func (v *Version) MarkFinished(ctx context.Context, status string, finishTime time.Time) error {
 	v.Status = status
 	v.FinishTime = finishTime
 	return VersionUpdateOne(
+		ctx,
 		bson.M{VersionIdKey: v.Id},
 		bson.M{"$set": bson.M{
 			VersionFinishTimeKey: finishTime,
@@ -248,12 +253,12 @@ func (v *Version) MarkFinished(status string, finishTime time.Time) error {
 
 // UpdateProjectStorageMethod updates the version's parser project storage
 // method.
-func (v *Version) UpdateProjectStorageMethod(method evergreen.ParserProjectStorageMethod) error {
+func (v *Version) UpdateProjectStorageMethod(ctx context.Context, method evergreen.ParserProjectStorageMethod) error {
 	if method == v.ProjectStorageMethod {
 		return nil
 	}
 
-	if err := VersionUpdateOne(bson.M{VersionIdKey: v.Id}, bson.M{
+	if err := VersionUpdateOne(ctx, bson.M{VersionIdKey: v.Id}, bson.M{
 		"$set": bson.M{VersionProjectStorageMethodKey: method},
 	}); err != nil {
 		return err
@@ -264,11 +269,11 @@ func (v *Version) UpdateProjectStorageMethod(method evergreen.ParserProjectStora
 
 // UpdatePreGenerationProjectStorageMethod updates the version's pre-generation parser project storage
 // method.
-func (v *Version) UpdatePreGenerationProjectStorageMethod(method evergreen.ParserProjectStorageMethod) error {
+func (v *Version) UpdatePreGenerationProjectStorageMethod(ctx context.Context, method evergreen.ParserProjectStorageMethod) error {
 	if method == v.PreGenerationProjectStorageMethod {
 		return nil
 	}
-	if err := VersionUpdateOne(bson.M{VersionIdKey: v.Id}, bson.M{
+	if err := VersionUpdateOne(ctx, bson.M{VersionIdKey: v.Id}, bson.M{
 		"$set": bson.M{VersionPreGenerationProjectStorageMethodKey: method},
 	}); err != nil {
 		return err
@@ -641,7 +646,7 @@ func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Vers
 		if opts.IncludeTasks {
 			taskMatch := []bson.M{
 				{"$eq": []string{"$build_id", "$$temp_build_id"}},
-				{"$eq": []interface{}{"$activated", true}},
+				{"$eq": []any{"$activated", true}},
 			}
 			if opts.ByTask != "" {
 				taskMatch = append(taskMatch, bson.M{"$eq": []string{"$display_name", opts.ByTask}})
@@ -659,7 +664,7 @@ func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Vers
 
 			// filter out builds that don't have any tasks included
 			matchTasksExist := bson.M{
-				"tasks": bson.M{"$exists": true, "$ne": []interface{}{}},
+				"tasks": bson.M{"$exists": true, "$ne": []any{}},
 			}
 			innerPipeline = append(innerPipeline, bson.M{"$match": matchTasksExist})
 		}
@@ -673,7 +678,7 @@ func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Vers
 		//
 		// filter out versions that don't have any activated builds
 		matchBuildsExist := bson.M{
-			"build_variants": bson.M{"$exists": true, "$ne": []interface{}{}},
+			"build_variants": bson.M{"$exists": true, "$ne": []any{}},
 		}
 		pipeline = append(pipeline, bson.M{"$match": matchBuildsExist})
 	}

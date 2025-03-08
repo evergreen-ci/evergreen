@@ -86,7 +86,7 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 		return
 	}
 	defer func() {
-		err = model.UpdateNextPeriodicBuild(j.ProjectID, definition)
+		err = model.UpdateNextPeriodicBuild(ctx, j.ProjectID, definition)
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":    "unable to set next periodic build job time",
 			"project":    j.ProjectID,

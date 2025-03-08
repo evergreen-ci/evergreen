@@ -35,8 +35,8 @@ type LastError struct {
 	Code, N, Waited int
 	FSyncFiles      int `bson:"fsyncFiles"`
 	WTimeout        bool
-	UpdatedExisting bool        `bson:"updatedExisting"`
-	UpsertedId      interface{} `bson:"upserted"`
+	UpdatedExisting bool `bson:"updatedExisting"`
+	UpsertedId      any  `bson:"upserted"`
 }
 
 func (err *LastError) Error() string {

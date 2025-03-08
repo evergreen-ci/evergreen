@@ -16,7 +16,7 @@ type APIAdminEvent struct {
 	Guid      string     `json:"guid"`
 }
 
-func (e *APIAdminEvent) BuildFromService(h interface{}) error {
+func (e *APIAdminEvent) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case event.EventLogEntry:
 		e.Timestamp = ToTimePtr(v.Timestamp)
@@ -44,6 +44,6 @@ func (e *APIAdminEvent) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (e *APIAdminEvent) ToService() (interface{}, error) {
+func (e *APIAdminEvent) ToService() (any, error) {
 	return nil, errors.New("ToService not implemented for APIAdminEvent")
 }

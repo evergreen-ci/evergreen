@@ -28,7 +28,7 @@ type tarballExtract struct {
 func tarballExtractFactory() Command   { return &tarballExtract{} }
 func (e *tarballExtract) Name() string { return "archive.targz_extract" }
 
-func (e *tarballExtract) ParseParams(params map[string]interface{}) error {
+func (e *tarballExtract) ParseParams(params map[string]any) error {
 	if err := mapstructure.Decode(params, e); err != nil {
 		return errors.Wrap(err, "decoding mapstructure params")
 	}

@@ -18,7 +18,7 @@ const (
 // Taking in the input and expansions map, apply the expansions to any
 // appropriate fields in the input.  The input must be a pointer to a struct
 // so that the underlying struct can be modified.
-func ExpandValues(input interface{}, expansions *Expansions) error {
+func ExpandValues(input any, expansions *Expansions) error {
 
 	// make sure the input is a pointer to a map or struct
 	if reflect.ValueOf(input).Type().Kind() != reflect.Ptr {

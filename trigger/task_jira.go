@@ -238,7 +238,7 @@ func (j *jiraBuilder) build(ctx context.Context) (*message.JiraIssue, error) {
 		return nil, errors.Wrap(err, "creating summary")
 	}
 
-	fields := map[string]interface{}{}
+	fields := map[string]any{}
 	components := []string{}
 	labels := []string{}
 	for _, project := range j.mappings.CustomFields {
@@ -333,8 +333,8 @@ func (j *jiraBuilder) getSummary() (string, error) {
 	return subj.String(), catcher.Resolve()
 }
 
-func (j *jiraBuilder) makeCustomFields(customFields []evergreen.JIRANotificationsCustomField) map[string]interface{} {
-	fields := map[string]interface{}{}
+func (j *jiraBuilder) makeCustomFields(customFields []evergreen.JIRANotificationsCustomField) map[string]any {
+	fields := map[string]any{}
 	for i := range j.data.Task.LocalTestResults {
 		if j.data.Task.LocalTestResults[i].Status == evergreen.TestFailedStatus {
 			j.data.FailedTests = append(j.data.FailedTests, j.data.Task.LocalTestResults[i])

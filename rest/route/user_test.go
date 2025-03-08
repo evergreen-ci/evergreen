@@ -53,7 +53,7 @@ func (s *UserRouteSuite) TestUpdateNotifications() {
 	s.NoError(err)
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
-	body := map[string]interface{}{
+	body := map[string]any{
 		"slack_username":  "@test",
 		"slack_member_id": "NOTES25BA",
 		"notifications": map[string]string{
@@ -92,7 +92,7 @@ func (s *UserRouteSuite) TestUndefinedInput() {
 	}
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me", Settings: settings})
-	body := map[string]interface{}{
+	body := map[string]any{
 		"notifications": map[string]string{
 			"build_break": "slack",
 		},
@@ -121,10 +121,10 @@ func (s *UserRouteSuite) TestSaveFeedback() {
 	s.NoError(err)
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
-	body := map[string]interface{}{
-		"spruce_feedback": map[string]interface{}{
+	body := map[string]any{
+		"spruce_feedback": map[string]any{
 			"type": "someType",
-			"questions": []map[string]interface{}{
+			"questions": []map[string]any{
 				{"id": "1", "prompt": "this is a question", "answer": "this is an answer"},
 			},
 		},
@@ -247,7 +247,7 @@ func (s *userPermissionPostSuite) TestValidInput() {
 	dbUser, err = user.FindOneById(s.u.Id)
 	s.NoError(err)
 	for _, role := range dbUser.Roles() {
-		s.NoError(dbUser.RemoveRole(role))
+		s.NoError(dbUser.RemoveRole(s.T().Context(), role))
 	}
 	_ = s.h.Run(ctx)
 	roles, err = s.env.RoleManager().GetAllRoles()
@@ -865,7 +865,7 @@ func TestRenameUser(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Len(t, hosts, 1)
 
-			volumes, err := host.FindVolumesByUser("new_me")
+			volumes, err := host.FindVolumesByUser(ctx, "new_me")
 			assert.NoError(t, err)
 			assert.Len(t, volumes, 1)
 
@@ -902,7 +902,7 @@ func TestRenameUser(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Len(t, hosts, 1)
 
-			volumes, err := host.FindVolumesByUser("new_me")
+			volumes, err := host.FindVolumesByUser(ctx, "new_me")
 			assert.NoError(t, err)
 			assert.Len(t, volumes, 1)
 

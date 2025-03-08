@@ -20,10 +20,10 @@ func TestPodDefinitionUpdateLastAccessed(t *testing.T) {
 		"SetsLastAccessedTime": func(t *testing.T, pd PodDefinition) {
 			require.NoError(t, pd.Insert())
 
-			require.NoError(t, pd.UpdateLastAccessed())
+			require.NoError(t, pd.UpdateLastAccessed(t.Context()))
 		},
 		"FailsForNonexistentPodDefinition": func(t *testing.T, pd PodDefinition) {
-			assert.Error(t, pd.UpdateLastAccessed())
+			assert.Error(t, pd.UpdateLastAccessed(t.Context()))
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {

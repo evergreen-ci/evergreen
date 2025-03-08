@@ -1,6 +1,7 @@
 package patch
 
 import (
+	"context"
 	"strings"
 	"time"
 
@@ -12,7 +13,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 const (
@@ -125,10 +126,11 @@ func NewGithubMergeIntent(msgDeliveryID string, caller string, mg *github.MergeG
 }
 
 // SetProcessed should be called by an amboy queue after creating a patch from an intent.
-func (g *githubMergeIntent) SetProcessed() error {
+func (g *githubMergeIntent) SetProcessed(ctx context.Context) error {
 	g.Processed = true
 	g.ProcessedAt = time.Now().UTC().Round(time.Millisecond)
 	return updateOneIntent(
+		ctx,
 		bson.M{documentIDKey: g.DocumentID},
 		bson.M{"$set": bson.M{
 			processedKey:   g.Processed,

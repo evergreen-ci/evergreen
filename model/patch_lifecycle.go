@@ -21,7 +21,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/mongo"
 	"gopkg.in/yaml.v2"
 )
 
@@ -133,18 +132,18 @@ func ConfigurePatch(ctx context.Context, settings *evergreen.Settings, p *patch.
 
 	// only modify parameters if the patch hasn't been finalized
 	if len(patchUpdateReq.Parameters) > 0 && p.Version == "" {
-		if err = p.SetParameters(patchUpdateReq.Parameters); err != nil {
+		if err = p.SetParameters(ctx, patchUpdateReq.Parameters); err != nil {
 			return http.StatusInternalServerError, errors.Wrap(err, "setting patch parameters")
 		}
 	}
 	// update the description for both reconfigured and new patches
-	if err = p.SetDescription(patchUpdateReq.Description); err != nil {
+	if err = p.SetDescription(ctx, patchUpdateReq.Description); err != nil {
 		return http.StatusInternalServerError, errors.Wrap(err, "setting description")
 	}
 
 	patchVariantTasks := tasks.TVPairsToVariantTasks()
 	if len(patchVariantTasks) > 0 {
-		if err = p.SetVariantsTasks(patchVariantTasks); err != nil {
+		if err = p.SetVariantsTasks(ctx, patchVariantTasks); err != nil {
 			return http.StatusInternalServerError, errors.Wrap(err, "setting description")
 		}
 	}
@@ -156,7 +155,7 @@ func ConfigurePatch(ctx context.Context, settings *evergreen.Settings, p *patch.
 		}
 
 		if version.Message != patchUpdateReq.Description {
-			if err = UpdateVersionMessage(p.Version, patchUpdateReq.Description); err != nil {
+			if err = UpdateVersionMessage(ctx, p.Version, patchUpdateReq.Description); err != nil {
 				return http.StatusInternalServerError, errors.Wrap(err, "setting version message")
 			}
 		}
@@ -576,7 +575,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 
 	var parentPatchNumber int
 	if p.IsChild() {
-		parentPatch, err := p.SetParametersFromParent()
+		parentPatch, err := p.SetParametersFromParent(ctx)
 		if err != nil {
 			return nil, errors.Wrap(err, "getting parameters from parent patch")
 		}
@@ -738,7 +737,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 			numActivatedTasks += utility.FromIntPtr(t.EstimatedNumActivatedGeneratedTasks)
 		}
 	}
-	if err = task.UpdateSchedulingLimit(creationInfo.Version.Author, creationInfo.Version.Requester, numActivatedTasks, true); err != nil {
+	if err = task.UpdateSchedulingLimit(ctx, creationInfo.Version.Author, creationInfo.Version.Requester, numActivatedTasks, true); err != nil {
 		return nil, errors.Wrapf(err, "fetching user '%s' and updating their scheduling limit", creationInfo.Version.Author)
 	}
 
@@ -750,30 +749,30 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 	}
 	defer session.EndSession(ctx)
 
-	txFunc := func(sessCtx mongo.SessionContext) (interface{}, error) {
+	txFunc := func(ctx context.Context) (any, error) {
 		db := env.DB()
-		_, err = db.Collection(VersionCollection).InsertOne(sessCtx, patchVersion)
+		_, err = db.Collection(VersionCollection).InsertOne(ctx, patchVersion)
 		if err != nil {
 			return nil, errors.Wrapf(err, "inserting version '%s'", patchVersion.Id)
 		}
 		if config != nil {
-			_, err = db.Collection(ProjectConfigCollection).InsertOne(sessCtx, config)
+			_, err = db.Collection(ProjectConfigCollection).InsertOne(ctx, config)
 			if err != nil {
 				return nil, errors.Wrapf(err, "inserting project config for version '%s'", patchVersion.Id)
 			}
 		}
 		if mfst != nil {
-			if err = mfst.InsertWithContext(sessCtx); err != nil {
+			if err = mfst.InsertWithContext(ctx); err != nil {
 				return nil, errors.Wrapf(err, "inserting manifest for version '%s'", patchVersion.Id)
 			}
 		}
-		if err = buildsToInsert.InsertMany(sessCtx, false); err != nil {
+		if err = buildsToInsert.InsertMany(ctx, false); err != nil {
 			return nil, errors.Wrapf(err, "inserting builds for version '%s'", patchVersion.Id)
 		}
-		if err = tasksToInsert.InsertUnordered(sessCtx); err != nil {
+		if err = tasksToInsert.InsertUnordered(ctx); err != nil {
 			return nil, errors.Wrapf(err, "inserting tasks for version '%s'", patchVersion.Id)
 		}
-		if err = p.SetFinalized(sessCtx, patchVersion.Id); err != nil {
+		if err = p.SetFinalized(ctx, patchVersion.Id); err != nil {
 			return nil, errors.Wrapf(err, "activating patch '%s'", patchVersion.Id)
 		}
 		return nil, err

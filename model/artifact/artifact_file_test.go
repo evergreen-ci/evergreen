@@ -6,7 +6,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	_ "github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 type TestArtifactFileSuite struct {
@@ -202,21 +202,6 @@ func (s *TestArtifactFileSuite) TestFindByIds() {
 	entries, err := FindAll(ByTaskIds([]string{"task1", "task2"}))
 	s.NoError(err)
 	s.Len(entries, 3)
-}
-
-func (s *TestArtifactFileSuite) TestRotateSecret() {
-	changes, err := RotateSecrets("secret", "changedSecret", true)
-	s.NoError(err)
-	s.Len(changes, 3)
-	entryFromDb, err := FindOne(ByTaskId("task1"))
-	s.NoError(err)
-	s.Equal("secret", entryFromDb.Files[0].AwsSecret)
-	changes, err = RotateSecrets("secret", "changedSecret", false)
-	s.NoError(err)
-	s.Len(changes, 3)
-	entryFromDb, err = FindOne(ByTaskId("task1"))
-	s.NoError(err)
-	s.Equal("changedSecret", entryFromDb.Files[0].AwsSecret)
 }
 
 func (s *TestArtifactFileSuite) TestEscapeFiles() {

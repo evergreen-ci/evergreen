@@ -47,7 +47,7 @@ func TestRemoveTaskDirectory(t *testing.T) {
 		oomTracker: &mock.OOMTracker{},
 	}
 
-	agent.removeTaskDirectory(tc)
+	agent.removeTaskDirectory(t.Context(), tc)
 	_, err = os.Stat(tmpDir)
 	require.True(os.IsNotExist(err), "directory should have been deleted")
 }
@@ -67,13 +67,13 @@ func TestDirectoryCleanup(t *testing.T) {
 	// cannot run the operation on a file, and it will not delete
 	// that file
 	a := Agent{}
-	a.tryCleanupDirectory(fn)
+	a.tryCleanupDirectory(t.Context(), fn)
 	_, err = os.Stat(fn)
 	assert.True(osExists(err))
 
 	// running the operation on the top level directory does not
 	// delete that directory but does delete the files within it
-	a.tryCleanupDirectory(dir)
+	a.tryCleanupDirectory(t.Context(), dir)
 	_, err = os.Stat(dir)
 	assert.True(osExists(err))
 
@@ -83,7 +83,7 @@ func TestDirectoryCleanup(t *testing.T) {
 	readOnlyFileToDelete := filepath.Join(toDelete, "read-only")
 	assert.NoError(os.WriteFile(readOnlyFileToDelete, []byte("cookies"), 0644))
 	assert.NoError(os.Chmod(readOnlyFileToDelete, 0444))
-	a.tryCleanupDirectory(dir)
+	a.tryCleanupDirectory(t.Context(), dir)
 	_, err = os.Stat(readOnlyFileToDelete)
 	assert.True(os.IsNotExist(err))
 	_, err = os.Stat(toDelete)
@@ -94,7 +94,7 @@ func TestDirectoryCleanup(t *testing.T) {
 	assert.NoError(os.MkdirAll(gitDir, 0777))
 	shouldNotDelete := filepath.Join(dir, "dir1", "delete-me")
 	assert.NoError(os.MkdirAll(shouldNotDelete, 0777))
-	a.tryCleanupDirectory(dir)
+	a.tryCleanupDirectory(t.Context(), dir)
 	_, err = os.Stat(gitDir)
 	assert.False(os.IsNotExist(err))
 	_, err = os.Stat(shouldNotDelete)

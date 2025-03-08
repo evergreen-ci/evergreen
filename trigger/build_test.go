@@ -11,7 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/stretchr/testify/suite"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 func TestBuildTriggers(t *testing.T) {
@@ -139,7 +139,7 @@ func (s *buildSuite) TestAllTriggers() {
 
 	s.build.Status = evergreen.BuildSucceeded
 	s.data.Status = evergreen.BuildSucceeded
-	s.NoError(db.Update(build.Collection, bson.M{"_id": s.build.Id}, &s.build))
+	s.NoError(db.ReplaceContext(s.ctx, build.Collection, bson.M{"_id": s.build.Id}, &s.build))
 
 	n, err = NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)
@@ -147,7 +147,7 @@ func (s *buildSuite) TestAllTriggers() {
 
 	s.build.Status = evergreen.BuildFailed
 	s.data.Status = evergreen.BuildFailed
-	s.NoError(db.Update(build.Collection, bson.M{"_id": s.build.Id}, &s.build))
+	s.NoError(db.ReplaceContext(s.ctx, build.Collection, bson.M{"_id": s.build.Id}, &s.build))
 
 	n, err = NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)
@@ -155,7 +155,7 @@ func (s *buildSuite) TestAllTriggers() {
 
 	s.build.Status = evergreen.BuildFailed
 	s.data.Status = evergreen.BuildCreated
-	s.NoError(db.Update(build.Collection, bson.M{"_id": s.build.Id}, &s.build))
+	s.NoError(db.ReplaceContext(s.ctx, build.Collection, bson.M{"_id": s.build.Id}, &s.build))
 
 	n, err = NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)
@@ -163,7 +163,7 @@ func (s *buildSuite) TestAllTriggers() {
 
 	s.build.GithubCheckStatus = evergreen.BuildFailed
 	s.data.GithubCheckStatus = evergreen.BuildFailed
-	s.NoError(db.Update(build.Collection, bson.M{"_id": s.build.Id}, &s.build))
+	s.NoError(db.ReplaceContext(s.ctx, build.Collection, bson.M{"_id": s.build.Id}, &s.build))
 
 	n, err = NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)

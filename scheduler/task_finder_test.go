@@ -19,8 +19,8 @@ import (
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/smartystreets/goconvey/convey/reporting"
 	"github.com/stretchr/testify/suite"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 func init() {
@@ -90,7 +90,7 @@ func (s *TaskFinderSuite) SetupTest() {
 		Enabled: true,
 	}
 
-	s.distro.PlannerSettings.Version = evergreen.PlannerVersionLegacy
+	s.distro.PlannerSettings.Version = evergreen.PlannerVersionTunable
 	s.NoError(ref.Insert())
 
 	s.ctx, s.cancel = context.WithCancel(context.Background())
@@ -267,7 +267,7 @@ func (s *TaskFinderComparisonSuite) SetupSuite() {
 
 	s.NoError(ref.Insert())
 
-	s.distro.PlannerSettings.Version = evergreen.PlannerVersionLegacy
+	s.distro.PlannerSettings.Version = evergreen.PlannerVersionTunable
 }
 
 func (s *TaskFinderComparisonSuite) TearDownSuite() {

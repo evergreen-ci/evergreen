@@ -38,12 +38,14 @@
       "create_time": {
         "$date": "2020-01-01T00:00:00Z"
       },
-      "build_variants_status": {
-        "activated": true,
-        "build_id": "evergreen_version1_build",
-        "build_variant": "enterprise-ubuntu1604-64",
-        "display_name": "01 Ubuntu 16.04"
-      },
+      "build_variants_status": [
+        {
+          "activated": true,
+          "build_id": "evergreen_version1_build",
+          "build_variant": "enterprise-ubuntu1604-64",
+          "display_name": "01 Ubuntu 16.04"
+        }
+      ],
       "builds": ["evergreen_version1_build"]
     },
     {
@@ -58,11 +60,13 @@
       "create_time": {
         "$date": "2020-01-02T06:43:00Z"
       },
-      "build_variants_status": {
-        "activated": true,
-        "build_id": "evergreen_version2_build",
-        "build_variant": "enterprise-ubuntu1604-64"
-      },
+      "build_variants_status": [
+        {
+          "activated": true,
+          "build_id": "evergreen_version2_build",
+          "build_variant": "enterprise-ubuntu1604-64"
+        }
+      ],
       "builds": ["evergreen_version2_build"]
     },
     {
@@ -77,11 +81,19 @@
       "create_time": {
         "$date": "2020-01-03T13:30:00Z"
       },
-      "build_variants_status": {
-        "activated": true,
-        "build_id": "evergreen_version3_build",
-        "build_variant": "lint"
-      }
+      "build_variants_status": [
+        {
+          "activated": true,
+          "build_id": "evergreen_version3_build",
+          "build_variant": "lint"
+        },
+        {
+          "activated": false,
+          "build_id": "evergreen_version1_build_b",
+          "build_variant": "enterprise-ubuntu1604-64",
+          "display_name": "01 Ubuntu 16.04"
+        }
+      ]
     },
     {
       "_id": "evergreen_version4",
@@ -91,7 +103,7 @@
       "activated": false,
       "author": "mohamed.khelif",
       "status": "created",
-      "order": 44,
+      "order": 645,
       "create_time": {
         "$date": "2020-01-04T08:15:00Z"
       }
@@ -104,7 +116,7 @@
       "activated": true,
       "author": "mohamed.khelif",
       "status": "created",
-      "order": 45,
+      "order": 945,
       "create_time": {
         "$date": "2020-01-05T12:00:00Z"
       },
