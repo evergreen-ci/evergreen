@@ -619,16 +619,9 @@ func (uis *UIServer) waterfallPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	newUILink := fmt.Sprintf("%s/project/%s/waterfall", uis.Settings.Ui.UIv2Url, project.Identifier)
-
-	u := gimlet.GetUser(r.Context())
-	if u != nil {
-		usr, ok := u.(*user.DBUser)
-		if ok {
-			if !usr.BetaFeatures.SpruceWaterfallEnabled {
-				newUILink = fmt.Sprintf("%s/commits/%s", uis.Settings.Ui.UIv2Url, project.Identifier)
-			}
-		}
+	newUILink := ""
+	if len(uis.Settings.Ui.UIv2Url) > 0 {
+		newUILink = fmt.Sprintf("%s/project/%s/waterfall", uis.Settings.Ui.UIv2Url, project.Identifier)
 	}
 
 	if RedirectSpruceUsers(w, r, newUILink) {
@@ -642,7 +635,7 @@ func (uis *UIServer) waterfallPage(w http.ResponseWriter, r *http.Request) {
 	}{newUILink, uis.Settings.Jira.Host, uis.GetCommonViewData(w, r, false, true)}, "base", "waterfall.html", "base_angular.html", "menu.html")
 }
 
-// Create and return a redirect to the Spruce mainline commits or waterfall page if the user is opted in to the new UI.
+// Create and return a redirect to the Spruce waterfall page if the user is opted in to the new UI.
 func (uis *UIServer) mainlineCommitsRedirect(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
 	project, err := projCtx.GetProject()
@@ -658,11 +651,7 @@ func (uis *UIServer) mainlineCommitsRedirect(w http.ResponseWriter, r *http.Requ
 		if ok {
 			// If the user is opted in to the new UI, redirect to the new UI.
 			if usr.Settings.UseSpruceOptions.SpruceV1 {
-				if usr.BetaFeatures.SpruceWaterfallEnabled {
-					http.Redirect(w, r, fmt.Sprintf("%s/project/%s/waterfall", uis.Settings.Ui.UIv2Url, project.Identifier), http.StatusSeeOther)
-				} else {
-					http.Redirect(w, r, fmt.Sprintf("%s/commits/%s", uis.Settings.Ui.UIv2Url, project.Identifier), http.StatusSeeOther)
-				}
+				http.Redirect(w, r, fmt.Sprintf("%s/project/%s/waterfall", uis.Settings.Ui.UIv2Url, project.Identifier), http.StatusSeeOther)
 			}
 		}
 	}
