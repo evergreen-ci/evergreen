@@ -377,7 +377,28 @@ swaggo-build:
 swaggo-render:
 	npx @redocly/cli build-docs $(buildDir)/swagger.json -o $(buildDir)/redoc-static.html
 
-phony += swaggo swaggo-install swaggo-format swaggo-build swaggo-render
+
+# Variables
+OPENAPI_FWS_CONFIG_URL := https://foliage-web-services.cloud-build.prod.corp.mongodb.com/foliage_web_services.json
+OPENAPI_FWS_HARDCODED_CONFIG := thirdparty/clients/fws/foliage_web_services.json
+OPENAPI_FWS_OUTPUT_DIR := thirdparty/clients/fws
+OPENAPI_FWS_CONFIG := packageName=fws,packageVersion=1.0.0,packageTitle=FoliageWebServices
+OPENAPI_GENERATOR := bin/openapi-generator-cli.sh
+
+# Main rule for generating the client
+# TODO: Remove the hardcoded config rule once DEVPROD-14517 is complete
+# fws-client: download-fws-config generate-client
+fws-client: generate-fws-client
+
+download-fws-config:
+	@echo "Downloading OpenAPI config..."
+	curl -L -o openapi-config.json $(OPENAPI_CONFIG_URL)
+
+generate-fws-client:
+	@echo "Generating OpenAPI client..."
+	scripts/setup-openapi-client.sh $(OPENAPI_FWS_HARDCODED_CONFIG) $(OPENAPI_FWS_OUTPUT_DIR) $(OPENAPI_GENERATOR) $(OPENAPI_FWS_CONFIG)
+
+phony += swaggo swaggo-install swaggo-format swaggo-build swaggo-render fws-client download-config generate-fws-client
 
 # sanitizes a json file by hashing string values. Note that this will not work well with
 # string data that only has a subset of valid values

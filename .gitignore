@@ -44,7 +44,7 @@ artifacts-*
 .godeps
 
 npm-debug.log
-clients
+/clients
 creds.yml
 
 fabfile.py
