@@ -13,7 +13,7 @@ import (
 type LogService interface {
 	// Get returns a log iterator with the given options.
 	Get(context.Context, GetOptions) (LogIterator, error)
-	// Append appends given lines to the specified log.
+	// Append appends given lines to the specified log and sequence chunk.
 	Append(context.Context, string, int, []LogLine) error
 }
 
@@ -44,3 +44,8 @@ type GetOptions struct {
 	// Ignored if less than or equal to 0.
 	TailN int
 }
+
+// LineParser functions parse a raw log line into the service representation of
+// a log line for uniform ingestion of logs.
+// Parsers need not set the log name or, in most cases, the priority.
+type LineParser func(string) (LogLine, error)

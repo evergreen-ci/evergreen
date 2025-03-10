@@ -291,7 +291,7 @@ type testLogSpec struct {
 
 const testLogSpecFilename = "log_spec.yaml"
 
-func (s testLogSpec) getParser() taskoutput.LogLineParser {
+func (s testLogSpec) getParser() log.LineParser {
 	switch s.Format {
 	case testLogFormatTextTimestamp:
 		return func(line string) (log.LogLine, error) {

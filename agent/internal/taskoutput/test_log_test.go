@@ -304,26 +304,26 @@ func TestTestLogSpecGetParser(t *testing.T) {
 	for _, test := range []struct {
 		name string
 		spec testLogSpec
-		test func(*testing.T, taskoutput.LogLineParser)
+		test func(*testing.T, log.LineParser)
 	}{
 		{
 			name: "DefaultFormat",
 			spec: testLogSpec{},
-			test: func(t *testing.T, parser taskoutput.LogLineParser) {
+			test: func(t *testing.T, parser log.LineParser) {
 				assert.Nil(t, parser)
 			},
 		},
 		{
 			name: "Text",
 			spec: testLogSpec{Format: testLogFormatDefault},
-			test: func(t *testing.T, parser taskoutput.LogLineParser) {
+			test: func(t *testing.T, parser log.LineParser) {
 				assert.Nil(t, parser)
 			},
 		},
 		{
 			name: "TextTimestamp",
 			spec: testLogSpec{Format: testLogFormatTextTimestamp},
-			test: func(t *testing.T, parser taskoutput.LogLineParser) {
+			test: func(t *testing.T, parser log.LineParser) {
 				ts := time.Now().UnixNano()
 				data := "This is a log line."
 
