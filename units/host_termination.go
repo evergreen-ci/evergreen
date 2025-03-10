@@ -167,6 +167,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			if err := j.host.Terminate(ctx, evergreen.User, j.TerminationReason); err != nil {
 				j.AddError(errors.Wrapf(err, "terminating intent host '%s' in DB", j.host.Id))
 			}
+			return
 		}
 	case evergreen.HostTerminated:
 		if host.IsIntentHostId(j.host.Id) {
