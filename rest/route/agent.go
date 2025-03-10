@@ -1868,17 +1868,24 @@ func (h *awsS3Credentials) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "getting caller identity for task '%s'", h.taskID))
 		}
 	}
-	// TODO (DEVPROD-13978): Create correct session policy based off of provided task.
+
+	projectPrefix := fmt.Sprintf("arn:aws:s3:::mciuploads/%s", t.Project)
+	accessPaths := []string{projectPrefix}
 	sessionPolicy := map[string]any{
 		"Version": "2012-10-17",
 		"Statement": []map[string]any{
 			{
-				"Effect":   "Deny",
-				"Action":   "*",
-				"Resource": "*",
+				"Effect": "Allow",
+				"Action": []string{
+					"s3:GetObject",
+					"s3:PutObject",
+					"s3:ListBucket",
+				},
+				"Resource": accessPaths,
 			},
 		},
 	}
+
 	policyJSON, err := json.Marshal(sessionPolicy)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "marshalling session policy for task '%s'", h.taskID))
