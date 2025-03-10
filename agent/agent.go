@@ -60,12 +60,9 @@ type Agent struct {
 	// completion.
 	addMetadataTagResp  func(*triggerAddMetadataTagResp)
 	addMetadataTagMutex sync.RWMutex
-	// numTaskDirCleanupFailures is the number of times the agent has tried and
-	// failed to clean up the task directory.
-	numTaskDirCleanupFailures int
-	tracer                    trace.Tracer
-	otelGrpcConn              *grpc.ClientConn
-	closers                   []closerOp
+	tracer              trace.Tracer
+	otelGrpcConn        *grpc.ClientConn
+	closers             []closerOp
 }
 
 // Options contains startup options for an Agent.
