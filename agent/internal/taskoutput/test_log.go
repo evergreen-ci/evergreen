@@ -69,6 +69,8 @@ func newTestLogDirectoryHandler(dir string, output *taskoutput.TaskOutput, taskO
 		if err != nil {
 			return nil, errors.Wrap(err, "making test log sender")
 		}
+		// This flag exists to improve the performance of test log ingestion.
+		redactionOpts.PreloadRedactions = true
 		return redactor.NewRedactingSender(evgSender, redactionOpts), nil
 	}
 
