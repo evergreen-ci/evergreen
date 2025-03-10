@@ -82,7 +82,7 @@ func (h *testLogDirectoryHandler) run(ctx context.Context) error {
 	defer span.End()
 
 	if h.sequenceSize <= 0 {
-		// Default sequence size to 10MB.
+		// Set default sequence size to 10MB.
 		h.sequenceSize = 1e7
 	}
 
@@ -136,30 +136,6 @@ func (h *testLogDirectoryHandler) run(ctx context.Context) error {
 			currentByte += h.sequenceSize
 			sequence++
 		}
-
-		/*
-			// TODO: probably want to only break up the file if it's large.
-			var (
-				currentByte int64
-				sequence    int
-			)
-			fileSize := fileInfo.Size()
-			chunkSize := int64(math.Ceil(float64(fileSize) / float64(runtime.NumCPU())))
-			for currentByte < fileSize {
-				wg.Add(1)
-				go func(sequence int, offset, limit int64) {
-					defer func() {
-						h.logger.Task().Critical(recovery.HandlePanicWithError(recover(), nil, "ingesting test log"))
-					}()
-					defer wg.Done()
-
-					h.ingest(ctx, path, sequence, offset, limit)
-				}(sequence, currentByte, currentByte+chunkSize)
-
-				currentByte += chunkSize
-				sequence++
-			}
-		*/
 
 		return nil
 	})
@@ -274,6 +250,7 @@ func (h *testLogDirectoryHandler) ingest(ctx context.Context, path string, seque
 		}
 		currentPos += int64(len(data)) - 1
 	}
+	var allData []byte
 	for currentPos < limit {
 		data, err := r.ReadBytes('\n')
 		if err == io.EOF {
@@ -285,8 +262,9 @@ func (h *testLogDirectoryHandler) ingest(ctx context.Context, path string, seque
 		}
 		currentPos += int64(len(data)) - 1
 
-		sender.Send(message.NewDefaultMessage(level.Info, string(data)))
+		allData = append(allData, data...)
 	}
+	sender.Send(message.NewBytesMessage(level.Info, allData))
 
 	if err = sender.Close(); err != nil {
 		h.logger.Task().Error(errors.Wrapf(err, "closing Sender for test log '%s'", path))
@@ -351,5 +329,457 @@ func (f testLogFormat) validate() error {
 		return nil
 	default:
 		return errors.Errorf("unrecognized test log format '%s'", f)
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// BENCHMARK IMPLEMENTATIONS
+///////////////////////////////////////////////////////////////////////////////
+
+type testLogDirectoryHandlerV0 struct {
+	*testLogDirectoryHandler
+}
+
+func (h *testLogDirectoryHandlerV0) run(ctx context.Context) error {
+	ctx, span := tracer.Start(ctx, "test-log-ingestion")
+	defer span.End()
+
+	h.getSpecFile()
+
+	var wg sync.WaitGroup
+	ignore := filepath.Join(h.dir, testLogSpecFilename)
+	err := filepath.WalkDir(h.dir, func(path string, info fs.DirEntry, err error) error {
+		if err != nil {
+			h.logger.Execution().Warning(errors.Wrap(err, "walking test log directory"))
+			return nil
+		}
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		if info.IsDir() {
+			return nil
+		}
+		if path == ignore {
+			return nil
+		}
+
+		h.logFileCount++
+		wg.Add(1)
+		go func() {
+			defer func() {
+				h.logger.Task().Critical(recovery.HandlePanicWithError(recover(), nil, "ingesting test log"))
+			}()
+			defer wg.Done()
+
+			h.ingest(ctx, path)
+		}()
+
+		return nil
+	})
+	wg.Wait()
+
+	span.SetAttributes(attribute.KeyValue{Key: "test_log_file_count", Value: attribute.IntValue(h.logFileCount)})
+
+	return err
+}
+
+// ingest reads and ships a test log file.
+func (h *testLogDirectoryHandlerV0) ingest(ctx context.Context, path string) {
+	h.logger.Task().Infof("new test log file '%s' found, initiating automated ingestion", path)
+
+	// The persisted log path should be relative to the reserved directory
+	// and contain only slash ('/') separators.
+	logPath, err := filepath.Rel(h.dir, path)
+	if err != nil {
+		h.logger.Task().Error(errors.Wrapf(err, "getting relative path for test log file '%s'", path))
+		return
+	}
+	logPath = filepath.ToSlash(logPath)
+	h.logger.Task().Infof("storing test log file '%s' as '%s'", path, logPath)
+
+	f, err := os.Open(path)
+	if err != nil {
+		h.logger.Task().Error(errors.Wrapf(err, "opening test log file '%s'", path))
+		return
+	}
+	defer func() {
+		if err := f.Close(); err != nil {
+			h.logger.Task().Error(errors.Wrapf(err, "closing test log file '%s'", path))
+		}
+	}()
+
+	sender, err := h.createSender(ctx, logPath, 0)
+	if err != nil {
+		h.logger.Task().Error(errors.Wrapf(err, "creating Sender for test log '%s'", path))
+		return
+	}
+
+	r := bufio.NewReader(f)
+	for {
+		line, err := r.ReadString('\n')
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			h.logger.Task().Error(errors.Wrapf(err, "reading test log '%s'", path))
+			return
+		}
+
+		sender.Send(message.NewDefaultMessage(level.Info, line))
+	}
+	if err = sender.Close(); err != nil {
+		h.logger.Task().Error(errors.Wrapf(err, "closing Sender for test log '%s'", path))
+	}
+}
+
+type testLogDirectoryHandlerV1 struct {
+	*testLogDirectoryHandler
+}
+
+func (h *testLogDirectoryHandlerV1) run(ctx context.Context) error {
+	ctx, span := tracer.Start(ctx, "test-log-ingestion")
+	defer span.End()
+
+	if h.sequenceSize <= 0 {
+		// Set default sequence size to 10MB.
+		h.sequenceSize = 1e7
+	}
+
+	h.getSpecFile()
+
+	var wg sync.WaitGroup
+	type workFragment struct {
+		path     string
+		sequence int
+		offset   int64
+		limit    int64
+	}
+	var workFragments []workFragment
+	ignore := filepath.Join(h.dir, testLogSpecFilename)
+	err := filepath.WalkDir(h.dir, func(path string, info fs.DirEntry, err error) error {
+		if err != nil {
+			h.logger.Execution().Warning(errors.Wrap(err, "walking test log directory"))
+			return nil
+		}
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		if info.IsDir() {
+			return nil
+		}
+		if path == ignore {
+			return nil
+		}
+
+		h.logFileCount++
+
+		fileInfo, err := info.Info()
+		if err != nil {
+			h.logger.Execution().Warning(errors.Wrap(err, "getting test log file info"))
+			return nil
+		}
+
+		fileSize := fileInfo.Size()
+		var (
+			currentByte int64
+			sequence    int
+		)
+		for currentByte < fileSize {
+			workFragments = append(workFragments, workFragment{
+				path:     path,
+				sequence: sequence,
+				offset:   currentByte,
+				limit:    currentByte + h.sequenceSize,
+			})
+
+			currentByte += h.sequenceSize
+			sequence++
+		}
+
+		return nil
+	})
+
+	work := make(chan workFragment, len(workFragments))
+	for _, fragment := range workFragments {
+		work <- fragment
+	}
+	close(work)
+	for i := 0; i < runtime.NumCPU(); i++ {
+		wg.Add(1)
+		go func() {
+			defer func() {
+				h.logger.Task().Critical(recovery.HandlePanicWithError(recover(), nil, "test log ingestion worker"))
+				wg.Done()
+			}()
+
+			for chunk := range work {
+				if err := ctx.Err(); err != nil {
+					h.logger.Execution().Warning(errors.Wrap(err, "context error test log ingestion worker"))
+					return
+				}
+
+				h.ingest(ctx, chunk.path, chunk.sequence, chunk.offset, chunk.limit)
+			}
+		}()
+	}
+	wg.Wait()
+
+	span.SetAttributes(attribute.KeyValue{Key: "test_log_file_count", Value: attribute.IntValue(h.logFileCount)})
+
+	return err
+}
+
+// ingest reads and ships a test log file.
+func (h *testLogDirectoryHandlerV1) ingest(ctx context.Context, path string, sequence int, offset, limit int64) {
+	h.logger.Task().Infof("new test log file '%s' found, initiating automated ingestion", path)
+
+	// The persisted log path should be relative to the reserved directory
+	// and contain only slash ('/') separators.
+	logPath, err := filepath.Rel(h.dir, path)
+	if err != nil {
+		h.logger.Task().Error(errors.Wrapf(err, "getting relative path for test log file '%s'", path))
+		return
+	}
+	logPath = filepath.ToSlash(logPath)
+	h.logger.Task().Infof("storing test log file '%s' as '%s'", path, logPath)
+
+	f, err := os.Open(path)
+	if err != nil {
+		h.logger.Task().Error(errors.Wrapf(err, "opening test log file '%s'", path))
+		return
+	}
+	defer func() {
+		if err := f.Close(); err != nil {
+			h.logger.Task().Error(errors.Wrapf(err, "closing test log file '%s'", path))
+		}
+	}()
+
+	sender, err := h.createSender(ctx, logPath, sequence)
+	if err != nil {
+		h.logger.Task().Error(errors.Wrapf(err, "creating Sender for test log '%s'", path))
+		return
+	}
+
+	if offset > 0 {
+		_, err := f.Seek(offset-1, io.SeekStart)
+		if err != nil {
+			h.logger.Task().Error(errors.Wrapf(err, "seeking offset for test log '%s'", path))
+			return
+		}
+	}
+	r := bufio.NewReader(f)
+	data, err := r.Peek(1)
+	if err == io.EOF {
+		return
+	}
+	if err != nil {
+		h.logger.Task().Error(errors.Wrapf(err, "reading test log '%s'", path))
+		return
+	}
+	currentPos := offset
+	if offset > 0 && data[0] != '\n' {
+		data, err := r.ReadBytes('\n')
+		if err == io.EOF {
+			return
+		}
+		if err != nil {
+			h.logger.Task().Error(errors.Wrapf(err, "reading test log '%s'", path))
+			return
+		}
+		currentPos += int64(len(data)) - 1
+	}
+	for currentPos < limit {
+		data, err := r.ReadBytes('\n')
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			h.logger.Task().Error(errors.Wrapf(err, "reading test log '%s'", path))
+			return
+		}
+		currentPos += int64(len(data)) - 1
+
+		sender.Send(message.NewDefaultMessage(level.Info, string(data)))
+	}
+
+	if err = sender.Close(); err != nil {
+		h.logger.Task().Error(errors.Wrapf(err, "closing Sender for test log '%s'", path))
+	}
+}
+
+type testLogDirectoryHandlerV2 struct {
+	*testLogDirectoryHandler
+}
+
+func (h *testLogDirectoryHandlerV2) run(ctx context.Context) error {
+	ctx, span := tracer.Start(ctx, "test-log-ingestion")
+	defer span.End()
+
+	if h.sequenceSize <= 0 {
+		// Set default sequence size to 10MB.
+		h.sequenceSize = 1e7
+	}
+
+	h.getSpecFile()
+
+	var wg sync.WaitGroup
+	type workFragment struct {
+		path     string
+		sequence int
+		offset   int64
+		limit    int64
+	}
+	var workFragments []workFragment
+	ignore := filepath.Join(h.dir, testLogSpecFilename)
+	err := filepath.WalkDir(h.dir, func(path string, info fs.DirEntry, err error) error {
+		if err != nil {
+			h.logger.Execution().Warning(errors.Wrap(err, "walking test log directory"))
+			return nil
+		}
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		if info.IsDir() {
+			return nil
+		}
+		if path == ignore {
+			return nil
+		}
+
+		h.logFileCount++
+
+		fileInfo, err := info.Info()
+		if err != nil {
+			h.logger.Execution().Warning(errors.Wrap(err, "getting test log file info"))
+			return nil
+		}
+
+		fileSize := fileInfo.Size()
+		var (
+			currentByte int64
+			sequence    int
+		)
+		for currentByte < fileSize {
+			workFragments = append(workFragments, workFragment{
+				path:     path,
+				sequence: sequence,
+				offset:   currentByte,
+				limit:    currentByte + h.sequenceSize,
+			})
+
+			currentByte += h.sequenceSize
+			sequence++
+		}
+
+		return nil
+	})
+
+	work := make(chan workFragment, len(workFragments))
+	for _, fragment := range workFragments {
+		work <- fragment
+	}
+	close(work)
+	for i := 0; i < runtime.NumCPU(); i++ {
+		wg.Add(1)
+		go func() {
+			defer func() {
+				h.logger.Task().Critical(recovery.HandlePanicWithError(recover(), nil, "test log ingestion worker"))
+				wg.Done()
+			}()
+
+			for chunk := range work {
+				if err := ctx.Err(); err != nil {
+					h.logger.Execution().Warning(errors.Wrap(err, "context error test log ingestion worker"))
+					return
+				}
+
+				h.ingest(ctx, chunk.path, chunk.sequence, chunk.offset, chunk.limit)
+			}
+		}()
+	}
+	wg.Wait()
+
+	span.SetAttributes(attribute.KeyValue{Key: "test_log_file_count", Value: attribute.IntValue(h.logFileCount)})
+
+	return err
+}
+
+// ingest reads and ships a test log file.
+func (h *testLogDirectoryHandlerV2) ingest(ctx context.Context, path string, sequence int, offset, limit int64) {
+	h.logger.Task().Infof("new test log file '%s' found, initiating automated ingestion", path)
+
+	// The persisted log path should be relative to the reserved directory
+	// and contain only slash ('/') separators.
+	logPath, err := filepath.Rel(h.dir, path)
+	if err != nil {
+		h.logger.Task().Error(errors.Wrapf(err, "getting relative path for test log file '%s'", path))
+		return
+	}
+	logPath = filepath.ToSlash(logPath)
+	h.logger.Task().Infof("storing test log file '%s' as '%s'", path, logPath)
+
+	f, err := os.Open(path)
+	if err != nil {
+		h.logger.Task().Error(errors.Wrapf(err, "opening test log file '%s'", path))
+		return
+	}
+	defer func() {
+		if err := f.Close(); err != nil {
+			h.logger.Task().Error(errors.Wrapf(err, "closing test log file '%s'", path))
+		}
+	}()
+
+	sender, err := h.createSender(ctx, logPath, sequence)
+	if err != nil {
+		h.logger.Task().Error(errors.Wrapf(err, "creating Sender for test log '%s'", path))
+		return
+	}
+
+	if offset > 0 {
+		_, err := f.Seek(offset-1, io.SeekStart)
+		if err != nil {
+			h.logger.Task().Error(errors.Wrapf(err, "seeking offset for test log '%s'", path))
+			return
+		}
+	}
+	r := bufio.NewReader(f)
+	data, err := r.Peek(1)
+	if err == io.EOF {
+		return
+	}
+	if err != nil {
+		h.logger.Task().Error(errors.Wrapf(err, "reading test log '%s'", path))
+		return
+	}
+	currentPos := offset
+	if offset > 0 && data[0] != '\n' {
+		data, err := r.ReadBytes('\n')
+		if err == io.EOF {
+			return
+		}
+		if err != nil {
+			h.logger.Task().Error(errors.Wrapf(err, "reading test log '%s'", path))
+			return
+		}
+		currentPos += int64(len(data)) - 1
+	}
+	var allData []byte
+	for currentPos < limit {
+		data, err := r.ReadBytes('\n')
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			h.logger.Task().Error(errors.Wrapf(err, "reading test log '%s'", path))
+			return
+		}
+		currentPos += int64(len(data)) - 1
+
+		allData = append(allData, data...)
+	}
+	sender.Send(message.NewDefaultMessage(level.Info, string(allData)))
+
+	if err = sender.Close(); err != nil {
+		h.logger.Task().Error(errors.Wrapf(err, "closing Sender for test log '%s'", path))
 	}
 }

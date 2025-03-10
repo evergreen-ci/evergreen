@@ -19,63 +19,69 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-func BenchmarkTestLog(b *testing.B) {
+func BenchmarkTestLogDirectoryHandler(b *testing.B) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	for _, bench := range []struct {
-		name   string
-		config testLogBenchmarkConfiguration
+		name              string
+		version           int
+		preloadRedactions bool
 	}{
 		{
-			name: "PartitionedFileReadAndPreloadedRedactions",
-			config: testLogBenchmarkConfiguration{
-				filePath:          "benchmark_log.txt",
-				sequenceSize:      1e7,
-				numRedactionKeys:  40,
-				preloadRedactions: true,
-			},
+			name:    "OriginalImplementation(SequentialFileReadWithSendCallPerLine)",
+			version: 0,
 		},
 		{
-			name: "PartitionedFileRead",
-			config: testLogBenchmarkConfiguration{
-				filePath:         "benchmark_log.txt",
-				sequenceSize:     1e7,
-				numRedactionKeys: 40,
-			},
+			name:    "PartitionedFileReadWithSendCallPerLine",
+			version: 1,
 		},
 		{
-			name: "SequentialFileRead",
-			config: testLogBenchmarkConfiguration{
-				filePath:         "benchmark_log.txt",
-				sequenceSize:     1e10,
-				numRedactionKeys: 40,
-			},
+			name:              "PartitionedFileReadWithSendCallPerLineAndPreloadedRedactions",
+			version:           1,
+			preloadRedactions: true,
+		},
+		{
+			name:    "PartitionedFileReadWithSingleSendCallPerPartition",
+			version: 2,
+		},
+		{
+			name:              "PartitionedFileReadWithSingleSendCallPerPartitionAndPreloadedRedactions",
+			version:           2,
+			preloadRedactions: true,
+		},
+		{
+			name:    "PartitionedFileReadWithSingleSendCallPerPartitionAndBytesMessage",
+			version: 3,
+		},
+		{
+			name:              "PartitionedFileReadWithSingleSendCallPerPartitionAndBytesMessageAndPreloadedRedactions",
+			version:           3,
+			preloadRedactions: true,
 		},
 	} {
 		b.Run(bench.name, func(b *testing.B) {
+			h := setupTestLogBenchmark(b, testLogBenchmarkConfiguration{
+				filePath:          "benchmark_log.txt",
+				numRedactionKeys:  40,
+				version:           bench.version,
+				preloadRedactions: bench.preloadRedactions,
+			})
 			for n := 0; n < b.N; n++ {
-				require.NoError(b, setupTestLogBenchmark(b, bench.config).run(ctx))
+				require.NoError(b, h.run(ctx))
 			}
 		})
 	}
-
-	// Total file size.
-	// Sequence size.
-	// Number of redaction keys.
-	// With and without preloaded expansions.
-	// Number of workers (maybe).
-	// Number of files (with old way).
 }
 
 type testLogBenchmarkConfiguration struct {
 	filePath          string
-	sequenceSize      int64
 	numRedactionKeys  int
+	version           int
 	preloadRedactions bool
 }
 
-func setupTestLogBenchmark(b *testing.B, config testLogBenchmarkConfiguration) *testLogDirectoryHandler {
+func setupTestLogBenchmark(b *testing.B, config testLogBenchmarkConfiguration) directoryHandler {
 	expansions := map[string]string{}
 	keys := make([]string, config.numRedactionKeys)
 	for i := 0; i < config.numRedactionKeys; i++ {
@@ -119,7 +125,6 @@ func setupTestLogBenchmark(b *testing.B, config testLogBenchmarkConfiguration) *
 		},
 		logger,
 	).(*testLogDirectoryHandler)
-	h.sequenceSize = config.sequenceSize
 
 	data, err := yaml.Marshal(testLogSpec{Format: testLogFormatTextTimestamp})
 	require.NoError(b, err)
@@ -134,17 +139,13 @@ func setupTestLogBenchmark(b *testing.B, config testLogBenchmarkConfiguration) *
 	require.NoError(b, src.Close())
 	require.NoError(b, dst.Close())
 
-	return h
-}
-
-func generateExpansions(n int) (*util.DynamicExpansions, []string) {
-	expansions := map[string]string{}
-	keys := make([]string, n)
-	for i := 0; i < n; i++ {
-		key := fmt.Sprintf("secret_%d", i)
-		expansions[key] = "abcdefghijklmnopqrstuvwxyz"
-		keys[i] = key
+	switch config.version {
+	case 0:
+		return &testLogDirectoryHandlerV0{h}
+	case 1:
+		return &testLogDirectoryHandlerV1{h}
+	case 2:
+		return &testLogDirectoryHandlerV2{h}
 	}
-
-	return util.NewDynamicExpansions(expansions), keys
+	return h
 }
