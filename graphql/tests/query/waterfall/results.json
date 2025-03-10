@@ -895,6 +895,28 @@
           }
         }
       }
+    },
+    {
+      "query_file": "task-status-pagination.graphql",
+      "result": {
+        "data": {
+          "waterfall": {
+            "flattenedVersions": [
+              {
+                "id": "evergreen_version2",
+                "activated": true,
+                "status": "success",
+                "order": 42
+              }
+            ],
+            "pagination": {
+              "activeVersionIds": [
+                "evergreen_version2"
+              ]
+            }
+          }
+        }
+      }
     }
   ]
 }

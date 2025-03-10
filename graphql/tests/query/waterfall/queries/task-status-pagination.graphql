@@ -1,0 +1,13 @@
+{
+  waterfall(options: { projectIdentifier: "spruce-identifier", minOrder: 41, statuses: ["success"] }) {
+    flattenedVersions {
+      id
+      activated
+      status
+      order
+    }
+    pagination {
+      activeVersionIds
+    }
+  }
+}

@@ -139,15 +139,30 @@ func getBuildVariantFilterPipeline(ctx context.Context, variants []string, match
 
 // GetActiveVersionsByTaskFilters returns limit versions that satisfy a task name or status filter. It also applies any requester and build variant filters.
 // If neither of these filters is specified, use GetActiveWaterfallVersions: it's faster.
-func GetActiveVersionsByTaskFilters(ctx context.Context, projectId string, opts WaterfallOptions, mostRecentVersionOrder int) ([]Version, error) {
+func GetActiveVersionsByTaskFilters(ctx context.Context, projectId string, opts WaterfallOptions, searchOffset int) ([]Version, error) {
 	match := bson.M{
 		task.ProjectKey: projectId,
 		task.RequesterKey: bson.M{
 			"$in": opts.Requesters,
 		},
-		task.ActivatedKey:           true,
-		task.RevisionOrderNumberKey: bson.M{"$gte": mostRecentVersionOrder - MaxWaterfallVersionLimit},
+		task.ActivatedKey: true,
 	}
+
+	if opts.MaxOrder != 0 && opts.MinOrder != 0 {
+		return nil, errors.New("cannot provide both max and min order options")
+	}
+
+	pagingBackward := opts.MinOrder != 0
+
+	revisionFilter := bson.M{}
+	if pagingBackward {
+		revisionFilter["$lte"] = searchOffset + MaxWaterfallVersionLimit
+		revisionFilter["$gt"] = searchOffset
+	} else {
+		revisionFilter["$gte"] = searchOffset - MaxWaterfallVersionLimit
+		revisionFilter["$lt"] = searchOffset
+	}
+	match[task.RevisionOrderNumberKey] = revisionFilter
 
 	if len(opts.Statuses) > 0 {
 		match[task.DisplayStatusCacheKey] = bson.M{"$in": opts.Statuses}
@@ -178,8 +193,18 @@ func GetActiveVersionsByTaskFilters(ctx context.Context, projectId string, opts 
 		},
 	})
 
-	pipeline = append(pipeline, bson.M{"$sort": bson.M{task.RevisionOrderNumberKey: -1}})
-	pipeline = append(pipeline, bson.M{"$limit": opts.Limit})
+	if pagingBackward {
+		// When querying with a $gt param, sort ascending so we can take `limit` versions nearest to the MinOrder param
+		pipeline = append(pipeline, bson.M{"$sort": bson.M{task.RevisionOrderNumberKey: 1}})
+		pipeline = append(pipeline, bson.M{"$limit": opts.Limit})
+		// Then apply an acending sort so these versions are returned in the expected descending order
+		pipeline = append(pipeline, bson.M{"$sort": bson.M{task.RevisionOrderNumberKey: -1}})
+
+	} else {
+		pipeline = append(pipeline, bson.M{"$sort": bson.M{task.RevisionOrderNumberKey: -1}})
+		pipeline = append(pipeline, bson.M{"$limit": opts.Limit})
+
+	}
 
 	versionLookupKey := "version"
 
@@ -282,8 +307,8 @@ func GetActiveWaterfallVersions(ctx context.Context, projectId string, opts Wate
 
 // GetAllWaterfallVersions returns all of a project's versions within an inclusive range of orders.
 func GetAllWaterfallVersions(ctx context.Context, projectId string, minOrder int, maxOrder int) ([]Version, error) {
-	if minOrder != 0 && maxOrder != 0 && minOrder >= maxOrder {
-		return nil, errors.New("minOrder must be less than maxOrder")
+	if minOrder != 0 && maxOrder != 0 && minOrder > maxOrder {
+		return nil, errors.New("minOrder must be less than or equal to maxOrder")
 	}
 	match := bson.M{
 		VersionIdentifierKey: projectId,

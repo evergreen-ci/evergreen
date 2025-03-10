@@ -986,8 +986,16 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 
 	var activeVersions []model.Version
 	if len(opts.Tasks) > 0 || len(opts.Statuses) > 0 {
-		activeVersions, err = model.GetActiveVersionsByTaskFilters(ctx, projectId, opts, mostRecentWaterfallVersion.RevisionOrderNumber)
-		fmt.Println("heheh", len(activeVersions))
+		var searchOffset int
+		if opts.MaxOrder != 0 {
+			searchOffset = opts.MaxOrder
+		} else if opts.MinOrder != 0 {
+			searchOffset = opts.MinOrder
+		} else {
+			// Add one because minOrder and maxOrder are exclusive
+			searchOffset = mostRecentWaterfallVersion.RevisionOrderNumber + 1
+		}
+		activeVersions, err = model.GetActiveVersionsByTaskFilters(ctx, projectId, opts, searchOffset)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting active waterfall versions: %s", err.Error()))
 		}
@@ -1001,7 +1009,7 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 	// Since GetAllWaterfallVersions uses an inclusive order range ($gte instead of $gt), add 1 to our minimum range
 	minVersionOrder := minOrderOpt + 1
 	if len(activeVersions) == 0 {
-		minVersionOrder = 0
+		minVersionOrder = opts.MinOrder
 	} else if minOrderOpt == 0 {
 		// Find an older version that is activated. If it doesn't exist, that means there are trailing inactive
 		// versions on the waterfall and that we should not place a lower bound.
@@ -1021,7 +1029,7 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 	// Same as above, but subtract for max order
 	maxVersionOrder := maxOrderOpt - 1
 	if len(activeVersions) == 0 {
-		maxVersionOrder = 0
+		maxVersionOrder = opts.MaxOrder
 	} else if maxOrderOpt == 0 && minOrderOpt == 0 {
 		// If no order options were specified, we're on the first page and should not put a limit on the first version returned so that we don't omit inactive versions
 		maxVersionOrder = 0
