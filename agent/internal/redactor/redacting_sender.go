@@ -40,8 +40,8 @@ type RedactionOptions struct {
 	// full list of redacted key-value pairs on initialization, or on every
 	// sender.Send invocation. This should not be set if the redacting sender
 	// is logging during task runtime, because expansions can change over the course
-	// of task runtime. It can only be safely set if  we're confident that expansions
-	// will no longer be changing. This flag exists to improve the performance of test log ingestion.
+	// of task runtime. It can only be safely set if we're confident that expansions
+	// will no longer be changing.
 	PreloadRedactions bool
 }
 
