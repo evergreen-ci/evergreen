@@ -165,7 +165,7 @@ func GetActiveWaterfallVersions(ctx context.Context, projectId string, opts Wate
 		if pagingForward {
 			searchOffset = opts.MaxOrder
 		} else if pagingBackward {
-			searchOffset = opts.MinOrder
+			searchOffset = opts.MinOrder + MaxWaterfallVersionLimit
 		} else {
 
 			mostRecentVersion, err := GetMostRecentWaterfallVersion(ctx, projectId)
