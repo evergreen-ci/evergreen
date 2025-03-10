@@ -573,10 +573,10 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, lo
 			// If the bucket is an internal one, Evergreen does not need the credentials
 			// to sign the URL. If the bucket is not an internal one, Evergreen needs the
 			// credentials to sign the URL.
-			if !utility.StringSliceContains(s3pc.internalBuckets, s3pc.Bucket) {
-				key = s3pc.AwsKey
-				secret = s3pc.AwsSecret
-			}
+			// if !utility.StringSliceContains(s3pc.internalBuckets, s3pc.Bucket) {
+			key = s3pc.AwsKey
+			secret = s3pc.AwsSecret
+			// }
 		}
 
 		files = append(files, &artifact.File{
