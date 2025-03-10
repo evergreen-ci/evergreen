@@ -646,7 +646,7 @@ func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Vers
 		if opts.IncludeTasks {
 			taskMatch := []bson.M{
 				{"$eq": []string{"$build_id", "$$temp_build_id"}},
-				{"$eq": []interface{}{"$activated", true}},
+				{"$eq": []any{"$activated", true}},
 			}
 			if opts.ByTask != "" {
 				taskMatch = append(taskMatch, bson.M{"$eq": []string{"$display_name", opts.ByTask}})
@@ -664,7 +664,7 @@ func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Vers
 
 			// filter out builds that don't have any tasks included
 			matchTasksExist := bson.M{
-				"tasks": bson.M{"$exists": true, "$ne": []interface{}{}},
+				"tasks": bson.M{"$exists": true, "$ne": []any{}},
 			}
 			innerPipeline = append(innerPipeline, bson.M{"$match": matchTasksExist})
 		}
@@ -678,7 +678,7 @@ func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Vers
 		//
 		// filter out versions that don't have any activated builds
 		matchBuildsExist := bson.M{
-			"build_variants": bson.M{"$exists": true, "$ne": []interface{}{}},
+			"build_variants": bson.M{"$exists": true, "$ne": []any{}},
 		}
 		pipeline = append(pipeline, bson.M{"$match": matchBuildsExist})
 	}

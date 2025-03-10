@@ -19,12 +19,3 @@ updates:
         applies-to: version-updates
         patterns:
           - github.com/aws/aws-sdk-go-v2*
-    ignore:
-      - dependency-name: "*gonum*" # TODO: (DEVPROD-6962) Remove this ignore once we upgrade to minimum golang version 1.21
-      - dependency-name: "*grpc*" # TODO: (DEVPROD-6962) Remove this ignore once we upgrade to minimum golang version 1.21
-      - dependency-name: "github.com/aws/smithy-go" # TODO: (DEVPROD-6962) Remove this ignore once we upgrade to minimum golang version 1.21
-      - dependency-name: "golang.org/x/oauth2" # TODO: (DEVPROD-6962) Remove this ignore once we upgrade to minimum golang version 1.21
-      - dependency-name: "github.com/vektah/gqlparser/v2" # TODO: (DEVPROD-6962) Remove this ignore once we upgrade to minimum golang version 1.21
-      - dependency-name: "google.golang.org/protobuf" # TODO: (DEVPROD-6962) Remove this ignore once we upgrade to minimum golang version 1.21
-      - dependency-name: "github.com/99designs/gqlgen" # TODO: (DEVPROD-6962) Remove this ignore once we upgrade to minimum golang version 1.22. If it is not possible to upgrade to 1.22 in DEVPROD-3611, create a separate ticket from DEVPROD-6962 for this dependency.
-      - dependency-name: "github.com/gorilla/sessions" # TODO: (DEVPROD-6962) Remove this ignore once we upgrade to minimum golang version 1.23. If it is not possible to upgrade to 1.23 in DEVPROD-3611, create a separate ticket from DEVPROD-6962 for this dependency.

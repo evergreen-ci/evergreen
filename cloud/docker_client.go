@@ -569,7 +569,7 @@ func (c *dockerClientImpl) AttachToContainer(ctx context.Context, h *host.Host, 
 	return &stream, nil
 }
 
-func makeDockerLogMessage(name, parent string, data interface{}) message.Fields {
+func makeDockerLogMessage(name, parent string, data any) message.Fields {
 	return message.Fields{
 		"message":  "Docker API call",
 		"api_name": name,

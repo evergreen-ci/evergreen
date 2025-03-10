@@ -375,7 +375,7 @@ func (s *AdminRouteSuite) TestAdminEventRoute() {
 	s.NotNil(resp)
 	count := 0
 
-	data := response.Data().([]interface{})
+	data := response.Data().([]any)
 	for _, model := range data {
 		evt, ok := model.(*restModel.APIAdminEvent)
 		s.True(ok)

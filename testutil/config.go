@@ -266,7 +266,7 @@ func MockConfig() *evergreen.Settings {
 		ParameterStore: evergreen.ParameterStoreConfig{
 			Prefix: "/prefix",
 		},
-		Plugins: map[string]map[string]interface{}{"k4": {"k5": "v5"}},
+		Plugins: map[string]map[string]any{"k4": {"k5": "v5"}},
 		PodLifecycle: evergreen.PodLifecycleConfig{
 			MaxParallelPodRequests:      2000,
 			MaxPodDefinitionCleanupRate: 100,

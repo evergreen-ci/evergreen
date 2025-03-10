@@ -42,7 +42,7 @@ type perfSend struct {
 func perfSendFactory() Command { return &perfSend{} }
 func (*perfSend) Name() string { return "perf.send" }
 
-func (c *perfSend) ParseParams(params map[string]interface{}) error {
+func (c *perfSend) ParseParams(params map[string]any) error {
 	if err := mapstructure.Decode(params, c); err != nil {
 		return errors.Wrap(err, "decoding params")
 	}

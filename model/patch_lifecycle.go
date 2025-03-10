@@ -749,7 +749,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 	}
 	defer session.EndSession(ctx)
 
-	txFunc := func(ctx context.Context) (interface{}, error) {
+	txFunc := func(ctx context.Context) (any, error) {
 		db := env.DB()
 		_, err = db.Collection(VersionCollection).InsertOne(ctx, patchVersion)
 		if err != nil {

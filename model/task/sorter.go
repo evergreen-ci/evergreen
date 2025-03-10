@@ -14,10 +14,10 @@ func (t Tasks) Len() int           { return len(t) }
 func (t Tasks) Swap(i, j int)      { t[i], t[j] = t[j], t[i] }
 func (t Tasks) Less(i, j int) bool { return t[i].Id < t[j].Id }
 
-func (t Tasks) getPayload() []interface{} {
-	payload := make([]interface{}, len(t))
+func (t Tasks) getPayload() []any {
+	payload := make([]any, len(t))
 	for idx := range t {
-		payload[idx] = interface{}(t[idx])
+		payload[idx] = any(t[idx])
 	}
 
 	return payload

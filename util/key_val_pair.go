@@ -7,8 +7,8 @@ import (
 )
 
 type KeyValuePair struct {
-	Key   string      `bson:"key" json:"key" yaml:"key"`
-	Value interface{} `bson:"value" json:"value" yaml:"value"`
+	Key   string `bson:"key" json:"key" yaml:"key"`
+	Value any    `bson:"value" json:"value" yaml:"value"`
 }
 
 type KeyValuePairSlice []KeyValuePair

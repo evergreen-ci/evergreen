@@ -31,7 +31,7 @@ type generateTask struct {
 func generateTaskFactory() Command   { return &generateTask{} }
 func (c *generateTask) Name() string { return "generate.tasks" }
 
-func (c *generateTask) ParseParams(params map[string]interface{}) error {
+func (c *generateTask) ParseParams(params map[string]any) error {
 	if err := mapstructure.Decode(params, c); err != nil {
 		return errors.Wrap(err, "decoding mapstructure params")
 	}

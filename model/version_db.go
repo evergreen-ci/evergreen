@@ -329,7 +329,7 @@ func VersionCount(query db.Q) (int, error) {
 }
 
 // UpdateOne updates one version.
-func VersionUpdateOne(ctx context.Context, query interface{}, update interface{}) error {
+func VersionUpdateOne(ctx context.Context, query any, update any) error {
 	return db.UpdateContext(
 		ctx,
 		VersionCollection,

@@ -311,7 +311,7 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, settings *
 		return errors.Wrap(err, "creating task ID table for new variant-tasks to create")
 	}
 	tasksToBeGenerated := allTasksToBeCreatedIncludingDeps.Length()
-	if err = validateGeneratedProjectMaxTasks(ctx, v, tasksToBeGenerated); err != nil {
+	if err = validateGeneratedProjectMaxTasks(ctx, v, g.Task.Id, tasksToBeGenerated); err != nil {
 		return errors.Wrapf(err, "validating the number of tasks to be added by '%s'", g.Task.Id)
 	}
 	span.SetAttributes(attribute.Int(numGenerateTasksAttribute, tasksToBeGenerated))
@@ -400,9 +400,10 @@ func getBuildVariantsFromPairs(pairs TaskVariantPairs) []string {
 	return uniqueBVs
 }
 
-func validateGeneratedProjectMaxTasks(ctx context.Context, v *Version, tasksToBeCreated int) error {
+func validateGeneratedProjectMaxTasks(ctx context.Context, v *Version, taskID string, tasksToBeCreated int) error {
 	numExistingTasks, err := task.Count(ctx, db.Query(bson.M{
-		task.VersionKey: v.Id,
+		task.VersionKey:     v.Id,
+		task.GeneratedByKey: bson.M{"$ne": taskID},
 	}))
 	if err != nil {
 		return errors.Wrapf(err, "counting tasks for version '%s'", v.Id)

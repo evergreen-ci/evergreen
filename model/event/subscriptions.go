@@ -174,7 +174,7 @@ type Attributes struct {
 }
 
 func (a *Attributes) filterQuery() bson.M {
-	filterForAttribute := func(values []string) interface{} {
+	filterForAttribute := func(values []string) any {
 		if len(values) > 0 {
 			in := bson.A{nil}
 			for _, attribute := range values {

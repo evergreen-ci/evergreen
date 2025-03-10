@@ -337,7 +337,7 @@ func (c *baseCommunicator) GetExpansionsAndVars(ctx context.Context, taskData Ta
 }
 
 func (c *baseCommunicator) Heartbeat(ctx context.Context, taskData TaskData) (string, error) {
-	data := interface{}("heartbeat")
+	data := any("heartbeat")
 	ctx, cancel := context.WithTimeout(ctx, heartbeatTimeout)
 	defer cancel()
 	info := requestInfo{
@@ -713,6 +713,10 @@ func (c *baseCommunicator) GenerateTasks(ctx context.Context, td TaskData, jsonB
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &td,
+		// When generated tasks are large and evergreen is under load, we may not be able to ingest the
+		// data fast enough leading to a buffer overflow and a 413 status code. Therefore, a 413 status
+		// code in this case is transitive and we should retry.
+		retryOn413: true,
 	}
 	info.path = fmt.Sprintf("task/%s/generate", td.ID)
 	resp, err := c.retryRequest(ctx, info, jsonBytes)

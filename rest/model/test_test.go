@@ -19,12 +19,12 @@ func TestTestBuildFromService(t *testing.T) {
 
 	for _, test := range []struct {
 		name   string
-		io     func() (interface{}, *APITest)
+		io     func() (any, *APITest)
 		hasErr bool
 	}{
 		{
 			name: "NoOptionals",
-			io: func() (interface{}, *APITest) {
+			io: func() (any, *APITest) {
 				input := &testresult.TestResult{
 					TaskID:        "task",
 					Execution:     1,
@@ -56,7 +56,7 @@ func TestTestBuildFromService(t *testing.T) {
 		},
 		{
 			name: "Optionals",
-			io: func() (interface{}, *APITest) {
+			io: func() (any, *APITest) {
 				input := &testresult.TestResult{
 					TaskID:          "task",
 					Execution:       1,
@@ -98,7 +98,7 @@ func TestTestBuildFromService(t *testing.T) {
 		},
 		{
 			name: "TaskID",
-			io: func() (interface{}, *APITest) {
+			io: func() (any, *APITest) {
 				output := &APITest{
 					TaskID: utility.ToStringPtr("task"),
 				}
@@ -108,7 +108,7 @@ func TestTestBuildFromService(t *testing.T) {
 		},
 		{
 			name: "InvalidType",
-			io: func() (interface{}, *APITest) {
+			io: func() (any, *APITest) {
 				return &task.Task{}, &APITest{}
 			},
 			hasErr: true,

@@ -13,7 +13,7 @@ func init() {
 	registry.AllowSubscription(ResourceTypePatch, PatchChildrenCompletion)
 }
 
-func patchEventDataFactory() interface{} {
+func patchEventDataFactory() any {
 	return &PatchEventData{}
 }
 

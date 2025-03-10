@@ -121,12 +121,13 @@ func getBuildVariantFilterPipeline(ctx context.Context, variants []string, match
 	variantsAsRegex := strings.Join(variants, "|")
 	pipeline = append(pipeline, bson.M{
 		"$match": bson.M{
-			"$or": []bson.M{
-				{bsonutil.GetDottedKeyName(VersionBuildVariantsKey, VersionBuildStatusVariantKey): bson.M{"$regex": variantsAsRegex, "$options": "i"},
-					bsonutil.GetDottedKeyName(VersionBuildVariantsKey, VersionBuildStatusActivatedKey): true,
-				},
-				{bsonutil.GetDottedKeyName(VersionBuildVariantsKey, VersionBuildStatusDisplayNameKey): bson.M{"$regex": variantsAsRegex, "$options": "i"},
-					bsonutil.GetDottedKeyName(VersionBuildVariantsKey, VersionBuildStatusActivatedKey): true,
+			VersionBuildVariantsKey: bson.M{
+				"$elemMatch": bson.M{
+					VersionBuildStatusActivatedKey: true,
+					"$or": []bson.M{
+						bson.M{VersionBuildStatusVariantKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
+						bson.M{VersionBuildStatusDisplayNameKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
+					},
 				},
 			},
 		},

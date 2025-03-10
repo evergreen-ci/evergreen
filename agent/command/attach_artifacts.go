@@ -38,7 +38,7 @@ type attachArtifacts struct {
 func attachArtifactsFactory() Command   { return &attachArtifacts{} }
 func (c *attachArtifacts) Name() string { return evergreen.AttachArtifactsCommandName }
 
-func (c *attachArtifacts) ParseParams(params map[string]interface{}) error {
+func (c *attachArtifacts) ParseParams(params map[string]any) error {
 	if err := mapstructure.Decode(params, c); err != nil {
 		return errors.Wrap(err, "decoding mapstructure params")
 	}
