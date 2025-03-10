@@ -1073,9 +1073,9 @@ func TestGetActiveVersionsByTaskFilters(t *testing.T) {
 				WaterfallOptions{
 					Limit:      5,
 					Requesters: evergreen.SystemVersionRequesterTypes,
-				}, 1001)
+				}, 1002)
 			assert.NoError(t, err)
-			assert.Len(t, versions, 2)
+			require.Len(t, versions, 2)
 		},
 		"Applies a task name filter": func(t *testing.T, ctx context.Context) {
 			versions, err := GetActiveVersionsByTaskFilters(ctx, "a_project",
@@ -1083,9 +1083,9 @@ func TestGetActiveVersionsByTaskFilters(t *testing.T) {
 					Limit:      5,
 					Requesters: evergreen.SystemVersionRequesterTypes,
 					Tasks:      []string{"Task 80"},
-				}, 1001)
+				}, 1002)
 			assert.NoError(t, err)
-			assert.Len(t, versions, 1)
+			require.Len(t, versions, 1)
 			assert.Equal(t, versions[0].Id, "v_1")
 		},
 		"Applies a task status filter": func(t *testing.T, ctx context.Context) {
@@ -1094,9 +1094,9 @@ func TestGetActiveVersionsByTaskFilters(t *testing.T) {
 					Limit:      5,
 					Requesters: evergreen.SystemVersionRequesterTypes,
 					Statuses:   []string{evergreen.TaskFailed},
-				}, 1001)
+				}, 1002)
 			assert.NoError(t, err)
-			assert.Len(t, versions, 2)
+			require.Len(t, versions, 2)
 			assert.Equal(t, versions[0].Id, "v_2")
 			assert.Equal(t, versions[1].Id, "v_1")
 		},
@@ -1107,9 +1107,9 @@ func TestGetActiveVersionsByTaskFilters(t *testing.T) {
 					Requesters: evergreen.SystemVersionRequesterTypes,
 					Statuses:   []string{evergreen.TaskFailed},
 					Tasks:      []string{"Task 80"},
-				}, 1001)
+				}, 1002)
 			assert.NoError(t, err)
-			assert.Len(t, versions, 0)
+			require.Len(t, versions, 0)
 		},
 		"Applies a task name and task status filter": func(t *testing.T, ctx context.Context) {
 			versions, err := GetActiveVersionsByTaskFilters(ctx, "a_project",
@@ -1118,9 +1118,9 @@ func TestGetActiveVersionsByTaskFilters(t *testing.T) {
 					Requesters: evergreen.SystemVersionRequesterTypes,
 					Statuses:   []string{evergreen.TaskFailed},
 					Tasks:      []string{"Task 120"},
-				}, 1001)
+				}, 1002)
 			assert.NoError(t, err)
-			assert.Len(t, versions, 1)
+			require.Len(t, versions, 1)
 			assert.Equal(t, versions[0].Id, "v_2")
 		},
 		"Applies a task name and build variant filter": func(t *testing.T, ctx context.Context) {
@@ -1130,9 +1130,9 @@ func TestGetActiveVersionsByTaskFilters(t *testing.T) {
 					Requesters: evergreen.SystemVersionRequesterTypes,
 					Tasks:      []string{"Task 100"},
 					Variants:   []string{"Build Variant 1"},
-				}, 1001)
+				}, 1002)
 			assert.NoError(t, err)
-			assert.Len(t, versions, 1)
+			require.Len(t, versions, 1)
 			assert.Equal(t, versions[0].Id, "v_1")
 		},
 		"Applies a task status and build variant filter": func(t *testing.T, ctx context.Context) {
@@ -1142,9 +1142,9 @@ func TestGetActiveVersionsByTaskFilters(t *testing.T) {
 					Requesters: evergreen.SystemVersionRequesterTypes,
 					Statuses:   []string{evergreen.TaskFailed},
 					Variants:   []string{"bv_2"},
-				}, 1001)
+				}, 1002)
 			assert.NoError(t, err)
-			assert.Len(t, versions, 1)
+			require.Len(t, versions, 1)
 			assert.Equal(t, versions[0].Id, "v_2")
 		},
 		"Applies a task name, task status, requester, and build variant filter": func(t *testing.T, ctx context.Context) {
@@ -1155,9 +1155,9 @@ func TestGetActiveVersionsByTaskFilters(t *testing.T) {
 					Statuses:   []string{evergreen.TaskSucceeded},
 					Tasks:      []string{"Task 80"},
 					Variants:   []string{"bv_1"},
-				}, 1001)
+				}, 1002)
 			assert.NoError(t, err)
-			assert.Len(t, versions, 1)
+			require.Len(t, versions, 1)
 			assert.Equal(t, versions[0].Id, "v_1")
 		},
 	} {
