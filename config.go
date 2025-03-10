@@ -171,9 +171,9 @@ func (c *Settings) ValidateAndDefault() error {
 		if err != nil {
 			catcher.Add(errors.Wrap(err, "parsing plugins"))
 		}
-		c.Plugins = map[string]map[string]interface{}{}
+		c.Plugins = map[string]map[string]any{}
 		for k1, v1 := range tempPlugins {
-			c.Plugins[k1] = map[string]interface{}{}
+			c.Plugins[k1] = map[string]any{}
 			for k2, v2 := range v1 {
 				c.Plugins[k1][k2] = v2
 			}
@@ -548,7 +548,7 @@ func (s *Settings) makeSplunkSender(ctx context.Context, client *http.Client, le
 
 // PluginConfig holds plugin-specific settings, which are handled.
 // manually by their respective plugins
-type PluginConfig map[string]map[string]interface{}
+type PluginConfig map[string]map[string]any
 
 // SSHKeyPair represents a public and private SSH key pair.
 type SSHKeyPair struct {
