@@ -332,7 +332,10 @@ includes. This will accept a list of filenames and module names. If the
 include isn't given, we will only use the main project configuration
 file.
 
-Note: included files do not support [version-controlled project settings configuration](Project-and-Distro-Settings#version-control)
+Note: [version-controlled project settings configurations](Project-and-Distro-Settings#version-control)
+will not be recognized if they are put in included files. In order for any of the supported version-controlled
+YAML settings to take effect, they must exist in the main config file.
+
 
 ``` yaml
 include: 
@@ -760,58 +763,57 @@ file a ticket or issues. That's a bug.
 
 Every task has some expansions available by default:
 
--   `${is_patch}` is "true" if the running task is in a patch build and
-    undefined if it is not.
--   `${is_stepback}` is "true" if the running task was stepped back.
+
 -   `${author}` is the patch author's username for patch tasks or the
     git commit author for git tasks
 -   `${author_email}` is the patch or the git commit authors email
--   `${task_id}` is the task's unique id
--   `${task_name}` is the name of the task
--   `${execution}` is the execution number of the task (how many times
-    it has been reset)
 -   `${build_id}` is the id of the build the task belongs to
--   `${build_variant}` is the name of the build variant the task belongs
-    to
--   `${version_id}` is the id of the task's version
--   `${workdir}` is the task's working directory
--   `${revision}` is the commit hash of the base commit that a patch's changes
-    are being applied to, or of the commit for a mainline build. For PR patches,
-    this is the merge base of the PR branch and the target branch.
--   `${github_commit}` is the commit hash of the commit that triggered
-    the patch run
 -   `${branch_name}` is the name of the branch tracked by the
     project
--   `${distro_id}` is name of the distro the task is running on
+-   `${build_variant}` is the name of the build variant the task belongs
+    to
 -   `${created_at}` is the time the version was created
--   `${revision_order_id}` is Evergreen's internal revision order
-    number, which increments on each commit, and includes the patch
-    author name in patches
--   `${github_pr_number}` is the Github PR number associated with PR
-    patches and PR triggered merge queue items
--   `${github_org}` is the GitHub organization for the repo in which
-    a PR or PR triggered merge queue item appears
--   `${github_repo}` is the GitHub repo in which a PR or PR triggered
-    merge queue item appears
+-   `${distro_id}` is name of the distro the task is running on
+-   `${execution}` is the execution number of the task (how many times
+    it has been reset)
 -   `${github_author}` is the GitHub username of the creator of a PR
     or PR triggered merge queue item
+-   `${github_commit}` is the commit hash of the commit that triggered
+    the patch run
 -   `${github_known_hosts}` is GitHub's SSH key fingerprint
--   `${triggered_by_git_tag}` is the name of the tag that triggered this
-    version, if applicable
+-   `${github_org}` is the GitHub organization for the repo for the project
+-   `${github_repo}` is the GitHub repo for the project
+-   `${github_pr_number}` is the Github PR number associated with PR
+    patches and PR triggered merge queue items
 -   `${is_commit_queue}` is the string "true" if this is a merge
     queue task
--   `${requester}` is what triggered the task: `patch`, `github_pr`,
-    `github_tag`, `commit`, `trigger`, `github_merge_queue`, or `ad_hoc`
+-   `${is_patch}` is "true" if the running task is in a patch build and
+    undefined if it is not.
+-   `${is_stepback}` is "true" if the running task was stepped back.
 -   `${otel_collector_endpoint}` is the gRPC endpoint for Evergreen's
     OTel collector. Tasks can send traces to this endpoint.
--   `${otel_trace_id}` is the OTel trace ID this task is running under.
-    Include the trace ID in your task's spans so they'll be hooked
-    in under the task's trace.
-    See [Hooking tests into command spans](Task_Traces#hooking-tests-into-command-spans) for more information.
 -   `${otel_parent_id}` is the OTel span ID of the current command.
     Include this ID in your test's root spans so it'll be hooked
     in under the command's trace.
+    Include the trace ID in your task's spans so they'll be hooked
+    in under the task's trace.
     See [Hooking tests into command spans](Task_Traces#hooking-tests-into-command-spans) for more information.
+    See [Hooking tests into command spans](Task_Traces#hooking-tests-into-command-spans) for more information.
+-   `${otel_trace_id}` is the OTel trace ID this task is running under.
+-   `${requester}` is what triggered the task: `patch`, `github_pr`,
+    `github_tag`, `commit`, `trigger`, `github_merge_queue`, or `ad_hoc`
+-   `${revision}` is the commit hash of the base commit that a patch's changes
+    are being applied to, or of the commit for a mainline build. For PR patches,
+    this is the merge base of the PR branch and the target branch.
+-   `${revision_order_id}` is Evergreen's internal revision order
+    number, which increments on each commit, and includes the patch
+    author name in patches
+-   `${task_id}` is the task's unique id
+-   `${task_name}` is the name of the task
+-   `${triggered_by_git_tag}` is the name of the tag that triggered this
+    version, if applicable
+-   `${version_id}` is the id of the task's version
+-   `${workdir}` is the task's working directory
 -   `${__project_aws_ssh_key_name}` is the unique key name for the ssh key 
     pair generated by Evergreen. 
 -   `${__project_aws_ssh_key_value}` is the unencrypted PEM encoded PKCS#1 private key 
@@ -1480,7 +1482,7 @@ Parameters:
     if max hosts is less than 1 (apart from -1) or greater than the number of 
     tasks in task group. When max hosts is 1, this is a special case where the
     tasks will run serially on a single host. If any task fails, the task group
-    will stop, so the remaining tasks after the failed one will not run.
+    will stop, so the remaining tasks after the failed one will not run. Please see [special considerations for single host task groups](#the-following-constraints-apply-to-single-host-task-groups). 
 -   `timeout`: timeout handler which will be called instead of the top-level
     timeout handler. If it is not present, the top-level timeout handler will
     run if a top-level timeout handler exists. See [timeout
@@ -1498,7 +1500,7 @@ discourage relying on it for anything critical in general.
 
 For that same reason, teardown groups also cannot run the [manually set task status](Project-Configuration/Task-Runtime-Behavior#manually-set-task-status) route. 
 
-The following constraints apply:
+#### The following constraints apply to all task groups:
 
 -   Tasks can appear in multiple task groups. However, no task can be
     assigned to a build variant more than once.
@@ -1511,6 +1513,10 @@ The following constraints apply:
     tasks within a task group using [task dependencies](#task-dependencies).
 -   Task groups cannot have tags applied to them and cannot be selected by
     tags.
+
+#### The following constraints apply to single host task groups:
+
+-  If tasks in a single host task groups have dependencies on another task outside the group, only the first task in the task group should list those dependencies. If a task in the group other than the first one have dependencies outside of the group, the task can be blocked waiting for external dependencies to complete and result in the host being terminated for idleness.
 
 Tasks in a group will be displayed as
 separate tasks. Users can use display tasks if they wish to group the

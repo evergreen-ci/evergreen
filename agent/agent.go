@@ -220,7 +220,7 @@ func (a *Agent) Start(ctx context.Context) error {
 		return errors.Wrap(err, "starting status server")
 	}
 	if a.opts.Cleanup {
-		a.tryCleanupDirectory(a.opts.WorkingDirectory)
+		a.tryCleanupDirectory(ctx, a.opts.WorkingDirectory)
 	}
 
 	return errors.Wrap(a.loop(ctx), "executing main agent loop")
@@ -833,11 +833,15 @@ func (a *Agent) runTaskCommands(ctx context.Context, tc *taskContext) error {
 	task := tc.taskConfig.Project.FindProjectTask(tc.taskConfig.Task.DisplayName)
 
 	if task == nil {
-		return errors.Errorf("unable to find task '%s' in project '%s'", tc.taskConfig.Task.DisplayName, tc.taskConfig.Task.Project)
+		err := errors.Errorf("unable to find task '%s' in project '%s'", tc.taskConfig.Task.DisplayName, tc.taskConfig.Task.Project)
+		tc.logger.Execution().Error(err)
+		return err
 	}
 
 	if err := ctx.Err(); err != nil {
-		return errors.Wrap(err, "canceled while running task commands")
+		err = errors.Wrap(err, "canceled before running task commands")
+		tc.logger.Execution().Error(err)
+		return err
 	}
 
 	mainTask := commandBlock{
@@ -897,7 +901,7 @@ func (a *Agent) runPostOrTeardownTaskCommands(ctx context.Context, tc *taskConte
 }
 
 func (a *Agent) runTeardownGroupCommands(ctx context.Context, tc *taskContext) {
-	defer a.removeTaskDirectory(tc)
+	defer a.removeTaskDirectory(ctx, tc)
 	if tc.taskConfig == nil {
 		return
 	}
@@ -1065,6 +1069,12 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 	if err != nil {
 		grip.Error(errors.Wrap(err, "upserting check run"))
 		tc.logger.Task().Errorf("Error upserting check run: '%s'", err.Error())
+	}
+
+	if tc.logger != nil {
+		flushCtx, cancel := context.WithTimeout(ctx, time.Minute)
+		defer cancel()
+		grip.Error(errors.Wrap(tc.logger.Flush(flushCtx), "flushing logs"))
 	}
 
 	span := trace.SpanFromContext(ctx)

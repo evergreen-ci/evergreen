@@ -58,7 +58,7 @@ type ViewData struct {
 	User        *user.DBUser
 	ProjectData projectContext
 	Project     model.Project
-	Flashes     []interface{}
+	Flashes     []any
 	Banner      string
 	BannerTheme string
 	Csrf        htmlTemplate.HTML

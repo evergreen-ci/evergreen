@@ -36,7 +36,13 @@ type RedactionOptions struct {
 	// secrets). All values in InternalRedactions are assumed to be
 	// sensitive and are replaced by their key.
 	InternalRedactions *util.DynamicExpansions
-	PreloadExpansions  bool
+	// PreloadRedactions indicates whether the redacting sender will need to compute a
+	// full list of redacted key-value pairs on initialization, or on every
+	// sender.Send invocation. This should not be set if the redacting sender
+	// is logging during task runtime, because expansions can change over the course
+	// of task runtime. It can only be safely set if we're confident that expansions
+	// will no longer be changing.
+	PreloadRedactions bool
 }
 
 func (r *redactingSender) Send(m message.Composer) {
@@ -76,7 +82,7 @@ func NewRedactingSender(sender send.Sender, opts RedactionOptions) send.Sender {
 		internalRedactions: opts.InternalRedactions,
 		Sender:             sender,
 	}
-	if opts.PreloadExpansions {
+	if opts.PreloadRedactions {
 		redacter.allRedacted = getAllRedacted(redacter.expansions, redacter.internalRedactions, redacter.expansionsToRedact)
 	}
 	return redacter

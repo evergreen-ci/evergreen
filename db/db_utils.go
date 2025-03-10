@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -12,17 +13,17 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 var (
-	NoProjection             = bson.M{}
-	NoSort                   = []string{}
-	NoSkip                   = 0
-	NoLimit                  = 0
-	NoHint       interface{} = nil
+	NoProjection     = bson.M{}
+	NoSort           = []string{}
+	NoSkip           = 0
+	NoLimit          = 0
+	NoHint       any = nil
 )
 
 type SessionFactory interface {
@@ -78,7 +79,7 @@ func (s *shimFactoryImpl) GetContextSession(ctx context.Context) (db.Session, db
 }
 
 // Insert inserts the specified item into the specified collection.
-func Insert(collection string, item interface{}) error {
+func Insert(collection string, item any) error {
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
 		return errors.WithStack(err)
@@ -88,7 +89,7 @@ func Insert(collection string, item interface{}) error {
 	return db.C(collection).Insert(item)
 }
 
-func InsertMany(collection string, items ...interface{}) error {
+func InsertMany(collection string, items ...any) error {
 	if len(items) == 0 {
 		return nil
 	}
@@ -101,7 +102,7 @@ func InsertMany(collection string, items ...interface{}) error {
 	return db.C(collection).Insert(items...)
 }
 
-func InsertManyUnordered(c string, items ...interface{}) error {
+func InsertManyUnordered(c string, items ...any) error {
 	if len(items) == 0 {
 		return nil
 	}
@@ -198,7 +199,7 @@ func EnsureIndex(collection string, index mongo.IndexModel) error {
 }
 
 // Remove removes one item matching the query from the specified collection.
-func Remove(collection string, query interface{}) error {
+func Remove(collection string, query any) error {
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
 		return err
@@ -208,7 +209,7 @@ func Remove(collection string, query interface{}) error {
 	return db.C(collection).Remove(query)
 }
 
-func RemoveContext(ctx context.Context, collection string, query interface{}) error {
+func RemoveContext(ctx context.Context, collection string, query any) error {
 	session, db, err := GetGlobalSessionFactory().GetContextSession(ctx)
 	if err != nil {
 		return err
@@ -219,7 +220,7 @@ func RemoveContext(ctx context.Context, collection string, query interface{}) er
 }
 
 // RemoveAll removes all items matching the query from the specified collection.
-func RemoveAll(collection string, query interface{}) error {
+func RemoveAll(collection string, query any) error {
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
 		return err
@@ -231,7 +232,7 @@ func RemoveAll(collection string, query interface{}) error {
 }
 
 // Update updates one matching document in the collection.
-func Update(collection string, query interface{}, update interface{}) error {
+func Update(collection string, query any, update any) error {
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
 		grip.Errorf("error establishing db connection: %+v", err)
@@ -243,8 +244,29 @@ func Update(collection string, query interface{}, update interface{}) error {
 	return db.C(collection).Update(query, update)
 }
 
-// Update updates one matching document in the collection.
-func UpdateContext(ctx context.Context, collection string, query interface{}, update interface{}) error {
+// UpdateContext updates one matching document in the collection.
+func UpdateContext(ctx context.Context, collection string, query any, update any) error {
+	// Temporarily, we check if the document has a key beginning with '$', this would
+	// indicate a proper update operation. If not, it's a document intended for replacement.
+	// If the document is unable to be transformed (aka err != nil, e.g. a pipeline), we
+	// also default to an update operation.
+	// This will be removed in DEVPROD-15419.
+
+	doc, err := transformDocument(update)
+	if err != nil || hasDollarKey(doc) {
+		return updateContext(ctx, collection, query, update)
+	}
+
+	msg := "update document must contain a key beginning with '$'"
+	grip.Debug(message.Fields{
+		"message": msg,
+		"error":   errors.New(msg),
+		"ticket":  "DEVPROD-15419",
+	})
+	return ReplaceContext(ctx, collection, query, update)
+}
+
+func updateContext(ctx context.Context, collection string, query any, update any) error {
 	res, err := evergreen.GetEnvironment().DB().Collection(collection).UpdateOne(ctx,
 		query,
 		update,
@@ -259,7 +281,24 @@ func UpdateContext(ctx context.Context, collection string, query interface{}, up
 	return nil
 }
 
-func UpdateAllContext(ctx context.Context, collection string, query interface{}, update interface{}) (*db.ChangeInfo, error) {
+// ReplaceContext replaces one matching document in the collection.
+func ReplaceContext(ctx context.Context, collection string, query any, replacement any) error {
+	res, err := evergreen.GetEnvironment().DB().Collection(collection).ReplaceOne(ctx,
+		query,
+		replacement,
+	)
+	if err != nil {
+		return errors.Wrapf(err, "replacing task")
+	}
+	if res.MatchedCount == 0 {
+		return db.ErrNotFound
+	}
+
+	return nil
+}
+
+// UpdateAllContext updates all matching documents in the collection.
+func UpdateAllContext(ctx context.Context, collection string, query any, update any) (*db.ChangeInfo, error) {
 	switch query.(type) {
 	case *Q, Q:
 		grip.EmergencyPanic(message.Fields{
@@ -288,7 +327,7 @@ func UpdateAllContext(ctx context.Context, collection string, query interface{},
 }
 
 // UpdateId updates one _id-matching document in the collection.
-func UpdateId(collection string, id, update interface{}) error {
+func UpdateId(collection string, id, update any) error {
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
 		grip.Errorf("error establishing db connection: %+v", err)
@@ -300,8 +339,24 @@ func UpdateId(collection string, id, update interface{}) error {
 	return db.C(collection).UpdateId(id, update)
 }
 
+// UpdateIdContext updates one _id-matching document in the collection.
+func UpdateIdContext(ctx context.Context, collection string, id, update any) error {
+	res, err := evergreen.GetEnvironment().DB().Collection(collection).UpdateOne(ctx,
+		bson.D{{Key: "_id", Value: id}},
+		update,
+	)
+	if err != nil {
+		return errors.Wrapf(err, "updating task")
+	}
+	if res.MatchedCount == 0 {
+		return db.ErrNotFound
+	}
+
+	return nil
+}
+
 // UpdateAll updates all matching documents in the collection.
-func UpdateAll(collection string, query interface{}, update interface{}) (*db.ChangeInfo, error) {
+func UpdateAll(collection string, query any, update any) (*db.ChangeInfo, error) {
 	switch query.(type) {
 	case *Q, Q:
 		grip.EmergencyPanic(message.Fields{
@@ -330,7 +385,7 @@ func UpdateAll(collection string, query interface{}, update interface{}) (*db.Ch
 }
 
 // Upsert run the specified update against the collection as an upsert operation.
-func Upsert(collection string, query interface{}, update interface{}) (*db.ChangeInfo, error) {
+func Upsert(collection string, query any, update any) (*db.ChangeInfo, error) {
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
 		grip.Errorf("error establishing db connection: %+v", err)
@@ -342,8 +397,22 @@ func Upsert(collection string, query interface{}, update interface{}) (*db.Chang
 	return db.C(collection).Upsert(query, update)
 }
 
+// UpsertContext run the specified update against the collection as an upsert operation.
+func UpsertContext(ctx context.Context, collection string, query any, update any) (*db.ChangeInfo, error) {
+	res, err := evergreen.GetEnvironment().DB().Collection(collection).UpdateOne(ctx,
+		query,
+		update,
+		options.UpdateOne().SetUpsert(true),
+	)
+	if err != nil {
+		return nil, errors.Wrapf(err, "upserting")
+	}
+
+	return &db.ChangeInfo{Updated: int(res.UpsertedCount) + int(res.ModifiedCount), UpsertedId: res.UpsertedID}, nil
+}
+
 // Count run a count command with the specified query against the collection.
-func Count(collection string, query interface{}) (int, error) {
+func Count(collection string, query any) (int, error) {
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
 		grip.Errorf("error establishing db connection: %+v", err)
@@ -356,7 +425,7 @@ func Count(collection string, query interface{}) (int, error) {
 }
 
 // Count run a count command with the specified query against the collection.
-func CountContext(ctx context.Context, collection string, query interface{}) (int, error) {
+func CountContext(ctx context.Context, collection string, query any) (int, error) {
 	session, db, err := GetGlobalSessionFactory().GetContextSession(ctx)
 	if err != nil {
 		grip.Errorf("error establishing db connection: %+v", err)
@@ -370,7 +439,7 @@ func CountContext(ctx context.Context, collection string, query interface{}) (in
 
 // FindAndModify runs the specified query and change against the collection,
 // unmarshaling the result into the specified interface.
-func FindAndModify(collection string, query interface{}, sort []string, change db.Change, out interface{}) (*db.ChangeInfo, error) {
+func FindAndModify(collection string, query any, sort []string, change db.Change, out any) (*db.ChangeInfo, error) {
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
 		grip.Errorf("error establishing db connection: %+v", err)
@@ -422,7 +491,7 @@ func ClearGridCollections(fsPrefix string) error {
 // Aggregate runs an aggregation pipeline on a collection and unmarshals
 // the results to the given "out" interface (usually a pointer
 // to an array of structs/bson.M)
-func Aggregate(collection string, pipeline interface{}, out interface{}) error {
+func Aggregate(collection string, pipeline any, out any) error {
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
 		err = errors.Wrap(err, "establishing db connection")
@@ -439,7 +508,7 @@ func Aggregate(collection string, pipeline interface{}, out interface{}) error {
 // AggregateContext runs an aggregation pipeline on a collection and unmarshals
 // the results to the given "out" interface (usually a pointer
 // to an array of structs/bson.M)
-func AggregateContext(ctx context.Context, collection string, pipeline interface{}, out interface{}) error {
+func AggregateContext(ctx context.Context, collection string, pipeline any, out any) error {
 	session, db, err := GetGlobalSessionFactory().GetContextSession(ctx)
 	if err != nil {
 		err = errors.Wrap(err, "establishing db connection")
@@ -455,8 +524,11 @@ func AggregateContext(ctx context.Context, collection string, pipeline interface
 
 // AggregateWithMaxTime runs aggregate and specifies a max query time which
 // ensures the query won't go on indefinitely when the request is cancelled.
-func AggregateWithMaxTime(collection string, pipeline interface{}, out interface{}, maxTime time.Duration) error {
-	session, database, err := GetGlobalSessionFactory().GetSession()
+func AggregateWithMaxTime(collection string, pipeline any, out any, maxTime time.Duration) error {
+	ctx, cancel := context.WithTimeout(context.Background(), maxTime)
+	defer cancel()
+
+	session, database, err := GetGlobalSessionFactory().GetContextSession(ctx)
 	if err != nil {
 		err = errors.Wrap(err, "establishing DB connection")
 		grip.Error(err)
@@ -464,5 +536,26 @@ func AggregateWithMaxTime(collection string, pipeline interface{}, out interface
 	}
 	defer session.Close()
 
-	return database.C(collection).Pipe(pipeline).MaxTime(maxTime).All(out)
+	return database.C(collection).Pipe(pipeline).All(out)
+}
+
+func transformDocument(val any) (bson.Raw, error) {
+	if val == nil {
+		return nil, errors.WithStack(mongo.ErrNilDocument)
+	}
+
+	b, err := bson.Marshal(val)
+	if err != nil {
+		return nil, mongo.MarshalError{Value: val, Err: err}
+	}
+
+	return bson.Raw(b), nil
+}
+
+func hasDollarKey(doc bson.Raw) bool {
+	if elem, err := doc.IndexErr(0); err == nil && strings.HasPrefix(elem.Key(), "$") {
+		return true
+	}
+
+	return false
 }

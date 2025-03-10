@@ -99,7 +99,7 @@ func TestRemoveSuspectedIssueFromAnnotation(t *testing.T) {
 	a := TaskAnnotation{TaskId: "t1", SuspectedIssues: []IssueLink{issue1, issue2}}
 	assert.NoError(t, a.Upsert())
 
-	assert.NoError(t, RemoveSuspectedIssueFromAnnotation("t1", 0, issue1))
+	assert.NoError(t, RemoveSuspectedIssueFromAnnotation(t.Context(), "t1", 0, issue1))
 	annotationFromDB, err := FindOneByTaskIdAndExecution("t1", 0)
 	assert.NoError(t, err)
 	assert.NotNil(t, annotationFromDB)

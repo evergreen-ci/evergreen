@@ -9,7 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 type TaskAnnotation struct {
@@ -144,8 +144,9 @@ func AddSuspectedIssueToAnnotation(taskId string, execution int, issue IssueLink
 	return errors.Wrapf(err, "adding task annotation suspected issue for task '%s'", taskId)
 }
 
-func RemoveSuspectedIssueFromAnnotation(taskId string, execution int, issue IssueLink) error {
-	return db.Update(
+func RemoveSuspectedIssueFromAnnotation(ctx context.Context, taskId string, execution int, issue IssueLink) error {
+	return db.UpdateContext(
+		ctx,
 		Collection,
 		ByTaskIdAndExecution(taskId, execution),
 		bson.M{"$pull": bson.M{SuspectedIssuesKey: issue}},

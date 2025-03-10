@@ -1,13 +1,14 @@
 package model
 
 import (
+	"context"
 	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 // Repository contains fields used to track projects.
@@ -72,8 +73,9 @@ func FindRepository(projectId string) (*Repository, error) {
 }
 
 // UpdateLastRevision updates the last created revision of a project.
-func UpdateLastRevision(projectId, revision string) error {
-	return db.Update(
+func UpdateLastRevision(ctx context.Context, projectId, revision string) error {
+	return db.UpdateContext(
+		ctx,
 		RepositoriesCollection,
 		bson.M{
 			RepoProjectKey: projectId,

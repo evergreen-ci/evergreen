@@ -19,8 +19,8 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 type Distro struct {
@@ -66,14 +66,14 @@ type Distro struct {
 // DistroData is the same as a distro, with the only difference being that all
 // the provider settings are stored as maps instead of Birch BSON documents.
 type DistroData struct {
-	Distro              Distro                   `bson:",inline"`
-	ProviderSettingsMap []map[string]interface{} `bson:"provider_settings_list" json:"provider_settings_list"`
+	Distro              Distro           `bson:",inline"`
+	ProviderSettingsMap []map[string]any `bson:"provider_settings_list" json:"provider_settings_list"`
 }
 
 // DistroData creates distro data from this distro. The provider settings are
 // converted into maps instead of Birch BSON documents.
 func (d *Distro) DistroData() DistroData {
-	res := DistroData{ProviderSettingsMap: []map[string]interface{}{}}
+	res := DistroData{ProviderSettingsMap: []map[string]any{}}
 	res.Distro = *d
 	for _, each := range d.ProviderSettingsList {
 		res.ProviderSettingsMap = append(res.ProviderSettingsMap, each.ExportMap())
@@ -527,7 +527,7 @@ func (d *Distro) GetPoolSize() int {
 	switch d.Provider {
 	case evergreen.ProviderNameStatic:
 		if len(d.ProviderSettingsList) > 0 {
-			hosts, ok := d.ProviderSettingsList[0].Lookup("hosts").Interface().([]interface{})
+			hosts, ok := d.ProviderSettingsList[0].Lookup("hosts").Interface().([]any)
 			if !ok {
 				return 0
 			}
@@ -716,7 +716,7 @@ func (d *Distro) GetResolvedPlannerSettings(s *evergreen.Settings) (PlannerSetti
 	}
 
 	if resolved.Version == "" {
-		resolved.Version = config.Planner
+		resolved.Version = evergreen.PlannerVersionTunable
 	}
 	if !utility.StringSliceContains(evergreen.ValidTaskPlannerVersions, resolved.Version) {
 		catcher.Errorf("'%s' is not a valid planner version", resolved.Version)
@@ -765,10 +765,10 @@ func (d *Distro) Add(ctx context.Context, creator *user.DBUser) error {
 	if err != nil {
 		return errors.Wrap(err, "Error inserting distro")
 	}
-	return d.AddPermissions(creator)
+	return d.AddPermissions(ctx, creator)
 }
 
-func (d *Distro) AddPermissions(creator *user.DBUser) error {
+func (d *Distro) AddPermissions(ctx context.Context, creator *user.DBUser) error {
 	rm := evergreen.GetEnvironment().RoleManager()
 	if err := rm.AddResourceToScope(evergreen.AllDistrosScope, d.Id); err != nil {
 		return errors.Wrapf(err, "adding distro '%s' to permissions scope containing all distros", d.Id)
@@ -796,7 +796,7 @@ func (d *Distro) AddPermissions(creator *user.DBUser) error {
 		return errors.Wrapf(err, "adding admin role for distro '%s'", d.Id)
 	}
 	if creator != nil {
-		if err := creator.AddRole(newRole.ID); err != nil {
+		if err := creator.AddRole(ctx, newRole.ID); err != nil {
 			return errors.Wrapf(err, "adding role '%s' to user '%s'", newRole.ID, creator.Id)
 		}
 	}

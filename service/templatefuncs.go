@@ -18,8 +18,8 @@ type TemplateFunctionOptions struct {
 }
 
 // MakeTemplateFuncs creates and registers all of our built-in template functions.
-func MakeTemplateFuncs(fo TemplateFunctionOptions) map[string]interface{} {
-	r := map[string]interface{}{
+func MakeTemplateFuncs(fo TemplateFunctionOptions) map[string]any {
+	r := map[string]any{
 		// DateFormat returns a time Formatted to the given layout and
 		// time zone. If the time zone is unset, it defaults to
 		// `America/New_York`.

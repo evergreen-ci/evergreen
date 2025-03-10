@@ -1,6 +1,7 @@
 package data
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
@@ -60,7 +61,7 @@ func CreatePod(apiPod model.APICreatePod) (*model.APICreatePodResponse, error) {
 // CheckPodSecret checks for a pod with a matching ID and secret in the
 // database. It returns an error if the secret does not match the one assigned
 // to the pod.
-func CheckPodSecret(id, secret string) error {
+func CheckPodSecret(ctx context.Context, id, secret string) error {
 	p, err := FindPodByID(id)
 	if err != nil {
 		return gimlet.ErrorResponse{
@@ -85,7 +86,7 @@ func CheckPodSecret(id, secret string) error {
 
 	// The pod just successfully authed into the app server, so bump its last
 	// communicated time.
-	grip.Warning(message.WrapError(p.UpdateLastCommunicated(), message.Fields{
+	grip.Warning(message.WrapError(p.UpdateLastCommunicated(ctx), message.Fields{
 		"message": "failed to update last communication time",
 		"pod":     p.ID,
 	}))

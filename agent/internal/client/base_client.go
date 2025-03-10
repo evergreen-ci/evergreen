@@ -239,6 +239,23 @@ func (c *baseCommunicator) GetDistroView(ctx context.Context, taskData TaskData)
 	return &dv, nil
 }
 
+func (c *baseCommunicator) GetHostView(ctx context.Context, taskData TaskData) (*apimodels.HostView, error) {
+	info := requestInfo{
+		method:   http.MethodGet,
+		taskData: &taskData,
+	}
+	info.setTaskPathSuffix("host_view")
+	resp, err := c.retryRequest(ctx, info, nil)
+	if err != nil {
+		return nil, util.RespError(resp, errors.Wrap(err, "getting host view").Error())
+	}
+	var hv apimodels.HostView
+	if err = utility.ReadJSON(resp.Body, &hv); err != nil {
+		return nil, errors.Wrap(err, "reading host view from response")
+	}
+	return &hv, nil
+}
+
 // GetDistroAMI returns the distro for the task.
 func (c *baseCommunicator) GetDistroAMI(ctx context.Context, distro, region string, taskData TaskData) (string, error) {
 	info := requestInfo{
@@ -320,7 +337,7 @@ func (c *baseCommunicator) GetExpansionsAndVars(ctx context.Context, taskData Ta
 }
 
 func (c *baseCommunicator) Heartbeat(ctx context.Context, taskData TaskData) (string, error) {
-	data := interface{}("heartbeat")
+	data := any("heartbeat")
 	ctx, cancel := context.WithTimeout(ctx, heartbeatTimeout)
 	defer cancel()
 	info := requestInfo{
@@ -696,6 +713,10 @@ func (c *baseCommunicator) GenerateTasks(ctx context.Context, td TaskData, jsonB
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &td,
+		// When generated tasks are large and evergreen is under load, we may not be able to ingest the
+		// data fast enough leading to a buffer overflow and a 413 status code. Therefore, a 413 status
+		// code in this case is transitive and we should retry.
+		retryOn413: true,
 	}
 	info.path = fmt.Sprintf("task/%s/generate", td.ID)
 	resp, err := c.retryRequest(ctx, info, jsonBytes)

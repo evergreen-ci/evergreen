@@ -26,7 +26,7 @@ type ZipCreateSuite struct {
 
 	cmd            *zipArchiveCreate
 	targetLocation string
-	params         map[string]interface{}
+	params         map[string]any
 
 	suite.Suite
 }
@@ -46,7 +46,7 @@ func (s *ZipCreateSuite) SetupTest() {
 	s.Require().NoError(err)
 
 	s.cmd = &zipArchiveCreate{}
-	s.params = map[string]interface{}{}
+	s.params = map[string]any{}
 }
 
 func (s *ZipCreateSuite) TearDownTest() {

@@ -32,7 +32,7 @@ type gitPush struct {
 func gitPushFactory() Command   { return &gitPush{} }
 func (c *gitPush) Name() string { return "git.push" }
 
-func (c *gitPush) ParseParams(params map[string]interface{}) error {
+func (c *gitPush) ParseParams(params map[string]any) error {
 	err := mapstructure.Decode(params, c)
 	if err != nil {
 		return errors.Wrap(err, "decoding mapstructure params")
@@ -174,22 +174,4 @@ func (c *gitPush) pushPatch(ctx context.Context, logger client.LoggerProducer, p
 	}
 
 	return nil
-}
-
-func (c *gitPush) revParse(ctx context.Context, conf *internal.TaskConfig, logger client.LoggerProducer, ref string) (string, error) {
-	stdout := noopWriteCloser{
-		&bytes.Buffer{},
-	}
-	jpm := c.JasperManager()
-
-	revParseCommand := fmt.Sprintf("git rev-parse %s", ref)
-	logger.Execution().Debugf("git rev-parse command: %s", revParseCommand)
-	cmd := jpm.CreateCommand(ctx).Directory(filepath.ToSlash(GetWorkingDirectory(conf, c.Directory))).Append(revParseCommand).SetOutputWriter(stdout).
-		SetErrorSender(level.Error, logger.Task().GetSender())
-
-	if err := cmd.Run(ctx); err != nil {
-		return "", errors.WithStack(err)
-	}
-
-	return strings.TrimSpace(stdout.String()), nil
 }

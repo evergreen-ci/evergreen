@@ -28,7 +28,7 @@ func Handler(apiURL string) func(w http.ResponseWriter, r *http.Request) {
 			return fieldCtx.IsMethod
 		}),
 		otelgqlgen.WithRequestVariablesAttributesBuilder(
-			otelgqlgen.RequestVariablesBuilderFunc(func(requestVariables map[string]interface{}) []attribute.KeyValue {
+			otelgqlgen.RequestVariablesBuilderFunc(func(requestVariables map[string]any) []attribute.KeyValue {
 				redactedRequestVariables := RedactFieldsInMap(requestVariables, redactedFields)
 				flattenedVariables := flattenOtelVariables(redactedRequestVariables)
 
@@ -44,7 +44,7 @@ func Handler(apiURL string) func(w http.ResponseWriter, r *http.Request) {
 	srv.Use(DisableQuery{})
 
 	// Handler to log graphql panics to splunk
-	srv.SetRecoverFunc(func(ctx context.Context, err interface{}) error {
+	srv.SetRecoverFunc(func(ctx context.Context, err any) error {
 		queryPath := graphql.GetFieldContext(ctx).Path()
 
 		grip.Critical(message.Fields{
@@ -61,7 +61,7 @@ func Handler(apiURL string) func(w http.ResponseWriter, r *http.Request) {
 	srv.SetErrorPresenter(func(ctx context.Context, err error) *gqlerror.Error {
 		fieldCtx := graphql.GetFieldContext(ctx)
 		queryPath := ""
-		args := map[string]interface{}{}
+		args := map[string]any{}
 		if fieldCtx != nil {
 			queryPath = fieldCtx.Path().String()
 			args = fieldCtx.Args

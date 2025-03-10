@@ -159,14 +159,16 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	// nor is the intent host associated with any instance in the cloud that
 	// we're aware of.
 	switch j.host.Status {
-	case evergreen.HostUninitialized, evergreen.HostBuilding, evergreen.HostBuildingFailed:
+	case evergreen.HostUninitialized, evergreen.HostBuilding, evergreen.HostBuildingFailed, evergreen.HostDecommissioned:
 		// If the host never successfully started, this means the host is an
-		// intent host, and should be marked terminated, and not in the cloud
-		// provider.
-		if err := j.host.Terminate(ctx, evergreen.User, j.TerminationReason); err != nil {
-			j.AddError(errors.Wrapf(err, "terminating intent host '%s' in DB", j.host.Id))
+		// intent host, and should be marked terminated. There's no host
+		// associated with it in the cloud provider.
+		if host.IsIntentHostId(j.host.Id) {
+			if err := j.host.Terminate(ctx, evergreen.User, j.TerminationReason); err != nil {
+				j.AddError(errors.Wrapf(err, "terminating intent host '%s' in DB", j.host.Id))
+			}
+			return
 		}
-		return
 	case evergreen.HostTerminated:
 		if host.IsIntentHostId(j.host.Id) {
 			return
@@ -309,6 +311,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		"message":            "host successfully terminated",
 		"host_id":            j.host.Id,
 		"distro":             j.host.Distro.Id,
+		"single_task_distro": j.host.Distro.SingleTaskDistro,
 		"job":                j.ID(),
 		"reason":             j.TerminationReason,
 		"total_idle_secs":    j.host.TotalIdleTime.Seconds(),

@@ -6,7 +6,7 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 const EventCollection = "events"
@@ -18,11 +18,11 @@ type EventLogEntry struct {
 	ResourceType string    `bson:"r_type,omitempty" json:"resource_type,omitempty"`
 	ProcessedAt  time.Time `bson:"processed_at" json:"processed_at"`
 
-	Timestamp  time.Time   `bson:"ts" json:"timestamp"`
-	Expirable  bool        `bson:"expirable,omitempty" json:"expirable,omitempty"`
-	ResourceId string      `bson:"r_id" json:"resource_id"`
-	EventType  string      `bson:"e_type" json:"event_type"`
-	Data       interface{} `bson:"data" json:"data"`
+	Timestamp  time.Time `bson:"ts" json:"timestamp"`
+	Expirable  bool      `bson:"expirable,omitempty" json:"expirable,omitempty"`
+	ResourceId string    `bson:"r_id" json:"resource_id"`
+	EventType  string    `bson:"e_type" json:"event_type"`
+	Data       any       `bson:"data" json:"data"`
 }
 
 // Processed is whether or not this event has been processed. An event
@@ -36,9 +36,9 @@ func (e *EventLogEntry) Processed() (bool, time.Time) {
 }
 
 type UnmarshalEventLogEntry struct {
-	ID           interface{} `bson:"_id" json:"-"`
-	ResourceType string      `bson:"r_type,omitempty" json:"resource_type,omitempty"`
-	ProcessedAt  time.Time   `bson:"processed_at" json:"processed_at"`
+	ID           any       `bson:"_id" json:"-"`
+	ResourceType string    `bson:"r_type,omitempty" json:"resource_type,omitempty"`
+	ProcessedAt  time.Time `bson:"processed_at" json:"processed_at"`
 
 	Timestamp  time.Time   `bson:"ts" json:"timestamp"`
 	Expirable  bool        `bson:"expirable,omitempty" json:"expirable,omitempty"`
@@ -85,7 +85,7 @@ func (e *EventLogEntry) SetBSON(raw mgobson.Raw) error {
 		e.ID = v
 	case mgobson.ObjectId:
 		e.ID = v.Hex()
-	case primitive.ObjectID:
+	case bson.ObjectID:
 		e.ID = v.Hex()
 	default:
 		return errors.Errorf("unrecognized ID format for event %v", v)

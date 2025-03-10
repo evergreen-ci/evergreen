@@ -2,6 +2,7 @@ package model
 
 import (
 	"bytes"
+	"context"
 	"reflect"
 	"time"
 
@@ -13,8 +14,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 type ProjectSettings struct {
@@ -292,7 +292,7 @@ func (e *ProjectChangeEventEntry) SetBSON(raw mgobson.Raw) error {
 		e.ID = v
 	case mgobson.ObjectId:
 		e.ID = v.Hex()
-	case primitive.ObjectID:
+	case bson.ObjectID:
 		e.ID = v.Hex()
 	default:
 		return errors.Errorf("unrecognized ID format for event %T", v)
@@ -364,8 +364,8 @@ func LogProjectAdded(projectId, username string) error {
 }
 
 // GetAndLogProjectModified retrieves the project settings before and after some change, and logs an event for the modification.
-func GetAndLogProjectModified(id, userId string, isRepo bool, before *ProjectSettings) error {
-	after, err := GetProjectSettingsById(id, isRepo)
+func GetAndLogProjectModified(ctx context.Context, id, userId string, isRepo bool, before *ProjectSettings) error {
+	after, err := GetProjectSettingsById(ctx, id, isRepo)
 	if err != nil {
 		return errors.Wrap(err, "getting after project settings event")
 	}
@@ -374,8 +374,8 @@ func GetAndLogProjectModified(id, userId string, isRepo bool, before *ProjectSet
 
 // GetAndLogProjectRepoAttachment retrieves the project settings before and after the change, and logs the modification
 // as a repo attachment/detachment event.
-func GetAndLogProjectRepoAttachment(id, userId, attachmentType string, isRepo bool, before *ProjectSettings) error {
-	after, err := GetProjectSettingsById(id, isRepo)
+func GetAndLogProjectRepoAttachment(ctx context.Context, id, userId, attachmentType string, isRepo bool, before *ProjectSettings) error {
+	after, err := GetProjectSettingsById(ctx, id, isRepo)
 	if err != nil {
 		return errors.Wrap(err, "getting after project settings event")
 	}

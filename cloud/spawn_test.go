@@ -84,7 +84,7 @@ func TestModifySpawnHostProviderSettings(t *testing.T) {
 		)},
 	}
 
-	settingsList, err := modifySpawnHostProviderSettings(d, &config, "", vol.ID)
+	settingsList, err := modifySpawnHostProviderSettings(t.Context(), d, &config, "", vol.ID)
 	assert.NoError(t, err)
 	assert.Equal(t, "new_id", settingsList[0].LookupElement("subnet_id").Value().StringValue())
 }

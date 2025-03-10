@@ -9,7 +9,7 @@ import (
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 // MoveIssueToSuspectedIssue removes an issue from an existing annotation and adds it to its suspected issues,
@@ -50,7 +50,8 @@ func MoveSuspectedIssueToIssue(ctx context.Context, taskId string, taskExecution
 	newIssue.Source = &annotations.Source{Requester: annotations.UIRequester, Author: username, Time: time.Now()}
 	q := annotations.ByTaskIdAndExecution(taskId, taskExecution)
 	q[bsonutil.GetDottedKeyName(annotations.SuspectedIssuesKey, annotations.IssueLinkIssueKey)] = issue.IssueKey
-	if err := db.Update(
+	if err := db.UpdateContext(
+		ctx,
 		annotations.Collection,
 		q,
 		bson.M{
@@ -190,7 +191,8 @@ func PatchAnnotation(ctx context.Context, a *annotations.TaskAnnotation, userDis
 		return nil
 	}
 
-	if err = db.Update(
+	if err = db.UpdateContext(
+		ctx,
 		annotations.Collection,
 		annotations.ByTaskIdAndExecution(a.TaskId, a.TaskExecution),
 		bson.M{

@@ -15,7 +15,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 const (
@@ -153,7 +153,7 @@ var requesterExpression = bson.M{
 			{
 				"case": bson.M{
 					"$and": []bson.M{
-						{"$ifNull": []interface{}{"$" + githubPatchDataKey, false}},
+						{"$ifNull": []any{"$" + githubPatchDataKey, false}},
 						{"$ne": []string{"$" + bsonutil.GetDottedKeyName(githubPatchDataKey, githubPatchHeadOwnerKey), ""}},
 					},
 				},
@@ -162,7 +162,7 @@ var requesterExpression = bson.M{
 			{
 				"case": bson.M{
 					"$and": []bson.M{
-						{"$ifNull": []interface{}{"$" + githubMergeDataKey, false}},
+						{"$ifNull": []any{"$" + githubMergeDataKey, false}},
 						{"$ne": []string{"$" + bsonutil.GetDottedKeyName(githubMergeDataKey, githubMergeGroupHeadSHAKey), ""}},
 					},
 				},
@@ -336,13 +336,13 @@ func Remove(query db.Q) error {
 }
 
 // UpdateAll runs an update on all patch documents.
-func UpdateAll(query interface{}, update interface{}) (info *adb.ChangeInfo, err error) {
+func UpdateAll(query any, update any) (info *adb.ChangeInfo, err error) {
 	return db.UpdateAll(Collection, query, update)
 }
 
 // UpdateOne runs an update on a single patch document.
-func UpdateOne(query interface{}, update interface{}) error {
-	return db.Update(Collection, query, update)
+func UpdateOne(ctx context.Context, query any, update any) error {
+	return db.UpdateContext(ctx, Collection, query, update)
 }
 
 // PatchesByProject builds a query for patches that match the given
@@ -352,26 +352,6 @@ func PatchesByProject(projectId string, ts time.Time, limit int) db.Q {
 		CreateTimeKey: bson.M{"$lte": ts},
 		ProjectKey:    projectId,
 	}).Sort([]string{"-" + CreateTimeKey}).Limit(limit)
-}
-
-// FindFailedCommitQueuePatchesInTimeRange returns failed patches if they started or failed within range.
-func FindFailedCommitQueuePatchesInTimeRange(projectID string, startTime, endTime time.Time) ([]Patch, error) {
-	query := bson.M{
-		ProjectKey: projectID,
-		StatusKey:  evergreen.VersionFailed,
-		AliasKey:   evergreen.CommitQueueAlias,
-		"$or": []bson.M{
-			{"$and": []bson.M{
-				{StartTimeKey: bson.M{"$lte": endTime}},
-				{StartTimeKey: bson.M{"$gte": startTime}},
-			}},
-			{"$and": []bson.M{
-				{FinishTimeKey: bson.M{"$lte": endTime}},
-				{FinishTimeKey: bson.M{"$gte": startTime}},
-			}},
-		},
-	}
-	return Find(db.Query(query).Sort([]string{CreateTimeKey}))
 }
 
 // ByGithubPRAndCreatedBefore finds all patches that were created for a GitHub
@@ -389,7 +369,7 @@ func ByGithubPRAndCreatedBefore(t time.Time, owner, repo string, prNumber int) d
 
 // ConsolidatePatchesForUser updates all patches authored by oldAuthor to be authored by newAuthor,
 // and if any patches have been authored by the new author already, update the patch numbers to come after the new author.
-func ConsolidatePatchesForUser(oldAuthor string, newUsr *user.DBUser) error {
+func ConsolidatePatchesForUser(ctx context.Context, oldAuthor string, newUsr *user.DBUser) error {
 
 	// It's not likely that the user would've already created patches for the new user, but if there are any, make
 	// sure that they don't have overlapping patch numbers.
@@ -404,7 +384,7 @@ func ConsolidatePatchesForUser(oldAuthor string, newUsr *user.DBUser) error {
 				return errors.Wrap(err, "incrementing patch number to resolve existing patches")
 			}
 			update := bson.M{"$set": bson.M{NumberKey: patchNum}}
-			if err := UpdateOne(bson.M{IdKey: p.Id}, update); err != nil {
+			if err := UpdateOne(ctx, bson.M{IdKey: p.Id}, update); err != nil {
 				return errors.Wrap(err, "updating patch number")
 			}
 		}

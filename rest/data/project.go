@@ -74,7 +74,7 @@ func RequestS3Creds(ctx context.Context, projectIdentifier, userEmail string) er
 		Summary:     summary,
 		Description: description,
 		Reporter:    userEmail,
-		Fields: map[string]interface{}{
+		Fields: map[string]any{
 			evergreen.DevProdServiceFieldName: evergreen.DevProdJiraServiceField,
 		},
 	}
@@ -144,7 +144,7 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 		}))
 	}
 
-	if err = projectRef.Add(u); err != nil {
+	if err = projectRef.Add(ctx, u); err != nil {
 		return false, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrapf(err, "inserting project '%s'", projectRef.Identifier).Error(),
@@ -189,10 +189,13 @@ func tryCopyingContainerSecrets(ctx context.Context, settings *evergreen.Setting
 
 	// Under the hood, this is updating the container secrets in the DB project
 	// ref, but this function's copy of the in-memory project ref won't reflect
-	// those changes.
-	if err := UpsertContainerSecrets(ctx, vault, secrets); err != nil {
-		return errors.Wrapf(err, "upserting container secrets")
-	}
+	// those changes. We log an error here instead of returning, so that this
+	// doesn't prevent the rest of the operations.
+	grip.Error(message.WrapError(UpsertContainerSecrets(ctx, vault, secrets), message.Fields{
+		"message":            "problem upserting container secrets",
+		"project_id":         pRef.Id,
+		"project_identifier": pRef.Identifier,
+	}))
 
 	return nil
 }
@@ -415,7 +418,7 @@ func (pc *DBProjectConnector) GetProjectFromFile(ctx context.Context, pRef model
 
 // HideBranch is used to "delete" a project via the rest route or the UI. It overwrites the project with a skeleton project.
 // It also clears project admin roles, project aliases, and project vars.
-func HideBranch(projectID string) error {
+func HideBranch(ctx context.Context, projectID string) error {
 	pRef, err := model.FindBranchProjectRef(projectID)
 	if err != nil {
 		return errors.Wrapf(err, "finding project '%s'", projectID)
@@ -446,7 +449,7 @@ func HideBranch(projectID string) error {
 	if err := skeletonProj.Upsert(); err != nil {
 		return errors.Wrapf(err, "updating project '%s'", pRef.Id)
 	}
-	if err := model.UpdateAdminRoles(pRef, nil, pRef.Admins); err != nil {
+	if err := model.UpdateAdminRoles(ctx, pRef, nil, pRef.Admins); err != nil {
 		return errors.Wrapf(err, "removing project admin roles")
 	}
 

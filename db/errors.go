@@ -5,7 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db/mgo"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 func IsDuplicateKey(err error) bool {

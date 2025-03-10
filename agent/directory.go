@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
@@ -9,11 +10,15 @@ import (
 	"os/user"
 	"path/filepath"
 	"strings"
+	"time"
 
+	"github.com/evergreen-ci/evergreen/agent/globals"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
+	"github.com/shirou/gopsutil/v3/disk"
 )
 
 // createTaskDirectory makes a directory for the agent to execute the current
@@ -52,11 +57,12 @@ func (a *Agent) createTaskDirectory(tc *taskContext, taskDir string) (string, er
 	return taskDir, nil
 }
 
-// removeTaskDirectory removes the folder the agent created for the task it
-// was executing. It does not return an error because it is executed at the end of
-// a task run, and the agent loop will start another task regardless of how this
-// exits.
-func (a *Agent) removeTaskDirectory(tc *taskContext) {
+// removeTaskDirectory removes the folder the agent created for the task it was
+// executing. It does not return an error because it is executed at the end of a
+// task run, and the agent loop will start another task regardless of how this
+// exits. If it cannot remove the task directory, the agent may disable the host
+// because leaving the task directory behind could impact later tasks.
+func (a *Agent) removeTaskDirectory(ctx context.Context, tc *taskContext) {
 	if tc.taskConfig == nil || tc.taskConfig.WorkDir == "" {
 		grip.Info("Task directory is not set, not removing.")
 		return
@@ -73,12 +79,34 @@ func (a *Agent) removeTaskDirectory(tc *taskContext) {
 		grip.Critical(errors.Wrapf(err, "getting absolute path for task directory '%s'", dir))
 		return
 	}
-	err = a.removeAll(abs)
-	grip.Critical(errors.Wrapf(err, "removing task directory '%s'", dir))
-	grip.InfoWhen(err == nil, message.Fields{
-		"message":   "Successfully deleted directory for completed task.",
-		"directory": tc.taskConfig.WorkDir,
-	})
+	if err := a.removeAllAndCheck(ctx, abs); err != nil {
+		grip.Critical(errors.Wrapf(err, "removing task directory '%s'", dir))
+	} else {
+		grip.Info(message.Fields{
+			"message":   "Successfully deleted directory for completed task.",
+			"directory": tc.taskConfig.WorkDir,
+		})
+	}
+}
+
+// removeAllAndCheck removes the directory and checks the data directory
+// usage afterwards. If the data directory is unhealthy, the host is disabled.
+func (a *Agent) removeAllAndCheck(ctx context.Context, dir string) error {
+	removeErr := a.removeAll(dir)
+	if removeErr == nil {
+		return nil
+	}
+
+	checkCtx, checkCancel := context.WithTimeout(ctx, time.Minute)
+	defer checkCancel()
+	if err := a.checkDataDirectoryHealth(checkCtx); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":               "failed to check data directory usage",
+			"unremovable_directory": dir,
+		}))
+	}
+
+	return removeErr
 }
 
 // removeAll is the same as os.RemoveAll, but recursively changes permissions
@@ -113,7 +141,7 @@ func (a *Agent) removeAll(dir string) error {
 // management, and only attempts to clean up the agent's working
 // directory, so files not located in a directory may still cause
 // issues.
-func (a *Agent) tryCleanupDirectory(dir string) {
+func (a *Agent) tryCleanupDirectory(ctx context.Context, dir string) {
 	defer recovery.LogStackTraceAndContinue("clean up directories")
 
 	if dir == "" {
@@ -174,10 +202,27 @@ func (a *Agent) tryCleanupDirectory(dir string) {
 
 	grip.Infof("Attempting to clean up directory '%s'.", dir)
 	for _, p := range paths {
-		if err = a.removeAll(p); err != nil {
-			grip.Notice(errors.Wrapf(err, "removing path '%s'", p))
+		if err = a.removeAllAndCheck(ctx, p); err != nil {
+			grip.Critical(errors.Wrapf(err, "removing path '%s'", p))
 		}
 	}
+}
+
+func (a *Agent) checkDataDirectoryHealth(ctx context.Context) error {
+	usage, err := disk.UsageWithContext(ctx, a.opts.WorkingDirectory)
+	if err != nil {
+		return errors.Wrap(err, "getting disk usage")
+	}
+	if usage.UsedPercent > globals.MaxPercentageDataVolumeUsage {
+		err := a.comm.DisableHost(ctx, a.opts.HostID, apimodels.DisableInfo{
+			Reason: fmt.Sprintf("data directory usage (%f%%) is too high to run a new task", usage.UsedPercent),
+		})
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // SetHomeDirectory sets the agent's home directory to the user's home directory

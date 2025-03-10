@@ -512,7 +512,7 @@ func makeBlockDeviceMappings(mounts []MountPoint) ([]types.BlockDeviceMapping, e
 			m.Ebs = &types.EbsBlockDevice{
 				DeleteOnTermination: aws.Bool(true),
 				VolumeSize:          aws.Int32(mount.Size),
-				VolumeType:          types.VolumeTypeGp2,
+				VolumeType:          types.VolumeTypeGp3,
 			}
 			if mount.Iops != 0 {
 				m.Ebs.Iops = aws.Int32(mount.Iops)
@@ -563,7 +563,7 @@ func makeBlockDeviceMappingsTemplate(mounts []MountPoint) ([]types.LaunchTemplat
 			m.Ebs = &types.LaunchTemplateEbsBlockDeviceRequest{
 				DeleteOnTermination: aws.Bool(true),
 				VolumeSize:          aws.Int32(mount.Size),
-				VolumeType:          types.VolumeTypeGp2,
+				VolumeType:          types.VolumeTypeGp3,
 			}
 			if mount.Iops != 0 {
 				m.Ebs.Iops = aws.Int32(mount.Iops)

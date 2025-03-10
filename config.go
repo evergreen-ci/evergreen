@@ -20,10 +20,10 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/mongo/readconcern"
-	"go.mongodb.org/mongo-driver/mongo/writeconcern"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/mongo/readconcern"
+	"go.mongodb.org/mongo-driver/v2/mongo/writeconcern"
 	"gopkg.in/yaml.v3"
 )
 
@@ -33,11 +33,11 @@ var (
 
 	// ClientVersion is the commandline version string used to control updating
 	// the CLI. The format is the calendar date (YYYY-MM-DD).
-	ClientVersion = "2025-02-24"
+	ClientVersion = "2025-03-07"
 
 	// Agent version to control agent rollover. The format is the calendar date
 	// (YYYY-MM-DD).
-	AgentVersion = "2025-03-10"
+	AgentVersion = "2025-03-10-a"
 )
 
 const (
@@ -171,9 +171,9 @@ func (c *Settings) ValidateAndDefault() error {
 		if err != nil {
 			catcher.Add(errors.Wrap(err, "parsing plugins"))
 		}
-		c.Plugins = map[string]map[string]interface{}{}
+		c.Plugins = map[string]map[string]any{}
 		for k1, v1 := range tempPlugins {
-			c.Plugins[k1] = map[string]interface{}{}
+			c.Plugins[k1] = map[string]any{}
 			for k2, v2 := range v1 {
 				c.Plugins[k1][k2] = v2
 			}
@@ -548,7 +548,7 @@ func (s *Settings) makeSplunkSender(ctx context.Context, client *http.Client, le
 
 // PluginConfig holds plugin-specific settings, which are handled.
 // manually by their respective plugins
-type PluginConfig map[string]map[string]interface{}
+type PluginConfig map[string]map[string]any
 
 // SSHKeyPair represents a public and private SSH key pair.
 type SSHKeyPair struct {
@@ -610,22 +610,18 @@ type WriteConcern struct {
 }
 
 func (wc WriteConcern) Resolve() *writeconcern.WriteConcern {
-	opts := []writeconcern.Option{}
+	concern := &writeconcern.WriteConcern{}
+	if wc.WMode == "majority" {
+		concern = writeconcern.Majority()
+	} else if wc.W > 0 {
+		concern.W = wc.W
+	}
 
 	if wc.J {
-		opts = append(opts, writeconcern.J(true))
-	}
-	if wc.WMode == "majority" {
-		opts = append(opts, writeconcern.WMajority())
-	} else if wc.W > 0 {
-		opts = append(opts, writeconcern.W(wc.W))
+		concern.Journal = utility.TruePtr()
 	}
 
-	if wc.WTimeout > 0 {
-		opts = append(opts, writeconcern.WTimeout(time.Duration(wc.WTimeout)*time.Millisecond))
-	}
-
-	return writeconcern.New().WithOptions(opts...)
+	return concern
 }
 
 type ReadConcern struct {
@@ -662,11 +658,10 @@ func (s *DBSettings) mongoOptions(url string) *options.ClientOptions {
 		SetReadConcern(s.ReadConcernSettings.Resolve()).
 		SetTimeout(mongoTimeout).
 		SetConnectTimeout(mongoConnectTimeout).
-		// SetSocketTimeout will be deprecated in future Go driver releases, though at the time being there
-		// isn't any other way to enforce a time limit on how long the client waits when trying to R/W data
-		// over a connection, so we are including it until Go driver finalizes their timeout API.
-		SetSocketTimeout(mongoTimeout).
-		SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false), apm.WithCommandAttributeTransformer(redactSensitiveCollections)))
+		SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false), apm.WithCommandAttributeTransformer(redactSensitiveCollections))).
+		SetBSONOptions(&options.BSONOptions{
+			ObjectIDAsHexString: true,
+		})
 
 	if s.AWSAuthEnabled {
 		opts.SetAuth(options.Credential{

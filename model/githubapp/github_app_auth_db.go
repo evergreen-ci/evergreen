@@ -11,7 +11,7 @@ import (
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 const (
@@ -33,11 +33,11 @@ func byGithubAppAuthID(projectId string) db.Q {
 }
 
 // GetGitHubAppID returns the app id for the given project id
-func GetGitHubAppID(projectId string) (*int64, error) {
+func GetGitHubAppID(ctx context.Context, projectId string) (*int64, error) {
 	githubAppAuth := &GithubAppAuth{}
 
 	q := byGithubAppAuthID(projectId).WithFields(GhAuthAppIdKey)
-	err := db.FindOneQ(GitHubAppAuthCollection, q, githubAppAuth)
+	err := db.FindOneQContext(ctx, GitHubAppAuthCollection, q, githubAppAuth)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -54,8 +54,8 @@ const defaultParameterStoreAccessTimeout = 30 * time.Second
 
 // FindOneGitHubAppAuth finds the GitHub app auth and retrieves the private key
 // from Parameter Store if enabled.
-func FindOneGitHubAppAuth(id string) (*GithubAppAuth, error) {
-	appAuth, err := findOneGitHubAppAuthDB(id)
+func FindOneGitHubAppAuth(ctx context.Context, id string) (*GithubAppAuth, error) {
+	appAuth, err := findOneGitHubAppAuthDB(ctx, id)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding GitHub app auth for project '%s'", id)
 	}
@@ -63,7 +63,7 @@ func FindOneGitHubAppAuth(id string) (*GithubAppAuth, error) {
 		return nil, nil
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), defaultParameterStoreAccessTimeout)
+	ctx, cancel := context.WithTimeout(ctx, defaultParameterStoreAccessTimeout)
 	defer cancel()
 
 	if err := findPrivateKeyParameterStore(ctx, appAuth); err != nil {
@@ -74,9 +74,9 @@ func FindOneGitHubAppAuth(id string) (*GithubAppAuth, error) {
 }
 
 // findOneGitHubAppAuthDB finds the GitHub app auth in the database.
-func findOneGitHubAppAuthDB(id string) (*GithubAppAuth, error) {
+func findOneGitHubAppAuthDB(ctx context.Context, id string) (*GithubAppAuth, error) {
 	appAuth := &GithubAppAuth{}
-	err := db.FindOneQ(GitHubAppAuthCollection, byGithubAppAuthID(id), appAuth)
+	err := db.FindOneQContext(ctx, GitHubAppAuthCollection, byGithubAppAuthID(id), appAuth)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -104,8 +104,8 @@ func findPrivateKeyParameterStore(ctx context.Context, appAuth *GithubAppAuth) e
 
 // UpsertGitHubAppAuth upserts the GitHub app auth into the database and upserts
 // the private key to Parameter Store if enabled.
-func UpsertGitHubAppAuth(appAuth *GithubAppAuth) error {
-	ctx, cancel := context.WithTimeout(context.Background(), defaultParameterStoreAccessTimeout)
+func UpsertGitHubAppAuth(ctx context.Context, appAuth *GithubAppAuth) error {
+	ctx, cancel := context.WithTimeout(ctx, defaultParameterStoreAccessTimeout)
 	defer cancel()
 
 	paramName, err := upsertPrivateKeyParameterStore(ctx, appAuth)
@@ -114,12 +114,12 @@ func UpsertGitHubAppAuth(appAuth *GithubAppAuth) error {
 	}
 	appAuth.PrivateKeyParameter = paramName
 
-	return upsertGitHubAppAuthDB(appAuth)
+	return upsertGitHubAppAuthDB(ctx, appAuth)
 }
 
 // upsertGitHubAppAuthDB upserts the GitHub app auth into the database.
-func upsertGitHubAppAuthDB(appAuth *GithubAppAuth) error {
-	_, err := db.Upsert(
+func upsertGitHubAppAuthDB(ctx context.Context, appAuth *GithubAppAuth) error {
+	_, err := db.UpsertContext(ctx,
 		GitHubAppAuthCollection,
 		bson.M{
 			GhAuthIdKey: appAuth.Id,
@@ -161,20 +161,21 @@ func upsertPrivateKeyParameterStore(ctx context.Context, appAuth *GithubAppAuth)
 
 // RemoveGitHubAppAuth removes the GitHub app private key from the database and
 // from Parameter Store if enabled.
-func RemoveGitHubAppAuth(appAuth *GithubAppAuth) error {
-	ctx, cancel := context.WithTimeout(context.Background(), defaultParameterStoreAccessTimeout)
+func RemoveGitHubAppAuth(ctx context.Context, appAuth *GithubAppAuth) error {
+	ctx, cancel := context.WithTimeout(ctx, defaultParameterStoreAccessTimeout)
 	defer cancel()
 
 	if err := removePrivateKeyParameterStore(ctx, appAuth); err != nil {
 		return errors.Wrap(err, "removing GitHub app private key from Parameter Store")
 	}
 
-	return removeGitHubAppAuthDB(appAuth.Id)
+	return removeGitHubAppAuthDB(ctx, appAuth.Id)
 }
 
 // removeGitHubAppAuthDB removes the GitHub app auth from the database.
-func removeGitHubAppAuthDB(id string) error {
-	return db.Remove(
+func removeGitHubAppAuthDB(ctx context.Context, id string) error {
+	return db.RemoveContext(
+		ctx,
 		GitHubAppAuthCollection,
 		bson.M{GhAuthIdKey: id},
 	)

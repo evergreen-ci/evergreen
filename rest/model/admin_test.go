@@ -12,7 +12,7 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 func TestConfigModelHasMatchingFieldNames(t *testing.T) {
@@ -395,7 +395,7 @@ func TestAPIServiceFlagsModelInterface(t *testing.T) {
 	allStructFieldsTrue(t, &newFlags)
 }
 
-func allStructFieldsTrue(t *testing.T, s interface{}) {
+func allStructFieldsTrue(t *testing.T, s any) {
 	elem := reflect.ValueOf(s).Elem()
 	for i := 0; i < elem.NumField(); i++ {
 		f := elem.Field(i)
@@ -533,7 +533,7 @@ func TestAPIOverride(t *testing.T) {
 			"DateValue": {
 				input: `{"section_id":null,"field":null,"value":{"$date":"2009-11-10T23:00:00Z"}}`,
 				expected: APIOverride{
-					Value: primitive.NewDateTimeFromTime(time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)),
+					Value: bson.NewDateTimeFromTime(time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)),
 				},
 			},
 		} {

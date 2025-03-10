@@ -11,7 +11,7 @@ import (
 )
 
 func init() {
-	registry.AddType(ResourceTypeTask, func() interface{} { return &TaskEventData{} })
+	registry.AddType(ResourceTypeTask, func() any { return &TaskEventData{} })
 	registry.AllowSubscription(ResourceTypeTask, TaskStarted)
 	registry.AllowSubscription(ResourceTypeTask, TaskFinished)
 	registry.AllowSubscription(ResourceTypeTask, TaskBlocked)
@@ -245,11 +245,5 @@ func LogTaskContainerAllocated(taskId string, execution int, containerAllocatedT
 // LogTaskDependenciesOverridden updates the DB with a task dependencies overridden event.
 func LogTaskDependenciesOverridden(taskId string, execution int, userID string) {
 	logTaskEvent(taskId, TaskDependenciesOverridden,
-		TaskEventData{Execution: execution, UserId: userID})
-}
-
-// LogMergeTaskUnscheduled updates the DB with a merge task unscheduled event.
-func LogMergeTaskUnscheduled(taskId string, execution int, userID string) {
-	logTaskEvent(taskId, MergeTaskUnscheduled,
 		TaskEventData{Execution: execution, UserId: userID})
 }

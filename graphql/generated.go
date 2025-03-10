@@ -1094,7 +1094,6 @@ type ComplexityRoot struct {
 		TaskTestSample           func(childComplexity int, versionID string, taskIds []string, filters []*TestFilter) int
 		User                     func(childComplexity int, userID *string) int
 		UserConfig               func(childComplexity int) int
-		UserSettings             func(childComplexity int) int
 		Version                  func(childComplexity int, versionID string) int
 		ViewableProjectRefs      func(childComplexity int) int
 		Waterfall                func(childComplexity int, options WaterfallOptions) int
@@ -1958,7 +1957,6 @@ type QueryResolver interface {
 	MyPublicKeys(ctx context.Context) ([]*model.APIPubKey, error)
 	User(ctx context.Context, userID *string) (*model.APIDBUser, error)
 	UserConfig(ctx context.Context) (*UserConfig, error)
-	UserSettings(ctx context.Context) (*model.APIUserSettings, error)
 	BuildVariantsForTaskName(ctx context.Context, projectIdentifier string, taskName string) ([]*task.BuildVariantTuple, error)
 	MainlineCommits(ctx context.Context, options MainlineCommitsOptions, buildVariantOptions *BuildVariantOptions) (*MainlineCommits, error)
 	TaskNamesForBuildVariant(ctx context.Context, projectIdentifier string, buildVariant string) ([]string, error)
@@ -7217,13 +7215,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.UserConfig(childComplexity), true
-
-	case "Query.userSettings":
-		if e.complexity.Query.UserSettings == nil {
-			break
-		}
-
-		return e.complexity.Query.UserSettings(childComplexity), true
 
 	case "Query.version":
 		if e.complexity.Query.Version == nil {
@@ -51121,67 +51112,6 @@ func (ec *executionContext) fieldContext_Query_userConfig(_ context.Context, fie
 	return fc, nil
 }
 
-func (ec *executionContext) _Query_userSettings(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Query_userSettings(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().UserSettings(rctx)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*model.APIUserSettings)
-	fc.Result = res
-	return ec.marshalOUserSettings2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUserSettings(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Query_userSettings(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Query",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "githubUser":
-				return ec.fieldContext_UserSettings_githubUser(ctx, field)
-			case "notifications":
-				return ec.fieldContext_UserSettings_notifications(ctx, field)
-			case "region":
-				return ec.fieldContext_UserSettings_region(ctx, field)
-			case "slackUsername":
-				return ec.fieldContext_UserSettings_slackUsername(ctx, field)
-			case "slackMemberId":
-				return ec.fieldContext_UserSettings_slackMemberId(ctx, field)
-			case "timezone":
-				return ec.fieldContext_UserSettings_timezone(ctx, field)
-			case "useSpruceOptions":
-				return ec.fieldContext_UserSettings_useSpruceOptions(ctx, field)
-			case "dateFormat":
-				return ec.fieldContext_UserSettings_dateFormat(ctx, field)
-			case "timeFormat":
-				return ec.fieldContext_UserSettings_timeFormat(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type UserSettings", field.Name)
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Query_buildVariantsForTaskName(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_buildVariantsForTaskName(ctx, field)
 	if err != nil {
@@ -75990,7 +75920,7 @@ func (ec *executionContext) unmarshalInputCreateDistroInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"newDistroId"}
+	fieldsInOrder := [...]string{"newDistroId", "singleTaskDistro"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -76004,6 +75934,13 @@ func (ec *executionContext) unmarshalInputCreateDistroInput(ctx context.Context,
 				return it, err
 			}
 			it.NewDistroID = data
+		case "singleTaskDistro":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("singleTaskDistro"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SingleTaskDistro = data
 		}
 	}
 
@@ -90486,25 +90423,6 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_userConfig(ctx, field)
-				return res
-			}
-
-			rrm := func(ctx context.Context) graphql.Marshaler {
-				return ec.OperationContext.RootResolverMiddleware(ctx,
-					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "userSettings":
-			field := field
-
-			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Query_userSettings(ctx, field)
 				return res
 			}
 
@@ -105189,13 +105107,6 @@ func (ec *executionContext) marshalOUserConfig2ᚖgithubᚗcomᚋevergreenᚑci�
 		return graphql.Null
 	}
 	return ec._UserConfig(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalOUserSettings2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUserSettings(ctx context.Context, sel ast.SelectionSet, v *model.APIUserSettings) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._UserSettings(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOUserSettingsInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIUserSettings(ctx context.Context, v any) (*model.APIUserSettings, error) {

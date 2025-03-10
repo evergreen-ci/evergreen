@@ -29,8 +29,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 ////////////////////////////////////////////////////////////////////////
@@ -175,7 +175,7 @@ func (s *PatchesByProjectSuite) TestPaginatorShouldReturnResultsIfDataExists() {
 	resp := s.route.Run(context.Background())
 	s.NotNil(resp)
 
-	payload := resp.Data().([]interface{})
+	payload := resp.Data().([]any)
 	s.NotNil(payload)
 
 	s.Len(payload, 2)
@@ -197,7 +197,7 @@ func (s *PatchesByProjectSuite) TestPaginatorShouldReturnEmptyResultsIfDataIsEmp
 	s.route.limit = 100
 
 	resp := s.route.Run(context.Background())
-	s.Len(resp.Data().([]interface{}), 2)
+	s.Len(resp.Data().([]any), 2)
 
 	s.Nil(resp.Pages())
 }
@@ -541,7 +541,7 @@ func (s *PatchesByUserSuite) TestPaginatorShouldReturnResultsIfDataExists() {
 
 	resp := s.route.Run(context.Background())
 	s.Equal(http.StatusOK, resp.Status())
-	payload := resp.Data().([]interface{})
+	payload := resp.Data().([]any)
 
 	s.Len(payload, 2)
 	s.Equal(s.now.Add(time.Second*6), *(payload[0]).(restModel.APIPatch).CreateTime)
@@ -565,7 +565,7 @@ func (s *PatchesByUserSuite) TestPaginatorShouldReturnEmptyResultsIfDataIsEmpty(
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
 
-	s.Len(resp.Data().([]interface{}), 2)
+	s.Len(resp.Data().([]any), 2)
 
 	s.Nil(resp.Pages())
 }

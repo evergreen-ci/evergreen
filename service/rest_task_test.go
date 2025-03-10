@@ -22,7 +22,7 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 func insertTaskForTesting(ctx context.Context, env evergreen.Environment, taskId, versionId, projectName string, testResults []testresult.TestResult) (*task.Task, error) {
@@ -133,7 +133,7 @@ func TestGetTaskInfo(t *testing.T) {
 		So(response.Code, ShouldEqual, http.StatusOK)
 
 		Convey("response should match contents of database and should omit hidden artifacts", func() {
-			var jsonBody map[string]interface{}
+			var jsonBody map[string]any
 			err = json.Unmarshal(response.Body.Bytes(), &jsonBody)
 			So(err, ShouldBeNil)
 
@@ -199,7 +199,7 @@ func TestGetTaskInfo(t *testing.T) {
 
 			jsonStatusDetails, ok := jsonBody["status_details"]
 			So(ok, ShouldBeTrue)
-			statusDetails, ok := jsonStatusDetails.(map[string]interface{})
+			statusDetails, ok := jsonStatusDetails.(map[string]any)
 			So(ok, ShouldBeTrue)
 
 			So(statusDetails["timed_out"], ShouldEqual, testTask.Details.TimedOut)
@@ -211,13 +211,13 @@ func TestGetTaskInfo(t *testing.T) {
 
 			jsonTestResults, ok := jsonBody["test_results"]
 			So(ok, ShouldBeTrue)
-			testResults, ok := jsonTestResults.(map[string]interface{})
+			testResults, ok := jsonTestResults.(map[string]any)
 			So(ok, ShouldBeTrue)
 			So(len(testResults), ShouldEqual, 1)
 
 			jsonTestResult, ok := testResults[testResult.TestName]
 			So(ok, ShouldBeTrue)
-			testResultForTestName, ok := jsonTestResult.(map[string]interface{})
+			testResultForTestName, ok := jsonTestResult.(map[string]any)
 			So(ok, ShouldBeTrue)
 
 			So(testResultForTestName["status"], ShouldEqual, testResult.Status)
@@ -225,12 +225,12 @@ func TestGetTaskInfo(t *testing.T) {
 
 			jsonTestResultLogs, ok := testResultForTestName["logs"]
 			So(ok, ShouldBeTrue)
-			testResultLogs, ok := jsonTestResultLogs.(map[string]interface{})
+			testResultLogs, ok := jsonTestResultLogs.(map[string]any)
 			So(ok, ShouldBeTrue)
 
 			So(testResultLogs["url"], ShouldEqual, testResult.LogURL)
 
-			var jsonFiles []map[string]interface{}
+			var jsonFiles []map[string]any
 			err = json.Unmarshal(*rawJSONBody["files"], &jsonFiles)
 			So(err, ShouldBeNil)
 			So(len(jsonFiles), ShouldEqual, 1)
@@ -258,7 +258,7 @@ func TestGetTaskInfo(t *testing.T) {
 		So(response.Code, ShouldEqual, http.StatusNotFound)
 
 		Convey("response should contain a sensible error message", func() {
-			var jsonBody map[string]interface{}
+			var jsonBody map[string]any
 			err = json.Unmarshal(response.Body.Bytes(), &jsonBody)
 			So(err, ShouldBeNil)
 			So(len(jsonBody["message"].(string)), ShouldBeGreaterThan, 0)
@@ -316,7 +316,7 @@ func TestGetTaskStatus(t *testing.T) {
 		So(response.Code, ShouldEqual, http.StatusOK)
 
 		Convey("response should match contents of database", func() {
-			var jsonBody map[string]interface{}
+			var jsonBody map[string]any
 			err = json.Unmarshal(response.Body.Bytes(), &jsonBody)
 			So(err, ShouldBeNil)
 
@@ -330,7 +330,7 @@ func TestGetTaskStatus(t *testing.T) {
 
 			jsonStatusDetails, ok := jsonBody["status_details"]
 			So(ok, ShouldBeTrue)
-			statusDetails, ok := jsonStatusDetails.(map[string]interface{})
+			statusDetails, ok := jsonStatusDetails.(map[string]any)
 			So(ok, ShouldBeTrue)
 
 			So(statusDetails["timed_out"], ShouldEqual, testTask.Details.TimedOut)
@@ -338,13 +338,13 @@ func TestGetTaskStatus(t *testing.T) {
 
 			jsonTestResults, ok := jsonBody["tests"]
 			So(ok, ShouldBeTrue)
-			testResults, ok := jsonTestResults.(map[string]interface{})
+			testResults, ok := jsonTestResults.(map[string]any)
 			So(ok, ShouldBeTrue)
 			So(len(testResults), ShouldEqual, 1)
 
 			jsonTestResult, ok := testResults[testResult.TestName]
 			So(ok, ShouldBeTrue)
-			testResultForTestName, ok := jsonTestResult.(map[string]interface{})
+			testResultForTestName, ok := jsonTestResult.(map[string]any)
 			So(ok, ShouldBeTrue)
 
 			So(testResultForTestName["status"], ShouldEqual, testResult.Status)
@@ -352,7 +352,7 @@ func TestGetTaskStatus(t *testing.T) {
 
 			jsonTestResultLogs, ok := testResultForTestName["logs"]
 			So(ok, ShouldBeTrue)
-			testResultLogs, ok := jsonTestResultLogs.(map[string]interface{})
+			testResultLogs, ok := jsonTestResultLogs.(map[string]any)
 			So(ok, ShouldBeTrue)
 
 			So(testResultLogs["url"], ShouldEqual, testResult.LogURL)
@@ -376,7 +376,7 @@ func TestGetTaskStatus(t *testing.T) {
 		So(response.Code, ShouldEqual, http.StatusNotFound)
 
 		Convey("response should contain a sensible error message", func() {
-			var jsonBody map[string]interface{}
+			var jsonBody map[string]any
 			err = json.Unmarshal(response.Body.Bytes(), &jsonBody)
 			So(err, ShouldBeNil)
 			So(len(jsonBody["message"].(string)), ShouldBeGreaterThan, 0)
@@ -418,7 +418,7 @@ func TestGetDisplayTaskInfo(t *testing.T) {
 	displayTask, err := insertTaskForTesting(ctx, env, displayTaskId, versionId, projectName, nil)
 	assert.NoError(err)
 	displayTask.ExecutionTasks = []string{executionTaskId}
-	err = db.Update(task.Collection,
+	err = db.UpdateContext(t.Context(), task.Collection,
 		bson.M{task.IdKey: displayTaskId},
 		bson.M{"$set": bson.M{
 			task.ExecutionTasksKey: []string{executionTaskId},
@@ -437,12 +437,12 @@ func TestGetDisplayTaskInfo(t *testing.T) {
 
 	assert.Equal(http.StatusOK, response.Code)
 
-	var jsonBody map[string]interface{}
+	var jsonBody map[string]any
 	err = json.Unmarshal(response.Body.Bytes(), &jsonBody)
 
 	assert.NoError(err)
 	assert.Equal(displayTask.Id, jsonBody["id"])
-	found, ok := jsonBody["test_results"].(map[string]interface{})
+	found, ok := jsonBody["test_results"].(map[string]any)
 	assert.True(ok)
 	assert.Contains(found, "some-test")
 }

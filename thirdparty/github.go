@@ -719,46 +719,6 @@ func GetCommitEvent(ctx context.Context, owner, repo, githash string) (*github.R
 	return commit, nil
 }
 
-// GetCommitDiff gets the diff of the specified commit via an API call to GitHub
-func GetCommitDiff(ctx context.Context, owner, repo, sha string) (string, error) {
-	caller := "GetCommitDiff"
-	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
-		attribute.String(githubEndpointAttribute, caller),
-		attribute.String(githubOwnerAttribute, owner),
-		attribute.String(githubRepoAttribute, repo),
-		attribute.String(githubRefAttribute, sha),
-	))
-	defer span.End()
-
-	var err error
-	token, err := getInstallationToken(ctx, owner, repo, nil)
-	if err != nil {
-		return "", errors.Wrap(err, "getting installation token")
-	}
-	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
-	defer githubClient.Close()
-
-	commit, resp, err := githubClient.Repositories.GetCommitRaw(ctx, owner, repo, sha, github.RawOptions{Type: github.Diff})
-	if resp != nil {
-		defer resp.Body.Close()
-		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
-		if err != nil {
-			return "", parseGithubErrorResponse(resp)
-		}
-	} else {
-		errMsg := fmt.Sprintf("nil response from '%s/%s': sha: '%s': %v", owner, repo, sha, err)
-		grip.Error(message.Fields{
-			"message": errMsg,
-			"owner":   owner,
-			"repo":    repo,
-			"sha":     sha,
-		})
-		return "", APIResponseError{errMsg}
-	}
-
-	return commit, nil
-}
-
 // GetBranchEvent gets the head of the a given branch via an API call to GitHub
 func GetBranchEvent(ctx context.Context, owner, repo, branch string) (*github.Branch, error) {
 	caller := "GetBranchEvent"
@@ -797,7 +757,7 @@ func GetBranchEvent(ctx context.Context, owner, repo, branch string) (*github.Br
 }
 
 // githubRequest performs the specified http request. If the oauth token field is empty it will not use oauth
-func githubRequest(ctx context.Context, method string, url string, oauthToken string, data interface{}) (*http.Response, error) {
+func githubRequest(ctx context.Context, method string, url string, oauthToken string, data any) (*http.Response, error) {
 	req, err := http.NewRequest(method, url, nil)
 	if err != nil {
 		return nil, err
@@ -830,7 +790,7 @@ func githubRequest(ctx context.Context, method string, url string, oauthToken st
 }
 
 // tryGithubPost posts the data to the Github api endpoint with the url given
-func tryGithubPost(ctx context.Context, url string, oauthToken string, data interface{}) (resp *http.Response, err error) {
+func tryGithubPost(ctx context.Context, url string, oauthToken string, data any) (resp *http.Response, err error) {
 	err = utility.Retry(ctx, func() (bool, error) {
 		grip.Info(message.Fields{
 			"message": "Attempting GitHub API POST",

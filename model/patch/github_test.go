@@ -13,7 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/suite"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 type GithubSuite struct {
@@ -183,7 +183,7 @@ func (s *GithubSuite) TestSetProcessed() {
 	s.NoError(err)
 	s.NotNil(intent)
 	s.NoError(intent.Insert())
-	s.NoError(intent.SetProcessed())
+	s.NoError(intent.SetProcessed(s.T().Context()))
 
 	found, err := FindUnprocessedGithubIntents()
 	s.NoError(err)

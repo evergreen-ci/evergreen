@@ -18,7 +18,7 @@
         "data": null,
         "errors": [
           {
-            "message": "tasks not found",
+            "message": "no tasks found",
             "path": ["scheduleTasks"],
             "extensions": {
               "code": "RESOURCE_NOT_FOUND"

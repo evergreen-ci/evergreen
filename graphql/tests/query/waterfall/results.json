@@ -14,14 +14,14 @@
                     "id": "evergreen_version1_build",
                     "tasks": [
                       {
-                        "displayName": "Some Task",
+                        "displayName": "Task A",
                         "displayStatusCache": "success",
                         "execution": 0,
                         "id": "task_1",
                         "status": "success"
                       },
                       {
-                        "displayName": "Some Other Task",
+                        "displayName": "Task B",
                         "displayStatusCache": "success",
                         "execution": 1,
                         "id": "task_2",
@@ -34,14 +34,14 @@
                     "id": "evergreen_version2_build",
                     "tasks": [
                       {
-                        "displayName": "Some Task",
+                        "displayName": "Task A",
                         "displayStatusCache": "setup-failed",
                         "execution": 0,
                         "id": "task_3",
                         "status": "failed"
                       },
                       {
-                        "displayName": "Some Other Task",
+                        "displayName": "Task B",
                         "displayStatusCache": "success",
                         "execution": 0,
                         "id": "task_4",
@@ -58,7 +58,7 @@
                     "id": "evergreen_version3_build",
                     "tasks": [
                       {
-                        "displayName": "Task Number 5",
+                        "displayName": "Task C",
                         "displayStatusCache": "success",
                         "execution": 0,
                         "id": "task_5",
@@ -79,7 +79,7 @@
                   "activated": true,
                   "author": "mohamed.khelif",
                   "id": "evergreen_version5",
-                  "order": 45
+                  "order": 945
                 }
               },
               {
@@ -88,7 +88,7 @@
                     "activated": false,
                     "author": "mohamed.khelif",
                     "id": "evergreen_version4",
-                    "order": 44
+                    "order": 645
                   }
                 ],
                 "version": null
@@ -142,7 +142,7 @@
               }
             ],
             "pagination": {
-              "mostRecentVersionOrder": 45,
+              "mostRecentVersionOrder": 945,
               "nextPageOrder": 39,
               "prevPageOrder": 0
             }
@@ -162,7 +162,7 @@
                     "activated": false,
                     "author": "mohamed.khelif",
                     "id": "evergreen_version4",
-                    "order": 44
+                    "order": 645
                   }
                 ],
                 "version": null
@@ -217,7 +217,7 @@
             ],
             "pagination": {
               "nextPageOrder": 39,
-              "prevPageOrder": 44
+              "prevPageOrder": 645
             }
           }
         }
@@ -235,7 +235,7 @@
                   "activated": true,
                   "author": "mohamed.khelif",
                   "id": "evergreen_version5",
-                  "order": 45
+                  "order": 945
                 }
               },
               {
@@ -244,7 +244,7 @@
                     "activated": false,
                     "author": "mohamed.khelif",
                     "id": "evergreen_version4",
-                    "order": 44
+                    "order": 645
                   }
                 ],
                 "version": null
@@ -370,7 +370,7 @@
               {
                 "version": {
                   "id": "evergreen_version5",
-                  "order": 45,
+                  "order": 945,
                   "revision": "revision5"
                 },
                 "inactiveVersions": null
@@ -380,7 +380,7 @@
                 "inactiveVersions": [
                   {
                     "id": "evergreen_version4",
-                    "order": 44,
+                    "order": 645,
                     "revision": "revision4"
                   }
                 ]
@@ -488,7 +488,7 @@
                 "version": {
                   "createTime": "2020-01-05T07:00:00-05:00",
                   "id": "evergreen_version5",
-                  "order": 45
+                  "order": 945
                 },
                 "inactiveVersions": null
               },
@@ -498,7 +498,7 @@
                   {
                     "createTime": "2020-01-04T03:15:00-05:00",
                     "id": "evergreen_version4",
-                    "order": 44
+                    "order": 645
                   }
                 ]
               },
@@ -572,13 +572,13 @@
                 "activated": true,
                 "author": "mohamed.khelif",
                 "id": "evergreen_version5",
-                "order": 45
+                "order": 945
               },
               {
                 "activated": false,
                 "author": "mohamed.khelif",
                 "id": "evergreen_version4",
-                "order": 44
+                "order": 645
               },
               {
                 "activated": true,
@@ -658,6 +658,15 @@
       "result": {
         "data": {
           "waterfall": {
+            "pagination": {
+              "activeVersionIds": [
+                "evergreen_version5",
+                "evergreen_version3",
+                "evergreen_version2",
+                "evergreen_version1",
+                "evergreen_version39"
+              ]
+            },
             "flattenedVersions": [
               {
                 "id": "evergreen_version5",
@@ -669,7 +678,7 @@
                     "tasks": [
                       {
                         "id": "task_5",
-                        "displayName": "Task Number 5"
+                        "displayName": "Task C"
                       }
                     ],
                     "version": "evergreen_version5"
@@ -694,11 +703,11 @@
                     "tasks": [
                       {
                         "id": "task_3",
-                        "displayName": "Some Task"
+                        "displayName": "Task A"
                       },
                       {
                         "id": "task_4",
-                        "displayName": "Some Other Task"
+                        "displayName": "Task B"
                       }
                     ],
                     "version": "evergreen_version2"
@@ -715,11 +724,11 @@
                     "tasks": [
                       {
                         "id": "task_1",
-                        "displayName": "Some Task"
+                        "displayName": "Task A"
                       },
                       {
                         "id": "task_2",
-                        "displayName": "Some Other Task"
+                        "displayName": "Task B"
                       }
                     ],
                     "version": "evergreen_version1"
@@ -750,13 +759,7 @@
             "flattenedVersions": [
               {
                 "id": "evergreen_version5",
-                "waterfallBuilds": [
-                  {
-                    "id": "evergreen_version3_build",
-                    "activated": true,
-                    "displayName": "03 Linter"
-                  }
-                ]
+                "waterfallBuilds": null
               },
               {
                 "id": "evergreen_version4",
@@ -764,7 +767,7 @@
               },
               {
                 "id": "evergreen_version3",
-                "waterfallBuilds": []
+                "waterfallBuilds": null
               },
               {
                 "id": "evergreen_version2",

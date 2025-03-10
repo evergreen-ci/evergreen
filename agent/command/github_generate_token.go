@@ -47,7 +47,7 @@ type githubGenerateToken struct {
 func githubGenerateTokenFactory() Command   { return &githubGenerateToken{} }
 func (r *githubGenerateToken) Name() string { return "github.generate_token" }
 
-func (r *githubGenerateToken) ParseParams(params map[string]interface{}) error {
+func (r *githubGenerateToken) ParseParams(params map[string]any) error {
 	// Extract permissions and remove it before decoding.
 	permissions := params["permissions"]
 	delete(params, "permissions")

@@ -196,56 +196,6 @@ func (m *canCreateMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request,
 	next(rw, r)
 }
 
-// This middleware is more restrictive than checkProjectAdmin, as branch admins do not have access
-func NewRepoAdminMiddleware() gimlet.Middleware {
-	return &projectRepoMiddleware{}
-}
-
-type projectRepoMiddleware struct {
-}
-
-func (m *projectRepoMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	ctx := r.Context()
-	u := MustHaveUser(ctx)
-	vars := gimlet.GetVars(r)
-	repoId, ok := vars["repo_id"]
-	if !ok || repoId == "" {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusUnauthorized,
-			Message:    "not authorized",
-		}))
-		return
-	}
-
-	repoRef, err := model.FindOneRepoRef(repoId)
-	if err != nil {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(err))
-		return
-	}
-	if repoRef == nil {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("repo '%s' not found", repoId),
-		}))
-		return
-	}
-	isRepoAdmin := u.HasPermission(gimlet.PermissionOpts{
-		Resource:      repoRef.Id,
-		ResourceType:  evergreen.ProjectResourceType,
-		Permission:    evergreen.PermissionProjectSettings,
-		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
-	})
-	if !isRepoAdmin {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusUnauthorized,
-			Message:    "not authorized",
-		}))
-		return
-	}
-
-	next(rw, r)
-}
-
 // NewTaskHostAuthMiddleware returns route middleware that authenticates a host
 // created by a task and verifies the secret of the host that created this host.
 func NewTaskHostAuthMiddleware() gimlet.Middleware {
@@ -395,7 +345,7 @@ func checkPodSecret(r *http.Request, podID string) error {
 	if secret == "" {
 		return errors.New("missing pod secret")
 	}
-	if err := data.CheckPodSecret(podID, secret); err != nil {
+	if err := data.CheckPodSecret(r.Context(), podID, secret); err != nil {
 		return errors.Wrap(err, "checking pod secret")
 	}
 	return nil
