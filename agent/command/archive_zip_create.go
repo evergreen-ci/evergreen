@@ -34,7 +34,7 @@ type zipArchiveCreate struct {
 func zipArchiveCreateFactory() Command   { return &zipArchiveCreate{} }
 func (c *zipArchiveCreate) Name() string { return "archive.zip_pack" }
 
-func (c *zipArchiveCreate) ParseParams(params map[string]interface{}) error {
+func (c *zipArchiveCreate) ParseParams(params map[string]any) error {
 	if err := mapstructure.Decode(params, c); err != nil {
 		return errors.Wrap(err, "decoding mapstructure params")
 	}

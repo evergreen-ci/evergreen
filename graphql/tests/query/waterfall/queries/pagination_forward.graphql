@@ -1,5 +1,5 @@
 {
-  waterfall(options: { projectIdentifier: "spruce-identifier", maxOrder: 45 }) {
+  waterfall(options: { projectIdentifier: "spruce-identifier", maxOrder: 945 }) {
     versions {
       version {
         activated

@@ -33,11 +33,11 @@ var (
 
 	// ClientVersion is the commandline version string used to control updating
 	// the CLI. The format is the calendar date (YYYY-MM-DD).
-	ClientVersion = "2025-03-05"
+	ClientVersion = "2025-03-07"
 
 	// Agent version to control agent rollover. The format is the calendar date
 	// (YYYY-MM-DD).
-	AgentVersion = "2025-03-06"
+	AgentVersion = "2025-03-11"
 )
 
 const (
@@ -171,9 +171,9 @@ func (c *Settings) ValidateAndDefault() error {
 		if err != nil {
 			catcher.Add(errors.Wrap(err, "parsing plugins"))
 		}
-		c.Plugins = map[string]map[string]interface{}{}
+		c.Plugins = map[string]map[string]any{}
 		for k1, v1 := range tempPlugins {
-			c.Plugins[k1] = map[string]interface{}{}
+			c.Plugins[k1] = map[string]any{}
 			for k2, v2 := range v1 {
 				c.Plugins[k1][k2] = v2
 			}
@@ -548,7 +548,7 @@ func (s *Settings) makeSplunkSender(ctx context.Context, client *http.Client, le
 
 // PluginConfig holds plugin-specific settings, which are handled.
 // manually by their respective plugins
-type PluginConfig map[string]map[string]interface{}
+type PluginConfig map[string]map[string]any
 
 // SSHKeyPair represents a public and private SSH key pair.
 type SSHKeyPair struct {

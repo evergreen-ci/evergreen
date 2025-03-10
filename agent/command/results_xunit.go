@@ -39,7 +39,7 @@ func (c *xunitResults) Name() string { return evergreen.AttachXUnitResultsComman
 
 // ParseParams reads and validates the command parameters. This is required
 // to satisfy the 'Command' interface
-func (c *xunitResults) ParseParams(params map[string]interface{}) error {
+func (c *xunitResults) ParseParams(params map[string]any) error {
 	if err := mapstructure.Decode(params, c); err != nil {
 		return errors.Wrap(err, "decoding mapstructure params")
 	}

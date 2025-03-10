@@ -88,7 +88,7 @@ func InsertMany(items ...Notification) error {
 		return nil
 	}
 
-	interfaces := make([]interface{}, len(items))
+	interfaces := make([]any, len(items))
 	for i := range items {
 		interfaces[i] = &items[i]
 	}

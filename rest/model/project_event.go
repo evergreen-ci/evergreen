@@ -108,7 +108,7 @@ func (e *APIProjectEvent) BuildFromService(entry model.ProjectChangeEventEntry) 
 	return nil
 }
 
-func (e *APIProjectEvent) ToService() (interface{}, error) {
+func (e *APIProjectEvent) ToService() (any, error) {
 	return nil, errors.New("ToService not implemented for APIProjectEvent")
 }
 

@@ -180,8 +180,8 @@ func (pd *PodDispatcher) dispatchTaskAtomically(ctx context.Context, env evergre
 	return nil
 }
 
-func (pd *PodDispatcher) dispatchTask(env evergreen.Environment, p *pod.Pod, t *task.Task) func(ctx context.Context) (interface{}, error) {
-	return func(ctx context.Context) (interface{}, error) {
+func (pd *PodDispatcher) dispatchTask(env evergreen.Environment, p *pod.Pod, t *task.Task) func(ctx context.Context) (any, error) {
+	return func(ctx context.Context) (any, error) {
 		if err := p.SetRunningTask(ctx, env, t.Id, t.Execution); err != nil {
 			return nil, errors.Wrapf(err, "setting pod's running task")
 		}

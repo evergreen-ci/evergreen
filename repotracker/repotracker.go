@@ -812,7 +812,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 	}
 
 	// create all builds for the version
-	buildsToCreate := []interface{}{}
+	buildsToCreate := []any{}
 	tasksToCreate := task.Tasks{}
 	pairsToCreate := model.TVPairSet{}
 	// build all pairsToCreate before creating builds, to handle dependencies (if applicable)

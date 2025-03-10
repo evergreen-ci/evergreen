@@ -714,7 +714,7 @@ index 748e345..7e70f15 100644
 
 // shouldContainPair returns a blank string if its arguments resemble each other, and returns a
 // list of pretty-printed diffs between the objects if they do not match.
-func shouldContainPair(actual interface{}, expected ...interface{}) string {
+func shouldContainPair(actual any, expected ...any) string {
 	actualPairsList, ok := actual.([]TVPair)
 
 	if !ok {

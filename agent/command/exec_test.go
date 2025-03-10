@@ -124,22 +124,22 @@ func (s *execCmdSuite) TestWeirdAndBadExpansions() {
 func (s *execCmdSuite) TestParseParamsInitializesEnvMap() {
 	cmd := &subprocessExec{}
 	s.Nil(cmd.Env)
-	s.NoError(cmd.ParseParams(map[string]interface{}{}))
+	s.NoError(cmd.ParseParams(map[string]any{}))
 	s.NotNil(cmd.Env)
 }
 
 func (s *execCmdSuite) TestErrorToIgnoreAndRedirectToStdOut() {
 	cmd := &subprocessExec{}
 
-	s.NoError(cmd.ParseParams(map[string]interface{}{}))
+	s.NoError(cmd.ParseParams(map[string]any{}))
 	cmd.IgnoreStandardOutput = true
 	cmd.RedirectStandardErrorToOutput = true
-	s.Error(cmd.ParseParams(map[string]interface{}{}))
+	s.Error(cmd.ParseParams(map[string]any{}))
 
 	cmd = &subprocessExec{}
 	cmd.Silent = true
 	cmd.RedirectStandardErrorToOutput = true
-	s.Error(cmd.ParseParams(map[string]interface{}{}))
+	s.Error(cmd.ParseParams(map[string]any{}))
 }
 
 func (s *execCmdSuite) TestCommandParsing() {
@@ -148,7 +148,7 @@ func (s *execCmdSuite) TestCommandParsing() {
 	}
 	s.Zero(cmd.Binary)
 	s.Zero(cmd.Args)
-	s.NoError(cmd.ParseParams(map[string]interface{}{}))
+	s.NoError(cmd.ParseParams(map[string]any{}))
 	s.Len(cmd.Args, 2)
 	s.NotZero(cmd.Binary)
 	s.Equal("/bin/bash", cmd.Binary)
@@ -158,7 +158,7 @@ func (s *execCmdSuite) TestCommandParsing() {
 
 func (s *execCmdSuite) TestParseErrorIfTypeMismatch() {
 	cmd := &subprocessExec{}
-	s.Error(cmd.ParseParams(map[string]interface{}{"args": 1, "silent": "false"}))
+	s.Error(cmd.ParseParams(map[string]any{"args": 1, "silent": "false"}))
 	s.False(cmd.Background)
 }
 
@@ -171,7 +171,7 @@ func (s *execCmdSuite) TestInvalidToSpecifyCommandInMultipleWays() {
 			"echo foo",
 		},
 	}
-	s.Error(cmd.ParseParams(map[string]interface{}{}))
+	s.Error(cmd.ParseParams(map[string]any{}))
 }
 
 func (s *execCmdSuite) TestRunCommand() {
@@ -179,7 +179,7 @@ func (s *execCmdSuite) TestRunCommand() {
 		Binary: "bash",
 	}
 	cmd.SetJasperManager(s.jasper)
-	s.NoError(cmd.ParseParams(map[string]interface{}{}))
+	s.NoError(cmd.ParseParams(map[string]any{}))
 	exec := cmd.getProc(s.ctx, cmd.Binary, &internal.TaskConfig{Task: task.Task{Id: "foo"}, Distro: &apimodels.DistroView{}}, s.logger)
 	s.NoError(cmd.runCommand(s.ctx, exec, s.logger))
 }
@@ -189,7 +189,7 @@ func (s *execCmdSuite) TestRunCommandPropagatesError() {
 		Command: "bash -c 'exit 1'",
 	}
 	cmd.SetJasperManager(s.jasper)
-	s.NoError(cmd.ParseParams(map[string]interface{}{}))
+	s.NoError(cmd.ParseParams(map[string]any{}))
 	exec := cmd.getProc(s.ctx, cmd.Binary, &internal.TaskConfig{Task: task.Task{Id: "foo"}, Distro: &apimodels.DistroView{}}, s.logger)
 	err := cmd.runCommand(s.ctx, exec, s.logger)
 	s.Require().Error(err)
@@ -203,7 +203,7 @@ func (s *execCmdSuite) TestRunCommandContinueOnErrorNoError() {
 		ContinueOnError: true,
 	}
 	cmd.SetJasperManager(s.jasper)
-	s.NoError(cmd.ParseParams(map[string]interface{}{}))
+	s.NoError(cmd.ParseParams(map[string]any{}))
 	exec := cmd.getProc(s.ctx, cmd.Binary, &internal.TaskConfig{Task: task.Task{Id: "foo"}, Distro: &apimodels.DistroView{}}, s.logger)
 	s.NoError(cmd.runCommand(s.ctx, exec, s.logger))
 }
@@ -215,7 +215,7 @@ func (s *execCmdSuite) TestRunCommandBackgroundAlwaysNil() {
 		Silent:     true,
 	}
 	cmd.SetJasperManager(s.jasper)
-	s.NoError(cmd.ParseParams(map[string]interface{}{}))
+	s.NoError(cmd.ParseParams(map[string]any{}))
 	exec := cmd.getProc(s.ctx, cmd.Binary, &internal.TaskConfig{Task: task.Task{Id: "foo"}, Distro: &apimodels.DistroView{}}, s.logger)
 	s.NoError(cmd.runCommand(s.ctx, exec, s.logger))
 }
@@ -229,7 +229,7 @@ func (s *execCmdSuite) TestCommandFailsWithoutWorkingDirectorySet() {
 		Command: "bash -c 'echo hello world!'",
 	}
 
-	s.NoError(cmd.ParseParams(map[string]interface{}{}))
+	s.NoError(cmd.ParseParams(map[string]any{}))
 	s.Error(cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 }
 
@@ -240,7 +240,7 @@ func (s *execCmdSuite) TestCommandIntegrationSimple() {
 	}
 	cmd.SetJasperManager(s.jasper)
 
-	s.NoError(cmd.ParseParams(map[string]interface{}{}))
+	s.NoError(cmd.ParseParams(map[string]any{}))
 	s.NoError(cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 }
 
@@ -250,7 +250,7 @@ func (s *execCmdSuite) TestCommandIntegrationFailureExpansion() {
 		WorkingDir: testutil.GetDirectoryOfFile(),
 	}
 
-	s.NoError(cmd.ParseParams(map[string]interface{}{}))
+	s.NoError(cmd.ParseParams(map[string]any{}))
 	err := cmd.Execute(s.ctx, s.comm, s.logger, s.conf)
 	if s.Error(err) {
 		s.Contains(err.Error(), "expanding")
@@ -264,7 +264,7 @@ func (s *execCmdSuite) TestCommandIntegrationFailureCase() {
 		WorkingDir: testutil.GetDirectoryOfFile(),
 	}
 	cmd.SetJasperManager(s.jasper)
-	s.NoError(cmd.ParseParams(map[string]interface{}{}))
+	s.NoError(cmd.ParseParams(map[string]any{}))
 	s.Error(cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 }
 
@@ -277,7 +277,7 @@ func (s *execCmdSuite) TestExecuteErrorsIfCommandAborts() {
 
 	s.cancel()
 
-	s.NoError(cmd.ParseParams(map[string]interface{}{}))
+	s.NoError(cmd.ParseParams(map[string]any{}))
 	err := cmd.Execute(s.ctx, s.comm, s.logger, s.conf)
 	if s.Error(err) {
 		s.True(utility.IsContextError(errors.Cause(err)))
@@ -291,7 +291,7 @@ func (s *execCmdSuite) TestKeepEmptyArgs() {
 		WorkingDir: testutil.GetDirectoryOfFile(),
 	}
 	cmd.SetJasperManager(s.jasper)
-	s.NoError(cmd.ParseParams(map[string]interface{}{}))
+	s.NoError(cmd.ParseParams(map[string]any{}))
 	s.NoError(cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 	s.Len(cmd.Args, 1)
 
@@ -302,7 +302,7 @@ func (s *execCmdSuite) TestKeepEmptyArgs() {
 		KeepEmptyArgs: true,
 	}
 	cmd.SetJasperManager(s.jasper)
-	s.NoError(cmd.ParseParams(map[string]interface{}{}))
+	s.NoError(cmd.ParseParams(map[string]any{}))
 	s.NoError(cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 	s.Len(cmd.Args, 2)
 }
@@ -313,7 +313,7 @@ func (s *execCmdSuite) TestCommandFailsForExecutableNotFound() {
 		WorkingDir: testutil.GetDirectoryOfFile(),
 	}
 	cmd.SetJasperManager(s.jasper)
-	s.NoError(cmd.ParseParams(map[string]interface{}{}))
+	s.NoError(cmd.ParseParams(map[string]any{}))
 	s.Error(cmd.Execute(s.ctx, s.comm, s.logger, s.conf), "command should not be able to run because executable does not exist in PATH")
 }
 
@@ -334,7 +334,7 @@ func (s *execCmdSuite) TestCommandFallsBackToSearchingPathFromEnvForBinaryExecut
 		AddToPath:  []string{filepath.Join(workingDir, "clients", fmt.Sprintf("%s_%s", runtime.GOOS, runtime.GOARCH))},
 	}
 	cmd.SetJasperManager(s.jasper)
-	s.NoError(cmd.ParseParams(map[string]interface{}{}))
+	s.NoError(cmd.ParseParams(map[string]any{}))
 	s.NoError(cmd.Execute(s.ctx, s.comm, s.logger, s.conf), "command should be able to run locally compiled evergreen executable from PATH")
 }
 
@@ -358,7 +358,7 @@ func (s *execCmdSuite) TestCommandUsesFilePathExecutable() {
 		WorkingDir: workingDir,
 	}
 	cmd.SetJasperManager(s.jasper)
-	s.NoError(cmd.ParseParams(map[string]interface{}{}))
+	s.NoError(cmd.ParseParams(map[string]any{}))
 	s.NoError(cmd.Execute(s.ctx, s.comm, s.logger, s.conf), "command should be able to run locally compiled file path to evergreen executable")
 }
 
@@ -379,7 +379,7 @@ func (s *execCmdSuite) TestCommandDoesNotFallBackToSearchingPathFromEnvWhenBinar
 		AddToPath:  []string{filepath.Join(workingDir, "clients", fmt.Sprintf("%s_%s", runtime.GOOS, runtime.GOARCH))},
 	}
 	cmd.SetJasperManager(s.jasper)
-	s.NoError(cmd.ParseParams(map[string]interface{}{}))
+	s.NoError(cmd.ParseParams(map[string]any{}))
 	s.Error(cmd.Execute(s.ctx, s.comm, s.logger, s.conf), "command should not be able to run because evergreen executable should not be available in the current working directory")
 }
 

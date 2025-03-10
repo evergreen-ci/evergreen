@@ -167,6 +167,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			if err := j.host.Terminate(ctx, evergreen.User, j.TerminationReason); err != nil {
 				j.AddError(errors.Wrapf(err, "terminating intent host '%s' in DB", j.host.Id))
 			}
+			return
 		}
 	case evergreen.HostTerminated:
 		if host.IsIntentHostId(j.host.Id) {
@@ -310,6 +311,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		"message":            "host successfully terminated",
 		"host_id":            j.host.Id,
 		"distro":             j.host.Distro.Id,
+		"single_task_distro": j.host.Distro.SingleTaskDistro,
 		"job":                j.ID(),
 		"reason":             j.TerminationReason,
 		"total_idle_secs":    j.host.TotalIdleTime.Seconds(),

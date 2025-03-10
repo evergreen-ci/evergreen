@@ -26,7 +26,7 @@ func createHostFactory() Command { return &createHost{} }
 
 func (c *createHost) Name() string { return "host.create" }
 
-func (c *createHost) ParseParams(params map[string]interface{}) error {
+func (c *createHost) ParseParams(params map[string]any) error {
 	c.CreateHost = &apimodels.CreateHost{}
 
 	// background default is true

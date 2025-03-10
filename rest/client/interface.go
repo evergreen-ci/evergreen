@@ -43,7 +43,7 @@ type Communicator interface {
 	RestartRecentTasks(context.Context, time.Time, time.Time) error
 	GetSettings(context.Context) (*evergreen.Settings, error)
 	UpdateSettings(context.Context, *restmodel.APIAdminSettings) (*restmodel.APIAdminSettings, error)
-	GetEvents(context.Context, time.Time, int) ([]interface{}, error)
+	GetEvents(context.Context, time.Time, int) ([]any, error)
 	RevertSettings(context.Context, string) error
 	GetServiceUsers(ctx context.Context) ([]restmodel.APIDBUser, error)
 	UpdateServiceUser(context.Context, string, string, []string) error
@@ -98,7 +98,7 @@ type Communicator interface {
 	GetSubscriptions(context.Context) ([]event.Subscription, error)
 
 	// Notifications
-	SendNotification(ctx context.Context, notificationType string, data interface{}) error
+	SendNotification(ctx context.Context, notificationType string, data any) error
 
 	// GetManifestByTask returns the manifest corresponding to the given task
 	GetManifestByTask(ctx context.Context, taskId string) (*manifest.Manifest, error)

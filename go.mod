@@ -23,7 +23,7 @@ require (
 	github.com/evergreen-ci/cocoa v0.0.0-20250225172339-717c91acad92
 	github.com/evergreen-ci/gimlet v0.0.0-20250227195544-4800fc7e312f
 	github.com/evergreen-ci/juniper v0.0.0-20230901183147-c805ea7351aa
-	github.com/evergreen-ci/pail v0.0.0-20250225193021-6429390aa3ce
+	github.com/evergreen-ci/pail v0.0.0-20250305202745-d12c61047dc5
 	github.com/evergreen-ci/poplar v0.0.0-20250226220147-608ee5d893b2
 	github.com/evergreen-ci/shrub v0.0.0-20250224222152-c8b72a51163b
 	github.com/evergreen-ci/timber v0.0.0-20250225175618-52d1e1841945
@@ -190,7 +190,7 @@ require (
 
 require (
 	github.com/aws/aws-sdk-go-v2/service/route53 v1.42.1
-	github.com/aws/aws-sdk-go-v2/service/s3 v1.58.3
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.77.1
 	github.com/aws/aws-sdk-go-v2/service/ssm v1.52.3
 	github.com/bradleyfalzon/ghinstallation v1.1.1
 	github.com/evergreen-ci/evg-lint v0.0.0-20211115144425-3b19c8e83a57
@@ -206,11 +206,11 @@ require (
 
 require (
 	filippo.io/edwards25519 v1.0.0 // indirect
-	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.6.3 // indirect
+	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.6.10 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.17.10 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/v4a v1.3.15 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.3.17 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.17.15 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/v4a v1.3.33 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.6.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.18.14 // indirect
 	github.com/coreos/go-oidc v2.2.1+incompatible // indirect
 	github.com/docker/distribution v2.8.2+incompatible // indirect
 	github.com/go-test/deep v1.1.0 // indirect
@@ -223,8 +223,12 @@ require (
 	github.com/pquerna/cachecontrol v0.2.0 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/sosodev/duration v1.3.1 // indirect
+	github.com/urfave/cli/v2 v2.27.5 // indirect
+	github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 // indirect
 	go.mongodb.org/mongo-driver v1.17.3 // indirect
 	go.step.sm/crypto v0.31.0 // indirect
 	gopkg.in/square/go-jose.v2 v2.6.0 // indirect
 	gotest.tools/v3 v3.5.1 // indirect
 )
+
+tool github.com/99designs/gqlgen

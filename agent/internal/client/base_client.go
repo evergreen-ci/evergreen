@@ -337,7 +337,7 @@ func (c *baseCommunicator) GetExpansionsAndVars(ctx context.Context, taskData Ta
 }
 
 func (c *baseCommunicator) Heartbeat(ctx context.Context, taskData TaskData) (string, error) {
-	data := interface{}("heartbeat")
+	data := any("heartbeat")
 	ctx, cancel := context.WithTimeout(ctx, heartbeatTimeout)
 	defer cancel()
 	info := requestInfo{

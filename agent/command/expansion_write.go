@@ -23,7 +23,7 @@ type expansionsWriter struct {
 func writeExpansionsFactory() Command    { return &expansionsWriter{} }
 func (c *expansionsWriter) Name() string { return "expansions.write" }
 
-func (c *expansionsWriter) ParseParams(params map[string]interface{}) error {
+func (c *expansionsWriter) ParseParams(params map[string]any) error {
 	err := mapstructure.Decode(params, c)
 	if err != nil {
 		return errors.Wrap(err, "decoding mapstructure params")

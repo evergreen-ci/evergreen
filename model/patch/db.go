@@ -153,7 +153,7 @@ var requesterExpression = bson.M{
 			{
 				"case": bson.M{
 					"$and": []bson.M{
-						{"$ifNull": []interface{}{"$" + githubPatchDataKey, false}},
+						{"$ifNull": []any{"$" + githubPatchDataKey, false}},
 						{"$ne": []string{"$" + bsonutil.GetDottedKeyName(githubPatchDataKey, githubPatchHeadOwnerKey), ""}},
 					},
 				},
@@ -162,7 +162,7 @@ var requesterExpression = bson.M{
 			{
 				"case": bson.M{
 					"$and": []bson.M{
-						{"$ifNull": []interface{}{"$" + githubMergeDataKey, false}},
+						{"$ifNull": []any{"$" + githubMergeDataKey, false}},
 						{"$ne": []string{"$" + bsonutil.GetDottedKeyName(githubMergeDataKey, githubMergeGroupHeadSHAKey), ""}},
 					},
 				},
@@ -336,12 +336,12 @@ func Remove(query db.Q) error {
 }
 
 // UpdateAll runs an update on all patch documents.
-func UpdateAll(query interface{}, update interface{}) (info *adb.ChangeInfo, err error) {
+func UpdateAll(query any, update any) (info *adb.ChangeInfo, err error) {
 	return db.UpdateAll(Collection, query, update)
 }
 
 // UpdateOne runs an update on a single patch document.
-func UpdateOne(ctx context.Context, query interface{}, update interface{}) error {
+func UpdateOne(ctx context.Context, query any, update any) error {
 	return db.UpdateContext(ctx, Collection, query, update)
 }
 

@@ -27,7 +27,7 @@ type requestInfo struct {
 	retryOn413         bool
 }
 
-func (c *baseCommunicator) newRequest(method, path, taskID, taskSecret string, data interface{}) (*http.Request, error) {
+func (c *baseCommunicator) newRequest(method, path, taskID, taskSecret string, data any) (*http.Request, error) {
 	url := c.getPath(path, evergreen.APIRoutePrefixV2)
 	r, err := http.NewRequest(method, url, nil)
 	if err != nil {
@@ -61,7 +61,7 @@ func (c *baseCommunicator) newRequest(method, path, taskID, taskSecret string, d
 	return r, nil
 }
 
-func (c *baseCommunicator) createRequest(info requestInfo, data interface{}) (*http.Request, error) {
+func (c *baseCommunicator) createRequest(info requestInfo, data any) (*http.Request, error) {
 	if info.method == http.MethodPost && data == nil {
 		return nil, errors.Errorf("cannot send '%s' request with a nil body", http.MethodPost)
 	}
@@ -82,7 +82,7 @@ func (c *baseCommunicator) createRequest(info requestInfo, data interface{}) (*h
 	return r, nil
 }
 
-func (c *baseCommunicator) request(ctx context.Context, info requestInfo, data interface{}) (*http.Response, error) {
+func (c *baseCommunicator) request(ctx context.Context, info requestInfo, data any) (*http.Response, error) {
 	r, err := c.createRequest(info, data)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating request")
@@ -121,7 +121,7 @@ func (c *baseCommunicator) doRequest(ctx context.Context, r *http.Request) (*htt
 	return response, nil
 }
 
-func (c *baseCommunicator) retryRequest(ctx context.Context, info requestInfo, data interface{}) (*http.Response, error) {
+func (c *baseCommunicator) retryRequest(ctx context.Context, info requestInfo, data any) (*http.Response, error) {
 	var err error
 	if info.taskData != nil && !info.taskData.OverrideValidation && info.taskData.Secret == "" {
 		err = errors.New("no task secret provided")

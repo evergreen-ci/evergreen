@@ -111,7 +111,7 @@ func (r *distroResolver) Provider(ctx context.Context, obj *model.APIDistro) (Pr
 
 // ProviderSettingsList is the resolver for the providerSettingsList field.
 func (r *distroResolver) ProviderSettingsList(ctx context.Context, obj *model.APIDistro) ([]map[string]any, error) {
-	settings := []map[string]interface{}{}
+	settings := []map[string]any{}
 	for _, entry := range obj.ProviderSettingsList {
 		settings = append(settings, entry.ExportMap())
 	}
