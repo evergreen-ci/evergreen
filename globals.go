@@ -216,6 +216,8 @@ const (
 	// disableLocalLoggingEnvVar is an environment variable to disable all local application logging
 	// besides for fallback logging to stderr.
 	disableLocalLoggingEnvVar = "DISABLE_LOCAL_LOGGING"
+	// AWSRoleARNEnvVar is an environment variable injected by IRSA that provides the role ARN.
+	AWSRoleARNEnvVar = "AWS_ROLE_ARN"
 
 	// APIServerTaskActivator represents Evergreen's internal API activator
 	APIServerTaskActivator = "apiserver"
