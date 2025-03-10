@@ -97,8 +97,6 @@ func (a *Agent) removeAllAndCheck(ctx context.Context, dir string) error {
 		return nil
 	}
 
-	a.numTaskDirCleanupFailures++
-
 	checkCtx, checkCancel := context.WithTimeout(ctx, time.Minute)
 	defer checkCancel()
 	if err := a.checkDataDirectoryHealth(checkCtx); err != nil {
@@ -211,15 +209,6 @@ func (a *Agent) tryCleanupDirectory(ctx context.Context, dir string) {
 }
 
 func (a *Agent) checkDataDirectoryHealth(ctx context.Context) error {
-	if a.numTaskDirCleanupFailures >= globals.MaxTaskDirCleanupFailures {
-		err := a.comm.DisableHost(ctx, a.opts.HostID, apimodels.DisableInfo{
-			Reason: fmt.Sprintf("agent has tried and failed to clean up task directories %d times", a.numTaskDirCleanupFailures),
-		})
-		if err != nil {
-			return err
-		}
-	}
-
 	usage, err := disk.UsageWithContext(ctx, a.opts.WorkingDirectory)
 	if err != nil {
 		return errors.Wrap(err, "getting disk usage")
