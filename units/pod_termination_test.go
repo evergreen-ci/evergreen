@@ -411,7 +411,7 @@ func generateTestingECSPod(ctx context.Context, t *testing.T, client cocoa.ECSCl
 	item, err := pdm.CreatePodDefinition(ctx, *defOpts)
 	require.NoError(t, err)
 
-	podDef, err := definition.FindOneByExternalID(item.ID)
+	podDef, err := definition.FindOneByExternalID(ctx, item.ID)
 	require.NoError(t, err)
 	require.NotZero(t, podDef, "pod definition should have been cached")
 

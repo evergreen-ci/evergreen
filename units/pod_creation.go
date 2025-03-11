@@ -184,7 +184,7 @@ func (j *podCreationJob) populateIfUnset(ctx context.Context) error {
 }
 
 func (j *podCreationJob) checkForPodDefinition(ctx context.Context, family string) (*definition.PodDefinition, error) {
-	podDef, err := definition.FindOneByFamily(family)
+	podDef, err := definition.FindOneByFamily(ctx, family)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding pod definition with family '%s'", family)
 	}
