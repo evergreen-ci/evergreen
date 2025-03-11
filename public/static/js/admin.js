@@ -251,7 +251,7 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
       $scope.Settings.buckets.project_to_prefix_mappings = [];
     }
 
-    if (!$scope.validProjectToPrefix($scope.new_project_to_prefix_mapping)) {
+    if (!$scope.validProjectToPrefixMapping($scope.new_project_to_prefix_mapping)) {
       $scope.invalidProjectToPrefixMapping = "Project and prefix are required.";
       return
     }
