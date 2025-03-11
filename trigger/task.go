@@ -124,7 +124,7 @@ func getShouldExecuteError(t, previousTask *task.Task) message.Fields {
 	}
 
 	if previousTask != nil {
-		m["previous"] = map[string]interface{}{
+		m["previous"] = map[string]any{
 			"id":          previousTask.Id,
 			"variant":     previousTask.BuildVariant,
 			"project":     previousTask.Project,
@@ -333,7 +333,7 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride, test
 }
 
 func (t *taskTriggers) generate(ctx context.Context, sub *event.Subscription, pastTenseOverride, testNames string) (*notification.Notification, error) {
-	var payload interface{}
+	var payload any
 	if sub.Subscriber.Type == event.JIRAIssueSubscriberType {
 		issueSub, ok := sub.Subscriber.Target.(*event.JIRAIssueSubscriber)
 		if !ok {

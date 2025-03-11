@@ -349,7 +349,7 @@ func TestConsolidatePatchesForUser(t *testing.T) {
 		PatchNumber: 7,
 	}
 	assert.NoError(t, db.Insert(user.Collection, newUsr))
-	assert.NoError(t, ConsolidatePatchesForUser("me", newUsr))
+	assert.NoError(t, ConsolidatePatchesForUser(t.Context(), "me", newUsr))
 
 	patchFromDB, err := FindOneId(p1.Id.Hex())
 	assert.NoError(t, err)

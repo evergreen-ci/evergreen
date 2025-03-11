@@ -88,6 +88,7 @@ type Options struct {
 	// sent to the global agent file log.
 	SendTaskLogsToGlobalSender bool
 	HomeDirectory              string
+	SingleTaskDistro           bool
 }
 
 // AddLoggableInfo is a helper to add relevant information about the agent
@@ -220,7 +221,7 @@ func (a *Agent) Start(ctx context.Context) error {
 		return errors.Wrap(err, "starting status server")
 	}
 	if a.opts.Cleanup {
-		a.tryCleanupDirectory(a.opts.WorkingDirectory)
+		a.tryCleanupDirectory(ctx, a.opts.WorkingDirectory)
 	}
 
 	return errors.Wrap(a.loop(ctx), "executing main agent loop")
@@ -287,7 +288,12 @@ func (a *Agent) loop(ctx context.Context) error {
 			if ntr.tc != nil {
 				tc = ntr.tc
 			}
-
+			// Single task distros should exit after running a single task.
+			// However, if the task group needs tearing down, we should continue
+			// the loop so the teardown group can run in the next iteration.
+			if !needTeardownGroup && a.opts.SingleTaskDistro {
+				return a.comm.DisableHost(ctx, a.opts.HostID, apimodels.DisableInfo{Reason: "Single task distro ran a task"})
+			}
 			if ntr.shouldExit {
 				return nil
 			}
@@ -901,7 +907,7 @@ func (a *Agent) runPostOrTeardownTaskCommands(ctx context.Context, tc *taskConte
 }
 
 func (a *Agent) runTeardownGroupCommands(ctx context.Context, tc *taskContext) {
-	defer a.removeTaskDirectory(tc)
+	defer a.removeTaskDirectory(ctx, tc)
 	if tc.taskConfig == nil {
 		return
 	}

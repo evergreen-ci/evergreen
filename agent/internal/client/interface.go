@@ -57,6 +57,8 @@ type SharedCommunicator interface {
 	GetProjectRef(context.Context, TaskData) (*model.ProjectRef, error)
 	// GetDistroView returns the view of the distro information for the task.
 	GetDistroView(context.Context, TaskData) (*apimodels.DistroView, error)
+	// GetHostView returns the view of host information for the task.
+	GetHostView(context.Context, TaskData) (*apimodels.HostView, error)
 	// GetDistroAMI gets the AMI for the given distro/region
 	GetDistroAMI(context.Context, string, string, TaskData) (string, error)
 	// GetProject loads the project using the task's version ID.
@@ -80,7 +82,7 @@ type SharedCommunicator interface {
 	SetResultsInfo(context.Context, TaskData, string, bool) error
 
 	// DisableHost signals to the app server that the host should be disabled.
-	DisableHost(context.Context, string, apimodels.DisableInfo) error
+	DisableHost(ctx context.Context, hostID string, info apimodels.DisableInfo) error
 
 	// GetLoggerProducer constructs a new LogProducer instance for use by tasks.
 	GetLoggerProducer(context.Context, *task.Task, *LoggerConfig) (LoggerProducer, error)

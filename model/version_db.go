@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -10,7 +11,7 @@ import (
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 const (
@@ -328,8 +329,9 @@ func VersionCount(query db.Q) (int, error) {
 }
 
 // UpdateOne updates one version.
-func VersionUpdateOne(query interface{}, update interface{}) error {
-	return db.Update(
+func VersionUpdateOne(ctx context.Context, query any, update any) error {
+	return db.UpdateContext(
+		ctx,
 		VersionCollection,
 		query,
 		update,
@@ -353,8 +355,9 @@ func ActivateVersions(versionIds []string) error {
 	return nil
 }
 
-func UpdateVersionMessage(versionId, message string) error {
+func UpdateVersionMessage(ctx context.Context, versionId, message string) error {
 	return VersionUpdateOne(
+		ctx,
 		bson.M{VersionIdKey: versionId},
 		bson.M{
 			"$set": bson.M{
@@ -364,8 +367,9 @@ func UpdateVersionMessage(versionId, message string) error {
 	)
 }
 
-func AddGitTag(versionId string, tag GitTag) error {
+func AddGitTag(ctx context.Context, versionId string, tag GitTag) error {
 	return VersionUpdateOne(
+		ctx,
 		bson.M{VersionIdKey: versionId},
 		bson.M{
 			"$push": bson.M{
@@ -375,8 +379,8 @@ func AddGitTag(versionId string, tag GitTag) error {
 	)
 }
 
-func AddSatisfiedTrigger(versionID, definitionID string) error {
-	return VersionUpdateOne(bson.M{VersionIdKey: versionID},
+func AddSatisfiedTrigger(ctx context.Context, versionID, definitionID string) error {
+	return VersionUpdateOne(ctx, bson.M{VersionIdKey: versionID},
 		bson.M{
 			"$push": bson.M{
 				VersionSatisfiedTriggersKey: definitionID,

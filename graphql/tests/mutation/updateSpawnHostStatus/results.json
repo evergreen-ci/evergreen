@@ -1,44 +1,34 @@
 {
-    "tests": [
-        {
-            "query_file": "terminate_host.graphql",
-            "test_user_id": "regular_user",
-            "result": {
-                "data": null,
-                "errors": [
-                  {
-                    "message": "user 'regular_user' does not have permission to access host 'i-085085e236d598a60'",
-                    "path": [
-                      "updateSpawnHostStatus",
-                      "updateSpawnHostStatusInput",
-                      "hostId"
-                    ],
-                    "extensions": {
-                      "code": "FORBIDDEN"
-                    }
-                  }
-                ]
+  "tests": [
+    {
+      "query_file": "terminate_host.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "not authorized to modify host 'i-085085e236d598a60'",
+            "path": ["updateSpawnHostStatus"],
+            "extensions": {
+              "code": "FORBIDDEN"
             }
-        },
-        {
-            "query_file": "stop_host.graphql",
-            "test_user_id": "regular_user",
-            "result": {
-                "data": null,
-                "errors": [
-                  {
-                    "message": "user 'regular_user' does not have permission to access host 'i-085085e236d598a60'",
-                    "path": [
-                      "updateSpawnHostStatus",
-                      "updateSpawnHostStatusInput",
-                      "hostId"
-                    ],
-                    "extensions": {
-                      "code": "FORBIDDEN"
-                    }
-                  }
-                ]
-              }
-        }
-    ]
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "stop_host.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "not authorized to modify host 'i-085085e236d598a60'",
+            "path": ["updateSpawnHostStatus"],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
+          }
+        ],
+        "data": null
+      }
+    }
+  ]
 }

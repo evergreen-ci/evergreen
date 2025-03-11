@@ -50,7 +50,7 @@ func SchedulePatch(ctx context.Context, env evergreen.Environment, patchId strin
 	}
 	if len(patchUpdateReq.PatchTriggerAliases) > 0 {
 		p.Triggers.Aliases = patchUpdateReq.PatchTriggerAliases
-		if err = p.SetTriggerAliases(); err != nil {
+		if err = p.SetTriggerAliases(ctx); err != nil {
 			return http.StatusInternalServerError, errors.Wrapf(err, "attaching trigger aliases '%s'", p.Id.Hex())
 		}
 	}

@@ -1372,14 +1372,14 @@ func (c *awsClientMock) GetCallerIdentity(ctx context.Context, input *sts.GetCal
 	}, nil
 }
 
-func makeAWSLogMessage(name, client string, args interface{}) message.Fields {
+func makeAWSLogMessage(name, client string, args any) message.Fields {
 	msg := message.Fields{
 		"message":  "AWS API call",
 		"api_name": name,
 		"client":   client,
 	}
 
-	argMap := make(map[string]interface{})
+	argMap := make(map[string]any)
 	if err := mapstructure.Decode(args, &argMap); err == nil {
 		msg["args"] = argMap
 	} else {

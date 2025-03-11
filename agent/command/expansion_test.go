@@ -20,16 +20,16 @@ import (
 func TestExpansionUpdate(t *testing.T) {
 	t.Run("ParseParams", func(t *testing.T) {
 		for tName, tCase := range map[string]struct {
-			params map[string]interface{}
+			params map[string]any
 			update []updateParams
 			err    string
 		}{
 			"EmptyParams": {
-				params: map[string]interface{}{},
+				params: map[string]any{},
 			},
 			"MissingKey": {
-				params: map[string]interface{}{
-					"updates": []map[string]interface{}{
+				params: map[string]any{
+					"updates": []map[string]any{
 						{
 							"value": "value",
 						},
@@ -38,8 +38,8 @@ func TestExpansionUpdate(t *testing.T) {
 				err: "expansion key at index 0 must not be a blank string",
 			},
 			"EmptyKey": {
-				params: map[string]interface{}{
-					"updates": []map[string]interface{}{
+				params: map[string]any{
+					"updates": []map[string]any{
 						{
 							"key":   "",
 							"value": "value",
@@ -49,8 +49,8 @@ func TestExpansionUpdate(t *testing.T) {
 				err: "expansion key at index 0 must not be a blank string",
 			},
 			"ConcatAndValuePresent": {
-				params: map[string]interface{}{
-					"updates": []map[string]interface{}{
+				params: map[string]any{
+					"updates": []map[string]any{
 						{
 							"key":    "key",
 							"value":  "value",
@@ -61,14 +61,14 @@ func TestExpansionUpdate(t *testing.T) {
 				err: "expansion 'key' at index 0 must not have both a value and a concat",
 			},
 			"InvalidRedactFileWithNoFile": {
-				params: map[string]interface{}{
+				params: map[string]any{
 					"redact_file_expansions": true,
 				},
 				err: "redact_file_expansions is true but no file was provided",
 			},
 			"ValidParams": {
-				params: map[string]interface{}{
-					"updates": []map[string]interface{}{
+				params: map[string]any{
+					"updates": []map[string]any{
 						{
 							"key":   "key-1",
 							"value": "value",
@@ -111,12 +111,12 @@ func TestExpansionUpdate(t *testing.T) {
 				},
 			},
 			"ValidFile": {
-				params: map[string]interface{}{
+				params: map[string]any{
 					"file": "file.yaml",
 				},
 			},
 			"ValidFileWithRedact": {
-				params: map[string]interface{}{
+				params: map[string]any{
 					"file":                   "file.yaml",
 					"redact_file_expansions": true,
 				},

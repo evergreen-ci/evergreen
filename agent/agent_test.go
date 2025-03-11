@@ -145,10 +145,22 @@ func (s *AgentSuite) SetupTest() {
 		},
 		BuildVariants: []model.BuildVariant{{Name: bvName}},
 	}
-	taskConfig, err := internal.NewTaskConfig(s.testTmpDirName, &apimodels.DistroView{}, project, &s.task, &model.ProjectRef{
-		Id:         "project_id",
-		Identifier: "project_identifier",
-	}, &patch.Patch{}, nil, &apimodels.ExpansionsAndVars{Expansions: util.Expansions{}})
+	tcOpts := internal.TaskConfigOptions{
+		WorkDir: s.testTmpDirName,
+		Distro:  &apimodels.DistroView{},
+		Host:    &apimodels.HostView{},
+		Project: project,
+		Task:    &s.task,
+		ProjectRef: &model.ProjectRef{
+			Id:         "project_id",
+			Identifier: "project_identifier",
+		},
+		Patch: &patch.Patch{},
+		ExpansionsAndVars: &apimodels.ExpansionsAndVars{
+			Expansions: util.Expansions{},
+		},
+	}
+	taskConfig, err := internal.NewTaskConfig(tcOpts)
 	s.Require().NoError(err)
 
 	s.tc = &taskContext{
@@ -290,6 +302,17 @@ func (s *AgentSuite) TestAgentEndTaskShouldExit() {
 	s.Equal(evergreen.TaskSucceeded, endDetail.Status, "the task should succeed")
 	s.Empty(endDetail.Description, "should not set description when it's not defined by the user or system failure")
 	s.Empty(endDetail.FailingCommand, "should not include end task failing command for successful task")
+}
+
+func (s *AgentSuite) TestAgentExitsSingleTaskDistros() {
+	s.setupRunTask(defaultProjYml)
+	s.mockCommunicator.EndTaskResponse = &apimodels.EndTaskResponse{}
+	s.a.opts.SingleTaskDistro = true
+	ctx, cancel := context.WithTimeout(s.ctx, 5*time.Second)
+	defer cancel()
+
+	// The loop should exit after one execution because it is on a single host distro
+	s.NoError(s.a.loop(ctx))
 }
 
 func (s *AgentSuite) TestFinishTaskWithNormalCompletedTask() {

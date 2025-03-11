@@ -26,7 +26,7 @@ func (mp *MockPlugin) GetUIHandler() http.Handler {
 	return nil
 }
 
-func (mp *MockPlugin) Configure(conf map[string]interface{}) error {
+func (mp *MockPlugin) Configure(conf map[string]any) error {
 	return nil
 }
 
@@ -112,12 +112,12 @@ func TestPanelManagerRegistration(t *testing.T) {
 						Panels: []UIPanel{
 							{
 								Page: TaskPage,
-								DataFunc: func(context UIContext) (interface{}, error) {
+								DataFunc: func(context UIContext) (any, error) {
 									return 100, nil
 								}},
 							{
 								Page: TaskPage,
-								DataFunc: func(context UIContext) (interface{}, error) {
+								DataFunc: func(context UIContext) (any, error) {
 									return nil, errors.New("this function just errors")
 								}},
 						},
@@ -156,7 +156,7 @@ func TestPanelManagerRetrieval(t *testing.T) {
 									"1",
 								},
 								PanelHTML: "0",
-								DataFunc: func(context UIContext) (interface{}, error) {
+								DataFunc: func(context UIContext) (any, error) {
 									return 1000, nil
 								},
 							},
@@ -192,7 +192,7 @@ func TestPanelManagerRetrieval(t *testing.T) {
 									"8",
 								},
 								PanelHTML: "3",
-								DataFunc: func(context UIContext) (interface{}, error) {
+								DataFunc: func(context UIContext) (any, error) {
 									return 2112, nil
 								},
 							},
@@ -210,7 +210,7 @@ func TestPanelManagerRetrieval(t *testing.T) {
 									"5",
 								},
 								PanelHTML: "2",
-								DataFunc: func(context UIContext) (interface{}, error) {
+								DataFunc: func(context UIContext) (any, error) {
 									return 1776, nil
 								},
 							},
@@ -284,7 +284,7 @@ func TestPluginUIDataFunctionErrorHandling(t *testing.T) {
 							{
 								Page:     TaskPage,
 								Position: PageCenter,
-								DataFunc: func(context UIContext) (interface{}, error) {
+								DataFunc: func(context UIContext) (any, error) {
 									return nil, errors.New("Error #1")
 								},
 							},
@@ -298,7 +298,7 @@ func TestPluginUIDataFunctionErrorHandling(t *testing.T) {
 							{
 								Page:     TaskPage,
 								Position: PageCenter,
-								DataFunc: func(context UIContext) (interface{}, error) {
+								DataFunc: func(context UIContext) (any, error) {
 									return nil, errors.New("Error #2")
 								},
 							},
@@ -312,7 +312,7 @@ func TestPluginUIDataFunctionErrorHandling(t *testing.T) {
 							{
 								Page:     TaskPage,
 								Position: PageCenter,
-								DataFunc: func(_ UIContext) (interface{}, error) {
+								DataFunc: func(_ UIContext) (any, error) {
 									return nil, errors.New("Error")
 								},
 							},
@@ -326,7 +326,7 @@ func TestPluginUIDataFunctionErrorHandling(t *testing.T) {
 							{
 								Page:     TaskPage,
 								Position: PageCenter,
-								DataFunc: func(_ UIContext) (interface{}, error) {
+								DataFunc: func(_ UIContext) (any, error) {
 									return "fine", nil
 								},
 							},
@@ -360,7 +360,7 @@ func TestPluginUIDataFunctionErrorHandling(t *testing.T) {
 							{
 								Page:     TaskPage,
 								Position: PageCenter,
-								DataFunc: func(_ UIContext) (interface{}, error) {
+								DataFunc: func(_ UIContext) (any, error) {
 									panic("BOOM")
 								},
 							},
@@ -374,7 +374,7 @@ func TestPluginUIDataFunctionErrorHandling(t *testing.T) {
 							{
 								Page:     TaskPage,
 								Position: PageCenter,
-								DataFunc: func(_ UIContext) (interface{}, error) {
+								DataFunc: func(_ UIContext) (any, error) {
 									return "still fine", nil
 								},
 							},
@@ -412,7 +412,7 @@ func TestUIDataInjection(t *testing.T) {
 							{
 								Page:     TaskPage,
 								Position: PageCenter,
-								DataFunc: func(ctx UIContext) (interface{}, error) {
+								DataFunc: func(ctx UIContext) (any, error) {
 									return ctx.Task.Id + ctx.Build.Id + ctx.Version.Id, nil
 								},
 							},
@@ -426,7 +426,7 @@ func TestUIDataInjection(t *testing.T) {
 							{
 								Page:     TaskPage,
 								Position: PageCenter,
-								DataFunc: func(ctx UIContext) (interface{}, error) {
+								DataFunc: func(ctx UIContext) (any, error) {
 									return fmt.Sprintf("%v.%v@%v", ctx.User.Email(), ctx.Settings.Api.URL, nil), nil
 								},
 							},

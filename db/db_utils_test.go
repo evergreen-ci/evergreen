@@ -10,7 +10,7 @@ import (
 	adb "github.com/mongodb/anser/db"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 func TestDBUtils(t *testing.T) {
@@ -240,7 +240,8 @@ func TestDBUtils(t *testing.T) {
 			So(count, ShouldEqual, 2)
 
 			// update the second
-			err = Update(
+			err = UpdateContext(
+				t.Context(),
 				collection,
 				bson.M{
 					"field_one": "2",

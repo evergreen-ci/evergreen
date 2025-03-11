@@ -10,7 +10,7 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 // We have to define a wrapper for the dependencies,
@@ -22,7 +22,7 @@ type depTask struct {
 func TestDependencyBSON(t *testing.T) {
 	Convey("With BSON bytes", t, func() {
 		Convey("representing legacy dependency format (i.e. just strings)", func() {
-			bytes, err := mgobson.Marshal(map[string]interface{}{
+			bytes, err := mgobson.Marshal(map[string]any{
 				"depends_on": []string{"t1", "t2", "t3"},
 			})
 			require.NoError(t, err, "failed to marshal test BSON")

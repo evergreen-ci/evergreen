@@ -47,28 +47,28 @@ func TestRequireProjectAccess(t *testing.T) {
 
 	// callCount keeps track of how many times the function is called
 	callCount := 0
-	next := func(rctx context.Context) (interface{}, error) {
+	next := func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
 		callCount++
 		return nil, nil
 	}
 
 	// error if input is invalid
-	obj := interface{}(nil)
+	obj := any(nil)
 	res, err := config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionSettings, AccessLevelEdit)
 	require.EqualError(t, err, "input: converting args into map")
 	require.Nil(t, res)
 	require.Equal(t, 0, callCount)
 
 	// error if no valid parameters
-	obj = interface{}(map[string]interface{}(nil))
+	obj = any(map[string]any(nil))
 	res, err = config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionSettings, AccessLevelEdit)
 	require.EqualError(t, err, "input: params map is empty")
 	require.Nil(t, res)
 	require.Equal(t, 0, callCount)
 
 	// error if invalid permission and access combination
-	obj = interface{}(map[string]interface{}(nil))
+	obj = any(map[string]any(nil))
 	res, err = config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionAnnotations, AccessLevelAdmin)
 	require.EqualError(t, err, "input: invalid permission and access level configuration: invalid access level for project_task_annotations")
 	require.Nil(t, res)
@@ -89,7 +89,7 @@ func TestRequireProjectAccessForSettings(t *testing.T) {
 
 	// callCount keeps track of how many times the function is called
 	callCount := 0
-	next := func(rctx context.Context) (interface{}, error) {
+	next := func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
 		callCount++
 		return nil, nil
@@ -109,19 +109,19 @@ func TestRequireProjectAccessForSettings(t *testing.T) {
 	err = repoRef.Upsert()
 	require.NoError(t, err)
 
-	obj := interface{}(map[string]interface{}{"projectIdentifier": "invalid_identifier"})
+	obj := any(map[string]any{"projectIdentifier": "invalid_identifier"})
 	res, err := config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionSettings, AccessLevelEdit)
 	require.EqualError(t, err, "input: project 'invalid_identifier' not found")
 	require.Nil(t, res)
 	require.Equal(t, 0, callCount)
 
-	obj = interface{}(map[string]interface{}{"projectIdentifier": projectRef.Identifier})
+	obj = any(map[string]any{"projectIdentifier": projectRef.Identifier})
 	res, err = config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionSettings, AccessLevelEdit)
 	require.EqualError(t, err, "input: user 'test_user' does not have permission to 'edit project settings' for the project 'project_id'")
 	require.Nil(t, res)
 	require.Equal(t, 0, callCount)
 
-	err = usr.AddRole("view_project")
+	err = usr.AddRole(t.Context(), "view_project")
 	require.NoError(t, err)
 
 	res, err = config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionSettings, AccessLevelEdit)
@@ -134,7 +134,7 @@ func TestRequireProjectAccessForSettings(t *testing.T) {
 	require.Nil(t, res)
 	require.Equal(t, 1, callCount)
 
-	err = usr.AddRole("admin_project")
+	err = usr.AddRole(t.Context(), "admin_project")
 	require.NoError(t, err)
 
 	res, err = config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionSettings, AccessLevelEdit)
@@ -142,20 +142,20 @@ func TestRequireProjectAccessForSettings(t *testing.T) {
 	require.Nil(t, res)
 	require.Equal(t, 2, callCount)
 
-	obj = interface{}(map[string]interface{}{"projectIdentifier": projectRef.Identifier})
+	obj = any(map[string]any{"projectIdentifier": projectRef.Identifier})
 	res, err = config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionSettings, AccessLevelEdit)
 	require.NoError(t, err)
 	require.Nil(t, res)
 	require.Equal(t, 3, callCount)
 
 	// Verify that user with only branch permission can view the repo page but not edit.
-	obj = interface{}(map[string]interface{}{"repoId": repoRef.ProjectRef.Id})
+	obj = any(map[string]any{"repoId": repoRef.ProjectRef.Id})
 	res, err = config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionSettings, AccessLevelEdit)
 	require.EqualError(t, err, "input: user 'test_user' does not have permission to 'edit project settings' for the project 'repo_id'")
 	require.Nil(t, res)
 	require.Equal(t, 3, callCount)
 
-	obj = interface{}(map[string]interface{}{"repoId": repoRef.ProjectRef.Id})
+	obj = any(map[string]any{"repoId": repoRef.ProjectRef.Id})
 	res, err = config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionSettings, AccessLevelView)
 	require.NoError(t, err)
 	require.Nil(t, res)
@@ -191,7 +191,7 @@ func TestRequireProjectAccessForTasks(t *testing.T) {
 	const refreshToken = "refresh_token"
 	config := New("/graphql")
 	require.NotNil(t, config)
-	obj := interface{}(map[string]interface{}{"taskId": task.Id})
+	obj := any(map[string]any{"taskId": task.Id})
 
 	usr, err := user.GetOrCreateUser(testUser, "User Name", email, accessToken, refreshToken, []string{})
 	require.NoError(t, err)
@@ -202,14 +202,14 @@ func TestRequireProjectAccessForTasks(t *testing.T) {
 
 	// callCount keeps track of how many times the function is called
 	callCount := 0
-	next := func(rctx context.Context) (interface{}, error) {
+	next := func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
 		callCount++
 		return nil, nil
 	}
 
 	// superuser should be successful for admin, edit, view
-	require.NoError(t, usr.AddRole("admin_project_access"))
+	require.NoError(t, usr.AddRole(t.Context(), "admin_project_access"))
 	res, err := config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionTasks, AccessLevelAdmin)
 	require.NoError(t, err)
 	require.Nil(t, res)
@@ -224,10 +224,10 @@ func TestRequireProjectAccessForTasks(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, res)
 	require.Equal(t, 3, callCount)
-	require.NoError(t, usr.RemoveRole("admin_project_access"))
+	require.NoError(t, usr.RemoveRole(t.Context(), "admin_project_access"))
 
 	// admin access is successful for admin, edit, view
-	require.NoError(t, usr.AddRole("admin_task"))
+	require.NoError(t, usr.AddRole(t.Context(), "admin_task"))
 	res, err = config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionTasks, AccessLevelAdmin)
 	require.NoError(t, err)
 	require.Nil(t, res)
@@ -242,10 +242,10 @@ func TestRequireProjectAccessForTasks(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, res)
 	require.Equal(t, 6, callCount)
-	require.NoError(t, usr.RemoveRole("admin_task"))
+	require.NoError(t, usr.RemoveRole(t.Context(), "admin_task"))
 
 	// edit access fails for admin, is successful for edit & view
-	require.NoError(t, usr.AddRole("edit_task"))
+	require.NoError(t, usr.AddRole(t.Context(), "edit_task"))
 	res, err = config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionTasks, AccessLevelAdmin)
 	require.Nil(t, res)
 	require.EqualError(t, err, "input: user 'test_user' does not have permission to 'edit tasks and override dependencies' for the project 'project_id'")
@@ -260,10 +260,10 @@ func TestRequireProjectAccessForTasks(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, res)
 	require.Equal(t, 8, callCount)
-	require.NoError(t, usr.RemoveRole("edit_task"))
+	require.NoError(t, usr.RemoveRole(t.Context(), "edit_task"))
 
 	// view access fails for admin & edit, is successful for view
-	require.NoError(t, usr.AddRole("view_task"))
+	require.NoError(t, usr.AddRole(t.Context(), "view_task"))
 	_, err = config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionTasks, AccessLevelAdmin)
 	require.Equal(t, 8, callCount)
 	require.EqualError(t, err, "input: user 'test_user' does not have permission to 'edit tasks and override dependencies' for the project 'project_id'")
@@ -276,7 +276,7 @@ func TestRequireProjectAccessForTasks(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, res)
 	require.Equal(t, 9, callCount)
-	require.NoError(t, usr.RemoveRole("view_task"))
+	require.NoError(t, usr.RemoveRole(t.Context(), "view_task"))
 
 	// no access fails all query attempts
 	_, err = config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionTasks, AccessLevelAdmin)
@@ -321,7 +321,7 @@ func TestRequireProjectAccessForAnnotations(t *testing.T) {
 	const refreshToken = "refresh_token"
 	config := New("/graphql")
 	require.NotNil(t, config)
-	obj := interface{}(map[string]interface{}{"taskId": task.Id})
+	obj := any(map[string]any{"taskId": task.Id})
 
 	usr, err := user.GetOrCreateUser(testUser, "User Name", email, accessToken, refreshToken, []string{})
 	require.NoError(t, err)
@@ -332,14 +332,14 @@ func TestRequireProjectAccessForAnnotations(t *testing.T) {
 
 	// callCount keeps track of how many times the function is called
 	callCount := 0
-	next := func(rctx context.Context) (interface{}, error) {
+	next := func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
 		callCount++
 		return nil, nil
 	}
 
 	// superuser should be successful for edit, view
-	require.NoError(t, usr.AddRole("admin_project_access"))
+	require.NoError(t, usr.AddRole(t.Context(), "admin_project_access"))
 	res, err := config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionAnnotations, AccessLevelEdit)
 	require.NoError(t, err)
 	require.Nil(t, res)
@@ -349,10 +349,10 @@ func TestRequireProjectAccessForAnnotations(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, res)
 	require.Equal(t, 2, callCount)
-	require.NoError(t, usr.RemoveRole("admin_project_access"))
+	require.NoError(t, usr.RemoveRole(t.Context(), "admin_project_access"))
 
 	// edit access is successful for edit, view
-	require.NoError(t, usr.AddRole("edit_annotation"))
+	require.NoError(t, usr.AddRole(t.Context(), "edit_annotation"))
 	res, err = config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionAnnotations, AccessLevelEdit)
 	require.NoError(t, err)
 	require.Nil(t, res)
@@ -362,10 +362,10 @@ func TestRequireProjectAccessForAnnotations(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, res)
 	require.Equal(t, 4, callCount)
-	require.NoError(t, usr.RemoveRole("edit_annotation"))
+	require.NoError(t, usr.RemoveRole(t.Context(), "edit_annotation"))
 
 	// view access fails for edit, is successful for view
-	require.NoError(t, usr.AddRole("view_annotation"))
+	require.NoError(t, usr.AddRole(t.Context(), "view_annotation"))
 	res, err = config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionAnnotations, AccessLevelEdit)
 	require.Nil(t, res)
 	require.EqualError(t, err, "input: user 'test_user' does not have permission to 'modify annotations' for the project 'project_id'")
@@ -375,7 +375,7 @@ func TestRequireProjectAccessForAnnotations(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, res)
 	require.Equal(t, 5, callCount)
-	require.NoError(t, usr.RemoveRole("view_annotation"))
+	require.NoError(t, usr.RemoveRole(t.Context(), "view_annotation"))
 
 	// no access fails all query attempts
 	_, err = config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionAnnotations, AccessLevelEdit)
@@ -415,7 +415,7 @@ func TestRequireProjectAccessForPatches(t *testing.T) {
 	const refreshToken = "refresh_token"
 	config := New("/graphql")
 	require.NotNil(t, config)
-	obj := interface{}(map[string]interface{}{"patchId": patch.Id.Hex()})
+	obj := any(map[string]any{"patchId": patch.Id.Hex()})
 
 	usr, err := user.GetOrCreateUser(testUser, "User Name", email, accessToken, refreshToken, []string{})
 	require.NoError(t, err)
@@ -426,14 +426,14 @@ func TestRequireProjectAccessForPatches(t *testing.T) {
 
 	// callCount keeps track of how many times the function is called
 	callCount := 0
-	next := func(rctx context.Context) (interface{}, error) {
+	next := func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
 		callCount++
 		return nil, nil
 	}
 
 	// superuser should be successful for admin, edit
-	require.NoError(t, usr.AddRole("admin_project_access"))
+	require.NoError(t, usr.AddRole(t.Context(), "admin_project_access"))
 	res, err := config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionPatches, AccessLevelAdmin)
 	require.NoError(t, err)
 	require.Nil(t, res)
@@ -443,10 +443,10 @@ func TestRequireProjectAccessForPatches(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, res)
 	require.Equal(t, 2, callCount)
-	require.NoError(t, usr.RemoveRole("admin_project_access"))
+	require.NoError(t, usr.RemoveRole(t.Context(), "admin_project_access"))
 
 	// admin access is successful for admin, edit
-	require.NoError(t, usr.AddRole("admin_patch"))
+	require.NoError(t, usr.AddRole(t.Context(), "admin_patch"))
 	res, err = config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionPatches, AccessLevelAdmin)
 	require.NoError(t, err)
 	require.Nil(t, res)
@@ -456,10 +456,10 @@ func TestRequireProjectAccessForPatches(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, res)
 	require.Equal(t, 4, callCount)
-	require.NoError(t, usr.RemoveRole("admin_patch"))
+	require.NoError(t, usr.RemoveRole(t.Context(), "admin_patch"))
 
 	// edit access fails for admin, is successful for edit
-	require.NoError(t, usr.AddRole("edit_patch"))
+	require.NoError(t, usr.AddRole(t.Context(), "edit_patch"))
 	res, err = config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionPatches, AccessLevelAdmin)
 	require.Nil(t, res)
 	require.EqualError(t, err, "input: user 'test_user' does not have permission to 'submit/edit patches, and submit patches on behalf of users' for the project 'project_id'")
@@ -469,7 +469,7 @@ func TestRequireProjectAccessForPatches(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, res)
 	require.Equal(t, 5, callCount)
-	require.NoError(t, usr.RemoveRole("edit_patch"))
+	require.NoError(t, usr.RemoveRole(t.Context(), "edit_patch"))
 
 	// no access fails all query attempts
 	_, err = config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionPatches, AccessLevelAdmin)
@@ -503,7 +503,7 @@ func TestRequireProjectAccessForLogs(t *testing.T) {
 	const refreshToken = "refresh_token"
 	config := New("/graphql")
 	require.NotNil(t, config)
-	obj := interface{}(map[string]interface{}{"projectId": project.Id})
+	obj := any(map[string]any{"projectId": project.Id})
 
 	usr, err := user.GetOrCreateUser(testUser, "User Name", email, accessToken, refreshToken, []string{})
 	require.NoError(t, err)
@@ -514,27 +514,27 @@ func TestRequireProjectAccessForLogs(t *testing.T) {
 
 	// callCount keeps track of how many times the function is called
 	callCount := 0
-	next := func(rctx context.Context) (interface{}, error) {
+	next := func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
 		callCount++
 		return nil, nil
 	}
 
 	// superuser should be successful for view
-	require.NoError(t, usr.AddRole("admin_project_access"))
+	require.NoError(t, usr.AddRole(t.Context(), "admin_project_access"))
 	res, err := config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionLogs, AccessLevelView)
 	require.NoError(t, err)
 	require.Nil(t, res)
 	require.Equal(t, 1, callCount)
-	require.NoError(t, usr.RemoveRole("admin_project_access"))
+	require.NoError(t, usr.RemoveRole(t.Context(), "admin_project_access"))
 
 	// view access is successful for view
-	require.NoError(t, usr.AddRole("view_logs"))
+	require.NoError(t, usr.AddRole(t.Context(), "view_logs"))
 	res, err = config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionLogs, AccessLevelView)
 	require.NoError(t, err)
 	require.Nil(t, res)
 	require.Equal(t, 2, callCount)
-	require.NoError(t, usr.RemoveRole("view_logs"))
+	require.NoError(t, usr.RemoveRole(t.Context(), "view_logs"))
 
 	// no access fails all query attempts
 	_, err = config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionLogs, AccessLevelView)

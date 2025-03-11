@@ -272,7 +272,6 @@ const (
 	PowerShellSetupScriptName     = "setup.ps1"
 	PowerShellTempSetupScriptName = "setup-temp.ps1"
 
-	PlannerVersionLegacy  = "legacy"
 	PlannerVersionTunable = "tunable"
 
 	DispatcherVersionRevisedWithDependencies = "revised-with-dependencies"
@@ -515,6 +514,7 @@ const (
 	ProjectIDOtelAttribute         = "evergreen.project.id"
 	DistroIDOtelAttribute          = "evergreen.distro.id"
 	HostIDOtelAttribute            = "evergreen.host.id"
+	HostnameOtelAttribute          = "evergreen.host.hostname"
 	HostStartedByOtelAttribute     = "evergreen.host.started_by"
 	HostNoExpirationOtelAttribute  = "evergreen.host.no_expiration"
 	HostInstanceTypeOtelAttribute  = "evergreen.host.instance_type"
@@ -980,7 +980,6 @@ var (
 
 	// Set of valid PlannerSettings.Version strings that can be user set via the API
 	ValidTaskPlannerVersions = []string{
-		PlannerVersionLegacy,
 		PlannerVersionTunable,
 	}
 

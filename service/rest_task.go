@@ -69,7 +69,7 @@ type taskStatusDetails struct {
 type taskTestResult struct {
 	Status    string        `json:"status"`
 	TimeTaken time.Duration `json:"time_taken"`
-	Logs      interface{}   `json:"logs"`
+	Logs      any           `json:"logs"`
 }
 
 type taskTestLogURL struct {

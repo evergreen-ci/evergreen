@@ -7,7 +7,7 @@ import (
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 func TestLogUserRolesEvent(t *testing.T) {

@@ -25,7 +25,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 	"gopkg.in/yaml.v3"
 )
 
@@ -396,6 +396,8 @@ func TestPopulateExpansions(t *testing.T) {
 	projectRef := &ProjectRef{
 		Id:         "mci",
 		Identifier: "mci-favorite",
+		Owner:      "my_org",
+		Repo:       "my_repo",
 	}
 	assert.NoError(projectRef.Insert())
 	v := &Version{
@@ -423,7 +425,7 @@ func TestPopulateExpansions(t *testing.T) {
 
 	expansions, err := PopulateExpansions(ctx, taskDoc, &h, "appToken", "")
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 23)
+	assert.Len(map[string]string(expansions), 25)
 	assert.Equal("0", expansions.Get("execution"))
 	assert.Equal("v1", expansions.Get("version_id"))
 	assert.Equal("t1", expansions.Get("task_id"))
@@ -435,6 +437,8 @@ func TestPopulateExpansions(t *testing.T) {
 	assert.Equal("mci-favorite", expansions.Get("project"))
 	assert.Equal("mci", expansions.Get("project_id"))
 	assert.Equal("mci-favorite", expansions.Get("project_identifier"))
+	assert.Equal("my_org", expansions.Get("github_org"))
+	assert.Equal("my_repo", expansions.Get("github_repo"))
 	assert.Equal("main", expansions.Get("branch_name"))
 	assert.Equal("somebody", expansions.Get("author"))
 	assert.Equal("somebody@somewhere.com", expansions.Get("author_email"))
@@ -446,10 +450,9 @@ func TestPopulateExpansions(t *testing.T) {
 	assert.False(expansions.Exists("is_commit_queue"))
 	assert.Equal("github_tag", expansions.Get("requester"))
 	assert.False(expansions.Exists("github_pr_number"))
-	assert.False(expansions.Exists("github_repo"))
 	assert.False(expansions.Exists("github_author"))
 
-	assert.NoError(VersionUpdateOne(bson.M{VersionIdKey: v.Id}, bson.M{
+	assert.NoError(VersionUpdateOne(ctx, bson.M{VersionIdKey: v.Id}, bson.M{
 		"$set": bson.M{VersionRequesterKey: evergreen.PatchVersionRequester},
 	}))
 	p := patch.Patch{
@@ -459,24 +462,24 @@ func TestPopulateExpansions(t *testing.T) {
 
 	expansions, err = PopulateExpansions(ctx, taskDoc, &h, "", "")
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 23)
+	assert.Len(map[string]string(expansions), 25)
 	assert.Equal("true", expansions.Get("is_patch"))
 	assert.Equal("patch", expansions.Get("requester"))
+	assert.Equal("my_repo", expansions.Get("github_repo"))
 	assert.False(expansions.Exists("is_commit_queue"))
 	assert.False(expansions.Exists("github_pr_number"))
-	assert.False(expansions.Exists("github_repo"))
 	assert.False(expansions.Exists("github_author"))
 	assert.False(expansions.Exists("triggered_by_git_tag"))
 	require.NoError(t, db.ClearCollections(patch.Collection))
 
-	assert.NoError(VersionUpdateOne(bson.M{VersionIdKey: v.Id}, bson.M{
+	assert.NoError(VersionUpdateOne(ctx, bson.M{VersionIdKey: v.Id}, bson.M{
 		"$set": bson.M{VersionRequesterKey: evergreen.GithubMergeRequester},
 	}))
 	p = patch.Patch{
 		Version: v.Id,
 		GithubMergeData: thirdparty.GithubMergeGroup{
-			Org:        "my_merge_org",
-			Repo:       "my_merge_repo",
+			Org:        "my_org",
+			Repo:       "my_repo",
 			HeadBranch: "merge_head_branch",
 			HeadSHA:    "merge_head_sha",
 			HeadCommit: "merge_head_commit",
@@ -489,12 +492,12 @@ func TestPopulateExpansions(t *testing.T) {
 	assert.Equal("true", expansions.Get("is_patch"))
 	assert.Equal("true", expansions.Get("is_commit_queue"))
 	assert.Equal("github_merge_queue", expansions.Get("requester"))
-	assert.Equal("my_merge_org", expansions.Get("github_org"))
-	assert.Equal("my_merge_repo", expansions.Get("github_repo"))
+	assert.Equal("my_org", expansions.Get("github_org"))
+	assert.Equal("my_repo", expansions.Get("github_repo"))
 	assert.Equal("merge_head_branch", expansions.Get("github_head_branch"))
 	require.NoError(t, db.ClearCollections(patch.Collection))
 
-	assert.NoError(VersionUpdateOne(bson.M{VersionIdKey: v.Id}, bson.M{
+	assert.NoError(VersionUpdateOne(ctx, bson.M{VersionIdKey: v.Id}, bson.M{
 		"$set": bson.M{VersionRequesterKey: evergreen.GithubPRRequester},
 	}))
 	p = patch.Patch{
@@ -518,8 +521,8 @@ func TestPopulateExpansions(t *testing.T) {
 		Version: v.Id,
 		GithubPatchData: thirdparty.GithubPatch{
 			PRNumber:  42,
-			BaseOwner: "evergreen-ci",
-			BaseRepo:  "evergreen",
+			BaseOwner: "my_org",
+			BaseRepo:  "my_repo",
 			Author:    "octocat",
 			HeadHash:  "abc123",
 		},
@@ -531,11 +534,11 @@ func TestPopulateExpansions(t *testing.T) {
 	assert.Len(map[string]string(expansions), 27)
 	assert.Equal("github_pr", expansions.Get("requester"))
 	assert.Equal("true", expansions.Get("is_patch"))
-	assert.Equal("evergreen", expansions.Get("github_repo"))
+	assert.Equal("my_repo", expansions.Get("github_repo"))
 	assert.Equal("octocat", expansions.Get("github_author"))
 	assert.Equal("42", expansions.Get("github_pr_number"))
 	assert.Equal("abc123", expansions.Get("github_commit"))
-	assert.Equal("evergreen-ci", expansions.Get("github_org"))
+	assert.Equal("my_org", expansions.Get("github_org"))
 
 	upstreamTask := task.Task{
 		Id:       "upstreamTask",

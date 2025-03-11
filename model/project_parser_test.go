@@ -23,13 +23,13 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 	"gopkg.in/yaml.v3"
 )
 
 // ShouldContainResembling tests whether a slice contains an element that DeepEquals
 // the expected input.
-func ShouldContainResembling(actual interface{}, expected ...interface{}) string {
+func ShouldContainResembling(actual any, expected ...any) string {
 	if len(expected) != 1 || expected == nil {
 		return "ShouldContainResembling takes 1 argument"
 	}

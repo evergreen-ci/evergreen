@@ -47,7 +47,7 @@ const (
 
 // UIDataFunction is a function which is called to populate panels
 // which are injected into Task/Build/Version pages at runtime.
-type UIDataFunction func(context UIContext) (interface{}, error)
+type UIDataFunction func(context UIContext) (any, error)
 
 // UIPage represents the information to be sent over to the ui server
 // in order to render a page for an app level plugin.
@@ -107,7 +107,7 @@ type PanelManager interface {
 	RegisterPlugins([]Plugin) error
 	Includes(PageScope) ([]template.HTML, error)
 	Panels(PageScope) (PanelLayout, error)
-	UIData(UIContext, PageScope) (map[string]interface{}, error)
+	UIData(UIContext, PageScope) (map[string]any, error)
 }
 
 // private type for sorting alphabetically,
@@ -258,12 +258,12 @@ func (spm *SimplePanelManager) Panels(page PageScope) (PanelLayout, error) {
 
 // UIData returns a map of plugin name -> data for inclusion
 // in the view's javascript.
-func (spm *SimplePanelManager) UIData(context UIContext, page PageScope) (map[string]interface{}, error) {
-	pluginUIData := map[string]interface{}{}
+func (spm *SimplePanelManager) UIData(context UIContext, page PageScope) (map[string]any, error) {
+	pluginUIData := map[string]any{}
 	errs := &UIDataFunctionError{}
 	for plName, dataFunc := range spm.uiDataFuncs[page] {
 		// run the data function, catching all sorts of errors
-		plData, err := func() (data interface{}, err error) {
+		plData, err := func() (data any, err error) {
 			defer func() {
 				if r := recover(); r != nil {
 					err = errors.Errorf("plugin function panicked: %v", r)

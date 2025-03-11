@@ -345,7 +345,7 @@ func checkPodSecret(r *http.Request, podID string) error {
 	if secret == "" {
 		return errors.New("missing pod secret")
 	}
-	if err := data.CheckPodSecret(podID, secret); err != nil {
+	if err := data.CheckPodSecret(r.Context(), podID, secret); err != nil {
 		return errors.Wrap(err, "checking pod secret")
 	}
 	return nil

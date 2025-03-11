@@ -28,7 +28,7 @@ import (
 	"github.com/mongodb/jasper/options"
 	"github.com/mongodb/jasper/remote"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 	"gopkg.in/yaml.v3"
 )
 
@@ -653,7 +653,7 @@ func ValidateRDPPassword(password string) bool {
 // assuming the CLI is on the same local machine as the Jasper service. To make
 // requests to a remote Jasper service using RPC, make the request through
 // JasperClient instead.
-func (h *Host) buildLocalJasperClientRequest(config evergreen.HostJasperConfig, subCmd string, input interface{}) (string, error) {
+func (h *Host) buildLocalJasperClientRequest(config evergreen.HostJasperConfig, subCmd string, input any) (string, error) {
 	inputBytes, err := json.Marshal(input)
 	if err != nil {
 		return "", errors.Wrap(err, "marshalling input as JSON")
@@ -1022,7 +1022,7 @@ func (h *Host) AgentCommand(settings *evergreen.Settings, executablePath string)
 	if executablePath == "" {
 		executablePath = h.Distro.AbsPathCygwinCompatible(h.Distro.HomeDir(), h.Distro.BinaryName())
 	}
-	return []string{
+	args := []string{
 		executablePath,
 		"agent",
 		fmt.Sprintf("--api_server=%s", settings.Api.URL),
@@ -1033,6 +1033,11 @@ func (h *Host) AgentCommand(settings *evergreen.Settings, executablePath string)
 		fmt.Sprintf("--working_directory=%s", h.Distro.WorkDir),
 		"--cleanup",
 	}
+
+	if h.Distro.SingleTaskDistro {
+		args = append(args, "--single_task_distro")
+	}
+	return args
 }
 
 // AgentEnv returns the environment variables required to start the agent.

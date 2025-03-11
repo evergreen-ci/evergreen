@@ -20,8 +20,8 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 var (
@@ -202,10 +202,10 @@ func (uis *UIServer) listSpawnableDistros(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	distroList := []map[string]interface{}{}
+	distroList := []map[string]any{}
 	for _, d := range distros {
 		regions := d.GetRegionsList(uis.Settings.Providers.AWS.AllowedRegions)
-		distroList = append(distroList, map[string]interface{}{
+		distroList = append(distroList, map[string]any{
 			"name":                        d.Id,
 			"virtual_workstation_allowed": d.IsVirtualWorkstation,
 			"is_cluster":                  d.IsCluster,
@@ -217,7 +217,7 @@ func (uis *UIServer) listSpawnableDistros(w http.ResponseWriter, r *http.Request
 
 func (uis *UIServer) getVolumes(w http.ResponseWriter, r *http.Request) {
 	usr := MustHaveUser(r)
-	volumes, err := host.FindSortedVolumesByUser(usr.Username())
+	volumes, err := host.FindSortedVolumesByUser(r.Context(), usr.Username())
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "error getting volumes for '%s'", usr.Username()))
 		return
@@ -267,7 +267,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 
 	// save the supplied public key if needed
 	if putParams.SaveKey {
-		if err = authedUser.AddPublicKey(putParams.KeyName, putParams.PublicKey); err != nil {
+		if err = authedUser.AddPublicKey(r.Context(), putParams.KeyName, putParams.PublicKey); err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error saving public key"))
 			return
 		}
@@ -544,7 +544,7 @@ func (uis *UIServer) modifyVolume(w http.ResponseWriter, r *http.Request) {
 	}
 
 	volumeID := gimlet.GetVars(r)["volume_id"]
-	vol, err := host.FindVolumeByID(volumeID)
+	vol, err := host.FindVolumeByID(ctx, volumeID)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "error finding volume '%s'", volumeID))
 		return
@@ -568,7 +568,7 @@ func (uis *UIServer) modifyVolume(w http.ResponseWriter, r *http.Request) {
 	// take the specified action
 	switch *updateParams.Action {
 	case VolumeRename:
-		uis.LoggedError(w, r, http.StatusUnauthorized, errors.Wrapf(vol.SetDisplayName(*updateParams.NewName), "can't set display name of '%s' to '%s'", vol.ID, *updateParams.NewName))
+		uis.LoggedError(w, r, http.StatusUnauthorized, errors.Wrapf(vol.SetDisplayName(ctx, *updateParams.NewName), "can't set display name of '%s' to '%s'", vol.ID, *updateParams.NewName))
 
 	case VolumeExtendExpiration:
 		if updateParams.Expiration == nil {

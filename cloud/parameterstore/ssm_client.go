@@ -129,7 +129,7 @@ func (c *ssmClientImpl) GetParameters(ctx context.Context, input *ssm.GetParamet
 // retryBatchSSMClientOp runs an SSM operation with retries and handles batching for
 // SSM API methods that have a limit on the number of parameters that can be
 // queried at once.
-func retryBatchSSMClientOp[Input interface{}, Output interface{}](ctx context.Context, paramNames []string, client *ssm.Client, input Input, makeBatchInput func(paramNames []string, input Input) Input, op func(ctx context.Context, client *ssm.Client, input Input) (Output, error), opName string) ([]Output, error) {
+func retryBatchSSMClientOp[Input any, Output any](ctx context.Context, paramNames []string, client *ssm.Client, input Input, makeBatchInput func(paramNames []string, input Input) Input, op func(ctx context.Context, client *ssm.Client, input Input) (Output, error), opName string) ([]Output, error) {
 	// This limitation comes from the SSM docs.
 	const maxParamsPerRequest = 10
 	batches := utility.MakeSliceBatches(paramNames, maxParamsPerRequest)
@@ -147,7 +147,7 @@ func retryBatchSSMClientOp[Input interface{}, Output interface{}](ctx context.Co
 }
 
 // retrySSMClientOp runs a single SSM operation with retries.
-func retrySSMClientOp[Input interface{}, Output interface{}](ctx context.Context, client *ssm.Client, input Input, clientOp func(ctx context.Context, client *ssm.Client, input Input) (Output, error), opName string) (Output, error) {
+func retrySSMClientOp[Input any, Output any](ctx context.Context, client *ssm.Client, input Input, clientOp func(ctx context.Context, client *ssm.Client, input Input) (Output, error), opName string) (Output, error) {
 	var output Output
 	var err error
 
@@ -181,14 +181,14 @@ func ssmDefaultRetryOptions() utility.RetryOptions {
 // trace API call inputs/outputs, callers must take extra precaution to ensure
 // that this does not log any sensitive values (e.g. the parameter value in
 // plaintext).
-func makeAWSLogMessage(name, client string, args interface{}) message.Fields {
+func makeAWSLogMessage(name, client string, args any) message.Fields {
 	msg := message.Fields{
 		"message":  "AWS API call",
 		"api_name": name,
 		"client":   client,
 	}
 
-	argMap := make(map[string]interface{})
+	argMap := make(map[string]any)
 	if err := mapstructure.Decode(args, &argMap); err == nil {
 		// Avoid logging the plaintext value of the parameter for PutParameter's
 		// input. This is not a comprehensive solution to redacting sensitive

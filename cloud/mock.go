@@ -13,7 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 var globalMockState *mockState
@@ -372,7 +372,7 @@ func (m *mockManager) CreateVolume(ctx context.Context, volume *host.Volume) (*h
 		m.Volumes = map[string]MockVolume{}
 	}
 	if volume.ID == "" {
-		volume.ID = primitive.NewObjectID().String()
+		volume.ID = bson.NewObjectID().String()
 	}
 	m.Volumes[volume.ID] = MockVolume{}
 	if err := volume.Insert(); err != nil {
@@ -387,7 +387,7 @@ func (m *mockManager) DeleteVolume(ctx context.Context, volume *host.Volume) err
 	l.Lock()
 	defer l.Unlock()
 	delete(m.Volumes, volume.ID)
-	return errors.WithStack(volume.Remove())
+	return errors.WithStack(volume.Remove(ctx))
 }
 
 func (m *mockManager) ModifyVolume(ctx context.Context, volume *host.Volume, opts *model.VolumeModifyOptions) error {
@@ -412,7 +412,7 @@ func (m *mockManager) ModifyVolume(ctx context.Context, volume *host.Volume, opt
 		volume.NoExpiration = false
 	}
 	if opts.NewName != "" {
-		err := volume.SetDisplayName(opts.NewName)
+		err := volume.SetDisplayName(ctx, opts.NewName)
 		if err != nil {
 			return err
 		}

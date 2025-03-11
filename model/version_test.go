@@ -576,7 +576,7 @@ func TestUpdateProjectStorageMethod(t *testing.T) {
 
 	for tName, tCase := range map[string]func(t *testing.T, v *Version){
 		"ChangesProjectStorageMethod": func(t *testing.T, v *Version) {
-			assert.NoError(t, v.UpdateProjectStorageMethod(evergreen.ProjectStorageMethodS3))
+			assert.NoError(t, v.UpdateProjectStorageMethod(t.Context(), evergreen.ProjectStorageMethodS3))
 
 			assert.Equal(t, evergreen.ProjectStorageMethodS3, v.ProjectStorageMethod)
 
@@ -587,7 +587,7 @@ func TestUpdateProjectStorageMethod(t *testing.T) {
 		},
 		"NoopsWhenVersionStorageMethodIsIdentical": func(t *testing.T, v *Version) {
 			v.ProjectStorageMethod = evergreen.ProjectStorageMethodS3
-			assert.NoError(t, v.UpdateProjectStorageMethod(evergreen.ProjectStorageMethodS3))
+			assert.NoError(t, v.UpdateProjectStorageMethod(t.Context(), evergreen.ProjectStorageMethodS3))
 
 			assert.Equal(t, evergreen.ProjectStorageMethodS3, v.ProjectStorageMethod)
 
@@ -618,7 +618,7 @@ func TestUpdatePreGenerationProjectStorageMethod(t *testing.T) {
 
 	for tName, tCase := range map[string]func(t *testing.T, v *Version){
 		"ChangesPreGenerationProjectStorageMethod": func(t *testing.T, v *Version) {
-			assert.NoError(t, v.UpdatePreGenerationProjectStorageMethod(evergreen.ProjectStorageMethodS3))
+			assert.NoError(t, v.UpdatePreGenerationProjectStorageMethod(t.Context(), evergreen.ProjectStorageMethodS3))
 
 			assert.Equal(t, evergreen.ProjectStorageMethodS3, v.PreGenerationProjectStorageMethod)
 
@@ -629,7 +629,7 @@ func TestUpdatePreGenerationProjectStorageMethod(t *testing.T) {
 		},
 		"NoopsWhenVersionStorageMethodIsIdentical": func(t *testing.T, v *Version) {
 			v.PreGenerationProjectStorageMethod = evergreen.ProjectStorageMethodS3
-			assert.NoError(t, v.UpdatePreGenerationProjectStorageMethod(evergreen.ProjectStorageMethodS3))
+			assert.NoError(t, v.UpdatePreGenerationProjectStorageMethod(t.Context(), evergreen.ProjectStorageMethodS3))
 
 			assert.Equal(t, evergreen.ProjectStorageMethodS3, v.PreGenerationProjectStorageMethod)
 

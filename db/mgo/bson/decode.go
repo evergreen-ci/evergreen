@@ -56,7 +56,7 @@ func corrupted() {
 	panic("Document is corrupted")
 }
 
-func settableValueOf(i interface{}) reflect.Value {
+func settableValueOf(i any) reflect.Value {
 	v := reflect.ValueOf(i)
 	sv := reflect.New(v.Type()).Elem()
 	sv.Set(v)
@@ -326,7 +326,7 @@ func (d *decoder) readArrayDocTo(out reflect.Value) {
 	}
 }
 
-func (d *decoder) readSliceDoc(t reflect.Type) interface{} {
+func (d *decoder) readSliceDoc(t reflect.Type) any {
 	tmp := make([]reflect.Value, 0, 8)
 	elemType := t.Elem()
 	if elemType == typeRawDocElem {
@@ -369,7 +369,7 @@ func (d *decoder) readSliceDoc(t reflect.Type) interface{} {
 	return slice.Interface()
 }
 
-var typeSlice = reflect.TypeOf([]interface{}{})
+var typeSlice = reflect.TypeOf([]any{})
 var typeIface = typeSlice.Elem()
 
 func (d *decoder) readDocElems(typ reflect.Type) reflect.Value {
@@ -528,7 +528,7 @@ func (d *decoder) readElemTo(out reflect.Value, kind byte) (good bool) {
 		return true
 	}
 
-	var in interface{}
+	var in any
 
 	switch kind {
 	case 0x01: // Float64

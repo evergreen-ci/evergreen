@@ -3,6 +3,7 @@ package model
 import (
 	"context"
 	"strings"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -10,7 +11,7 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.opentelemetry.io/otel/attribute"
 )
 
@@ -89,7 +90,7 @@ func getBuildDisplayNames(match bson.M) bson.M {
 }
 
 // This pipeline matches on versions that have a build with an ID or display name that matches variants
-func getBuildVariantFilterPipeline(variants []string, match bson.M) []bson.M {
+func getBuildVariantFilterPipeline(ctx context.Context, variants []string, match bson.M, projectId string) ([]bson.M, error) {
 	pipeline := []bson.M{}
 	match[bsonutil.GetDottedKeyName(VersionBuildVariantsKey, VersionBuildStatusDisplayNameKey)] = bson.M{"$exists": true}
 	pipeline = append(pipeline, bson.M{"$match": match})
@@ -97,23 +98,41 @@ func getBuildVariantFilterPipeline(variants []string, match bson.M) []bson.M {
 	for key := range match {
 		matchCopy[key] = match[key]
 	}
-	pipeline = append(pipeline, getBuildDisplayNames(matchCopy))
+
+	mostRecentVersion, err := GetMostRecentWaterfallVersion(ctx, projectId)
+	if err != nil {
+		return []bson.M{}, errors.Wrap(err, "getting most recent version")
+	}
+
+	// TODO DEVPROD-15118: Delete conditional getBuildDisplayNames check
+
+	searchOrder := max(mostRecentVersion.RevisionOrderNumber-MaxWaterfallVersionLimit, 1)
+	lastSearchableVersion, err := VersionFindOne(VersionByProjectIdAndOrder(mostRecentVersion.Identifier, searchOrder))
+	if err != nil {
+		return []bson.M{}, errors.Wrap(err, "fetching version")
+	}
+
+	buildVariantStatusDate := time.Date(2025, time.February, 7, 0, 0, 0, 0, time.UTC)
+	if lastSearchableVersion != nil && lastSearchableVersion.CreateTime.Before(buildVariantStatusDate) {
+		pipeline = append(pipeline, getBuildDisplayNames(matchCopy))
+	}
 	pipeline = append(pipeline, bson.M{"$sort": bson.M{VersionRevisionOrderNumberKey: -1}})
 
 	variantsAsRegex := strings.Join(variants, "|")
 	pipeline = append(pipeline, bson.M{
 		"$match": bson.M{
-			"$or": []bson.M{
-				{bsonutil.GetDottedKeyName(VersionBuildVariantsKey, VersionBuildStatusVariantKey): bson.M{"$regex": variantsAsRegex, "$options": "i"},
-					bsonutil.GetDottedKeyName(VersionBuildVariantsKey, VersionBuildStatusActivatedKey): true,
-				},
-				{bsonutil.GetDottedKeyName(VersionBuildVariantsKey, VersionBuildStatusDisplayNameKey): bson.M{"$regex": variantsAsRegex, "$options": "i"},
-					bsonutil.GetDottedKeyName(VersionBuildVariantsKey, VersionBuildStatusActivatedKey): true,
+			VersionBuildVariantsKey: bson.M{
+				"$elemMatch": bson.M{
+					VersionBuildStatusActivatedKey: true,
+					"$or": []bson.M{
+						bson.M{VersionBuildStatusVariantKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
+						bson.M{VersionBuildStatusDisplayNameKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
+					},
 				},
 			},
 		},
 	})
-	return pipeline
+	return pipeline, nil
 }
 
 // GetActiveWaterfallVersions returns at most `opts.limit` activated versions for a given project.
@@ -147,7 +166,11 @@ func GetActiveWaterfallVersions(ctx context.Context, projectId string, opts Wate
 	pipeline := []bson.M{}
 
 	if len(opts.Variants) > 0 {
-		pipeline = append(pipeline, getBuildVariantFilterPipeline(opts.Variants, match)...)
+		buildVariantPipeline, err := getBuildVariantFilterPipeline(ctx, opts.Variants, match, projectId)
+		if err != nil {
+			return nil, errors.Wrap(err, "creating build variant filter pipeline")
+		}
+		pipeline = append(pipeline, buildVariantPipeline...)
 	} else {
 		pipeline = append(pipeline, bson.M{"$match": match})
 	}
