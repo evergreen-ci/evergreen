@@ -237,74 +237,74 @@ func TestRequireHostAccess(t *testing.T) {
 		require.NoError(t, db.ClearCollections(host.Collection, user.Collection),
 			"unable to clear user or host collection")
 	}()
-	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, next func(rctx context.Context) (interface{}, error), config Config, usr *user.DBUser){
-		"FailsWhenHostIdIsNotSpecified": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (interface{}, error), config Config, usr *user.DBUser) {
-			obj := interface{}(nil)
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser){
+		"FailsWhenHostIdIsNotSpecified": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser) {
+			obj := any(nil)
 			_, err := config.Directives.RequireHostAccess(ctx, obj, next, HostAccessLevelEdit)
 			assert.EqualError(t, err, "input: host not specified")
 		},
-		"FailsWhenHostDoesNotExist": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (interface{}, error), config Config, usr *user.DBUser) {
-			obj := interface{}(map[string]interface{}{"hostId": "a-non-existent-host-id"})
+		"FailsWhenHostDoesNotExist": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser) {
+			obj := any(map[string]any{"hostId": "a-non-existent-host-id"})
 			_, err := config.Directives.RequireHostAccess(ctx, obj, next, HostAccessLevelEdit)
 			assert.EqualError(t, err, "input: No matching hosts found")
 		},
-		"ViewFailsWhenUserDoesNotHaveViewPermission": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (interface{}, error), config Config, usr *user.DBUser) {
-			obj := interface{}(map[string]interface{}{"hostId": "host1"})
+		"ViewFailsWhenUserDoesNotHaveViewPermission": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser) {
+			obj := any(map[string]any{"hostId": "host1"})
 			_, err := config.Directives.RequireHostAccess(ctx, obj, next, HostAccessLevelView)
 			assert.EqualError(t, err, "input: user 'test_user' does not have permission to access host 'host1'")
 		},
-		"EditFailsWhenUserDoesNotHaveEditPermission": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (interface{}, error), config Config, usr *user.DBUser) {
-			obj := interface{}(map[string]interface{}{"hostId": "host1"})
+		"EditFailsWhenUserDoesNotHaveEditPermission": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser) {
+			obj := any(map[string]any{"hostId": "host1"})
 			_, err := config.Directives.RequireHostAccess(ctx, obj, next, HostAccessLevelEdit)
 			assert.EqualError(t, err, "input: user 'test_user' does not have permission to access host 'host1'")
 		},
-		"ViewSucceedsWhenUserHasViewPermission": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (interface{}, error), config Config, usr *user.DBUser) {
-			assert.NoError(t, usr.AddRole("view_host-id"))
+		"ViewSucceedsWhenUserHasViewPermission": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser) {
+			assert.NoError(t, usr.AddRole(ctx, "view_host-id"))
 			nextCalled := false
-			wrappedNext := func(rctx context.Context) (interface{}, error) {
+			wrappedNext := func(rctx context.Context) (any, error) {
 				nextCalled = true
 				return nil, nil
 			}
-			obj := interface{}(map[string]interface{}{"hostId": "host1"})
+			obj := any(map[string]any{"hostId": "host1"})
 			res, err := config.Directives.RequireHostAccess(ctx, obj, wrappedNext, HostAccessLevelView)
 			assert.NoError(t, err)
 			assert.Nil(t, res)
 			assert.Equal(t, true, nextCalled)
-			assert.NoError(t, usr.RemoveRole("view_host-id"))
+			assert.NoError(t, usr.RemoveRole(ctx, "view_host-id"))
 		},
-		"EditSucceedsWhenUserHasEditPermission": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (interface{}, error), config Config, usr *user.DBUser) {
-			assert.NoError(t, usr.AddRole("edit_host-id"))
+		"EditSucceedsWhenUserHasEditPermission": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser) {
+			assert.NoError(t, usr.AddRole(ctx, "edit_host-id"))
 			nextCalled := false
-			wrappedNext := func(rctx context.Context) (interface{}, error) {
+			wrappedNext := func(rctx context.Context) (any, error) {
 				nextCalled = true
 				return nil, nil
 			}
-			obj := interface{}(map[string]interface{}{"hostId": "host1"})
+			obj := any(map[string]any{"hostId": "host1"})
 			res, err := config.Directives.RequireHostAccess(ctx, obj, wrappedNext, HostAccessLevelEdit)
 			assert.NoError(t, err)
 			assert.Nil(t, res)
 			assert.Equal(t, true, nextCalled)
-			assert.NoError(t, usr.RemoveRole("edit_host-id"))
+			assert.NoError(t, usr.RemoveRole(ctx, "edit_host-id"))
 		},
-		"ViewSucceedsWhenHostIsStartedByUser": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (interface{}, error), config Config, usr *user.DBUser) {
+		"ViewSucceedsWhenHostIsStartedByUser": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser) {
 			nextCalled := false
-			wrappedNext := func(rctx context.Context) (interface{}, error) {
+			wrappedNext := func(rctx context.Context) (any, error) {
 				nextCalled = true
 				return nil, nil
 			}
-			obj := interface{}(map[string]interface{}{"hostId": "host2"})
+			obj := any(map[string]any{"hostId": "host2"})
 			res, err := config.Directives.RequireHostAccess(ctx, obj, wrappedNext, HostAccessLevelView)
 			assert.NoError(t, err)
 			assert.Nil(t, res)
 			assert.Equal(t, true, nextCalled)
 		},
-		"EditSucceedsWhenHostIsStartedByUser": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (interface{}, error), config Config, usr *user.DBUser) {
+		"EditSucceedsWhenHostIsStartedByUser": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser) {
 			nextCalled := false
-			wrappedNext := func(rctx context.Context) (interface{}, error) {
+			wrappedNext := func(rctx context.Context) (any, error) {
 				nextCalled = true
 				return nil, nil
 			}
-			obj := interface{}(map[string]interface{}{"hostId": "host2"})
+			obj := any(map[string]any{"hostId": "host2"})
 			res, err := config.Directives.RequireHostAccess(ctx, obj, wrappedNext, HostAccessLevelEdit)
 			assert.NoError(t, err)
 			assert.Nil(t, res)
@@ -337,7 +337,7 @@ func TestRequireHostAccess(t *testing.T) {
 			assert.NoError(t, h2.Insert(ctx))
 			config := New("/graphql")
 			assert.NotNil(t, config)
-			next := func(rctx context.Context) (interface{}, error) {
+			next := func(rctx context.Context) (any, error) {
 				return nil, nil
 			}
 			tCase(ctx, t, next, config, usr)
