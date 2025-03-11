@@ -2796,7 +2796,7 @@ func (p *ProjectRef) ValidateIdentifier() error {
 }
 
 // RemoveAdminFromProjects removes a user from all Admin slices of every project and repo
-func RemoveAdminFromProjects(toDelete string) error {
+func RemoveAdminFromProjects(ctx context.Context, toDelete string) error {
 	projectUpdate := bson.M{
 		"$pull": bson.M{
 			ProjectRefAdminsKey: toDelete,
@@ -2809,9 +2809,9 @@ func RemoveAdminFromProjects(toDelete string) error {
 	}
 
 	catcher := grip.NewBasicCatcher()
-	_, err := db.UpdateAll(ProjectRefCollection, bson.M{ProjectRefAdminsKey: bson.M{"$ne": nil}}, projectUpdate)
+	_, err := db.UpdateAllContext(ctx, ProjectRefCollection, bson.M{ProjectRefAdminsKey: bson.M{"$ne": nil}}, projectUpdate)
 	catcher.Wrap(err, "updating projects")
-	_, err = db.UpdateAll(RepoRefCollection, bson.M{RepoRefAdminsKey: bson.M{"$ne": nil}}, repoUpdate)
+	_, err = db.UpdateAllContext(ctx, RepoRefCollection, bson.M{RepoRefAdminsKey: bson.M{"$ne": nil}}, repoUpdate)
 	catcher.Wrap(err, "updating repos")
 	return catcher.Resolve()
 }

@@ -3616,7 +3616,7 @@ func TestRemoveAdminFromProjects(t *testing.T) {
 	assert.NoError(t, repoRef2.Upsert())
 	assert.NoError(t, repoRef3.Upsert())
 
-	assert.NoError(t, RemoveAdminFromProjects("villain"))
+	assert.NoError(t, RemoveAdminFromProjects(t.Context(), "villain"))
 
 	// verify that we carry out multiple updates
 	pRefFromDB, err := FindBranchProjectRef(pRef.Id)

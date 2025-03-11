@@ -1082,7 +1082,7 @@ func (ch *offboardUserHandler) Run(ctx context.Context) gimlet.Responder {
 			"terminated_volumes": toTerminate.TerminatedVolumes,
 		})
 
-		grip.Error(message.WrapError(serviceModel.RemoveAdminFromProjects(ch.user), message.Fields{
+		grip.Error(message.WrapError(serviceModel.RemoveAdminFromProjects(ctx, ch.user), message.Fields{
 			"message": "could not remove user as an admin",
 			"context": "user offboarding",
 			"user":    ch.user,

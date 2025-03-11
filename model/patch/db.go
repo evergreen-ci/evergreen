@@ -336,8 +336,8 @@ func Remove(query db.Q) error {
 }
 
 // UpdateAll runs an update on all patch documents.
-func UpdateAll(query any, update any) (info *adb.ChangeInfo, err error) {
-	return db.UpdateAll(Collection, query, update)
+func UpdateAll(ctx context.Context, query any, update any) (info *adb.ChangeInfo, err error) {
+	return db.UpdateAllContext(ctx, Collection, query, update)
 }
 
 // UpdateOne runs an update on a single patch document.
@@ -394,7 +394,7 @@ func ConsolidatePatchesForUser(ctx context.Context, oldAuthor string, newUsr *us
 	update := bson.M{
 		"$set": bson.M{AuthorKey: newUsr.Id},
 	}
-	_, err = UpdateAll(byUser(oldAuthor), update)
+	_, err = UpdateAll(ctx, byUser(oldAuthor), update)
 	return err
 }
 

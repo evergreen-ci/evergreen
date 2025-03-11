@@ -121,7 +121,7 @@ func ActivateElapsedBuildsAndTasks(ctx context.Context, v *Version) (bool, error
 	}
 	if len(buildIdsToActivate) > 0 {
 		// Don't need to set the version in here since we do it ourselves in a single update
-		if err := build.UpdateActivation(buildIdsToActivate, true, evergreen.BuildActivator); err != nil {
+		if err := build.UpdateActivation(ctx, buildIdsToActivate, true, evergreen.BuildActivator); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"operation": "project-activation",
 				"message":   "problem activating builds",
