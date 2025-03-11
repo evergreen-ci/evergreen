@@ -865,7 +865,7 @@ func TestBuildBreakSubscriptions(t *testing.T) {
 		Branch:     "branch",
 	}
 	assert.NoError(AddBuildBreakSubscriptions(&v1, &proj1))
-	assert.NoError(db.FindAllQ(event.SubscriptionsCollection, db.Q{}, &subs))
+	assert.NoError(db.FindAllQContext(t.Context(), event.SubscriptionsCollection, db.Q{}, &subs))
 	assert.Empty(subs)
 
 	// just a project
@@ -906,7 +906,7 @@ func TestBuildBreakSubscriptions(t *testing.T) {
 	}
 	assert.NoError(u4.Insert())
 	assert.NoError(AddBuildBreakSubscriptions(&v1, &proj2))
-	assert.NoError(db.FindAllQ(event.SubscriptionsCollection, db.Q{}, &subs))
+	assert.NoError(db.FindAllQContext(t.Context(), event.SubscriptionsCollection, db.Q{}, &subs))
 	assert.Len(subs, 2)
 
 	// project has it enabled, but user doesn't want notifications
@@ -920,7 +920,7 @@ func TestBuildBreakSubscriptions(t *testing.T) {
 		AuthorID:   u4.Id,
 	}
 	assert.NoError(AddBuildBreakSubscriptions(&v3, &proj2))
-	assert.NoError(db.FindAllQ(event.SubscriptionsCollection, db.Q{}, &subs))
+	assert.NoError(db.FindAllQContext(t.Context(), event.SubscriptionsCollection, db.Q{}, &subs))
 	targetString, ok := subs[0].Subscriber.Target.(*string)
 	assert.True(ok)
 	assert.EqualValues("@hello.itsme", utility.FromStringPtr(targetString))

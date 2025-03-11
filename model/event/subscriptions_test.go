@@ -152,7 +152,7 @@ func (s *subscriptionsSuite) SetupTest() {
 
 func (s *subscriptionsSuite) TestUpsert() {
 	out := []Subscription{}
-	s.NoError(db.FindAllQ(SubscriptionsCollection, db.Q{}, &out))
+	s.NoError(db.FindAllQContext(s.T().Context(), SubscriptionsCollection, db.Q{}, &out))
 
 	s.Require().Len(out, 6)
 
@@ -174,7 +174,7 @@ func (s *subscriptionsSuite) TestRemove() {
 		s.NoError(RemoveSubscription(s.subscriptions[i].ID))
 
 		out := []Subscription{}
-		s.NoError(db.FindAllQ(SubscriptionsCollection, db.Q{}, &out))
+		s.NoError(db.FindAllQContext(s.T().Context(), SubscriptionsCollection, db.Q{}, &out))
 		s.Len(out, len(s.subscriptions)-i-1)
 	}
 }

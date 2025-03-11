@@ -1,6 +1,7 @@
 package patch
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -230,7 +231,7 @@ func (s *CliIntentSuite) TestInsert() {
 	s.Require().NoError(intent.Insert())
 
 	var intents []*cliIntent
-	intents, err = findCliIntents(false)
+	intents, err = findCliIntents(s.T().Context(), false)
 	s.NoError(err)
 	s.Len(intents, 1)
 	s.Equal(intent.ID(), intents[0].DocumentID)
@@ -257,16 +258,16 @@ func (s *CliIntentSuite) TestSetProcessed() {
 	s.True(intent.IsProcessed())
 
 	var intents []*cliIntent
-	intents, err = findCliIntents(true)
+	intents, err = findCliIntents(s.T().Context(), true)
 	s.NoError(err)
 	s.Len(intents, 1)
 
 	s.True(intents[0].Processed)
 }
 
-func findCliIntents(processed bool) ([]*cliIntent, error) {
+func findCliIntents(ctx context.Context, processed bool) ([]*cliIntent, error) {
 	var intents []*cliIntent
-	err := db.FindAllQ(IntentCollection, db.Query(bson.M{cliProcessedKey: processed, cliIntentTypeKey: CliIntentType}), &intents)
+	err := db.FindAllQContext(ctx, IntentCollection, db.Query(bson.M{cliProcessedKey: processed, cliIntentTypeKey: CliIntentType}), &intents)
 	if err != nil {
 		return []*cliIntent{}, err
 	}
