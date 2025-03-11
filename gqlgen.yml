@@ -335,6 +335,8 @@ models:
     model: github.com/evergreen-ci/evergreen/model.ProjectHealthView
   ProjectInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectRef
+  ProjectTasksPair:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectTasksPair
   ProjectSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectSettings
     fields:
@@ -400,6 +402,8 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APISelector
   SelectorInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APISelector
+  SingleTaskDistroConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISingleTaskDistroConfig
   SiteBanner:
     model: github.com/evergreen-ci/evergreen/rest/model.APIBanner
   SleepSchedule:
