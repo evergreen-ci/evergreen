@@ -182,11 +182,11 @@ func Agent() cli.Command {
 			}
 
 			grip.Info(message.Fields{
-				"message":  "starting agent",
-				"commands": command.RegisteredCommandNames(),
-				"dir":      opts.WorkingDirectory,
-				"host_id":  opts.HostID,
-				"single":   opts.SingleTaskDistro,
+				"message":            "starting agent",
+				"commands":           command.RegisteredCommandNames(),
+				"dir":                opts.WorkingDirectory,
+				"host_id":            opts.HostID,
+				"single_task_distro": opts.SingleTaskDistro,
 			})
 
 			ctx, cancel := context.WithCancel(context.Background())
