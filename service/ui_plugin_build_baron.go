@@ -114,7 +114,7 @@ func (uis *UIServer) bbGetCustomCreatedTickets(w http.ResponseWriter, r *http.Re
 	taskId := gimlet.GetVars(r)["task_id"]
 	var results []annotations.IssueLink
 
-	annotations, err := annotations.FindByTaskId(taskId)
+	annotations, err := annotations.FindByTaskId(r.Context(), taskId)
 	if err != nil {
 		gimlet.WriteJSONInternalError(w, err.Error())
 		return
