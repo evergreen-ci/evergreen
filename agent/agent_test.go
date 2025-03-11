@@ -304,6 +304,17 @@ func (s *AgentSuite) TestAgentEndTaskShouldExit() {
 	s.Empty(endDetail.FailingCommand, "should not include end task failing command for successful task")
 }
 
+func (s *AgentSuite) TestAgentExitsSingleTaskDistros() {
+	s.setupRunTask(defaultProjYml)
+	s.mockCommunicator.EndTaskResponse = &apimodels.EndTaskResponse{}
+	s.a.opts.SingleTaskDistro = true
+	ctx, cancel := context.WithTimeout(s.ctx, 5*time.Second)
+	defer cancel()
+
+	// The loop should exit after one execution because it is on a single host distro
+	s.NoError(s.a.loop(ctx))
+}
+
 func (s *AgentSuite) TestFinishTaskWithNormalCompletedTask() {
 	s.mockCommunicator.EndTaskResponse = &apimodels.EndTaskResponse{}
 
