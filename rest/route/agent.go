@@ -980,7 +980,7 @@ func (h *startTaskHandler) Run(ctx context.Context) gimlet.Responder {
 			grip.Info(foundHost.TaskStartMessage())
 		}
 	} else {
-		foundPod, err = pod.FindOneByID(h.podID)
+		foundPod, err = pod.FindOneByID(ctx, h.podID)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding pod running task %s", t.Id))
 		}

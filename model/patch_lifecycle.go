@@ -886,7 +886,7 @@ func getLoadProjectOptsForPatch(p *patch.Patch) (*ProjectRef, *GetProjectOpts, e
 }
 
 func finalizeOrSubscribeChildPatch(ctx context.Context, childPatchId string, parentPatch *patch.Patch, requester string) error {
-	intent, err := patch.FindIntent(childPatchId, patch.TriggerIntentType)
+	intent, err := patch.FindIntent(ctx, childPatchId, patch.TriggerIntentType)
 	if err != nil {
 		return errors.Wrap(err, "fetching child patch intent")
 	}

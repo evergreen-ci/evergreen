@@ -92,7 +92,7 @@ func TestPodTerminationJob(t *testing.T) {
 
 			checkCloudPodDeleteRequests(t, j.ecsClient)
 
-			dbPod, err := pod.FindOneByID(j.PodID)
+			dbPod, err := pod.FindOneByID(ctx, j.PodID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Equal(t, pod.StatusTerminated, dbPod.Status)
@@ -109,7 +109,7 @@ func TestPodTerminationJob(t *testing.T) {
 
 			checkCloudPodDeleteRequests(t, j.ecsClient)
 
-			dbPod, err := pod.FindOneByID(j.PodID)
+			dbPod, err := pod.FindOneByID(ctx, j.PodID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Equal(t, pod.StatusTerminated, dbPod.Status)
@@ -140,7 +140,7 @@ func TestPodTerminationJob(t *testing.T) {
 
 			checkCloudPodDeleteRequests(t, j.ecsClient)
 
-			dbPod, err := pod.FindOneByID(j.PodID)
+			dbPod, err := pod.FindOneByID(ctx, j.PodID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Equal(t, pod.StatusTerminated, dbPod.Status)
@@ -162,7 +162,7 @@ func TestPodTerminationJob(t *testing.T) {
 			j.Run(ctx)
 			require.NoError(t, j.Error())
 
-			dbPod, err := pod.FindOneByID(j.pod.ID)
+			dbPod, err := pod.FindOneByID(ctx, j.pod.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Equal(t, pod.StatusTerminated, dbPod.Status)
@@ -174,7 +174,7 @@ func TestPodTerminationJob(t *testing.T) {
 			j.Run(ctx)
 			require.NoError(t, j.Error())
 
-			dbPod, err := pod.FindOneByID(j.pod.ID)
+			dbPod, err := pod.FindOneByID(ctx, j.pod.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Equal(t, pod.StatusTerminated, dbPod.Status)
@@ -214,7 +214,7 @@ func TestPodTerminationJob(t *testing.T) {
 			require.NoError(t, j.Error())
 
 			assert.Equal(t, cocoa.StatusDeleted, j.ecsPod.StatusInfo().Status)
-			dbPod, err := pod.FindOneByID(j.pod.ID)
+			dbPod, err := pod.FindOneByID(ctx, j.pod.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Equal(t, pod.StatusTerminated, dbPod.Status)
@@ -248,7 +248,7 @@ func TestPodTerminationJob(t *testing.T) {
 			require.NoError(t, j.Error())
 
 			assert.Equal(t, cocoa.StatusDeleted, j.ecsPod.StatusInfo().Status)
-			dbPod, err := pod.FindOneByID(j.pod.ID)
+			dbPod, err := pod.FindOneByID(ctx, j.pod.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Equal(t, pod.StatusTerminated, dbPod.Status)
@@ -312,7 +312,7 @@ func TestPodTerminationJob(t *testing.T) {
 			require.NoError(t, j.Error())
 
 			assert.Equal(t, cocoa.StatusDeleted, j.ecsPod.StatusInfo().Status)
-			dbPod, err := pod.FindOneByID(j.pod.ID)
+			dbPod, err := pod.FindOneByID(ctx, j.pod.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Equal(t, pod.StatusTerminated, dbPod.Status)

@@ -517,7 +517,7 @@ func (r *taskResolver) Pod(ctx context.Context, obj *restModel.APITask) (*restMo
 	if podID == "" {
 		return nil, nil
 	}
-	pod, err := data.FindAPIPodByID(podID)
+	pod, err := data.FindAPIPodByID(ctx, podID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding pod '%s': %s", podID, err.Error()))
 	}

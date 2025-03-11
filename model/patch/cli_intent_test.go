@@ -200,7 +200,7 @@ func (s *CliIntentSuite) TestFindIntentSpecifically() {
 	s.NotNil(intent)
 	s.Require().NoError(intent.Insert())
 
-	found, err := FindIntent(intent.ID(), intent.GetType())
+	found, err := FindIntent(s.T().Context(), intent.ID(), intent.GetType())
 	s.Require().NoError(err)
 	s.NotNil(found)
 

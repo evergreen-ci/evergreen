@@ -96,7 +96,7 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 
 	var err error
 	if j.intent == nil {
-		j.intent, err = patch.FindIntent(j.IntentID, j.IntentType)
+		j.intent, err = patch.FindIntent(ctx, j.IntentID, j.IntentType)
 		if err != nil {
 			j.AddError(errors.Wrapf(err, "finding patch intent '%s'", j.IntentID))
 			return

@@ -1001,7 +1001,7 @@ func logTaskEndStats(ctx context.Context, t *task.Task) error {
 			}
 		}
 	} else {
-		taskPod, err := pod.FindOneByID(t.PodID)
+		taskPod, err := pod.FindOneByID(ctx, t.PodID)
 		if err != nil {
 			return errors.Wrapf(err, "finding pod '%s'", t.PodID)
 		}

@@ -384,7 +384,7 @@ func (r *queryResolver) TaskQueueDistros(ctx context.Context) ([]*TaskQueueDistr
 
 // Pod is the resolver for the pod field.
 func (r *queryResolver) Pod(ctx context.Context, podID string) (*restModel.APIPod, error) {
-	pod, err := data.FindAPIPodByID(podID)
+	pod, err := data.FindAPIPodByID(ctx, podID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching pod '%s': %s", podID, err.Error()))
 	}

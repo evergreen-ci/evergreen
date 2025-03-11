@@ -172,7 +172,7 @@ func TestAssignNextTask(t *testing.T) {
 		assert.Equal(t, p.ID, dbTask.PodID)
 		assert.Equal(t, p.AgentVersion, dbTask.AgentVersion)
 
-		dbPod, err := pod.FindOneByID(p.ID)
+		dbPod, err := pod.FindOneByID(t.Context(), p.ID)
 		require.NoError(t, err)
 		require.NotZero(t, dbPod)
 		assert.Equal(t, tsk.Id, dbPod.TaskRuntimeInfo.RunningTaskID)

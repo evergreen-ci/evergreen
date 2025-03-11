@@ -148,7 +148,7 @@ func (j *podCreationJob) populateIfUnset(ctx context.Context) error {
 	}
 
 	if j.pod == nil {
-		p, err := pod.FindOneByID(j.PodID)
+		p, err := pod.FindOneByID(ctx, j.PodID)
 		if err != nil {
 			return err
 		}

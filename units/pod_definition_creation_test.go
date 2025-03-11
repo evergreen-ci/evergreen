@@ -163,7 +163,7 @@ func TestPodDefinitionCreationJob(t *testing.T) {
 
 			assert.Empty(t, cocoaMock.GlobalECSService.TaskDefs, "should not have created an ECS task definition")
 
-			dbPod, err := pod.FindOneByID(p.ID)
+			dbPod, err := pod.FindOneByID(ctx, p.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Equal(t, pod.StatusDecommissioned, dbPod.Status, "intent pod should have been decommissioned after pod definition creation failed")

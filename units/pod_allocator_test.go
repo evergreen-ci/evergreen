@@ -71,7 +71,7 @@ func TestPodAllocatorJob(t *testing.T) {
 			require.NotZero(t, dbTask)
 			assert.True(t, dbTask.ContainerAllocated)
 
-			dbPod, err := pod.FindOne(db.Query(bson.M{}))
+			dbPod, err := pod.FindOne(ctx, db.Query(bson.M{}))
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Equal(t, pod.StatusInitializing, dbPod.Status)
@@ -122,7 +122,7 @@ func TestPodAllocatorJob(t *testing.T) {
 			require.NotZero(t, dbTask)
 			assert.True(t, dbTask.ContainerAllocated)
 
-			dbPod, err := pod.FindOne(db.Query(bson.M{}))
+			dbPod, err := pod.FindOne(ctx, db.Query(bson.M{}))
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Equal(t, pod.StatusInitializing, dbPod.Status)
@@ -163,7 +163,7 @@ func TestPodAllocatorJob(t *testing.T) {
 			require.NotZero(t, dbTask)
 			assert.False(t, dbTask.ContainerAllocated)
 
-			dbPod, err := pod.FindOne(db.Query(bson.M{}))
+			dbPod, err := pod.FindOne(ctx, db.Query(bson.M{}))
 			assert.NoError(t, err)
 			assert.Zero(t, dbPod)
 
@@ -189,7 +189,7 @@ func TestPodAllocatorJob(t *testing.T) {
 			require.NotZero(t, dbTask)
 			assert.False(t, dbTask.ContainerAllocated)
 
-			dbPod, err := pod.FindOne(db.Query(bson.M{}))
+			dbPod, err := pod.FindOne(ctx, db.Query(bson.M{}))
 			assert.NoError(t, err)
 			assert.Zero(t, dbPod)
 

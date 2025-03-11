@@ -949,7 +949,7 @@ func JIRATaskPayload(ctx context.Context, params JiraIssueParameters) (*message.
 
 	var podDoc *pod.Pod
 	if params.Task.PodID != "" {
-		podDoc, err = pod.FindOneByID(params.Task.PodID)
+		podDoc, err = pod.FindOneByID(ctx, params.Task.PodID)
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding pod '%s' while building Jira task payload", params.Task.PodID)
 		}

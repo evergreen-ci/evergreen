@@ -186,7 +186,7 @@ func TestAllocate(t *testing.T) {
 		assert.Equal(t, event.ContainerAllocated, dbEvents[0].EventType)
 	}
 	checkAllocated := func(t *testing.T, tsk *task.Task, p *pod.Pod, pd *PodDispatcher) {
-		dbPod, err := pod.FindOneByID(p.ID)
+		dbPod, err := pod.FindOneByID(t.Context(), p.ID)
 		require.NoError(t, err)
 		require.NotZero(t, dbPod)
 		assert.Equal(t, p.Type, dbPod.Type)
@@ -261,7 +261,7 @@ func TestAllocate(t *testing.T) {
 			require.Error(t, err)
 			assert.Zero(t, pd)
 
-			dbPod, err := pod.FindOneByID(p.ID)
+			dbPod, err := pod.FindOneByID(ctx, p.ID)
 			assert.NoError(t, err)
 			assert.Zero(t, dbPod)
 

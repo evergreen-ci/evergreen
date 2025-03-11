@@ -79,9 +79,9 @@ func Find(q db.Q) ([]Pod, error) {
 }
 
 // FindOne finds one pod by the given query.
-func FindOne(q db.Q) (*Pod, error) {
+func FindOne(ctx context.Context, q db.Q) (*Pod, error) {
 	var p Pod
-	err := db.FindOneQ(Collection, q, &p)
+	err := db.FindOneQContext(ctx, Collection, q, &p)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -89,8 +89,8 @@ func FindOne(q db.Q) (*Pod, error) {
 }
 
 // FindOneByID finds one pod by its ID.
-func FindOneByID(id string) (*Pod, error) {
-	p, err := FindOne(db.Query(ByID(id)))
+func FindOneByID(ctx context.Context, id string) (*Pod, error) {
+	p, err := FindOne(ctx, db.Query(ByID(id)))
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding pod '%s'", id)
 	}
@@ -148,8 +148,8 @@ func CountByInitializing() (int, error) {
 }
 
 // FindOneByExternalID finds a pod that has a matching external identifier.
-func FindOneByExternalID(id string) (*Pod, error) {
-	return FindOne(db.Query(ByExternalID(id)))
+func FindOneByExternalID(ctx context.Context, id string) (*Pod, error) {
+	return FindOne(ctx, db.Query(ByExternalID(id)))
 }
 
 // FindIntentByFamily finds intent pods that have a matching family name.
