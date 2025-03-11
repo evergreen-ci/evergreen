@@ -241,6 +241,26 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     $scope.invalidSubnet = "";
   }
 
+  $scope.addProjectToPrefixMapping = function () {
+    if ($scope.Settings.buckets == null) {
+      $scope.Settings.buckets = {
+        "project_to_prefix_mappings": []
+      };
+    }
+    if ($scope.Settings.buckets.project_to_prefix_mappings == null) {
+      $scope.Settings.buckets.project_to_prefix_mappings = [];
+    }
+
+    if (!$scope.validProjectToPrefix($scope.new_project_to_prefix_mapping)) {
+      $scope.invalidProjectToPrefixMapping = "Project and prefix are required.";
+      return
+    }
+
+    $scope.Settings.buckets.project_to_prefix_mappings.push($scope.new_project_to_prefix_mapping);
+    $scope.new_project_to_prefix_mapping = {};
+    $scope.invalidProjectToPrefixMapping = "";
+  }
+
   $scope.addInternalBucket = function () {
     if ($scope.Settings.buckets == null) {
       $scope.Settings.buckets = {
@@ -267,6 +287,14 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
 
   $scope.validSubnet = function (subnet) {
     return subnet && subnet.az && subnet.subnet_id;
+  }
+
+  $scope.deleteProjectToPrefixMapping = function (index) {
+    $scope.Settings.buckets.project_to_prefix_mappings.splice(index, 1);
+  }
+
+  $scope.validProjectToPrefixMapping = function (mapping) {
+    return mapping && mapping.project_id && mapping.prefix;
   }
 
   $scope.deleteInternalBucket = function (index) {

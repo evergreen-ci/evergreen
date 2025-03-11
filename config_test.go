@@ -991,6 +991,12 @@ func (s *AdminSuite) TestBucketsConfig() {
 			"test-bucket",
 			"test2-bucket",
 		},
+		ProjectToPrefixMappings: []ProjectToPrefixMapping{
+			{
+				ProjectID: "project-A",
+				Prefix:    "project-B",
+			},
+		},
 	}
 
 	err := config.Set(ctx)
@@ -1002,6 +1008,10 @@ func (s *AdminSuite) TestBucketsConfig() {
 
 	config.LogBucket.Name = "logs-2"
 	config.InternalBuckets = []string{"new-bucket"}
+	config.ProjectToPrefixMappings = []ProjectToPrefixMapping{{
+		ProjectID: "project-C",
+		Prefix:    "project-D",
+	}}
 	s.NoError(config.Set(ctx))
 
 	settings, err = GetConfig(ctx)

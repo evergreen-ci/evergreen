@@ -2249,6 +2249,53 @@ Admin Settings
 											</section>
 										</md-card-content>
 									</md-card>
+									<md-card style="margin-bottom:20px;">
+										<md-card-title>
+											<md-card-title-text>
+												<span>Project to prefix mappings</span>
+											</md-card-title-text>
+										</md-card-title>
+										<md-card-content>
+											<div id="project-to-prefix-mappings" class="form-group"
+												ng-repeat="(index, mapping) in Settings.buckets.project_to_prefix_mappings">
+												<section layout="row" flex>
+													<md-input-container class="control" flex=30>
+														<input class="control" type="text" ng-model="mapping.project_id"
+															placeholder="Project ID">
+													</md-input-container>
+													<md-input-container class="control" flex=30>
+														<input class="control" type="text" ng-model="mapping.prefix"
+															placeholder="Bucket prefix">
+													</md-input-container>
+													<div style="margin-top: 1%;">
+														<button class="btn btn-default btn-danger" type="button"
+															style="float: left" ng-click="deleteProjectToPrefixMapping(index)">
+															<i class="fa fa-trash"></i>
+														</button>
+													</div>
+												</section>
+											</div>
+											<section layout="row" flex>
+												<md-input-container class="control" flex=25>
+													<input class="control" type="text" ng-model="new_project_to_prefix_mapping.project_id"
+														placeholder="Project ID">
+												</md-input-container>
+
+												<md-input-container class="control" flex=50>
+													<input class="control" type="text" ng-model="new_project_to_prefix_mapping.prefix"
+														placeholder="Bucket Prefix">
+												</md-input-container>
+												<div style="margin-top: 1%;">
+													<button class="plus-button btn btn-primary"
+														ng-disabled="!validProjectToPrefixMapping(new_project_to_prefix_mapping)" type="button"
+														style="float: left" ng-click="addProjectToPrefixMapping()">
+														<i class="fa fa-plus"></i>
+													</button>
+													<label class="control">[[ invalidProjectToPrefixMapping ]]</label>
+												</div>
+											</section>
+										</md-card-content>
+									</md-card>
 								</md-card-content>
 							</md-card>
 
