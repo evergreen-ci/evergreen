@@ -40,6 +40,7 @@ var (
 	s3PutRemoteFileAttribute           = fmt.Sprintf("%s.remote_file", s3PutAttribute)
 	s3PutExpandedRemoteFileAttribute   = fmt.Sprintf("%s.expanded_remote_file", s3PutAttribute)
 	s3PutRoleARN                       = fmt.Sprintf("%s.role_arn", s3PutAttribute)
+	s3PutAssumeRoleARN                 = fmt.Sprintf("%s.assume_role_arn", s3PutAttribute) // This tracks the role ARN used when this command is passed temporary credentials.
 	s3PutInternalBucket                = fmt.Sprintf("%s.internal_bucket", s3PutAttribute)
 )
 
@@ -126,6 +127,7 @@ type s3put struct {
 	// TemporaryRoleARN is not meant to be used in production. It is used for testing purposes
 	// relating to the DEVPROD-5553 project.
 	// This is an ARN that should be assumed to make the S3 request.
+	// It is also set when the user provides temporary AWS credentials from an ec2.assume_role command.
 	// TODO (DEVPROD-13982): Upgrade this flag to RoleARN.
 	TemporaryRoleARN string `mapstructure:"temporary_role_arn" plugin:"expand"`
 
@@ -333,6 +335,18 @@ func (s3pc *s3put) Execute(ctx context.Context, comm client.Communicator, logger
 		s3pc.AwsKey = creds.AccessKeyID
 		s3pc.AwsSecret = creds.SecretAccessKey
 		s3pc.AwsSessionToken = creds.SessionToken
+	} else {
+		// If no role was provided, check if the session token matches any saved from ec2.assume_role commands in the task config.
+		// If it does, associate this command with the corresponding role ARN.
+		for sessionToken, roleARN := range conf.AssumeRoleRoles {
+			if sessionToken == s3pc.AwsSessionToken {
+				s3pc.TemporaryRoleARN = roleARN
+				break
+			}
+		}
+		trace.SpanFromContext(ctx).SetAttributes(
+			attribute.String(s3PutAssumeRoleARN, s3pc.TemporaryRoleARN),
+		)
 	}
 
 	// create pail bucket
