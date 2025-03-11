@@ -158,7 +158,7 @@ func (s *ProjectAliasSuite) TestRemove() {
 	s.Len(out, 10)
 
 	for i, a := range s.aliases {
-		s.NoError(RemoveProjectAlias(a.ID.Hex()))
+		s.NoError(RemoveProjectAlias(s.T().Context(), a.ID.Hex()))
 		s.NoError(db.FindAllQContext(s.T().Context(), ProjectAliasCollection, q, &out))
 		s.Len(out, 10-i-1)
 	}

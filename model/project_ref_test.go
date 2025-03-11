@@ -1119,7 +1119,7 @@ func TestDetachFromRepo(t *testing.T) {
 			assert.NoError(t, pRef.AttachToRepo(ctx, dbUser))
 			assert.NotEmpty(t, pRef.RepoRefId)
 			assert.True(t, pRef.UseRepoSettings())
-			assert.NoError(t, RemoveProjectAlias(projectAlias.ID.Hex()))
+			assert.NoError(t, RemoveProjectAlias(ctx, projectAlias.ID.Hex()))
 
 			assert.NoError(t, pRef.DetachFromRepo(t.Context(), dbUser))
 			aliases, err = FindAliasesForProjectFromDb(pRef.Id)
@@ -1203,7 +1203,7 @@ func TestDetachFromRepo(t *testing.T) {
 
 			// reattach to repo to test without subscription
 			assert.NoError(t, pRef.AttachToRepo(ctx, dbUser))
-			assert.NoError(t, event.RemoveSubscription(projectSubscription.ID))
+			assert.NoError(t, event.RemoveSubscription(ctx, projectSubscription.ID))
 			assert.NoError(t, pRef.DetachFromRepo(t.Context(), dbUser))
 
 			subs, err = event.FindSubscriptionsByOwner(pRef.Id, event.OwnerTypeProject)

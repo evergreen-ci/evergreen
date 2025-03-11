@@ -192,7 +192,7 @@ func TestRemove(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Zero(t, dbPod)
 
-			assert.NoError(t, p.Remove())
+			assert.NoError(t, p.Remove(t.Context()))
 		},
 		"SucceedsWithExistingPod": func(t *testing.T) {
 			p := Pod{
@@ -204,7 +204,7 @@ func TestRemove(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, dbPod)
 
-			require.NoError(t, p.Remove())
+			require.NoError(t, p.Remove(t.Context()))
 
 			dbPod, err = FindOneByID(t.Context(), p.ID)
 			assert.NoError(t, err)

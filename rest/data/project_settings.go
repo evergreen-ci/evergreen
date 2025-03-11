@@ -384,7 +384,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		if err = mergedSection.ValidateGitHubPermissionGroupsByRequester(); err != nil {
 			return nil, err
 		}
-		modified, err = updateAliasesForSection(projectId, changes.Aliases, before.Aliases, section)
+		modified, err = updateAliasesForSection(ctx, projectId, changes.Aliases, before.Aliases, section)
 		catcher.Add(err)
 	case model.ProjectPagePatchAliasSection:
 		for i := range mergedSection.PatchTriggerAliases {
@@ -394,7 +394,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		if catcher.HasErrors() {
 			return nil, errors.Wrap(catcher.Resolve(), "invalid patch trigger aliases")
 		}
-		modified, err = updateAliasesForSection(projectId, changes.Aliases, before.Aliases, section)
+		modified, err = updateAliasesForSection(ctx, projectId, changes.Aliases, before.Aliases, section)
 		catcher.Add(err)
 	case model.ProjectPageNotificationsSection:
 		// Some subscription values are redacted like webhook secret and 'Authorization' header.

@@ -241,7 +241,7 @@ func (a *AliasSuite) TestUpdateProjectAliases() {
 			Variant: utility.ToStringPtr("new_variant"),
 		},
 	}
-	a.NoError(UpdateProjectAliases("other_project_id", aliasUpdates))
+	a.NoError(UpdateProjectAliases(a.T().Context(), "other_project_id", aliasUpdates))
 	found, err = FindMergedProjectAliases(a.T().Context(), "other_project_id", "", nil, false)
 	a.NoError(err)
 	a.Require().Len(found, 2) // added one alias, deleted another
@@ -283,7 +283,7 @@ func (a *AliasSuite) TestUpdateAliasesForSection() {
 	}
 
 	updatedAliases := []restModel.APIProjectAlias{aliasToKeep, aliasToModify, newAlias, newInternalAlias}
-	modified, err := updateAliasesForSection("project_id", updatedAliases, originalAliases, model.ProjectPagePatchAliasSection)
+	modified, err := updateAliasesForSection(a.T().Context(), "project_id", updatedAliases, originalAliases, model.ProjectPagePatchAliasSection)
 	a.NoError(err)
 	a.True(modified)
 
@@ -298,7 +298,7 @@ func (a *AliasSuite) TestUpdateAliasesForSection() {
 		}
 	}
 
-	modified, err = updateAliasesForSection("project_id", updatedAliases, originalAliases, model.ProjectPageGithubAndCQSection)
+	modified, err = updateAliasesForSection(a.T().Context(), "project_id", updatedAliases, originalAliases, model.ProjectPageGithubAndCQSection)
 	a.NoError(err)
 	a.True(modified)
 	aliasesFromDb, err = model.FindAliasesForProjectFromDb("project_id")

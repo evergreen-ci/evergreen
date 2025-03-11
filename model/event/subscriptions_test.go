@@ -171,7 +171,7 @@ func (s *subscriptionsSuite) TestUpsert() {
 
 func (s *subscriptionsSuite) TestRemove() {
 	for i := range s.subscriptions {
-		s.NoError(RemoveSubscription(s.subscriptions[i].ID))
+		s.NoError(RemoveSubscription(s.T().Context(), s.subscriptions[i].ID))
 
 		out := []Subscription{}
 		s.NoError(db.FindAllQContext(s.T().Context(), SubscriptionsCollection, db.Q{}, &out))

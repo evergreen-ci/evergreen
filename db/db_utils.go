@@ -199,17 +199,7 @@ func EnsureIndex(collection string, index mongo.IndexModel) error {
 }
 
 // Remove removes one item matching the query from the specified collection.
-func Remove(collection string, query any) error {
-	session, db, err := GetGlobalSessionFactory().GetSession()
-	if err != nil {
-		return err
-	}
-	defer session.Close()
-
-	return db.C(collection).Remove(query)
-}
-
-func RemoveContext(ctx context.Context, collection string, query any) error {
+func Remove(ctx context.Context, collection string, query any) error {
 	session, db, err := GetGlobalSessionFactory().GetContextSession(ctx)
 	if err != nil {
 		return err

@@ -466,11 +466,11 @@ func UpsertAliasesForProject(aliases []ProjectAlias, projectId string) error {
 
 // RemoveProjectAlias removes a project alias with the given document ID from the
 // database.
-func RemoveProjectAlias(id string) error {
+func RemoveProjectAlias(ctx context.Context, id string) error {
 	if id == "" {
 		return errors.New("can't remove project alias with empty id")
 	}
-	err := db.Remove(ProjectAliasCollection, bson.M{idKey: mgobson.ObjectIdHex(id)})
+	err := db.Remove(ctx, ProjectAliasCollection, bson.M{idKey: mgobson.ObjectIdHex(id)})
 	if err != nil {
 		return errors.Wrapf(err, "removing project alias '%s'", id)
 	}

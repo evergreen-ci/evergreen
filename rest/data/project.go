@@ -458,7 +458,7 @@ func HideBranch(ctx context.Context, projectID string) error {
 		return errors.Wrapf(err, "finding aliases for project '%s'", pRef.Id)
 	}
 	for _, alias := range projectAliases {
-		if err := model.RemoveProjectAlias(alias.ID.Hex()); err != nil {
+		if err := model.RemoveProjectAlias(ctx, alias.ID.Hex()); err != nil {
 			return errors.Wrapf(err, "removing project alias '%s' for project '%s'", alias.ID.Hex(), pRef.Id)
 		}
 	}

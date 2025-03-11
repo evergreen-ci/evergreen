@@ -2371,7 +2371,7 @@ func DefaultSectionToRepo(ctx context.Context, projectId string, section Project
 		for _, a := range before.Aliases {
 			// remove only internal aliases; any alias without these labels is a patch alias
 			if utility.StringSliceContains(evergreen.InternalAliases, a.Alias) {
-				err = RemoveProjectAlias(a.ID.Hex())
+				err = RemoveProjectAlias(ctx, a.ID.Hex())
 				if err == nil {
 					modified = true // track if any aliases here were correctly modified so we can log the changes
 				}
@@ -2381,7 +2381,7 @@ func DefaultSectionToRepo(ctx context.Context, projectId string, section Project
 	case ProjectPageNotificationsSection:
 		// handle subscriptions
 		for _, sub := range before.Subscriptions {
-			err = event.RemoveSubscription(sub.ID)
+			err = event.RemoveSubscription(ctx, sub.ID)
 			if err == nil {
 				modified = true // track if any subscriptions were correctly modified so we can log the changes
 			}
@@ -2392,7 +2392,7 @@ func DefaultSectionToRepo(ctx context.Context, projectId string, section Project
 		// remove only patch aliases, i.e. aliases without an Evergreen-internal label
 		for _, a := range before.Aliases {
 			if !utility.StringSliceContains(evergreen.InternalAliases, a.Alias) {
-				err = RemoveProjectAlias(a.ID.Hex())
+				err = RemoveProjectAlias(ctx, a.ID.Hex())
 				if err == nil {
 					modified = true // track if any aliases were correctly modified so we can log the changes
 				}

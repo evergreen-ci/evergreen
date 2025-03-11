@@ -1676,7 +1676,7 @@ func UpdateAllWithHint(ctx context.Context, query any, update any, hint any) (*a
 
 // Remove deletes the task of the given id from the database
 func Remove(ctx context.Context, id string) error {
-	return db.RemoveContext(
+	return db.Remove(
 		ctx,
 		Collection,
 		bson.M{IdKey: id},

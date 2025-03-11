@@ -950,7 +950,7 @@ func CancelPatch(ctx context.Context, p *patch.Patch, reason task.AbortInfo) err
 		return errors.WithStack(task.AbortVersionTasks(ctx, p.Version, reason))
 	}
 
-	return errors.WithStack(patch.Remove(patch.ById(p.Id)))
+	return errors.WithStack(patch.Remove(ctx, patch.ById(p.Id)))
 }
 
 // AbortPatchesWithGithubPatchData aborts patches created

@@ -331,8 +331,8 @@ func Find(query db.Q) ([]Patch, error) {
 }
 
 // Remove removes all patch documents that satisfy the query.
-func Remove(query db.Q) error {
-	return db.RemoveAllQ(Collection, query)
+func Remove(ctx context.Context, query db.Q) error {
+	return db.RemoveAllQ(ctx, Collection, query)
 }
 
 // UpdateAll runs an update on all patch documents.

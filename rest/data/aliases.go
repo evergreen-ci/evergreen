@@ -55,7 +55,7 @@ func FindMergedProjectAliases(ctx context.Context, projectId, repoId string, ali
 }
 
 // UpdateProjectAliases upserts/deletes aliases for the given project
-func UpdateProjectAliases(projectId string, aliases []restModel.APIProjectAlias) error {
+func UpdateProjectAliases(ctx context.Context, projectId string, aliases []restModel.APIProjectAlias) error {
 	aliasesToUpsert := []model.ProjectAlias{}
 	aliasesToDelete := []string{}
 	catcher := grip.NewBasicCatcher()
@@ -79,7 +79,7 @@ func UpdateProjectAliases(projectId string, aliases []restModel.APIProjectAlias)
 		return errors.Wrap(err, "upserting project aliases")
 	}
 	for _, aliasId := range aliasesToDelete {
-		catcher.Wrapf(model.RemoveProjectAlias(aliasId), "deleting project alias '%s'", aliasId)
+		catcher.Wrapf(model.RemoveProjectAlias(ctx, aliasId), "deleting project alias '%s'", aliasId)
 	}
 	return catcher.Resolve()
 }
@@ -87,7 +87,7 @@ func UpdateProjectAliases(projectId string, aliases []restModel.APIProjectAlias)
 // updateAliasesForSection, given a project, a list of current aliases, a list of previous aliases, and a project page section,
 // upserts any current aliases, and deletes any aliases that existed previously but not anymore (only
 // considers the aliases that are relevant for the section). Returns if any aliases have been modified.
-func updateAliasesForSection(projectId string, updatedAliases []restModel.APIProjectAlias,
+func updateAliasesForSection(ctx context.Context, projectId string, updatedAliases []restModel.APIProjectAlias,
 	originalAliases []model.ProjectAlias, section model.ProjectPageSection) (bool, error) {
 	aliasesIdMap := map[string]bool{}
 	aliasesToUpdate := []restModel.APIProjectAlias{}
@@ -99,7 +99,7 @@ func updateAliasesForSection(projectId string, updatedAliases []restModel.APIPro
 		aliasesToUpdate = append(aliasesToUpdate, a)
 		aliasesIdMap[utility.FromStringPtr(a.ID)] = true
 	}
-	if err := UpdateProjectAliases(projectId, aliasesToUpdate); err != nil {
+	if err := UpdateProjectAliases(ctx, projectId, aliasesToUpdate); err != nil {
 		return false, errors.Wrap(err, "updating project aliases")
 	}
 	modified := len(aliasesToUpdate) > 0
@@ -112,7 +112,7 @@ func updateAliasesForSection(projectId string, updatedAliases []restModel.APIPro
 		}
 		id := originalAlias.ID.Hex()
 		if _, ok := aliasesIdMap[id]; !ok {
-			catcher.Add(model.RemoveProjectAlias(id))
+			catcher.Add(model.RemoveProjectAlias(ctx, id))
 			modified = true
 		}
 	}
