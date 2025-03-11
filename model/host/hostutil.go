@@ -1076,9 +1076,6 @@ func (h *Host) AgentMonitorOptions(settings *evergreen.Settings) *options.Create
 		"--log_output=file",
 		fmt.Sprintf("--log_prefix=%s", filepath.Join(h.Distro.WorkDir, "agent.monitor")),
 	)
-	if h.Distro.SingleTaskDistro {
-		args = append(args, "--single_task_distro")
-	}
 
 	return &options.Create{
 		Args:        args,
