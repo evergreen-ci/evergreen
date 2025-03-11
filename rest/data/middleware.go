@@ -105,7 +105,7 @@ func GetProjectIdFromParams(ctx context.Context, paramsMap map[string]string) (s
 		return "", http.StatusNotFound, errors.New("no project found")
 	}
 
-	projectRef, err := model.FindMergedProjectRef(projectID, versionID, true)
+	projectRef, err := model.FindMergedProjectRef(ctx, projectID, versionID, true)
 	if err != nil {
 		return "", http.StatusInternalServerError, errors.Wrap(err, "finding project")
 	}

@@ -254,7 +254,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		patchDoc.DisplayNewUI = true
 	}
 
-	pref, err := model.FindMergedProjectRef(patchDoc.Project, patchDoc.Version, true)
+	pref, err := model.FindMergedProjectRef(ctx, patchDoc.Project, patchDoc.Version, true)
 	if err != nil {
 		return errors.Wrap(err, "finding project for patch")
 	}
@@ -314,7 +314,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		validationCatcher.Errorf("invalid patched config for current project settings: %s", validator.ValidationErrorsToString(errs))
 	}
 
-	if errs := validator.CheckPatchedProjectConfigErrors(patchedProjectConfig).AtLevel(validator.Error); len(errs) != 0 {
+	if errs := validator.CheckPatchedProjectConfigErrors(ctx, patchedProjectConfig).AtLevel(validator.Error); len(errs) != 0 {
 		validationCatcher.Errorf("invalid patched project config syntax: %s", validator.ValidationErrorsToString(errs))
 	}
 	if validationCatcher.HasErrors() {
@@ -590,7 +590,7 @@ func (j *patchIntentProcessor) buildTasksAndVariants(ctx context.Context, patchD
 	}
 
 	if len(patchDoc.VariantsTasks) == 0 {
-		project.BuildProjectTVPairs(patchDoc, j.intent.GetAlias())
+		project.BuildProjectTVPairs(ctx, patchDoc, j.intent.GetAlias())
 	}
 	return nil
 }
@@ -807,7 +807,7 @@ func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *p
 		}))
 	}()
 
-	projectRef, err := model.FindMergedProjectRef(patchDoc.Project, patchDoc.Version, true)
+	projectRef, err := model.FindMergedProjectRef(ctx, patchDoc.Project, patchDoc.Version, true)
 	if err != nil {
 		return errors.Wrapf(err, "finding project ref '%s'", patchDoc.Project)
 	}
@@ -1028,7 +1028,7 @@ func (j *patchIntentProcessor) buildTriggerPatchDoc(ctx context.Context, patchDo
 	}
 
 	patchDoc.Githash = v.Revision
-	matchingTasks, err := project.VariantTasksForSelectors(intent.Definitions, patchDoc.GetRequester())
+	matchingTasks, err := project.VariantTasksForSelectors(ctx, intent.Definitions, patchDoc.GetRequester())
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "matching tasks to alias definitions")
 	}

@@ -493,7 +493,7 @@ func addTasksToBuild(ctx context.Context, creationInfo TaskCreationInfo) (*build
 
 	var githubCheckAliases ProjectAliases
 	if creationInfo.Version.Requester == evergreen.RepotrackerVersionRequester && creationInfo.ProjectRef.IsGithubChecksEnabled() {
-		githubCheckAliases, err = FindAliasInProjectRepoOrConfig(creationInfo.Version.Identifier, evergreen.GithubChecksAlias)
+		githubCheckAliases, err = FindAliasInProjectRepoOrConfig(ctx, creationInfo.Version.Identifier, evergreen.GithubChecksAlias)
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":            "error getting github check aliases when adding tasks to build",
 			"project":            creationInfo.Version.Identifier,

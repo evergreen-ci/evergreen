@@ -1,6 +1,8 @@
 package data
 
 import (
+	"context"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
@@ -15,14 +17,14 @@ import (
 // 3. aliases defined in the project config YAML
 // The includeProjectConfig flag determines whether to include aliases defined in the project config YAML.
 // If the aliasesToAdd parameter is defined, we fold those aliases in and remove any that are marked as deleted.
-func FindMergedProjectAliases(projectId, repoId string, aliasesToAdd []restModel.APIProjectAlias, includeProjectConfig bool) ([]restModel.APIProjectAlias, error) {
-	projectRef, err := model.FindMergedProjectRef(projectId, "", false)
+func FindMergedProjectAliases(ctx context.Context, projectId, repoId string, aliasesToAdd []restModel.APIProjectAlias, includeProjectConfig bool) ([]restModel.APIProjectAlias, error) {
+	projectRef, err := model.FindMergedProjectRef(ctx, projectId, "", false)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding project ref for project '%s'", projectId)
 	}
 	var projectConfig *model.ProjectConfig
 	if includeProjectConfig {
-		projectConfig, err = model.FindLastKnownGoodProjectConfig(projectId)
+		projectConfig, err = model.FindLastKnownGoodProjectConfig(ctx, projectId)
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding project config for project '%s'", projectId)
 		}

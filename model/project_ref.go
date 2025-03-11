@@ -717,8 +717,8 @@ func (p *ProjectRef) GetPatchTriggerAlias(aliasName string) (patch.PatchTriggerD
 // the project ref scanning for any properties that can be set on both project ref and project parser.
 // Any values that are set at the project config level will be set on the project ref IF they are not set on
 // the project ref. If the version isn't specified, we get the latest config.
-func (p *ProjectRef) MergeWithProjectConfig(version string) (err error) {
-	projectConfig, err := FindProjectConfigForProjectOrVersion(p.Id, version)
+func (p *ProjectRef) MergeWithProjectConfig(ctx context.Context, version string) (err error) {
+	projectConfig, err := FindProjectConfigForProjectOrVersion(ctx, p.Id, version)
 	if err != nil {
 		return err
 	}
@@ -834,7 +834,7 @@ func (p *ProjectRef) DetachFromRepo(ctx context.Context, u *user.DBUser) error {
 		return err
 	}
 
-	mergedProject, err := FindMergedProjectRef(p.Id, "", false)
+	mergedProject, err := FindMergedProjectRef(ctx, p.Id, "", false)
 	if err != nil {
 		return errors.Wrap(err, "finding merged project ref")
 	}
@@ -1108,7 +1108,7 @@ func FindBranchProjectRef(identifier string) (*ProjectRef, error) {
 // FindMergedProjectRef also finds the repo ref settings and merges relevant fields.
 // Relevant fields will also be merged from the parser project with a specified version.
 // If no version is specified, the most recent valid parser project version will be used for merge.
-func FindMergedProjectRef(identifier string, version string, includeProjectConfig bool) (*ProjectRef, error) {
+func FindMergedProjectRef(ctx context.Context, identifier string, version string, includeProjectConfig bool) (*ProjectRef, error) {
 	pRef, err := FindBranchProjectRef(identifier)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding project ref '%s'", identifier)
@@ -1130,7 +1130,7 @@ func FindMergedProjectRef(identifier string, version string, includeProjectConfi
 		}
 	}
 	if includeProjectConfig && pRef.IsVersionControlEnabled() {
-		err = pRef.MergeWithProjectConfig(version)
+		err = pRef.MergeWithProjectConfig(ctx, version)
 		if err != nil {
 			return nil, errors.Wrapf(err, "merging project config with project ref '%s'", pRef.Identifier)
 		}
@@ -2087,8 +2087,8 @@ func GetProjectSettings(ctx context.Context, p *ProjectRef) (*ProjectSettings, e
 	return &projectSettingsEvent, nil
 }
 
-func IsPerfEnabledForProject(projectId string) bool {
-	projectRef, err := FindMergedProjectRef(projectId, "", true)
+func IsPerfEnabledForProject(ctx context.Context, projectId string) bool {
+	projectRef, err := FindMergedProjectRef(ctx, projectId, "", true)
 	if err != nil || projectRef == nil {
 		return false
 	}
@@ -3098,7 +3098,7 @@ func GetProjectRefForTask(ctx context.Context, taskId string) (*ProjectRef, erro
 	if t == nil {
 		return nil, errors.Errorf("task '%s' not found", taskId)
 	}
-	pRef, err := FindMergedProjectRef(t.Project, t.Version, true)
+	pRef, err := FindMergedProjectRef(ctx, t.Project, t.Version, true)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting project '%s'", t.Project)
 	}
@@ -3266,7 +3266,7 @@ func (c ContainerSecret) Validate() error {
 
 var validTriggerStatuses = []string{"", AllStatuses, evergreen.VersionSucceeded, evergreen.VersionFailed}
 
-func ValidateTriggerDefinition(definition patch.PatchTriggerDefinition, parentProject string) (patch.PatchTriggerDefinition, error) {
+func ValidateTriggerDefinition(ctx context.Context, definition patch.PatchTriggerDefinition, parentProject string) (patch.PatchTriggerDefinition, error) {
 	if definition.ChildProject == parentProject {
 		return definition, errors.New("a project cannot trigger itself")
 	}
@@ -3308,7 +3308,7 @@ func ValidateTriggerDefinition(definition patch.PatchTriggerDefinition, parentPr
 
 		if specifier.PatchAlias != "" {
 			var aliases []ProjectAlias
-			aliases, err = FindAliasInProjectRepoOrConfig(definition.ChildProject, specifier.PatchAlias)
+			aliases, err = FindAliasInProjectRepoOrConfig(ctx, definition.ChildProject, specifier.PatchAlias)
 			if err != nil {
 				return definition, errors.Wrap(err, "fetching aliases for project")
 			}
@@ -3338,8 +3338,8 @@ func (d *PeriodicBuildDefinition) Validate() error {
 }
 
 // IsWebhookConfigured retrieves webhook configuration from the project settings.
-func IsWebhookConfigured(project string, version string) (evergreen.WebHook, bool, error) {
-	projectRef, err := FindMergedProjectRef(project, version, true)
+func IsWebhookConfigured(ctx context.Context, project string, version string) (evergreen.WebHook, bool, error) {
+	projectRef, err := FindMergedProjectRef(ctx, project, version, true)
 	if err != nil || projectRef == nil {
 		return evergreen.WebHook{}, false, errors.Errorf("finding merged project ref for project '%s'", project)
 	}

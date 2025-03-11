@@ -124,7 +124,7 @@ func TestFindMergedProjectRef(t *testing.T) {
 	}}
 	assert.NoError(t, repoRef.Upsert())
 
-	mergedProject, err := FindMergedProjectRef("ident", "ident", true)
+	mergedProject, err := FindMergedProjectRef(t.Context(), "ident", "ident", true)
 	assert.NoError(t, err)
 	require.NotNil(t, mergedProject)
 	assert.Equal(t, "ident", mergedProject.Id)
@@ -158,13 +158,13 @@ func TestFindMergedProjectRef(t *testing.T) {
 	projectRef.ParsleyFilters = []parsley.Filter{}
 
 	assert.NoError(t, projectRef.Upsert())
-	mergedProject, err = FindMergedProjectRef("ident", "ident", true)
+	mergedProject, err = FindMergedProjectRef(t.Context(), "ident", "ident", true)
 	assert.NoError(t, err)
 	assert.Len(t, mergedProject.ParsleyFilters, 1)
 
 	projectRef.ParsleyFilters = nil
 	assert.NoError(t, projectRef.Upsert())
-	mergedProject, err = FindMergedProjectRef("ident", "ident", true)
+	mergedProject, err = FindMergedProjectRef(t.Context(), "ident", "ident", true)
 	assert.NoError(t, err)
 	assert.Len(t, mergedProject.ParsleyFilters, 1)
 }
@@ -389,7 +389,7 @@ func TestValidateEnabledProjectsLimit(t *testing.T) {
 
 	// Should error when trying to enable an existing project past limits.
 	disabled1.Enabled = true
-	original, err := FindMergedProjectRef(disabled1.Id, "", false)
+	original, err := FindMergedProjectRef(t.Context(), disabled1.Id, "", false)
 	assert.NoError(t, err)
 	statusCode, err := ValidateEnabledProjectsLimit(disabled1.Id, &settings, original, disabled1)
 	assert.Error(t, err)
@@ -402,7 +402,7 @@ func TestValidateEnabledProjectsLimit(t *testing.T) {
 		Repo:    "repo_exception",
 		Enabled: true,
 	}
-	original, err = FindMergedProjectRef(exception.Id, "", false)
+	original, err = FindMergedProjectRef(t.Context(), exception.Id, "", false)
 	assert.NoError(t, err)
 	_, err = ValidateEnabledProjectsLimit(enabled1.Id, &settings, original, exception)
 	assert.NoError(t, err)
@@ -414,7 +414,7 @@ func TestValidateEnabledProjectsLimit(t *testing.T) {
 		Repo:    "mci",
 		Enabled: true,
 	}
-	original, err = FindMergedProjectRef(notException.Id, "", false)
+	original, err = FindMergedProjectRef(t.Context(), notException.Id, "", false)
 	assert.NoError(t, err)
 	statusCode, err = ValidateEnabledProjectsLimit(notException.Id, &settings, original, notException)
 	assert.Error(t, err)
@@ -425,7 +425,7 @@ func TestValidateEnabledProjectsLimit(t *testing.T) {
 	assert.NoError(t, disableRepo.Upsert())
 	mergedRef, err := GetProjectRefMergedWithRepo(*disabledByRepo)
 	assert.NoError(t, err)
-	original, err = FindMergedProjectRef(disabledByRepo.Id, "", false)
+	original, err = FindMergedProjectRef(t.Context(), disabledByRepo.Id, "", false)
 	assert.NoError(t, err)
 	_, err = ValidateEnabledProjectsLimit(disabledByRepo.Id, &settings, original, mergedRef)
 	assert.NoError(t, err)
@@ -433,7 +433,7 @@ func TestValidateEnabledProjectsLimit(t *testing.T) {
 	// Should error on enabled if you try to change owner/repo past limit.
 	enabled2.Owner = "mongodb"
 	enabled2.Repo = "mci"
-	original, err = FindMergedProjectRef(enabled2.Id, "", false)
+	original, err = FindMergedProjectRef(t.Context(), enabled2.Id, "", false)
 	assert.NoError(t, err)
 	statusCode, err = ValidateEnabledProjectsLimit(enabled2.Id, &settings, original, enabled2)
 	assert.Error(t, err)
@@ -441,7 +441,7 @@ func TestValidateEnabledProjectsLimit(t *testing.T) {
 
 	// Total project limit cannot be exceeded. Even with the exception.
 	settings.ProjectCreation.TotalProjectLimit = 2
-	original, err = FindMergedProjectRef(exception.Id, "", false)
+	original, err = FindMergedProjectRef(t.Context(), exception.Id, "", false)
 	assert.NoError(t, err)
 	statusCode, err = ValidateEnabledProjectsLimit(exception.Id, &settings, original, exception)
 	assert.Error(t, err)
@@ -863,7 +863,7 @@ func TestAttachToNewRepo(t *testing.T) {
 
 	assert.True(t, newRepoRef.DoesTrackPushEvents())
 
-	mergedRef, err := FindMergedProjectRef(pRef.Id, "", false)
+	mergedRef, err := FindMergedProjectRef(t.Context(), pRef.Id, "", false)
 	assert.NoError(t, err)
 	assert.True(t, mergedRef.DoesTrackPushEvents())
 
@@ -2949,7 +2949,7 @@ func TestContainerSecretCache(t *testing.T) {
 				Name: pRef.ContainerSecrets[0].ExternalName,
 			}))
 
-			dbProjRef, err := FindMergedProjectRef(pRef.Id, "", false)
+			dbProjRef, err := FindMergedProjectRef(t.Context(), pRef.Id, "", false)
 			require.NoError(t, err)
 			require.NotZero(t, dbProjRef)
 			require.Len(t, dbProjRef.ContainerSecrets, len(pRef.ContainerSecrets))
@@ -2973,7 +2973,7 @@ func TestContainerSecretCache(t *testing.T) {
 				Name: "nonexistent",
 			}))
 
-			dbProjRef, err := FindMergedProjectRef(pRef.Id, "", false)
+			dbProjRef, err := FindMergedProjectRef(t.Context(), pRef.Id, "", false)
 			require.NoError(t, err)
 			require.NotZero(t, dbProjRef)
 			require.Len(t, dbProjRef.ContainerSecrets, len(pRef.ContainerSecrets))
@@ -2989,7 +2989,7 @@ func TestContainerSecretCache(t *testing.T) {
 				Name: pRef.ContainerSecrets[0].ExternalName,
 			}))
 
-			dbProjRef, err := FindMergedProjectRef(pRef.Id, "", false)
+			dbProjRef, err := FindMergedProjectRef(t.Context(), pRef.Id, "", false)
 			require.NoError(t, err)
 			require.NotZero(t, dbProjRef)
 			require.Len(t, dbProjRef.ContainerSecrets, len(pRef.ContainerSecrets))
@@ -3006,7 +3006,7 @@ func TestContainerSecretCache(t *testing.T) {
 				Name: pRef.ContainerSecrets[0].ExternalName,
 			}))
 
-			dbProjRef, err := FindMergedProjectRef(pRef.Id, "", false)
+			dbProjRef, err := FindMergedProjectRef(t.Context(), pRef.Id, "", false)
 			require.NoError(t, err)
 			require.NotZero(t, dbProjRef)
 			require.Len(t, dbProjRef.ContainerSecrets, len(pRef.ContainerSecrets))
@@ -3018,7 +3018,7 @@ func TestContainerSecretCache(t *testing.T) {
 			require.NoError(t, pRef.Insert())
 			require.NoError(t, c.Delete(ctx, pRef.ContainerSecrets[1].ExternalID))
 
-			dbProjRef, err := FindMergedProjectRef(pRef.Id, "", false)
+			dbProjRef, err := FindMergedProjectRef(t.Context(), pRef.Id, "", false)
 			require.NoError(t, err)
 			require.NotZero(t, dbProjRef)
 			require.Len(t, dbProjRef.ContainerSecrets, len(pRef.ContainerSecrets)-1)
@@ -3032,7 +3032,7 @@ func TestContainerSecretCache(t *testing.T) {
 			require.NoError(t, pRef.Insert())
 			assert.NoError(t, c.Delete(ctx, "nonexistent"), "should not error for nonexistent container secret")
 
-			dbProjRef, err := FindMergedProjectRef(pRef.Id, "", false)
+			dbProjRef, err := FindMergedProjectRef(t.Context(), pRef.Id, "", false)
 			require.NoError(t, err)
 			require.NotZero(t, dbProjRef)
 			assert.Len(t, dbProjRef.ContainerSecrets, len(pRef.ContainerSecrets))
@@ -3735,7 +3735,7 @@ func TestMergeWithProjectConfig(t *testing.T) {
 	assert.NoError(t, projectRef.Insert())
 	assert.NoError(t, projectConfig.Insert())
 
-	err := projectRef.MergeWithProjectConfig("version1")
+	err := projectRef.MergeWithProjectConfig(t.Context(), "version1")
 	assert.NoError(t, err)
 	require.NotNil(t, projectRef)
 	assert.Equal(t, "ident", projectRef.Id)
@@ -3761,7 +3761,7 @@ func TestMergeWithProjectConfig(t *testing.T) {
 			MemoryMB: 800,
 		},
 	}
-	err = projectRef.MergeWithProjectConfig("version1")
+	err = projectRef.MergeWithProjectConfig(t.Context(), "version1")
 	assert.NoError(t, err)
 	require.NotNil(t, projectRef)
 	assert.Equal(t, 4, projectRef.ContainerSizeDefinitions[0].CPU)

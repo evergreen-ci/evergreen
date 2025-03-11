@@ -29,7 +29,7 @@ import (
 
 // CopyProject copies the passed in project with the given project identifier, and returns the new project.
 func CopyProject(ctx context.Context, env evergreen.Environment, opts restModel.CopyProjectOpts) (*restModel.APIProjectRef, error) {
-	projectToCopy, err := FindProjectById(opts.ProjectIdToCopy, false, false)
+	projectToCopy, err := FindProjectById(ctx, opts.ProjectIdToCopy, false, false)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding project '%s'", opts.ProjectIdToCopy)
 	}
@@ -388,7 +388,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		catcher.Add(err)
 	case model.ProjectPagePatchAliasSection:
 		for i := range mergedSection.PatchTriggerAliases {
-			mergedSection.PatchTriggerAliases[i], err = model.ValidateTriggerDefinition(mergedSection.PatchTriggerAliases[i], projectId)
+			mergedSection.PatchTriggerAliases[i], err = model.ValidateTriggerDefinition(ctx, mergedSection.PatchTriggerAliases[i], projectId)
 			catcher.Add(err)
 		}
 		if catcher.HasErrors() {

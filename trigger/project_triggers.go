@@ -55,7 +55,7 @@ func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 		projectID = args.SourceVersion.Identifier
 		versionID = args.SourceVersion.Id
 	}
-	upstreamProject, err := model.FindMergedProjectRef(projectID, versionID, true)
+	upstreamProject, err := model.FindMergedProjectRef(ctx, projectID, versionID, true)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding project ref '%s' for source version '%s'", projectID, versionID)
 	}

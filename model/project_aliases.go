@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"fmt"
 	"regexp"
 	"strings"
@@ -187,8 +188,8 @@ func findMatchingAliasForProjectRef(projectID, alias string) ([]ProjectAlias, er
 }
 
 // getMatchingAliasesForProjectConfig finds any aliases matching the alias input in the project config.
-func getMatchingAliasesForProjectConfig(projectID, versionID, alias string) ([]ProjectAlias, error) {
-	projectConfig, err := FindProjectConfigForProjectOrVersion(projectID, versionID)
+func getMatchingAliasesForProjectConfig(ctx context.Context, projectID, versionID, alias string) ([]ProjectAlias, error) {
+	projectConfig, err := FindProjectConfigForProjectOrVersion(ctx, projectID, versionID)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding project config")
 	}
@@ -223,7 +224,7 @@ func aliasesFromMap(input map[string]ProjectAliases) []ProjectAlias {
 
 // FindAliasInProjectRepoOrConfig finds all aliases with a given name for a project.
 // If the project has no aliases, the repo is checked for aliases.
-func FindAliasInProjectRepoOrConfig(projectID, alias string) ([]ProjectAlias, error) {
+func FindAliasInProjectRepoOrConfig(ctx context.Context, projectID, alias string) ([]ProjectAlias, error) {
 	aliases, err := findAliasInProjectOrRepoFromDb(projectID, alias)
 	if err != nil {
 		return nil, errors.Wrap(err, "checking for existing aliases")
@@ -232,7 +233,7 @@ func FindAliasInProjectRepoOrConfig(projectID, alias string) ([]ProjectAlias, er
 	if len(aliases) > 0 {
 		return aliases, nil
 	}
-	return getMatchingAliasesForProjectConfig(projectID, "", alias)
+	return getMatchingAliasesForProjectConfig(ctx, projectID, "", alias)
 }
 
 // patchAliasKey is used internally to group patch aliases together.
@@ -367,8 +368,8 @@ func tryGetRepoAliases(projectID string, alias string, aliases []ProjectAlias) (
 }
 
 // HasMatchingGitTagAliasAndRemotePath returns matching git tag aliases that match the given git tag
-func HasMatchingGitTagAliasAndRemotePath(projectId, tag string) (bool, string, error) {
-	aliases, err := FindMatchingGitTagAliasesInProject(projectId, tag)
+func HasMatchingGitTagAliasAndRemotePath(ctx context.Context, projectId, tag string) (bool, string, error) {
+	aliases, err := FindMatchingGitTagAliasesInProject(ctx, projectId, tag)
 	if err != nil {
 		return false, "", err
 	}
@@ -393,8 +394,8 @@ func CopyProjectAliases(oldProjectId, newProjectId string) error {
 	return nil
 }
 
-func FindMatchingGitTagAliasesInProject(projectID, tag string) ([]ProjectAlias, error) {
-	aliases, err := FindAliasInProjectRepoOrConfig(projectID, evergreen.GitTagAlias)
+func FindMatchingGitTagAliasesInProject(ctx context.Context, projectID, tag string) ([]ProjectAlias, error) {
+	aliases, err := FindAliasInProjectRepoOrConfig(ctx, projectID, evergreen.GitTagAlias)
 	if err != nil {
 		return nil, err
 	}

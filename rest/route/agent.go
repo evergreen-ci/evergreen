@@ -279,7 +279,7 @@ func (h *markTaskForRestartHandler) Run(ctx context.Context) gimlet.Responder {
 			Message:    fmt.Sprintf("task has already reached the maximum (%d) number of automatic restarts", evergreen.MaxAutomaticRestarts),
 		})
 	}
-	projectRef, err := model.FindMergedProjectRef(t.Project, t.Version, false)
+	projectRef, err := model.FindMergedProjectRef(ctx, t.Project, t.Version, false)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project '%s' for version '%s'", t.Project, t.Version))
 	}
@@ -461,7 +461,7 @@ func (h *getProjectRefHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	p, err := model.FindMergedProjectRef(t.Project, t.Version, true)
+	p, err := model.FindMergedProjectRef(ctx, t.Project, t.Version, true)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
@@ -1254,7 +1254,7 @@ func (h *manifestLoadHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	projectRef, err := model.FindMergedProjectRef(task.Project, task.Version, true)
+	projectRef, err := model.FindMergedProjectRef(ctx, task.Project, task.Version, true)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project '%s'", task.Project))
 	}
@@ -1646,7 +1646,7 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 	// When creating a token for a task, we want to consider the project's
 	// permission groups. These permission groups can restrict the permissions
 	// so that each requester only gets the permissions they have been set.
-	p, err := model.FindMergedProjectRef(t.Project, t.Version, true)
+	p, err := model.FindMergedProjectRef(ctx, t.Project, t.Version, true)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}

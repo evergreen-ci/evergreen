@@ -472,7 +472,7 @@ func (h *podAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONResponse(endTaskResp)
 	}
 
-	projectRef, err := model.FindMergedProjectRef(t.Project, t.Version, true)
+	projectRef, err := model.FindMergedProjectRef(ctx, t.Project, t.Version, true)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project '%s' for version '%s'", t.Project, t.Version))
 	}

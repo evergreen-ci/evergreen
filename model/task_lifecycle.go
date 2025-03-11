@@ -892,7 +892,7 @@ func getDeactivatePrevious(t *task.Task, pRef *ProjectRef, project *Project) boo
 
 func attemptStepbackAndDeactivatePrevious(ctx context.Context, t *task.Task, status, caller string) {
 	catcher := grip.NewBasicCatcher()
-	pRef, err := FindMergedProjectRef(t.Project, t.Version, false)
+	pRef, err := FindMergedProjectRef(ctx, t.Project, t.Version, false)
 	if err != nil {
 		catcher.Wrapf(err, "finding merged project ref for task '%s'", t.Id)
 	}

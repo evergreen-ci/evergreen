@@ -32,13 +32,13 @@ type DBProjectConnector struct{}
 // FindProjectById queries the database for the project matching the projectRef.Id. If the bool flag is set,
 // the project config properties in the project YAML will be merged into the result if the properties are
 // not set on the project page.
-func FindProjectById(id string, includeRepo bool, includeProjectConfig bool) (*model.ProjectRef, error) {
+func FindProjectById(ctx context.Context, id string, includeRepo bool, includeProjectConfig bool) (*model.ProjectRef, error) {
 	var p *model.ProjectRef
 	var err error
 	if includeRepo && includeProjectConfig {
-		p, err = model.FindMergedProjectRef(id, "", true)
+		p, err = model.FindMergedProjectRef(ctx, id, "", true)
 	} else if includeRepo {
-		p, err = model.FindMergedProjectRef(id, "", false)
+		p, err = model.FindMergedProjectRef(ctx, id, "", false)
 	} else {
 		p, err = model.FindBranchProjectRef(id)
 	}
@@ -105,7 +105,7 @@ func RequestS3Creds(ctx context.Context, projectIdentifier, userEmail string) er
 // Returns true if the project was successfully created.
 func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *model.ProjectRef, u *user.DBUser) (bool, error) {
 	if projectRef.Identifier != "" {
-		if err := ValidateProjectName(projectRef.Identifier); err != nil {
+		if err := ValidateProjectName(ctx, projectRef.Identifier); err != nil {
 			return false, err
 		}
 	}
@@ -114,7 +114,7 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 			projectRef.Id = mgobson.NewObjectId().Hex()
 		}
 	}
-	if err := ValidateProjectName(projectRef.Id); err != nil {
+	if err := ValidateProjectName(ctx, projectRef.Id); err != nil {
 		return false, err
 	}
 	// Always warn because created projects are never enabled.
@@ -211,8 +211,8 @@ var projectIDRegexp = regexp.MustCompile(`^[0-9a-zA-Z-._~\(\) ]*$`)
 
 // ValidateProjectName checks that a project ID / identifier is not already in use
 // and has only valid characters.
-func ValidateProjectName(name string) error {
-	_, err := FindProjectById(name, false, false)
+func ValidateProjectName(ctx context.Context, name string) error {
+	_, err := FindProjectById(ctx, name, false, false)
 	if err == nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -374,8 +374,8 @@ func GetEventsById(id string, before time.Time, n int) ([]restModel.APIProjectEv
 	return out, catcher.Resolve()
 }
 
-func GetProjectAliasResults(p *model.Project, alias string, includeDeps bool) ([]restModel.APIVariantTasks, error) {
-	projectAliases, err := model.FindAliasInProjectRepoOrConfig(p.Identifier, alias)
+func GetProjectAliasResults(ctx context.Context, p *model.Project, alias string, includeDeps bool) ([]restModel.APIVariantTasks, error) {
+	projectAliases, err := model.FindAliasInProjectRepoOrConfig(ctx, p.Identifier, alias)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
@@ -385,7 +385,7 @@ func GetProjectAliasResults(p *model.Project, alias string, includeDeps bool) ([
 	matches := []restModel.APIVariantTasks{}
 	for _, projectAlias := range projectAliases {
 		requester := getRequesterFromAlias(projectAlias.Alias)
-		_, _, variantTasks := p.ResolvePatchVTs(&patch.Patch{}, requester, projectAlias.Alias, includeDeps)
+		_, _, variantTasks := p.ResolvePatchVTs(ctx, &patch.Patch{}, requester, projectAlias.Alias, includeDeps)
 		for _, variantTask := range variantTasks {
 			matches = append(matches, restModel.APIVariantTasksBuildFromService(variantTask))
 		}

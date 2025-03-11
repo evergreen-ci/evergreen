@@ -395,12 +395,12 @@ func TestGetProjectAliasResults(t *testing.T) {
 	}
 	require.NoError(t, alias2.Upsert())
 
-	variantTasks, err := GetProjectAliasResults(&p, alias1.Alias, false)
+	variantTasks, err := GetProjectAliasResults(t.Context(), &p, alias1.Alias, false)
 	assert.NoError(t, err)
 	assert.Len(t, variantTasks, 1)
 	assert.Len(t, variantTasks[0].Tasks, 1)
 	assert.Equal(t, "task1", variantTasks[0].Tasks[0])
-	variantTasks, err = GetProjectAliasResults(&p, alias2.Alias, false)
+	variantTasks, err = GetProjectAliasResults(t.Context(), &p, alias2.Alias, false)
 	assert.NoError(t, err)
 	assert.Len(t, variantTasks, 1)
 	assert.Len(t, variantTasks[0].Tasks, 2)
@@ -640,7 +640,7 @@ func TestHideBranch(t *testing.T) {
 	err := HideBranch(t.Context(), project.Id)
 	assert.NoError(t, err)
 
-	hiddenProj, err := model.FindMergedProjectRef(project.Id, "", true)
+	hiddenProj, err := model.FindMergedProjectRef(t.Context(), project.Id, "", true)
 	assert.NoError(t, err)
 	skeletonProj := model.ProjectRef{
 		Id:        project.Id,
