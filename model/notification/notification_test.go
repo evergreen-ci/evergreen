@@ -67,7 +67,7 @@ func (s *notificationSuite) TestMarkSent() {
 	s.Empty(s.n.Error)
 	s.NotZero(s.n.SentAt)
 
-	n, err := Find(s.n.ID)
+	n, err := Find(s.T().Context(), s.n.ID)
 	s.NoError(err)
 	s.Require().NotNil(n)
 	s.Empty(n.Error)
@@ -94,7 +94,7 @@ func (s *notificationSuite) TestMarkError() {
 	s.NotEmpty(s.n.ID)
 	s.Equal("test", s.n.Error)
 	s.NotZero(s.n.SentAt)
-	n, err := Find(s.n.ID)
+	n, err := Find(s.T().Context(), s.n.ID)
 	s.NoError(err)
 	s.Require().NotNil(n)
 	s.Equal("test", n.Error)
@@ -107,7 +107,7 @@ func (s *notificationSuite) TestMarkErrorWithNilErrorHasNoSideEffect() {
 
 	// nil error should have no side effect
 	s.NoError(s.n.MarkError(nil))
-	n, err := Find(s.n.ID)
+	n, err := Find(s.T().Context(), s.n.ID)
 	s.NoError(err)
 	s.Empty(n.Error)
 	s.Zero(n.SentAt)
@@ -229,7 +229,7 @@ func (s *notificationSuite) TestWebhookPayload() {
 
 	s.NoError(InsertMany(s.n))
 
-	n, err := Find(s.n.ID)
+	n, err := Find(s.T().Context(), s.n.ID)
 	s.NoError(err)
 	s.NotNil(n)
 
@@ -250,7 +250,7 @@ func (s *notificationSuite) TestJIRACommentPayload() {
 
 	s.NoError(InsertMany(s.n))
 
-	n, err := Find(s.n.ID)
+	n, err := Find(s.T().Context(), s.n.ID)
 	s.NoError(err)
 	s.NotNil(n)
 
@@ -287,7 +287,7 @@ func (s *notificationSuite) TestJIRAIssuePayload() {
 
 	s.NoError(InsertMany(s.n))
 
-	n, err := Find(s.n.ID)
+	n, err := Find(s.T().Context(), s.n.ID)
 	s.NoError(err)
 	s.NotNil(n)
 
@@ -316,7 +316,7 @@ func (s *notificationSuite) TestEmailPayload() {
 
 	s.NoError(InsertMany(s.n))
 
-	n, err := Find(s.n.ID)
+	n, err := Find(s.T().Context(), s.n.ID)
 	s.NoError(err)
 	s.NotNil(n)
 
@@ -343,7 +343,7 @@ func (s *notificationSuite) TestSlackPayload() {
 
 	s.NoError(InsertMany(s.n))
 
-	n, err := Find(s.n.ID)
+	n, err := Find(s.T().Context(), s.n.ID)
 	s.NoError(err)
 	s.NotNil(n)
 
@@ -368,7 +368,7 @@ func (s *notificationSuite) TestGithubPayload() {
 
 	s.NoError(InsertMany(s.n))
 
-	n, err := Find(s.n.ID)
+	n, err := Find(s.T().Context(), s.n.ID)
 	s.NoError(err)
 	s.NotNil(n)
 

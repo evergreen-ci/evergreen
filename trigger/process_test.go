@@ -377,7 +377,7 @@ func TestProjectTriggerIntegration(t *testing.T) {
 		assert.Equal(e.ID, t.TriggerEvent)
 		assert.Contains(t.DisplayName, "task1")
 	}
-	mani, err := manifest.FindFromVersion(dbVersions[0].Id, downstreamProjectRef.Id, downstreamRevision, evergreen.RepotrackerVersionRequester)
+	mani, err := manifest.FindFromVersion(ctx, dbVersions[0].Id, downstreamProjectRef.Id, downstreamRevision, evergreen.RepotrackerVersionRequester)
 	assert.NoError(err)
 	require.NotNil(mani)
 	assert.Equal(downstreamProjectRef.Id, mani.ProjectName)
@@ -510,7 +510,7 @@ func TestProjectTriggerIntegrationForBuild(t *testing.T) {
 		assert.Equal(e.ID, t.TriggerEvent)
 		assert.Contains(t.DisplayName, "task1")
 	}
-	mani, err := manifest.FindFromVersion(dbVersions[0].Id, downstreamProjectRef.Id, downstreamRevision, evergreen.RepotrackerVersionRequester)
+	mani, err := manifest.FindFromVersion(ctx, dbVersions[0].Id, downstreamProjectRef.Id, downstreamRevision, evergreen.RepotrackerVersionRequester)
 	assert.NoError(err)
 	require.NotNil(mani)
 	assert.Equal(downstreamProjectRef.Id, mani.ProjectName)
@@ -621,7 +621,7 @@ func TestProjectTriggerIntegrationForPush(t *testing.T) {
 		assert.Equal(model.ProjectTriggerLevelPush, t.TriggerType)
 		assert.Contains(t.DisplayName, "task1")
 	}
-	mani, err := manifest.FindFromVersion(dbVersions[0].Id, downstreamProjectRef.Id, downstreamRevision, evergreen.RepotrackerVersionRequester)
+	mani, err := manifest.FindFromVersion(ctx, dbVersions[0].Id, downstreamProjectRef.Id, downstreamRevision, evergreen.RepotrackerVersionRequester)
 	assert.NoError(err)
 	require.NotNil(mani)
 	assert.Equal(downstreamProjectRef.Id, mani.ProjectName)

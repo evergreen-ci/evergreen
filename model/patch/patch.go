@@ -678,11 +678,11 @@ func (p *Patch) IsChild() bool {
 // CollectiveStatus returns the aggregate status of all tasks and child patches.
 // If this is meant for display on the UI, we should also consider the display status aborted.
 // NOTE that the result of this should not be compared against version statuses, as those can be different.
-func (p *Patch) CollectiveStatus() (string, error) {
+func (p *Patch) CollectiveStatus(ctx context.Context) (string, error) {
 	parentPatch := p
 	if p.IsChild() {
 		var err error
-		parentPatch, err = FindOneId(p.Triggers.ParentPatch)
+		parentPatch, err = FindOneId(ctx, p.Triggers.ParentPatch)
 		if err != nil {
 			return "", errors.Wrap(err, "getting parent patch")
 		}
@@ -692,7 +692,7 @@ func (p *Patch) CollectiveStatus() (string, error) {
 	}
 	allStatuses := []string{parentPatch.Status}
 	for _, childPatchId := range parentPatch.Triggers.ChildPatches {
-		cp, err := FindOneId(childPatchId)
+		cp, err := FindOneId(ctx, childPatchId)
 		if err != nil {
 			return "", errors.Wrapf(err, "getting child patch '%s' ", childPatchId)
 		}
@@ -747,13 +747,13 @@ func GetGithubContextForChildPatch(projectIdentifier string, parentPatch, childP
 	return githubContext, nil
 }
 
-func (p *Patch) GetFamilyInformation() (bool, *Patch, error) {
+func (p *Patch) GetFamilyInformation(ctx context.Context) (bool, *Patch, error) {
 	if !p.IsChild() && !p.IsParent() {
 		return evergreen.IsFinishedVersionStatus(p.Status), nil, nil
 	}
 
 	isDone := false
-	childrenOrSiblings, parentPatch, err := p.GetPatchFamily()
+	childrenOrSiblings, parentPatch, err := p.GetPatchFamily(ctx)
 	if err != nil {
 		return isDone, parentPatch, errors.Wrap(err, "getting child or sibling patches")
 	}
@@ -762,7 +762,7 @@ func (p *Patch) GetFamilyInformation() (bool, *Patch, error) {
 	if p.IsChild() && !evergreen.IsFinishedVersionStatus(parentPatch.Status) {
 		return isDone, parentPatch, nil
 	}
-	childrenStatus, err := GetChildrenOrSiblingsReadiness(childrenOrSiblings)
+	childrenStatus, err := GetChildrenOrSiblingsReadiness(ctx, childrenOrSiblings)
 	if err != nil {
 		return isDone, parentPatch, errors.Wrap(err, "getting child or sibling information")
 	}
@@ -775,13 +775,13 @@ func (p *Patch) GetFamilyInformation() (bool, *Patch, error) {
 	return isDone, parentPatch, err
 }
 
-func GetChildrenOrSiblingsReadiness(childrenOrSiblings []string) (string, error) {
+func GetChildrenOrSiblingsReadiness(ctx context.Context, childrenOrSiblings []string) (string, error) {
 	if len(childrenOrSiblings) == 0 {
 		return "", nil
 	}
 	childrenStatus := evergreen.VersionSucceeded
 	for _, childPatch := range childrenOrSiblings {
-		childPatchDoc, err := FindOneId(childPatch)
+		childPatchDoc, err := FindOneId(ctx, childPatch)
 		if err != nil {
 			return "", errors.Wrapf(err, "getting tasks for child patch '%s'", childPatch)
 		}
@@ -800,7 +800,7 @@ func GetChildrenOrSiblingsReadiness(childrenOrSiblings []string) (string, error)
 	return childrenStatus, nil
 
 }
-func (p *Patch) GetPatchFamily() ([]string, *Patch, error) {
+func (p *Patch) GetPatchFamily(ctx context.Context) ([]string, *Patch, error) {
 	var childrenOrSiblings []string
 	var parentPatch *Patch
 	var err error
@@ -809,7 +809,7 @@ func (p *Patch) GetPatchFamily() ([]string, *Patch, error) {
 	}
 	if p.IsChild() {
 		parentPatchId := p.Triggers.ParentPatch
-		parentPatch, err = FindOneId(parentPatchId)
+		parentPatch, err = FindOneId(ctx, parentPatchId)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "getting parent patch")
 		}
@@ -824,7 +824,7 @@ func (p *Patch) GetPatchFamily() ([]string, *Patch, error) {
 
 func (p *Patch) SetParametersFromParent(ctx context.Context) (*Patch, error) {
 	parentPatchId := p.Triggers.ParentPatch
-	parentPatch, err := FindOneId(parentPatchId)
+	parentPatch, err := FindOneId(ctx, parentPatchId)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting parent patch")
 	}

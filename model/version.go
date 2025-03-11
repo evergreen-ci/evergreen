@@ -731,7 +731,7 @@ func GetVersionsToModify(projectName string, opts ModifyVersionsOptions, startTi
 }
 
 // constructManifest will construct a manifest from the given project and version.
-func constructManifest(v *Version, projectRef *ProjectRef, moduleList ModuleList) (*manifest.Manifest, error) {
+func constructManifest(ctx context.Context, v *Version, projectRef *ProjectRef, moduleList ModuleList) (*manifest.Manifest, error) {
 	if len(moduleList) == 0 {
 		return nil, nil
 	}
@@ -759,7 +759,7 @@ func constructManifest(v *Version, projectRef *ProjectRef, moduleList ModuleList
 	var baseManifest *manifest.Manifest
 	shouldUseBaseRevision := utility.StringSliceContains(evergreen.PatchRequesters, v.Requester) || v.Requester == evergreen.AdHocRequester
 	if shouldUseBaseRevision {
-		baseManifest, err = manifest.FindFromVersion(v.Id, v.Identifier, v.Revision, v.Requester)
+		baseManifest, err = manifest.FindFromVersion(ctx, v.Id, v.Identifier, v.Revision, v.Requester)
 		if err != nil {
 			return nil, errors.Wrap(err, "getting base manifest")
 		}
@@ -850,8 +850,8 @@ func getManifestModule(v *Version, projectRef *ProjectRef, module Module) (*mani
 }
 
 // CreateManifest inserts a newly constructed manifest into the DB.
-func CreateManifest(v *Version, modules ModuleList, projectRef *ProjectRef) (*manifest.Manifest, error) {
-	newManifest, err := constructManifest(v, projectRef, modules)
+func CreateManifest(ctx context.Context, v *Version, modules ModuleList, projectRef *ProjectRef) (*manifest.Manifest, error) {
+	newManifest, err := constructManifest(ctx, v, projectRef, modules)
 	if err != nil {
 		return nil, errors.Wrap(err, "constructing manifest")
 	}

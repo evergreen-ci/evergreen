@@ -82,7 +82,7 @@ func (j *eventSendJob) Run(ctx context.Context) {
 		return
 	}
 
-	n, err := notification.Find(j.NotificationID)
+	n, err := notification.Find(ctx, j.NotificationID)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "finding notification '%s'", j.NotificationID))
 		return

@@ -165,7 +165,7 @@ func (s *GithubSuite) TestFindIntentSpecifically() {
 	s.NotNil(intent)
 	s.NoError(intent.Insert())
 
-	found, err := FindIntent(intent.ID(), intent.GetType())
+	found, err := FindIntent(s.T().Context(), intent.ID(), intent.GetType())
 	s.NoError(err)
 	s.NotNil(found)
 

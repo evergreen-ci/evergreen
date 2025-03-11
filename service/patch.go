@@ -39,7 +39,7 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 
 	// get the new patch document with the patched configuration
 	var err error
-	projCtx.Patch, err = patch.FindOne(patch.ById(projCtx.Patch.Id))
+	projCtx.Patch, err = patch.FindOne(r.Context(), patch.ById(projCtx.Patch.Id))
 	if err != nil {
 		http.Error(w, fmt.Sprintf("error loading patch: %v", err), http.StatusInternalServerError)
 		return
@@ -110,7 +110,7 @@ func (uis *UIServer) diffPage(w http.ResponseWriter, r *http.Request) {
 	// We have to reload the patch outside of the project context,
 	// since the raw diff is excluded by default. This redundancy is
 	// worth the time savings this behavior offers other pages.
-	fullPatch, err := patch.FindOne(patch.ById(projCtx.Patch.Id))
+	fullPatch, err := patch.FindOne(r.Context(), patch.ById(projCtx.Patch.Id))
 	if err != nil {
 		http.Error(w, fmt.Sprintf("error loading patch: %s", err.Error()),
 			http.StatusInternalServerError)
@@ -135,7 +135,7 @@ func (uis *UIServer) fileDiffPage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "patch not found", http.StatusNotFound)
 		return
 	}
-	fullPatch, err := patch.FindOne(patch.ById(projCtx.Patch.Id))
+	fullPatch, err := patch.FindOne(r.Context(), patch.ById(projCtx.Patch.Id))
 	if err != nil {
 		http.Error(w, fmt.Sprintf("error loading patch: %s", err.Error()),
 			http.StatusInternalServerError)
@@ -165,7 +165,7 @@ func (uis *UIServer) rawDiffPage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "patch not found", http.StatusNotFound)
 		return
 	}
-	fullPatch, err := patch.FindOne(patch.ById(projCtx.Patch.Id))
+	fullPatch, err := patch.FindOne(r.Context(), patch.ById(projCtx.Patch.Id))
 	if err != nil {
 		http.Error(w, fmt.Sprintf("error loading patch: %s", err.Error()),
 			http.StatusInternalServerError)

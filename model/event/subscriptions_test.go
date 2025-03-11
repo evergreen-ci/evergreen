@@ -532,14 +532,14 @@ func (s *subscriptionsSuite) TestFindByOwnerForProject() {
 
 func (s *subscriptionsSuite) TestFindSubscriptionsByOwner() {
 	for i := range s.subscriptions {
-		sub, err := FindSubscriptionByID(s.subscriptions[i].ID)
+		sub, err := FindSubscriptionByID(s.T().Context(), s.subscriptions[i].ID)
 		s.NoError(err)
 		s.NotNil(sub)
 		s.NotEqual("", sub.ID)
 	}
 
 	s.NoError(db.ClearCollections(SubscriptionsCollection))
-	sub, err := FindSubscriptionByID(s.subscriptions[0].ID)
+	sub, err := FindSubscriptionByID(s.T().Context(), s.subscriptions[0].ID)
 	s.NoError(err)
 	s.Nil(sub)
 }
@@ -550,7 +550,7 @@ func (s *subscriptionsSuite) TestCreateOrUpdateGeneralSubscription() {
 		Target: "@octocat",
 	}
 
-	subscription, err := CreateOrUpdateGeneralSubscription(GeneralSubscriptionPatchOutcome, "",
+	subscription, err := CreateOrUpdateGeneralSubscription(s.T().Context(), GeneralSubscriptionPatchOutcome, "",
 		subscriber, "octocat")
 	s.NoError(err)
 

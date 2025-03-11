@@ -214,7 +214,7 @@ func TestPodAgentNextTask(t *testing.T) {
 			resp := rh.Run(ctx)
 			assert.Equal(t, http.StatusOK, resp.Status())
 
-			dbPod, err := pod.FindOneByID(p.ID)
+			dbPod, err := pod.FindOneByID(ctx, p.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.NotZero(t, dbPod.TimeInfo.AgentStarted)
@@ -240,7 +240,7 @@ func TestPodAgentNextTask(t *testing.T) {
 			resp := rh.Run(ctx)
 			assert.Equal(t, http.StatusOK, resp.Status())
 
-			dbPod, err := pod.FindOneByID(p.ID)
+			dbPod, err := pod.FindOneByID(ctx, p.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.NotZero(t, dbPod.TimeInfo.AgentStarted)
@@ -289,7 +289,7 @@ func TestPodAgentNextTask(t *testing.T) {
 			stats := q.Stats(ctx)
 			assert.Equal(t, 1, stats.Total)
 
-			dbPod, err := pod.FindOneByID(rh.podID)
+			dbPod, err := pod.FindOneByID(ctx, rh.podID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Equal(t, pod.StatusTerminated, dbPod.Status)

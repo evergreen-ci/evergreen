@@ -96,7 +96,7 @@ func (s *TestArtifactFileSuite) SetupTest() {
 }
 
 func (s *TestArtifactFileSuite) TestArtifactFieldsArePresent() {
-	entryFromDb, err := FindOne(ByTaskId("task1"))
+	entryFromDb, err := FindOne(s.T().Context(), ByTaskId("task1"))
 	s.NoError(err)
 
 	s.Equal("task1", entryFromDb.TaskId)
@@ -135,7 +135,7 @@ func (s *TestArtifactFileSuite) TestArtifactFieldsAfterUpdate() {
 	s.NoError(err)
 	s.Equal(3, count)
 
-	entryFromDb, err := FindOne(ByTaskId("task1"))
+	entryFromDb, err := FindOne(s.T().Context(), ByTaskId("task1"))
 	s.NoError(err)
 	s.NotNil(entryFromDb)
 

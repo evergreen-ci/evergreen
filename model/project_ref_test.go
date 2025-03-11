@@ -3026,7 +3026,7 @@ func TestContainerSecretCache(t *testing.T) {
 		},
 		"DeleteNoopsWithNonexistentProjectRef": func(ctx context.Context, t *testing.T, pRef ProjectRef, c ContainerSecretCache) {
 			assert.NoError(t, c.Delete(ctx, "external_id"), "should not for nonexistent project ref")
-			assert.True(t, adb.ResultsNotFound(db.FindOneQ(ProjectRefCollection, db.Query(bson.M{}), &pRef)))
+			assert.True(t, adb.ResultsNotFound(db.FindOneQContext(t.Context(), ProjectRefCollection, db.Query(bson.M{}), &pRef)))
 		},
 		"DeleteNoopsWithoutMatchingContainerSecretExternalID": func(ctx context.Context, t *testing.T, pRef ProjectRef, c ContainerSecretCache) {
 			require.NoError(t, pRef.Insert())
@@ -3665,7 +3665,7 @@ func TestPointers(t *testing.T) {
 		PtrBool   *bool              `bson:"my_bool"`
 		PtrStruct *WorkstationConfig `bson:"config"`
 	}{}
-	assert.NoError(t, db.FindOneQ(ProjectRefCollection, db.Query(bson.M{}), &pointerRef))
+	assert.NoError(t, db.FindOneQContext(t.Context(), ProjectRefCollection, db.Query(bson.M{}), &pointerRef))
 	assert.Equal(t, ref.MyString, *pointerRef.PtrString)
 	assert.False(t, utility.FromBoolTPtr(pointerRef.PtrBool))
 	assert.NotNil(t, pointerRef.PtrStruct)

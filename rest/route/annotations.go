@@ -194,7 +194,7 @@ func (h *annotationByTaskGetHandler) Parse(ctx context.Context, r *http.Request)
 func (h *annotationByTaskGetHandler) Run(ctx context.Context) gimlet.Responder {
 	// get a specific execution
 	if h.execution != -1 {
-		a, err := annotations.FindOneByTaskIdAndExecution(h.taskId, h.execution)
+		a, err := annotations.FindOneByTaskIdAndExecution(ctx, h.taskId, h.execution)
 		if err != nil {
 			return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "finding task annotation for execution %d of task '%s'", h.execution, h.taskId))
 		}

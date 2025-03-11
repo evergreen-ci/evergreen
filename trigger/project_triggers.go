@@ -73,7 +73,7 @@ func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 			if args.TriggerType == model.ProjectTriggerLevelPush {
 				moduleList[i].Ref = metadata.SourceCommit
 			}
-			_, err = model.CreateManifest(v, moduleList, projectInfo.Ref)
+			_, err = model.CreateManifest(ctx, v, moduleList, projectInfo.Ref)
 			if err != nil {
 				return nil, errors.WithStack(err)
 			}

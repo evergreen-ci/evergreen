@@ -101,7 +101,7 @@ func (j *podDefinitionCreationJob) Run(ctx context.Context) {
 		return
 	}
 
-	podDef, err := definition.FindOneByFamily(j.Family)
+	podDef, err := definition.FindOneByFamily(ctx, j.Family)
 	if err != nil {
 		j.AddRetryableError(errors.Wrapf(err, "checking for existing pod definition with family '%s'", j.Family))
 		return

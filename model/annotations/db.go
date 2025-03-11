@@ -1,6 +1,8 @@
 package annotations
 
 import (
+	"context"
+
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
@@ -32,9 +34,9 @@ const (
 )
 
 // FindOne gets one TaskAnnotation for the given query.
-func FindOne(query db.Q) (*TaskAnnotation, error) {
+func FindOne(ctx context.Context, query db.Q) (*TaskAnnotation, error) {
 	annotation := &TaskAnnotation{}
-	err := db.FindOneQ(Collection, query, annotation)
+	err := db.FindOneQContext(ctx, Collection, query, annotation)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -52,8 +54,8 @@ func Find(query db.Q) ([]TaskAnnotation, error) {
 	return annotations, err
 }
 
-func FindOneByTaskIdAndExecution(id string, execution int) (*TaskAnnotation, error) {
-	return FindOne(db.Query(ByTaskIdAndExecution(id, execution)))
+func FindOneByTaskIdAndExecution(ctx context.Context, id string, execution int) (*TaskAnnotation, error) {
+	return FindOne(ctx, db.Query(ByTaskIdAndExecution(id, execution)))
 }
 
 func FindByTaskIds(ids []string) ([]TaskAnnotation, error) {

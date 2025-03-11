@@ -148,7 +148,7 @@ func (j *podCreationJob) populateIfUnset(ctx context.Context) error {
 	}
 
 	if j.pod == nil {
-		p, err := pod.FindOneByID(j.PodID)
+		p, err := pod.FindOneByID(ctx, j.PodID)
 		if err != nil {
 			return err
 		}
@@ -184,7 +184,7 @@ func (j *podCreationJob) populateIfUnset(ctx context.Context) error {
 }
 
 func (j *podCreationJob) checkForPodDefinition(ctx context.Context, family string) (*definition.PodDefinition, error) {
-	podDef, err := definition.FindOneByFamily(family)
+	podDef, err := definition.FindOneByFamily(ctx, family)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding pod definition with family '%s'", family)
 	}
@@ -211,7 +211,7 @@ func (j *podCreationJob) logTaskTimingStats(ctx context.Context) error {
 		return nil
 	}
 
-	disp, err := dispatcher.FindOneByPodID(j.pod.ID)
+	disp, err := dispatcher.FindOneByPodID(ctx, j.pod.ID)
 	if err != nil {
 		return errors.Wrap(err, "finding dispatcher for task")
 	}

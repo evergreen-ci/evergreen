@@ -1051,7 +1051,7 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasksWithBatchtime() {
 	s.NoError(err)
 	s.Len(tasks, 7)
 
-	dbExistingBV, err := build.FindOneId(sampleBuild.Id)
+	dbExistingBV, err := build.FindOneId(s.ctx, sampleBuild.Id)
 	s.NoError(err)
 	s.Require().NotZero(dbExistingBV)
 
@@ -1386,12 +1386,12 @@ buildvariants:
 	s.NoError(err)
 	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
 
-	dbExistingGenBuild, err := build.FindOneId(existingGenBuild.Id)
+	dbExistingGenBuild, err := build.FindOneId(s.ctx, existingGenBuild.Id)
 	s.Require().NoError(err)
 	s.Require().NotZero(dbExistingGenBuild)
 	s.Equal(evergreen.BuildStarted, dbExistingGenBuild.Status, "status for build generating tasks should not change")
 
-	dbExistingOtherBuild, err := build.FindOneId(existingFinishedBuild.Id)
+	dbExistingOtherBuild, err := build.FindOneId(s.ctx, existingFinishedBuild.Id)
 	s.Require().NoError(err)
 	s.Require().NotZero(dbExistingOtherBuild)
 	s.Equal(evergreen.BuildStarted, dbExistingOtherBuild.Status, "status for build that previously had only finished tasks and now has new generated tasks to run should be running")
@@ -1477,11 +1477,11 @@ buildvariants:
 	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
 
 	alreadyDefinedTask := task.Task{}
-	s.NoError(db.FindOneQ(task.Collection, db.Query(bson.M{task.DisplayNameKey: "defined_but_not_scheduled_task"}), &alreadyDefinedTask))
+	s.NoError(db.FindOneQContext(s.ctx, task.Collection, db.Query(bson.M{task.DisplayNameKey: "defined_but_not_scheduled_task"}), &alreadyDefinedTask))
 	s.True(alreadyDefinedTask.Activated, "dependency should be activated")
 
 	taskWithDeps := task.Task{}
-	s.NoError(db.FindOneQ(task.Collection, db.Query(bson.M{task.DisplayNameKey: "generated_task_that_has_cross_variant_dependency"}), &taskWithDeps))
+	s.NoError(db.FindOneQContext(s.ctx, task.Collection, db.Query(bson.M{task.DisplayNameKey: "generated_task_that_has_cross_variant_dependency"}), &taskWithDeps))
 	s.Require().Len(taskWithDeps.DependsOn, 1)
 	s.Equal(alreadyDefinedTask.Id, taskWithDeps.DependsOn[0].TaskId, "generated task should depend on cross-variant dependency")
 }
@@ -1567,11 +1567,11 @@ buildvariants:
 	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
 
 	depTask := task.Task{}
-	s.NoError(db.FindOneQ(task.Collection, db.Query(bson.M{task.DisplayNameKey: "generated_task"}), &depTask))
+	s.NoError(db.FindOneQContext(s.ctx, task.Collection, db.Query(bson.M{task.DisplayNameKey: "generated_task"}), &depTask))
 	s.True(depTask.Activated, "dependency should be activated")
 
 	taskWithDeps := task.Task{}
-	s.NoError(db.FindOneQ(task.Collection, db.Query(bson.M{task.DisplayNameKey: "generated_task_that_has_cross_variant_dependency"}), &taskWithDeps))
+	s.NoError(db.FindOneQContext(s.ctx, task.Collection, db.Query(bson.M{task.DisplayNameKey: "generated_task_that_has_cross_variant_dependency"}), &taskWithDeps))
 	s.Require().Len(taskWithDeps.DependsOn, 1)
 	s.Equal(depTask.Id, taskWithDeps.DependsOn[0].TaskId, "generated task should depend on cross-variant dependency")
 }
@@ -1675,11 +1675,11 @@ buildvariants:
 	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
 
 	depTask := task.Task{}
-	s.NoError(db.FindOneQ(task.Collection, db.Query(bson.M{task.DisplayNameKey: "generated_task"}), &depTask))
+	s.NoError(db.FindOneQContext(s.ctx, task.Collection, db.Query(bson.M{task.DisplayNameKey: "generated_task"}), &depTask))
 	s.True(depTask.Activated, "dependency should be activated")
 
 	taskWithDeps := task.Task{}
-	s.NoError(db.FindOneQ(task.Collection, db.Query(bson.M{task.DisplayNameKey: "generated_task_that_has_cross_variant_dependency"}), &taskWithDeps))
+	s.NoError(db.FindOneQContext(s.ctx, task.Collection, db.Query(bson.M{task.DisplayNameKey: "generated_task_that_has_cross_variant_dependency"}), &taskWithDeps))
 	s.Require().Len(taskWithDeps.DependsOn, 1)
 	s.Equal(depTask.Id, taskWithDeps.DependsOn[0].TaskId, "generated task should depend on cross-variant dependency")
 }
@@ -1782,11 +1782,11 @@ buildvariants:
 	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
 
 	depTask := task.Task{}
-	s.NoError(db.FindOneQ(task.Collection, db.Query(bson.M{task.DisplayNameKey: "generated_task"}), &depTask))
+	s.NoError(db.FindOneQContext(s.ctx, task.Collection, db.Query(bson.M{task.DisplayNameKey: "generated_task"}), &depTask))
 	s.True(depTask.Activated, "dependency should be activated")
 
 	taskWithDeps := task.Task{}
-	s.NoError(db.FindOneQ(task.Collection, db.Query(bson.M{task.DisplayNameKey: "generated_task_that_has_cross_variant_dependency"}), &taskWithDeps))
+	s.NoError(db.FindOneQContext(s.ctx, task.Collection, db.Query(bson.M{task.DisplayNameKey: "generated_task_that_has_cross_variant_dependency"}), &taskWithDeps))
 	s.Require().Len(taskWithDeps.DependsOn, 1)
 	s.Equal(depTask.Id, taskWithDeps.DependsOn[0].TaskId, "generated task should depend on cross-variant dependency")
 }

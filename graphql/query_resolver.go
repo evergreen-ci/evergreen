@@ -384,7 +384,7 @@ func (r *queryResolver) TaskQueueDistros(ctx context.Context) ([]*TaskQueueDistr
 
 // Pod is the resolver for the pod field.
 func (r *queryResolver) Pod(ctx context.Context, podID string) (*restModel.APIPod, error) {
-	pod, err := data.FindAPIPodByID(podID)
+	pod, err := data.FindAPIPodByID(ctx, podID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching pod '%s': %s", podID, err.Error()))
 	}
@@ -393,7 +393,7 @@ func (r *queryResolver) Pod(ctx context.Context, podID string) (*restModel.APIPo
 
 // Patch is the resolver for the patch field.
 func (r *queryResolver) Patch(ctx context.Context, patchID string) (*restModel.APIPatch, error) {
-	apiPatch, err := data.FindPatchById(patchID)
+	apiPatch, err := data.FindPatchById(ctx, patchID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch '%s': %s", patchID, err.Error()))
 	}
@@ -1107,7 +1107,7 @@ func (r *queryResolver) HasVersion(ctx context.Context, patchID string) (bool, e
 	}
 
 	if patch.IsValidId(patchID) {
-		p, err := patch.FindOneId(patchID)
+		p, err := patch.FindOneId(ctx, patchID)
 		if err != nil {
 			return false, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch '%s': %s", patchID, err.Error()))
 		}

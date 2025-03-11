@@ -1001,7 +1001,7 @@ func logTaskEndStats(ctx context.Context, t *task.Task) error {
 			}
 		}
 	} else {
-		taskPod, err := pod.FindOneByID(t.PodID)
+		taskPod, err := pod.FindOneByID(ctx, t.PodID)
 		if err != nil {
 			return errors.Wrapf(err, "finding pod '%s'", t.PodID)
 		}
@@ -1367,7 +1367,7 @@ func checkUpdateBuildPRStatusPending(ctx context.Context, b *build.Build) error 
 	if !evergreen.IsGitHubPatchRequester(b.Requester) {
 		return nil
 	}
-	p, err := patch.FindOneId(b.Version)
+	p, err := patch.FindOneId(ctx, b.Version)
 	if err != nil {
 		return errors.Wrapf(err, "finding patch '%s'", b.Version)
 	}
@@ -1614,12 +1614,12 @@ func UpdatePatchStatus(ctx context.Context, p *patch.Patch, status string) error
 		return errors.Wrapf(err, "updating patch '%s' with status '%s'", p.Id.Hex(), status)
 	}
 
-	isDone, parentPatch, err := p.GetFamilyInformation()
+	isDone, parentPatch, err := p.GetFamilyInformation(ctx)
 	if err != nil {
 		return errors.Wrapf(err, "getting family information for patch '%s'", p.Id.Hex())
 	}
 	if isDone {
-		collectiveStatus, err := p.CollectiveStatus()
+		collectiveStatus, err := p.CollectiveStatus(ctx)
 		if err != nil {
 			return errors.Wrapf(err, "getting collective status for patch '%s'", p.Id.Hex())
 		}
@@ -1640,7 +1640,7 @@ func UpdateBuildAndVersionStatusForTask(ctx context.Context, t *task.Task) error
 	ctx, span := tracer.Start(ctx, "save-builds-and-tasks")
 	defer span.End()
 
-	taskBuild, err := build.FindOneId(t.BuildId)
+	taskBuild, err := build.FindOneId(ctx, t.BuildId)
 	if err != nil {
 		return errors.Wrapf(err, "getting build for task '%s'", t.Id)
 	}
@@ -1690,7 +1690,7 @@ func UpdateBuildAndVersionStatusForTask(ctx context.Context, t *task.Task) error
 	}
 
 	if evergreen.IsPatchRequester(taskVersion.Requester) {
-		p, err := patch.FindOneId(taskVersion.Id)
+		p, err := patch.FindOneId(ctx, taskVersion.Id)
 		if err != nil {
 			return errors.Wrapf(err, "getting patch for version '%s'", taskVersion.Id)
 		}
@@ -1701,12 +1701,12 @@ func UpdateBuildAndVersionStatusForTask(ctx context.Context, t *task.Task) error
 			return errors.Wrapf(err, "updating patch '%s' status", p.Id.Hex())
 		}
 
-		isDone, parentPatch, err := p.GetFamilyInformation()
+		isDone, parentPatch, err := p.GetFamilyInformation(ctx)
 		if err != nil {
 			return errors.Wrapf(err, "getting family information for patch '%s'", p.Id.Hex())
 		}
 		if isDone {
-			versionStatus, err := p.CollectiveStatus()
+			versionStatus, err := p.CollectiveStatus(ctx)
 			if err != nil {
 				return errors.Wrapf(err, "getting collective status for patch '%s'", p.Id.Hex())
 			}
@@ -1768,7 +1768,7 @@ func UpdateVersionAndPatchStatusForBuilds(ctx context.Context, buildIds []string
 		}
 
 		if evergreen.IsPatchRequester(buildVersion.Requester) {
-			p, err := patch.FindOneId(buildVersion.Id)
+			p, err := patch.FindOneId(ctx, buildVersion.Id)
 			if err != nil {
 				return errors.Wrapf(err, "getting patch for version '%s'", buildVersion.Id)
 			}

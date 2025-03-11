@@ -197,7 +197,7 @@ func TestGetDisplayStatus(t *testing.T) {
 	}
 	assert.NoError(t, cp.Insert())
 
-	status, err := getDisplayStatus(version)
+	status, err := getDisplayStatus(t.Context(), version)
 	require.NoError(t, err)
 	assert.Equal(t, evergreen.VersionAborted, status)
 }

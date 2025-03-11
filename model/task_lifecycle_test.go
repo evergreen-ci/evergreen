@@ -526,7 +526,7 @@ func TestSetActiveState(t *testing.T) {
 				dependentTask, err = task.FindOne(ctx, db.Query(task.ById(dependentTask.Id)))
 				So(dependentTask.Activated, ShouldBeFalse)
 
-				build, err := build.FindOneId(testTask.BuildId)
+				build, err := build.FindOneId(t.Context(), testTask.BuildId)
 				So(err, ShouldBeNil)
 				So(build.Status, ShouldEqual, evergreen.BuildFailed)
 				version, err := VersionFindOneId(testTask.Version)
@@ -546,7 +546,7 @@ func TestSetActiveState(t *testing.T) {
 				So(testTask.Activated, ShouldEqual, false)
 				dependentTask, err = task.FindOne(ctx, db.Query(task.ById(dependentTask.Id)))
 				So(dependentTask.Activated, ShouldBeFalse)
-				build, err := build.FindOneId(testTask.BuildId)
+				build, err := build.FindOneId(t.Context(), testTask.BuildId)
 				So(err, ShouldBeNil)
 				So(build.Status, ShouldEqual, evergreen.BuildFailed)
 				version, err := VersionFindOneId(testTask.Version)
@@ -562,7 +562,7 @@ func TestSetActiveState(t *testing.T) {
 				testTask, err = task.FindOne(ctx, db.Query(task.ById(testTask.Id)))
 				So(err, ShouldBeNil)
 				So(testTask.Activated, ShouldEqual, true)
-				build, err := build.FindOneId(testTask.BuildId)
+				build, err := build.FindOneId(t.Context(), testTask.BuildId)
 				So(err, ShouldBeNil)
 				So(build.Status, ShouldEqual, evergreen.BuildStarted)
 				version, err := VersionFindOneId(testTask.Version)
@@ -578,7 +578,7 @@ func TestSetActiveState(t *testing.T) {
 				testTask, err = task.FindOne(ctx, db.Query(task.ById(testTask.Id)))
 				So(err, ShouldBeNil)
 				So(testTask.Activated, ShouldEqual, true)
-				build, err := build.FindOneId(testTask.BuildId)
+				build, err := build.FindOneId(t.Context(), testTask.BuildId)
 				So(err, ShouldBeNil)
 				So(build.Status, ShouldEqual, evergreen.BuildStarted)
 				version, err := VersionFindOneId(testTask.Version)
@@ -599,7 +599,7 @@ func TestSetActiveState(t *testing.T) {
 				So(testTask.Activated, ShouldEqual, false)
 				dependentTask, err = task.FindOne(ctx, db.Query(task.ById(dependentTask.Id)))
 				So(dependentTask.Activated, ShouldBeFalse)
-				build, err := build.FindOneId(testTask.BuildId)
+				build, err := build.FindOneId(t.Context(), testTask.BuildId)
 				So(err, ShouldBeNil)
 				So(build.Status, ShouldEqual, evergreen.BuildFailed)
 				version, err := VersionFindOneId(testTask.Version)
@@ -618,7 +618,7 @@ func TestSetActiveState(t *testing.T) {
 				dependentTask, err = task.FindOne(ctx, db.Query(task.ById(dependentTask.Id)))
 				So(dependentTask.Activated, ShouldBeFalse)
 
-				build, err := build.FindOneId(testTask.BuildId)
+				build, err := build.FindOneId(t.Context(), testTask.BuildId)
 				So(err, ShouldBeNil)
 				So(build.Status, ShouldEqual, evergreen.BuildFailed)
 				version, err := VersionFindOneId(testTask.Version)
@@ -636,7 +636,7 @@ func TestSetActiveState(t *testing.T) {
 				So(testTask.Activated, ShouldEqual, false)
 				dependentTask, err = task.FindOne(ctx, db.Query(task.ById(dependentTask.Id)))
 				So(dependentTask.Activated, ShouldBeFalse)
-				build, err := build.FindOneId(testTask.BuildId)
+				build, err := build.FindOneId(t.Context(), testTask.BuildId)
 				So(err, ShouldBeNil)
 				So(build.Status, ShouldEqual, evergreen.BuildFailed)
 				version, err := VersionFindOneId(testTask.Version)
@@ -1367,7 +1367,7 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 
 			assert.NoError(t, UpdateBuildAndVersionStatusForTask(ctx, &task.Task{Version: v.Id, BuildId: b.Id}))
 
-			b, err = build.FindOneId(b.Id)
+			b, err = build.FindOneId(t.Context(), b.Id)
 			require.NoError(t, err)
 			assert.Equal(t, test.expectedBuildStatus, b.Status)
 			assert.Equal(t, test.expectedBuildActivation, b.Activated)
@@ -1377,7 +1377,7 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 			assert.Equal(t, test.expectedVersionStatus, v.Status)
 			assert.Equal(t, test.expectedVersionActivation, utility.FromBoolPtr(v.Activated))
 
-			p, err = patch.FindOneId(p.Id.Hex())
+			p, err = patch.FindOneId(t.Context(), p.Id.Hex())
 			require.NoError(t, err)
 			assert.Equal(t, test.expectedPatchStatus, p.Status)
 			assert.Equal(t, test.expectedPatchActivation, p.Activated)
@@ -1441,10 +1441,10 @@ func TestUpdateVersionAndPatchStatusForBuilds(t *testing.T) {
 	assert.NoError(t, anotherTask.Insert())
 
 	assert.NoError(t, UpdateVersionAndPatchStatusForBuilds(ctx, []string{b.Id}))
-	dbBuild, err := build.FindOneId(b.Id)
+	dbBuild, err := build.FindOneId(t.Context(), b.Id)
 	assert.NoError(t, err)
 	assert.Equal(t, evergreen.BuildStarted, dbBuild.Status)
-	dbPatch, err := patch.FindOneId(p.Id.Hex())
+	dbPatch, err := patch.FindOneId(t.Context(), p.Id.Hex())
 	assert.NoError(t, err)
 	assert.Equal(t, evergreen.VersionStarted, dbPatch.Status)
 
@@ -1455,10 +1455,10 @@ func TestUpdateVersionAndPatchStatusForBuilds(t *testing.T) {
 	)
 	assert.NoError(t, err)
 	assert.NoError(t, UpdateVersionAndPatchStatusForBuilds(ctx, []string{b.Id}))
-	dbBuild, err = build.FindOneId(b.Id)
+	dbBuild, err = build.FindOneId(t.Context(), b.Id)
 	assert.NoError(t, err)
 	assert.Equal(t, evergreen.BuildFailed, dbBuild.Status)
-	dbPatch, err = patch.FindOneId(p.Id.Hex())
+	dbPatch, err = patch.FindOneId(t.Context(), p.Id.Hex())
 	assert.NoError(t, err)
 	assert.Equal(t, evergreen.VersionFailed, dbPatch.Status)
 }
@@ -1505,7 +1505,7 @@ func TestUpdateBuildStatusForTaskReset(t *testing.T) {
 	assert.NoError(t, anotherTask.Insert())
 
 	assert.NoError(t, UpdateBuildAndVersionStatusForTask(ctx, &testTask))
-	dbBuild, err := build.FindOneId(b.Id)
+	dbBuild, err := build.FindOneId(t.Context(), b.Id)
 	assert.NoError(t, err)
 	assert.Equal(t, evergreen.BuildStarted, dbBuild.Status)
 	dbVersion, err := VersionFindOneId(v.Id)
@@ -1694,10 +1694,10 @@ func TestUpdateBuildAndVersionStatusForTaskAbort(t *testing.T) {
 	assert.NoError(t, anotherTask.Insert())
 
 	assert.NoError(t, UpdateBuildAndVersionStatusForTask(ctx, &testTask))
-	dbBuild1, err := build.FindOneId(b1.Id)
+	dbBuild1, err := build.FindOneId(t.Context(), b1.Id)
 	assert.NoError(t, err)
 	assert.False(t, dbBuild1.Aborted)
-	dbBuild2, err := build.FindOneId(b2.Id)
+	dbBuild2, err := build.FindOneId(t.Context(), b2.Id)
 	assert.NoError(t, err)
 	assert.False(t, dbBuild2.Aborted)
 	dbVersion, err := VersionFindOneId(v.Id)
@@ -1708,11 +1708,11 @@ func TestUpdateBuildAndVersionStatusForTaskAbort(t *testing.T) {
 	assert.NoError(t, testTask.SetAborted(ctx, task.AbortInfo{}))
 	assert.NoError(t, testTask.MarkFailed(ctx))
 	assert.NoError(t, UpdateBuildAndVersionStatusForTask(ctx, &testTask))
-	dbBuild1, err = build.FindOneId(b1.Id)
+	dbBuild1, err = build.FindOneId(t.Context(), b1.Id)
 	assert.NoError(t, err)
 	assert.True(t, dbBuild1.Aborted)
 	assert.Equal(t, evergreen.BuildFailed, dbBuild1.Status)
-	dbBuild2, err = build.FindOneId(b2.Id)
+	dbBuild2, err = build.FindOneId(t.Context(), b2.Id)
 	assert.NoError(t, err)
 	assert.Equal(t, evergreen.BuildSucceeded, dbBuild2.Status)
 	assert.False(t, dbBuild2.Aborted)
@@ -1725,11 +1725,11 @@ func TestUpdateBuildAndVersionStatusForTaskAbort(t *testing.T) {
 	assert.NoError(t, testTask.Archive(ctx))
 	assert.NoError(t, testTask.MarkUnscheduled(ctx))
 	assert.NoError(t, UpdateBuildAndVersionStatusForTask(ctx, &testTask))
-	dbBuild1, err = build.FindOneId(b1.Id)
+	dbBuild1, err = build.FindOneId(t.Context(), b1.Id)
 	assert.NoError(t, err)
 	assert.False(t, dbBuild1.Aborted)
 	assert.Equal(t, evergreen.BuildCreated, dbBuild1.Status)
-	dbBuild2, err = build.FindOneId(b2.Id)
+	dbBuild2, err = build.FindOneId(t.Context(), b2.Id)
 	assert.NoError(t, err)
 	assert.Equal(t, evergreen.BuildSucceeded, dbBuild2.Status)
 	assert.False(t, dbBuild2.Aborted)
@@ -1920,7 +1920,7 @@ func TestUpdateBuildGithubStatus(t *testing.T) {
 
 	assert.NoError(t, updateBuildGithubStatus(t.Context(), b, tasks))
 
-	b, err := build.FindOneId(buildID)
+	b, err := build.FindOneId(t.Context(), buildID)
 	assert.NoError(t, err)
 	assert.Equal(t, evergreen.BuildSucceeded, b.GithubCheckStatus)
 
@@ -2002,7 +2002,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(v.Status, ShouldEqual, evergreen.VersionSucceeded)
 
-			b, err := build.FindOneId(b.Id)
+			b, err := build.FindOneId(t.Context(), b.Id)
 			So(err, ShouldBeNil)
 			So(b.Status, ShouldEqual, evergreen.BuildSucceeded)
 
@@ -2021,7 +2021,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(v.Status, ShouldEqual, evergreen.VersionFailed)
 
-			b, err := build.FindOneId(b.Id)
+			b, err := build.FindOneId(t.Context(), b.Id)
 			So(err, ShouldBeNil)
 			So(b.Status, ShouldEqual, evergreen.BuildFailed)
 
@@ -2048,7 +2048,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(v.Status, ShouldEqual, evergreen.VersionFailed)
 
-			b, err := build.FindOneId(b.Id)
+			b, err := build.FindOneId(t.Context(), b.Id)
 			So(err, ShouldBeNil)
 			So(b.Status, ShouldEqual, evergreen.BuildFailed)
 		})
@@ -2123,7 +2123,7 @@ func TestMarkEnd(t *testing.T) {
 	settings := testutil.TestConfig()
 	assert.NoError(MarkEnd(ctx, settings, &testTask, userName, time.Now(), &details))
 
-	b, err := build.FindOneId(b.Id)
+	b, err := build.FindOneId(t.Context(), b.Id)
 	assert.NoError(err)
 	assert.Equal(evergreen.BuildFailed, b.Status)
 
@@ -2666,7 +2666,7 @@ func TestTryResetTask(t *testing.T) {
 				So(oldTask.FinishTime, ShouldNotResemble, utility.ZeroTime)
 
 				// should also reset the build status to "started"
-				buildFromDb, err := build.FindOne(build.ById(b.Id))
+				buildFromDb, err := build.FindOne(t.Context(), build.ById(b.Id))
 				So(err, ShouldBeNil)
 				So(buildFromDb.Status, ShouldEqual, evergreen.BuildStarted)
 
@@ -3106,7 +3106,7 @@ func TestMarkStart(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(testTask.Status, ShouldEqual, evergreen.TaskStarted)
 			So(testTask.DisplayStatusCache, ShouldEqual, evergreen.TaskStarted)
-			b, err = build.FindOne(build.ById(b.Id))
+			b, err = build.FindOne(t.Context(), build.ById(b.Id))
 			So(err, ShouldBeNil)
 			So(b.Status, ShouldEqual, evergreen.BuildStarted)
 			v, err = VersionFindOne(VersionById(v.Id))
@@ -4122,7 +4122,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(evergreen.VersionStarted, v.Status)
 
-	b, err = build.FindOneId(b.Id)
+	b, err = build.FindOneId(t.Context(), b.Id)
 	assert.NoError(err)
 	assert.Equal(evergreen.BuildStarted, b.Status)
 
@@ -4131,7 +4131,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(evergreen.VersionStarted, v.Status)
 
-	b, err = build.FindOneId(b.Id)
+	b, err = build.FindOneId(t.Context(), b.Id)
 	assert.NoError(err)
 	assert.Equal(evergreen.BuildStarted, b.Status)
 
@@ -4140,7 +4140,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(evergreen.VersionStarted, v.Status)
 
-	b, err = build.FindOneId(b.Id)
+	b, err = build.FindOneId(t.Context(), b.Id)
 	assert.NoError(err)
 	assert.Equal(evergreen.BuildStarted, b.Status)
 
@@ -4151,7 +4151,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatus(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(evergreen.VersionFailed, v.Status)
 
-	b, err = build.FindOneId(b.Id)
+	b, err = build.FindOneId(t.Context(), b.Id)
 	assert.NoError(err)
 	assert.Equal(evergreen.BuildFailed, b.Status)
 
@@ -4232,7 +4232,7 @@ func TestMarkEndRequiresAllTasksToFinishToUpdateBuildStatusWithCompileTask(t *te
 	assert.NoError(err)
 	assert.Equal(evergreen.VersionFailed, v.Status)
 
-	b, err = build.FindOneId(b.Id)
+	b, err = build.FindOneId(t.Context(), b.Id)
 	assert.NoError(err)
 	assert.Equal(evergreen.BuildFailed, b.Status)
 
@@ -4313,7 +4313,7 @@ func TestMarkEndWithBlockedDependenciesTriggersNotifications(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(evergreen.VersionFailed, v.Status)
 
-	b, err = build.FindOneId(b.Id)
+	b, err = build.FindOneId(t.Context(), b.Id)
 	assert.NoError(err)
 	assert.Equal(evergreen.BuildFailed, b.Status)
 
@@ -4431,7 +4431,7 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(evergreen.TaskUndispatched, runningTask.Status)
 
-	foundBuild, err := build.FindOneId("b")
+	foundBuild, err := build.FindOneId(t.Context(), "b")
 	require.NoError(t, err)
 	assert.Equal(evergreen.BuildCreated, foundBuild.Status)
 
@@ -4457,7 +4457,7 @@ func TestClearAndResetStrandedHostTask(t *testing.T) {
 	assert.Equal(evergreen.TaskFailed, dt.Status)
 	assert.Equal(dt.Details, task.GetSystemFailureDetails(evergreen.TaskDescriptionStranded))
 
-	foundBuild, err = build.FindOneId("b2")
+	foundBuild, err = build.FindOneId(t.Context(), "b2")
 	require.NoError(t, err)
 	assert.Equal(evergreen.BuildFailed, foundBuild.Status)
 
@@ -4652,7 +4652,7 @@ func TestMarkUnallocatableContainerTasksSystemFailed(t *testing.T) {
 			require.NotZero(t, dbTask)
 			assert.True(t, dbTask.IsFinished(), "task that has used up its container allocation attempts should be finished")
 
-			dbBuild, err := build.FindOneId(b.Id)
+			dbBuild, err := build.FindOneId(t.Context(), b.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbBuild)
 			assert.True(t, dbBuild.IsFinished(), "build with finished task should have updated status")
@@ -4672,7 +4672,7 @@ func TestMarkUnallocatableContainerTasksSystemFailed(t *testing.T) {
 			require.NotZero(t, dbTask)
 			assert.False(t, dbTask.IsFinished(), "task with remaining container allocation attempts should not be finished")
 
-			dbBuild, err := build.FindOneId(b.Id)
+			dbBuild, err := build.FindOneId(t.Context(), b.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbBuild)
 			assert.Equal(t, b.Status, dbBuild.Status, "build status should not be changed because task should not be finished")
@@ -4829,7 +4829,7 @@ func TestClearAndResetStrandedContainerTask(t *testing.T) {
 
 			require.NoError(t, ClearAndResetStrandedContainerTask(ctx, settings, &p))
 
-			dbPod, err := pod.FindOneByID(p.ID)
+			dbPod, err := pod.FindOneByID(t.Context(), p.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Zero(t, dbPod.TaskRuntimeInfo.RunningTaskID)
@@ -4851,7 +4851,7 @@ func TestClearAndResetStrandedContainerTask(t *testing.T) {
 			assert.False(t, dbTask.ContainerAllocated)
 			assert.Zero(t, dbTask.ContainerAllocatedTime)
 
-			dbBuild, err := build.FindOneId(tsk.BuildId)
+			dbBuild, err := build.FindOneId(t.Context(), tsk.BuildId)
 			require.NoError(t, err)
 			require.NotZero(t, dbBuild)
 			assert.Equal(t, evergreen.BuildCreated, dbBuild.Status, "build status should be updated for restarted task")
@@ -4914,7 +4914,7 @@ func TestClearAndResetStrandedContainerTask(t *testing.T) {
 
 			require.NoError(t, ClearAndResetStrandedContainerTask(ctx, settings, &p))
 
-			dbPod, err := pod.FindOneByID(p.ID)
+			dbPod, err := pod.FindOneByID(t.Context(), p.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Zero(t, dbPod.TaskRuntimeInfo.RunningTaskID)
@@ -4940,7 +4940,7 @@ func TestClearAndResetStrandedContainerTask(t *testing.T) {
 
 			require.NoError(t, ClearAndResetStrandedContainerTask(ctx, settings, &p))
 
-			dbPod, err := pod.FindOneByID(p.ID)
+			dbPod, err := pod.FindOneByID(t.Context(), p.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Zero(t, dbPod.TaskRuntimeInfo.RunningTaskID)
@@ -4952,7 +4952,7 @@ func TestClearAndResetStrandedContainerTask(t *testing.T) {
 			require.NoError(t, p.Insert())
 
 			require.NoError(t, ClearAndResetStrandedContainerTask(ctx, settings, &p))
-			dbPod, err := pod.FindOneByID(p.ID)
+			dbPod, err := pod.FindOneByID(t.Context(), p.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Zero(t, dbPod.TaskRuntimeInfo.RunningTaskID)
@@ -4965,7 +4965,7 @@ func TestClearAndResetStrandedContainerTask(t *testing.T) {
 
 			require.NoError(t, ClearAndResetStrandedContainerTask(ctx, settings, &p))
 
-			dbPod, err := pod.FindOneByID(p.ID)
+			dbPod, err := pod.FindOneByID(t.Context(), p.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Zero(t, dbPod.TaskRuntimeInfo.RunningTaskID)
@@ -4988,7 +4988,7 @@ func TestClearAndResetStrandedContainerTask(t *testing.T) {
 
 			require.NoError(t, ClearAndResetStrandedContainerTask(ctx, settings, &p))
 
-			dbPod, err := pod.FindOneByID(p.ID)
+			dbPod, err := pod.FindOneByID(t.Context(), p.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Zero(t, dbPod.TaskRuntimeInfo.RunningTaskID)
@@ -5093,7 +5093,7 @@ func TestResetStaleTask(t *testing.T) {
 			assert.False(t, dbTask.ContainerAllocated)
 			assert.Zero(t, dbTask.ContainerAllocatedTime)
 
-			dbBuild, err := build.FindOneId(tsk.BuildId)
+			dbBuild, err := build.FindOneId(t.Context(), tsk.BuildId)
 			require.NoError(t, err)
 			require.NotZero(t, dbBuild)
 			assert.Equal(t, evergreen.BuildCreated, dbBuild.Status, "build status should be updated for restarted task")
@@ -7006,12 +7006,12 @@ func TestUpdateBlockedDependencies(t *testing.T) {
 	assert.NoError(err)
 	assert.True(dbExecTask.DependsOn[0].Unattainable)
 
-	dbBuild0, err := build.FindOneId(b0.Id)
+	dbBuild0, err := build.FindOneId(t.Context(), b0.Id)
 	require.NoError(err)
 	require.NotZero(dbBuild0)
 	assert.Equal(evergreen.BuildFailed, dbBuild0.Status, "build status with failed and blocked tasks should be updated")
 
-	dbBuild1, err := build.FindOneId(b1.Id)
+	dbBuild1, err := build.FindOneId(t.Context(), b1.Id)
 	require.NoError(err)
 	require.NotZero(dbBuild1)
 	assert.Equal(evergreen.BuildCreated, dbBuild1.Status, "build status should not need to be updated")
@@ -7145,7 +7145,7 @@ func TestUpdateUnblockedDependencies(t *testing.T) {
 	dbTask6, err := task.FindOneId(ctx, tasks[6].Id)
 	assert.NoError(err)
 	assert.False(dbTask6.DependsOn[0].Unattainable)
-	dbBuild2, err := build.FindOneId(b2.Id)
+	dbBuild2, err := build.FindOneId(t.Context(), b2.Id)
 	assert.NoError(err)
 	assert.False(dbBuild2.AllTasksBlocked)
 }

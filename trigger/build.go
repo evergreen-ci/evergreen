@@ -52,7 +52,7 @@ func (t *buildTriggers) Fetch(ctx context.Context, e *event.EventLogEntry) error
 		return errors.Wrap(err, "fetching UI config")
 	}
 
-	t.build, err = build.FindOne(build.ById(e.ResourceId))
+	t.build, err = build.FindOne(ctx, build.ById(e.ResourceId))
 	if err != nil {
 		return errors.Wrapf(err, "finding build '%s'", e.ResourceId)
 	}
@@ -175,7 +175,7 @@ func (t *buildTriggers) buildRuntimeChange(ctx context.Context, sub *event.Subsc
 		return nil, errors.Wrapf(err, "subscription '%s' has an invalid percentage", sub.ID)
 	}
 
-	lastGreen, err := t.build.PreviousSuccessful()
+	lastGreen, err := t.build.PreviousSuccessful(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "retrieving last green build")
 	}

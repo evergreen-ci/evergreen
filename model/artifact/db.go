@@ -1,6 +1,8 @@
 package artifact
 
 import (
+	"context"
+
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
@@ -117,9 +119,9 @@ func (e Entry) Upsert() error {
 }
 
 // FindOne gets one Entry for the given query
-func FindOne(query db.Q) (*Entry, error) {
+func FindOne(ctx context.Context, query db.Q) (*Entry, error) {
 	entry := &Entry{}
-	err := db.FindOneQ(Collection, query, entry)
+	err := db.FindOneQContext(ctx, Collection, query, entry)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}

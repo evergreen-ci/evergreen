@@ -1,6 +1,7 @@
 package event
 
 import (
+	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
@@ -78,13 +79,13 @@ func FindUnprocessedEvents(limit int) ([]EventLogEntry, error) {
 }
 
 // FindByID finds a single event matching the given event ID.
-func FindByID(eventID string) (*EventLogEntry, error) {
+func FindByID(ctx context.Context, eventID string) (*EventLogEntry, error) {
 	query := bson.M{
 		idKey: eventID,
 	}
 
 	var e EventLogEntry
-	if err := db.FindOneQ(EventCollection, db.Query(query), &e); err != nil {
+	if err := db.FindOneQContext(ctx, EventCollection, db.Query(query), &e); err != nil {
 		if adb.ResultsNotFound(err) {
 			return nil, nil
 		}
@@ -93,7 +94,7 @@ func FindByID(eventID string) (*EventLogEntry, error) {
 	return &e, nil
 }
 
-func FindLastProcessedEvent() (*EventLogEntry, error) {
+func FindLastProcessedEvent(ctx context.Context) (*EventLogEntry, error) {
 	q := db.Query(bson.M{
 		processedAtKey: bson.M{
 			"$gt": time.Time{},
@@ -101,7 +102,7 @@ func FindLastProcessedEvent() (*EventLogEntry, error) {
 	}).Sort([]string{"-" + processedAtKey})
 
 	e := EventLogEntry{}
-	if err := db.FindOneQ(EventCollection, q, &e); err != nil {
+	if err := db.FindOneQContext(ctx, EventCollection, q, &e); err != nil {
 		if adb.ResultsNotFound(err) {
 			return nil, nil
 		}

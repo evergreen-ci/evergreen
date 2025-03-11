@@ -146,7 +146,7 @@ func getFormattedDate(t *time.Time, timezone string) (*string, error) {
 
 // GetDisplayStatus considers both child patch statuses and
 // aborted status, and returns an overall status.
-func getDisplayStatus(v *model.Version) (string, error) {
+func getDisplayStatus(ctx context.Context, v *model.Version) (string, error) {
 	status := v.Status
 	if v.Aborted {
 		status = evergreen.VersionAborted
@@ -155,7 +155,7 @@ func getDisplayStatus(v *model.Version) (string, error) {
 		return status, nil
 	}
 
-	p, err := patch.FindOneId(v.Id)
+	p, err := patch.FindOneId(ctx, v.Id)
 	if err != nil {
 		return "", errors.Wrapf(err, "finding patch '%s': %s", v.Id, err.Error())
 	}
@@ -1260,7 +1260,7 @@ func isPatchAuthorForTask(ctx context.Context, obj *restModel.APITask) (bool, er
 	authUser := gimlet.GetUser(ctx)
 	patchID := utility.FromStringPtr(obj.Version)
 	if utility.StringSliceContains(evergreen.PatchRequesters, utility.FromStringPtr(obj.Requester)) {
-		p, err := patch.FindOneId(patchID)
+		p, err := patch.FindOneId(ctx, patchID)
 		if err != nil {
 			return false, InternalServerError.Send(ctx, fmt.Sprintf("finding patch '%s': %s", patchID, err.Error()))
 		}

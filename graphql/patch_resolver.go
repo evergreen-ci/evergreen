@@ -82,7 +82,7 @@ func (r *patchResolver) Duration(ctx context.Context, obj *restModel.APIPatch) (
 // GeneratedTaskCounts is the resolver for the generatedTaskCounts field.
 func (r *patchResolver) GeneratedTaskCounts(ctx context.Context, obj *restModel.APIPatch) ([]*GeneratedTaskCountResults, error) {
 	patchID := utility.FromStringPtr(obj.Id)
-	p, err := patch.FindOneId(patchID)
+	p, err := patch.FindOneId(ctx, patchID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch '%s': %s", patchID, err.Error()))
 	}

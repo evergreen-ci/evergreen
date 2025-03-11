@@ -49,13 +49,13 @@ func TestFindFromVersion(t *testing.T) {
 	}
 	assert.NoError(t, p.Insert())
 
-	mfest, err := FindFromVersion(patchID, projectName, revision, evergreen.PatchVersionRequester)
+	mfest, err := FindFromVersion(t.Context(), patchID, projectName, revision, evergreen.PatchVersionRequester)
 	assert.NoError(t, err)
 	assert.Equal(t, "m1", mfest.Id)
 	assert.Equal(t, "abcdef", mfest.ModuleOverrides[moduleName])
 
 	// If no manifest exists for this version we get the base version's manifest
-	mfest, err = FindFromVersion("deadbeefdeadbeefdeadbeef", projectName, revision, "")
+	mfest, err = FindFromVersion(t.Context(), "deadbeefdeadbeefdeadbeef", projectName, revision, "")
 	assert.NoError(t, err)
 	assert.Equal(t, "m1", mfest.Id)
 }
@@ -80,7 +80,7 @@ func TestByBaseProjectAndRevision(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	mfest, err := FindOne(ByBaseProjectAndRevision("evergreen", "abcdef"))
+	mfest, err := FindOne(t.Context(), ByBaseProjectAndRevision("evergreen", "abcdef"))
 	assert.NoError(t, err)
 	assert.Equal(t, "m1", mfest.Id)
 }

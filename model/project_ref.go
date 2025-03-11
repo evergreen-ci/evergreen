@@ -3366,7 +3366,7 @@ func GetUpstreamProjectName(ctx context.Context, triggerID, triggerType string) 
 		}
 		projectID = upstreamTask.Project
 	} else if triggerType == ProjectTriggerLevelBuild {
-		upstreamBuild, err := build.FindOneId(triggerID)
+		upstreamBuild, err := build.FindOneId(ctx, triggerID)
 		if err != nil {
 			return "", errors.Wrap(err, "finding upstream build")
 		}

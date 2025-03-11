@@ -197,7 +197,7 @@ func (j *periodicBuildJob) addVersion(ctx context.Context, metadata model.Versio
 		return errors.New("no version created")
 	}
 
-	_, err = model.CreateManifest(v, projectInfo.Project.Modules, projectInfo.Ref)
+	_, err = model.CreateManifest(ctx, v, projectInfo.Project.Modules, projectInfo.Ref)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":               "error creating manifest",

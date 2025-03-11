@@ -307,20 +307,20 @@ var ExcludePatchDiff = bson.M{
 // Query Functions
 
 // FindOne runs a patch query, returning one patch.
-func FindOne(query db.Q) (*Patch, error) {
+func FindOne(ctx context.Context, query db.Q) (*Patch, error) {
 	patch := &Patch{}
-	err := db.FindOneQ(Collection, query, patch)
+	err := db.FindOneQContext(ctx, Collection, query, patch)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
 	return patch, err
 }
 
-func FindOneId(id string) (*Patch, error) {
+func FindOneId(ctx context.Context, id string) (*Patch, error) {
 	if !IsValidId(id) {
 		return nil, errors.Errorf("'%s' is not a valid ObjectId", id)
 	}
-	return FindOne(ByStringId(id))
+	return FindOne(ctx, ByStringId(id))
 }
 
 // Find runs a patch query, returning all patches that satisfy the query.
@@ -415,8 +415,8 @@ func FindLatestGithubPRPatch(owner, repo string, prNumber int) (*Patch, error) {
 	return &patches[0], nil
 }
 
-func FindProjectForPatch(patchID mgobson.ObjectId) (string, error) {
-	p, err := FindOne(ById(patchID).Project(bson.M{ProjectKey: 1}))
+func FindProjectForPatch(ctx context.Context, patchID mgobson.ObjectId) (string, error) {
+	p, err := FindOne(ctx, ById(patchID).Project(bson.M{ProjectKey: 1}))
 	if err != nil {
 		return "", err
 	}
@@ -427,10 +427,10 @@ func FindProjectForPatch(patchID mgobson.ObjectId) (string, error) {
 }
 
 // GetFinalizedChildPatchIdsForPatch returns patchIds for any finalized children of the given patch.
-func GetFinalizedChildPatchIdsForPatch(patchID string) ([]string, error) {
+func GetFinalizedChildPatchIdsForPatch(ctx context.Context, patchID string) ([]string, error) {
 	withKey := bsonutil.GetDottedKeyName(TriggersKey, TriggerInfoChildPatchesKey)
 	//do the same for child patches
-	p, err := FindOne(ByStringId(patchID).WithFields(withKey))
+	p, err := FindOne(ctx, ByStringId(patchID).WithFields(withKey))
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding patch '%s'", patchID)
 	}

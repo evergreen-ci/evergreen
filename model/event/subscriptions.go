@@ -1,6 +1,7 @@
 package event
 
 import (
+	"context"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -504,7 +505,7 @@ func (s *Subscription) Upsert() error {
 	return nil
 }
 
-func FindSubscriptionByID(id string) (*Subscription, error) {
+func FindSubscriptionByID(ctx context.Context, id string) (*Subscription, error) {
 	out := Subscription{}
 	query := bson.M{
 		subscriptionIDKey: id,
@@ -519,7 +520,7 @@ func FindSubscriptionByID(id string) (*Subscription, error) {
 			},
 		}
 	}
-	err := db.FindOneQ(SubscriptionsCollection, db.Query(query), &out)
+	err := db.FindOneQContext(ctx, SubscriptionsCollection, db.Query(query), &out)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -712,12 +713,12 @@ func IsValidOwnerType(in string) bool {
 	}
 }
 
-func CreateOrUpdateGeneralSubscription(resourceType string, id string,
+func CreateOrUpdateGeneralSubscription(ctx context.Context, resourceType string, id string,
 	subscriber Subscriber, user string) (*Subscription, error) {
 	var err error
 	var sub *Subscription
 	if id != "" {
-		sub, err = FindSubscriptionByID(id)
+		sub, err = FindSubscriptionByID(ctx, id)
 		if err != nil {
 			return nil, errors.Wrap(err, "finding subscription")
 		}

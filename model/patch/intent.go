@@ -55,13 +55,13 @@ type Intent interface {
 }
 
 // FindIntent returns an intent of the specified type from the database
-func FindIntent(id, intentType string) (Intent, error) {
+func FindIntent(ctx context.Context, id, intentType string) (Intent, error) {
 	intent, ok := GetIntent(intentType)
 	if !ok {
 		return nil, errors.Errorf("no intent of type '%s' registered", intentType)
 	}
 
-	err := db.FindOneQ(IntentCollection, db.Query(bson.M{"_id": id}), intent)
+	err := db.FindOneQContext(ctx, IntentCollection, db.Query(bson.M{"_id": id}), intent)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}

@@ -50,7 +50,7 @@ func GetProjectIdFromParams(ctx context.Context, paramsMap map[string]string) (s
 		if !patch.IsValidId(patchID) {
 			return "", http.StatusBadRequest, errors.New("not a valid patch ID")
 		}
-		projectID, err = patch.FindProjectForPatch(patch.NewId(patchID))
+		projectID, err = patch.FindProjectForPatch(ctx, patch.NewId(patchID))
 		if err != nil {
 			return "", http.StatusNotFound, errors.Wrapf(err, "finding project for patch '%s'", patchID)
 		}
@@ -58,7 +58,7 @@ func GetProjectIdFromParams(ctx context.Context, paramsMap map[string]string) (s
 
 	buildID := paramsMap[buildIdKey]
 	if projectID == "" && buildID != "" {
-		projectID, err = build.FindProjectForBuild(buildID)
+		projectID, err = build.FindProjectForBuild(ctx, buildID)
 		if err != nil {
 			return "", http.StatusNotFound, errors.Wrapf(err, "finding project for build '%s'", buildID)
 		}

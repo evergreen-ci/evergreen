@@ -96,7 +96,7 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 
 	var err error
 	if j.intent == nil {
-		j.intent, err = patch.FindIntent(j.IntentID, j.IntentType)
+		j.intent, err = patch.FindIntent(ctx, j.IntentID, j.IntentType)
 		if err != nil {
 			j.AddError(errors.Wrapf(err, "finding patch intent '%s'", j.IntentID))
 			return
@@ -688,7 +688,7 @@ func (j *patchIntentProcessor) setToPreviousPatchDefinition(ctx context.Context,
 	var reusePatch *patch.Patch
 	var err error
 	if patchId == "" {
-		reusePatch, err = patch.FindOne(patch.MostRecentPatchByUserAndProject(j.user.Username(), project.Identifier))
+		reusePatch, err = patch.FindOne(ctx, patch.MostRecentPatchByUserAndProject(j.user.Username(), project.Identifier))
 		if err != nil {
 			return errors.Wrap(err, "querying for most recent patch")
 		}
@@ -696,7 +696,7 @@ func (j *patchIntentProcessor) setToPreviousPatchDefinition(ctx context.Context,
 			return errors.Errorf("no previous patch available")
 		}
 	} else {
-		reusePatch, err = patch.FindOneId(patchId)
+		reusePatch, err = patch.FindOneId(ctx, patchId)
 		if err != nil {
 			return errors.Wrapf(err, "querying for patch '%s'", patchId)
 		}
@@ -1040,7 +1040,7 @@ func (j *patchIntentProcessor) buildTriggerPatchDoc(ctx context.Context, patchDo
 
 	patchDoc.VariantsTasks = matchingTasks
 	if intent.ParentAsModule != "" || patchDoc.Triggers.SameBranchAsParent {
-		parentPatch, err := patch.FindOneId(patchDoc.Triggers.ParentPatch)
+		parentPatch, err := patch.FindOneId(ctx, patchDoc.Triggers.ParentPatch)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "getting parent patch '%s'", patchDoc.Triggers.ParentPatch)
 		}
