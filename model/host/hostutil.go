@@ -1022,7 +1022,7 @@ func (h *Host) AgentCommand(settings *evergreen.Settings, executablePath string)
 	if executablePath == "" {
 		executablePath = h.Distro.AbsPathCygwinCompatible(h.Distro.HomeDir(), h.Distro.BinaryName())
 	}
-	return []string{
+	args := []string{
 		executablePath,
 		"agent",
 		fmt.Sprintf("--api_server=%s", settings.Api.URL),
@@ -1033,6 +1033,11 @@ func (h *Host) AgentCommand(settings *evergreen.Settings, executablePath string)
 		fmt.Sprintf("--working_directory=%s", h.Distro.WorkDir),
 		"--cleanup",
 	}
+
+	if h.Distro.SingleTaskDistro {
+		args = append(args, "--single_task_distro")
+	}
+	return args
 }
 
 // AgentEnv returns the environment variables required to start the agent.
@@ -1071,6 +1076,9 @@ func (h *Host) AgentMonitorOptions(settings *evergreen.Settings) *options.Create
 		"--log_output=file",
 		fmt.Sprintf("--log_prefix=%s", filepath.Join(h.Distro.WorkDir, "agent.monitor")),
 	)
+	if h.Distro.SingleTaskDistro {
+		args = append(args, "--single_task_distro")
+	}
 
 	return &options.Create{
 		Args:        args,

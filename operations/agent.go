@@ -25,6 +25,7 @@ const (
 	agentCloudProviderFlagName = "provider"
 	agentHostIDFlagName        = "host_id"
 	agentHostSecretFlagName    = "host_secret"
+	singleTaskDistroFlagName   = "single_task_distro"
 )
 
 func Agent() cli.Command {
@@ -112,6 +113,10 @@ func Agent() cli.Command {
 				Name:  joinFlagNames(versionFlagName, "v"),
 				Usage: "print the agent revision of the current binary and exit",
 			},
+			cli.BoolFlag{
+				Name:  singleTaskDistroFlagName,
+				Usage: "marks the agent as running in single task distro",
+			},
 		},
 		Before: mergeBeforeFuncs(
 			func(c *cli.Context) error {
@@ -159,6 +164,7 @@ func Agent() cli.Command {
 				Cleanup:                    c.Bool(cleanupFlagName),
 				CloudProvider:              c.String(agentCloudProviderFlagName),
 				SendTaskLogsToGlobalSender: c.Bool(sendTaskLogsToGlobalSenderFlagName),
+				SingleTaskDistro:           c.Bool(singleTaskDistroFlagName),
 			}
 
 			// Once the agent has retrieved the host ID and secret, unset those
@@ -180,6 +186,7 @@ func Agent() cli.Command {
 				"commands": command.RegisteredCommandNames(),
 				"dir":      opts.WorkingDirectory,
 				"host_id":  opts.HostID,
+				"single":   opts.SingleTaskDistro,
 			})
 
 			ctx, cancel := context.WithCancel(context.Background())
