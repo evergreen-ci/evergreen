@@ -122,7 +122,7 @@ func (g *GithubAppAuth) CreateCachedInstallationToken(ctx context.Context, owner
 		return "", errors.Wrap(err, "creating installation token")
 	}
 
-	ghInstallationTokenCache2.Put(id, token, createdAt.Add(lifetime))
+	ghInstallationTokenCache2.Put(id, token, createdAt.Add(MaxInstallationTokenLifetime))
 
 	return token, errors.Wrapf(err, "getting installation token for '%s/%s'", owner, repo)
 }
