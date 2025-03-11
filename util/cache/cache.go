@@ -19,6 +19,7 @@ type cache[T any] struct {
 	mu    sync.RWMutex
 }
 
+// New creates a new in-memory cache.
 func New[T any]() *cache[T] {
 	return &cache[T]{
 		cache: make(map[string]cachedValue[T]),
@@ -26,6 +27,8 @@ func New[T any]() *cache[T] {
 	}
 }
 
+// Get returns the value for the given key if it exists and a boolean indicating
+// if the value was found.
 func (c *cache[T]) Get(id string, lifetime time.Duration) (T, bool) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -43,6 +46,7 @@ func (c *cache[T]) Get(id string, lifetime time.Duration) (T, bool) {
 	return cachedToken.value, true
 }
 
+// Put adds a value to the cache with the given expiration time.
 func (c *cache[T]) Put(id string, value T, expiresAt time.Time) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
