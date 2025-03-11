@@ -253,7 +253,7 @@ func TestPodTerminationJob(t *testing.T) {
 			require.NotZero(t, dbPod)
 			assert.Equal(t, pod.StatusTerminated, dbPod.Status)
 
-			dbDisp, err := dispatcher.FindOneByID(pd.ID)
+			dbDisp, err := dispatcher.FindOneByID(ctx, pd.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbDisp)
 			assert.Equal(t, []string{"another_pod_id"}, dbDisp.PodIDs, "pod should have been removed from dispatcher's set of pods")
@@ -317,7 +317,7 @@ func TestPodTerminationJob(t *testing.T) {
 			require.NotZero(t, dbPod)
 			assert.Equal(t, pod.StatusTerminated, dbPod.Status)
 
-			dbDisp, err := dispatcher.FindOneByID(pd.ID)
+			dbDisp, err := dispatcher.FindOneByID(ctx, pd.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbDisp)
 			assert.Empty(t, dbDisp.PodIDs, "terminated pod should have been removed from dispatcher")

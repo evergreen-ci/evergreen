@@ -211,7 +211,7 @@ func (j *podCreationJob) logTaskTimingStats(ctx context.Context) error {
 		return nil
 	}
 
-	disp, err := dispatcher.FindOneByPodID(j.pod.ID)
+	disp, err := dispatcher.FindOneByPodID(ctx, j.pod.ID)
 	if err != nil {
 		return errors.Wrap(err, "finding dispatcher for task")
 	}

@@ -83,7 +83,7 @@ func TestPodAllocatorJob(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, storedPodSecret, podSecret.Value)
 
-			dbDispatcher, err := dispatcher.FindOneByGroupID(dispatcher.GetGroupID(&tsk))
+			dbDispatcher, err := dispatcher.FindOneByGroupID(t.Context(), dispatcher.GetGroupID(&tsk))
 			require.NoError(t, err)
 			require.NotZero(t, dbDispatcher)
 			assert.Equal(t, []string{dbPod.ID}, dbDispatcher.PodIDs)
@@ -136,7 +136,7 @@ func TestPodAllocatorJob(t *testing.T) {
 
 			assert.Equal(t, pRef.ContainerSecrets[1].ExternalID, dbPod.TaskContainerCreationOpts.RepoCredsExternalID)
 
-			dbDispatcher, err := dispatcher.FindOneByGroupID(dispatcher.GetGroupID(&tsk))
+			dbDispatcher, err := dispatcher.FindOneByGroupID(t.Context(), dispatcher.GetGroupID(&tsk))
 			require.NoError(t, err)
 			require.NotZero(t, dbDispatcher)
 			assert.Equal(t, []string{dbPod.ID}, dbDispatcher.PodIDs)
@@ -167,7 +167,7 @@ func TestPodAllocatorJob(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Zero(t, dbPod)
 
-			dbDispatcher, err := dispatcher.FindOne(db.Query(bson.M{}))
+			dbDispatcher, err := dispatcher.FindOne(ctx, db.Query(bson.M{}))
 			assert.NoError(t, err)
 			assert.Zero(t, dbDispatcher)
 
@@ -193,7 +193,7 @@ func TestPodAllocatorJob(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Zero(t, dbPod)
 
-			dbDispatcher, err := dispatcher.FindOne(db.Query(bson.M{}))
+			dbDispatcher, err := dispatcher.FindOne(ctx, db.Query(bson.M{}))
 			assert.NoError(t, err)
 			assert.Zero(t, dbDispatcher)
 

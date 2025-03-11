@@ -187,7 +187,7 @@ func (j *podTerminationJob) fixStrandedTasks(ctx context.Context) error {
 		return errors.Wrapf(err, "fixing container task stranded on pod '%s'", j.pod.ID)
 	}
 
-	disp, err := dispatcher.FindOneByPodID(j.pod.ID)
+	disp, err := dispatcher.FindOneByPodID(ctx, j.pod.ID)
 	if err != nil {
 		return errors.Wrapf(err, "finding dispatcher associated with pod '%s'", j.pod.ID)
 	}

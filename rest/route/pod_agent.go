@@ -242,7 +242,7 @@ func (h *podAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 
-	pd, err := h.findDispatcher()
+	pd, err := h.findDispatcher(ctx)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
@@ -316,8 +316,8 @@ func (h *podAgentNextTask) setAgentFirstContactTime(ctx context.Context, p *pod.
 	})
 }
 
-func (h *podAgentNextTask) findDispatcher() (*dispatcher.PodDispatcher, error) {
-	pd, err := dispatcher.FindOneByPodID(h.podID)
+func (h *podAgentNextTask) findDispatcher(ctx context.Context) (*dispatcher.PodDispatcher, error) {
+	pd, err := dispatcher.FindOneByPodID(ctx, h.podID)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,

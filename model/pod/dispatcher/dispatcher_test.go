@@ -32,7 +32,7 @@ func TestUpsertAtomically(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, 1, change.Updated)
 
-			dbDispatcher, err := FindOneByID(pd.ID)
+			dbDispatcher, err := FindOneByID(t.Context(), pd.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbDispatcher)
 			assert.Equal(t, pd.GroupID, dbDispatcher.GroupID)
@@ -44,7 +44,7 @@ func TestUpsertAtomically(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, 1, change.Updated)
 
-			dbDispatcher, err := FindOneByID(pd.ID)
+			dbDispatcher, err := FindOneByID(t.Context(), pd.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbDispatcher)
 			assert.Equal(t, pd.GroupID, dbDispatcher.GroupID)
@@ -67,11 +67,11 @@ func TestUpsertAtomically(t *testing.T) {
 			assert.Error(t, err)
 			assert.Zero(t, change)
 
-			dbDispatcher, err := FindOneByID(modified.ID)
+			dbDispatcher, err := FindOneByID(t.Context(), modified.ID)
 			assert.NoError(t, err)
 			assert.Zero(t, dbDispatcher)
 
-			dbDispatcher, err = FindOneByID(pd.ID)
+			dbDispatcher, err = FindOneByID(t.Context(), pd.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbDispatcher)
 			assert.Equal(t, pd.GroupID, dbDispatcher.GroupID)
@@ -90,7 +90,7 @@ func TestUpsertAtomically(t *testing.T) {
 			assert.Error(t, err)
 			assert.Zero(t, change)
 
-			dbDispatcher, err := FindOneByID(pd.ID)
+			dbDispatcher, err := FindOneByID(t.Context(), pd.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbDispatcher)
 			assert.Equal(t, pd.GroupID, dbDispatcher.GroupID)
@@ -109,7 +109,7 @@ func TestUpsertAtomically(t *testing.T) {
 			assert.Error(t, err)
 			assert.Zero(t, change)
 
-			dbDispatcher, err := FindOneByID(pd.ID)
+			dbDispatcher, err := FindOneByID(t.Context(), pd.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbDispatcher)
 			assert.Equal(t, pd.GroupID, dbDispatcher.GroupID)
@@ -207,7 +207,7 @@ func TestAssignNextTask(t *testing.T) {
 	}
 
 	checkDispatcherTasks := func(t *testing.T, pd PodDispatcher, taskIDs []string) {
-		dbDispatcher, err := FindOneByID(pd.ID)
+		dbDispatcher, err := FindOneByID(t.Context(), pd.ID)
 		require.NoError(t, err)
 		require.NotZero(t, dbDispatcher)
 
@@ -465,7 +465,7 @@ func TestRemovePod(t *testing.T) {
 			require.NoError(t, pd.Insert())
 			require.NoError(t, pd.RemovePod(ctx, env, podID))
 
-			dbDisp, err := FindOneByID(pd.ID)
+			dbDisp, err := FindOneByID(t.Context(), pd.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbDisp)
 			assert.Empty(t, dbDisp.TaskIDs)
@@ -477,7 +477,7 @@ func TestRemovePod(t *testing.T) {
 
 			require.NoError(t, pd.RemovePod(ctx, env, podID))
 
-			dbDisp, err := FindOneByID(pd.ID)
+			dbDisp, err := FindOneByID(t.Context(), pd.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbDisp)
 			assert.Empty(t, dbDisp.TaskIDs)
@@ -533,7 +533,7 @@ func TestRemovePod(t *testing.T) {
 
 			require.NoError(t, pd.RemovePod(ctx, env, podID))
 
-			dbDisp, err := FindOneByID(pd.ID)
+			dbDisp, err := FindOneByID(t.Context(), pd.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbDisp)
 			assert.Empty(t, dbDisp.TaskIDs)
@@ -568,7 +568,7 @@ func TestRemovePod(t *testing.T) {
 
 			assert.Error(t, pd.RemovePod(ctx, env, "nonexistent"))
 
-			dbDisp, err := FindOneByID(pd.ID)
+			dbDisp, err := FindOneByID(t.Context(), pd.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbDisp)
 			assert.Equal(t, []string{"task_id"}, pd.TaskIDs)
@@ -594,7 +594,7 @@ func TestRemovePod(t *testing.T) {
 
 			assert.Error(t, pd.RemovePod(ctx, env, podID))
 
-			dbDisp, err := FindOneByID(pd.ID)
+			dbDisp, err := FindOneByID(t.Context(), pd.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbDisp)
 			assert.Equal(t, []string{tsk.Id}, pd.TaskIDs)
