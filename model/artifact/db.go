@@ -18,7 +18,7 @@ var (
 	NameKey        = bsonutil.MustHaveTag(File{}, "Name")
 	LinkKey        = bsonutil.MustHaveTag(File{}, "Link")
 	ContentTypeKey = bsonutil.MustHaveTag(File{}, "ContentType")
-	AwsSecretKey   = bsonutil.MustHaveTag(File{}, "AwsSecret")
+	AWSSecretKey   = bsonutil.MustHaveTag(File{}, "AWSSecret")
 )
 
 type TaskIDAndExecution struct {
@@ -83,7 +83,7 @@ func BySecret(secret string) db.Q {
 	return db.Query(bson.M{
 		FilesKey: bson.M{
 			"$elemMatch": bson.M{
-				AwsSecretKey: secret,
+				AWSSecretKey: secret,
 			},
 		},
 	})
