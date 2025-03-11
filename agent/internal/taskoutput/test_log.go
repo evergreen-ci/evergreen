@@ -27,6 +27,8 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+var defaultTestLogSequenceSize = int64(1e7)
+
 // AppendTestLog appends log lines to the specified test log for the given task
 // run.
 func AppendTestLog(ctx context.Context, tsk *task.Task, redactionOpts redactor.RedactionOptions, testLog *testlog.TestLog) error {
@@ -84,8 +86,7 @@ func (h *testLogDirectoryHandler) run(ctx context.Context) error {
 	defer span.End()
 
 	if h.sequenceSize <= 0 {
-		// Set default sequence size to 10MB.
-		h.sequenceSize = 1e7
+		h.sequenceSize = defaultTestLogSequenceSize
 	}
 
 	h.getSpecFile()
@@ -96,10 +97,7 @@ func (h *testLogDirectoryHandler) run(ctx context.Context) error {
 		offset   int64
 		limit    int64
 	}
-	var (
-		wg         sync.WaitGroup
-		fileChunks []fileChunk
-	)
+	var fileChunks []fileChunk
 	ignore := filepath.Join(h.dir, testLogSpecFilename)
 	err := filepath.WalkDir(h.dir, func(path string, info fs.DirEntry, err error) error {
 		if err != nil {
@@ -149,6 +147,8 @@ func (h *testLogDirectoryHandler) run(ctx context.Context) error {
 		work <- chunk
 	}
 	close(work)
+
+	var wg sync.WaitGroup
 	for i := 0; i < runtime.NumCPU(); i++ {
 		wg.Add(1)
 		go func() {
