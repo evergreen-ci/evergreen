@@ -220,7 +220,7 @@ func RemoveContext(ctx context.Context, collection string, query any) error {
 }
 
 // RemoveAll removes all items matching the query from the specified collection.
-func RemoveAll(collection string, query any) error {
+func RemoveAll(ctx context.Context, collection string, query any) error {
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
 		return err
@@ -232,6 +232,7 @@ func RemoveAll(collection string, query any) error {
 }
 
 // Update updates one matching document in the collection.
+// DEPRECATED: Use UpdateContext instead.
 func Update(collection string, query any, update any) error {
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {

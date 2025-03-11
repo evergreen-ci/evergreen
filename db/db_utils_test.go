@@ -151,7 +151,7 @@ func TestDBUtils(t *testing.T) {
 			So(count, ShouldEqual, 3)
 
 			// remove just the first
-			So(RemoveAll(collection, bson.M{"field_one": "1"}),
+			So(RemoveAll(t.Context(), collection, bson.M{"field_one": "1"}),
 				ShouldBeNil)
 			count, err = Count(collection, bson.M{})
 			So(err, ShouldBeNil)
