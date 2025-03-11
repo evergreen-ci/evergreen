@@ -7,11 +7,11 @@ import (
 	"net/http"
 	"reflect"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/bradleyfalzon/ghinstallation"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/util/cache"
 	"github.com/evergreen-ci/utility"
 	"github.com/golang-jwt/jwt"
 	"github.com/google/go-github/v52/github"
@@ -243,77 +243,20 @@ func getInstallationIDFromGitHub(ctx context.Context, authFields *GithubAppAuth,
 	return installation.GetID(), nil
 }
 
-// cachedInstallationToken represents a GitHub installation token that's
-// cached in memory.
-type cachedInstallationToken struct {
-	installationToken string
-	expiresAt         time.Time
-}
-
-func (c *cachedInstallationToken) isExpired(lifetime time.Duration) bool {
-	return time.Until(c.expiresAt) < lifetime
-}
-
-// installationTokenCache is a concurrency-safe cache that maps a unique key
-// (composed of the installation ID and the token's permissions) to the cached
-// GitHub installation token.
-type installationTokenCache struct {
-	cache map[string]cachedInstallationToken
-	mu    sync.RWMutex
-}
-
 // ghInstallationTokenCache is the in-memory instance of the cache for GitHub
 // installation tokens.
-var ghInstallationTokenCache = installationTokenCache{
-	cache: make(map[string]cachedInstallationToken),
-	mu:    sync.RWMutex{},
-}
+var ghInstallationTokenCache2 = cache.New[string]()
 
-// get gets an installation token from the cache by its installation ID and permissions. It will
-// not return a token if the token will expire before the requested lifetime.
-func (c *installationTokenCache) get(installationID int64, permissions *github.InstallationPermissions, lifetime time.Duration) string {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	id, err := createCacheID(installationID, permissions)
-	if err != nil {
-		return ""
-	}
-	cachedToken, ok := c.cache[id]
-	if !ok {
-		return ""
-	}
-	if cachedToken.isExpired(lifetime) {
-		return ""
-	}
-
-	return cachedToken.installationToken
-}
-
-// MaxInstallationTokenLifetime is the maximum amount of time that an
-// installation token can be used before it expires.
 const MaxInstallationTokenLifetime = time.Hour
-
-func (c *installationTokenCache) put(installationID int64, installationToken string, permissions *github.InstallationPermissions, createdAt time.Time) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	id, err := createCacheID(installationID, permissions)
-	if err != nil {
-		return
-	}
-	c.cache[id] = cachedInstallationToken{
-		installationToken: installationToken,
-		expiresAt:         createdAt.Add(MaxInstallationTokenLifetime),
-	}
-}
 
 // createCacheID creates an ID based on the installation ID and the token's permissions.
 // This allows us to put and get installation tokens from the cache based on the installation ID
 // and the permissions that the token is scoped to.
 // The format of the ID is: "<installationID>_<permissionKey:permissionValue>_<permissionKey:permissionValue>...".
-func createCacheID(installationID int64, permissions *github.InstallationPermissions) (string, error) {
+func createCacheID(installationID int64, permissions *github.InstallationPermissions) string {
 	id := fmt.Sprint(installationID)
 	if permissions == nil {
-		return id, nil
+		return id
 	}
 	permissionsStructVal := reflect.ValueOf(permissions).Elem()
 	var permissionPairs []string
@@ -323,21 +266,21 @@ func createCacheID(installationID int64, permissions *github.InstallationPermiss
 	// be concatenated into the cache ID.
 	for i := 0; i < permissionsStructVal.NumField(); i++ {
 		field := permissionsStructVal.Field(i)
-		if field.Kind() != reflect.Ptr || field.Elem().Kind() != reflect.String {
+		if field.Kind() != reflect.Ptr ||
+			field.Elem().Kind() != reflect.String ||
+			field.IsNil() {
 			continue
 		}
 
-		if !field.IsNil() {
-			fieldValue, ok := field.Interface().(*string)
-			if !ok {
-				return "", errors.New("failed to convert permission field to string")
-			}
-			permissionPairs = append(permissionPairs, fmt.Sprintf("%s:%s", permissionsStructVal.Type().Field(i).Name, utility.FromStringPtr(fieldValue)))
+		fieldValue, ok := field.Interface().(*string)
+		if !ok {
+			continue
 		}
+		permissionPairs = append(permissionPairs, fmt.Sprintf("%s:%s", permissionsStructVal.Type().Field(i).Name, utility.FromStringPtr(fieldValue)))
 	}
 	concatenatedPermissions := strings.ToLower(strings.Join(permissionPairs, "_"))
 	if concatenatedPermissions != "" {
 		id += "_" + concatenatedPermissions
 	}
-	return id, nil
+	return id
 }
