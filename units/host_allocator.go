@@ -27,6 +27,7 @@ const (
 	hostAllocatorJobName         = "host-allocator"
 	hostAllocatorAttributePrefix = "evergreen.host_allocator"
 	maxHostAllocatorJobTime      = 10 * time.Minute
+	maxIntentHosts               = 5000
 )
 
 func init() {
@@ -197,6 +198,25 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	//////////////////////
 	// host-spawning phase
 	//////////////////////
+
+	numIntentHosts, err := host.CountIntentHosts(ctx)
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"runner":   hostAllocatorJobName,
+			"instance": j.ID(),
+			"distro":   j.DistroID,
+			"message":  "failed to count intent hosts",
+		}))
+	}
+	if numIntentHosts > maxIntentHosts {
+		grip.Info(message.Fields{
+			"runner":   hostAllocatorJobName,
+			"instance": j.ID(),
+			"distro":   j.DistroID,
+			"message":  "too many intent hosts, skipping host allocation",
+		})
+		return
+	}
 
 	hostSpawningBegins := time.Now()
 	// Number of new hosts to be allocated

@@ -4622,6 +4622,46 @@ func TestCountSpawnhostsWithNoExpirationByUser(t *testing.T) {
 	assert.Equal(t, 0, count)
 }
 
+func TestCountIntentHosts(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	require.NoError(t, db.ClearCollections(Collection))
+	hosts := []Host{
+		{
+			Id:        "evg-host-1",
+			Status:    evergreen.HostRunning,
+			StartedBy: evergreen.User,
+		},
+		{
+			Id:        "evg-host-2",
+			Status:    evergreen.HostRunning,
+			StartedBy: evergreen.User,
+		},
+		{
+			Id:        "evg-host-3",
+			Status:    evergreen.HostTerminated,
+			StartedBy: evergreen.User,
+		},
+		{
+			Id:        "host-4",
+			Status:    evergreen.HostRunning,
+			StartedBy: evergreen.User,
+		},
+		{
+			Id:        "host-5",
+			Status:    evergreen.HostStarting,
+			StartedBy: evergreen.User,
+		},
+	}
+	for _, h := range hosts {
+		assert.NoError(t, h.Insert(ctx))
+	}
+	count, err := CountIntentHosts(ctx)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, count)
+}
+
 func TestFindSpawnhostsWithNoExpirationToExtend(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
