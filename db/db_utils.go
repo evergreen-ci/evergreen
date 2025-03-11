@@ -374,7 +374,6 @@ func UpdateAll(collection string, query any, update any) (*db.ChangeInfo, error)
 }
 
 // Upsert run the specified update against the collection as an upsert operation.
-// DEPRECATED: Use UpsertContext instead.
 func Upsert(collection string, query any, update any) (*db.ChangeInfo, error) {
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
