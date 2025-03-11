@@ -129,7 +129,7 @@ func EvalProjectTriggers(ctx context.Context, e *event.EventLogEntry, processor 
 		if data.Status != evergreen.BuildFailed && data.Status != evergreen.BuildSucceeded {
 			return nil, nil
 		}
-		b, err := build.FindOneId(e.ResourceId)
+		b, err := build.FindOneId(ctx, e.ResourceId)
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding build '%s'", e.ResourceId)
 		}

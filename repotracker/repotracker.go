@@ -363,7 +363,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 			}
 		}
 
-		_, err = model.CreateManifest(v, pInfo.Project.Modules, ref)
+		_, err = model.CreateManifest(ctx, v, pInfo.Project.Modules, ref)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":            "error creating manifest",

@@ -1,6 +1,7 @@
 package notification
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -98,9 +99,9 @@ func InsertMany(items ...Notification) error {
 	return db.InsertManyUnordered(Collection, interfaces...)
 }
 
-func Find(id string) (*Notification, error) {
+func Find(ctx context.Context, id string) (*Notification, error) {
 	notification := Notification{}
-	err := db.FindOneQ(Collection, byID(id), &notification)
+	err := db.FindOneQContext(ctx, Collection, byID(id), &notification)
 
 	if adb.ResultsNotFound(err) {
 		return nil, nil

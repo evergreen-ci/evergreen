@@ -393,7 +393,7 @@ func (r *queryResolver) Pod(ctx context.Context, podID string) (*restModel.APIPo
 
 // Patch is the resolver for the patch field.
 func (r *queryResolver) Patch(ctx context.Context, patchID string) (*restModel.APIPatch, error) {
-	apiPatch, err := data.FindPatchById(patchID)
+	apiPatch, err := data.FindPatchById(ctx, patchID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch '%s': %s", patchID, err.Error()))
 	}
@@ -1107,7 +1107,7 @@ func (r *queryResolver) HasVersion(ctx context.Context, patchID string) (bool, e
 	}
 
 	if patch.IsValidId(patchID) {
-		p, err := patch.FindOneId(patchID)
+		p, err := patch.FindOneId(ctx, patchID)
 		if err != nil {
 			return false, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch '%s': %s", patchID, err.Error()))
 		}

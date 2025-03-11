@@ -255,7 +255,7 @@ func (s *eventSuite) TestFindByID() {
 		Data:         registry.newEventFromType(ResourceTypeHost),
 	}
 	s.Require().NoError(e.Log())
-	dbEvent, err := FindByID(e.ID)
+	dbEvent, err := FindByID(s.T().Context(), e.ID)
 	s.Require().NoError(err)
 	s.Require().NotZero(dbEvent)
 	s.Equal(e.ResourceId, dbEvent.ResourceId)
@@ -286,7 +286,7 @@ func (s *eventSuite) TestMarkProcessed() {
 	}))
 
 	var fetchedEvent EventLogEntry
-	s.NoError(db.FindOneQ(EventCollection, db.Q{}, &fetchedEvent))
+	s.NoError(db.FindOneQContext(s.T().Context(), EventCollection, db.Q{}, &fetchedEvent))
 
 	processed, ptime = fetchedEvent.Processed()
 	s.False(processed)
@@ -388,7 +388,7 @@ func (s *eventSuite) TestFindLastProcessedEvent() {
 		s.NoError(db.Insert(EventCollection, events[i]))
 	}
 
-	e, err := FindLastProcessedEvent()
+	e, err := FindLastProcessedEvent(s.T().Context())
 	s.NoError(err)
 	s.Require().NotNil(e)
 	s.Equal("macos.example.com2", e.ResourceId)

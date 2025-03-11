@@ -308,7 +308,7 @@ func TestFinalizePatch(t *testing.T) {
 			assert.Len(t, version.Parameters, 1)
 			assert.Equal(t, ppStorageMethod, version.ProjectStorageMethod, "version's project storage method should match that of its patch")
 
-			dbPatch, err := patch.FindOneId(p.Id.Hex())
+			dbPatch, err := patch.FindOneId(t.Context(), p.Id.Hex())
 			require.NoError(t, err)
 			require.NotZero(t, dbPatch)
 			assert.True(t, dbPatch.Activated)
@@ -367,7 +367,7 @@ func TestFinalizePatch(t *testing.T) {
 			assert.NotNil(t, version)
 			// Ensure that the manifest was created and that auto_update worked for
 			// sandbox module but was skipped for evergreen
-			mfst, err := manifest.FindOne(manifest.ById(p.Id.Hex()))
+			mfst, err := manifest.FindOne(ctx, manifest.ById(p.Id.Hex()))
 			require.NoError(t, err)
 			assert.NotNil(t, mfst)
 			assert.Len(t, mfst.Modules, 2)
@@ -408,7 +408,7 @@ func TestFinalizePatch(t *testing.T) {
 			assert.Len(t, version.Parameters, 1)
 			assert.Equal(t, evergreen.ProjectStorageMethodDB, version.ProjectStorageMethod, "version's project storage method should be set")
 
-			dbPatch, err := patch.FindOneId(p.Id.Hex())
+			dbPatch, err := patch.FindOneId(t.Context(), p.Id.Hex())
 			require.NoError(t, err)
 			require.NotZero(t, dbPatch)
 			assert.True(t, dbPatch.Activated)
@@ -843,7 +843,7 @@ func TestAddNewPatch(t *testing.T) {
 	}
 	_, _, err := addNewBuilds(ctx, creationInfo, nil)
 	assert.NoError(err)
-	dbBuild, err := build.FindOne(db.Q{})
+	dbBuild, err := build.FindOne(t.Context(), db.Q{})
 	assert.NoError(err)
 	require.NotNil(t, dbBuild)
 	assert.Len(dbBuild.Tasks, 2)
@@ -944,7 +944,7 @@ func TestAddNewPatchWithMissingBaseVersion(t *testing.T) {
 	}
 	_, _, err := addNewBuilds(context.Background(), creationInfo, nil)
 	assert.NoError(err)
-	dbBuild, err := build.FindOne(db.Q{})
+	dbBuild, err := build.FindOne(t.Context(), db.Q{})
 	assert.NoError(err)
 	assert.NotNil(dbBuild)
 	assert.Len(dbBuild.Tasks, 2)
@@ -1094,7 +1094,7 @@ func TestConfigurePatchWithOnlyUpdatedDescription(t *testing.T) {
 	_, err := ConfigurePatch(ctx, &evergreen.Settings{}, p, nil, pRef, req)
 	assert.NoError(t, err)
 
-	p, err = patch.FindOneId(id.Hex())
+	p, err = patch.FindOneId(t.Context(), id.Hex())
 	assert.NoError(t, err)
 	require.NotNil(t, p)
 	assert.Equal(t, p.Description, req.Description)

@@ -589,7 +589,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	for _, deleteSub := range h.apiNewProjectRef.DeleteSubscriptions {
 		toDelete = append(toDelete, utility.FromStringPtr(deleteSub))
 	}
-	if err = data.DeleteSubscriptions(h.newProjectRef.Id, toDelete); err != nil {
+	if err = data.DeleteSubscriptions(ctx, h.newProjectRef.Id, toDelete); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "deleting subscriptions for project '%s'", h.project))
 	}
 

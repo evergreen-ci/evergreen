@@ -58,7 +58,7 @@ func TestMakeJiraTicket(t *testing.T) {
 		require.True(t, ok)
 		assert.EqualValues(t, expectedSub, jiraSub)
 
-		dbNotification, err := notification.Find(n.ID)
+		dbNotification, err := notification.Find(t.Context(), n.ID)
 		require.NoError(t, err)
 		require.NotZero(t, dbNotification)
 		assert.Equal(t, n.Subscriber.Type, dbNotification.Subscriber.Type)

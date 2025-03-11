@@ -82,7 +82,7 @@ func (j *eventNotifierJob) Run(ctx context.Context) {
 		return
 	}
 
-	e, err := event.FindByID(j.EventID)
+	e, err := event.FindByID(ctx, j.EventID)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "finding event '%s'", j.EventID))
 		return

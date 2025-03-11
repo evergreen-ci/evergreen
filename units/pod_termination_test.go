@@ -229,7 +229,7 @@ func TestPodTerminationJob(t *testing.T) {
 			require.NotZero(t, dbTask)
 			assert.True(t, dbTask.ShouldAllocateContainer(), "stranded task should have been restarted to re-attempt allocation")
 
-			dbBuild, err := build.FindOneId(b.Id)
+			dbBuild, err := build.FindOneId(t.Context(), b.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbBuild)
 			assert.Equal(t, evergreen.BuildCreated, dbBuild.Status, "build should have been updated after resetting stranded task")
@@ -334,7 +334,7 @@ func TestPodTerminationJob(t *testing.T) {
 			assert.False(t, dbTask1.ShouldAllocateContainer(), "task that has used up all container allocation attempts should not be able to allocate a new container")
 			assert.True(t, dbTask1.IsFinished(), "task that has used up all container allocation attempts should be finished")
 
-			dbBuild, err := build.FindOneId(b.Id)
+			dbBuild, err := build.FindOneId(t.Context(), b.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbBuild)
 			assert.True(t, dbBuild.IsFinished(), "build should be updated after its task has run out of container allocation attempts")

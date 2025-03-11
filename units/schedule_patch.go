@@ -13,7 +13,7 @@ import (
 // SchedulePatch schedules a patch. It returns an error and an HTTP status code.
 func SchedulePatch(ctx context.Context, env evergreen.Environment, patchId string, version *model.Version, patchUpdateReq model.PatchUpdate) (int, error) {
 	var err error
-	p, err := patch.FindOneId(patchId)
+	p, err := patch.FindOneId(ctx, patchId)
 	if err != nil {
 		return http.StatusInternalServerError, errors.Wrapf(err, "loading patch '%s'", patchId)
 	}

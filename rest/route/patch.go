@@ -73,7 +73,7 @@ func (p *patchChangeStatusHandler) Parse(ctx context.Context, r *http.Request) e
 
 func (p *patchChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 	user := MustHaveUser(ctx)
-	foundPatch, err := data.FindPatchById(p.patchId)
+	foundPatch, err := data.FindPatchById(ctx, p.patchId)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding patch '%s'", p.patchId))
 	}
@@ -134,7 +134,7 @@ func (p *patchByIdHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (p *patchByIdHandler) Run(ctx context.Context) gimlet.Responder {
-	foundPatch, err := data.FindPatchById(p.patchId)
+	foundPatch, err := data.FindPatchById(ctx, p.patchId)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding patch '%s'", p.patchId))
 	}
@@ -177,7 +177,7 @@ func (p *patchRawHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (p *patchRawHandler) Run(ctx context.Context) gimlet.Responder {
-	rawPatches, err := data.GetRawPatches(p.patchID)
+	rawPatches, err := data.GetRawPatches(ctx, p.patchID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "getting raw patches for patch '%s'", p.patchID))
 	}
@@ -234,7 +234,7 @@ func (p *moduleRawHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (p *moduleRawHandler) Run(ctx context.Context) gimlet.Responder {
-	rawPatches, err := data.GetRawPatches(p.patchID)
+	rawPatches, err := data.GetRawPatches(ctx, p.patchID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting raw patches for patch '%s'", p.patchID))
 	}
@@ -453,7 +453,7 @@ func (p *patchAbortHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	// Patch may be deleted by abort (eg not finalized) and not found here
-	foundPatch, err := data.FindPatchById(p.patchId)
+	foundPatch, err := data.FindPatchById(ctx, p.patchId)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding patch '%s'", p.patchId))
 	}
@@ -500,7 +500,7 @@ func (p *patchRestartHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "restarting tasks in patch '%s'", p.patchId))
 	}
 
-	foundPatch, err := data.FindPatchById(p.patchId)
+	foundPatch, err := data.FindPatchById(ctx, p.patchId)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding patch '%s'", p.patchId))
 	}
@@ -535,7 +535,7 @@ func (p *countEstimatedGeneratedTasksHandler) Parse(ctx context.Context, r *http
 }
 
 func (p *countEstimatedGeneratedTasksHandler) Run(ctx context.Context) gimlet.Responder {
-	existingPatch, err := patch.FindOneId(p.patchId)
+	existingPatch, err := patch.FindOneId(ctx, p.patchId)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting patch '%s'", p.patchId))
 	}
@@ -613,7 +613,7 @@ func (p *schedulePatchHandler) Parse(ctx context.Context, r *http.Request) error
 		return errors.New("must specify a patch ID")
 	}
 	var err error
-	apiPatch, err := data.FindPatchById(p.patchId)
+	apiPatch, err := data.FindPatchById(ctx, p.patchId)
 	if err != nil {
 		return err
 	}

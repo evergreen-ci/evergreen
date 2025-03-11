@@ -1065,7 +1065,7 @@ func PopulateExpansions(ctx context.Context, t *task.Task, h *host.Host, appToke
 			upstreamProjectID = upstreamTask.Project
 		} else if t.TriggerType == ProjectTriggerLevelBuild {
 			var upstreamBuild *build.Build
-			upstreamBuild, err = build.FindOneId(t.TriggerID)
+			upstreamBuild, err = build.FindOneId(ctx, t.TriggerID)
 			if err != nil {
 				return nil, errors.Wrap(err, "finding build")
 			}
@@ -1111,7 +1111,7 @@ func PopulateExpansions(ctx context.Context, t *task.Task, h *host.Host, appToke
 	}
 	if evergreen.IsPatchRequester(v.Requester) {
 		var p *patch.Patch
-		p, err = patch.FindOne(patch.ByVersion(t.Version))
+		p, err = patch.FindOne(ctx, patch.ByVersion(t.Version))
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding patch for version '%s'", t.Version)
 		}

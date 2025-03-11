@@ -85,7 +85,7 @@ func (j *spawnhostExpirationWarningsJob) Run(ctx context.Context) {
 			j.AddError(errors.Wrap(ctx.Err(), "spawnhost expiration warning run canceled"))
 			return
 		}
-		if err = runSpawnHostExpirationWarningTriggers(&h); err != nil {
+		if err = runSpawnHostExpirationWarningTriggers(ctx, &h); err != nil {
 			j.AddError(errors.Wrap(err, "logging events for spawn host expiration"))
 			grip.Error(message.WrapError(err, message.Fields{
 				"runner":  "monitor",
@@ -107,17 +107,17 @@ func (j *spawnhostExpirationWarningsJob) Run(ctx context.Context) {
 			j.AddError(errors.Wrap(ctx.Err(), "temporary exemption expiration warning run canceled"))
 			return
 		}
-		if err = runHostTemporaryExemptionExpirationWarningTriggers(&h); err != nil {
+		if err = runHostTemporaryExemptionExpirationWarningTriggers(ctx, &h); err != nil {
 			j.AddError(errors.Wrap(err, "logging events for temporary exemption expiration"))
 		}
 	}
 }
 
-func shouldNotifyForSpawnhostExpiration(h *host.Host, numHours int) (bool, error) {
+func shouldNotifyForSpawnhostExpiration(ctx context.Context, h *host.Host, numHours int) (bool, error) {
 	if h == nil || h.ExpirationTime.IsZero() || time.Until(h.ExpirationTime) > (time.Duration(numHours)*time.Hour) {
 		return false, nil
 	}
-	rec, err := alertrecord.FindByMostRecentSpawnHostExpirationWithHours(h.Id, numHours)
+	rec, err := alertrecord.FindByMostRecentSpawnHostExpirationWithHours(ctx, h.Id, numHours)
 	if err != nil {
 		return false, err
 	}
@@ -132,11 +132,11 @@ func shouldNotifyForSpawnhostExpiration(h *host.Host, numHours int) (bool, error
 // be re-sent after one has already been sent.
 const hostRenotificationInterval = utility.Day
 
-func shouldNotifyForHostTemporaryExemptionExpiration(h *host.Host, numHours int) (bool, error) {
+func shouldNotifyForHostTemporaryExemptionExpiration(ctx context.Context, h *host.Host, numHours int) (bool, error) {
 	if utility.IsZeroTime(h.SleepSchedule.TemporarilyExemptUntil) || time.Until(h.SleepSchedule.TemporarilyExemptUntil) > time.Duration(numHours)*time.Hour {
 		return false, nil
 	}
-	rec, err := alertrecord.FindByMostRecentTemporaryExemptionExpirationWithHours(h.Id, numHours)
+	rec, err := alertrecord.FindByMostRecentTemporaryExemptionExpirationWithHours(ctx, h.Id, numHours)
 	if err != nil {
 		return false, err
 	}
@@ -147,8 +147,8 @@ func shouldNotifyForHostTemporaryExemptionExpiration(h *host.Host, numHours int)
 	return time.Since(rec.AlertTime) > hostRenotificationInterval, nil
 }
 
-func trySpawnHostExpirationNotification(h *host.Host, numHours int) error {
-	shouldExec, err := shouldNotifyForSpawnhostExpiration(h, numHours)
+func trySpawnHostExpirationNotification(ctx context.Context, h *host.Host, numHours int) error {
+	shouldExec, err := shouldNotifyForSpawnhostExpiration(ctx, h, numHours)
 	if err != nil {
 		return err
 	}
@@ -167,8 +167,8 @@ func trySpawnHostExpirationNotification(h *host.Host, numHours int) error {
 	return nil
 }
 
-func tryHostTemporaryExemptionExpirationNotification(h *host.Host, numHours int) error {
-	shouldExec, err := shouldNotifyForHostTemporaryExemptionExpiration(h, numHours)
+func tryHostTemporaryExemptionExpirationNotification(ctx context.Context, h *host.Host, numHours int) error {
+	shouldExec, err := shouldNotifyForHostTemporaryExemptionExpiration(ctx, h, numHours)
 	if err != nil {
 		return err
 	}
@@ -187,16 +187,16 @@ func tryHostTemporaryExemptionExpirationNotification(h *host.Host, numHours int)
 	return nil
 }
 
-func runSpawnHostExpirationWarningTriggers(h *host.Host) error {
+func runSpawnHostExpirationWarningTriggers(ctx context.Context, h *host.Host) error {
 	catcher := grip.NewSimpleCatcher()
-	catcher.Add(trySpawnHostExpirationNotification(h, 2))
-	catcher.Add(trySpawnHostExpirationNotification(h, 12))
+	catcher.Add(trySpawnHostExpirationNotification(ctx, h, 2))
+	catcher.Add(trySpawnHostExpirationNotification(ctx, h, 12))
 	return catcher.Resolve()
 }
 
-func runHostTemporaryExemptionExpirationWarningTriggers(h *host.Host) error {
+func runHostTemporaryExemptionExpirationWarningTriggers(ctx context.Context, h *host.Host) error {
 	catcher := grip.NewSimpleCatcher()
-	catcher.Add(tryHostTemporaryExemptionExpirationNotification(h, 2))
-	catcher.Add(tryHostTemporaryExemptionExpirationNotification(h, 12))
+	catcher.Add(tryHostTemporaryExemptionExpirationNotification(ctx, h, 2))
+	catcher.Add(tryHostTemporaryExemptionExpirationNotification(ctx, h, 12))
 	return catcher.Resolve()
 }

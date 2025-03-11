@@ -23,7 +23,8 @@ func TestCache(t *testing.T) {
 	t.Run("GetNonexistentKey", func(t *testing.T) {
 		require.NoError(t, db.Clear(collection))
 
-		val, ok := cache.Get("not_here")
+		val, ok, err := cache.Get(t.Context(), "not_here")
+		require.NoError(t, err)
 		assert.False(t, ok)
 		assert.Nil(t, val)
 	})
@@ -33,8 +34,9 @@ func TestCache(t *testing.T) {
 
 		key := "https://api.github.com/repos/evergreen-ci/evergreen/contents/self-tests.yml?ref=86a2e50c93a2016f1b8a717f70343c4f9aeda961"
 		value := []byte("testing")
-		cache.Set(key, value)
-		val, ok := cache.Get(key)
+		require.NoError(t, cache.Set(t.Context(), key, value))
+		val, ok, err := cache.Get(t.Context(), key)
+		require.NoError(t, err)
 		assert.Equal(t, value, val)
 		assert.True(t, ok)
 	})
@@ -44,13 +46,15 @@ func TestCache(t *testing.T) {
 
 		key := "https://api.github.com/repos/evergreen-ci/evergreen/contents/self-tests.yml?ref=86a2e50c93a2016f1b8a717f70343c4f9aeda961"
 		value := []byte("testing")
-		cache.Set(key, value)
-		val, ok := cache.Get(key)
+		require.NoError(t, cache.Set(t.Context(), key, value))
+		val, ok, err := cache.Get(t.Context(), key)
+		require.NoError(t, err)
 		assert.Equal(t, value, val)
 		assert.True(t, ok)
 
-		cache.Delete(key)
-		val, ok = cache.Get(key)
+		require.NoError(t, cache.Delete(t.Context(), key))
+		val, ok, err = cache.Get(t.Context(), key)
+		require.NoError(t, err)
 		assert.False(t, ok)
 		assert.Nil(t, val)
 	})
@@ -60,19 +64,20 @@ func TestCache(t *testing.T) {
 
 		key := "https://api.github.com/repos/evergreen-ci/evergreen/contents/self-tests.yml?ref=86a2e50c93a2016f1b8a717f70343c4f9aeda961"
 		value := []byte("testing")
-		cache.Set(key, value)
-		firstVal, ok := cache.Get(key)
+		require.NoError(t, cache.Set(t.Context(), key, value))
+		firstVal, ok, err := cache.Get(t.Context(), key)
+		require.NoError(t, err)
 		assert.Equal(t, value, firstVal)
 		assert.True(t, ok)
 
 		before := cacheItem{}
-		require.NoError(t, db.FindOneQ(collection, db.Query(bson.M{IDKey: key}), &before))
+		require.NoError(t, db.FindOneQContext(t.Context(), collection, db.Query(bson.M{IDKey: key}), &before))
 
 		time.Sleep(100 * time.Millisecond)
-		cache.Set(key, value)
+		require.NoError(t, cache.Set(t.Context(), key, value))
 
 		after := cacheItem{}
-		require.NoError(t, db.FindOneQ(collection, db.Query(bson.M{IDKey: key}), &after))
+		require.NoError(t, db.FindOneQContext(t.Context(), collection, db.Query(bson.M{IDKey: key}), &after))
 
 		assert.True(t, after.Updated.After(before.Updated))
 	})

@@ -552,7 +552,7 @@ func TestRemovePod(t *testing.T) {
 			assert.True(t, dbTask1.IsFinished(), "task should be finished because it has used up all of its container allocation attempts")
 			assert.False(t, dbTask1.ContainerAllocated)
 
-			dbBuild, err := build.FindOneId(b.Id)
+			dbBuild, err := build.FindOneId(t.Context(), b.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbBuild)
 			assert.True(t, dbBuild.IsFinished(), "build should be updated after its task is finished")

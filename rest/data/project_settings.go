@@ -420,7 +420,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 				toDelete = append(toDelete, originalSub.ID)
 			}
 		}
-		catcher.Wrapf(DeleteSubscriptions(projectId, toDelete), "deleting subscriptions")
+		catcher.Wrapf(DeleteSubscriptions(ctx, projectId, toDelete), "deleting subscriptions")
 	case model.ProjectPageContainerSection:
 		for _, size := range mergedSection.ContainerSizeDefinitions {
 			catcher.Add(errors.Wrapf(size.Validate(evergreen.GetEnvironment().Settings().Providers.AWS.Pod.ECS), "invalid container size '%s'", size.Name))

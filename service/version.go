@@ -75,7 +75,7 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 			projectID = upstreamTask.Project
 		} else if projCtx.Version.TriggerType == model.ProjectTriggerLevelBuild {
 			var upstreamBuild *build.Build
-			upstreamBuild, err = build.FindOneId(projCtx.Version.TriggerID)
+			upstreamBuild, err = build.FindOneId(r.Context(), projCtx.Version.TriggerID)
 			if err != nil {
 				http.Error(w, "error finding upstream build", http.StatusInternalServerError)
 				return

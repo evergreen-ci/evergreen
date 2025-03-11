@@ -23,7 +23,7 @@ func GetManifestByTask(ctx context.Context, taskId string) (*manifest.Manifest, 
 			Message:    fmt.Sprintf("manifest for task '%s' not found", taskId),
 		}
 	}
-	mfest, err := manifest.FindFromVersion(t.Version, t.Project, t.Revision, t.Requester)
+	mfest, err := manifest.FindFromVersion(ctx, t.Version, t.Project, t.Revision, t.Requester)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding manifest from version '%s'", t.Version)
 	}

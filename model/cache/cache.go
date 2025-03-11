@@ -1,6 +1,7 @@
 package cache
 
 import (
+	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
@@ -30,9 +31,9 @@ var (
 
 // Get returns the []byte representation of a cached value and a bool
 // set to true if the value isn't empty.
-func (c *DBCache) Get(key string) ([]byte, bool) {
+func (c *DBCache) Get(ctx context.Context, key string) ([]byte, bool, error) {
 	item := cacheItem{}
-	err := db.FindOneQ(collection,
+	err := db.FindOneQContext(ctx, collection,
 		db.Query(bson.M{IDKey: key}),
 		&item,
 	)
@@ -44,15 +45,17 @@ func (c *DBCache) Get(key string) ([]byte, bool) {
 				"operation": "Get",
 				"source":    "DBCache",
 			}))
+			return nil, false, err
 		}
-		return nil, false
+		return nil, false, nil
 	}
-	return item.Contents, true
+	return item.Contents, true, nil
 }
 
 // Set stores valueBytes for key.
-func (c *DBCache) Set(key string, valueBytes []byte) {
-	_, err := db.Upsert(
+func (c *DBCache) Set(ctx context.Context, key string, valueBytes []byte) error {
+	_, err := db.UpsertContext(
+		ctx,
 		collection,
 		bson.M{IDKey: key},
 		bson.M{
@@ -69,16 +72,19 @@ func (c *DBCache) Set(key string, valueBytes []byte) {
 		"operation": "Set",
 		"source":    "DBCache",
 	}))
+
+	return err
 }
 
 // Delete removes the value associated with the key.
-func (c *DBCache) Delete(key string) {
-	grip.Error(message.WrapError(
-		db.Remove(collection, bson.M{IDKey: key}),
+func (c *DBCache) Delete(ctx context.Context, key string) error {
+	err := db.RemoveContext(ctx, collection, bson.M{IDKey: key})
+	grip.Error(message.WrapError(err,
 		message.Fields{
 			"message":   "deleting cached value",
 			"key":       key,
 			"operation": "Delete",
 			"source":    "DBCache",
 		}))
+	return err
 }

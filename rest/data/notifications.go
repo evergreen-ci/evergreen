@@ -1,16 +1,18 @@
 package data
 
 import (
+	"context"
+
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/pkg/errors"
 )
 
-func GetNotificationsStats() (*restModel.APIEventStats, error) {
+func GetNotificationsStats(ctx context.Context) (*restModel.APIEventStats, error) {
 	stats := restModel.APIEventStats{}
 
-	e, err := event.FindLastProcessedEvent()
+	e, err := event.FindLastProcessedEvent(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "fetching most recently processed event")
 	}

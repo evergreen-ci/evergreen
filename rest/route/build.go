@@ -50,7 +50,7 @@ func (b *buildGetHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (b *buildGetHandler) Run(ctx context.Context) gimlet.Responder {
-	foundBuild, err := build.FindOneId(b.buildId)
+	foundBuild, err := build.FindOneId(ctx, b.buildId)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding build '%s'", b.buildId))
 	}
@@ -159,7 +159,7 @@ func (b *buildChangeStatusHandler) Parse(ctx context.Context, r *http.Request) e
 
 func (b *buildChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 	user := gimlet.GetUser(ctx)
-	foundBuild, err := build.FindOneId(b.buildId)
+	foundBuild, err := build.FindOneId(ctx, b.buildId)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding build '%s'", b.buildId))
 	}
@@ -191,7 +191,7 @@ func (b *buildChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 
-	updatedBuild, err := build.FindOneId(b.buildId)
+	updatedBuild, err := build.FindOneId(ctx, b.buildId)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "finding updated build '%s'", b.buildId))
 	}
@@ -245,7 +245,7 @@ func (b *buildAbortHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "aborting build '%s'", b.buildId))
 	}
 
-	foundBuild, err := build.FindOneId(b.buildId)
+	foundBuild, err := build.FindOneId(ctx, b.buildId)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding updated build '%s'", b.buildId))
 	}
@@ -299,7 +299,7 @@ func (b *buildRestartHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting tasks for build '%s'", b.buildId))
 	}
-	foundBuild, err := build.FindOneId(b.buildId)
+	foundBuild, err := build.FindOneId(ctx, b.buildId)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding build '%s'", b.buildId))
 	}
@@ -315,7 +315,7 @@ func (b *buildRestartHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "restarting all tasks in build '%s'", b.buildId))
 	}
 
-	updatedBuild, err := build.FindOneId(b.buildId)
+	updatedBuild, err := build.FindOneId(ctx, b.buildId)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding build '%s'", b.buildId))
 	}

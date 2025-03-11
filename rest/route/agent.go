@@ -1124,7 +1124,7 @@ func (h *servePatchHandler) Run(ctx context.Context) gimlet.Responder {
 		h.patchID = t.Version
 	}
 
-	p, err := patch.FindOne(patch.ByVersion(h.patchID))
+	p, err := patch.FindOne(ctx, patch.ByVersion(h.patchID))
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding patch '%s'", h.patchID))
 	}
@@ -1272,7 +1272,7 @@ func (h *manifestLoadHandler) Run(ctx context.Context) gimlet.Responder {
 			Message:    fmt.Sprintf("version not found: %s", task.Version),
 		})
 	}
-	currentManifest, err := manifest.FindFromVersion(v.Id, v.Identifier, v.Revision, v.Requester)
+	currentManifest, err := manifest.FindFromVersion(ctx, v.Id, v.Identifier, v.Revision, v.Requester)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "retrieving manifest with version id '%s'", task.Version))
 	}
@@ -1294,7 +1294,7 @@ func (h *manifestLoadHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	// attempt to insert a manifest after making GitHub API calls
-	manifest, err := model.CreateManifest(v, project.Modules, projectRef)
+	manifest, err := model.CreateManifest(ctx, v, project.Modules, projectRef)
 	if err != nil {
 		if apiErr, ok := errors.Cause(err).(thirdparty.APIRequestError); ok && apiErr.StatusCode == http.StatusNotFound {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "manifest resource not found"))
@@ -1348,7 +1348,7 @@ func (h *setDownstreamParamsHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	grip.Infoln("Setting downstream expansions for task:", t.Id)
 
-	p, err := patch.FindOne(patch.ByVersion(t.Version))
+	p, err := patch.FindOne(ctx, patch.ByVersion(t.Version))
 
 	if err != nil {
 		errorMessage := fmt.Sprintf("loading patch: %s: ", err.Error())
@@ -1511,7 +1511,7 @@ func (h *checkRunHandler) Run(ctx context.Context) gimlet.Responder {
 
 	}
 
-	p, err := patch.FindOneId(t.Version)
+	p, err := patch.FindOneId(ctx, t.Version)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}

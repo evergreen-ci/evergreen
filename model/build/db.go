@@ -180,9 +180,9 @@ func ByAfterRevision(project, buildVariant string, revision int) db.Q {
 // DB Boilerplate
 
 // FindOne returns one build that satisfies the query.
-func FindOne(query db.Q) (*Build, error) {
+func FindOne(ctx context.Context, query db.Q) (*Build, error) {
 	build := &Build{}
-	err := db.FindOneQ(Collection, query, build)
+	err := db.FindOneQContext(ctx, Collection, query, build)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -190,8 +190,8 @@ func FindOne(query db.Q) (*Build, error) {
 }
 
 // FindOneId returns one build by Id.
-func FindOneId(id string) (*Build, error) {
-	return FindOne(ById(id))
+func FindOneId(ctx context.Context, id string) (*Build, error) {
+	return FindOne(ctx, ById(id))
 }
 
 // FindBuildsByVersions finds builds matching the version. This only populates a
@@ -227,8 +227,8 @@ func UpdateAllBuilds(query any, update any) error {
 	return err
 }
 
-func FindProjectForBuild(buildID string) (string, error) {
-	b, err := FindOne(ById(buildID).Project(bson.M{ProjectKey: 1}))
+func FindProjectForBuild(ctx context.Context, buildID string) (string, error) {
+	b, err := FindOne(ctx, ById(buildID).Project(bson.M{ProjectKey: 1}))
 	if err != nil {
 		return "", err
 	}

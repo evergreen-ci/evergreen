@@ -549,7 +549,7 @@ func TestDownstreamParams(t *testing.T) {
 	assert.NotNil(t, resp)
 	assert.Equal(t, http.StatusOK, resp.Status())
 
-	p, err := patch.FindOneId(parentPatchId)
+	p, err := patch.FindOneId(t.Context(), parentPatchId)
 	require.NoError(t, err)
 	assert.Equal(t, p.Triggers.DownstreamParameters[0].Key, parameters[0].Key)
 	assert.Equal(t, p.Triggers.DownstreamParameters[0].Value, parameters[0].Value)

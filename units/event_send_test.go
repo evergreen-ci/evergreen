@@ -144,8 +144,8 @@ func (s *eventNotificationSuite) SetupTest() {
 	s.NoError(notification.InsertMany(s.notifications...))
 }
 
-func (s *eventNotificationSuite) notificationHasError(id string, pattern string) time.Time {
-	n, err := notification.Find(id)
+func (s *eventNotificationSuite) notificationHasError(ctx context.Context, id string, pattern string) time.Time {
+	n, err := notification.Find(ctx, id)
 	s.Require().NoError(err)
 	s.Require().NotNil(n)
 
@@ -180,7 +180,7 @@ func (s *eventNotificationSuite) TestDegradedMode() {
 		s.NoError(job.Error())
 	}
 
-	s.NotZero(s.notificationHasError(s.webhook.ID, "sender is disabled, not sending notification"))
+	s.NotZero(s.notificationHasError(s.ctx, s.webhook.ID, "sender is disabled, not sending notification"))
 }
 
 func (s *eventNotificationSuite) TestEvergreenWebhook() {
@@ -190,7 +190,7 @@ func (s *eventNotificationSuite) TestEvergreenWebhook() {
 	job.Run(s.ctx)
 	s.NoError(job.Error())
 
-	s.NotZero(s.notificationHasError(s.webhook.ID, ""))
+	s.NotZero(s.notificationHasError(s.ctx, s.webhook.ID, ""))
 	s.NoError(job.Error())
 
 	msg, recv := s.env.InternalSender.GetMessageSafe()
@@ -206,7 +206,7 @@ func (s *eventNotificationSuite) TestSlack() {
 	job.Run(s.ctx)
 
 	s.NoError(job.Error())
-	s.NotZero(s.notificationHasError(s.slack.ID, ""))
+	s.NotZero(s.notificationHasError(s.ctx, s.slack.ID, ""))
 
 	msg, recv := s.env.InternalSender.GetMessageSafe()
 	s.True(recv)
@@ -224,7 +224,7 @@ func (s *eventNotificationSuite) TestJIRAComment() {
 	job.Run(s.ctx)
 
 	s.NoError(job.Error())
-	s.NotZero(s.notificationHasError(s.jiraComment.ID, ""))
+	s.NotZero(s.notificationHasError(s.ctx, s.jiraComment.ID, ""))
 
 	msg, recv := s.env.InternalSender.GetMessageSafe()
 	s.True(recv)
@@ -241,7 +241,7 @@ func (s *eventNotificationSuite) TestJIRAIssue() {
 	job.Run(s.ctx)
 
 	s.NoError(job.Error())
-	s.NotZero(s.notificationHasError(s.jiraIssue.ID, ""))
+	s.NotZero(s.notificationHasError(s.ctx, s.jiraIssue.ID, ""))
 
 	msg, recv := s.env.InternalSender.GetMessageSafe()
 	s.True(recv)
@@ -271,5 +271,5 @@ func (s *eventNotificationSuite) TestSendFailureResultsInNoMessages() {
 		s.False(recv)
 	}
 
-	s.NotZero(s.notificationHasError(s.webhook.ID, "^composer is not loggable$"))
+	s.NotZero(s.notificationHasError(s.ctx, s.webhook.ID, "^composer is not loggable$"))
 }

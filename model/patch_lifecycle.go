@@ -623,7 +623,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 		AuthorEmail:          authorEmail,
 	}
 
-	mfst, err := constructManifest(patchVersion, projectRef, project.Modules)
+	mfst, err := constructManifest(ctx, patchVersion, projectRef, project.Modules)
 	if err != nil {
 		return nil, errors.Wrap(err, "constructing manifest")
 	}
@@ -899,7 +899,7 @@ func finalizeOrSubscribeChildPatch(ctx context.Context, childPatchId string, par
 	}
 	// if the parentStatus is "", finalize without waiting for the parent patch to finish running
 	if triggerIntent.ParentStatus == "" {
-		childPatchDoc, err := patch.FindOneId(childPatchId)
+		childPatchDoc, err := patch.FindOneId(ctx, childPatchId)
 		if err != nil {
 			return errors.Wrap(err, "fetching child patch")
 		}

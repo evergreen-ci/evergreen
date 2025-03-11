@@ -101,7 +101,7 @@ func (j *githubStatusRefreshJob) fetch(ctx context.Context) error {
 		return err
 	}
 	if j.patch == nil {
-		j.patch, err = patch.FindOneId(j.FetchID)
+		j.patch, err = patch.FindOneId(ctx, j.FetchID)
 		if err != nil {
 			return errors.Wrap(err, "finding patch")
 		}
