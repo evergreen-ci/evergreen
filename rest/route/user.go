@@ -848,7 +848,7 @@ func (h *serviceUsersGetHandler) Parse(ctx context.Context, r *http.Request) err
 }
 
 func (h *serviceUsersGetHandler) Run(ctx context.Context) gimlet.Responder {
-	users, err := data.GetServiceUsers()
+	users, err := data.GetServiceUsers(ctx)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting all service users"))
 	}
