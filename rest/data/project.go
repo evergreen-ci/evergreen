@@ -183,7 +183,7 @@ func tryCopyingContainerSecrets(ctx context.Context, settings *evergreen.Setting
 	if err != nil {
 		return errors.Wrapf(err, "copying existing container secrets")
 	}
-	if err := pRef.SetContainerSecrets(secrets); err != nil {
+	if err := pRef.SetContainerSecrets(ctx, secrets); err != nil {
 		return errors.Wrap(err, "setting container secrets")
 	}
 

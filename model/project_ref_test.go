@@ -4053,7 +4053,7 @@ func TestSetContainerSecrets(t *testing.T) {
 			ExternalName: "external_name",
 			ExternalID:   "external_id",
 		}}
-		require.NoError(t, pRef.SetContainerSecrets(secrets))
+		require.NoError(t, pRef.SetContainerSecrets(t.Context(), secrets))
 		dbProjRef, err := FindBranchProjectRef(pRef.Identifier)
 		require.NoError(t, err)
 		require.NotZero(t, dbProjRef)
@@ -4061,7 +4061,7 @@ func TestSetContainerSecrets(t *testing.T) {
 		assert.Equal(t, secrets, dbProjRef.ContainerSecrets)
 	})
 	t.Run("ClearsContainerSecrets", func(t *testing.T) {
-		require.NoError(t, pRef.SetContainerSecrets(nil))
+		require.NoError(t, pRef.SetContainerSecrets(t.Context(), nil))
 		dbProjRef, err := FindBranchProjectRef(pRef.Identifier)
 		require.NoError(t, err)
 		require.NotZero(t, dbProjRef)

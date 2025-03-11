@@ -326,19 +326,6 @@ func UpdateAllContext(ctx context.Context, collection string, query any, update 
 	return &db.ChangeInfo{Updated: int(res.ModifiedCount)}, nil
 }
 
-// UpdateId updates one _id-matching document in the collection.
-func UpdateId(collection string, id, update any) error {
-	session, db, err := GetGlobalSessionFactory().GetSession()
-	if err != nil {
-		grip.Errorf("error establishing db connection: %+v", err)
-
-		return err
-	}
-	defer session.Close()
-
-	return db.C(collection).UpdateId(id, update)
-}
-
 // UpdateIdContext updates one _id-matching document in the collection.
 func UpdateIdContext(ctx context.Context, collection string, id, update any) error {
 	res, err := evergreen.GetEnvironment().DB().Collection(collection).UpdateOne(ctx,
