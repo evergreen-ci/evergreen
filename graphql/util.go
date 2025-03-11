@@ -48,7 +48,7 @@ const (
 
 // getGroupedFiles returns the files of a Task inside a GroupedFile struct
 func getGroupedFiles(ctx context.Context, name string, taskID string, execution int) (*GroupedFiles, error) {
-	taskFiles, err := artifact.GetAllArtifacts([]artifact.TaskIDAndExecution{{TaskID: taskID, Execution: execution}})
+	taskFiles, err := artifact.GetAllArtifacts(ctx, []artifact.TaskIDAndExecution{{TaskID: taskID, Execution: execution}})
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}

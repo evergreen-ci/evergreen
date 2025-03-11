@@ -649,7 +649,7 @@ func (uis *UIServer) taskFileRaw(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	taskFiles, err := artifact.GetAllArtifacts([]artifact.TaskIDAndExecution{{TaskID: projCtx.Task.Id, Execution: executionNum}})
+	taskFiles, err := artifact.GetAllArtifacts(r.Context(), []artifact.TaskIDAndExecution{{TaskID: projCtx.Task.Id, Execution: executionNum}})
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "unable to find artifacts for task '%s'", projCtx.Task.Id))
 		return
