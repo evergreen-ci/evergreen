@@ -4019,7 +4019,7 @@ func TestSetRepotrackerError(t *testing.T) {
 			InvalidRevision:   "invalid_revision",
 			MergeBaseRevision: "merge_base_revision",
 		}
-		require.NoError(t, pRef.SetRepotrackerError(repotrackerErr))
+		require.NoError(t, pRef.SetRepotrackerError(t.Context(), repotrackerErr))
 		dbProjRef, err := FindBranchProjectRef(pRef.Identifier)
 		require.NoError(t, err)
 		require.NotZero(t, dbProjRef)
@@ -4027,7 +4027,7 @@ func TestSetRepotrackerError(t *testing.T) {
 		assert.Equal(t, *repotrackerErr, *dbProjRef.RepotrackerError)
 	})
 	t.Run("ClearsError", func(t *testing.T) {
-		require.NoError(t, pRef.SetRepotrackerError(&RepositoryErrorDetails{}))
+		require.NoError(t, pRef.SetRepotrackerError(t.Context(), &RepositoryErrorDetails{}))
 		dbProjRef, err := FindBranchProjectRef(pRef.Identifier)
 		require.NoError(t, err)
 		require.NotZero(t, dbProjRef)

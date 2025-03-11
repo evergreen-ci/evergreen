@@ -356,6 +356,7 @@ func UpdateIdContext(ctx context.Context, collection string, id, update any) err
 }
 
 // UpdateAll updates all matching documents in the collection.
+// DEPRECATED: Use UpdateAllContext instead.
 func UpdateAll(collection string, query any, update any) (*db.ChangeInfo, error) {
 	switch query.(type) {
 	case *Q, Q:
@@ -385,6 +386,7 @@ func UpdateAll(collection string, query any, update any) (*db.ChangeInfo, error)
 }
 
 // Upsert run the specified update against the collection as an upsert operation.
+// DEPRECATED: Use UpsertContext instead.
 func Upsert(collection string, query any, update any) (*db.ChangeInfo, error) {
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {

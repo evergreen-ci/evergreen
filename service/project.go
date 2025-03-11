@@ -54,7 +54,7 @@ func (uis *UIServer) setRevision(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := projectRef.SetRepotrackerError(&model.RepositoryErrorDetails{}); err != nil {
+	if err := projectRef.SetRepotrackerError(r.Context(), &model.RepositoryErrorDetails{}); err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}

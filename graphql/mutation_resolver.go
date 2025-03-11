@@ -597,7 +597,7 @@ func (r *mutationResolver) SetLastRevision(ctx context.Context, opts SetLastRevi
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("updating last revision for '%s': %s", opts.ProjectIdentifier, err.Error()))
 	}
 
-	if err = project.SetRepotrackerError(&model.RepositoryErrorDetails{}); err != nil {
+	if err = project.SetRepotrackerError(ctx, &model.RepositoryErrorDetails{}); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("clearing repotracker error for '%s': %s", opts.ProjectIdentifier, err.Error()))
 	}
 
