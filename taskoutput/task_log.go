@@ -84,7 +84,7 @@ func (o TaskLogOutput) NewSender(ctx context.Context, taskOpts TaskOptions, send
 	}
 
 	senderOpts.appendLines = func(ctx context.Context, lines []log.LogLine) error {
-		return svc.Append(ctx, o.getLogName(taskOpts, logType), lines)
+		return svc.Append(ctx, o.getLogName(taskOpts, logType), 0, lines)
 	}
 
 	return newEvergreenSender(ctx, fmt.Sprintf("%s-%s", taskOpts.TaskID, logType), senderOpts)
@@ -101,7 +101,7 @@ func (o TaskLogOutput) Append(ctx context.Context, taskOpts TaskOptions, logType
 		return errors.Wrap(err, "getting log service")
 	}
 
-	return svc.Append(ctx, o.getLogName(taskOpts, logType), lines)
+	return svc.Append(ctx, o.getLogName(taskOpts, logType), 0, lines)
 }
 
 // Get returns task logs belonging to the specified task run.
