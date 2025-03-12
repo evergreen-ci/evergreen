@@ -62,7 +62,7 @@ func New(apiURL string) Config {
 		user := mustHaveUser(ctx)
 		hostsToCheck, err := host.Find(ctx, host.ByIds(hostIdsToCheck))
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Error getting hosts: %s", err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting hosts: %s", err.Error()))
 		}
 		if len(hostsToCheck) == 0 {
 			return nil, ResourceNotFound.Send(ctx, "No matching hosts found")
