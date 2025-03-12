@@ -4623,8 +4623,6 @@ func TestCountSpawnhostsWithNoExpirationByUser(t *testing.T) {
 }
 
 func TestCountIntentHosts(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	require.NoError(t, db.ClearCollections(Collection))
 	hosts := []Host{
@@ -4655,9 +4653,9 @@ func TestCountIntentHosts(t *testing.T) {
 		},
 	}
 	for _, h := range hosts {
-		assert.NoError(t, h.Insert(ctx))
+		assert.NoError(t, h.Insert(t.Context()))
 	}
-	count, err := CountIntentHosts(ctx)
+	count, err := CountIntentHosts(t.Context())
 	assert.NoError(t, err)
 	assert.Equal(t, 2, count)
 }

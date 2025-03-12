@@ -3137,7 +3137,7 @@ func CountSpawnhostsWithNoExpirationByUser(ctx context.Context, user string) (in
 }
 
 // CountIntentHosts counts the number of intent hosts Evergreen will soon
-// attempt to create
+// attempt to create.
 func CountIntentHosts(ctx context.Context) (int, error) {
 	query := bson.M{
 		IdKey:        bson.M{"$regex": "^evg.*"},
