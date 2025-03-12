@@ -222,7 +222,8 @@ func RemoveAll(ctx context.Context, collection string, query any) error {
 }
 
 // Update updates one matching document in the collection.
-// DEPRECATED: Use UpdateContext instead.
+// DEPRECATED (DEVPROD-15398): This is only here to support a cache
+// // with Gimlet, use UpdateContext instead.
 func Update(collection string, query any, update any) error {
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
@@ -334,7 +335,8 @@ func UpdateIdContext(ctx context.Context, collection string, id, update any) err
 }
 
 // UpdateAll updates all matching documents in the collection.
-// DEPRECATED: Use UpdateAllContext instead.
+// DEPRECATED (DEVPROD-15398): This is only here to support a cache
+// // with Gimlet, use UpdateAllContext instead.
 func UpdateAll(collection string, query any, update any) (*db.ChangeInfo, error) {
 	switch query.(type) {
 	case *Q, Q:
