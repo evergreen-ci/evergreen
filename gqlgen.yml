@@ -335,8 +335,6 @@ models:
     model: github.com/evergreen-ci/evergreen/model.ProjectHealthView
   ProjectInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectRef
-  ProjectTasksPair:
-    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectTasksPair
   ProjectSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectSettings
     fields:
@@ -352,6 +350,8 @@ models:
         resolver: true
   ProjectSettingsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectSettings
+  ProjectTasksPair:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectTasksPair
   ProjectVars:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectVars
     fields:
