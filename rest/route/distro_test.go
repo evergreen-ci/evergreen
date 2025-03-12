@@ -1339,6 +1339,7 @@ func getMockDistrosdata() error {
 			WorkDir: "/data/mci",
 			HostAllocatorSettings: distro.HostAllocatorSettings{
 				MaximumHosts: 30,
+				Version:      evergreen.HostAllocatorUtilization,
 			},
 			Provider: "mock",
 			ProviderSettingsList: []*birch.Document{birch.NewDocument(
@@ -1381,6 +1382,19 @@ func getMockDistrosdata() error {
 			},
 			Disabled:      false,
 			ContainerPool: "",
+			BootstrapSettings: distro.BootstrapSettings{
+				Method:        distro.BootstrapMethodNone,
+				Communication: distro.CommunicationMethodLegacySSH,
+			},
+			PlannerSettings: distro.PlannerSettings{
+				Version: evergreen.PlannerVersionTunable,
+			},
+			FinderSettings: distro.FinderSettings{
+				Version: evergreen.FinderVersionLegacy,
+			},
+			DispatcherSettings: distro.DispatcherSettings{
+				Version: evergreen.DispatcherVersionRevisedWithDependencies,
+			},
 		},
 	}
 	for _, d := range distros {
@@ -1448,4 +1462,80 @@ func (s *distroClientURLsGetSuite) TestRunNonexistentDistro() {
 	resp := s.rh.Run(ctx)
 	s.NotNil(resp.Data())
 	s.Equal(http.StatusNotFound, resp.Status())
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// Tests for PUT /rest/v2/distros/{distro_id}/copy/{new_distro_id}
+
+type distroCopySuite struct {
+	rm gimlet.RouteHandler
+
+	suite.Suite
+}
+
+func TestDistroCopySuite(t *testing.T) {
+	suite.Run(t, new(distroCopySuite))
+}
+
+func (s *distroCopySuite) SetupTest() {
+	s.NoError(db.ClearCollections(distro.Collection, user.Collection))
+	s.NoError(getMockDistrosdata())
+	_, err := user.GetOrCreateUser("user", "user", "", "token", "", nil)
+	s.NoError(err)
+	s.rm = makeCopyDistro()
+}
+
+func (s *distroCopySuite) TestParse() {
+	ctx := context.Background()
+	req, _ := http.NewRequest(http.MethodPut, "http://example.com/api/rest/v2/distros/distro1/copy/distro3?single_task_distro=true", nil)
+	err := s.rm.Parse(ctx, req)
+	s.NoError(err)
+}
+
+func (s *distroCopySuite) TestRunValidCopy() {
+	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
+	h := s.rm.(*distroCopyHandler)
+	h.distroToCopy = "fedora8"
+	h.newDistroID = "newDistro"
+	h.single_task_distro = true
+
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp.Data())
+	s.Equal(http.StatusCreated, resp.Status())
+
+	copied, err := distro.FindOneId(ctx, "newDistro")
+	s.NoError(err)
+	s.NotNil(copied)
+	s.Equal("newDistro", copied.Id)
+	s.Equal(true, copied.SingleTaskDistro)
+}
+
+func (s *distroCopySuite) TestRunInvalidCopySameID() {
+	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
+	h := s.rm.(*distroCopyHandler)
+	h.distroToCopy = "distro1"
+	h.newDistroID = "distro1"
+
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp.Data())
+	s.Equal(http.StatusBadRequest, resp.Status())
+	err := (resp.Data()).(gimlet.ErrorResponse)
+	s.Equal("new and existing distro IDs cannot be identical", err.Message)
+}
+
+func (s *distroCopySuite) TestRunInvalidCopyNonexistentID() {
+	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
+	h := s.rm.(*distroCopyHandler)
+	h.distroToCopy = "nonexistent"
+	h.newDistroID = "distro3"
+
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp.Data())
+	s.Equal(http.StatusNotFound, resp.Status())
+	err := (resp.Data()).(gimlet.ErrorResponse)
+	s.Equal("distro 'nonexistent' not found", err.Message)
 }
