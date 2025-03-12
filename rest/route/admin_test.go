@@ -198,6 +198,7 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.EqualValues(testSettings.Slack.Options.Channel, settings.Slack.Options.Channel)
 	s.ElementsMatch(testSettings.SleepSchedule.PermanentlyExemptHosts, settings.SleepSchedule.PermanentlyExemptHosts)
 	s.EqualValues(testSettings.Splunk.SplunkConnectionInfo.Channel, settings.Splunk.SplunkConnectionInfo.Channel)
+	s.EqualValues(testSettings.SSHKeySecretARN, settings.SSHKeySecretARN)
 	s.EqualValues(testSettings.TaskLimits.MaxTasksPerVersion, settings.TaskLimits.MaxTasksPerVersion)
 	s.EqualValues(testSettings.TestSelection.URL, settings.TestSelection.URL)
 	s.EqualValues(testSettings.Ui.HttpListenAddr, settings.Ui.HttpListenAddr)

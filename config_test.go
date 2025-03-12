@@ -147,6 +147,7 @@ func (s *AdminSuite) TestBaseConfig() {
 		PprofPort:           "port",
 		SSHKeyDirectory:     "/ssh_key_directory",
 		SSHKeyPairs:         []SSHKeyPair{{Name: "key", Public: "public", Private: "private"}},
+		SSHKeySecretARN:     "arn:aws:secretsmanager:us-east-1:012345678901:secret/top-secret-private-key",
 		ShutdownWaitSeconds: 15,
 	}
 
@@ -167,6 +168,7 @@ func (s *AdminSuite) TestBaseConfig() {
 	s.Equal(config.Plugins, settings.Plugins)
 	s.Equal(config.PprofPort, settings.PprofPort)
 	s.Equal(config.SSHKeyDirectory, settings.SSHKeyDirectory)
+	s.Equal(config.SSHKeySecretARN, settings.SSHKeySecretARN)
 	s.Require().Len(settings.SSHKeyPairs, len(config.SSHKeyPairs))
 	for i := 0; i < len(settings.SSHKeyPairs); i++ {
 		s.Equal(config.SSHKeyPairs[i].Name, settings.SSHKeyPairs[i].Name)

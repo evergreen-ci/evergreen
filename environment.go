@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 	"math"
-	"os"
-	"path"
+	"os/exec"
 	"regexp"
+	"strings"
 	"sync"
 	"time"
 
@@ -1038,7 +1038,7 @@ func (e *envState) initSSH(ctx context.Context, tracer trace.Tracer) error {
 		return errors.Wrap(err, "getting SSH private key")
 	}
 
-	return errors.Wrapf(writeSSHKey(sshKey), "writing SSH key to '%s'", SSHKeyPath)
+	return errors.Wrap(addSSHKeyToAgent(ctx, sshKey, tracer), "adding SSH key to ssh-agent")
 }
 
 func (e *envState) getSSHKey(ctx context.Context, tracer trace.Tracer) (string, error) {
@@ -1065,11 +1065,14 @@ func (e *envState) getSSHKey(ctx context.Context, tracer trace.Tracer) (string, 
 	return *output.SecretString, nil
 }
 
-func writeSSHKey(sshKey string) error {
-	if err := os.MkdirAll(path.Dir(SSHKeyPath), 0700); err != nil {
-		return errors.Wrapf(err, "creating SSH key directory '%s'", path.Dir(SSHKeyPath))
-	}
-	return errors.Wrapf(os.WriteFile(SSHKeyPath, []byte(sshKey), 0600), "writing SSH key to '%s'", SSHKeyPath)
+func addSSHKeyToAgent(ctx context.Context, sshKey string, tracer trace.Tracer) error {
+	ctx, span := tracer.Start(ctx, "AddSSHKeyToAgent")
+	defer span.End()
+
+	cmd := exec.CommandContext(ctx, "ssh-add", "-")
+	cmd.Stdin = strings.NewReader(sshKey)
+
+	return errors.Wrap(cmd.Run(), "running ssh-add")
 }
 
 func (e *envState) setupRoleManager(ctx context.Context, tracer trace.Tracer) error {
