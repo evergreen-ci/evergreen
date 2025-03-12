@@ -199,17 +199,7 @@ func EnsureIndex(collection string, index mongo.IndexModel) error {
 }
 
 // Remove removes one item matching the query from the specified collection.
-func Remove(collection string, query any) error {
-	session, db, err := GetGlobalSessionFactory().GetSession()
-	if err != nil {
-		return err
-	}
-	defer session.Close()
-
-	return db.C(collection).Remove(query)
-}
-
-func RemoveContext(ctx context.Context, collection string, query any) error {
+func Remove(ctx context.Context, collection string, query any) error {
 	session, db, err := GetGlobalSessionFactory().GetContextSession(ctx)
 	if err != nil {
 		return err
@@ -220,7 +210,7 @@ func RemoveContext(ctx context.Context, collection string, query any) error {
 }
 
 // RemoveAll removes all items matching the query from the specified collection.
-func RemoveAll(collection string, query any) error {
+func RemoveAll(ctx context.Context, collection string, query any) error {
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
 		return err
@@ -232,6 +222,8 @@ func RemoveAll(collection string, query any) error {
 }
 
 // Update updates one matching document in the collection.
+// DEPRECATED (DEVPROD-15398): This is only here to support a cache
+// with Gimlet, use UpdateContext instead.
 func Update(collection string, query any, update any) error {
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
@@ -326,19 +318,6 @@ func UpdateAllContext(ctx context.Context, collection string, query any, update 
 	return &db.ChangeInfo{Updated: int(res.ModifiedCount)}, nil
 }
 
-// UpdateId updates one _id-matching document in the collection.
-func UpdateId(collection string, id, update any) error {
-	session, db, err := GetGlobalSessionFactory().GetSession()
-	if err != nil {
-		grip.Errorf("error establishing db connection: %+v", err)
-
-		return err
-	}
-	defer session.Close()
-
-	return db.C(collection).UpdateId(id, update)
-}
-
 // UpdateIdContext updates one _id-matching document in the collection.
 func UpdateIdContext(ctx context.Context, collection string, id, update any) error {
 	res, err := evergreen.GetEnvironment().DB().Collection(collection).UpdateOne(ctx,
@@ -356,6 +335,8 @@ func UpdateIdContext(ctx context.Context, collection string, id, update any) err
 }
 
 // UpdateAll updates all matching documents in the collection.
+// DEPRECATED (DEVPROD-15398): This is only here to support a cache
+// with Gimlet, use UpdateAllContext instead.
 func UpdateAll(collection string, query any, update any) (*db.ChangeInfo, error) {
 	switch query.(type) {
 	case *Q, Q:

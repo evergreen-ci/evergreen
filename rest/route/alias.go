@@ -47,7 +47,7 @@ func (a *aliasGetHandler) Run(ctx context.Context) gimlet.Responder {
 	if pRef == nil {
 		return gimlet.MakeJSONErrorResponder(errors.Errorf("project '%s' not found", a.projectID))
 	}
-	aliasModels, err := data.FindMergedProjectAliases(pRef.Id, pRef.RepoRefId, nil, a.includeProjectConfig)
+	aliasModels, err := data.FindMergedProjectAliases(ctx, pRef.Id, pRef.RepoRefId, nil, a.includeProjectConfig)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project aliases for project '%s'", pRef.Id))
 	}

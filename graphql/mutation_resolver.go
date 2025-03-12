@@ -346,7 +346,7 @@ func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, co
 // AttachProjectToNewRepo is the resolver for the attachProjectToNewRepo field.
 func (r *mutationResolver) AttachProjectToNewRepo(ctx context.Context, project MoveProjectInput) (*restModel.APIProjectRef, error) {
 	usr := mustHaveUser(ctx)
-	pRef, err := data.FindProjectById(project.ProjectID, false, false)
+	pRef, err := data.FindProjectById(ctx, project.ProjectID, false, false)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", project.ProjectID, err.Error()))
 	}
@@ -370,7 +370,7 @@ func (r *mutationResolver) AttachProjectToNewRepo(ctx context.Context, project M
 // AttachProjectToRepo is the resolver for the attachProjectToRepo field.
 func (r *mutationResolver) AttachProjectToRepo(ctx context.Context, projectID string) (*restModel.APIProjectRef, error) {
 	usr := mustHaveUser(ctx)
-	pRef, err := data.FindProjectById(projectID, false, false)
+	pRef, err := data.FindProjectById(ctx, projectID, false, false)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", projectID, err.Error()))
 	}
@@ -519,7 +519,7 @@ func (r *mutationResolver) DeleteProject(ctx context.Context, projectID string) 
 // DetachProjectFromRepo is the resolver for the detachProjectFromRepo field.
 func (r *mutationResolver) DetachProjectFromRepo(ctx context.Context, projectID string) (*restModel.APIProjectRef, error) {
 	usr := mustHaveUser(ctx)
-	pRef, err := data.FindProjectById(projectID, false, false)
+	pRef, err := data.FindProjectById(ctx, projectID, false, false)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", projectID, err.Error()))
 	}
@@ -597,7 +597,7 @@ func (r *mutationResolver) SetLastRevision(ctx context.Context, opts SetLastRevi
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("updating last revision for '%s': %s", opts.ProjectIdentifier, err.Error()))
 	}
 
-	if err = project.SetRepotrackerError(&model.RepositoryErrorDetails{}); err != nil {
+	if err = project.SetRepotrackerError(ctx, &model.RepositoryErrorDetails{}); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("clearing repotracker error for '%s': %s", opts.ProjectIdentifier, err.Error()))
 	}
 
@@ -1188,7 +1188,7 @@ func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription re
 			return false, ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", id))
 		}
 	case "project":
-		p, projectErr := data.FindProjectById(id, false, false)
+		p, projectErr := data.FindProjectById(ctx, id, false, false)
 		if projectErr != nil {
 			return false, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", id, projectErr.Error()))
 		}

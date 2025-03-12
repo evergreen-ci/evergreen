@@ -35,7 +35,7 @@ func TestGetLatestExecutions(t *testing.T) {
 		assert.NoError(t, a.Upsert())
 	}
 
-	taskAnnotations, err := FindByTaskIds([]string{"t1", "t2"})
+	taskAnnotations, err := FindByTaskIds(t.Context(), []string{"t1", "t2"})
 	assert.NoError(t, err)
 	assert.Len(t, taskAnnotations, 3)
 	assert.Len(t, GetLatestExecutions(taskAnnotations), 2)

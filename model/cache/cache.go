@@ -78,7 +78,7 @@ func (c *DBCache) Set(ctx context.Context, key string, valueBytes []byte) error 
 
 // Delete removes the value associated with the key.
 func (c *DBCache) Delete(ctx context.Context, key string) error {
-	err := db.RemoveContext(ctx, collection, bson.M{IDKey: key})
+	err := db.Remove(ctx, collection, bson.M{IDKey: key})
 	grip.Error(message.WrapError(err,
 		message.Fields{
 			"message":   "deleting cached value",

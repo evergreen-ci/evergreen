@@ -612,7 +612,7 @@ func (p *Patch) UpdateModulePatch(ctx context.Context, modulePatch ModulePatch) 
 		PatchesKey + "." + ModulePatchNameKey: modulePatch.ModuleName,
 	}
 	update := bson.M{PatchesKey + ".$": modulePatch}
-	result, err := UpdateAll(query, bson.M{"$set": update})
+	result, err := UpdateAll(ctx, query, bson.M{"$set": update})
 	if err != nil {
 		return err
 	}

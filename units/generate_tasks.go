@@ -150,7 +150,7 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 		return j.handleError(ctx, errors.WithStack(err))
 	}
 
-	pref, err := model.FindMergedProjectRef(t.Project, t.Version, true)
+	pref, err := model.FindMergedProjectRef(ctx, t.Project, t.Version, true)
 	if err != nil {
 		return j.handleError(ctx, errors.WithStack(err))
 	}

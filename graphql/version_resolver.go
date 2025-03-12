@@ -140,7 +140,7 @@ func (r *versionResolver) ChildVersions(ctx context.Context, obj *restModel.APIV
 // ExternalLinksForMetadata is the resolver for the externalLinksForMetadata field.
 func (r *versionResolver) ExternalLinksForMetadata(ctx context.Context, obj *restModel.APIVersion) ([]*ExternalLinkForMetadata, error) {
 	projectID := utility.FromStringPtr(obj.Project)
-	pRef, err := data.FindProjectById(projectID, false, false)
+	pRef, err := data.FindProjectById(ctx, projectID, false, false)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", projectID, err.Error()))
 	}

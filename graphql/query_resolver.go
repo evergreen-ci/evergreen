@@ -405,7 +405,7 @@ func (r *queryResolver) Patch(ctx context.Context, patchID string) (*restModel.A
 
 // GithubProjectConflicts is the resolver for the githubProjectConflicts field.
 func (r *queryResolver) GithubProjectConflicts(ctx context.Context, projectID string) (*model.GithubProjectConflicts, error) {
-	pRef, err := model.FindMergedProjectRef(projectID, "", false)
+	pRef, err := model.FindMergedProjectRef(ctx, projectID, "", false)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", projectID, err.Error()))
 	}
@@ -422,7 +422,7 @@ func (r *queryResolver) GithubProjectConflicts(ctx context.Context, projectID st
 
 // Project is the resolver for the project field.
 func (r *queryResolver) Project(ctx context.Context, projectIdentifier string) (*restModel.APIProjectRef, error) {
-	project, err := data.FindProjectById(projectIdentifier, true, false)
+	project, err := data.FindProjectById(ctx, projectIdentifier, true, false)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", projectIdentifier, err.Error()))
 	}

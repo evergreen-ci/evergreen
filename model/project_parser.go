@@ -599,7 +599,7 @@ func FindAndTranslateProjectForVersion(ctx context.Context, settings *evergreen.
 func LoadProjectInfoForVersion(ctx context.Context, settings *evergreen.Settings, v *Version, id string) (ProjectInfo, error) {
 	var err error
 
-	pRef, err := FindMergedProjectRef(id, "", false)
+	pRef, err := FindMergedProjectRef(ctx, id, "", false)
 	if err != nil {
 		return ProjectInfo{}, errors.Wrap(err, "finding project ref")
 	}

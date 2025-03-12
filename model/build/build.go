@@ -116,7 +116,7 @@ func getSetBuildActivatedUpdate(active bool, caller string) bson.M {
 
 // UpdateActivation updates builds with the given ids
 // to the given activation setting.
-func UpdateActivation(buildIds []string, active bool, caller string) error {
+func UpdateActivation(ctx context.Context, buildIds []string, active bool, caller string) error {
 	if len(buildIds) == 0 {
 		return nil
 	}
@@ -126,6 +126,7 @@ func UpdateActivation(buildIds []string, active bool, caller string) error {
 	}
 
 	err := UpdateAllBuilds(
+		ctx,
 		query,
 		bson.M{
 			"$set": getSetBuildActivatedUpdate(active, caller),

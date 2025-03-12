@@ -93,7 +93,7 @@ func (j *eventSendJob) Run(ctx context.Context) {
 	}
 
 	if err = j.checkDegradedMode(n); err != nil {
-		j.AddError(errors.Wrapf(n.MarkError(errors.Wrap(err, "checking degraded mode")), "setting error for notification '%s'", n.ID))
+		j.AddError(errors.Wrapf(n.MarkError(ctx, errors.Wrap(err, "checking degraded mode")), "setting error for notification '%s'", n.ID))
 		return
 	}
 
@@ -110,8 +110,8 @@ func (j *eventSendJob) Run(ctx context.Context) {
 		"message":           "send failed",
 	}))
 	j.AddError(err)
-	j.AddError(errors.Wrapf(n.MarkSent(), "marking notification '%s' as sent", n.ID))
-	j.AddError(errors.Wrapf(n.MarkError(err), "setting error for notification '%s'", n.ID))
+	j.AddError(errors.Wrapf(n.MarkSent(ctx), "marking notification '%s' as sent", n.ID))
+	j.AddError(errors.Wrapf(n.MarkError(ctx, err), "setting error for notification '%s'", n.ID))
 }
 
 func (j *eventSendJob) send(n *notification.Notification) error {

@@ -174,7 +174,7 @@ func RemoveGitHubAppAuth(ctx context.Context, appAuth *GithubAppAuth) error {
 
 // removeGitHubAppAuthDB removes the GitHub app auth from the database.
 func removeGitHubAppAuthDB(ctx context.Context, id string) error {
-	return db.RemoveContext(
+	return db.Remove(
 		ctx,
 		GitHubAppAuthCollection,
 		bson.M{GhAuthIdKey: id},

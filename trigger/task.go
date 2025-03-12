@@ -241,7 +241,7 @@ func (t *taskTriggers) makeData(ctx context.Context, sub *event.Subscription, pa
 		return nil, errors.Errorf("build '%s' not found while building email payload", t.task.BuildId)
 	}
 
-	projectRef, err := model.FindMergedProjectRef(t.task.Project, t.task.Version, true)
+	projectRef, err := model.FindMergedProjectRef(ctx, t.task.Project, t.task.Version, true)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding project ref '%s' for version '%s' while building email payload", t.task.Project, t.task.Version)
 	}
@@ -963,7 +963,7 @@ func JIRATaskPayload(ctx context.Context, params JiraIssueParameters) (*message.
 		return nil, errors.Errorf("version '%s' not found while building Jira task payload", params.Task.Version)
 	}
 
-	projectRef, err := model.FindMergedProjectRef(params.Task.Project, params.Task.Version, true)
+	projectRef, err := model.FindMergedProjectRef(ctx, params.Task.Project, params.Task.Version, true)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding project ref '%s' for version '%s' while building Jira task payload", params.Task.Version, params.Task.Version)
 	}

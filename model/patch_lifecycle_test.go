@@ -478,7 +478,7 @@ func TestGetFullPatchParams(t *testing.T) {
 	require.NoError(t, p.Insert())
 	require.NoError(t, alias.Upsert())
 
-	params, err := getFullPatchParams(&p)
+	params, err := getFullPatchParams(t.Context(), &p)
 	require.NoError(t, err)
 	require.Len(t, params, 3)
 	for _, param := range params {

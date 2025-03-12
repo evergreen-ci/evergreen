@@ -294,7 +294,7 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, settings *
 	}
 
 	// This will only be populated for patches, not mainline commits.
-	projectRef, err := FindMergedProjectRef(p.Identifier, v.Id, true)
+	projectRef, err := FindMergedProjectRef(ctx, p.Identifier, v.Id, true)
 	if err != nil {
 		return errors.Wrapf(err, "finding merged project ref '%s' for version '%s'", p.Identifier, v.Id)
 	}

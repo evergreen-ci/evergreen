@@ -124,7 +124,7 @@ func (as *APIServer) FetchTask(w http.ResponseWriter, r *http.Request) {
 // No new information should be added to this route, instead a REST v2 route should be added.
 func (as *APIServer) fetchLimitedProjectRef(w http.ResponseWriter, r *http.Request) {
 	id := gimlet.GetVars(r)["projectId"]
-	p, err := model.FindMergedProjectRef(id, "", true)
+	p, err := model.FindMergedProjectRef(r.Context(), id, "", true)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -218,7 +218,7 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	projectRef, err := model.FindMergedProjectRef(input.ProjectID, "", false)
+	projectRef, err := model.FindMergedProjectRef(r.Context(), input.ProjectID, "", false)
 	errs := validator.CheckProject(ctx, project, projectConfig, projectRef, input.ProjectID, err)
 
 	if input.Quiet {

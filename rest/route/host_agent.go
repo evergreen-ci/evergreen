@@ -405,7 +405,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 			continue
 		}
 
-		projectRef, err := model.FindMergedProjectRef(nextTask.Project, nextTask.Version, true)
+		projectRef, err := model.FindMergedProjectRef(ctx, nextTask.Project, nextTask.Version, true)
 		errMsg := message.Fields{
 			"task_id":            nextTask.Id,
 			"message":            "could not find project ref for next task, skipping",

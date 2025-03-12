@@ -218,8 +218,9 @@ func UpdateOne(ctx context.Context, query any, update any) error {
 	)
 }
 
-func UpdateAllBuilds(query any, update any) error {
-	_, err := db.UpdateAll(
+func UpdateAllBuilds(ctx context.Context, query any, update any) error {
+	_, err := db.UpdateAllContext(
+		ctx,
 		Collection,
 		query,
 		update,
@@ -256,7 +257,7 @@ func FindBuildsForTasks(tasks []task.Task) ([]Build, error) {
 }
 
 // SetBuildStartedForTasks sets tasks' builds status to started and activates them
-func SetBuildStartedForTasks(tasks []task.Task, caller string) error {
+func SetBuildStartedForTasks(ctx context.Context, tasks []task.Task, caller string) error {
 	buildIdSet := map[string]bool{}
 	for _, t := range tasks {
 		buildIdSet[t.BuildId] = true
@@ -270,6 +271,7 @@ func SetBuildStartedForTasks(tasks []task.Task, caller string) error {
 	update[StartTimeKey] = time.Now()
 	// Set the build status/activation for all the builds containing the tasks that we touched.
 	err := UpdateAllBuilds(
+		ctx,
 		bson.M{IdKey: bson.M{"$in": buildIdList}},
 		bson.M{"$set": update},
 	)

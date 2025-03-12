@@ -155,19 +155,19 @@ func (s *TestArtifactFileSuite) TestArtifactFieldsAfterUpdate() {
 }
 
 func (s *TestArtifactFileSuite) TestFindByTaskIdAndExecution() {
-	entries, err := FindAll(ByTaskIdAndExecution("task1", 1))
+	entries, err := FindAll(s.T().Context(), ByTaskIdAndExecution("task1", 1))
 	s.Len(entries, 1)
 	s.NoError(err)
 	s.NotNil(entries[0])
 	s.Equal(1, entries[0].Execution)
 	s.Equal("task1", entries[0].TaskId)
 
-	entries, err = FindAll(ByTaskIdAndExecution("task2", 0))
+	entries, err = FindAll(s.T().Context(), ByTaskIdAndExecution("task2", 0))
 	s.Empty(entries)
 	s.NoError(err)
 	s.Empty(entries)
 
-	entries, err = FindAll(ByTaskIdAndExecution("task2", 5))
+	entries, err = FindAll(s.T().Context(), ByTaskIdAndExecution("task2", 5))
 	s.Len(entries, 1)
 	s.NoError(err)
 	s.NotNil(entries[0])
@@ -176,11 +176,11 @@ func (s *TestArtifactFileSuite) TestFindByTaskIdAndExecution() {
 }
 
 func (s *TestArtifactFileSuite) TestFindByTaskIdWithoutExecution() {
-	entries, err := FindAll(ByTaskIdWithoutExecution("task1"))
+	entries, err := FindAll(s.T().Context(), ByTaskIdWithoutExecution("task1"))
 	s.Empty(entries)
 	s.NoError(err)
 
-	entries, err = FindAll(ByTaskIdWithoutExecution("task2"))
+	entries, err = FindAll(s.T().Context(), ByTaskIdWithoutExecution("task2"))
 	s.Len(entries, 1)
 	s.NoError(err)
 	s.NotNil(entries[0])
@@ -193,13 +193,13 @@ func (s *TestArtifactFileSuite) TestFindByIdsAndExecutions() {
 		{TaskID: "task1", Execution: 1},
 		{TaskID: "task2", Execution: 5},
 	}
-	entries, err := FindAll(ByTaskIdsAndExecutions(tasks))
+	entries, err := FindAll(s.T().Context(), ByTaskIdsAndExecutions(tasks))
 	s.NoError(err)
 	s.Len(entries, 2)
 }
 
 func (s *TestArtifactFileSuite) TestFindByIds() {
-	entries, err := FindAll(ByTaskIds([]string{"task1", "task2"}))
+	entries, err := FindAll(s.T().Context(), ByTaskIds([]string{"task1", "task2"}))
 	s.NoError(err)
 	s.Len(entries, 3)
 }

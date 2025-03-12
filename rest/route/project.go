@@ -200,7 +200,7 @@ func (h *attachProjectToRepoHandler) Parse(ctx context.Context, r *http.Request)
 	h.user = MustHaveUser(ctx)
 
 	var err error
-	h.project, err = data.FindProjectById(projectIdentifier, false, false)
+	h.project, err = data.FindProjectById(ctx, projectIdentifier, false, false)
 	if err != nil {
 		return errors.Wrapf(err, "finding project '%s'", projectIdentifier)
 	}
@@ -241,7 +241,7 @@ func (h *detachProjectFromRepoHandler) Parse(ctx context.Context, r *http.Reques
 	h.user = MustHaveUser(ctx)
 
 	var err error
-	h.project, err = data.FindProjectById(projectIdentifier, false, false)
+	h.project, err = data.FindProjectById(ctx, projectIdentifier, false, false)
 	if err != nil {
 		return errors.Wrapf(err, "finding project '%s'", projectIdentifier)
 	}
@@ -306,7 +306,7 @@ func (h *projectIDPatchHandler) Parse(ctx context.Context, r *http.Request) erro
 		return errors.Wrap(err, "reading JSON request body")
 	}
 
-	oldProject, err := data.FindProjectById(h.project, false, false)
+	oldProject, err := data.FindProjectById(ctx, h.project, false, false)
 	if err != nil {
 		return errors.Wrapf(err, "finding original project '%s'", h.project)
 	}
@@ -406,7 +406,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 		var allAliases []model.APIProjectAlias
 		if mergedProjectRef.AliasesNeeded() {
-			allAliases, err = data.FindMergedProjectAliases(utility.FromStringPtr(h.apiNewProjectRef.Id), mergedProjectRef.RepoRefId, h.apiNewProjectRef.Aliases, false)
+			allAliases, err = data.FindMergedProjectAliases(ctx, utility.FromStringPtr(h.apiNewProjectRef.Id), mergedProjectRef.RepoRefId, h.apiNewProjectRef.Aliases, false)
 			if err != nil {
 				return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "checking existing patch definitions for project '%s'", h.project))
 			}
@@ -462,7 +462,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		catcher.Add(h.newProjectRef.Triggers[i].Validate(h.newProjectRef.Id))
 	}
 	for i := range h.newProjectRef.PatchTriggerAliases {
-		h.newProjectRef.PatchTriggerAliases[i], err = dbModel.ValidateTriggerDefinition(h.newProjectRef.PatchTriggerAliases[i], h.newProjectRef.Id)
+		h.newProjectRef.PatchTriggerAliases[i], err = dbModel.ValidateTriggerDefinition(ctx, h.newProjectRef.PatchTriggerAliases[i], h.newProjectRef.Id)
 		catcher.Add(err)
 	}
 	for _, buildDef := range h.newProjectRef.PeriodicBuilds {
@@ -478,7 +478,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "invalid Parsley filters"))
 	}
 
-	err = dbModel.ValidateBbProject(h.newProjectRef.Id, h.newProjectRef.BuildBaronSettings, &h.newProjectRef.TaskAnnotationSettings.FileTicketWebhook)
+	err = dbModel.ValidateBbProject(ctx, h.newProjectRef.Id, h.newProjectRef.BuildBaronSettings, &h.newProjectRef.TaskAnnotationSettings.FileTicketWebhook)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "validating build baron config"))
 	}
@@ -571,7 +571,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	if err = data.UpdateProjectVars(h.newProjectRef.Id, &h.apiNewProjectRef.Variables, false); err != nil { // destructively modifies h.apiNewProjectRef.Variables
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "updating variables for project '%s'", h.project))
 	}
-	if err = data.UpdateProjectAliases(h.newProjectRef.Id, h.apiNewProjectRef.Aliases); err != nil {
+	if err = data.UpdateProjectAliases(ctx, h.newProjectRef.Id, h.apiNewProjectRef.Aliases); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "updating aliases for project '%s'", h.project))
 	}
 
@@ -709,7 +709,7 @@ func (h *projectIDPutHandler) Parse(ctx context.Context, r *http.Request) error 
 
 // Run creates a new resource based on the Request-URI and JSON payload and returns a http.StatusCreated (201)
 func (h *projectIDPutHandler) Run(ctx context.Context) gimlet.Responder {
-	p, err := data.FindProjectById(h.projectName, false, false)
+	p, err := data.FindProjectById(ctx, h.projectName, false, false)
 	if err != nil && err.(gimlet.ErrorResponse).StatusCode != http.StatusNotFound {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project '%s'", h.projectName))
 	}
@@ -839,7 +839,7 @@ func (h *projectIDGetHandler) Parse(ctx context.Context, r *http.Request) error 
 }
 
 func (h *projectIDGetHandler) Run(ctx context.Context) gimlet.Responder {
-	project, err := data.FindProjectById(h.projectName, h.includeRepo, h.includeProjectConfig)
+	project, err := data.FindProjectById(ctx, h.projectName, h.includeRepo, h.includeProjectConfig)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project '%s'", h.projectName))
 	}
@@ -862,7 +862,7 @@ func (h *projectIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding vars for project '%s'", project.Id))
 	}
 	projectModel.Variables = *variables
-	if projectModel.Aliases, err = data.FindMergedProjectAliases(project.Id, repoId, nil, h.includeProjectConfig); err != nil {
+	if projectModel.Aliases, err = data.FindMergedProjectAliases(ctx, project.Id, repoId, nil, h.includeProjectConfig); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding aliases for project '%s'", project.Id))
 	}
 	if projectModel.Subscriptions, err = data.GetSubscriptions(project.Id, event.OwnerTypeProject); err != nil {
@@ -1321,7 +1321,7 @@ func (p *GetProjectAliasResultsHandler) Run(ctx context.Context) gimlet.Responde
 		}))
 		return gimlet.MakeJSONInternalErrorResponder(errors.Errorf("getting project for version '%s'", p.version))
 	}
-	variantTasks, err := data.GetProjectAliasResults(proj, p.alias, p.includeDependencies)
+	variantTasks, err := data.GetProjectAliasResults(ctx, proj, p.alias, p.includeDependencies)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting variants/tasks from for project '%s' and alias '%s'", proj.Identifier, p.alias))
 	}
@@ -1352,7 +1352,7 @@ func (p *GetPatchTriggerAliasHandler) Parse(ctx context.Context, r *http.Request
 }
 
 func (p *GetPatchTriggerAliasHandler) Run(ctx context.Context) gimlet.Responder {
-	proj, err := dbModel.FindMergedProjectRef(p.projectID, "", true)
+	proj, err := dbModel.FindMergedProjectRef(ctx, p.projectID, "", true)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error getting project",

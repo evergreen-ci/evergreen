@@ -453,7 +453,7 @@ func (r *taskResolver) IsPerfPluginEnabled(ctx context.Context, obj *restModel.A
 	if !evergreen.IsFinishedTaskStatus(utility.FromStringPtr(obj.Status)) {
 		return false, nil
 	}
-	if !model.IsPerfEnabledForProject(utility.FromStringPtr(obj.ProjectId)) {
+	if !model.IsPerfEnabledForProject(ctx, utility.FromStringPtr(obj.ProjectId)) {
 		return false, nil
 	}
 	opts := apimodels.GetPerfCountOptions{
@@ -527,7 +527,7 @@ func (r *taskResolver) Pod(ctx context.Context, obj *restModel.APITask) (*restMo
 // Project is the resolver for the project field.
 func (r *taskResolver) Project(ctx context.Context, obj *restModel.APITask) (*restModel.APIProjectRef, error) {
 	projectID := utility.FromStringPtr(obj.ProjectId)
-	pRef, err := data.FindProjectById(projectID, true, false)
+	pRef, err := data.FindProjectById(ctx, projectID, true, false)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", projectID, err.Error()))
 	}
