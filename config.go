@@ -106,7 +106,7 @@ type Settings struct {
 	ShutdownWaitSeconds int                       `yaml:"shutdown_wait_seconds" bson:"shutdown_wait_seconds" json:"shutdown_wait_seconds"`
 	SSHKeyDirectory     string                    `yaml:"ssh_key_directory" bson:"ssh_key_directory" json:"ssh_key_directory"`
 	SSHKeyPairs         []SSHKeyPair              `yaml:"ssh_key_pairs" bson:"ssh_key_pairs" json:"ssh_key_pairs"`
-	SSHKeySecretID      string                    `yaml:"ssh_key_secret_id" bson:"ssh_key_secret_id" json:"ssh_key_secret_id"`
+	SSHKeySecretARN     string                    `yaml:"ssh_key_secret_arn" bson:"ssh_key_secret_arn" json:"ssh_key_secret_arn"`
 	SingleTaskDistro    SingleTaskDistroConfig    `yaml:"single_task_distro" bson:"single_task_distro" json:"single_task_distro" id:"single_task_distro"`
 	Slack               SlackConfig               `yaml:"slack" bson:"slack" json:"slack" id:"slack"`
 	SleepSchedule       SleepScheduleConfig       `yaml:"sleep_schedule" bson:"sleep_schedule" json:"sleep_schedule" id:"sleep_schedule"`
@@ -149,6 +149,7 @@ func (c *Settings) Set(ctx context.Context) error {
 			splunkKey:              c.Splunk,
 			sshKeyDirectoryKey:     c.SSHKeyDirectory,
 			sshKeyPairsKey:         c.SSHKeyPairs,
+			sshKeySecretARNKey:     c.SSHKeySecretARN,
 			spawnhostKey:           c.Spawnhost,
 			shutdownWaitKey:        c.ShutdownWaitSeconds,
 		}}), "updating config section '%s'", c.SectionId(),

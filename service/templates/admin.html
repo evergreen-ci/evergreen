@@ -2310,6 +2310,13 @@ Admin Settings
 											placeholder="Path to the SSH key file when running in Kanopy" />
 									</md-input-container>
 								</md-card-content>
+								<md-card-content>
+									<md-input-container class="control">
+										<label>SSH Key Secret ARN</label>
+										<input type=text ng-model="Settings.ssh_key_secret_arn"
+											placeholder="ARN of the SSH key file secrets manager secret" />
+									</md-input-container>
+								</md-card-content>
 
 							</md-card>
 

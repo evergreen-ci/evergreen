@@ -1029,7 +1029,7 @@ func (e *envState) initSSH(ctx context.Context, tracer trace.Tracer) error {
 	ctx, span := tracer.Start(ctx, "InitSSH")
 	defer span.End()
 
-	if e.settings.SSHKeySecretID == "" {
+	if e.settings.SSHKeySecretARN == "" {
 		return nil
 	}
 
@@ -1054,7 +1054,7 @@ func (e *envState) getSSHKey(ctx context.Context, tracer trace.Tracer) (string, 
 
 	client := secretsmanager.NewFromConfig(config)
 	output, err := client.GetSecretValue(ctx, &secretsmanager.GetSecretValueInput{
-		SecretId: aws.String(e.settings.SSHKeySecretID),
+		SecretId: aws.String(e.settings.SSHKeySecretARN),
 	})
 	if err != nil {
 		return "", errors.Wrap(err, "getting SSH key secret")
