@@ -2,11 +2,11 @@ package evergreen
 
 import (
 	"os"
+	"path"
 	"strings"
 	"time"
 
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -1071,7 +1071,6 @@ func FindEvergreenHome() string {
 		return root
 	}
 
-	grip.Errorf("%s is unset", EvergreenHome)
 	return ""
 }
 
@@ -1486,6 +1485,8 @@ var validKeyTypes = []string{
 	publicKeyED25519,
 	publicKeyECDSA,
 }
+
+var SSHKeyPath = path.Join(FindEvergreenHome(), ".ssh/id_rsa")
 
 var sensitiveCollections = []string{"project_vars", "events"}
 

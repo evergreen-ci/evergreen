@@ -4,11 +4,15 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"os"
+	"path"
 	"regexp"
 	"sync"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/evergreen-ci/certdepot"
 	"github.com/evergreen-ci/evergreen/cloud/parameterstore"
 	"github.com/evergreen-ci/evergreen/util"
@@ -258,6 +262,7 @@ func NewEnvironment(ctx context.Context, confPath, versionID, clientS3Bucket str
 	catcher.Add(e.createNotificationQueue(ctx, tracer))
 	catcher.Add(e.setupRoleManager(ctx, tracer))
 	catcher.Add(e.initTracer(ctx, versionID != "", tracer))
+	catcher.Add(e.initSSH(ctx, tracer))
 	catcher.Extend(e.initQueues(ctx, tracer))
 
 	if catcher.HasErrors() {
@@ -1018,6 +1023,53 @@ func (e *envState) initTracer(ctx context.Context, useInternalDNS bool, tracer t
 	})
 
 	return nil
+}
+
+func (e *envState) initSSH(ctx context.Context, tracer trace.Tracer) error {
+	ctx, span := tracer.Start(ctx, "InitSSH")
+	defer span.End()
+
+	if e.settings.SSHKeySecretID == "" {
+		return nil
+	}
+
+	sshKey, err := e.getSSHKey(ctx, tracer)
+	if err != nil {
+		return errors.Wrap(err, "getting SSH private key")
+	}
+
+	return errors.Wrapf(writeSSHKey(sshKey), "writing SSH key to '%s'", SSHKeyPath)
+}
+
+func (e *envState) getSSHKey(ctx context.Context, tracer trace.Tracer) (string, error) {
+	ctx, span := tracer.Start(ctx, "GetSSHKey")
+	defer span.End()
+
+	config, err := config.LoadDefaultConfig(ctx,
+		config.WithRegion(DefaultEC2Region),
+	)
+	if err != nil {
+		return "", errors.Wrap(err, "loading AWS config")
+	}
+
+	client := secretsmanager.NewFromConfig(config)
+	output, err := client.GetSecretValue(ctx, &secretsmanager.GetSecretValueInput{
+		SecretId: aws.String(e.settings.SSHKeySecretID),
+	})
+	if err != nil {
+		return "", errors.Wrap(err, "getting SSH key secret")
+	}
+	if output.SecretString == nil {
+		return "", errors.New("SSH key secret was empty")
+	}
+	return *output.SecretString, nil
+}
+
+func writeSSHKey(sshKey string) error {
+	if err := os.MkdirAll(path.Dir(SSHKeyPath), 0700); err != nil {
+		return errors.Wrapf(err, "creating SSH key directory '%s'", path.Dir(SSHKeyPath))
+	}
+	return errors.Wrapf(os.WriteFile(SSHKeyPath, []byte(sshKey), 0600), "writing SSH key to '%s'", SSHKeyPath)
 }
 
 func (e *envState) setupRoleManager(ctx context.Context, tracer trace.Tracer) error {
