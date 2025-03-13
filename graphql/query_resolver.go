@@ -337,14 +337,25 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching hosts: %s", err.Error()))
 	}
 
+	usr := mustHaveUser(ctx)
 	apiHosts := []*restModel.APIHost{}
-
 	for _, h := range hosts {
+		forbiddenHosts := []string{}
+		if !userHasHostPermission(usr, h.Distro.Id, evergreen.HostsView.Value, h.StartedBy) {
+			forbiddenHosts = append(forbiddenHosts, h.Id)
+		}
+		if len(forbiddenHosts) > 0 {
+			grip.Info(message.Fields{
+				"message":         "User does not have permission to view hosts",
+				"forbidden_hosts": forbiddenHosts,
+				"user":            usr.Username(),
+				"ticket":          "DEVPROD-5753",
+			})
+		}
 		apiHost := restModel.APIHost{}
 		apiHost.BuildFromService(&h, h.RunningTaskFull)
 		apiHosts = append(apiHosts, &apiHost)
 	}
-
 	return &HostsResponse{
 		Hosts:              apiHosts,
 		FilteredHostsCount: filteredHostsCount,

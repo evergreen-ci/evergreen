@@ -26,7 +26,7 @@ input SleepScheduleInput {
 
 input UpdateSpawnHostStatusInput {
   action: SpawnHostStatusActions!
-  hostId: String!
+  hostId: String! @requireHostAccess(access: EDIT)
   shouldKeepOff: Boolean
 }
 
@@ -87,7 +87,7 @@ input EditSpawnHostInput {
   deletedInstanceTags: [InstanceTagInput!]
   displayName: String
   expiration: Time
-  hostId: String!
+  hostId: String! @requireHostAccess(access: EDIT)
   instanceType: String
   noExpiration: Boolean
   publicKey: PublicKeyInput @redactSecrets
