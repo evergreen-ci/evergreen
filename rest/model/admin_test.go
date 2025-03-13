@@ -311,7 +311,7 @@ func TestModelConversion(t *testing.T) {
 		assert.Equal(dbSettings.SSHKeyPairs[i].Public, testSettings.SSHKeyPairs[i].Public)
 		assert.Equal(dbSettings.SSHKeyPairs[i].Private, testSettings.SSHKeyPairs[i].Private)
 	}
-	assert.EqualValues(testSettings.SSHKeySecretARN, apiSettings.SSHKeySecretARN)
+	assert.EqualValues(testSettings.SSHKeySecretARNs, apiSettings.SSHKeySecretARNs)
 	assert.EqualValues(testSettings.SingleTaskDistro.ProjectTasksPairs[0].ProjectID, dbSettings.SingleTaskDistro.ProjectTasksPairs[0].ProjectID)
 	assert.ElementsMatch(testSettings.SingleTaskDistro.ProjectTasksPairs[0].AllowedTasks, dbSettings.SingleTaskDistro.ProjectTasksPairs[0].AllowedTasks)
 	assert.EqualValues(testSettings.Slack.Level, dbSettings.Slack.Level)
