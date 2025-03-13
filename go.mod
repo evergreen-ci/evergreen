@@ -19,9 +19,9 @@ require (
 	github.com/docker/go-connections v0.5.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/evergreen-ci/birch v0.0.0-20250224221624-64f481f4b888
-	github.com/evergreen-ci/certdepot v0.0.0-20250304195821-c4871b667baf
+	github.com/evergreen-ci/certdepot v0.0.0-20250313151408-76b756321eda
 	github.com/evergreen-ci/cocoa v0.0.0-20250225172339-717c91acad92
-	github.com/evergreen-ci/gimlet v0.0.0-20250227195544-4800fc7e312f
+	github.com/evergreen-ci/gimlet v0.0.0-20250313150823-622a429ac456
 	github.com/evergreen-ci/juniper v0.0.0-20230901183147-c805ea7351aa
 	github.com/evergreen-ci/pail v0.0.0-20250305202745-d12c61047dc5
 	github.com/evergreen-ci/poplar v0.0.0-20250226220147-608ee5d893b2
@@ -40,8 +40,8 @@ require (
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/mongodb/amboy v0.0.0-20250303191223-d8329aeac5c7
-	github.com/mongodb/anser v0.0.0-20250304192308-25ea0fd7a126
+	github.com/mongodb/amboy v0.0.0-20250313150805-ef0cd9968322
+	github.com/mongodb/anser v0.0.0-20250313150852-e4c729db2db3
 	github.com/mongodb/grip v0.0.0-20250224221724-fc8adcb1fe8e
 	github.com/pkg/errors v0.9.1
 	github.com/ravilushqa/otelgqlgen v0.15.0
@@ -199,12 +199,14 @@ require (
 	github.com/gorilla/handlers v1.5.2
 	github.com/mongodb/jasper v0.0.0-20250304205544-71af207b4383
 	github.com/shirou/gopsutil/v3 v3.24.5
-	go.mongodb.org/mongo-driver/v2 v2.1.0
 	go.uber.org/automaxprocs v1.6.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
-require github.com/montanaflynn/stats v0.7.1 // indirect
+require (
+	github.com/montanaflynn/stats v0.7.1 // indirect
+	go.mongodb.org/mongo-driver/v2 v2.1.0 // indirect
+)
 
 require (
 	filippo.io/edwards25519 v1.0.0 // indirect
