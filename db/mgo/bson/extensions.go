@@ -1,7 +1,7 @@
 package bson
 
 import (
-	"go.mongodb.org/mongo-driver/bson"
+	"github.com/evergreen-ci/birch/bsontype"
 )
 
 func (m M) MarshalBSON() ([]byte, error)     { return Marshal(m) }
@@ -11,10 +11,10 @@ func (d D) UnmarshalBSON(in []byte) error    { return Unmarshal(in, &d) }
 func (r RawD) MarshalBSON() ([]byte, error)  { return Marshal(r) }
 func (r RawD) UnmarshalBSON(in []byte) error { return Unmarshal(in, &r) }
 
-func (o *ObjectId) UnmarshalBSONValue(_ byte, in []byte) error {
+func (o *ObjectId) UnmarshalBSONValue(_ bsontype.Type, in []byte) error {
 	*o = ObjectId(in)
 	return nil
 }
-func (o ObjectId) MarshalBSONValue() (typ byte, data []byte, err error) {
-	return byte(bson.TypeObjectID), []byte(o), nil
+func (o ObjectId) MarshalBSONValue() (bsontype.Type, []byte, error) {
+	return bsontype.ObjectID, []byte(o), nil
 }
