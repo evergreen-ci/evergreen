@@ -268,9 +268,9 @@ func makeCopyDistro() gimlet.RouteHandler {
 //	@Tags			distros
 //	@Router			/distros/{distro_id}/copy/{new_distro_id} [put]
 //	@Security		Api-User || Api-Key
-//	@Param			distro_id	            path	string	true	"distro ID to copy"
-//	@Param			new_distro_id	        path	string	true	"ID of new distro to be created"
-//	@Param			single_task_distro	 	query	bool	false	"if should the copied distro should be single task"
+//	@Param			distro_id			path	string	true	"distro ID to copy"
+//	@Param			new_distro_id		path	string	true	"ID of new distro to be created"
+//	@Param			single_task_distro	query	bool	false	"if should the copied distro should be single task"
 //	@Success		201
 //	@Success		200
 func (h *distroCopyHandler) Factory() gimlet.RouteHandler {
