@@ -69,7 +69,7 @@ func TestPodCreationJob(t *testing.T) {
 			assert.Equal(t, clusterName, utility.FromStringPtr(res.Cluster))
 			require.Len(t, res.Containers, 1)
 
-			dbPod, err := pod.FindOneByID(j.PodID)
+			dbPod, err := pod.FindOneByID(ctx, j.PodID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 
@@ -103,7 +103,7 @@ func TestPodCreationJob(t *testing.T) {
 			require.Zero(t, j.pod.Resources)
 			assert.Empty(t, cocoaMock.GlobalECSService.Clusters[clusterName])
 
-			dbPod, err := pod.FindOneByID(j.PodID)
+			dbPod, err := pod.FindOneByID(ctx, j.PodID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Equal(t, pod.StatusStarting, dbPod.Status)
@@ -119,7 +119,7 @@ func TestPodCreationJob(t *testing.T) {
 			assert.Zero(t, j.pod.Resources)
 			assert.Empty(t, cocoaMock.GlobalECSService.Clusters[clusterName])
 
-			dbPod, err := pod.FindOneByID(j.PodID)
+			dbPod, err := pod.FindOneByID(ctx, j.PodID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Equal(t, pod.StatusRunning, dbPod.Status)
@@ -134,7 +134,7 @@ func TestPodCreationJob(t *testing.T) {
 			assert.Zero(t, j.pod.Resources)
 			assert.Empty(t, cocoaMock.GlobalECSService.Clusters[clusterName])
 
-			dbPod, err := pod.FindOneByID(j.PodID)
+			dbPod, err := pod.FindOneByID(ctx, j.PodID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Equal(t, pod.StatusTerminated, dbPod.Status)

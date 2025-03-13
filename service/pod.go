@@ -12,7 +12,7 @@ import (
 func (uis *UIServer) podPage(w http.ResponseWriter, r *http.Request) {
 	id := gimlet.GetVars(r)["pod_id"]
 
-	p, err := pod.FindOneByID(id)
+	p, err := pod.FindOneByID(r.Context(), id)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "finding pod '%s'", id))
 		return

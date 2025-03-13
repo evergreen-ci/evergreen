@@ -230,7 +230,7 @@ func (s *PatchConnectorFetchByIdSuite) TearDownSuite() {
 }
 
 func (s *PatchConnectorFetchByIdSuite) TestFetchById() {
-	p, err := FindPatchById(s.obj_ids[0])
+	p, err := FindPatchById(s.T().Context(), s.obj_ids[0])
 	s.Require().NoError(err)
 	s.Require().NotNil(p)
 	s.Equal(s.obj_ids[0], *p.Id)
@@ -241,7 +241,7 @@ func (s *PatchConnectorFetchByIdSuite) TestFetchByIdFail() {
 	for _, i := range s.obj_ids {
 		s.NotEqual(new_id, i)
 	}
-	p, err := FindPatchById(new_id.Hex())
+	p, err := FindPatchById(s.T().Context(), new_id.Hex())
 	s.Error(err)
 	s.Nil(p)
 }
@@ -305,18 +305,18 @@ func (s *PatchConnectorAbortByIdSuite) TearDownSuite() {
 func (s *PatchConnectorAbortByIdSuite) TestAbort() {
 	err := AbortPatch(context.Background(), s.obj_ids[0], "user1")
 	s.NoError(err)
-	p, err := FindPatchById(s.obj_ids[0])
+	p, err := FindPatchById(s.T().Context(), s.obj_ids[0])
 	s.Require().NoError(err)
 	s.Require().NotNil(p)
 	s.Equal(s.obj_ids[0], *p.Id)
-	abortedPatch, err := FindPatchById(s.obj_ids[0])
+	abortedPatch, err := FindPatchById(s.T().Context(), s.obj_ids[0])
 	s.NoError(err)
 	s.Equal(evergreen.PatchVersionRequester, *abortedPatch.Requester)
 
 	err = AbortPatch(context.Background(), s.obj_ids[1], "user1")
 	s.NoError(err)
 
-	p, err = FindPatchById(s.obj_ids[1])
+	p, err = FindPatchById(s.T().Context(), s.obj_ids[1])
 
 	s.Error(err)
 	s.Nil(p)
@@ -440,14 +440,14 @@ func (s *PatchConnectorChangeStatusSuite) TestSetActivation() {
 	settings := testutil.MockConfig()
 	err := SetPatchActivated(context.Background(), s.obj_ids[0], "user1", true, settings)
 	s.NoError(err)
-	p, err := FindPatchById(s.obj_ids[0])
+	p, err := FindPatchById(s.T().Context(), s.obj_ids[0])
 	s.NoError(err)
 	s.Require().NotNil(p)
 	s.True(p.Activated)
 
 	err = SetPatchActivated(context.Background(), s.obj_ids[0], "user1", false, settings)
 	s.NoError(err)
-	p, err = FindPatchById(s.obj_ids[0])
+	p, err = FindPatchById(s.T().Context(), s.obj_ids[0])
 	s.NoError(err)
 	s.False(p.Activated)
 
@@ -556,7 +556,7 @@ func TestGetRawPatches(t *testing.T) {
 		},
 	}
 	assert.NoError(t, p.Insert())
-	raw, err := GetRawPatches(p.Id.Hex())
+	raw, err := GetRawPatches(t.Context(), p.Id.Hex())
 	assert.NoError(t, err)
 	// Verify that we populate the raw patch patch githash regardless of whether we have changes.
 	assert.Equal(t, p.Githash, raw.Patch.Githash)

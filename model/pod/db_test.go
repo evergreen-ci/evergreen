@@ -201,13 +201,13 @@ func TestFindOneByID(t *testing.T) {
 			}
 			require.NoError(t, p.Insert())
 
-			dbPod, err := FindOneByID(p.ID)
+			dbPod, err := FindOneByID(t.Context(), p.ID)
 			require.NoError(t, err)
 			assert.Equal(t, p.ID, dbPod.ID)
 			assert.Equal(t, p.Status, dbPod.Status)
 		},
 		"ReturnsNilWithNonexistentPod": func(t *testing.T) {
-			p, err := FindOneByID("nonexistent")
+			p, err := FindOneByID(t.Context(), "nonexistent")
 			assert.NoError(t, err)
 			assert.Zero(t, p)
 		},
@@ -235,13 +235,13 @@ func TestFindOneByExternalID(t *testing.T) {
 			}
 			require.NoError(t, p.Insert())
 
-			dbPod, err := FindOneByExternalID(p.Resources.ExternalID)
+			dbPod, err := FindOneByExternalID(t.Context(), p.Resources.ExternalID)
 			require.NoError(t, err)
 			assert.Equal(t, p.ID, dbPod.ID)
 			assert.Equal(t, p.Status, dbPod.Status)
 		},
 		"ReturnsNilWithNonexistentPod": func(t *testing.T) {
-			p, err := FindOneByExternalID("nonexistent")
+			p, err := FindOneByExternalID(t.Context(), "nonexistent")
 			assert.NoError(t, err)
 			assert.Zero(t, p)
 		},
@@ -367,7 +367,7 @@ func TestUpdateOneStatus(t *testing.T) {
 			require.NoError(t, p.UpdateStatus(t.Context(), p.Status, ""))
 			assert.Equal(t, StatusInitializing, p.Status)
 
-			dbPod, err := FindOneByID(p.ID)
+			dbPod, err := FindOneByID(t.Context(), p.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Equal(t, p.Status, dbPod.Status)
@@ -379,7 +379,7 @@ func TestUpdateOneStatus(t *testing.T) {
 			updated := StatusInitializing
 			require.NoError(t, UpdateOneStatus(t.Context(), p.ID, p.Status, updated, time.Now(), ""))
 
-			dbPod, err := FindOneByID(p.ID)
+			dbPod, err := FindOneByID(t.Context(), p.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			checkStatusAndTimeInfo(t, dbPod, updated)
@@ -391,7 +391,7 @@ func TestUpdateOneStatus(t *testing.T) {
 			updated := StatusStarting
 			require.NoError(t, UpdateOneStatus(t.Context(), p.ID, p.Status, updated, time.Now(), ""))
 
-			dbPod, err := FindOneByID(p.ID)
+			dbPod, err := FindOneByID(t.Context(), p.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			checkStatusAndTimeInfo(t, dbPod, updated)
@@ -408,7 +408,7 @@ func TestUpdateOneStatus(t *testing.T) {
 			updated := StatusTerminated
 			require.NoError(t, UpdateOneStatus(t.Context(), p.ID, p.Status, updated, time.Now(), ""))
 
-			dbPod, err := FindOneByID(p.ID)
+			dbPod, err := FindOneByID(t.Context(), p.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 

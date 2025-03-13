@@ -100,7 +100,7 @@ func (r *versionResolver) ChildVersions(ctx context.Context, obj *restModel.APIV
 	if err := data.ValidatePatchID(patchID); err != nil {
 		return nil, werrors.WithStack(err)
 	}
-	foundPatch, err := patch.FindOneId(patchID)
+	foundPatch, err := patch.FindOneId(ctx, patchID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch '%s': %s", patchID, err.Error()))
 	}
@@ -116,7 +116,7 @@ func (r *versionResolver) ChildVersions(ctx context.Context, obj *restModel.APIV
 			if err != nil {
 				// before erroring due to the version being nil or not found,
 				// fetch the child patch to see if it's activated
-				p, err := patch.FindOneId(cp)
+				p, err := patch.FindOneId(ctx, cp)
 				if err != nil {
 					return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching child patch '%s': %s", cp, err.Error()))
 				}
@@ -140,7 +140,7 @@ func (r *versionResolver) ChildVersions(ctx context.Context, obj *restModel.APIV
 // ExternalLinksForMetadata is the resolver for the externalLinksForMetadata field.
 func (r *versionResolver) ExternalLinksForMetadata(ctx context.Context, obj *restModel.APIVersion) ([]*ExternalLinkForMetadata, error) {
 	projectID := utility.FromStringPtr(obj.Project)
-	pRef, err := data.FindProjectById(projectID, false, false)
+	pRef, err := data.FindProjectById(ctx, projectID, false, false)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", projectID, err.Error()))
 	}
@@ -198,7 +198,7 @@ func (r *versionResolver) IsPatch(ctx context.Context, obj *restModel.APIVersion
 // Manifest is the resolver for the manifest field.
 func (r *versionResolver) Manifest(ctx context.Context, obj *restModel.APIVersion) (*Manifest, error) {
 	versionID := utility.FromStringPtr(obj.Id)
-	m, err := manifest.FindFromVersion(versionID, utility.FromStringPtr(obj.Project), utility.FromStringPtr(obj.Revision), utility.FromStringPtr(obj.Requester))
+	m, err := manifest.FindFromVersion(ctx, versionID, utility.FromStringPtr(obj.Project), utility.FromStringPtr(obj.Revision), utility.FromStringPtr(obj.Requester))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting manifest for version '%s': %s", versionID, err.Error()))
 	}
@@ -228,7 +228,7 @@ func (r *versionResolver) Patch(ctx context.Context, obj *restModel.APIVersion) 
 		return nil, nil
 	}
 	patchID := utility.FromStringPtr(obj.Id)
-	apiPatch, err := data.FindPatchById(patchID)
+	apiPatch, err := data.FindPatchById(ctx, patchID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding patch '%s': %s", patchID, err.Error()))
 	}
@@ -269,7 +269,7 @@ func (r *versionResolver) Status(ctx context.Context, obj *restModel.APIVersion)
 	if v == nil {
 		return "", ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", versionID))
 	}
-	return getDisplayStatus(v)
+	return getDisplayStatus(ctx, v)
 }
 
 // TaskCount is the resolver for the taskCount field.
@@ -438,7 +438,7 @@ func (r *versionResolver) UpstreamProject(ctx context.Context, obj *restModel.AP
 			Task:     &apiTask,
 		}
 	} else if v.TriggerType == model.ProjectTriggerLevelBuild {
-		upstreamBuild, err := build.FindOneId(v.TriggerID)
+		upstreamBuild, err := build.FindOneId(ctx, v.TriggerID)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching upstream build '%s': %s", v.TriggerID, err.Error()))
 		}

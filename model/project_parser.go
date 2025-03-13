@@ -599,7 +599,7 @@ func FindAndTranslateProjectForVersion(ctx context.Context, settings *evergreen.
 func LoadProjectInfoForVersion(ctx context.Context, settings *evergreen.Settings, v *Version, id string) (ProjectInfo, error) {
 	var err error
 
-	pRef, err := FindMergedProjectRef(id, "", false)
+	pRef, err := FindMergedProjectRef(ctx, id, "", false)
 	if err != nil {
 		return ProjectInfo{}, errors.Wrap(err, "finding project ref")
 	}
@@ -857,7 +857,7 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules ModuleList, include parserInclude) ([]byte, error) {
 	// Check if the module has a local change passed in through the CLI or previous patch.
 	if opts.ReferencePatchID != "" {
-		p, err := patch.FindOneId(opts.ReferencePatchID)
+		p, err := patch.FindOneId(ctx, opts.ReferencePatchID)
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding patch to repeat '%s'", opts.ReferencePatchID)
 		}
@@ -905,7 +905,7 @@ func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules Mod
 
 	// If a reference manifest is provided, use the module revision from the manifest.
 	if opts.ReferenceManifestID != "" {
-		m, err := manifest.FindOne(manifest.ById(opts.ReferenceManifestID))
+		m, err := manifest.FindOne(ctx, manifest.ById(opts.ReferenceManifestID))
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding manifest to reference '%s'", opts.ReferenceManifestID)
 		}

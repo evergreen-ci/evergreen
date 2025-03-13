@@ -202,6 +202,11 @@ func (as *APIAdminSettings) BuildFromService(h any) error {
 			return errors.Wrap(err, "converting container pools config to API model")
 		}
 		as.ContainerPools = &containerPoolsConfig
+		singleTaskDistroConfig := APISingleTaskDistroConfig{}
+		if err = singleTaskDistroConfig.BuildFromService(v.SingleTaskDistro); err != nil {
+			return errors.Wrap(err, "converting single task distro config to API model")
+		}
+		as.SingleTaskDistro = &singleTaskDistroConfig
 	default:
 		return errors.Errorf("programmatic error: expected admin settings but got type %T", h)
 	}

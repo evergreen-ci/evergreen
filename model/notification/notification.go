@@ -1,6 +1,7 @@
 package notification
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -216,7 +217,7 @@ func (n *Notification) Composer() (message.Composer, error) {
 	}
 }
 
-func (n *Notification) MarkSent() error {
+func (n *Notification) MarkSent(ctx context.Context) error {
 	if len(n.ID) == 0 {
 		return errors.New("notification has no ID")
 	}
@@ -229,14 +230,14 @@ func (n *Notification) MarkSent() error {
 		},
 	}
 
-	if err := db.UpdateId(Collection, n.ID, update); err != nil {
+	if err := db.UpdateIdContext(ctx, Collection, n.ID, update); err != nil {
 		return errors.Wrap(err, "marking notification as sent")
 	}
 
 	return nil
 }
 
-func (n *Notification) MarkError(sendErr error) error {
+func (n *Notification) MarkError(ctx context.Context, sendErr error) error {
 	if sendErr == nil {
 		return nil
 	}
@@ -244,7 +245,7 @@ func (n *Notification) MarkError(sendErr error) error {
 		return errors.New("notification has no ID")
 	}
 	if n.SentAt.IsZero() {
-		if err := n.MarkSent(); err != nil {
+		if err := n.MarkSent(ctx); err != nil {
 			return err
 		}
 	}
@@ -257,7 +258,7 @@ func (n *Notification) MarkError(sendErr error) error {
 	}
 	n.Error = errMsg
 
-	if err := db.UpdateId(Collection, n.ID, update); err != nil {
+	if err := db.UpdateIdContext(ctx, Collection, n.ID, update); err != nil {
 		n.Error = ""
 		return errors.Wrap(err, "setting error for notification")
 	}

@@ -42,7 +42,7 @@ func TestGenericBuildFinding(t *testing.T) {
 				buildTwo := &Build{Id: "buildTwo"}
 				So(buildTwo.Insert(), ShouldBeNil)
 
-				found, err := FindOne(ById(buildOne.Id))
+				found, err := FindOne(t.Context(), ById(buildOne.Id))
 				So(err, ShouldBeNil)
 				So(found.Id, ShouldEqual, buildOne.Id)
 			})
@@ -229,7 +229,7 @@ func TestGenericBuildUpdating(t *testing.T) {
 			)
 			So(err, ShouldBeNil)
 
-			buildOne, err = FindOne(ById(buildOne.Id))
+			buildOne, err = FindOne(t.Context(), ById(buildOne.Id))
 			So(err, ShouldBeNil)
 			So(buildOne.Project, ShouldEqual, "blah")
 		})
@@ -251,7 +251,7 @@ func TestBuildUpdateStatus(t *testing.T) {
 			" in the database", func() {
 			So(build.UpdateStatus(t.Context(), evergreen.BuildSucceeded), ShouldBeNil)
 			So(build.Status, ShouldEqual, evergreen.BuildSucceeded)
-			build, err = FindOne(ById(build.Id))
+			build, err = FindOne(t.Context(), ById(build.Id))
 			So(err, ShouldBeNil)
 			So(build.Status, ShouldEqual, evergreen.BuildSucceeded)
 		})
@@ -272,7 +272,7 @@ func TestBuildSetHasUnfinishedEssentialTask(t *testing.T) {
 			require.NoError(t, b.SetHasUnfinishedEssentialTask(t.Context(), false))
 			assert.False(t, b.HasUnfinishedEssentialTask)
 
-			dbBuild, err := FindOneId(b.Id)
+			dbBuild, err := FindOneId(t.Context(), b.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbBuild)
 			assert.False(t, dbBuild.HasUnfinishedEssentialTask)
@@ -282,7 +282,7 @@ func TestBuildSetHasUnfinishedEssentialTask(t *testing.T) {
 			require.NoError(t, b.SetHasUnfinishedEssentialTask(t.Context(), true))
 			assert.True(t, b.HasUnfinishedEssentialTask)
 
-			dbBuild, err := FindOneId(b.Id)
+			dbBuild, err := FindOneId(t.Context(), b.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbBuild)
 			assert.True(t, dbBuild.HasUnfinishedEssentialTask)
@@ -293,7 +293,7 @@ func TestBuildSetHasUnfinishedEssentialTask(t *testing.T) {
 			require.NoError(t, b.SetHasUnfinishedEssentialTask(t.Context(), false))
 			assert.False(t, b.HasUnfinishedEssentialTask)
 
-			dbBuild, err := FindOneId(b.Id)
+			dbBuild, err := FindOneId(t.Context(), b.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbBuild)
 			assert.False(t, dbBuild.HasUnfinishedEssentialTask)

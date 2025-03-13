@@ -62,7 +62,7 @@ func CreatePod(apiPod model.APICreatePod) (*model.APICreatePodResponse, error) {
 // database. It returns an error if the secret does not match the one assigned
 // to the pod.
 func CheckPodSecret(ctx context.Context, id, secret string) error {
-	p, err := FindPodByID(id)
+	p, err := FindPodByID(ctx, id)
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -95,8 +95,8 @@ func CheckPodSecret(ctx context.Context, id, secret string) error {
 }
 
 // FindPodByID finds the pod by the given ID.
-func FindPodByID(podID string) (*pod.Pod, error) {
-	p, err := pod.FindOneByID(podID)
+func FindPodByID(ctx context.Context, podID string) (*pod.Pod, error) {
+	p, err := pod.FindOneByID(ctx, podID)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -115,8 +115,8 @@ func FindPodByID(podID string) (*pod.Pod, error) {
 
 // FindAPIPodByID finds a pod by the given ID and returns its equivalent API model.
 // It returns a nil result if no such pod is found.
-func FindAPIPodByID(id string) (*model.APIPod, error) {
-	p, err := FindPodByID(id)
+func FindAPIPodByID(ctx context.Context, id string) (*model.APIPod, error) {
+	p, err := FindPodByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}

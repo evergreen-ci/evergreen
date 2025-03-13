@@ -56,7 +56,7 @@ func TestPodDefinitionCache(t *testing.T) {
 					ID:             externalID,
 					DefinitionOpts: *defOpts,
 				}))
-				pd, err := FindOneByExternalID(externalID)
+				pd, err := FindOneByExternalID(ctx, externalID)
 				require.NoError(t, err)
 				require.NotZero(t, pd)
 				assert.NotZero(t, pd.ID)
@@ -72,7 +72,7 @@ func TestPodDefinitionCache(t *testing.T) {
 					DefinitionOpts: *defOpts,
 				}))
 
-				pd, err := FindOneByExternalID(externalID)
+				pd, err := FindOneByExternalID(ctx, externalID)
 				require.NoError(t, err)
 				require.NotZero(t, pd)
 
@@ -134,7 +134,7 @@ func TestPodDefinitionCache(t *testing.T) {
 
 				require.NoError(t, pdc.Delete(ctx, pd.ExternalID))
 
-				dbPodDef, err := FindOneByExternalID(pd.ExternalID)
+				dbPodDef, err := FindOneByExternalID(ctx, pd.ExternalID)
 				assert.NoError(t, err)
 				assert.Zero(t, dbPodDef)
 			},
@@ -151,7 +151,7 @@ func TestPodDefinitionCache(t *testing.T) {
 				for i := 0; i < 3; i++ {
 					require.NoError(t, pdc.Delete(ctx, pd.ExternalID))
 
-					pd, err := FindOneByExternalID(pd.ExternalID)
+					pd, err := FindOneByExternalID(ctx, pd.ExternalID)
 					assert.NoError(t, err)
 					assert.Zero(t, pd)
 				}

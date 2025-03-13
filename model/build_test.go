@@ -41,19 +41,19 @@ func (s *BuildConnectorFetchByIdSuite) SetupSuite() {
 }
 
 func (s *BuildConnectorFetchByIdSuite) TestFindById() {
-	b, err := build.FindOneId("build1")
+	b, err := build.FindOneId(s.T().Context(), "build1")
 	s.NoError(err)
 	s.NotNil(b)
 	s.Equal("build1", b.Id)
 
-	b, err = build.FindOneId("build2")
+	b, err = build.FindOneId(s.T().Context(), "build2")
 	s.NoError(err)
 	s.NotNil(b)
 	s.Equal("build2", b.Id)
 }
 
 func (s *BuildConnectorFetchByIdSuite) TestFindByIdFail() {
-	b, err := build.FindOneId("build3")
+	b, err := build.FindOneId(s.T().Context(), "build3")
 	s.NoError(err)
 	s.Nil(b)
 }
@@ -101,14 +101,14 @@ func (s *BuildConnectorChangeStatusSuite) TestSetActivated() {
 	defer cancel()
 	err := ActivateBuildsAndTasks(ctx, []string{"build1"}, true, "user1")
 	s.NoError(err)
-	b, err := build.FindOneId("build1")
+	b, err := build.FindOneId(s.T().Context(), "build1")
 	s.NoError(err)
 	s.True(b.Activated)
 	s.Equal("user1", b.ActivatedBy)
 
 	err = ActivateBuildsAndTasks(ctx, []string{"build1"}, false, "user1")
 	s.NoError(err)
-	b, err = build.FindOneId("build1")
+	b, err = build.FindOneId(s.T().Context(), "build1")
 	s.NoError(err)
 	s.False(b.Activated)
 	s.Equal("user1", b.ActivatedBy)
@@ -155,7 +155,7 @@ func (s *BuildConnectorAbortSuite) TestAbort() {
 
 	err := AbortBuild(ctx, "build1", "user1")
 	s.NoError(err)
-	b, err := build.FindOne(build.ById("build1"))
+	b, err := build.FindOne(s.T().Context(), build.ById("build1"))
 	s.NoError(err)
 	s.Equal("user1", b.ActivatedBy)
 }

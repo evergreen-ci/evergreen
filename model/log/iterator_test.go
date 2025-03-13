@@ -522,7 +522,7 @@ func generateTestLog(ctx context.Context, bucket pail.Bucket, size, chunkSize in
 
 		chunks[i].end = ts - int64(time.Millisecond)
 		chunks[i].numLines = lineCount
-		chunks[i].key = logName + "/" + service.createChunkKey(chunks[i].start, chunks[i].end, chunks[i].numLines)
+		chunks[i].key = logName + "/" + service.createChunkKey(0, chunks[i].start, chunks[i].end, chunks[i].numLines)
 
 		if bucket != nil {
 			if err := bucket.Put(ctx, chunks[i].key, strings.NewReader(rawLines)); err != nil {

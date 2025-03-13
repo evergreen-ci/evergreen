@@ -350,6 +350,8 @@ models:
         resolver: true
   ProjectSettingsInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectSettings
+  ProjectTasksPair:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIProjectTasksPair
   ProjectVars:
     model: github.com/evergreen-ci/evergreen/rest/model.APIProjectVars
     fields:
@@ -400,6 +402,8 @@ models:
     model: github.com/evergreen-ci/evergreen/rest/model.APISelector
   SelectorInput:
     model: github.com/evergreen-ci/evergreen/rest/model.APISelector
+  SingleTaskDistroConfig:
+    model: github.com/evergreen-ci/evergreen/rest/model.APISingleTaskDistroConfig
   SiteBanner:
     model: github.com/evergreen-ci/evergreen/rest/model.APIBanner
   SleepSchedule:

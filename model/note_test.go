@@ -20,7 +20,7 @@ func TestNoteStorage(t *testing.T) {
 			So(n.Upsert(), ShouldBeNil)
 
 			Convey("the note should be retrievable", func() {
-				n2, err := NoteForTask("t1")
+				n2, err := NoteForTask(t.Context(), "t1")
 				So(err, ShouldBeNil)
 				So(n2, ShouldNotBeNil)
 				So(*n2, ShouldResemble, n)
@@ -29,7 +29,7 @@ func TestNoteStorage(t *testing.T) {
 				n3 := n
 				n3.Content = "new content"
 				So(n3.Upsert(), ShouldBeNil)
-				n4, err := NoteForTask("t1")
+				n4, err := NoteForTask(t.Context(), "t1")
 				So(err, ShouldBeNil)
 				So(n4, ShouldNotBeNil)
 				So(n4.TaskId, ShouldEqual, "t1")

@@ -95,14 +95,14 @@ func (b *Build) IsFinished() bool {
 }
 
 // FindBuildOnBaseCommit returns the build that a patch build is based on.
-func (b *Build) FindBuildOnBaseCommit() (*Build, error) {
-	return FindOne(ByRevisionAndVariant(b.Revision, b.BuildVariant))
+func (b *Build) FindBuildOnBaseCommit(ctx context.Context) (*Build, error) {
+	return FindOne(ctx, ByRevisionAndVariant(b.Revision, b.BuildVariant))
 }
 
 // Find the most recent b on with the same build variant + requester +
 // project as the current build, with any of the specified statuses.
-func (b *Build) PreviousSuccessful() (*Build, error) {
-	return FindOne(ByRecentlySuccessfulForProjectAndVariant(
+func (b *Build) PreviousSuccessful(ctx context.Context) (*Build, error) {
+	return FindOne(ctx, ByRecentlySuccessfulForProjectAndVariant(
 		b.RevisionOrderNumber, b.Project, b.BuildVariant))
 }
 
@@ -116,7 +116,7 @@ func getSetBuildActivatedUpdate(active bool, caller string) bson.M {
 
 // UpdateActivation updates builds with the given ids
 // to the given activation setting.
-func UpdateActivation(buildIds []string, active bool, caller string) error {
+func UpdateActivation(ctx context.Context, buildIds []string, active bool, caller string) error {
 	if len(buildIds) == 0 {
 		return nil
 	}
@@ -126,6 +126,7 @@ func UpdateActivation(buildIds []string, active bool, caller string) error {
 	}
 
 	err := UpdateAllBuilds(
+		ctx,
 		query,
 		bson.M{
 			"$set": getSetBuildActivatedUpdate(active, caller),

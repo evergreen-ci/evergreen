@@ -69,7 +69,7 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 	}
 	var err error
 	// Use a fully merged project for the rest of the job, since we need it for creating the version
-	j.project, err = model.FindMergedProjectRef(j.ProjectID, "", true)
+	j.project, err = model.FindMergedProjectRef(ctx, j.ProjectID, "", true)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "finding project '%s'", j.ProjectID))
 		return
@@ -197,7 +197,7 @@ func (j *periodicBuildJob) addVersion(ctx context.Context, metadata model.Versio
 		return errors.New("no version created")
 	}
 
-	_, err = model.CreateManifest(v, projectInfo.Project.Modules, projectInfo.Ref)
+	_, err = model.CreateManifest(ctx, v, projectInfo.Project.Modules, projectInfo.Ref)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":               "error creating manifest",

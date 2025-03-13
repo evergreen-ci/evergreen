@@ -161,7 +161,7 @@ func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Copy over artifacts and binaries.
-	entries, err := artifact.FindAll(artifact.ByTaskId(srcTask.Id))
+	entries, err := artifact.FindAll(r.Context(), artifact.ByTaskId(srcTask.Id))
 	if err != nil {
 		msg := fmt.Sprintf("Error finding task '%s'", srcTask.Id)
 		grip.Errorf("%v: %+v", msg, err)

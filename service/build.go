@@ -97,7 +97,7 @@ func (uis *UIServer) buildPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if evergreen.IsPatchRequester(projCtx.Build.Requester) {
-		buildOnBaseCommit, err := projCtx.Build.FindBuildOnBaseCommit()
+		buildOnBaseCommit, err := projCtx.Build.FindBuildOnBaseCommit(r.Context())
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -225,7 +225,7 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// After updating the build, fetch updated version to serve back to client
-	projCtx.Build, err = build.FindOne(build.ById(projCtx.Build.Id))
+	projCtx.Build, err = build.FindOne(r.Context(), build.ById(projCtx.Build.Id))
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -270,7 +270,7 @@ func (uis *UIServer) buildHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	builds, err := getBuildVariantHistory(buildId, before, after)
+	builds, err := getBuildVariantHistory(r.Context(), buildId, before, after)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("error getting build history: %v", err), http.StatusInternalServerError)
 		return
@@ -318,7 +318,7 @@ func (uis *UIServer) buildHistory(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	lastSuccess, err := getBuildVariantHistoryLastSuccess(buildId)
+	lastSuccess, err := getBuildVariantHistoryLastSuccess(r.Context(), buildId)
 	if err == nil && lastSuccess != nil {
 		v, err := model.VersionFindOne(model.VersionById(lastSuccess.Version))
 		if err != nil {

@@ -498,7 +498,7 @@ tasks:
 	assert.Len(t, bv.BatchTimeTasks, 1)
 	assert.False(t, bv.BatchTimeTasks[0].Activated)
 
-	build1, err := build.FindOneId(bv.BuildId)
+	build1, err := build.FindOneId(t.Context(), bv.BuildId)
 	assert.NoError(t, err)
 	require.NotZero(t, build1)
 
@@ -521,7 +521,7 @@ tasks:
 
 	bv, _ = findStatus(v, "bv3")
 
-	build3, err := build.FindOneId(bv.BuildId)
+	build3, err := build.FindOneId(t.Context(), bv.BuildId)
 	assert.NoError(t, err)
 	require.NotZero(t, build3)
 
@@ -547,7 +547,7 @@ tasks:
 	assert.True(t, bv.BatchTimeTasks[0].Activated)
 
 	// validate that the activation time of the entire build was not changed
-	build2, err := build.FindOneId(bv.BuildId)
+	build2, err := build.FindOneId(t.Context(), bv.BuildId)
 	assert.NoError(t, err)
 	assert.Equal(t, build1.ActivatedTime, build2.ActivatedTime)
 }
@@ -865,7 +865,7 @@ func TestBuildBreakSubscriptions(t *testing.T) {
 		Branch:     "branch",
 	}
 	assert.NoError(AddBuildBreakSubscriptions(&v1, &proj1))
-	assert.NoError(db.FindAllQ(event.SubscriptionsCollection, db.Q{}, &subs))
+	assert.NoError(db.FindAllQContext(t.Context(), event.SubscriptionsCollection, db.Q{}, &subs))
 	assert.Empty(subs)
 
 	// just a project
@@ -906,7 +906,7 @@ func TestBuildBreakSubscriptions(t *testing.T) {
 	}
 	assert.NoError(u4.Insert())
 	assert.NoError(AddBuildBreakSubscriptions(&v1, &proj2))
-	assert.NoError(db.FindAllQ(event.SubscriptionsCollection, db.Q{}, &subs))
+	assert.NoError(db.FindAllQContext(t.Context(), event.SubscriptionsCollection, db.Q{}, &subs))
 	assert.Len(subs, 2)
 
 	// project has it enabled, but user doesn't want notifications
@@ -920,7 +920,7 @@ func TestBuildBreakSubscriptions(t *testing.T) {
 		AuthorID:   u4.Id,
 	}
 	assert.NoError(AddBuildBreakSubscriptions(&v3, &proj2))
-	assert.NoError(db.FindAllQ(event.SubscriptionsCollection, db.Q{}, &subs))
+	assert.NoError(db.FindAllQContext(t.Context(), event.SubscriptionsCollection, db.Q{}, &subs))
 	targetString, ok := subs[0].Subscriber.Target.(*string)
 	assert.True(ok)
 	assert.EqualValues("@hello.itsme", utility.FromStringPtr(targetString))
@@ -1024,7 +1024,7 @@ tasks:
 	s.Len(dbParserProject.Tasks, 2)
 
 	s.False(utility.FromBoolPtr(dbVersion.Activated))
-	dbBuild, err := build.FindOneId(v.BuildIds[0])
+	dbBuild, err := build.FindOneId(s.T().Context(), v.BuildIds[0])
 	s.NoError(err)
 	s.Equal(v.Id, dbBuild.Version)
 	s.Len(dbBuild.Tasks, 2)
@@ -1079,7 +1079,7 @@ tasks:
 	s.Len(dbParserProject.BuildVariants, 1)
 	s.Len(dbParserProject.Tasks, 2)
 
-	dbBuild, err := build.FindOne(build.ByVersion(v.Id))
+	dbBuild, err := build.FindOne(s.T().Context(), build.ByVersion(v.Id))
 	s.NoError(err)
 	s.Nil(dbBuild)
 
@@ -1129,7 +1129,7 @@ tasks:
 	s.Len(dbParserProject.BuildVariants, 1)
 	s.Len(dbParserProject.Tasks, 2)
 
-	dbBuild, err := build.FindOne(build.ByVersion(v.Id))
+	dbBuild, err := build.FindOne(s.T().Context(), build.ByVersion(v.Id))
 	s.NoError(err)
 	s.Nil(dbBuild)
 
@@ -1440,7 +1440,7 @@ tasks:
 	s.Equal(s.rev.RevisionMessage, dbVersion.Message)
 
 	s.Require().Len(v.BuildIds, 1)
-	dbBuild, err := build.FindOneId(v.BuildIds[0])
+	dbBuild, err := build.FindOneId(s.T().Context(), v.BuildIds[0])
 	s.NoError(err)
 	s.Equal(v.Id, dbBuild.Version)
 	s.Len(dbBuild.Tasks, 2)
@@ -1695,7 +1695,7 @@ func TestCreateManifest(t *testing.T) {
 	}
 	require.NoError(t, projVars.Insert())
 
-	manifest, err := model.CreateManifest(&v, proj.Modules, projRef)
+	manifest, err := model.CreateManifest(t.Context(), &v, proj.Modules, projRef)
 	assert.NoError(err)
 	assert.Equal(v.Id, manifest.Id)
 	assert.Equal(v.Revision, manifest.Revision)
@@ -1708,7 +1708,7 @@ func TestCreateManifest(t *testing.T) {
 	assert.Equal("b27779f856b211ffaf97cbc124b7082a20ea8bc0", module.Revision)
 
 	proj.Modules[0].AutoUpdate = true
-	manifest, err = model.CreateManifest(&patchVersion, proj.Modules, projRef)
+	manifest, err = model.CreateManifest(t.Context(), &patchVersion, proj.Modules, projRef)
 	assert.NoError(err)
 	assert.Equal(patchVersion.Id, manifest.Id)
 	assert.Equal(patchVersion.Revision, manifest.Revision)
@@ -1735,7 +1735,7 @@ func TestCreateManifest(t *testing.T) {
 			},
 		},
 	}
-	manifest, err = model.CreateManifest(&v, proj.Modules, projRef)
+	manifest, err = model.CreateManifest(t.Context(), &v, proj.Modules, projRef)
 	assert.NoError(err)
 	assert.Equal(v.Id, manifest.Id)
 	assert.Equal(v.Revision, manifest.Revision)
@@ -1760,7 +1760,7 @@ func TestCreateManifest(t *testing.T) {
 			},
 		},
 	}
-	manifest, err = model.CreateManifest(&v, proj.Modules, projRef)
+	_, err = model.CreateManifest(t.Context(), &v, proj.Modules, projRef)
 	assert.Contains(err.Error(), "No commit found for SHA")
 }
 

@@ -338,8 +338,9 @@ func VersionUpdateOne(ctx context.Context, query any, update any) error {
 	)
 }
 
-func ActivateVersions(versionIds []string) error {
-	_, err := db.UpdateAll(
+func ActivateVersions(ctx context.Context, versionIds []string) error {
+	_, err := db.UpdateAllContext(
+		ctx,
 		VersionCollection,
 		bson.M{
 			VersionIdKey: bson.M{"$in": versionIds},

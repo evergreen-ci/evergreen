@@ -27,7 +27,7 @@ func UpdateDistro(ctx context.Context, old, new *distro.Distro) error {
 	}
 
 	if old.DispatcherSettings.Version == evergreen.DispatcherVersionRevisedWithDependencies && new.DispatcherSettings.Version != evergreen.DispatcherVersionRevisedWithDependencies {
-		if err := model.RemoveTaskQueues(new.Id); err != nil {
+		if err := model.RemoveTaskQueues(ctx, new.Id); err != nil {
 			return gimlet.ErrorResponse{
 				StatusCode: http.StatusInternalServerError,
 				Message:    errors.Wrapf(err, "removing task queues for distro '%s'", new.Id).Error(),

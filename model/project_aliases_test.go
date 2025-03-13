@@ -46,7 +46,7 @@ func (s *ProjectAliasSuite) TestInsertTaskAndVariantWithNoTags() {
 	var out ProjectAlias
 	for i, a := range s.aliases {
 		q := db.Query(bson.M{projectIDKey: fmt.Sprintf("project-%d", i)})
-		s.NoError(db.FindOneQ(ProjectAliasCollection, q, &out))
+		s.NoError(db.FindOneQContext(s.T().Context(), ProjectAliasCollection, q, &out))
 		s.Equal(a.ProjectID, out.ProjectID)
 		s.Equal(a.Alias, out.Alias)
 		s.Equal(a.Variant, out.Variant)
@@ -67,7 +67,7 @@ func (s *ProjectAliasSuite) TestInsertTagsAndNoTask() {
 	var out ProjectAlias
 	for i, a := range s.aliases {
 		q := db.Query(bson.M{projectIDKey: fmt.Sprintf("project-%d", i)})
-		s.NoError(db.FindOneQ(ProjectAliasCollection, q, &out))
+		s.NoError(db.FindOneQContext(s.T().Context(), ProjectAliasCollection, q, &out))
 		s.Equal(a.ProjectID, out.ProjectID)
 		s.Equal(a.Alias, out.Alias)
 		s.Equal(a.Variant, out.Variant)
@@ -94,19 +94,19 @@ func (s *ProjectAliasSuite) TestHasMatchingGitTagAliasAndRemotePath() {
 		RemotePath: "file.yml",
 	}
 	s.NoError(newAlias2.Upsert())
-	hasAliases, path, err := HasMatchingGitTagAliasAndRemotePath("project_id", "release")
+	hasAliases, path, err := HasMatchingGitTagAliasAndRemotePath(s.T().Context(), "project_id", "release")
 	s.Error(err)
 	s.False(hasAliases)
 	s.Empty(path)
 
 	newAlias2.RemotePath = ""
 	s.NoError(newAlias2.Upsert())
-	hasAliases, path, err = HasMatchingGitTagAliasAndRemotePath("project_id", "release")
+	hasAliases, path, err = HasMatchingGitTagAliasAndRemotePath(s.T().Context(), "project_id", "release")
 	s.NoError(err)
 	s.True(hasAliases)
 	s.Empty(path)
 
-	hasAliases, path, err = HasMatchingGitTagAliasAndRemotePath("project_id2", "release")
+	hasAliases, path, err = HasMatchingGitTagAliasAndRemotePath(s.T().Context(), "project_id2", "release")
 	s.Error(err)
 	s.False(hasAliases)
 	s.Empty(path)
@@ -118,7 +118,7 @@ func (s *ProjectAliasSuite) TestHasMatchingGitTagAliasAndRemotePath() {
 		RemotePath: "file.yml",
 	}
 	s.NoError(newAlias3.Upsert())
-	hasAliases, path, err = HasMatchingGitTagAliasAndRemotePath("project_id2", "release")
+	hasAliases, path, err = HasMatchingGitTagAliasAndRemotePath(s.T().Context(), "project_id2", "release")
 	s.NoError(err)
 	s.True(hasAliases)
 	s.Equal("file.yml", path)
@@ -136,7 +136,7 @@ func (s *ProjectAliasSuite) TestInsertTagsAndNoVariant() {
 	var out ProjectAlias
 	for i, a := range s.aliases {
 		q := db.Query(bson.M{projectIDKey: fmt.Sprintf("project-%d", i)})
-		s.NoError(db.FindOneQ(ProjectAliasCollection, q, &out))
+		s.NoError(db.FindOneQContext(s.T().Context(), ProjectAliasCollection, q, &out))
 		s.Equal(a.ProjectID, out.ProjectID)
 		s.Equal(a.Alias, out.Alias)
 		s.Equal(a.Task, out.Task)
@@ -154,12 +154,12 @@ func (s *ProjectAliasSuite) TestRemove() {
 	}
 	var out []ProjectAlias
 	q := db.Query(bson.M{})
-	s.NoError(db.FindAllQ(ProjectAliasCollection, q, &out))
+	s.NoError(db.FindAllQContext(s.T().Context(), ProjectAliasCollection, q, &out))
 	s.Len(out, 10)
 
 	for i, a := range s.aliases {
-		s.NoError(RemoveProjectAlias(a.ID.Hex()))
-		s.NoError(db.FindAllQ(ProjectAliasCollection, q, &out))
+		s.NoError(RemoveProjectAlias(s.T().Context(), a.ID.Hex()))
+		s.NoError(db.FindAllQContext(s.T().Context(), ProjectAliasCollection, q, &out))
 		s.Len(out, 10-i-1)
 	}
 }
@@ -281,31 +281,31 @@ func (s *ProjectAliasSuite) TestFindAliasInProjectOrConfig() {
 		}}
 	s.NoError(projectConfig.Insert())
 
-	projectAliases, err := FindAliasInProjectRepoOrConfig("project-1", evergreen.CommitQueueAlias)
+	projectAliases, err := FindAliasInProjectRepoOrConfig(s.T().Context(), "project-1", evergreen.CommitQueueAlias)
 	s.NoError(err)
 	s.Len(projectAliases, 2)
 
-	projectAliases, err = FindAliasInProjectRepoOrConfig("project-1", evergreen.GithubPRAlias)
+	projectAliases, err = FindAliasInProjectRepoOrConfig(s.T().Context(), "project-1", evergreen.GithubPRAlias)
 	s.NoError(err)
 	s.Len(projectAliases, 1)
 
-	projectAliases, err = FindAliasInProjectRepoOrConfig("project-1", evergreen.GithubChecksAlias)
+	projectAliases, err = FindAliasInProjectRepoOrConfig(s.T().Context(), "project-1", evergreen.GithubChecksAlias)
 	s.NoError(err)
 	s.Len(projectAliases, 1)
 
-	projectAliases, err = FindAliasInProjectRepoOrConfig("project-1", "alias-0")
+	projectAliases, err = FindAliasInProjectRepoOrConfig(s.T().Context(), "project-1", "alias-0")
 	s.NoError(err)
 	s.Len(projectAliases, 1)
-	projectAliases, err = FindAliasInProjectRepoOrConfig("project-1", "alias-1")
+	projectAliases, err = FindAliasInProjectRepoOrConfig(s.T().Context(), "project-1", "alias-1")
 	s.NoError(err)
 	s.Len(projectAliases, 1)
-	projectAliases, err = FindAliasInProjectRepoOrConfig("project-1", "alias-2")
+	projectAliases, err = FindAliasInProjectRepoOrConfig(s.T().Context(), "project-1", "alias-2")
 	s.NoError(err)
 	s.Len(projectAliases, 1)
 
 	// If the same alias is defined in both UI and project config,
 	// UI takes precedence.
-	projectAliases, err = FindAliasInProjectRepoOrConfig("project-1", "duplicate")
+	projectAliases, err = FindAliasInProjectRepoOrConfig(s.T().Context(), "project-1", "duplicate")
 	s.NoError(err)
 	s.Len(projectAliases, 1)
 	s.Equal("from UI", projectAliases[0].Description)
@@ -510,27 +510,27 @@ func (s *ProjectAliasSuite) TestFindAliasInProjectRepoOrConfig() {
 	}
 
 	// Test project with aliases
-	found, err := FindAliasInProjectRepoOrConfig(pRef1.Id, "alias-3")
+	found, err := FindAliasInProjectRepoOrConfig(s.T().Context(), pRef1.Id, "alias-3")
 	s.NoError(err)
 	s.Len(found, 3)
 
 	// Test project without aliases; parent repo has aliases
-	found, err = FindAliasInProjectRepoOrConfig(pRef2.Id, "alias-1")
+	found, err = FindAliasInProjectRepoOrConfig(s.T().Context(), pRef2.Id, "alias-1")
 	s.NoError(err)
 	s.Len(found, 2)
 
 	// Test non-existent project
-	found, err = FindAliasInProjectRepoOrConfig("bad-project", "alias-1")
+	found, err = FindAliasInProjectRepoOrConfig(s.T().Context(), "bad-project", "alias-1")
 	s.Error(err)
 	s.Empty(found)
 
 	// Test no aliases found
-	found, err = FindAliasInProjectRepoOrConfig(pRef1.Id, "alias-5")
+	found, err = FindAliasInProjectRepoOrConfig(s.T().Context(), pRef1.Id, "alias-5")
 	s.NoError(err)
 	s.Empty(found)
 
 	// Test project config
-	found, err = FindAliasInProjectRepoOrConfig(pRef1.Id, "alias-6")
+	found, err = FindAliasInProjectRepoOrConfig(s.T().Context(), pRef1.Id, "alias-6")
 	s.NoError(err)
 	s.Require().Len(found, 1)
 	s.Equal("alias-6", found[0].Alias)
@@ -538,7 +538,7 @@ func (s *ProjectAliasSuite) TestFindAliasInProjectRepoOrConfig() {
 	s.Equal("*", found[0].Variant)
 
 	// Test non-patch aliases defined in config
-	found, err = FindAliasInProjectRepoOrConfig(pRef1.Id, evergreen.CommitQueueAlias)
+	found, err = FindAliasInProjectRepoOrConfig(s.T().Context(), pRef1.Id, evergreen.CommitQueueAlias)
 	s.NoError(err)
 	s.Require().Len(found, 1)
 	s.Equal(evergreen.CommitQueueAlias, found[0].Alias)

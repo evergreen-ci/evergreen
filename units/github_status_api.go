@@ -158,7 +158,7 @@ func (j *githubStatusUpdateJob) preamble(ctx context.Context) error {
 	return nil
 }
 
-func (j *githubStatusUpdateJob) fetch() (*message.GithubStatus, error) {
+func (j *githubStatusUpdateJob) fetch(ctx context.Context) (*message.GithubStatus, error) {
 	status := message.GithubStatus{
 		Owner: j.Owner,
 		Repo:  j.Repo,
@@ -189,7 +189,7 @@ func (j *githubStatusUpdateJob) fetch() (*message.GithubStatus, error) {
 	}
 
 	if j.UpdateType == githubUpdateTypeRequestAuth || j.UpdateType == githubUpdateTypeNewPatch {
-		patchDoc, err := patch.FindOne(patch.ById(mgobson.ObjectIdHex(j.FetchID)))
+		patchDoc, err := patch.FindOne(ctx, patch.ById(mgobson.ObjectIdHex(j.FetchID)))
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
@@ -219,7 +219,7 @@ func (j *githubStatusUpdateJob) Run(ctx context.Context) {
 		return
 	}
 
-	status, err := j.fetch()
+	status, err := j.fetch(ctx)
 	if err != nil {
 		j.AddError(err)
 		return

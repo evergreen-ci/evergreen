@@ -277,7 +277,7 @@ func GetPatchedProject(ctx context.Context, settings *evergreen.Settings, p *pat
 		return project, patchConfig, nil
 	}
 
-	projectRef, opts, err := getLoadProjectOptsForPatch(p)
+	projectRef, opts, err := getLoadProjectOptsForPatch(ctx, p)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "fetching project options for patch")
 	}
@@ -338,7 +338,7 @@ func GetPatchedProjectConfig(ctx context.Context, settings *evergreen.Settings, 
 
 	// The patch has not been created yet, so do the first-time initialization
 	// to get the parser project and project config.
-	projectRef, opts, err := getLoadProjectOptsForPatch(p)
+	projectRef, opts, err := getLoadProjectOptsForPatch(ctx, p)
 	if err != nil {
 		return "", errors.Wrap(err, "fetching project options for patch")
 	}
@@ -538,7 +538,7 @@ func parseRenamedOrCopiedFile(patchContents, filename string) string {
 // Creates builds based on the Version
 // Creates a manifest based on the Version
 func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Version, error) {
-	projectRef, err := FindMergedProjectRef(p.Project, p.Version, true)
+	projectRef, err := FindMergedProjectRef(ctx, p.Project, p.Version, true)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding project '%s'", p.Project)
 	}
@@ -582,7 +582,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 		parentPatchNumber = parentPatch.PatchNumber
 	}
 
-	params, err := getFullPatchParams(p)
+	params, err := getFullPatchParams(ctx, p)
 	if err != nil {
 		return nil, errors.Wrap(err, "fetching patch parameters")
 	}
@@ -623,7 +623,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 		AuthorEmail:          authorEmail,
 	}
 
-	mfst, err := constructManifest(patchVersion, projectRef, project.Modules)
+	mfst, err := constructManifest(ctx, patchVersion, projectRef, project.Modules)
 	if err != nil {
 		return nil, errors.Wrap(err, "constructing manifest")
 	}
@@ -813,12 +813,12 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 
 // getFullPatchParams will retrieve a merged list of parameters defined on the patch alias (if any)
 // with the parameters that were explicitly user-specified, with the latter taking precedence.
-func getFullPatchParams(p *patch.Patch) ([]patch.Parameter, error) {
+func getFullPatchParams(ctx context.Context, p *patch.Patch) ([]patch.Parameter, error) {
 	paramsMap := map[string]string{}
 	if p.Alias == "" || !IsPatchAlias(p.Alias) {
 		return p.Parameters, nil
 	}
-	aliases, err := findAliasesForPatch(p.Project, p.Alias, p)
+	aliases, err := findAliasesForPatch(ctx, p.Project, p.Alias, p)
 	if err != nil {
 		return nil, errors.Wrapf(err, "retrieving alias '%s' for patch '%s'", p.Alias, p.Id.Hex())
 	}
@@ -842,8 +842,8 @@ func getFullPatchParams(p *patch.Patch) ([]patch.Parameter, error) {
 	return fullParams, nil
 }
 
-func getLoadProjectOptsForPatch(p *patch.Patch) (*ProjectRef, *GetProjectOpts, error) {
-	projectRef, err := FindMergedProjectRef(p.Project, p.Version, true)
+func getLoadProjectOptsForPatch(ctx context.Context, p *patch.Patch) (*ProjectRef, *GetProjectOpts, error) {
+	projectRef, err := FindMergedProjectRef(ctx, p.Project, p.Version, true)
 	if err != nil {
 		return nil, nil, errors.WithStack(err)
 	}
@@ -886,7 +886,7 @@ func getLoadProjectOptsForPatch(p *patch.Patch) (*ProjectRef, *GetProjectOpts, e
 }
 
 func finalizeOrSubscribeChildPatch(ctx context.Context, childPatchId string, parentPatch *patch.Patch, requester string) error {
-	intent, err := patch.FindIntent(childPatchId, patch.TriggerIntentType)
+	intent, err := patch.FindIntent(ctx, childPatchId, patch.TriggerIntentType)
 	if err != nil {
 		return errors.Wrap(err, "fetching child patch intent")
 	}
@@ -899,7 +899,7 @@ func finalizeOrSubscribeChildPatch(ctx context.Context, childPatchId string, par
 	}
 	// if the parentStatus is "", finalize without waiting for the parent patch to finish running
 	if triggerIntent.ParentStatus == "" {
-		childPatchDoc, err := patch.FindOneId(childPatchId)
+		childPatchDoc, err := patch.FindOneId(ctx, childPatchId)
 		if err != nil {
 			return errors.Wrap(err, "fetching child patch")
 		}
@@ -950,7 +950,7 @@ func CancelPatch(ctx context.Context, p *patch.Patch, reason task.AbortInfo) err
 		return errors.WithStack(task.AbortVersionTasks(ctx, p.Version, reason))
 	}
 
-	return errors.WithStack(patch.Remove(patch.ById(p.Id)))
+	return errors.WithStack(patch.Remove(ctx, patch.ById(p.Id)))
 }
 
 // AbortPatchesWithGithubPatchData aborts patches created

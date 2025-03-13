@@ -29,7 +29,7 @@ func TestQueryExecution(t *testing.T) {
 			Convey("the item should be findable with a Query", func() {
 				out := &insertableStruct{}
 				query := Query(bson.M{"one": "1"})
-				err := FindOneQ(collection, query, out)
+				err := FindOneQContext(t.Context(), collection, query, out)
 				So(err, ShouldBeNil)
 				So(out, ShouldResemble, in)
 			})
@@ -56,14 +56,14 @@ func TestQueryExecution(t *testing.T) {
 
 			Convey("BelowFive should return 4 documents", func() {
 				out := []insertableStruct{}
-				err := FindAllQ(collection, BelowFive, &out)
+				err := FindAllQContext(t.Context(), collection, BelowFive, &out)
 				So(err, ShouldBeNil)
 				So(len(out), ShouldEqual, 4)
 			})
 
 			Convey("BelowFiveSorted should return 4 documents, sorted in reverse", func() {
 				out := []insertableStruct{}
-				err := FindAllQ(collection, BelowFiveSorted, &out)
+				err := FindAllQContext(t.Context(), collection, BelowFiveSorted, &out)
 				So(err, ShouldBeNil)
 				So(len(out), ShouldEqual, 4)
 				So(out[0].FieldTwo, ShouldEqual, 4)
@@ -74,14 +74,14 @@ func TestQueryExecution(t *testing.T) {
 
 			Convey("BelowFiveLimit should return 2 documents", func() {
 				out := []insertableStruct{}
-				err := FindAllQ(collection, BelowFiveLimit, &out)
+				err := FindAllQContext(t.Context(), collection, BelowFiveLimit, &out)
 				So(err, ShouldBeNil)
 				So(len(out), ShouldEqual, 2)
 			})
 
 			Convey("JustOneField should return 1 document", func() {
 				out := []bson.M{}
-				err := FindAllQ(collection, JustOneField, &out)
+				err := FindAllQContext(t.Context(), collection, JustOneField, &out)
 				So(err, ShouldBeNil)
 				So(out[0]["three"], ShouldEqual, "COOL")
 			})

@@ -1,6 +1,7 @@
 package event
 
 import (
+	"context"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -504,7 +505,7 @@ func (s *Subscription) Upsert() error {
 	return nil
 }
 
-func FindSubscriptionByID(id string) (*Subscription, error) {
+func FindSubscriptionByID(ctx context.Context, id string) (*Subscription, error) {
 	out := Subscription{}
 	query := bson.M{
 		subscriptionIDKey: id,
@@ -519,7 +520,7 @@ func FindSubscriptionByID(id string) (*Subscription, error) {
 			},
 		}
 	}
-	err := db.FindOneQ(SubscriptionsCollection, db.Query(query), &out)
+	err := db.FindOneQContext(ctx, SubscriptionsCollection, db.Query(query), &out)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -530,12 +531,12 @@ func FindSubscriptionByID(id string) (*Subscription, error) {
 	return &out, nil
 }
 
-func RemoveSubscription(id string) error {
+func RemoveSubscription(ctx context.Context, id string) error {
 	if id == "" {
 		return errors.New("id is not valid, cannot remove")
 	}
 
-	return db.Remove(SubscriptionsCollection, bson.M{
+	return db.Remove(ctx, SubscriptionsCollection, bson.M{
 		subscriptionIDKey: id,
 	})
 }
@@ -712,12 +713,12 @@ func IsValidOwnerType(in string) bool {
 	}
 }
 
-func CreateOrUpdateGeneralSubscription(resourceType string, id string,
+func CreateOrUpdateGeneralSubscription(ctx context.Context, resourceType string, id string,
 	subscriber Subscriber, user string) (*Subscription, error) {
 	var err error
 	var sub *Subscription
 	if id != "" {
-		sub, err = FindSubscriptionByID(id)
+		sub, err = FindSubscriptionByID(ctx, id)
 		if err != nil {
 			return nil, errors.Wrap(err, "finding subscription")
 		}
@@ -752,7 +753,7 @@ func CreateOrUpdateGeneralSubscription(resourceType string, id string,
 		}
 	} else {
 		if id != "" {
-			if err := RemoveSubscription(id); err != nil {
+			if err := RemoveSubscription(ctx, id); err != nil {
 				return nil, errors.Wrap(err, "removing subscription")
 			}
 			sub = nil

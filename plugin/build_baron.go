@@ -28,7 +28,7 @@ func (bbp *BuildBaronPlugin) GetPanelConfig() (*PanelConfig, error) {
 					template.HTML(`<script type="text/javascript" src="/static/plugins/buildbaron/js/task_build_baron.js"></script>`),
 				},
 				DataFunc: func(context UIContext) (any, error) {
-					bbSettings, ok := model.GetBuildBaronSettings(context.ProjectRef.Id, "")
+					bbSettings, ok := model.GetBuildBaronSettings(context.Request.Context(), context.ProjectRef.Id, "")
 					enabled := ok && len(bbSettings.TicketSearchProjects) > 0
 					return struct {
 						Enabled bool `json:"enabled"`

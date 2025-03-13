@@ -24,6 +24,7 @@ type requestInfo struct {
 	taskData *TaskData
 
 	retryOnInvalidBody bool
+	retryOn413         bool
 }
 
 func (c *baseCommunicator) newRequest(method, path, taskID, taskSecret string, data any) (*http.Request, error) {
@@ -146,6 +147,7 @@ func (c *baseCommunicator) retryRequest(ctx context.Context, info requestInfo, d
 	opts := utility.RetryRequestOptions{
 		RetryOptions:       c.retry,
 		RetryOnInvalidBody: info.retryOnInvalidBody,
+		RetryOn413:         info.retryOn413,
 	}
 	resp, err := utility.RetryRequest(ctx, r, opts)
 	if err != nil && resp != nil && resp.StatusCode == 400 {

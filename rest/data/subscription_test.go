@@ -425,10 +425,10 @@ func TestSaveVersionSubscriptions(t *testing.T) {
 func TestDeleteProjectSubscriptions(t *testing.T) {
 	for name, test := range map[string]func(t *testing.T, ids []string){
 		"InvalidOwner": func(t *testing.T, ids []string) {
-			assert.Error(t, DeleteSubscriptions("my-project", ids))
+			assert.Error(t, DeleteSubscriptions(t.Context(), "my-project", ids))
 		},
 		"ValidOwner": func(t *testing.T, ids []string) {
-			assert.NoError(t, DeleteSubscriptions("my-project", []string{ids[0]}))
+			assert.NoError(t, DeleteSubscriptions(t.Context(), "my-project", []string{ids[0]}))
 			subs, err := event.FindSubscriptionsByOwner("my-project", event.OwnerTypeProject)
 			assert.NoError(t, err)
 			assert.Empty(t, subs)

@@ -51,7 +51,7 @@ func (h *podProvisioningScript) Parse(ctx context.Context, r *http.Request) erro
 // because the pod's containers unlikely to be equipped with the tooling to
 // parse JSON output.
 func (h *podProvisioningScript) Run(ctx context.Context) gimlet.Responder {
-	p, err := pod.FindOneByID(h.podID)
+	p, err := pod.FindOneByID(ctx, h.podID)
 	if err != nil {
 		return gimlet.NewTextInternalErrorResponse(errors.Wrap(err, "finding pod"))
 	}
@@ -206,7 +206,7 @@ func (h *podAgentNextTask) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *podAgentNextTask) Run(ctx context.Context) gimlet.Responder {
-	p, err := data.FindPodByID(h.podID)
+	p, err := data.FindPodByID(ctx, h.podID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
@@ -242,7 +242,7 @@ func (h *podAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 
-	pd, err := h.findDispatcher()
+	pd, err := h.findDispatcher(ctx)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
@@ -316,8 +316,8 @@ func (h *podAgentNextTask) setAgentFirstContactTime(ctx context.Context, p *pod.
 	})
 }
 
-func (h *podAgentNextTask) findDispatcher() (*dispatcher.PodDispatcher, error) {
-	pd, err := dispatcher.FindOneByPodID(h.podID)
+func (h *podAgentNextTask) findDispatcher(ctx context.Context) (*dispatcher.PodDispatcher, error) {
+	pd, err := dispatcher.FindOneByPodID(ctx, h.podID)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -445,7 +445,7 @@ func (h *podAgentEndTask) Parse(ctx context.Context, r *http.Request) error {
 // It then marks the task as finished. If the task is aborted, this will no-op.
 func (h *podAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 	finishTime := time.Now()
-	p, err := data.FindPodByID(h.podID)
+	p, err := data.FindPodByID(ctx, h.podID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
@@ -472,7 +472,7 @@ func (h *podAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONResponse(endTaskResp)
 	}
 
-	projectRef, err := model.FindMergedProjectRef(t.Project, t.Version, true)
+	projectRef, err := model.FindMergedProjectRef(ctx, t.Project, t.Version, true)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project '%s' for version '%s'", t.Project, t.Version))
 	}

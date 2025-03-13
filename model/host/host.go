@@ -3136,6 +3136,17 @@ func CountSpawnhostsWithNoExpirationByUser(ctx context.Context, user string) (in
 	return Count(ctx, query)
 }
 
+// CountIntentHosts counts the number of intent hosts Evergreen will soon
+// attempt to create.
+func CountIntentHosts(ctx context.Context) (int, error) {
+	query := bson.M{
+		IdKey:        bson.M{"$regex": "^evg.*"},
+		StartedByKey: evergreen.User,
+		StatusKey:    bson.M{"$in": evergreen.UpHostStatus},
+	}
+	return Count(ctx, query)
+}
+
 // FindSpawnhostsWithNoExpirationToExtend returns all hosts that are set to never
 // expire but have their expiration time within the next day and are still up.
 func FindSpawnhostsWithNoExpirationToExtend(ctx context.Context) ([]Host, error) {

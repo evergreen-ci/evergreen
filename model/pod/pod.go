@@ -581,8 +581,9 @@ func (p *Pod) InsertWithContext(ctx context.Context, env evergreen.Environment) 
 }
 
 // Remove removes the pod from the collection.
-func (p *Pod) Remove() error {
+func (p *Pod) Remove(ctx context.Context) error {
 	return db.Remove(
+		ctx,
 		Collection,
 		bson.M{
 			IDKey: p.ID,

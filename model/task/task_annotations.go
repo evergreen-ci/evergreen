@@ -166,7 +166,7 @@ func UpsertAnnotation(ctx context.Context, a *annotations.TaskAnnotation, userDi
 // PatchAnnotation adds issues onto existing annotations, and marks its associated task document
 // as having annotations if the patch includes a non-nil Issues field.
 func PatchAnnotation(ctx context.Context, a *annotations.TaskAnnotation, userDisplayName string, upsert bool) error {
-	existingAnnotation, err := annotations.FindOneByTaskIdAndExecution(a.TaskId, a.TaskExecution)
+	existingAnnotation, err := annotations.FindOneByTaskIdAndExecution(ctx, a.TaskId, a.TaskExecution)
 	if err != nil {
 		return errors.Wrapf(err, "finding annotation for task '%s' and execution %d", a.TaskId, a.TaskExecution)
 	}

@@ -17,8 +17,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
+	"github.com/gonzojive/httpcache"
 	"github.com/google/go-github/v52/github"
-	"github.com/gregjones/httpcache"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
@@ -331,7 +331,7 @@ func getGithubClient(token, caller string, config retryConfig) *githubapp.GitHub
 	// to the database. Otherwise we're running in the agent and we should use an in-memory cache.
 	// We could stop casing on this if we were to stop calling out to GitHub from the agent.
 	if evergreen.GetEnvironment() != nil {
-		cacheTransport.Cache = &cache.DBCache{}
+		cacheTransport.ContextCache = &cache.DBCache{}
 	} else {
 		cacheTransport.Cache = httpcache.NewMemoryCache()
 	}

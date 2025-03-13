@@ -32,7 +32,7 @@ func TestGetAliasesHandler(t *testing.T) {
 			projectAliases, err := dbModel.FindAliasesForProjectFromDb("project_ref")
 			require.NoError(t, err)
 			require.Len(t, projectAliases, 1)
-			require.NoError(t, dbModel.RemoveProjectAlias(projectAliases[0].ID.Hex()))
+			require.NoError(t, dbModel.RemoveProjectAlias(ctx, projectAliases[0].ID.Hex()))
 
 			r, err := http.NewRequest(http.MethodGet, "/alias/project_ref", nil)
 			assert.NoError(t, err)

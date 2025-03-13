@@ -611,7 +611,7 @@ func TestGenerateTasksWithDifferentGeneratedJSONStorageMethods(t *testing.T) {
 			require.Len(p.TaskGroups, 1)
 			assert.Len(p.TaskGroups[0].Tasks, 2)
 
-			b, err := build.FindOneId("sample_build_id")
+			b, err := build.FindOneId(t.Context(), "sample_build_id")
 			assert.NoError(err)
 			assert.Equal("mci_identifier_race_detector_display_my_display_task__01_01_01_00_00_00", b.Tasks[0].Id)
 		})

@@ -165,7 +165,7 @@ func (s *GithubSuite) TestFindIntentSpecifically() {
 	s.NotNil(intent)
 	s.NoError(intent.Insert())
 
-	found, err := FindIntent(intent.ID(), intent.GetType())
+	found, err := FindIntent(s.T().Context(), intent.ID(), intent.GetType())
 	s.NoError(err)
 	s.NotNil(found)
 
@@ -190,7 +190,7 @@ func (s *GithubSuite) TestSetProcessed() {
 	s.Empty(found)
 
 	var intents []githubIntent
-	s.NoError(db.FindAllQ(IntentCollection, db.Query(bson.M{processedKey: true}), &intents))
+	s.NoError(db.FindAllQContext(s.T().Context(), IntentCollection, db.Query(bson.M{processedKey: true}), &intents))
 	s.Len(intents, 1)
 	s.Equal(s.pr, intents[0].PRNumber)
 	s.Equal(s.hash, intents[0].HeadHash)
