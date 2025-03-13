@@ -19,6 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
@@ -1548,4 +1549,38 @@ func (c *communicatorImpl) GetTestLogs(ctx context.Context, opts GetTestLogsOpti
 	header.Add(evergreen.APIUserHeader, c.apiUser)
 	header.Add(evergreen.APIKeyHeader, c.apiKey)
 	return utility.NewPaginatedReadCloser(ctx, c.httpClient, resp, header), nil
+}
+
+func (c *communicatorImpl) Validate(ctx context.Context, data []byte, quiet bool, projectID string) (validator.ValidationErrors, error) {
+	info := requestInfo{
+		method: http.MethodPost,
+		path:   "validate",
+	}
+
+	body := validator.ValidationInput{
+		ProjectYaml: data,
+		Quiet:       quiet,
+		ProjectID:   projectID,
+	}
+	resp, err := c.retryRequest(ctx, info, body)
+	// we want to ignore the error if it's a 400, since that is expected when validation fails
+	if resp.StatusCode != http.StatusBadRequest && err != nil {
+		return nil, errors.Wrap(err, "validating project")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusBadRequest {
+		errors := validator.ValidationErrors{}
+		err = utility.ReadJSON(resp.Body, &errors)
+		if err != nil {
+			return nil, util.RespError(resp, "reading validation errors")
+		}
+		return errors, nil
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, util.RespError(resp, "validating project")
+	}
+
+	return nil, nil
 }
