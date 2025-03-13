@@ -2318,7 +2318,7 @@ Admin Settings
 									</md-card-title>
 									<md-card-content>
 										<div id="ssh-key-secret-arns" class="form-group"
-											ng-repeat="(index, arn) in Settings.ssh_key_secret_arns">
+											ng-repeat="(index, secretARN) in Settings.ssh_key_secret_arns">
 											<section layout="row" flex>
 												<md-input-container class="control" flex=25>
 													<input class="control" type="text" ng-model="secretARN"

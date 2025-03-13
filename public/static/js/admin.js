@@ -289,9 +289,6 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     if ($scope.Settings.ssh_key_secret_arns == null) {
       $scope.Settings.ssh_key_secret_arns = [];
     }
-    if ($scope.Settings.ssh_key_secret_arns == null) {
-      $scope.Settings.ssh_key_secret_arns = [];
-    }
 
     if (!$scope.validSecretARN($scope.new_secret_arn)) {
       $scope.invalidSecretARN = "ARN cannot be empty.";
