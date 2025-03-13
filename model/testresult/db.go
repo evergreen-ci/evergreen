@@ -7,7 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const Collection = "testresults"
@@ -50,7 +50,7 @@ func (id dbTaskTestResultsID) appendResults(ctx context.Context, env evergreen.E
 			bsonutil.GetDottedKeyName(statsKey, failedCountKey): failedCount,
 		},
 	}
-	_, err := env.DB().Collection(Collection).UpdateOne(ctx, bson.M{idKey: id}, update, options.UpdateOne().SetUpsert(true))
+	_, err := env.DB().Collection(Collection).UpdateOne(ctx, bson.M{idKey: id}, update, options.Update().SetUpsert(true))
 	return errors.Wrap(err, "appending DB test results")
 }
 

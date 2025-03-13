@@ -25,6 +25,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func init() { testutil.Setup() }
@@ -1785,7 +1786,7 @@ func TestShellVersionFromRevisionGitTags(t *testing.T) {
 		},
 	}
 	pRef := &model.ProjectRef{
-		Id:                    bson.NewObjectId().Hex(),
+		Id:                    primitive.NewObjectID().Hex(),
 		Identifier:            "my-project",
 		GitTagAuthorizedUsers: []string{"release-bot", "not-release-bot"},
 		GitTagVersionsEnabled: utility.TruePtr(),

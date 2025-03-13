@@ -3,7 +3,6 @@ package evergreen
 import (
 	"context"
 	"fmt"
-	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -21,10 +20,10 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/v2/bson"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
-	"go.mongodb.org/mongo-driver/v2/mongo/readconcern"
-	"go.mongodb.org/mongo-driver/v2/mongo/writeconcern"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo/readconcern"
+	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 	"gopkg.in/yaml.v3"
 )
 
@@ -34,11 +33,11 @@ var (
 
 	// ClientVersion is the commandline version string used to control updating
 	// the CLI. The format is the calendar date (YYYY-MM-DD).
-	ClientVersion = "2025-03-07"
+	ClientVersion = "2025-03-13"
 
 	// Agent version to control agent rollover. The format is the calendar date
 	// (YYYY-MM-DD).
-	AgentVersion = "2025-03-11-d"
+	AgentVersion = "2025-03-13"
 )
 
 const (
@@ -659,18 +658,8 @@ func (s *DBSettings) mongoOptions(url string) *options.ClientOptions {
 		SetReadConcern(s.ReadConcernSettings.Resolve()).
 		SetTimeout(mongoTimeout).
 		SetConnectTimeout(mongoConnectTimeout).
-		SetMaxConnIdleTime(30 * time.Second).
-		SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false), apm.WithCommandAttributeTransformer(redactSensitiveCollections))).
-		SetBSONOptions(&options.BSONOptions{
-			ObjectIDAsHexString: true,
-		})
-
-	dialer := &net.Dialer{
-		Timeout:   30 * time.Second,
-		KeepAlive: 300 * time.Second,
-	}
-
-	opts.SetDialer(dialer)
+		SetSocketTimeout(mongoTimeout).
+		SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false), apm.WithCommandAttributeTransformer(redactSensitiveCollections)))
 
 	if s.AWSAuthEnabled {
 		opts.SetAuth(options.Credential{

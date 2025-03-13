@@ -21,6 +21,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/mongo"
 	"gopkg.in/yaml.v2"
 )
 
@@ -749,7 +750,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 	}
 	defer session.EndSession(ctx)
 
-	txFunc := func(ctx context.Context) (any, error) {
+	txFunc := func(ctx mongo.SessionContext) (any, error) {
 		db := env.DB()
 		_, err = db.Collection(VersionCollection).InsertOne(ctx, patchVersion)
 		if err != nil {

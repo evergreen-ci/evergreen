@@ -116,7 +116,7 @@ func (a *Agent) prepLogger(tc *taskContext, commandName string) client.LoggerCon
 	}
 	config := client.LoggerConfig{
 		SendToGlobalSender: a.opts.SendTaskLogsToGlobalSender,
-		AWSCredentials:     pail.CreateAWSCredentials(tc.taskConfig.TaskOutput.Key, tc.taskConfig.TaskOutput.Secret, ""),
+		AWSCredentials:     pail.CreateAWSStaticCredentials(tc.taskConfig.TaskOutput.Key, tc.taskConfig.TaskOutput.Secret, ""),
 		RedactorOpts: redactor.RedactionOptions{
 			Expansions:         tc.taskConfig.NewExpansions,
 			Redacted:           tc.taskConfig.Redacted,

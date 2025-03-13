@@ -19,9 +19,10 @@ import (
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/v2/bson"
-	"go.mongodb.org/mongo-driver/v2/mongo"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/gridfs"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const gridFSFileID = "5e4ff3ab850e6136624eaf95"
@@ -106,8 +107,11 @@ func insertFileDocsToDB(ctx context.Context, fn string, db *mongo.Database) erro
 }
 
 func writeDummyGridFSFile(ctx context.Context, db *mongo.Database) error {
-	bucket := db.GridFSBucket(options.GridFSBucket().SetName(patch.GridFSPrefix))
-	_, err := bucket.UploadFromStream(ctx, gridFSFileID, strings.NewReader("sample_patch"), nil)
+	bucket, err := gridfs.NewBucket(db, &options.BucketOptions{Name: utility.ToStringPtr(patch.GridFSPrefix)})
+	if err != nil {
+		return errors.Wrap(err, "Creating gridFS bucket")
+	}
+	_, err = bucket.UploadFromStream(gridFSFileID, strings.NewReader("sample_patch"), nil)
 	if err != nil {
 		return errors.Wrap(err, "writing GridFS file")
 	}
@@ -210,7 +214,7 @@ func main() {
 	const dbURI = "mongodb://localhost:27017"
 
 	clientOptions := options.Client().ApplyURI(dbURI).SetConnectTimeout(5 * time.Second)
-	client, err := mongo.Connect(clientOptions)
+	client, err := mongo.Connect(ctx, clientOptions)
 	grip.EmergencyFatal(err)
 
 	db := client.Database(dbName)

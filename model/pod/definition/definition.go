@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 // PodDefinition represents a template definition for a pod kept in external
@@ -72,7 +73,7 @@ func (pdc PodDefinitionCache) Put(ctx context.Context, item cocoa.ECSPodDefiniti
 			LastAccessedKey: time.Now(),
 		},
 		"$setOnInsert": bson.M{
-			IDKey: bson.NewObjectId().Hex(),
+			IDKey: primitive.NewObjectID().Hex(),
 		},
 	}
 	if _, err := UpsertOne(ctx, idAndFamily, newPodDef); err != nil {

@@ -23,6 +23,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.opentelemetry.io/otel/attribute"
 )
 
@@ -744,8 +745,8 @@ func dispatchHostTaskAtomically(ctx context.Context, env evergreen.Environment, 
 	return nil
 }
 
-func dispatchHostTask(env evergreen.Environment, h *host.Host, t *task.Task) func(context.Context) (any, error) {
-	return func(ctx context.Context) (any, error) {
+func dispatchHostTask(env evergreen.Environment, h *host.Host, t *task.Task) func(mongo.SessionContext) (any, error) {
+	return func(ctx mongo.SessionContext) (any, error) {
 		if err := h.UpdateRunningTaskWithContext(ctx, env, t); err != nil {
 			return nil, errors.Wrapf(err, "updating running task for host '%s' to '%s'", h.Id, t.Id)
 		}
@@ -798,8 +799,8 @@ func undoHostTaskDispatchAtomically(ctx context.Context, env evergreen.Environme
 	return nil
 }
 
-func undoHostTaskDispatch(env evergreen.Environment, h *host.Host, t *task.Task) func(context.Context) (any, error) {
-	return func(ctx context.Context) (any, error) {
+func undoHostTaskDispatch(env evergreen.Environment, h *host.Host, t *task.Task) func(mongo.SessionContext) (any, error) {
+	return func(ctx mongo.SessionContext) (any, error) {
 		if err := h.ClearRunningTaskWithContext(ctx, env); err != nil {
 			return nil, errors.Wrapf(err, "clearing running task '%s' execution '%d' from host '%s'", h.RunningTask, h.RunningTaskExecution, h.Id)
 		}
