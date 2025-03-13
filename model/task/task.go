@@ -926,10 +926,6 @@ func (t *Task) MarkDependenciesFinished(ctx context.Context, finished bool) erro
 				bsonutil.GetDottedKeyName(DependsOnKey, "$[elem]", DependencyFinishedAtKey): finishedAt,
 			},
 		},
-		// TODO (DEVPROD-11824): Reimplement and remove L930-935.
-		// options.Update().SetArrayFilters([]any{
-		// 	bson.M{bsonutil.GetDottedKeyName("elem", DependencyTaskIdKey): t.Id},
-		// }),
 		options.Update().SetArrayFilters(options.ArrayFilters{Filters: []interface{}{
 			bson.M{bsonutil.GetDottedKeyName("elem", DependencyTaskIdKey): t.Id},
 		}}),
@@ -1731,16 +1727,11 @@ func SetGeneratedStepbackInfoForGenerator(ctx context.Context, taskId string, s 
 				bsonutil.GetDottedKeyName(StepbackInfoKey, GeneratedStepbackInfoKey, "$[elem]", PreviousStepbackTaskIdKey):    s.PreviousStepbackTaskId,
 			},
 		},
-		// TODO (DEVPROD-11824): Reimplement and remove L1742-1744.
-		// options.Update().SetArrayFilters([]any{
-		// 	bson.M{
-		// 		bsonutil.GetDottedKeyName("elem", DisplayNameKey):  s.DisplayName,
-		// 		bsonutil.GetDottedKeyName("elem", BuildVariantKey): s.BuildVariant,
-		// 	},
-		// }),
 		options.Update().SetArrayFilters(options.ArrayFilters{Filters: []interface{}{
-			bson.M{bsonutil.GetDottedKeyName("elem", StepbackInfoDisplayNameKey): s.DisplayName},
-			bson.M{bsonutil.GetDottedKeyName("elem", StepbackInfoBuildVariantKey): s.BuildVariant},
+			bson.M{
+				bsonutil.GetDottedKeyName("elem", DisplayNameKey):  s.DisplayName,
+				bsonutil.GetDottedKeyName("elem", BuildVariantKey): s.BuildVariant,
+			},
 		}}),
 	)
 	// If no documents were modified, fallback to adding the new StepbackInfo.

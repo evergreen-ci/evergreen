@@ -238,12 +238,6 @@ func TestOverrideConfig(t *testing.T) {
 			newDocs, err := overrideConfig(ctx, []bson.Raw{docRaw}, true)
 			assert.NoError(t, err)
 			require.Len(t, newDocs, 1)
-			// TODO (DEVPROD-11824): Reimplement and remove L247-250.
-			// var doc bson.M
-			// decoder := bson.NewDecoder(bson.NewDocumentReader(bytes.NewBuffer(newDocs[0])))
-			// decoder.DefaultDocumentM()
-			// assert.NoError(t, decoder.Decode(&doc))
-			// assert.Equal(t, testCase.expected, doc)
 			var doc bson.M
 			require.NoError(t, bson.Unmarshal(newDocs[0], &doc))
 			assert.Equal(t, testCase.expected, doc)

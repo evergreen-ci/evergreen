@@ -107,8 +107,6 @@ func insertFileDocsToDB(ctx context.Context, fn string, db *mongo.Database) erro
 }
 
 func writeDummyGridFSFile(ctx context.Context, db *mongo.Database) error {
-	// TODO (DEVPROD-11824): Reimplement.
-	// bucket := db.GridFSBucket(options.GridFSBucket().SetName(patch.GridFSPrefix))
 	bucket, err := gridfs.NewBucket(db, &options.BucketOptions{Name: utility.ToStringPtr(patch.GridFSPrefix)})
 	if err != nil {
 		return errors.Wrap(err, "Creating gridFS bucket")

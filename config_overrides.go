@@ -85,13 +85,6 @@ func (c *OverridesConfig) overrideDoc(originalDoc bson.Raw) (bson.Raw, error) {
 	}
 
 	if sectionOverrides := c.sectionOverrides(id); len(sectionOverrides) > 0 {
-		// TODO (DEVPROD-11824): Reimplement and remove L95-98.
-		// decoder := bson.NewDecoder(bson.NewDocumentReader(bytes.NewBuffer(originalDoc)))
-		// decoder.DefaultDocumentM()
-		// var originalM bson.M
-		// if err := decoder.Decode(&originalM); err != nil {
-		// 	return nil, errors.Wrap(err, "unmarshalling original document")
-		// }
 		var originalM bson.M
 		if err := bson.Unmarshal(originalDoc, &originalM); err != nil {
 			return nil, errors.Wrap(err, "unmarshalling original document")
