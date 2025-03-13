@@ -53,7 +53,7 @@ var (
 	disabledGQLQueriesKey  = bsonutil.MustHaveTag(Settings{}, "DisabledGQLQueries")
 	sshKeyDirectoryKey     = bsonutil.MustHaveTag(Settings{}, "SSHKeyDirectory")
 	sshKeyPairsKey         = bsonutil.MustHaveTag(Settings{}, "SSHKeyPairs")
-	sshKeySecretARNKey     = bsonutil.MustHaveTag(Settings{}, "SSHKeySecretARN")
+	sshKeySecretARNsKey    = bsonutil.MustHaveTag(Settings{}, "SSHKeySecretARNs")
 	spawnhostKey           = bsonutil.MustHaveTag(Settings{}, "Spawnhost")
 	shutdownWaitKey        = bsonutil.MustHaveTag(Settings{}, "ShutdownWaitSeconds")
 

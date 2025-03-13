@@ -1029,11 +1029,16 @@ func (e *envState) initSSH(ctx context.Context, tracer trace.Tracer) error {
 	ctx, span := tracer.Start(ctx, "InitSSH")
 	defer span.End()
 
-	if e.settings.SSHKeySecretARN == "" {
-		return nil
+	catcher := grip.NewBasicCatcher()
+	for _, keyARN := range e.settings.SSHKeySecretARNs {
+		catcher.Add(addSSHKey(ctx, keyARN, tracer))
 	}
 
-	sshKey, err := e.getSSHKey(ctx, tracer)
+	return catcher.Resolve()
+}
+
+func addSSHKey(ctx context.Context, keyARN string, tracer trace.Tracer) error {
+	sshKey, err := getSSHKey(ctx, keyARN, tracer)
 	if err != nil {
 		return errors.Wrap(err, "getting SSH private key")
 	}
@@ -1041,7 +1046,7 @@ func (e *envState) initSSH(ctx context.Context, tracer trace.Tracer) error {
 	return errors.Wrap(addSSHKeyToAgent(ctx, sshKey, tracer), "adding SSH key to ssh-agent")
 }
 
-func (e *envState) getSSHKey(ctx context.Context, tracer trace.Tracer) (string, error) {
+func getSSHKey(ctx context.Context, keyARN string, tracer trace.Tracer) (string, error) {
 	ctx, span := tracer.Start(ctx, "GetSSHKey")
 	defer span.End()
 
@@ -1054,7 +1059,7 @@ func (e *envState) getSSHKey(ctx context.Context, tracer trace.Tracer) (string, 
 
 	client := secretsmanager.NewFromConfig(config)
 	output, err := client.GetSecretValue(ctx, &secretsmanager.GetSecretValueInput{
-		SecretId: aws.String(e.settings.SSHKeySecretARN),
+		SecretId: aws.String(keyARN),
 	})
 	if err != nil {
 		return "", errors.Wrap(err, "getting SSH key secret")

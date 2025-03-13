@@ -408,7 +408,10 @@ func MockConfig() *evergreen.Settings {
 				Private: "private",
 			},
 		},
-		SSHKeySecretARN: "arn:aws:secretsmanager:us-east-1:012345678901:secret/top-secret-private-key",
+		SSHKeySecretARNs: []string{
+			"arn:aws:secretsmanager:us-east-1:012345678901:secret/top-secret-private-key",
+			"arn:aws:secretsmanager:us-east-1:012345678901:secret/confidential-private-key",
+		},
 		Slack: evergreen.SlackConfig{
 			Options: &send.SlackOptions{
 				Channel:   "#channel",

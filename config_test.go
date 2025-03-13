@@ -134,20 +134,23 @@ func (s *AdminSuite) TestBaseConfig() {
 	defer cancel()
 
 	config := Settings{
-		AWSInstanceRole:     "role",
-		Banner:              "banner",
-		BannerTheme:         Important,
-		ConfigDir:           "cfg_dir",
-		DomainName:          "example.com",
-		Expansions:          map[string]string{"k2": "v2"},
-		GithubPRCreatorOrg:  "org",
-		GithubOrgs:          []string{"evergreen-ci"},
-		LogPath:             "logpath",
-		Plugins:             map[string]map[string]any{"k4": {"k5": "v5"}},
-		PprofPort:           "port",
-		SSHKeyDirectory:     "/ssh_key_directory",
-		SSHKeyPairs:         []SSHKeyPair{{Name: "key", Public: "public", Private: "private"}},
-		SSHKeySecretARN:     "arn:aws:secretsmanager:us-east-1:012345678901:secret/top-secret-private-key",
+		AWSInstanceRole:    "role",
+		Banner:             "banner",
+		BannerTheme:        Important,
+		ConfigDir:          "cfg_dir",
+		DomainName:         "example.com",
+		Expansions:         map[string]string{"k2": "v2"},
+		GithubPRCreatorOrg: "org",
+		GithubOrgs:         []string{"evergreen-ci"},
+		LogPath:            "logpath",
+		Plugins:            map[string]map[string]any{"k4": {"k5": "v5"}},
+		PprofPort:          "port",
+		SSHKeyDirectory:    "/ssh_key_directory",
+		SSHKeyPairs:        []SSHKeyPair{{Name: "key", Public: "public", Private: "private"}},
+		SSHKeySecretARNs: []string{
+			"arn:aws:secretsmanager:us-east-1:012345678901:secret/top-secret-private-key",
+			"arn:aws:secretsmanager:us-east-1:012345678901:secret/confidential-private-key",
+		},
 		ShutdownWaitSeconds: 15,
 	}
 
@@ -168,7 +171,7 @@ func (s *AdminSuite) TestBaseConfig() {
 	s.Equal(config.Plugins, settings.Plugins)
 	s.Equal(config.PprofPort, settings.PprofPort)
 	s.Equal(config.SSHKeyDirectory, settings.SSHKeyDirectory)
-	s.Equal(config.SSHKeySecretARN, settings.SSHKeySecretARN)
+	s.Equal(config.SSHKeySecretARNs, settings.SSHKeySecretARNs)
 	s.Require().Len(settings.SSHKeyPairs, len(config.SSHKeyPairs))
 	for i := 0; i < len(settings.SSHKeyPairs); i++ {
 		s.Equal(config.SSHKeyPairs[i].Name, settings.SSHKeyPairs[i].Name)

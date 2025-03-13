@@ -80,7 +80,7 @@ func TestModelConversion(t *testing.T) {
 		assert.Equal(testSettings.SSHKeyPairs[i].Public, utility.FromStringPtr(apiSettings.SSHKeyPairs[i].Public))
 		assert.Equal(testSettings.SSHKeyPairs[i].Private, utility.FromStringPtr(apiSettings.SSHKeyPairs[i].Private))
 	}
-	assert.Equal(testSettings.SSHKeySecretARN, utility.FromStringPtr(apiSettings.SSHKeySecretARN))
+	assert.Equal(testSettings.SSHKeySecretARNs, apiSettings.SSHKeySecretARNs)
 	assert.Equal(testSettings.ShutdownWaitSeconds, *apiSettings.ShutdownWaitSeconds)
 
 	assert.EqualValues(testSettings.Amboy.Name, utility.FromStringPtr(apiSettings.Amboy.Name))

@@ -277,6 +277,32 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     return bucket && bucket != "";
   }
 
+  $scope.deleteSecretARN = function (index) {
+    $scope.Settings.ssh_key_secret_arns.splice(index, 1);
+  }
+
+  $scope.validSecretARN = function (arn) {
+    return arn && arn != "";
+  }
+
+  $scope.addSecretARN = function () {
+    if ($scope.Settings.ssh_key_secret_arns == null) {
+      $scope.Settings.ssh_key_secret_arns = [];
+    }
+    if ($scope.Settings.ssh_key_secret_arns == null) {
+      $scope.Settings.ssh_key_secret_arns = [];
+    }
+
+    if (!$scope.validSecretARN($scope.new_secret_arn)) {
+      $scope.invalidSecretARN = "ARN cannot be empty.";
+      return
+    }
+
+    $scope.Settings.ssh_key_secret_arns.push($scope.new_secret_arn);
+    $scope.new_secret_arn = "";
+    $scope.invalidSecretARN = "";
+  }
+
   $scope.addAWSVPCSubnet = function () {
     if ($scope.Settings.providers == null) {
       $scope.Settings.providers = {
