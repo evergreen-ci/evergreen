@@ -3,6 +3,7 @@ package evergreen
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -658,10 +659,18 @@ func (s *DBSettings) mongoOptions(url string) *options.ClientOptions {
 		SetReadConcern(s.ReadConcernSettings.Resolve()).
 		SetTimeout(mongoTimeout).
 		SetConnectTimeout(mongoConnectTimeout).
+		SetMaxConnIdleTime(30 * time.Second).
 		SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false), apm.WithCommandAttributeTransformer(redactSensitiveCollections))).
 		SetBSONOptions(&options.BSONOptions{
 			ObjectIDAsHexString: true,
 		})
+
+	dialer := &net.Dialer{
+		Timeout:   30 * time.Second,
+		KeepAlive: 300 * time.Second,
+	}
+
+	opts.SetDialer(dialer)
 
 	if s.AWSAuthEnabled {
 		opts.SetAuth(options.Credential{
