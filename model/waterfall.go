@@ -197,7 +197,7 @@ func GetActiveVersionsByTaskFilters(ctx context.Context, projectId string, opts 
 		// When querying with a $gt param, sort ascending so we can take `limit` versions nearest to the MinOrder param
 		pipeline = append(pipeline, bson.M{"$sort": bson.M{task.RevisionOrderNumberKey: 1}})
 		pipeline = append(pipeline, bson.M{"$limit": opts.Limit})
-		// Then apply an acending sort so these versions are returned in the expected descending order
+		// Then apply an ascending sort so these versions are returned in the expected descending order
 		pipeline = append(pipeline, bson.M{"$sort": bson.M{task.RevisionOrderNumberKey: -1}})
 
 	} else {
@@ -239,7 +239,7 @@ func GetActiveVersionsByTaskFilters(ctx context.Context, projectId string, opts 
 }
 
 // GetActiveWaterfallVersions returns at most `opts.limit` activated versions for a given project.
-// It performantly applies build variant and requester filters; for task-related filters, see GetActiveVErsionsByTaskFilters.
+// It performantly applies build variant and requester filters; for task-related filters, see GetActiveVersionsByTaskFilters.
 func GetActiveWaterfallVersions(ctx context.Context, projectId string, opts WaterfallOptions) ([]Version, error) {
 	invalidRequesters, _ := utility.StringSliceSymmetricDifference(opts.Requesters, evergreen.SystemVersionRequesterTypes)
 	if len(invalidRequesters) > 0 {
