@@ -3,6 +3,7 @@ package evergreen
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -658,8 +659,7 @@ func (s *DBSettings) mongoOptions(url string) *options.ClientOptions {
 		SetTimeout(mongoTimeout).
 		SetConnectTimeout(mongoConnectTimeout).
 		SetSocketTimeout(mongoTimeout)
-		// TODO (DEVPROD-11824): Reimplement and remove L660.
-		// SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false), apm.WithCommandAttributeTransformer(redactSensitiveCollections))).
+		SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false), apm.WithCommandAttributeTransformer(redactSensitiveCollections)))
 		// SetBSONOptions(&options.BSONOptions{
 		// 	ObjectIDAsHexString: true,
 		// })
