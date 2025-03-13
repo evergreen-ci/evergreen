@@ -1,7 +1,7 @@
 package bson
 
 import (
-	"github.com/evergreen-ci/birch/bsontype"
+	"go.mongodb.org/mongo-driver/bson/bsontype"
 )
 
 func (m M) MarshalBSON() ([]byte, error)     { return Marshal(m) }
