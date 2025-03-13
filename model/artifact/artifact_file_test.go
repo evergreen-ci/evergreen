@@ -6,7 +6,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	_ "github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 type TestArtifactFileSuite struct {

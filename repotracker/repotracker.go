@@ -23,7 +23,7 @@ import (
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 const (
@@ -1015,8 +1015,8 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 	}
 	v.ProjectStorageMethod = ppStorageMethod
 
-	txFunc := func(ctx context.Context) error {
-		sessCtx := mongo.SessionFromContext(ctx)
+	txFunc := func(sessCtx mongo.SessionContext) error {
+		// sessCtx := mongo.SessionFromContext(ctx)
 
 		err := sessCtx.StartTransaction()
 		if err != nil {
@@ -1102,7 +1102,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 
 // If we error in aborting transaction, we create a new session and start again.
 // If we abort successfully and the error is a transient transaction error, we retry using the same session.
-func transactionWithRetries(ctx context.Context, versionId string, sessionFunc func(sessCtx context.Context) error) error {
+func transactionWithRetries(ctx context.Context, versionId string, sessionFunc func(sessCtx mongo.SessionContext) error) error {
 	const retryCount = 5
 	const minBackoffInterval = 1 * time.Second
 	const maxBackoffInterval = 60 * time.Second

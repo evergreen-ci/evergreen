@@ -6,9 +6,9 @@ import (
 
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/v2/bson"
-	"go.mongodb.org/mongo-driver/v2/mongo"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 var (
@@ -271,7 +271,7 @@ func setConfigSection(ctx context.Context, sectionID string, update bson.M) erro
 		ctx,
 		byId(sectionID),
 		update,
-		options.UpdateOne().SetUpsert(true),
+		options.Update().SetUpsert(true),
 	)
 
 	return errors.Wrapf(err, "updating config section '%s'", sectionID)
@@ -283,7 +283,7 @@ func SetBanner(ctx context.Context, bannerText string) error {
 	coll := GetEnvironment().DB().Collection(ConfigCollection)
 	_, err := coll.UpdateOne(ctx, byId(ConfigDocID), bson.M{
 		"$set": bson.M{bannerKey: bannerText},
-	}, options.UpdateOne().SetUpsert(true))
+	}, options.Update().SetUpsert(true))
 
 	return errors.WithStack(err)
 }
@@ -294,7 +294,7 @@ func SetBannerTheme(ctx context.Context, theme BannerTheme) error {
 	coll := GetEnvironment().DB().Collection(ConfigCollection)
 	_, err := coll.UpdateOne(ctx, byId(ConfigDocID), bson.M{
 		"$set": bson.M{bannerThemeKey: theme},
-	}, options.UpdateOne().SetUpsert(true))
+	}, options.Update().SetUpsert(true))
 
 	return errors.WithStack(err)
 }

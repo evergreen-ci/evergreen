@@ -8,7 +8,7 @@ import (
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func newBucket(ctx context.Context, config evergreen.BucketConfig, creds aws.CredentialsProvider) (pail.Bucket, error) {
@@ -23,7 +23,7 @@ func newBucket(ctx context.Context, config evergreen.BucketConfig, creds aws.Cre
 			Compress:    true,
 		})
 	case evergreen.BucketTypeGridFS:
-		client, err := mongo.Connect()
+		client, err := mongo.Connect(ctx)
 		if err != nil {
 			return nil, errors.Wrap(err, "connecting to the GridFS DB")
 		}

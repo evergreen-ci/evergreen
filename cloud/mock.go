@@ -13,7 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 var globalMockState *mockState
@@ -372,7 +372,7 @@ func (m *mockManager) CreateVolume(ctx context.Context, volume *host.Volume) (*h
 		m.Volumes = map[string]MockVolume{}
 	}
 	if volume.ID == "" {
-		volume.ID = bson.NewObjectID().String()
+		volume.ID = primitive.NewObjectID().String()
 	}
 	m.Volumes[volume.ID] = MockVolume{}
 	if err := volume.Insert(); err != nil {

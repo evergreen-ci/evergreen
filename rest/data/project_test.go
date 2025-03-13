@@ -25,7 +25,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 ////////////////////////////////////////////////////////////////////////
@@ -478,7 +478,7 @@ func TestCreateProject(t *testing.T) {
 			assert.Equal(t, pRef.Identifier, dbProjRef.Identifier)
 		},
 		"SucceedsWithObjectIDAsProjectID": func(ctx context.Context, t *testing.T, env *mock.Environment, pRef model.ProjectRef, u user.DBUser) {
-			pRef.Id = bson.NewObjectID().Hex()
+			pRef.Id = primitive.NewObjectID().Hex()
 			created, err := CreateProject(ctx, env, &pRef, &u)
 			require.NoError(t, err)
 			require.True(t, created)

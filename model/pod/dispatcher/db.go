@@ -14,7 +14,8 @@ import (
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const Collection = "pod_dispatchers"
@@ -90,7 +91,7 @@ func Allocate(ctx context.Context, env evergreen.Environment, t *task.Task, p *p
 	defer session.EndSession(ctx)
 
 	pd := &PodDispatcher{}
-	allocateDispatcher := func(ctx context.Context) (any, error) {
+	allocateDispatcher := func(ctx mongo.SessionContext) (any, error) {
 		groupID := GetGroupID(t)
 		if err := env.DB().Collection(Collection).FindOne(ctx, ByGroupID(groupID)).Decode(pd); err != nil && !adb.ResultsNotFound(err) {
 			return nil, errors.Wrap(err, "checking for existing pod dispatcher")
@@ -111,7 +112,7 @@ func Allocate(ctx context.Context, env evergreen.Environment, t *task.Task, p *p
 		}
 
 		lastModified := utility.BSONTime(time.Now())
-		res, err := env.DB().Collection(Collection).UpdateOne(ctx, pd.atomicUpsertQuery(), pd.atomicUpsertUpdate(lastModified), options.UpdateOne().SetUpsert(true))
+		res, err := env.DB().Collection(Collection).UpdateOne(ctx, pd.atomicUpsertQuery(), pd.atomicUpsertUpdate(lastModified), options.Update().SetUpsert(true))
 		if err != nil {
 			return nil, errors.Wrap(err, "upserting pod dispatcher")
 		}

@@ -16,15 +16,14 @@ import (
 	"github.com/evergreen-ci/gimlet/rolemanager"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
-	"github.com/mongodb/anser/apm"
 	"github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/mongodb/jasper"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/v2/mongo"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // this is just a hack to ensure that compile breaks clearly if the
@@ -92,14 +91,15 @@ func (e *Environment) Configure(ctx context.Context) error {
 
 	e.JasperProcessManager = jpm
 
-	e.MongoClient, err = mongo.Connect(options.Client().
+	e.MongoClient, err = mongo.Connect(ctx, options.Client().
 		ApplyURI(e.EvergreenSettings.Database.Url).
 		SetWriteConcern(e.EvergreenSettings.Database.WriteConcernSettings.Resolve()).
-		SetReadConcern(e.EvergreenSettings.Database.ReadConcernSettings.Resolve()).
-		SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false))).
-		SetBSONOptions(&options.BSONOptions{
-			ObjectIDAsHexString: true,
-		}))
+		SetReadConcern(e.EvergreenSettings.Database.ReadConcernSettings.Resolve()))
+	// TODO (DEVPROD-11824): Reimplement.
+	// SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false))).
+	// SetBSONOptions(&options.BSONOptions{
+	// 	ObjectIDAsHexString: true,
+	// }))
 
 	if err != nil {
 		return errors.WithStack(err)

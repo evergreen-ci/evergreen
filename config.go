@@ -13,17 +13,16 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy/logger"
-	"github.com/mongodb/anser/apm"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/v2/bson"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
-	"go.mongodb.org/mongo-driver/v2/mongo/readconcern"
-	"go.mongodb.org/mongo-driver/v2/mongo/writeconcern"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo/readconcern"
+	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 	"gopkg.in/yaml.v3"
 )
 
@@ -658,10 +657,12 @@ func (s *DBSettings) mongoOptions(url string) *options.ClientOptions {
 		SetReadConcern(s.ReadConcernSettings.Resolve()).
 		SetTimeout(mongoTimeout).
 		SetConnectTimeout(mongoConnectTimeout).
-		SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false), apm.WithCommandAttributeTransformer(redactSensitiveCollections))).
-		SetBSONOptions(&options.BSONOptions{
-			ObjectIDAsHexString: true,
-		})
+		SetSocketTimeout(mongoTimeout)
+		// TODO (DEVPROD-11824): Reimplement and remove L660.
+		// SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false), apm.WithCommandAttributeTransformer(redactSensitiveCollections))).
+		// SetBSONOptions(&options.BSONOptions{
+		// 	ObjectIDAsHexString: true,
+		// })
 
 	if s.AWSAuthEnabled {
 		opts.SetAuth(options.Credential{

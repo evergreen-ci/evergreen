@@ -32,6 +32,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 var (
@@ -142,7 +143,7 @@ func TestDisableStaleContainerTasks(t *testing.T) {
 	} {
 		t.Run(tName, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(task.Collection, event.EventCollection, build.Collection, VersionCollection))
-			versionId := bson.NewObjectId()
+			versionId := primitive.NewObjectID()
 			v := &Version{
 				Id: versionId.Hex(),
 			}
@@ -242,7 +243,7 @@ func TestDisableOneTask(t *testing.T) {
 			} {
 				t.Run(tName, func(t *testing.T) {
 					require.NoError(t, db.ClearCollections(task.Collection, event.EventCollection, build.Collection, VersionCollection))
-					versionId := bson.NewObjectId()
+					versionId := primitive.NewObjectID()
 					v := &Version{
 						Id: versionId.Hex(),
 					}
@@ -455,7 +456,7 @@ func TestSetActiveState(t *testing.T) {
 		displayName := "testName"
 		userName := "testUser"
 		testTime := time.Now()
-		versionId := bson.NewObjectId()
+		versionId := mgobson.NewObjectId()
 		v := &Version{
 			Id: versionId.Hex(),
 		}
@@ -1336,7 +1337,7 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 			b := &build.Build{
 				Id:        "buildtest",
 				Status:    evergreen.BuildCreated,
-				Version:   bson.NewObjectId().Hex(),
+				Version:   primitive.NewObjectID().Hex(),
 				Activated: true,
 			}
 			v := &Version{
@@ -1621,7 +1622,7 @@ func TestUpdateVersionStatus(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(task.Collection, build.Collection, VersionCollection, event.EventCollection))
 			v := &Version{
-				Id:        bson.NewObjectId().Hex(),
+				Id:        primitive.NewObjectID().Hex(),
 				Status:    evergreen.VersionCreated,
 				Activated: utility.TruePtr(),
 			}

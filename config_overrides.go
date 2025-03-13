@@ -1,14 +1,13 @@
 package evergreen
 
 import (
-	"bytes"
 	"context"
 	"strings"
 
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 const overridesSectionID = "overrides"
@@ -86,10 +85,15 @@ func (c *OverridesConfig) overrideDoc(originalDoc bson.Raw) (bson.Raw, error) {
 	}
 
 	if sectionOverrides := c.sectionOverrides(id); len(sectionOverrides) > 0 {
-		decoder := bson.NewDecoder(bson.NewDocumentReader(bytes.NewBuffer(originalDoc)))
-		decoder.DefaultDocumentM()
+		// TODO (DEVPROD-11824): Reimplement and remove L95-98.
+		// decoder := bson.NewDecoder(bson.NewDocumentReader(bytes.NewBuffer(originalDoc)))
+		// decoder.DefaultDocumentM()
+		// var originalM bson.M
+		// if err := decoder.Decode(&originalM); err != nil {
+		// 	return nil, errors.Wrap(err, "unmarshalling original document")
+		// }
 		var originalM bson.M
-		if err := decoder.Decode(&originalM); err != nil {
+		if err := bson.Unmarshal(originalDoc, &originalM); err != nil {
 			return nil, errors.Wrap(err, "unmarshalling original document")
 		}
 

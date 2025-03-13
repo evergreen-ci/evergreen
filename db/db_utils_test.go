@@ -10,7 +10,7 @@ import (
 	adb "github.com/mongodb/anser/db"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func TestDBUtils(t *testing.T) {

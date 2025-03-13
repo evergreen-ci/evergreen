@@ -1,7 +1,7 @@
 package bson
 
 import (
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func (m M) MarshalBSON() ([]byte, error)     { return Marshal(m) }

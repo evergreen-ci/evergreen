@@ -52,7 +52,6 @@ require (
 	github.com/stretchr/testify v1.10.0
 	github.com/urfave/cli v1.22.16
 	github.com/vektah/gqlparser/v2 v2.5.22
-	go.mongodb.org/mongo-driver/v2 v2.1.0
 	go.opentelemetry.io/contrib/detectors/aws/ec2 v1.21.1
 	go.opentelemetry.io/contrib/detectors/aws/ecs v1.21.1
 	go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws v0.46.1
@@ -200,9 +199,12 @@ require (
 	github.com/gorilla/handlers v1.5.2
 	github.com/mongodb/jasper v0.0.0-20250304205544-71af207b4383
 	github.com/shirou/gopsutil/v3 v3.24.5
+	go.mongodb.org/mongo-driver/v2 v2.1.0
 	go.uber.org/automaxprocs v1.6.0
 	gopkg.in/yaml.v3 v3.0.1
 )
+
+require github.com/montanaflynn/stats v0.7.1 // indirect
 
 require (
 	filippo.io/edwards25519 v1.0.0 // indirect
@@ -225,7 +227,7 @@ require (
 	github.com/sosodev/duration v1.3.1 // indirect
 	github.com/urfave/cli/v2 v2.27.5 // indirect
 	github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 // indirect
-	go.mongodb.org/mongo-driver v1.17.3 // indirect
+	go.mongodb.org/mongo-driver v1.17.3
 	go.step.sm/crypto v0.31.0 // indirect
 	gopkg.in/square/go-jose.v2 v2.6.0 // indirect
 	gotest.tools/v3 v3.5.1 // indirect

@@ -9,7 +9,7 @@ import (
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 // MoveIssueToSuspectedIssue removes an issue from an existing annotation and adds it to its suspected issues,
