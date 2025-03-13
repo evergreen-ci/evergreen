@@ -122,8 +122,8 @@ func presignFile(ctx context.Context, file File) (string, error) {
 	requestParams := pail.PreSignRequestParams{
 		Bucket:                file.Bucket,
 		FileKey:               file.FileKey,
-		AwsKey:                file.AwsKey,
-		AwsSecret:             file.AwsSecret,
+		AWSKey:                file.AwsKey,
+		AWSSecret:             file.AwsSecret,
 		SignatureExpiryWindow: evergreen.PresignMinimumValidTime,
 	}
 	return pail.PreSign(ctx, requestParams)
