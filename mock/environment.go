@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/gimlet/rolemanager"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
+	"github.com/mongodb/anser/apm"
 	"github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -94,12 +95,8 @@ func (e *Environment) Configure(ctx context.Context) error {
 	e.MongoClient, err = mongo.Connect(ctx, options.Client().
 		ApplyURI(e.EvergreenSettings.Database.Url).
 		SetWriteConcern(e.EvergreenSettings.Database.WriteConcernSettings.Resolve()).
-		SetReadConcern(e.EvergreenSettings.Database.ReadConcernSettings.Resolve()))
-	// TODO (DEVPROD-11824): Reimplement.
-	// SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false))).
-	// SetBSONOptions(&options.BSONOptions{
-	// 	ObjectIDAsHexString: true,
-	// }))
+		SetReadConcern(e.EvergreenSettings.Database.ReadConcernSettings.Resolve()).
+		SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false))))
 
 	if err != nil {
 		return errors.WithStack(err)

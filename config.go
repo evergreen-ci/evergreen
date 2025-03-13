@@ -3,7 +3,6 @@ package evergreen
 import (
 	"context"
 	"fmt"
-	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -14,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy/logger"
+	"github.com/mongodb/anser/apm"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
@@ -658,11 +658,8 @@ func (s *DBSettings) mongoOptions(url string) *options.ClientOptions {
 		SetReadConcern(s.ReadConcernSettings.Resolve()).
 		SetTimeout(mongoTimeout).
 		SetConnectTimeout(mongoConnectTimeout).
-		SetSocketTimeout(mongoTimeout)
+		SetSocketTimeout(mongoTimeout).
 		SetMonitor(apm.NewMonitor(apm.WithCommandAttributeDisabled(false), apm.WithCommandAttributeTransformer(redactSensitiveCollections)))
-		// SetBSONOptions(&options.BSONOptions{
-		// 	ObjectIDAsHexString: true,
-		// })
 
 	if s.AWSAuthEnabled {
 		opts.SetAuth(options.Credential{
