@@ -635,6 +635,8 @@ type WaterfallOptions struct {
 	ProjectIdentifier string   `json:"projectIdentifier"`
 	Requesters        []string `json:"requesters,omitempty"`
 	Revision          *string  `json:"revision,omitempty"`
+	Statuses          []string `json:"statuses,omitempty"`
+	Tasks             []string `json:"tasks,omitempty"`
 	Variants          []string `json:"variants,omitempty"`
 }
 
