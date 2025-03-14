@@ -16,7 +16,7 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func taskIdInSlice(tasks []task.Task, id string) bool {
@@ -259,7 +259,7 @@ func TestBuildRestart(t *testing.T) {
 
 			So(RestartBuild(ctx, b, []string{"task1", "task2"}, true, ""), ShouldBeNil)
 			var err error
-			b, err = build.FindOne(build.ById(b.Id))
+			b, err = build.FindOne(ctx, build.ById(b.Id))
 			So(err, ShouldBeNil)
 			So(b.Status, ShouldEqual, evergreen.BuildStarted)
 			So(b.Activated, ShouldEqual, true)
@@ -301,7 +301,7 @@ func TestBuildRestart(t *testing.T) {
 
 			So(RestartBuild(ctx, b, []string{"task3", "task4"}, false, ""), ShouldBeNil)
 			var err error
-			b, err = build.FindOne(build.ById(b.Id))
+			b, err = build.FindOne(ctx, build.ById(b.Id))
 			So(err, ShouldBeNil)
 			So(b.Status, ShouldEqual, evergreen.BuildStarted)
 			taskThree, err = task.FindOne(ctx, db.Query(task.ById("task3")))
@@ -353,7 +353,7 @@ func TestBuildRestart(t *testing.T) {
 
 			So(RestartBuild(ctx, b, []string{"task5", "task6", "task7"}, false, ""), ShouldBeNil)
 			var err error
-			b, err = build.FindOne(build.ById(b.Id))
+			b, err = build.FindOne(ctx, build.ById(b.Id))
 			So(err, ShouldBeNil)
 			So(b.Status, ShouldEqual, evergreen.BuildStarted)
 			taskFive, err = task.FindOne(ctx, db.Query(task.ById("task5")))
@@ -396,7 +396,7 @@ func TestBuildRestart(t *testing.T) {
 
 			So(RestartBuild(ctx, b, []string{"task8", "task9"}, false, ""), ShouldBeNil)
 			var err error
-			b, err = build.FindOne(build.ById(b.Id))
+			b, err = build.FindOne(ctx, build.ById(b.Id))
 			So(err, ShouldBeNil)
 			So(b.Status, ShouldEqual, evergreen.BuildStarted)
 			taskEight, err = task.FindOne(ctx, db.Query(task.ById("task8")))
@@ -445,7 +445,7 @@ func TestBuildMarkAborted(t *testing.T) {
 			Convey("it should be deactivated", func() {
 				var err error
 				So(AbortBuild(ctx, b.Id, ""), ShouldBeNil)
-				b, err = build.FindOne(build.ById(b.Id))
+				b, err = build.FindOne(ctx, build.ById(b.Id))
 				So(err, ShouldBeNil)
 				So(b.Activated, ShouldBeFalse)
 			})
@@ -636,7 +636,7 @@ func TestBuildSetActivated(t *testing.T) {
 
 				So(ActivateBuildsAndTasks(ctx, []string{b.Id}, false, evergreen.GenerateTasksActivator), ShouldBeNil)
 				// the build should have been updated in the db
-				b, err := build.FindOne(build.ById(b.Id))
+				b, err := build.FindOne(ctx, build.ById(b.Id))
 				So(err, ShouldBeNil)
 				So(b.Activated, ShouldBeFalse)
 				So(b.ActivatedBy, ShouldEqual, evergreen.GenerateTasksActivator)
@@ -717,7 +717,7 @@ func TestBuildSetActivated(t *testing.T) {
 				So(task2.ActivatedBy, ShouldEqual, user)
 
 				// refresh from the database and check again
-				b, err = build.FindOne(build.ById(b.Id))
+				b, err = build.FindOne(ctx, build.ById(b.Id))
 				So(err, ShouldBeNil)
 				So(b.Activated, ShouldBeTrue)
 				So(b.ActivatedBy, ShouldEqual, user)
@@ -726,7 +726,7 @@ func TestBuildSetActivated(t *testing.T) {
 				So(ActivateBuildsAndTasks(ctx, []string{b.Id}, false, evergreen.BuildActivator), ShouldBeNil)
 
 				// refresh from the database and check again
-				b, err = build.FindOne(build.ById(b.Id))
+				b, err = build.FindOne(ctx, build.ById(b.Id))
 				So(err, ShouldBeNil)
 				So(b.Activated, ShouldBeTrue)
 				So(b.ActivatedBy, ShouldEqual, user)
@@ -768,7 +768,7 @@ func TestBuildMarkStarted(t *testing.T) {
 
 			// refresh from db and check again
 			var err error
-			b, err = build.FindOne(build.ById(b.Id))
+			b, err = build.FindOne(t.Context(), build.ById(b.Id))
 			So(err, ShouldBeNil)
 			So(b.Status, ShouldEqual, evergreen.BuildStarted)
 			So(b.StartTime.Round(time.Second).Equal(
@@ -803,7 +803,7 @@ func TestBuildMarkFinished(t *testing.T) {
 
 			var err error
 			// refresh from db and check again
-			b, err = build.FindOne(build.ById(b.Id))
+			b, err = build.FindOne(t.Context(), build.ById(b.Id))
 			So(err, ShouldBeNil)
 			So(b.Status, ShouldEqual, evergreen.BuildSucceeded)
 			So(b.FinishTime.Round(time.Second).Equal(
@@ -2952,7 +2952,7 @@ func TestAddNewTasks(t *testing.T) {
 			assert.NoError(t, err)
 			activatedTasks, err := task.FindAll(ctx, db.Query(bson.M{task.ActivatedKey: true}))
 			assert.NoError(t, err)
-			build, err := build.FindOneId("b0")
+			build, err := build.FindOneId(t.Context(), "b0")
 			assert.NoError(t, err)
 			assert.NotNil(t, build)
 			assert.Equal(t, len(testCase.activatedTasks), len(activatedTasks))

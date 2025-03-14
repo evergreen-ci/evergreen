@@ -851,12 +851,12 @@ func GetGithubTokensForTask(ctx context.Context, taskId string) (string, []strin
 	t, err := task.FindOneId(ctx, taskId)
 	catcher.Add(err)
 	if err == nil && t != nil {
-		mfest, err := manifest.FindFromVersion(t.Version, t.Project, t.Revision, t.Requester)
+		mfest, err := manifest.FindFromVersion(ctx, t.Version, t.Project, t.Revision, t.Requester)
 		catcher.Add(err)
 		if mfest != nil {
 			modules = mfest.Modules
 		}
-		p, err := model.FindMergedProjectRef(t.Project, t.Version, false)
+		p, err := model.FindMergedProjectRef(ctx, t.Project, t.Version, false)
 		catcher.Add(err)
 		if p != nil {
 			projectOwner = p.Owner

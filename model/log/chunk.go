@@ -12,6 +12,7 @@ package log
 // storage.
 type chunkInfo struct {
 	key      string
+	sequence int
 	start    int64
 	end      int64
 	numLines int

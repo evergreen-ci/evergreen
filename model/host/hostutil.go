@@ -28,7 +28,7 @@ import (
 	"github.com/mongodb/jasper/options"
 	"github.com/mongodb/jasper/remote"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 	"gopkg.in/yaml.v3"
 )
 
@@ -1022,7 +1022,7 @@ func (h *Host) AgentCommand(settings *evergreen.Settings, executablePath string)
 	if executablePath == "" {
 		executablePath = h.Distro.AbsPathCygwinCompatible(h.Distro.HomeDir(), h.Distro.BinaryName())
 	}
-	return []string{
+	args := []string{
 		executablePath,
 		"agent",
 		fmt.Sprintf("--api_server=%s", settings.Api.URL),
@@ -1033,6 +1033,11 @@ func (h *Host) AgentCommand(settings *evergreen.Settings, executablePath string)
 		fmt.Sprintf("--working_directory=%s", h.Distro.WorkDir),
 		"--cleanup",
 	}
+
+	if h.Distro.SingleTaskDistro {
+		args = append(args, "--single_task_distro")
+	}
+	return args
 }
 
 // AgentEnv returns the environment variables required to start the agent.

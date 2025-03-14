@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 // Q holds all information necessary to execute a query
@@ -150,8 +150,8 @@ func CountQContext(ctx context.Context, collection string, q Q) (int, error) {
 }
 
 // RemoveAllQ removes all docs that satisfy the query
-func RemoveAllQ(collection string, q Q) error {
-	return Remove(collection, q.filter)
+func RemoveAllQ(ctx context.Context, collection string, q Q) error {
+	return Remove(ctx, collection, q.filter)
 }
 
 // implement custom marshaller interfaces to prevent the bug where we

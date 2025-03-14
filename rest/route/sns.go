@@ -412,7 +412,7 @@ func (sns *ecsSNS) handleNotification(ctx context.Context, notification ecsEvent
 		if err := json.Unmarshal(notification.Detail, &detail); err != nil {
 			return errors.Wrap(err, "unmarshalling event details as ECS task event details")
 		}
-		p, err := pod.FindOneByExternalID(detail.TaskARN)
+		p, err := pod.FindOneByExternalID(ctx, detail.TaskARN)
 		if err != nil {
 			return err
 		}
@@ -475,7 +475,7 @@ func (sns *ecsSNS) handleNotification(ctx context.Context, notification ecsEvent
 			return errors.Wrapf(err, "listing ECS tasks associated with container instance '%s'", detail.ContainerInstanceARN)
 		}
 		for _, taskARN := range taskARNs {
-			p, err := pod.FindOneByExternalID(taskARN)
+			p, err := pod.FindOneByExternalID(ctx, taskARN)
 			if err != nil {
 				return errors.Wrapf(err, "finding pod with external ID '%s'", taskARN)
 			}

@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func init() {
@@ -29,7 +30,7 @@ func TestFindOne(t *testing.T) {
 
 	for tName, tCase := range map[string]func(t *testing.T, pds []PodDispatcher){
 		"ReturnsNilResultForNoMatches": func(t *testing.T, pds []PodDispatcher) {
-			found, err := FindOne(db.Query(bson.M{}))
+			found, err := FindOne(t.Context(), db.Query(bson.M{}))
 			assert.NoError(t, err)
 			assert.Zero(t, found)
 		},
@@ -37,7 +38,7 @@ func TestFindOne(t *testing.T) {
 			for _, pd := range pds {
 				require.NoError(t, pd.Insert())
 			}
-			found, err := FindOneByID(pds[0].ID)
+			found, err := FindOneByID(t.Context(), pds[0].ID)
 			require.NoError(t, err)
 			require.NotZero(t, found)
 			assert.Equal(t, pds[0], *found)
@@ -93,7 +94,7 @@ func TestFindOneByGroupID(t *testing.T) {
 			for _, pd := range pds {
 				require.NoError(t, pd.Insert())
 			}
-			found, err := FindOneByGroupID(pds[0].GroupID)
+			found, err := FindOneByGroupID(t.Context(), pds[0].GroupID)
 			require.NoError(t, err)
 			assert.Equal(t, pds[0].ID, found.ID)
 		},
@@ -101,7 +102,7 @@ func TestFindOneByGroupID(t *testing.T) {
 			for _, pd := range pds {
 				require.NoError(t, pd.Insert())
 			}
-			found, err := FindOneByGroupID("foo")
+			found, err := FindOneByGroupID(t.Context(), "foo")
 			assert.NoError(t, err)
 			assert.Zero(t, found)
 		},
@@ -133,7 +134,7 @@ func TestFindOneByPodID(t *testing.T) {
 	t.Run("FindsDispatcherWithMatchingPodID", func(t *testing.T) {
 		for _, pd := range dispatchers {
 			for _, podID := range pd.PodIDs {
-				dbDisp, err := FindOneByPodID(podID)
+				dbDisp, err := FindOneByPodID(t.Context(), podID)
 				require.NoError(t, err)
 				require.NotZero(t, dbDisp)
 				assert.Equal(t, pd.ID, dbDisp.ID)
@@ -141,7 +142,7 @@ func TestFindOneByPodID(t *testing.T) {
 		}
 	})
 	t.Run("DoesNotFindDispatcherWithoutMatchingPodID", func(t *testing.T) {
-		pd, err := FindOneByPodID("foo")
+		pd, err := FindOneByPodID(t.Context(), "foo")
 		assert.NoError(t, err)
 		assert.Zero(t, pd)
 	})
@@ -170,7 +171,7 @@ func TestAllocate(t *testing.T) {
 		assert.NotZero(t, dbTask.ContainerAllocatedTime)
 	}
 	checkDispatcherUpdated := func(t *testing.T, tsk *task.Task, pd *PodDispatcher) {
-		dbDispatcher, err := FindOneByGroupID(GetGroupID(tsk))
+		dbDispatcher, err := FindOneByGroupID(t.Context(), GetGroupID(tsk))
 		require.NoError(t, err)
 		require.NotZero(t, dbDispatcher)
 		assert.Equal(t, pd.PodIDs, dbDispatcher.PodIDs)
@@ -186,7 +187,7 @@ func TestAllocate(t *testing.T) {
 		assert.Equal(t, event.ContainerAllocated, dbEvents[0].EventType)
 	}
 	checkAllocated := func(t *testing.T, tsk *task.Task, p *pod.Pod, pd *PodDispatcher) {
-		dbPod, err := pod.FindOneByID(p.ID)
+		dbPod, err := pod.FindOneByID(t.Context(), p.ID)
 		require.NoError(t, err)
 		require.NotZero(t, dbPod)
 		assert.Equal(t, p.Type, dbPod.Type)
@@ -261,7 +262,7 @@ func TestAllocate(t *testing.T) {
 			require.Error(t, err)
 			assert.Zero(t, pd)
 
-			dbPod, err := pod.FindOneByID(p.ID)
+			dbPod, err := pod.FindOneByID(ctx, p.ID)
 			assert.NoError(t, err)
 			assert.Zero(t, dbPod)
 
@@ -269,7 +270,7 @@ func TestAllocate(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Zero(t, dbTask)
 
-			dbDispatcher, err := FindOneByGroupID(GetGroupID(tsk))
+			dbDispatcher, err := FindOneByGroupID(t.Context(), GetGroupID(tsk))
 			assert.NoError(t, err)
 			assert.Zero(t, dbDispatcher)
 
@@ -289,7 +290,7 @@ func TestAllocate(t *testing.T) {
 					"image",
 				},
 			}, pod.TaskIntentPodOptions{
-				ID:                  bson.NewObjectId().Hex(),
+				ID:                  primitive.NewObjectID().Hex(),
 				CPU:                 256,
 				MemoryMB:            512,
 				OS:                  pod.OSLinux,

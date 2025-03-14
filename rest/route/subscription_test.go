@@ -184,7 +184,7 @@ func (s *SubscriptionRouteSuite) TestProjectSubscription() {
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: h.owner})
 	resp = d.Run(ctx)
 	s.Equal(http.StatusOK, resp.Status())
-	subscription, err := event.FindSubscriptionByID(id)
+	subscription, err := event.FindSubscriptionByID(s.T().Context(), id)
 	s.NoError(err)
 	s.Nil(subscription)
 }

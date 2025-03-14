@@ -13,7 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/suite"
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 type spawnHostExpirationSuite struct {
@@ -164,7 +164,7 @@ func (s *spawnHostExpirationSuite) TestDuplicateEventsAreLoggedAfterRenotificati
 			numHostsToRenotify++
 		}
 	}
-	res, err := db.UpdateAll(alertrecord.Collection, bson.M{
+	res, err := db.UpdateAllContext(s.ctx, alertrecord.Collection, bson.M{
 		alertrecord.HostIdKey: bson.M{"$in": []string{"h1", "h2", "h3", "h4", "h5"}}}, bson.M{
 		"$set": bson.M{
 			alertrecord.AlertTimeKey: time.Now().Add(-7 * utility.Day),

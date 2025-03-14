@@ -27,9 +27,9 @@ func Find(q db.Q) ([]PodDefinition, error) {
 }
 
 // FindOne finds one pod definition by the given query.
-func FindOne(q db.Q) (*PodDefinition, error) {
+func FindOne(ctx context.Context, q db.Q) (*PodDefinition, error) {
 	var def PodDefinition
-	err := db.FindOneQ(Collection, q, &def)
+	err := db.FindOneQContext(ctx, Collection, q, &def)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -48,8 +48,8 @@ func UpdateOne(ctx context.Context, query, update any) error {
 }
 
 // FindOneID returns a query to find a pod definition with the given ID.
-func FindOneID(id string) (*PodDefinition, error) {
-	return FindOne(db.Query(ByID(id)))
+func FindOneID(ctx context.Context, id string) (*PodDefinition, error) {
+	return FindOne(ctx, db.Query(ByID(id)))
 }
 
 // ByID returns a query to find pod definitions with the given ID.
@@ -64,13 +64,13 @@ func ByExternalID(id string) bson.M {
 }
 
 // FindOneByExternalID find a pod definition with the given external ID.
-func FindOneByExternalID(id string) (*PodDefinition, error) {
-	return FindOne(db.Query(ByExternalID(id)))
+func FindOneByExternalID(ctx context.Context, id string) (*PodDefinition, error) {
+	return FindOne(ctx, db.Query(ByExternalID(id)))
 }
 
 // FindOneByFamily finds a pod definition with the given family name.
-func FindOneByFamily(family string) (*PodDefinition, error) {
-	return FindOne(db.Query(bson.M{
+func FindOneByFamily(ctx context.Context, family string) (*PodDefinition, error) {
+	return FindOne(ctx, db.Query(bson.M{
 		FamilyKey: family,
 	}))
 }

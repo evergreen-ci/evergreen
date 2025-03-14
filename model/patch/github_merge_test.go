@@ -8,7 +8,7 @@ import (
 	"github.com/google/go-github/v52/github"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func TestGithubMergeIntent(t *testing.T) {
@@ -61,7 +61,7 @@ func TestGithubMergeIntent(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NoError(t, intent.Insert())
 			intents := []githubMergeIntent{}
-			err = db.FindAllQ(IntentCollection, db.Query(bson.M{}), &intents)
+			err = db.FindAllQContext(t.Context(), IntentCollection, db.Query(bson.M{}), &intents)
 			assert.NoError(t, err)
 			assert.Len(t, intents, 1)
 			assert.Equal(t, intent, &intents[0])
@@ -74,7 +74,7 @@ func TestGithubMergeIntent(t *testing.T) {
 			assert.NoError(t, intent.Insert())
 			assert.NoError(t, intent.SetProcessed(t.Context()))
 			intents := []githubMergeIntent{}
-			err = db.FindAllQ(IntentCollection, db.Query(bson.M{}), &intents)
+			err = db.FindAllQContext(t.Context(), IntentCollection, db.Query(bson.M{}), &intents)
 			assert.NoError(t, err)
 			assert.Len(t, intents, 1)
 			assert.True(t, intents[0].IsProcessed())

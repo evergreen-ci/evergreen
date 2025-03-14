@@ -103,8 +103,8 @@ type uiTask struct {
 // getBuildVariantHistory returns a slice of builds that surround a given build.
 // As many as 'before' builds (less recent builds) plus as many as 'after' builds
 // (more recent builds) are returned.
-func getBuildVariantHistory(buildId string, before int, after int) ([]build.Build, error) {
-	b, err := build.FindOne(build.ById(buildId))
+func getBuildVariantHistory(ctx context.Context, buildId string, before int, after int) ([]build.Build, error) {
+	b, err := build.FindOne(ctx, build.ById(buildId))
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -137,15 +137,15 @@ func getBuildVariantHistory(buildId string, before int, after int) ([]build.Buil
 }
 
 // Given build id, get last successful build before this one
-func getBuildVariantHistoryLastSuccess(buildId string) (*build.Build, error) {
-	b, err := build.FindOne(build.ById(buildId))
+func getBuildVariantHistoryLastSuccess(ctx context.Context, buildId string) (*build.Build, error) {
+	b, err := build.FindOne(ctx, build.ById(buildId))
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 	if b.Status == evergreen.BuildSucceeded {
 		return b, nil
 	}
-	b, err = b.PreviousSuccessful()
+	b, err = b.PreviousSuccessful(ctx)
 	return b, errors.WithStack(err)
 }
 

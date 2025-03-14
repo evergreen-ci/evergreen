@@ -56,7 +56,7 @@ func (ap *AttachPlugin) GetPanelConfig() (*PanelConfig, error) {
 						files := []displayTaskFiles{}
 						for _, execTaskID := range t.ExecutionTasks {
 							var execTaskFiles []artifact.File
-							execTaskFiles, err = artifact.GetAllArtifacts([]artifact.TaskIDAndExecution{{TaskID: execTaskID, Execution: uiCtx.Task.Execution}})
+							execTaskFiles, err = artifact.GetAllArtifacts(uiCtx.Request.Context(), []artifact.TaskIDAndExecution{{TaskID: execTaskID, Execution: uiCtx.Task.Execution}})
 							if err != nil {
 								return nil, err
 							}
@@ -86,7 +86,7 @@ func (ap *AttachPlugin) GetPanelConfig() (*PanelConfig, error) {
 						return files, nil
 					}
 
-					files, err := artifact.GetAllArtifacts([]artifact.TaskIDAndExecution{{TaskID: taskId, Execution: uiCtx.Task.Execution}})
+					files, err := artifact.GetAllArtifacts(uiCtx.Request.Context(), []artifact.TaskIDAndExecution{{TaskID: taskId, Execution: uiCtx.Task.Execution}})
 					if err != nil {
 						return nil, err
 					}
@@ -108,7 +108,7 @@ func (ap *AttachPlugin) GetPanelConfig() (*PanelConfig, error) {
 					if uiCtx.Build == nil {
 						return nil, nil
 					}
-					taskArtifactFiles, err := artifact.FindAll(artifact.ByBuildId(uiCtx.Build.Id))
+					taskArtifactFiles, err := artifact.FindAll(uiCtx.Request.Context(), artifact.ByBuildId(uiCtx.Build.Id))
 					if err != nil {
 						return nil, errors.Wrap(err, "error finding artifact files for build")
 					}

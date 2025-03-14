@@ -633,7 +633,7 @@ func (s3pc *s3put) createPailBucket(ctx context.Context, httpClient *http.Client
 		return nil
 	}
 	opts := pail.S3Options{
-		Credentials: pail.CreateAWSCredentials(s3pc.AwsKey, s3pc.AwsSecret, s3pc.AwsSessionToken),
+		Credentials: pail.CreateAWSStaticCredentials(s3pc.AwsKey, s3pc.AwsSecret, s3pc.AwsSessionToken),
 		Region:      s3pc.Region,
 		Name:        s3pc.Bucket,
 		Permissions: pail.S3Permissions(s3pc.Permissions),

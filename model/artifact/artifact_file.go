@@ -122,15 +122,15 @@ func presignFile(ctx context.Context, file File) (string, error) {
 	requestParams := pail.PreSignRequestParams{
 		Bucket:                file.Bucket,
 		FileKey:               file.FileKey,
-		AwsKey:                file.AwsKey,
-		AwsSecret:             file.AwsSecret,
+		AWSKey:                file.AwsKey,
+		AWSSecret:             file.AwsSecret,
 		SignatureExpiryWindow: evergreen.PresignMinimumValidTime,
 	}
 	return pail.PreSign(ctx, requestParams)
 }
 
-func GetAllArtifacts(tasks []TaskIDAndExecution) ([]File, error) {
-	artifacts, err := FindAll(ByTaskIdsAndExecutions(tasks))
+func GetAllArtifacts(ctx context.Context, tasks []TaskIDAndExecution) ([]File, error) {
+	artifacts, err := FindAll(ctx, ByTaskIdsAndExecutions(tasks))
 	if err != nil {
 		return nil, errors.Wrap(err, "finding artifact files for task")
 	}
@@ -139,7 +139,7 @@ func GetAllArtifacts(tasks []TaskIDAndExecution) ([]File, error) {
 		for _, t := range tasks {
 			taskIds = append(taskIds, t.TaskID)
 		}
-		artifacts, err = FindAll(ByTaskIds(taskIds))
+		artifacts, err = FindAll(ctx, ByTaskIds(taskIds))
 		if err != nil {
 			return nil, errors.Wrap(err, "finding artifact files for task without execution number")
 		}

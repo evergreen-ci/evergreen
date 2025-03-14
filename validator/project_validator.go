@@ -28,7 +28,7 @@ import (
 
 type projectValidator func(*model.Project) ValidationErrors
 
-type projectConfigValidator func(config *model.ProjectConfig) ValidationErrors
+type projectConfigValidator func(ctx context.Context, config *model.ProjectConfig) ValidationErrors
 
 type projectSettingsValidator func(context.Context, *evergreen.Settings, *model.Project, *model.ProjectRef, bool) ValidationErrors
 
@@ -254,7 +254,7 @@ func CheckProject(ctx context.Context, project *model.Project, config *model.Pro
 	verrs := CheckProjectErrors(ctx, project)
 	verrs = append(verrs, CheckProjectWarnings(project)...)
 	if config != nil {
-		verrs = append(verrs, CheckProjectConfigErrors(config)...)
+		verrs = append(verrs, CheckProjectConfigErrors(ctx, config)...)
 	}
 
 	if projectRefId == "" {
@@ -339,7 +339,7 @@ func CheckProjectErrors(ctx context.Context, project *model.Project) ValidationE
 }
 
 // CheckPatchedProjectConfigErrors returns validation errors for the given patched project config.
-func CheckPatchedProjectConfigErrors(patchedProjectConfig string) ValidationErrors {
+func CheckPatchedProjectConfigErrors(ctx context.Context, patchedProjectConfig string) ValidationErrors {
 	validationErrs := ValidationErrors{}
 	if len(patchedProjectConfig) <= 0 {
 		return validationErrs
@@ -351,18 +351,18 @@ func CheckPatchedProjectConfigErrors(patchedProjectConfig string) ValidationErro
 		})
 		return validationErrs
 	}
-	return CheckProjectConfigErrors(projectConfig)
+	return CheckProjectConfigErrors(ctx, projectConfig)
 }
 
 // CheckProjectConfigErrors verifies that the project configuration syntax is valid
-func CheckProjectConfigErrors(projectConfig *model.ProjectConfig) ValidationErrors {
+func CheckProjectConfigErrors(ctx context.Context, projectConfig *model.ProjectConfig) ValidationErrors {
 	validationErrs := ValidationErrors{}
 	if projectConfig == nil {
 		return validationErrs
 	}
 	for _, projectConfigErrorValidator := range projectConfigErrorValidators {
 		validationErrs = append(validationErrs,
-			projectConfigErrorValidator(projectConfig)...)
+			projectConfigErrorValidator(ctx, projectConfig)...)
 	}
 
 	return validationErrs
@@ -504,7 +504,7 @@ func tvToTaskUnit(p *model.Project) map[model.TVPair]model.BuildVariantTaskUnit 
 	return tasksByNameAndVariant
 }
 
-func validateProjectConfigAliases(pc *model.ProjectConfig) ValidationErrors {
+func validateProjectConfigAliases(ctx context.Context, pc *model.ProjectConfig) ValidationErrors {
 	errs := []string{}
 	pc.SetInternalAliases()
 	errs = append(errs, model.ValidateProjectAliases(pc.GitHubPRAliases, "GitHub PR Aliases")...)
@@ -726,7 +726,7 @@ func aliasMatchesTaskGroupTask(p *model.Project, alias model.ProjectAlias, tgNam
 	return false, nil
 }
 
-func validateProjectConfigContainers(pc *model.ProjectConfig) ValidationErrors {
+func validateProjectConfigContainers(ctx context.Context, pc *model.ProjectConfig) ValidationErrors {
 	errs := ValidationErrors{}
 	for _, size := range pc.ContainerSizeDefinitions {
 		if size.Name == "" {
@@ -748,7 +748,7 @@ func validateProjectConfigContainers(pc *model.ProjectConfig) ValidationErrors {
 	return errs
 }
 
-func validateProjectConfigPlugins(pc *model.ProjectConfig) ValidationErrors {
+func validateProjectConfigPlugins(ctx context.Context, pc *model.ProjectConfig) ValidationErrors {
 	errs := ValidationErrors{}
 	annotationSettings := pc.TaskAnnotationSettings
 	var webhook *evergreen.WebHook
@@ -759,7 +759,7 @@ func validateProjectConfigPlugins(pc *model.ProjectConfig) ValidationErrors {
 	if pc.BuildBaronSettings == nil {
 		return ValidationErrors{}
 	}
-	err := model.ValidateBbProject(pc.Project, *pc.BuildBaronSettings, webhook)
+	err := model.ValidateBbProject(ctx, pc.Project, *pc.BuildBaronSettings, webhook)
 	if err != nil {
 		errs = append(errs,
 			ValidationError{

@@ -70,7 +70,7 @@ func TestMostRecentByUserAndProject(t *testing.T) {
 	}
 	assert.NoError(t, oldPatch.Insert())
 
-	p, err := FindOne(MostRecentPatchByUserAndProject("me", "correct"))
+	p, err := FindOne(t.Context(), MostRecentPatchByUserAndProject("me", "correct"))
 	assert.NoError(t, err)
 	assert.NotNil(t, p)
 	assert.Equal(t, p.Id, previousPatch.Id)
@@ -267,7 +267,7 @@ func TestGetFinalizedChildPatchIdsForPatch(t *testing.T) {
 	}
 
 	assert.NoError(t, db.InsertMany(Collection, p, childPatch, childPatch2))
-	childPatchIds, err := GetFinalizedChildPatchIdsForPatch(p.Id.Hex())
+	childPatchIds, err := GetFinalizedChildPatchIdsForPatch(t.Context(), p.Id.Hex())
 	assert.NoError(t, err)
 	require.Len(t, childPatchIds, 1)
 	assert.Equal(t, childPatchIds[0], childPatch.Id.Hex())
@@ -351,25 +351,25 @@ func TestConsolidatePatchesForUser(t *testing.T) {
 	assert.NoError(t, db.Insert(user.Collection, newUsr))
 	assert.NoError(t, ConsolidatePatchesForUser(t.Context(), "me", newUsr))
 
-	patchFromDB, err := FindOneId(p1.Id.Hex())
+	patchFromDB, err := FindOneId(t.Context(), p1.Id.Hex())
 	assert.NoError(t, err)
 	require.NotNil(t, patchFromDB)
 	assert.Equal(t, "new_me", patchFromDB.Author)
 	assert.Equal(t, p1.PatchNumber, patchFromDB.PatchNumber)
 
-	patchFromDB, err = FindOneId(p2.Id.Hex())
+	patchFromDB, err = FindOneId(t.Context(), p2.Id.Hex())
 	assert.NoError(t, err)
 	require.NotNil(t, patchFromDB)
 	assert.Equal(t, "new_me", patchFromDB.Author)
 	assert.Equal(t, p2.PatchNumber, patchFromDB.PatchNumber)
 
-	patchFromDB, err = FindOneId(pNew.Id.Hex())
+	patchFromDB, err = FindOneId(t.Context(), pNew.Id.Hex())
 	assert.NoError(t, err)
 	require.NotNil(t, patchFromDB)
 	assert.Equal(t, "new_me", patchFromDB.Author)
 	assert.Equal(t, 8, patchFromDB.PatchNumber)
 
-	patchFromDB, err = FindOneId(pNewAlso.Id.Hex())
+	patchFromDB, err = FindOneId(t.Context(), pNewAlso.Id.Hex())
 	assert.NoError(t, err)
 	require.NotNil(t, patchFromDB)
 	assert.Equal(t, "new_me", patchFromDB.Author)

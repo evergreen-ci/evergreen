@@ -1,6 +1,7 @@
 package notification
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -12,7 +13,8 @@ import (
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 const (
@@ -98,9 +100,9 @@ func InsertMany(items ...Notification) error {
 	return db.InsertManyUnordered(Collection, interfaces...)
 }
 
-func Find(id string) (*Notification, error) {
+func Find(ctx context.Context, id string) (*Notification, error) {
 	notification := Notification{}
-	err := db.FindOneQ(Collection, byID(id), &notification)
+	err := db.FindOneQContext(ctx, Collection, byID(id), &notification)
 
 	if adb.ResultsNotFound(err) {
 		return nil, nil
@@ -112,7 +114,7 @@ func Find(id string) (*Notification, error) {
 func FindByEventID(id string) ([]Notification, error) {
 	notifications := []Notification{}
 	query := db.Query(bson.M{
-		idKey: bson.Regex{Pattern: fmt.Sprintf("^%s-", id)},
+		idKey: primitive.Regex{Pattern: fmt.Sprintf("^%s-", id)},
 	},
 	)
 

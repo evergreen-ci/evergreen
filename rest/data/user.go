@@ -40,7 +40,7 @@ func UpdateSettings(ctx context.Context, dbUser *user.DBUser, settings user.User
 	case user.PreferenceEmail:
 		patchSubscriber = event.NewEmailSubscriber(dbUser.Email())
 	}
-	patchSubscription, err := event.CreateOrUpdateGeneralSubscription(event.GeneralSubscriptionPatchOutcome,
+	patchSubscription, err := event.CreateOrUpdateGeneralSubscription(ctx, event.GeneralSubscriptionPatchOutcome,
 		dbUser.Settings.Notifications.PatchFinishID, patchSubscriber, dbUser.Id)
 	if err != nil {
 		return err
@@ -58,7 +58,7 @@ func UpdateSettings(ctx context.Context, dbUser *user.DBUser, settings user.User
 	case user.PreferenceEmail:
 		patchFailureSubscriber = event.NewEmailSubscriber(dbUser.Email())
 	}
-	patchFailureSubscription, err := event.CreateOrUpdateGeneralSubscription(event.GeneralSubscriptionPatchFirstFailure,
+	patchFailureSubscription, err := event.CreateOrUpdateGeneralSubscription(ctx, event.GeneralSubscriptionPatchFirstFailure,
 		dbUser.Settings.Notifications.PatchFirstFailureID, patchFailureSubscriber, dbUser.Id)
 	if err != nil {
 		return err
@@ -76,7 +76,7 @@ func UpdateSettings(ctx context.Context, dbUser *user.DBUser, settings user.User
 	case user.PreferenceEmail:
 		buildBreakSubscriber = event.NewEmailSubscriber(dbUser.Email())
 	}
-	buildBreakSubscription, err := event.CreateOrUpdateGeneralSubscription(event.GeneralSubscriptionBuildBreak,
+	buildBreakSubscription, err := event.CreateOrUpdateGeneralSubscription(ctx, event.GeneralSubscriptionBuildBreak,
 		dbUser.Settings.Notifications.BuildBreakID, buildBreakSubscriber, dbUser.Id)
 	if err != nil {
 		return err
@@ -94,7 +94,7 @@ func UpdateSettings(ctx context.Context, dbUser *user.DBUser, settings user.User
 	case user.PreferenceEmail:
 		spawnhostSubscriber = event.NewEmailSubscriber(dbUser.Email())
 	}
-	spawnhostSubscription, err := event.CreateOrUpdateGeneralSubscription(event.GeneralSubscriptionSpawnhostExpiration,
+	spawnhostSubscription, err := event.CreateOrUpdateGeneralSubscription(ctx, event.GeneralSubscriptionSpawnhostExpiration,
 		dbUser.Settings.Notifications.SpawnHostExpirationID, spawnhostSubscriber, dbUser.Id)
 	if err != nil {
 		return err
@@ -112,7 +112,7 @@ func UpdateSettings(ctx context.Context, dbUser *user.DBUser, settings user.User
 	case user.PreferenceEmail:
 		spawnHostOutcomeSubscriber = event.NewEmailSubscriber(dbUser.Email())
 	}
-	spawnHostOutcomeSubscription, err := event.CreateOrUpdateGeneralSubscription(event.GeneralSubscriptionSpawnHostOutcome,
+	spawnHostOutcomeSubscription, err := event.CreateOrUpdateGeneralSubscription(ctx, event.GeneralSubscriptionSpawnHostOutcome,
 		dbUser.Settings.Notifications.SpawnHostOutcomeID, spawnHostOutcomeSubscriber, dbUser.Id)
 	if err != nil {
 		return errors.Wrap(err, "creating spawn host outcome subscription")
@@ -131,8 +131,8 @@ func SubmitFeedback(in restModel.APIFeedbackSubmission) error {
 	return errors.Wrap(f.Insert(), "error saving feedback")
 }
 
-func GetServiceUsers() ([]restModel.APIDBUser, error) {
-	users, err := user.FindServiceUsers()
+func GetServiceUsers(ctx context.Context) ([]restModel.APIDBUser, error) {
+	users, err := user.FindServiceUsers(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding service users")
 	}

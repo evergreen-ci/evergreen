@@ -53,7 +53,7 @@ func (t *patchTriggers) Fetch(ctx context.Context, e *event.EventLogEntry) error
 
 	oid := mgobson.ObjectIdHex(e.ResourceId)
 
-	t.patch, err = patch.FindOne(patch.ById(oid))
+	t.patch, err = patch.FindOne(ctx, patch.ById(oid))
 	if err != nil {
 		return errors.Wrapf(err, "finding patch '%s'", e.ResourceId)
 	}
@@ -113,7 +113,7 @@ func (t *patchTriggers) patchOutcome(ctx context.Context, sub *event.Subscriptio
 			if aborted {
 				return nil, nil
 			}
-			err = finalizeChildPatch(sub)
+			err = finalizeChildPatch(ctx, sub)
 
 			if err != nil {
 				return nil, errors.Wrap(err, "finalizing child patch")
@@ -132,12 +132,12 @@ func (t *patchTriggers) patchFailure(ctx context.Context, sub *event.Subscriptio
 	return t.generate(ctx, sub)
 }
 
-func finalizeChildPatch(sub *event.Subscription) error {
+func finalizeChildPatch(ctx context.Context, sub *event.Subscription) error {
 	target, ok := sub.Subscriber.Target.(*event.ChildPatchSubscriber)
 	if !ok {
 		return errors.Errorf("target '%s' had unexpected type %T", sub.Subscriber.Target, sub.Subscriber.Target)
 	}
-	childPatch, err := patch.FindOneId(target.ChildPatchId)
+	childPatch, err := patch.FindOneId(ctx, target.ChildPatchId)
 	if err != nil {
 		return errors.Wrap(err, "finding child patch")
 	}
@@ -200,7 +200,7 @@ func (t *patchTriggers) makeData(ctx context.Context, sub *event.Subscription) (
 	collectiveStatus := t.data.Status
 	if t.patch.IsParent() {
 		var err error
-		collectiveStatus, err = t.patch.CollectiveStatus()
+		collectiveStatus, err = t.patch.CollectiveStatus(ctx)
 		if err != nil {
 			return nil, errors.Wrapf(err, "getting collective patch status for patch '%s'", t.patch.Id)
 		}
@@ -230,7 +230,7 @@ func (t *patchTriggers) makeData(ctx context.Context, sub *event.Subscription) (
 	}
 
 	if t.patch.IsChild() {
-		githubContext, err := t.getGithubContext(projectName)
+		githubContext, err := t.getGithubContext(ctx, projectName)
 		if err != nil {
 			return nil, errors.Wrapf(err, "getting GitHub context for patch '%s'", t.patch.Id)
 		}
@@ -316,8 +316,8 @@ func (t *patchTriggers) generate(ctx context.Context, sub *event.Subscription) (
 	return notification.New(t.event.ID, sub.Trigger, &sub.Subscriber, payload)
 }
 
-func (t *patchTriggers) getGithubContext(projectIdentifier string) (string, error) {
-	parentPatch, err := patch.FindOneId(t.patch.Triggers.ParentPatch)
+func (t *patchTriggers) getGithubContext(ctx context.Context, projectIdentifier string) (string, error) {
+	parentPatch, err := patch.FindOneId(ctx, t.patch.Triggers.ParentPatch)
 	if err != nil {
 		return "", errors.Wrapf(err, "getting parent patch '%s'", t.patch.Triggers.ParentPatch)
 	}

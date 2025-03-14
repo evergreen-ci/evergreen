@@ -88,6 +88,7 @@ type Options struct {
 	// sent to the global agent file log.
 	SendTaskLogsToGlobalSender bool
 	HomeDirectory              string
+	SingleTaskDistro           bool
 }
 
 // AddLoggableInfo is a helper to add relevant information about the agent
@@ -287,7 +288,12 @@ func (a *Agent) loop(ctx context.Context) error {
 			if ntr.tc != nil {
 				tc = ntr.tc
 			}
-
+			// Single task distros should exit after running a single task.
+			// However, if the task group needs tearing down, we should continue
+			// the loop so the teardown group can run in the next iteration.
+			if !needTeardownGroup && a.opts.SingleTaskDistro {
+				return a.comm.DisableHost(ctx, a.opts.HostID, apimodels.DisableInfo{Reason: "Single task distro ran a task"})
+			}
 			if ntr.shouldExit {
 				return nil
 			}

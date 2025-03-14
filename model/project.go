@@ -1065,7 +1065,7 @@ func PopulateExpansions(ctx context.Context, t *task.Task, h *host.Host, appToke
 			upstreamProjectID = upstreamTask.Project
 		} else if t.TriggerType == ProjectTriggerLevelBuild {
 			var upstreamBuild *build.Build
-			upstreamBuild, err = build.FindOneId(t.TriggerID)
+			upstreamBuild, err = build.FindOneId(ctx, t.TriggerID)
 			if err != nil {
 				return nil, errors.Wrap(err, "finding build")
 			}
@@ -1111,7 +1111,7 @@ func PopulateExpansions(ctx context.Context, t *task.Task, h *host.Host, appToke
 	}
 	if evergreen.IsPatchRequester(v.Requester) {
 		var p *patch.Patch
-		p, err = patch.FindOne(patch.ByVersion(t.Version))
+		p, err = patch.FindOne(ctx, patch.ByVersion(t.Version))
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding patch for version '%s'", t.Version)
 		}
@@ -1668,8 +1668,8 @@ func (p *Project) IgnoresAllFiles(files []string) bool {
 // variants will run and which tasks will run on each build variant. This
 // filters out tasks that cannot run due to being disabled or having an
 // unmatched requester (e.g. a patch-only task for a mainline commit).
-func (p *Project) BuildProjectTVPairs(patchDoc *patch.Patch, alias string) {
-	patchDoc.BuildVariants, patchDoc.Tasks, patchDoc.VariantsTasks = p.ResolvePatchVTs(patchDoc, patchDoc.GetRequester(), alias, true)
+func (p *Project) BuildProjectTVPairs(ctx context.Context, patchDoc *patch.Patch, alias string) {
+	patchDoc.BuildVariants, patchDoc.Tasks, patchDoc.VariantsTasks = p.ResolvePatchVTs(ctx, patchDoc, patchDoc.GetRequester(), alias, true)
 
 	// Connect the execution tasks to the display tasks.
 	displayTasksToExecTasks := map[string][]string{}
@@ -1700,7 +1700,7 @@ func (p *Project) BuildProjectTVPairs(patchDoc *patch.Patch, alias string) {
 // variant. If includeDeps is set, it will also resolve task dependencies. This
 // filters out tasks that cannot run due to being disabled or having an
 // unmatched requester (e.g. a patch-only task for a mainline commit).
-func (p *Project) ResolvePatchVTs(patchDoc *patch.Patch, requester, alias string, includeDeps bool) (resolvedBVs []string, resolvedTasks []string, vts []patch.VariantTasks) {
+func (p *Project) ResolvePatchVTs(ctx context.Context, patchDoc *patch.Patch, requester, alias string, includeDeps bool) (resolvedBVs []string, resolvedTasks []string, vts []patch.VariantTasks) {
 	var bvs, bvTags, tasks, taskTags []string
 	for _, bv := range patchDoc.BuildVariants {
 		// Tags should start with "."
@@ -1781,7 +1781,7 @@ func (p *Project) ResolvePatchVTs(patchDoc *patch.Patch, requester, alias string
 
 	if alias != "" {
 		catcher := grip.NewBasicCatcher()
-		aliases, err := findAliasesForPatch(p.Identifier, alias, patchDoc)
+		aliases, err := findAliasesForPatch(ctx, p.Identifier, alias, patchDoc)
 		catcher.Wrapf(err, "retrieving alias '%s' for patched project config '%s'", alias, patchDoc.Id.Hex())
 
 		aliasPairs := TaskVariantPairs{}
@@ -1876,7 +1876,7 @@ func (p *Project) IsGenerateTask(taskName string) bool {
 	return ok
 }
 
-func findAliasesForPatch(projectId, alias string, patchDoc *patch.Patch) ([]ProjectAlias, error) {
+func findAliasesForPatch(ctx context.Context, projectId, alias string, patchDoc *patch.Patch) ([]ProjectAlias, error) {
 	aliases, err := findAliasInProjectOrRepoFromDb(projectId, alias)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting alias from project")
@@ -1884,7 +1884,7 @@ func findAliasesForPatch(projectId, alias string, patchDoc *patch.Patch) ([]Proj
 	if len(aliases) > 0 {
 		return aliases, nil
 	}
-	pRef, err := FindMergedProjectRef(projectId, "", false)
+	pRef, err := FindMergedProjectRef(ctx, projectId, "", false)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting project ref")
 	}
@@ -1901,7 +1901,7 @@ func findAliasesForPatch(projectId, alias string, patchDoc *patch.Patch) ([]Proj
 			return nil, errors.Wrapf(err, "retrieving alias '%s' from project config", alias)
 		}
 	} else if patchDoc.Version != "" {
-		aliases, err = getMatchingAliasesForProjectConfig(projectId, patchDoc.Version, alias)
+		aliases, err = getMatchingAliasesForProjectConfig(ctx, projectId, patchDoc.Version, alias)
 		if err != nil {
 			return nil, errors.Wrapf(err, "retrieving alias '%s' from project config", alias)
 		}
@@ -2020,12 +2020,12 @@ func (p *Project) BuildProjectTVPairsWithAlias(aliases []ProjectAlias, requester
 	return res, nil
 }
 
-func (p *Project) VariantTasksForSelectors(definitions []patch.PatchTriggerDefinition, requester string) ([]patch.VariantTasks, error) {
+func (p *Project) VariantTasksForSelectors(ctx context.Context, definitions []patch.PatchTriggerDefinition, requester string) ([]patch.VariantTasks, error) {
 	projectAliases := []ProjectAlias{}
 	for _, definition := range definitions {
 		for _, specifier := range definition.TaskSpecifiers {
 			if specifier.PatchAlias != "" {
-				aliases, err := FindAliasInProjectRepoOrConfig(p.Identifier, specifier.PatchAlias)
+				aliases, err := FindAliasInProjectRepoOrConfig(ctx, p.Identifier, specifier.PatchAlias)
 				if err != nil {
 					return nil, errors.Wrap(err, "getting alias from project")
 				}

@@ -98,6 +98,7 @@ type ResolverRoot interface {
 type DirectiveRoot struct {
 	RedactSecrets                func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
 	RequireDistroAccess          func(ctx context.Context, obj any, next graphql.Resolver, access DistroSettingsAccess) (res any, err error)
+	RequireHostAccess            func(ctx context.Context, obj any, next graphql.Resolver, access HostAccessLevel) (res any, err error)
 	RequireProjectAccess         func(ctx context.Context, obj any, next graphql.Resolver, permission ProjectPermission, access AccessLevel) (res any, err error)
 	RequireProjectAdmin          func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
 	RequireProjectSettingsAccess func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
@@ -1042,6 +1043,11 @@ type ComplexityRoot struct {
 		Vars                  func(childComplexity int) int
 	}
 
+	ProjectTasksPair struct {
+		AllowedTasks func(childComplexity int) int
+		ProjectID    func(childComplexity int) int
+	}
+
 	ProjectVars struct {
 		AdminOnlyVars func(childComplexity int) int
 		PrivateVars   func(childComplexity int) int
@@ -1203,6 +1209,10 @@ type ComplexityRoot struct {
 		MergeBaseRevision func(childComplexity int) int
 	}
 
+	SingleTaskDistroConfig struct {
+		ProjectTasksPairs func(childComplexity int) int
+	}
+
 	SlackConfig struct {
 		Name func(childComplexity int) int
 	}
@@ -1232,16 +1242,17 @@ type ComplexityRoot struct {
 	}
 
 	SpruceConfig struct {
-		Banner         func(childComplexity int) int
-		BannerTheme    func(childComplexity int) int
-		ContainerPools func(childComplexity int) int
-		GithubOrgs     func(childComplexity int) int
-		Jira           func(childComplexity int) int
-		Providers      func(childComplexity int) int
-		SecretFields   func(childComplexity int) int
-		Slack          func(childComplexity int) int
-		Spawnhost      func(childComplexity int) int
-		Ui             func(childComplexity int) int
+		Banner           func(childComplexity int) int
+		BannerTheme      func(childComplexity int) int
+		ContainerPools   func(childComplexity int) int
+		GithubOrgs       func(childComplexity int) int
+		Jira             func(childComplexity int) int
+		Providers        func(childComplexity int) int
+		SecretFields     func(childComplexity int) int
+		SingleTaskDistro func(childComplexity int) int
+		Slack            func(childComplexity int) int
+		Spawnhost        func(childComplexity int) int
+		Ui               func(childComplexity int) int
 	}
 
 	StatusCount struct {
@@ -6761,6 +6772,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.ProjectSettings.Vars(childComplexity), true
 
+	case "ProjectTasksPair.allowedTasks":
+		if e.complexity.ProjectTasksPair.AllowedTasks == nil {
+			break
+		}
+
+		return e.complexity.ProjectTasksPair.AllowedTasks(childComplexity), true
+
+	case "ProjectTasksPair.projectId":
+		if e.complexity.ProjectTasksPair.ProjectID == nil {
+			break
+		}
+
+		return e.complexity.ProjectTasksPair.ProjectID(childComplexity), true
+
 	case "ProjectVars.adminOnlyVars":
 		if e.complexity.ProjectVars.AdminOnlyVars == nil {
 			break
@@ -7744,6 +7769,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.SetLastRevisionPayload.MergeBaseRevision(childComplexity), true
 
+	case "SingleTaskDistroConfig.projectTasksPairs":
+		if e.complexity.SingleTaskDistroConfig.ProjectTasksPairs == nil {
+			break
+		}
+
+		return e.complexity.SingleTaskDistroConfig.ProjectTasksPairs(childComplexity), true
+
 	case "SlackConfig.name":
 		if e.complexity.SlackConfig.Name == nil {
 			break
@@ -7904,6 +7936,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.SpruceConfig.SecretFields(childComplexity), true
+
+	case "SpruceConfig.singleTaskDistro":
+		if e.complexity.SpruceConfig.SingleTaskDistro == nil {
+			break
+		}
+
+		return e.complexity.SpruceConfig.SingleTaskDistro(childComplexity), true
 
 	case "SpruceConfig.slack":
 		if e.complexity.SpruceConfig.Slack == nil {
@@ -10627,6 +10666,34 @@ func (ec *executionContext) dir_requireDistroAccess_argsAccess(
 	return zeroVal, nil
 }
 
+func (ec *executionContext) dir_requireHostAccess_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.dir_requireHostAccess_argsAccess(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["access"] = arg0
+	return args, nil
+}
+func (ec *executionContext) dir_requireHostAccess_argsAccess(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (HostAccessLevel, error) {
+	if _, ok := rawArgs["access"]; !ok {
+		var zeroVal HostAccessLevel
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("access"))
+	if tmp, ok := rawArgs["access"]; ok {
+		return ec.unmarshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx, tmp)
+	}
+
+	var zeroVal HostAccessLevel
+	return zeroVal, nil
+}
+
 func (ec *executionContext) dir_requireProjectAccess_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -12377,12 +12444,42 @@ func (ec *executionContext) field_Mutation_reprovisionToNew_argsHostIds(
 	}
 
 	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("hostIds"))
-	if tmp, ok := rawArgs["hostIds"]; ok {
+	directive0 := func(ctx context.Context) (any, error) {
+		tmp, ok := rawArgs["hostIds"]
+		if !ok {
+			var zeroVal []string
+			return zeroVal, nil
+		}
 		return ec.unmarshalNString2ᚕstringᚄ(ctx, tmp)
 	}
 
-	var zeroVal []string
-	return zeroVal, nil
+	directive1 := func(ctx context.Context) (any, error) {
+		access, err := ec.unmarshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx, "EDIT")
+		if err != nil {
+			var zeroVal []string
+			return zeroVal, err
+		}
+		if ec.directives.RequireHostAccess == nil {
+			var zeroVal []string
+			return zeroVal, errors.New("directive requireHostAccess is not implemented")
+		}
+		return ec.directives.RequireHostAccess(ctx, rawArgs, directive0, access)
+	}
+
+	tmp, err := directive1(ctx)
+	if err != nil {
+		var zeroVal []string
+		return zeroVal, graphql.ErrorOnPath(ctx, err)
+	}
+	if data, ok := tmp.([]string); ok {
+		return data, nil
+	} else if tmp == nil {
+		var zeroVal []string
+		return zeroVal, nil
+	} else {
+		var zeroVal []string
+		return zeroVal, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be []string`, tmp))
+	}
 }
 
 func (ec *executionContext) field_Mutation_restartJasper_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
@@ -12405,12 +12502,42 @@ func (ec *executionContext) field_Mutation_restartJasper_argsHostIds(
 	}
 
 	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("hostIds"))
-	if tmp, ok := rawArgs["hostIds"]; ok {
+	directive0 := func(ctx context.Context) (any, error) {
+		tmp, ok := rawArgs["hostIds"]
+		if !ok {
+			var zeroVal []string
+			return zeroVal, nil
+		}
 		return ec.unmarshalNString2ᚕstringᚄ(ctx, tmp)
 	}
 
-	var zeroVal []string
-	return zeroVal, nil
+	directive1 := func(ctx context.Context) (any, error) {
+		access, err := ec.unmarshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx, "EDIT")
+		if err != nil {
+			var zeroVal []string
+			return zeroVal, err
+		}
+		if ec.directives.RequireHostAccess == nil {
+			var zeroVal []string
+			return zeroVal, errors.New("directive requireHostAccess is not implemented")
+		}
+		return ec.directives.RequireHostAccess(ctx, rawArgs, directive0, access)
+	}
+
+	tmp, err := directive1(ctx)
+	if err != nil {
+		var zeroVal []string
+		return zeroVal, graphql.ErrorOnPath(ctx, err)
+	}
+	if data, ok := tmp.([]string); ok {
+		return data, nil
+	} else if tmp == nil {
+		var zeroVal []string
+		return zeroVal, nil
+	} else {
+		var zeroVal []string
+		return zeroVal, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be []string`, tmp))
+	}
 }
 
 func (ec *executionContext) field_Mutation_restartTask_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
@@ -13584,12 +13711,42 @@ func (ec *executionContext) field_Mutation_updateHostStatus_argsHostIds(
 	}
 
 	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("hostIds"))
-	if tmp, ok := rawArgs["hostIds"]; ok {
+	directive0 := func(ctx context.Context) (any, error) {
+		tmp, ok := rawArgs["hostIds"]
+		if !ok {
+			var zeroVal []string
+			return zeroVal, nil
+		}
 		return ec.unmarshalNString2ᚕstringᚄ(ctx, tmp)
 	}
 
-	var zeroVal []string
-	return zeroVal, nil
+	directive1 := func(ctx context.Context) (any, error) {
+		access, err := ec.unmarshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx, "EDIT")
+		if err != nil {
+			var zeroVal []string
+			return zeroVal, err
+		}
+		if ec.directives.RequireHostAccess == nil {
+			var zeroVal []string
+			return zeroVal, errors.New("directive requireHostAccess is not implemented")
+		}
+		return ec.directives.RequireHostAccess(ctx, rawArgs, directive0, access)
+	}
+
+	tmp, err := directive1(ctx)
+	if err != nil {
+		var zeroVal []string
+		return zeroVal, graphql.ErrorOnPath(ctx, err)
+	}
+	if data, ok := tmp.([]string); ok {
+		return data, nil
+	} else if tmp == nil {
+		var zeroVal []string
+		return zeroVal, nil
+	} else {
+		var zeroVal []string
+		return zeroVal, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be []string`, tmp))
+	}
 }
 
 func (ec *executionContext) field_Mutation_updateHostStatus_argsStatus(
@@ -14470,12 +14627,39 @@ func (ec *executionContext) field_Query_hostEvents_argsHostID(
 	}
 
 	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("hostId"))
-	if tmp, ok := rawArgs["hostId"]; ok {
+	directive0 := func(ctx context.Context) (any, error) {
+		tmp, ok := rawArgs["hostId"]
+		if !ok {
+			var zeroVal string
+			return zeroVal, nil
+		}
 		return ec.unmarshalNString2string(ctx, tmp)
 	}
 
-	var zeroVal string
-	return zeroVal, nil
+	directive1 := func(ctx context.Context) (any, error) {
+		access, err := ec.unmarshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx, "VIEW")
+		if err != nil {
+			var zeroVal string
+			return zeroVal, err
+		}
+		if ec.directives.RequireHostAccess == nil {
+			var zeroVal string
+			return zeroVal, errors.New("directive requireHostAccess is not implemented")
+		}
+		return ec.directives.RequireHostAccess(ctx, rawArgs, directive0, access)
+	}
+
+	tmp, err := directive1(ctx)
+	if err != nil {
+		var zeroVal string
+		return zeroVal, graphql.ErrorOnPath(ctx, err)
+	}
+	if data, ok := tmp.(string); ok {
+		return data, nil
+	} else {
+		var zeroVal string
+		return zeroVal, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
+	}
 }
 
 func (ec *executionContext) field_Query_hostEvents_argsHostTag(
@@ -14552,12 +14736,39 @@ func (ec *executionContext) field_Query_host_argsHostID(
 	}
 
 	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("hostId"))
-	if tmp, ok := rawArgs["hostId"]; ok {
+	directive0 := func(ctx context.Context) (any, error) {
+		tmp, ok := rawArgs["hostId"]
+		if !ok {
+			var zeroVal string
+			return zeroVal, nil
+		}
 		return ec.unmarshalNString2string(ctx, tmp)
 	}
 
-	var zeroVal string
-	return zeroVal, nil
+	directive1 := func(ctx context.Context) (any, error) {
+		access, err := ec.unmarshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx, "VIEW")
+		if err != nil {
+			var zeroVal string
+			return zeroVal, err
+		}
+		if ec.directives.RequireHostAccess == nil {
+			var zeroVal string
+			return zeroVal, errors.New("directive requireHostAccess is not implemented")
+		}
+		return ec.directives.RequireHostAccess(ctx, rawArgs, directive0, access)
+	}
+
+	tmp, err := directive1(ctx)
+	if err != nil {
+		var zeroVal string
+		return zeroVal, graphql.ErrorOnPath(ctx, err)
+	}
+	if data, ok := tmp.(string); ok {
+		return data, nil
+	} else {
+		var zeroVal string
+		return zeroVal, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp))
+	}
 }
 
 func (ec *executionContext) field_Query_hosts_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
@@ -48138,6 +48349,94 @@ func (ec *executionContext) fieldContext_ProjectSettings_vars(_ context.Context,
 	return fc, nil
 }
 
+func (ec *executionContext) _ProjectTasksPair_projectId(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectTasksPair) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ProjectTasksPair_projectId(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ProjectID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ProjectTasksPair_projectId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProjectTasksPair",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ProjectTasksPair_allowedTasks(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectTasksPair) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ProjectTasksPair_allowedTasks(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AllowedTasks, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ProjectTasksPair_allowedTasks(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProjectTasksPair",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ProjectVars_adminOnlyVars(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectVars) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_ProjectVars_adminOnlyVars(ctx, field)
 	if err != nil {
@@ -48661,6 +48960,8 @@ func (ec *executionContext) fieldContext_Query_spruceConfig(_ context.Context, f
 				return ec.fieldContext_SpruceConfig_providers(ctx, field)
 			case "secretFields":
 				return ec.fieldContext_SpruceConfig_secretFields(ctx, field)
+			case "singleTaskDistro":
+				return ec.fieldContext_SpruceConfig_singleTaskDistro(ctx, field)
 			case "slack":
 				return ec.fieldContext_SpruceConfig_slack(ctx, field)
 			case "spawnHost":
@@ -55222,6 +55523,56 @@ func (ec *executionContext) fieldContext_SetLastRevisionPayload_mergeBaseRevisio
 	return fc, nil
 }
 
+func (ec *executionContext) _SingleTaskDistroConfig_projectTasksPairs(ctx context.Context, field graphql.CollectedField, obj *model.APISingleTaskDistroConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SingleTaskDistroConfig_projectTasksPairs(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ProjectTasksPairs, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]model.APIProjectTasksPair)
+	fc.Result = res
+	return ec.marshalNProjectTasksPair2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectTasksPairᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SingleTaskDistroConfig_projectTasksPairs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SingleTaskDistroConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "projectId":
+				return ec.fieldContext_ProjectTasksPair_projectId(ctx, field)
+			case "allowedTasks":
+				return ec.fieldContext_ProjectTasksPair_allowedTasks(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ProjectTasksPair", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _SlackConfig_name(ctx context.Context, field graphql.CollectedField, obj *model.APISlackConfig) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_SlackConfig_name(ctx, field)
 	if err != nil {
@@ -56216,6 +56567,51 @@ func (ec *executionContext) fieldContext_SpruceConfig_secretFields(_ context.Con
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SpruceConfig_singleTaskDistro(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SpruceConfig_singleTaskDistro(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SingleTaskDistro, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APISingleTaskDistroConfig)
+	fc.Result = res
+	return ec.marshalOSingleTaskDistroConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISingleTaskDistroConfig(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SpruceConfig_singleTaskDistro(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SpruceConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "projectTasksPairs":
+				return ec.fieldContext_SingleTaskDistroConfig_projectTasksPairs(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SingleTaskDistroConfig", field.Name)
 		},
 	}
 	return fc, nil
@@ -76700,11 +77096,31 @@ func (ec *executionContext) unmarshalInputEditSpawnHostInput(ctx context.Context
 			it.Expiration = data
 		case "hostId":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostId"))
-			data, err := ec.unmarshalNString2string(ctx, v)
-			if err != nil {
-				return it, err
+			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalNString2string(ctx, v) }
+
+			directive1 := func(ctx context.Context) (any, error) {
+				access, err := ec.unmarshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx, "EDIT")
+				if err != nil {
+					var zeroVal string
+					return zeroVal, err
+				}
+				if ec.directives.RequireHostAccess == nil {
+					var zeroVal string
+					return zeroVal, errors.New("directive requireHostAccess is not implemented")
+				}
+				return ec.directives.RequireHostAccess(ctx, obj, directive0, access)
 			}
-			it.HostID = data
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(string); ok {
+				it.HostID = data
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
 		case "instanceType":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("instanceType"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -80519,11 +80935,31 @@ func (ec *executionContext) unmarshalInputUpdateSpawnHostStatusInput(ctx context
 			it.Action = data
 		case "hostId":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hostId"))
-			data, err := ec.unmarshalNString2string(ctx, v)
-			if err != nil {
-				return it, err
+			directive0 := func(ctx context.Context) (any, error) { return ec.unmarshalNString2string(ctx, v) }
+
+			directive1 := func(ctx context.Context) (any, error) {
+				access, err := ec.unmarshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx, "EDIT")
+				if err != nil {
+					var zeroVal string
+					return zeroVal, err
+				}
+				if ec.directives.RequireHostAccess == nil {
+					var zeroVal string
+					return zeroVal, errors.New("directive requireHostAccess is not implemented")
+				}
+				return ec.directives.RequireHostAccess(ctx, obj, directive0, access)
 			}
-			it.HostID = data
+
+			tmp, err := directive1(ctx)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			if data, ok := tmp.(string); ok {
+				it.HostID = data
+			} else {
+				err := fmt.Errorf(`unexpected type %T from directive, should be string`, tmp)
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
 		case "shouldKeepOff":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("shouldKeepOff"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -89515,6 +89951,50 @@ func (ec *executionContext) _ProjectSettings(ctx context.Context, sel ast.Select
 	return out
 }
 
+var projectTasksPairImplementors = []string{"ProjectTasksPair"}
+
+func (ec *executionContext) _ProjectTasksPair(ctx context.Context, sel ast.SelectionSet, obj *model.APIProjectTasksPair) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, projectTasksPairImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ProjectTasksPair")
+		case "projectId":
+			out.Values[i] = ec._ProjectTasksPair_projectId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "allowedTasks":
+			out.Values[i] = ec._ProjectTasksPair_allowedTasks(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var projectVarsImplementors = []string{"ProjectVars"}
 
 func (ec *executionContext) _ProjectVars(ctx context.Context, sel ast.SelectionSet, obj *model.APIProjectVars) graphql.Marshaler {
@@ -91463,6 +91943,45 @@ func (ec *executionContext) _SetLastRevisionPayload(ctx context.Context, sel ast
 	return out
 }
 
+var singleTaskDistroConfigImplementors = []string{"SingleTaskDistroConfig"}
+
+func (ec *executionContext) _SingleTaskDistroConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APISingleTaskDistroConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, singleTaskDistroConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SingleTaskDistroConfig")
+		case "projectTasksPairs":
+			out.Values[i] = ec._SingleTaskDistroConfig_projectTasksPairs(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var slackConfigImplementors = []string{"SlackConfig"}
 
 func (ec *executionContext) _SlackConfig(ctx context.Context, sel ast.SelectionSet, obj *model.APISlackConfig) graphql.Marshaler {
@@ -91760,6 +92279,8 @@ func (ec *executionContext) _SpruceConfig(ctx context.Context, sel ast.Selection
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "singleTaskDistro":
+			out.Values[i] = ec._SpruceConfig_singleTaskDistro(ctx, field, obj)
 		case "slack":
 			out.Values[i] = ec._SpruceConfig_slack(ctx, field, obj)
 		case "spawnHost":
@@ -98519,6 +99040,16 @@ func (ec *executionContext) marshalNHost2ᚖgithubᚗcomᚋevergreenᚑciᚋever
 	return ec._Host(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx context.Context, v any) (HostAccessLevel, error) {
+	var res HostAccessLevel
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNHostAccessLevel2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐHostAccessLevel(ctx context.Context, sel ast.SelectionSet, v HostAccessLevel) graphql.Marshaler {
+	return v
+}
+
 func (ec *executionContext) marshalNHostAllocatorSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIHostAllocatorSettings(ctx context.Context, sel ast.SelectionSet, v model.APIHostAllocatorSettings) graphql.Marshaler {
 	return ec._HostAllocatorSettings(ctx, sel, &v)
 }
@@ -100593,6 +101124,54 @@ func (ec *executionContext) unmarshalNProjectSettingsSection2githubᚗcomᚋever
 
 func (ec *executionContext) marshalNProjectSettingsSection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐProjectSettingsSection(ctx context.Context, sel ast.SelectionSet, v ProjectSettingsSection) graphql.Marshaler {
 	return v
+}
+
+func (ec *executionContext) marshalNProjectTasksPair2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectTasksPair(ctx context.Context, sel ast.SelectionSet, v model.APIProjectTasksPair) graphql.Marshaler {
+	return ec._ProjectTasksPair(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNProjectTasksPair2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectTasksPairᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APIProjectTasksPair) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNProjectTasksPair2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIProjectTasksPair(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) unmarshalNPromoteVarsToRepoInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐPromoteVarsToRepoInput(ctx context.Context, v any) (PromoteVarsToRepoInput, error) {
@@ -104499,6 +105078,13 @@ func (ec *executionContext) marshalOSearchReturnInfo2ᚖgithubᚗcomᚋevergreen
 		return graphql.Null
 	}
 	return ec._SearchReturnInfo(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOSingleTaskDistroConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISingleTaskDistroConfig(ctx context.Context, sel ast.SelectionSet, v *model.APISingleTaskDistroConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._SingleTaskDistroConfig(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOSlackConfig2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISlackConfig(ctx context.Context, sel ast.SelectionSet, v *model.APISlackConfig) graphql.Marshaler {

@@ -355,7 +355,7 @@ func (c *s3get) get(ctx context.Context) error {
 
 func (c *s3get) createPailBucket(ctx context.Context, httpClient *http.Client) error {
 	opts := pail.S3Options{
-		Credentials: pail.CreateAWSCredentials(c.AwsKey, c.AwsSecret, c.AwsSessionToken),
+		Credentials: pail.CreateAWSStaticCredentials(c.AwsKey, c.AwsSecret, c.AwsSessionToken),
 		Region:      c.Region,
 		Name:        c.Bucket,
 	}

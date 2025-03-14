@@ -16,6 +16,7 @@ import (
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 // Pod represents a related collection of containers. This model holds metadata
@@ -91,7 +92,7 @@ func (o *TaskIntentPodOptions) Validate(ecsConf evergreen.ECSConfig) error {
 	}
 
 	if o.ID == "" {
-		o.ID = bson.NewObjectId().Hex()
+		o.ID = primitive.NewObjectID().Hex()
 	}
 
 	return nil
@@ -581,8 +582,9 @@ func (p *Pod) InsertWithContext(ctx context.Context, env evergreen.Environment) 
 }
 
 // Remove removes the pod from the collection.
-func (p *Pod) Remove() error {
+func (p *Pod) Remove(ctx context.Context) error {
 	return db.Remove(
+		ctx,
 		Collection,
 		bson.M{
 			IDKey: p.ID,

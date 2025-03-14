@@ -230,7 +230,7 @@ func (s *ProjectPatchByIDSuite) TestRunWithValidBbConfig() {
 	s.NotNil(resp)
 	s.NotNil(resp.Data())
 	s.Require().Equal(http.StatusOK, resp.Status(), resp.Data())
-	pRef, err := data.FindProjectById("dimoxinil", false, false)
+	pRef, err := data.FindProjectById(s.T().Context(), "dimoxinil", false, false)
 	s.NoError(err)
 	s.Require().Equal("EVG", pRef.BuildBaronSettings.TicketCreateProject)
 }
@@ -287,7 +287,7 @@ func (s *ProjectPatchByIDSuite) TestGitTagVersionsEnabled() {
 	s.Require().Equal(http.StatusOK, resp.Status())
 
 	// verify that the repo fields weren't saved with the branch
-	p, err := data.FindProjectById("dimoxinil", false, false)
+	p, err := data.FindProjectById(s.T().Context(), "dimoxinil", false, false)
 	s.NoError(err)
 	s.Require().NotNil(p)
 	s.Empty(p.GitTagAuthorizedUsers)
@@ -363,7 +363,7 @@ func (s *ProjectPatchByIDSuite) TestUpdateParsleyFilters() {
 	s.NotNil(resp.Data())
 	s.Equal(http.StatusOK, resp.Status(), resp.Data())
 
-	p, err := data.FindProjectById("dimoxinil", true, false)
+	p, err := data.FindProjectById(s.T().Context(), "dimoxinil", true, false)
 	s.NoError(err)
 	s.NotNil(p)
 	s.Len(p.ParsleyFilters, 2)
@@ -397,7 +397,7 @@ func (s *ProjectPatchByIDSuite) TestPatchTriggerAliases() {
 	s.NotNil(resp.Data())
 	s.Equal(http.StatusOK, resp.Status())
 
-	p, err := data.FindProjectById("dimoxinil", true, false)
+	p, err := data.FindProjectById(s.T().Context(), "dimoxinil", true, false)
 	s.NoError(err)
 	s.NotEqual(p.PatchTriggerAliases, nil)
 	s.Len(p.PatchTriggerAliases, 1)
@@ -414,7 +414,7 @@ func (s *ProjectPatchByIDSuite) TestPatchTriggerAliases() {
 	s.NotNil(resp.Data())
 	s.Equal(http.StatusOK, resp.Status())
 
-	p, err = data.FindProjectById("dimoxinil", true, false)
+	p, err = data.FindProjectById(s.T().Context(), "dimoxinil", true, false)
 	s.NoError(err)
 	s.NotNil(p.PatchTriggerAliases)
 	s.Empty(p.PatchTriggerAliases)
@@ -429,7 +429,7 @@ func (s *ProjectPatchByIDSuite) TestPatchTriggerAliases() {
 	s.NotNil(resp.Data())
 	s.Equal(http.StatusOK, resp.Status())
 
-	p, err = data.FindProjectById("dimoxinil", true, false)
+	p, err = data.FindProjectById(s.T().Context(), "dimoxinil", true, false)
 	s.NoError(err)
 	s.Nil(p.PatchTriggerAliases)
 }
@@ -640,7 +640,7 @@ func (s *ProjectPutSuite) TestRunNewWithValidEntity() {
 	s.NotNil(resp.Data())
 	s.Equal(http.StatusCreated, resp.Status())
 
-	p, err := data.FindProjectById("nutsandgum", false, false)
+	p, err := data.FindProjectById(s.T().Context(), "nutsandgum", false, false)
 	s.NoError(err)
 	s.Require().NotNil(p)
 	s.NotEqual("nutsandgum", p.Id)
@@ -713,7 +713,7 @@ func (s *ProjectGetByIDSuite) TestRunExistingId() {
 	projectRef, ok := resp.Data().(*model.APIProjectRef)
 	s.Require().True(ok)
 	s.Equal(evergreen.CommitQueueAlias, utility.FromStringPtr(projectRef.Aliases[0].Alias))
-	cachedProject, err := data.FindProjectById(h.projectName, false, false)
+	cachedProject, err := data.FindProjectById(s.T().Context(), h.projectName, false, false)
 	s.NoError(err)
 	s.Equal(cachedProject.Repo, utility.FromStringPtr(projectRef.Repo))
 	s.Equal(cachedProject.Owner, utility.FromStringPtr(projectRef.Owner))
@@ -1100,7 +1100,7 @@ func TestDeleteProject(t *testing.T) {
 		resp := pdh.Run(ctx)
 		assert.Equal(t, http.StatusOK, resp.Status())
 
-		hiddenProj, err := serviceModel.FindMergedProjectRef(projects[i].Id, "", true)
+		hiddenProj, err := serviceModel.FindMergedProjectRef(t.Context(), projects[i].Id, "", true)
 		assert.NoError(t, err)
 		skeletonProj := serviceModel.ProjectRef{
 			Id:        projects[i].Id,
@@ -1195,7 +1195,7 @@ func TestAttachProjectToRepo(t *testing.T) {
 	assert.NotNil(t, resp.Data())
 	assert.Equal(t, http.StatusOK, resp.Status())
 
-	p, err := serviceModel.FindMergedProjectRef("projectIdent", "", false)
+	p, err := serviceModel.FindMergedProjectRef(t.Context(), "projectIdent", "", false)
 	assert.NoError(t, err)
 	assert.NotNil(t, p)
 	assert.True(t, p.UseRepoSettings())
@@ -1268,7 +1268,7 @@ func TestDetachProjectFromRepo(t *testing.T) {
 	assert.NotNil(t, resp.Data())
 	assert.Equal(t, http.StatusOK, resp.Status())
 
-	p, err := serviceModel.FindMergedProjectRef("projectIdent", "", false)
+	p, err := serviceModel.FindMergedProjectRef(t.Context(), "projectIdent", "", false)
 	assert.NoError(t, err)
 	assert.NotNil(t, p)
 	assert.False(t, p.UseRepoSettings())

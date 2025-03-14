@@ -25,7 +25,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 	"gopkg.in/yaml.v3"
 )
 
@@ -924,7 +924,7 @@ func (s *projectSuite) TestBuildProjectTVPairs() {
 		Tasks:         []string{"all"},
 	}
 
-	s.project.BuildProjectTVPairs(&patchDoc, evergreen.PatchVersionRequester)
+	s.project.BuildProjectTVPairs(s.T().Context(), &patchDoc, evergreen.PatchVersionRequester)
 
 	s.Len(patchDoc.BuildVariants, 2)
 	s.ElementsMatch([]string{"bv_1", "bv_2"}, patchDoc.BuildVariants)
@@ -968,7 +968,7 @@ func (s *projectSuite) TestBuildProjectTVPairs() {
 	patchDoc.Tasks = []string{"all"}
 	patchDoc.VariantsTasks = []patch.VariantTasks{}
 
-	s.project.BuildProjectTVPairs(&patchDoc, evergreen.PatchVersionRequester)
+	s.project.BuildProjectTVPairs(s.T().Context(), &patchDoc, evergreen.PatchVersionRequester)
 
 	s.Len(patchDoc.BuildVariants, 2)
 	s.Len(patchDoc.Tasks, 6)
@@ -977,7 +977,7 @@ func (s *projectSuite) TestBuildProjectTVPairs() {
 	patchDoc.BuildVariants = []string{"all"}
 	patchDoc.VariantsTasks = []patch.VariantTasks{}
 
-	s.project.BuildProjectTVPairs(&patchDoc, evergreen.PatchVersionRequester)
+	s.project.BuildProjectTVPairs(s.T().Context(), &patchDoc, evergreen.PatchVersionRequester)
 
 	s.Len(patchDoc.BuildVariants, 2)
 	s.Len(patchDoc.Tasks, 6)
@@ -990,7 +990,7 @@ func (s *projectSuite) TestResolvePatchVTs() {
 		Tasks:         []string{"all"},
 	}
 
-	bvs, tasks, variantTasks := s.project.ResolvePatchVTs(&patchDoc, patchDoc.GetRequester(), "", true)
+	bvs, tasks, variantTasks := s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), "", true)
 	s.Len(bvs, 2)
 	s.ElementsMatch([]string{"bv_1", "bv_2"}, bvs)
 	s.Len(tasks, 7)
@@ -1037,7 +1037,7 @@ func (s *projectSuite) TestResolvePatchVTs() {
 		RegexTasks:         []string{"_1$"},
 	}
 
-	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(&patchDoc, patchDoc.GetRequester(), "", true)
+	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), "", true)
 	s.Len(bvs, 2)
 	s.Len(tasks, 7)
 	s.Len(variantTasks, 2)
@@ -1048,7 +1048,7 @@ func (s *projectSuite) TestResolvePatchVTs() {
 		RegexTasks:         []string{"_1$"},
 	}
 
-	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(&patchDoc, patchDoc.GetRequester(), "", true)
+	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), "", true)
 	s.Len(bvs, 2)
 	s.Contains(bvs, "bv_1")
 	s.Contains(bvs, "bv_2")
@@ -1070,7 +1070,7 @@ func (s *projectSuite) TestResolvePatchVTs() {
 		RegexTasks:    []string{"_1$"},
 	}
 
-	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(&patchDoc, patchDoc.GetRequester(), "", true)
+	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), "", true)
 	s.Len(bvs, 2)
 	s.Contains(bvs, "bv_1")
 	s.Contains(bvs, "bv_2")
@@ -1092,7 +1092,7 @@ func (s *projectSuite) TestResolvePatchVTs() {
 		RegexTasks:    []string{"_1$"},
 	}
 
-	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(&patchDoc, patchDoc.GetRequester(), "", true)
+	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), "", true)
 	s.Len(bvs, 2)
 	s.Contains(bvs, "bv_1")
 	s.Contains(bvs, "bv_2")
@@ -1114,7 +1114,7 @@ func (s *projectSuite) TestResolvePatchVTs() {
 		RegexTasks:         []string{"_1$"},
 	}
 
-	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(&patchDoc, patchDoc.GetRequester(), "aTags", true)
+	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), "aTags", true)
 	s.Len(bvs, 2)
 	s.Contains(bvs, "bv_1")
 	s.Contains(bvs, "bv_2")
@@ -1138,7 +1138,7 @@ func (s *projectSuite) TestResolvePatchVTs() {
 		Tasks:         []string{".a", ".1"},
 	}
 
-	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(&patchDoc, patchDoc.GetRequester(), "", true)
+	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), "", true)
 	s.Len(bvs, 1)
 	s.Contains(bvs, "bv_2")
 	s.Len(tasks, 3)
@@ -1161,7 +1161,7 @@ func (s *projectSuite) TestResolvePatchVTs() {
 		Tasks:         []string{".a", ".1", "b_task_2"},
 	}
 
-	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(&patchDoc, patchDoc.GetRequester(), "", true)
+	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), "", true)
 	s.Len(bvs, 2)
 	s.Contains(bvs, "bv_1")
 	s.Contains(bvs, "bv_2")
@@ -1188,7 +1188,7 @@ func (s *projectSuite) TestResolvePatchVTs() {
 		RegexTasks:    []string{"_1$"},
 	}
 
-	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(&patchDoc, patchDoc.GetRequester(), "", true)
+	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), "", true)
 	s.Len(bvs, 2)
 	s.Contains(bvs, "bv_1")
 	s.Contains(bvs, "bv_2")
@@ -1211,7 +1211,7 @@ func (s *projectSuite) TestResolvePatchVTs() {
 func (s *projectSuite) TestBuildProjectTVPairsWithAlias() {
 	patchDoc := patch.Patch{}
 
-	s.project.BuildProjectTVPairs(&patchDoc, "2tasks(obsolete)")
+	s.project.BuildProjectTVPairs(s.T().Context(), &patchDoc, "2tasks(obsolete)")
 
 	s.Len(patchDoc.BuildVariants, 2)
 	s.Contains(patchDoc.BuildVariants, "bv_1")
@@ -1237,7 +1237,7 @@ func (s *projectSuite) TestBuildProjectTVPairsWithBadBuildVariant() {
 		Tasks:         []string{"a_task_1", "b_task_1"},
 	}
 
-	s.project.BuildProjectTVPairs(&patchDoc, "")
+	s.project.BuildProjectTVPairs(s.T().Context(), &patchDoc, "")
 
 	s.Require().Len(patchDoc.Tasks, 2)
 	s.Contains(patchDoc.Tasks, "a_task_1")
@@ -1260,7 +1260,7 @@ func (s *projectSuite) TestBuildProjectTVPairsWithBadBuildVariant() {
 func (s *projectSuite) TestBuildProjectTVPairsWithAliasWithTags() {
 	patchDoc := patch.Patch{}
 
-	s.project.BuildProjectTVPairs(&patchDoc, "aTags")
+	s.project.BuildProjectTVPairs(s.T().Context(), &patchDoc, "aTags")
 
 	s.Len(patchDoc.BuildVariants, 2)
 	s.Contains(patchDoc.BuildVariants, "bv_1")
@@ -1283,7 +1283,7 @@ func (s *projectSuite) TestBuildProjectTVPairsWithAliasWithTags() {
 func (s *projectSuite) TestBuildProjectTVPairsWithAliasWithDisplayTask() {
 	patchDoc := patch.Patch{}
 
-	s.project.BuildProjectTVPairs(&patchDoc, "memes")
+	s.project.BuildProjectTVPairs(s.T().Context(), &patchDoc, "memes")
 	s.Len(patchDoc.BuildVariants, 2)
 	s.Contains(patchDoc.BuildVariants, "bv_1")
 	s.Contains(patchDoc.BuildVariants, "bv_2")
@@ -1310,7 +1310,7 @@ func (s *projectSuite) TestBuildProjectTVPairsWithAliasWithDisplayTask() {
 func (s *projectSuite) TestBuildProjectTVPairsWithDisabledBuildVariant() {
 	patchDoc := patch.Patch{}
 
-	s.project.BuildProjectTVPairs(&patchDoc, "disabled_stuff")
+	s.project.BuildProjectTVPairs(s.T().Context(), &patchDoc, "disabled_stuff")
 	s.Empty(patchDoc.BuildVariants)
 	s.Empty(patchDoc.Tasks)
 	s.Empty(patchDoc.VariantsTasks)
@@ -1320,7 +1320,7 @@ func (s *projectSuite) TestBuildProjectTVPairsWithDisabledBuildVariant() {
 		Tasks:         []string{"disabled_task"},
 	}
 
-	s.project.BuildProjectTVPairs(&patchDoc, "")
+	s.project.BuildProjectTVPairs(s.T().Context(), &patchDoc, "")
 	s.Empty(patchDoc.BuildVariants)
 	s.Empty(patchDoc.Tasks)
 	s.Empty(patchDoc.VariantsTasks)
@@ -1332,7 +1332,7 @@ func (s *projectSuite) TestBuildProjectTVPairsWithDisplayTaskWithDependencies() 
 		Tasks:         []string{"memes"},
 	}
 
-	s.project.BuildProjectTVPairs(&patchDoc, "")
+	s.project.BuildProjectTVPairs(s.T().Context(), &patchDoc, "")
 	s.Len(patchDoc.BuildVariants, 2)
 	s.Contains(patchDoc.BuildVariants, "bv_1")
 	s.Contains(patchDoc.BuildVariants, "bv_2")
@@ -1364,7 +1364,7 @@ func (s *projectSuite) TestBuildProjectTVPairsWithDisplayTaskWithDependencies() 
 
 func (s *projectSuite) TestBuildProjectTVPairsWithExecutionTaskFromTags() {
 	patchDoc := patch.Patch{}
-	s.project.BuildProjectTVPairs(&patchDoc, "part_of_memes")
+	s.project.BuildProjectTVPairs(s.T().Context(), &patchDoc, "part_of_memes")
 	s.Len(patchDoc.BuildVariants, 2)
 	s.Contains(patchDoc.BuildVariants, "bv_1")
 	s.Len(patchDoc.Tasks, 3)
@@ -1391,7 +1391,7 @@ func (s *projectSuite) TestBuildProjectTVPairsWithExecutionTask() {
 		BuildVariants: []string{"bv_1"},
 		Tasks:         []string{"9001_task"},
 	}
-	s.project.BuildProjectTVPairs(&patchDoc, "")
+	s.project.BuildProjectTVPairs(s.T().Context(), &patchDoc, "")
 	s.Len(patchDoc.BuildVariants, 2)
 	s.Contains(patchDoc.BuildVariants, "bv_1")
 	s.Contains(patchDoc.BuildVariants, "bv_2")
@@ -2088,7 +2088,7 @@ func TestVariantTasksForSelectors(t *testing.T) {
 	for testName, test := range map[string]func(*testing.T){
 		"patch alias selector": func(t *testing.T) {
 			definitions := []patch.PatchTriggerDefinition{{TaskSpecifiers: []patch.TaskSpecifier{{PatchAlias: alias}}}}
-			vts, err := project.VariantTasksForSelectors(definitions, "")
+			vts, err := project.VariantTasksForSelectors(t.Context(), definitions, "")
 			assert.NoError(t, err)
 			require.Len(t, vts, 1)
 			require.Len(t, vts[0].Tasks, 1)
@@ -2096,7 +2096,7 @@ func TestVariantTasksForSelectors(t *testing.T) {
 		},
 		"selector with dependency": func(t *testing.T) {
 			definitions := []patch.PatchTriggerDefinition{{TaskSpecifiers: []patch.TaskSpecifier{{VariantRegex: "bv0", TaskRegex: "t1"}}}}
-			vts, err := project.VariantTasksForSelectors(definitions, "")
+			vts, err := project.VariantTasksForSelectors(t.Context(), definitions, "")
 			assert.NoError(t, err)
 			require.Len(t, vts, 1)
 			require.Len(t, vts[0].Tasks, 2)
@@ -2105,7 +2105,7 @@ func TestVariantTasksForSelectors(t *testing.T) {
 		},
 		"selector with display task": func(t *testing.T) {
 			definitions := []patch.PatchTriggerDefinition{{TaskSpecifiers: []patch.TaskSpecifier{{VariantRegex: "bv0", TaskRegex: "dt0"}}}}
-			vts, err := project.VariantTasksForSelectors(definitions, "")
+			vts, err := project.VariantTasksForSelectors(t.Context(), definitions, "")
 			assert.NoError(t, err)
 			require.Len(t, vts, 1)
 			require.Len(t, vts[0].Tasks, 1)

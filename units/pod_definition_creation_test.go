@@ -61,7 +61,7 @@ func TestPodDefinitionCreationJob(t *testing.T) {
 			j.Run(ctx)
 			require.NoError(t, j.Error())
 
-			podDef, err := definition.FindOne(db.Query(bson.M{}))
+			podDef, err := definition.FindOne(ctx, db.Query(bson.M{}))
 			require.NoError(t, err)
 			require.NotZero(t, podDef, "pod definition creation should have inserted a document")
 			assert.Equal(t, j.Family, podDef.Family)
@@ -120,7 +120,7 @@ func TestPodDefinitionCreationJob(t *testing.T) {
 			j.Run(ctx)
 			require.NoError(t, j.Error())
 
-			podDef, err := definition.FindOne(db.Query(bson.M{}))
+			podDef, err := definition.FindOne(ctx, db.Query(bson.M{}))
 			require.NoError(t, err)
 			require.NotZero(t, podDef, "pre-existing pod definition should still exist")
 			assert.Equal(t, j.Family, podDef.Family)
@@ -133,7 +133,7 @@ func TestPodDefinitionCreationJob(t *testing.T) {
 			j.Run(ctx)
 			require.NoError(t, j.Error())
 
-			podDef, err := definition.FindOne(db.Query(bson.M{}))
+			podDef, err := definition.FindOne(ctx, db.Query(bson.M{}))
 			assert.NoError(t, err)
 			assert.Zero(t, podDef, "should not have cached a pod definition")
 
@@ -157,13 +157,13 @@ func TestPodDefinitionCreationJob(t *testing.T) {
 			j.Run(ctx)
 			assert.Error(t, j.Error(), "job should have errored due to empty container options")
 
-			podDef, err := definition.FindOne(db.Query(bson.M{}))
+			podDef, err := definition.FindOne(ctx, db.Query(bson.M{}))
 			assert.NoError(t, err)
 			assert.Zero(t, podDef, "should not have cached a pod definition")
 
 			assert.Empty(t, cocoaMock.GlobalECSService.TaskDefs, "should not have created an ECS task definition")
 
-			dbPod, err := pod.FindOneByID(p.ID)
+			dbPod, err := pod.FindOneByID(ctx, p.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Equal(t, pod.StatusDecommissioned, dbPod.Status, "intent pod should have been decommissioned after pod definition creation failed")

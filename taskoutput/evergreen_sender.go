@@ -16,11 +16,6 @@ import (
 
 const defaultMaxBufferSize = 1e7
 
-// LogLineParser functions parse a raw log line into the service representation
-// of a log line for uniform ingestion of logs by the Evergreen log sender.
-// Parsers need not set the log name or, in most cases, the priority.
-type LogLineParser func(string) (log.LogLine, error)
-
 var defaultLogLineParser = func(rawLine string) (log.LogLine, error) {
 	return log.LogLine{Data: rawLine}, nil
 }
@@ -46,7 +41,7 @@ type EvergreenSenderOptions struct {
 	// Parse is the injectable line parser that allows the sender to be
 	// agnostic to the raw log line formats it ingests. Defaults to a basic
 	// line parser that adds the raw string as the log line data field.
-	Parse LogLineParser
+	Parse log.LineParser
 
 	appendLines logLineAppender
 }

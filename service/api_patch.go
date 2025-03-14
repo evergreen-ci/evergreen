@@ -129,7 +129,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pref, err := model.FindMergedProjectRef(data.Project, "", true)
+	pref, err := model.FindMergedProjectRef(r.Context(), data.Project, "", true)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, errors.Wrapf(err, "project '%s' is not specified", data.Project))
 		return
@@ -231,7 +231,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	patchDoc, err := patch.FindOne(patch.ById(patchID))
+	patchDoc, err := patch.FindOne(r.Context(), patch.ById(patchID))
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, errors.New("can't fetch patch data"))
 		return
@@ -253,7 +253,7 @@ func getPatchFromRequest(r *http.Request) (*patch.Patch, error) {
 	}
 
 	// find the patch
-	existingPatch, err := patch.FindOneId(patchIdStr)
+	existingPatch, err := patch.FindOneId(r.Context(), patchIdStr)
 	if err != nil {
 		return nil, err
 	}

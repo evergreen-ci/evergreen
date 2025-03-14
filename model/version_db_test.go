@@ -130,7 +130,7 @@ func TestRestartVersion(t *testing.T) {
 
 	// Build status for all builds containing the tasks that we touched
 	// should be updated.
-	b, err := build.FindOneId(buildID)
+	b, err := build.FindOneId(ctx, buildID)
 	require.NoError(t, err)
 	assert.Equal(t, evergreen.BuildStarted, b.Status)
 	assert.Equal(t, "caller", b.ActivatedBy)

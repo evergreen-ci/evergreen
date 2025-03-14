@@ -337,14 +337,25 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching hosts: %s", err.Error()))
 	}
 
+	usr := mustHaveUser(ctx)
 	apiHosts := []*restModel.APIHost{}
-
 	for _, h := range hosts {
+		forbiddenHosts := []string{}
+		if !userHasHostPermission(usr, h.Distro.Id, evergreen.HostsView.Value, h.StartedBy) {
+			forbiddenHosts = append(forbiddenHosts, h.Id)
+		}
+		if len(forbiddenHosts) > 0 {
+			grip.Info(message.Fields{
+				"message":         "User does not have permission to view hosts",
+				"forbidden_hosts": forbiddenHosts,
+				"user":            usr.Username(),
+				"ticket":          "DEVPROD-5753",
+			})
+		}
 		apiHost := restModel.APIHost{}
 		apiHost.BuildFromService(&h, h.RunningTaskFull)
 		apiHosts = append(apiHosts, &apiHost)
 	}
-
 	return &HostsResponse{
 		Hosts:              apiHosts,
 		FilteredHostsCount: filteredHostsCount,
@@ -384,7 +395,7 @@ func (r *queryResolver) TaskQueueDistros(ctx context.Context) ([]*TaskQueueDistr
 
 // Pod is the resolver for the pod field.
 func (r *queryResolver) Pod(ctx context.Context, podID string) (*restModel.APIPod, error) {
-	pod, err := data.FindAPIPodByID(podID)
+	pod, err := data.FindAPIPodByID(ctx, podID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching pod '%s': %s", podID, err.Error()))
 	}
@@ -393,7 +404,7 @@ func (r *queryResolver) Pod(ctx context.Context, podID string) (*restModel.APIPo
 
 // Patch is the resolver for the patch field.
 func (r *queryResolver) Patch(ctx context.Context, patchID string) (*restModel.APIPatch, error) {
-	apiPatch, err := data.FindPatchById(patchID)
+	apiPatch, err := data.FindPatchById(ctx, patchID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch '%s': %s", patchID, err.Error()))
 	}
@@ -405,7 +416,7 @@ func (r *queryResolver) Patch(ctx context.Context, patchID string) (*restModel.A
 
 // GithubProjectConflicts is the resolver for the githubProjectConflicts field.
 func (r *queryResolver) GithubProjectConflicts(ctx context.Context, projectID string) (*model.GithubProjectConflicts, error) {
-	pRef, err := model.FindMergedProjectRef(projectID, "", false)
+	pRef, err := model.FindMergedProjectRef(ctx, projectID, "", false)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", projectID, err.Error()))
 	}
@@ -422,7 +433,7 @@ func (r *queryResolver) GithubProjectConflicts(ctx context.Context, projectID st
 
 // Project is the resolver for the project field.
 func (r *queryResolver) Project(ctx context.Context, projectIdentifier string) (*restModel.APIProjectRef, error) {
-	project, err := data.FindProjectById(projectIdentifier, true, false)
+	project, err := data.FindProjectById(ctx, projectIdentifier, true, false)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", projectIdentifier, err.Error()))
 	}
@@ -1107,7 +1118,7 @@ func (r *queryResolver) HasVersion(ctx context.Context, patchID string) (bool, e
 	}
 
 	if patch.IsValidId(patchID) {
-		p, err := patch.FindOneId(patchID)
+		p, err := patch.FindOneId(ctx, patchID)
 		if err != nil {
 			return false, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch '%s': %s", patchID, err.Error()))
 		}

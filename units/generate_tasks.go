@@ -19,7 +19,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -150,7 +150,7 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 		return j.handleError(ctx, errors.WithStack(err))
 	}
 
-	pref, err := model.FindMergedProjectRef(t.Project, t.Version, true)
+	pref, err := model.FindMergedProjectRef(ctx, t.Project, t.Version, true)
 	if err != nil {
 		return j.handleError(ctx, errors.WithStack(err))
 	}

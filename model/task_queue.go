@@ -11,7 +11,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 const (
@@ -92,12 +92,12 @@ func getDistroQueueInfoCollection(distroID, collection string) (DistroQueueInfo,
 	return taskQueue.DistroQueueInfo, nil
 }
 
-func RemoveTaskQueues(distroID string) error {
+func RemoveTaskQueues(ctx context.Context, distroID string) error {
 	query := db.Query(bson.M{taskQueueDistroKey: distroID})
 	catcher := grip.NewBasicCatcher()
-	err := db.RemoveAllQ(TaskQueuesCollection, query)
+	err := db.RemoveAllQ(ctx, TaskQueuesCollection, query)
 	catcher.AddWhen(!adb.ResultsNotFound(err), errors.Wrapf(err, "removing task queue for distro '%s'", distroID))
-	err = db.RemoveAllQ(TaskSecondaryQueuesCollection, query)
+	err = db.RemoveAllQ(ctx, TaskSecondaryQueuesCollection, query)
 	catcher.AddWhen(!adb.ResultsNotFound(err), errors.Wrapf(err, "removing task alias queue for distro '%s'", distroID))
 	return catcher.Resolve()
 }

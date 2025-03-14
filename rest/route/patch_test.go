@@ -29,8 +29,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"go.mongodb.org/mongo-driver/v2/bson"
-	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 ////////////////////////////////////////////////////////////////////////
@@ -397,9 +397,9 @@ func (s *PatchesChangeStatusSuite) TestChangeStatus() {
 	rm.Priority = &tmp_seven
 	res := rm.Run(ctx)
 	s.NotNil(res)
-	p1, err := data.FindPatchById(s.objIds[0])
+	p1, err := data.FindPatchById(s.T().Context(), s.objIds[0])
 	s.NoError(err)
-	p2, err := data.FindPatchById(s.objIds[1])
+	p2, err := data.FindPatchById(s.T().Context(), s.objIds[1])
 	s.NoError(err)
 	s.Equal(7, p1.PatchNumber)
 	s.Equal(0, p2.PatchNumber)
@@ -470,7 +470,7 @@ func (s *PatchRestartSuite) TestRestart() {
 	s.NotNil(res)
 
 	s.Equal(http.StatusOK, res.Status())
-	restartedPatch, err := data.FindPatchById(s.objIds[0])
+	restartedPatch, err := data.FindPatchById(s.T().Context(), s.objIds[0])
 	s.NoError(err)
 	s.Equal(evergreen.PatchVersionRequester, *restartedPatch.Requester)
 }
@@ -997,7 +997,7 @@ buildvariants:
 	assert.True(t, foundCompile)
 	assert.True(t, foundPassing)
 
-	dbPatch, err := patch.FindOneId(unfinalized.Id.Hex())
+	dbPatch, err := patch.FindOneId(t.Context(), unfinalized.Id.Hex())
 	require.NotNil(t, dbPatch)
 	assert.NoError(t, err)
 	assert.Equal(t, len(dbPatch.VariantsTasks[0].Tasks), len(tasks))
@@ -1040,7 +1040,7 @@ buildvariants:
 
 	// ensure that the patch contains both the previously-scheduled and newly-scheduled tasks,
 	// and didn't overwrite the previous tasks with the new tasks
-	dbPatch, err = patch.FindOneId(unfinalized.Id.Hex())
+	dbPatch, err = patch.FindOneId(t.Context(), unfinalized.Id.Hex())
 	require.NotNil(t, dbPatch)
 	assert.NoError(t, err)
 	assert.Equal(t, len(dbPatch.VariantsTasks[0].Tasks), len(tasks))

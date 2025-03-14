@@ -147,7 +147,7 @@ func (j *podDefinitionCleanupJob) cleanupStalePodDefinitions(ctx context.Context
 	catcher := grip.NewBasicCatcher()
 	for _, podDef := range podDefs {
 		if podDef.ExternalID == "" {
-			if err := podDef.Remove(); err != nil {
+			if err := podDef.Remove(ctx); err != nil {
 				catcher.Wrapf(err, "deleting pod definition '%s' which is missing an external ID", podDef.ID)
 				continue
 			}

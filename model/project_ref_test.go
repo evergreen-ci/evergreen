@@ -27,7 +27,7 @@ import (
 	adb "github.com/mongodb/anser/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func TestFindOneProjectRef(t *testing.T) {
@@ -124,7 +124,7 @@ func TestFindMergedProjectRef(t *testing.T) {
 	}}
 	assert.NoError(t, repoRef.Upsert())
 
-	mergedProject, err := FindMergedProjectRef("ident", "ident", true)
+	mergedProject, err := FindMergedProjectRef(t.Context(), "ident", "ident", true)
 	assert.NoError(t, err)
 	require.NotNil(t, mergedProject)
 	assert.Equal(t, "ident", mergedProject.Id)
@@ -158,13 +158,13 @@ func TestFindMergedProjectRef(t *testing.T) {
 	projectRef.ParsleyFilters = []parsley.Filter{}
 
 	assert.NoError(t, projectRef.Upsert())
-	mergedProject, err = FindMergedProjectRef("ident", "ident", true)
+	mergedProject, err = FindMergedProjectRef(t.Context(), "ident", "ident", true)
 	assert.NoError(t, err)
 	assert.Len(t, mergedProject.ParsleyFilters, 1)
 
 	projectRef.ParsleyFilters = nil
 	assert.NoError(t, projectRef.Upsert())
-	mergedProject, err = FindMergedProjectRef("ident", "ident", true)
+	mergedProject, err = FindMergedProjectRef(t.Context(), "ident", "ident", true)
 	assert.NoError(t, err)
 	assert.Len(t, mergedProject.ParsleyFilters, 1)
 }
@@ -389,7 +389,7 @@ func TestValidateEnabledProjectsLimit(t *testing.T) {
 
 	// Should error when trying to enable an existing project past limits.
 	disabled1.Enabled = true
-	original, err := FindMergedProjectRef(disabled1.Id, "", false)
+	original, err := FindMergedProjectRef(t.Context(), disabled1.Id, "", false)
 	assert.NoError(t, err)
 	statusCode, err := ValidateEnabledProjectsLimit(disabled1.Id, &settings, original, disabled1)
 	assert.Error(t, err)
@@ -402,7 +402,7 @@ func TestValidateEnabledProjectsLimit(t *testing.T) {
 		Repo:    "repo_exception",
 		Enabled: true,
 	}
-	original, err = FindMergedProjectRef(exception.Id, "", false)
+	original, err = FindMergedProjectRef(t.Context(), exception.Id, "", false)
 	assert.NoError(t, err)
 	_, err = ValidateEnabledProjectsLimit(enabled1.Id, &settings, original, exception)
 	assert.NoError(t, err)
@@ -414,7 +414,7 @@ func TestValidateEnabledProjectsLimit(t *testing.T) {
 		Repo:    "mci",
 		Enabled: true,
 	}
-	original, err = FindMergedProjectRef(notException.Id, "", false)
+	original, err = FindMergedProjectRef(t.Context(), notException.Id, "", false)
 	assert.NoError(t, err)
 	statusCode, err = ValidateEnabledProjectsLimit(notException.Id, &settings, original, notException)
 	assert.Error(t, err)
@@ -425,7 +425,7 @@ func TestValidateEnabledProjectsLimit(t *testing.T) {
 	assert.NoError(t, disableRepo.Upsert())
 	mergedRef, err := GetProjectRefMergedWithRepo(*disabledByRepo)
 	assert.NoError(t, err)
-	original, err = FindMergedProjectRef(disabledByRepo.Id, "", false)
+	original, err = FindMergedProjectRef(t.Context(), disabledByRepo.Id, "", false)
 	assert.NoError(t, err)
 	_, err = ValidateEnabledProjectsLimit(disabledByRepo.Id, &settings, original, mergedRef)
 	assert.NoError(t, err)
@@ -433,7 +433,7 @@ func TestValidateEnabledProjectsLimit(t *testing.T) {
 	// Should error on enabled if you try to change owner/repo past limit.
 	enabled2.Owner = "mongodb"
 	enabled2.Repo = "mci"
-	original, err = FindMergedProjectRef(enabled2.Id, "", false)
+	original, err = FindMergedProjectRef(t.Context(), enabled2.Id, "", false)
 	assert.NoError(t, err)
 	statusCode, err = ValidateEnabledProjectsLimit(enabled2.Id, &settings, original, enabled2)
 	assert.Error(t, err)
@@ -441,7 +441,7 @@ func TestValidateEnabledProjectsLimit(t *testing.T) {
 
 	// Total project limit cannot be exceeded. Even with the exception.
 	settings.ProjectCreation.TotalProjectLimit = 2
-	original, err = FindMergedProjectRef(exception.Id, "", false)
+	original, err = FindMergedProjectRef(t.Context(), exception.Id, "", false)
 	assert.NoError(t, err)
 	statusCode, err = ValidateEnabledProjectsLimit(exception.Id, &settings, original, exception)
 	assert.Error(t, err)
@@ -863,7 +863,7 @@ func TestAttachToNewRepo(t *testing.T) {
 
 	assert.True(t, newRepoRef.DoesTrackPushEvents())
 
-	mergedRef, err := FindMergedProjectRef(pRef.Id, "", false)
+	mergedRef, err := FindMergedProjectRef(t.Context(), pRef.Id, "", false)
 	assert.NoError(t, err)
 	assert.True(t, mergedRef.DoesTrackPushEvents())
 
@@ -1119,7 +1119,7 @@ func TestDetachFromRepo(t *testing.T) {
 			assert.NoError(t, pRef.AttachToRepo(ctx, dbUser))
 			assert.NotEmpty(t, pRef.RepoRefId)
 			assert.True(t, pRef.UseRepoSettings())
-			assert.NoError(t, RemoveProjectAlias(projectAlias.ID.Hex()))
+			assert.NoError(t, RemoveProjectAlias(ctx, projectAlias.ID.Hex()))
 
 			assert.NoError(t, pRef.DetachFromRepo(t.Context(), dbUser))
 			aliases, err = FindAliasesForProjectFromDb(pRef.Id)
@@ -1203,7 +1203,7 @@ func TestDetachFromRepo(t *testing.T) {
 
 			// reattach to repo to test without subscription
 			assert.NoError(t, pRef.AttachToRepo(ctx, dbUser))
-			assert.NoError(t, event.RemoveSubscription(projectSubscription.ID))
+			assert.NoError(t, event.RemoveSubscription(ctx, projectSubscription.ID))
 			assert.NoError(t, pRef.DetachFromRepo(t.Context(), dbUser))
 
 			subs, err = event.FindSubscriptionsByOwner(pRef.Id, event.OwnerTypeProject)
@@ -2949,7 +2949,7 @@ func TestContainerSecretCache(t *testing.T) {
 				Name: pRef.ContainerSecrets[0].ExternalName,
 			}))
 
-			dbProjRef, err := FindMergedProjectRef(pRef.Id, "", false)
+			dbProjRef, err := FindMergedProjectRef(t.Context(), pRef.Id, "", false)
 			require.NoError(t, err)
 			require.NotZero(t, dbProjRef)
 			require.Len(t, dbProjRef.ContainerSecrets, len(pRef.ContainerSecrets))
@@ -2973,7 +2973,7 @@ func TestContainerSecretCache(t *testing.T) {
 				Name: "nonexistent",
 			}))
 
-			dbProjRef, err := FindMergedProjectRef(pRef.Id, "", false)
+			dbProjRef, err := FindMergedProjectRef(t.Context(), pRef.Id, "", false)
 			require.NoError(t, err)
 			require.NotZero(t, dbProjRef)
 			require.Len(t, dbProjRef.ContainerSecrets, len(pRef.ContainerSecrets))
@@ -2989,7 +2989,7 @@ func TestContainerSecretCache(t *testing.T) {
 				Name: pRef.ContainerSecrets[0].ExternalName,
 			}))
 
-			dbProjRef, err := FindMergedProjectRef(pRef.Id, "", false)
+			dbProjRef, err := FindMergedProjectRef(t.Context(), pRef.Id, "", false)
 			require.NoError(t, err)
 			require.NotZero(t, dbProjRef)
 			require.Len(t, dbProjRef.ContainerSecrets, len(pRef.ContainerSecrets))
@@ -3006,7 +3006,7 @@ func TestContainerSecretCache(t *testing.T) {
 				Name: pRef.ContainerSecrets[0].ExternalName,
 			}))
 
-			dbProjRef, err := FindMergedProjectRef(pRef.Id, "", false)
+			dbProjRef, err := FindMergedProjectRef(t.Context(), pRef.Id, "", false)
 			require.NoError(t, err)
 			require.NotZero(t, dbProjRef)
 			require.Len(t, dbProjRef.ContainerSecrets, len(pRef.ContainerSecrets))
@@ -3018,7 +3018,7 @@ func TestContainerSecretCache(t *testing.T) {
 			require.NoError(t, pRef.Insert())
 			require.NoError(t, c.Delete(ctx, pRef.ContainerSecrets[1].ExternalID))
 
-			dbProjRef, err := FindMergedProjectRef(pRef.Id, "", false)
+			dbProjRef, err := FindMergedProjectRef(t.Context(), pRef.Id, "", false)
 			require.NoError(t, err)
 			require.NotZero(t, dbProjRef)
 			require.Len(t, dbProjRef.ContainerSecrets, len(pRef.ContainerSecrets)-1)
@@ -3026,13 +3026,13 @@ func TestContainerSecretCache(t *testing.T) {
 		},
 		"DeleteNoopsWithNonexistentProjectRef": func(ctx context.Context, t *testing.T, pRef ProjectRef, c ContainerSecretCache) {
 			assert.NoError(t, c.Delete(ctx, "external_id"), "should not for nonexistent project ref")
-			assert.True(t, adb.ResultsNotFound(db.FindOneQ(ProjectRefCollection, db.Query(bson.M{}), &pRef)))
+			assert.True(t, adb.ResultsNotFound(db.FindOneQContext(t.Context(), ProjectRefCollection, db.Query(bson.M{}), &pRef)))
 		},
 		"DeleteNoopsWithoutMatchingContainerSecretExternalID": func(ctx context.Context, t *testing.T, pRef ProjectRef, c ContainerSecretCache) {
 			require.NoError(t, pRef.Insert())
 			assert.NoError(t, c.Delete(ctx, "nonexistent"), "should not error for nonexistent container secret")
 
-			dbProjRef, err := FindMergedProjectRef(pRef.Id, "", false)
+			dbProjRef, err := FindMergedProjectRef(t.Context(), pRef.Id, "", false)
 			require.NoError(t, err)
 			require.NotZero(t, dbProjRef)
 			assert.Len(t, dbProjRef.ContainerSecrets, len(pRef.ContainerSecrets))
@@ -3616,7 +3616,7 @@ func TestRemoveAdminFromProjects(t *testing.T) {
 	assert.NoError(t, repoRef2.Upsert())
 	assert.NoError(t, repoRef3.Upsert())
 
-	assert.NoError(t, RemoveAdminFromProjects("villain"))
+	assert.NoError(t, RemoveAdminFromProjects(t.Context(), "villain"))
 
 	// verify that we carry out multiple updates
 	pRefFromDB, err := FindBranchProjectRef(pRef.Id)
@@ -3665,7 +3665,7 @@ func TestPointers(t *testing.T) {
 		PtrBool   *bool              `bson:"my_bool"`
 		PtrStruct *WorkstationConfig `bson:"config"`
 	}{}
-	assert.NoError(t, db.FindOneQ(ProjectRefCollection, db.Query(bson.M{}), &pointerRef))
+	assert.NoError(t, db.FindOneQContext(t.Context(), ProjectRefCollection, db.Query(bson.M{}), &pointerRef))
 	assert.Equal(t, ref.MyString, *pointerRef.PtrString)
 	assert.False(t, utility.FromBoolTPtr(pointerRef.PtrBool))
 	assert.NotNil(t, pointerRef.PtrStruct)
@@ -3735,7 +3735,7 @@ func TestMergeWithProjectConfig(t *testing.T) {
 	assert.NoError(t, projectRef.Insert())
 	assert.NoError(t, projectConfig.Insert())
 
-	err := projectRef.MergeWithProjectConfig("version1")
+	err := projectRef.MergeWithProjectConfig(t.Context(), "version1")
 	assert.NoError(t, err)
 	require.NotNil(t, projectRef)
 	assert.Equal(t, "ident", projectRef.Id)
@@ -3761,7 +3761,7 @@ func TestMergeWithProjectConfig(t *testing.T) {
 			MemoryMB: 800,
 		},
 	}
-	err = projectRef.MergeWithProjectConfig("version1")
+	err = projectRef.MergeWithProjectConfig(t.Context(), "version1")
 	assert.NoError(t, err)
 	require.NotNil(t, projectRef)
 	assert.Equal(t, 4, projectRef.ContainerSizeDefinitions[0].CPU)
@@ -4019,7 +4019,7 @@ func TestSetRepotrackerError(t *testing.T) {
 			InvalidRevision:   "invalid_revision",
 			MergeBaseRevision: "merge_base_revision",
 		}
-		require.NoError(t, pRef.SetRepotrackerError(repotrackerErr))
+		require.NoError(t, pRef.SetRepotrackerError(t.Context(), repotrackerErr))
 		dbProjRef, err := FindBranchProjectRef(pRef.Identifier)
 		require.NoError(t, err)
 		require.NotZero(t, dbProjRef)
@@ -4027,7 +4027,7 @@ func TestSetRepotrackerError(t *testing.T) {
 		assert.Equal(t, *repotrackerErr, *dbProjRef.RepotrackerError)
 	})
 	t.Run("ClearsError", func(t *testing.T) {
-		require.NoError(t, pRef.SetRepotrackerError(&RepositoryErrorDetails{}))
+		require.NoError(t, pRef.SetRepotrackerError(t.Context(), &RepositoryErrorDetails{}))
 		dbProjRef, err := FindBranchProjectRef(pRef.Identifier)
 		require.NoError(t, err)
 		require.NotZero(t, dbProjRef)
@@ -4053,7 +4053,7 @@ func TestSetContainerSecrets(t *testing.T) {
 			ExternalName: "external_name",
 			ExternalID:   "external_id",
 		}}
-		require.NoError(t, pRef.SetContainerSecrets(secrets))
+		require.NoError(t, pRef.SetContainerSecrets(t.Context(), secrets))
 		dbProjRef, err := FindBranchProjectRef(pRef.Identifier)
 		require.NoError(t, err)
 		require.NotZero(t, dbProjRef)
@@ -4061,7 +4061,7 @@ func TestSetContainerSecrets(t *testing.T) {
 		assert.Equal(t, secrets, dbProjRef.ContainerSecrets)
 	})
 	t.Run("ClearsContainerSecrets", func(t *testing.T) {
-		require.NoError(t, pRef.SetContainerSecrets(nil))
+		require.NoError(t, pRef.SetContainerSecrets(t.Context(), nil))
 		dbProjRef, err := FindBranchProjectRef(pRef.Identifier)
 		require.NoError(t, err)
 		require.NotZero(t, dbProjRef)
