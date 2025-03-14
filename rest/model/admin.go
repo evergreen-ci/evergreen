@@ -631,15 +631,21 @@ func (a *APIAuthConfig) ToService() (any, error) {
 }
 
 type APIBucketsConfig struct {
-	LogBucket       APIBucketConfig  `json:"log_bucket"`
-	InternalBuckets []string         `json:"internal_buckets"`
-	Credentials     APIS3Credentials `json:"credentials"`
+	LogBucket               APIBucketConfig             `json:"log_bucket"`
+	InternalBuckets         []string                    `json:"internal_buckets"`
+	ProjectToPrefixMappings []APIProjectToPrefixMapping `json:"project_to_prefix_mappings"`
+	Credentials             APIS3Credentials            `json:"credentials"`
 }
 
 type APIBucketConfig struct {
 	Name   *string `json:"name"`
 	Type   *string `json:"type"`
 	DBName *string `json:"db_name"`
+}
+
+type APIProjectToPrefixMapping struct {
+	ProjectID *string `json:"project_id"`
+	Prefix    *string `json:"prefix"`
 }
 
 func (a *APIBucketsConfig) BuildFromService(h any) error {
@@ -656,6 +662,16 @@ func (a *APIBucketsConfig) BuildFromService(h any) error {
 			return errors.Wrap(err, "converting S3 credentials to API model")
 		}
 		a.Credentials = creds
+
+		mappings := []APIProjectToPrefixMapping{}
+		for _, mapping := range v.ProjectToPrefixMappings {
+			apiMapping := APIProjectToPrefixMapping{
+				ProjectID: utility.ToStringPtr(mapping.ProjectID),
+				Prefix:    utility.ToStringPtr(mapping.Prefix),
+			}
+			mappings = append(mappings, apiMapping)
+		}
+		a.ProjectToPrefixMappings = mappings
 	default:
 		return errors.Errorf("programmatic error: expected bucket config but got type %T", h)
 	}
@@ -671,6 +687,13 @@ func (a *APIBucketsConfig) ToService() (any, error) {
 	if !ok {
 		return nil, errors.Errorf("programmatic error: expected S3 credentials but got type %T", i)
 	}
+	mappings := []evergreen.ProjectToPrefixMapping{}
+	for _, mapping := range a.ProjectToPrefixMappings {
+		mappings = append(mappings, evergreen.ProjectToPrefixMapping{
+			ProjectID: utility.FromStringPtr(mapping.ProjectID),
+			Prefix:    utility.FromStringPtr(mapping.Prefix),
+		})
+	}
 
 	return evergreen.BucketsConfig{
 		LogBucket: evergreen.BucketConfig{
@@ -678,8 +701,9 @@ func (a *APIBucketsConfig) ToService() (any, error) {
 			Type:   evergreen.BucketType(utility.FromStringPtr(a.LogBucket.Type)),
 			DBName: utility.FromStringPtr(a.LogBucket.DBName),
 		},
-		InternalBuckets: a.InternalBuckets,
-		Credentials:     creds,
+		InternalBuckets:         a.InternalBuckets,
+		ProjectToPrefixMappings: mappings,
+		Credentials:             creds,
 	}, nil
 }
 
