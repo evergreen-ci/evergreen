@@ -117,8 +117,9 @@ func TestEC2AssumeRoleExecute(t *testing.T) {
 				ProjectRef: model.ProjectRef{
 					Id: "project_identifier",
 				},
-				Expansions:    expansions,
-				NewExpansions: agentutil.NewDynamicExpansions(expansions),
+				Expansions:      expansions,
+				NewExpansions:   agentutil.NewDynamicExpansions(expansions),
+				AssumeRoleRoles: map[string]string{},
 			}
 
 			comm := client.NewMock("localhost")
