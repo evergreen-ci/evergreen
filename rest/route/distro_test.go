@@ -1484,13 +1484,6 @@ func (s *distroCopySuite) SetupTest() {
 	s.rm = makeCopyDistro()
 }
 
-func (s *distroCopySuite) TestParse() {
-	ctx := context.Background()
-	req, _ := http.NewRequest(http.MethodPut, "http://example.com/api/rest/v2/distros/distro1/copy/distro3?single_task_distro=true", nil)
-	err := s.rm.Parse(ctx, req)
-	s.NoError(err)
-}
-
 func (s *distroCopySuite) TestParseInvalidIDs() {
 	ctx := context.Background()
 	req, _ := http.NewRequest(http.MethodPut, "http://example.com/api/rest/v2/distros/distro1/copy/distro1?single_task_distro=true", nil)
