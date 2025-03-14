@@ -138,6 +138,9 @@ type SharedCommunicator interface {
 
 	// AssumeRole assumes an AWS role and returns the credentials.
 	AssumeRole(ctx context.Context, td TaskData, request apimodels.AssumeRoleRequest) (*apimodels.AWSCredentials, error)
+
+	// S3Credentials returns the S3 credentials for the task when uploading to devprod owned buckets.
+	S3Credentials(ctx context.Context, td TaskData, bucket string) (*apimodels.AWSCredentials, error)
 }
 
 // TaskData contains the taskData.ID and taskData.Secret. It must be set for
