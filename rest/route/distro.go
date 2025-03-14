@@ -247,6 +247,78 @@ func (h *distroIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 	return responder
 }
 
+// PUT /rest/v2/distros/{distro_id}/copy/{new_distro_id}
+
+type distroCopyHandler struct {
+	distroToCopy     string
+	newDistroID      string
+	singleTaskDistro bool
+}
+
+func makeCopyDistro() gimlet.RouteHandler {
+	return &distroCopyHandler{}
+}
+
+// Factory creates an instance of the handler.
+//
+//	@Summary		Copy an existing distro
+//	@Description	Create a new distro by copying an existing distro. Specifying "single task distro" will mark the copied distro as a single task distro.
+//	@Tags			distros
+//	@Router			/distros/{distro_id}/copy/{new_distro_id} [put]
+//	@Security		Api-User || Api-Key
+//	@Param			distro_id			path	string	true	"distro ID to copy"
+//	@Param			new_distro_id		path	string	true	"ID of new distro to be created"
+//	@Param			single_task_distro	query	bool	false	"if should the copied distro should be single task"
+//	@Success		201
+//	@Success		200
+func (h *distroCopyHandler) Factory() gimlet.RouteHandler {
+	return &distroCopyHandler{}
+}
+
+// Parse fetches the distroId and JSON payload from the http request.
+func (h *distroCopyHandler) Parse(ctx context.Context, r *http.Request) error {
+	h.distroToCopy = gimlet.GetVars(r)["distro_id"]
+	h.newDistroID = gimlet.GetVars(r)["new_distro_id"]
+	h.singleTaskDistro = r.URL.Query().Get("single_task_distro") == "true"
+
+	if h.distroToCopy == h.newDistroID {
+		return errors.New("new and existing distro IDs cannot be identical")
+	}
+
+	return nil
+}
+
+// Run creates a new distro by copying an existing distro.
+func (h *distroCopyHandler) Run(ctx context.Context) gimlet.Responder {
+	user := MustHaveUser(ctx)
+	toCopy, err := distro.FindOneId(ctx, h.distroToCopy)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding distro '%s'", h.distroToCopy))
+	}
+	if toCopy == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("distro '%s' not found", h.distroToCopy),
+		})
+	}
+
+	toCopy.Id = h.newDistroID
+	if h.singleTaskDistro {
+		toCopy.SingleTaskDistro = true
+	}
+
+	err = data.NewDistro(ctx, toCopy, user)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "creating and inserting new distro '%s'", h.newDistroID))
+	}
+
+	responder := gimlet.NewJSONResponse(struct{}{})
+	if err = responder.SetStatus(http.StatusCreated); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "setting HTTP status code to %d", http.StatusCreated))
+	}
+	return responder
+}
+
 ///////////////////////////////////////////////////////////////////////
 //
 // DELETE /rest/v2/distros/{distro_id}
