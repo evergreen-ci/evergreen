@@ -103,7 +103,7 @@ func (h *podGetHandler) Parse(ctx context.Context, r *http.Request) error {
 
 // Run finds and returns the REST pod.
 func (h *podGetHandler) Run(ctx context.Context) gimlet.Responder {
-	p, err := data.FindAPIPodByID(h.podID)
+	p, err := data.FindAPIPodByID(ctx, h.podID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding pod '%s'", h.podID))
 	}

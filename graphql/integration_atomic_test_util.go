@@ -41,8 +41,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/v2/bson"
-	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 const (
@@ -311,7 +311,7 @@ func setupScopesAndRoles(t *testing.T, state *AtomicGraphQLState) {
 		ID:        evergreen.AllDistrosScope,
 		Name:      "all distros",
 		Type:      evergreen.DistroResourceType,
-		Resources: []string{"ubuntu1604-small", "ubuntu1604-large", "localhost", "localhost2", "rhel71-power8-large", "windows-64-vs2015-small"},
+		Resources: []string{"ubuntu1604-small", "ubuntu1604-large", "localhost", "localhost2", "rhel71-power8-large", "windows-64-vs2015-small", "ubuntu1604-power8-large", "centos6-perf", "macos-1014", "debian92-small", "ubuntu1804-power8-small"},
 	}
 	err = roleManager.AddScope(distroScope)
 	require.NoError(t, err)

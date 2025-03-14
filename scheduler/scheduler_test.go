@@ -18,7 +18,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type SchedulerSuite struct {
@@ -183,7 +183,7 @@ func TestUnderwaterUnschedule(t *testing.T) {
 	err := underwaterUnschedule(ctx, "d")
 	assert.NoError(err)
 
-	foundBuild, err := build.FindOneId(b.Id)
+	foundBuild, err := build.FindOneId(t.Context(), b.Id)
 	assert.NoError(err)
 	require.NotNil(t, foundBuild)
 	foundVersion, err := model.VersionFindOneId(v.Id)

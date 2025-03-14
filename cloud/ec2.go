@@ -20,7 +20,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 // EC2ProviderSettings describes properties of managed instances.
@@ -311,18 +311,7 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 			previousSubnet := h.GetSubnetID()
 			// try again in another AZ
 			if subnetErr := m.setNextSubnet(ctx, h); subnetErr == nil {
-				newSubnet := h.GetSubnetID()
-				msg := "got EC2InsufficientCapacityError, will try next available subnet"
-				grip.Info(message.Fields{
-					"message":         msg,
-					"action":          "retrying",
-					"host_id":         h.Id,
-					"host_provider":   h.Distro.Provider,
-					"distro":          h.Distro.Id,
-					"previous_subnet": previousSubnet,
-					"next_subnet":     newSubnet,
-				})
-				return errors.Wrap(err, msg)
+				return errors.Wrap(err, "got EC2InsufficientCapacityError, will try next available subnet")
 			} else {
 				grip.Error(message.WrapError(subnetErr, message.Fields{
 					"message":         "couldn't increment subnet",
@@ -461,16 +450,8 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 	} else {
 		h.InstanceType = ec2Settings.InstanceType
 	}
-
 	if err = m.spawnOnDemandHost(ctx, h, ec2Settings, blockDevices); err != nil {
-		msg := "error spawning on-demand host"
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":       msg,
-			"host_id":       h.Id,
-			"host_provider": h.Distro.Provider,
-			"distro":        h.Distro.Id,
-		}))
-		return nil, errors.Wrap(err, msg)
+		return nil, errors.Wrap(err, "spawning on-demand host")
 	}
 	grip.Debug(message.Fields{
 		"message":       "spawned on-demand host",

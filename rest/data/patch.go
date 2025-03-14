@@ -60,12 +60,12 @@ func FindPatchesByProject(projectId string, ts time.Time, limit int) ([]restMode
 }
 
 // FindPatchById queries the backing database for the patch matching patchId.
-func FindPatchById(patchId string) (*restModel.APIPatch, error) {
+func FindPatchById(ctx context.Context, patchId string) (*restModel.APIPatch, error) {
 	if err := ValidatePatchID(patchId); err != nil {
 		return nil, errors.WithStack(err)
 	}
 
-	p, err := patch.FindOneId(patchId)
+	p, err := patch.FindOneId(ctx, patchId)
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +95,7 @@ func AbortPatch(ctx context.Context, patchId string, user string) error {
 		return errors.WithStack(err)
 	}
 
-	p, err := patch.FindOne(patch.ById(mgobson.ObjectIdHex(patchId)))
+	p, err := patch.FindOne(ctx, patch.ById(mgobson.ObjectIdHex(patchId)))
 	if err != nil {
 		return err
 	}
@@ -110,7 +110,7 @@ func AbortPatch(ctx context.Context, patchId string, user string) error {
 
 // SetPatchActivated attempts to activate the patch and create a new version (if activated is set to true)
 func SetPatchActivated(ctx context.Context, patchId string, user string, activated bool, settings *evergreen.Settings) error {
-	p, err := patch.FindOne(patch.ById(mgobson.ObjectIdHex(patchId)))
+	p, err := patch.FindOne(ctx, patch.ById(mgobson.ObjectIdHex(patchId)))
 	if err != nil {
 		return err
 	}
@@ -193,8 +193,8 @@ func AbortPatchesFromPullRequest(ctx context.Context, event *github.PullRequestE
 }
 
 // GetRawPatches fetches the raw patches for a patch.
-func GetRawPatches(patchID string) (*restModel.APIRawPatch, error) {
-	patchDoc, err := patch.FindOneId(patchID)
+func GetRawPatches(ctx context.Context, patchID string) (*restModel.APIRawPatch, error) {
+	patchDoc, err := patch.FindOneId(ctx, patchID)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,

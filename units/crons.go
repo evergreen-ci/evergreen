@@ -22,7 +22,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 const (
@@ -1067,7 +1067,7 @@ func PopulateReauthorizeUserJobs(env evergreen.Environment) amboy.QueueOperation
 		if reauthAfter == 0 {
 			reauthAfter = defaultBackgroundReauth
 		}
-		users, err := user.FindNeedsReauthorization(reauthAfter)
+		users, err := user.FindNeedsReauthorization(ctx, reauthAfter)
 		if err != nil {
 			return errors.Wrap(err, "finding users that need to reauthorize")
 		}

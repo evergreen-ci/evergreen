@@ -14,8 +14,8 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/v2/bson"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const (
@@ -95,9 +95,9 @@ func FindOneById(id string) (*DBUser, error) {
 }
 
 // Find gets all DBUser for the given query.
-func Find(query db.Q) ([]DBUser, error) {
+func Find(ctx context.Context, query db.Q) ([]DBUser, error) {
 	us := []DBUser{}
-	err := db.FindAllQ(Collection, query, &us)
+	err := db.FindAllQContext(ctx, Collection, query, &us)
 	return us, err
 }
 
@@ -414,9 +414,9 @@ func setSlackInformation(ctx context.Context, env evergreen.Environment, u *DBUs
 // FindNeedsReauthorization finds all users that need to be reauthorized after
 // the given period has passed and who have not exceeded the max reauthorization
 // attempts.
-func FindNeedsReauthorization(reauthorizeAfter time.Duration) ([]DBUser, error) {
+func FindNeedsReauthorization(ctx context.Context, reauthorizeAfter time.Duration) ([]DBUser, error) {
 	cutoff := time.Now().Add(-reauthorizeAfter)
-	users, err := Find(db.Query(bson.M{
+	users, err := Find(ctx, db.Query(bson.M{
 		bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTokenKey): bson.M{"$exists": true},
 		bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTTLKey):   bson.M{"$lte": cutoff},
 	}))
@@ -424,11 +424,11 @@ func FindNeedsReauthorization(reauthorizeAfter time.Duration) ([]DBUser, error) 
 }
 
 // FindServiceUsers returns all API-only users.
-func FindServiceUsers() ([]DBUser, error) {
+func FindServiceUsers(ctx context.Context) ([]DBUser, error) {
 	query := bson.M{
 		OnlyAPIKey: true,
 	}
-	return Find(db.Query(query))
+	return Find(ctx, db.Query(query))
 }
 
 // PutLoginCache generates a token if one does not exist, and sets the TTL to

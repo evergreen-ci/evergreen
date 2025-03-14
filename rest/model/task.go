@@ -615,10 +615,10 @@ func (at *APITask) getArtifacts(ctx context.Context) error {
 			ets = append(ets, artifact.TaskIDAndExecution{TaskID: *t, Execution: at.Execution})
 		}
 		if len(ets) > 0 {
-			entries, err = artifact.FindAll(artifact.ByTaskIdsAndExecutions(ets))
+			entries, err = artifact.FindAll(ctx, artifact.ByTaskIdsAndExecutions(ets))
 		}
 	} else {
-		entries, err = artifact.FindAll(artifact.ByTaskIdAndExecution(utility.FromStringPtr(at.Id), at.Execution))
+		entries, err = artifact.FindAll(ctx, artifact.ByTaskIdAndExecution(utility.FromStringPtr(at.Id), at.Execution))
 	}
 	if err != nil {
 		return errors.Wrap(err, "retrieving artifacts")

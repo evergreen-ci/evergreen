@@ -40,7 +40,7 @@ func (pp *PerfPlugin) GetPanelConfig() (*PanelConfig, error) {
 				Position:  PageCenter,
 				PanelHTML: template.HTML(panelHTML),
 				DataFunc: func(context UIContext) (any, error) {
-					enabled := model.IsPerfEnabledForProject(context.ProjectRef.Id)
+					enabled := model.IsPerfEnabledForProject(context.Request.Context(), context.ProjectRef.Id)
 					return struct {
 						Enabled bool `json:"enabled"`
 					}{Enabled: enabled}, nil

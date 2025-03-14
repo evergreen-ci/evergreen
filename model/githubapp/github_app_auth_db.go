@@ -11,7 +11,7 @@ import (
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 const (
@@ -174,7 +174,7 @@ func RemoveGitHubAppAuth(ctx context.Context, appAuth *GithubAppAuth) error {
 
 // removeGitHubAppAuthDB removes the GitHub app auth from the database.
 func removeGitHubAppAuthDB(ctx context.Context, id string) error {
-	return db.RemoveContext(
+	return db.Remove(
 		ctx,
 		GitHubAppAuthCollection,
 		bson.M{GhAuthIdKey: id},

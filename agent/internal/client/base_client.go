@@ -713,6 +713,10 @@ func (c *baseCommunicator) GenerateTasks(ctx context.Context, td TaskData, jsonB
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &td,
+		// When generated tasks are large and evergreen is under load, we may not be able to ingest the
+		// data fast enough leading to a buffer overflow and a 413 status code. Therefore, a 413 status
+		// code in this case is transitive and we should retry.
+		retryOn413: true,
 	}
 	info.path = fmt.Sprintf("task/%s/generate", td.ID)
 	resp, err := c.retryRequest(ctx, info, jsonBytes)
@@ -1039,6 +1043,28 @@ func (c *baseCommunicator) AssumeRole(ctx context.Context, td TaskData, request 
 	var creds apimodels.AWSCredentials
 	if err := utility.ReadJSON(resp.Body, &creds); err != nil {
 		return nil, errors.Wrap(err, "reading assume role response")
+	}
+	return &creds, nil
+}
+
+func (c *baseCommunicator) S3Credentials(ctx context.Context, td TaskData, bucket string) (*apimodels.AWSCredentials, error) {
+	info := requestInfo{
+		method:   http.MethodPost,
+		taskData: &td,
+	}
+	info.setTaskPathSuffix("aws/s3_credentials")
+	resp, err := c.retryRequest(ctx, info, apimodels.S3CredentialsRequest{
+		Bucket: bucket,
+	})
+	if err != nil {
+		return nil, util.RespError(resp, errors.Wrap(err, "getting s3 credentials").Error())
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, util.RespError(resp, "trouble getting s3 credentials")
+	}
+	var creds apimodels.AWSCredentials
+	if err := utility.ReadJSON(resp.Body, &creds); err != nil {
+		return nil, errors.Wrap(err, "reading s3 credentials response")
 	}
 	return &creds, nil
 }

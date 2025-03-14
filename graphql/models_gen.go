@@ -635,6 +635,8 @@ type WaterfallOptions struct {
 	ProjectIdentifier string   `json:"projectIdentifier"`
 	Requesters        []string `json:"requesters,omitempty"`
 	Revision          *string  `json:"revision,omitempty"`
+	Statuses          []string `json:"statuses,omitempty"`
+	Tasks             []string `json:"tasks,omitempty"`
 	Variants          []string `json:"variants,omitempty"`
 }
 
@@ -1046,6 +1048,47 @@ func (e *FinderVersion) UnmarshalGQL(v any) error {
 }
 
 func (e FinderVersion) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+type HostAccessLevel string
+
+const (
+	HostAccessLevelEdit HostAccessLevel = "EDIT"
+	HostAccessLevelView HostAccessLevel = "VIEW"
+)
+
+var AllHostAccessLevel = []HostAccessLevel{
+	HostAccessLevelEdit,
+	HostAccessLevelView,
+}
+
+func (e HostAccessLevel) IsValid() bool {
+	switch e {
+	case HostAccessLevelEdit, HostAccessLevelView:
+		return true
+	}
+	return false
+}
+
+func (e HostAccessLevel) String() string {
+	return string(e)
+}
+
+func (e *HostAccessLevel) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = HostAccessLevel(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid HostAccessLevel", str)
+	}
+	return nil
+}
+
+func (e HostAccessLevel) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 

@@ -9,7 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 type TaskAnnotation struct {
@@ -82,13 +82,13 @@ func GetLatestExecutions(annotations []TaskAnnotation) []TaskAnnotation {
 	return res
 }
 
-func UpdateAnnotationNote(taskId string, execution int, originalMessage, newMessage, username string) error {
+func UpdateAnnotationNote(ctx context.Context, taskId string, execution int, originalMessage, newMessage, username string) error {
 	note := Note{
 		Message: newMessage,
 		Source:  &Source{Requester: UIRequester, Author: username, Time: time.Now()},
 	}
 
-	annotation, err := FindOneByTaskIdAndExecution(taskId, execution)
+	annotation, err := FindOneByTaskIdAndExecution(ctx, taskId, execution)
 	if err != nil {
 		return errors.Wrap(err, "finding task annotation")
 	}
@@ -96,7 +96,8 @@ func UpdateAnnotationNote(taskId string, execution int, originalMessage, newMess
 	if annotation != nil && annotation.Note != nil && annotation.Note.Message != originalMessage {
 		return errors.New("note is out of sync, please try again")
 	}
-	_, err = db.Upsert(
+	_, err = db.UpsertContext(
+		ctx,
 		Collection,
 		ByTaskIdAndExecution(taskId, execution),
 		bson.M{

@@ -14,7 +14,8 @@ import (
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const Collection = "pod_dispatchers"
@@ -29,9 +30,9 @@ var (
 )
 
 // FindOne finds one pod dispatcher for the given query.
-func FindOne(q db.Q) (*PodDispatcher, error) {
+func FindOne(ctx context.Context, q db.Q) (*PodDispatcher, error) {
 	var pd PodDispatcher
-	err := db.FindOneQ(Collection, q, &pd)
+	err := db.FindOneQContext(ctx, Collection, q, &pd)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -51,8 +52,8 @@ func UpsertOne(query, update any) (*adb.ChangeInfo, error) {
 }
 
 // FindOneByID finds one pod dispatcher by its ID.
-func FindOneByID(id string) (*PodDispatcher, error) {
-	return FindOne(db.Query(bson.M{
+func FindOneByID(ctx context.Context, id string) (*PodDispatcher, error) {
+	return FindOne(ctx, db.Query(bson.M{
 		IDKey: id,
 	}))
 }
@@ -65,13 +66,13 @@ func ByGroupID(groupID string) bson.M {
 }
 
 // FindOneByGroupID finds one pod dispatcher by its group ID.
-func FindOneByGroupID(groupID string) (*PodDispatcher, error) {
-	return FindOne(db.Query(ByGroupID(groupID)))
+func FindOneByGroupID(ctx context.Context, groupID string) (*PodDispatcher, error) {
+	return FindOne(ctx, db.Query(ByGroupID(groupID)))
 }
 
 // FindOneByPodID finds the dispatcher that manages the given pod by ID.
-func FindOneByPodID(podID string) (*PodDispatcher, error) {
-	return FindOne(db.Query(byPodID(podID)))
+func FindOneByPodID(ctx context.Context, podID string) (*PodDispatcher, error) {
+	return FindOne(ctx, db.Query(byPodID(podID)))
 }
 
 func byPodID(podID string) bson.M {
@@ -90,7 +91,7 @@ func Allocate(ctx context.Context, env evergreen.Environment, t *task.Task, p *p
 	defer session.EndSession(ctx)
 
 	pd := &PodDispatcher{}
-	allocateDispatcher := func(ctx context.Context) (any, error) {
+	allocateDispatcher := func(ctx mongo.SessionContext) (any, error) {
 		groupID := GetGroupID(t)
 		if err := env.DB().Collection(Collection).FindOne(ctx, ByGroupID(groupID)).Decode(pd); err != nil && !adb.ResultsNotFound(err) {
 			return nil, errors.Wrap(err, "checking for existing pod dispatcher")
@@ -111,7 +112,7 @@ func Allocate(ctx context.Context, env evergreen.Environment, t *task.Task, p *p
 		}
 
 		lastModified := utility.BSONTime(time.Now())
-		res, err := env.DB().Collection(Collection).UpdateOne(ctx, pd.atomicUpsertQuery(), pd.atomicUpsertUpdate(lastModified), options.UpdateOne().SetUpsert(true))
+		res, err := env.DB().Collection(Collection).UpdateOne(ctx, pd.atomicUpsertQuery(), pd.atomicUpsertUpdate(lastModified), options.Update().SetUpsert(true))
 		if err != nil {
 			return nil, errors.Wrap(err, "upserting pod dispatcher")
 		}

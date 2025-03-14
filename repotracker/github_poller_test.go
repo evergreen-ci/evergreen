@@ -112,7 +112,7 @@ func TestGetRevisionsSinceWithPaging(t *testing.T) {
 			distantEvgRevision, err := getDistantEVGRevision()
 			So(err, ShouldBeNil)
 			So(distantEvgRevision, ShouldNotEqual, "")
-			revisions, err := grp.GetRevisionsSince(distantEvgRevision, 5000)
+			revisions, err := grp.GetRevisionsSince(t.Context(), distantEvgRevision, 5000)
 			So(err, ShouldBeNil)
 			Convey("and the revision should be found", func() {
 				So(len(revisions), ShouldNotEqual, 0)
@@ -138,7 +138,7 @@ func TestGetRevisionsSince(t *testing.T) {
 
 		Convey("There should be only two revisions since the first revision",
 			func() {
-				revisions, err := ghp.GetRevisionsSince(firstRevision, 10)
+				revisions, err := ghp.GetRevisionsSince(t.Context(), firstRevision, 10)
 				require.NoError(t, err)
 				So(len(revisions), ShouldEqual, 2)
 
@@ -154,19 +154,19 @@ func TestGetRevisionsSince(t *testing.T) {
 			})
 
 		Convey("There should be no revisions since the last revision", func() {
-			revisions, err := ghp.GetRevisionsSince(lastRevision, 10)
+			revisions, err := ghp.GetRevisionsSince(t.Context(), lastRevision, 10)
 			require.NoError(t, err)
 			So(len(revisions), ShouldEqual, 0)
 		})
 
 		Convey("There should be an error returned if the requested revision "+
 			"isn't found", func() {
-			revisions, err := ghp.GetRevisionsSince(badRevision, 10)
+			revisions, err := ghp.GetRevisionsSince(t.Context(), badRevision, 10)
 			So(len(revisions), ShouldEqual, 0)
 			So(err, ShouldNotBeNil)
 		})
 		Convey("If the revision is not valid because it has less than 10 characters, should return an error", func() {
-			_, err := ghp.GetRevisionsSince("master", 10)
+			_, err := ghp.GetRevisionsSince(t.Context(), "master", 10)
 			So(err, ShouldNotBeNil)
 		})
 		Convey("should limit number of revisions returned and set last repo revision", func() {
@@ -175,7 +175,7 @@ func TestGetRevisionsSince(t *testing.T) {
 			// (i.e. earliest) revisions should not be found. The expected behavior here is that if it cannot find the
 			// given revision, it will search for maxRevisions, then add one revision as the new base revision if
 			// necessary.
-			revisions, err := ghp.GetRevisionsSince(firstRevision, maxRevisions)
+			revisions, err := ghp.GetRevisionsSince(t.Context(), firstRevision, maxRevisions)
 			require.NoError(t, err)
 			require.Len(t, revisions, maxRevisions+1, "should find revisions up to limit, plus one for the base revision when the starting revision is not found in the listed revisions")
 			assert.Equal(t, lastRevision, revisions[0].Revision, "revisions should be reverse time ordered")

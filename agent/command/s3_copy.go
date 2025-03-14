@@ -255,7 +255,7 @@ func (c *s3copy) copyWithRetry(ctx context.Context,
 		}
 
 		srcOpts := pail.S3Options{
-			Credentials: pail.CreateAWSCredentials(c.AwsKey, c.AwsSecret, c.AwsSessionToken),
+			Credentials: pail.CreateAWSStaticCredentials(c.AwsKey, c.AwsSecret, c.AwsSessionToken),
 			Region:      s3CopyReq.S3SourceRegion,
 			Name:        s3CopyReq.S3SourceBucket,
 			Permissions: pail.S3Permissions(s3CopyReq.S3Permissions),
@@ -282,7 +282,7 @@ func (c *s3copy) copyWithRetry(ctx context.Context,
 			return catcher.Resolve()
 		}
 		destOpts := pail.S3Options{
-			Credentials: pail.CreateAWSCredentials(c.AwsKey, c.AwsSecret, c.AwsSessionToken),
+			Credentials: pail.CreateAWSStaticCredentials(c.AwsKey, c.AwsSecret, c.AwsSessionToken),
 			Region:      s3CopyReq.S3DestinationRegion,
 			Name:        s3CopyReq.S3DestinationBucket,
 			Permissions: pail.S3Permissions(s3CopyReq.S3Permissions),

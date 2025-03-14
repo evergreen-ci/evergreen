@@ -20,7 +20,7 @@ func (r *annotationResolver) WebhookConfigured(ctx context.Context, obj *restMod
 	if t == nil {
 		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("task '%s' not found", taskID))
 	}
-	_, ok, _ := model.IsWebhookConfigured(t.Project, t.Version)
+	_, ok, _ := model.IsWebhookConfigured(ctx, t.Project, t.Version)
 	return ok, nil
 }
 

@@ -20,7 +20,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 const (
@@ -102,7 +102,7 @@ func SetVersionActivation(ctx context.Context, versionId string, active bool, ca
 	for buildId := range buildIdsMap {
 		buildIds = append(buildIds, buildId)
 	}
-	if err := build.UpdateActivation(buildIds, active, caller); err != nil {
+	if err := build.UpdateActivation(ctx, buildIds, active, caller); err != nil {
 		return errors.Wrapf(err, "setting build activations to %t", active)
 	}
 	if err := UpdateVersionAndPatchStatusForBuilds(ctx, buildIds); err != nil {
@@ -114,7 +114,7 @@ func SetVersionActivation(ctx context.Context, versionId string, active bool, ca
 // ActivateBuildsAndTasks updates the "active" state of this build and all associated tasks.
 // It also updates the task cache for the build document.
 func ActivateBuildsAndTasks(ctx context.Context, buildIds []string, active bool, caller string) error {
-	if err := build.UpdateActivation(buildIds, active, caller); err != nil {
+	if err := build.UpdateActivation(ctx, buildIds, active, caller); err != nil {
 		return errors.Wrapf(err, "setting build activation to %t for builds '%v'", active, buildIds)
 	}
 
@@ -184,7 +184,7 @@ func setTaskActivationForBuilds(ctx context.Context, buildIds []string, active, 
 // AbortBuild marks the build as deactivated and sets the abort flag on all tasks associated
 // with the build which are in an abortable state.
 func AbortBuild(ctx context.Context, buildId string, caller string) error {
-	if err := build.UpdateActivation([]string{buildId}, false, caller); err != nil {
+	if err := build.UpdateActivation(ctx, []string{buildId}, false, caller); err != nil {
 		return errors.Wrapf(err, "deactivating build '%s'", buildId)
 	}
 
@@ -421,7 +421,7 @@ func restartTasks(ctx context.Context, allFinishedTasks []task.Task, caller, ver
 		}
 	}
 
-	if err := build.SetBuildStartedForTasks(allFinishedTasks, caller); err != nil {
+	if err := build.SetBuildStartedForTasks(ctx, allFinishedTasks, caller); err != nil {
 		return errors.Wrap(err, "setting builds started")
 	}
 	builds, err := build.FindBuildsForTasks(allFinishedTasks)
@@ -493,7 +493,7 @@ func addTasksToBuild(ctx context.Context, creationInfo TaskCreationInfo) (*build
 
 	var githubCheckAliases ProjectAliases
 	if creationInfo.Version.Requester == evergreen.RepotrackerVersionRequester && creationInfo.ProjectRef.IsGithubChecksEnabled() {
-		githubCheckAliases, err = FindAliasInProjectRepoOrConfig(creationInfo.Version.Identifier, evergreen.GithubChecksAlias)
+		githubCheckAliases, err = FindAliasInProjectRepoOrConfig(ctx, creationInfo.Version.Identifier, evergreen.GithubChecksAlias)
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":            "error getting github check aliases when adding tasks to build",
 			"project":            creationInfo.Version.Identifier,
@@ -1747,7 +1747,7 @@ func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationI
 		return nil, nil, errors.Wrap(err, "updating patch task limit for user")
 	}
 	if len(buildIdsToActivate) > 0 {
-		if err := build.UpdateActivation(buildIdsToActivate, true, caller); err != nil {
+		if err := build.UpdateActivation(ctx, buildIdsToActivate, true, caller); err != nil {
 			return nil, nil, err
 		}
 	}

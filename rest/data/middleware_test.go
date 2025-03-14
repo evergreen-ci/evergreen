@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func TestGetProjectIdFromParams(t *testing.T) {
@@ -90,7 +91,7 @@ func TestGetProjectIdFromParams(t *testing.T) {
 	require.Equal(t, http.StatusBadRequest, statusCode)
 	require.Equal(t, "", projectId)
 
-	projectId, statusCode, err = GetProjectIdFromParams(ctx, map[string]string{"patchId": bson.NewObjectId().Hex()})
+	projectId, statusCode, err = GetProjectIdFromParams(ctx, map[string]string{"patchId": primitive.NewObjectID().Hex()})
 	require.Error(t, err)
 	require.Equal(t, http.StatusNotFound, statusCode)
 	require.Equal(t, "", projectId)

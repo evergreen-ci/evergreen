@@ -8,7 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 type Volume struct {
@@ -90,7 +90,7 @@ func (v *Volume) SetMigrating(ctx context.Context, migrating bool) error {
 // Note this shouldn't be used when you want to
 // remove from AWS itself.
 func (v *Volume) Remove(ctx context.Context) error {
-	return db.RemoveContext(
+	return db.Remove(
 		ctx,
 		VolumesCollection,
 		bson.M{

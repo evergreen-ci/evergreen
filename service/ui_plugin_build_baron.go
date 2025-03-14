@@ -39,7 +39,7 @@ func bbSaveNote(w http.ResponseWriter, r *http.Request) {
 	// We need to make sure the user isn't blowing away a new edit,
 	// so we load the existing note. If the user's last seen edit time is less
 	// than the most recent edit, we error with a helpful message.
-	old, err := model.NoteForTask(taskId)
+	old, err := model.NoteForTask(r.Context(), taskId)
 	if err != nil {
 		gimlet.WriteJSONInternalError(w, err.Error())
 		return
@@ -65,7 +65,7 @@ func bbSaveNote(w http.ResponseWriter, r *http.Request) {
 // getNote retrieves the latest note from the database.
 func bbGetNote(w http.ResponseWriter, r *http.Request) {
 	taskId := gimlet.GetVars(r)["task_id"]
-	n, err := model.NoteForTask(taskId)
+	n, err := model.NoteForTask(r.Context(), taskId)
 	if err != nil {
 		gimlet.WriteJSONInternalError(w, err.Error())
 		return
@@ -114,7 +114,7 @@ func (uis *UIServer) bbGetCustomCreatedTickets(w http.ResponseWriter, r *http.Re
 	taskId := gimlet.GetVars(r)["task_id"]
 	var results []annotations.IssueLink
 
-	annotations, err := annotations.FindByTaskId(taskId)
+	annotations, err := annotations.FindByTaskId(r.Context(), taskId)
 	if err != nil {
 		gimlet.WriteJSONInternalError(w, err.Error())
 		return

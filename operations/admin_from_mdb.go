@@ -13,9 +13,9 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
-	"go.mongodb.org/mongo-driver/v2/bson"
-	"go.mongodb.org/mongo-driver/v2/mongo"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func toMdbForLocal() cli.Command {
@@ -60,7 +60,7 @@ func toMdbForLocal() cli.Command {
 			url := c.String(urlFlagName)
 			infn := c.String(inputFlagName)
 
-			client, err := mongo.Connect(options.Client().ApplyURI(url))
+			client, err := mongo.Connect(ctx, options.Client().ApplyURI(url))
 			if err != nil {
 				return errors.Wrap(err, "creating MongoDB client")
 			}
@@ -184,7 +184,7 @@ func fromMdbForLocal() cli.Command {
 				}
 			}
 
-			client, err := mongo.Connect(options.Client().ApplyURI(url))
+			client, err := mongo.Connect(ctx, options.Client().ApplyURI(url))
 			if err != nil {
 				return errors.Wrap(err, "creating MongoDB client")
 			}

@@ -13,7 +13,7 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func init() {
@@ -125,7 +125,7 @@ func TestImportWindowsVersion(t *testing.T) {
 func TestInsertAndFindOneByID(t *testing.T) {
 	for tName, tCase := range map[string]func(t *testing.T){
 		"FindOneByIDReturnsNoResultForNonexistentPod": func(t *testing.T) {
-			p, err := FindOneByID("foo")
+			p, err := FindOneByID(t.Context(), "foo")
 			assert.NoError(t, err)
 			assert.Zero(t, p)
 		},
@@ -161,7 +161,7 @@ func TestInsertAndFindOneByID(t *testing.T) {
 			}
 			require.NoError(t, p.Insert())
 
-			dbPod, err := FindOneByID(p.ID)
+			dbPod, err := FindOneByID(t.Context(), p.ID)
 			require.NoError(t, err)
 			require.NotNil(t, dbPod)
 
@@ -188,11 +188,11 @@ func TestRemove(t *testing.T) {
 			p := Pod{
 				ID: "nonexistent",
 			}
-			dbPod, err := FindOneByID(p.ID)
+			dbPod, err := FindOneByID(t.Context(), p.ID)
 			assert.NoError(t, err)
 			assert.Zero(t, dbPod)
 
-			assert.NoError(t, p.Remove())
+			assert.NoError(t, p.Remove(t.Context()))
 		},
 		"SucceedsWithExistingPod": func(t *testing.T) {
 			p := Pod{
@@ -200,13 +200,13 @@ func TestRemove(t *testing.T) {
 			}
 			require.NoError(t, p.Insert())
 
-			dbPod, err := FindOneByID(p.ID)
+			dbPod, err := FindOneByID(t.Context(), p.ID)
 			require.NoError(t, err)
 			require.NotNil(t, dbPod)
 
-			require.NoError(t, p.Remove())
+			require.NoError(t, p.Remove(t.Context()))
 
-			dbPod, err = FindOneByID(p.ID)
+			dbPod, err = FindOneByID(t.Context(), p.ID)
 			assert.NoError(t, err)
 			assert.Zero(t, dbPod)
 		},
@@ -330,14 +330,14 @@ func TestNewTaskIntentPod(t *testing.T) {
 
 func TestUpdateStatus(t *testing.T) {
 	checkStatus := func(t *testing.T, p Pod) {
-		dbPod, err := FindOneByID(p.ID)
+		dbPod, err := FindOneByID(t.Context(), p.ID)
 		require.NoError(t, err)
 		require.NotZero(t, dbPod)
 		assert.Equal(t, p.Status, dbPod.Status)
 	}
 
 	checkStatusAndTimeInfo := func(t *testing.T, p Pod) {
-		dbPod, err := FindOneByID(p.ID)
+		dbPod, err := FindOneByID(t.Context(), p.ID)
 		require.NoError(t, err)
 		require.NotZero(t, dbPod)
 		assert.Equal(t, p.Status, dbPod.Status)
@@ -399,7 +399,7 @@ func TestUpdateStatus(t *testing.T) {
 		"FailsWithNonexistentPod": func(t *testing.T, p Pod) {
 			assert.Error(t, p.UpdateStatus(t.Context(), StatusTerminated, ""))
 
-			dbPod, err := FindOneByID(p.ID)
+			dbPod, err := FindOneByID(t.Context(), p.ID)
 			assert.NoError(t, err)
 			assert.Zero(t, dbPod)
 		},
@@ -412,7 +412,7 @@ func TestUpdateStatus(t *testing.T) {
 
 			assert.Error(t, p.UpdateStatus(t.Context(), StatusTerminated, ""))
 
-			dbPod, err := FindOneByID(p.ID)
+			dbPod, err := FindOneByID(t.Context(), p.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Equal(t, StatusInitializing, dbPod.Status)
@@ -433,7 +433,7 @@ func TestUpdateStatus(t *testing.T) {
 
 func TestUpdateResources(t *testing.T) {
 	checkResources := func(t *testing.T, p Pod) {
-		dbPod, err := FindOneByID(p.ID)
+		dbPod, err := FindOneByID(t.Context(), p.ID)
 		require.NoError(t, err)
 		require.NotZero(t, dbPod)
 		assert.Equal(t, p.Resources, dbPod.Resources)
@@ -501,7 +501,7 @@ func TestUpdateResources(t *testing.T) {
 		"FailsWithNonexistentPod": func(t *testing.T, p Pod) {
 			assert.Error(t, p.UpdateResources(t.Context(), ResourceInfo{}))
 
-			dbPod, err := FindOneByID(p.ID)
+			dbPod, err := FindOneByID(t.Context(), p.ID)
 			assert.NoError(t, err)
 			assert.Zero(t, dbPod)
 		},
@@ -576,7 +576,7 @@ func TestSetRunningTask(t *testing.T) {
 			const taskExecution = 1
 			require.NoError(t, p.SetRunningTask(ctx, env, taskID, taskExecution))
 
-			dbPod, err := FindOneByID(p.ID)
+			dbPod, err := FindOneByID(t.Context(), p.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Equal(t, taskID, dbPod.TaskRuntimeInfo.RunningTaskID)
@@ -591,7 +591,7 @@ func TestSetRunningTask(t *testing.T) {
 			require.NoError(t, p.Insert())
 			assert.NoError(t, p.SetRunningTask(ctx, env, taskID, taskExecution))
 
-			dbPod, err := FindOneByID(p.ID)
+			dbPod, err := FindOneByID(t.Context(), p.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Equal(t, taskID, dbPod.TaskRuntimeInfo.RunningTaskID)
@@ -618,7 +618,7 @@ func TestSetRunningTask(t *testing.T) {
 		"FailsWithNonexistentPod": func(ctx context.Context, t *testing.T, env *mock.Environment, p Pod) {
 			assert.Error(t, p.SetRunningTask(ctx, env, "task", 0))
 
-			dbPod, err := FindOneByID(p.ID)
+			dbPod, err := FindOneByID(t.Context(), p.ID)
 			assert.NoError(t, err)
 			assert.Zero(t, dbPod)
 		},
@@ -644,7 +644,7 @@ func TestClearRunningTask(t *testing.T) {
 	}()
 
 	checkContainerTaskCleared := func(t *testing.T, podID string) {
-		p, err := FindOneByID(podID)
+		p, err := FindOneByID(t.Context(), podID)
 		require.NoError(t, err)
 		require.NotZero(t, p)
 		assert.Zero(t, p.TaskRuntimeInfo.RunningTaskID)
@@ -688,7 +688,7 @@ func TestClearRunningTask(t *testing.T) {
 			assert.Zero(t, p.TaskRuntimeInfo.RunningTaskID)
 			assert.Zero(t, p.TaskRuntimeInfo.RunningTaskExecution)
 
-			dbPod, err := FindOneByID(p.ID)
+			dbPod, err := FindOneByID(t.Context(), p.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Zero(t, dbPod.TaskRuntimeInfo.RunningTaskID)
@@ -708,7 +708,7 @@ func TestClearRunningTask(t *testing.T) {
 			p.TaskRuntimeInfo.RunningTaskExecution = 0
 			require.NoError(t, p.ClearRunningTask(t.Context()))
 
-			dbPod, err := FindOneByID(p.ID)
+			dbPod, err := FindOneByID(t.Context(), p.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Equal(t, taskID, dbPod.TaskRuntimeInfo.RunningTaskID)
@@ -718,7 +718,7 @@ func TestClearRunningTask(t *testing.T) {
 			p.TaskRuntimeInfo.RunningTaskID = "task_id"
 			assert.Error(t, p.ClearRunningTask(t.Context()))
 
-			dbPod, err := FindOneByID(p.ID)
+			dbPod, err := FindOneByID(t.Context(), p.ID)
 			assert.NoError(t, err)
 			assert.Zero(t, dbPod)
 		},
@@ -729,7 +729,7 @@ func TestClearRunningTask(t *testing.T) {
 			p.TaskRuntimeInfo.RunningTaskID = "some_other_task_id"
 			assert.Error(t, p.ClearRunningTask(t.Context()))
 
-			dbPod, err := FindOneByID(p.ID)
+			dbPod, err := FindOneByID(t.Context(), p.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Equal(t, taskID, dbPod.TaskRuntimeInfo.RunningTaskID)
@@ -743,7 +743,7 @@ func TestClearRunningTask(t *testing.T) {
 			p.TaskRuntimeInfo.RunningTaskExecution = taskExecution + 1
 			assert.Error(t, p.ClearRunningTask(t.Context()))
 
-			dbPod, err := FindOneByID(p.ID)
+			dbPod, err := FindOneByID(t.Context(), p.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Equal(t, taskID, dbPod.TaskRuntimeInfo.RunningTaskID)
@@ -775,7 +775,7 @@ func TestUpdateAgentStartTime(t *testing.T) {
 			require.NoError(t, p.Insert())
 			require.NoError(t, p.UpdateAgentStartTime(ctx))
 
-			dbPod, err := FindOneByID(p.ID)
+			dbPod, err := FindOneByID(t.Context(), p.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.NotZero(t, dbPod.TimeInfo.AgentStarted)
@@ -784,7 +784,7 @@ func TestUpdateAgentStartTime(t *testing.T) {
 		"FailsWithNonexistentPod": func(ctx context.Context, t *testing.T, p Pod) {
 			assert.Error(t, p.UpdateAgentStartTime(ctx))
 
-			dbPod, err := FindOneByID(p.ID)
+			dbPod, err := FindOneByID(t.Context(), p.ID)
 			assert.NoError(t, err)
 			assert.Zero(t, dbPod)
 		},
@@ -816,7 +816,7 @@ func TestUpdateLastCommunicated(t *testing.T) {
 			require.NoError(t, p.Insert())
 			require.NoError(t, p.UpdateLastCommunicated(ctx))
 
-			dbPod, err := FindOneByID(p.ID)
+			dbPod, err := FindOneByID(t.Context(), p.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.NotZero(t, dbPod.TimeInfo.LastCommunicated)
@@ -825,7 +825,7 @@ func TestUpdateLastCommunicated(t *testing.T) {
 		"FailsWithNonexistentPod": func(ctx context.Context, t *testing.T, p Pod) {
 			assert.Error(t, p.UpdateLastCommunicated(ctx))
 
-			dbPod, err := FindOneByID(p.ID)
+			dbPod, err := FindOneByID(t.Context(), p.ID)
 			assert.NoError(t, err)
 			assert.Zero(t, dbPod)
 		},

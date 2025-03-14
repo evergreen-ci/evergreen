@@ -1,6 +1,7 @@
 package data
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
@@ -137,9 +138,9 @@ func GetSubscriptions(owner string, ownerType event.OwnerType) ([]restModel.APIS
 	return apiSubs, nil
 }
 
-func DeleteSubscriptions(owner string, ids []string) error {
+func DeleteSubscriptions(ctx context.Context, owner string, ids []string) error {
 	for _, id := range ids {
-		subscription, err := event.FindSubscriptionByID(id)
+		subscription, err := event.FindSubscriptionByID(ctx, id)
 		if err != nil {
 			return gimlet.ErrorResponse{
 				StatusCode: http.StatusInternalServerError,
@@ -162,7 +163,7 @@ func DeleteSubscriptions(owner string, ids []string) error {
 
 	catcher := grip.NewBasicCatcher()
 	for _, id := range ids {
-		catcher.Wrapf(event.RemoveSubscription(id), "removing subscription '%s'", id)
+		catcher.Wrapf(event.RemoveSubscription(ctx, id), "removing subscription '%s'", id)
 	}
 	return catcher.Resolve()
 }

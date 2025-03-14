@@ -129,7 +129,7 @@ func (s *subscriptionDeleteHandler) Parse(ctx context.Context, r *http.Request) 
 
 func (s *subscriptionDeleteHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
-	if err := data.DeleteSubscriptions(u.Username(), []string{s.id}); err != nil {
+	if err := data.DeleteSubscriptions(ctx, u.Username(), []string{s.id}); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "deleting subscription '%s' for user '%s'", s.id, u.Username()))
 	}
 

@@ -80,10 +80,19 @@ type s3get struct {
 	// TODO (DEVPROD-13982): Upgrade this flag to RoleARN.
 	TemporaryRoleARN string `mapstructure:"temporary_role_arn" plugin:"expand"`
 
+	// TemporaryUseInternalBucket is not meant to be used in production. It is used for testing purposes
+	// relating to the DEVPROD-5553 project.
+	// This flag is used to determine if the s3_credentials route should be called before the command is executed.
+	// TODO (DEVPROD-13982): Remove this flag and use the internal bucket list to determine if the s3_credentials
+	// route should be called.
+	TemporaryUseInternalBucket string `mapstructure:"temporary_use_internal_bucket" plugin:"expand"`
+
 	skipMissing bool
 
 	bucket          pail.Bucket
 	internalBuckets []string
+
+	temporaryUseInternalBucket bool
 
 	base
 }
@@ -154,6 +163,13 @@ func (c *s3get) expandParams(conf *internal.TaskConfig) error {
 		}
 	}
 
+	if c.TemporaryUseInternalBucket != "" {
+		c.temporaryUseInternalBucket, err = strconv.ParseBool(c.TemporaryUseInternalBucket)
+		if err != nil {
+			return errors.Wrap(err, "parsing temporary use internal bucket parameter as a boolean")
+		}
+	}
+
 	if c.Region == "" {
 		c.Region = evergreen.DefaultEC2Region
 	}
@@ -185,8 +201,8 @@ func (c *s3get) Execute(ctx context.Context, comm client.Communicator, logger cl
 		attribute.Bool(s3GetInternalBucketAttribute, utility.StringSliceContains(conf.InternalBuckets, c.Bucket)),
 	)
 
+	taskData := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 	if c.TemporaryRoleARN != "" {
-		taskData := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 		creds, err := comm.AssumeRole(ctx, taskData, apimodels.AssumeRoleRequest{
 			RoleARN: c.TemporaryRoleARN,
 		})
@@ -195,6 +211,19 @@ func (c *s3get) Execute(ctx context.Context, comm client.Communicator, logger cl
 		}
 		if creds == nil {
 			return errors.Errorf("nil credentials returned for '%s' role arn", c.TemporaryRoleARN)
+		}
+		c.AwsKey = creds.AccessKeyID
+		c.AwsSecret = creds.SecretAccessKey
+		c.AwsSessionToken = creds.SessionToken
+	}
+
+	if c.temporaryUseInternalBucket {
+		creds, err := comm.S3Credentials(ctx, taskData, c.Bucket)
+		if err != nil {
+			return errors.Wrap(err, "getting S3 credentials")
+		}
+		if creds == nil {
+			return errors.New("nil credentials returned for provided role arn")
 		}
 		c.AwsKey = creds.AccessKeyID
 		c.AwsSecret = creds.SecretAccessKey
@@ -326,7 +355,7 @@ func (c *s3get) get(ctx context.Context) error {
 
 func (c *s3get) createPailBucket(ctx context.Context, httpClient *http.Client) error {
 	opts := pail.S3Options{
-		Credentials: pail.CreateAWSCredentials(c.AwsKey, c.AwsSecret, c.AwsSessionToken),
+		Credentials: pail.CreateAWSStaticCredentials(c.AwsKey, c.AwsSecret, c.AwsSessionToken),
 		Region:      c.Region,
 		Name:        c.Bucket,
 	}
