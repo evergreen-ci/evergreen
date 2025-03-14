@@ -126,6 +126,7 @@ func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, d
 	r.Header.Add(evergreen.ContentLengthHeader, strconv.Itoa(len(out)))
 
 	resp, err := utility.RetryRequest(ctx, r, utility.RetryRequestOptions{
+		RetryOn413: c.RetryOn413,
 		RetryOptions: utility.RetryOptions{
 			MaxAttempts: c.maxAttempts,
 			MinDelay:    c.timeoutStart,

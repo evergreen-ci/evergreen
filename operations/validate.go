@@ -77,12 +77,12 @@ func Validate() cli.Command {
 				}
 				catcher := grip.NewSimpleCatcher()
 				for _, file := range files {
-					catcher.Add(validateFile(filepath.Join(path, file.Name()), ac, quiet, errorOnWarnings, localModuleMap, projectID))
+					catcher.Add(validateFile(conf, filepath.Join(path, file.Name()), ac, quiet, errorOnWarnings, localModuleMap, projectID))
 				}
 				return catcher.Resolve()
 			}
 
-			return validateFile(path, ac, quiet, errorOnWarnings, localModuleMap, projectID)
+			return validateFile(conf, path, ac, quiet, errorOnWarnings, localModuleMap, projectID)
 		},
 	}
 }
@@ -100,7 +100,7 @@ func getLocalModulesFromInput(localModulePaths []string) (map[string]string, err
 	return moduleMap, catcher.Resolve()
 }
 
-func validateFile(path string, ac *legacyClient, quiet, errorOnWarnings bool, localModuleMap map[string]string, projectID string) error {
+func validateFile(conf *ClientSettings, path string, ac *legacyClient, quiet, errorOnWarnings bool, localModuleMap map[string]string, projectID string) error {
 	confFile, err := os.ReadFile(path)
 	if err != nil {
 		return errors.Wrapf(err, "reading file '%s'", path)
@@ -133,7 +133,15 @@ func validateFile(path string, ac *legacyClient, quiet, errorOnWarnings bool, lo
 		projectBytes := [][]byte{projectYaml, projectConfigYaml}
 		projectYaml = bytes.Join(projectBytes, []byte("\n"))
 	}
-	projErrors, err := ac.ValidateLocalConfig(projectYaml, quiet, projectID)
+
+	client, err := conf.setupRestCommunicator(ctx, false)
+	if err != nil {
+		return errors.Wrap(err, "setting up REST communicator")
+	}
+	defer client.Close()
+
+	client.SetRetryOn413(true)
+	projErrors, err := client.Validate(ctx, projectYaml, quiet, projectID)
 	if err != nil {
 		return errors.Wrapf(err, "validating project '%s'", projectID)
 	}
