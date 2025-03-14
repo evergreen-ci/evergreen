@@ -236,7 +236,6 @@ func (a *Agent) runCommand(ctx context.Context, tc *taskContext, commandInfo mod
 		}
 		tc.taskConfig.NewExpansions.Update(prevExp)
 		tc.taskConfig.DynamicExpansions = *util.NewExpansions(map[string]string{})
-		tc.taskConfig.AssumeRoleRoles = map[string]string{}
 	}()
 
 	tc.setCurrentCommand(cmd)
