@@ -1464,8 +1464,6 @@ func (s *distroClientURLsGetSuite) TestRunNonexistentDistro() {
 	s.Equal(http.StatusNotFound, resp.Status())
 }
 
-////////////////////////////////////////////////////////////////////////
-//
 // Tests for PUT /rest/v2/distros/{distro_id}/copy/{new_distro_id}
 
 type distroCopySuite struct {
@@ -1493,13 +1491,20 @@ func (s *distroCopySuite) TestParse() {
 	s.NoError(err)
 }
 
+func (s *distroCopySuite) TestParseInvalidIDs() {
+	ctx := context.Background()
+	req, _ := http.NewRequest(http.MethodPut, "http://example.com/api/rest/v2/distros/distro1/copy/distro1?single_task_distro=true", nil)
+	err := s.rm.Parse(ctx, req)
+	s.Error(err)
+}
+
 func (s *distroCopySuite) TestRunValidCopy() {
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 	h := s.rm.(*distroCopyHandler)
 	h.distroToCopy = "fedora8"
 	h.newDistroID = "newDistro"
-	h.single_task_distro = true
+	h.singleTaskDistro = true
 
 	resp := s.rm.Run(ctx)
 	s.NotNil(resp.Data())
@@ -1510,20 +1515,6 @@ func (s *distroCopySuite) TestRunValidCopy() {
 	s.NotNil(copied)
 	s.Equal("newDistro", copied.Id)
 	s.Equal(true, copied.SingleTaskDistro)
-}
-
-func (s *distroCopySuite) TestRunInvalidCopySameID() {
-	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
-	h := s.rm.(*distroCopyHandler)
-	h.distroToCopy = "distro1"
-	h.newDistroID = "distro1"
-
-	resp := s.rm.Run(ctx)
-	s.NotNil(resp.Data())
-	s.Equal(http.StatusBadRequest, resp.Status())
-	err := (resp.Data()).(gimlet.ErrorResponse)
-	s.Equal("new and existing distro IDs cannot be identical", err.Message)
 }
 
 func (s *distroCopySuite) TestRunInvalidCopyNonexistentID() {

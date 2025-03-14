@@ -247,14 +247,12 @@ func (h *distroIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 	return responder
 }
 
-///////////////////////////////////////////////////////////////////////
-//
 // PUT /rest/v2/distros/{distro_id}/copy/{new_distro_id}
 
 type distroCopyHandler struct {
-	distroToCopy       string
-	newDistroID        string
-	single_task_distro bool
+	distroToCopy     string
+	newDistroID      string
+	singleTaskDistro bool
 }
 
 func makeCopyDistro() gimlet.RouteHandler {
@@ -281,20 +279,17 @@ func (h *distroCopyHandler) Factory() gimlet.RouteHandler {
 func (h *distroCopyHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.distroToCopy = gimlet.GetVars(r)["distro_id"]
 	h.newDistroID = gimlet.GetVars(r)["new_distro_id"]
-	h.single_task_distro = r.URL.Query().Get("single_task_distro") == "true"
+	h.singleTaskDistro = r.URL.Query().Get("single_task_distro") == "true"
+
+	if h.distroToCopy == h.newDistroID {
+		return errors.New("new and existing distro IDs cannot be identical")
+	}
 
 	return nil
 }
 
 // Run creates a new distro by copying an existing distro.
 func (h *distroCopyHandler) Run(ctx context.Context) gimlet.Responder {
-	if h.distroToCopy == h.newDistroID {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusBadRequest,
-			Message:    "new and existing distro IDs cannot be identical",
-		})
-	}
-
 	user := MustHaveUser(ctx)
 	toCopy, err := distro.FindOneId(ctx, h.distroToCopy)
 	if err != nil {
@@ -308,7 +303,7 @@ func (h *distroCopyHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	toCopy.Id = h.newDistroID
-	if h.single_task_distro {
+	if h.singleTaskDistro {
 		toCopy.SingleTaskDistro = true
 	}
 
