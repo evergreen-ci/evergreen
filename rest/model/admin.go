@@ -96,6 +96,7 @@ type APIAdminSettings struct {
 	SleepSchedule       *APISleepScheduleConfig       `json:"sleep_schedule,omitempty"`
 	SSHKeyDirectory     *string                       `json:"ssh_key_directory,omitempty"`
 	SSHKeyPairs         []APISSHKeyPair               `json:"ssh_key_pairs,omitempty"`
+	SSHKeySecretARNs    []string                      `json:"ssh_key_secret_arns,omitempty"`
 	Splunk              *APISplunkConfig              `json:"splunk,omitempty"`
 	TaskLimits          *APITaskLimitsConfig          `json:"task_limits,omitempty"`
 	TestSelection       *APITestSelectionConfig       `json:"test_selection,omitempty"`
@@ -160,6 +161,7 @@ func (as *APIAdminSettings) BuildFromService(h any) error {
 				Private: utility.ToStringPtr(pair.Private),
 			})
 		}
+		as.SSHKeySecretARNs = v.SSHKeySecretARNs
 		uiConfig := APIUIConfig{}
 		err := uiConfig.BuildFromService(v.Ui)
 		if err != nil {
@@ -288,6 +290,7 @@ func (as *APIAdminSettings) ToService() (any, error) {
 			Private: utility.FromStringPtr(pair.Private),
 		})
 	}
+	settings.SSHKeySecretARNs = as.SSHKeySecretARNs
 
 	if as.ShutdownWaitSeconds != nil {
 		settings.ShutdownWaitSeconds = *as.ShutdownWaitSeconds
