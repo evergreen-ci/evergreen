@@ -1,10 +1,12 @@
 package model
 
 import (
+	"context"
+
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 const NotesCollection = "build_baron_notes"
@@ -31,9 +33,10 @@ func (n *Note) Upsert() error {
 }
 
 // NoteForTask returns the note for the given task Id, if it exists.
-func NoteForTask(taskId string) (*Note, error) {
+func NoteForTask(ctx context.Context, taskId string) (*Note, error) {
 	n := &Note{}
-	err := db.FindOneQ(
+	err := db.FindOneQContext(
+		ctx,
 		NotesCollection,
 		db.Query(bson.M{NoteTaskIdKey: taskId}),
 		n,

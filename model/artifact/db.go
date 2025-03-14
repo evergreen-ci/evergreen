@@ -1,10 +1,12 @@
 package artifact
 
 import (
+	"context"
+
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 var (
@@ -117,9 +119,9 @@ func (e Entry) Upsert() error {
 }
 
 // FindOne gets one Entry for the given query
-func FindOne(query db.Q) (*Entry, error) {
+func FindOne(ctx context.Context, query db.Q) (*Entry, error) {
 	entry := &Entry{}
-	err := db.FindOneQ(Collection, query, entry)
+	err := db.FindOneQContext(ctx, Collection, query, entry)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -127,8 +129,8 @@ func FindOne(query db.Q) (*Entry, error) {
 }
 
 // FindAll gets every Entry for the given query
-func FindAll(query db.Q) ([]Entry, error) {
+func FindAll(ctx context.Context, query db.Q) ([]Entry, error) {
 	entries := []Entry{}
-	err := db.FindAllQ(Collection, query, &entries)
+	err := db.FindAllQContext(ctx, Collection, query, &entries)
 	return entries, err
 }

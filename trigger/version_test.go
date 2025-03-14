@@ -15,7 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/suite"
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func TestVersionTriggers(t *testing.T) {
@@ -346,7 +346,7 @@ func (s *VersionSuite) TestVersionRuntimeChange() {
 
 func (s *VersionSuite) TestMakeDataForRepotrackerVersion() {
 	sub := s.subs[0]
-	data, err := s.t.makeData(&sub, "")
+	data, err := s.t.makeData(s.ctx, &sub, "")
 
 	s.Require().NoError(err)
 	s.Equal(s.version.Id, data.ID)
@@ -366,7 +366,7 @@ func (s *VersionSuite) TestMakeDataForPatchVersion() {
 
 	s.version.Requester = evergreen.PatchVersionRequester
 	sub := s.subs[0]
-	data, err := s.t.makeData(&sub, "")
+	data, err := s.t.makeData(s.ctx, &sub, "")
 
 	s.Require().NoError(err)
 	s.Equal(s.version.Id, data.ID)

@@ -8,9 +8,9 @@ import (
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/v2/bson"
-	"go.mongodb.org/mongo-driver/v2/mongo"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 var (
@@ -95,7 +95,7 @@ func FindOneId(ctx context.Context, id string) (*Distro, error) {
 	return FindOne(ctx, ById(id))
 }
 
-func FindOne(ctx context.Context, query bson.M, options ...options.Lister[options.FindOneOptions]) (*Distro, error) {
+func FindOne(ctx context.Context, query bson.M, options ...*options.FindOneOptions) (*Distro, error) {
 	res := distroDB().Collection(Collection).FindOne(ctx, query, options...)
 	if err := res.Err(); err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
@@ -111,7 +111,7 @@ func FindOne(ctx context.Context, query bson.M, options ...options.Lister[option
 	return d, nil
 }
 
-func Find(ctx context.Context, query bson.M, options ...options.Lister[options.FindOptions]) ([]Distro, error) {
+func Find(ctx context.Context, query bson.M, options ...*options.FindOptions) ([]Distro, error) {
 	cur, err := distroDB().Collection(Collection).Find(ctx, query, options...)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding distros")

@@ -6,7 +6,7 @@ import (
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 var podLifecycleConfigKey = bsonutil.MustHaveTag(Settings{}, "PodLifecycle") //nolint:unused

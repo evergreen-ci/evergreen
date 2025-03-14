@@ -31,7 +31,7 @@ import (
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 type PatchIntentUnitsSuite struct {
@@ -1158,7 +1158,7 @@ func (s *PatchIntentUnitsSuite) TestProcessMergeGroupIntent() {
 	s.NoError(j.Error())
 	s.False(j.HasErrors())
 
-	dbPatch, err := patch.FindOne(patch.ById(j.PatchID))
+	dbPatch, err := patch.FindOne(s.ctx, patch.ById(j.PatchID))
 	s.NoError(err)
 	s.Require().NotNil(dbPatch)
 	s.True(patchDoc.Activated, "patch should be finalized")
@@ -1174,7 +1174,7 @@ func (s *PatchIntentUnitsSuite) TestProcessMergeGroupIntent() {
 	s.verifyVersionDoc(dbPatch, evergreen.GithubMergeRequester, evergreen.GithubMergeUser, baseSHA, 1)
 
 	out := []event.Subscription{}
-	s.NoError(db.FindAllQ(event.SubscriptionsCollection, db.Query(bson.M{}), &out))
+	s.NoError(db.FindAllQContext(s.ctx, event.SubscriptionsCollection, db.Query(bson.M{}), &out))
 	s.Len(out, 2)
 	for _, subscription := range out {
 		s.Equal("github_merge", subscription.Subscriber.Type)
@@ -1284,7 +1284,7 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 	s.NoError(j.Error())
 	s.False(j.HasErrors())
 
-	dbPatch, err := patch.FindOne(patch.ById(j.PatchID))
+	dbPatch, err := patch.FindOne(s.ctx, patch.ById(j.PatchID))
 	s.NoError(err)
 	s.Require().NotNil(dbPatch)
 	s.True(patchDoc.Activated, "patch should be finalized")
@@ -1302,7 +1302,7 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 	s.gridFSFileExists(dbPatch.Patches[0].PatchSet.PatchFileId)
 
 	out := []event.Subscription{}
-	s.NoError(db.FindAllQ(event.SubscriptionsCollection, db.Query(bson.M{}), &out))
+	s.NoError(db.FindAllQContext(s.ctx, event.SubscriptionsCollection, db.Query(bson.M{}), &out))
 	s.Require().Empty(out)
 }
 
@@ -1350,7 +1350,7 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntentWithoutFinalizing() {
 	s.NoError(j.Error())
 	s.False(j.HasErrors())
 
-	dbPatch, err := patch.FindOne(patch.ById(j.PatchID))
+	dbPatch, err := patch.FindOne(s.ctx, patch.ById(j.PatchID))
 	s.NoError(err)
 	s.Require().NotNil(dbPatch)
 	s.False(patchDoc.Activated, "patch should not be finalized")
@@ -1370,7 +1370,7 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntentWithoutFinalizing() {
 	s.gridFSFileExists(dbPatch.Patches[0].PatchSet.PatchFileId)
 
 	out := []event.Subscription{}
-	s.NoError(db.FindAllQ(event.SubscriptionsCollection, db.Query(bson.M{}), &out))
+	s.NoError(db.FindAllQContext(s.ctx, event.SubscriptionsCollection, db.Query(bson.M{}), &out))
 	s.Require().Empty(out)
 }
 
@@ -1506,7 +1506,7 @@ func (s *PatchIntentUnitsSuite) TestRunInDegradedModeWithGithubIntent() {
 	s.Error(j.Error())
 	s.Contains(j.Error().Error(), "not processing PR because GitHub PR testing is disabled")
 
-	patchDoc, err := patch.FindOne(patch.ById(patchID))
+	patchDoc, err := patch.FindOne(s.ctx, patch.ById(patchID))
 	s.NoError(err)
 	s.Nil(patchDoc)
 
@@ -1537,7 +1537,7 @@ func (s *PatchIntentUnitsSuite) TestGithubPRTestFromUnknownUserDoesntCreateVersi
 	j.Run(s.ctx)
 	s.Error(j.Error())
 	filter := patch.ById(patchID)
-	patchDoc, err := patch.FindOne(filter)
+	patchDoc, err := patch.FindOne(s.ctx, filter)
 	s.NoError(err)
 	s.Require().NotNil(patchDoc)
 	s.Empty(patchDoc.Version)
@@ -1625,13 +1625,13 @@ tasks:
 	s.Empty(p.Triggers.ChildPatches)
 	s.NoError(ProcessTriggerAliases(s.ctx, p, projectRef, s.env, []string{"patch-alias"}))
 
-	dbPatch, err := patch.FindOneId(p.Id.Hex())
+	dbPatch, err := patch.FindOneId(s.ctx, p.Id.Hex())
 	s.NoError(err)
 	s.Require().NotZero(dbPatch)
 	s.Equal(p.Triggers.ChildPatches, dbPatch.Triggers.ChildPatches)
 
 	s.Require().Len(dbPatch.Triggers.ChildPatches, 1)
-	dbChildPatch, err := patch.FindOneId(dbPatch.Triggers.ChildPatches[0])
+	dbChildPatch, err := patch.FindOneId(s.ctx, dbPatch.Triggers.ChildPatches[0])
 	s.NoError(err)
 	s.Require().NotZero(dbChildPatch)
 	s.Require().Len(dbChildPatch.VariantsTasks, 1, "child patch with valid trigger alias in the child project must have the expected variants and tasks")
@@ -1692,13 +1692,13 @@ tasks:
 
 	s.NoError(ProcessTriggerAliases(s.ctx, p, projectRef, s.env, []string{"patch-alias"}))
 
-	dbPatch, err := patch.FindOneId(p.Id.Hex())
+	dbPatch, err := patch.FindOneId(s.ctx, p.Id.Hex())
 	s.NoError(err)
 	s.Require().NotZero(dbPatch)
 	s.Equal(p.Triggers.ChildPatches, dbPatch.Triggers.ChildPatches)
 
 	s.Require().Len(dbPatch.Triggers.ChildPatches, 1)
-	dbChildPatch, err := patch.FindOneId(dbPatch.Triggers.ChildPatches[0])
+	dbChildPatch, err := patch.FindOneId(s.ctx, dbPatch.Triggers.ChildPatches[0])
 	s.NoError(err)
 	s.Require().NotZero(dbChildPatch)
 	s.Require().Len(dbChildPatch.VariantsTasks, 1, "child patch with valid trigger alias in the child project must have the expected variants and tasks")
@@ -1753,7 +1753,7 @@ tasks:
 	s.Error(ProcessTriggerAliases(s.ctx, p, projectRef, s.env, []string{"patch-alias"}), "should error if no tasks/variants match")
 	s.Len(p.Triggers.ChildPatches, 1)
 
-	dbPatch, err := patch.FindOneId(p.Id.Hex())
+	dbPatch, err := patch.FindOneId(s.ctx, p.Id.Hex())
 	s.NoError(err)
 	s.Equal(p.Triggers.ChildPatches, dbPatch.Triggers.ChildPatches)
 }

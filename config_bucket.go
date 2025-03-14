@@ -6,7 +6,7 @@ import (
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 type BucketType string
@@ -26,6 +26,14 @@ func (b BucketType) validate() error {
 	}
 }
 
+// ProjectToPrefixMapping relates a project to a bucket path prefix.
+type ProjectToPrefixMapping struct {
+	// ProjectID is the project's ID.
+	ProjectID string `yaml:"project_id" bson:"project_id" json:"project_id"`
+	// Prefix is the bucket path prefix that the project should have access to.
+	Prefix string `yaml:"prefix" bson:"prefix" json:"prefix"`
+}
+
 // BucketsConfig represents the admin config section for interally-owned
 // Evergreen data bucket storage.
 type BucketsConfig struct {
@@ -37,12 +45,19 @@ type BucketsConfig struct {
 	// InternalBuckets are the buckets that Evergreen's app servers have access to
 	// via their IRSA role.
 	InternalBuckets []string `yaml:"internal_buckets" bson:"internal_buckets" json:"internal_buckets"`
+
+	// ProjectToPrefixMappings is a list of project to prefix mappings.
+	// This is used to connect cross-project access to the same prefix.
+	// E.g. if project A should have access to project B's prefix, then
+	// project A's ID and project B's prefix should be in this list.
+	ProjectToPrefixMappings []ProjectToPrefixMapping `yaml:"project_to_prefix_mappings" bson:"project_to_prefix_mappings" json:"project_to_prefix_mappings"`
 }
 
 var (
 	bucketsConfigLogBucketKey       = bsonutil.MustHaveTag(BucketsConfig{}, "LogBucket")
 	bucketsConfigCredentialsKey     = bsonutil.MustHaveTag(BucketsConfig{}, "Credentials")
 	bucketsConfigInternalBucketsKey = bsonutil.MustHaveTag(BucketsConfig{}, "InternalBuckets")
+	projectToPrefixMappingsKey      = bsonutil.MustHaveTag(BucketsConfig{}, "ProjectToPrefixMappings")
 )
 
 // BucketConfig represents the admin config for an individual bucket.
@@ -76,6 +91,7 @@ func (c *BucketsConfig) Set(ctx context.Context) error {
 			bucketsConfigLogBucketKey:       c.LogBucket,
 			bucketsConfigCredentialsKey:     c.Credentials,
 			bucketsConfigInternalBucketsKey: c.InternalBuckets,
+			projectToPrefixMappingsKey:      c.ProjectToPrefixMappings,
 		}}), "updating config section '%s'", c.SectionId(),
 	)
 }

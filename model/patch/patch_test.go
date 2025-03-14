@@ -143,7 +143,7 @@ func (s *patchSuite) TestByGithubPRAndCreatedBefore() {
 }
 
 func (s *patchSuite) TestUpdateGithashProjectAndTasks() {
-	patch, err := FindOne(ByUserAndCommitQueue("octocat", false))
+	patch, err := FindOne(s.T().Context(), ByUserAndCommitQueue("octocat", false))
 	s.NoError(err)
 	s.Empty(patch.Githash)
 	s.Empty(patch.VariantsTasks)
@@ -162,7 +162,7 @@ func (s *patchSuite) TestUpdateGithashProjectAndTasks() {
 
 	s.NoError(patch.UpdateGithashProjectAndTasks(s.T().Context()))
 
-	dbPatch, err := FindOne(ById(patch.Id))
+	dbPatch, err := FindOne(s.T().Context(), ById(patch.Id))
 	s.NoError(err)
 
 	s.Equal("abcdef", dbPatch.Githash)
@@ -416,7 +416,7 @@ func TestSetTriggerAliases(t *testing.T) {
 
 	assert.NoError(p.SetTriggerAliases(t.Context()))
 
-	dbPatch, err := FindOne(ById(p.Id))
+	dbPatch, err := FindOne(t.Context(), ById(p.Id))
 	assert.NoError(err)
 	assert.Equal("alias_0", dbPatch.Triggers.Aliases[0])
 	assert.Equal("alias_1", dbPatch.Triggers.Aliases[1])
@@ -442,7 +442,7 @@ func TestSetChildPatches(t *testing.T) {
 
 	assert.NoError(p.SetChildPatches(t.Context()))
 
-	dbPatch, err := FindOne(ById(p.Id))
+	dbPatch, err := FindOne(t.Context(), ById(p.Id))
 	assert.NoError(err)
 	assert.Equal("id_0", dbPatch.Triggers.ChildPatches[0])
 	assert.Equal("id_1", dbPatch.Triggers.ChildPatches[1])

@@ -42,7 +42,7 @@ func TestCreatePod(t *testing.T) {
 	require.NoError(t, err)
 	require.NotZero(t, res)
 
-	apiPod, err := FindAPIPodByID(res.ID)
+	apiPod, err := FindAPIPodByID(t.Context(), res.ID)
 	require.NoError(t, err)
 	require.NotZero(t, apiPod)
 
@@ -71,7 +71,7 @@ func TestFindAPIPodByID(t *testing.T) {
 		}
 		require.NoError(t, p.Insert())
 
-		apiPod, err := FindAPIPodByID(p.ID)
+		apiPod, err := FindAPIPodByID(t.Context(), p.ID)
 		require.NoError(t, err)
 		require.NotZero(t, apiPod)
 
@@ -80,7 +80,7 @@ func TestFindAPIPodByID(t *testing.T) {
 		assert.EqualValues(t, p.Status, apiPod.Status)
 	})
 	t.Run("FailsWithNonexistentPod", func(t *testing.T) {
-		apiPod, err := FindAPIPodByID("nonexistent")
+		apiPod, err := FindAPIPodByID(t.Context(), "nonexistent")
 		assert.Error(t, err)
 		assert.Zero(t, apiPod)
 	})
@@ -91,7 +91,7 @@ func TestCheckPodSecret(t *testing.T) {
 		"Succeeds": func(t *testing.T, p pod.Pod, secret string) {
 			assert.NoError(t, CheckPodSecret(t.Context(), p.ID, secret))
 
-			dbPod, err := pod.FindOneByID(p.ID)
+			dbPod, err := pod.FindOneByID(t.Context(), p.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.NotZero(t, dbPod.TimeInfo.LastCommunicated)
@@ -99,7 +99,7 @@ func TestCheckPodSecret(t *testing.T) {
 		"FailsWithoutID": func(t *testing.T, p pod.Pod, secret string) {
 			assert.Error(t, CheckPodSecret(t.Context(), "", secret))
 
-			dbPod, err := pod.FindOneByID(p.ID)
+			dbPod, err := pod.FindOneByID(t.Context(), p.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Zero(t, dbPod.TimeInfo.LastCommunicated)
@@ -107,7 +107,7 @@ func TestCheckPodSecret(t *testing.T) {
 		"FailsWithoutSecret": func(t *testing.T, p pod.Pod, secret string) {
 			assert.Error(t, CheckPodSecret(t.Context(), p.ID, ""))
 
-			dbPod, err := pod.FindOneByID(p.ID)
+			dbPod, err := pod.FindOneByID(t.Context(), p.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Zero(t, dbPod.TimeInfo.LastCommunicated)
@@ -115,7 +115,7 @@ func TestCheckPodSecret(t *testing.T) {
 		"FailsWithBadID": func(t *testing.T, p pod.Pod, secret string) {
 			assert.Error(t, CheckPodSecret(t.Context(), "bad_id", secret))
 
-			dbPod, err := pod.FindOneByID(p.ID)
+			dbPod, err := pod.FindOneByID(t.Context(), p.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Zero(t, dbPod.TimeInfo.LastCommunicated)
@@ -123,7 +123,7 @@ func TestCheckPodSecret(t *testing.T) {
 		"FailsWithBadSecret": func(t *testing.T, p pod.Pod, secret string) {
 			assert.Error(t, CheckPodSecret(t.Context(), p.ID, "bad_secret"))
 
-			dbPod, err := pod.FindOneByID(p.ID)
+			dbPod, err := pod.FindOneByID(t.Context(), p.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Zero(t, dbPod.TimeInfo.LastCommunicated)

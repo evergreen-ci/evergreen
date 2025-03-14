@@ -8,7 +8,7 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	_ "github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func TestAlertRecord(t *testing.T) {
@@ -37,7 +37,7 @@ func (s *alertRecordSuite) TestInsertNewTaskRegressionByTestRecord() {
 	beforeRevision = 5
 	s.NoError(InsertNewTaskRegressionByTestRecord(sub, taskID, testName, taskDisplayName, variant, projectID, beforeRevision))
 
-	record, err := FindByLastTaskRegressionByTest(sub, testName, taskDisplayName, variant, projectID)
+	record, err := FindByLastTaskRegressionByTest(s.T().Context(), sub, testName, taskDisplayName, variant, projectID)
 	s.NoError(err)
 	s.Require().NotNil(record)
 	s.True(record.Id.Valid())
@@ -75,7 +75,7 @@ func (s *alertRecordSuite) TestByLastFailureTransition() {
 		RevisionOrderNumber: 2,
 	}
 	s.NoError(alert2.Insert())
-	alert, err := FindOne(ByLastFailureTransition("", "t", "v", "p"))
+	alert, err := FindOne(s.T().Context(), ByLastFailureTransition("", "t", "v", "p"))
 	s.NoError(err)
 	s.Equal("t2", alert.TaskId)
 
@@ -89,7 +89,7 @@ func (s *alertRecordSuite) TestByLastFailureTransition() {
 		RevisionOrderNumber: 3,
 	}
 	s.NoError(alert3.Insert())
-	alert, err = FindOne(ByLastFailureTransition("", "t", "v", "p"))
+	alert, err = FindOne(s.T().Context(), ByLastFailureTransition("", "t", "v", "p"))
 	s.NoError(err)
 	s.Equal("t3", alert.TaskId)
 
@@ -104,7 +104,7 @@ func (s *alertRecordSuite) TestByLastFailureTransition() {
 		AlertTime:           time.Now(),
 	}
 	s.NoError(alert4.Insert())
-	alert, err = FindOne(ByLastFailureTransition("", "t", "v", "p"))
+	alert, err = FindOne(s.T().Context(), ByLastFailureTransition("", "t", "v", "p"))
 	s.NoError(err)
 	s.Equal("t4", alert.TaskId)
 
@@ -119,7 +119,7 @@ func (s *alertRecordSuite) TestByLastFailureTransition() {
 		AlertTime:           time.Now().Add(-1 * time.Hour),
 	}
 	s.NoError(alert5.Insert())
-	alert, err = FindOne(ByLastFailureTransition("", "t", "v", "p"))
+	alert, err = FindOne(s.T().Context(), ByLastFailureTransition("", "t", "v", "p"))
 	s.NoError(err)
 	s.Equal("t4", alert.TaskId)
 }
@@ -153,7 +153,7 @@ func (s *alertRecordSuite) TestFindOneWithUnsetIDQuery() {
 	s.NoError(db.Insert(Collection, &oldStyle1))
 	s.NoError(db.Insert(Collection, &oldStyle3))
 
-	rec, err := FindOne(ByLastFailureTransition(legacyAlertsSubscription, "task", "variant", "project"))
+	rec, err := FindOne(s.T().Context(), ByLastFailureTransition(legacyAlertsSubscription, "task", "variant", "project"))
 	s.NoError(err)
 	s.Require().NotNil(rec)
 
@@ -169,13 +169,13 @@ func (s *alertRecordSuite) TestFindOneWithUnsetIDQuery() {
 	}
 	s.NoError(newStyle.Insert())
 
-	rec, err = FindOne(ByLastFailureTransition(legacyAlertsSubscription, "task", "variant", "project"))
+	rec, err = FindOne(s.T().Context(), ByLastFailureTransition(legacyAlertsSubscription, "task", "variant", "project"))
 	s.NoError(err)
 	s.Require().NotNil(rec)
 	s.Equal(2, rec.RevisionOrderNumber)
 
 	records := []AlertRecord{}
-	err = db.FindAllQ(Collection, ByLastFailureTransition(legacyAlertsSubscription, "task", "variant", "project").Limit(999), &records)
+	err = db.FindAllQContext(s.T().Context(), Collection, ByLastFailureTransition(legacyAlertsSubscription, "task", "variant", "project").Limit(999), &records)
 	s.NoError(err)
 	s.Len(records, 3)
 }
@@ -205,7 +205,7 @@ func (s *alertRecordSuite) TestFindByLastTaskRegressionByTest() {
 	s.NoError(alert2.Insert())
 
 	//test that sorting by revision works
-	alert, err := FindByLastTaskRegressionByTest("", "test", "t", "v", "p")
+	alert, err := FindByLastTaskRegressionByTest(s.T().Context(), "", "test", "t", "v", "p")
 	s.NoError(err)
 	s.Equal("t2", alert.TaskId)
 
@@ -222,7 +222,7 @@ func (s *alertRecordSuite) TestFindByLastTaskRegressionByTest() {
 		AlertTime:           time.Now(),
 	}
 	s.NoError(alert3.Insert())
-	alert, err = FindByLastTaskRegressionByTest("", "test", "t", "v", "p")
+	alert, err = FindByLastTaskRegressionByTest(s.T().Context(), "", "test", "t", "v", "p")
 	s.NoError(err)
 	s.Equal("t3", alert.TaskId)
 
@@ -239,7 +239,7 @@ func (s *alertRecordSuite) TestFindByLastTaskRegressionByTest() {
 		AlertTime:           time.Now().Add(-1 * time.Hour),
 	}
 	s.NoError(alert4.Insert())
-	alert, err = FindByLastTaskRegressionByTest("", "test", "t", "v", "p")
+	alert, err = FindByLastTaskRegressionByTest(s.T().Context(), "", "test", "t", "v", "p")
 	s.NoError(err)
 	s.Equal("t3", alert.TaskId)
 }
@@ -268,7 +268,7 @@ func (s *alertRecordSuite) TestFindByTaskRegressionByTaskTest() {
 	}
 	s.NoError(alert2.Insert())
 
-	alert, err := FindByTaskRegressionByTaskTest("", "test", "t", "v", "p", "t2")
+	alert, err := FindByTaskRegressionByTaskTest(s.T().Context(), "", "test", "t", "v", "p", "t2")
 	s.NoError(err)
 	s.True(time.Date(2010, time.November, 10, 23, 0, 0, 0, time.UTC).Equal(alert.AlertTime))
 }
@@ -297,7 +297,7 @@ func (s *alertRecordSuite) TestFindByTaskRegressionTestAndOrderNumber() {
 	}
 	s.NoError(alert2.Insert())
 
-	alert, err := FindByTaskRegressionTestAndOrderNumber("", "test", "t", "v", "p", 1)
+	alert, err := FindByTaskRegressionTestAndOrderNumber(s.T().Context(), "", "test", "t", "v", "p", 1)
 	s.NoError(err)
 	s.Equal("t1", alert.TaskId)
 }

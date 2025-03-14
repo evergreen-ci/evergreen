@@ -7,7 +7,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -18,6 +17,7 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func TestUpsertAtomically(t *testing.T) {
@@ -32,7 +32,7 @@ func TestUpsertAtomically(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, 1, change.Updated)
 
-			dbDispatcher, err := FindOneByID(pd.ID)
+			dbDispatcher, err := FindOneByID(t.Context(), pd.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbDispatcher)
 			assert.Equal(t, pd.GroupID, dbDispatcher.GroupID)
@@ -44,7 +44,7 @@ func TestUpsertAtomically(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, 1, change.Updated)
 
-			dbDispatcher, err := FindOneByID(pd.ID)
+			dbDispatcher, err := FindOneByID(t.Context(), pd.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbDispatcher)
 			assert.Equal(t, pd.GroupID, dbDispatcher.GroupID)
@@ -59,7 +59,7 @@ func TestUpsertAtomically(t *testing.T) {
 			require.NoError(t, pd.Insert())
 
 			modified := pd
-			modified.ID = bson.NewObjectId().Hex()
+			modified.ID = primitive.NewObjectID().Hex()
 			modified.PodIDs = []string{"modified-pod0"}
 			modified.TaskIDs = []string{"modified-task0"}
 
@@ -67,11 +67,11 @@ func TestUpsertAtomically(t *testing.T) {
 			assert.Error(t, err)
 			assert.Zero(t, change)
 
-			dbDispatcher, err := FindOneByID(modified.ID)
+			dbDispatcher, err := FindOneByID(t.Context(), modified.ID)
 			assert.NoError(t, err)
 			assert.Zero(t, dbDispatcher)
 
-			dbDispatcher, err = FindOneByID(pd.ID)
+			dbDispatcher, err = FindOneByID(t.Context(), pd.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbDispatcher)
 			assert.Equal(t, pd.GroupID, dbDispatcher.GroupID)
@@ -90,7 +90,7 @@ func TestUpsertAtomically(t *testing.T) {
 			assert.Error(t, err)
 			assert.Zero(t, change)
 
-			dbDispatcher, err := FindOneByID(pd.ID)
+			dbDispatcher, err := FindOneByID(t.Context(), pd.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbDispatcher)
 			assert.Equal(t, pd.GroupID, dbDispatcher.GroupID)
@@ -109,7 +109,7 @@ func TestUpsertAtomically(t *testing.T) {
 			assert.Error(t, err)
 			assert.Zero(t, change)
 
-			dbDispatcher, err := FindOneByID(pd.ID)
+			dbDispatcher, err := FindOneByID(t.Context(), pd.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbDispatcher)
 			assert.Equal(t, pd.GroupID, dbDispatcher.GroupID)
@@ -172,7 +172,7 @@ func TestAssignNextTask(t *testing.T) {
 		assert.Equal(t, p.ID, dbTask.PodID)
 		assert.Equal(t, p.AgentVersion, dbTask.AgentVersion)
 
-		dbPod, err := pod.FindOneByID(p.ID)
+		dbPod, err := pod.FindOneByID(t.Context(), p.ID)
 		require.NoError(t, err)
 		require.NotZero(t, dbPod)
 		assert.Equal(t, tsk.Id, dbPod.TaskRuntimeInfo.RunningTaskID)
@@ -207,7 +207,7 @@ func TestAssignNextTask(t *testing.T) {
 	}
 
 	checkDispatcherTasks := func(t *testing.T, pd PodDispatcher, taskIDs []string) {
-		dbDispatcher, err := FindOneByID(pd.ID)
+		dbDispatcher, err := FindOneByID(t.Context(), pd.ID)
 		require.NoError(t, err)
 		require.NotZero(t, dbDispatcher)
 
@@ -465,7 +465,7 @@ func TestRemovePod(t *testing.T) {
 			require.NoError(t, pd.Insert())
 			require.NoError(t, pd.RemovePod(ctx, env, podID))
 
-			dbDisp, err := FindOneByID(pd.ID)
+			dbDisp, err := FindOneByID(t.Context(), pd.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbDisp)
 			assert.Empty(t, dbDisp.TaskIDs)
@@ -477,7 +477,7 @@ func TestRemovePod(t *testing.T) {
 
 			require.NoError(t, pd.RemovePod(ctx, env, podID))
 
-			dbDisp, err := FindOneByID(pd.ID)
+			dbDisp, err := FindOneByID(t.Context(), pd.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbDisp)
 			assert.Empty(t, dbDisp.TaskIDs)
@@ -533,7 +533,7 @@ func TestRemovePod(t *testing.T) {
 
 			require.NoError(t, pd.RemovePod(ctx, env, podID))
 
-			dbDisp, err := FindOneByID(pd.ID)
+			dbDisp, err := FindOneByID(t.Context(), pd.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbDisp)
 			assert.Empty(t, dbDisp.TaskIDs)
@@ -552,7 +552,7 @@ func TestRemovePod(t *testing.T) {
 			assert.True(t, dbTask1.IsFinished(), "task should be finished because it has used up all of its container allocation attempts")
 			assert.False(t, dbTask1.ContainerAllocated)
 
-			dbBuild, err := build.FindOneId(b.Id)
+			dbBuild, err := build.FindOneId(t.Context(), b.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbBuild)
 			assert.True(t, dbBuild.IsFinished(), "build should be updated after its task is finished")
@@ -568,7 +568,7 @@ func TestRemovePod(t *testing.T) {
 
 			assert.Error(t, pd.RemovePod(ctx, env, "nonexistent"))
 
-			dbDisp, err := FindOneByID(pd.ID)
+			dbDisp, err := FindOneByID(t.Context(), pd.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbDisp)
 			assert.Equal(t, []string{"task_id"}, pd.TaskIDs)
@@ -594,7 +594,7 @@ func TestRemovePod(t *testing.T) {
 
 			assert.Error(t, pd.RemovePod(ctx, env, podID))
 
-			dbDisp, err := FindOneByID(pd.ID)
+			dbDisp, err := FindOneByID(t.Context(), pd.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbDisp)
 			assert.Equal(t, []string{tsk.Id}, pd.TaskIDs)

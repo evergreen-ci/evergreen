@@ -50,7 +50,7 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 		assert.Equal(t, evergreen.TaskUndispatched, restartedTask.Status)
 	}
 	checkPodRunningTaskCleared := func(t *testing.T, podID string) {
-		foundPod, err := pod.FindOneByID(podID)
+		foundPod, err := pod.FindOneByID(t.Context(), podID)
 		require.NoError(t, err)
 		require.NotZero(t, foundPod)
 		assert.Zero(t, foundPod.TaskRuntimeInfo)

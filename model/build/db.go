@@ -10,7 +10,7 @@ import (
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 // The MongoDB collection for build documents.
@@ -180,9 +180,9 @@ func ByAfterRevision(project, buildVariant string, revision int) db.Q {
 // DB Boilerplate
 
 // FindOne returns one build that satisfies the query.
-func FindOne(query db.Q) (*Build, error) {
+func FindOne(ctx context.Context, query db.Q) (*Build, error) {
 	build := &Build{}
-	err := db.FindOneQ(Collection, query, build)
+	err := db.FindOneQContext(ctx, Collection, query, build)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -190,8 +190,8 @@ func FindOne(query db.Q) (*Build, error) {
 }
 
 // FindOneId returns one build by Id.
-func FindOneId(id string) (*Build, error) {
-	return FindOne(ById(id))
+func FindOneId(ctx context.Context, id string) (*Build, error) {
+	return FindOne(ctx, ById(id))
 }
 
 // FindBuildsByVersions finds builds matching the version. This only populates a
@@ -218,8 +218,9 @@ func UpdateOne(ctx context.Context, query any, update any) error {
 	)
 }
 
-func UpdateAllBuilds(query any, update any) error {
-	_, err := db.UpdateAll(
+func UpdateAllBuilds(ctx context.Context, query any, update any) error {
+	_, err := db.UpdateAllContext(
+		ctx,
 		Collection,
 		query,
 		update,
@@ -227,8 +228,8 @@ func UpdateAllBuilds(query any, update any) error {
 	return err
 }
 
-func FindProjectForBuild(buildID string) (string, error) {
-	b, err := FindOne(ById(buildID).Project(bson.M{ProjectKey: 1}))
+func FindProjectForBuild(ctx context.Context, buildID string) (string, error) {
+	b, err := FindOne(ctx, ById(buildID).Project(bson.M{ProjectKey: 1}))
 	if err != nil {
 		return "", err
 	}
@@ -256,7 +257,7 @@ func FindBuildsForTasks(tasks []task.Task) ([]Build, error) {
 }
 
 // SetBuildStartedForTasks sets tasks' builds status to started and activates them
-func SetBuildStartedForTasks(tasks []task.Task, caller string) error {
+func SetBuildStartedForTasks(ctx context.Context, tasks []task.Task, caller string) error {
 	buildIdSet := map[string]bool{}
 	for _, t := range tasks {
 		buildIdSet[t.BuildId] = true
@@ -270,6 +271,7 @@ func SetBuildStartedForTasks(tasks []task.Task, caller string) error {
 	update[StartTimeKey] = time.Now()
 	// Set the build status/activation for all the builds containing the tasks that we touched.
 	err := UpdateAllBuilds(
+		ctx,
 		bson.M{IdKey: bson.M{"$in": buildIdList}},
 		bson.M{"$set": update},
 	)

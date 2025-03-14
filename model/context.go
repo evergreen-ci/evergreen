@@ -38,7 +38,7 @@ func LoadContext(ctx context.Context, taskId, buildId, versionId, patchId, proje
 		projectId = pID
 	}
 
-	err = c.populatePatch(patchId)
+	err = c.populatePatch(ctx, patchId)
 	if err != nil {
 		return c, err
 	}
@@ -49,7 +49,7 @@ func LoadContext(ctx context.Context, taskId, buildId, versionId, patchId, proje
 	// Try to load project for the ID we found, and set cookie with it for subsequent requests
 	if len(projectId) > 0 {
 		// Also lookup the ProjectRef itself and add it to context.
-		c.ProjectRef, err = FindMergedProjectRef(projectId, versionId, true)
+		c.ProjectRef, err = FindMergedProjectRef(ctx, projectId, versionId, true)
 		if err != nil {
 			return c, err
 		}
@@ -119,7 +119,7 @@ func (c *Context) populateTaskBuildVersion(ctx context.Context, taskId, buildId,
 
 	// Fetch build if there's a build ID present; if we find one, populate version ID from it
 	if len(buildId) > 0 {
-		c.Build, err = build.FindOne(build.ById(buildId))
+		c.Build, err = build.FindOne(ctx, build.ById(buildId))
 		if err != nil {
 			return "", err
 		}
@@ -143,17 +143,17 @@ func (c *Context) populateTaskBuildVersion(ctx context.Context, taskId, buildId,
 // populatePatch loads a patch into the project context, using patchId if provided.
 // If patchId is blank, will try to infer the patch ID from the version already loaded
 // into context, if available.
-func (ctx *Context) populatePatch(patchId string) error {
+func (ctx *Context) populatePatch(c context.Context, patchId string) error {
 	var err error
 	if len(patchId) > 0 {
 		// The patch is explicitly identified in the URL, so fetch it
 		if !patch.IsValidId(patchId) {
 			return errors.Errorf("patch id '%s' is not an object id", patchId)
 		}
-		ctx.Patch, err = patch.FindOne(patch.ByStringId(patchId).Project(patch.ExcludePatchDiff))
+		ctx.Patch, err = patch.FindOne(c, patch.ByStringId(patchId).Project(patch.ExcludePatchDiff))
 	} else if ctx.Version != nil {
 		// patch isn't in URL but the version in context has one, get it
-		ctx.Patch, err = patch.FindOne(patch.ByVersion(ctx.Version.Id).Project(patch.ExcludePatchDiff))
+		ctx.Patch, err = patch.FindOne(c, patch.ByVersion(ctx.Version.Id).Project(patch.ExcludePatchDiff))
 	}
 	if err != nil {
 		return err

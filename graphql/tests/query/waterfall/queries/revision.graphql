@@ -1,5 +1,5 @@
 {
-  waterfall(options: { projectIdentifier: "spruce", revision: "da39a3e" }) {
+  waterfall(options: { projectIdentifier: "spruce", revision: "d7b7a08" }) {
     versions {
       version {
         id

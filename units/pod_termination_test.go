@@ -92,7 +92,7 @@ func TestPodTerminationJob(t *testing.T) {
 
 			checkCloudPodDeleteRequests(t, j.ecsClient)
 
-			dbPod, err := pod.FindOneByID(j.PodID)
+			dbPod, err := pod.FindOneByID(ctx, j.PodID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Equal(t, pod.StatusTerminated, dbPod.Status)
@@ -109,7 +109,7 @@ func TestPodTerminationJob(t *testing.T) {
 
 			checkCloudPodDeleteRequests(t, j.ecsClient)
 
-			dbPod, err := pod.FindOneByID(j.PodID)
+			dbPod, err := pod.FindOneByID(ctx, j.PodID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Equal(t, pod.StatusTerminated, dbPod.Status)
@@ -140,7 +140,7 @@ func TestPodTerminationJob(t *testing.T) {
 
 			checkCloudPodDeleteRequests(t, j.ecsClient)
 
-			dbPod, err := pod.FindOneByID(j.PodID)
+			dbPod, err := pod.FindOneByID(ctx, j.PodID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Equal(t, pod.StatusTerminated, dbPod.Status)
@@ -162,7 +162,7 @@ func TestPodTerminationJob(t *testing.T) {
 			j.Run(ctx)
 			require.NoError(t, j.Error())
 
-			dbPod, err := pod.FindOneByID(j.pod.ID)
+			dbPod, err := pod.FindOneByID(ctx, j.pod.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Equal(t, pod.StatusTerminated, dbPod.Status)
@@ -174,7 +174,7 @@ func TestPodTerminationJob(t *testing.T) {
 			j.Run(ctx)
 			require.NoError(t, j.Error())
 
-			dbPod, err := pod.FindOneByID(j.pod.ID)
+			dbPod, err := pod.FindOneByID(ctx, j.pod.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Equal(t, pod.StatusTerminated, dbPod.Status)
@@ -214,7 +214,7 @@ func TestPodTerminationJob(t *testing.T) {
 			require.NoError(t, j.Error())
 
 			assert.Equal(t, cocoa.StatusDeleted, j.ecsPod.StatusInfo().Status)
-			dbPod, err := pod.FindOneByID(j.pod.ID)
+			dbPod, err := pod.FindOneByID(ctx, j.pod.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Equal(t, pod.StatusTerminated, dbPod.Status)
@@ -229,7 +229,7 @@ func TestPodTerminationJob(t *testing.T) {
 			require.NotZero(t, dbTask)
 			assert.True(t, dbTask.ShouldAllocateContainer(), "stranded task should have been restarted to re-attempt allocation")
 
-			dbBuild, err := build.FindOneId(b.Id)
+			dbBuild, err := build.FindOneId(t.Context(), b.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbBuild)
 			assert.Equal(t, evergreen.BuildCreated, dbBuild.Status, "build should have been updated after resetting stranded task")
@@ -248,12 +248,12 @@ func TestPodTerminationJob(t *testing.T) {
 			require.NoError(t, j.Error())
 
 			assert.Equal(t, cocoa.StatusDeleted, j.ecsPod.StatusInfo().Status)
-			dbPod, err := pod.FindOneByID(j.pod.ID)
+			dbPod, err := pod.FindOneByID(ctx, j.pod.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Equal(t, pod.StatusTerminated, dbPod.Status)
 
-			dbDisp, err := dispatcher.FindOneByID(pd.ID)
+			dbDisp, err := dispatcher.FindOneByID(ctx, pd.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbDisp)
 			assert.Equal(t, []string{"another_pod_id"}, dbDisp.PodIDs, "pod should have been removed from dispatcher's set of pods")
@@ -312,12 +312,12 @@ func TestPodTerminationJob(t *testing.T) {
 			require.NoError(t, j.Error())
 
 			assert.Equal(t, cocoa.StatusDeleted, j.ecsPod.StatusInfo().Status)
-			dbPod, err := pod.FindOneByID(j.pod.ID)
+			dbPod, err := pod.FindOneByID(ctx, j.pod.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Equal(t, pod.StatusTerminated, dbPod.Status)
 
-			dbDisp, err := dispatcher.FindOneByID(pd.ID)
+			dbDisp, err := dispatcher.FindOneByID(ctx, pd.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbDisp)
 			assert.Empty(t, dbDisp.PodIDs, "terminated pod should have been removed from dispatcher")
@@ -334,7 +334,7 @@ func TestPodTerminationJob(t *testing.T) {
 			assert.False(t, dbTask1.ShouldAllocateContainer(), "task that has used up all container allocation attempts should not be able to allocate a new container")
 			assert.True(t, dbTask1.IsFinished(), "task that has used up all container allocation attempts should be finished")
 
-			dbBuild, err := build.FindOneId(b.Id)
+			dbBuild, err := build.FindOneId(t.Context(), b.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbBuild)
 			assert.True(t, dbBuild.IsFinished(), "build should be updated after its task has run out of container allocation attempts")
@@ -411,7 +411,7 @@ func generateTestingECSPod(ctx context.Context, t *testing.T, client cocoa.ECSCl
 	item, err := pdm.CreatePodDefinition(ctx, *defOpts)
 	require.NoError(t, err)
 
-	podDef, err := definition.FindOneByExternalID(item.ID)
+	podDef, err := definition.FindOneByExternalID(ctx, item.ID)
 	require.NoError(t, err)
 	require.NotZero(t, podDef, "pod definition should have been cached")
 

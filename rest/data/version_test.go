@@ -330,7 +330,7 @@ func TestCreateVersionFromConfig(t *testing.T) {
 	assert.NotNil(pp)
 	assert.True(utility.FromBoolPtr(pp.Stepback))
 
-	b, err := build.FindOneId(newVersion.BuildIds[0])
+	b, err := build.FindOneId(t.Context(), newVersion.BuildIds[0])
 	assert.NoError(err)
 	assert.Equal(evergreen.BuildCreated, b.Status)
 	assert.True(b.Activated)
@@ -377,7 +377,7 @@ tasks:
 	assert.NotNil(pp)
 	assert.True(utility.FromBoolPtr(pp.Stepback))
 
-	b, err = build.FindOneId(newVersion.BuildIds[0])
+	b, err = build.FindOneId(t.Context(), newVersion.BuildIds[0])
 	assert.NoError(err)
 	assert.Equal(evergreen.BuildCreated, b.Status)
 	assert.True(b.Activated)

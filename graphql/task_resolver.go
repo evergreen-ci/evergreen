@@ -39,7 +39,7 @@ func (r *taskResolver) AbortInfo(ctx context.Context, obj *restModel.APITask) (*
 		if abortedTask == nil {
 			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("task '%s' not found", obj.AbortInfo.TaskID))
 		}
-		abortedTaskBuild, err := build.FindOneId(abortedTask.BuildId)
+		abortedTaskBuild, err := build.FindOneId(ctx, abortedTask.BuildId)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching build '%s': %s", abortedTask.BuildId, err.Error()))
 		}
@@ -72,7 +72,7 @@ func (r *taskResolver) Annotation(ctx context.Context, obj *restModel.APITask) (
 		return nil, Forbidden.Send(ctx, fmt.Sprintf("not authorized to view annotations for task '%s'", taskID))
 	}
 
-	annotation, err := annotations.FindOneByTaskIdAndExecution(taskID, obj.Execution)
+	annotation, err := annotations.FindOneByTaskIdAndExecution(ctx, taskID, obj.Execution)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding annotation for task '%s' with execution %d: %s", taskID, obj.Execution, err.Error()))
 	}
@@ -148,7 +148,7 @@ func (r *taskResolver) BuildVariantDisplayName(ctx context.Context, obj *restMod
 		return nil, nil
 	}
 	buildID := utility.FromStringPtr(obj.BuildId)
-	b, err := build.FindOneId(buildID)
+	b, err := build.FindOneId(ctx, buildID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching build '%s': %s", buildID, err.Error()))
 	}
@@ -453,7 +453,7 @@ func (r *taskResolver) IsPerfPluginEnabled(ctx context.Context, obj *restModel.A
 	if !evergreen.IsFinishedTaskStatus(utility.FromStringPtr(obj.Status)) {
 		return false, nil
 	}
-	if !model.IsPerfEnabledForProject(utility.FromStringPtr(obj.ProjectId)) {
+	if !model.IsPerfEnabledForProject(ctx, utility.FromStringPtr(obj.ProjectId)) {
 		return false, nil
 	}
 	opts := apimodels.GetPerfCountOptions{
@@ -498,7 +498,7 @@ func (r *taskResolver) Patch(ctx context.Context, obj *restModel.APITask) (*rest
 	if !evergreen.IsPatchRequester(utility.FromStringPtr(obj.Requester)) {
 		return nil, nil
 	}
-	apiPatch, err := data.FindPatchById(utility.FromStringPtr(obj.Version))
+	apiPatch, err := data.FindPatchById(ctx, utility.FromStringPtr(obj.Version))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding patch '%s': %s", utility.FromStringPtr(obj.Version), err.Error()))
 	}
@@ -517,7 +517,7 @@ func (r *taskResolver) Pod(ctx context.Context, obj *restModel.APITask) (*restMo
 	if podID == "" {
 		return nil, nil
 	}
-	pod, err := data.FindAPIPodByID(podID)
+	pod, err := data.FindAPIPodByID(ctx, podID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding pod '%s': %s", podID, err.Error()))
 	}
@@ -527,7 +527,7 @@ func (r *taskResolver) Pod(ctx context.Context, obj *restModel.APITask) (*restMo
 // Project is the resolver for the project field.
 func (r *taskResolver) Project(ctx context.Context, obj *restModel.APITask) (*restModel.APIProjectRef, error) {
 	projectID := utility.FromStringPtr(obj.ProjectId)
-	pRef, err := data.FindProjectById(projectID, true, false)
+	pRef, err := data.FindProjectById(ctx, projectID, true, false)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", projectID, err.Error()))
 	}

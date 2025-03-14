@@ -15,7 +15,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 const (
@@ -307,20 +307,20 @@ var ExcludePatchDiff = bson.M{
 // Query Functions
 
 // FindOne runs a patch query, returning one patch.
-func FindOne(query db.Q) (*Patch, error) {
+func FindOne(ctx context.Context, query db.Q) (*Patch, error) {
 	patch := &Patch{}
-	err := db.FindOneQ(Collection, query, patch)
+	err := db.FindOneQContext(ctx, Collection, query, patch)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
 	return patch, err
 }
 
-func FindOneId(id string) (*Patch, error) {
+func FindOneId(ctx context.Context, id string) (*Patch, error) {
 	if !IsValidId(id) {
 		return nil, errors.Errorf("'%s' is not a valid ObjectId", id)
 	}
-	return FindOne(ByStringId(id))
+	return FindOne(ctx, ByStringId(id))
 }
 
 // Find runs a patch query, returning all patches that satisfy the query.
@@ -331,13 +331,13 @@ func Find(query db.Q) ([]Patch, error) {
 }
 
 // Remove removes all patch documents that satisfy the query.
-func Remove(query db.Q) error {
-	return db.RemoveAllQ(Collection, query)
+func Remove(ctx context.Context, query db.Q) error {
+	return db.RemoveAllQ(ctx, Collection, query)
 }
 
 // UpdateAll runs an update on all patch documents.
-func UpdateAll(query any, update any) (info *adb.ChangeInfo, err error) {
-	return db.UpdateAll(Collection, query, update)
+func UpdateAll(ctx context.Context, query any, update any) (info *adb.ChangeInfo, err error) {
+	return db.UpdateAllContext(ctx, Collection, query, update)
 }
 
 // UpdateOne runs an update on a single patch document.
@@ -394,7 +394,7 @@ func ConsolidatePatchesForUser(ctx context.Context, oldAuthor string, newUsr *us
 	update := bson.M{
 		"$set": bson.M{AuthorKey: newUsr.Id},
 	}
-	_, err = UpdateAll(byUser(oldAuthor), update)
+	_, err = UpdateAll(ctx, byUser(oldAuthor), update)
 	return err
 }
 
@@ -415,8 +415,8 @@ func FindLatestGithubPRPatch(owner, repo string, prNumber int) (*Patch, error) {
 	return &patches[0], nil
 }
 
-func FindProjectForPatch(patchID mgobson.ObjectId) (string, error) {
-	p, err := FindOne(ById(patchID).Project(bson.M{ProjectKey: 1}))
+func FindProjectForPatch(ctx context.Context, patchID mgobson.ObjectId) (string, error) {
+	p, err := FindOne(ctx, ById(patchID).Project(bson.M{ProjectKey: 1}))
 	if err != nil {
 		return "", err
 	}
@@ -427,10 +427,10 @@ func FindProjectForPatch(patchID mgobson.ObjectId) (string, error) {
 }
 
 // GetFinalizedChildPatchIdsForPatch returns patchIds for any finalized children of the given patch.
-func GetFinalizedChildPatchIdsForPatch(patchID string) ([]string, error) {
+func GetFinalizedChildPatchIdsForPatch(ctx context.Context, patchID string) ([]string, error) {
 	withKey := bsonutil.GetDottedKeyName(TriggersKey, TriggerInfoChildPatchesKey)
 	//do the same for child patches
-	p, err := FindOne(ByStringId(patchID).WithFields(withKey))
+	p, err := FindOne(ctx, ByStringId(patchID).WithFields(withKey))
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding patch '%s'", patchID)
 	}

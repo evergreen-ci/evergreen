@@ -9,7 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
-	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func TestGenerateTasksEstimations(t *testing.T) {

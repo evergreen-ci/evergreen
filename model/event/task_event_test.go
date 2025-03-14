@@ -10,7 +10,7 @@ import (
 	"github.com/smartystreets/goconvey/convey/reporting"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func init() {
@@ -114,6 +114,6 @@ func TestLogManyTestEvents(t *testing.T) {
 	require.NoError(db.ClearCollections(EventCollection))
 	LogManyTaskAbortRequests([]string{"task_1", "task_2"}, "example_user")
 	events := []EventLogEntry{}
-	assert.NoError(db.FindAllQ(EventCollection, db.Query(bson.M{}), &events))
+	assert.NoError(db.FindAllQContext(t.Context(), EventCollection, db.Query(bson.M{}), &events))
 	assert.Len(events, 2)
 }

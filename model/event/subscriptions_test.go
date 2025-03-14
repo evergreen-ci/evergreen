@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func TestSubscriptions(t *testing.T) {
@@ -152,7 +152,7 @@ func (s *subscriptionsSuite) SetupTest() {
 
 func (s *subscriptionsSuite) TestUpsert() {
 	out := []Subscription{}
-	s.NoError(db.FindAllQ(SubscriptionsCollection, db.Q{}, &out))
+	s.NoError(db.FindAllQContext(s.T().Context(), SubscriptionsCollection, db.Q{}, &out))
 
 	s.Require().Len(out, 6)
 
@@ -171,10 +171,10 @@ func (s *subscriptionsSuite) TestUpsert() {
 
 func (s *subscriptionsSuite) TestRemove() {
 	for i := range s.subscriptions {
-		s.NoError(RemoveSubscription(s.subscriptions[i].ID))
+		s.NoError(RemoveSubscription(s.T().Context(), s.subscriptions[i].ID))
 
 		out := []Subscription{}
-		s.NoError(db.FindAllQ(SubscriptionsCollection, db.Q{}, &out))
+		s.NoError(db.FindAllQContext(s.T().Context(), SubscriptionsCollection, db.Q{}, &out))
 		s.Len(out, len(s.subscriptions)-i-1)
 	}
 }
@@ -532,14 +532,14 @@ func (s *subscriptionsSuite) TestFindByOwnerForProject() {
 
 func (s *subscriptionsSuite) TestFindSubscriptionsByOwner() {
 	for i := range s.subscriptions {
-		sub, err := FindSubscriptionByID(s.subscriptions[i].ID)
+		sub, err := FindSubscriptionByID(s.T().Context(), s.subscriptions[i].ID)
 		s.NoError(err)
 		s.NotNil(sub)
 		s.NotEqual("", sub.ID)
 	}
 
 	s.NoError(db.ClearCollections(SubscriptionsCollection))
-	sub, err := FindSubscriptionByID(s.subscriptions[0].ID)
+	sub, err := FindSubscriptionByID(s.T().Context(), s.subscriptions[0].ID)
 	s.NoError(err)
 	s.Nil(sub)
 }
@@ -550,7 +550,7 @@ func (s *subscriptionsSuite) TestCreateOrUpdateGeneralSubscription() {
 		Target: "@octocat",
 	}
 
-	subscription, err := CreateOrUpdateGeneralSubscription(GeneralSubscriptionPatchOutcome, "",
+	subscription, err := CreateOrUpdateGeneralSubscription(s.T().Context(), GeneralSubscriptionPatchOutcome, "",
 		subscriber, "octocat")
 	s.NoError(err)
 

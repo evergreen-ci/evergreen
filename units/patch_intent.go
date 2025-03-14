@@ -25,7 +25,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 const (
@@ -96,7 +96,7 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 
 	var err error
 	if j.intent == nil {
-		j.intent, err = patch.FindIntent(j.IntentID, j.IntentType)
+		j.intent, err = patch.FindIntent(ctx, j.IntentID, j.IntentType)
 		if err != nil {
 			j.AddError(errors.Wrapf(err, "finding patch intent '%s'", j.IntentID))
 			return
@@ -254,7 +254,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		patchDoc.DisplayNewUI = true
 	}
 
-	pref, err := model.FindMergedProjectRef(patchDoc.Project, patchDoc.Version, true)
+	pref, err := model.FindMergedProjectRef(ctx, patchDoc.Project, patchDoc.Version, true)
 	if err != nil {
 		return errors.Wrap(err, "finding project for patch")
 	}
@@ -314,7 +314,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		validationCatcher.Errorf("invalid patched config for current project settings: %s", validator.ValidationErrorsToString(errs))
 	}
 
-	if errs := validator.CheckPatchedProjectConfigErrors(patchedProjectConfig).AtLevel(validator.Error); len(errs) != 0 {
+	if errs := validator.CheckPatchedProjectConfigErrors(ctx, patchedProjectConfig).AtLevel(validator.Error); len(errs) != 0 {
 		validationCatcher.Errorf("invalid patched project config syntax: %s", validator.ValidationErrorsToString(errs))
 	}
 	if validationCatcher.HasErrors() {
@@ -590,7 +590,7 @@ func (j *patchIntentProcessor) buildTasksAndVariants(ctx context.Context, patchD
 	}
 
 	if len(patchDoc.VariantsTasks) == 0 {
-		project.BuildProjectTVPairs(patchDoc, j.intent.GetAlias())
+		project.BuildProjectTVPairs(ctx, patchDoc, j.intent.GetAlias())
 	}
 	return nil
 }
@@ -688,7 +688,7 @@ func (j *patchIntentProcessor) setToPreviousPatchDefinition(ctx context.Context,
 	var reusePatch *patch.Patch
 	var err error
 	if patchId == "" {
-		reusePatch, err = patch.FindOne(patch.MostRecentPatchByUserAndProject(j.user.Username(), project.Identifier))
+		reusePatch, err = patch.FindOne(ctx, patch.MostRecentPatchByUserAndProject(j.user.Username(), project.Identifier))
 		if err != nil {
 			return errors.Wrap(err, "querying for most recent patch")
 		}
@@ -696,7 +696,7 @@ func (j *patchIntentProcessor) setToPreviousPatchDefinition(ctx context.Context,
 			return errors.Errorf("no previous patch available")
 		}
 	} else {
-		reusePatch, err = patch.FindOneId(patchId)
+		reusePatch, err = patch.FindOneId(ctx, patchId)
 		if err != nil {
 			return errors.Wrapf(err, "querying for patch '%s'", patchId)
 		}
@@ -807,7 +807,7 @@ func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *p
 		}))
 	}()
 
-	projectRef, err := model.FindMergedProjectRef(patchDoc.Project, patchDoc.Version, true)
+	projectRef, err := model.FindMergedProjectRef(ctx, patchDoc.Project, patchDoc.Version, true)
 	if err != nil {
 		return errors.Wrapf(err, "finding project ref '%s'", patchDoc.Project)
 	}
@@ -1028,7 +1028,7 @@ func (j *patchIntentProcessor) buildTriggerPatchDoc(ctx context.Context, patchDo
 	}
 
 	patchDoc.Githash = v.Revision
-	matchingTasks, err := project.VariantTasksForSelectors(intent.Definitions, patchDoc.GetRequester())
+	matchingTasks, err := project.VariantTasksForSelectors(ctx, intent.Definitions, patchDoc.GetRequester())
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "matching tasks to alias definitions")
 	}
@@ -1040,7 +1040,7 @@ func (j *patchIntentProcessor) buildTriggerPatchDoc(ctx context.Context, patchDo
 
 	patchDoc.VariantsTasks = matchingTasks
 	if intent.ParentAsModule != "" || patchDoc.Triggers.SameBranchAsParent {
-		parentPatch, err := patch.FindOneId(patchDoc.Triggers.ParentPatch)
+		parentPatch, err := patch.FindOneId(ctx, patchDoc.Triggers.ParentPatch)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "getting parent patch '%s'", patchDoc.Triggers.ParentPatch)
 		}

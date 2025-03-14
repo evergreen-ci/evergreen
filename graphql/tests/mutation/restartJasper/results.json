@@ -3,16 +3,19 @@
     {
       "query_file": "empty_array.graphql",
       "result": {
+        "data": null,
         "errors": [
           {
-            "message": "hostIds cannot be empty",
-            "path": ["restartJasper"],
+            "message": "No matching hosts found",
+            "path": [
+              "restartJasper",
+              "hostIds"
+            ],
             "extensions": {
-              "code": "INPUT_VALIDATION_ERROR"
+              "code": "RESOURCE_NOT_FOUND"
             }
           }
-        ],
-        "data": null
+        ]
       }
     },
     {
@@ -26,16 +29,19 @@
     {
       "query_file": "no_hosts_found.graphql",
       "result": {
+        "data": null,
         "errors": [
           {
             "message": "No matching hosts found",
-            "path": ["restartJasper"],
+            "path": [
+              "restartJasper",
+              "hostIds"
+            ],
             "extensions": {
               "code": "RESOURCE_NOT_FOUND"
             }
           }
-        ],
-        "data": null
+        ]
       }
     },
     {
@@ -48,10 +54,21 @@
     },
     {
       "query_file": "user_has_no_permission_to_edit_host.graphql",
+      "test_user_id": "regular_user",
       "result": {
-        "data": {
-          "restartJasper": 0
-        }
+        "data": null,
+        "errors": [
+          {
+            "message": "user 'regular_user' does not have permission to access host 'i-0d0ae8b83366d22be'",
+            "path": [
+              "restartJasper",
+              "hostIds"
+            ],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
+          }
+        ]
       }
     }
   ]

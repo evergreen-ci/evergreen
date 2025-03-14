@@ -32,9 +32,9 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/v2/bson"
-	"go.mongodb.org/mongo-driver/v2/mongo"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type Host struct {
@@ -3132,6 +3132,17 @@ func CountSpawnhostsWithNoExpirationByUser(ctx context.Context, user string) (in
 		StartedByKey:    user,
 		NoExpirationKey: true,
 		StatusKey:       bson.M{"$in": evergreen.UpHostStatus},
+	}
+	return Count(ctx, query)
+}
+
+// CountIntentHosts counts the number of intent hosts Evergreen will soon
+// attempt to create.
+func CountIntentHosts(ctx context.Context) (int, error) {
+	query := bson.M{
+		IdKey:        bson.M{"$regex": "^evg.*"},
+		StartedByKey: evergreen.User,
+		StatusKey:    bson.M{"$in": evergreen.UpHostStatus},
 	}
 	return Count(ctx, query)
 }

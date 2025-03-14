@@ -14,8 +14,8 @@ import (
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/v2/bson"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -1666,7 +1666,7 @@ func UpdateAll(ctx context.Context, query any, update any) (*adb.ChangeInfo, err
 }
 
 func UpdateAllWithHint(ctx context.Context, query any, update any, hint any) (*adb.ChangeInfo, error) {
-	res, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(ctx, query, update, options.UpdateMany().SetHint(hint))
+	res, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(ctx, query, update, options.Update().SetHint(hint))
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -1676,7 +1676,7 @@ func UpdateAllWithHint(ctx context.Context, query any, update any, hint any) (*a
 
 // Remove deletes the task of the given id from the database
 func Remove(ctx context.Context, id string) error {
-	return db.RemoveContext(
+	return db.Remove(
 		ctx,
 		Collection,
 		bson.M{IdKey: id},

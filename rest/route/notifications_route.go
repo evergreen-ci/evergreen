@@ -22,7 +22,7 @@ func (gh *notificationsStatusHandler) Factory() gimlet.RouteHandler {
 func (gh *notificationsStatusHandler) Parse(_ context.Context, _ *http.Request) error { return nil }
 
 func (gh *notificationsStatusHandler) Run(ctx context.Context) gimlet.Responder {
-	stats, err := data.GetNotificationsStats()
+	stats, err := data.GetNotificationsStats(ctx)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting notification stats"))
 	}

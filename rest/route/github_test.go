@@ -27,7 +27,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 type GithubWebhookRouteSuite struct {
@@ -431,14 +431,14 @@ func TestPRDef(t *testing.T) {
 	err := keepPRPatchDefinition(t.Context(), owner, repo, 5)
 	assert.NoError(t, err)
 
-	p, err = patch.FindOne(patch.ById(patchId))
+	p, err = patch.FindOne(t.Context(), patch.ById(patchId))
 	assert.NoError(t, err)
 	assert.Equal(t, patchId.Hex(), p.GithubPatchData.RepeatPatchIdNextPatch)
 
 	err = resetPRPatchDefinition(t.Context(), owner, repo, 5)
 	assert.NoError(t, err)
 
-	p, err = patch.FindOne(patch.ById(patchId))
+	p, err = patch.FindOne(t.Context(), patch.ById(patchId))
 	assert.NoError(t, err)
 	assert.Equal(t, "", p.GithubPatchData.RepeatPatchIdNextPatch)
 

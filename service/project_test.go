@@ -16,26 +16,26 @@ func TestValidateBbProject(t *testing.T) {
 		Identifier: "proj1",
 	}
 	assert.NoError(p.Insert())
-	assert.NoError(model.ValidateBbProject("proj1", evergreen.BuildBaronSettings{
+	assert.NoError(model.ValidateBbProject(t.Context(), "proj1", evergreen.BuildBaronSettings{
 		TicketCreateProject:  "BFG",
 		TicketSearchProjects: []string{"BF", "BFG"},
 	}, nil))
 
-	assert.NoError(model.ValidateBbProject("proj1", evergreen.BuildBaronSettings{
+	assert.NoError(model.ValidateBbProject(t.Context(), "proj1", evergreen.BuildBaronSettings{
 		TicketCreateProject:  "BFG",
 		TicketSearchProjects: []string{"BF", "BFG"},
 	}, nil))
 
-	assert.NoError(model.ValidateBbProject("proj1", evergreen.BuildBaronSettings{
+	assert.NoError(model.ValidateBbProject(t.Context(), "proj1", evergreen.BuildBaronSettings{
 		TicketCreateProject:  "BFG",
 		TicketSearchProjects: []string{"BF", "BFG"},
 	}, nil))
 
-	assert.Error(model.ValidateBbProject("proj1", evergreen.BuildBaronSettings{
+	assert.Error(model.ValidateBbProject(t.Context(), "proj1", evergreen.BuildBaronSettings{
 		TicketCreateProject: "BFG",
 	}, nil))
 
-	assert.Error(model.ValidateBbProject("proj1", evergreen.BuildBaronSettings{
+	assert.Error(model.ValidateBbProject(t.Context(), "proj1", evergreen.BuildBaronSettings{
 		TicketSearchProjects: []string{"BF", "BFG"},
 	}, nil))
 }
@@ -47,7 +47,7 @@ func TestBuildBaronPluginConfigureBFSuggestion(t *testing.T) {
 		Identifier: "proj1",
 	}
 	assert.NoError(p.Insert())
-	assert.NoError(model.ValidateBbProject("proj1", evergreen.BuildBaronSettings{
+	assert.NoError(model.ValidateBbProject(t.Context(), "proj1", evergreen.BuildBaronSettings{
 		TicketCreateProject:     "BFG",
 		TicketSearchProjects:    []string{"BF", "BFG"},
 		BFSuggestionServer:      "https://evergreen.mongodb.com",
@@ -56,34 +56,34 @@ func TestBuildBaronPluginConfigureBFSuggestion(t *testing.T) {
 		BFSuggestionTimeoutSecs: 10,
 	}, nil))
 
-	assert.NoError(model.ValidateBbProject("proj1", evergreen.BuildBaronSettings{
+	assert.NoError(model.ValidateBbProject(t.Context(), "proj1", evergreen.BuildBaronSettings{
 		TicketCreateProject:     "BFG",
 		TicketSearchProjects:    []string{"BF", "BFG"},
 		BFSuggestionServer:      "https://evergreen.mongodb.com",
 		BFSuggestionTimeoutSecs: 10,
 	}, nil))
 
-	assert.Error(model.ValidateBbProject("proj1", evergreen.BuildBaronSettings{
+	assert.Error(model.ValidateBbProject(t.Context(), "proj1", evergreen.BuildBaronSettings{
 		TicketCreateProject:  "BFG",
 		TicketSearchProjects: []string{"BF", "BFG"},
 		BFSuggestionUsername: "user",
 		BFSuggestionPassword: "pass",
 	}, nil))
 
-	assert.Error(model.ValidateBbProject("proj1", evergreen.BuildBaronSettings{
+	assert.Error(model.ValidateBbProject(t.Context(), "proj1", evergreen.BuildBaronSettings{
 		TicketCreateProject:     "BFG",
 		TicketSearchProjects:    []string{"BF", "BFG"},
 		BFSuggestionTimeoutSecs: 10,
 	}, nil))
 
-	assert.Error(model.ValidateBbProject("proj1", evergreen.BuildBaronSettings{
+	assert.Error(model.ValidateBbProject(t.Context(), "proj1", evergreen.BuildBaronSettings{
 		TicketCreateProject:     "BFG",
 		TicketSearchProjects:    []string{"BF", "BFG"},
 		BFSuggestionServer:      "://evergreen.mongodb.com",
 		BFSuggestionTimeoutSecs: 10,
 	}, nil))
 
-	assert.Error(model.ValidateBbProject("proj1", evergreen.BuildBaronSettings{
+	assert.Error(model.ValidateBbProject(t.Context(), "proj1", evergreen.BuildBaronSettings{
 		TicketCreateProject:     "BFG",
 		TicketSearchProjects:    []string{"BF", "BFG"},
 		BFSuggestionServer:      "https://evergreen.mongodb.com",
@@ -91,14 +91,14 @@ func TestBuildBaronPluginConfigureBFSuggestion(t *testing.T) {
 		BFSuggestionTimeoutSecs: 10,
 	}, nil))
 
-	assert.Error(model.ValidateBbProject("proj1", evergreen.BuildBaronSettings{
+	assert.Error(model.ValidateBbProject(t.Context(), "proj1", evergreen.BuildBaronSettings{
 		TicketCreateProject:     "BFG",
 		TicketSearchProjects:    []string{"BF", "BFG"},
 		BFSuggestionServer:      "https://evergreen.mongodb.com",
 		BFSuggestionTimeoutSecs: 0,
 	}, nil))
 
-	assert.Error(model.ValidateBbProject("proj1", evergreen.BuildBaronSettings{
+	assert.Error(model.ValidateBbProject(t.Context(), "proj1", evergreen.BuildBaronSettings{
 		TicketCreateProject:     "BFG",
 		TicketSearchProjects:    []string{"BF", "BFG"},
 		BFSuggestionServer:      "https://evergreen.mongodb.com",

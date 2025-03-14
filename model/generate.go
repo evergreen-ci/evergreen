@@ -12,8 +12,8 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/v2/bson"
-	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.opentelemetry.io/otel/attribute"
 )
 
@@ -294,7 +294,7 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, settings *
 	}
 
 	// This will only be populated for patches, not mainline commits.
-	projectRef, err := FindMergedProjectRef(p.Identifier, v.Id, true)
+	projectRef, err := FindMergedProjectRef(ctx, p.Identifier, v.Id, true)
 	if err != nil {
 		return errors.Wrapf(err, "finding merged project ref '%s' for version '%s'", p.Identifier, v.Id)
 	}
