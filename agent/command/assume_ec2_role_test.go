@@ -71,6 +71,8 @@ func TestEC2AssumeRoleExecute(t *testing.T) {
 			assert.Equal(t, "session_token", conf.NewExpansions.Get(globals.AWSSessionToken))
 			assert.Equal(t, "expiration", conf.NewExpansions.Get(globals.AWSRoleExpiration))
 
+			assert.Equal(t, c.RoleARN, conf.AssumeRoleRoles[comm.AssumeRoleResponse.SessionToken])
+
 			t.Run("KeysAreRedacted", func(t *testing.T) {
 				hasAccessKey := false
 				hasSecretAccessKey := false
