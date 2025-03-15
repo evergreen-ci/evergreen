@@ -382,12 +382,12 @@ func TestSignedUrlVisibility(t *testing.T) {
 			for _, file := range v {
 				assert.NotEqual(t, " ", string(file.Name[0]))
 				if file.Visibility == artifact.Signed {
-					assert.Equal(t, file.AwsKey, s.AwsKey)
-					assert.Equal(t, file.AwsSecret, s.AwsSecret)
+					assert.Equal(t, file.AWSKey, s.AwsKey)
+					assert.Equal(t, file.AWSSecret, s.AwsSecret)
 
 				} else {
-					assert.Equal(t, "", file.AwsKey)
-					assert.Equal(t, "", file.AwsSecret)
+					assert.Equal(t, "", file.AWSKey)
+					assert.Equal(t, "", file.AWSSecret)
 				}
 			}
 		}

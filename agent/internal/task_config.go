@@ -40,6 +40,10 @@ type TaskConfig struct {
 	// and should persist throughout the task's execution.
 	DynamicExpansions util.Expansions
 
+	// AssumeRoleRoles holds the session tokens and role ARNs that have
+	// been assumed by the agent during the task's execution.
+	AssumeRoleRoles map[string]string
+
 	ProjectVars map[string]string
 	Redacted    []string
 	RedactKeys  []string
@@ -224,6 +228,7 @@ func NewTaskConfig(opts TaskConfigOptions) (*TaskConfig, error) {
 		Expansions:         opts.ExpansionsAndVars.Expansions,
 		NewExpansions:      agentutil.NewDynamicExpansions(opts.ExpansionsAndVars.Expansions),
 		DynamicExpansions:  util.Expansions{},
+		AssumeRoleRoles:    map[string]string{},
 		InternalRedactions: agentutil.NewDynamicExpansions(internalRedactions),
 		ProjectVars:        opts.ExpansionsAndVars.Vars,
 		Redacted:           redacted,
