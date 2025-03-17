@@ -55,10 +55,12 @@ type File struct {
 	Visibility string `json:"visibility" bson:"visibility"`
 	// When true, these artifacts are excluded from reproduction
 	IgnoreForFetch bool `bson:"fetch_ignore,omitempty" json:"ignore_for_fetch"`
-	// AwsKey is the key with which the file was uploaded to S3.
-	AwsKey string `json:"aws_key,omitempty" bson:"aws_key,omitempty"`
-	// AwsSecret is the secret with which the file was uploaded to S3.
-	AwsSecret string `json:"aws_secret,omitempty" bson:"aws_secret,omitempty"`
+	// AWSKey is the key with which the file was uploaded to S3.
+	AWSKey string `json:"aws_key,omitempty" bson:"aws_key,omitempty"`
+	// AWSSecret is the secret with which the file was uploaded to S3.
+	AWSSecret string `json:"aws_secret,omitempty" bson:"aws_secret,omitempty"`
+	// AWSRoleARN is the role ARN with which the file was uploaded to S3.
+	AWSRoleARN string `json:"aws_role_arn,omitempty" bson:"aws_role_arn,omitempty"`
 	// Bucket is the aws bucket in which the file is stored.
 	Bucket string `json:"bucket,omitempty" bson:"bucket,omitempty"`
 	// FileKey is the path to the file in the bucket.
@@ -75,8 +77,8 @@ func (f *File) validate() error {
 
 	// Buckets that are not devprod owned require AWS credentials.
 	if !isInternalBucket(f.Bucket) {
-		catcher.ErrorfWhen(f.AwsKey == "", "AWS key is required")
-		catcher.ErrorfWhen(f.AwsSecret == "", "AWS secret is required")
+		catcher.ErrorfWhen(f.AWSKey == "", "AWS key is required")
+		catcher.ErrorfWhen(f.AWSSecret == "", "AWS secret is required")
 	}
 
 	return catcher.Resolve()
@@ -115,15 +117,18 @@ func presignFile(ctx context.Context, file File) (string, error) {
 	// with the app's server IRSA credentials (which is used
 	// when no credentials are provided).
 	if isInternalBucket(file.Bucket) {
-		file.AwsKey = ""
-		file.AwsSecret = ""
+		file.AWSKey = ""
+		file.AWSSecret = ""
 	}
 
+	// TODO (DEVPROD-13979): Use the role ARN to sign the URL.
+	// A pail update is required to support this and will be done in
+	// the above ticket.
 	requestParams := pail.PreSignRequestParams{
 		Bucket:                file.Bucket,
 		FileKey:               file.FileKey,
-		AWSKey:                file.AwsKey,
-		AWSSecret:             file.AwsSecret,
+		AWSKey:                file.AWSKey,
+		AWSSecret:             file.AWSSecret,
 		SignatureExpiryWindow: evergreen.PresignMinimumValidTime,
 	}
 	return pail.PreSign(ctx, requestParams)

@@ -79,5 +79,9 @@ func (r *ec2AssumeRole) Execute(ctx context.Context, comm client.Communicator, l
 	conf.NewExpansions.PutAndRedact(globals.AWSSessionToken, creds.SessionToken)
 	conf.NewExpansions.Put(globals.AWSRoleExpiration, creds.Expiration)
 
+	// Store the role ARN in the task config, so s3 operations can identify the corresponding
+	// role ARN that the credentials are associated with.
+	conf.AssumeRoleRoles[creds.SessionToken] = request.RoleARN
+
 	return nil
 }
