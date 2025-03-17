@@ -124,7 +124,7 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 		// If the version fails to be added, create a stub version and
 		// log an event so users can get notified when notifications are configured
 		metadata.Activate = false
-		stubVersion, dbErr := repotracker.ShellVersionFromRevision(j.project, metadata)
+		stubVersion, dbErr := repotracker.ShellVersionFromRevision(ctx, j.project, metadata)
 		if dbErr != nil {
 			grip.Error(message.WrapError(dbErr, message.Fields{
 				"message":            "error creating stub version for periodic build",

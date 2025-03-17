@@ -1793,7 +1793,7 @@ func TestShellVersionFromRevisionGitTags(t *testing.T) {
 	}
 
 	assert.NoError(t, evergreen.UpdateConfig(ctx, testutil.TestConfig()))
-	v, err := ShellVersionFromRevision(pRef, metadata)
+	v, err := ShellVersionFromRevision(t.Context(), pRef, metadata)
 	assert.NoError(t, err)
 	require.NotNil(t, v)
 	assert.Equal(t, evergreen.GitTagRequester, v.Requester)
@@ -1821,7 +1821,7 @@ func TestShellVersionFromRevisionGitTags(t *testing.T) {
 	}
 	assert.NoError(t, usr.Insert())
 
-	v, err = ShellVersionFromRevision(pRef, metadata)
+	v, err = ShellVersionFromRevision(t.Context(), pRef, metadata)
 	assert.NoError(t, err)
 	require.NotNil(t, v)
 	assert.Equal(t, evergreen.GitTagRequester, v.Requester)

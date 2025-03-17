@@ -2926,7 +2926,7 @@ func (p *ProjectRef) AuthorizedForGitTag(ctx context.Context, githubUser, owner,
 		return true
 	}
 	// check if user has permissions with mana before asking github about the teams
-	u, err := user.FindByGithubName(githubUser)
+	u, err := user.FindByGithubName(ctx, githubUser)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error checking if user is authorized for git tag",

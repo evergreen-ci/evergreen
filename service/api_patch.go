@@ -35,7 +35,7 @@ type PatchAPIResponse struct {
 // getAuthor returns the author for the patch. If githubAuthor or patchAuthor is provided and exists, will use that
 // author instead of the submitter if the submitter is authorized to submit patches on behalf of users.
 // Returns the author, status code, and error.
-func (as *APIServer) getAuthor(data patchData, dbUser *user.DBUser, projectId, patchID string) (string, int, error) {
+func (as *APIServer) getAuthor(ctx context.Context, data patchData, dbUser *user.DBUser, projectId, patchID string) (string, int, error) {
 	author := dbUser.Id
 	if data.GithubAuthor == "" && data.PatchAuthor == "" {
 		return author, http.StatusOK, nil
@@ -52,7 +52,7 @@ func (as *APIServer) getAuthor(data patchData, dbUser *user.DBUser, projectId, p
 	}
 
 	if data.GithubAuthor != "" {
-		specifiedUser, err := user.FindByGithubName(data.GithubAuthor)
+		specifiedUser, err := user.FindByGithubName(ctx, data.GithubAuthor)
 		if err != nil {
 			return "", http.StatusInternalServerError, errors.Wrapf(err, "error looking for github author '%s'", data.GithubAuthor)
 		}
@@ -166,7 +166,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	patchID := mgobson.NewObjectId()
-	author, statusCode, err := as.getAuthor(data, dbUser, pref.Id, patchID.Hex())
+	author, statusCode, err := as.getAuthor(r.Context(), data, dbUser, pref.Id, patchID.Hex())
 	if err != nil {
 		as.LoggedError(w, r, statusCode, err)
 		return

@@ -1020,7 +1020,7 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 			Revision: revision,
 			GitTag:   tag,
 		}
-		stubVersion, dbErr := repotracker.ShellVersionFromRevision(&pRef, metadata)
+		stubVersion, dbErr := repotracker.ShellVersionFromRevision(ctx, &pRef, metadata)
 		if dbErr != nil {
 			grip.Error(message.WrapError(dbErr, message.Fields{
 				"message":            "error creating shell version",
@@ -1040,7 +1040,7 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 			}))
 		}
 		event.LogVersionStateChangeEvent(stubVersion.Id, evergreen.VersionFailed)
-		userDoc, err := user.FindByGithubName(tag.Pusher)
+		userDoc, err := user.FindByGithubName(ctx, tag.Pusher)
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding user '%s'", tag.Pusher)
 		}

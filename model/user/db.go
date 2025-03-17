@@ -169,9 +169,9 @@ func FindByGithubUID(uid int) (*DBUser, error) {
 }
 
 // FindByGithubName finds a user with the given GitHub username.
-func FindByGithubName(name string) (*DBUser, error) {
+func FindByGithubName(ctx context.Context, name string) (*DBUser, error) {
 	u := DBUser{}
-	err := db.FindOneQ(Collection, db.Query(bson.M{
+	err := db.FindOneQContext(ctx, Collection, db.Query(bson.M{
 		bsonutil.GetDottedKeyName(SettingsKey, UserSettingsGithubUserKey, githubUserLastKnownAsKey): name,
 	}), &u)
 	if adb.ResultsNotFound(err) {
