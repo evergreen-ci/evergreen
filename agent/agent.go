@@ -1050,7 +1050,7 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 	// was setup, regardless of the task status.
 	if tc.taskConfig != nil && tc.taskConfig.TaskOutputDir != nil {
 		toCtx, span := a.tracer.Start(ctx, "task-output-ingestion")
-		tc.logger.Execution().Error(errors.Wrap(a.uploadTraces(toCtx, tc.taskConfig.WorkDir), "uploading traces"))
+		tc.logger.Execution().Error(errors.Wrap(taskoutput.UploadTraces(toCtx, a.otelGrpcConn, tc.taskConfig.WorkDir), "uploading traces"))
 		tc.logger.Execution().Error(errors.Wrap(tc.taskConfig.TaskOutputDir.Run(toCtx), "ingesting task output"))
 		span.End()
 	}
