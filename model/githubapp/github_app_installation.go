@@ -274,6 +274,12 @@ func createCacheID(installationID int64, permissions *github.InstallationPermiss
 
 		fieldValue, ok := field.Interface().(*string)
 		if !ok {
+			grip.Error(message.Fields{
+				"message": "invalid type for permission field in GitHub installation permissions",
+				"field":   permissionsStructVal.Type().Field(i).Name,
+				"type":    reflect.TypeOf(field.Interface()),
+				"value":   field.Interface(),
+			})
 			continue
 		}
 		permissionPairs = append(permissionPairs, fmt.Sprintf("%s:%s", permissionsStructVal.Type().Field(i).Name, utility.FromStringPtr(fieldValue)))
