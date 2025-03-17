@@ -247,6 +247,8 @@ func getInstallationIDFromGitHub(ctx context.Context, authFields *GithubAppAuth,
 // installation tokens.
 var ghInstallationTokenCache = cache.WithOtel(cache.NewTTLInMemory[string](), "github-app-installation-token")
 
+// MaxInstallationTokenLifetime is the maximum amount of time that an
+// installation token can be used before it expires.
 const MaxInstallationTokenLifetime = time.Hour
 
 // createCacheID creates an ID based on the installation ID and the token's permissions.
