@@ -189,6 +189,8 @@ functions:
       type: setup
       params:
         expansion_name: github_token
+        permissions:
+          contents: read
     - command: git.get_project
       type: setup
       params:
@@ -276,9 +278,6 @@ functions:
         EVG_CLIENT_S3_BUCKET: evg-bucket-evergreen
 
   setup-credentials:
-    - command: github.generate_token
-      params:
-        expansion_name: github_token
     - command: subprocess.exec
       type: setup
       params:
@@ -627,6 +626,8 @@ tasks:
       - command: github.generate_token
         params:
           expansion_name: github_token
+          permissions:
+            contents: read
       - command: git.get_project
         type: setup
         params:
@@ -683,6 +684,8 @@ tasks:
       - command: github.generate_token
         params:
           expansion_name: github_token
+          permissions:
+            contents: read
       - command: git.get_project
         type: setup
         params:
