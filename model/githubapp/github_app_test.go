@@ -120,7 +120,8 @@ func (s *installationSuite) TestCreateCachedInstallationToken() {
 	)
 
 	// Test without permissions
-	id := createCacheID(installation.InstallationID, nil)
+	id, err := createCacheID(installation.InstallationID, nil)
+	s.NoError(err)
 	s.Equal("5678", id)
 	ghInstallationTokenCache.Put(s.ctx, id, unrestrictedToken, time.Now().Add(lifetime*2))
 
@@ -140,7 +141,8 @@ func (s *installationSuite) TestCreateCachedInstallationToken() {
 		Permissions: p,
 	}
 
-	id = createCacheID(installation.InstallationID, p)
+	id, err = createCacheID(installation.InstallationID, p)
+	s.NoError(err)
 	s.Equal("5678_contents:read_issues:write", id)
 	ghInstallationTokenCache.Put(s.ctx, id, restrictedToken, time.Now().Add(lifetime*2))
 
@@ -210,7 +212,8 @@ func TestCreateCacheID(t *testing.T) {
 
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
-			result := createCacheID(tc.installationID, tc.permissions)
+			result, err := createCacheID(tc.installationID, tc.permissions)
+			assert.NoError(t, err)
 			assert.Equal(t, tc.expected, result)
 		})
 	}

@@ -253,10 +253,10 @@ const MaxInstallationTokenLifetime = time.Hour
 // This allows us to put and get installation tokens from the cache based on the installation ID
 // and the permissions that the token is scoped to.
 // The format of the ID is: "<installationID>_<permissionKey:permissionValue>_<permissionKey:permissionValue>...".
-func createCacheID(installationID int64, permissions *github.InstallationPermissions) string {
+func createCacheID(installationID int64, permissions *github.InstallationPermissions) (string, error) {
 	id := fmt.Sprint(installationID)
 	if permissions == nil {
-		return id
+		return id, nil
 	}
 	permissionsStructVal := reflect.ValueOf(permissions).Elem()
 	var permissionPairs []string
@@ -274,13 +274,12 @@ func createCacheID(installationID int64, permissions *github.InstallationPermiss
 
 		fieldValue, ok := field.Interface().(*string)
 		if !ok {
-			grip.Error(message.Fields{
-				"message": "invalid type for permission field in GitHub installation permissions",
-				"field":   permissionsStructVal.Type().Field(i).Name,
-				"type":    reflect.TypeOf(field.Interface()),
-				"value":   field.Interface(),
-			})
-			continue
+			return "", errors.Errorf(
+				"expected *string for field '%s', got '%T' with value '%v'",
+				permissionsStructVal.Type().Field(i).Name,
+				reflect.TypeOf(field.Interface()),
+				field.Interface(),
+			)
 		}
 		permissionPairs = append(permissionPairs, fmt.Sprintf("%s:%s", permissionsStructVal.Type().Field(i).Name, utility.FromStringPtr(fieldValue)))
 	}
@@ -288,5 +287,5 @@ func createCacheID(installationID int64, permissions *github.InstallationPermiss
 	if concatenatedPermissions != "" {
 		id += "_" + concatenatedPermissions
 	}
-	return id
+	return id, nil
 }
