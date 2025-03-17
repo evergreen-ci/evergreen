@@ -44,7 +44,6 @@ func NewCommunicator(serverURL string) (Communicator, error) {
 		timeoutStart: defaultTimeoutStart,
 		timeoutMax:   defaultTimeoutMax,
 		serverURL:    serverURL,
-		RetryOn413:   false,
 	}
 	c.resetClient()
 

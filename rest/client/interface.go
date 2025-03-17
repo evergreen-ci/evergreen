@@ -30,9 +30,6 @@ type Communicator interface {
 	// Client authentication methods (for hosts)
 	SetHostID(string)
 	SetHostSecret(string)
-	// SetRetryOn413 sets whether the client should retry requests that return a 413.
-	SetRetryOn413(bool)
-
 	// Method to release resources used by the communicator.
 	Close()
 
