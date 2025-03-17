@@ -627,6 +627,8 @@ tasks:
       - command: github.generate_token
         params:
           expansion_name: github_token
+          permissions:
+            contents: read
       - command: git.get_project
         type: setup
         params:
