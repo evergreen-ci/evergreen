@@ -15,6 +15,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/agent/globals"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
@@ -28,26 +29,12 @@ import (
 // a new task directory based on the current task data.
 func (a *Agent) createTaskDirectory(tc *taskContext, taskDir string) (string, error) {
 	if taskDir == "" {
-		h := md5.New()
-
-		_, err := h.Write([]byte(
-			fmt.Sprintf("%s_%d_%d", tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution, os.Getpid())))
+		var err error
+		taskDir, err = a.generateTaskDirectoryName(tc)
 		if err != nil {
-			tc.logger.Execution().Error(errors.Wrap(err, "creating task directory name"))
+			tc.logger.Execution().Error(errors.Wrap(err, "generating task directory name"))
 			return "", err
 		}
-
-		md5Sum := h.Sum(nil)
-
-		dirName := hex.EncodeToString(md5Sum)
-		if runtime.GOOS == "windows" {
-			// Windows has a max filepath length which can cause issues for some
-			// tasks that hit the length limit. Shortening the typical
-			// 32-character directory name reduces the problem.
-			dirName = dirName[:3]
-		}
-
-		taskDir = filepath.Join(a.opts.WorkingDirectory, dirName)
 	}
 
 	tc.logger.Execution().Infof("Making task directory '%s' for task execution.", taskDir)
@@ -65,6 +52,75 @@ func (a *Agent) createTaskDirectory(tc *taskContext, taskDir string) (string, er
 	}
 
 	return taskDir, nil
+}
+
+// generateTaskDirectoryName generates a task directory path. Typically, this is
+// in the format: <agent_working_directory>/<hash>.
+//
+// On Windows hosts, the hash portion is shorter than on other distros because
+// it has a max file path length. Having a long task directory's path can cause
+// issues for some tasks that have deep paths that hit the Windows path length
+// limit. Shortening the typical 32-character directory name reduces the
+// problem.
+// kim: TODO: test in staging, Linux/Windows
+func (a *Agent) generateTaskDirectoryName(tc *taskContext) (string, error) {
+	dirName, err := a.generateTaskDirectoryHash(fmt.Sprintf("%s_%d_%d", tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution, os.Getpid()))
+	if err != nil {
+		return "", errors.Wrap(err, "generating hash for randomized task directory")
+	}
+
+	if runtime.GOOS != "windows" {
+		return filepath.Join(a.opts.WorkingDirectory, dirName), nil
+	}
+
+	// Reducing the length of the hash also creates a new potential issue by
+	// reducing the randomness of the task directory path. If the agent fails to
+	// clean up task directories (ideally shouldn't happen, but this does
+	// unfortunately happen sometimes in practice), then the agent runs the risk
+	// of reusing a directory from a previous unrelated task. To guard against
+	// this, check if the directory already exists.
+	taskDirPath := filepath.Join(a.opts.WorkingDirectory, dirName)
+	if !utility.FileExists(taskDirPath) {
+		return taskDirPath, nil
+	}
+
+	// If the initially proposed shortened task directory already exists, try to
+	// generate a new task directory.
+	const maxAttempts = 10
+	for i := 0; i < maxAttempts; i++ {
+		dirName, err = a.generateTaskDirectoryHash(dirName)
+		if err != nil {
+			return "", errors.Wrapf(err, "writing hash for randomized task directory (attempt %d/%d)", i+1, maxAttempts)
+		}
+
+		taskDirPath := filepath.Join(a.opts.WorkingDirectory, dirName)
+		if !utility.FileExists(taskDirPath) {
+			return taskDirPath, nil
+		}
+	}
+
+	return "", errors.Errorf("failed to generate a unique task directory after %d attempts", maxAttempts)
+}
+
+// generateTaskDirectoryHash generates a hashed string for a task directory.
+func (a *Agent) generateTaskDirectoryHash(toHash string) (string, error) {
+	h := md5.New()
+	if _, err := h.Write([]byte(toHash)); err != nil {
+		return "", errors.Wrap(err, "writing task directory hash")
+	}
+
+	md5Sum := h.Sum(nil)
+	dirName := hex.EncodeToString(md5Sum)
+
+	if runtime.GOOS != "windows" {
+		return dirName, nil
+	}
+
+	// On Windows, the agent has to use a shorter task working directory due to
+	// max file path length limitations. To accommodate this, try shortening the
+	// long hash.
+	const maxWindowsHashLength = 3
+	return dirName[:maxWindowsHashLength], nil
 }
 
 // removeTaskDirectory removes the folder the agent created for the task it was
