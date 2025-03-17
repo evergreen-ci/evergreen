@@ -62,7 +62,6 @@ func (a *Agent) createTaskDirectory(tc *taskContext, taskDir string) (string, er
 // issues for some tasks that have deep paths that hit the Windows path length
 // limit. Shortening the typical 32-character directory name reduces the
 // problem.
-// kim: TODO: test in staging, Linux/Windows
 func (a *Agent) generateTaskDirectoryName(tc *taskContext) (string, error) {
 	dirName, err := a.generateTaskDirectoryHash(fmt.Sprintf("%s_%d_%d", tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution, os.Getpid()))
 	if err != nil {
