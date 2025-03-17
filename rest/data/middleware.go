@@ -67,7 +67,7 @@ func GetProjectIdFromParams(ctx context.Context, paramsMap map[string]string) (s
 	testLog := paramsMap[logIdKey]
 	if projectID == "" && testLog != "" {
 		var test *testlog.TestLog
-		test, err = testlog.FindOneTestLogById(testLog)
+		test, err = testlog.FindOneTestLogById(ctx, testLog)
 		if err != nil {
 			return "", http.StatusInternalServerError, errors.Wrapf(err, "finding test log '%s'", testLog)
 		}
