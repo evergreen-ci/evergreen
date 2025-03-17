@@ -69,7 +69,7 @@ func (d *basicCachedDAGDispatcherImpl) Type() string {
 	return evergreen.DispatcherVersionRevisedWithDependencies
 }
 
-func (d *basicCachedDAGDispatcherImpl) Refresh() error {
+func (d *basicCachedDAGDispatcherImpl) Refresh(ctx context.Context) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
@@ -77,7 +77,7 @@ func (d *basicCachedDAGDispatcherImpl) Refresh() error {
 		return nil
 	}
 
-	taskQueue, err := FindDistroTaskQueue(d.distroID)
+	taskQueue, err := FindDistroTaskQueue(ctx, d.distroID)
 	if err != nil {
 		return errors.WithStack(err)
 	}

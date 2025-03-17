@@ -129,7 +129,7 @@ func TestClearTaskQueue(t *testing.T) {
 	assert.Len(otherQueue.Queue, 3)
 	assert.NoError(otherQueue.Save())
 
-	assert.NoError(ClearTaskQueue(distro))
+	assert.NoError(ClearTaskQueue(t.Context(), distro))
 	queueFromDb, err := LoadTaskQueue(distro)
 	assert.NoError(err)
 	assert.Empty(queueFromDb.Queue)
@@ -171,7 +171,7 @@ func TestFindDistroTaskQueue(t *testing.T) {
 	taskQueueIn := NewTaskQueue(distroID, taskQueueItems, info)
 	assert.NoError(taskQueueIn.Save())
 
-	taskQueueOut, err := FindDistroTaskQueue(distroID)
+	taskQueueOut, err := FindDistroTaskQueue(t.Context(), distroID)
 	assert.NoError(err)
 	assert.Equal(distroID, taskQueueOut.Distro)
 	assert.Len(taskQueueOut.Queue, 8)
@@ -211,7 +211,7 @@ func TestGetDistroQueueInfo(t *testing.T) {
 	taskQueueIn := NewTaskQueue(distroID, taskQueueItems, info)
 	assert.NoError(taskQueueIn.Save())
 
-	distroQueueInfoOut, err := GetDistroQueueInfo(distroID)
+	distroQueueInfoOut, err := GetDistroQueueInfo(t.Context(), distroID)
 	assert.NoError(err)
 	assert.Equal(8, distroQueueInfoOut.Length)
 	assert.Len(distroQueueInfoOut.TaskGroupInfos, 1)

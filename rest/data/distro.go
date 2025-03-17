@@ -36,7 +36,7 @@ func UpdateDistro(ctx context.Context, old, new *distro.Distro) error {
 	}
 
 	if !old.Disabled && new.Disabled {
-		if err := model.ClearTaskQueue(new.Id); err != nil {
+		if err := model.ClearTaskQueue(ctx, new.Id); err != nil {
 			return gimlet.ErrorResponse{
 				StatusCode: http.StatusInternalServerError,
 				Message:    errors.Wrapf(err, "clearing task queues for distro '%s'", new.Id).Error(),
@@ -80,7 +80,7 @@ func DeleteDistroById(ctx context.Context, u *user.DBUser, distroId string) erro
 			Message:    errors.Wrapf(err, "deleting distro '%s'", distroId).Error(),
 		}
 	}
-	if err = model.ClearTaskQueue(distroId); err != nil {
+	if err = model.ClearTaskQueue(ctx, distroId); err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrapf(err, "clearing task queue for distro '%s'", distroId).Error(),
