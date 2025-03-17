@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestValidateProjectHandlerValid(t *testing.T) {
+func TestValidateProjectHandler(t *testing.T) {
 	invalidYml := `
 tasks:
   - name: my_task
@@ -43,7 +43,7 @@ buildvariants:
 	require.NoError(t, err)
 
 	handler := makeValidateProject().Factory()
-	require.NoError(t, handler.Parse(context.Background(), req))
+	require.NoError(t, handler.Parse(t.Context(), req))
 
 	resp := handler.Run(context.Background())
 	require.NotNil(t, resp)

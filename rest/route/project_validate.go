@@ -48,7 +48,7 @@ func (v *validateProjectHandler) Parse(ctx context.Context, r *http.Request) err
 	}
 	input := validator.ValidationInput{}
 	if err := json.Unmarshal(bytes, &input); err != nil {
-		// try the legacy structure
+		// if it fails to unmarshal, try the legacy structure
 		input.ProjectYaml = bytes
 	}
 	v.input = input
