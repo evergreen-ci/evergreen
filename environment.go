@@ -1025,6 +1025,7 @@ func (e *envState) initTracer(ctx context.Context, useInternalDNS bool, tracer t
 	return nil
 }
 
+// initSSH pulls all private keys from Secrets Manager and adds them to the ssh-agent daemon.
 func (e *envState) initSSH(ctx context.Context, tracer trace.Tracer) error {
 	ctx, span := tracer.Start(ctx, "InitSSH")
 	defer span.End()
