@@ -58,11 +58,11 @@ func LoadContext(ctx context.Context, taskId, buildId, versionId, patchId, proje
 	return c, nil
 }
 
-func (ctx *Context) GetProjectRef() (*ProjectRef, error) {
+func (ctx *Context) GetProjectRef(c context.Context) (*ProjectRef, error) {
 	// if no project, use the default
 	if ctx.ProjectRef == nil {
 		var err error
-		ctx.ProjectRef, err = FindAnyRestrictedProjectRef()
+		ctx.ProjectRef, err = FindAnyRestrictedProjectRef(c)
 		if err != nil {
 			return nil, errors.Wrap(err, "finding project ref")
 		}
@@ -72,12 +72,12 @@ func (ctx *Context) GetProjectRef() (*ProjectRef, error) {
 }
 
 // GetProject returns the project associated with the Context.
-func (ctx *Context) GetProject() (*Project, error) {
+func (ctx *Context) GetProject(c context.Context) (*Project, error) {
 	if ctx.project != nil {
 		return ctx.project, nil
 	}
 
-	pref, err := ctx.GetProjectRef()
+	pref, err := ctx.GetProjectRef(c)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding project")
 	}

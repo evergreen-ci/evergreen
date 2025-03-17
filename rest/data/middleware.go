@@ -90,7 +90,7 @@ func GetProjectIdFromParams(ctx context.Context, paramsMap map[string]string) (s
 
 	if repoID != "" {
 		var repoRef *model.RepoRef
-		repoRef, err = model.FindOneRepoRef(repoID)
+		repoRef, err = model.FindOneRepoRef(ctx, repoID)
 		if err != nil {
 			return "", http.StatusInternalServerError, errors.Wrap(err, "finding repo")
 		}

@@ -178,7 +178,7 @@ func getProjectOrRepoId(ctx context.Context, identifier string) (string, bool, e
 	id, err := model.GetIdForProject(ctx, identifier) // Ensure project is existing
 	if err != nil {
 		// Check if this is a repo project instead
-		repoRef, err := model.FindOneRepoRef(identifier)
+		repoRef, err := model.FindOneRepoRef(ctx, identifier)
 		if err != nil {
 			return "", false, gimlet.ErrorResponse{
 				StatusCode: http.StatusInternalServerError,

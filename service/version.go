@@ -19,7 +19,7 @@ import (
 
 func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
-	project, err := projCtx.GetProject()
+	project, err := projCtx.GetProject(r.Context())
 
 	identifier := ""
 	if project != nil {
@@ -252,7 +252,7 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 	var err error
 
 	projCtx := MustHaveProjectContext(r)
-	project, err := projCtx.GetProject()
+	project, err := projCtx.GetProject(r.Context())
 	if err != nil || project == nil || projCtx.Version == nil {
 		http.Error(w, "not found", http.StatusNotFound)
 		return

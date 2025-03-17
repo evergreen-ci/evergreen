@@ -424,7 +424,7 @@ func (r *queryResolver) GithubProjectConflicts(ctx context.Context, projectID st
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("project '%s' not found", projectID))
 	}
 
-	conflicts, err := pRef.GetGithubProjectConflicts()
+	conflicts, err := pRef.GetGithubProjectConflicts(ctx)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting project conflicts: %s", err.Error()))
 	}
@@ -452,7 +452,7 @@ func (r *queryResolver) Projects(ctx context.Context) ([]*GroupedProjects, error
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting viewable projects for user '%s': %s", usr.Username(), err.Error()))
 	}
-	allProjects, err := model.FindMergedEnabledProjectRefsByIds(viewableProjectIds...)
+	allProjects, err := model.FindMergedEnabledProjectRefsByIds(ctx, viewableProjectIds...)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("getting merged enabled project refs for user '%s': %s", usr.Username(), err.Error()))
 	}
@@ -516,7 +516,7 @@ func (r *queryResolver) RepoEvents(ctx context.Context, repoID string, limit *in
 
 // RepoSettings is the resolver for the repoSettings field.
 func (r *queryResolver) RepoSettings(ctx context.Context, repoID string) (*restModel.APIProjectSettings, error) {
-	repoRef, err := model.FindOneRepoRef(repoID)
+	repoRef, err := model.FindOneRepoRef(ctx, repoID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching repo '%s': %s", repoID, err.Error()))
 	}
@@ -544,7 +544,7 @@ func (r *queryResolver) ViewableProjectRefs(ctx context.Context) ([]*GroupedProj
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting viewable projects for user '%s': %s", usr.Username(), err.Error()))
 	}
 
-	projects, err := model.FindProjectRefsByIds(projectIds...)
+	projects, err := model.FindProjectRefsByIds(ctx, projectIds...)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting projects: %s", err.Error()))
 	}
@@ -558,7 +558,7 @@ func (r *queryResolver) ViewableProjectRefs(ctx context.Context) ([]*GroupedProj
 
 // IsRepo is the resolver for the isRepo field.
 func (r *queryResolver) IsRepo(ctx context.Context, projectOrRepoID string) (bool, error) {
-	repo, err := model.FindOneRepoRef(projectOrRepoID)
+	repo, err := model.FindOneRepoRef(ctx, projectOrRepoID)
 	if err != nil {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("fetching repo '%s': %s", projectOrRepoID, err.Error()))
 	}

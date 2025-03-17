@@ -2294,7 +2294,7 @@ func GetAllowedSingleTaskDistroTasksForProject(ctx context.Context, identifier s
 			projectsToLookFor = append(projectsToLookFor, pRef.Id, pRef.Identifier, pRef.RepoRefId)
 		} else {
 			// If project ref is nil, it means the project is a repo project.
-			repoRef, err := model.FindOneRepoRef(identifier)
+			repoRef, err := model.FindOneRepoRef(ctx, identifier)
 			if err != nil {
 				return nil, errors.Wrapf(err, "finding repo ref '%s'", identifier)
 			}

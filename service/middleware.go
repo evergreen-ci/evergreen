@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -267,8 +268,8 @@ func (uis *UIServer) loadCtx(next http.HandlerFunc) http.HandlerFunc {
 }
 
 // populateProjectRefs loads all enabled project refs into the context.
-func (pc *projectContext) populateProjectRefs() error {
-	allProjs, err := model.FindAllMergedEnabledTrackedProjectRefs()
+func (pc *projectContext) populateProjectRefs(ctx context.Context) error {
+	allProjs, err := model.FindAllMergedEnabledTrackedProjectRefs(ctx)
 	if err != nil {
 		return err
 	}
@@ -321,7 +322,7 @@ func (uis *UIServer) loadProjectContext(rw http.ResponseWriter, r *http.Request)
 	patchId := vars["patch_id"]
 
 	pc := projectContext{AuthRedirect: uis.env.UserManager().IsRedirect()}
-	err := pc.populateProjectRefs()
+	err := pc.populateProjectRefs(r.Context())
 	if err != nil {
 		return pc, err
 	}

@@ -44,7 +44,7 @@ func LegacyFindRunnableTasks(ctx context.Context, d distro.Distro) ([]task.Task,
 		return nil, err
 	}
 
-	projectRefCache, err := getProjectRefCache()
+	projectRefCache, err := getProjectRefCache(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +133,7 @@ func AlternateTaskFinder(ctx context.Context, d distro.Distro) ([]task.Task, err
 		return nil, err
 	}
 
-	projectRefCache, err := getProjectRefCache()
+	projectRefCache, err := getProjectRefCache(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -242,7 +242,7 @@ func ParallelTaskFinder(ctx context.Context, d distro.Distro) ([]task.Task, erro
 		return nil, err
 	}
 
-	projectRefCache, err := getProjectRefCache()
+	projectRefCache, err := getProjectRefCache(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -362,9 +362,9 @@ func ParallelTaskFinder(ctx context.Context, d distro.Distro) ([]task.Task, erro
 	return runnabletasks, nil
 }
 
-func getProjectRefCache() (map[string]model.ProjectRef, error) {
+func getProjectRefCache(ctx context.Context) (map[string]model.ProjectRef, error) {
 	out := map[string]model.ProjectRef{}
-	refs, err := model.FindAllMergedProjectRefs()
+	refs, err := model.FindAllMergedProjectRefs(ctx)
 	if err != nil {
 		return out, err
 	}

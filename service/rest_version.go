@@ -565,7 +565,7 @@ func (restapi restAPI) getVersionStatusByBuild(ctx context.Context, versionId st
 // lastGreen returns the most recent version for which the supplied variants completely pass.
 func (ra *restAPI) lastGreen(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveRESTContext(r)
-	project, err := projCtx.GetProject()
+	project, err := projCtx.GetProject(r.Context())
 	if err != nil || project == nil {
 		http.Error(w, "project not found", http.StatusNotFound)
 		return

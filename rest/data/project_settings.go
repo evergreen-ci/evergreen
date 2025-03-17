@@ -217,13 +217,13 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 
 	// If the project ref doesn't use the repo, or we're using a repo ref, then this will just be the same as the passed in ref.
 	// Used to verify that if something is set to nil, we properly validate using the merged project ref.
-	mergedSection, err := model.GetProjectRefMergedWithRepo(*newProjectRef)
+	mergedSection, err := model.GetProjectRefMergedWithRepo(ctx, *newProjectRef)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting merged project ref")
 	}
 
 	// mergedBeforeRef represents the original merged project ref (i.e. the project ref without any edits).
-	mergedBeforeRef, err := model.GetProjectRefMergedWithRepo(before.ProjectRef)
+	mergedBeforeRef, err := model.GetProjectRefMergedWithRepo(ctx, before.ProjectRef)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting the original merged project ref")
 	}
@@ -258,7 +258,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		// Only need to check GitHub conflicts once so we use else if statements to handle this.
 		// Handle conflicts using the ref from the DB, since only general section settings are passed in from the UI.
 		if mergedSection.Owner != mergedBeforeRef.Owner || mergedSection.Repo != mergedBeforeRef.Repo {
-			if err = handleGithubConflicts(mergedBeforeRef, "Changing owner/repo"); err != nil {
+			if err = handleGithubConflicts(ctx, mergedBeforeRef, "Changing owner/repo"); err != nil {
 				return nil, err
 			}
 			// Check if webhook is enabled if the owner/repo has changed.
@@ -269,11 +269,11 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 			}
 			modified = true
 		} else if mergedSection.Enabled && !mergedBeforeRef.Enabled {
-			if err = handleGithubConflicts(mergedBeforeRef, "Enabling project"); err != nil {
+			if err = handleGithubConflicts(ctx, mergedBeforeRef, "Enabling project"); err != nil {
 				return nil, err
 			}
 		} else if mergedSection.Branch != mergedBeforeRef.Branch {
-			if err = handleGithubConflicts(mergedBeforeRef, "Changing branch"); err != nil {
+			if err = handleGithubConflicts(ctx, mergedBeforeRef, "Changing branch"); err != nil {
 				return nil, err
 			}
 		}
@@ -374,7 +374,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		mergedSection.Owner = mergedBeforeRef.Owner
 		mergedSection.Repo = mergedBeforeRef.Repo
 		mergedSection.Branch = mergedBeforeRef.Branch
-		if err = handleGithubConflicts(mergedSection, "Toggling GitHub features"); err != nil {
+		if err = handleGithubConflicts(ctx, mergedSection, "Toggling GitHub features"); err != nil {
 			return nil, err
 		}
 
@@ -605,12 +605,12 @@ func validateModifiedIdentifier(ctx context.Context, pRef *model.ProjectRef) err
 }
 
 // handleGithubConflicts returns an error containing any potential Github project conflicts.
-func handleGithubConflicts(pRef *model.ProjectRef, reason string) error {
+func handleGithubConflicts(ctx context.Context, pRef *model.ProjectRef, reason string) error {
 	if !pRef.IsPRTestingEnabled() && !pRef.CommitQueue.IsEnabled() && !pRef.IsGithubChecksEnabled() {
 		return nil // if nothing is toggled on, then there's no reason to look for conflicts
 	}
 	conflictMsgs := []string{}
-	conflicts, err := pRef.GetGithubProjectConflicts()
+	conflicts, err := pRef.GetGithubProjectConflicts(ctx)
 	if err != nil {
 		return errors.Wrapf(err, "getting GitHub project conflicts")
 	}

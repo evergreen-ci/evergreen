@@ -381,7 +381,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 	// If the project ref doesn't use the repo, then this will just be the same as newProjectRef.
 	// Used to verify that if something is set to nil in the request, we properly validate using the merged project ref.
-	mergedProjectRef, err := dbModel.GetProjectRefMergedWithRepo(*h.newProjectRef)
+	mergedProjectRef, err := dbModel.GetProjectRefMergedWithRepo(ctx, *h.newProjectRef)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "merging project ref '%s' with repo settings", h.newProjectRef.Identifier))
 	}
@@ -422,7 +422,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 				return gimlet.MakeJSONErrorResponder(errors.New("cannot enable PR testing without a PR patch definition"))
 			}
 
-			if err = canEnablePRTesting(h.newProjectRef); err != nil {
+			if err = canEnablePRTesting(ctx, h.newProjectRef); err != nil {
 				return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "enabling PR testing for project '%s'", h.project))
 			}
 		}
@@ -450,7 +450,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 			if !hasAliasDefined(allAliases, evergreen.CommitQueueAlias) {
 				return gimlet.MakeJSONErrorResponder(errors.New("cannot enable commit queue without a commit queue patch definition"))
 			}
-			if err = canEnableCommitQueue(h.newProjectRef); err != nil {
+			if err = canEnableCommitQueue(ctx, h.newProjectRef); err != nil {
 				return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "enabling commit queue for project '%s'", h.project))
 			}
 		}
@@ -630,8 +630,8 @@ func hasAliasDefined(aliases []model.APIProjectAlias, alias string) bool {
 }
 
 // canEnableCommitQueue determines if commit queue can be enabled for the given project.
-func canEnableCommitQueue(projectRef *dbModel.ProjectRef) error {
-	if ok, err := projectRef.CanEnableCommitQueue(); err != nil {
+func canEnableCommitQueue(ctx context.Context, projectRef *dbModel.ProjectRef) error {
+	if ok, err := projectRef.CanEnableCommitQueue(ctx); err != nil {
 		return errors.Wrap(err, "checking if commit queue can be enabled")
 	} else if !ok {
 		return errors.Errorf("cannot enable commit queue in this repo, must disable in other projects first")
@@ -641,8 +641,8 @@ func canEnableCommitQueue(projectRef *dbModel.ProjectRef) error {
 }
 
 // canEnablePRTesting determines if PR testing can be enabled for the given project.
-func canEnablePRTesting(projectRef *dbModel.ProjectRef) error {
-	conflicts, err := projectRef.GetGithubProjectConflicts()
+func canEnablePRTesting(ctx context.Context, projectRef *dbModel.ProjectRef) error {
+	conflicts, err := projectRef.GetGithubProjectConflicts(ctx)
 	if err != nil {
 		return errors.Wrap(err, "finding project refs with conflicting GitHub settings")
 	}

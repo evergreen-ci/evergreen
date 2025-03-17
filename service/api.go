@@ -156,7 +156,7 @@ func (as *APIServer) fetchLimitedProjectRef(w http.ResponseWriter, r *http.Reque
 
 // listProjects returns the projects merged with the repo settings
 func (as *APIServer) listProjects(w http.ResponseWriter, r *http.Request) {
-	allProjs, err := model.FindAllMergedTrackedProjectRefs()
+	allProjs, err := model.FindAllMergedTrackedProjectRefs(r.Context())
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

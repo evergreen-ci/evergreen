@@ -1186,7 +1186,7 @@ func TestAttachProjectToRepo(t *testing.T) {
 
 	assert.NotNil(t, h.user)
 	assert.NotNil(t, h.project)
-	repoRef, err := serviceModel.FindRepoRefByOwnerAndRepo(h.project.Owner, h.project.Repo)
+	repoRef, err := serviceModel.FindRepoRefByOwnerAndRepo(t.Context(), h.project.Owner, h.project.Repo)
 	assert.NoError(t, err)
 	assert.Nil(t, repoRef) // repo ref doesn't exist before running
 
@@ -1210,7 +1210,7 @@ func TestAttachProjectToRepo(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, hasPermission)
 
-	repoRef, err = serviceModel.FindRepoRefByOwnerAndRepo(h.project.Owner, h.project.Repo)
+	repoRef, err = serviceModel.FindRepoRefByOwnerAndRepo(t.Context(), h.project.Owner, h.project.Repo)
 	assert.NoError(t, err)
 	assert.NotNil(t, repoRef)
 }
