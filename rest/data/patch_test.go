@@ -102,7 +102,7 @@ func (s *PatchConnectorFetchByProjectSuite) TearDownSuite() {
 }
 
 func (s *PatchConnectorFetchByProjectSuite) TestFetchTooManyAsc() {
-	patches, err := FindPatchesByProject("project2", s.time.Add(time.Second*10), 3)
+	patches, err := FindPatchesByProject(s.T().Context(), "project2", s.time.Add(time.Second*10), 3)
 	s.NoError(err)
 	s.NotNil(patches)
 	if s.Len(patches, 2) {
@@ -113,7 +113,7 @@ func (s *PatchConnectorFetchByProjectSuite) TestFetchTooManyAsc() {
 }
 
 func (s *PatchConnectorFetchByProjectSuite) TestFetchTooManyDesc() {
-	patches, err := FindPatchesByProject("project2", s.time.Add(time.Second*10), 3)
+	patches, err := FindPatchesByProject(s.T().Context(), "project2", s.time.Add(time.Second*10), 3)
 	s.NoError(err)
 	s.NotNil(patches)
 	if s.Len(patches, 2) {
@@ -124,7 +124,7 @@ func (s *PatchConnectorFetchByProjectSuite) TestFetchTooManyDesc() {
 }
 
 func (s *PatchConnectorFetchByProjectSuite) TestFetchExactNumber() {
-	patches, err := FindPatchesByProject("project2", s.time.Add(time.Second*10), 1)
+	patches, err := FindPatchesByProject(s.T().Context(), "project2", s.time.Add(time.Second*10), 1)
 	s.NoError(err)
 	s.NotNil(patches)
 
@@ -133,7 +133,7 @@ func (s *PatchConnectorFetchByProjectSuite) TestFetchExactNumber() {
 }
 
 func (s *PatchConnectorFetchByProjectSuite) TestFetchTooFew() {
-	patches, err := FindPatchesByProject("project1", s.time.Add(time.Second*10), 1)
+	patches, err := FindPatchesByProject(s.T().Context(), "project1", s.time.Add(time.Second*10), 1)
 	s.NoError(err)
 	s.NotNil(patches)
 	s.Len(patches, 1)
@@ -141,18 +141,18 @@ func (s *PatchConnectorFetchByProjectSuite) TestFetchTooFew() {
 }
 
 func (s *PatchConnectorFetchByProjectSuite) TestProjectNonexistentFail() {
-	_, err := FindPatchesByProject("zzz", s.time, 1)
+	_, err := FindPatchesByProject(s.T().Context(), "zzz", s.time, 1)
 	s.Error(err)
 }
 
 func (s *PatchConnectorFetchByProjectSuite) TestEmptyPatchesOkay() {
-	patches, err := FindPatchesByProject("project4", s.time, 1)
+	patches, err := FindPatchesByProject(s.T().Context(), "project4", s.time, 1)
 	s.NoError(err)
 	s.Empty(patches)
 }
 
 func (s *PatchConnectorFetchByProjectSuite) TestFetchKeyWithinBound() {
-	patches, err := FindPatchesByProject("project1", s.time.Add(time.Second*6), 1)
+	patches, err := FindPatchesByProject(s.T().Context(), "project1", s.time.Add(time.Second*6), 1)
 	s.NoError(err)
 	s.NotNil(patches)
 	s.Len(patches, 1)
@@ -160,13 +160,13 @@ func (s *PatchConnectorFetchByProjectSuite) TestFetchKeyWithinBound() {
 }
 
 func (s *PatchConnectorFetchByProjectSuite) TestFetchKeyOutOfBound() {
-	patches, err := FindPatchesByProject("project1", s.time.Add(-time.Hour), 1)
+	patches, err := FindPatchesByProject(s.T().Context(), "project1", s.time.Add(-time.Hour), 1)
 	s.NoError(err)
 	s.Empty(patches)
 }
 
 func (s *PatchConnectorFetchByProjectSuite) TestFindPatchesByIdentifier() {
-	patches, err := FindPatchesByProject("project_three", s.time.Add(time.Second*14), 1)
+	patches, err := FindPatchesByProject(s.T().Context(), "project_three", s.time.Add(time.Second*14), 1)
 	s.NoError(err)
 	s.NotNil(patches)
 	s.Len(patches, 1)
@@ -501,7 +501,7 @@ func (s *PatchConnectorFetchByUserSuite) SetupSuite() {
 }
 
 func (s *PatchConnectorFetchByUserSuite) TestFetchTooMany() {
-	patches, err := FindPatchesByUser("user2", s.time.Add(time.Second*10), 3)
+	patches, err := FindPatchesByUser(s.T().Context(), "user2", s.time.Add(time.Second*10), 3)
 	s.NoError(err)
 	s.NotNil(patches)
 	s.Len(patches, 2)
@@ -511,7 +511,7 @@ func (s *PatchConnectorFetchByUserSuite) TestFetchTooMany() {
 }
 
 func (s *PatchConnectorFetchByUserSuite) TestFetchExactNumber() {
-	patches, err := FindPatchesByUser("user2", s.time.Add(time.Second*10), 1)
+	patches, err := FindPatchesByUser(s.T().Context(), "user2", s.time.Add(time.Second*10), 1)
 	s.NoError(err)
 	if s.NotNil(patches) && s.Len(patches, 1) {
 		s.Equal("user2", *patches[0].Author)
@@ -519,7 +519,7 @@ func (s *PatchConnectorFetchByUserSuite) TestFetchExactNumber() {
 }
 
 func (s *PatchConnectorFetchByUserSuite) TestFetchTooFew() {
-	patches, err := FindPatchesByUser("user1", s.time.Add(time.Second*10), 1)
+	patches, err := FindPatchesByUser(s.T().Context(), "user1", s.time.Add(time.Second*10), 1)
 	s.NoError(err)
 	s.NotNil(patches)
 	s.Len(patches, 1)
@@ -527,13 +527,13 @@ func (s *PatchConnectorFetchByUserSuite) TestFetchTooFew() {
 }
 
 func (s *PatchConnectorFetchByUserSuite) TestFetchNonexistentFail() {
-	patches, err := FindPatchesByUser("zzz", s.time, 1)
+	patches, err := FindPatchesByUser(s.T().Context(), "zzz", s.time, 1)
 	s.NoError(err)
 	s.Empty(patches)
 }
 
 func (s *PatchConnectorFetchByUserSuite) TestFetchKeyWithinBound() {
-	patches, err := FindPatchesByUser("user1", s.time.Add(time.Second*6), 1)
+	patches, err := FindPatchesByUser(s.T().Context(), "user1", s.time.Add(time.Second*6), 1)
 	s.NoError(err)
 	s.NotNil(patches)
 	s.Len(patches, 1)
@@ -541,7 +541,7 @@ func (s *PatchConnectorFetchByUserSuite) TestFetchKeyWithinBound() {
 }
 
 func (s *PatchConnectorFetchByUserSuite) TestFetchKeyOutOfBound() {
-	patches, err := FindPatchesByUser("user1", s.time.Add(-time.Hour), 1)
+	patches, err := FindPatchesByUser(s.T().Context(), "user1", s.time.Add(-time.Hour), 1)
 	s.NoError(err)
 	s.Empty(patches)
 }

@@ -104,7 +104,7 @@ func (t *versionTriggers) Attributes() event.Attributes {
 
 func (t *versionTriggers) makeData(ctx context.Context, sub *event.Subscription, pastTenseOverride string) (*commonTemplateData, error) {
 	api := restModel.APIVersion{}
-	api.BuildFromService(*t.version)
+	api.BuildFromService(ctx, *t.version)
 	projectName := t.version.Identifier
 	if api.ProjectIdentifier != nil {
 		projectName = utility.FromStringPtr(api.ProjectIdentifier)

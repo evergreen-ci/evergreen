@@ -457,7 +457,7 @@ func (as *APIServer) listPatchModules(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	projectName := project.Identifier // this might be the ID, so use identifier if we can
-	identifier, _ := model.GetIdentifierForProject(project.Identifier)
+	identifier, _ := model.GetIdentifierForProject(r.Context(), project.Identifier)
 	if identifier != "" {
 		projectName = identifier
 	}

@@ -111,7 +111,11 @@ func (g *GithubAppAuth) CreateCachedInstallationToken(ctx context.Context, owner
 		return "", errors.Wrapf(err, "getting installation id for '%s/%s'", owner, repo)
 	}
 
-	if cachedToken := ghInstallationTokenCache.get(installationID, opts.GetPermissions(), lifetime); cachedToken != "" {
+	id, err := createCacheID(installationID, opts.GetPermissions())
+	if err != nil {
+		return "", errors.Wrap(err, "creating cache ID")
+	}
+	if cachedToken, found := ghInstallationTokenCache.Get(ctx, id, lifetime); found {
 		return cachedToken, nil
 	}
 
@@ -121,7 +125,7 @@ func (g *GithubAppAuth) CreateCachedInstallationToken(ctx context.Context, owner
 		return "", errors.Wrap(err, "creating installation token")
 	}
 
-	ghInstallationTokenCache.put(installationID, token, opts.GetPermissions(), createdAt)
+	ghInstallationTokenCache.Put(ctx, id, token, createdAt.Add(MaxInstallationTokenLifetime))
 
 	return token, errors.Wrapf(err, "getting installation token for '%s/%s'", owner, repo)
 }

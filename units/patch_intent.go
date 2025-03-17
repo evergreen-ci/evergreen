@@ -112,7 +112,7 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 			j.AddError(errors.New("cannot search for an empty project"))
 			return
 		}
-		p, err := model.FindBranchProjectRef(patchDoc.Project)
+		p, err := model.FindBranchProjectRef(ctx, patchDoc.Project)
 		if err != nil {
 			j.AddError(errors.Wrapf(err, "finding project '%s'", patchDoc.Project))
 			return
@@ -122,7 +122,7 @@ func (j *patchIntentProcessor) Run(ctx context.Context) {
 			return
 		}
 		if j.IntentType == patch.TriggerIntentType {
-			parentProject, err := model.FindBranchProjectRef(patchDoc.Triggers.ParentProjectID)
+			parentProject, err := model.FindBranchProjectRef(ctx, patchDoc.Triggers.ParentProjectID)
 			if err != nil {
 				j.AddError(errors.Wrapf(err, "finding project '%s'", patchDoc.Project))
 				return
@@ -342,7 +342,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 			}
 		}
 	}
-	if err = j.verifyValidAlias(pref.Id, patchDoc.PatchedProjectConfig); err != nil {
+	if err = j.verifyValidAlias(ctx, pref.Id, patchDoc.PatchedProjectConfig); err != nil {
 		j.gitHubError = invalidAlias
 		return err
 	}
@@ -978,7 +978,7 @@ func (j *patchIntentProcessor) buildGithubMergeDoc(ctx context.Context, patchDoc
 		}))
 	}()
 
-	projectRef, err := model.FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(patchDoc.GithubMergeData.Org,
+	projectRef, err := model.FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(ctx, patchDoc.GithubMergeData.Org,
 		patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.BaseBranch)
 	if err != nil {
 		return errors.Wrapf(err, "fetching project ref for repo '%s/%s' with branch '%s'",
@@ -1092,7 +1092,7 @@ func fetchTriggerVersionInfo(ctx context.Context, patchDoc *patch.Patch) (*model
 	return v, project, pp, nil
 }
 
-func (j *patchIntentProcessor) verifyValidAlias(projectId string, configStr string) error {
+func (j *patchIntentProcessor) verifyValidAlias(ctx context.Context, projectId string, configStr string) error {
 	alias := j.intent.GetAlias()
 	if alias == "" {
 		return nil
@@ -1105,7 +1105,7 @@ func (j *patchIntentProcessor) verifyValidAlias(projectId string, configStr stri
 			return errors.Wrap(err, "creating project config")
 		}
 	}
-	aliases, err := model.FindAliasInProjectRepoOrProjectConfig(projectId, alias, projectConfig)
+	aliases, err := model.FindAliasInProjectRepoOrProjectConfig(ctx, projectId, alias, projectConfig)
 	if err != nil {
 		return errors.Wrapf(err, "retrieving aliases for project '%s'", projectId)
 	}

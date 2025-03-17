@@ -196,7 +196,7 @@ func (r *queryResolver) DistroTaskQueue(ctx context.Context, distroID string) ([
 		apiTaskQueueItem := restModel.APITaskQueueItem{}
 
 		if _, ok := idToIdentifierMap[taskQueueItem.Project]; !ok {
-			identifier, err := model.GetIdentifierForProject(taskQueueItem.Project)
+			identifier, err := model.GetIdentifierForProject(ctx, taskQueueItem.Project)
 			if err != nil {
 				return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting identifier for project '%s': %s", taskQueueItem.Project, err.Error()))
 			}
@@ -424,7 +424,7 @@ func (r *queryResolver) GithubProjectConflicts(ctx context.Context, projectID st
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("project '%s' not found", projectID))
 	}
 
-	conflicts, err := pRef.GetGithubProjectConflicts()
+	conflicts, err := pRef.GetGithubProjectConflicts(ctx)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting project conflicts: %s", err.Error()))
 	}
@@ -438,7 +438,7 @@ func (r *queryResolver) Project(ctx context.Context, projectIdentifier string) (
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", projectIdentifier, err.Error()))
 	}
 	apiProjectRef := restModel.APIProjectRef{}
-	err = apiProjectRef.BuildFromService(*project)
+	err = apiProjectRef.BuildFromService(ctx, *project)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting project '%s' to APIProjectRef: %s", projectIdentifier, err.Error()))
 	}
@@ -452,11 +452,11 @@ func (r *queryResolver) Projects(ctx context.Context) ([]*GroupedProjects, error
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting viewable projects for user '%s': %s", usr.Username(), err.Error()))
 	}
-	allProjects, err := model.FindMergedEnabledProjectRefsByIds(viewableProjectIds...)
+	allProjects, err := model.FindMergedEnabledProjectRefsByIds(ctx, viewableProjectIds...)
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("getting merged enabled project refs for user '%s': %s", usr.Username(), err.Error()))
 	}
-	groupedProjects, err := groupProjects(allProjects, false)
+	groupedProjects, err := groupProjects(ctx, allProjects, false)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("grouping projects: %s", err.Error()))
 	}
@@ -469,7 +469,7 @@ func (r *queryResolver) ProjectEvents(ctx context.Context, projectIdentifier str
 	if before != nil {
 		timestamp = *before
 	}
-	events, err := data.GetProjectEventLog(projectIdentifier, timestamp, utility.FromIntPtr(limit))
+	events, err := data.GetProjectEventLog(ctx, projectIdentifier, timestamp, utility.FromIntPtr(limit))
 	res := &ProjectEvents{
 		EventLogEntries: getPointerEventList(events),
 		Count:           len(events),
@@ -479,7 +479,7 @@ func (r *queryResolver) ProjectEvents(ctx context.Context, projectIdentifier str
 
 // ProjectSettings is the resolver for the projectSettings field.
 func (r *queryResolver) ProjectSettings(ctx context.Context, projectIdentifier string) (*restModel.APIProjectSettings, error) {
-	projectRef, err := model.FindBranchProjectRef(projectIdentifier)
+	projectRef, err := model.FindBranchProjectRef(ctx, projectIdentifier)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", projectIdentifier, err.Error()))
 	}
@@ -490,7 +490,7 @@ func (r *queryResolver) ProjectSettings(ctx context.Context, projectIdentifier s
 	res := &restModel.APIProjectSettings{
 		ProjectRef: restModel.APIProjectRef{},
 	}
-	if err = res.ProjectRef.BuildFromService(*projectRef); err != nil {
+	if err = res.ProjectRef.BuildFromService(ctx, *projectRef); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting project '%s' to APIProjectRef: %s", projectIdentifier, err.Error()))
 	}
 	if !projectRef.UseRepoSettings() {
@@ -506,7 +506,7 @@ func (r *queryResolver) RepoEvents(ctx context.Context, repoID string, limit *in
 	if before != nil {
 		timestamp = *before
 	}
-	events, err := data.GetEventsById(repoID, timestamp, utility.FromIntPtr(limit))
+	events, err := data.GetEventsById(ctx, repoID, timestamp, utility.FromIntPtr(limit))
 	res := &ProjectEvents{
 		EventLogEntries: getPointerEventList(events),
 		Count:           len(events),
@@ -516,7 +516,7 @@ func (r *queryResolver) RepoEvents(ctx context.Context, repoID string, limit *in
 
 // RepoSettings is the resolver for the repoSettings field.
 func (r *queryResolver) RepoSettings(ctx context.Context, repoID string) (*restModel.APIProjectSettings, error) {
-	repoRef, err := model.FindOneRepoRef(repoID)
+	repoRef, err := model.FindOneRepoRef(ctx, repoID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching repo '%s': %s", repoID, err.Error()))
 	}
@@ -527,7 +527,7 @@ func (r *queryResolver) RepoSettings(ctx context.Context, repoID string) (*restM
 	res := &restModel.APIProjectSettings{
 		ProjectRef: restModel.APIProjectRef{},
 	}
-	if err = res.ProjectRef.BuildFromService(repoRef.ProjectRef); err != nil {
+	if err = res.ProjectRef.BuildFromService(ctx, repoRef.ProjectRef); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting repo '%s' to APIProjectRef: %s", repoID, err.Error()))
 	}
 
@@ -544,12 +544,12 @@ func (r *queryResolver) ViewableProjectRefs(ctx context.Context) ([]*GroupedProj
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting viewable projects for user '%s': %s", usr.Username(), err.Error()))
 	}
 
-	projects, err := model.FindProjectRefsByIds(projectIds...)
+	projects, err := model.FindProjectRefsByIds(ctx, projectIds...)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting projects: %s", err.Error()))
 	}
 
-	groupedProjects, err := groupProjects(projects, true)
+	groupedProjects, err := groupProjects(ctx, projects, true)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("grouping projects: %s", err.Error()))
 	}
@@ -558,7 +558,7 @@ func (r *queryResolver) ViewableProjectRefs(ctx context.Context) ([]*GroupedProj
 
 // IsRepo is the resolver for the isRepo field.
 func (r *queryResolver) IsRepo(ctx context.Context, projectOrRepoID string) (bool, error) {
-	repo, err := model.FindOneRepoRef(projectOrRepoID)
+	repo, err := model.FindOneRepoRef(ctx, projectOrRepoID)
 	if err != nil {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("fetching repo '%s': %s", projectOrRepoID, err.Error()))
 	}
@@ -751,11 +751,11 @@ func (r *queryResolver) UserConfig(ctx context.Context) (*UserConfig, error) {
 
 // BuildVariantsForTaskName is the resolver for the buildVariantsForTaskName field.
 func (r *queryResolver) BuildVariantsForTaskName(ctx context.Context, projectIdentifier string, taskName string) ([]*task.BuildVariantTuple, error) {
-	pid, err := model.GetIdForProject(projectIdentifier)
+	pid, err := model.GetIdForProject(ctx, projectIdentifier)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", projectIdentifier, err.Error()))
 	}
-	repo, err := model.FindRepository(pid)
+	repo, err := model.FindRepository(ctx, pid)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching repository for project '%s': %s", pid, err.Error()))
 	}
@@ -771,7 +771,7 @@ func (r *queryResolver) BuildVariantsForTaskName(ctx context.Context, projectIde
 
 // MainlineCommits is the resolver for the mainlineCommits field.
 func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCommitsOptions, buildVariantOptions *BuildVariantOptions) (*MainlineCommits, error) {
-	projectId, err := model.GetIdForProject(options.ProjectIdentifier)
+	projectId, err := model.GetIdForProject(ctx, options.ProjectIdentifier)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", options.ProjectIdentifier, err.Error()))
 	}
@@ -869,7 +869,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 		for _, v := range versions {
 			mainlineCommitVersion := MainlineCommitVersion{}
 			apiVersion := restModel.APIVersion{}
-			apiVersion.BuildFromService(v)
+			apiVersion.BuildFromService(ctx, v)
 			versionsCheckedCount++
 
 			if !utility.FromBoolPtr(v.Activated) {
@@ -912,11 +912,11 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 
 // TaskNamesForBuildVariant is the resolver for the taskNamesForBuildVariant field.
 func (r *queryResolver) TaskNamesForBuildVariant(ctx context.Context, projectIdentifier string, buildVariant string) ([]string, error) {
-	pid, err := model.GetIdForProject(projectIdentifier)
+	pid, err := model.GetIdForProject(ctx, projectIdentifier)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", projectIdentifier, err.Error()))
 	}
-	repo, err := model.FindRepository(pid)
+	repo, err := model.FindRepository(ctx, pid)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching repository for project '%s': %s", pid, err.Error()))
 	}
@@ -935,7 +935,7 @@ func (r *queryResolver) TaskNamesForBuildVariant(ctx context.Context, projectIde
 
 // Waterfall is the resolver for the waterfall field.
 func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions) (*Waterfall, error) {
-	projectId, err := model.GetIdForProject(options.ProjectIdentifier)
+	projectId, err := model.GetIdForProject(ctx, options.ProjectIdentifier)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", options.ProjectIdentifier, err.Error()))
 	}
@@ -1070,7 +1070,7 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 		activeVersionIds = append(activeVersionIds, v.Id)
 	}
 
-	waterfallVersions := groupInactiveVersions(allVersions)
+	waterfallVersions := groupInactiveVersions(ctx, allVersions)
 
 	prevPageOrder := 0
 	nextPageOrder := 0
@@ -1092,7 +1092,7 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 	flattenedVersions := []*restModel.APIVersion{}
 	for _, v := range allVersions {
 		apiVersion := &restModel.APIVersion{}
-		apiVersion.BuildFromService(v)
+		apiVersion.BuildFromService(ctx, v)
 		flattenedVersions = append(flattenedVersions, apiVersion)
 	}
 
@@ -1162,7 +1162,7 @@ func (r *queryResolver) Version(ctx context.Context, versionID string) (*restMod
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", versionID))
 	}
 	apiVersion := restModel.APIVersion{}
-	apiVersion.BuildFromService(*v)
+	apiVersion.BuildFromService(ctx, *v)
 	return &apiVersion, nil
 }
 

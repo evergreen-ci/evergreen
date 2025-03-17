@@ -93,7 +93,7 @@ func (s *TaskStatsSuite) TestRunTaskHandler() {
 	s.Equal(http.StatusOK, resp.Status())
 	s.NotNil(resp.Pages())
 
-	docs, err := data.GetTaskReliabilityScores(reliability.TaskReliabilityFilter{StatsFilter: handler.filter})
+	docs, err := data.GetTaskReliabilityScores(s.T().Context(), reliability.TaskReliabilityFilter{StatsFilter: handler.filter})
 	s.Require().NoError(err)
 	s.Equal(docs[handler.filter.Limit-1].StartAtKey(), resp.Pages().Next.Key)
 }

@@ -180,7 +180,7 @@ func makeProjectAndExpansionsFromTask(ctx context.Context, settings *evergreen.S
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "finding host running task")
 	}
-	pRef, err := model.FindBranchProjectRef(t.Project)
+	pRef, err := model.FindBranchProjectRef(ctx, t.Project)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "finding project ref '%s'", t.Project)
 	}
@@ -212,7 +212,7 @@ func makeProjectAndExpansionsFromTask(ctx context.Context, settings *evergreen.S
 		project = &model.Project{}
 	}
 	params := append(project.GetParameters(), v.Parameters...)
-	if err = updateExpansions(&expansions, t.Project, params); err != nil {
+	if err = updateExpansions(ctx, &expansions, t.Project, params); err != nil {
 		return nil, nil, errors.Wrap(err, "updating expansions")
 	}
 
@@ -221,8 +221,8 @@ func makeProjectAndExpansionsFromTask(ctx context.Context, settings *evergreen.S
 
 // updateExpansions updates expansions with project variables and patch
 // parameters.
-func updateExpansions(expansions *util.Expansions, projectId string, params []patch.Parameter) error {
-	projVars, err := model.FindMergedProjectVars(projectId)
+func updateExpansions(ctx context.Context, expansions *util.Expansions, projectId string, params []patch.Parameter) error {
+	projVars, err := model.FindMergedProjectVars(ctx, projectId)
 	if err != nil {
 		return errors.Wrap(err, "finding project variables")
 	}

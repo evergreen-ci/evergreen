@@ -43,7 +43,7 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 			ref.SpawnHostScriptPath = "my script path"
 			ref.Owner = "something different"
 			apiProjectRef := restModel.APIProjectRef{}
-			assert.NoError(t, apiProjectRef.BuildFromService(ref.ProjectRef))
+			assert.NoError(t, apiProjectRef.BuildFromService(t.Context(), ref.ProjectRef))
 
 			// Appends ProjectHealthView field when building from service
 			assert.Equal(t, model.ProjectHealthViewFailed, apiProjectRef.ProjectHealthView)
@@ -64,7 +64,7 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 			settings, err = SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageGeneralSection, true, "me")
 			assert.NoError(t, err)
 			assert.NotNil(t, settings)
-			repoRefFromDB, err := model.FindOneRepoRef(ref.Id)
+			repoRefFromDB, err := model.FindOneRepoRef(t.Context(), ref.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, repoRefFromDB)
 			assert.NotEmpty(t, repoRefFromDB.SpawnHostScriptPath)
@@ -78,14 +78,14 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 			ref.Restricted = utility.TruePtr() // should also flip the project that defaults to this repo
 			ref.Admins = []string{"oldAdmin", newAdmin.Id}
 			apiProjectRef := restModel.APIProjectRef{}
-			assert.NoError(t, apiProjectRef.BuildFromService(ref.ProjectRef))
+			assert.NoError(t, apiProjectRef.BuildFromService(t.Context(), ref.ProjectRef))
 			apiChanges := &restModel.APIProjectSettings{
 				ProjectRef: apiProjectRef,
 			}
 			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageAccessSection, true, "me")
 			assert.NoError(t, err)
 			assert.NotNil(t, settings)
-			repoRefFromDb, err := model.FindOneRepoRef(ref.Id)
+			repoRefFromDb, err := model.FindOneRepoRef(t.Context(), ref.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, repoRefFromDb)
 			assert.True(t, repoRefFromDb.IsRestricted())
@@ -125,7 +125,7 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 			require.NoError(t, newAdmin.Insert())
 			ref.Admins = []string{"nonexistent", newAdmin.Id}
 			apiProjectRef := restModel.APIProjectRef{}
-			assert.NoError(t, apiProjectRef.BuildFromService(ref.ProjectRef))
+			assert.NoError(t, apiProjectRef.BuildFromService(t.Context(), ref.ProjectRef))
 			apiChanges := &restModel.APIProjectSettings{
 				ProjectRef: apiProjectRef,
 			}
@@ -134,7 +134,7 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "no user 'nonexistent' found")
 			assert.NotNil(t, settings)
-			repoRefFromDb, err := model.FindOneRepoRef(ref.Id)
+			repoRefFromDb, err := model.FindOneRepoRef(t.Context(), ref.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, repoRefFromDb)
 			assert.Equal(t, []string{newAdmin.Id}, repoRefFromDb.Admins)
@@ -164,7 +164,7 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageVariablesSection, true, "me")
 			assert.NoError(t, err)
 			assert.NotNil(t, settings)
-			varsFromDb, err := model.FindOneProjectVars(updatedVars.Id)
+			varsFromDb, err := model.FindOneProjectVars(t.Context(), updatedVars.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, varsFromDb)
 			assert.Equal(t, "me", varsFromDb.Vars["it"])
@@ -275,7 +275,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			ref.SpawnHostScriptPath = "my script path"
 			ref.Owner = "something different"
 			apiProjectRef := restModel.APIProjectRef{}
-			assert.NoError(t, apiProjectRef.BuildFromService(ref))
+			assert.NoError(t, apiProjectRef.BuildFromService(t.Context(), ref))
 			apiChanges := &restModel.APIProjectSettings{
 				ProjectRef: apiProjectRef,
 			}
@@ -292,7 +292,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, settings)
 			assert.Equal(t, "myRepoId", utility.FromStringPtr(settings.ProjectRef.RepoRefId))
-			pRefFromDB, err := model.FindBranchProjectRef(ref.Id)
+			pRefFromDB, err := model.FindBranchProjectRef(ctx, ref.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDB)
 			assert.NotEmpty(t, pRefFromDB.SpawnHostScriptPath)
@@ -317,7 +317,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.NoError(t, ref.Upsert())
 			ref.Enabled = true
 			apiProjectRef := restModel.APIProjectRef{}
-			assert.NoError(t, apiProjectRef.BuildFromService(ref))
+			assert.NoError(t, apiProjectRef.BuildFromService(t.Context(), ref))
 			apiChanges := &restModel.APIProjectSettings{
 				ProjectRef: apiProjectRef,
 			}
@@ -416,7 +416,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 				GithubChecksEnabled: utility.FalsePtr(),
 			}
 			apiProjectRef := restModel.APIProjectRef{}
-			assert.NoError(t, apiProjectRef.BuildFromService(changes))
+			assert.NoError(t, apiProjectRef.BuildFromService(t.Context(), changes))
 			apiChanges := &restModel.APIProjectSettings{
 				ProjectRef: apiProjectRef,
 			}
@@ -452,7 +452,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, settings)
 
-			pRefFromDB, err := model.FindBranchProjectRef(ref.Id)
+			pRefFromDB, err := model.FindBranchProjectRef(ctx, ref.Id)
 			require.NoError(t, err)
 			require.NotNil(t, pRefFromDB)
 			require.NotNil(t, pRefFromDB.GitHubDynamicTokenPermissionGroups)
@@ -573,7 +573,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, settings)
 
-			pRefFromDB, err := model.FindBranchProjectRef(ref.Id)
+			pRefFromDB, err := model.FindBranchProjectRef(ctx, ref.Id)
 			assert.NoError(t, err)
 			require.NotNil(t, pRefFromDB)
 			require.NotNil(t, pRefFromDB.GitHubPermissionGroupByRequester)
@@ -590,7 +590,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, settings)
 
-			pRefFromDB, err = model.FindBranchProjectRef(ref.Id)
+			pRefFromDB, err = model.FindBranchProjectRef(ctx, ref.Id)
 			assert.NoError(t, err)
 			require.NotNil(t, pRefFromDB)
 			assert.Nil(t, pRefFromDB.GitHubPermissionGroupByRequester)
@@ -603,14 +603,14 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			ref.Restricted = nil // should now default to the repo value
 			ref.Admins = []string{"oldAdmin", newAdmin.Id}
 			apiProjectRef := restModel.APIProjectRef{}
-			assert.NoError(t, apiProjectRef.BuildFromService(ref))
+			assert.NoError(t, apiProjectRef.BuildFromService(t.Context(), ref))
 			apiChanges := &restModel.APIProjectSettings{
 				ProjectRef: apiProjectRef,
 			}
 			settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageAccessSection, false, "me")
 			assert.NoError(t, err)
 			assert.NotNil(t, settings)
-			pRefFromDB, err := model.FindBranchProjectRef(ref.Id)
+			pRefFromDB, err := model.FindBranchProjectRef(ctx, ref.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDB)
 			assert.Nil(t, pRefFromDB.Restricted)
@@ -643,7 +643,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			require.NoError(t, newAdmin.Insert())
 			ref.Admins = []string{"nonexistent", newAdmin.Id}
 			apiProjectRef := restModel.APIProjectRef{}
-			assert.NoError(t, apiProjectRef.BuildFromService(ref))
+			assert.NoError(t, apiProjectRef.BuildFromService(t.Context(), ref))
 			apiChanges := &restModel.APIProjectSettings{
 				ProjectRef: apiProjectRef,
 			}
@@ -651,7 +651,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "no user 'nonexistent' found")
 			assert.NotNil(t, settings)
-			pRefFromDB, err := model.FindBranchProjectRef(ref.Id)
+			pRefFromDB, err := model.FindBranchProjectRef(ctx, ref.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDB)
 			// should still add newAdmin and delete oldAdmin even with errors
@@ -671,7 +671,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			ref.Enabled = true
 			ref.Branch = ""
 			apiProjectRef := restModel.APIProjectRef{}
-			assert.NoError(t, apiProjectRef.BuildFromService(ref))
+			assert.NoError(t, apiProjectRef.BuildFromService(t.Context(), ref))
 			apiChanges := &restModel.APIProjectSettings{
 				ProjectRef: apiProjectRef,
 			}
@@ -696,7 +696,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.Equal(t, "", settings.Vars.Vars["banana"])
 			assert.Equal(t, "", settings.Vars.Vars["change"])
 			assert.Equal(t, "", settings.Vars.Vars["private"])
-			varsFromDb, err := model.FindOneProjectVars(ref.Id)
+			varsFromDb, err := model.FindOneProjectVars(t.Context(), ref.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, varsFromDb)
 			assert.Equal(t, "me", varsFromDb.Vars["it"])
@@ -968,7 +968,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, settings)
 
-			projectFromDB, err := model.FindBranchProjectRef(ref.Id)
+			projectFromDB, err := model.FindBranchProjectRef(ctx, ref.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, projectFromDB)
 			assert.Len(t, projectFromDB.ParsleyFilters, 2)
@@ -1112,13 +1112,13 @@ func TestPromoteVarsToRepo(t *testing.T) {
 			err := PromoteVarsToRepo(t.Context(), ref.Id, varsToPromote, "u")
 			assert.NoError(t, err)
 
-			projectVarsFromDB, err := model.FindOneProjectVars(ref.Id)
+			projectVarsFromDB, err := model.FindOneProjectVars(t.Context(), ref.Id)
 			assert.NoError(t, err)
 			assert.Empty(t, projectVarsFromDB.Vars)
 			assert.Empty(t, projectVarsFromDB.PrivateVars)
 			assert.Empty(t, projectVarsFromDB.AdminOnlyVars)
 
-			repoVarsFromDB, err := model.FindOneProjectVars(ref.RepoRefId)
+			repoVarsFromDB, err := model.FindOneProjectVars(t.Context(), ref.RepoRefId)
 			assert.NoError(t, err)
 			assert.Len(t, repoVarsFromDB.Vars, 4)
 			assert.Len(t, repoVarsFromDB.PrivateVars, 2)
@@ -1140,14 +1140,14 @@ func TestPromoteVarsToRepo(t *testing.T) {
 			err := PromoteVarsToRepo(t.Context(), ref.Id, varsToPromote, "u")
 			assert.NoError(t, err)
 
-			varsFromDB, err := model.FindOneProjectVars(ref.Id)
+			varsFromDB, err := model.FindOneProjectVars(t.Context(), ref.Id)
 			assert.NoError(t, err)
 			assert.Len(t, varsFromDB.Vars, 1)
 			assert.Equal(t, "3", varsFromDB.Vars["c"])
 			assert.Empty(t, varsFromDB.PrivateVars)
 			assert.Empty(t, varsFromDB.AdminOnlyVars)
 
-			repoVarsFromDB, err := model.FindOneProjectVars(ref.RepoRefId)
+			repoVarsFromDB, err := model.FindOneProjectVars(t.Context(), ref.RepoRefId)
 			assert.NoError(t, err)
 			assert.Len(t, repoVarsFromDB.Vars, 3)
 			assert.Len(t, repoVarsFromDB.PrivateVars, 2)
@@ -1169,7 +1169,7 @@ func TestPromoteVarsToRepo(t *testing.T) {
 			err := PromoteVarsToRepo(t.Context(), ref.Id, varsToPromote, "u")
 			assert.NoError(t, err)
 
-			varsFromDB, err := model.FindOneProjectVars(ref.Id)
+			varsFromDB, err := model.FindOneProjectVars(t.Context(), ref.Id)
 			assert.NoError(t, err)
 			assert.Len(t, varsFromDB.Vars, 3)
 			assert.Equal(t, "1", varsFromDB.Vars["a"])
@@ -1179,7 +1179,7 @@ func TestPromoteVarsToRepo(t *testing.T) {
 			assert.True(t, varsFromDB.PrivateVars["a"])
 			assert.Empty(t, varsFromDB.AdminOnlyVars)
 
-			repoVarsFromDB, err := model.FindOneProjectVars(ref.RepoRefId)
+			repoVarsFromDB, err := model.FindOneProjectVars(t.Context(), ref.RepoRefId)
 			assert.NoError(t, err)
 			assert.Len(t, repoVarsFromDB.Vars, 1)
 			assert.Len(t, repoVarsFromDB.PrivateVars, 1)
@@ -1204,7 +1204,7 @@ func TestPromoteVarsToRepo(t *testing.T) {
 			err := PromoteVarsToRepo(t.Context(), ref.Id, varsToPromote, "u")
 			assert.NoError(t, err)
 
-			varsFromDB, err := model.FindOneProjectVars(ref.Id)
+			varsFromDB, err := model.FindOneProjectVars(t.Context(), ref.Id)
 			assert.NoError(t, err)
 			assert.Len(t, varsFromDB.Vars, 3)
 			assert.Equal(t, "1", varsFromDB.Vars["a"])
@@ -1214,7 +1214,7 @@ func TestPromoteVarsToRepo(t *testing.T) {
 			assert.True(t, varsFromDB.PrivateVars["a"])
 			assert.Empty(t, varsFromDB.AdminOnlyVars)
 
-			repoVarsFromDB, err := model.FindOneProjectVars(ref.RepoRefId)
+			repoVarsFromDB, err := model.FindOneProjectVars(t.Context(), ref.RepoRefId)
 			assert.NoError(t, err)
 			assert.Len(t, repoVarsFromDB.Vars, 1)
 			assert.Len(t, repoVarsFromDB.PrivateVars, 1)
@@ -1315,7 +1315,7 @@ func TestCopyProject(t *testing.T) {
 			assert.Equal(t, "myNewProject", utility.FromStringPtr(newProject.Identifier))
 			assert.Equal(t, "12345", utility.FromStringPtr(newProject.Id))
 
-			dbProjRef, err := model.FindBranchProjectRef(utility.FromStringPtr(newProject.Id))
+			dbProjRef, err := model.FindBranchProjectRef(ctx, utility.FromStringPtr(newProject.Id))
 			require.NoError(t, err)
 			require.NotZero(t, dbProjRef)
 			require.Len(t, dbProjRef.ContainerSecrets, 2, "should create a new pod secret for the project and copy the existing repo creds from the old project")
@@ -1488,7 +1488,7 @@ func TestDeleteContainerSecrets(t *testing.T) {
 			require.NoError(t, err)
 			assert.Len(t, remaining, len(pRef.ContainerSecrets))
 
-			dbProjRef, err := model.FindBranchProjectRef(pRef.Id)
+			dbProjRef, err := model.FindBranchProjectRef(ctx, pRef.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbProjRef)
 			assert.Equal(t, dbProjRef.ContainerSecrets, pRef.ContainerSecrets)
@@ -1501,7 +1501,7 @@ func TestDeleteContainerSecrets(t *testing.T) {
 			require.NoError(t, err)
 			require.Len(t, remaining, 2)
 
-			dbProjRef, err := model.FindBranchProjectRef(pRef.Id)
+			dbProjRef, err := model.FindBranchProjectRef(ctx, pRef.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbProjRef)
 			require.Len(t, dbProjRef.ContainerSecrets, 2)
@@ -1513,7 +1513,7 @@ func TestDeleteContainerSecrets(t *testing.T) {
 			require.NoError(t, err)
 			assert.Len(t, remaining, len(pRef.ContainerSecrets))
 
-			dbProjRef, err := model.FindBranchProjectRef(pRef.Id)
+			dbProjRef, err := model.FindBranchProjectRef(ctx, pRef.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbProjRef)
 			assert.Equal(t, dbProjRef.ContainerSecrets, pRef.ContainerSecrets)
@@ -1525,7 +1525,7 @@ func TestDeleteContainerSecrets(t *testing.T) {
 			require.NoError(t, err)
 			assert.Len(t, remaining, len(pRef.ContainerSecrets)-1)
 
-			dbProjRef, err := model.FindBranchProjectRef(pRef.Id)
+			dbProjRef, err := model.FindBranchProjectRef(ctx, pRef.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbProjRef)
 			assert.Equal(t, dbProjRef.ContainerSecrets, pRef.ContainerSecrets)
@@ -1581,7 +1581,7 @@ func TestDeleteContainerSecrets(t *testing.T) {
 
 			// Re-find the project ref because creating the secret will update
 			// the container secret.
-			dbProjRef, err := model.FindBranchProjectRef(pRef.Id)
+			dbProjRef, err := model.FindBranchProjectRef(ctx, pRef.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbProjRef)
 			pRef = *dbProjRef
@@ -1605,7 +1605,7 @@ func TestUpsertContainerSecrets(t *testing.T) {
 		"NoopsWithoutAnyUpdatedContainerSecrets": func(ctx context.Context, t *testing.T, mv *cocoaMock.Vault, pRef model.ProjectRef) {
 			require.NoError(t, UpsertContainerSecrets(ctx, mv, pRef.ContainerSecrets))
 
-			dbProjRef, err := model.FindBranchProjectRef(pRef.Id)
+			dbProjRef, err := model.FindBranchProjectRef(ctx, pRef.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbProjRef)
 			assert.Equal(t, dbProjRef.ContainerSecrets, pRef.ContainerSecrets)
@@ -1621,7 +1621,7 @@ func TestUpsertContainerSecrets(t *testing.T) {
 			require.NoError(t, pRef.Upsert())
 			require.NoError(t, UpsertContainerSecrets(ctx, mv, pRef.ContainerSecrets))
 
-			dbProjRef, err := model.FindBranchProjectRef(pRef.Id)
+			dbProjRef, err := model.FindBranchProjectRef(ctx, pRef.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbProjRef)
 			require.Len(t, dbProjRef.ContainerSecrets, 2)
@@ -1641,7 +1641,7 @@ func TestUpsertContainerSecrets(t *testing.T) {
 			require.NoError(t, pRef.Upsert())
 			require.NoError(t, UpsertContainerSecrets(ctx, mv, pRef.ContainerSecrets))
 
-			dbProjRef, err := model.FindBranchProjectRef(pRef.Id)
+			dbProjRef, err := model.FindBranchProjectRef(ctx, pRef.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbProjRef)
 			assert.Equal(t, pRef.ContainerSecrets[0].Name, dbProjRef.ContainerSecrets[0].Name)
@@ -1661,7 +1661,7 @@ func TestUpsertContainerSecrets(t *testing.T) {
 			pRef.ContainerSecrets = append(pRef.ContainerSecrets, newSecret)
 			assert.Error(t, UpsertContainerSecrets(ctx, mv, pRef.ContainerSecrets))
 
-			dbProjRef, err := model.FindBranchProjectRef(pRef.Id)
+			dbProjRef, err := model.FindBranchProjectRef(ctx, pRef.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbProjRef)
 			require.Len(t, dbProjRef.ContainerSecrets, 1)
@@ -1701,7 +1701,7 @@ func TestUpsertContainerSecrets(t *testing.T) {
 
 			// Re-find the project ref because creating the secret will update
 			// the container secret.
-			dbProjRef, err := model.FindBranchProjectRef(pRef.Id)
+			dbProjRef, err := model.FindBranchProjectRef(ctx, pRef.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbProjRef)
 			pRef = *dbProjRef

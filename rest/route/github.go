@@ -262,7 +262,7 @@ func (gh *githubHookApi) Run(_ context.Context) gimlet.Responder {
 			break
 		}
 		if event.GetAction() == githubActionChecksRequested {
-			return gh.handleMergeGroupChecksRequested(event)
+			return gh.handleMergeGroupChecksRequested(ctx, event)
 		}
 
 	case *github.CheckRunEvent:
@@ -445,7 +445,7 @@ func (gh *githubHookApi) handleCheckSuiteRerequested(ctx context.Context, event 
 	return nil
 }
 
-func (gh *githubHookApi) handleMergeGroupChecksRequested(event *github.MergeGroupEvent) gimlet.Responder {
+func (gh *githubHookApi) handleMergeGroupChecksRequested(ctx context.Context, event *github.MergeGroupEvent) gimlet.Responder {
 	org := event.GetOrg().GetLogin()
 	repo := event.GetRepo().GetName()
 	branch := strings.TrimPrefix(event.MergeGroup.GetBaseRef(), "refs/heads/")
@@ -461,7 +461,7 @@ func (gh *githubHookApi) handleMergeGroupChecksRequested(event *github.MergeGrou
 		"message":  "merge group received",
 	})
 	// Ensure that a project exists before creating an intent. Otherwise, intent creation will fail which will always yield an unactionable 'Evergreen error' posted to GitHub.
-	projectRefs, err := model.FindMergedEnabledProjectRefsByRepoAndBranch(org, repo, branch)
+	projectRefs, err := model.FindMergedEnabledProjectRefsByRepoAndBranch(ctx, org, repo, branch)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "finding project ref"))
 	}
@@ -589,11 +589,11 @@ func (gh *githubHookApi) displayHelpText(ctx context.Context, owner, repo string
 		return errors.New("PR contains no base branch label")
 	}
 	branch := pr.Base.GetRef()
-	repoRef, err := model.FindRepoRefByOwnerAndRepo(owner, repo)
+	repoRef, err := model.FindRepoRefByOwnerAndRepo(ctx, owner, repo)
 	if err != nil {
 		return errors.Wrapf(err, "fetching repo ref for '%s'%s'", owner, repo)
 	}
-	projectRefs, err := model.FindMergedEnabledProjectRefsByRepoAndBranch(owner, repo, branch)
+	projectRefs, err := model.FindMergedEnabledProjectRefsByRepoAndBranch(ctx, owner, repo, branch)
 	if err != nil {
 		return errors.Wrapf(err, "fetching merged project refs for repo '%s/%s' with branch '%s'",
 			owner, repo, branch)
@@ -877,7 +877,7 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 		}))
 		return errors.Wrapf(err, "getting commit for tag '%s'", tag.Tag)
 	}
-	projectRefs, err := model.FindMergedEnabledProjectRefsByOwnerAndRepo(ownerAndRepo[0], ownerAndRepo[1])
+	projectRefs, err := model.FindMergedEnabledProjectRefsByOwnerAndRepo(ctx, ownerAndRepo[0], ownerAndRepo[1])
 	if err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
 			"source":  "GitHub hook",

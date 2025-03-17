@@ -1,6 +1,8 @@
 package data
 
 import (
+	"context"
+
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/taskstats"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
@@ -8,9 +10,9 @@ import (
 )
 
 // GetTaskStats queries the service backend to retrieve the task stats that match the given filter.
-func GetTaskStats(filter taskstats.StatsFilter) ([]restModel.APITaskStats, error) {
+func GetTaskStats(ctx context.Context, filter taskstats.StatsFilter) ([]restModel.APITaskStats, error) {
 	if filter.Project != "" {
-		projectID, err := model.GetIdForProject(filter.Project)
+		projectID, err := model.GetIdForProject(ctx, filter.Project)
 		if err != nil {
 			return nil, errors.Wrapf(err, "getting project ID for project identifier '%s'", filter.Project)
 		}

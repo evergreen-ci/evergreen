@@ -18,7 +18,7 @@ func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 	}
 
 	// propagate version metadata to the downstream version
-	metadata, err := getMetadataFromArgs(args)
+	metadata, err := getMetadataFromArgs(ctx, args)
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +91,7 @@ func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 	return v, nil
 }
 
-func getMetadataFromArgs(args ProcessorArgs) (model.VersionMetadata, error) {
+func getMetadataFromArgs(ctx context.Context, args ProcessorArgs) (model.VersionMetadata, error) {
 	metadata := model.VersionMetadata{
 		SourceVersion:       args.SourceVersion,
 		Activate:            !args.UnscheduleDownstreamVersions,
@@ -120,7 +120,7 @@ func getMetadataFromArgs(args ProcessorArgs) (model.VersionMetadata, error) {
 		metadata.Revision = args.PushRevision
 		metadata.SourceCommit = args.PushRevision.Revision
 	}
-	repo, err := model.FindRepository(args.DownstreamProject.Id)
+	repo, err := model.FindRepository(ctx, args.DownstreamProject.Id)
 	if err != nil {
 		return metadata, errors.Wrapf(err, "finding most recent revision for '%s'", args.DownstreamProject.Id)
 	}

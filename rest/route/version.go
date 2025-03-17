@@ -67,7 +67,7 @@ func (vh *versionHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	versionModel := &model.APIVersion{}
-	versionModel.BuildFromService(*foundVersion)
+	versionModel.BuildFromService(ctx, *foundVersion)
 	return gimlet.NewJSONResponse(versionModel)
 }
 
@@ -214,7 +214,7 @@ func (h *buildsForVersionHandler) Run(ctx context.Context) gimlet.Responder {
 	buildModels := []model.APIBuild{}
 	for _, b := range builds {
 		buildModel := model.APIBuild{}
-		buildModel.BuildFromService(b, pp)
+		buildModel.BuildFromService(ctx, b, pp)
 		if h.includeTaskInfo {
 			if err := setBuildTaskCache(ctx, &b, &buildModel); err != nil {
 				return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "setting task cache for build '%s'", b.Id))
@@ -281,7 +281,7 @@ func (h *versionAbortHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	versionModel := &model.APIVersion{}
-	versionModel.BuildFromService(*foundVersion)
+	versionModel.BuildFromService(ctx, *foundVersion)
 	return gimlet.NewJSONResponse(versionModel)
 }
 
@@ -340,6 +340,6 @@ func (h *versionRestartHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	versionModel := &model.APIVersion{}
-	versionModel.BuildFromService(*foundVersion)
+	versionModel.BuildFromService(ctx, *foundVersion)
 	return gimlet.NewJSONResponse(versionModel)
 }

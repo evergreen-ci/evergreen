@@ -148,10 +148,10 @@ type AWSSSHKey struct {
 
 // FindOneProjectVars finds the project variables document for a given project
 // ID.
-func FindOneProjectVars(projectId string) (*ProjectVars, error) {
+func FindOneProjectVars(ctx context.Context, projectId string) (*ProjectVars, error) {
 	projectVars := &ProjectVars{}
 	q := db.Query(bson.M{projectVarIdKey: projectId})
-	err := db.FindOneQ(ProjectVarsCollection, q, projectVars)
+	err := db.FindOneQContext(ctx, ProjectVarsCollection, q, projectVars)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -199,8 +199,8 @@ func (projectVars *ProjectVars) findParameterStore(ctx context.Context) (*Projec
 }
 
 // FindMergedProjectVars merges vars from the target project's ProjectVars and its parent repo's vars
-func FindMergedProjectVars(projectID string) (*ProjectVars, error) {
-	project, err := FindBranchProjectRef(projectID)
+func FindMergedProjectVars(ctx context.Context, projectID string) (*ProjectVars, error) {
+	project, err := FindBranchProjectRef(ctx, projectID)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting project '%s'", projectID)
 	}
@@ -208,7 +208,7 @@ func FindMergedProjectVars(projectID string) (*ProjectVars, error) {
 		return nil, errors.Errorf("project '%s' does not exist", projectID)
 	}
 
-	projectVars, err := FindOneProjectVars(project.Id)
+	projectVars, err := FindOneProjectVars(ctx, project.Id)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting project vars for project '%s'", projectID)
 	}
@@ -216,7 +216,7 @@ func FindMergedProjectVars(projectID string) (*ProjectVars, error) {
 		return projectVars, nil
 	}
 
-	repoVars, err := FindOneProjectVars(project.RepoRefId)
+	repoVars, err := FindOneProjectVars(ctx, project.RepoRefId)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting project vars for repo '%s'", project.RepoRefId)
 	}
@@ -233,8 +233,8 @@ func FindMergedProjectVars(projectID string) (*ProjectVars, error) {
 }
 
 // CopyProjectVars copies the variables for the first project to the second
-func CopyProjectVars(oldProjectId, newProjectId string) error {
-	vars, err := FindOneProjectVars(oldProjectId)
+func CopyProjectVars(ctx context.Context, oldProjectId, newProjectId string) error {
+	vars, err := FindOneProjectVars(ctx, oldProjectId)
 	if err != nil {
 		return errors.Wrapf(err, "finding variables for project '%s'", oldProjectId)
 	}
@@ -247,8 +247,8 @@ func CopyProjectVars(oldProjectId, newProjectId string) error {
 	return errors.Wrapf(err, "inserting variables for project '%s", newProjectId)
 }
 
-func SetAWSKeyForProject(projectId string, ssh *AWSSSHKey) error {
-	vars, err := FindOneProjectVars(projectId)
+func SetAWSKeyForProject(ctx context.Context, projectId string, ssh *AWSSSHKey) error {
+	vars, err := FindOneProjectVars(ctx, projectId)
 	if err != nil {
 		return errors.Wrap(err, "getting project vars")
 	}
@@ -269,8 +269,8 @@ func SetAWSKeyForProject(projectId string, ssh *AWSSSHKey) error {
 	return errors.Wrap(err, "saving project keys")
 }
 
-func GetAWSKeyForProject(projectId string) (*AWSSSHKey, error) {
-	vars, err := FindMergedProjectVars(projectId)
+func GetAWSKeyForProject(ctx context.Context, projectId string) (*AWSSSHKey, error) {
+	vars, err := FindMergedProjectVars(ctx, projectId)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting project vars")
 	}
@@ -330,7 +330,7 @@ func (projectVars *ProjectVars) upsertParameterStore(ctx context.Context) (*Para
 	projectID := projectVars.Id
 	after := projectVars
 
-	before, err := FindOneProjectVars(projectID)
+	before, err := FindOneProjectVars(ctx, projectID)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding original project vars for project '%s'", projectID)
 	}
@@ -614,7 +614,7 @@ func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.Chang
 func (projectVars *ProjectVars) findAndModifyParameterStore(ctx context.Context, varsToDelete []string) (*ParameterMappings, error) {
 	projectID := projectVars.Id
 
-	before, err := FindOneProjectVars(projectID)
+	before, err := FindOneProjectVars(ctx, projectID)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding original project vars for project '%s'", projectID)
 	}

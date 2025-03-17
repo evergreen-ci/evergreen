@@ -147,7 +147,7 @@ func (restapi restAPI) getRecentVersions(w http.ResponseWriter, r *http.Request)
 		}
 	}
 	var versions []model.Version
-	projectId, err := model.GetIdForProject(projectIdentifier)
+	projectId, err := model.GetIdForProject(r.Context(), projectIdentifier)
 	// only look for versions if the project can be found, otherwise continue without error
 	if err == nil {
 		// add one to limit to determine if a new page is necessary
@@ -346,7 +346,7 @@ func (restapi restAPI) getVersionInfoViaRevision(w http.ResponseWriter, r *http.
 	projectName := vars["project_id"]
 	revision := vars["revision"]
 
-	projectId, err := model.GetIdForProject(projectName)
+	projectId, err := model.GetIdForProject(r.Context(), projectName)
 	if err != nil {
 		gimlet.WriteJSONError(w, responseError{Message: "project doesn't exist"})
 	}
@@ -565,7 +565,7 @@ func (restapi restAPI) getVersionStatusByBuild(ctx context.Context, versionId st
 // lastGreen returns the most recent version for which the supplied variants completely pass.
 func (ra *restAPI) lastGreen(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveRESTContext(r)
-	project, err := projCtx.GetProject()
+	project, err := projCtx.GetProject(r.Context())
 	if err != nil || project == nil {
 		http.Error(w, "project not found", http.StatusNotFound)
 		return

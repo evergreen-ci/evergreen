@@ -210,7 +210,7 @@ func (h *newPushHandler) Run(ctx context.Context) gimlet.Responder {
 
 	copyToLocation := strings.Join([]string{h.s3CopyReq.S3DestinationBucket, h.s3CopyReq.S3DestinationPath}, "/")
 
-	newestPushLog, err := model.FindPushLogAfter(copyToLocation, v.RevisionOrderNumber)
+	newestPushLog, err := model.FindPushLogAfter(ctx, copyToLocation, v.RevisionOrderNumber)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "querying for push log at '%s' for '%s'", copyToLocation, t.Id))
 	}
@@ -365,7 +365,7 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 		}
 	}
 
-	pRef, err := model.FindBranchProjectRef(t.Project)
+	pRef, err := model.FindBranchProjectRef(ctx, t.Project)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project ref '%s'", t.Project))
 	}
@@ -401,7 +401,7 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 		res.InternalRedactions[hostServicePasswordPlaceholder] = foundHost.ServicePassword
 	}
 
-	projectVars, err := model.FindMergedProjectVars(t.Project)
+	projectVars, err := model.FindMergedProjectVars(ctx, t.Project)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting merged project vars"))
 	}

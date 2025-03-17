@@ -32,7 +32,7 @@ var (
 
 // runTest abstracts away common tests and setup between all attach xunit tests.
 // It also takes as an argument a function which runs any additional tests desired.
-func runTest(t *testing.T, configPath string, customTests func(string)) {
+func runTest(t *testing.T, configPath string, customTests func(context.Context, string)) {
 	resetTasks(t)
 	testConfig := testutil.TestConfig()
 	ctx, cancel := context.WithCancel(context.Background())
@@ -67,14 +67,14 @@ func runTest(t *testing.T, configPath string, customTests func(string)) {
 			}
 
 			Convey("and the tests should be present in the db", func() {
-				customTests(modelData.Task.Id)
+				customTests(t.Context(), modelData.Task.Id)
 			})
 		})
 	})
 }
 
 // dBTests are the database verification tests for standard one file execution
-func dBTests(taskId string) {
+func dBTests(ctx context.Context, taskId string) {
 	t, err := task.FindOne(context.Background(), db.Query(task.ById(taskId)))
 	So(err, ShouldBeNil)
 	So(t, ShouldNotBeNil)
@@ -82,50 +82,51 @@ func dBTests(taskId string) {
 
 	Convey("along with the proper logs", func() {
 		// junit_3.xml
-		tl := dBFindOneTestLog(
+		tl := dBFindOneTestLog(ctx,
 			"test.test_threads_replica_set_client.TestThreadsReplicaSet.test_safe_update",
 			taskId,
 		)
 		So(tl.Lines[0], ShouldContainSubstring, "SKIPPED")
-		tl = dBFindOneTestLog("test.test_bson.TestBSON.test_basic_encode", taskId)
+		tl = dBFindOneTestLog(ctx, "test.test_bson.TestBSON.test_basic_encode", taskId)
 		So(tl.Lines[0], ShouldContainSubstring, "AssertionError")
 	})
 }
 
 // dBTestsWildcard are the database verification tests for globbed file execution
-func dBTestsWildcard(taskId string) {
+func dBTestsWildcard(ctx context.Context, taskId string) {
 	t, err := task.FindOne(context.Background(), db.Query(task.ById(taskId)))
 	So(err, ShouldBeNil)
 	So(len(t.LocalTestResults), ShouldEqual, TotalResultCount)
 
 	Convey("along with the proper logs", func() {
 		// junit_1.xml
-		tl := dBFindOneTestLog("pkg1.test.test_things.test_params_func_2", taskId)
+		tl := dBFindOneTestLog(ctx, "pkg1.test.test_things.test_params_func_2", taskId)
 		So(tl.Lines[0], ShouldContainSubstring, "FAILURE")
 		So(tl.Lines[6], ShouldContainSubstring, "AssertionError")
-		tl = dBFindOneTestLog("pkg1.test.test_things.SomeTests.test_skippy", taskId)
+		tl = dBFindOneTestLog(ctx, "pkg1.test.test_things.SomeTests.test_skippy", taskId)
 		So(tl.Lines[0], ShouldContainSubstring, "SKIPPED")
 
 		// junit_2.xml
-		tl = dBFindOneTestLog("tests.ATest.fail", taskId)
+		tl = dBFindOneTestLog(ctx, "tests.ATest.fail", taskId)
 		So(tl.Lines[0], ShouldContainSubstring, "FAILURE")
 		So(tl.Lines[1], ShouldContainSubstring, "AssertionFailedError")
 
 		// junit_3.xml
-		tl = dBFindOneTestLog(
+		tl = dBFindOneTestLog(ctx,
 			"test.test_threads_replica_set_client.TestThreadsReplicaSet.test_safe_update",
 			taskId,
 		)
 		So(tl.Lines[0], ShouldContainSubstring, "SKIPPED")
-		tl = dBFindOneTestLog("test.test_bson.TestBSON.test_basic_encode", taskId)
+		tl = dBFindOneTestLog(ctx, "test.test_bson.TestBSON.test_basic_encode", taskId)
 		So(tl.Lines[0], ShouldContainSubstring, "AssertionError")
 	})
 }
 
 // dBFindOneTestLog abstracts away some of the common attributes of database
 // verification tests.
-func dBFindOneTestLog(name, taskId string) *testlog.TestLog {
+func dBFindOneTestLog(ctx context.Context, name, taskId string) *testlog.TestLog {
 	ret, err := testlog.FindOneTestLog(
+		ctx,
 		name,
 		taskId,
 		0,

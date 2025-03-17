@@ -528,13 +528,13 @@ func (h *userPermissionsGetHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "getting permissions for user '%s'", h.userID))
 	}
 	// Hidden projects are not meant to be exposed to the user, so we remove them from the response here.
-	if err = removeHiddenProjects(permissions); err != nil {
+	if err = removeHiddenProjects(ctx, permissions); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
 	return gimlet.NewJSONResponse(permissions)
 }
 
-func removeHiddenProjects(permissions []rolemanager.PermissionSummary) error {
+func removeHiddenProjects(ctx context.Context, permissions []rolemanager.PermissionSummary) error {
 	var projectIDs []string
 	var projectResourceIndex int
 	for i, permission := range permissions {
@@ -545,7 +545,7 @@ func removeHiddenProjects(permissions []rolemanager.PermissionSummary) error {
 			}
 		}
 	}
-	projectRefs, err := serviceModel.FindProjectRefsByIds(projectIDs...)
+	projectRefs, err := serviceModel.FindProjectRefsByIds(ctx, projectIDs...)
 	if err != nil {
 		return errors.Wrapf(err, "getting projects")
 	}

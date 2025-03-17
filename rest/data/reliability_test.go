@@ -39,7 +39,7 @@ func TestMockGetTaskReliability(t *testing.T) {
 			AfterDate:    utility.GetUTCDay(time.Now().Add(-dayInHours)),
 		},
 	}
-	scores, err := GetTaskReliabilityScores(filter)
+	scores, err := GetTaskReliabilityScores(t.Context(), filter)
 	assert.NoError(err)
 	assert.Empty(scores)
 
@@ -75,7 +75,7 @@ func TestMockGetTaskReliability(t *testing.T) {
 		},
 	}
 
-	scores, err = GetTaskReliabilityScores(filter)
+	scores, err = GetTaskReliabilityScores(t.Context(), filter)
 	assert.NoError(err)
 	assert.Len(scores, 100)
 
@@ -127,7 +127,7 @@ func TestGetTaskReliability(t *testing.T) {
 	filter.BeforeDate = time.Date(2022, 02, 16, 0, 0, 0, 0, time.UTC)
 	filter.Limit = 1
 	filter.Tasks = []string{"t0"}
-	scores, err := GetTaskReliabilityScores(filter)
+	scores, err := GetTaskReliabilityScores(t.Context(), filter)
 
 	assert.NoError(t, err)
 	require.Len(t, scores, 1)

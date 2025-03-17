@@ -13,7 +13,7 @@ import (
 // IsFavorite is the resolver for the isFavorite field.
 func (r *projectResolver) IsFavorite(ctx context.Context, obj *restModel.APIProjectRef) (bool, error) {
 	projectIdentifier := utility.FromStringPtr(obj.Identifier)
-	p, err := model.FindBranchProjectRef(projectIdentifier)
+	p, err := model.FindBranchProjectRef(ctx, projectIdentifier)
 	if err != nil {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", projectIdentifier, err.Error()))
 	}
@@ -47,7 +47,7 @@ func (r *projectResolver) Patches(ctx context.Context, obj *restModel.APIProject
 	apiPatches := []*restModel.APIPatch{}
 	for _, p := range patches {
 		apiPatch := restModel.APIPatch{}
-		err = apiPatch.BuildFromService(p, nil) // Injecting DB info into APIPatch is handled by the resolvers.
+		err = apiPatch.BuildFromService(ctx, p, nil) // Injecting DB info into APIPatch is handled by the resolvers.
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting patch '%s' to APIPatch: %s", p.Id.Hex(), err.Error()))
 		}

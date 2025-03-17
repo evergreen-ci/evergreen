@@ -4,11 +4,15 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"os/exec"
 	"regexp"
+	"strings"
 	"sync"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	"github.com/evergreen-ci/certdepot"
 	"github.com/evergreen-ci/evergreen/cloud/parameterstore"
 	"github.com/evergreen-ci/evergreen/util"
@@ -258,6 +262,7 @@ func NewEnvironment(ctx context.Context, confPath, versionID, clientS3Bucket str
 	catcher.Add(e.createNotificationQueue(ctx, tracer))
 	catcher.Add(e.setupRoleManager(ctx, tracer))
 	catcher.Add(e.initTracer(ctx, versionID != "", tracer))
+	catcher.Add(e.initSSH(ctx, tracer))
 	catcher.Extend(e.initQueues(ctx, tracer))
 
 	if catcher.HasErrors() {
@@ -1018,6 +1023,62 @@ func (e *envState) initTracer(ctx context.Context, useInternalDNS bool, tracer t
 	})
 
 	return nil
+}
+
+// initSSH pulls all private keys from Secrets Manager and adds them to the ssh-agent daemon.
+func (e *envState) initSSH(ctx context.Context, tracer trace.Tracer) error {
+	ctx, span := tracer.Start(ctx, "InitSSH")
+	defer span.End()
+
+	catcher := grip.NewBasicCatcher()
+	for _, keyARN := range e.settings.SSHKeySecretARNs {
+		catcher.Add(addSSHKey(ctx, keyARN, tracer))
+	}
+
+	return catcher.Resolve()
+}
+
+func addSSHKey(ctx context.Context, keyARN string, tracer trace.Tracer) error {
+	sshKey, err := getSSHKey(ctx, keyARN, tracer)
+	if err != nil {
+		return errors.Wrap(err, "getting SSH private key")
+	}
+
+	return errors.Wrap(addSSHKeyToAgent(ctx, sshKey, tracer), "adding SSH key to ssh-agent")
+}
+
+func getSSHKey(ctx context.Context, keyARN string, tracer trace.Tracer) (string, error) {
+	ctx, span := tracer.Start(ctx, "GetSSHKey")
+	defer span.End()
+
+	config, err := config.LoadDefaultConfig(ctx,
+		config.WithRegion(DefaultEC2Region),
+	)
+	if err != nil {
+		return "", errors.Wrap(err, "loading AWS config")
+	}
+
+	client := secretsmanager.NewFromConfig(config)
+	output, err := client.GetSecretValue(ctx, &secretsmanager.GetSecretValueInput{
+		SecretId: aws.String(keyARN),
+	})
+	if err != nil {
+		return "", errors.Wrap(err, "getting SSH key secret")
+	}
+	if output.SecretString == nil {
+		return "", errors.New("SSH key secret was empty")
+	}
+	return *output.SecretString, nil
+}
+
+func addSSHKeyToAgent(ctx context.Context, sshKey string, tracer trace.Tracer) error {
+	ctx, span := tracer.Start(ctx, "AddSSHKeyToAgent")
+	defer span.End()
+
+	cmd := exec.CommandContext(ctx, "ssh-add", "-")
+	cmd.Stdin = strings.NewReader(sshKey)
+
+	return errors.Wrap(cmd.Run(), "running ssh-add")
 }
 
 func (e *envState) setupRoleManager(ctx context.Context, tracer trace.Tracer) error {

@@ -38,8 +38,8 @@ var (
 
 // ParserProjectFindOneById returns the parser project from the DB for the
 // given ID.
-func parserProjectFindOneById(id string) (*ParserProject, error) {
-	pp, err := parserProjectFindOne(parserProjectById(id))
+func parserProjectFindOneById(ctx context.Context, id string) (*ParserProject, error) {
+	pp, err := parserProjectFindOne(ctx, parserProjectById(id))
 	if err != nil {
 		return nil, err
 	}
@@ -50,9 +50,9 @@ func parserProjectFindOneById(id string) (*ParserProject, error) {
 }
 
 // parserProjectFindOne finds a parser project in the DB with a given query.
-func parserProjectFindOne(query db.Q) (*ParserProject, error) {
+func parserProjectFindOne(ctx context.Context, query db.Q) (*ParserProject, error) {
 	project := &ParserProject{}
-	err := db.FindOneQ(ParserProjectCollection, query, project)
+	err := db.FindOneQContext(ctx, ParserProjectCollection, query, project)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -81,15 +81,15 @@ type ParserProjectDBStorage struct{}
 
 // FindOneByID finds a parser project from the DB by its ID. This ignores the
 // context parameter.
-func (s ParserProjectDBStorage) FindOneByID(_ context.Context, id string) (*ParserProject, error) {
-	return parserProjectFindOneById(id)
+func (s ParserProjectDBStorage) FindOneByID(ctx context.Context, id string) (*ParserProject, error) {
+	return parserProjectFindOneById(ctx, id)
 }
 
 // FindOneByIDWithFields returns the parser project from the DB with only the
 // requested fields populated. This may be more efficient than fetching the
 // entire parser project. This ignores the context parameter.
-func (s ParserProjectDBStorage) FindOneByIDWithFields(_ context.Context, id string, fields ...string) (*ParserProject, error) {
-	return parserProjectFindOne(parserProjectById(id).WithFields(fields...))
+func (s ParserProjectDBStorage) FindOneByIDWithFields(ctx context.Context, id string, fields ...string) (*ParserProject, error) {
+	return parserProjectFindOne(ctx, parserProjectById(id).WithFields(fields...))
 }
 
 // UpsertOne replaces a parser project in the DB if one exists with the same ID.
