@@ -44,7 +44,7 @@ func (s *statsSuite) SetupTest() {
 
 func (s *statsSuite) TestStatsStatus() {
 	// Check that we get a default status when there is no doc in the database.
-	status, err := GetStatsStatus("p1")
+	status, err := GetStatsStatus(s.T().Context(), "p1")
 	s.NoError(err)
 	s.NotNil(status)
 	// The default value is rounded off to the day so use a delta of over one day to cover all cases.
@@ -57,7 +57,7 @@ func (s *statsSuite) TestStatsStatus() {
 	err = UpdateStatsStatus("p1", baseHour, baseDay, time.Hour)
 	s.NoError(err)
 
-	status, err = GetStatsStatus("p1")
+	status, err = GetStatsStatus(s.T().Context(), "p1")
 	s.NoError(err)
 	s.NotNil(status)
 	s.Equal(baseHour.UTC(), status.LastJobRun.UTC())

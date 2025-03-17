@@ -88,7 +88,7 @@ func TestCacheHistoricalTaskDataJob(t *testing.T) {
 
 				}
 
-				status, err := taskstats.GetStatsStatus("p0")
+				status, err := taskstats.GetStatsStatus(t.Context(), "p0")
 				require.NoError(t, err)
 				assert.WithinDuration(t, time.Now(), status.LastJobRun, time.Minute)
 				assert.WithinDuration(t, time.Now(), status.ProcessedTasksUntil, time.Minute)
@@ -148,7 +148,7 @@ func TestCacheHistoricalTaskDataJob(t *testing.T) {
 				require.NoError(t, err)
 				assert.Nil(t, ts)
 
-				status, err := taskstats.GetStatsStatus("p0")
+				status, err := taskstats.GetStatsStatus(t.Context(), "p0")
 				require.NoError(t, err)
 				assert.WithinDuration(t, time.Now(), status.LastJobRun, time.Minute)
 				assert.WithinDuration(t, t0.Add(22*time.Hour), status.ProcessedTasksUntil, time.Minute)
@@ -241,7 +241,7 @@ func TestCacheHistoricalTaskDataJob(t *testing.T) {
 				require.NotNil(t, ts)
 				assert.Equal(t, 2, ts.NumSuccess)
 
-				status, err := taskstats.GetStatsStatus("p0")
+				status, err := taskstats.GetStatsStatus(t.Context(), "p0")
 				require.NoError(t, err)
 				assert.WithinDuration(t, time.Now(), status.LastJobRun, time.Minute)
 				assert.WithinDuration(t, time.Now(), status.ProcessedTasksUntil, time.Minute)

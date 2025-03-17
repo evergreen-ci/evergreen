@@ -318,7 +318,7 @@ func (tsh *taskStatsHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting task stats"))
 	}
 	if len(taskStatsResult) == 0 {
-		statsStatus, err := taskstats.GetStatsStatus(tsh.filter.Project)
+		statsStatus, err := taskstats.GetStatsStatus(ctx, tsh.filter.Project)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting stats status for project '%s'", tsh.filter.Project))
 		}
