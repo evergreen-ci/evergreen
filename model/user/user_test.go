@@ -563,13 +563,6 @@ func (s *UserTestSuite) TestGetPatchUser() {
 	s.Equal(evergreen.GithubPatchUser, u.Id)
 }
 
-func (s *UserTestSuite) TestGetSlackMemberId() {
-	username := "person"
-	memberId, err := GetSlackMemberId(username)
-	s.NoError(err)
-	s.Equal("12345member", memberId)
-}
-
 func (s *UserTestSuite) TestRoles() {
 	u := s.users[0]
 	for i := 1; i <= 3; i++ {

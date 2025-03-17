@@ -185,9 +185,9 @@ func FindByGithubName(name string) (*DBUser, error) {
 }
 
 // FindBySlackUsername finds a user with the given Slack Username.
-func FindBySlackUsername(userName string) (*DBUser, error) {
+func FindBySlackUsername(ctx context.Context, userName string) (*DBUser, error) {
 	u := DBUser{}
-	err := db.FindOneQ(Collection, db.Query(bson.M{
+	err := db.FindOneQContext(ctx, Collection, db.Query(bson.M{
 		bsonutil.GetDottedKeyName(SettingsKey, userSettingsSlackUsernameKey): userName,
 	}), &u)
 	if adb.ResultsNotFound(err) {

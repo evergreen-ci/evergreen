@@ -235,7 +235,7 @@ func (s *notificationSuite) TestWebhookPayload() {
 
 	s.JSONEq(jsonData, string(n.Payload.(*util.EvergreenWebhook).Body))
 
-	c, err := n.Composer()
+	c, err := n.Composer(s.T().Context())
 	s.NoError(err)
 	s.Require().NotNil(c)
 	s.True(c.Loggable())
@@ -256,7 +256,7 @@ func (s *notificationSuite) TestJIRACommentPayload() {
 
 	s.Equal("hi", *n.Payload.(*string))
 
-	c, err := n.Composer()
+	c, err := n.Composer(s.T().Context())
 	s.NoError(err)
 	s.Require().NotNil(c)
 	s.Equal("hi", c.String())
@@ -293,7 +293,7 @@ func (s *notificationSuite) TestJIRAIssuePayload() {
 
 	s.Equal(s.n, *n)
 
-	c, err := n.Composer()
+	c, err := n.Composer(s.T().Context())
 	s.NoError(err)
 	s.Require().NotNil(c)
 	s.True(c.Loggable())
@@ -322,7 +322,7 @@ func (s *notificationSuite) TestEmailPayload() {
 
 	s.Equal(s.n, *n)
 
-	c, err := n.Composer()
+	c, err := n.Composer(s.T().Context())
 	s.NoError(err)
 	s.Require().NotNil(c)
 
@@ -349,7 +349,7 @@ func (s *notificationSuite) TestSlackPayload() {
 
 	s.Equal(s.n, *n)
 
-	c, err := n.Composer()
+	c, err := n.Composer(s.T().Context())
 	s.NoError(err)
 	s.Require().NotNil(c)
 	s.True(c.Loggable())
@@ -374,7 +374,7 @@ func (s *notificationSuite) TestGithubPayload() {
 
 	s.Equal(s.n, *n)
 
-	c, err := n.Composer()
+	c, err := n.Composer(s.T().Context())
 	s.NoError(err)
 	s.Require().NotNil(c)
 	s.True(c.Loggable())
