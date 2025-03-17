@@ -276,7 +276,7 @@ func TestJasperCommands(t *testing.T) {
 			setupScript, err := h.setupScriptCommands(settings)
 			require.NoError(t, err)
 
-			setupSpawnHost, err := h.SpawnHostSetupCommands(settings)
+			setupSpawnHost, err := h.SpawnHostSetupCommands(t.Context(), settings)
 			require.NoError(t, err)
 
 			markDone := h.MarkUserDataProvisioningDoneCommand()
@@ -486,7 +486,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 			writeCredentialsCmd, err := h.WriteJasperCredentialsFilesCommands(creds)
 			require.NoError(t, err)
 
-			setupSpawnHost, err := h.SpawnHostSetupCommands(settings)
+			setupSpawnHost, err := h.SpawnHostSetupCommands(t.Context(), settings)
 			require.NoError(t, err)
 
 			markDone := h.MarkUserDataProvisioningDoneCommand()
@@ -992,7 +992,7 @@ func TestSpawnHostSetupCommands(t *testing.T) {
 		},
 	}
 
-	cmd, err := h.SpawnHostSetupCommands(settings)
+	cmd, err := h.SpawnHostSetupCommands(t.Context(), settings)
 	require.NoError(t, err)
 
 	expected := "mkdir -m 777 -p /home/user/cli_bin" +

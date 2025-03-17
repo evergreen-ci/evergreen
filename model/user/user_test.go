@@ -217,7 +217,7 @@ func (s *UserTestSuite) TestAddKey() {
 	s.Require().NoError(err)
 	s.Equal("ssh-mock 67890", key)
 
-	u, err := FindOne(ById(s.users[0].Id))
+	u, err := FindOneContext(s.T().Context(), ById(s.users[0].Id))
 	s.Require().NoError(err)
 	s.Require().NotNil(u)
 
@@ -233,14 +233,14 @@ func (s *UserTestSuite) TestCheckAndUpdateSchedulingLimit() {
 
 	// Should not be able to go to a negative counter
 	s.Require().NoError(u.CheckAndUpdateSchedulingLimit(s.T().Context(), maxScheduledTasks, 100, false))
-	u, err := FindOne(ById(u.Id))
+	u, err := FindOneContext(s.T().Context(), ById(u.Id))
 	s.Require().NoError(err)
 	s.Require().NotNil(u)
 	s.Equal(0, u.NumScheduledPatchTasks)
 
 	// Confirm scheduling tasks less than the limit is allowed
 	s.Require().NoError(u.CheckAndUpdateSchedulingLimit(s.T().Context(), maxScheduledTasks, 99, true))
-	u, err = FindOne(ById(u.Id))
+	u, err = FindOneContext(s.T().Context(), ById(u.Id))
 	s.Require().NoError(err)
 	s.Require().NotNil(u)
 	s.Equal(99, u.NumScheduledPatchTasks)
@@ -249,7 +249,7 @@ func (s *UserTestSuite) TestCheckAndUpdateSchedulingLimit() {
 	err = u.CheckAndUpdateSchedulingLimit(s.T().Context(), maxScheduledTasks, 1, true)
 	s.Require().Error(err)
 	s.Contains(err.Error(), fmt.Sprintf("user '%s' has scheduled %d out of %d allowed tasks in the past hour", u.Id, u.NumScheduledPatchTasks, maxScheduledTasks))
-	u, err = FindOne(ById(u.Id))
+	u, err = FindOneContext(s.T().Context(), ById(u.Id))
 	s.Require().NoError(err)
 	s.Require().NotNil(u)
 	s.Equal(99, u.NumScheduledPatchTasks)
@@ -257,7 +257,7 @@ func (s *UserTestSuite) TestCheckAndUpdateSchedulingLimit() {
 	// Confirm unscheduling one task brings the count-down to 98
 	err = u.CheckAndUpdateSchedulingLimit(s.T().Context(), maxScheduledTasks, 1, false)
 	s.Require().NoError(err)
-	u, err = FindOne(ById(u.Id))
+	u, err = FindOneContext(s.T().Context(), ById(u.Id))
 	s.Require().NoError(err)
 	s.Require().NotNil(u)
 	s.Equal(98, u.NumScheduledPatchTasks)
@@ -265,7 +265,7 @@ func (s *UserTestSuite) TestCheckAndUpdateSchedulingLimit() {
 	// Confirm that scheduling one more task is now possible
 	err = u.CheckAndUpdateSchedulingLimit(s.T().Context(), maxScheduledTasks, 1, true)
 	s.Require().NoError(err)
-	u, err = FindOne(ById(u.Id))
+	u, err = FindOneContext(s.T().Context(), ById(u.Id))
 	s.Require().NoError(err)
 	s.Require().NotNil(u)
 	s.Equal(99, u.NumScheduledPatchTasks)
@@ -275,7 +275,7 @@ func (s *UserTestSuite) TestCheckAndUpdateSchedulingLimit() {
 	u.LastScheduledTasksAt = time.Now().Add(-1 * time.Hour)
 	err = u.CheckAndUpdateSchedulingLimit(s.T().Context(), maxScheduledTasks, 5, true)
 	s.Require().NoError(err)
-	u, err = FindOne(ById(u.Id))
+	u, err = FindOneContext(s.T().Context(), ById(u.Id))
 	s.Require().NoError(err)
 	s.Require().NotNil(u)
 	s.Equal(5, u.NumScheduledPatchTasks)
@@ -285,7 +285,7 @@ func (s *UserTestSuite) TestCheckAndUpdateSchedulingLimit() {
 	u.LastScheduledTasksAt = time.Now().Add(-1 * time.Hour)
 	err = u.CheckAndUpdateSchedulingLimit(s.T().Context(), maxScheduledTasks, 5, false)
 	s.Require().NoError(err)
-	u, err = FindOne(ById(u.Id))
+	u, err = FindOneContext(s.T().Context(), ById(u.Id))
 	s.Require().NoError(err)
 	s.Require().NotNil(u)
 	s.Equal(0, u.NumScheduledPatchTasks)
@@ -295,7 +295,7 @@ func (s *UserTestSuite) TestCheckAndUpdateSchedulingLimit() {
 	err = u.CheckAndUpdateSchedulingLimit(s.T().Context(), maxScheduledTasks, 101, true)
 	s.Require().Error(err)
 	s.Contains(err.Error(), fmt.Sprintf("cannot schedule %d tasks, maximum hourly per-user limit is %d", 101, 100))
-	u, err = FindOne(ById(u.Id))
+	u, err = FindOneContext(s.T().Context(), ById(u.Id))
 	s.Require().NoError(err)
 	s.Require().NotNil(u)
 	s.Equal(0, u.NumScheduledPatchTasks)
@@ -307,7 +307,7 @@ func (s *UserTestSuite) TestCheckAndUpdateSchedulingLimit() {
 	s.Require().NoError(UpdateOneContext(s.T().Context(), bson.M{IdKey: u.Id}, update))
 	err = u.CheckAndUpdateSchedulingLimit(s.T().Context(), maxScheduledTasks, 10, false)
 	s.Require().NoError(err)
-	u, err = FindOne(ById(u.Id))
+	u, err = FindOneContext(s.T().Context(), ById(u.Id))
 	s.Require().NoError(err)
 	s.Require().NotNil(u)
 	s.Equal(110, u.NumScheduledPatchTasks)
@@ -318,7 +318,7 @@ func (s *UserTestSuite) TestAddDuplicateKeyFails() {
 	s.Error(err)
 	s.Contains(err.Error(), "not found")
 
-	u, err := FindOne(ById(s.users[1].Id))
+	u, err := FindOneContext(s.T().Context(), ById(s.users[1].Id))
 	s.NoError(err)
 	s.NotNil(u)
 	s.checkUserNotDestroyed(u, s.users[1])
@@ -335,7 +335,7 @@ func (s *UserTestSuite) TestUpdatePublicKey() {
 	s.Contains(s.users[5].PubKeys[0].Name, "key1")
 	s.Contains(s.users[5].PubKeys[0].Key, "this is an amazing key")
 
-	u, err := FindOne(ById(s.users[5].Id))
+	u, err := FindOneContext(s.T().Context(), ById(s.users[5].Id))
 	s.NoError(err)
 	s.checkUserNotDestroyed(u, s.users[5])
 }
@@ -346,7 +346,7 @@ func (s *UserTestSuite) TestUpdatePublicKeyWithSameKeyName() {
 	s.Contains(s.users[5].PubKeys[0].Name, "keyAmazing")
 	s.Contains(s.users[5].PubKeys[0].Key, "this is an amazing key")
 
-	u, err := FindOne(ById(s.users[5].Id))
+	u, err := FindOneContext(s.T().Context(), ById(s.users[5].Id))
 	s.NoError(err)
 	s.checkUserNotDestroyed(u, s.users[5])
 }
@@ -357,7 +357,7 @@ func (s *UserTestSuite) TestUpdatePublicKeyThatDoesntExist() {
 	s.Contains(s.users[5].PubKeys[0].Name, "key1")
 	s.Contains(s.users[5].PubKeys[0].Key, "ssh-mock 12345")
 
-	u, err := FindOne(ById(s.users[5].Id))
+	u, err := FindOneContext(s.T().Context(), ById(s.users[5].Id))
 	s.NoError(err)
 	s.checkUserNotDestroyed(u, s.users[5])
 }
@@ -367,7 +367,7 @@ func (s *UserTestSuite) TestDeletePublicKey() {
 	s.Empty(s.users[1].PubKeys)
 	s.Equal("67890", s.users[1].APIKey)
 
-	u, err := FindOne(ById(s.users[1].Id))
+	u, err := FindOneContext(s.T().Context(), ById(s.users[1].Id))
 	s.NoError(err)
 	s.checkUserNotDestroyed(u, s.users[1])
 }
@@ -377,7 +377,7 @@ func (s *UserTestSuite) TestDeletePublicKeyThatDoesntExist() {
 	s.Empty(s.users[0].PubKeys)
 	s.Equal("12345", s.users[0].APIKey)
 
-	u, err := FindOne(ById(s.users[0].Id))
+	u, err := FindOneContext(s.T().Context(), ById(s.users[0].Id))
 	s.NoError(err)
 	s.checkUserNotDestroyed(u, s.users[0])
 }

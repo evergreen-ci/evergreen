@@ -72,7 +72,7 @@ func (s *UserRouteSuite) TestUpdateNotifications() {
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
 
-	dbUser, err := user.FindOne(user.ById("me"))
+	dbUser, err := user.FindOneContext(ctx, user.ById("me"))
 	s.NoError(err)
 	s.EqualValues(user.PreferenceSlack, dbUser.Settings.Notifications.BuildBreak)
 	s.EqualValues(user.PreferenceEmail, dbUser.Settings.Notifications.PatchFinish)
@@ -108,7 +108,7 @@ func (s *UserRouteSuite) TestUndefinedInput() {
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
 
-	dbUser, err := user.FindOne(user.ById("me"))
+	dbUser, err := user.FindOneContext(ctx, user.ById("me"))
 	s.NoError(err)
 	s.EqualValues(user.PreferenceSlack, dbUser.Settings.Notifications.BuildBreak)
 	s.EqualValues("something", dbUser.Settings.SlackUsername)

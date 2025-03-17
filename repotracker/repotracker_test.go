@@ -159,7 +159,7 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 			So(versionOne, ShouldNotBeNil)
 			So(versionOne.AuthorID, ShouldEqual, "testUser")
 
-			u2, err := user.FindOne(user.ById("testUser"))
+			u2, err := user.FindOneContext(ctx, user.ById("testUser"))
 			So(err, ShouldBeNil)
 			So(u2, ShouldNotBeNil)
 			So(u2.Settings.GithubUser.LastKnownAs, ShouldEqual, "somebody")
@@ -865,7 +865,7 @@ func TestBuildBreakSubscriptions(t *testing.T) {
 		Requester:  evergreen.RepotrackerVersionRequester,
 		Branch:     "branch",
 	}
-	assert.NoError(AddBuildBreakSubscriptions(&v1, &proj1))
+	assert.NoError(AddBuildBreakSubscriptions(t.Context(), &v1, &proj1))
 	assert.NoError(db.FindAllQContext(t.Context(), event.SubscriptionsCollection, db.Q{}, &subs))
 	assert.Empty(subs)
 
@@ -906,7 +906,7 @@ func TestBuildBreakSubscriptions(t *testing.T) {
 		},
 	}
 	assert.NoError(u4.Insert())
-	assert.NoError(AddBuildBreakSubscriptions(&v1, &proj2))
+	assert.NoError(AddBuildBreakSubscriptions(t.Context(), &v1, &proj2))
 	assert.NoError(db.FindAllQContext(t.Context(), event.SubscriptionsCollection, db.Q{}, &subs))
 	assert.Len(subs, 2)
 
@@ -920,7 +920,7 @@ func TestBuildBreakSubscriptions(t *testing.T) {
 		Branch:     "branch",
 		AuthorID:   u4.Id,
 	}
-	assert.NoError(AddBuildBreakSubscriptions(&v3, &proj2))
+	assert.NoError(AddBuildBreakSubscriptions(t.Context(), &v3, &proj2))
 	assert.NoError(db.FindAllQContext(t.Context(), event.SubscriptionsCollection, db.Q{}, &subs))
 	targetString, ok := subs[0].Subscriber.Target.(*string)
 	assert.True(ok)

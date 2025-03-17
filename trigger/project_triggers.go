@@ -84,7 +84,7 @@ func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 	if err != nil {
 		return nil, errors.Wrap(err, "updating last revision")
 	}
-	err = repotracker.AddBuildBreakSubscriptions(v, &args.DownstreamProject)
+	err = repotracker.AddBuildBreakSubscriptions(ctx, v, &args.DownstreamProject)
 	if err != nil {
 		return nil, errors.Wrap(err, "adding build break subscriptions")
 	}

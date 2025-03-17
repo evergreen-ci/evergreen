@@ -1398,7 +1398,7 @@ func (s *PatchIntentUnitsSuite) TestFindEvergreenUserForPR() {
 }
 
 func (s *PatchIntentUnitsSuite) TestFindEvergreenUserForGithubMergeGroup() {
-	u, err := findEvergreenUserForGithubMergeGroup()
+	u, err := findEvergreenUserForGithubMergeGroup(s.ctx)
 	s.NoError(err)
 	s.Require().NotNil(u)
 	s.Equal(evergreen.GithubMergeUser, u.Id)

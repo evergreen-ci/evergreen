@@ -341,7 +341,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 			}))
 			continue
 		}
-		if err = AddBuildBreakSubscriptions(v, ref); err != nil {
+		if err = AddBuildBreakSubscriptions(ctx, v, ref); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":            "error creating build break subscriptions",
 				"runner":             RunnerName,
@@ -492,7 +492,7 @@ func addGithubCheckSubscriptions(ctx context.Context, v *model.Version) error {
 
 // AddBuildBreakSubscriptions will subscribe admins of a project to a version if no one
 // else would receive a build break notification
-func AddBuildBreakSubscriptions(v *model.Version, projectRef *model.ProjectRef) error {
+func AddBuildBreakSubscriptions(ctx context.Context, v *model.Version, projectRef *model.ProjectRef) error {
 	subscriptionBase := event.Subscription{
 		ResourceType: event.ResourceTypeTask,
 		Trigger:      "build-break",
@@ -528,7 +528,7 @@ func AddBuildBreakSubscriptions(v *model.Version, projectRef *model.ProjectRef) 
 	// don't send it to admins
 	catcher := grip.NewSimpleCatcher()
 	if v.AuthorID != "" && v.TriggerID == "" {
-		author, err := user.FindOne(user.ById(v.AuthorID))
+		author, err := user.FindOneContext(ctx, user.ById(v.AuthorID))
 		if err != nil {
 			catcher.Add(errors.Wrap(err, "unable to retrieve user"))
 		} else if author.Settings.Notifications.BuildBreakID != "" {
@@ -542,7 +542,7 @@ func AddBuildBreakSubscriptions(v *model.Version, projectRef *model.ProjectRef) 
 	}
 	// if the project has build break notifications, subscribe admins if no one subscribed
 	for _, admin := range projectRef.Admins {
-		subscriber, err := makeBuildBreakSubscriber(admin)
+		subscriber, err := makeBuildBreakSubscriber(ctx, admin)
 		if err != nil {
 			catcher.Add(err)
 			continue
@@ -560,8 +560,8 @@ func AddBuildBreakSubscriptions(v *model.Version, projectRef *model.ProjectRef) 
 	return catcher.Resolve()
 }
 
-func makeBuildBreakSubscriber(userID string) (*event.Subscriber, error) {
-	u, err := user.FindOne(user.ById(userID))
+func makeBuildBreakSubscriber(ctx context.Context, userID string) (*event.Subscriber, error) {
+	u, err := user.FindOneContext(ctx, user.ById(userID))
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to find user")
 	}

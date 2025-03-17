@@ -80,6 +80,15 @@ func FindOne(query db.Q) (*DBUser, error) {
 	return u, err
 }
 
+func FindOneContext(ctx context.Context, query db.Q) (*DBUser, error) {
+	u := &DBUser{}
+	err := db.FindOneQContext(ctx, Collection, query, u)
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+	return u, err
+}
+
 // FindOneById gets a DBUser by ID.
 func FindOneById(id string) (*DBUser, error) {
 	u := &DBUser{}
