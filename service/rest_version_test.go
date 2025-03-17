@@ -33,10 +33,10 @@ func TestGetRecentVersions(t *testing.T) {
 	router, err := newTestUIRouter(ctx, env)
 	require.NoError(t, err, "error setting up router")
 
-	err = modelutil.CreateTestLocalConfig(buildTestConfig, "mci-test", "")
+	err = modelutil.CreateTestLocalConfig(ctx, buildTestConfig, "mci-test", "")
 	require.NoError(t, err, "Error loading local config mci-test")
 
-	err = modelutil.CreateTestLocalConfig(buildTestConfig, "render", "")
+	err = modelutil.CreateTestLocalConfig(ctx, buildTestConfig, "render", "")
 	require.NoError(t, err, "Error loading local config render")
 
 	Convey("When finding recent versions", t, func() {
@@ -44,7 +44,7 @@ func TestGetRecentVersions(t *testing.T) {
 
 		projectName := "project_test"
 
-		err = modelutil.CreateTestLocalConfig(buildTestConfig, projectName, "")
+		err = modelutil.CreateTestLocalConfig(ctx, buildTestConfig, projectName, "")
 		So(err, ShouldBeNil)
 		otherProjectName := "my-other-project"
 		So(projectName, ShouldNotEqual, otherProjectName) // sanity-check
@@ -238,10 +238,10 @@ func TestGetVersionInfo(t *testing.T) {
 	router, err := newTestUIRouter(ctx, env)
 	require.NoError(t, err, "error setting up router")
 
-	err = modelutil.CreateTestLocalConfig(buildTestConfig, "mci-test", "")
+	err = modelutil.CreateTestLocalConfig(ctx, buildTestConfig, "mci-test", "")
 	require.NoError(t, err, "Error loading local config mci-test")
 
-	err = modelutil.CreateTestLocalConfig(buildTestConfig, "render", "")
+	err = modelutil.CreateTestLocalConfig(ctx, buildTestConfig, "render", "")
 	require.NoError(t, err, "Error loading local config render")
 
 	Convey("When finding info on a particular version", t, func() {
@@ -251,7 +251,7 @@ func TestGetVersionInfo(t *testing.T) {
 		versionId := "my-version"
 		projectName := "project_test"
 
-		err = modelutil.CreateTestLocalConfig(buildTestConfig, projectName, "")
+		err = modelutil.CreateTestLocalConfig(ctx, buildTestConfig, projectName, "")
 		So(err, ShouldBeNil)
 
 		v := &model.Version{

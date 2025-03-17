@@ -77,7 +77,7 @@ type UIStats struct {
 
 func (uis *UIServer) taskTimingPage(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
-	project, err := projCtx.GetProject()
+	project, err := projCtx.GetProject(r.Context())
 
 	if err != nil || project == nil {
 		uis.LoggedError(w, r, http.StatusNotFound, errors.New("project not found"))
@@ -140,7 +140,7 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 	taskName := vars["task_name"]
 	request := vars["request"]
 
-	project, err := projCtx.GetProject()
+	project, err := projCtx.GetProject(r.Context())
 	if err != nil || project == nil {
 		uis.LoggedError(w, r, http.StatusNotFound, errors.New("not found"))
 		return

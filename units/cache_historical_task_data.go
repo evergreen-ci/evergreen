@@ -81,7 +81,7 @@ func (j *cacheHistoricalTaskDataJob) Run(ctx context.Context) {
 
 	var statsStatus taskstats.StatsStatus
 	timingMsg["status_check"] = reportTiming(func() {
-		statsStatus, err = taskstats.GetStatsStatus(j.ProjectID)
+		statsStatus, err = taskstats.GetStatsStatus(ctx, j.ProjectID)
 		j.AddError(errors.Wrap(err, "getting daily task stats status"))
 	}).Seconds()
 	if j.HasErrors() {

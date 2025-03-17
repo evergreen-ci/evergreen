@@ -105,7 +105,7 @@ func TestPodAllocatorJob(t *testing.T) {
 			_, err := v.CreateSecret(ctx, *cocoa.NewNamedSecret().SetName(pRef.ContainerSecrets[1].ExternalName).SetValue("repo_creds_value"))
 			require.NoError(t, err)
 
-			dbProjRef, err := model.FindBranchProjectRef(pRef.Id)
+			dbProjRef, err := model.FindBranchProjectRef(t.Context(), pRef.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbProjRef)
 			pRef = *dbProjRef
@@ -292,7 +292,7 @@ func TestPodAllocatorJob(t *testing.T) {
 
 			// Re-find the project ref because creating the secret will update
 			// the container secret.
-			dbProjRef, err := model.FindBranchProjectRef(pRef.Id)
+			dbProjRef, err := model.FindBranchProjectRef(t.Context(), pRef.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbProjRef)
 			pRef = *dbProjRef

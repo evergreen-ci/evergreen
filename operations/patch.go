@@ -272,7 +272,7 @@ func Patch() cli.Command {
 				uiHost:     conf.UIServerHost,
 				outputJSON: outputJSON,
 			}
-			if err = params.displayPatch(ac, outputParams); err != nil {
+			if err = params.displayPatch(ctx, ac, outputParams); err != nil {
 				grip.Error(err)
 			}
 			params.setDefaultProject(conf)
@@ -512,7 +512,7 @@ func PatchFile() cli.Command {
 				outputJSON: c.Bool(jsonFlagName),
 			}
 
-			return params.displayPatch(ac, outputParams)
+			return params.displayPatch(ctx, ac, outputParams)
 		},
 	}
 }

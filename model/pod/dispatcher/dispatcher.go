@@ -128,7 +128,7 @@ func (pd *PodDispatcher) AssignNextTask(ctx context.Context, env evergreen.Envir
 			continue
 		}
 
-		isDispatchable, err := pd.checkTaskIsDispatchable(t)
+		isDispatchable, err := pd.checkTaskIsDispatchable(ctx, t)
 		if err != nil {
 			return nil, errors.Wrap(err, "checking task dispatchability")
 		}
@@ -246,7 +246,7 @@ func (pd *PodDispatcher) dequeueUndispatchableTask(ctx context.Context, env ever
 
 // checkTaskIsDispatchable checks if a task is able to dispatch based on its
 // current state and its project ref's settings.
-func (pd *PodDispatcher) checkTaskIsDispatchable(t *task.Task) (shouldRun bool, err error) {
+func (pd *PodDispatcher) checkTaskIsDispatchable(ctx context.Context, t *task.Task) (shouldRun bool, err error) {
 	if !t.IsContainerDispatchable() {
 		grip.Notice(message.Fields{
 			"message":    "container task in dispatch queue is not dispatchable",
@@ -258,7 +258,7 @@ func (pd *PodDispatcher) checkTaskIsDispatchable(t *task.Task) (shouldRun bool, 
 		return false, nil
 	}
 
-	refs, err := model.FindProjectRefsByIds(t.Project)
+	refs, err := model.FindProjectRefsByIds(ctx, t.Project)
 	if err != nil {
 		return false, errors.Wrapf(err, "finding project ref '%s' for task '%s'", t.Project, t.Id)
 	}

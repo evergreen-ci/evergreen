@@ -314,7 +314,7 @@ func (r *mutationResolver) SetPatchVisibility(ctx context.Context, patchIds []st
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting visibility for patch '%s': %s", p.Id, err.Error()))
 		}
 		apiPatch := restModel.APIPatch{}
-		err = apiPatch.BuildFromService(p, &restModel.APIPatchArgs{IncludeProjectIdentifier: true})
+		err = apiPatch.BuildFromService(ctx, p, &restModel.APIPatchArgs{IncludeProjectIdentifier: true})
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting patch '%s' to APIPatch: %s", p.Id, err.Error()))
 		}
@@ -361,7 +361,7 @@ func (r *mutationResolver) AttachProjectToNewRepo(ctx context.Context, project M
 	}
 
 	res := &restModel.APIProjectRef{}
-	if err = res.BuildFromService(*pRef); err != nil {
+	if err = res.BuildFromService(ctx, *pRef); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting project '%s' to APIProjectRef: %s", project.ProjectID, err.Error()))
 	}
 	return res, nil
@@ -382,7 +382,7 @@ func (r *mutationResolver) AttachProjectToRepo(ctx context.Context, projectID st
 	}
 
 	res := &restModel.APIProjectRef{}
-	if err := res.BuildFromService(*pRef); err != nil {
+	if err := res.BuildFromService(ctx, *pRef); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting project '%s' to APIProjectRef: %s", projectID, err.Error()))
 	}
 	return res, nil
@@ -410,7 +410,7 @@ func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.
 	}
 
 	projectIdentifier := utility.FromStringPtr(project.Identifier)
-	projectRef, err := model.FindBranchProjectRef(projectIdentifier)
+	projectRef, err := model.FindBranchProjectRef(ctx, projectIdentifier)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", projectIdentifier, err.Error()))
 	}
@@ -418,7 +418,7 @@ func (r *mutationResolver) CreateProject(ctx context.Context, project restModel.
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("project '%s' not found", projectIdentifier))
 	}
 	apiProjectRef := restModel.APIProjectRef{}
-	if err = apiProjectRef.BuildFromService(*projectRef); err != nil {
+	if err = apiProjectRef.BuildFromService(ctx, *projectRef); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting project '%s' to APIProjectRef: %s", projectIdentifier, err.Error()))
 	}
 
@@ -531,7 +531,7 @@ func (r *mutationResolver) DetachProjectFromRepo(ctx context.Context, projectID 
 	}
 
 	res := &restModel.APIProjectRef{}
-	if err := res.BuildFromService(*pRef); err != nil {
+	if err := res.BuildFromService(ctx, *pRef); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting project '%s' to APIProjectRef: %s", projectID, err.Error()))
 	}
 	return res, nil
@@ -585,7 +585,7 @@ func (r *mutationResolver) SetLastRevision(ctx context.Context, opts SetLastRevi
 		return nil, InputValidationError.Send(ctx, fmt.Sprintf("insufficient length: must provide %d characters for revision", gitHashLength))
 	}
 
-	project, err := model.FindBranchProjectRef(opts.ProjectIdentifier)
+	project, err := model.FindBranchProjectRef(ctx, opts.ProjectIdentifier)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", opts.ProjectIdentifier, err.Error()))
 	}
@@ -1060,7 +1060,7 @@ func (r *mutationResolver) UnscheduleTask(ctx context.Context, taskID string) (*
 
 // AddFavoriteProject is the resolver for the addFavoriteProject field.
 func (r *mutationResolver) AddFavoriteProject(ctx context.Context, opts AddFavoriteProjectInput) (*restModel.APIProjectRef, error) {
-	p, err := model.FindBranchProjectRef(opts.ProjectIdentifier)
+	p, err := model.FindBranchProjectRef(ctx, opts.ProjectIdentifier)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", opts.ProjectIdentifier, err.Error()))
 	}
@@ -1074,7 +1074,7 @@ func (r *mutationResolver) AddFavoriteProject(ctx context.Context, opts AddFavor
 		return nil, InternalServerError.Send(ctx, err.Error())
 	}
 	apiProjectRef := restModel.APIProjectRef{}
-	err = apiProjectRef.BuildFromService(*p)
+	err = apiProjectRef.BuildFromService(ctx, *p)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting project '%s' to APIProjectRef: %s", opts.ProjectIdentifier, err.Error()))
 	}
@@ -1120,7 +1120,7 @@ func (r *mutationResolver) DeleteSubscriptions(ctx context.Context, subscription
 
 // RemoveFavoriteProject is the resolver for the removeFavoriteProject field.
 func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, opts RemoveFavoriteProjectInput) (*restModel.APIProjectRef, error) {
-	p, err := model.FindBranchProjectRef(opts.ProjectIdentifier)
+	p, err := model.FindBranchProjectRef(ctx, opts.ProjectIdentifier)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", opts.ProjectIdentifier, err.Error()))
 	}
@@ -1134,7 +1134,7 @@ func (r *mutationResolver) RemoveFavoriteProject(ctx context.Context, opts Remov
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("removing project '%s': %s", opts.ProjectIdentifier, err.Error()))
 	}
 	apiProjectRef := restModel.APIProjectRef{}
-	err = apiProjectRef.BuildFromService(*p)
+	err = apiProjectRef.BuildFromService(ctx, *p)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting project '%s' to APIProjectRef: %s", opts.ProjectIdentifier, err.Error()))
 	}
@@ -1300,7 +1300,7 @@ func (r *mutationResolver) RestartVersions(ctx context.Context, versionID string
 				return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", currVersionID))
 			}
 			apiVersion := restModel.APIVersion{}
-			apiVersion.BuildFromService(*v)
+			apiVersion.BuildFromService(ctx, *v)
 			versions = append(versions, &apiVersion)
 		}
 	}

@@ -1,6 +1,7 @@
 package testutil
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -14,7 +15,7 @@ import (
 
 // Creates a project ref local config that can be used for testing, with the string identifier given
 // and the local config from a path
-func CreateTestLocalConfig(testSettings *evergreen.Settings, projectName, projectPath string) error {
+func CreateTestLocalConfig(ctx context.Context, testSettings *evergreen.Settings, projectName, projectPath string) error {
 	if projectPath == "" {
 		config, err := findConfig(testSettings.ConfigDir)
 		if err != nil {
@@ -23,7 +24,7 @@ func CreateTestLocalConfig(testSettings *evergreen.Settings, projectName, projec
 		projectPath = filepath.Join(config, "project", fmt.Sprintf("%v.yml", projectName))
 	}
 
-	projectRef, err := model.FindBranchProjectRef(projectName)
+	projectRef, err := model.FindBranchProjectRef(ctx, projectName)
 	if err != nil {
 		return err
 	}

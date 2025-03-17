@@ -839,7 +839,7 @@ func PopulateCacheHistoricalTaskDataJob(part int) amboy.QueueOperation {
 			return nil
 		}
 
-		projects, err := model.FindAllMergedTrackedProjectRefs()
+		projects, err := model.FindAllMergedTrackedProjectRefs(ctx)
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -976,7 +976,7 @@ func PopulateLocalQueueJobs(env evergreen.Environment) amboy.QueueOperation {
 
 func PopulatePeriodicBuilds() amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
-		projects, err := model.FindPeriodicProjects()
+		projects, err := model.FindPeriodicProjects(ctx)
 		if err != nil {
 			return errors.Wrap(err, "finding periodic projects")
 		}

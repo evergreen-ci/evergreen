@@ -41,7 +41,7 @@ func (uis *UIServer) setRevision(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	projectRef, err := model.FindBranchProjectRef(project)
+	projectRef, err := model.FindBranchProjectRef(r.Context(), project)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -71,7 +71,7 @@ func (uis *UIServer) setRevision(w http.ResponseWriter, r *http.Request) {
 func (uis *UIServer) projectEvents(w http.ResponseWriter, r *http.Request) {
 	// Validate the project exists
 	id := gimlet.GetVars(r)["project_id"]
-	projectRef, err := model.FindBranchProjectRef(id)
+	projectRef, err := model.FindBranchProjectRef(r.Context(), id)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return

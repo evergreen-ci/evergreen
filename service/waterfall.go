@@ -612,7 +612,7 @@ func waterfallDataAdaptor(ctx context.Context, vvData versionVariantData, projec
 // Http handler for the waterfall page
 func (uis *UIServer) waterfallPage(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
-	project, err := projCtx.GetProject()
+	project, err := projCtx.GetProject(r.Context())
 
 	if err != nil || project == nil {
 		uis.LoggedError(w, r, http.StatusNotFound, errors.New("project not found"))
@@ -638,7 +638,7 @@ func (uis *UIServer) waterfallPage(w http.ResponseWriter, r *http.Request) {
 // Create and return a redirect to the Spruce waterfall page if the user is opted in to the new UI.
 func (uis *UIServer) mainlineCommitsRedirect(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
-	project, err := projCtx.GetProject()
+	project, err := projCtx.GetProject(r.Context())
 
 	if err != nil || project == nil {
 		uis.LoggedError(w, r, http.StatusNotFound, errors.New("project not found"))
@@ -662,7 +662,7 @@ func (uis *UIServer) mainlineCommitsRedirect(w http.ResponseWriter, r *http.Requ
 
 func (restapi restAPI) getWaterfallData(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveRESTContext(r)
-	project, err := projCtx.GetProject()
+	project, err := projCtx.GetProject(r.Context())
 	if err != nil || project == nil {
 		gimlet.WriteJSONResponse(w, http.StatusNotFound, responseError{Message: "error finding project"})
 		return

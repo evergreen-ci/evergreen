@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -115,9 +116,9 @@ type APIPatchTriggerDefinition struct {
 	VariantsTasks []VariantTask `json:"variants_tasks,omitempty"`
 }
 
-func (t *APIPatchTriggerDefinition) BuildFromService(def patch.PatchTriggerDefinition) error {
+func (t *APIPatchTriggerDefinition) BuildFromService(ctx context.Context, def patch.PatchTriggerDefinition) error {
 	t.ChildProjectId = utility.ToStringPtr(def.ChildProject) // we store the real ID in the child project field
-	identifier, err := model.GetIdentifierForProject(def.ChildProject)
+	identifier, err := model.GetIdentifierForProject(ctx, def.ChildProject)
 	if err != nil {
 		return errors.Wrapf(err, "getting identifier for child project '%s'", def.ChildProject)
 	}
@@ -821,7 +822,7 @@ func (p *APIProjectRef) ToService() (*model.ProjectRef, error) {
 
 // BuildPublicFields only builds the fields that anyone should be able to see
 // so that we can return these to non project admins.
-func (p *APIProjectRef) BuildPublicFields(projectRef model.ProjectRef) error {
+func (p *APIProjectRef) BuildPublicFields(ctx context.Context, projectRef model.ProjectRef) error {
 	p.Id = utility.ToStringPtr(projectRef.Id)
 	p.Identifier = utility.ToStringPtr(projectRef.Identifier)
 	p.DisplayName = utility.ToStringPtr(projectRef.DisplayName)
@@ -919,7 +920,7 @@ func (p *APIProjectRef) BuildPublicFields(projectRef model.ProjectRef) error {
 		patchTriggers := []APIPatchTriggerDefinition{}
 		for idx, a := range projectRef.PatchTriggerAliases {
 			trigger := APIPatchTriggerDefinition{}
-			if err := trigger.BuildFromService(a); err != nil {
+			if err := trigger.BuildFromService(ctx, a); err != nil {
 				return errors.Wrapf(err, "converting patch trigger alias at index %d to service model", idx)
 			}
 			patchTriggers = append(patchTriggers, trigger)
@@ -958,8 +959,8 @@ func (p *APIProjectRef) BuildPublicFields(projectRef model.ProjectRef) error {
 	return nil
 }
 
-func (p *APIProjectRef) BuildFromService(projectRef model.ProjectRef) error {
-	if err := p.BuildPublicFields(projectRef); err != nil {
+func (p *APIProjectRef) BuildFromService(ctx context.Context, projectRef model.ProjectRef) error {
+	if err := p.BuildPublicFields(ctx, projectRef); err != nil {
 		return err
 	}
 

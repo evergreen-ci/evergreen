@@ -61,7 +61,7 @@ func (q *ContainerTaskQueue) populate(ctx context.Context) error {
 		return errors.Wrap(err, "finding candidate container tasks for allocation")
 	}
 
-	readyForAllocation, err := q.filterByProjectRefSettings(candidates)
+	readyForAllocation, err := q.filterByProjectRefSettings(ctx, candidates)
 	if err != nil {
 		return errors.Wrap(err, "filtering candidate container tasks for allocation by project ref settings")
 	}
@@ -81,8 +81,8 @@ func (q *ContainerTaskQueue) populate(ctx context.Context) error {
 	return nil
 }
 
-func (q *ContainerTaskQueue) filterByProjectRefSettings(tasks []task.Task) ([]task.Task, error) {
-	projRefs, err := q.getProjectRefs(tasks)
+func (q *ContainerTaskQueue) filterByProjectRefSettings(ctx context.Context, tasks []task.Task) ([]task.Task, error) {
+	projRefs, err := q.getProjectRefs(ctx, tasks)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting project refs")
 	}
@@ -128,7 +128,7 @@ func (q *ContainerTaskQueue) filterByProjectRefSettings(tasks []task.Task) ([]ta
 	return readyForAllocation, nil
 }
 
-func (q *ContainerTaskQueue) getProjectRefs(tasks []task.Task) (map[string]ProjectRef, error) {
+func (q *ContainerTaskQueue) getProjectRefs(ctx context.Context, tasks []task.Task) (map[string]ProjectRef, error) {
 	seenProjRefIDs := map[string]struct{}{}
 	var projRefIDs []string
 	for _, t := range tasks {
@@ -143,7 +143,7 @@ func (q *ContainerTaskQueue) getProjectRefs(tasks []task.Task) (map[string]Proje
 		return map[string]ProjectRef{}, nil
 	}
 
-	projRefs, err := FindMergedProjectRefsByIds(projRefIDs...)
+	projRefs, err := FindMergedProjectRefsByIds(ctx, projRefIDs...)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding project refs for tasks")
 	}

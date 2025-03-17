@@ -46,7 +46,7 @@ func FindTasksByBuildId(ctx context.Context, buildId, taskId, status string, lim
 // certain version in a project. It takes the projectId, commit hash, and a taskId
 // for paginating through the results.
 func FindTasksByProjectAndCommit(ctx context.Context, opts task.GetTasksByProjectAndCommitOptions) ([]task.Task, error) {
-	projectId, err := model.GetIdForProject(opts.Project)
+	projectId, err := model.GetIdForProject(ctx, opts.Project)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,

@@ -68,7 +68,7 @@ func TestPeriodicBuildsJob(t *testing.T) {
 	tasks, err := task.Find(ctx, task.ByVersion(createdVersion.Id))
 	require.NoError(t, err)
 	assert.True(tasks[0].Activated)
-	dbProject, err := model.FindBranchProjectRef(sampleProject.Id)
+	dbProject, err := model.FindBranchProjectRef(t.Context(), sampleProject.Id)
 	assert.NoError(err)
 	assert.True(sampleProject.PeriodicBuilds[0].NextRunTime.Add(time.Hour).Equal(dbProject.PeriodicBuilds[0].NextRunTime))
 	assert.Equal(usr.Id, createdVersion.AuthorID)

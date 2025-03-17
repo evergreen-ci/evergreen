@@ -977,7 +977,7 @@ func logTaskEndStats(ctx context.Context, t *task.Task) error {
 		msg["display_task_id"] = t.DisplayTaskId
 	}
 
-	pRef, _ := FindBranchProjectRef(t.Project)
+	pRef, _ := FindBranchProjectRef(ctx, t.Project)
 	if pRef != nil {
 		msg["project_identifier"] = pRef.Identifier
 	}

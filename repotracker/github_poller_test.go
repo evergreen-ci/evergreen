@@ -179,7 +179,7 @@ func TestGetRevisionsSince(t *testing.T) {
 			require.NoError(t, err)
 			require.Len(t, revisions, maxRevisions+1, "should find revisions up to limit, plus one for the base revision when the starting revision is not found in the listed revisions")
 			assert.Equal(t, lastRevision, revisions[0].Revision, "revisions should be reverse time ordered")
-			lastRepoRevision, err := model.FindRepository(projectRef.Id)
+			lastRepoRevision, err := model.FindRepository(t.Context(), projectRef.Id)
 			require.NoError(t, err)
 			assert.Equal(t, firstRevision, lastRepoRevision.LastRevision, "last revision should be updated to base revision when the starting revision is not found in listed revisions")
 		})

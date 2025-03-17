@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"time"
@@ -148,13 +149,13 @@ type APIPatchArgs struct {
 // BuildFromService converts from service level structs to an APIPatch.
 // An APIPatch expects the VariantTasks to be populated with only non-execution tasks and display tasks.
 // If args are set, includes identifier, commit queue position, and/or child patches from the DB, if applicable.
-func (apiPatch *APIPatch) BuildFromService(p patch.Patch, args *APIPatchArgs) error {
+func (apiPatch *APIPatch) BuildFromService(ctx context.Context, p patch.Patch, args *APIPatchArgs) error {
 	apiPatch.buildBasePatch(p)
 
 	projectIdentifier := p.Project
 	if args != nil {
 		if args.IncludeProjectIdentifier && p.Project != "" {
-			apiPatch.GetIdentifier()
+			apiPatch.GetIdentifier(ctx)
 			if apiPatch.ProjectIdentifier != nil {
 				projectIdentifier = utility.FromStringPtr(apiPatch.ProjectIdentifier)
 			}
@@ -164,17 +165,17 @@ func (apiPatch *APIPatch) BuildFromService(p patch.Patch, args *APIPatchArgs) er
 	apiPatch.buildModuleChanges(p, projectIdentifier)
 
 	if args != nil && args.IncludeChildPatches {
-		return apiPatch.buildChildPatches(p)
+		return apiPatch.buildChildPatches(ctx, p)
 	}
 	return nil
 }
 
-func (apiPatch *APIPatch) GetIdentifier() {
+func (apiPatch *APIPatch) GetIdentifier(ctx context.Context) {
 	if utility.FromStringPtr(apiPatch.ProjectIdentifier) != "" {
 		return
 	}
 	if utility.FromStringPtr(apiPatch.ProjectId) != "" {
-		identifier, err := model.GetIdentifierForProject(utility.FromStringPtr(apiPatch.ProjectId))
+		identifier, err := model.GetIdentifierForProject(ctx, utility.FromStringPtr(apiPatch.ProjectId))
 
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "could not get identifier for project",
@@ -265,7 +266,7 @@ func (apiPatch *APIPatch) buildBasePatch(p patch.Patch) {
 	apiPatch.GithubPatchData.BuildFromService(p.GithubPatchData)
 }
 
-func getChildPatchesData(p patch.Patch) ([]DownstreamTasks, []APIPatch, error) {
+func getChildPatchesData(ctx context.Context, p patch.Patch) ([]DownstreamTasks, []APIPatch, error) {
 	if len(p.Triggers.ChildPatches) <= 0 {
 		return nil, nil, nil
 	}
@@ -295,7 +296,7 @@ func getChildPatchesData(p patch.Patch) ([]DownstreamTasks, []APIPatch, error) {
 			VariantTasks: variantTasks,
 		}
 		apiPatch := APIPatch{}
-		err = apiPatch.BuildFromService(childPatch, &APIPatchArgs{IncludeProjectIdentifier: true})
+		err = apiPatch.BuildFromService(ctx, childPatch, &APIPatchArgs{IncludeProjectIdentifier: true})
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "converting child patch to API model")
 		}
@@ -305,8 +306,8 @@ func getChildPatchesData(p patch.Patch) ([]DownstreamTasks, []APIPatch, error) {
 	return downstreamTasks, apiChildPatches, nil
 }
 
-func (apiPatch *APIPatch) buildChildPatches(p patch.Patch) error {
-	downstreamTasks, childPatches, err := getChildPatchesData(p)
+func (apiPatch *APIPatch) buildChildPatches(ctx context.Context, p patch.Patch) error {
+	downstreamTasks, childPatches, err := getChildPatchesData(ctx, p)
 	if err != nil {
 		return errors.Wrap(err, "getting downstream tasks")
 	}

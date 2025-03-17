@@ -44,7 +44,7 @@ func (s *statsSuite) SetupTest() {
 
 func (s *statsSuite) TestStatsStatus() {
 	// Check that we get a default status when there is no doc in the database.
-	status, err := GetStatsStatus("p1")
+	status, err := GetStatsStatus(s.T().Context(), "p1")
 	s.NoError(err)
 	s.NotNil(status)
 	// The default value is rounded off to the day so use a delta of over one day to cover all cases.
@@ -57,7 +57,7 @@ func (s *statsSuite) TestStatsStatus() {
 	err = UpdateStatsStatus("p1", baseHour, baseDay, time.Hour)
 	s.NoError(err)
 
-	status, err = GetStatsStatus("p1")
+	status, err = GetStatsStatus(s.T().Context(), "p1")
 	s.NoError(err)
 	s.NotNil(status)
 	s.Equal(baseHour.UTC(), status.LastJobRun.UTC())
@@ -88,7 +88,7 @@ func (s *statsSuite) TestGenerateStats() {
 		Tasks:     []string{"task1", "task2"},
 	}))
 	s.Equal(3, s.countDailyTaskDocs())
-	doc, err := GetDailyTaskDoc(DBTaskStatsID{
+	doc, err := GetDailyTaskDoc(s.T().Context(), DBTaskStatsID{
 		Project:      "p1",
 		Requester:    "r1",
 		TaskName:     "task1",
@@ -98,7 +98,7 @@ func (s *statsSuite) TestGenerateStats() {
 	})
 	s.Require().NoError(err)
 	s.NotNil(doc)
-	doc, err = GetDailyTaskDoc(DBTaskStatsID{
+	doc, err = GetDailyTaskDoc(s.T().Context(), DBTaskStatsID{
 		Project:      "p1",
 		Requester:    "r1",
 		TaskName:     "task1",
@@ -108,7 +108,7 @@ func (s *statsSuite) TestGenerateStats() {
 	})
 	s.Require().NoError(err)
 	s.NotNil(doc)
-	doc, err = GetDailyTaskDoc(DBTaskStatsID{
+	doc, err = GetDailyTaskDoc(s.T().Context(), DBTaskStatsID{
 		Project:      "p1",
 		Requester:    "r1",
 		TaskName:     "task2",
@@ -122,7 +122,7 @@ func (s *statsSuite) TestGenerateStats() {
 	// Generate task stats for project p4 to check status aggregation.
 	s.Require().NoError(GenerateStats(ctx, GenerateStatsOptions{ProjectID: "p4", Requester: "r1", Date: baseHour, Tasks: []string{"task1"}}))
 	s.Equal(4, s.countDailyTaskDocs()) // 1 more task combination was added to the collection.
-	doc, err = GetDailyTaskDoc(DBTaskStatsID{
+	doc, err = GetDailyTaskDoc(s.T().Context(), DBTaskStatsID{
 		Project:      "p4",
 		Requester:    "r1",
 		TaskName:     "task1",
@@ -145,7 +145,7 @@ func (s *statsSuite) TestGenerateStats() {
 	// Generate task for project p2
 	s.Require().NoError(GenerateStats(ctx, GenerateStatsOptions{ProjectID: "p2", Requester: "r1", Date: baseHour, Tasks: []string{"task1"}}))
 	s.Equal(5, s.countDailyTaskDocs()) // 1 more task combination was added to the collection.
-	doc, err = GetDailyTaskDoc(DBTaskStatsID{
+	doc, err = GetDailyTaskDoc(s.T().Context(), DBTaskStatsID{
 		Project:      "p2",
 		Requester:    "r1",
 		TaskName:     "task1",

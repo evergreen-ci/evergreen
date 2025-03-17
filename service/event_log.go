@@ -60,7 +60,7 @@ func (uis *UIServer) fullEventLogs(w http.ResponseWriter, r *http.Request) {
 		}
 
 		var project *model.ProjectRef
-		project, err = model.FindBranchProjectRef(resourceID)
+		project, err = model.FindBranchProjectRef(ctx, resourceID)
 		if err != nil {
 			http.Error(w, "database error", http.StatusInternalServerError)
 			return
