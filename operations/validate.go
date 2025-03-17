@@ -140,7 +140,6 @@ func validateFile(conf *ClientSettings, path string, ac *legacyClient, quiet, er
 	}
 	defer client.Close()
 
-	client.SetRetryOn413(true)
 	projErrors, err := client.Validate(ctx, projectYaml, quiet, projectID)
 	if err != nil {
 		return errors.Wrapf(err, "validating project '%s'", projectID)

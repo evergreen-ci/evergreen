@@ -1552,9 +1552,12 @@ func (c *communicatorImpl) GetTestLogs(ctx context.Context, opts GetTestLogsOpti
 }
 
 func (c *communicatorImpl) Validate(ctx context.Context, data []byte, quiet bool, projectID string) (validator.ValidationErrors, error) {
+	// 413 errors are transient when validating large project configurations
+	// so we want to retry on them.
 	info := requestInfo{
-		method: http.MethodPost,
-		path:   "validate",
+		method:     http.MethodPost,
+		path:       "validate",
+		retryOn413: true,
 	}
 
 	body := validator.ValidationInput{

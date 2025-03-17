@@ -20,7 +20,6 @@ const (
 type communicatorImpl struct {
 	serverURL    string
 	maxAttempts  int
-	RetryOn413   bool
 	timeoutStart time.Duration
 	timeoutMax   time.Duration
 	httpClient   *http.Client
@@ -100,9 +99,4 @@ func (c *communicatorImpl) SetHostID(hostID string) {
 // instead of API keys.
 func (c *communicatorImpl) SetHostSecret(hostSecret string) {
 	c.hostSecret = hostSecret
-}
-
-// SetRetryOn413 sets whether the client should retry requests that return a
-func (c *communicatorImpl) SetRetryOn413(retry bool) {
-	c.RetryOn413 = retry
 }
