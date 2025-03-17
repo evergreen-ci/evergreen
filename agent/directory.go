@@ -118,7 +118,7 @@ func (a *Agent) generateTaskDirectoryHash(toHash string) (string, error) {
 	// On Windows, the agent has to use a shorter task working directory due to
 	// max file path length limitations. To accommodate this, try shortening the
 	// long hash.
-	const maxWindowsHashLength = 3
+	const maxWindowsHashLength = 4
 	return dirName[:maxWindowsHashLength], nil
 }
 
