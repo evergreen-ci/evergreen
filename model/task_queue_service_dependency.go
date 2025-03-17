@@ -530,7 +530,7 @@ func checkMaxConcurrentLargeParserProjectTasks(ctx context.Context, settings *ev
 	if maxConcurrentLargeParserProjTasks <= 0 {
 		return false, false
 	}
-	taskVersion, err := VersionFindOneId(nextTaskFromDB.Version)
+	taskVersion, err := VersionFindOneId(ctx, nextTaskFromDB.Version)
 	if err != nil {
 		grip.Warning(message.WrapError(err, message.Fields{
 			"dispatcher": DAGDispatcher,

@@ -848,7 +848,7 @@ func TestAddNewPatch(t *testing.T) {
 	assert.NoError(err)
 	require.NotNil(t, dbBuild)
 	assert.Len(dbBuild.Tasks, 2)
-	dbVersion, err := VersionFindOne(db.Q{})
+	dbVersion, err := VersionFindOne(t.Context(), db.Q{})
 	assert.NoError(err)
 	require.NotNil(t, dbVersion)
 	assert.Len(dbVersion.BuildVariants, 1)

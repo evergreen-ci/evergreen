@@ -106,7 +106,7 @@ func (uis *UIServer) taskHistoryPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if revision := r.FormValue("revision"); revision != "" {
-		v, err = model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(project.Identifier, revision))
+		v, err = model.VersionFindOne(r.Context(), model.BaseVersionByProjectIdAndRevision(project.Identifier, revision))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -167,7 +167,7 @@ func (uis *UIServer) variantHistory(w http.ResponseWriter, r *http.Request) {
 	var err error
 	beforeCommit = nil
 	if beforeCommitId != "" {
-		beforeCommit, err = model.VersionFindOne(model.VersionById(beforeCommitId))
+		beforeCommit, err = model.VersionFindOne(r.Context(), model.VersionById(beforeCommitId))
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return

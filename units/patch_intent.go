@@ -1072,7 +1072,7 @@ func (j *patchIntentProcessor) buildTriggerPatchDoc(ctx context.Context, patchDo
 
 func fetchTriggerVersionInfo(ctx context.Context, patchDoc *patch.Patch) (*model.Version, *model.Project, *model.ParserProject, error) {
 	if patchDoc.Triggers.DownstreamRevision != "" {
-		v, err := model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(patchDoc.Project, patchDoc.Triggers.DownstreamRevision))
+		v, err := model.VersionFindOne(ctx, model.BaseVersionByProjectIdAndRevision(patchDoc.Project, patchDoc.Triggers.DownstreamRevision))
 		if err != nil {
 			return nil, nil, nil, errors.Wrapf(err, "getting version at revision '%s'", patchDoc.Triggers.DownstreamRevision)
 		}

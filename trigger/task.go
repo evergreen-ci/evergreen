@@ -183,7 +183,7 @@ func (t *taskTriggers) Fetch(ctx context.Context, e *event.EventLogEntry) error 
 		return errors.Wrapf(err, "getting parent display task for task '%s'", t.task.Id)
 	}
 
-	author, err := model.GetVersionAuthorID(t.task.Version)
+	author, err := model.GetVersionAuthorID(ctx, t.task.Version)
 	if err != nil {
 		return errors.Wrapf(err, "getting owner for version '%s'", t.task.Version)
 	}
@@ -955,7 +955,7 @@ func JIRATaskPayload(ctx context.Context, params JiraIssueParameters) (*message.
 		}
 	}
 
-	versionDoc, err := model.VersionFindOneId(params.Task.Version)
+	versionDoc, err := model.VersionFindOneId(ctx, params.Task.Version)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding version '%s' while building Jira task payload", params.Task.Version)
 	}

@@ -94,7 +94,7 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 		}))
 	}()
 
-	mostRecentRevision, authorID, err := model.FindLatestRevisionAndAuthorForProject(j.ProjectID)
+	mostRecentRevision, authorID, err := model.FindLatestRevisionAndAuthorForProject(ctx, j.ProjectID)
 	if err != nil {
 		j.AddError(err)
 		return

@@ -194,7 +194,7 @@ func (h *newPushHandler) Run(ctx context.Context) gimlet.Responder {
 
 	// Get the version for this task, so we can check if it has
 	// any already-done pushes
-	v, err := model.VersionFindOne(model.VersionById(t.Version))
+	v, err := model.VersionFindOne(ctx, model.VersionById(t.Version))
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "problem querying task %s with version id %s", t.Id, t.Version))
 	}
@@ -412,7 +412,7 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 		}
 	}
 
-	v, err := model.VersionFindOneId(t.Version)
+	v, err := model.VersionFindOneId(ctx, t.Version)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding version '%s'", t.Version))
 	}
@@ -509,7 +509,7 @@ func (h *getParserProjectHandler) Run(ctx context.Context) gimlet.Responder {
 			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
 		})
 	}
-	v, err := model.VersionFindOne(model.VersionById(t.Version))
+	v, err := model.VersionFindOne(ctx, model.VersionById(t.Version))
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
@@ -1171,7 +1171,7 @@ func (h *serveVersionHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	v, err := model.VersionFindOneId(t.Version)
+	v, err := model.VersionFindOneId(ctx, t.Version)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding version '%s'", t.Version))
 	}
@@ -1263,7 +1263,7 @@ func (h *manifestLoadHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Errorf("project ref '%s' doesn't exist", task.Project))
 	}
 
-	v, err := model.VersionFindOne(model.VersionById(task.Version))
+	v, err := model.VersionFindOne(ctx, model.VersionById(task.Version))
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "retrieving version for task"))
 	}

@@ -588,7 +588,7 @@ func TestGenerateTasksWithDifferentGeneratedJSONStorageMethods(t *testing.T) {
 			}
 
 			// Make sure first project was not changed
-			v, err := model.VersionFindOneId("random_version")
+			v, err := model.VersionFindOneId(ctx, "random_version")
 			assert.NoError(err)
 			p, _, err := model.FindAndTranslateProjectForVersion(ctx, env.Settings(), v, false)
 			assert.NoError(err)
@@ -599,7 +599,7 @@ func TestGenerateTasksWithDifferentGeneratedJSONStorageMethods(t *testing.T) {
 			assert.Len(p.BuildVariants[1].Tasks, 2)
 
 			// Verify second project was changed
-			v, err = model.VersionFindOneId("sample_version")
+			v, err = model.VersionFindOneId(ctx, "sample_version")
 			assert.NoError(err)
 			p, _, err = model.FindAndTranslateProjectForVersion(ctx, env.Settings(), v, false)
 			assert.NoError(err)

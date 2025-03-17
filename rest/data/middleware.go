@@ -39,7 +39,7 @@ func GetProjectIdFromParams(ctx context.Context, paramsMap map[string]string) (s
 	var err error
 	versionID := paramsMap[versionIdKey]
 	if projectID == "" && versionID != "" {
-		projectID, err = model.FindProjectForVersion(versionID)
+		projectID, err = model.FindProjectForVersion(ctx, versionID)
 		if err != nil {
 			return "", http.StatusNotFound, errors.Wrapf(err, "finding version '%s'", versionID)
 		}

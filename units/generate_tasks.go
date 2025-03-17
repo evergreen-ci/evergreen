@@ -93,7 +93,7 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 		return nil
 	}
 
-	v, err := model.VersionFindOneId(t.Version)
+	v, err := model.VersionFindOneId(ctx, t.Version)
 	if err != nil {
 		return errors.Wrapf(err, "finding version '%s'", t.Version)
 	}

@@ -151,7 +151,7 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		var baseVersion *model.Version
-		baseVersion, err = model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(projCtx.Version.Identifier, projCtx.Version.Revision))
+		baseVersion, err = model.VersionFindOne(r.Context(), model.BaseVersionByProjectIdAndRevision(projCtx.Version.Identifier, projCtx.Version.Revision))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -272,7 +272,7 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 
 	// After the version has been modified, re-load it from DB and send back the up-to-date view
 	// to the client.
-	projCtx.Version, err = model.VersionFindOne(model.VersionById(projCtx.Version.Id))
+	projCtx.Version, err = model.VersionFindOne(r.Context(), model.VersionById(projCtx.Version.Id))
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -358,7 +358,7 @@ func addFailedTests(failedTaskIds []string, uiBuilds []uiBuild, taskMap map[stri
 
 func (uis *UIServer) versionHistory(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
-	data, err := model.VersionGetHistory(projCtx.Version.Id, 5)
+	data, err := model.VersionGetHistory(r.Context(), projCtx.Version.Id, 5)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

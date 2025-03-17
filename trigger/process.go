@@ -150,7 +150,7 @@ func triggerDownstreamProjectsForTask(ctx context.Context, t *task.Task, e *even
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding downstream projects of project '%s'", t.Project)
 	}
-	sourceVersion, err := model.VersionFindOneId(t.Version)
+	sourceVersion, err := model.VersionFindOneId(ctx, t.Version)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding source version '%s'", t.Version)
 	}
@@ -234,7 +234,7 @@ func triggerDownstreamProjectsForBuild(ctx context.Context, b *build.Build, e *e
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding downstream projects of project '%s'", b.Project)
 	}
-	sourceVersion, err := model.VersionFindOneId(b.Version)
+	sourceVersion, err := model.VersionFindOneId(ctx, b.Version)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding source version '%s'", b.Version)
 	}

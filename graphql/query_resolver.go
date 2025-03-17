@@ -788,7 +788,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 	revision := utility.FromStringPtr(options.Revision)
 
 	if options.SkipOrderNumber == nil && options.Revision != nil {
-		order, err := getRevisionOrder(revision, projectId, limit)
+		order, err := getRevisionOrder(ctx, revision, projectId, limit)
 		if err != nil {
 			graphql.AddError(ctx, PartialError.Send(ctx, err.Error()))
 		} else {
@@ -957,7 +957,7 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 	revision := utility.FromStringPtr(options.Revision)
 
 	if options.Revision != nil {
-		order, err := getRevisionOrder(revision, projectId, limit)
+		order, err := getRevisionOrder(ctx, revision, projectId, limit)
 		if err != nil {
 			graphql.AddError(ctx, PartialError.Send(ctx, err.Error()))
 		} else {
@@ -967,7 +967,7 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 		date := utility.FromTimePtr(options.Date)
 		// Use the end of the provided date to find the most recent version created on or before it
 		eod := time.Date(date.Year(), date.Month(), date.Day(), 23, 59, 59, 0, date.Location())
-		found, err := model.VersionFindOne(model.VersionByProjectIdAndCreateTime(projectId, eod))
+		found, err := model.VersionFindOne(ctx, model.VersionByProjectIdAndCreateTime(projectId, eod))
 		if err != nil {
 			graphql.AddError(ctx, PartialError.Send(ctx, fmt.Sprintf("getting version on or before date '%s': %s", eod.Format(time.DateOnly), err.Error())))
 		} else if found == nil {
@@ -1132,7 +1132,7 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 
 // HasVersion is the resolver for the hasVersion field.
 func (r *queryResolver) HasVersion(ctx context.Context, patchID string) (bool, error) {
-	v, err := model.VersionFindOne(model.VersionById(patchID))
+	v, err := model.VersionFindOne(ctx, model.VersionById(patchID))
 	if err != nil {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", patchID, err.Error()))
 	}
@@ -1154,7 +1154,7 @@ func (r *queryResolver) HasVersion(ctx context.Context, patchID string) (bool, e
 
 // Version is the resolver for the version field.
 func (r *queryResolver) Version(ctx context.Context, versionID string) (*restModel.APIVersion, error) {
-	v, err := model.VersionFindOneId(versionID)
+	v, err := model.VersionFindOneId(ctx, versionID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", versionID, err.Error()))
 	}

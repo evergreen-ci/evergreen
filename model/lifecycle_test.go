@@ -2181,7 +2181,7 @@ func TestVersionRestart(t *testing.T) {
 	assert.Equal("task1", dbTask5.DependsOn[0].TaskId)
 	assert.False(dbTask5.DependsOn[0].Finished, "restarting task1 should have marked dependency in execution task as unfinished")
 
-	dbVersion, err := VersionFindOneId("version")
+	dbVersion, err := VersionFindOneId(t.Context(), "version")
 	assert.NoError(err)
 	assert.Equal(evergreen.VersionStarted, dbVersion.Status)
 
@@ -2196,7 +2196,7 @@ func TestVersionRestart(t *testing.T) {
 	assert.Equal("test", dbTask.AbortInfo.User)
 	assert.Equal(evergreen.TaskDispatched, dbTask.Status)
 	assert.True(dbTask.ResetWhenFinished)
-	dbVersion, err = VersionFindOneId("version")
+	dbVersion, err = VersionFindOneId(t.Context(), "version")
 	assert.NoError(err)
 	// Version status should not update if only aborting tasks
 	assert.Equal("", dbVersion.Status)
@@ -2210,7 +2210,7 @@ func TestVersionRestart(t *testing.T) {
 	assert.NotNil(dbTask)
 	assert.False(dbTask.Aborted)
 	assert.Equal(evergreen.TaskDispatched, dbTask.Status)
-	dbVersion, err = VersionFindOneId("version")
+	dbVersion, err = VersionFindOneId(t.Context(), "version")
 	assert.NoError(err)
 	// Version status should not update if no tasks are being reset.
 	assert.Equal("", dbVersion.Status)

@@ -29,7 +29,7 @@ func TestLastKnownGoodConfig(t *testing.T) {
 				Errors:     []string{"error 1", "error 2"},
 			}
 			require.NoError(t, v.Insert(), "Error inserting test version: %s", v.Id)
-			lastGood, err := FindVersionByLastKnownGoodConfig(identifier, -1)
+			lastGood, err := FindVersionByLastKnownGoodConfig(t.Context(), identifier, -1)
 			require.NoError(t, err, "error finding last known good")
 			So(lastGood, ShouldBeNil)
 		})
@@ -39,7 +39,7 @@ func TestLastKnownGoodConfig(t *testing.T) {
 				Requester:  evergreen.RepotrackerVersionRequester,
 			}
 			require.NoError(t, v.Insert(), "Error inserting test version: %s", v.Id)
-			lastGood, err := FindVersionByLastKnownGoodConfig(identifier, -1)
+			lastGood, err := FindVersionByLastKnownGoodConfig(t.Context(), identifier, -1)
 			require.NoError(t, err, "error finding last known good: %s", lastGood.Id)
 			So(lastGood, ShouldNotBeNil)
 		})
@@ -57,7 +57,7 @@ func TestLastKnownGoodConfig(t *testing.T) {
 			v.Id = "2"
 			v.RevisionOrderNumber = 2
 			require.NoError(t, v.Insert(), "Error inserting test version: %s", v.Id)
-			lastGood, err := FindVersionByLastKnownGoodConfig(identifier, -1)
+			lastGood, err := FindVersionByLastKnownGoodConfig(t.Context(), identifier, -1)
 			require.NoError(t, err, "error finding last known good: %s", v.Id)
 			So(lastGood, ShouldNotBeNil)
 		})
@@ -580,7 +580,7 @@ func TestUpdateProjectStorageMethod(t *testing.T) {
 
 			assert.Equal(t, evergreen.ProjectStorageMethodS3, v.ProjectStorageMethod)
 
-			dbVersion, err := VersionFindOneId(v.Id)
+			dbVersion, err := VersionFindOneId(t.Context(), v.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbVersion)
 			assert.Equal(t, evergreen.ProjectStorageMethodS3, dbVersion.ProjectStorageMethod)
@@ -591,7 +591,7 @@ func TestUpdateProjectStorageMethod(t *testing.T) {
 
 			assert.Equal(t, evergreen.ProjectStorageMethodS3, v.ProjectStorageMethod)
 
-			dbVersion, err := VersionFindOneId(v.Id)
+			dbVersion, err := VersionFindOneId(t.Context(), v.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbVersion)
 			assert.Equal(t, evergreen.ProjectStorageMethodDB, dbVersion.ProjectStorageMethod)
@@ -622,7 +622,7 @@ func TestUpdatePreGenerationProjectStorageMethod(t *testing.T) {
 
 			assert.Equal(t, evergreen.ProjectStorageMethodS3, v.PreGenerationProjectStorageMethod)
 
-			dbVersion, err := VersionFindOneId(v.Id)
+			dbVersion, err := VersionFindOneId(t.Context(), v.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbVersion)
 			assert.Equal(t, evergreen.ProjectStorageMethodS3, dbVersion.PreGenerationProjectStorageMethod)
@@ -633,7 +633,7 @@ func TestUpdatePreGenerationProjectStorageMethod(t *testing.T) {
 
 			assert.Equal(t, evergreen.ProjectStorageMethodS3, v.PreGenerationProjectStorageMethod)
 
-			dbVersion, err := VersionFindOneId(v.Id)
+			dbVersion, err := VersionFindOneId(t.Context(), v.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbVersion)
 			assert.Equal(t, evergreen.ProjectStorageMethodDB, dbVersion.PreGenerationProjectStorageMethod)

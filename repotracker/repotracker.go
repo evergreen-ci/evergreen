@@ -224,7 +224,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 		grip.Infof("Processing revision %s in project %s", revision, ref.Id)
 
 		// We check if the version exists here so we can avoid fetching the github config unnecessarily
-		existingVersion, err := model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(ref.Id, revisions[i].Revision))
+		existingVersion, err := model.VersionFindOne(ctx, model.BaseVersionByProjectIdAndRevision(ref.Id, revisions[i].Revision))
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":            "problem looking up version for project",
 			"runner":             RunnerName,
@@ -603,7 +603,7 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to create shell version")
 	}
-	if err = verifyOrderNum(v.RevisionOrderNumber, projectInfo.Ref.Id); err != nil {
+	if err = verifyOrderNum(ctx, v.RevisionOrderNumber, projectInfo.Ref.Id); err != nil {
 		return nil, errors.Wrap(err, "inconsistent version order")
 	}
 
@@ -784,8 +784,8 @@ func makeVersionIdWithTag(project, tag, id string) string {
 }
 
 // Verifies that the given revision order number is higher than the latest number stored for the project.
-func verifyOrderNum(revOrderNum int, projectId string) error {
-	latest, err := model.VersionFindOne(model.VersionByMostRecentSystemRequester(projectId))
+func verifyOrderNum(ctx context.Context, revOrderNum int, projectId string) error {
+	latest, err := model.VersionFindOne(ctx, model.VersionByMostRecentSystemRequester(projectId))
 	if err != nil || latest == nil {
 		return errors.Wrap(err, "getting latest version")
 	}
@@ -935,7 +935,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		activateVariantAt := time.Now()
 		taskStatuses := []model.BatchTimeTaskStatus{}
 		if evergreen.ShouldConsiderBatchtime(v.Requester) {
-			activateVariantAt, err = projectInfo.Ref.GetActivationTimeForVariant(&buildvariant, v.CreateTime, time.Now())
+			activateVariantAt, err = projectInfo.Ref.GetActivationTimeForVariant(ctx, &buildvariant, v.CreateTime, time.Now())
 			batchTimeCatcher.Add(errors.Wrapf(err, "unable to get activation time for variant '%s'", buildvariant.Name))
 			// add only tasks that require activation times
 			for _, bvt := range buildvariant.Tasks {
@@ -943,7 +943,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 				if !ok || !bvt.HasSpecificActivation() {
 					continue
 				}
-				activateTaskAt, err := projectInfo.Ref.GetActivationTimeForTask(&bvt, v.CreateTime, time.Now())
+				activateTaskAt, err := projectInfo.Ref.GetActivationTimeForTask(ctx, &bvt, v.CreateTime, time.Now())
 				batchTimeCatcher.Add(errors.Wrapf(err, "unable to get activation time for task '%s' (variant '%s')", bvt.Name, buildvariant.Name))
 
 				taskStatuses = append(taskStatuses,
