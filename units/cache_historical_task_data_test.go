@@ -71,7 +71,7 @@ func TestCacheHistoricalTaskDataJob(t *testing.T) {
 			},
 			post: func(ctx context.Context, t *testing.T) {
 				for _, requester := range evergreen.AllRequesterTypes {
-					ts, err := taskstats.GetDailyTaskDoc(taskstats.DBTaskStatsID{
+					ts, err := taskstats.GetDailyTaskDoc(t.Context(), taskstats.DBTaskStatsID{
 						TaskName:     "task0",
 						BuildVariant: "variant",
 						Project:      "p0",
@@ -127,7 +127,7 @@ func TestCacheHistoricalTaskDataJob(t *testing.T) {
 				require.NoError(t, taskstats.UpdateStatsStatus("p0", lastJobTime, lastJobTime, time.Minute))
 			},
 			post: func(ctx context.Context, t *testing.T) {
-				ts, err := taskstats.GetDailyTaskDoc(taskstats.DBTaskStatsID{
+				ts, err := taskstats.GetDailyTaskDoc(t.Context(), taskstats.DBTaskStatsID{
 					TaskName:     "task0",
 					BuildVariant: "variant",
 					Project:      "p0",
@@ -138,7 +138,7 @@ func TestCacheHistoricalTaskDataJob(t *testing.T) {
 				require.NotNil(t, ts)
 				assert.Equal(t, 1, ts.NumSuccess)
 
-				ts, err = taskstats.GetDailyTaskDoc(taskstats.DBTaskStatsID{
+				ts, err = taskstats.GetDailyTaskDoc(t.Context(), taskstats.DBTaskStatsID{
 					TaskName:     "task1",
 					BuildVariant: "variant",
 					Project:      "p0",
@@ -208,7 +208,7 @@ func TestCacheHistoricalTaskDataJob(t *testing.T) {
 				require.NoError(t, taskstats.UpdateStatsStatus("p0", lastJobTime, lastJobTime, time.Minute))
 			},
 			post: func(ctx context.Context, t *testing.T) {
-				ts, err := taskstats.GetDailyTaskDoc(taskstats.DBTaskStatsID{
+				ts, err := taskstats.GetDailyTaskDoc(t.Context(), taskstats.DBTaskStatsID{
 					TaskName:     "task0",
 					BuildVariant: "variant",
 					Project:      "p0",
@@ -219,7 +219,7 @@ func TestCacheHistoricalTaskDataJob(t *testing.T) {
 				require.NotNil(t, ts)
 				assert.Equal(t, 1, ts.NumSuccess)
 
-				ts, err = taskstats.GetDailyTaskDoc(taskstats.DBTaskStatsID{
+				ts, err = taskstats.GetDailyTaskDoc(t.Context(), taskstats.DBTaskStatsID{
 					TaskName:     "task0",
 					BuildVariant: "variant",
 					Project:      "p0",
@@ -230,7 +230,7 @@ func TestCacheHistoricalTaskDataJob(t *testing.T) {
 				require.NotNil(t, ts)
 				assert.Equal(t, 1, ts.NumSuccess)
 
-				ts, err = taskstats.GetDailyTaskDoc(taskstats.DBTaskStatsID{
+				ts, err = taskstats.GetDailyTaskDoc(t.Context(), taskstats.DBTaskStatsID{
 					TaskName:     "task1",
 					BuildVariant: "variant",
 					Project:      "p0",
