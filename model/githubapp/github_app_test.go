@@ -122,7 +122,7 @@ func (s *installationSuite) TestCreateCachedInstallationToken() {
 	// Test without permissions
 	id := createCacheID(installation.InstallationID, nil)
 	s.Equal("5678", id)
-	ghInstallationTokenCache2.Put(id, unrestrictedToken, time.Now().Add(lifetime*2))
+	ghInstallationTokenCache.Put(s.ctx, id, unrestrictedToken, time.Now().Add(lifetime*2))
 
 	authFields := GithubAppAuth{
 		AppID: installation.AppID,
@@ -142,7 +142,7 @@ func (s *installationSuite) TestCreateCachedInstallationToken() {
 
 	id = createCacheID(installation.InstallationID, p)
 	s.Equal("5678_contents:read_issues:write", id)
-	ghInstallationTokenCache2.Put(id, restrictedToken, time.Now().Add(lifetime*2))
+	ghInstallationTokenCache.Put(s.ctx, id, restrictedToken, time.Now().Add(lifetime*2))
 
 	token, err = authFields.CreateCachedInstallationToken(s.ctx, installation.Owner, installation.Repo, lifetime, opts)
 	s.Require().NoError(err)
