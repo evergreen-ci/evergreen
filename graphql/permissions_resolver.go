@@ -81,7 +81,7 @@ func (r *permissionsResolver) ProjectPermissions(ctx context.Context, obj *Permi
 	if usr == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("user '%s' not found", obj.UserID))
 	}
-	project, err := model.FindBranchProjectRef(options.ProjectIdentifier)
+	project, err := model.FindBranchProjectRef(ctx, options.ProjectIdentifier)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", options.ProjectIdentifier, err.Error()))
 	}

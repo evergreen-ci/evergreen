@@ -468,7 +468,7 @@ func (s *ProjectPatchByIDSuite) TestRotateAndDeleteProjectPodSecret() {
 	s.Require().NotNil(resp.Data())
 	s.Equal(http.StatusOK, resp.Status())
 
-	dbProjRef, err := serviceModel.FindBranchProjectRef("dimoxinil")
+	dbProjRef, err := serviceModel.FindBranchProjectRef(s.T().Context(), "dimoxinil")
 	s.Require().NoError(err)
 	s.Require().NotNil(dbProjRef)
 	s.Require().Len(dbProjRef.ContainerSecrets, 1)
@@ -494,7 +494,7 @@ func (s *ProjectPatchByIDSuite) TestRotateAndDeleteProjectPodSecret() {
 	s.Require().NotNil(resp.Data())
 	s.Equal(http.StatusOK, resp.Status())
 
-	dbProjRef, err = serviceModel.FindBranchProjectRef("dimoxinil")
+	dbProjRef, err = serviceModel.FindBranchProjectRef(s.T().Context(), "dimoxinil")
 	s.Require().NoError(err)
 	s.Require().NotNil(dbProjRef)
 	s.Require().Len(dbProjRef.ContainerSecrets, 1)
@@ -524,7 +524,7 @@ func (s *ProjectPatchByIDSuite) TestRotateAndDeleteProjectPodSecret() {
 	s.Require().NotNil(resp.Data())
 	s.Equal(http.StatusOK, resp.Status())
 
-	dbProjRef, err = serviceModel.FindBranchProjectRef("dimoxinil")
+	dbProjRef, err = serviceModel.FindBranchProjectRef(s.T().Context(), "dimoxinil")
 	s.Require().NoError(err)
 	s.Require().NotNil(dbProjRef)
 	s.Empty(dbProjRef.ContainerSecrets, "container secret should have been deleted")

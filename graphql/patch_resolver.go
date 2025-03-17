@@ -57,7 +57,7 @@ func (r *patchResolver) Builds(ctx context.Context, obj *restModel.APIPatch) ([]
 	var apiBuilds []*restModel.APIBuild
 	for _, build := range builds {
 		apiBuild := restModel.APIBuild{}
-		apiBuild.BuildFromService(build, nil)
+		apiBuild.BuildFromService(ctx, build, nil)
 		apiBuilds = append(apiBuilds, &apiBuild)
 	}
 	return apiBuilds, nil
@@ -166,7 +166,7 @@ func (r *patchResolver) PatchTriggerAliases(ctx context.Context, obj *restModel.
 			})
 		}
 
-		identifier, err := model.GetIdentifierForProject(alias.ChildProject)
+		identifier, err := model.GetIdentifierForProject(ctx, alias.ChildProject)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting project identifier for child project '%s' in alias '%s': %s", alias.ChildProject, alias.Alias, err.Error()))
 		}
@@ -193,7 +193,7 @@ func (r *patchResolver) Project(ctx context.Context, obj *restModel.APIPatch) (*
 
 // ProjectIdentifier is the resolver for the projectIdentifier field.
 func (r *patchResolver) ProjectIdentifier(ctx context.Context, obj *restModel.APIPatch) (string, error) {
-	obj.GetIdentifier()
+	obj.GetIdentifier(ctx)
 	return utility.FromStringPtr(obj.ProjectIdentifier), nil
 }
 
@@ -260,7 +260,7 @@ func (r *patchResolver) VersionFull(ctx context.Context, obj *restModel.APIPatch
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", versionID))
 	}
 	apiVersion := restModel.APIVersion{}
-	apiVersion.BuildFromService(*v)
+	apiVersion.BuildFromService(ctx, *v)
 	return &apiVersion, nil
 }
 

@@ -674,7 +674,7 @@ func (p *ProjectRef) Add(ctx context.Context, creator *user.DBUser) error {
 
 	// if a hidden project exists for this configuration, use that ID
 	if p.Owner != "" && p.Repo != "" && p.Branch != "" {
-		hidden, err := FindHiddenProjectRefByOwnerRepoAndBranch(p.Owner, p.Repo, p.Branch)
+		hidden, err := FindHiddenProjectRefByOwnerRepoAndBranch(ctx, p.Owner, p.Repo, p.Branch)
 		if err != nil {
 			return errors.Wrap(err, "finding hidden project")
 		}
@@ -774,7 +774,7 @@ func (p *ProjectRef) SetGithubAppCredentials(ctx context.Context, appID int64, p
 // DefaultGithubAppCredentialsToRepo defaults the app credentials to the repo by
 // removing the GithubAppAuth entry for the project.
 func DefaultGithubAppCredentialsToRepo(ctx context.Context, projectId string) error {
-	p, err := FindBranchProjectRef(projectId)
+	p, err := FindBranchProjectRef(ctx, projectId)
 	if err != nil {
 		return errors.Wrap(err, "finding project ref")
 	}
@@ -844,7 +844,7 @@ func (p *ProjectRef) DetachFromRepo(ctx context.Context, u *user.DBUser) error {
 
 	// Save repo variables that don't exist in the repo as the project variables.
 	// Wait to save merged project until we've gotten the variables.
-	mergedVars, err := FindMergedProjectVars(before.ProjectRef.Id)
+	mergedVars, err := FindMergedProjectVars(ctx, before.ProjectRef.Id)
 	if err != nil {
 		return errors.Wrap(err, "finding merged project vars")
 	}
@@ -1088,9 +1088,9 @@ func (p *ProjectRef) addPermissions(ctx context.Context, creator *user.DBUser) e
 	return nil
 }
 
-func findOneProjectRefQ(query db.Q) (*ProjectRef, error) {
+func findOneProjectRefQ(ctx context.Context, query db.Q) (*ProjectRef, error) {
 	projectRef := &ProjectRef{}
-	err := db.FindOneQ(ProjectRefCollection, query, projectRef)
+	err := db.FindOneQContext(ctx, ProjectRefCollection, query, projectRef)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -1101,15 +1101,15 @@ func findOneProjectRefQ(query db.Q) (*ProjectRef, error) {
 
 // FindBranchProjectRef gets a project ref given the project identifier.
 // This returns only branch-level settings; to include repo settings, use FindMergedProjectRef.
-func FindBranchProjectRef(identifier string) (*ProjectRef, error) {
-	return findOneProjectRefQ(byId(identifier))
+func FindBranchProjectRef(ctx context.Context, identifier string) (*ProjectRef, error) {
+	return findOneProjectRefQ(ctx, byId(identifier))
 }
 
 // FindMergedProjectRef also finds the repo ref settings and merges relevant fields.
 // Relevant fields will also be merged from the parser project with a specified version.
 // If no version is specified, the most recent valid parser project version will be used for merge.
 func FindMergedProjectRef(ctx context.Context, identifier string, version string, includeProjectConfig bool) (*ProjectRef, error) {
-	pRef, err := FindBranchProjectRef(identifier)
+	pRef, err := FindBranchProjectRef(ctx, identifier)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding project ref '%s'", identifier)
 	}
@@ -1408,8 +1408,8 @@ func getCommonProjectVariables(projectIds []string) (*ProjectVars, error) {
 	}, nil
 }
 
-func GetIdForProject(identifier string) (string, error) {
-	pRef, err := findOneProjectRefQ(byId(identifier).WithFields(ProjectRefIdKey))
+func GetIdForProject(ctx context.Context, identifier string) (string, error) {
+	pRef, err := findOneProjectRefQ(ctx, byId(identifier).WithFields(ProjectRefIdKey))
 	if err != nil {
 		return "", err
 	}
@@ -1419,8 +1419,8 @@ func GetIdForProject(identifier string) (string, error) {
 	return pRef.Id, nil
 }
 
-func GetIdentifierForProject(id string) (string, error) {
-	pRef, err := findOneProjectRefQ(byId(id).WithFields(ProjectRefIdentifierKey))
+func GetIdentifierForProject(ctx context.Context, id string) (string, error) {
+	pRef, err := findOneProjectRefQ(ctx, byId(id).WithFields(ProjectRefIdentifierKey))
 	if err != nil {
 		return "", err
 	}
@@ -1443,8 +1443,8 @@ type GetProjectTasksOpts struct {
 
 // GetTasksWithOptions will find the matching tasks run in the last number of versions(denoted by Limit) that exist for a given project.
 // This function may also filter on tasks running on a specific build variant, or tasks that come after a specific revision order number.
-func GetTasksWithOptions(projectName string, taskName string, opts GetProjectTasksOpts) ([]task.Task, error) {
-	projectId, err := GetIdForProject(projectName)
+func GetTasksWithOptions(ctx context.Context, projectName string, taskName string, opts GetProjectTasksOpts) ([]task.Task, error) {
+	projectId, err := GetIdForProject(ctx, projectName)
 	if err != nil {
 		return nil, err
 	}
@@ -1966,12 +1966,12 @@ func UpdateProjectRevision(ctx context.Context, projectID, revision string) erro
 	return nil
 }
 
-func FindHiddenProjectRefByOwnerRepoAndBranch(owner, repo, branch string) (*ProjectRef, error) {
+func FindHiddenProjectRefByOwnerRepoAndBranch(ctx context.Context, owner, repo, branch string) (*ProjectRef, error) {
 	// don't need to include undefined branches here since hidden projects explicitly define them
 	q := byOwnerRepoAndBranch(owner, repo, branch, false)
 	q[ProjectRefHiddenKey] = true
 
-	return findOneProjectRefQ(db.Query(q))
+	return findOneProjectRefQ(ctx, db.Query(q))
 }
 
 func FindMergedEnabledProjectRefsByOwnerAndRepo(owner, repo string) ([]ProjectRef, error) {
@@ -2034,7 +2034,7 @@ func GetProjectSettingsById(ctx context.Context, projectId string, isRepo bool) 
 		return GetProjectSettings(ctx, &repoRef.ProjectRef)
 	}
 
-	pRef, err = FindBranchProjectRef(projectId)
+	pRef, err = FindBranchProjectRef(ctx, projectId)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding project ref")
 	}
@@ -3026,7 +3026,7 @@ func UpdateNextPeriodicBuild(ctx context.Context, projectId string, definition *
 		}
 	}
 	// Get the branch project on its own so we can determine where to update the run time.
-	projectRef, err := FindBranchProjectRef(projectId)
+	projectRef, err := FindBranchProjectRef(ctx, projectId)
 	if err != nil {
 		return errors.Wrap(err, "finding branch project")
 	}
@@ -3131,8 +3131,8 @@ func GetSetupScriptForTask(ctx context.Context, taskId string) (string, error) {
 	return string(fileContents), nil
 }
 
-func (t *TriggerDefinition) Validate(downstreamProject string) error {
-	upstreamProject, err := FindBranchProjectRef(t.Project)
+func (t *TriggerDefinition) Validate(ctx context.Context, downstreamProject string) error {
+	upstreamProject, err := FindBranchProjectRef(ctx, t.Project)
 	if err != nil {
 		return errors.Wrapf(err, "finding upstream project '%s'", t.Project)
 	}
@@ -3171,10 +3171,10 @@ func (t *TriggerDefinition) Validate(downstreamProject string) error {
 // ValidateContainers inspects the list of containers defined in the project YAML and checks that each
 // are properly configured, and that their definitions can coexist with what is defined for container sizes
 // on the project admin page.
-func ValidateContainers(ecsConf evergreen.ECSConfig, pRef *ProjectRef, containers []Container) error {
+func ValidateContainers(ctx context.Context, ecsConf evergreen.ECSConfig, pRef *ProjectRef, containers []Container) error {
 	catcher := grip.NewSimpleCatcher()
 
-	projVars, err := FindMergedProjectVars(pRef.Id)
+	projVars, err := FindMergedProjectVars(ctx, pRef.Id)
 	if err != nil {
 		return errors.Wrapf(err, "getting project vars for project '%s'", pRef.Id)
 	}
@@ -3271,7 +3271,7 @@ func ValidateTriggerDefinition(ctx context.Context, definition patch.PatchTrigge
 		return definition, errors.New("a project cannot trigger itself")
 	}
 
-	childProjectId, err := GetIdForProject(definition.ChildProject)
+	childProjectId, err := GetIdForProject(ctx, definition.ChildProject)
 	if err != nil {
 		return definition, errors.Wrapf(err, "finding child project '%s'", definition.ChildProject)
 	}
@@ -3375,7 +3375,7 @@ func GetUpstreamProjectName(ctx context.Context, triggerID, triggerType string) 
 		}
 		projectID = upstreamBuild.Project
 	}
-	upstreamProject, err := FindBranchProjectRef(projectID)
+	upstreamProject, err := FindBranchProjectRef(ctx, projectID)
 	if err != nil {
 		return "", errors.Wrap(err, "finding upstream project")
 	}

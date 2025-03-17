@@ -199,8 +199,8 @@ func (projectVars *ProjectVars) findParameterStore(ctx context.Context) (*Projec
 }
 
 // FindMergedProjectVars merges vars from the target project's ProjectVars and its parent repo's vars
-func FindMergedProjectVars(projectID string) (*ProjectVars, error) {
-	project, err := FindBranchProjectRef(projectID)
+func FindMergedProjectVars(ctx context.Context, projectID string) (*ProjectVars, error) {
+	project, err := FindBranchProjectRef(ctx, projectID)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting project '%s'", projectID)
 	}
@@ -269,8 +269,8 @@ func SetAWSKeyForProject(projectId string, ssh *AWSSSHKey) error {
 	return errors.Wrap(err, "saving project keys")
 }
 
-func GetAWSKeyForProject(projectId string) (*AWSSSHKey, error) {
-	vars, err := FindMergedProjectVars(projectId)
+func GetAWSKeyForProject(ctx context.Context, projectId string) (*AWSSSHKey, error) {
+	vars, err := FindMergedProjectVars(ctx, projectId)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting project vars")
 	}

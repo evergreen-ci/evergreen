@@ -144,7 +144,7 @@ func (j *githubStatusRefreshJob) sendStatus(status *message.GithubStatus) {
 }
 
 // sendChildPatchStatuses iterates through child patches if relevant and builds/sends statuses.
-func (j *githubStatusRefreshJob) sendChildPatchStatuses() error {
+func (j *githubStatusRefreshJob) sendChildPatchStatuses(ctx context.Context) error {
 	if len(j.childPatches) == 0 {
 		return nil
 	}
@@ -156,7 +156,7 @@ func (j *githubStatusRefreshJob) sendChildPatchStatuses() error {
 	}
 
 	for _, childPatch := range j.childPatches {
-		projectIdentifier, err := model.GetIdentifierForProject(childPatch.Project)
+		projectIdentifier, err := model.GetIdentifierForProject(ctx, childPatch.Project)
 		if err != nil {
 			return errors.Wrap(err, "finding project identifier")
 		}
@@ -247,7 +247,7 @@ func (j *githubStatusRefreshJob) Run(ctx context.Context) {
 	j.sendStatus(status)
 
 	// Send child patch statuses.
-	if err := j.sendChildPatchStatuses(); err != nil {
+	if err := j.sendChildPatchStatuses(ctx); err != nil {
 		j.AddError(err)
 		return
 	}

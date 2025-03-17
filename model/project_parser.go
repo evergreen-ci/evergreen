@@ -608,7 +608,7 @@ func LoadProjectInfoForVersion(ctx context.Context, settings *evergreen.Settings
 	}
 	var pc *ProjectConfig
 	if pRef.IsVersionControlEnabled() {
-		pc, err = FindProjectConfigById(v.Id)
+		pc, err = FindProjectConfigById(ctx, v.Id)
 		if err != nil {
 			return ProjectInfo{}, errors.Wrap(err, "finding project config")
 		}

@@ -46,7 +46,7 @@ func (r *versionResolver) BaseVersion(ctx context.Context, obj *restModel.APIVer
 	}
 
 	apiVersion := restModel.APIVersion{}
-	apiVersion.BuildFromService(*baseVersion)
+	apiVersion.BuildFromService(ctx, *baseVersion)
 	return &apiVersion, nil
 }
 
@@ -246,7 +246,7 @@ func (r *versionResolver) PreviousVersion(ctx context.Context, obj *restModel.AP
 			return nil, nil
 		}
 		apiVersion := restModel.APIVersion{}
-		apiVersion.BuildFromService(*previousVersion)
+		apiVersion.BuildFromService(ctx, *previousVersion)
 		return &apiVersion, nil
 	} else {
 		return nil, nil
@@ -455,7 +455,7 @@ func (r *versionResolver) UpstreamProject(ctx context.Context, obj *restModel.AP
 		}
 
 		apiVersion := restModel.APIVersion{}
-		apiVersion.BuildFromService(*upstreamVersion)
+		apiVersion.BuildFromService(ctx, *upstreamVersion)
 
 		projectID = upstreamVersion.Identifier
 		upstreamProject = &UpstreamProject{
@@ -468,7 +468,7 @@ func (r *versionResolver) UpstreamProject(ctx context.Context, obj *restModel.AP
 			Revision: v.TriggerSHA,
 		}
 	}
-	upstreamProjectRef, err := model.FindBranchProjectRef(projectID)
+	upstreamProjectRef, err := model.FindBranchProjectRef(ctx, projectID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching upstream project '%s': %s", projectID, err.Error()))
 	}

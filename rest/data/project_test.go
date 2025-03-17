@@ -198,7 +198,7 @@ func (s *ProjectConnectorGetSuite) TearDownSuite() {
 }
 
 func (s *ProjectConnectorGetSuite) TestGetProjectEvents() {
-	events, err := GetProjectEventLog(projectId, time.Now(), 0)
+	events, err := GetProjectEventLog(s.T().Context(), projectId, time.Now(), 0)
 	s.NoError(err)
 	s.Len(events, projEventCount)
 	for _, eventLog := range events {
@@ -219,7 +219,7 @@ func (s *ProjectConnectorGetSuite) TestGetProjectEvents() {
 	}
 
 	// No error for empty events
-	events, err = GetProjectEventLog("projectA", time.Now(), 0)
+	events, err = GetProjectEventLog(s.T().Context(), "projectA", time.Now(), 0)
 	s.NoError(err)
 	s.Empty(events)
 }
@@ -424,7 +424,7 @@ func TestCreateProject(t *testing.T) {
 			require.NoError(t, err)
 			require.True(t, created)
 
-			dbProjRef, err := model.FindBranchProjectRef(pRef.Id)
+			dbProjRef, err := model.FindBranchProjectRef(ctx, pRef.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbProjRef)
 			require.Len(t, dbProjRef.ContainerSecrets, 1, "should create pod secret for new project")
@@ -459,7 +459,7 @@ func TestCreateProject(t *testing.T) {
 			require.NoError(t, err)
 			require.True(t, created)
 
-			dbProjRef, err := model.FindBranchProjectRef(pRef.Identifier)
+			dbProjRef, err := model.FindBranchProjectRef(ctx, pRef.Identifier)
 			require.NoError(t, err)
 			require.NotZero(t, dbProjRef)
 			assert.NotZero(t, dbProjRef.Id, "project ID should be set to something")
@@ -471,7 +471,7 @@ func TestCreateProject(t *testing.T) {
 			require.NoError(t, err)
 			require.True(t, created)
 
-			dbProjRef, err := model.FindBranchProjectRef(pRef.Identifier)
+			dbProjRef, err := model.FindBranchProjectRef(ctx, pRef.Identifier)
 			require.NoError(t, err)
 			require.NotZero(t, dbProjRef)
 			assert.NotZero(t, dbProjRef.Id)
@@ -554,7 +554,7 @@ func TestGetLegacyProjectEvents(t *testing.T) {
 
 	require.NoError(t, h.Log())
 
-	events, err := GetProjectEventLog(projectId, time.Now(), 0)
+	events, err := GetProjectEventLog(t.Context(), projectId, time.Now(), 0)
 	require.NoError(t, err)
 	require.Len(t, events, 1)
 	eventLog := events[0]

@@ -440,7 +440,7 @@ func validateContainers(ctx context.Context, _ *evergreen.Settings, project *mod
 		}
 	}
 	errs := ValidationErrors{}
-	err = model.ValidateContainers(settings.Providers.AWS.Pod.ECS, ref, project.Containers)
+	err = model.ValidateContainers(ctx, settings.Providers.AWS.Pod.ECS, ref, project.Containers)
 	if err != nil {
 		errs = append(errs,
 			ValidationError{
@@ -2284,7 +2284,7 @@ func GetAllowedSingleTaskDistroTasksForProject(ctx context.Context, identifier s
 	allowedSingleTaskDistroTasks := []string{}
 	projectsToLookFor := []string{}
 	for _, pairs := range settings.SingleTaskDistro.ProjectTasksPairs {
-		pRef, err := model.FindBranchProjectRef(identifier)
+		pRef, err := model.FindBranchProjectRef(ctx, identifier)
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding project ref '%s'", identifier)
 		}

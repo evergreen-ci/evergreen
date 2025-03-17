@@ -88,7 +88,7 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 			projectID = upstreamBuild.Project
 		}
 		var project *model.ProjectRef
-		project, err = model.FindBranchProjectRef(projectID)
+		project, err = model.FindBranchProjectRef(r.Context(), projectID)
 		if err != nil {
 			http.Error(w, "error finding upstream project", http.StatusInternalServerError)
 			return
@@ -427,7 +427,7 @@ func (uis *UIServer) versionFind(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "revision not long enough: must be at least 5 characters", http.StatusBadRequest)
 		return
 	}
-	id, err := model.GetIdForProject(project)
+	id, err := model.GetIdForProject(r.Context(), project)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return

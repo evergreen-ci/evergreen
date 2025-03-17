@@ -104,7 +104,7 @@ func TestFindMergedProjectVars(t *testing.T) {
 	checkParametersNamespacedByProject(t, repoVars)
 
 	// Testing merging of project vars and repo vars
-	mergedVars, err := FindMergedProjectVars(project0.Id)
+	mergedVars, err := FindMergedProjectVars(t.Context(), project0.Id)
 	assert.NoError(err)
 	require.NotZero(t, mergedVars)
 
@@ -134,7 +134,7 @@ func TestFindMergedProjectVars(t *testing.T) {
 	// Testing existing repo vars but no project vars
 	expectedMergedVars = repoVars
 	expectedMergedVars.Id = project1.Id
-	mergedVars, err = FindMergedProjectVars(project1.Id)
+	mergedVars, err = FindMergedProjectVars(t.Context(), project1.Id)
 	assert.NoError(err)
 	require.NotZero(t, mergedVars)
 
@@ -149,7 +149,7 @@ func TestFindMergedProjectVars(t *testing.T) {
 
 	require.NoError(t, project0Vars.Insert())
 
-	mergedVars, err = FindMergedProjectVars(project0.Id)
+	mergedVars, err = FindMergedProjectVars(t.Context(), project0.Id)
 	assert.NoError(err)
 	require.NotZero(t, mergedVars)
 
@@ -163,19 +163,19 @@ func TestFindMergedProjectVars(t *testing.T) {
 	// Testing ProjectRef.RepoRefId == ""
 	project0.RepoRefId = ""
 	require.NoError(t, project0.Upsert())
-	mergedVars, err = FindMergedProjectVars(project0.Id)
+	mergedVars, err = FindMergedProjectVars(t.Context(), project0.Id)
 	assert.NoError(err)
 	require.NotZero(t, mergedVars)
 	assert.Equal(project0Vars, *mergedVars)
 
 	// Testing no project vars and no repo vars
 	require.NoError(t, db.ClearCollections(ProjectVarsCollection, fakeparameter.Collection))
-	mergedVars, err = FindMergedProjectVars(project1.Id)
+	mergedVars, err = FindMergedProjectVars(t.Context(), project1.Id)
 	assert.NoError(err)
 	assert.Nil(mergedVars)
 
 	// Testing non-existent project
-	mergedVars, err = FindMergedProjectVars("bad_project")
+	mergedVars, err = FindMergedProjectVars(t.Context(), "bad_project")
 	assert.Error(err)
 	assert.Nil(mergedVars)
 }
@@ -614,7 +614,7 @@ func TestAWSVars(t *testing.T) {
 		Id: project.Id,
 	}
 	require.NoError(newVars.Insert())
-	k, err := GetAWSKeyForProject(project.Id)
+	k, err := GetAWSKeyForProject(t.Context(), project.Id)
 	assert.NoError(err)
 	require.NotZero(k)
 	assert.Empty(k.Name)
@@ -644,7 +644,7 @@ func TestAWSVars(t *testing.T) {
 	assert.False(found.PrivateVars["b"])
 
 	// empty aws values
-	k, err = GetAWSKeyForProject(project.Id)
+	k, err = GetAWSKeyForProject(t.Context(), project.Id)
 	assert.NoError(err)
 	require.NotZero(k)
 	assert.Empty(k.Name)
@@ -656,7 +656,7 @@ func TestAWSVars(t *testing.T) {
 		Value: "aws_key_value",
 	}
 	assert.NoError(SetAWSKeyForProject(project.Id, k))
-	k, err = GetAWSKeyForProject(project.Id)
+	k, err = GetAWSKeyForProject(t.Context(), project.Id)
 	assert.NoError(err)
 	require.NotZero(k)
 	assert.Equal("aws_key_name", k.Name)

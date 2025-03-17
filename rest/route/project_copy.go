@@ -128,11 +128,11 @@ func (p *copyVariablesHandler) Parse(ctx context.Context, r *http.Request) error
 }
 
 func (p *copyVariablesHandler) Run(ctx context.Context) gimlet.Responder {
-	copyToProjectId, copyIdIsProject, err := getProjectOrRepoId(p.opts.CopyTo)
+	copyToProjectId, copyIdIsProject, err := getProjectOrRepoId(ctx, p.opts.CopyTo)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
-	copyFromProjectId, _, err := getProjectOrRepoId(p.copyFrom)
+	copyFromProjectId, _, err := getProjectOrRepoId(ctx, p.copyFrom)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
@@ -174,8 +174,8 @@ func (p *copyVariablesHandler) Run(ctx context.Context) gimlet.Responder {
 }
 
 // getProjectOrRepoId returns the ID, and returns true if this is a project ref, and false otherwise.
-func getProjectOrRepoId(identifier string) (string, bool, error) {
-	id, err := model.GetIdForProject(identifier) // Ensure project is existing
+func getProjectOrRepoId(ctx context.Context, identifier string) (string, bool, error) {
+	id, err := model.GetIdForProject(ctx, identifier) // Ensure project is existing
 	if err != nil {
 		// Check if this is a repo project instead
 		repoRef, err := model.FindOneRepoRef(identifier)

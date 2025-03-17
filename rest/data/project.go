@@ -40,7 +40,7 @@ func FindProjectById(ctx context.Context, id string, includeRepo bool, includePr
 	} else if includeRepo {
 		p, err = model.FindMergedProjectRef(ctx, id, "", false)
 	} else {
-		p, err = model.FindBranchProjectRef(id)
+		p, err = model.FindBranchProjectRef(ctx, id)
 	}
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding project '%s'", id)
@@ -239,7 +239,7 @@ func ValidateProjectName(ctx context.Context, name string) error {
 
 // GetProjectTasksWithOptions finds the previous tasks that have run on a project that adhere to the passed in options.
 func GetProjectTasksWithOptions(ctx context.Context, projectName string, taskName string, opts model.GetProjectTasksOpts) ([]restModel.APITask, error) {
-	tasks, err := model.GetTasksWithOptions(projectName, taskName, opts)
+	tasks, err := model.GetTasksWithOptions(ctx, projectName, taskName, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -336,8 +336,8 @@ func UpdateProjectVars(projectId string, varsModel *restModel.APIProjectVars, ov
 	return nil
 }
 
-func GetProjectEventLog(project string, before time.Time, n int) ([]restModel.APIProjectEvent, error) {
-	id, err := model.GetIdForProject(project)
+func GetProjectEventLog(ctx context.Context, project string, before time.Time, n int) ([]restModel.APIProjectEvent, error) {
+	id, err := model.GetIdForProject(ctx, project)
 	if err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
 			"func":    "GetProjectEventLog",
@@ -347,10 +347,10 @@ func GetProjectEventLog(project string, before time.Time, n int) ([]restModel.AP
 		// don't return an error here to preserve existing behavior
 		return nil, nil
 	}
-	return GetEventsById(id, before, n)
+	return GetEventsById(ctx, id, before, n)
 }
 
-func GetEventsById(id string, before time.Time, n int) ([]restModel.APIProjectEvent, error) {
+func GetEventsById(ctx context.Context, id string, before time.Time, n int) ([]restModel.APIProjectEvent, error) {
 	if n == 0 {
 		n = EventLogLimit
 	}
@@ -364,7 +364,7 @@ func GetEventsById(id string, before time.Time, n int) ([]restModel.APIProjectEv
 	catcher := grip.NewBasicCatcher()
 	for _, evt := range events {
 		apiEvent := restModel.APIProjectEvent{}
-		err = apiEvent.BuildFromService(evt)
+		err = apiEvent.BuildFromService(ctx, evt)
 		if err != nil {
 			catcher.Wrapf(err, "converting event '%s' to API model", evt.ID)
 			continue
@@ -419,7 +419,7 @@ func (pc *DBProjectConnector) GetProjectFromFile(ctx context.Context, pRef model
 // HideBranch is used to "delete" a project via the rest route or the UI. It overwrites the project with a skeleton project.
 // It also clears project admin roles, project aliases, and project vars.
 func HideBranch(ctx context.Context, projectID string) error {
-	pRef, err := model.FindBranchProjectRef(projectID)
+	pRef, err := model.FindBranchProjectRef(ctx, projectID)
 	if err != nil {
 		return errors.Wrapf(err, "finding project '%s'", projectID)
 	}

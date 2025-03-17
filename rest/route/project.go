@@ -105,7 +105,7 @@ func (p *projectGetHandler) Run(ctx context.Context) gimlet.Responder {
 	for _, proj := range projects {
 		projectModel := &model.APIProjectRef{}
 		// Because this is route to accessible to non-admins, only return basic fields.
-		if err = projectModel.BuildPublicFields(proj); err != nil {
+		if err = projectModel.BuildPublicFields(ctx, proj); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting project '%s' to API model", proj.Id))
 		}
 		if err = resp.AddData(projectModel); err != nil {
@@ -159,7 +159,7 @@ func (h *legacyVersionsGetHandler) Parse(ctx context.Context, r *http.Request) e
 }
 
 func (h *legacyVersionsGetHandler) Run(ctx context.Context) gimlet.Responder {
-	projRefId, err := dbModel.GetIdForProject(h.project)
+	projRefId, err := dbModel.GetIdForProject(ctx, h.project)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting ID for project '%s'", h.project))
 	}
@@ -311,7 +311,7 @@ func (h *projectIDPatchHandler) Parse(ctx context.Context, r *http.Request) erro
 		return errors.Wrapf(err, "finding original project '%s'", h.project)
 	}
 	requestProjectRef := &model.APIProjectRef{}
-	if err = requestProjectRef.BuildFromService(*oldProject); err != nil {
+	if err = requestProjectRef.BuildFromService(ctx, *oldProject); err != nil {
 		return errors.Wrap(err, "converting original project to API model")
 	}
 
@@ -459,7 +459,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	// validate triggers before updating project
 	catcher := grip.NewSimpleCatcher()
 	for i := range h.newProjectRef.Triggers {
-		catcher.Add(h.newProjectRef.Triggers[i].Validate(h.newProjectRef.Id))
+		catcher.Add(h.newProjectRef.Triggers[i].Validate(ctx, h.newProjectRef.Id))
 	}
 	for i := range h.newProjectRef.PatchTriggerAliases {
 		h.newProjectRef.PatchTriggerAliases[i], err = dbModel.ValidateTriggerDefinition(ctx, h.newProjectRef.PatchTriggerAliases[i], h.newProjectRef.Id)
@@ -759,7 +759,7 @@ func (h *projectRepotrackerHandler) Parse(ctx context.Context, r *http.Request) 
 }
 
 func (h *projectRepotrackerHandler) Run(ctx context.Context) gimlet.Responder {
-	projectId, err := dbModel.GetIdForProject(h.projectName)
+	projectId, err := dbModel.GetIdForProject(ctx, h.projectName)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "getting ID for project '%s'", h.projectName))
 	}
@@ -848,7 +848,7 @@ func (h *projectIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	projectModel := &model.APIProjectRef{}
-	if err = projectModel.BuildFromService(*project); err != nil {
+	if err = projectModel.BuildFromService(ctx, *project); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "converting project '%s' to API model", h.projectName))
 	}
 
@@ -968,7 +968,7 @@ func (h *getProjectVersionsHandler) Parse(ctx context.Context, r *http.Request) 
 }
 
 func (h *getProjectVersionsHandler) Run(ctx context.Context) gimlet.Responder {
-	versions, err := data.GetProjectVersionsWithOptions(h.projectName, h.opts)
+	versions, err := data.GetProjectVersionsWithOptions(ctx, h.projectName, h.opts)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting versions for project '%s'", h.projectName))
 	}
@@ -1093,7 +1093,7 @@ func (h *modifyProjectVersionsHandler) Run(ctx context.Context) gimlet.Responder
 			StatusCode: http.StatusForbidden,
 		})
 	}
-	versions, err := dbModel.GetVersionsToModify(h.projectId, h.opts, h.startTime, h.endTime)
+	versions, err := dbModel.GetVersionsToModify(ctx, h.projectId, h.opts, h.startTime, h.endTime)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting versions for project '%s'", h.projectId))
 	}
@@ -1241,7 +1241,7 @@ func (h *getProjectTaskExecutionsHandler) Parse(ctx context.Context, r *http.Req
 	}
 
 	h.projectName = gimlet.GetVars(r)["project_id"]
-	h.projectId, err = dbModel.GetIdForProject(h.projectName)
+	h.projectId, err = dbModel.GetIdForProject(ctx, h.projectName)
 	if err != nil {
 		return errors.Wrap(err, "getting id for project")
 	}
@@ -1404,7 +1404,7 @@ func (h *projectParametersGetHandler) Parse(ctx context.Context, r *http.Request
 }
 
 func (h *projectParametersGetHandler) Run(ctx context.Context) gimlet.Responder {
-	id, err := dbModel.GetIdForProject(h.projectName)
+	id, err := dbModel.GetIdForProject(ctx, h.projectName)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "getting ID for project '%s'", h.projectName))
 	}

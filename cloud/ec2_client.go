@@ -823,7 +823,7 @@ func (c *awsClientImpl) GetKey(ctx context.Context, h *host.Host) (string, error
 	if t == nil {
 		return "", errors.Errorf("task '%s' not found", h.StartedBy)
 	}
-	k, err := model.GetAWSKeyForProject(t.Project)
+	k, err := model.GetAWSKeyForProject(ctx, t.Project)
 	if err != nil {
 		return "", errors.Wrap(err, "getting key for project")
 	}

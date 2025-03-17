@@ -1618,7 +1618,7 @@ tasks:
 	}
 	s.NoError(u.Insert())
 
-	projectRef, err := model.FindBranchProjectRef(s.project)
+	projectRef, err := model.FindBranchProjectRef(s.ctx, s.project)
 	s.Require().NotNil(projectRef)
 	s.NoError(err)
 
@@ -1684,7 +1684,7 @@ tasks:
 	}
 	s.NoError(u.Insert())
 
-	projectRef, err := model.FindBranchProjectRef(s.project)
+	projectRef, err := model.FindBranchProjectRef(s.ctx, s.project)
 	s.Require().NotNil(projectRef)
 	s.NoError(err)
 	s.Require().Len(projectRef.PatchTriggerAliases, 1)
@@ -1745,7 +1745,7 @@ tasks:
 	}
 	s.NoError(u.Insert())
 
-	projectRef, err := model.FindBranchProjectRef(s.project)
+	projectRef, err := model.FindBranchProjectRef(s.ctx, s.project)
 	s.Require().NotNil(projectRef)
 	s.NoError(err)
 

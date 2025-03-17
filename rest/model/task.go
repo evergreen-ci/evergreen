@@ -474,7 +474,7 @@ func (at *APITask) BuildFromService(ctx context.Context, t *task.Task, args *API
 		}
 	}
 	if args.IncludeProjectIdentifier {
-		at.GetProjectIdentifier()
+		at.GetProjectIdentifier(ctx)
 	}
 
 	return nil
@@ -499,12 +499,12 @@ func (at *APITask) GetAMI(ctx context.Context) error {
 	return nil
 }
 
-func (at *APITask) GetProjectIdentifier() {
+func (at *APITask) GetProjectIdentifier(ctx context.Context) {
 	if at.ProjectIdentifier != nil {
 		return
 	}
 	if utility.FromStringPtr(at.ProjectId) != "" {
-		identifier, err := model.GetIdentifierForProject(utility.FromStringPtr(at.ProjectId))
+		identifier, err := model.GetIdentifierForProject(ctx, utility.FromStringPtr(at.ProjectId))
 		if err == nil {
 			at.ProjectIdentifier = utility.ToStringPtr(identifier)
 		}

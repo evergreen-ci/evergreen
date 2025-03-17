@@ -851,7 +851,7 @@ func (t TaskIdConfig) Length() int {
 // the tasks will be created for this version so only create task IDs for those
 // tasks that actually will be created; otherwise, it will create task IDs for
 // all possible tasks in the version.
-func NewTaskIdConfigForRepotrackerVersion(p *Project, v *Version, pairsToCreate TVPairSet, sourceRev, defID string) TaskIdConfig {
+func NewTaskIdConfigForRepotrackerVersion(ctx context.Context, p *Project, v *Version, pairsToCreate TVPairSet, sourceRev, defID string) TaskIdConfig {
 	// init the variant map
 	execTable := TaskIdTable{}
 	displayTable := TaskIdTable{}
@@ -860,7 +860,7 @@ func NewTaskIdConfigForRepotrackerVersion(p *Project, v *Version, pairsToCreate 
 
 	sort.Stable(p.BuildVariants)
 
-	projectIdentifier, err := GetIdentifierForProject(p.Identifier)
+	projectIdentifier, err := GetIdentifierForProject(ctx, p.Identifier)
 	if err != nil { // default to ID
 		projectIdentifier = p.Identifier
 	}
@@ -1019,7 +1019,7 @@ func PopulateExpansions(ctx context.Context, t *task.Task, h *host.Host, appToke
 		return nil, errors.New("task cannot be nil")
 	}
 
-	projectRef, err := FindBranchProjectRef(t.Project)
+	projectRef, err := FindBranchProjectRef(ctx, t.Project)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding project ref")
 	}
@@ -1078,7 +1078,7 @@ func PopulateExpansions(ctx context.Context, t *task.Task, h *host.Host, appToke
 			upstreamProjectID = upstreamBuild.Project
 		}
 		var upstreamProject *ProjectRef
-		upstreamProject, err = FindBranchProjectRef(upstreamProjectID)
+		upstreamProject, err = FindBranchProjectRef(ctx, upstreamProjectID)
 		if err != nil {
 			return nil, errors.Wrap(err, "finding project")
 		}
@@ -1877,7 +1877,7 @@ func (p *Project) IsGenerateTask(taskName string) bool {
 }
 
 func findAliasesForPatch(ctx context.Context, projectId, alias string, patchDoc *patch.Patch) ([]ProjectAlias, error) {
-	aliases, err := findAliasInProjectOrRepoFromDb(projectId, alias)
+	aliases, err := findAliasInProjectOrRepoFromDb(ctx, projectId, alias)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting alias from project")
 	}

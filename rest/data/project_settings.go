@@ -63,7 +63,7 @@ func CopyProject(ctx context.Context, env evergreen.Environment, opts restModel.
 		catcher.Add(err)
 	}
 	apiProjectRef := &restModel.APIProjectRef{}
-	if err := apiProjectRef.BuildFromService(*projectToCopy); err != nil {
+	if err := apiProjectRef.BuildFromService(ctx, *projectToCopy); err != nil {
 		return nil, errors.Wrap(err, "converting project to API model")
 	}
 
@@ -236,7 +236,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 	switch section {
 	case model.ProjectPageGeneralSection:
 		if mergedSection.Identifier != mergedBeforeRef.Identifier {
-			if err = validateModifiedIdentifier(mergedSection); err != nil {
+			if err = validateModifiedIdentifier(ctx, mergedSection); err != nil {
 				return nil, err
 			}
 		}
@@ -448,7 +448,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		}
 
 		for i := range mergedSection.Triggers {
-			catcher.Add(mergedSection.Triggers[i].Validate(projectId))
+			catcher.Add(mergedSection.Triggers[i].Validate(ctx, projectId))
 		}
 		if catcher.HasErrors() {
 			return nil, errors.Wrap(catcher.Resolve(), "invalid project trigger")
@@ -500,7 +500,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 			catcher.Add(model.LogProjectModified(projectId, userId, before, after))
 			after.Vars = *after.Vars.RedactPrivateVars() // ensure that we're not returning private variables back to the UI
 			after.GitHubAppAuth = *after.GitHubAppAuth.RedactPrivateKey()
-			res, err = restModel.DbProjectSettingsToRestModel(*after)
+			res, err = restModel.DbProjectSettingsToRestModel(ctx, *after)
 			if err != nil {
 				catcher.Wrapf(err, "converting project settings")
 			}
@@ -587,8 +587,8 @@ func getSubscription[T any](subscriptions []event.Subscription, id string) (*T, 
 	return nil, nil
 }
 
-func validateModifiedIdentifier(pRef *model.ProjectRef) error {
-	conflictingRef, err := model.FindBranchProjectRef(pRef.Identifier)
+func validateModifiedIdentifier(ctx context.Context, pRef *model.ProjectRef) error {
+	conflictingRef, err := model.FindBranchProjectRef(ctx, pRef.Identifier)
 	if err != nil {
 		return errors.Wrapf(err, "checking for conflicting project ref")
 	}

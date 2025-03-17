@@ -286,7 +286,7 @@ func makeGetProjectTaskStats(url string) gimlet.RouteHandler {
 
 func (tsh *taskStatsHandler) Parse(ctx context.Context, r *http.Request) error {
 	project := gimlet.GetVars(r)["project_id"]
-	projectId, err := dbModel.GetIdForProject(project)
+	projectId, err := dbModel.GetIdForProject(ctx, project)
 	if err != nil {
 		return errors.Wrapf(err, "project ID not found for project '%s'", project)
 	}
@@ -313,7 +313,7 @@ func (tsh *taskStatsHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	taskStatsResult, err := data.GetTaskStats(tsh.filter)
+	taskStatsResult, err := data.GetTaskStats(ctx, tsh.filter)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting task stats"))
 	}

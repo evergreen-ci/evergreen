@@ -68,7 +68,7 @@ func TestAPIPatch(t *testing.T) {
 	}
 
 	a := APIPatch{}
-	err := a.BuildFromService(p, &APIPatchArgs{
+	err := a.BuildFromService(t.Context(), p, &APIPatchArgs{
 		IncludeProjectIdentifier: true,
 	})
 	assert.NoError(err)
@@ -204,7 +204,7 @@ func TestDownstreamTasks(t *testing.T) {
 	assert.NoError(childPatch.Insert())
 
 	a := APIPatch{}
-	err := a.BuildFromService(p, &APIPatchArgs{
+	err := a.BuildFromService(t.Context(), p, &APIPatchArgs{
 		IncludeChildPatches: true,
 	})
 	assert.NoError(err)
@@ -238,7 +238,7 @@ func TestPreselectedDisplayTasks(t *testing.T) {
 	require.NoError(t, p.Insert())
 
 	a := APIPatch{}
-	err := a.BuildFromService(p, nil)
+	err := a.BuildFromService(t.Context(), p, nil)
 	require.NoError(t, err)
 
 	// We expect the tasks from the patch to be only non-execution tasks + display tasks.

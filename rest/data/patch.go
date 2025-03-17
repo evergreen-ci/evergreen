@@ -34,9 +34,9 @@ func ValidatePatchID(patchId string) error {
 
 // FindPatchesByProject uses the service layer's patches type to query the backing database for
 // the patches.
-func FindPatchesByProject(projectId string, ts time.Time, limit int) ([]restModel.APIPatch, error) {
+func FindPatchesByProject(ctx context.Context, projectId string, ts time.Time, limit int) ([]restModel.APIPatch, error) {
 	apiPatches := []restModel.APIPatch{}
-	id, err := model.GetIdForProject(projectId)
+	id, err := model.GetIdForProject(ctx, projectId)
 	if err != nil {
 		return nil, errors.Wrapf(err, "fetching project '%s'", projectId)
 	}
@@ -46,7 +46,7 @@ func FindPatchesByProject(projectId string, ts time.Time, limit int) ([]restMode
 	}
 	for _, p := range patches {
 		apiPatch := restModel.APIPatch{}
-		err = apiPatch.BuildFromService(p, &restModel.APIPatchArgs{
+		err = apiPatch.BuildFromService(ctx, p, &restModel.APIPatchArgs{
 			IncludeProjectIdentifier: true,
 			IncludeChildPatches:      true,
 		})
@@ -77,7 +77,7 @@ func FindPatchById(ctx context.Context, patchId string) (*restModel.APIPatch, er
 	}
 
 	apiPatch := restModel.APIPatch{}
-	err = apiPatch.BuildFromService(*p, &restModel.APIPatchArgs{
+	err = apiPatch.BuildFromService(ctx, *p, &restModel.APIPatchArgs{
 		IncludeChildPatches:      true,
 		IncludeProjectIdentifier: true,
 	})
@@ -151,7 +151,7 @@ func SetPatchActivated(ctx context.Context, patchId string, user string, activat
 }
 
 // FindPatchesByUser finds patches for the input user as ordered by creation time
-func FindPatchesByUser(user string, ts time.Time, limit int) ([]restModel.APIPatch, error) {
+func FindPatchesByUser(ctx context.Context, user string, ts time.Time, limit int) ([]restModel.APIPatch, error) {
 	patches, err := patch.Find(patch.ByUserPaginated(user, ts, limit))
 	if err != nil {
 		return nil, errors.Wrapf(err, "fetching patches for user '%s'", user)
@@ -159,7 +159,7 @@ func FindPatchesByUser(user string, ts time.Time, limit int) ([]restModel.APIPat
 	apiPatches := []restModel.APIPatch{}
 	for _, p := range patches {
 		apiPatch := restModel.APIPatch{}
-		err = apiPatch.BuildFromService(p, &restModel.APIPatchArgs{
+		err = apiPatch.BuildFromService(ctx, p, &restModel.APIPatchArgs{
 			IncludeProjectIdentifier: true,
 			IncludeChildPatches:      true,
 		})

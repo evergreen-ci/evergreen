@@ -40,7 +40,7 @@ func (a *aliasGetHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (a *aliasGetHandler) Run(ctx context.Context) gimlet.Responder {
-	pRef, err := model.FindBranchProjectRef(a.projectID)
+	pRef, err := model.FindBranchProjectRef(ctx, a.projectID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "finding project '%s'", a.projectID))
 	}
