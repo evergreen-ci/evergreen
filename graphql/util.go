@@ -734,7 +734,7 @@ func groupProjects(ctx context.Context, projects []model.ProjectRef, onlyDefault
 		project := groupedProjects[0]
 		if utility.FromBoolPtr(project.UseRepoSettings) {
 			repoRefId := utility.FromStringPtr(project.RepoRefId)
-			repoRef, err := model.FindOneRepoRef(ctx,repoRefId)
+			repoRef, err := model.FindOneRepoRef(ctx, repoRefId)
 			if err != nil {
 				return nil, err
 			}
