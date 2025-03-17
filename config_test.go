@@ -1002,6 +1002,13 @@ func (s *AdminSuite) TestBucketsConfig() {
 				Prefix:    "project-B",
 			},
 		},
+		ProjectToBucketMappings: []ProjectToBucketMapping{
+			{
+				ProjectID: "project-C",
+				Bucket:    "bucket-C",
+				Prefix:    "prefix-1",
+			},
+		},
 	}
 
 	err := config.Set(ctx)
@@ -1016,6 +1023,11 @@ func (s *AdminSuite) TestBucketsConfig() {
 	config.ProjectToPrefixMappings = []ProjectToPrefixMapping{{
 		ProjectID: "project-C",
 		Prefix:    "project-D",
+	}}
+	config.ProjectToBucketMappings = []ProjectToBucketMapping{{
+		ProjectID: "project-A",
+		Bucket:    "bucket-A",
+		Prefix:    "prefix-2",
 	}}
 	s.NoError(config.Set(ctx))
 

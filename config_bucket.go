@@ -34,6 +34,16 @@ type ProjectToPrefixMapping struct {
 	Prefix string `yaml:"prefix" bson:"prefix" json:"prefix"`
 }
 
+// ProjectToBucketMapping relates a project to a bucket.
+type ProjectToBucketMapping struct {
+	// ProjectID is the project's ID.
+	ProjectID string `yaml:"project_id" bson:"project_id" json:"project_id"`
+	// Bucket is the bucket that the project should have access to.
+	Bucket string `yaml:"bucket" bson:"bucket" json:"bucket"`
+	// Prefix is an optional bucket path prefix that the project should have access to.
+	Prefix string `yaml:"prefix" bson:"prefix" json:"prefix"`
+}
+
 // BucketsConfig represents the admin config section for interally-owned
 // Evergreen data bucket storage.
 type BucketsConfig struct {
@@ -51,6 +61,10 @@ type BucketsConfig struct {
 	// E.g. if project A should have access to project B's prefix, then
 	// project A's ID and project B's prefix should be in this list.
 	ProjectToPrefixMappings []ProjectToPrefixMapping `yaml:"project_to_prefix_mappings" bson:"project_to_prefix_mappings" json:"project_to_prefix_mappings"`
+
+	// ProjectToBucketMappings is a list of project to bucket mappings.
+	// This is used to connect projects to buckets Evergreen has access to.
+	ProjectToBucketMappings []ProjectToBucketMapping `yaml:"project_to_bucket_mappings" bson:"project_to_bucket_mappings" json:"project_to_bucket_mappings"`
 }
 
 var (
@@ -58,6 +72,7 @@ var (
 	bucketsConfigCredentialsKey     = bsonutil.MustHaveTag(BucketsConfig{}, "Credentials")
 	bucketsConfigInternalBucketsKey = bsonutil.MustHaveTag(BucketsConfig{}, "InternalBuckets")
 	projectToPrefixMappingsKey      = bsonutil.MustHaveTag(BucketsConfig{}, "ProjectToPrefixMappings")
+	projectToBucketMappingsKey      = bsonutil.MustHaveTag(BucketsConfig{}, "ProjectToBucketMappings")
 )
 
 // BucketConfig represents the admin config for an individual bucket.
@@ -92,6 +107,7 @@ func (c *BucketsConfig) Set(ctx context.Context) error {
 			bucketsConfigCredentialsKey:     c.Credentials,
 			bucketsConfigInternalBucketsKey: c.InternalBuckets,
 			projectToPrefixMappingsKey:      c.ProjectToPrefixMappings,
+			projectToBucketMappingsKey:      c.ProjectToBucketMappings,
 		}}), "updating config section '%s'", c.SectionId(),
 	)
 }
