@@ -8,7 +8,7 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	_ "github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func TestAlertRecord(t *testing.T) {
@@ -175,7 +175,7 @@ func (s *alertRecordSuite) TestFindOneWithUnsetIDQuery() {
 	s.Equal(2, rec.RevisionOrderNumber)
 
 	records := []AlertRecord{}
-	err = db.FindAllQ(Collection, ByLastFailureTransition(legacyAlertsSubscription, "task", "variant", "project").Limit(999), &records)
+	err = db.FindAllQContext(s.T().Context(), Collection, ByLastFailureTransition(legacyAlertsSubscription, "task", "variant", "project").Limit(999), &records)
 	s.NoError(err)
 	s.Len(records, 3)
 }

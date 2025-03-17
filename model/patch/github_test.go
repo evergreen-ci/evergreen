@@ -13,7 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/suite"
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 type GithubSuite struct {
@@ -190,7 +190,7 @@ func (s *GithubSuite) TestSetProcessed() {
 	s.Empty(found)
 
 	var intents []githubIntent
-	s.NoError(db.FindAllQ(IntentCollection, db.Query(bson.M{processedKey: true}), &intents))
+	s.NoError(db.FindAllQContext(s.T().Context(), IntentCollection, db.Query(bson.M{processedKey: true}), &intents))
 	s.Len(intents, 1)
 	s.Equal(s.pr, intents[0].PRNumber)
 	s.Equal(s.hash, intents[0].HeadHash)

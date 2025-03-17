@@ -63,7 +63,7 @@ func (h *annotationsByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "finding task IDs for build '%s'", h.buildId))
 	}
 
-	return getAPIAnnotationsForTaskIds(taskIds, h.fetchAllExecutions)
+	return getAPIAnnotationsForTaskIds(ctx, taskIds, h.fetchAllExecutions)
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -111,11 +111,11 @@ func (h *annotationsByVersionHandler) Run(ctx context.Context) gimlet.Responder 
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "finding task IDs for version '%s'", h.versionId))
 	}
-	return getAPIAnnotationsForTaskIds(taskIds, h.fetchAllExecutions)
+	return getAPIAnnotationsForTaskIds(ctx, taskIds, h.fetchAllExecutions)
 }
 
-func getAPIAnnotationsForTaskIds(taskIds []string, allExecutions bool) gimlet.Responder {
-	allAnnotations, err := annotations.FindByTaskIds(taskIds)
+func getAPIAnnotationsForTaskIds(ctx context.Context, taskIds []string, allExecutions bool) gimlet.Responder {
+	allAnnotations, err := annotations.FindByTaskIds(ctx, taskIds)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "finding task annotations"))
 	}
@@ -205,7 +205,7 @@ func (h *annotationByTaskGetHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONResponse([]restModel.APITaskAnnotation{*taskAnnotation})
 	}
 
-	allAnnotations, err := annotations.FindByTaskId(h.taskId)
+	allAnnotations, err := annotations.FindByTaskId(ctx, h.taskId)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "finding task annotation for task '%s'", h.taskId))
 	}

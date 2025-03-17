@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -279,7 +280,7 @@ func (h *markTaskForRestartHandler) Run(ctx context.Context) gimlet.Responder {
 			Message:    fmt.Sprintf("task has already reached the maximum (%d) number of automatic restarts", evergreen.MaxAutomaticRestarts),
 		})
 	}
-	projectRef, err := model.FindMergedProjectRef(t.Project, t.Version, false)
+	projectRef, err := model.FindMergedProjectRef(ctx, t.Project, t.Version, false)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project '%s' for version '%s'", t.Project, t.Version))
 	}
@@ -461,7 +462,7 @@ func (h *getProjectRefHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	p, err := model.FindMergedProjectRef(t.Project, t.Version, true)
+	p, err := model.FindMergedProjectRef(ctx, t.Project, t.Version, true)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
@@ -1254,7 +1255,7 @@ func (h *manifestLoadHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	projectRef, err := model.FindMergedProjectRef(task.Project, task.Version, true)
+	projectRef, err := model.FindMergedProjectRef(ctx, task.Project, task.Version, true)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project '%s'", task.Project))
 	}
@@ -1646,7 +1647,7 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 	// When creating a token for a task, we want to consider the project's
 	// permission groups. These permission groups can restrict the permissions
 	// so that each requester only gets the permissions they have been set.
-	p, err := model.FindMergedProjectRef(t.Project, t.Version, true)
+	p, err := model.FindMergedProjectRef(ctx, t.Project, t.Version, true)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
@@ -1817,9 +1818,8 @@ type awsS3Credentials struct {
 	env        evergreen.Environment
 	stsManager cloud.STSManager
 
-	// callerARN is the ARN in use with AWS STS.
-	// This is saved across requests to avoid unnecessary calls to AWS STS.
-	callerARN string
+	// roleARN is the ARN in use with AWS STS.
+	roleARN string
 
 	body   apimodels.S3CredentialsRequest
 	taskID string
@@ -1830,7 +1830,7 @@ func makeAWSS3Credentials(env evergreen.Environment, stsManager cloud.STSManager
 }
 
 func (h *awsS3Credentials) Factory() gimlet.RouteHandler {
-	return &awsS3Credentials{env: h.env, stsManager: h.stsManager, callerARN: h.callerARN}
+	return &awsS3Credentials{env: h.env, stsManager: h.stsManager, roleARN: h.roleARN}
 }
 
 func (h *awsS3Credentials) Parse(ctx context.Context, r *http.Request) error {
@@ -1862,29 +1862,36 @@ func (h *awsS3Credentials) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	if h.callerARN == "" {
-		h.callerARN, err = h.stsManager.GetCallerIdentityARN(ctx)
-		if err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "getting caller identity for task '%s'", h.taskID))
-		}
+	if h.roleARN == "" {
+		h.roleARN = os.Getenv(evergreen.AWSRoleARNEnvVar)
 	}
-	// TODO (DEVPROD-13978): Create correct session policy based off of provided task.
+
+	projectPrefix := fmt.Sprintf("arn:aws:s3:::mciuploads/%s", t.Project)
+	accessPaths := []string{
+		projectPrefix,
+		fmt.Sprintf("%s/*", projectPrefix),
+	}
 	sessionPolicy := map[string]any{
 		"Version": "2012-10-17",
 		"Statement": []map[string]any{
 			{
-				"Effect":   "Deny",
-				"Action":   "*",
-				"Resource": "*",
+				"Effect": "Allow",
+				"Action": []string{
+					"s3:GetObject",
+					"s3:PutObject",
+					"s3:ListBucket",
+				},
+				"Resource": accessPaths,
 			},
 		},
 	}
+
 	policyJSON, err := json.Marshal(sessionPolicy)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "marshalling session policy for task '%s'", h.taskID))
 	}
 	creds, err := h.stsManager.AssumeRole(ctx, h.taskID, cloud.AssumeRoleOptions{
-		RoleARN: h.callerARN,
+		RoleARN: h.roleARN,
 		Policy:  aws.String(string(policyJSON)),
 	})
 	if err != nil {

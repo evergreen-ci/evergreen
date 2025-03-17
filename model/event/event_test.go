@@ -12,7 +12,7 @@ import (
 	amboyRegistry "github.com/mongodb/amboy/registry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 type eventSuite struct {
@@ -279,7 +279,7 @@ func (s *eventSuite) TestMarkProcessed() {
 	s.EqualError(event.MarkProcessed(s.T().Context()), "updating 'processed at' time: document not found")
 	s.NoError(event.Log())
 
-	s.NoError(db.UpdateId(EventCollection, event.ID, bson.M{
+	s.NoError(db.UpdateIdContext(s.T().Context(), EventCollection, event.ID, bson.M{
 		"$set": bson.M{
 			"processed_at": time.Time{},
 		},

@@ -14,7 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 // AuthorDisplayName is the resolver for the authorDisplayName field.
@@ -129,7 +129,7 @@ func (r *patchResolver) GeneratedTaskCounts(ctx context.Context, obj *restModel.
 // PatchTriggerAliases is the resolver for the patchTriggerAliases field.
 func (r *patchResolver) PatchTriggerAliases(ctx context.Context, obj *restModel.APIPatch) ([]*restModel.APIPatchTriggerDefinition, error) {
 	projectID := utility.FromStringPtr(obj.ProjectId)
-	projectRef, err := data.FindProjectById(projectID, true, true)
+	projectRef, err := data.FindProjectById(ctx, projectID, true, true)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", projectID, err.Error()))
 	}
@@ -153,7 +153,7 @@ func (r *patchResolver) PatchTriggerAliases(ctx context.Context, obj *restModel.
 			projectCache[alias.ChildProject] = project
 		}
 
-		matchingTasks, err := project.VariantTasksForSelectors([]patch.PatchTriggerDefinition{alias}, utility.FromStringPtr(obj.Requester))
+		matchingTasks, err := project.VariantTasksForSelectors(ctx, []patch.PatchTriggerDefinition{alias}, utility.FromStringPtr(obj.Requester))
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("matching tasks to definitions for alias '%s': %s", alias.Alias, err.Error()))
 		}

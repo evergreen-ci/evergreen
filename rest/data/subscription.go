@@ -163,7 +163,7 @@ func DeleteSubscriptions(ctx context.Context, owner string, ids []string) error 
 
 	catcher := grip.NewBasicCatcher()
 	for _, id := range ids {
-		catcher.Wrapf(event.RemoveSubscription(id), "removing subscription '%s'", id)
+		catcher.Wrapf(event.RemoveSubscription(ctx, id), "removing subscription '%s'", id)
 	}
 	return catcher.Resolve()
 }

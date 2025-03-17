@@ -2525,31 +2525,31 @@ func TestValidatePlugins(t *testing.T) {
 	assert.NoError(projectRef.Insert())
 	Convey("When validating a project", t, func() {
 		Convey("ensure bad plugin configs throw an error", func() {
-			So(validateProjectConfigPlugins(&model.ProjectConfig{}), ShouldResemble, ValidationErrors{})
-			So(validateProjectConfigPlugins(&model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
+			So(validateProjectConfigPlugins(t.Context(), &model.ProjectConfig{}), ShouldResemble, ValidationErrors{})
+			So(validateProjectConfigPlugins(t.Context(), &model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject:  "BFG",
 				TicketSearchProjects: []string{"BF", "BFG"},
 			}}}), ShouldResemble, ValidationErrors{})
 
-			So(validateProjectConfigPlugins(&model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
+			So(validateProjectConfigPlugins(t.Context(), &model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject:  "BFG",
 				TicketSearchProjects: []string{"BF", "BFG"},
 			}}}), ShouldResemble, ValidationErrors{})
 
-			So(validateProjectConfigPlugins(&model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
+			So(validateProjectConfigPlugins(t.Context(), &model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject:  "BFG",
 				TicketSearchProjects: []string{"BF", "BFG"},
 			}}}), ShouldResemble, ValidationErrors{})
 
-			So(validateProjectConfigPlugins(&model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
+			So(validateProjectConfigPlugins(t.Context(), &model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject: "BFG",
 			}}}), ShouldNotBeNil)
 
-			So(validateProjectConfigPlugins(&model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
+			So(validateProjectConfigPlugins(t.Context(), &model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketSearchProjects: []string{"BF", "BFG"},
 			}}}), ShouldNotBeNil)
 
-			So(validateProjectConfigPlugins(&model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
+			So(validateProjectConfigPlugins(t.Context(), &model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject:     "BFG",
 				TicketSearchProjects:    []string{"BF", "BFG"},
 				BFSuggestionServer:      "https://evergreen.mongodb.com",
@@ -2558,48 +2558,48 @@ func TestValidatePlugins(t *testing.T) {
 				BFSuggestionTimeoutSecs: 10,
 			}}}), ShouldResemble, ValidationErrors{})
 
-			So(validateProjectConfigPlugins(&model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
+			So(validateProjectConfigPlugins(t.Context(), &model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject:     "BFG",
 				TicketSearchProjects:    []string{"BF", "BFG"},
 				BFSuggestionServer:      "https://evergreen.mongodb.com",
 				BFSuggestionTimeoutSecs: 10,
 			}}}), ShouldResemble, ValidationErrors{})
 
-			So(validateProjectConfigPlugins(&model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
+			So(validateProjectConfigPlugins(t.Context(), &model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject:  "BFG",
 				TicketSearchProjects: []string{"BF", "BFG"},
 				BFSuggestionUsername: "user",
 				BFSuggestionPassword: "pass",
 			}}}), ShouldNotBeNil)
 
-			So(validateProjectConfigPlugins(&model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
+			So(validateProjectConfigPlugins(t.Context(), &model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject:     "BFG",
 				TicketSearchProjects:    []string{"BF", "BFG"},
 				BFSuggestionTimeoutSecs: 10,
 			}}}), ShouldNotBeNil)
 
-			So(validateProjectConfigPlugins(&model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
+			So(validateProjectConfigPlugins(t.Context(), &model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject:     "BFG",
 				TicketSearchProjects:    []string{"BF", "BFG"},
 				BFSuggestionServer:      "://evergreen.mongodb.com",
 				BFSuggestionTimeoutSecs: 10,
 			}}}), ShouldNotBeNil)
 
-			So(validateProjectConfigPlugins(&model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
+			So(validateProjectConfigPlugins(t.Context(), &model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject:     "BFG",
 				TicketSearchProjects:    []string{"BF", "BFG"},
 				BFSuggestionServer:      "https://evergreen.mongodb.com",
 				BFSuggestionPassword:    "pass",
 				BFSuggestionTimeoutSecs: 10,
 			}}}), ShouldNotBeNil)
-			So(validateProjectConfigPlugins(&model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
+			So(validateProjectConfigPlugins(t.Context(), &model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject:     "BFG",
 				TicketSearchProjects:    []string{"BF", "BFG"},
 				BFSuggestionServer:      "https://evergreen.mongodb.com",
 				BFSuggestionTimeoutSecs: 0,
 			}}}), ShouldNotBeNil)
 
-			So(validateProjectConfigPlugins(&model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
+			So(validateProjectConfigPlugins(t.Context(), &model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject:     "BFG",
 				TicketSearchProjects:    []string{"BF", "BFG"},
 				BFSuggestionServer:      "https://evergreen.mongodb.com",
@@ -3073,7 +3073,7 @@ func TestValidateProjectAliases(t *testing.T) {
 					},
 				},
 			}
-			validationErrs := validateProjectConfigAliases(projectConfig)
+			validationErrs := validateProjectConfigAliases(t.Context(), projectConfig)
 			So(validationErrs, ShouldNotResemble, ValidationErrors{})
 			So(len(validationErrs), ShouldEqual, 8)
 			So(validationErrs[0].Message, ShouldContainSubstring, "can't be empty string")
@@ -3375,7 +3375,7 @@ func TestValidateProjectConfigContainers(t *testing.T) {
 				},
 			},
 		}
-		errs := validateProjectConfigContainers(&pc)
+		errs := validateProjectConfigContainers(t.Context(), &pc)
 		assert.Empty(t, errs)
 	})
 	t.Run("FailsWithInvalidContainerResources", func(t *testing.T) {
@@ -3390,7 +3390,7 @@ func TestValidateProjectConfigContainers(t *testing.T) {
 				},
 			},
 		}
-		errs := validateProjectConfigContainers(&pc)
+		errs := validateProjectConfigContainers(t.Context(), &pc)
 		assert.NotEmpty(t, errs)
 	})
 	t.Run("FailsWithUnnamedContainerSize", func(t *testing.T) {
@@ -3405,7 +3405,7 @@ func TestValidateProjectConfigContainers(t *testing.T) {
 				},
 			},
 		}
-		errs := validateProjectConfigContainers(&pc)
+		errs := validateProjectConfigContainers(t.Context(), &pc)
 		assert.NotEmpty(t, errs)
 	})
 	t.Run("FailsWithContainerSizeExceedingGlobalLimits", func(t *testing.T) {
@@ -3431,7 +3431,7 @@ func TestValidateProjectConfigContainers(t *testing.T) {
 					},
 				},
 			}
-			errs := validateProjectConfigContainers(&pc)
+			errs := validateProjectConfigContainers(t.Context(), &pc)
 			assert.NotEmpty(t, errs)
 		})
 		t.Run("Memory", func(t *testing.T) {
@@ -3446,7 +3446,7 @@ func TestValidateProjectConfigContainers(t *testing.T) {
 					},
 				},
 			}
-			errs := validateProjectConfigContainers(&pc)
+			errs := validateProjectConfigContainers(t.Context(), &pc)
 			assert.NotEmpty(t, errs)
 		})
 	})

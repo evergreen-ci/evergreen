@@ -11,7 +11,7 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.opentelemetry.io/otel/attribute"
 )
 
@@ -51,6 +51,8 @@ type WaterfallOptions struct {
 	MaxOrder   int      `bson:"-" json:"-"`
 	MinOrder   int      `bson:"-" json:"-"`
 	Requesters []string `bson:"-" json:"-"`
+	Statuses   []string `bson:"-" json:"-"`
+	Tasks      []string `bson:"-" json:"-"`
 	Variants   []string `bson:"-" json:"-"`
 }
 
@@ -135,7 +137,109 @@ func getBuildVariantFilterPipeline(ctx context.Context, variants []string, match
 	return pipeline, nil
 }
 
+// GetActiveVersionsByTaskFilters returns limit versions that satisfy a task name or status filter. It also applies any requester and build variant filters.
+// If neither of these filters is specified, use GetActiveWaterfallVersions: it's faster.
+func GetActiveVersionsByTaskFilters(ctx context.Context, projectId string, opts WaterfallOptions, searchOffset int) ([]Version, error) {
+	match := bson.M{
+		task.ProjectKey: projectId,
+		task.RequesterKey: bson.M{
+			"$in": opts.Requesters,
+		},
+		task.ActivatedKey: true,
+	}
+
+	if opts.MaxOrder != 0 && opts.MinOrder != 0 {
+		return nil, errors.New("cannot provide both max and min order options")
+	}
+
+	pagingBackward := opts.MinOrder != 0
+
+	revisionFilter := bson.M{}
+	if pagingBackward {
+		revisionFilter["$lte"] = searchOffset + MaxWaterfallVersionLimit
+		revisionFilter["$gt"] = searchOffset
+	} else {
+		revisionFilter["$gte"] = searchOffset - MaxWaterfallVersionLimit
+		revisionFilter["$lt"] = searchOffset
+	}
+	match[task.RevisionOrderNumberKey] = revisionFilter
+
+	if len(opts.Statuses) > 0 {
+		match[task.DisplayStatusCacheKey] = bson.M{"$in": opts.Statuses}
+	}
+
+	if len(opts.Tasks) > 0 {
+		taskNamesAsRegex := strings.Join(opts.Tasks, "|")
+		match[task.DisplayNameKey] = bson.M{"$regex": taskNamesAsRegex, "$options": "i"}
+	}
+
+	if len(opts.Variants) > 0 {
+		variantsAsRegex := strings.Join(opts.Variants, "|")
+		match["$or"] = []bson.M{
+			{task.BuildVariantKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
+			{task.BuildVariantDisplayNameKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
+		}
+	}
+
+	pipeline := []bson.M{{"$match": match}}
+
+	pipeline = append(pipeline, bson.M{
+		"$group": bson.M{
+			task.IdKey: "$" + task.VersionKey,
+			// All tasks with the same version key should have the same order number, but $max is the safest way to ensure we can sort from newest to oldest upon grouping.
+			task.RevisionOrderNumberKey: bson.M{
+				"$max": "$" + task.RevisionOrderNumberKey,
+			},
+		},
+	})
+
+	if pagingBackward {
+		// When querying with a $gt param, sort ascending so we can take `limit` versions nearest to the MinOrder param
+		pipeline = append(pipeline, bson.M{"$sort": bson.M{task.RevisionOrderNumberKey: 1}})
+		pipeline = append(pipeline, bson.M{"$limit": opts.Limit})
+		// Then apply an ascending sort so these versions are returned in the expected descending order
+		pipeline = append(pipeline, bson.M{"$sort": bson.M{task.RevisionOrderNumberKey: -1}})
+
+	} else {
+		pipeline = append(pipeline, bson.M{"$sort": bson.M{task.RevisionOrderNumberKey: -1}})
+		pipeline = append(pipeline, bson.M{"$limit": opts.Limit})
+
+	}
+
+	versionLookupKey := "version"
+
+	// Get version documents
+	pipeline = append(pipeline, bson.M{
+		"$lookup": bson.M{
+			"from":         VersionCollection,
+			"localField":   task.IdKey,
+			"foreignField": VersionIdKey,
+			"as":           versionLookupKey,
+		},
+	})
+
+	// Reroot to only return version docs
+	pipeline = append(pipeline, bson.M{
+		"$replaceRoot": bson.M{
+			"newRoot": bson.M{"$arrayElemAt": bson.A{"$" + versionLookupKey, 0}},
+		},
+	})
+
+	res := []Version{}
+	env := evergreen.GetEnvironment()
+	cursor, err := env.DB().Collection(task.Collection).Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, errors.Wrap(err, "finding versions matching task filters")
+	}
+	if err = cursor.All(ctx, &res); err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
+
 // GetActiveWaterfallVersions returns at most `opts.limit` activated versions for a given project.
+// It performantly applies build variant and requester filters; for task-related filters, see GetActiveVersionsByTaskFilters.
 func GetActiveWaterfallVersions(ctx context.Context, projectId string, opts WaterfallOptions) ([]Version, error) {
 	invalidRequesters, _ := utility.StringSliceSymmetricDifference(opts.Requesters, evergreen.SystemVersionRequesterTypes)
 	if len(invalidRequesters) > 0 {
@@ -203,8 +307,8 @@ func GetActiveWaterfallVersions(ctx context.Context, projectId string, opts Wate
 
 // GetAllWaterfallVersions returns all of a project's versions within an inclusive range of orders.
 func GetAllWaterfallVersions(ctx context.Context, projectId string, minOrder int, maxOrder int) ([]Version, error) {
-	if minOrder != 0 && maxOrder != 0 && minOrder >= maxOrder {
-		return nil, errors.New("minOrder must be less than maxOrder")
+	if minOrder != 0 && maxOrder != 0 && minOrder > maxOrder {
+		return nil, errors.New("minOrder must be less than or equal to maxOrder")
 	}
 	match := bson.M{
 		VersionIdentifierKey: projectId,

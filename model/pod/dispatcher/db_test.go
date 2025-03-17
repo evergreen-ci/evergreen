@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func init() {
@@ -289,7 +290,7 @@ func TestAllocate(t *testing.T) {
 					"image",
 				},
 			}, pod.TaskIntentPodOptions{
-				ID:                  bson.NewObjectId().Hex(),
+				ID:                  primitive.NewObjectID().Hex(),
 				CPU:                 256,
 				MemoryMB:            512,
 				OS:                  pod.OSLinux,

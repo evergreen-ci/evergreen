@@ -27,7 +27,7 @@ func UpdateDistro(ctx context.Context, old, new *distro.Distro) error {
 	}
 
 	if old.DispatcherSettings.Version == evergreen.DispatcherVersionRevisedWithDependencies && new.DispatcherSettings.Version != evergreen.DispatcherVersionRevisedWithDependencies {
-		if err := model.RemoveTaskQueues(new.Id); err != nil {
+		if err := model.RemoveTaskQueues(ctx, new.Id); err != nil {
 			return gimlet.ErrorResponse{
 				StatusCode: http.StatusInternalServerError,
 				Message:    errors.Wrapf(err, "removing task queues for distro '%s'", new.Id).Error(),
@@ -112,7 +112,7 @@ func CopyDistro(ctx context.Context, u *user.DBUser, opts restModel.CopyDistroOp
 	}
 
 	distroToCopy.Id = opts.NewDistroId
-	return newDistro(ctx, distroToCopy, u)
+	return NewDistro(ctx, distroToCopy, u)
 }
 
 // CreateDistro creates a new distro with the provided ID using the default settings specified here.
@@ -143,10 +143,11 @@ func CreateDistro(ctx context.Context, u *user.DBUser, newDistroId string, singl
 		WorkDir:          "/data/mci",
 	}
 
-	return newDistro(ctx, defaultDistro, u)
+	return NewDistro(ctx, defaultDistro, u)
 }
 
-func newDistro(ctx context.Context, d *distro.Distro, u *user.DBUser) error {
+// NewDistro creates a new distro in the database with the given user as the creator and creates an event log.
+func NewDistro(ctx context.Context, d *distro.Distro, u *user.DBUser) error {
 	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return errors.Wrap(err, "getting admin settings")

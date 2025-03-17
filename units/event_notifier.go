@@ -231,7 +231,7 @@ func notificationJobs(ctx context.Context, notifications []notification.Notifica
 		if notificationIsEnabled(flags, &notifications[i]) {
 			jobs = append(jobs, NewEventSendJob(notifications[i].ID, ts.Format(TSFormat)))
 		} else {
-			catcher.Wrapf(notifications[i].MarkError(errors.New("notification is disabled")), "setting error for notification '%s'", notifications[i].ID)
+			catcher.Wrapf(notifications[i].MarkError(ctx, errors.New("notification is disabled")), "setting error for notification '%s'", notifications[i].ID)
 		}
 	}
 	return jobs, catcher.Resolve()

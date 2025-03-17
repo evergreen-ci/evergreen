@@ -13,8 +13,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/v2/mongo"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func main() {
@@ -34,7 +34,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	client, err := mongo.Connect(options.Client().ApplyURI("mongodb://localhost:27017").SetConnectTimeout(5 * time.Second))
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI("mongodb://localhost:27017").SetConnectTimeout(5*time.Second))
 	grip.EmergencyFatal(errors.Wrap(err, "connecting to DB"))
 	defer client.Disconnect(ctx)
 
@@ -51,7 +51,7 @@ func main() {
 			"$setOnInsert": bson.M{
 				"_id": project,
 			},
-		}, options.UpdateOne().SetUpsert(true))
+		}, options.Update().SetUpsert(true))
 	grip.EmergencyFatal(errors.Wrap(err, "updating project var parameter"))
 	if res.ModifiedCount+res.UpsertedCount == 0 {
 		grip.Warningf("no project var documents updated: %+v", res)

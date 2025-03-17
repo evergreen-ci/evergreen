@@ -7,7 +7,7 @@ import (
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 var (
@@ -44,9 +44,9 @@ func FindOne(ctx context.Context, query db.Q) (*TaskAnnotation, error) {
 }
 
 // Find gets every TaskAnnotation matching the given query.
-func Find(query db.Q) ([]TaskAnnotation, error) {
+func Find(ctx context.Context, query db.Q) ([]TaskAnnotation, error) {
 	annotations := []TaskAnnotation{}
-	err := db.FindAllQ(Collection, query, &annotations)
+	err := db.FindAllQContext(ctx, Collection, query, &annotations)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding task annotations")
 	}
@@ -58,12 +58,12 @@ func FindOneByTaskIdAndExecution(ctx context.Context, id string, execution int) 
 	return FindOne(ctx, db.Query(ByTaskIdAndExecution(id, execution)))
 }
 
-func FindByTaskIds(ids []string) ([]TaskAnnotation, error) {
-	return Find(ByTaskIds(ids))
+func FindByTaskIds(ctx context.Context, ids []string) ([]TaskAnnotation, error) {
+	return Find(ctx, ByTaskIds(ids))
 }
 
-func FindByTaskId(id string) ([]TaskAnnotation, error) {
-	return Find(db.Query(ByTaskId(id)))
+func FindByTaskId(ctx context.Context, id string) ([]TaskAnnotation, error) {
+	return Find(ctx, db.Query(ByTaskId(id)))
 }
 
 // Upsert writes the task_annotation to the database.

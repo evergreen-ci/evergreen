@@ -125,10 +125,10 @@ func (s *ProjectCopySuite) TestCopyToNewProject() {
 	s.NoError(err)
 	s.Len(usrs, 2)
 
-	res, err := data.FindProjectById("projectC", false, false)
+	res, err := data.FindProjectById(s.T().Context(), "projectC", false, false)
 	s.NoError(err)
 	s.NotNil(res)
-	res, err = data.FindProjectById("projectA", false, false)
+	res, err = data.FindProjectById(s.T().Context(), "projectA", false, false)
 	s.NoError(err)
 	s.NotNil(res)
 	vars, err := data.FindProjectVarsById(utility.FromStringPtr(newProject.Id), "", false)

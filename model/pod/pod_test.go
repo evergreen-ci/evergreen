@@ -13,7 +13,7 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func init() {
@@ -192,7 +192,7 @@ func TestRemove(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Zero(t, dbPod)
 
-			assert.NoError(t, p.Remove())
+			assert.NoError(t, p.Remove(t.Context()))
 		},
 		"SucceedsWithExistingPod": func(t *testing.T) {
 			p := Pod{
@@ -204,7 +204,7 @@ func TestRemove(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, dbPod)
 
-			require.NoError(t, p.Remove())
+			require.NoError(t, p.Remove(t.Context()))
 
 			dbPod, err = FindOneByID(t.Context(), p.ID)
 			assert.NoError(t, err)

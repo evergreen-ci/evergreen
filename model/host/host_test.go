@@ -27,9 +27,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"go.mongodb.org/mongo-driver/v2/bson"
-	"go.mongodb.org/mongo-driver/v2/mongo"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func init() {
@@ -4620,6 +4620,44 @@ func TestCountSpawnhostsWithNoExpirationByUser(t *testing.T) {
 	count, err = CountSpawnhostsWithNoExpirationByUser(ctx, "user-3")
 	assert.NoError(t, err)
 	assert.Equal(t, 0, count)
+}
+
+func TestCountIntentHosts(t *testing.T) {
+
+	require.NoError(t, db.ClearCollections(Collection))
+	hosts := []Host{
+		{
+			Id:        "evg-host-1",
+			Status:    evergreen.HostRunning,
+			StartedBy: evergreen.User,
+		},
+		{
+			Id:        "evg-host-2",
+			Status:    evergreen.HostRunning,
+			StartedBy: evergreen.User,
+		},
+		{
+			Id:        "evg-host-3",
+			Status:    evergreen.HostTerminated,
+			StartedBy: evergreen.User,
+		},
+		{
+			Id:        "host-4",
+			Status:    evergreen.HostRunning,
+			StartedBy: evergreen.User,
+		},
+		{
+			Id:        "host-5",
+			Status:    evergreen.HostStarting,
+			StartedBy: evergreen.User,
+		},
+	}
+	for _, h := range hosts {
+		assert.NoError(t, h.Insert(t.Context()))
+	}
+	count, err := CountIntentHosts(t.Context())
+	assert.NoError(t, err)
+	assert.Equal(t, 2, count)
 }
 
 func TestFindSpawnhostsWithNoExpirationToExtend(t *testing.T) {

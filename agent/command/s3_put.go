@@ -129,6 +129,13 @@ type s3put struct {
 	// TODO (DEVPROD-13982): Upgrade this flag to RoleARN.
 	TemporaryRoleARN string `mapstructure:"temporary_role_arn" plugin:"expand"`
 
+	// TemporaryUseInternalBucket is not meant to be used in production. It is used for testing purposes
+	// relating to the DEVPROD-5553 project.
+	// This flag is used to determine if the s3_credentials route should be called before the command is executed.
+	// TODO (DEVPROD-13982): Remove this flag and use the internal bucket list to determine if the s3_credentials
+	// route should be called.
+	TemporaryUseInternalBucket string `mapstructure:"temporary_use_internal_bucket" plugin:"expand"`
+
 	// workDir sets the working directory relative to which s3put should look for files to upload.
 	// workDir will be empty if an absolute path is provided to the file.
 	workDir          string
@@ -140,6 +147,8 @@ type s3put struct {
 
 	bucket          pail.Bucket
 	internalBuckets []string
+
+	temporaryUseInternalBucket bool
 
 	taskData client.TaskData
 	base
@@ -244,6 +253,13 @@ func (s3pc *s3put) expandParams(conf *internal.TaskConfig) error {
 		}
 	}
 
+	if s3pc.TemporaryUseInternalBucket != "" {
+		s3pc.temporaryUseInternalBucket, err = strconv.ParseBool(s3pc.TemporaryUseInternalBucket)
+		if err != nil {
+			return errors.Wrap(err, "parsing temporary use internal bucket parameter as a boolean")
+		}
+	}
+
 	if s3pc.PreservePath != "" {
 		s3pc.preservePath, err = strconv.ParseBool(s3pc.PreservePath)
 		if err != nil {
@@ -326,6 +342,19 @@ func (s3pc *s3put) Execute(ctx context.Context, comm client.Communicator, logger
 		})
 		if err != nil {
 			return errors.Wrap(err, "getting credentials for provided role arn")
+		}
+		if creds == nil {
+			return errors.New("nil credentials returned for provided role arn")
+		}
+		s3pc.AwsKey = creds.AccessKeyID
+		s3pc.AwsSecret = creds.SecretAccessKey
+		s3pc.AwsSessionToken = creds.SessionToken
+	}
+
+	if s3pc.temporaryUseInternalBucket {
+		creds, err := comm.S3Credentials(ctx, s3pc.taskData, s3pc.Bucket)
+		if err != nil {
+			return errors.Wrap(err, "getting S3 credentials")
 		}
 		if creds == nil {
 			return errors.New("nil credentials returned for provided role arn")
@@ -604,7 +633,7 @@ func (s3pc *s3put) createPailBucket(ctx context.Context, httpClient *http.Client
 		return nil
 	}
 	opts := pail.S3Options{
-		Credentials: pail.CreateAWSCredentials(s3pc.AwsKey, s3pc.AwsSecret, s3pc.AwsSessionToken),
+		Credentials: pail.CreateAWSStaticCredentials(s3pc.AwsKey, s3pc.AwsSecret, s3pc.AwsSessionToken),
 		Region:      s3pc.Region,
 		Name:        s3pc.Bucket,
 		Permissions: pail.S3Permissions(s3pc.Permissions),

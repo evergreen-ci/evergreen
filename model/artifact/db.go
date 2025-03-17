@@ -6,7 +6,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 var (
@@ -129,8 +129,8 @@ func FindOne(ctx context.Context, query db.Q) (*Entry, error) {
 }
 
 // FindAll gets every Entry for the given query
-func FindAll(query db.Q) ([]Entry, error) {
+func FindAll(ctx context.Context, query db.Q) ([]Entry, error) {
 	entries := []Entry{}
-	err := db.FindAllQ(Collection, query, &entries)
+	err := db.FindAllQContext(ctx, Collection, query, &entries)
 	return entries, err
 }

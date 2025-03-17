@@ -161,7 +161,7 @@ func (s *cronsEventSuite) TestSenderDegradedModeDoesntDispatchJobs() {
 	s.Empty(jobs)
 
 	out := []notification.Notification{}
-	s.NoError(db.FindAllQ(notification.Collection, db.Q{}, &out))
+	s.NoError(db.FindAllQContext(s.ctx, notification.Collection, db.Q{}, &out))
 	s.Len(out, 6)
 	for i := range out {
 		s.Equal("notification is disabled", out[i].Error)
@@ -298,7 +298,7 @@ func (s *cronsEventSuite) TestEndToEnd() {
 	s.Require().True(amboy.WaitInterval(s.ctx, q, 10*time.Millisecond))
 
 	out := []notification.Notification{}
-	s.NoError(db.FindAllQ(notification.Collection, db.Q{}, &out))
+	s.NoError(db.FindAllQContext(s.ctx, notification.Collection, db.Q{}, &out))
 	s.Require().Len(out, 1)
 
 	s.NotZero(out[0].SentAt, "%+v", out[0])

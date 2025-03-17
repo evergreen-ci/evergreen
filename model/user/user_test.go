@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func init() {
@@ -659,24 +659,24 @@ func (s *UserTestSuite) TestFindNeedsReauthorization() {
 		return len(left) == 0 && len(right) == 0
 	}
 
-	users, err := FindNeedsReauthorization(0)
+	users, err := FindNeedsReauthorization(s.T().Context(), 0)
 	s.NoError(err)
 	s.Require().Len(users, 4)
 	s.True(containsUsers(users, "Test1", "Test2", "Test4", "Test5"), "should find all logged in users")
 	s.False(containsUsers(users, "Test3"), "should not find logged out users")
 
-	users, err = FindNeedsReauthorization(0)
+	users, err = FindNeedsReauthorization(s.T().Context(), 0)
 	s.NoError(err)
 	s.Require().Len(users, 4)
 	s.True(containsUsers(users, "Test1", "Test2", "Test4", "Test5"), "should find logged in users who have not exceeded max reauth attempts")
 	s.False(containsUsers(users, "Test3", "Test6"), "should not find logged out users or users who have exceeded max reauth attempts")
 
-	users, err = FindNeedsReauthorization(30 * time.Minute)
+	users, err = FindNeedsReauthorization(s.T().Context(), 30*time.Minute)
 	s.NoError(err)
 	s.Require().Len(users, 1)
 	s.True(containsUsers(users, "Test2"), "should find logged in users who have exceeded the reauth limit")
 
-	users, err = FindNeedsReauthorization(24 * time.Hour)
+	users, err = FindNeedsReauthorization(s.T().Context(), 24*time.Hour)
 	s.NoError(err)
 	s.Empty(users, "should not find users who have not exceeded the reauth limit")
 }
@@ -714,7 +714,7 @@ func TestServiceUserOperations(t *testing.T) {
 	assert.Equal(t, u.APIKey, dbUser.APIKey)
 	assert.Equal(t, u.EmailAddress, dbUser.EmailAddress)
 
-	users, err := FindServiceUsers()
+	users, err := FindServiceUsers(t.Context())
 	assert.NoError(t, err)
 	assert.Len(t, users, 1)
 

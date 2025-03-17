@@ -15,8 +15,8 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/v2/bson"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // IdTimeLayout is used time time.Time.Format() to produce timestamps for our ids.
@@ -116,7 +116,7 @@ func getSetBuildActivatedUpdate(active bool, caller string) bson.M {
 
 // UpdateActivation updates builds with the given ids
 // to the given activation setting.
-func UpdateActivation(buildIds []string, active bool, caller string) error {
+func UpdateActivation(ctx context.Context, buildIds []string, active bool, caller string) error {
 	if len(buildIds) == 0 {
 		return nil
 	}
@@ -126,6 +126,7 @@ func UpdateActivation(buildIds []string, active bool, caller string) error {
 	}
 
 	err := UpdateAllBuilds(
+		ctx,
 		query,
 		bson.M{
 			"$set": getSetBuildActivatedUpdate(active, caller),

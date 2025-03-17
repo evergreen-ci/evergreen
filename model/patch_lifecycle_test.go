@@ -25,7 +25,8 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 var (
@@ -255,7 +256,7 @@ func TestGetPatchedProjectAndGetPatchedProjectConfig(t *testing.T) {
 			Convey("Calling GetPatchedProject on a patch with GridFS patches works", func() {
 				configPatch := resetProjectlessPatchSetup(ctx, t)
 
-				patchFileID := bson.NewObjectID()
+				patchFileID := primitive.NewObjectID()
 				So(db.WriteGridFile(patch.GridFSPrefix, patchFileID.Hex(), strings.NewReader(configPatch.Patches[0].PatchSet.Patch)), ShouldBeNil)
 				configPatch.Patches[0].PatchSet.Patch = ""
 				configPatch.Patches[0].PatchSet.PatchFileId = patchFileID.Hex()
@@ -478,7 +479,7 @@ func TestGetFullPatchParams(t *testing.T) {
 	require.NoError(t, p.Insert())
 	require.NoError(t, alias.Upsert())
 
-	params, err := getFullPatchParams(&p)
+	params, err := getFullPatchParams(t.Context(), &p)
 	require.NoError(t, err)
 	require.Len(t, params, 3)
 	for _, param := range params {

@@ -21,7 +21,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -91,14 +91,14 @@ func SetActiveState(ctx context.Context, caller string, active bool, tasks ...ta
 		for v := range versionIdsSet {
 			versionIdsToActivate = append(versionIdsToActivate, v)
 		}
-		if err := ActivateVersions(versionIdsToActivate); err != nil {
+		if err := ActivateVersions(ctx, versionIdsToActivate); err != nil {
 			return errors.Wrap(err, "marking version as activated")
 		}
 		buildIdsToActivate := []string{}
 		for b := range buildToTaskMap {
 			buildIdsToActivate = append(buildIdsToActivate, b)
 		}
-		if err := build.UpdateActivation(buildIdsToActivate, true, caller); err != nil {
+		if err := build.UpdateActivation(ctx, buildIdsToActivate, true, caller); err != nil {
 			return errors.Wrap(err, "marking builds as activated")
 		}
 	} else {
@@ -892,7 +892,7 @@ func getDeactivatePrevious(t *task.Task, pRef *ProjectRef, project *Project) boo
 
 func attemptStepbackAndDeactivatePrevious(ctx context.Context, t *task.Task, status, caller string) {
 	catcher := grip.NewBasicCatcher()
-	pRef, err := FindMergedProjectRef(t.Project, t.Version, false)
+	pRef, err := FindMergedProjectRef(ctx, t.Project, t.Version, false)
 	if err != nil {
 		catcher.Wrapf(err, "finding merged project ref for task '%s'", t.Id)
 	}

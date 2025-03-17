@@ -23,7 +23,7 @@ import (
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 const (
@@ -64,7 +64,7 @@ type RepoPoller interface {
 	// allow to search through - in order to find 'revision' - before we give
 	// up. A value <= 0 implies we allow to search through till we hit the first
 	// revision for the project.
-	GetRevisionsSince(sinceRevision string, maxRevisions int) ([]model.Revision, error)
+	GetRevisionsSince(ctx context.Context, sinceRevision string, maxRevisions int) ([]model.Revision, error)
 	// Fetches the most recent 'numNewRepoRevisionsToFetch' revisions for a
 	// project - with the most recent revision appearing as the first element in
 	// the slice.
@@ -152,7 +152,7 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 		if max <= 0 {
 			max = DefaultMaxRepoRevisionsToSearch
 		}
-		revisions, err = repoTracker.GetRevisionsSince(lastRevision, max)
+		revisions, err = repoTracker.GetRevisionsSince(ctx, lastRevision, max)
 	}
 
 	if err != nil {
@@ -622,12 +622,12 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 	// Compute aliases first to include undefined requested alias in the stub version errors list.
 	var aliases model.ProjectAliases
 	if metadata.Alias == evergreen.GitTagAlias {
-		aliases, err = model.FindMatchingGitTagAliasesInProject(projectInfo.Ref.Id, metadata.GitTag.Tag)
+		aliases, err = model.FindMatchingGitTagAliasesInProject(ctx, projectInfo.Ref.Id, metadata.GitTag.Tag)
 		if err != nil {
 			return v, errors.Wrapf(err, "error finding project alias for tag '%s'", metadata.GitTag.Tag)
 		}
 	} else if metadata.Alias != "" {
-		aliases, err = model.FindAliasInProjectRepoOrConfig(projectInfo.Ref.Id, metadata.Alias)
+		aliases, err = model.FindAliasInProjectRepoOrConfig(ctx, projectInfo.Ref.Id, metadata.Alias)
 		if err != nil {
 			return v, errors.Wrap(err, "error finding project alias")
 		}
@@ -873,7 +873,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 
 	var githubCheckAliases model.ProjectAliases
 	if v.Requester == evergreen.RepotrackerVersionRequester && projectInfo.Ref.IsGithubChecksEnabled() {
-		githubCheckAliases, err = model.FindAliasInProjectRepoOrConfig(v.Identifier, evergreen.GithubChecksAlias)
+		githubCheckAliases, err = model.FindAliasInProjectRepoOrConfig(ctx, v.Identifier, evergreen.GithubChecksAlias)
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error getting github check aliases",
 			"project": projectInfo.Project.Identifier,
@@ -1015,8 +1015,8 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 	}
 	v.ProjectStorageMethod = ppStorageMethod
 
-	txFunc := func(ctx context.Context) error {
-		sessCtx := mongo.SessionFromContext(ctx)
+	txFunc := func(sessCtx mongo.SessionContext) error {
+		// sessCtx := mongo.SessionFromContext(ctx)
 
 		err := sessCtx.StartTransaction()
 		if err != nil {
@@ -1102,7 +1102,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 
 // If we error in aborting transaction, we create a new session and start again.
 // If we abort successfully and the error is a transient transaction error, we retry using the same session.
-func transactionWithRetries(ctx context.Context, versionId string, sessionFunc func(sessCtx context.Context) error) error {
+func transactionWithRetries(ctx context.Context, versionId string, sessionFunc func(sessCtx mongo.SessionContext) error) error {
 	const retryCount = 5
 	const minBackoffInterval = 1 * time.Second
 	const maxBackoffInterval = 60 * time.Second

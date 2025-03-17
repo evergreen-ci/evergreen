@@ -56,20 +56,20 @@ func (mss *MultiSourceSuggest) Suggest(t *task.Task) ([]thirdparty.JiraTicket, s
 // GetBuildBaronSettings retrieves build baron settings from project settings.
 // Project page settings takes precedence, otherwise fallback to project config yaml.
 // Returns build baron settings and ok if found.
-func GetBuildBaronSettings(projectId string, version string) (evergreen.BuildBaronSettings, bool) {
-	projectRef, err := FindMergedProjectRef(projectId, version, true)
+func GetBuildBaronSettings(ctx context.Context, projectId string, version string) (evergreen.BuildBaronSettings, bool) {
+	projectRef, err := FindMergedProjectRef(ctx, projectId, version, true)
 	if err != nil || projectRef == nil {
 		return evergreen.BuildBaronSettings{}, false
 	}
 	return projectRef.BuildBaronSettings, true
 }
 
-func ValidateBbProject(projName string, proj evergreen.BuildBaronSettings, webhook *evergreen.WebHook) error {
+func ValidateBbProject(ctx context.Context, projName string, proj evergreen.BuildBaronSettings, webhook *evergreen.WebHook) error {
 	catcher := grip.NewBasicCatcher()
 	var err error
 	var webhookConfigured bool
 	if webhook == nil {
-		pRefWebHook, _, err := IsWebhookConfigured(projName, "")
+		pRefWebHook, _, err := IsWebhookConfigured(ctx, projName, "")
 		if err != nil {
 			return errors.Wrapf(err, "retrieving webhook config for project '%s'", projName)
 		}
@@ -132,7 +132,7 @@ func GetSearchReturnInfo(ctx context.Context, taskId string, exec string) (*thir
 		return nil, bbConfig, err
 	}
 	settings := evergreen.GetEnvironment().Settings()
-	bbProj, ok := GetBuildBaronSettings(t.Project, t.Version)
+	bbProj, ok := GetBuildBaronSettings(ctx, t.Project, t.Version)
 	if !ok {
 		// build baron project not found, meaning it's not configured for
 		// either regular build baron or for a custom ticket filing webhook

@@ -48,7 +48,7 @@ const (
 
 // getGroupedFiles returns the files of a Task inside a GroupedFile struct
 func getGroupedFiles(ctx context.Context, name string, taskID string, execution int) (*GroupedFiles, error) {
-	taskFiles, err := artifact.GetAllArtifacts([]artifact.TaskIDAndExecution{{TaskID: taskID, Execution: execution}})
+	taskFiles, err := artifact.GetAllArtifacts(ctx, []artifact.TaskIDAndExecution{{TaskID: taskID, Execution: execution}})
 	if err != nil {
 		return nil, ResourceNotFound.Send(ctx, err.Error())
 	}
@@ -882,7 +882,7 @@ func getHostRequestOptions(ctx context.Context, usr *user.DBUser, spawnHostInput
 }
 
 func getProjectMetadata(ctx context.Context, projectId *string, patchId *string) (*restModel.APIProjectRef, error) {
-	projectRef, err := model.FindMergedProjectRef(*projectId, *patchId, false)
+	projectRef, err := model.FindMergedProjectRef(ctx, *projectId, *patchId, false)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding merged project ref for project '%s': %s", utility.FromStringPtr(projectId), err.Error()))
 	}
@@ -1072,6 +1072,16 @@ func userHasDistroPermission(u *user.DBUser, distroId string, requiredLevel int)
 		RequiredLevel: requiredLevel,
 	}
 	return u.HasPermission(opts)
+}
+
+func userHasHostPermission(u *user.DBUser, distroId string, requiredLevel int, startedBy string) bool {
+	opts := gimlet.PermissionOpts{
+		Resource:      distroId,
+		ResourceType:  evergreen.DistroResourceType,
+		Permission:    evergreen.PermissionHosts,
+		RequiredLevel: requiredLevel,
+	}
+	return u.Username() == startedBy || u.HasPermission(opts)
 }
 
 func userHasProjectSettingsPermission(u *user.DBUser, projectId string, requiredLevel int) bool {

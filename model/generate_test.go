@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 var (
@@ -1140,7 +1140,7 @@ func (s *GenerateSuite) TestSaveWithAlreadyGeneratedTasksAndVariants() {
 
 	tasks := []task.Task{}
 	taskQuery := db.Query(bson.M{task.GeneratedByKey: "generator"}).Sort([]string{task.CreateTimeKey})
-	err = db.FindAllQ(task.Collection, taskQuery, &tasks)
+	err = db.FindAllQContext(s.ctx, task.Collection, taskQuery, &tasks)
 	s.NoError(err)
 	s.Require().Len(tasks, 3)
 	// New task is added both to previously generated variant, and new variant.
@@ -1235,7 +1235,7 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
 	s.True(taskWithDepsFound, "task '%s' should have been added to build variant", expectedTask)
 
 	tasks := []task.Task{}
-	s.NoError(db.FindAllQ(task.Collection, db.Query(bson.M{task.DisplayNameKey: expectedTask}), &tasks))
+	s.NoError(db.FindAllQContext(s.ctx, task.Collection, db.Query(bson.M{task.DisplayNameKey: expectedTask}), &tasks))
 	s.Require().Len(tasks, 1)
 	s.Require().Len(tasks[0].DependsOn, 3)
 	expected := map[string]bool{"say-hi-task-id": false, "say-bye-task-id": false, "say_something_else": false}
@@ -1289,7 +1289,7 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependenciesInNewBuilds() {
 	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
 
 	tasks := []task.Task{}
-	s.NoError(db.FindAllQ(task.Collection, db.Query(bson.M{task.VersionKey: v.Id}), &tasks))
+	s.NoError(db.FindAllQContext(s.ctx, task.Collection, db.Query(bson.M{task.VersionKey: v.Id}), &tasks))
 	s.Require().Len(tasks, 4)
 	for _, t := range tasks {
 		s.True(t.Activated)
@@ -1849,10 +1849,10 @@ func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {
 	s.True(dtFound, "display task '%s' should have been added", expectedDisplayTask)
 
 	tasks := []task.Task{}
-	s.NoError(db.FindAllQ(task.Collection, db.Query(bson.M{}), &tasks))
-	s.NoError(db.FindAllQ(task.Collection, db.Query(bson.M{task.DisplayNameKey: "my_display_task_gen"}), &tasks))
+	s.NoError(db.FindAllQContext(s.ctx, task.Collection, db.Query(bson.M{}), &tasks))
+	s.NoError(db.FindAllQContext(s.ctx, task.Collection, db.Query(bson.M{task.DisplayNameKey: "my_display_task_gen"}), &tasks))
 	s.Len(tasks, 1)
-	s.NoError(db.FindAllQ(task.Collection, db.Query(bson.M{task.DisplayNameKey: "my_display_task"}), &tasks))
+	s.NoError(db.FindAllQContext(s.ctx, task.Collection, db.Query(bson.M{task.DisplayNameKey: "my_display_task"}), &tasks))
 	s.Len(tasks, 1)
 	s.Len(tasks[0].ExecutionTasks, 1)
 }

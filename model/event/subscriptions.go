@@ -16,7 +16,7 @@ import (
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 const (
@@ -531,12 +531,12 @@ func FindSubscriptionByID(ctx context.Context, id string) (*Subscription, error)
 	return &out, nil
 }
 
-func RemoveSubscription(id string) error {
+func RemoveSubscription(ctx context.Context, id string) error {
 	if id == "" {
 		return errors.New("id is not valid, cannot remove")
 	}
 
-	return db.Remove(SubscriptionsCollection, bson.M{
+	return db.Remove(ctx, SubscriptionsCollection, bson.M{
 		subscriptionIDKey: id,
 	})
 }
@@ -753,7 +753,7 @@ func CreateOrUpdateGeneralSubscription(ctx context.Context, resourceType string,
 		}
 	} else {
 		if id != "" {
-			if err := RemoveSubscription(id); err != nil {
+			if err := RemoveSubscription(ctx, id); err != nil {
 				return nil, errors.Wrap(err, "removing subscription")
 			}
 			sub = nil

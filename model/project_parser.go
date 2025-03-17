@@ -21,7 +21,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 const LoadProjectError = "load project error(s)"
@@ -599,7 +599,7 @@ func FindAndTranslateProjectForVersion(ctx context.Context, settings *evergreen.
 func LoadProjectInfoForVersion(ctx context.Context, settings *evergreen.Settings, v *Version, id string) (ProjectInfo, error) {
 	var err error
 
-	pRef, err := FindMergedProjectRef(id, "", false)
+	pRef, err := FindMergedProjectRef(ctx, id, "", false)
 	if err != nil {
 		return ProjectInfo{}, errors.Wrap(err, "finding project ref")
 	}

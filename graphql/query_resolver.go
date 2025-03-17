@@ -337,14 +337,25 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching hosts: %s", err.Error()))
 	}
 
+	usr := mustHaveUser(ctx)
 	apiHosts := []*restModel.APIHost{}
-
 	for _, h := range hosts {
+		forbiddenHosts := []string{}
+		if !userHasHostPermission(usr, h.Distro.Id, evergreen.HostsView.Value, h.StartedBy) {
+			forbiddenHosts = append(forbiddenHosts, h.Id)
+		}
+		if len(forbiddenHosts) > 0 {
+			grip.Info(message.Fields{
+				"message":         "User does not have permission to view hosts",
+				"forbidden_hosts": forbiddenHosts,
+				"user":            usr.Username(),
+				"ticket":          "DEVPROD-5753",
+			})
+		}
 		apiHost := restModel.APIHost{}
 		apiHost.BuildFromService(&h, h.RunningTaskFull)
 		apiHosts = append(apiHosts, &apiHost)
 	}
-
 	return &HostsResponse{
 		Hosts:              apiHosts,
 		FilteredHostsCount: filteredHostsCount,
@@ -405,7 +416,7 @@ func (r *queryResolver) Patch(ctx context.Context, patchID string) (*restModel.A
 
 // GithubProjectConflicts is the resolver for the githubProjectConflicts field.
 func (r *queryResolver) GithubProjectConflicts(ctx context.Context, projectID string) (*model.GithubProjectConflicts, error) {
-	pRef, err := model.FindMergedProjectRef(projectID, "", false)
+	pRef, err := model.FindMergedProjectRef(ctx, projectID, "", false)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", projectID, err.Error()))
 	}
@@ -422,7 +433,7 @@ func (r *queryResolver) GithubProjectConflicts(ctx context.Context, projectID st
 
 // Project is the resolver for the project field.
 func (r *queryResolver) Project(ctx context.Context, projectIdentifier string) (*restModel.APIProjectRef, error) {
-	project, err := data.FindProjectById(projectIdentifier, true, false)
+	project, err := data.FindProjectById(ctx, projectIdentifier, true, false)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", projectIdentifier, err.Error()))
 	}
@@ -968,21 +979,48 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 
 	opts := model.WaterfallOptions{
 		Limit:      limit,
-		Requesters: requesters,
 		MaxOrder:   maxOrderOpt,
 		MinOrder:   minOrderOpt,
-		Variants:   options.Variants,
+		Requesters: requesters,
+		Statuses:   utility.FilterSlice(options.Statuses, func(s string) bool { return s != "" }),
+		Tasks:      utility.FilterSlice(options.Tasks, func(s string) bool { return s != "" }),
+		Variants:   utility.FilterSlice(options.Variants, func(s string) bool { return s != "" }),
 	}
 
-	activeVersions, err := model.GetActiveWaterfallVersions(ctx, projectId, opts)
+	mostRecentWaterfallVersion, err := model.GetMostRecentWaterfallVersion(ctx, projectId)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting active waterfall versions: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching most recent waterfall version: %s", err.Error()))
+	}
+	if mostRecentWaterfallVersion == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("no versions found for project '%s'", projectId))
+	}
+
+	var activeVersions []model.Version
+	if len(opts.Tasks) > 0 || len(opts.Statuses) > 0 {
+		var searchOffset int
+		if opts.MaxOrder != 0 {
+			searchOffset = opts.MaxOrder
+		} else if opts.MinOrder != 0 {
+			searchOffset = opts.MinOrder
+		} else {
+			// Add one because minOrder and maxOrder are exclusive
+			searchOffset = mostRecentWaterfallVersion.RevisionOrderNumber + 1
+		}
+		activeVersions, err = model.GetActiveVersionsByTaskFilters(ctx, projectId, opts, searchOffset)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting active waterfall versions: %s", err.Error()))
+		}
+	} else {
+		activeVersions, err = model.GetActiveWaterfallVersions(ctx, projectId, opts)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting active waterfall versions: %s", err.Error()))
+		}
 	}
 
 	// Since GetAllWaterfallVersions uses an inclusive order range ($gte instead of $gt), add 1 to our minimum range
 	minVersionOrder := minOrderOpt + 1
 	if len(activeVersions) == 0 {
-		minVersionOrder = 0
+		minVersionOrder = opts.MinOrder
 	} else if minOrderOpt == 0 {
 		// Find an older version that is activated. If it doesn't exist, that means there are trailing inactive
 		// versions on the waterfall and that we should not place a lower bound.
@@ -1002,7 +1040,7 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 	// Same as above, but subtract for max order
 	maxVersionOrder := maxOrderOpt - 1
 	if len(activeVersions) == 0 {
-		maxVersionOrder = 0
+		maxVersionOrder = opts.MaxOrder
 	} else if maxOrderOpt == 0 && minOrderOpt == 0 {
 		// If no order options were specified, we're on the first page and should not put a limit on the first version returned so that we don't omit inactive versions
 		maxVersionOrder = 0
@@ -1033,10 +1071,6 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 	}
 
 	waterfallVersions := groupInactiveVersions(allVersions)
-	mostRecentWaterfallVersion, err := model.GetMostRecentWaterfallVersion(ctx, projectId)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching most recent waterfall version: %s", err.Error()))
-	}
 
 	prevPageOrder := 0
 	nextPageOrder := 0

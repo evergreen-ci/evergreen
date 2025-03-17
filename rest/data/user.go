@@ -131,8 +131,8 @@ func SubmitFeedback(in restModel.APIFeedbackSubmission) error {
 	return errors.Wrap(f.Insert(), "error saving feedback")
 }
 
-func GetServiceUsers() ([]restModel.APIDBUser, error) {
-	users, err := user.FindServiceUsers()
+func GetServiceUsers(ctx context.Context) ([]restModel.APIDBUser, error) {
+	users, err := user.FindServiceUsers(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding service users")
 	}

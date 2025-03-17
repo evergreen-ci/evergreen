@@ -58,7 +58,7 @@ func TestSubscribers(t *testing.T) {
 	}
 
 	fetchedSubs := []Subscriber{}
-	assert.NoError(db.FindAllQ(SubscriptionsCollection, db.Q{}, &fetchedSubs))
+	assert.NoError(db.FindAllQContext(t.Context(), SubscriptionsCollection, db.Q{}, &fetchedSubs))
 
 	assert.Len(fetchedSubs, 5)
 
@@ -73,7 +73,7 @@ func TestSubscribers(t *testing.T) {
 		Target: "*boom*",
 	}))
 	fetchedSubs = []Subscriber{}
-	err := db.FindAllQ(SubscriptionsCollection, db.Q{}, &fetchedSubs)
+	err := db.FindAllQContext(t.Context(), SubscriptionsCollection, db.Q{}, &fetchedSubs)
 
 	require.Error(t, err)
 	assert.Contains(err.Error(), "unknown subscriber type 'something completely different'")

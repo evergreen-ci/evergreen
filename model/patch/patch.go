@@ -16,7 +16,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 // SizeLimit is a hard limit on patch size.
@@ -612,7 +612,7 @@ func (p *Patch) UpdateModulePatch(ctx context.Context, modulePatch ModulePatch) 
 		PatchesKey + "." + ModulePatchNameKey: modulePatch.ModuleName,
 	}
 	update := bson.M{PatchesKey + ".$": modulePatch}
-	result, err := UpdateAll(query, bson.M{"$set": update})
+	result, err := UpdateAll(ctx, query, bson.M{"$set": update})
 	if err != nil {
 		return err
 	}

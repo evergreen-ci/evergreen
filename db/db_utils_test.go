@@ -10,7 +10,7 @@ import (
 	adb "github.com/mongodb/anser/db"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func TestDBUtils(t *testing.T) {
@@ -111,7 +111,7 @@ func TestDBUtils(t *testing.T) {
 			So(count, ShouldEqual, 2)
 
 			// remove just the first
-			So(Remove(collection, bson.M{"field_one": "1"}),
+			So(Remove(t.Context(), collection, bson.M{"field_one": "1"}),
 				ShouldBeNil)
 			count, err = Count(collection, bson.M{})
 			So(err, ShouldBeNil)
@@ -151,7 +151,7 @@ func TestDBUtils(t *testing.T) {
 			So(count, ShouldEqual, 3)
 
 			// remove just the first
-			So(RemoveAll(collection, bson.M{"field_one": "1"}),
+			So(RemoveAll(t.Context(), collection, bson.M{"field_one": "1"}),
 				ShouldBeNil)
 			count, err = Count(collection, bson.M{})
 			So(err, ShouldBeNil)
@@ -205,7 +205,7 @@ func TestDBUtils(t *testing.T) {
 			// one and limit to one (meaning only the second struct should be
 			// returned)
 			out := []insertableStruct{}
-			err = FindAllQ(collection, Query(bson.M{"field_two": 1}).
+			err = FindAllQContext(t.Context(), collection, Query(bson.M{"field_two": 1}).
 				Project(bson.M{"field_three": 0}).
 				Sort([]string{"-field_one"}).
 				Limit(1).
@@ -288,7 +288,8 @@ func TestDBUtils(t *testing.T) {
 			So(count, ShouldEqual, 3)
 
 			// update the first and third
-			_, err = UpdateAll(
+			_, err = UpdateAllContext(
+				t.Context(),
 				collection,
 				bson.M{
 					"field_one": "1",
@@ -302,7 +303,7 @@ func TestDBUtils(t *testing.T) {
 			So(err, ShouldBeNil)
 
 			out := []insertableStruct{}
-			err = FindAllQ(collection, Query(bson.M{"field_two": 3}), &out)
+			err = FindAllQContext(t.Context(), collection, Query(bson.M{"field_two": 3}), &out)
 			So(err, ShouldBeNil)
 			So(len(out), ShouldEqual, 2)
 
