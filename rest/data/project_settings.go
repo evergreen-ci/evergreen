@@ -438,7 +438,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		}
 	case model.ProjectPageTriggersSection:
 		if !isRepo { // Check this for project refs only, as repo projects won't have last version information stored.
-			repository, err := model.FindRepository(projectId)
+			repository, err := model.FindRepository(ctx, projectId)
 			if err != nil {
 				return nil, errors.Wrapf(err, "finding repository for project '%s'", projectId)
 			}

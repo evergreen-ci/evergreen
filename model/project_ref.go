@@ -1467,7 +1467,7 @@ func GetTasksWithOptions(ctx context.Context, projectName string, taskName strin
 	}
 	startingRevision := opts.StartAt
 	if startingRevision == 0 {
-		repo, err := FindRepository(projectId)
+		repo, err := FindRepository(ctx, projectId)
 		if err != nil {
 			return nil, err
 		}

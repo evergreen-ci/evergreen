@@ -90,7 +90,7 @@ func (uis *UIServer) taskHistoryPage(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	repo, err := model.FindRepository(project.Identifier)
+	repo, err := model.FindRepository(r.Context(), project.Identifier)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

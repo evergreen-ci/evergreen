@@ -100,7 +100,7 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 		return nil
 	}
 
-	repository, err := model.FindRepository(projectRef.Id)
+	repository, err := model.FindRepository(ctx, projectRef.Id)
 	if err != nil {
 		return errors.Wrapf(err, "finding repository '%s'", projectRef.Identifier)
 	}
@@ -432,7 +432,7 @@ func (repoTracker *RepoTracker) GetProjectConfig(ctx context.Context, revision s
 		// want to send a notification instead of just creating a stub
 		// model.Version
 		var lastRevision string
-		repository, fErr := model.FindRepository(projectRef.Id)
+		repository, fErr := model.FindRepository(ctx, projectRef.Id)
 		if fErr != nil || repository == nil {
 			grip.Error(message.WrapError(fErr, message.Fields{
 				"message":            "problem finding repository",

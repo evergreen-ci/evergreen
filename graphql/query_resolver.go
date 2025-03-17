@@ -755,7 +755,7 @@ func (r *queryResolver) BuildVariantsForTaskName(ctx context.Context, projectIde
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", projectIdentifier, err.Error()))
 	}
-	repo, err := model.FindRepository(pid)
+	repo, err := model.FindRepository(ctx, pid)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching repository for project '%s': %s", pid, err.Error()))
 	}
@@ -916,7 +916,7 @@ func (r *queryResolver) TaskNamesForBuildVariant(ctx context.Context, projectIde
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", projectIdentifier, err.Error()))
 	}
-	repo, err := model.FindRepository(pid)
+	repo, err := model.FindRepository(ctx, pid)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching repository for project '%s': %s", pid, err.Error()))
 	}

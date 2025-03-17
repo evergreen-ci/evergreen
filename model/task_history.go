@@ -282,7 +282,7 @@ func TaskHistoryPickaxe(ctx context.Context, params PickaxeParams) ([]task.Task,
 	// If there are no build variants, use all of them for the given task name.
 	// Need this because without the build_variant specified, no amount of hinting
 	// will get sort to use the proper index
-	repo, err := FindRepository(params.Project.Identifier)
+	repo, err := FindRepository(ctx, params.Project.Identifier)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding repository")
 	}
