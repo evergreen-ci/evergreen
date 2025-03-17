@@ -354,15 +354,12 @@ func (s3pc *s3put) Execute(ctx context.Context, comm client.Communicator, logger
 	} else {
 		// If no role was provided, check if the session token matches any saved from ec2.assume_role commands in the task config.
 		// If it does, associate this command with the corresponding role ARN.
-		for sessionToken, roleARN := range conf.AssumeRoleRoles {
-			if sessionToken == s3pc.AwsSessionToken {
-				s3pc.TemporaryRoleARN = roleARN
-				break
-			}
+		if roleARN, ok := conf.AssumeRoleRoles[s3pc.AwsSessionToken]; ok {
+			s3pc.TemporaryRoleARN = roleARN
+			trace.SpanFromContext(ctx).SetAttributes(
+				attribute.String(s3PutAssumeRoleARN, roleARN),
+			)
 		}
-		trace.SpanFromContext(ctx).SetAttributes(
-			attribute.String(s3PutAssumeRoleARN, s3pc.TemporaryRoleARN),
-		)
 	}
 
 	if s3pc.temporaryUseInternalBucket {
