@@ -1386,12 +1386,12 @@ func (s *PatchIntentUnitsSuite) TestFindEvergreenUserForPR() {
 	}
 	s.NoError(dbUser.Insert())
 
-	u, err := findEvergreenUserForPR(1234)
+	u, err := findEvergreenUserForPR(s.ctx, 1234)
 	s.NoError(err)
 	s.Require().NotNil(u)
 	s.Equal("testuser", u.Id)
 
-	u, err = findEvergreenUserForPR(123)
+	u, err = findEvergreenUserForPR(s.ctx, 123)
 	s.NoError(err)
 	s.Require().NotNil(u)
 	s.Equal(evergreen.GithubPatchUser, u.Id)

@@ -692,7 +692,7 @@ func ShellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metada
 		}))
 	}
 	if usr == nil && metadata.Revision.AuthorGithubUID != 0 {
-		usr, err = user.FindByGithubUID(metadata.Revision.AuthorGithubUID)
+		usr, err = user.FindByGithubUID(ctx, metadata.Revision.AuthorGithubUID)
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":             "failed to fetch Evergreen user with GitHub info",
 			"method":              "user_uid",

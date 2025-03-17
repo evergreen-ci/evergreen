@@ -383,15 +383,15 @@ func (s *UserTestSuite) TestDeletePublicKeyThatDoesntExist() {
 }
 
 func (s *UserTestSuite) TestFindByGithubUID() {
-	u, err := FindByGithubUID(1234)
+	u, err := FindByGithubUID(s.T().Context(), 1234)
 	s.NoError(err)
 	s.Equal("Test1", u.Id)
 
-	u, err = FindByGithubUID(0)
+	u, err = FindByGithubUID(s.T().Context(), 0)
 	s.NoError(err)
 	s.Nil(u)
 
-	u, err = FindByGithubUID(-1)
+	u, err = FindByGithubUID(s.T().Context(), -1)
 	s.NoError(err)
 	s.Nil(u)
 }
@@ -547,20 +547,6 @@ func (s *UserTestSuite) TestClearAllLoginCaches() {
 	s.NoError(err)
 	s.False(valid)
 	s.Nil(u)
-}
-
-func (s *UserTestSuite) TestGetPatchUser() {
-	uid := 1234
-	u, err := GetPatchUser(uid)
-	s.NoError(err)
-	s.Require().NotNil(u)
-	s.Equal("Test1", u.Id)
-
-	uid = 9876
-	u, err = GetPatchUser(uid)
-	s.NoError(err)
-	s.NotNil(u)
-	s.Equal(evergreen.GithubPatchUser, u.Id)
 }
 
 func (s *UserTestSuite) TestRoles() {

@@ -933,7 +933,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 		})
 	}
 
-	j.user, err = findEvergreenUserForPR(patchDoc.GithubPatchData.AuthorUID)
+	j.user, err = findEvergreenUserForPR(ctx, patchDoc.GithubPatchData.AuthorUID)
 	if err != nil {
 		return isMember, errors.Wrapf(err, "finding user associated with GitHub UID '%d'", patchDoc.GithubPatchData.AuthorUID)
 	}
@@ -1115,9 +1115,9 @@ func (j *patchIntentProcessor) verifyValidAlias(ctx context.Context, projectId s
 	return errors.Errorf("alias '%s' could not be found on project '%s'", alias, projectId)
 }
 
-func findEvergreenUserForPR(githubUID int) (*user.DBUser, error) {
+func findEvergreenUserForPR(ctx context.Context, githubUID int) (*user.DBUser, error) {
 	// try and find a user by GitHub UID
-	u, err := user.FindByGithubUID(githubUID)
+	u, err := user.FindByGithubUID(ctx, githubUID)
 	if err != nil {
 		return nil, err
 	}

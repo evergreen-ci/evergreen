@@ -153,9 +153,9 @@ func FindOneByToken(token string) (*DBUser, error) {
 }
 
 // FindByGithubUID finds a user with the given GitHub UID.
-func FindByGithubUID(uid int) (*DBUser, error) {
+func FindByGithubUID(ctx context.Context, uid int) (*DBUser, error) {
 	u := DBUser{}
-	err := db.FindOneQ(Collection, db.Query(bson.M{
+	err := db.FindOneQContext(ctx, Collection, db.Query(bson.M{
 		bsonutil.GetDottedKeyName(SettingsKey, UserSettingsGithubUserKey, GithubUserUIDKey): uid,
 	}), &u)
 	if adb.ResultsNotFound(err) {
@@ -248,35 +248,6 @@ func FindHumanUsersByRoles(roles []string) ([]DBUser, error) {
 		&res,
 	)
 	return res, errors.Wrapf(err, "finding users with roles '%s'", roles)
-}
-
-// GetPatchUser gets a user from their GitHub UID. If no such user is found, it
-// defaults to the global GitHub pull request user.
-func GetPatchUser(gitHubUID int) (*DBUser, error) {
-	u, err := FindByGithubUID(gitHubUID)
-	if err != nil {
-		return nil, errors.Wrap(err, "finding user by GitHub UID")
-	}
-	if u == nil {
-		// set to a default user
-		u, err = FindOne(ById(evergreen.GithubPatchUser))
-		if err != nil {
-			return nil, errors.Wrap(err, "getting user for PR")
-		}
-		// default user doesn't exist yet
-		if u == nil {
-			u = &DBUser{
-				Id:       evergreen.GithubPatchUser,
-				DispName: "GitHub Pull Requests",
-				APIKey:   utility.RandomString(),
-			}
-			if err = u.Insert(); err != nil {
-				return nil, errors.Wrap(err, "creating GitHub patch user")
-			}
-		}
-	}
-
-	return u, nil
 }
 
 // GetPeriodicBuild returns the matching user if applicable, and otherwise returns the default periodic build user.
