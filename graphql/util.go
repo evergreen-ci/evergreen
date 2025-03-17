@@ -642,7 +642,7 @@ func isPopulated(buildVariantOptions *BuildVariantOptions) bool {
 }
 
 func getRedactedAPIVarsForProject(ctx context.Context, projectId string) (*restModel.APIProjectVars, error) {
-	vars, err := model.FindOneProjectVars(projectId)
+	vars, err := model.FindOneProjectVars(ctx, projectId)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding vars for project '%s': %s", projectId, err.Error()))
 	}

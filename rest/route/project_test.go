@@ -188,7 +188,7 @@ func (s *ProjectPatchByIDSuite) TestRunValid() {
 	s.NotNil(resp)
 	s.NotNil(resp.Data())
 	s.Equal(http.StatusOK, resp.Status())
-	vars, err := data.FindProjectVarsById("dimoxinil", "", false)
+	vars, err := data.FindProjectVarsById(s.T().Context(), "dimoxinil", "", false)
 	s.NoError(err)
 	_, ok := vars.Vars["apple"]
 	s.False(ok)
@@ -1121,7 +1121,7 @@ func TestDeleteProject(t *testing.T) {
 			Id:   projects[i].Id,
 			Vars: map[string]string{},
 		}
-		projVars, err := serviceModel.FindOneProjectVars(projects[i].Id)
+		projVars, err := serviceModel.FindOneProjectVars(t.Context(), projects[i].Id)
 		assert.NoError(t, err)
 		assert.Equal(t, skeletonProjVars, *projVars)
 	}

@@ -138,7 +138,7 @@ func (p *copyVariablesHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	// Don't redact private variables unless it's a dry run
-	varsToCopy, err := data.FindProjectVarsById(copyFromProjectId, "", p.opts.DryRun)
+	varsToCopy, err := data.FindProjectVarsById(ctx, copyFromProjectId, "", p.opts.DryRun)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding vars for source project '%s'", p.copyFrom))
 	}

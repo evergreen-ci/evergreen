@@ -852,7 +852,7 @@ func (c *awsClientImpl) makeNewKey(ctx context.Context, project string) (string,
 		return "", errors.Wrap(err, "creating key pair")
 	}
 
-	if err := model.SetAWSKeyForProject(project, &model.AWSSSHKey{Name: name, Value: *resp.KeyMaterial}); err != nil {
+	if err := model.SetAWSKeyForProject(ctx, project, &model.AWSSSHKey{Name: name, Value: *resp.KeyMaterial}); err != nil {
 		return "", errors.Wrap(err, "setting key for project")
 	}
 

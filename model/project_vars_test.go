@@ -48,7 +48,7 @@ func TestFindOneProjectVar(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(1, change.Updated, "%+v", change)
 
-	projectVarsFromDB, err := FindOneProjectVars("mongodb")
+	projectVarsFromDB, err := FindOneProjectVars(t.Context(), "mongodb")
 	assert.NoError(err)
 	require.NotZero(t, projectVarsFromDB)
 
@@ -108,10 +108,10 @@ func TestFindMergedProjectVars(t *testing.T) {
 	assert.NoError(err)
 	require.NotZero(t, mergedVars)
 
-	dbProject0Vars, err := FindOneProjectVars(project0.Id)
+	dbProject0Vars, err := FindOneProjectVars(t.Context(), project0.Id)
 	require.NoError(t, err)
 	require.NotZero(t, dbProject0Vars)
-	dbRepoVars, err := FindOneProjectVars(repo.Id)
+	dbRepoVars, err := FindOneProjectVars(t.Context(), repo.Id)
 	require.NoError(t, err)
 	require.NotZero(t, dbRepoVars)
 	expectedMergedVars := ProjectVars{
@@ -138,7 +138,7 @@ func TestFindMergedProjectVars(t *testing.T) {
 	assert.NoError(err)
 	require.NotZero(t, mergedVars)
 
-	dbRepoVars, err = FindOneProjectVars(repo.Id)
+	dbRepoVars, err = FindOneProjectVars(t.Context(), repo.Id)
 	require.NoError(t, err)
 	require.NotZero(t, dbRepoVars)
 	expectedMergedVars.Parameters = dbRepoVars.Parameters
@@ -154,7 +154,7 @@ func TestFindMergedProjectVars(t *testing.T) {
 	require.NotZero(t, mergedVars)
 
 	assert.Equal(project0Vars.Vars, mergedVars.Vars)
-	dbProject0Vars, err = FindOneProjectVars(project0.Id)
+	dbProject0Vars, err = FindOneProjectVars(t.Context(), project0.Id)
 	require.NoError(t, err)
 	require.NotZero(t, dbProject0Vars)
 	assert.Equal(dbProject0Vars.Parameters, mergedVars.Parameters, "merged parameters for branch project vars should exactly match the branch project vars from the DB when there's no repo vars")
@@ -189,7 +189,7 @@ func TestProjectVarsInsert(t *testing.T) {
 	}()
 
 	checkProjectVars := func(t *testing.T, vars ProjectVars) {
-		dbProjVars, err := FindOneProjectVars(vars.Id)
+		dbProjVars, err := FindOneProjectVars(t.Context(), vars.Id)
 		require.NoError(t, err)
 		require.NotZero(t, dbProjVars)
 
@@ -243,7 +243,7 @@ func TestProjectVarsInsert(t *testing.T) {
 			// Original project vars should not be modified at all.
 			checkProjectVars(t, vars)
 
-			dbNewVars, err := FindOneProjectVars(newProjRef.Id)
+			dbNewVars, err := FindOneProjectVars(t.Context(), newProjRef.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbNewVars)
 
@@ -290,7 +290,7 @@ func TestProjectVarsUpsert(t *testing.T) {
 	}()
 
 	checkProjectVars := func(t *testing.T, vars ProjectVars) {
-		dbProjVars, err := FindOneProjectVars(vars.Id)
+		dbProjVars, err := FindOneProjectVars(t.Context(), vars.Id)
 		require.NoError(t, err)
 		require.NotZero(t, dbProjVars)
 
@@ -329,7 +329,7 @@ func TestProjectVarsUpsert(t *testing.T) {
 			_, err = vars.Upsert()
 			require.NoError(t, err)
 
-			dbProjVars, err := FindOneProjectVars(vars.Id)
+			dbProjVars, err := FindOneProjectVars(t.Context(), vars.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbProjVars)
 
@@ -366,7 +366,7 @@ func TestProjectVarsUpsert(t *testing.T) {
 			// Original project vars should not be modified at all.
 			checkProjectVars(t, vars)
 
-			dbNewVars, err := FindOneProjectVars(newProjRef.Id)
+			dbNewVars, err := FindOneProjectVars(t.Context(), newProjRef.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbNewVars)
 
@@ -424,7 +424,7 @@ func TestProjectVarsFindAndModify(t *testing.T) {
 			}
 			assert.NoError(t, vars.Insert())
 
-			dbVars, err := FindOneProjectVars(vars.Id)
+			dbVars, err := FindOneProjectVars(t.Context(), vars.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbVars)
 
@@ -452,7 +452,7 @@ func TestProjectVarsFindAndModify(t *testing.T) {
 			require.NotNil(t, info)
 			assert.Equal(t, 1, info.Updated)
 
-			dbVars, err = FindOneProjectVars(vars.Id)
+			dbVars, err = FindOneProjectVars(t.Context(), vars.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbVars)
 
@@ -484,7 +484,7 @@ func TestProjectVarsFindAndModify(t *testing.T) {
 			_, err := vars.FindAndModify(varsToDelete)
 			assert.NoError(t, err)
 
-			dbVars, err := FindOneProjectVars(vars.Id)
+			dbVars, err := FindOneProjectVars(t.Context(), vars.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbVars)
 
@@ -515,7 +515,7 @@ func TestProjectVarsFindAndModify(t *testing.T) {
 			_, err := vars.FindAndModify(varsToDelete)
 			assert.NoError(t, err)
 
-			dbVars, err := FindOneProjectVars(vars.Id)
+			dbVars, err := FindOneProjectVars(t.Context(), vars.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbVars)
 
@@ -542,7 +542,7 @@ func TestProjectVarsFindAndModify(t *testing.T) {
 			require.NoError(t, err)
 
 			// Original project vars should not be modified at all.
-			dbVars, err = FindOneProjectVars(vars.Id)
+			dbVars, err = FindOneProjectVars(t.Context(), vars.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbVars)
 
@@ -555,7 +555,7 @@ func TestProjectVarsFindAndModify(t *testing.T) {
 			assert.True(t, dbVars.PrivateVars["a"])
 			assert.False(t, dbVars.PrivateVars["b"])
 
-			dbNewVars, err := FindOneProjectVars(newVars.Id)
+			dbNewVars, err := FindOneProjectVars(t.Context(), newVars.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbNewVars)
 
@@ -636,7 +636,7 @@ func TestAWSVars(t *testing.T) {
 	assert.NoError(err)
 
 	// canaries
-	found, err := FindOneProjectVars(project.Id)
+	found, err := FindOneProjectVars(t.Context(), project.Id)
 	assert.NoError(err)
 	assert.Equal("foo", found.Vars["a"])
 	assert.Equal("bar", found.Vars["b"])
@@ -655,7 +655,7 @@ func TestAWSVars(t *testing.T) {
 		Name:  "aws_key_name",
 		Value: "aws_key_value",
 	}
-	assert.NoError(SetAWSKeyForProject(project.Id, k))
+	assert.NoError(SetAWSKeyForProject(t.Context(), project.Id, k))
 	k, err = GetAWSKeyForProject(t.Context(), project.Id)
 	assert.NoError(err)
 	require.NotZero(k)
@@ -663,7 +663,7 @@ func TestAWSVars(t *testing.T) {
 	assert.Equal("aws_key_value", k.Value)
 
 	// canaries, again
-	found, err = FindOneProjectVars(project.Id)
+	found, err = FindOneProjectVars(t.Context(), project.Id)
 	assert.NoError(err)
 	require.NotZero(found)
 	assert.Equal("foo", found.Vars["a"])

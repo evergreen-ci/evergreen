@@ -68,7 +68,7 @@ func CopyProject(ctx context.Context, env evergreen.Environment, opts restModel.
 	}
 
 	// Copy variables, aliases, and subscriptions
-	if err := model.CopyProjectVars(oldId, projectToCopy.Id); err != nil {
+	if err := model.CopyProjectVars(ctx, oldId, projectToCopy.Id); err != nil {
 		catcher.Wrapf(err, "copying project vars from project '%s'", oldIdentifier)
 	}
 	if err := model.CopyProjectAliases(oldId, projectToCopy.Id); err != nil {
@@ -111,7 +111,7 @@ func PromoteVarsToRepo(ctx context.Context, projectIdentifier string, varNames [
 	projectId := project.ProjectRef.Id
 	repoId := project.ProjectRef.RepoRefId
 
-	projectVars, err := model.FindOneProjectVars(projectId)
+	projectVars, err := model.FindOneProjectVars(ctx, projectId)
 	if err != nil {
 		return errors.Wrapf(err, "getting project variables for project '%s'", projectIdentifier)
 	}
@@ -120,7 +120,7 @@ func PromoteVarsToRepo(ctx context.Context, projectIdentifier string, varNames [
 	if err != nil {
 		return errors.Wrapf(err, "getting repo settings for repo '%s'", repoId)
 	}
-	repoVars, err := model.FindOneProjectVars(repoId)
+	repoVars, err := model.FindOneProjectVars(ctx, repoId)
 	if err != nil {
 		return errors.Wrapf(err, "getting repo variables for repo '%s'", repoId)
 	}

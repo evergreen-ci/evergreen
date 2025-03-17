@@ -258,11 +258,11 @@ func GetProjectTasksWithOptions(ctx context.Context, projectName string, taskNam
 }
 
 // FindProjectVarsById returns the variables associated with the project and repo (if given).
-func FindProjectVarsById(id string, repoId string, redact bool) (*restModel.APIProjectVars, error) {
+func FindProjectVarsById(ctx context.Context, id string, repoId string, redact bool) (*restModel.APIProjectVars, error) {
 	var repoVars *model.ProjectVars
 	var err error
 	if repoId != "" {
-		repoVars, err = model.FindOneProjectVars(repoId)
+		repoVars, err = model.FindOneProjectVars(ctx, repoId)
 		if err != nil {
 			return nil, errors.Wrapf(err, "problem fetching variables for repo '%s'", repoId)
 		}
@@ -275,7 +275,7 @@ func FindProjectVarsById(id string, repoId string, redact bool) (*restModel.APIP
 	}
 	var vars *model.ProjectVars
 	if id != "" {
-		vars, err = model.FindOneProjectVars(id)
+		vars, err = model.FindOneProjectVars(ctx, id)
 		if err != nil {
 			return nil, errors.Wrapf(err, "problem fetching variables for project '%s'", id)
 		}

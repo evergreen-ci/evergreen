@@ -857,7 +857,7 @@ func (h *projectIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 	if h.includeRepo {
 		repoId = project.RepoRefId
 	}
-	variables, err := data.FindProjectVarsById(project.Id, repoId, true)
+	variables, err := data.FindProjectVarsById(ctx, project.Id, repoId, true)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding vars for project '%s'", project.Id))
 	}

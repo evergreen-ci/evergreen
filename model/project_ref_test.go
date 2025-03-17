@@ -1077,7 +1077,7 @@ func TestDetachFromRepo(t *testing.T) {
 		"NewRepoVarsAreMerged": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
 			assert.NoError(t, pRef.DetachFromRepo(t.Context(), dbUser))
 			checkRepoAttachmentEventLog(t, *pRef, event.EventTypeProjectDetachedFromRepo)
-			vars, err := FindOneProjectVars(pRef.Id)
+			vars, err := FindOneProjectVars(t.Context(), pRef.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, vars)
 			assert.Equal(t, "only", vars.Vars["project"])
@@ -1093,7 +1093,7 @@ func TestDetachFromRepo(t *testing.T) {
 
 			assert.NoError(t, pRef.DetachFromRepo(t.Context(), dbUser))
 			checkRepoAttachmentEventLog(t, *pRef, event.EventTypeProjectDetachedFromRepo)
-			vars, err := FindOneProjectVars(pRef.Id)
+			vars, err := FindOneProjectVars(t.Context(), pRef.Id)
 			require.NoError(t, err)
 			require.NotZero(t, vars)
 
@@ -1326,7 +1326,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 		ProjectPageVariablesSection: func(t *testing.T, id string) {
 			assert.NoError(t, DefaultSectionToRepo(t.Context(), id, ProjectPageVariablesSection, "me"))
 
-			varsFromDb, err := FindOneProjectVars(id)
+			varsFromDb, err := FindOneProjectVars(t.Context(), id)
 			assert.NoError(t, err)
 			assert.NotNil(t, varsFromDb)
 			assert.Empty(t, varsFromDb.Vars)
@@ -1994,7 +1994,7 @@ func TestCreateNewRepoRef(t *testing.T) {
 	require.Len(t, users, 1)
 	assert.Equal(t, "me", users[0].Id)
 
-	projectVars, err := FindOneProjectVars(repoRef.Id)
+	projectVars, err := FindOneProjectVars(t.Context(), repoRef.Id)
 	assert.NoError(t, err)
 	assert.Len(t, projectVars.Vars, 3)
 	assert.Len(t, projectVars.PrivateVars, 1)

@@ -1293,7 +1293,7 @@ func (p *ProjectRef) createNewRepoRef(ctx context.Context, u *user.DBUser) (repo
 	for _, p := range allEnabledProjects {
 		enabledProjectIds = append(enabledProjectIds, p.Id)
 	}
-	commonProjectVars, err := getCommonProjectVariables(enabledProjectIds)
+	commonProjectVars, err := getCommonProjectVariables(ctx, enabledProjectIds)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting common project variables")
 	}
@@ -1361,13 +1361,13 @@ func aliasSliceContains(slice []ProjectAlias, item ProjectAlias) bool {
 	return false
 }
 
-func getCommonProjectVariables(projectIds []string) (*ProjectVars, error) {
+func getCommonProjectVariables(ctx context.Context, projectIds []string) (*ProjectVars, error) {
 	// add in project variables and aliases here
 	commonProjectVariables := map[string]string{}
 	commonPrivate := map[string]bool{}
 	commonAdminOnly := map[string]bool{}
 	for i, id := range projectIds {
-		vars, err := FindOneProjectVars(id)
+		vars, err := FindOneProjectVars(ctx, id)
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding variables for project '%s'", id)
 		}
@@ -2051,7 +2051,7 @@ func GetProjectSettings(ctx context.Context, p *ProjectRef) (*ProjectSettings, e
 	// because a GitHub outage could cause project settings page to not load.
 	hasEvergreenAppInstalled, _ := githubapp.CreateGitHubAppAuth(evergreen.GetEnvironment().Settings()).IsGithubAppInstalledOnRepo(context.Background(), p.Owner, p.Repo)
 
-	projectVars, err := FindOneProjectVars(p.Id)
+	projectVars, err := FindOneProjectVars(ctx, p.Id)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding variables for project '%s'", p.Id)
 	}
@@ -2354,7 +2354,7 @@ func DefaultSectionToRepo(ctx context.Context, projectId string, section Project
 	catcher := grip.NewBasicCatcher()
 	switch section {
 	case ProjectPageVariablesSection:
-		vars, err := FindOneProjectVars(projectId)
+		vars, err := FindOneProjectVars(ctx, projectId)
 		if err != nil {
 			return errors.Wrapf(err, "finding project vars for project '%s'", projectId)
 		}
