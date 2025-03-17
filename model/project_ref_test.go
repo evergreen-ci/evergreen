@@ -867,7 +867,7 @@ func TestAttachToNewRepo(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, mergedRef.DoesTrackPushEvents())
 
-	userFromDB, err := user.FindOneById("me")
+	userFromDB, err := user.FindOneByIdContext(t.Context(), "me")
 	assert.NoError(t, err)
 	assert.Len(t, userFromDB.SystemRoles, 1)
 	assert.Contains(t, userFromDB.SystemRoles, GetRepoAdminRole(pRefFromDB.RepoRefId))
@@ -973,7 +973,7 @@ func TestAttachToRepo(t *testing.T) {
 	require.NotNil(t, repoRef)
 	assert.True(t, repoRef.DoesTrackPushEvents())
 
-	u, err = user.FindOneById("me")
+	u, err = user.FindOneByIdContext(t.Context(), "me")
 	assert.NoError(t, err)
 	assert.NotNil(t, u)
 	assert.Contains(t, u.Roles(), GetRepoAdminRole(pRefFromDB.RepoRefId))
@@ -1067,7 +1067,7 @@ func TestDetachFromRepo(t *testing.T) {
 			assert.Equal(t, []string{"my_trigger"}, pRefFromDB.GithubTriggerAliases)
 			assert.True(t, pRefFromDB.DoesTrackPushEvents())
 
-			dbUser, err = user.FindOneById("me")
+			dbUser, err = user.FindOneByIdContext(t.Context(), "me")
 			assert.NoError(t, err)
 			assert.NotNil(t, dbUser)
 			hasPermission, err := UserHasRepoViewPermission(dbUser, pRefFromDB.RepoRefId)
@@ -3163,7 +3163,7 @@ func TestAddPermissions(t *testing.T) {
 	})
 	assert.NoError(err)
 	assert.NotNil(role)
-	dbUser, err := user.FindOneById(u.Id)
+	dbUser, err := user.FindOneByIdContext(t.Context(), u.Id)
 	assert.NoError(err)
 	assert.Contains(dbUser.Roles(), fmt.Sprintf("admin_project_%s", p.Id))
 	projectId := p.Id
@@ -3190,7 +3190,7 @@ func TestAddPermissions(t *testing.T) {
 	})
 	assert.NoError(err)
 	assert.NotNil(role)
-	dbUser, err = user.FindOneById(u.Id)
+	dbUser, err = user.FindOneByIdContext(t.Context(), u.Id)
 	assert.NoError(err)
 	assert.Contains(dbUser.Roles(), fmt.Sprintf("admin_project_%s", p.Id))
 }
@@ -3231,10 +3231,10 @@ func TestUpdateAdminRoles(t *testing.T) {
 	modified, err := p.UpdateAdminRoles(t.Context(), []string{newAdmin.Id}, []string{oldAdmin.Id})
 	assert.NoError(t, err)
 	assert.True(t, modified)
-	oldAdminFromDB, err := user.FindOneById(oldAdmin.Id)
+	oldAdminFromDB, err := user.FindOneByIdContext(t.Context(), oldAdmin.Id)
 	assert.NoError(t, err)
 	assert.Empty(t, oldAdminFromDB.Roles())
-	newAdminFromDB, err := user.FindOneById(newAdmin.Id)
+	newAdminFromDB, err := user.FindOneByIdContext(t.Context(), newAdmin.Id)
 	assert.NoError(t, err)
 	assert.Len(t, newAdminFromDB.Roles(), 1)
 }
@@ -3284,10 +3284,10 @@ func TestUpdateAdminRolesError(t *testing.T) {
 	modified, err = p.UpdateAdminRoles(t.Context(), []string{"nonexistent-user", newAdmin.Id}, []string{"nonexistent-user", oldAdmin.Id})
 	assert.Error(t, err)
 	assert.True(t, modified)
-	oldAdminFromDB, err := user.FindOneById(oldAdmin.Id)
+	oldAdminFromDB, err := user.FindOneByIdContext(t.Context(), oldAdmin.Id)
 	assert.NoError(t, err)
 	assert.Empty(t, oldAdminFromDB.Roles())
-	newAdminFromDB, err := user.FindOneById(newAdmin.Id)
+	newAdminFromDB, err := user.FindOneByIdContext(t.Context(), newAdmin.Id)
 	assert.NoError(t, err)
 	assert.Len(t, newAdminFromDB.Roles(), 1)
 }

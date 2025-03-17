@@ -94,6 +94,20 @@ func FindOneById(id string) (*DBUser, error) {
 	return u, nil
 }
 
+// FindOneById gets a DBUser by ID.
+func FindOneByIdContext(ctx context.Context, id string) (*DBUser, error) {
+	u := &DBUser{}
+	query := ById(id)
+	err := db.FindOneQContext(ctx, Collection, query, u)
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "finding user by ID")
+	}
+	return u, nil
+}
+
 // Find gets all DBUser for the given query.
 func Find(ctx context.Context, query db.Q) ([]DBUser, error) {
 	us := []DBUser{}
@@ -251,16 +265,16 @@ func FindHumanUsersByRoles(roles []string) ([]DBUser, error) {
 }
 
 // GetPeriodicBuild returns the matching user if applicable, and otherwise returns the default periodic build user.
-func GetPeriodicBuildUser(user string) (*DBUser, error) {
+func GetPeriodicBuildUser(ctx context.Context, user string) (*DBUser, error) {
 	if user != "" {
-		usr, err := FindOneById(user)
+		usr, err := FindOneByIdContext(ctx, user)
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding user '%s'", user)
 		}
 		return usr, nil
 	}
 
-	usr, err := FindOneById(evergreen.PeriodicBuildUser)
+	usr, err := FindOneByIdContext(ctx, evergreen.PeriodicBuildUser)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting periodic build user")
 	}

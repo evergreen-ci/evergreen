@@ -406,7 +406,7 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting merged project vars"))
 	}
 	if projectVars != nil {
-		res.Vars = projectVars.GetVars(t)
+		res.Vars = projectVars.GetVars(ctx, t)
 		if projectVars.PrivateVars != nil {
 			res.PrivateVars = projectVars.PrivateVars
 		}

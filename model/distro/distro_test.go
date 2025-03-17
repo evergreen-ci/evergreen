@@ -552,7 +552,7 @@ func TestAddPermissions(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	assert.NotNil(t, role)
-	dbUser, err := user.FindOneById(u.Id)
+	dbUser, err := user.FindOneByIdContext(t.Context(), u.Id)
 	assert.NoError(t, err)
 	assert.Contains(t, dbUser.Roles(), "admin_distro_myDistro")
 }

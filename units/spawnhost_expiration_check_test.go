@@ -83,7 +83,7 @@ func TestTryIdleSpawnHostNotification(t *testing.T) {
 		EmailAddress: "me.ee@ee.com",
 	}
 	assert.NoError(t, u.Insert())
-	assert.NoError(t, tryIdleSpawnHostNotification(h))
+	assert.NoError(t, tryIdleSpawnHostNotification(t.Context(), h))
 
 	fetchedSubs := []event.Subscription{}
 	assert.NoError(t, db.FindAllQContext(t.Context(), event.SubscriptionsCollection, db.Q{}, &fetchedSubs))
@@ -93,7 +93,7 @@ func TestTryIdleSpawnHostNotification(t *testing.T) {
 	assert.Contains(t, fetchedSubs[0].ID, h.Id)
 
 	// Trying to re-insert the subscription doesn't create a new subscription.
-	assert.NoError(t, tryIdleSpawnHostNotification(h))
+	assert.NoError(t, tryIdleSpawnHostNotification(t.Context(), h))
 	fetchedSubs = []event.Subscription{}
 	assert.NoError(t, db.FindAllQContext(t.Context(), event.SubscriptionsCollection, db.Q{}, &fetchedSubs))
 	require.Len(t, fetchedSubs, 1)

@@ -2877,7 +2877,7 @@ func (p *ProjectRef) UpdateAdminRoles(ctx context.Context, toAdd, toRemove []str
 
 	catcher := grip.NewBasicCatcher()
 	for _, addedUser := range toAdd {
-		adminUser, err := user.FindOneById(addedUser)
+		adminUser, err := user.FindOneByIdContext(ctx, addedUser)
 		if err != nil {
 			catcher.Wrapf(err, "finding user '%s'", addedUser)
 			p.removeFromAdminsList(addedUser)
@@ -2895,7 +2895,7 @@ func (p *ProjectRef) UpdateAdminRoles(ctx context.Context, toAdd, toRemove []str
 		}
 	}
 	for _, removedUser := range toRemove {
-		adminUser, err := user.FindOneById(removedUser)
+		adminUser, err := user.FindOneByIdContext(ctx, removedUser)
 		if err != nil {
 			catcher.Wrapf(err, "finding user '%s'", removedUser)
 			continue

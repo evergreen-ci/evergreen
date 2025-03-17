@@ -413,12 +413,12 @@ func (s *UserTestSuite) TestFindOneByToken() {
 }
 
 func (s *UserTestSuite) TestFindOneById() {
-	u, err := FindOneById(s.users[0].Id)
+	u, err := FindOneByIdContext(s.T().Context(), s.users[0].Id)
 	s.NoError(err)
 	s.NotNil(u)
 	s.Equal("Test1", u.Id)
 
-	u, err = FindOneById(s.users[1].Id)
+	u, err = FindOneByIdContext(s.T().Context(), s.users[1].Id)
 	s.NoError(err)
 	s.NotNil(u)
 	s.Equal("Test2", u.Id)
@@ -441,13 +441,13 @@ func (s *UserTestSuite) TestPutLoginCache() {
 	s.Error(err)
 	s.Empty(token3)
 
-	u1, err := FindOneById(s.users[0].Id)
+	u1, err := FindOneByIdContext(s.T().Context(), s.users[0].Id)
 	s.NoError(err)
 	s.Equal(s.users[0].Id, u1.Id)
 	s.Equal(s.users[0].LoginCache.AccessToken, u1.LoginCache.AccessToken)
 	s.Equal(s.users[0].LoginCache.RefreshToken, u1.LoginCache.RefreshToken)
 
-	u2, err := FindOneById(s.users[1].Id)
+	u2, err := FindOneByIdContext(s.T().Context(), s.users[1].Id)
 	s.NoError(err)
 	s.Equal(s.users[1].Id, u2.Id)
 	s.Equal(s.users[0].LoginCache.AccessToken, u1.LoginCache.AccessToken)
@@ -461,7 +461,7 @@ func (s *UserTestSuite) TestPutLoginCache() {
 	time.Sleep(time.Millisecond) // sleep to check TTL changed
 	token4, err := PutLoginCache(s.users[0])
 	s.NoError(err)
-	u4, err := FindOneById(s.users[0].Id)
+	u4, err := FindOneByIdContext(s.T().Context(), s.users[0].Id)
 	s.NoError(err)
 	s.Equal(u1.LoginCache.Token, u4.LoginCache.Token)
 	s.NotEqual(u1.LoginCache.TTL, u4.LoginCache.TTL)
@@ -472,7 +472,7 @@ func (s *UserTestSuite) TestPutLoginCache() {
 	s.users[0].LoginCache.RefreshToken = "new_refresh_token"
 	token5, err := PutLoginCache(s.users[0])
 	s.NoError(err)
-	u5, err := FindOneById(s.users[0].Id)
+	u5, err := FindOneByIdContext(s.T().Context(), s.users[0].Id)
 	s.NoError(err)
 	s.Equal(u1.LoginCache.Token, u5.LoginCache.Token)
 	s.Equal(token1, token5)
@@ -482,7 +482,7 @@ func (s *UserTestSuite) TestPutLoginCache() {
 	// Fresh user with no token should generate new token
 	token6, err := PutLoginCache(s.users[2])
 	s.NoError(err)
-	u6, err := FindOneById(s.users[2].Id)
+	u6, err := FindOneByIdContext(s.T().Context(), s.users[2].Id)
 	s.Equal(token6, u6.LoginCache.Token)
 	s.NoError(err)
 	s.NotEmpty(token6)
@@ -554,12 +554,12 @@ func (s *UserTestSuite) TestRoles() {
 	for i := 1; i <= 3; i++ {
 		s.NoError(u.AddRole(s.T().Context(), strconv.Itoa(i)))
 	}
-	dbUser, err := FindOneById(u.Id)
+	dbUser, err := FindOneByIdContext(s.T().Context(), u.Id)
 	s.NoError(err)
 	s.EqualValues(dbUser.SystemRoles, u.SystemRoles)
 
 	s.NoError(u.RemoveRole(s.T().Context(), "2"))
-	dbUser, err = FindOneById(u.Id)
+	dbUser, err = FindOneByIdContext(s.T().Context(), u.Id)
 	s.NoError(err)
 	s.EqualValues(dbUser.SystemRoles, u.SystemRoles)
 	s.NoError(u.RemoveRole(s.T().Context(), "definitely non-existent role"))
@@ -674,7 +674,7 @@ func TestServiceUserOperations(t *testing.T) {
 	assert.EqualError(t, AddOrUpdateServiceUser(u), "cannot update a non-service user")
 	u.OnlyAPI = true
 	assert.NoError(t, AddOrUpdateServiceUser(u))
-	dbUser, err := FindOneById(u.Id)
+	dbUser, err := FindOneByIdContext(t.Context(), u.Id)
 	assert.NoError(t, err)
 	assert.True(t, dbUser.OnlyAPI)
 	assert.Equal(t, u.DispName, dbUser.DispName)
@@ -685,7 +685,7 @@ func TestServiceUserOperations(t *testing.T) {
 	u.DispName = "another"
 	u.SystemRoles = []string{"one", "two"}
 	assert.NoError(t, AddOrUpdateServiceUser(u))
-	dbUser, err = FindOneById(u.Id)
+	dbUser, err = FindOneByIdContext(t.Context(), u.Id)
 	assert.NoError(t, err)
 	assert.True(t, dbUser.OnlyAPI)
 	assert.Equal(t, u.DispName, dbUser.DispName)
@@ -701,7 +701,7 @@ func TestServiceUserOperations(t *testing.T) {
 	assert.EqualError(t, err, "service user 'doesntexist' not found")
 	err = DeleteServiceUser(ctx, u.Id)
 	assert.NoError(t, err)
-	dbUser, err = FindOneById(u.Id)
+	dbUser, err = FindOneByIdContext(t.Context(), u.Id)
 	assert.NoError(t, err)
 	assert.Nil(t, dbUser)
 }
@@ -729,7 +729,7 @@ func TestGetOrCreateUser(t *testing.T) {
 			apiKey := user.GetAPIKey()
 			assert.NotEmpty(t, apiKey)
 
-			dbUser, err := FindOneById(id)
+			dbUser, err := FindOneByIdContext(t.Context(), id)
 			require.NoError(t, err)
 			require.NotZero(t, dbUser)
 			checkUser(t, dbUser, id, name, email, accessToken, refreshToken)
@@ -974,7 +974,7 @@ func TestUpdateParsleySettings(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, utility.FromBoolPtr(usr.ParsleySettings.SectionsEnabled))
 
-	dbUser, err := FindOneById(usr.Id)
+	dbUser, err := FindOneByIdContext(t.Context(), usr.Id)
 	require.NoError(t, err)
 	require.NotNil(t, dbUser)
 	assert.False(t, utility.FromBoolPtr(dbUser.ParsleySettings.SectionsEnabled))
@@ -988,7 +988,7 @@ func TestUpdateBetaFeatures(t *testing.T) {
 	}
 	require.NoError(t, usr.Insert())
 
-	dbUser, err := FindOneById(usr.Id)
+	dbUser, err := FindOneByIdContext(t.Context(), usr.Id)
 	require.NoError(t, err)
 	require.NotNil(t, dbUser)
 	assert.False(t, dbUser.BetaFeatures.SpruceWaterfallEnabled)
@@ -1000,7 +1000,7 @@ func TestUpdateBetaFeatures(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, usr.BetaFeatures.SpruceWaterfallEnabled)
 
-	dbUser, err = FindOneById(usr.Id)
+	dbUser, err = FindOneByIdContext(t.Context(), usr.Id)
 	require.NoError(t, err)
 	require.NotNil(t, dbUser)
 	assert.True(t, dbUser.BetaFeatures.SpruceWaterfallEnabled)
@@ -1010,7 +1010,7 @@ func (s *UserTestSuite) TestClearUser() {
 	// Error on non-existent user.
 	s.Error(ClearUser(s.T().Context(), "asdf"))
 
-	u, err := FindOneById(s.users[0].Id)
+	u, err := FindOneByIdContext(s.T().Context(), s.users[0].Id)
 	s.NoError(err)
 	s.NotNil(u)
 	s.NotEmpty(u.Settings)
@@ -1023,7 +1023,7 @@ func (s *UserTestSuite) TestClearUser() {
 	s.NoError(ClearUser(s.T().Context(), u.Id))
 
 	// Sensitive settings and roles should now be empty.
-	u, err = FindOneById(s.users[0].Id)
+	u, err = FindOneByIdContext(s.T().Context(), s.users[0].Id)
 	s.NoError(err)
 	s.NotNil(u)
 
@@ -1038,12 +1038,12 @@ func (s *UserTestSuite) TestClearUser() {
 	s.True(u.Settings.UseSpruceOptions.SpruceV1)
 
 	// Should enable for user that previously had it false
-	u, err = FindOneById(s.users[1].Id)
+	u, err = FindOneByIdContext(s.T().Context(), s.users[1].Id)
 	s.NoError(err)
 	s.NotNil(u)
 	s.False(u.Settings.UseSpruceOptions.SpruceV1)
 	s.NoError(ClearUser(s.T().Context(), u.Id))
-	u, err = FindOneById(s.users[1].Id)
+	u, err = FindOneByIdContext(s.T().Context(), s.users[1].Id)
 	s.NoError(err)
 	s.True(u.Settings.UseSpruceOptions.SpruceV1)
 }

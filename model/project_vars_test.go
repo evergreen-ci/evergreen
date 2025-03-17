@@ -1049,7 +1049,7 @@ func TestShouldGetAdminOnlyVars(t *testing.T) {
 			tsk.Requester = testCase.requester
 			tsk.ActivatedBy = testCase.usrId
 
-			assert.Equal(t, testCase.shouldGetAdminVars, shouldGetAdminOnlyVars(tsk))
+			assert.Equal(t, testCase.shouldGetAdminVars, shouldGetAdminOnlyVars(t.Context(), tsk))
 		})
 	}
 

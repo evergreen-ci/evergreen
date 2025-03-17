@@ -109,7 +109,7 @@ func getMetadataFromArgs(ctx context.Context, args ProcessorArgs) (model.Version
 			RevisionMessage: args.SourceVersion.Message,
 		}
 
-		author, err := user.FindOneById(args.SourceVersion.AuthorID)
+		author, err := user.FindOneByIdContext(ctx, args.SourceVersion.AuthorID)
 		if err != nil {
 			return metadata, errors.Wrapf(err, "finding version author '%s'", args.SourceVersion.AuthorID)
 		}

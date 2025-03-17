@@ -99,7 +99,7 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 		j.AddError(err)
 		return
 	}
-	usr, err := user.GetPeriodicBuildUser(authorID)
+	usr, err := user.GetPeriodicBuildUser(ctx, authorID)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "problem getting periodic build user",
