@@ -210,7 +210,7 @@ func (h *newPushHandler) Run(ctx context.Context) gimlet.Responder {
 
 	copyToLocation := strings.Join([]string{h.s3CopyReq.S3DestinationBucket, h.s3CopyReq.S3DestinationPath}, "/")
 
-	newestPushLog, err := model.FindPushLogAfter(copyToLocation, v.RevisionOrderNumber)
+	newestPushLog, err := model.FindPushLogAfter(ctx, copyToLocation, v.RevisionOrderNumber)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "querying for push log at '%s' for '%s'", copyToLocation, t.Id))
 	}

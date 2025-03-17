@@ -74,11 +74,11 @@ func (pl *PushLog) UpdateStatus(ctx context.Context, newStatus string) error {
 	)
 }
 
-func FindOnePushLog(query any, projection any,
+func FindOnePushLog(ctx context.Context, query any, projection any,
 	sort []string) (*PushLog, error) {
 	pushLog := &PushLog{}
 	q := db.Query(query).Project(projection).Sort(sort)
-	err := db.FindOneQ(PushlogCollection, q, pushLog)
+	err := db.FindOneQContext(ctx, PushlogCollection, q, pushLog)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -87,7 +87,7 @@ func FindOnePushLog(query any, projection any,
 
 // FindNewerPushLog returns a PushLog item if there is a file pushed from
 // this version or a newer one, or one already in progress.
-func FindPushLogAfter(fileLoc string, revisionOrderNumber int) (*PushLog, error) {
+func FindPushLogAfter(ctx context.Context, fileLoc string, revisionOrderNumber int) (*PushLog, error) {
 	query := bson.M{
 		PushLogStatusKey: bson.M{
 			"$in": []string{
@@ -100,6 +100,7 @@ func FindPushLogAfter(fileLoc string, revisionOrderNumber int) (*PushLog, error)
 		},
 	}
 	existingPushLog, err := FindOnePushLog(
+		ctx,
 		query,
 		db.NoProjection,
 		[]string{"-" + PushLogRonKey},
