@@ -1,13 +1,14 @@
 package taskoutput
 
 import (
+	"os"
+	"path"
+	"testing"
+
 	"encoding/base64"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	tracepb "go.opentelemetry.io/proto/otlp/trace/v1"
-	"os"
-	"path"
-	"testing"
 )
 
 func TestUnmarshalTraces(t *testing.T) {
