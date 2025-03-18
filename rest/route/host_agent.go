@@ -418,7 +418,9 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 			"task_version":       nextTask.Version,
 		}
 		if err != nil {
-			grip.Alert(message.WrapError(err, errMsg))
+			if !errors.Is(err, context.Canceled) && ctx.Err() == nil {
+				grip.Alert(message.WrapError(err, errMsg))
+			}
 			return nil, false, errors.Wrapf(err, "could not find project ref for next task '%s'", nextTask.Id)
 		}
 		if projectRef == nil {
