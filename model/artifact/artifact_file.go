@@ -121,14 +121,17 @@ func presignFile(ctx context.Context, file File) (string, error) {
 		file.AWSSecret = ""
 	}
 
-	// TODO (DEVPROD-13979): Use the role ARN to sign the URL.
-	// A pail update is required to support this and will be done in
-	// the above ticket.
+	if file.AWSRoleARN != "" {
+		file.AWSKey = ""
+		file.AWSSecret = ""
+	}
+
 	requestParams := pail.PreSignRequestParams{
 		Bucket:                file.Bucket,
 		FileKey:               file.FileKey,
 		AWSKey:                file.AWSKey,
 		AWSSecret:             file.AWSSecret,
+		AWSRoleARN:            file.AWSRoleARN,
 		SignatureExpiryWindow: evergreen.PresignMinimumValidTime,
 	}
 	return pail.PreSign(ctx, requestParams)
