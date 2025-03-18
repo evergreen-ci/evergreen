@@ -514,6 +514,7 @@ const (
 	ProjectOrgOtelAttribute        = "evergreen.project.org"
 	ProjectRepoOtelAttribute       = "evergreen.project.repo"
 	ProjectIDOtelAttribute         = "evergreen.project.id"
+	RepoRefIDOtelAttribute         = "evergreen.project.repo_ref_id"
 	DistroIDOtelAttribute          = "evergreen.distro.id"
 	HostIDOtelAttribute            = "evergreen.host.id"
 	HostnameOtelAttribute          = "evergreen.host.hostname"
