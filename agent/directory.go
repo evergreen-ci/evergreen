@@ -68,23 +68,26 @@ func (a *Agent) generateTaskDirectoryName(tc *taskContext) (string, error) {
 		return "", errors.Wrap(err, "generating hash for randomized task directory")
 	}
 
+	taskDirPath := filepath.Join(a.opts.WorkingDirectory, dirName)
 	if runtime.GOOS != "windows" {
-		return filepath.Join(a.opts.WorkingDirectory, dirName), nil
+		return taskDirPath, nil
 	}
 
-	// Reducing the length of the hash also creates a new potential issue by
-	// reducing the randomness of the task directory path. If the agent fails to
-	// clean up task directories (ideally shouldn't happen, but this does
-	// unfortunately happen sometimes in practice), then the agent runs the risk
-	// of reusing a directory from a previous unrelated task. To guard against
-	// this, check if the directory already exists.
-	taskDirPath := filepath.Join(a.opts.WorkingDirectory, dirName)
+	// On Windows, the task directory path's hash is shortened due to max path
+	// length limits. Reducing the length of the hash also creates a new
+	// potential issue by reducing the randomness of the task directory path. If
+	// the agent fails to clean up task directories (ideally shouldn't happen,
+	// but this does unfortunately happen sometimes in practice), then the agent
+	// runs the risk of reusing a directory from a previous unrelated task. To
+	// guard against this, check if the directory already exists.
 	if !utility.FileExists(taskDirPath) {
 		return taskDirPath, nil
 	}
 
 	// If the initially proposed shortened task directory already exists, try to
-	// generate a new task directory.
+	// generate a new task directory. Practically, it's unlikely that it would
+	// generate a colliding hash 10 times, this just puts a reasonable bound on
+	// the maximum number of attempts.
 	const maxAttempts = 10
 	for i := 0; i < maxAttempts; i++ {
 		dirName, err = a.generateTaskDirectoryHash(dirName)
