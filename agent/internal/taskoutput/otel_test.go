@@ -1,11 +1,11 @@
 package taskoutput
 
 import (
+	"encoding/base64"
 	"os"
 	"path"
 	"testing"
 
-	"encoding/base64"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	tracepb "go.opentelemetry.io/proto/otlp/trace/v1"
