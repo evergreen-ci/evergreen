@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
@@ -1825,8 +1824,8 @@ type awsS3Credentials struct {
 	taskID string
 }
 
-func makeAWSS3Credentials(env evergreen.Environment, stsManager cloud.STSManager) gimlet.RouteHandler {
-	return &awsS3Credentials{env: env, stsManager: stsManager}
+func makeAWSS3Credentials(env evergreen.Environment, stsManager cloud.STSManager, roleARN string) gimlet.RouteHandler {
+	return &awsS3Credentials{env: env, stsManager: stsManager, roleARN: roleARN}
 }
 
 func (h *awsS3Credentials) Factory() gimlet.RouteHandler {
@@ -1862,11 +1861,8 @@ func (h *awsS3Credentials) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	if h.roleARN == "" {
-		h.roleARN = os.Getenv(evergreen.AWSRoleARNEnvVar)
-	}
-
-	projectPrefix := fmt.Sprintf("arn:aws:s3:::mciuploads/%s", t.Project)
+	sharedBucket := h.env.Settings().Buckets.SharedBucket
+	projectPrefix := fmt.Sprintf("arn:aws:s3:::%s/%s", sharedBucket, t.Project)
 	accessPaths := []string{
 		projectPrefix,
 		fmt.Sprintf("%s/*", projectPrefix),
