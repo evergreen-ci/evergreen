@@ -149,6 +149,7 @@ func (h *Host) GetSSHPort() int {
 // GetSSHOptions returns the options to SSH into this host from an application
 // server.
 func (h *Host) GetSSHOptions(settings *evergreen.Settings) ([]string, error) {
+	// TODO (DEVPROD-15898): stop providing this key.
 	if _, err := os.Stat(settings.KanopySSHKeyPath); err != nil {
 		return nil, errors.New("Kanopy SSH identity file does not exist")
 	}

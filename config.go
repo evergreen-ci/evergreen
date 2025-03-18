@@ -59,31 +59,32 @@ type ConfigSection interface {
 // Settings contains all configuration settings for running Evergreen. Settings
 // with the "id" struct tag should implement the ConfigSection interface.
 type Settings struct {
-	Id                  string                    `bson:"_id" json:"id" yaml:"id"`
-	Amboy               AmboyConfig               `yaml:"amboy" bson:"amboy" json:"amboy" id:"amboy"`
-	AmboyDB             AmboyDBConfig             `yaml:"amboy_db" bson:"amboy_db" json:"amboy_db" id:"amboy_db"`
-	Api                 APIConfig                 `yaml:"api" bson:"api" json:"api" id:"api"`
-	AuthConfig          AuthConfig                `yaml:"auth" bson:"auth" json:"auth" id:"auth"`
-	AWSInstanceRole     string                    `yaml:"aws_instance_role" bson:"aws_instance_role" json:"aws_instance_role"`
-	Banner              string                    `bson:"banner" json:"banner" yaml:"banner"`
-	BannerTheme         BannerTheme               `bson:"banner_theme" json:"banner_theme" yaml:"banner_theme"`
-	Buckets             BucketsConfig             `bson:"buckets" json:"buckets" yaml:"buckets" id:"buckets"`
-	Cedar               CedarConfig               `bson:"cedar" json:"cedar" yaml:"cedar" id:"cedar"`
-	ConfigDir           string                    `yaml:"configdir" bson:"configdir" json:"configdir"`
-	ContainerPools      ContainerPoolsConfig      `yaml:"container_pools" bson:"container_pools" json:"container_pools" id:"container_pools"`
-	Database            DBSettings                `yaml:"database" json:"database" bson:"database"`
-	DomainName          string                    `yaml:"domain_name" bson:"domain_name" json:"domain_name"`
-	Expansions          map[string]string         `yaml:"expansions" bson:"expansions" json:"expansions"`
-	ExpansionsNew       util.KeyValuePairSlice    `yaml:"expansions_new" bson:"expansions_new" json:"expansions_new"`
-	GithubPRCreatorOrg  string                    `yaml:"github_pr_creator_org" bson:"github_pr_creator_org" json:"github_pr_creator_org"`
-	GitHubCheckRun      GitHubCheckRunConfig      `yaml:"github_check_run" bson:"github_check_run" json:"github_check_run" id:"github_check_run"`
-	GithubOrgs          []string                  `yaml:"github_orgs" bson:"github_orgs" json:"github_orgs"`
-	GithubWebhookSecret string                    `yaml:"github_webhook_secret" bson:"github_webhook_secret" json:"github_webhook_secret"`
-	DisabledGQLQueries  []string                  `yaml:"disabled_gql_queries" bson:"disabled_gql_queries" json:"disabled_gql_queries"`
-	HostInit            HostInitConfig            `yaml:"hostinit" bson:"hostinit" json:"hostinit" id:"hostinit"`
-	HostJasper          HostJasperConfig          `yaml:"host_jasper" bson:"host_jasper" json:"host_jasper" id:"host_jasper"`
-	Jira                JiraConfig                `yaml:"jira" bson:"jira" json:"jira" id:"jira"`
-	JIRANotifications   JIRANotificationsConfig   `yaml:"jira_notifications" json:"jira_notifications" bson:"jira_notifications" id:"jira_notifications"`
+	Id                  string                  `bson:"_id" json:"id" yaml:"id"`
+	Amboy               AmboyConfig             `yaml:"amboy" bson:"amboy" json:"amboy" id:"amboy"`
+	AmboyDB             AmboyDBConfig           `yaml:"amboy_db" bson:"amboy_db" json:"amboy_db" id:"amboy_db"`
+	Api                 APIConfig               `yaml:"api" bson:"api" json:"api" id:"api"`
+	AuthConfig          AuthConfig              `yaml:"auth" bson:"auth" json:"auth" id:"auth"`
+	AWSInstanceRole     string                  `yaml:"aws_instance_role" bson:"aws_instance_role" json:"aws_instance_role"`
+	Banner              string                  `bson:"banner" json:"banner" yaml:"banner"`
+	BannerTheme         BannerTheme             `bson:"banner_theme" json:"banner_theme" yaml:"banner_theme"`
+	Buckets             BucketsConfig           `bson:"buckets" json:"buckets" yaml:"buckets" id:"buckets"`
+	Cedar               CedarConfig             `bson:"cedar" json:"cedar" yaml:"cedar" id:"cedar"`
+	ConfigDir           string                  `yaml:"configdir" bson:"configdir" json:"configdir"`
+	ContainerPools      ContainerPoolsConfig    `yaml:"container_pools" bson:"container_pools" json:"container_pools" id:"container_pools"`
+	Database            DBSettings              `yaml:"database" json:"database" bson:"database"`
+	DomainName          string                  `yaml:"domain_name" bson:"domain_name" json:"domain_name"`
+	Expansions          map[string]string       `yaml:"expansions" bson:"expansions" json:"expansions"`
+	ExpansionsNew       util.KeyValuePairSlice  `yaml:"expansions_new" bson:"expansions_new" json:"expansions_new"`
+	GithubPRCreatorOrg  string                  `yaml:"github_pr_creator_org" bson:"github_pr_creator_org" json:"github_pr_creator_org"`
+	GitHubCheckRun      GitHubCheckRunConfig    `yaml:"github_check_run" bson:"github_check_run" json:"github_check_run" id:"github_check_run"`
+	GithubOrgs          []string                `yaml:"github_orgs" bson:"github_orgs" json:"github_orgs"`
+	GithubWebhookSecret string                  `yaml:"github_webhook_secret" bson:"github_webhook_secret" json:"github_webhook_secret"`
+	DisabledGQLQueries  []string                `yaml:"disabled_gql_queries" bson:"disabled_gql_queries" json:"disabled_gql_queries"`
+	HostInit            HostInitConfig          `yaml:"hostinit" bson:"hostinit" json:"hostinit" id:"hostinit"`
+	HostJasper          HostJasperConfig        `yaml:"host_jasper" bson:"host_jasper" json:"host_jasper" id:"host_jasper"`
+	Jira                JiraConfig              `yaml:"jira" bson:"jira" json:"jira" id:"jira"`
+	JIRANotifications   JIRANotificationsConfig `yaml:"jira_notifications" json:"jira_notifications" bson:"jira_notifications" id:"jira_notifications"`
+	// TODO (DEVPROD-15898): remove this key path.
 	KanopySSHKeyPath    string                    `yaml:"kanopy_ssh_key_path" bson:"kanopy_ssh_key_path" json:"kanopy_ssh_key_path"`
 	LoggerConfig        LoggerConfig              `yaml:"logger_config" bson:"logger_config" json:"logger_config" id:"logger_config"`
 	LogPath             string                    `yaml:"log_path" bson:"log_path" json:"log_path"`
