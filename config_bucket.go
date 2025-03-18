@@ -42,6 +42,9 @@ type BucketsConfig struct {
 	// Credentials for accessing the LogBucket.
 	Credentials S3Credentials `bson:"credentials" json:"credentials" yaml:"credentials"`
 
+	// SharedBucket is the bucket that's shared across all projects.
+	SharedBucket string `yaml:"global_shared_bucket" bson:"global_shared_bucket" json:"global_shared_bucket"`
+
 	// InternalBuckets are the buckets that Evergreen's app servers have access to
 	// via their IRSA role.
 	InternalBuckets []string `yaml:"internal_buckets" bson:"internal_buckets" json:"internal_buckets"`
@@ -56,6 +59,7 @@ type BucketsConfig struct {
 var (
 	bucketsConfigLogBucketKey       = bsonutil.MustHaveTag(BucketsConfig{}, "LogBucket")
 	bucketsConfigCredentialsKey     = bsonutil.MustHaveTag(BucketsConfig{}, "Credentials")
+	bucketsConfigSharedBucketKey    = bsonutil.MustHaveTag(BucketsConfig{}, "SharedBucket")
 	bucketsConfigInternalBucketsKey = bsonutil.MustHaveTag(BucketsConfig{}, "InternalBuckets")
 	projectToPrefixMappingsKey      = bsonutil.MustHaveTag(BucketsConfig{}, "ProjectToPrefixMappings")
 )
@@ -90,6 +94,7 @@ func (c *BucketsConfig) Set(ctx context.Context) error {
 		"$set": bson.M{
 			bucketsConfigLogBucketKey:       c.LogBucket,
 			bucketsConfigCredentialsKey:     c.Credentials,
+			bucketsConfigSharedBucketKey:    c.SharedBucket,
 			bucketsConfigInternalBucketsKey: c.InternalBuckets,
 			projectToPrefixMappingsKey:      c.ProjectToPrefixMappings,
 		}}), "updating config section '%s'", c.SectionId(),

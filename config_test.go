@@ -992,6 +992,7 @@ func (s *AdminSuite) TestBucketsConfig() {
 			Name: "logs",
 			Type: "s3",
 		},
+		SharedBucket: "shared-across",
 		InternalBuckets: []string{
 			"test-bucket",
 			"test2-bucket",
@@ -1012,6 +1013,7 @@ func (s *AdminSuite) TestBucketsConfig() {
 	s.Equal(config, settings.Buckets)
 
 	config.LogBucket.Name = "logs-2"
+	config.SharedBucket = "many-projects"
 	config.InternalBuckets = []string{"new-bucket"}
 	config.ProjectToPrefixMappings = []ProjectToPrefixMapping{{
 		ProjectID: "project-C",
