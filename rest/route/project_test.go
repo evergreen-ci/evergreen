@@ -188,7 +188,7 @@ func (s *ProjectPatchByIDSuite) TestRunValid() {
 	s.NotNil(resp)
 	s.NotNil(resp.Data())
 	s.Equal(http.StatusOK, resp.Status())
-	vars, err := data.FindProjectVarsById("dimoxinil", "", false)
+	vars, err := data.FindProjectVarsById(s.T().Context(), "dimoxinil", "", false)
 	s.NoError(err)
 	_, ok := vars.Vars["apple"]
 	s.False(ok)
@@ -468,7 +468,7 @@ func (s *ProjectPatchByIDSuite) TestRotateAndDeleteProjectPodSecret() {
 	s.Require().NotNil(resp.Data())
 	s.Equal(http.StatusOK, resp.Status())
 
-	dbProjRef, err := serviceModel.FindBranchProjectRef("dimoxinil")
+	dbProjRef, err := serviceModel.FindBranchProjectRef(s.T().Context(), "dimoxinil")
 	s.Require().NoError(err)
 	s.Require().NotNil(dbProjRef)
 	s.Require().Len(dbProjRef.ContainerSecrets, 1)
@@ -494,7 +494,7 @@ func (s *ProjectPatchByIDSuite) TestRotateAndDeleteProjectPodSecret() {
 	s.Require().NotNil(resp.Data())
 	s.Equal(http.StatusOK, resp.Status())
 
-	dbProjRef, err = serviceModel.FindBranchProjectRef("dimoxinil")
+	dbProjRef, err = serviceModel.FindBranchProjectRef(s.T().Context(), "dimoxinil")
 	s.Require().NoError(err)
 	s.Require().NotNil(dbProjRef)
 	s.Require().Len(dbProjRef.ContainerSecrets, 1)
@@ -524,7 +524,7 @@ func (s *ProjectPatchByIDSuite) TestRotateAndDeleteProjectPodSecret() {
 	s.Require().NotNil(resp.Data())
 	s.Equal(http.StatusOK, resp.Status())
 
-	dbProjRef, err = serviceModel.FindBranchProjectRef("dimoxinil")
+	dbProjRef, err = serviceModel.FindBranchProjectRef(s.T().Context(), "dimoxinil")
 	s.Require().NoError(err)
 	s.Require().NotNil(dbProjRef)
 	s.Empty(dbProjRef.ContainerSecrets, "container secret should have been deleted")
@@ -1121,7 +1121,7 @@ func TestDeleteProject(t *testing.T) {
 			Id:   projects[i].Id,
 			Vars: map[string]string{},
 		}
-		projVars, err := serviceModel.FindOneProjectVars(projects[i].Id)
+		projVars, err := serviceModel.FindOneProjectVars(t.Context(), projects[i].Id)
 		assert.NoError(t, err)
 		assert.Equal(t, skeletonProjVars, *projVars)
 	}
@@ -1186,7 +1186,7 @@ func TestAttachProjectToRepo(t *testing.T) {
 
 	assert.NotNil(t, h.user)
 	assert.NotNil(t, h.project)
-	repoRef, err := serviceModel.FindRepoRefByOwnerAndRepo(h.project.Owner, h.project.Repo)
+	repoRef, err := serviceModel.FindRepoRefByOwnerAndRepo(t.Context(), h.project.Owner, h.project.Repo)
 	assert.NoError(t, err)
 	assert.Nil(t, repoRef) // repo ref doesn't exist before running
 
@@ -1202,7 +1202,7 @@ func TestAttachProjectToRepo(t *testing.T) {
 	assert.NotEmpty(t, p.RepoRefId)
 	assert.Contains(t, p.Admins, "me")
 
-	u, err = user.FindOneById("me")
+	u, err = user.FindOneByIdContext(t.Context(), "me")
 	assert.NoError(t, err)
 	assert.NotNil(t, u)
 	assert.Contains(t, u.Roles(), serviceModel.GetRepoAdminRole(p.RepoRefId))
@@ -1210,7 +1210,7 @@ func TestAttachProjectToRepo(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, hasPermission)
 
-	repoRef, err = serviceModel.FindRepoRefByOwnerAndRepo(h.project.Owner, h.project.Repo)
+	repoRef, err = serviceModel.FindRepoRefByOwnerAndRepo(t.Context(), h.project.Owner, h.project.Repo)
 	assert.NoError(t, err)
 	assert.NotNil(t, repoRef)
 }
@@ -1276,7 +1276,7 @@ func TestDetachProjectFromRepo(t *testing.T) {
 	assert.Contains(t, p.Admins, "me")
 	assert.True(t, p.IsGitTagVersionsEnabled()) // saved from the repo before detaching
 
-	u, err = user.FindOneById("me")
+	u, err = user.FindOneByIdContext(t.Context(), "me")
 	assert.NoError(t, err)
 	assert.NotNil(t, u)
 	assert.NotContains(t, u.Roles(), serviceModel.GetRepoAdminRole(p.RepoRefId))

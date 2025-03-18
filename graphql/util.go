@@ -164,7 +164,7 @@ func getDisplayStatus(ctx context.Context, v *model.Version) (string, error) {
 	}
 	allStatuses := []string{status}
 	for _, cp := range p.Triggers.ChildPatches {
-		cpVersion, err := model.VersionFindOneId(cp)
+		cpVersion, err := model.VersionFindOneId(ctx, cp)
 		if err != nil {
 			return "", errors.Wrapf(err, "finding version for child patch '%s': %s", cp, err.Error())
 		}
@@ -336,7 +336,7 @@ func generateBuildVariants(ctx context.Context, versionId string, buildVariantOp
 		buildVariantOpts.IncludeBaseTasks = utility.ToBoolPtr(true)
 	}
 	if utility.FromBoolPtr(buildVariantOpts.IncludeBaseTasks) {
-		baseVersion, err := model.FindBaseVersionForVersion(versionId)
+		baseVersion, err := model.FindBaseVersionForVersion(ctx, versionId)
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding base version for version '%s'", versionId)
 		}
@@ -392,7 +392,7 @@ func generateBuildVariants(ctx context.Context, versionId string, buildVariantOp
 
 // modifyVersionHandler handles the boilerplate code for performing a modify version action, i.e. schedule, unschedule, restart and set priority
 func modifyVersionHandler(ctx context.Context, versionID string, modification model.VersionModification) error {
-	v, err := model.VersionFindOneId(versionID)
+	v, err := model.VersionFindOneId(ctx, versionID)
 	if err != nil {
 		return ResourceNotFound.Send(ctx, fmt.Sprintf("finding version '%s': %s", versionID, err.Error()))
 	}
@@ -642,7 +642,7 @@ func isPopulated(buildVariantOptions *BuildVariantOptions) bool {
 }
 
 func getRedactedAPIVarsForProject(ctx context.Context, projectId string) (*restModel.APIProjectVars, error) {
-	vars, err := model.FindOneProjectVars(projectId)
+	vars, err := model.FindOneProjectVars(ctx, projectId)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding vars for project '%s': %s", projectId, err.Error()))
 	}
@@ -697,7 +697,7 @@ func getPointerEventList(events []restModel.APIProjectEvent) []*restModel.APIPro
 
 // groupProjects takes a list of projects and groups them by their repo. If onlyDefaultedToRepo is true,
 // it groups projects that defaulted to the repo under that repo and groups the rest under "".
-func groupProjects(projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*GroupedProjects, error) {
+func groupProjects(ctx context.Context, projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*GroupedProjects, error) {
 	groupsMap := make(map[string][]*restModel.APIProjectRef)
 
 	for _, p := range projects {
@@ -713,7 +713,7 @@ func groupProjects(projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*Gr
 		}
 
 		apiProjectRef := restModel.APIProjectRef{}
-		if err := apiProjectRef.BuildFromService(p); err != nil {
+		if err := apiProjectRef.BuildFromService(ctx, p); err != nil {
 			return nil, errors.Wrap(err, fmt.Sprintf("converting project '%s' to APIProjectRef", p.Id))
 		}
 
@@ -734,7 +734,7 @@ func groupProjects(projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*Gr
 		project := groupedProjects[0]
 		if utility.FromBoolPtr(project.UseRepoSettings) {
 			repoRefId := utility.FromStringPtr(project.RepoRefId)
-			repoRef, err := model.FindOneRepoRef(repoRefId)
+			repoRef, err := model.FindOneRepoRef(ctx, repoRefId)
 			if err != nil {
 				return nil, err
 			}
@@ -747,7 +747,7 @@ func groupProjects(projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*Gr
 				})
 			} else {
 				apiRepoRef := restModel.APIProjectRef{}
-				if err := apiRepoRef.BuildFromService(repoRef.ProjectRef); err != nil {
+				if err := apiRepoRef.BuildFromService(ctx, repoRef.ProjectRef); err != nil {
 					return nil, errors.Wrap(err, fmt.Sprintf("converting repo '%s' to APIProjectRef", repoRef.ProjectRef.Id))
 				}
 				gp.Repo = &apiRepoRef
@@ -890,7 +890,7 @@ func getProjectMetadata(ctx context.Context, projectId *string, patchId *string)
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("merged project ref for project '%s' not found", utility.FromStringPtr(projectId)))
 	}
 	apiProjectRef := restModel.APIProjectRef{}
-	if err = apiProjectRef.BuildFromService(*projectRef); err != nil {
+	if err = apiProjectRef.BuildFromService(ctx, *projectRef); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting project '%s' to APIProjectRef: %s", projectRef.Id, err.Error()))
 	}
 	return &apiProjectRef, nil
@@ -1325,13 +1325,13 @@ func annotationPermissionHelper(ctx context.Context, taskID string, execution *i
 }
 
 // groupInactiveVersions partitions a slice of versions into a slice where each entry is either an active version or slice of inactive versions (i.e. versions that don't match filters; they may be technically activated).
-func groupInactiveVersions(versions []model.Version) []*WaterfallVersion {
+func groupInactiveVersions(ctx context.Context, versions []model.Version) []*WaterfallVersion {
 	waterfallVersions := []*WaterfallVersion{}
 	i := 0
 	for i < len(versions) {
 		if utility.FromBoolPtr(versions[i].Activated) {
 			apiVersion := restModel.APIVersion{}
-			apiVersion.BuildFromService(versions[i])
+			apiVersion.BuildFromService(ctx, versions[i])
 			waterfallVersions = append(waterfallVersions, &WaterfallVersion{
 				InactiveVersions: nil,
 				Version:          &apiVersion,
@@ -1341,7 +1341,7 @@ func groupInactiveVersions(versions []model.Version) []*WaterfallVersion {
 			inactiveGroup := []*restModel.APIVersion{}
 			for i < len(versions) && !utility.FromBoolPtr(versions[i].Activated) {
 				apiVersion := restModel.APIVersion{}
-				apiVersion.BuildFromService(versions[i])
+				apiVersion.BuildFromService(ctx, versions[i])
 				inactiveGroup = append(inactiveGroup, &apiVersion)
 				i++
 			}
@@ -1369,12 +1369,12 @@ func flattenOtelVariables(vars map[string]any) map[string]any {
 	return flattenedVars
 }
 
-func getRevisionOrder(revision string, projectId string, limit int) (int, error) {
+func getRevisionOrder(ctx context.Context, revision string, projectId string, limit int) (int, error) {
 	if len(revision) < minRevisionLength {
 		return 0, errors.New(fmt.Sprintf("at least %d characters must be provided for the revision", minRevisionLength))
 	}
 
-	found, err := model.VersionFindOne(model.VersionByProjectIdAndRevisionPrefix(projectId, revision))
+	found, err := model.VersionFindOne(ctx, model.VersionByProjectIdAndRevisionPrefix(projectId, revision))
 	if err != nil {
 		return 0, errors.New(fmt.Sprintf("finding version with revision '%s': %s", revision, err))
 	} else if found == nil {

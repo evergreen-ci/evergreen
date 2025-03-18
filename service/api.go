@@ -87,7 +87,7 @@ func (as *APIServer) requireProject(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		projectRef, err := model.FindBranchProjectRef(projectId)
+		projectRef, err := model.FindBranchProjectRef(r.Context(), projectId)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 		}
@@ -156,7 +156,7 @@ func (as *APIServer) fetchLimitedProjectRef(w http.ResponseWriter, r *http.Reque
 
 // listProjects returns the projects merged with the repo settings
 func (as *APIServer) listProjects(w http.ResponseWriter, r *http.Request) {
-	allProjs, err := model.FindAllMergedTrackedProjectRefs()
+	allProjs, err := model.FindAllMergedTrackedProjectRefs(r.Context())
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -184,6 +184,8 @@ func (as *APIServer) listVariants(w http.ResponseWriter, r *http.Request) {
 
 // validateProjectConfig returns a slice containing a list of any errors
 // found in validating the given project configuration
+// Please do not add any functionality to this, it is deprecated.
+// Use the REST v2 /validate route instead.
 func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Request) {
 	body := utility.NewRequestReader(r)
 	defer body.Close()
@@ -283,6 +285,7 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 
 	// Project lookup and validation routes
 	app.AddRoute("/ref/{projectId}").Wrap(requireUser).Handler(as.fetchLimitedProjectRef).Get()
+	// Please do not use this route internally, it is deprecated. Use the REST v2 /validate route instead.
 	app.AddRoute("/validate").Wrap(requireUser).Handler(as.validateProjectConfig).Post()
 
 	// Internal status reporting

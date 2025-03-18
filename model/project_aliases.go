@@ -225,7 +225,7 @@ func aliasesFromMap(input map[string]ProjectAliases) []ProjectAlias {
 // FindAliasInProjectRepoOrConfig finds all aliases with a given name for a project.
 // If the project has no aliases, the repo is checked for aliases.
 func FindAliasInProjectRepoOrConfig(ctx context.Context, projectID, alias string) ([]ProjectAlias, error) {
-	aliases, err := findAliasInProjectOrRepoFromDb(projectID, alias)
+	aliases, err := findAliasInProjectOrRepoFromDb(ctx, projectID, alias)
 	if err != nil {
 		return nil, errors.Wrap(err, "checking for existing aliases")
 	}
@@ -323,8 +323,8 @@ func uncoveredAliasTypes(aliases map[string]ProjectAliases) []string {
 
 // FindAliasInProjectRepoOrProjectConfig finds all aliases with a given name for a project.
 // If the project has no aliases, the patched config string is checked for the alias as well.
-func FindAliasInProjectRepoOrProjectConfig(projectID, alias string, projectConfig *ProjectConfig) ([]ProjectAlias, error) {
-	aliases, err := findAliasInProjectOrRepoFromDb(projectID, alias)
+func FindAliasInProjectRepoOrProjectConfig(ctx context.Context, projectID, alias string, projectConfig *ProjectConfig) ([]ProjectAlias, error) {
+	aliases, err := findAliasInProjectOrRepoFromDb(ctx, projectID, alias)
 	if err != nil {
 		return nil, errors.Wrap(err, "checking for existing aliases")
 	}
@@ -337,7 +337,7 @@ func FindAliasInProjectRepoOrProjectConfig(projectID, alias string, projectConfi
 
 // findAliasInProjectOrRepoFromDb finds all aliases with a given name for a project without merging with parser project.
 // If the project has no aliases, the repo is checked for aliases.
-func findAliasInProjectOrRepoFromDb(projectID, alias string) ([]ProjectAlias, error) {
+func findAliasInProjectOrRepoFromDb(ctx context.Context, projectID, alias string) ([]ProjectAlias, error) {
 	aliases, err := findMatchingAliasForProjectRef(projectID, alias)
 	if err != nil {
 		return aliases, errors.Wrapf(err, "finding aliases for project ref '%s'", projectID)
@@ -345,11 +345,11 @@ func findAliasInProjectOrRepoFromDb(projectID, alias string) ([]ProjectAlias, er
 	if len(aliases) > 0 {
 		return aliases, nil
 	}
-	return tryGetRepoAliases(projectID, alias, aliases)
+	return tryGetRepoAliases(ctx, projectID, alias, aliases)
 }
 
-func tryGetRepoAliases(projectID string, alias string, aliases []ProjectAlias) ([]ProjectAlias, error) {
-	project, err := FindBranchProjectRef(projectID)
+func tryGetRepoAliases(ctx context.Context, projectID string, alias string, aliases []ProjectAlias) ([]ProjectAlias, error) {
+	project, err := FindBranchProjectRef(ctx, projectID)
 	if err != nil {
 		return aliases, errors.Wrapf(err, "finding project '%s'", projectID)
 	}

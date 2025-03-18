@@ -62,9 +62,9 @@ func (r *RepoRef) Upsert() error {
 }
 
 // findOneRepoRefQ returns one RepoRef that satisfies the query.
-func findOneRepoRefQ(query db.Q) (*RepoRef, error) {
+func findOneRepoRefQ(ctx context.Context, query db.Q) (*RepoRef, error) {
 	repoRef := &RepoRef{}
-	err := db.FindOneQ(RepoRefCollection, query, repoRef)
+	err := db.FindOneQContext(ctx, RepoRefCollection, query, repoRef)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -73,16 +73,16 @@ func findOneRepoRefQ(query db.Q) (*RepoRef, error) {
 
 // FindOneRepoRef gets a project ref given the owner name, the repo
 // name and the project name
-func FindOneRepoRef(identifier string) (*RepoRef, error) {
-	return findOneRepoRefQ(db.Query(bson.M{
+func FindOneRepoRef(ctx context.Context, identifier string) (*RepoRef, error) {
+	return findOneRepoRefQ(ctx, db.Query(bson.M{
 		RepoRefIdKey: identifier,
 	}))
 }
 
 // FindRepoRefsByRepoAndBranch finds RepoRefs with matching repo/branch
 // that are enabled and setup for PR testing
-func FindRepoRefByOwnerAndRepo(owner, repoName string) (*RepoRef, error) {
-	return findOneRepoRefQ(db.Query(bson.M{
+func FindRepoRefByOwnerAndRepo(ctx context.Context, owner, repoName string) (*RepoRef, error) {
+	return findOneRepoRefQ(ctx, db.Query(bson.M{
 		RepoRefOwnerKey: owner,
 		RepoRefRepoKey:  repoName,
 	}))
@@ -184,7 +184,7 @@ func (r *RepoRef) UpdateAdminRoles(ctx context.Context, toAdd, toRemove []string
 	catcher := grip.NewBasicCatcher()
 	adminRole := GetRepoAdminRole(r.Id)
 	for _, addedUser := range toAdd {
-		adminUser, err := user.FindOneById(addedUser)
+		adminUser, err := user.FindOneByIdContext(ctx, addedUser)
 		if err != nil {
 			catcher.Wrapf(err, "finding user '%s'", addedUser)
 			r.removeFromAdminsList(addedUser)
@@ -203,7 +203,7 @@ func (r *RepoRef) UpdateAdminRoles(ctx context.Context, toAdd, toRemove []string
 
 	}
 	for _, removedUser := range toRemove {
-		adminUser, err := user.FindOneById(removedUser)
+		adminUser, err := user.FindOneByIdContext(ctx, removedUser)
 		if err != nil {
 			catcher.Wrapf(err, "finding user '%s'", removedUser)
 			continue

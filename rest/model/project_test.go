@@ -23,7 +23,7 @@ func TestRepoBuildFromService(t *testing.T) {
 		}},
 	}
 	apiRef := &APIProjectRef{}
-	assert.NoError(t, apiRef.BuildFromService(repoRef.ProjectRef))
+	assert.NoError(t, apiRef.BuildFromService(t.Context(), repoRef.ProjectRef))
 	// not defaulted yet
 	require.NotNil(t, apiRef)
 	assert.Nil(t, apiRef.GitTagVersionsEnabled)

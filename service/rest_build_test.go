@@ -42,13 +42,13 @@ func TestGetBuildInfo(t *testing.T) {
 		versionId := "my-version"
 		projectName := "mci-test"
 
-		err := modelutil.CreateTestLocalConfig(buildTestConfig, "mci-test", "")
+		err := modelutil.CreateTestLocalConfig(ctx, buildTestConfig, "mci-test", "")
 		So(err, ShouldBeNil)
 
-		err = modelutil.CreateTestLocalConfig(buildTestConfig, "render", "")
+		err = modelutil.CreateTestLocalConfig(ctx, buildTestConfig, "render", "")
 		So(err, ShouldBeNil)
 
-		err = modelutil.CreateTestLocalConfig(buildTestConfig, "project_test", "")
+		err = modelutil.CreateTestLocalConfig(ctx, buildTestConfig, "project_test", "")
 		So(err, ShouldBeNil)
 
 		task := task.Task{

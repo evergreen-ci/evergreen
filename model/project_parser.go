@@ -550,7 +550,7 @@ func FindAndTranslateProjectForPatch(ctx context.Context, settings *evergreen.Se
 	}
 
 	// This fallback handles the case where the patch is already finalized.
-	v, err := VersionFindOneId(p.Version)
+	v, err := VersionFindOneId(ctx, p.Version)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "finding version '%s' for patch '%s'", p.Version, p.Id.Hex())
 	}
@@ -608,7 +608,7 @@ func LoadProjectInfoForVersion(ctx context.Context, settings *evergreen.Settings
 	}
 	var pc *ProjectConfig
 	if pRef.IsVersionControlEnabled() {
-		pc, err = FindProjectConfigById(v.Id)
+		pc, err = FindProjectConfigById(ctx, v.Id)
 		if err != nil {
 			return ProjectInfo{}, errors.Wrap(err, "finding project config")
 		}

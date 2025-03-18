@@ -547,7 +547,7 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 // PATH when the user logs in. If the spawn host is loading task data, it is
 // also retrieved.
 func (j *setupHostJob) setupSpawnHost(ctx context.Context, env evergreen.Environment) error {
-	script, err := j.host.SpawnHostSetupCommands(env.Settings())
+	script, err := j.host.SpawnHostSetupCommands(ctx, env.Settings())
 	if err != nil {
 		return errors.Wrap(err, "creating script to set up spawn host")
 	}

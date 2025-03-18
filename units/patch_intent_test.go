@@ -1363,7 +1363,7 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntentWithoutFinalizing() {
 	s.Equal(evergreen.ProjectStorageMethodDB, dbPatch.ProjectStorageMethod, "unfinalized patch should have project storage method set")
 	s.verifyParserProjectDoc(dbPatch, 8)
 
-	dbVersion, err := model.VersionFindOne(model.VersionById(patchDoc.Id.Hex()))
+	dbVersion, err := model.VersionFindOne(s.ctx, model.VersionById(patchDoc.Id.Hex()))
 	s.NoError(err)
 	s.Zero(dbVersion, "should not create version for unfinalized patch")
 
@@ -1386,19 +1386,19 @@ func (s *PatchIntentUnitsSuite) TestFindEvergreenUserForPR() {
 	}
 	s.NoError(dbUser.Insert())
 
-	u, err := findEvergreenUserForPR(1234)
+	u, err := findEvergreenUserForPR(s.ctx, 1234)
 	s.NoError(err)
 	s.Require().NotNil(u)
 	s.Equal("testuser", u.Id)
 
-	u, err = findEvergreenUserForPR(123)
+	u, err = findEvergreenUserForPR(s.ctx, 123)
 	s.NoError(err)
 	s.Require().NotNil(u)
 	s.Equal(evergreen.GithubPatchUser, u.Id)
 }
 
 func (s *PatchIntentUnitsSuite) TestFindEvergreenUserForGithubMergeGroup() {
-	u, err := findEvergreenUserForGithubMergeGroup()
+	u, err := findEvergreenUserForGithubMergeGroup(s.ctx)
 	s.NoError(err)
 	s.Require().NotNil(u)
 	s.Equal(evergreen.GithubMergeUser, u.Id)
@@ -1451,7 +1451,7 @@ func (s *PatchIntentUnitsSuite) projectExists(projectId string) {
 }
 
 func (s *PatchIntentUnitsSuite) verifyVersionDoc(patchDoc *patch.Patch, expectedRequester, expectedUser, hash string, builds int) {
-	versionDoc, err := model.VersionFindOne(model.VersionById(patchDoc.Id.Hex()))
+	versionDoc, err := model.VersionFindOne(s.ctx, model.VersionById(patchDoc.Id.Hex()))
 	s.NoError(err)
 	s.Require().NotNil(versionDoc)
 
@@ -1542,7 +1542,7 @@ func (s *PatchIntentUnitsSuite) TestGithubPRTestFromUnknownUserDoesntCreateVersi
 	s.Require().NotNil(patchDoc)
 	s.Empty(patchDoc.Version)
 
-	versionDoc, err := model.VersionFindOne(model.VersionById(patchID.Hex()))
+	versionDoc, err := model.VersionFindOne(s.ctx, model.VersionById(patchID.Hex()))
 	s.NoError(err)
 	s.Nil(versionDoc)
 
@@ -1618,7 +1618,7 @@ tasks:
 	}
 	s.NoError(u.Insert())
 
-	projectRef, err := model.FindBranchProjectRef(s.project)
+	projectRef, err := model.FindBranchProjectRef(s.ctx, s.project)
 	s.Require().NotNil(projectRef)
 	s.NoError(err)
 
@@ -1684,7 +1684,7 @@ tasks:
 	}
 	s.NoError(u.Insert())
 
-	projectRef, err := model.FindBranchProjectRef(s.project)
+	projectRef, err := model.FindBranchProjectRef(s.ctx, s.project)
 	s.Require().NotNil(projectRef)
 	s.NoError(err)
 	s.Require().Len(projectRef.PatchTriggerAliases, 1)
@@ -1745,7 +1745,7 @@ tasks:
 	}
 	s.NoError(u.Insert())
 
-	projectRef, err := model.FindBranchProjectRef(s.project)
+	projectRef, err := model.FindBranchProjectRef(s.ctx, s.project)
 	s.Require().NotNil(projectRef)
 	s.NoError(err)
 

@@ -69,7 +69,7 @@ func (d *basicCachedDAGDispatcherImpl) Type() string {
 	return evergreen.DispatcherVersionRevisedWithDependencies
 }
 
-func (d *basicCachedDAGDispatcherImpl) Refresh() error {
+func (d *basicCachedDAGDispatcherImpl) Refresh(ctx context.Context) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
@@ -77,7 +77,7 @@ func (d *basicCachedDAGDispatcherImpl) Refresh() error {
 		return nil
 	}
 
-	taskQueue, err := FindDistroTaskQueue(d.distroID)
+	taskQueue, err := FindDistroTaskQueue(ctx, d.distroID)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -530,7 +530,7 @@ func checkMaxConcurrentLargeParserProjectTasks(ctx context.Context, settings *ev
 	if maxConcurrentLargeParserProjTasks <= 0 {
 		return false, false
 	}
-	taskVersion, err := VersionFindOneId(nextTaskFromDB.Version)
+	taskVersion, err := VersionFindOneId(ctx, nextTaskFromDB.Version)
 	if err != nil {
 		grip.Warning(message.WrapError(err, message.Fields{
 			"dispatcher": DAGDispatcher,

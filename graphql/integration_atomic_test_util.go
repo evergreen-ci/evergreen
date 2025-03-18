@@ -114,7 +114,7 @@ func MakeTestsInDirectory(state *AtomicGraphQLState, pathToTests string) func(t 
 				if testUserId == "" {
 					testUserId = adminUser
 				}
-				foundUser, err := user.FindOneById(testUserId)
+				foundUser, err := user.FindOneByIdContext(t.Context(), testUserId)
 				require.NoError(t, err)
 				r.Header.Add(evergreen.APIUserHeader, foundUser.Id)
 				r.Header.Add(evergreen.APIKeyHeader, foundUser.APIKey)

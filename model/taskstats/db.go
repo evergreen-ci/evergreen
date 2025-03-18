@@ -648,10 +648,10 @@ func makeSum(condition bson.M) bson.M {
 // Functions to access pre-computed stats documents for testing. //
 ///////////////////////////////////////////////////////////////////
 
-func GetDailyTaskDoc(id DBTaskStatsID) (*DBTaskStats, error) {
+func GetDailyTaskDoc(ctx context.Context, id DBTaskStatsID) (*DBTaskStats, error) {
 	doc := DBTaskStats{}
 	q := db.Query(bson.M{DBTaskStatsIDKey: id})
-	err := db.FindOneQ(DailyTaskStatsCollection, q, &doc)
+	err := db.FindOneQContext(ctx, DailyTaskStatsCollection, q, &doc)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}

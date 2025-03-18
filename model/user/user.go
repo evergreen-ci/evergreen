@@ -553,16 +553,3 @@ func IsValidSubscriptionPreference(in string) bool {
 		return false
 	}
 }
-
-func GetSlackMemberId(username string) (string, error) {
-	u, err := FindBySlackUsername(username)
-	if err != nil {
-		return "", errors.Wrapf(err, "finding user by slack username '%s'", username)
-	}
-
-	if u == nil {
-		return "", errors.Wrapf(err, "user with id '%s' not found", username)
-	}
-
-	return u.Settings.SlackMemberId, nil
-}

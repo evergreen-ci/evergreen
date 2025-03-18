@@ -147,7 +147,7 @@ func (restapi restAPI) getRecentVersions(w http.ResponseWriter, r *http.Request)
 		}
 	}
 	var versions []model.Version
-	projectId, err := model.GetIdForProject(projectIdentifier)
+	projectId, err := model.GetIdForProject(r.Context(), projectIdentifier)
 	// only look for versions if the project can be found, otherwise continue without error
 	if err == nil {
 		// add one to limit to determine if a new page is necessary
@@ -346,11 +346,11 @@ func (restapi restAPI) getVersionInfoViaRevision(w http.ResponseWriter, r *http.
 	projectName := vars["project_id"]
 	revision := vars["revision"]
 
-	projectId, err := model.GetIdForProject(projectName)
+	projectId, err := model.GetIdForProject(r.Context(), projectName)
 	if err != nil {
 		gimlet.WriteJSONError(w, responseError{Message: "project doesn't exist"})
 	}
-	srcVersion, err := model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(projectId, revision))
+	srcVersion, err := model.VersionFindOne(r.Context(), model.BaseVersionByProjectIdAndRevision(projectId, revision))
 	if err != nil || srcVersion == nil {
 		msg := fmt.Sprintf("Error finding revision '%v' for project '%v'", revision, projectId)
 		statusCode := http.StatusNotFound
@@ -565,7 +565,7 @@ func (restapi restAPI) getVersionStatusByBuild(ctx context.Context, versionId st
 // lastGreen returns the most recent version for which the supplied variants completely pass.
 func (ra *restAPI) lastGreen(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveRESTContext(r)
-	project, err := projCtx.GetProject()
+	project, err := projCtx.GetProject(r.Context())
 	if err != nil || project == nil {
 		http.Error(w, "project not found", http.StatusNotFound)
 		return
@@ -583,7 +583,7 @@ func (ra *restAPI) lastGreen(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get latest version for which all the given build variants passed.
-	version, err := model.FindLastPassingVersionForBuildVariants(project, bvs)
+	version, err := model.FindLastPassingVersionForBuildVariants(r.Context(), project, bvs)
 	if err != nil {
 		ra.LoggedError(w, r, http.StatusInternalServerError, err)
 		return

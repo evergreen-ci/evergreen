@@ -100,7 +100,7 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 		return nil
 	}
 
-	repository, err := model.FindRepository(projectRef.Id)
+	repository, err := model.FindRepository(ctx, projectRef.Id)
 	if err != nil {
 		return errors.Wrapf(err, "finding repository '%s'", projectRef.Identifier)
 	}
@@ -224,7 +224,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 		grip.Infof("Processing revision %s in project %s", revision, ref.Id)
 
 		// We check if the version exists here so we can avoid fetching the github config unnecessarily
-		existingVersion, err := model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(ref.Id, revisions[i].Revision))
+		existingVersion, err := model.VersionFindOne(ctx, model.BaseVersionByProjectIdAndRevision(ref.Id, revisions[i].Revision))
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":            "problem looking up version for project",
 			"runner":             RunnerName,
@@ -258,7 +258,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 					Errors:   projErr.Errors,
 				}
 				if len(versionErrs.Errors) > 0 {
-					stubVersion, dbErr := ShellVersionFromRevision(ref, model.VersionMetadata{Revision: revisions[i]})
+					stubVersion, dbErr := ShellVersionFromRevision(ctx, ref, model.VersionMetadata{Revision: revisions[i]})
 					if dbErr != nil {
 						grip.Error(message.WrapError(dbErr, message.Fields{
 							"message":            "error creating shell version",
@@ -341,7 +341,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 			}))
 			continue
 		}
-		if err = AddBuildBreakSubscriptions(v, ref); err != nil {
+		if err = AddBuildBreakSubscriptions(ctx, v, ref); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":            "error creating build break subscriptions",
 				"runner":             RunnerName,
@@ -432,7 +432,7 @@ func (repoTracker *RepoTracker) GetProjectConfig(ctx context.Context, revision s
 		// want to send a notification instead of just creating a stub
 		// model.Version
 		var lastRevision string
-		repository, fErr := model.FindRepository(projectRef.Id)
+		repository, fErr := model.FindRepository(ctx, projectRef.Id)
 		if fErr != nil || repository == nil {
 			grip.Error(message.WrapError(fErr, message.Fields{
 				"message":            "problem finding repository",
@@ -492,7 +492,7 @@ func addGithubCheckSubscriptions(ctx context.Context, v *model.Version) error {
 
 // AddBuildBreakSubscriptions will subscribe admins of a project to a version if no one
 // else would receive a build break notification
-func AddBuildBreakSubscriptions(v *model.Version, projectRef *model.ProjectRef) error {
+func AddBuildBreakSubscriptions(ctx context.Context, v *model.Version, projectRef *model.ProjectRef) error {
 	subscriptionBase := event.Subscription{
 		ResourceType: event.ResourceTypeTask,
 		Trigger:      "build-break",
@@ -528,7 +528,7 @@ func AddBuildBreakSubscriptions(v *model.Version, projectRef *model.ProjectRef) 
 	// don't send it to admins
 	catcher := grip.NewSimpleCatcher()
 	if v.AuthorID != "" && v.TriggerID == "" {
-		author, err := user.FindOne(user.ById(v.AuthorID))
+		author, err := user.FindOneContext(ctx, user.ById(v.AuthorID))
 		if err != nil {
 			catcher.Add(errors.Wrap(err, "unable to retrieve user"))
 		} else if author.Settings.Notifications.BuildBreakID != "" {
@@ -542,7 +542,7 @@ func AddBuildBreakSubscriptions(v *model.Version, projectRef *model.ProjectRef) 
 	}
 	// if the project has build break notifications, subscribe admins if no one subscribed
 	for _, admin := range projectRef.Admins {
-		subscriber, err := makeBuildBreakSubscriber(admin)
+		subscriber, err := makeBuildBreakSubscriber(ctx, admin)
 		if err != nil {
 			catcher.Add(err)
 			continue
@@ -560,8 +560,8 @@ func AddBuildBreakSubscriptions(v *model.Version, projectRef *model.ProjectRef) 
 	return catcher.Resolve()
 }
 
-func makeBuildBreakSubscriber(userID string) (*event.Subscriber, error) {
-	u, err := user.FindOne(user.ById(userID))
+func makeBuildBreakSubscriber(ctx context.Context, userID string) (*event.Subscriber, error) {
+	u, err := user.FindOneContext(ctx, user.ById(userID))
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to find user")
 	}
@@ -599,11 +599,11 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 	}
 
 	// create a version document
-	v, err := ShellVersionFromRevision(projectInfo.Ref, metadata)
+	v, err := ShellVersionFromRevision(ctx, projectInfo.Ref, metadata)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to create shell version")
 	}
-	if err = verifyOrderNum(v.RevisionOrderNumber, projectInfo.Ref.Id); err != nil {
+	if err = verifyOrderNum(ctx, v.RevisionOrderNumber, projectInfo.Ref.Id); err != nil {
 		return nil, errors.Wrap(err, "inconsistent version order")
 	}
 
@@ -679,12 +679,12 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 
 // ShellVersionFromRevision populates a new Version with metadata from a model.Revision.
 // Does not populate its config or store anything in the database.
-func ShellVersionFromRevision(ref *model.ProjectRef, metadata model.VersionMetadata) (*model.Version, error) {
+func ShellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metadata model.VersionMetadata) (*model.Version, error) {
 	var usr *user.DBUser
 	var err error
 	// Default to the pusher of the git tag, if relevant.
 	if metadata.GitTag.Pusher != "" {
-		usr, err = user.FindByGithubName(metadata.GitTag.Pusher)
+		usr, err = user.FindByGithubName(ctx, metadata.GitTag.Pusher)
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":        "failed to fetch Evergreen user with GitHub info",
 			"method":         "git_tag",
@@ -692,7 +692,7 @@ func ShellVersionFromRevision(ref *model.ProjectRef, metadata model.VersionMetad
 		}))
 	}
 	if usr == nil && metadata.Revision.AuthorGithubUID != 0 {
-		usr, err = user.FindByGithubUID(metadata.Revision.AuthorGithubUID)
+		usr, err = user.FindByGithubUID(ctx, metadata.Revision.AuthorGithubUID)
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":             "failed to fetch Evergreen user with GitHub info",
 			"method":              "user_uid",
@@ -784,8 +784,8 @@ func makeVersionIdWithTag(project, tag, id string) string {
 }
 
 // Verifies that the given revision order number is higher than the latest number stored for the project.
-func verifyOrderNum(revOrderNum int, projectId string) error {
-	latest, err := model.VersionFindOne(model.VersionByMostRecentSystemRequester(projectId))
+func verifyOrderNum(ctx context.Context, revOrderNum int, projectId string) error {
+	latest, err := model.VersionFindOne(ctx, model.VersionByMostRecentSystemRequester(projectId))
 	if err != nil || latest == nil {
 		return errors.Wrap(err, "getting latest version")
 	}
@@ -881,7 +881,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		}))
 	}
 
-	taskIds := model.NewTaskIdConfigForRepotrackerVersion(projectInfo.Project, v, pairsToCreate, sourceRev, metadata.TriggerDefinitionID)
+	taskIds := model.NewTaskIdConfigForRepotrackerVersion(ctx, projectInfo.Project, v, pairsToCreate, sourceRev, metadata.TriggerDefinitionID)
 
 	for _, buildvariant := range projectInfo.Project.BuildVariants {
 		taskNames := pairsToCreate.TaskNames(buildvariant.Name)
@@ -935,7 +935,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 		activateVariantAt := time.Now()
 		taskStatuses := []model.BatchTimeTaskStatus{}
 		if evergreen.ShouldConsiderBatchtime(v.Requester) {
-			activateVariantAt, err = projectInfo.Ref.GetActivationTimeForVariant(&buildvariant, v.CreateTime, time.Now())
+			activateVariantAt, err = projectInfo.Ref.GetActivationTimeForVariant(ctx, &buildvariant, v.CreateTime, time.Now())
 			batchTimeCatcher.Add(errors.Wrapf(err, "unable to get activation time for variant '%s'", buildvariant.Name))
 			// add only tasks that require activation times
 			for _, bvt := range buildvariant.Tasks {
@@ -943,7 +943,7 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 				if !ok || !bvt.HasSpecificActivation() {
 					continue
 				}
-				activateTaskAt, err := projectInfo.Ref.GetActivationTimeForTask(&bvt, v.CreateTime, time.Now())
+				activateTaskAt, err := projectInfo.Ref.GetActivationTimeForTask(ctx, &bvt, v.CreateTime, time.Now())
 				batchTimeCatcher.Add(errors.Wrapf(err, "unable to get activation time for task '%s' (variant '%s')", bvt.Name, buildvariant.Name))
 
 				taskStatuses = append(taskStatuses,

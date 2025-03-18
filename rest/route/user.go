@@ -114,7 +114,7 @@ func (h *getUserHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *getUserHandler) Run(ctx context.Context) gimlet.Responder {
-	usr, err := user.FindOneById(h.userId)
+	usr, err := user.FindOneByIdContext(ctx, h.userId)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "finding user by ID"))
 	}
@@ -192,7 +192,7 @@ func (h *userPermissionsPostHandler) Parse(ctx context.Context, r *http.Request)
 }
 
 func (h *userPermissionsPostHandler) Run(ctx context.Context) gimlet.Responder {
-	u, err := user.FindOneById(h.userID)
+	u, err := user.FindOneByIdContext(ctx, h.userID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting user '%s'", h.userID))
 	}
@@ -278,7 +278,7 @@ func (h *userPermissionsDeleteHandler) Parse(ctx context.Context, r *http.Reques
 }
 
 func (h *userPermissionsDeleteHandler) Run(ctx context.Context) gimlet.Responder {
-	u, err := user.FindOneById(h.userID)
+	u, err := user.FindOneByIdContext(ctx, h.userID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding user '%s'", h.userID))
 	}
@@ -507,7 +507,7 @@ func (h *userPermissionsGetHandler) Parse(ctx context.Context, r *http.Request) 
 }
 
 func (h *userPermissionsGetHandler) Run(ctx context.Context) gimlet.Responder {
-	u, err := user.FindOneById(h.userID)
+	u, err := user.FindOneByIdContext(ctx, h.userID)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error finding user",
@@ -528,13 +528,13 @@ func (h *userPermissionsGetHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "getting permissions for user '%s'", h.userID))
 	}
 	// Hidden projects are not meant to be exposed to the user, so we remove them from the response here.
-	if err = removeHiddenProjects(permissions); err != nil {
+	if err = removeHiddenProjects(ctx, permissions); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
 	return gimlet.NewJSONResponse(permissions)
 }
 
-func removeHiddenProjects(permissions []rolemanager.PermissionSummary) error {
+func removeHiddenProjects(ctx context.Context, permissions []rolemanager.PermissionSummary) error {
 	var projectIDs []string
 	var projectResourceIndex int
 	for i, permission := range permissions {
@@ -545,7 +545,7 @@ func removeHiddenProjects(permissions []rolemanager.PermissionSummary) error {
 			}
 		}
 	}
-	projectRefs, err := serviceModel.FindProjectRefsByIds(projectIDs...)
+	projectRefs, err := serviceModel.FindProjectRefsByIds(ctx, projectIDs...)
 	if err != nil {
 		return errors.Wrapf(err, "getting projects")
 	}
@@ -618,7 +618,7 @@ func (h *userRolesPostHandler) Parse(ctx context.Context, r *http.Request) error
 }
 
 func (h *userRolesPostHandler) Run(ctx context.Context) gimlet.Responder {
-	u, err := user.FindOneById(h.userID)
+	u, err := user.FindOneByIdContext(ctx, h.userID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding user '%s'", h.userID))
 	}
@@ -778,7 +778,7 @@ func (h *serviceUserPostHandler) Run(ctx context.Context) gimlet.Responder {
 	if h.u == nil {
 		return gimlet.NewJSONErrorResponse("no user read from request body")
 	}
-	err := data.AddOrUpdateServiceUser(*h.u)
+	err := data.AddOrUpdateServiceUser(ctx, *h.u)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "adding/updating service user '%s'", utility.FromStringPtr(h.u.UserID)))
 	}
@@ -912,7 +912,7 @@ func (h *renameUserHandler) Parse(ctx context.Context, r *http.Request) error {
 	if username == "" {
 		return errors.New("no user could be parsed from the email address")
 	}
-	h.oldUsr, err = user.FindOneById(username)
+	h.oldUsr, err = user.FindOneByIdContext(ctx, username)
 	if err != nil {
 		return gimlet.ErrorResponse{
 			Message:    errors.Wrapf(err, "finding user '%s'", username).Error(),
@@ -1016,7 +1016,7 @@ func (ch *offboardUserHandler) Parse(ctx context.Context, r *http.Request) error
 	if ch.user == "" {
 		return errors.New("no user could be parsed from the email address")
 	}
-	u, err := user.FindOneById(ch.user)
+	u, err := user.FindOneByIdContext(ctx, ch.user)
 	if err != nil {
 		return gimlet.ErrorResponse{
 			Message:    errors.Wrapf(err, "finding user '%s'", ch.user).Error(),

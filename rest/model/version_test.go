@@ -71,7 +71,7 @@ func TestVersionBuildFromService(t *testing.T) {
 
 	apiVersion := &APIVersion{}
 	// BuildFromService should complete without error
-	apiVersion.BuildFromService(v)
+	apiVersion.BuildFromService(t.Context(), v)
 	// Each field should be as expected
 	assert.Equal(apiVersion.Id, utility.ToStringPtr(versionId))
 	assert.Equal(*apiVersion.CreateTime, time)

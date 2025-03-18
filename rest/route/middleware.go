@@ -395,7 +395,7 @@ func (m *alertmanagerMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 		}))
 		return
 	}
-	u, err := user.FindOneById(username)
+	u, err := user.FindOneByIdContext(r.Context(), username)
 	if err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding user '%s'", username)))
 		return

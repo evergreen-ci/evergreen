@@ -40,13 +40,13 @@ func TestTestLogInsertAndFind(t *testing.T) {
 			So(err, ShouldBeNil)
 
 			Convey("the test log should be findable in the db", func() {
-				logFromDB, err := FindOneTestLog("TestNothing", "TestTask1000", 5)
+				logFromDB, err := FindOneTestLog(t.Context(), "TestNothing", "TestTask1000", 5)
 				So(err, ShouldBeNil)
 				So(logFromDB, ShouldResemble, log)
 			})
 
 			Convey("but a nonexistent test log should not be found", func() {
-				logFromDB, err := FindOneTestLog("blech", "blah", 1)
+				logFromDB, err := FindOneTestLog(t.Context(), "blech", "blah", 1)
 				So(logFromDB, ShouldBeNil)
 				So(err, ShouldBeNil)
 			})

@@ -67,7 +67,7 @@ type taskBlurb struct {
 // Serves the task history page itself.
 func (uis *UIServer) taskHistoryPage(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
-	project, err := projCtx.GetProject()
+	project, err := projCtx.GetProject(r.Context())
 
 	taskName := gimlet.GetVars(r)["task_name"]
 
@@ -90,7 +90,7 @@ func (uis *UIServer) taskHistoryPage(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	repo, err := model.FindRepository(project.Identifier)
+	repo, err := model.FindRepository(r.Context(), project.Identifier)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -106,7 +106,7 @@ func (uis *UIServer) taskHistoryPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if revision := r.FormValue("revision"); revision != "" {
-		v, err = model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(project.Identifier, revision))
+		v, err = model.VersionFindOne(r.Context(), model.BaseVersionByProjectIdAndRevision(project.Identifier, revision))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -167,7 +167,7 @@ func (uis *UIServer) variantHistory(w http.ResponseWriter, r *http.Request) {
 	var err error
 	beforeCommit = nil
 	if beforeCommitId != "" {
-		beforeCommit, err = model.VersionFindOne(model.VersionById(beforeCommitId))
+		beforeCommit, err = model.VersionFindOne(r.Context(), model.VersionById(beforeCommitId))
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
@@ -222,7 +222,7 @@ func (uis *UIServer) variantHistory(w http.ResponseWriter, r *http.Request) {
 func (uis *UIServer) taskHistoryPickaxe(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
 
-	project, err := projCtx.GetProject()
+	project, err := projCtx.GetProject(r.Context())
 	if err != nil || project == nil {
 		http.Error(w, "not found", http.StatusNotFound)
 		return

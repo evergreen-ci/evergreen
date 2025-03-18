@@ -198,7 +198,7 @@ func (s *ProjectConnectorGetSuite) TearDownSuite() {
 }
 
 func (s *ProjectConnectorGetSuite) TestGetProjectEvents() {
-	events, err := GetProjectEventLog(projectId, time.Now(), 0)
+	events, err := GetProjectEventLog(s.T().Context(), projectId, time.Now(), 0)
 	s.NoError(err)
 	s.Len(events, projEventCount)
 	for _, eventLog := range events {
@@ -219,14 +219,14 @@ func (s *ProjectConnectorGetSuite) TestGetProjectEvents() {
 	}
 
 	// No error for empty events
-	events, err = GetProjectEventLog("projectA", time.Now(), 0)
+	events, err = GetProjectEventLog(s.T().Context(), "projectA", time.Now(), 0)
 	s.NoError(err)
 	s.Empty(events)
 }
 
 func (s *ProjectConnectorGetSuite) TestFindProjectVarsById() {
 	// redact private variables
-	res, err := FindProjectVarsById(projectId, "", true)
+	res, err := FindProjectVarsById(s.T().Context(), projectId, "", true)
 	s.NoError(err)
 	s.Require().NotNil(res)
 	s.Equal("1", res.Vars["a"])
@@ -234,7 +234,7 @@ func (s *ProjectConnectorGetSuite) TestFindProjectVarsById() {
 	s.True(res.PrivateVars["b"])
 
 	// not redacted
-	res, err = FindProjectVarsById(projectId, "", false)
+	res, err = FindProjectVarsById(s.T().Context(), projectId, "", false)
 	s.NoError(err)
 	s.Require().NotNil(res)
 	s.Equal("1", res.Vars["a"])
@@ -242,7 +242,7 @@ func (s *ProjectConnectorGetSuite) TestFindProjectVarsById() {
 	s.Equal("", res.Vars["c"])
 
 	// test with repo
-	res, err = FindProjectVarsById(projectId, repoProjectId, true)
+	res, err = FindProjectVarsById(s.T().Context(), projectId, repoProjectId, true)
 	s.NoError(err)
 	s.Require().NotNil(res)
 	s.Equal("1", res.Vars["a"])
@@ -251,20 +251,20 @@ func (s *ProjectConnectorGetSuite) TestFindProjectVarsById() {
 	s.False(res.PrivateVars["a"])
 	s.Equal("new", res.Vars["c"])
 
-	res, err = FindProjectVarsById("", repoProjectId, true)
+	res, err = FindProjectVarsById(s.T().Context(), "", repoProjectId, true)
 	s.NoError(err)
 	s.Equal("", res.Vars["a"])
 	s.Equal("new", res.Vars["c"])
 	s.True(res.PrivateVars["a"])
 
-	res, err = FindProjectVarsById("", repoProjectId, false)
+	res, err = FindProjectVarsById(s.T().Context(), "", repoProjectId, false)
 	s.NoError(err)
 	s.Equal("a_from_repo", res.Vars["a"])
 	s.Equal("", res.Vars["b"])
 	s.Equal("new", res.Vars["c"])
 	s.True(res.PrivateVars["a"])
 
-	_, err = FindProjectVarsById("non-existent", "also-non-existent", false)
+	_, err = FindProjectVarsById(s.T().Context(), "non-existent", "also-non-existent", false)
 	s.Error(err)
 }
 
@@ -314,7 +314,7 @@ func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
 	_, ok = newVars.PrivateVars["a"]
 	s.False(ok)
 
-	dbNewVars, err := model.FindOneProjectVars(projectId)
+	dbNewVars, err := model.FindOneProjectVars(s.T().Context(), projectId)
 	s.NoError(err)
 	s.Require().NotZero(dbNewVars)
 
@@ -339,7 +339,7 @@ func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
 	// successful upsert
 	s.NoError(UpdateProjectVars(newProjRef.Id, &newVars, false))
 
-	dbUpsertedVars, err := model.FindOneProjectVars(newProjRef.Id)
+	dbUpsertedVars, err := model.FindOneProjectVars(s.T().Context(), newProjRef.Id)
 	s.NoError(err)
 	s.Require().NotZero(dbUpsertedVars)
 
@@ -355,11 +355,11 @@ func (s *ProjectConnectorGetSuite) TestCopyProjectVars() {
 		Id: "project-copy",
 	}
 	s.Require().NoError(pRef.Insert())
-	s.NoError(model.CopyProjectVars(projectId, pRef.Id))
-	origProj, err := FindProjectVarsById(projectId, "", false)
+	s.NoError(model.CopyProjectVars(s.T().Context(), projectId, pRef.Id))
+	origProj, err := FindProjectVarsById(s.T().Context(), projectId, "", false)
 	s.NoError(err)
 
-	newProj, err := FindProjectVarsById("project-copy", "", false)
+	newProj, err := FindProjectVarsById(s.T().Context(), "project-copy", "", false)
 	s.NoError(err)
 
 	s.Equal(origProj.PrivateVars, newProj.PrivateVars)
@@ -424,7 +424,7 @@ func TestCreateProject(t *testing.T) {
 			require.NoError(t, err)
 			require.True(t, created)
 
-			dbProjRef, err := model.FindBranchProjectRef(pRef.Id)
+			dbProjRef, err := model.FindBranchProjectRef(ctx, pRef.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbProjRef)
 			require.Len(t, dbProjRef.ContainerSecrets, 1, "should create pod secret for new project")
@@ -459,7 +459,7 @@ func TestCreateProject(t *testing.T) {
 			require.NoError(t, err)
 			require.True(t, created)
 
-			dbProjRef, err := model.FindBranchProjectRef(pRef.Identifier)
+			dbProjRef, err := model.FindBranchProjectRef(ctx, pRef.Identifier)
 			require.NoError(t, err)
 			require.NotZero(t, dbProjRef)
 			assert.NotZero(t, dbProjRef.Id, "project ID should be set to something")
@@ -471,7 +471,7 @@ func TestCreateProject(t *testing.T) {
 			require.NoError(t, err)
 			require.True(t, created)
 
-			dbProjRef, err := model.FindBranchProjectRef(pRef.Identifier)
+			dbProjRef, err := model.FindBranchProjectRef(ctx, pRef.Identifier)
 			require.NoError(t, err)
 			require.NotZero(t, dbProjRef)
 			assert.NotZero(t, dbProjRef.Id)
@@ -554,7 +554,7 @@ func TestGetLegacyProjectEvents(t *testing.T) {
 
 	require.NoError(t, h.Log())
 
-	events, err := GetProjectEventLog(projectId, time.Now(), 0)
+	events, err := GetProjectEventLog(t.Context(), projectId, time.Now(), 0)
 	require.NoError(t, err)
 	require.Len(t, events, 1)
 	eventLog := events[0]
@@ -661,7 +661,7 @@ func TestHideBranch(t *testing.T) {
 		Id:   project.Id,
 		Vars: map[string]string{},
 	}
-	projVars, err := model.FindOneProjectVars(project.Id)
+	projVars, err := model.FindOneProjectVars(t.Context(), project.Id)
 	assert.NoError(t, err)
 	assert.Equal(t, skeletonProjVars, *projVars)
 }

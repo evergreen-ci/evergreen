@@ -535,7 +535,7 @@ func (r *taskResolver) Project(ctx context.Context, obj *restModel.APITask) (*re
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("project '%s' not found", projectID))
 	}
 	apiProjectRef := restModel.APIProjectRef{}
-	if err = apiProjectRef.BuildFromService(*pRef); err != nil {
+	if err = apiProjectRef.BuildFromService(ctx, *pRef); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting project '%s' to APIProjectRef: %s", projectID, err.Error()))
 	}
 	return &apiProjectRef, nil
@@ -543,7 +543,7 @@ func (r *taskResolver) Project(ctx context.Context, obj *restModel.APITask) (*re
 
 // ProjectIdentifier is the resolver for the projectIdentifier field.
 func (r *taskResolver) ProjectIdentifier(ctx context.Context, obj *restModel.APITask) (*string, error) {
-	obj.GetProjectIdentifier()
+	obj.GetProjectIdentifier(ctx)
 	return obj.ProjectIdentifier, nil
 }
 
@@ -633,7 +633,7 @@ func (r *taskResolver) TotalTestCount(ctx context.Context, obj *restModel.APITas
 // VersionMetadata is the resolver for the versionMetadata field.
 func (r *taskResolver) VersionMetadata(ctx context.Context, obj *restModel.APITask) (*restModel.APIVersion, error) {
 	versionID := utility.FromStringPtr(obj.Version)
-	v, err := model.VersionFindOneId(versionID)
+	v, err := model.VersionFindOneId(ctx, versionID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", versionID, utility.FromStringPtr(obj.Id)))
 	}
@@ -641,7 +641,7 @@ func (r *taskResolver) VersionMetadata(ctx context.Context, obj *restModel.APITa
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", versionID))
 	}
 	apiVersion := &restModel.APIVersion{}
-	apiVersion.BuildFromService(*v)
+	apiVersion.BuildFromService(ctx, *v)
 	return apiVersion, nil
 }
 

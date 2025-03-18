@@ -2357,7 +2357,44 @@ Admin Settings
 											placeholder="Path to the SSH key file when running in Kanopy" />
 									</md-input-container>
 								</md-card-content>
-
+								<md-card style="margin-bottom:20px;">
+									<md-card-title>
+										<md-card-title-text>
+											<span>SSH Private Key ARNs</span>
+										</md-card-title-text>
+									</md-card-title>
+									<md-card-content>
+										<div id="ssh-key-secret-arns" class="form-group"
+											ng-repeat="(index, secretARN) in Settings.ssh_key_secret_arns">
+											<section layout="row" flex>
+												<md-input-container class="control" flex=75>
+													<input class="control" type="text" ng-model="secretARN"
+														placeholder="Secret ARN">
+												</md-input-container>
+												<div style="margin-top: 1%;">
+													<button class="btn btn-default btn-danger" type="button"
+														style="float: left" ng-click="deleteSecretARN(index)">
+														<i class="fa fa-trash"></i>
+													</button>
+												</div>
+											</section>
+										</div>
+										<section layout="row" flex>
+											<md-input-container class="control" flex=75>
+												<input class="control" type="text" ng-model="new_secret_arn"
+													placeholder="Secret ARN">
+											</md-input-container>
+											<div style="margin-top: 1%;">
+												<button class="plus-button btn btn-primary"
+													ng-disabled="!validSecretARN(new_secret_arn)" type="button"
+													style="float: left" ng-click="addSecretARN()">
+													<i class="fa fa-plus"></i>
+												</button>
+												<label class="control">[[ invalidSecretARN ]]</label>
+											</div>
+										</section>
+									</md-card-content>
+								</md-card>
 							</md-card>
 
 							<md-card flex=50 id="expansions">

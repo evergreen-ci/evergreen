@@ -102,7 +102,7 @@ func (j *eventSendJob) Run(ctx context.Context) {
 		return
 	}
 
-	err = j.send(n)
+	err = j.send(ctx, n)
 	grip.Error(message.WrapError(err, message.Fields{
 		"job_id":            j.ID(),
 		"notification_id":   n.ID,
@@ -114,8 +114,8 @@ func (j *eventSendJob) Run(ctx context.Context) {
 	j.AddError(errors.Wrapf(n.MarkError(ctx, err), "setting error for notification '%s'", n.ID))
 }
 
-func (j *eventSendJob) send(n *notification.Notification) error {
-	c, err := n.Composer()
+func (j *eventSendJob) send(ctx context.Context, n *notification.Notification) error {
+	c, err := n.Composer(ctx)
 	if err != nil {
 		return err
 	}

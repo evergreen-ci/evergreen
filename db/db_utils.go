@@ -418,6 +418,82 @@ func CountContext(ctx context.Context, collection string, query any) (int, error
 	return db.C(collection).Find(query).Count()
 }
 
+// FindOneQ runs a Q query against the given collection, applying the results to "out."
+// Only reads one document from the DB.
+// DEPRECATED (DEVPROD-15398): This is only here to support a cache
+// with Gimlet, use FindOneQContext instead.
+func FindOneQ(collection string, q Q, out any) error {
+	return FindOneQContext(context.Background(), collection, q, out)
+}
+
+// FindOneQContext runs a Q query against the given collection, applying the results to "out."
+// Only reads one document from the DB.
+func FindOneQContext(ctx context.Context, collection string, q Q, out any) error {
+	if q.maxTime > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, q.maxTime)
+		defer cancel()
+	}
+
+	session, db, err := GetGlobalSessionFactory().GetContextSession(ctx)
+	if err != nil {
+		return err
+	}
+	defer session.Close()
+
+	return db.C(collection).
+		Find(q.filter).
+		Select(q.projection).
+		Sort(q.sort...).
+		Skip(q.skip).
+		Limit(1).
+		Hint(q.hint).
+		One(out)
+}
+
+// FindAllQ runs a Q query against the given collection, applying the results to "out."
+func FindAllQ(collection string, q Q, out any) error {
+	return FindAllQContext(context.Background(), collection, q, out)
+}
+
+func FindAllQContext(ctx context.Context, collection string, q Q, out any) error {
+	if q.maxTime > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, q.maxTime)
+		defer cancel()
+	}
+
+	session, db, err := GetGlobalSessionFactory().GetContextSession(ctx)
+	if err != nil {
+		return err
+	}
+	defer session.Close()
+
+	return db.C(collection).
+		Find(q.filter).
+		Select(q.projection).
+		Sort(q.sort...).
+		Skip(q.skip).
+		Limit(q.limit).
+		Hint(q.hint).
+		All(out)
+}
+
+// CountQ runs a Q count query against the given collection.
+func CountQ(collection string, q Q) (int, error) {
+	return Count(collection, q.filter)
+}
+
+// CountQ runs a Q count query against the given collection.
+func CountQContext(ctx context.Context, collection string, q Q) (int, error) {
+	return CountContext(ctx, collection, q.filter)
+}
+
+// RemoveAllQ removes all docs that satisfy the query
+func RemoveAllQ(ctx context.Context, collection string, q Q) error {
+	return Remove(ctx, collection, q.filter)
+}
+
 // FindAndModify runs the specified query and change against the collection,
 // unmarshaling the result into the specified interface.
 func FindAndModify(collection string, query any, sort []string, change db.Change, out any) (*db.ChangeInfo, error) {

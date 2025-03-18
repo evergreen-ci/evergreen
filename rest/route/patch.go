@@ -295,7 +295,7 @@ func (p *patchesByUserHandler) Parse(ctx context.Context, r *http.Request) error
 
 func (p *patchesByUserHandler) Run(ctx context.Context) gimlet.Responder {
 	// sortAsc set to false in order to display patches in desc chronological order
-	patches, err := data.FindPatchesByUser(p.user, p.key, p.limit+1)
+	patches, err := data.FindPatchesByUser(ctx, p.user, p.key, p.limit+1)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding patches for user '%s'", p.user))
 	}
@@ -383,7 +383,7 @@ func (p *patchesByProjectHandler) Parse(ctx context.Context, r *http.Request) er
 }
 
 func (p *patchesByProjectHandler) Run(ctx context.Context) gimlet.Responder {
-	patches, err := data.FindPatchesByProject(p.projectId, p.key, p.limit+1)
+	patches, err := data.FindPatchesByProject(ctx, p.projectId, p.key, p.limit+1)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding patches for project '%s'", p.projectId))
 	}
@@ -642,7 +642,7 @@ func (p *schedulePatchHandler) Parse(ctx context.Context, r *http.Request) error
 
 func (p *schedulePatchHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
-	dbVersion, _ := dbModel.VersionFindOneId(p.patchId)
+	dbVersion, _ := dbModel.VersionFindOneId(ctx, p.patchId)
 	var project *dbModel.Project
 	var err error
 	if dbVersion == nil {
@@ -651,7 +651,7 @@ func (p *schedulePatchHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project for patch '%s'", p.patchId))
 		}
 	} else {
-		project, err = dbModel.FindProjectFromVersionID(dbVersion.Id)
+		project, err = dbModel.FindProjectFromVersionID(ctx, dbVersion.Id)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project for version '%s'", dbVersion.Id))
 		}
@@ -711,7 +711,7 @@ func (p *schedulePatchHandler) Run(ctx context.Context) gimlet.Responder {
 		_ = resp.SetStatus(code)
 		return resp
 	}
-	dbVersion, err = dbModel.VersionFindOneId(p.patchId)
+	dbVersion, err = dbModel.VersionFindOneId(ctx, p.patchId)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding version for patch '%s'", p.patchId))
 	}
@@ -719,6 +719,6 @@ func (p *schedulePatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Errorf("version for patch '%s' not found", p.patchId))
 	}
 	restVersion := model.APIVersion{}
-	restVersion.BuildFromService(*dbVersion)
+	restVersion.BuildFromService(ctx, *dbVersion)
 	return gimlet.NewJSONResponse(restVersion)
 }

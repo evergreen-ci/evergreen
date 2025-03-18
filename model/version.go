@@ -114,8 +114,8 @@ func (v *Version) IsFinished() bool {
 	return evergreen.IsFinishedVersionStatus(v.Status)
 }
 
-func (v *Version) LastSuccessful() (*Version, error) {
-	lastGreen, err := VersionFindOne(VersionBySuccessfulBeforeRevision(v.Identifier, v.RevisionOrderNumber).Sort(
+func (v *Version) LastSuccessful(ctx context.Context) (*Version, error) {
+	lastGreen, err := VersionFindOne(ctx, VersionBySuccessfulBeforeRevision(v.Identifier, v.RevisionOrderNumber).Sort(
 		[]string{"-" + VersionRevisionOrderNumberKey}))
 	if err != nil {
 		return nil, errors.Wrap(err, "retrieving last successful version")
@@ -179,19 +179,6 @@ func (v *Version) Insert() error {
 
 func (v *Version) IsChild() bool {
 	return v.ParentPatchID != ""
-}
-
-func (v *Version) GetParentVersion() (*Version, error) {
-	if v.ParentPatchID == "" {
-		return nil, errors.Errorf("version '%s' is missing parent patch ID", v.Id)
-	}
-	parentVersion, err := VersionFindOne(VersionById(v.ParentPatchID))
-	if err != nil {
-		return nil, errors.WithStack(err)
-	} else if parentVersion == nil {
-		return nil, errors.Errorf("version '%s' not found", v.ParentPatchID)
-	}
-	return parentVersion, nil
 }
 
 func (v *Version) AddSatisfiedTrigger(ctx context.Context, definitionID string) error {
@@ -346,8 +333,8 @@ type DuplicateVersions struct {
 	Versions []Version           `bson:"versions"`
 }
 
-func IsAborted(id string) (bool, error) {
-	v, err := VersionFindOne(VersionById(id))
+func IsAborted(ctx context.Context, id string) (bool, error) {
+	v, err := VersionFindOne(ctx, VersionById(id))
 	if err != nil {
 		return false, errors.Errorf("finding version '%s'", id)
 	}
@@ -357,8 +344,8 @@ func IsAborted(id string) (bool, error) {
 	return v.Aborted, nil
 }
 
-func VersionGetHistory(versionId string, N int) ([]Version, error) {
-	v, err := VersionFindOne(VersionById(versionId))
+func VersionGetHistory(ctx context.Context, versionId string, N int) ([]Version, error) {
+	v, err := VersionFindOne(ctx, VersionById(versionId))
 	if err != nil {
 		return nil, errors.WithStack(err)
 	} else if v == nil {
@@ -574,8 +561,8 @@ type GetVersionsOptions struct {
 
 // GetVersionsWithOptions returns versions for a project, that satisfy a set of query parameters defined by
 // the input GetVersionsOptions.
-func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Version, error) {
-	projectId, err := GetIdForProject(projectName)
+func GetVersionsWithOptions(ctx context.Context, projectName string, opts GetVersionsOptions) ([]Version, error) {
+	projectId, err := GetIdForProject(ctx, projectName)
 	if err != nil {
 		return nil, err
 	}
@@ -707,8 +694,8 @@ type ModifyVersionsOptions struct {
 }
 
 // GetVersionsToModify returns a slice of versions intended to be modified that satisfy the given ModifyVersionsOptions.
-func GetVersionsToModify(projectName string, opts ModifyVersionsOptions, startTime, endTime time.Time) ([]Version, error) {
-	projectId, err := GetIdForProject(projectName)
+func GetVersionsToModify(ctx context.Context, projectName string, opts ModifyVersionsOptions, startTime, endTime time.Time) ([]Version, error) {
+	projectId, err := GetIdForProject(ctx, projectName)
 	if err != nil {
 		return nil, err
 	}
@@ -743,7 +730,7 @@ func constructManifest(ctx context.Context, v *Version, projectRef *ProjectRef, 
 		IsBase:      v.Requester == evergreen.RepotrackerVersionRequester,
 	}
 
-	projVars, err := FindMergedProjectVars(projectRef.Id)
+	projVars, err := FindMergedProjectVars(ctx, projectRef.Id)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting project vars for project '%s'", projectRef.Id)
 	}

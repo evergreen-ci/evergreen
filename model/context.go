@@ -58,11 +58,11 @@ func LoadContext(ctx context.Context, taskId, buildId, versionId, patchId, proje
 	return c, nil
 }
 
-func (ctx *Context) GetProjectRef() (*ProjectRef, error) {
+func (ctx *Context) GetProjectRef(c context.Context) (*ProjectRef, error) {
 	// if no project, use the default
 	if ctx.ProjectRef == nil {
 		var err error
-		ctx.ProjectRef, err = FindAnyRestrictedProjectRef()
+		ctx.ProjectRef, err = FindAnyRestrictedProjectRef(c)
 		if err != nil {
 			return nil, errors.Wrap(err, "finding project ref")
 		}
@@ -72,12 +72,12 @@ func (ctx *Context) GetProjectRef() (*ProjectRef, error) {
 }
 
 // GetProject returns the project associated with the Context.
-func (ctx *Context) GetProject() (*Project, error) {
+func (ctx *Context) GetProject(c context.Context) (*Project, error) {
 	if ctx.project != nil {
 		return ctx.project, nil
 	}
 
-	pref, err := ctx.GetProjectRef()
+	pref, err := ctx.GetProjectRef(c)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding project")
 	}
@@ -129,7 +129,7 @@ func (c *Context) populateTaskBuildVersion(ctx context.Context, taskId, buildId,
 		}
 	}
 	if len(versionId) > 0 {
-		c.Version, err = VersionFindOne(VersionById(versionId))
+		c.Version, err = VersionFindOne(ctx, VersionById(versionId))
 		if err != nil {
 			return "", err
 		}
@@ -162,7 +162,7 @@ func (ctx *Context) populatePatch(c context.Context, patchId string) error {
 	// If there's a finalized patch loaded into context but not a version, load the version
 	// associated with the patch as the context's version.
 	if ctx.Version == nil && ctx.Patch != nil && ctx.Patch.Version != "" {
-		ctx.Version, err = VersionFindOne(VersionById(ctx.Patch.Version))
+		ctx.Version, err = VersionFindOne(c, VersionById(ctx.Patch.Version))
 		if err != nil {
 			return errors.WithStack(err)
 		}

@@ -528,7 +528,7 @@ func TestGroupInactiveVersions(t *testing.T) {
 	v4 := model.Version{Id: "4", Activated: utility.ToBoolPtr(false)}
 	v5 := model.Version{Id: "5", Activated: utility.ToBoolPtr(true)}
 
-	waterfallVersions := groupInactiveVersions([]model.Version{v0, v1, v2, v3, v4, v5})
+	waterfallVersions := groupInactiveVersions(t.Context(), []model.Version{v0, v1, v2, v3, v4, v5})
 	require.Len(t, waterfallVersions, 5)
 
 	assert.Nil(t, waterfallVersions[0].Version)

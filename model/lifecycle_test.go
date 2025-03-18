@@ -1035,7 +1035,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 		project, err := TranslateProject(parserProject)
 		So(err, ShouldBeNil)
 		So(project, ShouldNotBeNil)
-		table := NewTaskIdConfigForRepotrackerVersion(project, v, TVPairSet{}, "", "")
+		table := NewTaskIdConfigForRepotrackerVersion(t.Context(), project, v, TVPairSet{}, "", "")
 		tt := table.ExecutionTasks
 		dt := table.DisplayTasks
 
@@ -1730,7 +1730,7 @@ func TestCreateTaskGroup(t *testing.T) {
 		Id:         "projectId",
 		Identifier: projectIdentifier,
 	}
-	table := NewTaskIdConfigForRepotrackerVersion(proj, v, TVPairSet{}, "", "")
+	table := NewTaskIdConfigForRepotrackerVersion(t.Context(), proj, v, TVPairSet{}, "", "")
 
 	creationInfo := TaskCreationInfo{
 		Project:          proj,
@@ -2181,7 +2181,7 @@ func TestVersionRestart(t *testing.T) {
 	assert.Equal("task1", dbTask5.DependsOn[0].TaskId)
 	assert.False(dbTask5.DependsOn[0].Finished, "restarting task1 should have marked dependency in execution task as unfinished")
 
-	dbVersion, err := VersionFindOneId("version")
+	dbVersion, err := VersionFindOneId(t.Context(), "version")
 	assert.NoError(err)
 	assert.Equal(evergreen.VersionStarted, dbVersion.Status)
 
@@ -2196,7 +2196,7 @@ func TestVersionRestart(t *testing.T) {
 	assert.Equal("test", dbTask.AbortInfo.User)
 	assert.Equal(evergreen.TaskDispatched, dbTask.Status)
 	assert.True(dbTask.ResetWhenFinished)
-	dbVersion, err = VersionFindOneId("version")
+	dbVersion, err = VersionFindOneId(t.Context(), "version")
 	assert.NoError(err)
 	// Version status should not update if only aborting tasks
 	assert.Equal("", dbVersion.Status)
@@ -2210,7 +2210,7 @@ func TestVersionRestart(t *testing.T) {
 	assert.NotNil(dbTask)
 	assert.False(dbTask.Aborted)
 	assert.Equal(evergreen.TaskDispatched, dbTask.Status)
-	dbVersion, err = VersionFindOneId("version")
+	dbVersion, err = VersionFindOneId(t.Context(), "version")
 	assert.NoError(err)
 	// Version status should not update if no tasks are being reset.
 	assert.Equal("", dbVersion.Status)
@@ -2282,7 +2282,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 	assert.NoError(dt.SetResetFailedWhenFinished(ctx, "caller"))
 
 	// Confirm that marking a display task to reset when finished increments the user's scheduling limit
-	dbUser, err := user.FindOneById("caller")
+	dbUser, err := user.FindOneByIdContext(t.Context(), "caller")
 	assert.NoError(err)
 	require.NotNil(t, dbUser)
 	assert.Equal(2, dbUser.NumScheduledPatchTasks)
@@ -2299,7 +2299,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 		}
 	}
 	// Confirm that resetting a display task does not affect the user's scheduling limit
-	dbUser, err = user.FindOneById("caller")
+	dbUser, err = user.FindOneByIdContext(t.Context(), "caller")
 	assert.NoError(err)
 	require.NotNil(t, dbUser)
 	assert.Equal(2, dbUser.NumScheduledPatchTasks)
@@ -2340,7 +2340,7 @@ func TestResetTaskOrDisplayTask(t *testing.T) {
 			assert.Equal(t, 1, dt.Execution)
 			assert.False(t, dt.ResetWhenFinished)
 
-			dbUser, err := user.FindOneById("caller")
+			dbUser, err := user.FindOneByIdContext(t.Context(), "caller")
 			assert.NoError(t, err)
 			require.NotNil(t, dbUser)
 			assert.Equal(t, len(dt.ExecutionTasks), dbUser.NumScheduledPatchTasks)
@@ -2368,7 +2368,7 @@ func TestResetTaskOrDisplayTask(t *testing.T) {
 			require.NotNil(t, successfulExecTask)
 			assert.Equal(t, evergreen.TaskSucceeded, successfulExecTask.Status, "successful execution task should not be reset")
 
-			dbUser, err := user.FindOneById("caller")
+			dbUser, err := user.FindOneByIdContext(t.Context(), "caller")
 			assert.NoError(t, err)
 			require.NotNil(t, dbUser)
 			assert.Equal(t, len(dt.ExecutionTasks), dbUser.NumScheduledPatchTasks)

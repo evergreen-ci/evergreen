@@ -83,7 +83,7 @@ func (s *ProjectEventSuite) SetupTest() {
 	}
 
 	c := APIProjectEvent{}
-	err := c.BuildFromService(h)
+	err := c.BuildFromService(s.T().Context(), h)
 	s.Require().NoError(err)
 
 	projChanges := h.Data.(*model.ProjectChangeEvent)

@@ -170,8 +170,8 @@ func (p *patchParams) validateSubmission(diffData *localDiff) error {
 
 // displayPatch outputs the given patch(es) to the user. If there is only one patch,
 // and browse is true, it will open the patch in the user's default web browser.
-func (p *patchParams) displayPatch(ac *legacyClient, params outputPatchParams) error {
-	patchDisp, err := getPatchDisplay(ac, params)
+func (p *patchParams) displayPatch(ctx context.Context, ac *legacyClient, params outputPatchParams) error {
+	patchDisp, err := getPatchDisplay(ctx, ac, params)
 	if err != nil {
 		return err
 	}
@@ -551,9 +551,9 @@ type outputPatchParams struct {
 
 // getPatchDisplay returns a string representation of the given patches
 // according to the outputPatchParams.
-func getPatchDisplay(ac *legacyClient, params outputPatchParams) (string, error) {
+func getPatchDisplay(ctx context.Context, ac *legacyClient, params outputPatchParams) (string, error) {
 	if params.outputJSON {
-		return getJSONPatchDisplay(params)
+		return getJSONPatchDisplay(ctx, params)
 	}
 	return getGenericPatchDisplay(ac, params)
 }
@@ -597,11 +597,11 @@ func getGenericPatchDisplay(ac *legacyClient, params outputPatchParams) (string,
 // using the JSON format. If there is only one patch, it will be displayed
 // as a single JSON object. If there are multiple patches, they will be
 // displayed as a JSON array.
-func getJSONPatchDisplay(params outputPatchParams) (string, error) {
+func getJSONPatchDisplay(ctx context.Context, params outputPatchParams) (string, error) {
 	display := []restModel.APIPatch{}
 	for _, p := range params.patches {
 		api := restModel.APIPatch{}
-		err := api.BuildFromService(p, nil)
+		err := api.BuildFromService(ctx, p, nil)
 		if err != nil {
 			return "", errors.Wrap(err, "converting patch to API model")
 		}

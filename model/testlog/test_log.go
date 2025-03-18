@@ -38,10 +38,10 @@ var (
 	TestLogLinesKey         = bsonutil.MustHaveTag(TestLog{}, "Lines")
 )
 
-func FindOneTestLogById(id string) (*TestLog, error) {
+func FindOneTestLogById(ctx context.Context, id string) (*TestLog, error) {
 	tl := &TestLog{}
 	q := db.Query(bson.M{TestLogIdKey: id})
-	err := db.FindOneQ(TestLogCollection, q, tl)
+	err := db.FindOneQContext(ctx, TestLogCollection, q, tl)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -50,14 +50,14 @@ func FindOneTestLogById(id string) (*TestLog, error) {
 
 // FindOneTestLog returns a TestLog, given the test's name, task id,
 // and execution.
-func FindOneTestLog(name, task string, execution int) (*TestLog, error) {
+func FindOneTestLog(ctx context.Context, name, task string, execution int) (*TestLog, error) {
 	tl := &TestLog{}
 	q := db.Query(bson.M{
 		TestLogNameKey:          name,
 		TestLogTaskKey:          task,
 		TestLogTaskExecutionKey: execution,
 	})
-	err := db.FindOneQ(TestLogCollection, q, tl)
+	err := db.FindOneQContext(ctx, TestLogCollection, q, tl)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}

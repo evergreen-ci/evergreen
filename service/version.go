@@ -19,7 +19,7 @@ import (
 
 func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
-	project, err := projCtx.GetProject()
+	project, err := projCtx.GetProject(r.Context())
 
 	identifier := ""
 	if project != nil {
@@ -88,7 +88,7 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 			projectID = upstreamBuild.Project
 		}
 		var project *model.ProjectRef
-		project, err = model.FindBranchProjectRef(projectID)
+		project, err = model.FindBranchProjectRef(r.Context(), projectID)
 		if err != nil {
 			http.Error(w, "error finding upstream project", http.StatusInternalServerError)
 			return
@@ -151,7 +151,7 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		var baseVersion *model.Version
-		baseVersion, err = model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(projCtx.Version.Identifier, projCtx.Version.Revision))
+		baseVersion, err = model.VersionFindOne(r.Context(), model.BaseVersionByProjectIdAndRevision(projCtx.Version.Identifier, projCtx.Version.Revision))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -252,7 +252,7 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 	var err error
 
 	projCtx := MustHaveProjectContext(r)
-	project, err := projCtx.GetProject()
+	project, err := projCtx.GetProject(r.Context())
 	if err != nil || project == nil || projCtx.Version == nil {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
@@ -272,7 +272,7 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 
 	// After the version has been modified, re-load it from DB and send back the up-to-date view
 	// to the client.
-	projCtx.Version, err = model.VersionFindOne(model.VersionById(projCtx.Version.Id))
+	projCtx.Version, err = model.VersionFindOne(r.Context(), model.VersionById(projCtx.Version.Id))
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -358,7 +358,7 @@ func addFailedTests(failedTaskIds []string, uiBuilds []uiBuild, taskMap map[stri
 
 func (uis *UIServer) versionHistory(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
-	data, err := model.VersionGetHistory(projCtx.Version.Id, 5)
+	data, err := model.VersionGetHistory(r.Context(), projCtx.Version.Id, 5)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -427,7 +427,7 @@ func (uis *UIServer) versionFind(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "revision not long enough: must be at least 5 characters", http.StatusBadRequest)
 		return
 	}
-	id, err := model.GetIdForProject(project)
+	id, err := model.GetIdForProject(r.Context(), project)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return

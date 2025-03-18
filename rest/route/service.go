@@ -148,6 +148,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/distros/{distro_id}").Version(2).Put().Wrap(requireUser, createDistro).RouteHandler(makePutDistro())
 	app.AddRoute("/distros/{distro_id}/setup").Version(2).Get().Wrap(requireUser, editDistroSettings).RouteHandler(makeGetDistroSetup())
 	app.AddRoute("/distros/{distro_id}/setup").Version(2).Patch().Wrap(requireUser, editDistroSettings).RouteHandler(makeChangeDistroSetup())
+	app.AddRoute("/distros/{distro_id}/copy/{new_distro_id}").Version(2).Put().Wrap(requireUser, editDistroSettings).RouteHandler(makeCopyDistro())
 
 	app.AddRoute("/hooks/github").Version(2).Post().Wrap(requireValidGithubPayload).RouteHandler(makeGithubHooksRoute(sc, opts.APIQueue, opts.GithubSecret, settings))
 	app.AddRoute("/hooks/aws").Version(2).Post().Wrap(requireValidSNSPayload).RouteHandler(makeEC2SNS(env, opts.APIQueue))
@@ -250,6 +251,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/users/{user_id}/permissions").Version(2).Post().Wrap(requireUser, editRoles).RouteHandler(makeModifyUserPermissions(env.RoleManager()))
 	app.AddRoute("/users/{user_id}/permissions").Version(2).Delete().Wrap(requireUser, editRoles).RouteHandler(makeDeleteUserPermissions(env.RoleManager()))
 	app.AddRoute("/users/{user_id}/roles").Version(2).Post().Wrap(requireUser, editRoles).RouteHandler(makeModifyUserRoles(env.RoleManager()))
+	app.AddRoute("/validate").Version(2).Post().Wrap(requireUser).RouteHandler(makeValidateProject())
 	app.AddRoute("/versions/{version_id}").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeGetVersionByID())
 	app.AddRoute("/versions/{version_id}").Version(2).Patch().Wrap(requireUser, editTasks).RouteHandler(makePatchVersion())
 	app.AddRoute("/versions/{version_id}/abort").Version(2).Post().Wrap(requireUser, editTasks).RouteHandler(makeAbortVersion())
