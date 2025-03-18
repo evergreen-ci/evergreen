@@ -1186,7 +1186,7 @@ func (h *hostAgentEndTask) Parse(ctx context.Context, r *http.Request) error {
 
 // Run creates test results from the request and the project config.
 // It then acquires the lock, and with it, marks tasks as finished or inactive if aborted.
-// If the task is a patch, it will Error the users based on failures
+// If the task is a patch, it will alert the users based on failures
 // It also updates the expected task duration of the task for scheduling.
 func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{
