@@ -799,15 +799,6 @@ func TestTearingDownIsNotConsideredIdle(t *testing.T) {
 	distro1 := distro.Distro{
 		Id:       "distro1",
 		Provider: evergreen.ProviderNameMock,
-		HostAllocatorSettings: distro.HostAllocatorSettings{
-			// TODO (DEVPROD-7795): this test doesn't pass currently unless you
-			// set the acceptable host idle time to be non-zero. However, it
-			// should pass even if it's acceptable idle time is 0 since the host
-			// should be busy running the teardown group. Once DEVPROD-7795 is
-			// fixed, this distro setting can/should be modified/removed and the
-			// test should still pass.
-			AcceptableHostIdleTime: time.Minute,
-		},
 	}
 	require.NoError(t, distro1.Insert(tctx))
 
