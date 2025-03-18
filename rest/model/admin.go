@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -94,9 +95,7 @@ type APIAdminSettings struct {
 	SingleTaskDistro    *APISingleTaskDistroConfig    `json:"single_task_distro,omitempty"`
 	Slack               *APISlackConfig               `json:"slack,omitempty"`
 	SleepSchedule       *APISleepScheduleConfig       `json:"sleep_schedule,omitempty"`
-	SSHKeyDirectory     *string                       `json:"ssh_key_directory,omitempty"`
-	SSHKeyPairs         []APISSHKeyPair               `json:"ssh_key_pairs,omitempty"`
-	SSHKeySecretARNs    []string                      `json:"ssh_key_secret_arns,omitempty"`
+	SSH                 *APISSHConfig                 `json:"ssh,omitempty"`
 	Splunk              *APISplunkConfig              `json:"splunk,omitempty"`
 	TaskLimits          *APITaskLimitsConfig          `json:"task_limits,omitempty"`
 	TestSelection       *APITestSelectionConfig       `json:"test_selection,omitempty"`
@@ -152,16 +151,6 @@ func (as *APIAdminSettings) BuildFromService(h any) error {
 		as.GithubOrgs = v.GithubOrgs
 		as.GithubWebhookSecret = utility.ToStringPtr(v.GithubWebhookSecret)
 		as.DisabledGQLQueries = v.DisabledGQLQueries
-		as.SSHKeyDirectory = utility.ToStringPtr(v.SSHKeyDirectory)
-		as.SSHKeyPairs = []APISSHKeyPair{}
-		for _, pair := range v.SSHKeyPairs {
-			as.SSHKeyPairs = append(as.SSHKeyPairs, APISSHKeyPair{
-				Name:    utility.ToStringPtr(pair.Name),
-				Public:  utility.ToStringPtr(pair.Public),
-				Private: utility.ToStringPtr(pair.Private),
-			})
-		}
-		as.SSHKeySecretARNs = v.SSHKeySecretARNs
 		uiConfig := APIUIConfig{}
 		err := uiConfig.BuildFromService(v.Ui)
 		if err != nil {
@@ -281,16 +270,6 @@ func (as *APIAdminSettings) ToService() (any, error) {
 			settings.Plugins[k][k2] = v2
 		}
 	}
-	settings.SSHKeyDirectory = utility.FromStringPtr(as.SSHKeyDirectory)
-	settings.SSHKeyPairs = []evergreen.SSHKeyPair{}
-	for _, pair := range as.SSHKeyPairs {
-		settings.SSHKeyPairs = append(settings.SSHKeyPairs, evergreen.SSHKeyPair{
-			Name:    utility.FromStringPtr(pair.Name),
-			Public:  utility.FromStringPtr(pair.Public),
-			Private: utility.FromStringPtr(pair.Private),
-		})
-	}
-	settings.SSHKeySecretARNs = as.SSHKeySecretARNs
 
 	if as.ShutdownWaitSeconds != nil {
 		settings.ShutdownWaitSeconds = *as.ShutdownWaitSeconds
@@ -2216,12 +2195,6 @@ func (a *APISingleTaskDistroConfig) ToService() (any, error) {
 	}, nil
 }
 
-type APISSHKeyPair struct {
-	Name    *string `json:"name"`
-	Public  *string `json:"public"`
-	Private *string `json:"private"`
-}
-
 type APISlackConfig struct {
 	Options *APISlackOptions `json:"options"`
 	Token   *string          `json:"token"`
@@ -2369,6 +2342,68 @@ func (a *APISplunkConnectionInfo) ToService() send.SplunkConnectionInfo {
 		Token:     utility.FromStringPtr(a.Token),
 		Channel:   utility.FromStringPtr(a.Channel),
 	}
+}
+
+type APISSHConfig struct {
+	TaskHostKey  APISSHKeyPair `json:"task_host_key"`
+	SpawnHostKey APISSHKeyPair `json:"spawn_host_key"`
+}
+
+func (a *APISSHConfig) BuildFromService(h any) error {
+	catcher := grip.NewBasicCatcher()
+	switch v := h.(type) {
+	case evergreen.SSHConfig:
+		catcher.Wrap(a.TaskHostKey.BuildFromService(v.TaskHostKey), "building task host key from service")
+		catcher.Wrap(a.SpawnHostKey.BuildFromService(v.SpawnHostKey), "building spawn host key from service")
+	default:
+		return errors.Errorf("programmatic error: expected SSH Config but got type %T", h)
+	}
+	return catcher.Resolve()
+}
+
+func (a *APISSHConfig) ToService() (any, error) {
+	if a == nil {
+		return evergreen.SSHConfig{}, nil
+	}
+
+	catcher := grip.NewBasicCatcher()
+	taskHostIface, err := a.TaskHostKey.ToService()
+	catcher.Wrap(err, "converting task host key to service")
+	spawnHostIface, err := a.SpawnHostKey.ToService()
+	catcher.Wrap(err, "converting spawn host key to service")
+	if catcher.HasErrors() {
+		return nil, catcher.Resolve()
+	}
+	return evergreen.SSHConfig{
+		TaskHostKey:  taskHostIface.(evergreen.SSHKeyPair),
+		SpawnHostKey: spawnHostIface.(evergreen.SSHKeyPair),
+	}, nil
+}
+
+type APISSHKeyPair struct {
+	Name      *string `json:"name"`
+	SecretARN *string `json:"secret_arn"`
+}
+
+func (a *APISSHKeyPair) BuildFromService(h any) error {
+	switch v := h.(type) {
+	case evergreen.SSHKeyPair:
+		a.Name = utility.ToStringPtr(v.Name)
+		a.SecretARN = utility.ToStringPtr(v.SecretARN)
+	default:
+		return errors.Errorf("programmatic error: expected SSH Key Pair but got type %T", h)
+	}
+	return nil
+}
+
+func (a *APISSHKeyPair) ToService() (any, error) {
+	if a == nil {
+		return evergreen.SSHKeyPair{}, nil
+	}
+	return evergreen.SSHKeyPair{
+		Name:      utility.FromStringPtr(a.Name),
+		SecretARN: utility.FromStringPtr(a.SecretARN),
+	}, nil
 }
 
 type APIUIConfig struct {

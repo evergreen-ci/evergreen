@@ -3329,25 +3329,6 @@ func FindLatestTerminatedHostWithHomeVolume(ctx context.Context, homeVolumeID st
 	return FindOne(ctx, q, options.FindOne().SetSort(bson.M{TerminationTimeKey: -1}))
 }
 
-// FindStaticNeedsNewSSHKeys finds all static hosts that do not have the same
-// set of SSH keys as those in the global settings.
-func FindStaticNeedsNewSSHKeys(ctx context.Context, settings *evergreen.Settings) ([]Host, error) {
-	if len(settings.SSHKeyPairs) == 0 {
-		return nil, nil
-	}
-
-	names := []string{}
-	for _, pair := range settings.SSHKeyPairs {
-		names = append(names, pair.Name)
-	}
-
-	return Find(ctx, bson.M{
-		StatusKey:      evergreen.HostRunning,
-		ProviderKey:    evergreen.ProviderNameStatic,
-		SSHKeyNamesKey: bson.M{"$not": bson.M{"$all": names}},
-	})
-}
-
 func (h *Host) IsSubjectToHostCreationThrottle() bool {
 	if h.UserHost {
 		return false

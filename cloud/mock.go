@@ -473,7 +473,3 @@ func getMockManagerOptions(provider string, providerSettingsList []*birch.Docume
 	opts.Region = region
 	return opts, nil
 }
-
-func (m *mockManager) AddSSHKey(ctx context.Context, pair evergreen.SSHKeyPair) error {
-	return nil
-}

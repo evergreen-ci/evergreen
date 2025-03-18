@@ -74,13 +74,6 @@ func TestModelConversion(t *testing.T) {
 			assert.Equal(v2, apiSettings.Plugins[k][k2])
 		}
 	}
-	require.Len(apiSettings.SSHKeyPairs, len(testSettings.SSHKeyPairs))
-	for i := 0; i < len(testSettings.SSHKeyPairs); i++ {
-		assert.Equal(testSettings.SSHKeyPairs[i].Name, utility.FromStringPtr(apiSettings.SSHKeyPairs[i].Name))
-		assert.Equal(testSettings.SSHKeyPairs[i].Public, utility.FromStringPtr(apiSettings.SSHKeyPairs[i].Public))
-		assert.Equal(testSettings.SSHKeyPairs[i].Private, utility.FromStringPtr(apiSettings.SSHKeyPairs[i].Private))
-	}
-	assert.Equal(testSettings.SSHKeySecretARNs, apiSettings.SSHKeySecretARNs)
 	assert.Equal(testSettings.ShutdownWaitSeconds, *apiSettings.ShutdownWaitSeconds)
 
 	assert.EqualValues(testSettings.Amboy.Name, utility.FromStringPtr(apiSettings.Amboy.Name))
@@ -305,13 +298,6 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.ServiceFlags.SleepScheduleDisabled, dbSettings.ServiceFlags.SleepScheduleDisabled)
 	assert.EqualValues(testSettings.ServiceFlags.SystemFailedTaskRestartDisabled, apiSettings.ServiceFlags.SystemFailedTaskRestartDisabled)
 	assert.EqualValues(testSettings.ServiceFlags.CPUDegradedModeDisabled, apiSettings.ServiceFlags.DegradedModeDisabled)
-	require.Len(dbSettings.SSHKeyPairs, len(testSettings.SSHKeyPairs))
-	for i := 0; i < len(testSettings.SSHKeyPairs); i++ {
-		assert.Equal(dbSettings.SSHKeyPairs[i].Name, testSettings.SSHKeyPairs[i].Name)
-		assert.Equal(dbSettings.SSHKeyPairs[i].Public, testSettings.SSHKeyPairs[i].Public)
-		assert.Equal(dbSettings.SSHKeyPairs[i].Private, testSettings.SSHKeyPairs[i].Private)
-	}
-	assert.EqualValues(testSettings.SSHKeySecretARNs, apiSettings.SSHKeySecretARNs)
 	assert.EqualValues(testSettings.SingleTaskDistro.ProjectTasksPairs[0].ProjectID, dbSettings.SingleTaskDistro.ProjectTasksPairs[0].ProjectID)
 	assert.ElementsMatch(testSettings.SingleTaskDistro.ProjectTasksPairs[0].AllowedTasks, dbSettings.SingleTaskDistro.ProjectTasksPairs[0].AllowedTasks)
 	assert.EqualValues(testSettings.Slack.Level, dbSettings.Slack.Level)

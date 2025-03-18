@@ -10,8 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 	"go.opentelemetry.io/otel/trace"
@@ -112,12 +110,6 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment, tracer 
 	// Local Queue Jobs
 	local := env.LocalQueue()
 	amboy.IntervalQueueOperation(ctx, local, 30*time.Second, utility.RoundPartOfMinute(0), opts, units.PopulateLocalQueueJobs(env))
-
-	// Enqueue jobs to ensure each app server has the correct SSH key files.
-	ts := utility.RoundPartOfHour(30).Format(units.TSFormat)
-	grip.Error(message.WrapError(local.Put(ctx, units.NewLocalUpdateSSHKeysJob(ts)), message.Fields{
-		"message": "enqueueing jobs to update app server's local SSH keys",
-	}))
 
 	return nil
 }

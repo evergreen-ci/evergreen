@@ -149,30 +149,10 @@ func (h *Host) GetSSHPort() int {
 // GetSSHOptions returns the options to SSH into this host from an application
 // server.
 func (h *Host) GetSSHOptions(settings *evergreen.Settings) ([]string, error) {
-	var keyPaths []string
-	for _, pair := range settings.SSHKeyPairs {
-		if _, err := os.Stat(pair.PrivatePath(settings)); err == nil {
-			keyPaths = append(keyPaths, pair.PrivatePath(settings))
-		} else {
-			grip.Warning(message.WrapError(err, message.Fields{
-				"message": "could not find local SSH key file (this should only be a temporary problem until SSH keys are written to the static host)",
-				"host_id": h.Id,
-				"key":     pair.Name,
-			}))
-		}
+	if _, err := os.Stat(settings.KanopySSHKeyPath); err != nil {
+		return nil, errors.New("Kanopy SSH identity file does not exist")
 	}
-
-	if _, err := os.Stat(settings.KanopySSHKeyPath); err == nil {
-		keyPaths = append(keyPaths, settings.KanopySSHKeyPath)
-	}
-	if len(keyPaths) == 0 {
-		return nil, errors.New("no SSH identity files available")
-	}
-
-	var opts []string
-	for _, path := range keyPaths {
-		opts = append(opts, "-i", path)
-	}
+	opts := []string{"-i", settings.KanopySSHKeyPath}
 
 	var hasKnownHostsFile bool
 	var distroPortOption string

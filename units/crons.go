@@ -1007,43 +1007,6 @@ func userDataDoneJobs(ctx context.Context, env evergreen.Environment, ts time.Ti
 	return jobs, nil
 }
 
-// PopulateSSHKeyUpdates updates the remote SSH keys in the cloud providers and
-// static hosts.
-func PopulateSSHKeyUpdates(env evergreen.Environment) amboy.QueueOperation {
-	return func(ctx context.Context, queue amboy.Queue) error {
-		catcher := grip.NewBasicCatcher()
-		ts := utility.RoundPartOfHour(0).Format(TSFormat)
-		settings := env.Settings()
-
-		allRegions := settings.Providers.AWS.AllowedRegions
-		// Enqueue jobs to update SSH keys in the cloud provider.
-		updateRegions := map[string]bool{}
-		for _, key := range settings.SSHKeyPairs {
-			for _, region := range allRegions {
-				if utility.StringSliceContains(key.EC2Regions, region) {
-					continue
-				}
-				updateRegions[region] = true
-			}
-		}
-		for region := range updateRegions {
-			catcher.Wrapf(queue.Put(ctx, NewCloudUpdateSSHKeysJob(evergreen.ProviderNameEc2Fleet, region, ts)), "enqueueing jobs to update SSH keys for EC2 region '%s'", region)
-		}
-
-		// Enqueue jobs to update authorized keys on static hosts.
-		hosts, err := host.FindStaticNeedsNewSSHKeys(ctx, settings)
-		if err != nil {
-			catcher.Wrap(err, "finding static hosts that need to update their SSH keys")
-			return catcher.Resolve()
-		}
-		for _, h := range hosts {
-			catcher.Wrapf(queue.Put(ctx, NewStaticUpdateSSHKeysJob(h, ts)), "enqueueing jobs to update SSH keys for static host '%s'", h.Id)
-		}
-
-		return catcher.Resolve()
-	}
-}
-
 func PopulateReauthorizeUserJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		if !env.UserManagerInfo().CanReauthorize {
