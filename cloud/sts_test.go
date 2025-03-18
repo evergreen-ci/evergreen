@@ -39,7 +39,7 @@ func TestAssumeRole(t *testing.T) {
 				RoleARN:         roleARN,
 				Policy:          &policy,
 				DurationSeconds: aws.Int32(int32(time.Hour.Seconds())),
-				Cache:           true,
+				CanCache:        true,
 			})
 			require.NoError(t, err)
 			// Return credentials
@@ -67,9 +67,9 @@ func TestAssumeRole(t *testing.T) {
 
 			t.Run("Cached", func(t *testing.T) {
 				creds, err := manager.AssumeRole(t.Context(), taskID, AssumeRoleOptions{
-					RoleARN: roleARN,
-					Policy:  &policy,
-					Cache:   true,
+					RoleARN:  roleARN,
+					Policy:   &policy,
+					CanCache: true,
 				})
 				require.NoError(t, err)
 				// Return cached credentials

@@ -51,8 +51,8 @@ type AssumeRoleOptions struct {
 	// DurationSeconds is an optional field of the duration of the role session.
 	// It defaults to 15 minutes.
 	DurationSeconds *int32
-	// Cache signals whether to cache the credentials.
-	Cache bool
+	// CanCache signals whether to cache the credentials.
+	CanCache bool
 }
 
 // AssumeRoleCredentials are the credentials to be returned from
@@ -68,9 +68,9 @@ type AssumeRoleCredentials struct {
 var assumeRoleCache = cache.WithOtel(cache.NewTTLInMemory[AssumeRoleCredentials](), "aws-assume-role")
 
 // minAssumeRoleCacheLifetime is the minimum lifetime of an assumed role
-// when retrieved from the cache. This is set low because the cache is currently
-// used in s3 credentials, which only need valid credentials for the
-// beginning of the operation.
+// when retrieved from the cache. This can be used in situations where it's
+// known that the credentials don't need to be used for a long time. Such as
+// S3 operations that only need valid credentials at the beginning of the operations.
 const minAssumeRoleCacheLifetime = 2 * time.Minute
 
 // AssumeRole gets the credentials for a role as the given task. It handles
@@ -91,7 +91,7 @@ func (s *stsManagerImpl) AssumeRole(ctx context.Context, taskID string, opts Ass
 	if opts.Policy != nil {
 		cacheID += *opts.Policy
 	}
-	if opts.Cache {
+	if opts.CanCache {
 		if output, found := assumeRoleCache.Get(ctx, cacheID, minAssumeRoleCacheLifetime); found {
 			return output, nil
 		}
@@ -115,7 +115,7 @@ func (s *stsManagerImpl) AssumeRole(ctx context.Context, taskID string, opts Ass
 		SessionToken:    *output.Credentials.SessionToken,
 		Expiration:      *output.Credentials.Expiration,
 	}
-	if opts.Cache {
+	if opts.CanCache {
 		assumeRoleCache.Put(ctx, cacheID, creds, creds.Expiration)
 	}
 	return creds, nil

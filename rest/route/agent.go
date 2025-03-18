@@ -1891,9 +1891,9 @@ func (h *awsS3Credentials) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "marshalling session policy for task '%s'", h.taskID))
 	}
 	creds, err := h.stsManager.AssumeRole(ctx, h.taskID, cloud.AssumeRoleOptions{
-		RoleARN: h.roleARN,
-		Policy:  aws.String(string(policyJSON)),
-		Cache:   true,
+		RoleARN:  h.roleARN,
+		Policy:   aws.String(string(policyJSON)),
+		CanCache: true,
 	})
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "creating credentials for s3 access for task '%s'", h.taskID))
