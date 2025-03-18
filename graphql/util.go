@@ -642,7 +642,7 @@ func isPopulated(buildVariantOptions *BuildVariantOptions) bool {
 }
 
 func getRedactedAPIVarsForProject(ctx context.Context, projectId string) (*restModel.APIProjectVars, error) {
-	vars, err := model.FindOneProjectVars(projectId)
+	vars, err := model.FindOneProjectVars(ctx, projectId)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding vars for project '%s': %s", projectId, err.Error()))
 	}
@@ -697,7 +697,7 @@ func getPointerEventList(events []restModel.APIProjectEvent) []*restModel.APIPro
 
 // groupProjects takes a list of projects and groups them by their repo. If onlyDefaultedToRepo is true,
 // it groups projects that defaulted to the repo under that repo and groups the rest under "".
-func groupProjects(projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*GroupedProjects, error) {
+func groupProjects(ctx context.Context, projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*GroupedProjects, error) {
 	groupsMap := make(map[string][]*restModel.APIProjectRef)
 
 	for _, p := range projects {
@@ -713,7 +713,7 @@ func groupProjects(projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*Gr
 		}
 
 		apiProjectRef := restModel.APIProjectRef{}
-		if err := apiProjectRef.BuildFromService(p); err != nil {
+		if err := apiProjectRef.BuildFromService(ctx, p); err != nil {
 			return nil, errors.Wrap(err, fmt.Sprintf("converting project '%s' to APIProjectRef", p.Id))
 		}
 
@@ -734,7 +734,7 @@ func groupProjects(projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*Gr
 		project := groupedProjects[0]
 		if utility.FromBoolPtr(project.UseRepoSettings) {
 			repoRefId := utility.FromStringPtr(project.RepoRefId)
-			repoRef, err := model.FindOneRepoRef(repoRefId)
+			repoRef, err := model.FindOneRepoRef(ctx, repoRefId)
 			if err != nil {
 				return nil, err
 			}
@@ -747,7 +747,7 @@ func groupProjects(projects []model.ProjectRef, onlyDefaultedToRepo bool) ([]*Gr
 				})
 			} else {
 				apiRepoRef := restModel.APIProjectRef{}
-				if err := apiRepoRef.BuildFromService(repoRef.ProjectRef); err != nil {
+				if err := apiRepoRef.BuildFromService(ctx, repoRef.ProjectRef); err != nil {
 					return nil, errors.Wrap(err, fmt.Sprintf("converting repo '%s' to APIProjectRef", repoRef.ProjectRef.Id))
 				}
 				gp.Repo = &apiRepoRef
@@ -890,7 +890,7 @@ func getProjectMetadata(ctx context.Context, projectId *string, patchId *string)
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("merged project ref for project '%s' not found", utility.FromStringPtr(projectId)))
 	}
 	apiProjectRef := restModel.APIProjectRef{}
-	if err = apiProjectRef.BuildFromService(*projectRef); err != nil {
+	if err = apiProjectRef.BuildFromService(ctx, *projectRef); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting project '%s' to APIProjectRef: %s", projectRef.Id, err.Error()))
 	}
 	return &apiProjectRef, nil
@@ -1325,13 +1325,13 @@ func annotationPermissionHelper(ctx context.Context, taskID string, execution *i
 }
 
 // groupInactiveVersions partitions a slice of versions into a slice where each entry is either an active version or slice of inactive versions (i.e. versions that don't match filters; they may be technically activated).
-func groupInactiveVersions(versions []model.Version) []*WaterfallVersion {
+func groupInactiveVersions(ctx context.Context, versions []model.Version) []*WaterfallVersion {
 	waterfallVersions := []*WaterfallVersion{}
 	i := 0
 	for i < len(versions) {
 		if utility.FromBoolPtr(versions[i].Activated) {
 			apiVersion := restModel.APIVersion{}
-			apiVersion.BuildFromService(versions[i])
+			apiVersion.BuildFromService(ctx, versions[i])
 			waterfallVersions = append(waterfallVersions, &WaterfallVersion{
 				InactiveVersions: nil,
 				Version:          &apiVersion,
@@ -1341,7 +1341,7 @@ func groupInactiveVersions(versions []model.Version) []*WaterfallVersion {
 			inactiveGroup := []*restModel.APIVersion{}
 			for i < len(versions) && !utility.FromBoolPtr(versions[i].Activated) {
 				apiVersion := restModel.APIVersion{}
-				apiVersion.BuildFromService(versions[i])
+				apiVersion.BuildFromService(ctx, versions[i])
 				inactiveGroup = append(inactiveGroup, &apiVersion)
 				i++
 			}

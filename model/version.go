@@ -574,8 +574,8 @@ type GetVersionsOptions struct {
 
 // GetVersionsWithOptions returns versions for a project, that satisfy a set of query parameters defined by
 // the input GetVersionsOptions.
-func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Version, error) {
-	projectId, err := GetIdForProject(projectName)
+func GetVersionsWithOptions(ctx context.Context, projectName string, opts GetVersionsOptions) ([]Version, error) {
+	projectId, err := GetIdForProject(ctx, projectName)
 	if err != nil {
 		return nil, err
 	}
@@ -707,8 +707,8 @@ type ModifyVersionsOptions struct {
 }
 
 // GetVersionsToModify returns a slice of versions intended to be modified that satisfy the given ModifyVersionsOptions.
-func GetVersionsToModify(projectName string, opts ModifyVersionsOptions, startTime, endTime time.Time) ([]Version, error) {
-	projectId, err := GetIdForProject(projectName)
+func GetVersionsToModify(ctx context.Context, projectName string, opts ModifyVersionsOptions, startTime, endTime time.Time) ([]Version, error) {
+	projectId, err := GetIdForProject(ctx, projectName)
 	if err != nil {
 		return nil, err
 	}
@@ -743,7 +743,7 @@ func constructManifest(ctx context.Context, v *Version, projectRef *ProjectRef, 
 		IsBase:      v.Requester == evergreen.RepotrackerVersionRequester,
 	}
 
-	projVars, err := FindMergedProjectVars(projectRef.Id)
+	projVars, err := FindMergedProjectVars(ctx, projectRef.Id)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting project vars for project '%s'", projectRef.Id)
 	}

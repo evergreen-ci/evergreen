@@ -648,7 +648,7 @@ func TestRemoveHiddenProjects(t *testing.T) {
 		},
 	}
 
-	assert.NoError(t, removeHiddenProjects(permissions))
+	assert.NoError(t, removeHiddenProjects(t.Context(), permissions))
 	require.Len(t, permissions, 2)
 	require.Len(t, permissions[0].Permissions, 2)
 	require.Nil(t, permissions[0].Permissions["project1"])
@@ -1107,7 +1107,7 @@ func TestOffboardUserHandlerAdmins(t *testing.T) {
 	require.Equal(t, http.StatusOK, resp.Status())
 	env.SetUserManager(userManager)
 
-	projectRefs, err := model.FindAllMergedProjectRefs()
+	projectRefs, err := model.FindAllMergedProjectRefs(t.Context())
 	assert.NoError(t, err)
 	require.Len(t, projectRefs, 2)
 	for _, projRef := range projectRefs {

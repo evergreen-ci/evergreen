@@ -25,7 +25,7 @@ func FindProjectConfigForProjectOrVersion(ctx context.Context, projectId, id str
 	if id == "" {
 		return FindLastKnownGoodProjectConfig(ctx, projectId)
 	}
-	return FindProjectConfigById(id)
+	return FindProjectConfigById(ctx, id)
 }
 
 // FindLastKnownGoodProjectConfig retrieves the most recent project config for the given project.
@@ -50,10 +50,10 @@ func ProjectConfigFindOne(ctx context.Context, query db.Q) (*ProjectConfig, erro
 }
 
 // FindProjectConfigById returns a project config by id.
-func FindProjectConfigById(id string) (*ProjectConfig, error) {
+func FindProjectConfigById(ctx context.Context, id string) (*ProjectConfig, error) {
 	project := &ProjectConfig{}
 	query := db.Query(bson.M{ProjectConfigIdKey: id})
-	err := db.FindOneQ(ProjectConfigCollection, query, project)
+	err := db.FindOneQContext(ctx, ProjectConfigCollection, query, project)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}

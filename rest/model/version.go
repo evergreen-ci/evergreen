@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -65,7 +66,7 @@ type buildDetail struct {
 }
 
 // BuildFromService converts from service level structs to an APIVersion.
-func (apiVersion *APIVersion) BuildFromService(v model.Version) {
+func (apiVersion *APIVersion) BuildFromService(ctx context.Context, v model.Version) {
 	apiVersion.Id = utility.ToStringPtr(v.Id)
 	apiVersion.CreateTime = ToTimePtr(v.CreateTime)
 	apiVersion.StartTime = ToTimePtr(v.StartTime)
@@ -95,7 +96,7 @@ func (apiVersion *APIVersion) BuildFromService(v model.Version) {
 	}
 	for _, bv := range v.Builds {
 		apiBuild := APIBuild{}
-		apiBuild.BuildFromService(bv, nil)
+		apiBuild.BuildFromService(ctx, bv, nil)
 		apiVersion.Builds = append(apiVersion.Builds, apiBuild)
 	}
 
@@ -121,7 +122,7 @@ func (apiVersion *APIVersion) BuildFromService(v model.Version) {
 	}
 
 	if v.Identifier != "" {
-		identifier, err := model.GetIdentifierForProject(v.Identifier)
+		identifier, err := model.GetIdentifierForProject(ctx, v.Identifier)
 		if err == nil {
 			apiVersion.ProjectIdentifier = utility.ToStringPtr(identifier)
 		}

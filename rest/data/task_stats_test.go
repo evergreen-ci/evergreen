@@ -30,7 +30,7 @@ func TestMockGetTaskStats(t *testing.T) {
 	filter := &taskstats.StatsFilter{}
 	assert.NoError(t, insertTaskStats(filter, 102, 100))
 
-	stats, err := GetTaskStats(*filter)
+	stats, err := GetTaskStats(t.Context(), *filter)
 	assert.NoError(t, err)
 	assert.Len(t, stats, 100)
 
@@ -64,7 +64,7 @@ func TestGetTaskStats(t *testing.T) {
 	}
 	assert.NoError(t, projectRef.Insert())
 
-	stats, err := GetTaskStats(taskstats.StatsFilter{
+	stats, err := GetTaskStats(t.Context(), taskstats.StatsFilter{
 		Project:      "projectName",
 		GroupNumDays: 1,
 		Requesters:   []string{evergreen.RepotrackerVersionRequester},

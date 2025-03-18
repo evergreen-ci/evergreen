@@ -82,7 +82,7 @@ func (s *subscriptionGetHandler) Parse(ctx context.Context, r *http.Request) err
 		}
 	}
 	if s.ownerType == string(event.OwnerTypeProject) {
-		id, err := dbModel.GetIdForProject(s.owner)
+		id, err := dbModel.GetIdForProject(ctx, s.owner)
 		if err != nil {
 			return errors.Wrapf(err, "getting ID for project '%s'", s.owner)
 		}

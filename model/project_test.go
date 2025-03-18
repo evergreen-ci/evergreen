@@ -1786,11 +1786,11 @@ func (s *FindProjectsSuite) TestFetchKeyOutOfBoundDesc() {
 }
 
 func (s *FindProjectsSuite) TestGetProjectWithCommitQueueByOwnerRepoAndBranch() {
-	projRef, err := FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch("octocat", "hello-world", "main")
+	projRef, err := FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(s.T().Context(), "octocat", "hello-world", "main")
 	s.NoError(err)
 	s.Nil(projRef)
 
-	projRef, err = FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch("evergreen-ci", "evergreen", "main")
+	projRef, err = FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(s.T().Context(), "evergreen-ci", "evergreen", "main")
 	s.NoError(err)
 	s.NotNil(projRef)
 }

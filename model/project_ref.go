@@ -674,7 +674,7 @@ func (p *ProjectRef) Add(ctx context.Context, creator *user.DBUser) error {
 
 	// if a hidden project exists for this configuration, use that ID
 	if p.Owner != "" && p.Repo != "" && p.Branch != "" {
-		hidden, err := FindHiddenProjectRefByOwnerRepoAndBranch(p.Owner, p.Repo, p.Branch)
+		hidden, err := FindHiddenProjectRefByOwnerRepoAndBranch(ctx, p.Owner, p.Repo, p.Branch)
 		if err != nil {
 			return errors.Wrap(err, "finding hidden project")
 		}
@@ -774,7 +774,7 @@ func (p *ProjectRef) SetGithubAppCredentials(ctx context.Context, appID int64, p
 // DefaultGithubAppCredentialsToRepo defaults the app credentials to the repo by
 // removing the GithubAppAuth entry for the project.
 func DefaultGithubAppCredentialsToRepo(ctx context.Context, projectId string) error {
-	p, err := FindBranchProjectRef(projectId)
+	p, err := FindBranchProjectRef(ctx, projectId)
 	if err != nil {
 		return errors.Wrap(err, "finding project ref")
 	}
@@ -794,7 +794,7 @@ func DefaultGithubAppCredentialsToRepo(ctx context.Context, projectId string) er
 // adds repo view permission for branch admins, and adds branch edit access for repo admins.
 func (p *ProjectRef) AddToRepoScope(ctx context.Context, u *user.DBUser) error {
 	rm := evergreen.GetEnvironment().RoleManager()
-	repoRef, err := FindRepoRefByOwnerAndRepo(p.Owner, p.Repo)
+	repoRef, err := FindRepoRefByOwnerAndRepo(ctx, p.Owner, p.Repo)
 	if err != nil {
 		return errors.Wrapf(err, "finding repo ref '%s'", p.RepoRefId)
 	}
@@ -844,7 +844,7 @@ func (p *ProjectRef) DetachFromRepo(ctx context.Context, u *user.DBUser) error {
 
 	// Save repo variables that don't exist in the repo as the project variables.
 	// Wait to save merged project until we've gotten the variables.
-	mergedVars, err := FindMergedProjectVars(before.ProjectRef.Id)
+	mergedVars, err := FindMergedProjectVars(ctx, before.ProjectRef.Id)
 	if err != nil {
 		return errors.Wrap(err, "finding merged project vars")
 	}
@@ -933,7 +933,7 @@ func (p *ProjectRef) AttachToRepo(ctx context.Context, u *user.DBUser) error {
 	update := bson.M{
 		ProjectRefRepoRefIdKey: p.RepoRefId, // This is set locally in AddToRepoScope
 	}
-	update = p.addGithubConflictsToUpdate(update)
+	update = p.addGithubConflictsToUpdate(ctx, update)
 	err = db.UpdateIdContext(ctx, ProjectRefCollection, p.Id, bson.M{
 		"$set":   update,
 		"$unset": bson.M{ProjectRefTracksPushEventsKey: 1},
@@ -973,7 +973,7 @@ func (p *ProjectRef) AttachToNewRepo(ctx context.Context, u *user.DBUser) error 
 		ProjectRefRepoKey:      p.Repo,
 		ProjectRefRepoRefIdKey: p.RepoRefId,
 	}
-	update = p.addGithubConflictsToUpdate(update)
+	update = p.addGithubConflictsToUpdate(ctx, update)
 
 	err = db.UpdateIdContext(ctx, ProjectRefCollection, p.Id, bson.M{
 		"$set":   update,
@@ -988,9 +988,9 @@ func (p *ProjectRef) AttachToNewRepo(ctx context.Context, u *user.DBUser) error 
 
 // addGithubConflictsToUpdate turns off any settings that may introduce conflicts by
 // adding fields to the given update and returning them.
-func (p *ProjectRef) addGithubConflictsToUpdate(update bson.M) bson.M {
+func (p *ProjectRef) addGithubConflictsToUpdate(ctx context.Context, update bson.M) bson.M {
 	// If the project ref doesn't default to repo, will just return the original project.
-	mergedProject, err := GetProjectRefMergedWithRepo(*p)
+	mergedProject, err := GetProjectRefMergedWithRepo(ctx, *p)
 	if err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
 			"message":            "unable to merge project with attached repo",
@@ -1001,7 +1001,7 @@ func (p *ProjectRef) addGithubConflictsToUpdate(update bson.M) bson.M {
 		return update
 	}
 	if mergedProject.Enabled {
-		conflicts, err := mergedProject.GetGithubProjectConflicts()
+		conflicts, err := mergedProject.GetGithubProjectConflicts(ctx)
 		if err != nil {
 			grip.Debug(message.WrapError(err, message.Fields{
 				"message":            "unable to get github project conflicts",
@@ -1088,9 +1088,9 @@ func (p *ProjectRef) addPermissions(ctx context.Context, creator *user.DBUser) e
 	return nil
 }
 
-func findOneProjectRefQ(query db.Q) (*ProjectRef, error) {
+func findOneProjectRefQ(ctx context.Context, query db.Q) (*ProjectRef, error) {
 	projectRef := &ProjectRef{}
-	err := db.FindOneQ(ProjectRefCollection, query, projectRef)
+	err := db.FindOneQContext(ctx, ProjectRefCollection, query, projectRef)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -1101,15 +1101,15 @@ func findOneProjectRefQ(query db.Q) (*ProjectRef, error) {
 
 // FindBranchProjectRef gets a project ref given the project identifier.
 // This returns only branch-level settings; to include repo settings, use FindMergedProjectRef.
-func FindBranchProjectRef(identifier string) (*ProjectRef, error) {
-	return findOneProjectRefQ(byId(identifier))
+func FindBranchProjectRef(ctx context.Context, identifier string) (*ProjectRef, error) {
+	return findOneProjectRefQ(ctx, byId(identifier))
 }
 
 // FindMergedProjectRef also finds the repo ref settings and merges relevant fields.
 // Relevant fields will also be merged from the parser project with a specified version.
 // If no version is specified, the most recent valid parser project version will be used for merge.
 func FindMergedProjectRef(ctx context.Context, identifier string, version string, includeProjectConfig bool) (*ProjectRef, error) {
-	pRef, err := FindBranchProjectRef(identifier)
+	pRef, err := FindBranchProjectRef(ctx, identifier)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding project ref '%s'", identifier)
 	}
@@ -1117,7 +1117,7 @@ func FindMergedProjectRef(ctx context.Context, identifier string, version string
 		return nil, nil
 	}
 	if pRef.UseRepoSettings() {
-		repoRef, err := FindOneRepoRef(pRef.RepoRefId)
+		repoRef, err := FindOneRepoRef(ctx, pRef.RepoRefId)
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding repo ref '%s' for project '%s'", pRef.RepoRefId, pRef.Identifier)
 		}
@@ -1177,11 +1177,11 @@ func getNumberOfEnabledProjects(owner, repo string) (int, error) {
 
 // GetProjectRefMergedWithRepo merges the project with the repo, if one exists.
 // Otherwise, it will return the project as given.
-func GetProjectRefMergedWithRepo(pRef ProjectRef) (*ProjectRef, error) {
+func GetProjectRefMergedWithRepo(ctx context.Context, pRef ProjectRef) (*ProjectRef, error) {
 	if !pRef.UseRepoSettings() {
 		return &pRef, nil
 	}
-	repoRef, err := FindOneRepoRef(pRef.RepoRefId)
+	repoRef, err := FindOneRepoRef(ctx, pRef.RepoRefId)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding repo ref '%s'", pRef.RepoRefId)
 	}
@@ -1246,7 +1246,7 @@ func setRepoFieldsFromProjects(repoRef *RepoRef, projectRefs []ProjectRef) {
 }
 
 func (p *ProjectRef) createNewRepoRef(ctx context.Context, u *user.DBUser) (repoRef *RepoRef, err error) {
-	allEnabledProjects, err := FindMergedEnabledProjectRefsByOwnerAndRepo(p.Owner, p.Repo)
+	allEnabledProjects, err := FindMergedEnabledProjectRefsByOwnerAndRepo(ctx, p.Owner, p.Repo)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding all enabled projects")
 	}
@@ -1293,7 +1293,7 @@ func (p *ProjectRef) createNewRepoRef(ctx context.Context, u *user.DBUser) (repo
 	for _, p := range allEnabledProjects {
 		enabledProjectIds = append(enabledProjectIds, p.Id)
 	}
-	commonProjectVars, err := getCommonProjectVariables(enabledProjectIds)
+	commonProjectVars, err := getCommonProjectVariables(ctx, enabledProjectIds)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting common project variables")
 	}
@@ -1361,13 +1361,13 @@ func aliasSliceContains(slice []ProjectAlias, item ProjectAlias) bool {
 	return false
 }
 
-func getCommonProjectVariables(projectIds []string) (*ProjectVars, error) {
+func getCommonProjectVariables(ctx context.Context, projectIds []string) (*ProjectVars, error) {
 	// add in project variables and aliases here
 	commonProjectVariables := map[string]string{}
 	commonPrivate := map[string]bool{}
 	commonAdminOnly := map[string]bool{}
 	for i, id := range projectIds {
-		vars, err := FindOneProjectVars(id)
+		vars, err := FindOneProjectVars(ctx, id)
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding variables for project '%s'", id)
 		}
@@ -1408,8 +1408,8 @@ func getCommonProjectVariables(projectIds []string) (*ProjectVars, error) {
 	}, nil
 }
 
-func GetIdForProject(identifier string) (string, error) {
-	pRef, err := findOneProjectRefQ(byId(identifier).WithFields(ProjectRefIdKey))
+func GetIdForProject(ctx context.Context, identifier string) (string, error) {
+	pRef, err := findOneProjectRefQ(ctx, byId(identifier).WithFields(ProjectRefIdKey))
 	if err != nil {
 		return "", err
 	}
@@ -1419,8 +1419,8 @@ func GetIdForProject(identifier string) (string, error) {
 	return pRef.Id, nil
 }
 
-func GetIdentifierForProject(id string) (string, error) {
-	pRef, err := findOneProjectRefQ(byId(id).WithFields(ProjectRefIdentifierKey))
+func GetIdentifierForProject(ctx context.Context, id string) (string, error) {
+	pRef, err := findOneProjectRefQ(ctx, byId(id).WithFields(ProjectRefIdentifierKey))
 	if err != nil {
 		return "", err
 	}
@@ -1443,8 +1443,8 @@ type GetProjectTasksOpts struct {
 
 // GetTasksWithOptions will find the matching tasks run in the last number of versions(denoted by Limit) that exist for a given project.
 // This function may also filter on tasks running on a specific build variant, or tasks that come after a specific revision order number.
-func GetTasksWithOptions(projectName string, taskName string, opts GetProjectTasksOpts) ([]task.Task, error) {
-	projectId, err := GetIdForProject(projectName)
+func GetTasksWithOptions(ctx context.Context, projectName string, taskName string, opts GetProjectTasksOpts) ([]task.Task, error) {
+	projectId, err := GetIdForProject(ctx, projectName)
 	if err != nil {
 		return nil, err
 	}
@@ -1467,7 +1467,7 @@ func GetTasksWithOptions(projectName string, taskName string, opts GetProjectTas
 	}
 	startingRevision := opts.StartAt
 	if startingRevision == 0 {
-		repo, err := FindRepository(projectId)
+		repo, err := FindRepository(ctx, projectId)
 		if err != nil {
 			return nil, err
 		}
@@ -1492,8 +1492,8 @@ func GetTasksWithOptions(projectName string, taskName string, opts GetProjectTas
 
 // FindAnyRestrictedProjectRef returns an unrestricted project to use as a default for contexts.
 // TODO: Investigate removing this in DEVPROD-10469.
-func FindAnyRestrictedProjectRef() (*ProjectRef, error) {
-	projectRefs, err := FindAllMergedEnabledTrackedProjectRefs()
+func FindAnyRestrictedProjectRef(ctx context.Context) (*ProjectRef, error) {
+	projectRefs, err := FindAllMergedEnabledTrackedProjectRefs(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding all project refs")
 	}
@@ -1511,7 +1511,7 @@ func FindAnyRestrictedProjectRef() (*ProjectRef, error) {
 // that are currently being tracked (i.e. their project files
 // still exist and the project is not hidden).
 // Can't hide a repo without hiding the branches, so don't need to aggregate here.
-func FindAllMergedTrackedProjectRefs() ([]ProjectRef, error) {
+func FindAllMergedTrackedProjectRefs(ctx context.Context) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 	q := db.Query(bson.M{ProjectRefHiddenKey: bson.M{"$ne": true}})
 	err := db.FindAllQ(ProjectRefCollection, q, &projectRefs)
@@ -1519,13 +1519,13 @@ func FindAllMergedTrackedProjectRefs() ([]ProjectRef, error) {
 		return nil, err
 	}
 
-	return addLoggerAndRepoSettingsToProjects(projectRefs)
+	return addLoggerAndRepoSettingsToProjects(ctx, projectRefs)
 }
 
 // FindAllMergedEnabledTrackedProjectRefs returns all enabled project refs in the db
 // that are currently being tracked (i.e. their project files
 // still exist and the project is not hidden).
-func FindAllMergedEnabledTrackedProjectRefs() ([]ProjectRef, error) {
+func FindAllMergedEnabledTrackedProjectRefs(ctx context.Context) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 	q := db.Query(bson.M{
 		ProjectRefHiddenKey:  bson.M{"$ne": true},
@@ -1536,17 +1536,17 @@ func FindAllMergedEnabledTrackedProjectRefs() ([]ProjectRef, error) {
 		return nil, err
 	}
 
-	return addLoggerAndRepoSettingsToProjects(projectRefs)
+	return addLoggerAndRepoSettingsToProjects(ctx, projectRefs)
 }
 
-func addLoggerAndRepoSettingsToProjects(pRefs []ProjectRef) ([]ProjectRef, error) {
+func addLoggerAndRepoSettingsToProjects(ctx context.Context, pRefs []ProjectRef) ([]ProjectRef, error) {
 	repoRefs := map[string]*RepoRef{} // cache repoRefs by id
 	for i, pRef := range pRefs {
 		if pRefs[i].UseRepoSettings() {
 			repoRef := repoRefs[pRef.RepoRefId]
 			if repoRef == nil {
 				var err error
-				repoRef, err = FindOneRepoRef(pRef.RepoRefId)
+				repoRef, err = FindOneRepoRef(ctx, pRef.RepoRefId)
 				if err != nil {
 					return nil, errors.Wrapf(err, "finding repo ref '%s' for project '%s'", pRef.RepoRefId, pRef.Identifier)
 				}
@@ -1566,47 +1566,53 @@ func addLoggerAndRepoSettingsToProjects(pRefs []ProjectRef) ([]ProjectRef, error
 }
 
 // FindAllMergedProjectRefs returns all project refs in the db, with repo ref information merged
-func FindAllMergedProjectRefs() ([]ProjectRef, error) {
-	return findProjectRefsQ(bson.M{}, true)
+func FindAllMergedProjectRefs(ctx context.Context) ([]ProjectRef, error) {
+	return findProjectRefsQ(ctx, bson.M{}, true)
 }
 
-func FindMergedProjectRefsByIds(ids ...string) ([]ProjectRef, error) {
+func FindMergedProjectRefsByIds(ctx context.Context, ids ...string) ([]ProjectRef, error) {
 	if len(ids) == 0 {
 		return nil, nil
 	}
-	return findProjectRefsQ(bson.M{
-		ProjectRefIdKey: bson.M{
-			"$in": ids,
-		},
-	}, true)
+	return findProjectRefsQ(
+		ctx,
+		bson.M{
+			ProjectRefIdKey: bson.M{
+				"$in": ids,
+			},
+		}, true)
 }
 
 // FindMergedEnabledProjectRefsByIds returns all project refs for the provided ids
 // that are currently enabled.
-func FindMergedEnabledProjectRefsByIds(ids ...string) ([]ProjectRef, error) {
+func FindMergedEnabledProjectRefsByIds(ctx context.Context, ids ...string) ([]ProjectRef, error) {
 	if len(ids) == 0 {
 		return nil, nil
 	}
-	return findProjectRefsQ(bson.M{
-		ProjectRefIdKey: bson.M{
-			"$in": ids,
-		},
-		ProjectRefEnabledKey: true,
-	}, true)
+	return findProjectRefsQ(
+		ctx,
+		bson.M{
+			ProjectRefIdKey: bson.M{
+				"$in": ids,
+			},
+			ProjectRefEnabledKey: true,
+		}, true)
 }
 
-func FindProjectRefsByIds(ids ...string) ([]ProjectRef, error) {
+func FindProjectRefsByIds(ctx context.Context, ids ...string) ([]ProjectRef, error) {
 	if len(ids) == 0 {
 		return nil, nil
 	}
-	return findProjectRefsQ(bson.M{
-		ProjectRefIdKey: bson.M{
-			"$in": ids,
-		},
-	}, false)
+	return findProjectRefsQ(
+		ctx,
+		bson.M{
+			ProjectRefIdKey: bson.M{
+				"$in": ids,
+			},
+		}, false)
 }
 
-func findProjectRefsQ(filter bson.M, merged bool) ([]ProjectRef, error) {
+func findProjectRefsQ(ctx context.Context, filter bson.M, merged bool) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 	q := db.Query(filter)
 	err := db.FindAllQ(ProjectRefCollection, q, &projectRefs)
@@ -1615,7 +1621,7 @@ func findProjectRefsQ(filter bson.M, merged bool) ([]ProjectRef, error) {
 	}
 
 	if merged {
-		return addLoggerAndRepoSettingsToProjects(projectRefs)
+		return addLoggerAndRepoSettingsToProjects(ctx, projectRefs)
 	}
 	return projectRefs, nil
 }
@@ -1657,7 +1663,7 @@ func byId(identifier string) db.Q {
 
 // FindMergedEnabledProjectRefsByRepoAndBranch finds ProjectRefs with matching repo/branch
 // that are enabled, and merges repo information.
-func FindMergedEnabledProjectRefsByRepoAndBranch(owner, repoName, branch string) ([]ProjectRef, error) {
+func FindMergedEnabledProjectRefsByRepoAndBranch(ctx context.Context, owner, repoName, branch string) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 
 	match := byOwnerRepoAndBranch(owner, repoName, branch, true)
@@ -1668,7 +1674,7 @@ func FindMergedEnabledProjectRefsByRepoAndBranch(owner, repoName, branch string)
 	if err != nil {
 		return nil, err
 	}
-	mergedProjects, err := addLoggerAndRepoSettingsToProjects(projectRefs)
+	mergedProjects, err := addLoggerAndRepoSettingsToProjects(ctx, projectRefs)
 	if err != nil {
 		return nil, err
 	}
@@ -1677,17 +1683,17 @@ func FindMergedEnabledProjectRefsByRepoAndBranch(owner, repoName, branch string)
 
 // FindMergedProjectRefsThatUseRepoSettingsByRepoAndBranch finds ProjectRef with matching repo/branch that
 // rely on the repo configuration, and merges that info.
-func FindMergedProjectRefsThatUseRepoSettingsByRepoAndBranch(owner, repoName, branch string) ([]ProjectRef, error) {
+func FindMergedProjectRefsThatUseRepoSettingsByRepoAndBranch(ctx context.Context, owner, repoName, branch string) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 
 	q := byOwnerRepoAndBranch(owner, repoName, branch, true)
 	q[ProjectRefRepoRefIdKey] = bson.M{"$exists": true, "$ne": ""}
 	pipeline := []bson.M{{"$match": q}}
-	err := db.Aggregate(ProjectRefCollection, pipeline, &projectRefs)
+	err := db.AggregateContext(ctx, ProjectRefCollection, pipeline, &projectRefs)
 	if err != nil {
 		return nil, err
 	}
-	mergedProjects, err := addLoggerAndRepoSettingsToProjects(projectRefs)
+	mergedProjects, err := addLoggerAndRepoSettingsToProjects(ctx, projectRefs)
 	if err != nil {
 		return nil, err
 	}
@@ -1767,7 +1773,7 @@ func FindDownstreamProjects(project string) ([]ProjectRef, error) {
 // FindOneProjectRefByRepoAndBranchWithPRTesting finds a single ProjectRef with matching
 // repo/branch that is enabled and setup for PR testing.
 func FindOneProjectRefByRepoAndBranchWithPRTesting(ctx context.Context, owner, repo, branch, calledBy string) (*ProjectRef, error) {
-	projectRefs, err := FindMergedEnabledProjectRefsByRepoAndBranch(owner, repo, branch)
+	projectRefs, err := FindMergedEnabledProjectRefsByRepoAndBranch(ctx, owner, repo, branch)
 	if err != nil {
 		return nil, errors.Wrapf(err, "fetching project ref for repo '%s/%s' with branch '%s'",
 			owner, repo, branch)
@@ -1789,7 +1795,7 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(ctx context.Context, owner, r
 	}
 
 	// if no projects are enabled, check if the repo has PR testing enabled, in which case we can use a disabled/hidden project.
-	repoRef, err := FindRepoRefByOwnerAndRepo(owner, repo)
+	repoRef, err := FindRepoRefByOwnerAndRepo(ctx, owner, repo)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding merged repo refs for repo '%s/%s'", owner, repo)
 	}
@@ -1814,7 +1820,7 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(ctx context.Context, owner, r
 		return nil, errors.Errorf("repo ref '%s' has no remote path, cannot use for PR testing", repoRef.Id)
 	}
 
-	projectRefs, err = FindMergedProjectRefsThatUseRepoSettingsByRepoAndBranch(owner, repo, branch)
+	projectRefs, err = FindMergedProjectRefsThatUseRepoSettingsByRepoAndBranch(ctx, owner, repo, branch)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding merged all project refs for repo '%s/%s' with branch '%s'",
 			owner, repo, branch)
@@ -1873,8 +1879,8 @@ func FindOneProjectRefByRepoAndBranchWithPRTesting(ctx context.Context, owner, r
 // FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch finds the project ref for this owner/repo/branch
 // that has the commit queue enabled. There should only ever be one project for the query because we only enable commit
 // queue if no other project ref with the same specification has it enabled.
-func FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(owner, repo, branch string) (*ProjectRef, error) {
-	projectRefs, err := FindMergedEnabledProjectRefsByRepoAndBranch(owner, repo, branch)
+func FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(ctx context.Context, owner, repo, branch string) (*ProjectRef, error) {
+	projectRefs, err := FindMergedEnabledProjectRefsByRepoAndBranch(ctx, owner, repo, branch)
 	if err != nil {
 		return nil, errors.Wrapf(err, "fetching project ref for repo '%s/%s' with branch '%s'",
 			owner, repo, branch)
@@ -1966,27 +1972,27 @@ func UpdateProjectRevision(ctx context.Context, projectID, revision string) erro
 	return nil
 }
 
-func FindHiddenProjectRefByOwnerRepoAndBranch(owner, repo, branch string) (*ProjectRef, error) {
+func FindHiddenProjectRefByOwnerRepoAndBranch(ctx context.Context, owner, repo, branch string) (*ProjectRef, error) {
 	// don't need to include undefined branches here since hidden projects explicitly define them
 	q := byOwnerRepoAndBranch(owner, repo, branch, false)
 	q[ProjectRefHiddenKey] = true
 
-	return findOneProjectRefQ(db.Query(q))
+	return findOneProjectRefQ(ctx, db.Query(q))
 }
 
-func FindMergedEnabledProjectRefsByOwnerAndRepo(owner, repo string) ([]ProjectRef, error) {
+func FindMergedEnabledProjectRefsByOwnerAndRepo(ctx context.Context, owner, repo string) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 
 	match := byOwnerAndRepo(owner, repo)
 	match[ProjectRefEnabledKey] = true
 	pipeline := []bson.M{{"$match": match}}
 	pipeline = append(pipeline, lookupRepoStep)
-	err := db.Aggregate(ProjectRefCollection, pipeline, &projectRefs)
+	err := db.AggregateContext(ctx, ProjectRefCollection, pipeline, &projectRefs)
 	if err != nil {
 		return nil, err
 	}
 
-	return addLoggerAndRepoSettingsToProjects(projectRefs)
+	return addLoggerAndRepoSettingsToProjects(ctx, projectRefs)
 }
 
 // FindMergedProjectRefsForRepo considers either owner/repo and repo ref ID, in case the owner/repo of the repo ref is going to change.
@@ -2024,7 +2030,7 @@ func GetProjectSettingsById(ctx context.Context, projectId string, isRepo bool) 
 	var pRef *ProjectRef
 	var err error
 	if isRepo {
-		repoRef, err := FindOneRepoRef(projectId)
+		repoRef, err := FindOneRepoRef(ctx, projectId)
 		if err != nil {
 			return nil, errors.Wrap(err, "finding repo ref")
 		}
@@ -2034,7 +2040,7 @@ func GetProjectSettingsById(ctx context.Context, projectId string, isRepo bool) 
 		return GetProjectSettings(ctx, &repoRef.ProjectRef)
 	}
 
-	pRef, err = FindBranchProjectRef(projectId)
+	pRef, err = FindBranchProjectRef(ctx, projectId)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding project ref")
 	}
@@ -2051,7 +2057,7 @@ func GetProjectSettings(ctx context.Context, p *ProjectRef) (*ProjectSettings, e
 	// because a GitHub outage could cause project settings page to not load.
 	hasEvergreenAppInstalled, _ := githubapp.CreateGitHubAppAuth(evergreen.GetEnvironment().Settings()).IsGithubAppInstalledOnRepo(context.Background(), p.Owner, p.Repo)
 
-	projectVars, err := FindOneProjectVars(p.Id)
+	projectVars, err := FindOneProjectVars(ctx, p.Id)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding variables for project '%s'", p.Id)
 	}
@@ -2096,10 +2102,10 @@ func IsPerfEnabledForProject(ctx context.Context, projectId string) bool {
 }
 
 // FindPeriodicProjects returns a list of merged projects that have periodic builds defined.
-func FindPeriodicProjects() ([]ProjectRef, error) {
+func FindPeriodicProjects(ctx context.Context) ([]ProjectRef, error) {
 	res := []ProjectRef{}
 
-	projectRefs, err := FindAllMergedTrackedProjectRefs()
+	projectRefs, err := FindAllMergedTrackedProjectRefs(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -2121,8 +2127,8 @@ func (p *ProjectRef) ValidateEnabledRepotracker() error {
 	return nil
 }
 
-func (p *ProjectRef) CanEnableCommitQueue() (bool, error) {
-	conflicts, err := p.GetGithubProjectConflicts()
+func (p *ProjectRef) CanEnableCommitQueue(ctx context.Context) (bool, error) {
+	conflicts, err := p.GetGithubProjectConflicts(ctx)
 	if err != nil {
 		return false, errors.Wrap(err, "finding GitHub conflicts")
 	}
@@ -2354,7 +2360,7 @@ func DefaultSectionToRepo(ctx context.Context, projectId string, section Project
 	catcher := grip.NewBasicCatcher()
 	switch section {
 	case ProjectPageVariablesSection:
-		vars, err := FindOneProjectVars(projectId)
+		vars, err := FindOneProjectVars(ctx, projectId)
 		if err != nil {
 			return errors.Wrapf(err, "finding project vars for project '%s'", projectId)
 		}
@@ -2678,14 +2684,14 @@ func (p *ProjectRef) isValidTaskCron(bvtu *BuildVariantTaskUnit, proposedCron ti
 
 // GetGithubProjectConflicts returns any potential conflicts; i.e. regardless of whether or not
 // p has something enabled, returns the project identifiers that it _would_ conflict with if it did.
-func (p *ProjectRef) GetGithubProjectConflicts() (GithubProjectConflicts, error) {
+func (p *ProjectRef) GetGithubProjectConflicts(ctx context.Context) (GithubProjectConflicts, error) {
 	res := GithubProjectConflicts{}
 	// return early for projects that don't need to consider conflicts
 	if p.Owner == "" || p.Repo == "" || p.Branch == "" {
 		return res, nil
 	}
 
-	matchingProjects, err := FindMergedEnabledProjectRefsByRepoAndBranch(p.Owner, p.Repo, p.Branch)
+	matchingProjects, err := FindMergedEnabledProjectRefsByRepoAndBranch(ctx, p.Owner, p.Repo, p.Branch)
 	if err != nil {
 		return res, errors.Wrap(err, "getting conflicting projects")
 	}
@@ -3026,7 +3032,7 @@ func UpdateNextPeriodicBuild(ctx context.Context, projectId string, definition *
 		}
 	}
 	// Get the branch project on its own so we can determine where to update the run time.
-	projectRef, err := FindBranchProjectRef(projectId)
+	projectRef, err := FindBranchProjectRef(ctx, projectId)
 	if err != nil {
 		return errors.Wrap(err, "finding branch project")
 	}
@@ -3041,7 +3047,7 @@ func UpdateNextPeriodicBuild(ctx context.Context, projectId string, definition *
 
 	// If periodic builds aren't defined for the project, see if it's part of the repo and update there instead.
 	if projectRef.PeriodicBuilds == nil && projectRef.UseRepoSettings() {
-		repoRef, err := FindOneRepoRef(projectRef.RepoRefId)
+		repoRef, err := FindOneRepoRef(ctx, projectRef.RepoRefId)
 		if err != nil {
 			return err
 		}
@@ -3131,8 +3137,8 @@ func GetSetupScriptForTask(ctx context.Context, taskId string) (string, error) {
 	return string(fileContents), nil
 }
 
-func (t *TriggerDefinition) Validate(downstreamProject string) error {
-	upstreamProject, err := FindBranchProjectRef(t.Project)
+func (t *TriggerDefinition) Validate(ctx context.Context, downstreamProject string) error {
+	upstreamProject, err := FindBranchProjectRef(ctx, t.Project)
 	if err != nil {
 		return errors.Wrapf(err, "finding upstream project '%s'", t.Project)
 	}
@@ -3171,10 +3177,10 @@ func (t *TriggerDefinition) Validate(downstreamProject string) error {
 // ValidateContainers inspects the list of containers defined in the project YAML and checks that each
 // are properly configured, and that their definitions can coexist with what is defined for container sizes
 // on the project admin page.
-func ValidateContainers(ecsConf evergreen.ECSConfig, pRef *ProjectRef, containers []Container) error {
+func ValidateContainers(ctx context.Context, ecsConf evergreen.ECSConfig, pRef *ProjectRef, containers []Container) error {
 	catcher := grip.NewSimpleCatcher()
 
-	projVars, err := FindMergedProjectVars(pRef.Id)
+	projVars, err := FindMergedProjectVars(ctx, pRef.Id)
 	if err != nil {
 		return errors.Wrapf(err, "getting project vars for project '%s'", pRef.Id)
 	}
@@ -3271,7 +3277,7 @@ func ValidateTriggerDefinition(ctx context.Context, definition patch.PatchTrigge
 		return definition, errors.New("a project cannot trigger itself")
 	}
 
-	childProjectId, err := GetIdForProject(definition.ChildProject)
+	childProjectId, err := GetIdForProject(ctx, definition.ChildProject)
 	if err != nil {
 		return definition, errors.Wrapf(err, "finding child project '%s'", definition.ChildProject)
 	}
@@ -3375,7 +3381,7 @@ func GetUpstreamProjectName(ctx context.Context, triggerID, triggerType string) 
 		}
 		projectID = upstreamBuild.Project
 	}
-	upstreamProject, err := FindBranchProjectRef(projectID)
+	upstreamProject, err := FindBranchProjectRef(ctx, projectID)
 	if err != nil {
 		return "", errors.Wrap(err, "finding upstream project")
 	}

@@ -185,7 +185,7 @@ func (t *patchTriggers) patchStarted(ctx context.Context, sub *event.Subscriptio
 
 func (t *patchTriggers) makeData(ctx context.Context, sub *event.Subscription) (*commonTemplateData, error) {
 	api := restModel.APIPatch{}
-	if err := api.BuildFromService(*t.patch, &restModel.APIPatchArgs{
+	if err := api.BuildFromService(ctx, *t.patch, &restModel.APIPatchArgs{
 		IncludeProjectIdentifier: true,
 	}); err != nil {
 		return nil, errors.Wrap(err, "building patch args from service model")

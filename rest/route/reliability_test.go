@@ -710,7 +710,7 @@ func TestReliabilityRun(t *testing.T) {
 					respData := resp.Data().([]any)
 					require.Len(t, respData, handler.filter.StatsFilter.Limit)
 					require.NotNil(t, resp.Pages())
-					docs, err := data.GetTaskReliabilityScores(handler.filter)
+					docs, err := data.GetTaskReliabilityScores(t.Context(), handler.filter)
 					require.NoError(t, err)
 					require.Equal(t, docs[handler.filter.StatsFilter.Limit-1].StartAtKey(), resp.Pages().Next.Key)
 				},
@@ -867,7 +867,7 @@ func TestReliability(t *testing.T) {
 					require.NotNil(t, resp)
 					require.Equal(t, http.StatusOK, resp.Status())
 					require.NotNil(t, resp.Pages())
-					docs, err := data.GetTaskReliabilityScores(handler.filter)
+					docs, err := data.GetTaskReliabilityScores(t.Context(), handler.filter)
 					require.NoError(t, err)
 					require.Equal(t, docs[pageSize-1].StartAtKey(), resp.Pages().Next.Key)
 				},
@@ -920,7 +920,7 @@ func TestReliability(t *testing.T) {
 					require.NotNil(t, resp)
 					require.Equal(t, http.StatusOK, resp.Status())
 					require.NotNil(t, resp.Pages())
-					docs, err := data.GetTaskReliabilityScores(handler.filter)
+					docs, err := data.GetTaskReliabilityScores(t.Context(), handler.filter)
 					require.NoError(t, err)
 					require.Equal(t, docs[pageSize-1].StartAtKey(), resp.Pages().Next.Key)
 				},

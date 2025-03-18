@@ -36,7 +36,7 @@ func TestFetchRevisions(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	Convey("With a GithubRepositoryPoller", t, func() {
-		err := modelutil.CreateTestLocalConfig(testConfig, "mci-test", "")
+		err := modelutil.CreateTestLocalConfig(t.Context(), testConfig, "mci-test", "")
 		So(err, ShouldBeNil)
 
 		resetProjectRefs()
@@ -82,7 +82,7 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	Convey("When storing revisions gotten from a repository...", t, func() {
-		err := modelutil.CreateTestLocalConfig(testConfig, "mci-test", "")
+		err := modelutil.CreateTestLocalConfig(t.Context(), testConfig, "mci-test", "")
 		So(err, ShouldBeNil)
 		repoTracker := RepoTracker{testConfig, evgProjectRef, NewGithubRepositoryPoller(evgProjectRef)}
 

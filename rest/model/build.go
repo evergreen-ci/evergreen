@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -104,7 +105,7 @@ func (apiBuild *APIBuild) populateDefinitionInfo(pp *model.ParserProject) {
 // BuildFromService converts from service level structs to an APIBuild.
 // APIBuild.ProjectId is set in the route builder's Execute method.
 // If ParserProject isn't nil, include info from project (not applicable to matrix builds).
-func (apiBuild *APIBuild) BuildFromService(v build.Build, pp *model.ParserProject) {
+func (apiBuild *APIBuild) BuildFromService(ctx context.Context, v build.Build, pp *model.ParserProject) {
 	apiBuild.Id = utility.ToStringPtr(v.Id)
 	apiBuild.CreateTime = ToTimePtr(v.CreateTime)
 	apiBuild.StartTime = ToTimePtr(v.StartTime)
@@ -145,7 +146,7 @@ func (apiBuild *APIBuild) BuildFromService(v build.Build, pp *model.ParserProjec
 	}
 	apiBuild.Origin = utility.ToStringPtr(origin)
 	if v.Project != "" {
-		identifier, err := model.GetIdentifierForProject(v.Project)
+		identifier, err := model.GetIdentifierForProject(ctx, v.Project)
 		if err == nil {
 			apiBuild.ProjectIdentifier = utility.ToStringPtr(identifier)
 		}

@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
@@ -85,7 +86,7 @@ type APIProjectAlias struct {
 	Parameters []*APIParameter `json:"parameters,omitempty"`
 }
 
-func (e *APIProjectEvent) BuildFromService(entry model.ProjectChangeEventEntry) error {
+func (e *APIProjectEvent) BuildFromService(ctx context.Context, entry model.ProjectChangeEventEntry) error {
 	e.Timestamp = ToTimePtr(entry.Timestamp)
 	data, ok := entry.Data.(*model.ProjectChangeEvent)
 	if !ok {
@@ -93,11 +94,11 @@ func (e *APIProjectEvent) BuildFromService(entry model.ProjectChangeEventEntry) 
 	}
 
 	user := utility.ToStringPtr(data.User)
-	before, err := DbProjectSettingsToRestModel(model.NewProjectSettingsFromEvent(data.Before))
+	before, err := DbProjectSettingsToRestModel(ctx, model.NewProjectSettingsFromEvent(data.Before))
 	if err != nil {
 		return errors.Wrap(err, "converting 'before' project settings to API model")
 	}
-	after, err := DbProjectSettingsToRestModel(model.NewProjectSettingsFromEvent(data.After))
+	after, err := DbProjectSettingsToRestModel(ctx, model.NewProjectSettingsFromEvent(data.After))
 	if err != nil {
 		return errors.Wrap(err, "converting 'after' project settings to API model")
 	}
@@ -112,9 +113,9 @@ func (e *APIProjectEvent) ToService() (any, error) {
 	return nil, errors.New("ToService not implemented for APIProjectEvent")
 }
 
-func DbProjectSettingsToRestModel(settings model.ProjectSettings) (APIProjectSettings, error) {
+func DbProjectSettingsToRestModel(ctx context.Context, settings model.ProjectSettings) (APIProjectSettings, error) {
 	apiProjectRef := APIProjectRef{}
-	if err := apiProjectRef.BuildFromService(settings.ProjectRef); err != nil {
+	if err := apiProjectRef.BuildFromService(ctx, settings.ProjectRef); err != nil {
 		return APIProjectSettings{}, err
 	}
 

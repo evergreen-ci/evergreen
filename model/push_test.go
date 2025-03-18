@@ -25,7 +25,7 @@ func TestFindPushLogAfter(t *testing.T) {
 				RevisionOrderNumber: 500,
 			}
 
-			pushLog, err := FindPushLogAfter(fileLoc, versionOne.RevisionOrderNumber)
+			pushLog, err := FindPushLogAfter(t.Context(), fileLoc, versionOne.RevisionOrderNumber)
 			So(err, ShouldBeNil)
 			So(pushLog, ShouldBeNil)
 
@@ -39,11 +39,11 @@ func TestFindPushLogAfter(t *testing.T) {
 				RevisionOrderNumber: 500,
 			}
 
-			t := &task.Task{
+			task := &task.Task{
 				Id: "taskId",
 			}
 
-			pushLog := NewPushLog(versionOne, t, fileLoc)
+			pushLog := NewPushLog(versionOne, task, fileLoc)
 			So(pushLog.Insert(), ShouldBeNil)
 
 			versionTwo := &Version{
@@ -51,7 +51,7 @@ func TestFindPushLogAfter(t *testing.T) {
 				RevisionOrderNumber: 600,
 			}
 
-			pushLog, err := FindPushLogAfter(fileLoc, versionTwo.RevisionOrderNumber)
+			pushLog, err := FindPushLogAfter(t.Context(), fileLoc, versionTwo.RevisionOrderNumber)
 			So(err, ShouldBeNil)
 			So(pushLog, ShouldBeNil)
 
@@ -65,14 +65,14 @@ func TestFindPushLogAfter(t *testing.T) {
 				RevisionOrderNumber: 500,
 			}
 
-			t := &task.Task{
+			task := &task.Task{
 				Id: "taskId",
 			}
 
-			pushLog := NewPushLog(versionOne, t, fileLoc)
+			pushLog := NewPushLog(versionOne, task, fileLoc)
 			So(pushLog.Insert(), ShouldBeNil)
 
-			pushLog, err := FindPushLogAfter(fileLoc, versionOne.RevisionOrderNumber)
+			pushLog, err := FindPushLogAfter(t.Context(), fileLoc, versionOne.RevisionOrderNumber)
 			So(err, ShouldBeNil)
 			So(pushLog, ShouldNotBeNil)
 
@@ -86,11 +86,11 @@ func TestFindPushLogAfter(t *testing.T) {
 				RevisionOrderNumber: 500,
 			}
 
-			t := &task.Task{
+			task := &task.Task{
 				Id: "taskId",
 			}
 
-			pushLog := NewPushLog(versionOne, t, fileLoc)
+			pushLog := NewPushLog(versionOne, task, fileLoc)
 			So(pushLog.Insert(), ShouldBeNil)
 
 			versionTwo := &Version{
@@ -98,7 +98,7 @@ func TestFindPushLogAfter(t *testing.T) {
 				RevisionOrderNumber: 400,
 			}
 
-			pushLog, err := FindPushLogAfter(fileLoc, versionTwo.RevisionOrderNumber)
+			pushLog, err := FindPushLogAfter(t.Context(), fileLoc, versionTwo.RevisionOrderNumber)
 			So(err, ShouldBeNil)
 			So(pushLog, ShouldNotBeNil)
 

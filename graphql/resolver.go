@@ -189,7 +189,7 @@ func New(apiURL string) Config {
 			if !ok {
 				return nil, InternalServerError.Send(ctx, "finding projectIdentifier for set last revision operation")
 			}
-			project, err := model.FindBranchProjectRef(projectIdentifier)
+			project, err := model.FindBranchProjectRef(ctx, projectIdentifier)
 			if err != nil {
 				return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding project '%s': %s", projectIdentifier, err.Error()))
 			}
