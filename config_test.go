@@ -790,6 +790,31 @@ func (s *AdminSuite) TestCedarConfig() {
 	s.Equal(config, settings.Cedar)
 }
 
+func (s *AdminSuite) TestSSHConfig() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	config := SSHConfig{
+		TaskHostKey: SSHKeyPair{
+			Name:      "task-host-key",
+			SecretARN: "arn:aws:secretsmanager:us-east-1:012345678901:secret/top-secret-private-key",
+		},
+		SpawnHostKey: SSHKeyPair{
+			Name:      "spawn-host-key",
+			SecretARN: "arn:aws:secretsmanager:us-east-1:012345678901:secret/confidential-private-key",
+		},
+	}
+
+	s.NoError(config.ValidateAndDefault())
+	s.NoError(config.Set(ctx))
+
+	settings, err := GetConfig(ctx)
+	s.NoError(err)
+	s.Require().NotNil(settings)
+
+	s.Equal(config, settings.SSH)
+}
+
 func (s *AdminSuite) TestTracerConfig() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
