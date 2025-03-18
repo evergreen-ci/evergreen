@@ -43,6 +43,7 @@ func NewConfigModel() *APIAdminSettings {
 		Slack:               &APISlackConfig{},
 		SleepSchedule:       &APISleepScheduleConfig{},
 		Splunk:              &APISplunkConfig{},
+		SSH:                 &APISSHConfig{},
 		TaskLimits:          &APITaskLimitsConfig{},
 		TestSelection:       &APITestSelectionConfig{},
 		Triggers:            &APITriggerConfig{},
