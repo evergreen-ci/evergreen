@@ -15,7 +15,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/sdk/trace"
-	"go.opentelemetry.io/proto/otlp/trace/v1"
+	tracepb "go.opentelemetry.io/proto/otlp/trace/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/encoding/protojson"
 )
@@ -74,8 +74,8 @@ func UploadTraces(ctx context.Context, otelGrpcConn *grpc.ClientConn, taskDir st
 
 // batchSpans batches spans to avoid exceeding the collector's gRPC message size limit of 4MB.
 // Batching algorithm from https://go.dev/wiki/SliceTricks#batching-with-minimal-allocation
-func batchSpans(spans []*v1.ResourceSpans, batchSize int) [][]*v1.ResourceSpans {
-	batches := make([][]*v1.ResourceSpans, 0, (len(spans)+batchSize-1)/batchSize)
+func batchSpans(spans []*tracepb.ResourceSpans, batchSize int) [][]*tracepb.ResourceSpans {
+	batches := make([][]*tracepb.ResourceSpans, 0, (len(spans)+batchSize-1)/batchSize)
 
 	for batchSize < len(spans) {
 		spans, batches = spans[batchSize:], append(batches, spans[0:batchSize:batchSize])
@@ -83,7 +83,7 @@ func batchSpans(spans []*v1.ResourceSpans, batchSize int) [][]*v1.ResourceSpans 
 	return append(batches, spans)
 }
 
-func unmarshalTraces(fileName string) ([]*v1.ResourceSpans, error) {
+func unmarshalTraces(fileName string) ([]*tracepb.ResourceSpans, error) {
 	file, err := os.Open(fileName)
 	if err != nil {
 		return nil, errors.Wrapf(err, "opening trace file '%s'", fileName)
@@ -92,11 +92,11 @@ func unmarshalTraces(fileName string) ([]*v1.ResourceSpans, error) {
 
 	catcher := grip.NewBasicCatcher()
 
-	var resourceSpans []*v1.ResourceSpans
+	var resourceSpans []*tracepb.ResourceSpans
 	scanner := bufio.NewScanner(file)
 	scanner.Buffer([]byte{}, maxLineSize)
 	for scanner.Scan() {
-		var traces v1.TracesData
+		var traces tracepb.TracesData
 		catcher.Wrap(protojson.Unmarshal(scanner.Bytes(), &traces), "unmarshalling trace")
 		resourceSpans = append(resourceSpans, traces.ResourceSpans...)
 	}
@@ -118,7 +118,7 @@ func unmarshalTraces(fileName string) ([]*v1.ResourceSpans, error) {
 //
 // [OTel JSON protobuf encoding]: https://opentelemetry.io/docs/specs/otel/protocol/otlp/#json-protobuf-encoding
 // [standard JSON encoding]: https://protobuf.dev/programming-guides/proto3/#json
-func fixBinaryIDs(resourceSpans []*v1.ResourceSpans) error {
+func fixBinaryIDs(resourceSpans []*tracepb.ResourceSpans) error {
 	catcher := grip.NewBasicCatcher()
 	for _, rs := range resourceSpans {
 		for _, ss := range rs.ScopeSpans {
@@ -134,7 +134,7 @@ func fixBinaryIDs(resourceSpans []*v1.ResourceSpans) error {
 	return catcher.Resolve()
 }
 
-func fixSpan(span *v1.Span) error {
+func fixSpan(span *tracepb.Span) error {
 	traceIDHex, err := fixBinaryID(span.TraceId)
 	if err != nil {
 		return errors.Wrap(err, "fixing trace id")
@@ -154,7 +154,7 @@ func fixSpan(span *v1.Span) error {
 	return nil
 }
 
-func fixSpanLink(spanLink *v1.Span_Link) error {
+func fixSpanLink(spanLink *tracepb.Span_Link) error {
 	traceIDHex, err := fixBinaryID(spanLink.TraceId)
 	if err != nil {
 		return errors.Wrap(err, "fixing trace id")
