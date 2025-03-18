@@ -10,14 +10,23 @@ import (
 	"github.com/pkg/errors"
 )
 
+// evergreenCredentialProvider is an AWS credential provider that
+// retrieves credentials from Evergreen.
 type evergreenCredentialProvider struct {
 	comm     client.Communicator
 	taskData client.TaskData
 
-	roleARN        string
+	// roleARN is the ARN of the role to assume.
+	// It takes precedence over internalBucket.
+	roleARN string
+
+	// internalBucket is the name of the internal bucket to get credentials for.
 	internalBucket string
 }
 
+// createEvergreenCredentials creates a new evergreenCredentialProvider. It supports
+// long operations or operations that might need to request new credentials during
+// the operation (e.g. multipart bucket uploads).
 func createEvergreenCredentials(comm client.Communicator, taskData client.TaskData, roleARN, internalBucket string) *evergreenCredentialProvider {
 	return &evergreenCredentialProvider{
 		comm:           comm,
