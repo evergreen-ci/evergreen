@@ -336,39 +336,40 @@ func (s *APIIceCreamSettings) ToService() distro.IceCreamSettings {
 // APIDistro is the model to be returned by the API whenever distros are fetched
 
 type APIDistro struct {
-	Name                  *string                  `json:"name"`
-	AdminOnly             bool                     `json:"admin_only"`
-	Aliases               []string                 `json:"aliases"`
-	UserSpawnAllowed      bool                     `json:"user_spawn_allowed"`
-	Provider              *string                  `json:"provider"`
-	ProviderSettingsList  []*birch.Document        `json:"provider_settings" swaggertype:"object"`
-	Arch                  *string                  `json:"arch"`
-	WorkDir               *string                  `json:"work_dir"`
-	SetupAsSudo           bool                     `json:"setup_as_sudo"`
-	Setup                 *string                  `json:"setup"`
-	User                  *string                  `json:"user"`
-	BootstrapSettings     APIBootstrapSettings     `json:"bootstrap_settings"`
-	SSHOptions            []string                 `json:"ssh_options"`
-	AuthorizedKeysFile    *string                  `json:"authorized_keys_file"`
-	Expansions            []APIExpansion           `json:"expansions"`
-	Disabled              bool                     `json:"disabled"`
-	ContainerPool         *string                  `json:"container_pool"`
-	FinderSettings        APIFinderSettings        `json:"finder_settings"`
-	PlannerSettings       APIPlannerSettings       `json:"planner_settings"`
-	DispatcherSettings    APIDispatcherSettings    `json:"dispatcher_settings"`
-	HostAllocatorSettings APIHostAllocatorSettings `json:"host_allocator_settings"`
-	DisableShallowClone   bool                     `json:"disable_shallow_clone"`
-	HomeVolumeSettings    APIHomeVolumeSettings    `json:"home_volume_settings"`
-	IcecreamSettings      APIIceCreamSettings      `json:"icecream_settings"`
-	IsVirtualWorkstation  bool                     `json:"is_virtual_workstation"`
-	IsCluster             bool                     `json:"is_cluster"`
-	Note                  *string                  `json:"note"`
-	WarningNote           *string                  `json:"warning_note"`
-	ValidProjects         []*string                `json:"valid_projects"`
-	Mountpoints           []string                 `json:"mountpoints"`
-	SingleTaskDistro      bool                     `json:"single_task_distro"`
-	ImageID               *string                  `json:"image_id"`
-	ExecUser              *string                  `json:"exec_user"`
+	Name                          *string                  `json:"name"`
+	AdminOnly                     bool                     `json:"admin_only"`
+	Aliases                       []string                 `json:"aliases"`
+	UserSpawnAllowed              bool                     `json:"user_spawn_allowed"`
+	Provider                      *string                  `json:"provider"`
+	ProviderSettingsList          []*birch.Document        `json:"provider_settings" swaggertype:"object"`
+	Arch                          *string                  `json:"arch"`
+	WorkDir                       *string                  `json:"work_dir"`
+	SetupAsSudo                   bool                     `json:"setup_as_sudo"`
+	Setup                         *string                  `json:"setup"`
+	User                          *string                  `json:"user"`
+	BootstrapSettings             APIBootstrapSettings     `json:"bootstrap_settings"`
+	SSHOptions                    []string                 `json:"ssh_options"`
+	AuthorizedKeysFile            *string                  `json:"authorized_keys_file"`
+	Expansions                    []APIExpansion           `json:"expansions"`
+	Disabled                      bool                     `json:"disabled"`
+	ContainerPool                 *string                  `json:"container_pool"`
+	FinderSettings                APIFinderSettings        `json:"finder_settings"`
+	PlannerSettings               APIPlannerSettings       `json:"planner_settings"`
+	DispatcherSettings            APIDispatcherSettings    `json:"dispatcher_settings"`
+	HostAllocatorSettings         APIHostAllocatorSettings `json:"host_allocator_settings"`
+	DisableShallowClone           bool                     `json:"disable_shallow_clone"`
+	HomeVolumeSettings            APIHomeVolumeSettings    `json:"home_volume_settings"`
+	IcecreamSettings              APIIceCreamSettings      `json:"icecream_settings"`
+	IsVirtualWorkstation          bool                     `json:"is_virtual_workstation"`
+	IsCluster                     bool                     `json:"is_cluster"`
+	Note                          *string                  `json:"note"`
+	WarningNote                   *string                  `json:"warning_note"`
+	ValidProjects                 []*string                `json:"valid_projects"`
+	Mountpoints                   []string                 `json:"mountpoints"`
+	SingleTaskDistro              bool                     `json:"single_task_distro"`
+	ImageID                       *string                  `json:"image_id"`
+	ExecUser                      *string                  `json:"exec_user"`
+	ConsecutiveSystemFailureLimit int                      `json:"consecutive_system_failure_limit"`
 }
 
 // BuildFromService converts from service level distro.Distro to an APIDistro
@@ -396,6 +397,7 @@ func (apiDistro *APIDistro) BuildFromService(d distro.Distro) {
 	apiDistro.SingleTaskDistro = d.SingleTaskDistro
 	apiDistro.ImageID = utility.ToStringPtr(d.ImageID)
 	apiDistro.ExecUser = utility.ToStringPtr(d.ExecUser)
+	apiDistro.ConsecutiveSystemFailureLimit = d.ConsecutiveSystemFailureLimit
 
 	if d.Expansions != nil {
 		apiDistro.Expansions = []APIExpansion{}
@@ -463,6 +465,7 @@ func (apiDistro *APIDistro) ToService() *distro.Distro {
 	d.ContainerPool = utility.FromStringPtr(apiDistro.ContainerPool)
 	d.ImageID = utility.FromStringPtr(apiDistro.ImageID)
 	d.ExecUser = utility.FromStringPtr(apiDistro.ExecUser)
+	d.ConsecutiveSystemFailureLimit = apiDistro.ConsecutiveSystemFailureLimit
 
 	d.FinderSettings = apiDistro.FinderSettings.ToService()
 	d.PlannerSettings = apiDistro.PlannerSettings.ToService()

@@ -988,8 +988,8 @@ func TestHostEndTask(t *testing.T) {
 				},
 			}))
 
-			for i := 0; i < 10; i++ {
-				event.LogHostTaskFinished(fmt.Sprintf("some-system-failed-task-%d", i), 0, hostId, evergreen.TaskSystemTimedOut)
+			for i := 0; i < defaultConsecutiveSystemFailureThreshold+5; i++ {
+				event.LogHostTaskFinished(fmt.Sprintf("some-system-failed-task-%d", i), 0, hostId, evergreen.TaskSystemFailed)
 			}
 
 			details := &apimodels.TaskEndDetail{
@@ -1011,17 +1011,20 @@ func TestHostEndTask(t *testing.T) {
 			require.NotZero(t, foundTask)
 			require.Equal(t, evergreen.TaskSystemTimedOut, foundTask.GetDisplayStatus())
 		},
-		"QuarantinesStaticHostWithRepeatedSystemUnresponsiveTasks": func(ctx context.Context, t *testing.T, handler *hostAgentEndTask, env *mock.Environment) {
+		"QuarantinesStaticHostWithRepeatedSystemUnresponsiveTasksAboveDistroLimit": func(ctx context.Context, t *testing.T, handler *hostAgentEndTask, env *mock.Environment) {
 			h, err := host.FindOneId(ctx, hostId)
 			require.NoError(t, err)
 			require.NotZero(t, h)
+			d := h.Distro
+			d.ConsecutiveSystemFailureLimit = 1
 			require.NoError(t, host.UpdateOne(ctx, host.ById(hostId), bson.M{
 				"$set": bson.M{
 					host.ProviderKey: evergreen.ProviderNameStatic,
+					host.DistroKey:   d,
 				},
 			}))
 
-			for i := 0; i < 10; i++ {
+			for i := 0; i < d.ConsecutiveSystemFailureLimit; i++ {
 				event.LogHostTaskFinished(fmt.Sprintf("some-system-failed-task-%d", i), 0, hostId, evergreen.TaskSystemUnresponse)
 			}
 
@@ -1038,7 +1041,7 @@ func TestHostEndTask(t *testing.T) {
 			h, err = host.FindOneId(ctx, hostId)
 			require.NoError(t, err)
 			require.NotZero(t, h)
-			assert.Equal(t, evergreen.HostQuarantined, h.Status, "static host should be quarantined for consecutive system failed tasks")
+			assert.Equal(t, evergreen.HostQuarantined, h.Status, "static host should be quarantined for consecutive system failed tasks above distro limit")
 
 			foundTask, err := task.FindOneId(ctx, handler.taskID)
 			require.NoError(t, err)
