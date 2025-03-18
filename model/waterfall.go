@@ -92,7 +92,7 @@ func getBuildDisplayNames(match bson.M) bson.M {
 }
 
 // This pipeline matches on versions that have a build with an ID or display name that matches variants
-func getBuildVariantFilterPipeline(ctx context.Context, variants []string, match bson.M, projectId string, searchOffset int) ([]bson.M, error) {
+func getBuildVariantFilterPipeline(ctx context.Context, variants []string, match bson.M, projectId string, bvSearchCutoff int) ([]bson.M, error) {
 	pipeline := []bson.M{}
 	match[bsonutil.GetDottedKeyName(VersionBuildVariantsKey, VersionBuildStatusDisplayNameKey)] = bson.M{"$exists": true}
 	pipeline = append(pipeline, bson.M{"$match": match})
@@ -102,7 +102,7 @@ func getBuildVariantFilterPipeline(ctx context.Context, variants []string, match
 	}
 
 	// TODO DEVPROD-15118: Delete conditional getBuildDisplayNames check
-	searchOrder := max(searchOffset-MaxWaterfallVersionLimit, 1)
+	searchOrder := max(bvSearchCutoff, 1)
 	lastSearchableVersion, err := VersionFindOne(ctx, VersionByProjectIdAndOrder(projectId, searchOrder))
 	if err != nil {
 		return []bson.M{}, errors.Wrap(err, "fetching version")
@@ -264,21 +264,21 @@ func GetActiveWaterfallVersions(ctx context.Context, projectId string, opts Wate
 	pipeline := []bson.M{}
 
 	if len(opts.Variants) > 0 {
-		var searchOffset int
+		var bvSearchCutoff int
 		if pagingForward {
-			searchOffset = opts.MaxOrder
+			bvSearchCutoff = opts.MaxOrder - MaxWaterfallVersionLimit
 		} else if pagingBackward {
-			searchOffset = opts.MinOrder + MaxWaterfallVersionLimit
+			// When paginating backwards, the order specifies the oldest version that will be investigated in the query. No need to increment by MaxWaterfallVersionLimit
+			bvSearchCutoff = opts.MinOrder
 		} else {
-
 			mostRecentVersion, err := GetMostRecentWaterfallVersion(ctx, projectId)
 			if err != nil {
 				return nil, errors.Wrap(err, "getting most recent version")
 			}
-			searchOffset = mostRecentVersion.RevisionOrderNumber
+			bvSearchCutoff = mostRecentVersion.RevisionOrderNumber - MaxWaterfallVersionLimit
 		}
 
-		buildVariantPipeline, err := getBuildVariantFilterPipeline(ctx, opts.Variants, match, projectId, searchOffset)
+		buildVariantPipeline, err := getBuildVariantFilterPipeline(ctx, opts.Variants, match, projectId, bvSearchCutoff)
 		if err != nil {
 			return nil, errors.Wrap(err, "creating build variant filter pipeline")
 		}
