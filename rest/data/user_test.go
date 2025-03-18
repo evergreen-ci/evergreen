@@ -1,6 +1,7 @@
 package data
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -42,8 +43,8 @@ func (s *DBUserConnectorSuite) SetupTest() {
 	}
 }
 
-func (s *DBUserConnectorSuite) getNotificationSettings(index int) *user.NotificationPreferences {
-	found, err := user.FindOneById(s.users[index].Id)
+func (s *DBUserConnectorSuite) getNotificationSettings(ctx context.Context, index int) *user.NotificationPreferences {
+	found, err := user.FindOneByIdContext(ctx, s.users[index].Id)
 	s.NoError(err)
 	s.Require().NotNil(found)
 
@@ -64,14 +65,14 @@ func (s *DBUserConnectorSuite) TestUpdateSettings() {
 	settings.Notifications.PatchFinish = ""
 
 	s.NoError(UpdateSettings(s.T().Context(), s.users[0], settings))
-	pref := s.getNotificationSettings(0)
+	pref := s.getNotificationSettings(s.T().Context(), 0)
 	s.NotNil(pref)
 	s.Equal("", pref.PatchFinishID)
 
 	// Should create a new subscription
 	settings.Notifications.PatchFinish = user.PreferenceSlack
 	s.NoError(UpdateSettings(s.T().Context(), s.users[0], settings))
-	pref = s.getNotificationSettings(0)
+	pref = s.getNotificationSettings(s.T().Context(), 0)
 	s.NotEqual("", pref.PatchFinishID)
 	sub, err := event.FindSubscriptionByID(s.T().Context(), pref.PatchFinishID)
 	s.NoError(err)
@@ -82,7 +83,7 @@ func (s *DBUserConnectorSuite) TestUpdateSettings() {
 	// should modify the existing subscription
 	settings.Notifications.PatchFinish = user.PreferenceEmail
 	s.NoError(UpdateSettings(s.T().Context(), s.users[0], settings))
-	pref = s.getNotificationSettings(0)
+	pref = s.getNotificationSettings(s.T().Context(), 0)
 	s.NotNil(pref)
 	s.NotEqual("", pref.PatchFinishID)
 	sub, err = event.FindSubscriptionByID(s.T().Context(), pref.PatchFinishID)
@@ -94,7 +95,7 @@ func (s *DBUserConnectorSuite) TestUpdateSettings() {
 	// should delete the existing subscription
 	settings.Notifications.PatchFinish = ""
 	s.NoError(UpdateSettings(s.T().Context(), s.users[0], settings))
-	pref = s.getNotificationSettings(0)
+	pref = s.getNotificationSettings(s.T().Context(), 0)
 	s.NotNil(pref)
 	s.Equal("", pref.PatchFinishID)
 	settings.Notifications = *pref

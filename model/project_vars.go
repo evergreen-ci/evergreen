@@ -669,9 +669,9 @@ func (projectVars *ProjectVars) Clear(ctx context.Context) error {
 	return nil
 }
 
-func (projectVars *ProjectVars) GetVars(t *task.Task) map[string]string {
+func (projectVars *ProjectVars) GetVars(ctx context.Context, t *task.Task) map[string]string {
 	vars := map[string]string{}
-	isAdmin := shouldGetAdminOnlyVars(t)
+	isAdmin := shouldGetAdminOnlyVars(ctx, t)
 	for k, v := range projectVars.Vars {
 		if !projectVars.AdminOnlyVars[k] || isAdmin {
 			vars[k] = v
@@ -682,13 +682,13 @@ func (projectVars *ProjectVars) GetVars(t *task.Task) map[string]string {
 
 // shouldGetAdminOnlyVars returns true if the task is part of a version that can't be modified by users,
 // or if the task was activated by a project admin.
-func shouldGetAdminOnlyVars(t *task.Task) bool {
+func shouldGetAdminOnlyVars(ctx context.Context, t *task.Task) bool {
 	if utility.StringSliceContains(evergreen.SystemVersionRequesterTypes, t.Requester) {
 		return true
 	} else if t.ActivatedBy == "" {
 		return false
 	}
-	u, err := user.FindOneById(t.ActivatedBy)
+	u, err := user.FindOneByIdContext(ctx, t.ActivatedBy)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": fmt.Sprintf("problem with fetching user '%s'", t.ActivatedBy),

@@ -104,7 +104,7 @@ func (s *UserConnectorSuite) TestAddSSHKey() {
 	resp := s.post.Run(ctx)
 	s.Equal(http.StatusOK, resp.Status())
 
-	user0, err := user.FindOneById("user0")
+	user0, err := user.FindOneByIdContext(s.T().Context(), "user0")
 	s.NoError(err)
 	s.Len(user0.PubKeys, 3)
 	s.Equal("Test", user0.PubKeys[2].Name)
@@ -116,7 +116,7 @@ func (s *UserConnectorSuite) TestAddDuplicateSSHKeyFails() {
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
 	s.TestAddSSHKey()
 
-	user0, err := user.FindOneById("user0")
+	user0, err := user.FindOneByIdContext(s.T().Context(), "user0")
 	s.NoError(err)
 	s.Len(user0.PubKeys, 3)
 
@@ -126,7 +126,7 @@ func (s *UserConnectorSuite) TestAddDuplicateSSHKeyFails() {
 	resp := s.post.Run(ctx)
 	s.NotEqual(http.StatusOK, resp.Status())
 
-	user0, err = user.FindOneById("user0")
+	user0, err = user.FindOneByIdContext(s.T().Context(), "user0")
 	s.NoError(err)
 	s.Len(user0.PubKeys, 3)
 }
@@ -196,14 +196,14 @@ func (s *UserConnectorDeleteSuite) TestDeleteSSHKeys() {
 	s.rm.(*keysDeleteHandler).keyName = "user0_pubkey0"
 	resp := s.rm.Run(ctx)
 	s.Equal(http.StatusOK, resp.Status())
-	user0, err := user.FindOneById("user0")
+	user0, err := user.FindOneByIdContext(s.T().Context(), "user0")
 	s.NoError(err)
 	s.Len(user0.PubKeys, 1)
 
 	s.rm.(*keysDeleteHandler).keyName = "user0_pubkey1"
 	resp = s.rm.Run(ctx)
 	s.Equal(http.StatusOK, resp.Status())
-	user0, err = user.FindOneById("user0")
+	user0, err = user.FindOneByIdContext(s.T().Context(), "user0")
 	s.NoError(err)
 	s.Empty(user0.PubKeys)
 }

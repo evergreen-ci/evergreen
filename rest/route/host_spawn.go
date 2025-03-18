@@ -167,7 +167,7 @@ func (h *hostModifyHandler) Run(ctx context.Context) gimlet.Responder {
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "creating spawn host subscription"))
 		}
-		if err = data.SaveSubscriptions(user.Username(), []model.APISubscription{subscription}, false); err != nil {
+		if err = data.SaveSubscriptions(ctx, user.Username(), []model.APISubscription{subscription}, false); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "saving subscription"))
 		}
 	}
@@ -385,7 +385,7 @@ func (h *hostStopHandler) Run(ctx context.Context) gimlet.Responder {
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "creating spawn host subscription"))
 		}
-		if err = data.SaveSubscriptions(user.Username(), []model.APISubscription{subscription}, false); err != nil {
+		if err = data.SaveSubscriptions(ctx, user.Username(), []model.APISubscription{subscription}, false); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "saving subscription"))
 		}
 	}
@@ -468,7 +468,7 @@ func (h *hostStartHandler) Run(ctx context.Context) gimlet.Responder {
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "creating spawn host subscription"))
 		}
-		if err = data.SaveSubscriptions(user.Username(), []model.APISubscription{subscription}, false); err != nil {
+		if err = data.SaveSubscriptions(ctx, user.Username(), []model.APISubscription{subscription}, false); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "saving subscription"))
 		}
 	}

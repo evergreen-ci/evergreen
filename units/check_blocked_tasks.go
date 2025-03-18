@@ -66,11 +66,11 @@ func (j *checkBlockedTasksJob) Run(ctx context.Context) {
 }
 
 func (j *checkBlockedTasksJob) getDistroTasksToCheck(ctx context.Context) []task.Task {
-	queue, err := model.FindDistroTaskQueue(j.DistroId)
+	queue, err := model.FindDistroTaskQueue(ctx, j.DistroId)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "getting task queue for distro '%s'", j.DistroId))
 	}
-	secondaryQueue, err := model.FindDistroSecondaryTaskQueue(j.DistroId)
+	secondaryQueue, err := model.FindDistroSecondaryTaskQueue(ctx, j.DistroId)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "getting alias task queue for distro '%s'", j.DistroId))
 	}

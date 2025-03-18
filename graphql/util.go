@@ -164,7 +164,7 @@ func getDisplayStatus(ctx context.Context, v *model.Version) (string, error) {
 	}
 	allStatuses := []string{status}
 	for _, cp := range p.Triggers.ChildPatches {
-		cpVersion, err := model.VersionFindOneId(cp)
+		cpVersion, err := model.VersionFindOneId(ctx, cp)
 		if err != nil {
 			return "", errors.Wrapf(err, "finding version for child patch '%s': %s", cp, err.Error())
 		}
@@ -336,7 +336,7 @@ func generateBuildVariants(ctx context.Context, versionId string, buildVariantOp
 		buildVariantOpts.IncludeBaseTasks = utility.ToBoolPtr(true)
 	}
 	if utility.FromBoolPtr(buildVariantOpts.IncludeBaseTasks) {
-		baseVersion, err := model.FindBaseVersionForVersion(versionId)
+		baseVersion, err := model.FindBaseVersionForVersion(ctx, versionId)
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding base version for version '%s'", versionId)
 		}
@@ -392,7 +392,7 @@ func generateBuildVariants(ctx context.Context, versionId string, buildVariantOp
 
 // modifyVersionHandler handles the boilerplate code for performing a modify version action, i.e. schedule, unschedule, restart and set priority
 func modifyVersionHandler(ctx context.Context, versionID string, modification model.VersionModification) error {
-	v, err := model.VersionFindOneId(versionID)
+	v, err := model.VersionFindOneId(ctx, versionID)
 	if err != nil {
 		return ResourceNotFound.Send(ctx, fmt.Sprintf("finding version '%s': %s", versionID, err.Error()))
 	}
@@ -1369,12 +1369,12 @@ func flattenOtelVariables(vars map[string]any) map[string]any {
 	return flattenedVars
 }
 
-func getRevisionOrder(revision string, projectId string, limit int) (int, error) {
+func getRevisionOrder(ctx context.Context, revision string, projectId string, limit int) (int, error) {
 	if len(revision) < minRevisionLength {
 		return 0, errors.New(fmt.Sprintf("at least %d characters must be provided for the revision", minRevisionLength))
 	}
 
-	found, err := model.VersionFindOne(model.VersionByProjectIdAndRevisionPrefix(projectId, revision))
+	found, err := model.VersionFindOne(ctx, model.VersionByProjectIdAndRevisionPrefix(projectId, revision))
 	if err != nil {
 		return 0, errors.New(fmt.Sprintf("finding version with revision '%s': %s", revision, err))
 	} else if found == nil {

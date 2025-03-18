@@ -350,7 +350,7 @@ func (restapi restAPI) getVersionInfoViaRevision(w http.ResponseWriter, r *http.
 	if err != nil {
 		gimlet.WriteJSONError(w, responseError{Message: "project doesn't exist"})
 	}
-	srcVersion, err := model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(projectId, revision))
+	srcVersion, err := model.VersionFindOne(r.Context(), model.BaseVersionByProjectIdAndRevision(projectId, revision))
 	if err != nil || srcVersion == nil {
 		msg := fmt.Sprintf("Error finding revision '%v' for project '%v'", revision, projectId)
 		statusCode := http.StatusNotFound
@@ -583,7 +583,7 @@ func (ra *restAPI) lastGreen(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get latest version for which all the given build variants passed.
-	version, err := model.FindLastPassingVersionForBuildVariants(project, bvs)
+	version, err := model.FindLastPassingVersionForBuildVariants(r.Context(), project, bvs)
 	if err != nil {
 		ra.LoggedError(w, r, http.StatusInternalServerError, err)
 		return

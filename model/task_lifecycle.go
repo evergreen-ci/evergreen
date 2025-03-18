@@ -900,7 +900,7 @@ func attemptStepbackAndDeactivatePrevious(ctx context.Context, t *task.Task, sta
 		catcher.Errorf("merged project ref for task '%s' is nil", t.Id)
 	}
 
-	project, err := FindProjectFromVersionID(t.Version)
+	project, err := FindProjectFromVersionID(ctx, t.Version)
 	if err != nil {
 		catcher.Wrapf(err, "finding project for task '%s'", t.Id)
 	}
@@ -1657,7 +1657,7 @@ func UpdateBuildAndVersionStatusForTask(ctx context.Context, t *task.Task) error
 		return nil
 	}
 
-	taskVersion, err := VersionFindOneId(t.Version)
+	taskVersion, err := VersionFindOneId(ctx, t.Version)
 	if err != nil {
 		return errors.Wrapf(err, "getting version '%s' for task '%s'", t.Version, t.Id)
 	}
@@ -1755,7 +1755,7 @@ func UpdateVersionAndPatchStatusForBuilds(ctx context.Context, buildIds []string
 		versionsToUpdate[build.Version] = true
 	}
 	for versionId := range versionsToUpdate {
-		buildVersion, err := VersionFindOneId(versionId)
+		buildVersion, err := VersionFindOneId(ctx, versionId)
 		if err != nil {
 			return errors.Wrapf(err, "getting version '%s'", versionId)
 		}

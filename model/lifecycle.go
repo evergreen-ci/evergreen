@@ -486,7 +486,7 @@ func addTasksToBuild(ctx context.Context, creationInfo TaskCreationInfo) (*build
 			creationInfo.Build.BuildVariant, creationInfo.Project.Identifier)
 	}
 
-	createTime, err := getTaskCreateTime(creationInfo)
+	createTime, err := getTaskCreateTime(ctx, creationInfo)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "getting create time for tasks in version '%s'", creationInfo.Version.Id)
 	}
@@ -542,7 +542,7 @@ func addTasksToBuild(ctx context.Context, creationInfo TaskCreationInfo) (*build
 		if !bvtu.HasSpecificActivation() {
 			continue
 		}
-		activateTaskAt, err := creationInfo.ProjectRef.GetActivationTimeForTask(bvtu, creationInfo.Version.CreateTime, time.Now())
+		activateTaskAt, err := creationInfo.ProjectRef.GetActivationTimeForTask(ctx, bvtu, creationInfo.Version.CreateTime, time.Now())
 		batchTimeCatcher.Wrapf(err, "getting activation time for task '%s'", t.DisplayName)
 		batchTimeTaskStatuses = append(batchTimeTaskStatuses, BatchTimeTaskStatus{
 			TaskName: t.DisplayName,
@@ -1067,10 +1067,10 @@ func getAllNodesInDepGraph(startTaskId, startKey, linkKey string) []bson.M {
 	}
 }
 
-func getTaskCreateTime(creationInfo TaskCreationInfo) (time.Time, error) {
+func getTaskCreateTime(ctx context.Context, creationInfo TaskCreationInfo) (time.Time, error) {
 	createTime := time.Time{}
 	if evergreen.IsPatchRequester(creationInfo.Version.Requester) {
-		baseVersion, err := VersionFindOne(BaseVersionByProjectIdAndRevision(creationInfo.Project.Identifier, creationInfo.Version.Revision))
+		baseVersion, err := VersionFindOne(ctx, BaseVersionByProjectIdAndRevision(creationInfo.Project.Identifier, creationInfo.Version.Revision))
 		if err != nil {
 			return createTime, errors.Wrap(err, "finding base version for patch version")
 		}
@@ -1503,7 +1503,7 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 		variantsProcessed[b.BuildVariant] = true
 	}
 
-	createTime, err := getTaskCreateTime(creationInfo)
+	createTime, err := getTaskCreateTime(ctx, creationInfo)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "getting create time for tasks")
 	}
@@ -1573,12 +1573,12 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 		var activateVariantAt time.Time
 		batchTimeTaskStatuses := []BatchTimeTaskStatus{}
 		if !activateVariant {
-			activateVariantAt, err = creationInfo.ProjectRef.GetActivationTimeForVariant(
+			activateVariantAt, err = creationInfo.ProjectRef.GetActivationTimeForVariant(ctx,
 				creationInfo.Project.FindBuildVariant(pair.Variant), creationInfo.Version.CreateTime, time.Now())
 			batchTimeCatcher.Wrapf(err, "getting activation time for variant '%s'", pair.Variant)
 		}
 		for taskName, id := range batchTimeTasksToIds {
-			activateTaskAt, err := creationInfo.ProjectRef.GetActivationTimeForTask(
+			activateTaskAt, err := creationInfo.ProjectRef.GetActivationTimeForTask(ctx,
 				creationInfo.Project.FindTaskForVariant(taskName, pair.Variant), creationInfo.Version.CreateTime, time.Now())
 			batchTimeCatcher.Wrapf(err, "getting activation time for task '%s' in variant '%s'", taskName, pair.Variant)
 			batchTimeTaskStatuses = append(batchTimeTaskStatuses, BatchTimeTaskStatus{

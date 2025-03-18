@@ -40,7 +40,7 @@ func (h *clearTaskQueueHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	if err := model.ClearTaskQueue(h.distro); err != nil {
+	if err := model.ClearTaskQueue(ctx, h.distro); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
 

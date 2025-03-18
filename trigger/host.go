@@ -220,35 +220,35 @@ func (t *hostTemplateData) hostSlackPayload(messageString string, linkTitle stri
 func (t *hostTriggers) hostExpiration(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
 	switch t.event.EventType {
 	case event.EventHostExpirationWarningSent:
-		return t.makeHostExpirationNotification(sub)
+		return t.makeHostExpirationNotification(ctx, sub)
 	case event.EventHostTemporaryExemptionExpirationWarningSent:
-		return t.makeHostTemporaryExemptionNotification(sub)
+		return t.makeHostTemporaryExemptionNotification(ctx, sub)
 	default:
 		return nil, nil
 	}
 }
 
-func (t *hostTriggers) makeHostExpirationNotification(sub *event.Subscription) (*notification.Notification, error) {
+func (t *hostTriggers) makeHostExpirationNotification(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
 	if t.host.NoExpiration {
 		return nil, nil
 	}
 
-	timeZone := t.getTimeZone(sub, "host expiration")
+	timeZone := t.getTimeZone(ctx, sub, "host expiration")
 	t.templateData.ExpirationTime = t.host.ExpirationTime.In(timeZone).Format(time.RFC1123)
 
 	return t.generateExpiration(sub)
 }
 
-func (t *hostTriggers) makeHostTemporaryExemptionNotification(sub *event.Subscription) (*notification.Notification, error) {
-	timeZone := t.getTimeZone(sub, "host temporary exemption expiration")
+func (t *hostTriggers) makeHostTemporaryExemptionNotification(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
+	timeZone := t.getTimeZone(ctx, sub, "host temporary exemption expiration")
 	t.templateData.ExpirationTime = t.host.SleepSchedule.TemporarilyExemptUntil.In(timeZone).Format(time.RFC1123)
 
 	return t.generateTemporaryExemptionExpiration(sub)
 }
 
-func (t *hostTriggers) getTimeZone(sub *event.Subscription, trigger string) *time.Location {
+func (t *hostTriggers) getTimeZone(ctx context.Context, sub *event.Subscription, trigger string) *time.Location {
 	if sub.OwnerType == event.OwnerTypePerson {
-		userTimeZone, err := getUserTimeZone(sub.Owner)
+		userTimeZone, err := getUserTimeZone(ctx, sub.Owner)
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":    "problem getting user time zone",
 			"user":       sub.Owner,

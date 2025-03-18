@@ -308,7 +308,7 @@ func (gh *githubHookApi) rerunCheckRun(ctx context.Context, owner, repo string, 
 	if !utility.StringSliceContains(evergreen.TaskCompletedStatuses, taskToRestart.Status) {
 		return errors.Errorf("task '%s' is not in a completed state", taskIDFromCheckrun)
 	}
-	githubUser, err := user.FindByGithubUID(uid)
+	githubUser, err := user.FindByGithubUID(ctx, uid)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"source":  "GitHub hook",
@@ -925,7 +925,7 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 				var existingVersion *model.Version
 				// If a version for this revision exists for this project, add tag
 				// Retry in case a commit and a tag are pushed at around the same time, and the version isn't ready yet
-				existingVersion, err = model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(pRef.Id, hash))
+				existingVersion, err = model.VersionFindOne(ctx, model.BaseVersionByProjectIdAndRevision(pRef.Id, hash))
 				if err != nil {
 					retryCatcher.Wrapf(err, "finding version for project '%s' with revision '%s'", pRef.Id, hash)
 					continue
@@ -1020,7 +1020,7 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 			Revision: revision,
 			GitTag:   tag,
 		}
-		stubVersion, dbErr := repotracker.ShellVersionFromRevision(&pRef, metadata)
+		stubVersion, dbErr := repotracker.ShellVersionFromRevision(ctx, &pRef, metadata)
 		if dbErr != nil {
 			grip.Error(message.WrapError(dbErr, message.Fields{
 				"message":            "error creating shell version",
@@ -1040,7 +1040,7 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 			}))
 		}
 		event.LogVersionStateChangeEvent(stubVersion.Id, evergreen.VersionFailed)
-		userDoc, err := user.FindByGithubName(tag.Pusher)
+		userDoc, err := user.FindByGithubName(ctx, tag.Pusher)
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding user '%s'", tag.Pusher)
 		}

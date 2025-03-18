@@ -95,7 +95,7 @@ func TestConvertVersionSubscription(t *testing.T) {
 					Target: "a@domain.invalid",
 				},
 			}
-			assert.NoError(t, convertVersionSubscription(&subscription))
+			assert.NoError(t, convertVersionSubscription(t.Context(), &subscription))
 			assert.Equal(t, event.TriggerFamilyFailure, subscription.Trigger)
 		},
 		"PersonalSubscription": func(t *testing.T) {
@@ -119,7 +119,7 @@ func TestConvertVersionSubscription(t *testing.T) {
 					Target: "a@domain.invalid",
 				},
 			}
-			assert.NoError(t, convertVersionSubscription(&subscription))
+			assert.NoError(t, convertVersionSubscription(t.Context(), &subscription))
 			assert.Equal(t, event.TriggerFamilyFailure, subscription.Trigger)
 		},
 		"PersonalSubscriptionVersionNotFound": func(t *testing.T) {
@@ -143,7 +143,7 @@ func TestConvertVersionSubscription(t *testing.T) {
 					Target: "a@domain.invalid",
 				},
 			}
-			assert.Error(t, convertVersionSubscription(&subscription))
+			assert.Error(t, convertVersionSubscription(t.Context(), &subscription))
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -179,7 +179,7 @@ func TestSaveProjectSubscriptions(t *testing.T) {
 					Target: "a@domain.invalid",
 				},
 			}
-			assert.Error(t, SaveSubscriptions(utility.FromStringPtr(subscription.Owner), []restModel.APISubscription{subscription}, false))
+			assert.Error(t, SaveSubscriptions(t.Context(), utility.FromStringPtr(subscription.Owner), []restModel.APISubscription{subscription}, false))
 		},
 		"VersionRequesterSubscription": func(t *testing.T) {
 			subscription := restModel.APISubscription{
@@ -198,7 +198,7 @@ func TestSaveProjectSubscriptions(t *testing.T) {
 					Target: "a@domain.invalid",
 				},
 			}
-			assert.NoError(t, SaveSubscriptions(
+			assert.NoError(t, SaveSubscriptions(t.Context(),
 				utility.FromStringPtr(subscription.Owner),
 				[]restModel.APISubscription{subscription},
 				false))
@@ -225,7 +225,7 @@ func TestSaveProjectSubscriptions(t *testing.T) {
 					Target: "a@domain.invalid",
 				},
 			}
-			assert.NoError(t, SaveSubscriptions(
+			assert.NoError(t, SaveSubscriptions(t.Context(),
 				utility.FromStringPtr(subscription.Owner),
 				[]restModel.APISubscription{subscription},
 				false))
@@ -259,7 +259,7 @@ func TestSaveProjectSubscriptions(t *testing.T) {
 			}
 			newData := utility.ToStringPtr("5678")
 			subscription.Selectors[0].Data = newData
-			assert.NoError(t, SaveSubscriptions(utility.FromStringPtr(subscription.Owner), []restModel.APISubscription{subscription}, true))
+			assert.NoError(t, SaveSubscriptions(t.Context(), utility.FromStringPtr(subscription.Owner), []restModel.APISubscription{subscription}, true))
 
 			dbSubs, err := GetSubscriptions(utility.FromStringPtr(subscription.Owner), event.OwnerTypeProject)
 			assert.NoError(t, err)
@@ -278,7 +278,7 @@ func TestSaveProjectSubscriptions(t *testing.T) {
 					Target: "ticket",
 				},
 			}
-			assert.Error(t, SaveSubscriptions(utility.FromStringPtr(subscription.Owner), []restModel.APISubscription{subscription}, false))
+			assert.Error(t, SaveSubscriptions(t.Context(), utility.FromStringPtr(subscription.Owner), []restModel.APISubscription{subscription}, false))
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -333,7 +333,7 @@ func TestSaveTaskSubscriptions(t *testing.T) {
 					Target: "a@domain.invalid",
 				},
 			}
-			assert.NoError(t, SaveSubscriptions("me", []restModel.APISubscription{subscription}, false))
+			assert.NoError(t, SaveSubscriptions(t.Context(), "me", []restModel.APISubscription{subscription}, false))
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -366,7 +366,7 @@ func TestSaveVersionSubscriptions(t *testing.T) {
 					Target: "a@domain.invalid",
 				},
 			}
-			assert.NoError(t, SaveSubscriptions("me", []restModel.APISubscription{subscription}, false))
+			assert.NoError(t, SaveSubscriptions(t.Context(), "me", []restModel.APISubscription{subscription}, false))
 
 			dbSubs, err := GetSubscriptions("me", event.OwnerTypePerson)
 			assert.NoError(t, err)
@@ -394,7 +394,7 @@ func TestSaveVersionSubscriptions(t *testing.T) {
 					Target: "a@domain.invalid",
 				},
 			}
-			assert.NoError(t, SaveSubscriptions("me", []restModel.APISubscription{subscription}, false))
+			assert.NoError(t, SaveSubscriptions(t.Context(), "me", []restModel.APISubscription{subscription}, false))
 
 			dbSubs, err := GetSubscriptions("me", event.OwnerTypePerson)
 			assert.NoError(t, err)
