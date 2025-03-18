@@ -61,6 +61,12 @@ type Distro struct {
 
 	// ExecUser is the user to run shell.exec and subprocess.exec processes as. If unset, processes are run as the regular distro User.
 	ExecUser string `bson:"exec_user,omitempty" json:"exec_user,omitempty" mapstructure:"exec_user,omitempty"`
+
+	// ConsecutiveSystemFailureLimit is the number of consecutive system
+	// failures allowed before a host is marked as disabled. If this is not a
+	// positive number, a default number of system failures will be used
+	// instead.
+	ConsecutiveSystemFailureLimit int `bson:"consecutive_system_failure_limit,omitempty" json:"consecutive_system_failure_limit,omitempty" mapstructure:"consecutive_system_failure_limit,omitempty"`
 }
 
 // DistroData is the same as a distro, with the only difference being that all
