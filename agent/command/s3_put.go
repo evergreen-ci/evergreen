@@ -189,7 +189,6 @@ func (s3pc *s3put) validate() error {
 		catcher.NewWhen(s3pc.AwsSecret == "", "AWS secret cannot be blank")
 	}
 
-	catcher.NewWhen(s3pc.AwsSessionToken != "" && s3pc.Visibility == artifact.Signed, "cannot use temporary AWS credentials with signed link visibility")
 	if s3pc.LocalFile == "" && !s3pc.isMulti() {
 		catcher.New("local file and local files include filter cannot both be blank")
 	}
@@ -237,10 +236,6 @@ func (s3pc *s3put) expandParams(conf *internal.TaskConfig) error {
 	var err error
 	if err = util.ExpandValues(s3pc, &conf.Expansions); err != nil {
 		return errors.Wrap(err, "applying expansions")
-	}
-
-	if s3pc.AwsSessionToken != "" && s3pc.Visibility == artifact.Signed {
-		return errors.New("cannot use temporary AWS credentials with a signed link visibility")
 	}
 
 	s3pc.workDir = conf.WorkDir
