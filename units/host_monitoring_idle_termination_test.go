@@ -821,15 +821,46 @@ func TestTearingDownIsNotConsideredIdle(t *testing.T) {
 		StartedBy:                  evergreen.User,
 		TaskGroupTeardownStartTime: time.Now(),
 	}
+	host3 := host.Host{
+		Id:                         utility.RandomString(),
+		Distro:                     distro1,
+		Provider:                   evergreen.ProviderNameMock,
+		CreationTime:               time.Now().Add(-30 * time.Minute),
+		LastCommunicationTime:      time.Now(),
+		Status:                     evergreen.HostRunning,
+		StartedBy:                  evergreen.User,
+		TaskGroupTeardownStartTime: time.Now().Add(-20 * time.Minute),
+	}
+	host4 := host.Host{
+		Id:                         utility.RandomString(),
+		Distro:                     distro1,
+		Provider:                   evergreen.ProviderNameMock,
+		CreationTime:               time.Now().Add(-30 * time.Minute),
+		LastCommunicationTime:      time.Now().Add(-20 * time.Minute),
+		Status:                     evergreen.HostRunning,
+		StartedBy:                  evergreen.User,
+		TaskGroupTeardownStartTime: time.Now(),
+	}
 
 	require.NoError(t, host1.Insert(tctx))
 	require.NoError(t, host2.Insert(tctx))
+	require.NoError(t, host3.Insert(tctx))
+	require.NoError(t, host4.Insert(tctx))
 
 	// The host tearing down should not be flagged as idle.
 	num, hosts := numIdleHostsFound(tctx, env, t)
-	require.Equal(t, 1, num)
-	assert.Equal(t, host1.Id, hosts[0])
-
+	require.Equal(t, 2, num)
+	var host1Found, host3Found bool
+	for _, h := range hosts {
+		if h == host1.Id {
+			host1Found = true
+		}
+		if h == host3.Id {
+			host3Found = true
+		}
+	}
+	assert.True(t, host1Found)
+	assert.True(t, host3Found)
 }
 func TestPopulateIdleHostJobsCalculations(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
