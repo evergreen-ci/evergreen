@@ -76,9 +76,8 @@ func (f *File) validate() error {
 	catcher.ErrorfWhen(f.FileKey == "", "file key is required")
 
 	// Buckets that are not devprod owned require AWS credentials.
-	if !isInternalBucket(f.Bucket) {
-		catcher.ErrorfWhen(f.AWSKey == "", "AWS key is required")
-		catcher.ErrorfWhen(f.AWSSecret == "", "AWS secret is required")
+	if !isInternalBucket(f.Bucket) && f.AWSRoleARN == "" {
+		catcher.ErrorfWhen(f.AWSKey == "" || f.AWSSecret == "", "AWS key/secret or AWS role ARN is required")
 	}
 
 	return catcher.Resolve()
