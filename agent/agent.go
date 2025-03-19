@@ -517,7 +517,7 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 		Redacted:           tc.taskConfig.Redacted,
 		InternalRedactions: tc.taskConfig.InternalRedactions,
 	}
-	tc.taskConfig.TaskOutputDir = taskoutput.NewDirectory(tc.taskConfig.WorkDir, &tc.taskConfig.Task, redactorOpts, tc.logger)
+	tc.taskConfig.TaskOutputDir = taskoutput.NewDirectory(tc.taskConfig.WorkDir, &tc.taskConfig.Task, redactorOpts, tc.logger, a.otelGrpcConn)
 	if err := tc.taskConfig.TaskOutputDir.Setup(); err != nil {
 		return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "creating task output directory"))
 	}
@@ -1050,7 +1050,6 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 	// was setup, regardless of the task status.
 	if tc.taskConfig != nil && tc.taskConfig.TaskOutputDir != nil {
 		toCtx, span := a.tracer.Start(ctx, "task-output-ingestion")
-		tc.logger.Execution().Error(errors.Wrap(taskoutput.UploadTraces(toCtx, a.otelGrpcConn, tc.taskConfig.WorkDir), "uploading traces"))
 		tc.logger.Execution().Error(errors.Wrap(tc.taskConfig.TaskOutputDir.Run(toCtx), "ingesting task output"))
 		span.End()
 	}

@@ -24,6 +24,7 @@ import (
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel/attribute"
+	"google.golang.org/grpc"
 	"gopkg.in/yaml.v2"
 )
 
@@ -60,7 +61,7 @@ type testLogDirectoryHandler struct {
 
 // newTestLogDirectoryHandler returns a new test log directory handler for the
 // specified task.
-func newTestLogDirectoryHandler(dir string, output *taskoutput.TaskOutput, taskOpts taskoutput.TaskOptions, redactionOpts redactor.RedactionOptions, logger client.LoggerProducer) directoryHandler {
+func newTestLogDirectoryHandler(dir string, output *taskoutput.TaskOutput, taskOpts taskoutput.TaskOptions, redactionOpts redactor.RedactionOptions, logger client.LoggerProducer, _ *grpc.ClientConn) directoryHandler {
 	h := &testLogDirectoryHandler{
 		dir:    dir,
 		logger: logger,

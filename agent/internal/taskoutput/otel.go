@@ -10,6 +10,9 @@ import (
 	"path"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent/internal/client"
+	"github.com/evergreen-ci/evergreen/agent/internal/redactor"
+	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel"
@@ -26,25 +29,33 @@ const traceSuffix = "build/OTelTraces"
 
 const maxLineSize = 1024 * 1024
 
-// UploadTraces finds all the trace files in taskDir, uploads their contents
+// otelTraceDirectoryHandler implements automatic task output handling for the
+// reserved otel trace directory.
+type otelTraceDirectoryHandler struct {
+	dir          string
+	logger       client.LoggerProducer
+	otelGrpcConn *grpc.ClientConn
+}
+
+// run finds all the trace files in taskDir, uploads their contents
 // to the OTel collector, and deletes the files. The files must be written with
 // [OTel JSON protobuf encoding], such as the output of the collector's [file exporter].
 //
 // [OTel JSON protobuf encoding] https://opentelemetry.io/docs/specs/otel/protocol/otlp/#json-protobuf-encoding
 // [file exporter] https://pkg.go.dev/github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter
-func UploadTraces(ctx context.Context, otelGrpcConn *grpc.ClientConn, taskDir string) error {
+func (o otelTraceDirectoryHandler) run(ctx context.Context) error {
 	ctx, span := tracer.Start(ctx, "upload-traces")
 	defer span.End()
 
-	if otelGrpcConn == nil {
+	if o.otelGrpcConn == nil {
 		return errors.New("OTel gRPC connection has not been configured")
 	}
 
-	files, err := getTraceFiles(taskDir)
+	files, err := getTraceFiles(o.dir)
 	if err != nil {
-		return errors.Wrapf(err, "getting trace files for '%s'", taskDir)
+		return errors.Wrapf(err, "getting trace files for '%s'", o.dir)
 	}
-	client := otlptracegrpc.NewClient(otlptracegrpc.WithGRPCConn(otelGrpcConn))
+	client := otlptracegrpc.NewClient(otlptracegrpc.WithGRPCConn(o.otelGrpcConn))
 	if err := client.Start(ctx); err != nil {
 		return errors.Wrap(err, "starting trace client")
 	}
@@ -70,6 +81,17 @@ func UploadTraces(ctx context.Context, otelGrpcConn *grpc.ClientConn, taskDir st
 	}
 
 	return catcher.Resolve()
+}
+
+// newOtelTraceDirectoryHandler returns a new otel trace directory handler for the
+// specified task.
+func newOtelTraceDirectoryHandler(dir string, _ *taskoutput.TaskOutput, _ taskoutput.TaskOptions, _ redactor.RedactionOptions, logger client.LoggerProducer, otelGrpcConn *grpc.ClientConn) directoryHandler {
+	h := &otelTraceDirectoryHandler{
+		dir:          dir,
+		logger:       logger,
+		otelGrpcConn: otelGrpcConn,
+	}
+	return h
 }
 
 // batchSpans batches spans to avoid exceeding the collector's gRPC message size limit of 4MB.
@@ -179,8 +201,7 @@ func fixBinaryID(id []byte) ([]byte, error) {
 
 // getTraceFiles returns the full path of all the files in the [traceSuffix] directory
 // under the task's working directory.
-func getTraceFiles(taskDir string) ([]string, error) {
-	traceDir := path.Join(taskDir, traceSuffix)
+func getTraceFiles(traceDir string) ([]string, error) {
 	info, err := os.Stat(traceDir)
 	if err != nil {
 		if os.IsNotExist(err) {
