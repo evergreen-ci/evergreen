@@ -68,6 +68,7 @@ func (s *EC2Suite) SetupTest() {
 		HostedZoneID: "hosted_zone_id",
 		Domain:       "example.com",
 	}
+	mockEnv.EvergreenSettings.SSH.TaskHostKey.Name = "keyName"
 	s.env = mockEnv
 
 	s.Require().NoError(db.ClearCollections(host.Collection, host.VolumesCollection, task.Collection, model.ProjectVarsCollection, fakeparameter.Collection, user.Collection))
@@ -143,7 +144,6 @@ func (s *EC2Suite) TestValidateProviderSettings() {
 		AMI:              "ami",
 		InstanceType:     "type",
 		SecurityGroupIDs: []string{"sg-123456"},
-		KeyName:          "keyName",
 	}
 	s.NoError(p.Validate())
 	p.AMI = ""
@@ -321,7 +321,6 @@ func (s *EC2Suite) TestSpawnHostClassicOnDemand() {
 	s.h.Distro.ProviderSettingsList = []*birch.Document{birch.NewDocument(
 		birch.EC.String("ami", "ami"),
 		birch.EC.String("instance_type", "instanceType"),
-		birch.EC.String("key_name", "keyName"),
 		birch.EC.String("subnet_id", "subnet-123456"),
 		birch.EC.String("user_data", someUserData),
 		birch.EC.String("region", evergreen.DefaultEC2Region),
@@ -369,7 +368,6 @@ func (s *EC2Suite) TestSpawnHostVPCOnDemand() {
 		birch.EC.String("ami", "ami"),
 		birch.EC.String("instance_type", "instanceType"),
 		birch.EC.String("iam_instance_profile_arn", "my_profile"),
-		birch.EC.String("key_name", "keyName"),
 		birch.EC.String("subnet_id", "subnet-123456"),
 		birch.EC.String("user_data", someUserData),
 		birch.EC.Boolean("is_vpc", true),
