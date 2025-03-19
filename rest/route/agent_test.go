@@ -1051,7 +1051,7 @@ func TestAWSS3(t *testing.T) {
 
 			manager := cloud.GetSTSManager(true)
 
-			r, ok := makeAWSS3Credentials(env, manager).(*awsS3Credentials)
+			r, ok := makeAWSS3Credentials(env, manager, "some_role_arn").(*awsS3Credentials)
 			require.True(t, ok)
 
 			tCase(ctx, t, r)

@@ -2214,6 +2214,20 @@ Admin Settings
 									<md-card style="margin-bottom:20px;">
 										<md-card-title>
 											<md-card-title-text>
+												<span>Shared Bucket</span>
+											</md-card-title-text>
+										</md-card-title>
+										<md-card-content>
+											<md-input-container class="control">
+												<label>This is the bucket that is shared across all projects:</label>
+												<input type="text" id="sharedBucketTxt" ng-model="Settings.buckets.shared_bucket"
+													placeholder="Shared bucket name">
+											</md-input-container>
+										</md-card-content>
+									</md-card>
+										<md-card style="margin-bottom:20px;">
+											<md-card-title>
+												<md-card-title-text>
 												<span>Internal Buckets</span>
 											</md-card-title-text>
 										</md-card-title>

@@ -635,6 +635,7 @@ func (a *APIAuthConfig) ToService() (any, error) {
 
 type APIBucketsConfig struct {
 	LogBucket               APIBucketConfig             `json:"log_bucket"`
+	SharedBucket            *string                     `json:"shared_bucket"`
 	InternalBuckets         []string                    `json:"internal_buckets"`
 	ProjectToPrefixMappings []APIProjectToPrefixMapping `json:"project_to_prefix_mappings"`
 	ProjectToBucketMappings []APIProjectToBucketMapping `json:"project_to_bucket_mappings"`
@@ -664,6 +665,7 @@ func (a *APIBucketsConfig) BuildFromService(h any) error {
 		a.LogBucket.Name = utility.ToStringPtr(v.LogBucket.Name)
 		a.LogBucket.Type = utility.ToStringPtr(string(v.LogBucket.Type))
 		a.LogBucket.DBName = utility.ToStringPtr(v.LogBucket.DBName)
+		a.SharedBucket = utility.ToStringPtr(v.SharedBucket)
 
 		a.InternalBuckets = v.InternalBuckets
 
@@ -730,6 +732,7 @@ func (a *APIBucketsConfig) ToService() (any, error) {
 			Type:   evergreen.BucketType(utility.FromStringPtr(a.LogBucket.Type)),
 			DBName: utility.FromStringPtr(a.LogBucket.DBName),
 		},
+		SharedBucket:            utility.FromStringPtr(a.SharedBucket),
 		InternalBuckets:         a.InternalBuckets,
 		ProjectToPrefixMappings: prefixMappings,
 		ProjectToBucketMappings: bucketMappings,
