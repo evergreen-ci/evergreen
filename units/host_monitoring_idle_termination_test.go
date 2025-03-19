@@ -850,17 +850,8 @@ func TestTearingDownIsNotConsideredIdle(t *testing.T) {
 	// The host tearing down should not be flagged as idle.
 	num, hosts := numIdleHostsFound(tctx, env, t)
 	require.Equal(t, 2, num)
-	var host1Found, host3Found bool
-	for _, h := range hosts {
-		if h == host1.Id {
-			host1Found = true
-		}
-		if h == host3.Id {
-			host3Found = true
-		}
-	}
-	assert.True(t, host1Found)
-	assert.True(t, host3Found)
+	assert.Contains(t, hosts, host1.Id)
+	assert.Contains(t, hosts, host3.Id)
 }
 func TestPopulateIdleHostJobsCalculations(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
