@@ -613,6 +613,7 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 			return nil, errors.Wrap(err, "translating intermediate project")
 		}
 	}
+	// Make sure identifier exists for single task distro validation.
 	if projectInfo.Project.Identifier == "" {
 		projectInfo.Project.Identifier = projectInfo.Ref.Identifier
 	}
