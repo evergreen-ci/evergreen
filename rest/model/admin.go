@@ -635,8 +635,10 @@ func (a *APIAuthConfig) ToService() (any, error) {
 
 type APIBucketsConfig struct {
 	LogBucket               APIBucketConfig             `json:"log_bucket"`
+	SharedBucket            *string                     `json:"shared_bucket"`
 	InternalBuckets         []string                    `json:"internal_buckets"`
 	ProjectToPrefixMappings []APIProjectToPrefixMapping `json:"project_to_prefix_mappings"`
+	ProjectToBucketMappings []APIProjectToBucketMapping `json:"project_to_bucket_mappings"`
 	Credentials             APIS3Credentials            `json:"credentials"`
 }
 
@@ -651,12 +653,19 @@ type APIProjectToPrefixMapping struct {
 	Prefix    *string `json:"prefix"`
 }
 
+type APIProjectToBucketMapping struct {
+	ProjectID *string `json:"project_id"`
+	Bucket    *string `json:"bucket"`
+	Prefix    *string `json:"prefix"`
+}
+
 func (a *APIBucketsConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.BucketsConfig:
 		a.LogBucket.Name = utility.ToStringPtr(v.LogBucket.Name)
 		a.LogBucket.Type = utility.ToStringPtr(string(v.LogBucket.Type))
 		a.LogBucket.DBName = utility.ToStringPtr(v.LogBucket.DBName)
+		a.SharedBucket = utility.ToStringPtr(v.SharedBucket)
 
 		a.InternalBuckets = v.InternalBuckets
 
@@ -666,15 +675,26 @@ func (a *APIBucketsConfig) BuildFromService(h any) error {
 		}
 		a.Credentials = creds
 
-		mappings := []APIProjectToPrefixMapping{}
+		prefixMappings := []APIProjectToPrefixMapping{}
 		for _, mapping := range v.ProjectToPrefixMappings {
 			apiMapping := APIProjectToPrefixMapping{
 				ProjectID: utility.ToStringPtr(mapping.ProjectID),
 				Prefix:    utility.ToStringPtr(mapping.Prefix),
 			}
-			mappings = append(mappings, apiMapping)
+			prefixMappings = append(prefixMappings, apiMapping)
 		}
-		a.ProjectToPrefixMappings = mappings
+		a.ProjectToPrefixMappings = prefixMappings
+
+		bucketMappings := []APIProjectToBucketMapping{}
+		for _, mapping := range v.ProjectToBucketMappings {
+			apiMapping := APIProjectToBucketMapping{
+				ProjectID: utility.ToStringPtr(mapping.ProjectID),
+				Bucket:    utility.ToStringPtr(mapping.Bucket),
+				Prefix:    utility.ToStringPtr(mapping.Prefix),
+			}
+			bucketMappings = append(bucketMappings, apiMapping)
+		}
+		a.ProjectToBucketMappings = bucketMappings
 	default:
 		return errors.Errorf("programmatic error: expected bucket config but got type %T", h)
 	}
@@ -690,10 +710,18 @@ func (a *APIBucketsConfig) ToService() (any, error) {
 	if !ok {
 		return nil, errors.Errorf("programmatic error: expected S3 credentials but got type %T", i)
 	}
-	mappings := []evergreen.ProjectToPrefixMapping{}
+	prefixMappings := []evergreen.ProjectToPrefixMapping{}
 	for _, mapping := range a.ProjectToPrefixMappings {
-		mappings = append(mappings, evergreen.ProjectToPrefixMapping{
+		prefixMappings = append(prefixMappings, evergreen.ProjectToPrefixMapping{
 			ProjectID: utility.FromStringPtr(mapping.ProjectID),
+			Prefix:    utility.FromStringPtr(mapping.Prefix),
+		})
+	}
+	bucketMappings := []evergreen.ProjectToBucketMapping{}
+	for _, mapping := range a.ProjectToBucketMappings {
+		bucketMappings = append(bucketMappings, evergreen.ProjectToBucketMapping{
+			ProjectID: utility.FromStringPtr(mapping.ProjectID),
+			Bucket:    utility.FromStringPtr(mapping.Bucket),
 			Prefix:    utility.FromStringPtr(mapping.Prefix),
 		})
 	}
@@ -704,8 +732,10 @@ func (a *APIBucketsConfig) ToService() (any, error) {
 			Type:   evergreen.BucketType(utility.FromStringPtr(a.LogBucket.Type)),
 			DBName: utility.FromStringPtr(a.LogBucket.DBName),
 		},
+		SharedBucket:            utility.FromStringPtr(a.SharedBucket),
 		InternalBuckets:         a.InternalBuckets,
-		ProjectToPrefixMappings: mappings,
+		ProjectToPrefixMappings: prefixMappings,
+		ProjectToBucketMappings: bucketMappings,
 		Credentials:             creds,
 	}, nil
 }

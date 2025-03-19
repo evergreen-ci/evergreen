@@ -261,6 +261,26 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     $scope.invalidProjectToPrefixMapping = "";
   }
 
+  $scope.addProjectToBucketMapping = function () {
+    if ($scope.Settings.buckets == null) {
+      $scope.Settings.buckets = {
+        "project_to_bucket_mappings": []
+      };
+    }
+    if ($scope.Settings.buckets.project_to_bucket_mappings == null) {
+      $scope.Settings.buckets.project_to_bucket_mappings = [];
+    }
+
+    if (!$scope.validProjectToBucketMapping($scope.new_project_to_bucket_mapping)) {
+      $scope.invalidProjectToBucketMapping = "Project and bucket are required.";
+      return
+    }
+
+    $scope.Settings.buckets.project_to_bucket_mappings.push($scope.new_project_to_bucket_mapping);
+    $scope.new_project_to_bucket_mapping = {};
+    $scope.invalidProjectToBucketMapping = "";
+  }
+
   $scope.addInternalBucket = function () {
     if ($scope.Settings.buckets == null) {
       $scope.Settings.buckets = {
@@ -295,6 +315,15 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
 
   $scope.validProjectToPrefixMapping = function (mapping) {
     return mapping && mapping.project_id && mapping.prefix;
+  }
+
+  $scope.deleteProjectToBucketMapping = function (index) {
+    $scope.Settings.buckets.project_to_bucket_mappings.splice(index, 1);
+  }
+
+  $scope.validProjectToBucketMapping = function (mapping) {
+    // We do not check mapping.prefix since it is optional.
+    return mapping && mapping.project_id && mapping.bucket;
   }
 
   $scope.deleteInternalBucket = function (index) {
