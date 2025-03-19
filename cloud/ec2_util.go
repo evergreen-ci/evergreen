@@ -673,6 +673,8 @@ func getSubnetForZone(subnets []evergreen.Subnet, zone string) (string, error) {
 	return "", errors.Errorf("invalid availability zone '%s', valid availability zones are: %s", zone, zones)
 }
 
+// getKeyName returns the name of the public key to use for the host. Task spawned hosts use a key
+// created for the project, user spawned hosts use the spawn host key, and task hosts use the task host key.
 func getKeyName(ctx context.Context, h *host.Host, settings *evergreen.Settings, client AWSClient) (string, error) {
 	if h.SpawnOptions.SpawnedByTask {
 		return client.GetKey(ctx, h)
