@@ -165,7 +165,7 @@ func CreateHostsFromTask(ctx context.Context, env evergreen.Environment, t *task
 }
 
 func makeProjectAndExpansionsFromTask(ctx context.Context, settings *evergreen.Settings, t *task.Task) (*model.Project, *util.Expansions, error) {
-	v, err := model.VersionFindOne(model.VersionById(t.Version))
+	v, err := model.VersionFindOne(ctx, model.VersionById(t.Version))
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "finding version '%s'", t.Version)
 	}

@@ -1202,7 +1202,7 @@ func TestAttachProjectToRepo(t *testing.T) {
 	assert.NotEmpty(t, p.RepoRefId)
 	assert.Contains(t, p.Admins, "me")
 
-	u, err = user.FindOneById("me")
+	u, err = user.FindOneByIdContext(t.Context(), "me")
 	assert.NoError(t, err)
 	assert.NotNil(t, u)
 	assert.Contains(t, u.Roles(), serviceModel.GetRepoAdminRole(p.RepoRefId))
@@ -1276,7 +1276,7 @@ func TestDetachProjectFromRepo(t *testing.T) {
 	assert.Contains(t, p.Admins, "me")
 	assert.True(t, p.IsGitTagVersionsEnabled()) // saved from the repo before detaching
 
-	u, err = user.FindOneById("me")
+	u, err = user.FindOneByIdContext(t.Context(), "me")
 	assert.NoError(t, err)
 	assert.NotNil(t, u)
 	assert.NotContains(t, u.Roles(), serviceModel.GetRepoAdminRole(p.RepoRefId))

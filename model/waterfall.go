@@ -109,7 +109,7 @@ func getBuildVariantFilterPipeline(ctx context.Context, variants []string, match
 	// TODO DEVPROD-15118: Delete conditional getBuildDisplayNames check
 
 	searchOrder := max(mostRecentVersion.RevisionOrderNumber-MaxWaterfallVersionLimit, 1)
-	lastSearchableVersion, err := VersionFindOne(VersionByProjectIdAndOrder(mostRecentVersion.Identifier, searchOrder))
+	lastSearchableVersion, err := VersionFindOne(ctx, VersionByProjectIdAndOrder(mostRecentVersion.Identifier, searchOrder))
 	if err != nil {
 		return []bson.M{}, errors.Wrap(err, "fetching version")
 	}

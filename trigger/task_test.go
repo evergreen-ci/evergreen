@@ -72,7 +72,7 @@ func TestBuildBreakNotificationsFromRepotracker(t *testing.T) {
 	assert.NoError(u.Insert())
 
 	// a build break that no one is subscribed to should go to admins
-	assert.NoError(repotracker.AddBuildBreakSubscriptions(&v1, &proj))
+	assert.NoError(repotracker.AddBuildBreakSubscriptions(ctx, &v1, &proj))
 	e := event.EventLogEntry{
 		ResourceType: event.ResourceTypeTask,
 		ResourceId:   t1.Id,
@@ -114,7 +114,7 @@ func TestBuildBreakNotificationsFromRepotracker(t *testing.T) {
 		Target: "committer@example.com",
 	})
 	assert.NoError(sub.Upsert())
-	assert.NoError(repotracker.AddBuildBreakSubscriptions(&v2, &proj))
+	assert.NoError(repotracker.AddBuildBreakSubscriptions(ctx, &v2, &proj))
 	e = event.EventLogEntry{
 		ResourceType: event.ResourceTypeTask,
 		ResourceId:   t2.Id,

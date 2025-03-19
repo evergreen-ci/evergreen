@@ -143,7 +143,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	// host-allocation phase
 	////////////////////////
 
-	distroQueueInfo, err := model.GetDistroQueueInfo(j.DistroID)
+	distroQueueInfo, err := model.GetDistroQueueInfo(ctx, j.DistroID)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "getting distro queue info for distro '%s'", j.DistroID))
 		return

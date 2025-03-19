@@ -241,7 +241,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 
 	if j.user == nil {
-		j.user, err = user.FindOne(user.ById(patchDoc.Author))
+		j.user, err = user.FindOneContext(ctx, user.ById(patchDoc.Author))
 		if err != nil {
 			return errors.Wrapf(err, "finding patch author '%s'", patchDoc.Author)
 		}
@@ -933,7 +933,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 		})
 	}
 
-	j.user, err = findEvergreenUserForPR(patchDoc.GithubPatchData.AuthorUID)
+	j.user, err = findEvergreenUserForPR(ctx, patchDoc.GithubPatchData.AuthorUID)
 	if err != nil {
 		return isMember, errors.Wrapf(err, "finding user associated with GitHub UID '%d'", patchDoc.GithubPatchData.AuthorUID)
 	}
@@ -991,7 +991,7 @@ func (j *patchIntentProcessor) buildGithubMergeDoc(ctx context.Context, patchDoc
 			patchDoc.GithubMergeData.Org, patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.BaseBranch)
 	}
 
-	j.user, err = findEvergreenUserForGithubMergeGroup()
+	j.user, err = findEvergreenUserForGithubMergeGroup(ctx)
 	if err != nil {
 		return errors.Wrap(err, "finding GitHub merge queue user")
 	}
@@ -1072,7 +1072,7 @@ func (j *patchIntentProcessor) buildTriggerPatchDoc(ctx context.Context, patchDo
 
 func fetchTriggerVersionInfo(ctx context.Context, patchDoc *patch.Patch) (*model.Version, *model.Project, *model.ParserProject, error) {
 	if patchDoc.Triggers.DownstreamRevision != "" {
-		v, err := model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(patchDoc.Project, patchDoc.Triggers.DownstreamRevision))
+		v, err := model.VersionFindOne(ctx, model.BaseVersionByProjectIdAndRevision(patchDoc.Project, patchDoc.Triggers.DownstreamRevision))
 		if err != nil {
 			return nil, nil, nil, errors.Wrapf(err, "getting version at revision '%s'", patchDoc.Triggers.DownstreamRevision)
 		}
@@ -1115,9 +1115,9 @@ func (j *patchIntentProcessor) verifyValidAlias(ctx context.Context, projectId s
 	return errors.Errorf("alias '%s' could not be found on project '%s'", alias, projectId)
 }
 
-func findEvergreenUserForPR(githubUID int) (*user.DBUser, error) {
+func findEvergreenUserForPR(ctx context.Context, githubUID int) (*user.DBUser, error) {
 	// try and find a user by GitHub UID
-	u, err := user.FindByGithubUID(githubUID)
+	u, err := user.FindByGithubUID(ctx, githubUID)
 	if err != nil {
 		return nil, err
 	}
@@ -1126,7 +1126,7 @@ func findEvergreenUserForPR(githubUID int) (*user.DBUser, error) {
 	}
 
 	// Otherwise, use the GitHub patch user
-	u, err = user.FindOne(user.ById(evergreen.GithubPatchUser))
+	u, err = user.FindOneContext(ctx, user.ById(evergreen.GithubPatchUser))
 	if err != nil {
 		return u, errors.Wrap(err, "finding GitHub patch user")
 	}
@@ -1145,8 +1145,8 @@ func findEvergreenUserForPR(githubUID int) (*user.DBUser, error) {
 	return u, err
 }
 
-func findEvergreenUserForGithubMergeGroup() (*user.DBUser, error) {
-	u, err := user.FindOne(user.ById(evergreen.GithubMergeUser))
+func findEvergreenUserForGithubMergeGroup(ctx context.Context) (*user.DBUser, error) {
+	u, err := user.FindOneContext(ctx, user.ById(evergreen.GithubMergeUser))
 	if err != nil {
 		return u, errors.Wrap(err, "finding GitHub merge queue user")
 	}

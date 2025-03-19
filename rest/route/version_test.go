@@ -156,7 +156,7 @@ func (s *VersionSuite) TestPatchVersionVersion() {
 	s.NotNil(res)
 	s.Equal(http.StatusOK, res.Status())
 
-	v, err := serviceModel.VersionFindOneId(versionId)
+	v, err := serviceModel.VersionFindOneId(s.ctx, versionId)
 	s.NoError(err)
 	for _, b := range v.BuildIds {
 		build, err := build.FindOneId(s.ctx, b)
@@ -287,7 +287,7 @@ func (s *VersionSuite) TestRestartVersion() {
 	h, ok := (version).(*model.APIVersion)
 	s.True(ok)
 	s.Equal(utility.ToStringPtr(versionId), h.Id)
-	v, err := serviceModel.VersionFindOneId("versionId")
+	v, err := serviceModel.VersionFindOneId(s.ctx, "versionId")
 	s.NoError(err)
 	s.Equal(evergreen.VersionStarted, v.Status)
 }

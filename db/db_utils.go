@@ -420,6 +420,8 @@ func CountContext(ctx context.Context, collection string, query any) (int, error
 
 // FindOneQ runs a Q query against the given collection, applying the results to "out."
 // Only reads one document from the DB.
+// DEPRECATED (DEVPROD-15398): This is only here to support a cache
+// with Gimlet, use FindOneQContext instead.
 func FindOneQ(collection string, q Q, out any) error {
 	return FindOneQContext(context.Background(), collection, q, out)
 }

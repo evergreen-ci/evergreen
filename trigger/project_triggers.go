@@ -84,7 +84,7 @@ func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 	if err != nil {
 		return nil, errors.Wrap(err, "updating last revision")
 	}
-	err = repotracker.AddBuildBreakSubscriptions(v, &args.DownstreamProject)
+	err = repotracker.AddBuildBreakSubscriptions(ctx, v, &args.DownstreamProject)
 	if err != nil {
 		return nil, errors.Wrap(err, "adding build break subscriptions")
 	}
@@ -109,7 +109,7 @@ func getMetadataFromArgs(ctx context.Context, args ProcessorArgs) (model.Version
 			RevisionMessage: args.SourceVersion.Message,
 		}
 
-		author, err := user.FindOneById(args.SourceVersion.AuthorID)
+		author, err := user.FindOneByIdContext(ctx, args.SourceVersion.AuthorID)
 		if err != nil {
 			return metadata, errors.Wrapf(err, "finding version author '%s'", args.SourceVersion.AuthorID)
 		}

@@ -1090,7 +1090,7 @@ func PopulateExpansions(ctx context.Context, t *task.Task, h *host.Host, appToke
 		expansions.Put("trigger_branch", upstreamProject.Branch)
 	}
 
-	v, err := VersionFindOneId(t.Version)
+	v, err := VersionFindOneId(ctx, t.Version)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding version")
 	}
@@ -1233,8 +1233,8 @@ func (p *Project) FindTaskGroupForTask(bvName, taskName string) *TaskGroup {
 	return nil
 }
 
-func FindProjectFromVersionID(versionStr string) (*Project, error) {
-	ver, err := VersionFindOne(VersionById(versionStr))
+func FindProjectFromVersionID(ctx context.Context, versionStr string) (*Project, error) {
+	ver, err := VersionFindOne(ctx, VersionById(versionStr))
 	if err != nil {
 		return nil, err
 	}
@@ -1291,13 +1291,14 @@ func FindLatestVersionWithValidProject(projectId string, preGeneration bool) (*V
 	var project *Project
 	var pp *ParserProject
 
+	// TODO: ZACKARY PASS CONTEXT
 	revisionOrderNum := -1 // only specify in the event of failure
 	var err error
 	var lastGoodVersion *Version
 	ctx, cancel := context.WithTimeout(context.Background(), DefaultParserProjectAccessTimeout)
 	defer cancel()
 	for i := 0; i < retryCount; i++ {
-		lastGoodVersion, err = FindVersionByLastKnownGoodConfig(projectId, revisionOrderNum)
+		lastGoodVersion, err = FindVersionByLastKnownGoodConfig(ctx, projectId, revisionOrderNum)
 		if err != nil {
 			// Database error, don't log critical but try again.
 			continue
