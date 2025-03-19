@@ -43,7 +43,7 @@ func TestFixBinaryID(t *testing.T) {
 func TestGetTraceFiles(t *testing.T) {
 	t.Run("NoTraceDirectory", func(t *testing.T) {
 		tmpDir := t.TempDir()
-		files, err := getTraceFiles(tmpDir)
+		files, err := getTraceFiles(path.Join(tmpDir, traceSuffix))
 		assert.NoError(t, err)
 		assert.Nil(t, files)
 	})
@@ -51,7 +51,7 @@ func TestGetTraceFiles(t *testing.T) {
 	t.Run("EmptyTraceDirectory", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		require.NoError(t, os.MkdirAll(path.Join(tmpDir, traceSuffix), os.ModePerm))
-		files, err := getTraceFiles(tmpDir)
+		files, err := getTraceFiles(path.Join(tmpDir, traceSuffix))
 		assert.NoError(t, err)
 		assert.Nil(t, files)
 	})
@@ -63,7 +63,7 @@ func TestGetTraceFiles(t *testing.T) {
 		require.NoError(t, err)
 		require.NoError(t, f.Close())
 
-		files, err := getTraceFiles(tmpDir)
+		files, err := getTraceFiles(path.Join(tmpDir, traceSuffix))
 		assert.NoError(t, err)
 		require.Len(t, files, 1)
 		assert.Equal(t, path.Join(tmpDir, traceSuffix, "trace0.json"), files[0])
@@ -80,7 +80,7 @@ func TestGetTraceFiles(t *testing.T) {
 		require.NoError(t, err)
 		require.NoError(t, f.Close())
 
-		files, err := getTraceFiles(tmpDir)
+		files, err := getTraceFiles(path.Join(tmpDir, traceSuffix))
 		assert.NoError(t, err)
 		require.Len(t, files, 1)
 		assert.Equal(t, path.Join(tmpDir, traceSuffix, "trace0.json"), files[0])
