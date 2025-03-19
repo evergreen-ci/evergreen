@@ -73,10 +73,8 @@ func (v *validateProjectHandler) Run(ctx context.Context) gimlet.Responder {
 		gimlet.NewJSONErrorResponse(validator.ValidationErrors{validationErr})
 	}
 
+	// This error is handled inside CheckProject.
 	projectRef, err := model.FindMergedProjectRef(ctx, v.input.ProjectID, "", false)
-	if err != nil {
-		return gimlet.NewJSONErrorResponse(errors.Wrapf(err, "finding project ref '%s'", v.input.ProjectID))
-	}
 	errs := validator.CheckProject(ctx, project, projectConfig, projectRef, v.input.ProjectID, err)
 
 	if v.input.Quiet {
