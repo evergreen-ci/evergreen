@@ -613,6 +613,9 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 			return nil, errors.Wrap(err, "translating intermediate project")
 		}
 	}
+	if projectInfo.Project.Identifier == "" {
+		projectInfo.Project.Identifier = projectInfo.Ref.Identifier
+	}
 	projectInfo.IntermediateProject.Init(v.Id, v.CreateTime)
 	if projectInfo.Config != nil {
 		projectInfo.Config.Id = v.Id
