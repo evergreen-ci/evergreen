@@ -10,12 +10,17 @@ import (
 )
 
 type SSHConfig struct {
-	TaskHostKey  SSHKeyPair `bson:"task_host_key" json:"task_host_key" yaml:"task_host_key"`
+	// TaskHostKey is the key pair used for SSHing onto task hosts.
+	TaskHostKey SSHKeyPair `bson:"task_host_key" json:"task_host_key" yaml:"task_host_key"`
+	// SpawnHostKey is the key pair used for SSHing onto spawn hosts.
 	SpawnHostKey SSHKeyPair `bson:"spawn_host_key" json:"spawn_host_key" yaml:"spawn_host_key"`
 }
 
 type SSHKeyPair struct {
-	Name      string `yaml:"name" bson:"name" json:"name"`
+	// Name corresponds to the name of the public key for this key pair.
+	// Public keys in EC2 are referred to by names: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-key-pairs.html
+	Name string `yaml:"name" bson:"name" json:"name"`
+	// SecretARN corresponds to a secret in AWS Secrets Manager that contains the private key for this key pair.
 	SecretARN string `yaml:"secret_arn" bson:"secret_arn" json:"secret_arn"`
 }
 
