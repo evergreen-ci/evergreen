@@ -43,7 +43,7 @@ type BucketsConfig struct {
 	Credentials S3Credentials `bson:"credentials" json:"credentials" yaml:"credentials"`
 
 	// SharedBucket is the bucket that's shared across all projects.
-	SharedBucket string `yaml:"global_shared_bucket" bson:"global_shared_bucket" json:"global_shared_bucket"`
+	SharedBucket string `yaml:"shared_bucket" bson:"shared_bucket" json:"shared_bucket"`
 
 	// InternalBuckets are the buckets that Evergreen's app servers have access to
 	// via their IRSA role.
