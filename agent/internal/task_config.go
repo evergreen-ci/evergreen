@@ -259,6 +259,7 @@ func (tc *TaskConfig) TaskAttributeMap() map[string]string {
 		evergreen.ProjectOrgOtelAttribute:         tc.ProjectRef.Owner,
 		evergreen.ProjectRepoOtelAttribute:        tc.ProjectRef.Repo,
 		evergreen.ProjectIDOtelAttribute:          tc.ProjectRef.Id,
+		evergreen.RepoRefIDOtelAttribute:          tc.ProjectRef.RepoRefId,
 		evergreen.DistroIDOtelAttribute:           tc.Task.DistroId,
 		evergreen.VersionDescriptionOtelAttribute: tc.PatchOrVersionDescription,
 	}
