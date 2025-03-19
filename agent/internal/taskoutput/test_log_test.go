@@ -416,7 +416,7 @@ func setupTestTestLogDirectoryHandler(t *testing.T, comm *client.Mock, redactOpt
 		ProjectID: tsk.Project,
 		TaskID:    tsk.Id,
 		Execution: tsk.Execution,
-	}, redactOpts, logger).(*testLogDirectoryHandler)
+	}, redactOpts, logger, nil).(*testLogDirectoryHandler)
 	h.sequenceSize = seqSize
 
 	return tsk, h
