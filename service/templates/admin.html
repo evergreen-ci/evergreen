@@ -94,6 +94,7 @@ Admin Settings
 						<div>Other</div>
 						<li class="link" ng-click="scrollTo('misc')">Misc Settings</li>
 						<li class="link" ng-click="scrollTo('buckets')">Bucket Config</li>
+						<li class="link" ng-click="scrollTo('ssh')">SSH Key Pairs</li>
 						<li class="link" ng-click="scrollTo('expansions')">Expansions</li>
 						<li class="link" ng-click="scrollTo('host_jasper')">Host Jasper</li>
 						<li class="link" ng-click="scrollTo('jira_notifications')">JIRA Custom Field Mappings</li>
@@ -2369,99 +2370,39 @@ Admin Settings
 						</section>
 
 						<section layout="row" flex>
-
-							<md-card flex=50 id="credentials">	
-								<md-card-content>
-									<label>SSH Keys</label>
-									<md-list>
-										<md-list-item ng-repeat="pair in tempSSHKeyPairs">
-											<div class="md-list-item-text" style="width:100%;">
-												<p style="white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">
-													<b>[[pair.name]]</b></p>
-												<p style="white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">
-													[[pair.public]]</p>
-											</div>
-										</md-list-item>
-									</md-list>
-									<md-input-container class="control" style="width:45%;">
-										<label>Name</label>
-										<input type="text" ng-model="newSSHKeyPair.name" />
-									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
-										<label>Public Key</label>
-										<input ng-model="newSSHKeyPair.public"
-											ng-required="newSSHKeyPair.name && newSSHKeyPair.name.length !== 0" />
-									</md-input-container>
-									<md-input-container class="control" style="width:90%;">
-										<label>Private Key</label>
-										<textarea ng-model="newSSHKeyPair.private"
-											ng-required="newSSHKeyPair.name && newSSHKeyPair.name.length !== 0"
-											wrap="off" rows="1"></textarea>
-									</md-input-container>
-								</md-card-content>
-								<md-button type="submit" class="md-raised" ng-click="addSSHKeyPair()"
-									style="width:20%;">Add SSH Key</md-button>
-								<label class="icon fa fa-warning distro-error"
-									ng-show="tempSSHKeyPairs.length !== 0 && tempSSHKeyPairs.length !== Settings.ssh_key_pairs.length">
-									SSH key will not be updated until app server is restarted.<br></label>
-
-								<md-card-content>
-									<md-input-container class="control">
-										<label>SSH Key Directory</label>
-										<input type=text ng-model="Settings.ssh_key_directory"
-											placeholder="Path to the directory containing each server's SSH key files" />
-									</md-input-container>
-									<md-input-container class="control">
-										<label>Authorized Keys File</label>
-										<input type=text ng-model="Settings.authorized_keys_file"
-											placeholder="Path where authorized SSH keys are stored on static hosts" />
-									</md-input-container>
-								</md-card-content>
-								<md-card-content>
-									<md-input-container class="control">
-										<label>Kanopy SSH Key</label>
-										<input type=text ng-model="Settings.kanopy_ssh_key_path"
-											placeholder="Path to the SSH key file when running in Kanopy" />
-									</md-input-container>
-								</md-card-content>
+							<md-card flex=50 id="ssh">
+								<md-card-title>
+									<md-card-title-text>
+										<span>SSH Key Pairs</span>
+									</md-card-title-text>
+								</md-card-title>
 								<md-card style="margin-bottom:20px;">
-									<md-card-title>
-										<md-card-title-text>
-											<span>SSH Private Key ARNs</span>
-										</md-card-title-text>
-									</md-card-title>
 									<md-card-content>
-										<div id="ssh-key-secret-arns" class="form-group"
-											ng-repeat="(index, secretARN) in Settings.ssh_key_secret_arns">
-											<section layout="row" flex>
-												<md-input-container class="control" flex=75>
-													<input class="control" type="text" ng-model="secretARN"
-														placeholder="Secret ARN">
-												</md-input-container>
-												<div style="margin-top: 1%;">
-													<button class="btn btn-default btn-danger" type="button"
-														style="float: left" ng-click="deleteSecretARN(index)">
-														<i class="fa fa-trash"></i>
-													</button>
-												</div>
-											</section>
-										</div>
-										<section layout="row" flex>
-											<md-input-container class="control" flex=75>
-												<input class="control" type="text" ng-model="new_secret_arn"
-													placeholder="Secret ARN">
-											</md-input-container>
-											<div style="margin-top: 1%;">
-												<button class="plus-button btn btn-primary"
-													ng-disabled="!validSecretARN(new_secret_arn)" type="button"
-													style="float: left" ng-click="addSecretARN()">
-													<i class="fa fa-plus"></i>
-												</button>
-												<label class="control">[[ invalidSecretARN ]]</label>
-											</div>
-										</section>
+										<md-input-container class="control">
+											<label>Task Host Key Name</label>
+											<input type=text ng-model="Settings.ssh.task_host_key.name"/>
+										</md-input-container>
+										<md-input-container class="control">
+											<label>Task Host Secret ARN</label>
+											<input type=text ng-model="Settings.ssh.task_host_key.secret_arn"/>
+										</md-input-container>
+										<md-input-container class="control">
+											<label>Spawn Host Key Name</label>
+											<input type=text ng-model="Settings.ssh.spawn_host_key.name"/>
+										</md-input-container>
+										<md-input-container class="control">
+											<label>Spawn Host Secret ARN</label>
+											<input type=text ng-model="Settings.ssh.spawn_host_key.secret_arn"/>
+										</md-input-container>
 									</md-card-content>
 								</md-card>
+								<md-card-content>
+									<md-input-container class="control">
+										<label>Legacy SSH Key</label>
+										<input type=text ng-model="Settings.kanopy_ssh_key_path"
+											placeholder="Path to the legacy SSH key file" />
+									</md-input-container>
+								</md-card-content>
 							</md-card>
 
 							<md-card flex=50 id="expansions">

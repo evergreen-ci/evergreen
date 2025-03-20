@@ -400,17 +400,15 @@ func MockConfig() *evergreen.Settings {
 		SleepSchedule: evergreen.SleepScheduleConfig{
 			PermanentlyExemptHosts: []string{"host0", "host1"},
 		},
-		SSHKeyDirectory: "/ssh_key_directory",
-		SSHKeyPairs: []evergreen.SSHKeyPair{
-			{
-				Name:    "key",
-				Public:  "public",
-				Private: "private",
+		SSH: evergreen.SSHConfig{
+			TaskHostKey: evergreen.SSHKeyPair{
+				Name:      "task-host-key",
+				SecretARN: "arn:aws:secretsmanager:us-east-1:012345678901:secret/top-secret-private-key",
 			},
-		},
-		SSHKeySecretARNs: []string{
-			"arn:aws:secretsmanager:us-east-1:012345678901:secret/top-secret-private-key",
-			"arn:aws:secretsmanager:us-east-1:012345678901:secret/confidential-private-key",
+			SpawnHostKey: evergreen.SSHKeyPair{
+				Name:      "spawn-host-key",
+				SecretARN: "arn:aws:secretsmanager:us-east-1:012345678901:secret/confidential-private-key",
+			},
 		},
 		Slack: evergreen.SlackConfig{
 			Options: &send.SlackOptions{

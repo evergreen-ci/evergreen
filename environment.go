@@ -1031,8 +1031,13 @@ func (e *envState) initSSH(ctx context.Context, tracer trace.Tracer) error {
 	defer span.End()
 
 	catcher := grip.NewBasicCatcher()
-	for _, keyARN := range e.settings.SSHKeySecretARNs {
-		catcher.Add(addSSHKey(ctx, keyARN, tracer))
+	for _, keyARN := range []string{
+		e.settings.SSH.TaskHostKey.SecretARN,
+		e.settings.SSH.SpawnHostKey.SecretARN,
+	} {
+		if keyARN != "" {
+			catcher.Add(addSSHKey(ctx, keyARN, tracer))
+		}
 	}
 
 	return catcher.Resolve()

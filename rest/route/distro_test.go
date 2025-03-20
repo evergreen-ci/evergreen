@@ -349,20 +349,10 @@ func (s *DistroPutSuite) SetupTest() {
 			Id: "distro4",
 		},
 	}
-	settings := &evergreen.Settings{
-		SSHKeyPairs: []evergreen.SSHKeyPair{
-			{
-				Name:    "SSH Key",
-				Public:  "public_key",
-				Private: "private_key",
-			},
-		},
-	}
 	for _, d := range distros {
 		err := d.Insert(ctx)
 		s.NoError(err)
 	}
-	s.NoError(evergreen.UpdateConfig(ctx, settings))
 	s.rm = makePutDistro()
 }
 
@@ -589,7 +579,6 @@ func (s *DistroPatchByIDSuite) SetupTest() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	sshKey := "SSH Key"
 	settingsList := []*birch.Document{birch.NewDocument(
 		birch.EC.Double("bid_price", 0.2),
 		birch.EC.String("instance_type", "m3.large"),
@@ -643,25 +632,10 @@ func (s *DistroPatchByIDSuite) SetupTest() {
 			ContainerPool: "",
 		},
 	}
-	settings := &evergreen.Settings{
-		SSHKeyPairs: []evergreen.SSHKeyPair{
-			{
-				Name:    sshKey,
-				Public:  "public",
-				Private: "private",
-			},
-			{
-				Name:    "New SSH Key",
-				Public:  "new_public",
-				Private: "new_private",
-			},
-		},
-	}
 	for _, d := range distros {
 		err := d.Insert(ctx)
 		s.NoError(err)
 	}
-	s.NoError(evergreen.UpdateConfig(ctx, settings))
 	s.rm = makePatchDistroByID()
 }
 
