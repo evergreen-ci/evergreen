@@ -33,15 +33,13 @@ var (
 
 type EC2Suite struct {
 	suite.Suite
-	onDemandOpts              *EC2ManagerOptions
-	onDemandManager           Manager
-	onDemandWithRegionOpts    *EC2ManagerOptions
-	onDemandWithRegionManager Manager
-	impl                      *ec2Manager
-	mock                      *awsClientMock
-	h                         *host.Host
-	distro                    distro.Distro
-	volume                    *host.Volume
+	onDemandOpts    *EC2ManagerOptions
+	onDemandManager Manager
+	impl            *ec2Manager
+	mock            *awsClientMock
+	h               *host.Host
+	distro          distro.Distro
+	volume          *host.Volume
 
 	env    evergreen.Environment
 	ctx    context.Context
@@ -83,14 +81,16 @@ func (s *EC2Suite) SetupTest() {
 				DefaultSecurityGroup: "sg-default",
 			},
 		},
-	})
-	s.onDemandWithRegionOpts = &EC2ManagerOptions{
-		client: &awsClientMock{},
-		region: "test-region",
-	}
-	s.onDemandWithRegionManager = &ec2Manager{env: s.env, EC2ManagerOptions: s.onDemandWithRegionOpts}
-	_ = s.onDemandManager.Configure(s.ctx, &evergreen.Settings{
-		Expansions: map[string]string{"test": "expand"},
+		SSH: evergreen.SSHConfig{
+			TaskHostKey: evergreen.SSHKeyPair{
+				Name:      "task-host-key",
+				SecretARN: "arn:aws:secretsmanager:us-east-1:012345678901:secret/top-secret-private-key",
+			},
+			SpawnHostKey: evergreen.SSHKeyPair{
+				Name:      "spawn-host-key",
+				SecretARN: "arn:aws:secretsmanager:us-east-1:012345678901:secret/confidential-private-key",
+			},
+		},
 	})
 	var ok bool
 	s.impl, ok = s.onDemandManager.(*ec2Manager)
@@ -103,7 +103,6 @@ func (s *EC2Suite) SetupTest() {
 
 	s.distro = distro.Distro{
 		ProviderSettingsList: []*birch.Document{birch.NewDocument(
-			birch.EC.String("key_name", "key"),
 			birch.EC.String("aws_access_key_id", "key_id"),
 			birch.EC.String("ami", "ami"),
 			birch.EC.String("instance_type", "instance"),
@@ -289,13 +288,13 @@ func (s *EC2Suite) TestConfigure() {
 	s.Equal(evergreen.DefaultEC2Region, ec2m.region)
 
 	// Region specified.
-	settings.Providers.AWS.EC2Keys = []evergreen.EC2Key{
-		{Key: "test-key", Secret: ""},
+	onDemandWithRegionOpts := &EC2ManagerOptions{
+		client: &awsClientMock{},
+		region: "test-region",
 	}
-	s.Require().NoError(s.onDemandWithRegionManager.Configure(ctx, settings))
-	ec2m, ok = s.onDemandWithRegionManager.(*ec2Manager)
-	s.Require().True(ok)
-	s.Equal(s.onDemandWithRegionOpts.region, ec2m.region)
+	onDemandWithRegionManager := &ec2Manager{env: s.env, EC2ManagerOptions: onDemandWithRegionOpts}
+	s.Require().NoError(onDemandWithRegionManager.Configure(ctx, settings))
+	s.Equal(onDemandWithRegionOpts.region, onDemandWithRegionManager.region)
 }
 
 func (s *EC2Suite) TestSpawnHostInvalidInput() {
@@ -349,7 +348,7 @@ func (s *EC2Suite) TestSpawnHostClassicOnDemand() {
 	runInput := *mock.RunInstancesInput
 	s.Equal("ami", *runInput.ImageId)
 	s.EqualValues("instanceType", runInput.InstanceType)
-	s.Equal("keyName", *runInput.KeyName)
+	s.Equal("task-host-key", *runInput.KeyName)
 	s.Require().Len(runInput.BlockDeviceMappings, 1)
 	s.Equal("virtual", *runInput.BlockDeviceMappings[0].VirtualName)
 	s.Equal("device", *runInput.BlockDeviceMappings[0].DeviceName)
@@ -398,43 +397,13 @@ func (s *EC2Suite) TestSpawnHostVPCOnDemand() {
 	s.Equal("ami", *runInput.ImageId)
 	s.EqualValues("instanceType", runInput.InstanceType)
 	s.Equal("my_profile", *runInput.IamInstanceProfile.Arn)
-	s.Equal("keyName", *runInput.KeyName)
+	s.Equal("task-host-key", *runInput.KeyName)
 	s.Equal("virtual", *runInput.BlockDeviceMappings[0].VirtualName)
 	s.Equal("device", *runInput.BlockDeviceMappings[0].DeviceName)
 	s.Nil(runInput.SecurityGroupIds)
 	s.Nil(runInput.SecurityGroups)
 	s.Nil(runInput.SubnetId)
 	s.Equal(base64OfSomeUserData, *runInput.UserData)
-}
-
-func (s *EC2Suite) TestNoKeyAndNotSpawnHostForTaskShouldFail() {
-	h := &host.Host{}
-	h.Distro.Id = "distro_id"
-	h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
-	h.Distro.ProviderSettingsList = []*birch.Document{birch.NewDocument(
-		birch.EC.String("ami", "ami"),
-		birch.EC.String("instance_type", "instanceType"),
-		birch.EC.String("iam_instance_profile_arn", "my_profile"),
-		birch.EC.String("key_name", ""),
-		birch.EC.String("subnet_id", "subnet-123456"),
-		birch.EC.String("user_data", someUserData),
-		birch.EC.Boolean("is_vpc", true),
-		birch.EC.String("region", evergreen.DefaultEC2Region),
-		birch.EC.SliceString("security_group_ids", []string{"sg-123456"}),
-		birch.EC.Array("mount_points", birch.NewArray(
-			birch.VC.Document(birch.NewDocument(
-				birch.EC.String("device_name", "device"),
-				birch.EC.String("virtual_name", "virtual"),
-			)),
-		)),
-	)}
-	s.Require().NoError(h.Insert(s.ctx))
-
-	ctx, cancel := context.WithCancel(s.ctx)
-	defer cancel()
-
-	_, err := s.onDemandManager.SpawnHost(ctx, h)
-	s.Error(err)
 }
 
 func (s *EC2Suite) TestSpawnHostForTask() {
@@ -445,7 +414,6 @@ func (s *EC2Suite) TestSpawnHostForTask() {
 		birch.EC.String("ami", "ami"),
 		birch.EC.String("instance_type", "instanceType"),
 		birch.EC.String("iam_instance_profile_arn", "my_profile"),
-		birch.EC.String("key_name", ""),
 		birch.EC.String("subnet_id", "subnet-123456"),
 		birch.EC.String("user_data", someUserData),
 		birch.EC.Boolean("is_vpc", true),
@@ -470,10 +438,15 @@ func (s *EC2Suite) TestSpawnHostForTask() {
 	s.Require().NoError(h.Insert(s.ctx))
 	s.Require().NoError(t.Insert())
 
+	s.Require().NoError(db.Clear(model.ProjectRefCollection))
+	defer func() {
+		s.NoError(db.Clear(model.ProjectRefCollection))
+	}()
 	pRef := &model.ProjectRef{
 		Id: project,
 	}
 	s.Require().NoError(pRef.Insert())
+
 	newVars := &model.ProjectVars{
 		Id: pRef.Id,
 		Vars: map[string]string{
