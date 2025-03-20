@@ -12,7 +12,6 @@ import (
 
 	s3Types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/smithy-go"
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
@@ -46,12 +45,6 @@ var (
 // s3pc is a command to put a resource to an S3 bucket and download it to
 // the local machine.
 type s3put struct {
-	// AwsKey, AwsSecret, and AwsSessionToken are the user's credentials for
-	// authenticating interactions with S3.
-	AwsKey          string `mapstructure:"aws_key" plugin:"expand"`
-	AwsSecret       string `mapstructure:"aws_secret" plugin:"expand"`
-	AwsSessionToken string `mapstructure:"aws_session_token" plugin:"expand"`
-
 	// LocalFile is the local filepath to the file the user
 	// wishes to store in S3.
 	LocalFile string `mapstructure:"local_file" plugin:"expand"`
@@ -63,23 +56,9 @@ type s3put struct {
 	// LocalFilesIncludeFilterPrefix is an optional path to start processing the LocalFilesIncludeFilter, relative to the working directory.
 	LocalFilesIncludeFilterPrefix string `mapstructure:"local_files_include_filter_prefix" plugin:"expand"`
 
-	// RemoteFile is the filepath to store the file to,
-	// within an S3 bucket. Is a prefix when multiple files are uploaded via LocalFilesIncludeFilter.
-	RemoteFile string `mapstructure:"remote_file" plugin:"expand"`
-
-	// remoteFile is the file path without any expansions applied.
-	remoteFile string
-
 	// PreservePath, when set to true, causes multi part uploads uploaded with LocalFilesIncludeFilter to
 	// preserve the original folder structure instead of putting all the files into the same folder
 	PreservePath string ` mapstructure:"preserve_path" plugin:"expand"`
-
-	// Region is the S3 region where the bucket is located. It defaults to
-	// "us-east-1".
-	Region string `mapstructure:"region" plugin:"region"`
-
-	// Bucket is the s3 bucket to use when storing the desired file.
-	Bucket string `mapstructure:"bucket" plugin:"expand"`
 
 	// Permissions is the ACL to apply to the uploaded file. See:
 	// http://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#canned-acl
@@ -89,10 +68,6 @@ type s3put struct {
 	// ContentType is the MIME type of the uploaded file.
 	// E.g. text/html, application/pdf, image/jpeg, ...
 	ContentType string `mapstructure:"content_type" plugin:"expand"`
-
-	// BuildVariants stores a list of build variants to run the command for.
-	// If the list is empty, it runs for all build variants.
-	BuildVariants []string `mapstructure:"build_variants"`
 
 	// ResourceDisplayName stores the name of the file that is linked. Is a prefix when
 	// to the matched file name when multiple files are uploaded.
@@ -107,11 +82,6 @@ type s3put struct {
 	// If unset, the file will be public.
 	Visibility string `mapstructure:"visibility" plugin:"expand"`
 
-	// Optional, when set to true, causes this command to be skipped over without an error when
-	// the path specified in local_file does not exist. Defaults to false, which triggers errors
-	// for missing files.
-	Optional string `mapstructure:"optional" plugin:"expand"`
-
 	// Patchable defaults to true. If set to false, this command will noop without error for patch tasks.
 	Patchable string `mapstructure:"patchable" plugin:"patchable"`
 
@@ -123,11 +93,6 @@ type s3put struct {
 	// behavior respects s3's strong read-after-write consistency model.
 	SkipExisting string `mapstructure:"skip_existing" plugin:"expand"`
 
-	// RoleARN is an ARN that should be assumed to make the S3 request.
-	// If one is not provided and a user provided credentials coming from an ec2.assume_role command,
-	// this wil be set to the ARN associated with the session token.
-	RoleARN string `mapstructure:"role_arn" plugin:"expand"`
-
 	// TemporaryUseInternalBucket is not meant to be used in production. It is used for testing purposes
 	// relating to the DEVPROD-5553 project.
 	// This flag is used to determine if the s3_credentials route should be called before the command is executed.
@@ -138,18 +103,12 @@ type s3put struct {
 	// workDir sets the working directory relative to which s3put should look for files to upload.
 	// workDir will be empty if an absolute path is provided to the file.
 	workDir          string
-	skipMissing      bool
 	preservePath     bool
 	skipExistingBool bool
 	isPatchable      bool
 	isPatchOnly      bool
 
-	bucket          pail.Bucket
-	internalBuckets []string
-
-	temporaryUseInternalBucket bool
-
-	taskData client.TaskData
+	s3Operation `plugin:"expand"`
 	base
 }
 
@@ -161,6 +120,7 @@ func (s3pc *s3put) ParseParams(params map[string]any) error {
 	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
 		WeaklyTypedInput: true,
 		Result:           s3pc,
+		Squash:           true,
 	})
 	if err != nil {
 		return errors.Wrap(err, "initializing mapstructure decoder")
@@ -176,15 +136,7 @@ func (s3pc *s3put) ParseParams(params map[string]any) error {
 func (s3pc *s3put) validate() error {
 	catcher := grip.NewSimpleCatcher()
 
-	if s3pc.RoleARN != "" {
-		// When using the role ARN, there should be no provided AWS credentials.
-		catcher.NewWhen(s3pc.AwsKey != "", "AWS key must be empty when using role ARN")
-		catcher.NewWhen(s3pc.AwsSecret != "", "AWS secret must be empty when using role ARN")
-		catcher.NewWhen(s3pc.AwsSessionToken != "", "AWS session token must be empty when using role ARN")
-	} else {
-		catcher.NewWhen(s3pc.AwsKey == "", "AWS key cannot be blank")
-		catcher.NewWhen(s3pc.AwsSecret == "", "AWS secret cannot be blank")
-	}
+	catcher.Extend(s3pc.s3Operation.validate())
 
 	if s3pc.LocalFile == "" && !s3pc.isMulti() {
 		catcher.New("local file and local files include filter cannot both be blank")
@@ -195,11 +147,8 @@ func (s3pc *s3put) validate() error {
 	if s3pc.PreservePath != "" && !s3pc.isMulti() {
 		catcher.New("preserve path can only be used with local files include filter")
 	}
-	if s3pc.skipMissing && s3pc.isMulti() {
+	if s3pc.optional && s3pc.isMulti() {
 		catcher.New("cannot use optional with local files include filter as by default it is optional")
-	}
-	if s3pc.RemoteFile == "" {
-		catcher.New("remote file cannot be blank")
 	}
 	if s3pc.ContentType == "" {
 		catcher.New("content type cannot be blank")
@@ -214,8 +163,6 @@ func (s3pc *s3put) validate() error {
 	if !utility.StringSliceContains(artifact.ValidVisibilities, s3pc.Visibility) {
 		catcher.Errorf("invalid visibility setting '%s', allowed visibilities are: %s", s3pc.Visibility, artifact.ValidVisibilities)
 	}
-
-	catcher.Wrapf(validateS3BucketName(s3pc.Bucket), "invalid bucket name '%s'", s3pc.Bucket)
 
 	// make sure the s3 permissions are valid
 	if !validS3Permissions(s3pc.Permissions) {
@@ -240,18 +187,8 @@ func (s3pc *s3put) expandParams(conf *internal.TaskConfig) error {
 		s3pc.workDir = ""
 	}
 
-	if s3pc.Optional != "" {
-		s3pc.skipMissing, err = strconv.ParseBool(s3pc.Optional)
-		if err != nil {
-			return errors.Wrap(err, "parsing optional parameter as a boolean")
-		}
-	}
-
-	if s3pc.TemporaryUseInternalBucket != "" {
-		s3pc.temporaryUseInternalBucket, err = strconv.ParseBool(s3pc.TemporaryUseInternalBucket)
-		if err != nil {
-			return errors.Wrap(err, "parsing temporary use internal bucket parameter as a boolean")
-		}
+	if err := s3pc.s3Operation.expandParams(conf); err != nil {
+		return err
 	}
 
 	if s3pc.PreservePath != "" {
@@ -283,10 +220,6 @@ func (s3pc *s3put) expandParams(conf *internal.TaskConfig) error {
 		}
 	}
 
-	if s3pc.Region == "" {
-		s3pc.Region = evergreen.DefaultEC2Region
-	}
-
 	return nil
 }
 
@@ -299,21 +232,19 @@ func (s3pc *s3put) isMulti() bool {
 // Implementation of Execute.  Expands the parameters, and then puts the
 // resource to s3.
 func (s3pc *s3put) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
-	s3pc.taskData = client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
-	s3pc.internalBuckets = conf.InternalBuckets
-
-	// expand necessary params
 	if err := s3pc.expandParams(conf); err != nil {
 		return errors.WithStack(err)
 	}
-	// re-validate command here, in case an expansion is not defined
+
 	if err := s3pc.validate(); err != nil {
 		return errors.Wrap(err, "validating expanded parameters")
 	}
+
 	if conf.Task.IsPatchRequest() && !s3pc.isPatchable {
 		logger.Task().Infof("Skipping command '%s' because it is not patchable and this task is part of a patch.", s3pc.Name())
 		return nil
 	}
+
 	if !conf.Task.IsPatchRequest() && s3pc.isPatchOnly {
 		logger.Task().Infof("Skipping command '%s' because the command is patch only and this task is not part of a patch.", s3pc.Name())
 		return nil
@@ -321,31 +252,21 @@ func (s3pc *s3put) Execute(ctx context.Context, comm client.Communicator, logger
 
 	trace.SpanFromContext(ctx).SetAttributes(
 		attribute.String(s3PutBucketAttribute, s3pc.Bucket),
-		attribute.Bool(s3PutTemporaryCredentialsAttribute, s3pc.AwsSessionToken != ""),
+		attribute.Bool(s3PutTemporaryCredentialsAttribute, s3pc.AWSSessionToken != ""),
 		attribute.String(s3PutVisibilityAttribute, s3pc.Visibility),
 		attribute.String(s3PutPermissionsAttribute, s3pc.Permissions),
 		attribute.String(s3PutRemoteFileAttribute, s3pc.remoteFile),
 		attribute.String(s3PutExpandedRemoteFileAttribute, s3pc.RemoteFile),
 		attribute.String(s3PutRoleARN, s3pc.RoleARN),
+		attribute.String(s3PutAssumeRoleARN, s3pc.assumeRoleARN),
 		attribute.Bool(s3PutInternalBucket, utility.StringSliceContains(s3pc.internalBuckets, s3pc.Bucket)),
 	)
-
-	if s3pc.AwsSessionToken != "" && s3pc.RoleARN == "" {
-		// If no role was provided but a session token is being used (which means an AssumeRole credentials is being
-		// used), check if the session token matches any saved from ec2.assume_role commands in the task config.
-		// If it does, associate this command with the corresponding role ARN.
-		if roleARN, ok := conf.AssumeRoleRoles[s3pc.AwsSessionToken]; ok {
-			s3pc.RoleARN = roleARN
-			trace.SpanFromContext(ctx).SetAttributes(
-				attribute.String(s3PutAssumeRoleARN, roleARN),
-			)
-		}
-	}
 
 	// create pail bucket
 	httpClient := utility.GetHTTPClient()
 	httpClient.Timeout = s3HTTPClientTimeout
 	defer utility.PutHTTPClient(httpClient)
+
 	if err := s3pc.createPailBucket(ctx, comm, httpClient); err != nil {
 		return errors.Wrap(err, "connecting to S3")
 	}
@@ -354,7 +275,7 @@ func (s3pc *s3put) Execute(ctx context.Context, comm client.Communicator, logger
 		return errors.Wrap(err, "checking bucket")
 	}
 
-	if !shouldRunForVariant(s3pc.BuildVariants, conf.BuildVariant.Name) {
+	if !s3pc.shouldRunForVariant(conf.BuildVariant.Name) {
 		logger.Task().Infof("Skipping S3 put of local file '%s' for variant '%s'.",
 			s3pc.LocalFile, conf.BuildVariant.Name)
 		return nil
@@ -483,7 +404,7 @@ retryLoop:
 							// error.
 							logger.Task().Infof("File '%s' not found, but continuing to upload other files.", fpath)
 							continue uploadLoop
-						} else if s3pc.skipMissing {
+						} else if s3pc.optional {
 							// single optional file uploads should return early.
 							logger.Task().Infof("File '%s' not found and skip missing is true, exiting without error.", fpath)
 							return nil
@@ -526,7 +447,7 @@ retryLoop:
 		}
 	}
 
-	if len(uploadedFiles) == 0 && s3pc.skipMissing {
+	if len(uploadedFiles) == 0 && s3pc.optional {
 		logger.Task().Info("S3 put uploaded no files")
 		return nil
 	}
@@ -540,7 +461,7 @@ retryLoop:
 
 	processedCount := skippedFilesCount + len(uploadedFiles)
 
-	if processedCount != len(filesList) && !s3pc.skipMissing {
+	if processedCount != len(filesList) && !s3pc.optional {
 		logger.Task().Infof("Attempted to upload %d files, %d successfully uploaded.", len(filesList), processedCount)
 		return errors.Errorf("uploaded %d files of %d requested", processedCount, len(filesList))
 	}
@@ -581,8 +502,8 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, lo
 			// to sign the URL. If the bucket is not an internal one, Evergreen needs the
 			// credentials to sign the URL.
 			if !utility.StringSliceContains(s3pc.internalBuckets, s3pc.Bucket) {
-				key = s3pc.AwsKey
-				secret = s3pc.AwsSecret
+				key = s3pc.AWSKey
+				secret = s3pc.AWSSecret
 			}
 		}
 
@@ -608,29 +529,14 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, lo
 }
 
 func (s3pc *s3put) createPailBucket(ctx context.Context, comm client.Communicator, httpClient *http.Client) error {
-	if s3pc.bucket != nil {
-		return nil
-	}
 	opts := pail.S3Options{
-		Region:      s3pc.Region,
-		Name:        s3pc.Bucket,
 		Permissions: pail.S3Permissions(s3pc.Permissions),
 		ContentType: s3pc.ContentType,
+		IfNotExists: s3pc.skipExistingBool,
 	}
-
-	if s3pc.AwsKey != "" {
-		opts.Credentials = pail.CreateAWSStaticCredentials(s3pc.AwsKey, s3pc.AwsSecret, s3pc.AwsSessionToken)
-	} else if s3pc.RoleARN != "" || s3pc.temporaryUseInternalBucket {
-		opts.Credentials = createEvergreenCredentials(comm, s3pc.taskData, s3pc.RoleARN, s3pc.Bucket)
-	}
-
-	if s3pc.skipExistingBool {
-		opts.IfNotExists = true
-	}
-
-	bucket, err := pail.NewS3MultiPartBucketWithHTTPClient(ctx, httpClient, opts)
-	s3pc.bucket = bucket
-	return err
+	return s3pc.s3Operation.createPailBucket(opts, comm, func(so pail.S3Options) (pail.Bucket, error) {
+		return pail.NewS3MultiPartBucketWithHTTPClient(ctx, httpClient, opts)
+	})
 }
 
 func (s3pc *s3put) isPrivate(visibility string) bool {

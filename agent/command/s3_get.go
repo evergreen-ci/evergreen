@@ -39,29 +39,6 @@ var (
 // s3get is a command to fetch a resource from an S3 bucket and download it to
 // the local machine.
 type s3get struct {
-	// AwsKey, AwsSecret, and AwsSessionToken are the user's credentials for
-	// authenticating interactions with s3.
-	AwsKey          string `mapstructure:"aws_key" plugin:"expand"`
-	AwsSecret       string `mapstructure:"aws_secret" plugin:"expand"`
-	AwsSessionToken string `mapstructure:"aws_session_token" plugin:"expand"`
-
-	// RemoteFile is the file path of the file to get, within its bucket.
-	RemoteFile string `mapstructure:"remote_file" plugin:"expand"`
-
-	// remoteFile is the file path without any expansions applied.
-	remoteFile string
-
-	// Region is the S3 region where the bucket is located. It defaults to
-	// "us-east-1".
-	Region string `mapstructure:"region" plugin:"region"`
-
-	// Bucket is the S3 bucket holding the desired file.
-	Bucket string `mapstructure:"bucket" plugin:"expand"`
-
-	// BuildVariants stores a list of build variants to run the command for.
-	// If the list is empty, it runs for all build variants.
-	BuildVariants []string `mapstructure:"build_variants" plugin:"expand"`
-
 	// Only one of these two should be specified. local_file indicates that the
 	// s3 resource should be downloaded as-is to the specified file, and
 	// extract_to indicates that the remote resource is a .tgz file to be
@@ -69,31 +46,7 @@ type s3get struct {
 	LocalFile string `mapstructure:"local_file" plugin:"expand"`
 	ExtractTo string `mapstructure:"extract_to" plugin:"expand"`
 
-	// Optional, when set to true, causes this command to be skipped over without an error when
-	// the path specified in remote_file does not exist. Defaults to false, which triggers errors
-	// for missing files.
-	Optional string `mapstructure:"optional" plugin:"expand"`
-
-	// RoleARN is an ARN that should be assumed to make the S3 request.
-	// If one is not provided and a user provided credentials coming from an ec2.assume_role command,
-	// this wil be set to the ARN associated with the session token.
-	RoleARN string `mapstructure:"role_arn" plugin:"expand"`
-
-	// TemporaryUseInternalBucket is not meant to be used in production. It is used for testing purposes
-	// relating to the DEVPROD-5553 project.
-	// This flag is used to determine if the s3_credentials route should be called before the command is executed.
-	// TODO (DEVPROD-13982): Remove this flag and use the internal bucket list to determine if the s3_credentials
-	// route should be called.
-	TemporaryUseInternalBucket string `mapstructure:"temporary_use_internal_bucket" plugin:"expand"`
-
-	skipMissing bool
-
-	bucket          pail.Bucket
-	internalBuckets []string
-
-	temporaryUseInternalBucket bool
-
-	taskData client.TaskData
+	s3Operation `plugin:"expand"`
 	base
 }
 
@@ -105,6 +58,7 @@ func (c *s3get) ParseParams(params map[string]any) error {
 	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
 		WeaklyTypedInput: true,
 		Result:           c,
+		Squash:           true,
 	})
 	if err != nil {
 		return errors.Wrap(err, "initializing mapstructure decoder")
@@ -128,13 +82,13 @@ func (c *s3get) validate() error {
 
 	if c.RoleARN != "" {
 		// When using the role ARN, there should be no provided AWS credentials.
-		catcher.NewWhen(c.AwsKey != "", "AWS key must be empty when using role ARN")
-		catcher.NewWhen(c.AwsSecret != "", "AWS secret must be empty when using role ARN")
-		catcher.NewWhen(c.AwsSessionToken != "", "AWS session token must be empty when using role ARN")
+		catcher.NewWhen(c.AWSKey != "", "AWS key must be empty when using role ARN")
+		catcher.NewWhen(c.AWSSecret != "", "AWS secret must be empty when using role ARN")
+		catcher.NewWhen(c.AWSSessionToken != "", "AWS session token must be empty when using role ARN")
 	} else {
 		// Otherwise, the AWS credentials must be provided.
-		catcher.NewWhen(c.AwsKey == "", "AWS key cannot be blank")
-		catcher.NewWhen(c.AwsSecret == "", "AWS secret cannot be blank")
+		catcher.NewWhen(c.AWSKey == "", "AWS key cannot be blank")
+		catcher.NewWhen(c.AWSSecret == "", "AWS secret cannot be blank")
 	}
 
 	catcher.NewWhen(c.RemoteFile == "", "remote file cannot be blank")
@@ -158,7 +112,7 @@ func (c *s3get) expandParams(conf *internal.TaskConfig) error {
 	}
 
 	if c.Optional != "" {
-		c.skipMissing, err = strconv.ParseBool(c.Optional)
+		c.optional, err = strconv.ParseBool(c.Optional)
 		if err != nil {
 			return errors.Wrap(err, "parsing optional parameter as a boolean")
 		}
@@ -181,46 +135,30 @@ func (c *s3get) expandParams(conf *internal.TaskConfig) error {
 // Execute expands the parameters, and then fetches the
 // resource from s3.
 func (c *s3get) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
-	c.taskData = client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
-	c.internalBuckets = conf.InternalBuckets
-
-	// expand necessary params
 	if err := c.expandParams(conf); err != nil {
 		return errors.Wrap(err, "expanding params")
 	}
 
-	// validate the params
 	if err := c.validate(); err != nil {
 		return errors.Wrap(err, "validating expanded params")
 	}
 
 	trace.SpanFromContext(ctx).SetAttributes(
 		attribute.String(s3GetBucketAttribute, c.Bucket),
-		attribute.Bool(s3GetTemporaryCredentialsAttribute, c.AwsSessionToken != ""),
+		attribute.Bool(s3GetTemporaryCredentialsAttribute, c.AWSSessionToken != ""),
 		attribute.String(s3GetRemoteFileAttribute, c.remoteFile),
 		attribute.String(s3GetExpandedRemoteFileAttribute, c.RemoteFile),
 		attribute.String(s3GetRoleARN, c.RoleARN),
+		attribute.String(s3GetAssumeRoleARN, c.assumeRoleARN),
 		attribute.Bool(s3GetInternalBucketAttribute, utility.StringSliceContains(conf.InternalBuckets, c.Bucket)),
 	)
-
-	if c.AwsSessionToken != "" && c.RoleARN == "" {
-		// If no role was provided but a session token is being used (which means an AssumeRole credentials is being
-		// used), check if the session token matches any saved from ec2.assume_role commands in the task config.
-		// If it does, associate this command with the corresponding role ARN.
-		if roleARN, ok := conf.AssumeRoleRoles[c.AwsSessionToken]; ok {
-			c.RoleARN = roleARN
-			trace.SpanFromContext(ctx).SetAttributes(
-				attribute.String(s3GetAssumeRoleARN, roleARN),
-			)
-		}
-	}
 
 	// create pail bucket
 	httpClient := utility.GetHTTPClient()
 	httpClient.Timeout = s3HTTPClientTimeout
 	defer utility.PutHTTPClient(httpClient)
-	err := c.createPailBucket(ctx, comm, httpClient)
-	if err != nil {
+
+	if err := c.createPailBucket(ctx, comm, httpClient); err != nil {
 		return errors.Wrap(err, "creating S3 bucket")
 	}
 
@@ -228,7 +166,7 @@ func (c *s3get) Execute(ctx context.Context, comm client.Communicator, logger cl
 		return errors.Wrap(err, "checking bucket")
 	}
 
-	if !shouldRunForVariant(c.BuildVariants, conf.BuildVariant.Name) {
+	if c.shouldRunForVariant(conf.BuildVariant.Name) {
 		logger.Task().Infof("Skipping S3 get of remote file '%s' for variant '%s'.",
 			c.RemoteFile, conf.BuildVariant.Name)
 		return nil
@@ -270,7 +208,7 @@ func (c *s3get) Execute(ctx context.Context, comm client.Communicator, logger cl
 
 	select {
 	case err := <-errChan:
-		if err != nil && c.skipMissing {
+		if err != nil && c.optional {
 			logger.Task().Infof("Problem getting file but optional is true, exiting without error (%s).", err.Error())
 			return nil
 		}
@@ -343,14 +281,7 @@ func (c *s3get) createPailBucket(ctx context.Context, comm client.Communicator, 
 		Region: c.Region,
 		Name:   c.Bucket,
 	}
-
-	if c.AwsKey != "" {
-		opts.Credentials = pail.CreateAWSStaticCredentials(c.AwsKey, c.AwsSecret, c.AwsSessionToken)
-	} else if c.RoleARN != "" || c.temporaryUseInternalBucket {
-		opts.Credentials = createEvergreenCredentials(comm, c.taskData, c.RoleARN, c.Bucket)
-	}
-
-	bucket, err := pail.NewS3BucketWithHTTPClient(ctx, httpClient, opts)
-	c.bucket = bucket
-	return err
+	return c.s3Operation.createPailBucket(opts, comm, func(so pail.S3Options) (pail.Bucket, error) {
+		return pail.NewS3BucketWithHTTPClient(ctx, httpClient, opts)
+	})
 }

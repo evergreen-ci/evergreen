@@ -243,8 +243,8 @@ func TestS3PutValidateParams(t *testing.T) {
 					"display_name": "test_file",
 				}
 				So(cmd.ParseParams(params), ShouldBeNil)
-				So(cmd.AwsKey, ShouldEqual, params["aws_key"])
-				So(cmd.AwsSecret, ShouldEqual, params["aws_secret"])
+				So(cmd.AWSKey, ShouldEqual, params["aws_key"])
+				So(cmd.AWSSecret, ShouldEqual, params["aws_secret"])
 				So(cmd.LocalFile, ShouldEqual, params["local_file"])
 				So(cmd.RemoteFile, ShouldEqual, params["remote_file"])
 				So(cmd.Bucket, ShouldEqual, params["bucket"])
@@ -287,8 +287,8 @@ func TestExpandS3PutParams(t *testing.T) {
 		Convey("when expanding the command's params all appropriate values should be expanded, if they"+
 			" contain expansions", func() {
 
-			cmd.AwsKey = "${aws_key}"
-			cmd.AwsSecret = "${aws_secret}"
+			cmd.AWSKey = "${aws_key}"
+			cmd.AWSSecret = "${aws_secret}"
 			cmd.RemoteFile = "${remote_file}"
 			cmd.Bucket = "${bucket}"
 			cmd.ContentType = "${content_type}"
@@ -312,8 +312,8 @@ func TestExpandS3PutParams(t *testing.T) {
 			)
 
 			So(cmd.expandParams(conf), ShouldBeNil)
-			So(cmd.AwsKey, ShouldEqual, "key")
-			So(cmd.AwsSecret, ShouldEqual, "secret")
+			So(cmd.AWSKey, ShouldEqual, "key")
+			So(cmd.AWSSecret, ShouldEqual, "secret")
 			So(cmd.RemoteFile, ShouldEqual, "remote")
 			So(cmd.Bucket, ShouldEqual, "bck")
 			So(cmd.ContentType, ShouldEqual, "ct")
@@ -332,20 +332,20 @@ func TestExpandS3PutParams(t *testing.T) {
 				cmd.SkipExisting = "true"
 				cmd.Optional = v
 				So(cmd.expandParams(conf), ShouldBeNil)
-				So(cmd.skipMissing, ShouldBeFalse)
+				So(cmd.optional, ShouldBeFalse)
 			}
 
 			for _, v := range []string{"true", "True", "1", "T", "t", "${foo|true}"} {
-				cmd.skipMissing = false
+				cmd.optional = false
 				cmd.Optional = v
 				So(cmd.expandParams(conf), ShouldBeNil)
-				So(cmd.skipMissing, ShouldBeTrue)
+				So(cmd.optional, ShouldBeTrue)
 			}
 
 			for _, v := range []string{"NOPE", "NONE", "EMPTY", "01", "100", "${foo|wat}"} {
 				cmd.Optional = v
 				So(cmd.expandParams(conf), ShouldNotBeNil)
-				So(cmd.skipMissing, ShouldBeFalse)
+				So(cmd.optional, ShouldBeFalse)
 			}
 
 		})
@@ -358,14 +358,20 @@ func TestSignedUrlVisibility(t *testing.T) {
 	defer cancel()
 	for _, vis := range []string{"signed", "private"} {
 		s := s3put{
-			AwsKey:        "key",
-			AwsSecret:     "secret",
-			Bucket:        "bucket",
-			BuildVariants: []string{},
-			ContentType:   "content-type",
-			Permissions:   string(s3Types.BucketCannedACLPublicRead),
-			RemoteFile:    "remote",
-			Visibility:    vis,
+			s3Operation: s3Operation{
+				awsCredentials: awsCredentials{
+					AWSKey:    "key",
+					AWSSecret: "secret",
+				},
+				bucketOptions: bucketOptions{
+					Bucket:     "bucket",
+					RemoteFile: "remote",
+				},
+				BuildVariants: []string{},
+			},
+			ContentType: "content-type",
+			Permissions: string(s3Types.BucketCannedACLPublicRead),
+			Visibility:  vis,
 		}
 
 		comm := client.NewMock("http://localhost.com")
@@ -380,8 +386,8 @@ func TestSignedUrlVisibility(t *testing.T) {
 			for _, file := range v {
 				assert.NotEqual(t, " ", string(file.Name[0]))
 				if file.Visibility == artifact.Signed {
-					assert.Equal(t, file.AWSKey, s.AwsKey)
-					assert.Equal(t, file.AWSSecret, s.AwsSecret)
+					assert.Equal(t, file.AWSKey, s.AWSKey)
+					assert.Equal(t, file.AWSSecret, s.AWSSecret)
 
 				} else {
 					assert.Equal(t, "", file.AWSKey)
@@ -396,14 +402,20 @@ func TestContentTypeSaved(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	s := s3put{
-		AwsKey:        "key",
-		AwsSecret:     "secret",
-		Bucket:        "bucket",
-		BuildVariants: []string{},
-		ContentType:   "content-type",
-		Permissions:   string(s3Types.BucketCannedACLPublicRead),
-		RemoteFile:    "remote",
-		Visibility:    "",
+		s3Operation: s3Operation{
+			awsCredentials: awsCredentials{
+				AWSKey:    "key",
+				AWSSecret: "secret",
+			},
+			bucketOptions: bucketOptions{
+				Bucket:     "bucket",
+				RemoteFile: "remote",
+			},
+			BuildVariants: []string{},
+		},
+		ContentType: "content-type",
+		Permissions: string(s3Types.BucketCannedACLPublicRead),
+		Visibility:  "",
 	}
 
 	comm := client.NewMock("http://localhost.com")
@@ -454,15 +466,22 @@ func TestS3LocalFilesIncludeFilterPrefix(t *testing.T) {
 				localFilesIncludeFilterPrefix = prefix
 			}
 			s := s3put{
-				AwsKey:                        "key",
-				AwsSecret:                     "secret",
-				Bucket:                        "bucket",
-				BuildVariants:                 []string{},
+				s3Operation: s3Operation{
+					awsCredentials: awsCredentials{
+
+						AWSKey:    "key",
+						AWSSecret: "secret",
+					},
+					bucketOptions: bucketOptions{
+						Bucket:     "bucket",
+						RemoteFile: "remote",
+					},
+					BuildVariants: []string{},
+				},
 				ContentType:                   "content-type",
 				LocalFilesIncludeFilter:       []string{"*"},
 				LocalFilesIncludeFilterPrefix: localFilesIncludeFilterPrefix,
 				Permissions:                   string(s3Types.BucketCannedACLPublicRead),
-				RemoteFile:                    "remote",
 			}
 			require.NoError(t, os.Mkdir(filepath.Join(dir, "destination"), 0755))
 			opts := pail.LocalOptions{
@@ -515,15 +534,21 @@ func TestFileUploadNaming(t *testing.T) {
 	require.NoError(t, f.Close())
 
 	s := s3put{
-		AwsKey:                        "key",
-		AwsSecret:                     "secret",
-		Bucket:                        "bucket",
-		BuildVariants:                 []string{},
+		s3Operation: s3Operation{
+			awsCredentials: awsCredentials{
+				AWSKey:    "key",
+				AWSSecret: "secret",
+			},
+			bucketOptions: bucketOptions{
+				Bucket:     "bucket",
+				RemoteFile: "remote",
+			},
+			BuildVariants: []string{},
+		},
 		ContentType:                   "content-type",
 		LocalFilesIncludeFilter:       []string{"*"},
 		Permissions:                   string(s3Types.BucketCannedACLPublicRead),
 		LocalFilesIncludeFilterPrefix: "",
-		RemoteFile:                    "remote",
 	}
 	require.NoError(t, os.Mkdir(filepath.Join(dir, "destination"), 0755))
 	opts := pail.LocalOptions{
@@ -595,14 +620,20 @@ func TestPreservePath(t *testing.T) {
 	require.NoError(t, f.Close())
 
 	s := s3put{
-		AwsKey:                  "key",
-		AwsSecret:               "secret",
-		Bucket:                  "bucket",
-		BuildVariants:           []string{},
+		s3Operation: s3Operation{
+			awsCredentials: awsCredentials{
+				AWSKey:    "key",
+				AWSSecret: "secret",
+			},
+			bucketOptions: bucketOptions{
+				Bucket:     "bucket",
+				RemoteFile: "remote",
+			},
+			BuildVariants: []string{},
+		},
 		ContentType:             "content-type",
 		LocalFilesIncludeFilter: []string{"*"},
 		Permissions:             string(s3Types.BucketCannedACLPublicRead),
-		RemoteFile:              "remote",
 		PreservePath:            "true",
 	}
 	require.NoError(t, os.Mkdir(filepath.Join(dir, "destination"), 0755))

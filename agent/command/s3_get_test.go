@@ -136,8 +136,8 @@ func TestExpandS3GetParams(t *testing.T) {
 			Convey("all appropriate values should be expanded, if they"+
 				" contain expansions", func() {
 
-				cmd.AwsKey = "${aws_key}"
-				cmd.AwsSecret = "${aws_secret}"
+				cmd.AWSKey = "${aws_key}"
+				cmd.AWSSecret = "${aws_secret}"
 				cmd.Bucket = "${bucket}"
 
 				conf.Expansions.Update(
@@ -148,8 +148,8 @@ func TestExpandS3GetParams(t *testing.T) {
 				)
 
 				So(cmd.expandParams(conf), ShouldBeNil)
-				So(cmd.AwsKey, ShouldEqual, "key")
-				So(cmd.AwsSecret, ShouldEqual, "secret")
+				So(cmd.AWSKey, ShouldEqual, "key")
+				So(cmd.AWSSecret, ShouldEqual, "secret")
 			})
 
 		})
