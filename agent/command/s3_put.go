@@ -123,12 +123,10 @@ type s3put struct {
 	// behavior respects s3's strong read-after-write consistency model.
 	SkipExisting string `mapstructure:"skip_existing" plugin:"expand"`
 
-	// TemporaryRoleARN is not meant to be used in production. It is used for testing purposes
-	// relating to the DEVPROD-5553 project.
-	// This is an ARN that should be assumed to make the S3 request.
-	// It is also set when the user provides temporary AWS credentials from an ec2.assume_role command.
-	// TODO (DEVPROD-13982): Upgrade this flag to RoleARN.
-	TemporaryRoleARN string `mapstructure:"temporary_role_arn" plugin:"expand"`
+	// RoleARN is an ARN that should be assumed to make the S3 request.
+	// If one is not provided and a user provided credentials coming from an ec2.assume_role command,
+	// this wil be set to the ARN associated with the session token.
+	RoleARN string `mapstructure:"role_arn" plugin:"expand"`
 
 	// TemporaryUseInternalBucket is not meant to be used in production. It is used for testing purposes
 	// relating to the DEVPROD-5553 project.
@@ -178,7 +176,7 @@ func (s3pc *s3put) ParseParams(params map[string]any) error {
 func (s3pc *s3put) validate() error {
 	catcher := grip.NewSimpleCatcher()
 
-	if s3pc.TemporaryRoleARN != "" {
+	if s3pc.RoleARN != "" {
 		// When using the role ARN, there should be no provided AWS credentials.
 		catcher.NewWhen(s3pc.AwsKey != "", "AWS key must be empty when using role ARN")
 		catcher.NewWhen(s3pc.AwsSecret != "", "AWS secret must be empty when using role ARN")
@@ -328,16 +326,16 @@ func (s3pc *s3put) Execute(ctx context.Context, comm client.Communicator, logger
 		attribute.String(s3PutPermissionsAttribute, s3pc.Permissions),
 		attribute.String(s3PutRemoteFileAttribute, s3pc.remoteFile),
 		attribute.String(s3PutExpandedRemoteFileAttribute, s3pc.RemoteFile),
-		attribute.String(s3PutRoleARN, s3pc.TemporaryRoleARN),
+		attribute.String(s3PutRoleARN, s3pc.RoleARN),
 		attribute.Bool(s3PutInternalBucket, utility.StringSliceContains(s3pc.internalBuckets, s3pc.Bucket)),
 	)
 
-	if s3pc.AwsSessionToken != "" && s3pc.TemporaryRoleARN == "" {
+	if s3pc.AwsSessionToken != "" && s3pc.RoleARN == "" {
 		// If no role was provided but a session token is being used (which means an AssumeRole credentials is being
 		// used), check if the session token matches any saved from ec2.assume_role commands in the task config.
 		// If it does, associate this command with the corresponding role ARN.
 		if roleARN, ok := conf.AssumeRoleRoles[s3pc.AwsSessionToken]; ok {
-			s3pc.TemporaryRoleARN = roleARN
+			s3pc.RoleARN = roleARN
 			trace.SpanFromContext(ctx).SetAttributes(
 				attribute.String(s3PutAssumeRoleARN, roleARN),
 			)
@@ -594,7 +592,7 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, lo
 			Visibility:  s3pc.Visibility,
 			AWSKey:      key,
 			AWSSecret:   secret,
-			AWSRoleARN:  s3pc.TemporaryRoleARN,
+			AWSRoleARN:  s3pc.RoleARN,
 			Bucket:      bucket,
 			FileKey:     fileKey,
 			ContentType: s3pc.ContentType,
@@ -622,8 +620,8 @@ func (s3pc *s3put) createPailBucket(ctx context.Context, comm client.Communicato
 
 	if s3pc.AwsKey != "" {
 		opts.Credentials = pail.CreateAWSStaticCredentials(s3pc.AwsKey, s3pc.AwsSecret, s3pc.AwsSessionToken)
-	} else if s3pc.TemporaryRoleARN != "" || s3pc.temporaryUseInternalBucket {
-		opts.Credentials = createEvergreenCredentials(comm, s3pc.taskData, s3pc.TemporaryRoleARN, s3pc.Bucket)
+	} else if s3pc.RoleARN != "" || s3pc.temporaryUseInternalBucket {
+		opts.Credentials = createEvergreenCredentials(comm, s3pc.taskData, s3pc.RoleARN, s3pc.Bucket)
 	}
 
 	if s3pc.skipExistingBool {
