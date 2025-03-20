@@ -10,6 +10,25 @@ import (
 type ProjectTasksPair struct {
 	ProjectID    string   `bson:"project_id" json:"project_id"`
 	AllowedTasks []string `bson:"allowed_tasks" json:"allowed_tasks"`
+	AllowedBVs   []string `bson:"allowed_bvs" json:"allowed_bvs"`
+}
+
+func (p *ProjectTasksPair) IsEmpty() bool {
+	return len(p.AllowedTasks) == 0 && len(p.AllowedBVs) == 0
+}
+
+func (p *ProjectTasksPair) AllowAll() bool {
+	for _, bv := range p.AllowedBVs {
+		if bv == "all" {
+			return true
+		}
+	}
+	for _, task := range p.AllowedTasks {
+		if task == "all" {
+			return true
+		}
+	}
+	return false
 }
 
 type SingleTaskDistroConfig struct {
