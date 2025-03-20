@@ -17,12 +17,16 @@ import (
 func TestS3OperationExpandParams(t *testing.T) {
 	for tName, tCase := range map[string]func(*testing.T, s3Operation, *internal.TaskConfig){
 		"OptionalFails": func(t *testing.T, op s3Operation, conf *internal.TaskConfig) {
-			op.Optional = "invalid"
-			require.ErrorContains(t, op.expandParams(conf), "expanding optional")
+			for _, v := range []string{"NOPE", "NONE", "EMPTY", "01", "100", "${foo|wat}"} {
+				op.Optional = v
+				require.ErrorContains(t, op.expandParams(conf), "expanding optional")
+			}
 		},
 		"OptionalSucceeds": func(t *testing.T, op s3Operation, conf *internal.TaskConfig) {
-			op.Optional = "true"
-			require.NoError(t, op.expandParams(conf))
+			for _, v := range []string{"true", "True", "1", "T", "t"} {
+				op.Optional = v
+				require.NoError(t, op.expandParams(conf))
+			}
 		},
 		"TaskData": func(t *testing.T, op s3Operation, conf *internal.TaskConfig) {
 			assert.Empty(t, op.taskData.ID)

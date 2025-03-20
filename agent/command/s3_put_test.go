@@ -36,21 +36,6 @@ func TestS3PutValidateParams(t *testing.T) {
 
 			cmd = &s3put{}
 
-			Convey("a missing aws key should cause an error", func() {
-
-				params := map[string]any{
-					"aws_secret":   "secret",
-					"local_file":   "local",
-					"remote_file":  "remote",
-					"bucket":       "bck",
-					"permissions":  "public-read",
-					"content_type": "application/x-tar",
-					"display_name": "test_file",
-				}
-				err := cmd.ParseParams(params)
-				require.Error(t, err)
-				So(err.Error(), ShouldContainSubstring, "AWS key cannot be blank")
-			})
 			Convey("a defined local file and inclusion filter should cause an error", func() {
 
 				params := map[string]any{
@@ -99,22 +84,6 @@ func TestS3PutValidateParams(t *testing.T) {
 				So(err.Error(), ShouldContainSubstring, "cannot use optional with local files include filter as by default it is optional")
 			})
 
-			Convey("a missing aws secret should cause an error", func() {
-
-				params := map[string]any{
-					"aws_key":      "key",
-					"local_file":   "local",
-					"remote_file":  "remote",
-					"bucket":       "bck",
-					"permissions":  "public-read",
-					"content_type": "application/x-tar",
-					"display_name": "test_file",
-				}
-				err := cmd.ParseParams(params)
-				require.Error(t, err)
-				So(err.Error(), ShouldContainSubstring, "AWS secret cannot be blank")
-			})
-
 			Convey("a missing local file should cause an error", func() {
 
 				params := map[string]any{
@@ -129,38 +98,6 @@ func TestS3PutValidateParams(t *testing.T) {
 				err := cmd.ParseParams(params)
 				require.Error(t, err)
 				So(err.Error(), ShouldContainSubstring, "local file and local files include filter cannot both be blank")
-			})
-
-			Convey("a missing remote file should cause an error", func() {
-
-				params := map[string]any{
-					"aws_key":      "key",
-					"aws_secret":   "secret",
-					"local_file":   "local",
-					"bucket":       "bck",
-					"permissions":  "public-read",
-					"content_type": "application/x-tar",
-					"display_name": "test_file",
-				}
-				err := cmd.ParseParams(params)
-				require.Error(t, err)
-				So(err.Error(), ShouldContainSubstring, "remote file cannot be blank")
-			})
-
-			Convey("a missing bucket should cause an error", func() {
-
-				params := map[string]any{
-					"aws_key":      "key",
-					"aws_secret":   "secret",
-					"local_file":   "local",
-					"remote_file":  "remote",
-					"permissions":  "public-read",
-					"content_type": "application/x-tar",
-					"display_name": "test_file",
-				}
-				err := cmd.ParseParams(params)
-				require.Error(t, err)
-				So(err.Error(), ShouldContainSubstring, "invalid bucket name")
 			})
 
 			Convey("a missing s3 permission should cause an error", func() {
@@ -324,32 +261,6 @@ func TestExpandS3PutParams(t *testing.T) {
 			// EVG-7226 Since LocalFile is an absolute path, workDir should be empty
 			So(cmd.workDir, ShouldEqual, "")
 		})
-
-		Convey("the expandParams function should error for invalid optional values", func() {
-			cmd = &s3put{}
-
-			for _, v := range []string{"", "false", "False", "0", "F", "f", "${foo|false}", "${foo|}", "${foo}"} {
-				cmd.SkipExisting = "true"
-				cmd.Optional = v
-				So(cmd.expandParams(conf), ShouldBeNil)
-				So(cmd.optional, ShouldBeFalse)
-			}
-
-			for _, v := range []string{"true", "True", "1", "T", "t", "${foo|true}"} {
-				cmd.optional = false
-				cmd.Optional = v
-				So(cmd.expandParams(conf), ShouldBeNil)
-				So(cmd.optional, ShouldBeTrue)
-			}
-
-			for _, v := range []string{"NOPE", "NONE", "EMPTY", "01", "100", "${foo|wat}"} {
-				cmd.Optional = v
-				So(cmd.expandParams(conf), ShouldNotBeNil)
-				So(cmd.optional, ShouldBeFalse)
-			}
-
-		})
-
 	})
 }
 
