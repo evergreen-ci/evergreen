@@ -27,9 +27,8 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 )
 
-// defaultConsecutiveSystemFailureThreshold is the default number of consecutive
-// system failures allowed for a host before it's disabled.
-const defaultConsecutiveSystemFailureThreshold = 3
+// if a host encounters more than this number of system failures, then it should be disabled.
+const consecutiveSystemFailureThreshold = 3
 
 // if we fail to clean up the agent on a quarantined host more than this number of times, we can consider the
 // host unreachable and clear its secret.
@@ -1330,12 +1329,8 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 
 	// Disable hosts and prevent them from performing more work if they have
 	// system failed many tasks in a row.
-	consecutiveSystemFailureLimit := defaultConsecutiveSystemFailureThreshold
-	if currentHost.Distro.ConsecutiveSystemFailureLimit > 0 {
-		consecutiveSystemFailureLimit = currentHost.Distro.ConsecutiveSystemFailureLimit
-	}
-	if event.AllRecentHostEventsAreSystemFailed(ctx, currentHost.Id, currentHost.ProvisionTime, consecutiveSystemFailureLimit) {
-		msg := fmt.Sprintf("host encountered %d consecutive system failures", consecutiveSystemFailureLimit)
+	if event.AllRecentHostEventsAreSystemFailed(ctx, currentHost.Id, currentHost.ProvisionTime, consecutiveSystemFailureThreshold) {
+		msg := fmt.Sprintf("host encountered %d consecutive system failures", consecutiveSystemFailureThreshold)
 		grip.Error(message.WrapError(units.HandlePoisonedHost(ctx, h.env, currentHost, msg), message.Fields{
 			"message": "unable to disable poisoned host",
 			"host":    currentHost.Id,
