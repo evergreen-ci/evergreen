@@ -989,7 +989,7 @@ func TestHostEndTask(t *testing.T) {
 			}))
 
 			for i := 0; i < defaultConsecutiveSystemFailureThreshold+5; i++ {
-				event.LogHostTaskFinished(fmt.Sprintf("some-system-failed-task-%d", i), 0, hostId, evergreen.TaskSystemTimedOut)
+				event.LogHostTaskFinished(fmt.Sprintf("some-system-failed-task-%d", i), 0, hostId, evergreen.TaskSystemFailed)
 			}
 
 			details := &apimodels.TaskEndDetail{
