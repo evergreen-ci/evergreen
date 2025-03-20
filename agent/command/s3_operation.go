@@ -1,8 +1,6 @@
 package command
 
 import (
-	"strconv"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
@@ -41,7 +39,6 @@ type s3Operation struct {
 	internalBuckets []string
 
 	taskData client.TaskData
-	base
 }
 
 func (s *s3Operation) validate() []error {
@@ -54,26 +51,17 @@ func (s *s3Operation) validate() []error {
 }
 
 func (s *s3Operation) expandParams(conf *internal.TaskConfig) error {
-	var err error
-
-	s.bucketOptions.expandParams()
-
-	if s.Optional != "" {
-		s.optional, err = strconv.ParseBool(s.Optional)
-		if err != nil {
-			return errors.Wrap(err, "parsing optional parameter as a boolean")
-		}
+	if err := expandBool(s.Optional, &s.optional); err != nil {
+		return errors.Wrap(err, "expanding optional")
 	}
 
-	if s.TemporaryUseInternalBucket != "" {
-		s.temporaryUseInternalBucket, err = strconv.ParseBool(s.TemporaryUseInternalBucket)
-		if err != nil {
-			return errors.Wrap(err, "parsing temporary use internal bucket parameter as a boolean")
-		}
+	if err := expandBool(s.TemporaryUseInternalBucket, &s.temporaryUseInternalBucket); err != nil {
+		return errors.Wrap(err, "expanding temporary use internal bucket")
 	}
 
 	s.taskData = client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 	s.internalBuckets = conf.InternalBuckets
+	s.bucketOptions.expandParams()
 
 	if s.AWSSessionToken != "" && s.RoleARN == "" {
 		// If no role was provided but a session token is being used (which means an AssumeRole credentials is being
@@ -98,10 +86,10 @@ func (s *s3Operation) createPailBucket(opts pail.S3Options, comm client.Communic
 	opts.Region = s.Region
 	opts.Name = s.Bucket
 
-	if s.AWSKey != "" {
-		opts.Credentials = pail.CreateAWSStaticCredentials(s.AWSKey, s.AWSSecret, s.AWSSessionToken)
-	} else if s.getRoleARN() != "" || s.temporaryUseInternalBucket {
+	if s.getRoleARN() != "" || s.temporaryUseInternalBucket {
 		opts.Credentials = createEvergreenCredentials(comm, s.taskData, s.getRoleARN(), s.Bucket)
+	} else if s.AWSKey != "" {
+		opts.Credentials = pail.CreateAWSStaticCredentials(s.AWSKey, s.AWSSecret, s.AWSSessionToken)
 	}
 
 	var err error

@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -125,12 +124,11 @@ func (s3pc *s3put) ParseParams(params map[string]any) error {
 	if err != nil {
 		return errors.Wrap(err, "initializing mapstructure decoder")
 	}
-
 	if err := decoder.Decode(params); err != nil {
 		return errors.Wrap(err, "decoding mapstructure params")
 	}
 
-	return s3pc.validate()
+	return errors.Wrap(s3pc.validate(), "validating params")
 }
 
 func (s3pc *s3put) validate() error {
@@ -177,8 +175,7 @@ func (s3pc *s3put) validate() error {
 func (s3pc *s3put) expandParams(conf *internal.TaskConfig) error {
 	s3pc.remoteFile = s3pc.RemoteFile
 
-	var err error
-	if err = util.ExpandValues(s3pc, &conf.Expansions); err != nil {
+	if err := util.ExpandValues(s3pc, &conf.Expansions); err != nil {
 		return errors.Wrap(err, "applying expansions")
 	}
 
@@ -191,33 +188,22 @@ func (s3pc *s3put) expandParams(conf *internal.TaskConfig) error {
 		return err
 	}
 
-	if s3pc.PreservePath != "" {
-		s3pc.preservePath, err = strconv.ParseBool(s3pc.PreservePath)
-		if err != nil {
-			return errors.Wrap(err, "parsing preserve path parameter as a boolean")
-		}
+	if err := expandBool(s3pc.PreservePath, &s3pc.preservePath); err != nil {
+		return errors.Wrap(err, "expanding preserve path")
 	}
 
-	if s3pc.SkipExisting != "" {
-		s3pc.skipExistingBool, err = strconv.ParseBool(s3pc.SkipExisting)
-		if err != nil {
-			return errors.Wrap(err, "parsing skip existing parameter as a boolean")
-		}
+	if err := expandBool(s3pc.SkipExisting, &s3pc.skipExistingBool); err != nil {
+		return errors.Wrap(err, "expanding skip existing")
 	}
 
-	if s3pc.PatchOnly != "" {
-		s3pc.isPatchOnly, err = strconv.ParseBool(s3pc.PatchOnly)
-		if err != nil {
-			return errors.Wrap(err, "parsing patch only parameter as a boolean")
-		}
+	if err := expandBool(s3pc.PatchOnly, &s3pc.isPatchOnly); err != nil {
+		return errors.Wrap(err, "expanding patch only")
 	}
 
 	s3pc.isPatchable = true
-	if s3pc.Patchable != "" {
-		s3pc.isPatchable, err = strconv.ParseBool(s3pc.Patchable)
-		if err != nil {
-			return errors.Wrap(err, "parsing patchable parameter as a boolean")
-		}
+
+	if err := expandBool(s3pc.Patchable, &s3pc.isPatchable); err != nil {
+		return errors.Wrap(err, "expanding patchable")
 	}
 
 	return nil
@@ -240,16 +226,6 @@ func (s3pc *s3put) Execute(ctx context.Context, comm client.Communicator, logger
 		return errors.Wrap(err, "validating expanded parameters")
 	}
 
-	if conf.Task.IsPatchRequest() && !s3pc.isPatchable {
-		logger.Task().Infof("Skipping command '%s' because it is not patchable and this task is part of a patch.", s3pc.Name())
-		return nil
-	}
-
-	if !conf.Task.IsPatchRequest() && s3pc.isPatchOnly {
-		logger.Task().Infof("Skipping command '%s' because the command is patch only and this task is not part of a patch.", s3pc.Name())
-		return nil
-	}
-
 	trace.SpanFromContext(ctx).SetAttributes(
 		attribute.String(s3PutBucketAttribute, s3pc.Bucket),
 		attribute.Bool(s3PutTemporaryCredentialsAttribute, s3pc.AWSSessionToken != ""),
@@ -262,6 +238,22 @@ func (s3pc *s3put) Execute(ctx context.Context, comm client.Communicator, logger
 		attribute.Bool(s3PutInternalBucket, utility.StringSliceContains(s3pc.internalBuckets, s3pc.Bucket)),
 	)
 
+	if conf.Task.IsPatchRequest() && !s3pc.isPatchable {
+		logger.Task().Infof("Skipping command '%s' because it is not patchable and this task is part of a patch.", s3pc.Name())
+		return nil
+	}
+
+	if !conf.Task.IsPatchRequest() && s3pc.isPatchOnly {
+		logger.Task().Infof("Skipping command '%s' because the command is patch only and this task is not part of a patch.", s3pc.Name())
+		return nil
+	}
+
+	if !s3pc.shouldRunForVariant(conf.BuildVariant.Name) {
+		logger.Task().Infof("Skipping S3 put of local file '%s' for variant '%s'.",
+			s3pc.LocalFile, conf.BuildVariant.Name)
+		return nil
+	}
+
 	// create pail bucket
 	httpClient := utility.GetHTTPClient()
 	httpClient.Timeout = s3HTTPClientTimeout
@@ -273,12 +265,6 @@ func (s3pc *s3put) Execute(ctx context.Context, comm client.Communicator, logger
 
 	if err := s3pc.bucket.Check(ctx); err != nil {
 		return errors.Wrap(err, "checking bucket")
-	}
-
-	if !s3pc.shouldRunForVariant(conf.BuildVariant.Name) {
-		logger.Task().Infof("Skipping S3 put of local file '%s' for variant '%s'.",
-			s3pc.LocalFile, conf.BuildVariant.Name)
-		return nil
 	}
 
 	if s3pc.isPrivate(s3pc.Visibility) {

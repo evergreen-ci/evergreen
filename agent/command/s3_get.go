@@ -6,10 +6,8 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/util"
@@ -67,32 +65,13 @@ func (c *s3get) ParseParams(params map[string]any) error {
 		return errors.Wrap(err, "decoding mapstructure params")
 	}
 
-	// make sure the command params are valid
-	if err := c.validate(); err != nil {
-		return errors.Wrap(err, "validating params")
-	}
-
-	return nil
+	return errors.Wrap(c.validate(), "validating params")
 }
 
-// validate that all necessary params are set, and that only one of
-// local_file and extract_to is specified.
 func (c *s3get) validate() error {
 	catcher := grip.NewSimpleCatcher()
 
-	if c.RoleARN != "" {
-		// When using the role ARN, there should be no provided AWS credentials.
-		catcher.NewWhen(c.AWSKey != "", "AWS key must be empty when using role ARN")
-		catcher.NewWhen(c.AWSSecret != "", "AWS secret must be empty when using role ARN")
-		catcher.NewWhen(c.AWSSessionToken != "", "AWS session token must be empty when using role ARN")
-	} else {
-		// Otherwise, the AWS credentials must be provided.
-		catcher.NewWhen(c.AWSKey == "", "AWS key cannot be blank")
-		catcher.NewWhen(c.AWSSecret == "", "AWS secret cannot be blank")
-	}
-
-	catcher.NewWhen(c.RemoteFile == "", "remote file cannot be blank")
-	catcher.Wrapf(validateS3BucketName(c.Bucket), "validating bucket name '%s'", c.Bucket)
+	catcher.Extend(c.s3Operation.validate())
 
 	// There must be only one of local_file or extract_to specified.
 	catcher.NewWhen(c.LocalFile != "" && c.ExtractTo != "", "cannot specify both local file path and directory to extract to")
@@ -106,27 +85,12 @@ func (c *s3get) validate() error {
 func (c *s3get) expandParams(conf *internal.TaskConfig) error {
 	c.remoteFile = c.RemoteFile
 
-	var err error
-	if err = util.ExpandValues(c, &conf.Expansions); err != nil {
+	if err := util.ExpandValues(c, &conf.Expansions); err != nil {
 		return errors.Wrap(err, "applying expansions")
 	}
 
-	if c.Optional != "" {
-		c.optional, err = strconv.ParseBool(c.Optional)
-		if err != nil {
-			return errors.Wrap(err, "parsing optional parameter as a boolean")
-		}
-	}
-
-	if c.TemporaryUseInternalBucket != "" {
-		c.temporaryUseInternalBucket, err = strconv.ParseBool(c.TemporaryUseInternalBucket)
-		if err != nil {
-			return errors.Wrap(err, "parsing temporary use internal bucket parameter as a boolean")
-		}
-	}
-
-	if c.Region == "" {
-		c.Region = evergreen.DefaultEC2Region
+	if err := c.s3Operation.expandParams(conf); err != nil {
+		return err
 	}
 
 	return nil
@@ -153,6 +117,12 @@ func (c *s3get) Execute(ctx context.Context, comm client.Communicator, logger cl
 		attribute.Bool(s3GetInternalBucketAttribute, utility.StringSliceContains(conf.InternalBuckets, c.Bucket)),
 	)
 
+	if c.shouldRunForVariant(conf.BuildVariant.Name) {
+		logger.Task().Infof("Skipping S3 get of remote file '%s' for variant '%s'.",
+			c.RemoteFile, conf.BuildVariant.Name)
+		return nil
+	}
+
 	// create pail bucket
 	httpClient := utility.GetHTTPClient()
 	httpClient.Timeout = s3HTTPClientTimeout
@@ -164,12 +134,6 @@ func (c *s3get) Execute(ctx context.Context, comm client.Communicator, logger cl
 
 	if err := c.bucket.Check(ctx); err != nil {
 		return errors.Wrap(err, "checking bucket")
-	}
-
-	if c.shouldRunForVariant(conf.BuildVariant.Name) {
-		logger.Task().Infof("Skipping S3 get of remote file '%s' for variant '%s'.",
-			c.RemoteFile, conf.BuildVariant.Name)
-		return nil
 	}
 
 	// if the local file or extract_to is a relative path, join it to the
