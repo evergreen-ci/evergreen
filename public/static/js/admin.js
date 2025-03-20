@@ -4,7 +4,9 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
   $scope.validDefaultHostAllocatorRoundingRules = $window.validDefaultHostAllocatorRoundingRules;
   $scope.validDefaultHostAllocatorFeedbackRules = $window.validDefaultHostAllocatorFeedbackRules;
   $scope.validDefaultHostsOverallocatedRules = $window.validDefaultHostsOverallocatedRules;
-
+  $scope.projectRefData = $window.projectRefData;
+  $scope.repoRefData = $window.repoRefData;
+  console.log($scope.repoRefData)
   $scope.load = function () {
     $scope.Settings = {};
 
@@ -899,6 +901,38 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     }
     delete $scope.jiraMapping.newProject;
   }
+  $scope.deleteJIRAProject = function (key) {
+    if (!key) {
+      return;
+    }
+    delete $scope.Settings.jira_notifications.custom_fields[key];
+  }
+  $scope.deleteProjectTasksPair = function (projectName) {
+    $scope.Settings.single_task_distro.project_tasks_pairs = $scope.Settings.single_task_distro.project_tasks_pairs.filter(p => p.project_id !== projectName);
+  }
+  $scope.addProjectTasksPair = function () {
+    var value = $scope.projectTasksPairsMapping.newProject;
+    if (!value) {
+      return;
+    }
+    if(!($scope.Settings.single_task_distro.project_tasks_pairs || []).find(p => p.project_id === value)) {
+      $scope.Settings.single_task_distro.project_tasks_pairs = [...($scope.Settings.single_task_distro.project_tasks_pairs || []), {project_id: value, allowed_tasks: []}];
+    }
+    delete $scope.projectTasksPairsMapping.newProject;
+  }
+  $scope.addAllowedTask = function(projectId) {
+    $scope.Settings.single_task_distro.project_tasks_pairs.find(p => p.project_id === projectId).allowed_tasks.push("");
+  }
+  $scope.validateTaskRegex = function(taskList, index) {
+    var task = taskList[index];
+    if (!task) {
+      return false;
+    }
+    return isRegex(task);
+  } 
+  $scope.removeAllowedTask = function(projectId, index) {
+    $scope.Settings.single_task_distro.project_tasks_pairs.find(p => p.project_id === projectId).allowed_tasks.splice(index, 1);
+  }
   $scope.addDisabledGQLQuery = function () {
     var value = $scope.queryMapping.newQuery
     if (!value) {
@@ -955,4 +989,18 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
   $scope.queryMapping = {}
 
   $scope.load();
+  
 }]);
+
+const escapeRegex = (str) =>
+  str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const isRegex = (task) => {
+  try {
+    new RegExp(task);
+  } catch (e) {
+    return false
+  }
+  return true
+}
+
