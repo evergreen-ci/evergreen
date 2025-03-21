@@ -53,12 +53,17 @@ func NewDirectory(root string, tsk *task.Task, redactorOpts redactor.RedactionOp
 		TaskID:    tsk.Id,
 		Execution: tsk.Execution,
 	}
-
+	handlerOpts := directoryHandlerOpts{
+		taskOpts:     taskOpts,
+		redactorOpts: redactorOpts,
+		output:       output,
+		grpcConn:     otelGrpcConn,
+	}
 	root = filepath.Join(root, "build")
 	handlers := map[string]directoryHandler{}
 	for name, factory := range directoryHandlerFactories {
 		dir := filepath.Join(root, name)
-		handlers[dir] = factory(dir, output, taskOpts, redactorOpts, logger, otelGrpcConn)
+		handlers[dir] = factory(dir, logger, handlerOpts)
 	}
 
 	return &Directory{
@@ -108,5 +113,13 @@ type directoryHandler interface {
 	run(context.Context) error
 }
 
+// directoryHandlerOpts contains options to be passed into each directory handler implementation initialization.
+type directoryHandlerOpts struct {
+	output       *taskoutput.TaskOutput
+	taskOpts     taskoutput.TaskOptions
+	redactorOpts redactor.RedactionOptions
+	grpcConn     *grpc.ClientConn
+}
+
 // directoryHandlerFactory abstracts the creation of a directory handler.
-type directoryHandlerFactory func(string, *taskoutput.TaskOutput, taskoutput.TaskOptions, redactor.RedactionOptions, client.LoggerProducer, *grpc.ClientConn) directoryHandler
+type directoryHandlerFactory func(string, client.LoggerProducer, directoryHandlerOpts) directoryHandler

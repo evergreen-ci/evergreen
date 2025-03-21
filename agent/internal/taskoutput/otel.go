@@ -11,8 +11,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
-	"github.com/evergreen-ci/evergreen/agent/internal/redactor"
-	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel"
@@ -85,11 +83,11 @@ func (o otelTraceDirectoryHandler) run(ctx context.Context) error {
 
 // newOtelTraceDirectoryHandler returns a new otel trace directory handler for the
 // specified task.
-func newOtelTraceDirectoryHandler(dir string, _ *taskoutput.TaskOutput, _ taskoutput.TaskOptions, _ redactor.RedactionOptions, logger client.LoggerProducer, otelGrpcConn *grpc.ClientConn) directoryHandler {
+func newOtelTraceDirectoryHandler(dir string, logger client.LoggerProducer, handlerOpts directoryHandlerOpts) directoryHandler {
 	h := &otelTraceDirectoryHandler{
 		dir:          dir,
 		logger:       logger,
-		otelGrpcConn: otelGrpcConn,
+		otelGrpcConn: handlerOpts.grpcConn,
 	}
 	return h
 }

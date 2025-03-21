@@ -412,11 +412,17 @@ func setupTestTestLogDirectoryHandler(t *testing.T, comm *client.Mock, redactOpt
 	}
 	logger, err := comm.GetLoggerProducer(context.TODO(), tsk, nil)
 	require.NoError(t, err)
-	h := newTestLogDirectoryHandler(t.TempDir(), tsk.TaskOutputInfo, taskoutput.TaskOptions{
+	taskOpts := taskoutput.TaskOptions{
 		ProjectID: tsk.Project,
 		TaskID:    tsk.Id,
 		Execution: tsk.Execution,
-	}, redactOpts, logger, nil).(*testLogDirectoryHandler)
+	}
+	handlerOpts := directoryHandlerOpts{
+		redactorOpts: redactOpts,
+		output:       tsk.TaskOutputInfo,
+		taskOpts:     taskOpts,
+	}
+	h := newTestLogDirectoryHandler(t.TempDir(), logger, handlerOpts).(*testLogDirectoryHandler)
 	h.sequenceSize = seqSize
 
 	return tsk, h
