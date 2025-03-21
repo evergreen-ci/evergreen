@@ -18,9 +18,8 @@ import (
 
 // RequestInfo holds metadata about a request
 type requestInfo struct {
-	method     string
-	path       string
-	retryOn413 bool
+	method string
+	path   string
 }
 
 // AuthError is a special error when the CLI receives 401 Unauthorized to
@@ -127,7 +126,6 @@ func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, d
 	r.Header.Add(evergreen.ContentLengthHeader, strconv.Itoa(len(out)))
 
 	resp, err := utility.RetryRequest(ctx, r, utility.RetryRequestOptions{
-		RetryOn413: info.retryOn413,
 		RetryOptions: utility.RetryOptions{
 			MaxAttempts: c.maxAttempts,
 			MinDelay:    c.timeoutStart,
