@@ -312,12 +312,13 @@ func CheckAliasWarnings(project *model.Project, aliases model.ProjectAliases) Va
 // CheckProjectErrors returns errors about the project configuration syntax
 func CheckProjectErrors(ctx context.Context, project *model.Project) ValidationErrors {
 	validationErrs := ValidationErrors{}
+
 	for _, projectErrorValidator := range projectErrorValidators {
 		validationErrs = append(validationErrs,
 			projectErrorValidator(project)...)
 	}
 
-	singleTaskDistroWhiteList, err := GetAllowedSingleTaskDistroTasksForProject(ctx, project.Identifier)
+	singleTaskDistroWhitelist, err := GetAllowedSingleTaskDistroTasksForProject(ctx, project.Identifier)
 	if err != nil {
 		return []ValidationError{{Message: errors.Wrap(err, "problem getting allowed tasks for single task distros").Error()}}
 	}
@@ -334,7 +335,7 @@ func CheckProjectErrors(ctx context.Context, project *model.Project) ValidationE
 		}
 		containerNameMap[container.Name] = true
 	}
-	validationErrs = append(validationErrs, ensureReferentialIntegrity(project, containerNameMap, distroIDs, distroAliases, singleTaskDistroIDs, singleTaskDistroWhiteList, distroWarnings)...)
+	validationErrs = append(validationErrs, ensureReferentialIntegrity(project, containerNameMap, distroIDs, distroAliases, singleTaskDistroIDs, singleTaskDistroWhitelist, distroWarnings)...)
 	return validationErrs
 }
 

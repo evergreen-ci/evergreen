@@ -489,7 +489,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 
 		if currentHost.Distro.SingleTaskDistro {
 			// If next task exists and the distro is a single task distro, check if the task is allowed on the distro.
-			singleTaskDistroWhiteList, err := validator.GetAllowedSingleTaskDistroTasksForProject(ctx, nextTask.Project)
+			singleTaskDistroWhitelist, err := validator.GetAllowedSingleTaskDistroTasksForProject(ctx, nextTask.Project)
 			if err != nil {
 				errMsg = message.Fields{
 					"message":    "could not find allowed single task disto tasks for project",
@@ -503,7 +503,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 				grip.Error(message.WrapError(err, errMsg))
 				return nil, false, errors.Wrapf(err, "could not find allowed single task disto tasks for project '%s'", nextTask.Project)
 			}
-			matched, err := validateSingleTaskDistro(singleTaskDistroWhiteList, nextTask)
+			matched, err := validateSingleTaskDistro(singleTaskDistroWhitelist, nextTask)
 			if err != nil {
 				errMsg = message.Fields{
 					"message":            "could not validate single task distro task",
@@ -652,14 +652,14 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 	return nil, false, nil
 }
 
-func validateSingleTaskDistro(singleTaskDistroWhiteList evergreen.ProjectTasksPair, nextTask *task.Task) (bool, error) {
+func validateSingleTaskDistro(singleTaskDistroWhitelist evergreen.ProjectTasksPair, nextTask *task.Task) (bool, error) {
 	// Skip single task distro validation if the project allows every task.
-	if singleTaskDistroWhiteList.AllowAll() {
+	if singleTaskDistroWhitelist.AllowAll() {
 		return true, nil
 	}
 
 	// Check if the buildvariant is allowed on the distro.
-	for _, allowedBV := range singleTaskDistroWhiteList.AllowedBVs {
+	for _, allowedBV := range singleTaskDistroWhitelist.AllowedBVs {
 		matched, err := regexp.MatchString(allowedBV, nextTask.BuildVariant)
 		if err != nil {
 			errMsg := message.Fields{
@@ -678,7 +678,7 @@ func validateSingleTaskDistro(singleTaskDistroWhiteList evergreen.ProjectTasksPa
 	}
 
 	// Check if the task is allowed on the distro.
-	for _, allowedTask := range singleTaskDistroWhiteList.AllowedTasks {
+	for _, allowedTask := range singleTaskDistroWhitelist.AllowedTasks {
 		matched, err := regexp.MatchString(allowedTask, nextTask.DisplayName)
 		if err != nil {
 			errMsg := message.Fields{
