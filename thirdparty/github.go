@@ -1612,6 +1612,66 @@ func GetBranchProtectionRules(ctx context.Context, owner, repo, branch string) (
 	return nil, nil
 }
 
+// GetEvergreenRulesetRules gets all Evergreen rules from rulesets as a list of
+// strings. This may return duplicate rules.
+func GetEvergreenRulesetRules(ctx context.Context, owner, repo, branch string) ([]string, error) {
+	rules, err := GetRulesetRules(ctx, owner, repo, branch)
+	if err != nil {
+		return nil, err
+	}
+
+	return getRulesWithEvergreenPrefix(rules), nil
+}
+
+// GetRulesetRules returns all active rules from rulesets that apply to a branch
+// as a list of strings. This may return duplicate rules.
+func GetRulesetRules(ctx context.Context, owner, repo, branch string) ([]string, error) {
+	caller := "GetRulesForBranch"
+	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
+		attribute.String(githubEndpointAttribute, caller),
+		attribute.String(githubOwnerAttribute, owner),
+		attribute.String(githubRepoAttribute, repo),
+		attribute.String(githubRefAttribute, branch),
+	))
+	defer span.End()
+
+	token, err := getInstallationToken(ctx, owner, repo, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting installation token")
+	}
+
+	githubClient := getGithubClient(token, caller, retryConfig{})
+	defer githubClient.Close()
+
+	rules, resp, err := githubClient.Repositories.GetRulesForBranch(ctx, owner, repo, branch)
+	if resp != nil {
+		defer resp.Body.Close()
+		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "getting rules for branch")
+	}
+
+	requiredStatusChecks := rules.RequiredStatusChecks
+	if requiredStatusChecks == nil {
+		return nil, nil
+	}
+
+	checks := []string{}
+	for _, statusCheck := range requiredStatusChecks {
+		if statusCheck == nil {
+			continue
+		}
+		for _, check := range statusCheck.Parameters.RequiredStatusChecks {
+			if check == nil {
+				continue
+			}
+			checks = append(checks, check.Context)
+		}
+	}
+	return checks, nil
+}
+
 func getCheckRunConclusion(status string) string {
 	switch status {
 	case evergreen.TaskSucceeded:
