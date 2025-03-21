@@ -6,13 +6,10 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
-	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
@@ -33,35 +30,13 @@ var (
 	s3GetRemoteFileAttribute           = fmt.Sprintf("%s.remote_file", s3GetAttribute)
 	s3GetExpandedRemoteFileAttribute   = fmt.Sprintf("%s.expanded_remote_file", s3GetAttribute)
 	s3GetRoleARN                       = fmt.Sprintf("%s.role_arn", s3GetAttribute)
+	s3GetAssumeRoleARN                 = fmt.Sprintf("%s.assume_role_arn", s3GetAttribute) // This tracks the role ARN used when this command is passed temporary credentials.
 	s3GetInternalBucketAttribute       = fmt.Sprintf("%s.internal_bucket", s3GetAttribute)
 )
 
 // s3get is a command to fetch a resource from an S3 bucket and download it to
 // the local machine.
 type s3get struct {
-	// AwsKey, AwsSecret, and AwsSessionToken are the user's credentials for
-	// authenticating interactions with s3.
-	AwsKey          string `mapstructure:"aws_key" plugin:"expand"`
-	AwsSecret       string `mapstructure:"aws_secret" plugin:"expand"`
-	AwsSessionToken string `mapstructure:"aws_session_token" plugin:"expand"`
-
-	// RemoteFile is the file path of the file to get, within its bucket.
-	RemoteFile string `mapstructure:"remote_file" plugin:"expand"`
-
-	// remoteFile is the file path without any expansions applied.
-	remoteFile string
-
-	// Region is the S3 region where the bucket is located. It defaults to
-	// "us-east-1".
-	Region string `mapstructure:"region" plugin:"region"`
-
-	// Bucket is the S3 bucket holding the desired file.
-	Bucket string `mapstructure:"bucket" plugin:"expand"`
-
-	// BuildVariants stores a list of build variants to run the command for.
-	// If the list is empty, it runs for all build variants.
-	BuildVariants []string `mapstructure:"build_variants" plugin:"expand"`
-
 	// Only one of these two should be specified. local_file indicates that the
 	// s3 resource should be downloaded as-is to the specified file, and
 	// extract_to indicates that the remote resource is a .tgz file to be
@@ -69,31 +44,7 @@ type s3get struct {
 	LocalFile string `mapstructure:"local_file" plugin:"expand"`
 	ExtractTo string `mapstructure:"extract_to" plugin:"expand"`
 
-	// Optional, when set to true, causes this command to be skipped over without an error when
-	// the path specified in remote_file does not exist. Defaults to false, which triggers errors
-	// for missing files.
-	Optional string `mapstructure:"optional" plugin:"expand"`
-
-	// TemporaryRoleARN is not meant to be used in production. It is used for testing purposes
-	// relating to the DEVPROD-5553 project.
-	// This is an ARN that should be assumed to make the S3 request.
-	// TODO (DEVPROD-13982): Upgrade this flag to RoleARN.
-	TemporaryRoleARN string `mapstructure:"temporary_role_arn" plugin:"expand"`
-
-	// TemporaryUseInternalBucket is not meant to be used in production. It is used for testing purposes
-	// relating to the DEVPROD-5553 project.
-	// This flag is used to determine if the s3_credentials route should be called before the command is executed.
-	// TODO (DEVPROD-13982): Remove this flag and use the internal bucket list to determine if the s3_credentials
-	// route should be called.
-	TemporaryUseInternalBucket string `mapstructure:"temporary_use_internal_bucket" plugin:"expand"`
-
-	skipMissing bool
-
-	bucket          pail.Bucket
-	internalBuckets []string
-
-	temporaryUseInternalBucket bool
-
+	s3Operation `plugin:"expand"`
 	base
 }
 
@@ -105,6 +56,7 @@ func (c *s3get) ParseParams(params map[string]any) error {
 	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
 		WeaklyTypedInput: true,
 		Result:           c,
+		Squash:           true,
 	})
 	if err != nil {
 		return errors.Wrap(err, "initializing mapstructure decoder")
@@ -113,31 +65,13 @@ func (c *s3get) ParseParams(params map[string]any) error {
 		return errors.Wrap(err, "decoding mapstructure params")
 	}
 
-	// make sure the command params are valid
-	if err := c.validate(); err != nil {
-		return errors.Wrap(err, "validating params")
-	}
-
-	return nil
+	return errors.Wrap(c.validate(), "validating params")
 }
 
-// validate that all necessary params are set, and that only one of
-// local_file and extract_to is specified.
 func (c *s3get) validate() error {
 	catcher := grip.NewSimpleCatcher()
 
-	if c.TemporaryRoleARN != "" {
-		// When using the role ARN, there should be no provided AWS credentials.
-		catcher.NewWhen(c.AwsKey != "", "AWS key must be empty when using role ARN")
-		catcher.NewWhen(c.AwsSecret != "", "AWS secret must be empty when using role ARN")
-		catcher.NewWhen(c.AwsSessionToken != "", "AWS session token must be empty when using role ARN")
-	} else {
-		catcher.NewWhen(c.AwsKey == "", "AWS key cannot be blank")
-		catcher.NewWhen(c.AwsSecret == "", "AWS secret cannot be blank")
-	}
-
-	catcher.NewWhen(c.RemoteFile == "", "remote file cannot be blank")
-	catcher.Wrapf(validateS3BucketName(c.Bucket), "validating bucket name '%s'", c.Bucket)
+	catcher.Extend(c.s3Operation.validate())
 
 	// There must be only one of local_file or extract_to specified.
 	catcher.NewWhen(c.LocalFile != "" && c.ExtractTo != "", "cannot specify both local file path and directory to extract to")
@@ -151,27 +85,12 @@ func (c *s3get) validate() error {
 func (c *s3get) expandParams(conf *internal.TaskConfig) error {
 	c.remoteFile = c.RemoteFile
 
-	var err error
-	if err = util.ExpandValues(c, &conf.Expansions); err != nil {
+	if err := util.ExpandValues(c, &conf.Expansions); err != nil {
 		return errors.Wrap(err, "applying expansions")
 	}
 
-	if c.Optional != "" {
-		c.skipMissing, err = strconv.ParseBool(c.Optional)
-		if err != nil {
-			return errors.Wrap(err, "parsing optional parameter as a boolean")
-		}
-	}
-
-	if c.TemporaryUseInternalBucket != "" {
-		c.temporaryUseInternalBucket, err = strconv.ParseBool(c.TemporaryUseInternalBucket)
-		if err != nil {
-			return errors.Wrap(err, "parsing temporary use internal bucket parameter as a boolean")
-		}
-	}
-
-	if c.Region == "" {
-		c.Region = evergreen.DefaultEC2Region
+	if err := c.s3Operation.expandParams(conf); err != nil {
+		return err
 	}
 
 	return nil
@@ -180,73 +99,41 @@ func (c *s3get) expandParams(conf *internal.TaskConfig) error {
 // Execute expands the parameters, and then fetches the
 // resource from s3.
 func (c *s3get) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
-	c.internalBuckets = conf.InternalBuckets
-
-	// expand necessary params
 	if err := c.expandParams(conf); err != nil {
 		return errors.Wrap(err, "expanding params")
 	}
 
-	// validate the params
 	if err := c.validate(); err != nil {
 		return errors.Wrap(err, "validating expanded params")
 	}
 
 	trace.SpanFromContext(ctx).SetAttributes(
 		attribute.String(s3GetBucketAttribute, c.Bucket),
-		attribute.Bool(s3GetTemporaryCredentialsAttribute, c.AwsSessionToken != ""),
+		attribute.Bool(s3GetTemporaryCredentialsAttribute, c.AWSSessionToken != ""),
 		attribute.String(s3GetRemoteFileAttribute, c.remoteFile),
 		attribute.String(s3GetExpandedRemoteFileAttribute, c.RemoteFile),
-		attribute.String(s3GetRoleARN, c.TemporaryRoleARN),
+		attribute.String(s3GetRoleARN, c.RoleARN),
+		attribute.String(s3GetAssumeRoleARN, c.assumeRoleARN),
 		attribute.Bool(s3GetInternalBucketAttribute, utility.StringSliceContains(conf.InternalBuckets, c.Bucket)),
 	)
 
-	taskData := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
-	if c.TemporaryRoleARN != "" {
-		creds, err := comm.AssumeRole(ctx, taskData, apimodels.AssumeRoleRequest{
-			RoleARN: c.TemporaryRoleARN,
-		})
-		if err != nil {
-			return errors.Wrapf(err, "getting credentials for '%s' role arn", c.TemporaryRoleARN)
-		}
-		if creds == nil {
-			return errors.Errorf("nil credentials returned for '%s' role arn", c.TemporaryRoleARN)
-		}
-		c.AwsKey = creds.AccessKeyID
-		c.AwsSecret = creds.SecretAccessKey
-		c.AwsSessionToken = creds.SessionToken
-	}
-
-	if c.temporaryUseInternalBucket {
-		creds, err := comm.S3Credentials(ctx, taskData, c.Bucket)
-		if err != nil {
-			return errors.Wrap(err, "getting S3 credentials")
-		}
-		if creds == nil {
-			return errors.New("nil credentials returned for provided role arn")
-		}
-		c.AwsKey = creds.AccessKeyID
-		c.AwsSecret = creds.SecretAccessKey
-		c.AwsSessionToken = creds.SessionToken
+	if c.shouldRunForVariant(conf.BuildVariant.Name) {
+		logger.Task().Infof("Skipping S3 get of remote file '%s' for variant '%s'.",
+			c.RemoteFile, conf.BuildVariant.Name)
+		return nil
 	}
 
 	// create pail bucket
 	httpClient := utility.GetHTTPClient()
 	httpClient.Timeout = s3HTTPClientTimeout
 	defer utility.PutHTTPClient(httpClient)
-	err := c.createPailBucket(ctx, httpClient)
-	if err != nil {
+
+	if err := c.createPailBucket(ctx, comm, httpClient); err != nil {
 		return errors.Wrap(err, "creating S3 bucket")
 	}
 
 	if err := c.bucket.Check(ctx); err != nil {
 		return errors.Wrap(err, "checking bucket")
-	}
-
-	if !shouldRunForVariant(c.BuildVariants, conf.BuildVariant.Name) {
-		logger.Task().Infof("Skipping S3 get of remote file '%s' for variant '%s'.",
-			c.RemoteFile, conf.BuildVariant.Name)
-		return nil
 	}
 
 	// if the local file or extract_to is a relative path, join it to the
@@ -285,7 +172,7 @@ func (c *s3get) Execute(ctx context.Context, comm client.Communicator, logger cl
 
 	select {
 	case err := <-errChan:
-		if err != nil && c.skipMissing {
+		if err != nil && c.optional {
 			logger.Task().Infof("Problem getting file but optional is true, exiting without error (%s).", err.Error())
 			return nil
 		}
@@ -353,13 +240,12 @@ func (c *s3get) get(ctx context.Context) error {
 	return nil
 }
 
-func (c *s3get) createPailBucket(ctx context.Context, httpClient *http.Client) error {
+func (c *s3get) createPailBucket(ctx context.Context, comm client.Communicator, httpClient *http.Client) error {
 	opts := pail.S3Options{
-		Credentials: pail.CreateAWSStaticCredentials(c.AwsKey, c.AwsSecret, c.AwsSessionToken),
-		Region:      c.Region,
-		Name:        c.Bucket,
+		Region: c.Region,
+		Name:   c.Bucket,
 	}
-	bucket, err := pail.NewS3BucketWithHTTPClient(ctx, httpClient, opts)
-	c.bucket = bucket
-	return err
+	return c.s3Operation.createPailBucket(opts, comm, func(so pail.S3Options) (pail.Bucket, error) {
+		return pail.NewS3BucketWithHTTPClient(ctx, httpClient, opts)
+	})
 }

@@ -3,6 +3,7 @@ package command
 import (
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/evergreen-ci/evergreen/agent/internal"
@@ -108,4 +109,13 @@ func getTracer() trace.Tracer {
 	}
 
 	return tracer
+}
+
+func expandBool(fromString string, toBool *bool) error {
+	if fromString == "" {
+		return nil
+	}
+	var err error
+	*toBool, err = strconv.ParseBool(fromString)
+	return errors.Wrapf(err, "parsing '%s' as a boolean", fromString)
 }
