@@ -1327,16 +1327,21 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 		endTaskResp.ShouldExit = true
 	}
 
-	// Disable hosts and prevent them from performing more work if they have
-	// system failed many tasks in a row.
-	if event.AllRecentHostEventsAreSystemFailed(ctx, currentHost.Id, currentHost.ProvisionTime, consecutiveSystemFailureThreshold) {
-		msg := fmt.Sprintf("host encountered %d consecutive system failures", consecutiveSystemFailureThreshold)
-		grip.Error(message.WrapError(units.HandlePoisonedHost(ctx, h.env, currentHost, msg), message.Fields{
-			"message": "unable to disable poisoned host",
-			"host":    currentHost.Id,
-		}))
+	if currentHost.Provider != evergreen.ProviderNameStatic {
+		// Disable a dynamic host and prevent it from performing more work if it
+		// has system failed multiple tasks in a row. They're assumed to be in
+		// an unhealthy state.
+		// Static hosts are monitored and managed separately, so they are not
+		// quarantined for system failures.
+		if event.AllRecentHostEventsAreSystemFailed(ctx, currentHost.Id, currentHost.ProvisionTime, consecutiveSystemFailureThreshold) {
+			msg := fmt.Sprintf("host encountered %d consecutive system failures", consecutiveSystemFailureThreshold)
+			grip.Error(message.WrapError(units.HandlePoisonedHost(ctx, h.env, currentHost, msg), message.Fields{
+				"message": "unable to disable poisoned host",
+				"host":    currentHost.Id,
+			}))
 
-		endTaskResp.ShouldExit = true
+			endTaskResp.ShouldExit = true
+		}
 	}
 
 	msg := message.Fields{
