@@ -30,7 +30,7 @@ require (
 	github.com/evergreen-ci/utility v0.0.0-20250317160201-a1e224d4bba9
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/gonzojive/httpcache v0.0.0-20220509000156-e80a5e6a69fe
-	github.com/google/go-github/v52 v52.0.0
+	github.com/google/go-github/v52 v52.0.0 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/gorilla/csrf v1.7.2
 	github.com/gorilla/mux v1.8.1
@@ -196,6 +196,7 @@ require (
 	github.com/evergreen-ci/plank v0.0.0-20230207190607-5f47f8a30da1
 	github.com/evergreen-ci/tarjan v0.0.0-20170824211642-fcd3f3321826
 	github.com/evergreen-ci/test-selection-client v0.0.0-20250211161638-10b5478f11ff
+	github.com/google/go-github/v70 v70.0.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/mongodb/jasper v0.0.0-20250304205544-71af207b4383
 	github.com/shirou/gopsutil/v3 v3.24.5

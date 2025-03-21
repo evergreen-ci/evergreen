@@ -14,7 +14,7 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/evergreen-ci/utility/cache"
 	"github.com/golang-jwt/jwt"
-	"github.com/google/go-github/v52/github"
+	"github.com/google/go-github/v70/github"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"

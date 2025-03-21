@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/google/go-github/v52/github"
+	"github.com/google/go-github/v70/github"
 )
 
 // Connector is an interface that contains all of the methods which
