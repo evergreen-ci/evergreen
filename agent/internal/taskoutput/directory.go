@@ -28,10 +28,12 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
+	"google.golang.org/grpc"
 )
 
 var directoryHandlerFactories = map[string]directoryHandlerFactory{
-	"TestLogs": newTestLogDirectoryHandler,
+	"TestLogs":   newTestLogDirectoryHandler,
+	"OTelTraces": newOtelTraceDirectoryHandler,
 }
 
 // Directory is the application representation of a task's reserved output
@@ -44,19 +46,24 @@ type Directory struct {
 
 // NewDirectory returns a new task output directory with the specified root for
 // the given task.
-func NewDirectory(root string, tsk *task.Task, redactorOpts redactor.RedactionOptions, logger client.LoggerProducer) *Directory {
+func NewDirectory(root string, tsk *task.Task, redactorOpts redactor.RedactionOptions, logger client.LoggerProducer, otelGrpcConn *grpc.ClientConn) *Directory {
 	output := tsk.TaskOutputInfo
 	taskOpts := taskoutput.TaskOptions{
 		ProjectID: tsk.Project,
 		TaskID:    tsk.Id,
 		Execution: tsk.Execution,
 	}
-
+	handlerOpts := directoryHandlerOpts{
+		taskOpts:     taskOpts,
+		redactorOpts: redactorOpts,
+		output:       output,
+		grpcConn:     otelGrpcConn,
+	}
 	root = filepath.Join(root, "build")
 	handlers := map[string]directoryHandler{}
 	for name, factory := range directoryHandlerFactories {
 		dir := filepath.Join(root, name)
-		handlers[dir] = factory(dir, output, taskOpts, redactorOpts, logger)
+		handlers[dir] = factory(dir, logger, handlerOpts)
 	}
 
 	return &Directory{
@@ -106,5 +113,13 @@ type directoryHandler interface {
 	run(context.Context) error
 }
 
+// directoryHandlerOpts contains options to be passed into each directory handler implementation initialization.
+type directoryHandlerOpts struct {
+	output       *taskoutput.TaskOutput
+	taskOpts     taskoutput.TaskOptions
+	redactorOpts redactor.RedactionOptions
+	grpcConn     *grpc.ClientConn
+}
+
 // directoryHandlerFactory abstracts the creation of a directory handler.
-type directoryHandlerFactory func(string, *taskoutput.TaskOutput, taskoutput.TaskOptions, redactor.RedactionOptions, client.LoggerProducer) directoryHandler
+type directoryHandlerFactory func(string, client.LoggerProducer, directoryHandlerOpts) directoryHandler

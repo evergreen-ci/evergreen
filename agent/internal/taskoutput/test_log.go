@@ -60,13 +60,13 @@ type testLogDirectoryHandler struct {
 
 // newTestLogDirectoryHandler returns a new test log directory handler for the
 // specified task.
-func newTestLogDirectoryHandler(dir string, output *taskoutput.TaskOutput, taskOpts taskoutput.TaskOptions, redactionOpts redactor.RedactionOptions, logger client.LoggerProducer) directoryHandler {
+func newTestLogDirectoryHandler(dir string, logger client.LoggerProducer, handlerOpts directoryHandlerOpts) directoryHandler {
 	h := &testLogDirectoryHandler{
 		dir:    dir,
 		logger: logger,
 	}
 	h.createSender = func(ctx context.Context, logPath string, sequence int) (send.Sender, error) {
-		evgSender, err := output.TestLogs.NewSender(ctx, taskOpts, taskoutput.EvergreenSenderOptions{
+		evgSender, err := handlerOpts.output.TestLogs.NewSender(ctx, handlerOpts.taskOpts, taskoutput.EvergreenSenderOptions{
 			Local: logger.Task().GetSender(),
 			Parse: h.spec.getParser(),
 		}, logPath, sequence)
@@ -74,8 +74,8 @@ func newTestLogDirectoryHandler(dir string, output *taskoutput.TaskOutput, taskO
 			return nil, errors.Wrap(err, "making test log sender")
 		}
 		// This flag exists to improve the performance of test log ingestion.
-		redactionOpts.PreloadRedactions = true
-		return redactor.NewRedactingSender(evgSender, redactionOpts), nil
+		handlerOpts.redactorOpts.PreloadRedactions = true
+		return redactor.NewRedactingSender(evgSender, handlerOpts.redactorOpts), nil
 	}
 
 	return h
