@@ -3,6 +3,7 @@ package command
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -89,7 +90,7 @@ type s3get struct {
 
 	skipMissing bool
 
-	bucket          pail.Bucket
+	bucket          pail.FastGetS3Bucket
 	internalBuckets []string
 
 	temporaryUseInternalBucket bool
@@ -336,17 +337,49 @@ func (c *s3get) get(ctx context.Context) error {
 			}
 		}
 
-		// download to local file
-		return errors.Wrapf(c.bucket.Download(ctx, c.RemoteFile, c.LocalFile),
-			"downloading remote file '%s' to local file '%s'", c.RemoteFile, c.LocalFile)
+		if err := os.MkdirAll(filepath.Dir(c.LocalFile), 0700); err != nil {
+			return errors.Wrapf(err, "creating enclosing directory for file '%s'", c.LocalFile)
+		}
 
+		f, err := os.Create(c.LocalFile)
+		if err != nil {
+			return errors.Wrapf(err, "creating file '%s'", c.LocalFile)
+		}
+
+		defer f.Close()
+
+		if err := c.bucket.GetToWriter(ctx, c.RemoteFile, f); err != nil {
+			return errors.Wrapf(err, "downloading remote file '%s' to local file '%s'", c.RemoteFile, c.LocalFile)
+		}
+
+		return nil
 	}
 
-	reader, err := c.bucket.Reader(ctx, c.RemoteFile)
+	f, err := os.CreateTemp(filepath.Dir(c.ExtractTo), "temp-get-*.tgz")
 	if err != nil {
-		return errors.Wrapf(err, "getting reader for remote file '%s'", c.RemoteFile)
+		return errors.Wrapf(err, "creating temporary file")
 	}
-	if err := extractTarball(ctx, reader, c.ExtractTo, []string{}); err != nil {
+
+	defer f.Close()
+
+	catcher := grip.NewBasicCatcher()
+
+	catcher.Wrapf(c.fetchAndExtractTarball(ctx, f), "fetching and extracting targz")
+	catcher.Wrapf(os.Remove(f.Name()), "removing temporary file")
+
+	return catcher.Resolve()
+}
+
+func (c *s3get) fetchAndExtractTarball(ctx context.Context, f *os.File) error {
+	if err := c.bucket.GetToWriter(ctx, c.RemoteFile, f); err != nil {
+		return errors.Wrapf(err, "downloading remote file '%s' to local file '%s'", c.RemoteFile, f.Name())
+	}
+
+	if _, err := f.Seek(0, io.SeekStart); err != nil {
+		return errors.Wrapf(err, "seeking to start of tgz file")
+	}
+
+	if err := extractTarball(ctx, f, c.ExtractTo, []string{}); err != nil {
 		return errors.Wrapf(err, "extracting file '%s' from archive to destination '%s'", c.RemoteFile, c.ExtractTo)
 	}
 
@@ -359,7 +392,7 @@ func (c *s3get) createPailBucket(ctx context.Context, httpClient *http.Client) e
 		Region:      c.Region,
 		Name:        c.Bucket,
 	}
-	bucket, err := pail.NewS3BucketWithHTTPClient(ctx, httpClient, opts)
+	bucket, err := pail.NewFastGetS3BucketWithHTTPClient(ctx, httpClient, opts)
 	c.bucket = bucket
 	return err
 }
