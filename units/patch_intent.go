@@ -533,14 +533,8 @@ func (j *patchIntentProcessor) createGitHubMergeSubscription(ctx context.Context
 		Caller:    j.Name,
 	}
 
-	// kim: TODO: determine if rulesets need to be obeyed for merge queue as
-	// well. Since they're interchangeable, I believe they should be checked as
-	// well.
 	rules := j.getEvergreenRulesForStatuses(ctx, p.GithubMergeData.Org, p.GithubMergeData.Repo, p.GithubMergeData.BaseBranch)
 	for i, rule := range rules {
-		// kim: TODO: ask BrianS why we would limit the merge queue pending
-		// checks to the first 10 branch protection rules.
-		// Limit statuses to 10
 		if i >= 10 {
 			break
 		}
@@ -1270,8 +1264,6 @@ func (j *patchIntentProcessor) sendGitHubErrorStatus(ctx context.Context, patchD
 // sendGitHubSuccessMessages sends a successful status to GitHub with the given message for all
 // Evergreen rules configured for the given project.
 func (j *patchIntentProcessor) sendGitHubSuccessMessages(ctx context.Context, patchDoc *patch.Patch, projectRef *model.ProjectRef, msg string) {
-	// kim: TODO: test that this works in staging with rulesets and with a
-	// combination of branch protection rules + rulesets.
 	rules := j.getEvergreenRulesForStatuses(ctx, patchDoc.GithubPatchData.BaseOwner, projectRef.Repo, projectRef.Branch)
 	for _, rule := range rules {
 		update := NewGithubStatusUpdateJobWithSuccessMessage(
