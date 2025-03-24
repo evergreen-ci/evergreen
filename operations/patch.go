@@ -220,8 +220,9 @@ func Patch() cli.Command {
 				return err
 			}
 
+			modulePathCache := map[string]string{}
 			if params.IncludeModules {
-				localModuleIncludes, err := getLocalModuleIncludes(params, conf, params.Path, ref.RemotePath)
+				localModuleIncludes, err := getLocalModuleIncludes(params, conf, params.Path, ref.RemotePath, modulePathCache)
 				if err != nil {
 					return err
 				}
@@ -243,7 +244,7 @@ func Patch() cli.Command {
 				}
 
 				for _, module := range proj.Modules {
-					modulePath, err := params.getModulePath(conf, module.Name)
+					modulePath, err := params.getModulePath(conf, module.Name, modulePathCache)
 					if err != nil {
 						grip.Error(err)
 						continue
@@ -518,7 +519,7 @@ func PatchFile() cli.Command {
 }
 
 // getLocalModuleIncludes reads and saves files module includes from the local project config.
-func getLocalModuleIncludes(params *patchParams, conf *ClientSettings, path, remotePath string) ([]patch.LocalModuleInclude, error) {
+func getLocalModuleIncludes(params *patchParams, conf *ClientSettings, path, remotePath string, modulePathCache map[string]string) ([]patch.LocalModuleInclude, error) {
 	var yml []byte
 	var err error
 	if path != "" {
@@ -540,7 +541,7 @@ func getLocalModuleIncludes(params *patchParams, conf *ClientSettings, path, rem
 		if include.Module == "" {
 			continue
 		}
-		modulePath, err := params.getModulePath(conf, include.Module)
+		modulePath, err := params.getModulePath(conf, include.Module, modulePathCache)
 		if err != nil {
 			grip.Error(errors.Wrapf(err, "getting module path for '%s'", include.Module))
 			continue

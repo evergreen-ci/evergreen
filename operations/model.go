@@ -260,32 +260,17 @@ func (s *ClientSettings) FindDefaultProject(cwd string, useRoot bool) string {
 	return ""
 }
 
-func (s *ClientSettings) getModulePath(project, moduleName string) string {
-	var modulePath string
-	for _, p := range s.Projects {
-		if p.Name == project && p.ModulePaths[moduleName] != "" {
-			modulePath = p.ModulePaths[moduleName]
-			break
-		}
-	}
-	return modulePath
-}
-
-// setModulePath updates the given client settings to include the new module path. It does this
-// regardless of whether auto updating is disabled, so that the path is cached locally in case of include files.
-func (s *ClientSettings) setModulePath(project, moduleName, modulePath string) {
+// setModulePath updates the given client settings to match the given module patch cache.
+func (s *ClientSettings) setModulePath(project string, modulePathCache map[string]string) {
 	for i, p := range s.Projects {
 		if p.Name == project {
-			if s.Projects[i].ModulePaths == nil {
-				s.Projects[i].ModulePaths = map[string]string{}
-			}
-			s.Projects[i].ModulePaths[moduleName] = modulePath
+			s.Projects[i].ModulePaths = modulePathCache
 			return
 		}
 	}
 	s.Projects = append(s.Projects, ClientProjectConf{
 		Name:        project,
-		ModulePaths: map[string]string{moduleName: modulePath},
+		ModulePaths: modulePathCache,
 	})
 }
 
