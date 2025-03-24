@@ -2101,16 +2101,23 @@ func CacheAllCloudProviderData(ctx context.Context, env evergreen.Environment, h
 // cacheCloudProviderDataUpdate returns an update for caching cloud provider
 // data.
 func cacheCloudProviderDataUpdate(data CloudProviderData) bson.M {
+	setFields := bson.M{
+		ZoneKey:      data.Zone,
+		StartTimeKey: data.StartedAt,
+		IPv4Key:      data.PrivateIPv4,
+		IPKey:        data.IPv6,
+		VolumesKey:   data.Volumes,
+	}
+	// kim: TODO: verify that PublicIPv4 and PublicDNS are only set if
+	// AssociatePublicIpAddress is true.
+	if data.PublicIPv4 != "" {
+		setFields[PublicIPv4Key] = data.PublicIPv4
+	}
+	if data.PublicDNS != "" {
+		setFields[DNSKey] = data.PublicDNS
+	}
 	return bson.M{
-		"$set": bson.M{
-			ZoneKey:       data.Zone,
-			StartTimeKey:  data.StartedAt,
-			DNSKey:        data.PublicDNS,
-			PublicIPv4Key: data.PublicIPv4,
-			IPv4Key:       data.PrivateIPv4,
-			IPKey:         data.IPv6,
-			VolumesKey:    data.Volumes,
-		},
+		"$set": setFields,
 	}
 }
 
