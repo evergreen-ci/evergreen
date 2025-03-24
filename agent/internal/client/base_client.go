@@ -997,7 +997,12 @@ func (c *baseCommunicator) RevokeGitHubDynamicAccessToken(ctx context.Context, t
 }
 
 // MarkFailedTaskToRestart will mark the task to automatically restart upon completion
+// This is sometimes called with a context that is cancelled due to task timeouts,
+// so we need to ensure that the context is still valid but still apply a timeout
+// to ensure the request doesn't hang indefinitely.
 func (c *baseCommunicator) MarkFailedTaskToRestart(ctx context.Context, td TaskData) error {
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), restartFailedTimout)
+	defer cancel()
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &td,

@@ -196,11 +196,6 @@ func (a *Agent) runCommandOrFunc(ctx context.Context, tc *taskContext, commandIn
 			commandSpan.End()
 			if cmd.RetryOnFailure() {
 				tc.logger.Task().Infof("Command is set to automatically restart on completion, this can be done %d total times per task.", evergreen.MaxAutomaticRestarts)
-				// Sometimes the command is cancelled due to timeouts but we still want the MarkFailedTaskToRestart to be called
-				// with a valid context. The given context should still get cancelled by the end of the running of this command
-				// to prevent leaking resources.
-				ctx, cancel := context.WithCancel(context.WithoutCancel(ctx))
-				defer cancel()
 				if restartErr := a.comm.MarkFailedTaskToRestart(ctx, tc.task); restartErr != nil {
 					tc.logger.Task().Errorf("Encountered error marking task to restart upon completion: %s", restartErr)
 				}
