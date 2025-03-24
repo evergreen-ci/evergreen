@@ -1304,8 +1304,8 @@ func (j *patchIntentProcessor) getEvergreenRulesForStatuses(ctx context.Context,
 		"patch":    j.PatchID.Hex(),
 	}))
 
-	allRules := append(branchProtectionRules, rulesetRules...)
-	allRules = append(allRules, thirdparty.GithubStatusDefaultContext)
+	allRules := append([]string{thirdparty.GithubStatusDefaultContext}, branchProtectionRules...)
+	allRules = append(allRules, rulesetRules...)
 
 	return utility.UniqueStrings(allRules)
 }
