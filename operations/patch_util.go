@@ -366,6 +366,9 @@ func (p *patchParams) addAliasToPatchParams(alias model.ProjectAlias) {
 }
 
 func (p *patchParams) setDefaultProject(conf *ClientSettings) {
+	if conf.DisableAutoDefaulting {
+		return
+	}
 	cwd, err := os.Getwd()
 	grip.Error(errors.Wrap(err, "getting current working directory"))
 	cwd, err = filepath.EvalSymlinks(cwd)
