@@ -489,7 +489,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 
 		if currentHost.Distro.SingleTaskDistro {
 			// If next task exists and the distro is a single task distro, check if the task is allowed on the distro.
-			allowedTasks, err := validator.GetAllowedSingleTaskDistroTasksForProject(ctx, nextTask.Project)
+			singleTaskDistroWhitelist, err := validator.GetAllowedSingleTaskDistroTasksForProject(ctx, nextTask.Project)
 			if err != nil {
 				errMsg = message.Fields{
 					"message":    "could not find allowed single task disto tasks for project",
@@ -503,22 +503,21 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 				grip.Error(message.WrapError(err, errMsg))
 				return nil, false, errors.Wrapf(err, "could not find allowed single task disto tasks for project '%s'", nextTask.Project)
 			}
-			matched := false
-			for _, allowedTask := range allowedTasks {
-				matched, err = regexp.MatchString(allowedTask, nextTask.DisplayName)
-				if err != nil {
-					errMsg = message.Fields{
-						"message":      "could not process regex",
-						"task_id":      nextTask.Id,
-						"task_name":    nextTask.DisplayName,
-						"allowed_task": allowedTask,
-					}
-					grip.Error(message.WrapError(err, errMsg))
-					return nil, false, errors.Wrapf(err, "could not process regex '%s'", allowedTask)
+			matched, err := validateSingleTaskDistro(singleTaskDistroWhitelist, nextTask)
+			if err != nil {
+				errMsg = message.Fields{
+					"message":            "could not validate single task distro task",
+					"host_id":            currentHost.Id,
+					"distro_id":          nextTask.DistroId,
+					"task_id":            nextTask.Id,
+					"task_name":          nextTask.DisplayName,
+					"task_group":         nextTask.TaskGroup,
+					"project":            projectRef.Id,
+					"project_identifier": projectRef.Identifier,
+					"build_variant":      nextTask.BuildVariant,
 				}
-				if matched {
-					break
-				}
+				grip.Error(message.WrapError(err, errMsg))
+				return nil, false, errors.Wrapf(err, "could not validate single task distro task '%s'", nextTask.Id)
 			}
 			if !matched {
 				grip.Error(message.Fields{
@@ -529,16 +528,18 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 					"task_name":          nextTask.DisplayName,
 					"task_group":         nextTask.TaskGroup,
 					"project":            projectRef.Id,
-					"project_identifier": projectRef.Enabled,
+					"project_identifier": projectRef.Identifier,
+					"build_variant":      nextTask.BuildVariant,
 				})
 
 				err = nextTask.MarkSystemFailed(ctx, "Marking disallowed single task distro task as system failed")
 				if err != nil {
 					errMsg = message.Fields{
-						"message":   "could not mark disallowed single task distro task as system failed",
-						"distro_id": nextTask.DistroId,
-						"task_id":   nextTask.Id,
-						"task_name": nextTask.DisplayName,
+						"message":       "could not mark disallowed single task distro task as system failed",
+						"distro_id":     nextTask.DistroId,
+						"task_id":       nextTask.Id,
+						"task_name":     nextTask.DisplayName,
+						"build_variant": nextTask.BuildVariant,
 					}
 					grip.Error(message.WrapError(err, errMsg))
 					return nil, false, errors.Wrapf(err, "could not mark disallowed single task distro task '%s' as system failed", nextTask.Id)
@@ -546,10 +547,11 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 				err = taskQueue.DequeueTask(ctx, nextTask.Id)
 				if err != nil {
 					errMsg = message.Fields{
-						"message":   "could not dequeue disallowed single task distro task",
-						"distro_id": nextTask.DistroId,
-						"task_id":   nextTask.Id,
-						"task_name": nextTask.DisplayName,
+						"message":       "could not dequeue disallowed single task distro task",
+						"distro_id":     nextTask.DistroId,
+						"task_id":       nextTask.Id,
+						"task_name":     nextTask.DisplayName,
+						"build_variant": nextTask.BuildVariant,
 					}
 					grip.Error(message.WrapError(err, errMsg))
 					return nil, false, errors.Wrapf(err, "could not dequeue disallowed single task distro task '%s'", nextTask.Id)
@@ -648,6 +650,37 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 	}
 
 	return nil, false, nil
+}
+
+func validateSingleTaskDistro(singleTaskDistroWhitelist evergreen.ProjectTasksPair, nextTask *task.Task) (bool, error) {
+	// Skip single task distro validation if the project allows every task.
+	if singleTaskDistroWhitelist.AllowAll() {
+		return true, nil
+	}
+
+	// Check if the buildvariant is allowed on the distro.
+	for _, allowedBV := range singleTaskDistroWhitelist.AllowedBVs {
+		matched, err := regexp.MatchString(allowedBV, nextTask.BuildVariant)
+		if err != nil {
+			return false, errors.Wrapf(err, "could not process bv regex '%s'", allowedBV)
+		}
+		if matched {
+			return true, nil
+		}
+	}
+
+	// Check if the task is allowed on the distro.
+	for _, allowedTask := range singleTaskDistroWhitelist.AllowedTasks {
+		matched, err := regexp.MatchString(allowedTask, nextTask.DisplayName)
+		if err != nil {
+			return false, errors.Wrapf(err, "could not process task regex '%s'", allowedTask)
+		}
+		if matched {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 // checkHostTaskGroupAfterDispatch checks that the task group max hosts is
