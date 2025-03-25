@@ -775,8 +775,8 @@ func TestRequireProjectSettingsAccess(t *testing.T) {
 
 func TestRequirePatchOwner(t *testing.T) {
 	defer func() {
-		require.NoError(t, db.ClearCollections(host.Collection, user.Collection),
-			"unable to clear user or host collection")
+		require.NoError(t, db.ClearCollections(model.ProjectRefCollection, patch.Collection),
+			"unable to clear projectRef or patch collection")
 	}()
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser, patch1Id mgobson.ObjectId, patch2Id mgobson.ObjectId, patch3Id mgobson.ObjectId){
 		"SucceedsWhenUserIsPatchAuthor": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser, patch1Id mgobson.ObjectId, patch2Id mgobson.ObjectId, patch3Id mgobson.ObjectId) {
