@@ -57,10 +57,17 @@ func New(apiURL string) Config {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patches '%s': %s", patchIds, err.Error()))
 		}
 
+		forbiddenPatches := []string{}
 		for _, p := range patches {
 			if !userCanModifyPatch(user, p) {
-				return nil, Forbidden.Send(ctx, fmt.Sprintf("not authorized to change visibility of patch '%s'", p.Id))
+				forbiddenPatches = append(forbiddenPatches, p.Id.Hex())
 			}
+		}
+		if len(forbiddenPatches) == 1 {
+			return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have permission to modify patch '%s'", user.Username(), forbiddenPatches[0]))
+		} else if len(forbiddenPatches) > 1 {
+			patchString := strings.Join(forbiddenPatches, ", ")
+			return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have permission to modify patches: '%s'", user.Username(), patchString))
 		}
 
 		return next(ctx)
