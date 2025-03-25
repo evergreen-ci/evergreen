@@ -268,15 +268,15 @@ func TestGetNewestWaterfallTask(t *testing.T) {
 	}
 	assert.NoError(t, t4.Insert())
 
-	oldestWaterfallTask, err := GetNewestWaterfallTask(t.Context(), FindTaskHistoryOptions{
+	newestWaterfallTask, err := GetNewestWaterfallTask(t.Context(), FindTaskHistoryOptions{
 		TaskName:     taskName,
 		BuildVariant: buildVariant,
 		ProjectId:    projectId,
 	})
 	require.NoError(t, err)
-	require.NotNil(t, oldestWaterfallTask)
-	assert.Equal(t, "t_3", oldestWaterfallTask.Id)
-	assert.Equal(t, 100, oldestWaterfallTask.RevisionOrderNumber)
+	require.NotNil(t, newestWaterfallTask)
+	assert.Equal(t, "t_3", newestWaterfallTask.Id)
+	assert.Equal(t, 100, newestWaterfallTask.RevisionOrderNumber)
 }
 
 func TestGetOldestWaterfallTask(t *testing.T) {

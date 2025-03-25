@@ -1200,18 +1200,20 @@ func (r *queryResolver) TaskHistory(ctx context.Context, options TaskHistoryOpts
 	apiTasks := []*restModel.APITask{}
 	for _, t := range tasks {
 		apiTask := &restModel.APITask{}
-		apiTask.BuildFromService(ctx, &t, nil)
+		if err = apiTask.BuildFromService(ctx, &t, nil); err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' to APITask: %s", t.Id, err.Error()))
+		}
 		apiTasks = append(apiTasks, apiTask)
 	}
 
 	mostRecentTask, err := model.GetNewestWaterfallTask(ctx, opts)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching most recent task: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching most recent task for '%s' in project '%s' and build variant '%s': %s", options.TaskName, options.ProjectIdentifier, options.BuildVariant, err.Error()))
 	}
 
 	oldestTask, err := model.GetOldestWaterfallTask(ctx, opts)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching oldest task: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching oldest task for '%s' in project '%s' and build variant '%s': %s", options.TaskName, options.ProjectIdentifier, options.BuildVariant, err.Error()))
 	}
 
 	return &TaskHistory{
