@@ -52,6 +52,12 @@ type CreateDistroInput struct {
 	SingleTaskDistro *bool  `json:"singleTaskDistro,omitempty"`
 }
 
+type CursorParams struct {
+	After         *string `json:"after,omitempty"`
+	Before        *string `json:"before,omitempty"`
+	IncludeCursor bool    `json:"includeCursor"`
+}
+
 // DeactivateStepbackTaskInput is the input to the deactivateStepbackTask mutation.
 type DeactivateStepbackTaskInput struct {
 	ProjectID        string `json:"projectId"`
@@ -475,6 +481,25 @@ type TaskFilterOptions struct {
 	Statuses                   []string     `json:"statuses,omitempty"`
 	TaskName                   *string      `json:"taskName,omitempty"`
 	Variant                    *string      `json:"variant,omitempty"`
+}
+
+type TaskHistory struct {
+	Tasks      []*model.APITask       `json:"tasks"`
+	Pagination *TaskHistoryPagination `json:"pagination"`
+}
+
+type TaskHistoryOpts struct {
+	ProjectIdentifier string        `json:"projectIdentifier"`
+	TaskName          string        `json:"taskName"`
+	BuildVariant      string        `json:"buildVariant"`
+	Limit             *int          `json:"limit,omitempty"`
+	Date              *time.Time    `json:"date,omitempty"`
+	CursorParams      *CursorParams `json:"cursorParams,omitempty"`
+}
+
+type TaskHistoryPagination struct {
+	MostRecentTaskOrder int `json:"mostRecentTaskOrder"`
+	OldestTaskOrder     int `json:"oldestTaskOrder"`
 }
 
 // TaskLogs is the return value for the task.taskLogs query.

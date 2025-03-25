@@ -1,0 +1,16 @@
+query {
+  taskHistory(
+    options: {
+      projectIdentifier: "sandbox"
+      taskName: "test-sandbox"
+      buildVariant: "ubuntu2204"
+      cursorParams: { after: "sandbox_task_1", includeCursor: true }
+    }
+  ) {
+    tasks {
+      id
+      activated
+      order
+    }
+  }
+}

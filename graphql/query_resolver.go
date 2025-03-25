@@ -21,6 +21,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/plank"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
@@ -1128,6 +1129,98 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 	}
 
 	return results, nil
+}
+
+// TaskHistory is the resolver for the taskHistory field.
+func (r *queryResolver) TaskHistory(ctx context.Context, options TaskHistoryOpts) (*TaskHistory, error) {
+	projectId, err := model.GetIdForProject(ctx, options.ProjectIdentifier)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", options.ProjectIdentifier, err.Error()))
+	}
+
+	before := utility.FromStringPtr(options.CursorParams.Before)
+	after := utility.FromStringPtr(options.CursorParams.After)
+	includeCursor := options.CursorParams.IncludeCursor
+	taskID := util.CoalesceString(before, after)
+
+	foundTask, err := task.FindOneId(ctx, taskID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task '%s': %s", taskID, err.Error()))
+	}
+	if foundTask == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("task '%s' not found", taskID))
+	}
+	taskOrder := foundTask.RevisionOrderNumber
+
+	opts := model.FindTaskHistoryOptions{
+		TaskName:     options.TaskName,
+		BuildVariant: options.BuildVariant,
+		ProjectId:    projectId,
+		Limit:        options.Limit,
+	}
+
+	if before != "" {
+		if includeCursor {
+			opts.UpperBound = utility.ToIntPtr(taskOrder)
+		} else {
+			opts.UpperBound = utility.ToIntPtr(taskOrder - 1)
+		}
+	}
+	if after != "" {
+		if includeCursor {
+			opts.LowerBound = utility.ToIntPtr(taskOrder)
+		} else {
+			opts.LowerBound = utility.ToIntPtr(taskOrder + 1)
+		}
+	}
+
+	activeTasks, err := model.FindActiveTasksForHistory(ctx, opts)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding active tasks: %s", err.Error()))
+	}
+
+	if len(activeTasks) > 0 && opts.UpperBound == nil {
+		// TODO DEVPROD-16060: Add logic for leading inactive versions.
+		opts.UpperBound = utility.ToIntPtr(activeTasks[0].RevisionOrderNumber)
+	}
+
+	if len(activeTasks) > 0 && opts.LowerBound == nil {
+		// TODO DEVPROD-16060: Add logic for trailing inactive versions.
+		opts.LowerBound = utility.ToIntPtr(activeTasks[len(activeTasks)-1].RevisionOrderNumber)
+	}
+
+	inactiveTasks, err := model.FindInactiveTasksForHistory(ctx, opts)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding inactive tasks: %s", err.Error()))
+	}
+
+	tasks := append(activeTasks, inactiveTasks...)
+	sort.Slice(tasks, func(i, j int) bool { return tasks[i].RevisionOrderNumber > tasks[j].RevisionOrderNumber })
+
+	apiTasks := []*restModel.APITask{}
+	for _, t := range tasks {
+		apiTask := &restModel.APITask{}
+		apiTask.BuildFromService(ctx, &t, nil)
+		apiTasks = append(apiTasks, apiTask)
+	}
+
+	mostRecentTask, err := model.GetNewestWaterfallTask(ctx, opts)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching most recent task: %s", err.Error()))
+	}
+
+	oldestTask, err := model.GetOldestWaterfallTask(ctx, opts)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching oldest task: %s", err.Error()))
+	}
+
+	return &TaskHistory{
+		Tasks: apiTasks,
+		Pagination: &TaskHistoryPagination{
+			MostRecentTaskOrder: mostRecentTask.RevisionOrderNumber,
+			OldestTaskOrder:     oldestTask.RevisionOrderNumber,
+		},
+	}, nil
 }
 
 // HasVersion is the resolver for the hasVersion field.
