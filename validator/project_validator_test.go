@@ -3253,6 +3253,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 		Convey("an error should be thrown if a referenced distro for a "+
 			"task is a single task only distro and the task is not allowed", func() {
 			project := &model.Project{
+				Identifier: "project",
 				Tasks: []model.ProjectTask{
 					{Name: "compile"},
 				},
@@ -3273,6 +3274,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 		Convey("an error should be thrown if a refrerenced distro for a "+
 			"buildvariant is a single task only distro", func() {
 			project := &model.Project{
+				Identifier: "project",
 				BuildVariants: []model.BuildVariant{
 					{
 						Name:  "enterprise",
@@ -3351,6 +3353,17 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 		Convey("no error should be thrown if a referenced single task distro ID for a "+
 			"task is allowed to use single task distros", func() {
 			project := &model.Project{
+				BuildVariants: []model.BuildVariant{
+					{
+						Name:  "bv",
+						RunOn: []string{"rhel55"},
+						Tasks: []model.BuildVariantTaskUnit{
+							{
+								Name: "allowedSingleTask",
+							},
+						},
+					},
+				},
 				Tasks: []model.ProjectTask{
 					{
 						Name:  "allowedSingleTask",
@@ -3364,6 +3377,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 		Convey("no error should be thrown if a referenced single task distro ID for a "+
 			"bv is allowed to use single task distros", func() {
 			project := &model.Project{
+				Identifier: "project",
 				BuildVariants: []model.BuildVariant{
 					{
 						Name:  "bv",
@@ -3380,14 +3394,58 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 				AllowedTasks: []string{"all"},
 			}
 			project := &model.Project{
+				Identifier: "project",
+				BuildVariants: []model.BuildVariant{
+					{
+						Name:  "bv",
+						RunOn: []string{"singleTaskDistro"},
+						Tasks: []model.BuildVariantTaskUnit{
+							{
+								Name: "anytask",
+							},
+							{
+								Name: "allowedSingleTask",
+							},
+						},
+					},
+				},
 				Tasks: []model.ProjectTask{
 					{
-						Name:  "anytask",
-						RunOn: []string{"singleTaskDistro"},
+						Name: "allowedSingleTask",
+					},
+					{
+						Name: "anytask",
 					},
 				},
 			}
 			So(ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, allowAll, nil), ShouldResemble, ValidationErrors{})
+		})
+
+		Convey("warning should be thrown if single task distro is used"+
+			"without a specified project", func() {
+			project := &model.Project{
+				BuildVariants: []model.BuildVariant{
+					{
+						Name:  "bv",
+						RunOn: []string{"rhel55"},
+						Tasks: []model.BuildVariantTaskUnit{
+							{
+								Name:  "allowedSingleTask",
+								RunOn: []string{"singleTaskDistro"},
+							},
+						},
+					},
+				},
+				Tasks: []model.ProjectTask{
+					{
+						Name: "allowedSingleTask",
+					},
+				},
+			}
+			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroWhitelist, nil)
+			So(errs, ShouldNotResemble, ValidationErrors{})
+			So(len(errs), ShouldEqual, 1)
+			So(errs[0].Message, ShouldContainSubstring, "project not specified, skipping single task distro validation")
 		})
 	})
 }
