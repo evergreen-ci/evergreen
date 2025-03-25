@@ -23,10 +23,6 @@ func TestCheckDistro(t *testing.T) {
 	env := evergreen.GetEnvironment()
 	conf := env.Settings()
 	conf.Providers.AWS.EC2Keys = []evergreen.EC2Key{{Key: "key", Secret: "secret"}}
-	conf.SSHKeyPairs = []evergreen.SSHKeyPair{{Name: "a"}}
-	defer func() {
-		conf.SSHKeyPairs = nil
-	}()
 
 	Convey("When validating a distro", t, func() {
 
@@ -661,22 +657,6 @@ func TestEnsureValidStaticBootstrapSettings(t *testing.T) {
 
 	d.BootstrapSettings.Method = distro.BootstrapMethodUserData
 	assert.NotNil(t, ensureValidStaticBootstrapSettings(ctx, &d, &evergreen.Settings{}))
-}
-
-func TestEnsureStaticHasAuthorizedKeysFile(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	settings := &evergreen.Settings{
-		SSHKeyPairs: []evergreen.SSHKeyPair{
-			{
-				Name: "ssh_key_pair1",
-			},
-		},
-	}
-	assert.Nil(t, ensureStaticHasAuthorizedKeysFile(ctx, &distro.Distro{Provider: evergreen.ProviderNameStatic, AuthorizedKeysFile: "~/.ssh/authorized_keys"}, settings))
-	assert.NotNil(t, ensureStaticHasAuthorizedKeysFile(ctx, &distro.Distro{Provider: evergreen.ProviderNameStatic}, settings))
-	assert.Nil(t, ensureStaticHasAuthorizedKeysFile(ctx, &distro.Distro{Provider: evergreen.ProviderNameEc2Fleet}, settings))
 }
 
 func TestEnsureHasValidVirtualWorkstationSettings(t *testing.T) {

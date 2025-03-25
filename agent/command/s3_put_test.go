@@ -252,7 +252,7 @@ func TestS3PutValidateParams(t *testing.T) {
 				So(cmd.ResourceDisplayName, ShouldEqual, params["display_name"])
 			})
 
-			Convey("combining temporary credentials with signed visibility should cause an error", func() {
+			Convey("combining temporary credentials with signed visibility should not cause an error", func() {
 				params := map[string]any{
 					"aws_key":           "key",
 					"aws_secret":        "secret",
@@ -260,14 +260,12 @@ func TestS3PutValidateParams(t *testing.T) {
 					"local_file":        "local",
 					"remote_file":       "remote",
 					"bucket":            "bck",
-					"permissions":       "public-read",
+					"permissions":       "private",
 					"content_type":      "application/x-tar",
 					"display_name":      "test_file",
 					"visibility":        "signed",
 				}
-				err := cmd.ParseParams(params)
-				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldContainSubstring, "cannot use temporary AWS credentials with signed link visibility")
+				So(cmd.ParseParams(params), ShouldBeNil)
 			})
 		})
 

@@ -25,7 +25,6 @@ var distroSyntaxValidators = []distroValidator{
 	ensureHasNonZeroID,
 	ensureHasRequiredFields,
 	ensureValidSSHOptions,
-	ensureStaticHasAuthorizedKeysFile,
 	ensureValidExpansions,
 	ensureStaticHostsAreNotSpawnable,
 	ensureValidContainerPool,
@@ -240,20 +239,6 @@ func ensureValidSSHOptions(ctx context.Context, d *distro.Distro, s *evergreen.S
 	for _, o := range d.SSHOptions {
 		if o == "" {
 			return ValidationErrors{{Error, "distro cannot be blank SSH option"}}
-		}
-	}
-	return nil
-}
-
-// ensureStaticHasAuthorizedKeysFile checks that the SSH key name corresponds to an actual
-// SSH key.
-func ensureStaticHasAuthorizedKeysFile(ctx context.Context, d *distro.Distro, s *evergreen.Settings) ValidationErrors {
-	if len(s.SSHKeyPairs) != 0 && d.Provider == evergreen.ProviderNameStatic && d.AuthorizedKeysFile == "" {
-		return ValidationErrors{
-			{
-				Message: "authorized keys file was not specified",
-				Level:   Error,
-			},
 		}
 	}
 	return nil

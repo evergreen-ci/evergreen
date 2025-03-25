@@ -51,9 +51,6 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
         $scope.tempExpansions.push(obj);
       });
 
-      $scope.newSSHKeyPair = {};
-      $scope.tempSSHKeyPairs = _.clone(resp.data.ssh_key_pairs) || [];
-
       if (!resp.data.auth) {
         resp.data.auth = {};
       }
@@ -111,7 +108,6 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
         $scope.Settings.credentials[key] = elem[key];
       }
     });
-    $scope.Settings.ssh_key_pairs = $scope.tempSSHKeyPairs;
 
     if (!$scope.Settings.auth) {
       $scope.Settings.auth = {};
@@ -332,29 +328,6 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
 
   $scope.validInternalBucket = function (bucket) {
     return bucket && bucket != "";
-  }
-
-  $scope.deleteSecretARN = function (index) {
-    $scope.Settings.ssh_key_secret_arns.splice(index, 1);
-  }
-
-  $scope.validSecretARN = function (arn) {
-    return arn && arn != "";
-  }
-
-  $scope.addSecretARN = function () {
-    if ($scope.Settings.ssh_key_secret_arns == null) {
-      $scope.Settings.ssh_key_secret_arns = [];
-    }
-
-    if (!$scope.validSecretARN($scope.new_secret_arn)) {
-      $scope.invalidSecretARN = "ARN cannot be empty.";
-      return
-    }
-
-    $scope.Settings.ssh_key_secret_arns.push($scope.new_secret_arn);
-    $scope.new_secret_arn = "";
-    $scope.invalidSecretARN = "";
   }
 
   $scope.addAWSVPCSubnet = function () {
@@ -765,14 +738,6 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     }
 
     return user;
-  }
-
-  $scope.addSSHKeyPair = function () {
-    if ($scope.tempSSHKeyPairs.length === 0) {
-      $scope.tempSSHKeyPairs = [];
-    }
-    $scope.tempSSHKeyPairs.push($scope.newSSHKeyPair);
-    $scope.newSSHKeyPair = {};
   }
 
   $scope.addMultiAuthReadWrite = function () {

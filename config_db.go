@@ -51,14 +51,9 @@ var (
 	githubOrgsKey          = bsonutil.MustHaveTag(Settings{}, "GithubOrgs")
 	githubWebhookSecretKey = bsonutil.MustHaveTag(Settings{}, "GithubWebhookSecret")
 	disabledGQLQueriesKey  = bsonutil.MustHaveTag(Settings{}, "DisabledGQLQueries")
-	sshKeyDirectoryKey     = bsonutil.MustHaveTag(Settings{}, "SSHKeyDirectory")
-	sshKeyPairsKey         = bsonutil.MustHaveTag(Settings{}, "SSHKeyPairs")
-	sshKeySecretARNsKey    = bsonutil.MustHaveTag(Settings{}, "SSHKeySecretARNs")
 	spawnhostKey           = bsonutil.MustHaveTag(Settings{}, "Spawnhost")
 	shutdownWaitKey        = bsonutil.MustHaveTag(Settings{}, "ShutdownWaitSeconds")
-
-	sshKeyPairNameKey       = bsonutil.MustHaveTag(SSHKeyPair{}, "Name")
-	sshKeyPairEC2RegionsKey = bsonutil.MustHaveTag(SSHKeyPair{}, "EC2Regions")
+	sshKey                 = bsonutil.MustHaveTag(Settings{}, "SSH")
 
 	// degraded mode flags
 	taskDispatchKey                    = bsonutil.MustHaveTag(ServiceFlags{}, "TaskDispatchDisabled")

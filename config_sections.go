@@ -48,6 +48,7 @@ func NewConfigSections() ConfigSections {
 		&SlackConfig{},
 		&SleepScheduleConfig{},
 		&SplunkConfig{},
+		&SSHConfig{},
 		&UIConfig{},
 		&Settings{},
 		&JIRANotificationsConfig{},

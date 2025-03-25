@@ -26,7 +26,6 @@ func fetchTestDistro() distro.Distro {
 		ProviderSettingsList: []*birch.Document{birch.NewDocument(
 			birch.EC.String("ami", "ami-97785bed"),
 			birch.EC.String("instance_type", "t2.micro"),
-			birch.EC.String("key_name", "mci"),
 			birch.EC.String("region", "us-east-1"),
 			birch.EC.Boolean("is_vpc", true),
 			birch.EC.Double("bid_price", .005),
@@ -58,6 +57,7 @@ func TestSpawnEC2InstanceOnDemand(t *testing.T) {
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
 	testConfig := env.Settings()
+	testConfig.SSH.TaskHostKey.Name = "evergreen-task-hosts"
 
 	testutil.ConfigureIntegrationTest(t, testConfig)
 	require.NoError(db.Clear(host.Collection))
