@@ -87,7 +87,7 @@ func newOtelTraceDirectoryHandler(dir string, logger client.LoggerProducer, hand
 	h := &otelTraceDirectoryHandler{
 		dir:          dir,
 		logger:       logger,
-		otelGrpcConn: handlerOpts.grpcConn,
+		otelGrpcConn: handlerOpts.otelConn,
 	}
 	return h
 }

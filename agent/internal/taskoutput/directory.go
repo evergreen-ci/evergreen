@@ -44,26 +44,33 @@ type Directory struct {
 	handlers map[string]directoryHandler
 }
 
+// DirectoryOpts is an options struct passed into directory initialization.
+type DirectoryOpts struct {
+	Root         string
+	Tsk          *task.Task
+	RedactorOpts redactor.RedactionOptions
+	Logger       client.LoggerProducer
+	OtelConn     *grpc.ClientConn
+}
+
 // NewDirectory returns a new task output directory with the specified root for
 // the given task.
-func NewDirectory(root string, tsk *task.Task, redactorOpts redactor.RedactionOptions, logger client.LoggerProducer, otelGrpcConn *grpc.ClientConn) *Directory {
-	output := tsk.TaskOutputInfo
-	taskOpts := taskoutput.TaskOptions{
-		ProjectID: tsk.Project,
-		TaskID:    tsk.Id,
-		Execution: tsk.Execution,
-	}
+func NewDirectory(opts DirectoryOpts) *Directory {
 	handlerOpts := directoryHandlerOpts{
-		taskOpts:     taskOpts,
-		redactorOpts: redactorOpts,
-		output:       output,
-		grpcConn:     otelGrpcConn,
+		taskOpts: taskoutput.TaskOptions{
+			ProjectID: opts.Tsk.Project,
+			TaskID:    opts.Tsk.Id,
+			Execution: opts.Tsk.Execution,
+		},
+		redactorOpts: opts.RedactorOpts,
+		output:       opts.Tsk.TaskOutputInfo,
+		otelConn:     opts.OtelConn,
 	}
-	root = filepath.Join(root, "build")
+	root := filepath.Join(opts.Root, "build")
 	handlers := map[string]directoryHandler{}
 	for name, factory := range directoryHandlerFactories {
 		dir := filepath.Join(root, name)
-		handlers[dir] = factory(dir, logger, handlerOpts)
+		handlers[dir] = factory(dir, opts.Logger, handlerOpts)
 	}
 
 	return &Directory{
@@ -118,7 +125,7 @@ type directoryHandlerOpts struct {
 	output       *taskoutput.TaskOutput
 	taskOpts     taskoutput.TaskOptions
 	redactorOpts redactor.RedactionOptions
-	grpcConn     *grpc.ClientConn
+	otelConn     *grpc.ClientConn
 }
 
 // directoryHandlerFactory abstracts the creation of a directory handler.
