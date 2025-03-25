@@ -16,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
-	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/pail"
@@ -189,7 +188,6 @@ func (s3pc *s3put) validate() error {
 		catcher.NewWhen(s3pc.AwsSecret == "", "AWS secret cannot be blank")
 	}
 
-	catcher.NewWhen(s3pc.AwsSessionToken != "" && s3pc.Visibility == artifact.Signed, "cannot use temporary AWS credentials with signed link visibility")
 	if s3pc.LocalFile == "" && !s3pc.isMulti() {
 		catcher.New("local file and local files include filter cannot both be blank")
 	}
@@ -237,10 +235,6 @@ func (s3pc *s3put) expandParams(conf *internal.TaskConfig) error {
 	var err error
 	if err = util.ExpandValues(s3pc, &conf.Expansions); err != nil {
 		return errors.Wrap(err, "applying expansions")
-	}
-
-	if s3pc.AwsSessionToken != "" && s3pc.Visibility == artifact.Signed {
-		return errors.New("cannot use temporary AWS credentials with a signed link visibility")
 	}
 
 	s3pc.workDir = conf.WorkDir
@@ -338,21 +332,9 @@ func (s3pc *s3put) Execute(ctx context.Context, comm client.Communicator, logger
 		attribute.Bool(s3PutInternalBucket, utility.StringSliceContains(s3pc.internalBuckets, s3pc.Bucket)),
 	)
 
-	if s3pc.TemporaryRoleARN != "" {
-		creds, err := comm.AssumeRole(ctx, s3pc.taskData, apimodels.AssumeRoleRequest{
-			RoleARN: s3pc.TemporaryRoleARN,
-		})
-		if err != nil {
-			return errors.Wrap(err, "getting credentials for provided role arn")
-		}
-		if creds == nil {
-			return errors.New("nil credentials returned for provided role arn")
-		}
-		s3pc.AwsKey = creds.AccessKeyID
-		s3pc.AwsSecret = creds.SecretAccessKey
-		s3pc.AwsSessionToken = creds.SessionToken
-	} else {
-		// If no role was provided, check if the session token matches any saved from ec2.assume_role commands in the task config.
+	if s3pc.AwsSessionToken != "" && s3pc.TemporaryRoleARN == "" {
+		// If no role was provided but a session token is being used (which means an AssumeRole credentials is being
+		// used), check if the session token matches any saved from ec2.assume_role commands in the task config.
 		// If it does, associate this command with the corresponding role ARN.
 		if roleARN, ok := conf.AssumeRoleRoles[s3pc.AwsSessionToken]; ok {
 			s3pc.TemporaryRoleARN = roleARN
@@ -362,24 +344,11 @@ func (s3pc *s3put) Execute(ctx context.Context, comm client.Communicator, logger
 		}
 	}
 
-	if s3pc.temporaryUseInternalBucket {
-		creds, err := comm.S3Credentials(ctx, s3pc.taskData, s3pc.Bucket)
-		if err != nil {
-			return errors.Wrap(err, "getting S3 credentials")
-		}
-		if creds == nil {
-			return errors.New("nil credentials returned for provided role arn")
-		}
-		s3pc.AwsKey = creds.AccessKeyID
-		s3pc.AwsSecret = creds.SecretAccessKey
-		s3pc.AwsSessionToken = creds.SessionToken
-	}
-
 	// create pail bucket
 	httpClient := utility.GetHTTPClient()
 	httpClient.Timeout = s3HTTPClientTimeout
 	defer utility.PutHTTPClient(httpClient)
-	if err := s3pc.createPailBucket(ctx, httpClient); err != nil {
+	if err := s3pc.createPailBucket(ctx, comm, httpClient); err != nil {
 		return errors.Wrap(err, "connecting to S3")
 	}
 
@@ -640,16 +609,21 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, lo
 	return nil
 }
 
-func (s3pc *s3put) createPailBucket(ctx context.Context, httpClient *http.Client) error {
+func (s3pc *s3put) createPailBucket(ctx context.Context, comm client.Communicator, httpClient *http.Client) error {
 	if s3pc.bucket != nil {
 		return nil
 	}
 	opts := pail.S3Options{
-		Credentials: pail.CreateAWSStaticCredentials(s3pc.AwsKey, s3pc.AwsSecret, s3pc.AwsSessionToken),
 		Region:      s3pc.Region,
 		Name:        s3pc.Bucket,
 		Permissions: pail.S3Permissions(s3pc.Permissions),
 		ContentType: s3pc.ContentType,
+	}
+
+	if s3pc.AwsKey != "" {
+		opts.Credentials = pail.CreateAWSStaticCredentials(s3pc.AwsKey, s3pc.AwsSecret, s3pc.AwsSessionToken)
+	} else if s3pc.TemporaryRoleARN != "" || s3pc.temporaryUseInternalBucket {
+		opts.Credentials = createEvergreenCredentials(comm, s3pc.taskData, s3pc.TemporaryRoleARN, s3pc.Bucket)
 	}
 
 	if s3pc.skipExistingBool {

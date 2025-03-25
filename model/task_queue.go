@@ -70,20 +70,20 @@ type DistroQueueInfo struct {
 	SecondaryQueue bool `bson:"alias_queue" json:"alias_queue"`
 }
 
-func GetDistroQueueInfo(distroID string) (DistroQueueInfo, error) {
-	rval, err := getDistroQueueInfoCollection(distroID, TaskQueuesCollection)
+func GetDistroQueueInfo(ctx context.Context, distroID string) (DistroQueueInfo, error) {
+	rval, err := getDistroQueueInfoCollection(ctx, distroID, TaskQueuesCollection)
 	return rval, err
 }
 
-func GetDistroSecondaryQueueInfo(distroID string) (DistroQueueInfo, error) {
-	rval, err := getDistroQueueInfoCollection(distroID, TaskSecondaryQueuesCollection)
+func GetDistroSecondaryQueueInfo(ctx context.Context, distroID string) (DistroQueueInfo, error) {
+	rval, err := getDistroQueueInfoCollection(ctx, distroID, TaskSecondaryQueuesCollection)
 	return rval, err
 }
 
-func getDistroQueueInfoCollection(distroID, collection string) (DistroQueueInfo, error) {
+func getDistroQueueInfoCollection(ctx context.Context, distroID, collection string) (DistroQueueInfo, error) {
 	taskQueue := &TaskQueue{}
 	q := db.Query(bson.M{taskQueueDistroKey: distroID}).Project(bson.M{taskQueueDistroQueueInfoKey: 1})
-	err := db.FindOneQ(collection, q, taskQueue)
+	err := db.FindOneQContext(ctx, collection, q, taskQueue)
 
 	if err != nil {
 		return DistroQueueInfo{}, errors.Wrapf(err, "finding distro queue info for distro '%s'", distroID)
@@ -234,7 +234,7 @@ func updateTaskQueue(distro string, taskQueue []TaskQueueItem, distroQueueInfo D
 // ClearTaskQueue removes all tasks from task queue by updating them with a blank queue,
 // and modifies the queue info.
 // This is in contrast to RemoveTaskQueues, which simply deletes these documents.
-func ClearTaskQueue(distroId string) error {
+func ClearTaskQueue(ctx context.Context, distroId string) error {
 	grip.Info(message.Fields{
 		"message": "clearing task queue",
 		"distro":  distroId,
@@ -243,7 +243,7 @@ func ClearTaskQueue(distroId string) error {
 	catcher := grip.NewBasicCatcher()
 
 	// Task queue should always exist, so proceed with clearing
-	distroQueueInfo, err := GetDistroQueueInfo(distroId)
+	distroQueueInfo, err := GetDistroQueueInfo(ctx, distroId)
 	catcher.AddWhen(!adb.ResultsNotFound(err), errors.Wrapf(err, "getting task queue info"))
 	distroQueueInfo = clearQueueInfo(distroQueueInfo)
 	err = clearTaskQueueCollection(distroId, distroQueueInfo)
@@ -267,7 +267,7 @@ func ClearTaskQueue(distroId string) error {
 		})
 		return catcher.Resolve()
 	}
-	distroQueueInfo, err = GetDistroSecondaryQueueInfo(distroId)
+	distroQueueInfo, err = GetDistroSecondaryQueueInfo(ctx, distroId)
 	catcher.Wrap(err, "getting task secondary queue info")
 	distroQueueInfo = clearQueueInfo(distroQueueInfo)
 
@@ -431,16 +431,16 @@ func FindAllTaskQueues() ([]TaskQueue, error) {
 	return taskQueues, err
 }
 
-func FindDistroTaskQueue(distroID string) (TaskQueue, error) {
+func FindDistroTaskQueue(ctx context.Context, distroID string) (TaskQueue, error) {
 	queue := TaskQueue{}
-	err := db.FindOneQ(TaskQueuesCollection, db.Query(bson.M{taskQueueDistroKey: distroID}), &queue)
+	err := db.FindOneQContext(ctx, TaskQueuesCollection, db.Query(bson.M{taskQueueDistroKey: distroID}), &queue)
 	return queue, errors.WithStack(err)
 }
 
-func FindDistroSecondaryTaskQueue(distroID string) (TaskQueue, error) {
+func FindDistroSecondaryTaskQueue(ctx context.Context, distroID string) (TaskQueue, error) {
 	queue := TaskQueue{}
 	q := db.Query(bson.M{taskQueueDistroKey: distroID})
-	err := db.FindOneQ(TaskSecondaryQueuesCollection, q, &queue)
+	err := db.FindOneQContext(ctx, TaskSecondaryQueuesCollection, q, &queue)
 
 	return queue, errors.WithStack(err)
 }

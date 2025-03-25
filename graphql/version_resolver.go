@@ -24,7 +24,7 @@ import (
 // BaseTaskStatuses is the resolver for the baseTaskStatuses field.
 func (r *versionResolver) BaseTaskStatuses(ctx context.Context, obj *restModel.APIVersion) ([]string, error) {
 	versionID := utility.FromStringPtr(obj.Id)
-	baseVersion, err := model.FindBaseVersionForVersion(versionID)
+	baseVersion, err := model.FindBaseVersionForVersion(ctx, versionID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding base version for version '%s': %s", versionID, err.Error()))
 	}
@@ -40,7 +40,7 @@ func (r *versionResolver) BaseTaskStatuses(ctx context.Context, obj *restModel.A
 
 // BaseVersion is the resolver for the baseVersion field.
 func (r *versionResolver) BaseVersion(ctx context.Context, obj *restModel.APIVersion) (*restModel.APIVersion, error) {
-	baseVersion, err := model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(utility.FromStringPtr(obj.Project), utility.FromStringPtr(obj.Revision)))
+	baseVersion, err := model.VersionFindOne(ctx, model.BaseVersionByProjectIdAndRevision(utility.FromStringPtr(obj.Project), utility.FromStringPtr(obj.Revision)))
 	if baseVersion == nil || err != nil {
 		return nil, nil
 	}
@@ -55,7 +55,7 @@ func (r *versionResolver) BuildVariants(ctx context.Context, obj *restModel.APIV
 	versionID := utility.FromStringPtr(obj.Id)
 	// If activated is nil in the db we should resolve it and cache it for subsequent queries. There is a very low likely hood of this field being hit
 	if obj.Activated == nil {
-		version, err := model.VersionFindOne(model.VersionById(versionID))
+		version, err := model.VersionFindOne(ctx, model.VersionById(versionID))
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version '%s': %s", versionID, err.Error()))
 		}
@@ -165,7 +165,7 @@ func (r *versionResolver) ExternalLinksForMetadata(ctx context.Context, obj *res
 // GeneratedTaskCounts is the resolver for the generatedTaskCounts field.
 func (r *versionResolver) GeneratedTaskCounts(ctx context.Context, obj *restModel.APIVersion) ([]*GeneratedTaskCountResults, error) {
 	versionID := utility.FromStringPtr(obj.Id)
-	v, err := model.VersionFindOneId(versionID)
+	v, err := model.VersionFindOneId(ctx, versionID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", versionID, err.Error()))
 	}
@@ -238,7 +238,7 @@ func (r *versionResolver) Patch(ctx context.Context, obj *restModel.APIVersion) 
 // PreviousVersion is the resolver for the previousVersion field.
 func (r *versionResolver) PreviousVersion(ctx context.Context, obj *restModel.APIVersion) (*restModel.APIVersion, error) {
 	if !obj.IsPatchRequester() {
-		previousVersion, err := model.VersionFindOne(model.VersionByProjectIdAndOrder(utility.FromStringPtr(obj.Project), obj.Order-1))
+		previousVersion, err := model.VersionFindOne(ctx, model.VersionByProjectIdAndOrder(utility.FromStringPtr(obj.Project), obj.Order-1))
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding previous version for version '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
 		}
@@ -262,7 +262,7 @@ func (r *versionResolver) ProjectMetadata(ctx context.Context, obj *restModel.AP
 // Status is the resolver for the status field.
 func (r *versionResolver) Status(ctx context.Context, obj *restModel.APIVersion) (string, error) {
 	versionID := utility.FromStringPtr(obj.Id)
-	v, err := model.VersionFindOneId(versionID)
+	v, err := model.VersionFindOneId(ctx, versionID)
 	if err != nil {
 		return "", InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", versionID, err.Error()))
 	}
@@ -329,7 +329,7 @@ func (r *versionResolver) Tasks(ctx context.Context, obj *restModel.APIVersion, 
 		}
 	}
 	baseVersionID := ""
-	baseVersion, err := model.FindBaseVersionForVersion(utility.FromStringPtr(obj.Id))
+	baseVersion, err := model.FindBaseVersionForVersion(ctx, utility.FromStringPtr(obj.Id))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding base version for version '%s': %s", versionID, err.Error()))
 	}
@@ -405,7 +405,7 @@ func (r *versionResolver) UpstreamProject(ctx context.Context, obj *restModel.AP
 	}
 
 	versionID := utility.FromStringPtr(obj.Id)
-	v, err := model.VersionFindOneId(versionID)
+	v, err := model.VersionFindOneId(ctx, versionID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", versionID, err.Error()))
 	}
@@ -446,7 +446,7 @@ func (r *versionResolver) UpstreamProject(ctx context.Context, obj *restModel.AP
 			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("upstream build '%s' not found", v.TriggerID))
 		}
 
-		upstreamVersion, err := model.VersionFindOneId(upstreamBuild.Version)
+		upstreamVersion, err := model.VersionFindOneId(ctx, upstreamBuild.Version)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching upstream version '%s': %s", upstreamBuild.Version, err.Error()))
 		}
@@ -487,7 +487,7 @@ func (r *versionResolver) UpstreamProject(ctx context.Context, obj *restModel.AP
 // VersionTiming is the resolver for the versionTiming field.
 func (r *versionResolver) VersionTiming(ctx context.Context, obj *restModel.APIVersion) (*VersionTiming, error) {
 	versionID := utility.FromStringPtr(obj.Id)
-	v, err := model.VersionFindOneId(versionID)
+	v, err := model.VersionFindOneId(ctx, versionID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", versionID, err.Error()))
 	}
@@ -520,7 +520,7 @@ func (r *versionResolver) VersionTiming(ctx context.Context, obj *restModel.APIV
 // Warnings is the resolver for the warnings field.
 func (r *versionResolver) Warnings(ctx context.Context, obj *restModel.APIVersion) ([]string, error) {
 	versionID := utility.FromStringPtr(obj.Id)
-	v, err := model.VersionFindOneId(versionID)
+	v, err := model.VersionFindOneId(ctx, versionID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", versionID, err.Error()))
 	}

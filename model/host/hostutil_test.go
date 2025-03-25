@@ -126,23 +126,6 @@ func TestGetSSHOptions(t *testing.T) {
 			require.NoError(t, err)
 			checkContainsOptionsAndValues(t, expected, opts)
 		},
-		"IncludesMultipleIdentityFiles": func(t *testing.T, h *Host, settings *evergreen.Settings) {
-			keyName := "key_file"
-			keyFile, err := os.CreateTemp(settings.SSHKeyDirectory, keyName)
-			require.NoError(t, err)
-			assert.NoError(t, keyFile.Close())
-			defer func() {
-				assert.NoError(t, os.RemoveAll(keyFile.Name()))
-			}()
-
-			key := evergreen.SSHKeyPair{Name: filepath.Base(keyFile.Name())}
-			settings.SSHKeyPairs = []evergreen.SSHKeyPair{key}
-
-			expected := []string{"-i", key.PrivatePath(settings), "-i", defaultKeyPath, "-o", "UserKnownHostsFile=/dev/null", "-o", "RequestTTY=no"}
-			opts, err := h.GetSSHOptions(settings)
-			require.NoError(t, err)
-			checkContainsOptionsAndValues(t, expected, opts)
-		},
 		"SetsDistroPortIfHostSpecificPortIsUnspecified": func(t *testing.T, h *Host, settings *evergreen.Settings) {
 			h.Distro.SSHOptions = append(h.Distro.SSHOptions, "Port=123")
 			expected := []string{"-i", defaultKeyPath, "-o", "UserKnownHostsFile=/dev/null", "-o", "Port=123", "-o", "RequestTTY=no"}
@@ -154,15 +137,6 @@ func TestGetSSHOptions(t *testing.T) {
 			h.Distro.SSHOptions = append(h.Distro.SSHOptions, "Port=456")
 			h.SSHPort = 123
 			expected := []string{"-i", defaultKeyPath, "-o", "UserKnownHostsFile=/dev/null", "-o", "Port=123", "-o", "RequestTTY=no"}
-			opts, err := h.GetSSHOptions(settings)
-			require.NoError(t, err)
-			checkContainsOptionsAndValues(t, expected, opts)
-		},
-		"IgnoresNonexistentIdentityFiles": func(t *testing.T, h *Host, settings *evergreen.Settings) {
-			nonexistentKey := evergreen.SSHKeyPair{Name: "nonexistent"}
-			settings.SSHKeyPairs = []evergreen.SSHKeyPair{nonexistentKey}
-
-			expected := []string{"-i", defaultKeyPath, "-o", "UserKnownHostsFile=/dev/null", "-o", "RequestTTY=no"}
 			opts, err := h.GetSSHOptions(settings)
 			require.NoError(t, err)
 			checkContainsOptionsAndValues(t, expected, opts)
@@ -183,12 +157,10 @@ func TestGetSSHOptions(t *testing.T) {
 		},
 	} {
 		t.Run(testName, func(t *testing.T) {
-			sshKeyDir := t.TempDir()
 			testCase(t, &Host{
 				Id: "id",
 			}, &evergreen.Settings{
 				KanopySSHKeyPath: defaultKeyPath,
-				SSHKeyDirectory:  sshKeyDir,
 			})
 		})
 	}
@@ -276,7 +248,7 @@ func TestJasperCommands(t *testing.T) {
 			setupScript, err := h.setupScriptCommands(settings)
 			require.NoError(t, err)
 
-			setupSpawnHost, err := h.SpawnHostSetupCommands(settings)
+			setupSpawnHost, err := h.SpawnHostSetupCommands(t.Context(), settings)
 			require.NoError(t, err)
 
 			markDone := h.MarkUserDataProvisioningDoneCommand()
@@ -486,7 +458,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 			writeCredentialsCmd, err := h.WriteJasperCredentialsFilesCommands(creds)
 			require.NoError(t, err)
 
-			setupSpawnHost, err := h.SpawnHostSetupCommands(settings)
+			setupSpawnHost, err := h.SpawnHostSetupCommands(t.Context(), settings)
 			require.NoError(t, err)
 
 			markDone := h.MarkUserDataProvisioningDoneCommand()
@@ -992,7 +964,7 @@ func TestSpawnHostSetupCommands(t *testing.T) {
 		},
 	}
 
-	cmd, err := h.SpawnHostSetupCommands(settings)
+	cmd, err := h.SpawnHostSetupCommands(t.Context(), settings)
 	require.NoError(t, err)
 
 	expected := "mkdir -m 777 -p /home/user/cli_bin" +

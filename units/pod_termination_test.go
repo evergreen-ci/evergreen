@@ -234,7 +234,7 @@ func TestPodTerminationJob(t *testing.T) {
 			require.NotZero(t, dbBuild)
 			assert.Equal(t, evergreen.BuildCreated, dbBuild.Status, "build should have been updated after resetting stranded task")
 
-			dbVersion, err := model.VersionFindOneId(v.Id)
+			dbVersion, err := model.VersionFindOneId(ctx, v.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbVersion)
 			assert.Equal(t, evergreen.VersionCreated, dbVersion.Status, "version should have been updated after resetting stranded task")
@@ -339,7 +339,7 @@ func TestPodTerminationJob(t *testing.T) {
 			require.NotZero(t, dbBuild)
 			assert.True(t, dbBuild.IsFinished(), "build should be updated after its task has run out of container allocation attempts")
 
-			dbVersion, err := model.VersionFindOneId(v.Id)
+			dbVersion, err := model.VersionFindOneId(t.Context(), v.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbVersion)
 			assert.Equal(t, evergreen.VersionFailed, dbVersion.Status, "version should be updated after its task has run out of container allocation attempts")

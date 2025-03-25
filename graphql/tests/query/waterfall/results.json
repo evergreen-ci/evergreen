@@ -536,7 +536,7 @@
               },
               {
                 "version": {
-                  "createTime": "2019-12-31T19:00:00-05:00",
+                  "createTime": "2025-02-28T19:00:00-05:00",
                   "id": "evergreen_version1",
                   "order": 41
                 },
@@ -914,6 +914,48 @@
                 "evergreen_version2"
               ]
             }
+          }
+        }
+      }
+    },
+    {
+      "query_file": "variants-pagination.graphql",
+      "result": {
+        "data": {
+          "waterfall": {
+            "pagination": {
+              "activeVersionIds": []
+            },
+            "flattenedVersions": [
+              {
+                "id": "evergreen_version5",
+                "waterfallBuilds": null
+              },
+              {
+                "id": "evergreen_version4",
+                "waterfallBuilds": null
+              },
+              {
+                "id": "evergreen_version3",
+                "waterfallBuilds": null
+              },
+              {
+                "id": "evergreen_version2",
+                "waterfallBuilds": null
+              },
+              {
+                "id": "evergreen_version1",
+                "waterfallBuilds": null
+              },
+              {
+                "id": "evergreen_version0",
+                "waterfallBuilds": null
+              },
+              {
+                "id": "evergreen_version39",
+                "waterfallBuilds": null
+              }
+            ]
           }
         }
       }

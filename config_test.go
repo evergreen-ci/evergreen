@@ -12,8 +12,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.opentelemetry.io/otel/trace/noop"
 )
 
@@ -134,23 +132,17 @@ func (s *AdminSuite) TestBaseConfig() {
 	defer cancel()
 
 	config := Settings{
-		AWSInstanceRole:    "role",
-		Banner:             "banner",
-		BannerTheme:        Important,
-		ConfigDir:          "cfg_dir",
-		DomainName:         "example.com",
-		Expansions:         map[string]string{"k2": "v2"},
-		GithubPRCreatorOrg: "org",
-		GithubOrgs:         []string{"evergreen-ci"},
-		LogPath:            "logpath",
-		Plugins:            map[string]map[string]any{"k4": {"k5": "v5"}},
-		PprofPort:          "port",
-		SSHKeyDirectory:    "/ssh_key_directory",
-		SSHKeyPairs:        []SSHKeyPair{{Name: "key", Public: "public", Private: "private"}},
-		SSHKeySecretARNs: []string{
-			"arn:aws:secretsmanager:us-east-1:012345678901:secret/top-secret-private-key",
-			"arn:aws:secretsmanager:us-east-1:012345678901:secret/confidential-private-key",
-		},
+		AWSInstanceRole:     "role",
+		Banner:              "banner",
+		BannerTheme:         Important,
+		ConfigDir:           "cfg_dir",
+		DomainName:          "example.com",
+		Expansions:          map[string]string{"k2": "v2"},
+		GithubPRCreatorOrg:  "org",
+		GithubOrgs:          []string{"evergreen-ci"},
+		LogPath:             "logpath",
+		Plugins:             map[string]map[string]any{"k4": {"k5": "v5"}},
+		PprofPort:           "port",
 		ShutdownWaitSeconds: 15,
 	}
 
@@ -170,15 +162,6 @@ func (s *AdminSuite) TestBaseConfig() {
 	s.Equal(config.LogPath, settings.LogPath)
 	s.Equal(config.Plugins, settings.Plugins)
 	s.Equal(config.PprofPort, settings.PprofPort)
-	s.Equal(config.SSHKeyDirectory, settings.SSHKeyDirectory)
-	s.Equal(config.SSHKeySecretARNs, settings.SSHKeySecretARNs)
-	s.Require().Len(settings.SSHKeyPairs, len(config.SSHKeyPairs))
-	for i := 0; i < len(settings.SSHKeyPairs); i++ {
-		s.Equal(config.SSHKeyPairs[i].Name, settings.SSHKeyPairs[i].Name)
-		s.Equal(config.SSHKeyPairs[i].Public, settings.SSHKeyPairs[i].Public)
-		s.Equal(config.SSHKeyPairs[i].Private, settings.SSHKeyPairs[i].Private)
-		s.Empty(config.SSHKeyPairs[i].EC2Regions)
-	}
 	s.Equal(config.ShutdownWaitSeconds, settings.ShutdownWaitSeconds)
 }
 
@@ -542,10 +525,6 @@ func (s *AdminSuite) TestConfigDefaults() {
 	s.Equal(defaultAmboyPoolSize, config.Amboy.PoolSizeLocal)
 	s.Equal("v1", config.Expansions["k1"])
 	s.Equal("v2", config.Expansions["k2"])
-	for _, pair := range config.SSHKeyPairs {
-		s.NotNil(pair.EC2Regions)
-		s.Equal([]string{}, pair.EC2Regions)
-	}
 }
 
 func (s *AdminSuite) TestKeyValPairsToMap() {
@@ -784,128 +763,6 @@ func (s *AdminSuite) TestSleepScheduleConfig() {
 	s.Equal(config, settings.SleepSchedule)
 }
 
-func (s *AdminSuite) TestAddEC2RegionToSSHKey() {
-	env := GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-	pairs := []SSHKeyPair{
-		{
-			Name:       "ssh_key_pair0",
-			Public:     "public0",
-			Private:    "private0",
-			EC2Regions: []string{},
-		},
-		{
-			Name:       "ssh_key_pair1",
-			Public:     "public1",
-			Private:    "private1",
-			EC2Regions: []string{},
-		},
-	}
-	coll := env.DB().Collection(ConfigCollection)
-	_, err := coll.UpdateOne(ctx, bson.M{
-		idKey: ConfigDocID,
-	}, bson.M{
-		"$set": bson.M{sshKeyPairsKey: pairs},
-	}, options.Update().SetUpsert(true))
-	s.Require().NoError(err)
-
-	region0 := "region0"
-	region1 := "region1"
-	s.Require().NoError(pairs[0].AddEC2Region(region0))
-	s.Contains(pairs[0].EC2Regions, region0)
-	getDBPairs := func() []SSHKeyPair {
-		dbSettings := &Settings{}
-		s.Require().NoError(coll.FindOne(ctx, bson.M{
-			idKey: ConfigDocID,
-		}).Decode(dbSettings))
-		return dbSettings.SSHKeyPairs
-	}
-	dbPairs := getDBPairs()
-	s.Require().Len(dbPairs, 2)
-	s.Require().Len(dbPairs[0].EC2Regions, 1)
-	s.Equal(region0, dbPairs[0].EC2Regions[0])
-	s.Empty(dbPairs[1].EC2Regions)
-
-	s.Require().NoError(pairs[1].AddEC2Region(region1))
-	dbPairs = getDBPairs()
-	s.Require().Len(dbPairs, 2)
-	s.Require().Len(dbPairs[0].EC2Regions, 1)
-	s.Equal(region0, dbPairs[0].EC2Regions[0])
-	s.Require().Len(dbPairs[1].EC2Regions, 1)
-	s.Equal(region1, dbPairs[1].EC2Regions[0])
-
-	s.Require().NoError(pairs[0].AddEC2Region(region0))
-	dbPairs = getDBPairs()
-	s.Require().Len(dbPairs, 2)
-	s.Require().Len(dbPairs[0].EC2Regions, 1)
-	s.Equal(region0, dbPairs[0].EC2Regions[0])
-	s.Require().Len(dbPairs[1].EC2Regions, 1)
-	s.Equal(region1, dbPairs[1].EC2Regions[0])
-
-	s.Require().NoError(pairs[0].AddEC2Region(region1))
-	dbPairs = getDBPairs()
-	s.Require().Len(dbPairs, 2)
-	s.Require().Len(dbPairs[0].EC2Regions, 2)
-	s.Equal(region0, dbPairs[0].EC2Regions[0])
-	s.Equal(region1, dbPairs[0].EC2Regions[1])
-	s.Require().Len(dbPairs[1].EC2Regions, 1)
-	s.Equal(region1, dbPairs[1].EC2Regions[0])
-}
-
-func (s *AdminSuite) TestSSHKeysAppendOnly() {
-	defaultPair := func() SSHKeyPair {
-		return SSHKeyPair{
-			Name:    "foo",
-			Public:  "public",
-			Private: "private",
-		}
-	}
-
-	env, ok := s.env.(*envState)
-	s.Require().True(ok)
-	oldSettings := env.settings
-
-	settings := testConfig()
-	settings.SSHKeyPairs = []SSHKeyPair{defaultPair()}
-	settings.SSHKeyDirectory = "/ssh_key_directory"
-
-	newSettings := testConfig()
-	newSettings.SSHKeyPairs = []SSHKeyPair{defaultPair()}
-	newSettings.SSHKeyDirectory = "/ssh_key_directory"
-
-	env.settings = settings
-	defer func() {
-		env.settings = oldSettings
-	}()
-
-	pair := defaultPair()
-	pair.Public = "new_public"
-	newSettings.SSHKeyPairs = []SSHKeyPair{pair}
-	s.Error(newSettings.Validate(), "should not be able to modify existing key pair")
-
-	pair = defaultPair()
-	pair.Private = "new_private"
-	newSettings.SSHKeyPairs = []SSHKeyPair{pair}
-	s.Error(newSettings.Validate(), "should not be able to modify existing key pair")
-
-	pair = defaultPair()
-	pair.Public = "new_public"
-	pair.Private = "new_private"
-	newSettings.SSHKeyPairs = []SSHKeyPair{defaultPair(), pair}
-	s.Error(newSettings.Validate(), "should not be able to add a new pair with the same name and different public/private keys")
-
-	newSettings.SSHKeyPairs = nil
-	s.Error(newSettings.Validate(), "should not be able to delete existing key pair")
-
-	newSettings.SSHKeyPairs = []SSHKeyPair{defaultPair(), {
-		Name:    "bar",
-		Public:  "public",
-		Private: "private",
-	}}
-	s.NoError(newSettings.Validate(), "should be able to append new key pair")
-}
-
 func (s *AdminSuite) TestCedarConfig() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -931,6 +788,31 @@ func (s *AdminSuite) TestCedarConfig() {
 	s.NoError(err)
 	s.NotNil(settings)
 	s.Equal(config, settings.Cedar)
+}
+
+func (s *AdminSuite) TestSSHConfig() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	config := SSHConfig{
+		TaskHostKey: SSHKeyPair{
+			Name:      "task-host-key",
+			SecretARN: "arn:aws:secretsmanager:us-east-1:012345678901:secret/top-secret-private-key",
+		},
+		SpawnHostKey: SSHKeyPair{
+			Name:      "spawn-host-key",
+			SecretARN: "arn:aws:secretsmanager:us-east-1:012345678901:secret/confidential-private-key",
+		},
+	}
+
+	s.NoError(config.ValidateAndDefault())
+	s.NoError(config.Set(ctx))
+
+	settings, err := GetConfig(ctx)
+	s.NoError(err)
+	s.Require().NotNil(settings)
+
+	s.Equal(config, settings.SSH)
 }
 
 func (s *AdminSuite) TestTracerConfig() {
@@ -992,6 +874,7 @@ func (s *AdminSuite) TestBucketsConfig() {
 			Name: "logs",
 			Type: "s3",
 		},
+		SharedBucket: "shared-across",
 		InternalBuckets: []string{
 			"test-bucket",
 			"test2-bucket",
@@ -1000,6 +883,13 @@ func (s *AdminSuite) TestBucketsConfig() {
 			{
 				ProjectID: "project-A",
 				Prefix:    "project-B",
+			},
+		},
+		ProjectToBucketMappings: []ProjectToBucketMapping{
+			{
+				ProjectID: "project-C",
+				Bucket:    "bucket-C",
+				Prefix:    "prefix-1",
 			},
 		},
 	}
@@ -1012,10 +902,16 @@ func (s *AdminSuite) TestBucketsConfig() {
 	s.Equal(config, settings.Buckets)
 
 	config.LogBucket.Name = "logs-2"
+	config.SharedBucket = "many-projects"
 	config.InternalBuckets = []string{"new-bucket"}
 	config.ProjectToPrefixMappings = []ProjectToPrefixMapping{{
 		ProjectID: "project-C",
 		Prefix:    "project-D",
+	}}
+	config.ProjectToBucketMappings = []ProjectToBucketMapping{{
+		ProjectID: "project-A",
+		Bucket:    "bucket-A",
+		Prefix:    "prefix-2",
 	}}
 	s.NoError(config.Set(ctx))
 

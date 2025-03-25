@@ -177,11 +177,13 @@ func (j *idleHostJob) checkAndTerminateHost(ctx context.Context, schedulerConfig
 }
 
 type hostIdleInfo struct {
-	timeSinceLastCommunication   time.Duration
-	idleTime                     time.Duration
-	idleThreshold                time.Duration
-	isRunningSingleHostTaskGroup bool
-	hasOutdatedAMI               bool
+	timeSinceLastCommunication          time.Duration
+	idleTime                            time.Duration
+	idleThreshold                       time.Duration
+	timeSinceTaskGroupTeardownStartTime time.Duration
+	isRunningSingleHostTaskGroup        bool
+	isRunningTearDownTaskGroup          bool
+	hasOutdatedAMI                      bool
 }
 
 // getIdleInfo returns information about how long the host has been idle,
@@ -210,11 +212,13 @@ func (j *idleHostJob) getIdleInfo(ctx context.Context, h *host.Host, d *distro.D
 	}
 
 	return hostIdleInfo{
-		idleTime:                     h.IdleTime(),
-		timeSinceLastCommunication:   h.GetElapsedCommunicationTime(),
-		idleThreshold:                idleThreshold,
-		isRunningSingleHostTaskGroup: isRunningSingleHostTaskGroup,
-		hasOutdatedAMI:               hostHasOutdatedAMI(*h, *d),
+		idleTime:                            h.IdleTime(),
+		timeSinceLastCommunication:          h.GetElapsedCommunicationTime(),
+		idleThreshold:                       idleThreshold,
+		isRunningSingleHostTaskGroup:        isRunningSingleHostTaskGroup,
+		isRunningTearDownTaskGroup:          h.IsTearingDown(),
+		timeSinceTaskGroupTeardownStartTime: time.Since(h.TaskGroupTeardownStartTime),
+		hasOutdatedAMI:                      hostHasOutdatedAMI(*h, *d),
 	}, nil
 }
 
@@ -263,11 +267,16 @@ func (i hostIdleInfo) getTerminationReason() string {
 		// busy.
 		return "host has an outdated AMI"
 	}
-	if i.timeSinceLastCommunication >= i.idleThreshold {
+	if i.timeSinceLastCommunication >= i.idleThreshold && !i.isRunningTearDownTaskGroup {
 		return fmt.Sprintf("host is idle or unreachable, communication time %s is over threshold time %s", i.timeSinceLastCommunication, i.idleThreshold)
 	}
-	if i.idleTime >= i.idleThreshold {
+	// idleTime will be zero for tasks running their teardown group, because heartbeats are not sent during teardown,
+	// which is why we need to check if idle time is nonzero.
+	if i.idleTime > 0 && i.idleTime >= i.idleThreshold {
 		return fmt.Sprintf("host is idle or unreachable, idle time %s is over threshold time %s", i.idleTime, i.idleThreshold)
+	}
+	if i.timeSinceTaskGroupTeardownStartTime > evergreen.MaxTeardownGroupThreshold && i.isRunningTearDownTaskGroup {
+		return fmt.Sprintf("time since the host's task group teardown start time %s has exceeded the maximum teardown threshold %s", i.timeSinceTaskGroupTeardownStartTime, evergreen.MaxTeardownGroupThreshold)
 	}
 
 	return ""

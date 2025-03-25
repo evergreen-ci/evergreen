@@ -26,7 +26,7 @@ import (
 	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
-	"github.com/google/go-github/v52/github"
+	"github.com/google/go-github/v70/github"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
@@ -72,6 +72,7 @@ type Mock struct {
 	CreateGitHubDynamicAccessTokenFail   bool
 	RevokeGitHubDynamicAccessTokenFail   bool
 	AssumeRoleResponse                   *apimodels.AWSCredentials
+	S3Response                           *apimodels.AWSCredentials
 
 	CedarGRPCConn *grpc.ClientConn
 
@@ -616,5 +617,5 @@ func (c *Mock) AssumeRole(ctx context.Context, td TaskData, request apimodels.As
 }
 
 func (c *Mock) S3Credentials(ctx context.Context, td TaskData, bucket string) (*apimodels.AWSCredentials, error) {
-	return nil, nil
+	return c.S3Response, nil
 }

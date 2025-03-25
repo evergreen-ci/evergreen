@@ -97,7 +97,7 @@ func (h *slackNotificationPostHandler) Run(ctx context.Context) gimlet.Responder
 		attachments = append(attachments, a.ToService())
 	}
 	target := utility.FromStringPtr(h.APISlack.Target)
-	formattedTarget, err := notification.FormatSlackTarget(target)
+	formattedTarget, err := notification.FormatSlackTarget(ctx, target)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "formatting slack target"))
 	}

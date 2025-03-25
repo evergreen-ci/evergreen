@@ -328,7 +328,7 @@ func (r *mutationResolver) SchedulePatch(ctx context.Context, patchID string, co
 	patchUpdateReq := buildFromGqlInput(configure)
 	usr := mustHaveUser(ctx)
 	patchUpdateReq.Caller = usr.Id
-	version, err := model.VersionFindOneId(patchID)
+	version, err := model.VersionFindOneId(ctx, patchID)
 	if err != nil && !adb.ResultsNotFound(err) {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patch '%s': %s", patchID, err.Error()))
 	}
@@ -1180,7 +1180,7 @@ func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription re
 			return false, ResourceNotFound.Send(ctx, fmt.Sprintf("build '%s' not found", id))
 		}
 	case "version":
-		v, versionErr := model.VersionFindOneId(id)
+		v, versionErr := model.VersionFindOneId(ctx, id)
 		if versionErr != nil {
 			return false, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", id, versionErr.Error()))
 		}
@@ -1198,7 +1198,7 @@ func (r *mutationResolver) SaveSubscription(ctx context.Context, subscription re
 	default:
 		return false, InputValidationError.Send(ctx, "selectors do not include a target version, build, project, or task ID")
 	}
-	err = data.SaveSubscriptions(username, []restModel.APISubscription{subscription}, false)
+	err = data.SaveSubscriptions(ctx, username, []restModel.APISubscription{subscription}, false)
 	if err != nil {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("saving subscription: %s", err.Error()))
 	}
@@ -1292,7 +1292,7 @@ func (r *mutationResolver) RestartVersions(ctx context.Context, versionID string
 	for _, version := range versionsToRestart {
 		if version.VersionId != nil {
 			currVersionID := utility.FromStringPtr(version.VersionId)
-			v, versionErr := model.VersionFindOneId(currVersionID)
+			v, versionErr := model.VersionFindOneId(ctx, currVersionID)
 			if versionErr != nil {
 				return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", currVersionID, versionErr.Error()))
 			}

@@ -59,7 +59,7 @@ func (t *versionTriggers) Fetch(ctx context.Context, e *event.EventLogEntry) err
 		return errors.Wrap(err, "fetching UI config")
 	}
 
-	t.version, err = model.VersionFindOne(model.VersionById(e.ResourceId))
+	t.version, err = model.VersionFindOne(ctx, model.VersionById(e.ResourceId))
 	if err != nil {
 		return errors.Wrapf(err, "finding version '%s'", e.ResourceId)
 	}
@@ -321,7 +321,7 @@ func (t *versionTriggers) versionRuntimeChange(ctx context.Context, sub *event.S
 		return nil, fmt.Errorf("subscription '%s' has an invalid percentage", sub.ID)
 	}
 
-	lastGreen, err := t.version.LastSuccessful()
+	lastGreen, err := t.version.LastSuccessful(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "retrieving last green build")
 	}

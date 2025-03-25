@@ -45,7 +45,7 @@ func TestVersionByMostRecentNonIgnored(t *testing.T) {
 
 	assert.NoError(t, db.InsertMany(VersionCollection, v1, v2, v3, v4))
 
-	v, err := VersionFindOne(VersionByMostRecentNonIgnored("proj", ts))
+	v, err := VersionFindOne(t.Context(), VersionByMostRecentNonIgnored("proj", ts))
 	assert.NoError(t, err)
 	assert.Equal(t, "v1", v.Id)
 }
@@ -139,7 +139,7 @@ func TestRestartVersion(t *testing.T) {
 func TestFindVersionByIdFail(t *testing.T) {
 	// Finding a non-existent version should fail
 	assert.NoError(t, db.ClearCollections(VersionCollection))
-	v, err := VersionFindOneId("build3")
+	v, err := VersionFindOneId(t.Context(), "build3")
 	assert.NoError(t, err)
 	assert.Nil(t, v)
 }
@@ -155,12 +155,12 @@ func TestGetVersionAuthorID(t *testing.T) {
 				Id:       "v0",
 				AuthorID: "me",
 			}).Insert())
-			author, err := GetVersionAuthorID("v0")
+			author, err := GetVersionAuthorID(t.Context(), "v0")
 			assert.NoError(t, err)
 			assert.Equal(t, "me", author)
 		},
 		"NoVersion": func(t *testing.T) {
-			author, err := GetVersionAuthorID("v0")
+			author, err := GetVersionAuthorID(t.Context(), "v0")
 			assert.Error(t, err)
 			assert.Empty(t, author)
 		},
@@ -168,7 +168,7 @@ func TestGetVersionAuthorID(t *testing.T) {
 			assert.NoError(t, (&Version{
 				Id: "v0",
 			}).Insert())
-			author, err := GetVersionAuthorID("v0")
+			author, err := GetVersionAuthorID(t.Context(), "v0")
 			assert.NoError(t, err)
 			assert.Empty(t, author)
 		},
@@ -187,7 +187,7 @@ func TestFindLatestRevisionAndAuthorForProject(t *testing.T) {
 				Requester:  evergreen.RepotrackerVersionRequester,
 				Revision:   "abc",
 			}).Insert())
-			revision, author, err := FindLatestRevisionAndAuthorForProject("project2")
+			revision, author, err := FindLatestRevisionAndAuthorForProject(t.Context(), "project2")
 			assert.Error(t, err)
 			assert.Empty(t, revision)
 			assert.Empty(t, author)
@@ -209,7 +209,7 @@ func TestFindLatestRevisionAndAuthorForProject(t *testing.T) {
 				Revision:            "def",
 				RevisionOrderNumber: 10,
 			}).Insert())
-			revision, author, err := FindLatestRevisionAndAuthorForProject("project1")
+			revision, author, err := FindLatestRevisionAndAuthorForProject(t.Context(), "project1")
 			assert.NoError(t, err)
 			assert.Equal(t, "abc", revision)
 			assert.Equal(t, "banana", author)
@@ -229,7 +229,7 @@ func TestFindLatestRevisionAndAuthorForProject(t *testing.T) {
 				Revision:            "def",
 				RevisionOrderNumber: 10,
 			}).Insert())
-			revision, author, err := FindLatestRevisionAndAuthorForProject("project1")
+			revision, author, err := FindLatestRevisionAndAuthorForProject(t.Context(), "project1")
 			assert.Error(t, err)
 			assert.Empty(t, revision)
 			assert.Empty(t, author)
@@ -241,7 +241,7 @@ func TestFindLatestRevisionAndAuthorForProject(t *testing.T) {
 				Requester:  evergreen.RepotrackerVersionRequester,
 				Revision:   "",
 			}).Insert())
-			revision, author, err := FindLatestRevisionAndAuthorForProject("project1")
+			revision, author, err := FindLatestRevisionAndAuthorForProject(t.Context(), "project1")
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "has no revision")
 			assert.Empty(t, revision)
@@ -254,7 +254,7 @@ func TestFindLatestRevisionAndAuthorForProject(t *testing.T) {
 				Requester:  evergreen.RepotrackerVersionRequester,
 				Revision:   "mystery",
 			}).Insert())
-			revision, author, err := FindLatestRevisionAndAuthorForProject("project1")
+			revision, author, err := FindLatestRevisionAndAuthorForProject(t.Context(), "project1")
 			require.NoError(t, err)
 			assert.Equal(t, "mystery", revision)
 			assert.Empty(t, author)
@@ -302,24 +302,24 @@ func TestFindBaseVersionForVersion(t *testing.T) {
 	assert.NoError(t, mainlineCommit1.Insert())
 	assert.NoError(t, mainlineCommit2.Insert())
 	// Test that it returns the base version mainline commit for a patch
-	version, err := FindBaseVersionForVersion("v1")
+	version, err := FindBaseVersionForVersion(t.Context(), "v1")
 	assert.NoError(t, err)
 	assert.NotNil(t, version)
 	assert.Equal(t, "project1_v1", version.Id)
 
 	// test that it returns the previous mainline commit for a mainline commit
-	version, err = FindBaseVersionForVersion("project1_v2")
+	version, err = FindBaseVersionForVersion(t.Context(), "project1_v2")
 	assert.NoError(t, err)
 	assert.NotNil(t, version)
 	assert.Equal(t, "project1_v1", version.Id)
 
 	// Test that it returns an empty string if the previous version doesn't exist for a mainline commit
-	version, err = FindBaseVersionForVersion("project1_v1")
+	version, err = FindBaseVersionForVersion(t.Context(), "project1_v1")
 	assert.NoError(t, err)
 	assert.Nil(t, version)
 
 	// Test that it returns an empty string if the base version doesn't exist for a patch
-	version, err = FindBaseVersionForVersion("v0")
+	version, err = FindBaseVersionForVersion(t.Context(), "v0")
 	assert.NoError(t, err)
 	assert.Nil(t, version)
 
@@ -366,28 +366,28 @@ func TestVersionByProjectIdAndRevisionPrefix(t *testing.T) {
 
 	assert.NoError(t, db.InsertMany(VersionCollection, v1, v2, v3, v4, v5))
 
-	v, err := VersionFindOne(VersionByProjectIdAndCreateTime("proj", ts))
+	v, err := VersionFindOne(t.Context(), VersionByProjectIdAndCreateTime("proj", ts))
 	assert.NoError(t, err)
 	assert.Equal(t, "v1", v.Id)
 
-	v, err = VersionFindOne(VersionByProjectIdAndCreateTime("proj", ts.Add(-3*utility.Day)))
+	v, err = VersionFindOne(t.Context(), VersionByProjectIdAndCreateTime("proj", ts.Add(-3*utility.Day)))
 	assert.NoError(t, err)
 	assert.Equal(t, "v4", v.Id)
 
-	v, err = VersionFindOne(VersionByProjectIdAndCreateTime("proj", ts.Add(-2*utility.Day).Add(-30*time.Minute)))
+	v, err = VersionFindOne(t.Context(), VersionByProjectIdAndCreateTime("proj", ts.Add(-2*utility.Day).Add(-30*time.Minute)))
 	assert.NoError(t, err)
 	assert.Equal(t, "v3", v.Id)
 
-	v, err = VersionFindOne(VersionByProjectIdAndCreateTime("proj", ts.Add(-2*utility.Day)))
+	v, err = VersionFindOne(t.Context(), VersionByProjectIdAndCreateTime("proj", ts.Add(-2*utility.Day)))
 	assert.NoError(t, err)
 	assert.Equal(t, "v3", v.Id)
 
-	v, err = VersionFindOne(VersionByProjectIdAndCreateTime("proj_2", ts.Add(-2*utility.Day)))
+	v, err = VersionFindOne(t.Context(), VersionByProjectIdAndCreateTime("proj_2", ts.Add(-2*utility.Day)))
 	assert.NoError(t, err)
 	assert.Equal(t, "v2", v.Id)
 
 	// Does not match on patch requester
-	v, err = VersionFindOne(VersionByProjectIdAndCreateTime("proj", ts.Add(-5*utility.Day)))
+	v, err = VersionFindOne(t.Context(), VersionByProjectIdAndCreateTime("proj", ts.Add(-5*utility.Day)))
 	assert.NoError(t, err)
 	assert.Nil(t, v)
 }

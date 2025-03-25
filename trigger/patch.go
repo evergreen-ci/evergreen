@@ -106,7 +106,7 @@ func (t *patchTriggers) patchOutcome(ctx context.Context, sub *event.Subscriptio
 		anyOutcome := ps == patchAllOutcomes
 
 		if successOutcome || failureOutcome || anyOutcome {
-			aborted, err := model.IsAborted(t.patch.Id.Hex())
+			aborted, err := model.IsAborted(ctx, t.patch.Id.Hex())
 			if err != nil {
 				return nil, errors.Wrapf(err, "getting aborted status for patch '%s'", t.patch.Id.Hex())
 			}
@@ -336,7 +336,7 @@ func (t *patchTriggers) patchFamilyOutcome(ctx context.Context, sub *event.Subsc
 	}
 
 	// Don't notify the user of the patch outcome if they aborted the patch
-	aborted, err := model.IsAborted(t.patch.Id.Hex())
+	aborted, err := model.IsAborted(ctx, t.patch.Id.Hex())
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting aborted status for patch '%s'", t.patch.Id.Hex())
 	}

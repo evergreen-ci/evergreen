@@ -40,7 +40,7 @@ func (s *subscriptionPostHandler) Parse(ctx context.Context, r *http.Request) er
 
 func (s *subscriptionPostHandler) Run(ctx context.Context) gimlet.Responder {
 	u := MustHaveUser(ctx)
-	err := data.SaveSubscriptions(u.Username(), *s.Subscriptions, false)
+	err := data.SaveSubscriptions(ctx, u.Username(), *s.Subscriptions, false)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "saving subscriptions for user '%s'", u.Username()))
 	}

@@ -186,7 +186,7 @@ func TestUnderwaterUnschedule(t *testing.T) {
 	foundBuild, err := build.FindOneId(t.Context(), b.Id)
 	assert.NoError(err)
 	require.NotNil(t, foundBuild)
-	foundVersion, err := model.VersionFindOneId(v.Id)
+	foundVersion, err := model.VersionFindOneId(t.Context(), v.Id)
 	assert.NoError(err)
 	require.NotNil(t, foundVersion)
 	foundT1, err := task.FindOneId(ctx, t1.Id)

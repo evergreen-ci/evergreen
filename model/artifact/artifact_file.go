@@ -76,9 +76,8 @@ func (f *File) validate() error {
 	catcher.ErrorfWhen(f.FileKey == "", "file key is required")
 
 	// Buckets that are not devprod owned require AWS credentials.
-	if !isInternalBucket(f.Bucket) {
-		catcher.ErrorfWhen(f.AWSKey == "", "AWS key is required")
-		catcher.ErrorfWhen(f.AWSSecret == "", "AWS secret is required")
+	if !isInternalBucket(f.Bucket) && f.AWSRoleARN == "" {
+		catcher.ErrorfWhen(f.AWSKey == "" || f.AWSSecret == "", "AWS key/secret or AWS role ARN is required")
 	}
 
 	return catcher.Resolve()
@@ -121,14 +120,17 @@ func presignFile(ctx context.Context, file File) (string, error) {
 		file.AWSSecret = ""
 	}
 
-	// TODO (DEVPROD-13979): Use the role ARN to sign the URL.
-	// A pail update is required to support this and will be done in
-	// the above ticket.
+	if file.AWSRoleARN != "" {
+		file.AWSKey = ""
+		file.AWSSecret = ""
+	}
+
 	requestParams := pail.PreSignRequestParams{
 		Bucket:                file.Bucket,
 		FileKey:               file.FileKey,
 		AWSKey:                file.AWSKey,
 		AWSSecret:             file.AWSSecret,
+		AWSRoleARN:            file.AWSRoleARN,
 		SignatureExpiryWindow: evergreen.PresignMinimumValidTime,
 	}
 	return pail.PreSign(ctx, requestParams)

@@ -91,7 +91,7 @@ func (n *Notification) SenderKey() (evergreen.SenderKey, error) {
 // Composer builds a grip/message.Composer for the notification. Composer is
 // guaranteed to be non-nil if error is nil, but the composer may not be
 // loggable
-func (n *Notification) Composer() (message.Composer, error) {
+func (n *Notification) Composer(ctx context.Context) (message.Composer, error) {
 	switch n.Subscriber.Type {
 	case event.EvergreenWebhookSubscriberType:
 		sub, ok := n.Subscriber.Target.(*event.WebhookSubscriber)
@@ -167,7 +167,7 @@ func (n *Notification) Composer() (message.Composer, error) {
 			return nil, errors.New("slack subscriber is invalid")
 		}
 
-		formattedTarget, err := FormatSlackTarget(*sub)
+		formattedTarget, err := FormatSlackTarget(ctx, *sub)
 		if err != nil {
 			return nil, errors.Wrap(err, "formatting slack target")
 		}
@@ -272,10 +272,10 @@ func (n *Notification) SetTaskMetadata(ID string, execution int) {
 }
 
 // FormatSlackTarget uses the slackMemberId instead of the userName when possible.
-func FormatSlackTarget(target string) (string, error) {
+func FormatSlackTarget(ctx context.Context, target string) (string, error) {
 	if strings.HasPrefix(target, "@") {
 		trimmedTarget := strings.TrimPrefix(target, "@")
-		user, err := user.FindBySlackUsername(trimmedTarget)
+		user, err := user.FindBySlackUsername(ctx, trimmedTarget)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "could not find user by Slack username, falling back to default target instead of using the member ID",

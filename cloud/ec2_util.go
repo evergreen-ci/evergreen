@@ -673,20 +673,16 @@ func getSubnetForZone(subnets []evergreen.Subnet, zone string) (string, error) {
 	return "", errors.Errorf("invalid availability zone '%s', valid availability zones are: %s", zone, zones)
 }
 
-// addSSHKey adds an SSH key for the given client. If an SSH key already exists
-// with the given name, this no-ops.
-func addSSHKey(ctx context.Context, client AWSClient, pair evergreen.SSHKeyPair) error {
-	if _, err := client.ImportKeyPair(ctx, &ec2.ImportKeyPairInput{
-		KeyName:           aws.String(pair.Name),
-		PublicKeyMaterial: []byte(pair.Public),
-	}); err != nil {
-		var apiErr smithy.APIError
-		if errors.As(err, &apiErr) && apiErr.ErrorCode() == EC2DuplicateKeyPair {
-			return nil
-		}
-		return errors.Wrap(err, "importing public SSH key")
+// getKeyName returns the name of the public key to use for the host. Task spawned hosts use a key
+// created for the project, user spawned hosts use the spawn host key, and task hosts use the task host key.
+func getKeyName(ctx context.Context, h *host.Host, settings *evergreen.Settings, client AWSClient) (string, error) {
+	if h.SpawnOptions.SpawnedByTask {
+		return client.GetKey(ctx, h)
 	}
-	return nil
+	if h.UserHost {
+		return settings.SSH.SpawnHostKey.Name, nil
+	}
+	return settings.SSH.TaskHostKey.Name, nil
 }
 
 func AttachVolumeBadRequest(err error) bool {

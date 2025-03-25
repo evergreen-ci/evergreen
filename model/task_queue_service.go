@@ -15,7 +15,7 @@ type TaskQueueItemDispatcher interface {
 }
 
 type CachedDispatcher interface {
-	Refresh() error
+	Refresh(context.Context) error
 	FindNextTask(context.Context, TaskSpec, time.Time) *TaskQueueItem
 	Type() string
 }
@@ -48,7 +48,7 @@ func (s *taskDispatchService) RefreshFindNextTask(ctx context.Context, distroID 
 		return nil, errors.WithStack(err)
 	}
 
-	if err := distroDispatchService.Refresh(); err != nil {
+	if err := distroDispatchService.Refresh(ctx); err != nil {
 		return nil, errors.WithStack(err)
 	}
 	return distroDispatchService.FindNextTask(ctx, spec, amiUpdatedTime), nil
@@ -76,9 +76,9 @@ func (s *taskDispatchService) ensureQueue(ctx context.Context, distroID string) 
 
 	var taskQueue TaskQueue
 	if s.useAliases {
-		taskQueue, err = FindDistroSecondaryTaskQueue(distroID)
+		taskQueue, err = FindDistroSecondaryTaskQueue(ctx, distroID)
 	} else {
-		taskQueue, err = FindDistroTaskQueue(distroID)
+		taskQueue, err = FindDistroTaskQueue(ctx, distroID)
 	}
 
 	if err != nil {

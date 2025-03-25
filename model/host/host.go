@@ -2185,7 +2185,7 @@ func (h *Host) GetElapsedCommunicationTime() time.Duration {
 // TeardownTimeExceededMax checks if the time since the host's task group teardown start time
 // has exceeded the maximum teardown threshold.
 func (h *Host) TeardownTimeExceededMax() bool {
-	return time.Since(h.TaskGroupTeardownStartTime) < evergreen.MaxTeardownGroupThreshold
+	return time.Since(h.TaskGroupTeardownStartTime) > evergreen.MaxTeardownGroupThreshold
 }
 
 // DecommissionHostsWithDistroId marks all up hosts intended for running tasks
@@ -3327,25 +3327,6 @@ func FindLatestTerminatedHostWithHomeVolume(ctx context.Context, homeVolumeID st
 		HomeVolumeIDKey: homeVolumeID,
 	}
 	return FindOne(ctx, q, options.FindOne().SetSort(bson.M{TerminationTimeKey: -1}))
-}
-
-// FindStaticNeedsNewSSHKeys finds all static hosts that do not have the same
-// set of SSH keys as those in the global settings.
-func FindStaticNeedsNewSSHKeys(ctx context.Context, settings *evergreen.Settings) ([]Host, error) {
-	if len(settings.SSHKeyPairs) == 0 {
-		return nil, nil
-	}
-
-	names := []string{}
-	for _, pair := range settings.SSHKeyPairs {
-		names = append(names, pair.Name)
-	}
-
-	return Find(ctx, bson.M{
-		StatusKey:      evergreen.HostRunning,
-		ProviderKey:    evergreen.ProviderNameStatic,
-		SSHKeyNamesKey: bson.M{"$not": bson.M{"$all": names}},
-	})
 }
 
 func (h *Host) IsSubjectToHostCreationThrottle() bool {

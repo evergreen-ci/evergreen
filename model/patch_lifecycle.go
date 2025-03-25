@@ -593,7 +593,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 		authorEmail = p.GitInfo.Email
 	}
 	if p.Author != "" {
-		u, err := user.FindOneById(p.Author)
+		u, err := user.FindOneByIdContext(ctx, p.Author)
 		if err != nil {
 			return nil, errors.Wrap(err, "getting user")
 		}
@@ -666,7 +666,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 		Project:    project,
 		ProjectRef: projectRef,
 	}
-	createTime, err := getTaskCreateTime(creationInfo)
+	createTime, err := getTaskCreateTime(ctx, creationInfo)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting create time for tasks in '%s', githash '%s'", p.Project, p.Githash)
 	}
@@ -863,7 +863,7 @@ func getLoadProjectOptsForPatch(ctx context.Context, p *patch.Patch) (*ProjectRe
 	if p.ReferenceManifestID != "" {
 		manifestID = p.ReferenceManifestID
 	} else {
-		baseVersion, err := VersionFindOne(BaseVersionByProjectIdAndRevision(p.Project, p.Githash))
+		baseVersion, err := VersionFindOne(ctx, BaseVersionByProjectIdAndRevision(p.Project, p.Githash))
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "finding base version for project '%s' and revision '%s'", p.Project, p.Githash)
 		}

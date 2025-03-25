@@ -581,7 +581,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 
 	// Don't use Save to delete subscriptions, since we aren't checking the
 	// delete subscriptions list against the inputted list of subscriptions.
-	if err = data.SaveSubscriptions(h.newProjectRef.Id, h.apiNewProjectRef.Subscriptions, true); err != nil {
+	if err = data.SaveSubscriptions(ctx, h.newProjectRef.Id, h.apiNewProjectRef.Subscriptions, true); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "saving subscriptions for project '%s'", h.project))
 	}
 
@@ -1314,7 +1314,7 @@ func (p *GetProjectAliasResultsHandler) Parse(ctx context.Context, r *http.Reque
 }
 
 func (p *GetProjectAliasResultsHandler) Run(ctx context.Context) gimlet.Responder {
-	proj, err := dbModel.FindProjectFromVersionID(p.version)
+	proj, err := dbModel.FindProjectFromVersionID(ctx, p.version)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error getting project for version",

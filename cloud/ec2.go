@@ -428,16 +428,10 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 	if err = ec2Settings.Validate(); err != nil {
 		return nil, errors.Wrapf(err, "invalid EC2 settings in distro %s: %+v", h.Distro.Id, ec2Settings)
 	}
-	if ec2Settings.KeyName == "" && !h.UserHost {
-		if !h.SpawnOptions.SpawnedByTask {
-			return nil, errors.New("key name must not be empty")
-		}
-		var k string
-		k, err = m.client.GetKey(ctx, h)
-		if err != nil {
-			return nil, errors.Wrap(err, "getting key name")
-		}
-		ec2Settings.KeyName = k
+	// The KeyName is used by AWS to determine which public key to put on the host.
+	ec2Settings.KeyName, err = getKeyName(ctx, h, m.settings, m.client)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting key name")
 	}
 
 	blockDevices, err := makeBlockDeviceMappings(ec2Settings.MountPoints)
@@ -570,7 +564,7 @@ func (m *ec2Manager) setNoExpiration(ctx context.Context, h *host.Host, noExpira
 
 	if noExpiration {
 		var userTimeZone string
-		u, err := user.FindOneById(h.StartedBy)
+		u, err := user.FindOneByIdContext(ctx, h.StartedBy)
 		if err != nil {
 			return errors.Wrapf(err, "finding owner '%s' for host '%s'", h.StartedBy, h.Id)
 		}
@@ -1300,12 +1294,4 @@ func (m *ec2Manager) TimeTilNextPayment(host *host.Host) time.Duration {
 // Cleanup is a noop for the EC2 provider.
 func (m *ec2Manager) Cleanup(context.Context) error {
 	return nil
-}
-
-func (m *ec2Manager) AddSSHKey(ctx context.Context, pair evergreen.SSHKeyPair) error {
-	if err := m.client.Create(ctx, m.region); err != nil {
-		return errors.Wrap(err, "creating client")
-	}
-
-	return errors.Wrap(addSSHKey(ctx, m.client, pair), "adding public SSH key")
 }

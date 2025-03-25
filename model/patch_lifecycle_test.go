@@ -848,7 +848,7 @@ func TestAddNewPatch(t *testing.T) {
 	assert.NoError(err)
 	require.NotNil(t, dbBuild)
 	assert.Len(dbBuild.Tasks, 2)
-	dbVersion, err := VersionFindOne(db.Q{})
+	dbVersion, err := VersionFindOne(t.Context(), db.Q{})
 	assert.NoError(err)
 	require.NotNil(t, dbVersion)
 	assert.Len(dbVersion.BuildVariants, 1)
@@ -857,7 +857,7 @@ func TestAddNewPatch(t *testing.T) {
 
 	_, _, err = addNewTasksToExistingBuilds(ctx, creationInfo, []build.Build{*dbBuild}, "")
 	assert.NoError(err)
-	dbUser, err := user.FindOneById(u.Id)
+	dbUser, err := user.FindOneByIdContext(t.Context(), u.Id)
 	assert.NoError(err)
 	require.NotNil(t, dbUser)
 	assert.Equal(4, dbUser.NumScheduledPatchTasks)
