@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -573,25 +572,4 @@ func AggregateWithMaxTime(collection string, pipeline any, out any, maxTime time
 	defer session.Close()
 
 	return database.C(collection).Pipe(pipeline).All(out)
-}
-
-func transformDocument(val any) (bson.Raw, error) {
-	if val == nil {
-		return nil, errors.WithStack(mongo.ErrNilDocument)
-	}
-
-	b, err := bson.Marshal(val)
-	if err != nil {
-		return nil, mongo.MarshalError{Value: val, Err: err}
-	}
-
-	return bson.Raw(b), nil
-}
-
-func hasDollarKey(doc bson.Raw) bool {
-	if elem, err := doc.IndexErr(0); err == nil && strings.HasPrefix(elem.Key(), "$") {
-		return true
-	}
-
-	return false
 }
