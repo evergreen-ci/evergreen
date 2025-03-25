@@ -55,6 +55,6 @@ redactSecrets is used to mark input fields that should not be logged or exposed 
 directive @redactSecrets on INPUT_FIELD_DEFINITION | ARGUMENT_DEFINITION | INPUT_OBJECT
 
 """
-requirePatchOwner is used to restrict certain actions to the patch creator or project admin.
+requirePatchOwner is used to restrict certain actions to the patch creator, patch admin, project admin or superuser.
 """
 directive @requirePatchOwner on ARGUMENT_DEFINITION
