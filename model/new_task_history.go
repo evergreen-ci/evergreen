@@ -16,8 +16,7 @@ const (
 	maxTaskHistoryLimit = 50
 )
 
-// maybe shared opts, then pass lower upper limit as additional opts i guess
-// FindTaskHistoryOptions
+// FindTaskHistoryOptions defines options that can be passed to queries in this file.
 type FindTaskHistoryOptions struct {
 	TaskName     string
 	BuildVariant string
