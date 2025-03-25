@@ -938,6 +938,14 @@ func ensureReferentialIntegrity(project *model.Project, containerNameMap map[str
 		}
 	}
 
+	shouldValidateSingleTaskDistros := project.Identifier != ""
+	if !shouldValidateSingleTaskDistros {
+		errs = append(errs, ValidationError{
+			Message: "project not specified, skipping single task distro validation",
+			Level:   Warning,
+		})
+	}
+
 	for _, buildVariant := range project.BuildVariants {
 		buildVariantTasks := map[string]bool{}
 		for _, task := range buildVariant.Tasks {
@@ -975,7 +983,7 @@ func ensureReferentialIntegrity(project *model.Project, containerNameMap map[str
 				}
 
 				// Do single task distro validation if the distro is a single task distro and not all tasks are allowed.
-				if slices.Contains(singleTaskDistroIDs, name) && !singleTaskDistroWhitelist.AllowAll() {
+				if shouldValidateSingleTaskDistros && slices.Contains(singleTaskDistroIDs, name) && !singleTaskDistroWhitelist.AllowAll() {
 					matchedTask, warnings := matchTaskToWhitelist(singleTaskDistroWhitelist.AllowedTasks, task.Name)
 					errs = append(errs, warnings...)
 					matchedBV, warnings := matchTaskToWhitelist(singleTaskDistroWhitelist.AllowedBVs, task.Variant)
@@ -1034,7 +1042,7 @@ func ensureReferentialIntegrity(project *model.Project, containerNameMap map[str
 			}
 
 			// Do single task distro validation if the distro is a single task distro and not all tasks are allowed.
-			if slices.Contains(singleTaskDistroIDs, name) && !singleTaskDistroWhitelist.AllowAll() {
+			if shouldValidateSingleTaskDistros && slices.Contains(singleTaskDistroIDs, name) && !singleTaskDistroWhitelist.AllowAll() {
 				matched, warnings := matchTaskToWhitelist(singleTaskDistroWhitelist.AllowedBVs, buildVariant.Name)
 				errs = append(errs, warnings...)
 				if !matched {
