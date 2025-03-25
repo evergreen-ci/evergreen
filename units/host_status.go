@@ -47,8 +47,6 @@ func NewCloudHostReadyJob(env evergreen.Environment, id string) amboy.Job {
 	return j
 }
 
-// kim: TODO: verify that host still becomes running without
-// AssociatePublicIpAddress.
 func makeCloudHostReadyJob() *cloudHostReadyJob {
 	j := &cloudHostReadyJob{
 		Base: job.Base{

@@ -2108,8 +2108,6 @@ func cacheCloudProviderDataUpdate(data CloudProviderData) bson.M {
 		IPKey:        data.IPv6,
 		VolumesKey:   data.Volumes,
 	}
-	// kim: TODO: verify that PublicIPv4 and PublicDNS are only set if
-	// AssociatePublicIpAddress is true.
 	if data.PublicIPv4 != "" {
 		setFields[PublicIPv4Key] = data.PublicIPv4
 	}
