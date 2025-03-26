@@ -65,8 +65,9 @@ func parserProjectById(id string) db.Q {
 }
 
 // parserProjectUpsertOne updates one parser project in the DB.
-func parserProjectUpsertOne(query any, update any) error {
-	_, err := db.Upsert(
+func parserProjectUpsertOne(ctx context.Context, query any, update any) error {
+	_, err := db.UpsertContext(
+		ctx,
 		ParserProjectCollection,
 		query,
 		update,
@@ -95,5 +96,5 @@ func (s ParserProjectDBStorage) FindOneByIDWithFields(ctx context.Context, id st
 // UpsertOne replaces a parser project in the DB if one exists with the same ID.
 // Otherwise, if it does not exist yet, it inserts a new parser project.
 func (s ParserProjectDBStorage) UpsertOne(ctx context.Context, pp *ParserProject) error {
-	return parserProjectUpsertOne(bson.M{ParserProjectIdKey: pp.Id}, pp)
+	return parserProjectUpsertOne(ctx, bson.M{ParserProjectIdKey: pp.Id}, pp)
 }

@@ -671,9 +671,9 @@ func TestServiceUserOperations(t *testing.T) {
 		SystemRoles:  []string{"one"},
 		EmailAddress: "myemail@mailplace.com",
 	}
-	assert.EqualError(t, AddOrUpdateServiceUser(u), "cannot update a non-service user")
+	assert.EqualError(t, AddOrUpdateServiceUser(t.Context(), u), "cannot update a non-service user")
 	u.OnlyAPI = true
-	assert.NoError(t, AddOrUpdateServiceUser(u))
+	assert.NoError(t, AddOrUpdateServiceUser(t.Context(), u))
 	dbUser, err := FindOneByIdContext(t.Context(), u.Id)
 	assert.NoError(t, err)
 	assert.True(t, dbUser.OnlyAPI)
@@ -684,7 +684,7 @@ func TestServiceUserOperations(t *testing.T) {
 
 	u.DispName = "another"
 	u.SystemRoles = []string{"one", "two"}
-	assert.NoError(t, AddOrUpdateServiceUser(u))
+	assert.NoError(t, AddOrUpdateServiceUser(t.Context(), u))
 	dbUser, err = FindOneByIdContext(t.Context(), u.Id)
 	assert.NoError(t, err)
 	assert.True(t, dbUser.OnlyAPI)
