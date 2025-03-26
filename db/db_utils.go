@@ -447,11 +447,6 @@ func FindAllQContext(ctx context.Context, collection string, q Q, out any) error
 }
 
 // CountQ runs a Q count query against the given collection.
-func CountQ(collection string, q Q) (int, error) {
-	return Count(collection, q.filter)
-}
-
-// CountQ runs a Q count query against the given collection.
 func CountQContext(ctx context.Context, collection string, q Q) (int, error) {
 	return CountContext(ctx, collection, q.filter)
 }
