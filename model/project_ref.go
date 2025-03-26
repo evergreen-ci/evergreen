@@ -1483,8 +1483,10 @@ func GetTasksWithOptions(ctx context.Context, projectName string, taskName strin
 	pipeline := []bson.M{{"$match": match}}
 	pipeline = append(pipeline, bson.M{"$sort": bson.M{task.RevisionOrderNumberKey: -1}})
 
+	aggregateCtx, cancel := context.WithTimeout(ctx, tasksByProjectQueryMaxTime)
+	defer cancel()
 	res := []task.Task{}
-	if err = db.AggregateWithMaxTime(task.Collection, pipeline, &res, tasksByProjectQueryMaxTime); err != nil {
+	if err = db.Aggregate(aggregateCtx, task.Collection, pipeline, &res); err != nil {
 		return nil, errors.Wrapf(err, "aggregating tasks")
 	}
 	return res, nil

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"time"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/pail"
@@ -540,19 +540,23 @@ func Aggregate(ctx context.Context, collection string, pipeline any, out any) er
 	return errors.WithStack(pipe.All(out))
 }
 
-// AggregateWithMaxTime runs aggregate and specifies a max query time which
-// ensures the query won't go on indefinitely when the request is cancelled.
-func AggregateWithMaxTime(collection string, pipeline any, out any, maxTime time.Duration) error {
-	ctx, cancel := context.WithTimeout(context.Background(), maxTime)
-	defer cancel()
-
-	session, database, err := GetGlobalSessionFactory().GetContextSession(ctx)
-	if err != nil {
-		err = errors.Wrap(err, "establishing DB connection")
-		grip.Error(err)
-		return err
+func transformDocument(val any) (bson.Raw, error) {
+	if val == nil {
+		return nil, errors.WithStack(mongo.ErrNilDocument)
 	}
-	defer session.Close()
 
-	return database.C(collection).Pipe(pipeline).All(out)
+	b, err := bson.Marshal(val)
+	if err != nil {
+		return nil, mongo.MarshalError{Value: val, Err: err}
+	}
+
+	return bson.Raw(b), nil
+}
+
+func hasDollarKey(doc bson.Raw) bool {
+	if elem, err := doc.IndexErr(0); err == nil && strings.HasPrefix(elem.Key(), "$") {
+		return true
+	}
+
+	return false
 }
