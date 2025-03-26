@@ -171,23 +171,23 @@ func (s *statsSuite) TestFindStatsToUpdate() {
 	// Find stats for p5 for a period with no finished tasks.
 	start := baseHour
 	end := baseHour.Add(time.Hour)
-	statsList, err := FindStatsToUpdate(FindStatsToUpdateOptions{ProjectID: "p5", Requesters: nil, Start: start, End: end})
+	statsList, err := FindStatsToUpdate(s.T().Context(), FindStatsToUpdateOptions{ProjectID: "p5", Requesters: nil, Start: start, End: end})
 	s.Require().NoError(err)
 	s.Empty(statsList)
 
 	// Find stats for p5 for a period around finish1.
 	start = finish1.Add(-1 * time.Hour)
 	end = finish1.Add(time.Hour)
-	statsList, err = FindStatsToUpdate(FindStatsToUpdateOptions{ProjectID: "p5", Requesters: nil, Start: start, End: end})
+	statsList, err = FindStatsToUpdate(s.T().Context(), FindStatsToUpdateOptions{ProjectID: "p5", Requesters: nil, Start: start, End: end})
 	s.Require().NoError(err)
 	s.Len(statsList, 2)
 
 	// Find stats for p5 for a period around finished1, filtering by
 	// requester.
-	statsList, err = FindStatsToUpdate(FindStatsToUpdateOptions{ProjectID: "p5", Requesters: []string{"r2"}, Start: start, End: end})
+	statsList, err = FindStatsToUpdate(s.T().Context(), FindStatsToUpdateOptions{ProjectID: "p5", Requesters: []string{"r2"}, Start: start, End: end})
 	s.Require().NoError(err)
 	s.Len(statsList, 1)
-	statsList, err = FindStatsToUpdate(FindStatsToUpdateOptions{ProjectID: "p5", Requesters: []string{"r1", "r2"}, Start: start, End: end})
+	statsList, err = FindStatsToUpdate(s.T().Context(), FindStatsToUpdateOptions{ProjectID: "p5", Requesters: []string{"r1", "r2"}, Start: start, End: end})
 	s.Require().NoError(err)
 	s.Require().Len(statsList, 2)
 
@@ -199,7 +199,7 @@ func (s *statsSuite) TestFindStatsToUpdate() {
 	// Find stats for p5 for a period around finish1
 	start = finish1.Add(-1 * time.Hour)
 	end = finish1.Add(time.Hour)
-	statsList, err = FindStatsToUpdate(FindStatsToUpdateOptions{ProjectID: "p5", Requesters: nil, Start: start, End: end})
+	statsList, err = FindStatsToUpdate(s.T().Context(), FindStatsToUpdateOptions{ProjectID: "p5", Requesters: nil, Start: start, End: end})
 	s.Require().NoError(err)
 	s.Require().Len(statsList, 2)
 	// The results are sorted so we know the order

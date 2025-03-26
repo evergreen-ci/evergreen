@@ -429,7 +429,7 @@ func (s *AdminRouteSuite) TestClearTaskQueueRoute() {
 	resp := route.Run(context.Background())
 	s.Equal(http.StatusOK, resp.Status())
 
-	queueFromDb, err := model.LoadTaskQueue(distro)
+	queueFromDb, err := model.LoadTaskQueue(s.T().Context(), distro)
 	s.NoError(err)
 	s.Empty(queueFromDb.Queue)
 }

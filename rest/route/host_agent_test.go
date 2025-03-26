@@ -750,7 +750,7 @@ func TestSingleTaskDistroValidation(t *testing.T) {
 	require.NotZero(t, h)
 	assert.Equal(t, "task1", h.RunningTask)
 
-	tq, err = model.LoadTaskQueue(d.Id)
+	tq, err = model.LoadTaskQueue(t.Context(), d.Id)
 	require.NoError(t, err)
 	require.NotNil(t, tq)
 	assert.Equal(t, 2, tq.Length())
@@ -770,7 +770,7 @@ func TestSingleTaskDistroValidation(t *testing.T) {
 	assert.Equal(t, "", h.RunningTask)
 
 	// task2 should be taken off the queue because it is not an allowed task.
-	tq, err = model.LoadTaskQueue(d.Id)
+	tq, err = model.LoadTaskQueue(t.Context(), d.Id)
 	require.NoError(t, err)
 	require.NotNil(t, tq)
 	assert.Equal(t, 1, tq.Length())
@@ -1210,7 +1210,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 			assert.Nil(t, task)
 			assert.False(t, shouldTeardown)
 
-			tq, err := model.LoadTaskQueue(d.Distro1.Id)
+			tq, err := model.LoadTaskQueue(t.Context(), d.Distro1.Id)
 			require.NoError(t, err)
 			assert.Equal(t, 0, tq.Length())
 
@@ -1228,7 +1228,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 			assert.Nil(t, task)
 			assert.False(t, shouldTeardown)
 
-			tq, err := model.LoadTaskQueue(d.Distro3.Id)
+			tq, err := model.LoadTaskQueue(t.Context(), d.Distro3.Id)
 			require.NoError(t, err)
 			assert.Equal(t, 3, tq.Length())
 
@@ -1245,7 +1245,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 			assert.False(t, shouldTeardown)
 			assert.Equal(t, nextTaskId, task.Id)
 
-			tq, err := model.LoadTaskQueue(d.Distro3.Id)
+			tq, err := model.LoadTaskQueue(t.Context(), d.Distro3.Id)
 			require.NoError(t, err)
 			assert.Equal(t, 1, tq.Length())
 
@@ -1262,7 +1262,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 			assert.False(t, shouldTeardown)
 			assert.Equal(t, nextTaskId, task.Id)
 
-			tq, err := model.LoadTaskQueue(d.Distro1.Id)
+			tq, err := model.LoadTaskQueue(t.Context(), d.Distro1.Id)
 			require.NoError(t, err)
 			assert.Equal(t, 1, tq.Length())
 
@@ -1282,7 +1282,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 			assert.False(t, shouldTeardown)
 			assert.Equal(t, nextTaskId, task.Id)
 
-			tq, err := model.LoadTaskQueue(d.Distro3.Id)
+			tq, err := model.LoadTaskQueue(t.Context(), d.Distro3.Id)
 			require.NoError(t, err)
 			assert.Equal(t, 0, tq.Length())
 
@@ -1302,7 +1302,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 			assert.False(t, shouldTeardown)
 			assert.Equal(t, nextTaskId, task.Id)
 
-			tq, err := model.LoadTaskQueue(d.Distro3.Id)
+			tq, err := model.LoadTaskQueue(t.Context(), d.Distro3.Id)
 			require.NoError(t, err)
 			assert.Equal(t, 0, tq.Length())
 
@@ -1319,7 +1319,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 			assert.Nil(t, task)
 			assert.True(t, shouldTeardown)
 
-			tq, err := model.LoadTaskQueue(d.Distro1.Id)
+			tq, err := model.LoadTaskQueue(t.Context(), d.Distro1.Id)
 			require.NoError(t, err)
 			assert.Equal(t, 2, tq.Length())
 
@@ -1336,7 +1336,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 			assert.Nil(t, task)
 			assert.True(t, shouldTeardown)
 
-			tq, err := model.LoadTaskQueue(d.Distro2.Id)
+			tq, err := model.LoadTaskQueue(t.Context(), d.Distro2.Id)
 			require.NoError(t, err)
 			assert.Equal(t, 4, tq.Length())
 
@@ -1355,7 +1355,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 			assert.False(t, shouldTeardown)
 			assert.Equal(t, nextTaskId, task.Id)
 
-			tq, err := model.LoadTaskQueue(d.Distro3.Id)
+			tq, err := model.LoadTaskQueue(t.Context(), d.Distro3.Id)
 			require.NoError(t, err)
 			assert.Equal(t, 0, tq.Length())
 
@@ -1372,7 +1372,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 			assert.False(t, shouldTeardown)
 			assert.Equal(t, nextTaskId, task.Id)
 
-			tq, err := model.LoadTaskQueue(d.Distro3.Id)
+			tq, err := model.LoadTaskQueue(t.Context(), d.Distro3.Id)
 			require.NoError(t, err)
 			assert.Equal(t, 1, tq.Length())
 
@@ -1387,7 +1387,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 			assert.False(t, shouldTeardown)
 			assert.Equal(t, nextTaskId, task.Id)
 
-			tq, err = model.LoadTaskQueue(d.Distro3.Id)
+			tq, err = model.LoadTaskQueue(t.Context(), d.Distro3.Id)
 			require.NoError(t, err)
 			assert.Equal(t, 0, tq.Length())
 
@@ -1404,7 +1404,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 			assert.False(t, shouldTeardown)
 			assert.Equal(t, nextTaskId, task.Id)
 
-			tq, err := model.LoadTaskQueue(d.Distro3.Id)
+			tq, err := model.LoadTaskQueue(t.Context(), d.Distro3.Id)
 			require.NoError(t, err)
 			assert.Equal(t, 1, tq.Length())
 
@@ -1420,7 +1420,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 			assert.False(t, shouldTeardown)
 			assert.Equal(t, nextTaskId, task.Id)
 
-			tq, err = model.LoadTaskQueue(d.Distro3.Id)
+			tq, err = model.LoadTaskQueue(t.Context(), d.Distro3.Id)
 			require.NoError(t, err)
 			assert.Equal(t, 0, tq.Length())
 
@@ -1437,7 +1437,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 			assert.False(t, shouldTeardown)
 			assert.Equal(t, nextTaskId, task.Id)
 
-			tq, err := model.LoadTaskQueue(d.Distro3.Id)
+			tq, err := model.LoadTaskQueue(t.Context(), d.Distro3.Id)
 			require.NoError(t, err)
 			assert.Equal(t, 1, tq.Length())
 
@@ -1450,7 +1450,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 			assert.Nil(t, task)
 			assert.False(t, shouldTeardown)
 
-			tq, err = model.LoadTaskQueue(d.Distro3.Id)
+			tq, err = model.LoadTaskQueue(t.Context(), d.Distro3.Id)
 			require.NoError(t, err)
 			assert.Equal(t, 1, tq.Length())
 
@@ -1467,7 +1467,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 			assert.False(t, shouldTeardown)
 			assert.Equal(t, nextTaskId, task.Id)
 
-			tq, err := model.LoadTaskQueue(d.Distro1.Id)
+			tq, err := model.LoadTaskQueue(t.Context(), d.Distro1.Id)
 			require.NoError(t, err)
 			assert.Equal(t, 1, tq.Length())
 
@@ -1481,7 +1481,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 			assert.Nil(t, task)
 			assert.False(t, shouldTeardown)
 
-			tq, err = model.LoadTaskQueue(d.Distro1.Id)
+			tq, err = model.LoadTaskQueue(t.Context(), d.Distro1.Id)
 			require.NoError(t, err)
 			assert.Equal(t, 0, tq.Length())
 
@@ -1529,7 +1529,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 			assert.False(t, shouldTeardown)
 			assert.Equal(t, nextTaskId, task.Id)
 
-			tq, err := model.LoadTaskQueue(d.Distro1.Id)
+			tq, err := model.LoadTaskQueue(t.Context(), d.Distro1.Id)
 			require.NoError(t, err)
 			assert.Equal(t, 2, tq.Length())
 
@@ -1545,7 +1545,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 			assert.False(t, shouldTeardown)
 			assert.Equal(t, nextTaskId, task.Id)
 
-			tq, err = model.LoadTaskQueue(d.Distro1.Id)
+			tq, err = model.LoadTaskQueue(t.Context(), d.Distro1.Id)
 			require.NoError(t, err)
 			assert.Equal(t, 1, tq.Length())
 
@@ -1560,7 +1560,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 			assert.Nil(t, task)
 			assert.False(t, shouldTeardown)
 
-			tq, err = model.LoadTaskQueue(d.Distro1.Id)
+			tq, err = model.LoadTaskQueue(t.Context(), d.Distro1.Id)
 			require.NoError(t, err)
 			assert.Equal(t, 0, tq.Length())
 

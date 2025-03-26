@@ -149,7 +149,7 @@ func FindVolumesWithTerminatedHost(ctx context.Context) ([]Volume, error) {
 	project := bson.M{"$project": bson.M{"host_doc": 0}}
 	pipeline := []bson.M{match, lookup, matchTerminatedHosts, project}
 	volumes := []Volume{}
-	if err := db.AggregateContext(ctx, VolumesCollection, pipeline, &volumes); err != nil {
+	if err := db.Aggregate(ctx, VolumesCollection, pipeline, &volumes); err != nil {
 		return nil, err
 	}
 	return volumes, nil
@@ -185,7 +185,7 @@ func FindTotalVolumeSizeByUser(ctx context.Context, user string) (int, error) {
 	}
 
 	out := []volumeSize{}
-	err := db.AggregateContext(ctx, VolumesCollection, pipeline, &out)
+	err := db.Aggregate(ctx, VolumesCollection, pipeline, &out)
 	if err != nil || len(out) == 0 {
 		return 0, err
 	}

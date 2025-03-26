@@ -191,12 +191,12 @@ func NewTaskQueue(distroID string, queue []TaskQueueItem, distroQueueInfo Distro
 	}
 }
 
-func LoadTaskQueue(distro string) (*TaskQueue, error) {
-	return findTaskQueueForDistro(taskQueueQuery{DistroID: distro, Collection: TaskQueuesCollection})
+func LoadTaskQueue(ctx context.Context, distro string) (*TaskQueue, error) {
+	return findTaskQueueForDistro(ctx, taskQueueQuery{DistroID: distro, Collection: TaskQueuesCollection})
 }
 
-func LoadDistroSecondaryTaskQueue(distroID string) (*TaskQueue, error) {
-	return findTaskQueueForDistro(taskQueueQuery{DistroID: distroID, Collection: TaskSecondaryQueuesCollection})
+func LoadDistroSecondaryTaskQueue(ctx context.Context, distroID string) (*TaskQueue, error) {
+	return findTaskQueueForDistro(ctx, taskQueueQuery{DistroID: distroID, Collection: TaskSecondaryQueuesCollection})
 }
 
 func (tq *TaskQueue) Length() int {
@@ -314,7 +314,7 @@ type taskQueueQuery struct {
 	DistroID   string
 }
 
-func findTaskQueueForDistro(q taskQueueQuery) (*TaskQueue, error) {
+func findTaskQueueForDistro(ctx context.Context, q taskQueueQuery) (*TaskQueue, error) {
 	isDispatchedKey := bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemIsDispatchedKey)
 
 	pipeline := []bson.M{
@@ -370,7 +370,7 @@ func findTaskQueueForDistro(q taskQueueQuery) (*TaskQueue, error) {
 
 	out := []TaskQueue{}
 
-	err := db.Aggregate(q.Collection, pipeline, &out)
+	err := db.Aggregate(ctx, q.Collection, pipeline, &out)
 	if err != nil {
 		if adb.ResultsNotFound(err) {
 			return nil, nil
@@ -397,7 +397,7 @@ func findTaskQueueForDistro(q taskQueueQuery) (*TaskQueue, error) {
 
 // FindMinimumQueuePositionForTask finds the position of a task in the many task queues
 // where its position is the lowest. It returns an error if the aggregation it runs fails.
-func FindMinimumQueuePositionForTask(taskId string) (int, error) {
+func FindMinimumQueuePositionForTask(ctx context.Context, taskId string) (int, error) {
 	var results []struct {
 		Index int `bson:"index"`
 	}
@@ -416,7 +416,7 @@ func FindMinimumQueuePositionForTask(taskId string) (int, error) {
 		{"$limit": 1},
 	}
 
-	err := db.Aggregate(TaskQueuesCollection, pipeline, &results)
+	err := db.Aggregate(ctx, TaskQueuesCollection, pipeline, &results)
 
 	if len(results) == 0 {
 		return -1, err
@@ -496,7 +496,7 @@ type DuplicateEnqueuedTasksResult struct {
 	DistroIDs []string `bson:"distros"`
 }
 
-func FindDuplicateEnqueuedTasks(coll string) ([]DuplicateEnqueuedTasksResult, error) {
+func FindDuplicateEnqueuedTasks(ctx context.Context, coll string) ([]DuplicateEnqueuedTasksResult, error) {
 	var res []DuplicateEnqueuedTasksResult
 	taskIDKey := bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemIdKey)
 	unwindTaskQueue := bson.M{
@@ -529,7 +529,7 @@ func FindDuplicateEnqueuedTasks(coll string) ([]DuplicateEnqueuedTasksResult, er
 		includeNumQueues,
 		matchDuplicateTasks,
 	)
-	if err := db.Aggregate(coll, pipeline, &res); err != nil {
+	if err := db.Aggregate(ctx, coll, pipeline, &res); err != nil {
 		return nil, errors.WithStack(err)
 	}
 	return res, nil

@@ -430,7 +430,7 @@ func TestDBUtils(t *testing.T) {
 			}
 
 			output := []bson.M{}
-			err := AggregateContext(t.Context(), collection, testPipeline, &output)
+			err := Aggregate(t.Context(), collection, testPipeline, &output)
 			So(err, ShouldBeNil)
 			So(len(output), ShouldEqual, 2)
 			So(output[0]["total"], ShouldEqual, 5)
@@ -444,7 +444,7 @@ func TestDBUtils(t *testing.T) {
 					TotalSum int    `bson:"total"`
 				}
 				output := []ResultStruct{}
-				err := AggregateContext(t.Context(), collection, testPipeline, &output)
+				err := Aggregate(t.Context(), collection, testPipeline, &output)
 				So(err, ShouldBeNil)
 				So(len(output), ShouldEqual, 2)
 				So(output[0], ShouldResemble, ResultStruct{"2", 5})

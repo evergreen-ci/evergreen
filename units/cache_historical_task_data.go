@@ -103,7 +103,7 @@ func (j *cacheHistoricalTaskDataJob) Run(ctx context.Context) {
 
 	var statsToUpdate []taskstats.StatsToUpdate
 	timingMsg["find_task_stats_to_update"] = reportTiming(func() {
-		statsToUpdate, err = taskstats.FindStatsToUpdate(taskstats.FindStatsToUpdateOptions{
+		statsToUpdate, err = taskstats.FindStatsToUpdate(ctx, taskstats.FindStatsToUpdateOptions{
 			ProjectID:  j.ProjectID,
 			Requesters: j.Requesters,
 			Start:      update_window_start,

@@ -213,7 +213,7 @@ type StatusCount struct {
 // for running tasks. For each pod status, it returns the counts for the number
 // of pods and number of running tasks in that particular status. Terminated
 // pods are excluded from these statistics.
-func GetStatsByStatus(statuses ...Status) ([]StatusCount, error) {
+func GetStatsByStatus(ctx context.Context, statuses ...Status) ([]StatusCount, error) {
 	if len(statuses) == 0 {
 		return []StatusCount{}, nil
 	}
@@ -250,7 +250,7 @@ func GetStatsByStatus(statuses ...Status) ([]StatusCount, error) {
 	}
 
 	stats := []StatusCount{}
-	if err := db.Aggregate(Collection, pipeline, &stats); err != nil {
+	if err := db.Aggregate(ctx, Collection, pipeline, &stats); err != nil {
 		return nil, err
 	}
 

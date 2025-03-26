@@ -425,7 +425,7 @@ func (restapi *restAPI) getVersionStatus(w http.ResponseWriter, r *http.Request)
 	case "": // default to group by tasks
 		fallthrough
 	case "tasks":
-		restapi.getVersionStatusByTask(versionId, w)
+		restapi.getVersionStatusByTask(r.Context(), versionId, w)
 		return
 	case "builds":
 		restapi.getVersionStatusByBuild(r.Context(), versionId, w)
@@ -441,7 +441,7 @@ func (restapi *restAPI) getVersionStatus(w http.ResponseWriter, r *http.Request)
 // grouped on the tasks. The keys of the object are the task names,
 // with each key in the nested object representing a particular build
 // variant.
-func (restapi *restAPI) getVersionStatusByTask(versionId string, w http.ResponseWriter) {
+func (restapi *restAPI) getVersionStatusByTask(ctx context.Context, versionId string, w http.ResponseWriter) {
 	id := "_id"
 
 	pipeline := []bson.M{
@@ -482,7 +482,7 @@ func (restapi *restAPI) getVersionStatusByTask(versionId string, w http.Response
 		Tasks       []task.Task `bson:"tasks"`
 	}
 
-	err := db.Aggregate(task.Collection, pipeline, &groupedTasks)
+	err := db.Aggregate(ctx, task.Collection, pipeline, &groupedTasks)
 	if err != nil {
 		msg := fmt.Sprintf("Error finding status for version '%v'", versionId)
 		grip.Errorf("%v: %+v", msg, err)

@@ -526,24 +526,7 @@ func ClearGridCollections(fsPrefix string) error {
 // Aggregate runs an aggregation pipeline on a collection and unmarshals
 // the results to the given "out" interface (usually a pointer
 // to an array of structs/bson.M)
-func Aggregate(collection string, pipeline any, out any) error {
-	session, db, err := GetGlobalSessionFactory().GetSession()
-	if err != nil {
-		err = errors.Wrap(err, "establishing db connection")
-		grip.Error(err)
-		return err
-	}
-	defer session.Close()
-
-	pipe := db.C(collection).Pipe(pipeline)
-
-	return errors.WithStack(pipe.All(out))
-}
-
-// AggregateContext runs an aggregation pipeline on a collection and unmarshals
-// the results to the given "out" interface (usually a pointer
-// to an array of structs/bson.M)
-func AggregateContext(ctx context.Context, collection string, pipeline any, out any) error {
+func Aggregate(ctx context.Context, collection string, pipeline any, out any) error {
 	session, db, err := GetGlobalSessionFactory().GetContextSession(ctx)
 	if err != nil {
 		err = errors.Wrap(err, "establishing db connection")
