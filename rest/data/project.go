@@ -304,7 +304,7 @@ func FindProjectVarsById(ctx context.Context, id string, repoId string, redact b
 // will be fully replaced by those in varsModel. Otherwise, it will only set the
 // value for variables that are explicitly present in varsModel and will not
 // delete variables that are omitted.
-func UpdateProjectVars(projectId string, varsModel *restModel.APIProjectVars, overwrite bool) error {
+func UpdateProjectVars(ctx context.Context, projectId string, varsModel *restModel.APIProjectVars, overwrite bool) error {
 	if varsModel == nil {
 		return nil
 	}
@@ -318,7 +318,7 @@ func UpdateProjectVars(projectId string, varsModel *restModel.APIProjectVars, ov
 		}
 	}
 	if overwrite {
-		if _, err := vars.Upsert(); err != nil {
+		if _, err := vars.Upsert(ctx); err != nil {
 			return errors.Wrapf(err, "overwriting variables for project '%s'", vars.Id)
 		}
 	} else {
@@ -466,7 +466,7 @@ func HideBranch(ctx context.Context, projectID string) error {
 	skeletonProjVars := model.ProjectVars{
 		Id: pRef.Id,
 	}
-	if _, err := skeletonProjVars.Upsert(); err != nil {
+	if _, err := skeletonProjVars.Upsert(ctx); err != nil {
 		return errors.Wrapf(err, "updating vars for project '%s'", pRef.Id)
 	}
 

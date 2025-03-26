@@ -43,7 +43,7 @@ func TestFindOneProjectVar(t *testing.T) {
 		Id:   pRef.Id,
 		Vars: vars,
 	}
-	change, err := projectVars.Upsert()
+	change, err := projectVars.Upsert(t.Context())
 	assert.NotNil(change)
 	assert.NoError(err)
 	assert.Equal(1, change.Updated, "%+v", change)
@@ -312,21 +312,21 @@ func TestProjectVarsUpsert(t *testing.T) {
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, pRef ProjectRef, vars ProjectVars){
 		"InsertsNewVars": func(ctx context.Context, t *testing.T, pRef ProjectRef, vars ProjectVars) {
 			require.NoError(t, pRef.Insert())
-			_, err := vars.Upsert()
+			_, err := vars.Upsert(t.Context())
 			require.NoError(t, err)
 
 			checkProjectVars(t, vars)
 		},
 		"UpdatesExistingVars": func(ctx context.Context, t *testing.T, pRef ProjectRef, vars ProjectVars) {
 			require.NoError(t, pRef.Insert())
-			_, err := vars.Upsert()
+			_, err := vars.Upsert(t.Context())
 			require.NoError(t, err)
 
 			checkProjectVars(t, vars)
 
 			vars.Vars["c"] = "3"
 			delete(vars.Vars, "a")
-			_, err = vars.Upsert()
+			_, err = vars.Upsert(t.Context())
 			require.NoError(t, err)
 
 			dbProjVars, err := FindOneProjectVars(t.Context(), vars.Id)
@@ -350,7 +350,7 @@ func TestProjectVarsUpsert(t *testing.T) {
 		"CreatesNewVarsForSeparateProject": func(ctx context.Context, t *testing.T, pRef ProjectRef, vars ProjectVars) {
 			oldProjectID := vars.Id
 			require.NoError(t, pRef.Insert())
-			_, err := vars.Upsert()
+			_, err := vars.Upsert(t.Context())
 			require.NoError(t, err)
 
 			checkProjectVars(t, vars)
@@ -632,7 +632,7 @@ func TestAWSVars(t *testing.T) {
 		Vars:        vars,
 		PrivateVars: privateVars,
 	}
-	_, err = projectVars.Upsert()
+	_, err = projectVars.Upsert(t.Context()t.Context())
 	assert.NoError(err)
 
 	// canaries

@@ -235,7 +235,7 @@ func (s *copyVariablesSuite) TestCopyAllVariables() {
 		Vars:        map[string]string{"banana": "yellow"},
 		PrivateVars: map[string]bool{},
 	}
-	_, err := newProjectVar.Upsert()
+	_, err := newProjectVar.Upsert(s.ctx)
 	s.NoError(err)
 	resp := s.route.Run(s.ctx)
 	s.NotNil(resp)

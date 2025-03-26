@@ -64,7 +64,7 @@ func (s *ProjectPatchByIDSuite) SetupTest() {
 	project2.Identifier = "project2"
 	s.NoError(project2.Add(s.T().Context(), &user))
 
-	_, err := getTestVar().Upsert()
+	_, err := getTestVar().Upsert(s.T().Context())
 	s.NoError(err)
 	aliases := getTestAliases()
 	for _, alias := range aliases {
@@ -1087,7 +1087,7 @@ func TestDeleteProject(t *testing.T) {
 		Id:   projects[0].Id,
 		Vars: map[string]string{"hello": "world"},
 	}
-	_, err := projVars.Upsert()
+	_, err := projVars.Upsert(t.Context())
 	require.NoError(t, err)
 
 	pdh := projectDeleteHandler{}

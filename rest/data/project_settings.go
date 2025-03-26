@@ -143,7 +143,7 @@ func PromoteVarsToRepo(ctx context.Context, projectIdentifier string, varNames [
 		}
 	}
 
-	if err = UpdateProjectVars(repoId, apiRepoVars, true); err != nil {
+	if err = UpdateProjectVars(ctx, repoId, apiRepoVars, true); err != nil {
 		return errors.Wrapf(err, "adding variables from project '%s' to repo", projectIdentifier)
 	}
 
@@ -180,7 +180,7 @@ func PromoteVarsToRepo(ctx context.Context, projectIdentifier string, varNames [
 		}
 	}
 
-	if err := UpdateProjectVars(projectId, apiProjectVars, true); err != nil {
+	if err := UpdateProjectVars(ctx, projectId, apiProjectVars, true); err != nil {
 		return errors.Wrapf(err, "removing promoted project variables from project '%s'", projectIdentifier)
 	}
 
@@ -366,7 +366,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 				changes.Vars.Vars[key] = value
 			}
 		}
-		if err = UpdateProjectVars(projectId, &changes.Vars, true); err != nil { // destructively modifies vars
+		if err = UpdateProjectVars(ctx, projectId, &changes.Vars, true); err != nil { // destructively modifies vars
 			return nil, errors.Wrapf(err, "updating project variables for project '%s'", projectId)
 		}
 		modified = true

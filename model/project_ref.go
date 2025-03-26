@@ -857,7 +857,7 @@ func (p *ProjectRef) DetachFromRepo(ctx context.Context, u *user.DBUser) error {
 	// catch any resulting errors so that we log before returning
 	catcher := grip.NewBasicCatcher()
 	if mergedVars != nil {
-		_, err = mergedVars.Upsert()
+		_, err = mergedVars.Upsert(ctx)
 		catcher.Wrap(err, "saving merged vars")
 	}
 
