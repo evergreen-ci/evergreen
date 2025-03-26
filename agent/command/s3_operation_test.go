@@ -193,7 +193,7 @@ func TestS3CredentialsShouldRunForVariant(t *testing.T) {
 	t.Run("IncludesBV", func(t *testing.T) {
 		op := s3Operation{}
 		op.BuildVariants = []string{"bv1", "bv2"}
-		assert.False(t, op.shouldRunForVariant("bv2"))
+		assert.True(t, op.shouldRunForVariant("bv2"))
 	})
 }
 
