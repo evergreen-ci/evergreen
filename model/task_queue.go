@@ -256,7 +256,7 @@ func ClearTaskQueue(ctx context.Context, distroId string) error {
 	secondaryQueueQuery := bson.M{
 		taskQueueDistroKey: distroId,
 	}
-	aliasCount, err := db.CountContext(ctx, TaskSecondaryQueuesCollection, secondaryQueueQuery)
+	aliasCount, err := db.Count(ctx, TaskSecondaryQueuesCollection, secondaryQueueQuery)
 	if err != nil {
 		catcher.Wrap(err, "counting secondary queues matching distro")
 	}

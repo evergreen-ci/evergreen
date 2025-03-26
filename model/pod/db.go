@@ -69,7 +69,7 @@ func ByExternalID(id string) bson.M {
 
 // Count counts the number of pods matching the given query.
 func Count(ctx context.Context, q db.Q) (int, error) {
-	return db.CountQContext(ctx, Collection, q)
+	return db.CountQ(ctx, Collection, q)
 }
 
 // Find finds all pods matching the given query.

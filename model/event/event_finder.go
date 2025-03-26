@@ -54,7 +54,7 @@ func FindPaginatedWithTotalCount(ctx context.Context, query db.Q, limit, page in
 	}
 
 	// Count ignores skip and limit by default, so this will return the total number of events.
-	count, err := db.CountQContext(ctx, EventCollection, query)
+	count, err := db.CountQ(ctx, EventCollection, query)
 	if err != nil {
 		return nil, 0, errors.Wrap(err, "fetching total count for events")
 	}
@@ -115,7 +115,7 @@ func FindLastProcessedEvent(ctx context.Context) (*EventLogEntry, error) {
 func CountUnprocessedEvents(ctx context.Context) (int, error) {
 	q := db.Query(unprocessedEvents())
 
-	n, err := db.CountQContext(ctx, EventCollection, q)
+	n, err := db.CountQ(ctx, EventCollection, q)
 	if err != nil {
 		return 0, errors.Wrap(err, "fetching number of unprocessed events")
 	}
@@ -227,7 +227,7 @@ func HasNoRecentStoppedHostEvent(ctx context.Context, id string, ts time.Time) (
 	filter[ResourceIdKey] = id
 	filter[eventTypeKey] = EventHostStopped
 	filter[TimestampKey] = bson.M{"$gte": ts}
-	count, err := db.CountQContext(ctx, EventCollection, db.Query(filter))
+	count, err := db.CountQ(ctx, EventCollection, db.Query(filter))
 	if err != nil {
 		return false, errors.Wrap(err, "fetching count of stopped host events")
 	}
