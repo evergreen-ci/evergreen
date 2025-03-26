@@ -248,7 +248,7 @@ func TestBucketOptionsValidate(t *testing.T) {
 		}
 		err := errors.Join(opts.validate()...)
 		require.Error(t, err)
-		assert.ErrorContains(t, err, "must be at leaset 3 characters")
+		assert.ErrorContains(t, err, "must be at least 3 characters")
 	})
 
 	t.Run("InvalidRemoteFile", func(t *testing.T) {
