@@ -68,8 +68,8 @@ func ByExternalID(id string) bson.M {
 }
 
 // Count counts the number of pods matching the given query.
-func Count(q db.Q) (int, error) {
-	return db.CountQ(Collection, q)
+func Count(ctx context.Context, q db.Q) (int, error) {
+	return db.CountQContext(ctx, Collection, q)
 }
 
 // Find finds all pods matching the given query.
@@ -141,8 +141,8 @@ func FindByInitializing() ([]Pod, error) {
 
 // CountByInitializing counts the number of pods that are initializing but have
 // not started any containers.
-func CountByInitializing() (int, error) {
-	return Count(db.Query(bson.M{
+func CountByInitializing(ctx context.Context) (int, error) {
+	return Count(ctx, db.Query(bson.M{
 		StatusKey: StatusInitializing,
 	}))
 }

@@ -1430,8 +1430,8 @@ func GetIdentifierForProject(ctx context.Context, id string) (string, error) {
 	return pRef.Identifier, nil
 }
 
-func CountProjectRefsWithIdentifier(identifier string) (int, error) {
-	return db.CountQ(ProjectRefCollection, byId(identifier))
+func CountProjectRefsWithIdentifier(ctx context.Context, identifier string) (int, error) {
+	return db.CountQContext(ctx, ProjectRefCollection, byId(identifier))
 }
 
 type GetProjectTasksOpts struct {
@@ -2789,11 +2789,11 @@ func validateOwner(owner string, validOrgs []string) error {
 	return nil
 }
 
-func (p *ProjectRef) ValidateIdentifier() error {
+func (p *ProjectRef) ValidateIdentifier(ctx context.Context) error {
 	if p.Id == p.Identifier { // we already know the id is unique
 		return nil
 	}
-	count, err := CountProjectRefsWithIdentifier(p.Identifier)
+	count, err := CountProjectRefsWithIdentifier(ctx, p.Identifier)
 	if err != nil {
 		return errors.Wrap(err, "counting other project refs")
 	}

@@ -20,7 +20,7 @@ func GetNotificationsStats(ctx context.Context) (*restModel.APIEventStats, error
 		stats.LastProcessedAt = &e.ProcessedAt
 	}
 
-	n, err := event.CountUnprocessedEvents()
+	n, err := event.CountUnprocessedEvents(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "counting unprocessed events")
 	}

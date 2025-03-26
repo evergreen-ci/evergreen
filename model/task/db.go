@@ -1692,7 +1692,7 @@ func Aggregate(ctx context.Context, pipeline []bson.M, results any) error {
 
 // Count returns the number of tasks that satisfy the given query.
 func Count(ctx context.Context, query db.Q) (int, error) {
-	return db.CountQ(Collection, query)
+	return db.CountQContext(ctx, Collection, query)
 }
 
 func FindProjectForTask(ctx context.Context, taskID string) (string, error) {

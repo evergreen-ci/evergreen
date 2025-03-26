@@ -50,7 +50,7 @@ func (r *hostResolver) Events(ctx context.Context, obj *restModel.APIHost, opts 
 		SortAsc:    sortAsc,
 		EventTypes: opts.EventTypes,
 	}
-	events, count, err := event.GetPaginatedHostEvents(hostQueryOpts)
+	events, count, err := event.GetPaginatedHostEvents(ctx, hostQueryOpts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching events for host '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
 	}
