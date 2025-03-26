@@ -384,6 +384,7 @@ Parameters:
 -   `duration_seconds`: int in seconds of how long the returned
     credentials will be valid. (default 900)
 
+### AssumeRole AWS Setup
 
 The call to AssumeRole includes an external ID formatted as
 `<project_id>-<requester>`. This cannot be modified by the user.
@@ -1402,6 +1403,8 @@ Parameters:
     Note: If you are generating temporary credentials using `ec2.assume_role`, it is recommended
     to pass in the role_arn directly to your s3 commands instead.
 -   `role_arn`: your AWS role to be assumed before and during the s3 operation.
+    See [AssumeRole AWS setup](#assumerole-aws-setup) for more information on how
+    to configure your role.
     This does not have to be a secret but managing it with expansions is recommended.
     This is the recommended way to authenticate with AWS.
 -   `local_file`: the local file to save, do not use with `extract_to`
@@ -1456,6 +1459,8 @@ Parameters:
     Note: If you are generating temporary credentials using `ec2.assume_role`, it is recommended
     to pass in the role_arn directly to your s3 commands instead.
 -   `role_arn`: your AWS role to be assumed before and during the s3 operation.
+    See [AssumeRole AWS setup](#assumerole-aws-setup) for more information on how
+    to configure your role.
     This does not have to be a secret but managing it with expansions is recommended.
     This is the recommended way to authenticate with AWS.
 -   `local_file`: the local file to post
