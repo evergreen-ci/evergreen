@@ -869,7 +869,7 @@ func (p *ProjectRef) DetachFromRepo(ctx context.Context, u *user.DBUser) error {
 		for _, s := range subs {
 			s.ID = ""
 			s.Owner = p.Id
-			catcher.Add(s.Upsert())
+			catcher.Add(s.Upsert(ctx))
 		}
 	}
 
@@ -905,7 +905,7 @@ func (p *ProjectRef) DetachFromRepo(ctx context.Context, u *user.DBUser) error {
 			}
 		}
 	}
-	catcher.Add(UpsertAliasesForProject(repoAliasesToCopy, p.Id))
+	catcher.Add(UpsertAliasesForProject(ctx, repoAliasesToCopy, p.Id))
 
 	catcher.Add(GetAndLogProjectRepoAttachment(ctx, p.Id, u.Id, event.EventTypeProjectDetachedFromRepo, false, before))
 	return catcher.Resolve()
@@ -1308,7 +1308,7 @@ func (p *ProjectRef) createNewRepoRef(ctx context.Context, u *user.DBUser) (repo
 	}
 	for _, a := range commonAliases {
 		a.ProjectID = repoRef.Id
-		if err = a.Upsert(); err != nil {
+		if err = a.Upsert(ctx); err != nil {
 			return nil, errors.Wrap(err, "upserting alias for repo")
 		}
 	}

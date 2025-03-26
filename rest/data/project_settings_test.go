@@ -1070,7 +1070,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 				Target: "a@gmail.com",
 			},
 		}
-		assert.NoError(t, existingSub.Upsert())
+		assert.NoError(t, existingSub.Upsert(t.Context()))
 		existingSub2 := event.Subscription{
 			ID:           "existingSub2",
 			Owner:        pRef.Id,
@@ -1098,7 +1098,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 				},
 			},
 		}
-		assert.NoError(t, existingSub2.Upsert())
+		assert.NoError(t, existingSub2.Upsert(t.Context()))
 		t.Run(name, func(t *testing.T) {
 			test(t, pRef)
 		})
@@ -1468,7 +1468,7 @@ func TestCopyProject(t *testing.T) {
 				Target: "a@gmail.com",
 			},
 		}
-		assert.NoError(t, existingSub.Upsert())
+		assert.NoError(t, existingSub.Upsert(t.Context()))
 		t.Run(name, func(t *testing.T) {
 			test(t, pRef)
 		})

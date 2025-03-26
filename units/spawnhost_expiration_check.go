@@ -108,7 +108,7 @@ func tryIdleSpawnHostNotification(ctx context.Context, h *host.Host) error {
 	}
 	subscriber := event.NewEmailSubscriber(usr.Email())
 	subscription := event.NewSpawnHostIdleWarningSubscription(h.Id, subscriber)
-	if err = subscription.Upsert(); err != nil {
+	if err = subscription.Upsert(ctx); err != nil {
 		return errors.Wrap(err, "upserting idle spawn host subscription")
 	}
 

@@ -386,14 +386,14 @@ func TestGetProjectAliasResults(t *testing.T) {
 		Variant:   "^bv1$",
 		Task:      ".*",
 	}
-	require.NoError(t, alias1.Upsert())
+	require.NoError(t, alias1.Upsert(t.Context()))
 	alias2 := model.ProjectAlias{
 		Alias:     "select_bv2",
 		ProjectID: p.Identifier,
 		Variant:   "^bv2$",
 		Task:      ".*",
 	}
-	require.NoError(t, alias2.Upsert())
+	require.NoError(t, alias2.Upsert(t.Context()))
 
 	variantTasks, err := GetProjectAliasResults(t.Context(), &p, alias1.Alias, false)
 	assert.NoError(t, err)
@@ -628,7 +628,7 @@ func TestHideBranch(t *testing.T) {
 		Variant:   "^bv1$",
 		Task:      ".*",
 	}
-	require.NoError(t, alias.Upsert())
+	require.NoError(t, alias.Upsert(t.Context()))
 
 	vars := &model.ProjectVars{
 		Id:          project.Id,

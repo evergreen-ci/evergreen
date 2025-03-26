@@ -47,8 +47,8 @@ func Find(q db.Q) ([]PodDispatcher, error) {
 
 // UpsertOne updates an existing pod dispatcher if it exists based on the
 // query; otherwise, it inserts a new pod dispatcher.
-func UpsertOne(query, update any) (*adb.ChangeInfo, error) {
-	return db.Upsert(Collection, query, update)
+func UpsertOne(ctx context.Context, query, update any) (*adb.ChangeInfo, error) {
+	return db.UpsertContext(ctx, Collection, query, update)
 }
 
 // FindOneByID finds one pod dispatcher by its ID.

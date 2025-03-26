@@ -68,7 +68,7 @@ func (s *ProjectPatchByIDSuite) SetupTest() {
 	s.NoError(err)
 	aliases := getTestAliases()
 	for _, alias := range aliases {
-		s.NoError(alias.Upsert())
+		s.NoError(alias.Upsert(s.T().Context()))
 	}
 	s.NoError(db.Insert(serviceModel.RepositoriesCollection, serviceModel.Repository{
 		Project:      "dimoxinil",
@@ -1080,7 +1080,7 @@ func TestDeleteProject(t *testing.T) {
 			Task:      fmt.Sprintf("task_%d", i),
 		}
 
-		require.NoError(t, projAlias.Upsert())
+		require.NoError(t, projAlias.Upsert(t.Context()))
 	}
 
 	projVars := serviceModel.ProjectVars{

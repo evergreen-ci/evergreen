@@ -4510,11 +4510,11 @@ func (s *TaskConnectorFetchByIdSuite) TestFindByVersion() {
 	annotationWithSuspectedIssue := annotations.TaskAnnotation{TaskId: "task_not_known", TaskExecution: 0, SuspectedIssues: []annotations.IssueLink{issue}}
 	annotationWithEmptyIssues := annotations.TaskAnnotation{TaskId: "task_not_known", TaskExecution: 0, Issues: []annotations.IssueLink{}, SuspectedIssues: []annotations.IssueLink{issue}}
 
-	s.NoError(annotationExecution0.Upsert())
-	s.NoError(annotationExecution1.Upsert())
-	s.NoError(annotationExecution2.Upsert())
-	s.NoError(annotationWithSuspectedIssue.Upsert())
-	s.NoError(annotationWithEmptyIssues.Upsert())
+	s.NoError(annotationExecution0.Upsert(s.T().Context()))
+	s.NoError(annotationExecution1.Upsert(s.T().Context()))
+	s.NoError(annotationExecution2.Upsert(s.T().Context()))
+	s.NoError(annotationWithSuspectedIssue.Upsert(s.T().Context()))
+	s.NoError(annotationWithEmptyIssues.Upsert(s.T().Context()))
 
 	ctx := context.TODO()
 	opts := GetTasksByVersionOptions{}

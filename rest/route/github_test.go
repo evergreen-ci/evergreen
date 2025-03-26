@@ -331,7 +331,7 @@ func (s *GithubWebhookRouteSuite) TestCreateVersionForTag() {
 		RemotePath: "rest/route/testdata/release.yml",
 	}
 	s.NoError(pRef.Insert())
-	s.NoError(projectAlias.Upsert())
+	s.NoError(projectAlias.Upsert(s.T().Context()))
 
 	v, err := s.mock.createVersionForTag(context.Background(), pRef, nil, model.Revision{}, tag)
 	s.NoError(err)

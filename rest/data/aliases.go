@@ -75,7 +75,7 @@ func UpdateProjectAliases(ctx context.Context, projectId string, aliases []restM
 	if catcher.HasErrors() {
 		return catcher.Resolve()
 	}
-	if err := model.UpsertAliasesForProject(aliasesToUpsert, projectId); err != nil {
+	if err := model.UpsertAliasesForProject(ctx, aliasesToUpsert, projectId); err != nil {
 		return errors.Wrap(err, "upserting project aliases")
 	}
 	for _, aliasId := range aliasesToDelete {

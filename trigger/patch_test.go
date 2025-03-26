@@ -125,7 +125,7 @@ func (s *patchSuite) SetupTest() {
 	}
 
 	for i := range s.subs {
-		s.NoError(s.subs[i].Upsert())
+		s.NoError(s.subs[i].Upsert(s.ctx))
 	}
 
 	ui := &evergreen.UIConfig{
@@ -262,7 +262,7 @@ func (s *patchSuite) TestRunChildrenOnPatchOutcome() {
 	}
 
 	for i := range s.subs {
-		s.NoError(s.subs[i].Upsert())
+		s.NoError(s.subs[i].Upsert(s.ctx))
 	}
 	s.data.Status = evergreen.VersionSucceeded
 	n, err := s.t.patchOutcome(s.ctx, &s.subs[0])

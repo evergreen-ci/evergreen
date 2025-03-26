@@ -1103,10 +1103,10 @@ func TestDetachFromRepo(t *testing.T) {
 		"PatchAliases": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
 			// no patch aliases are copied if the project has a patch alias
 			projectAlias := ProjectAlias{Alias: "myProjectAlias", ProjectID: pRef.Id}
-			assert.NoError(t, projectAlias.Upsert())
+			assert.NoError(t, projectAlias.Upsert(t.Context()))
 
 			repoAlias := ProjectAlias{Alias: "myRepoAlias", ProjectID: pRef.RepoRefId}
-			assert.NoError(t, repoAlias.Upsert())
+			assert.NoError(t, repoAlias.Upsert(t.Context()))
 
 			assert.NoError(t, pRef.DetachFromRepo(t.Context(), dbUser))
 			checkRepoAttachmentEventLog(t, *pRef, event.EventTypeProjectDetachedFromRepo)
@@ -1132,12 +1132,12 @@ func TestDetachFromRepo(t *testing.T) {
 				{Alias: evergreen.GitTagAlias, Variant: "projectVariant"},
 				{Alias: evergreen.CommitQueueAlias},
 			}
-			assert.NoError(t, UpsertAliasesForProject(projectAliases, pRef.Id))
+			assert.NoError(t, UpsertAliasesForProject(t.Context(), projectAliases, pRef.Id))
 			repoAliases := []ProjectAlias{
 				{Alias: evergreen.GitTagAlias, Variant: "repoVariant"},
 				{Alias: evergreen.GithubPRAlias},
 			}
-			assert.NoError(t, UpsertAliasesForProject(repoAliases, pRef.RepoRefId))
+			assert.NoError(t, UpsertAliasesForProject(t.Context(), repoAliases, pRef.RepoRefId))
 
 			assert.NoError(t, pRef.DetachFromRepo(t.Context(), dbUser))
 			checkRepoAttachmentEventLog(t, *pRef, event.EventTypeProjectDetachedFromRepo)
@@ -1177,7 +1177,7 @@ func TestDetachFromRepo(t *testing.T) {
 					Target: "a@domain.invalid",
 				},
 			}
-			assert.NoError(t, projectSubscription.Upsert())
+			assert.NoError(t, projectSubscription.Upsert(t.Context()))
 			repoSubscription := event.Subscription{
 				Owner:        pRef.RepoRefId,
 				OwnerType:    event.OwnerTypeProject,
@@ -1191,7 +1191,7 @@ func TestDetachFromRepo(t *testing.T) {
 					Target: "a@domain.invalid",
 				},
 			}
-			assert.NoError(t, repoSubscription.Upsert())
+			assert.NoError(t, repoSubscription.Upsert(t.Context()))
 			assert.NoError(t, pRef.DetachFromRepo(t.Context(), dbUser))
 			checkRepoAttachmentEventLog(t, *pRef, event.EventTypeProjectDetachedFromRepo)
 
@@ -1545,7 +1545,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 				},
 			}
 			for _, a := range aliases {
-				assert.NoError(t, a.Upsert())
+				assert.NoError(t, a.Upsert(t.Context()))
 			}
 			test(t, pRef.Id)
 		})
@@ -1962,7 +1962,7 @@ func TestCreateNewRepoRef(t *testing.T) {
 		},
 	}
 	for _, a := range projectAliases {
-		assert.NoError(t, a.Upsert())
+		assert.NoError(t, a.Upsert(t.Context()))
 	}
 	u := user.DBUser{Id: "me"}
 	assert.NoError(t, u.Insert())

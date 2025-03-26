@@ -645,7 +645,7 @@ func (s *projectSuite) SetupTest() {
 		},
 	}
 	for _, alias := range s.aliases {
-		s.NoError(alias.Upsert())
+		s.NoError(alias.Upsert(s.T().Context()))
 	}
 	s.project = &Project{
 		Identifier: pRef.Id,
@@ -2066,7 +2066,7 @@ func TestVariantTasksForSelectors(t *testing.T) {
 		Variant:   "bv0",
 		Task:      "t0",
 	}
-	require.NoError(t, patchAlias.Upsert())
+	require.NoError(t, patchAlias.Upsert(t.Context()))
 
 	project := Project{
 		Identifier: projectID,

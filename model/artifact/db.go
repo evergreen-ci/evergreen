@@ -95,8 +95,9 @@ func BySecret(secret string) db.Q {
 
 // Upsert updates the files entry in the db if an entry already exists,
 // overwriting the existing file data. If no entry exists, one is created
-func (e Entry) Upsert() error {
-	_, err := db.Upsert(
+func (e Entry) Upsert(ctx context.Context) error {
+	_, err := db.UpsertContext(
+		ctx,
 		Collection,
 		bson.M{
 			TaskIdKey:    e.TaskId,
