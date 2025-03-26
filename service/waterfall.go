@@ -588,7 +588,7 @@ func waterfallDataAdaptor(ctx context.Context, vvData versionVariantData, projec
 	finalData.Rows = rows
 
 	// compute the total number of versions that exist
-	finalData.TotalVersions, err = model.VersionCount(model.VersionByProjectId(project.Identifier))
+	finalData.TotalVersions, err = model.VersionCount(ctx, model.VersionByProjectId(project.Identifier))
 	if err != nil {
 		return waterfallData{}, err
 	}

@@ -244,7 +244,7 @@ func (r *queryResolver) HostEvents(ctx context.Context, hostID string, hostTag *
 		Page:    utility.FromIntPtr(page),
 		SortAsc: false,
 	}
-	events, count, err := event.GetPaginatedHostEvents(hostQueryOpts)
+	events, count, err := event.GetPaginatedHostEvents(ctx, hostQueryOpts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching events for host '%s': %s", hostID, err.Error()))
 	}

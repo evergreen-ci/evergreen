@@ -153,7 +153,7 @@ func TestFindByInitializing(t *testing.T) {
 func TestCountByInitializing(t *testing.T) {
 	for tName, tCase := range map[string]func(t *testing.T){
 		"ReturnsZeroForNoMatches": func(t *testing.T) {
-			count, err := CountByInitializing()
+			count, err := CountByInitializing(t.Context())
 			assert.NoError(t, err)
 			assert.Empty(t, count)
 		},
@@ -176,7 +176,7 @@ func TestCountByInitializing(t *testing.T) {
 			}
 			require.NoError(t, p3.Insert())
 
-			count, err := CountByInitializing()
+			count, err := CountByInitializing(t.Context())
 			require.NoError(t, err)
 			assert.Equal(t, 2, count)
 		},

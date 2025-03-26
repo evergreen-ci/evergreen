@@ -353,7 +353,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "validating owner and repo"))
 	}
 	if h.newProjectRef.Identifier != h.originalProject.Identifier {
-		if err := h.newProjectRef.ValidateIdentifier(); err != nil {
+		if err := h.newProjectRef.ValidateIdentifier(ctx); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "validating project identifier"))
 		}
 	}

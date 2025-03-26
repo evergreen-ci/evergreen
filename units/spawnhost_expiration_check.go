@@ -95,7 +95,7 @@ func (j *spawnhostExpirationCheckJob) Run(ctx context.Context) {
 
 // tryIdleSpawnHostNotification attempts to insert a subscription and notification for this spawn host.
 func tryIdleSpawnHostNotification(ctx context.Context, h *host.Host) error {
-	shouldNotify, err := h.ShouldNotifyStoppedSpawnHostIdle()
+	shouldNotify, err := h.ShouldNotifyStoppedSpawnHostIdle(ctx)
 	if err != nil || !shouldNotify {
 		return err
 	}

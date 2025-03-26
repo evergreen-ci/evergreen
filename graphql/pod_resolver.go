@@ -12,7 +12,7 @@ import (
 
 // Events is the resolver for the events field.
 func (r *podResolver) Events(ctx context.Context, obj *model.APIPod, limit *int, page *int) (*PodEvents, error) {
-	events, count, err := event.MostRecentPaginatedPodEvents(utility.FromStringPtr(obj.ID), *limit, *page)
+	events, count, err := event.MostRecentPaginatedPodEvents(ctx, utility.FromStringPtr(obj.ID), *limit, *page)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding events for pod '%s': %s", utility.FromStringPtr(obj.ID), err.Error()))
 	}

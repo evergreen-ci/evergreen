@@ -435,7 +435,7 @@ func (s *eventSuite) TestCountUnprocessedEvents() {
 		s.NoError(db.Insert(EventCollection, events[i]))
 	}
 
-	n, err := CountUnprocessedEvents()
+	n, err := CountUnprocessedEvents(s.T().Context())
 	s.NoError(err)
 	s.Equal(2, n)
 }
