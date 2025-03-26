@@ -27,6 +27,8 @@ type evergreenCredentialProvider struct {
 // createEvergreenCredentials creates a new evergreenCredentialProvider. It supports
 // long operations or operations that might need to request new credentials during
 // the operation (e.g. multipart bucket uploads).
+// roleARN takes precedence over internalBucket, only one is used to decide
+// the underlying credentials used.
 func createEvergreenCredentials(comm client.Communicator, taskData client.TaskData, roleARN, internalBucket string) *evergreenCredentialProvider {
 	return &evergreenCredentialProvider{
 		comm:           comm,
