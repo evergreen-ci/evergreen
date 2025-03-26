@@ -79,7 +79,7 @@ type s3get struct {
 	// TemporaryUseInternalBucket is not meant to be used in production. It is used for testing purposes
 	// relating to the DEVPROD-5553 project.
 	// This flag is used to determine if the s3_credentials route should be called before the command is executed.
-	// TODO (DEVPROD-13982): Remove this flag and use the internal bucket list to determine if the s3_credentials
+	// TODO (DEVPROD-13985): Remove this flag and use the internal bucket list to determine if the s3_credentials
 	// route should be called.
 	TemporaryUseInternalBucket string `mapstructure:"temporary_use_internal_bucket" plugin:"expand"`
 
