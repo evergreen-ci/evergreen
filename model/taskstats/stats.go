@@ -68,14 +68,14 @@ func GetStatsStatus(ctx context.Context, projectID string) (StatsStatus, error) 
 }
 
 // UpdateStatsStatus updates the status of the stats pre-computations for a project.
-func UpdateStatsStatus(projectID string, lastJobRun, processedTasksUntil time.Time, runtime time.Duration) error {
+func UpdateStatsStatus(ctx context.Context, projectID string, lastJobRun, processedTasksUntil time.Time, runtime time.Duration) error {
 	status := StatsStatus{
 		ProjectID:           projectID,
 		LastJobRun:          lastJobRun,
 		ProcessedTasksUntil: processedTasksUntil,
 		Runtime:             runtime,
 	}
-	_, err := db.Upsert(DailyStatsStatusCollection, bson.M{"_id": projectID}, status)
+	_, err := db.UpsertContext(ctx, DailyStatsStatusCollection, bson.M{"_id": projectID}, status)
 	if err != nil {
 		return errors.Wrap(err, "updating test stats status")
 	}
