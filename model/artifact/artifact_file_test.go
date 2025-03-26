@@ -90,7 +90,7 @@ func (s *TestArtifactFileSuite) SetupTest() {
 		s.NoError(entry.Upsert(s.T().Context()))
 	}
 
-	count, err := db.Count(Collection, bson.M{})
+	count, err := db.CountContext(s.T().Context(), Collection, bson.M{})
 	s.NoError(err)
 	s.Equal(3, count)
 }
@@ -131,7 +131,7 @@ func (s *TestArtifactFileSuite) TestArtifactFieldsAfterUpdate() {
 	}
 	s.NoError(s.testEntries[0].Upsert(s.T().Context()))
 
-	count, err := db.Count(Collection, bson.M{})
+	count, err := db.CountContext(s.T().Context(), Collection, bson.M{})
 	s.NoError(err)
 	s.Equal(3, count)
 

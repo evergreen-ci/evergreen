@@ -60,11 +60,11 @@ func TestDistroAliases(t *testing.T) {
 			require.Equal(t, "one", output[0].Id)
 			require.Equal(t, "other", output[1].Id)
 
-			ct, err := db.Count(model.TaskQueuesCollection, bson.M{})
+			ct, err := db.CountContext(t.Context(), model.TaskQueuesCollection, bson.M{})
 			require.NoError(t, err)
 			require.Equal(t, 1, ct)
 
-			ct, err = db.Count(model.TaskSecondaryQueuesCollection, bson.M{})
+			ct, err = db.CountContext(t.Context(), model.TaskSecondaryQueuesCollection, bson.M{})
 			require.NoError(t, err)
 			require.Equal(t, 0, ct)
 		})
@@ -78,11 +78,11 @@ func TestDistroAliases(t *testing.T) {
 			require.Equal(t, "one", output[0].Id)
 			require.Equal(t, "other", output[1].Id)
 
-			ct, err := db.Count(model.TaskQueuesCollection, bson.M{})
+			ct, err := db.CountContext(t.Context(), model.TaskQueuesCollection, bson.M{})
 			require.NoError(t, err)
 			require.Equal(t, 1, ct)
 
-			ct, err = db.Count(model.TaskSecondaryQueuesCollection, bson.M{})
+			ct, err = db.CountContext(t.Context(), model.TaskSecondaryQueuesCollection, bson.M{})
 			require.NoError(t, err)
 			require.Equal(t, 0, ct)
 		})
@@ -106,11 +106,11 @@ func TestDistroAliases(t *testing.T) {
 			require.Equal(t, "one", output[0].Id)
 			require.Equal(t, "other", output[1].Id)
 
-			ct, err := db.Count(model.TaskSecondaryQueuesCollection, bson.M{})
+			ct, err := db.CountContext(t.Context(), model.TaskSecondaryQueuesCollection, bson.M{})
 			require.NoError(t, err)
 			require.Equal(t, 1, ct)
 
-			ct, err = db.Count(model.TaskQueuesCollection, bson.M{})
+			ct, err = db.CountContext(t.Context(), model.TaskQueuesCollection, bson.M{})
 			require.NoError(t, err)
 			require.Equal(t, 0, ct)
 
@@ -125,11 +125,11 @@ func TestDistroAliases(t *testing.T) {
 			require.Equal(t, "one", output[0].Id)
 			require.Equal(t, "other", output[1].Id)
 
-			ct, err := db.Count(model.TaskSecondaryQueuesCollection, bson.M{})
+			ct, err := db.CountContext(t.Context(), model.TaskSecondaryQueuesCollection, bson.M{})
 			require.NoError(t, err)
 			require.Equal(t, 1, ct)
 
-			ct, err = db.Count(model.TaskQueuesCollection, bson.M{})
+			ct, err = db.CountContext(t.Context(), model.TaskQueuesCollection, bson.M{})
 			require.NoError(t, err)
 			require.Equal(t, 0, ct)
 		})

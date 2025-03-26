@@ -2701,7 +2701,7 @@ type NumExecutionsForIntervalInput struct {
 	EndTime      time.Time
 }
 
-func CountNumExecutionsForInterval(input NumExecutionsForIntervalInput) (int, error) {
+func CountNumExecutionsForInterval(ctx context.Context, input NumExecutionsForIntervalInput) (int, error) {
 	query := bson.M{
 		ProjectKey:      input.ProjectId,
 		BuildVariantKey: input.BuildVarName,
@@ -2721,11 +2721,11 @@ func CountNumExecutionsForInterval(input NumExecutionsForIntervalInput) (int, er
 	} else {
 		query[FinishTimeKey] = bson.M{"$gt": input.StartTime}
 	}
-	numTasks, err := db.Count(Collection, query)
+	numTasks, err := db.CountContext(ctx, Collection, query)
 	if err != nil {
 		return 0, errors.Wrap(err, "counting task executions")
 	}
-	numOldTasks, err := db.Count(OldCollection, query)
+	numOldTasks, err := db.CountContext(ctx, OldCollection, query)
 	if err != nil {
 		return 0, errors.Wrap(err, "counting old task executions")
 	}
