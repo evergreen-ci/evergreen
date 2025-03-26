@@ -90,4 +90,5 @@ type SingleTaskDistroConfig {
 type ProjectTasksPair {
   projectId: String!
   allowedTasks: [String!]!
+  allowedBVs: [String!]!
 }
