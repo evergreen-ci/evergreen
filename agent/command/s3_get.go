@@ -94,6 +94,7 @@ type s3get struct {
 
 	temporaryUseInternalBucket bool
 
+	taskData client.TaskData
 	base
 }
 
@@ -181,6 +182,7 @@ func (c *s3get) expandParams(conf *internal.TaskConfig) error {
 // resource from s3.
 func (c *s3get) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *internal.TaskConfig) error {
 	c.internalBuckets = conf.InternalBuckets
+	c.taskData = client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 
 	// expand necessary params
 	if err := c.expandParams(conf); err != nil {
@@ -201,9 +203,8 @@ func (c *s3get) Execute(ctx context.Context, comm client.Communicator, logger cl
 		attribute.Bool(s3GetInternalBucketAttribute, utility.StringSliceContains(conf.InternalBuckets, c.Bucket)),
 	)
 
-	taskData := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 	if c.TemporaryRoleARN != "" {
-		creds, err := comm.AssumeRole(ctx, taskData, apimodels.AssumeRoleRequest{
+		creds, err := comm.AssumeRole(ctx, c.taskData, apimodels.AssumeRoleRequest{
 			RoleARN: c.TemporaryRoleARN,
 		})
 		if err != nil {
@@ -218,7 +219,7 @@ func (c *s3get) Execute(ctx context.Context, comm client.Communicator, logger cl
 	}
 
 	if c.temporaryUseInternalBucket {
-		creds, err := comm.S3Credentials(ctx, taskData, c.Bucket)
+		creds, err := comm.S3Credentials(ctx, c.taskData, c.Bucket)
 		if err != nil {
 			return errors.Wrap(err, "getting S3 credentials")
 		}
@@ -234,8 +235,7 @@ func (c *s3get) Execute(ctx context.Context, comm client.Communicator, logger cl
 	httpClient := utility.GetHTTPClient()
 	httpClient.Timeout = s3HTTPClientTimeout
 	defer utility.PutHTTPClient(httpClient)
-	err := c.createPailBucket(ctx, httpClient)
-	if err != nil {
+	if err := c.createPailBucket(ctx, comm, httpClient); err != nil {
 		return errors.Wrap(err, "creating S3 bucket")
 	}
 
@@ -353,12 +353,19 @@ func (c *s3get) get(ctx context.Context) error {
 	return nil
 }
 
-func (c *s3get) createPailBucket(ctx context.Context, httpClient *http.Client) error {
+func (c *s3get) createPailBucket(ctx context.Context, comm client.Communicator, httpClient *http.Client) error {
 	opts := pail.S3Options{
 		Credentials: pail.CreateAWSStaticCredentials(c.AwsKey, c.AwsSecret, c.AwsSessionToken),
 		Region:      c.Region,
 		Name:        c.Bucket,
 	}
+
+	if c.AwsKey != "" {
+		opts.Credentials = pail.CreateAWSStaticCredentials(c.AwsKey, c.AwsSecret, c.AwsSessionToken)
+	} else if c.TemporaryRoleARN != "" || c.temporaryUseInternalBucket {
+		opts.Credentials = createEvergreenCredentials(comm, c.taskData, c.TemporaryRoleARN, c.Bucket)
+	}
+
 	bucket, err := pail.NewS3BucketWithHTTPClient(ctx, httpClient, opts)
 	c.bucket = bucket
 	return err
