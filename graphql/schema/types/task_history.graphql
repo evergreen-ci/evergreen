@@ -3,9 +3,9 @@ input TaskHistoryOpts {
     @requireProjectAccess(permission: TASKS, access: VIEW)
   taskName: String!
   buildVariant: String!
+  cursorParams: CursorParams!
   limit: Int = 50
   date: Time
-  cursorParams: CursorParams
 }
 
 input CursorParams {

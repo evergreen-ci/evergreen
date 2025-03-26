@@ -94,8 +94,8 @@ func FindInactiveTasksForHistory(ctx context.Context, opts FindTaskHistoryOption
 	return tasks, err
 }
 
-// GetNewestWaterfallTask returns the most recent task, activated or unactivated, on the waterfall.
-func GetNewestWaterfallTask(ctx context.Context, opts FindTaskHistoryOptions) (*task.Task, error) {
+// GetLatestMainlineTask returns the most recent task matching the given parameters, activated or unactivated, on the waterfall.
+func GetLatestMainlineTask(ctx context.Context, opts FindTaskHistoryOptions) (*task.Task, error) {
 	filter := getBaseTaskHistoryFilter(opts)
 	q := db.Query(filter).Sort([]string{"-" + task.RevisionOrderNumberKey}).Limit(1)
 	mostRecentTask, err := task.FindOne(ctx, q)
@@ -109,10 +109,10 @@ func GetNewestWaterfallTask(ctx context.Context, opts FindTaskHistoryOptions) (*
 	return mostRecentTask, nil
 }
 
-// GetOldestWaterfallTask returns the oldest task, activated or unactivated, on the waterfall.
+// GetOldestMainlineTask returns the oldest task matching the given parameters, activated or unactivated, on the waterfall.
 // Note that we cannot assume that the oldest task has an order of 1, because new tasks can be introduced over time,
 // and because the task TTL deletes old tasks.
-func GetOldestWaterfallTask(ctx context.Context, opts FindTaskHistoryOptions) (*task.Task, error) {
+func GetOldestMainlineTask(ctx context.Context, opts FindTaskHistoryOptions) (*task.Task, error) {
 	filter := getBaseTaskHistoryFilter(opts)
 	q := db.Query(filter).Sort([]string{task.RevisionOrderNumberKey}).Limit(1)
 	oldestTask, err := task.FindOne(ctx, q)

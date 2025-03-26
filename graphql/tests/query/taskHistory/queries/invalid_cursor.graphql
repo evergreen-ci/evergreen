@@ -1,0 +1,30 @@
+query {
+  both_missing: taskHistory(
+    options: {
+      projectIdentifier: "evergreen"
+      taskName: "test-graphql"
+      buildVariant: "ubuntu2204"
+      cursorParams: { includeCursor: false }
+    }
+  ) {
+    tasks {
+      id
+    }
+  }
+  both_present: taskHistory(
+    options: {
+      projectIdentifier: "evergreen"
+      taskName: "test-graphql"
+      buildVariant: "ubuntu2204"
+      cursorParams: {
+        after: "task_101"
+        before: "task_107"
+        includeCursor: false
+      }
+    }
+  ) {
+    tasks {
+      id
+    }
+  }
+}

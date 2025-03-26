@@ -1138,11 +1138,22 @@ func (r *queryResolver) TaskHistory(ctx context.Context, options TaskHistoryOpts
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", options.ProjectIdentifier, err.Error()))
 	}
 
+	if options.CursorParams == nil {
+		return nil, InputValidationError.Send(ctx, "must specify cursor params")
+	}
+
 	before := utility.FromStringPtr(options.CursorParams.Before)
 	after := utility.FromStringPtr(options.CursorParams.After)
 	includeCursor := options.CursorParams.IncludeCursor
-	taskID := util.CoalesceString(before, after)
 
+	hasBefore := before != ""
+	hasAfter := after != ""
+
+	if (!hasAfter && !hasBefore) || (hasAfter && hasBefore) {
+		return nil, InputValidationError.Send(ctx, "must specify exactly one of the before or after parameters")
+	}
+
+	taskID := util.CoalesceString(before, after)
 	foundTask, err := task.FindOneId(ctx, taskID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task '%s': %s", taskID, err.Error()))
@@ -1159,14 +1170,14 @@ func (r *queryResolver) TaskHistory(ctx context.Context, options TaskHistoryOpts
 		Limit:        options.Limit,
 	}
 
-	if before != "" {
+	if hasBefore {
 		if includeCursor {
 			opts.UpperBound = utility.ToIntPtr(taskOrder)
 		} else {
 			opts.UpperBound = utility.ToIntPtr(taskOrder - 1)
 		}
 	}
-	if after != "" {
+	if hasAfter {
 		if includeCursor {
 			opts.LowerBound = utility.ToIntPtr(taskOrder)
 		} else {
@@ -1206,12 +1217,12 @@ func (r *queryResolver) TaskHistory(ctx context.Context, options TaskHistoryOpts
 		apiTasks = append(apiTasks, apiTask)
 	}
 
-	mostRecentTask, err := model.GetNewestWaterfallTask(ctx, opts)
+	latestTask, err := model.GetLatestMainlineTask(ctx, opts)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching most recent task for '%s' in project '%s' and build variant '%s': %s", options.TaskName, options.ProjectIdentifier, options.BuildVariant, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching latest task for '%s' in project '%s' and build variant '%s': %s", options.TaskName, options.ProjectIdentifier, options.BuildVariant, err.Error()))
 	}
 
-	oldestTask, err := model.GetOldestWaterfallTask(ctx, opts)
+	oldestTask, err := model.GetOldestMainlineTask(ctx, opts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching oldest task for '%s' in project '%s' and build variant '%s': %s", options.TaskName, options.ProjectIdentifier, options.BuildVariant, err.Error()))
 	}
@@ -1219,7 +1230,7 @@ func (r *queryResolver) TaskHistory(ctx context.Context, options TaskHistoryOpts
 	return &TaskHistory{
 		Tasks: apiTasks,
 		Pagination: &TaskHistoryPagination{
-			MostRecentTaskOrder: mostRecentTask.RevisionOrderNumber,
+			MostRecentTaskOrder: latestTask.RevisionOrderNumber,
 			OldestTaskOrder:     oldestTask.RevisionOrderNumber,
 		},
 	}, nil

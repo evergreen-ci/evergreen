@@ -93,6 +93,28 @@
       }
     },
     {
+      "query_file": "invalid_cursor.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "must specify exactly one of the before or after parameters",
+            "path": ["both_missing"],
+            "extensions": {
+              "code": "INPUT_VALIDATION_ERROR"
+            }
+          },
+          {
+            "message": "must specify exactly one of the before or after parameters",
+            "path": ["both_present"],
+            "extensions": {
+              "code": "INPUT_VALIDATION_ERROR"
+            }
+          }
+        ]
+      }
+    },
+    {
       "query_file": "no_permissions.graphql",
       "test_user_id": "regular_user",
       "result": {

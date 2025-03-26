@@ -217,7 +217,7 @@ func TestFindInactiveTasksForHistory(t *testing.T) {
 	require.Len(t, tasks, 0)
 }
 
-func TestGetNewestWaterfallTask(t *testing.T) {
+func TestGetLatestMainlineTask(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(task.Collection))
 
 	projectId := "evergreen"
@@ -268,18 +268,18 @@ func TestGetNewestWaterfallTask(t *testing.T) {
 	}
 	assert.NoError(t, t4.Insert())
 
-	newestWaterfallTask, err := GetNewestWaterfallTask(t.Context(), FindTaskHistoryOptions{
+	latestMainlineTask, err := GetLatestMainlineTask(t.Context(), FindTaskHistoryOptions{
 		TaskName:     taskName,
 		BuildVariant: buildVariant,
 		ProjectId:    projectId,
 	})
 	require.NoError(t, err)
-	require.NotNil(t, newestWaterfallTask)
-	assert.Equal(t, "t_3", newestWaterfallTask.Id)
-	assert.Equal(t, 100, newestWaterfallTask.RevisionOrderNumber)
+	require.NotNil(t, latestMainlineTask)
+	assert.Equal(t, "t_3", latestMainlineTask.Id)
+	assert.Equal(t, 100, latestMainlineTask.RevisionOrderNumber)
 }
 
-func TestGetOldestWaterfallTask(t *testing.T) {
+func TestGetOldestMainlineTask(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(task.Collection))
 
 	projectId := "evergreen"
@@ -330,13 +330,13 @@ func TestGetOldestWaterfallTask(t *testing.T) {
 	}
 	assert.NoError(t, t4.Insert())
 
-	oldestWaterfallTask, err := GetOldestWaterfallTask(t.Context(), FindTaskHistoryOptions{
+	oldestMainlineTask, err := GetOldestMainlineTask(t.Context(), FindTaskHistoryOptions{
 		TaskName:     taskName,
 		BuildVariant: buildVariant,
 		ProjectId:    projectId,
 	})
 	require.NoError(t, err)
-	require.NotNil(t, oldestWaterfallTask)
-	assert.Equal(t, "t_3", oldestWaterfallTask.Id)
-	assert.Equal(t, 100, oldestWaterfallTask.RevisionOrderNumber)
+	require.NotNil(t, oldestMainlineTask)
+	assert.Equal(t, "t_3", oldestMainlineTask.Id)
+	assert.Equal(t, 100, oldestMainlineTask.RevisionOrderNumber)
 }

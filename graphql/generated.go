@@ -80966,7 +80966,7 @@ func (ec *executionContext) unmarshalInputTaskHistoryOpts(ctx context.Context, o
 		asMap["limit"] = 50
 	}
 
-	fieldsInOrder := [...]string{"projectIdentifier", "taskName", "buildVariant", "limit", "date", "cursorParams"}
+	fieldsInOrder := [...]string{"projectIdentifier", "taskName", "buildVariant", "cursorParams", "limit", "date"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -81019,6 +81019,13 @@ func (ec *executionContext) unmarshalInputTaskHistoryOpts(ctx context.Context, o
 				return it, err
 			}
 			it.BuildVariant = data
+		case "cursorParams":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("cursorParams"))
+			data, err := ec.unmarshalNCursorParams2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐCursorParams(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CursorParams = data
 		case "limit":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("limit"))
 			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
@@ -81033,13 +81040,6 @@ func (ec *executionContext) unmarshalInputTaskHistoryOpts(ctx context.Context, o
 				return it, err
 			}
 			it.Date = data
-		case "cursorParams":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("cursorParams"))
-			data, err := ec.unmarshalOCursorParams2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐCursorParams(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.CursorParams = data
 		}
 	}
 
@@ -98678,6 +98678,11 @@ func (ec *executionContext) unmarshalNCreateProjectInput2githubᚗcomᚋevergree
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalNCursorParams2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐCursorParams(ctx context.Context, v any) (*CursorParams, error) {
+	res, err := ec.unmarshalInputCursorParams(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNDeactivateStepbackTaskInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDeactivateStepbackTaskInput(ctx context.Context, v any) (DeactivateStepbackTaskInput, error) {
 	res, err := ec.unmarshalInputDeactivateStepbackTaskInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -104024,14 +104029,6 @@ func (ec *executionContext) unmarshalOContainerResourcesInput2ᚕgithubᚗcomᚋ
 		}
 	}
 	return res, nil
-}
-
-func (ec *executionContext) unmarshalOCursorParams2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐCursorParams(ctx context.Context, v any) (*CursorParams, error) {
-	if v == nil {
-		return nil, nil
-	}
-	res, err := ec.unmarshalInputCursorParams(ctx, v)
-	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalODeleteGithubAppCredentialsPayload2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDeleteGithubAppCredentialsPayload(ctx context.Context, sel ast.SelectionSet, v *DeleteGithubAppCredentialsPayload) graphql.Marshaler {

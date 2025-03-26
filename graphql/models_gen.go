@@ -492,9 +492,9 @@ type TaskHistoryOpts struct {
 	ProjectIdentifier string        `json:"projectIdentifier"`
 	TaskName          string        `json:"taskName"`
 	BuildVariant      string        `json:"buildVariant"`
+	CursorParams      *CursorParams `json:"cursorParams"`
 	Limit             *int          `json:"limit,omitempty"`
 	Date              *time.Time    `json:"date,omitempty"`
-	CursorParams      *CursorParams `json:"cursorParams,omitempty"`
 }
 
 type TaskHistoryPagination struct {
