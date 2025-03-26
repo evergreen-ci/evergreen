@@ -129,7 +129,7 @@ func TestDBTaskQueuePersister(t *testing.T) {
 			So(PersistTaskQueue(ctx, distroIds[0], []task.Task{tasks[0], tasks[1], tasks[2]}, distroQueueInfo1), ShouldBeNil)
 			So(PersistTaskQueue(ctx, distroIds[1], []task.Task{tasks[3], tasks[4]}, distroQueueInfo2), ShouldBeNil)
 
-			taskQueue, err := model.LoadTaskQueue(distroIds[0])
+			taskQueue, err := model.LoadTaskQueue(t.Context(), distroIds[0])
 			So(err, ShouldBeNil)
 			So(taskQueue.Length(), ShouldEqual, 3)
 
@@ -172,7 +172,7 @@ func TestDBTaskQueuePersister(t *testing.T) {
 			So(taskQueue.Queue[2].ActivatedBy, ShouldEqual, tasks[2].ActivatedBy)
 			So(taskQueue.Queue[2].ExpectedDuration, ShouldEqual, durations[2])
 
-			taskQueue, err = model.LoadTaskQueue(distroIds[1])
+			taskQueue, err = model.LoadTaskQueue(t.Context(), distroIds[1])
 			So(err, ShouldBeNil)
 			So(taskQueue.Length(), ShouldEqual, 2)
 

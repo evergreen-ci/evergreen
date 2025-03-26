@@ -72,7 +72,7 @@ func TestBuildVariantHistoryIterator(t *testing.T) {
 		Convey("Should respect project and build variant rules", func() {
 			iter := NewBuildVariantHistoryIterator("bv1", "bv1", "project1")
 
-			tasks, versions, err := iter.GetItems(nil, 5)
+			tasks, versions, err := iter.GetItems(t.Context(), nil, 5)
 			So(err, ShouldBeNil)
 			So(len(versions), ShouldEqual, 2)
 			// Versions on project1 that have `bv1` in their build variants list

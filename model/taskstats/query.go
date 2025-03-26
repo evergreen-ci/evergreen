@@ -1,6 +1,7 @@
 package taskstats
 
 import (
+	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
@@ -180,14 +181,14 @@ func (s *TaskStats) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(s) }
 func (s *TaskStats) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, s) }
 
 // GetTaskStats queries the precomputed task statistics using a filter.
-func GetTaskStats(filter StatsFilter) ([]TaskStats, error) {
+func GetTaskStats(ctx context.Context, filter StatsFilter) ([]TaskStats, error) {
 	err := filter.ValidateForTasks()
 	if err != nil {
 		return nil, errors.Wrap(err, "invalid stats filter")
 	}
 	var stats []TaskStats
 	pipeline := filter.TaskStatsQueryPipeline()
-	err = db.Aggregate(DailyTaskStatsCollection, pipeline, &stats)
+	err = db.Aggregate(ctx, DailyTaskStatsCollection, pipeline, &stats)
 	if err != nil {
 		return nil, errors.Wrap(err, "aggregating task statistics")
 	}

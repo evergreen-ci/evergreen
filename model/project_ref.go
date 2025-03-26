@@ -1139,20 +1139,20 @@ func FindMergedProjectRef(ctx context.Context, identifier string, version string
 }
 
 // GetNumberOfEnabledProjects returns the current number of enabled projects on evergreen.
-func GetNumberOfEnabledProjects() (int, error) {
+func GetNumberOfEnabledProjects(ctx context.Context) (int, error) {
 	// Empty owner and repo will return all enabled project count.
-	return getNumberOfEnabledProjects("", "")
+	return getNumberOfEnabledProjects(ctx, "", "")
 }
 
 // GetNumberOfEnabledProjectsForOwnerRepo returns the number of enabled projects for a given owner/repo.
-func GetNumberOfEnabledProjectsForOwnerRepo(owner, repo string) (int, error) {
+func GetNumberOfEnabledProjectsForOwnerRepo(ctx context.Context, owner, repo string) (int, error) {
 	if owner == "" || repo == "" {
 		return 0, errors.New("owner and repo must be specified")
 	}
-	return getNumberOfEnabledProjects(owner, repo)
+	return getNumberOfEnabledProjects(ctx, owner, repo)
 }
 
-func getNumberOfEnabledProjects(owner, repo string) (int, error) {
+func getNumberOfEnabledProjects(ctx context.Context, owner, repo string) (int, error) {
 	pipeline := []bson.M{
 		{"$match": bson.M{ProjectRefEnabledKey: true}},
 	}
@@ -1165,7 +1165,7 @@ func getNumberOfEnabledProjects(owner, repo string) (int, error) {
 		Count int `bson:"count"`
 	}
 	count := []Count{}
-	err := db.Aggregate(ProjectRefCollection, pipeline, &count)
+	err := db.Aggregate(ctx, ProjectRefCollection, pipeline, &count)
 	if err != nil {
 		return 0, err
 	}
@@ -1670,7 +1670,7 @@ func FindMergedEnabledProjectRefsByRepoAndBranch(ctx context.Context, owner, rep
 	match[ProjectRefEnabledKey] = true
 	pipeline := []bson.M{{"$match": match}}
 	pipeline = append(pipeline, lookupRepoStep)
-	err := db.Aggregate(ProjectRefCollection, pipeline, &projectRefs)
+	err := db.Aggregate(ctx, ProjectRefCollection, pipeline, &projectRefs)
 	if err != nil {
 		return nil, err
 	}
@@ -1689,7 +1689,7 @@ func FindMergedProjectRefsThatUseRepoSettingsByRepoAndBranch(ctx context.Context
 	q := byOwnerRepoAndBranch(owner, repoName, branch, true)
 	q[ProjectRefRepoRefIdKey] = bson.M{"$exists": true, "$ne": ""}
 	pipeline := []bson.M{{"$match": q}}
-	err := db.AggregateContext(ctx, ProjectRefCollection, pipeline, &projectRefs)
+	err := db.Aggregate(ctx, ProjectRefCollection, pipeline, &projectRefs)
 	if err != nil {
 		return nil, err
 	}
@@ -1759,10 +1759,10 @@ func UserHasRepoViewPermission(u *user.DBUser, repoRefId string) (bool, error) {
 
 // FindDownstreamProjects finds projects that have that trigger enabled or
 // inherits it from the repo project.
-func FindDownstreamProjects(project string) ([]ProjectRef, error) {
+func FindDownstreamProjects(ctx context.Context, project string) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 
-	err := db.Aggregate(ProjectRefCollection, projectRefPipelineForMatchingTrigger(project), &projectRefs)
+	err := db.Aggregate(ctx, ProjectRefCollection, projectRefPipelineForMatchingTrigger(project), &projectRefs)
 	if err != nil {
 		return nil, err
 	}
@@ -1987,7 +1987,7 @@ func FindMergedEnabledProjectRefsByOwnerAndRepo(ctx context.Context, owner, repo
 	match[ProjectRefEnabledKey] = true
 	pipeline := []bson.M{{"$match": match}}
 	pipeline = append(pipeline, lookupRepoStep)
-	err := db.AggregateContext(ctx, ProjectRefCollection, pipeline, &projectRefs)
+	err := db.Aggregate(ctx, ProjectRefCollection, pipeline, &projectRefs)
 	if err != nil {
 		return nil, err
 	}
@@ -2736,7 +2736,7 @@ func shouldValidateOwnerRepoLimit(isNewProject bool, config *evergreen.Settings,
 // ValidateEnabledProjectsLimit takes in a the original and new merged project refs and validates project limits,
 // assuming the given project is going to be enabled.
 // Returns a status code and error if we are already at limit with enabled projects.
-func ValidateEnabledProjectsLimit(projectId string, config *evergreen.Settings, originalMergedRef, mergedRefToValidate *ProjectRef) (int, error) {
+func ValidateEnabledProjectsLimit(ctx context.Context, projectId string, config *evergreen.Settings, originalMergedRef, mergedRefToValidate *ProjectRef) (int, error) {
 	if config.ProjectCreation.TotalProjectLimit == 0 || config.ProjectCreation.RepoProjectLimit == 0 {
 		return http.StatusOK, nil
 	}
@@ -2744,7 +2744,7 @@ func ValidateEnabledProjectsLimit(projectId string, config *evergreen.Settings, 
 	isNewProject := originalMergedRef == nil
 	catcher := grip.NewBasicCatcher()
 	if shouldValidateTotalProjectLimit(isNewProject, originalMergedRef) {
-		allEnabledProjects, err := GetNumberOfEnabledProjects()
+		allEnabledProjects, err := GetNumberOfEnabledProjects(ctx)
 		if err != nil {
 			return http.StatusInternalServerError, errors.Wrap(err, "getting number of enabled projects")
 		}
@@ -2754,7 +2754,7 @@ func ValidateEnabledProjectsLimit(projectId string, config *evergreen.Settings, 
 	}
 
 	if shouldValidateOwnerRepoLimit(isNewProject, config, originalMergedRef, mergedRefToValidate) {
-		enabledOwnerRepoProjects, err := GetNumberOfEnabledProjectsForOwnerRepo(mergedRefToValidate.Owner, mergedRefToValidate.Repo)
+		enabledOwnerRepoProjects, err := GetNumberOfEnabledProjectsForOwnerRepo(ctx, mergedRefToValidate.Owner, mergedRefToValidate.Repo)
 		if err != nil {
 			return http.StatusInternalServerError, errors.Wrapf(err, "getting number of projects for '%s/%s'", mergedRefToValidate.Owner, mergedRefToValidate.Repo)
 		}

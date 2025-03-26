@@ -929,7 +929,7 @@ func FindByExecutionTasksAndMaxExecution(ctx context.Context, taskIds []string, 
 		oldTaskPipeline = append(oldTaskPipeline, bson.M{"$replaceRoot": bson.M{"newRoot": "$root"}})
 
 		var oldTasks []Task
-		if err := db.Aggregate(OldCollection, oldTaskPipeline, &oldTasks); err != nil {
+		if err := db.Aggregate(ctx, OldCollection, oldTaskPipeline, &oldTasks); err != nil {
 			return nil, errors.Wrap(err, "finding old tasks")
 		}
 		tasks = append(tasks, oldTasks...)
@@ -1381,7 +1381,7 @@ func findOneOldByIdAndExecutionWithDisplayStatus(ctx context.Context, id string,
 		addDisplayStatus,
 	}
 
-	if err := db.AggregateContext(ctx, OldCollection, pipeline, &tasks); err != nil {
+	if err := db.Aggregate(ctx, OldCollection, pipeline, &tasks); err != nil {
 		return nil, errors.Wrap(err, "finding task")
 	}
 	if len(tasks) != 0 {
@@ -1684,7 +1684,7 @@ func Remove(ctx context.Context, id string) error {
 }
 
 func Aggregate(ctx context.Context, pipeline []bson.M, results any) error {
-	return db.AggregateContext(ctx,
+	return db.Aggregate(ctx,
 		Collection,
 		pipeline,
 		results)

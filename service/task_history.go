@@ -188,7 +188,7 @@ func (uis *UIServer) variantHistory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	iter := model.NewBuildVariantHistoryIterator(variant, bv.Name, project.Identifier)
-	tasks, versions, err := iter.GetItems(beforeCommit, 50)
+	tasks, versions, err := iter.GetItems(r.Context(), beforeCommit, 50)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return

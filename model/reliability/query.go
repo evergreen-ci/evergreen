@@ -1,6 +1,7 @@
 package reliability
 
 import (
+	"context"
 	"math"
 	"time"
 
@@ -154,12 +155,12 @@ func significanceToZ(significance float64) float64 {
 // GetTaskReliabilityScores queries the precomputed task statistics using a filter and then calculates
 // the success reliability score from the lower bound wilson confidence interval.
 // https://en.wikipedia.org/wiki/Binomial_proportion_confidence_interval#Wilson_score_interval.
-func GetTaskReliabilityScores(filter TaskReliabilityFilter) ([]TaskReliability, error) {
+func GetTaskReliabilityScores(ctx context.Context, filter TaskReliabilityFilter) ([]TaskReliability, error) {
 	err := filter.ValidateForTaskReliability()
 	if err != nil {
 		return nil, errors.Wrap(err, "invalid stats filter")
 	}
-	taskStats, err := filter.GetTaskStats()
+	taskStats, err := filter.GetTaskStats(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "aggregating task statistics")
 	}

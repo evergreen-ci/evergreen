@@ -317,10 +317,10 @@ func TestGetNumberOfEnabledProjects(t *testing.T) {
 	}
 	assert.NoError(t, disabled2.Insert())
 
-	enabledProjects, err := GetNumberOfEnabledProjects()
+	enabledProjects, err := GetNumberOfEnabledProjects(t.Context())
 	assert.NoError(t, err)
 	assert.Equal(t, 2, enabledProjects)
-	enabledProjectsOwnerRepo, err := GetNumberOfEnabledProjectsForOwnerRepo(enabled2.Owner, enabled2.Repo)
+	enabledProjectsOwnerRepo, err := GetNumberOfEnabledProjectsForOwnerRepo(t.Context(), enabled2.Owner, enabled2.Repo)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, enabledProjectsOwnerRepo)
 }
@@ -391,7 +391,7 @@ func TestValidateEnabledProjectsLimit(t *testing.T) {
 	disabled1.Enabled = true
 	original, err := FindMergedProjectRef(t.Context(), disabled1.Id, "", false)
 	assert.NoError(t, err)
-	statusCode, err := ValidateEnabledProjectsLimit(disabled1.Id, &settings, original, disabled1)
+	statusCode, err := ValidateEnabledProjectsLimit(t.Context(), disabled1.Id, &settings, original, disabled1)
 	assert.Error(t, err)
 	assert.Equal(t, http.StatusBadRequest, statusCode)
 
@@ -404,7 +404,7 @@ func TestValidateEnabledProjectsLimit(t *testing.T) {
 	}
 	original, err = FindMergedProjectRef(t.Context(), exception.Id, "", false)
 	assert.NoError(t, err)
-	_, err = ValidateEnabledProjectsLimit(enabled1.Id, &settings, original, exception)
+	_, err = ValidateEnabledProjectsLimit(t.Context(), enabled1.Id, &settings, original, exception)
 	assert.NoError(t, err)
 
 	// Should error if owner/repo is not part of exception.
@@ -416,7 +416,7 @@ func TestValidateEnabledProjectsLimit(t *testing.T) {
 	}
 	original, err = FindMergedProjectRef(t.Context(), notException.Id, "", false)
 	assert.NoError(t, err)
-	statusCode, err = ValidateEnabledProjectsLimit(notException.Id, &settings, original, notException)
+	statusCode, err = ValidateEnabledProjectsLimit(t.Context(), notException.Id, &settings, original, notException)
 	assert.Error(t, err)
 	assert.Equal(t, http.StatusBadRequest, statusCode)
 
@@ -427,7 +427,7 @@ func TestValidateEnabledProjectsLimit(t *testing.T) {
 	assert.NoError(t, err)
 	original, err = FindMergedProjectRef(t.Context(), disabledByRepo.Id, "", false)
 	assert.NoError(t, err)
-	_, err = ValidateEnabledProjectsLimit(disabledByRepo.Id, &settings, original, mergedRef)
+	_, err = ValidateEnabledProjectsLimit(t.Context(), disabledByRepo.Id, &settings, original, mergedRef)
 	assert.NoError(t, err)
 
 	// Should error on enabled if you try to change owner/repo past limit.
@@ -435,7 +435,7 @@ func TestValidateEnabledProjectsLimit(t *testing.T) {
 	enabled2.Repo = "mci"
 	original, err = FindMergedProjectRef(t.Context(), enabled2.Id, "", false)
 	assert.NoError(t, err)
-	statusCode, err = ValidateEnabledProjectsLimit(enabled2.Id, &settings, original, enabled2)
+	statusCode, err = ValidateEnabledProjectsLimit(t.Context(), enabled2.Id, &settings, original, enabled2)
 	assert.Error(t, err)
 	assert.Equal(t, http.StatusBadRequest, statusCode)
 
@@ -443,7 +443,7 @@ func TestValidateEnabledProjectsLimit(t *testing.T) {
 	settings.ProjectCreation.TotalProjectLimit = 2
 	original, err = FindMergedProjectRef(t.Context(), exception.Id, "", false)
 	assert.NoError(t, err)
-	statusCode, err = ValidateEnabledProjectsLimit(exception.Id, &settings, original, exception)
+	statusCode, err = ValidateEnabledProjectsLimit(t.Context(), exception.Id, &settings, original, exception)
 	assert.Error(t, err)
 	assert.Equal(t, http.StatusBadRequest, statusCode)
 }
@@ -3105,7 +3105,7 @@ func TestFindDownstreamProjects(t *testing.T) {
 	}
 	require.NoError(t, proj2.Insert())
 
-	projects, err := FindDownstreamProjects("grip")
+	projects, err := FindDownstreamProjects(t.Context(), "grip")
 	assert.NoError(t, err)
 	assert.Len(t, projects, 1)
 	assert.Equal(t, proj1, projects[0])

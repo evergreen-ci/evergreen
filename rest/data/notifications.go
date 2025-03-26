@@ -26,7 +26,7 @@ func GetNotificationsStats(ctx context.Context) (*restModel.APIEventStats, error
 	}
 	stats.NumUnprocessedEvents = n
 
-	nStats, err := notification.CollectUnsentNotificationStats()
+	nStats, err := notification.CollectUnsentNotificationStats(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "collecting unsent notification stats")
 	}

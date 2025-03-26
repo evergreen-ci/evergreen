@@ -66,7 +66,7 @@ func TestDequeueTask(t *testing.T) {
 
 			var err error
 			// make sure the db representation was updated
-			taskQueue, err = LoadTaskQueue(distroId)
+			taskQueue, err = LoadTaskQueue(t.Context(), distroId)
 			So(err, ShouldBeNil)
 			So(taskQueue.Length(), ShouldEqual, 2)
 			So(taskQueue.Queue[0].Id, ShouldEqual, taskIds[0])
@@ -130,10 +130,10 @@ func TestClearTaskQueue(t *testing.T) {
 	assert.NoError(otherQueue.Save())
 
 	assert.NoError(ClearTaskQueue(t.Context(), distro))
-	queueFromDb, err := LoadTaskQueue(distro)
+	queueFromDb, err := LoadTaskQueue(t.Context(), distro)
 	assert.NoError(err)
 	assert.Empty(queueFromDb.Queue)
-	otherQueueFromDb, err := LoadTaskQueue(otherDistro)
+	otherQueueFromDb, err := LoadTaskQueue(t.Context(), otherDistro)
 	assert.NoError(err)
 	assert.Len(otherQueueFromDb.Queue, 3)
 }
@@ -235,7 +235,7 @@ func TestFindDuplicateEnqueuedTasks(t *testing.T) {
 			_ = makeTaskQueue(t, "d1", "task1", "task2", "task3")
 			_ = makeTaskQueue(t, "d2", "task1", "task3", "task4", "task5", "task6")
 			_ = makeTaskQueue(t, "d3", "task3")
-			dups, err := FindDuplicateEnqueuedTasks(coll)
+			dups, err := FindDuplicateEnqueuedTasks(t.Context(), coll)
 			require.NoError(t, err)
 			require.Len(t, dups, 2)
 			var task1Found, task3Found bool
@@ -258,20 +258,20 @@ func TestFindDuplicateEnqueuedTasks(t *testing.T) {
 		},
 		"DoesNotMatchDuplicatesWithinSameQueue": func(t *testing.T) {
 			_ = makeTaskQueue(t, "d1", "task1", "task1", "task2")
-			dups, err := FindDuplicateEnqueuedTasks(coll)
+			dups, err := FindDuplicateEnqueuedTasks(t.Context(), coll)
 			assert.NoError(t, err)
 			assert.Empty(t, dups)
 		},
 		"DoesNotMatchEmptyQueues": func(t *testing.T) {
 			_ = makeTaskQueue(t, "d1")
-			dups, err := FindDuplicateEnqueuedTasks(coll)
+			dups, err := FindDuplicateEnqueuedTasks(t.Context(), coll)
 			assert.NoError(t, err)
 			assert.Empty(t, dups)
 		},
 		"DoesNotMatchAllUnique": func(t *testing.T) {
 			_ = makeTaskQueue(t, "d1", "task1", "task2")
 			_ = makeTaskQueue(t, "d2", "task3", "task4")
-			dups, err := FindDuplicateEnqueuedTasks(coll)
+			dups, err := FindDuplicateEnqueuedTasks(t.Context(), coll)
 			assert.NoError(t, err)
 			assert.Empty(t, dups)
 		},

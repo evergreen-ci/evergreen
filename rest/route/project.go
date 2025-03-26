@@ -391,7 +391,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting evergreen settings"))
 		}
-		_, err = dbModel.ValidateEnabledProjectsLimit(h.newProjectRef.Id, settings, h.originalProject, mergedProjectRef)
+		_, err = dbModel.ValidateEnabledProjectsLimit(ctx, h.newProjectRef.Id, settings, h.originalProject, mergedProjectRef)
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "validating project creation for project '%s'", h.newProjectRef.Identifier))
 		}

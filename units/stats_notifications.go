@@ -82,7 +82,7 @@ func (j *notificationsStatsCollector) Run(ctx context.Context) {
 	}
 	msg["unprocessed_events"] = nUnprocessed
 
-	stats, err := notification.CollectUnsentNotificationStats()
+	stats, err := notification.CollectUnsentNotificationStats(ctx)
 	j.AddError(errors.Wrap(err, "collecting unsent notification stats"))
 	if j.HasErrors() {
 		return

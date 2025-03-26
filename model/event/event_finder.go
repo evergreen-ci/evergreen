@@ -183,7 +183,7 @@ type eventTypeResult struct {
 }
 
 // GetEventTypesForHost returns the event types that have occurred on the host.
-func GetEventTypesForHost(hostID string, tag string) ([]string, error) {
+func GetEventTypesForHost(ctx context.Context, hostID string, tag string) ([]string, error) {
 	filter := ResourceTypeKeyIs(ResourceTypeHost)
 	if tag != "" {
 		filter[ResourceIdKey] = bson.M{"$in": []string{hostID, tag}}
@@ -212,7 +212,7 @@ func GetEventTypesForHost(hostID string, tag string) ([]string, error) {
 	}
 
 	out := []eventTypeResult{}
-	if err := db.Aggregate(EventCollection, pipeline, &out); err != nil {
+	if err := db.Aggregate(ctx, EventCollection, pipeline, &out); err != nil {
 		return nil, errors.Errorf("finding event types for host '%s': %s", hostID, err)
 	}
 	if len(out) == 0 {
@@ -254,9 +254,9 @@ func TaskEventsInOrder(id string) db.Q {
 
 // FindLatestPrimaryDistroEvents return the most recent non-AMI events for the distro.
 // The before parameter returns only events before the specified time and is used for pagination on the UI.
-func FindLatestPrimaryDistroEvents(id string, n int, before time.Time) ([]EventLogEntry, error) {
+func FindLatestPrimaryDistroEvents(ctx context.Context, id string, n int, before time.Time) ([]EventLogEntry, error) {
 	events := []EventLogEntry{}
-	err := db.Aggregate(EventCollection, latestDistroEventsPipeline(id, n, false, before), &events)
+	err := db.Aggregate(ctx, EventCollection, latestDistroEventsPipeline(id, n, false, before), &events)
 	if err != nil {
 		return nil, err
 	}
@@ -264,10 +264,10 @@ func FindLatestPrimaryDistroEvents(id string, n int, before time.Time) ([]EventL
 }
 
 // FindLatestAMIModifiedDistroEvent returns the most recent AMI event. Returns an empty struct if nothing exists.
-func FindLatestAMIModifiedDistroEvent(id string) (EventLogEntry, error) {
+func FindLatestAMIModifiedDistroEvent(ctx context.Context, id string) (EventLogEntry, error) {
 	events := []EventLogEntry{}
 	res := EventLogEntry{}
-	err := db.Aggregate(EventCollection, latestDistroEventsPipeline(id, 1, true, time.Now()), &events)
+	err := db.Aggregate(ctx, EventCollection, latestDistroEventsPipeline(id, 1, true, time.Now()), &events)
 	if err != nil {
 		return res, err
 	}
