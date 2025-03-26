@@ -250,7 +250,7 @@ func ValidateVolumeCanBeAttached(ctx context.Context, volumeID string) (*Volume,
 }
 
 func CountNoExpirationVolumesForUser(ctx context.Context, userID string) (int, error) {
-	return db.CountContext(ctx, VolumesCollection, bson.M{
+	return db.Count(ctx, VolumesCollection, bson.M{
 		VolumeNoExpirationKey: true,
 		VolumeCreatedByKey:    userID,
 	})

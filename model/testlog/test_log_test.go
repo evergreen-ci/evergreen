@@ -74,7 +74,7 @@ func TestDeleteTestLogsWithLimit(t *testing.T) {
 		require.NoError(t, db.Insert(TestLogCollection, bson.M{"_id": primitive.NewObjectIDFromTimestamp(now.Add(time.Hour)).Hex()}))
 		require.NoError(t, db.Insert(TestLogCollection, bson.M{"_id": primitive.NewObjectIDFromTimestamp(now.Add(-time.Hour)).Hex()}))
 
-		num, err := db.CountContext(t.Context(), TestLogCollection, bson.M{})
+		num, err := db.Count(t.Context(), TestLogCollection, bson.M{})
 		require.NoError(t, err)
 		assert.Equal(t, 2, num)
 
@@ -82,7 +82,7 @@ func TestDeleteTestLogsWithLimit(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, 1, num)
 
-		num, err = db.CountContext(t.Context(), TestLogCollection, bson.M{})
+		num, err = db.Count(t.Context(), TestLogCollection, bson.M{})
 		require.NoError(t, err)
 		assert.Equal(t, 1, num)
 	})

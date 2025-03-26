@@ -345,7 +345,7 @@ func (s *statsSuite) insertFinishedTask(project string, requester string, taskNa
 /////////////////////////////////////
 
 func (s *statsSuite) countDocs(ctx context.Context, collection string) int {
-	count, err := db.CountContext(ctx, collection, bson.M{})
+	count, err := db.Count(ctx, collection, bson.M{})
 	s.Require().NoError(err)
 	return count
 }

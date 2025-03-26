@@ -1692,7 +1692,7 @@ func Aggregate(ctx context.Context, pipeline []bson.M, results any) error {
 
 // Count returns the number of tasks that satisfy the given query.
 func Count(ctx context.Context, query db.Q) (int, error) {
-	return db.CountQContext(ctx, Collection, query)
+	return db.CountQ(ctx, Collection, query)
 }
 
 func FindProjectForTask(ctx context.Context, taskID string) (string, error) {
@@ -2721,11 +2721,11 @@ func CountNumExecutionsForInterval(ctx context.Context, input NumExecutionsForIn
 	} else {
 		query[FinishTimeKey] = bson.M{"$gt": input.StartTime}
 	}
-	numTasks, err := db.CountContext(ctx, Collection, query)
+	numTasks, err := db.Count(ctx, Collection, query)
 	if err != nil {
 		return 0, errors.Wrap(err, "counting task executions")
 	}
-	numOldTasks, err := db.CountContext(ctx, OldCollection, query)
+	numOldTasks, err := db.Count(ctx, OldCollection, query)
 	if err != nil {
 		return 0, errors.Wrap(err, "counting old task executions")
 	}

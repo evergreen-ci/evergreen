@@ -1431,7 +1431,7 @@ func GetIdentifierForProject(ctx context.Context, id string) (string, error) {
 }
 
 func CountProjectRefsWithIdentifier(ctx context.Context, identifier string) (int, error) {
-	return db.CountQContext(ctx, ProjectRefCollection, byId(identifier))
+	return db.CountQ(ctx, ProjectRefCollection, byId(identifier))
 }
 
 type GetProjectTasksOpts struct {

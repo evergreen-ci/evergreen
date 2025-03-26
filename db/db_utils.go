@@ -359,20 +359,7 @@ func Upsert(ctx context.Context, collection string, query any, update any) (*db.
 }
 
 // Count run a count command with the specified query against the collection.
-func Count(collection string, query any) (int, error) {
-	session, db, err := GetGlobalSessionFactory().GetSession()
-	if err != nil {
-		grip.Errorf("error establishing db connection: %+v", err)
-
-		return 0, err
-	}
-	defer session.Close()
-
-	return db.C(collection).Find(query).Count()
-}
-
-// Count run a count command with the specified query against the collection.
-func CountContext(ctx context.Context, collection string, query any) (int, error) {
+func Count(ctx context.Context, collection string, query any) (int, error) {
 	session, db, err := GetGlobalSessionFactory().GetContextSession(ctx)
 	if err != nil {
 		grip.Errorf("error establishing db connection: %+v", err)
@@ -447,8 +434,8 @@ func FindAllQContext(ctx context.Context, collection string, q Q, out any) error
 }
 
 // CountQ runs a Q count query against the given collection.
-func CountQContext(ctx context.Context, collection string, q Q) (int, error) {
-	return CountContext(ctx, collection, q.filter)
+func CountQ(ctx context.Context, collection string, q Q) (int, error) {
+	return Count(ctx, collection, q.filter)
 }
 
 // RemoveAllQ removes all docs that satisfy the query
