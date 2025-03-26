@@ -287,7 +287,7 @@ func TestMarkTaskForReset(t *testing.T) {
 				NumAutoRestartedTasks:   1,
 				LastAutoRestartedTaskAt: time.Now().Add(-25 * time.Hour),
 			}
-			require.NoError(t, pRef.Upsert())
+			require.NoError(t, pRef.Upsert(t.Context()))
 			rh.taskID = "t4"
 			resp = rh.Run(ctx)
 			require.NotZero(t, resp)

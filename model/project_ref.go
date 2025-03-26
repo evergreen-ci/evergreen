@@ -680,7 +680,7 @@ func (p *ProjectRef) Add(ctx context.Context, creator *user.DBUser) error {
 		}
 		if hidden != nil {
 			p.Id = hidden.Id
-			err := p.Upsert()
+			err := p.Upsert(ctx)
 			if err != nil {
 				return errors.Wrapf(err, "upserting project ref '%s'", hidden.Id)
 			}
@@ -850,7 +850,7 @@ func (p *ProjectRef) DetachFromRepo(ctx context.Context, u *user.DBUser) error {
 	}
 
 	mergedProject.RepoRefId = ""
-	if err := mergedProject.Upsert(); err != nil {
+	if err := mergedProject.Upsert(ctx); err != nil {
 		return errors.Wrap(err, "detaching project from repo")
 	}
 
@@ -2142,8 +2142,8 @@ func (p *ProjectRef) CanEnableCommitQueue(ctx context.Context) (bool, error) {
 
 // Upsert updates the project ref in the db if an entry already exists,
 // overwriting the existing ref. If no project ref exists, a new one is created.
-func (p *ProjectRef) Upsert() error {
-	_, err := db.Upsert(ProjectRefCollection, bson.M{ProjectRefIdKey: p.Id}, p)
+func (p *ProjectRef) Upsert(ctx context.Context) error {
+	_, err := db.UpsertContext(ctx, ProjectRefCollection, bson.M{ProjectRefIdKey: p.Id}, p)
 	return err
 }
 
