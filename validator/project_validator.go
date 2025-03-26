@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -312,12 +313,13 @@ func CheckAliasWarnings(project *model.Project, aliases model.ProjectAliases) Va
 // CheckProjectErrors returns errors about the project configuration syntax
 func CheckProjectErrors(ctx context.Context, project *model.Project) ValidationErrors {
 	validationErrs := ValidationErrors{}
+
 	for _, projectErrorValidator := range projectErrorValidators {
 		validationErrs = append(validationErrs,
 			projectErrorValidator(project)...)
 	}
 
-	allowedSingleTaskDistroTasks, err := GetAllowedSingleTaskDistroTasksForProject(ctx, project.Identifier)
+	singleTaskDistroWhitelist, err := GetAllowedSingleTaskDistroTasksForProject(ctx, project.Identifier)
 	if err != nil {
 		return []ValidationError{{Message: errors.Wrap(err, "problem getting allowed tasks for single task distros").Error()}}
 	}
@@ -334,7 +336,7 @@ func CheckProjectErrors(ctx context.Context, project *model.Project) ValidationE
 		}
 		containerNameMap[container.Name] = true
 	}
-	validationErrs = append(validationErrs, ensureReferentialIntegrity(project, containerNameMap, distroIDs, distroAliases, singleTaskDistroIDs, allowedSingleTaskDistroTasks, distroWarnings)...)
+	validationErrs = append(validationErrs, ensureReferentialIntegrity(project, containerNameMap, distroIDs, distroAliases, singleTaskDistroIDs, singleTaskDistroWhitelist, distroWarnings)...)
 	return validationErrs
 }
 
@@ -899,9 +901,9 @@ func validateBuildVariantTaskNames(task string, variant string, allTaskNames map
 	return errs
 }
 
-func matchTaskToAllowedTasks(allowedSingleTaskDistroTasks []string, taskName string) (bool, []ValidationError) {
+func matchTaskToWhitelist(whitelist []string, taskName string) (bool, []ValidationError) {
 	errs := []ValidationError{}
-	for _, allowedTask := range allowedSingleTaskDistroTasks {
+	for _, allowedTask := range whitelist {
 		matched, err := regexp.MatchString(allowedTask, taskName)
 		if err != nil {
 			errs = append(errs,
@@ -921,7 +923,7 @@ func matchTaskToAllowedTasks(allowedSingleTaskDistroTasks []string, taskName str
 // ensureReferentialIntegrity checks all fields that reference other entities defined in the YAML and ensure that they are referring to valid names,
 // and returns any relevant distro validation info.
 // distroWarnings are considered validation notices.
-func ensureReferentialIntegrity(project *model.Project, containerNameMap map[string]bool, distroIDs, distroAliases, singleTaskDistroIDs, allowedSingleTaskDistroTasks []string, distroWarnings map[string]string) ValidationErrors {
+func ensureReferentialIntegrity(project *model.Project, containerNameMap map[string]bool, distroIDs, distroAliases, singleTaskDistroIDs []string, singleTaskDistroWhitelist evergreen.ProjectTasksPair, distroWarnings map[string]string) ValidationErrors {
 	errs := ValidationErrors{}
 	// create a set of all the task names
 	allTaskNames := map[string]bool{}
@@ -972,15 +974,19 @@ func ensureReferentialIntegrity(project *model.Project, containerNameMap map[str
 					)
 				}
 
-				if utility.StringSliceContains(singleTaskDistroIDs, name) {
-					matched, warnings := matchTaskToAllowedTasks(allowedSingleTaskDistroTasks, task.Name)
+				shouldValidateSingleTaskDistros, errorLevel, warnings := shouldValidateSingleTaskDistros(project.Identifier, singleTaskDistroWhitelist, singleTaskDistroIDs, name)
+				errs = append(errs, warnings...)
+				if shouldValidateSingleTaskDistros {
+					matchedTask, warnings := matchTaskToWhitelist(singleTaskDistroWhitelist.AllowedTasks, task.Name)
 					errs = append(errs, warnings...)
-					if !matched {
+					matchedBV, warnings := matchTaskToWhitelist(singleTaskDistroWhitelist.AllowedBVs, task.Variant)
+					errs = append(errs, warnings...)
+					if !(matchedTask || matchedBV) {
 						errs = append(errs,
 							ValidationError{
-								Message: fmt.Sprintf("task '%s' in buildvariant '%s' references a single task distro '%s' that is not allowed for this task",
+								Message: fmt.Sprintf("task '%s' in buildvariant '%s' references a single task distro '%s' that is not allowed for this task or variant",
 									task.Name, buildVariant.Name, name),
-								Level: Error,
+								Level: errorLevel,
 							},
 						)
 					}
@@ -1028,13 +1034,20 @@ func ensureReferentialIntegrity(project *model.Project, containerNameMap map[str
 				)
 			}
 
-			if utility.StringSliceContains(singleTaskDistroIDs, name) {
-				errs = append(errs,
-					ValidationError{
-						Message: fmt.Sprintf("buildvariant '%s' references a single task distro '%s' which is not allowed for entire buildvariants, only individual tasks", buildVariant.Name, name),
-						Level:   Error,
-					},
-				)
+			shouldValidateSingleTaskDistros, errorLevel, warnings := shouldValidateSingleTaskDistros(project.Identifier, singleTaskDistroWhitelist, singleTaskDistroIDs, name)
+			errs = append(errs, warnings...)
+			if shouldValidateSingleTaskDistros {
+				matched, warnings := matchTaskToWhitelist(singleTaskDistroWhitelist.AllowedBVs, buildVariant.Name)
+				errs = append(errs, warnings...)
+				if !matched {
+					errs = append(errs,
+						ValidationError{
+							Message: fmt.Sprintf("buildvariant '%s' references a single task distro '%s' that is not allowed for this variant",
+								buildVariant.Name, name),
+							Level: errorLevel,
+						},
+					)
+				}
 			}
 
 			if warning, ok := distroWarnings[name]; ok {
@@ -1073,6 +1086,20 @@ func checkRunOn(runOnHasDistro, runOnHasContainer bool, runOn []string) []Valida
 		}}
 	}
 	return nil
+}
+
+func shouldValidateSingleTaskDistros(projectIdentifier string, singleTaskDistroWhitelist evergreen.ProjectTasksPair, singleTaskDistroIDs []string, distroName string) (bool, ValidationErrorLevel, []ValidationError) {
+	// Do single task distro validation if the distro is a single task distro and not all tasks are allowed.
+	shouldValidate := slices.Contains(singleTaskDistroIDs, distroName) && !singleTaskDistroWhitelist.AllowAll()
+	if shouldValidate && projectIdentifier == "" {
+		return shouldValidate, Warning, []ValidationError{
+			{
+				Message: "project not specified, skipping single task distro validation",
+				Level:   Warning,
+			}}
+	}
+
+	return shouldValidate, Error, []ValidationError{}
 }
 
 func validateTimeoutLimits(_ context.Context, settings *evergreen.Settings, project *model.Project, _ *model.ProjectRef, _ bool) ValidationErrors {
@@ -2272,21 +2299,21 @@ func checkBuildVariants(project *model.Project) ValidationErrors {
 	return errs
 }
 
-// GetAllowedSingleTaskDistroTasksForProject returns a list of tasks that is
+// GetAllowedSingleTaskDistroTasksForProject returns a struct with a list of tasks and bvs that is
 // whitelisted for the given project and repo project. If both the project and
-// repo project have allowed tasks, the tasks are combined.
-func GetAllowedSingleTaskDistroTasksForProject(ctx context.Context, identifier string) ([]string, error) {
+// repo project have allowed tasks/BVs, they are combined.
+func GetAllowedSingleTaskDistroTasksForProject(ctx context.Context, identifier string) (evergreen.ProjectTasksPair, error) {
+	whiteList := evergreen.ProjectTasksPair{}
 	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
-		return nil, errors.Wrap(err, "getting evergreen settings")
+		return whiteList, errors.Wrap(err, "getting evergreen settings")
 	}
 
-	allowedSingleTaskDistroTasks := []string{}
 	projectsToLookFor := []string{}
 	for _, pairs := range settings.SingleTaskDistro.ProjectTasksPairs {
 		pRef, err := model.FindBranchProjectRef(ctx, identifier)
 		if err != nil {
-			return nil, errors.Wrapf(err, "finding project ref '%s'", identifier)
+			return whiteList, errors.Wrapf(err, "finding project ref '%s'", identifier)
 		}
 
 		// Look for allowed tasks for the project and its repo project.
@@ -2296,17 +2323,18 @@ func GetAllowedSingleTaskDistroTasksForProject(ctx context.Context, identifier s
 			// If project ref is nil, it means the project is a repo project.
 			repoRef, err := model.FindOneRepoRef(ctx, identifier)
 			if err != nil {
-				return nil, errors.Wrapf(err, "finding repo ref '%s'", identifier)
+				return whiteList, errors.Wrapf(err, "finding repo ref '%s'", identifier)
 			}
 			if repoRef == nil {
-				return nil, errors.Errorf("project or repo ref '%s' not found", identifier)
+				return whiteList, errors.Errorf("project or repo ref '%s' not found", identifier)
 			}
 			projectsToLookFor = append(projectsToLookFor, repoRef.Id)
 		}
 		if utility.StringSliceContains(projectsToLookFor, pairs.ProjectID) {
-			allowedSingleTaskDistroTasks = append(allowedSingleTaskDistroTasks, pairs.AllowedTasks...)
+			whiteList.AllowedTasks = append(whiteList.AllowedTasks, pairs.AllowedTasks...)
+			whiteList.AllowedBVs = append(whiteList.AllowedBVs, pairs.AllowedBVs...)
 		}
 	}
 
-	return allowedSingleTaskDistroTasks, nil
+	return whiteList, nil
 }

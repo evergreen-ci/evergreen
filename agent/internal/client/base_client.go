@@ -27,7 +27,7 @@ import (
 	"github.com/evergreen-ci/juniper/gopb"
 	"github.com/evergreen-ci/timber"
 	"github.com/evergreen-ci/utility"
-	"github.com/google/go-github/v52/github"
+	"github.com/google/go-github/v70/github"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/logging"
@@ -997,7 +997,12 @@ func (c *baseCommunicator) RevokeGitHubDynamicAccessToken(ctx context.Context, t
 }
 
 // MarkFailedTaskToRestart will mark the task to automatically restart upon completion
+// This is sometimes called with a context that is cancelled due to task timeouts,
+// so we need to ensure that the context is still valid but still apply a timeout
+// to ensure the request doesn't hang indefinitely.
 func (c *baseCommunicator) MarkFailedTaskToRestart(ctx context.Context, td TaskData) error {
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), restartFailedTimout)
+	defer cancel()
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &td,
