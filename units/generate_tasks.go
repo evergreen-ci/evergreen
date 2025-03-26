@@ -26,7 +26,6 @@ import (
 
 const (
 	generateTasksJobName           = "generate-tasks"
-	generateTasksAttribute         = "evergreen.generate-tasks"
 	hasGeneratedTasksOtelAttribute = "evergreen.generate-tasks.has_generated_tasks"
 )
 
