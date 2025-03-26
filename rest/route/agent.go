@@ -26,7 +26,7 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
-	"github.com/google/go-github/v52/github"
+	"github.com/google/go-github/v70/github"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -411,7 +411,7 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 		}
 	}
 
-	v, err := model.VersionFindOneId(ctx, t.Version)
+	v, err := model.VersionFindOne(ctx, model.VersionById(t.Version).WithFields(model.VersionParametersKey))
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding version '%s'", t.Version))
 	}
@@ -508,7 +508,7 @@ func (h *getParserProjectHandler) Run(ctx context.Context) gimlet.Responder {
 			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
 		})
 	}
-	v, err := model.VersionFindOne(ctx, model.VersionById(t.Version))
+	v, err := model.VersionFindOne(ctx, model.VersionById(t.Version).WithFields(model.VersionIdKey, model.VersionProjectStorageMethodKey))
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}

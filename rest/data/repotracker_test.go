@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/gimlet"
-	"github.com/google/go-github/v52/github"
+	"github.com/google/go-github/v70/github"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -34,7 +34,6 @@ func NewConfigSections() ConfigSections {
 		&HostJasperConfig{},
 		&JiraConfig{},
 		&LoggerConfig{},
-		&NewRelicConfig{},
 		&NotifyConfig{},
 		&OverridesConfig{},
 		&ParameterStoreConfig{},

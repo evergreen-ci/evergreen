@@ -27,7 +27,6 @@ func NewConfigModel() *APIAdminSettings {
 		Jira:                &APIJiraConfig{},
 		JIRANotifications:   &APIJIRANotificationsConfig{},
 		LoggerConfig:        &APILoggerConfig{},
-		NewRelic:            &APINewRelicConfig{},
 		Notify:              &APINotifyConfig{},
 		Overrides:           &APIOverridesConfig{},
 		ParameterStore:      &APIParameterStoreConfig{},
@@ -80,7 +79,6 @@ type APIAdminSettings struct {
 	KanopySSHKeyPath    *string                       `json:"kanopy_ssh_key_path,omitempty"`
 	LoggerConfig        *APILoggerConfig              `json:"logger_config,omitempty"`
 	LogPath             *string                       `json:"log_path,omitempty"`
-	NewRelic            *APINewRelicConfig            `json:"newrelic,omitempty"`
 	Notify              *APINotifyConfig              `json:"notify,omitempty"`
 	Overrides           *APIOverridesConfig           `json:"overrides,omitempty"`
 	ParameterStore      *APIParameterStoreConfig      `json:"parameter_store,omitempty"`
@@ -2499,40 +2497,6 @@ func (a *APIUIConfig) ToService() (any, error) {
 		UserVoice:                 utility.FromStringPtr(a.UserVoice),
 		BetaFeatures:              a.BetaFeatures.ToService(),
 		StagingEnvironment:        utility.FromStringPtr(a.StagingEnvironment),
-	}, nil
-}
-
-type APINewRelicConfig struct {
-	AccountID     *string `json:"accountId"`
-	TrustKey      *string `json:"trustKey"`
-	AgentID       *string `json:"agentId"`
-	LicenseKey    *string `json:"licenseKey"`
-	ApplicationID *string `json:"applicationId"`
-}
-
-// BuildFromService builds a model from the service layer
-func (a *APINewRelicConfig) BuildFromService(h any) error {
-	switch v := h.(type) {
-	case evergreen.NewRelicConfig:
-		a.AccountID = utility.ToStringPtr(v.AccountID)
-		a.TrustKey = utility.ToStringPtr(v.TrustKey)
-		a.AgentID = utility.ToStringPtr(v.AgentID)
-		a.LicenseKey = utility.ToStringPtr(v.LicenseKey)
-		a.ApplicationID = utility.ToStringPtr(v.ApplicationID)
-	default:
-		return errors.Errorf("programmatic error: expected New Relic config but got type %T", h)
-	}
-	return nil
-}
-
-// ToService returns a service model from an API model
-func (a *APINewRelicConfig) ToService() (any, error) {
-	return evergreen.NewRelicConfig{
-		AccountID:     utility.FromStringPtr(a.AccountID),
-		TrustKey:      utility.FromStringPtr(a.TrustKey),
-		AgentID:       utility.FromStringPtr(a.AgentID),
-		LicenseKey:    utility.FromStringPtr(a.LicenseKey),
-		ApplicationID: utility.FromStringPtr(a.ApplicationID),
 	}, nil
 }
 
