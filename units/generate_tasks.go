@@ -25,12 +25,9 @@ import (
 )
 
 const (
-	generateTasksJobName   = "generate-tasks"
-	generateTasksAttribute = "evergreen.amboy.job.generate-tasks"
-)
-
-var (
-	hasGeneratedTasksOtelAttribute = fmt.Sprintf("%s.%s", generateTasksAttribute, "has_generated_tasks")
+	generateTasksJobName           = "generate-tasks"
+	generateTasksAttribute         = "evergreen.generate-tasks"
+	hasGeneratedTasksOtelAttribute = "evergreen.generate-tasks.has_generated_tasks"
 )
 
 func init() {
