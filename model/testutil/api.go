@@ -177,7 +177,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 			},
 		},
 	}
-	if err = taskQueue.Save(); err != nil {
+	if err = taskQueue.Save(ctx); err != nil {
 		return nil, errors.Wrap(err, "inserting task queue")
 	}
 

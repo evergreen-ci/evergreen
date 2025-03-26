@@ -206,16 +206,17 @@ func (tq *TaskQueue) Length() int {
 	return len(tq.Queue)
 }
 
-func (tq *TaskQueue) Save() error {
+func (tq *TaskQueue) Save(ctx context.Context) error {
 	if len(tq.Queue) > 10000 {
 		tq.Queue = tq.Queue[:10000]
 	}
 
-	return updateTaskQueue(tq.Distro, tq.Queue, tq.DistroQueueInfo)
+	return updateTaskQueue(ctx, tq.Distro, tq.Queue, tq.DistroQueueInfo)
 }
 
-func updateTaskQueue(distro string, taskQueue []TaskQueueItem, distroQueueInfo DistroQueueInfo) error {
-	_, err := db.Upsert(
+func updateTaskQueue(ctx context.Context, distro string, taskQueue []TaskQueueItem, distroQueueInfo DistroQueueInfo) error {
+	_, err := db.UpsertContext(
+		ctx,
 		distroQueueInfo.GetQueueCollection(),
 		bson.M{
 			taskQueueDistroKey: distro,

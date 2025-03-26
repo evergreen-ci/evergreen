@@ -423,7 +423,7 @@ func (s *AdminRouteSuite) TestClearTaskQueueRoute() {
 	}
 	queue := model.NewTaskQueue(distro, tasks, model.DistroQueueInfo{})
 	s.Len(queue.Queue, 3)
-	s.NoError(queue.Save())
+	s.NoError(queue.Save(s.T().Context()))
 
 	route.distro = distro
 	resp := route.Run(context.Background())
