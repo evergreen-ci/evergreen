@@ -34,7 +34,7 @@ var (
 )
 
 func (r *RepoRef) Add(ctx context.Context, creator *user.DBUser) error {
-	if err := r.Upsert(); err != nil {
+	if err := r.Upsert(ctx); err != nil {
 		return errors.Wrap(err, "upserting repo ref")
 	}
 	return r.addPermissions(ctx, creator)
@@ -48,10 +48,11 @@ func (r *RepoRef) Insert() error {
 // Upsert updates the project ref in the db if an entry already exists,
 // overwriting the existing ref. If no project ref exists, one is created.
 // Ensures that fields that aren't relevant to repos aren't set.
-func (r *RepoRef) Upsert() error {
+func (r *RepoRef) Upsert(ctx context.Context) error {
 	r.RepoRefId = ""
 	r.Branch = ""
-	_, err := db.Upsert(
+	_, err := db.UpsertContext(
+		ctx,
 		RepoRefCollection,
 		bson.M{
 			RepoRefIdKey: r.Id,

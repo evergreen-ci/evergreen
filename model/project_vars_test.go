@@ -68,7 +68,7 @@ func TestFindMergedProjectVars(t *testing.T) {
 		Owner: "mongodb",
 		Repo:  "test_repo",
 	}}
-	require.NoError(t, repo.Upsert())
+	require.NoError(t, repo.Upsert(t.Context()))
 
 	project0 := ProjectRef{
 		Id:        "project_0",
@@ -632,7 +632,7 @@ func TestAWSVars(t *testing.T) {
 		Vars:        vars,
 		PrivateVars: privateVars,
 	}
-	_, err = projectVars.Upsert(t.Context()t.Context())
+	_, err = projectVars.Upsert(t.Context())
 	assert.NoError(err)
 
 	// canaries
