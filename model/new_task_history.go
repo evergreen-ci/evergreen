@@ -38,6 +38,7 @@ func getBaseTaskHistoryFilter(opts FindTaskHistoryOptions) bson.M {
 }
 
 // FindActiveTasksForHistory finds LIMIT active tasks with the given task name, build variant, and project ID between the specified bounds.
+// Note that only one bound should be specified.
 // The result is sorted by order numbers, descending (e.g. 100, 99, 98, 97, ...).
 func FindActiveTasksForHistory(ctx context.Context, opts FindTaskHistoryOptions) ([]task.Task, error) {
 	filter := getBaseTaskHistoryFilter(opts)
