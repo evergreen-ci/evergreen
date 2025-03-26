@@ -101,11 +101,11 @@ type s3put struct {
 
 	// workDir sets the working directory relative to which s3put should look for files to upload.
 	// workDir will be empty if an absolute path is provided to the file.
-	workDir          string
-	preservePath     bool
-	skipExistingBool bool
-	isPatchable      bool
-	isPatchOnly      bool
+	workDir      string
+	preservePath bool
+	skipExisting bool
+	isPatchable  bool
+	isPatchOnly  bool
 
 	s3Operation `plugin:"expand"`
 	base
@@ -192,7 +192,7 @@ func (s3pc *s3put) expandParams(conf *internal.TaskConfig) error {
 		return errors.Wrap(err, "expanding preserve path")
 	}
 
-	if err := expandBool(s3pc.SkipExisting, &s3pc.skipExistingBool); err != nil {
+	if err := expandBool(s3pc.SkipExisting, &s3pc.skipExisting); err != nil {
 		return errors.Wrap(err, "expanding skip existing")
 	}
 
@@ -400,7 +400,7 @@ retryLoop:
 						}
 					}
 
-					if s3pc.skipExistingBool {
+					if s3pc.skipExisting {
 						var ae smithy.APIError
 
 						if errors.As(err, &ae) {
@@ -518,7 +518,7 @@ func (s3pc *s3put) createPailBucket(ctx context.Context, comm client.Communicato
 	opts := pail.S3Options{
 		Permissions: pail.S3Permissions(s3pc.Permissions),
 		ContentType: s3pc.ContentType,
-		IfNotExists: s3pc.skipExistingBool,
+		IfNotExists: s3pc.skipExisting,
 	}
 	return s3pc.s3Operation.createPailBucket(opts, comm, func(so pail.S3Options) (pail.Bucket, error) {
 		return pail.NewS3MultiPartBucketWithHTTPClient(ctx, httpClient, opts)
