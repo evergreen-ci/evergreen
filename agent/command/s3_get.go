@@ -32,6 +32,7 @@ var (
 	s3GetRemoteFileAttribute           = fmt.Sprintf("%s.remote_file", s3GetAttribute)
 	s3GetExpandedRemoteFileAttribute   = fmt.Sprintf("%s.expanded_remote_file", s3GetAttribute)
 	s3GetRoleARN                       = fmt.Sprintf("%s.role_arn", s3GetAttribute)
+	s3GetAssumeRoleARN                 = fmt.Sprintf("%s.assume_role_arn", s3GetAttribute)
 	s3GetInternalBucketAttribute       = fmt.Sprintf("%s.internal_bucket", s3GetAttribute)
 )
 
@@ -209,7 +210,7 @@ func (c *s3get) Execute(ctx context.Context, comm client.Communicator, logger cl
 		attribute.String(s3GetRemoteFileAttribute, c.remoteFile),
 		attribute.String(s3GetExpandedRemoteFileAttribute, c.RemoteFile),
 		attribute.String(s3GetRoleARN, c.RoleARN),
-		attribute.String(s3PutAssumeRoleARN, c.assumedRoleARN),
+		attribute.String(s3GetAssumeRoleARN, c.assumedRoleARN),
 		attribute.Bool(s3GetInternalBucketAttribute, utility.StringSliceContains(conf.InternalBuckets, c.Bucket)),
 	)
 

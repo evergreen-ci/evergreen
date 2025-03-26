@@ -39,7 +39,7 @@ var (
 	s3PutRemoteFileAttribute           = fmt.Sprintf("%s.remote_file", s3PutAttribute)
 	s3PutExpandedRemoteFileAttribute   = fmt.Sprintf("%s.expanded_remote_file", s3PutAttribute)
 	s3PutRoleARN                       = fmt.Sprintf("%s.role_arn", s3PutAttribute)
-	s3PutAssumeRoleARN                 = fmt.Sprintf("%s.assume_role_arn", s3PutAttribute) // This tracks the role ARN used when this command is passed temporary credentials.
+	s3PutAssumeRoleARN                 = fmt.Sprintf("%s.assume_role_arn", s3PutAttribute)
 	s3PutInternalBucket                = fmt.Sprintf("%s.internal_bucket", s3PutAttribute)
 )
 
