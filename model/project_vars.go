@@ -243,7 +243,7 @@ func CopyProjectVars(ctx context.Context, oldProjectId, newProjectId string) err
 	}
 
 	vars.Id = newProjectId
-	_, err = vars.Upsert()
+	_, err = vars.Upsert(ctx)
 	return errors.Wrapf(err, "inserting variables for project '%s", newProjectId)
 }
 
@@ -265,7 +265,7 @@ func SetAWSKeyForProject(ctx context.Context, projectId string, ssh *AWSSSHKey) 
 	vars.Vars[ProjectAWSSSHKeyName] = ssh.Name
 	vars.Vars[ProjectAWSSSHKeyValue] = ssh.Value
 	vars.PrivateVars[ProjectAWSSSHKeyValue] = true // redact value, but not key name
-	_, err = vars.Upsert()
+	_, err = vars.Upsert(ctx)
 	return errors.Wrap(err, "saving project keys")
 }
 
@@ -293,8 +293,8 @@ const defaultParameterStoreAccessTimeout = 30 * time.Second
 // Upsert creates or updates a project vars document and stores all the project
 // variables in the DB. If Parameter Store is enabled for the project, it also
 // stores the variables in Parameter Store.
-func (projectVars *ProjectVars) Upsert() (*adb.ChangeInfo, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), defaultParameterStoreAccessTimeout)
+func (projectVars *ProjectVars) Upsert(ctx context.Context) (*adb.ChangeInfo, error) {
+	ctx, cancel := context.WithTimeout(ctx, defaultParameterStoreAccessTimeout)
 	defer cancel()
 
 	pm, err := projectVars.upsertParameterStore(ctx)
@@ -315,7 +315,8 @@ func (projectVars *ProjectVars) Upsert() (*adb.ChangeInfo, error) {
 	}
 	update["$set"] = setUpdate
 
-	return db.Upsert(
+	return db.UpsertContext(
+		ctx,
 		ProjectVarsCollection,
 		bson.M{
 			projectVarIdKey: projectVars.Id,

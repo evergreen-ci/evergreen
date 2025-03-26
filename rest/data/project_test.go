@@ -301,7 +301,7 @@ func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
 		PrivateVars:  map[string]bool{"b": false, "c": true},
 		VarsToDelete: varsToDelete,
 	}
-	s.NoError(UpdateProjectVars(projectId, &newVars, false))
+	s.NoError(UpdateProjectVars(s.T().Context(), projectId, &newVars, false))
 
 	s.Empty(newVars.Vars["b"]) // can't unredact previously redacted variables
 	s.Empty(newVars.Vars["c"])
@@ -337,7 +337,7 @@ func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
 	}
 	s.Require().NoError(newProjRef.Insert())
 	// successful upsert
-	s.NoError(UpdateProjectVars(newProjRef.Id, &newVars, false))
+	s.NoError(UpdateProjectVars(s.T().Context(), newProjRef.Id, &newVars, false))
 
 	dbUpsertedVars, err := model.FindOneProjectVars(s.T().Context(), newProjRef.Id)
 	s.NoError(err)

@@ -568,7 +568,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		"project_identifier": h.newProjectRef.Identifier,
 	}))
 
-	if err = data.UpdateProjectVars(h.newProjectRef.Id, &h.apiNewProjectRef.Variables, false); err != nil { // destructively modifies h.apiNewProjectRef.Variables
+	if err = data.UpdateProjectVars(ctx, h.newProjectRef.Id, &h.apiNewProjectRef.Variables, false); err != nil { // destructively modifies h.apiNewProjectRef.Variables
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "updating variables for project '%s'", h.project))
 	}
 	if err = data.UpdateProjectAliases(ctx, h.newProjectRef.Id, h.apiNewProjectRef.Aliases); err != nil {

@@ -1257,7 +1257,7 @@ func TestDetachFromRepo(t *testing.T) {
 					"in": true,
 				},
 			}
-			_, err := pVars.Upsert()
+			_, err := pVars.Upsert(t.Context())
 			assert.NoError(t, err)
 
 			dbProjRef, err := FindBranchProjectRef(t.Context(), pRef.Id)
@@ -1274,7 +1274,7 @@ func TestDetachFromRepo(t *testing.T) {
 					"repo": true,
 				},
 			}
-			_, err = repoVars.Upsert()
+			_, err = repoVars.Upsert(t.Context())
 			assert.NoError(t, err)
 
 			dbRepoRef, err := FindOneRepoRef(t.Context(), repoRef.Id)
