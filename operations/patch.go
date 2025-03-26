@@ -219,7 +219,8 @@ func Patch() cli.Command {
 			if err = params.validateSubmission(diffData); err != nil {
 				return err
 			}
-
+			// Initialize module path cache in case these have already been set by the user. We use a cache here
+			// to avoid asking the user repeatedly for paths, in the case that they aren't writing them back to their configuration file.
 			modulePathCache := conf.getModulePathsForProject(params.Project)
 			if params.IncludeModules {
 				localModuleIncludes, err := getLocalModuleIncludes(params, conf, params.Path, ref.RemotePath, modulePathCache)
