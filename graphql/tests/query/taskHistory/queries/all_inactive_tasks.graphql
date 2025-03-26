@@ -4,7 +4,11 @@ query {
       projectIdentifier: "sandbox"
       taskName: "test-sandbox"
       buildVariant: "ubuntu2204"
-      cursorParams: { after: "sandbox_task_1", includeCursor: true }
+      cursorParams: {
+        cursorId: "sandbox_task_1"
+        direction: AFTER
+        includeCursor: true
+      }
     }
   ) {
     tasks {

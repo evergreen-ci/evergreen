@@ -1,3 +1,8 @@
+enum TaskHistoryDirection {
+  AFTER
+  BEFORE
+}
+
 input TaskHistoryOpts {
   projectIdentifier: String!
     @requireProjectAccess(permission: TASKS, access: VIEW)
@@ -9,8 +14,8 @@ input TaskHistoryOpts {
 }
 
 input CursorParams {
-  after: String
-  before: String
+  cursorId: String!
+  direction: TaskHistoryDirection!
   includeCursor: Boolean!
 }
 

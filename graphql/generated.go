@@ -76772,27 +76772,27 @@ func (ec *executionContext) unmarshalInputCursorParams(ctx context.Context, obj 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"after", "before", "includeCursor"}
+	fieldsInOrder := [...]string{"cursorId", "direction", "includeCursor"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
-		case "after":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("after"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+		case "cursorId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("cursorId"))
+			data, err := ec.unmarshalNString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.After = data
-		case "before":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("before"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			it.CursorID = data
+		case "direction":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("direction"))
+			data, err := ec.unmarshalNTaskHistoryDirection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskHistoryDirection(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.Before = data
+			it.Direction = data
 		case "includeCursor":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("includeCursor"))
 			data, err := ec.unmarshalNBoolean2bool(ctx, v)
@@ -102403,6 +102403,16 @@ func (ec *executionContext) marshalNTaskHistory2ᚖgithubᚗcomᚋevergreenᚑci
 		return graphql.Null
 	}
 	return ec._TaskHistory(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNTaskHistoryDirection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskHistoryDirection(ctx context.Context, v any) (TaskHistoryDirection, error) {
+	var res TaskHistoryDirection
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNTaskHistoryDirection2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskHistoryDirection(ctx context.Context, sel ast.SelectionSet, v TaskHistoryDirection) graphql.Marshaler {
+	return v
 }
 
 func (ec *executionContext) unmarshalNTaskHistoryOpts2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskHistoryOpts(ctx context.Context, v any) (TaskHistoryOpts, error) {

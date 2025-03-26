@@ -21,7 +21,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/plank"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
@@ -1142,18 +1141,9 @@ func (r *queryResolver) TaskHistory(ctx context.Context, options TaskHistoryOpts
 		return nil, InputValidationError.Send(ctx, "must specify cursor params")
 	}
 
-	before := utility.FromStringPtr(options.CursorParams.Before)
-	after := utility.FromStringPtr(options.CursorParams.After)
+	taskID := options.CursorParams.CursorID
 	includeCursor := options.CursorParams.IncludeCursor
 
-	hasBefore := before != ""
-	hasAfter := after != ""
-
-	if (!hasAfter && !hasBefore) || (hasAfter && hasBefore) {
-		return nil, InputValidationError.Send(ctx, "must specify exactly one of the before or after parameters")
-	}
-
-	taskID := util.CoalesceString(before, after)
 	foundTask, err := task.FindOneId(ctx, taskID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task '%s': %s", taskID, err.Error()))
@@ -1170,14 +1160,14 @@ func (r *queryResolver) TaskHistory(ctx context.Context, options TaskHistoryOpts
 		Limit:        options.Limit,
 	}
 
-	if hasBefore {
+	if options.CursorParams.Direction == TaskHistoryDirectionBefore {
 		if includeCursor {
 			opts.UpperBound = utility.ToIntPtr(taskOrder)
 		} else {
 			opts.UpperBound = utility.ToIntPtr(taskOrder - 1)
 		}
 	}
-	if hasAfter {
+	if options.CursorParams.Direction == TaskHistoryDirectionAfter {
 		if includeCursor {
 			opts.LowerBound = utility.ToIntPtr(taskOrder)
 		} else {
