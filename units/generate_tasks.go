@@ -77,6 +77,7 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 		attribute.String(evergreen.VersionIDOtelAttribute, t.Version),
 		attribute.String(evergreen.BuildIDOtelAttribute, t.BuildId),
 		attribute.String(evergreen.ProjectIDOtelAttribute, t.Project),
+		attribute.String(evergreen.VersionRequesterOtelAttribute, t.Requester),
 		attribute.Bool(hasGeneratedTasksOtelAttribute, t.GeneratedTasks),
 	})
 	ctx, span := tracer.Start(ctx, "task-generation")
