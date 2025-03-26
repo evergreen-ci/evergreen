@@ -3243,7 +3243,7 @@ buildvariants:
 			testTask := &task.Task{Id: "t1", DisplayName: "nil", Project: projRef.Id, Version: ver.Id}
 			So(testTask.Insert(), ShouldBeNil)
 			projRef.StepbackDisabled = utility.TruePtr()
-			So(projRef.Upsert(), ShouldBeNil)
+			So(projRef.Upsert(t.Context()), ShouldBeNil)
 			Convey("then the value should be false", func() {
 				val, err := getStepback(ctx, testTask.Id, projRef, project)
 				So(err, ShouldBeNil)

@@ -162,7 +162,7 @@ func TestFindMergedProjectVars(t *testing.T) {
 
 	// Testing ProjectRef.RepoRefId == ""
 	project0.RepoRefId = ""
-	require.NoError(t, project0.Upsert())
+	require.NoError(t, project0.Upsert(t.Context()))
 	mergedVars, err = FindMergedProjectVars(t.Context(), project0.Id)
 	assert.NoError(err)
 	require.NotZero(t, mergedVars)

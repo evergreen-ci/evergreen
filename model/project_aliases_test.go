@@ -219,7 +219,7 @@ func (s *ProjectAliasSuite) TestFindAliasInProjectOrConfig() {
 		RepoRefId:             "r1",
 		VersionControlEnabled: utility.TruePtr(),
 	}
-	s.NoError(pRef.Upsert())
+	s.NoError(pRef.Upsert(s.T().Context()))
 	a1 := ProjectAlias{
 		ProjectID: "project-1",
 		Alias:     evergreen.CommitQueueAlias,
@@ -479,8 +479,8 @@ func (s *ProjectAliasSuite) TestFindAliasInProjectRepoOrConfig() {
 			},
 		}}
 	s.NoError(repoRef.Upsert())
-	s.NoError(pRef1.Upsert())
-	s.NoError(pRef2.Upsert())
+	s.NoError(pRef1.Upsert(s.T().Context()))
+	s.NoError(pRef2.Upsert(s.T().Context()))
 	s.NoError(projectConfig.Insert())
 
 	for i := 0; i < 3; i++ {
