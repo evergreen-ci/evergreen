@@ -439,7 +439,7 @@ func (p *ProjectAlias) Upsert(ctx context.Context) error {
 		parametersKey:  p.Parameters,
 	}
 
-	_, err := db.UpsertContext(ctx, ProjectAliasCollection, bson.M{
+	_, err := db.Upsert(ctx, ProjectAliasCollection, bson.M{
 		idKey: p.ID,
 	}, bson.M{"$set": update})
 	if err != nil {

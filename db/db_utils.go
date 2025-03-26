@@ -344,21 +344,9 @@ func UpdateAll(collection string, query any, update any) (*db.ChangeInfo, error)
 }
 
 // Upsert run the specified update against the collection as an upsert operation.
-func Upsert(collection string, query any, update any) (*db.ChangeInfo, error) {
-	session, db, err := GetGlobalSessionFactory().GetSession()
-	if err != nil {
-		grip.Errorf("error establishing db connection: %+v", err)
-
-		return nil, err
-	}
-	defer session.Close()
-
-	return db.C(collection).Upsert(query, update)
-}
-
-// UpsertContext run the specified update against the collection as an upsert operation.
-func UpsertContext(ctx context.Context, collection string, query any, update any) (*db.ChangeInfo, error) {
-	res, err := evergreen.GetEnvironment().DB().Collection(collection).UpdateOne(ctx,
+func Upsert(ctx context.Context, collection string, query any, update any) (*db.ChangeInfo, error) {
+	res, err := evergreen.GetEnvironment().DB().Collection(collection).UpdateOne(
+		ctx,
 		query,
 		update,
 		options.Update().SetUpsert(true),

@@ -78,7 +78,7 @@ func (a *TaskAnnotation) Upsert(ctx context.Context) error {
 	if a.Metadata != nil {
 		set[MetadataKey] = a.Metadata
 	}
-	_, err := db.UpsertContext(
+	_, err := db.Upsert(
 		ctx,
 		Collection,
 		ByTaskIdAndExecution(a.TaskId, a.TaskExecution),

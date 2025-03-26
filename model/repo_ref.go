@@ -51,7 +51,7 @@ func (r *RepoRef) Insert() error {
 func (r *RepoRef) Upsert(ctx context.Context) error {
 	r.RepoRefId = ""
 	r.Branch = ""
-	_, err := db.UpsertContext(
+	_, err := db.Upsert(
 		ctx,
 		RepoRefCollection,
 		bson.M{

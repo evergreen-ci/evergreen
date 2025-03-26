@@ -96,7 +96,7 @@ func UpdateAnnotationNote(ctx context.Context, taskId string, execution int, ori
 	if annotation != nil && annotation.Note != nil && annotation.Note.Message != originalMessage {
 		return errors.New("note is out of sync, please try again")
 	}
-	_, err = db.UpsertContext(
+	_, err = db.Upsert(
 		ctx,
 		Collection,
 		ByTaskIdAndExecution(taskId, execution),
@@ -118,7 +118,7 @@ func SetAnnotationMetadataLinks(ctx context.Context, taskId string, execution in
 		}
 	}
 
-	_, err := db.UpsertContext(
+	_, err := db.Upsert(
 		ctx,
 		Collection,
 		ByTaskIdAndExecution(taskId, execution),
@@ -136,7 +136,7 @@ func AddSuspectedIssueToAnnotation(ctx context.Context, taskId string, execution
 		Requester: UIRequester,
 	}
 
-	_, err := db.UpsertContext(
+	_, err := db.Upsert(
 		ctx,
 		Collection,
 		ByTaskIdAndExecution(taskId, execution),
@@ -192,7 +192,7 @@ func AddCreatedTicket(ctx context.Context, taskId string, execution int, ticket 
 		Requester: WebhookRequester,
 	}
 	ticket.Source = source
-	_, err := db.UpsertContext(
+	_, err := db.Upsert(
 		ctx,
 		Collection,
 		ByTaskIdAndExecution(taskId, execution),

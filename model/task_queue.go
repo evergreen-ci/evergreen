@@ -215,7 +215,7 @@ func (tq *TaskQueue) Save(ctx context.Context) error {
 }
 
 func updateTaskQueue(ctx context.Context, distro string, taskQueue []TaskQueueItem, distroQueueInfo DistroQueueInfo) error {
-	_, err := db.UpsertContext(
+	_, err := db.Upsert(
 		ctx,
 		distroQueueInfo.GetQueueCollection(),
 		bson.M{
@@ -293,7 +293,7 @@ func clearQueueInfo(distroQueueInfo DistroQueueInfo) DistroQueueInfo {
 }
 
 func clearTaskQueueCollection(ctx context.Context, distroId string, distroQueueInfo DistroQueueInfo) error {
-	_, err := db.UpsertContext(
+	_, err := db.Upsert(
 		ctx,
 		distroQueueInfo.GetQueueCollection(),
 		bson.M{
