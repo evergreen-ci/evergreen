@@ -422,6 +422,7 @@ func FindAllQ(collection string, q Q, out any) error {
 	return FindAllQContext(context.Background(), collection, q, out)
 }
 
+// FindAllQContext runs a Q query against the given collection, applying the results to "out."
 func FindAllQContext(ctx context.Context, collection string, q Q, out any) error {
 	if q.maxTime > 0 {
 		var cancel context.CancelFunc

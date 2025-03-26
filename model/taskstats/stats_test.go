@@ -78,7 +78,7 @@ func (s *statsSuite) TestGenerateStats() {
 		Date:      baseHour,
 		Tasks:     []string{"unknown_task"},
 	}))
-	s.Equal(0, s.countDailyTaskDocs())
+	s.Equal(0, s.countDailyTaskDocs(s.T().Context()))
 
 	// Generate task stats for project p1.
 	s.Require().NoError(GenerateStats(ctx, GenerateStatsOptions{
@@ -87,7 +87,7 @@ func (s *statsSuite) TestGenerateStats() {
 		Date:      baseHour,
 		Tasks:     []string{"task1", "task2"},
 	}))
-	s.Equal(3, s.countDailyTaskDocs())
+	s.Equal(3, s.countDailyTaskDocs(s.T().Context()))
 	doc, err := GetDailyTaskDoc(s.T().Context(), DBTaskStatsID{
 		Project:      "p1",
 		Requester:    "r1",
@@ -121,7 +121,7 @@ func (s *statsSuite) TestGenerateStats() {
 
 	// Generate task stats for project p4 to check status aggregation.
 	s.Require().NoError(GenerateStats(ctx, GenerateStatsOptions{ProjectID: "p4", Requester: "r1", Date: baseHour, Tasks: []string{"task1"}}))
-	s.Equal(4, s.countDailyTaskDocs()) // 1 more task combination was added to the collection.
+	s.Equal(4, s.countDailyTaskDocs(s.T().Context())) // 1 more task combination was added to the collection.
 	doc, err = GetDailyTaskDoc(s.T().Context(), DBTaskStatsID{
 		Project:      "p4",
 		Requester:    "r1",
@@ -144,7 +144,7 @@ func (s *statsSuite) TestGenerateStats() {
 
 	// Generate task for project p2
 	s.Require().NoError(GenerateStats(ctx, GenerateStatsOptions{ProjectID: "p2", Requester: "r1", Date: baseHour, Tasks: []string{"task1"}}))
-	s.Equal(5, s.countDailyTaskDocs()) // 1 more task combination was added to the collection.
+	s.Equal(5, s.countDailyTaskDocs(s.T().Context())) // 1 more task combination was added to the collection.
 	doc, err = GetDailyTaskDoc(s.T().Context(), DBTaskStatsID{
 		Project:      "p2",
 		Requester:    "r1",
@@ -344,12 +344,12 @@ func (s *statsSuite) insertFinishedTask(project string, requester string, taskNa
 // Methods to access database data //
 /////////////////////////////////////
 
-func (s *statsSuite) countDocs(collection string) int {
-	count, err := db.Count(collection, bson.M{})
+func (s *statsSuite) countDocs(ctx context.Context, collection string) int {
+	count, err := db.CountContext(ctx, collection, bson.M{})
 	s.Require().NoError(err)
 	return count
 }
 
-func (s *statsSuite) countDailyTaskDocs() int {
-	return s.countDocs(DailyTaskStatsCollection)
+func (s *statsSuite) countDailyTaskDocs(ctx context.Context) int {
+	return s.countDocs(ctx, DailyTaskStatsCollection)
 }

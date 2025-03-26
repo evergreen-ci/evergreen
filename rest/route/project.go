@@ -1263,7 +1263,7 @@ func (h *getProjectTaskExecutionsHandler) Run(ctx context.Context) gimlet.Respon
 		StartTime:    h.startTime,
 		EndTime:      h.endTime,
 	}
-	numTasks, err := task.CountNumExecutionsForInterval(input)
+	numTasks, err := task.CountNumExecutionsForInterval(ctx, input)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(err)
 	}

@@ -65,13 +65,13 @@ func TestDBUtils(t *testing.T) {
 			// insert, make sure both were inserted
 			So(Insert(collection, in), ShouldBeNil)
 			So(Insert(collection, inTwo), ShouldBeNil)
-			count, err := Count(collection, bson.M{})
+			count, err := CountContext(t.Context(), collection, bson.M{})
 			So(err, ShouldBeNil)
 			So(count, ShouldEqual, 2)
 
 			// clear and validate the collection is empty
 			So(Clear(collection), ShouldBeNil)
-			count, err = Count(collection, bson.M{})
+			count, err = CountContext(t.Context(), collection, bson.M{})
 			So(err, ShouldBeNil)
 			So(count, ShouldEqual, 0)
 
@@ -106,14 +106,14 @@ func TestDBUtils(t *testing.T) {
 			// insert, make sure both were inserted
 			So(Insert(collection, in), ShouldBeNil)
 			So(Insert(collection, inTwo), ShouldBeNil)
-			count, err := Count(collection, bson.M{})
+			count, err := CountContext(t.Context(), collection, bson.M{})
 			So(err, ShouldBeNil)
 			So(count, ShouldEqual, 2)
 
 			// remove just the first
 			So(Remove(t.Context(), collection, bson.M{"field_one": "1"}),
 				ShouldBeNil)
-			count, err = Count(collection, bson.M{})
+			count, err = CountContext(t.Context(), collection, bson.M{})
 			So(err, ShouldBeNil)
 			So(count, ShouldEqual, 1)
 
@@ -146,14 +146,14 @@ func TestDBUtils(t *testing.T) {
 			So(Insert(collection, in), ShouldBeNil)
 			So(Insert(collection, inTwo), ShouldBeNil)
 			So(Insert(collection, inThree), ShouldBeNil)
-			count, err := Count(collection, bson.M{})
+			count, err := CountContext(t.Context(), collection, bson.M{})
 			So(err, ShouldBeNil)
 			So(count, ShouldEqual, 3)
 
 			// remove just the first
 			So(RemoveAll(t.Context(), collection, bson.M{"field_one": "1"}),
 				ShouldBeNil)
-			count, err = Count(collection, bson.M{})
+			count, err = CountContext(t.Context(), collection, bson.M{})
 			So(err, ShouldBeNil)
 			So(count, ShouldEqual, 1)
 
@@ -196,7 +196,7 @@ func TestDBUtils(t *testing.T) {
 			So(Insert(collection, inTwo), ShouldBeNil)
 			So(Insert(collection, inThree), ShouldBeNil)
 			So(Insert(collection, inFour), ShouldBeNil)
-			count, err := Count(collection, bson.M{})
+			count, err := CountContext(t.Context(), collection, bson.M{})
 			So(err, ShouldBeNil)
 			So(count, ShouldEqual, 4)
 
@@ -235,7 +235,7 @@ func TestDBUtils(t *testing.T) {
 			// insert, make sure both were inserted
 			So(Insert(collection, in), ShouldBeNil)
 			So(Insert(collection, inTwo), ShouldBeNil)
-			count, err := Count(collection, bson.M{})
+			count, err := CountContext(t.Context(), collection, bson.M{})
 			So(err, ShouldBeNil)
 			So(count, ShouldEqual, 2)
 
@@ -283,7 +283,7 @@ func TestDBUtils(t *testing.T) {
 			So(Insert(collection, in), ShouldBeNil)
 			So(Insert(collection, inTwo), ShouldBeNil)
 			So(Insert(collection, inThree), ShouldBeNil)
-			count, err := Count(collection, bson.M{})
+			count, err := CountContext(t.Context(), collection, bson.M{})
 			So(err, ShouldBeNil)
 			So(count, ShouldEqual, 3)
 
