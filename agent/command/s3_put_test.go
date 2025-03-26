@@ -613,7 +613,7 @@ func TestS3PutSkipExisting(t *testing.T) {
 
 	remoteFile := fmt.Sprintf("tests/%s/%s", t.Name(), id)
 
-	cmd := s3PutFactory()
+	cmd := s3PutFactory().(*s3put)
 	params := map[string]any{
 		"aws_key":           accessKeyID,
 		"aws_secret":        secretAccessKey,
@@ -628,6 +628,7 @@ func TestS3PutSkipExisting(t *testing.T) {
 	}
 
 	require.NoError(t, cmd.ParseParams(params))
+	require.True(t, cmd.skipExisting)
 
 	tconf := &internal.TaskConfig{
 		Task:    task.Task{},
