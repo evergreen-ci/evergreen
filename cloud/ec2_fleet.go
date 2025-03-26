@@ -80,6 +80,7 @@ func (c instanceTypeSubnetCache) getAZs(ctx context.Context, settings *evergreen
 type EC2FleetManagerOptions struct {
 	client AWSClient
 	region string
+	role   string
 }
 
 type ec2FleetManager struct {
@@ -98,12 +99,16 @@ func (m *ec2FleetManager) Configure(ctx context.Context, settings *evergreen.Set
 	return nil
 }
 
+func (m *ec2FleetManager) setupClient(ctx context.Context) error {
+	return m.client.Create(ctx, m.region, m.role)
+}
+
 func (m *ec2FleetManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, error) {
 	if h.Distro.Provider != evergreen.ProviderNameEc2Fleet {
 		return nil, errors.Errorf("can't spawn instance for distro '%s': distro provider is '%s'", h.Distro.Id, h.Distro.Provider)
 	}
 
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.setupClient(ctx); err != nil {
 		return nil, errors.Wrap(err, "creating client")
 	}
 
@@ -151,7 +156,7 @@ func (m *ec2FleetManager) GetInstanceStatuses(ctx context.Context, hosts []host.
 		instanceIDs = append(instanceIDs, h.Id)
 	}
 
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.setupClient(ctx); err != nil {
 		return nil, errors.Wrap(err, "creating client")
 	}
 
@@ -210,7 +215,7 @@ func (m *ec2FleetManager) GetInstanceStatuses(ctx context.Context, hosts []host.
 func (m *ec2FleetManager) GetInstanceState(ctx context.Context, h *host.Host) (CloudInstanceState, error) {
 	info := CloudInstanceState{Status: StatusUnknown}
 
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.setupClient(ctx); err != nil {
 		return info, errors.Wrap(err, "creating client")
 	}
 
@@ -251,7 +256,7 @@ func (m *ec2FleetManager) SetPortMappings(context.Context, *host.Host, *host.Hos
 }
 
 func (m *ec2FleetManager) CheckInstanceType(ctx context.Context, instanceType string) error {
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.setupClient(ctx); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
 	output, err := m.client.DescribeInstanceTypeOfferings(ctx, &ec2.DescribeInstanceTypeOfferingsInput{})
@@ -272,7 +277,7 @@ func (m *ec2FleetManager) TerminateInstance(ctx context.Context, h *host.Host, u
 	if h.Status == evergreen.HostTerminated {
 		return errors.Errorf("cannot terminate host '%s' because it's already marked as terminated", h.Id)
 	}
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.setupClient(ctx); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
 
@@ -325,7 +330,7 @@ func (m *ec2FleetManager) StartInstance(context.Context, *host.Host, string) err
 }
 
 func (m *ec2FleetManager) Cleanup(ctx context.Context) error {
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.setupClient(ctx); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
 
@@ -385,7 +390,7 @@ func (m *ec2FleetManager) GetVolumeAttachment(context.Context, string) (*VolumeA
 }
 
 func (m *ec2FleetManager) GetDNSName(ctx context.Context, h *host.Host) (string, error) {
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.setupClient(ctx); err != nil {
 		return "", errors.Wrap(err, "creating client")
 	}
 

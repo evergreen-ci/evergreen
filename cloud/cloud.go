@@ -110,7 +110,11 @@ type BatchManager interface {
 // of the proper type.
 type ManagerOpts struct {
 	Provider string
-	Region   string
+	// Region is the geographical region where the cloud operations should
+	// occur.
+	Region string
+	// Role is the permissions role used to make authorized cloud API calls.
+	Role string
 }
 
 // GetSettings returns an uninitialized ProviderSettings based on the given
@@ -141,6 +145,9 @@ func GetManager(ctx context.Context, env evergreen.Environment, mgrOpts ManagerO
 			EC2ManagerOptions: &EC2ManagerOptions{
 				client: &awsClientImpl{},
 				region: mgrOpts.Region,
+				// kim: TODO: make sure callers set AssumeRoleARN if set by
+				// distro.
+				role: mgrOpts.Role,
 			},
 		}
 	case evergreen.ProviderNameEc2Fleet:
@@ -149,6 +156,9 @@ func GetManager(ctx context.Context, env evergreen.Environment, mgrOpts ManagerO
 			EC2FleetManagerOptions: &EC2FleetManagerOptions{
 				client: &awsClientImpl{},
 				region: mgrOpts.Region,
+				// kim: TODO: make sure callers set AssumeRoleARN if set by
+				// distro.
+				role: mgrOpts.Role,
 			},
 		}
 	case evergreen.ProviderNameStatic:

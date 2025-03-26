@@ -640,6 +640,7 @@ func getEC2ManagerOptionsFromSettings(provider string, settings *EC2ProviderSett
 	return ManagerOpts{
 		Provider: provider,
 		Region:   region,
+		Role:     settings.AssumeRoleARN,
 	}
 }
 

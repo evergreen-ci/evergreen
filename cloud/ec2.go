@@ -80,6 +80,23 @@ type EC2ProviderSettings struct {
 
 	// FleetOptions specifies options for creating host with Fleet. It is ignored by other managers.
 	FleetOptions FleetConfig `mapstructure:"fleet_options" json:"fleet_options,omitempty" bson:"fleet_options,omitempty"`
+
+	// AssumeRoleARN is the role to assume when making AWS API calls.
+	// kim: TODO: consider long-term implications of storing role ARNs, which
+	// could be modified in the future, as opposed to storing account IDs.
+	// - Role ARNs are very straightforward since it tells you what role to use
+	// to make an API call today. However, if they're changed later on, it's
+	// extremely difficult to fix existing hosts/volumes to use the new ARN.
+	// - Account IDs are immutable and can be mapped in admin settings to their
+	// exact role ARNs to assume, which allows us to change the role ARNs later
+	// on associated with each account. However, they're less straightforward to
+	// use since you can't pass in the string directly (need to map distro to
+	// admin setings, and not all places may pass the admin settings in).
+	// **Slightly prefer this one because it avoids storing a role ARN in the
+	// host/volume doc.**
+	// kim: TODO: consider moving this to general distro settings because it
+	// applies to the entire distro, it's not region-specific.
+	AssumeRoleARN string `mapstructure:"assume_role_arn,omitempty" json:"assume_role_arn,omitempty" bson:"assume_role_arn,omitempty"`
 }
 
 // Validate that essential EC2ProviderSettings fields are not empty.
@@ -231,8 +248,11 @@ type EC2ManagerOptions struct {
 	// client is the client library for communicating with AWS.
 	client AWSClient
 
-	// region is the AWS region specified by distro
+	// region is the AWS region specified by the distro.
 	region string
+
+	// role is the role to assume when making AWS API calls for a distro.
+	role string
 }
 
 // ec2Manager starts and configures instances in EC2.
@@ -251,6 +271,10 @@ func (m *ec2Manager) Configure(ctx context.Context, settings *evergreen.Settings
 	}
 
 	return nil
+}
+
+func (m *ec2Manager) setupClient(ctx context.Context) error {
+	return m.client.Create(ctx, m.region, m.role)
 }
 
 func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings, blockDevices []types.BlockDeviceMapping) error {
@@ -427,7 +451,7 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 			h.Distro.Id, h.Distro.Provider)
 	}
 
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.setupClient(ctx); err != nil {
 		return nil, errors.Wrap(err, "creating client")
 	}
 
@@ -536,7 +560,7 @@ func (m *ec2Manager) setInstanceType(ctx context.Context, h *host.Host, instance
 }
 
 func (m *ec2Manager) CheckInstanceType(ctx context.Context, instanceType string) error {
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.setupClient(ctx); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
 	output, err := m.client.DescribeInstanceTypeOfferings(ctx, &ec2.DescribeInstanceTypeOfferingsInput{})
@@ -646,7 +670,7 @@ func (m *ec2Manager) extendExpiration(ctx context.Context, h *host.Host, extensi
 
 // ModifyHost modifies a spawn host according to the changes specified by a HostModifyOptions struct.
 func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, opts host.HostModifyOptions) error {
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.setupClient(ctx); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
 
@@ -725,7 +749,7 @@ func addPublicKey(ctx context.Context, h *host.Host, key string) error {
 
 // GetInstanceStatuses returns the current status of a slice of EC2 instances.
 func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host) (map[string]CloudStatus, error) {
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.setupClient(ctx); err != nil {
 		return nil, errors.Wrap(err, "creating client")
 	}
 
@@ -795,7 +819,7 @@ func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host)
 func (m *ec2Manager) GetInstanceState(ctx context.Context, h *host.Host) (CloudInstanceState, error) {
 	info := CloudInstanceState{Status: StatusUnknown}
 
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.setupClient(ctx); err != nil {
 		return info, errors.Wrap(err, "creating client")
 	}
 
@@ -844,7 +868,7 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 		}))
 	}
 
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.setupClient(ctx); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
 
@@ -928,7 +952,7 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, shouldKeepO
 		return errors.Errorf("host cannot be stopped because its status ('%s') is not a stoppable state", h.Status)
 	}
 
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.setupClient(ctx); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
 
@@ -1011,7 +1035,7 @@ func (m *ec2Manager) StartInstance(ctx context.Context, h *host.Host, user strin
 		return errors.Errorf("host cannot be started because its status ('%s') is not a startable state", h.Status)
 	}
 
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.setupClient(ctx); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
 
@@ -1057,7 +1081,7 @@ func (m *ec2Manager) StartInstance(ctx context.Context, h *host.Host, user strin
 }
 
 func (m *ec2Manager) AttachVolume(ctx context.Context, h *host.Host, attachment *host.VolumeAttachment) error {
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.setupClient(ctx); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
 
@@ -1097,7 +1121,7 @@ func (m *ec2Manager) DetachVolume(ctx context.Context, h *host.Host, volumeID st
 		return errors.Errorf("volume '%s' not found", volumeID)
 	}
 
-	if err = m.client.Create(ctx, m.region); err != nil {
+	if err = m.setupClient(ctx); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
 
@@ -1119,7 +1143,7 @@ func (m *ec2Manager) DetachVolume(ctx context.Context, h *host.Host, volumeID st
 }
 
 func (m *ec2Manager) CreateVolume(ctx context.Context, volume *host.Volume) (*host.Volume, error) {
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.setupClient(ctx); err != nil {
 		return nil, errors.Wrap(err, "creating client")
 	}
 
@@ -1165,7 +1189,7 @@ func (m *ec2Manager) CreateVolume(ctx context.Context, volume *host.Volume) (*ho
 }
 
 func (m *ec2Manager) DeleteVolume(ctx context.Context, volume *host.Volume) error {
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.setupClient(ctx); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
 
@@ -1180,7 +1204,7 @@ func (m *ec2Manager) DeleteVolume(ctx context.Context, volume *host.Volume) erro
 }
 
 func (m *ec2Manager) GetVolumeAttachment(ctx context.Context, volumeID string) (*VolumeAttachment, error) {
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.setupClient(ctx); err != nil {
 		return nil, errors.Wrap(err, "creating client")
 	}
 
@@ -1235,7 +1259,7 @@ func (m *ec2Manager) modifyVolumeExpiration(ctx context.Context, volume *host.Vo
 }
 
 func (m *ec2Manager) ModifyVolume(ctx context.Context, volume *host.Volume, opts *model.VolumeModifyOptions) error {
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.setupClient(ctx); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
 
@@ -1290,7 +1314,7 @@ func (m *ec2Manager) ModifyVolume(ctx context.Context, volume *host.Volume, opts
 
 // GetDNSName returns the DNS name for the host.
 func (m *ec2Manager) GetDNSName(ctx context.Context, h *host.Host) (string, error) {
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.setupClient(ctx); err != nil {
 		return "", errors.Wrap(err, "creating client")
 	}
 
