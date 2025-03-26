@@ -1374,6 +1374,15 @@ and contains these fields:
 `s3.get` downloads a file from Amazon s3.
 
 ``` yaml
+# Temporary credentials:
+- command: s3.get
+  params:
+    role_arn: ${role_arn}
+    remote_file: ${mongo_binaries}
+    bucket: mciuploads
+    region: us-east-1
+    local_file: src/mongo-binaries.tgz
+# Static credentials (deprecated):
 - command: s3.get
   params:
     aws_key: ${aws_key}
@@ -1390,6 +1399,11 @@ Parameters:
 -   `aws_key`: your AWS key (use expansions to keep this a secret).
 -   `aws_secret`: your AWS secret (use expansions to keep this a secret).
 -   `aws_session_token`: your temporary AWS session token (use expansions to keep this a secret).
+    Note: If you are generating temporary credentials using `ec2.assume_role`, it is recommended
+    to pass in the role_arn directly to your s3 commands instead.
+-   `role_arn`: your AWS role to be assumed before and during the s3 operation.
+    This does not have to be a secret but managing it with expansions is recommended.
+    This is the recommended way to authenticate with AWS.
 -   `local_file`: the local file to save, do not use with `extract_to`
 -   `extract_to`: the local directory to extract to, do not use with
     `local_file`
@@ -1406,6 +1420,19 @@ This command uploads a file to Amazon s3, for use in later tasks or
 distribution. **Files uploaded with this command will also be viewable within the Parsley log viewer if the `content_type` is set to `text/plain`, `application/json` or `text/csv`.**
 
 ``` yaml
+# Temporary credentials:
+- command: s3.put
+  params:
+    role_arn: ${role_arn}
+    local_file: src/mongodb-binaries.tgz
+    remote_file: mongodb-mongo-master/${build_variant}/${revision}/binaries/mongo-${build_id}.${ext|tgz}
+    bucket: mciuploads
+    region: us-east-1
+    permissions: private
+    visibility: signed
+    content_type: ${content_type|application/x-gzip}
+    display_name: Binaries
+# Static credentials (deprecated)
 - command: s3.put
   params:
     aws_key: ${aws_key}
@@ -1424,9 +1451,13 @@ distribution. **Files uploaded with this command will also be viewable within th
 Parameters:
 
 -   `aws_key`: your AWS key (use expansions to keep this a secret).
--   `aws_secret`: your AWS secret (use expansions to keep this a secret).
--   `aws_session_token`: your temporary AWS session token (use expansions to keep this a secret). This cannot be used
-    with `visibility: signed`.
+-   `aws_secret`: your AWS secret (use expansions to keep this a secret)
+-   `aws_session_token`: your temporary AWS session token (use expansions to keep this a secret).
+    Note: If you are generating temporary credentials using `ec2.assume_role`, it is recommended
+    to pass in the role_arn directly to your s3 commands instead.
+-   `role_arn`: your AWS role to be assumed before and during the s3 operation.
+    This does not have to be a secret but managing it with expansions is recommended.
+    This is the recommended way to authenticate with AWS.
 -   `local_file`: the local file to post
 -   `remote_file`: the S3 path to post the file to
 -   `bucket`: the S3 bucket to use. Note: buckets created after Sept.
@@ -1453,9 +1484,13 @@ Parameters:
     you can use this parameter.
 -   `visibility`: "public" (default) which provides a link to the
     s3 path in the UI for all Evergreen users. "private" which is a legacy option that now does the
-    same as "public". "none" which hides the file from the UI for everybody.
-    "signed" which creates a pre signed url with the provided static credentials, allowing users to see the file (even if it's private on S3). Visibility: signed should not be combined with permissions: public-read or permissions: public-read-write, or aws_session_token.
-    Note: This parameter does not affect the underlying permissions of the file
+    same as "public". "none" which hides the file from the UI for everybody but does not
+    affect the underlying s3 permissions (see `permissions` parameter). "signed" which creates
+    a pre signed url with the provided role_arn or credentials, allowing users to see the file
+    (even if it's private on S3). Visibility: signed should not be combined with
+    permissions: public-read or permissions: public-read-write. It can be combined with aws_session_token
+    but it will only work if the generated credentials are from a previous `ec2.assume_role` command in this task.
+    Note: This parameter does *not* affect the underlying permissions of the file
     on S3, only the visibility in the Evergreen UI. To change the permissions of the file on S3, use the `permissions` parameter.
 -   `patchable`: defaults to true. If set to false, the command will
     no-op for patches (i.e. continue without performing the s3 put).
