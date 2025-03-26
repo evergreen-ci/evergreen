@@ -40,7 +40,7 @@ func (s *ProjectAliasSuite) SetupTest() {
 
 func (s *ProjectAliasSuite) TestInsertTaskAndVariantWithNoTags() {
 	for _, a := range s.aliases {
-		s.NoError(a.Upsert())
+		s.NoError(a.Upsert(s.T().Context()))
 	}
 
 	var out ProjectAlias
@@ -61,7 +61,7 @@ func (s *ProjectAliasSuite) TestInsertTagsAndNoTask() {
 		aliasCopy := alias
 		aliasCopy.Task = ""
 		aliasCopy.TaskTags = tags
-		s.NoError(aliasCopy.Upsert())
+		s.NoError(aliasCopy.Upsert(s.T().Context()))
 	}
 
 	var out ProjectAlias
@@ -86,21 +86,21 @@ func (s *ProjectAliasSuite) TestHasMatchingGitTagAliasAndRemotePath() {
 		Variant:   "variant",
 		Task:      "task",
 	}
-	s.NoError(newAlias.Upsert())
+	s.NoError(newAlias.Upsert(s.T().Context()))
 	newAlias2 := ProjectAlias{
 		ProjectID:  "project_id",
 		Alias:      evergreen.GitTagAlias,
 		GitTag:     "release",
 		RemotePath: "file.yml",
 	}
-	s.NoError(newAlias2.Upsert())
+	s.NoError(newAlias2.Upsert(s.T().Context()))
 	hasAliases, path, err := HasMatchingGitTagAliasAndRemotePath(s.T().Context(), "project_id", "release")
 	s.Error(err)
 	s.False(hasAliases)
 	s.Empty(path)
 
 	newAlias2.RemotePath = ""
-	s.NoError(newAlias2.Upsert())
+	s.NoError(newAlias2.Upsert(s.T().Context()))
 	hasAliases, path, err = HasMatchingGitTagAliasAndRemotePath(s.T().Context(), "project_id", "release")
 	s.NoError(err)
 	s.True(hasAliases)
@@ -117,7 +117,7 @@ func (s *ProjectAliasSuite) TestHasMatchingGitTagAliasAndRemotePath() {
 		GitTag:     "release",
 		RemotePath: "file.yml",
 	}
-	s.NoError(newAlias3.Upsert())
+	s.NoError(newAlias3.Upsert(s.T().Context()))
 	hasAliases, path, err = HasMatchingGitTagAliasAndRemotePath(s.T().Context(), "project_id2", "release")
 	s.NoError(err)
 	s.True(hasAliases)
@@ -130,7 +130,7 @@ func (s *ProjectAliasSuite) TestInsertTagsAndNoVariant() {
 		aliasCopy := alias
 		aliasCopy.Variant = ""
 		aliasCopy.VariantTags = tags
-		s.NoError(aliasCopy.Upsert())
+		s.NoError(aliasCopy.Upsert(s.T().Context()))
 	}
 
 	var out ProjectAlias
@@ -149,7 +149,7 @@ func (s *ProjectAliasSuite) TestInsertTagsAndNoVariant() {
 
 func (s *ProjectAliasSuite) TestRemove() {
 	for i, a := range s.aliases {
-		s.NoError(a.Upsert())
+		s.NoError(a.Upsert(s.T().Context()))
 		s.aliases[i] = a
 	}
 	var out []ProjectAlias
@@ -166,7 +166,7 @@ func (s *ProjectAliasSuite) TestRemove() {
 
 func (s *ProjectAliasSuite) TestFindAliasesForProject() {
 	for _, a := range s.aliases {
-		s.NoError(a.Upsert())
+		s.NoError(a.Upsert(s.T().Context()))
 	}
 	a1 := ProjectAlias{
 		ProjectID: "project-1",
@@ -174,7 +174,7 @@ func (s *ProjectAliasSuite) TestFindAliasesForProject() {
 		Variant:   "variants-111",
 		Task:      "variants-11",
 	}
-	s.NoError(a1.Upsert())
+	s.NoError(a1.Upsert(s.T().Context()))
 
 	out, err := FindAliasesForProjectFromDb("project-1")
 	s.NoError(err)
@@ -183,7 +183,7 @@ func (s *ProjectAliasSuite) TestFindAliasesForProject() {
 
 func (s *ProjectAliasSuite) TestFindAliasInProject() {
 	for _, a := range s.aliases {
-		s.NoError(a.Upsert())
+		s.NoError(a.Upsert(s.T().Context()))
 	}
 	a1 := ProjectAlias{
 		ProjectID: "project-1",
@@ -203,9 +203,9 @@ func (s *ProjectAliasSuite) TestFindAliasInProject() {
 		Variant:   "variants-11",
 		Task:      "variants-11",
 	}
-	s.NoError(a1.Upsert())
-	s.NoError(a2.Upsert())
-	s.NoError(a3.Upsert())
+	s.NoError(a1.Upsert(s.T().Context()))
+	s.NoError(a2.Upsert(s.T().Context()))
+	s.NoError(a3.Upsert(s.T().Context()))
 
 	found, err := findMatchingAliasForProjectRef("project-1", "alias-1")
 	s.NoError(err)
@@ -241,11 +241,11 @@ func (s *ProjectAliasSuite) TestFindAliasInProjectOrConfig() {
 		Alias:       "duplicate",
 		Description: "from UI",
 	}
-	s.NoError(a1.Upsert())
-	s.NoError(a2.Upsert())
-	s.NoError(a3.Upsert())
-	s.NoError(patchAlias.Upsert())
-	s.NoError(duplicateAlias.Upsert())
+	s.NoError(a1.Upsert(s.T().Context()))
+	s.NoError(a2.Upsert(s.T().Context()))
+	s.NoError(a3.Upsert(s.T().Context()))
+	s.NoError(patchAlias.Upsert(s.T().Context()))
+	s.NoError(duplicateAlias.Upsert(s.T().Context()))
 
 	projectConfig := &ProjectConfig{
 		Id:      "project-1",
@@ -367,9 +367,9 @@ func TestFindMergedAliasesFromProjectRepoOrProjectConfig(t *testing.T) {
 
 	for testName, testCase := range map[string]func(t *testing.T){
 		"nothing enabled": func(t *testing.T) {
-			assert.NoError(t, UpsertAliasesForProject(cqAliases, pRef.Id))
-			assert.NoError(t, UpsertAliasesForProject(githubChecksAlias, pRef.Id))
-			assert.NoError(t, UpsertAliasesForProject(gitTagAliases, pRef.RepoRefId))
+			assert.NoError(t, UpsertAliasesForProject(t.Context(), cqAliases, pRef.Id))
+			assert.NoError(t, UpsertAliasesForProject(t.Context(), githubChecksAlias, pRef.Id))
+			assert.NoError(t, UpsertAliasesForProject(t.Context(), gitTagAliases, pRef.RepoRefId))
 			tempRef := ProjectRef{ // This ref has nothing else enabled so merging should only return project aliases
 				Id: pRef.Id,
 			}
@@ -380,10 +380,10 @@ func TestFindMergedAliasesFromProjectRepoOrProjectConfig(t *testing.T) {
 			assert.Equal(t, res[1].ProjectID, pRef.Id)
 		},
 		"all enabled": func(t *testing.T) {
-			assert.NoError(t, UpsertAliasesForProject(cqAliases, pRef.Id))
-			assert.NoError(t, UpsertAliasesForProject(cqAliases, pRef.RepoRefId))
-			assert.NoError(t, UpsertAliasesForProject(gitTagAliases, pRef.RepoRefId))
-			assert.NoError(t, UpsertAliasesForProject(githubChecksAlias, pRef.RepoRefId))
+			assert.NoError(t, UpsertAliasesForProject(t.Context(), cqAliases, pRef.Id))
+			assert.NoError(t, UpsertAliasesForProject(t.Context(), cqAliases, pRef.RepoRefId))
+			assert.NoError(t, UpsertAliasesForProject(t.Context(), gitTagAliases, pRef.RepoRefId))
+			assert.NoError(t, UpsertAliasesForProject(t.Context(), githubChecksAlias, pRef.RepoRefId))
 			res, err := ConstructMergedAliasesByPrecedence(&pRef, &projectConfig, pRef.RepoRefId)
 			assert.NoError(t, err)
 			// Uses aliases from project, repo, and config
@@ -407,9 +407,9 @@ func TestFindMergedAliasesFromProjectRepoOrProjectConfig(t *testing.T) {
 			assert.Equal(t, 2, cqCount)
 		},
 		"project and repo only used": func(t *testing.T) {
-			assert.NoError(t, UpsertAliasesForProject(cqAliases, pRef.Id))
-			assert.NoError(t, UpsertAliasesForProject(cqAliases, pRef.RepoRefId))
-			assert.NoError(t, UpsertAliasesForProject(patchAliases, pRef.RepoRefId))
+			assert.NoError(t, UpsertAliasesForProject(t.Context(), cqAliases, pRef.Id))
+			assert.NoError(t, UpsertAliasesForProject(t.Context(), cqAliases, pRef.RepoRefId))
+			assert.NoError(t, UpsertAliasesForProject(t.Context(), patchAliases, pRef.RepoRefId))
 			res, err := ConstructMergedAliasesByPrecedence(&pRef, &projectConfig, pRef.RepoRefId)
 			assert.NoError(t, err)
 			// Ignores config aliases because they're already used
@@ -493,7 +493,7 @@ func (s *ProjectAliasSuite) TestFindAliasInProjectRepoOrConfig() {
 		if i%2 != 0 {
 			alias.Alias = "alias-2"
 		}
-		s.NoError(alias.Upsert())
+		s.NoError(alias.Upsert(s.T().Context()))
 	}
 
 	for i := 0; i < 6; i++ {
@@ -506,7 +506,7 @@ func (s *ProjectAliasSuite) TestFindAliasInProjectRepoOrConfig() {
 		if i%2 == 0 {
 			alias.Alias = "alias-4"
 		}
-		s.NoError(alias.Upsert())
+		s.NoError(alias.Upsert(s.T().Context()))
 	}
 
 	// Test project with aliases
@@ -546,12 +546,12 @@ func (s *ProjectAliasSuite) TestFindAliasInProjectRepoOrConfig() {
 	s.Equal("cq-.*", found[0].Variant)
 }
 
-func (s *ProjectAliasSuite) TestUpsertAliasesForProject() {
+func (s *ProjectAliasSuite) TestUpsertAliasesForProject(t *testing.T) {
 	for _, a := range s.aliases {
 		a.ProjectID = "old-project"
-		s.NoError(a.Upsert())
+		s.NoError(a.Upsert(t.Context()))
 	}
-	s.NoError(UpsertAliasesForProject(s.aliases, "new-project"))
+	s.NoError(UpsertAliasesForProject(t.Context(), s.aliases, "new-project"))
 
 	found, err := FindAliasesForProjectFromDb("new-project")
 	s.NoError(err)

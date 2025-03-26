@@ -118,7 +118,8 @@ func SetAnnotationMetadataLinks(ctx context.Context, taskId string, execution in
 		}
 	}
 
-	_, err := db.Upsert(
+	_, err := db.UpsertContext(
+		ctx,
 		Collection,
 		ByTaskIdAndExecution(taskId, execution),
 		bson.M{
@@ -128,14 +129,15 @@ func SetAnnotationMetadataLinks(ctx context.Context, taskId string, execution in
 	return errors.Wrapf(err, "setting task links for task '%s'", taskId)
 }
 
-func AddSuspectedIssueToAnnotation(taskId string, execution int, issue IssueLink, username string) error {
+func AddSuspectedIssueToAnnotation(ctx context.Context, taskId string, execution int, issue IssueLink, username string) error {
 	issue.Source = &Source{
 		Author:    username,
 		Time:      time.Now(),
 		Requester: UIRequester,
 	}
 
-	_, err := db.Upsert(
+	_, err := db.UpsertContext(
+		ctx,
 		Collection,
 		ByTaskIdAndExecution(taskId, execution),
 		bson.M{
@@ -183,14 +185,15 @@ func CreateAnnotationUpdate(annotation *TaskAnnotation, userDisplayName string) 
 	return update
 }
 
-func AddCreatedTicket(taskId string, execution int, ticket IssueLink, userDisplayName string) error {
+func AddCreatedTicket(ctx context.Context, taskId string, execution int, ticket IssueLink, userDisplayName string) error {
 	source := &Source{
 		Author:    userDisplayName,
 		Time:      time.Now(),
 		Requester: WebhookRequester,
 	}
 	ticket.Source = source
-	_, err := db.Upsert(
+	_, err := db.UpsertContext(
+		ctx,
 		Collection,
 		ByTaskIdAndExecution(taskId, execution),
 		bson.M{

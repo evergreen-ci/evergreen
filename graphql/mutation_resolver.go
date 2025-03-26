@@ -68,7 +68,7 @@ func (r *mutationResolver) AddAnnotationIssue(ctx context.Context, taskID string
 		}
 		return true, nil
 	} else {
-		if err := annotations.AddSuspectedIssueToAnnotation(taskID, execution, *issue, usr.Username()); err != nil {
+		if err := annotations.AddSuspectedIssueToAnnotation(ctx, taskID, execution, *issue, usr.Username()); err != nil {
 			return false, InternalServerError.Send(ctx, fmt.Sprintf("adding suspected issue: %s", err.Error()))
 		}
 		return true, nil

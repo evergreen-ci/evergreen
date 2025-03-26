@@ -245,14 +245,14 @@ func TestCLIFetchArtifacts(t *testing.T) {
 			TaskId:          "rest_task_test_id1",
 			TaskDisplayName: "task_one",
 			Files:           []artifact.File{{Link: "http://www.google.com/robots.txt"}},
-		}).Upsert()
+		}).Upsert(t.Context())
 		So(err, ShouldBeNil)
 
 		err = (&artifact.Entry{
 			TaskId:          "rest_task_test_id2",
 			TaskDisplayName: "task_two",
 			Files:           []artifact.File{{Link: "http://www.google.com/humans.txt"}},
-		}).Upsert()
+		}).Upsert(t.Context())
 		So(err, ShouldBeNil)
 
 		client, err := NewClientSettings(testSetup.settingsFilePath)

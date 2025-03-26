@@ -56,7 +56,7 @@ func TestGetSubscriptions(t *testing.T) {
 	}
 
 	for i := range subs {
-		assert.NoError(subs[i].Upsert())
+		assert.NoError(subs[i].Upsert(t.Context()))
 	}
 
 	apiSubs, err := GetSubscriptions("someone", event.OwnerTypePerson)
@@ -304,7 +304,7 @@ func TestSaveProjectSubscriptions(t *testing.T) {
 					Target: "a@domain.invalid",
 				},
 			}
-			assert.NoError(t, projectSubscription.Upsert())
+			assert.NoError(t, projectSubscription.Upsert(t.Context()))
 			test(t)
 		})
 	}
@@ -474,7 +474,7 @@ func TestDeleteProjectSubscriptions(t *testing.T) {
 			}
 			toDelete := []string{}
 			for _, sub := range subs {
-				assert.NoError(t, sub.Upsert())
+				assert.NoError(t, sub.Upsert(t.Context()))
 				toDelete = append(toDelete, sub.ID)
 			}
 			test(t, toDelete)

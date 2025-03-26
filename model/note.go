@@ -23,8 +23,9 @@ type Note struct {
 var NoteTaskIdKey = bsonutil.MustHaveTag(Note{}, "TaskId")
 
 // Upsert overwrites an existing note.
-func (n *Note) Upsert() error {
-	_, err := db.Upsert(
+func (n *Note) Upsert(ctx context.Context) error {
+	_, err := db.UpsertContext(
+		ctx,
 		NotesCollection,
 		bson.M{NoteTaskIdKey: n.TaskId},
 		n,

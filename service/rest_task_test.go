@@ -117,7 +117,7 @@ func TestGetTaskInfo(t *testing.T) {
 			TaskId: taskId,
 			Files:  []artifact.File{publicFile, noVisibilityFile},
 		}
-		So(taskArtifacts.Upsert(), ShouldBeNil)
+		So(taskArtifacts.Upsert(t.Context()), ShouldBeNil)
 
 		url := "/rest/v1/tasks/" + taskId
 

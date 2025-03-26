@@ -318,7 +318,7 @@ func TestDBUtils(t *testing.T) {
 					FieldTwo: 1,
 				}
 
-				_, err := Upsert(
+				_, err := UpsertContext(t.Context(),
 					collection,
 					bson.M{
 						"field_one": in.FieldOne,
@@ -348,7 +348,7 @@ func TestDBUtils(t *testing.T) {
 				So(Insert(collection, in), ShouldBeNil)
 				in.FieldTwo = 2
 
-				_, err := Upsert(
+				_, err := UpsertContext(t.Context(),
 					collection,
 					bson.M{
 						"field_one": in.FieldOne,

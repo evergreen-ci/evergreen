@@ -112,8 +112,8 @@ func TestGetAliasesHandler(t *testing.T) {
 				Alias:     "project_alias",
 				Variant:   "test_variant",
 			}
-			require.NoError(t, repoAlias.Upsert())
-			require.NoError(t, projectAlias.Upsert())
+			require.NoError(t, repoAlias.Upsert(t.Context()))
+			require.NoError(t, projectAlias.Upsert(t.Context()))
 
 			projectConfig := &dbModel.ProjectConfig{
 				Id:      "project-1",
