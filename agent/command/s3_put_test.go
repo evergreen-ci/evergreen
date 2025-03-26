@@ -634,19 +634,16 @@ func TestS3PutSkipExisting(t *testing.T) {
 		WorkDir: temproot,
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	sender := send.MakeInternalLogger()
 	logger := client.NewSingleChannelLogHarness("test", sender)
 	comm := client.NewMock("")
 
-	require.NoError(t, cmd.Execute(ctx, comm, logger, tconf))
+	require.NoError(t, cmd.Execute(t.Context(), comm, logger, tconf))
 
 	params["local_file"] = secondFilePath
 	require.NoError(t, cmd.ParseParams(params))
 
-	require.NoError(t, cmd.Execute(ctx, comm, logger, tconf))
+	require.NoError(t, cmd.Execute(t.Context(), comm, logger, tconf))
 
 	creds := credentials.NewStaticCredentialsProvider(accessKeyID, secretAccessKey, token)
 
@@ -656,10 +653,10 @@ func TestS3PutSkipExisting(t *testing.T) {
 		Credentials: creds,
 	}
 
-	bucket, err := pail.NewS3Bucket(ctx, opts)
+	bucket, err := pail.NewS3Bucket(t.Context(), opts)
 	require.NoError(t, err)
 
-	got, err := bucket.Get(ctx, remoteFile)
+	got, err := bucket.Get(t.Context(), remoteFile)
 	require.NoError(t, err)
 
 	content, err := io.ReadAll(got)
