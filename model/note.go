@@ -24,7 +24,7 @@ var NoteTaskIdKey = bsonutil.MustHaveTag(Note{}, "TaskId")
 
 // Upsert overwrites an existing note.
 func (n *Note) Upsert(ctx context.Context) error {
-	_, err := db.UpsertContext(
+	_, err := db.Upsert(
 		ctx,
 		NotesCollection,
 		bson.M{NoteTaskIdKey: n.TaskId},

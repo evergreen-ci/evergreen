@@ -35,7 +35,7 @@ func (pd *PodDefinition) Insert() error {
 
 // Upsert upserts the pod definition into the collection.
 func (pd *PodDefinition) Upsert(ctx context.Context) error {
-	_, err := db.UpsertContext(ctx, Collection, ByID(pd.ID), pd)
+	_, err := db.Upsert(ctx, Collection, ByID(pd.ID), pd)
 	return err
 }
 

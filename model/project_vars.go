@@ -315,7 +315,7 @@ func (projectVars *ProjectVars) Upsert(ctx context.Context) (*adb.ChangeInfo, er
 	}
 	update["$set"] = setUpdate
 
-	return db.UpsertContext(
+	return db.Upsert(
 		ctx,
 		ProjectVarsCollection,
 		bson.M{

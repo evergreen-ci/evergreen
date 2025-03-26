@@ -2143,7 +2143,7 @@ func (p *ProjectRef) CanEnableCommitQueue(ctx context.Context) (bool, error) {
 // Upsert updates the project ref in the db if an entry already exists,
 // overwriting the existing ref. If no project ref exists, a new one is created.
 func (p *ProjectRef) Upsert(ctx context.Context) error {
-	_, err := db.UpsertContext(ctx, ProjectRefCollection, bson.M{ProjectRefIdKey: p.Id}, p)
+	_, err := db.Upsert(ctx, ProjectRefCollection, bson.M{ProjectRefIdKey: p.Id}, p)
 	return err
 }
 

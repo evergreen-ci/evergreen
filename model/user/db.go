@@ -154,7 +154,7 @@ func UpdateAll(query any, update any) error {
 
 // UpsertOne upserts a user.
 func UpsertOne(ctx context.Context, query any, update any) (*adb.ChangeInfo, error) {
-	return db.UpsertContext(
+	return db.Upsert(
 		ctx,
 		Collection,
 		query,
