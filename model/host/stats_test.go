@@ -84,7 +84,7 @@ func TestHostStatsByProvider(t *testing.T) {
 
 	result := ProviderStats{}
 
-	assert.NoError(db.Aggregate(Collection, statsByProviderPipeline(), &result))
+	assert.NoError(db.AggregateContext(t.Context(), Collection, statsByProviderPipeline(), &result))
 	assert.Len(result, 2, "%+v", result)
 
 	rmap := result.Map()
@@ -107,7 +107,7 @@ func TestHostStatsByDistro(t *testing.T) {
 
 	result := DistroStats{}
 
-	assert.NoError(db.Aggregate(Collection, statsByDistroPipeline(), &result))
+	assert.NoError(db.AggregateContext(t.Context(), Collection, statsByDistroPipeline(), &result))
 	assert.Len(result, 3, "%+v", result)
 
 	rcmap := result.CountMap()

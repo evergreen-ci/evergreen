@@ -2026,7 +2026,7 @@ func TestInactiveHostCountPipeline(t *testing.T) {
 	assert.NoError(h5.Insert(ctx))
 
 	var out []InactiveHostCounts
-	err := db.Aggregate(Collection, inactiveHostCountPipeline(), &out)
+	err := db.AggregateContext(t.Context(), Collection, inactiveHostCountPipeline(), &out)
 	assert.NoError(err)
 	assert.Len(out, 2)
 	for _, count := range out {
@@ -3004,7 +3004,7 @@ func TestLastContainerFinishTimePipeline(t *testing.T) {
 	var out []FinishTime
 	var results = make(map[string]time.Time)
 
-	err := db.Aggregate(Collection, lastContainerFinishTimePipeline(), &out)
+	err := db.AggregateContext(t.Context(), Collection, lastContainerFinishTimePipeline(), &out)
 	assert.NoError(err)
 
 	for _, doc := range out {
