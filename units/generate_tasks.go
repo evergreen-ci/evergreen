@@ -25,7 +25,12 @@ import (
 )
 
 const (
-	generateTasksJobName = "generate-tasks"
+	generateTasksJobName   = "generate-tasks"
+	generateTasksAttribute = "evergreen.amboy.job.generate-tasks"
+)
+
+var (
+	hasGeneratedTasksOtelAttribute = fmt.Sprintf("%s.%s", generateTasksAttribute, "has_generated_tasks")
 )
 
 func init() {
@@ -76,7 +81,8 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 		attribute.String(evergreen.VersionIDOtelAttribute, t.Version),
 		attribute.String(evergreen.BuildIDOtelAttribute, t.BuildId),
 		attribute.String(evergreen.ProjectIDOtelAttribute, t.Project),
-		attribute.String(evergreen.VersionRequesterOtelAttribute, t.Requester)})
+		attribute.Bool(hasGeneratedTasksOtelAttribute, t.GeneratedTasks),
+	})
 	ctx, span := tracer.Start(ctx, "task-generation")
 	defer span.End()
 
