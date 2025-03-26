@@ -195,14 +195,7 @@ func (c *s3get) Execute(ctx context.Context, comm client.Communicator, logger cl
 		return errors.Wrap(err, "validating expanded params")
 	}
 
-	if c.AwsSessionToken != "" {
-		// If a session token is provided, it most likely comes from
-		// an ec2.assume_role command. If it does, we store the role ARN
-		// so we can handle long s3.put commands.
-		if roleARN, ok := conf.AssumeRoleRoles[c.AwsSessionToken]; ok {
-			c.assumedRoleARN = roleARN
-		}
-	}
+	c.assumedRoleARN = getAssumedRoleARN(conf, c.AwsSessionToken)
 
 	trace.SpanFromContext(ctx).SetAttributes(
 		attribute.String(s3GetBucketAttribute, c.Bucket),

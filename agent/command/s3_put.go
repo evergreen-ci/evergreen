@@ -321,14 +321,7 @@ func (s3pc *s3put) Execute(ctx context.Context, comm client.Communicator, logger
 		return nil
 	}
 
-	if s3pc.AwsSessionToken != "" {
-		// If a session token is provided, it most likely comes from
-		// an ec2.assume_role command. If it does, we store the role ARN
-		// so we can handle long s3.get commands.
-		if roleARN, ok := conf.AssumeRoleRoles[s3pc.AwsSessionToken]; ok {
-			s3pc.assumedRoleARN = roleARN
-		}
-	}
+	s3pc.assumedRoleARN = getAssumedRoleARN(conf, s3pc.AwsSessionToken)
 
 	trace.SpanFromContext(ctx).SetAttributes(
 		attribute.String(s3PutBucketAttribute, s3pc.Bucket),
