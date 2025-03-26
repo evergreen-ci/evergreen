@@ -1678,7 +1678,7 @@ func TestFindProjectsSuite(t *testing.T) {
 		repoWithVars := &RepoRef{ProjectRef{
 			Id: repoProjectId,
 		}}
-		s.Require().NoError(repoWithVars.Upsert())
+		s.Require().NoError(repoWithVars.Upsert(t.Context()))
 		repoVars := &ProjectVars{
 			Id:          repoProjectId,
 			Vars:        map[string]string{"a": "a_from_repo", "c": "new"},

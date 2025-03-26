@@ -286,7 +286,7 @@ func TestProjectSettingsUpdateViewRepo(t *testing.T) {
 	repoRef := model.RepoRef{ProjectRef: model.ProjectRef{
 		Id: "myRepo",
 	}}
-	assert.NoError(t, repoRef.Upsert())
+	assert.NoError(t, repoRef.Upsert(t.Context()))
 	scope := gimlet.Scope{
 		ID:        "myRepo_scope",
 		Resources: []string{"myRepo"},

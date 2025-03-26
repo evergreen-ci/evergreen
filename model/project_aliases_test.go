@@ -478,7 +478,7 @@ func (s *ProjectAliasSuite) TestFindAliasInProjectRepoOrConfig() {
 				},
 			},
 		}}
-	s.NoError(repoRef.Upsert())
+	s.NoError(repoRef.Upsert(s.T().Context()))
 	s.NoError(pRef1.Upsert(s.T().Context()))
 	s.NoError(pRef2.Upsert(s.T().Context()))
 	s.NoError(projectConfig.Insert())

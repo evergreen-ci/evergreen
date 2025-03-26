@@ -1047,7 +1047,7 @@ func TestDeleteProject(t *testing.T) {
 			Repo:  "test_repo",
 		},
 	}
-	assert.NoError(t, repo.Upsert())
+	assert.NoError(t, repo.Upsert(t.Context()))
 
 	// Projects expected to be successfully deleted
 	numGoodProjects := 2
