@@ -220,7 +220,7 @@ func Patch() cli.Command {
 				return err
 			}
 
-			modulePathCache := map[string]string{}
+			modulePathCache := conf.getModulePathsForProject(params.Project)
 			if params.IncludeModules {
 				localModuleIncludes, err := getLocalModuleIncludes(params, conf, params.Path, ref.RemotePath, modulePathCache)
 				if err != nil {

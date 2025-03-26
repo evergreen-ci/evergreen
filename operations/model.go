@@ -260,6 +260,16 @@ func (s *ClientSettings) FindDefaultProject(cwd string, useRoot bool) string {
 	return ""
 }
 
+// getModulePathsForProject returns the map of modules to local paths for the given project.
+func (s *ClientSettings) getModulePathsForProject(project string) map[string]string {
+	for _, p := range s.Projects {
+		if p.Name == project {
+			return p.ModulePaths
+		}
+	}
+	return map[string]string{}
+}
+
 // setModulePath updates the given client settings to match the given module patch cache.
 func (s *ClientSettings) setModulePath(project string, modulePathCache map[string]string) {
 	for i, p := range s.Projects {
