@@ -54,7 +54,7 @@ func (s *statsSuite) TestStatsStatus() {
 	s.WithinDuration(expected, status.ProcessedTasksUntil, oneDayOneMinute)
 
 	// Check that we can update the status and read the new values.
-	err = UpdateStatsStatus("p1", baseHour, baseDay, time.Hour)
+	err = UpdateStatsStatus(s.T().Context(), "p1", baseHour, baseDay, time.Hour)
 	s.NoError(err)
 
 	status, err = GetStatsStatus(s.T().Context(), "p1")

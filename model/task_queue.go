@@ -247,7 +247,7 @@ func ClearTaskQueue(ctx context.Context, distroId string) error {
 	distroQueueInfo, err := GetDistroQueueInfo(ctx, distroId)
 	catcher.AddWhen(!adb.ResultsNotFound(err), errors.Wrapf(err, "getting task queue info"))
 	distroQueueInfo = clearQueueInfo(distroQueueInfo)
-	err = clearTaskQueueCollection(distroId, distroQueueInfo)
+	err = clearTaskQueueCollection(ctx, distroId, distroQueueInfo)
 	if err != nil {
 		catcher.Wrap(err, "clearing task queue")
 	}
@@ -272,7 +272,7 @@ func ClearTaskQueue(ctx context.Context, distroId string) error {
 	catcher.Wrap(err, "getting task secondary queue info")
 	distroQueueInfo = clearQueueInfo(distroQueueInfo)
 
-	err = clearTaskQueueCollection(distroId, distroQueueInfo)
+	err = clearTaskQueueCollection(ctx, distroId, distroQueueInfo)
 	catcher.Wrap(err, "clearing task alias queue")
 	return catcher.Resolve()
 }
@@ -292,9 +292,9 @@ func clearQueueInfo(distroQueueInfo DistroQueueInfo) DistroQueueInfo {
 	}
 }
 
-func clearTaskQueueCollection(distroId string, distroQueueInfo DistroQueueInfo) error {
-
-	_, err := db.Upsert(
+func clearTaskQueueCollection(ctx context.Context, distroId string, distroQueueInfo DistroQueueInfo) error {
+	_, err := db.UpsertContext(
+		ctx,
 		distroQueueInfo.GetQueueCollection(),
 		bson.M{
 			taskQueueDistroKey: distroId,
