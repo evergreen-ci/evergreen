@@ -4830,11 +4830,11 @@ func TestHasResults(t *testing.T) {
 			defer cancel()
 
 			for _, execTask := range test.executionTasks {
-				_, err := db.Upsert(Collection, ById(execTask.Id), &execTask)
+				_, err := db.UpsertContext(t.Context(), Collection, ById(execTask.Id), &execTask)
 				require.NoError(t, err)
 			}
 			for _, execTask := range test.oldExecutionTasks {
-				_, err := db.Upsert(OldCollection, ById(execTask.Id), &execTask)
+				_, err := db.UpsertContext(t.Context(), OldCollection, ById(execTask.Id), &execTask)
 				require.NoError(t, err)
 			}
 
@@ -5015,12 +5015,12 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 			defer cancel()
 
 			for _, execTask := range test.executionTasks {
-				_, err := db.Upsert(Collection, ById(execTask.Id), &execTask)
+				_, err := db.UpsertContext(t.Context(), Collection, ById(execTask.Id), &execTask)
 				require.NoError(t, err)
 			}
 			for _, execTask := range test.oldExecutionTasks {
 				execTask.Archived = true
-				_, err := db.Upsert(OldCollection, ById(execTask.Id), &execTask)
+				_, err := db.UpsertContext(t.Context(), OldCollection, ById(execTask.Id), &execTask)
 				require.NoError(t, err)
 			}
 

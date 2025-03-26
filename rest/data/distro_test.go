@@ -86,7 +86,7 @@ func TestDeleteDistroById(t *testing.T) {
 				Distro: d.Id,
 				Queue:  []model.TaskQueueItem{{Id: "task"}},
 			}
-			assert.NoError(t, queue.Save())
+			assert.NoError(t, queue.Save(t.Context()))
 
 			d.Id = "distro-no-task-queue"
 			assert.NoError(t, d.Insert(tctx))
@@ -269,7 +269,7 @@ func TestUpdateDistro(t *testing.T) {
 				Distro: d.Id,
 				Queue:  []model.TaskQueueItem{{Id: "task"}},
 			}
-			assert.NoError(t, queue.Save())
+			assert.NoError(t, queue.Save(t.Context()))
 
 			tCase(t, tctx, &d, &updatedDistro)
 		})

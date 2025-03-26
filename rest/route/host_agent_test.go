@@ -620,7 +620,7 @@ func TestHostNextTask(t *testing.T) {
 			require.NoError(t, testBuild.Insert())
 			require.NoError(t, pref.Insert())
 			require.NoError(t, sampleHost.Insert(ctx))
-			require.NoError(t, tq.Save())
+			require.NoError(t, tq.Save(t.Context()))
 			require.NoError(t, v.Insert())
 
 			r, ok := makeHostAgentNextTask(env, nil, nil).(*hostAgentNextTask)
@@ -728,7 +728,7 @@ func TestSingleTaskDistroValidation(t *testing.T) {
 	require.NoError(t, b.Insert())
 	require.NoError(t, pref.Insert())
 	require.NoError(t, sampleHost.Insert(ctx))
-	require.NoError(t, tq.Save())
+	require.NoError(t, tq.Save(t.Context()))
 	require.NoError(t, v.Insert())
 
 	r, ok := makeHostAgentNextTask(env, nil, nil).(*hostAgentNextTask)
@@ -1203,7 +1203,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, d data){
 		"an empty task queue should return a nil task": func(ctx context.Context, t *testing.T, env *mock.Environment, d data) {
 			d.Tq1.Queue = []model.TaskQueueItem{}
-			require.NoError(t, d.Tq1.Save())
+			require.NoError(t, d.Tq1.Save(t.Context()))
 			details := &apimodels.GetNextTaskDetails{}
 			task, shouldTeardown, err := assignNextAvailableTask(ctx, env, d.Tq1, model.NewTaskDispatchService(time.Minute), d.Host1, details)
 			require.NoError(t, err)
@@ -1220,7 +1220,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 		},
 		"an invalid task in a task queue should skip it and noop": func(ctx context.Context, t *testing.T, env *mock.Environment, d data) {
 			d.Tq3.Queue = append([]model.TaskQueueItem{{Id: "invalid", DependenciesMet: true}}, d.Tq3.Queue...)
-			require.NoError(t, d.Tq3.Save())
+			require.NoError(t, d.Tq3.Save(t.Context()))
 			details := &apimodels.GetNextTaskDetails{}
 			task, shouldTeardown, err := assignNextAvailableTask(ctx, env, d.Tq3, model.NewTaskDispatchService(time.Minute), d.Host5, details)
 			// The legacy dispatcher does not automatically handle invalid tasks.
@@ -1502,7 +1502,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 				Length:         3,
 				TaskGroupInfos: []model.TaskGroupInfo{{Name: "task-group-1", Count: 3}},
 			}
-			require.NoError(t, d.Tq1.Save())
+			require.NoError(t, d.Tq1.Save(t.Context()))
 			tg1Task3 := &task.Task{
 				Id:                "tg1-task3",
 				Status:            evergreen.TaskUndispatched,
@@ -1736,7 +1736,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 					TaskGroupInfos: []model.TaskGroupInfo{tgInfo1},
 				},
 			}
-			require.NoError(t, data.Tq1.Save())
+			require.NoError(t, data.Tq1.Save(t.Context()))
 			data.Task1 = &task.Task{
 				Id:           "task1",
 				Status:       evergreen.TaskUndispatched,
@@ -1802,7 +1802,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 					TaskGroupInfos: []model.TaskGroupInfo{tgInfo2},
 				},
 			}
-			require.NoError(t, data.Tq2.Save())
+			require.NoError(t, data.Tq2.Save(t.Context()))
 			data.Task3 = &task.Task{
 				Id:           "task3",
 				Status:       evergreen.TaskUndispatched,
@@ -1836,7 +1836,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 					TaskGroupInfos: []model.TaskGroupInfo{},
 				},
 			}
-			require.NoError(t, data.Tq3.Save())
+			require.NoError(t, data.Tq3.Save(t.Context()))
 
 			tCase(ctx, t, env, data)
 		})

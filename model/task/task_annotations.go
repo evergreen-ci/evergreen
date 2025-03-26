@@ -72,7 +72,8 @@ func AddIssueToAnnotation(ctx context.Context, taskId string, execution int, iss
 		Time:      time.Now(),
 		Requester: annotations.UIRequester,
 	}
-	if _, err := db.Upsert(
+	if _, err := db.UpsertContext(
+		ctx,
 		annotations.Collection,
 		annotations.ByTaskIdAndExecution(taskId, execution),
 		bson.M{
@@ -145,7 +146,8 @@ func UpsertAnnotation(ctx context.Context, a *annotations.TaskAnnotation, userDi
 	if len(update) == 0 {
 		return nil
 	}
-	if _, err := db.Upsert(
+	if _, err := db.UpsertContext(
+		ctx,
 		annotations.Collection,
 		annotations.ByTaskIdAndExecution(a.TaskId, a.TaskExecution),
 		bson.M{
