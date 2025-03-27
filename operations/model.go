@@ -263,7 +263,7 @@ func (s *ClientSettings) FindDefaultProject(cwd string, useRoot bool) string {
 // getModulePathsForProject returns the map of modules to local paths for the given project.
 func (s *ClientSettings) getModulePathsForProject(project string) map[string]string {
 	for _, p := range s.Projects {
-		if p.Name == project {
+		if p.Name == project && p.ModulePaths != nil {
 			return p.ModulePaths
 		}
 	}
