@@ -3014,22 +3014,36 @@ func (p *ProjectRef) GetProjectSetupCommands(opts apimodels.WorkstationSetupComm
 	return cmds, nil
 }
 
-// UpdateNextPeriodicBuild updates the periodic build run time for either the project
-// or repo ref depending on where it's defined.
-func UpdateNextPeriodicBuild(ctx context.Context, projectId string, definition *PeriodicBuildDefinition) error {
+func updateNextRunTime(baseTime time.Time, definition *PeriodicBuildDefinition) (time.Time, error) {
 	var nextRunTime time.Time
 	var err error
-	baseTime := definition.NextRunTime
-	if utility.IsZeroTime(baseTime) {
-		baseTime = time.Now()
-	}
 	if definition.IntervalHours > 0 {
 		nextRunTime = baseTime.Add(time.Duration(definition.IntervalHours) * time.Hour)
 	} else {
 		nextRunTime, err = GetNextCronTime(baseTime, definition.Cron)
 		if err != nil {
-			return errors.Wrap(err, "getting next run time with cron")
+			return time.Time{}, errors.Wrap(err, "getting next run time with cron")
 		}
+	}
+	return nextRunTime, nil
+}
+
+// UpdateNextPeriodicBuild updates the periodic build run time for either the project
+// or repo ref depending on where it's defined.
+func UpdateNextPeriodicBuild(ctx context.Context, projectId string, definition *PeriodicBuildDefinition) error {
+	baseTime := definition.NextRunTime
+	if utility.IsZeroTime(baseTime) {
+		baseTime = time.Now()
+	}
+	nextRunTime, err := updateNextRunTime(baseTime, definition)
+	now := time.Now()
+	if now.After(nextRunTime) {
+		grip.Error(message.Fields{
+			"message":    "next run time is in the past, resetting to current time",
+			"project":    projectId,
+			"definition": definition.ID,
+		})
+		nextRunTime, err = updateNextRunTime(now, definition)
 	}
 	// Get the branch project on its own so we can determine where to update the run time.
 	projectRef, err := FindBranchProjectRef(ctx, projectId)
@@ -3078,7 +3092,20 @@ func UpdateNextPeriodicBuild(ctx context.Context, projectId string, definition *
 		},
 	}
 
-	return errors.Wrapf(db.UpdateContext(ctx, collection, filter, update), "updating collection '%s'", collection)
+	res, err := evergreen.GetEnvironment().DB().Collection(collection).UpdateOne(ctx,
+		filter,
+		update,
+	)
+	if err != nil {
+		return errors.Wrapf(err, "updating task")
+	}
+	if res.MatchedCount == 0 {
+		return errors.Errorf("periodic build definition '%s' on project '%s' not found", definition.ID, idToUpdate)
+	}
+	if res.UpsertedCount+res.ModifiedCount == 0 {
+		return errors.Errorf("periodic build definition '%s' on project '%s' was not updated", definition.ID, idToUpdate)
+	}
+	return nil
 }
 
 func (p *ProjectRef) CommitQueueIsOn() error {
