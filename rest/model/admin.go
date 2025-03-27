@@ -2168,6 +2168,7 @@ type APIServiceFlags struct {
 type APIProjectTasksPair struct {
 	ProjectID    string   `json:"project_id"`
 	AllowedTasks []string `json:"allowed_tasks"`
+	AllowedBVs   []string `json:"allowed_bvs"`
 }
 
 func (a *APIProjectTasksPair) BuildFromService(h any) error {
@@ -2175,6 +2176,7 @@ func (a *APIProjectTasksPair) BuildFromService(h any) error {
 	case evergreen.ProjectTasksPair:
 		a.ProjectID = v.ProjectID
 		a.AllowedTasks = v.AllowedTasks
+		a.AllowedBVs = v.AllowedBVs
 	default:
 		return errors.Errorf("programmatic error: expected project tasks pair but got type %T", h)
 	}
@@ -2185,6 +2187,7 @@ func (a *APIProjectTasksPair) ToService() (any, error) {
 	return evergreen.ProjectTasksPair{
 		ProjectID:    a.ProjectID,
 		AllowedTasks: a.AllowedTasks,
+		AllowedBVs:   a.AllowedBVs,
 	}, nil
 }
 
