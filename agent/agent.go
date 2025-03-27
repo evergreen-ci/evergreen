@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -510,13 +511,19 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 	tc.taskConfig.WorkDir = taskDirectory
 	tc.taskConfig.NewExpansions.Put("workdir", tc.taskConfig.WorkDir)
 
+	traceClient := otlptracegrpc.NewClient(otlptracegrpc.WithGRPCConn(a.otelGrpcConn))
+	if err = traceClient.Start(setupCtx); err != nil {
+		return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "starting trace client"))
+	}
+	defer traceClient.Stop(setupCtx)
+
 	// Set up a new task output directory regardless if the task is part of
 	// a task group.
 	opts := taskoutput.DirectoryOpts{
-		Root:     tc.taskConfig.WorkDir,
-		Tsk:      &tc.taskConfig.Task,
-		Logger:   tc.logger,
-		OtelConn: a.otelGrpcConn,
+		Root:        tc.taskConfig.WorkDir,
+		Tsk:         &tc.taskConfig.Task,
+		Logger:      tc.logger,
+		TraceClient: traceClient,
 		RedactorOpts: redactor.RedactionOptions{
 			Expansions:         tc.taskConfig.NewExpansions,
 			Redacted:           tc.taskConfig.Redacted,

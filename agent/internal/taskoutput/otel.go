@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"os"
 	"path"
 
@@ -14,10 +15,8 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/sdk/trace"
 	tracepb "go.opentelemetry.io/proto/otlp/trace/v1"
-	"google.golang.org/grpc"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -30,9 +29,9 @@ const maxLineSize = 1024 * 1024
 // otelTraceDirectoryHandler implements automatic task output handling for the
 // reserved otel trace directory.
 type otelTraceDirectoryHandler struct {
-	dir          string
-	logger       client.LoggerProducer
-	otelGrpcConn *grpc.ClientConn
+	dir         string
+	logger      client.LoggerProducer
+	traceClient otlptrace.Client
 }
 
 // run finds all the trace files in taskDir, uploads their contents
@@ -45,19 +44,10 @@ func (o otelTraceDirectoryHandler) run(ctx context.Context) error {
 	ctx, span := tracer.Start(ctx, "upload-traces")
 	defer span.End()
 
-	if o.otelGrpcConn == nil {
-		return errors.New("OTel gRPC connection has not been configured")
-	}
-
 	files, err := getTraceFiles(o.dir)
 	if err != nil {
 		return errors.Wrapf(err, "getting trace files for '%s'", o.dir)
 	}
-	client := otlptracegrpc.NewClient(otlptracegrpc.WithGRPCConn(o.otelGrpcConn))
-	if err := client.Start(ctx); err != nil {
-		return errors.Wrap(err, "starting trace client")
-	}
-	defer func() { grip.Error(errors.Wrap(client.Stop(ctx), "stopping trace gRPC client")) }()
 
 	catcher := grip.NewBasicCatcher()
 	for _, fileName := range files {
@@ -69,7 +59,7 @@ func (o otelTraceDirectoryHandler) run(ctx context.Context) error {
 
 		spanBatches := batchSpans(resourceSpans, trace.DefaultMaxExportBatchSize)
 		for _, batch := range spanBatches {
-			if err = client.UploadTraces(ctx, batch); err != nil {
+			if err = o.traceClient.UploadTraces(ctx, batch); err != nil {
 				catcher.Wrapf(err, "uploading traces for '%s'", fileName)
 				continue
 			}
@@ -85,9 +75,9 @@ func (o otelTraceDirectoryHandler) run(ctx context.Context) error {
 // specified task.
 func newOtelTraceDirectoryHandler(dir string, logger client.LoggerProducer, handlerOpts directoryHandlerOpts) directoryHandler {
 	h := &otelTraceDirectoryHandler{
-		dir:          dir,
-		logger:       logger,
-		otelGrpcConn: handlerOpts.otelConn,
+		dir:         dir,
+		logger:      logger,
+		traceClient: handlerOpts.traceClient,
 	}
 	return h
 }

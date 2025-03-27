@@ -17,6 +17,7 @@ package taskoutput
 
 import (
 	"context"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"os"
 	"path/filepath"
 	"sync"
@@ -28,7 +29,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
-	"google.golang.org/grpc"
 )
 
 var directoryHandlerFactories = map[string]directoryHandlerFactory{
@@ -50,7 +50,7 @@ type DirectoryOpts struct {
 	Tsk          *task.Task
 	RedactorOpts redactor.RedactionOptions
 	Logger       client.LoggerProducer
-	OtelConn     *grpc.ClientConn
+	TraceClient  otlptrace.Client
 }
 
 // NewDirectory returns a new task output directory with the specified root for
@@ -64,7 +64,6 @@ func NewDirectory(opts DirectoryOpts) *Directory {
 		},
 		redactorOpts: opts.RedactorOpts,
 		output:       opts.Tsk.TaskOutputInfo,
-		otelConn:     opts.OtelConn,
 	}
 	root := filepath.Join(opts.Root, "build")
 	handlers := map[string]directoryHandler{}
@@ -125,7 +124,7 @@ type directoryHandlerOpts struct {
 	output       *taskoutput.TaskOutput
 	taskOpts     taskoutput.TaskOptions
 	redactorOpts redactor.RedactionOptions
-	otelConn     *grpc.ClientConn
+	traceClient  otlptrace.Client
 }
 
 // directoryHandlerFactory abstracts the creation of a directory handler.
