@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -26,7 +27,6 @@ func NewConfigModel() *APIAdminSettings {
 		Jira:                &APIJiraConfig{},
 		JIRANotifications:   &APIJIRANotificationsConfig{},
 		LoggerConfig:        &APILoggerConfig{},
-		NewRelic:            &APINewRelicConfig{},
 		Notify:              &APINotifyConfig{},
 		Overrides:           &APIOverridesConfig{},
 		ParameterStore:      &APIParameterStoreConfig{},
@@ -42,6 +42,7 @@ func NewConfigModel() *APIAdminSettings {
 		Slack:               &APISlackConfig{},
 		SleepSchedule:       &APISleepScheduleConfig{},
 		Splunk:              &APISplunkConfig{},
+		SSH:                 &APISSHConfig{},
 		TaskLimits:          &APITaskLimitsConfig{},
 		TestSelection:       &APITestSelectionConfig{},
 		Triggers:            &APITriggerConfig{},
@@ -78,7 +79,6 @@ type APIAdminSettings struct {
 	KanopySSHKeyPath    *string                       `json:"kanopy_ssh_key_path,omitempty"`
 	LoggerConfig        *APILoggerConfig              `json:"logger_config,omitempty"`
 	LogPath             *string                       `json:"log_path,omitempty"`
-	NewRelic            *APINewRelicConfig            `json:"newrelic,omitempty"`
 	Notify              *APINotifyConfig              `json:"notify,omitempty"`
 	Overrides           *APIOverridesConfig           `json:"overrides,omitempty"`
 	ParameterStore      *APIParameterStoreConfig      `json:"parameter_store,omitempty"`
@@ -94,9 +94,7 @@ type APIAdminSettings struct {
 	SingleTaskDistro    *APISingleTaskDistroConfig    `json:"single_task_distro,omitempty"`
 	Slack               *APISlackConfig               `json:"slack,omitempty"`
 	SleepSchedule       *APISleepScheduleConfig       `json:"sleep_schedule,omitempty"`
-	SSHKeyDirectory     *string                       `json:"ssh_key_directory,omitempty"`
-	SSHKeyPairs         []APISSHKeyPair               `json:"ssh_key_pairs,omitempty"`
-	SSHKeySecretARNs    []string                      `json:"ssh_key_secret_arns,omitempty"`
+	SSH                 *APISSHConfig                 `json:"ssh,omitempty"`
 	Splunk              *APISplunkConfig              `json:"splunk,omitempty"`
 	TaskLimits          *APITaskLimitsConfig          `json:"task_limits,omitempty"`
 	TestSelection       *APITestSelectionConfig       `json:"test_selection,omitempty"`
@@ -152,16 +150,6 @@ func (as *APIAdminSettings) BuildFromService(h any) error {
 		as.GithubOrgs = v.GithubOrgs
 		as.GithubWebhookSecret = utility.ToStringPtr(v.GithubWebhookSecret)
 		as.DisabledGQLQueries = v.DisabledGQLQueries
-		as.SSHKeyDirectory = utility.ToStringPtr(v.SSHKeyDirectory)
-		as.SSHKeyPairs = []APISSHKeyPair{}
-		for _, pair := range v.SSHKeyPairs {
-			as.SSHKeyPairs = append(as.SSHKeyPairs, APISSHKeyPair{
-				Name:    utility.ToStringPtr(pair.Name),
-				Public:  utility.ToStringPtr(pair.Public),
-				Private: utility.ToStringPtr(pair.Private),
-			})
-		}
-		as.SSHKeySecretARNs = v.SSHKeySecretARNs
 		uiConfig := APIUIConfig{}
 		err := uiConfig.BuildFromService(v.Ui)
 		if err != nil {
@@ -281,16 +269,6 @@ func (as *APIAdminSettings) ToService() (any, error) {
 			settings.Plugins[k][k2] = v2
 		}
 	}
-	settings.SSHKeyDirectory = utility.FromStringPtr(as.SSHKeyDirectory)
-	settings.SSHKeyPairs = []evergreen.SSHKeyPair{}
-	for _, pair := range as.SSHKeyPairs {
-		settings.SSHKeyPairs = append(settings.SSHKeyPairs, evergreen.SSHKeyPair{
-			Name:    utility.FromStringPtr(pair.Name),
-			Public:  utility.FromStringPtr(pair.Public),
-			Private: utility.FromStringPtr(pair.Private),
-		})
-	}
-	settings.SSHKeySecretARNs = as.SSHKeySecretARNs
 
 	if as.ShutdownWaitSeconds != nil {
 		settings.ShutdownWaitSeconds = *as.ShutdownWaitSeconds
@@ -635,8 +613,10 @@ func (a *APIAuthConfig) ToService() (any, error) {
 
 type APIBucketsConfig struct {
 	LogBucket               APIBucketConfig             `json:"log_bucket"`
+	SharedBucket            *string                     `json:"shared_bucket"`
 	InternalBuckets         []string                    `json:"internal_buckets"`
 	ProjectToPrefixMappings []APIProjectToPrefixMapping `json:"project_to_prefix_mappings"`
+	ProjectToBucketMappings []APIProjectToBucketMapping `json:"project_to_bucket_mappings"`
 	Credentials             APIS3Credentials            `json:"credentials"`
 }
 
@@ -651,12 +631,19 @@ type APIProjectToPrefixMapping struct {
 	Prefix    *string `json:"prefix"`
 }
 
+type APIProjectToBucketMapping struct {
+	ProjectID *string `json:"project_id"`
+	Bucket    *string `json:"bucket"`
+	Prefix    *string `json:"prefix"`
+}
+
 func (a *APIBucketsConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.BucketsConfig:
 		a.LogBucket.Name = utility.ToStringPtr(v.LogBucket.Name)
 		a.LogBucket.Type = utility.ToStringPtr(string(v.LogBucket.Type))
 		a.LogBucket.DBName = utility.ToStringPtr(v.LogBucket.DBName)
+		a.SharedBucket = utility.ToStringPtr(v.SharedBucket)
 
 		a.InternalBuckets = v.InternalBuckets
 
@@ -666,15 +653,26 @@ func (a *APIBucketsConfig) BuildFromService(h any) error {
 		}
 		a.Credentials = creds
 
-		mappings := []APIProjectToPrefixMapping{}
+		prefixMappings := []APIProjectToPrefixMapping{}
 		for _, mapping := range v.ProjectToPrefixMappings {
 			apiMapping := APIProjectToPrefixMapping{
 				ProjectID: utility.ToStringPtr(mapping.ProjectID),
 				Prefix:    utility.ToStringPtr(mapping.Prefix),
 			}
-			mappings = append(mappings, apiMapping)
+			prefixMappings = append(prefixMappings, apiMapping)
 		}
-		a.ProjectToPrefixMappings = mappings
+		a.ProjectToPrefixMappings = prefixMappings
+
+		bucketMappings := []APIProjectToBucketMapping{}
+		for _, mapping := range v.ProjectToBucketMappings {
+			apiMapping := APIProjectToBucketMapping{
+				ProjectID: utility.ToStringPtr(mapping.ProjectID),
+				Bucket:    utility.ToStringPtr(mapping.Bucket),
+				Prefix:    utility.ToStringPtr(mapping.Prefix),
+			}
+			bucketMappings = append(bucketMappings, apiMapping)
+		}
+		a.ProjectToBucketMappings = bucketMappings
 	default:
 		return errors.Errorf("programmatic error: expected bucket config but got type %T", h)
 	}
@@ -690,10 +688,18 @@ func (a *APIBucketsConfig) ToService() (any, error) {
 	if !ok {
 		return nil, errors.Errorf("programmatic error: expected S3 credentials but got type %T", i)
 	}
-	mappings := []evergreen.ProjectToPrefixMapping{}
+	prefixMappings := []evergreen.ProjectToPrefixMapping{}
 	for _, mapping := range a.ProjectToPrefixMappings {
-		mappings = append(mappings, evergreen.ProjectToPrefixMapping{
+		prefixMappings = append(prefixMappings, evergreen.ProjectToPrefixMapping{
 			ProjectID: utility.FromStringPtr(mapping.ProjectID),
+			Prefix:    utility.FromStringPtr(mapping.Prefix),
+		})
+	}
+	bucketMappings := []evergreen.ProjectToBucketMapping{}
+	for _, mapping := range a.ProjectToBucketMappings {
+		bucketMappings = append(bucketMappings, evergreen.ProjectToBucketMapping{
+			ProjectID: utility.FromStringPtr(mapping.ProjectID),
+			Bucket:    utility.FromStringPtr(mapping.Bucket),
 			Prefix:    utility.FromStringPtr(mapping.Prefix),
 		})
 	}
@@ -704,8 +710,10 @@ func (a *APIBucketsConfig) ToService() (any, error) {
 			Type:   evergreen.BucketType(utility.FromStringPtr(a.LogBucket.Type)),
 			DBName: utility.FromStringPtr(a.LogBucket.DBName),
 		},
+		SharedBucket:            utility.FromStringPtr(a.SharedBucket),
 		InternalBuckets:         a.InternalBuckets,
-		ProjectToPrefixMappings: mappings,
+		ProjectToPrefixMappings: prefixMappings,
+		ProjectToBucketMappings: bucketMappings,
 		Credentials:             creds,
 	}, nil
 }
@@ -2160,6 +2168,7 @@ type APIServiceFlags struct {
 type APIProjectTasksPair struct {
 	ProjectID    string   `json:"project_id"`
 	AllowedTasks []string `json:"allowed_tasks"`
+	AllowedBVs   []string `json:"allowed_bvs"`
 }
 
 func (a *APIProjectTasksPair) BuildFromService(h any) error {
@@ -2167,6 +2176,7 @@ func (a *APIProjectTasksPair) BuildFromService(h any) error {
 	case evergreen.ProjectTasksPair:
 		a.ProjectID = v.ProjectID
 		a.AllowedTasks = v.AllowedTasks
+		a.AllowedBVs = v.AllowedBVs
 	default:
 		return errors.Errorf("programmatic error: expected project tasks pair but got type %T", h)
 	}
@@ -2177,6 +2187,7 @@ func (a *APIProjectTasksPair) ToService() (any, error) {
 	return evergreen.ProjectTasksPair{
 		ProjectID:    a.ProjectID,
 		AllowedTasks: a.AllowedTasks,
+		AllowedBVs:   a.AllowedBVs,
 	}, nil
 }
 
@@ -2214,12 +2225,6 @@ func (a *APISingleTaskDistroConfig) ToService() (any, error) {
 	return evergreen.SingleTaskDistroConfig{
 		ProjectTasksPairs: pairs,
 	}, nil
-}
-
-type APISSHKeyPair struct {
-	Name    *string `json:"name"`
-	Public  *string `json:"public"`
-	Private *string `json:"private"`
 }
 
 type APISlackConfig struct {
@@ -2371,6 +2376,68 @@ func (a *APISplunkConnectionInfo) ToService() send.SplunkConnectionInfo {
 	}
 }
 
+type APISSHConfig struct {
+	TaskHostKey  APISSHKeyPair `json:"task_host_key"`
+	SpawnHostKey APISSHKeyPair `json:"spawn_host_key"`
+}
+
+func (a *APISSHConfig) BuildFromService(h any) error {
+	catcher := grip.NewBasicCatcher()
+	switch v := h.(type) {
+	case evergreen.SSHConfig:
+		catcher.Wrap(a.TaskHostKey.BuildFromService(v.TaskHostKey), "building task host key from service")
+		catcher.Wrap(a.SpawnHostKey.BuildFromService(v.SpawnHostKey), "building spawn host key from service")
+	default:
+		return errors.Errorf("programmatic error: expected SSH Config but got type %T", h)
+	}
+	return catcher.Resolve()
+}
+
+func (a *APISSHConfig) ToService() (any, error) {
+	if a == nil {
+		return evergreen.SSHConfig{}, nil
+	}
+
+	catcher := grip.NewBasicCatcher()
+	taskHostIface, err := a.TaskHostKey.ToService()
+	catcher.Wrap(err, "converting task host key to service")
+	spawnHostIface, err := a.SpawnHostKey.ToService()
+	catcher.Wrap(err, "converting spawn host key to service")
+	if catcher.HasErrors() {
+		return nil, catcher.Resolve()
+	}
+	return evergreen.SSHConfig{
+		TaskHostKey:  taskHostIface.(evergreen.SSHKeyPair),
+		SpawnHostKey: spawnHostIface.(evergreen.SSHKeyPair),
+	}, nil
+}
+
+type APISSHKeyPair struct {
+	Name      *string `json:"name"`
+	SecretARN *string `json:"secret_arn"`
+}
+
+func (a *APISSHKeyPair) BuildFromService(h any) error {
+	switch v := h.(type) {
+	case evergreen.SSHKeyPair:
+		a.Name = utility.ToStringPtr(v.Name)
+		a.SecretARN = utility.ToStringPtr(v.SecretARN)
+	default:
+		return errors.Errorf("programmatic error: expected SSH Key Pair but got type %T", h)
+	}
+	return nil
+}
+
+func (a *APISSHKeyPair) ToService() (any, error) {
+	if a == nil {
+		return evergreen.SSHKeyPair{}, nil
+	}
+	return evergreen.SSHKeyPair{
+		Name:      utility.FromStringPtr(a.Name),
+		SecretARN: utility.FromStringPtr(a.SecretARN),
+	}, nil
+}
+
 type APIUIConfig struct {
 	Url                       *string         `json:"url"`
 	HelpUrl                   *string         `json:"help_url"`
@@ -2433,40 +2500,6 @@ func (a *APIUIConfig) ToService() (any, error) {
 		UserVoice:                 utility.FromStringPtr(a.UserVoice),
 		BetaFeatures:              a.BetaFeatures.ToService(),
 		StagingEnvironment:        utility.FromStringPtr(a.StagingEnvironment),
-	}, nil
-}
-
-type APINewRelicConfig struct {
-	AccountID     *string `json:"accountId"`
-	TrustKey      *string `json:"trustKey"`
-	AgentID       *string `json:"agentId"`
-	LicenseKey    *string `json:"licenseKey"`
-	ApplicationID *string `json:"applicationId"`
-}
-
-// BuildFromService builds a model from the service layer
-func (a *APINewRelicConfig) BuildFromService(h any) error {
-	switch v := h.(type) {
-	case evergreen.NewRelicConfig:
-		a.AccountID = utility.ToStringPtr(v.AccountID)
-		a.TrustKey = utility.ToStringPtr(v.TrustKey)
-		a.AgentID = utility.ToStringPtr(v.AgentID)
-		a.LicenseKey = utility.ToStringPtr(v.LicenseKey)
-		a.ApplicationID = utility.ToStringPtr(v.ApplicationID)
-	default:
-		return errors.Errorf("programmatic error: expected New Relic config but got type %T", h)
-	}
-	return nil
-}
-
-// ToService returns a service model from an API model
-func (a *APINewRelicConfig) ToService() (any, error) {
-	return evergreen.NewRelicConfig{
-		AccountID:     utility.FromStringPtr(a.AccountID),
-		TrustKey:      utility.FromStringPtr(a.TrustKey),
-		AgentID:       utility.FromStringPtr(a.AgentID),
-		LicenseKey:    utility.FromStringPtr(a.LicenseKey),
-		ApplicationID: utility.FromStringPtr(a.ApplicationID),
 	}, nil
 }
 

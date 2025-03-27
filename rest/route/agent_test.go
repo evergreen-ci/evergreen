@@ -24,7 +24,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
-	"github.com/google/go-github/v52/github"
+	"github.com/google/go-github/v70/github"
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/assert"
@@ -1051,7 +1051,7 @@ func TestAWSS3(t *testing.T) {
 
 			manager := cloud.GetSTSManager(true)
 
-			r, ok := makeAWSS3Credentials(env, manager).(*awsS3Credentials)
+			r, ok := makeAWSS3Credentials(env, manager, "some_role_arn").(*awsS3Credentials)
 			require.True(t, ok)
 
 			tCase(ctx, t, r)

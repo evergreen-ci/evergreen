@@ -20,7 +20,7 @@ import (
 // AuthorDisplayName is the resolver for the authorDisplayName field.
 func (r *patchResolver) AuthorDisplayName(ctx context.Context, obj *restModel.APIPatch) (string, error) {
 	author := utility.FromStringPtr(obj.Author)
-	usr, err := user.FindOneById(author)
+	usr, err := user.FindOneByIdContext(ctx, author)
 	if err != nil {
 		return "", InternalServerError.Send(ctx, fmt.Sprintf("getting user corresponding to author '%s': %s", author, err.Error()))
 	}
@@ -33,7 +33,7 @@ func (r *patchResolver) AuthorDisplayName(ctx context.Context, obj *restModel.AP
 // BaseTaskStatuses is the resolver for the baseTaskStatuses field.
 func (r *patchResolver) BaseTaskStatuses(ctx context.Context, obj *restModel.APIPatch) ([]string, error) {
 	versionID := utility.FromStringPtr(obj.Id)
-	baseVersion, err := model.FindBaseVersionForVersion(versionID)
+	baseVersion, err := model.FindBaseVersionForVersion(ctx, versionID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching base version for version '%s': %s", versionID, err.Error()))
 	}
@@ -252,7 +252,7 @@ func (r *patchResolver) VersionFull(ctx context.Context, obj *restModel.APIPatch
 	if versionID == "" {
 		return nil, nil
 	}
-	v, err := model.VersionFindOneId(versionID)
+	v, err := model.VersionFindOneId(ctx, versionID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", versionID, err.Error()))
 	}

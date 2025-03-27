@@ -60,7 +60,6 @@ type ResolverRoot interface {
 	IssueLink() IssueLinkResolver
 	LogkeeperBuild() LogkeeperBuildResolver
 	Mutation() MutationResolver
-	Notifications() NotificationsResolver
 	Patch() PatchResolver
 	Permissions() PermissionsResolver
 	PlannerSettings() PlannerSettingsResolver
@@ -87,7 +86,6 @@ type ResolverRoot interface {
 	DistroInput() DistroInputResolver
 	FinderSettingsInput() FinderSettingsInputResolver
 	HostAllocatorSettingsInput() HostAllocatorSettingsInputResolver
-	NotificationsInput() NotificationsInputResolver
 	PlannerSettingsInput() PlannerSettingsInputResolver
 	ProjectSettingsInput() ProjectSettingsInputResolver
 	RepoSettingsInput() RepoSettingsInputResolver
@@ -749,8 +747,6 @@ type ComplexityRoot struct {
 	Notifications struct {
 		BuildBreak            func(childComplexity int) int
 		BuildBreakID          func(childComplexity int) int
-		CommitQueue           func(childComplexity int) int
-		CommitQueueID         func(childComplexity int) int
 		PatchFinish           func(childComplexity int) int
 		PatchFinishID         func(childComplexity int) int
 		PatchFirstFailure     func(childComplexity int) int
@@ -1044,6 +1040,7 @@ type ComplexityRoot struct {
 	}
 
 	ProjectTasksPair struct {
+		AllowedBVs   func(childComplexity int) int
 		AllowedTasks func(childComplexity int) int
 		ProjectID    func(childComplexity int) int
 	}
@@ -1868,10 +1865,6 @@ type MutationResolver interface {
 	SetVersionPriority(ctx context.Context, versionID string, priority int) (*string, error)
 	UnscheduleVersionTasks(ctx context.Context, versionID string, abort bool) (*string, error)
 }
-type NotificationsResolver interface {
-	CommitQueue(ctx context.Context, obj *model.APINotificationPreferences) (*string, error)
-	CommitQueueID(ctx context.Context, obj *model.APINotificationPreferences) (*string, error)
-}
 type PatchResolver interface {
 	AuthorDisplayName(ctx context.Context, obj *model.APIPatch) (string, error)
 	BaseTaskStatuses(ctx context.Context, obj *model.APIPatch) ([]string, error)
@@ -2136,9 +2129,6 @@ type HostAllocatorSettingsInputResolver interface {
 
 	RoundingRule(ctx context.Context, obj *model.APIHostAllocatorSettings, data RoundingRule) error
 	Version(ctx context.Context, obj *model.APIHostAllocatorSettings, data HostAllocatorVersion) error
-}
-type NotificationsInputResolver interface {
-	CommitQueue(ctx context.Context, obj *model.APINotificationPreferences, data *string) error
 }
 type PlannerSettingsInputResolver interface {
 	TargetTime(ctx context.Context, obj *model.APIPlannerSettings, data int) error
@@ -5312,20 +5302,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Notifications.BuildBreakID(childComplexity), true
 
-	case "Notifications.commitQueue":
-		if e.complexity.Notifications.CommitQueue == nil {
-			break
-		}
-
-		return e.complexity.Notifications.CommitQueue(childComplexity), true
-
-	case "Notifications.commitQueueId":
-		if e.complexity.Notifications.CommitQueueID == nil {
-			break
-		}
-
-		return e.complexity.Notifications.CommitQueueID(childComplexity), true
-
 	case "Notifications.patchFinish":
 		if e.complexity.Notifications.PatchFinish == nil {
 			break
@@ -6771,6 +6747,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.ProjectSettings.Vars(childComplexity), true
+
+	case "ProjectTasksPair.allowedBVs":
+		if e.complexity.ProjectTasksPair.AllowedBVs == nil {
+			break
+		}
+
+		return e.complexity.ProjectTasksPair.AllowedBVs(childComplexity), true
 
 	case "ProjectTasksPair.allowedTasks":
 		if e.complexity.ProjectTasksPair.AllowedTasks == nil {
@@ -38205,88 +38188,6 @@ func (ec *executionContext) fieldContext_Notifications_buildBreakId(_ context.Co
 	return fc, nil
 }
 
-func (ec *executionContext) _Notifications_commitQueue(ctx context.Context, field graphql.CollectedField, obj *model.APINotificationPreferences) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Notifications_commitQueue(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Notifications().CommitQueue(rctx, obj)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Notifications_commitQueue(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Notifications",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Notifications_commitQueueId(ctx context.Context, field graphql.CollectedField, obj *model.APINotificationPreferences) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Notifications_commitQueueId(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Notifications().CommitQueueID(rctx, obj)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Notifications_commitQueueId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Notifications",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Notifications_patchFinish(ctx context.Context, field graphql.CollectedField, obj *model.APINotificationPreferences) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Notifications_patchFinish(ctx, field)
 	if err != nil {
@@ -48437,6 +48338,50 @@ func (ec *executionContext) fieldContext_ProjectTasksPair_allowedTasks(_ context
 	return fc, nil
 }
 
+func (ec *executionContext) _ProjectTasksPair_allowedBVs(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectTasksPair) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ProjectTasksPair_allowedBVs(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AllowedBVs, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ProjectTasksPair_allowedBVs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProjectTasksPair",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ProjectVars_adminOnlyVars(ctx context.Context, field graphql.CollectedField, obj *model.APIProjectVars) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_ProjectVars_adminOnlyVars(ctx, field)
 	if err != nil {
@@ -55566,6 +55511,8 @@ func (ec *executionContext) fieldContext_SingleTaskDistroConfig_projectTasksPair
 				return ec.fieldContext_ProjectTasksPair_projectId(ctx, field)
 			case "allowedTasks":
 				return ec.fieldContext_ProjectTasksPair_allowedTasks(ctx, field)
+			case "allowedBVs":
+				return ec.fieldContext_ProjectTasksPair_allowedBVs(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ProjectTasksPair", field.Name)
 		},
@@ -68145,10 +68092,6 @@ func (ec *executionContext) fieldContext_UserSettings_notifications(_ context.Co
 				return ec.fieldContext_Notifications_buildBreak(ctx, field)
 			case "buildBreakId":
 				return ec.fieldContext_Notifications_buildBreakId(ctx, field)
-			case "commitQueue":
-				return ec.fieldContext_Notifications_commitQueue(ctx, field)
-			case "commitQueueId":
-				return ec.fieldContext_Notifications_commitQueueId(ctx, field)
 			case "patchFinish":
 				return ec.fieldContext_Notifications_patchFinish(ctx, field)
 			case "patchFinishId":
@@ -77960,7 +77903,7 @@ func (ec *executionContext) unmarshalInputNotificationsInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"buildBreak", "commitQueue", "patchFinish", "patchFirstFailure", "spawnHostExpiration", "spawnHostOutcome"}
+	fieldsInOrder := [...]string{"buildBreak", "patchFinish", "patchFirstFailure", "spawnHostExpiration", "spawnHostOutcome"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -77974,15 +77917,6 @@ func (ec *executionContext) unmarshalInputNotificationsInput(ctx context.Context
 				return it, err
 			}
 			it.BuildBreak = data
-		case "commitQueue":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("commitQueue"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			if err = ec.resolvers.NotificationsInput().CommitQueue(ctx, &it, data); err != nil {
-				return it, err
-			}
 		case "patchFinish":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("patchFinish"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -87132,72 +87066,6 @@ func (ec *executionContext) _Notifications(ctx context.Context, sel ast.Selectio
 			out.Values[i] = ec._Notifications_buildBreak(ctx, field, obj)
 		case "buildBreakId":
 			out.Values[i] = ec._Notifications_buildBreakId(ctx, field, obj)
-		case "commitQueue":
-			field := field
-
-			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Notifications_commitQueue(ctx, field, obj)
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-		case "commitQueueId":
-			field := field
-
-			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Notifications_commitQueueId(ctx, field, obj)
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "patchFinish":
 			out.Values[i] = ec._Notifications_patchFinish(ctx, field, obj)
 		case "patchFinishId":
@@ -89983,6 +89851,11 @@ func (ec *executionContext) _ProjectTasksPair(ctx context.Context, sel ast.Selec
 			}
 		case "allowedTasks":
 			out.Values[i] = ec._ProjectTasksPair_allowedTasks(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "allowedBVs":
+			out.Values[i] = ec._ProjectTasksPair_allowedBVs(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

@@ -77,12 +77,12 @@ func Validate() cli.Command {
 				}
 				catcher := grip.NewSimpleCatcher()
 				for _, file := range files {
-					catcher.Add(validateFile(conf, filepath.Join(path, file.Name()), ac, quiet, errorOnWarnings, localModuleMap, projectID))
+					catcher.Add(validateFile(filepath.Join(path, file.Name()), ac, quiet, errorOnWarnings, localModuleMap, projectID))
 				}
 				return catcher.Resolve()
 			}
 
-			return validateFile(conf, path, ac, quiet, errorOnWarnings, localModuleMap, projectID)
+			return validateFile(path, ac, quiet, errorOnWarnings, localModuleMap, projectID)
 		},
 	}
 }
@@ -100,7 +100,7 @@ func getLocalModulesFromInput(localModulePaths []string) (map[string]string, err
 	return moduleMap, catcher.Resolve()
 }
 
-func validateFile(conf *ClientSettings, path string, ac *legacyClient, quiet, errorOnWarnings bool, localModuleMap map[string]string, projectID string) error {
+func validateFile(path string, ac *legacyClient, quiet, errorOnWarnings bool, localModuleMap map[string]string, projectID string) error {
 	confFile, err := os.ReadFile(path)
 	if err != nil {
 		return errors.Wrapf(err, "reading file '%s'", path)
@@ -114,7 +114,7 @@ func validateFile(conf *ClientSettings, path string, ac *legacyClient, quiet, er
 	if !quiet {
 		opts.UnmarshalStrict = true
 	}
-	pp, pc, validationErrs := loadProjectIntoWithValidation(ctx, confFile, opts, errorOnWarnings, project)
+	pp, pc, validationErrs := loadProjectIntoWithValidation(ctx, confFile, opts, errorOnWarnings, project, projectID)
 	grip.Info(validationErrs)
 	if validationErrs.Has(validator.Error) {
 		return errors.Errorf("%s is an invalid configuration", path)
@@ -133,14 +133,7 @@ func validateFile(conf *ClientSettings, path string, ac *legacyClient, quiet, er
 		projectBytes := [][]byte{projectYaml, projectConfigYaml}
 		projectYaml = bytes.Join(projectBytes, []byte("\n"))
 	}
-
-	client, err := conf.setupRestCommunicator(ctx, false)
-	if err != nil {
-		return errors.Wrap(err, "setting up REST communicator")
-	}
-	defer client.Close()
-
-	projErrors, err := client.Validate(ctx, projectYaml, quiet, projectID)
+	projErrors, err := ac.ValidateLocalConfig(projectYaml, quiet, projectID)
 	if err != nil {
 		return errors.Wrapf(err, "validating project '%s'", projectID)
 	}
@@ -161,7 +154,7 @@ func validateFile(conf *ClientSettings, path string, ac *legacyClient, quiet, er
 
 // loadProjectIntoWithValidation returns a warning (instead of an error) if there's an error with unmarshalling strictly
 func loadProjectIntoWithValidation(ctx context.Context, data []byte, opts *model.GetProjectOpts, errorOnWarnings bool,
-	project *model.Project) (*model.ParserProject, *model.ProjectConfig, validator.ValidationErrors) {
+	project *model.Project, projectID string) (*model.ParserProject, *model.ProjectConfig, validator.ValidationErrors) {
 	errs := validator.ValidationErrors{}
 	// We validate the project config regardless if version control is disabled for the project
 	// to ensure that the config will remain valid if it is turned on.
@@ -172,13 +165,13 @@ func loadProjectIntoWithValidation(ctx context.Context, data []byte, opts *model
 			Message: err.Error(),
 		})
 	}
-	pp, err := model.LoadProjectInto(ctx, data, opts, "", project)
+	pp, err := model.LoadProjectInto(ctx, data, opts, projectID, project)
 	if err != nil {
 		// If the error came from unmarshalling strict, try it again without strict to verify if
 		// it's a legitimate unmarshal error or just an error from strict (which should be a warning)
 		if !errorOnWarnings && strings.Contains(err.Error(), util.UnmarshalStrictError) {
 			opts.UnmarshalStrict = false
-			pp, err2 := model.LoadProjectInto(ctx, data, opts, "", project)
+			pp, err2 := model.LoadProjectInto(ctx, data, opts, projectID, project)
 			if err2 == nil {
 				errs = append(errs, validator.ValidationError{
 					Level:   validator.Warning,

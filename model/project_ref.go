@@ -28,7 +28,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
-	"github.com/google/go-github/v52/github"
+	"github.com/google/go-github/v70/github"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
@@ -2478,7 +2478,7 @@ func getCronParserSchedule(cronStr string) (cron.Schedule, error) {
 // next be activated. The version create time is used to determine the next
 // activation time, except in situations where using the version create time
 // would produce conflicts such as duplicate cron runs.
-func (p *ProjectRef) GetActivationTimeForVariant(variant *BuildVariant, versionCreateTime time.Time, now time.Time) (time.Time, error) {
+func (p *ProjectRef) GetActivationTimeForVariant(ctx context.Context, variant *BuildVariant, versionCreateTime time.Time, now time.Time) (time.Time, error) {
 	// if we don't want to activate the build, set batchtime to the zero time
 	if !utility.FromBoolTPtr(variant.Activate) {
 		return utility.ZeroTime, nil
@@ -2490,7 +2490,7 @@ func (p *ProjectRef) GetActivationTimeForVariant(variant *BuildVariant, versionC
 		if err != nil {
 			return time.Time{}, errors.Wrap(err, "getting next cron time")
 		}
-		isValidCron, err := p.isValidBVCron(variant, proposedCron, now)
+		isValidCron, err := p.isValidBVCron(ctx, variant, proposedCron, now)
 		if err != nil {
 			return time.Time{}, errors.Wrapf(err, "checking if proposed cron %s for variant '%s' is valid", proposedCron.String(), variant.Name)
 		}
@@ -2508,7 +2508,7 @@ func (p *ProjectRef) GetActivationTimeForVariant(variant *BuildVariant, versionC
 		return now, nil
 	}
 
-	lastActivated, err := VersionFindOne(VersionByLastVariantActivation(p.Id, variant.Name).WithFields(VersionBuildVariantsKey))
+	lastActivated, err := VersionFindOne(ctx, VersionByLastVariantActivation(p.Id, variant.Name).WithFields(VersionBuildVariantsKey))
 	if err != nil {
 		return time.Time{}, errors.Wrap(err, "finding version")
 	}
@@ -2570,8 +2570,8 @@ func (p *ProjectRef) isActiveCronTimeRange(proposedCron time.Time, now time.Time
 }
 
 // isValidBVCron checks is a build variant cron is valid.
-func (p *ProjectRef) isValidBVCron(bv *BuildVariant, proposedCron time.Time, now time.Time) (bool, error) {
-	return p.isValidCron(proposedCron, now, func(mostRecentCommit *Version) bool {
+func (p *ProjectRef) isValidBVCron(ctx context.Context, bv *BuildVariant, proposedCron time.Time, now time.Time) (bool, error) {
+	return p.isValidCron(ctx, proposedCron, now, func(mostRecentCommit *Version) bool {
 		for _, bvStatus := range mostRecentCommit.BuildVariants {
 			if bvStatus.BuildVariant != bv.Name {
 				continue
@@ -2588,7 +2588,7 @@ func (p *ProjectRef) isValidBVCron(bv *BuildVariant, proposedCron time.Time, now
 // run in the past, that mean it will run immediately. Crons scheduled for the
 // past are only valid if they've recently passed the proposed cron time and
 // there's no conflicting cron that will activate or has already activated.
-func (p *ProjectRef) isValidCron(proposedCron time.Time, now time.Time, isDuplicateCron func(mostRecentCommit *Version) bool) (bool, error) {
+func (p *ProjectRef) isValidCron(ctx context.Context, proposedCron time.Time, now time.Time, isDuplicateCron func(mostRecentCommit *Version) bool) (bool, error) {
 	if !p.isActiveCronTimeRange(proposedCron, now) {
 		return false, nil
 	}
@@ -2598,7 +2598,7 @@ func (p *ProjectRef) isValidCron(proposedCron time.Time, now time.Time, isDuplic
 	// already scheduled to activate in that delay period - if there is a cron
 	// that is activated/will activate soon, then this cron conflicts and is
 	// therefore invalid.
-	mostRecentCommit, err := VersionFindOne(VersionByMostRecentNonIgnored(p.Id, now))
+	mostRecentCommit, err := VersionFindOne(ctx, VersionByMostRecentNonIgnored(p.Id, now))
 	if err != nil {
 		return false, errors.Wrap(err, "getting most recent commit version")
 	}
@@ -2613,7 +2613,7 @@ func (p *ProjectRef) isValidCron(proposedCron time.Time, now time.Time, isDuplic
 // activated. The version create time is used to determine the next activation
 // time, except in situations where using the version create time would produce
 // conflicts such as duplicate cron runs.
-func (p *ProjectRef) GetActivationTimeForTask(t *BuildVariantTaskUnit, versionCreateTime time.Time, now time.Time) (time.Time, error) {
+func (p *ProjectRef) GetActivationTimeForTask(ctx context.Context, t *BuildVariantTaskUnit, versionCreateTime time.Time, now time.Time) (time.Time, error) {
 	// if we don't want to activate the task, set batchtime to the zero time
 	if !utility.FromBoolTPtr(t.Activate) || t.IsDisabled() {
 		return utility.ZeroTime, nil
@@ -2625,7 +2625,7 @@ func (p *ProjectRef) GetActivationTimeForTask(t *BuildVariantTaskUnit, versionCr
 		if err != nil {
 			return time.Time{}, errors.Wrap(err, "getting next cron time")
 		}
-		isValidCron, err := p.isValidTaskCron(t, proposedCron, now)
+		isValidCron, err := p.isValidTaskCron(ctx, t, proposedCron, now)
 		if err != nil {
 			return time.Time{}, errors.Wrapf(err, "checking if proposed cron %s for task '%s' in build variant '%s' is valid", proposedCron.String(), t.Name, t.Variant)
 		}
@@ -2643,7 +2643,7 @@ func (p *ProjectRef) GetActivationTimeForTask(t *BuildVariantTaskUnit, versionCr
 		return time.Now(), nil
 	}
 
-	lastActivated, err := VersionFindOne(VersionByLastTaskActivation(p.Id, t.Variant, t.Name).WithFields(VersionBuildVariantsKey))
+	lastActivated, err := VersionFindOne(ctx, VersionByLastTaskActivation(p.Id, t.Variant, t.Name).WithFields(VersionBuildVariantsKey))
 	if err != nil {
 		return versionCreateTime, errors.Wrap(err, "finding version")
 	}
@@ -2667,8 +2667,8 @@ func (p *ProjectRef) GetActivationTimeForTask(t *BuildVariantTaskUnit, versionCr
 }
 
 // isValidBVCron checks is a build variant cron is valid.
-func (p *ProjectRef) isValidTaskCron(bvtu *BuildVariantTaskUnit, proposedCron time.Time, now time.Time) (bool, error) {
-	return p.isValidCron(proposedCron, now, func(mostRecentCommit *Version) bool {
+func (p *ProjectRef) isValidTaskCron(ctx context.Context, bvtu *BuildVariantTaskUnit, proposedCron time.Time, now time.Time) (bool, error) {
+	return p.isValidCron(ctx, proposedCron, now, func(mostRecentCommit *Version) bool {
 		for _, bvStatus := range mostRecentCommit.BuildVariants {
 			if bvStatus.BuildVariant != bvtu.Variant {
 				continue
@@ -2881,7 +2881,7 @@ func (p *ProjectRef) UpdateAdminRoles(ctx context.Context, toAdd, toRemove []str
 
 	catcher := grip.NewBasicCatcher()
 	for _, addedUser := range toAdd {
-		adminUser, err := user.FindOneById(addedUser)
+		adminUser, err := user.FindOneByIdContext(ctx, addedUser)
 		if err != nil {
 			catcher.Wrapf(err, "finding user '%s'", addedUser)
 			p.removeFromAdminsList(addedUser)
@@ -2899,7 +2899,7 @@ func (p *ProjectRef) UpdateAdminRoles(ctx context.Context, toAdd, toRemove []str
 		}
 	}
 	for _, removedUser := range toRemove {
-		adminUser, err := user.FindOneById(removedUser)
+		adminUser, err := user.FindOneByIdContext(ctx, removedUser)
 		if err != nil {
 			catcher.Wrapf(err, "finding user '%s'", removedUser)
 			continue
@@ -2930,7 +2930,7 @@ func (p *ProjectRef) AuthorizedForGitTag(ctx context.Context, githubUser, owner,
 		return true
 	}
 	// check if user has permissions with mana before asking github about the teams
-	u, err := user.FindByGithubName(githubUser)
+	u, err := user.FindByGithubName(ctx, githubUser)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error checking if user is authorized for git tag",

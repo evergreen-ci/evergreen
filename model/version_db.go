@@ -69,14 +69,14 @@ func VersionByIds(ids []string) db.Q {
 var VersionAll = db.Query(bson.D{})
 
 // FindVersionByLastKnownGoodConfig filters on versions with valid (i.e., have no errors) config for the given project.
-func FindVersionByLastKnownGoodConfig(projectId string, revisionOrderNumber int) (*Version, error) {
+func FindVersionByLastKnownGoodConfig(ctx context.Context, projectId string, revisionOrderNumber int) (*Version, error) {
 	const retryLimit = 50
 	q := byLatestProjectVersion(projectId)
 	if revisionOrderNumber >= 0 {
 		q[VersionRevisionOrderNumberKey] = bson.M{"$lt": revisionOrderNumber}
 	}
 	for i := 0; i < retryLimit; i++ {
-		v, err := VersionFindOne(db.Query(q).Sort([]string{"-" + VersionRevisionOrderNumberKey}))
+		v, err := VersionFindOne(ctx, db.Query(q).Sort([]string{"-" + VersionRevisionOrderNumberKey}))
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding recent valid version for project '%s'", projectId)
 		}
@@ -99,8 +99,8 @@ func byLatestProjectVersion(projectId string) bson.M {
 }
 
 // FindLatestRevisionAndAuthorForProject returns the latest revision and author ID for the project, and returns an error if it's not found.
-func FindLatestRevisionAndAuthorForProject(projectId string) (string, string, error) {
-	v, err := VersionFindOne(db.Query(byLatestProjectVersion(projectId)).
+func FindLatestRevisionAndAuthorForProject(ctx context.Context, projectId string) (string, string, error) {
+	v, err := VersionFindOne(ctx, db.Query(byLatestProjectVersion(projectId)).
 		Sort([]string{"-" + VersionRevisionOrderNumberKey}).WithFields(VersionRevisionKey, VersionAuthorIDKey))
 	if err != nil {
 		return "", "", errors.Wrapf(err, "finding most recent version for project '%s'", projectId)
@@ -297,17 +297,17 @@ func VersionBySuccessfulBeforeRevision(project string, beforeRevision int) db.Q 
 	)
 }
 
-func VersionFindOne(query db.Q) (*Version, error) {
+func VersionFindOne(ctx context.Context, query db.Q) (*Version, error) {
 	version := &Version{}
-	err := db.FindOneQ(VersionCollection, query, version)
+	err := db.FindOneQContext(ctx, VersionCollection, query, version)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
 	return version, err
 }
 
-func VersionFindOneId(id string) (*Version, error) {
-	return VersionFindOne(VersionById(id))
+func VersionFindOneId(ctx context.Context, id string) (*Version, error) {
+	return VersionFindOne(ctx, VersionById(id))
 }
 
 func VersionFindByIds(ids []string) ([]Version, error) {
@@ -389,8 +389,8 @@ func AddSatisfiedTrigger(ctx context.Context, versionID, definitionID string) er
 		})
 }
 
-func GetVersionAuthorID(versionID string) (string, error) {
-	v, err := VersionFindOne(VersionById(versionID).WithFields(VersionAuthorIDKey))
+func GetVersionAuthorID(ctx context.Context, versionID string) (string, error) {
+	v, err := VersionFindOne(ctx, VersionById(versionID).WithFields(VersionAuthorIDKey))
 	if err != nil {
 		return "", errors.Wrapf(err, "getting version '%s'", versionID)
 	}
@@ -416,8 +416,8 @@ func FindLastPeriodicBuild(projectID, definitionID string) (*Version, error) {
 	return &versions[0], nil
 }
 
-func FindProjectForVersion(versionID string) (string, error) {
-	v, err := VersionFindOne(VersionById(versionID).Project(bson.M{VersionIdentifierKey: 1}))
+func FindProjectForVersion(ctx context.Context, versionID string) (string, error) {
+	v, err := VersionFindOne(ctx, VersionById(versionID).Project(bson.M{VersionIdentifierKey: 1}))
 	if err != nil {
 		return "", err
 	}
@@ -429,8 +429,8 @@ func FindProjectForVersion(versionID string) (string, error) {
 
 // FindBaseVersionForVersion finds the base version  for a given version ID. If the version is a patch, it will
 // return the base version. If the version is a mainline commit, it will return the previously run mainline commit.
-func FindBaseVersionForVersion(versionID string) (*Version, error) {
-	v, err := VersionFindOne(VersionById(versionID))
+func FindBaseVersionForVersion(ctx context.Context, versionID string) (*Version, error) {
+	v, err := VersionFindOne(ctx, VersionById(versionID))
 	if err != nil {
 		return nil, err
 	}
@@ -438,13 +438,13 @@ func FindBaseVersionForVersion(versionID string) (*Version, error) {
 		return nil, errors.New("version not found")
 	}
 	if evergreen.IsPatchRequester(v.Requester) {
-		baseVersion, err := VersionFindOne(BaseVersionByProjectIdAndRevision(v.Identifier, v.Revision))
+		baseVersion, err := VersionFindOne(ctx, BaseVersionByProjectIdAndRevision(v.Identifier, v.Revision))
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding base version with id: '%s'", v.Id)
 		}
 		return baseVersion, nil
 	} else {
-		previousVersion, err := VersionFindOne(VersionByProjectIdAndOrder(utility.FromStringPtr(&v.Identifier), v.RevisionOrderNumber-1))
+		previousVersion, err := VersionFindOne(ctx, VersionByProjectIdAndOrder(utility.FromStringPtr(&v.Identifier), v.RevisionOrderNumber-1))
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding base version with id: '%s'", v.Id)
 		}

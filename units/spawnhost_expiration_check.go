@@ -89,17 +89,17 @@ func (j *spawnhostExpirationCheckJob) Run(ctx context.Context) {
 		return
 	}
 	// If an unexpirable host hasn't been used in a while, send an email encouraging the user to remove the host.
-	j.AddError(tryIdleSpawnHostNotification(j.host))
+	j.AddError(tryIdleSpawnHostNotification(ctx, j.host))
 
 }
 
 // tryIdleSpawnHostNotification attempts to insert a subscription and notification for this spawn host.
-func tryIdleSpawnHostNotification(h *host.Host) error {
+func tryIdleSpawnHostNotification(ctx context.Context, h *host.Host) error {
 	shouldNotify, err := h.ShouldNotifyStoppedSpawnHostIdle()
 	if err != nil || !shouldNotify {
 		return err
 	}
-	usr, err := user.FindOneById(h.StartedBy)
+	usr, err := user.FindOneByIdContext(ctx, h.StartedBy)
 	if err != nil {
 		return errors.Wrapf(err, "finding user '%s'", h.StartedBy)
 	}

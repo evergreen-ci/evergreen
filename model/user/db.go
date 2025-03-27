@@ -80,11 +80,34 @@ func FindOne(query db.Q) (*DBUser, error) {
 	return u, err
 }
 
+func FindOneContext(ctx context.Context, query db.Q) (*DBUser, error) {
+	u := &DBUser{}
+	err := db.FindOneQContext(ctx, Collection, query, u)
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+	return u, err
+}
+
 // FindOneById gets a DBUser by ID.
 func FindOneById(id string) (*DBUser, error) {
 	u := &DBUser{}
 	query := ById(id)
 	err := db.FindOneQ(Collection, query, u)
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "finding user by ID")
+	}
+	return u, nil
+}
+
+// FindOneById gets a DBUser by ID.
+func FindOneByIdContext(ctx context.Context, id string) (*DBUser, error) {
+	u := &DBUser{}
+	query := ById(id)
+	err := db.FindOneQContext(ctx, Collection, query, u)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -153,9 +176,9 @@ func FindOneByToken(token string) (*DBUser, error) {
 }
 
 // FindByGithubUID finds a user with the given GitHub UID.
-func FindByGithubUID(uid int) (*DBUser, error) {
+func FindByGithubUID(ctx context.Context, uid int) (*DBUser, error) {
 	u := DBUser{}
-	err := db.FindOneQ(Collection, db.Query(bson.M{
+	err := db.FindOneQContext(ctx, Collection, db.Query(bson.M{
 		bsonutil.GetDottedKeyName(SettingsKey, UserSettingsGithubUserKey, GithubUserUIDKey): uid,
 	}), &u)
 	if adb.ResultsNotFound(err) {
@@ -169,9 +192,9 @@ func FindByGithubUID(uid int) (*DBUser, error) {
 }
 
 // FindByGithubName finds a user with the given GitHub username.
-func FindByGithubName(name string) (*DBUser, error) {
+func FindByGithubName(ctx context.Context, name string) (*DBUser, error) {
 	u := DBUser{}
-	err := db.FindOneQ(Collection, db.Query(bson.M{
+	err := db.FindOneQContext(ctx, Collection, db.Query(bson.M{
 		bsonutil.GetDottedKeyName(SettingsKey, UserSettingsGithubUserKey, githubUserLastKnownAsKey): name,
 	}), &u)
 	if adb.ResultsNotFound(err) {
@@ -185,9 +208,9 @@ func FindByGithubName(name string) (*DBUser, error) {
 }
 
 // FindBySlackUsername finds a user with the given Slack Username.
-func FindBySlackUsername(userName string) (*DBUser, error) {
+func FindBySlackUsername(ctx context.Context, userName string) (*DBUser, error) {
 	u := DBUser{}
-	err := db.FindOneQ(Collection, db.Query(bson.M{
+	err := db.FindOneQContext(ctx, Collection, db.Query(bson.M{
 		bsonutil.GetDottedKeyName(SettingsKey, userSettingsSlackUsernameKey): userName,
 	}), &u)
 	if adb.ResultsNotFound(err) {
@@ -250,46 +273,17 @@ func FindHumanUsersByRoles(roles []string) ([]DBUser, error) {
 	return res, errors.Wrapf(err, "finding users with roles '%s'", roles)
 }
 
-// GetPatchUser gets a user from their GitHub UID. If no such user is found, it
-// defaults to the global GitHub pull request user.
-func GetPatchUser(gitHubUID int) (*DBUser, error) {
-	u, err := FindByGithubUID(gitHubUID)
-	if err != nil {
-		return nil, errors.Wrap(err, "finding user by GitHub UID")
-	}
-	if u == nil {
-		// set to a default user
-		u, err = FindOne(ById(evergreen.GithubPatchUser))
-		if err != nil {
-			return nil, errors.Wrap(err, "getting user for PR")
-		}
-		// default user doesn't exist yet
-		if u == nil {
-			u = &DBUser{
-				Id:       evergreen.GithubPatchUser,
-				DispName: "GitHub Pull Requests",
-				APIKey:   utility.RandomString(),
-			}
-			if err = u.Insert(); err != nil {
-				return nil, errors.Wrap(err, "creating GitHub patch user")
-			}
-		}
-	}
-
-	return u, nil
-}
-
 // GetPeriodicBuild returns the matching user if applicable, and otherwise returns the default periodic build user.
-func GetPeriodicBuildUser(user string) (*DBUser, error) {
+func GetPeriodicBuildUser(ctx context.Context, user string) (*DBUser, error) {
 	if user != "" {
-		usr, err := FindOneById(user)
+		usr, err := FindOneByIdContext(ctx, user)
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding user '%s'", user)
 		}
 		return usr, nil
 	}
 
-	usr, err := FindOneById(evergreen.PeriodicBuildUser)
+	usr, err := FindOneByIdContext(ctx, evergreen.PeriodicBuildUser)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting periodic build user")
 	}

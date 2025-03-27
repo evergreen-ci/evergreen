@@ -15,7 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
-	"github.com/google/go-github/v52/github"
+	"github.com/google/go-github/v70/github"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -384,7 +384,7 @@ func TestProjectTriggerIntegration(t *testing.T) {
 	assert.Equal(uptreamProjectRef.Branch, mani.Branch)
 
 	// verify that triggering this version again does nothing
-	upstreamVersionFromDB, err := model.VersionFindOneId(upstreamVersion.Id)
+	upstreamVersionFromDB, err := model.VersionFindOneId(t.Context(), upstreamVersion.Id)
 	assert.NoError(err)
 	assert.Contains(upstreamVersionFromDB.SatisfiedTriggers, "def1")
 	downstreamVersions, err = EvalProjectTriggers(ctx, &e, TriggerDownstreamVersion)
@@ -517,7 +517,7 @@ func TestProjectTriggerIntegrationForBuild(t *testing.T) {
 	assert.Equal(uptreamProjectRef.Branch, mani.Branch)
 
 	// verify that triggering this version again does nothing
-	upstreamVersionFromDB, err := model.VersionFindOneId(upstreamVersion.Id)
+	upstreamVersionFromDB, err := model.VersionFindOneId(t.Context(), upstreamVersion.Id)
 	assert.NoError(err)
 	assert.Contains(upstreamVersionFromDB.SatisfiedTriggers, "def1")
 	downstreamVersions, err = EvalProjectTriggers(ctx, &e, TriggerDownstreamVersion)

@@ -202,7 +202,7 @@ func (m *mockManager) ModifyHost(ctx context.Context, host *host.Host, changes h
 		expireOnValue := expireInDays(30)
 		if *changes.NoExpiration {
 			var userTimeZone string
-			u, err := user.FindOneById(host.StartedBy)
+			u, err := user.FindOneByIdContext(ctx, host.StartedBy)
 			if err != nil {
 				return errors.Wrapf(err, "finding owner '%s' for host '%s'", host.StartedBy, host.Id)
 			}
@@ -472,8 +472,4 @@ func getMockManagerOptions(provider string, providerSettingsList []*birch.Docume
 	}
 	opts.Region = region
 	return opts, nil
-}
-
-func (m *mockManager) AddSSHKey(ctx context.Context, pair evergreen.SSHKeyPair) error {
-	return nil
 }

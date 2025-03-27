@@ -3,10 +3,8 @@
    "reviews": {
       "auto": true,
       "code-generation": true,
-      "auto-approvals": false,
+      "autoApprove": false,
       "include": [
-         "bugs",
-         "security"
       ],
       "exclude": [
       ]

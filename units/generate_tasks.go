@@ -93,7 +93,7 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 		return nil
 	}
 
-	v, err := model.VersionFindOneId(t.Version)
+	v, err := model.VersionFindOneId(ctx, t.Version)
 	if err != nil {
 		return errors.Wrapf(err, "finding version '%s'", t.Version)
 	}
@@ -166,13 +166,12 @@ func (j *generateTasksJob) generate(ctx context.Context, t *task.Task) error {
 		return errors.Wrap(err, "checking new dependency graph for cycles")
 	}
 
-	// Don't use the job's context, because it's better to try finishing than to
-	// exit early after a SIGTERM from app server shutdown.
-	saveCtx, saveCancel := context.WithTimeout(context.Background(), 30*time.Minute)
-	defer saveCancel()
-	// Inject the span context into the saveCtx.
-	saveCtx = trace.ContextWithSpanContext(saveCtx, span.SpanContext())
-	err = g.Save(saveCtx, j.env.Settings(), p, pp, v)
+	// Ignore the cancel signal from the job's context, because it's better
+	// to try finishing than to exit early after a SIGTERM from app server shutdown.
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Minute)
+	defer cancel()
+
+	err = g.Save(ctx, j.env.Settings(), p, pp, v)
 
 	// If the version or parser project has changed there was a race. Another generator will try again.
 	if adb.ResultsNotFound(err) || db.IsDuplicateKey(err) {

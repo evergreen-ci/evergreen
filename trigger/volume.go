@@ -97,7 +97,7 @@ func (t *volumeTriggers) generate(sub *event.Subscription) (*notification.Notifi
 func (t *volumeTriggers) volumeExpiration(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
 	timeZone := time.Local
 	if sub.OwnerType == event.OwnerTypePerson {
-		userTimeZone, err := getUserTimeZone(sub.Owner)
+		userTimeZone, err := getUserTimeZone(ctx, sub.Owner)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "problem getting time zone",
@@ -112,8 +112,8 @@ func (t *volumeTriggers) volumeExpiration(ctx context.Context, sub *event.Subscr
 	return t.generate(sub)
 }
 
-func getUserTimeZone(userID string) (*time.Location, error) {
-	user, err := user.FindOneById(userID)
+func getUserTimeZone(ctx context.Context, userID string) (*time.Location, error) {
+	user, err := user.FindOneByIdContext(ctx, userID)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding user '%s' for subscription owner", userID)
 	}

@@ -69,7 +69,7 @@ func NewReauthorizeUserJob(env evergreen.Environment, u *user.DBUser, id string)
 
 func (j *reauthorizeUserJob) Run(ctx context.Context) {
 	if j.user == nil {
-		user, err := user.FindOneById(j.UserID)
+		user, err := user.FindOneByIdContext(ctx, j.UserID)
 		if err != nil {
 			j.AddRetryableError(errors.Wrapf(err, "finding user '%s'", j.UserID))
 			return

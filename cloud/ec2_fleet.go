@@ -115,15 +115,10 @@ func (m *ec2FleetManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Ho
 		return nil, errors.Wrapf(err, "invalid EC2 settings in distro '%s': %+v", h.Distro.Id, ec2Settings)
 	}
 
-	if ec2Settings.KeyName == "" && !h.UserHost {
-		if !h.SpawnOptions.SpawnedByTask {
-			return nil, errors.New("key name must not be empty")
-		}
-		k, err := m.client.GetKey(ctx, h)
-		if err != nil {
-			return nil, errors.Wrap(err, "getting public key")
-		}
-		ec2Settings.KeyName = k
+	var err error
+	ec2Settings.KeyName, err = getKeyName(ctx, h, m.settings, m.client)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting key name")
 	}
 
 	if err := m.spawnFleetSpotHost(ctx, h, ec2Settings); err != nil {
@@ -560,12 +555,4 @@ func (m *ec2FleetManager) makeOverrides(ctx context.Context, ec2Settings *EC2Pro
 	}
 
 	return overrides, nil
-}
-
-func (m *ec2FleetManager) AddSSHKey(ctx context.Context, pair evergreen.SSHKeyPair) error {
-	if err := m.client.Create(ctx, m.region); err != nil {
-		return errors.Wrap(err, "creating client")
-	}
-
-	return errors.Wrap(addSSHKey(ctx, m.client, pair), "adding public SSH key")
 }

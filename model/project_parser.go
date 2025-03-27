@@ -550,7 +550,7 @@ func FindAndTranslateProjectForPatch(ctx context.Context, settings *evergreen.Se
 	}
 
 	// This fallback handles the case where the patch is already finalized.
-	v, err := VersionFindOneId(p.Version)
+	v, err := VersionFindOneId(ctx, p.Version)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "finding version '%s' for patch '%s'", p.Version, p.Id.Hex())
 	}

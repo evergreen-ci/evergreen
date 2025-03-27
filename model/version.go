@@ -114,8 +114,8 @@ func (v *Version) IsFinished() bool {
 	return evergreen.IsFinishedVersionStatus(v.Status)
 }
 
-func (v *Version) LastSuccessful() (*Version, error) {
-	lastGreen, err := VersionFindOne(VersionBySuccessfulBeforeRevision(v.Identifier, v.RevisionOrderNumber).Sort(
+func (v *Version) LastSuccessful(ctx context.Context) (*Version, error) {
+	lastGreen, err := VersionFindOne(ctx, VersionBySuccessfulBeforeRevision(v.Identifier, v.RevisionOrderNumber).Sort(
 		[]string{"-" + VersionRevisionOrderNumberKey}))
 	if err != nil {
 		return nil, errors.Wrap(err, "retrieving last successful version")
@@ -179,19 +179,6 @@ func (v *Version) Insert() error {
 
 func (v *Version) IsChild() bool {
 	return v.ParentPatchID != ""
-}
-
-func (v *Version) GetParentVersion() (*Version, error) {
-	if v.ParentPatchID == "" {
-		return nil, errors.Errorf("version '%s' is missing parent patch ID", v.Id)
-	}
-	parentVersion, err := VersionFindOne(VersionById(v.ParentPatchID))
-	if err != nil {
-		return nil, errors.WithStack(err)
-	} else if parentVersion == nil {
-		return nil, errors.Errorf("version '%s' not found", v.ParentPatchID)
-	}
-	return parentVersion, nil
 }
 
 func (v *Version) AddSatisfiedTrigger(ctx context.Context, definitionID string) error {
@@ -346,8 +333,8 @@ type DuplicateVersions struct {
 	Versions []Version           `bson:"versions"`
 }
 
-func IsAborted(id string) (bool, error) {
-	v, err := VersionFindOne(VersionById(id))
+func IsAborted(ctx context.Context, id string) (bool, error) {
+	v, err := VersionFindOne(ctx, VersionById(id))
 	if err != nil {
 		return false, errors.Errorf("finding version '%s'", id)
 	}
@@ -357,8 +344,8 @@ func IsAborted(id string) (bool, error) {
 	return v.Aborted, nil
 }
 
-func VersionGetHistory(versionId string, N int) ([]Version, error) {
-	v, err := VersionFindOne(VersionById(versionId))
+func VersionGetHistory(ctx context.Context, versionId string, N int) ([]Version, error) {
+	v, err := VersionFindOne(ctx, VersionById(versionId))
 	if err != nil {
 		return nil, errors.WithStack(err)
 	} else if v == nil {

@@ -149,30 +149,11 @@ func (h *Host) GetSSHPort() int {
 // GetSSHOptions returns the options to SSH into this host from an application
 // server.
 func (h *Host) GetSSHOptions(settings *evergreen.Settings) ([]string, error) {
-	var keyPaths []string
-	for _, pair := range settings.SSHKeyPairs {
-		if _, err := os.Stat(pair.PrivatePath(settings)); err == nil {
-			keyPaths = append(keyPaths, pair.PrivatePath(settings))
-		} else {
-			grip.Warning(message.WrapError(err, message.Fields{
-				"message": "could not find local SSH key file (this should only be a temporary problem until SSH keys are written to the static host)",
-				"host_id": h.Id,
-				"key":     pair.Name,
-			}))
-		}
+	// TODO (DEVPROD-15898): stop providing this key.
+	if _, err := os.Stat(settings.KanopySSHKeyPath); err != nil {
+		return nil, errors.New("Kanopy SSH identity file does not exist")
 	}
-
-	if _, err := os.Stat(settings.KanopySSHKeyPath); err == nil {
-		keyPaths = append(keyPaths, settings.KanopySSHKeyPath)
-	}
-	if len(keyPaths) == 0 {
-		return nil, errors.New("no SSH identity files available")
-	}
-
-	var opts []string
-	for _, path := range keyPaths {
-		opts = append(opts, "-i", path)
-	}
+	opts := []string{"-i", settings.KanopySSHKeyPath}
 
 	var hasKnownHostsFile bool
 	var distroPortOption string
@@ -443,7 +424,7 @@ func (h *Host) GenerateUserDataProvisioningScript(ctx context.Context, settings 
 		}
 	} else if h.ProvisionOptions != nil && h.UserHost {
 		// Set up a spawn host.
-		if postFetchClient, err = h.SpawnHostSetupCommands(settings); err != nil {
+		if postFetchClient, err = h.SpawnHostSetupCommands(ctx, settings); err != nil {
 			return "", errors.Wrap(err, "creating commands to load task data")
 		}
 		if h.ProvisionOptions.TaskId != "" {
@@ -1098,7 +1079,7 @@ func (h *Host) AddPublicKeyScript(pubKey string) string {
 
 // SpawnHostSetupCommands returns the commands to handle setting up a spawn
 // host with the evergreen binary and config file for the owner.
-func (h *Host) SpawnHostSetupCommands(settings *evergreen.Settings) (string, error) {
+func (h *Host) SpawnHostSetupCommands(ctx context.Context, settings *evergreen.Settings) (string, error) {
 	if h.ProvisionOptions == nil {
 		return "", errors.New("missing spawn host provisioning options")
 	}
@@ -1106,7 +1087,7 @@ func (h *Host) SpawnHostSetupCommands(settings *evergreen.Settings) (string, err
 		return "", errors.New("missing spawn host owner")
 	}
 
-	conf, err := h.spawnHostConfig(settings)
+	conf, err := h.spawnHostConfig(ctx, settings)
 	if err != nil {
 		return "", errors.Wrap(err, "creating spawn host configuration settings")
 	}
@@ -1154,8 +1135,8 @@ func (h *Host) spawnHostConfigFile() string {
 
 // spawnHostCLIConfig returns the evergreen configuration for a spawn host CLI
 // in yaml format.
-func (h *Host) spawnHostConfig(settings *evergreen.Settings) ([]byte, error) {
-	owner, err := user.FindOne(user.ById(h.ProvisionOptions.OwnerId))
+func (h *Host) spawnHostConfig(ctx context.Context, settings *evergreen.Settings) ([]byte, error) {
+	owner, err := user.FindOneContext(ctx, user.ById(h.ProvisionOptions.OwnerId))
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting owner '%s' for host", h.ProvisionOptions.OwnerId)
 	}

@@ -21,7 +21,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
-	"github.com/google/go-github/v52/github"
+	"github.com/google/go-github/v70/github"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -113,7 +113,7 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 			assert.NotNil(t, unrestrictedScope)
 			assert.NotContains(t, unrestrictedScope.Resources, projectThatDefaults.Id)
 
-			newAdminFromDB, err := user.FindOneById("newAdmin")
+			newAdminFromDB, err := user.FindOneByIdContext(t.Context(), "newAdmin")
 			assert.NoError(t, err)
 			assert.NotNil(t, newAdminFromDB)
 			assert.Contains(t, newAdminFromDB.Roles(), model.GetRepoAdminRole(ref.Id))
@@ -139,12 +139,12 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 			assert.NotNil(t, repoRefFromDb)
 			assert.Equal(t, []string{newAdmin.Id}, repoRefFromDb.Admins)
 
-			newAdminFromDB, err := user.FindOneById("newAdmin")
+			newAdminFromDB, err := user.FindOneByIdContext(t.Context(), "newAdmin")
 			assert.NoError(t, err)
 			assert.NotNil(t, newAdminFromDB)
 			assert.Contains(t, newAdminFromDB.Roles(), model.GetRepoAdminRole(ref.Id))
 
-			oldAdminFromDB, err := user.FindOneById("oldAdmin")
+			oldAdminFromDB, err := user.FindOneByIdContext(t.Context(), "oldAdmin")
 			assert.NoError(t, err)
 			assert.NotNil(t, oldAdminFromDB)
 			assert.NotContains(t, oldAdminFromDB.Roles(), model.GetRepoAdminRole(ref.Id))
@@ -631,7 +631,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.NotNil(t, unrestrictedScope)
 			assert.NotContains(t, unrestrictedScope.Resources, ref.Id)
 
-			newAdminFromDB, err := user.FindOneById("newAdmin")
+			newAdminFromDB, err := user.FindOneByIdContext(t.Context(), "newAdmin")
 			assert.NoError(t, err)
 			assert.NotNil(t, newAdminFromDB)
 			assert.Contains(t, newAdminFromDB.Roles(), "admin")
@@ -657,12 +657,12 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			// should still add newAdmin and delete oldAdmin even with errors
 			assert.Equal(t, []string{newAdmin.Id}, pRefFromDB.Admins)
 
-			newAdminFromDB, err := user.FindOneById("newAdmin")
+			newAdminFromDB, err := user.FindOneByIdContext(t.Context(), "newAdmin")
 			assert.NoError(t, err)
 			assert.NotNil(t, newAdminFromDB)
 			assert.Contains(t, newAdminFromDB.Roles(), "admin")
 
-			oldAdminFromDB, err := user.FindOneById("oldAdmin")
+			oldAdminFromDB, err := user.FindOneByIdContext(t.Context(), "oldAdmin")
 			assert.NoError(t, err)
 			assert.NotNil(t, oldAdminFromDB)
 			assert.NotContains(t, oldAdminFromDB.Roles(), model.GetRepoAdminRole(ref.Id))

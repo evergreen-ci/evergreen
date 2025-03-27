@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"path/filepath"
 	"reflect"
 	"strconv"
 	"time"
@@ -14,7 +13,6 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy/logger"
 	"github.com/mongodb/anser/apm"
-	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
@@ -33,11 +31,11 @@ var (
 
 	// ClientVersion is the commandline version string used to control updating
 	// the CLI. The format is the calendar date (YYYY-MM-DD).
-	ClientVersion = "2025-03-17-A"
+	ClientVersion = "2025-03-25"
 
 	// Agent version to control agent rollover. The format is the calendar date
 	// (YYYY-MM-DD).
-	AgentVersion = "2025-03-18a"
+	AgentVersion = "2025-03-25"
 )
 
 const (
@@ -61,35 +59,35 @@ type ConfigSection interface {
 // Settings contains all configuration settings for running Evergreen. Settings
 // with the "id" struct tag should implement the ConfigSection interface.
 type Settings struct {
-	Id                  string                    `bson:"_id" json:"id" yaml:"id"`
-	Amboy               AmboyConfig               `yaml:"amboy" bson:"amboy" json:"amboy" id:"amboy"`
-	AmboyDB             AmboyDBConfig             `yaml:"amboy_db" bson:"amboy_db" json:"amboy_db" id:"amboy_db"`
-	Api                 APIConfig                 `yaml:"api" bson:"api" json:"api" id:"api"`
-	AuthConfig          AuthConfig                `yaml:"auth" bson:"auth" json:"auth" id:"auth"`
-	AWSInstanceRole     string                    `yaml:"aws_instance_role" bson:"aws_instance_role" json:"aws_instance_role"`
-	Banner              string                    `bson:"banner" json:"banner" yaml:"banner"`
-	BannerTheme         BannerTheme               `bson:"banner_theme" json:"banner_theme" yaml:"banner_theme"`
-	Buckets             BucketsConfig             `bson:"buckets" json:"buckets" yaml:"buckets" id:"buckets"`
-	Cedar               CedarConfig               `bson:"cedar" json:"cedar" yaml:"cedar" id:"cedar"`
-	ConfigDir           string                    `yaml:"configdir" bson:"configdir" json:"configdir"`
-	ContainerPools      ContainerPoolsConfig      `yaml:"container_pools" bson:"container_pools" json:"container_pools" id:"container_pools"`
-	Database            DBSettings                `yaml:"database" json:"database" bson:"database"`
-	DomainName          string                    `yaml:"domain_name" bson:"domain_name" json:"domain_name"`
-	Expansions          map[string]string         `yaml:"expansions" bson:"expansions" json:"expansions"`
-	ExpansionsNew       util.KeyValuePairSlice    `yaml:"expansions_new" bson:"expansions_new" json:"expansions_new"`
-	GithubPRCreatorOrg  string                    `yaml:"github_pr_creator_org" bson:"github_pr_creator_org" json:"github_pr_creator_org"`
-	GitHubCheckRun      GitHubCheckRunConfig      `yaml:"github_check_run" bson:"github_check_run" json:"github_check_run" id:"github_check_run"`
-	GithubOrgs          []string                  `yaml:"github_orgs" bson:"github_orgs" json:"github_orgs"`
-	GithubWebhookSecret string                    `yaml:"github_webhook_secret" bson:"github_webhook_secret" json:"github_webhook_secret"`
-	DisabledGQLQueries  []string                  `yaml:"disabled_gql_queries" bson:"disabled_gql_queries" json:"disabled_gql_queries"`
-	HostInit            HostInitConfig            `yaml:"hostinit" bson:"hostinit" json:"hostinit" id:"hostinit"`
-	HostJasper          HostJasperConfig          `yaml:"host_jasper" bson:"host_jasper" json:"host_jasper" id:"host_jasper"`
-	Jira                JiraConfig                `yaml:"jira" bson:"jira" json:"jira" id:"jira"`
-	JIRANotifications   JIRANotificationsConfig   `yaml:"jira_notifications" json:"jira_notifications" bson:"jira_notifications" id:"jira_notifications"`
+	Id                  string                  `bson:"_id" json:"id" yaml:"id"`
+	Amboy               AmboyConfig             `yaml:"amboy" bson:"amboy" json:"amboy" id:"amboy"`
+	AmboyDB             AmboyDBConfig           `yaml:"amboy_db" bson:"amboy_db" json:"amboy_db" id:"amboy_db"`
+	Api                 APIConfig               `yaml:"api" bson:"api" json:"api" id:"api"`
+	AuthConfig          AuthConfig              `yaml:"auth" bson:"auth" json:"auth" id:"auth"`
+	AWSInstanceRole     string                  `yaml:"aws_instance_role" bson:"aws_instance_role" json:"aws_instance_role"`
+	Banner              string                  `bson:"banner" json:"banner" yaml:"banner"`
+	BannerTheme         BannerTheme             `bson:"banner_theme" json:"banner_theme" yaml:"banner_theme"`
+	Buckets             BucketsConfig           `bson:"buckets" json:"buckets" yaml:"buckets" id:"buckets"`
+	Cedar               CedarConfig             `bson:"cedar" json:"cedar" yaml:"cedar" id:"cedar"`
+	ConfigDir           string                  `yaml:"configdir" bson:"configdir" json:"configdir"`
+	ContainerPools      ContainerPoolsConfig    `yaml:"container_pools" bson:"container_pools" json:"container_pools" id:"container_pools"`
+	Database            DBSettings              `yaml:"database" json:"database" bson:"database"`
+	DomainName          string                  `yaml:"domain_name" bson:"domain_name" json:"domain_name"`
+	Expansions          map[string]string       `yaml:"expansions" bson:"expansions" json:"expansions"`
+	ExpansionsNew       util.KeyValuePairSlice  `yaml:"expansions_new" bson:"expansions_new" json:"expansions_new"`
+	GithubPRCreatorOrg  string                  `yaml:"github_pr_creator_org" bson:"github_pr_creator_org" json:"github_pr_creator_org"`
+	GitHubCheckRun      GitHubCheckRunConfig    `yaml:"github_check_run" bson:"github_check_run" json:"github_check_run" id:"github_check_run"`
+	GithubOrgs          []string                `yaml:"github_orgs" bson:"github_orgs" json:"github_orgs"`
+	GithubWebhookSecret string                  `yaml:"github_webhook_secret" bson:"github_webhook_secret" json:"github_webhook_secret"`
+	DisabledGQLQueries  []string                `yaml:"disabled_gql_queries" bson:"disabled_gql_queries" json:"disabled_gql_queries"`
+	HostInit            HostInitConfig          `yaml:"hostinit" bson:"hostinit" json:"hostinit" id:"hostinit"`
+	HostJasper          HostJasperConfig        `yaml:"host_jasper" bson:"host_jasper" json:"host_jasper" id:"host_jasper"`
+	Jira                JiraConfig              `yaml:"jira" bson:"jira" json:"jira" id:"jira"`
+	JIRANotifications   JIRANotificationsConfig `yaml:"jira_notifications" json:"jira_notifications" bson:"jira_notifications" id:"jira_notifications"`
+	// TODO (DEVPROD-15898): remove this key path.
 	KanopySSHKeyPath    string                    `yaml:"kanopy_ssh_key_path" bson:"kanopy_ssh_key_path" json:"kanopy_ssh_key_path"`
 	LoggerConfig        LoggerConfig              `yaml:"logger_config" bson:"logger_config" json:"logger_config" id:"logger_config"`
 	LogPath             string                    `yaml:"log_path" bson:"log_path" json:"log_path"`
-	NewRelic            NewRelicConfig            `yaml:"newrelic" bson:"newrelic" json:"newrelic" id:"newrelic"`
 	Notify              NotifyConfig              `yaml:"notify" bson:"notify" json:"notify" id:"notify"`
 	Overrides           OverridesConfig           `yaml:"overrides" bson:"overrides" json:"overrides" id:"overrides"`
 	ParameterStore      ParameterStoreConfig      `yaml:"parameter_store" bson:"parameter_store" json:"parameter_store" id:"parameter_store"`
@@ -104,14 +102,12 @@ type Settings struct {
 	Scheduler           SchedulerConfig           `yaml:"scheduler" bson:"scheduler" json:"scheduler" id:"scheduler"`
 	ServiceFlags        ServiceFlags              `bson:"service_flags" json:"service_flags" id:"service_flags" yaml:"service_flags"`
 	ShutdownWaitSeconds int                       `yaml:"shutdown_wait_seconds" bson:"shutdown_wait_seconds" json:"shutdown_wait_seconds"`
-	SSHKeyDirectory     string                    `yaml:"ssh_key_directory" bson:"ssh_key_directory" json:"ssh_key_directory"`
-	SSHKeyPairs         []SSHKeyPair              `yaml:"ssh_key_pairs" bson:"ssh_key_pairs" json:"ssh_key_pairs"`
-	SSHKeySecretARNs    []string                  `yaml:"ssh_key_secret_arns" bson:"ssh_key_secret_arns" json:"ssh_key_secret_arns"`
 	SingleTaskDistro    SingleTaskDistroConfig    `yaml:"single_task_distro" bson:"single_task_distro" json:"single_task_distro" id:"single_task_distro"`
 	Slack               SlackConfig               `yaml:"slack" bson:"slack" json:"slack" id:"slack"`
 	SleepSchedule       SleepScheduleConfig       `yaml:"sleep_schedule" bson:"sleep_schedule" json:"sleep_schedule" id:"sleep_schedule"`
 	Spawnhost           SpawnHostConfig           `yaml:"spawnhost" bson:"spawnhost" json:"spawnhost" id:"spawnhost"`
 	Splunk              SplunkConfig              `yaml:"splunk" bson:"splunk" json:"splunk" id:"splunk"`
+	SSH                 SSHConfig                 `yaml:"ssh" bson:"ssh" json:"ssh" id:"ssh"`
 	TaskLimits          TaskLimitsConfig          `yaml:"task_limits" bson:"task_limits" json:"task_limits" id:"task_limits"`
 	TestSelection       TestSelectionConfig       `yaml:"test_selection" bson:"test_selection" json:"test_selection" id:"test_selection"`
 	Tracer              TracerConfig              `yaml:"tracer" bson:"tracer" json:"tracer" id:"tracer"`
@@ -147,9 +143,7 @@ func (c *Settings) Set(ctx context.Context) error {
 			pluginsKey:             c.Plugins,
 			pluginsNewKey:          c.PluginsNew,
 			splunkKey:              c.Splunk,
-			sshKeyDirectoryKey:     c.SSHKeyDirectory,
-			sshKeyPairsKey:         c.SSHKeyPairs,
-			sshKeySecretARNsKey:    c.SSHKeySecretARNs,
+			sshKey:                 c.SSH,
 			spawnhostKey:           c.Spawnhost,
 			shutdownWaitKey:        c.ShutdownWaitSeconds,
 		}}), "updating config section '%s'", c.SectionId(),
@@ -178,52 +172,6 @@ func (c *Settings) ValidateAndDefault() error {
 			c.Plugins[k1] = map[string]any{}
 			for k2, v2 := range v1 {
 				c.Plugins[k1][k2] = v2
-			}
-		}
-	}
-	if len(c.SSHKeyPairs) != 0 && c.SSHKeyDirectory == "" {
-		catcher.New("cannot use SSH key pairs without setting a directory for them")
-	}
-
-	for i := 0; i < len(c.SSHKeyPairs); i++ {
-		catcher.NewWhen(c.SSHKeyPairs[i].Name == "", "must specify a name for SSH key pairs")
-		catcher.ErrorfWhen(c.SSHKeyPairs[i].Public == "", "must specify a public key for SSH key pair '%s'", c.SSHKeyPairs[i].Name)
-		catcher.ErrorfWhen(c.SSHKeyPairs[i].Private == "", "must specify a private key for SSH key pair '%s'", c.SSHKeyPairs[i].Name)
-		// Avoid overwriting the filepath stored in Keys, which is a special
-		// case for the path to the legacy SSH identity file.
-		catcher.ErrorfWhen(c.SSHKeyPairs[i].PrivatePath(c) == c.KanopySSHKeyPath, "cannot overwrite the legacy SSH key at path '%s'", c.KanopySSHKeyPath)
-
-		// ValidateAndDefault can be called before the environment has been
-		// initialized.
-		if env := GetEnvironment(); env != nil {
-			// Ensure we are not modify any existing keys.
-			if settings := env.Settings(); settings != nil {
-				for _, key := range env.Settings().SSHKeyPairs {
-					if key.Name == c.SSHKeyPairs[i].Name {
-						catcher.ErrorfWhen(c.SSHKeyPairs[i].Public != key.Public, "cannot modify public key for existing SSH key pair '%s'", key.Name)
-						catcher.ErrorfWhen(c.SSHKeyPairs[i].Private != key.Private, "cannot modify private key for existing SSH key pair '%s'", key.Name)
-					}
-				}
-			}
-		}
-		if c.SSHKeyPairs[i].EC2Regions == nil {
-			c.SSHKeyPairs[i].EC2Regions = []string{}
-		}
-	}
-	// ValidateAndDefault can be called before the environment has been
-	// initialized.
-	if env := GetEnvironment(); env != nil {
-		if settings := env.Settings(); settings != nil {
-			// Ensure we are not deleting any existing keys.
-			for _, key := range GetEnvironment().Settings().SSHKeyPairs {
-				var found bool
-				for _, newKey := range c.SSHKeyPairs {
-					if newKey.Name == key.Name {
-						found = true
-						break
-					}
-				}
-				catcher.ErrorfWhen(!found, "cannot find existing SSH key '%s'", key.Name)
 			}
 		}
 	}
@@ -551,58 +499,6 @@ func (s *Settings) makeSplunkSender(ctx context.Context, client *http.Client, le
 // PluginConfig holds plugin-specific settings, which are handled.
 // manually by their respective plugins
 type PluginConfig map[string]map[string]any
-
-// SSHKeyPair represents a public and private SSH key pair.
-type SSHKeyPair struct {
-	Name    string `bson:"name" json:"name" yaml:"name"`
-	Public  string `bson:"public" json:"public" yaml:"public"`
-	Private string `bson:"private" json:"private" yaml:"private"`
-	// EC2Regions contains all EC2 regions that have stored this SSH key.
-	EC2Regions []string `bson:"ec2_regions" json:"ec2_regions" yaml:"ec2_regions"`
-}
-
-// AddEC2Region adds the given EC2 region to the set of regions containing the
-// SSH key.
-func (p *SSHKeyPair) AddEC2Region(region string) error {
-	env := GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-	coll := env.DB().Collection(ConfigCollection)
-
-	query := bson.M{
-		idKey: ConfigDocID,
-		sshKeyPairsKey: bson.M{
-			"$elemMatch": bson.M{
-				sshKeyPairNameKey: p.Name,
-			},
-		},
-	}
-	var update bson.M
-	if len(p.EC2Regions) == 0 {
-		// In case this is the first element, we have to push to create the
-		// array first.
-		update = bson.M{
-			"$push": bson.M{bsonutil.GetDottedKeyName(sshKeyPairsKey, "$", sshKeyPairEC2RegionsKey): region},
-		}
-	} else {
-		update = bson.M{
-			"$addToSet": bson.M{bsonutil.GetDottedKeyName(sshKeyPairsKey, "$", sshKeyPairEC2RegionsKey): region},
-		}
-	}
-	if _, err := coll.UpdateOne(ctx, query, update); err != nil {
-		return errors.WithStack(err)
-	}
-
-	if !utility.StringSliceContains(p.EC2Regions, region) {
-		p.EC2Regions = append(p.EC2Regions, region)
-	}
-
-	return nil
-}
-
-func (p *SSHKeyPair) PrivatePath(settings *Settings) string {
-	return filepath.Join(settings.SSHKeyDirectory, p.Name)
-}
 
 type WriteConcern struct {
 	W        int    `yaml:"w"`

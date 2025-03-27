@@ -61,7 +61,7 @@ func (b *buildGetHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	v, err := serviceModel.VersionFindOneId(foundBuild.Version)
+	v, err := serviceModel.VersionFindOne(ctx, serviceModel.VersionById(foundBuild.Version).WithFields(serviceModel.VersionIdKey, serviceModel.VersionProjectStorageMethodKey))
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding version '%s'", foundBuild.Version))
 	}

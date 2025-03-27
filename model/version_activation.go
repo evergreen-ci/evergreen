@@ -14,7 +14,7 @@ import (
 
 func DoProjectActivation(ctx context.Context, id string, ts time.Time) (bool, error) {
 	// fetch the most recent, non-ignored version (before the given time) to activate
-	activateVersion, err := VersionFindOne(VersionByMostRecentNonIgnored(id, ts))
+	activateVersion, err := VersionFindOne(ctx, VersionByMostRecentNonIgnored(id, ts))
 	if err != nil {
 		return false, errors.WithStack(err)
 	}

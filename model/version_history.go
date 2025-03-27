@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/evergreen-ci/evergreen"
@@ -18,13 +19,13 @@ const (
 
 // Given a project name and a list of build variants, return the latest version
 // on which all the given build variants succeeded. Gives up after 100 versions.
-func FindLastPassingVersionForBuildVariants(project *Project, buildVariantNames []string) (*Version, error) {
+func FindLastPassingVersionForBuildVariants(ctx context.Context, project *Project, buildVariantNames []string) (*Version, error) {
 	if len(buildVariantNames) == 0 {
 		return nil, errors.New("no build variants specified")
 	}
 
 	// Get latest commit order number for this project
-	latestVersion, err := VersionFindOne(VersionByMostRecentSystemRequester(project.Identifier).WithFields(VersionRevisionOrderNumberKey))
+	latestVersion, err := VersionFindOne(ctx, VersionByMostRecentSystemRequester(project.Identifier).WithFields(VersionRevisionOrderNumberKey))
 	if err != nil {
 		return nil, errors.Wrap(err, "getting latest version")
 	}
@@ -91,6 +92,7 @@ func FindLastPassingVersionForBuildVariants(project *Project, buildVariantNames 
 
 	// Get the version corresponding to the resulting commit order number
 	v, err := VersionFindOne(
+		ctx,
 		db.Query(bson.M{
 			VersionRequesterKey: bson.M{
 				"$in": evergreen.SystemVersionRequesterTypes,

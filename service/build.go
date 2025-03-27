@@ -290,7 +290,7 @@ func (uis *UIServer) buildHistory(w http.ResponseWriter, r *http.Request) {
 	history.Builds = make([]*uiBuild, len(builds))
 	for i := 0; i < len(builds); i++ {
 		var v *model.Version
-		v, err = model.VersionFindOne(model.VersionById(builds[i].Version))
+		v, err = model.VersionFindOne(r.Context(), model.VersionById(builds[i].Version))
 		if err != nil {
 			http.Error(w, fmt.Sprintf("error getting version for build %v: %v", builds[i].Id, err), http.StatusInternalServerError)
 			return
@@ -320,7 +320,7 @@ func (uis *UIServer) buildHistory(w http.ResponseWriter, r *http.Request) {
 
 	lastSuccess, err := getBuildVariantHistoryLastSuccess(r.Context(), buildId)
 	if err == nil && lastSuccess != nil {
-		v, err := model.VersionFindOne(model.VersionById(lastSuccess.Version))
+		v, err := model.VersionFindOne(r.Context(), model.VersionById(lastSuccess.Version))
 		if err != nil {
 			http.Error(
 				w, fmt.Sprintf("error getting last successful build version: %v", err),

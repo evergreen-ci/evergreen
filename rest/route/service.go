@@ -2,6 +2,7 @@ package route
 
 import (
 	"net/http"
+	"os"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
@@ -66,6 +67,9 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	// Clients
 	stsManager := cloud.GetSTSManager(false)
 
+	// AWS Role ARN from IRSA
+	awsRoleARN := os.Getenv("AWS_ROLE_ARN")
+
 	// Agent protocol routes
 	app.AddRoute("/agent/cedar_config").Version(2).Get().Wrap(requirePodOrHost).RouteHandler(makeAgentCedarConfig(settings.Cedar))
 	app.AddRoute("/agent/setup").Version(2).Get().Wrap(requirePodOrHost).RouteHandler(makeAgentSetup(settings))
@@ -112,7 +116,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/task/{task_id}/restart").Version(2).Post().Wrap(requireTask).RouteHandler(makeMarkTaskForRestart())
 	app.AddRoute("/task/{task_id}/check_run").Version(2).Post().Wrap(requireTask).RouteHandler(makeCheckRun(settings))
 	app.AddRoute("/task/{task_id}/aws/assume_role").Version(2).Post().Wrap(requireTask).RouteHandler(makeAWSAssumeRole(stsManager))
-	app.AddRoute("/task/{task_id}/aws/s3_credentials").Version(2).Post().Wrap(requireTask).RouteHandler(makeAWSS3Credentials(env, stsManager))
+	app.AddRoute("/task/{task_id}/aws/s3_credentials").Version(2).Post().Wrap(requireTask).RouteHandler(makeAWSS3Credentials(env, stsManager, awsRoleARN))
 
 	// REST v2 API Routes
 	app.AddRoute("/").Version(2).Get().Wrap(requireUser).RouteHandler(makePlaceHolder())
@@ -251,7 +255,6 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/users/{user_id}/permissions").Version(2).Post().Wrap(requireUser, editRoles).RouteHandler(makeModifyUserPermissions(env.RoleManager()))
 	app.AddRoute("/users/{user_id}/permissions").Version(2).Delete().Wrap(requireUser, editRoles).RouteHandler(makeDeleteUserPermissions(env.RoleManager()))
 	app.AddRoute("/users/{user_id}/roles").Version(2).Post().Wrap(requireUser, editRoles).RouteHandler(makeModifyUserRoles(env.RoleManager()))
-	app.AddRoute("/validate").Version(2).Post().Wrap(requireUser).RouteHandler(makeValidateProject())
 	app.AddRoute("/versions/{version_id}").Version(2).Get().Wrap(requireUser, viewTasks).RouteHandler(makeGetVersionByID())
 	app.AddRoute("/versions/{version_id}").Version(2).Patch().Wrap(requireUser, editTasks).RouteHandler(makePatchVersion())
 	app.AddRoute("/versions/{version_id}/abort").Version(2).Post().Wrap(requireUser, editTasks).RouteHandler(makeAbortVersion())

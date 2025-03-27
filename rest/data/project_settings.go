@@ -404,7 +404,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		if err != nil {
 			return nil, errors.Wrap(err, "unredacting subscriptions")
 		}
-		if err = SaveSubscriptions(projectId, unredactedSubscriptions, true); err != nil {
+		if err = SaveSubscriptions(ctx, projectId, unredactedSubscriptions, true); err != nil {
 			return nil, errors.Wrapf(err, "saving subscriptions for project '%s'", projectId)
 		}
 		modified = true

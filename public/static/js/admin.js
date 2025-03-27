@@ -53,9 +53,6 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
         $scope.tempExpansions.push(obj);
       });
 
-      $scope.newSSHKeyPair = {};
-      $scope.tempSSHKeyPairs = _.clone(resp.data.ssh_key_pairs) || [];
-
       if (!resp.data.auth) {
         resp.data.auth = {};
       }
@@ -113,7 +110,6 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
         $scope.Settings.credentials[key] = elem[key];
       }
     });
-    $scope.Settings.ssh_key_pairs = $scope.tempSSHKeyPairs;
 
     if (!$scope.Settings.auth) {
       $scope.Settings.auth = {};
@@ -263,6 +259,26 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     $scope.invalidProjectToPrefixMapping = "";
   }
 
+  $scope.addProjectToBucketMapping = function () {
+    if ($scope.Settings.buckets == null) {
+      $scope.Settings.buckets = {
+        "project_to_bucket_mappings": []
+      };
+    }
+    if ($scope.Settings.buckets.project_to_bucket_mappings == null) {
+      $scope.Settings.buckets.project_to_bucket_mappings = [];
+    }
+
+    if (!$scope.validProjectToBucketMapping($scope.new_project_to_bucket_mapping)) {
+      $scope.invalidProjectToBucketMapping = "Project and bucket are required.";
+      return
+    }
+
+    $scope.Settings.buckets.project_to_bucket_mappings.push($scope.new_project_to_bucket_mapping);
+    $scope.new_project_to_bucket_mapping = {};
+    $scope.invalidProjectToBucketMapping = "";
+  }
+
   $scope.addInternalBucket = function () {
     if ($scope.Settings.buckets == null) {
       $scope.Settings.buckets = {
@@ -299,35 +315,21 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     return mapping && mapping.project_id && mapping.prefix;
   }
 
+  $scope.deleteProjectToBucketMapping = function (index) {
+    $scope.Settings.buckets.project_to_bucket_mappings.splice(index, 1);
+  }
+
+  $scope.validProjectToBucketMapping = function (mapping) {
+    // We do not check mapping.prefix since it is optional.
+    return mapping && mapping.project_id && mapping.bucket;
+  }
+
   $scope.deleteInternalBucket = function (index) {
     $scope.Settings.buckets.internal_buckets.splice(index, 1);
   }
 
   $scope.validInternalBucket = function (bucket) {
     return bucket && bucket != "";
-  }
-
-  $scope.deleteSecretARN = function (index) {
-    $scope.Settings.ssh_key_secret_arns.splice(index, 1);
-  }
-
-  $scope.validSecretARN = function (arn) {
-    return arn && arn != "";
-  }
-
-  $scope.addSecretARN = function () {
-    if ($scope.Settings.ssh_key_secret_arns == null) {
-      $scope.Settings.ssh_key_secret_arns = [];
-    }
-
-    if (!$scope.validSecretARN($scope.new_secret_arn)) {
-      $scope.invalidSecretARN = "ARN cannot be empty.";
-      return
-    }
-
-    $scope.Settings.ssh_key_secret_arns.push($scope.new_secret_arn);
-    $scope.new_secret_arn = "";
-    $scope.invalidSecretARN = "";
   }
 
   $scope.addAWSVPCSubnet = function () {
@@ -738,14 +740,6 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     }
 
     return user;
-  }
-
-  $scope.addSSHKeyPair = function () {
-    if ($scope.tempSSHKeyPairs.length === 0) {
-      $scope.tempSSHKeyPairs = [];
-    }
-    $scope.tempSSHKeyPairs.push($scope.newSSHKeyPair);
-    $scope.newSSHKeyPair = {};
   }
 
   $scope.addMultiAuthReadWrite = function () {

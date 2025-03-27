@@ -241,7 +241,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 
 	if j.user == nil {
-		j.user, err = user.FindOne(user.ById(patchDoc.Author))
+		j.user, err = user.FindOneContext(ctx, user.ById(patchDoc.Author))
 		if err != nil {
 			return errors.Wrapf(err, "finding patch author '%s'", patchDoc.Author)
 		}
@@ -533,9 +533,8 @@ func (j *patchIntentProcessor) createGitHubMergeSubscription(ctx context.Context
 		Caller:    j.Name,
 	}
 
-	rules := j.getEvergreenBranchProtectionRulesForStatuses(ctx, p.GithubMergeData.Org, p.GithubMergeData.Repo, p.GithubMergeData.BaseBranch)
+	rules := j.getEvergreenRulesForStatuses(ctx, p.GithubMergeData.Org, p.GithubMergeData.Repo, p.GithubMergeData.BaseBranch)
 	for i, rule := range rules {
-		// Limit statuses to 10
 		if i >= 10 {
 			break
 		}
@@ -933,7 +932,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 		})
 	}
 
-	j.user, err = findEvergreenUserForPR(patchDoc.GithubPatchData.AuthorUID)
+	j.user, err = findEvergreenUserForPR(ctx, patchDoc.GithubPatchData.AuthorUID)
 	if err != nil {
 		return isMember, errors.Wrapf(err, "finding user associated with GitHub UID '%d'", patchDoc.GithubPatchData.AuthorUID)
 	}
@@ -991,7 +990,7 @@ func (j *patchIntentProcessor) buildGithubMergeDoc(ctx context.Context, patchDoc
 			patchDoc.GithubMergeData.Org, patchDoc.GithubMergeData.Repo, patchDoc.GithubMergeData.BaseBranch)
 	}
 
-	j.user, err = findEvergreenUserForGithubMergeGroup()
+	j.user, err = findEvergreenUserForGithubMergeGroup(ctx)
 	if err != nil {
 		return errors.Wrap(err, "finding GitHub merge queue user")
 	}
@@ -1072,7 +1071,7 @@ func (j *patchIntentProcessor) buildTriggerPatchDoc(ctx context.Context, patchDo
 
 func fetchTriggerVersionInfo(ctx context.Context, patchDoc *patch.Patch) (*model.Version, *model.Project, *model.ParserProject, error) {
 	if patchDoc.Triggers.DownstreamRevision != "" {
-		v, err := model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(patchDoc.Project, patchDoc.Triggers.DownstreamRevision))
+		v, err := model.VersionFindOne(ctx, model.BaseVersionByProjectIdAndRevision(patchDoc.Project, patchDoc.Triggers.DownstreamRevision))
 		if err != nil {
 			return nil, nil, nil, errors.Wrapf(err, "getting version at revision '%s'", patchDoc.Triggers.DownstreamRevision)
 		}
@@ -1115,9 +1114,9 @@ func (j *patchIntentProcessor) verifyValidAlias(ctx context.Context, projectId s
 	return errors.Errorf("alias '%s' could not be found on project '%s'", alias, projectId)
 }
 
-func findEvergreenUserForPR(githubUID int) (*user.DBUser, error) {
+func findEvergreenUserForPR(ctx context.Context, githubUID int) (*user.DBUser, error) {
 	// try and find a user by GitHub UID
-	u, err := user.FindByGithubUID(githubUID)
+	u, err := user.FindByGithubUID(ctx, githubUID)
 	if err != nil {
 		return nil, err
 	}
@@ -1126,7 +1125,7 @@ func findEvergreenUserForPR(githubUID int) (*user.DBUser, error) {
 	}
 
 	// Otherwise, use the GitHub patch user
-	u, err = user.FindOne(user.ById(evergreen.GithubPatchUser))
+	u, err = user.FindOneContext(ctx, user.ById(evergreen.GithubPatchUser))
 	if err != nil {
 		return u, errors.Wrap(err, "finding GitHub patch user")
 	}
@@ -1145,8 +1144,8 @@ func findEvergreenUserForPR(githubUID int) (*user.DBUser, error) {
 	return u, err
 }
 
-func findEvergreenUserForGithubMergeGroup() (*user.DBUser, error) {
-	u, err := user.FindOne(user.ById(evergreen.GithubMergeUser))
+func findEvergreenUserForGithubMergeGroup(ctx context.Context) (*user.DBUser, error) {
+	u, err := user.FindOneContext(ctx, user.ById(evergreen.GithubMergeUser))
 	if err != nil {
 		return u, errors.Wrap(err, "finding GitHub merge queue user")
 	}
@@ -1263,9 +1262,9 @@ func (j *patchIntentProcessor) sendGitHubErrorStatus(ctx context.Context, patchD
 }
 
 // sendGitHubSuccessMessages sends a successful status to GitHub with the given message for all
-// branch protection rules configured for the given project.
+// Evergreen rules configured for the given project.
 func (j *patchIntentProcessor) sendGitHubSuccessMessages(ctx context.Context, patchDoc *patch.Patch, projectRef *model.ProjectRef, msg string) {
-	rules := j.getEvergreenBranchProtectionRulesForStatuses(ctx, patchDoc.GithubPatchData.BaseOwner, projectRef.Repo, projectRef.Branch)
+	rules := j.getEvergreenRulesForStatuses(ctx, patchDoc.GithubPatchData.BaseOwner, projectRef.Repo, projectRef.Branch)
 	for _, rule := range rules {
 		update := NewGithubStatusUpdateJobWithSuccessMessage(
 			rule,
@@ -1279,11 +1278,11 @@ func (j *patchIntentProcessor) sendGitHubSuccessMessages(ctx context.Context, pa
 	}
 }
 
-// getEvergreenBranchProtectionRulesForStatuses returns the rules we want to send Evergreen statuses for.
+// getEvergreenRulesForStatuses returns the rules we want to send Evergreen statuses for.
 // If we don't find rules, we'll send the status default context. We log the error but don't
-// return it, because we might have permission to send statuses but not to get branch protection rules.
-func (j *patchIntentProcessor) getEvergreenBranchProtectionRulesForStatuses(ctx context.Context, owner, repo, branch string) []string {
-	rules, err := thirdparty.GetEvergreenBranchProtectionRules(ctx, owner, repo, branch)
+// return it, because we might have permission to send statuses but not to get the rules.
+func (j *patchIntentProcessor) getEvergreenRulesForStatuses(ctx context.Context, owner, repo, branch string) []string {
+	branchProtectionRules, err := thirdparty.GetEvergreenBranchProtectionRules(ctx, owner, repo, branch)
 	grip.Error(message.WrapError(err, message.Fields{
 		"job":      j.ID(),
 		"job_type": j.Type,
@@ -1294,5 +1293,19 @@ func (j *patchIntentProcessor) getEvergreenBranchProtectionRulesForStatuses(ctx 
 		"patch":    j.PatchID.Hex(),
 	}))
 
-	return utility.UniqueStrings(append(rules, thirdparty.GithubStatusDefaultContext))
+	rulesetRules, err := thirdparty.GetEvergreenRulesetRules(ctx, owner, repo, branch)
+	grip.Error(message.WrapError(err, message.Fields{
+		"job":      j.ID(),
+		"job_type": j.Type,
+		"message":  "failed to get ruleset rules",
+		"org":      owner,
+		"repo":     repo,
+		"branch":   branch,
+		"patch":    j.PatchID.Hex(),
+	}))
+
+	allRules := append([]string{thirdparty.GithubStatusDefaultContext}, branchProtectionRules...)
+	allRules = append(allRules, rulesetRules...)
+
+	return utility.UniqueStrings(allRules)
 }

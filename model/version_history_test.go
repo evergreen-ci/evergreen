@@ -39,7 +39,7 @@ func TestFindLastPassingVersionForBuildVariants(t *testing.T) {
 		insertPatchBuild("3ap", project, bv1, evergreen.BuildSucceeded, 3)
 		insertPatchBuild("3bp", project, bv2, evergreen.BuildFailed, 3)
 
-		version, err := FindLastPassingVersionForBuildVariants(&projectObj, []string{bv1, bv2})
+		version, err := FindLastPassingVersionForBuildVariants(t.Context(), &projectObj, []string{bv1, bv2})
 
 		So(err, ShouldBeNil)
 		So(version, ShouldNotBeNil)
