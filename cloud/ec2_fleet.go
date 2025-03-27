@@ -439,9 +439,13 @@ func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host
 	}
 
 	if ec2Settings.IsVpc {
+		assignPublicIPv4 := !ec2Settings.DoNotAssignPublicIPv4Address
+		if h.UserHost {
+			assignPublicIPv4 = true
+		}
 		launchTemplate.NetworkInterfaces = []types.LaunchTemplateInstanceNetworkInterfaceSpecificationRequest{
 			{
-				AssociatePublicIpAddress: aws.Bool(true),
+				AssociatePublicIpAddress: aws.Bool(assignPublicIPv4),
 				DeviceIndex:              aws.Int32(0),
 				Groups:                   ec2Settings.SecurityGroupIDs,
 				SubnetId:                 aws.String(ec2Settings.SubnetId),
