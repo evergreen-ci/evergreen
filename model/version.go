@@ -333,17 +333,6 @@ type DuplicateVersions struct {
 	Versions []Version           `bson:"versions"`
 }
 
-func IsAborted(ctx context.Context, id string) (bool, error) {
-	v, err := VersionFindOne(ctx, VersionById(id))
-	if err != nil {
-		return false, errors.Errorf("finding version '%s'", id)
-	}
-	if v == nil {
-		return false, errors.Errorf("version '%s' not found", id)
-	}
-	return v.Aborted, nil
-}
-
 func VersionGetHistory(ctx context.Context, versionId string, N int) ([]Version, error) {
 	v, err := VersionFindOne(ctx, VersionById(versionId))
 	if err != nil {
