@@ -3036,7 +3036,11 @@ func UpdateNextPeriodicBuild(ctx context.Context, projectId string, definition *
 		baseTime = time.Now()
 	}
 	nextRunTime, err := updateNextRunTime(baseTime, definition)
+	if err != nil {
+		return errors.Wrap(err, "updating next run time")
+	}
 	now := time.Now()
+	// If the nextRunTime is still in the past, bring its base time up to present and re-calculate it.
 	if now.After(nextRunTime) {
 		grip.Error(message.Fields{
 			"message":    "next run time is in the past, resetting to current time",
@@ -3044,6 +3048,9 @@ func UpdateNextPeriodicBuild(ctx context.Context, projectId string, definition *
 			"definition": definition.ID,
 		})
 		nextRunTime, err = updateNextRunTime(now, definition)
+		if err != nil {
+			return errors.Wrap(err, "updating next run time")
+		}
 	}
 	// Get the branch project on its own so we can determine where to update the run time.
 	projectRef, err := FindBranchProjectRef(ctx, projectId)
