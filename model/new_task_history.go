@@ -16,7 +16,7 @@ const (
 	maxTaskHistoryLimit = 50
 )
 
-// FindTaskHistoryOptions defines options that can be passed to queries in this file.
+// FindTaskHistoryOptions defines options that can be passed to queries for task history.
 type FindTaskHistoryOptions struct {
 	TaskName     string
 	BuildVariant string
@@ -26,6 +26,8 @@ type FindTaskHistoryOptions struct {
 	Limit        *int
 }
 
+// getBaseTaskHistoryFilter defines a basic match for the task history query. This is helpful as getting task history
+// requires matching on multiple fields (i.e. the task name, build variant, and project fields).
 func getBaseTaskHistoryFilter(opts FindTaskHistoryOptions) bson.M {
 	return bson.M{
 		task.DisplayNameKey:  opts.TaskName,
@@ -37,10 +39,10 @@ func getBaseTaskHistoryFilter(opts FindTaskHistoryOptions) bson.M {
 	}
 }
 
-// FindActiveTasksForHistory finds LIMIT active tasks with the given task name, build variant, and project ID between the specified bounds.
+// findActiveTasksForHistory finds LIMIT active tasks with the given task name, build variant, and project ID between the specified bounds.
 // Note that only one bound should be specified.
 // The result is sorted by order numbers, descending (e.g. 100, 99, 98, 97, ...).
-func FindActiveTasksForHistory(ctx context.Context, opts FindTaskHistoryOptions) ([]task.Task, error) {
+func findActiveTasksForHistory(ctx context.Context, opts FindTaskHistoryOptions) ([]task.Task, error) {
 	filter := getBaseTaskHistoryFilter(opts)
 	filter[task.ActivatedKey] = true
 
@@ -75,9 +77,9 @@ func FindActiveTasksForHistory(ctx context.Context, opts FindTaskHistoryOptions)
 	return tasks, err
 }
 
-// FindInactiveTasksForHistory finds all inactive tasks with the given task name, build variant, and project ID between the specified bounds.
+// findInactiveTasksForHistory finds all inactive tasks with the given task name, build variant, and project ID between the specified bounds.
 // The result is sorted by order numbers, descending (e.g. 100, 99, 98, 97, ...).
-func FindInactiveTasksForHistory(ctx context.Context, opts FindTaskHistoryOptions) ([]task.Task, error) {
+func findInactiveTasksForHistory(ctx context.Context, opts FindTaskHistoryOptions) ([]task.Task, error) {
 	filter := getBaseTaskHistoryFilter(opts)
 	filter[task.ActivatedKey] = false
 
@@ -93,6 +95,44 @@ func FindInactiveTasksForHistory(ctx context.Context, opts FindTaskHistoryOption
 	q := db.Query(filter).Sort([]string{"-" + task.RevisionOrderNumberKey})
 	tasks, err := task.FindAll(ctx, q)
 	return tasks, err
+}
+
+// FindTasksForHistory finds tasks with the given task name, build variant, and project ID with the given parameters.
+// The result is sorted by order numbers, descending (e.g. 100, 99, 98, 97, ...).
+func FindTasksForHistory(ctx context.Context, opts FindTaskHistoryOptions) ([]task.Task, error) {
+	// Active tasks must be fetched with either a lower bound or upper bound (not both), so we check for valid
+	// arguments here.
+	if (opts.UpperBound != nil && opts.LowerBound != nil) || (opts.UpperBound == nil && opts.LowerBound == nil) {
+		return nil, errors.New("Exactly one bound must be defined.")
+	}
+
+	activeTasks, err := findActiveTasksForHistory(ctx, opts)
+	if err != nil {
+		return nil, errors.Wrapf(err, "finding active tasks for history")
+	}
+
+	// Adjust the bounds because we want to fetch all inactive tasks that appear between the active tasks. This typically
+	// means that both the lower bound and upper bound should be defined.
+	// However, if all tasks are inactive, then one bound is sufficient, as we'll just fetch all inactive tasks. Note that
+	// this is an uncommon edge case.
+	if len(activeTasks) > 0 && opts.UpperBound == nil {
+		// TODO DEVPROD-16060: Add logic for leading inactive versions.
+		opts.UpperBound = utility.ToIntPtr(activeTasks[0].RevisionOrderNumber)
+	}
+
+	if len(activeTasks) > 0 && opts.LowerBound == nil {
+		// TODO DEVPROD-16060: Add logic for trailing inactive versions.
+		opts.LowerBound = utility.ToIntPtr(activeTasks[len(activeTasks)-1].RevisionOrderNumber)
+	}
+
+	inactiveTasks, err := findInactiveTasksForHistory(ctx, opts)
+	if err != nil {
+		return nil, errors.Wrapf(err, "finding inactive tasks for history")
+	}
+
+	tasks := append(activeTasks, inactiveTasks...)
+	sort.Slice(tasks, func(i, j int) bool { return tasks[i].RevisionOrderNumber > tasks[j].RevisionOrderNumber })
+	return tasks, nil
 }
 
 // GetLatestMainlineTask returns the most recent task matching the given parameters, activated or unactivated, on the waterfall.

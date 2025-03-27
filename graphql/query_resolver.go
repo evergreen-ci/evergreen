@@ -1177,31 +1177,10 @@ func (r *queryResolver) TaskHistory(ctx context.Context, options TaskHistoryOpts
 		}
 	}
 
-	// Active tasks are fetched with either a lower bound or upper bound (not both).
-	activeTasks, err := model.FindActiveTasksForHistory(ctx, opts)
+	tasks, err := model.FindTasksForHistory(ctx, opts)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding active tasks: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting history for task '%s' in project '%s' and build variant '%s': %s", options.TaskName, options.ProjectIdentifier, options.BuildVariant, err.Error()))
 	}
-
-	if len(activeTasks) > 0 && opts.UpperBound == nil {
-		// TODO DEVPROD-16060: Add logic for leading inactive versions.
-		opts.UpperBound = utility.ToIntPtr(activeTasks[0].RevisionOrderNumber)
-	}
-
-	if len(activeTasks) > 0 && opts.LowerBound == nil {
-		// TODO DEVPROD-16060: Add logic for trailing inactive versions.
-		opts.LowerBound = utility.ToIntPtr(activeTasks[len(activeTasks)-1].RevisionOrderNumber)
-	}
-
-	// Inactive tasks are typically fetched with both a lower bound and upper bound. However, if all of the tasks omitted,
-	// then one bound is sufficient.
-	inactiveTasks, err := model.FindInactiveTasksForHistory(ctx, opts)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding inactive tasks: %s", err.Error()))
-	}
-
-	tasks := append(activeTasks, inactiveTasks...)
-	sort.Slice(tasks, func(i, j int) bool { return tasks[i].RevisionOrderNumber > tasks[j].RevisionOrderNumber })
 
 	apiTasks := []*restModel.APITask{}
 	for _, t := range tasks {
