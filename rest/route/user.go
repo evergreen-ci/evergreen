@@ -935,7 +935,7 @@ func (h *renameUserHandler) Run(ctx context.Context) gimlet.Responder {
 	githubUID := h.oldUsr.Settings.GithubUser.UID
 	h.oldUsr.Settings.GithubUser.UID = 0
 
-	newUsr, err := user.UpsertOneFromExisting(h.oldUsr, h.newEmail)
+	newUsr, err := user.UpsertOneFromExisting(ctx, h.oldUsr, h.newEmail)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(err)
 	}

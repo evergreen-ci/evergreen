@@ -113,7 +113,7 @@ func TestBuildBreakNotificationsFromRepotracker(t *testing.T) {
 		Type:   event.EmailSubscriberType,
 		Target: "committer@example.com",
 	})
-	assert.NoError(sub.Upsert())
+	assert.NoError(sub.Upsert(t.Context()))
 	assert.NoError(repotracker.AddBuildBreakSubscriptions(ctx, &v2, &proj))
 	e = event.EventLogEntry{
 		ResourceType: event.ResourceTypeTask,
@@ -320,7 +320,7 @@ func (s *taskSuite) SetupTest() {
 	}
 
 	for i := range s.subs {
-		s.NoError(s.subs[i].Upsert())
+		s.NoError(s.subs[i].Upsert(s.ctx))
 	}
 
 	ui := &evergreen.UIConfig{
@@ -361,7 +361,7 @@ func (s *taskSuite) TestTriggerEvent() {
 		},
 		Owner: "someone",
 	}
-	s.NoError(sub.Upsert())
+	s.NoError(sub.Upsert(s.ctx))
 	t := task.Task{
 		Id:                  "test",
 		Version:             "test_version_id",
@@ -390,7 +390,7 @@ func (s *taskSuite) TestGithubPREvent() {
 		Type:   event.SlackSubscriberType,
 		Target: "@annie",
 	})
-	s.NoError(sub.Upsert())
+	s.NoError(sub.Upsert(s.ctx))
 	t := task.Task{
 		Id:           "test",
 		Version:      "test_version_id",
@@ -1043,7 +1043,7 @@ func (s *taskSuite) TestRegressionByTestWithRegex() {
 		},
 		Owner: "someone",
 	}
-	s.NoError(sub.Upsert())
+	s.NoError(sub.Upsert(s.ctx))
 
 	v1 := model.Version{
 		Id:        "v1",

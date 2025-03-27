@@ -163,5 +163,5 @@ func AddOrUpdateServiceUser(ctx context.Context, toUpdate restModel.APIDBUser) e
 	if dbUser == nil {
 		return errors.Wrapf(err, "cannot perform add or update with nil user")
 	}
-	return errors.Wrap(user.AddOrUpdateServiceUser(*dbUser), "updating service user")
+	return errors.Wrap(user.AddOrUpdateServiceUser(ctx, *dbUser), "updating service user")
 }

@@ -107,7 +107,7 @@ func SaveSubscriptions(ctx context.Context, owner string, subscriptions []restMo
 
 	catcher := grip.NewSimpleCatcher()
 	for _, subscription := range dbSubscriptions {
-		catcher.Add(subscription.Upsert())
+		catcher.Add(subscription.Upsert(ctx))
 	}
 	return catcher.Resolve()
 }

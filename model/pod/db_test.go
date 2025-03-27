@@ -153,7 +153,7 @@ func TestFindByInitializing(t *testing.T) {
 func TestCountByInitializing(t *testing.T) {
 	for tName, tCase := range map[string]func(t *testing.T){
 		"ReturnsZeroForNoMatches": func(t *testing.T) {
-			count, err := CountByInitializing()
+			count, err := CountByInitializing(t.Context())
 			assert.NoError(t, err)
 			assert.Empty(t, count)
 		},
@@ -176,7 +176,7 @@ func TestCountByInitializing(t *testing.T) {
 			}
 			require.NoError(t, p3.Insert())
 
-			count, err := CountByInitializing()
+			count, err := CountByInitializing(t.Context())
 			require.NoError(t, err)
 			assert.Equal(t, 2, count)
 		},
@@ -583,7 +583,7 @@ func TestGetStatsByStatus(t *testing.T) {
 	}()
 	for tName, tCase := range map[string]func(t *testing.T){
 		"ReturnsEmptyForNoMatchingPods": func(t *testing.T) {
-			stats, err := GetStatsByStatus()
+			stats, err := GetStatsByStatus(t.Context())
 			assert.NoError(t, err)
 			assert.Empty(t, stats)
 		},
@@ -616,7 +616,7 @@ func TestGetStatsByStatus(t *testing.T) {
 				require.NoError(t, p.Insert())
 			}
 
-			stats, err := GetStatsByStatus(StatusRunning)
+			stats, err := GetStatsByStatus(t.Context(), StatusRunning)
 			require.NoError(t, err)
 			require.Len(t, stats, 1)
 			assert.Equal(t, StatusRunning, stats[0].Status)
@@ -671,7 +671,7 @@ func TestGetStatsByStatus(t *testing.T) {
 				require.NoError(t, p.Insert())
 			}
 
-			stats, err := GetStatsByStatus(StatusInitializing, StatusStarting, StatusRunning)
+			stats, err := GetStatsByStatus(t.Context(), StatusInitializing, StatusStarting, StatusRunning)
 			require.NoError(t, err)
 			require.Len(t, stats, 3)
 			for _, s := range stats {

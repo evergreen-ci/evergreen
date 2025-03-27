@@ -19,7 +19,7 @@ func GetTaskStats(ctx context.Context, filter taskstats.StatsFilter) ([]restMode
 		filter.Project = projectID
 	}
 
-	serviceStatsResult, err := taskstats.GetTaskStats(filter)
+	serviceStatsResult, err := taskstats.GetTaskStats(ctx, filter)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting task stats")
 	}

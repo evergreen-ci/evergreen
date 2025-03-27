@@ -19,6 +19,7 @@ package reliability
 // See taskstats.db.go for details on the structure of the backing daily_task_stats collection.
 
 import (
+	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
@@ -186,8 +187,8 @@ func (filter TaskReliabilityFilter) taskReliabilityQueryPipeline() []bson.M {
 }
 
 // GetTaskStats create an aggregation to find task stats matching the filter state.
-func (filter TaskReliabilityFilter) GetTaskStats() (taskStats []taskstats.TaskStats, err error) {
+func (filter TaskReliabilityFilter) GetTaskStats(ctx context.Context) (taskStats []taskstats.TaskStats, err error) {
 	pipeline := filter.taskReliabilityQueryPipeline()
-	err = db.Aggregate(taskstats.DailyTaskStatsCollection, pipeline, &taskStats)
+	err = db.Aggregate(ctx, taskstats.DailyTaskStatsCollection, pipeline, &taskStats)
 	return
 }

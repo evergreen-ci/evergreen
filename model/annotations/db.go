@@ -67,7 +67,7 @@ func FindByTaskId(ctx context.Context, id string) ([]TaskAnnotation, error) {
 }
 
 // Upsert writes the task_annotation to the database.
-func (a *TaskAnnotation) Upsert() error {
+func (a *TaskAnnotation) Upsert(ctx context.Context) error {
 	set := bson.M{
 		NoteKey:            a.Note,
 		IssuesKey:          a.Issues,
@@ -79,6 +79,7 @@ func (a *TaskAnnotation) Upsert() error {
 		set[MetadataKey] = a.Metadata
 	}
 	_, err := db.Upsert(
+		ctx,
 		Collection,
 		ByTaskIdAndExecution(a.TaskId, a.TaskExecution),
 		bson.M{

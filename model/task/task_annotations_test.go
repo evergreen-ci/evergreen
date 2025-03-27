@@ -57,7 +57,7 @@ func TestRemoveIssueFromAnnotation(t *testing.T) {
 	issue2 := annotations.IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", Source: &annotations.Source{Author: "not.annie.black"}}
 	assert.NoError(t, db.ClearCollections(annotations.Collection, Collection))
 	a := annotations.TaskAnnotation{TaskId: "t1", Issues: []annotations.IssueLink{issue1, issue2}}
-	assert.NoError(t, a.Upsert())
+	assert.NoError(t, a.Upsert(t.Context()))
 	task := Task{Id: "t1", HasAnnotations: true, Status: evergreen.TaskFailed, DisplayStatusCache: evergreen.TaskKnownIssue}
 	assert.NoError(t, task.Insert())
 
@@ -96,7 +96,7 @@ func TestMoveIssueToSuspectedIssue(t *testing.T) {
 	issue3 := annotations.IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-3456", Source: &annotations.Source{Author: "different user"}}
 	assert.NoError(t, db.ClearCollections(annotations.Collection, Collection))
 	a := annotations.TaskAnnotation{TaskId: "t1", Issues: []annotations.IssueLink{issue1, issue2}, SuspectedIssues: []annotations.IssueLink{issue3}}
-	assert.NoError(t, a.Upsert())
+	assert.NoError(t, a.Upsert(t.Context()))
 	task := Task{Id: "t1", HasAnnotations: true}
 	assert.NoError(t, task.Insert())
 
@@ -143,7 +143,7 @@ func TestMoveSuspectedIssueToIssue(t *testing.T) {
 	task := Task{Id: "t1"}
 	assert.NoError(t, task.Insert())
 	a := annotations.TaskAnnotation{TaskId: "t1", SuspectedIssues: []annotations.IssueLink{issue1, issue2}, Issues: []annotations.IssueLink{issue3}}
-	assert.NoError(t, a.Upsert())
+	assert.NoError(t, a.Upsert(t.Context()))
 
 	assert.NoError(t, MoveSuspectedIssueToIssue(ctx, a.TaskId, a.TaskExecution, issue1, "someone new"))
 	annotationFromDB, err := annotations.FindOneByTaskIdAndExecution(t.Context(), "t1", 0)

@@ -20,7 +20,7 @@ func TestRepoRefUpdateAdminRoles(t *testing.T) {
 	r := RepoRef{ProjectRef{
 		Id: "proj",
 	}}
-	require.NoError(t, r.Upsert())
+	require.NoError(t, r.Upsert(t.Context()))
 	adminScope := gimlet.Scope{
 		ID:        "repo_scope",
 		Type:      evergreen.ProjectResourceType,

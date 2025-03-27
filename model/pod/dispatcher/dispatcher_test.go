@@ -28,7 +28,7 @@ func TestUpsertAtomically(t *testing.T) {
 
 	for tName, tCase := range map[string]func(t *testing.T, pd PodDispatcher){
 		"InsertsNewPodDispatcher": func(t *testing.T, pd PodDispatcher) {
-			change, err := pd.UpsertAtomically()
+			change, err := pd.UpsertAtomically(t.Context())
 			require.NoError(t, err)
 			require.Equal(t, 1, change.Updated)
 
@@ -40,7 +40,7 @@ func TestUpsertAtomically(t *testing.T) {
 		"UpdatesExistingPodDispatcher": func(t *testing.T, pd PodDispatcher) {
 			require.NoError(t, pd.Insert())
 
-			change, err := pd.UpsertAtomically()
+			change, err := pd.UpsertAtomically(t.Context())
 			require.NoError(t, err)
 			require.Equal(t, 1, change.Updated)
 
@@ -63,7 +63,7 @@ func TestUpsertAtomically(t *testing.T) {
 			modified.PodIDs = []string{"modified-pod0"}
 			modified.TaskIDs = []string{"modified-task0"}
 
-			change, err := modified.UpsertAtomically()
+			change, err := modified.UpsertAtomically(t.Context())
 			assert.Error(t, err)
 			assert.Zero(t, change)
 
@@ -86,7 +86,7 @@ func TestUpsertAtomically(t *testing.T) {
 			modified.PodIDs = []string{"modified-pod0"}
 			modified.TaskIDs = []string{"modified-task0"}
 
-			change, err := modified.UpsertAtomically()
+			change, err := modified.UpsertAtomically(t.Context())
 			assert.Error(t, err)
 			assert.Zero(t, change)
 
@@ -105,7 +105,7 @@ func TestUpsertAtomically(t *testing.T) {
 			modified.PodIDs = []string{"modified-pod0"}
 			modified.TaskIDs = []string{"modified-task0"}
 
-			change, err := modified.UpsertAtomically()
+			change, err := modified.UpsertAtomically(t.Context())
 			assert.Error(t, err)
 			assert.Zero(t, change)
 

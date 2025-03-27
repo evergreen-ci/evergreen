@@ -72,8 +72,8 @@ func (j *hostStatsCollector) Run(ctx context.Context) {
 		j.logger = logging.MakeGrip(grip.GetSender())
 	}
 
-	j.AddError(j.statsByDistro())
-	j.AddError(j.statsByProvider())
+	j.AddError(j.statsByDistro(ctx))
+	j.AddError(j.statsByProvider(ctx))
 }
 
 type hostCountStats struct {
@@ -83,8 +83,8 @@ type hostCountStats struct {
 	excess int
 }
 
-func collectHostCountStats() (*hostCountStats, error) {
-	hosts, err := host.GetStatsByDistro()
+func collectHostCountStats(ctx context.Context) (*hostCountStats, error) {
+	hosts, err := host.GetStatsByDistro(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting host stats by distro")
 	}
@@ -112,8 +112,8 @@ func collectHostCountStats() (*hostCountStats, error) {
 	return stats, nil
 }
 
-func (j *hostStatsCollector) statsByDistro() error {
-	stats, err := collectHostCountStats()
+func (j *hostStatsCollector) statsByDistro(ctx context.Context) error {
+	stats, err := collectHostCountStats(ctx)
 
 	if err != nil {
 		return err
@@ -135,8 +135,8 @@ func (j *hostStatsCollector) statsByDistro() error {
 	return nil
 }
 
-func (j *hostStatsCollector) statsByProvider() error {
-	providers, err := host.GetProviderCounts()
+func (j *hostStatsCollector) statsByProvider(ctx context.Context) error {
+	providers, err := host.GetProviderCounts(ctx)
 	if err != nil {
 		return errors.Wrap(err, "getting host stats by provider")
 	}

@@ -68,8 +68,8 @@ func ByExternalID(id string) bson.M {
 }
 
 // Count counts the number of pods matching the given query.
-func Count(q db.Q) (int, error) {
-	return db.CountQ(Collection, q)
+func Count(ctx context.Context, q db.Q) (int, error) {
+	return db.CountQ(ctx, Collection, q)
 }
 
 // Find finds all pods matching the given query.
@@ -141,8 +141,8 @@ func FindByInitializing() ([]Pod, error) {
 
 // CountByInitializing counts the number of pods that are initializing but have
 // not started any containers.
-func CountByInitializing() (int, error) {
-	return Count(db.Query(bson.M{
+func CountByInitializing(ctx context.Context) (int, error) {
+	return Count(ctx, db.Query(bson.M{
 		StatusKey: StatusInitializing,
 	}))
 }
@@ -213,7 +213,7 @@ type StatusCount struct {
 // for running tasks. For each pod status, it returns the counts for the number
 // of pods and number of running tasks in that particular status. Terminated
 // pods are excluded from these statistics.
-func GetStatsByStatus(statuses ...Status) ([]StatusCount, error) {
+func GetStatsByStatus(ctx context.Context, statuses ...Status) ([]StatusCount, error) {
 	if len(statuses) == 0 {
 		return []StatusCount{}, nil
 	}
@@ -250,7 +250,7 @@ func GetStatsByStatus(statuses ...Status) ([]StatusCount, error) {
 	}
 
 	stats := []StatusCount{}
-	if err := db.Aggregate(Collection, pipeline, &stats); err != nil {
+	if err := db.Aggregate(ctx, Collection, pipeline, &stats); err != nil {
 		return nil, err
 	}
 

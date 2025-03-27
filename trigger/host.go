@@ -264,7 +264,7 @@ func (t *hostTriggers) getTimeZone(ctx context.Context, sub *event.Subscription,
 }
 
 func (t *hostTriggers) spawnHostIdle(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
-	shouldNotify, err := t.host.ShouldNotifyStoppedSpawnHostIdle()
+	shouldNotify, err := t.host.ShouldNotifyStoppedSpawnHostIdle(ctx)
 	if err != nil {
 		return nil, err
 	}

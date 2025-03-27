@@ -327,7 +327,7 @@ func TestProjectTriggerIntegration(t *testing.T) {
 		Variant:   "buildvariant",
 		Task:      "task1",
 	}
-	assert.NoError(alias.Upsert())
+	assert.NoError(alias.Upsert(t.Context()))
 	_, err := model.GetNewRevisionOrderNumber(downstreamProjectRef.Id)
 	assert.NoError(err)
 	downstreamRevision := "9338711cc1acc94ff75889a3b53a936a00e8c385"
@@ -460,7 +460,7 @@ func TestProjectTriggerIntegrationForBuild(t *testing.T) {
 		Variant:   "buildvariant",
 		Task:      "task1",
 	}
-	assert.NoError(alias.Upsert())
+	assert.NoError(alias.Upsert(t.Context()))
 	_, err := model.GetNewRevisionOrderNumber(downstreamProjectRef.Id)
 	assert.NoError(err)
 	downstreamRevision := "9338711cc1acc94ff75889a3b53a936a00e8c385"
@@ -567,7 +567,7 @@ func TestProjectTriggerIntegrationForPush(t *testing.T) {
 		Variant:   "buildvariant",
 		Task:      "task1",
 	}
-	assert.NoError(alias.Upsert())
+	assert.NoError(alias.Upsert(t.Context()))
 	_, err := model.GetNewRevisionOrderNumber(downstreamProjectRef.Id)
 	assert.NoError(err)
 	downstreamRevision := "cf46076567e4949f9fc68e0634139d4ac495c89b"

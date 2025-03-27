@@ -119,7 +119,7 @@ func UpsertGitHubAppAuth(ctx context.Context, appAuth *GithubAppAuth) error {
 
 // upsertGitHubAppAuthDB upserts the GitHub app auth into the database.
 func upsertGitHubAppAuthDB(ctx context.Context, appAuth *GithubAppAuth) error {
-	_, err := db.UpsertContext(ctx,
+	_, err := db.Upsert(ctx,
 		GitHubAppAuthCollection,
 		bson.M{
 			GhAuthIdKey: appAuth.Id,

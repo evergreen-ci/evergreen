@@ -278,7 +278,7 @@ func (s *cronsEventSuite) TestEndToEnd() {
 	}
 
 	for i := range subs {
-		s.NoError(subs[i].Upsert())
+		s.NoError(subs[i].Upsert(s.ctx))
 	}
 
 	handler := &mockWebhookHandler{
