@@ -359,18 +359,6 @@ func UpdateAll(collection string, query any, update any) (*db.ChangeInfo, error)
 	return db.C(collection).UpdateAll(query, update)
 }
 
-// func test() {
-// 	session, db, err := GetGlobalSessionFactory().GetSession()
-// 	if err != nil {
-// 		grip.Errorf("error establishing db connection: %+v", err)
-
-// 		return nil, err
-// 	}
-// 	defer session.Close()
-
-// 	return db.C(collection).Upsert(query, update)
-// }
-
 // Upsert run the specified update against the collection as an upsert operation.
 func Upsert(ctx context.Context, collection string, query any, update any) (*db.ChangeInfo, error) {
 	res, err := evergreen.GetEnvironment().DB().Collection(collection).UpdateOne(
@@ -388,15 +376,11 @@ func Upsert(ctx context.Context, collection string, query any, update any) (*db.
 
 // Count run a count command with the specified query against the collection.
 func Count(ctx context.Context, collection string, query any) (int, error) {
-	session, db, err := GetGlobalSessionFactory().GetContextSession(ctx)
-	if err != nil {
-		grip.Errorf("error establishing db connection: %+v", err)
-
-		return 0, err
-	}
-	defer session.Close()
-
-	return db.C(collection).Find(query).Count()
+	res, err := evergreen.GetEnvironment().DB().Collection(collection).CountDocuments(
+		ctx,
+		query,
+	)
+	return int(res), errors.WithStack(err)
 }
 
 // FindOneQ runs a Q query against the given collection, applying the results to "out."
@@ -552,6 +536,8 @@ func transformDocument(val any) (bson.Raw, error) {
 	return bson.Raw(b), nil
 }
 
+// TODO: Use these because upsert is being used as upsert and replace, so we need to do the same
+// workaround we did for update and replace
 func hasDollarKey(doc bson.Raw) bool {
 	if elem, err := doc.IndexErr(0); err == nil && strings.HasPrefix(elem.Key(), "$") {
 		return true
