@@ -46,16 +46,23 @@ func (v *validateProjectHandler) Parse(ctx context.Context, r *http.Request) err
 	if err != nil {
 		return errors.Wrap(err, "Error reading request body")
 	}
-	input := validator.ValidationInput{}
-	if err := json.Unmarshal(bytes, &input); err != nil {
-		// if it fails to unmarshal, try the legacy structure
-		input.ProjectYaml = bytes
+
+	if !json.Valid(bytes) {
+		return errors.New("Invalid JSON format detected; potential incomplete or corrupted data. This may be an indication that evergreen is under high load.")
 	}
+
+	input := validator.ValidationInput{}
+
+	if err := json.Unmarshal(bytes, &input); err != nil {
+		return errors.Wrap(err, "Unmarshaling request body")
+	}
+
 	v.input = input
 	return nil
 }
 
 func (v *validateProjectHandler) Run(ctx context.Context) gimlet.Responder {
+
 	project := &model.Project{}
 	var projectConfig *model.ProjectConfig
 	var err error
