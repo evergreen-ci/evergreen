@@ -267,6 +267,22 @@ func ReplaceContext(ctx context.Context, collection string, query any, replaceme
 	return nil
 }
 
+func ReplaceContext2(ctx context.Context, collection string, query any, replacement any) (*db.ChangeInfo, error) {
+	res, err := evergreen.GetEnvironment().DB().Collection(collection).ReplaceOne(ctx,
+		query,
+		replacement,
+		options.Replace().SetUpsert(true),
+	)
+	if err != nil {
+		return nil, errors.Wrapf(err, "replacing task")
+	}
+	if res.MatchedCount == 0 {
+		return nil, db.ErrNotFound
+	}
+
+	return &db.ChangeInfo{Updated: int(res.UpsertedCount) + int(res.ModifiedCount), UpsertedId: res.UpsertedID}, nil
+}
+
 // UpdateAllContext updates all matching documents in the collection.
 func UpdateAllContext(ctx context.Context, collection string, query any, update any) (*db.ChangeInfo, error) {
 	switch query.(type) {
@@ -342,6 +358,18 @@ func UpdateAll(collection string, query any, update any) (*db.ChangeInfo, error)
 
 	return db.C(collection).UpdateAll(query, update)
 }
+
+// func test() {
+// 	session, db, err := GetGlobalSessionFactory().GetSession()
+// 	if err != nil {
+// 		grip.Errorf("error establishing db connection: %+v", err)
+
+// 		return nil, err
+// 	}
+// 	defer session.Close()
+
+// 	return db.C(collection).Upsert(query, update)
+// }
 
 // Upsert run the specified update against the collection as an upsert operation.
 func Upsert(ctx context.Context, collection string, query any, update any) (*db.ChangeInfo, error) {

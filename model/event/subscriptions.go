@@ -487,7 +487,7 @@ func (s *Subscription) Upsert(ctx context.Context) error {
 	}
 
 	// note: this prevents changing the owner of an existing subscription, which is desired
-	c, err := db.Upsert(ctx, SubscriptionsCollection, bson.M{
+	c, err := db.ReplaceContext2(ctx, SubscriptionsCollection, bson.M{
 		subscriptionIDKey:    s.ID,
 		subscriptionOwnerKey: s.Owner,
 	}, update)
