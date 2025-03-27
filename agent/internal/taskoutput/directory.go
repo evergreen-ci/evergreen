@@ -17,7 +17,6 @@ package taskoutput
 
 import (
 	"context"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"os"
 	"path/filepath"
 	"sync"
@@ -29,6 +28,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 )
 
 var directoryHandlerFactories = map[string]directoryHandlerFactory{
@@ -64,6 +64,7 @@ func NewDirectory(opts DirectoryOpts) *Directory {
 		},
 		redactorOpts: opts.RedactorOpts,
 		output:       opts.Tsk.TaskOutputInfo,
+		traceClient:  opts.TraceClient,
 	}
 	root := filepath.Join(opts.Root, "build")
 	handlers := map[string]directoryHandler{}

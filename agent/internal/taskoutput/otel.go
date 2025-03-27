@@ -6,7 +6,6 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"os"
 	"path"
 
@@ -15,6 +14,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/sdk/trace"
 	tracepb "go.opentelemetry.io/proto/otlp/trace/v1"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -48,6 +48,16 @@ func (o otelTraceDirectoryHandler) run(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrapf(err, "getting trace files for '%s'", o.dir)
 	}
+
+	if err = o.traceClient.Start(ctx); err != nil {
+		return errors.Wrapf(err, "starting trace client for '%s'", o.dir)
+	}
+	defer func(traceClient otlptrace.Client, ctx context.Context) {
+		err := traceClient.Stop(ctx)
+		if err != nil {
+			o.logger.Task().Error(errors.Wrapf(err, "stopping trace client for '%s'", o.dir))
+		}
+	}(o.traceClient, ctx)
 
 	catcher := grip.NewBasicCatcher()
 	for _, fileName := range files {
