@@ -1137,6 +1137,8 @@ func (r *queryResolver) TaskHistory(ctx context.Context, options TaskHistoryOpts
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", options.ProjectIdentifier, err.Error()))
 	}
 
+	// CursorParams orient the query around a specific task (e.g. fetch 50 tasks before the task 'task-1'). Without CursorParams,
+	// we don't have enough information about what tasks to fetch.
 	if options.CursorParams == nil {
 		return nil, InputValidationError.Send(ctx, "must specify cursor params")
 	}
@@ -1175,6 +1177,7 @@ func (r *queryResolver) TaskHistory(ctx context.Context, options TaskHistoryOpts
 		}
 	}
 
+	// Active tasks are fetched with either a lower bound or upper bound (not both).
 	activeTasks, err := model.FindActiveTasksForHistory(ctx, opts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding active tasks: %s", err.Error()))
@@ -1190,6 +1193,8 @@ func (r *queryResolver) TaskHistory(ctx context.Context, options TaskHistoryOpts
 		opts.LowerBound = utility.ToIntPtr(activeTasks[len(activeTasks)-1].RevisionOrderNumber)
 	}
 
+	// Inactive tasks are typically fetched with both a lower bound and upper bound. However, if all of the tasks omitted,
+	// then one bound is sufficient.
 	inactiveTasks, err := model.FindInactiveTasksForHistory(ctx, opts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding inactive tasks: %s", err.Error()))
