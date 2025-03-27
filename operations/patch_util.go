@@ -496,8 +496,10 @@ func (p *patchParams) getDescription() string {
 	return description
 }
 
-func (p *patchParams) getModulePath(conf *ClientSettings, module string) (string, error) {
-	modulePath := conf.getModulePath(p.Project, module)
+// getModulePath takes in a cache in addition to the conf, so that if we've disabled auto-defaulting, we can use the cache
+// without making any updates to conf, since this may be written to for future operations as well.
+func (p *patchParams) getModulePath(conf *ClientSettings, module string, modulePathCache map[string]string) (string, error) {
+	modulePath := modulePathCache[module]
 	if modulePath != "" || p.SkipConfirm {
 		return modulePath, nil
 	}
@@ -506,15 +508,14 @@ func (p *patchParams) getModulePath(conf *ClientSettings, module string) (string
 	if modulePath == "" {
 		return "", errors.Errorf("no module path given")
 	}
-	// Set path locally regardless of auto defaulting, so that its cached for the rest of the command.
-	conf.setModulePath(p.Project, module, modulePath)
+	modulePathCache[module] = modulePath
 
 	if !conf.DisableAutoDefaulting {
 		// Verify that the path is correct before auto defaulting
 		if _, err := gitUncommittedChanges(modulePath); err != nil {
 			return "", errors.Wrapf(err, "verifying module '%s''", module)
 		}
-
+		conf.setModulePath(p.Project, modulePathCache)
 		grip.Infof("Project module '%s' will be set to use path '%s'. "+
 			"To disable automatic defaulting, set 'disable_auto_defaulting' to true.", module, modulePath)
 
@@ -522,7 +523,6 @@ func (p *patchParams) getModulePath(conf *ClientSettings, module string) (string
 			grip.Errorf("problem setting module '%s' path in config: %s", module, err.Error())
 		}
 	}
-
 	return modulePath, nil
 }
 
