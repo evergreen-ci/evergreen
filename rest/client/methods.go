@@ -1552,6 +1552,8 @@ func (c *communicatorImpl) GetTestLogs(ctx context.Context, opts GetTestLogsOpti
 	return utility.NewPaginatedReadCloser(ctx, c.httpClient, resp, header), nil
 }
 
+const server400 = "server returned status 400"
+
 func (c *communicatorImpl) Validate(ctx context.Context, data []byte, quiet bool, projectID string) (validator.ValidationErrors, error) {
 	// 413 errors are transient when validating large project configurations
 	// so we want to retry on them.
@@ -1567,15 +1569,15 @@ func (c *communicatorImpl) Validate(ctx context.Context, data []byte, quiet bool
 		ProjectID:   projectID,
 	}
 	resp, err := c.retryRequest(ctx, info, body)
+	defer resp.Body.Close()
+
 	// we want to ignore the error if it's a 400, since that is expected when validation fails
-	if err != nil && err.Error() != "server returned status 400" {
+	if err != nil && err.Error() != server400 {
 		return nil, util.RespError(resp, "validating project")
 	}
-	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusBadRequest {
 		rawData, _ := io.ReadAll(resp.Body)
-		defer resp.Body.Close()
 
 		var errorResponse gimlet.ErrorResponse
 		err := json.Unmarshal(rawData, &errorResponse)
