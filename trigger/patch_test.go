@@ -304,13 +304,6 @@ func (s *patchSuite) TestPatchFamilyOutcomeWithAbortedPatch() {
 		ResourceId:   patchID.Hex(),
 		Data:         &eventData,
 	}
-	subscriber := event.Subscriber{
-		Type: event.EvergreenWebhookSubscriberType,
-		Target: &event.WebhookSubscriber{
-			URL:    "http://example.com/2",
-			Secret: []byte("secret"),
-		},
-	}
 
 	p := patch.Patch{
 		Id:     patchID,
@@ -326,17 +319,24 @@ func (s *patchSuite) TestPatchFamilyOutcomeWithAbortedPatch() {
 	}
 	s.Require().NoError(v.Insert())
 
+	subscriber := event.Subscriber{
+		Type: event.EvergreenWebhookSubscriberType,
+		Target: &event.WebhookSubscriber{
+			URL:    "http://example.com/2",
+			Secret: []byte("secret"),
+		},
+	}
+	subscription := event.NewSubscriptionByID(event.ResourceTypePatch, event.TriggerFamilyOutcome, e.ResourceId, subscriber)
+	s.Require().NoError(subscription.Upsert())
+
 	t := makePatchTriggers().(*patchTriggers)
 	t.event = &e
 	t.data = &eventData
 	t.patch = &p
 
-	suppressable, err := isVersionAbortSuppressable(s.ctx, patchID.Hex())
+	suppressable, err := t.isNotificationSuppressableForAbort(s.ctx, &subscription)
 	s.Require().NoError(err)
 	s.True(suppressable)
-
-	subscription := event.NewSubscriptionByID(event.ResourceTypePatch, event.TriggerFamilyOutcome, e.ResourceId, subscriber)
-	s.Require().NoError(subscription.Upsert())
 
 	n, err := t.patchFamilyOutcome(s.ctx, &subscription)
 	s.NoError(err)
@@ -355,14 +355,6 @@ func (s *patchSuite) TestPatchFamilyOutcomeWithAbortedGitHubMergePatch() {
 		ResourceId:   patchID.Hex(),
 		Data:         &eventData,
 	}
-	subscriber := event.Subscriber{
-		Type: event.GithubMergeSubscriberType,
-		Target: &event.GithubMergeSubscriber{
-			Owner: "owner",
-			Repo:  "repo",
-			Ref:   "abc123",
-		},
-	}
 
 	p := patch.Patch{
 		Id:     patchID,
@@ -378,22 +370,30 @@ func (s *patchSuite) TestPatchFamilyOutcomeWithAbortedGitHubMergePatch() {
 	}
 	s.Require().NoError(v.Insert())
 
+	subscriber := event.Subscriber{
+		Type: event.GithubMergeSubscriberType,
+		Target: &event.GithubMergeSubscriber{
+			Owner: "owner",
+			Repo:  "repo",
+			Ref:   "abc123",
+		},
+	}
+	subscription := event.NewSubscriptionByID(event.ResourceTypePatch, event.TriggerFamilyOutcome, e.ResourceId, subscriber)
+	s.Require().NoError(subscription.Upsert())
+
 	t := makePatchTriggers().(*patchTriggers)
 	t.event = &e
 	t.data = &eventData
 	t.patch = &p
 
-	suppressable, err := isVersionAbortSuppressable(s.ctx, patchID.Hex())
+	suppressable, err := t.isNotificationSuppressableForAbort(s.ctx, &subscription)
 	s.Require().NoError(err)
 	s.False(suppressable)
-
-	subscription := event.NewSubscriptionByID(event.ResourceTypePatch, event.TriggerFamilyOutcome, e.ResourceId, subscriber)
-	s.Require().NoError(subscription.Upsert())
 
 	n, err := t.patchFamilyOutcome(s.ctx, &subscription)
 	s.NoError(err)
 	s.NotNil(n)
-	s.NotNil(n, "should create notification for aborted GitHub merge queue patch")
+	s.NotNil(n, "should create notification for aborted GitHub merge queue patch because the subscriber is the merge queue status check")
 }
 
 func (s *patchSuite) TestPatchStarted() {

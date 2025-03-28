@@ -106,7 +106,7 @@ func (t *patchTriggers) patchOutcome(ctx context.Context, sub *event.Subscriptio
 		anyOutcome := ps == patchAllOutcomes
 
 		if successOutcome || failureOutcome || anyOutcome {
-			suppressable, err := isVersionAbortSuppressable(ctx, t.patch.Id.Hex())
+			suppressable, err := t.isNotificationSuppressableForAbort(ctx, sub)
 			if err != nil {
 				return nil, errors.Wrapf(err, "getting aborted status for patch '%s'", t.patch.Id.Hex())
 			}
@@ -124,9 +124,18 @@ func (t *patchTriggers) patchOutcome(ctx context.Context, sub *event.Subscriptio
 	return t.generate(ctx, sub)
 }
 
-// isVersionAbortSuppressable checks if the version was aborted and allows the
-// notification to be suppressed.
-func isVersionAbortSuppressable(ctx context.Context, versionID string) (bool, error) {
+// isNotificationSuppressableForAbort checks if a user-owned patch was aborted
+// and allows the notification to be suppressed. Users generally don't want to
+// be informed of the patch completion if it was aborted.
+func (t *patchTriggers) isNotificationSuppressableForAbort(ctx context.Context, sub *event.Subscription) (bool, error) {
+	if sub.Subscriber.Type == event.GithubMergeSubscriberType {
+		// If this is a GitHub merge queue patch and the subscription is for
+		// GitHub merge queue status checks, never suppress the notification
+		// because the patch still needs to send required status checks back to
+		// the GitHub merge queue.
+		return false, nil
+	}
+	versionID := t.patch.Id.Hex()
 	v, err := model.VersionFindOneId(ctx, versionID)
 	if err != nil {
 		return false, errors.Errorf("finding version '%s'", versionID)
@@ -134,11 +143,7 @@ func isVersionAbortSuppressable(ctx context.Context, versionID string) (bool, er
 	if v == nil {
 		return false, errors.Errorf("version '%s' not found", versionID)
 	}
-	// Don't notify users for the patch outcome if they aborted their own patch.
-	// However, if the patch was requested by the GitHub merge queue, then allow
-	// a notification because the patch still needs to send required status
-	// checks back to the GitHub merge queue.
-	return v.Aborted && v.Requester != evergreen.GithubMergeRequester, nil
+	return v.Aborted, nil
 }
 
 func (t *patchTriggers) patchFailure(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
@@ -352,7 +357,7 @@ func (t *patchTriggers) patchFamilyOutcome(ctx context.Context, sub *event.Subsc
 		return nil, nil
 	}
 
-	suppressable, err := isVersionAbortSuppressable(ctx, t.patch.Id.Hex())
+	suppressable, err := t.isNotificationSuppressableForAbort(ctx, sub)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting aborted status for patch '%s'", t.patch.Id.Hex())
 	}
