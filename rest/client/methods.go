@@ -19,6 +19,8 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/validator"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
@@ -1548,4 +1550,55 @@ func (c *communicatorImpl) GetTestLogs(ctx context.Context, opts GetTestLogsOpti
 	header.Add(evergreen.APIUserHeader, c.apiUser)
 	header.Add(evergreen.APIKeyHeader, c.apiKey)
 	return utility.NewPaginatedReadCloser(ctx, c.httpClient, resp, header), nil
+}
+
+const server400 = "server returned status 400"
+
+func (c *communicatorImpl) Validate(ctx context.Context, data []byte, quiet bool, projectID string) (validator.ValidationErrors, error) {
+	// 413 errors are transient when validating large project configurations
+	// so we want to retry on them.
+	info := requestInfo{
+		method:     http.MethodPost,
+		path:       "validate",
+		retryOn413: true,
+	}
+
+	body := validator.ValidationInput{
+		ProjectYaml: data,
+		Quiet:       quiet,
+		ProjectID:   projectID,
+	}
+	resp, err := c.retryRequest(ctx, info, body)
+	defer resp.Body.Close()
+
+	// we want to ignore the error if it's a 400, since that is expected when validation fails
+	if err != nil && err.Error() != server400 {
+		return nil, util.RespError(resp, "validating project")
+	}
+
+	if resp.StatusCode == http.StatusBadRequest {
+		rawData, _ := io.ReadAll(resp.Body)
+
+		var errorResponse gimlet.ErrorResponse
+		err := json.Unmarshal(rawData, &errorResponse)
+		if err == nil {
+			// if it successfully unmarshaled to a gimlet error response,
+			// that means it's an error message rather than project errors and
+			// we should return the error.
+			return nil, errors.New(errorResponse.Message)
+		}
+
+		errors := validator.ValidationErrors{}
+		err = json.Unmarshal(rawData, &errors)
+		if err != nil {
+			return nil, util.RespError(resp, "reading validation errors")
+		}
+		return errors, nil
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, util.RespError(resp, "validating project")
+	}
+
+	return nil, nil
 }
