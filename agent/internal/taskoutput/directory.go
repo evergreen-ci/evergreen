@@ -28,10 +28,12 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 )
 
 var directoryHandlerFactories = map[string]directoryHandlerFactory{
-	"TestLogs": newTestLogDirectoryHandler,
+	"TestLogs":   newTestLogDirectoryHandler,
+	"OTelTraces": newOtelTraceDirectoryHandler,
 }
 
 // Directory is the application representation of a task's reserved output
@@ -42,21 +44,33 @@ type Directory struct {
 	handlers map[string]directoryHandler
 }
 
+// DirectoryOpts is an options struct passed into directory initialization.
+type DirectoryOpts struct {
+	Root         string
+	Tsk          *task.Task
+	RedactorOpts redactor.RedactionOptions
+	Logger       client.LoggerProducer
+	TraceClient  otlptrace.Client
+}
+
 // NewDirectory returns a new task output directory with the specified root for
 // the given task.
-func NewDirectory(root string, tsk *task.Task, redactorOpts redactor.RedactionOptions, logger client.LoggerProducer) *Directory {
-	output := tsk.TaskOutputInfo
-	taskOpts := taskoutput.TaskOptions{
-		ProjectID: tsk.Project,
-		TaskID:    tsk.Id,
-		Execution: tsk.Execution,
+func NewDirectory(opts DirectoryOpts) *Directory {
+	handlerOpts := directoryHandlerOpts{
+		taskOpts: taskoutput.TaskOptions{
+			ProjectID: opts.Tsk.Project,
+			TaskID:    opts.Tsk.Id,
+			Execution: opts.Tsk.Execution,
+		},
+		redactorOpts: opts.RedactorOpts,
+		output:       opts.Tsk.TaskOutputInfo,
+		traceClient:  opts.TraceClient,
 	}
-
-	root = filepath.Join(root, "build")
+	root := filepath.Join(opts.Root, "build")
 	handlers := map[string]directoryHandler{}
 	for name, factory := range directoryHandlerFactories {
 		dir := filepath.Join(root, name)
-		handlers[dir] = factory(dir, output, taskOpts, redactorOpts, logger)
+		handlers[dir] = factory(dir, opts.Logger, handlerOpts)
 	}
 
 	return &Directory{
@@ -106,5 +120,13 @@ type directoryHandler interface {
 	run(context.Context) error
 }
 
+// directoryHandlerOpts contains options to be passed into each directory handler implementation initialization.
+type directoryHandlerOpts struct {
+	output       *taskoutput.TaskOutput
+	taskOpts     taskoutput.TaskOptions
+	redactorOpts redactor.RedactionOptions
+	traceClient  otlptrace.Client
+}
+
 // directoryHandlerFactory abstracts the creation of a directory handler.
-type directoryHandlerFactory func(string, *taskoutput.TaskOutput, taskoutput.TaskOptions, redactor.RedactionOptions, client.LoggerProducer) directoryHandler
+type directoryHandlerFactory func(string, client.LoggerProducer, directoryHandlerOpts) directoryHandler
