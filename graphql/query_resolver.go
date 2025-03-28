@@ -1132,15 +1132,15 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 
 // TaskHistory is the resolver for the taskHistory field.
 func (r *queryResolver) TaskHistory(ctx context.Context, options TaskHistoryOpts) (*TaskHistory, error) {
-	projectId, err := model.GetIdForProject(ctx, options.ProjectIdentifier)
-	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", options.ProjectIdentifier, err.Error()))
-	}
-
-	// CursorParams orient the query around a specific task (e.g. fetch 50 tasks before the task 'task-1'). Without CursorParams,
+	// CursorParams orient the query around a specific task (e.g. fetch 50 tasks before task A). Without CursorParams,
 	// we don't have enough information about what tasks to fetch.
 	if options.CursorParams == nil {
 		return nil, InputValidationError.Send(ctx, "must specify cursor params")
+	}
+
+	projectId, err := model.GetIdForProject(ctx, options.ProjectIdentifier)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", options.ProjectIdentifier, err.Error()))
 	}
 
 	taskID := options.CursorParams.CursorID

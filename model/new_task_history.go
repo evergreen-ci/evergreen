@@ -26,7 +26,7 @@ type FindTaskHistoryOptions struct {
 	Limit        *int
 }
 
-// getBaseTaskHistoryFilter defines a basic match for the task history query. This is helpful as getting task history
+// getBaseTaskHistoryFilter defines a basic match for the task history query. This is useful as fetching task history
 // requires matching on multiple fields (i.e. the task name, build variant, and project fields).
 func getBaseTaskHistoryFilter(opts FindTaskHistoryOptions) bson.M {
 	return bson.M{
@@ -97,7 +97,7 @@ func findInactiveTasksForHistory(ctx context.Context, opts FindTaskHistoryOption
 	return tasks, err
 }
 
-// FindTasksForHistory finds tasks with the given task name, build variant, and project ID with the given parameters.
+// FindTasksForHistory finds tasks with the given task name, build variant, and project ID between the specified bounds.
 // The result is sorted by order numbers, descending (e.g. 100, 99, 98, 97, ...).
 func FindTasksForHistory(ctx context.Context, opts FindTaskHistoryOptions) ([]task.Task, error) {
 	// Active tasks must be fetched with either a lower bound or upper bound (not both), so we check for valid
@@ -145,7 +145,7 @@ func GetLatestMainlineTask(ctx context.Context, opts FindTaskHistoryOptions) (*t
 		return nil, err
 	}
 	if mostRecentTask == nil {
-		return nil, errors.New("task doesn't exist on project history")
+		return nil, errors.New("task not found on project history")
 	}
 	return mostRecentTask, nil
 }
@@ -162,7 +162,7 @@ func GetOldestMainlineTask(ctx context.Context, opts FindTaskHistoryOptions) (*t
 		return nil, err
 	}
 	if oldestTask == nil {
-		return nil, errors.New("task doesn't exist on project history")
+		return nil, errors.New("task not found on project history")
 	}
 	return oldestTask, nil
 }
