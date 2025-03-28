@@ -1,0 +1,30 @@
+enum TaskHistoryDirection {
+  AFTER
+  BEFORE
+}
+
+input TaskHistoryOpts {
+  projectIdentifier: String!
+    @requireProjectAccess(permission: TASKS, access: VIEW)
+  taskName: String!
+  buildVariant: String!
+  cursorParams: CursorParams!
+  limit: Int = 50
+  date: Time
+}
+
+input CursorParams {
+  cursorId: String!
+  direction: TaskHistoryDirection!
+  includeCursor: Boolean!
+}
+
+type TaskHistoryPagination {
+  mostRecentTaskOrder: Int!
+  oldestTaskOrder: Int!
+}
+
+type TaskHistory {
+  tasks: [Task!]!
+  pagination: TaskHistoryPagination!
+}
