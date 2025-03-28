@@ -53,7 +53,7 @@ type Mutation {
   """
   setPatchVisibility takes a list of patch ids and a boolean to set the visibility on the my patches queries
   """
-  setPatchVisibility(patchIds: [String!]!, hidden: Boolean!): [Patch!]! # Permissions are checked in the resolver.
+  setPatchVisibility(patchIds: [String!]! @requirePatchOwner, hidden: Boolean!): [Patch!]! # Permissions are checked in the resolver.
   schedulePatch(patchId: String! @requireProjectAccess(permission: PATCHES, access: EDIT), configure: PatchConfigure!): Patch!
 
   # project

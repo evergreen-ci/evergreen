@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/gimlet"
@@ -35,6 +36,41 @@ func New(apiURL string) Config {
 		Resolvers: &Resolver{
 			sc: dbConnector,
 		},
+	}
+	c.Directives.RequirePatchOwner = func(ctx context.Context, obj any, next graphql.Resolver) (any, error) {
+		user := mustHaveUser(ctx)
+		args, isStringMap := obj.(map[string]any)
+		if !isStringMap {
+			return nil, ResourceNotFound.Send(ctx, "patchIds not specified")
+		}
+		rawPatchIds, hasPatchIds := args["patchIds"].([]any)
+		if !hasPatchIds {
+			return nil, ResourceNotFound.Send(ctx, "patchIds not specified")
+		}
+		patchIds := make([]string, len(rawPatchIds))
+		for i, v := range rawPatchIds {
+			patchIds[i] = v.(string)
+		}
+
+		patches, err := patch.Find(patch.ByStringIds(patchIds))
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patches '%s': %s", patchIds, err.Error()))
+		}
+
+		forbiddenPatches := []string{}
+		for _, p := range patches {
+			if !userCanModifyPatch(user, p) {
+				forbiddenPatches = append(forbiddenPatches, p.Id.Hex())
+			}
+		}
+		if len(forbiddenPatches) == 1 {
+			return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have permission to modify patch '%s'", user.Username(), forbiddenPatches[0]))
+		} else if len(forbiddenPatches) > 1 {
+			patchString := strings.Join(forbiddenPatches, ", ")
+			return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have permission to modify patches: '%s'", user.Username(), patchString))
+		}
+
+		return next(ctx)
 	}
 	c.Directives.RequireHostAccess = func(ctx context.Context, obj any, next graphql.Resolver, access HostAccessLevel) (any, error) {
 		args, isStringMap := obj.(map[string]interface{})

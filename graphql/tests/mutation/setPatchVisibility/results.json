@@ -12,6 +12,25 @@
                     ]
                 }
             }
+        },
+        {
+            "query_file": "forbidden.graphql",
+            "test_user_id": "regular_user",
+            "result": {
+                "data": null,
+                "errors": [
+                  {
+                    "message": "user 'regular_user' does not have permission to modify patch '5e4ff3abe3c3317e352062e4'",
+                    "path": [
+                      "setPatchVisibility",
+                      "patchIds"
+                    ],
+                    "extensions": {
+                      "code": "FORBIDDEN"
+                    }
+                  }
+                ]
+            }
         }
     ]
 }
