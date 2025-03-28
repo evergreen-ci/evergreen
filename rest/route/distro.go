@@ -307,6 +307,9 @@ func (h *distroCopyHandler) Run(ctx context.Context) gimlet.Responder {
 		toCopy.SingleTaskDistro = true
 	}
 
+	// Do not copy aliases because it could lead to the wrong distros being used.
+	toCopy.Aliases = nil
+
 	err = data.NewDistro(ctx, toCopy, user)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "creating and inserting new distro '%s'", h.newDistroID))

@@ -112,6 +112,7 @@ func CopyDistro(ctx context.Context, u *user.DBUser, opts restModel.CopyDistroOp
 	}
 
 	distroToCopy.Id = opts.NewDistroId
+	distroToCopy.Aliases = nil
 	return NewDistro(ctx, distroToCopy, u)
 }
 
