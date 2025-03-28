@@ -262,7 +262,7 @@ func makeCopyDistro() gimlet.RouteHandler {
 // Factory creates an instance of the handler.
 //
 //	@Summary		Copy an existing distro
-//	@Description	Create a new distro by copying an existing distro. Specifying "single task distro" will mark the copied distro as a single task distro.
+//	@Description	Create a new distro by copying an existing distro. Specifying "single task distro" will mark the copied distro as a single task distro. Aliases will not be copied.
 //	@Tags			distros
 //	@Router			/distros/{distro_id}/copy/{new_distro_id} [put]
 //	@Security		Api-User || Api-Key
