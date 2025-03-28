@@ -71,7 +71,7 @@ func (v *validateProjectHandler) Run(ctx context.Context) gimlet.Responder {
 		ReadFileFrom: model.ReadFromLocal,
 	}
 	validationErr := validator.ValidationError{}
-	if _, err = model.LoadProjectInto(ctx, v.input.ProjectYaml, opts, "", project); err != nil {
+	if _, err = model.LoadProjectInto(ctx, v.input.ProjectYaml, opts, v.input.ProjectID, project); err != nil {
 		validationErr.Message = err.Error()
 		return gimlet.NewJSONErrorResponse(validator.ValidationErrors{validationErr})
 	}

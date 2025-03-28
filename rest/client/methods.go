@@ -1583,7 +1583,7 @@ func (c *communicatorImpl) Validate(ctx context.Context, data []byte, quiet bool
 		err := json.Unmarshal(rawData, &errorResponse)
 		if err == nil {
 			// if it successfully unmarshaled to a gimlet error response,
-			// that means it's n error message rather than project errors and
+			// that means it's an error message rather than project errors and
 			// we should return the error.
 			return nil, errors.New(errorResponse.Message)
 		}
