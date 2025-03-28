@@ -3413,6 +3413,22 @@ func TestUpdateNextPeriodicBuild(t *testing.T) {
 			// Repo wasn't updated because the branch project definitions take precedent.
 			assert.True(later.Equal(dbRepo.PeriodicBuilds[0].NextRunTime))
 		},
+		"updatesProjectFromThePast": func(t *testing.T) {
+			p := ProjectRef{
+				Id: "proj",
+				PeriodicBuilds: []PeriodicBuildDefinition{
+					{ID: "0", NextRunTime: now.Add(-48 * time.Hour), IntervalHours: 5},
+				},
+			}
+			assert.NoError(p.Insert())
+
+			assert.NoError(UpdateNextPeriodicBuild(t.Context(), "proj", &p.PeriodicBuilds[0]))
+			dbProject, err := FindBranchProjectRef(t.Context(), p.Id)
+			assert.NoError(err)
+			require.NotNil(dbProject)
+			nextRunTime := now.Add(5 * time.Hour).Round(time.Hour)
+			assert.True(nextRunTime.Equal(dbProject.PeriodicBuilds[0].NextRunTime.Round(time.Hour)))
+		},
 		"updatesRepoOnly": func(t *testing.T) {
 			p := ProjectRef{
 				Id:             "proj",
@@ -3459,7 +3475,7 @@ func TestUpdateNextPeriodicBuild(t *testing.T) {
 			assert.True(later.Equal(dbRepo.PeriodicBuilds[0].NextRunTime))
 		},
 		"updateProjectWithCron": func(t *testing.T) {
-			nextRunTime := time.Date(2022, 12, 12, 0, 0, 0, 0, time.UTC)
+			nextRunTime := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
 			nextDay := nextRunTime.Add(24 * time.Hour)
 			laterRunTime := nextRunTime.Add(12 * time.Hour)
 			dailyCron := "0 0 * * *"
