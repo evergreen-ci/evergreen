@@ -1352,6 +1352,7 @@ type ComplexityRoot struct {
 		TaskGroup               func(childComplexity int) int
 		TaskGroupMaxHosts       func(childComplexity int) int
 		TaskLogs                func(childComplexity int) int
+		TaskOwnerTeam           func(childComplexity int) int
 		Tests                   func(childComplexity int, opts *TestFilterOptions) int
 		TimeTaken               func(childComplexity int) int
 		TotalTestCount          func(childComplexity int) int
@@ -1441,6 +1442,13 @@ type ComplexityRoot struct {
 		SystemLogs func(childComplexity int) int
 		TaskID     func(childComplexity int) int
 		TaskLogs   func(childComplexity int) int
+	}
+
+	TaskOwnerTeam struct {
+		AssignmentType func(childComplexity int) int
+		JiraProject    func(childComplexity int) int
+		Messages       func(childComplexity int) int
+		TeamName       func(childComplexity int) int
 	}
 
 	TaskQueueDistro struct {
@@ -2049,6 +2057,7 @@ type TaskResolver interface {
 	SpawnHostLink(ctx context.Context, obj *model.APITask) (*string, error)
 
 	TaskLogs(ctx context.Context, obj *model.APITask) (*TaskLogs, error)
+	TaskOwnerTeam(ctx context.Context, obj *model.APITask) (*TaskOwnerTeam, error)
 	Tests(ctx context.Context, obj *model.APITask, opts *TestFilterOptions) (*TaskTestResult, error)
 
 	TotalTestCount(ctx context.Context, obj *model.APITask) (int, error)
@@ -8574,6 +8583,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Task.TaskLogs(childComplexity), true
 
+	case "Task.taskOwnerTeam":
+		if e.complexity.Task.TaskOwnerTeam == nil {
+			break
+		}
+
+		return e.complexity.Task.TaskOwnerTeam(childComplexity), true
+
 	case "Task.tests":
 		if e.complexity.Task.Tests == nil {
 			break
@@ -8970,6 +8986,34 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.TaskLogs.TaskLogs(childComplexity), true
+
+	case "TaskOwnerTeam.assignmentType":
+		if e.complexity.TaskOwnerTeam.AssignmentType == nil {
+			break
+		}
+
+		return e.complexity.TaskOwnerTeam.AssignmentType(childComplexity), true
+
+	case "TaskOwnerTeam.jiraProject":
+		if e.complexity.TaskOwnerTeam.JiraProject == nil {
+			break
+		}
+
+		return e.complexity.TaskOwnerTeam.JiraProject(childComplexity), true
+
+	case "TaskOwnerTeam.messages":
+		if e.complexity.TaskOwnerTeam.Messages == nil {
+			break
+		}
+
+		return e.complexity.TaskOwnerTeam.Messages(childComplexity), true
+
+	case "TaskOwnerTeam.teamName":
+		if e.complexity.TaskOwnerTeam.TeamName == nil {
+			break
+		}
+
+		return e.complexity.TaskOwnerTeam.TeamName(childComplexity), true
 
 	case "TaskQueueDistro.hostCount":
 		if e.complexity.TaskQueueDistro.HostCount == nil {
@@ -24464,6 +24508,8 @@ func (ec *executionContext) fieldContext_GroupedBuildVariant_tasks(_ context.Con
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "taskOwnerTeam":
+				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
 				return ec.fieldContext_Task_tests(ctx, field)
 			case "timeTaken":
@@ -28763,6 +28809,8 @@ func (ec *executionContext) fieldContext_Image_latestTask(_ context.Context, fie
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "taskOwnerTeam":
+				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
 				return ec.fieldContext_Task_tests(ctx, field)
 			case "timeTaken":
@@ -31267,6 +31315,8 @@ func (ec *executionContext) fieldContext_LogkeeperBuild_task(_ context.Context, 
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "taskOwnerTeam":
+				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
 				return ec.fieldContext_Task_tests(ctx, field)
 			case "timeTaken":
@@ -35726,6 +35776,8 @@ func (ec *executionContext) fieldContext_Mutation_abortTask(ctx context.Context,
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "taskOwnerTeam":
+				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
 				return ec.fieldContext_Task_tests(ctx, field)
 			case "timeTaken":
@@ -35933,6 +35985,8 @@ func (ec *executionContext) fieldContext_Mutation_overrideTaskDependencies(ctx c
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "taskOwnerTeam":
+				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
 				return ec.fieldContext_Task_tests(ctx, field)
 			case "timeTaken":
@@ -36140,6 +36194,8 @@ func (ec *executionContext) fieldContext_Mutation_restartTask(ctx context.Contex
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "taskOwnerTeam":
+				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
 				return ec.fieldContext_Task_tests(ctx, field)
 			case "timeTaken":
@@ -36347,6 +36403,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleTasks(ctx context.Cont
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "taskOwnerTeam":
+				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
 				return ec.fieldContext_Task_tests(ctx, field)
 			case "timeTaken":
@@ -36554,6 +36612,8 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriority(ctx context.Co
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "taskOwnerTeam":
+				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
 				return ec.fieldContext_Task_tests(ctx, field)
 			case "timeTaken":
@@ -36761,6 +36821,8 @@ func (ec *executionContext) fieldContext_Mutation_unscheduleTask(ctx context.Con
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "taskOwnerTeam":
+				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
 				return ec.fieldContext_Task_tests(ctx, field)
 			case "timeTaken":
@@ -37917,6 +37979,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleUndispatchedBaseTasks(
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "taskOwnerTeam":
+				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
 				return ec.fieldContext_Task_tests(ctx, field)
 			case "timeTaken":
@@ -43128,6 +43192,8 @@ func (ec *executionContext) fieldContext_Pod_task(_ context.Context, field graph
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "taskOwnerTeam":
+				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
 				return ec.fieldContext_Task_tests(ctx, field)
 			case "timeTaken":
@@ -43669,6 +43735,8 @@ func (ec *executionContext) fieldContext_PodEventLogData_task(_ context.Context,
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "taskOwnerTeam":
+				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
 				return ec.fieldContext_Task_tests(ctx, field)
 			case "timeTaken":
@@ -50966,6 +51034,8 @@ func (ec *executionContext) fieldContext_Query_task(ctx context.Context, field g
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "taskOwnerTeam":
+				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
 				return ec.fieldContext_Task_tests(ctx, field)
 			case "timeTaken":
@@ -51173,6 +51243,8 @@ func (ec *executionContext) fieldContext_Query_taskAllExecutions(ctx context.Con
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "taskOwnerTeam":
+				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
 				return ec.fieldContext_Task_tests(ctx, field)
 			case "timeTaken":
@@ -58126,6 +58198,8 @@ func (ec *executionContext) fieldContext_Task_baseTask(_ context.Context, field 
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "taskOwnerTeam":
+				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
 				return ec.fieldContext_Task_tests(ctx, field)
 			case "timeTaken":
@@ -59210,6 +59284,8 @@ func (ec *executionContext) fieldContext_Task_displayTask(_ context.Context, fie
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "taskOwnerTeam":
+				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
 				return ec.fieldContext_Task_tests(ctx, field)
 			case "timeTaken":
@@ -59573,6 +59649,8 @@ func (ec *executionContext) fieldContext_Task_executionTasksFull(_ context.Conte
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "taskOwnerTeam":
+				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
 				return ec.fieldContext_Task_tests(ctx, field)
 			case "timeTaken":
@@ -61238,6 +61316,57 @@ func (ec *executionContext) fieldContext_Task_taskLogs(_ context.Context, field 
 				return ec.fieldContext_TaskLogs_taskLogs(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type TaskLogs", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Task_taskOwnerTeam(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Task_taskOwnerTeam(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Task().TaskOwnerTeam(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*TaskOwnerTeam)
+	fc.Result = res
+	return ec.marshalOTaskOwnerTeam2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskOwnerTeam(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Task_taskOwnerTeam(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Task",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "assignmentType":
+				return ec.fieldContext_TaskOwnerTeam_assignmentType(ctx, field)
+			case "messages":
+				return ec.fieldContext_TaskOwnerTeam_messages(ctx, field)
+			case "teamName":
+				return ec.fieldContext_TaskOwnerTeam_teamName(ctx, field)
+			case "jiraProject":
+				return ec.fieldContext_TaskOwnerTeam_jiraProject(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type TaskOwnerTeam", field.Name)
 		},
 	}
 	return fc, nil
@@ -64046,6 +64175,182 @@ func (ec *executionContext) fieldContext_TaskLogs_taskLogs(_ context.Context, fi
 				return ec.fieldContext_LogMessage_version(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type LogMessage", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TaskOwnerTeam_assignmentType(ctx context.Context, field graphql.CollectedField, obj *TaskOwnerTeam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TaskOwnerTeam_assignmentType(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AssignmentType, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_TaskOwnerTeam_assignmentType(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TaskOwnerTeam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TaskOwnerTeam_messages(ctx context.Context, field graphql.CollectedField, obj *TaskOwnerTeam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TaskOwnerTeam_messages(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Messages, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_TaskOwnerTeam_messages(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TaskOwnerTeam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TaskOwnerTeam_teamName(ctx context.Context, field graphql.CollectedField, obj *TaskOwnerTeam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TaskOwnerTeam_teamName(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TeamName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_TaskOwnerTeam_teamName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TaskOwnerTeam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TaskOwnerTeam_jiraProject(ctx context.Context, field graphql.CollectedField, obj *TaskOwnerTeam) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TaskOwnerTeam_jiraProject(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.JiraProject, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_TaskOwnerTeam_jiraProject(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TaskOwnerTeam",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -67430,6 +67735,8 @@ func (ec *executionContext) fieldContext_UpstreamProject_task(_ context.Context,
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "taskOwnerTeam":
+				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
 				return ec.fieldContext_Task_tests(ctx, field)
 			case "timeTaken":
@@ -71476,6 +71783,8 @@ func (ec *executionContext) fieldContext_VersionTasks_data(_ context.Context, fi
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "taskOwnerTeam":
+				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
 				return ec.fieldContext_Task_tests(ctx, field)
 			case "timeTaken":
@@ -94286,6 +94595,39 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "taskOwnerTeam":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Task_taskOwnerTeam(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "tests":
 			field := field
 
@@ -95180,6 +95522,60 @@ func (ec *executionContext) _TaskLogs(ctx context.Context, sel ast.SelectionSet,
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var taskOwnerTeamImplementors = []string{"TaskOwnerTeam"}
+
+func (ec *executionContext) _TaskOwnerTeam(ctx context.Context, sel ast.SelectionSet, obj *TaskOwnerTeam) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, taskOwnerTeamImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("TaskOwnerTeam")
+		case "assignmentType":
+			out.Values[i] = ec._TaskOwnerTeam_assignmentType(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "messages":
+			out.Values[i] = ec._TaskOwnerTeam_messages(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "teamName":
+			out.Values[i] = ec._TaskOwnerTeam_teamName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "jiraProject":
+			out.Values[i] = ec._TaskOwnerTeam_jiraProject(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -106079,6 +106475,13 @@ func (ec *executionContext) marshalOTaskEndDetail2githubᚗcomᚋevergreenᚑci�
 
 func (ec *executionContext) marshalOTaskInfo2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐTaskInfo(ctx context.Context, sel ast.SelectionSet, v model.TaskInfo) graphql.Marshaler {
 	return ec._TaskInfo(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalOTaskOwnerTeam2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTaskOwnerTeam(ctx context.Context, sel ast.SelectionSet, v *TaskOwnerTeam) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._TaskOwnerTeam(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOTaskSpecifier2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSpecifierᚄ(ctx context.Context, sel ast.SelectionSet, v []model.APITaskSpecifier) graphql.Marshaler {
