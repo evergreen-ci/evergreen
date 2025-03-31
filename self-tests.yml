@@ -196,7 +196,7 @@ functions:
       params:
         directory: evergreen
         token: ${github_token}
-        use_scalar: true
+        shallow_clone: true
     - command: shell.exec
       type: setup
       params:
@@ -633,7 +633,8 @@ tasks:
         params:
           directory: evergreen
           token: ${github_token}
-          use_scalar: true
+          # The getDistantEVGRevision test relies on HEAD~100
+          clone_depth: 101
       - func: setup-credentials
       - func: setup-mongodb
       - func: run-make
@@ -691,7 +692,7 @@ tasks:
         params:
           directory: evergreen
           token: ${github_token}
-          use_scalar: true
+          shallow_clone: true
       - command: shell.exec
         params:
           script: |
