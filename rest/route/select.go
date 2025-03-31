@@ -94,8 +94,13 @@ func (t *selectTestsHandler) Run(ctx context.Context) gimlet.Responder {
 		},
 	}
 	c := testselection.NewAPIClient(conf)
+	var strategies []testselection.StrategyEnum
+	for _, s := range t.selectTests.Strategies {
+		strategies = append(strategies, testselection.StrategyEnum(s))
+	}
 	reqBody := testselection.BodySelectTestsApiTestSelectionSelectTestsProjectIdRequesterBuildVariantNameTaskIdTaskNamePost{
-		TestNames: t.selectTests.Tests,
+		TestNames:  t.selectTests.Tests,
+		Strategies: strategies,
 	}
 	selectedTests, resp, err := c.TestSelectionAPI.SelectTestsApiTestSelectionSelectTestsProjectIdRequesterBuildVariantNameTaskIdTaskNamePost(ctx, t.selectTests.Project, t.selectTests.Requester, t.selectTests.BuildVariant, t.selectTests.TaskID, t.selectTests.TaskName).
 		BodySelectTestsApiTestSelectionSelectTestsProjectIdRequesterBuildVariantNameTaskIdTaskNamePost(reqBody).
