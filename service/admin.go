@@ -1,7 +1,6 @@
 package service
 
 import (
-	"fmt"
 	"net/http"
 	"time"
 
@@ -51,7 +50,6 @@ func (uis *UIServer) adminSettings(w http.ResponseWriter, r *http.Request) {
 			"displayName": ref.Repo,
 		})
 	}
-	fmt.Printf("--------------------------repoRefData: %v\n", repoRefData)
 	data := struct {
 		ViewData
 		CanClearTokens                         bool
