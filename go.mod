@@ -195,7 +195,7 @@ require (
 	github.com/evergreen-ci/evg-lint v0.0.0-20211115144425-3b19c8e83a57
 	github.com/evergreen-ci/plank v0.0.0-20230207190607-5f47f8a30da1
 	github.com/evergreen-ci/tarjan v0.0.0-20170824211642-fcd3f3321826
-	github.com/evergreen-ci/test-selection-client v0.0.0-20250211161638-10b5478f11ff
+	github.com/evergreen-ci/test-selection-client v0.0.0-20250331142509-2af2d0f91c8b
 	github.com/google/go-github/v70 v70.0.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/mongodb/jasper v0.0.0-20250304205544-71af207b4383
