@@ -1561,15 +1561,16 @@ func (a *APISubnet) ToService() (any, error) {
 }
 
 type APIAWSConfig struct {
-	EC2Keys              []APIEC2Key               `json:"ec2_keys"`
-	Subnets              []APISubnet               `json:"subnets"`
-	ParserProject        *APIParserProjectS3Config `json:"parser_project"`
-	PersistentDNS        *APIPersistentDNSConfig   `json:"persistent_dns"`
-	DefaultSecurityGroup *string                   `json:"default_security_group"`
-	AllowedInstanceTypes []*string                 `json:"allowed_instance_types"`
-	AllowedRegions       []*string                 `json:"allowed_regions"`
-	MaxVolumeSizePerUser *int                      `json:"max_volume_size"`
-	Pod                  *APIAWSPodConfig          `json:"pod"`
+	EC2Keys              []APIEC2Key                `json:"ec2_keys"`
+	Subnets              []APISubnet                `json:"subnets"`
+	ParserProject        *APIParserProjectS3Config  `json:"parser_project"`
+	PersistentDNS        *APIPersistentDNSConfig    `json:"persistent_dns"`
+	DefaultSecurityGroup *string                    `json:"default_security_group"`
+	AllowedInstanceTypes []*string                  `json:"allowed_instance_types"`
+	AllowedRegions       []*string                  `json:"allowed_regions"`
+	MaxVolumeSizePerUser *int                       `json:"max_volume_size"`
+	Pod                  *APIAWSPodConfig           `json:"pod"`
+	AccountRoles         []APIAWSAccountRoleMapping `json:"account_roles"`
 }
 
 func (a *APIAWSConfig) BuildFromService(h any) error {
@@ -1611,6 +1612,14 @@ func (a *APIAWSConfig) BuildFromService(h any) error {
 		var pod APIAWSPodConfig
 		pod.BuildFromService(v.Pod)
 		a.Pod = &pod
+
+		var roleMappings []APIAWSAccountRoleMapping
+		for _, m := range v.AccountRoles {
+			var api APIAWSAccountRoleMapping
+			api.BuildFromService(m)
+			roleMappings = append(roleMappings, api)
+		}
+		a.AccountRoles = roleMappings
 	default:
 		return errors.Errorf("programmatic error: expected AWS config but got type %T", h)
 	}
@@ -1692,6 +1701,12 @@ func (a *APIAWSConfig) ToService() (any, error) {
 		return nil, errors.Wrap(err, "converting ECS configuration to service model")
 	}
 	config.Pod = *pod
+
+	var roleMappings []evergreen.AWSAccountRoleMapping
+	for _, m := range a.AccountRoles {
+		roleMappings = append(roleMappings, m.ToService())
+	}
+	config.AccountRoles = roleMappings
 
 	return config, nil
 }
@@ -3000,4 +3015,21 @@ func (a *APIRuntimeEnvironmentsConfig) ToService() (any, error) {
 		BaseURL: utility.FromStringPtr(a.BaseURL),
 		APIKey:  utility.FromStringPtr(a.APIKey),
 	}, nil
+}
+
+type APIAWSAccountRoleMapping struct {
+	Account *string `json:"account"`
+	Role    *string `json:"role"`
+}
+
+func (a *APIAWSAccountRoleMapping) BuildFromService(v evergreen.AWSAccountRoleMapping) {
+	a.Account = utility.ToStringPtr(v.Account)
+	a.Role = utility.ToStringPtr(v.Role)
+}
+
+func (a *APIAWSAccountRoleMapping) ToService() evergreen.AWSAccountRoleMapping {
+	return evergreen.AWSAccountRoleMapping{
+		Account: utility.FromStringPtr(a.Account),
+		Role:    utility.FromStringPtr(a.Role),
+	}
 }

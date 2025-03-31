@@ -344,6 +344,12 @@ func MockConfig() *evergreen.Settings {
 						SecretPrefix: "secret_prefix",
 					},
 				},
+				AccountRoles: []evergreen.AWSAccountRoleMapping{
+					{
+						Account: "account",
+						Role:    "role",
+					},
+				},
 			},
 			Docker: evergreen.DockerConfig{
 				APIVersion: "docker_version",
