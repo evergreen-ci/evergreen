@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/validator"
 )
 
 // Communicator is an interface for communicating with the API server.
@@ -29,7 +30,6 @@ type Communicator interface {
 	// Client authentication methods (for hosts)
 	SetHostID(string)
 	SetHostSecret(string)
-
 	// Method to release resources used by the communicator.
 	Close()
 
@@ -128,6 +128,9 @@ type Communicator interface {
 
 	// RevokeGitHubDynamicAccessToken revokes the given GitHub dynamic access tokens.
 	RevokeGitHubDynamicAccessTokens(ctx context.Context, taskID string, tokens []string) error
+
+	// Validate validates a project configuration file.
+	Validate(ctx context.Context, data []byte, quiet bool, projectID string) (validator.ValidationErrors, error)
 }
 
 // GetTaskLogsOptions are the options for fetching task logs for a given task.
