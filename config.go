@@ -31,11 +31,11 @@ var (
 
 	// ClientVersion is the commandline version string used to control updating
 	// the CLI. The format is the calendar date (YYYY-MM-DD).
-	ClientVersion = "2025-03-17"
+	ClientVersion = "2025-03-31"
 
 	// Agent version to control agent rollover. The format is the calendar date
 	// (YYYY-MM-DD).
-	AgentVersion = "2025-03-21"
+	AgentVersion = "2025-03-31"
 )
 
 const (
@@ -88,7 +88,6 @@ type Settings struct {
 	KanopySSHKeyPath    string                    `yaml:"kanopy_ssh_key_path" bson:"kanopy_ssh_key_path" json:"kanopy_ssh_key_path"`
 	LoggerConfig        LoggerConfig              `yaml:"logger_config" bson:"logger_config" json:"logger_config" id:"logger_config"`
 	LogPath             string                    `yaml:"log_path" bson:"log_path" json:"log_path"`
-	NewRelic            NewRelicConfig            `yaml:"newrelic" bson:"newrelic" json:"newrelic" id:"newrelic"`
 	Notify              NotifyConfig              `yaml:"notify" bson:"notify" json:"notify" id:"notify"`
 	Overrides           OverridesConfig           `yaml:"overrides" bson:"overrides" json:"overrides" id:"overrides"`
 	ParameterStore      ParameterStoreConfig      `yaml:"parameter_store" bson:"parameter_store" json:"parameter_store" id:"parameter_store"`

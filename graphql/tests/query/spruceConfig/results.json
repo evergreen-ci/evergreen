@@ -66,6 +66,10 @@
                   "allowedTasks": [
                     "compile",
                     "test"
+                  ],
+                  "allowedBVs": [
+                    "ubuntu1604",
+                    "windows"
                   ]
                 },
                 {
@@ -73,6 +77,9 @@
                   "allowedTasks": [
                     "lint",
                     "storybook"
+                  ],
+                  "allowedBVs": [
+                    "macOS"
                   ]
                 }
               ]

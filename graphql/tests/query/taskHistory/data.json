@@ -1,0 +1,187 @@
+{
+  "tasks": [
+    {
+      "_id": "task_101",
+      "version": "evergreen_version_101",
+      "status": "success",
+      "display_name": "test-graphql",
+      "activated": true,
+      "branch": "evergreen",
+      "build_variant": "ubuntu2204",
+      "build_variant_display_name": "Ubuntu 22.04",
+      "execution": 0,
+      "order": 101,
+      "r": "gitter_request"
+    },
+    {
+      "_id": "task_102",
+      "version": "evergreen_version_102",
+      "status": "success",
+      "display_name": "test-graphql",
+      "activated": true,
+      "branch": "evergreen",
+      "build_variant": "ubuntu2204",
+      "build_variant_display_name": "Ubuntu 22.04",
+      "execution": 1,
+      "order": 102,
+      "r": "ad_hoc"
+    },
+    {
+      "_id": "task_103",
+      "version": "evergreen_version_103",
+      "status": "success",
+      "display_name": "test-graphql",
+      "activated": false,
+      "branch": "evergreen",
+      "build_variant": "ubuntu2204",
+      "build_variant_display_name": "Ubuntu 22.04",
+      "execution": 0,
+      "order": 103,
+      "r": "git_tag_request"
+    },
+    {
+      "_id": "task_104",
+      "version": "evergreen_version_104",
+      "status": "success",
+      "display_name": "test-graphql",
+      "activated": true,
+      "branch": "evergreen",
+      "build_variant": "ubuntu2204",
+      "build_variant_display_name": "Ubuntu 22.04",
+      "execution": 0,
+      "order": 104,
+      "r": "trigger_request"
+    },
+    {
+      "_id": "task_105",
+      "version": "evergreen_version_105",
+      "status": "success",
+      "display_name": "test-graphql",
+      "activated": true,
+      "branch": "evergreen",
+      "build_variant": "ubuntu2204",
+      "build_variant_display_name": "Ubuntu 22.04",
+      "execution": 0,
+      "order": 105,
+      "r": "gitter_request"
+    },
+    {
+      "_id": "task_106",
+      "version": "evergreen_version_106",
+      "status": "success",
+      "display_name": "test-graphql",
+      "activated": false,
+      "branch": "evergreen",
+      "build_variant": "ubuntu2204",
+      "build_variant_display_name": "Ubuntu 22.04",
+      "execution": 0,
+      "order": 106,
+      "r": "gitter_request"
+    },
+    {
+      "_id": "task_107",
+      "version": "evergreen_version_107",
+      "status": "success",
+      "display_name": "test-graphql",
+      "activated": true,
+      "branch": "evergreen",
+      "build_variant": "ubuntu2204",
+      "build_variant_display_name": "Ubuntu 22.04",
+      "execution": 2,
+      "order": 107,
+      "r": "ad_hoc"
+    },
+    {
+      "_id": "task_1_trailing_inactive_version",
+      "version": "spruce_version_1",
+      "status": "success",
+      "display_name": "check-codegen",
+      "activated": false,
+      "branch": "spruce",
+      "build_variant": "ubuntu2204",
+      "build_variant_display_name": "Ubuntu 22.04",
+      "execution": 0,
+      "order": 1,
+      "r": "ad_hoc"
+    },
+    {
+      "_id": "task_2",
+      "version": "spruce_version_2",
+      "status": "success",
+      "display_name": "check-codegen",
+      "activated": true,
+      "branch": "spruce",
+      "build_variant": "ubuntu2204",
+      "build_variant_display_name": "Ubuntu 22.04",
+      "execution": 0,
+      "order": 2,
+      "r": "gitter_request"
+    },
+    {
+      "_id": "task_3",
+      "version": "spruce_version_3",
+      "status": "success",
+      "display_name": "check-codegen",
+      "activated": true,
+      "branch": "spruce",
+      "build_variant": "ubuntu2204",
+      "build_variant_display_name": "Ubuntu 22.04",
+      "execution": 0,
+      "order": 3,
+      "r": "git_tag_request"
+    },
+    {
+      "_id": "task_4_leading_inactive_version",
+      "version": "spruce_version_4",
+      "status": "success",
+      "display_name": "check-codegen",
+      "activated": false,
+      "branch": "spruce",
+      "build_variant": "ubuntu2204",
+      "build_variant_display_name": "Ubuntu 22.04",
+      "execution": 0,
+      "order": 4,
+      "r": "gitter_request"
+    },
+    {
+      "_id": "sandbox_task_1",
+      "version": "sandbox_version_1",
+      "status": "success",
+      "display_name": "test-sandbox",
+      "activated": false,
+      "branch": "sandbox_project_id",
+      "build_variant": "ubuntu2204",
+      "build_variant_display_name": "Ubuntu 22.04",
+      "execution": 0,
+      "order": 1,
+      "r": "gitter_request"
+    },
+    {
+      "_id": "sandbox_task_2",
+      "version": "sandbox_version_2",
+      "status": "success",
+      "display_name": "test-sandbox",
+      "activated": false,
+      "branch": "sandbox_project_id",
+      "build_variant": "ubuntu2204",
+      "build_variant_display_name": "Ubuntu 22.04",
+      "execution": 0,
+      "order": 2,
+      "r": "gitter_request"
+    }
+  ],
+  "project_ref": [
+    {
+      "_id": "spruce",
+      "identifier": "spruce"
+    },
+    {
+      "_id": "evergreen",
+      "identifier": "evergreen"
+    },
+    {
+      "_id": "sandbox_project_id",
+      "identifier": "sandbox"
+    }
+  ]
+}

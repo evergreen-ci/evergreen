@@ -52,6 +52,12 @@ type CreateDistroInput struct {
 	SingleTaskDistro *bool  `json:"singleTaskDistro,omitempty"`
 }
 
+type CursorParams struct {
+	CursorID      string               `json:"cursorId"`
+	Direction     TaskHistoryDirection `json:"direction"`
+	IncludeCursor bool                 `json:"includeCursor"`
+}
+
 // DeactivateStepbackTaskInput is the input to the deactivateStepbackTask mutation.
 type DeactivateStepbackTaskInput struct {
 	ProjectID        string `json:"projectId"`
@@ -475,6 +481,25 @@ type TaskFilterOptions struct {
 	Statuses                   []string     `json:"statuses,omitempty"`
 	TaskName                   *string      `json:"taskName,omitempty"`
 	Variant                    *string      `json:"variant,omitempty"`
+}
+
+type TaskHistory struct {
+	Tasks      []*model.APITask       `json:"tasks"`
+	Pagination *TaskHistoryPagination `json:"pagination"`
+}
+
+type TaskHistoryOpts struct {
+	ProjectIdentifier string        `json:"projectIdentifier"`
+	TaskName          string        `json:"taskName"`
+	BuildVariant      string        `json:"buildVariant"`
+	CursorParams      *CursorParams `json:"cursorParams"`
+	Limit             *int          `json:"limit,omitempty"`
+	Date              *time.Time    `json:"date,omitempty"`
+}
+
+type TaskHistoryPagination struct {
+	MostRecentTaskOrder int `json:"mostRecentTaskOrder"`
+	OldestTaskOrder     int `json:"oldestTaskOrder"`
 }
 
 // TaskLogs is the return value for the task.taskLogs query.
@@ -1635,6 +1660,47 @@ func (e *SpawnHostStatusActions) UnmarshalGQL(v any) error {
 }
 
 func (e SpawnHostStatusActions) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+type TaskHistoryDirection string
+
+const (
+	TaskHistoryDirectionAfter  TaskHistoryDirection = "AFTER"
+	TaskHistoryDirectionBefore TaskHistoryDirection = "BEFORE"
+)
+
+var AllTaskHistoryDirection = []TaskHistoryDirection{
+	TaskHistoryDirectionAfter,
+	TaskHistoryDirectionBefore,
+}
+
+func (e TaskHistoryDirection) IsValid() bool {
+	switch e {
+	case TaskHistoryDirectionAfter, TaskHistoryDirectionBefore:
+		return true
+	}
+	return false
+}
+
+func (e TaskHistoryDirection) String() string {
+	return string(e)
+}
+
+func (e *TaskHistoryDirection) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = TaskHistoryDirection(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid TaskHistoryDirection", str)
+	}
+	return nil
+}
+
+func (e TaskHistoryDirection) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
