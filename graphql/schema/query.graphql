@@ -89,6 +89,9 @@ type Query {
 
   # waterfall
   waterfall(options: WaterfallOptions!): Waterfall!
+  
+  # task history
+  taskHistory(options: TaskHistoryOpts!): TaskHistory!
 
   # version
   hasVersion(patchId: String!): Boolean!

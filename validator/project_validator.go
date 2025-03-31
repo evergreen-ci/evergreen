@@ -974,8 +974,9 @@ func ensureReferentialIntegrity(project *model.Project, containerNameMap map[str
 					)
 				}
 
-				// Do single task distro validation if the distro is a single task distro and not all tasks are allowed.
-				if slices.Contains(singleTaskDistroIDs, name) && !singleTaskDistroWhitelist.AllowAll() {
+				shouldValidateSingleTaskDistros, errorLevel, warnings := shouldValidateSingleTaskDistros(project.Identifier, singleTaskDistroWhitelist, singleTaskDistroIDs, name)
+				errs = append(errs, warnings...)
+				if shouldValidateSingleTaskDistros {
 					matchedTask, warnings := matchTaskToWhitelist(singleTaskDistroWhitelist.AllowedTasks, task.Name)
 					errs = append(errs, warnings...)
 					matchedBV, warnings := matchTaskToWhitelist(singleTaskDistroWhitelist.AllowedBVs, task.Variant)
@@ -985,7 +986,7 @@ func ensureReferentialIntegrity(project *model.Project, containerNameMap map[str
 							ValidationError{
 								Message: fmt.Sprintf("task '%s' in buildvariant '%s' references a single task distro '%s' that is not allowed for this task or variant",
 									task.Name, buildVariant.Name, name),
-								Level: Error,
+								Level: errorLevel,
 							},
 						)
 					}
@@ -1033,8 +1034,9 @@ func ensureReferentialIntegrity(project *model.Project, containerNameMap map[str
 				)
 			}
 
-			// Do single task distro validation if the distro is a single task distro and not all tasks are allowed.
-			if slices.Contains(singleTaskDistroIDs, name) && !singleTaskDistroWhitelist.AllowAll() {
+			shouldValidateSingleTaskDistros, errorLevel, warnings := shouldValidateSingleTaskDistros(project.Identifier, singleTaskDistroWhitelist, singleTaskDistroIDs, name)
+			errs = append(errs, warnings...)
+			if shouldValidateSingleTaskDistros {
 				matched, warnings := matchTaskToWhitelist(singleTaskDistroWhitelist.AllowedBVs, buildVariant.Name)
 				errs = append(errs, warnings...)
 				if !matched {
@@ -1042,7 +1044,7 @@ func ensureReferentialIntegrity(project *model.Project, containerNameMap map[str
 						ValidationError{
 							Message: fmt.Sprintf("buildvariant '%s' references a single task distro '%s' that is not allowed for this variant",
 								buildVariant.Name, name),
-							Level: Error,
+							Level: errorLevel,
 						},
 					)
 				}
@@ -1084,6 +1086,20 @@ func checkRunOn(runOnHasDistro, runOnHasContainer bool, runOn []string) []Valida
 		}}
 	}
 	return nil
+}
+
+func shouldValidateSingleTaskDistros(projectIdentifier string, singleTaskDistroWhitelist evergreen.ProjectTasksPair, singleTaskDistroIDs []string, distroName string) (bool, ValidationErrorLevel, []ValidationError) {
+	// Do single task distro validation if the distro is a single task distro and not all tasks are allowed.
+	shouldValidate := slices.Contains(singleTaskDistroIDs, distroName) && !singleTaskDistroWhitelist.AllowAll()
+	if shouldValidate && projectIdentifier == "" {
+		return shouldValidate, Warning, []ValidationError{
+			{
+				Message: "project not specified, skipping single task distro validation",
+				Level:   Warning,
+			}}
+	}
+
+	return shouldValidate, Error, []ValidationError{}
 }
 
 func validateTimeoutLimits(_ context.Context, settings *evergreen.Settings, project *model.Project, _ *model.ProjectRef, _ bool) ValidationErrors {
