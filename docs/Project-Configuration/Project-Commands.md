@@ -225,20 +225,10 @@ page.
     indicates to treat the files array as a list of exact filenames to
     match, rather than an array of gitignore file globs.
 
-#### Lifecycle Policy
-
-These artifacts are stored in an S3 bucket which has the following lifecycle policy:
-
-* Day 0 - Object uploaded
-* Day 60 - Object moved to Standard-IA
-* Day 365 - Object moved to Deep Glacier Archive
-* Day 1095 - Object expires
-
-If you would like to download an artifact after it has been moved to Glacier, please create a BUILD ticket requesting download as it will no longer be available via the link under the Files tab on the task page.
-
 ## attach.results
 
-This command parses and stores results in Evergreen's JSON test result format.
+This command parses and stores results in Evergreen's JSON test result format.Refer to [Task Artifacts Data Retention Policy](../Reference/Limits#task-scheduling-limits) for details on the lifecycle of files uploaded via this command.
+
 The use case for this command is when you wish to link custom test results
 with test logs written via the
 [file system API for task output](Task-Output-Directory). Evergreen's JSON
@@ -315,7 +305,9 @@ Test log URLs are automatically generated and provided via the
 ## attach.xunit_results
 
 This command parses results in the XUnit format and posts them to the
-API server. Use this when you use a library in your programming language
+API server. Refer to [Task Artifacts Data Retention Policy](../Reference/Limits#task-scheduling-limits) for details on the lifecycle of files uploaded via this command.
+
+Use this when you use a library in your programming language
 to generate XUnit results from tests. Evergreen will parse these XML
 files, creating links to individual tests in the test logs in the UI and
 API. (Logs are only generated if the test case did not succeed -- this is
@@ -1420,7 +1412,7 @@ Parameters:
 ## s3.put
 
 This command uploads a file to Amazon s3, for use in later tasks or
-distribution. **Files uploaded with this command will also be viewable within the Parsley log viewer if the `content_type` is set to `text/plain`, `application/json` or `text/csv`.**
+distribution. Refer to [Task Artifacts Data Retention Policy](../Reference/Limits#task-scheduling-limits) for details on the lifecycle of files uploaded via this command. **Files uploaded with this command will also be viewable within the Parsley log viewer if the `content_type` is set to `text/plain`, `application/json` or `text/csv`.**
 
 ``` yaml
 # Temporary credentials:
