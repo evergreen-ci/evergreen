@@ -1494,7 +1494,9 @@ Parameters:
     a pre signed url with the provided role_arn or credentials, allowing users to see the file
     (even if it's private on S3). Visibility: signed should not be combined with
     permissions: public-read or permissions: public-read-write. It can be combined with aws_session_token
-    but it will only work if the generated credentials are from a previous `ec2.assume_role` command in this task.
+    but only if the generated credentials are from a previous `ec2.assume_role` command in this task or if
+    `role_arn` was passed in, otherwise Evergreen won't know the associated role to assume when generating
+    the presigned url.
     Note: This parameter does *not* affect the underlying permissions of the file
     on S3, only the visibility in the Evergreen UI. To change the permissions of the file on S3, use the `permissions` parameter.
 -   `patchable`: defaults to true. If set to false, the command will
