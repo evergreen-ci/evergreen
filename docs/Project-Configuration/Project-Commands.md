@@ -1456,8 +1456,10 @@ Parameters:
 -   `aws_key`: your AWS key (use expansions to keep this a secret).
 -   `aws_secret`: your AWS secret (use expansions to keep this a secret)
 -   `aws_session_token`: your temporary AWS session token (use expansions to keep this a secret).
-    Note: If you are generating temporary credentials using `ec2.assume_role`, it is recommended
-    to pass in the role_arn directly to your s3 commands instead.
+    Note: If you are generating temporary credentials using `ec2.assume_role`, you can instead
+    pass in the role_arn directly to your s3 commands. They will functionally be the same,
+    but Evergreen ignores the temporary credentials passed in if they are associated with
+    a previous `ec2.assume_role` call and will re-call AssumeRole for each s3 operation.
 -   `role_arn`: your AWS role to be assumed before and during the s3 operation.
     See [AssumeRole AWS setup](#assumerole-aws-setup) for more information on how
     to configure your role.
