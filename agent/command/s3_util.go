@@ -84,10 +84,9 @@ func shouldRunForVariant(bvs []string, bv string) bool {
 // is associated with an assumed role. If it is, it returns
 // the role ARN.
 func getAssumedRoleARN(conf *internal.TaskConfig, sessionToken string) string {
-	if sessionToken != "" {
-		if roleARN, ok := conf.AssumeRoleRoles[sessionToken]; ok {
-			return roleARN
-		}
+	if sessionToken == "" {
+		return ""
 	}
-	return ""
+
+	return conf.AssumeRoleRoles[sessionToken]
 }
