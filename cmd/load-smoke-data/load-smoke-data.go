@@ -62,15 +62,9 @@ func insertFileDocsToDB(ctx context.Context, fn string, db *mongo.Database) erro
 	switch collName {
 	case task.Collection:
 		if _, err = collection.Indexes().CreateMany(ctx, []mongo.IndexModel{
-			{
-				Keys: task.ActivatedTasksByDistroIndex,
-			},
-			{
-				Keys: task.DurationIndex,
-			},
-			{
-				Keys: model.TaskHistoryIndex,
-			},
+			{Keys: task.ActivatedTasksByDistroIndex},
+			{Keys: task.DurationIndex},
+			{Keys: model.TaskHistoryIndex},
 		}); err != nil {
 			return errors.Wrap(err, "creating task indexes")
 		}

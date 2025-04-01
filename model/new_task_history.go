@@ -16,19 +16,6 @@ const (
 	maxTaskHistoryLimit = 50
 )
 
-// The `branch_1_build_variant_1_display_name_1_status_1_r_1_activated_1_order_1` index is a good
-// index for the following queries, but the query planner does not detect this. Using this index
-// as a hint allows these queries to run efficiently.
-var TaskHistoryIndex = bson.D{
-	{Key: task.ProjectKey, Value: 1},
-	{Key: task.BuildVariantKey, Value: 1},
-	{Key: task.DisplayNameKey, Value: 1},
-	{Key: task.StatusKey, Value: 1},
-	{Key: task.RequesterKey, Value: 1},
-	{Key: task.ActivatedKey, Value: 1},
-	{Key: task.RevisionOrderNumberKey, Value: 1},
-}
-
 // FindTaskHistoryOptions defines options that can be passed to queries for task history.
 type FindTaskHistoryOptions struct {
 	TaskName     string
@@ -146,6 +133,19 @@ func FindTasksForHistory(ctx context.Context, opts FindTaskHistoryOptions) ([]ta
 	tasks := append(activeTasks, inactiveTasks...)
 	sort.Slice(tasks, func(i, j int) bool { return tasks[i].RevisionOrderNumber > tasks[j].RevisionOrderNumber })
 	return tasks, nil
+}
+
+// The index `branch_1_build_variant_1_display_name_1_status_1_r_1_activated_1_order_1` is a good index
+// for GetLatestMainlineTask & GetOldestMainlineTask, but the query planner does not detect this.
+// Using this index as a hint allows these queries to run efficiently.
+var TaskHistoryIndex = bson.D{
+	{Key: task.ProjectKey, Value: 1},
+	{Key: task.BuildVariantKey, Value: 1},
+	{Key: task.DisplayNameKey, Value: 1},
+	{Key: task.StatusKey, Value: 1},
+	{Key: task.RequesterKey, Value: 1},
+	{Key: task.ActivatedKey, Value: 1},
+	{Key: task.RevisionOrderNumberKey, Value: 1},
 }
 
 // GetLatestMainlineTask returns the most recent task matching the given parameters, activated or unactivated, on the waterfall.
