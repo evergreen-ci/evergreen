@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -66,6 +67,9 @@ func insertFileDocsToDB(ctx context.Context, fn string, db *mongo.Database) erro
 			},
 			{
 				Keys: task.DurationIndex,
+			},
+			{
+				Keys: model.TaskHistoryIndex,
 			},
 		}); err != nil {
 			return errors.Wrap(err, "creating task indexes")
