@@ -24,7 +24,7 @@ Artifacts uploaded by tasks using [s3.put](../Project-ConfigurationProject-Comma
 ## Task Output Data Retention Policy
 Test results uploaded via [attach.results](../Project-ConfigurationProject-Commands#attachresults), [attach.xunit_results](../Project-ConfigurationProject-Commands#attachxunit_results), and [gotest.parse_files](../Project-ConfigurationProject-Commands#gotestparse_files) will be available via evergreen for 1 year but will continue to be available in [Trino](../Project-Configuration/Evergreen-Data-for-Analytics) for longer.
 
-[Task traces](../Project-Configuration/Task_Traces) are available for 60 days in Honeycomb. While this is not currently available, we are working on making it available in [Trino](../Project-Configuration/Evergreen-Data-for-Analytics) once they expire in honeycomb.
+[Task traces](../Project-Configuration/Task_Traces) are available for 60 days in Honeycomb.
 
 
 ## Task Limits
