@@ -36,7 +36,7 @@ type SelectTestsRequest struct {
 	TaskName string `json:"task_name"`
 	// Tests is a list of test names.
 	Tests []string `json:"tests"`
-	// Strategies is the list of test selection strategies to use.
+	// Strategies is the optional list of test selection strategies to use.
 	Strategies []string `json:"strategies"`
 }
 
