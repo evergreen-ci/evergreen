@@ -227,7 +227,7 @@ page.
 
 ## attach.results
 
-This command parses and stores results in Evergreen's JSON test result format.Refer to [Task Artifacts Data Retention Policy](../Reference/Limits#task-scheduling-limits) for details on the lifecycle of files uploaded via this command.
+This command parses and stores results in Evergreen's JSON test result format. Refer to [Task Artifacts Data Retention Policy](../Reference/Limits#task_artifacts_data_retention_policy) for details on the lifecycle of files uploaded via this command.
 
 The use case for this command is when you wish to link custom test results
 with test logs written via the
@@ -305,7 +305,7 @@ Test log URLs are automatically generated and provided via the
 ## attach.xunit_results
 
 This command parses results in the XUnit format and posts them to the
-API server. Refer to [Task Artifacts Data Retention Policy](../Reference/Limits#task-scheduling-limits) for details on the lifecycle of files uploaded via this command.
+API server. Refer to [Task Artifacts Data Retention Policy](../Reference/Limits#task_artifacts_data_retention_policy) for details on the lifecycle of files uploaded via this command.
 
 Use this when you use a library in your programming language
 to generate XUnit results from tests. Evergreen will parse these XML
@@ -1412,7 +1412,7 @@ Parameters:
 ## s3.put
 
 This command uploads a file to Amazon s3, for use in later tasks or
-distribution. Refer to [Task Artifacts Data Retention Policy](../Reference/Limits#task-scheduling-limits) for details on the lifecycle of files uploaded via this command. **Files uploaded with this command will also be viewable within the Parsley log viewer if the `content_type` is set to `text/plain`, `application/json` or `text/csv`.**
+distribution. Refer to [Task Artifacts Data Retention Policy](../Reference/Limits#task_artifacts_data_retention_policy) for details on the lifecycle of files uploaded via this command. **Files uploaded with this command will also be viewable within the Parsley log viewer if the `content_type` is set to `text/plain`, `application/json` or `text/csv`.**
 
 ``` yaml
 # Temporary credentials:
