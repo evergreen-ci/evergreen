@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 
+	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -11,10 +12,11 @@ import (
 
 // JiraConfig stores auth info for interacting with Atlassian Jira.
 type JiraConfig struct {
-	Host            string              `yaml:"host" bson:"host" json:"host"`
-	BasicAuthConfig JiraBasicAuthConfig `yaml:"basic_auth" bson:"basic_auth" json:"basic_auth"`
-	OAuth1Config    JiraOAuth1Config    `yaml:"oauth1" bson:"oauth1" json:"oauth1"`
-	Email           string              `yaml:"email" bson:"email" json:"email"`
+	Host                string                            `yaml:"host" bson:"host" json:"host"`
+	BasicAuthConfig     JiraBasicAuthConfig               `yaml:"basic_auth" bson:"basic_auth" json:"basic_auth"`
+	OAuth1Config        JiraOAuth1Config                  `yaml:"oauth1" bson:"oauth1" json:"oauth1"`
+	PersonalAccessToken JiraPersonalAccessTokenAuthConfig `yaml:"personal_access_token" bson:"personal_access_token" json:"personal_access_token"`
+	Email               string                            `yaml:"email" bson:"email" json:"email"`
 }
 
 type JiraBasicAuthConfig struct {
@@ -29,6 +31,10 @@ type JiraOAuth1Config struct {
 	ConsumerKey string `yaml:"consumer_key" bson:"consumer_key" json:"consumer_key"`
 }
 
+type JiraPersonalAccessTokenAuthConfig struct {
+	Token string `yaml:"token" bson:"token" json:"token"`
+}
+
 func (c *JiraConfig) SectionId() string { return "jira" }
 
 func (c *JiraConfig) Get(ctx context.Context) error {
@@ -38,18 +44,22 @@ func (c *JiraConfig) Get(ctx context.Context) error {
 func (c *JiraConfig) Set(ctx context.Context) error {
 	return errors.Wrapf(setConfigSection(ctx, c.SectionId(), bson.M{
 		"$set": bson.M{
-			"host":       c.Host,
-			"basic_auth": c.BasicAuthConfig,
-			"oauth1":     c.OAuth1Config,
-			"email":      c.Email,
+			"host":                  c.Host,
+			"basic_auth":            c.BasicAuthConfig,
+			"oauth1":                c.OAuth1Config,
+			"personal_access_token": c.PersonalAccessToken,
+			"email":                 c.Email,
 		}}), "updating config section '%s'", c.SectionId(),
 	)
 }
 
 func (c *JiraConfig) ValidateAndDefault() error {
-	if (c.Host != "") && (c.BasicAuthConfig.Username != "") == (c.OAuth1Config.AccessToken != "") {
-		return errors.New("must specify exactly 1 Jira auth method")
-	}
+	catcher := grip.NewBasicCatcher()
+	catcher.NewWhen(c.Host == "", "must specify valid Jira URL")
+	basicAuthPopulated := c.BasicAuthConfig.Username != ""
+	oauth1Populated := c.OAuth1Config.AccessToken != ""
+	patPopulated := c.PersonalAccessToken.Token != ""
+	catcher.NewWhen(!basicAuthPopulated && !oauth1Populated && !patPopulated, "must specify at least one Jira auth method")
 	return nil
 }
 
@@ -75,6 +85,9 @@ func (c JiraConfig) Export() *send.JiraOptions {
 			TokenSecret: c.OAuth1Config.TokenSecret,
 			PrivateKey:  []byte(c.OAuth1Config.PrivateKey),
 			ConsumerKey: c.OAuth1Config.ConsumerKey,
+		},
+		PersonalAccessTokenOpts: send.JiraPersonalAccessTokenAuth{
+			Token: c.PersonalAccessTokenConfig.Token,
 		},
 	}
 }

@@ -7,7 +7,7 @@ set -o errexit
 
 echo "building creds file!"
 
-cat > creds.yml <<EOF
+cat > creds.yml << EOF
 database:
   url: "mongodb://localhost:27017"
   db: "mci"
@@ -42,6 +42,8 @@ jira:
     access_token: "$JIRA_ACCESS_TOKEN"
     token_secret: "$JIRA_TOKEN_SECRET"
     consumer_key: "$JIRA_CONSUMER_KEY"
+  personal_access_token:
+    token: "$JIRA_PERSONAL_ACCESS_TOKEN"
 
 providers:
   aws:

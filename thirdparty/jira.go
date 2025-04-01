@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/andygrunwald/go-jira"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -190,6 +191,7 @@ func (jiraHandler *JiraHandler) UpdateTicket(key string, fields map[string]any) 
 }
 
 // GetJIRATicket returns the ticket with the given key.
+// kim: TODO: test this in staging
 func (jiraHandler *JiraHandler) GetJIRATicket(key string) (*JiraTicket, error) {
 	apiEndpoint := fmt.Sprintf("%s/rest/api/latest/issue/%v", jiraHandler.JiraHost(), url.QueryEscape(key))
 	req, err := http.NewRequest(http.MethodGet, apiEndpoint, nil)
@@ -298,7 +300,12 @@ func (jiraHandler *JiraHandler) HttpClient() *http.Client {
 
 func NewJiraHandler(opts send.JiraOptions) JiraHandler {
 	httpClient := utility.GetHTTPClient()
-	if opts.Oauth1Opts.AccessToken != "" {
+	if opts.PersonalAccessTokenOpts.Token != "" {
+		transport := jira.BearerAuthTransport{
+			Token: opts.PersonalAccessTokenOpts.Token,
+		}
+		httpClient = transport.Client()
+	} else if opts.Oauth1Opts.AccessToken != "" {
 		var err error
 		credentials := send.JiraOauthCredentials{
 			PrivateKey:  opts.Oauth1Opts.PrivateKey,
