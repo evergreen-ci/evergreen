@@ -56,8 +56,7 @@ func insertFileDocsToDB(ctx context.Context, fn string, db *mongo.Database) erro
 	}
 	defer file.Close()
 
-	fileName := filepath.Base(fn)
-	collName := strings.TrimSuffix(fileName, ".json")
+	collName := strings.TrimSuffix(filepath.Base(fn), ".json")
 	collection := db.Collection(collName)
 	switch collName {
 	case task.Collection:
@@ -107,7 +106,7 @@ func insertFileDocsToDB(ctx context.Context, fn string, db *mongo.Database) erro
 	return nil
 }
 
-func writeDummyGridFSFile(db *mongo.Database) error {
+func writeDummyGridFSFile(ctx context.Context, db *mongo.Database) error {
 	bucket, err := gridfs.NewBucket(db, &options.BucketOptions{Name: utility.ToStringPtr(patch.GridFSPrefix)})
 	if err != nil {
 		return errors.Wrap(err, "Creating gridFS bucket")
@@ -227,7 +226,7 @@ func main() {
 	catcher := grip.NewBasicCatcher()
 	catcher.Wrap(buildAmboyIndexes(ctx, dbURI, amboyDB), "building Amboy indexes")
 	catcher.Wrapf(getFilesFromPathAndInsert(ctx, path, db), "adding DB documents from file path '%s'", path)
-	catcher.Wrap(writeDummyGridFSFile(db), "writing dummy file to GridFS")
+	catcher.Wrap(writeDummyGridFSFile(ctx, db), "writing dummy file to GridFS")
 
 	catcher.Add(client.Disconnect(ctx))
 	grip.EmergencyFatal(catcher.Resolve())
