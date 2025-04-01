@@ -7,7 +7,7 @@ set -o errexit
 
 echo "building creds file!"
 
-cat > creds.yml <<EOF
+cat >creds.yml <<EOF
 database:
   url: "mongodb://localhost:27017"
   db: "mci"
@@ -38,7 +38,7 @@ notify:
 jira:
   host: "$JIRA_SERVER"
   oauth1:
-    private_key: "$JIRA_PRIVATE_KEY"
+    private_key: $JIRA_PRIVATE_KEY
     access_token: "$JIRA_ACCESS_TOKEN"
     token_secret: "$JIRA_TOKEN_SECRET"
     consumer_key: "$JIRA_CONSUMER_KEY"
@@ -83,8 +83,8 @@ expansions:
 EOF
 
 # Write the GitHub app key to a file for easier formatting
-echo "$GITHUB_APP_KEY" > app_key.txt
+echo "$GITHUB_APP_KEY" >app_key.txt
 # Linux and MacOS friendly command to add 4 spaces to the start of each line
 sed -i'' -e 's/^/    /' app_key.txt
 # Append the formatted GitHub app key to the creds.yml file
-cat app_key.txt >> creds.yml
+cat app_key.txt >>creds.yml
