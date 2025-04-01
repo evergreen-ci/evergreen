@@ -97,6 +97,7 @@ type DirectiveRoot struct {
 	RedactSecrets                func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
 	RequireDistroAccess          func(ctx context.Context, obj any, next graphql.Resolver, access DistroSettingsAccess) (res any, err error)
 	RequireHostAccess            func(ctx context.Context, obj any, next graphql.Resolver, access HostAccessLevel) (res any, err error)
+	RequirePatchOwner            func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
 	RequireProjectAccess         func(ctx context.Context, obj any, next graphql.Resolver, permission ProjectPermission, access AccessLevel) (res any, err error)
 	RequireProjectAdmin          func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
 	RequireProjectSettingsAccess func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
@@ -13300,12 +13301,37 @@ func (ec *executionContext) field_Mutation_setPatchVisibility_argsPatchIds(
 	}
 
 	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("patchIds"))
-	if tmp, ok := rawArgs["patchIds"]; ok {
+	directive0 := func(ctx context.Context) (any, error) {
+		tmp, ok := rawArgs["patchIds"]
+		if !ok {
+			var zeroVal []string
+			return zeroVal, nil
+		}
 		return ec.unmarshalNString2ᚕstringᚄ(ctx, tmp)
 	}
 
-	var zeroVal []string
-	return zeroVal, nil
+	directive1 := func(ctx context.Context) (any, error) {
+		if ec.directives.RequirePatchOwner == nil {
+			var zeroVal []string
+			return zeroVal, errors.New("directive requirePatchOwner is not implemented")
+		}
+		return ec.directives.RequirePatchOwner(ctx, rawArgs, directive0)
+	}
+
+	tmp, err := directive1(ctx)
+	if err != nil {
+		var zeroVal []string
+		return zeroVal, graphql.ErrorOnPath(ctx, err)
+	}
+	if data, ok := tmp.([]string); ok {
+		return data, nil
+	} else if tmp == nil {
+		var zeroVal []string
+		return zeroVal, nil
+	} else {
+		var zeroVal []string
+		return zeroVal, graphql.ErrorOnPath(ctx, fmt.Errorf(`unexpected type %T from directive, should be []string`, tmp))
+	}
 }
 
 func (ec *executionContext) field_Mutation_setPatchVisibility_argsHidden(
