@@ -18,14 +18,13 @@ Tasks expire expire 365 days after creation. Expired tasks will not be available
 
 ## Task Artifacts Data Retention Policy
 
-Artifacts uploaded by tasks [s3.put](../Project-ConfigurationProject-Commands#s3put) with the default bucket (for example, the s3 bucket created for the project upon project creation) will expire after one year and no longer be available in any way after that. Refer to [Project S3 Bucket Lifecycle Policy](#project_s3_bucket_lifecycle_policy) for details on the bucket's lifecycle policy. If artifacts were uploaded by specifying a user's S3 bucket with different retention policy to [s3.put](../Project-ConfigurationProject-Commands#s3put), it will follow the retention policy of that bucket. 
+Artifacts uploaded by tasks using [s3.put](../Project-ConfigurationProject-Commands#s3put) with the default bucket (for example, the s3 bucket created for the project upon project creation) will expire after one year and no longer be available in any way after that. Refer to [Project S3 Bucket Lifecycle Policy](#project_s3_bucket_lifecycle_policy) for more details on the bucket's lifecycle policy. If artifacts were uploaded by specifying a user's S3 bucket with different retention policy to [s3.put](../Project-ConfigurationProject-Commands#s3put), it will follow the retention policy of that bucket. 
 
 
 ## Task Output Data Retention Policy
-Test results uploaded via will via [attach.results](../Project-ConfigurationProject-Commands#attachresults), [attach.xunit_results](../Project-ConfigurationProject-Commands#attachxunit_results), and [gotest.parse_files](../Project-ConfigurationProject-Commands#gotestparse_files) will be available via evergreen for 1 year but will continue to be available [Trino](../Project-Configuration/Evergreen-Data-for-Analytics) for longer.
+Test results uploaded via [attach.results](../Project-ConfigurationProject-Commands#attachresults), [attach.xunit_results](../Project-ConfigurationProject-Commands#attachxunit_results), and [gotest.parse_files](../Project-ConfigurationProject-Commands#gotestparse_files) will be available via evergreen for 1 year but will continue to be available in [Trino](../Project-Configuration/Evergreen-Data-for-Analytics) for longer.
 
 [Task traces](../Project-Configuration/Task_Traces) are available for 60 days in Honeycomb. While this is not currently available, we are working on making it available in [Trino](../Project-Configuration/Evergreen-Data-for-Analytics) once they expire in honeycomb.
-
 
 
 ## Task Limits
