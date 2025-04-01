@@ -212,6 +212,20 @@ func (jiraHandler *JiraHandler) GetJIRATicket(key string) (*JiraTicket, error) {
 	}
 
 	if res.StatusCode >= 300 || res.StatusCode < 200 {
+		body, err := io.ReadAll(res.Body)
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "kim: could not read response body for non-OK HTTP request",
+				"status":  res.Status,
+				"body":    string(body),
+			}))
+		} else {
+			grip.Info(message.Fields{
+				"message": "kim: got response body for non-OK HTTP request",
+				"status":  res.Status,
+				"body":    string(body),
+			})
+		}
 		return nil, errors.Errorf("HTTP request returned unexpected status `%v`", res.Status)
 	}
 
