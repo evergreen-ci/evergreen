@@ -23,6 +23,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testlog"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -787,6 +788,45 @@ func (h *attachTestLogHandler) Run(ctx context.Context) gimlet.Responder {
 		Id string `json:"_id"`
 	}{h.log.Id}
 	return gimlet.NewJSONResponse(logReply)
+}
+
+// POST /task/{task_id}/test_results
+type attachTestResultsHandler struct {
+	settings *evergreen.Settings
+	results  []testresult.TestResult
+	taskID   string
+}
+
+func makeAttachTestResults(settings *evergreen.Settings) gimlet.RouteHandler {
+	return &attachTestResultsHandler{
+		settings: settings,
+	}
+}
+
+func (h *attachTestResultsHandler) Factory() gimlet.RouteHandler {
+	return &attachTestResultsHandler{
+		settings: h.settings,
+	}
+}
+
+func (h *attachTestResultsHandler) Parse(ctx context.Context, r *http.Request) error {
+	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
+		return errors.New("missing task ID")
+	}
+	err := utility.ReadJSON(r.Body, &h.results)
+	if err != nil {
+		return errors.Wrap(err, "reading test results from JSON request body")
+	}
+	return nil
+}
+
+func (h *attachTestResultsHandler) Run(ctx context.Context) gimlet.Responder {
+	// TODO: DEVPROD-16200 Implement the new DB/S3-backed Evergreen test results service
+	grip.Debug(message.Fields{
+		"message": "received test results",
+		"results": h.results,
+	})
+	return gimlet.NewJSONResponse(struct{}{})
 }
 
 // POST /task/{task_id}/heartbeat
