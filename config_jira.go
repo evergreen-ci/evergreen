@@ -31,10 +31,6 @@ type JiraOAuth1Config struct {
 	ConsumerKey string `yaml:"consumer_key" bson:"consumer_key" json:"consumer_key"`
 }
 
-type JiraPersonalAccessTokenAuthConfig struct {
-	Token string `yaml:"token" bson:"token" json:"token"`
-}
-
 func (c *JiraConfig) SectionId() string { return "jira" }
 
 func (c *JiraConfig) Get(ctx context.Context) error {
