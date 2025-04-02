@@ -7,7 +7,7 @@ set -o errexit
 
 echo "building creds file!"
 
-cat > creds.yml << EOF
+cat > creds.yml <<EOF
 database:
   url: "mongodb://localhost:27017"
   db: "mci"
