@@ -116,13 +116,23 @@ func FindTasksForHistory(ctx context.Context, opts FindTaskHistoryOptions) ([]ta
 	// However, if all tasks are inactive, then one bound is sufficient, as we'll just fetch all inactive tasks. Note that
 	// this is an uncommon edge case.
 	if len(activeTasks) > 0 && opts.UpperBound == nil {
-		// TODO DEVPROD-16060: Add logic for leading inactive versions.
-		opts.UpperBound = utility.ToIntPtr(activeTasks[0].RevisionOrderNumber)
+		newerActiveTask, err := getNewerActiveMainlineTask(ctx, activeTasks[0])
+		if err != nil {
+			return nil, errors.Wrapf(err, "fetching newer activated mainline task")
+		}
+		if newerActiveTask != nil {
+			opts.UpperBound = utility.ToIntPtr(newerActiveTask.RevisionOrderNumber - 1)
+		}
 	}
 
 	if len(activeTasks) > 0 && opts.LowerBound == nil {
-		// TODO DEVPROD-16060: Add logic for trailing inactive versions.
-		opts.LowerBound = utility.ToIntPtr(activeTasks[len(activeTasks)-1].RevisionOrderNumber)
+		olderActiveTask, err := getOlderActiveMainlineTask(ctx, activeTasks[len(activeTasks)-1])
+		if err != nil {
+			return nil, errors.Wrapf(err, "fetching older activated mainline task")
+		}
+		if olderActiveTask != nil {
+			opts.LowerBound = utility.ToIntPtr(olderActiveTask.RevisionOrderNumber + 1)
+		}
 	}
 
 	inactiveTasks, err := findInactiveTasksForHistory(ctx, opts)
@@ -178,4 +188,48 @@ func GetOldestMainlineTask(ctx context.Context, opts FindTaskHistoryOptions) (*t
 		return nil, errors.New("task not found on project history")
 	}
 	return oldestTask, nil
+}
+
+// getNewerActiveMainlineTask returns the next newer active mainline task, i.e. a more
+// recent activated task than the current task.
+func getNewerActiveMainlineTask(ctx context.Context, t task.Task) (*task.Task, error) {
+	filter := getBaseTaskHistoryFilter(FindTaskHistoryOptions{
+		TaskName:     t.DisplayName,
+		BuildVariant: t.BuildVariant,
+		ProjectId:    t.Project,
+	})
+	filter[task.ActivatedKey] = true
+	filter[task.RevisionOrderNumberKey] = bson.M{
+		"$gt": t.RevisionOrderNumber,
+	}
+	q := db.Query(filter).Sort([]string{task.RevisionOrderNumberKey}).Limit(1)
+
+	newerActiveTask, err := task.FindOne(ctx, q)
+	if err != nil {
+		return nil, err
+	}
+	// newerActiveTask can be nil, since it may not exist.
+	return newerActiveTask, nil
+}
+
+// getOlderActiveMainlineTask returns the next older active mainline task, i.e. an older
+// activated task than the current task.
+func getOlderActiveMainlineTask(ctx context.Context, t task.Task) (*task.Task, error) {
+	filter := getBaseTaskHistoryFilter(FindTaskHistoryOptions{
+		TaskName:     t.DisplayName,
+		BuildVariant: t.BuildVariant,
+		ProjectId:    t.Project,
+	})
+	filter[task.ActivatedKey] = true
+	filter[task.RevisionOrderNumberKey] = bson.M{
+		"$lt": t.RevisionOrderNumber,
+	}
+	q := db.Query(filter).Sort([]string{"-" + task.RevisionOrderNumberKey}).Limit(1)
+
+	olderActiveTask, err := task.FindOne(ctx, q)
+	if err != nil {
+		return nil, err
+	}
+	// olderActiveTask can be nil, since it may not exist.
+	return olderActiveTask, nil
 }

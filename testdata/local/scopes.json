@@ -1,4 +1,4 @@
-{ "_id" : "all_projects", "name" : "all projects", "type" : "project", "resources": ["logkeeper", "evergreen", "sys-perf", "spruce", "mongodb-mongo-master", "602d70a2b2373672ee493184", "mongodb-mongo-test", "performance", "602d70a2b2373672ee493189"] }
+{ "_id" : "all_projects", "name" : "all projects", "type" : "project", "resources": ["logkeeper", "evergreen", "sys-perf", "spruce", "mongodb-mongo-master", "602d70a2b2373672ee493184", "mongodb-mongo-test", "performance", "602d70a2b2373672ee493189", "mci"] }
 { "_id" : "unrestricted_projects", "name" : "unrestricted projects", "type" : "project", "parent" : "all_projects", "resources": ["logkeeper", "evergreen", "sys-perf", "spruce","mongodb-mongo-master", "602d70a2b2373672ee493184", "mongodb-mongo-test", "performance", "602d70a2b2373672ee493189"] }
 { "_id" : "restricted_projects", "name" : "restricted projects", "type" : "project", "parent" : "all_projects", "resources": [] }
 { "_id" : "logkeeper", "name" : "logkeeper project", "type" : "project", "resources" : [ "logkeeper" ] }
@@ -7,6 +7,7 @@
 { "_id" : "evergreen_repo", "name" : "evergreen repo", "type" : "project", "resources" : [ "602d70a2b2373672ee493184" ] }
 { "_id" : "spruce", "name" : "spruce project", "type" : "project", "resources" : [ "spruce" ] }
 { "_id" : "parsley", "name" : "parsley project", "type" : "project", "resources" : [ "602d70a2b2373672ee493189" ] }
+{ "_id" : "mci", "name" : "mci project", "type" : "project", "resources" : [ "mci" ] }
 { "_id" : "sys-perf", "name" : "sys-perf project", "type" : "project", "resources" : [ "sys-perf" ] }
 { "_id" : "mongodb-mongo-master", "name" : "mongodb-mongo-master project", "type" : "project", "resources" : [ "mongodb-mongo-master" ] }
 { "_id" : "mongodb-mongo-test", "name" : "mongodb-mongo-test project", "type" : "project", "resources" : [ "mongodb-mongo-test" ] }
