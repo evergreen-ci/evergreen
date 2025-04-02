@@ -1490,7 +1490,7 @@ var validKeyTypes = []string{
 	publicKeyECDSA,
 }
 
-var sensitiveCollections = []string{"project_vars", "events"}
+var sensitiveCollections = []string{"events"}
 
 // ValidateSSHKey errors if the given key does not start with one of the allowed prefixes.
 func ValidateSSHKey(key string) error {
