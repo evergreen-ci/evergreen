@@ -21,9 +21,11 @@ const (
 	maxGeneratedBuildVariants = 200
 	maxGeneratedTasks         = 25000
 
-	numGenerateTaskBVAttribute         = "evergreen.generate_tasks.num_build_variants"
-	numGenerateTasksAttribute          = "evergreen.generate_tasks.num_created"
-	numActivatedGenerateTasksAttribute = "evergreen.generate_tasks.num_activated"
+	numGenerateTaskBVAttribute           = "evergreen.generate_tasks.num_build_variants"
+	numGenerateTasksAttribute            = "evergreen.generate_tasks.num_created"
+	numActivatedGenerateTasksAttribute   = "evergreen.generate_tasks.num_activated"
+	skippingGenerateTasksAttribute       = "evergreen.generate_tasks.skipping"
+	firstGenerateTasksOnVersionAttribute = "evergreen.generate_tasks.first_generate_tasks_on_version"
 )
 
 var DependencyCycleError = errors.New("adding dependencies creates a dependency cycle")
@@ -185,8 +187,12 @@ func (g *GeneratedProject) Save(ctx context.Context, settings *evergreen.Setting
 // updateParserProject updates the parser project along with generated task ID
 // and updated config number.
 func updateParserProject(ctx context.Context, settings *evergreen.Settings, v *Version, pp *ParserProject, taskId string) error {
+	ctx, span := tracer.Start(ctx, "update-parser-project")
+	defer span.End()
+
 	if utility.StringSliceContains(pp.UpdatedByGenerators, taskId) {
 		// This generator has already updated the parser project so continue.
+		span.SetAttributes(attribute.Bool(skippingGenerateTasksAttribute, true))
 		return nil
 	}
 
@@ -195,6 +201,7 @@ func updateParserProject(ctx context.Context, settings *evergreen.Settings, v *V
 	// a special case that enables child patches to reference a pre-generated copy of the parser project
 	// so that they can call generate.tasks again without getting a "redefining tasks" error.
 	if len(pp.UpdatedByGenerators) == 0 {
+		span.SetAttributes(attribute.Bool(firstGenerateTasksOnVersionAttribute, true))
 		oldPP, err := ParserProjectFindOneByID(ctx, settings, v.ProjectStorageMethod, v.Id)
 		if err != nil {
 			return errors.Wrapf(err, "finding parser project '%s' from before task generation", v.Id)
