@@ -4,7 +4,6 @@ import (
 	"context"
 	"strings"
 
-	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -50,13 +49,14 @@ func (c *JiraConfig) Set(ctx context.Context) error {
 }
 
 func (c *JiraConfig) ValidateAndDefault() error {
-	catcher := grip.NewBasicCatcher()
-	catcher.NewWhen(c.Host == "", "must specify valid Jira URL")
+	hostPopulated := c.Host != ""
 	basicAuthPopulated := c.BasicAuthConfig.Username != ""
 	oauth1Populated := c.OAuth1Config.AccessToken != ""
 	patPopulated := c.PersonalAccessToken != ""
-	catcher.NewWhen(!basicAuthPopulated && !oauth1Populated && !patPopulated, "must specify at least one Jira auth method")
-	return catcher.Resolve()
+	if hostPopulated && !basicAuthPopulated && !oauth1Populated && !patPopulated {
+		return errors.New("must specify at least one Jira auth method")
+	}
+	return nil
 }
 
 func (c JiraConfig) GetHostURL() string {
