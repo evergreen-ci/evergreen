@@ -60,7 +60,7 @@ func (c *JiraConfig) ValidateAndDefault() error {
 	oauth1Populated := c.OAuth1Config.AccessToken != ""
 	patPopulated := c.PersonalAccessToken != ""
 	catcher.NewWhen(!basicAuthPopulated && !oauth1Populated && !patPopulated, "must specify at least one Jira auth method")
-	return nil
+	return catcher.Resolve()
 }
 
 func (c JiraConfig) GetHostURL() string {
