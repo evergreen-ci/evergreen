@@ -325,10 +325,8 @@ func (s *AdminSuite) TestJiraConfig() {
 			PrivateKey:  "asdf",
 			AccessToken: "fdsa",
 		},
-		PersonalAccessTokenConfig: JiraPersonalAccessTokenAuthConfig{
-			Token: "personal_access_token",
-		},
-		Email: "a@mail.com",
+		PersonalAccessToken: "personal_access_token",
+		Email:               "a@mail.com",
 	}
 
 	err := config.Set(ctx)
