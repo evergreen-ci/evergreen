@@ -3014,7 +3014,7 @@ func (p *ProjectRef) GetProjectSetupCommands(opts apimodels.WorkstationSetupComm
 	return cmds, nil
 }
 
-func updateNextRunTime(baseTime time.Time, definition *PeriodicBuildDefinition) (time.Time, error) {
+func getNextRunTime(baseTime time.Time, definition *PeriodicBuildDefinition) (time.Time, error) {
 	var nextRunTime time.Time
 	var err error
 	if definition.IntervalHours > 0 {
@@ -3035,19 +3035,20 @@ func UpdateNextPeriodicBuild(ctx context.Context, projectId string, definition *
 	if utility.IsZeroTime(baseTime) {
 		baseTime = time.Now()
 	}
-	nextRunTime, err := updateNextRunTime(baseTime, definition)
+	nextRunTime, err := getNextRunTime(baseTime, definition)
 	if err != nil {
 		return errors.Wrap(err, "updating next run time")
 	}
 	now := time.Now()
 	// If the nextRunTime is still in the past, bring its base time up to present and re-calculate it.
+	// This could happen if the periodic build's pre-existing next run time is in the past.
 	if now.After(nextRunTime) {
-		grip.Error(message.Fields{
+		grip.Warning(message.Fields{
 			"message":    "next run time is in the past, resetting to current time",
 			"project":    projectId,
 			"definition": definition.ID,
 		})
-		nextRunTime, err = updateNextRunTime(now, definition)
+		nextRunTime, err = getNextRunTime(now, definition)
 		if err != nil {
 			return errors.Wrap(err, "updating next run time")
 		}
