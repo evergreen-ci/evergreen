@@ -93,6 +93,40 @@
       }
     },
     {
+      "query_file": "leading_inactive_tasks.graphql",
+      "result": {
+        "data": {
+          "taskHistory": {
+            "tasks": [
+              {
+                "id": "task_4_leading_inactive_version",
+                "activated": false,
+                "order": 4
+              },
+              { "id": "task_3", "activated": true, "order": 3 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "query_file": "trailing_inactive_tasks.graphql",
+      "result": {
+        "data": {
+          "taskHistory": {
+            "tasks": [
+              { "id": "task_2", "activated": true, "order": 2 },
+              {
+                "id": "task_1_trailing_inactive_version",
+                "activated": false,
+                "order": 1
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
       "query_file": "no_permissions.graphql",
       "test_user_id": "regular_user",
       "result": {

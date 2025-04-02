@@ -1,0 +1,20 @@
+query {
+  taskHistory(
+    options: {
+      projectIdentifier: "spruce"
+      taskName: "check-codegen"
+      buildVariant: "ubuntu2204"
+      cursorParams: {
+        cursorId: "task_3"
+        direction: BEFORE
+        includeCursor: false
+      }
+    }
+  ) {
+    tasks {
+      id
+      activated
+      order
+    }
+  }
+}

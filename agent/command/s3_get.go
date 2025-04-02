@@ -336,8 +336,6 @@ func (c *s3get) get(ctx context.Context) error {
 		return errors.Wrapf(err, "creating temporary file")
 	}
 
-	defer f.Close()
-
 	catcher := grip.NewBasicCatcher()
 
 	catcher.Wrapf(c.fetchAndExtractTarball(ctx, f), "fetching and extracting targz")
@@ -347,6 +345,10 @@ func (c *s3get) get(ctx context.Context) error {
 }
 
 func (c *s3get) fetchAndExtractTarball(ctx context.Context, f *os.File) error {
+	// it's important that we close the file after this function runs because
+	// we must close a file before we can remove it on Windows.
+	defer f.Close()
+
 	if err := c.bucket.GetToWriter(ctx, c.RemoteFile, f); err != nil {
 		return errors.Wrapf(err, "downloading remote file '%s' to local file '%s'", c.RemoteFile, f.Name())
 	}
