@@ -14,6 +14,7 @@ import (
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDeleteDistroById(t *testing.T) {
@@ -116,7 +117,8 @@ func TestCopyDistro(t *testing.T) {
 
 			newDistro, err := distro.FindOneId(ctx, "new-distro")
 			assert.NoError(t, err)
-			assert.NotNil(t, newDistro)
+			require.NotNil(t, newDistro)
+			assert.Nil(t, newDistro.Aliases)
 
 			events, err := event.FindLatestPrimaryDistroEvents("new-distro", 10, utility.ZeroTime)
 			assert.NoError(t, err)
@@ -191,6 +193,7 @@ func TestCopyDistro(t *testing.T) {
 				Provider: evergreen.ProviderNameStatic,
 				WorkDir:  "/tmp",
 				User:     "admin",
+				Aliases:  []string{"alias1", "alias2"},
 			}
 			assert.NoError(t, d.Insert(tctx))
 

@@ -4,6 +4,7 @@ query {
       projectTasksPairs {
         projectId
         allowedTasks
+        allowedBVs
       }
     }
   }

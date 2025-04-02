@@ -38,6 +38,11 @@ type EC2ProviderSettings struct {
 	// IPv6 is set to true if the instance should have only an IPv6 address.
 	IPv6 bool `mapstructure:"ipv6" json:"ipv6,omitempty" bson:"ipv6,omitempty"`
 
+	// DoNotAssignPublicIPv4Address, if true, skips assigning a public IPv4
+	// address to hosts. Does not apply if the host is using IPv6 or spawn hosts
+	// which need an IPv4 address for SSH.
+	DoNotAssignPublicIPv4Address bool `mapstructure:"do_not_assign_public_ipv4_address" json:"do_not_assign_public_ipv4_address,omitempty" bson:"do_not_assign_public_ipv4_address,omitempty"`
+
 	// KeyName is the AWS SSH key name.
 	KeyName string `mapstructure:"key_name" json:"key_name,omitempty" bson:"key_name,omitempty"`
 
@@ -264,9 +269,15 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 	}
 
 	if ec2Settings.IsVpc {
+		assignPublicIPv4 := !ec2Settings.DoNotAssignPublicIPv4Address
+		if h.UserHost {
+			// Spawn hosts need a public IPv4 address so that users can SSH into
+			// them.
+			assignPublicIPv4 = true
+		}
 		input.NetworkInterfaces = []types.InstanceNetworkInterfaceSpecification{
 			{
-				AssociatePublicIpAddress: aws.Bool(true),
+				AssociatePublicIpAddress: aws.Bool(assignPublicIPv4),
 				DeviceIndex:              aws.Int32(0),
 				Groups:                   ec2Settings.SecurityGroupIDs,
 				SubnetId:                 &ec2Settings.SubnetId,

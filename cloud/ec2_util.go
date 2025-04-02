@@ -370,7 +370,6 @@ func validateCloudProviderData(instance *types.Instance) error {
 	catcher.ErrorfWhen(instance.Placement == nil || instance.Placement.AvailabilityZone == nil, "instance missing availability zone")
 	catcher.ErrorfWhen(instance.LaunchTime == nil, "instance missing launch time")
 	catcher.ErrorfWhen(instance.PublicDnsName == nil, "instance missing public DNS name")
-	catcher.ErrorfWhen(instance.PublicIpAddress == nil, "instance missing public IP address")
 	catcher.ErrorfWhen(instance.PrivateIpAddress == nil, "instance missing private IP address")
 	return catcher.Resolve()
 }

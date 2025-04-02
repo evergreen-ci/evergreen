@@ -35,6 +35,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 )
@@ -510,14 +511,21 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 	tc.taskConfig.WorkDir = taskDirectory
 	tc.taskConfig.NewExpansions.Put("workdir", tc.taskConfig.WorkDir)
 
+	traceClient := otlptracegrpc.NewClient(otlptracegrpc.WithGRPCConn(a.otelGrpcConn))
 	// Set up a new task output directory regardless if the task is part of
 	// a task group.
-	redactorOpts := redactor.RedactionOptions{
-		Expansions:         tc.taskConfig.NewExpansions,
-		Redacted:           tc.taskConfig.Redacted,
-		InternalRedactions: tc.taskConfig.InternalRedactions,
+	opts := taskoutput.DirectoryOpts{
+		Root:        tc.taskConfig.WorkDir,
+		Tsk:         &tc.taskConfig.Task,
+		Logger:      tc.logger,
+		TraceClient: traceClient,
+		RedactorOpts: redactor.RedactionOptions{
+			Expansions:         tc.taskConfig.NewExpansions,
+			Redacted:           tc.taskConfig.Redacted,
+			InternalRedactions: tc.taskConfig.InternalRedactions,
+		},
 	}
-	tc.taskConfig.TaskOutputDir = taskoutput.NewDirectory(tc.taskConfig.WorkDir, &tc.taskConfig.Task, redactorOpts, tc.logger)
+	tc.taskConfig.TaskOutputDir = taskoutput.NewDirectory(opts)
 	if err := tc.taskConfig.TaskOutputDir.Setup(); err != nil {
 		return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "creating task output directory"))
 	}
@@ -1050,7 +1058,6 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 	// was setup, regardless of the task status.
 	if tc.taskConfig != nil && tc.taskConfig.TaskOutputDir != nil {
 		toCtx, span := a.tracer.Start(ctx, "task-output-ingestion")
-		tc.logger.Execution().Error(errors.Wrap(a.uploadTraces(toCtx, tc.taskConfig.WorkDir), "uploading traces"))
 		tc.logger.Execution().Error(errors.Wrap(tc.taskConfig.TaskOutputDir.Run(toCtx), "ingesting task output"))
 		span.End()
 	}
