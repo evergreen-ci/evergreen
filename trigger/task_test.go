@@ -833,7 +833,7 @@ func (s *taskSuite) makeTest(ctx context.Context, testName, testStatus string) {
 		testName = "test_0"
 	}
 
-	s.Require().NoError(testresult.InsertLocal(ctx, s.env, testresult.TestResult{
+	s.Require().NoError(testresult.InsertLocal(ctx, testresult.TestResult{
 		TestName:  testName,
 		TaskID:    s.task.Id,
 		Execution: s.task.Execution,
@@ -1423,13 +1423,7 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 	for _, task := range tasks {
 		require.NoError(t, task.Insert(t.Context()))
 	}
-	require.NoError(t, testresult.InsertLocal(
-		ctx,
-		env,
-		testresult.TestResult{TaskID: "et0_0", TestName: "f0", Status: evergreen.TestFailedStatus},
-		testresult.TestResult{TaskID: "et1_0", TestName: "f1", Status: evergreen.TestSucceededStatus},
-		testresult.TestResult{TaskID: "et1_1", TestName: "f0", Status: evergreen.TestFailedStatus},
-	))
+	require.NoError(t, testresult.InsertLocal(ctx, testresult.TestResult{TaskID: "et0_0", TestName: "f0", Status: evergreen.TestFailedStatus}, testresult.TestResult{TaskID: "et1_0", TestName: "f1", Status: evergreen.TestSucceededStatus}, testresult.TestResult{TaskID: "et1_1", TestName: "f0", Status: evergreen.TestFailedStatus}))
 
 	tr := taskTriggers{event: &event.EventLogEntry{ID: "e0"}, jiraMappings: &evergreen.JIRANotificationsConfig{}}
 	subscriber := event.Subscriber{Type: event.JIRAIssueSubscriberType, Target: &event.JIRAIssueSubscriber{}}
@@ -1449,7 +1443,7 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 
 	// alert for the second run of the display task with the same execution task (et0) failing with a new test (f1)
 	tr.task = &tasks[3]
-	require.NoError(t, testresult.InsertLocal(ctx, env, testresult.TestResult{
+	require.NoError(t, testresult.InsertLocal(ctx, testresult.TestResult{
 		TaskID:   "et0_1",
 		TestName: "f1",
 		Status:   evergreen.TestFailedStatus,

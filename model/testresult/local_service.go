@@ -17,8 +17,8 @@ const maxSampleSize = 10
 
 // InsertLocal inserts the given test results into the local test results store
 // for testing and local development.
-func InsertLocal(ctx context.Context, env evergreen.Environment, results ...TestResult) error {
-	return errors.Wrap(appendDBResults(ctx, env, results), "inserting local test results")
+func InsertLocal(ctx context.Context, results ...TestResult) error {
+	return errors.Wrap(appendDBResults(ctx, results), "inserting local test results")
 }
 
 // ClearLocal clears the local test results store.
@@ -34,6 +34,10 @@ type localService struct {
 // newLocalService returns a local test results service implementation.
 func newLocalService(env evergreen.Environment) *localService {
 	return &localService{env: env}
+}
+
+func (s *localService) AppendTestResults(ctx context.Context, results []TestResult) error {
+	return errors.Wrap(appendDBResults(ctx, results), "inserting local test results")
 }
 
 func (s *localService) GetMergedTaskTestResults(ctx context.Context, taskOpts []TaskOptions, filterOpts *FilterOptions) (TaskTestResults, error) {

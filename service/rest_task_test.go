@@ -61,7 +61,7 @@ func insertTaskForTesting(ctx context.Context, env evergreen.Environment, taskId
 
 	if len(testResults) > 0 {
 		task.ResultsService = testresult.TestResultsServiceLocal
-		if err := testresult.InsertLocal(ctx, env, testResults...); err != nil {
+		if err := testresult.InsertLocal(ctx, testResults...); err != nil {
 			return nil, err
 		}
 	}

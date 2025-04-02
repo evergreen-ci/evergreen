@@ -22,6 +22,7 @@ type testResultsService interface {
 	GetMergedTaskTestResultsStats(context.Context, []TaskOptions) (TaskTestResultsStats, error)
 	GetMergedFailedTestSample(context.Context, []TaskOptions) ([]string, error)
 	GetFailedTestSamples(context.Context, []TaskOptions, []string) ([]TaskTestResultsFailedSample, error)
+	AppendTestResults(context.Context, []TestResult) error
 }
 
 func getServiceImpl(env evergreen.Environment, service string) (testResultsService, error) {

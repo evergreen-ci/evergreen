@@ -351,7 +351,7 @@ func TestCLITestHistory(t *testing.T) {
 					TestStartTime: startTime,
 					TestEndTime:   endTime,
 				}
-				require.NoError(t, testresult.InsertLocal(ctx, evergreen.GetEnvironment(), passingResult, failedResult))
+				require.NoError(t, testresult.InsertLocal(ctx, passingResult, failedResult))
 			}
 		})
 	})
