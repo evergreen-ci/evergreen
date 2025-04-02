@@ -500,9 +500,6 @@ func TestBuildMarkAborted(t *testing.T) {
 }
 
 func TestModifyVersionDoesntSucceedVersionOnAbort(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	require.NoError(t, db.ClearCollections(build.Collection, task.Collection, VersionCollection))
 
 	vID := "abcdef"
@@ -533,11 +530,12 @@ func TestModifyVersionDoesntSucceedVersionOnAbort(t *testing.T) {
 		Abort:  true,
 		Active: false,
 	}
-	_, err := ModifyVersion(ctx, *v, user.DBUser{Id: "testuser"}, modification)
+	_, err := ModifyVersion(t.Context(), *v, user.DBUser{Id: "testuser"}, modification)
 	assert.NoError(t, err)
 
-	dbVersion, err := VersionFindOneId(ctx, v.Id)
+	dbVersion, err := VersionFindOneId(t.Context(), v.Id)
 	require.NoError(t, err)
+	require.NotZero(t, dbVersion)
 	assert.Equal(t, evergreen.VersionStarted, dbVersion.Status)
 }
 

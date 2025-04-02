@@ -1408,7 +1408,6 @@ func updateBuildStatus(ctx context.Context, b *build.Build) (bool, error) {
 			}
 			return true, nil
 		}
-		return false, nil
 	}
 
 	if err := b.SetHasUnfinishedEssentialTask(ctx, buildStatus.hasUnfinishedEssentialTask); err != nil {
@@ -1506,7 +1505,6 @@ func getVersionActivationAndStatus(builds []build.Build) (bool, string) {
 
 	// Check if all builds are finished but have failures.
 	for _, b := range builds {
-		// aborted needs to be true here
 		if b.Status == evergreen.BuildFailed || b.Aborted {
 			return true, evergreen.VersionFailed
 		}
