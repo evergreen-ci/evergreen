@@ -39,7 +39,7 @@ import (
 
 type Host struct {
 	Id string `bson:"_id" json:"id"`
-	// Host is the ephemeral DNS name of the host.
+	// Host is the ephemeral DNS name of the host when available.
 	Host            string        `bson:"host_id" json:"host"`
 	User            string        `bson:"user" json:"user"`
 	Secret          string        `bson:"secret" json:"secret"`
@@ -54,7 +54,7 @@ type Host struct {
 	// PersistentDNSName is the long-lived DNS name of the host, which should
 	// never change once set.
 	PersistentDNSName string `bson:"persistent_dns_name,omitempty" json:"persistent_dns_name,omitempty"`
-	// PublicIPv4 is the host's IPv4 address.
+	// PublicIPv4 is the host's IPv4 address when available.
 	PublicIPv4 string `bson:"public_ipv4_address,omitempty" json:"public_ipv4_address,omitempty"`
 
 	// secondary (external) identifier for the host
@@ -2101,16 +2101,21 @@ func CacheAllCloudProviderData(ctx context.Context, env evergreen.Environment, h
 // cacheCloudProviderDataUpdate returns an update for caching cloud provider
 // data.
 func cacheCloudProviderDataUpdate(data CloudProviderData) bson.M {
+	setFields := bson.M{
+		ZoneKey:      data.Zone,
+		StartTimeKey: data.StartedAt,
+		IPv4Key:      data.PrivateIPv4,
+		IPKey:        data.IPv6,
+		VolumesKey:   data.Volumes,
+	}
+	if data.PublicIPv4 != "" {
+		setFields[PublicIPv4Key] = data.PublicIPv4
+	}
+	if data.PublicDNS != "" {
+		setFields[DNSKey] = data.PublicDNS
+	}
 	return bson.M{
-		"$set": bson.M{
-			ZoneKey:       data.Zone,
-			StartTimeKey:  data.StartedAt,
-			DNSKey:        data.PublicDNS,
-			PublicIPv4Key: data.PublicIPv4,
-			IPv4Key:       data.PrivateIPv4,
-			IPKey:         data.IPv6,
-			VolumesKey:    data.Volumes,
-		},
+		"$set": setFields,
 	}
 }
 

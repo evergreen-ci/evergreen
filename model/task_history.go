@@ -2,326 +2,221 @@ package model
 
 import (
 	"context"
-	"fmt"
-	"time"
+	"sort"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/testresult"
-	"github.com/mongodb/grip"
+	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-const taskHistoryMaxTime = 90 * time.Second
+const (
+	maxTaskHistoryLimit = 50
+)
 
-type taskHistoryIterator struct {
-	TaskName      string
-	BuildVariants []string
-	ProjectName   string
+// FindTaskHistoryOptions defines options that can be passed to queries for task history.
+type FindTaskHistoryOptions struct {
+	TaskName     string
+	BuildVariant string
+	ProjectId    string
+	LowerBound   *int
+	UpperBound   *int
+	Limit        *int
 }
 
-type TaskHistoryChunk struct {
-	Tasks       []bson.M
-	Versions    []Version
-	FailedTests map[string][]string
-	Exhausted   ExhaustedIterator
-}
-
-type ExhaustedIterator struct {
-	Before, After bool
-}
-
-type TaskHistory struct {
-	Id    string                  `bson:"_id" json:"_id"`
-	Order string                  `bson:"order" json:"order"`
-	Tasks []aggregatedTaskHistory `bson:"tasks" json:"tasks"`
-}
-
-type aggregatedTaskHistory struct {
-	Id               string                   `bson:"_id" json:"_id"`
-	Status           string                   `bson:"status" json:"status"`
-	Activated        bool                     `bson:"activated" json:"activated"`
-	TimeTaken        time.Duration            `bson:"time_taken" json:"time_taken"`
-	BuildVariant     string                   `bson:"build_variant" json:"build_variant"`
-	LocalTestResults apimodels.TaskEndDetails `bson:"status_details" json:"status_details"`
-}
-type TaskDetails struct {
-	TimedOut bool   `bson:"timed_out"`
-	Status   string `bson:"st"`
-}
-
-type TaskHistoryIterator interface {
-	GetChunk(ctx context.Context, version *Version, numBefore, numAfter int, include bool) (TaskHistoryChunk, error)
-}
-
-func NewTaskHistoryIterator(name string, buildVariants []string, projectName string) TaskHistoryIterator {
-	return TaskHistoryIterator(&taskHistoryIterator{TaskName: name, BuildVariants: buildVariants, ProjectName: projectName})
-}
-
-func (iter *taskHistoryIterator) findAllVersions(v *Version, numRevisions int, before, include bool) ([]Version, bool, error) {
-	versionQuery := bson.M{
-		VersionRequesterKey: bson.M{
-			"$in": evergreen.SystemVersionRequesterTypes,
-		},
-		VersionIdentifierKey: iter.ProjectName,
-	}
-
-	// If including the specified version in the result, then should
-	// get an additional revision
-	if include {
-		numRevisions++
-	}
-
-	// Determine the comparator to use based on whether the revisions
-	// come before/after the specified version
-	compare, order := "$gt", VersionRevisionOrderNumberKey
-	if before {
-		compare, order = "$lt", fmt.Sprintf("-%v", VersionRevisionOrderNumberKey)
-		if include {
-			compare = "$lte"
-		}
-	} else if include {
-		compare = "$gte"
-	}
-
-	if v != nil {
-		versionQuery[VersionRevisionOrderNumberKey] = bson.M{compare: v.RevisionOrderNumber}
-	}
-
-	// Get the next numRevisions, plus an additional one to check if have
-	// reached the beginning/end of history
-	versions, err := VersionFind(
-		db.Query(versionQuery).WithFields(
-			VersionIdKey,
-			VersionRevisionOrderNumberKey,
-			VersionRevisionKey,
-			VersionMessageKey,
-			VersionCreateTimeKey,
-		).Sort([]string{order}).Limit(numRevisions + 1))
-
-	// Check if there were fewer results returned by the query than what
-	// the limit was set as
-	exhausted := len(versions) <= numRevisions
-	if !exhausted {
-		// Exclude the last version because we actually only wanted
-		// `numRevisions` number of commits
-		versions = versions[:len(versions)-1]
-	}
-
-	// The iterator can only be exhausted if an actual version was specified
-	exhausted = exhausted || (v == nil && numRevisions == 0)
-
-	if !before {
-		// Reverse the order so that the most recent version is first
-		for i, j := 0, len(versions)-1; i < j; i, j = i+1, j-1 {
-			versions[i], versions[j] = versions[j], versions[i]
-		}
-	}
-	return versions, exhausted, err
-}
-
-// GetChunk Returns tasks grouped by their versions, and sorted with the most
-// recent first (i.e. descending commit order number).
-func (iter *taskHistoryIterator) GetChunk(ctx context.Context, v *Version, numBefore, numAfter int, include bool) (TaskHistoryChunk, error) {
-	chunk := TaskHistoryChunk{
-		Tasks:       []bson.M{},
-		Versions:    []Version{},
-		FailedTests: map[string][]string{},
-	}
-
-	versionsBefore, exhausted, err := iter.findAllVersions(v, numBefore, true, include)
-	if err != nil {
-		return chunk, errors.WithStack(err)
-	}
-	chunk.Exhausted.Before = exhausted
-
-	versionsAfter, exhausted, err := iter.findAllVersions(v, numAfter, false, false)
-	if err != nil {
-		return chunk, errors.WithStack(err)
-	}
-	chunk.Exhausted.After = exhausted
-
-	versions := append(versionsAfter, versionsBefore...)
-	if len(versions) == 0 {
-		return chunk, nil
-	}
-	chunk.Versions = versions
-
-	// versionStartBoundary is the most recent version (i.e. newest) that
-	// should be included in the results.
-	//
-	// versionEndBoundary is the least recent version (i.e. oldest) that
-	// should be included in the results.
-	versionStartBoundary, versionEndBoundary := versions[0], versions[len(versions)-1]
-
-	matchStage := bson.M{
+// getBaseTaskHistoryFilter defines a basic match for the task history query. This is useful as fetching task history
+// requires matching on multiple fields (i.e. the task name, build variant, and project fields).
+func getBaseTaskHistoryFilter(opts FindTaskHistoryOptions) bson.M {
+	return bson.M{
+		task.DisplayNameKey:  opts.TaskName,
+		task.BuildVariantKey: opts.BuildVariant,
+		task.ProjectKey:      opts.ProjectId,
 		task.RequesterKey: bson.M{
 			"$in": evergreen.SystemVersionRequesterTypes,
 		},
-		task.ProjectKey:     iter.ProjectName,
-		task.DisplayNameKey: iter.TaskName,
-		task.RevisionOrderNumberKey: bson.M{
-			"$gte": versionEndBoundary.RevisionOrderNumber,
-			"$lte": versionStartBoundary.RevisionOrderNumber,
-		},
 	}
-	if len(iter.BuildVariants) > 0 {
-		// only filter on bv if passed in - this handles scenarios where a task may have been removed
-		// from the project yaml but we want to know its history before that
-		matchStage[task.BuildVariantKey] = bson.M{"$in": iter.BuildVariants}
-	}
-	projectStage := bson.M{
-		task.IdKey:                  1,
-		task.StatusKey:              1,
-		task.DetailsKey:             1,
-		task.ActivatedKey:           1,
-		task.TimeTakenKey:           1,
-		task.BuildVariantKey:        1,
-		task.RevisionKey:            1,
-		task.RevisionOrderNumberKey: 1,
-	}
-	groupStage := bson.M{
-		"_id":   fmt.Sprintf("$%v", task.RevisionKey),
-		"order": bson.M{"$first": fmt.Sprintf("$%v", task.RevisionOrderNumberKey)},
-		"tasks": bson.M{
-			"$push": bson.M{
-				task.IdKey:           fmt.Sprintf("$%v", task.IdKey),
-				task.StatusKey:       fmt.Sprintf("$%v", task.StatusKey),
-				task.DetailsKey:      fmt.Sprintf("$%v", task.DetailsKey),
-				task.ActivatedKey:    fmt.Sprintf("$%v", task.ActivatedKey),
-				task.TimeTakenKey:    fmt.Sprintf("$%v", task.TimeTakenKey),
-				task.BuildVariantKey: fmt.Sprintf("$%v", task.BuildVariantKey),
-			},
-		},
-	}
-
-	pipeline := []bson.M{
-		{"$match": matchStage},
-		{"$project": projectStage},
-		{"$group": groupStage},
-		{"$sort": bson.M{task.RevisionOrderNumberKey: -1}},
-	}
-	var rawAggregatedTasks []bson.M
-	if err = db.AggregateWithMaxTime(task.Collection, pipeline, &rawAggregatedTasks, taskHistoryMaxTime); err != nil {
-		return chunk, errors.Wrap(err, "aggregating task history data")
-	}
-	chunk.Tasks = rawAggregatedTasks
-
-	matchStage[task.StatusKey] = evergreen.TaskFailed
-	tasks, err := task.FindAll(ctx, db.Query(matchStage))
-	if err != nil {
-		return chunk, errors.Wrap(err, "finding failed tasks")
-	}
-	failedTests, err := iter.GetFailedTests(tasks)
-	if err != nil {
-		return chunk, errors.Wrap(err, "getting failed tests for aggregated task history data")
-	}
-	chunk.FailedTests = failedTests
-
-	return chunk, nil
 }
 
-// GetFailedTests returns a mapping of task ID to a slice of failed tasks
-// extracted from a pipeline of aggregated tasks.
-func (thi *taskHistoryIterator) GetFailedTests(tasks []task.Task) (map[string][]string, error) {
-	env := evergreen.GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
+// findActiveTasksForHistory finds LIMIT active tasks with the given task name, build variant, and project ID between the specified bounds.
+// Note that only one bound should be specified.
+// The result is sorted by order numbers, descending (e.g. 100, 99, 98, 97, ...).
+func findActiveTasksForHistory(ctx context.Context, opts FindTaskHistoryOptions) ([]task.Task, error) {
+	filter := getBaseTaskHistoryFilter(opts)
+	filter[task.ActivatedKey] = true
 
-	var allTaskOpts []testresult.TaskOptions
-	taskIDsToDisplay := map[string]string{}
-	for _, tsk := range tasks {
-		taskOpts, err := tsk.CreateTestResultsTaskOptions(ctx)
+	var querySort []string // Requires different sorts so that the limit is taken correctly.
+	var isSortedAsc bool
+
+	if opts.LowerBound != nil {
+		filter[task.RevisionOrderNumberKey] = bson.M{"$gte": utility.FromIntPtr(opts.LowerBound)}
+		querySort = []string{task.RevisionOrderNumberKey}
+		isSortedAsc = true
+	}
+	if opts.UpperBound != nil {
+		filter[task.RevisionOrderNumberKey] = bson.M{"$lte": utility.FromIntPtr(opts.UpperBound)}
+		querySort = []string{"-" + task.RevisionOrderNumberKey}
+		isSortedAsc = false
+	}
+
+	queryLimit := maxTaskHistoryLimit
+	if opts.Limit != nil {
+		queryLimit = utility.FromIntPtr(opts.Limit)
+	}
+
+	q := db.Query(filter).Sort(querySort).Limit(queryLimit)
+	tasks, err := task.FindAll(ctx, q)
+
+	// We want the result to be sorted in descending order numbers. If it's currently sorted in ascending order,
+	// sort the result correctly.
+	if isSortedAsc {
+		sort.Slice(tasks, func(i, j int) bool { return tasks[i].RevisionOrderNumber > tasks[j].RevisionOrderNumber })
+	}
+
+	return tasks, err
+}
+
+// findInactiveTasksForHistory finds all inactive tasks with the given task name, build variant, and project ID between the specified bounds.
+// The result is sorted by order numbers, descending (e.g. 100, 99, 98, 97, ...).
+func findInactiveTasksForHistory(ctx context.Context, opts FindTaskHistoryOptions) ([]task.Task, error) {
+	filter := getBaseTaskHistoryFilter(opts)
+	filter[task.ActivatedKey] = false
+
+	revisionFilter := bson.M{}
+	if opts.LowerBound != nil {
+		revisionFilter["$gte"] = utility.FromIntPtr(opts.LowerBound)
+	}
+	if opts.UpperBound != nil {
+		revisionFilter["$lte"] = utility.FromIntPtr(opts.UpperBound)
+	}
+	filter[task.RevisionOrderNumberKey] = revisionFilter
+
+	q := db.Query(filter).Sort([]string{"-" + task.RevisionOrderNumberKey})
+	tasks, err := task.FindAll(ctx, q)
+	return tasks, err
+}
+
+// FindTasksForHistory finds tasks with the given task name, build variant, and project ID between the specified bounds.
+// The result is sorted by order numbers, descending (e.g. 100, 99, 98, 97, ...).
+func FindTasksForHistory(ctx context.Context, opts FindTaskHistoryOptions) ([]task.Task, error) {
+	// Active tasks must be fetched with either a lower bound or upper bound (not both), so we check for valid
+	// arguments here.
+	if (opts.UpperBound != nil && opts.LowerBound != nil) || (opts.UpperBound == nil && opts.LowerBound == nil) {
+		return nil, errors.New("Exactly one bound must be defined.")
+	}
+
+	activeTasks, err := findActiveTasksForHistory(ctx, opts)
+	if err != nil {
+		return nil, errors.Wrapf(err, "finding active tasks for history")
+	}
+
+	// Adjust the bounds because we want to fetch all inactive tasks that appear between the active tasks. This typically
+	// means that both the lower bound and upper bound should be defined.
+	// However, if all tasks are inactive, then one bound is sufficient, as we'll just fetch all inactive tasks. Note that
+	// this is an uncommon edge case.
+	if len(activeTasks) > 0 && opts.UpperBound == nil {
+		newerActiveTask, err := getNewerActiveMainlineTask(ctx, activeTasks[0])
 		if err != nil {
-			return nil, errors.Wrap(err, "creating test results task options")
+			return nil, errors.Wrapf(err, "fetching newer activated mainline task")
 		}
+		if newerActiveTask != nil {
+			opts.UpperBound = utility.ToIntPtr(newerActiveTask.RevisionOrderNumber - 1)
+		}
+	}
 
-		allTaskOpts = append(allTaskOpts, taskOpts...)
-		for _, opts := range taskOpts {
-			taskIDsToDisplay[opts.TaskID] = tsk.Id
+	if len(activeTasks) > 0 && opts.LowerBound == nil {
+		olderActiveTask, err := getOlderActiveMainlineTask(ctx, activeTasks[len(activeTasks)-1])
+		if err != nil {
+			return nil, errors.Wrapf(err, "fetching older activated mainline task")
+		}
+		if olderActiveTask != nil {
+			opts.LowerBound = utility.ToIntPtr(olderActiveTask.RevisionOrderNumber + 1)
 		}
 	}
-	if len(allTaskOpts) == 0 {
-		// This is an added hack to make tests pass when transitioning
-		// between Mongo drivers.
-		return map[string][]string{}, nil
-	}
-	results, err := testresult.GetFailedTestSamples(ctx, env, allTaskOpts, nil)
+
+	inactiveTasks, err := findInactiveTasksForHistory(ctx, opts)
 	if err != nil {
-		return nil, errors.Wrap(err, "getting failed test results samples from Cedar")
+		return nil, errors.Wrapf(err, "finding inactive tasks for history")
 	}
 
-	failedTestsMap := map[string][]string{}
-	for _, result := range results {
-		if len(result.MatchingFailedTestNames) == 0 {
-			continue
-		}
-
-		taskID, ok := taskIDsToDisplay[result.TaskID]
-		if !ok {
-			return nil, errors.Wrapf(err, "unexpected task '%s' in failed test sample result", result.TaskID)
-		}
-		failedTestsMap[taskID] = append(failedTestsMap[taskID], result.MatchingFailedTestNames...)
-	}
-
-	return failedTestsMap, nil
+	tasks := append(activeTasks, inactiveTasks...)
+	sort.Slice(tasks, func(i, j int) bool { return tasks[i].RevisionOrderNumber > tasks[j].RevisionOrderNumber })
+	return tasks, nil
 }
 
-type PickaxeParams struct {
-	Project       *Project
-	TaskName      string
-	NewestOrder   int64
-	OldestOrder   int64
-	BuildVariants []string
+// GetLatestMainlineTask returns the most recent task matching the given parameters, activated or unactivated, on the waterfall.
+func GetLatestMainlineTask(ctx context.Context, opts FindTaskHistoryOptions) (*task.Task, error) {
+	filter := getBaseTaskHistoryFilter(opts)
+	q := db.Query(filter).Sort([]string{"-" + task.RevisionOrderNumberKey}).Limit(1)
+	mostRecentTask, err := task.FindOne(ctx, q)
+
+	if err != nil {
+		return nil, err
+	}
+	if mostRecentTask == nil {
+		return nil, errors.New("task not found on project history")
+	}
+	return mostRecentTask, nil
 }
 
-func TaskHistoryPickaxe(ctx context.Context, params PickaxeParams) ([]task.Task, error) {
-	// If there are no build variants, use all of them for the given task name.
-	// Need this because without the build_variant specified, no amount of hinting
-	// will get sort to use the proper index
-	repo, err := FindRepository(ctx, params.Project.Identifier)
-	if err != nil {
-		return nil, errors.Wrap(err, "finding repository")
-	}
-	if repo == nil {
-		return nil, errors.New("unable to find repository")
-	}
-	grip.Info(repo)
-	buildVariants, err := task.FindVariantsWithTask(ctx, params.TaskName, params.Project.Identifier, repo.RevisionOrderNumber-50, repo.RevisionOrderNumber)
-	if err != nil {
-		return nil, errors.Wrap(err, "finding build variants")
-	}
-	query := bson.M{
-		task.DisplayNameKey: params.TaskName,
-		task.RevisionOrderNumberKey: bson.M{
-			"$gte": params.OldestOrder,
-			"$lte": params.NewestOrder,
-		},
-		task.ProjectKey: params.Project.Identifier,
-	}
-	if len(params.BuildVariants) > 0 {
-		query[task.BuildVariantKey] = bson.M{
-			"$in": params.BuildVariants,
-		}
-	} else if len(buildVariants) > 0 {
-		query[task.BuildVariantKey] = bson.M{
-			"$in": buildVariants,
-		}
-	}
-	projection := []string{
-		task.IdKey,
-		task.StatusKey,
-		task.ActivatedKey,
-		task.TimeTakenKey,
-		task.BuildVariantKey,
-	}
-	last, err := task.FindWithFields(ctx, query, projection...)
-	if err != nil {
-		return nil, errors.Wrap(err, "finding tasks")
-	}
+// GetOldestMainlineTask returns the oldest task matching the given parameters, activated or unactivated, on the waterfall.
+// Note that we cannot assume that the oldest task has an order of 1, because new tasks can be introduced over time,
+// and because the task TTL deletes old tasks.
+func GetOldestMainlineTask(ctx context.Context, opts FindTaskHistoryOptions) (*task.Task, error) {
+	filter := getBaseTaskHistoryFilter(opts)
+	q := db.Query(filter).Sort([]string{task.RevisionOrderNumberKey}).Limit(1)
+	oldestTask, err := task.FindOne(ctx, q)
 
-	return last, nil
+	if err != nil {
+		return nil, err
+	}
+	if oldestTask == nil {
+		return nil, errors.New("task not found on project history")
+	}
+	return oldestTask, nil
+}
+
+// getNewerActiveMainlineTask returns the next newer active mainline task, i.e. a more
+// recent activated task than the current task.
+func getNewerActiveMainlineTask(ctx context.Context, t task.Task) (*task.Task, error) {
+	filter := getBaseTaskHistoryFilter(FindTaskHistoryOptions{
+		TaskName:     t.DisplayName,
+		BuildVariant: t.BuildVariant,
+		ProjectId:    t.Project,
+	})
+	filter[task.ActivatedKey] = true
+	filter[task.RevisionOrderNumberKey] = bson.M{
+		"$gt": t.RevisionOrderNumber,
+	}
+	q := db.Query(filter).Sort([]string{task.RevisionOrderNumberKey}).Limit(1)
+
+	newerActiveTask, err := task.FindOne(ctx, q)
+	if err != nil {
+		return nil, err
+	}
+	// newerActiveTask can be nil, since it may not exist.
+	return newerActiveTask, nil
+}
+
+// getOlderActiveMainlineTask returns the next older active mainline task, i.e. an older
+// activated task than the current task.
+func getOlderActiveMainlineTask(ctx context.Context, t task.Task) (*task.Task, error) {
+	filter := getBaseTaskHistoryFilter(FindTaskHistoryOptions{
+		TaskName:     t.DisplayName,
+		BuildVariant: t.BuildVariant,
+		ProjectId:    t.Project,
+	})
+	filter[task.ActivatedKey] = true
+	filter[task.RevisionOrderNumberKey] = bson.M{
+		"$lt": t.RevisionOrderNumber,
+	}
+	q := db.Query(filter).Sort([]string{"-" + task.RevisionOrderNumberKey}).Limit(1)
+
+	olderActiveTask, err := task.FindOne(ctx, q)
+	if err != nil {
+		return nil, err
+	}
+	// olderActiveTask can be nil, since it may not exist.
+	return olderActiveTask, nil
 }

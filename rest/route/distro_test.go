@@ -1369,6 +1369,7 @@ func getMockDistrosdata() error {
 			DispatcherSettings: distro.DispatcherSettings{
 				Version: evergreen.DispatcherVersionRevisedWithDependencies,
 			},
+			Aliases: []string{"alias1", "alias2"},
 		},
 	}
 	for _, d := range distros {
@@ -1482,6 +1483,7 @@ func (s *distroCopySuite) TestRunValidCopy() {
 	s.NotNil(copied)
 	s.Equal("newDistro", copied.Id)
 	s.Equal(true, copied.SingleTaskDistro)
+	s.Nil(copied.Aliases)
 }
 
 func (s *distroCopySuite) TestRunInvalidCopyNonexistentID() {

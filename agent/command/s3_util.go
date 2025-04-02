@@ -7,6 +7,7 @@ import (
 	"time"
 
 	s3Types "github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/jpillora/backoff"
@@ -77,4 +78,15 @@ func getS3OpBackoff() *backoff.Backoff {
 
 func shouldRunForVariant(bvs []string, bv string) bool {
 	return len(bvs) == 0 || utility.StringSliceContains(bvs, bv)
+}
+
+// getAssumedRoleARN checks if the provided session token
+// is associated with an assumed role. If it is, it returns
+// the role ARN.
+func getAssumedRoleARN(conf *internal.TaskConfig, sessionToken string) string {
+	if sessionToken == "" {
+		return ""
+	}
+
+	return conf.AssumeRoleRoles[sessionToken]
 }

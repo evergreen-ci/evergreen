@@ -11,4 +11,4 @@
 { "_id": "logger_config", "logkeeper_url": "http://localhost:8080" }
 { "_id": "container_pools", "pools": [{ "distro": "ubuntu1604-parent", "id": "test-pool-1", "max_containers": 5, "port": 2525, "maximages": 0 }, { "distro": "ubuntu1604-parent", "id": "test-pool-2", "max_containers": 10, "port": 4649, "maximages": 0 }]}
 { "_id": "api", "url": "http://localhost:9090" }
-{"_id": "single_task_distro","project_tasks_pairs": [{"project_id": "evergreen","allowed_tasks": ["compile", "test"]}, {"project_id": "spruce","allowed_tasks": ["lint", "storybook"]}]}
+{"_id": "single_task_distro","project_tasks_pairs": [{"project_id": "evergreen","allowed_tasks": ["compile", "test"], "allowed_bvs": ["windows", "ubuntu1604"]}, {"project_id": "spruce","allowed_tasks": ["lint", "storybook"]}]}
