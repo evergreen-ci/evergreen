@@ -4,6 +4,7 @@
 {"_id":"evergreen_repo","name":"evergreen_repo_role","scope":"evergreen_repo","permissions":{"project_logs":10,"project_settings":20,"project_tasks":30,"project_patches":10}}
 {"_id":"spruce","name":"spruce_role","scope":"spruce","permissions":{"project_logs":10,"project_settings":20,"project_tasks":30,"project_patches":10}}
 {"_id":"parsley","name":"parsley_role","scope":"parsley","permissions":{"project_logs":10,"project_settings":20,"project_tasks":30,"project_patches":10}}
+{"_id":"mci","name":"mci_role","scope":"mci","permissions":{"project_logs":10,"project_settings":20,"project_tasks":30,"project_patches":10}}
 {"_id":"mongodb-mongo-master","name":"mongodb-mongo-master_role","scope":"mongodb-mongo-master","permissions":{"project_logs":10,"project_settings":20,"project_tasks":30,"project_patches":10}}
 {"_id":"mongodb-mongo-test","name":"mongodb-mongo-test_role","scope":"mongodb-mongo-test","permissions":{"project_logs":10,"project_settings":20,"project_tasks":30,"project_patches":10}}
 {"_id":"performance","name":"performance_role","scope":"performance","permissions":{"project_logs":10,"project_settings":20,"project_tasks":30,"project_patches":10}}

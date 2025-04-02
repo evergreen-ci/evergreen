@@ -505,3 +505,141 @@ func TestGetOldestMainlineTask(t *testing.T) {
 	assert.Equal(t, "t_3", oldestMainlineTask.Id)
 	assert.Equal(t, 100, oldestMainlineTask.RevisionOrderNumber)
 }
+
+func TestGetNewerActiveMainlineTask(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(task.Collection))
+
+	projectId := "evergreen"
+	taskName := "test-graphql"
+	buildVariant := "ubuntu2204"
+
+	t1 := task.Task{
+		Id:                  "t_1",
+		Requester:           evergreen.TriggerRequester,
+		RevisionOrderNumber: 98,
+		Activated:           true,
+		Project:             projectId,
+		DisplayName:         taskName,
+		BuildVariant:        buildVariant,
+	}
+	assert.NoError(t, t1.Insert())
+
+	t2 := task.Task{
+		Id:                  "t_2",
+		Requester:           evergreen.PatchVersionRequester,
+		RevisionOrderNumber: 99,
+		Activated:           true,
+		Project:             projectId,
+		DisplayName:         taskName,
+		BuildVariant:        buildVariant,
+	}
+	assert.NoError(t, t2.Insert())
+
+	t3 := task.Task{
+		Id:                  "t_3",
+		Requester:           evergreen.TriggerRequester,
+		RevisionOrderNumber: 100,
+		Activated:           false,
+		Project:             projectId,
+		DisplayName:         taskName,
+		BuildVariant:        buildVariant,
+	}
+	assert.NoError(t, t3.Insert())
+
+	t4 := task.Task{
+		Id:                  "t_4",
+		Requester:           evergreen.GitTagRequester,
+		RevisionOrderNumber: 101,
+		Activated:           true,
+		Project:             projectId,
+		DisplayName:         taskName,
+		BuildVariant:        buildVariant,
+	}
+	assert.NoError(t, t4.Insert())
+
+	t5 := task.Task{
+		Id:                  "t_5",
+		Requester:           evergreen.GitTagRequester,
+		RevisionOrderNumber: 102,
+		Activated:           true,
+		Project:             projectId,
+		DisplayName:         taskName,
+		BuildVariant:        buildVariant,
+	}
+	assert.NoError(t, t5.Insert())
+
+	newerActiveTask, err := getNewerActiveMainlineTask(t.Context(), t1)
+	require.NoError(t, err)
+	require.NotNil(t, newerActiveTask)
+	assert.Equal(t, "t_4", newerActiveTask.Id)
+	assert.Equal(t, 101, newerActiveTask.RevisionOrderNumber)
+}
+
+func TestGetOlderActiveMainlineTask(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(task.Collection))
+
+	projectId := "evergreen"
+	taskName := "test-graphql"
+	buildVariant := "ubuntu2204"
+
+	t1 := task.Task{
+		Id:                  "t_1",
+		Requester:           evergreen.TriggerRequester,
+		RevisionOrderNumber: 98,
+		Activated:           true,
+		Project:             projectId,
+		DisplayName:         taskName,
+		BuildVariant:        buildVariant,
+	}
+	assert.NoError(t, t1.Insert())
+
+	t2 := task.Task{
+		Id:                  "t_2",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		RevisionOrderNumber: 99,
+		Activated:           true,
+		Project:             projectId,
+		DisplayName:         taskName,
+		BuildVariant:        buildVariant,
+	}
+	assert.NoError(t, t2.Insert())
+
+	t3 := task.Task{
+		Id:                  "t_3",
+		Requester:           evergreen.PatchVersionRequester,
+		RevisionOrderNumber: 100,
+		Activated:           true,
+		Project:             projectId,
+		DisplayName:         taskName,
+		BuildVariant:        buildVariant,
+	}
+	assert.NoError(t, t3.Insert())
+
+	t4 := task.Task{
+		Id:                  "t_4",
+		Requester:           evergreen.GitTagRequester,
+		RevisionOrderNumber: 101,
+		Activated:           false,
+		Project:             projectId,
+		DisplayName:         taskName,
+		BuildVariant:        buildVariant,
+	}
+	assert.NoError(t, t4.Insert())
+
+	t5 := task.Task{
+		Id:                  "t_5",
+		Requester:           evergreen.GitTagRequester,
+		RevisionOrderNumber: 102,
+		Activated:           true,
+		Project:             projectId,
+		DisplayName:         taskName,
+		BuildVariant:        buildVariant,
+	}
+	assert.NoError(t, t5.Insert())
+
+	olderActiveTask, err := getOlderActiveMainlineTask(t.Context(), t5)
+	require.NoError(t, err)
+	require.NotNil(t, olderActiveTask)
+	assert.Equal(t, "t_2", olderActiveTask.Id)
+	assert.Equal(t, 99, olderActiveTask.RevisionOrderNumber)
+}

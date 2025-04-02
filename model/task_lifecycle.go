@@ -1402,10 +1402,12 @@ func updateBuildStatus(ctx context.Context, b *build.Build) (bool, error) {
 	buildStatus := getBuildStatus(buildTasks)
 	// If all the tasks are unscheduled, set active to false
 	if buildStatus.allTasksUnscheduled {
-		if err = b.SetActivated(ctx, false); err != nil {
-			return true, errors.Wrapf(err, "setting build '%s' as inactive", b.Id)
+		if b.Activated {
+			if err = b.SetActivated(ctx, false); err != nil {
+				return true, errors.Wrapf(err, "setting build '%s' as inactive", b.Id)
+			}
+			return true, nil
 		}
-		return true, nil
 	}
 
 	if err := b.SetHasUnfinishedEssentialTask(ctx, buildStatus.hasUnfinishedEssentialTask); err != nil {

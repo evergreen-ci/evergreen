@@ -499,6 +499,46 @@ func TestBuildMarkAborted(t *testing.T) {
 	})
 }
 
+func TestModifyVersionDoesntSucceedVersionOnAbort(t *testing.T) {
+	require.NoError(t, db.ClearCollections(build.Collection, task.Collection, VersionCollection))
+
+	vID := "abcdef"
+	v := &Version{Id: vID, BuildIds: []string{"b0"}, Status: evergreen.VersionStarted}
+	require.NoError(t, v.Insert())
+
+	b0 := build.Build{
+		Id: "b0", Version: vID, Activated: true, Tasks: []build.TaskCache{{Id: "t0"}, {Id: "t1"}, {Id: "t2"}}, Status: evergreen.BuildStarted,
+	}
+	b1 := build.Build{
+		Id: "b1", Version: vID, Activated: false, Tasks: []build.TaskCache{{Id: "t3"}}, Status: evergreen.BuildCreated,
+	}
+	require.NoError(t, b0.Insert())
+	require.NoError(t, b1.Insert())
+
+	tasks := []task.Task{
+		{Id: "t0", BuildId: "b0", Version: vID, Activated: true, Status: evergreen.TaskStarted},
+		{Id: "t1", BuildId: "b0", Version: vID, Activated: true, Status: evergreen.TaskFailed},
+		{Id: "t2", BuildId: "b0", Version: vID, Activated: true, Status: evergreen.TaskUndispatched},
+		{Id: "t3", BuildId: "b1", Version: vID, Activated: false, Status: evergreen.TaskUndispatched},
+	}
+	for _, task := range tasks {
+		require.NoError(t, task.Insert())
+	}
+
+	modification := VersionModification{
+		Action: evergreen.SetActiveAction,
+		Abort:  true,
+		Active: false,
+	}
+	_, err := ModifyVersion(t.Context(), *v, user.DBUser{Id: "testuser"}, modification)
+	assert.NoError(t, err)
+
+	dbVersion, err := VersionFindOneId(t.Context(), v.Id)
+	require.NoError(t, err)
+	require.NotZero(t, dbVersion)
+	assert.Equal(t, evergreen.VersionStarted, dbVersion.Status)
+}
+
 func TestSetVersionActivation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
