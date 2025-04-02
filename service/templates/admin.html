@@ -1248,6 +1248,10 @@ Admin Settings
 										<label>Email</label>
 										<input type="text" ng-model="Settings.jira.email">
 									</md-input-container>
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
+										<label>Personal Access Token</label>
+										<input type="text" ng-model="Settings.jira.personal_access_token">
+									</md-input-container>
 									<md-card>
 										<md-card-title>
 											<md-card-title-text>
@@ -1288,20 +1292,6 @@ Admin Settings
 												<label>Private Key (PEM format)</label>
 												<textarea ng-model="Settings.jira.oauth1.private_key" ng-trim="false"
 													rows="3" md-select-on-focus></textarea>
-											</md-input-container>
-										</md-card-content>
-									</md-card>
-									<md-card>
-										<md-card-title>
-											<md-card-title-text>
-												<span>Personal Access Token</span>
-											</md-card-title-text>
-										</md-card-title>
-										<md-card-content>
-											<md-input-container class="control" style="width:45%;">
-												<label>Token</label>
-												<input type="text" ng-model="Settings.jira.personal_access_token.token">
-											</md-input-container>
 											</md-input-container>
 										</md-card-content>
 									</md-card>

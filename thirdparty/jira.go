@@ -302,7 +302,8 @@ func NewJiraHandler(opts send.JiraOptions) JiraHandler {
 	httpClient := utility.GetHTTPClient()
 	if opts.PersonalAccessTokenOpts.Token != "" {
 		transport := jira.BearerAuthTransport{
-			Token: opts.PersonalAccessTokenOpts.Token,
+			Token:     opts.PersonalAccessTokenOpts.Token,
+			Transport: httpClient.Transport,
 		}
 		httpClient = transport.Client()
 	} else if opts.Oauth1Opts.AccessToken != "" {
