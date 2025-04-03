@@ -1048,11 +1048,12 @@ func (a *APIPodLifecycleConfig) ToService() (any, error) {
 }
 
 type APIJiraConfig struct {
-	Host            *string           `json:"host"`
-	DefaultProject  *string           `json:"default_project"`
-	Email           *string           `json:"email"`
-	BasicAuthConfig *APIJiraBasicAuth `json:"basic_auth"`
-	OAuth1Config    *APIJiraOAuth1    `json:"oauth1"`
+	Host                *string           `json:"host"`
+	DefaultProject      *string           `json:"default_project"`
+	Email               *string           `json:"email"`
+	PersonalAccessToken *string           `json:"personal_access_token"`
+	BasicAuthConfig     *APIJiraBasicAuth `json:"basic_auth"`
+	OAuth1Config        *APIJiraOAuth1    `json:"oauth1"`
 }
 
 func (a *APIJiraConfig) BuildFromService(h any) error {
@@ -1060,6 +1061,7 @@ func (a *APIJiraConfig) BuildFromService(h any) error {
 	case evergreen.JiraConfig:
 		a.Host = utility.ToStringPtr(v.Host)
 		a.Email = utility.ToStringPtr(v.Email)
+		a.PersonalAccessToken = utility.ToStringPtr(v.PersonalAccessToken)
 		a.BasicAuthConfig = &APIJiraBasicAuth{}
 		a.BasicAuthConfig.BuildFromService(v.BasicAuthConfig)
 		a.OAuth1Config = &APIJiraOAuth1{}
@@ -1072,8 +1074,9 @@ func (a *APIJiraConfig) BuildFromService(h any) error {
 
 func (a *APIJiraConfig) ToService() (any, error) {
 	c := evergreen.JiraConfig{
-		Host:  utility.FromStringPtr(a.Host),
-		Email: utility.FromStringPtr(a.Email),
+		Host:                utility.FromStringPtr(a.Host),
+		Email:               utility.FromStringPtr(a.Email),
+		PersonalAccessToken: utility.FromStringPtr(a.PersonalAccessToken),
 	}
 	if a.BasicAuthConfig != nil {
 		c.BasicAuthConfig = a.BasicAuthConfig.ToService()
