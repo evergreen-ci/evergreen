@@ -72,6 +72,9 @@ func (h *generateHandler) processFiles(ctx context.Context, r *http.Request) err
 	}
 	var err error
 	if h.files, err = parseJson(r); err != nil {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
 		return errors.Wrap(err, "reading raw JSON from request body")
 	}
 
