@@ -37,28 +37,35 @@ func (h *generateHandler) Factory() gimlet.RouteHandler {
 func (h *generateHandler) Parse(ctx context.Context, r *http.Request) error {
 	var err error
 
+	if h.files, err = parseJson(r); err != nil {
+		return errors.Wrap(err, "reading raw JSON from request body")
+
+	}
+	h.taskID = gimlet.GetVars(r)["task_id"]
+
+	err = validateFileSize(h.files, h.env.Settings().TaskLimits.MaxGenerateTaskJSONSize)
+	return errors.Wrap(err, "validating JSON size")
+}
+
+func parseJson(r *http.Request) ([]json.RawMessage, error) {
 	body := utility.NewRequestReader(r)
 	defer body.Close()
 
 	bytes, err := io.ReadAll(body)
 	if err != nil {
-		return errors.Wrap(err, "Error reading request body")
+		return nil, errors.Wrap(err, "Error reading request body")
 	}
 
 	if !json.Valid(bytes) {
-		return errors.New("Invalid JSON format detected; potential incomplete or corrupted data. This may be an indication that evergreen is under high load.")
+		return nil, errors.New("Invalid JSON format detected; potential incomplete or corrupted data. This may be an indication that evergreen is under high load.")
 	}
 
 	files := []json.RawMessage{}
 	if err := json.Unmarshal(bytes, &files); err != nil {
-		return errors.Wrap(err, "Unmarshaling request body")
+		return nil, errors.Wrap(err, "Unmarshaling request body")
 	}
 
-	h.files = files
-	h.taskID = gimlet.GetVars(r)["task_id"]
-
-	err = validateFileSize(h.files, h.env.Settings().TaskLimits.MaxGenerateTaskJSONSize)
-	return errors.Wrap(err, "validating JSON size")
+	return files, err
 }
 
 func validateFileSize(files []json.RawMessage, maxSizeInMB int) error {

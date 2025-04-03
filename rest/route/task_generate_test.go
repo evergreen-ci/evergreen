@@ -57,6 +57,22 @@ func TestValidate(t *testing.T) {
 	assert.NoError(validateFileSize(files, 1))
 }
 
+func TestValidateWithBadJson(t *testing.T) {
+	assert := assert.New(t)
+	jsonBytes := []byte(`
+[
+{
+  "this": "is missing closing brace"
+`)
+	buffer := bytes.NewBuffer(jsonBytes)
+	request, err := http.NewRequest("", "", buffer)
+	assert.NoError(err)
+	files, err := parseJson(request)
+	assert.Error(err)
+	assert.EqualError(err, "Invalid JSON format detected; potential incomplete or corrupted data. This may be an indication that evergreen is under high load.")
+	assert.Nil(files)
+}
+
 func TestGenerateExecuteWithSmallFileInDB(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
