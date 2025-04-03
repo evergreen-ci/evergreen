@@ -133,7 +133,6 @@ func SetBannerTheme(ctx context.Context, themeString string) error {
 	return evergreen.SetBannerTheme(ctx, theme)
 }
 
-
 // RestartFailedTasks attempts to restart failed tasks that started between 2 times
 func RestartFailedTasks(ctx context.Context, queue amboy.Queue, opts model.RestartOptions) (*restModel.RestartResponse, error) {
 	var results model.RestartResults
