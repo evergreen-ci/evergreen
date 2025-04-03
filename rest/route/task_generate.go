@@ -72,6 +72,7 @@ func (h *generateHandler) processFiles(ctx context.Context, r *http.Request) err
 	}
 	var err error
 	if h.files, err = parseJson(r); err != nil {
+		// make sure the context wasn't canceled while we were reading the request body
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
