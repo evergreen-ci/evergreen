@@ -221,3 +221,19 @@ func TestGeneratePollRun(t *testing.T) {
 	require.Equal(t, http.StatusOK, resp.Status())
 	require.False(t, resp.Data().(*apimodels.GeneratePollResponse).Finished)
 }
+
+func TestGenerateHandlerContextCanceledDuringRun(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // Immediately cancel the context
+
+	req, err := http.NewRequest(http.MethodPost, "/task/456/generate", nil)
+	require.NoError(t, err)
+
+	h := &generateHandler{}
+	require.NoError(t, h.Parse(ctx, req))
+
+	resp := h.Run(ctx)
+	require.NotNil(t, resp)
+
+	assert.Equal(t, http.StatusInternalServerError, resp.Status())
+}
