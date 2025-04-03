@@ -87,9 +87,9 @@ type AWSConfig struct {
 // be assumed to make authorized API calls in that account.
 type AWSAccountRoleMapping struct {
 	// Account is the identifier for the AWS account.
-	Account string
+	Account string `bson:"account" json:"account" yaml:"account"`
 	// Role is the the role to assume to make authorized API calls.
-	Role string
+	Role string `bson:"role" json:"role" yaml:"role"`
 }
 
 func (m *AWSAccountRoleMapping) Validate() error {
