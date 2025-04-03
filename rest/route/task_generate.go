@@ -24,6 +24,7 @@ func makeGenerateTasksHandler(env evergreen.Environment) gimlet.RouteHandler {
 }
 
 type generateHandler struct {
+	r      *http.Request
 	files  []json.RawMessage
 	taskID string
 	env    evergreen.Environment
@@ -34,14 +35,9 @@ func (h *generateHandler) Factory() gimlet.RouteHandler {
 }
 
 func (h *generateHandler) Parse(ctx context.Context, r *http.Request) error {
-	var err error
-	if h.files, err = parseJson(r); err != nil {
-		return errors.Wrap(err, "reading raw JSON from request body")
-	}
 	h.taskID = gimlet.GetVars(r)["task_id"]
-
-	err = validateFileSize(h.files, h.env.Settings().TaskLimits.MaxGenerateTaskJSONSize)
-	return errors.Wrap(err, "validating JSON size")
+	h.r = r
+	return nil
 }
 
 func parseJson(r *http.Request) ([]json.RawMessage, error) {
@@ -67,7 +63,30 @@ func validateFileSize(files []json.RawMessage, maxSizeInMB int) error {
 	return nil
 }
 
+// processFiles needs to be called in Run and not Parse so that we can return a 500 error rather
+// than a 400 error when the context is canceled. This will allow the client to retry.
+func (h *generateHandler) processFiles(ctx context.Context, r *http.Request) error {
+	// If ctx is canceled, return immediately to avoid reading a potentially corrupted request body
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+	var err error
+	if h.files, err = parseJson(r); err != nil {
+		return errors.Wrap(err, "reading raw JSON from request body")
+	}
+
+	err = validateFileSize(h.files, h.env.Settings().TaskLimits.MaxGenerateTaskJSONSize)
+	return errors.Wrap(err, "validating JSON size")
+}
+
 func (h *generateHandler) Run(ctx context.Context) gimlet.Responder {
+	if err := h.processFiles(ctx, h.r); err != nil {
+		if utility.IsContextError(errors.Cause(err)) {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "context canceled"))
+		}
+		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "reading JSON from request body"))
+	}
+
 	if err := data.GenerateTasks(ctx, h.env.Settings(), h.taskID, h.files); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "generating tasks for task '%s'", h.taskID))
 	}
