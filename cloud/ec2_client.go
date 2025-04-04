@@ -15,7 +15,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	ststypes "github.com/aws/aws-sdk-go-v2/service/sts/types"
 	"github.com/aws/smithy-go"
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -157,7 +156,7 @@ func getConfigCacheID(role, region string) string {
 }
 
 // Create a new aws-sdk-client if one does not exist, otherwise no-op.
-func (c *awsClientImpl) Create(ctx context.Context, region, role string) error {
+func (c *awsClientImpl) Create(ctx context.Context, role, region string) error {
 	if region == "" {
 		return errors.New("region must not be empty")
 	}
@@ -171,7 +170,7 @@ func (c *awsClientImpl) Create(ctx context.Context, region, role string) error {
 			// kim: TODO: figure out STS credentials options:
 			// - No explicit credentials needed to assume the role?
 			// - Is it always assuming a role in the current account in us-east-1?
-			stsConfig, err := config.LoadDefaultConfig(ctx, config.WithRegion(evergreen.DefaultEC2Region))
+			stsConfig, err := config.LoadDefaultConfig(ctx)
 			if err != nil {
 				return errors.Wrapf(err, "loading config for assuming role '%s'", role)
 			}
@@ -791,6 +790,9 @@ func (c *awsClientImpl) DeleteLaunchTemplate(ctx context.Context, input *ec2.Del
 
 // CreateFleet is a wrapper for ec2.CreateFleet.
 func (c *awsClientImpl) CreateFleet(ctx context.Context, input *ec2.CreateFleetInput) (*ec2.CreateFleetOutput, error) {
+	grip.Info(message.Fields{
+		"message": "kim: creating fleet host",
+	})
 	var output *ec2.CreateFleetOutput
 	var err error
 	input.ClientToken = aws.String(utility.RandomString())

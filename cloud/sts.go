@@ -122,7 +122,7 @@ func (s *stsManagerImpl) AssumeRole(ctx context.Context, taskID string, opts Ass
 }
 
 func (s *stsManagerImpl) setupClient(ctx context.Context) error {
-	return s.client.Create(ctx, evergreen.DefaultEC2Region, "")
+	return s.client.Create(ctx, "", evergreen.DefaultEC2Region)
 }
 
 // GetCallerIdentityARN gets the caller identity's ARN.

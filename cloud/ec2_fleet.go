@@ -97,11 +97,21 @@ func (m *ec2FleetManager) Configure(ctx context.Context, settings *evergreen.Set
 		m.region = evergreen.DefaultEC2Region
 	}
 
+	role, err := getRoleForAccount(settings, m.account)
+	if err != nil {
+		return errors.Wrap(err, "getting role for account")
+	}
+	m.role = role
+	grip.Info(message.Fields{
+		"message": "kim: using role for EC2 fleet manager",
+		"role":    m.role,
+	})
+
 	return nil
 }
 
 func (m *ec2FleetManager) setupClient(ctx context.Context) error {
-	return m.client.Create(ctx, m.region, m.role)
+	return m.client.Create(ctx, m.role, m.region)
 }
 
 func (m *ec2FleetManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, error) {

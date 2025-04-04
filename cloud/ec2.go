@@ -276,6 +276,10 @@ func (m *ec2Manager) Configure(ctx context.Context, settings *evergreen.Settings
 		return errors.Wrap(err, "getting role for account")
 	}
 	m.role = role
+	grip.Info(message.Fields{
+		"message": "kim: using role for EC2 manager",
+		"role":    m.role,
+	})
 
 	return nil
 }
@@ -295,7 +299,7 @@ func getRoleForAccount(settings *evergreen.Settings, account string) (string, er
 }
 
 func (m *ec2Manager) setupClient(ctx context.Context) error {
-	return m.client.Create(ctx, m.region, m.role)
+	return m.client.Create(ctx, m.role, m.region)
 }
 
 func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings, blockDevices []types.BlockDeviceMapping) error {
