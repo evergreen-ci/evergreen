@@ -10,7 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/utility/cache"
+	"github.com/evergreen-ci/utility/ttlcache"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -65,7 +65,7 @@ type AssumeRoleCredentials struct {
 }
 
 // assumeRoleCache holds AWSCredentials for assumed roles.
-var assumeRoleCache = cache.WithOtel(cache.NewTTLInMemory[AssumeRoleCredentials](), "aws-assume-role")
+var assumeRoleCache = ttlcache.WithOtel(ttlcache.NewTTLInMemory[AssumeRoleCredentials](), "aws-assume-role")
 
 // minAssumeRoleCacheLifetime is the minimum lifetime of an assumed role
 // when retrieved from the cache. This can be used in situations where it's

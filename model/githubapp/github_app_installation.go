@@ -12,7 +12,7 @@ import (
 	"github.com/bradleyfalzon/ghinstallation"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/utility"
-	"github.com/evergreen-ci/utility/cache"
+	"github.com/evergreen-ci/utility/ttlcache"
 	"github.com/golang-jwt/jwt"
 	"github.com/google/go-github/v70/github"
 	"github.com/mongodb/grip"
@@ -245,7 +245,7 @@ func getInstallationIDFromGitHub(ctx context.Context, authFields *GithubAppAuth,
 
 // ghInstallationTokenCache is the in-memory instance of the cache for GitHub
 // installation tokens.
-var ghInstallationTokenCache = cache.WithOtel(cache.NewTTLInMemory[string](), "github-app-installation-token")
+var ghInstallationTokenCache = ttlcache.WithOtel(ttlcache.NewTTLInMemory[string](), "github-app-installation-token")
 
 // MaxInstallationTokenLifetime is the maximum amount of time that an
 // installation token can be used before it expires.
