@@ -96,7 +96,7 @@ type EC2ProviderSettings struct {
 	// host/volume doc.**
 	// kim: TODO: consider moving this to general distro settings because it
 	// applies to the entire distro, it's not region-specific.
-	AssumeRoleARN string `mapstructure:"assume_role_arn,omitempty" json:"assume_role_arn,omitempty" bson:"assume_role_arn,omitempty"`
+	// AssumeRoleARN string `mapstructure:"assume_role_arn,omitempty" json:"assume_role_arn,omitempty" bson:"assume_role_arn,omitempty"`
 }
 
 // Validate that essential EC2ProviderSettings fields are not empty.

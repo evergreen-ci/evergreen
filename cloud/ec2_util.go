@@ -632,15 +632,15 @@ func validateEc2DescribeInstancesOutput(describeInstancesResponse *ec2.DescribeI
 	return catcher.Resolve()
 }
 
-func getEC2ManagerOptionsFromSettings(provider string, settings *EC2ProviderSettings) ManagerOpts {
+func getEC2ManagerOptionsFromSettings(d *distro.Distro, settings *EC2ProviderSettings) ManagerOpts {
 	region := settings.Region
 	if region == "" {
 		region = evergreen.DefaultEC2Region
 	}
 	return ManagerOpts{
-		Provider: provider,
+		Provider: d.Provider,
+		Account:  d.ProviderAccountID,
 		Region:   region,
-		Role:     settings.AssumeRoleARN,
 	}
 }
 
