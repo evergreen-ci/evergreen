@@ -27,7 +27,7 @@ require (
 	github.com/evergreen-ci/poplar v0.0.0-20250313160224-22f0e4e98238
 	github.com/evergreen-ci/shrub v0.0.0-20250224222152-c8b72a51163b
 	github.com/evergreen-ci/timber v0.0.0-20250225175618-52d1e1841945
-	github.com/evergreen-ci/utility v0.0.0-20250317160201-a1e224d4bba9
+	github.com/evergreen-ci/utility v0.0.0-20250404164817-04ef334e215a
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/gonzojive/httpcache v0.0.0-20220509000156-e80a5e6a69fe
 	github.com/google/go-github/v52 v52.0.0 // indirect
