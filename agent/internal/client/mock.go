@@ -485,6 +485,12 @@ func (c *Mock) SendTestLog(ctx context.Context, td TaskData, log *testlog.TestLo
 	return c.LogID, nil
 }
 
+// SendTestResults appends test results to the local list of test results.
+func (c *Mock) SendTestResults(ctx context.Context, td TaskData, testResults []testresult.TestResult) error {
+	c.LocalTestResults = append(c.LocalTestResults, testResults...)
+	return nil
+}
+
 func (c *Mock) GetManifest(ctx context.Context, td TaskData) (*manifest.Manifest, error) {
 	return &manifest.Manifest{}, nil
 }
