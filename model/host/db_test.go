@@ -287,14 +287,23 @@ func TestFindStartingHostsByClient(t *testing.T) {
 						ProviderSettingsList: []*birch.Document{birch.NewDocument()},
 					},
 				},
+				{
+					Id:     "h4",
+					Status: evergreen.HostStarting,
+					Distro: distro.Distro{
+						Provider:             evergreen.ProviderNameEc2Fleet,
+						ProviderAccount:      "account",
+						ProviderSettingsList: []*birch.Document{birch.NewDocument()},
+					},
+				},
 			}
 			for _, h := range hosts {
 				require.NoError(t, h.Insert(ctx))
 			}
 
-			hostsByClient, err := FindStartingHostsByClient(ctx, 10)
+			hostsByClient, err := FindStartingHostsByClient(ctx, 100)
 			assert.NoError(t, err)
-			assert.Len(t, hostsByClient, 3)
+			assert.Len(t, hostsByClient, 4)
 			for _, hostsByClient := range hostsByClient {
 				foundHosts := hostsByClient.Hosts
 				clientOptions := hostsByClient.Options
@@ -317,6 +326,12 @@ func TestFindStartingHostsByClient(t *testing.T) {
 					require.Len(t, foundHosts, 2)
 					compareHosts(t, hosts[2], foundHosts[0])
 					compareHosts(t, hosts[3], foundHosts[1])
+				case ClientOptions{
+					Provider: evergreen.ProviderNameEc2Fleet,
+					Account:  "account",
+				}:
+					require.Len(t, foundHosts, 1)
+					compareHosts(t, hosts[4], foundHosts[0])
 				default:
 					assert.Fail(t, "unrecognized client options")
 				}
