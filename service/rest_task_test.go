@@ -61,7 +61,7 @@ func insertTaskForTesting(ctx context.Context, env evergreen.Environment, taskId
 
 	if len(testResults) > 0 {
 		task.ResultsService = testresult.TestResultsServiceLocal
-		if err := testresult.InsertLocal(ctx, env, testResults...); err != nil {
+		if err := testresult.InsertLocal(ctx, testResults...); err != nil {
 			return nil, err
 		}
 	}
@@ -300,7 +300,7 @@ func TestGetTaskStatus(t *testing.T) {
 			TestEndTime:   time.Now().Add(-1 * time.Minute),
 		}
 		require.NoError(t, testTask.Insert())
-		require.NoError(t, testresult.InsertLocal(ctx, env, testResult))
+		require.NoError(t, testresult.InsertLocal(ctx, testResult))
 
 		url := "/rest/v1/tasks/" + taskId + "/status"
 
