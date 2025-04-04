@@ -3,6 +3,8 @@ DEVPROD-NNNNN
 ### Description
 add description, context, thought process, etc
 
+<!-- Are you adding a Task, Build, Version, or Patch struct? Create a DPIPE ticket to expose this in data warehouse. -->
+
 ### Testing
 add a description of how you tested it
 
