@@ -462,7 +462,7 @@ func (m *mockManager) Cleanup(context.Context) error {
 func getMockManagerOptions(d distro.Distro) (ManagerOpts, error) {
 	opts := ManagerOpts{
 		Provider: d.Provider,
-		Account:  d.ProviderAccountID,
+		Account:  d.ProviderAccount,
 	}
 	if len(d.ProviderSettingsList) == 0 {
 		return opts, nil

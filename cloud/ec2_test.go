@@ -1391,12 +1391,12 @@ func (s *EC2Suite) TestGetEC2ManagerOptions() {
 			birch.EC.String("aws_access_key_id", "key"),
 			birch.EC.String("aws_secret_access_key", "secret"),
 		)},
-		ProviderAccountID: "account",
+		ProviderAccount: "account",
 	}
 
 	managerOpts, err := GetManagerOptions(d1)
 	s.NoError(err)
-	s.Equal(d1.ProviderAccountID, managerOpts.Account)
+	s.Equal(d1.ProviderAccount, managerOpts.Account)
 	s.Equal(evergreen.DefaultEC2Region, managerOpts.Region)
 }
 

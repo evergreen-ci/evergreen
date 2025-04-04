@@ -639,7 +639,7 @@ func getEC2ManagerOptionsFromSettings(d distro.Distro, settings *EC2ProviderSett
 	}
 	return ManagerOpts{
 		Provider: d.Provider,
-		Account:  d.ProviderAccountID,
+		Account:  d.ProviderAccount,
 		Region:   region,
 	}
 }

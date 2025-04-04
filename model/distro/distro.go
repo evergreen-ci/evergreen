@@ -31,8 +31,8 @@ type Distro struct {
 	WorkDir              string            `bson:"work_dir" json:"work_dir,omitempty" mapstructure:"work_dir,omitempty"`
 	Provider             string            `bson:"provider" json:"provider,omitempty" mapstructure:"provider,omitempty"`
 	ProviderSettingsList []*birch.Document `bson:"provider_settings,omitempty" json:"provider_settings,omitempty" mapstructure:"provider_settings,omitempty"`
-	// ProviderAccountID is the identifier for the provider's account.
-	ProviderAccountID     string                `bson:"provider_account_id,omitempty" json:"provider_account_id,omitempty" mapstructure:"provider_account_id,omitempty"`
+	// ProviderAccount is the identifier for the provider's account.
+	ProviderAccount       string                `bson:"provider_account,omitempty" json:"provider_account,omitempty" mapstructure:"provider_account,omitempty"`
 	SetupAsSudo           bool                  `bson:"setup_as_sudo,omitempty" json:"setup_as_sudo,omitempty" mapstructure:"setup_as_sudo,omitempty"`
 	Setup                 string                `bson:"setup,omitempty" json:"setup,omitempty" mapstructure:"setup,omitempty"`
 	User                  string                `bson:"user,omitempty" json:"user,omitempty" mapstructure:"user,omitempty"`
