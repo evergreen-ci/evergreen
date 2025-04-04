@@ -65,7 +65,7 @@ type AssumeRoleCredentials struct {
 }
 
 // assumeRoleCache holds AWSCredentials for assumed roles.
-var assumeRoleCache = ttlcache.WithOtel(ttlcache.NewTTLInMemory[AssumeRoleCredentials](), "aws-assume-role")
+var assumeRoleCache = ttlcache.WithOtel(ttlcache.NewInMemory[AssumeRoleCredentials](), "aws-assume-role")
 
 // minAssumeRoleCacheLifetime is the minimum lifetime of an assumed role
 // when retrieved from the cache. This can be used in situations where it's

@@ -245,7 +245,7 @@ func getInstallationIDFromGitHub(ctx context.Context, authFields *GithubAppAuth,
 
 // ghInstallationTokenCache is the in-memory instance of the cache for GitHub
 // installation tokens.
-var ghInstallationTokenCache = ttlcache.WithOtel(ttlcache.NewTTLInMemory[string](), "github-app-installation-token")
+var ghInstallationTokenCache = ttlcache.WithOtel(ttlcache.NewInMemory[string](), "github-app-installation-token")
 
 // MaxInstallationTokenLifetime is the maximum amount of time that an
 // installation token can be used before it expires.
