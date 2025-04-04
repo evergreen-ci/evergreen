@@ -160,6 +160,10 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.Equal(testSettings.Providers.AWS.ParserProject.GeneratedJSONPrefix, settingsFromConnector.Providers.AWS.ParserProject.GeneratedJSONPrefix)
 	s.Equal(testSettings.Providers.AWS.PersistentDNS.HostedZoneID, settingsFromConnector.Providers.AWS.PersistentDNS.HostedZoneID)
 	s.Equal(testSettings.Providers.AWS.PersistentDNS.Domain, settingsFromConnector.Providers.AWS.PersistentDNS.Domain)
+	s.Require().Len(testSettings.Providers.AWS.AccountRoles, len(settingsFromConnector.Providers.AWS.AccountRoles))
+	for i := range testSettings.Providers.AWS.AccountRoles {
+		s.Equal(testSettings.Providers.AWS.AccountRoles[i], settingsFromConnector.Providers.AWS.AccountRoles[i])
+	}
 	s.EqualValues(testSettings.Providers.Docker.APIVersion, settingsFromConnector.Providers.Docker.APIVersion)
 	s.EqualValues(testSettings.RepoTracker.MaxConcurrentRequests, settingsFromConnector.RepoTracker.MaxConcurrentRequests)
 	s.EqualValues(testSettings.Scheduler.TaskFinder, settingsFromConnector.Scheduler.TaskFinder)
