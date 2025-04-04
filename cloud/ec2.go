@@ -80,23 +80,6 @@ type EC2ProviderSettings struct {
 
 	// FleetOptions specifies options for creating host with Fleet. It is ignored by other managers.
 	FleetOptions FleetConfig `mapstructure:"fleet_options" json:"fleet_options,omitempty" bson:"fleet_options,omitempty"`
-
-	// AssumeRoleARN is the role to assume when making AWS API calls.
-	// kim: TODO: consider long-term implications of storing role ARNs, which
-	// could be modified in the future, as opposed to storing account IDs.
-	// - Role ARNs are very straightforward since it tells you what role to use
-	// to make an API call today. However, if they're changed later on, it's
-	// extremely difficult to fix existing hosts/volumes to use the new ARN.
-	// - Account IDs are immutable and can be mapped in admin settings to their
-	// exact role ARNs to assume, which allows us to change the role ARNs later
-	// on associated with each account. However, they're less straightforward to
-	// use since you can't pass in the string directly (need to map distro to
-	// admin setings, and not all places may pass the admin settings in).
-	// **Slightly prefer this one because it avoids storing a role ARN in the
-	// host/volume doc.**
-	// kim: TODO: consider moving this to general distro settings because it
-	// applies to the entire distro, it's not region-specific.
-	// AssumeRoleARN string `mapstructure:"assume_role_arn,omitempty" json:"assume_role_arn,omitempty" bson:"assume_role_arn,omitempty"`
 }
 
 // Validate that essential EC2ProviderSettings fields are not empty.
@@ -270,7 +253,6 @@ func (m *ec2Manager) Configure(ctx context.Context, settings *evergreen.Settings
 		m.region = evergreen.DefaultEC2Region
 	}
 
-	// kim: TODO: test that mapping works.
 	role, err := getRoleForAccount(settings, m.account)
 	if err != nil {
 		return errors.Wrap(err, "getting role for account")

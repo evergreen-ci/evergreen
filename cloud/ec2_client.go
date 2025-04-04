@@ -160,16 +160,15 @@ func (c *awsClientImpl) Create(ctx context.Context, role, region string) error {
 	if region == "" {
 		return errors.New("region must not be empty")
 	}
-	// kim: TODO: use role for credentials provider
-	// kim: TODO: use role ARN as part of unique ID for caching.
 
 	configID := getConfigCacheID(role, region)
 	if configCache[configID] == nil {
+		// kim: TODO: confirm that it's okay to cache the credential provider as
+		// well. Theretically, it should renew the credentials when they expire.
 		opts := []func(*config.LoadOptions) error{config.WithRegion(region)}
 		if role != "" {
-			// kim: TODO: figure out STS credentials options:
-			// - No explicit credentials needed to assume the role?
-			// - Is it always assuming a role in the current account in us-east-1?
+			// kim: TODO: confirm that this doesn't require any explicit
+			// configuration to assume the role.
 			stsConfig, err := config.LoadDefaultConfig(ctx)
 			if err != nil {
 				return errors.Wrapf(err, "loading config for assuming role '%s'", role)
