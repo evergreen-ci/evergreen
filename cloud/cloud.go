@@ -110,12 +110,11 @@ type BatchManager interface {
 // of the proper type.
 type ManagerOpts struct {
 	Provider string
+	// Account is the account where API calls are being made.
+	Account string
 	// Region is the geographical region where the cloud operations should
 	// occur.
 	Region string
-	// kim: TODO: make sure this is set where needed.
-	// Account is account where API calls are being made.
-	Account string
 }
 
 // GetSettings returns an uninitialized ProviderSettings based on the given
@@ -141,27 +140,21 @@ func GetManager(ctx context.Context, env evergreen.Environment, mgrOpts ManagerO
 
 	switch mgrOpts.Provider {
 	case evergreen.ProviderNameEc2OnDemand:
-		// kim: TODO: use env.Settings() account role mappings to deduce role to
-		// use.
 		provider = &ec2Manager{
 			env: env,
 			EC2ManagerOptions: &EC2ManagerOptions{
-				client: &awsClientImpl{},
-				region: mgrOpts.Region,
-				// kim: TODO: make sure callers set Account if set by
-				// distro.
-				role: mgrOpts.Account,
+				client:  &awsClientImpl{},
+				account: mgrOpts.Account,
+				region:  mgrOpts.Region,
 			},
 		}
 	case evergreen.ProviderNameEc2Fleet:
 		provider = &ec2FleetManager{
 			env: env,
 			EC2FleetManagerOptions: &EC2FleetManagerOptions{
-				client: &awsClientImpl{},
-				region: mgrOpts.Region,
-				// kim: TODO: make sure callers set Account if set by
-				// distro.
-				role: mgrOpts.Account,
+				client:  &awsClientImpl{},
+				account: mgrOpts.Account,
+				region:  mgrOpts.Region,
 			},
 		}
 	case evergreen.ProviderNameStatic:
@@ -210,7 +203,7 @@ func GetManagerOptions(d distro.Distro) (ManagerOpts, error) {
 		return getEC2ManagerOptionsFromSettings(d, s), nil
 	}
 	if d.Provider == evergreen.ProviderNameMock {
-		return getMockManagerOptions(d.Provider, d.ProviderSettingsList)
+		return getMockManagerOptions(d)
 	}
 	return ManagerOpts{Provider: d.Provider}, nil
 }

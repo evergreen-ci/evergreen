@@ -247,10 +247,10 @@ var (
 type EC2ManagerOptions struct {
 	// client is the client library for communicating with AWS.
 	client AWSClient
-
 	// region is the AWS region specified by the distro.
 	region string
-
+	// account is the AWS account in which API calls are being made.
+	account string
 	// role is the role to assume when making AWS API calls for a distro.
 	role string
 }
@@ -270,7 +270,28 @@ func (m *ec2Manager) Configure(ctx context.Context, settings *evergreen.Settings
 		m.region = evergreen.DefaultEC2Region
 	}
 
+	// kim: TODO: test that mapping works.
+	role, err := getRoleForAccount(settings, m.account)
+	if err != nil {
+		return errors.Wrap(err, "getting role for account")
+	}
+	m.role = role
+
 	return nil
+}
+
+func getRoleForAccount(settings *evergreen.Settings, account string) (string, error) {
+	if account == "" {
+		return "", nil
+	}
+
+	for _, m := range settings.Providers.AWS.AccountRoles {
+		if m.Account == account {
+			return m.Role, nil
+		}
+	}
+
+	return "", errors.Errorf("account '%s' has no associated role", account)
 }
 
 func (m *ec2Manager) setupClient(ctx context.Context) error {

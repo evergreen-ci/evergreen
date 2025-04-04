@@ -1289,6 +1289,7 @@ func findVolumes(ctx context.Context, q bson.M) ([]Volume, error) {
 
 type ClientOptions struct {
 	Provider string `bson:"provider"`
+	Account  string `bson:"account"`
 	Region   string `bson:"region"`
 }
 
@@ -1402,9 +1403,11 @@ func hostsByClientPipeline(pipeline []bson.M, limit int) []bson.M {
 			"$group": bson.M{
 				"_id": bson.M{
 					"provider": bsonutil.GetDottedKeyName("$host", DistroKey, distro.ProviderKey),
-					"region":   bsonutil.GetDottedKeyName("$settings_list", awsRegionKey),
-					"key":      bsonutil.GetDottedKeyName("$settings_list", awsKeyKey),
-					"secret":   bsonutil.GetDottedKeyName("$settings_list", awsSecretKey),
+					// kim: TODO: test that this works as expected.
+					"account": bsonutil.GetDottedKeyName("$host", DistroKey, distro.ProviderAccountKey),
+					"region":  bsonutil.GetDottedKeyName("$settings_list", awsRegionKey),
+					"key":     bsonutil.GetDottedKeyName("$settings_list", awsKeyKey),
+					"secret":  bsonutil.GetDottedKeyName("$settings_list", awsSecretKey),
 				},
 				"hosts": bson.M{"$push": "$host"},
 			},

@@ -78,9 +78,10 @@ func (c instanceTypeSubnetCache) getAZs(ctx context.Context, settings *evergreen
 }
 
 type EC2FleetManagerOptions struct {
-	client AWSClient
-	region string
-	role   string
+	client  AWSClient
+	region  string
+	account string
+	role    string
 }
 
 type ec2FleetManager struct {

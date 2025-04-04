@@ -42,11 +42,6 @@ func GetEC2ManagerForVolume(ctx context.Context, vol *host.Volume) (Manager, err
 	mgrOpts := ManagerOpts{
 		Provider: provider,
 		Region:   AztoRegion(vol.AvailabilityZone),
-		// kim: NOTE: doesn't have role to assume, but that's potentially okay.
-		// May need to propagate it down from the associated host's distro, or
-		// otherwise store that in the volume document. That's future proofing
-		// though, realistically I don't think volume management will need to
-		// use a separate account for now.
 	}
 	env := evergreen.GetEnvironment()
 	mgr, err := GetManager(ctx, env, mgrOpts)
