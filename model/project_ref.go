@@ -1570,6 +1570,10 @@ func FindAllMergedProjectRefs(ctx context.Context) ([]ProjectRef, error) {
 	return findProjectRefsQ(ctx, bson.M{}, true)
 }
 
+func FindAllProjectRefs(ctx context.Context) ([]ProjectRef, error) {
+	return findProjectRefsQ(ctx, bson.M{}, false)
+}
+
 func FindMergedProjectRefsByIds(ctx context.Context, ids ...string) ([]ProjectRef, error) {
 	if len(ids) == 0 {
 		return nil, nil
