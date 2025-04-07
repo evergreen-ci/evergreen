@@ -579,6 +579,22 @@ func (r *taskResolver) TaskLogs(ctx context.Context, obj *restModel.APITask) (*T
 
 // Tests is the resolver for the tests field.
 func (r *taskResolver) Tests(ctx context.Context, obj *restModel.APITask, opts *TestFilterOptions) (*TaskTestResult, error) {
+	queryingFailingTestsOnly := true
+	if opts != nil && len(opts.Statuses) <= len(evergreen.TestFailureStatuses) {
+		for _, status := range opts.Statuses {
+			if !evergreen.IsFailedTestStatus(status) {
+				queryingFailingTestsOnly = false
+				break
+			}
+		}
+	}
+	if queryingFailingTestsOnly && !obj.ResultsFailed {
+		return &TaskTestResult{
+			TestResults:       []*restModel.APITest{},
+			TotalTestCount:    0,
+			FilteredTestCount: 0,
+		}, nil
+	}
 	taskID := utility.FromStringPtr(obj.Id)
 	dbTask, err := task.FindOneIdAndExecution(ctx, taskID, obj.Execution)
 	if err != nil {
