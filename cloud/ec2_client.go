@@ -15,6 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	ststypes "github.com/aws/aws-sdk-go-v2/service/sts/types"
 	"github.com/aws/smithy-go"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -167,9 +168,8 @@ func (c *awsClientImpl) Create(ctx context.Context, role, region string) error {
 		// well. Theretically, it should renew the credentials when they expire.
 		opts := []func(*config.LoadOptions) error{config.WithRegion(region)}
 		if role != "" {
-			// kim: TODO: confirm that this doesn't require any explicit
-			// configuration to assume the role.
-			stsConfig, err := config.LoadDefaultConfig(ctx)
+			// Assuming a role to make API calls requires an explicit region.
+			stsConfig, err := config.LoadDefaultConfig(ctx, config.WithRegion(evergreen.DefaultEC2Region))
 			if err != nil {
 				return errors.Wrapf(err, "loading config for assuming role '%s'", role)
 			}
