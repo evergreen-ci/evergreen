@@ -1248,6 +1248,10 @@ Admin Settings
 										<label>Email</label>
 										<input type="text" ng-model="Settings.jira.email">
 									</md-input-container>
+									<md-input-container class="control" style="width:45%; margin-left:50px;">
+										<label>Personal Access Token</label>
+										<input type="text" ng-model="Settings.jira.personal_access_token">
+									</md-input-container>
 									<md-card>
 										<md-card-title>
 											<md-card-title-text>
@@ -1789,6 +1793,52 @@ Admin Settings
 														<i class="fa fa-plus"></i>
 													</button>
 													<label class="control">[[ invalidSubnet ]]</label>
+												</div>
+											</section>
+										</md-card-content>
+									</md-card>
+									<md-card style="margin-bottom:20px;">
+										<md-card-title>
+											<md-card-title-text>
+												<span>Account Role Mappings</span>
+											</md-card-title-text>
+										</md-card-title>
+										<md-card-content>
+											<div id="account-role-mappings" class="form-group"
+												ng-repeat="(index, mapping) in Settings.providers.aws.account_roles">
+												<section layout="row" flex>
+													<md-input-container class="control" flex=30>
+														<input class="control" type="text" ng-model="mapping.account"
+															placeholder="Account">
+													</md-input-container>
+													<md-input-container class="control" flex=30>
+														<input class="control" type="text" ng-model="mapping.role"
+															placeholder="Role">
+													</md-input-container>
+													<div style="margin-top: 1%;">
+														<button class="btn btn-default btn-danger" type="button"
+															style="float: left" ng-click="deleteAccountRoleMapping(index)">
+															<i class="fa fa-trash"></i>
+														</button>
+													</div>
+												</section>
+											</div>
+											<section layout="row" flex>
+												<md-input-container class="control" flex=30>
+													<input class="control" type="text" ng-model="new_account_role_mapping.account"
+														placeholder="Account">
+												</md-input-container>
+												<md-input-container class="control" flex=30>
+													<input class="control" type="text" ng-model="new_account_role_mapping.role"
+														placeholder="Role">
+												</md-input-container>
+												<div style="margin-top: 1%;">
+													<button class="plus-button btn btn-primary"
+														ng-disabled="!validAccountRoleMapping(new_account_role_mapping)" type="button"
+														style="float: left" ng-click="addAccountRoleMapping()">
+														<i class="fa fa-plus"></i>
+													</button>
+													<label class="control">[[ invalidAccountRoleMapping ]]</label>
 												</div>
 											</section>
 										</md-card-content>

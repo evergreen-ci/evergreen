@@ -235,8 +235,8 @@ github.com/evergreen-ci/test-selection-client v0.0.0-20250331142509-2af2d0f91c8b
 github.com/evergreen-ci/timber v0.0.0-20250225175618-52d1e1841945 h1:brav0wdGU4QGOGlzLPjT5UdxzJBDwytmLC+FdF7EG7c=
 github.com/evergreen-ci/timber v0.0.0-20250225175618-52d1e1841945/go.mod h1:j76Uq4ABEq6Eulrq1otaNJGxWh/lo74IlfxWvAeOZb4=
 github.com/evergreen-ci/utility v0.0.0-20230104160902-3f0e05a638bd/go.mod h1:vkCEVgfCMIDajzbG/PHZURszI2Y1SuFqNWX9EUxmLLI=
-github.com/evergreen-ci/utility v0.0.0-20250317160201-a1e224d4bba9 h1:BorPIkUXW8r5yYw2LQgK51c4FHhes3APSZvFwLahcrs=
-github.com/evergreen-ci/utility v0.0.0-20250317160201-a1e224d4bba9/go.mod h1:AGAekBl7zMjMvHB6yqkVkE81JuHBxBPaPozF49DsU70=
+github.com/evergreen-ci/utility v0.0.0-20250404164817-04ef334e215a h1:k7FLEvTQf9RfrdbVIdtjnArl7E3f3KdsCI+xUAzjc44=
+github.com/evergreen-ci/utility v0.0.0-20250404164817-04ef334e215a/go.mod h1:AGAekBl7zMjMvHB6yqkVkE81JuHBxBPaPozF49DsU70=
 github.com/fatih/structs v1.1.0 h1:Q7juDM0QtcnhCpeyLGQKyg4TOIghuNXrkL32pHAUMxo=
 github.com/fatih/structs v1.1.0/go.mod h1:9NiDSp5zOcgEDl+j00MP/WkGVPOlPRLejGD8Ga6PJ7M=
 github.com/felixge/httpsnoop v1.0.4 h1:NFTV2Zj1bL4mc9sqWACXbQFVBBg2W3GPvqp8/ESS2Wg=
@@ -279,8 +279,8 @@ github.com/golang-jwt/jwt v3.2.1+incompatible/go.mod h1:8pz2t5EyA70fFQQSrl6XZXzq
 github.com/golang-jwt/jwt v3.2.2+incompatible h1:IfV12K8xAKAnZqdXVzCZ+TOjboZ2keLg81eXfW3O+oY=
 github.com/golang-jwt/jwt v3.2.2+incompatible/go.mod h1:8pz2t5EyA70fFQQSrl6XZXzqecmYZeUEB8OUGHkxJ+I=
 github.com/golang-jwt/jwt/v4 v4.4.2/go.mod h1:m21LjoU+eqJr34lmDMbreY2eSTRJ1cv77w39/MY0Ch0=
-github.com/golang-jwt/jwt/v4 v4.5.0 h1:7cYmW1XlMY7h7ii7UhUyChSgS5wUJEnm9uZVTGqOWzg=
-github.com/golang-jwt/jwt/v4 v4.5.0/go.mod h1:m21LjoU+eqJr34lmDMbreY2eSTRJ1cv77w39/MY0Ch0=
+github.com/golang-jwt/jwt/v4 v4.5.2 h1:YtQM7lnr8iZ+j5q71MGKkNw9Mn7AjHM68uc9g5fXeUI=
+github.com/golang-jwt/jwt/v4 v4.5.2/go.mod h1:m21LjoU+eqJr34lmDMbreY2eSTRJ1cv77w39/MY0Ch0=
 github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b/go.mod h1:SBH7ygxi8pfUlaOkMMuAQtPIUF8ecWP5IEl/CR7VP2Q=
 github.com/golang/groupcache v0.0.0-20190702054246-869f871628b6/go.mod h1:cIg4eruTrX1D+g88fzRXU5OdNfaM+9IcxsU14FzY7Hc=
 github.com/golang/groupcache v0.0.0-20191227052852-215e87163ea7/go.mod h1:cIg4eruTrX1D+g88fzRXU5OdNfaM+9IcxsU14FzY7Hc=
@@ -454,8 +454,8 @@ github.com/mongodb/ftdc v0.0.0-20220401165013-13e4af55e809 h1:CQVEigRr2M/OFIPn+w
 github.com/mongodb/ftdc v0.0.0-20220401165013-13e4af55e809/go.mod h1:zz0HHFUU4/TOxl9TW4P9t3y3Ivx+sTWS2nwnhuYYRdw=
 github.com/mongodb/grip v0.0.0-20211018154934-e661a71929d5/go.mod h1:g0r93iHSTLD50bDT7vNj+z+Y3nKz9o/tQXtB9esq2tk=
 github.com/mongodb/grip v0.0.0-20220401165023-6a1d9bb90c21/go.mod h1:QfF6CwbaTQx1Kgww77c6ROPBFN+JCiU2qBnk2SjKHyU=
-github.com/mongodb/grip v0.0.0-20250224221724-fc8adcb1fe8e h1:Uhz92ZN9SrFHxkCLOce+QPZEdgnXPojABh+/wo2lDBE=
-github.com/mongodb/grip v0.0.0-20250224221724-fc8adcb1fe8e/go.mod h1:EC0VantnUpbAGa9zia6/i+X1kjnqAIHKi9JWcjJGlYc=
+github.com/mongodb/grip v0.0.0-20250402143321-b38487c98aeb h1:LBhjDsSYCRGuZiXg8JvGP7klHtsY/SE6KGOA3kgzvJI=
+github.com/mongodb/grip v0.0.0-20250402143321-b38487c98aeb/go.mod h1:y3Icl6CvpvcfvRBVfzYQlpuplQ5KDHOlS/vq5rpaf8s=
 github.com/mongodb/jasper v0.0.0-20250304205544-71af207b4383 h1:bSik9Vq7CmNuDo7ajEIDFiprrOyyzK4LyoV2+QFzY4E=
 github.com/mongodb/jasper v0.0.0-20250304205544-71af207b4383/go.mod h1:5XXow1Gps0T9x31n412o7X79JVkG8dC39fG4iVJ3MY8=
 github.com/montanaflynn/stats v0.0.0-20171201202039-1bf9dbcd8cbe/go.mod h1:wL8QJuTMNUDYhXwkmfOly8iTdp5TEcJFWZD2D7SIkUc=

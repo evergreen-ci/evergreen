@@ -140,6 +140,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.PodLifecycle.MaxPodDefinitionCleanupRate, settingsFromConnector.PodLifecycle.MaxPodDefinitionCleanupRate)
 	s.EqualValues(testSettings.PodLifecycle.MaxSecretCleanupRate, settingsFromConnector.PodLifecycle.MaxSecretCleanupRate)
 	s.EqualValues(testSettings.Jira.BasicAuthConfig.Username, settingsFromConnector.Jira.BasicAuthConfig.Username)
+	s.EqualValues(testSettings.Jira.PersonalAccessToken, settingsFromConnector.Jira.PersonalAccessToken)
 
 	s.Equal(level.Info.String(), settingsFromConnector.LoggerConfig.DefaultLevel)
 
@@ -159,6 +160,10 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.Equal(testSettings.Providers.AWS.ParserProject.GeneratedJSONPrefix, settingsFromConnector.Providers.AWS.ParserProject.GeneratedJSONPrefix)
 	s.Equal(testSettings.Providers.AWS.PersistentDNS.HostedZoneID, settingsFromConnector.Providers.AWS.PersistentDNS.HostedZoneID)
 	s.Equal(testSettings.Providers.AWS.PersistentDNS.Domain, settingsFromConnector.Providers.AWS.PersistentDNS.Domain)
+	s.Require().Len(testSettings.Providers.AWS.AccountRoles, len(settingsFromConnector.Providers.AWS.AccountRoles))
+	for i := range testSettings.Providers.AWS.AccountRoles {
+		s.Equal(testSettings.Providers.AWS.AccountRoles[i], settingsFromConnector.Providers.AWS.AccountRoles[i])
+	}
 	s.EqualValues(testSettings.Providers.Docker.APIVersion, settingsFromConnector.Providers.Docker.APIVersion)
 	s.EqualValues(testSettings.RepoTracker.MaxConcurrentRequests, settingsFromConnector.RepoTracker.MaxConcurrentRequests)
 	s.EqualValues(testSettings.Scheduler.TaskFinder, settingsFromConnector.Scheduler.TaskFinder)
@@ -274,6 +279,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.Equal(testSettings.AuthConfig.Multi.ReadWrite[0], settingsFromConnector.AuthConfig.Multi.ReadWrite[0])
 	s.EqualValues(testSettings.AuthConfig.Kanopy.Issuer, settingsFromConnector.AuthConfig.Kanopy.Issuer)
 	s.EqualValues(testSettings.Jira.BasicAuthConfig.Username, settingsFromConnector.Jira.BasicAuthConfig.Username)
+	s.EqualValues(testSettings.Jira.PersonalAccessToken, settingsFromConnector.Jira.PersonalAccessToken)
 	s.Equal(testSettings.Buckets.Credentials.Key, settingsFromConnector.Buckets.Credentials.Key)
 	s.Equal(testSettings.Buckets.Credentials.Secret, settingsFromConnector.Buckets.Credentials.Secret)
 
