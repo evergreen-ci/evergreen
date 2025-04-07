@@ -23,11 +23,11 @@ require (
 	github.com/evergreen-ci/cocoa v0.0.0-20250225172339-717c91acad92
 	github.com/evergreen-ci/gimlet v0.0.0-20250313150823-622a429ac456
 	github.com/evergreen-ci/juniper v0.0.0-20230901183147-c805ea7351aa
-	github.com/evergreen-ci/pail v0.0.0-20250313154453-319668d02e83
+	github.com/evergreen-ci/pail v0.0.0-20250326174825-f0b9ab79c57c
 	github.com/evergreen-ci/poplar v0.0.0-20250313160224-22f0e4e98238
 	github.com/evergreen-ci/shrub v0.0.0-20250224222152-c8b72a51163b
 	github.com/evergreen-ci/timber v0.0.0-20250225175618-52d1e1841945
-	github.com/evergreen-ci/utility v0.0.0-20250317160201-a1e224d4bba9
+	github.com/evergreen-ci/utility v0.0.0-20250404164817-04ef334e215a
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/gonzojive/httpcache v0.0.0-20220509000156-e80a5e6a69fe
 	github.com/google/go-github/v52 v52.0.0 // indirect
@@ -42,7 +42,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/mongodb/amboy v0.0.0-20250313150805-ef0cd9968322
 	github.com/mongodb/anser v0.0.0-20250324144457-fcc2c57eee09
-	github.com/mongodb/grip v0.0.0-20250224221724-fc8adcb1fe8e
+	github.com/mongodb/grip v0.0.0-20250402143321-b38487c98aeb
 	github.com/pkg/errors v0.9.1
 	github.com/ravilushqa/otelgqlgen v0.15.0
 	github.com/robbiet480/go.sns v0.0.0-20210223081447-c7c9eb6836cb
@@ -82,7 +82,7 @@ require (
 	github.com/VividCortex/ewma v1.2.0 // indirect
 	github.com/agnivade/levenshtein v1.2.0 // indirect
 	github.com/andybalholm/brotli v1.0.3 // indirect
-	github.com/andygrunwald/go-jira v1.16.0 // indirect
+	github.com/andygrunwald/go-jira v1.16.0
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.16.29 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.3.33 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.6.33 // indirect
@@ -195,7 +195,7 @@ require (
 	github.com/evergreen-ci/evg-lint v0.0.0-20211115144425-3b19c8e83a57
 	github.com/evergreen-ci/plank v0.0.0-20230207190607-5f47f8a30da1
 	github.com/evergreen-ci/tarjan v0.0.0-20170824211642-fcd3f3321826
-	github.com/evergreen-ci/test-selection-client v0.0.0-20250211161638-10b5478f11ff
+	github.com/evergreen-ci/test-selection-client v0.0.0-20250331142509-2af2d0f91c8b
 	github.com/google/go-github/v70 v70.0.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/mongodb/jasper v0.0.0-20250304205544-71af207b4383
@@ -220,7 +220,7 @@ require (
 	github.com/docker/distribution v2.8.2+incompatible // indirect
 	github.com/go-test/deep v1.1.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.2.1 // indirect
-	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
+	github.com/golang-jwt/jwt/v4 v4.5.2 // indirect
 	github.com/google/go-github/v29 v29.0.2 // indirect
 	github.com/moby/term v0.5.0 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect

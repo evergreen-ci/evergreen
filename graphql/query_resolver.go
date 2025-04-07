@@ -1130,6 +1130,86 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 	return results, nil
 }
 
+// TaskHistory is the resolver for the taskHistory field.
+func (r *queryResolver) TaskHistory(ctx context.Context, options TaskHistoryOpts) (*TaskHistory, error) {
+	// CursorParams orient the query around a specific task (e.g. fetch 50 tasks before task A). Without CursorParams,
+	// we don't have enough information about what tasks to fetch.
+	if options.CursorParams == nil {
+		return nil, InputValidationError.Send(ctx, "must specify cursor params")
+	}
+
+	projectId, err := model.GetIdForProject(ctx, options.ProjectIdentifier)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", options.ProjectIdentifier, err.Error()))
+	}
+
+	taskID := options.CursorParams.CursorID
+	includeCursor := options.CursorParams.IncludeCursor
+
+	foundTask, err := task.FindOneId(ctx, taskID)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching task '%s': %s", taskID, err.Error()))
+	}
+	if foundTask == nil {
+		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("task '%s' not found", taskID))
+	}
+	taskOrder := foundTask.RevisionOrderNumber
+
+	opts := model.FindTaskHistoryOptions{
+		TaskName:     options.TaskName,
+		BuildVariant: options.BuildVariant,
+		ProjectId:    projectId,
+		Limit:        options.Limit,
+	}
+
+	if options.CursorParams.Direction == TaskHistoryDirectionBefore {
+		if includeCursor {
+			opts.UpperBound = utility.ToIntPtr(taskOrder)
+		} else {
+			opts.UpperBound = utility.ToIntPtr(taskOrder - 1)
+		}
+	}
+	if options.CursorParams.Direction == TaskHistoryDirectionAfter {
+		if includeCursor {
+			opts.LowerBound = utility.ToIntPtr(taskOrder)
+		} else {
+			opts.LowerBound = utility.ToIntPtr(taskOrder + 1)
+		}
+	}
+
+	tasks, err := model.FindTasksForHistory(ctx, opts)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting history for task '%s' in project '%s' and build variant '%s': %s", options.TaskName, options.ProjectIdentifier, options.BuildVariant, err.Error()))
+	}
+
+	apiTasks := []*restModel.APITask{}
+	for _, t := range tasks {
+		apiTask := &restModel.APITask{}
+		if err = apiTask.BuildFromService(ctx, &t, nil); err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' to APITask: %s", t.Id, err.Error()))
+		}
+		apiTasks = append(apiTasks, apiTask)
+	}
+
+	latestTask, err := model.GetLatestMainlineTask(ctx, opts)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching latest task for '%s' in project '%s' and build variant '%s': %s", options.TaskName, options.ProjectIdentifier, options.BuildVariant, err.Error()))
+	}
+
+	oldestTask, err := model.GetOldestMainlineTask(ctx, opts)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching oldest task for '%s' in project '%s' and build variant '%s': %s", options.TaskName, options.ProjectIdentifier, options.BuildVariant, err.Error()))
+	}
+
+	return &TaskHistory{
+		Tasks: apiTasks,
+		Pagination: &TaskHistoryPagination{
+			MostRecentTaskOrder: latestTask.RevisionOrderNumber,
+			OldestTaskOrder:     oldestTask.RevisionOrderNumber,
+		},
+	}, nil
+}
+
 // HasVersion is the resolver for the hasVersion field.
 func (r *queryResolver) HasVersion(ctx context.Context, patchID string) (bool, error) {
 	v, err := model.VersionFindOne(ctx, model.VersionById(patchID))

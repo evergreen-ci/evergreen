@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
-	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -86,9 +85,6 @@ type gitFetchProject struct {
 
 	RecurseSubmodules bool `mapstructure:"recurse_submodules"`
 
-	UseScalar          bool `mapstructure:"use_scalar"`
-	UseScalarFullClone bool `mapstructure:"use_scalar_full_clone"`
-
 	CommitterName string `mapstructure:"committer_name"`
 
 	CommitterEmail string `mapstructure:"committer_email"`
@@ -97,18 +93,16 @@ type gitFetchProject struct {
 }
 
 type cloneOpts struct {
-	method             string
-	location           string
-	owner              string
-	repo               string
-	branch             string
-	dir                string
-	token              string
-	recurseSubmodules  bool
-	useVerbose         bool
-	useScalar          bool
-	useScalarFullClone bool
-	cloneDepth         int
+	method            string
+	location          string
+	owner             string
+	repo              string
+	branch            string
+	dir               string
+	token             string
+	recurseSubmodules bool
+	useVerbose        bool
+	cloneDepth        int
 }
 
 // validateCloneMethod checks that the clone mechanism is one of the supported
@@ -122,12 +116,6 @@ func validateCloneMethod(method string) error {
 
 func (opts cloneOpts) validate() error {
 	catcher := grip.NewBasicCatcher()
-	// git scalar does not have a --depth option or a --recurse-submodules option. We should therefore not
-	// let users combine scalar with recurse_submodules,clone_depth or shallow_clone (which uses depth).
-	// See https://git-scm.com/docs/scalar for more information.
-	usesScalar := opts.useScalar || opts.useScalarFullClone
-	catcher.NewWhen(usesScalar && opts.cloneDepth > 0, "cannot use scalar with clone depth")
-	catcher.NewWhen(usesScalar && opts.recurseSubmodules, "cannot use scalar with recurse submodules")
 	catcher.NewWhen(opts.owner == "", "missing required owner")
 	catcher.NewWhen(opts.repo == "", "missing required repo")
 	catcher.NewWhen(opts.location == "", "missing required location")
@@ -191,20 +179,20 @@ func parseToken(token string) (string, error) {
 	return splitToken[1], nil
 }
 
-func (opts cloneOpts) getCloneCommand(logger client.LoggerProducer) ([]string, error) {
+func (opts cloneOpts) getCloneCommand() ([]string, error) {
 	if err := opts.validate(); err != nil {
 		return nil, errors.Wrap(err, "invalid clone command options")
 	}
 	switch opts.method {
 	case cloneMethodOAuth:
-		return opts.buildHTTPCloneCommand(logger, false)
+		return opts.buildHTTPCloneCommand(false)
 	case cloneMethodAccessToken:
-		return opts.buildHTTPCloneCommand(logger, true)
+		return opts.buildHTTPCloneCommand(true)
 	}
 	return nil, errors.New("unrecognized clone method in options")
 }
 
-func (opts cloneOpts) buildHTTPCloneCommand(logger client.LoggerProducer, forApp bool) ([]string, error) {
+func (opts cloneOpts) buildHTTPCloneCommand(forApp bool) ([]string, error) {
 	urlLocation, err := url.Parse(opts.location)
 	if err != nil {
 		return nil, errors.Wrap(err, "parsing URL from location")
@@ -216,24 +204,7 @@ func (opts cloneOpts) buildHTTPCloneCommand(logger client.LoggerProducer, forApp
 		gitURL = thirdparty.FormGitURL(urlLocation.Host, opts.owner, opts.repo, opts.token)
 	}
 
-	gitCommand := "git clone"
-	// use --no-src so that it doesn't put the repository into a src directory because
-	// this can break user expectations and cause scripts to fail
-	if opts.useScalar || opts.useScalarFullClone {
-		scalarAvailable, err := agentutil.IsGitVersionMinimumForScalar(thirdparty.RequiredScalarGitVersion)
-		scalarBaseCommand := "scalar clone --no-src"
-		if err != nil {
-			logger.Task().Errorf("checking git version failed, falling back to git clone instead of scalar clone: %s.", err)
-		} else if !scalarAvailable {
-			logger.Task().Infof("cannot use scalar, git version is below '%s'", thirdparty.RequiredScalarGitVersion)
-		} else if opts.useScalarFullClone {
-			gitCommand = scalarBaseCommand + " --full-clone"
-		} else {
-			gitCommand = scalarBaseCommand
-		}
-	}
-
-	clone := fmt.Sprintf("%s %s '%s'", gitCommand, gitURL, opts.dir)
+	clone := fmt.Sprintf("git clone %s '%s'", gitURL, opts.dir)
 
 	if opts.recurseSubmodules {
 		clone = fmt.Sprintf("%s --recurse-submodules", clone)
@@ -297,25 +268,10 @@ func (c *gitFetchProject) ParseParams(params map[string]any) error {
 		return errors.New("directory must not be blank")
 	}
 
-	return c.validate()
+	return nil
 }
 
-func (c *gitFetchProject) validate() error {
-	catcher := grip.NewSimpleCatcher()
-	usesScalar := c.UseScalar || c.UseScalarFullClone
-	if usesScalar && c.CloneDepth > 0 {
-		catcher.New("use_scalar cannot be combined with clone_depth")
-	}
-	if usesScalar && c.RecurseSubmodules {
-		catcher.New("use_scalar cannot be combined with recurse_submodules")
-	}
-	if usesScalar && c.ShallowClone {
-		catcher.New("use_scalar cannot be combined with shallow_clone")
-	}
-	return catcher.Resolve()
-}
-
-func (c *gitFetchProject) buildSourceCloneCommand(logger client.LoggerProducer, conf *internal.TaskConfig, opts cloneOpts) ([]string, error) {
+func (c *gitFetchProject) buildSourceCloneCommand(conf *internal.TaskConfig, opts cloneOpts) ([]string, error) {
 	gitCommands := []string{
 		"set -o xtrace",
 		fmt.Sprintf("chmod -R 755 %s", c.Directory),
@@ -323,7 +279,7 @@ func (c *gitFetchProject) buildSourceCloneCommand(logger client.LoggerProducer, 
 		fmt.Sprintf("rm -rf %s", c.Directory),
 	}
 
-	cloneCmd, err := opts.getCloneCommand(logger)
+	cloneCmd, err := opts.getCloneCommand()
 	if err != nil {
 		return nil, errors.Wrap(err, "getting command to clone repo")
 	}
@@ -367,7 +323,7 @@ func (c *gitFetchProject) buildSourceCloneCommand(logger client.LoggerProducer, 
 	return gitCommands, nil
 }
 
-func (c *gitFetchProject) buildModuleCloneCommand(logger client.LoggerProducer, conf *internal.TaskConfig, opts cloneOpts, ref string, modulePatch *patch.ModulePatch) ([]string, error) {
+func (c *gitFetchProject) buildModuleCloneCommand(conf *internal.TaskConfig, opts cloneOpts, ref string, modulePatch *patch.ModulePatch) ([]string, error) {
 	gitCommands := []string{
 		"set -o xtrace",
 		"set -o errexit",
@@ -382,7 +338,7 @@ func (c *gitFetchProject) buildModuleCloneCommand(logger client.LoggerProducer, 
 		return nil, errors.New("empty ref/branch to check out")
 	}
 
-	cloneCmd, err := opts.getCloneCommand(logger)
+	cloneCmd, err := opts.getCloneCommand()
 	if err != nil {
 		return nil, errors.Wrap(err, "getting command to clone repo")
 	}
@@ -405,15 +361,13 @@ func (c *gitFetchProject) buildModuleCloneCommand(logger client.LoggerProducer, 
 func (c *gitFetchProject) opts(projectMethod, projectToken string, logger client.LoggerProducer, conf *internal.TaskConfig) (cloneOpts, error) {
 	shallowCloneEnabled := conf.Distro == nil || !conf.Distro.DisableShallowClone
 	opts := cloneOpts{
-		method:             projectMethod,
-		owner:              conf.ProjectRef.Owner,
-		repo:               conf.ProjectRef.Repo,
-		branch:             conf.ProjectRef.Branch,
-		dir:                c.Directory,
-		token:              projectToken,
-		recurseSubmodules:  c.RecurseSubmodules,
-		useScalar:          c.UseScalar,
-		useScalarFullClone: c.UseScalarFullClone,
+		method:            projectMethod,
+		owner:             conf.ProjectRef.Owner,
+		repo:              conf.ProjectRef.Repo,
+		branch:            conf.ProjectRef.Branch,
+		dir:               c.Directory,
+		token:             projectToken,
+		recurseSubmodules: c.RecurseSubmodules,
 	}
 	cloneDepth := c.CloneDepth
 	if cloneDepth == 0 && c.ShallowClone {
@@ -448,11 +402,6 @@ func (c *gitFetchProject) Execute(ctx context.Context, comm client.Communicator,
 
 	if err = util.ExpandValues(c, &conf.Expansions); err != nil {
 		return errors.Wrap(err, "applying expansions")
-	}
-
-	// re-validate command here, in case an expansion is not defined
-	if err := c.validate(); err != nil {
-		return errors.Wrap(err, "validating expanded parameters")
 	}
 
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
@@ -493,7 +442,7 @@ func (c *gitFetchProject) fetchSource(ctx context.Context,
 	attempt := 0
 	return c.retryFetch(ctx, logger, true, opts, func(opts cloneOpts) error {
 		attempt++
-		gitCommands, err := c.buildSourceCloneCommand(logger, conf, opts)
+		gitCommands, err := c.buildSourceCloneCommand(conf, opts)
 		if err != nil {
 			return err
 		}
@@ -683,7 +632,7 @@ func (c *gitFetchProject) fetchModuleSource(ctx context.Context,
 	}
 
 	var moduleCmds []string
-	moduleCmds, err = c.buildModuleCloneCommand(logger, conf, opts, revision, modulePatch)
+	moduleCmds, err = c.buildModuleCloneCommand(conf, opts, revision, modulePatch)
 	if err != nil {
 		return err
 	}

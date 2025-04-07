@@ -286,6 +286,33 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     $scope.invalidSubnet = "";
   }
 
+  $scope.addAccountRoleMapping = function () {
+    if ($scope.Settings.providers == null) {
+      $scope.Settings.providers = {
+        "aws": {
+          "account_roles": []
+        }
+      };
+    }
+    if ($scope.Settings.providers.aws == null) {
+      $scope.Settings.providers.aws = {
+        "account_roles": []
+      }
+    }
+    if ($scope.Settings.providers.aws.account_roles == null) {
+      $scope.Settings.providers.aws.account_roles = []
+    }
+
+    if (!$scope.validAccountRoleMapping($scope.new_account_role_mapping)) {
+      $scope.invalidAccountRoleMapping = "Account and role are required.";
+      return
+    }
+
+    $scope.Settings.providers.aws.account_roles.push($scope.new_account_role_mapping);
+    $scope.new_account_role_mapping = {};
+    $scope.invalidAccountRoleMapping = "";
+  }
+
   $scope.addProjectToPrefixMapping = function () {
     if ($scope.Settings.buckets == null) {
       $scope.Settings.buckets = {
@@ -352,6 +379,14 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
 
   $scope.validSubnet = function (subnet) {
     return subnet && subnet.az && subnet.subnet_id;
+  }
+
+  $scope.deleteAccountRoleMapping = function (index) {
+    $scope.Settings.providers.aws.account_roles.splice(index, 1);
+  }
+
+  $scope.validAccountRoleMapping = function (mapping) {
+    return mapping && mapping.account && mapping.role;
   }
 
   $scope.deleteProjectToPrefixMapping = function (index) {
