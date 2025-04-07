@@ -35,7 +35,7 @@ var noReservationError = errors.New("no reservation returned for instance")
 // AWSClient is a wrapper for aws-sdk-go so we can use a mock in testing.
 type AWSClient interface {
 	// Create a new aws-sdk-client or mock if one does not exist, otherwise no-op.
-	Create(ctx context.Context, region, role string) error
+	Create(ctx context.Context, role, region string) error
 
 	// RunInstances is a wrapper for ec2.RunInstances.
 	RunInstances(context.Context, *ec2.RunInstancesInput) (*ec2.RunInstancesOutput, error)
@@ -1045,7 +1045,7 @@ type awsClientMock struct { //nolint
 }
 
 // Create a new mock client.
-func (c *awsClientMock) Create(ctx context.Context, region, role string) error {
+func (c *awsClientMock) Create(ctx context.Context, role, region string) error {
 	return nil
 }
 
