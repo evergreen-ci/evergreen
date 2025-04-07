@@ -1403,12 +1403,10 @@ func hostsByClientPipeline(pipeline []bson.M, limit int) []bson.M {
 			"$group": bson.M{
 				"_id": bson.M{
 					"provider": bsonutil.GetDottedKeyName("$host", DistroKey, distro.ProviderKey),
-					// kim: TODO: test in staging that this works as expected to
-					// check that the host status is running.
-					"account": bsonutil.GetDottedKeyName("$host", DistroKey, distro.ProviderAccountKey),
-					"region":  bsonutil.GetDottedKeyName("$settings_list", awsRegionKey),
-					"key":     bsonutil.GetDottedKeyName("$settings_list", awsKeyKey),
-					"secret":  bsonutil.GetDottedKeyName("$settings_list", awsSecretKey),
+					"account":  bsonutil.GetDottedKeyName("$host", DistroKey, distro.ProviderAccountKey),
+					"region":   bsonutil.GetDottedKeyName("$settings_list", awsRegionKey),
+					"key":      bsonutil.GetDottedKeyName("$settings_list", awsKeyKey),
+					"secret":   bsonutil.GetDottedKeyName("$settings_list", awsSecretKey),
 				},
 				"hosts": bson.M{"$push": "$host"},
 			},

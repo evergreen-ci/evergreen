@@ -102,10 +102,6 @@ func (m *ec2FleetManager) Configure(ctx context.Context, settings *evergreen.Set
 		return errors.Wrap(err, "getting role for account")
 	}
 	m.role = role
-	grip.InfoWhen(m.role != "", message.Fields{
-		"message": "kim: using role for EC2 fleet manager",
-		"role":    m.role,
-	})
 
 	return nil
 }

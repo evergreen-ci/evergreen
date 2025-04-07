@@ -164,8 +164,6 @@ func (c *awsClientImpl) Create(ctx context.Context, role, region string) error {
 
 	configID := getConfigCacheID(role, region)
 	if configCache[configID] == nil {
-		// kim: TODO: confirm that it's okay to cache the credential provider as
-		// well. Theretically, it should renew the credentials when they expire.
 		opts := []func(*config.LoadOptions) error{config.WithRegion(region)}
 		if role != "" {
 			// Assuming a role to make API calls requires an explicit region.
@@ -789,9 +787,6 @@ func (c *awsClientImpl) DeleteLaunchTemplate(ctx context.Context, input *ec2.Del
 
 // CreateFleet is a wrapper for ec2.CreateFleet.
 func (c *awsClientImpl) CreateFleet(ctx context.Context, input *ec2.CreateFleetInput) (*ec2.CreateFleetOutput, error) {
-	grip.Info(message.Fields{
-		"message": "kim: creating fleet host",
-	})
 	var output *ec2.CreateFleetOutput
 	var err error
 	input.ClientToken = aws.String(utility.RandomString())

@@ -258,10 +258,6 @@ func (m *ec2Manager) Configure(ctx context.Context, settings *evergreen.Settings
 		return errors.Wrap(err, "getting role for account")
 	}
 	m.role = role
-	grip.Info(message.Fields{
-		"message": "kim: using role for EC2 manager",
-		"role":    m.role,
-	})
 
 	return nil
 }
