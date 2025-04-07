@@ -380,15 +380,6 @@ const (
 	PresignMinimumValidTime = 15 * time.Minute
 )
 
-var TestFailureStatuses = []string{
-	TestFailedStatus,
-	TestSilentlyFailedStatus,
-}
-
-func IsFailedTestStatus(status string) bool {
-	return utility.StringSliceContains(TestFailureStatuses, status)
-}
-
 var TaskStatuses = []string{
 	TaskStarted,
 	TaskSucceeded,
