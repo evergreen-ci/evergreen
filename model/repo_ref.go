@@ -61,6 +61,12 @@ func (r *RepoRef) Upsert() error {
 	return err
 }
 
+func FindAllRepoRefs(ctx context.Context) ([]RepoRef, error) {
+	repoRefs := []RepoRef{}
+	err := db.FindAllQ(RepoRefCollection, db.Query(nil), &repoRefs)
+	return repoRefs, err
+}
+
 // findOneRepoRefQ returns one RepoRef that satisfies the query.
 func findOneRepoRefQ(ctx context.Context, query db.Q) (*RepoRef, error) {
 	repoRef := &RepoRef{}
