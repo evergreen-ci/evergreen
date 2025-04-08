@@ -4,8 +4,7 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
   $scope.validDefaultHostAllocatorRoundingRules = $window.validDefaultHostAllocatorRoundingRules;
   $scope.validDefaultHostAllocatorFeedbackRules = $window.validDefaultHostAllocatorFeedbackRules;
   $scope.validDefaultHostsOverallocatedRules = $window.validDefaultHostsOverallocatedRules;
-  $scope.projectRefData = $window.projectRefData;
-  $scope.repoRefData = $window.repoRefData;
+
   $scope.load = function () {
     $scope.Settings = {};
 
@@ -76,19 +75,6 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
       $scope.Settings.jira_notifications.custom_fields = $scope.Settings.jira_notifications.custom_fields || {};
       $scope.Settings.providers.aws.ec2_keys = $scope.Settings.providers.aws.ec2_keys || [];
       $scope.Settings.providers.aws.allowed_regions = $scope.Settings.providers.aws.allowed_regions || [];
-      $scope.Settings.single_task_distro.project_tasks_pair
-        .sort((a,b) => $scope.getProjectOrRepoName(a.project_id).localeCompare($scope.getProjectOrRepoName(b.project_id)))
-        .sort((a,b) => {
-          const aType = $scope.isProjectOrRepo(a.project_id)
-          const bType = $scope.isProjectOrRepo(b.project_id)
-          if(aType === bType) {
-            return 0
-          } else if(aType === "Repo") {
-            return -1
-          } else {
-            return 1
-          }
-        })
     }
     var errorHandler = function (resp) {
       notificationService.pushNotification("Error loading settings: " + resp.data.error, "errorHeader");
@@ -195,41 +181,6 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
       $scope.Settings.expansions = {};
     }
 
-    const singleTaskDistroErrors = []
-    $scope.Settings.single_task_distro.project_tasks_pair.forEach(({project_id, allowed_bvs, allowed_tasks}) => {
-      const t = new Set()
-      if(allowed_tasks.length === 0 && allowed_bvs.length === 0) {
-        singleTaskDistroErrors.push(`Both allowed tasks and allowed build variants cannot be empty for project ${project_id}`)
-      }
-      allowed_tasks.forEach((task) => {
-        if(!task) {
-          singleTaskDistroErrors.push(`Empty task for project ${project_id}`)
-        }
-        if(!isRegex(task)) {
-          singleTaskDistroErrors.push(`Invalid regex for task ${task} in project ${project_id}`)
-        }
-        if(t.has(task)) {
-          singleTaskDistroErrors.push(`Duplicate task regex found for project ${project_id}: ${task}`)
-        }
-        t.add(task)
-      })
-      if(!project_id) {
-        singleTaskDistroErrors.push("Project ID cannot be empty for single task distro settings")
-      }
-      const b = new Set()
-      allowed_bvs.forEach((bv) => {
-        if(!bv) {
-          singleTaskDistroErrors.push(`Empty build variant for project ${project_id}`)
-        }
-        if(b.has(bv)) {
-          singleTaskDistroErrors.push(`Duplicate build variant found for project ${project_id}: ${bv}`)
-        }
-        b.add(bv)
-      })
-    })
-    if(singleTaskDistroErrors.length){
-      return notificationService.pushNotification(`Error saving Single Task Distro settings: ${singleTaskDistroErrors.join(". ")}`, "errorHeader");
-    } 
     mciAdminRestService.saveSettings($scope.Settings, {
       success: successHandler,
       error: errorHandler
@@ -977,73 +928,6 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     }
     delete $scope.jiraMapping.newProject;
   }
-  $scope.deleteJIRAProject = function (key) {
-    if (!key) {
-      return;
-    }
-    delete $scope.Settings.jira_notifications.custom_fields[key];
-  }
-  $scope.deleteProjectTasksPair = function (projectName) {
-    $scope.Settings.single_task_distro.project_tasks_pair = $scope.Settings.single_task_distro.project_tasks_pair.filter(p => p.project_id !== projectName);
-  }
-  $scope.addProjectTasksPair = function () {
-    var value = $scope.projectTasksPairsMapping.newProject;
-    if (!value) {
-      return;
-    }
-    if(!($scope.Settings.single_task_distro.project_tasks_pair || []).find(p => p.project_id === value)) {
-      $scope.Settings.single_task_distro.project_tasks_pair = [...($scope.Settings.single_task_distro.project_tasks_pair || []), {project_id: value, allowed_tasks: [], allowed_bvs: []}];
-    }
-    delete $scope.projectTasksPairsMapping.newProject;
-  }
-  $scope.addAllowedTask = function(projectId) {
-    $scope.Settings.single_task_distro.project_tasks_pair.find(p => p.project_id === projectId).allowed_tasks.push("");
-  }
-  $scope.addBuildVariant = function(projectId) {
-    const proj = $scope.Settings.single_task_distro.project_tasks_pair.find(p => p.project_id === projectId)
-    if(!proj.allowed_bvs) {
-      proj.allowed_bvs = [""]
-    } else {
-      proj.allowed_bvs.push("");
-    }
-  }
-  $scope.buildVariantExists = function(bvList, index) {
-    var bv = bvList[index];
-    if (!bv) {
-      return false;
-    }
-    return !!bvList.find((t, i) => i !== index && t === bv);
-  }
-  $scope.validateTaskRegex = function(taskList, index) {
-    var task = taskList[index];
-    if (!task) {
-      return false;
-    }
-    return isRegex(task);
-  }
-  $scope.getProjectOrRepoName = function(projectOrRepoId) {
-    return $scope.repoRefData.find(({id}) => {
-      return id === projectOrRepoId
-    })?.displayName || projectOrRepoId
-  }
-  $scope.isProjectOrRepo = function(projectOrRepoId) {
-    return !!$scope.repoRefData.find(({id}) => {
-      return id === projectOrRepoId
-    }) ? "Repo" : "Project"
-  }
-  $scope.taskRegexExists = function(taskList, index) {
-    var task = taskList[index];
-    if (!task) {
-      return false;
-    }
-    return !!taskList.find((t, i) => i !== index && t === task);
-  }
-  $scope.removeAllowedTask = function(projectId, index) {
-    $scope.Settings.single_task_distro.project_tasks_pair.find(p => p.project_id === projectId).allowed_tasks.splice(index, 1);
-  }
-  $scope.removeBuildVariant = function(projectId, index) {
-    $scope.Settings.single_task_distro.project_tasks_pair.find(p => p.project_id === projectId).allowed_bvs.splice(index, 1);
-  }
   $scope.addDisabledGQLQuery = function () {
     var value = $scope.queryMapping.newQuery
     if (!value) {
@@ -1100,18 +984,4 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
   $scope.queryMapping = {}
 
   $scope.load();
-  
 }]);
-
-const escapeRegex = (str) =>
-  str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
-const isRegex = (task) => {
-  try {
-    new RegExp(task);
-  } catch (e) {
-    return false
-  }
-  return true
-}
-

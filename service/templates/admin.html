@@ -3,8 +3,6 @@
 	window.validDefaultHostAllocatorRoundingRules = {{.ValidDefaultHostAllocatorRoundingRules}};
 	window.validDefaultHostAllocatorFeedbackRules = {{.ValidDefaultHostAllocatorFeedbackRules}};
 	window.validDefaultHostsOverallocatedRules = {{.ValidDefaultHostsOverallocatedRules}};
-	window.projectRefData = {{.ProjectRefData}};
-	window.repoRefData = {{.RepoRefData}};
 	window.can_clear_tokens = {{.CanClearTokens }};
 	window.show_overrides_section = {{.ShowOverridesSection}};
 </script>
@@ -105,7 +103,6 @@ Admin Settings
 						<li class="link" ng-click="scrollTo('tracer')">Tracer Config</li>
 						<li class="link" ng-click="scrollTo('project_creation')">Project Creation</li>
 						<li class="link" ng-click="scrollTo('github_check_run')">GitHub Check Run</li>
-						<li class="link" ng-click="scrollTo('single_task_distro')">Single Task Distro</li>
 						<div>Non-Configuration</div>
 						<li class="link" ng-click="scrollTo('restart')">Restart Tasks/Versions</li>
 						<a class="link" href="/admin/events" style="margin-left:10px;">Event Log</a>
@@ -2803,109 +2800,6 @@ Admin Settings
 								</md-card-content>
 							</md-card>
 						</section>
-						<section layout="row" flex>
-							<md-card flex=100 id="single_task_distro">
-								<md-card-title>
-									<md-card-title-text>
-										<span>Single Task Distro Allowed Tasks</span>
-									</md-card-title-text>
-									<md-button ng-click="clearSection('single_task_distro')">
-										<i class="fa fa-trash"></i>
-									</md-button>
-								</md-card-title>
-								<md-card-content>
-									<div
-										ng-repeat="projectTasksPair in Settings.single_task_distro.project_tasks_pair">
-										<div>
-											<span class="md-subhead" style="font-weight:bold;">[[isProjectOrRepo(projectTasksPair.project_id)]]: [[getProjectOrRepoName(projectTasksPair.project_id)]]</span>
-											<span>
-												<md-button ng-click="deleteProjectTasksPair(projectTasksPair.project_id)">
-													<i class="fa fa-trash"></i>
-												</md-button>
-											</span>
-										</div>
-										<div>
-											<label style="font-weight:bold;">Allowed Tasks Regex</label>
-											<div>
-												<table style="margin-left: -8px;">
-													<tbody ng-repeat="taskName in projectTasksPair.allowed_tasks track by $index">
-														<tr>
-															<td style="padding-left: 10px;">
-																<input type="text"
-																	ng-model="projectTasksPair.allowed_tasks[$index]"
-																	class="form-control">
-																<span class="icon fa fa-warning distro-error"
-																	ng-hide="validateTaskRegex(projectTasksPair.allowed_tasks, $index)">
-																	Task is not a regex.
-																</span>
-																<span class="icon fa fa-warning distro-error"
-																	ng-show="taskRegexExists(projectTasksPair.allowed_tasks, $index)">
-																	Task is already represented.
-																</span>
-															</td>
-															<td>
-																<a ng-click="removeAllowedTask(projectTasksPair.project_id, $index)">
-																	<i class="fa fa-trash"></i>
-																</a>
-															</td>
-														</tr>
-													</tbody>
-												</table>
-											</div>
-											<button type="button" class="md-raised md-button"
-												ng-click="addAllowedTask(projectTasksPair.project_id)"><i class="fa fa-plus"></i>Add Task Regex</button>
-										</div>
-										<div>
-											<label style="font-weight:bold;">Allowed Build Variants</label>
-											<div>
-												<table style="margin-left: -8px;">
-													<tbody ng-repeat="buildVariant in projectTasksPair.allowed_bvs track by $index">
-														<tr>
-															<td style="padding-left: 10px;">
-																<input type="text"
-																	ng-model="projectTasksPair.allowed_bvs[$index]"
-																	class="form-control">
-																<span class="icon fa fa-warning distro-error"
-																	ng-show="buildVariantExists(projectTasksPair.allowed_bvs, $index)">
-																	Build variant is already represented.
-																</span>
-															</td>
-															<td>
-																<a ng-click="removeBuildVariant(projectTasksPair.project_id, $index)">
-																	<i class="fa fa-trash"></i>
-																</a>
-															</td>
-														</tr>
-													</tbody>
-												</table>
-											</div>
-											<button type="button" class="md-raised md-button"
-												ng-click="addBuildVariant(projectTasksPair.project_id)"><i class="fa fa-plus"></i>Add Build Variant</button>
-										</div>
-									</div>
-									<div>
-										<md-input-container class="control" style="width: 400px;">
-											<label>Add new Project ID / Repo</label>
-											<md-select ng-model="projectTasksPairsMapping.newProject" md-on-close="filterText = ''" style="flex: 1;">
-												<md-option value=""></md-option>
-												<md-input-container>
-													<input type="text" ng-model="filterText" placeholder="Filter projects/repos" ng-keydown="$event.stopPropagation()">
-												</md-input-container>
-												<md-optgroup label="Repos">
-													<md-option ng-repeat="t in repoRefData | filter:filterText" value="[[t.id]]">[[t.displayName]]</md-option>
-												</md-optgroup>
-												<md-optgroup label="Projects">
-													<md-option ng-repeat="t in projectRefData | filter:filterText" value="[[t.id]]">[[t.displayName]]</md-option>
-												</md-optgroup>
-											</md-select>
-										</md-input-container>
-										<md-button ng-click="addProjectTasksPair()">
-											<i class="fa fa-plus"></i>
-										</md-button>
-									</div>
-								</md-card-content>
-							</md-card>
-						</section>
 					<md-card-footer class="squeezeTop">
 						<md-button type="submit" class="md-raised" ng-click="saveSettings()">Save Changes</md-button>
 					</md-card-footer>
@@ -2951,6 +2845,7 @@ Admin Settings
 				</md-card-footer>
 			</md-card>
 		</md-content>
+
 	</section>
 </div>
 {{end}}
