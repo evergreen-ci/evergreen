@@ -39,8 +39,10 @@ type EC2ProviderSettings struct {
 	IPv6 bool `mapstructure:"ipv6" json:"ipv6,omitempty" bson:"ipv6,omitempty"`
 
 	// DoNotAssignPublicIPv4Address, if true, skips assigning a public IPv4
-	// address to hosts. Does not apply if the host is using IPv6 or spawn hosts
-	// which need an IPv4 address for SSH.
+	// address to task hosts. An AWS SSH key will be assigned to the host only
+	// if a public IPv4 address is also assigned.
+	// Does not apply if the host is using IPv6 or if the host is a spawn host
+	// or host.create host, which need an IPv4 address for SSH.
 	DoNotAssignPublicIPv4Address bool `mapstructure:"do_not_assign_public_ipv4_address" json:"do_not_assign_public_ipv4_address,omitempty" bson:"do_not_assign_public_ipv4_address,omitempty"`
 
 	// KeyName is the AWS SSH key name.

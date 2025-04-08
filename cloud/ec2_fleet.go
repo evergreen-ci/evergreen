@@ -428,7 +428,6 @@ func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host
 
 	launchTemplate := &types.RequestLaunchTemplateData{
 		ImageId:             aws.String(ec2Settings.AMI),
-		KeyName:             aws.String(ec2Settings.KeyName),
 		InstanceType:        types.InstanceType(ec2Settings.InstanceType),
 		BlockDeviceMappings: blockDevices,
 		TagSpecifications:   makeTagTemplate(makeTags(h)),
@@ -438,11 +437,14 @@ func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host
 		launchTemplate.IamInstanceProfile = &types.LaunchTemplateIamInstanceProfileSpecificationRequest{Arn: aws.String(ec2Settings.IAMInstanceProfileARN)}
 	}
 
+	assignPublicIPv4 := !ec2Settings.DoNotAssignPublicIPv4Address && !ec2Settings.IPv6
+	if h.UserHost || h.SpawnOptions.SpawnedByTask {
+		assignPublicIPv4 = true
+	}
+	if assignPublicIPv4 {
+		launchTemplate.KeyName = aws.String(ec2Settings.KeyName)
+	}
 	if ec2Settings.IsVpc {
-		assignPublicIPv4 := !ec2Settings.DoNotAssignPublicIPv4Address
-		if h.UserHost {
-			assignPublicIPv4 = true
-		}
 		launchTemplate.NetworkInterfaces = []types.LaunchTemplateInstanceNetworkInterfaceSpecificationRequest{
 			{
 				AssociatePublicIpAddress: aws.Bool(assignPublicIPv4),
