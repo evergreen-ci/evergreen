@@ -16,7 +16,7 @@
         },
         "errors": [
           {
-            "message": "project/repo 'sandbox_repo_id' not found",
+            "message": "defaulting to repo for section: getting before project settings event: project ref 'sandbox_repo_id' not found",
             "path": ["defaultSectionToRepo", "opts", "projectId"],
             "extensions": {
               "code": "RESOURCE_NOT_FOUND"
