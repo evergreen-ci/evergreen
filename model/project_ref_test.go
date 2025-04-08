@@ -2461,7 +2461,8 @@ func TestFindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(t *testing.T) {
 	assert.Nil(projectRef)
 
 	doc.CommitQueue.Enabled = utility.TruePtr()
-	require.NoError(db.ReplaceContext(t.Context(), ProjectRefCollection, mgobson.M{ProjectRefIdKey: "mci"}, doc))
+	_, err = db.ReplaceContext(t.Context(), ProjectRefCollection, mgobson.M{ProjectRefIdKey: "mci"}, doc)
+	require.NoError(err)
 
 	projectRef, err = FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(t.Context(), "mongodb", "mci", "main")
 	assert.NoError(err)

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"testing"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/pail"
@@ -252,29 +253,14 @@ func UpdateContext(ctx context.Context, collection string, query any, update any
 }
 
 // ReplaceContext replaces one matching document in the collection.
-func ReplaceContext(ctx context.Context, collection string, query any, replacement any) error {
-	res, err := evergreen.GetEnvironment().DB().Collection(collection).ReplaceOne(ctx,
-		query,
-		replacement,
-	)
-	if err != nil {
-		return errors.Wrapf(err, "replacing task")
-	}
-	if res.MatchedCount == 0 {
-		return db.ErrNotFound
-	}
-
-	return nil
-}
-
-func ReplaceContext2(ctx context.Context, collection string, query any, replacement any) (*db.ChangeInfo, error) {
+func ReplaceContext(ctx context.Context, collection string, query any, replacement any) (*db.ChangeInfo, error) {
 	res, err := evergreen.GetEnvironment().DB().Collection(collection).ReplaceOne(ctx,
 		query,
 		replacement,
 		options.Replace().SetUpsert(true),
 	)
 	if err != nil {
-		return nil, errors.Wrapf(err, "replacing task")
+		return nil, errors.Wrapf(err, "replacing document")
 	}
 	if res.MatchedCount == 0 {
 		return nil, db.ErrNotFound
@@ -359,8 +345,32 @@ func UpdateAll(collection string, query any, update any) (*db.ChangeInfo, error)
 	return db.C(collection).UpdateAll(query, update)
 }
 
-// Upsert run the specified update against the collection as an upsert operation.
 func Upsert(ctx context.Context, collection string, query any, update any) (*db.ChangeInfo, error) {
+	// Temporarily, we check if the document has a key beginning with '$', this would
+	// indicate a proper upsert operation. If not, it's a document intended for replacement.
+	// If the document is unable to be transformed (aka err != nil, e.g. a pipeline), we
+	// also default to an update operation.
+	// This will be removed in DEVPROD-<TODO>.
+
+	doc, err := transformDocument(update)
+	if err != nil || hasDollarKey(doc) {
+		return upsert(ctx, collection, query, update)
+	}
+
+	msg := "update document must contain a key beginning with '$'"
+	grip.Debug(message.Fields{
+		"message": msg,
+		"error":   errors.New(msg),
+		"ticket":  "DEVPROD-15419",
+	})
+	if testing.Testing() {
+		return nil, errors.New("CHANGE TO REPLACE")
+	}
+	return ReplaceContext(ctx, collection, query, update)
+}
+
+// Upsert run the specified update against the collection as an upsert operation.
+func upsert(ctx context.Context, collection string, query any, update any) (*db.ChangeInfo, error) {
 	res, err := evergreen.GetEnvironment().DB().Collection(collection).UpdateOne(
 		ctx,
 		query,
