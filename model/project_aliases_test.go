@@ -546,12 +546,13 @@ func (s *ProjectAliasSuite) TestFindAliasInProjectRepoOrConfig() {
 	s.Equal("cq-.*", found[0].Variant)
 }
 
-func (s *ProjectAliasSuite) TestUpsertAliasesForProject(t *testing.T) {
+func (s *ProjectAliasSuite) TestUpsertAliasesForProject() {
 	for _, a := range s.aliases {
 		a.ProjectID = "old-project"
-		s.NoError(a.Upsert(t.Context()))
+
+		s.NoError(a.Upsert(s.T().Context()))
 	}
-	s.NoError(UpsertAliasesForProject(t.Context(), s.aliases, "new-project"))
+	s.NoError(UpsertAliasesForProject(s.T().Context(), s.aliases, "new-project"))
 
 	found, err := FindAliasesForProjectFromDb("new-project")
 	s.NoError(err)
