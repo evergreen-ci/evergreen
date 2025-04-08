@@ -620,7 +620,7 @@ func TestHideBranch(t *testing.T) {
 		Enabled:     true,
 		Hidden:      utility.ToBoolPtr(false),
 	}
-	require.NoError(t, project.Upsert(t.Context()))
+	require.NoError(t, project.Replace(t.Context()))
 
 	alias := model.ProjectAlias{
 		ProjectID: project.Id,

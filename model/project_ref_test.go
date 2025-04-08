@@ -157,13 +157,13 @@ func TestFindMergedProjectRef(t *testing.T) {
 	// Assert that mergeParsleyFilters correctly handles projects with repo filters but not project filters.
 	projectRef.ParsleyFilters = []parsley.Filter{}
 
-	assert.NoError(t, projectRef.Upsert(t.Context()))
+	assert.NoError(t, projectRef.Replace(t.Context()))
 	mergedProject, err = FindMergedProjectRef(t.Context(), "ident", "ident", true)
 	assert.NoError(t, err)
 	assert.Len(t, mergedProject.ParsleyFilters, 1)
 
 	projectRef.ParsleyFilters = nil
-	assert.NoError(t, projectRef.Upsert(t.Context()))
+	assert.NoError(t, projectRef.Replace(t.Context()))
 	mergedProject, err = FindMergedProjectRef(t.Context(), "ident", "ident", true)
 	assert.NoError(t, err)
 	assert.Len(t, mergedProject.ParsleyFilters, 1)
@@ -2365,7 +2365,7 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 	// project PR testing explicitly disabled
 	doc.PRTestingEnabled = utility.FalsePtr()
 	doc.ManualPRTestingEnabled = utility.FalsePtr()
-	assert.NoError(doc.Upsert(t.Context()))
+	assert.NoError(doc.Replace(t.Context()))
 	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting(t.Context(), "mongodb", "mci", "mine", "")
 	assert.NoError(err)
 	assert.Nil(projectRef)
@@ -2379,7 +2379,7 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 	// project auto PR testing enabled, manual disabled
 	doc.PRTestingEnabled = utility.TruePtr()
 	doc.ManualPRTestingEnabled = utility.FalsePtr()
-	assert.NoError(doc.Upsert(t.Context()))
+	assert.NoError(doc.Replace(t.Context()))
 	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting(t.Context(), "mongodb", "mci", "mine", "")
 	assert.NoError(err)
 	assert.NotNil(projectRef)
@@ -2393,7 +2393,7 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 	// project auto PR testing disabled, manual enabled
 	doc.PRTestingEnabled = utility.FalsePtr()
 	doc.ManualPRTestingEnabled = utility.TruePtr()
-	assert.NoError(doc.Upsert(t.Context()))
+	assert.NoError(doc.Replace(t.Context()))
 	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting(t.Context(), "mongodb", "mci", "mine", "")
 	assert.NoError(err)
 	assert.NotNil(projectRef)
@@ -2409,7 +2409,7 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 	assert.NoError(repoDoc.Replace(t.Context()))
 	doc.Enabled = false
 	doc.PRTestingEnabled = utility.TruePtr()
-	assert.NoError(doc.Upsert(t.Context()))
+	assert.NoError(doc.Replace(t.Context()))
 	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting(t.Context(), "mongodb", "mci", "mine", "")
 	assert.NoError(err)
 	assert.Nil(projectRef)
@@ -2471,7 +2471,7 @@ func TestFindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(t *testing.T) {
 
 	// doc doesn't default to repo
 	doc.CommitQueue.Enabled = utility.FalsePtr()
-	assert.NoError(doc.Upsert(t.Context()))
+	assert.NoError(doc.Replace(t.Context()))
 	projectRef, err = FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(t.Context(), "mongodb", "mci", "not_main")
 	assert.NoError(err)
 	assert.Nil(projectRef)
@@ -3626,9 +3626,9 @@ func TestRemoveAdminFromProjects(t *testing.T) {
 		Id: "adminless_repo",
 	}}
 
-	assert.NoError(t, pRef.Upsert(t.Context()))
-	assert.NoError(t, pRef2.Upsert(t.Context()))
-	assert.NoError(t, pRef3.Upsert(t.Context()))
+	assert.NoError(t, pRef.Replace(t.Context()))
+	assert.NoError(t, pRef2.Replace(t.Context()))
+	assert.NoError(t, pRef3.Replace(t.Context()))
 	assert.NoError(t, repoRef.Replace(t.Context()))
 	assert.NoError(t, repoRef2.Replace(t.Context()))
 	assert.NoError(t, repoRef3.Replace(t.Context()))

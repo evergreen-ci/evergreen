@@ -770,7 +770,7 @@ func TestCreatedTicketByTaskPutHandlerParse(t *testing.T) {
 			Endpoint: "random",
 		},
 	}
-	assert.NoError(t, p.Upsert(t.Context()))
+	assert.NoError(t, p.Replace(t.Context()))
 	r, err := http.NewRequest(http.MethodPut, "/task/t1/created_ticket?execution=1", buffer)
 	r = gimlet.SetURLVars(r, map[string]string{"task_id": "t1"})
 	assert.NoError(t, err)

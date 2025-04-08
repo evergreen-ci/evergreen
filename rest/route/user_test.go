@@ -393,7 +393,7 @@ func TestGetUserPermissions(t *testing.T) {
 		},
 	}
 	for _, projectRef := range projectRefs {
-		require.NoError(t, projectRef.Upsert(t.Context()))
+		require.NoError(t, projectRef.Replace(t.Context()))
 	}
 	require.NoError(t, u.Insert())
 	require.NoError(t, rm.AddScope(gimlet.Scope{ID: "scope1", Resources: []string{"resource1"}, Type: "project"}))
@@ -617,7 +617,7 @@ func TestRemoveHiddenProjects(t *testing.T) {
 		},
 	}
 	for _, projectRef := range projectRefs {
-		require.NoError(t, projectRef.Upsert(t.Context()))
+		require.NoError(t, projectRef.Replace(t.Context()))
 	}
 
 	permissions := []rolemanager.PermissionSummary{

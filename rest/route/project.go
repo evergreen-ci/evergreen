@@ -554,7 +554,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	// complete all updates
-	if err = h.newProjectRef.Upsert(ctx); err != nil {
+	if err = h.newProjectRef.Replace(ctx); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "updating project '%s'", h.newProjectRef.Id))
 	}
 

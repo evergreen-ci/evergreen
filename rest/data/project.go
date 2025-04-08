@@ -446,7 +446,7 @@ func HideBranch(ctx context.Context, projectID string) error {
 		Enabled:   false,
 		Hidden:    utility.TruePtr(),
 	}
-	if err := skeletonProj.Upsert(ctx); err != nil {
+	if err := skeletonProj.Replace(ctx); err != nil {
 		return errors.Wrapf(err, "updating project '%s'", pRef.Id)
 	}
 	if err := model.UpdateAdminRoles(ctx, pRef, nil, pRef.Admins); err != nil {

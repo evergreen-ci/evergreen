@@ -100,7 +100,7 @@ func TestPodAllocatorJob(t *testing.T) {
 				ExternalName: "repo_creds_external_name",
 				Type:         model.ContainerSecretRepoCreds,
 			})
-			require.NoError(t, pRef.Upsert(t.Context()))
+			require.NoError(t, pRef.Replace(t.Context()))
 
 			_, err := v.CreateSecret(ctx, *cocoa.NewNamedSecret().SetName(pRef.ContainerSecrets[1].ExternalName).SetValue("repo_creds_value"))
 			require.NoError(t, err)
@@ -242,7 +242,7 @@ func TestPodAllocatorJob(t *testing.T) {
 		},
 		"RunNoopsWhenProjectDoesNotAllowDispatching": func(ctx context.Context, t *testing.T, j *podAllocatorJob, v cocoa.Vault, tsk task.Task, pRef model.ProjectRef) {
 			pRef.Enabled = false
-			require.NoError(t, pRef.Upsert(t.Context()))
+			require.NoError(t, pRef.Replace(t.Context()))
 			require.NoError(t, tsk.Insert())
 
 			j.Run(ctx)

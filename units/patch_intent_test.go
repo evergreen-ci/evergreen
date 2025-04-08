@@ -356,7 +356,7 @@ func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithDisabledCommitQueue() {
 			Enabled: utility.FalsePtr(),
 		},
 	}
-	s.Require().NoError(disabledMergeQueueProject.Upsert(s.ctx))
+	s.Require().NoError(disabledMergeQueueProject.Replace(s.ctx))
 
 	org := github.Organization{
 		Login: &orgName,

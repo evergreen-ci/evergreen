@@ -1273,7 +1273,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 		"tasks with a disabled project should be removed from the queue": func(ctx context.Context, t *testing.T, env *mock.Environment, d data) {
 			// The queue has task3 then task4, task3 is under a disabled project.
 			d.Project2.Enabled = false
-			require.NoError(t, d.Project2.Upsert(t.Context()))
+			require.NoError(t, d.Project2.Replace(t.Context()))
 			nextTaskId := "task4"
 			details := &apimodels.GetNextTaskDetails{}
 			task, shouldTeardown, err := assignNextAvailableTask(ctx, env, d.Tq3, model.NewTaskDispatchService(time.Minute), d.Host5, details)
@@ -1293,7 +1293,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 		"tasks with a project with dispatching disabled should be removed from the queue": func(ctx context.Context, t *testing.T, env *mock.Environment, d data) {
 			// The queue has task3 then task4, task3 is under a disabled project.
 			d.Project2.DispatchingDisabled = utility.TruePtr()
-			require.NoError(t, d.Project2.Upsert(t.Context()))
+			require.NoError(t, d.Project2.Replace(t.Context()))
 			nextTaskId := d.Tq3.Queue[1].Id
 			details := &apimodels.GetNextTaskDetails{}
 			task, shouldTeardown, err := assignNextAvailableTask(ctx, env, d.Tq3, model.NewTaskDispatchService(time.Minute), d.Host5, details)
