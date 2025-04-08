@@ -314,24 +314,28 @@ func (s *EC2Suite) TestSpawnHostInvalidInput() {
 	s.EqualError(err, "can't spawn EC2 instance for distro 'id': distro provider is 'foo'")
 }
 
-func (s *EC2Suite) TestSpawnHostClassicOnDemand() {
-	s.h.Distro.Id = "distro_id"
-	s.h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
-	s.h.Distro.ProviderSettingsList = []*birch.Document{birch.NewDocument(
+func validEC2ProviderSettings() *birch.Document {
+	return birch.NewDocument(
 		birch.EC.String("ami", "ami"),
 		birch.EC.String("instance_type", "instanceType"),
+		birch.EC.String("iam_instance_profile_arn", "my_profile"),
 		birch.EC.String("subnet_id", "subnet-123456"),
 		birch.EC.String("user_data", someUserData),
 		birch.EC.String("region", evergreen.DefaultEC2Region),
 		birch.EC.SliceString("security_group_ids", []string{"sg-123456"}),
-		birch.EC.String("iam_instance_profile_arn", "my_profile"),
 		birch.EC.Array("mount_points", birch.NewArray(
 			birch.VC.Document(birch.NewDocument(
 				birch.EC.String("device_name", "device"),
 				birch.EC.String("virtual_name", "virtual"),
 			)),
 		)),
-	)}
+	)
+}
+
+func (s *EC2Suite) TestSpawnHostClassicOnDemand() {
+	s.h.Distro.Id = "distro_id"
+	s.h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
+	s.h.Distro.ProviderSettingsList = []*birch.Document{validEC2ProviderSettings()}
 	s.Require().NoError(s.h.Insert(s.ctx))
 
 	ctx, cancel := context.WithCancel(s.ctx)
@@ -363,22 +367,9 @@ func (s *EC2Suite) TestSpawnHostVPCOnDemand() {
 	h := &host.Host{}
 	h.Distro.Id = "distro_id"
 	h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
-	h.Distro.ProviderSettingsList = []*birch.Document{birch.NewDocument(
-		birch.EC.String("ami", "ami"),
-		birch.EC.String("instance_type", "instanceType"),
-		birch.EC.String("iam_instance_profile_arn", "my_profile"),
-		birch.EC.String("subnet_id", "subnet-123456"),
-		birch.EC.String("user_data", someUserData),
-		birch.EC.Boolean("is_vpc", true),
-		birch.EC.String("region", evergreen.DefaultEC2Region),
-		birch.EC.SliceString("security_group_ids", []string{"sg-123456"}),
-		birch.EC.Array("mount_points", birch.NewArray(
-			birch.VC.Document(birch.NewDocument(
-				birch.EC.String("device_name", "device"),
-				birch.EC.String("virtual_name", "virtual"),
-			)),
-		)),
-	)}
+	providerSettings := validEC2ProviderSettings()
+	providerSettings.Append(birch.EC.Boolean("is_vpc", true))
+	h.Distro.ProviderSettingsList = []*birch.Document{providerSettings}
 	s.Require().NoError(h.Insert(s.ctx))
 
 	ctx, cancel := context.WithCancel(s.ctx)
@@ -398,6 +389,10 @@ func (s *EC2Suite) TestSpawnHostVPCOnDemand() {
 	s.EqualValues("instanceType", runInput.InstanceType)
 	s.Equal("my_profile", *runInput.IamInstanceProfile.Arn)
 	s.Equal("task-host-key", *runInput.KeyName)
+	s.Require().Len(runInput.NetworkInterfaces, 1)
+	s.True(aws.ToBool(runInput.NetworkInterfaces[0].AssociatePublicIpAddress))
+	s.Require().Len(runInput.NetworkInterfaces[0].Groups, 1)
+	s.Equal("sg-123456", runInput.NetworkInterfaces[0].Groups[0])
 	s.Equal("virtual", *runInput.BlockDeviceMappings[0].VirtualName)
 	s.Equal("device", *runInput.BlockDeviceMappings[0].DeviceName)
 	s.Nil(runInput.SecurityGroupIds)
@@ -410,22 +405,9 @@ func (s *EC2Suite) TestSpawnHostForTask() {
 	h := &host.Host{}
 	h.Distro.Id = "distro_id"
 	h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
-	h.Distro.ProviderSettingsList = []*birch.Document{birch.NewDocument(
-		birch.EC.String("ami", "ami"),
-		birch.EC.String("instance_type", "instanceType"),
-		birch.EC.String("iam_instance_profile_arn", "my_profile"),
-		birch.EC.String("subnet_id", "subnet-123456"),
-		birch.EC.String("user_data", someUserData),
-		birch.EC.Boolean("is_vpc", true),
-		birch.EC.String("region", evergreen.DefaultEC2Region),
-		birch.EC.SliceString("security_group_ids", []string{"sg-123456"}),
-		birch.EC.Array("mount_points", birch.NewArray(
-			birch.VC.Document(birch.NewDocument(
-				birch.EC.String("device_name", "device"),
-				birch.EC.String("virtual_name", "virtual"),
-			)),
-		)),
-	)}
+	providerSettings := validEC2ProviderSettings()
+	providerSettings.Append(birch.EC.Boolean("is_vpc", true))
+	h.Distro.ProviderSettingsList = []*birch.Document{providerSettings}
 
 	project := "example_project"
 	t := &task.Task{
@@ -473,8 +455,52 @@ func (s *EC2Suite) TestSpawnHostForTask() {
 	s.EqualValues("instanceType", runInput.InstanceType)
 	s.Equal("my_profile", *runInput.IamInstanceProfile.Arn)
 	s.Equal("evg_auto_evergreen", *runInput.KeyName)
+	s.Require().Len(runInput.NetworkInterfaces, 1)
+	s.True(aws.ToBool(runInput.NetworkInterfaces[0].AssociatePublicIpAddress))
+	s.Require().Len(runInput.NetworkInterfaces[0].Groups, 1)
+	s.Equal("sg-123456", runInput.NetworkInterfaces[0].Groups[0])
+	s.Equal("subnet-123456", aws.ToString(runInput.NetworkInterfaces[0].SubnetId))
 	s.Equal("virtual", *runInput.BlockDeviceMappings[0].VirtualName)
 	s.Equal("device", *runInput.BlockDeviceMappings[0].DeviceName)
+	s.Nil(runInput.SecurityGroupIds)
+	s.Nil(runInput.SecurityGroups)
+	s.Nil(runInput.SubnetId)
+	s.Equal(base64OfSomeUserData, *runInput.UserData)
+}
+
+func (s *EC2Suite) TestSpawnHostForTaskWithoutPublicIPv4Address() {
+	s.h.Distro.Id = "distro_id"
+	s.h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
+	providerSettings := validEC2ProviderSettings()
+	providerSettings.Append(birch.EC.Boolean("is_vpc", true))
+	providerSettings.Append(birch.EC.Boolean("do_not_assign_public_ipv4_address", true))
+	s.h.Distro.ProviderSettingsList = []*birch.Document{providerSettings}
+	s.Require().NoError(s.h.Insert(s.ctx))
+
+	ctx, cancel := context.WithCancel(s.ctx)
+	defer cancel()
+	_, err := s.onDemandManager.SpawnHost(ctx, s.h)
+	s.NoError(err)
+
+	manager, ok := s.onDemandManager.(*ec2Manager)
+	s.Require().True(ok)
+	mock, ok := manager.client.(*awsClientMock)
+	s.Require().True(ok)
+
+	s.Require().NotNil(mock.RunInstancesInput)
+	runInput := *mock.RunInstancesInput
+	s.Equal("ami", *runInput.ImageId)
+	s.EqualValues("instanceType", runInput.InstanceType)
+	s.Zero(runInput.KeyName)
+	s.Require().Len(runInput.NetworkInterfaces, 1)
+	s.False(aws.ToBool(runInput.NetworkInterfaces[0].AssociatePublicIpAddress))
+	s.Require().Len(runInput.NetworkInterfaces[0].Groups, 1)
+	s.Equal("sg-123456", runInput.NetworkInterfaces[0].Groups[0])
+	s.Equal("subnet-123456", aws.ToString(runInput.NetworkInterfaces[0].SubnetId))
+	s.Require().Len(runInput.BlockDeviceMappings, 1)
+	s.Equal("virtual", *runInput.BlockDeviceMappings[0].VirtualName)
+	s.Equal("device", *runInput.BlockDeviceMappings[0].DeviceName)
+	s.Equal("my_profile", *runInput.IamInstanceProfile.Arn)
 	s.Nil(runInput.SecurityGroupIds)
 	s.Nil(runInput.SecurityGroups)
 	s.Nil(runInput.SubnetId)
