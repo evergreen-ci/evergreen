@@ -347,22 +347,26 @@ func Upsert(ctx context.Context, collection string, query any, update any) (*db.
 	// indicate a proper upsert operation. If not, it's a document intended for replacement.
 	// If the document is unable to be transformed (aka err != nil, e.g. a pipeline), we
 	// also default to an update operation.
-	// This will be removed in DEVPROD-<TODO>.
+	// This will be removed in DEVPROD-16579.
 
 	doc, err := transformDocument(update)
 	if err != nil || hasDollarKey(doc) {
 		return upsert(ctx, collection, query, update)
 	}
 
-	msg := "update document must contain a key beginning with '$'"
+	msg := "upsert document must contain a key beginning with '$'"
 	grip.Debug(message.Fields{
 		"message": msg,
 		"error":   errors.New(msg),
-		"ticket":  "DEVPROD-15419",
+		"ticket":  "DEVPROD-16579",
 	})
+
+	// This is to prevent new tests from using the upsert operation as a replacement operation.
+	// This will be removed (as will the fallback completely) in DEVPROD-16579.
 	if testing.Testing() {
 		return nil, errors.New("CHANGE TO REPLACE")
 	}
+
 	return ReplaceContext(ctx, collection, query, update)
 }
 
