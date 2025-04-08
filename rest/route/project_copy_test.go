@@ -150,6 +150,10 @@ func TestCopyVariablesSuite(t *testing.T) {
 }
 
 func (s *copyVariablesSuite) SetupTest() {
+	ctx, cancel := context.WithCancel(context.Background())
+	s.ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
+	s.cancel = cancel
+
 	s.route = &copyVariablesHandler{usr: &user.DBUser{Id: "admin"}}
 	s.NoError(db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameter.Collection, model.RepoRefCollection, event.EventCollection))
 	pRefs := []model.ProjectRef{
@@ -192,9 +196,6 @@ func (s *copyVariablesSuite) SetupTest() {
 	s.NoError(projectVar1.Insert())
 	s.NoError(projectVar2.Insert())
 	s.NoError(projectVar3.Insert())
-	ctx, cancel := context.WithCancel(context.Background())
-	s.ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
-	s.cancel = cancel
 }
 
 func (s *copyVariablesSuite) TearDownTest() {
