@@ -68,7 +68,7 @@ func TestFindMergedProjectVars(t *testing.T) {
 		Owner: "mongodb",
 		Repo:  "test_repo",
 	}}
-	require.NoError(t, repo.Upsert(t.Context()))
+	require.NoError(t, repo.Replace(t.Context()))
 
 	project0 := ProjectRef{
 		Id:        "project_0",

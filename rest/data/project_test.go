@@ -152,7 +152,7 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 				Id: repoProjectId,
 			},
 		}
-		s.Require().NoError(repoWithVars.Upsert(t.Context()))
+		s.Require().NoError(repoWithVars.Replace(t.Context()))
 		repoVars := &model.ProjectVars{
 			Id:          repoProjectId,
 			Vars:        map[string]string{"a": "a_from_repo", "c": "new"},
@@ -607,7 +607,7 @@ func TestHideBranch(t *testing.T) {
 			Repo:  "test_repo",
 		},
 	}
-	assert.NoError(t, repo.Upsert(t.Context()))
+	assert.NoError(t, repo.Replace(t.Context()))
 
 	project := &model.ProjectRef{
 		Identifier:  projectId,

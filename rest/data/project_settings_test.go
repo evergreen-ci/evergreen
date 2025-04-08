@@ -186,7 +186,7 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 			Restricted: utility.FalsePtr(),
 			Admins:     []string{"oldAdmin"},
 		}}
-		assert.NoError(t, repoRef.Upsert(t.Context()))
+		assert.NoError(t, repoRef.Replace(t.Context()))
 
 		pRefThatDefaults := model.ProjectRef{
 			Id:        "myId",
@@ -1005,7 +1005,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			Restricted:       utility.TruePtr(),
 			PRTestingEnabled: utility.TruePtr(),
 		}}
-		assert.NoError(t, repoRef.Upsert(t.Context()))
+		assert.NoError(t, repoRef.Replace(t.Context()))
 
 		pVars := model.ProjectVars{
 			Id:          pRef.Id,
@@ -1241,7 +1241,7 @@ func TestPromoteVarsToRepo(t *testing.T) {
 			Restricted: utility.FalsePtr(),
 			Admins:     []string{"u"},
 		}}
-		assert.NoError(t, repoRef.Upsert(t.Context()))
+		assert.NoError(t, repoRef.Replace(t.Context()))
 
 		rVars := model.ProjectVars{
 			Id:            repoRef.Id,

@@ -172,7 +172,7 @@ func (s *copyVariablesSuite) SetupTest() {
 	repoRef := model.RepoRef{ProjectRef: model.ProjectRef{
 		Id: "repoRef",
 	}}
-	s.NoError(repoRef.Upsert(s.ctx))
+	s.NoError(repoRef.Replace(s.ctx))
 	projectVar1 := &model.ProjectVars{
 		Id:          "projectA",
 		Vars:        map[string]string{"apple": "red", "hello": "world"},
