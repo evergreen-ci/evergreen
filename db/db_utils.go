@@ -342,6 +342,7 @@ func UpdateAll(collection string, query any, update any) (*db.ChangeInfo, error)
 	return db.C(collection).UpdateAll(query, update)
 }
 
+// Upsert run the specified update against the collection as an upsert operation.
 func Upsert(ctx context.Context, collection string, query any, update any) (*db.ChangeInfo, error) {
 	// Temporarily, we check if the document has a key beginning with '$', this would
 	// indicate a proper upsert operation. If not, it's a document intended for replacement.
