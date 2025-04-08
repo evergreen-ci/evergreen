@@ -273,7 +273,7 @@ Fields:
     We can also [define when a task will run](#limiting-when-a-task-or-variant-will-run). If there are
     conflicting settings definitions at different levels, the order of priority
     is defined [here](#task-fields-override-hierarchy).
--   `activate`: by default, we'll activate if the whole version is
+-   `activate`: by default, we'll activate if the whole mainline commit is
     being activated or if `batchtime` specifies it should be activated. If
     we instead want to activate immediately, then set activate to true.
     If this should only activate when manually scheduled or by
@@ -283,7 +283,7 @@ Fields:
 -   `deactivate_previous`: indicate if this variant should unschedule older 
     mainline tasks on success (if disabled at the project-level, this value will be ignored, otherwise it will override.)
 -   `batchtime`: interval of time in minutes that Evergreen should wait
-    before activating this variant. The default is set on the project
+    before activating this variant for mainline commits. The default is set on the project
     settings page. This cannot be set for individual tasks. 
 -   `cron`: define with [cron syntax](https://crontab.guru/) (i.e. Min \| Hour \| DayOfMonth \|
     Month \| DayOfWeekOptional) when (in UTC) a task or variant in a mainline
