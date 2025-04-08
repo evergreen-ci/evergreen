@@ -343,6 +343,28 @@ func (a *Agent) processNextTask(ctx context.Context, nt *apimodels.NextTaskRespo
 	if nt.ShouldTeardownGroup {
 		// Tear down the task group if the task group is finished.
 		a.runTeardownGroupCommands(ctx, tc)
+
+		// Terminate host if a task groups is complete in a single host distro.
+		if a.opts.SingleTaskDistro {
+			err := a.comm.DisableHost(ctx, a.opts.HostID, apimodels.DisableInfo{Reason: "Single task distro ran a task"})
+			if err != nil {
+				span.RecordError(err, trace.WithAttributes(attribute.String("task.id", tc.task.ID)), trace.WithStackTrace(true))
+				grip.Critical(message.WrapError(err, message.Fields{
+					"message":    "error disabling host after task group completion",
+					"task":       tc.task.ID,
+					"host":       a.opts.HostID,
+					"task_group": nt.TaskGroup,
+				}))
+
+				return processNextResponse{
+					tc: &taskContext{
+						logger: client.NewSingleChannelLogHarness("default", a.defaultLogger),
+					},
+					needTeardownGroup: false,
+				}, err
+			}
+		}
+
 		return processNextResponse{
 			// Running the teardown group commands implies exiting the group, so
 			// destroy prior task information.
