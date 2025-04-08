@@ -262,9 +262,6 @@ func ReplaceContext(ctx context.Context, collection string, query any, replaceme
 	if err != nil {
 		return nil, errors.Wrapf(err, "replacing document")
 	}
-	if res.MatchedCount == 0 {
-		return nil, db.ErrNotFound
-	}
 
 	return &db.ChangeInfo{Updated: int(res.UpsertedCount) + int(res.ModifiedCount), UpsertedId: res.UpsertedID}, nil
 }

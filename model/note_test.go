@@ -17,7 +17,7 @@ func TestNoteStorage(t *testing.T) {
 			Content:      "test note",
 		}
 		Convey("saving the note should work without error", func() {
-			So(n.Upsert(t.Context()), ShouldBeNil)
+			So(n.Replace(t.Context()), ShouldBeNil)
 
 			Convey("the note should be retrievable", func() {
 				n2, err := NoteForTask(t.Context(), "t1")
@@ -28,7 +28,7 @@ func TestNoteStorage(t *testing.T) {
 			Convey("saving the note again should overwrite the existing note", func() {
 				n3 := n
 				n3.Content = "new content"
-				So(n3.Upsert(t.Context()), ShouldBeNil)
+				So(n3.Replace(t.Context()), ShouldBeNil)
 				n4, err := NoteForTask(t.Context(), "t1")
 				So(err, ShouldBeNil)
 				So(n4, ShouldNotBeNil)

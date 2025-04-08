@@ -22,9 +22,9 @@ type Note struct {
 
 var NoteTaskIdKey = bsonutil.MustHaveTag(Note{}, "TaskId")
 
-// Upsert overwrites an existing note.
-func (n *Note) Upsert(ctx context.Context) error {
-	_, err := db.Upsert(
+// Replace overwrites an existing note if found, or inserts if not found.
+func (n *Note) Replace(ctx context.Context) error {
+	_, err := db.ReplaceContext(
 		ctx,
 		NotesCollection,
 		bson.M{NoteTaskIdKey: n.TaskId},
