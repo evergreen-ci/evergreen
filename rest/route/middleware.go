@@ -60,7 +60,7 @@ func (m *projCtxMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, n
 
 	user := gimlet.GetUser(ctx)
 
-	if opCtx.ProjectRef != nil && user == nil {
+	if opCtx.HasProjectOrRepoRef() && user == nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    "project not found",
@@ -141,7 +141,7 @@ func (m *projectAdminMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 	opCtx := MustHaveProjectContext(ctx)
 	user := MustHaveUser(ctx)
 
-	if opCtx == nil || opCtx.ProjectRef == nil {
+	if opCtx == nil || !opCtx.HasProjectOrRepoRef() {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    "no project found",
@@ -150,7 +150,7 @@ func (m *projectAdminMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 	}
 
 	isAdmin := user.HasPermission(gimlet.PermissionOpts{
-		Resource:      opCtx.ProjectRef.Id,
+		Resource:      opCtx.GetProjectOrRepoRefId(),
 		ResourceType:  evergreen.ProjectResourceType,
 		Permission:    evergreen.PermissionProjectSettings,
 		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
