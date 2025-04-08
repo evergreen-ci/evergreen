@@ -437,10 +437,7 @@ func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host
 		launchTemplate.IamInstanceProfile = &types.LaunchTemplateIamInstanceProfileSpecificationRequest{Arn: aws.String(ec2Settings.IAMInstanceProfileARN)}
 	}
 
-	assignPublicIPv4 := !ec2Settings.DoNotAssignPublicIPv4Address && !ec2Settings.IPv6
-	if h.UserHost || h.SpawnOptions.SpawnedByTask {
-		assignPublicIPv4 = true
-	}
+	assignPublicIPv4 := shouldAssignPublicIPv4Address(h, ec2Settings)
 	if assignPublicIPv4 {
 		launchTemplate.KeyName = aws.String(ec2Settings.KeyName)
 	}
@@ -455,7 +452,6 @@ func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host
 		}
 		if ec2Settings.IPv6 {
 			launchTemplate.NetworkInterfaces[0].Ipv6AddressCount = aws.Int32(1)
-			launchTemplate.NetworkInterfaces[0].AssociatePublicIpAddress = aws.Bool(false)
 		}
 	} else {
 		launchTemplate.SecurityGroups = ec2Settings.SecurityGroupIDs
@@ -501,6 +497,14 @@ func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host
 	}
 
 	return nil
+}
+
+func shouldAssignPublicIPv4Address(h *host.Host, ec2Settings *EC2ProviderSettings) bool {
+	if h.UserHost || h.SpawnOptions.SpawnedByTask {
+		return true
+	}
+
+	return !ec2Settings.DoNotAssignPublicIPv4Address && !ec2Settings.IPv6
 }
 
 func (m *ec2FleetManager) requestFleet(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings) (string, error) {

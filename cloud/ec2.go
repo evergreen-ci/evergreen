@@ -260,7 +260,6 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 		MinCount:            aws.Int32(1),
 		MaxCount:            aws.Int32(1),
 		ImageId:             &ec2Settings.AMI,
-		KeyName:             &ec2Settings.KeyName,
 		InstanceType:        types.InstanceType(ec2Settings.InstanceType),
 		BlockDeviceMappings: blockDevices,
 		TagSpecifications:   makeTagSpecifications(makeTags(h)),
@@ -270,13 +269,11 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 		input.IamInstanceProfile = &types.IamInstanceProfileSpecification{Arn: aws.String(ec2Settings.IAMInstanceProfileARN)}
 	}
 
+	assignPublicIPv4 := shouldAssignPublicIPv4Address(h, ec2Settings)
+	if assignPublicIPv4 {
+		input.KeyName = aws.String(ec2Settings.KeyName)
+	}
 	if ec2Settings.IsVpc {
-		assignPublicIPv4 := !ec2Settings.DoNotAssignPublicIPv4Address
-		if h.UserHost {
-			// Spawn hosts need a public IPv4 address so that users can SSH into
-			// them.
-			assignPublicIPv4 = true
-		}
 		input.NetworkInterfaces = []types.InstanceNetworkInterfaceSpecification{
 			{
 				AssociatePublicIpAddress: aws.Bool(assignPublicIPv4),
@@ -287,7 +284,6 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 		}
 		if ec2Settings.IPv6 {
 			input.NetworkInterfaces[0].Ipv6AddressCount = aws.Int32(1)
-			input.NetworkInterfaces[0].AssociatePublicIpAddress = aws.Bool(false)
 		}
 	} else {
 		input.SecurityGroups = ec2Settings.SecurityGroupIDs
