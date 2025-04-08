@@ -4,16 +4,20 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db/cache"
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/pail"
 	"github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -312,6 +316,12 @@ func FindOneQ(collection string, q Q, out any) error {
 // FindOneQContext runs a Q query against the given collection, applying the results to "out."
 // Only reads one document from the DB.
 func FindOneQContext(ctx context.Context, collection string, q Q, out any) error {
+	t, found := findFromCache(ctx, collection, q)
+	if found {
+		setObject(out, t)
+		return nil
+	}
+
 	if q.maxTime > 0 {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, q.maxTime)
@@ -324,7 +334,7 @@ func FindOneQContext(ctx context.Context, collection string, q Q, out any) error
 	}
 	defer session.Close()
 
-	return db.C(collection).
+	err = db.C(collection).
 		Find(q.filter).
 		Select(q.projection).
 		Sort(q.sort...).
@@ -332,6 +342,12 @@ func FindOneQContext(ctx context.Context, collection string, q Q, out any) error
 		Limit(1).
 		Hint(q.hint).
 		One(out)
+	if err != nil {
+		return err
+	}
+
+	setInCache(ctx, collection, q, out)
+	return nil
 }
 
 // FindAllQ runs a Q query against the given collection, applying the results to "out."
@@ -541,4 +557,66 @@ func EnsureIndex(collection string, index mongo.IndexModel) error {
 	_, err := env.DB().Collection(collection).Indexes().CreateOne(ctx, index)
 
 	return errors.WithStack(err)
+}
+
+func setObject(out any, in any) error {
+	val := reflect.ValueOf(out)
+	if val.Kind() != reflect.Ptr || val.IsNil() {
+		return errors.New("invalid type: 'out' must be a non-nil pointer")
+	}
+	if !val.CanSet() {
+		return errors.New("invalid type: 'out' must be a settable pointer")
+	}
+	val.Elem().Set(reflect.ValueOf(in))
+	return nil
+}
+
+func findFromCache(ctx context.Context, collection string, query any) (any, bool) {
+	id, found := getIDFromQuery(query)
+	if !found {
+		return nil, false
+	}
+
+	return cache.GetFromCache[any](ctx, collection, id)
+}
+
+func setInCache(ctx context.Context, collection string, query, out any) {
+	id, found := getIDFromQuery(query)
+	if !found {
+		return
+	}
+
+	cache.SetInCache(ctx, collection, id, &out)
+}
+
+func getIDFromQuery(query any) (string, bool) {
+	if query, ok := query.(Q); ok {
+		return getIDFromQuery(query.filter)
+	}
+
+	if filter, ok := query.(bson.M); ok {
+		if id, ok := filter["_id"]; ok {
+			if idStr, ok := id.(string); ok {
+				return idStr, true
+			} else if idBson, ok := id.(primitive.ObjectID); ok {
+				return idBson.Hex(), true
+			} else if idMgoBson, ok := id.(mgobson.ObjectId); ok {
+				return idMgoBson.Hex(), true
+			}
+		}
+	}
+
+	if filter, ok := query.(mgobson.M); ok {
+		if id, ok := filter["_id"]; ok {
+			if idStr, ok := id.(string); ok {
+				return idStr, true
+			} else if idBson, ok := id.(primitive.ObjectID); ok {
+				return idBson.Hex(), true
+			} else if idMgoBson, ok := id.(mgobson.ObjectId); ok {
+				return idMgoBson.Hex(), true
+			}
+		}
+	}
+
+	return "", false
 }
