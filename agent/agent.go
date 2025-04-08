@@ -40,7 +40,8 @@ import (
 const hostAttribute = "evergreen.host"
 
 var (
-	shouldExitAttribute = fmt.Sprintf("%s.should_exit", hostAttribute)
+	shouldExitAttribute  = fmt.Sprintf("%s.should_exit", hostAttribute)
+	globalFilesToCleanup = []string{".gitconfig", ".git-credentials", ".netcr"}
 )
 
 // Agent manages the data necessary to run tasks in a runtime environment.
@@ -929,7 +930,7 @@ func (a *Agent) runTeardownGroupCommands(ctx context.Context, tc *taskContext) {
 			grip.Error(tc.logger.Close())
 		}
 	}()
-	defer a.clearGitConfig(tc)
+	defer a.clearGlobalFiles(tc)
 
 	teardownGroup, err := tc.getTeardownGroup()
 	if err != nil {
@@ -1275,33 +1276,24 @@ func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupC
 	}
 }
 
-// clearGitConfig cleans up git files that were created in the home directory including
-// the global git config file and credentials file.
-func (a *Agent) clearGitConfig(tc *taskContext) {
+// clearGlobalFiles cleans up certain files that were created in the home directory, including
+// the global git config file, git credentials file, and netcr file.
+func (a *Agent) clearGlobalFiles(tc *taskContext) {
 	logger := grip.GetDefaultJournaler()
 	if tc.logger != nil && !tc.logger.Closed() {
 		logger = tc.logger.Execution()
 	}
 
-	logger.Infof("Clearing git config.")
-
-	globalGitConfigPath := filepath.Join(a.opts.HomeDirectory, ".gitconfig")
-	if _, err := os.Stat(globalGitConfigPath); os.IsNotExist(err) {
-		logger.Info("Global git config file does not exist.")
-	} else if err := os.Remove(globalGitConfigPath); err != nil {
-		logger.Error(errors.Wrap(err, "removing global git config file"))
-	} else {
-		logger.Info("Cleared git config.")
-	}
-
-	logger.Infof("Clearing git credentials.")
-	globalGitCredentialsPath := filepath.Join(a.opts.HomeDirectory, ".git-credentials")
-	if _, err := os.Stat(globalGitCredentialsPath); os.IsNotExist(err) {
-		logger.Info("Global git credentials file does not exist.")
-	} else if err := os.Remove(globalGitCredentialsPath); err != nil {
-		logger.Error(errors.Wrap(err, "removing global git credentials file"))
-	} else {
-		logger.Info("Cleared git credentials.")
+	for _, file := range globalFilesToCleanup {
+		logger.Infof("Clearing '%s'.", file)
+		globalPath := filepath.Join(a.opts.HomeDirectory, file)
+		if _, err := os.Stat(globalPath); os.IsNotExist(err) {
+			logger.Infof("Global '%s' file does not exist.", file)
+		} else if err := os.Remove(globalPath); err != nil {
+			logger.Error(errors.Wrapf(err, "removing global '%s' file", file))
+		} else {
+			logger.Infof("Cleared '%s'.", file)
+		}
 	}
 }
 
