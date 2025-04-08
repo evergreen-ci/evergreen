@@ -499,14 +499,6 @@ func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host
 	return nil
 }
 
-func shouldAssignPublicIPv4Address(h *host.Host, ec2Settings *EC2ProviderSettings) bool {
-	if h.UserHost || h.SpawnOptions.SpawnedByTask {
-		return true
-	}
-
-	return !ec2Settings.DoNotAssignPublicIPv4Address && !ec2Settings.IPv6
-}
-
 func (m *ec2FleetManager) requestFleet(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings) (string, error) {
 	var overrides []types.FleetLaunchTemplateOverridesRequest
 	var err error
