@@ -196,12 +196,12 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     }
 
     const singleTaskDistroErrors = []
-    $scope.Settings.single_task_distro.project_tasks_pair.forEach(({project_id, allowed_bvs, allowed_tasks}) => {
+    $scope.Settings.single_task_distro?.project_tasks_pair?.forEach(({project_id, allowed_bvs, allowed_tasks}) => {
       const t = new Set()
-      if(allowed_tasks.length === 0 && allowed_bvs.length === 0) {
+      if(!allowed_tasks?.length && !allowed_bvs?.length) {
         singleTaskDistroErrors.push(`Both allowed tasks and allowed build variants cannot be empty for project ${project_id}`)
       }
-      allowed_tasks.forEach((task) => {
+      allowed_tasks?.forEach((task) => {
         if(!task) {
           singleTaskDistroErrors.push(`Empty task for project ${project_id}`)
         }
@@ -217,7 +217,7 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
         singleTaskDistroErrors.push("Project ID cannot be empty for single task distro settings")
       }
       const b = new Set()
-      allowed_bvs.forEach((bv) => {
+      allowed_bvs?.forEach((bv) => {
         if(!bv) {
           singleTaskDistroErrors.push(`Empty build variant for project ${project_id}`)
         }
@@ -1022,9 +1022,11 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     return isRegex(task);
   }
   $scope.getProjectOrRepoName = function(projectOrRepoId) {
-    return $scope.repoRefData.find(({id}) => {
+    return ($scope.repoRefData.find(({id}) => {
       return id === projectOrRepoId
-    })?.displayName || projectOrRepoId
+    })?.displayName || $scope.projectRefData.find(({id}) => {
+      return id === projectOrRepoId
+    })?.displayName) ?? projectOrRepoId
   }
   $scope.isProjectOrRepo = function(projectOrRepoId) {
     return !!$scope.repoRefData.find(({id}) => {
