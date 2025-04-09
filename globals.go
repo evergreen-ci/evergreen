@@ -385,10 +385,6 @@ var TestFailureStatuses = []string{
 	TestSilentlyFailedStatus,
 }
 
-func IsFailedTestStatus(status string) bool {
-	return utility.StringSliceContains(TestFailureStatuses, status)
-}
-
 var TaskStatuses = []string{
 	TaskStarted,
 	TaskSucceeded,
