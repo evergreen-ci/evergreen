@@ -754,8 +754,7 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 		return nil, err
 	}
 
-	hasDistroCreatePermission := usr.HasDistroCreatePermission()
-	if !hasDistroCreatePermission {
+	if !usr.HasDistroCreatePermission() {
 		d, err := distro.FindOneId(ctx, options.DistroID)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching distro '%s': %s", options.DistroID, err.Error()))

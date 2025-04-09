@@ -81,7 +81,10 @@ func (hph *hostPostHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONErrorResponder(errors.Errorf("distro '%s' not found", hph.options.DistroID))
 		}
 		if d.AdminOnly {
-			return gimlet.MakeJSONErrorResponder(errors.Errorf("insufficient permissions to spawn admin-only distro '%s'", hph.options.DistroID))
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusForbidden,
+				Message:    errors.Errorf("not authorized to spawn admin-only distro '%s'", hph.options.DistroID).Error(),
+			})
 		}
 	}
 
