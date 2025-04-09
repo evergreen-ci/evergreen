@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/cloud/parameterstore"
 	"github.com/evergreen-ci/evergreen/cloud/parameterstore/fakeparameter"
+	"github.com/evergreen-ci/evergreen/db/cache"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -321,6 +322,7 @@ func getAdminService(ctx context.Context, env evergreen.Environment, tracer trac
 
 	app := gimlet.NewApp()
 	app.AddMiddleware(gimlet.MakeRecoveryLogger())
+	app.AddMiddleware(cache.NewGimletMiddleware("admin"))
 	apps := []*gimlet.APIApp{app}
 
 	localAbort := rest.NewAbortablePoolManagementService(localPool).App()

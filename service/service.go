@@ -48,7 +48,7 @@ func GetRouter(ctx context.Context, as *APIServer, uis *UIServer) (http.Handler,
 	app.AddMiddleware(gimlet.UserMiddleware(ctx, uis.env.UserManager(), uis.umconf))
 	app.AddMiddleware(gimlet.NewAuthenticationHandler(gimlet.NewBasicAuthenticator(nil, nil), uis.env.UserManager()))
 	app.AddMiddleware(gimlet.NewStaticAuth("", http.Dir(filepath.Join(uis.Home, "public"))))
-	app.AddMiddleware(embededCache{})
+	app.AddMiddleware(cache.NewGimletMiddleware("service"))
 
 	clients := gimlet.NewApp()
 	if uis.env.ClientConfig().S3URLPrefix != "" {
@@ -169,11 +169,4 @@ func GetRouter(ctx context.Context, as *APIServer, uis *UIServer) (http.Handler,
 	// the order that we merge handlers matters here, and we must
 	// define more specific routes before less specific routes.
 	return gimlet.MergeApplicationsWithRouter(router, app, clients, uiService, rest, apiRestV2, apiService)
-}
-
-// embededCache embeds a db cache into the context of the request.
-type embededCache struct{}
-
-func (embededCache) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	next.ServeHTTP(rw, r.WithContext(cache.Embed(r.Context(), "service")))
 }
