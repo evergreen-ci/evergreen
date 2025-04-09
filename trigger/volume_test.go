@@ -72,7 +72,7 @@ func TestVolumeExpiration(t *testing.T) {
 					Target: "foo@bar.com",
 				}),
 			}
-			require.NoError(t, subscriptions[0].Upsert())
+			require.NoError(t, subscriptions[0].Upsert(t.Context()))
 
 			n, err := NotificationsFromEvent(ctx, &event.EventLogEntry{
 				ResourceType: event.ResourceTypeHost,

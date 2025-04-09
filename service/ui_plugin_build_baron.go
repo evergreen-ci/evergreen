@@ -55,7 +55,7 @@ func bbSaveNote(w http.ResponseWriter, r *http.Request) {
 
 	n.TaskId = taskId
 	n.UnixNanoTime = time.Now().UnixNano()
-	if err := n.Upsert(); err != nil {
+	if err := n.Replace(r.Context()); err != nil {
 		gimlet.WriteJSONInternalError(w, err.Error())
 		return
 	}

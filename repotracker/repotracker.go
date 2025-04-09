@@ -467,11 +467,11 @@ func addGithubCheckSubscriptions(ctx context.Context, v *model.Version) error {
 	})
 
 	versionSub := event.NewVersionGithubCheckOutcomeSubscription(v.Id, ghSub)
-	if err := versionSub.Upsert(); err != nil {
+	if err := versionSub.Upsert(ctx); err != nil {
 		catcher.Wrap(err, "inserting version GitHub check subscription")
 	}
 	buildSub := event.NewGithubCheckBuildOutcomeSubscriptionByVersion(v.Id, ghSub)
-	if err := buildSub.Upsert(); err != nil {
+	if err := buildSub.Upsert(ctx); err != nil {
 		catcher.Wrap(err, "inserting build GitHub check subscription")
 	}
 	input := thirdparty.SendGithubStatusInput{
@@ -555,7 +555,7 @@ func AddBuildBreakSubscriptions(ctx context.Context, v *model.Version, projectRe
 	for _, subscriber := range subscribers {
 		newSubscription := subscriptionBase
 		newSubscription.Subscriber = subscriber
-		catcher.Add(newSubscription.Upsert())
+		catcher.Add(newSubscription.Upsert(ctx))
 	}
 	return catcher.Resolve()
 }

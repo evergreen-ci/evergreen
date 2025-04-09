@@ -381,13 +381,13 @@ func HasMatchingGitTagAliasAndRemotePath(ctx context.Context, projectId, tag str
 }
 
 // CopyProjectAliases finds the aliases for a given project and inserts them for the new project.
-func CopyProjectAliases(oldProjectId, newProjectId string) error {
+func CopyProjectAliases(ctx context.Context, oldProjectId, newProjectId string) error {
 	aliases, err := FindAliasesForProjectFromDb(oldProjectId)
 	if err != nil {
 		return errors.Wrapf(err, "finding aliases for project '%s'", oldProjectId)
 	}
 	if aliases != nil {
-		if err = UpsertAliasesForProject(aliases, newProjectId); err != nil {
+		if err = UpsertAliasesForProject(ctx, aliases, newProjectId); err != nil {
 			return errors.Wrapf(err, "inserting aliases for project '%s'", newProjectId)
 		}
 	}
@@ -419,7 +419,7 @@ func IsValidId(id string) bool {
 // NewId constructs a valid patch Id from the given hex string.
 func NewId(id string) mgobson.ObjectId { return mgobson.ObjectIdHex(id) }
 
-func (p *ProjectAlias) Upsert() error {
+func (p *ProjectAlias) Upsert(ctx context.Context) error {
 	if len(p.ProjectID) == 0 {
 		return errors.New("empty project ID")
 	}
@@ -439,7 +439,7 @@ func (p *ProjectAlias) Upsert() error {
 		parametersKey:  p.Parameters,
 	}
 
-	_, err := db.Upsert(ProjectAliasCollection, bson.M{
+	_, err := db.Upsert(ctx, ProjectAliasCollection, bson.M{
 		idKey: p.ID,
 	}, bson.M{"$set": update})
 	if err != nil {
@@ -448,14 +448,14 @@ func (p *ProjectAlias) Upsert() error {
 	return nil
 }
 
-func UpsertAliasesForProject(aliases []ProjectAlias, projectId string) error {
+func UpsertAliasesForProject(ctx context.Context, aliases []ProjectAlias, projectId string) error {
 	catcher := grip.NewBasicCatcher()
 	for i := range aliases {
 		if aliases[i].ProjectID != projectId { // new project, so we need a new document (new ID)
 			aliases[i].ProjectID = projectId
 			aliases[i].ID = ""
 		}
-		catcher.Add(aliases[i].Upsert())
+		catcher.Add(aliases[i].Upsert(ctx))
 	}
 	grip.Debug(message.WrapError(catcher.Resolve(), message.Fields{
 		"message":    "problem getting aliases",

@@ -184,7 +184,7 @@ func (j *podAllocatorJob) systemCanAllocate(ctx context.Context) (canAllocate bo
 	if err != nil {
 		return false, errors.Wrap(err, "getting admin settings")
 	}
-	numInitializing, err := pod.CountByInitializing()
+	numInitializing, err := pod.CountByInitializing(ctx)
 	if err != nil {
 		return false, errors.Wrap(err, "counting initializing pods")
 	}

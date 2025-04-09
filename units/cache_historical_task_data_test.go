@@ -67,7 +67,7 @@ func TestCacheHistoricalTaskDataJob(t *testing.T) {
 				}
 
 				lastJobTime := now.Add(-time.Hour)
-				require.NoError(t, taskstats.UpdateStatsStatus("p0", lastJobTime, lastJobTime, time.Minute))
+				require.NoError(t, taskstats.UpdateStatsStatus(t.Context(), "p0", lastJobTime, lastJobTime, time.Minute))
 			},
 			post: func(ctx context.Context, t *testing.T) {
 				for _, requester := range evergreen.AllRequesterTypes {
@@ -124,7 +124,7 @@ func TestCacheHistoricalTaskDataJob(t *testing.T) {
 				}
 
 				lastJobTime := t0.Add(-2 * time.Hour)
-				require.NoError(t, taskstats.UpdateStatsStatus("p0", lastJobTime, lastJobTime, time.Minute))
+				require.NoError(t, taskstats.UpdateStatsStatus(t.Context(), "p0", lastJobTime, lastJobTime, time.Minute))
 			},
 			post: func(ctx context.Context, t *testing.T) {
 				ts, err := taskstats.GetDailyTaskDoc(t.Context(), taskstats.DBTaskStatsID{
@@ -205,7 +205,7 @@ func TestCacheHistoricalTaskDataJob(t *testing.T) {
 				}
 
 				lastJobTime := now.Add(-2 * time.Hour)
-				require.NoError(t, taskstats.UpdateStatsStatus("p0", lastJobTime, lastJobTime, time.Minute))
+				require.NoError(t, taskstats.UpdateStatsStatus(t.Context(), "p0", lastJobTime, lastJobTime, time.Minute))
 			},
 			post: func(ctx context.Context, t *testing.T) {
 				ts, err := taskstats.GetDailyTaskDoc(t.Context(), taskstats.DBTaskStatsID{
