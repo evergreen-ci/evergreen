@@ -577,7 +577,7 @@ func findFromCache(ctx context.Context, collection string, query any) (any, bool
 		return nil, false
 	}
 
-	return cache.GetFromCache[any](ctx, collection, id)
+	return cache.GetFromCache(ctx, collection, id)
 }
 
 func setInCache(ctx context.Context, collection string, query, out any) {
@@ -586,7 +586,7 @@ func setInCache(ctx context.Context, collection string, query, out any) {
 		return
 	}
 
-	cache.SetInCache(ctx, collection, id, &out)
+	cache.SetInCache(ctx, collection, id, out)
 }
 
 func getIDFromQuery(query any) (string, bool) {

@@ -3,6 +3,7 @@ package cache
 import (
 	"context"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/evergreen-ci/utility/ttlcache"
@@ -35,24 +36,24 @@ func Embed(ctx context.Context, namePrefix string) context.Context {
 			continue
 		}
 		cacheName := fmt.Sprintf("%s-db-cache-%s", namePrefix, collections)
-		cache := ttlcache.WithOtel(ttlcache.NewWeakInMemory[any](), cacheName)
+		var cache ttlcache.Cache[any] = ttlcache.WithOtel(ttlcache.NewWeakInMemory[any](), cacheName)
 		ctx = context.WithValue(ctx, cacheContextKey(collections), cache)
 	}
 
 	return ctx
 }
 
-func GetFromCache[T any](ctx context.Context, collection, id string) (T, bool) {
-	cache, ok := getCache[T](ctx, cacheContextKey(collection))
+func GetFromCache(ctx context.Context, collection, id string) (any, bool) {
+	cache, ok := getCache(ctx, cacheContextKey(collection))
 	if !ok {
-		return *new(T), false
+		return *new(any), false
 	}
 
 	return cache.Get(ctx, id, 0)
 }
 
-func SetInCache[T any](ctx context.Context, collection, id string, value T) {
-	cache, ok := getCache[T](ctx, cacheContextKey(collection))
+func SetInCache(ctx context.Context, collection, id string, value any) {
+	cache, ok := getCache(ctx, cacheContextKey(collection))
 	if !ok {
 		return
 	}
@@ -60,20 +61,15 @@ func SetInCache[T any](ctx context.Context, collection, id string, value T) {
 	cache.Put(ctx, id, value, time.Now().Add(lifetime))
 }
 
-func getCache[T any](ctx context.Context, collection cacheContextKey) (ttlcache.Cache[T], bool) {
+func getCache(ctx context.Context, collection cacheContextKey) (ttlcache.Cache[any], bool) {
 	if !validCache(collection) {
 		return nil, false
 	}
 
-	cache, ok := ctx.Value(cacheContextKey(collection)).(ttlcache.Cache[T])
+	cache, ok := ctx.Value(collection).(ttlcache.Cache[any])
 	return cache, ok
 }
 
 func validCache(collection cacheContextKey) bool {
-	for _, validCollection := range validCaches {
-		if collection == validCollection {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(validCaches, collection)
 }
