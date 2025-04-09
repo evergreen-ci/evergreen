@@ -14,21 +14,27 @@ type (
 )
 
 const (
-	tasksCache cacheContextKey = "tasks"
+	tasksCache    cacheContextKey = "tasks"
+	versionsCache cacheContextKey = "versions"
+	projectsCache cacheContextKey = "projects"
+	patchesCache  cacheContextKey = "patches"
 
 	lifetime = time.Second
 )
 
-var validCaches = []string{
-	string(tasksCache),
+var validCaches = []cacheContextKey{
+	tasksCache,
+	versionsCache,
+	projectsCache,
+	patchesCache,
 }
 
-func Embed(ctx context.Context) context.Context {
+func Embed(ctx context.Context, namePrefix string) context.Context {
 	for _, collections := range validCaches {
 		if ctx.Value(cacheContextKey(collections)) != nil {
 			continue
 		}
-		cacheName := fmt.Sprintf("db-cache-%s", collections)
+		cacheName := fmt.Sprintf("%s-db-cache-%s", namePrefix, collections)
 		cache := ttlcache.WithOtel(ttlcache.NewWeakInMemory[any](), cacheName)
 		ctx = context.WithValue(ctx, cacheContextKey(collections), cache)
 	}
@@ -37,10 +43,6 @@ func Embed(ctx context.Context) context.Context {
 }
 
 func GetFromCache[T any](ctx context.Context, collection, id string) (T, bool) {
-	if !validCache(collection) {
-		return *new(T), false
-	}
-
 	cache, ok := getCache[T](ctx, cacheContextKey(collection))
 	if !ok {
 		return *new(T), false
@@ -50,10 +52,6 @@ func GetFromCache[T any](ctx context.Context, collection, id string) (T, bool) {
 }
 
 func SetInCache[T any](ctx context.Context, collection, id string, value T) {
-	if !validCache(collection) {
-		return
-	}
-
 	cache, ok := getCache[T](ctx, cacheContextKey(collection))
 	if !ok {
 		return
@@ -63,11 +61,15 @@ func SetInCache[T any](ctx context.Context, collection, id string, value T) {
 }
 
 func getCache[T any](ctx context.Context, collection cacheContextKey) (ttlcache.Cache[T], bool) {
+	if !validCache(collection) {
+		return nil, false
+	}
+
 	cache, ok := ctx.Value(cacheContextKey(collection)).(ttlcache.Cache[T])
 	return cache, ok
 }
 
-func validCache(collection string) bool {
+func validCache(collection cacheContextKey) bool {
 	for _, validCollection := range validCaches {
 		if collection == validCollection {
 			return true
