@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/db/cache"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/gimlet"
@@ -62,6 +63,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	compress := gimlet.WrapperHandlerMiddleware(handlers.CompressHandler)
 
 	app.AddWrapper(gimlet.WrapperMiddleware(allowCORS))
+	app.AddWrapper(cache.NewGimletMiddleware("handler"))
 
 	// Clients
 	stsManager := cloud.GetSTSManager(false)
