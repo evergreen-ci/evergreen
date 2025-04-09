@@ -252,7 +252,9 @@ func UpdateContext(ctx context.Context, collection string, query any, update any
 	return nil
 }
 
-// ReplaceContext replaces one matching document in the collection.
+// ReplaceContext replaces one matching document in the collection. If a matching
+// document is not found, it will be upserted. It returns the upserted ID if
+// one was created.
 func ReplaceContext(ctx context.Context, collection string, query any, replacement any) (*db.ChangeInfo, error) {
 	res, err := evergreen.GetEnvironment().DB().Collection(collection).ReplaceOne(ctx,
 		query,
