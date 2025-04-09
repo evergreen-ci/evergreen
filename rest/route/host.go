@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/units"
@@ -357,7 +356,7 @@ func (h *hostFilterGetHandler) Run(ctx context.Context) gimlet.Responder {
 	dbUser := MustHaveUser(ctx)
 	username := ""
 	// only admins see hosts that aren't theirs
-	if h.params.Mine || !userHasDistroCreatePermission(dbUser) {
+	if h.params.Mine || !dbUser.HasDistroCreatePermission() {
 		username = dbUser.Username()
 	}
 
@@ -376,15 +375,6 @@ func (h *hostFilterGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	return resp
-}
-
-func userHasDistroCreatePermission(u *user.DBUser) bool {
-	return u.HasPermission(gimlet.PermissionOpts{
-		Resource:      evergreen.SuperUserPermissionsID,
-		ResourceType:  evergreen.SuperUserResourceType,
-		Permission:    evergreen.PermissionDistroCreate,
-		RequiredLevel: evergreen.DistroCreate.Value,
-	})
 }
 
 // GET /hosts/{host_id}/provisioning_options

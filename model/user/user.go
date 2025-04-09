@@ -482,6 +482,17 @@ func (u *DBUser) HasProjectCreatePermission() (bool, error) {
 	return false, nil
 }
 
+// HasDistroCreatePermission returns true if the user has permission to create
+// distros.
+func (u *DBUser) HasDistroCreatePermission() bool {
+	return u.HasPermission(gimlet.PermissionOpts{
+		Resource:      evergreen.SuperUserPermissionsID,
+		ResourceType:  evergreen.SuperUserResourceType,
+		Permission:    evergreen.PermissionDistroCreate,
+		RequiredLevel: evergreen.DistroCreate.Value,
+	})
+}
+
 func (u *DBUser) DeleteAllRoles() error {
 	info, err := db.FindAndModify(
 		Collection,

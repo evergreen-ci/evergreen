@@ -9,6 +9,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/parsley"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
@@ -25,6 +26,7 @@ func init() {
 
 type UserTestSuite struct {
 	suite.Suite
+	env   evergreen.Environment
 	users []*DBUser
 }
 
@@ -34,8 +36,9 @@ func TestUserTestSuite(t *testing.T) {
 }
 
 func (s *UserTestSuite) SetupSuite() {
-	rm := evergreen.GetEnvironment().RoleManager()
-	s.NoError(rm.RegisterPermissions([]string{"permission"}))
+	env := testutil.NewEnvironment(s.T().Context(), s.T())
+	s.env = env
+	s.NoError(env.RoleManager().RegisterPermissions([]string{"permission"}))
 }
 
 func (s *UserTestSuite) SetupTest() {
@@ -124,7 +127,7 @@ func (s *UserTestSuite) SetupTest() {
 		s.NoError(user.Insert())
 	}
 
-	rm := evergreen.GetEnvironment().RoleManager()
+	rm := s.env.RoleManager()
 	scope1 := gimlet.Scope{
 		ID:          "1",
 		Resources:   []string{"resource1", "resource2"},
@@ -196,7 +199,7 @@ func (s *UserTestSuite) SetupTest() {
 }
 
 func (s *UserTestSuite) TearDownTest() {
-	s.NoError(db.ClearCollections(Collection))
+	s.NoError(db.ClearCollections(Collection, evergreen.ScopeCollection, evergreen.RoleCollection))
 }
 
 func (s *UserTestSuite) TestGetPublicKey() {
@@ -626,6 +629,37 @@ func (s *UserTestSuite) TestHasPermission() {
 	s.NoError(u.AddRole(s.T().Context(), "r1234p2"))
 	hasPermission = u.HasPermission(gimlet.PermissionOpts{Resource: "resource4", Permission: "permission", RequiredLevel: 2})
 	s.True(hasPermission)
+}
+
+func (s *UserTestSuite) TestHasDistroCreatePermission() {
+	env := &mock.Environment{}
+	s.Require().NoError(env.Configure(s.T().Context()))
+	roleManager := env.RoleManager()
+
+	usr := DBUser{
+		Id: "basic_user",
+	}
+	s.NoError(usr.Insert())
+	s.Require().False(usr.HasDistroCreatePermission())
+
+	createRole := gimlet.Role{
+		ID:          "create_distro",
+		Name:        "create_distro",
+		Scope:       "superuser_scope",
+		Permissions: map[string]int{evergreen.PermissionDistroCreate: evergreen.DistroCreate.Value},
+	}
+	s.Require().NoError(roleManager.UpdateRole(createRole))
+	s.Require().NoError(usr.AddRole(s.T().Context(), "create_distro"))
+
+	superUserScope := gimlet.Scope{
+		ID:        "superuser_scope",
+		Name:      "superuser scope",
+		Type:      evergreen.SuperUserResourceType,
+		Resources: []string{evergreen.SuperUserPermissionsID},
+	}
+	s.Require().NoError(roleManager.AddScope(superUserScope))
+
+	s.True(usr.HasDistroCreatePermission())
 }
 
 func (s *UserTestSuite) TestFindNeedsReauthorization() {

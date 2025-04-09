@@ -754,7 +754,7 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 		return nil, err
 	}
 
-	hasDistroCreatePermission := userHasDistroCreatePermission(usr)
+	hasDistroCreatePermission := usr.HasDistroCreatePermission()
 	if !hasDistroCreatePermission {
 		d, err := distro.FindOneId(ctx, options.DistroID)
 		if err != nil {
