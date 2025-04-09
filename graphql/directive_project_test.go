@@ -111,7 +111,7 @@ func TestRequireProjectAccessForSettings(t *testing.T) {
 
 	obj := any(map[string]any{"projectIdentifier": "invalid_identifier"})
 	res, err := config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionSettings, AccessLevelEdit)
-	require.EqualError(t, err, "input: project 'invalid_identifier' not found")
+	require.EqualError(t, err, "input: project/repo 'invalid_identifier' not found")
 	require.Nil(t, res)
 	require.Equal(t, 0, callCount)
 

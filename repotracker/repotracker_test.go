@@ -1363,11 +1363,11 @@ tasks:
 			tomorrow := versionCreateTime.Add(time.Hour * 24) // next day
 			y, m, d := tomorrow.Date()
 
-			if requester == evergreen.PatchVersionRequester {
+			if !evergreen.ShouldConsiderBatchtime(v.Requester) {
 				s.Len(v.BuildVariants, 2)
 				for _, bv := range v.BuildVariants {
-					s.NotEqual(versionCreateTime, bv.ActivateAt, "build variant activation should be based on version create time because patch")
-					s.Require().Len(bv.BatchTimeTasks, 0, "task cron activation should be empty because patch")
+					s.NotEqual(versionCreateTime, bv.ActivateAt, "build variant activation should be based on version create time because not mainline")
+					s.Require().Len(bv.BatchTimeTasks, 0, "task cron activation should be empty because not mainline")
 				}
 			} else {
 				for _, bv := range v.BuildVariants {

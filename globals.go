@@ -1112,8 +1112,10 @@ func IsGithubMergeQueueRequester(requester string) bool {
 	return requester == GithubMergeRequester
 }
 
+// ShouldConsiderBatchtime checks if the requester is for a mainline commit,
+// as this is the only requester checked for project activation.
 func ShouldConsiderBatchtime(requester string) bool {
-	return !IsPatchRequester(requester) && requester != AdHocRequester && requester != GitTagRequester
+	return requester == RepotrackerVersionRequester
 }
 
 func PermissionsDisabledForTests() bool {
