@@ -289,6 +289,7 @@ func TestCLITestHistory(t *testing.T) {
 		assert.NoError(t, testresult.ClearLocal(ctx, env))
 	}()
 	testutil.ConfigureIntegrationTest(t, testConfig)
+	svc := testresult.NewLocalService(env)
 	Convey("with API test server running", t, func() {
 		testSetup := setupCLITestHarness(ctx)
 		defer testSetup.testServer.Close()
@@ -351,7 +352,7 @@ func TestCLITestHistory(t *testing.T) {
 					TestStartTime: startTime,
 					TestEndTime:   endTime,
 				}
-				require.NoError(t, testresult.InsertLocal(ctx, passingResult, failedResult))
+				require.NoError(t, svc.AppendTestResults(ctx, []testresult.TestResult{passingResult, failedResult}))
 			}
 		})
 	})

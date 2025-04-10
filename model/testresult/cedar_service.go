@@ -30,8 +30,7 @@ func newCedarService(env evergreen.Environment) *cedarService {
 }
 
 func (s *cedarService) AppendTestResults(ctx context.Context, results []TestResult) error {
-	// TODO: DEVPROD-16200 implement service
-	return nil
+	return errors.New("not implemented")
 }
 
 func (s *cedarService) GetMergedTaskTestResults(ctx context.Context, taskOpts []TaskOptions, filterOpts *FilterOptions) (TaskTestResults, error) {
