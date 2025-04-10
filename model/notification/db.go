@@ -85,7 +85,7 @@ func (n *Notification) SetBSON(raw mgobson.Raw) error {
 	return nil
 }
 
-func InsertMany(items ...Notification) error {
+func InsertMany(ctx context.Context, items ...Notification) error {
 	if len(items) == 0 {
 		return nil
 	}
@@ -97,7 +97,7 @@ func InsertMany(items ...Notification) error {
 
 	// notification IDs are intended to collide when multiple subscriptions exist to the same event
 	// insert unordered will continue on error so the rest of the notifications in items will still be inserted
-	return db.InsertManyUnordered(Collection, interfaces...)
+	return db.InsertManyUnordered(ctx, Collection, interfaces...)
 }
 
 func Find(ctx context.Context, id string) (*Notification, error) {

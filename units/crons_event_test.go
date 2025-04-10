@@ -154,7 +154,7 @@ func (s *cronsEventSuite) TestSenderDegradedModeDoesntDispatchJobs() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s.NoError(notification.InsertMany(s.n...))
+	s.NoError(notification.InsertMany(s.ctx, s.n...))
 
 	jobs, err := notificationJobs(ctx, s.n, &flags, time.Time{})
 	s.NoError(err)
@@ -306,7 +306,7 @@ func (s *cronsEventSuite) TestEndToEnd() {
 }
 
 func (s *cronsEventSuite) TestSendNotificationJobs() {
-	s.NoError(notification.InsertMany(s.n...))
+	s.NoError(notification.InsertMany(s.ctx, s.n...))
 
 	jobs, err := sendNotificationJobs(s.ctx, s.env, time.Time{})
 	s.NoError(err)

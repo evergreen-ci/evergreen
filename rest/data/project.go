@@ -91,7 +91,7 @@ func RequestS3Creds(ctx context.Context, projectIdentifier, userEmail string) er
 		return err
 	}
 
-	err = notification.InsertMany(*n)
+	err = notification.InsertMany(ctx, *n)
 	if err != nil {
 		return errors.Wrap(err, "batch inserting notifications")
 	}

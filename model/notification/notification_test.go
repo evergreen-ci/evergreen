@@ -60,7 +60,7 @@ func (s *notificationSuite) TestMarkSent() {
 	s.Zero(s.n.SentAt)
 
 	s.n.ID = "1"
-	s.NoError(InsertMany(s.n))
+	s.NoError(InsertMany(s.T().Context(), s.n))
 
 	// mark that notification as sent
 	s.NoError(s.n.MarkSent(s.T().Context()))
@@ -88,7 +88,7 @@ func (s *notificationSuite) TestMarkError() {
 
 	// MarkError, non nil error
 	s.n.ID = "1"
-	s.NoError(InsertMany(s.n))
+	s.NoError(InsertMany(s.T().Context(), s.n))
 
 	s.NoError(s.n.MarkError(s.T().Context(), errors.New("test")))
 	s.NotEmpty(s.n.ID)
@@ -103,7 +103,7 @@ func (s *notificationSuite) TestMarkError() {
 
 func (s *notificationSuite) TestMarkErrorWithNilErrorHasNoSideEffect() {
 	s.n.ID = "1"
-	s.NoError(InsertMany(s.n))
+	s.NoError(InsertMany(s.T().Context(), s.n))
 
 	// nil error should have no side effect
 	s.NoError(s.n.MarkError(s.T().Context(), nil))
@@ -139,7 +139,7 @@ func (s *notificationSuite) TestInsertMany() {
 
 	slice := []Notification{s.n, n2, n3}
 
-	s.NoError(InsertMany(slice...))
+	s.NoError(InsertMany(s.T().Context(), slice...))
 
 	for i := range slice {
 		s.NotEmpty(slice[i].ID)
@@ -209,7 +209,7 @@ func (s *notificationSuite) TestInsertManyUnordered() {
 
 	slice := []Notification{s.n, n2, n3}
 
-	s.Error(InsertMany(slice...))
+	s.Error(InsertMany(s.T().Context(), slice...))
 	out := []Notification{}
 	s.NoError(db.FindAllQContext(s.T().Context(), Collection, db.Q{}, &out))
 	s.Len(out, 2)
@@ -227,7 +227,7 @@ func (s *notificationSuite) TestWebhookPayload() {
 		Body: []byte(jsonData),
 	}
 
-	s.NoError(InsertMany(s.n))
+	s.NoError(InsertMany(s.T().Context(), s.n))
 
 	n, err := Find(s.T().Context(), s.n.ID)
 	s.NoError(err)
@@ -248,7 +248,7 @@ func (s *notificationSuite) TestJIRACommentPayload() {
 	s.n.Subscriber.Target = target
 	s.n.Payload = "hi"
 
-	s.NoError(InsertMany(s.n))
+	s.NoError(InsertMany(s.T().Context(), s.n))
 
 	n, err := Find(s.T().Context(), s.n.ID)
 	s.NoError(err)
@@ -285,7 +285,7 @@ func (s *notificationSuite) TestJIRAIssuePayload() {
 		FixVersions: []string{},
 	}
 
-	s.NoError(InsertMany(s.n))
+	s.NoError(InsertMany(s.T().Context(), s.n))
 
 	n, err := Find(s.T().Context(), s.n.ID)
 	s.NoError(err)
@@ -314,7 +314,7 @@ func (s *notificationSuite) TestEmailPayload() {
 		Recipients: []string{},
 	}
 
-	s.NoError(InsertMany(s.n))
+	s.NoError(InsertMany(s.T().Context(), s.n))
 
 	n, err := Find(s.T().Context(), s.n.ID)
 	s.NoError(err)
@@ -341,7 +341,7 @@ func (s *notificationSuite) TestSlackPayload() {
 		Attachments: []message.SlackAttachment{},
 	}
 
-	s.NoError(InsertMany(s.n))
+	s.NoError(InsertMany(s.T().Context(), s.n))
 
 	n, err := Find(s.T().Context(), s.n.ID)
 	s.NoError(err)
@@ -366,7 +366,7 @@ func (s *notificationSuite) TestGithubPayload() {
 		Description: "hi",
 	}
 
-	s.NoError(InsertMany(s.n))
+	s.NoError(InsertMany(s.T().Context(), s.n))
 
 	n, err := Find(s.T().Context(), s.n.ID)
 	s.NoError(err)

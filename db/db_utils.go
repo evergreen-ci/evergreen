@@ -102,7 +102,7 @@ func InsertMany(ctx context.Context, collection string, items ...any) error {
 	return db.C(collection).Insert(items...)
 }
 
-func InsertManyUnordered(c string, items ...any) error {
+func InsertManyUnordered(ctx context.Context, c string, items ...any) error {
 	if len(items) == 0 {
 		return nil
 	}
