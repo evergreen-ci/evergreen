@@ -1383,3 +1383,9 @@ func getRevisionOrder(ctx context.Context, revision string, projectId string, li
 	// Offset the order number so the specified revision lands nearer to the center of the page.
 	return found.RevisionOrderNumber + limit/2 + 1, nil
 }
+
+// findVersionWithoutBuildVariants projects out the `build_variants` field which is unnecessary for GraphQL operations. This field can be quite
+// large so it's beneficial to omit it.
+func findVersionWithoutBuildVariants(ctx context.Context, query db.Q) (*model.Version, error) {
+	return model.VersionFindOne(ctx, query.Project(bson.M{model.VersionBuildVariantsKey: 0}))
+}
