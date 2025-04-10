@@ -33,7 +33,7 @@
                 "author": "mohamed.khelif",
                 "id": "evergreen_version4",
                 "order": 44,
-                "waterfallBuilds": []
+                "waterfallBuilds": null
               },
               {
                 "activated": true,
@@ -105,7 +105,7 @@
                 "author": "mohamed.khelif",
                 "id": "evergreen_version0",
                 "order": 40,
-                "waterfallBuilds": []
+                "waterfallBuilds": null
               },
               {
                 "activated": true,
@@ -556,7 +556,7 @@
               },
               {
                 "id": "evergreen_version4",
-                "waterfallBuilds": []
+                "waterfallBuilds": null
               },
               {
                 "id": "evergreen_version3",
@@ -606,7 +606,7 @@
               },
               {
                 "id": "evergreen_version0",
-                "waterfallBuilds": []
+                "waterfallBuilds": null
               },
               {
                 "id": "evergreen_version39",
@@ -628,15 +628,15 @@
             "flattenedVersions": [
               {
                 "id": "evergreen_version5",
-                "waterfallBuilds": []
+                "waterfallBuilds": null
               },
               {
                 "id": "evergreen_version4",
-                "waterfallBuilds": []
+                "waterfallBuilds": null
               },
               {
                 "id": "evergreen_version3",
-                "waterfallBuilds": []
+                "waterfallBuilds": null
               },
               {
                 "id": "evergreen_version2",
@@ -776,31 +776,31 @@
             "flattenedVersions": [
               {
                 "id": "evergreen_version5",
-                "waterfallBuilds": []
+                "waterfallBuilds": null
               },
               {
                 "id": "evergreen_version4",
-                "waterfallBuilds": []
+                "waterfallBuilds": null
               },
               {
                 "id": "evergreen_version3",
-                "waterfallBuilds": []
+                "waterfallBuilds": null
               },
               {
                 "id": "evergreen_version2",
-                "waterfallBuilds": []
+                "waterfallBuilds": null
               },
               {
                 "id": "evergreen_version1",
-                "waterfallBuilds": []
+                "waterfallBuilds": null
               },
               {
                 "id": "evergreen_version0",
-                "waterfallBuilds": []
+                "waterfallBuilds": null
               },
               {
                 "id": "evergreen_version39",
-                "waterfallBuilds": []
+                "waterfallBuilds": null
               }
             ]
           }
