@@ -445,14 +445,13 @@ func TestAssignNextTask(t *testing.T) {
 }
 
 func TestRemovePod(t *testing.T) {
+	env := &mock.Environment{}
+	require.NoError(t, env.Configure(t.Context()))
+	evergreen.SetEnvironment(env)
 	defer func() {
 		assert.NoError(t, db.ClearCollections(Collection, pod.Collection, task.Collection))
 	}()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
-	env := &mock.Environment{}
-	require.NoError(t, env.Configure(ctx))
 	const podID = "pod_id"
 
 	for tName, tCase := range map[string]func(ctx context.Context, env evergreen.Environment, t *testing.T){
@@ -599,7 +598,7 @@ func TestRemovePod(t *testing.T) {
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
-			tctx, tcancel := context.WithTimeout(ctx, 5*time.Second)
+			tctx, tcancel := context.WithTimeout(t.Context(), 5*time.Second)
 			defer tcancel()
 
 			require.NoError(t, db.ClearCollections(Collection, pod.Collection, task.Collection, build.Collection, model.VersionCollection))
