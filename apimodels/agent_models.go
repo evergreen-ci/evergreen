@@ -210,6 +210,8 @@ type AssumeRoleRequest struct {
 	// DurationSeconds is an optional field of the duration of the role session.
 	// It defaults to 15 minutes.
 	DurationSeconds *int32 `json:"duration_seconds"`
+
+	RepoID bool `json:"repo_id"`
 }
 
 // Validate checks that the request has valid values.

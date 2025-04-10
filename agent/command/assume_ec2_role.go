@@ -26,6 +26,8 @@ type ec2AssumeRole struct {
 	// Defaults to 900s (15 minutes).
 	DurationSeconds int32 `mapstructure:"duration_seconds"`
 
+	RepoID string `mapstructure:"repo_id" plugin:"expand"`
+
 	base
 }
 
@@ -60,6 +62,11 @@ func (r *ec2AssumeRole) Execute(ctx context.Context, comm client.Communicator, l
 	request := apimodels.AssumeRoleRequest{
 		RoleARN: r.RoleARN,
 	}
+
+	if r.RepoID == "true" {
+		request.RepoID = true
+	}
+
 	if r.DurationSeconds > 0 {
 		request.DurationSeconds = utility.ToInt32Ptr(r.DurationSeconds)
 	}
