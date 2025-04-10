@@ -636,7 +636,7 @@ func (s *UserTestSuite) TestHasDistroCreatePermission() {
 	usr := DBUser{
 		Id: "basic_user",
 	}
-	s.NoError(usr.Insert())
+	s.NoError(usr.Insert(s.T().Context()))
 	s.Require().False(usr.HasDistroCreatePermission())
 
 	createRole := gimlet.Role{
