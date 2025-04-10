@@ -2230,20 +2230,6 @@ Admin Settings
 										<label>S3 Secret</label>
 										<input type="text" ng-model="Settings.buckets.credentials.secret">
 									</md-input-container>
-									<md-card style="margin-bottom:20px;">
-										<md-card-title>
-											<md-card-title-text>
-												<span>Shared Bucket</span>
-											</md-card-title-text>
-										</md-card-title>
-										<md-card-content>
-											<md-input-container class="control">
-												<label>This is the bucket that is shared across all projects:</label>
-												<input type="text" id="sharedBucketTxt" ng-model="Settings.buckets.shared_bucket"
-													placeholder="Shared bucket name">
-											</md-input-container>
-										</md-card-content>
-									</md-card>
 										<md-card style="margin-bottom:20px;">
 											<md-card-title>
 												<md-card-title-text>
@@ -2278,106 +2264,6 @@ Admin Settings
 														<i class="fa fa-plus"></i>
 													</button>
 													<label class="control">[[ invalidBucket ]]</label>
-												</div>
-											</section>
-										</md-card-content>
-									</md-card>
-									<md-card style="margin-bottom:20px;">
-										<md-card-title>
-											<md-card-title-text>
-												<span>Project to prefix mappings</span>
-											</md-card-title-text>
-										</md-card-title>
-										<md-card-content>
-											<div id="project-to-prefix-mappings" class="form-group"
-												ng-repeat="(index, mapping) in Settings.buckets.project_to_prefix_mappings">
-												<section layout="row" flex>
-													<md-input-container class="control" flex=30>
-														<input class="control" type="text" ng-model="mapping.project_id"
-															placeholder="Project ID">
-													</md-input-container>
-													<md-input-container class="control" flex=30>
-														<input class="control" type="text" ng-model="mapping.prefix"
-															placeholder="Bucket prefix">
-													</md-input-container>
-													<div style="margin-top: 1%;">
-														<button class="btn btn-default btn-danger" type="button"
-															style="float: left" ng-click="deleteProjectToPrefixMapping(index)">
-															<i class="fa fa-trash"></i>
-														</button>
-													</div>
-												</section>
-											</div>
-											<section layout="row" flex>
-												<md-input-container class="control" flex=30>
-													<input class="control" type="text" ng-model="new_project_to_prefix_mapping.project_id"
-														placeholder="Project ID">
-												</md-input-container>
-												<md-input-container class="control" flex=30>
-													<input class="control" type="text" ng-model="new_project_to_prefix_mapping.prefix"
-														placeholder="Bucket Prefix">
-												</md-input-container>
-												<div style="margin-top: 1%;">
-													<button class="plus-button btn btn-primary"
-														ng-disabled="!validProjectToPrefixMapping(new_project_to_prefix_mapping)" type="button"
-														style="float: left" ng-click="addProjectToPrefixMapping()">
-														<i class="fa fa-plus"></i>
-													</button>
-													<label class="control">[[ invalidProjectToPrefixMapping ]]</label>
-												</div>
-											</section>
-										</md-card-content>
-									</md-card>
-									<md-card style="margin-bottom:20px;">
-										<md-card-title>
-											<md-card-title-text>
-												<span>Project to bucket mappings</span>
-											</md-card-title-text>
-										</md-card-title>
-										<md-card-content>
-											<div id="project-to-bucket-mappings" class="form-group"
-												ng-repeat="(index, mapping) in Settings.buckets.project_to_bucket_mappings">
-												<section layout="row" flex>
-													<md-input-container class="control" flex=30>
-														<input class="control" type="text" ng-model="mapping.project_id"
-															placeholder="Project ID">
-													</md-input-container>
-													<md-input-container class="control" flex=30>
-														<input class="control" type="text" ng-model="mapping.bucket"
-															placeholder="Bucket name">
-													</md-input-container>
-													<md-input-container class="control" flex=30>
-														<input class="control" type="text" ng-model="mapping.prefix"
-															placeholder="Prefix (Optional)">
-													</md-input-container>
-													<div style="margin-top: 1%;">
-														<button class="btn btn-default btn-danger" type="button"
-															style="float: left" ng-click="deleteProjectToBucketMapping(index)">
-															<i class="fa fa-trash"></i>
-														</button>
-													</div>
-												</section>
-											</div>
-											<section layout="row" flex>
-												<md-input-container class="control" flex=30>
-													<input class="control" type="text" ng-model="new_project_to_bucket_mapping.project_id"
-														placeholder="Project ID">
-												</md-input-container>
-												<md-input-container class="control" flex=30>
-													<input class="control" type="text" ng-model="new_project_to_bucket_mapping.bucket"
-														placeholder="Bucket name">
-												</md-input-container>
-												<md-input-container class="control" flex=30>
-													<input class="control" type="text" ng-model="new_project_to_bucket_mapping.prefix"
-														placeholder="Prefix (Optional)">
-												</md-input-container>
-												<div style="margin-top: 1%;">
-													<button class="plus-button btn btn-primary"
-														ng-disabled="!validProjectToBucketMapping(new_project_to_bucket_mapping)" type="button"
-														style="float: left" ng-click="addProjectToBucketMapping()">
-														<i class="fa fa-plus"></i>
-													</button>
-													<label class="control">[[ invalidProjectToBucketMapping ]]</label>
 												</div>
 											</section>
 										</md-card-content>

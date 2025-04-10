@@ -91,7 +91,6 @@ func (h *agentSetup) Run(ctx context.Context) gimlet.Responder {
 		SplunkClientToken:  h.settings.Splunk.SplunkConnectionInfo.Token,
 		SplunkChannel:      h.settings.Splunk.SplunkConnectionInfo.Channel,
 		TaskOutput:         h.settings.Buckets.Credentials,
-		InternalBuckets:    h.settings.Buckets.InternalBuckets,
 		MaxExecTimeoutSecs: h.settings.TaskLimits.MaxExecTimeoutSecs,
 	}
 
