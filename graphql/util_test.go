@@ -202,38 +202,6 @@ func TestGetDisplayStatus(t *testing.T) {
 	assert.Equal(t, evergreen.VersionAborted, status)
 }
 
-func TestUserHasDistroCreatePermission(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(user.Collection, evergreen.RoleCollection, evergreen.ScopeCollection))
-
-	env := evergreen.GetEnvironment()
-	roleManager := env.RoleManager()
-
-	usr := user.DBUser{
-		Id: "basic_user",
-	}
-	assert.NoError(t, usr.Insert())
-	assert.False(t, userHasDistroCreatePermission(&usr))
-
-	createRole := gimlet.Role{
-		ID:          "create_distro",
-		Name:        "create_distro",
-		Scope:       "superuser_scope",
-		Permissions: map[string]int{"distro_create": 10},
-	}
-	require.NoError(t, roleManager.UpdateRole(createRole))
-	require.NoError(t, usr.AddRole(t.Context(), "create_distro"))
-
-	superUserScope := gimlet.Scope{
-		ID:        "superuser_scope",
-		Name:      "superuser scope",
-		Type:      evergreen.SuperUserResourceType,
-		Resources: []string{evergreen.SuperUserPermissionsID},
-	}
-	require.NoError(t, roleManager.AddScope(superUserScope))
-
-	assert.True(t, userHasDistroCreatePermission(&usr))
-}
-
 func TestConcurrentlyBuildVersionsMatchingTasksMap(t *testing.T) {
 	ctx := context.Background()
 	assert.NoError(t, db.ClearCollections(task.Collection))

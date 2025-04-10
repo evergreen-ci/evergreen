@@ -164,7 +164,7 @@ func (r *queryResolver) Distros(ctx context.Context, onlySpawnable bool) ([]*res
 		distros = d
 	}
 
-	userHasDistroCreatePermission := userHasDistroCreatePermission(usr)
+	userHasDistroCreatePermission := usr.HasDistroCreatePermission()
 
 	for _, d := range distros {
 		// Omit admin-only distros if user lacks permissions

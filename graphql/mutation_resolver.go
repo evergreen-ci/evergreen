@@ -754,6 +754,20 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 		return nil, err
 	}
 
+	if !usr.HasDistroCreatePermission() {
+		d, err := distro.FindOneId(ctx, options.DistroID)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching distro '%s': %s", options.DistroID, err.Error()))
+		}
+		if d == nil {
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("distro '%s' not found", options.DistroID))
+		}
+		if d.AdminOnly {
+			// Admin-only distros can only be spawned by distro admins.
+			return nil, Forbidden.Send(ctx, fmt.Sprintf("not authorized to spawn host in admin-only distro '%s'", options.DistroID))
+		}
+	}
+
 	spawnHost, err := data.NewIntentHost(ctx, options, usr, evergreen.GetEnvironment())
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("spawning host: %s", err.Error()))

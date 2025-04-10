@@ -19,7 +19,7 @@ func (r *permissionsResolver) CanCreateDistro(ctx context.Context, obj *Permissi
 	if usr == nil {
 		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("user '%s' not found", obj.UserID))
 	}
-	return userHasDistroCreatePermission(usr), nil
+	return usr.HasDistroCreatePermission(), nil
 }
 
 // CanCreateProject is the resolver for the canCreateProject field.
