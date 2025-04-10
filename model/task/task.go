@@ -653,7 +653,7 @@ func (t *Task) SetOverrideDependencies(ctx context.Context, userID string) error
 	t.OverrideDependencies = true
 	t.DependenciesMetTime = dependenciesMetTime
 	t.DisplayStatusCache = t.DetermineDisplayStatus()
-	event.LogTaskDependenciesOverridden(t.Id, t.Execution, userID)
+	event.LogTaskDependenciesOverridden(ctx, t.Id, t.Execution, userID)
 	return UpdateOne(
 		ctx,
 		bson.M{
@@ -1556,7 +1556,7 @@ func UnscheduleStaleUnderwaterHostTasks(ctx context.Context, distroID string) ([
 		return nil, errors.Wrap(err, "unscheduling stale underwater tasks")
 	}
 	for _, modifiedTask := range tasks {
-		event.LogTaskPriority(modifiedTask.Id, modifiedTask.Execution, evergreen.UnderwaterTaskUnscheduler, evergreen.DisabledTaskPriority)
+		event.LogTaskPriority(ctx, modifiedTask.Id, modifiedTask.Execution, evergreen.UnderwaterTaskUnscheduler, evergreen.DisabledTaskPriority)
 	}
 	return tasks, nil
 }
@@ -1575,7 +1575,7 @@ func DeactivateStepbackTask(ctx context.Context, projectId, buildVariantName, ta
 		return errors.Wrap(err, "deactivating stepback task")
 	}
 	if t.IsAbortable() {
-		event.LogTaskAbortRequest(t.Id, t.Execution, caller)
+		event.LogTaskAbortRequest(ctx, t.Id, t.Execution, caller)
 		if err = t.SetAborted(ctx, AbortInfo{User: caller}); err != nil {
 			return errors.Wrap(err, "setting task aborted")
 		}
@@ -1607,11 +1607,11 @@ func (t *Task) MarkSystemFailed(ctx context.Context, description string) error {
 
 	switch t.ExecutionPlatform {
 	case ExecutionPlatformHost:
-		event.LogHostTaskFinished(t.Id, t.Execution, t.HostId, evergreen.TaskSystemFailed)
+		event.LogHostTaskFinished(ctx, t.Id, t.Execution, t.HostId, evergreen.TaskSystemFailed)
 	case ExecutionPlatformContainer:
-		event.LogContainerTaskFinished(t.Id, t.Execution, t.PodID, evergreen.TaskSystemFailed)
+		event.LogContainerTaskFinished(ctx, t.Id, t.Execution, t.PodID, evergreen.TaskSystemFailed)
 	default:
-		event.LogTaskFinished(t.Id, t.Execution, evergreen.TaskSystemFailed)
+		event.LogTaskFinished(ctx, t.Id, t.Execution, evergreen.TaskSystemFailed)
 	}
 	grip.Info(message.Fields{
 		"message":            "marking task system failed",
@@ -2996,7 +2996,7 @@ func (t *Task) String() (taskStruct string) {
 
 // Insert writes the task to the db.
 func (t *Task) Insert(ctx context.Context) error {
-	return db.InsertContext(ctx, Collection, t)
+	return db.Insert(ctx, Collection, t)
 }
 
 // Archive modifies the current execution of the task so that it is no longer
@@ -3012,7 +3012,7 @@ func (t *Task) Archive(ctx context.Context) error {
 	} else {
 		// Archiving a single task.
 		archiveTask := t.makeArchivedTask()
-		err := db.Insert(OldCollection, archiveTask)
+		err := db.Insert(ctx, OldCollection, archiveTask)
 		if err != nil && !db.IsDuplicateKey(err) {
 			return errors.Wrap(err, "inserting archived task into old tasks")
 		}

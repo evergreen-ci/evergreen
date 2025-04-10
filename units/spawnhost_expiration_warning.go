@@ -153,7 +153,7 @@ func trySpawnHostExpirationNotification(ctx context.Context, h *host.Host, numHo
 		return err
 	}
 	if shouldExec {
-		event.LogSpawnhostExpirationWarningSent(h.Id)
+		event.LogSpawnhostExpirationWarningSent(ctx, h.Id)
 		grip.Info(message.Fields{
 			"message":    "sent host expiration warning",
 			"host_id":    h.Id,
@@ -173,7 +173,7 @@ func tryHostTemporaryExemptionExpirationNotification(ctx context.Context, h *hos
 		return err
 	}
 	if shouldExec {
-		event.LogHostTemporaryExemptionExpirationWarningSent(h.Id)
+		event.LogHostTemporaryExemptionExpirationWarningSent(ctx, h.Id)
 		grip.Info(message.Fields{
 			"message": "sent temporary exemption expiration warning",
 			"host_id": h.Id,

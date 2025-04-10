@@ -178,7 +178,7 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 
 		s.Require().NoError(db.ClearCollections(event.EventCollection))
 		for i := 0; i < projEventCount; i++ {
-			s.NoError(model.LogProjectModified(projectId, username, &before, &after))
+			s.NoError(model.LogProjectModified(t.Context(), projectId, username, &before, &after))
 		}
 
 		return nil
@@ -552,7 +552,7 @@ func TestGetLegacyProjectEvents(t *testing.T) {
 		},
 	}
 
-	require.NoError(t, h.Log())
+	require.NoError(t, h.Log(t.Context()))
 
 	events, err := GetProjectEventLog(t.Context(), projectId, time.Now(), 0)
 	require.NoError(t, err)

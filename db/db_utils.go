@@ -79,18 +79,7 @@ func (s *shimFactoryImpl) GetContextSession(ctx context.Context) (db.Session, db
 }
 
 // Insert inserts the specified item into the specified collection.
-func Insert(collection string, item any) error {
-	session, db, err := GetGlobalSessionFactory().GetSession()
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	defer session.Close()
-
-	return db.C(collection).Insert(item)
-}
-
-// Insert inserts the specified item into the specified collection.
-func InsertContext(ctx context.Context, collection string, item any) error {
+func Insert(ctx context.Context, collection string, item any) error {
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
 		return errors.WithStack(err)

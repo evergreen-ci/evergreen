@@ -940,10 +940,10 @@ func (h *startTaskHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	if len(updates.PatchNewStatus) != 0 {
-		event.LogPatchStateChangeEvent(t.Version, updates.PatchNewStatus)
+		event.LogPatchStateChangeEvent(ctx, t.Version, updates.PatchNewStatus)
 	}
 	if len(updates.BuildNewStatus) != 0 {
-		event.LogBuildStateChangeEvent(t.BuildId, updates.BuildNewStatus)
+		event.LogBuildStateChangeEvent(ctx, t.BuildId, updates.BuildNewStatus)
 	}
 
 	var msg string

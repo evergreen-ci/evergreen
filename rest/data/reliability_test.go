@@ -49,7 +49,7 @@ func TestMockGetTaskReliability(t *testing.T) {
 	for i := 0; i < 102; i++ {
 		taskName := fmt.Sprintf("%v%v", "task_", i)
 		tasks = append(tasks, taskName)
-		err = db.Insert(taskstats.DailyTaskStatsCollection, mgobson.M{
+		err = db.Insert(t.Context(), taskstats.DailyTaskStatsCollection, mgobson.M{
 			"_id": taskstats.DBTaskStatsID{
 				Project:      "project",
 				Requester:    "requester",
@@ -110,7 +110,7 @@ func TestGetTaskReliability(t *testing.T) {
 			Requester: evergreen.RepotrackerVersionRequester,
 		},
 	}
-	assert.NoError(t, db.Insert(taskstats.DailyTaskStatsCollection, stat))
+	assert.NoError(t, db.Insert(t.Context(), taskstats.DailyTaskStatsCollection, stat))
 	projectRef := model.ProjectRef{
 		Id:         "projectID",
 		Identifier: "projectName",

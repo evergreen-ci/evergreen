@@ -957,7 +957,7 @@ func TestHostEndTask(t *testing.T) {
 			}))
 
 			for i := 0; i < 10; i++ {
-				event.LogHostTaskFinished(fmt.Sprintf("some-system-failed-task-%d", i), 0, hostId, evergreen.TaskSystemFailed)
+				event.LogHostTaskFinished(ctx, fmt.Sprintf("some-system-failed-task-%d", i), 0, hostId, evergreen.TaskSystemFailed)
 			}
 
 			details := &apimodels.TaskEndDetail{
@@ -989,7 +989,7 @@ func TestHostEndTask(t *testing.T) {
 			}))
 
 			for i := 0; i < 10; i++ {
-				event.LogHostTaskFinished(fmt.Sprintf("some-system-failed-task-%d", i), 0, hostId, evergreen.TaskSystemTimedOut)
+				event.LogHostTaskFinished(ctx, fmt.Sprintf("some-system-failed-task-%d", i), 0, hostId, evergreen.TaskSystemTimedOut)
 			}
 
 			details := &apimodels.TaskEndDetail{
@@ -1022,7 +1022,7 @@ func TestHostEndTask(t *testing.T) {
 			}))
 
 			for i := 0; i < 10; i++ {
-				event.LogHostTaskFinished(fmt.Sprintf("some-system-failed-task-%d", i), 0, hostId, evergreen.TaskSystemUnresponse)
+				event.LogHostTaskFinished(ctx, fmt.Sprintf("some-system-failed-task-%d", i), 0, hostId, evergreen.TaskSystemUnresponse)
 			}
 
 			details := &apimodels.TaskEndDetail{
@@ -1050,7 +1050,7 @@ func TestHostEndTask(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, h)
 			for i := 0; i < 8; i++ {
-				event.LogHostTaskFinished(fmt.Sprintf("some-system-failed-task-%d", i), 0, hostId, evergreen.TaskSystemUnresponse)
+				event.LogHostTaskFinished(ctx, fmt.Sprintf("some-system-failed-task-%d", i), 0, hostId, evergreen.TaskSystemUnresponse)
 			}
 
 			require.NoError(t, host.UpdateOne(ctx, host.ById(hostId), bson.M{
@@ -1061,7 +1061,7 @@ func TestHostEndTask(t *testing.T) {
 			}))
 
 			for i := 8; i < 10; i++ {
-				event.LogHostTaskFinished(fmt.Sprintf("some-system-failed-task-%d", i), 0, hostId, evergreen.TaskSystemUnresponse)
+				event.LogHostTaskFinished(ctx, fmt.Sprintf("some-system-failed-task-%d", i), 0, hostId, evergreen.TaskSystemUnresponse)
 			}
 
 			details := &apimodels.TaskEndDetail{

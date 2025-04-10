@@ -423,7 +423,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 			"source":      "patch intents",
 		}))
 	}
-	event.LogPatchStateChangeEvent(patchDoc.Id.Hex(), patchDoc.Status)
+	event.LogPatchStateChangeEvent(ctx, patchDoc.Id.Hex(), patchDoc.Status)
 
 	if canFinalize && j.intent.ShouldFinalizePatch() {
 		if _, err = model.FinalizePatch(ctx, patchDoc, j.intent.RequesterIdentity()); err != nil {

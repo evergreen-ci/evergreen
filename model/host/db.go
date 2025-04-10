@@ -857,7 +857,7 @@ func MarkStaleBuildingAsFailed(ctx context.Context, distroID string) error {
 	}
 
 	for _, id := range ids {
-		event.LogHostCreatedError(id, "stale building host took too long to start")
+		event.LogHostCreatedError(ctx, id, "stale building host took too long to start")
 		grip.Info(message.Fields{
 			"message": "stale building host took too long to start",
 			"host_id": id,

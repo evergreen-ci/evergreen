@@ -12,12 +12,12 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func (e *EventLogEntry) Log() error {
+func (e *EventLogEntry) Log(ctx context.Context) error {
 	if err := e.validateEvent(); err != nil {
 		return errors.Wrap(err, "not logging event, event is invalid")
 	}
 
-	return errors.Wrap(db.Insert(EventCollection, e), "inserting event")
+	return errors.Wrap(db.Insert(ctx, EventCollection, e), "inserting event")
 }
 
 func (e *EventLogEntry) MarkProcessed(ctx context.Context) error {

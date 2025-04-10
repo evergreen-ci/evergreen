@@ -3992,8 +3992,8 @@ func TestArchive(t *testing.T) {
 			require.NoError(t, tsk.Insert(t.Context()))
 
 			hostID := "hostID"
-			event.LogHostRunningTaskSet(hostID, tsk.Id, 0)
-			event.LogHostRunningTaskCleared(hostID, tsk.Id, 0)
+			event.LogHostRunningTaskSet(ctx, hostID, tsk.Id, 0)
+			event.LogHostRunningTaskCleared(ctx, hostID, tsk.Id, 0)
 
 			require.NoError(t, tsk.Archive(ctx))
 
@@ -4011,8 +4011,8 @@ func TestArchive(t *testing.T) {
 			require.NoError(t, execTask.Insert(t.Context()))
 
 			hostID := "hostID"
-			event.LogHostRunningTaskSet(hostID, execTask.Id, 0)
-			event.LogHostRunningTaskCleared(hostID, execTask.Id, 0)
+			event.LogHostRunningTaskSet(ctx, hostID, execTask.Id, 0)
+			event.LogHostRunningTaskCleared(ctx, hostID, execTask.Id, 0)
 
 			dt.DisplayOnly = true
 			dt.ExecutionTasks = []string{execTask.Id}
@@ -4129,8 +4129,8 @@ func TestArchiveFailedOnly(t *testing.T) {
 		archivedExecution := t1.Execution
 
 		hostID := "hostID"
-		event.LogHostRunningTaskSet(hostID, t1.Id, 0)
-		event.LogHostRunningTaskCleared(hostID, t1.Id, 0)
+		event.LogHostRunningTaskSet(ctx, hostID, t1.Id, 0)
+		event.LogHostRunningTaskCleared(ctx, hostID, t1.Id, 0)
 
 		// Verifies the execution before and after calling Archive
 		archivedDisplayTaskID := MakeOldID(dt.Id, dt.Execution)
@@ -4182,8 +4182,8 @@ func TestArchiveFailedOnly(t *testing.T) {
 		archivedT2 := MakeOldID(t2.Id, t2.Execution)
 
 		hostID := "hostID2"
-		event.LogHostRunningTaskSet(hostID, t1.Id, 1)
-		event.LogHostRunningTaskCleared(hostID, t1.Id, 1)
+		event.LogHostRunningTaskSet(ctx, hostID, t1.Id, 1)
+		event.LogHostRunningTaskCleared(ctx, hostID, t1.Id, 1)
 
 		// Verifies the display task is archived after calling archive
 		archivedDisplayTaskID := MakeOldID(dt.Id, dt.Execution)
@@ -4223,12 +4223,12 @@ func TestByExecutionTasksAndMaxExecution(t *testing.T) {
 			Execution: 1,
 			Status:    evergreen.TaskSucceeded,
 		}
-		assert.NoError(t, db.Insert(Collection, t1))
+		assert.NoError(t, db.Insert(t.Context(), Collection, t1))
 
 		ot1 := t1
 		ot1.Execution = 0
 		ot1 = *ot1.makeArchivedTask()
-		assert.NoError(t, db.Insert(OldCollection, ot1))
+		assert.NoError(t, db.Insert(t.Context(), OldCollection, ot1))
 
 		t2 := Task{
 			Id:        "t2",
@@ -4236,11 +4236,11 @@ func TestByExecutionTasksAndMaxExecution(t *testing.T) {
 			Execution: 1,
 			Status:    evergreen.TaskSucceeded,
 		}
-		assert.NoError(t, db.Insert(Collection, t2))
+		assert.NoError(t, db.Insert(t.Context(), Collection, t2))
 		ot2 := t2
 		ot2.Execution = 0
 		ot2 = *ot2.makeArchivedTask()
-		assert.NoError(t, db.Insert(OldCollection, ot2))
+		assert.NoError(t, db.Insert(t.Context(), OldCollection, ot2))
 
 		tasks, err := FindByExecutionTasksAndMaxExecution(ctx, tasksToFetch, 1)
 		tasks = convertOldTasksIntoTasks(tasks)
@@ -4257,16 +4257,16 @@ func TestByExecutionTasksAndMaxExecution(t *testing.T) {
 			Execution: 2,
 			Status:    evergreen.TaskSucceeded,
 		}
-		assert.NoError(t, db.Insert(Collection, t1))
+		assert.NoError(t, db.Insert(t.Context(), Collection, t1))
 
 		ot1 := t1
 		ot1.Execution = 1
 		ot1 = *ot1.makeArchivedTask()
-		assert.NoError(t, db.Insert(OldCollection, ot1))
+		assert.NoError(t, db.Insert(t.Context(), OldCollection, ot1))
 
 		ot1.Execution = 1
 		ot1 = *ot1.makeArchivedTask()
-		assert.NoError(t, db.Insert(OldCollection, ot1))
+		assert.NoError(t, db.Insert(t.Context(), OldCollection, ot1))
 
 		t2 := Task{
 			Id:        "t2",
@@ -4274,11 +4274,11 @@ func TestByExecutionTasksAndMaxExecution(t *testing.T) {
 			Execution: 1,
 			Status:    evergreen.TaskSucceeded,
 		}
-		assert.NoError(t, db.Insert(Collection, t2))
+		assert.NoError(t, db.Insert(t.Context(), Collection, t2))
 		ot2 := t2
 		ot2.Execution = 0
 		ot2 = *ot2.makeArchivedTask()
-		assert.NoError(t, db.Insert(OldCollection, ot2))
+		assert.NoError(t, db.Insert(t.Context(), OldCollection, ot2))
 
 		tasks, err := FindByExecutionTasksAndMaxExecution(ctx, tasksToFetch, 2)
 		tasks = convertOldTasksIntoTasks(tasks)
@@ -4297,17 +4297,17 @@ func TestByExecutionTasksAndMaxExecution(t *testing.T) {
 			Execution: 2,
 			Status:    evergreen.TaskSucceeded,
 		}
-		assert.NoError(t, db.Insert(Collection, t1))
+		assert.NoError(t, db.Insert(t.Context(), Collection, t1))
 
 		ot1 := t1
 		ot1.Execution = 1
 		ot1 = *ot1.makeArchivedTask()
-		assert.NoError(t, db.Insert(OldCollection, ot1))
+		assert.NoError(t, db.Insert(t.Context(), OldCollection, ot1))
 
 		ot1 = t1
 		ot1.Execution = 0
 		ot1 = *ot1.makeArchivedTask()
-		assert.NoError(t, db.Insert(OldCollection, ot1))
+		assert.NoError(t, db.Insert(t.Context(), OldCollection, ot1))
 
 		t2 := Task{
 			Id:        "t2",
@@ -4315,17 +4315,17 @@ func TestByExecutionTasksAndMaxExecution(t *testing.T) {
 			Execution: 2,
 			Status:    evergreen.TaskFailed,
 		}
-		assert.NoError(t, db.Insert(Collection, t2))
+		assert.NoError(t, db.Insert(t.Context(), Collection, t2))
 
 		ot2 := t2
 		ot2.Execution = 1
 		ot2 = *ot2.makeArchivedTask()
-		assert.NoError(t, db.Insert(OldCollection, ot2))
+		assert.NoError(t, db.Insert(t.Context(), OldCollection, ot2))
 
 		ot2 = t2
 		ot2.Execution = 0
 		ot2 = *ot2.makeArchivedTask()
-		assert.NoError(t, db.Insert(OldCollection, ot2))
+		assert.NoError(t, db.Insert(t.Context(), OldCollection, ot2))
 
 		tasks, err := FindByExecutionTasksAndMaxExecution(ctx, tasksToFetch, 1)
 		tasks = convertOldTasksIntoTasks(tasks)
@@ -4352,7 +4352,7 @@ func TestFindTaskOnPreviousCommit(t *testing.T) {
 		DisplayName:         "dn",
 		Project:             "p",
 	}
-	assert.NoError(t, db.Insert(Collection, t1))
+	assert.NoError(t, db.Insert(t.Context(), Collection, t1))
 	t2 := Task{
 		Id:                  "t2",
 		Version:             "v2",
@@ -4364,7 +4364,7 @@ func TestFindTaskOnPreviousCommit(t *testing.T) {
 		DisplayName:         "dn",
 		Project:             "p",
 	}
-	assert.NoError(t, db.Insert(Collection, t2))
+	assert.NoError(t, db.Insert(t.Context(), Collection, t2))
 
 	task, err := t2.FindTaskOnPreviousCommit(ctx)
 	assert.NoError(t, err)
@@ -4382,7 +4382,7 @@ func TestFindTaskOnPreviousCommit(t *testing.T) {
 		DisplayName:         "dn",
 		Project:             "p",
 	}
-	assert.NoError(t, db.Insert(Collection, t3))
+	assert.NoError(t, db.Insert(t.Context(), Collection, t3))
 	t4 := Task{
 		Id:                  "t4",
 		Version:             "v4",
@@ -4394,7 +4394,7 @@ func TestFindTaskOnPreviousCommit(t *testing.T) {
 		DisplayName:         "dn",
 		Project:             "p",
 	}
-	assert.NoError(t, db.Insert(Collection, t4))
+	assert.NoError(t, db.Insert(t.Context(), Collection, t4))
 
 	// Should fetch the latest mainline commit task and should not consider non gitter tasks
 	task, err = t4.FindTaskOnPreviousCommit(ctx)

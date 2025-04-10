@@ -74,7 +74,7 @@ func (s *eventSuite) TestWithRealData() {
 			hostDataStatusKey: "success",
 		},
 	}
-	s.NoError(db.Insert(EventCollection, data))
+	s.NoError(db.Insert(s.T().Context(), EventCollection, data))
 	entries, err := Find(db.Query(bson.M{idKey: mgobson.ObjectIdHex("5949645c9acd9604fdd202d8")}))
 	s.NoError(err)
 	s.Len(entries, 1)
@@ -109,7 +109,7 @@ func (s *eventSuite) TestWithRealData() {
 			hostDataStatusKey: "success",
 		},
 	}
-	s.NoError(db.Insert(EventCollection, data))
+	s.NoError(db.Insert(s.T().Context(), EventCollection, data))
 	entries, err = Find(db.Query(bson.M{idKey: mgobson.ObjectIdHex("5949645c9acd9604fdd202d9")}))
 	s.NoError(err)
 	s.Len(entries, 1)
@@ -133,7 +133,7 @@ func (s *eventSuite) TestWithRealData() {
 
 	// check that string IDs are preserved in the DB
 	data[idKey] = "elephant"
-	s.NoError(db.Insert(EventCollection, data))
+	s.NoError(db.Insert(s.T().Context(), EventCollection, data))
 	entries, err = Find(db.Query(bson.M{idKey: "elephant"}))
 	s.NoError(err)
 	s.Len(entries, 1)
@@ -148,11 +148,11 @@ func (s *eventSuite) TestEventWithNilData() {
 		Timestamp:  time.Now().Round(time.Millisecond).Truncate(time.Millisecond),
 	}
 	s.Nil(event.Data)
-	s.Errorf(event.Log(), "event log entry cannot have nil data")
+	s.Errorf(event.Log(s.T().Context()), "event log entry cannot have nil data")
 
 	s.NotPanics(func() {
 		// But reading this back should not panic, if it somehow got into the db
-		s.NoError(db.Insert(EventCollection, event))
+		s.NoError(db.Insert(s.T().Context(), EventCollection, event))
 		fetchedEvents, err := Find(db.Query(bson.M{}))
 		s.Require().Error(err)
 		s.Nil(fetchedEvents)
@@ -254,7 +254,7 @@ func (s *eventSuite) TestFindByID() {
 		Timestamp:    time.Now().Round(time.Millisecond).Truncate(time.Millisecond),
 		Data:         registry.newEventFromType(ResourceTypeHost),
 	}
-	s.Require().NoError(e.Log())
+	s.Require().NoError(e.Log(s.T().Context()))
 	dbEvent, err := FindByID(s.T().Context(), e.ID)
 	s.Require().NoError(err)
 	s.Require().NotZero(dbEvent)
@@ -277,7 +277,7 @@ func (s *eventSuite) TestMarkProcessed() {
 	s.EqualError(event.MarkProcessed(s.T().Context()), "event has no ID")
 	event.ID = mgobson.NewObjectId().Hex()
 	s.EqualError(event.MarkProcessed(s.T().Context()), "updating 'processed at' time: document not found")
-	s.NoError(event.Log())
+	s.NoError(event.Log(s.T().Context()))
 
 	s.NoError(db.UpdateIdContext(s.T().Context(), EventCollection, event.ID, bson.M{
 		"$set": bson.M{
@@ -333,7 +333,7 @@ func (s *eventSuite) TestFindUnprocessedEvents() {
 		},
 	}
 	for i := range data {
-		s.NoError(db.Insert(EventCollection, data[i]))
+		s.NoError(db.Insert(s.T().Context(), EventCollection, data[i]))
 	}
 	events, err := FindUnprocessedEvents(-1)
 	s.NoError(err)
@@ -385,7 +385,7 @@ func (s *eventSuite) TestFindLastProcessedEvent() {
 		},
 	}
 	for i := range events {
-		s.NoError(db.Insert(EventCollection, events[i]))
+		s.NoError(db.Insert(s.T().Context(), EventCollection, events[i]))
 	}
 
 	e, err := FindLastProcessedEvent(s.T().Context())
@@ -432,7 +432,7 @@ func (s *eventSuite) TestCountUnprocessedEvents() {
 		},
 	}
 	for i := range events {
-		s.NoError(db.Insert(EventCollection, events[i]))
+		s.NoError(db.Insert(s.T().Context(), EventCollection, events[i]))
 	}
 
 	n, err := CountUnprocessedEvents(s.T().Context())

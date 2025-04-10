@@ -70,7 +70,7 @@ func (s *ProjectPatchByIDSuite) SetupTest() {
 	for _, alias := range aliases {
 		s.NoError(alias.Upsert(s.T().Context()))
 	}
-	s.NoError(db.Insert(serviceModel.RepositoriesCollection, serviceModel.Repository{
+	s.NoError(db.Insert(s.T().Context(), serviceModel.RepositoriesCollection, serviceModel.Repository{
 		Project:      "dimoxinil",
 		LastRevision: "something",
 	}))
@@ -929,7 +929,7 @@ func TestGetProjectTasks(t *testing.T) {
 		Identifier: "p1",
 	}
 	assert.NoError(project.Insert(t.Context()))
-	assert.NoError(db.Insert(serviceModel.RepositoriesCollection, serviceModel.Repository{
+	assert.NoError(db.Insert(t.Context(), serviceModel.RepositoriesCollection, serviceModel.Repository{
 		Project:             projectId,
 		RevisionOrderNumber: 20,
 	}))
@@ -1370,7 +1370,7 @@ func TestGetProjectTaskExecutions(t *testing.T) {
 		assert.NoError(t, each.Insert(t.Context()))
 		each.Execution = 0
 		// Duplicate everything for the old task collection to ensure this is working.
-		assert.NoError(t, db.Insert(task.OldCollection, each))
+		assert.NoError(t, db.Insert(t.Context(), task.OldCollection, each))
 	}
 	for testName, test := range map[string]func(*testing.T, *getProjectTaskExecutionsHandler){
 		"parseSuccess": func(t *testing.T, rm *getProjectTaskExecutionsHandler) {

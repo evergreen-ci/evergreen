@@ -261,7 +261,7 @@ func (j *createHostJob) selfThrottle(ctx context.Context, hostInit evergreen.Hos
 	} else if numProv >= hostInit.HostThrottle {
 		reason := "host creation throttle"
 		j.AddError(errors.Wrapf(j.host.SetStatusAtomically(ctx, evergreen.HostBuildingFailed, evergreen.User, reason), "getting rid of intent host '%s' for host creation throttle", j.host.Id))
-		event.LogHostCreatedError(j.host.Id, reason)
+		event.LogHostCreatedError(ctx, j.host.Id, reason)
 		return true
 	}
 
@@ -352,14 +352,14 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 			// host errors more efficient because the notification system can
 			// process just spawn host errors rather than every single host
 			// creation error.
-			event.LogSpawnHostCreatedError(j.host.Id, err.Error())
+			event.LogSpawnHostCreatedError(ctx, j.host.Id, err.Error())
 		}
-		event.LogHostCreatedError(j.host.Id, err.Error())
+		event.LogHostCreatedError(ctx, j.host.Id, err.Error())
 		return errors.Wrapf(err, "spawning and updating host '%s'", j.host.Id)
 	}
 
 	if hostReplaced {
-		event.LogHostStartSucceeded(j.host.Id, evergreen.User)
+		event.LogHostStartSucceeded(ctx, j.host.Id, evergreen.User)
 	}
 
 	grip.Info(message.Fields{

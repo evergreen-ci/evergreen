@@ -658,7 +658,7 @@ var adminPermissions = gimlet.Permissions{
 }
 
 func (projectRef *ProjectRef) Insert(ctx context.Context) error {
-	return db.InsertContext(ctx, ProjectRefCollection, projectRef)
+	return db.Insert(ctx, ProjectRefCollection, projectRef)
 }
 
 func (p *ProjectRef) Add(ctx context.Context, creator *user.DBUser) error {
@@ -689,7 +689,7 @@ func (p *ProjectRef) Add(ctx context.Context, creator *user.DBUser) error {
 		}
 	}
 
-	err := db.Insert(ProjectRefCollection, p)
+	err := db.Insert(ctx, ProjectRefCollection, p)
 	if err != nil {
 		return errors.Wrap(err, "inserting project ref")
 	}
@@ -1281,7 +1281,7 @@ func (p *ProjectRef) createNewRepoRef(ctx context.Context, u *user.DBUser) (repo
 	if err = repoRef.Add(ctx, u); err != nil {
 		return nil, errors.Wrapf(err, "adding new repo repo ref for '%s/%s'", p.Owner, p.Repo)
 	}
-	err = LogProjectAdded(repoRef.Id, u.DisplayName())
+	err = LogProjectAdded(ctx, repoRef.Id, u.DisplayName())
 	grip.Error(message.WrapError(err, message.Fields{
 		"message":            "problem logging repo added",
 		"project_id":         repoRef.Id,

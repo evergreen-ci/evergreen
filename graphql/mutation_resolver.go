@@ -226,11 +226,11 @@ func (r *mutationResolver) SaveDistro(ctx context.Context, opts SaveDistroInput)
 		}
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("updating distro '%s': %s", d.Id, err.Error()))
 	}
-	event.LogDistroModified(d.Id, usr.Username(), oldDistro.DistroData(), d.DistroData())
+	event.LogDistroModified(ctx, d.Id, usr.Username(), oldDistro.DistroData(), d.DistroData())
 
 	// AMI events are not displayed in the event log, but are used by the backend to determine if hosts have become stale.
 	if d.GetDefaultAMI() != oldDistro.GetDefaultAMI() {
-		event.LogDistroAMIModified(d.Id, usr.Username())
+		event.LogDistroAMIModified(ctx, d.Id, usr.Username())
 	}
 
 	numHostsUpdated, err := handleDistroOnSaveOperation(ctx, d.Id, opts.OnSave, usr.Username())
@@ -496,7 +496,7 @@ func (r *mutationResolver) DeleteGithubAppCredentials(ctx context.Context, opts 
 	after := model.ProjectSettings{
 		GitHubAppAuth: githubapp.GithubAppAuth{},
 	}
-	if err = model.LogProjectModified(opts.ProjectID, usr.Id, &before, &after); err != nil {
+	if err = model.LogProjectModified(ctx, opts.ProjectID, usr.Id, &before, &after); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("logging modification for project '%s': %s", opts.ProjectID, err.Error()))
 	}
 	return &DeleteGithubAppCredentialsPayload{

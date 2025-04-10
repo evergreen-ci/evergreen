@@ -149,7 +149,7 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 				"definitionID":       j.DefinitionID,
 			}))
 		}
-		event.LogVersionStateChangeEvent(stubVersion.Id, evergreen.VersionFailed)
+		event.LogVersionStateChangeEvent(ctx, stubVersion.Id, evergreen.VersionFailed)
 
 		j.AddError(versionErr)
 		return

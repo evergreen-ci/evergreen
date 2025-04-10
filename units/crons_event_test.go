@@ -70,7 +70,7 @@ func (s *cronsEventSuite) SetupTest() {
 	}
 
 	for i := range events {
-		s.NoError(events[i].Log())
+		s.NoError(events[i].Log(s.ctx))
 	}
 
 	s.n = []notification.Notification{
@@ -136,7 +136,7 @@ func (s *cronsEventSuite) TestDegradedMode() {
 	}
 
 	// degraded mode shouldn't process events
-	s.NoError(e.Log())
+	s.NoError(e.Log(s.ctx))
 	jobs, err := eventNotifierJobs(s.ctx, s.env, time.Time{})
 	s.NoError(err)
 	s.Empty(jobs)
@@ -232,7 +232,7 @@ func (s *cronsEventSuite) TestEndToEnd() {
 		},
 	}
 
-	s.NoError(e.Log())
+	s.NoError(e.Log(s.ctx))
 
 	subs := []event.Subscription{
 		{

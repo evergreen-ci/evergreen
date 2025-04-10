@@ -3300,7 +3300,7 @@ func TestGetProjectTasksWithOptions(t *testing.T) {
 		Identifier: "my_ident",
 	}
 	assert.NoError(t, p.Insert(t.Context()))
-	assert.NoError(t, db.Insert(RepositoriesCollection, Repository{
+	assert.NoError(t, db.Insert(t.Context(), RepositoriesCollection, Repository{
 		Project:             "my_project",
 		RevisionOrderNumber: 100,
 	}))
@@ -3675,7 +3675,7 @@ func TestPointers(t *testing.T) {
 		MyStruct: WorkstationConfig{GitClone: utility.TruePtr()},
 	}
 
-	assert.NoError(t, db.Insert(ProjectRefCollection, ref))
+	assert.NoError(t, db.Insert(t.Context(), ProjectRefCollection, ref))
 
 	pointerRef := struct {
 		PtrString *string            `bson:"my_str"`

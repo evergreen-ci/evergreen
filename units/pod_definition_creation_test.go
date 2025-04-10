@@ -111,7 +111,7 @@ func TestPodDefinitionCreationJob(t *testing.T) {
 		"NoopsWithAlreadyExistingPodDefinition": func(ctx context.Context, t *testing.T, j *podDefinitionCreationJob, p *pod.Pod) {
 			require.NoError(t, p.Insert(t.Context()))
 
-			require.NoError(t, db.Insert(definition.Collection, definition.PodDefinition{
+			require.NoError(t, db.Insert(t.Context(), definition.Collection, definition.PodDefinition{
 				ID:         utility.RandomString(),
 				Family:     j.Family,
 				ExternalID: "external_id",

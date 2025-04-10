@@ -1901,7 +1901,7 @@ func TestUpdateVersionGithubStatus(t *testing.T) {
 		{IsGithubCheck: false, Status: evergreen.BuildCreated},
 	}
 
-	assert.NoError(t, updateVersionGithubStatus(v, builds))
+	assert.NoError(t, updateVersionGithubStatus(t.Context(), v, builds))
 
 	e, err := event.FindUnprocessedEvents(-1)
 	assert.NoError(t, err)

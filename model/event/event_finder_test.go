@@ -16,7 +16,7 @@ func TestMostRecentPaginatedPodEvents(t *testing.T) {
 		if i%2 == 0 {
 			podId = "pod2"
 		}
-		LogPodAssignedTask(podId, "task", i)
+		LogPodAssignedTask(t.Context(), podId, "task", i)
 	}
 
 	// Query for pod1 events, limit 10, page 0
@@ -64,12 +64,12 @@ func TestGetPaginatedHostEvents(t *testing.T) {
 	tag := "host-tag"
 
 	// Log various events for the host.
-	LogHostCreated(hostID)                                               // HOST_CREATED
-	LogHostAgentDeployed(hostID)                                         // HOST_AGENT_DEPLOYED
-	LogHostDNSNameSet(hostID, "dns-name")                                // HOST_DNS_NAME_SET
-	LogHostTaskFinished("task-1", 0, hostID, evergreen.TaskSystemFailed) // HOST_TASK_FINISHED
-	LogHostModifySucceeded(hostID, evergreen.User)                       // HOST_MODIFIED
-	LogHostTaskFinished("task-2", 0, tag, evergreen.TaskSucceeded)       // HOST_TASK_FINISHED
+	LogHostCreated(t.Context(), hostID)                                               // HOST_CREATED
+	LogHostAgentDeployed(t.Context(), hostID)                                         // HOST_AGENT_DEPLOYED
+	LogHostDNSNameSet(t.Context(), hostID, "dns-name")                                // HOST_DNS_NAME_SET
+	LogHostTaskFinished(t.Context(), "task-1", 0, hostID, evergreen.TaskSystemFailed) // HOST_TASK_FINISHED
+	LogHostModifySucceeded(t.Context(), hostID, evergreen.User)                       // HOST_MODIFIED
+	LogHostTaskFinished(t.Context(), "task-2", 0, tag, evergreen.TaskSucceeded)       // HOST_TASK_FINISHED
 
 	// Filters by tag correctly.
 	opts := PaginatedHostEventsOpts{
@@ -140,12 +140,12 @@ func TestGetEventTypesForHost(t *testing.T) {
 	tag := "host-tag"
 
 	// Log various events for the host.
-	LogHostCreated(hostID)                                               // HOST_CREATED
-	LogHostAgentDeployed(hostID)                                         // HOST_AGENT_DEPLOYED
-	LogHostDNSNameSet(hostID, "dns-name")                                // HOST_DNS_NAME_SET
-	LogHostTaskFinished("task-1", 0, hostID, evergreen.TaskSystemFailed) // HOST_TASK_FINISHED
-	LogHostModifySucceeded(hostID, evergreen.User)                       // HOST_MODIFIED
-	LogHostTaskFinished("task-2", 0, tag, evergreen.TaskSucceeded)       // HOST_TASK_FINISHED
+	LogHostCreated(t.Context(), hostID)                                               // HOST_CREATED
+	LogHostAgentDeployed(t.Context(), hostID)                                         // HOST_AGENT_DEPLOYED
+	LogHostDNSNameSet(t.Context(), hostID, "dns-name")                                // HOST_DNS_NAME_SET
+	LogHostTaskFinished(t.Context(), "task-1", 0, hostID, evergreen.TaskSystemFailed) // HOST_TASK_FINISHED
+	LogHostModifySucceeded(t.Context(), hostID, evergreen.User)                       // HOST_MODIFIED
+	LogHostTaskFinished(t.Context(), "task-2", 0, tag, evergreen.TaskSucceeded)       // HOST_TASK_FINISHED
 
 	// Should return non-duplicate host event types.
 	eventTypes, err := GetEventTypesForHost(t.Context(), hostID, tag)

@@ -186,7 +186,7 @@ func UpdateOneStatus(ctx context.Context, id string, current, updated Status, ts
 		return err
 	}
 
-	event.LogPodStatusChanged(id, string(current), string(updated), reason)
+	event.LogPodStatusChanged(ctx, id, string(current), string(updated), reason)
 
 	return nil
 }

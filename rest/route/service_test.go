@@ -343,7 +343,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 				cachedTasks = append(cachedTasks, nextTask)
 			}
 			for _, cachedTask := range cachedTasks {
-				err := db.Insert(task.Collection, cachedTask)
+				err := db.Insert(t.Context(), task.Collection, cachedTask)
 				So(err, ShouldBeNil)
 			}
 			Convey("then finding a key in the middle of the set should produce"+
@@ -585,7 +585,7 @@ func TestTaskByBuildPaginator(t *testing.T) {
 				nextTask := task.Task{
 					Id: fmt.Sprintf("%dbuild%d", prefix, i),
 				}
-				So(db.Insert(task.Collection, nextTask), ShouldBeNil)
+				So(db.Insert(t.Context(), task.Collection, nextTask), ShouldBeNil)
 			}
 			for i := 0; i < 5; i++ {
 				prefix := int(math.Log10(float64(i)))
@@ -597,7 +597,7 @@ func TestTaskByBuildPaginator(t *testing.T) {
 					OldTaskId: "0build0",
 					Execution: i,
 				}
-				So(db.Insert(task.OldCollection, nextTask), ShouldBeNil)
+				So(db.Insert(t.Context(), task.OldCollection, nextTask), ShouldBeNil)
 				cachedOldTasks = append(cachedOldTasks, nextTask)
 			}
 			Convey("then finding a key in the middle of the set should produce"+
@@ -1052,8 +1052,8 @@ func TestTaskGetHandler(t *testing.T) {
 				Id:        "testTaskId_0",
 				OldTaskId: "testTaskId",
 			}
-			So(db.Insert(task.Collection, newTask), ShouldBeNil)
-			So(db.Insert(task.OldCollection, oldTask), ShouldBeNil)
+			So(db.Insert(t.Context(), task.Collection, newTask), ShouldBeNil)
+			So(db.Insert(t.Context(), task.OldCollection, oldTask), ShouldBeNil)
 
 			app := gimlet.NewApp()
 			app.SetPrefix("rest")

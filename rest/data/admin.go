@@ -65,13 +65,13 @@ func SetEvergreenSettings(ctx context.Context, changes *restModel.APIAdminSettin
 			return nil, errors.Wrap(err, "saving new admin settings")
 		}
 		newSettings.Id = evergreen.ConfigDocID
-		return &newSettings, LogConfigChanges(&newSettings, oldSettings, u)
+		return &newSettings, LogConfigChanges(ctx, &newSettings, oldSettings, u)
 	}
 
 	return &newSettings, nil
 }
 
-func LogConfigChanges(newSettings *evergreen.Settings, oldSettings *evergreen.Settings, u *user.DBUser) error {
+func LogConfigChanges(ctx context.Context, newSettings *evergreen.Settings, oldSettings *evergreen.Settings, u *user.DBUser) error {
 
 	catcher := grip.NewSimpleCatcher()
 	// log the other config sub-documents
@@ -113,12 +113,12 @@ func LogConfigChanges(newSettings *evergreen.Settings, oldSettings *evergreen.Se
 			oldPointer := reflect.Indirect(reflect.New(field.Type()))
 			oldPointer.Set(field)
 			oldInterface := oldPointer.Addr().Interface()
-			catcher.Add(event.LogAdminEvent(section.SectionId(), oldInterface.(evergreen.ConfigSection), section, u.Username()))
+			catcher.Add(event.LogAdminEvent(ctx, section.SectionId(), oldInterface.(evergreen.ConfigSection), section, u.Username()))
 		}
 	}
 
 	// log the root config document
-	catcher.Wrap(event.LogAdminEvent(newSettings.SectionId(), oldSettings, newSettings, u.Username()), "logging admin event for modifying admin settings")
+	catcher.Wrap(event.LogAdminEvent(ctx, newSettings.SectionId(), oldSettings, newSettings, u.Username()), "logging admin event for modifying admin settings")
 
 	return catcher.Resolve()
 }

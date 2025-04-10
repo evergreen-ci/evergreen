@@ -71,7 +71,7 @@ func (s *ProjectEventSuite) TestModifyProjectEvent() {
 	after := getMockProjectSettings()
 	after.ProjectRef.Enabled = false
 
-	s.NoError(LogProjectModified(projectId, username, &before, &after))
+	s.NoError(LogProjectModified(s.T().Context(), projectId, username, &before, &after))
 
 	projectEvents, err := MostRecentProjectEvents(projectId, 5)
 	s.NoError(err)
@@ -124,7 +124,7 @@ func (s *ProjectEventSuite) TestModifyProjectEventRedactsAllVars() {
 	after.GitHubAppAuth.AppID = 12345
 	after.GitHubAppAuth.PrivateKey = []byte("secret")
 
-	s.NoError(LogProjectModified(projectId, username, &before, &after))
+	s.NoError(LogProjectModified(s.T().Context(), projectId, username, &before, &after))
 
 	projectEvents, err := MostRecentProjectEvents(projectId, 5)
 	s.NoError(err)
@@ -176,7 +176,7 @@ func (s *ProjectEventSuite) TestModifyProjectNonEvent() {
 	before := getMockProjectSettings()
 	after := getMockProjectSettings()
 
-	s.NoError(LogProjectModified(projectId, username, &before, &after))
+	s.NoError(LogProjectModified(s.T().Context(), projectId, username, &before, &after))
 
 	projectEvents, err := MostRecentProjectEvents(projectId, 5)
 	s.NoError(err)
@@ -184,7 +184,7 @@ func (s *ProjectEventSuite) TestModifyProjectNonEvent() {
 }
 
 func (s *ProjectEventSuite) TestAddProject() {
-	s.NoError(LogProjectAdded(projectId, username))
+	s.NoError(LogProjectAdded(s.T().Context(), projectId, username))
 
 	projectEvents, err := MostRecentProjectEvents(projectId, 5)
 	s.NoError(err)

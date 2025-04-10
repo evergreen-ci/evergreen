@@ -1039,7 +1039,7 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 				"revision":           revision,
 			}))
 		}
-		event.LogVersionStateChangeEvent(stubVersion.Id, evergreen.VersionFailed)
+		event.LogVersionStateChangeEvent(ctx, stubVersion.Id, evergreen.VersionFailed)
 		userDoc, err := user.FindByGithubName(ctx, tag.Pusher)
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding user '%s'", tag.Pusher)

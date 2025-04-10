@@ -396,7 +396,7 @@ func makeEC2IntentHost(ctx context.Context, env evergreen.Environment, taskID, u
 	if err = intent.Insert(ctx); err != nil {
 		return nil, errors.Wrap(err, "inserting intent host")
 	}
-	event.LogHostCreated(intent.Id)
+	event.LogHostCreated(ctx, intent.Id)
 	grip.Info(message.Fields{
 		"message":  "intent host created",
 		"host_id":  intent.Id,

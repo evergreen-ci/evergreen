@@ -152,7 +152,7 @@ func PromoteVarsToRepo(ctx context.Context, projectIdentifier string, varNames [
 	if err != nil {
 		return errors.Wrapf(err, "getting settings for repo '%s' after adding promoted variables", repoId)
 	}
-	if err = model.LogProjectModified(repoId, userId, repo, repoAfter); err != nil {
+	if err = model.LogProjectModified(ctx, repoId, userId, repo, repoAfter); err != nil {
 		return errors.Wrapf(err, "logging repo '%s' modified", repoId)
 	}
 
@@ -188,7 +188,7 @@ func PromoteVarsToRepo(ctx context.Context, projectIdentifier string, varNames [
 	if err != nil {
 		return errors.Wrapf(err, "getting settings for project '%s' after removing promoted variables", projectIdentifier)
 	}
-	if err = model.LogProjectModified(projectId, userId, project, projectAfter); err != nil {
+	if err = model.LogProjectModified(ctx, projectId, userId, project, projectAfter); err != nil {
 		return errors.Wrapf(err, "logging project '%s' modified", projectIdentifier)
 	}
 
@@ -497,7 +497,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		if err != nil {
 			catcher.Wrapf(err, "getting after project settings event")
 		} else {
-			catcher.Add(model.LogProjectModified(projectId, userId, before, after))
+			catcher.Add(model.LogProjectModified(ctx, projectId, userId, before, after))
 			after.Vars = *after.Vars.RedactPrivateVars() // ensure that we're not returning private variables back to the UI
 			after.GitHubAppAuth = *after.GitHubAppAuth.RedactPrivateKey()
 			res, err = restModel.DbProjectSettingsToRestModel(ctx, *after)

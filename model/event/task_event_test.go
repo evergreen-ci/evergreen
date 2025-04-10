@@ -27,15 +27,15 @@ func TestLoggingTaskEvents(t *testing.T) {
 			taskId := "task_id"
 			hostId := "host_id"
 
-			LogTaskCreated(taskId, 1)
+			LogTaskCreated(t.Context(), taskId, 1)
 			time.Sleep(1 * time.Millisecond)
-			LogHostTaskDispatched(taskId, 1, hostId)
+			LogHostTaskDispatched(t.Context(), taskId, 1, hostId)
 			time.Sleep(1 * time.Millisecond)
-			LogHostTaskUndispatched(taskId, 1, hostId)
+			LogHostTaskUndispatched(t.Context(), taskId, 1, hostId)
 			time.Sleep(1 * time.Millisecond)
-			LogTaskStarted(taskId, 1)
+			LogTaskStarted(t.Context(), taskId, 1)
 			time.Sleep(1 * time.Millisecond)
-			LogHostTaskFinished(taskId, 1, hostId, evergreen.TaskSucceeded)
+			LogHostTaskFinished(t.Context(), taskId, 1, hostId, evergreen.TaskSucceeded)
 
 			eventsForTask, err := Find(TaskEventsInOrder(taskId))
 			So(err, ShouldEqual, nil)

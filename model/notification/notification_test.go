@@ -392,13 +392,13 @@ func (s *notificationSuite) TestCollectUnsentNotificationStats() {
 		n = append(n, s.n)
 		n[i].ID = mgobson.NewObjectId().Hex()
 		n[i].Subscriber.Type = type_
-		s.NoError(db.Insert(Collection, n[i]))
+		s.NoError(db.Insert(s.T().Context(), Collection, n[i]))
 	}
 
 	// add one more, mark it sent
 	s.n.ID = mgobson.NewObjectId().Hex()
 	s.n.SentAt = time.Now()
-	s.NoError(db.Insert(Collection, s.n))
+	s.NoError(db.Insert(s.T().Context(), Collection, s.n))
 
 	stats, err := CollectUnsentNotificationStats(s.T().Context())
 	s.NoError(err)
@@ -414,10 +414,10 @@ func (s *notificationSuite) TestCollectUnsentNotificationStats() {
 
 func (s *notificationSuite) TestFindUnprocessed() {
 	s.n.ID = "unsent"
-	s.NoError(db.Insert(Collection, s.n))
+	s.NoError(db.Insert(s.T().Context(), Collection, s.n))
 	s.n.ID = "sent"
 	s.n.SentAt = time.Now()
-	s.NoError(db.Insert(Collection, s.n))
+	s.NoError(db.Insert(s.T().Context(), Collection, s.n))
 
 	unprocessedNotifications, err := FindUnprocessed()
 	s.NoError(err)

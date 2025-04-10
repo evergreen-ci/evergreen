@@ -597,7 +597,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting project settings after update for project '%s'", h.project))
 	}
-	if err = dbModel.LogProjectModified(h.newProjectRef.Id, h.user.Username(), before, after); err != nil {
+	if err = dbModel.LogProjectModified(ctx, h.newProjectRef.Id, h.user.Username(), before, after); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "logging modification event for project '%s'", h.project))
 	}
 

@@ -19,17 +19,17 @@ func TestLoggingHostEvents(t *testing.T) {
 		taskId := "task_id"
 
 		// log some events, sleeping in between to make sure the times are different
-		LogHostCreated(hostId)
+		LogHostCreated(t.Context(), hostId)
 		time.Sleep(1 * time.Millisecond)
-		LogHostStatusChanged(hostTag, evergreen.HostRunning, evergreen.HostTerminated, "user", "myLogs")
+		LogHostStatusChanged(t.Context(), hostTag, evergreen.HostRunning, evergreen.HostTerminated, "user", "myLogs")
 		time.Sleep(1 * time.Millisecond)
-		LogHostDNSNameSet(hostId, hostname)
+		LogHostDNSNameSet(t.Context(), hostId, hostname)
 		time.Sleep(1 * time.Millisecond)
-		LogHostProvisioned(hostTag)
+		LogHostProvisioned(t.Context(), hostTag)
 		time.Sleep(1 * time.Millisecond)
-		LogHostRunningTaskSet(hostId, taskId, 0)
+		LogHostRunningTaskSet(t.Context(), hostId, taskId, 0)
 		time.Sleep(1 * time.Millisecond)
-		LogHostRunningTaskCleared(hostId, taskId, 0)
+		LogHostRunningTaskCleared(t.Context(), hostId, taskId, 0)
 		time.Sleep(1 * time.Millisecond)
 
 		// fetch all the events from the database, make sure they are persisted correctly

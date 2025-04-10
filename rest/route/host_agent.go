@@ -763,8 +763,8 @@ func dispatchHostTaskAtomically(ctx context.Context, env evergreen.Environment, 
 		return err
 	}
 
-	event.LogHostTaskDispatched(t.Id, t.Execution, h.Id)
-	event.LogHostRunningTaskSet(h.Id, t.Id, t.Execution)
+	event.LogHostTaskDispatched(ctx, t.Id, t.Execution, h.Id)
+	event.LogHostRunningTaskSet(ctx, h.Id, t.Id, t.Execution)
 
 	if t.IsPartOfDisplay(ctx) {
 		// The task is already dispatched at this point, so continue if this
@@ -816,8 +816,8 @@ func undoHostTaskDispatchAtomically(ctx context.Context, env evergreen.Environme
 	}
 
 	if clearedTask != "" {
-		event.LogHostRunningTaskCleared(h.Id, clearedTask, clearedTaskExec)
-		event.LogHostTaskUndispatched(clearedTask, clearedTaskExec, h.Id)
+		event.LogHostRunningTaskCleared(ctx, h.Id, clearedTask, clearedTaskExec)
+		event.LogHostTaskUndispatched(ctx, clearedTask, clearedTaskExec, h.Id)
 	}
 
 	if t.IsPartOfDisplay(ctx) {
@@ -1022,7 +1022,7 @@ func handleOldAgentRevision(ctx context.Context, response apimodels.NextTaskResp
 			}))
 		}
 
-		event.LogHostAgentDeployed(h.Id)
+		event.LogHostAgentDeployed(ctx, h.Id)
 		grip.Info(message.Fields{
 			"message":        "updated host agent revision",
 			"operation":      "NextTask",

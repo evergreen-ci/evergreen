@@ -178,7 +178,7 @@ func doStaticHostUpdate(ctx context.Context, d distro.Distro) ([]string, error) 
 				staticHost.Status = evergreen.HostProvisioning
 			}
 			if dbHost != nil {
-				event.LogHostStatusChanged(dbHost.Id, dbHost.Status, staticHost.Status, evergreen.User, "host status changed by host allocator")
+				event.LogHostStatusChanged(ctx, dbHost.Id, dbHost.Status, staticHost.Status, evergreen.User, "host status changed by host allocator")
 				grip.Info(message.Fields{
 					"message":    "static host status updated",
 					"operation":  "doStaticHostUpdate",
@@ -197,9 +197,9 @@ func doStaticHostUpdate(ctx context.Context, d distro.Distro) ([]string, error) 
 		if dbHost != nil && provisionChange != dbHost.NeedsReprovision {
 			switch provisionChange {
 			case host.ReprovisionRestartJasper:
-				event.LogHostJasperRestarting(staticHost.Id, evergreen.User)
+				event.LogHostJasperRestarting(ctx, staticHost.Id, evergreen.User)
 			case host.ReprovisionToLegacy, host.ReprovisionToNew:
-				event.LogHostConvertingProvisioning(staticHost.Id, staticHost.Distro.BootstrapSettings.Method, evergreen.User)
+				event.LogHostConvertingProvisioning(ctx, staticHost.Id, staticHost.Distro.BootstrapSettings.Method, evergreen.User)
 			}
 
 			grip.Info(message.Fields{

@@ -436,7 +436,7 @@ func TestFindAllFirstExecution(t *testing.T) {
 		require.NoError(t, task.Insert(t.Context()))
 	}
 	oldTask := Task{Id: MakeOldID("t1", 0)}
-	require.NoError(t, db.Insert(OldCollection, &oldTask))
+	require.NoError(t, db.Insert(t.Context(), OldCollection, &oldTask))
 
 	foundTasks, err := FindAllFirstExecution(ctx, All)
 	assert.NoError(t, err)
@@ -1971,7 +1971,7 @@ func TestCountNumExecutionsForInterval(t *testing.T) {
 		assert.NoError(t, each.Insert(t.Context()))
 		each.Execution = 0
 		// Duplicate everything for the old task collection to ensure this is working.
-		assert.NoError(t, db.Insert(OldCollection, each))
+		assert.NoError(t, db.Insert(t.Context(), OldCollection, each))
 	}
 
 	for testName, test := range map[string]func(*testing.T){
