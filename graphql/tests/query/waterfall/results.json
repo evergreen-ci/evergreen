@@ -556,7 +556,7 @@
               },
               {
                 "id": "evergreen_version4",
-                "waterfallBuilds": null
+                "waterfallBuilds": []
               },
               {
                 "id": "evergreen_version3",
@@ -606,7 +606,7 @@
               },
               {
                 "id": "evergreen_version0",
-                "waterfallBuilds": null
+                "waterfallBuilds": []
               },
               {
                 "id": "evergreen_version39",
@@ -628,15 +628,15 @@
             "flattenedVersions": [
               {
                 "id": "evergreen_version5",
-                "waterfallBuilds": null
+                "waterfallBuilds": []
               },
               {
                 "id": "evergreen_version4",
-                "waterfallBuilds": null
+                "waterfallBuilds": []
               },
               {
                 "id": "evergreen_version3",
-                "waterfallBuilds": null
+                "waterfallBuilds": []
               },
               {
                 "id": "evergreen_version2",
@@ -776,31 +776,31 @@
             "flattenedVersions": [
               {
                 "id": "evergreen_version5",
-                "waterfallBuilds": null
+                "waterfallBuilds": []
               },
               {
                 "id": "evergreen_version4",
-                "waterfallBuilds": null
+                "waterfallBuilds": []
               },
               {
                 "id": "evergreen_version3",
-                "waterfallBuilds": null
+                "waterfallBuilds": []
               },
               {
                 "id": "evergreen_version2",
-                "waterfallBuilds": null
+                "waterfallBuilds": []
               },
               {
                 "id": "evergreen_version1",
-                "waterfallBuilds": null
+                "waterfallBuilds": []
               },
               {
                 "id": "evergreen_version0",
-                "waterfallBuilds": null
+                "waterfallBuilds": []
               },
               {
                 "id": "evergreen_version39",
-                "waterfallBuilds": null
+                "waterfallBuilds": []
               }
             ]
           }
