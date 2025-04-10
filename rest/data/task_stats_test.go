@@ -24,7 +24,7 @@ func TestMockGetTaskStats(t *testing.T) {
 	proj := model.ProjectRef{
 		Id: "project",
 	}
-	require.NoError(t, proj.Insert())
+	require.NoError(t, proj.Insert(t.Context()))
 
 	// Add stats
 	filter := &taskstats.StatsFilter{}
@@ -47,7 +47,7 @@ func TestGetTaskStats(t *testing.T) {
 	proj := model.ProjectRef{
 		Id: "project",
 	}
-	require.NoError(t, proj.Insert())
+	require.NoError(t, proj.Insert(t.Context()))
 
 	stat := taskstats.DBTaskStats{
 		Id: taskstats.DBTaskStatsID{
@@ -62,7 +62,7 @@ func TestGetTaskStats(t *testing.T) {
 		Id:         "projectID",
 		Identifier: "projectName",
 	}
-	assert.NoError(t, projectRef.Insert())
+	assert.NoError(t, projectRef.Insert(t.Context()))
 
 	stats, err := GetTaskStats(t.Context(), taskstats.StatsFilter{
 		Project:      "projectName",

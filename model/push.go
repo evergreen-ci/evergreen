@@ -55,8 +55,8 @@ func NewPushLog(v *Version, task *task.Task, location string) *PushLog {
 	}
 }
 
-func (pl *PushLog) Insert() error {
-	return db.Insert(PushlogCollection, pl)
+func (pl *PushLog) Insert(ctx context.Context) error {
+	return db.InsertContext(ctx, PushlogCollection, pl)
 }
 
 func (pl *PushLog) UpdateStatus(ctx context.Context, newStatus string) error {

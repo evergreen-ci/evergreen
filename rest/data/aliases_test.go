@@ -139,10 +139,10 @@ func (a *AliasSuite) SetupTest() {
 				},
 			},
 		}}
-	a.NoError(otherProjectRef.Insert())
-	a.NoError(projectRef.Insert())
-	a.NoError(newProjectRef.Insert())
-	a.NoError(projectConfig.Insert())
+	a.NoError(otherProjectRef.Insert(a.T().Context()))
+	a.NoError(projectRef.Insert(a.T().Context()))
+	a.NoError(newProjectRef.Insert(a.T().Context()))
+	a.NoError(projectConfig.Insert(a.T().Context()))
 	for _, v := range aliases {
 		a.NoError(v.Upsert(a.T().Context()))
 	}

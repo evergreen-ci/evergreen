@@ -48,7 +48,7 @@ func TestAnnotationsByBuildHandlerRun(t *testing.T) {
 		{Id: "wrong-build", BuildId: "b2"},
 	}
 	for _, each := range tasks {
-		assert.NoError(t, each.Insert())
+		assert.NoError(t, each.Insert(t.Context()))
 	}
 	h := &annotationsByBuildHandler{
 		buildId: "b1",
@@ -139,7 +139,7 @@ func TestAnnotationsByVersionHandlerRun(t *testing.T) {
 		{Id: "wrong-build", Version: "v2"},
 	}
 	for _, each := range tasks {
-		assert.NoError(t, each.Insert())
+		assert.NoError(t, each.Insert(t.Context()))
 	}
 	h := &annotationsByVersionHandler{
 		versionId: "v1",
@@ -364,11 +364,11 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "test_annotation_user"})
 
 	for _, each := range tasks {
-		assert.NoError(t, each.Insert())
+		assert.NoError(t, each.Insert(t.Context()))
 	}
 
 	for _, each := range old_tasks {
-		assert.NoError(t, each.Insert())
+		assert.NoError(t, each.Insert(t.Context()))
 		assert.NoError(t, each.Archive(ctx))
 	}
 
@@ -644,7 +644,7 @@ func TestAnnotationByTaskPutHandlerParse(t *testing.T) {
 func TestAnnotationByTaskPutHandlerRun(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(annotations.Collection, task.Collection))
 	t1 := task.Task{Id: "t1"}
-	require.NoError(t, t1.Insert())
+	require.NoError(t, t1.Insert(t.Context()))
 	execution0 := 0
 	execution1 := 1
 	a := restModel.APITaskAnnotation{
@@ -745,13 +745,13 @@ func TestCreatedTicketByTaskPutHandlerParse(t *testing.T) {
 	p := model.ProjectRef{
 		Identifier: testProject,
 	}
-	assert.NoError(t, p.Insert())
+	assert.NoError(t, p.Insert(t.Context()))
 	tasks := []task.Task{
 		{Id: "t1", Execution: 1, Project: testProject},
 		{Id: "t2", Execution: 1, Project: testProject},
 	}
 	for _, each := range tasks {
-		assert.NoError(t, each.Insert())
+		assert.NoError(t, each.Insert(t.Context()))
 	}
 	h := &createdTicketByTaskPutHandler{}
 	ctx := gimlet.AttachUser(context.Background(), &user.DBUser{Id: "test_annotation_user"})

@@ -67,7 +67,7 @@ func (s *StatusSuite) SetupTest() {
 		},
 	}
 	for _, t := range tasks {
-		s.NoError(t.Insert())
+		s.NoError(t.Insert(s.T().Context()))
 	}
 	s.h = &recentTasksGetHandler{}
 }

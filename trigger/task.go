@@ -385,7 +385,7 @@ func (t *taskTriggers) generateWithAlertRecord(ctx context.Context, sub *event.S
 	}
 
 	newRec := newAlertRecord(sub.ID, t.task, alertType)
-	grip.Error(message.WrapError(newRec.Insert(), message.Fields{
+	grip.Error(message.WrapError(newRec.Insert(ctx), message.Fields{
 		"source":  "alert-record",
 		"type":    alertType,
 		"task_id": t.task.Id,
@@ -556,7 +556,7 @@ func (t *taskTriggers) taskRegression(ctx context.Context, sub *event.Subscripti
 	if err != nil {
 		return nil, err
 	}
-	return n, errors.Wrap(alert.Insert(), "processing regression trigger")
+	return n, errors.Wrap(alert.Insert(ctx), "processing regression trigger")
 }
 
 func isTaskRegression(ctx context.Context, sub *event.Subscription, t *task.Task) (bool, *alertrecord.AlertRecord, error) {
@@ -876,7 +876,7 @@ func (t *taskTriggers) taskRegressionByTest(ctx context.Context, sub *event.Subs
 			if previousCompleteTask != nil {
 				orderNumber = previousCompleteTask.RevisionOrderNumber
 			}
-			if err = alertrecord.InsertNewTaskRegressionByTestRecord(sub.ID, t.task.Id, test.GetDisplayTestName(), t.task.DisplayName, t.task.BuildVariant, t.task.Project, orderNumber); err != nil {
+			if err = alertrecord.InsertNewTaskRegressionByTestRecord(ctx, sub.ID, t.task.Id, test.GetDisplayTestName(), t.task.DisplayName, t.task.BuildVariant, t.task.Project, orderNumber); err != nil {
 				catcher.Add(err)
 				continue
 			}

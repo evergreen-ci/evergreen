@@ -568,8 +568,8 @@ func (i TaskRuntimeInfo) IsZero() bool {
 
 // Insert inserts a new pod into the collection. This relies on the global Anser
 // DB session.
-func (p *Pod) Insert() error {
-	return db.Insert(Collection, p)
+func (p *Pod) Insert(ctx context.Context) error {
+	return db.InsertContext(ctx, Collection, p)
 }
 
 // InsertWithContext is the same as Insert, but it respects the given context by

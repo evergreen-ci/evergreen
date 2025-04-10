@@ -279,7 +279,7 @@ func (s *ProjectAliasSuite) TestFindAliasInProjectOrConfig() {
 				},
 			},
 		}}
-	s.NoError(projectConfig.Insert())
+	s.NoError(projectConfig.Insert(s.T().Context()))
 
 	projectAliases, err := FindAliasInProjectRepoOrConfig(s.T().Context(), "project-1", evergreen.CommitQueueAlias)
 	s.NoError(err)
@@ -481,7 +481,7 @@ func (s *ProjectAliasSuite) TestFindAliasInProjectRepoOrConfig() {
 	s.NoError(repoRef.Replace(s.T().Context()))
 	s.NoError(pRef1.Replace(s.T().Context()))
 	s.NoError(pRef2.Replace(s.T().Context()))
-	s.NoError(projectConfig.Insert())
+	s.NoError(projectConfig.Insert(s.T().Context()))
 
 	for i := 0; i < 3; i++ {
 		alias := ProjectAlias{

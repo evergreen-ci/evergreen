@@ -28,7 +28,7 @@ func TestLastKnownGoodConfig(t *testing.T) {
 				Requester:  evergreen.RepotrackerVersionRequester,
 				Errors:     []string{"error 1", "error 2"},
 			}
-			require.NoError(t, v.Insert(), "Error inserting test version: %s", v.Id)
+			require.NoError(t, v.Insert(t.Context()), "Error inserting test version: %s", v.Id)
 			lastGood, err := FindVersionByLastKnownGoodConfig(t.Context(), identifier, -1)
 			require.NoError(t, err, "error finding last known good")
 			So(lastGood, ShouldBeNil)
@@ -38,7 +38,7 @@ func TestLastKnownGoodConfig(t *testing.T) {
 				Identifier: identifier,
 				Requester:  evergreen.RepotrackerVersionRequester,
 			}
-			require.NoError(t, v.Insert(), "Error inserting test version: %s", v.Id)
+			require.NoError(t, v.Insert(t.Context()), "Error inserting test version: %s", v.Id)
 			lastGood, err := FindVersionByLastKnownGoodConfig(t.Context(), identifier, -1)
 			require.NoError(t, err, "error finding last known good: %s", lastGood.Id)
 			So(lastGood, ShouldNotBeNil)
@@ -50,13 +50,13 @@ func TestLastKnownGoodConfig(t *testing.T) {
 				Requester:           evergreen.RepotrackerVersionRequester,
 				RevisionOrderNumber: 1,
 			}
-			require.NoError(t, v.Insert(), "Error inserting test version: %s", v.Id)
+			require.NoError(t, v.Insert(t.Context()), "Error inserting test version: %s", v.Id)
 			v.Id = "5"
 			v.RevisionOrderNumber = 5
-			require.NoError(t, v.Insert(), "Error inserting test version: %s", v.Id)
+			require.NoError(t, v.Insert(t.Context()), "Error inserting test version: %s", v.Id)
 			v.Id = "2"
 			v.RevisionOrderNumber = 2
-			require.NoError(t, v.Insert(), "Error inserting test version: %s", v.Id)
+			require.NoError(t, v.Insert(t.Context()), "Error inserting test version: %s", v.Id)
 			lastGood, err := FindVersionByLastKnownGoodConfig(t.Context(), identifier, -1)
 			require.NoError(t, err, "error finding last known good: %s", v.Id)
 			So(lastGood, ShouldNotBeNil)
@@ -94,28 +94,28 @@ func TestFindLastPeriodicBuild(t *testing.T) {
 		Identifier:      "myProj",
 		CreateTime:      now.Add(-10 * time.Minute),
 	}
-	assert.NoError(v1.Insert())
+	assert.NoError(v1.Insert(t.Context()))
 	v2 := Version{
 		Id:              "v2",
 		PeriodicBuildID: "a",
 		Identifier:      "myProj",
 		CreateTime:      now.Add(-5 * time.Minute),
 	}
-	assert.NoError(v2.Insert())
+	assert.NoError(v2.Insert(t.Context()))
 	v3 := Version{
 		Id:              "v3",
 		PeriodicBuildID: "b",
 		Identifier:      "myProj",
 		CreateTime:      now,
 	}
-	assert.NoError(v3.Insert())
+	assert.NoError(v3.Insert(t.Context()))
 	v4 := Version{
 		Id:              "v4",
 		PeriodicBuildID: "a",
 		Identifier:      "someProj",
 		CreateTime:      now,
 	}
-	assert.NoError(v4.Insert())
+	assert.NoError(v4.Insert(t.Context()))
 
 	mostRecent, err := FindLastPeriodicBuild("myProj", "a")
 	assert.NoError(err)
@@ -168,7 +168,7 @@ func TestGetVersionsWithTaskOptions(t *testing.T) {
 		Id:         "my_project",
 		Identifier: "my_ident",
 	}
-	assert.NoError(t, p.Insert())
+	assert.NoError(t, p.Insert(t.Context()))
 
 	for i := 0; i <= 20; i++ {
 		myTask := task.Task{
@@ -202,9 +202,9 @@ func TestGetVersionsWithTaskOptions(t *testing.T) {
 		if i == 0 || i == 1 || i == 20 {
 			myTask.Activated = true
 		}
-		assert.NoError(t, v.Insert())
-		assert.NoError(t, bv.Insert())
-		assert.NoError(t, myTask.Insert())
+		assert.NoError(t, v.Insert(t.Context()))
+		assert.NoError(t, bv.Insert(t.Context()))
+		assert.NoError(t, myTask.Insert(t.Context()))
 	}
 
 	// test with tasks
@@ -251,7 +251,7 @@ func TestGetVersionsWithOptions(t *testing.T) {
 		Id:         "my_project",
 		Identifier: "my_ident",
 	}
-	assert.NoError(t, p.Insert())
+	assert.NoError(t, p.Insert(t.Context()))
 	v := Version{
 		Id:                  "my_version",
 		Identifier:          "my_project",
@@ -269,7 +269,7 @@ func TestGetVersionsWithOptions(t *testing.T) {
 		},
 		CreateTime: start,
 	}
-	assert.NoError(t, v.Insert())
+	assert.NoError(t, v.Insert(t.Context()))
 	v = Version{
 		Id:                  "your_version",
 		Identifier:          "my_project",
@@ -282,7 +282,7 @@ func TestGetVersionsWithOptions(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(t, v.Insert())
+	assert.NoError(t, v.Insert(t.Context()))
 	v = Version{
 		Id:                  "another_version",
 		Requester:           evergreen.RepotrackerVersionRequester,
@@ -290,7 +290,7 @@ func TestGetVersionsWithOptions(t *testing.T) {
 		Identifier:          "my_project",
 		CreateTime:          start.Add(-2 * time.Minute),
 	}
-	assert.NoError(t, v.Insert())
+	assert.NoError(t, v.Insert(t.Context()))
 	v = Version{
 		Id:                  "seven_version",
 		Requester:           evergreen.RepotrackerVersionRequester,
@@ -298,7 +298,7 @@ func TestGetVersionsWithOptions(t *testing.T) {
 		Identifier:          "my_project",
 		CreateTime:          start.Add(-3 * time.Minute),
 	}
-	assert.NoError(t, v.Insert())
+	assert.NoError(t, v.Insert(t.Context()))
 
 	bv := build.Build{
 		Id:           "bv1",
@@ -310,7 +310,7 @@ func TestGetVersionsWithOptions(t *testing.T) {
 		Activated: true,
 		Status:    evergreen.BuildFailed,
 	}
-	assert.NoError(t, bv.Insert())
+	assert.NoError(t, bv.Insert(t.Context()))
 	bv = build.Build{
 		Id:           "bv_not_activated",
 		Version:      "your_version",
@@ -318,7 +318,7 @@ func TestGetVersionsWithOptions(t *testing.T) {
 		Activated:    false,
 		Status:       evergreen.BuildFailed,
 	}
-	assert.NoError(t, bv.Insert())
+	assert.NoError(t, bv.Insert(t.Context()))
 	bv = build.Build{
 		Id:           "bv2",
 		Version:      "my_version",
@@ -329,7 +329,7 @@ func TestGetVersionsWithOptions(t *testing.T) {
 		Activated: true,
 		Status:    evergreen.BuildSucceeded,
 	}
-	assert.NoError(t, bv.Insert())
+	assert.NoError(t, bv.Insert(t.Context()))
 
 	t1 := task.Task{
 		Id:          "t1",
@@ -339,7 +339,7 @@ func TestGetVersionsWithOptions(t *testing.T) {
 		Version:     "my_version",
 		Activated:   true,
 	}
-	assert.NoError(t, t1.Insert())
+	assert.NoError(t, t1.Insert(t.Context()))
 	t2 := task.Task{
 		Id:          "t2",
 		DisplayName: "your_task",
@@ -348,7 +348,7 @@ func TestGetVersionsWithOptions(t *testing.T) {
 		Version:     "my_version",
 		Activated:   true,
 	}
-	assert.NoError(t, t2.Insert())
+	assert.NoError(t, t2.Insert(t.Context()))
 
 	opts := GetVersionsOptions{Requester: evergreen.RepotrackerVersionRequester}
 	versions, err := GetVersionsWithOptions(t.Context(), "my_ident", opts)
@@ -426,7 +426,7 @@ func TestGetMainlineCommitVersionsWithOptions(t *testing.T) {
 		Id:         "my_project",
 		Identifier: "my_ident",
 	}
-	assert.NoError(t, p.Insert())
+	assert.NoError(t, p.Insert(t.Context()))
 	v := Version{
 		Id:                  "my_version",
 		Identifier:          "my_project",
@@ -435,7 +435,7 @@ func TestGetMainlineCommitVersionsWithOptions(t *testing.T) {
 		CreateTime:          start,
 		Activated:           utility.TruePtr(),
 	}
-	assert.NoError(t, v.Insert())
+	assert.NoError(t, v.Insert(t.Context()))
 	v = Version{
 		Id:                  "your_version",
 		Identifier:          "my_project",
@@ -444,7 +444,7 @@ func TestGetMainlineCommitVersionsWithOptions(t *testing.T) {
 		CreateTime:          start.Add(-1 * time.Minute),
 		Activated:           utility.TruePtr(),
 	}
-	assert.NoError(t, v.Insert())
+	assert.NoError(t, v.Insert(t.Context()))
 	v = Version{
 		Id:                  "another_version",
 		Requester:           evergreen.RepotrackerVersionRequester,
@@ -453,7 +453,7 @@ func TestGetMainlineCommitVersionsWithOptions(t *testing.T) {
 		CreateTime:          start.Add(-2 * time.Minute),
 		Activated:           utility.FalsePtr(),
 	}
-	assert.NoError(t, v.Insert())
+	assert.NoError(t, v.Insert(t.Context()))
 	v = Version{
 		Id:                  "yet_another_version",
 		Requester:           evergreen.RepotrackerVersionRequester,
@@ -461,7 +461,7 @@ func TestGetMainlineCommitVersionsWithOptions(t *testing.T) {
 		Identifier:          "my_project",
 		CreateTime:          start.Add(-2 * time.Minute),
 	}
-	assert.NoError(t, v.Insert())
+	assert.NoError(t, v.Insert(t.Context()))
 
 	opts := MainlineCommitVersionOptions{
 		Limit:      4,
@@ -516,7 +516,7 @@ func TestGetPreviousPageCommit(t *testing.T) {
 		Id:         "my_project",
 		Identifier: "my_ident",
 	}
-	assert.NoError(t, p.Insert())
+	assert.NoError(t, p.Insert(t.Context()))
 	v := Version{
 		Id:                  "my_version",
 		Identifier:          "my_project",
@@ -525,7 +525,7 @@ func TestGetPreviousPageCommit(t *testing.T) {
 		CreateTime:          start,
 		Activated:           utility.TruePtr(),
 	}
-	assert.NoError(t, v.Insert())
+	assert.NoError(t, v.Insert(t.Context()))
 	v = Version{
 		Id:                  "your_version",
 		Identifier:          "my_project",
@@ -534,7 +534,7 @@ func TestGetPreviousPageCommit(t *testing.T) {
 		CreateTime:          start.Add(-1 * time.Minute),
 		Activated:           utility.TruePtr(),
 	}
-	assert.NoError(t, v.Insert())
+	assert.NoError(t, v.Insert(t.Context()))
 	v = Version{
 		Id:                  "another_version",
 		Requester:           evergreen.RepotrackerVersionRequester,
@@ -543,7 +543,7 @@ func TestGetPreviousPageCommit(t *testing.T) {
 		CreateTime:          start.Add(-2 * time.Minute),
 		Activated:           utility.FalsePtr(),
 	}
-	assert.NoError(t, v.Insert())
+	assert.NoError(t, v.Insert(t.Context()))
 	v = Version{
 		Id:                  "yet_another_version",
 		Requester:           evergreen.RepotrackerVersionRequester,
@@ -551,7 +551,7 @@ func TestGetPreviousPageCommit(t *testing.T) {
 		Identifier:          "my_project",
 		CreateTime:          start.Add(-2 * time.Minute),
 	}
-	assert.NoError(t, v.Insert())
+	assert.NoError(t, v.Insert(t.Context()))
 	ctx := context.TODO()
 	// If you are viewing the latest commit it should return nil to indicate that there is no previous page.
 	orderNumber, err := GetPreviousPageCommitOrderNumber(ctx, p.Id, 10, 2, evergreen.SystemVersionRequesterTypes)
@@ -603,7 +603,7 @@ func TestUpdateProjectStorageMethod(t *testing.T) {
 				Id:                   "id",
 				ProjectStorageMethod: evergreen.ProjectStorageMethodDB,
 			}
-			require.NoError(t, v.Insert())
+			require.NoError(t, v.Insert(t.Context()))
 
 			tCase(t, &v)
 		})
@@ -645,7 +645,7 @@ func TestUpdatePreGenerationProjectStorageMethod(t *testing.T) {
 				Id:                                "id",
 				PreGenerationProjectStorageMethod: evergreen.ProjectStorageMethodDB,
 			}
-			require.NoError(t, v.Insert())
+			require.NoError(t, v.Insert(t.Context()))
 
 			tCase(t, &v)
 		})

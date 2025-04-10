@@ -499,11 +499,11 @@ func getUpdatedParamMappings(original ParameterMappings, upserted, deleted map[s
 // Insert creates a new project vars document and stores all the project
 // variables in the DB. If Parameter Store is enabled for the project, it also
 // stores the variables in Parameter Store.
-func (projectVars *ProjectVars) Insert() error {
+func (projectVars *ProjectVars) Insert(ctx context.Context) error {
 	// This has to be done after inserting the initial document because it
 	// upserts the project vars doc. If this ran first, it would cause the DB
 	// insert to fail due to the ID already existing.
-	ctx, cancel := context.WithTimeout(context.Background(), defaultParameterStoreAccessTimeout)
+	ctx, cancel := context.WithTimeout(ctx, defaultParameterStoreAccessTimeout)
 	defer cancel()
 
 	pm, err := insertParameterStore(ctx, projectVars)
@@ -512,7 +512,8 @@ func (projectVars *ProjectVars) Insert() error {
 	}
 	projectVars.Parameters = *pm
 
-	return db.Insert(
+	return db.InsertContext(
+		ctx,
 		ProjectVarsCollection,
 		projectVars,
 	)

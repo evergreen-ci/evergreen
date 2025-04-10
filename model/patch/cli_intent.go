@@ -103,7 +103,7 @@ var (
 	cliIntentTypeKey  = bsonutil.MustHaveTag(cliIntent{}, "IntentType")
 )
 
-func (c *cliIntent) Insert() error {
+func (c *cliIntent) Insert(ctx context.Context) error {
 	if len(c.PatchContent) > 0 {
 		patchFileID := mgobson.NewObjectId()
 		if err := db.WriteGridFile(GridFSPrefix, patchFileID.Hex(), strings.NewReader(c.PatchContent)); err != nil {
@@ -116,7 +116,7 @@ func (c *cliIntent) Insert() error {
 
 	c.CreatedAt = time.Now().UTC().Round(time.Millisecond)
 
-	if err := db.Insert(IntentCollection, c); err != nil {
+	if err := db.InsertContext(ctx, IntentCollection, c); err != nil {
 		c.CreatedAt = time.Time{}
 		return err
 	}

@@ -139,7 +139,7 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 			return
 		}
 		stubVersion.Errors = []string{versionErr.Error()}
-		insertError := stubVersion.Insert()
+		insertError := stubVersion.Insert(ctx)
 		if err != nil {
 			grip.Error(message.WrapError(insertError, message.Fields{
 				"message":            "error inserting stub version for periodic build",

@@ -25,7 +25,7 @@ func TestMockGetTaskReliability(t *testing.T) {
 	proj := model.ProjectRef{
 		Id: "project",
 	}
-	require.NoError(t, proj.Insert())
+	require.NoError(t, proj.Insert(t.Context()))
 	filter := reliability.TaskReliabilityFilter{
 		StatsFilter: taskstats.StatsFilter{
 			Limit:        100,
@@ -101,7 +101,7 @@ func TestGetTaskReliability(t *testing.T) {
 	proj := model.ProjectRef{
 		Id: "project",
 	}
-	require.NoError(t, proj.Insert())
+	require.NoError(t, proj.Insert(t.Context()))
 	stat := taskstats.DBTaskStats{
 		Id: taskstats.DBTaskStatsID{
 			Project:   "projectID",
@@ -115,7 +115,7 @@ func TestGetTaskReliability(t *testing.T) {
 		Id:         "projectID",
 		Identifier: "projectName",
 	}
-	assert.NoError(t, projectRef.Insert())
+	assert.NoError(t, projectRef.Insert(t.Context()))
 
 	filter := reliability.TaskReliabilityFilter{}
 	filter.Project = "projectName"

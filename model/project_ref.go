@@ -657,8 +657,8 @@ var adminPermissions = gimlet.Permissions{
 	evergreen.PermissionLogs:            evergreen.LogsView.Value,
 }
 
-func (projectRef *ProjectRef) Insert() error {
-	return db.Insert(ProjectRefCollection, projectRef)
+func (projectRef *ProjectRef) Insert(ctx context.Context) error {
+	return db.InsertContext(ctx, ProjectRefCollection, projectRef)
 }
 
 func (p *ProjectRef) Add(ctx context.Context, creator *user.DBUser) error {
@@ -697,7 +697,7 @@ func (p *ProjectRef) Add(ctx context.Context, creator *user.DBUser) error {
 	newProjectVars := ProjectVars{
 		Id: p.Id,
 	}
-	if err = newProjectVars.Insert(); err != nil {
+	if err = newProjectVars.Insert(ctx); err != nil {
 		return errors.Wrapf(err, "adding project variables for project '%s'", p.Id)
 	}
 	return p.addPermissions(ctx, creator)
@@ -1298,7 +1298,7 @@ func (p *ProjectRef) createNewRepoRef(ctx context.Context, u *user.DBUser) (repo
 		return nil, errors.Wrap(err, "getting common project variables")
 	}
 	commonProjectVars.Id = repoRef.Id
-	if err = commonProjectVars.Insert(); err != nil {
+	if err = commonProjectVars.Insert(ctx); err != nil {
 		return nil, errors.Wrap(err, "inserting project variables for repo")
 	}
 

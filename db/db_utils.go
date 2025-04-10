@@ -89,11 +89,35 @@ func Insert(collection string, item any) error {
 	return db.C(collection).Insert(item)
 }
 
+// Insert inserts the specified item into the specified collection.
+func InsertContext(ctx context.Context, collection string, item any) error {
+	session, db, err := GetGlobalSessionFactory().GetSession()
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	defer session.Close()
+
+	return db.C(collection).Insert(item)
+}
+
 func InsertMany(collection string, items ...any) error {
 	if len(items) == 0 {
 		return nil
 	}
 	session, db, err := GetGlobalSessionFactory().GetSession()
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	defer session.Close()
+
+	return db.C(collection).Insert(items...)
+}
+
+func InsertManyContext(ctx context.Context, collection string, items ...any) error {
+	if len(items) == 0 {
+		return nil
+	}
+	session, db, err := GetGlobalSessionFactory().GetContextSession(ctx)
 	if err != nil {
 		return errors.WithStack(err)
 	}

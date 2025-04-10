@@ -468,7 +468,7 @@ func (gh *githubHookApi) handleMergeGroupChecksRequested(ctx context.Context, ev
 	if len(projectRefs) == 0 {
 		return gimlet.NewJSONInternalErrorResponse(errors.New("no matching project ref"))
 	}
-	if err := gh.AddIntentForGithubMerge(event); err != nil {
+	if err := gh.AddIntentForGithubMerge(ctx, event); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"source":   "GitHub hook",
 			"msg_id":   gh.msgID,
@@ -486,12 +486,12 @@ func (gh *githubHookApi) handleMergeGroupChecksRequested(ctx context.Context, ev
 }
 
 // AddIntentForGithubMerge creates and inserts an intent document in response to a GitHub merge group event.
-func (gh *githubHookApi) AddIntentForGithubMerge(mg *github.MergeGroupEvent) error {
+func (gh *githubHookApi) AddIntentForGithubMerge(ctx context.Context, mg *github.MergeGroupEvent) error {
 	intent, err := patch.NewGithubMergeIntent(gh.msgID, patch.AutomatedCaller, mg)
 	if err != nil {
 		return errors.Wrap(err, "creating GitHub merge intent")
 	}
-	if err := data.AddGithubMergeIntent(intent, gh.queue); err != nil {
+	if err := data.AddGithubMergeIntent(ctx, intent, gh.queue); err != nil {
 		return errors.Wrap(err, "saving GitHub merge intent")
 	}
 	return nil
@@ -771,7 +771,7 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 
 	// If no conflicting patches exist, we can create the patch
 	if len(conflictingPatches) == 0 {
-		return errors.Wrap(data.AddPRPatchIntent(ghi, gh.queue), "saving GitHub patch intent")
+		return errors.Wrap(data.AddPRPatchIntent(ctx, ghi, gh.queue), "saving GitHub patch intent")
 	}
 
 	// If we don't want to override any existing patches, comment to inform the user and no-op.
@@ -794,7 +794,7 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 		return errors.Wrap(err, "overriding other PRs")
 	}
 
-	return errors.Wrap(data.AddPRPatchIntent(ghi, gh.queue), "saving GitHub patch intent")
+	return errors.Wrap(data.AddPRPatchIntent(ctx, ghi, gh.queue), "saving GitHub patch intent")
 }
 
 // overrideOtherPRs aborts the given patches and comments on each patch's PR to inform the user that their patch
@@ -1030,7 +1030,7 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 			}))
 		}
 		stubVersion.Errors = []string{errors.Errorf("user '%s' not authorized for git tag version", tag.Pusher).Error()}
-		err := stubVersion.Insert()
+		err := stubVersion.Insert(ctx)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":            "error inserting stub version for failed git tag version",

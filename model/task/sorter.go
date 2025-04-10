@@ -31,7 +31,7 @@ func (t Tasks) Export() []Task {
 	return out
 }
 
-func (t Tasks) Insert() error {
+func (t Tasks) Insert(ctx context.Context) error {
 	return db.InsertMany(Collection, t.getPayload()...)
 }
 

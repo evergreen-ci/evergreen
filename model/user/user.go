@@ -307,9 +307,9 @@ func (u *DBUser) UpdatePublicKey(targetKeyName, newKeyName, newKeyValue string) 
 	return nil
 }
 
-func (u *DBUser) Insert() error {
+func (u *DBUser) Insert(ctx context.Context) error {
 	u.CreatedAt = time.Now()
-	return db.Insert(Collection, u)
+	return db.InsertContext(ctx, Collection, u)
 }
 
 // IncPatchNumber increases the count for the user's patch submissions by one,

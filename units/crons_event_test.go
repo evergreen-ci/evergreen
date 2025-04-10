@@ -216,13 +216,13 @@ func (s *cronsEventSuite) TestEndToEnd() {
 		Status:  evergreen.VersionFailed,
 		Author:  "somebody",
 	}
-	s.NoError(p.Insert())
+	s.NoError(p.Insert(s.ctx))
 
 	pRef := model.ProjectRef{
 		Id:         "test",
 		Identifier: "testing",
 	}
-	s.NoError(pRef.Insert())
+	s.NoError(pRef.Insert(s.ctx))
 	e := event.EventLogEntry{
 		ResourceType: event.ResourceTypePatch,
 		EventType:    event.PatchStateChange,

@@ -64,7 +64,7 @@ func TestPatchPluginAPI(t *testing.T) {
 		})
 		Convey("calls to non-existing tasks should fail", func() {
 			v := model.Version{Id: ""}
-			require.NoError(t, v.Insert())
+			require.NoError(t, v.Insert(t.Context()))
 			modelData.Task = &task.Task{
 				Id: "BAD_TASK_ID",
 			}
@@ -76,11 +76,11 @@ func TestPatchPluginAPI(t *testing.T) {
 		})
 		Convey("calls to existing tasks without patches should fail", func() {
 			noPatchTask := task.Task{Id: "noPatchTask", BuildId: "a"}
-			require.NoError(t, noPatchTask.Insert())
+			require.NoError(t, noPatchTask.Insert(t.Context()))
 			noPatchVersion := model.Version{Id: "noPatchVersion", BuildIds: []string{"a"}}
-			require.NoError(t, noPatchVersion.Insert())
+			require.NoError(t, noPatchVersion.Insert(t.Context()))
 			v := model.Version{Id: ""}
-			require.NoError(t, v.Insert())
+			require.NoError(t, v.Insert(t.Context()))
 			modelData.Task = &noPatchTask
 
 			err := testCommand.getPatchContents(ctx, comm, logger, conf, patch)
@@ -109,7 +109,7 @@ func TestPatchPlugin(t *testing.T) {
 		version := &model.Version{
 			Id: "",
 		}
-		So(version.Insert(), ShouldBeNil)
+		So(version.Insert(t.Context()), ShouldBeNil)
 
 		patchFile := filepath.Join(cwd, "testdata", "git", "testmodule.patch")
 		configPath := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "git", "plugin_patch.yml")

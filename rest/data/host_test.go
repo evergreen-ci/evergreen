@@ -105,13 +105,13 @@ func TestHostConnectorSuite(t *testing.T) {
 			user := &user.DBUser{
 				Id: id,
 			}
-			s.NoError(user.Insert())
+			s.NoError(user.Insert(t.Context()))
 		}
 		root := user.DBUser{
 			Id:          "root",
 			SystemRoles: []string{"root"},
 		}
-		s.NoError(root.Insert())
+		s.NoError(root.Insert(t.Context()))
 		rm := s.env.RoleManager()
 		s.NoError(rm.AddScope(gimlet.Scope{
 			ID:        "root",
@@ -186,7 +186,7 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 		Name: testPublicKeyName,
 		Key:  testPublicKey,
 	})
-	s.NoError(testUser.Insert())
+	s.NoError(testUser.Insert(s.T().Context()))
 
 	for tName, tCase := range map[string]func(t *testing.T, options *restmodel.HostRequestOptions){
 		"IntentHostCreatedSuccessfully": func(t *testing.T, options *restmodel.HostRequestOptions) {

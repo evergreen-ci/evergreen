@@ -126,7 +126,7 @@ func tryVolumeNotification(ctx context.Context, v host.Volume, numHours int) (bo
 		"owner":      v.CreatedBy,
 		"expiration": v.Expiration,
 	})
-	if err = alertrecord.InsertNewVolumeExpirationRecord(v.ID, numHours); err != nil {
+	if err = alertrecord.InsertNewVolumeExpirationRecord(ctx, v.ID, numHours); err != nil {
 		return false, err
 	}
 	return true, nil

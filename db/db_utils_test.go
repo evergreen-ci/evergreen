@@ -40,7 +40,7 @@ func TestDBUtils(t *testing.T) {
 				FieldTwo: 1,
 			}
 
-			So(Insert(collection, in), ShouldBeNil)
+			So(InsertContext(t.Context(), collection, in), ShouldBeNil)
 
 			out := &insertableStruct{}
 			err := FindOneQContext(t.Context(), collection, Query(bson.M{}), out)
@@ -63,8 +63,8 @@ func TestDBUtils(t *testing.T) {
 			}
 
 			// insert, make sure both were inserted
-			So(Insert(collection, in), ShouldBeNil)
-			So(Insert(collection, inTwo), ShouldBeNil)
+			So(InsertContext(t.Context(), collection, in), ShouldBeNil)
+			So(InsertContext(t.Context(), collection, inTwo), ShouldBeNil)
 			count, err := Count(t.Context(), collection, bson.M{})
 			So(err, ShouldBeNil)
 			So(count, ShouldEqual, 2)
@@ -104,8 +104,8 @@ func TestDBUtils(t *testing.T) {
 			}
 
 			// insert, make sure both were inserted
-			So(Insert(collection, in), ShouldBeNil)
-			So(Insert(collection, inTwo), ShouldBeNil)
+			So(InsertContext(t.Context(), collection, in), ShouldBeNil)
+			So(InsertContext(t.Context(), collection, inTwo), ShouldBeNil)
 			count, err := Count(t.Context(), collection, bson.M{})
 			So(err, ShouldBeNil)
 			So(count, ShouldEqual, 2)
@@ -143,9 +143,9 @@ func TestDBUtils(t *testing.T) {
 			}
 
 			// insert, make sure all were inserted
-			So(Insert(collection, in), ShouldBeNil)
-			So(Insert(collection, inTwo), ShouldBeNil)
-			So(Insert(collection, inThree), ShouldBeNil)
+			So(InsertContext(t.Context(), collection, in), ShouldBeNil)
+			So(InsertContext(t.Context(), collection, inTwo), ShouldBeNil)
+			So(InsertContext(t.Context(), collection, inThree), ShouldBeNil)
 			count, err := Count(t.Context(), collection, bson.M{})
 			So(err, ShouldBeNil)
 			So(count, ShouldEqual, 3)
@@ -192,10 +192,10 @@ func TestDBUtils(t *testing.T) {
 			}
 
 			// insert, make sure all were inserted
-			So(Insert(collection, in), ShouldBeNil)
-			So(Insert(collection, inTwo), ShouldBeNil)
-			So(Insert(collection, inThree), ShouldBeNil)
-			So(Insert(collection, inFour), ShouldBeNil)
+			So(InsertContext(t.Context(), collection, in), ShouldBeNil)
+			So(InsertContext(t.Context(), collection, inTwo), ShouldBeNil)
+			So(InsertContext(t.Context(), collection, inThree), ShouldBeNil)
+			So(InsertContext(t.Context(), collection, inFour), ShouldBeNil)
 			count, err := Count(t.Context(), collection, bson.M{})
 			So(err, ShouldBeNil)
 			So(count, ShouldEqual, 4)
@@ -233,8 +233,8 @@ func TestDBUtils(t *testing.T) {
 			}
 
 			// insert, make sure both were inserted
-			So(Insert(collection, in), ShouldBeNil)
-			So(Insert(collection, inTwo), ShouldBeNil)
+			So(InsertContext(t.Context(), collection, in), ShouldBeNil)
+			So(InsertContext(t.Context(), collection, inTwo), ShouldBeNil)
 			count, err := Count(t.Context(), collection, bson.M{})
 			So(err, ShouldBeNil)
 			So(count, ShouldEqual, 2)
@@ -280,9 +280,9 @@ func TestDBUtils(t *testing.T) {
 			}
 
 			// insert, make sure all were inserted
-			So(Insert(collection, in), ShouldBeNil)
-			So(Insert(collection, inTwo), ShouldBeNil)
-			So(Insert(collection, inThree), ShouldBeNil)
+			So(InsertContext(t.Context(), collection, in), ShouldBeNil)
+			So(InsertContext(t.Context(), collection, inTwo), ShouldBeNil)
+			So(InsertContext(t.Context(), collection, inThree), ShouldBeNil)
 			count, err := Count(t.Context(), collection, bson.M{})
 			So(err, ShouldBeNil)
 			So(count, ShouldEqual, 3)
@@ -345,7 +345,7 @@ func TestDBUtils(t *testing.T) {
 					FieldTwo: 1,
 				}
 
-				So(Insert(collection, in), ShouldBeNil)
+				So(InsertContext(t.Context(), collection, in), ShouldBeNil)
 				in.FieldTwo = 2
 
 				_, err := Upsert(t.Context(),
@@ -377,7 +377,7 @@ func TestDBUtils(t *testing.T) {
 				FieldTwo: 1,
 			}
 
-			So(Insert(collection, in), ShouldBeNil)
+			So(InsertContext(t.Context(), collection, in), ShouldBeNil)
 			in.FieldTwo = 2
 
 			change := adb.Change{
@@ -418,9 +418,9 @@ func TestDBUtils(t *testing.T) {
 				FieldOne: "2",
 				FieldTwo: 3,
 			}
-			So(Insert(collection, in), ShouldBeNil)
-			So(Insert(collection, inTwo), ShouldBeNil)
-			So(Insert(collection, inThree), ShouldBeNil)
+			So(InsertContext(t.Context(), collection, in), ShouldBeNil)
+			So(InsertContext(t.Context(), collection, inTwo), ShouldBeNil)
+			So(InsertContext(t.Context(), collection, inThree), ShouldBeNil)
 
 			testPipeline := []bson.M{
 				{"$group": bson.M{

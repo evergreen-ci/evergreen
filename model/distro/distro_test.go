@@ -536,7 +536,7 @@ func TestAddPermissions(t *testing.T) {
 	u := user.DBUser{
 		Id: "me",
 	}
-	require.NoError(t, u.Insert())
+	require.NoError(t, u.Insert(t.Context()))
 	d := Distro{
 		Id: "myDistro",
 	}

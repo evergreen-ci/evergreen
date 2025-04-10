@@ -63,7 +63,7 @@ func TestCacheHistoricalTaskDataJob(t *testing.T) {
 						FinishTime:   now,
 						Status:       "success",
 					}
-					require.NoError(t, tsk.Insert())
+					require.NoError(t, tsk.Insert(t.Context()))
 				}
 
 				lastJobTime := now.Add(-time.Hour)
@@ -120,7 +120,7 @@ func TestCacheHistoricalTaskDataJob(t *testing.T) {
 						Execution:    1,
 					},
 				} {
-					require.NoError(t, tsk.Insert())
+					require.NoError(t, tsk.Insert(t.Context()))
 				}
 
 				lastJobTime := t0.Add(-2 * time.Hour)
@@ -201,7 +201,7 @@ func TestCacheHistoricalTaskDataJob(t *testing.T) {
 						Execution:    1,
 					},
 				} {
-					require.NoError(t, tsk.Insert())
+					require.NoError(t, tsk.Insert(t.Context()))
 				}
 
 				lastJobTime := now.Add(-2 * time.Hour)

@@ -35,12 +35,12 @@ func TestBadHostTaskRelationship(t *testing.T) {
 
 	h.RunningTask = "2"
 	runningTask := &task.Task{Id: "2", Status: evergreen.TaskStarted}
-	require.NoError(runningTask.Insert())
+	require.NoError(runningTask.Insert(t.Context()))
 	assert.True(badHostTaskRelationship(ctx, h, k), "true if task is in a state other than dispatched")
 
 	require.NoError(db.Clear(task.Collection))
 	runningTask.Status = evergreen.TaskDispatched
-	require.NoError(runningTask.Insert())
+	require.NoError(runningTask.Insert(t.Context()))
 	assert.False(badHostTaskRelationship(ctx, h, k), "false if task is dispatched")
 }
 

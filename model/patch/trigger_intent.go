@@ -39,8 +39,8 @@ func (t *TriggerIntent) ID() string {
 	return t.Id
 }
 
-func (t *TriggerIntent) Insert() error {
-	return errors.Wrap(db.Insert(IntentCollection, t), "inserting trigger intent")
+func (t *TriggerIntent) Insert(ctx context.Context) error {
+	return errors.Wrap(db.InsertContext(ctx, IntentCollection, t), "inserting trigger intent")
 }
 
 func (t *TriggerIntent) SetProcessed(ctx context.Context) error {

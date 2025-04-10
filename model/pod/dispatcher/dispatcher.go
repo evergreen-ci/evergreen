@@ -51,8 +51,8 @@ func NewPodDispatcher(groupID string, taskIDs, podIDs []string) PodDispatcher {
 }
 
 // Insert inserts the pod dispatcher into the DB.
-func (pd *PodDispatcher) Insert() error {
-	return db.Insert(Collection, pd)
+func (pd *PodDispatcher) Insert(ctx context.Context) error {
+	return db.InsertContext(ctx, Collection, pd)
 }
 
 func (pd *PodDispatcher) atomicUpsertQuery() bson.M {

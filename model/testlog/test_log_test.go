@@ -36,7 +36,7 @@ func TestTestLogInsertAndFind(t *testing.T) {
 		}
 
 		Convey("inserting that test log into the db", func() {
-			err := log.Insert()
+			err := log.Insert(t.Context())
 			So(err, ShouldBeNil)
 
 			Convey("the test log should be findable in the db", func() {

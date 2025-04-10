@@ -60,7 +60,7 @@ func TestPodAllocatorJob(t *testing.T) {
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, j *podAllocatorJob, v cocoa.Vault, tsk task.Task, pRef model.ProjectRef){
 		"RunSucceeds": func(ctx context.Context, t *testing.T, j *podAllocatorJob, v cocoa.Vault, tsk task.Task, pRef model.ProjectRef) {
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(t.Context()))
 
 			j.Run(ctx)
 
@@ -111,7 +111,7 @@ func TestPodAllocatorJob(t *testing.T) {
 			pRef = *dbProjRef
 
 			tsk.ContainerOpts.RepoCredsName = pRef.ContainerSecrets[1].Name
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(t.Context()))
 
 			j.Run(ctx)
 
@@ -151,7 +151,7 @@ func TestPodAllocatorJob(t *testing.T) {
 			j.task = &tsk
 			modified := tsk
 			modified.Activated = false
-			require.NoError(t, modified.Insert())
+			require.NoError(t, modified.Insert(t.Context()))
 
 			j.Run(ctx)
 
@@ -177,7 +177,7 @@ func TestPodAllocatorJob(t *testing.T) {
 		},
 		"RunNoopsForTaskThatDoesNotNeedContainerAllocation": func(ctx context.Context, t *testing.T, j *podAllocatorJob, v cocoa.Vault, tsk task.Task, pRef model.ProjectRef) {
 			tsk.Activated = false
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(t.Context()))
 
 			j.Run(ctx)
 
@@ -209,7 +209,7 @@ func TestPodAllocatorJob(t *testing.T) {
 			env.EvergreenSettings.ServiceFlags.PodAllocatorDisabled = true
 			require.NoError(t, env.EvergreenSettings.ServiceFlags.Set(ctx))
 
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(t.Context()))
 
 			j.Run(ctx)
 			assert.True(t, j.RetryInfo().ShouldRetry())
@@ -228,9 +228,9 @@ func TestPodAllocatorJob(t *testing.T) {
 			require.NoError(t, env.EvergreenSettings.PodLifecycle.Set(ctx))
 
 			initializing := getInitializingPod(t)
-			require.NoError(t, initializing.Insert())
+			require.NoError(t, initializing.Insert(t.Context()))
 
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(t.Context()))
 
 			j.Run(ctx)
 			assert.True(t, j.RetryInfo().ShouldRetry())
@@ -243,7 +243,7 @@ func TestPodAllocatorJob(t *testing.T) {
 		"RunNoopsWhenProjectDoesNotAllowDispatching": func(ctx context.Context, t *testing.T, j *podAllocatorJob, v cocoa.Vault, tsk task.Task, pRef model.ProjectRef) {
 			pRef.Enabled = false
 			require.NoError(t, pRef.Replace(t.Context()))
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(t.Context()))
 
 			j.Run(ctx)
 
@@ -277,7 +277,7 @@ func TestPodAllocatorJob(t *testing.T) {
 					},
 				},
 			}
-			require.NoError(t, pRef.Insert())
+			require.NoError(t, pRef.Insert(t.Context()))
 			tsk.Project = pRef.Id
 
 			smClient := &cocoaMock.SecretsManagerClient{}
@@ -349,11 +349,11 @@ func TestPopulatePodAllocatorJobs(t *testing.T) {
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment){
 		"CreatesNoPodAllocatorsWithoutTasksNeedingContainerAllocation": func(ctx context.Context, t *testing.T, env *mock.Environment) {
 			ref := getProjectRef()
-			require.NoError(t, ref.Insert())
+			require.NoError(t, ref.Insert(t.Context()))
 			doesNotNeedAllocation := getTaskThatNeedsContainerAllocation()
 			doesNotNeedAllocation.ContainerAllocated = true
 			doesNotNeedAllocation.Project = ref.Id
-			require.NoError(t, doesNotNeedAllocation.Insert())
+			require.NoError(t, doesNotNeedAllocation.Insert(t.Context()))
 
 			jobs, err := podAllocatorJobs(ctx, env, time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC))
 			require.NoError(t, err)
@@ -362,11 +362,11 @@ func TestPopulatePodAllocatorJobs(t *testing.T) {
 		},
 		"MarksStaleContainerTasksAsNoLongerNeedingAllocation": func(ctx context.Context, t *testing.T, env *mock.Environment) {
 			ref := getProjectRef()
-			require.NoError(t, ref.Insert())
+			require.NoError(t, ref.Insert(t.Context()))
 			staleNeedsAllocation := getTaskThatNeedsContainerAllocation()
 			staleNeedsAllocation.ActivatedTime = time.Now().Add(-1000 * 24 * time.Hour)
 			staleNeedsAllocation.Project = ref.Id
-			require.NoError(t, staleNeedsAllocation.Insert())
+			require.NoError(t, staleNeedsAllocation.Insert(t.Context()))
 
 			jobs, err := podAllocatorJobs(ctx, env, time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC))
 			require.NoError(t, err)
@@ -387,13 +387,13 @@ func TestPopulatePodAllocatorJobs(t *testing.T) {
 			require.NoError(t, env.EvergreenSettings.PodLifecycle.Set(ctx))
 
 			initializing := getInitializingPod(t)
-			require.NoError(t, initializing.Insert())
+			require.NoError(t, initializing.Insert(t.Context()))
 
 			ref := getProjectRef()
-			require.NoError(t, ref.Insert())
+			require.NoError(t, ref.Insert(t.Context()))
 			needsAllocation := getTaskThatNeedsContainerAllocation()
 			needsAllocation.Project = ref.Id
-			require.NoError(t, needsAllocation.Insert())
+			require.NoError(t, needsAllocation.Insert(t.Context()))
 
 			jobs, err := podAllocatorJobs(ctx, env, time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC))
 			require.NoError(t, err)
@@ -409,10 +409,10 @@ func TestPopulatePodAllocatorJobs(t *testing.T) {
 			require.NoError(t, env.EvergreenSettings.ServiceFlags.Set(ctx))
 
 			ref := getProjectRef()
-			require.NoError(t, ref.Insert())
+			require.NoError(t, ref.Insert(t.Context()))
 			needsAllocation := getTaskThatNeedsContainerAllocation()
 			needsAllocation.Project = ref.Id
-			require.NoError(t, needsAllocation.Insert())
+			require.NoError(t, needsAllocation.Insert(t.Context()))
 
 			jobs, err := podAllocatorJobs(ctx, env, time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC))
 			require.NoError(t, err)

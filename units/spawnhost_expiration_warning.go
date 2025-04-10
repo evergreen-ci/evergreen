@@ -160,7 +160,7 @@ func trySpawnHostExpirationNotification(ctx context.Context, h *host.Host, numHo
 			"owner":      h.StartedBy,
 			"expiration": h.ExpirationTime,
 		})
-		if err = alertrecord.InsertNewSpawnHostExpirationRecord(h.Id, numHours); err != nil {
+		if err = alertrecord.InsertNewSpawnHostExpirationRecord(ctx, h.Id, numHours); err != nil {
 			return err
 		}
 	}
@@ -180,7 +180,7 @@ func tryHostTemporaryExemptionExpirationNotification(ctx context.Context, h *hos
 			"owner":   h.StartedBy,
 			"until":   h.SleepSchedule.TemporarilyExemptUntil,
 		})
-		if err = alertrecord.InsertNewHostTemporaryExemptionExpirationRecord(h.Id, numHours); err != nil {
+		if err = alertrecord.InsertNewHostTemporaryExemptionExpirationRecord(ctx, h.Id, numHours); err != nil {
 			return err
 		}
 	}

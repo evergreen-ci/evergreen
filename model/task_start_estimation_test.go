@@ -44,13 +44,13 @@ func (s *estimatorSuite) TestCreateModel() {
 		ExpectedDuration: 5 * time.Minute,
 		DispatchTime:     now.Add(-4 * time.Minute),
 	}
-	s.NoError(t1.Insert())
+	s.NoError(t1.Insert(s.T().Context()))
 	t2 := task.Task{
 		Id:               "t2",
 		ExpectedDuration: 30 * time.Minute,
 		DispatchTime:     now.Add(-10 * time.Minute),
 	}
-	s.NoError(t2.Insert())
+	s.NoError(t2.Insert(s.T().Context()))
 	queue := TaskQueue{
 		Queue: []TaskQueueItem{
 			{ExpectedDuration: 1 * time.Hour}, {ExpectedDuration: 1 * time.Minute},

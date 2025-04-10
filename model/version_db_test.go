@@ -79,13 +79,13 @@ func TestRestartVersion(t *testing.T) {
 		{Id: "exec11", Version: versionID, DisplayTaskId: utility.ToStringPtr("display1"), Aborted: false, Status: evergreen.TaskFailed, BuildId: buildID},
 	}
 	for _, item := range versions {
-		require.NoError(t, item.Insert())
+		require.NoError(t, item.Insert(t.Context()))
 	}
 	for _, item := range tasks {
-		require.NoError(t, item.Insert())
+		require.NoError(t, item.Insert(t.Context()))
 	}
 	for _, item := range builds {
-		require.NoError(t, item.Insert())
+		require.NoError(t, item.Insert(ctx))
 	}
 
 	require.NoError(t, RestartVersion(ctx, versionID, nil, true, "caller"))
@@ -154,7 +154,7 @@ func TestGetVersionAuthorID(t *testing.T) {
 			assert.NoError(t, (&Version{
 				Id:       "v0",
 				AuthorID: "me",
-			}).Insert())
+			}).Insert(t.Context()))
 			author, err := GetVersionAuthorID(t.Context(), "v0")
 			assert.NoError(t, err)
 			assert.Equal(t, "me", author)
@@ -167,7 +167,7 @@ func TestGetVersionAuthorID(t *testing.T) {
 		"EmptyAuthorID": func(t *testing.T) {
 			assert.NoError(t, (&Version{
 				Id: "v0",
-			}).Insert())
+			}).Insert(t.Context()))
 			author, err := GetVersionAuthorID(t.Context(), "v0")
 			assert.NoError(t, err)
 			assert.Empty(t, author)
@@ -186,7 +186,7 @@ func TestFindLatestRevisionAndAuthorForProject(t *testing.T) {
 				Identifier: "project1",
 				Requester:  evergreen.RepotrackerVersionRequester,
 				Revision:   "abc",
-			}).Insert())
+			}).Insert(t.Context()))
 			revision, author, err := FindLatestRevisionAndAuthorForProject(t.Context(), "project2")
 			assert.Error(t, err)
 			assert.Empty(t, revision)
@@ -201,14 +201,14 @@ func TestFindLatestRevisionAndAuthorForProject(t *testing.T) {
 				Author:              "anna",
 				AuthorID:            "banana",
 				RevisionOrderNumber: 12,
-			}).Insert())
+			}).Insert(t.Context()))
 			assert.NoError(t, (&Version{
 				Id:                  "v1",
 				Identifier:          "project1",
 				Requester:           evergreen.RepotrackerVersionRequester,
 				Revision:            "def",
 				RevisionOrderNumber: 10,
-			}).Insert())
+			}).Insert(t.Context()))
 			revision, author, err := FindLatestRevisionAndAuthorForProject(t.Context(), "project1")
 			assert.NoError(t, err)
 			assert.Equal(t, "abc", revision)
@@ -221,14 +221,14 @@ func TestFindLatestRevisionAndAuthorForProject(t *testing.T) {
 				Requester:           evergreen.AdHocRequester,
 				Revision:            "abc",
 				RevisionOrderNumber: 12,
-			}).Insert())
+			}).Insert(t.Context()))
 			assert.NoError(t, (&Version{
 				Id:                  "v1",
 				Identifier:          "project1",
 				Requester:           evergreen.TriggerRequester,
 				Revision:            "def",
 				RevisionOrderNumber: 10,
-			}).Insert())
+			}).Insert(t.Context()))
 			revision, author, err := FindLatestRevisionAndAuthorForProject(t.Context(), "project1")
 			assert.Error(t, err)
 			assert.Empty(t, revision)
@@ -240,7 +240,7 @@ func TestFindLatestRevisionAndAuthorForProject(t *testing.T) {
 				Identifier: "project1",
 				Requester:  evergreen.RepotrackerVersionRequester,
 				Revision:   "",
-			}).Insert())
+			}).Insert(t.Context()))
 			revision, author, err := FindLatestRevisionAndAuthorForProject(t.Context(), "project1")
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "has no revision")
@@ -253,7 +253,7 @@ func TestFindLatestRevisionAndAuthorForProject(t *testing.T) {
 				Identifier: "project1",
 				Requester:  evergreen.RepotrackerVersionRequester,
 				Revision:   "mystery",
-			}).Insert())
+			}).Insert(t.Context()))
 			revision, author, err := FindLatestRevisionAndAuthorForProject(t.Context(), "project1")
 			require.NoError(t, err)
 			assert.Equal(t, "mystery", revision)
@@ -297,10 +297,10 @@ func TestFindBaseVersionForVersion(t *testing.T) {
 		RevisionOrderNumber: 2,
 	}
 
-	assert.NoError(t, patch0.Insert())
-	assert.NoError(t, patch1.Insert())
-	assert.NoError(t, mainlineCommit1.Insert())
-	assert.NoError(t, mainlineCommit2.Insert())
+	assert.NoError(t, patch0.Insert(t.Context()))
+	assert.NoError(t, patch1.Insert(t.Context()))
+	assert.NoError(t, mainlineCommit1.Insert(t.Context()))
+	assert.NoError(t, mainlineCommit2.Insert(t.Context()))
 	// Test that it returns the base version mainline commit for a patch
 	version, err := FindBaseVersionForVersion(t.Context(), "v1")
 	assert.NoError(t, err)

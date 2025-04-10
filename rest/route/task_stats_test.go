@@ -37,7 +37,7 @@ func (s *TaskStatsSuite) SetupSuite() {
 	proj := model.ProjectRef{
 		Id: "project",
 	}
-	s.NoError(proj.Insert())
+	s.NoError(proj.Insert(s.T().Context()))
 }
 
 func (s *TaskStatsSuite) TestParseStatsFilter() {

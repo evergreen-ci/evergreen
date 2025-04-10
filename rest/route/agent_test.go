@@ -168,14 +168,14 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 				},
 				ServicePassword: "password",
 			}
-			require.NoError(t, t1.Insert())
-			require.NoError(t, t2.Insert())
-			require.NoError(t, pRef.Insert())
-			require.NoError(t, vars.Insert())
-			require.NoError(t, v1.Insert())
-			require.NoError(t, v2.Insert())
-			require.NoError(t, pp1.Insert())
-			require.NoError(t, pp2.Insert())
+			require.NoError(t, t1.Insert(t.Context()))
+			require.NoError(t, t2.Insert(t.Context()))
+			require.NoError(t, pRef.Insert(t.Context()))
+			require.NoError(t, vars.Insert(t.Context()))
+			require.NoError(t, v1.Insert(t.Context()))
+			require.NoError(t, v2.Insert(t.Context()))
+			require.NoError(t, pp1.Insert(t.Context()))
+			require.NoError(t, pp2.Insert(t.Context()))
 			require.NoError(t, h.Insert(ctx))
 
 			r, ok := makeGetExpansionsAndVars(env.Settings()).(*getExpansionsAndVarsHandler)
@@ -348,13 +348,13 @@ func TestMarkTaskForReset(t *testing.T) {
 			pRef := model.ProjectRef{
 				Id: "p1",
 			}
-			require.NoError(t, pRef.Insert())
-			require.NoError(t, et1.Insert())
-			require.NoError(t, et2.Insert())
-			require.NoError(t, dt.Insert())
-			require.NoError(t, t2.Insert())
-			require.NoError(t, t3.Insert())
-			require.NoError(t, t4.Insert())
+			require.NoError(t, pRef.Insert(t.Context()))
+			require.NoError(t, et1.Insert(t.Context()))
+			require.NoError(t, et2.Insert(t.Context()))
+			require.NoError(t, dt.Insert(t.Context()))
+			require.NoError(t, t2.Insert(t.Context()))
+			require.NoError(t, t3.Insert(t.Context()))
+			require.NoError(t, t4.Insert(t.Context()))
 			r, ok := makeMarkTaskForRestart().(*markTaskForRestartHandler)
 			require.True(t, ok)
 
@@ -505,7 +505,7 @@ func TestDownstreamParams(t *testing.T) {
 		Id:      mgobson.ObjectIdHex(parentPatchId),
 		Version: versionId,
 	}
-	require.NoError(t, parentPatch.Insert())
+	require.NoError(t, parentPatch.Insert(t.Context()))
 
 	hostId := "h1"
 	projectId := "proj"
@@ -521,7 +521,7 @@ func TestDownstreamParams(t *testing.T) {
 		BuildId:   buildID,
 		Version:   versionId,
 	}
-	require.NoError(t, task1.Insert())
+	require.NoError(t, task1.Insert(t.Context()))
 
 	sampleHost := host.Host{
 		Id: hostId,
@@ -571,14 +571,14 @@ func TestAgentGetProjectRef(t *testing.T) {
 		Project: "project1",
 	}
 	projRef1 := &model.ProjectRef{Id: "project1"}
-	require.NoError(t, task1.Insert())
-	require.NoError(t, projRef1.Insert())
+	require.NoError(t, task1.Insert(t.Context()))
+	require.NoError(t, projRef1.Insert(t.Context()))
 
 	task2 := &task.Task{
 		Id:      "task2",
 		Project: "project2",
 	}
-	require.NoError(t, task2.Insert())
+	require.NoError(t, task2.Insert(t.Context()))
 
 	for _, test := range []struct {
 		name           string
@@ -687,7 +687,7 @@ func TestUpsertCheckRunParse(t *testing.T) {
 		Id:      patch.NewId(versionId),
 		Version: versionId,
 	}
-	require.NoError(t, patch.Insert())
+	require.NoError(t, patch.Insert(t.Context()))
 
 	task1 := task.Task{
 		Id:        "task1",
@@ -700,7 +700,7 @@ func TestUpsertCheckRunParse(t *testing.T) {
 		Version:   versionId,
 		Requester: evergreen.GithubPRRequester,
 	}
-	require.NoError(t, task1.Insert())
+	require.NoError(t, task1.Insert(t.Context()))
 
 	r, ok := makeCheckRun(&evergreen.Settings{}).(*checkRunHandler)
 	require.True(t, ok)
@@ -943,7 +943,7 @@ func TestAWSAssumeRole(t *testing.T) {
 
 			t.Run("RunSucceeds", func(t *testing.T) {
 				task := task.Task{Id: taskID, Project: projectID, Requester: "requester"}
-				require.NoError(t, task.Insert())
+				require.NoError(t, task.Insert(t.Context()))
 
 				resp := handler.Run(ctx)
 				require.NotNil(t, resp)
@@ -1026,7 +1026,7 @@ func TestAWSS3(t *testing.T) {
 
 			t.Run("RunSucceeds", func(t *testing.T) {
 				task := task.Task{Id: taskID, Project: projectID, Requester: "requester"}
-				require.NoError(t, task.Insert())
+				require.NoError(t, task.Insert(t.Context()))
 
 				resp := handler.Run(ctx)
 				require.NotNil(t, resp)

@@ -173,7 +173,7 @@ func TestGetDisplayStatus(t *testing.T) {
 		Requester: evergreen.PatchVersionRequester,
 	}
 
-	assert.NoError(t, version.Insert())
+	assert.NoError(t, version.Insert(t.Context()))
 
 	p := &patch.Patch{
 		Id:     patchId,
@@ -182,20 +182,20 @@ func TestGetDisplayStatus(t *testing.T) {
 			ChildPatches: []string{childPatchId.Hex()},
 		},
 	}
-	assert.NoError(t, p.Insert())
+	assert.NoError(t, p.Insert(t.Context()))
 
 	cv := model.Version{
 		Id:      childPatchId.Hex(),
 		Aborted: true,
 		Status:  evergreen.VersionFailed,
 	}
-	assert.NoError(t, cv.Insert())
+	assert.NoError(t, cv.Insert(t.Context()))
 
 	cp := &patch.Patch{
 		Id:     childPatchId,
 		Status: evergreen.VersionFailed,
 	}
-	assert.NoError(t, cp.Insert())
+	assert.NoError(t, cp.Insert(t.Context()))
 
 	status, err := getDisplayStatus(t.Context(), version)
 	require.NoError(t, err)
@@ -211,7 +211,7 @@ func TestUserHasDistroCreatePermission(t *testing.T) {
 	usr := user.DBUser{
 		Id: "basic_user",
 	}
-	assert.NoError(t, usr.Insert())
+	assert.NoError(t, usr.Insert(t.Context()))
 	assert.False(t, userHasDistroCreatePermission(&usr))
 
 	createRole := gimlet.Role{
@@ -367,7 +367,7 @@ func TestIsPatchAuthorForTask(t *testing.T) {
 				Id:     versionAndPatchID,
 				Author: "basic_user",
 			}
-			assert.NoError(t, patch.Insert())
+			assert.NoError(t, patch.Insert(t.Context()))
 			task := restModel.APITask{ProjectId: utility.ToStringPtr("random_project_id"), Version: utility.ToStringPtr(versionAndPatchID.Hex()), Requester: utility.ToStringPtr(evergreen.PatchVersionRequester)}
 			isPatchAuthor, err := isPatchAuthorForTask(ctx, &task)
 			assert.NoError(t, err)
@@ -379,7 +379,7 @@ func TestIsPatchAuthorForTask(t *testing.T) {
 				Id:     versionAndPatchID,
 				Author: "someone_else",
 			}
-			assert.NoError(t, patch.Insert())
+			assert.NoError(t, patch.Insert(t.Context()))
 			task := restModel.APITask{ProjectId: utility.ToStringPtr("random_project_id"), Version: utility.ToStringPtr(versionAndPatchID.Hex()), Requester: utility.ToStringPtr(evergreen.PatchVersionRequester)}
 			isPatchAuthor, err := isPatchAuthorForTask(ctx, &task)
 			assert.NoError(t, err)
@@ -391,7 +391,7 @@ func TestIsPatchAuthorForTask(t *testing.T) {
 				Id:     versionAndPatchID,
 				Author: "basic_user",
 			}
-			assert.NoError(t, patch.Insert())
+			assert.NoError(t, patch.Insert(t.Context()))
 			task := restModel.APITask{ProjectId: utility.ToStringPtr("random_project_id"), Version: utility.ToStringPtr(versionAndPatchID.Hex()), Requester: utility.ToStringPtr(evergreen.TriggerRequester)}
 			isPatchAuthor, err := isPatchAuthorForTask(ctx, &task)
 			assert.NoError(t, err)
@@ -403,7 +403,7 @@ func TestIsPatchAuthorForTask(t *testing.T) {
 			usr := user.DBUser{
 				Id: "basic_user",
 			}
-			assert.NoError(t, usr.Insert())
+			assert.NoError(t, usr.Insert(t.Context()))
 			ctx := gimlet.AttachUser(context.Background(), &usr)
 			tCase(ctx, t)
 		})
@@ -430,11 +430,11 @@ func TestHasLogViewPermission(t *testing.T) {
 			userWithoutRole := user.DBUser{
 				Id: "basic_user",
 			}
-			assert.NoError(t, userWithoutRole.Insert())
+			assert.NoError(t, userWithoutRole.Insert(t.Context()))
 			userWithRole := user.DBUser{
 				Id: "usr_with_log_view_role",
 			}
-			assert.NoError(t, userWithRole.Insert())
+			assert.NoError(t, userWithRole.Insert(t.Context()))
 			ctx := gimlet.AttachUser(context.Background(), &userWithRole)
 			env := evergreen.GetEnvironment()
 			roleManager := env.RoleManager()
@@ -480,7 +480,7 @@ func TestHasAnnotationPermission(t *testing.T) {
 				Id:     versionAndPatchID,
 				Author: "basic_user",
 			}
-			assert.NoError(t, patch.Insert())
+			assert.NoError(t, patch.Insert(t.Context()))
 			task := restModel.APITask{ProjectId: utility.ToStringPtr("random_project_id"), Version: utility.ToStringPtr(versionAndPatchID.Hex()), Requester: utility.ToStringPtr(evergreen.PatchVersionRequester)}
 			hasAccess, err := hasAnnotationPermission(ctx, &task, evergreen.AnnotationsView.Value)
 			assert.NoError(t, err)
@@ -492,7 +492,7 @@ func TestHasAnnotationPermission(t *testing.T) {
 			usr := user.DBUser{
 				Id: "basic_user",
 			}
-			assert.NoError(t, usr.Insert())
+			assert.NoError(t, usr.Insert(t.Context()))
 			ctx := gimlet.AttachUser(context.Background(), &usr)
 
 			env := evergreen.GetEnvironment()

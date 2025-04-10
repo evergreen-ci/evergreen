@@ -62,7 +62,7 @@ func TestLastContainerFinishTimeJob(t *testing.T) {
 		},
 		StartTime: startTimeOne,
 	}
-	assert.NoError(t1.Insert())
+	assert.NoError(t1.Insert(ctx))
 	t2 := &task.Task{
 		Id: "t2",
 		DurationPrediction: util.CachedDurationValue{
@@ -70,7 +70,7 @@ func TestLastContainerFinishTimeJob(t *testing.T) {
 		},
 		StartTime: startTimeTwo,
 	}
-	assert.NoError(t2.Insert())
+	assert.NoError(t2.Insert(ctx))
 
 	j := NewLastContainerFinishTimeJob("one")
 	assert.False(j.Status().Completed)

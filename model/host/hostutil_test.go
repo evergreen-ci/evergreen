@@ -235,7 +235,7 @@ func TestJasperCommands(t *testing.T) {
 			h.UserHost = true
 			userID := "user"
 			user := &user.DBUser{Id: userID}
-			require.NoError(t, user.Insert())
+			require.NoError(t, user.Insert(t.Context()))
 
 			h.ProvisionOptions = &ProvisionOptions{
 				OwnerId: userID,
@@ -439,7 +439,7 @@ func TestJasperCommandsWindows(t *testing.T) {
 			h.UserHost = true
 			userID := "user"
 			user := &user.DBUser{Id: userID}
-			require.NoError(t, user.Insert())
+			require.NoError(t, user.Insert(t.Context()))
 			h.ProvisionOptions = &ProvisionOptions{
 				OwnerId: userID,
 			}
@@ -933,7 +933,7 @@ func TestSpawnHostSetupCommands(t *testing.T) {
 	}()
 
 	user := user.DBUser{Id: "user", APIKey: "key"}
-	require.NoError(t, user.Insert())
+	require.NoError(t, user.Insert(t.Context()))
 
 	h := &Host{Id: "host",
 		Distro: distro.Distro{

@@ -557,11 +557,11 @@ func TestCreateVolumeHandler(t *testing.T) {
 	}
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 	v := host.Volume{ID: "volume1", Size: 15, CreatedBy: "user"}
-	assert.NoError(t, v.Insert())
+	assert.NoError(t, v.Insert(t.Context()))
 	v = host.Volume{ID: "volume2", Size: 35, CreatedBy: "user"}
-	assert.NoError(t, v.Insert())
+	assert.NoError(t, v.Insert(t.Context()))
 	v = host.Volume{ID: "not-relevant", Size: 400, CreatedBy: "someone-else"}
-	assert.NoError(t, v.Insert())
+	assert.NoError(t, v.Insert(t.Context()))
 
 	h.env.Settings().Providers.AWS.MaxVolumeSizePerUser = 100
 	h.env.Settings().Providers.AWS.Subnets = []evergreen.Subnet{
@@ -615,7 +615,7 @@ func TestDeleteVolumeHandler(t *testing.T) {
 		assert.NoError(t, hostToAdd.Insert(ctx))
 	}
 	for _, volumeToAdd := range volumes {
-		assert.NoError(t, volumeToAdd.Insert())
+		assert.NoError(t, volumeToAdd.Insert(t.Context()))
 	}
 	h.VolumeID = "my-volume"
 	resp := h.Run(ctx)
@@ -663,7 +663,7 @@ func TestAttachVolumeHandler(t *testing.T) {
 	volume := host.Volume{
 		ID: v.VolumeID,
 	}
-	assert.NoError(t, volume.Insert())
+	assert.NoError(t, volume.Insert(t.Context()))
 
 	jsonBody, err = json.Marshal(v)
 	assert.NoError(t, err)
@@ -739,7 +739,7 @@ func TestModifyVolumeHandler(t *testing.T) {
 		Size:             64,
 		AvailabilityZone: evergreen.DefaultEBSAvailabilityZone,
 	}
-	assert.NoError(t, volume.Insert())
+	assert.NoError(t, volume.Insert(t.Context()))
 
 	// parse request
 	opts := &model.VolumeModifyOptions{Size: 20, NewName: "my-favorite-volume"}
@@ -836,7 +836,7 @@ func TestGetVolumesHandler(t *testing.T) {
 		},
 	}
 	for _, volumeToAdd := range volumesToAdd {
-		assert.NoError(t, volumeToAdd.Insert())
+		assert.NoError(t, volumeToAdd.Insert(t.Context()))
 	}
 	assert.NoError(t, h1.Insert(ctx))
 	resp := h.Run(ctx)
@@ -886,7 +886,7 @@ func TestGetVolumeByIDHandler(t *testing.T) {
 		Size:             64,
 		AvailabilityZone: evergreen.DefaultEBSAvailabilityZone,
 	}
-	assert.NoError(t, volume.Insert())
+	assert.NoError(t, volume.Insert(t.Context()))
 	assert.NoError(t, h1.Insert(ctx))
 	r, err := http.NewRequest(http.MethodGet, "/volumes/volume1", nil)
 	assert.NoError(t, err)

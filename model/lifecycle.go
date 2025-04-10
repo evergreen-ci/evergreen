@@ -1553,7 +1553,7 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 		}
 
 		allTasks = append(allTasks, tasks...)
-		if err = build.Insert(); err != nil {
+		if err = build.Insert(ctx); err != nil {
 			return nil, nil, errors.Wrapf(err, "inserting build '%s'", build.Id)
 		}
 		newBuildIds = append(newBuildIds, build.Id)

@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"time"
 
 	"github.com/mongodb/anser/bsonutil"
@@ -29,8 +30,8 @@ type QuestionAnswer struct {
 	Answer string `json:"answer" bson:"answer"`
 }
 
-func (s *FeedbackSubmission) Insert() error {
-	return db.Insert(FeedbackCollection, s)
+func (s *FeedbackSubmission) Insert(ctx context.Context) error {
+	return db.InsertContext(ctx, FeedbackCollection, s)
 }
 
 func FindFeedbackOfType(t string) ([]FeedbackSubmission, error) {

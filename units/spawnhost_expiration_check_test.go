@@ -82,7 +82,7 @@ func TestTryIdleSpawnHostNotification(t *testing.T) {
 		Id:           "me",
 		EmailAddress: "me.ee@ee.com",
 	}
-	assert.NoError(t, u.Insert())
+	assert.NoError(t, u.Insert(t.Context()))
 	assert.NoError(t, tryIdleSpawnHostNotification(t.Context(), h))
 
 	fetchedSubs := []event.Subscription{}

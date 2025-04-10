@@ -381,7 +381,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 	patchDoc.ProjectStorageMethod = ppStorageMethod
 
-	if err = patchDoc.Insert(); err != nil {
+	if err = patchDoc.Insert(ctx); err != nil {
 		// If this is a duplicate key error, we already inserted the patch
 		// in to the DB but it failed later in the patch intent job (i.e.
 		// context cancelling early from deploy). To reduce stuck patches,
@@ -759,7 +759,7 @@ func ProcessTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *mode
 			Definitions:        definitions,
 		})
 
-		if err := triggerIntent.Insert(); err != nil {
+		if err := triggerIntent.Insert(ctx); err != nil {
 			return errors.Wrap(err, "inserting trigger intent")
 		}
 
@@ -1136,7 +1136,7 @@ func findEvergreenUserForPR(ctx context.Context, githubUID int) (*user.DBUser, e
 			DispName: "GitHub Pull Requests",
 			APIKey:   utility.RandomString(),
 		}
-		if err = u.Insert(); err != nil {
+		if err = u.Insert(ctx); err != nil {
 			return nil, errors.Wrap(err, "inserting GitHub patch user")
 		}
 	}
@@ -1156,7 +1156,7 @@ func findEvergreenUserForGithubMergeGroup(ctx context.Context) (*user.DBUser, er
 			DispName: "GitHub Merge Queue",
 			APIKey:   utility.RandomString(),
 		}
-		if err = u.Insert(); err != nil {
+		if err = u.Insert(ctx); err != nil {
 			return nil, errors.Wrap(err, "inserting GitHub patch user")
 		}
 	}

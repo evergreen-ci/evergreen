@@ -326,7 +326,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 			Id:         projectId,
 			Identifier: projectName,
 		}
-		assert.NoError(t, p.Insert())
+		assert.NoError(t, p.Insert(t.Context()))
 		Convey("and there are tasks to be found", func() {
 			cachedTasks := []task.Task{}
 			for i := 0; i < numTasks; i++ {
@@ -920,9 +920,9 @@ func TestTaskExecutionPatchExecute(t *testing.T) {
 			Activated: false,
 			Priority:  10,
 		}
-		So(testTask.Insert(), ShouldBeNil)
-		So(version.Insert(), ShouldBeNil)
-		So(build.Insert(), ShouldBeNil)
+		So(testTask.Insert(t.Context()), ShouldBeNil)
+		So(version.Insert(t.Context()), ShouldBeNil)
+		So(build.Insert(t.Context()), ShouldBeNil)
 		ctx := context.Background()
 		Convey("then setting priority should change it's priority", func() {
 			act := true
@@ -1124,7 +1124,7 @@ func TestTaskResetExecute(t *testing.T) {
 			Version:      "v1",
 			Status:       evergreen.TaskSucceeded,
 		}
-		So(testTask.Insert(), ShouldBeNil)
+		So(testTask.Insert(t.Context()), ShouldBeNil)
 
 		testTask2 := task.Task{
 			Id:           "testTaskId2",
@@ -1135,7 +1135,7 @@ func TestTaskResetExecute(t *testing.T) {
 			Version:      "v1",
 			Status:       evergreen.TaskFailed,
 		}
-		So(testTask2.Insert(), ShouldBeNil)
+		So(testTask2.Insert(t.Context()), ShouldBeNil)
 
 		testTask3 := task.Task{
 			Id:           "testTaskId3",
@@ -1146,7 +1146,7 @@ func TestTaskResetExecute(t *testing.T) {
 			Version:      "v1",
 			Status:       evergreen.TaskSucceeded,
 		}
-		So(testTask3.Insert(), ShouldBeNil)
+		So(testTask3.Insert(t.Context()), ShouldBeNil)
 
 		displayTask := &task.Task{
 			Id:             "displayTask",
@@ -1159,12 +1159,12 @@ func TestTaskResetExecute(t *testing.T) {
 			Status:         evergreen.TaskFailed,
 			DispatchTime:   time.Now(),
 		}
-		So(displayTask.Insert(), ShouldBeNil)
+		So(displayTask.Insert(t.Context()), ShouldBeNil)
 
 		v := &serviceModel.Version{Id: "v1"}
-		So(v.Insert(), ShouldBeNil)
+		So(v.Insert(t.Context()), ShouldBeNil)
 		b := build.Build{Id: "b0", Version: "v1", Activated: true}
-		So(b.Insert(), ShouldBeNil)
+		So(b.Insert(t.Context()), ShouldBeNil)
 
 		ctx := context.Background()
 		Convey("and an error from the service function", func() {
@@ -1177,7 +1177,7 @@ func TestTaskResetExecute(t *testing.T) {
 				Version:      "v1",
 				Status:       evergreen.TaskStarted,
 			}
-			So(testTask4.Insert(), ShouldBeNil)
+			So(testTask4.Insert(t.Context()), ShouldBeNil)
 			trh := &taskRestartHandler{
 				taskId:   "testTaskId4",
 				username: "testUser",
@@ -1258,10 +1258,10 @@ func TestParentTaskInfo(t *testing.T) {
 		BuildId: buildID,
 	}
 
-	assert.NoError(t, displayTask.Insert())
-	assert.NoError(t, execTask0.Insert())
-	assert.NoError(t, execTask1.Insert())
-	assert.NoError(t, randomTask.Insert())
+	assert.NoError(t, displayTask.Insert(t.Context()))
+	assert.NoError(t, execTask0.Insert(t.Context()))
+	assert.NoError(t, execTask1.Insert(t.Context()))
+	assert.NoError(t, randomTask.Insert(t.Context()))
 	tbh := &tasksByBuildHandler{
 		limit: 100,
 		url:   "http://evergreen.example.net",

@@ -42,7 +42,7 @@ func TestTaskHistory(t *testing.T) {
 					Identifier:          projectToUse,
 				}
 
-				require.NoError(t, ver.Insert(),
+				require.NoError(t, ver.Insert(t.Context()),
 					"Error inserting version")
 				for j := 0; j < 3; j++ {
 					newTask := &task.Task{
@@ -54,7 +54,7 @@ func TestTaskHistory(t *testing.T) {
 						Requester:           evergreen.RepotrackerVersionRequester,
 						Project:             projectToUse,
 					}
-					require.NoError(t, newTask.Insert(),
+					require.NoError(t, newTask.Insert(t.Context()),
 						"Error inserting task")
 				}
 
@@ -143,10 +143,10 @@ func TestTaskHistoryPickaxe(t *testing.T) {
 		BuildVariant:        "bv",
 		RevisionOrderNumber: 4,
 	}
-	assert.NoError(t1.Insert())
-	assert.NoError(t2.Insert())
-	assert.NoError(t3.Insert())
-	assert.NoError(t4.Insert())
+	assert.NoError(t1.Insert(t.Context()))
+	assert.NoError(t2.Insert(t.Context()))
+	assert.NoError(t3.Insert(t.Context()))
+	assert.NoError(t4.Insert(t.Context()))
 	for i := 0; i < 5; i++ {
 		_, err := GetNewRevisionOrderNumber(proj.Identifier)
 		assert.NoError(err)

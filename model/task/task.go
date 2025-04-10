@@ -2995,8 +2995,8 @@ func (t *Task) String() (taskStruct string) {
 }
 
 // Insert writes the task to the db.
-func (t *Task) Insert() error {
-	return db.Insert(Collection, t)
+func (t *Task) Insert(ctx context.Context) error {
+	return db.InsertContext(ctx, Collection, t)
 }
 
 // Archive modifies the current execution of the task so that it is no longer

@@ -169,7 +169,7 @@ func (s *userPermissionPostSuite) SetupTest() {
 	s.u = user.DBUser{
 		Id: "user",
 	}
-	s.Require().NoError(s.u.Insert())
+	s.Require().NoError(s.u.Insert(s.T().Context()))
 	s.h = makeModifyUserPermissions(s.env.RoleManager())
 }
 
@@ -276,12 +276,12 @@ func TestProjectSettingsUpdateViewRepo(t *testing.T) {
 		RepoRefId: "myRepo",
 		Enabled:   true,
 	}
-	assert.NoError(t, pRef.Insert())
+	assert.NoError(t, pRef.Insert(t.Context()))
 	pRef = model.ProjectRef{
 		Id:      "unattached",
 		Enabled: true,
 	}
-	assert.NoError(t, pRef.Insert())
+	assert.NoError(t, pRef.Insert(t.Context()))
 
 	repoRef := model.RepoRef{ProjectRef: model.ProjectRef{
 		Id: "myRepo",
@@ -298,7 +298,7 @@ func TestProjectSettingsUpdateViewRepo(t *testing.T) {
 		Id:          "me",
 		SystemRoles: []string{},
 	}
-	require.NoError(t, u.Insert())
+	require.NoError(t, u.Insert(t.Context()))
 
 	// We should be able to view the repo because of the attached project, and not error because of the unattached project.
 	handler := userPermissionsPostHandler{rm: rm, userID: u.Id}
@@ -332,7 +332,7 @@ func TestDeleteUserPermissions(t *testing.T) {
 		Id:          "user",
 		SystemRoles: []string{"role1", "role2", "role3", evergreen.BasicProjectAccessRole},
 	}
-	require.NoError(t, u.Insert())
+	require.NoError(t, u.Insert(t.Context()))
 	require.NoError(t, rm.AddScope(gimlet.Scope{ID: "scope1", Resources: []string{"resource1"}, Type: "project"}))
 	require.NoError(t, rm.AddScope(gimlet.Scope{ID: "scope2", Resources: []string{"resource2"}, Type: "project"}))
 	require.NoError(t, rm.AddScope(gimlet.Scope{ID: "scope3", Resources: []string{"resource3"}, Type: "distro"}))
@@ -395,7 +395,7 @@ func TestGetUserPermissions(t *testing.T) {
 	for _, projectRef := range projectRefs {
 		require.NoError(t, projectRef.Replace(t.Context()))
 	}
-	require.NoError(t, u.Insert())
+	require.NoError(t, u.Insert(t.Context()))
 	require.NoError(t, rm.AddScope(gimlet.Scope{ID: "scope1", Resources: []string{"resource1"}, Type: "project"}))
 	require.NoError(t, rm.AddScope(gimlet.Scope{ID: "scope2", Resources: []string{"resource2"}, Type: "project"}))
 	require.NoError(t, rm.AddScope(gimlet.Scope{ID: "scope3", Resources: []string{"resource3"}, Type: "project"}))
@@ -421,7 +421,7 @@ func TestPostUserRoles(t *testing.T) {
 	u := user.DBUser{
 		Id: "user",
 	}
-	require.NoError(t, u.Insert())
+	require.NoError(t, u.Insert(t.Context()))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	ctx = gimlet.AttachUser(ctx, &u)
@@ -465,7 +465,7 @@ func TestPostUserRoles(t *testing.T) {
 	u = user.DBUser{
 		Id: newId,
 	}
-	require.NoError(t, u.Insert())
+	require.NoError(t, u.Insert(t.Context()))
 	require.NoError(t, err)
 	assert.NoError(t, handler.Parse(ctx, request))
 	resp = handler.Run(ctx)
@@ -835,14 +835,14 @@ func TestRenameUser(t *testing.T) {
 				Author:      "new_me",
 				PatchNumber: 1,
 			}
-			assert.NoError(t, pNew.Insert())
+			assert.NoError(t, pNew.Insert(t.Context()))
 			newUsr := user.DBUser{
 				Id:           "new_me",
 				EmailAddress: "new_me@still_awesome.com",
 				APIKey:       "my_original_key",
 				PatchNumber:  1,
 			}
-			assert.NoError(t, newUsr.Insert())
+			assert.NoError(t, newUsr.Insert(t.Context()))
 			req, err := http.NewRequest(http.MethodPost, "http://example.com/api/rest/v2/users/rename_user", bytes.NewBuffer(body))
 			require.NoError(t, err)
 			handler := makeRenameUser(env)
@@ -978,8 +978,8 @@ func TestRenameUser(t *testing.T) {
 					UID: 12,
 				}},
 			}
-			assert.NoError(t, someOtherUser.Insert())
-			assert.NoError(t, oldUsr.Insert())
+			assert.NoError(t, someOtherUser.Insert(t.Context()))
+			assert.NoError(t, oldUsr.Insert(t.Context()))
 			testCase(t)
 		})
 	}
@@ -1032,7 +1032,7 @@ func TestOffboardUserHandlerHosts(t *testing.T) {
 	assert.NoError(t, h1.Insert(ctx))
 	assert.NoError(t, h2.Insert(ctx))
 	assert.NoError(t, h3.Insert(ctx))
-	assert.NoError(t, v1.Insert())
+	assert.NoError(t, v1.Insert(t.Context()))
 
 	handler := offboardUserHandler{}
 	json := []byte(`{"email": "user0@mongodb.com"}`)
@@ -1041,7 +1041,7 @@ func TestOffboardUserHandlerHosts(t *testing.T) {
 	assert.Error(t, handler.Parse(ctx, req)) // user not inserted
 
 	u := user.DBUser{Id: "user0"}
-	assert.NoError(t, u.Insert())
+	assert.NoError(t, u.Insert(t.Context()))
 	req, _ = http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/users/offboard_user?dry_run=true", bytes.NewBuffer(json))
 	assert.NoError(t, handler.Parse(ctx, req))
 	assert.Equal(t, "user0", handler.user)
@@ -1082,8 +1082,8 @@ func TestOffboardUserHandlerAdmins(t *testing.T) {
 		Admins:    []string{"user1", "user2"},
 	}
 
-	assert.NoError(t, projectRef0.Insert())
-	assert.NoError(t, projectRef1.Insert())
+	assert.NoError(t, projectRef0.Insert(t.Context()))
+	assert.NoError(t, projectRef1.Insert(t.Context()))
 
 	offboardedUser := "user0"
 	ctx, cancel := context.WithCancel(context.Background())
@@ -1177,8 +1177,8 @@ func TestGetUserHandler(t *testing.T) {
 	} {
 		t.Run(testName, func(t *testing.T) {
 			assert.NoError(t, db.ClearCollections(user.Collection))
-			assert.NoError(t, usrToRetrieve.Insert())
-			assert.NoError(t, me.Insert())
+			assert.NoError(t, usrToRetrieve.Insert(t.Context()))
+			assert.NoError(t, me.Insert(t.Context()))
 			testCase(t)
 		})
 	}
