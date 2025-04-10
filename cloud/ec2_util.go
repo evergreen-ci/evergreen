@@ -748,3 +748,14 @@ func isEC2InstanceNotFound(err error) bool {
 	}
 	return false
 }
+
+func shouldAssignPublicIPv4Address(h *host.Host, ec2Settings *EC2ProviderSettings) bool {
+	if h.UserHost || h.SpawnOptions.SpawnedByTask {
+		// Spawn hosts and host.create hosts need to have a public IPv4 address
+		// because SSH is currently the only means for the user/task to access
+		// the host.
+		return true
+	}
+
+	return !ec2Settings.DoNotAssignPublicIPv4Address && !ec2Settings.IPv6
+}

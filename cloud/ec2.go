@@ -39,8 +39,10 @@ type EC2ProviderSettings struct {
 	IPv6 bool `mapstructure:"ipv6" json:"ipv6,omitempty" bson:"ipv6,omitempty"`
 
 	// DoNotAssignPublicIPv4Address, if true, skips assigning a public IPv4
-	// address to hosts. Does not apply if the host is using IPv6 or spawn hosts
-	// which need an IPv4 address for SSH.
+	// address to task hosts. An AWS SSH key will be assigned to the host only
+	// if a public IPv4 address is also assigned.
+	// Does not apply if the host is using IPv6 or if the host is a spawn host
+	// or host.create host, which need an IPv4 address for SSH.
 	DoNotAssignPublicIPv4Address bool `mapstructure:"do_not_assign_public_ipv4_address" json:"do_not_assign_public_ipv4_address,omitempty" bson:"do_not_assign_public_ipv4_address,omitempty"`
 
 	// KeyName is the AWS SSH key name.
@@ -285,7 +287,6 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 		MinCount:            aws.Int32(1),
 		MaxCount:            aws.Int32(1),
 		ImageId:             &ec2Settings.AMI,
-		KeyName:             &ec2Settings.KeyName,
 		InstanceType:        types.InstanceType(ec2Settings.InstanceType),
 		BlockDeviceMappings: blockDevices,
 		TagSpecifications:   makeTagSpecifications(makeTags(h)),
@@ -295,13 +296,14 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 		input.IamInstanceProfile = &types.IamInstanceProfileSpecification{Arn: aws.String(ec2Settings.IAMInstanceProfileARN)}
 	}
 
+	assignPublicIPv4 := shouldAssignPublicIPv4Address(h, ec2Settings)
+	if assignPublicIPv4 {
+		// Only set an SSH key for the host if the host actually has a public
+		// IPv4 address. Hosts that don't have a public IPv4 address aren't
+		// reachable with SSH even if a key is set.
+		input.KeyName = aws.String(ec2Settings.KeyName)
+	}
 	if ec2Settings.IsVpc {
-		assignPublicIPv4 := !ec2Settings.DoNotAssignPublicIPv4Address
-		if h.UserHost {
-			// Spawn hosts need a public IPv4 address so that users can SSH into
-			// them.
-			assignPublicIPv4 = true
-		}
 		input.NetworkInterfaces = []types.InstanceNetworkInterfaceSpecification{
 			{
 				AssociatePublicIpAddress: aws.Bool(assignPublicIPv4),
@@ -312,7 +314,6 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 		}
 		if ec2Settings.IPv6 {
 			input.NetworkInterfaces[0].Ipv6AddressCount = aws.Int32(1)
-			input.NetworkInterfaces[0].AssociatePublicIpAddress = aws.Bool(false)
 		}
 	} else {
 		input.SecurityGroups = ec2Settings.SecurityGroupIDs

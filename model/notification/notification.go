@@ -301,7 +301,7 @@ type NotificationStats struct {
 	GithubMerge       int `json:"github_merge" bson:"github_merge" yaml:"github_merge"`
 }
 
-func CollectUnsentNotificationStats() (*NotificationStats, error) {
+func CollectUnsentNotificationStats(ctx context.Context) (*NotificationStats, error) {
 	const subscriberTypeKey = "type"
 	pipeline := []bson.M{
 		{
@@ -326,7 +326,7 @@ func CollectUnsentNotificationStats() (*NotificationStats, error) {
 		Count int    `bson:"n"`
 	}{}
 
-	if err := db.Aggregate(Collection, pipeline, &stats); err != nil {
+	if err := db.Aggregate(ctx, Collection, pipeline, &stats); err != nil {
 		return nil, errors.Wrap(err, "counting unsent notifications")
 	}
 

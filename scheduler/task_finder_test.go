@@ -204,7 +204,7 @@ func (s *TaskFinderSuite) TestTasksWithDisabledProjectNeverReturned() {
 		Id:      "exists",
 		Enabled: false,
 	}
-	s.Require().NoError(ref.Upsert())
+	s.Require().NoError(ref.Replace(s.ctx))
 	runnableTasks, err := s.FindRunnableTasks(s.ctx, s.distro)
 	s.NoError(err)
 	s.Empty(runnableTasks)
@@ -215,7 +215,7 @@ func (s *TaskFinderSuite) TestTasksWithProjectDispatchingDisabledNeverReturned()
 		Id:                  "exists",
 		DispatchingDisabled: utility.TruePtr(),
 	}
-	s.Require().NoError(ref.Upsert())
+	s.Require().NoError(ref.Replace(s.ctx))
 	runnableTasks, err := s.FindRunnableTasks(s.ctx, s.distro)
 	s.NoError(err)
 	s.Empty(runnableTasks)

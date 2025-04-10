@@ -54,7 +54,7 @@ func TestFetchRevisions(t *testing.T) {
 		Convey("Fetching commits for a disabled repotracker should create no versions", func() {
 			evgProjectRef.RepotrackerDisabled = utility.TruePtr()
 			So(repoTracker.FetchRevisions(ctx), ShouldBeNil)
-			numVersions, err := model.VersionCount(model.VersionAll)
+			numVersions, err := model.VersionCount(t.Context(), model.VersionAll)
 			require.NoError(t, err, "Error finding all versions")
 			So(numVersions, ShouldEqual, 0)
 			evgProjectRef.RepotrackerDisabled = utility.FalsePtr()
@@ -66,7 +66,7 @@ func TestFetchRevisions(t *testing.T) {
 			testConfig.RepoTracker.NumNewRepoRevisionsToFetch = 2
 			require.NoError(t, repoTracker.FetchRevisions(ctx),
 				"Error running repository process %s", repoTracker.Settings.Id)
-			numVersions, err := model.VersionCount(model.VersionAll)
+			numVersions, err := model.VersionCount(t.Context(), model.VersionAll)
 			require.NoError(t, err, "Error finding all versions")
 			So(numVersions, ShouldEqual, 2)
 		})
@@ -1363,11 +1363,11 @@ tasks:
 			tomorrow := versionCreateTime.Add(time.Hour * 24) // next day
 			y, m, d := tomorrow.Date()
 
-			if requester == evergreen.PatchVersionRequester {
+			if !evergreen.ShouldConsiderBatchtime(v.Requester) {
 				s.Len(v.BuildVariants, 2)
 				for _, bv := range v.BuildVariants {
-					s.NotEqual(versionCreateTime, bv.ActivateAt, "build variant activation should be based on version create time because patch")
-					s.Require().Len(bv.BatchTimeTasks, 0, "task cron activation should be empty because patch")
+					s.NotEqual(versionCreateTime, bv.ActivateAt, "build variant activation should be based on version create time because not mainline")
+					s.Require().Len(bv.BatchTimeTasks, 0, "task cron activation should be empty because not mainline")
 				}
 			} else {
 				for _, bv := range v.BuildVariants {
@@ -1428,7 +1428,7 @@ tasks:
 		Task:      "task1",
 		Variant:   ".*",
 	}
-	s.NoError(alias.Upsert())
+	s.NoError(alias.Upsert(s.ctx))
 	v, err := CreateVersionFromConfig(s.ctx, projectInfo, model.VersionMetadata{Revision: *s.rev, Alias: evergreen.GithubPRAlias}, false, nil)
 	s.NoError(err)
 	s.Require().NotNil(v)
@@ -1480,7 +1480,7 @@ tasks:
 		Task:      "task1",
 		Variant:   ".*",
 	}
-	s.NoError(alias.Upsert())
+	s.NoError(alias.Upsert(s.ctx))
 
 	projectInfo := &model.ProjectInfo{
 		Ref:                 s.ref,
@@ -1537,7 +1537,7 @@ task_groups:
 		Task:      "tg1",
 		Variant:   ".*",
 	}
-	s.NoError(alias.Upsert())
+	s.NoError(alias.Upsert(s.ctx))
 
 	projectInfo := &model.ProjectInfo{
 		Ref:                 s.ref,
@@ -1605,7 +1605,7 @@ tasks:
 		Task:      "(task1)|(task2)",
 		Variant:   ".*",
 	}
-	s.NoError(alias.Upsert())
+	s.NoError(alias.Upsert(s.ctx))
 
 	projectInfo := &model.ProjectInfo{
 		Ref:                 s.ref,

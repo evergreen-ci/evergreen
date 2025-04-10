@@ -124,7 +124,7 @@ func (r *queryResolver) DistroEvents(ctx context.Context, opts DistroEventsInput
 		limit = utility.FromIntPtr(opts.Limit)
 	}
 
-	events, err := event.FindLatestPrimaryDistroEvents(opts.DistroID, limit, before)
+	events, err := event.FindLatestPrimaryDistroEvents(ctx, opts.DistroID, limit, before)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("retrieving events for distro '%s': %s", opts.DistroID, err.Error()))
 	}
@@ -181,7 +181,7 @@ func (r *queryResolver) Distros(ctx context.Context, onlySpawnable bool) ([]*res
 
 // DistroTaskQueue is the resolver for the distroTaskQueue field.
 func (r *queryResolver) DistroTaskQueue(ctx context.Context, distroID string) ([]*restModel.APITaskQueueItem, error) {
-	distroQueue, err := model.LoadTaskQueue(distroID)
+	distroQueue, err := model.LoadTaskQueue(ctx, distroID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting task queue for distro '%s': %s", distroID, err.Error()))
 	}
@@ -244,7 +244,7 @@ func (r *queryResolver) HostEvents(ctx context.Context, hostID string, hostTag *
 		Page:    utility.FromIntPtr(page),
 		SortAsc: false,
 	}
-	events, count, err := event.GetPaginatedHostEvents(hostQueryOpts)
+	events, count, err := event.GetPaginatedHostEvents(ctx, hostQueryOpts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching events for host '%s': %s", hostID, err.Error()))
 	}

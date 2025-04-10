@@ -993,6 +993,7 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasksWithBatchtime() {
 			},
 		},
 		CreateTime: time.Now(),
+		Requester:  evergreen.RepotrackerVersionRequester,
 	}
 	s.NoError(v.Insert())
 	pp := &ParserProject{}

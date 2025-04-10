@@ -279,7 +279,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 
 	uiTask.DependsOn = deps
 	uiTask.TaskWaiting = taskWaiting
-	uiTask.MinQueuePos, err = model.FindMinimumQueuePositionForTask(uiTask.Id)
+	uiTask.MinQueuePos, err = model.FindMinimumQueuePositionForTask(ctx, uiTask.Id)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return

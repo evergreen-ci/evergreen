@@ -152,7 +152,7 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 				Id: repoProjectId,
 			},
 		}
-		s.Require().NoError(repoWithVars.Upsert())
+		s.Require().NoError(repoWithVars.Replace(t.Context()))
 		repoVars := &model.ProjectVars{
 			Id:          repoProjectId,
 			Vars:        map[string]string{"a": "a_from_repo", "c": "new"},
@@ -301,7 +301,7 @@ func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
 		PrivateVars:  map[string]bool{"b": false, "c": true},
 		VarsToDelete: varsToDelete,
 	}
-	s.NoError(UpdateProjectVars(projectId, &newVars, false))
+	s.NoError(UpdateProjectVars(s.T().Context(), projectId, &newVars, false))
 
 	s.Empty(newVars.Vars["b"]) // can't unredact previously redacted variables
 	s.Empty(newVars.Vars["c"])
@@ -337,7 +337,7 @@ func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
 	}
 	s.Require().NoError(newProjRef.Insert())
 	// successful upsert
-	s.NoError(UpdateProjectVars(newProjRef.Id, &newVars, false))
+	s.NoError(UpdateProjectVars(s.T().Context(), newProjRef.Id, &newVars, false))
 
 	dbUpsertedVars, err := model.FindOneProjectVars(s.T().Context(), newProjRef.Id)
 	s.NoError(err)
@@ -386,14 +386,14 @@ func TestGetProjectAliasResults(t *testing.T) {
 		Variant:   "^bv1$",
 		Task:      ".*",
 	}
-	require.NoError(t, alias1.Upsert())
+	require.NoError(t, alias1.Upsert(t.Context()))
 	alias2 := model.ProjectAlias{
 		Alias:     "select_bv2",
 		ProjectID: p.Identifier,
 		Variant:   "^bv2$",
 		Task:      ".*",
 	}
-	require.NoError(t, alias2.Upsert())
+	require.NoError(t, alias2.Upsert(t.Context()))
 
 	variantTasks, err := GetProjectAliasResults(t.Context(), &p, alias1.Alias, false)
 	assert.NoError(t, err)
@@ -607,7 +607,7 @@ func TestHideBranch(t *testing.T) {
 			Repo:  "test_repo",
 		},
 	}
-	assert.NoError(t, repo.Upsert())
+	assert.NoError(t, repo.Replace(t.Context()))
 
 	project := &model.ProjectRef{
 		Identifier:  projectId,
@@ -620,7 +620,7 @@ func TestHideBranch(t *testing.T) {
 		Enabled:     true,
 		Hidden:      utility.ToBoolPtr(false),
 	}
-	require.NoError(t, project.Upsert())
+	require.NoError(t, project.Replace(t.Context()))
 
 	alias := model.ProjectAlias{
 		ProjectID: project.Id,
@@ -628,7 +628,7 @@ func TestHideBranch(t *testing.T) {
 		Variant:   "^bv1$",
 		Task:      ".*",
 	}
-	require.NoError(t, alias.Upsert())
+	require.NoError(t, alias.Upsert(t.Context()))
 
 	vars := &model.ProjectVars{
 		Id:          project.Id,

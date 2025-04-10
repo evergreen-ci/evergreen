@@ -332,6 +332,10 @@ project) will trigger builds in their current project (the "downstream"
 project). Configure triggers **in the downstream project** from the Project Triggers
 section of the project configuration page. Click "Add Project Trigger".
 
+The purpose of a trigger is to trigger all needed tasks; as such **project triggers do not respect batchtime, cron, 
+or other activation settings.** To reduce the number of tasks/variants run in a trigger, we recommend supplying a 
+smaller config file, or an alias.
+
 Options:
 
 -   **Project**: The upstream project identifier to listen to for commits.

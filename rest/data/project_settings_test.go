@@ -186,7 +186,7 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 			Restricted: utility.FalsePtr(),
 			Admins:     []string{"oldAdmin"},
 		}}
-		assert.NoError(t, repoRef.Upsert())
+		assert.NoError(t, repoRef.Replace(t.Context()))
 
 		pRefThatDefaults := model.ProjectRef{
 			Id:        "myId",
@@ -195,14 +195,14 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 			RepoRefId: "myRepoId",
 			Admins:    []string{"oldAdmin"},
 		}
-		assert.NoError(t, pRefThatDefaults.Upsert())
+		assert.NoError(t, pRefThatDefaults.Replace(t.Context()))
 
 		pRefThatDoesNotDefault := model.ProjectRef{
 			Id:    "myId2",
 			Owner: "evergreen-ci",
 			Repo:  "evergreen",
 		}
-		assert.NoError(t, pRefThatDoesNotDefault.Upsert())
+		assert.NoError(t, pRefThatDoesNotDefault.Replace(t.Context()))
 
 		pVars := model.ProjectVars{
 			Id:          repoRef.Id,
@@ -314,7 +314,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.NoError(t, conflictingRef.Insert())
 			ref.PRTestingEnabled = utility.TruePtr()
 			ref.GithubChecksEnabled = utility.TruePtr()
-			assert.NoError(t, ref.Upsert())
+			assert.NoError(t, ref.Replace(t.Context()))
 			ref.Enabled = true
 			apiProjectRef := restModel.APIProjectRef{}
 			assert.NoError(t, apiProjectRef.BuildFromService(t.Context(), ref))
@@ -1005,7 +1005,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			Restricted:       utility.TruePtr(),
 			PRTestingEnabled: utility.TruePtr(),
 		}}
-		assert.NoError(t, repoRef.Upsert())
+		assert.NoError(t, repoRef.Replace(t.Context()))
 
 		pVars := model.ProjectVars{
 			Id:          pRef.Id,
@@ -1070,7 +1070,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 				Target: "a@gmail.com",
 			},
 		}
-		assert.NoError(t, existingSub.Upsert())
+		assert.NoError(t, existingSub.Upsert(t.Context()))
 		existingSub2 := event.Subscription{
 			ID:           "existingSub2",
 			Owner:        pRef.Id,
@@ -1098,7 +1098,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 				},
 			},
 		}
-		assert.NoError(t, existingSub2.Upsert())
+		assert.NoError(t, existingSub2.Upsert(t.Context()))
 		t.Run(name, func(t *testing.T) {
 			test(t, pRef)
 		})
@@ -1241,7 +1241,7 @@ func TestPromoteVarsToRepo(t *testing.T) {
 			Restricted: utility.FalsePtr(),
 			Admins:     []string{"u"},
 		}}
-		assert.NoError(t, repoRef.Upsert())
+		assert.NoError(t, repoRef.Replace(t.Context()))
 
 		rVars := model.ProjectVars{
 			Id:            repoRef.Id,
@@ -1468,7 +1468,7 @@ func TestCopyProject(t *testing.T) {
 				Target: "a@gmail.com",
 			},
 		}
-		assert.NoError(t, existingSub.Upsert())
+		assert.NoError(t, existingSub.Upsert(t.Context()))
 		t.Run(name, func(t *testing.T) {
 			test(t, pRef)
 		})
@@ -1520,7 +1520,7 @@ func TestDeleteContainerSecrets(t *testing.T) {
 		},
 		"RemovesContainerSecretsMissingExternalIDsWithoutModifyingDBProjectRef": func(ctx context.Context, t *testing.T, mv *cocoaMock.Vault, pRef model.ProjectRef) {
 			pRef.ContainerSecrets[0].ExternalID = ""
-			require.NoError(t, pRef.Upsert())
+			require.NoError(t, pRef.Replace(t.Context()))
 			remaining, err := DeleteContainerSecrets(ctx, mv, &pRef, []string{pRef.ContainerSecrets[0].Name})
 			require.NoError(t, err)
 			assert.Len(t, remaining, len(pRef.ContainerSecrets)-1)
@@ -1618,7 +1618,7 @@ func TestUpsertContainerSecrets(t *testing.T) {
 				Value:        "is yummy",
 			}
 			pRef.ContainerSecrets = append(pRef.ContainerSecrets, newSecret)
-			require.NoError(t, pRef.Upsert())
+			require.NoError(t, pRef.Replace(t.Context()))
 			require.NoError(t, UpsertContainerSecrets(ctx, mv, pRef.ContainerSecrets))
 
 			dbProjRef, err := model.FindBranchProjectRef(ctx, pRef.Id)
@@ -1638,7 +1638,7 @@ func TestUpsertContainerSecrets(t *testing.T) {
 		"UpdatesExistingContainerSecretValue": func(ctx context.Context, t *testing.T, mv *cocoaMock.Vault, pRef model.ProjectRef) {
 			const newValue = "new_secret_value"
 			pRef.ContainerSecrets[0].Value = newValue
-			require.NoError(t, pRef.Upsert())
+			require.NoError(t, pRef.Replace(t.Context()))
 			require.NoError(t, UpsertContainerSecrets(ctx, mv, pRef.ContainerSecrets))
 
 			dbProjRef, err := model.FindBranchProjectRef(ctx, pRef.Id)

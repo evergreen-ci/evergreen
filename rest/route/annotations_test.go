@@ -87,7 +87,7 @@ func TestAnnotationsByBuildHandlerRun(t *testing.T) {
 		},
 	}
 	for _, a := range annotations {
-		assert.NoError(t, a.Upsert())
+		assert.NoError(t, a.Upsert(t.Context()))
 	}
 
 	resp = h.Run(ctx)
@@ -178,7 +178,7 @@ func TestAnnotationsByVersionHandlerRun(t *testing.T) {
 		},
 	}
 	for _, a := range annotations {
-		assert.NoError(t, a.Upsert())
+		assert.NoError(t, a.Upsert(t.Context()))
 	}
 
 	resp = h.Run(ctx)
@@ -286,7 +286,7 @@ func TestAnnotationByTaskGetHandlerRun(t *testing.T) {
 	}
 
 	for _, a := range annotations {
-		assert.NoError(t, a.Upsert())
+		assert.NoError(t, a.Upsert(t.Context()))
 	}
 
 	// get the latest execution : 1
@@ -770,7 +770,7 @@ func TestCreatedTicketByTaskPutHandlerParse(t *testing.T) {
 			Endpoint: "random",
 		},
 	}
-	assert.NoError(t, p.Upsert())
+	assert.NoError(t, p.Replace(t.Context()))
 	r, err := http.NewRequest(http.MethodPut, "/task/t1/created_ticket?execution=1", buffer)
 	r = gimlet.SetURLVars(r, map[string]string{"task_id": "t1"})
 	assert.NoError(t, err)

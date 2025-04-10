@@ -54,7 +54,7 @@ func (c *DBCache) Get(ctx context.Context, key string) ([]byte, bool, error) {
 
 // Set stores valueBytes for key.
 func (c *DBCache) Set(ctx context.Context, key string, valueBytes []byte) error {
-	_, err := db.UpsertContext(
+	_, err := db.Upsert(
 		ctx,
 		collection,
 		bson.M{IDKey: key},
