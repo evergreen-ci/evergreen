@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility/ttlcache"
 	"github.com/mongodb/grip"
@@ -53,6 +54,8 @@ type AssumeRoleOptions struct {
 	DurationSeconds *int32
 	// CanCache signals whether to cache the credentials.
 	CanCache bool
+
+	RepoID bool
 }
 
 // AssumeRoleCredentials are the credentials to be returned from
@@ -86,7 +89,26 @@ func (s *stsManagerImpl) AssumeRole(ctx context.Context, taskID string, opts Ass
 	if t == nil {
 		return AssumeRoleCredentials{}, errors.New("task not found")
 	}
-	externalID := createExternalID(t)
+
+	externalID := createProjectExternalID(t)
+
+	if opts.RepoID {
+		ref, err := model.FindBranchProjectRef(ctx, t.Project)
+		if err != nil {
+			return AssumeRoleCredentials{}, errors.Wrapf(err, "finding project ref")
+		}
+
+		if ref == nil {
+			return AssumeRoleCredentials{}, errors.Errorf("project ref '%s' doesn't exist", t.Project)
+		}
+
+		if ref.RepoRefId == "" {
+			return AssumeRoleCredentials{}, errors.Errorf("project ref '%s' doesn't have a repo ref id", t.Project)
+		}
+
+		externalID = createRepoRefExternalID(ref.RepoRefId, t.Requester)
+	}
+
 	cacheID := externalID
 	if opts.Policy != nil {
 		cacheID += *opts.Policy
@@ -140,12 +162,20 @@ func (s *stsManagerImpl) GetCallerIdentityARN(ctx context.Context) (string, erro
 	return *output.Arn, nil
 }
 
-func createExternalID(task *task.Task) string {
-	// The external ID is used as a trust boundary for the AssumeRole call.
-	// It is an unconfigurable computed value from the task of its project and
-	// requester to avoid the confused deputy problem since Evergreen
-	// assumes many roles on behalf of tasks.
+// createProjectExternalID creates an AssumeRole external ID which is used as
+// a trust boundary. This external ID is an unconfigurable computed value from
+// the task of its project and requester to avoid the confused deputy problem
+// since Evergreen assumes many roles on behalf of tasks.
+func createProjectExternalID(task *task.Task) string {
 	return fmt.Sprintf("%s-%s", task.Project, task.Requester)
+}
+
+// createRepoRefExternalID creates an AssumeRole external ID which is used as
+// a trust boundary. This external ID is an unconfigurable computed value from
+// the repo ref id and requester to avoid the confused deputy problem
+// since Evergreen assumes many roles on behalf of tasks.
+func createRepoRefExternalID(repoRefID, requester string) string {
+	return fmt.Sprintf("%s-%s", repoRefID, requester)
 }
 
 func validateAssumeRoleOutput(assumeRole *sts.AssumeRoleOutput) error {

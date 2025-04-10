@@ -1837,6 +1837,7 @@ func (h *awsAssumeRole) Run(ctx context.Context) gimlet.Responder {
 		RoleARN:         h.body.RoleARN,
 		Policy:          h.body.Policy,
 		DurationSeconds: h.body.DurationSeconds,
+		RepoID:          h.body.RepoID,
 	})
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "assuming role for task '%s'", h.taskID))
