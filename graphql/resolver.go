@@ -123,7 +123,8 @@ func New(apiURL string) Config {
 
 		// If directive is checking for create permissions, no distro ID is required.
 		if access == DistroSettingsAccessCreate {
-			if userHasDistroCreatePermission(user) {
+
+			if user.HasDistroCreatePermission() {
 				return next(ctx)
 			}
 			return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have create distro permissions", user.Username()))
