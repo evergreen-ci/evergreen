@@ -112,14 +112,6 @@ func presignFile(ctx context.Context, file File) (string, error) {
 		return "", errors.Wrap(err, "file validation failed")
 	}
 
-	// If this bucket is a devprod owned one, we sign the URL
-	// with the app's server IRSA credentials (which is used
-	// when no credentials are provided).
-	if isInternalBucket(file.Bucket) {
-		file.AWSKey = ""
-		file.AWSSecret = ""
-	}
-
 	if file.AWSRoleARN != "" {
 		file.AWSKey = ""
 		file.AWSSecret = ""
