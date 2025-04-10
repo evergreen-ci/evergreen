@@ -9,7 +9,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/parsley"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
@@ -632,9 +631,7 @@ func (s *UserTestSuite) TestHasPermission() {
 }
 
 func (s *UserTestSuite) TestHasDistroCreatePermission() {
-	env := &mock.Environment{}
-	s.Require().NoError(env.Configure(s.T().Context()))
-	roleManager := env.RoleManager()
+	roleManager := s.env.RoleManager()
 
 	usr := DBUser{
 		Id: "basic_user",
@@ -649,7 +646,7 @@ func (s *UserTestSuite) TestHasDistroCreatePermission() {
 		Permissions: map[string]int{evergreen.PermissionDistroCreate: evergreen.DistroCreate.Value},
 	}
 	s.Require().NoError(roleManager.UpdateRole(createRole))
-	s.Require().NoError(usr.AddRole(s.T().Context(), "create_distro"))
+	s.Require().NoError(usr.AddRole(s.T().Context(), createRole.ID))
 
 	superUserScope := gimlet.Scope{
 		ID:        "superuser_scope",

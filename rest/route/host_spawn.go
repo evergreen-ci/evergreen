@@ -78,7 +78,10 @@ func (hph *hostPostHandler) Run(ctx context.Context) gimlet.Responder {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding distro '%s'", hph.options.DistroID))
 		}
 		if d == nil {
-			return gimlet.MakeJSONErrorResponder(errors.Errorf("distro '%s' not found", hph.options.DistroID))
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusNotFound,
+				Message:    errors.Errorf("distro '%s' not found", hph.options.DistroID).Error(),
+			})
 		}
 		if d.AdminOnly {
 			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{

@@ -763,6 +763,7 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("distro '%s' not found", options.DistroID))
 		}
 		if d.AdminOnly {
+			// Admin-only distros can only be spawned by distro admins.
 			return nil, Forbidden.Send(ctx, fmt.Sprintf("not authorized to spawn host in admin-only distro '%s'", options.DistroID))
 		}
 	}
