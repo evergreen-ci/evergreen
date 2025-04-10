@@ -275,7 +275,7 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 		}
 	}
 
-	if p.Finalize && p.Alias == "" && !p.RepeatFailed && !p.RepeatDefinition && !p.tasksAndVariantsSet() {
+	if p.Finalize && p.Alias == "" && !p.RepeatFailed && !p.RepeatDefinition && !p.hasTasksAndVariants() {
 		return ref, errors.Errorf("Need to specify at least one task/variant or alias when finalizing")
 	}
 
@@ -304,8 +304,8 @@ func (p *patchParams) setNonRepeatedDefaults(conf *ClientSettings) {
 	}
 }
 
-// tasksAndVariantsSet is true if both tasks and variants were specified directly or via regex.
-func (p *patchParams) tasksAndVariantsSet() bool {
+// hasTasksAndVariants is true if both tasks and variants were specified directly or via regex.
+func (p *patchParams) hasTasksAndVariants() bool {
 	return len(p.Variants)+len(p.RegexVariants) != 0 && len(p.Tasks)+len(p.RegexTasks) != 0
 }
 
@@ -399,7 +399,7 @@ func (p *patchParams) loadAlias(conf *ClientSettings) error {
 				return errors.Wrap(err, "setting default alias")
 			}
 		}
-	} else if !p.tasksAndVariantsSet() {
+	} else if !p.hasTasksAndVariants() {
 		// No --alias or variant/task pair was passed, use the default
 		p.Alias = conf.FindDefaultAlias(p.Project)
 		grip.InfoWhen(p.Alias != "", "Using default alias set in local config")

@@ -2,7 +2,6 @@ package operations
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"testing"
 
@@ -55,7 +54,6 @@ func (s *PatchUtilTestSuite) TestLoadAliasFromFile() {
 	s.Nil(pp.Variants)
 	s.Nil(pp.Tasks)
 
-	fmt.Println("Testing starts here")
 	// If tasks/variants are specified, then we should not set the alias or task/variant defaults.
 	pp = patchParams{Project: "mci", RegexTasks: []string{".*"}, RegexVariants: []string{".*"}}
 	s.Require().NoError(pp.loadAlias(conf))
