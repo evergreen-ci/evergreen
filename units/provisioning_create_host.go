@@ -151,6 +151,16 @@ func (j *createHostJob) Run(ctx context.Context) {
 
 		removeHostIntent := false
 		if distroActiveHosts > j.host.Distro.HostAllocatorSettings.MaximumHosts {
+			grip.ErrorWhen(j.host.Distro.SingleTaskDistro, message.Fields{
+				"host_id":      j.HostID,
+				"attempt":      j.RetryInfo().CurrentAttempt,
+				"distro":       j.host.Distro.Id,
+				"job":          j.ID(),
+				"provider":     j.host.Provider,
+				"message":      "not provisioning single task distro host to respect maxhosts",
+				"max_hosts":    j.host.Distro.HostAllocatorSettings.MaximumHosts,
+				"active_hosts": distroActiveHosts,
+			})
 			grip.Info(message.Fields{
 				"host_id":   j.HostID,
 				"attempt":   j.RetryInfo().CurrentAttempt,
