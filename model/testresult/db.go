@@ -35,7 +35,7 @@ var (
 	failedCountKey = bsonutil.MustHaveTag(TaskTestResultsStats{}, "FailedCount")
 )
 
-func (id dbTaskTestResultsID) appendResults(ctx context.Context, results []TestResult) error {
+func (s *localService) appendResults(ctx context.Context, results []TestResult, id dbTaskTestResultsID) error {
 	var failedCount int
 	for _, result := range results {
 		if result.Status == evergreen.TestFailedStatus {
@@ -50,25 +50,6 @@ func (id dbTaskTestResultsID) appendResults(ctx context.Context, results []TestR
 			bsonutil.GetDottedKeyName(statsKey, failedCountKey): failedCount,
 		},
 	}
-	_, err := evergreen.GetEnvironment().DB().Collection(Collection).UpdateOne(ctx, bson.M{idKey: id}, update, options.Update().SetUpsert(true))
+	_, err := s.env.DB().Collection(Collection).UpdateOne(ctx, bson.M{idKey: id}, update, options.Update().SetUpsert(true))
 	return errors.Wrap(err, "appending DB test results")
-}
-
-func appendDBResults(ctx context.Context, results []TestResult) error {
-	ids := map[dbTaskTestResultsID][]TestResult{}
-	for _, result := range results {
-		id := dbTaskTestResultsID{
-			TaskID:    result.TaskID,
-			Execution: result.Execution,
-		}
-		ids[id] = append(ids[id], result)
-	}
-
-	for id, results := range ids {
-		if err := id.appendResults(ctx, results); err != nil {
-			return err
-		}
-	}
-
-	return nil
 }

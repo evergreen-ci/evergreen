@@ -16,7 +16,7 @@ func TestLocalService(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
-	svc := newLocalService(env)
+	svc := NewLocalService(env)
 	require.NoError(t, ClearLocal(ctx, env))
 	defer func() {
 		assert.NoError(t, ClearLocal(ctx, env))
@@ -221,7 +221,7 @@ func TestLocalFilterAndSortTestResults(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
-	svc := newLocalService(env)
+	svc := NewLocalService(env)
 	defer func() {
 		assert.NoError(t, ClearLocal(ctx, env))
 	}()

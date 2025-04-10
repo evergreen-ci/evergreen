@@ -30,7 +30,7 @@ func TestGetMergedTaskTestResults(t *testing.T) {
 	}()
 	srv, handler := newMockCedarServer(env)
 	defer srv.Close()
-	svc := newLocalService(env)
+	svc := NewLocalService(env)
 
 	task0 := TaskOptions{
 		TaskID:         "task0",
@@ -204,7 +204,7 @@ func TestGetMergedTaskTestResultsStats(t *testing.T) {
 	}()
 	srv, handler := newMockCedarServer(env)
 	defer srv.Close()
-	svc := newLocalService(env)
+	svc := NewLocalService(env)
 
 	task0 := TaskOptions{
 		TaskID:         "task0",
@@ -334,7 +334,7 @@ func TestGetMergedFailedTestSample(t *testing.T) {
 	}()
 	srv, handler := newMockCedarServer(env)
 	defer srv.Close()
-	svc := newLocalService(env)
+	svc := NewLocalService(env)
 
 	task0 := TaskOptions{
 		TaskID:         "task0",
@@ -454,7 +454,7 @@ func TestGetFailedTestSamples(t *testing.T) {
 	}()
 	srv, handler := newMockCedarServer(env)
 	defer srv.Close()
-	svc := newLocalService(env)
+	svc := NewLocalService(env)
 
 	task0 := TaskOptions{
 		TaskID:         "task0",
