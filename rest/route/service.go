@@ -68,7 +68,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	stsManager := cloud.GetSTSManager(false)
 
 	// AWS Role ARN from IRSA
-	awsRoleARN := os.Getenv("AWS_ROLE_ARN")
+	awsRoleARN := os.Getenv(evergreen.AWSRoleARNEnvVar)
 
 	// Agent protocol routes
 	app.AddRoute("/agent/cedar_config").Version(2).Get().Wrap(requirePodOrHost).RouteHandler(makeAgentCedarConfig(settings.Cedar))
