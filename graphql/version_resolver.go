@@ -533,10 +533,11 @@ func (r *versionResolver) Warnings(ctx context.Context, obj *restModel.APIVersio
 // WaterfallBuilds is the resolver for the waterfallBuilds field.
 func (r *versionResolver) WaterfallBuilds(ctx context.Context, obj *restModel.APIVersion) ([]*model.WaterfallBuild, error) {
 	versionID := utility.FromStringPtr(obj.Id)
+	versionBuilds := []*model.WaterfallBuild{}
 
 	// No need to fetch build variants for unactivated versions
 	if !utility.FromBoolPtr(obj.Activated) {
-		return nil, nil
+		return versionBuilds, nil
 	}
 
 	parentWaterfall, ok := graphql.GetFieldContext(ctx).Parent.Parent.Parent.Result.(*Waterfall)
@@ -544,14 +545,13 @@ func (r *versionResolver) WaterfallBuilds(ctx context.Context, obj *restModel.AP
 		// If we can't find the activeVersionIds in the parent query, eagerly continue with this aggregation.
 		activeVersionIds := parentWaterfall.Pagination.ActiveVersionIds
 		if !utility.StringSliceContains(activeVersionIds, versionID) {
-			return nil, nil
+			return versionBuilds, nil
 		}
 	}
 
-	versionBuilds := []*model.WaterfallBuild{}
 	builds, err := model.GetVersionBuilds(ctx, versionID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting build variants for version '%s': %s", versionID, err.Error()))
+		return versionBuilds, InternalServerError.Send(ctx, fmt.Sprintf("getting build variants for version '%s': %s", versionID, err.Error()))
 	}
 
 	for _, b := range builds {

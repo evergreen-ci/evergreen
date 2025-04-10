@@ -5,46 +5,65 @@
       "result": {
         "data": {
           "waterfall": {
-            "buildVariants": [
+            "flattenedVersions": [
               {
-                "id": "enterprise-ubuntu1604-64",
-                "displayName": "01 Ubuntu 16.04",
-                "builds": [
+                "activated": true,
+                "author": "mohamed.khelif",
+                "id": "evergreen_version5",
+                "order": 45,
+                "waterfallBuilds": [
                   {
-                    "id": "evergreen_version1_build",
+                    "id": "evergreen_version3_build",
+                    "displayName": "03 Linter",
                     "tasks": [
                       {
-                        "displayName": "Task A",
-                        "displayStatusCache": "success",
+                        "id": "task_5",
+                        "displayName": "Task C",
+                        "displayStatusCache": "system-failed",
                         "execution": 0,
-                        "id": "task_1",
-                        "status": "success"
-                      },
-                      {
-                        "displayName": "Task B",
-                        "displayStatusCache": "success",
-                        "execution": 1,
-                        "id": "task_2",
-                        "status": "success"
+                        "status": "failed"
                       }
                     ],
-                    "version": "evergreen_version1"
-                  },
+                    "version": "evergreen_version5"
+                  }
+                ]
+              },
+              {
+                "activated": false,
+                "author": "mohamed.khelif",
+                "id": "evergreen_version4",
+                "order": 44,
+                "waterfallBuilds": []
+              },
+              {
+                "activated": true,
+                "author": "mohamed.khelif",
+                "id": "evergreen_version3",
+                "order": 43,
+                "waterfallBuilds": []
+              },
+              {
+                "activated": true,
+                "author": "mohamed.khelif",
+                "id": "evergreen_version2",
+                "order": 42,
+                "waterfallBuilds": [
                   {
                     "id": "evergreen_version2_build",
+                    "displayName": "02 Ubuntu 16.04",
                     "tasks": [
                       {
+                        "id": "task_3",
                         "displayName": "Task A",
                         "displayStatusCache": "setup-failed",
                         "execution": 0,
-                        "id": "task_3",
                         "status": "failed"
                       },
                       {
+                        "id": "task_4",
                         "displayName": "Task B",
                         "displayStatusCache": "success",
                         "execution": 0,
-                        "id": "task_4",
                         "status": "success"
                       }
                     ],
@@ -53,92 +72,47 @@
                 ]
               },
               {
-                "builds": [
+                "activated": true,
+                "author": "mohamed.khelif",
+                "id": "evergreen_version1",
+                "order": 41,
+                "waterfallBuilds": [
                   {
-                    "id": "evergreen_version3_build",
+                    "id": "evergreen_version1_build",
+                    "displayName": "01 Ubuntu 16.04",
                     "tasks": [
                       {
-                        "displayName": "Task C",
-                        "displayStatusCache": "system-failed",
+                        "id": "task_1",
+                        "displayName": "Task A",
+                        "displayStatusCache": "success",
                         "execution": 0,
-                        "id": "task_5",
-                        "status": "failed"
+                        "status": "success"
+                      },
+                      {
+                        "id": "task_2",
+                        "displayName": "Task B",
+                        "displayStatusCache": "success",
+                        "execution": 1,
+                        "status": "success"
                       }
                     ],
-                    "version": "evergreen_version5"
+                    "version": "evergreen_version1"
                   }
-                ],
-                "displayName": "03 Linter",
-                "id": "lint"
-              }
-            ],
-            "versions": [
-              {
-                "inactiveVersions": null,
-                "version": {
-                  "activated": true,
-                  "author": "mohamed.khelif",
-                  "id": "evergreen_version5",
-                  "order": 45
-                }
+                ]
               },
               {
-                "inactiveVersions": [
-                  {
-                    "activated": false,
-                    "author": "mohamed.khelif",
-                    "id": "evergreen_version4",
-                    "order": 44
-                  }
-                ],
-                "version": null
+                "activated": false,
+                "author": "mohamed.khelif",
+                "id": "evergreen_version0",
+                "order": 40,
+                "waterfallBuilds": []
               },
               {
-                "inactiveVersions": null,
-                "version": {
-                  "activated": true,
-                  "author": "mohamed.khelif",
-                  "id": "evergreen_version3",
-                  "order": 43
-                }
-              },
-              {
-                "inactiveVersions": null,
-                "version": {
-                  "activated": true,
-                  "author": "mohamed.khelif",
-                  "id": "evergreen_version2",
-                  "order": 42
-                }
-              },
-              {
-                "inactiveVersions": null,
-                "version": {
-                  "activated": true,
-                  "author": "mohamed.khelif",
-                  "id": "evergreen_version1",
-                  "order": 41
-                }
-              },
-              {
-                "inactiveVersions": [
-                  {
-                    "activated": false,
-                    "author": "mohamed.khelif",
-                    "id": "evergreen_version0",
-                    "order": 40
-                  }
-                ],
-                "version": null
-              },
-              {
-                "inactiveVersions": null,
-                "version": {
-                  "activated": true,
-                  "author": "mohamed.khelif",
-                  "id": "evergreen_version39",
-                  "order": 1
-                }
+                "activated": true,
+                "author": "mohamed.khelif",
+                "id": "evergreen_version39",
+                "order": 1,
+                "waterfallBuilds": []
               }
             ],
             "pagination": {
@@ -155,64 +129,42 @@
       "result": {
         "data": {
           "waterfall": {
-            "versions": [
+            "flattenedVersions": [
               {
-                "inactiveVersions": [
-                  {
-                    "activated": false,
-                    "author": "mohamed.khelif",
-                    "id": "evergreen_version4",
-                    "order": 44
-                  }
-                ],
-                "version": null
+                "activated": false,
+                "author": "mohamed.khelif",
+                "id": "evergreen_version4",
+                "order": 44
               },
               {
-                "inactiveVersions": null,
-                "version": {
-                  "activated": true,
-                  "author": "mohamed.khelif",
-                  "id": "evergreen_version3",
-                  "order": 43
-                }
+                "activated": true,
+                "author": "mohamed.khelif",
+                "id": "evergreen_version3",
+                "order": 43
               },
               {
-                "inactiveVersions": null,
-                "version": {
-                  "activated": true,
-                  "author": "mohamed.khelif",
-                  "id": "evergreen_version2",
-                  "order": 42
-                }
+                "activated": true,
+                "author": "mohamed.khelif",
+                "id": "evergreen_version2",
+                "order": 42
               },
               {
-                "inactiveVersions": null,
-                "version": {
-                  "activated": true,
-                  "author": "mohamed.khelif",
-                  "id": "evergreen_version1",
-                  "order": 41
-                }
+                "activated": true,
+                "author": "mohamed.khelif",
+                "id": "evergreen_version1",
+                "order": 41
               },
               {
-                "inactiveVersions": [
-                  {
-                    "activated": false,
-                    "author": "mohamed.khelif",
-                    "id": "evergreen_version0",
-                    "order": 40
-                  }
-                ],
-                "version": null
+                "activated": false,
+                "author": "mohamed.khelif",
+                "id": "evergreen_version0",
+                "order": 40
               },
               {
-                "inactiveVersions": null,
-                "version": {
-                  "activated": true,
-                  "author": "mohamed.khelif",
-                  "id": "evergreen_version39",
-                  "order": 1
-                }
+                "activated": true,
+                "author": "mohamed.khelif",
+                "id": "evergreen_version39",
+                "order": 1
               }
             ],
             "pagination": {
@@ -228,35 +180,24 @@
       "result": {
         "data": {
           "waterfall": {
-            "versions": [
+            "flattenedVersions": [
               {
-                "inactiveVersions": null,
-                "version": {
-                  "activated": true,
-                  "author": "mohamed.khelif",
-                  "id": "evergreen_version5",
-                  "order": 45
-                }
+                "activated": true,
+                "author": "mohamed.khelif",
+                "id": "evergreen_version5",
+                "order": 45
               },
               {
-                "inactiveVersions": [
-                  {
-                    "activated": false,
-                    "author": "mohamed.khelif",
-                    "id": "evergreen_version4",
-                    "order": 44
-                  }
-                ],
-                "version": null
+                "activated": false,
+                "author": "mohamed.khelif",
+                "id": "evergreen_version4",
+                "order": 44
               },
               {
-                "inactiveVersions": null,
-                "version": {
-                  "activated": true,
-                  "author": "mohamed.khelif",
-                  "id": "evergreen_version3",
-                  "order": 43
-                }
+                "activated": true,
+                "author": "mohamed.khelif",
+                "id": "evergreen_version3",
+                "order": 43
               }
             ],
             "pagination": {
@@ -272,29 +213,24 @@
       "result": {
         "data": {
           "waterfall": {
-            "versions": [
+            "flattenedVersions": [
               {
-                "version": null,
-                "inactiveVersions": [
-                  {
-                    "activated": false,
-                    "author": "sophie.stadler",
-                    "id": "inactive3",
-                    "order": 3
-                  },
-                  {
-                    "activated": false,
-                    "author": "sophie.stadler",
-                    "id": "inactive2",
-                    "order": 2
-                  },
-                  {
-                    "activated": false,
-                    "author": "sophie.stadler",
-                    "id": "inactive1",
-                    "order": 1
-                  }
-                ]
+                "activated": false,
+                "author": "sophie.stadler",
+                "id": "inactive3",
+                "order": 3
+              },
+              {
+                "activated": false,
+                "author": "sophie.stadler",
+                "id": "inactive2",
+                "order": 2
+              },
+              {
+                "activated": false,
+                "author": "sophie.stadler",
+                "id": "inactive1",
+                "order": 1
               }
             ],
             "pagination": {
@@ -325,48 +261,31 @@
       "result": {
         "data": {
           "waterfall": {
-            "versions": [
+            "flattenedVersions": [
               {
-                "version": {
-                  "id": "evergreen_version3",
-                  "order": 43,
-                  "revision": "revision3"
-                },
-                "inactiveVersions": null
+                "id": "evergreen_version3",
+                "order": 43,
+                "revision": "revision3"
               },
               {
-                "version": {
-                  "id": "evergreen_version2",
-                  "order": 42,
-                  "revision": "2c9056df66d42fb1908d52eed096750a91f1f089"
-                },
-                "inactiveVersions": null
+                "id": "evergreen_version2",
+                "order": 42,
+                "revision": "2c9056df66d42fb1908d52eed096750a91f1f089"
               },
               {
-                "version": {
-                  "id": "evergreen_version1",
-                  "order": 41,
-                  "revision": "d7b7a086cc4f4edeb9a5eb59f3dd4f2f7c3f7ddb"
-                },
-                "inactiveVersions": null
+                "id": "evergreen_version1",
+                "order": 41,
+                "revision": "d7b7a086cc4f4edeb9a5eb59f3dd4f2f7c3f7ddb"
               },
               {
-                "version": null,
-                "inactiveVersions": [
-                  {
-                    "id": "evergreen_version0",
-                    "order": 40,
-                    "revision": "revision0"
-                  }
-                ]
+                "id": "evergreen_version0",
+                "order": 40,
+                "revision": "revision0"
               },
               {
-                "version": {
-                  "id": "evergreen_version39",
-                  "order": 1,
-                  "revision": "da39a3ee5e6b4b0d3255bfef95601890afd80709"
-                },
-                "inactiveVersions": null
+                "id": "evergreen_version39",
+                "order": 1,
+                "revision": "da39a3ee5e6b4b0d3255bfef95601890afd80709"
               }
             ],
             "pagination": {
@@ -382,66 +301,41 @@
       "result": {
         "data": {
           "waterfall": {
-            "versions": [
+            "flattenedVersions": [
               {
-                "version": {
-                  "id": "evergreen_version5",
-                  "order": 45,
-                  "revision": "revision5"
-                },
-                "inactiveVersions": null
+                "id": "evergreen_version5",
+                "order": 45,
+                "revision": "revision5"
               },
               {
-                "version": null,
-                "inactiveVersions": [
-                  {
-                    "id": "evergreen_version4",
-                    "order": 44,
-                    "revision": "revision4"
-                  }
-                ]
+                "id": "evergreen_version4",
+                "order": 44,
+                "revision": "revision4"
               },
               {
-                "version": {
-                  "id": "evergreen_version3",
-                  "order": 43,
-                  "revision": "revision3"
-                },
-                "inactiveVersions": null
+                "id": "evergreen_version3",
+                "order": 43,
+                "revision": "revision3"
               },
               {
-                "version": {
-                  "id": "evergreen_version2",
-                  "order": 42,
-                  "revision": "2c9056df66d42fb1908d52eed096750a91f1f089"
-                },
-                "inactiveVersions": null
+                "id": "evergreen_version2",
+                "order": 42,
+                "revision": "2c9056df66d42fb1908d52eed096750a91f1f089"
               },
               {
-                "version": {
-                  "id": "evergreen_version1",
-                  "order": 41,
-                  "revision": "d7b7a086cc4f4edeb9a5eb59f3dd4f2f7c3f7ddb"
-                },
-                "inactiveVersions": null
+                "id": "evergreen_version1",
+                "order": 41,
+                "revision": "d7b7a086cc4f4edeb9a5eb59f3dd4f2f7c3f7ddb"
               },
               {
-                "version": null,
-                "inactiveVersions": [
-                  {
-                    "id": "evergreen_version0",
-                    "order": 40,
-                    "revision": "revision0"
-                  }
-                ]
+                "id": "evergreen_version0",
+                "order": 40,
+                "revision": "revision0"
               },
               {
-                "version": {
-                  "id": "evergreen_version39",
-                  "order": 1,
-                  "revision": "da39a3ee5e6b4b0d3255bfef95601890afd80709"
-                },
-                "inactiveVersions": null
+                "id": "evergreen_version39",
+                "order": 1,
+                "revision": "da39a3ee5e6b4b0d3255bfef95601890afd80709"
               }
             ],
             "pagination": {
@@ -466,24 +360,16 @@
       "result": {
         "data": {
           "waterfall": {
-            "versions": [
+            "flattenedVersions": [
               {
-                "version": null,
-                "inactiveVersions": [
-                  {
-                    "createTime": "2019-12-30T19:00:03-05:00",
-                    "id": "evergreen_version0",
-                    "order": 40
-                  }
-                ]
+                "createTime": "2019-12-30T19:00:03-05:00",
+                "id": "evergreen_version0",
+                "order": 40
               },
               {
-                "version": {
-                  "createTime": "2019-12-29T19:00:03-05:00",
-                  "id": "evergreen_version39",
-                  "order": 1
-                },
-                "inactiveVersions": null
+                "createTime": "2019-12-29T19:00:03-05:00",
+                "id": "evergreen_version39",
+                "order": 1
               }
             ],
             "pagination": {
@@ -499,66 +385,41 @@
       "result": {
         "data": {
           "waterfall": {
-            "versions": [
+            "flattenedVersions": [
               {
-                "version": {
-                  "createTime": "2020-01-05T07:00:00-05:00",
-                  "id": "evergreen_version5",
-                  "order": 45
-                },
-                "inactiveVersions": null
+                "createTime": "2020-01-05T07:00:00-05:00",
+                "id": "evergreen_version5",
+                "order": 45
               },
               {
-                "version": null,
-                "inactiveVersions": [
-                  {
-                    "createTime": "2020-01-04T03:15:00-05:00",
-                    "id": "evergreen_version4",
-                    "order": 44
-                  }
-                ]
+                "createTime": "2020-01-04T03:15:00-05:00",
+                "id": "evergreen_version4",
+                "order": 44
               },
               {
-                "version": {
-                  "createTime": "2020-01-03T08:30:00-05:00",
-                  "id": "evergreen_version3",
-                  "order": 43
-                },
-                "inactiveVersions": null
+                "createTime": "2020-01-03T08:30:00-05:00",
+                "id": "evergreen_version3",
+                "order": 43
               },
               {
-                "version": {
-                  "createTime": "2020-01-02T01:43:00-05:00",
-                  "id": "evergreen_version2",
-                  "order": 42
-                },
-                "inactiveVersions": null
+                "createTime": "2020-01-02T01:43:00-05:00",
+                "id": "evergreen_version2",
+                "order": 42
               },
               {
-                "version": {
-                  "createTime": "2025-02-28T19:00:00-05:00",
-                  "id": "evergreen_version1",
-                  "order": 41
-                },
-                "inactiveVersions": null
+                "createTime": "2025-02-28T19:00:00-05:00",
+                "id": "evergreen_version1",
+                "order": 41
               },
               {
-                "version": null,
-                "inactiveVersions": [
-                  {
-                    "createTime": "2019-12-30T19:00:03-05:00",
-                    "id": "evergreen_version0",
-                    "order": 40
-                  }
-                ]
+                "createTime": "2019-12-30T19:00:03-05:00",
+                "id": "evergreen_version0",
+                "order": 40
               },
               {
-                "version": {
-                  "createTime": "2019-12-29T19:00:03-05:00",
-                  "id": "evergreen_version39",
-                  "order": 1
-                },
-                "inactiveVersions": null
+                "createTime": "2019-12-29T19:00:03-05:00",
+                "id": "evergreen_version39",
+                "order": 1
               }
             ],
             "pagination": {
@@ -636,29 +497,21 @@
       "result": {
         "data": {
           "waterfall": {
-            "versions": [
+            "flattenedVersions": [
               {
-                "version": {
-                  "id": "sandbox_active",
-                  "order": 3,
-                  "revision": "abc"
-                },
-                "inactiveVersions": null
+                "id": "sandbox_active",
+                "order": 3,
+                "revision": "abc"
               },
               {
-                "version": null,
-                "inactiveVersions": [
-                  {
-                    "id": "sandbox_inactive1",
-                    "order": 2,
-                    "revision": "abc"
-                  },
-                  {
-                    "id": "sandbox_inactive2",
-                    "order": 1,
-                    "revision": "abc"
-                  }
-                ]
+                "id": "sandbox_inactive1",
+                "order": 2,
+                "revision": "abc"
+              },
+              {
+                "id": "sandbox_inactive2",
+                "order": 1,
+                "revision": "abc"
               }
             ],
             "pagination": {
@@ -862,9 +715,7 @@
               }
             ],
             "pagination": {
-              "activeVersionIds": [
-                "evergreen_version5"
-              ]
+              "activeVersionIds": ["evergreen_version5"]
             }
           }
         }
@@ -888,9 +739,7 @@
               }
             ],
             "pagination": {
-              "activeVersionIds": [
-                "evergreen_version5"
-              ]
+              "activeVersionIds": ["evergreen_version5"]
             }
           }
         }
@@ -910,9 +759,7 @@
               }
             ],
             "pagination": {
-              "activeVersionIds": [
-                "evergreen_version2"
-              ]
+              "activeVersionIds": ["evergreen_version2"]
             }
           }
         }
