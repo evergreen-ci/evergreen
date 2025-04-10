@@ -68,6 +68,8 @@ func TestParallelTaskFinder(t *testing.T) {
 }
 
 func (s *TaskFinderSuite) SetupTest() {
+	s.ctx, s.cancel = context.WithCancel(context.Background())
+
 	s.NoError(db.ClearCollections(model.ProjectRefCollection, task.Collection))
 	taskIds := []string{"t0", "t1", "t2", "t3", "t4", "t5"}
 	s.tasks = []task.Task{
@@ -92,8 +94,6 @@ func (s *TaskFinderSuite) SetupTest() {
 
 	s.distro.PlannerSettings.Version = evergreen.PlannerVersionTunable
 	s.NoError(ref.Insert(s.ctx))
-
-	s.ctx, s.cancel = context.WithCancel(context.Background())
 }
 
 func (s *TaskFinderSuite) TearDownTest() {

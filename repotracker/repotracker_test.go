@@ -944,8 +944,7 @@ func TestCreateVersionFromConfigSuite(t *testing.T) {
 }
 
 func (s *CreateVersionFromConfigSuite) SetupTest() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	s.ctx, s.cancel = context.WithCancel(context.Background())
 
 	s.NoError(db.ClearCollections(model.ProjectRefCollection, model.VersionCollection, model.ParserProjectCollection, build.Collection, task.Collection, distro.Collection, model.ProjectAliasCollection))
 	s.ref = &model.ProjectRef{
@@ -971,8 +970,7 @@ func (s *CreateVersionFromConfigSuite) SetupTest() {
 		Id:       "v",
 		Revision: "abc",
 	}
-	s.NoError(s.d.Insert(ctx))
-	s.ctx, s.cancel = context.WithCancel(context.Background())
+	s.NoError(s.d.Insert(s.ctx))
 	env := &mock.Environment{}
 	s.Require().NoError(env.Configure(s.ctx))
 	s.env = env

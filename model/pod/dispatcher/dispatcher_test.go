@@ -219,10 +219,10 @@ func TestAssignNextTask(t *testing.T) {
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, params testCaseParams){
 		"DispatchesTask": func(ctx context.Context, t *testing.T, params testCaseParams) {
-			require.NoError(t, params.dispatcher.Insert(t.Context()))
-			require.NoError(t, params.pod.Insert(t.Context()))
-			require.NoError(t, params.task.Insert(t.Context()))
-			require.NoError(t, params.ref.Insert(t.Context()))
+			require.NoError(t, params.dispatcher.Insert(ctx))
+			require.NoError(t, params.pod.Insert(ctx))
+			require.NoError(t, params.task.Insert(ctx))
+			require.NoError(t, params.ref.Insert(ctx))
 
 			nextTask, err := params.dispatcher.AssignNextTask(ctx, params.env, &params.pod)
 			require.NoError(t, err)
@@ -240,11 +240,11 @@ func TestAssignNextTask(t *testing.T) {
 				Status:         evergreen.TaskUndispatched,
 			}
 			params.task.DisplayTaskId = utility.ToStringPtr(dt.Id)
-			require.NoError(t, dt.Insert(t.Context()))
-			require.NoError(t, params.task.Insert(t.Context()))
-			require.NoError(t, params.dispatcher.Insert(t.Context()))
-			require.NoError(t, params.pod.Insert(t.Context()))
-			require.NoError(t, params.ref.Insert(t.Context()))
+			require.NoError(t, dt.Insert(ctx))
+			require.NoError(t, params.task.Insert(ctx))
+			require.NoError(t, params.dispatcher.Insert(ctx))
+			require.NoError(t, params.pod.Insert(ctx))
+			require.NoError(t, params.ref.Insert(ctx))
 
 			nextTask, err := params.dispatcher.AssignNextTask(ctx, params.env, &params.pod)
 			require.NoError(t, err)
@@ -264,10 +264,10 @@ func TestAssignNextTask(t *testing.T) {
 			params.task.Requester = evergreen.GithubPRRequester
 			params.ref.Enabled = false
 			params.ref.Hidden = utility.TruePtr()
-			require.NoError(t, params.dispatcher.Insert(t.Context()))
-			require.NoError(t, params.pod.Insert(t.Context()))
-			require.NoError(t, params.task.Insert(t.Context()))
-			require.NoError(t, params.ref.Insert(t.Context()))
+			require.NoError(t, params.dispatcher.Insert(ctx))
+			require.NoError(t, params.pod.Insert(ctx))
+			require.NoError(t, params.task.Insert(ctx))
+			require.NoError(t, params.ref.Insert(ctx))
 
 			nextTask, err := params.dispatcher.AssignNextTask(ctx, params.env, &params.pod)
 			require.NoError(t, err)
@@ -278,9 +278,9 @@ func TestAssignNextTask(t *testing.T) {
 			checkDispatcherTasks(t, params.dispatcher, nil)
 		},
 		"DequeuesNonexistentTaskAndDoesNotDispatchIt": func(ctx context.Context, t *testing.T, params testCaseParams) {
-			require.NoError(t, params.dispatcher.Insert(t.Context()))
-			require.NoError(t, params.pod.Insert(t.Context()))
-			require.NoError(t, params.ref.Insert(t.Context()))
+			require.NoError(t, params.dispatcher.Insert(ctx))
+			require.NoError(t, params.pod.Insert(ctx))
+			require.NoError(t, params.ref.Insert(ctx))
 
 			nextTask, err := params.dispatcher.AssignNextTask(ctx, params.env, &params.pod)
 			assert.NoError(t, err)
@@ -292,9 +292,9 @@ func TestAssignNextTask(t *testing.T) {
 			checkDispatcherTasks(t, params.dispatcher, nil)
 		},
 		"DequeuesTaskWithNonexistentProjectAndDoesNotDispatchIt": func(ctx context.Context, t *testing.T, params testCaseParams) {
-			require.NoError(t, params.task.Insert(t.Context()))
-			require.NoError(t, params.dispatcher.Insert(t.Context()))
-			require.NoError(t, params.pod.Insert(t.Context()))
+			require.NoError(t, params.task.Insert(ctx))
+			require.NoError(t, params.dispatcher.Insert(ctx))
+			require.NoError(t, params.pod.Insert(ctx))
 
 			nextTask, err := params.dispatcher.AssignNextTask(ctx, params.env, &params.pod)
 			assert.NoError(t, err)
@@ -305,10 +305,10 @@ func TestAssignNextTask(t *testing.T) {
 		},
 		"DequeuesDeactivatedTaskAndDoesNotDispatchIt": func(ctx context.Context, t *testing.T, params testCaseParams) {
 			params.task.Activated = false
-			require.NoError(t, params.dispatcher.Insert(t.Context()))
-			require.NoError(t, params.pod.Insert(t.Context()))
-			require.NoError(t, params.task.Insert(t.Context()))
-			require.NoError(t, params.ref.Insert(t.Context()))
+			require.NoError(t, params.dispatcher.Insert(ctx))
+			require.NoError(t, params.pod.Insert(ctx))
+			require.NoError(t, params.task.Insert(ctx))
+			require.NoError(t, params.ref.Insert(ctx))
 
 			nextTask, err := params.dispatcher.AssignNextTask(ctx, params.env, &params.pod)
 			assert.NoError(t, err)
@@ -324,12 +324,12 @@ func TestAssignNextTask(t *testing.T) {
 			dispatchableTask1 := getDispatchableTask()
 			dispatchableTask1.Project = params.ref.Id
 			params.dispatcher.TaskIDs = append(params.dispatcher.TaskIDs, dispatchableTask0.Id, dispatchableTask1.Id)
-			require.NoError(t, params.dispatcher.Insert(t.Context()))
-			require.NoError(t, params.pod.Insert(t.Context()))
-			require.NoError(t, params.task.Insert(t.Context()))
-			require.NoError(t, dispatchableTask0.Insert(t.Context()))
-			require.NoError(t, dispatchableTask1.Insert(t.Context()))
-			require.NoError(t, params.ref.Insert(t.Context()))
+			require.NoError(t, params.dispatcher.Insert(ctx))
+			require.NoError(t, params.pod.Insert(ctx))
+			require.NoError(t, params.task.Insert(ctx))
+			require.NoError(t, dispatchableTask0.Insert(ctx))
+			require.NoError(t, dispatchableTask1.Insert(ctx))
+			require.NoError(t, params.ref.Insert(ctx))
 
 			nextTask, err := params.dispatcher.AssignNextTask(ctx, params.env, &params.pod)
 			require.NoError(t, err)
@@ -341,12 +341,12 @@ func TestAssignNextTask(t *testing.T) {
 			checkDispatcherTasks(t, params.dispatcher, []string{dispatchableTask1.Id})
 		},
 		"DequeuesTaskWithoutContainerAllocatedAndDoesNotDispatchIt": func(ctx context.Context, t *testing.T, params testCaseParams) {
-			require.NoError(t, params.pod.Insert(t.Context()))
+			require.NoError(t, params.pod.Insert(ctx))
 			params.task.Status = evergreen.TaskUndispatched
 			params.task.ContainerAllocated = false
-			require.NoError(t, params.task.Insert(t.Context()))
-			require.NoError(t, params.ref.Insert(t.Context()))
-			require.NoError(t, params.dispatcher.Insert(t.Context()))
+			require.NoError(t, params.task.Insert(ctx))
+			require.NoError(t, params.ref.Insert(ctx))
+			require.NoError(t, params.dispatcher.Insert(ctx))
 
 			nextTask, err := params.dispatcher.AssignNextTask(ctx, params.env, &params.pod)
 			assert.NoError(t, err)
@@ -356,11 +356,11 @@ func TestAssignNextTask(t *testing.T) {
 			checkDispatcherTasks(t, params.dispatcher, nil)
 		},
 		"DequeuesDisabledTaskAndDoesNotDispatchIt": func(ctx context.Context, t *testing.T, params testCaseParams) {
-			require.NoError(t, params.pod.Insert(t.Context()))
+			require.NoError(t, params.pod.Insert(ctx))
 			params.task.Priority = evergreen.DisabledTaskPriority
-			require.NoError(t, params.task.Insert(t.Context()))
-			require.NoError(t, params.ref.Insert(t.Context()))
-			require.NoError(t, params.dispatcher.Insert(t.Context()))
+			require.NoError(t, params.task.Insert(ctx))
+			require.NoError(t, params.ref.Insert(ctx))
+			require.NoError(t, params.dispatcher.Insert(ctx))
 
 			nextTask, err := params.dispatcher.AssignNextTask(ctx, params.env, &params.pod)
 			assert.NoError(t, err)
@@ -371,10 +371,10 @@ func TestAssignNextTask(t *testing.T) {
 		},
 		"DequeuesTaskInDisabledProjectAndDoesNotDispatchIt": func(ctx context.Context, t *testing.T, params testCaseParams) {
 			params.ref.Enabled = false
-			require.NoError(t, params.pod.Insert(t.Context()))
-			require.NoError(t, params.task.Insert(t.Context()))
-			require.NoError(t, params.ref.Insert(t.Context()))
-			require.NoError(t, params.dispatcher.Insert(t.Context()))
+			require.NoError(t, params.pod.Insert(ctx))
+			require.NoError(t, params.task.Insert(ctx))
+			require.NoError(t, params.ref.Insert(ctx))
+			require.NoError(t, params.dispatcher.Insert(ctx))
 
 			nextTask, err := params.dispatcher.AssignNextTask(ctx, params.env, &params.pod)
 			assert.NoError(t, err)
@@ -385,10 +385,10 @@ func TestAssignNextTask(t *testing.T) {
 		},
 		"DequeuesTaskInProjectWithDispatchingDisabledAndDoesNotDispatchIt": func(ctx context.Context, t *testing.T, params testCaseParams) {
 			params.ref.DispatchingDisabled = utility.TruePtr()
-			require.NoError(t, params.pod.Insert(t.Context()))
-			require.NoError(t, params.task.Insert(t.Context()))
-			require.NoError(t, params.ref.Insert(t.Context()))
-			require.NoError(t, params.dispatcher.Insert(t.Context()))
+			require.NoError(t, params.pod.Insert(ctx))
+			require.NoError(t, params.task.Insert(ctx))
+			require.NoError(t, params.ref.Insert(ctx))
+			require.NoError(t, params.dispatcher.Insert(ctx))
 
 			nextTask, err := params.dispatcher.AssignNextTask(ctx, params.env, &params.pod)
 			assert.NoError(t, err)
@@ -399,10 +399,10 @@ func TestAssignNextTask(t *testing.T) {
 		},
 		"FailsWithPodInStateThatCannotRunTasks": func(ctx context.Context, t *testing.T, params testCaseParams) {
 			params.pod.Status = pod.StatusDecommissioned
-			require.NoError(t, params.pod.Insert(t.Context()))
-			require.NoError(t, params.task.Insert(t.Context()))
-			require.NoError(t, params.ref.Insert(t.Context()))
-			require.NoError(t, params.dispatcher.Insert(t.Context()))
+			require.NoError(t, params.pod.Insert(ctx))
+			require.NoError(t, params.task.Insert(ctx))
+			require.NoError(t, params.ref.Insert(ctx))
+			require.NoError(t, params.dispatcher.Insert(ctx))
 
 			nextTask, err := params.dispatcher.AssignNextTask(ctx, params.env, &params.pod)
 			assert.Error(t, err)
@@ -412,10 +412,10 @@ func TestAssignNextTask(t *testing.T) {
 		},
 		"FailsWithPodAlreadyAssignedTask": func(ctx context.Context, t *testing.T, params testCaseParams) {
 			params.pod.TaskRuntimeInfo.RunningTaskID = "running-task"
-			require.NoError(t, params.pod.Insert(t.Context()))
-			require.NoError(t, params.task.Insert(t.Context()))
-			require.NoError(t, params.ref.Insert(t.Context()))
-			require.NoError(t, params.dispatcher.Insert(t.Context()))
+			require.NoError(t, params.pod.Insert(ctx))
+			require.NoError(t, params.task.Insert(ctx))
+			require.NoError(t, params.ref.Insert(ctx))
+			require.NoError(t, params.dispatcher.Insert(ctx))
 
 			nextTask, err := params.dispatcher.AssignNextTask(ctx, params.env, &params.pod)
 			assert.Error(t, err)
