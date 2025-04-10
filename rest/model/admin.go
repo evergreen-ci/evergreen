@@ -641,8 +641,6 @@ func (a *APIBucketsConfig) BuildFromService(h any) error {
 		a.LogBucket.Type = utility.ToStringPtr(string(v.LogBucket.Type))
 		a.LogBucket.DBName = utility.ToStringPtr(v.LogBucket.DBName)
 
-		a.InternalBuckets = v.InternalBuckets
-
 		creds := APIS3Credentials{}
 		if err := creds.BuildFromService(v.Credentials); err != nil {
 			return errors.Wrap(err, "converting S3 credentials to API model")
@@ -670,8 +668,7 @@ func (a *APIBucketsConfig) ToService() (any, error) {
 			Type:   evergreen.BucketType(utility.FromStringPtr(a.LogBucket.Type)),
 			DBName: utility.FromStringPtr(a.LogBucket.DBName),
 		},
-		InternalBuckets: a.InternalBuckets,
-		Credentials:     creds,
+		Credentials: creds,
 	}, nil
 }
 
