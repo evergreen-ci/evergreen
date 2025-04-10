@@ -1905,6 +1905,10 @@ Admin Settings
 											ng-trim="false" rows="3" md-select-on-focus></textarea>
 									</md-input-container>
 									<md-input-container class="control" style="width:45%;">
+										<label>IPAM Pool ID</label>
+										<input type="number" ng-model="Settings.providers.aws.ipam_pool_id">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
 										<label>Allowed Container Images</label>
 										<textarea ng-model="Settings.providers.aws.pod.ecs.allowed_images" ng-list="&#10;" ng-trim="false" rows="3"
 											md-select-on-focus></textarea>

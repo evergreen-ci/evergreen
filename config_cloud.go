@@ -81,6 +81,9 @@ type AWSConfig struct {
 	Pod AWSPodConfig `bson:"pod" json:"pod" yaml:"pod"`
 
 	AccountRoles []AWSAccountRoleMapping `bson:"account_roles" json:"account_roles" yaml:"account_roles"`
+
+	// IPAMPoolID is the ID for the IP address management (IPAM) pool in AWS.
+	IPAMPoolID string `bson:"ipam_pool_id" json:"ipam_pool_id" yaml:"ipam_pool_id"`
 }
 
 // AccountRoleMapping is a mapping of an AWS account to the role that needs to
