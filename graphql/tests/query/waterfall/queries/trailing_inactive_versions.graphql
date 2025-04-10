@@ -1,16 +1,9 @@
 {
   waterfall(options: { projectIdentifier: "sandbox_project_id", maxOrder: 4 }) {
-    versions {
-      version {
-        id
-        order
-        revision
-      }
-      inactiveVersions {
-        id
-        order
-        revision
-      }
+    flattenedVersions {
+      id
+      order
+      revision
     }
     pagination {
       nextPageOrder
