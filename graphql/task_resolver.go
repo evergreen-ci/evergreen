@@ -483,7 +483,7 @@ func (r *taskResolver) LatestExecution(ctx context.Context, obj *restModel.APITa
 // MinQueuePosition is the resolver for the minQueuePosition field.
 func (r *taskResolver) MinQueuePosition(ctx context.Context, obj *restModel.APITask) (int, error) {
 	taskID := utility.FromStringPtr(obj.Id)
-	position, err := model.FindMinimumQueuePositionForTask(taskID)
+	position, err := model.FindMinimumQueuePositionForTask(ctx, taskID)
 	if err != nil {
 		return 0, InternalServerError.Send(ctx, fmt.Sprintf("finding minimum queue position for task '%s': %s", taskID, err.Error()))
 	}
@@ -579,6 +579,17 @@ func (r *taskResolver) TaskLogs(ctx context.Context, obj *restModel.APITask) (*T
 
 // Tests is the resolver for the tests field.
 func (r *taskResolver) Tests(ctx context.Context, obj *restModel.APITask, opts *TestFilterOptions) (*TaskTestResult, error) {
+	// Return early if it is known that there are no test results to return.
+	if opts != nil && len(opts.Statuses) > 0 {
+		diffFailureStatuses := utility.GetSetDifference(opts.Statuses, evergreen.TestFailureStatuses)
+		if len(diffFailureStatuses) == 0 && !obj.ResultsFailed {
+			return &TaskTestResult{
+				TestResults:       []*restModel.APITest{},
+				TotalTestCount:    0,
+				FilteredTestCount: 0,
+			}, nil
+		}
+	}
 	taskID := utility.FromStringPtr(obj.Id)
 	dbTask, err := task.FindOneIdAndExecution(ctx, taskID, obj.Execution)
 	if err != nil {

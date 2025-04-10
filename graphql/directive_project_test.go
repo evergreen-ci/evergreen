@@ -106,7 +106,7 @@ func TestRequireProjectAccessForSettings(t *testing.T) {
 	repoRef := model.RepoRef{ProjectRef: model.ProjectRef{
 		Id: "repo_id",
 	}}
-	err = repoRef.Upsert()
+	err = repoRef.Replace(ctx)
 	require.NoError(t, err)
 
 	obj := any(map[string]any{"projectIdentifier": "invalid_identifier"})

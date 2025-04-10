@@ -204,8 +204,10 @@ func (iter *taskHistoryIterator) GetChunk(ctx context.Context, v *Version, numBe
 		{"$group": groupStage},
 		{"$sort": bson.M{task.RevisionOrderNumberKey: -1}},
 	}
+	aggregateCtx, cancel := context.WithTimeout(ctx, taskHistoryMaxTime)
+	defer cancel()
 	var rawAggregatedTasks []bson.M
-	if err = db.AggregateWithMaxTime(task.Collection, pipeline, &rawAggregatedTasks, taskHistoryMaxTime); err != nil {
+	if err = db.Aggregate(aggregateCtx, task.Collection, pipeline, &rawAggregatedTasks); err != nil {
 		return chunk, errors.Wrap(err, "aggregating task history data")
 	}
 	chunk.Tasks = rawAggregatedTasks

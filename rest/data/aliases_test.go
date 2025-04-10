@@ -144,7 +144,7 @@ func (a *AliasSuite) SetupTest() {
 	a.NoError(newProjectRef.Insert())
 	a.NoError(projectConfig.Insert())
 	for _, v := range aliases {
-		a.NoError(v.Upsert())
+		a.NoError(v.Upsert(a.T().Context()))
 	}
 }
 
@@ -212,7 +212,7 @@ func (a *AliasSuite) TestCopyProjectAliases() {
 	a.NoError(err)
 	a.Empty(res)
 
-	a.NoError(model.CopyProjectAliases("project_id", "new_project_id"))
+	a.NoError(model.CopyProjectAliases(a.T().Context(), "project_id", "new_project_id"))
 
 	res, err = FindMergedProjectAliases(a.T().Context(), "project_id", "", nil, false)
 	a.NoError(err)
@@ -335,7 +335,7 @@ func TestValidateFeaturesHaveAliases(t *testing.T) {
 		ProjectID: pRef.RepoRefId,
 		Alias:     evergreen.GithubChecksAlias,
 	}
-	assert.NoError(t, repoAlias1.Upsert())
+	assert.NoError(t, repoAlias1.Upsert(t.Context()))
 	// No error when there are aliases in the repo.
 	assert.NoError(t, validateFeaturesHaveAliases(oldPRef, pRef, aliases))
 

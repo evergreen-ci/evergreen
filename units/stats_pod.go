@@ -66,17 +66,17 @@ func (j *podStatsCollector) Run(ctx context.Context) {
 		return
 	}
 
-	j.AddError(j.logStats())
+	j.AddError(j.logStats(ctx))
 }
 
-func (j *podStatsCollector) logStats() error {
+func (j *podStatsCollector) logStats(ctx context.Context) error {
 	statuses := []pod.Status{
 		pod.StatusInitializing,
 		pod.StatusStarting,
 		pod.StatusRunning,
 		pod.StatusDecommissioned,
 	}
-	stats, err := pod.GetStatsByStatus(statuses...)
+	stats, err := pod.GetStatsByStatus(ctx, statuses...)
 	if err != nil {
 		return errors.Wrap(err, "getting statistics by pod status")
 	}

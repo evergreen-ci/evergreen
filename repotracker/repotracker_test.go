@@ -54,7 +54,7 @@ func TestFetchRevisions(t *testing.T) {
 		Convey("Fetching commits for a disabled repotracker should create no versions", func() {
 			evgProjectRef.RepotrackerDisabled = utility.TruePtr()
 			So(repoTracker.FetchRevisions(ctx), ShouldBeNil)
-			numVersions, err := model.VersionCount(model.VersionAll)
+			numVersions, err := model.VersionCount(t.Context(), model.VersionAll)
 			require.NoError(t, err, "Error finding all versions")
 			So(numVersions, ShouldEqual, 0)
 			evgProjectRef.RepotrackerDisabled = utility.FalsePtr()
@@ -66,7 +66,7 @@ func TestFetchRevisions(t *testing.T) {
 			testConfig.RepoTracker.NumNewRepoRevisionsToFetch = 2
 			require.NoError(t, repoTracker.FetchRevisions(ctx),
 				"Error running repository process %s", repoTracker.Settings.Id)
-			numVersions, err := model.VersionCount(model.VersionAll)
+			numVersions, err := model.VersionCount(t.Context(), model.VersionAll)
 			require.NoError(t, err, "Error finding all versions")
 			So(numVersions, ShouldEqual, 2)
 		})
@@ -1428,7 +1428,7 @@ tasks:
 		Task:      "task1",
 		Variant:   ".*",
 	}
-	s.NoError(alias.Upsert())
+	s.NoError(alias.Upsert(s.ctx))
 	v, err := CreateVersionFromConfig(s.ctx, projectInfo, model.VersionMetadata{Revision: *s.rev, Alias: evergreen.GithubPRAlias}, false, nil)
 	s.NoError(err)
 	s.Require().NotNil(v)
@@ -1480,7 +1480,7 @@ tasks:
 		Task:      "task1",
 		Variant:   ".*",
 	}
-	s.NoError(alias.Upsert())
+	s.NoError(alias.Upsert(s.ctx))
 
 	projectInfo := &model.ProjectInfo{
 		Ref:                 s.ref,
@@ -1537,7 +1537,7 @@ task_groups:
 		Task:      "tg1",
 		Variant:   ".*",
 	}
-	s.NoError(alias.Upsert())
+	s.NoError(alias.Upsert(s.ctx))
 
 	projectInfo := &model.ProjectInfo{
 		Ref:                 s.ref,
@@ -1605,7 +1605,7 @@ tasks:
 		Task:      "(task1)|(task2)",
 		Variant:   ".*",
 	}
-	s.NoError(alias.Upsert())
+	s.NoError(alias.Upsert(s.ctx))
 
 	projectInfo := &model.ProjectInfo{
 		Ref:                 s.ref,

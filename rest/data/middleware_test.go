@@ -135,7 +135,7 @@ func TestGetProjectIdFromParams(t *testing.T) {
 			Id: "repo_id",
 		},
 	}
-	require.NoError(t, repo.Upsert())
+	require.NoError(t, repo.Replace(t.Context()))
 	projectId, statusCode, err = GetProjectIdFromParams(ctx, map[string]string{"repoId": repo.ProjectRef.Id})
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, statusCode)

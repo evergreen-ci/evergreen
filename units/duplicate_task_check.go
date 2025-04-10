@@ -48,7 +48,7 @@ func NewDuplicateTaskCheckJob(id string) amboy.Job {
 func (j *duplicateTaskCheckJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
-	dups, err := model.FindDuplicateEnqueuedTasks(model.TaskQueuesCollection)
+	dups, err := model.FindDuplicateEnqueuedTasks(ctx, model.TaskQueuesCollection)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "finding task queues with duplicate enqueued tasks"))
 		return

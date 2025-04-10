@@ -380,6 +380,11 @@ const (
 	PresignMinimumValidTime = 15 * time.Minute
 )
 
+var TestFailureStatuses = []string{
+	TestFailedStatus,
+	TestSilentlyFailedStatus,
+}
+
 var TaskStatuses = []string{
 	TaskStarted,
 	TaskSucceeded,

@@ -4510,11 +4510,11 @@ func (s *TaskConnectorFetchByIdSuite) TestFindByVersion() {
 	annotationWithSuspectedIssue := annotations.TaskAnnotation{TaskId: "task_not_known", TaskExecution: 0, SuspectedIssues: []annotations.IssueLink{issue}}
 	annotationWithEmptyIssues := annotations.TaskAnnotation{TaskId: "task_not_known", TaskExecution: 0, Issues: []annotations.IssueLink{}, SuspectedIssues: []annotations.IssueLink{issue}}
 
-	s.NoError(annotationExecution0.Upsert())
-	s.NoError(annotationExecution1.Upsert())
-	s.NoError(annotationExecution2.Upsert())
-	s.NoError(annotationWithSuspectedIssue.Upsert())
-	s.NoError(annotationWithEmptyIssues.Upsert())
+	s.NoError(annotationExecution0.Upsert(s.T().Context()))
+	s.NoError(annotationExecution1.Upsert(s.T().Context()))
+	s.NoError(annotationExecution2.Upsert(s.T().Context()))
+	s.NoError(annotationWithSuspectedIssue.Upsert(s.T().Context()))
+	s.NoError(annotationWithEmptyIssues.Upsert(s.T().Context()))
 
 	ctx := context.TODO()
 	opts := GetTasksByVersionOptions{}
@@ -4830,11 +4830,11 @@ func TestHasResults(t *testing.T) {
 			defer cancel()
 
 			for _, execTask := range test.executionTasks {
-				_, err := db.Upsert(Collection, ById(execTask.Id), &execTask)
+				_, err := db.ReplaceContext(t.Context(), Collection, ById(execTask.Id), &execTask)
 				require.NoError(t, err)
 			}
 			for _, execTask := range test.oldExecutionTasks {
-				_, err := db.Upsert(OldCollection, ById(execTask.Id), &execTask)
+				_, err := db.ReplaceContext(t.Context(), OldCollection, ById(execTask.Id), &execTask)
 				require.NoError(t, err)
 			}
 
@@ -5015,12 +5015,12 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 			defer cancel()
 
 			for _, execTask := range test.executionTasks {
-				_, err := db.Upsert(Collection, ById(execTask.Id), &execTask)
+				_, err := db.ReplaceContext(t.Context(), Collection, ById(execTask.Id), &execTask)
 				require.NoError(t, err)
 			}
 			for _, execTask := range test.oldExecutionTasks {
 				execTask.Archived = true
-				_, err := db.Upsert(OldCollection, ById(execTask.Id), &execTask)
+				_, err := db.ReplaceContext(t.Context(), OldCollection, ById(execTask.Id), &execTask)
 				require.NoError(t, err)
 			}
 

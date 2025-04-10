@@ -23,7 +23,7 @@ func TestUpsertOneFromExisting(t *testing.T) {
 		FavoriteProjects: []string{"evergreen"},
 		PatchNumber:      12,
 	}
-	newUsr, err := UpsertOneFromExisting(oldUsr, "hello.howareyou@adele.com")
+	newUsr, err := UpsertOneFromExisting(t.Context(), oldUsr, "hello.howareyou@adele.com")
 	assert.NoError(t, err)
 	assert.Equal(t, "hello.howareyou", newUsr.Id)
 	assert.Equal(t, "hello.howareyou@adele.com", newUsr.Email())
@@ -42,7 +42,7 @@ func TestUpsertOneFromExisting(t *testing.T) {
 		PatchNumber: 1,
 	}
 	assert.NoError(t, db.Insert(Collection, existingUsr))
-	newUsr, err = UpsertOneFromExisting(oldUsr, "newly.created@new.com")
+	newUsr, err = UpsertOneFromExisting(t.Context(), oldUsr, "newly.created@new.com")
 	assert.NoError(t, err)
 	assert.Equal(t, "newly.created", newUsr.Id)
 	assert.Equal(t, "newly.created@new.com", newUsr.Email())

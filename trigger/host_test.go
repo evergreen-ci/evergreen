@@ -67,7 +67,7 @@ func (s *hostSuite) SetupTest() {
 	}
 
 	for i := range s.subs {
-		s.NoError(s.subs[i].Upsert())
+		s.NoError(s.subs[i].Upsert(s.ctx))
 	}
 
 	s.uiConfig = &evergreen.UIConfig{
