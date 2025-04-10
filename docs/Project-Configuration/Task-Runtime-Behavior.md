@@ -156,7 +156,7 @@ clean up the task directory.
 
 Right now, we delete the .git-credentials, .gitconfig, and .netcr files from the home directory.
 For tasks not in a task group, this is done at the end of the task after all commands 
-have finished running. For task groups, the reset will occur after 
+have finished running. For task groups, the deletion will occur after 
 all the tasks in the task group have finished.
 
 ## Task Timeouts

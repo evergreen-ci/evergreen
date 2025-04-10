@@ -40,7 +40,8 @@ import (
 const hostAttribute = "evergreen.host"
 
 var (
-	shouldExitAttribute  = fmt.Sprintf("%s.should_exit", hostAttribute)
+	shouldExitAttribute = fmt.Sprintf("%s.should_exit", hostAttribute)
+	// globalFilesToCleanup are used for cleaning up at the end of the task; these files are appended to the home directory.
 	globalFilesToCleanup = []string{".gitconfig", ".git-credentials", ".netcr"}
 )
 
