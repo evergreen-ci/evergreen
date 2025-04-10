@@ -82,9 +82,9 @@ func (pd *PodDispatcher) atomicUpsertUpdate(lastModified time.Time) bson.M {
 
 // UpsertAtomically inserts/updates the pod dispatcher depending on whether the
 // document already exists.
-func (pd *PodDispatcher) UpsertAtomically() (*adb.ChangeInfo, error) {
+func (pd *PodDispatcher) UpsertAtomically(ctx context.Context) (*adb.ChangeInfo, error) {
 	lastModified := utility.BSONTime(time.Now())
-	change, err := UpsertOne(pd.atomicUpsertQuery(), pd.atomicUpsertUpdate(lastModified))
+	change, err := UpsertOne(ctx, pd.atomicUpsertQuery(), pd.atomicUpsertUpdate(lastModified))
 	if err != nil {
 		return change, err
 	}

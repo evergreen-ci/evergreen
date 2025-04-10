@@ -109,19 +109,32 @@ func GetProjectIdFromParams(ctx context.Context, paramsMap map[string]string) (s
 	if err != nil {
 		return "", http.StatusInternalServerError, errors.Wrap(err, "finding project")
 	}
-	if projectRef == nil {
-		return "", http.StatusNotFound, errors.Errorf("project '%s' not found", projectID)
+	var id string
+	if projectRef != nil {
+		id = projectRef.Id
+	} else {
+		// If the project wasn't found, it's sometimes because it's a repo
+		// ref id.
+		repoRef, err := model.FindOneRepoRef(ctx, projectID)
+		if err != nil {
+			return "", http.StatusInternalServerError, errors.Wrap(err, "finding repo project")
+		}
+		if repoRef == nil {
+			return "", http.StatusNotFound, errors.Errorf("project/repo '%s' not found", projectID)
+		}
+		id = repoRef.Id
 	}
+
 	usr := gimlet.GetUser(ctx)
 	if usr == nil {
 		return "", http.StatusUnauthorized, errors.New("unauthorized")
 	}
 
-	if projectRef.Id == "" {
+	if id == "" {
 		return "", http.StatusInternalServerError, errors.New("project ID is blank")
 	}
 
-	return projectRef.Id, http.StatusOK, nil
+	return id, http.StatusOK, nil
 }
 
 // BuildProjectParameterMapForGraphQL builds the parameters map that can be used as an input to GetProjectIdFromParams.

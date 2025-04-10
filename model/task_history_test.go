@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func TestFindActiveTasksForHistory(t *testing.T) {
@@ -384,6 +385,7 @@ func TestFindTasksForHistory(t *testing.T) {
 
 func TestGetLatestMainlineTask(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(task.Collection))
+	assert.NoError(t, db.EnsureIndex(task.Collection, mongo.IndexModel{Keys: TaskHistoryIndex}))
 
 	projectId := "evergreen"
 	taskName := "test-graphql"
@@ -446,6 +448,7 @@ func TestGetLatestMainlineTask(t *testing.T) {
 
 func TestGetOldestMainlineTask(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(task.Collection))
+	assert.NoError(t, db.EnsureIndex(task.Collection, mongo.IndexModel{Keys: TaskHistoryIndex}))
 
 	projectId := "evergreen"
 	taskName := "test-graphql"

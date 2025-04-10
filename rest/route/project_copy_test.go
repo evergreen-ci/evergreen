@@ -150,6 +150,10 @@ func TestCopyVariablesSuite(t *testing.T) {
 }
 
 func (s *copyVariablesSuite) SetupTest() {
+	ctx, cancel := context.WithCancel(context.Background())
+	s.ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
+	s.cancel = cancel
+
 	s.route = &copyVariablesHandler{usr: &user.DBUser{Id: "admin"}}
 	s.NoError(db.ClearCollections(model.ProjectRefCollection, model.ProjectVarsCollection, fakeparameter.Collection, model.RepoRefCollection, event.EventCollection))
 	pRefs := []model.ProjectRef{
@@ -172,7 +176,7 @@ func (s *copyVariablesSuite) SetupTest() {
 	repoRef := model.RepoRef{ProjectRef: model.ProjectRef{
 		Id: "repoRef",
 	}}
-	s.NoError(repoRef.Upsert())
+	s.NoError(repoRef.Replace(s.ctx))
 	projectVar1 := &model.ProjectVars{
 		Id:          "projectA",
 		Vars:        map[string]string{"apple": "red", "hello": "world"},
@@ -192,9 +196,6 @@ func (s *copyVariablesSuite) SetupTest() {
 	s.NoError(projectVar1.Insert())
 	s.NoError(projectVar2.Insert())
 	s.NoError(projectVar3.Insert())
-	ctx, cancel := context.WithCancel(context.Background())
-	s.ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
-	s.cancel = cancel
 }
 
 func (s *copyVariablesSuite) TearDownTest() {
@@ -235,7 +236,7 @@ func (s *copyVariablesSuite) TestCopyAllVariables() {
 		Vars:        map[string]string{"banana": "yellow"},
 		PrivateVars: map[string]bool{},
 	}
-	_, err := newProjectVar.Upsert()
+	_, err := newProjectVar.Upsert(s.ctx)
 	s.NoError(err)
 	resp := s.route.Run(s.ctx)
 	s.NotNil(resp)

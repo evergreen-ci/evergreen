@@ -43,7 +43,7 @@ func CreateTestLocalConfig(ctx context.Context, testSettings *evergreen.Settings
 		return err
 	}
 
-	return projectRef.Upsert()
+	return projectRef.Replace(ctx)
 }
 
 // findConfig finds the config root in the home directory.

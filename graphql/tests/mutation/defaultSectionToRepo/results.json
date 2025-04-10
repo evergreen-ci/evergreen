@@ -16,10 +16,10 @@
         },
         "errors": [
           {
-            "message": "project 'sandbox_repo_id' not found",
-            "path": ["defaultSectionToRepo", "opts", "projectId"],
+            "message": "defaulting to repo for section: getting before project settings event: project ref 'sandbox_repo_id' not found",
+            "path": ["defaultSectionToRepo"],
             "extensions": {
-              "code": "RESOURCE_NOT_FOUND"
+              "code": "INTERNAL_SERVER_ERROR"
             }
           }
         ]

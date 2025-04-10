@@ -71,10 +71,10 @@ func CopyProject(ctx context.Context, env evergreen.Environment, opts restModel.
 	if err := model.CopyProjectVars(ctx, oldId, projectToCopy.Id); err != nil {
 		catcher.Wrapf(err, "copying project vars from project '%s'", oldIdentifier)
 	}
-	if err := model.CopyProjectAliases(oldId, projectToCopy.Id); err != nil {
+	if err := model.CopyProjectAliases(ctx, oldId, projectToCopy.Id); err != nil {
 		catcher.Wrapf(err, "copying aliases from project '%s'", oldIdentifier)
 	}
-	if err := event.CopyProjectSubscriptions(oldId, projectToCopy.Id); err != nil {
+	if err := event.CopyProjectSubscriptions(ctx, oldId, projectToCopy.Id); err != nil {
 		catcher.Wrapf(err, "copying subscriptions from project '%s'", oldIdentifier)
 	}
 	// Set the same admin roles from the old project on the newly copied project.
@@ -143,7 +143,7 @@ func PromoteVarsToRepo(ctx context.Context, projectIdentifier string, varNames [
 		}
 	}
 
-	if err = UpdateProjectVars(repoId, apiRepoVars, true); err != nil {
+	if err = UpdateProjectVars(ctx, repoId, apiRepoVars, true); err != nil {
 		return errors.Wrapf(err, "adding variables from project '%s' to repo", projectIdentifier)
 	}
 
@@ -180,7 +180,7 @@ func PromoteVarsToRepo(ctx context.Context, projectIdentifier string, varNames [
 		}
 	}
 
-	if err := UpdateProjectVars(projectId, apiProjectVars, true); err != nil {
+	if err := UpdateProjectVars(ctx, projectId, apiProjectVars, true); err != nil {
 		return errors.Wrapf(err, "removing promoted project variables from project '%s'", projectIdentifier)
 	}
 
@@ -288,7 +288,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 			if err != nil {
 				return nil, errors.Wrap(err, "getting evergreen config")
 			}
-			_, err = model.ValidateEnabledProjectsLimit(projectId, config, mergedBeforeRef, mergedSection)
+			_, err = model.ValidateEnabledProjectsLimit(ctx, projectId, config, mergedBeforeRef, mergedSection)
 			if err != nil {
 				return nil, errors.Wrap(err, "validating project creation")
 			}
@@ -366,7 +366,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 				changes.Vars.Vars[key] = value
 			}
 		}
-		if err = UpdateProjectVars(projectId, &changes.Vars, true); err != nil { // destructively modifies vars
+		if err = UpdateProjectVars(ctx, projectId, &changes.Vars, true); err != nil { // destructively modifies vars
 			return nil, errors.Wrapf(err, "updating project variables for project '%s'", projectId)
 		}
 		modified = true

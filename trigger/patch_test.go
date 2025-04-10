@@ -125,7 +125,7 @@ func (s *patchSuite) SetupTest() {
 	}
 
 	for i := range s.subs {
-		s.NoError(s.subs[i].Upsert())
+		s.NoError(s.subs[i].Upsert(s.ctx))
 	}
 
 	ui := &evergreen.UIConfig{
@@ -163,7 +163,8 @@ func (s *patchSuite) TestAllTriggers() {
 
 	s.patch.Status = evergreen.VersionSucceeded
 	s.data.Status = evergreen.VersionSucceeded
-	s.NoError(db.ReplaceContext(s.ctx, patch.Collection, bson.M{"_id": s.patch.Id}, &s.patch))
+	_, err = db.ReplaceContext(s.ctx, patch.Collection, bson.M{"_id": s.patch.Id}, &s.patch)
+	s.NoError(err)
 
 	n, err = NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)
@@ -171,7 +172,8 @@ func (s *patchSuite) TestAllTriggers() {
 
 	s.patch.Status = evergreen.VersionFailed
 	s.data.Status = evergreen.VersionFailed
-	s.NoError(db.ReplaceContext(s.ctx, patch.Collection, bson.M{"_id": s.patch.Id}, &s.patch))
+	_, err = db.ReplaceContext(s.ctx, patch.Collection, bson.M{"_id": s.patch.Id}, &s.patch)
+	s.NoError(err)
 
 	n, err = NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)
@@ -262,7 +264,7 @@ func (s *patchSuite) TestRunChildrenOnPatchOutcome() {
 	}
 
 	for i := range s.subs {
-		s.NoError(s.subs[i].Upsert())
+		s.NoError(s.subs[i].Upsert(s.ctx))
 	}
 	s.data.Status = evergreen.VersionSucceeded
 	n, err := s.t.patchOutcome(s.ctx, &s.subs[0])
@@ -327,7 +329,7 @@ func (s *patchSuite) TestPatchFamilyOutcomeWithAbortedPatch() {
 		},
 	}
 	subscription := event.NewSubscriptionByID(event.ResourceTypePatch, event.TriggerFamilyOutcome, e.ResourceId, subscriber)
-	s.Require().NoError(subscription.Upsert())
+	s.Require().NoError(subscription.Upsert(s.ctx))
 
 	t := makePatchTriggers().(*patchTriggers)
 	t.event = &e
@@ -379,7 +381,7 @@ func (s *patchSuite) TestPatchFamilyOutcomeWithAbortedGitHubMergePatch() {
 		},
 	}
 	subscription := event.NewSubscriptionByID(event.ResourceTypePatch, event.TriggerFamilyOutcome, e.ResourceId, subscriber)
-	s.Require().NoError(subscription.Upsert())
+	s.Require().NoError(subscription.Upsert(s.ctx))
 
 	t := makePatchTriggers().(*patchTriggers)
 	t.event = &e

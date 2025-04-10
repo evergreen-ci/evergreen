@@ -661,7 +661,8 @@
       "display_name": "commit-task",
       "execution": 0,
       "order": 101,
-      "results_service": "local"
+      "results_service": "local",
+      "results_failed": true
     },
     {
       "_id": "commit_task_base",

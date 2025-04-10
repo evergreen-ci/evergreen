@@ -68,14 +68,14 @@ func GetStatsStatus(ctx context.Context, projectID string) (StatsStatus, error) 
 }
 
 // UpdateStatsStatus updates the status of the stats pre-computations for a project.
-func UpdateStatsStatus(projectID string, lastJobRun, processedTasksUntil time.Time, runtime time.Duration) error {
+func UpdateStatsStatus(ctx context.Context, projectID string, lastJobRun, processedTasksUntil time.Time, runtime time.Duration) error {
 	status := StatsStatus{
 		ProjectID:           projectID,
 		LastJobRun:          lastJobRun,
 		ProcessedTasksUntil: processedTasksUntil,
 		Runtime:             runtime,
 	}
-	_, err := db.Upsert(DailyStatsStatusCollection, bson.M{"_id": projectID}, status)
+	_, err := db.ReplaceContext(ctx, DailyStatsStatusCollection, bson.M{"_id": projectID}, status)
 	if err != nil {
 		return errors.Wrap(err, "updating test stats status")
 	}
@@ -133,7 +133,7 @@ type FindStatsToUpdateOptions struct {
 // FindStatsToUpdate finds the stats that need to be updated as a result of
 // tasks finishing between the given start and end times. The results are
 // ordered are ordered by first by date, then requester.
-func FindStatsToUpdate(opts FindStatsToUpdateOptions) ([]StatsToUpdate, error) {
+func FindStatsToUpdate(ctx context.Context, opts FindStatsToUpdateOptions) ([]StatsToUpdate, error) {
 	grip.Info(message.Fields{
 		"message": "finding tasks that need their stats updated",
 		"project": opts.ProjectID,
@@ -142,7 +142,7 @@ func FindStatsToUpdate(opts FindStatsToUpdateOptions) ([]StatsToUpdate, error) {
 	})
 
 	var toUpdate []StatsToUpdate
-	if err := db.Aggregate(task.Collection, statsToUpdatePipeline(opts.ProjectID, opts.Requesters, opts.Start, opts.End), &toUpdate); err != nil {
+	if err := db.Aggregate(ctx, task.Collection, statsToUpdatePipeline(opts.ProjectID, opts.Requesters, opts.Start, opts.End), &toUpdate); err != nil {
 		return nil, errors.Wrap(err, "finding tasks that need their stats updated")
 	}
 

@@ -127,7 +127,7 @@ func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 	destTask.ModulePaths = srcTask.Details.Modules.Prefixes
 
 	var err error
-	destTask.MinQueuePos, err = model.FindMinimumQueuePositionForTask(destTask.Id)
+	destTask.MinQueuePos, err = model.FindMinimumQueuePositionForTask(r.Context(), destTask.Id)
 	if err != nil {
 		msg := fmt.Sprintf("Error calculating task queue position for '%v'", srcTask.Id)
 		grip.Errorf("%v: %+v", msg, err)

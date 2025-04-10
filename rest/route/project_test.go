@@ -64,11 +64,11 @@ func (s *ProjectPatchByIDSuite) SetupTest() {
 	project2.Identifier = "project2"
 	s.NoError(project2.Add(s.T().Context(), &user))
 
-	_, err := getTestVar().Upsert()
+	_, err := getTestVar().Upsert(s.T().Context())
 	s.NoError(err)
 	aliases := getTestAliases()
 	for _, alias := range aliases {
-		s.NoError(alias.Upsert())
+		s.NoError(alias.Upsert(s.T().Context()))
 	}
 	s.NoError(db.Insert(serviceModel.RepositoriesCollection, serviceModel.Repository{
 		Project:      "dimoxinil",
@@ -1047,7 +1047,7 @@ func TestDeleteProject(t *testing.T) {
 			Repo:  "test_repo",
 		},
 	}
-	assert.NoError(t, repo.Upsert())
+	assert.NoError(t, repo.Replace(t.Context()))
 
 	// Projects expected to be successfully deleted
 	numGoodProjects := 2
@@ -1080,14 +1080,14 @@ func TestDeleteProject(t *testing.T) {
 			Task:      fmt.Sprintf("task_%d", i),
 		}
 
-		require.NoError(t, projAlias.Upsert())
+		require.NoError(t, projAlias.Upsert(t.Context()))
 	}
 
 	projVars := serviceModel.ProjectVars{
 		Id:   projects[0].Id,
 		Vars: map[string]string{"hello": "world"},
 	}
-	_, err := projVars.Upsert()
+	_, err := projVars.Upsert(t.Context())
 	require.NoError(t, err)
 
 	pdh := projectDeleteHandler{}
@@ -1181,7 +1181,7 @@ func TestAttachProjectToRepo(t *testing.T) {
 	assert.Error(t, h.Parse(ctx, req)) // should fail because repoRefId is populated
 
 	pRef.RepoRefId = ""
-	assert.NoError(t, pRef.Upsert())
+	assert.NoError(t, pRef.Replace(t.Context()))
 	assert.NoError(t, h.Parse(ctx, req))
 
 	assert.NotNil(t, h.user)
@@ -1257,7 +1257,7 @@ func TestDetachProjectFromRepo(t *testing.T) {
 	assert.Error(t, h.Parse(ctx, req)) // should fail because repoRefId isn't populated
 
 	pRef.RepoRefId = repoRef.Id
-	assert.NoError(t, pRef.Upsert())
+	assert.NoError(t, pRef.Replace(t.Context()))
 	assert.NoError(t, h.Parse(ctx, req))
 
 	assert.NotNil(t, h.user)

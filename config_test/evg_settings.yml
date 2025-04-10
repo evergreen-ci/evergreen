@@ -184,3 +184,6 @@ github_check_run:
 task_limits:
   max_hourly_patch_tasks: 100
   max_task_execution: 9
+
+jira:
+  personal_access_token: token

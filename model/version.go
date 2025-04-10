@@ -666,7 +666,7 @@ func GetVersionsWithOptions(ctx context.Context, projectName string, opts GetVer
 
 	res := []Version{}
 
-	if err := db.Aggregate(VersionCollection, pipeline, &res); err != nil {
+	if err := db.Aggregate(ctx, VersionCollection, pipeline, &res); err != nil {
 		return nil, errors.Wrap(err, "aggregating versions and builds")
 	}
 	return res, nil

@@ -867,7 +867,7 @@ func getGitVersion() (string, error) {
 	if err != nil {
 		return "", errors.Wrap(err, "getting git version")
 	}
-	version, _, err := thirdparty.ParseGitVersion(strings.TrimSpace(versionString))
+	version, err := thirdparty.ParseGitVersion(strings.TrimSpace(versionString))
 
 	return version, err
 }

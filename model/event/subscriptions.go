@@ -446,7 +446,7 @@ func regexMatchesValue(regexString string, values []string) bool {
 }
 
 // CopyProjectSubscriptions copies subscriptions from the first project for the second project.
-func CopyProjectSubscriptions(oldProject, newProject string) error {
+func CopyProjectSubscriptions(ctx context.Context, oldProject, newProject string) error {
 	subs, err := FindSubscriptionsByOwner(oldProject, OwnerTypeProject)
 	if err != nil {
 		return errors.Wrapf(err, "finding subscription for project '%s'", oldProject)
@@ -462,12 +462,12 @@ func CopyProjectSubscriptions(oldProject, newProject string) error {
 				sub.Filter.Project = newProject
 			}
 		}
-		catcher.Add(sub.Upsert())
+		catcher.Add(sub.Upsert(ctx))
 	}
 	return catcher.Resolve()
 }
 
-func (s *Subscription) Upsert() error {
+func (s *Subscription) Upsert(ctx context.Context) error {
 	if s.ID == "" {
 		s.ID = mgobson.NewObjectId().Hex()
 	}
@@ -487,7 +487,7 @@ func (s *Subscription) Upsert() error {
 	}
 
 	// note: this prevents changing the owner of an existing subscription, which is desired
-	c, err := db.Upsert(SubscriptionsCollection, bson.M{
+	c, err := db.ReplaceContext(ctx, SubscriptionsCollection, bson.M{
 		subscriptionIDKey:    s.ID,
 		subscriptionOwnerKey: s.Owner,
 	}, update)
@@ -748,7 +748,7 @@ func CreateOrUpdateGeneralSubscription(ctx context.Context, resourceType string,
 		sub.OwnerType = OwnerTypePerson
 		sub.Owner = user
 
-		if err := sub.Upsert(); err != nil {
+		if err := sub.Upsert(ctx); err != nil {
 			return nil, errors.Wrap(err, "upserting subscription")
 		}
 	} else {

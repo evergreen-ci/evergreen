@@ -27,6 +27,10 @@ Evergreen - Waterfall
 {{end}}
 
 {{define "content"}}
+<div class="alert alert-warning alert-dismissable">
+  The waterfall page will be deprecated on May 20th. Please use the <a href="{{.NewUILink}}">new Waterfall page</a> instead.
+</div>
+
 <div id="root" class="container-fluid waterfall-2"></div>
 <script type="text/javascript" src="/static/dist/js/waterfall/waterfall-render.js?hash={{ BuildRevision }}"></script>
 

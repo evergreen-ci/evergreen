@@ -144,7 +144,7 @@ func (h *hostStatsByDistroHandler) Parse(ctx context.Context, r *http.Request) e
 }
 
 func (h *hostStatsByDistroHandler) Run(ctx context.Context) gimlet.Responder {
-	stats, err := host.GetStatsByDistro()
+	stats, err := host.GetStatsByDistro(ctx)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting distro host stats"))
 	}

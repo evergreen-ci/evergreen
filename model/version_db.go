@@ -324,8 +324,8 @@ func VersionFind(query db.Q) ([]Version, error) {
 }
 
 // Count returns the number of hosts that satisfy the given query.
-func VersionCount(query db.Q) (int, error) {
-	return db.CountQ(VersionCollection, query)
+func VersionCount(ctx context.Context, query db.Q) (int, error) {
+	return db.CountQ(ctx, VersionCollection, query)
 }
 
 // UpdateOne updates one version.

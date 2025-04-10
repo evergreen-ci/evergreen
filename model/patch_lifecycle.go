@@ -922,21 +922,21 @@ func finalizeOrSubscribeChildPatch(ctx context.Context, childPatchId string, par
 		}
 	} else {
 		//subscribe on parent outcome
-		if err = SubscribeOnParentOutcome(triggerIntent.ParentStatus, childPatchId, parentPatch, requester); err != nil {
+		if err = SubscribeOnParentOutcome(ctx, triggerIntent.ParentStatus, childPatchId, parentPatch, requester); err != nil {
 			return errors.Wrap(err, "getting parameters from parent patch")
 		}
 	}
 	return nil
 }
 
-func SubscribeOnParentOutcome(parentStatus string, childPatchId string, parentPatch *patch.Patch, requester string) error {
+func SubscribeOnParentOutcome(ctx context.Context, parentStatus string, childPatchId string, parentPatch *patch.Patch, requester string) error {
 	subscriber := event.NewRunChildPatchSubscriber(event.ChildPatchSubscriber{
 		ParentStatus: parentStatus,
 		ChildPatchId: childPatchId,
 		Requester:    requester,
 	})
 	patchSub := event.NewParentPatchSubscription(parentPatch.Id.Hex(), subscriber)
-	if err := patchSub.Upsert(); err != nil {
+	if err := patchSub.Upsert(ctx); err != nil {
 		return errors.Wrapf(err, "inserting child patch subscription '%s'", childPatchId)
 	}
 	return nil

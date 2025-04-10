@@ -87,10 +87,10 @@ func (s *TestArtifactFileSuite) SetupTest() {
 	}))
 
 	for _, entry := range s.testEntries {
-		s.NoError(entry.Upsert())
+		s.NoError(entry.Upsert(s.T().Context()))
 	}
 
-	count, err := db.Count(Collection, bson.M{})
+	count, err := db.Count(s.T().Context(), Collection, bson.M{})
 	s.NoError(err)
 	s.Equal(3, count)
 }
@@ -129,9 +129,9 @@ func (s *TestArtifactFileSuite) TestArtifactFieldsAfterUpdate() {
 			AWSSecret:      "secret",
 		},
 	}
-	s.NoError(s.testEntries[0].Upsert())
+	s.NoError(s.testEntries[0].Upsert(s.T().Context()))
 
-	count, err := db.Count(Collection, bson.M{})
+	count, err := db.Count(s.T().Context(), Collection, bson.M{})
 	s.NoError(err)
 	s.Equal(3, count)
 

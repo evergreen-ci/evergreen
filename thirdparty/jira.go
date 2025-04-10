@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/andygrunwald/go-jira"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -298,7 +299,13 @@ func (jiraHandler *JiraHandler) HttpClient() *http.Client {
 
 func NewJiraHandler(opts send.JiraOptions) JiraHandler {
 	httpClient := utility.GetHTTPClient()
-	if opts.Oauth1Opts.AccessToken != "" {
+	if opts.PersonalAccessTokenOpts.Token != "" {
+		transport := jira.BearerAuthTransport{
+			Token:     opts.PersonalAccessTokenOpts.Token,
+			Transport: httpClient.Transport,
+		}
+		httpClient = transport.Client()
+	} else if opts.Oauth1Opts.AccessToken != "" {
 		var err error
 		credentials := send.JiraOauthCredentials{
 			PrivateKey:  opts.Oauth1Opts.PrivateKey,

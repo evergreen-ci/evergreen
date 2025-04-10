@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 // Context is the set of all the related entities in a
@@ -19,6 +20,7 @@ type Context struct {
 	Version    *Version
 	Patch      *patch.Patch
 	ProjectRef *ProjectRef
+	RepoRef    *RepoRef
 
 	project *Project
 }
@@ -50,6 +52,10 @@ func LoadContext(ctx context.Context, taskId, buildId, versionId, patchId, proje
 	if len(projectId) > 0 {
 		// Also lookup the ProjectRef itself and add it to context.
 		c.ProjectRef, err = FindMergedProjectRef(ctx, projectId, versionId, true)
+		if err != nil && !errors.Is(err, mongo.ErrNoDocuments) {
+			return c, err
+		}
+		c.RepoRef, err = FindOneRepoRef(ctx, projectId)
 		if err != nil {
 			return c, err
 		}
@@ -88,6 +94,17 @@ func (ctx *Context) GetProject(c context.Context) (*Project, error) {
 	}
 
 	return ctx.project, nil
+}
+
+func (ctx *Context) HasProjectOrRepoRef() bool {
+	return ctx.ProjectRef != nil || ctx.RepoRef != nil
+}
+
+func (ctx *Context) GetProjectOrRepoRefId() string {
+	if ctx.ProjectRef != nil {
+		return ctx.ProjectRef.Id
+	}
+	return ctx.RepoRef.Id
 }
 
 // populateTaskBuildVersion takes a task, build, and version ID and populates a Context

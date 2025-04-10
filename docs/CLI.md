@@ -45,7 +45,7 @@ When specifying tasks or variants, _both_ must be specified:
 ```bash
 evergreen patch --regex_variants "enterprise.*" // not valid, will not select any tasks
 evergreen patch -t unittest // not valid, will not select any tasks
-evergreen patch -rv "enterprise.*" --regex-tasks test-.* // valid
+evergreen patch -rv "enterprise.*" --regex_tasks test-.* // valid
 evergreen patch --regex_variants "enterprise.*" -t unittest // valid
 ```
 

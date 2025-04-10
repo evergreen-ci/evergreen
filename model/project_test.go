@@ -645,7 +645,7 @@ func (s *projectSuite) SetupTest() {
 		},
 	}
 	for _, alias := range s.aliases {
-		s.NoError(alias.Upsert())
+		s.NoError(alias.Upsert(s.T().Context()))
 	}
 	s.project = &Project{
 		Identifier: pRef.Id,
@@ -1678,7 +1678,7 @@ func TestFindProjectsSuite(t *testing.T) {
 		repoWithVars := &RepoRef{ProjectRef{
 			Id: repoProjectId,
 		}}
-		s.Require().NoError(repoWithVars.Upsert())
+		s.Require().NoError(repoWithVars.Replace(t.Context()))
 		repoVars := &ProjectVars{
 			Id:          repoProjectId,
 			Vars:        map[string]string{"a": "a_from_repo", "c": "new"},
@@ -2066,7 +2066,7 @@ func TestVariantTasksForSelectors(t *testing.T) {
 		Variant:   "bv0",
 		Task:      "t0",
 	}
-	require.NoError(t, patchAlias.Upsert())
+	require.NoError(t, patchAlias.Upsert(t.Context()))
 
 	project := Project{
 		Identifier: projectID,

@@ -170,25 +170,25 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 		Alias:     evergreen.GithubPRAlias,
 		Variant:   "ubuntu.*",
 		Task:      "dist.*",
-	}).Upsert())
+	}).Upsert(s.ctx))
 	s.NoError((&model.ProjectAlias{
 		ProjectID: "mci",
 		Alias:     evergreen.GithubPRAlias,
 		Variant:   "race.*",
 		Task:      "dist.*",
-	}).Upsert())
+	}).Upsert(s.ctx))
 	s.NoError((&model.ProjectAlias{
 		ProjectID: "mci",
 		Alias:     "doesntexist",
 		Variant:   "fake",
 		Task:      "fake",
-	}).Upsert())
+	}).Upsert(s.ctx))
 	s.NoError((&model.ProjectAlias{
 		ProjectID: "commit-queue-sandbox",
 		Alias:     evergreen.CommitQueueAlias,
 		Variant:   "^ubuntu2004$",
 		Task:      "^bynntask$",
-	}).Upsert())
+	}).Upsert(s.ctx))
 
 	s.NoError((&distro.Distro{Id: "ubuntu1604-test"}).Insert(s.ctx))
 	s.NoError((&distro.Distro{Id: "ubuntu1604-build"}).Insert(s.ctx))
@@ -315,7 +315,7 @@ func (s *PatchIntentUnitsSuite) TestCantFinishCommitQueuePatchWithNoTasksAndVari
 	s.NoError((&model.ProjectAlias{
 		ProjectID: s.project,
 		Alias:     evergreen.CommitQueueAlias,
-	}).Upsert())
+	}).Upsert(s.ctx))
 
 	intent, err := patch.NewCliIntent(patch.CLIIntentParams{
 		User:         s.user,
@@ -356,7 +356,7 @@ func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithDisabledCommitQueue() {
 			Enabled: utility.FalsePtr(),
 		},
 	}
-	s.Require().NoError(disabledMergeQueueProject.Upsert())
+	s.Require().NoError(disabledMergeQueueProject.Replace(s.ctx))
 
 	org := github.Organization{
 		Login: &orgName,
@@ -1599,7 +1599,7 @@ tasks:
 		Task:      "my-task",
 		Variant:   "my-build-variant",
 	}
-	s.Require().NoError(childPatchAlias.Upsert())
+	s.Require().NoError(childPatchAlias.Upsert(s.ctx))
 
 	p := &patch.Patch{
 		Id:      mgobson.NewObjectId(),
@@ -1669,7 +1669,7 @@ tasks:
 		Task:      "my-task",
 		Variant:   "my-build-variant",
 	}
-	s.Require().NoError(childPatchAlias.Upsert())
+	s.Require().NoError(childPatchAlias.Upsert(s.ctx))
 
 	p := &patch.Patch{
 		Id:      mgobson.NewObjectId(),

@@ -160,12 +160,12 @@ func (a *Agent) blockToLegacyName(block command.BlockType) string {
 func (a *Agent) runCommandOrFunc(ctx context.Context, tc *taskContext, commandInfo model.PluginCommandConf,
 	cmds []command.Command, options runCommandsOptions) error {
 
+	var functionSpan trace.Span
 	if commandInfo.Function != "" {
-		var commandSetSpan trace.Span
-		ctx, commandSetSpan = a.tracer.Start(ctx, "function", trace.WithAttributes(
+		ctx, functionSpan = a.tracer.Start(ctx, "function", trace.WithAttributes(
 			attribute.String(functionNameAttribute, commandInfo.Function),
 		))
-		defer commandSetSpan.End()
+		defer functionSpan.End()
 	}
 
 	for _, cmd := range cmds {
@@ -193,6 +193,10 @@ func (a *Agent) runCommandOrFunc(ctx context.Context, tc *taskContext, commandIn
 		if err := a.runCommand(ctx, tc, commandInfo, cmd, options); err != nil {
 			commandSpan.SetStatus(codes.Error, "running command")
 			commandSpan.RecordError(err, trace.WithAttributes(tc.taskConfig.TaskAttributes()...))
+			if commandInfo.Function != "" {
+				functionSpan.SetStatus(codes.Error, "running function")
+				functionSpan.RecordError(err, trace.WithAttributes(tc.taskConfig.TaskAttributes()...))
+			}
 			commandSpan.End()
 			if cmd.RetryOnFailure() {
 				tc.logger.Task().Infof("Command is set to automatically restart on completion, this can be done %d total times per task.", evergreen.MaxAutomaticRestarts)

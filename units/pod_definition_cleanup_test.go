@@ -141,7 +141,7 @@ func TestPodDefinitionCleanupJob(t *testing.T) {
 		"CleansUpStaleUnusedPodDefinitions": func(ctx context.Context, t *testing.T, j *podDefinitionCleanupJob) {
 			pd := createPodDef(ctx, t, j.podDefMgr, j.ecsClient)
 			pd.LastAccessed = time.Now().Add(-9000 * 24 * time.Hour)
-			require.NoError(t, pd.Upsert())
+			require.NoError(t, pd.Replace(t.Context()))
 
 			j.Run(ctx)
 			require.NoError(t, j.Error())
@@ -185,7 +185,7 @@ func TestPodDefinitionCleanupJob(t *testing.T) {
 
 			pd := createPodDef(ctx, t, j.podDefMgr, j.ecsClient)
 			pd.LastAccessed = time.Now().Add(-9000 * 24 * time.Hour)
-			require.NoError(t, pd.Upsert())
+			require.NoError(t, pd.Replace(t.Context()))
 
 			j.Run(ctx)
 			assert.Error(t, j.Error())

@@ -132,13 +132,13 @@ func (s *GithubWebhookRouteSuite) TestAddIntentAndFailsWithDuplicate() {
 	ctx := context.Background()
 	resp := s.h.Run(ctx)
 	s.Equal(http.StatusOK, resp.Status())
-	count, err := db.CountQ(patch.IntentCollection, db.Query(bson.M{}))
+	count, err := db.CountQ(s.T().Context(), patch.IntentCollection, db.Query(bson.M{}))
 	s.NoError(err)
 	s.Equal(1, count)
 
 	resp = s.h.Run(ctx)
 	s.NotEqual(http.StatusOK, resp.Status())
-	count, err = db.CountQ(patch.IntentCollection, db.Query(bson.M{}))
+	count, err = db.CountQ(s.T().Context(), patch.IntentCollection, db.Query(bson.M{}))
 	s.NoError(err)
 	s.Equal(1, count)
 }
@@ -331,7 +331,7 @@ func (s *GithubWebhookRouteSuite) TestCreateVersionForTag() {
 		RemotePath: "rest/route/testdata/release.yml",
 	}
 	s.NoError(pRef.Insert())
-	s.NoError(projectAlias.Upsert())
+	s.NoError(projectAlias.Upsert(s.T().Context()))
 
 	v, err := s.mock.createVersionForTag(context.Background(), pRef, nil, model.Revision{}, tag)
 	s.NoError(err)

@@ -97,7 +97,7 @@ func (s *estimatedTimeSimulator) dispatchNextTask() {
 
 // GetEstimatedStartTime returns the estimated start time for a task
 func GetEstimatedStartTime(ctx context.Context, t task.Task) (time.Duration, error) {
-	queue, err := LoadTaskQueue(t.DistroId)
+	queue, err := LoadTaskQueue(ctx, t.DistroId)
 	if err != nil {
 		return -1, errors.Wrap(err, "retrieving task queue")
 	}

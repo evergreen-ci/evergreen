@@ -1,6 +1,8 @@
 package model
 
 import (
+	"context"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -16,7 +18,7 @@ type buildVariantHistoryIterator struct {
 // Interface around getting task and version history for a given build variant
 // in a given project.
 type BuildVariantHistoryIterator interface {
-	GetItems(beforeCommit *Version, numCommits int) ([]bson.M, []Version, error)
+	GetItems(ctx context.Context, beforeCommit *Version, numCommits int) ([]bson.M, []Version, error)
 }
 
 // Since version currently uses build variant display name and task uses build variant
@@ -27,7 +29,7 @@ func NewBuildVariantHistoryIterator(buildVariantInTask string, buildVariantInVer
 }
 
 // Returns versions and tasks grouped by gitspec, newest first (sorted by order number desc)
-func (bvhi *buildVariantHistoryIterator) GetItems(beforeCommit *Version, numRevisions int) ([]bson.M, []Version, error) {
+func (bvhi *buildVariantHistoryIterator) GetItems(ctx context.Context, beforeCommit *Version, numRevisions int) ([]bson.M, []Version, error) {
 	var versionQuery db.Q
 	if beforeCommit != nil {
 		versionQuery = db.Query(bson.M{
@@ -119,7 +121,7 @@ func (bvhi *buildVariantHistoryIterator) GetItems(beforeCommit *Version, numRevi
 	}
 
 	var output []bson.M
-	if err = db.Aggregate(task.Collection, pipeline, &output); err != nil {
+	if err = db.Aggregate(ctx, task.Collection, pipeline, &output); err != nil {
 		return nil, nil, err
 	}
 

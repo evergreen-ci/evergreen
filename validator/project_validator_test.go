@@ -5069,7 +5069,7 @@ func TestValidateContainers(t *testing.T) {
 				},
 			}
 
-			require.NoError(t, ref.Upsert())
+			require.NoError(t, ref.Replace(t.Context()))
 			require.NoError(t, projVars.Insert())
 			tCase(t, p, ref)
 		})

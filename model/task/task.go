@@ -2215,12 +2215,15 @@ func DeactivateTasks(ctx context.Context, tasks []Task, updateDependencies bool,
 		bson.M{
 			IdKey: bson.M{"$in": taskIDs},
 		},
-		bson.M{
-			"$set": bson.M{
-				ActivatedKey:     false,
-				ActivatedByKey:   caller,
-				ScheduledTimeKey: utility.ZeroTime,
+		[]bson.M{
+			{
+				"$set": bson.M{
+					ActivatedKey:     false,
+					ActivatedByKey:   caller,
+					ScheduledTimeKey: utility.ZeroTime,
+				},
 			},
+			addDisplayStatusCache,
 		},
 	)
 	if err != nil {

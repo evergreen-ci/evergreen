@@ -130,7 +130,7 @@
         "data": null,
         "errors": [
           {
-            "message": "project 'evergreen' not found",
+            "message": "project/repo 'evergreen' not found",
             "path": ["projectSettings", "projectIdentifier"],
             "extensions": {
               "code": "RESOURCE_NOT_FOUND"

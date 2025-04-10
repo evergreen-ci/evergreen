@@ -145,10 +145,23 @@ func FindTasksForHistory(ctx context.Context, opts FindTaskHistoryOptions) ([]ta
 	return tasks, nil
 }
 
+// The index `branch_1_build_variant_1_display_name_1_status_1_r_1_activated_1_order_1` is a good index
+// for GetLatestMainlineTask & GetOldestMainlineTask, but the query planner does not detect this.
+// Using this index as a hint allows these queries to run efficiently.
+var TaskHistoryIndex = bson.D{
+	{Key: task.ProjectKey, Value: 1},
+	{Key: task.BuildVariantKey, Value: 1},
+	{Key: task.DisplayNameKey, Value: 1},
+	{Key: task.StatusKey, Value: 1},
+	{Key: task.RequesterKey, Value: 1},
+	{Key: task.ActivatedKey, Value: 1},
+	{Key: task.RevisionOrderNumberKey, Value: 1},
+}
+
 // GetLatestMainlineTask returns the most recent task matching the given parameters, activated or unactivated, on the waterfall.
 func GetLatestMainlineTask(ctx context.Context, opts FindTaskHistoryOptions) (*task.Task, error) {
 	filter := getBaseTaskHistoryFilter(opts)
-	q := db.Query(filter).Sort([]string{"-" + task.RevisionOrderNumberKey}).Limit(1)
+	q := db.Query(filter).Sort([]string{"-" + task.RevisionOrderNumberKey}).Limit(1).Hint(TaskHistoryIndex)
 	mostRecentTask, err := task.FindOne(ctx, q)
 
 	if err != nil {
@@ -165,7 +178,7 @@ func GetLatestMainlineTask(ctx context.Context, opts FindTaskHistoryOptions) (*t
 // and because the task TTL deletes old tasks.
 func GetOldestMainlineTask(ctx context.Context, opts FindTaskHistoryOptions) (*task.Task, error) {
 	filter := getBaseTaskHistoryFilter(opts)
-	q := db.Query(filter).Sort([]string{task.RevisionOrderNumberKey}).Limit(1)
+	q := db.Query(filter).Sort([]string{task.RevisionOrderNumberKey}).Limit(1).Hint(TaskHistoryIndex)
 	oldestTask, err := task.FindOne(ctx, q)
 
 	if err != nil {

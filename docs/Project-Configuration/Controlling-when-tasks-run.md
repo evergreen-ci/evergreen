@@ -6,18 +6,18 @@ In short:
 
 **Activate**: if set to false, this prevents Evergreen from automatically activating a task in the waterfall, which includes crons. If activate is set to false and it can still be manually activated by a user. If set to true, it can override batchtime in the project settings.
 
-**Cron:** activates builds/tasks on existing waterfall commits based on a specified schedule. If used with activate set to false, the cron setting will not activate the specified builds/tasks on the waterfall.
+**Cron:** activates builds/tasks on existing mainline commits based on a specified schedule. If used with activate set to false, the cron setting will not activate the specified builds/tasks on the waterfall.
 
-**Batchtime:** sets an interval of time in minutes that Evergreen should wait before activating builds/tasks. It will only activate the build/tasks for latest commit. If used with activate true, batchtime will be ignored and the builds/tasks will run every time.
+**Batchtime:** sets an interval of time in minutes that Evergreen should wait before activating builds/tasks on mainline commits. It will only activate the build/tasks for latest commit. If used with activate true, batchtime will be ignored and the builds/tasks will run every time.
 
-**Periodic Builds:** creates a _new version_ with specified variants/tasks at a specified interval, regardless of commit activity.
+**Periodic Builds:** creates a _new version_ with specified variants/tasks at a specified interval, regardless of commit activity. (This is not a yaml setting.)
 
-If more than one is set, more specific details on how these features interact with each other are found
-[here](Project-Configuration-Files#specific-activation-override-hierarchy).
-Documentation on limiting when tasks runs beyond the waterfall can be found [here](Project-Configuration-Files#limiting-when-a-task-or-variant-will-run)
+The yaml settings **only apply to mainline commits.** If more than one is set, more specific details on how these 
+features interact with each other are found [here](Project-Configuration-Files#specific-activation-override-hierarchy).
+Documentation on limiting when tasks runs beyond the waterfall can be found [here](Project-Configuration-Files#limiting-when-a-task-or-variant-will-run).
 
 ### Activate
-`activate: false` prevents a build variant or task from activating automatically. This can be specified in the
+`activate: false` prevents a build variant or task on a mainline commit from activating automatically. This can be specified in the
 buildvariants section of the project configuration file on a build variant or a task within the build variant. If a cron job wants to activate a build/task but also has `activate` set to false, the build/task will not run.
 
 `activate: true` is a special flag that is only usable for the purpose of overriding a batchtime defined in the project
@@ -47,7 +47,7 @@ buildvariants:
 
 ### Batchtime
 
-Batchtime sets an interval of time in minutes that Evergreen should wait before activating a version/task/variant. This is ideal for delaying activation of versions/tasks/variants to batch them together, reducing the frequency of activations and managing resource usage.
+Batchtime sets an interval of time in minutes that Evergreen should wait before activating a version/task/variant for a mainline commit. This is ideal for delaying activation of versions/tasks/variants to batch them together, reducing the frequency of activations and managing resource usage.
 
 A default batch time can be set on the project page [under general settings](../Project-Configuration/Project-and-Distro-Settings/#general-project-settings) for the interval of time (in minutes) that Evergreen should wait in between activating the latest version.
 

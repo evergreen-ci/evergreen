@@ -96,7 +96,7 @@ func UpdateAnnotationNote(ctx context.Context, taskId string, execution int, ori
 	if annotation != nil && annotation.Note != nil && annotation.Note.Message != originalMessage {
 		return errors.New("note is out of sync, please try again")
 	}
-	_, err = db.UpsertContext(
+	_, err = db.Upsert(
 		ctx,
 		Collection,
 		ByTaskIdAndExecution(taskId, execution),
@@ -119,6 +119,7 @@ func SetAnnotationMetadataLinks(ctx context.Context, taskId string, execution in
 	}
 
 	_, err := db.Upsert(
+		ctx,
 		Collection,
 		ByTaskIdAndExecution(taskId, execution),
 		bson.M{
@@ -128,7 +129,7 @@ func SetAnnotationMetadataLinks(ctx context.Context, taskId string, execution in
 	return errors.Wrapf(err, "setting task links for task '%s'", taskId)
 }
 
-func AddSuspectedIssueToAnnotation(taskId string, execution int, issue IssueLink, username string) error {
+func AddSuspectedIssueToAnnotation(ctx context.Context, taskId string, execution int, issue IssueLink, username string) error {
 	issue.Source = &Source{
 		Author:    username,
 		Time:      time.Now(),
@@ -136,6 +137,7 @@ func AddSuspectedIssueToAnnotation(taskId string, execution int, issue IssueLink
 	}
 
 	_, err := db.Upsert(
+		ctx,
 		Collection,
 		ByTaskIdAndExecution(taskId, execution),
 		bson.M{
@@ -183,7 +185,7 @@ func CreateAnnotationUpdate(annotation *TaskAnnotation, userDisplayName string) 
 	return update
 }
 
-func AddCreatedTicket(taskId string, execution int, ticket IssueLink, userDisplayName string) error {
+func AddCreatedTicket(ctx context.Context, taskId string, execution int, ticket IssueLink, userDisplayName string) error {
 	source := &Source{
 		Author:    userDisplayName,
 		Time:      time.Now(),
@@ -191,6 +193,7 @@ func AddCreatedTicket(taskId string, execution int, ticket IssueLink, userDispla
 	}
 	ticket.Source = source
 	_, err := db.Upsert(
+		ctx,
 		Collection,
 		ByTaskIdAndExecution(taskId, execution),
 		bson.M{

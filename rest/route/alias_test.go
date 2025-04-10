@@ -99,8 +99,8 @@ func TestGetAliasesHandler(t *testing.T) {
 				RepoRefId:             "repo_ref",
 				VersionControlEnabled: utility.TruePtr(),
 			}
-			require.NoError(t, repoRef.Upsert())
-			require.NoError(t, projectRef.Upsert())
+			require.NoError(t, repoRef.Replace(t.Context()))
+			require.NoError(t, projectRef.Replace(t.Context()))
 
 			repoAlias := &dbModel.ProjectAlias{
 				ProjectID: repoRef.Id,
@@ -112,8 +112,8 @@ func TestGetAliasesHandler(t *testing.T) {
 				Alias:     "project_alias",
 				Variant:   "test_variant",
 			}
-			require.NoError(t, repoAlias.Upsert())
-			require.NoError(t, projectAlias.Upsert())
+			require.NoError(t, repoAlias.Upsert(t.Context()))
+			require.NoError(t, projectAlias.Upsert(t.Context()))
 
 			projectConfig := &dbModel.ProjectConfig{
 				Id:      "project-1",

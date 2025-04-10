@@ -48,7 +48,7 @@ func (v *validateProjectHandler) Parse(ctx context.Context, r *http.Request) err
 	}
 
 	if !json.Valid(bytes) {
-		return errors.New("Invalid JSON format detected; potential incomplete or corrupted data. This may be an indication that evergreen is under high load.")
+		return errors.New("Invalid JSON format detected; potential incomplete or corrupted data.")
 	}
 
 	input := validator.ValidationInput{}

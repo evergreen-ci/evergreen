@@ -1070,7 +1070,7 @@ func podAllocatorJobs(ctx context.Context, _ evergreen.Environment, ts time.Time
 		}))
 	}
 
-	numInitializing, err := pod.CountByInitializing()
+	numInitializing, err := pod.CountByInitializing(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "counting initializing pods")
 	}

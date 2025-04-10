@@ -42,7 +42,7 @@ func PersistTaskQueue(ctx context.Context, distro string, tasks []task.Task, dis
 	}
 
 	queue := model.NewTaskQueue(distro, taskQueue, distroQueueInfo)
-	err := queue.Save()
+	err := queue.Save(ctx)
 	if err != nil {
 		return errors.WithStack(err)
 	}

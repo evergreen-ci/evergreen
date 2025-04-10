@@ -106,12 +106,12 @@ func TestRequireProjectAccessForSettings(t *testing.T) {
 	repoRef := model.RepoRef{ProjectRef: model.ProjectRef{
 		Id: "repo_id",
 	}}
-	err = repoRef.Upsert()
+	err = repoRef.Replace(ctx)
 	require.NoError(t, err)
 
 	obj := any(map[string]any{"projectIdentifier": "invalid_identifier"})
 	res, err := config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionSettings, AccessLevelEdit)
-	require.EqualError(t, err, "input: project 'invalid_identifier' not found")
+	require.EqualError(t, err, "input: project/repo 'invalid_identifier' not found")
 	require.Nil(t, res)
 	require.Equal(t, 0, callCount)
 
