@@ -22,23 +22,24 @@ import (
 )
 
 type Version struct {
-	Id                  string               `bson:"_id" json:"id,omitempty"`
-	CreateTime          time.Time            `bson:"create_time" json:"create_time,omitempty"`
-	StartTime           time.Time            `bson:"start_time" json:"start_time,omitempty"`
-	FinishTime          time.Time            `bson:"finish_time" json:"finish_time,omitempty"`
-	Revision            string               `bson:"gitspec" json:"revision,omitempty"`
-	Author              string               `bson:"author" json:"author,omitempty"`
-	AuthorEmail         string               `bson:"author_email" json:"author_email,omitempty"`
-	Message             string               `bson:"message" json:"message,omitempty"`
-	Status              string               `bson:"status" json:"status,omitempty"`
-	RevisionOrderNumber int                  `bson:"order,omitempty" json:"order,omitempty"`
-	Ignored             bool                 `bson:"ignored" json:"ignored"`
-	Owner               string               `bson:"owner_name" json:"owner_name,omitempty"`
-	Repo                string               `bson:"repo_name" json:"repo_name,omitempty"`
-	Branch              string               `bson:"branch_name" json:"branch_name,omitempty"`
-	BuildVariants       []VersionBuildStatus `bson:"build_variants_status,omitempty" json:"build_variants_status,omitempty"`
-	PeriodicBuildID     string               `bson:"periodic_build_id,omitempty" json:"periodic_build_id,omitempty"`
-	Aborted             bool                 `bson:"aborted,omitempty" json:"aborted,omitempty"`
+	Id                  string    `bson:"_id" json:"id,omitempty"`
+	CreateTime          time.Time `bson:"create_time" json:"create_time,omitempty"`
+	StartTime           time.Time `bson:"start_time" json:"start_time,omitempty"`
+	FinishTime          time.Time `bson:"finish_time" json:"finish_time,omitempty"`
+	Revision            string    `bson:"gitspec" json:"revision,omitempty"`
+	Author              string    `bson:"author" json:"author,omitempty"`
+	AuthorEmail         string    `bson:"author_email" json:"author_email,omitempty"`
+	Message             string    `bson:"message" json:"message,omitempty"`
+	Status              string    `bson:"status" json:"status,omitempty"`
+	RevisionOrderNumber int       `bson:"order,omitempty" json:"order,omitempty"`
+	Ignored             bool      `bson:"ignored" json:"ignored"`
+	Owner               string    `bson:"owner_name" json:"owner_name,omitempty"`
+	Repo                string    `bson:"repo_name" json:"repo_name,omitempty"`
+	Branch              string    `bson:"branch_name" json:"branch_name,omitempty"`
+	// kim: TODO: turn this into a helper, like GetDisplayTask
+	BuildVariants   []VersionBuildStatus `bson:"build_variants_status,omitempty" json:"build_variants_status,omitempty"`
+	PeriodicBuildID string               `bson:"periodic_build_id,omitempty" json:"periodic_build_id,omitempty"`
+	Aborted         bool                 `bson:"aborted,omitempty" json:"aborted,omitempty"`
 
 	// This stores whether or not a version has tasks which were activated.
 	// We use a bool ptr in order to to distinguish the unset value from the default value
@@ -114,9 +115,12 @@ func (v *Version) IsFinished() bool {
 	return evergreen.IsFinishedVersionStatus(v.Status)
 }
 
+// LastSuccessful returns the last successful version before the current
+// version.
 func (v *Version) LastSuccessful(ctx context.Context) (*Version, error) {
-	lastGreen, err := VersionFindOne(ctx, VersionBySuccessfulBeforeRevision(v.Identifier, v.RevisionOrderNumber).Sort(
-		[]string{"-" + VersionRevisionOrderNumberKey}))
+	lastGreen, err := VersionFindOne(ctx, VersionBySuccessfulBeforeRevision(v.Identifier, v.RevisionOrderNumber).
+		Project(bson.M{VersionBuildVariantsKey: 0}).
+		Sort([]string{"-" + VersionRevisionOrderNumberKey}))
 	if err != nil {
 		return nil, errors.Wrap(err, "retrieving last successful version")
 	}
@@ -125,13 +129,17 @@ func (v *Version) LastSuccessful(ctx context.Context) (*Version, error) {
 
 // ActivateAndSetBuildVariants activates the version and sets its build variants.
 func (v *Version) ActivateAndSetBuildVariants(ctx context.Context) error {
+	bvs, err := v.GetBuildVariants(ctx)
+	if err != nil {
+		return errors.Wrap(err, "getting build variant info for version")
+	}
 	return VersionUpdateOne(
 		ctx,
 		bson.M{VersionIdKey: v.Id},
 		bson.M{
 			"$set": bson.M{
 				VersionActivatedKey:     true,
-				VersionBuildVariantsKey: v.BuildVariants,
+				VersionBuildVariantsKey: bvs,
 			},
 		},
 	)
@@ -267,6 +275,35 @@ func (v *Version) UpdatePreGenerationProjectStorageMethod(ctx context.Context, m
 	}
 	v.PreGenerationProjectStorageMethod = method
 	return nil
+}
+
+// GetBuildVariants returns the build variants for the version. If the version
+// already has build variants cached, it'll use that; otherwise, it will load
+// the build variants from the DB. If the version does not exist in the DB yet,
+// it'll return v's own in-memory BuildVariants, if any.
+// kim: TODO: add unit test
+func (v *Version) GetBuildVariants(ctx context.Context) ([]VersionBuildStatus, error) {
+	if v.BuildVariants != nil {
+		// kim: TODO: confirm that DB will return nil if the field is empty.
+		// Then setting it to explicitly empty but not zero array below allows
+		// subsequent calls to avoid the query below.
+		return v.BuildVariants, nil
+	}
+	versionWithBuildVariants, err := VersionFindOneIdWithBuildVariants(ctx, v.Id)
+	if err != nil {
+		return nil, errors.Wrapf(err, "finding version '%s'", v.Id)
+	}
+	bvs := []VersionBuildStatus{}
+	// If the version is nil, then the version doesn't exist in the DB, so it's
+	// safe to assume that BuildVariants is not populated. This intentionally
+	// does not error if the version doesn't exist in the DB so that this method
+	// can be called even if the version hasn't been inserted into the DB yet.
+	if versionWithBuildVariants != nil && versionWithBuildVariants.BuildVariants != nil {
+		bvs = versionWithBuildVariants.BuildVariants
+	}
+	v.BuildVariants = bvs
+
+	return v.BuildVariants, nil
 }
 
 // VersionBuildStatus stores metadata relating to each build

@@ -1306,7 +1306,7 @@ func (r *mutationResolver) RestartVersions(ctx context.Context, versionID string
 	for _, version := range versionsToRestart {
 		if version.VersionId != nil {
 			currVersionID := utility.FromStringPtr(version.VersionId)
-			v, versionErr := model.VersionFindOneId(ctx, currVersionID)
+			v, versionErr := model.VersionFindOneIdWithBuildVariants(ctx, currVersionID)
 			if versionErr != nil {
 				return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", currVersionID, versionErr.Error()))
 			}

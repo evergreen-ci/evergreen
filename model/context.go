@@ -146,6 +146,7 @@ func (c *Context) populateTaskBuildVersion(ctx context.Context, taskId, buildId,
 		}
 	}
 	if len(versionId) > 0 {
+		// kim: TODO: look at usages
 		c.Version, err = VersionFindOne(ctx, VersionById(versionId))
 		if err != nil {
 			return "", err

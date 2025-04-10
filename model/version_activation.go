@@ -43,6 +43,11 @@ func ActivateElapsedBuildsAndTasks(ctx context.Context, v *Version) (bool, error
 	elapsedBuildIds := []string{}
 	allReadyTaskIds := []string{}
 	allIgnoreTaskIds := []string{}
+
+	if _, err := v.GetBuildVariants(ctx); err != nil {
+		return false, errors.Wrap(err, "getting build variant info for version")
+	}
+
 	for i, bv := range v.BuildVariants {
 		// If there are batchtime tasks, consider if these should/shouldn't be activated, regardless of build
 		ignoreTasks := []string{}

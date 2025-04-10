@@ -81,7 +81,7 @@ func TestTaskHistory(t *testing.T) {
 			Convey("tasks from a different project should be filtered"+
 				" out", func() {
 
-				vBefore, err := VersionFindOne(t.Context(), VersionById("v15"))
+				vBefore, err := VersionFindOneId(t.Context(), "v15")
 				So(err, ShouldBeNil)
 
 				taskHistoryChunk, err := taskHistoryIterator.GetChunk(ctx, vBefore, 5, 0, false)

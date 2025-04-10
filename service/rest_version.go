@@ -271,6 +271,8 @@ func (restapi restAPI) getVersionInfo(w http.ResponseWriter, r *http.Request) {
 
 	destVersion := &restVersion{}
 	copyVersion(srcVersion, destVersion)
+	// kim: NOTE: query above already loads the entire version. Might be best to
+	// convert BuildVariants to a method, like GetDisplayTask().
 	for _, buildStatus := range srcVersion.BuildVariants {
 		destVersion.BuildVariants = append(destVersion.BuildVariants, buildStatus.BuildVariant)
 		grip.Infof("adding BuildVariant %s", buildStatus.BuildVariant)
@@ -349,6 +351,7 @@ func (restapi restAPI) getVersionInfoViaRevision(w http.ResponseWriter, r *http.
 	projectId, err := model.GetIdForProject(r.Context(), projectName)
 	if err != nil {
 		gimlet.WriteJSONError(w, responseError{Message: "project doesn't exist"})
+		return
 	}
 	srcVersion, err := model.VersionFindOne(r.Context(), model.BaseVersionByProjectIdAndRevision(projectId, revision))
 	if err != nil || srcVersion == nil {
@@ -367,6 +370,12 @@ func (restapi restAPI) getVersionInfoViaRevision(w http.ResponseWriter, r *http.
 	destVersion := &restVersion{}
 	copyVersion(srcVersion, destVersion)
 
+	// kim: NOTE: query above already loads the entire version.
+	if _, err := srcVersion.GetBuildVariants(r.Context()); err != nil {
+		msg := fmt.Sprintf("Error finding build variant info for version '%v'", srcVersion.Id)
+		gimlet.WriteJSONInternalError(w, responseError{Message: msg})
+		return
+	}
 	for _, buildStatus := range srcVersion.BuildVariants {
 		destVersion.BuildVariants = append(destVersion.BuildVariants, buildStatus.BuildVariant)
 		grip.Infof("adding BuildVariant %s", buildStatus.BuildVariant)
