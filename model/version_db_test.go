@@ -43,7 +43,7 @@ func TestVersionByMostRecentNonIgnored(t *testing.T) {
 		CreateTime: ts,
 	}
 
-	assert.NoError(t, db.InsertMany(VersionCollection, v1, v2, v3, v4))
+	assert.NoError(t, db.InsertMany(t.Context(), VersionCollection, v1, v2, v3, v4))
 
 	v, err := VersionFindOne(t.Context(), VersionByMostRecentNonIgnored("proj", ts))
 	assert.NoError(t, err)
@@ -364,7 +364,7 @@ func TestVersionByProjectIdAndRevisionPrefix(t *testing.T) {
 		RevisionOrderNumber: 1,
 	}
 
-	assert.NoError(t, db.InsertMany(VersionCollection, v1, v2, v3, v4, v5))
+	assert.NoError(t, db.InsertMany(t.Context(), VersionCollection, v1, v2, v3, v4, v5))
 
 	v, err := VersionFindOne(t.Context(), VersionByProjectIdAndCreateTime("proj", ts))
 	assert.NoError(t, err)

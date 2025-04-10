@@ -1948,7 +1948,7 @@ func ActivateTasks(ctx context.Context, tasks []Task, activationTime time.Time, 
 	for _, t := range tasksToActivate {
 		logs = append(logs, event.GetTaskActivatedEvent(t.Id, t.Execution, caller))
 	}
-	grip.Error(message.WrapError(event.LogManyEvents(logs), message.Fields{
+	grip.Error(message.WrapError(event.LogManyEvents(ctx, logs), message.Fields{
 		"message":  "problem logging task activated events",
 		"task_ids": taskIDs,
 		"caller":   caller,
@@ -2116,7 +2116,7 @@ func activateDeactivatedDependencies(ctx context.Context, tasksToActivate map[st
 	for _, t := range tasksToActivate {
 		logs = append(logs, event.GetTaskActivatedEvent(t.Id, t.Execution, caller))
 	}
-	grip.Error(message.WrapError(event.LogManyEvents(logs), message.Fields{
+	grip.Error(message.WrapError(event.LogManyEvents(ctx, logs), message.Fields{
 		"message":  "problem logging task activated events",
 		"task_ids": taskIDsToActivate,
 		"caller":   caller,
@@ -2234,7 +2234,7 @@ func DeactivateTasks(ctx context.Context, tasks []Task, updateDependencies bool,
 	for _, t := range tasks {
 		logs = append(logs, event.GetTaskDeactivatedEvent(t.Id, t.Execution, caller))
 	}
-	grip.Error(message.WrapError(event.LogManyEvents(logs), message.Fields{
+	grip.Error(message.WrapError(event.LogManyEvents(ctx, logs), message.Fields{
 		"message":  "problem logging task deactivated events",
 		"task_ids": taskIDs,
 		"caller":   caller,
@@ -2289,7 +2289,7 @@ func deactivateDependencies(ctx context.Context, tasksToUpdate []Task, taskIDsTo
 	for _, t := range tasksToUpdate {
 		logs = append(logs, event.GetTaskDeactivatedEvent(t.Id, t.Execution, caller))
 	}
-	grip.Error(message.WrapError(event.LogManyEvents(logs), message.Fields{
+	grip.Error(message.WrapError(event.LogManyEvents(ctx, logs), message.Fields{
 		"message":  "problem logging task deactivated events",
 		"task_ids": taskIDsToUpdate,
 		"caller":   caller,
@@ -2971,7 +2971,7 @@ func abortTasksByQuery(ctx context.Context, q bson.M, reason AbortInfo) error {
 	if err != nil {
 		return errors.Wrap(err, "setting aborted statuses")
 	}
-	event.LogManyTaskAbortRequests(ids, reason.User)
+	event.LogManyTaskAbortRequests(ctx, ids, reason.User)
 	return nil
 }
 

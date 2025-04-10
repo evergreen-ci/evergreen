@@ -72,7 +72,7 @@ func getTaskEvent(taskId string, eventType string, eventData TaskEventData) Even
 	}
 }
 
-func logManyTaskEvents(taskIds []string, eventType string, eventData TaskEventData) {
+func logManyTaskEvents(ctx context.Context, taskIds []string, eventType string, eventData TaskEventData) {
 	if len(taskIds) == 0 {
 		grip.Error(message.Fields{
 			"message":    "logManyTaskEvents cannot be called with no task IDs",
@@ -94,7 +94,7 @@ func logManyTaskEvents(taskIds []string, eventType string, eventData TaskEventDa
 		}
 		events = append(events, event)
 	}
-	if err := LogManyEvents(events); err != nil {
+	if err := LogManyEvents(ctx, events); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"resource_type": ResourceTypeTask,
 			"message":       "error logging events",
@@ -225,14 +225,14 @@ func LogTaskAbortRequest(ctx context.Context, taskId string, execution int, user
 }
 
 // LogManyTaskAbortRequests updates the DB with task abort request events.
-func LogManyTaskAbortRequests(taskIds []string, userId string) {
-	logManyTaskEvents(taskIds, TaskAbortRequest,
+func LogManyTaskAbortRequests(ctx context.Context, taskIds []string, userId string) {
+	logManyTaskEvents(ctx, taskIds, TaskAbortRequest,
 		TaskEventData{UserId: userId})
 }
 
 // LogManyTaskPriority updates the DB with a task started events.
-func LogManyTaskPriority(taskIds []string, userId string, priority int64) {
-	logManyTaskEvents(taskIds, TaskPriorityChanged,
+func LogManyTaskPriority(ctx context.Context, taskIds []string, userId string, priority int64) {
+	logManyTaskEvents(ctx, taskIds, TaskPriorityChanged,
 		TaskEventData{UserId: userId, Priority: priority})
 }
 

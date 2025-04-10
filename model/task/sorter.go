@@ -32,7 +32,7 @@ func (t Tasks) Export() []Task {
 }
 
 func (t Tasks) Insert(ctx context.Context) error {
-	return db.InsertMany(Collection, t.getPayload()...)
+	return db.InsertMany(ctx, Collection, t.getPayload()...)
 }
 
 func (t Tasks) InsertUnordered(ctx context.Context) error {

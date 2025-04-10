@@ -6705,7 +6705,7 @@ func TestEvalStepbackTaskGroup(t *testing.T) {
 		Id:        "prev_success_v1",
 		Requester: evergreen.RepotrackerVersionRequester,
 	}
-	require.NoError(t, db.InsertMany(VersionCollection, v1, v2, v3))
+	require.NoError(t, db.InsertMany(t.Context(), VersionCollection, v1, v2, v3))
 	pp := ParserProject{
 		Stepback: utility.TruePtr(),
 	}
@@ -6722,7 +6722,7 @@ func TestEvalStepbackTaskGroup(t *testing.T) {
 	b2 := build.Build{
 		Id: "prev_b2",
 	}
-	require.NoError(t, db.InsertMany(build.Collection, b1, b2))
+	require.NoError(t, db.InsertMany(t.Context(), build.Collection, b1, b2))
 	t1 := task.Task{
 		Id:                  "t1",
 		Project:             pRef.Id,
@@ -6843,7 +6843,7 @@ func TestEvalStepbackTaskGroup(t *testing.T) {
 		Activated:           true,
 		RevisionOrderNumber: 1,
 	}
-	assert.NoError(t, db.InsertMany(task.Collection, t1, t2, t3, prevT1, prevT2, prevT3, prevSuccessT1, prevSuccessT2, prevSuccessT3))
+	assert.NoError(t, db.InsertMany(t.Context(), task.Collection, t1, t2, t3, prevT1, prevT2, prevT3, prevSuccessT1, prevSuccessT2, prevSuccessT3))
 	assert.NoError(t, evalStepback(ctx, &t2, evergreen.TaskFailed, pRef, project))
 
 	// verify only the previous t1 and t2 are stepped back

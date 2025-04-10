@@ -266,7 +266,7 @@ func TestGetFinalizedChildPatchIdsForPatch(t *testing.T) {
 		},
 	}
 
-	assert.NoError(t, db.InsertMany(Collection, p, childPatch, childPatch2))
+	assert.NoError(t, db.InsertMany(t.Context(), Collection, p, childPatch, childPatch2))
 	childPatchIds, err := GetFinalizedChildPatchIdsForPatch(t.Context(), p.Id.Hex())
 	assert.NoError(t, err)
 	require.Len(t, childPatchIds, 1)
@@ -313,7 +313,7 @@ func TestLatestGithubPRPatch(t *testing.T) {
 		},
 	}
 
-	assert.NoError(t, db.InsertMany(Collection, patch1, patch2, cqPatch, wrongPRPatch))
+	assert.NoError(t, db.InsertMany(t.Context(), Collection, patch1, patch2, cqPatch, wrongPRPatch))
 	p, err := FindLatestGithubPRPatch("parks", "rec", 12)
 	assert.NoError(t, err)
 	require.NotNil(t, p)
@@ -342,7 +342,7 @@ func TestConsolidatePatchesForUser(t *testing.T) {
 		Author:      "new_me",
 		PatchNumber: 2,
 	}
-	assert.NoError(t, db.InsertMany(Collection, p1, p2, pNew, pNewAlso))
+	assert.NoError(t, db.InsertMany(t.Context(), Collection, p1, p2, pNew, pNewAlso))
 
 	newUsr := &user.DBUser{
 		Id:          "new_me",

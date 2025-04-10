@@ -634,7 +634,7 @@ func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 			Status:       evergreen.TaskSucceeded,
 			Activated:    true,
 		}
-		s.NoError(db.InsertMany(task.Collection, t1, t2, tgt1, tgt2, tgt3, tgt4,
+		s.NoError(db.InsertMany(s.ctx, task.Collection, t1, t2, tgt1, tgt2, tgt3, tgt4,
 			dt1, et1, dt2, et2, notActivated, diffTask1, diffTask2))
 
 		intent, err := patch.NewCliIntent(patch.CLIIntentParams{

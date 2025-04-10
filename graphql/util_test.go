@@ -299,7 +299,7 @@ func TestConcurrentlyBuildVersionsMatchingTasksMap(t *testing.T) {
 		DisplayTaskId:           utility.ToStringPtr(""),
 	}
 
-	assert.NoError(t, db.InsertMany(task.Collection, t1, t2, t3, t4, t5, t6))
+	assert.NoError(t, db.InsertMany(t.Context(), task.Collection, t1, t2, t3, t4, t5, t6))
 
 	opts := task.HasMatchingTasksOptions{
 		TaskNames:                  []string{"agent"},

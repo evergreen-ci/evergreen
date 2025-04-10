@@ -46,7 +46,7 @@ func (e *EventLogEntry) MarkProcessed(ctx context.Context) error {
 	return nil
 }
 
-func LogManyEvents(events []EventLogEntry) error {
+func LogManyEvents(ctx context.Context, events []EventLogEntry) error {
 	catcher := grip.NewBasicCatcher()
 	interfaces := make([]any, len(events))
 	for i := range events {
@@ -61,7 +61,7 @@ func LogManyEvents(events []EventLogEntry) error {
 		return errors.Wrap(catcher.Resolve(), "invalid events")
 	}
 
-	return db.InsertMany(EventCollection, interfaces...)
+	return db.InsertMany(ctx, EventCollection, interfaces...)
 }
 
 // LogManyUnorderedEventsWithContext logs many events without any ordering on

@@ -36,7 +36,7 @@ func TestConsolidateHostsForUser(t *testing.T) {
 		StartedBy: "NOT me",
 		Status:    evergreen.HostRunning,
 	}
-	assert.NoError(t, db.InsertMany(Collection, h1, h2, h3, h4))
+	assert.NoError(t, db.InsertMany(t.Context(), Collection, h1, h2, h3, h4))
 
 	v1 := Volume{
 		ID:        "v1",
@@ -46,7 +46,7 @@ func TestConsolidateHostsForUser(t *testing.T) {
 		ID:        "v2",
 		CreatedBy: "NOT me",
 	}
-	assert.NoError(t, db.InsertMany(VolumesCollection, v1, v2))
+	assert.NoError(t, db.InsertMany(t.Context(), VolumesCollection, v1, v2))
 
 	ctx := context.TODO()
 	assert.NoError(t, ConsolidateHostsForUser(ctx, "me", "new_me"))
@@ -894,7 +894,7 @@ func TestCountHostsCanRunTasks(t *testing.T) {
 		StartedBy: evergreen.User,
 	}
 
-	assert.NoError(t, db.InsertMany(Collection, h1, h2, h3, h4, h5, h6, h7, h8, h9, h10))
+	assert.NoError(t, db.InsertMany(t.Context(), Collection, h1, h2, h3, h4, h5, h6, h7, h8, h9, h10))
 
 	ctx := context.TODO()
 	count, err := CountHostsCanRunTasks(ctx, "d1")

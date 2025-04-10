@@ -290,7 +290,7 @@ func setTasksPriority(ctx context.Context, query bson.M, priority int64, caller 
 	for _, t := range tasks {
 		taskIds = append(taskIds, t.Id)
 	}
-	event.LogManyTaskPriority(taskIds, caller, priority)
+	event.LogManyTaskPriority(ctx, taskIds, caller, priority)
 
 	// Tasks with negative priority should never run, so we unschedule them.
 	if priority < 0 {

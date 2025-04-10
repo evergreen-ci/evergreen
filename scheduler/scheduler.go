@@ -215,7 +215,7 @@ func SpawnHosts(ctx context.Context, d distro.Distro, newHostsNeeded int, pool *
 	for _, h := range hostsSpawned {
 		hostIDs = append(hostIDs, h.Id)
 	}
-	event.LogManyHostsCreated(hostIDs)
+	event.LogManyHostsCreated(ctx, hostIDs)
 
 	grip.Info(message.Fields{
 		"runner":        RunnerName,

@@ -502,7 +502,7 @@ func (s *eventSuite) TestLogManyEvents() {
 		Data:         registry.newEventFromType(ResourceTypeTask),
 		ResourceType: "TASK",
 	}
-	s.NoError(LogManyEvents([]EventLogEntry{event1, event2}))
+	s.NoError(LogManyEvents(s.T().Context(), []EventLogEntry{event1, event2}))
 	events := []EventLogEntry{}
 	s.NoError(db.FindAllQ(EventCollection, db.Query(bson.M{}), &events))
 	s.Len(events, 2)

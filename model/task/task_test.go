@@ -165,7 +165,7 @@ func TestGetDisplayStatusAndColorSort(t *testing.T) {
 		DisplayTaskId: utility.ToStringPtr(""),
 	}
 
-	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11))
+	assert.NoError(t, db.InsertMany(t.Context(), Collection, t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11))
 
 	pipeline, err := getTasksByVersionPipeline("v1", GetTasksByVersionOptions{})
 	require.NoError(t, err)
@@ -1649,7 +1649,7 @@ func TestDeactivateStepbackTasksForProject(t *testing.T) {
 		DisplayName:  "myTask",
 		Requester:    evergreen.RepotrackerVersionRequester,
 	}
-	assert.NoError(t, db.InsertMany(Collection, taskDependingOnStepbackTask, wrongProjectTask,
+	assert.NoError(t, db.InsertMany(t.Context(), Collection, taskDependingOnStepbackTask, wrongProjectTask,
 		wrongTaskNameTask, wrongVariantTask, runningStepbackTask, notStepbackTask))
 	assert.NoError(t, DeactivateStepbackTask(ctx, "p1", "myVariant", "myTask", "me"))
 
@@ -3932,7 +3932,7 @@ func TestAbortVersionTasks(t *testing.T) {
 		Status:         evergreen.TaskStarted,
 		ExecutionTasks: []string{"et1", "et2", "et3"},
 	}
-	assert.NoError(t, db.InsertMany(Collection, finishedExecTask, failingExecTask, otherExecTask, dt))
+	assert.NoError(t, db.InsertMany(t.Context(), Collection, finishedExecTask, failingExecTask, otherExecTask, dt))
 
 	assert.NoError(t, AbortVersionTasks(ctx, "v1", AbortInfo{TaskID: "et2"}))
 

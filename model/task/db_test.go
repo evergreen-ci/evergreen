@@ -167,7 +167,7 @@ func TestNonExecutionTasksByVersion(t *testing.T) {
 		Version:       "v2",
 		DisplayTaskId: nil, // legacy, not populated
 	}
-	assert.NoError(t, db.InsertMany(Collection, displayTask, regularTask, wrongVersionTask, execTask, legacyTask))
+	assert.NoError(t, db.InsertMany(t.Context(), Collection, displayTask, regularTask, wrongVersionTask, execTask, legacyTask))
 
 	tasks, err := Find(ctx, NonExecutionTasksByVersions([]string{"v1", "v2"}))
 	assert.NoError(t, err)
@@ -1009,7 +1009,7 @@ func TestGetTasksByVersionExecTasks(t *testing.T) {
 		DisplayOnly:    true,
 		ExecutionTasks: []string{"execWithDisplayId"},
 	}
-	assert.NoError(t, db.InsertMany(Collection, t1, t2, dt))
+	assert.NoError(t, db.InsertMany(t.Context(), Collection, t1, t2, dt))
 
 	ctx := context.TODO()
 	// execution tasks have been filtered outs
@@ -1076,7 +1076,7 @@ func TestGetTasksByVersionAnnotations(t *testing.T) {
 		Status:        evergreen.TaskFailed,
 		DisplayTaskId: utility.ToStringPtr(""),
 	}
-	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3))
+	assert.NoError(t, db.InsertMany(t.Context(), Collection, t1, t2, t3))
 
 	ctx := context.TODO()
 
@@ -1142,7 +1142,7 @@ func TestGetTasksByVersionBaseTasks(t *testing.T) {
 		Revision:      "def123",
 		DisplayTaskId: utility.ToStringPtr(""),
 	}
-	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4))
+	assert.NoError(t, db.InsertMany(t.Context(), Collection, t1, t2, t3, t4))
 
 	ctx := context.TODO()
 
@@ -1218,7 +1218,7 @@ func TestGetTasksByVersionErrorHandling(t *testing.T) {
 			task.BuildVariant = fmt.Sprintf("bv_%d", j)
 			tasksToInsert = append(tasksToInsert, task)
 		}
-		assert.NoError(t, db.InsertMany(Collection, tasksToInsert...))
+		assert.NoError(t, db.InsertMany(t.Context(), Collection, tasksToInsert...))
 	}
 	// Normal Patch builds
 	opts := GetTasksByVersionOptions{}
@@ -1285,7 +1285,7 @@ func TestGetTaskStatusesByVersion(t *testing.T) {
 		TimeTaken:     2 * time.Hour,
 		DisplayTaskId: utility.ToStringPtr(""),
 	}
-	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4))
+	assert.NoError(t, db.InsertMany(t.Context(), Collection, t1, t2, t3, t4))
 	ctx := context.TODO()
 	tasks, err := GetTaskStatusesByVersion(ctx, "v1")
 	assert.NoError(t, err)
@@ -1347,7 +1347,7 @@ func TestGetTasksByVersionSorting(t *testing.T) {
 		DisplayTaskId: utility.ToStringPtr(""),
 	}
 
-	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4))
+	assert.NoError(t, db.InsertMany(t.Context(), Collection, t1, t2, t3, t4))
 
 	ctx := context.TODO()
 
@@ -1470,7 +1470,7 @@ func TestGetTaskStatsByVersion(t *testing.T) {
 		Status:        evergreen.TaskFailed,
 		DisplayTaskId: utility.ToStringPtr(""),
 	}
-	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4, t5, t6))
+	assert.NoError(t, db.InsertMany(t.Context(), Collection, t1, t2, t3, t4, t5, t6))
 	ctx := context.TODO()
 	opts := GetTasksByVersionOptions{}
 	stats, err := GetTaskStatsByVersion(ctx, "v1", opts)
@@ -1479,7 +1479,7 @@ func TestGetTaskStatsByVersion(t *testing.T) {
 	assert.True(t, stats.ETA.Equal(time.Date(2009, time.November, 10, 14, 30, 0, 0, time.UTC)))
 
 	assert.NoError(t, db.ClearCollections(Collection))
-	assert.NoError(t, db.InsertMany(Collection, t3, t4, t5, t6))
+	assert.NoError(t, db.InsertMany(t.Context(), Collection, t3, t4, t5, t6))
 	stats, err = GetTaskStatsByVersion(ctx, "v1", opts)
 	assert.NoError(t, err)
 	assert.Nil(t, stats.ETA)
@@ -1542,7 +1542,7 @@ func TestGetGroupedTaskStatsByVersion(t *testing.T) {
 		BuildVariantDisplayName: "Build Variant 2",
 		DisplayTaskId:           utility.ToStringPtr(""),
 	}
-	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4, t5, t6))
+	assert.NoError(t, db.InsertMany(t.Context(), Collection, t1, t2, t3, t4, t5, t6))
 
 	t.Run("Fetch GroupedTaskStats with no filters applied", func(t *testing.T) {
 
@@ -1676,7 +1676,7 @@ func TestGetBaseStatusesForActivatedTasks(t *testing.T) {
 		BuildVariant:  "bv_2",
 		DisplayTaskId: utility.ToStringPtr(""),
 	}
-	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4, t5))
+	assert.NoError(t, db.InsertMany(t.Context(), Collection, t1, t2, t3, t4, t5))
 	ctx := context.TODO()
 	statuses, err := GetBaseStatusesForActivatedTasks(ctx, "v1", "v1_base")
 	assert.NoError(t, err)
@@ -1685,7 +1685,7 @@ func TestGetBaseStatusesForActivatedTasks(t *testing.T) {
 	assert.Equal(t, evergreen.TaskSucceeded, statuses[1])
 
 	assert.NoError(t, db.ClearCollections(Collection))
-	assert.NoError(t, db.InsertMany(Collection, t1, t2, t5))
+	assert.NoError(t, db.InsertMany(t.Context(), Collection, t1, t2, t5))
 	statuses, err = GetBaseStatusesForActivatedTasks(ctx, "v1", "v1_base")
 	assert.NoError(t, err)
 	assert.Empty(t, statuses)
@@ -1750,7 +1750,7 @@ func TestHasMatchingTasks(t *testing.T) {
 		DisplayTaskId:           utility.ToStringPtr(""),
 	}
 
-	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4, t5, t6))
+	assert.NoError(t, db.InsertMany(t.Context(), Collection, t1, t2, t3, t4, t5, t6))
 	opts := HasMatchingTasksOptions{
 		Statuses: []string{evergreen.TaskFailed},
 	}
@@ -2055,7 +2055,7 @@ func TestHasActivatedDependentTasks(t *testing.T) {
 			{TaskId: "secondTask"},
 		},
 	}
-	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3))
+	assert.NoError(t, db.InsertMany(t.Context(), Collection, t1, t2, t3))
 
 	hasDependentTasks, err := HasActivatedDependentTasks(ctx, "current")
 	assert.NoError(t, err)
@@ -2230,7 +2230,7 @@ func TestGetPendingGenerateTasks(t *testing.T) {
 		EstimatedNumGeneratedTasks: utility.ToIntPtr(4),
 		GeneratedTasks:             false,
 	}
-	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4))
+	assert.NoError(t, db.InsertMany(t.Context(), Collection, t1, t2, t3, t4))
 
 	ctx := context.TODO()
 	numPending, err := GetPendingGenerateTasks(ctx)

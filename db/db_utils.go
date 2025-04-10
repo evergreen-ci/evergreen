@@ -89,20 +89,7 @@ func Insert(ctx context.Context, collection string, item any) error {
 	return db.C(collection).Insert(item)
 }
 
-func InsertMany(collection string, items ...any) error {
-	if len(items) == 0 {
-		return nil
-	}
-	session, db, err := GetGlobalSessionFactory().GetSession()
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	defer session.Close()
-
-	return db.C(collection).Insert(items...)
-}
-
-func InsertManyContext(ctx context.Context, collection string, items ...any) error {
+func InsertMany(ctx context.Context, collection string, items ...any) error {
 	if len(items) == 0 {
 		return nil
 	}

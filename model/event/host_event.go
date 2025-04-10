@@ -118,7 +118,7 @@ func LogHostCreated(ctx context.Context, hostId string) {
 }
 
 // LogManyHostsCreated is the same as LogHostCreated but for multiple hosts.
-func LogManyHostsCreated(hostIDs []string) {
+func LogManyHostsCreated(ctx context.Context, hostIDs []string) {
 	events := make([]EventLogEntry, 0, len(hostIDs))
 	for _, hostID := range hostIDs {
 		e := EventLogEntry{
@@ -130,7 +130,7 @@ func LogManyHostsCreated(hostIDs []string) {
 		}
 		events = append(events, e)
 	}
-	if err := LogManyEvents(events); err != nil {
+	if err := LogManyEvents(ctx, events); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"resource_type": ResourceTypeHost,
 			"message":       "error logging events",

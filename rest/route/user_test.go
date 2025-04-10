@@ -579,7 +579,7 @@ func TestGetUsersForRole(t *testing.T) {
 			"nothing_useful",
 		},
 	}
-	assert.NoError(t, db.InsertMany(user.Collection, u1, u2, u3))
+	assert.NoError(t, db.InsertMany(t.Context(), user.Collection, u1, u2, u3))
 
 	req, err := http.NewRequest(http.MethodGet, "http://example.com/api/rest/v2/roles/basic_project_access/users", nil)
 	require.NoError(t, err)
@@ -692,7 +692,7 @@ func TestGetUsersForResourceId(t *testing.T) {
 			"bot_access",
 		},
 	}
-	assert.NoError(t, db.InsertMany(user.Collection, u1, u2, u3, u4))
+	assert.NoError(t, db.InsertMany(t.Context(), user.Collection, u1, u2, u3, u4))
 	basicRole := gimlet.Role{
 		ID:    "basic_project_access",
 		Scope: "some_projects",
@@ -936,7 +936,7 @@ func TestRenameUser(t *testing.T) {
 				UserHost:  true,
 				Status:    evergreen.HostRunning,
 			}
-			assert.NoError(t, db.InsertMany(host.Collection, h1, h2, h3))
+			assert.NoError(t, db.InsertMany(t.Context(), host.Collection, h1, h2, h3))
 
 			v1 := host.Volume{
 				ID:        "v1",
@@ -946,7 +946,7 @@ func TestRenameUser(t *testing.T) {
 				ID:        "v2",
 				CreatedBy: "you",
 			}
-			assert.NoError(t, db.InsertMany(host.VolumesCollection, v1, v2))
+			assert.NoError(t, db.InsertMany(t.Context(), host.VolumesCollection, v1, v2))
 
 			p1 := patch.Patch{
 				Id:          mgobson.NewObjectId(),
@@ -958,7 +958,7 @@ func TestRenameUser(t *testing.T) {
 				Author:      "me",
 				PatchNumber: 7,
 			}
-			assert.NoError(t, db.InsertMany(patch.Collection, p1, p2))
+			assert.NoError(t, db.InsertMany(t.Context(), patch.Collection, p1, p2))
 
 			someOtherUser := user.DBUser{
 				Id:           "some_other_me",

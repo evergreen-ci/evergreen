@@ -112,7 +112,7 @@ func TestLogManyTestEvents(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 	require.NoError(db.ClearCollections(EventCollection))
-	LogManyTaskAbortRequests([]string{"task_1", "task_2"}, "example_user")
+	LogManyTaskAbortRequests(t.Context(), []string{"task_1", "task_2"}, "example_user")
 	events := []EventLogEntry{}
 	assert.NoError(db.FindAllQContext(t.Context(), EventCollection, db.Query(bson.M{}), &events))
 	assert.Len(events, 2)
