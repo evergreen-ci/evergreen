@@ -18,7 +18,7 @@ Parameters can be defined in multiple different places, and can overwrite existi
 
 * Project-specific default parameters defined in the user’s local configuration.
 
-* Default parameters defined for the patch alias on the Project Page, if applicable (only project admins have access to these). 
+* Default parameters defined for the patch alias on the Project Page, if applicable (only project admins have access to these). These do not apply to build variants. 
 
 * Default parameters defined in the project YAML.
 
