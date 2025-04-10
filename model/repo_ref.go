@@ -34,7 +34,7 @@ var (
 )
 
 func (r *RepoRef) Add(ctx context.Context, creator *user.DBUser) error {
-	if err := r.Upsert(); err != nil {
+	if err := r.Replace(ctx); err != nil {
 		return errors.Wrap(err, "upserting repo ref")
 	}
 	return r.addPermissions(ctx, creator)
@@ -45,13 +45,14 @@ func (r *RepoRef) Insert() error {
 	return errors.New("insert not supported for repoRef")
 }
 
-// Upsert updates the project ref in the db if an entry already exists,
+// Replace updates the project ref in the db if an entry already exists,
 // overwriting the existing ref. If no project ref exists, one is created.
 // Ensures that fields that aren't relevant to repos aren't set.
-func (r *RepoRef) Upsert() error {
+func (r *RepoRef) Replace(ctx context.Context) error {
 	r.RepoRefId = ""
 	r.Branch = ""
-	_, err := db.Upsert(
+	_, err := db.ReplaceContext(
+		ctx,
 		RepoRefCollection,
 		bson.M{
 			RepoRefIdKey: r.Id,
@@ -59,6 +60,12 @@ func (r *RepoRef) Upsert() error {
 		r,
 	)
 	return err
+}
+
+func FindAllRepoRefs(ctx context.Context) ([]RepoRef, error) {
+	repoRefs := []RepoRef{}
+	err := db.FindAllQ(RepoRefCollection, db.Query(nil), &repoRefs)
+	return repoRefs, err
 }
 
 // findOneRepoRefQ returns one RepoRef that satisfies the query.

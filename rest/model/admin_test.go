@@ -129,6 +129,7 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.HostInit.CloudStatusBatchSize, apiSettings.HostInit.CloudStatusBatchSize)
 	assert.EqualValues(testSettings.HostInit.MaxTotalDynamicHosts, apiSettings.HostInit.MaxTotalDynamicHosts)
 	assert.EqualValues(testSettings.Jira.BasicAuthConfig.Username, utility.FromStringPtr(apiSettings.Jira.BasicAuthConfig.Username))
+	assert.EqualValues(testSettings.Jira.PersonalAccessToken, utility.FromStringPtr(apiSettings.Jira.PersonalAccessToken))
 	assert.EqualValues(testSettings.LoggerConfig.DefaultLevel, utility.FromStringPtr(apiSettings.LoggerConfig.DefaultLevel))
 	assert.EqualValues(testSettings.LoggerConfig.Buffer.Count, apiSettings.LoggerConfig.Buffer.Count)
 	assert.EqualValues(testSettings.LoggerConfig.Buffer.UseAsync, apiSettings.LoggerConfig.Buffer.UseAsync)
@@ -183,6 +184,11 @@ func TestModelConversion(t *testing.T) {
 		assert.EqualValues(cp.WindowsVersion, utility.FromStringPtr(apiSettings.Providers.AWS.Pod.ECS.CapacityProviders[i].WindowsVersion))
 	}
 	assert.EqualValues(testSettings.Providers.AWS.Pod.SecretsManager.SecretPrefix, utility.FromStringPtr(apiSettings.Providers.AWS.Pod.SecretsManager.SecretPrefix))
+	require.Len(apiSettings.Providers.AWS.AccountRoles, len(testSettings.Providers.AWS.AccountRoles))
+	for i, ar := range testSettings.Providers.AWS.AccountRoles {
+		assert.Equal(ar.Account, utility.FromStringPtr(apiSettings.Providers.AWS.AccountRoles[i].Account))
+		assert.Equal(ar.Role, utility.FromStringPtr(apiSettings.Providers.AWS.AccountRoles[i].Role))
+	}
 	assert.EqualValues(testSettings.Providers.Docker.APIVersion, utility.FromStringPtr(apiSettings.Providers.Docker.APIVersion))
 	assert.EqualValues(testSettings.RepoTracker.MaxConcurrentRequests, apiSettings.RepoTracker.MaxConcurrentRequests)
 	assert.EqualValues(testSettings.Scheduler.TaskFinder, utility.FromStringPtr(apiSettings.Scheduler.TaskFinder))
@@ -263,6 +269,7 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.ContainerPools.Pools[0].Port, dbSettings.ContainerPools.Pools[0].Port)
 	assert.EqualValues(testSettings.HostInit.HostThrottle, dbSettings.HostInit.HostThrottle)
 	assert.EqualValues(testSettings.Jira.BasicAuthConfig.Username, dbSettings.Jira.BasicAuthConfig.Username)
+	assert.EqualValues(testSettings.Jira.PersonalAccessToken, dbSettings.Jira.PersonalAccessToken)
 	assert.EqualValues(testSettings.LoggerConfig.DefaultLevel, dbSettings.LoggerConfig.DefaultLevel)
 	assert.EqualValues(testSettings.LoggerConfig.Buffer.Count, dbSettings.LoggerConfig.Buffer.Count)
 	assert.EqualValues(testSettings.LoggerConfig.Buffer.UseAsync, dbSettings.LoggerConfig.Buffer.UseAsync)

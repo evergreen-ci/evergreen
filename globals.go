@@ -380,6 +380,11 @@ const (
 	PresignMinimumValidTime = 15 * time.Minute
 )
 
+var TestFailureStatuses = []string{
+	TestFailedStatus,
+	TestSilentlyFailedStatus,
+}
+
 var TaskStatuses = []string{
 	TaskStarted,
 	TaskSucceeded,
@@ -1103,8 +1108,10 @@ func IsGithubMergeQueueRequester(requester string) bool {
 	return requester == GithubMergeRequester
 }
 
+// ShouldConsiderBatchtime checks if the requester is for a mainline commit,
+// as this is the only requester checked for project activation.
 func ShouldConsiderBatchtime(requester string) bool {
-	return !IsPatchRequester(requester) && requester != AdHocRequester && requester != GitTagRequester
+	return requester == RepotrackerVersionRequester
 }
 
 func PermissionsDisabledForTests() bool {
@@ -1490,7 +1497,7 @@ var validKeyTypes = []string{
 	publicKeyECDSA,
 }
 
-var sensitiveCollections = []string{"project_vars", "events"}
+var sensitiveCollections = []string{"events"}
 
 // ValidateSSHKey errors if the given key does not start with one of the allowed prefixes.
 func ValidateSSHKey(key string) error {

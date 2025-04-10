@@ -987,7 +987,7 @@ func (s *taskDAGDispatchServiceSuite) TestIsRefreshFindNextTaskThreadSafe() {
 	service, err := newDistroTaskDAGDispatchService(s.taskQueue, time.Nanosecond)
 	s.NoError(err)
 	s.taskQueue.Queue = s.refreshTaskQueue(s.ctx, service)
-	s.Require().NoError(s.taskQueue.Save())
+	s.Require().NoError(s.taskQueue.Save(s.ctx))
 	service.lastUpdated = time.Now().Add(-1 * time.Second)
 	dispatcher := &taskDispatchService{
 		cachedDispatchers: map[string]CachedDispatcher{

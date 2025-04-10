@@ -103,7 +103,7 @@ func (j *cacheHistoricalTaskDataJob) Run(ctx context.Context) {
 
 	var statsToUpdate []taskstats.StatsToUpdate
 	timingMsg["find_task_stats_to_update"] = reportTiming(func() {
-		statsToUpdate, err = taskstats.FindStatsToUpdate(taskstats.FindStatsToUpdateOptions{
+		statsToUpdate, err = taskstats.FindStatsToUpdate(ctx, taskstats.FindStatsToUpdateOptions{
 			ProjectID:  j.ProjectID,
 			Requesters: j.Requesters,
 			Start:      update_window_start,
@@ -149,7 +149,7 @@ func (j *cacheHistoricalTaskDataJob) Run(ctx context.Context) {
 	}
 
 	timingMsg["save_stats_status"] = reportTiming(func() {
-		j.AddError(errors.Wrap(taskstats.UpdateStatsStatus(j.ProjectID, startAt, update_window_end, time.Since(startAt)), "updating daily task stats status"))
+		j.AddError(errors.Wrap(taskstats.UpdateStatsStatus(ctx, j.ProjectID, startAt, update_window_end, time.Since(startAt)), "updating daily task stats status"))
 	}).Seconds()
 }
 

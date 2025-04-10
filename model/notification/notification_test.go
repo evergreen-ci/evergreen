@@ -400,7 +400,7 @@ func (s *notificationSuite) TestCollectUnsentNotificationStats() {
 	s.n.SentAt = time.Now()
 	s.NoError(db.Insert(Collection, s.n))
 
-	stats, err := CollectUnsentNotificationStats()
+	stats, err := CollectUnsentNotificationStats(s.T().Context())
 	s.NoError(err)
 	s.Require().NotNil(stats)
 

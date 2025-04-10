@@ -1913,7 +1913,7 @@ func TestHostStats(t *testing.T) {
 	assert.NoError(host8.Insert(ctx))
 
 	// test GetStatsByDistro
-	stats, err := GetStatsByDistro()
+	stats, err := GetStatsByDistro(t.Context())
 	assert.NoError(err)
 	for _, entry := range stats {
 		if entry.Distro == d1 {
@@ -2026,7 +2026,7 @@ func TestInactiveHostCountPipeline(t *testing.T) {
 	assert.NoError(h5.Insert(ctx))
 
 	var out []InactiveHostCounts
-	err := db.Aggregate(Collection, inactiveHostCountPipeline(), &out)
+	err := db.Aggregate(t.Context(), Collection, inactiveHostCountPipeline(), &out)
 	assert.NoError(err)
 	assert.Len(out, 2)
 	for _, count := range out {
@@ -3004,7 +3004,7 @@ func TestLastContainerFinishTimePipeline(t *testing.T) {
 	var out []FinishTime
 	var results = make(map[string]time.Time)
 
-	err := db.Aggregate(Collection, lastContainerFinishTimePipeline(), &out)
+	err := db.Aggregate(t.Context(), Collection, lastContainerFinishTimePipeline(), &out)
 	assert.NoError(err)
 
 	for _, doc := range out {

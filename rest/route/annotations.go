@@ -481,7 +481,7 @@ func (h *createdTicketByTaskPutHandler) Parse(ctx context.Context, r *http.Reque
 }
 
 func (h *createdTicketByTaskPutHandler) Run(ctx context.Context) gimlet.Responder {
-	err := annotations.AddCreatedTicket(h.taskId, h.execution, *restModel.APIIssueLinkToService(*h.ticket), h.user.DisplayName())
+	err := annotations.AddCreatedTicket(ctx, h.taskId, h.execution, *restModel.APIIssueLinkToService(*h.ticket), h.user.DisplayName())
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(err)
 	}

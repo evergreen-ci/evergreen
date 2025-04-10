@@ -1,6 +1,8 @@
 package host
 
 import (
+	"context"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
@@ -83,18 +85,18 @@ func (d DistroStats) MaxHostsExceeded() map[string]int {
 }
 
 // GetStatsByDistro returns counts of up hosts broken down by distro
-func GetStatsByDistro() (DistroStats, error) {
+func GetStatsByDistro(ctx context.Context) (DistroStats, error) {
 	stats := []StatsByDistro{}
-	if err := db.Aggregate(Collection, statsByDistroPipeline(), &stats); err != nil {
+	if err := db.Aggregate(ctx, Collection, statsByDistroPipeline(), &stats); err != nil {
 		return nil, err
 	}
 	return stats, nil
 }
 
 // GetProviderCounts returns data on the number of hosts by different provider stats.
-func GetProviderCounts() (ProviderStats, error) {
+func GetProviderCounts(ctx context.Context) (ProviderStats, error) {
 	stats := []StatsByProvider{}
-	if err := db.Aggregate(Collection, statsByProviderPipeline(), &stats); err != nil {
+	if err := db.Aggregate(ctx, Collection, statsByProviderPipeline(), &stats); err != nil {
 		return nil, err
 	}
 	return stats, nil

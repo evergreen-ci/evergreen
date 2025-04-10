@@ -28,7 +28,7 @@ func checkStatuses(t *testing.T, expected string, toCheck Task) {
 		}},
 		addDisplayStatus,
 	}
-	err := db.Aggregate(Collection, aggregation, &dbTasks)
+	err := db.Aggregate(t.Context(), Collection, aggregation, &dbTasks)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, dbTasks[0].DisplayStatus)
 	assert.Equal(t, expected, toCheck.GetDisplayStatus())
@@ -1983,7 +1983,7 @@ func TestCountNumExecutionsForInterval(t *testing.T) {
 				StartTime:    time.Now().Add(-20 * time.Hour),
 				EndTime:      time.Now().Add(-18 * time.Hour),
 			}
-			numExecutions, err := CountNumExecutionsForInterval(input)
+			numExecutions, err := CountNumExecutionsForInterval(t.Context(), input)
 			assert.NoError(t, err)
 			assert.Equal(t, 0, numExecutions)
 		},
@@ -1995,7 +1995,7 @@ func TestCountNumExecutionsForInterval(t *testing.T) {
 				StartTime:    now.Add(-20 * time.Hour),
 			}
 			// Should include the finished tasks in both new and old.
-			numExecutions, err := CountNumExecutionsForInterval(input)
+			numExecutions, err := CountNumExecutionsForInterval(t.Context(), input)
 			assert.NoError(t, err)
 			assert.Equal(t, 6, numExecutions)
 		},
@@ -2007,7 +2007,7 @@ func TestCountNumExecutionsForInterval(t *testing.T) {
 				StartTime:    now.Add(-2 * time.Hour),
 			}
 			// Should include the finished tasks in both new and old except reallyEarly.
-			numExecutions, err := CountNumExecutionsForInterval(input)
+			numExecutions, err := CountNumExecutionsForInterval(t.Context(), input)
 			assert.NoError(t, err)
 			assert.Equal(t, 4, numExecutions)
 		},
@@ -2020,7 +2020,7 @@ func TestCountNumExecutionsForInterval(t *testing.T) {
 				StartTime:    now.Add(-2 * time.Hour),
 			}
 			// Should include the patch requester.
-			numExecutions, err := CountNumExecutionsForInterval(input)
+			numExecutions, err := CountNumExecutionsForInterval(t.Context(), input)
 			assert.NoError(t, err)
 			assert.Equal(t, 2, numExecutions)
 		},

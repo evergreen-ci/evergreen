@@ -192,7 +192,7 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 
 	// retrieve the next task off the task queue and attempt to assign it to the host.
 	// If there is already a host that has the task, it will error
-	taskQueue, err := model.LoadTaskQueue(h.host.Distro.Id)
+	taskQueue, err := model.LoadTaskQueue(ctx, h.host.Distro.Id)
 	if err != nil {
 		err = errors.Wrapf(err, "locating distro queue (%s) for host '%s'", h.host.Distro.Id, h.host.Id)
 		grip.Error(err)
@@ -214,7 +214,7 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 	if nextTask == nil && !shouldRunTeardown {
 		// if we couldn't find a task in the task queue,
 		// check the alias queue...
-		secondaryQueue, err := model.LoadDistroSecondaryTaskQueue(h.host.Distro.Id)
+		secondaryQueue, err := model.LoadDistroSecondaryTaskQueue(ctx, h.host.Distro.Id)
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
@@ -311,7 +311,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 
 	var amiUpdatedTime time.Time
 	if d.GetDefaultAMI() != currentHost.GetAMI() {
-		amiEvent, err := event.FindLatestAMIModifiedDistroEvent(d.Id)
+		amiEvent, err := event.FindLatestAMIModifiedDistroEvent(ctx, d.Id)
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":   "problem getting AMI event log",
 			"host_id":   currentHost.Id,

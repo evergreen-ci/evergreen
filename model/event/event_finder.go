@@ -41,7 +41,7 @@ func Find(query db.Q) ([]EventLogEntry, error) {
 	return events, nil
 }
 
-func FindPaginatedWithTotalCount(query db.Q, limit, page int) ([]EventLogEntry, int, error) {
+func FindPaginatedWithTotalCount(ctx context.Context, query db.Q, limit, page int) ([]EventLogEntry, int, error) {
 	events := []EventLogEntry{}
 	skip := page * limit
 	if skip > 0 {
@@ -54,7 +54,7 @@ func FindPaginatedWithTotalCount(query db.Q, limit, page int) ([]EventLogEntry, 
 	}
 
 	// Count ignores skip and limit by default, so this will return the total number of events.
-	count, err := db.CountQ(EventCollection, query)
+	count, err := db.CountQ(ctx, EventCollection, query)
 	if err != nil {
 		return nil, 0, errors.Wrap(err, "fetching total count for events")
 	}
@@ -112,10 +112,10 @@ func FindLastProcessedEvent(ctx context.Context) (*EventLogEntry, error) {
 	return &e, nil
 }
 
-func CountUnprocessedEvents() (int, error) {
+func CountUnprocessedEvents(ctx context.Context) (int, error) {
 	q := db.Query(unprocessedEvents())
 
-	n, err := db.CountQ(EventCollection, q)
+	n, err := db.CountQ(ctx, EventCollection, q)
 	if err != nil {
 		return 0, errors.Wrap(err, "fetching number of unprocessed events")
 	}
@@ -166,7 +166,7 @@ type PaginatedHostEventsOpts struct {
 // GetPaginatedHostEvents returns a limited and paginated list of host events for the given
 // filters sorted in ascending or descending order by timestamp, as well as the total number
 // of host events.
-func GetPaginatedHostEvents(opts PaginatedHostEventsOpts) ([]EventLogEntry, int, error) {
+func GetPaginatedHostEvents(ctx context.Context, opts PaginatedHostEventsOpts) ([]EventLogEntry, int, error) {
 	queryOpts := HostEventsOpts{
 		ID:         opts.ID,
 		Tag:        opts.Tag,
@@ -175,7 +175,7 @@ func GetPaginatedHostEvents(opts PaginatedHostEventsOpts) ([]EventLogEntry, int,
 		EventTypes: opts.EventTypes,
 	}
 	hostEventsQuery := HostEvents(queryOpts)
-	return FindPaginatedWithTotalCount(hostEventsQuery, opts.Limit, opts.Page)
+	return FindPaginatedWithTotalCount(ctx, hostEventsQuery, opts.Limit, opts.Page)
 }
 
 type eventTypeResult struct {
@@ -183,7 +183,7 @@ type eventTypeResult struct {
 }
 
 // GetEventTypesForHost returns the event types that have occurred on the host.
-func GetEventTypesForHost(hostID string, tag string) ([]string, error) {
+func GetEventTypesForHost(ctx context.Context, hostID string, tag string) ([]string, error) {
 	filter := ResourceTypeKeyIs(ResourceTypeHost)
 	if tag != "" {
 		filter[ResourceIdKey] = bson.M{"$in": []string{hostID, tag}}
@@ -212,7 +212,7 @@ func GetEventTypesForHost(hostID string, tag string) ([]string, error) {
 	}
 
 	out := []eventTypeResult{}
-	if err := db.Aggregate(EventCollection, pipeline, &out); err != nil {
+	if err := db.Aggregate(ctx, EventCollection, pipeline, &out); err != nil {
 		return nil, errors.Errorf("finding event types for host '%s': %s", hostID, err)
 	}
 	if len(out) == 0 {
@@ -222,12 +222,12 @@ func GetEventTypesForHost(hostID string, tag string) ([]string, error) {
 }
 
 // HasNoRecentStoppedHostEvent returns true if no host event exists that is more recent than the passed in time stamp.
-func HasNoRecentStoppedHostEvent(id string, ts time.Time) (bool, error) {
+func HasNoRecentStoppedHostEvent(ctx context.Context, id string, ts time.Time) (bool, error) {
 	filter := ResourceTypeKeyIs(ResourceTypeHost)
 	filter[ResourceIdKey] = id
 	filter[eventTypeKey] = EventHostStopped
 	filter[TimestampKey] = bson.M{"$gte": ts}
-	count, err := db.CountQ(EventCollection, db.Query(filter))
+	count, err := db.CountQ(ctx, EventCollection, db.Query(filter))
 	if err != nil {
 		return false, errors.Wrap(err, "fetching count of stopped host events")
 	}
@@ -254,9 +254,9 @@ func TaskEventsInOrder(id string) db.Q {
 
 // FindLatestPrimaryDistroEvents return the most recent non-AMI events for the distro.
 // The before parameter returns only events before the specified time and is used for pagination on the UI.
-func FindLatestPrimaryDistroEvents(id string, n int, before time.Time) ([]EventLogEntry, error) {
+func FindLatestPrimaryDistroEvents(ctx context.Context, id string, n int, before time.Time) ([]EventLogEntry, error) {
 	events := []EventLogEntry{}
-	err := db.Aggregate(EventCollection, latestDistroEventsPipeline(id, n, false, before), &events)
+	err := db.Aggregate(ctx, EventCollection, latestDistroEventsPipeline(id, n, false, before), &events)
 	if err != nil {
 		return nil, err
 	}
@@ -264,10 +264,10 @@ func FindLatestPrimaryDistroEvents(id string, n int, before time.Time) ([]EventL
 }
 
 // FindLatestAMIModifiedDistroEvent returns the most recent AMI event. Returns an empty struct if nothing exists.
-func FindLatestAMIModifiedDistroEvent(id string) (EventLogEntry, error) {
+func FindLatestAMIModifiedDistroEvent(ctx context.Context, id string) (EventLogEntry, error) {
 	events := []EventLogEntry{}
 	res := EventLogEntry{}
-	err := db.Aggregate(EventCollection, latestDistroEventsPipeline(id, 1, true, time.Now()), &events)
+	err := db.Aggregate(ctx, EventCollection, latestDistroEventsPipeline(id, 1, true, time.Now()), &events)
 	if err != nil {
 		return res, err
 	}
@@ -344,7 +344,7 @@ func MostRecentPodEvents(id string, n int) db.Q {
 
 // MostRecentPaginatedPodEvents returns a limited and paginated list of pod events for the
 // given pod ID sorted in descending order by timestamp as well as the total number of events.
-func MostRecentPaginatedPodEvents(id string, limit, page int) ([]EventLogEntry, int, error) {
+func MostRecentPaginatedPodEvents(ctx context.Context, id string, limit, page int) ([]EventLogEntry, int, error) {
 	recentPodsQuery := MostRecentPodEvents(id, limit)
-	return FindPaginatedWithTotalCount(recentPodsQuery, limit, page)
+	return FindPaginatedWithTotalCount(ctx, recentPodsQuery, limit, page)
 }

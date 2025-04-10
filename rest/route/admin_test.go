@@ -167,6 +167,7 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.EqualValues(testSettings.HostJasper.URL, settings.HostJasper.URL)
 	s.EqualValues(testSettings.HostInit.HostThrottle, settings.HostInit.HostThrottle)
 	s.EqualValues(testSettings.Jira.BasicAuthConfig.Username, settings.Jira.BasicAuthConfig.Username)
+	s.EqualValues(testSettings.Jira.PersonalAccessToken, settings.Jira.PersonalAccessToken)
 	s.Equal(level.Info.String(), settings.LoggerConfig.DefaultLevel)
 	s.EqualValues(testSettings.LoggerConfig.Buffer.Count, settings.LoggerConfig.Buffer.Count)
 	s.EqualValues(testSettings.LoggerConfig.Buffer.UseAsync, settings.LoggerConfig.Buffer.UseAsync)
@@ -182,6 +183,10 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.Equal(len(testSettings.Providers.AWS.EC2Keys), len(settings.Providers.AWS.EC2Keys))
 	s.EqualValues(testSettings.Providers.AWS.PersistentDNS.HostedZoneID, settings.Providers.AWS.PersistentDNS.HostedZoneID)
 	s.EqualValues(testSettings.Providers.AWS.PersistentDNS.Domain, settings.Providers.AWS.PersistentDNS.Domain)
+	s.Require().Len(testSettings.Providers.AWS.AccountRoles, len(settings.Providers.AWS.AccountRoles))
+	for i := range testSettings.Providers.AWS.AccountRoles {
+		s.Equal(testSettings.Providers.AWS.AccountRoles[i], settings.Providers.AWS.AccountRoles[i])
+	}
 	s.EqualValues(testSettings.Providers.Docker.APIVersion, settings.Providers.Docker.APIVersion)
 	s.EqualValues(testSettings.RepoTracker.MaxConcurrentRequests, settings.RepoTracker.MaxConcurrentRequests)
 	s.EqualValues(testSettings.Scheduler.TaskFinder, settings.Scheduler.TaskFinder)
@@ -418,13 +423,13 @@ func (s *AdminRouteSuite) TestClearTaskQueueRoute() {
 	}
 	queue := model.NewTaskQueue(distro, tasks, model.DistroQueueInfo{})
 	s.Len(queue.Queue, 3)
-	s.NoError(queue.Save())
+	s.NoError(queue.Save(s.T().Context()))
 
 	route.distro = distro
 	resp := route.Run(context.Background())
 	s.Equal(http.StatusOK, resp.Status())
 
-	queueFromDb, err := model.LoadTaskQueue(distro)
+	queueFromDb, err := model.LoadTaskQueue(s.T().Context(), distro)
 	s.NoError(err)
 	s.Empty(queueFromDb.Queue)
 }

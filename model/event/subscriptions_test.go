@@ -146,7 +146,7 @@ func (s *subscriptionsSuite) SetupTest() {
 	}
 
 	for _, sub := range s.subscriptions {
-		s.NoError(sub.Upsert())
+		s.NoError(sub.Upsert(s.T().Context()))
 	}
 }
 
@@ -602,19 +602,19 @@ func TestCopyProjectSubscriptions(t *testing.T) {
 		},
 	}
 	for _, sub := range subs {
-		assert.NoError(t, sub.Upsert())
+		assert.NoError(t, sub.Upsert(t.Context()))
 	}
 
 	for name, test := range map[string]func(t *testing.T){
 		"FromNonExistentProject": func(t *testing.T) {
-			assert.NoError(t, CopyProjectSubscriptions("not-a-project", "my-new-project"))
+			assert.NoError(t, CopyProjectSubscriptions(t.Context(), "not-a-project", "my-new-project"))
 			apiSubs, err := FindSubscriptionsByOwner("my-new-project", OwnerTypeProject)
 			assert.NoError(t, err)
 			require.Empty(t, apiSubs)
 		},
 		"FromExistentProject": func(t *testing.T) {
 			newProjectId := "my-newest-project"
-			assert.NoError(t, CopyProjectSubscriptions(oldProjectId, newProjectId))
+			assert.NoError(t, CopyProjectSubscriptions(t.Context(), oldProjectId, newProjectId))
 			apiSubs, err := FindSubscriptionsByOwner(oldProjectId, OwnerTypeProject)
 			assert.NoError(t, err)
 			require.Len(t, apiSubs, 1)

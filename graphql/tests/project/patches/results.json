@@ -84,11 +84,8 @@
         "data": null,
         "errors": [
           {
-            "message": "project 'not a real project' not found",
-            "path": [
-              "project",
-              "projectIdentifier"
-            ],
+            "message": "project/repo 'not a real project' not found",
+            "path": ["project", "projectIdentifier"],
             "extensions": {
               "code": "RESOURCE_NOT_FOUND"
             }
@@ -239,10 +236,7 @@
         "errors": [
           {
             "message": "user 'regular_user' does not have permission to 'view tasks' for the project 'evergreen'",
-            "path": [
-              "project",
-              "projectIdentifier"
-            ],
+            "path": ["project", "projectIdentifier"],
             "extensions": {
               "code": "FORBIDDEN"
             }

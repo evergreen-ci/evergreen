@@ -665,7 +665,7 @@ func (h *attachFilesHandler) Run(ctx context.Context) gimlet.Responder {
 		Files:           artifact.EscapeFiles(h.files),
 	}
 
-	if err = entry.Upsert(); err != nil {
+	if err = entry.Upsert(ctx); err != nil {
 		message := fmt.Sprintf("updating artifact file info for task %s: %v", t.Id, err)
 		grip.Error(message)
 		return gimlet.MakeJSONInternalErrorResponder(errors.New(message))

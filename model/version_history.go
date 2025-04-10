@@ -81,7 +81,7 @@ func FindLastPassingVersionForBuildVariants(ctx context.Context, project *Projec
 
 	var result []bson.M
 
-	err = db.Aggregate(build.Collection, pipeline, &result)
+	err = db.Aggregate(ctx, build.Collection, pipeline, &result)
 	if err != nil {
 		return nil, errors.Wrap(err, "aggregating builds")
 	}

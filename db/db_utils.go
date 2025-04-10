@@ -4,7 +4,8 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"time"
+	"strings"
+	"testing"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/pail"
@@ -251,20 +252,20 @@ func UpdateContext(ctx context.Context, collection string, query any, update any
 	return nil
 }
 
-// ReplaceContext replaces one matching document in the collection.
-func ReplaceContext(ctx context.Context, collection string, query any, replacement any) error {
+// ReplaceContext replaces one matching document in the collection. If a matching
+// document is not found, it will be upserted. It returns the upserted ID if
+// one was created.
+func ReplaceContext(ctx context.Context, collection string, query any, replacement any) (*db.ChangeInfo, error) {
 	res, err := evergreen.GetEnvironment().DB().Collection(collection).ReplaceOne(ctx,
 		query,
 		replacement,
+		options.Replace().SetUpsert(true),
 	)
 	if err != nil {
-		return errors.Wrapf(err, "replacing task")
-	}
-	if res.MatchedCount == 0 {
-		return db.ErrNotFound
+		return nil, errors.Wrapf(err, "replacing document")
 	}
 
-	return nil
+	return &db.ChangeInfo{Updated: int(res.UpsertedCount) + int(res.ModifiedCount), UpsertedId: res.UpsertedID}, nil
 }
 
 // UpdateAllContext updates all matching documents in the collection.
@@ -344,21 +345,38 @@ func UpdateAll(collection string, query any, update any) (*db.ChangeInfo, error)
 }
 
 // Upsert run the specified update against the collection as an upsert operation.
-func Upsert(collection string, query any, update any) (*db.ChangeInfo, error) {
-	session, db, err := GetGlobalSessionFactory().GetSession()
-	if err != nil {
-		grip.Errorf("error establishing db connection: %+v", err)
+func Upsert(ctx context.Context, collection string, query any, update any) (*db.ChangeInfo, error) {
+	// Temporarily, we check if the document has a key beginning with '$', this would
+	// indicate a proper upsert operation. If not, it's a document intended for replacement.
+	// If the document is unable to be transformed (aka err != nil, e.g. a pipeline), we
+	// also default to an update operation.
+	// This will be removed in DEVPROD-16579.
 
-		return nil, err
+	doc, err := transformDocument(update)
+	if err != nil || hasDollarKey(doc) {
+		return upsert(ctx, collection, query, update)
 	}
-	defer session.Close()
 
-	return db.C(collection).Upsert(query, update)
+	msg := "upsert document must contain a key beginning with '$'"
+	grip.Debug(message.Fields{
+		"message": msg,
+		"error":   errors.New(msg),
+		"ticket":  "DEVPROD-16579",
+	})
+
+	// This is to prevent new tests from using the upsert operation as a replacement operation.
+	// This will be removed (as will the fallback completely) in DEVPROD-16579.
+	if testing.Testing() {
+		return nil, errors.New("CHANGE TO REPLACE")
+	}
+
+	return ReplaceContext(ctx, collection, query, update)
 }
 
-// UpsertContext run the specified update against the collection as an upsert operation.
-func UpsertContext(ctx context.Context, collection string, query any, update any) (*db.ChangeInfo, error) {
-	res, err := evergreen.GetEnvironment().DB().Collection(collection).UpdateOne(ctx,
+// Upsert run the specified update against the collection as an upsert operation.
+func upsert(ctx context.Context, collection string, query any, update any) (*db.ChangeInfo, error) {
+	res, err := evergreen.GetEnvironment().DB().Collection(collection).UpdateOne(
+		ctx,
 		query,
 		update,
 		options.Update().SetUpsert(true),
@@ -371,29 +389,12 @@ func UpsertContext(ctx context.Context, collection string, query any, update any
 }
 
 // Count run a count command with the specified query against the collection.
-func Count(collection string, query any) (int, error) {
-	session, db, err := GetGlobalSessionFactory().GetSession()
-	if err != nil {
-		grip.Errorf("error establishing db connection: %+v", err)
-
-		return 0, err
-	}
-	defer session.Close()
-
-	return db.C(collection).Find(query).Count()
-}
-
-// Count run a count command with the specified query against the collection.
-func CountContext(ctx context.Context, collection string, query any) (int, error) {
-	session, db, err := GetGlobalSessionFactory().GetContextSession(ctx)
-	if err != nil {
-		grip.Errorf("error establishing db connection: %+v", err)
-
-		return 0, err
-	}
-	defer session.Close()
-
-	return db.C(collection).Find(query).Count()
+func Count(ctx context.Context, collection string, query any) (int, error) {
+	res, err := evergreen.GetEnvironment().DB().Collection(collection).CountDocuments(
+		ctx,
+		query,
+	)
+	return int(res), errors.WithStack(err)
 }
 
 // FindOneQ runs a Q query against the given collection, applying the results to "out."
@@ -434,6 +435,7 @@ func FindAllQ(collection string, q Q, out any) error {
 	return FindAllQContext(context.Background(), collection, q, out)
 }
 
+// FindAllQContext runs a Q query against the given collection, applying the results to "out."
 func FindAllQContext(ctx context.Context, collection string, q Q, out any) error {
 	if q.maxTime > 0 {
 		var cancel context.CancelFunc
@@ -458,13 +460,8 @@ func FindAllQContext(ctx context.Context, collection string, q Q, out any) error
 }
 
 // CountQ runs a Q count query against the given collection.
-func CountQ(collection string, q Q) (int, error) {
-	return Count(collection, q.filter)
-}
-
-// CountQ runs a Q count query against the given collection.
-func CountQContext(ctx context.Context, collection string, q Q) (int, error) {
-	return CountContext(ctx, collection, q.filter)
+func CountQ(ctx context.Context, collection string, q Q) (int, error) {
+	return Count(ctx, collection, q.filter)
 }
 
 // RemoveAllQ removes all docs that satisfy the query
@@ -526,24 +523,7 @@ func ClearGridCollections(fsPrefix string) error {
 // Aggregate runs an aggregation pipeline on a collection and unmarshals
 // the results to the given "out" interface (usually a pointer
 // to an array of structs/bson.M)
-func Aggregate(collection string, pipeline any, out any) error {
-	session, db, err := GetGlobalSessionFactory().GetSession()
-	if err != nil {
-		err = errors.Wrap(err, "establishing db connection")
-		grip.Error(err)
-		return err
-	}
-	defer session.Close()
-
-	pipe := db.C(collection).Pipe(pipeline)
-
-	return errors.WithStack(pipe.All(out))
-}
-
-// AggregateContext runs an aggregation pipeline on a collection and unmarshals
-// the results to the given "out" interface (usually a pointer
-// to an array of structs/bson.M)
-func AggregateContext(ctx context.Context, collection string, pipeline any, out any) error {
+func Aggregate(ctx context.Context, collection string, pipeline any, out any) error {
 	session, db, err := GetGlobalSessionFactory().GetContextSession(ctx)
 	if err != nil {
 		err = errors.Wrap(err, "establishing db connection")
@@ -557,19 +537,25 @@ func AggregateContext(ctx context.Context, collection string, pipeline any, out 
 	return errors.WithStack(pipe.All(out))
 }
 
-// AggregateWithMaxTime runs aggregate and specifies a max query time which
-// ensures the query won't go on indefinitely when the request is cancelled.
-func AggregateWithMaxTime(collection string, pipeline any, out any, maxTime time.Duration) error {
-	ctx, cancel := context.WithTimeout(context.Background(), maxTime)
-	defer cancel()
-
-	session, database, err := GetGlobalSessionFactory().GetContextSession(ctx)
-	if err != nil {
-		err = errors.Wrap(err, "establishing DB connection")
-		grip.Error(err)
-		return err
+func transformDocument(val any) (bson.Raw, error) {
+	if val == nil {
+		return nil, errors.WithStack(mongo.ErrNilDocument)
 	}
-	defer session.Close()
 
-	return database.C(collection).Pipe(pipeline).All(out)
+	b, err := bson.Marshal(val)
+	if err != nil {
+		return nil, mongo.MarshalError{Value: val, Err: err}
+	}
+
+	return bson.Raw(b), nil
+}
+
+// TODO: Use these because upsert is being used as upsert and replace, so we need to do the same
+// workaround we did for update and replace
+func hasDollarKey(doc bson.Raw) bool {
+	if elem, err := doc.IndexErr(0); err == nil && strings.HasPrefix(elem.Key(), "$") {
+		return true
+	}
+
+	return false
 }

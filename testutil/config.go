@@ -229,7 +229,8 @@ func MockConfig() *evergreen.Settings {
 			Version:          "version",
 		},
 		Jira: evergreen.JiraConfig{
-			Host: "host",
+			Host:                "host",
+			PersonalAccessToken: "personal_access_token",
 			BasicAuthConfig: evergreen.JiraBasicAuthConfig{
 				Username: "username",
 				Password: "password",
@@ -341,6 +342,12 @@ func MockConfig() *evergreen.Settings {
 					},
 					SecretsManager: evergreen.SecretsManagerConfig{
 						SecretPrefix: "secret_prefix",
+					},
+				},
+				AccountRoles: []evergreen.AWSAccountRoleMapping{
+					{
+						Account: "account",
+						Role:    "role",
 					},
 				},
 			},

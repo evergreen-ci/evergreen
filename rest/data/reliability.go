@@ -19,7 +19,7 @@ func GetTaskReliabilityScores(ctx context.Context, filter reliability.TaskReliab
 		filter.Project = projectID
 	}
 
-	serviceStatsResult, err := reliability.GetTaskReliabilityScores(filter)
+	serviceStatsResult, err := reliability.GetTaskReliabilityScores(ctx, filter)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting task reliability scores")
 	}
