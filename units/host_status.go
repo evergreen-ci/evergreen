@@ -88,6 +88,7 @@ clientsLoop:
 			continue
 		}
 		mgrOpts := cloud.ManagerOpts{
+			Account:  clientOpts.Account,
 			Provider: clientOpts.Provider,
 			Region:   clientOpts.Region,
 		}

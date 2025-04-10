@@ -279,19 +279,36 @@ func (s *EC2Suite) TestMakeDeviceMappingsTemplate() {
 func (s *EC2Suite) TestConfigure() {
 	settings := &evergreen.Settings{}
 
+	// No region or account specified.
 	// No region specified.
 	s.Require().NoError(s.onDemandManager.Configure(s.ctx, settings))
 	ec2m, ok := s.onDemandManager.(*ec2Manager)
 	s.Require().True(ok)
+	s.Zero(ec2m.account)
+	s.Zero(ec2m.role)
 	s.Equal(evergreen.DefaultEC2Region, ec2m.region)
 
-	// Region specified.
+	// Region and account specified.
+	const (
+		account = "test-account"
+		role    = "test-role"
+	)
 	onDemandWithRegionOpts := &EC2ManagerOptions{
-		client: &awsClientMock{},
-		region: "test-region",
+		client:  &awsClientMock{},
+		account: account,
+		region:  "test-region",
 	}
+	settings.Providers.AWS.AccountRoles = []evergreen.AWSAccountRoleMapping{
+		{
+			Account: account,
+			Role:    role,
+		},
+	}
+
 	onDemandWithRegionManager := &ec2Manager{env: s.env, EC2ManagerOptions: onDemandWithRegionOpts}
 	s.Require().NoError(onDemandWithRegionManager.Configure(s.ctx, settings))
+	s.Equal(account, onDemandWithRegionManager.account)
+	s.Equal(role, onDemandWithRegionManager.role)
 	s.Equal(onDemandWithRegionOpts.region, onDemandWithRegionManager.region)
 }
 
@@ -1361,10 +1378,12 @@ func (s *EC2Suite) TestGetEC2ManagerOptions() {
 			birch.EC.String("aws_access_key_id", "key"),
 			birch.EC.String("aws_secret_access_key", "secret"),
 		)},
+		ProviderAccount: "account",
 	}
 
 	managerOpts, err := GetManagerOptions(d1)
 	s.NoError(err)
+	s.Equal(d1.ProviderAccount, managerOpts.Account)
 	s.Equal(evergreen.DefaultEC2Region, managerOpts.Region)
 }
 
