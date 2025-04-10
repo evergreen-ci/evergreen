@@ -41,7 +41,7 @@ type ProjectConfigFields struct {
 // Comment above is used by the linter to detect the end of the struct.
 
 func (pc *ProjectConfig) Insert(ctx context.Context) error {
-	return db.InsertContext(ctx, ProjectConfigCollection, pc)
+	return db.Insert(ctx, ProjectConfigCollection, pc)
 }
 
 func (pc *ProjectConfig) MarshalBSON() ([]byte, error) {

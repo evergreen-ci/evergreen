@@ -149,9 +149,9 @@ func (s *alertRecordSuite) TestFindOneWithUnsetIDQuery() {
 		ProjectIdKey:           "otherproject",
 		RevisionOrderNumberKey: 2,
 	}
-	s.NoError(db.InsertContext(s.T().Context(), Collection, &oldStyle0))
-	s.NoError(db.InsertContext(s.T().Context(), Collection, &oldStyle1))
-	s.NoError(db.InsertContext(s.T().Context(), Collection, &oldStyle3))
+	s.NoError(db.Insert(s.T().Context(), Collection, &oldStyle0))
+	s.NoError(db.Insert(s.T().Context(), Collection, &oldStyle1))
+	s.NoError(db.Insert(s.T().Context(), Collection, &oldStyle3))
 
 	rec, err := FindOne(s.T().Context(), ByLastFailureTransition(legacyAlertsSubscription, "task", "variant", "project"))
 	s.NoError(err)

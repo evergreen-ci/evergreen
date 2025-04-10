@@ -57,7 +57,7 @@ func (ar *AlertRecord) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(a
 func (ar *AlertRecord) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, ar) }
 
 func (ar *AlertRecord) Insert(ctx context.Context) error {
-	return db.InsertContext(ctx, Collection, ar)
+	return db.Insert(ctx, Collection, ar)
 }
 
 var (

@@ -31,7 +31,7 @@ type Volume struct {
 // Insert a volume into the volumes collection.
 func (v *Volume) Insert(ctx context.Context) error {
 	v.CreationDate = time.Now()
-	return db.InsertContext(ctx, VolumesCollection, v)
+	return db.Insert(ctx, VolumesCollection, v)
 }
 
 func (v *Volume) SetHost(ctx context.Context, id string) error {

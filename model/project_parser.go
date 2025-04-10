@@ -156,7 +156,7 @@ type parserTask struct {
 }
 
 func (pp *ParserProject) Insert(ctx context.Context) error {
-	return db.InsertContext(ctx, ParserProjectCollection, pp)
+	return db.Insert(ctx, ParserProjectCollection, pp)
 }
 
 func (pp *ParserProject) MarshalBSON() ([]byte, error) {

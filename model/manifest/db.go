@@ -40,7 +40,7 @@ func FindOne(ctx context.Context, query db.Q) (*Manifest, error) {
 // If the document already exists, it returns true and the error
 // If it does not it will return false and the error
 func (m *Manifest) TryInsert(ctx context.Context) (bool, error) {
-	err := db.InsertContext(ctx, Collection, m)
+	err := db.Insert(ctx, Collection, m)
 	if db.IsDuplicateKey(err) {
 		return true, nil
 	}

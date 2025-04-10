@@ -307,7 +307,7 @@ func (b *Build) GetURL(uiBase string) string {
 
 // Insert writes the b to the db.
 func (b *Build) Insert(ctx context.Context) error {
-	return db.InsertContext(ctx, Collection, b)
+	return db.Insert(ctx, Collection, b)
 }
 
 type Builds []*Build

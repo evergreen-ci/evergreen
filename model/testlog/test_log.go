@@ -105,7 +105,7 @@ func (tl *TestLog) Insert(ctx context.Context) error {
 	if err := tl.Validate(); err != nil {
 		return errors.Wrap(err, "invalid test log")
 	}
-	return errors.WithStack(db.InsertContext(ctx, TestLogCollection, tl))
+	return errors.WithStack(db.Insert(ctx, TestLogCollection, tl))
 }
 
 // Validate makes sure the log will accessible in the database

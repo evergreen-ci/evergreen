@@ -65,7 +65,7 @@ func (s *TestArtifactFileSuite) SetupTest() {
 
 	// hack to insert an entry without execution number (representative of
 	// existing data)
-	s.NoError(db.InsertContext(s.T().Context(), Collection, struct {
+	s.NoError(db.Insert(s.T().Context(), Collection, struct {
 		TaskId          string `json:"task" bson:"task"`
 		TaskDisplayName string `json:"task_name" bson:"task_name"`
 		BuildId         string `json:"build" bson:"build"`

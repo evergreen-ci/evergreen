@@ -31,7 +31,7 @@ type QuestionAnswer struct {
 }
 
 func (s *FeedbackSubmission) Insert(ctx context.Context) error {
-	return db.InsertContext(ctx, FeedbackCollection, s)
+	return db.Insert(ctx, FeedbackCollection, s)
 }
 
 func FindFeedbackOfType(t string) ([]FeedbackSubmission, error) {

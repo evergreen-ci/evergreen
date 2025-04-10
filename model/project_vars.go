@@ -512,7 +512,7 @@ func (projectVars *ProjectVars) Insert(ctx context.Context) error {
 	}
 	projectVars.Parameters = *pm
 
-	return db.InsertContext(
+	return db.Insert(
 		ctx,
 		ProjectVarsCollection,
 		projectVars,

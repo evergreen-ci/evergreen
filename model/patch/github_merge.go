@@ -152,7 +152,7 @@ func (g *githubMergeIntent) GetType() string {
 // Insert inserts a patch intent in the database.
 func (g *githubMergeIntent) Insert(ctx context.Context) error {
 	g.CreatedAt = time.Now().UTC().Round(time.Millisecond)
-	err := db.InsertContext(ctx, IntentCollection, g)
+	err := db.Insert(ctx, IntentCollection, g)
 	if err != nil {
 		g.CreatedAt = time.Time{}
 		return err

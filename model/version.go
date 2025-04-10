@@ -174,7 +174,7 @@ func (v *Version) SetAborted(ctx context.Context, aborted bool) error {
 }
 
 func (v *Version) Insert(ctx context.Context) error {
-	return db.InsertContext(ctx, VersionCollection, v)
+	return db.Insert(ctx, VersionCollection, v)
 }
 
 func (v *Version) IsChild() bool {

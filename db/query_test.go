@@ -24,7 +24,7 @@ func TestQueryExecution(t *testing.T) {
 				FieldOne: "1",
 				FieldTwo: 1,
 			}
-			So(InsertContext(t.Context(), collection, in), ShouldBeNil)
+			So(Insert(t.Context(), collection, in), ShouldBeNil)
 
 			Convey("the item should be findable with a Query", func() {
 				out := &insertableStruct{}
@@ -46,7 +46,7 @@ func TestQueryExecution(t *testing.T) {
 				{"X", 7, "COOL"},
 			}
 			for _, in := range objs {
-				So(InsertContext(t.Context(), collection, in), ShouldBeNil)
+				So(Insert(t.Context(), collection, in), ShouldBeNil)
 			}
 
 			BelowFive := Query(bson.M{"two": bson.M{"$lt": 5}})

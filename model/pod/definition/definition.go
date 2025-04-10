@@ -30,7 +30,7 @@ type PodDefinition struct {
 
 // Insert inserts the pod definition into the collection.
 func (pd *PodDefinition) Insert(ctx context.Context) error {
-	return db.InsertContext(ctx, Collection, pd)
+	return db.Insert(ctx, Collection, pd)
 }
 
 // Replace updates the pod definition in the db if an entry already exists,

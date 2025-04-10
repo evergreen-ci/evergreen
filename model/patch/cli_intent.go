@@ -116,7 +116,7 @@ func (c *cliIntent) Insert(ctx context.Context) error {
 
 	c.CreatedAt = time.Now().UTC().Round(time.Millisecond)
 
-	if err := db.InsertContext(ctx, IntentCollection, c); err != nil {
+	if err := db.Insert(ctx, IntentCollection, c); err != nil {
 		c.CreatedAt = time.Time{}
 		return err
 	}
