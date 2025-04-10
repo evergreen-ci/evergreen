@@ -80,8 +80,7 @@ func (s *shimFactoryImpl) GetContextSession(ctx context.Context) (db.Session, db
 
 // Insert inserts the specified item into the specified collection.
 func Insert(ctx context.Context, collection string, item any) error {
-	_, err := evergreen.GetEnvironment().DB().Collection(collection).InsertOne(
-		ctx,
+	_, err := evergreen.GetEnvironment().DB().Collection(collection).InsertOne(ctx,
 		item,
 	)
 	return errors.Wrapf(errors.WithStack(err), "inserting document")
@@ -92,8 +91,7 @@ func InsertMany(ctx context.Context, collection string, items ...any) error {
 		return nil
 	}
 
-	_, err := evergreen.GetEnvironment().DB().Collection(collection).InsertMany(
-		ctx,
+	_, err := evergreen.GetEnvironment().DB().Collection(collection).InsertMany(ctx,
 		items,
 	)
 	return errors.Wrapf(errors.WithStack(err), "inserting documents")
@@ -104,8 +102,7 @@ func InsertManyUnordered(ctx context.Context, collection string, items ...any) e
 		return nil
 	}
 
-	_, err := evergreen.GetEnvironment().DB().Collection(collection).InsertMany(
-		ctx,
+	_, err := evergreen.GetEnvironment().DB().Collection(collection).InsertMany(ctx,
 		items,
 		options.InsertMany().SetOrdered(false),
 	)
@@ -198,8 +195,7 @@ func EnsureIndex(collection string, index mongo.IndexModel) error {
 
 // Remove removes one item matching the query from the specified collection.
 func Remove(ctx context.Context, collection string, query any) error {
-	_, err := evergreen.GetEnvironment().DB().Collection(collection).DeleteOne(
-		ctx,
+	_, err := evergreen.GetEnvironment().DB().Collection(collection).DeleteOne(ctx,
 		query,
 	)
 	return errors.Wrapf(errors.WithStack(err), "deleting document")
@@ -207,8 +203,7 @@ func Remove(ctx context.Context, collection string, query any) error {
 
 // RemoveAll removes all items matching the query from the specified collection.
 func RemoveAll(ctx context.Context, collection string, query any) error {
-	_, err := evergreen.GetEnvironment().DB().Collection(collection).DeleteMany(
-		ctx,
+	_, err := evergreen.GetEnvironment().DB().Collection(collection).DeleteMany(ctx,
 		query,
 	)
 	return errors.Wrapf(errors.WithStack(err), "deleting documents")
