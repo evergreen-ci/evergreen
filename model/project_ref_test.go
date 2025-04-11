@@ -908,7 +908,7 @@ func TestAttachToNewRepo(t *testing.T) {
 }
 
 func checkRepoAttachmentEventLog(t *testing.T, project ProjectRef, attachmentType string) {
-	events, err := MostRecentProjectEvents(project.Id, 10)
+	events, err := MostRecentProjectEvents(t.Context(), project.Id, 10)
 	require.NoError(t, err)
 	require.Len(t, events, 1)
 	assert.Equal(t, project.Id, events[0].ResourceId)

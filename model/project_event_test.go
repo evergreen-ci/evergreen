@@ -73,7 +73,7 @@ func (s *ProjectEventSuite) TestModifyProjectEvent() {
 
 	s.NoError(LogProjectModified(s.T().Context(), projectId, username, &before, &after))
 
-	projectEvents, err := MostRecentProjectEvents(projectId, 5)
+	projectEvents, err := MostRecentProjectEvents(s.T().Context(), projectId, 5)
 	s.NoError(err)
 	s.Require().Len(projectEvents, 1)
 
@@ -126,7 +126,7 @@ func (s *ProjectEventSuite) TestModifyProjectEventRedactsAllVars() {
 
 	s.NoError(LogProjectModified(s.T().Context(), projectId, username, &before, &after))
 
-	projectEvents, err := MostRecentProjectEvents(projectId, 5)
+	projectEvents, err := MostRecentProjectEvents(s.T().Context(), projectId, 5)
 	s.NoError(err)
 	s.Require().Len(projectEvents, 1)
 
@@ -178,7 +178,7 @@ func (s *ProjectEventSuite) TestModifyProjectNonEvent() {
 
 	s.NoError(LogProjectModified(s.T().Context(), projectId, username, &before, &after))
 
-	projectEvents, err := MostRecentProjectEvents(projectId, 5)
+	projectEvents, err := MostRecentProjectEvents(s.T().Context(), projectId, 5)
 	s.NoError(err)
 	s.Require().Empty(projectEvents)
 }
@@ -186,7 +186,7 @@ func (s *ProjectEventSuite) TestModifyProjectNonEvent() {
 func (s *ProjectEventSuite) TestAddProject() {
 	s.NoError(LogProjectAdded(s.T().Context(), projectId, username))
 
-	projectEvents, err := MostRecentProjectEvents(projectId, 5)
+	projectEvents, err := MostRecentProjectEvents(s.T().Context(), projectId, 5)
 	s.NoError(err)
 
 	s.Require().Len(projectEvents, 1)

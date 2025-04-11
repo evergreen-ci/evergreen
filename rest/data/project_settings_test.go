@@ -1127,11 +1127,11 @@ func TestPromoteVarsToRepo(t *testing.T) {
 			assert.Equal(t, "2", repoVarsFromDB.Vars["b"])
 			assert.Equal(t, "3", repoVarsFromDB.Vars["c"])
 
-			projectEvents, err := model.MostRecentProjectEvents(ref.Id, 10)
+			projectEvents, err := model.MostRecentProjectEvents(t.Context(), ref.Id, 10)
 			assert.NoError(t, err)
 			assert.Len(t, projectEvents, 1)
 
-			repoEvents, err := model.MostRecentProjectEvents(ref.RepoRefId, 10)
+			repoEvents, err := model.MostRecentProjectEvents(t.Context(), ref.RepoRefId, 10)
 			assert.NoError(t, err)
 			assert.Len(t, repoEvents, 1)
 		},
@@ -1156,11 +1156,11 @@ func TestPromoteVarsToRepo(t *testing.T) {
 			assert.Equal(t, "1", repoVarsFromDB.Vars["a"])
 			assert.Equal(t, "2", repoVarsFromDB.Vars["b"])
 
-			projectEvents, err := model.MostRecentProjectEvents(ref.Id, 10)
+			projectEvents, err := model.MostRecentProjectEvents(t.Context(), ref.Id, 10)
 			assert.NoError(t, err)
 			assert.Len(t, projectEvents, 1)
 
-			repoEvents, err := model.MostRecentProjectEvents(ref.RepoRefId, 10)
+			repoEvents, err := model.MostRecentProjectEvents(t.Context(), ref.RepoRefId, 10)
 			assert.NoError(t, err)
 			assert.Len(t, repoEvents, 1)
 		},
@@ -1186,11 +1186,11 @@ func TestPromoteVarsToRepo(t *testing.T) {
 			assert.True(t, repoVarsFromDB.PrivateVars["d"])
 			assert.True(t, repoVarsFromDB.AdminOnlyVars["d"])
 
-			projectEvents, err := model.MostRecentProjectEvents(ref.Id, 10)
+			projectEvents, err := model.MostRecentProjectEvents(t.Context(), ref.Id, 10)
 			assert.NoError(t, err)
 			assert.Empty(t, projectEvents)
 
-			repoEvents, err := model.MostRecentProjectEvents(ref.RepoRefId, 10)
+			repoEvents, err := model.MostRecentProjectEvents(t.Context(), ref.RepoRefId, 10)
 			assert.NoError(t, err)
 			assert.Empty(t, repoEvents)
 		},
@@ -1221,11 +1221,11 @@ func TestPromoteVarsToRepo(t *testing.T) {
 			assert.True(t, repoVarsFromDB.PrivateVars["d"])
 			assert.True(t, repoVarsFromDB.AdminOnlyVars["d"])
 
-			projectEvents, err := model.MostRecentProjectEvents(ref.Id, 10)
+			projectEvents, err := model.MostRecentProjectEvents(t.Context(), ref.Id, 10)
 			assert.NoError(t, err)
 			assert.Empty(t, projectEvents)
 
-			repoEvents, err := model.MostRecentProjectEvents(ref.RepoRefId, 10)
+			repoEvents, err := model.MostRecentProjectEvents(t.Context(), ref.RepoRefId, 10)
 			assert.NoError(t, err)
 			assert.Empty(t, repoEvents)
 		},

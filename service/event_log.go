@@ -80,7 +80,7 @@ func (uis *UIServer) fullEventLogs(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		var loggedProjectEvents model.ProjectChangeEvents
-		loggedProjectEvents, err = model.MostRecentProjectEvents(resourceID, 200)
+		loggedProjectEvents, err = model.MostRecentProjectEvents(r.Context(), resourceID, 200)
 		for _, event := range loggedProjectEvents {
 			loggedEvents = append(loggedEvents, event.EventLogEntry)
 		}
