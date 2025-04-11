@@ -98,7 +98,7 @@ func TestTryIdleSpawnHostNotification(t *testing.T) {
 	assert.NoError(t, db.FindAllQContext(t.Context(), event.SubscriptionsCollection, db.Q{}, &fetchedSubs))
 	require.Len(t, fetchedSubs, 1)
 
-	events, err := event.FindAllByResourceID(h.Id)
+	events, err := event.FindAllByResourceID(t.Context(), h.Id)
 	assert.NoError(t, err)
 	assert.Len(t, events, 2)
 }

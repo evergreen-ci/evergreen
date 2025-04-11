@@ -45,7 +45,7 @@ func checkDisabled(t *testing.T, dbTask *task.Task) {
 	assert.Equal(t, evergreen.DisabledTaskPriority, dbTask.Priority, "task '%s' should have disabled priority", dbTask.Id)
 	assert.False(t, dbTask.Activated, "task '%s' should be deactivated", dbTask.Id)
 
-	events, err := event.FindAllByResourceID(dbTask.Id)
+	events, err := event.FindAllByResourceID(t.Context(), dbTask.Id)
 	require.NoError(t, err)
 
 	var loggedDeactivationEvent bool
@@ -1512,7 +1512,7 @@ func TestUpdateBuildStatusForTaskReset(t *testing.T) {
 	dbVersion, err := VersionFindOneId(t.Context(), v.Id)
 	assert.NoError(t, err)
 	assert.Equal(t, evergreen.VersionStarted, dbVersion.Status)
-	events, err := event.FindAllByResourceID(v.Id)
+	events, err := event.FindAllByResourceID(t.Context(), v.Id)
 	assert.NoError(t, err)
 	assert.Len(t, events, 1)
 	data := events[0].Data.(*event.VersionEventData)
@@ -1548,7 +1548,7 @@ func TestUpdateVersionStatusForGithubChecks(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, versionStatus, v1.Status) // version status hasn't changed
 
-	events, err := event.FindAllByResourceID("v1")
+	events, err := event.FindAllByResourceID(t.Context(), "v1")
 	assert.NoError(t, err)
 	require.Len(t, events, 1)
 	assert.Equal(t, event.VersionGithubCheckFinished, events[0].EventType)
@@ -2874,7 +2874,7 @@ func TestTryResetTask(t *testing.T) {
 		t1FromDb, err := task.FindOne(ctx, db.Query(task.ById(t1.Id)))
 		So(err, ShouldBeNil)
 		So(t1FromDb.Status, ShouldEqual, evergreen.TaskUndispatched)
-		t1Events, err := event.FindAllByResourceID(dt.Id)
+		t1Events, err := event.FindAllByResourceID(t.Context(), dt.Id)
 		So(err, ShouldBeNil)
 		So(len(t1Events), ShouldEqual, 1)
 		So(t1Events[0].EventType, ShouldEqual, event.TaskRestarted)
@@ -2883,7 +2883,7 @@ func TestTryResetTask(t *testing.T) {
 		So(err, ShouldBeNil)
 		So(dtFromDb.Status, ShouldEqual, evergreen.TaskUndispatched)
 
-		dtEvents, err := event.FindAllByResourceID(dt.Id)
+		dtEvents, err := event.FindAllByResourceID(t.Context(), dt.Id)
 		So(err, ShouldBeNil)
 		So(len(dtEvents), ShouldEqual, 1)
 		So(dtEvents[0].EventType, ShouldEqual, event.TaskRestarted)
@@ -4587,7 +4587,7 @@ func TestClearAndResetStrandedHostTaskFailedOnly(t *testing.T) {
 	assert.NoError(t, ClearAndResetStrandedHostTask(ctx, settings, h))
 
 	checkTaskRestartEvent := func(t *testing.T, taskID string) {
-		events, err := event.FindAllByResourceID(taskID)
+		events, err := event.FindAllByResourceID(t.Context(), taskID)
 		require.NoError(t, err)
 		require.NotEmpty(t, events)
 		var foundTaskRestartEvent bool
@@ -4613,7 +4613,7 @@ func TestClearAndResetStrandedHostTaskFailedOnly(t *testing.T) {
 	assert.Equal(t, 1, restartedExecutionTask.Execution)
 	assert.Equal(t, 1, restartedExecutionTask.LatestParentExecution)
 	assert.Equal(t, evergreen.TaskUndispatched, restartedExecutionTask.Status)
-	restartedExecutionTaskEvents, err := event.FindAllByResourceID(restartedExecutionTask.Id)
+	restartedExecutionTaskEvents, err := event.FindAllByResourceID(t.Context(), restartedExecutionTask.Id)
 	require.NoError(t, err)
 	require.NotEmpty(t, restartedExecutionTaskEvents)
 	checkTaskRestartEvent(t, restartedExecutionTask.Id)
@@ -4624,7 +4624,7 @@ func TestClearAndResetStrandedHostTaskFailedOnly(t *testing.T) {
 	assert.Equal(t, evergreen.TaskSucceeded, nonRestartedExecutionTask.Status)
 	assert.Equal(t, 0, nonRestartedExecutionTask.Execution)
 	assert.Equal(t, 1, restartedExecutionTask.LatestParentExecution)
-	events, err := event.FindAllByResourceID(nonRestartedExecutionTask.Id)
+	events, err := event.FindAllByResourceID(t.Context(), nonRestartedExecutionTask.Id)
 	require.NoError(t, err)
 	assert.Empty(t, events, "should not have any new events for a non-restarted task")
 
@@ -5519,10 +5519,10 @@ func TestDisplayTaskUpdates(t *testing.T) {
 	assert.Zero(dbTask.FinishTime)
 
 	// check that the updates above logged an event for the first one
-	events, err := event.Find(event.TaskEventsForId(dt.Id))
+	events, err := event.Find(t.Context(), event.TaskEventsForId(dt.Id))
 	assert.NoError(err)
 	assert.Len(events, 1)
-	events, err = event.Find(event.TaskEventsForId(dt2.Id))
+	events, err = event.Find(t.Context(), event.TaskEventsForId(dt2.Id))
 	assert.NoError(err)
 	assert.Empty(events)
 
@@ -5593,7 +5593,7 @@ func TestDisplayTaskUpdateNoUndispatched(t *testing.T) {
 	assert.NotNil(dbTask)
 	assert.Equal(evergreen.TaskStarted, dbTask.Status)
 
-	events, err := event.Find(event.TaskEventsForId(dt.Id))
+	events, err := event.Find(t.Context(), event.TaskEventsForId(dt.Id))
 	assert.NoError(err)
 	assert.Empty(events)
 }
@@ -5767,7 +5767,7 @@ func TestDisplayTaskUpdatesAreConcurrencySafe(t *testing.T) {
 
 	assert.Equal(t, evergreen.TaskSucceeded, dbDisplayTask.Status, "final display task status must be success after all concurrent updates finish")
 
-	latestEvents, err := event.Find(event.MostRecentTaskEvents(dt.Id, 1))
+	latestEvents, err := event.Find(t.Context(), event.MostRecentTaskEvents(dt.Id, 1))
 	require.NoError(t, err)
 	require.Len(t, latestEvents, 1)
 	assert.Equal(t, event.TaskFinished, latestEvents[0].EventType, "should have logged event for display task finished")
@@ -7024,7 +7024,7 @@ func TestUpdateBlockedDependencies(t *testing.T) {
 
 	// one event inserted for every updated task, one for the updated build, and
 	// one for the updated version.
-	events, err := event.Find(db.Q{})
+	events, err := event.Find(t.Context(), db.Q{})
 	assert.NoError(err)
 	assert.Len(events, 6)
 }

@@ -30,7 +30,7 @@ import (
 
 // BbGetCreatedTickets is the resolver for the bbGetCreatedTickets field.
 func (r *queryResolver) BbGetCreatedTickets(ctx context.Context, taskID string) ([]*thirdparty.JiraTicket, error) {
-	createdTickets, err := bbGetCreatedTicketsPointers(taskID)
+	createdTickets, err := bbGetCreatedTicketsPointers(ctx, taskID)
 	if err != nil {
 		return nil, err
 	}

@@ -2309,7 +2309,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 		assert.True(dbTask.Activated, dbTask.Id)
 		assert.Equal("caller", dbTask.ActivatedBy)
 
-		dbEvents, err := event.FindAllByResourceID(dbTask.Id)
+		dbEvents, err := event.FindAllByResourceID(t.Context(), dbTask.Id)
 		require.NoError(t, err)
 		require.Len(t, dbEvents, 1)
 		assert.Equal(event.TaskRestarted, dbEvents[0].EventType)

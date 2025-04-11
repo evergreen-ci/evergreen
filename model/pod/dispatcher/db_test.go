@@ -181,7 +181,7 @@ func TestAllocate(t *testing.T) {
 		assert.Equal(t, pd.LastModified, dbDispatcher.LastModified)
 	}
 	checkEventLogged := func(t *testing.T, tsk *task.Task) {
-		dbEvents, err := event.FindAllByResourceID(tsk.Id)
+		dbEvents, err := event.FindAllByResourceID(t.Context(), tsk.Id)
 		require.NoError(t, err)
 		require.Len(t, dbEvents, 1)
 		assert.Equal(t, event.ContainerAllocated, dbEvents[0].EventType)
@@ -274,7 +274,7 @@ func TestAllocate(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Zero(t, dbDispatcher)
 
-			dbEvents, err := event.FindAllByResourceID(tsk.Id)
+			dbEvents, err := event.FindAllByResourceID(t.Context(), tsk.Id)
 			assert.NoError(t, err)
 			assert.Empty(t, dbEvents)
 		},

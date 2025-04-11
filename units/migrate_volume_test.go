@@ -134,7 +134,7 @@ func TestVolumeMigrateJob(t *testing.T) {
 			assert.Equal(t, evergreen.HostRunning, initialHost.Status)
 			assert.Equal(t, initialHost.HomeVolumeID, volume.ID)
 
-			events, err := event.FindAllByResourceID(h.Id)
+			events, err := event.FindAllByResourceID(t.Context(), h.Id)
 			assert.NoError(t, err)
 			require.Len(t, events, 1)
 			assert.Equal(t, event.EventVolumeMigrationFailed, events[0].EventType)
@@ -177,7 +177,7 @@ func TestVolumeMigrateJob(t *testing.T) {
 			assert.Equal(t, evergreen.HostStopped, initialHost.Status)
 			assert.Equal(t, "", initialHost.HomeVolumeID)
 
-			events, err := event.FindAllByResourceID(h.Id)
+			events, err := event.FindAllByResourceID(t.Context(), h.Id)
 			assert.NoError(t, err)
 			assert.Len(t, events, 3)
 		},

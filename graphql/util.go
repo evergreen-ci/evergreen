@@ -777,8 +777,8 @@ func getValidTaskStatusesFilter(statuses []string) []string {
 	return filteredStatuses
 }
 
-func bbGetCreatedTicketsPointers(taskId string) ([]*thirdparty.JiraTicket, error) {
-	events, err := event.Find(event.TaskEventsForId(taskId))
+func bbGetCreatedTicketsPointers(ctx context.Context, taskId string) ([]*thirdparty.JiraTicket, error) {
+	events, err := event.Find(ctx, event.TaskEventsForId(taskId))
 	if err != nil {
 		return nil, err
 	}

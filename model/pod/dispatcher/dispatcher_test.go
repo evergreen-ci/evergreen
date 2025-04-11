@@ -175,12 +175,12 @@ func TestAssignNextTask(t *testing.T) {
 		assert.Equal(t, tsk.Id, dbPod.TaskRuntimeInfo.RunningTaskID)
 		assert.Equal(t, pod.StatusDecommissioned, dbPod.Status)
 
-		taskEvents, err := event.FindAllByResourceID(dbTask.Id)
+		taskEvents, err := event.FindAllByResourceID(t.Context(), dbTask.Id)
 		require.NoError(t, err)
 		require.Len(t, taskEvents, 1)
 		assert.Equal(t, event.TaskDispatched, taskEvents[0].EventType)
 
-		podEvents, err := event.FindAllByResourceID(p.ID)
+		podEvents, err := event.FindAllByResourceID(t.Context(), p.ID)
 		require.NoError(t, err)
 		var foundPodAssignedTask bool
 		var foundPodUpdatedStatus bool

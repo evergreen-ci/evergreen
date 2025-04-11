@@ -24,7 +24,7 @@ func (uis *UIServer) fullEventLogs(w http.ResponseWriter, r *http.Request) {
 	var err error
 	switch resourceType {
 	case event.ResourceTypeTask:
-		loggedEvents, err = event.Find(event.MostRecentTaskEvents(resourceID, 100))
+		loggedEvents, err = event.Find(r.Context(), event.MostRecentTaskEvents(resourceID, 100))
 	case event.ResourceTypeHost:
 		if u == nil {
 			uis.RedirectToLogin(w, r)
@@ -46,13 +46,13 @@ func (uis *UIServer) fullEventLogs(w http.ResponseWriter, r *http.Request) {
 			Limit:   5000,
 			SortAsc: false,
 		}
-		loggedEvents, err = event.Find(event.HostEvents(hostEventsOpts))
+		loggedEvents, err = event.Find(r.Context(), event.HostEvents(hostEventsOpts))
 	case event.ResourceTypeAdmin:
 		if u == nil {
 			uis.RedirectToLogin(w, r)
 			return
 		}
-		loggedEvents, err = event.Find(event.RecentAdminEvents(100))
+		loggedEvents, err = event.Find(r.Context(), event.RecentAdminEvents(100))
 	case event.EventResourceTypeProject:
 		if u == nil {
 			uis.RedirectToLogin(w, r)

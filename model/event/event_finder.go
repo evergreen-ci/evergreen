@@ -31,9 +31,9 @@ func ResourceTypeKeyIs(key string) bson.M {
 
 // Find takes a collection storing events and a query, generated
 // by one of the query functions, and returns a slice of events.
-func Find(query db.Q) ([]EventLogEntry, error) {
+func Find(ctx context.Context, query db.Q) ([]EventLogEntry, error) {
 	events := []EventLogEntry{}
-	err := db.FindAllQ(EventCollection, query, &events)
+	err := db.FindAllQContext(ctx, EventCollection, query, &events)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -327,8 +327,8 @@ func AdminEventsBefore(before time.Time, n int) db.Q {
 	return db.Query(filter).Sort([]string{"-" + TimestampKey}).Limit(n)
 }
 
-func FindAllByResourceID(resourceID string) ([]EventLogEntry, error) {
-	return Find(db.Query(bson.M{ResourceIdKey: resourceID}))
+func FindAllByResourceID(ctx context.Context, resourceID string) ([]EventLogEntry, error) {
+	return Find(ctx, db.Query(bson.M{ResourceIdKey: resourceID}))
 }
 
 // Pod events
