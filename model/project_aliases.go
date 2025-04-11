@@ -158,13 +158,13 @@ func FindAliasesForRepo(ctx context.Context, repoId string) ([]ProjectAlias, err
 
 // findMatchingAliasForRepo finds all aliases with a given name for a repo.
 // Typically FindAliasInProjectRepoOrConfig should be used.
-func findMatchingAliasForRepo(repoID, alias string) ([]ProjectAlias, error) {
+func findMatchingAliasForRepo(ctx context.Context, repoID, alias string) ([]ProjectAlias, error) {
 	var out []ProjectAlias
 	q := db.Query(bson.M{
 		projectIDKey: repoID,
 		aliasKey:     alias,
 	})
-	err := db.FindAllQ(ProjectAliasCollection, q, &out)
+	err := db.FindAllQContext(ctx, ProjectAliasCollection, q, &out)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding project aliases for repo")
 	}
@@ -173,13 +173,13 @@ func findMatchingAliasForRepo(repoID, alias string) ([]ProjectAlias, error) {
 
 // findMatchingAliasForProjectRef finds all aliases with a given name for a project.
 // Typically FindAliasInProjectRepoOrConfig should be used.
-func findMatchingAliasForProjectRef(projectID, alias string) ([]ProjectAlias, error) {
+func findMatchingAliasForProjectRef(ctx context.Context, projectID, alias string) ([]ProjectAlias, error) {
 	var out []ProjectAlias
 	q := db.Query(bson.M{
 		projectIDKey: projectID,
 		aliasKey:     alias,
 	})
-	err := db.FindAllQ(ProjectAliasCollection, q, &out)
+	err := db.FindAllQContext(ctx, ProjectAliasCollection, q, &out)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding project aliases")
 	}
@@ -338,7 +338,7 @@ func FindAliasInProjectRepoOrProjectConfig(ctx context.Context, projectID, alias
 // findAliasInProjectOrRepoFromDb finds all aliases with a given name for a project without merging with parser project.
 // If the project has no aliases, the repo is checked for aliases.
 func findAliasInProjectOrRepoFromDb(ctx context.Context, projectID, alias string) ([]ProjectAlias, error) {
-	aliases, err := findMatchingAliasForProjectRef(projectID, alias)
+	aliases, err := findMatchingAliasForProjectRef(ctx, projectID, alias)
 	if err != nil {
 		return aliases, errors.Wrapf(err, "finding aliases for project ref '%s'", projectID)
 	}
@@ -360,7 +360,7 @@ func tryGetRepoAliases(ctx context.Context, projectID string, alias string, alia
 		return aliases, nil
 	}
 
-	aliases, err = findMatchingAliasForRepo(project.RepoRefId, alias)
+	aliases, err = findMatchingAliasForRepo(ctx, project.RepoRefId, alias)
 	if err != nil {
 		return aliases, errors.Wrapf(err, "finding aliases for repo '%s'", project.RepoRefId)
 	}
