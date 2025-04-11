@@ -164,6 +164,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	for i := range testSettings.Providers.AWS.AccountRoles {
 		s.Equal(testSettings.Providers.AWS.AccountRoles[i], settingsFromConnector.Providers.AWS.AccountRoles[i])
 	}
+	s.Equal(testSettings.Providers.AWS.IPAMPoolID, settingsFromConnector.Providers.AWS.IPAMPoolID)
 	s.EqualValues(testSettings.Providers.Docker.APIVersion, settingsFromConnector.Providers.Docker.APIVersion)
 	s.EqualValues(testSettings.RepoTracker.MaxConcurrentRequests, settingsFromConnector.RepoTracker.MaxConcurrentRequests)
 	s.EqualValues(testSettings.Scheduler.TaskFinder, settingsFromConnector.Scheduler.TaskFinder)
