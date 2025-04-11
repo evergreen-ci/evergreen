@@ -196,15 +196,15 @@ func FindOneId(ctx context.Context, id string) (*Build, error) {
 
 // FindBuildsByVersions finds builds matching the version. This only populates a
 // subset of the build fields.
-func FindBuildsByVersions(versionIds []string) ([]Build, error) {
-	return Find(ByVersions(versionIds).
+func FindBuildsByVersions(ctx context.Context, versionIds []string) ([]Build, error) {
+	return Find(ctx, ByVersions(versionIds).
 		WithFields(BuildVariantKey, DisplayNameKey, TasksKey, VersionKey, StatusKey, TimeTakenKey, PredictedMakespanKey, ActualMakespanKey, HasUnfinishedEssentialTaskKey))
 }
 
 // Find returns all builds that satisfy the query.
-func Find(query db.Q) ([]Build, error) {
+func Find(ctx context.Context, query db.Q) ([]Build, error) {
 	builds := []Build{}
-	err := db.FindAllQ(Collection, query, &builds)
+	err := db.FindAllQContext(ctx, Collection, query, &builds)
 	return builds, err
 }
 
@@ -240,7 +240,7 @@ func FindProjectForBuild(ctx context.Context, buildID string) (string, error) {
 }
 
 // FindBuildsForTasks returns all builds that cover the given tasks
-func FindBuildsForTasks(tasks []task.Task) ([]Build, error) {
+func FindBuildsForTasks(ctx context.Context, tasks []task.Task) ([]Build, error) {
 	buildIdsMap := map[string]bool{}
 	var buildIds []string
 	for _, t := range tasks {
@@ -249,7 +249,7 @@ func FindBuildsForTasks(tasks []task.Task) ([]Build, error) {
 	for buildId := range buildIdsMap {
 		buildIds = append(buildIds, buildId)
 	}
-	builds, err := Find(ByIds(buildIds))
+	builds, err := Find(ctx, ByIds(buildIds))
 	if err != nil {
 		return nil, errors.Wrap(err, "getting builds")
 	}

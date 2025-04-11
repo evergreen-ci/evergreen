@@ -2140,7 +2140,7 @@ func FetchVersionsBuildsAndTasks(ctx context.Context, project *Project, skip int
 	}
 
 	// fetch all of the builds (with only relevant fields)
-	buildsFromDb, err := build.Find(
+	buildsFromDb, err := build.Find(ctx,
 		build.ByVersions(versionIds).
 			WithFields(
 				build.BuildVariantKey,

@@ -1549,7 +1549,7 @@ func updateVersionGithubStatus(ctx context.Context, v *Version, builds []build.B
 // unfinished essential tasks. It assumes that the build statuses have already
 // been updated prior to this.
 func updateVersionStatus(ctx context.Context, v *Version) (string, error) {
-	builds, err := build.Find(build.ByVersion(v.Id))
+	builds, err := build.Find(ctx, build.ByVersion(v.Id))
 	if err != nil {
 		return "", errors.Wrapf(err, "getting builds for version '%s'", v.Id)
 	}
@@ -1739,7 +1739,7 @@ func UpdateVersionAndPatchStatusForBuilds(ctx context.Context, buildIds []string
 	if len(buildIds) == 0 {
 		return nil
 	}
-	builds, err := build.Find(build.ByIds(buildIds))
+	builds, err := build.Find(ctx, build.ByIds(buildIds))
 	if err != nil {
 		return errors.Wrapf(err, "fetching builds")
 	}

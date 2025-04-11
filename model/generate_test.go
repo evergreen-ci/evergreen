@@ -1041,7 +1041,7 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasksWithBatchtime() {
 	s.Len(pp.BuildVariants, 3)
 	s.Len(pp.Tasks, 6)
 
-	builds, err := build.FindBuildsByVersions([]string{v.Id})
+	builds, err := build.FindBuildsByVersions(s.ctx, []string{v.Id})
 	s.NoError(err)
 	s.Len(builds, 2)
 	for _, b := range builds {
@@ -1150,7 +1150,7 @@ func (s *GenerateSuite) TestSaveWithAlreadyGeneratedTasksAndVariants() {
 	s.Equal("new_task", tasks[2].DisplayName)
 
 	// New build is added.
-	builds, err := build.FindBuildsByVersions([]string{v.Id})
+	builds, err := build.FindBuildsByVersions(s.ctx, []string{v.Id})
 	s.NoError(err)
 	s.Require().Len(builds, 2)
 	s.Equal("new_variant", builds[0].BuildVariant)

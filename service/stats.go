@@ -165,7 +165,7 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 		// TODO: switch this to be a query on the builds TaskCache
 		var builds []build.Build
 
-		builds, err = build.Find(build.ByProjectAndVariant(project.Identifier, buildVariant, request, statuses).
+		builds, err = build.Find(r.Context(), build.ByProjectAndVariant(project.Identifier, buildVariant, request, statuses).
 			WithFields(build.IdKey, build.CreateTimeKey, build.VersionKey,
 				build.TimeTakenKey, build.FinishTimeKey, build.StartTimeKey, build.StatusKey).
 			Sort([]string{"-" + build.CreateTimeKey}).

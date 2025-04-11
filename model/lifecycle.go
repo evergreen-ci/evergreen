@@ -424,7 +424,7 @@ func restartTasks(ctx context.Context, allFinishedTasks []task.Task, caller, ver
 	if err := build.SetBuildStartedForTasks(ctx, allFinishedTasks, caller); err != nil {
 		return errors.Wrap(err, "setting builds started")
 	}
-	builds, err := build.FindBuildsForTasks(allFinishedTasks)
+	builds, err := build.FindBuildsForTasks(ctx, allFinishedTasks)
 	if err != nil {
 		return errors.Wrap(err, "finding builds for tasks")
 	}

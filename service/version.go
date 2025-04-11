@@ -107,7 +107,7 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	dbBuilds, err := build.Find(build.ByIds(projCtx.Version.BuildIds))
+	dbBuilds, err := build.Find(r.Context(), build.ByIds(projCtx.Version.BuildIds))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -119,7 +119,7 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 		versionAsUI.PatchInfo = &uiPatch{Patch: *projCtx.Patch}
 		// diff builds for each build in the version
 		var baseBuilds []build.Build
-		baseBuilds, err = build.Find(build.ByRevisionWithSystemVersionRequester(projCtx.Version.Revision))
+		baseBuilds, err = build.Find(r.Context(), build.ByRevisionWithSystemVersionRequester(projCtx.Version.Revision))
 		if err != nil {
 			http.Error(w,
 				fmt.Sprintf("error loading base builds for patch: %v", err),
@@ -283,7 +283,7 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 		RepoOwner: projCtx.ProjectRef.Owner,
 		Repo:      projCtx.ProjectRef.Repo,
 	}
-	dbBuilds, err := build.Find(build.ByIds(projCtx.Version.BuildIds))
+	dbBuilds, err := build.Find(r.Context(), build.ByIds(projCtx.Version.BuildIds))
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -374,7 +374,7 @@ func (uis *UIServer) versionHistory(w http.ResponseWriter, r *http.Request) {
 		}
 		versions = append(versions, &versionAsUI)
 
-		dbBuilds, err := build.Find(build.ByIds(version.BuildIds))
+		dbBuilds, err := build.Find(r.Context(), build.ByIds(version.BuildIds))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

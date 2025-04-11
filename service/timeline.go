@@ -173,7 +173,7 @@ func (uis *UIServer) patchTimelineJson(w http.ResponseWriter, r *http.Request) {
 }
 
 func getBuildInfo(ctx context.Context, buildIds []string) ([]BuildInfo, error) {
-	dbBuilds, err := build.Find(build.ByIds(buildIds))
+	dbBuilds, err := build.Find(ctx, build.ByIds(buildIds))
 	if err != nil {
 		return nil, errors.Wrap(err, "can't get builds")
 	}

@@ -110,7 +110,7 @@ func (j *githubStatusRefreshJob) fetch(ctx context.Context) error {
 		}
 	}
 
-	j.builds, err = build.Find(build.ByVersion(j.FetchID))
+	j.builds, err = build.Find(ctx, build.ByVersion(j.FetchID))
 	if err != nil {
 		return errors.Wrap(err, "finding builds")
 	}

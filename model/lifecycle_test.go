@@ -566,7 +566,7 @@ func TestSetVersionActivation(t *testing.T) {
 	}
 
 	assert.NoError(t, SetVersionActivation(context.Background(), vID, false, "user"))
-	builds, err := build.FindBuildsByVersions([]string{vID})
+	builds, err := build.FindBuildsByVersions(t.Context(), []string{vID})
 	require.NoError(t, err)
 	require.Len(t, builds, 2)
 	for _, b := range builds {
@@ -2197,7 +2197,7 @@ func TestVersionRestart(t *testing.T) {
 	tasks, err := task.Find(ctx, task.ByIds(taskIds))
 	assert.NoError(err)
 	assert.NotEmpty(tasks)
-	builds, err := build.Find(build.ByIds(buildIds))
+	builds, err := build.Find(t.Context(), build.ByIds(buildIds))
 	assert.NoError(err)
 	assert.NotEmpty(builds)
 	for _, t := range tasks {
