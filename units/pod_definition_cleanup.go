@@ -139,7 +139,7 @@ func (j *podDefinitionCleanupJob) cleanupStrandedPodDefinitions(ctx context.Cont
 }
 
 func (j *podDefinitionCleanupJob) cleanupStalePodDefinitions(ctx context.Context, limit int) (numDeleted int, err error) {
-	podDefs, err := definition.FindByLastAccessedBefore(podDefinitionTTL, limit)
+	podDefs, err := definition.FindByLastAccessedBefore(ctx, podDefinitionTTL, limit)
 	if err != nil {
 		return 0, errors.Wrapf(err, "finding pod definitions last accessed before %s", time.Now().Add(-podDefinitionTTL))
 	}

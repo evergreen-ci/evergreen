@@ -5,7 +5,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -375,7 +374,7 @@ func (m *mockManager) CreateVolume(ctx context.Context, volume *host.Volume) (*h
 		volume.ID = primitive.NewObjectID().String()
 	}
 	m.Volumes[volume.ID] = MockVolume{}
-	if err := volume.Insert(); err != nil {
+	if err := volume.Insert(ctx); err != nil {
 		return nil, errors.WithStack(err)
 	}
 
@@ -460,13 +459,16 @@ func (m *mockManager) Cleanup(context.Context) error {
 }
 
 // Get mock region from ProviderSettingsList
-func getMockManagerOptions(provider string, providerSettingsList []*birch.Document) (ManagerOpts, error) {
-	opts := ManagerOpts{Provider: provider}
-	if len(providerSettingsList) == 0 {
+func getMockManagerOptions(d distro.Distro) (ManagerOpts, error) {
+	opts := ManagerOpts{
+		Provider: d.Provider,
+		Account:  d.ProviderAccount,
+	}
+	if len(d.ProviderSettingsList) == 0 {
 		return opts, nil
 	}
 
-	region, ok := providerSettingsList[0].Lookup("region").StringValueOK()
+	region, ok := d.ProviderSettingsList[0].Lookup("region").StringValueOK()
 	if !ok {
 		return ManagerOpts{}, errors.New("cannot get region from provider settings")
 	}

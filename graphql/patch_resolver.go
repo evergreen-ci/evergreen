@@ -50,7 +50,7 @@ func (r *patchResolver) BaseTaskStatuses(ctx context.Context, obj *restModel.API
 // Builds is the resolver for the builds field.
 func (r *patchResolver) Builds(ctx context.Context, obj *restModel.APIPatch) ([]*restModel.APIBuild, error) {
 	versionID := utility.FromStringPtr(obj.Version)
-	builds, err := build.FindBuildsByVersions([]string{versionID})
+	builds, err := build.FindBuildsByVersions(ctx, []string{versionID})
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching builds for version '%s': %s", versionID, err.Error()))
 	}

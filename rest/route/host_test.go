@@ -113,13 +113,13 @@ func (s *HostsChangeStatusesSuite) TestRunHostQuarantinesStaticHostAndFixesStran
 		Id:     "version_id",
 		Status: evergreen.VersionStarted,
 	}
-	s.Require().NoError(v.Insert())
+	s.Require().NoError(v.Insert(s.ctx))
 	b := build.Build{
 		Id:      "build_id",
 		Version: v.Id,
 		Status:  evergreen.BuildStarted,
 	}
-	s.Require().NoError(b.Insert())
+	s.Require().NoError(b.Insert(s.ctx))
 	tsk := task.Task{
 		Id:        "task_id",
 		Execution: 1,
@@ -128,7 +128,7 @@ func (s *HostsChangeStatusesSuite) TestRunHostQuarantinesStaticHostAndFixesStran
 		Status:    evergreen.TaskStarted,
 		HostId:    hostID,
 	}
-	s.Require().NoError(tsk.Insert())
+	s.Require().NoError(tsk.Insert(s.ctx))
 	s.Require().NoError(host.UpdateOne(s.ctx, host.ById(hostID), bson.M{
 		"$set": bson.M{
 			host.ProviderKey:             evergreen.ProviderNameStatic,
@@ -946,7 +946,7 @@ func setupMockHostsConnector(t *testing.T, env evergreen.Environment) {
 		grip.Error(hostToAdd.Insert(ctx))
 	}
 	for _, userToAdd := range users {
-		grip.Error(userToAdd.Insert())
+		grip.Error(userToAdd.Insert(t.Context()))
 	}
 	require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 	rm := env.RoleManager()
@@ -1087,13 +1087,13 @@ func TestDisableHostHandler(t *testing.T) {
 				Id:     "version_id",
 				Status: evergreen.VersionStarted,
 			}
-			require.NoError(t, v.Insert())
+			require.NoError(t, v.Insert(t.Context()))
 			b := build.Build{
 				Id:      "build_id",
 				Version: v.Id,
 				Status:  evergreen.BuildStarted,
 			}
-			require.NoError(t, b.Insert())
+			require.NoError(t, b.Insert(t.Context()))
 			tsk := task.Task{
 				Id:        "task_id",
 				Execution: 1,
@@ -1102,7 +1102,7 @@ func TestDisableHostHandler(t *testing.T) {
 				Status:    evergreen.TaskStarted,
 				HostId:    hostID,
 			}
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(t.Context()))
 
 			h := host.Host{
 				Id:                   hostID,

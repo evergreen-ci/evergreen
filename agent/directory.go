@@ -300,10 +300,11 @@ func (a *Agent) SetHomeDirectory() {
 		return
 	}
 
-	homeDir, err := os.UserHomeDir()
+	usr, err := user.Current()
 	if err != nil {
-		grip.Warning(errors.Wrap(err, "getting home directory"))
+		grip.Warning(errors.Wrap(err, "getting current user to set the home directory"))
 		return
 	}
-	a.opts.HomeDirectory = homeDir
+
+	a.opts.HomeDirectory = usr.HomeDir
 }

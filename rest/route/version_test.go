@@ -111,13 +111,13 @@ func (s *VersionSuite) SetupSuite() {
 	builds := []build.Build{testBuild1, testBuild2}
 
 	for _, item := range versions {
-		s.Require().NoError(item.Insert())
+		s.Require().NoError(item.Insert(s.ctx))
 	}
 	for _, item := range tasks {
-		s.Require().NoError(item.Insert())
+		s.Require().NoError(item.Insert(s.ctx))
 	}
 	for _, item := range builds {
-		s.Require().NoError(item.Insert())
+		s.Require().NoError(item.Insert(s.ctx))
 	}
 }
 

@@ -263,7 +263,7 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, settings *
 		}
 	}
 
-	existingBuilds, err := build.Find(build.ByVersion(v.Id))
+	existingBuilds, err := build.Find(ctx, build.ByVersion(v.Id))
 	if err != nil {
 		return errors.Wrap(err, "finding builds for version")
 	}
@@ -551,7 +551,7 @@ func (g *GeneratedProject) addDependencyEdgesToGraph(ctx context.Context, newTas
 
 // filterInactiveTasks returns a copy of tasks with the tasks that will not be activated by the generator removed.
 func (g *GeneratedProject) filterInactiveTasks(ctx context.Context, tasks TVPairSet, v *Version, p *Project) (TVPairSet, error) {
-	existingBuilds, err := build.Find(build.ByVersion(v.Id))
+	existingBuilds, err := build.Find(ctx, build.ByVersion(v.Id))
 	if err != nil {
 		return nil, errors.Wrap(err, "finding builds for version")
 	}

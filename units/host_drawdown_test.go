@@ -85,8 +85,8 @@ func TestHostDrawdown(t *testing.T) {
 			tsk2 := task.Task{
 				Id: "dummy_task_name2",
 			}
-			require.NoError(t, tsk1.Insert())
-			require.NoError(t, tsk2.Insert())
+			require.NoError(t, tsk1.Insert(ctx))
+			require.NoError(t, tsk2.Insert(ctx))
 
 			// If we encounter missing distros, we decommission hosts from those
 			// distros.
@@ -136,8 +136,8 @@ func TestHostDrawdown(t *testing.T) {
 				TaskGroup:         "dummy_task_group2",
 				TaskGroupMaxHosts: 1,
 			}
-			require.NoError(t, tsk1.Insert())
-			require.NoError(t, tsk2.Insert())
+			require.NoError(t, tsk1.Insert(ctx))
+			require.NoError(t, tsk2.Insert(ctx))
 
 			drawdownInfo := DrawdownInfo{
 				DistroID:     d.Id,
@@ -160,7 +160,7 @@ func TestHostDrawdown(t *testing.T) {
 			tsk1 := task.Task{
 				Id: "dummy_task_name1",
 			}
-			require.NoError(t, tsk1.Insert())
+			require.NoError(t, tsk1.Insert(ctx))
 
 			drawdownInfo := DrawdownInfo{
 				DistroID:     d.Id,
@@ -188,7 +188,7 @@ func TestHostDrawdown(t *testing.T) {
 				TaskGroup:         "dummy_task_group1",
 				TaskGroupMaxHosts: 5,
 			}
-			require.NoError(t, tsk1.Insert())
+			require.NoError(t, tsk1.Insert(ctx))
 
 			drawdownInfo := DrawdownInfo{
 				DistroID:     d.Id,
@@ -214,7 +214,7 @@ func TestHostDrawdown(t *testing.T) {
 			tsk1 := task.Task{
 				Id: "dummy_task_name1",
 			}
-			require.NoError(t, tsk1.Insert())
+			require.NoError(t, tsk1.Insert(ctx))
 
 			drawdownInfo := DrawdownInfo{
 				DistroID:     d.Id,

@@ -65,7 +65,7 @@ func TestMakeHost(t *testing.T) {
 	sampleTask := &task.Task{
 		Id: "task-id",
 	}
-	require.NoError(sampleTask.Insert())
+	require.NoError(sampleTask.Insert(t.Context()))
 
 	// spawn an evergreen distro
 	c := apimodels.CreateHost{
@@ -114,7 +114,7 @@ func TestMakeHost(t *testing.T) {
 		Id:      "task-id",
 		BuildId: "build-id",
 	}
-	require.NoError(myTask.Insert())
+	require.NoError(myTask.Insert(t.Context()))
 	c = apimodels.CreateHost{
 		Distro:              "archlinux-test",
 		CloudProvider:       "ec2",
@@ -316,7 +316,7 @@ func TestHostCreateHandler(t *testing.T) {
 		Id:        "task-id",
 		Execution: 0,
 	}
-	require.NoError(sampleTask.Insert())
+	require.NoError(sampleTask.Insert(t.Context()))
 
 	c := apimodels.CreateHost{
 		Distro:              "archlinux-test",
@@ -411,7 +411,7 @@ func TestHostCreateDocker(t *testing.T) {
 	sampleTask := &task.Task{
 		Id: handler.taskID,
 	}
-	require.NoError(sampleTask.Insert())
+	require.NoError(sampleTask.Insert(t.Context()))
 
 	extraHosts := []string{"localhost:127.0.0.1"}
 	c := apimodels.CreateHost{
@@ -497,7 +497,7 @@ func TestGetDockerLogs(t *testing.T) {
 		Id:      "task-id",
 		BuildId: "build-id",
 	}
-	require.NoError(myTask.Insert())
+	require.NoError(myTask.Insert(t.Context()))
 	c := apimodels.CreateHost{
 		CloudProvider: apimodels.ProviderDocker,
 		NumHosts:      "1",
@@ -611,7 +611,7 @@ func TestGetDockerStatus(t *testing.T) {
 		Id:      "task-id",
 		BuildId: "build-id",
 	}
-	require.NoError(myTask.Insert())
+	require.NoError(myTask.Insert(t.Context()))
 	c := apimodels.CreateHost{
 		CloudProvider: apimodels.ProviderDocker,
 		NumHosts:      "1",

@@ -126,7 +126,7 @@ func (s *DistroPatchSetupByIDSuite) TestRunValidId() {
 	s.Require().True(ok)
 	s.Equal(apiDistro.Setup, utility.ToStringPtr("New set-up script"))
 
-	dbEvents, err := event.FindAllByResourceID(h.distroID)
+	dbEvents, err := event.FindAllByResourceID(s.T().Context(), h.distroID)
 	s.Require().NoError(err)
 	s.Require().Len(dbEvents, 1)
 	eventData, ok := dbEvents[0].Data.(*event.DistroEventData)
@@ -538,7 +538,7 @@ func (s *DistroDeleteByIDSuite) TestRunValidDistroId() {
 		Distro:      "distro1",
 		GeneratedAt: now,
 	}
-	s.NoError(db.Insert(model.TaskQueuesCollection, taskQueue))
+	s.NoError(db.Insert(s.T().Context(), model.TaskQueuesCollection, taskQueue))
 	h := s.rm.(*distroIDDeleteHandler)
 	h.distroID = "distro1"
 

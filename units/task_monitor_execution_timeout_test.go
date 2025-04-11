@@ -59,8 +59,8 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 	const hostID = "host_id"
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, j *taskExecutionTimeoutJob, v model.Version){
 		"RestartsStaleHostTask": func(ctx context.Context, t *testing.T, j *taskExecutionTimeoutJob, v model.Version) {
-			require.NoError(t, j.task.Insert())
-			require.NoError(t, v.Insert())
+			require.NoError(t, j.task.Insert(t.Context()))
+			require.NoError(t, v.Insert(t.Context()))
 
 			j.Run(ctx)
 			require.NoError(t, j.Error())
@@ -76,8 +76,8 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 			const taskGroupName = "some_task_group"
 			j.task.TaskGroup = taskGroupName
 			j.task.TaskGroupMaxHosts = 1
-			require.NoError(t, v.Insert())
-			require.NoError(t, j.task.Insert())
+			require.NoError(t, v.Insert(t.Context()))
+			require.NoError(t, j.task.Insert(t.Context()))
 			otherTask := task.Task{
 				Id:                "another_task",
 				BuildId:           j.task.BuildId,
@@ -94,7 +94,7 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 					},
 				},
 			}
-			require.NoError(t, otherTask.Insert())
+			require.NoError(t, otherTask.Insert(t.Context()))
 
 			p := model.Project{
 				TaskGroups: []model.TaskGroup{
@@ -123,7 +123,7 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 			err = util.UnmarshalYAMLWithFallback(yml, &pp)
 			require.NoError(t, err)
 			pp.Id = v.Id
-			require.NoError(t, pp.Insert())
+			require.NoError(t, pp.Insert(t.Context()))
 
 			j.Run(ctx)
 			require.NoError(t, j.Error())
@@ -148,9 +148,9 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 
 			j.task.PodID = p.ID
 			j.task.ContainerAllocated = true
-			require.NoError(t, j.task.Insert())
-			require.NoError(t, v.Insert())
-			require.NoError(t, p.Insert())
+			require.NoError(t, j.task.Insert(t.Context()))
+			require.NoError(t, v.Insert(t.Context()))
+			require.NoError(t, p.Insert(t.Context()))
 
 			j.Run(ctx)
 			require.NoError(t, j.Error())
@@ -171,9 +171,9 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 			j.task.ContainerAllocated = true
 			j.task.PodID = p.ID
 
-			require.NoError(t, v.Insert())
-			require.NoError(t, p.Insert())
-			require.NoError(t, j.task.Insert())
+			require.NoError(t, v.Insert(t.Context()))
+			require.NoError(t, p.Insert(t.Context()))
+			require.NoError(t, j.task.Insert(t.Context()))
 
 			j.Run(ctx)
 			require.NoError(t, j.Error())
@@ -200,7 +200,7 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 				DisplayTaskId: utility.ToStringPtr(displayTaskID),
 				Status:        evergreen.TaskFailed,
 			}
-			require.NoError(t, et0.Insert())
+			require.NoError(t, et0.Insert(t.Context()))
 			et1 := task.Task{
 				Id:            "another_execution_task",
 				BuildId:       j.task.BuildId,
@@ -209,7 +209,7 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 				DisplayTaskId: utility.ToStringPtr(displayTaskID),
 				Status:        evergreen.TaskUndispatched,
 			}
-			require.NoError(t, et1.Insert())
+			require.NoError(t, et1.Insert(t.Context()))
 			dt := task.Task{
 				Id:             displayTaskID,
 				BuildId:        j.task.BuildId,
@@ -218,10 +218,10 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 				DisplayOnly:    true,
 				ExecutionTasks: []string{j.task.Id, et0.Id, et1.Id},
 			}
-			require.NoError(t, dt.Insert())
+			require.NoError(t, dt.Insert(t.Context()))
 			j.task.DisplayTaskId = utility.ToStringPtr(displayTaskID)
-			require.NoError(t, j.task.Insert())
-			require.NoError(t, v.Insert())
+			require.NoError(t, j.task.Insert(t.Context()))
+			require.NoError(t, v.Insert(t.Context()))
 
 			j.Run(ctx)
 			require.NoError(t, j.Error())
@@ -239,8 +239,8 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 				Status: cloud.StatusTerminated,
 			})
 
-			require.NoError(t, v.Insert())
-			require.NoError(t, j.task.Insert())
+			require.NoError(t, v.Insert(t.Context()))
+			require.NoError(t, j.task.Insert(t.Context()))
 
 			j.Run(ctx)
 			require.NoError(t, j.Error())
@@ -259,7 +259,7 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 		},
 		"NoopsForActiveTask": func(ctx context.Context, t *testing.T, j *taskExecutionTimeoutJob, _ model.Version) {
 			j.task.LastHeartbeat = time.Now()
-			require.NoError(t, j.task.Insert())
+			require.NoError(t, j.task.Insert(t.Context()))
 
 			j.Run(ctx)
 			require.NoError(t, j.Error())
@@ -308,13 +308,13 @@ func TestTaskExecutionTimeoutJob(t *testing.T) {
 				Version: v.Id,
 				Status:  evergreen.BuildStarted,
 			}
-			require.NoError(t, b.Insert())
+			require.NoError(t, b.Insert(t.Context()))
 
 			pRef := model.ProjectRef{
 				Id:      "project_id",
 				Enabled: true,
 			}
-			require.NoError(t, pRef.Insert())
+			require.NoError(t, pRef.Insert(t.Context()))
 
 			tsk := task.Task{
 				Id:                taskID,

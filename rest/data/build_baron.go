@@ -160,7 +160,7 @@ func makeJiraNotification(ctx context.Context, settings *evergreen.Settings, t *
 	}
 	n.SetTaskMetadata(t.Id, t.Execution)
 
-	err = notification.InsertMany(*n)
+	err = notification.InsertMany(ctx, *n)
 	if err != nil {
 		return nil, errors.Wrap(err, "batch inserting notifications")
 	}

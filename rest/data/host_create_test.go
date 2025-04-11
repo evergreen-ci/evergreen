@@ -89,8 +89,8 @@ func TestListHostsForTask(t *testing.T) {
 	for i := range hosts {
 		require.NoError(hosts[i].Insert(ctx))
 	}
-	require.NoError((&task.Task{Id: "task_1", BuildId: "build_1"}).Insert())
-	require.NoError((&build.Build{Id: "build_1"}).Insert())
+	require.NoError((&task.Task{Id: "task_1", BuildId: "build_1"}).Insert(t.Context()))
+	require.NoError((&build.Build{Id: "build_1"}).Insert(t.Context()))
 
 	found, err := ListHostsForTask(context.Background(), "task_1")
 	assert.NoError(err)
@@ -138,11 +138,11 @@ func TestCreateHostsFromTask(t *testing.T) {
 		Owner: "evergreen-ci",
 		Repo:  "sample",
 	}
-	assert.NoError(t, p.Insert())
+	assert.NoError(t, p.Insert(t.Context()))
 	pvars := model.ProjectVars{
 		Id: "p",
 	}
-	assert.NoError(t, pvars.Insert())
+	assert.NoError(t, pvars.Insert(t.Context()))
 
 	// Run tests
 	t.Run("Classic", func(t *testing.T) {
@@ -165,7 +165,7 @@ buildvariants:
 			Id:         "v1",
 			Identifier: "p",
 		}
-		assert.NoError(t, v1.Insert())
+		assert.NoError(t, v1.Insert(t.Context()))
 		t1 := task.Task{
 			Id:           "t1",
 			DisplayName:  "t1",
@@ -175,7 +175,7 @@ buildvariants:
 			BuildVariant: "bv",
 			HostId:       "h1",
 		}
-		assert.NoError(t, t1.Insert())
+		assert.NoError(t, t1.Insert(t.Context()))
 		h1 := host.Host{
 			Id:          "h1",
 			RunningTask: t1.Id,
@@ -185,7 +185,7 @@ buildvariants:
 		err := util.UnmarshalYAMLWithFallback([]byte(versionYaml), &pp)
 		assert.NoError(t, err)
 		pp.Id = "v1"
-		assert.NoError(t, pp.Insert())
+		assert.NoError(t, pp.Insert(t.Context()))
 
 		assert.NoError(t, CreateHostsFromTask(ctx, env, &t1, user.DBUser{Id: "me"}, ""))
 		createdHosts, err := host.Find(ctx, bson.M{host.StartedByKey: "me"})
@@ -233,7 +233,7 @@ buildvariants:
 			Id:         "v2",
 			Identifier: "p",
 		}
-		assert.NoError(t, v2.Insert())
+		assert.NoError(t, v2.Insert(t.Context()))
 		t2 := task.Task{
 			Id:           "t2",
 			DisplayName:  "t2",
@@ -243,7 +243,7 @@ buildvariants:
 			BuildVariant: "bv",
 			HostId:       "h2",
 		}
-		assert.NoError(t, t2.Insert())
+		assert.NoError(t, t2.Insert(t.Context()))
 		h2 := host.Host{
 			Id:          "h2",
 			RunningTask: t2.Id,
@@ -253,7 +253,7 @@ buildvariants:
 		err := util.UnmarshalYAMLWithFallback([]byte(versionYaml), &pp)
 		assert.NoError(t, err)
 		pp.Id = "v2"
-		assert.NoError(t, pp.Insert())
+		assert.NoError(t, pp.Insert(t.Context()))
 
 		err = CreateHostsFromTask(ctx, env, &t2, user.DBUser{Id: "me"}, "")
 		assert.NoError(t, err)
@@ -302,7 +302,7 @@ buildvariants:
 			Id:         "v3",
 			Identifier: "p",
 		}
-		assert.NoError(t, v3.Insert())
+		assert.NoError(t, v3.Insert(t.Context()))
 		t3 := task.Task{
 			Id:           "t3",
 			DisplayName:  "t3",
@@ -312,7 +312,7 @@ buildvariants:
 			BuildVariant: "bv",
 			HostId:       "h3",
 		}
-		assert.NoError(t, t3.Insert())
+		assert.NoError(t, t3.Insert(t.Context()))
 		h3 := host.Host{
 			Id:          "h3",
 			RunningTask: t3.Id,
@@ -322,7 +322,7 @@ buildvariants:
 		err := util.UnmarshalYAMLWithFallback([]byte(versionYaml), &pp)
 		assert.NoError(t, err)
 		pp.Id = "v3"
-		assert.NoError(t, pp.Insert())
+		assert.NoError(t, pp.Insert(t.Context()))
 
 		settings := &evergreen.Settings{}
 		assert.NoError(t, evergreen.UpdateConfig(ctx, settings))
@@ -367,7 +367,7 @@ buildvariants:
 			Id:         "v4",
 			Identifier: "p",
 		}
-		assert.NoError(t, v4.Insert())
+		assert.NoError(t, v4.Insert(t.Context()))
 		t4 := task.Task{
 			Id:           "t4",
 			DisplayName:  "t4",
@@ -377,7 +377,7 @@ buildvariants:
 			BuildVariant: "bv",
 			HostId:       "h4",
 		}
-		assert.NoError(t, t4.Insert())
+		assert.NoError(t, t4.Insert(t.Context()))
 		h4 := host.Host{
 			Id:          "h4",
 			RunningTask: t4.Id,
@@ -388,7 +388,7 @@ buildvariants:
 		err := util.UnmarshalYAMLWithFallback([]byte(versionYaml), &pp)
 		assert.NoError(t, err)
 		pp.Id = "v4"
-		assert.NoError(t, pp.Insert())
+		assert.NoError(t, pp.Insert(t.Context()))
 
 		settings := &evergreen.Settings{}
 		assert.NoError(t, evergreen.UpdateConfig(ctx, settings))
@@ -445,7 +445,7 @@ func TestCreateContainerFromTask(t *testing.T) {
 		BuildVariant: "bv",
 		HostId:       "h1",
 	}
-	assert.NoError(t1.Insert())
+	assert.NoError(t1.Insert(t.Context()))
 	versionYaml := `
 tasks:
 - name: t1
@@ -472,7 +472,7 @@ buildvariants:
 		Id:         "v1",
 		Identifier: "p",
 	}
-	assert.NoError(v1.Insert())
+	assert.NoError(v1.Insert(t.Context()))
 	h1 := host.Host{
 		Id:          "h1",
 		RunningTask: t1.Id,
@@ -481,7 +481,7 @@ buildvariants:
 	pp := model.ParserProject{}
 	require.NoError(util.UnmarshalYAMLWithFallback([]byte(versionYaml), &pp))
 	pp.Id = "v1"
-	require.NoError(pp.Insert())
+	require.NoError(pp.Insert(t.Context()))
 
 	parent := distro.Distro{
 		Id:       "parent-distro",
@@ -515,11 +515,11 @@ buildvariants:
 		Owner: "evergreen-ci",
 		Repo:  "sample",
 	}
-	assert.NoError(p.Insert())
+	assert.NoError(p.Insert(t.Context()))
 	pvars := model.ProjectVars{
 		Id: "p",
 	}
-	assert.NoError(pvars.Insert())
+	assert.NoError(pvars.Insert(t.Context()))
 
 	assert.NoError(CreateHostsFromTask(ctx, env, &t1, user.DBUser{Id: "me"}, ""))
 

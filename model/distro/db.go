@@ -20,6 +20,7 @@ var (
 	NoteKey                  = bsonutil.MustHaveTag(Distro{}, "Note")
 	ArchKey                  = bsonutil.MustHaveTag(Distro{}, "Arch")
 	ProviderKey              = bsonutil.MustHaveTag(Distro{}, "Provider")
+	ProviderAccountKey       = bsonutil.MustHaveTag(Distro{}, "ProviderAccount")
 	ProviderSettingsListKey  = bsonutil.MustHaveTag(Distro{}, "ProviderSettingsList")
 	SetupAsSudoKey           = bsonutil.MustHaveTag(Distro{}, "SetupAsSudo")
 	SetupKey                 = bsonutil.MustHaveTag(Distro{}, "Setup")

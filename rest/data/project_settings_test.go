@@ -74,7 +74,7 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 			newAdmin := user.DBUser{
 				Id: "newAdmin",
 			}
-			require.NoError(t, newAdmin.Insert())
+			require.NoError(t, newAdmin.Insert(t.Context()))
 			ref.Restricted = utility.TruePtr() // should also flip the project that defaults to this repo
 			ref.Admins = []string{"oldAdmin", newAdmin.Id}
 			apiProjectRef := restModel.APIProjectRef{}
@@ -122,7 +122,7 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 			newAdmin := user.DBUser{
 				Id: "newAdmin",
 			}
-			require.NoError(t, newAdmin.Insert())
+			require.NoError(t, newAdmin.Insert(t.Context()))
 			ref.Admins = []string{"nonexistent", newAdmin.Id}
 			apiProjectRef := restModel.APIProjectRef{}
 			assert.NoError(t, apiProjectRef.BuildFromService(t.Context(), ref.ProjectRef))
@@ -209,7 +209,7 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 			Vars:        map[string]string{"hello": "world", "it": "adele"},
 			PrivateVars: map[string]bool{"hello": true},
 		}
-		assert.NoError(t, pVars.Insert())
+		assert.NoError(t, pVars.Insert(t.Context()))
 
 		// add scopes
 		allProjectsScope := gimlet.Scope{
@@ -251,7 +251,7 @@ func TestSaveProjectSettingsForSectionForRepo(t *testing.T) {
 			Id:          "oldAdmin",
 			SystemRoles: []string{"admin"},
 		}
-		require.NoError(t, oldAdmin.Insert())
+		require.NoError(t, oldAdmin.Insert(t.Context()))
 
 		t.Run(name, func(t *testing.T) {
 			test(t, repoRef)
@@ -311,7 +311,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 					Enabled: utility.TruePtr(),
 				},
 			}
-			assert.NoError(t, conflictingRef.Insert())
+			assert.NoError(t, conflictingRef.Insert(t.Context()))
 			ref.PRTestingEnabled = utility.TruePtr()
 			ref.GithubChecksEnabled = utility.TruePtr()
 			assert.NoError(t, ref.Replace(t.Context()))
@@ -408,7 +408,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 					Enabled: utility.TruePtr(),
 				},
 			}
-			assert.NoError(t, conflictingRef.Insert())
+			assert.NoError(t, conflictingRef.Insert(t.Context()))
 
 			changes := model.ProjectRef{
 				Id:                  ref.Id,
@@ -599,7 +599,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			newAdmin := user.DBUser{
 				Id: "newAdmin",
 			}
-			require.NoError(t, newAdmin.Insert())
+			require.NoError(t, newAdmin.Insert(t.Context()))
 			ref.Restricted = nil // should now default to the repo value
 			ref.Admins = []string{"oldAdmin", newAdmin.Id}
 			apiProjectRef := restModel.APIProjectRef{}
@@ -640,7 +640,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			newAdmin := user.DBUser{
 				Id: "newAdmin",
 			}
-			require.NoError(t, newAdmin.Insert())
+			require.NoError(t, newAdmin.Insert(t.Context()))
 			ref.Admins = []string{"nonexistent", newAdmin.Id}
 			apiProjectRef := restModel.APIProjectRef{}
 			assert.NoError(t, apiProjectRef.BuildFromService(t.Context(), ref))
@@ -772,7 +772,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 				settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageNotificationsSection, false, "me")
 				require.NoError(t, err)
 				require.NotNil(t, settings)
-				subsFromDb, err := event.FindSubscriptionsByOwner(ref.Id, event.OwnerTypeProject)
+				subsFromDb, err := event.FindSubscriptionsByOwner(t.Context(), ref.Id, event.OwnerTypeProject)
 				require.NoError(t, err)
 				require.Len(t, subsFromDb, 2)
 				assert.Equal(t, event.TriggerSuccess, subsFromDb[0].Trigger)
@@ -825,7 +825,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 				settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageNotificationsSection, false, "me")
 				require.NoError(t, err)
 				require.NotNil(t, settings)
-				subsFromDb, err := event.FindSubscriptionsByOwner(ref.Id, event.OwnerTypeProject)
+				subsFromDb, err := event.FindSubscriptionsByOwner(t.Context(), ref.Id, event.OwnerTypeProject)
 				require.NoError(t, err)
 				require.Len(t, subsFromDb, 1)
 				// Check if webhooks Authorization header is the new value.
@@ -841,7 +841,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 				Id:      "upstreamProject",
 				Enabled: true,
 			}
-			assert.NoError(t, upstreamProject.Insert())
+			assert.NoError(t, upstreamProject.Insert(t.Context()))
 			apiProjectRef := restModel.APIProjectRef{
 				Triggers: []restModel.APITriggerDefinition{
 					{
@@ -998,7 +998,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 				},
 			},
 		}
-		assert.NoError(t, pRef.Insert())
+		assert.NoError(t, pRef.Insert(t.Context()))
 
 		repoRef := model.RepoRef{ProjectRef: model.ProjectRef{
 			Id:               pRef.RepoRefId,
@@ -1012,7 +1012,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			Vars:        map[string]string{"hello": "world", "it": "adele", "private": "forever", "change": "inevitable"},
 			PrivateVars: map[string]bool{"hello": true, "private": true, "change": true},
 		}
-		assert.NoError(t, pVars.Insert())
+		assert.NoError(t, pVars.Insert(t.Context()))
 
 		// add scopes
 		allProjectsScope := gimlet.Scope{
@@ -1054,7 +1054,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			Id:          "oldAdmin",
 			SystemRoles: []string{"admin"},
 		}
-		require.NoError(t, oldAdmin.Insert())
+		require.NoError(t, oldAdmin.Insert(t.Context()))
 
 		existingSub := event.Subscription{
 			ID:           "existingSub1",
@@ -1127,11 +1127,11 @@ func TestPromoteVarsToRepo(t *testing.T) {
 			assert.Equal(t, "2", repoVarsFromDB.Vars["b"])
 			assert.Equal(t, "3", repoVarsFromDB.Vars["c"])
 
-			projectEvents, err := model.MostRecentProjectEvents(ref.Id, 10)
+			projectEvents, err := model.MostRecentProjectEvents(t.Context(), ref.Id, 10)
 			assert.NoError(t, err)
 			assert.Len(t, projectEvents, 1)
 
-			repoEvents, err := model.MostRecentProjectEvents(ref.RepoRefId, 10)
+			repoEvents, err := model.MostRecentProjectEvents(t.Context(), ref.RepoRefId, 10)
 			assert.NoError(t, err)
 			assert.Len(t, repoEvents, 1)
 		},
@@ -1156,11 +1156,11 @@ func TestPromoteVarsToRepo(t *testing.T) {
 			assert.Equal(t, "1", repoVarsFromDB.Vars["a"])
 			assert.Equal(t, "2", repoVarsFromDB.Vars["b"])
 
-			projectEvents, err := model.MostRecentProjectEvents(ref.Id, 10)
+			projectEvents, err := model.MostRecentProjectEvents(t.Context(), ref.Id, 10)
 			assert.NoError(t, err)
 			assert.Len(t, projectEvents, 1)
 
-			repoEvents, err := model.MostRecentProjectEvents(ref.RepoRefId, 10)
+			repoEvents, err := model.MostRecentProjectEvents(t.Context(), ref.RepoRefId, 10)
 			assert.NoError(t, err)
 			assert.Len(t, repoEvents, 1)
 		},
@@ -1186,11 +1186,11 @@ func TestPromoteVarsToRepo(t *testing.T) {
 			assert.True(t, repoVarsFromDB.PrivateVars["d"])
 			assert.True(t, repoVarsFromDB.AdminOnlyVars["d"])
 
-			projectEvents, err := model.MostRecentProjectEvents(ref.Id, 10)
+			projectEvents, err := model.MostRecentProjectEvents(t.Context(), ref.Id, 10)
 			assert.NoError(t, err)
 			assert.Empty(t, projectEvents)
 
-			repoEvents, err := model.MostRecentProjectEvents(ref.RepoRefId, 10)
+			repoEvents, err := model.MostRecentProjectEvents(t.Context(), ref.RepoRefId, 10)
 			assert.NoError(t, err)
 			assert.Empty(t, repoEvents)
 		},
@@ -1221,11 +1221,11 @@ func TestPromoteVarsToRepo(t *testing.T) {
 			assert.True(t, repoVarsFromDB.PrivateVars["d"])
 			assert.True(t, repoVarsFromDB.AdminOnlyVars["d"])
 
-			projectEvents, err := model.MostRecentProjectEvents(ref.Id, 10)
+			projectEvents, err := model.MostRecentProjectEvents(t.Context(), ref.Id, 10)
 			assert.NoError(t, err)
 			assert.Empty(t, projectEvents)
 
-			repoEvents, err := model.MostRecentProjectEvents(ref.RepoRefId, 10)
+			repoEvents, err := model.MostRecentProjectEvents(t.Context(), ref.RepoRefId, 10)
 			assert.NoError(t, err)
 			assert.Empty(t, repoEvents)
 		},
@@ -1249,7 +1249,7 @@ func TestPromoteVarsToRepo(t *testing.T) {
 			PrivateVars:   map[string]bool{"d": true},
 			AdminOnlyVars: map[string]bool{"d": true},
 		}
-		assert.NoError(t, rVars.Insert())
+		assert.NoError(t, rVars.Insert(t.Context()))
 
 		pRef := model.ProjectRef{
 			Id:         "pId",
@@ -1260,7 +1260,7 @@ func TestPromoteVarsToRepo(t *testing.T) {
 			Admins:     []string{"u"},
 			RepoRefId:  "rId",
 		}
-		assert.NoError(t, pRef.Insert())
+		assert.NoError(t, pRef.Insert(t.Context()))
 
 		pUnattached := model.ProjectRef{
 			Id:         "pUnattached",
@@ -1269,7 +1269,7 @@ func TestPromoteVarsToRepo(t *testing.T) {
 			Branch:     "main",
 			Restricted: utility.FalsePtr(),
 		}
-		assert.NoError(t, pUnattached.Insert())
+		assert.NoError(t, pUnattached.Insert(t.Context()))
 
 		pVars := model.ProjectVars{
 			Id:            pRef.Id,
@@ -1277,13 +1277,13 @@ func TestPromoteVarsToRepo(t *testing.T) {
 			PrivateVars:   map[string]bool{"a": true},
 			AdminOnlyVars: map[string]bool{},
 		}
-		assert.NoError(t, pVars.Insert())
+		assert.NoError(t, pVars.Insert(t.Context()))
 
 		usr := user.DBUser{
 			Id:          "u",
 			SystemRoles: []string{"admin"},
 		}
-		require.NoError(t, usr.Insert())
+		require.NoError(t, usr.Insert(t.Context()))
 
 		t.Run(name, func(t *testing.T) {
 			test(t, pRef)
@@ -1401,7 +1401,7 @@ func TestCopyProject(t *testing.T) {
 				},
 			},
 		}
-		assert.NoError(t, pRef.Insert())
+		assert.NoError(t, pRef.Insert(t.Context()))
 
 		pRefInvalidAdmin := model.ProjectRef{
 			Id:         "myIdTwo",
@@ -1411,14 +1411,14 @@ func TestCopyProject(t *testing.T) {
 			Restricted: utility.FalsePtr(),
 			Admins:     []string{"unknownAdmin"},
 		}
-		assert.NoError(t, pRefInvalidAdmin.Insert())
+		assert.NoError(t, pRefInvalidAdmin.Insert(t.Context()))
 
 		pVars := model.ProjectVars{
 			Id:          pRef.Id,
 			Vars:        map[string]string{"hello": "world", "it": "adele", "private": "forever", "change": "inevitable"},
 			PrivateVars: map[string]bool{"hello": true, "private": true, "change": true},
 		}
-		assert.NoError(t, pVars.Insert())
+		assert.NoError(t, pVars.Insert(t.Context()))
 		// add scopes
 		allProjectsScope := gimlet.Scope{
 			ID:        evergreen.AllProjectsScope,
@@ -1453,7 +1453,7 @@ func TestCopyProject(t *testing.T) {
 			Id:          "oldAdmin",
 			SystemRoles: []string{"admin"},
 		}
-		require.NoError(t, oldAdmin.Insert())
+		require.NoError(t, oldAdmin.Insert(t.Context()))
 
 		existingSub := event.Subscription{
 			Owner:        pRef.Id,
@@ -1565,7 +1565,7 @@ func TestDeleteContainerSecrets(t *testing.T) {
 					},
 				},
 			}
-			require.NoError(t, pRef.Insert())
+			require.NoError(t, pRef.Insert(t.Context()))
 
 			smClient := &cocoaMock.SecretsManagerClient{}
 			v, err := cloud.MakeSecretsManagerVault(smClient)
@@ -1687,7 +1687,7 @@ func TestUpsertContainerSecrets(t *testing.T) {
 					},
 				},
 			}
-			require.NoError(t, pRef.Insert())
+			require.NoError(t, pRef.Insert(t.Context()))
 
 			smClient := &cocoaMock.SecretsManagerClient{}
 			v, err := cloud.MakeSecretsManagerVault(smClient)

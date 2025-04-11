@@ -79,39 +79,34 @@ func (s *shimFactoryImpl) GetContextSession(ctx context.Context) (db.Session, db
 }
 
 // Insert inserts the specified item into the specified collection.
-func Insert(collection string, item any) error {
-	session, db, err := GetGlobalSessionFactory().GetSession()
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	defer session.Close()
-
-	return db.C(collection).Insert(item)
+func Insert(ctx context.Context, collection string, item any) error {
+	_, err := evergreen.GetEnvironment().DB().Collection(collection).InsertOne(ctx,
+		item,
+	)
+	return errors.Wrapf(errors.WithStack(err), "inserting document")
 }
 
-func InsertMany(collection string, items ...any) error {
+func InsertMany(ctx context.Context, collection string, items ...any) error {
 	if len(items) == 0 {
 		return nil
 	}
-	session, db, err := GetGlobalSessionFactory().GetSession()
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	defer session.Close()
 
-	return db.C(collection).Insert(items...)
+	_, err := evergreen.GetEnvironment().DB().Collection(collection).InsertMany(ctx,
+		items,
+	)
+	return errors.Wrapf(errors.WithStack(err), "inserting documents")
 }
 
-func InsertManyUnordered(c string, items ...any) error {
+func InsertManyUnordered(ctx context.Context, collection string, items ...any) error {
 	if len(items) == 0 {
 		return nil
 	}
-	env := evergreen.GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-	_, err := env.DB().Collection(c).InsertMany(ctx, items, options.InsertMany().SetOrdered(false))
 
-	return errors.WithStack(err)
+	_, err := evergreen.GetEnvironment().DB().Collection(collection).InsertMany(ctx,
+		items,
+		options.InsertMany().SetOrdered(false),
+	)
+	return errors.Wrapf(errors.WithStack(err), "inserting unordered documents")
 }
 
 // CreateCollections ensures that all the given collections are created,
@@ -200,25 +195,18 @@ func EnsureIndex(collection string, index mongo.IndexModel) error {
 
 // Remove removes one item matching the query from the specified collection.
 func Remove(ctx context.Context, collection string, query any) error {
-	session, db, err := GetGlobalSessionFactory().GetContextSession(ctx)
-	if err != nil {
-		return err
-	}
-	defer session.Close()
-
-	return db.C(collection).Remove(query)
+	_, err := evergreen.GetEnvironment().DB().Collection(collection).DeleteOne(ctx,
+		query,
+	)
+	return errors.Wrapf(errors.WithStack(err), "deleting document")
 }
 
 // RemoveAll removes all items matching the query from the specified collection.
 func RemoveAll(ctx context.Context, collection string, query any) error {
-	session, db, err := GetGlobalSessionFactory().GetSession()
-	if err != nil {
-		return err
-	}
-	defer session.Close()
-
-	_, err = db.C(collection).RemoveAll(query)
-	return err
+	_, err := evergreen.GetEnvironment().DB().Collection(collection).DeleteMany(ctx,
+		query,
+	)
+	return errors.Wrapf(errors.WithStack(err), "deleting documents")
 }
 
 // Update updates one matching document in the collection.
@@ -431,12 +419,7 @@ func FindOneQContext(ctx context.Context, collection string, q Q, out any) error
 }
 
 // FindAllQ runs a Q query against the given collection, applying the results to "out."
-func FindAllQ(collection string, q Q, out any) error {
-	return FindAllQContext(context.Background(), collection, q, out)
-}
-
-// FindAllQContext runs a Q query against the given collection, applying the results to "out."
-func FindAllQContext(ctx context.Context, collection string, q Q, out any) error {
+func FindAllQ(ctx context.Context, collection string, q Q, out any) error {
 	if q.maxTime > 0 {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, q.maxTime)

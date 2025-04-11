@@ -28,7 +28,7 @@ func TestFindUniqueBuildVariantNamesByTask(t *testing.T) {
 		CreateTime:              time.Now().Add(-time.Hour),
 		RevisionOrderNumber:     1,
 	}
-	assert.NoError(t, t1.Insert())
+	assert.NoError(t, t1.Insert(t.Context()))
 	t2 := task.Task{
 		Id:                      "t2",
 		Status:                  evergreen.TaskSucceeded,
@@ -41,7 +41,7 @@ func TestFindUniqueBuildVariantNamesByTask(t *testing.T) {
 		CreateTime:              time.Now().Add(-time.Hour),
 		RevisionOrderNumber:     1,
 	}
-	assert.NoError(t, t2.Insert())
+	assert.NoError(t, t2.Insert(t.Context()))
 	t3 := task.Task{
 		Id:                      "t3",
 		Status:                  evergreen.TaskSucceeded,
@@ -54,7 +54,7 @@ func TestFindUniqueBuildVariantNamesByTask(t *testing.T) {
 		CreateTime:              time.Now().Add(-time.Hour),
 		RevisionOrderNumber:     1,
 	}
-	assert.NoError(t, t3.Insert())
+	assert.NoError(t, t3.Insert(t.Context()))
 	taskBuildVariants, err := task.FindUniqueBuildVariantNamesByTask(ctx, "evergreen", "test-agent", 1)
 	assert.NoError(t, err)
 	assert.Equal(t, []*task.BuildVariantTuple{

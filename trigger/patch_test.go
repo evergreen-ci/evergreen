@@ -52,7 +52,7 @@ func (s *patchSuite) SetupTest() {
 		Id:         "test",
 		Identifier: "testing",
 	}
-	s.NoError(pRef.Insert())
+	s.NoError(pRef.Insert(s.ctx))
 	s.patch = patch.Patch{
 		Id:         patchID,
 		Project:    "test",
@@ -69,7 +69,7 @@ func (s *patchSuite) SetupTest() {
 		},
 	}
 	s.patch.Version = s.patch.Id.Hex()
-	s.NoError(s.patch.Insert())
+	s.NoError(s.patch.Insert(s.ctx))
 
 	childPatch := patch.Patch{
 		Id:         mgobson.ObjectIdHex(childPatchId),
@@ -87,18 +87,18 @@ func (s *patchSuite) SetupTest() {
 			HeadHash:  "776f608b5b12cd27b8d931c8ee4ca0c13f857299",
 		},
 	}
-	s.NoError(childPatch.Insert())
+	s.NoError(childPatch.Insert(s.ctx))
 
 	version := model.Version{
 		Id:      s.patch.Id.Hex(),
 		Aborted: false,
 	}
-	s.NoError(version.Insert())
+	s.NoError(version.Insert(s.ctx))
 	childVersion := model.Version{
 		Id:      childPatchId,
 		Aborted: false,
 	}
-	s.NoError(childVersion.Insert())
+	s.NoError(childVersion.Insert(s.ctx))
 
 	s.data = &event.PatchEventData{
 		Status: evergreen.VersionCreated,
@@ -311,7 +311,7 @@ func (s *patchSuite) TestPatchFamilyOutcomeWithAbortedPatch() {
 		Id:     patchID,
 		Status: evergreen.VersionFailed,
 	}
-	s.Require().NoError(p.Insert())
+	s.Require().NoError(p.Insert(s.ctx))
 
 	v := model.Version{
 		Id:        patchID.Hex(),
@@ -319,7 +319,7 @@ func (s *patchSuite) TestPatchFamilyOutcomeWithAbortedPatch() {
 		Requester: evergreen.PatchVersionRequester,
 		Aborted:   true,
 	}
-	s.Require().NoError(v.Insert())
+	s.Require().NoError(v.Insert(s.ctx))
 
 	subscriber := event.Subscriber{
 		Type: event.EvergreenWebhookSubscriberType,
@@ -362,7 +362,7 @@ func (s *patchSuite) TestPatchFamilyOutcomeWithAbortedGitHubMergePatch() {
 		Id:     patchID,
 		Status: evergreen.VersionFailed,
 	}
-	s.Require().NoError(p.Insert())
+	s.Require().NoError(p.Insert(s.ctx))
 
 	v := model.Version{
 		Id:        patchID.Hex(),
@@ -370,7 +370,7 @@ func (s *patchSuite) TestPatchFamilyOutcomeWithAbortedGitHubMergePatch() {
 		Requester: evergreen.GithubMergeRequester,
 		Aborted:   true,
 	}
-	s.Require().NoError(v.Insert())
+	s.Require().NoError(v.Insert(s.ctx))
 
 	subscriber := event.Subscriber{
 		Type: event.GithubMergeSubscriberType,

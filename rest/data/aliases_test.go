@@ -139,10 +139,10 @@ func (a *AliasSuite) SetupTest() {
 				},
 			},
 		}}
-	a.NoError(otherProjectRef.Insert())
-	a.NoError(projectRef.Insert())
-	a.NoError(newProjectRef.Insert())
-	a.NoError(projectConfig.Insert())
+	a.NoError(otherProjectRef.Insert(a.T().Context()))
+	a.NoError(projectRef.Insert(a.T().Context()))
+	a.NoError(newProjectRef.Insert(a.T().Context()))
+	a.NoError(projectConfig.Insert(a.T().Context()))
 	for _, v := range aliases {
 		a.NoError(v.Upsert(a.T().Context()))
 	}
@@ -258,7 +258,7 @@ func (a *AliasSuite) TestUpdateProjectAliases() {
 }
 
 func (a *AliasSuite) TestUpdateAliasesForSection() {
-	originalAliases, err := model.FindAliasesForProjectFromDb("project_id")
+	originalAliases, err := model.FindAliasesForProjectFromDb(a.T().Context(), "project_id")
 	a.NoError(err)
 	a.Len(originalAliases, 4)
 
@@ -287,7 +287,7 @@ func (a *AliasSuite) TestUpdateAliasesForSection() {
 	a.NoError(err)
 	a.True(modified)
 
-	aliasesFromDb, err := model.FindAliasesForProjectFromDb("project_id")
+	aliasesFromDb, err := model.FindAliasesForProjectFromDb(a.T().Context(), "project_id")
 	a.NoError(err)
 	a.Len(aliasesFromDb, 4)
 	for _, alias := range aliasesFromDb {
@@ -301,7 +301,7 @@ func (a *AliasSuite) TestUpdateAliasesForSection() {
 	modified, err = updateAliasesForSection(a.T().Context(), "project_id", updatedAliases, originalAliases, model.ProjectPageGithubAndCQSection)
 	a.NoError(err)
 	a.True(modified)
-	aliasesFromDb, err = model.FindAliasesForProjectFromDb("project_id")
+	aliasesFromDb, err = model.FindAliasesForProjectFromDb(a.T().Context(), "project_id")
 	a.NoError(err)
 	a.Len(aliasesFromDb, 4) // adds internal alias
 }
@@ -326,7 +326,7 @@ func TestValidateFeaturesHaveAliases(t *testing.T) {
 	}
 
 	// Errors when there aren't aliases for all enabled features.
-	err := validateFeaturesHaveAliases(oldPRef, pRef, aliases)
+	err := validateFeaturesHaveAliases(t.Context(), oldPRef, pRef, aliases)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "GitHub checks")
 
@@ -337,16 +337,16 @@ func TestValidateFeaturesHaveAliases(t *testing.T) {
 	}
 	assert.NoError(t, repoAlias1.Upsert(t.Context()))
 	// No error when there are aliases in the repo.
-	assert.NoError(t, validateFeaturesHaveAliases(oldPRef, pRef, aliases))
+	assert.NoError(t, validateFeaturesHaveAliases(t.Context(), oldPRef, pRef, aliases))
 
 	pRef.GitTagVersionsEnabled = utility.TruePtr()
 	pRef.CommitQueue.Enabled = utility.TruePtr()
-	err = validateFeaturesHaveAliases(oldPRef, pRef, aliases)
+	err = validateFeaturesHaveAliases(t.Context(), oldPRef, pRef, aliases)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Git tag")
 	assert.Contains(t, err.Error(), "Commit queue")
 
 	// No error when version control is enabled.
 	oldPRef.VersionControlEnabled = utility.TruePtr()
-	assert.NoError(t, validateFeaturesHaveAliases(oldPRef, pRef, aliases))
+	assert.NoError(t, validateFeaturesHaveAliases(t.Context(), oldPRef, pRef, aliases))
 }

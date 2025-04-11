@@ -116,7 +116,6 @@ type AgentSetupData struct {
 	TaskOutput             evergreen.S3Credentials `json:"task_output"`
 	TraceCollectorEndpoint string                  `json:"trace_collector_endpoint"`
 	MaxExecTimeoutSecs     int                     `json:"max_exec_timeout_secs"`
-	InternalBuckets        []string                `json:"internal_buckets"`
 }
 
 // NextTaskResponse represents the response sent back when an agent asks for a next task

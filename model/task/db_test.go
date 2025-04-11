@@ -55,7 +55,7 @@ func TestFindTasksByIds(t *testing.T) {
 			}
 
 			for _, task := range tasks {
-				So(task.Insert(), ShouldBeNil)
+				So(task.Insert(t.Context()), ShouldBeNil)
 			}
 
 			dbTasks, err := Find(ctx, ByIds([]string{"one", "two"}))
@@ -111,7 +111,7 @@ func TestDisplayTasksByVersion(t *testing.T) {
 			}
 
 			for _, task := range tasks {
-				So(task.Insert(), ShouldBeNil)
+				So(task.Insert(t.Context()), ShouldBeNil)
 			}
 
 			dbTasks, err := FindAll(ctx, db.Query(DisplayTasksByVersion("v1", false)))
@@ -167,7 +167,7 @@ func TestNonExecutionTasksByVersion(t *testing.T) {
 		Version:       "v2",
 		DisplayTaskId: nil, // legacy, not populated
 	}
-	assert.NoError(t, db.InsertMany(Collection, displayTask, regularTask, wrongVersionTask, execTask, legacyTask))
+	assert.NoError(t, db.InsertMany(t.Context(), Collection, displayTask, regularTask, wrongVersionTask, execTask, legacyTask))
 
 	tasks, err := Find(ctx, NonExecutionTasksByVersions([]string{"v1", "v2"}))
 	assert.NoError(t, err)
@@ -205,7 +205,7 @@ func TestFailedTasksByVersion(t *testing.T) {
 			}
 
 			for _, task := range tasks {
-				So(task.Insert(), ShouldBeNil)
+				So(task.Insert(t.Context()), ShouldBeNil)
 			}
 
 			dbTasks, err := Find(ctx, FailedTasksByVersion("v1"))
@@ -285,7 +285,7 @@ func TestPotentiallyBlockedTasksByIds(t *testing.T) {
 	}
 	ids := make([]string, 0, len(tasks))
 	for _, task := range tasks {
-		require.NoError(t, task.Insert())
+		require.NoError(t, task.Insert(t.Context()))
 		ids = append(ids, task.Id)
 	}
 
@@ -325,7 +325,7 @@ func TestFindTasksByVersionWithChildTasks(t *testing.T) {
 		},
 	}
 	for _, task := range tasks {
-		assert.NoError(t, task.Insert())
+		assert.NoError(t, task.Insert(t.Context()))
 	}
 
 	dbTasks, err := Find(ctx, ByVersionWithChildTasks(mainVersion))
@@ -363,7 +363,7 @@ func TestFindTasksByBuildIdAndGithubChecks(t *testing.T) {
 	}
 
 	for _, task := range tasks {
-		assert.NoError(t, task.Insert())
+		assert.NoError(t, task.Insert(t.Context()))
 	}
 	dbTasks, err := FindAll(ctx, db.Query(ByBuildIdAndGithubChecks("b1")))
 	assert.NoError(t, err)
@@ -387,7 +387,7 @@ func TestFindOneIdAndExecutionWithDisplayStatus(t *testing.T) {
 		Status:    evergreen.TaskSucceeded,
 		Activated: true,
 	}
-	assert.NoError(taskDoc.Insert())
+	assert.NoError(taskDoc.Insert(t.Context()))
 	task, err := FindOneIdAndExecutionWithDisplayStatus(ctx, taskDoc.Id, utility.ToIntPtr(0))
 	assert.NoError(err)
 	assert.NotNil(task)
@@ -415,7 +415,7 @@ func TestFindOneIdAndExecutionWithDisplayStatus(t *testing.T) {
 		Status:    evergreen.TaskUndispatched,
 		Activated: false,
 	}
-	assert.NoError(taskDoc.Insert())
+	assert.NoError(taskDoc.Insert(t.Context()))
 	task, err = FindOneIdAndExecutionWithDisplayStatus(ctx, taskDoc.Id, utility.ToIntPtr(0))
 	assert.NoError(err)
 	assert.NotNil(task)
@@ -433,10 +433,10 @@ func TestFindAllFirstExecution(t *testing.T) {
 		{Id: "t2", DisplayOnly: true},
 	}
 	for _, task := range tasks {
-		require.NoError(t, task.Insert())
+		require.NoError(t, task.Insert(t.Context()))
 	}
 	oldTask := Task{Id: MakeOldID("t1", 0)}
-	require.NoError(t, db.Insert(OldCollection, &oldTask))
+	require.NoError(t, db.Insert(t.Context(), OldCollection, &oldTask))
 
 	foundTasks, err := FindAllFirstExecution(ctx, All)
 	assert.NoError(t, err)
@@ -461,7 +461,7 @@ func TestFindOneIdOldOrNew(t *testing.T) {
 		Id:     "task",
 		Status: evergreen.TaskSucceeded,
 	}
-	require.NoError(taskDoc.Insert())
+	require.NoError(taskDoc.Insert(t.Context()))
 	require.NoError(taskDoc.Archive(ctx))
 
 	task00, err := FindOneIdOldOrNew(ctx, "task", 0)
@@ -482,7 +482,7 @@ func TestAddHostCreateDetails(t *testing.T) {
 
 	assert.NoError(t, db.ClearCollections(Collection))
 	task := Task{Id: "t1", Execution: 0}
-	assert.NoError(t, task.Insert())
+	assert.NoError(t, task.Insert(t.Context()))
 	errToSave := errors.Wrapf(errors.New("InsufficientCapacityError"), "error trying to start host")
 	assert.NoError(t, AddHostCreateDetails(ctx, task.Id, "h1", 0, errToSave))
 	dbTask, err := FindOneId(ctx, task.Id)
@@ -505,21 +505,21 @@ func TestDisplayStatus(t *testing.T) {
 		Id:     "t1",
 		Status: evergreen.TaskSucceeded,
 	}
-	assert.NoError(t, t1.Insert())
+	assert.NoError(t, t1.Insert(t.Context()))
 	checkStatuses(t, evergreen.TaskSucceeded, t1)
 	t2 := Task{
 		Id:        "t2",
 		Status:    evergreen.TaskUndispatched,
 		Activated: true,
 	}
-	assert.NoError(t, t2.Insert())
+	assert.NoError(t, t2.Insert(t.Context()))
 	checkStatuses(t, evergreen.TaskWillRun, t2)
 	t3 := Task{
 		Id:        "t3",
 		Status:    evergreen.TaskFailed,
 		Activated: true,
 	}
-	assert.NoError(t, t3.Insert())
+	assert.NoError(t, t3.Insert(t.Context()))
 	checkStatuses(t, evergreen.TaskFailed, t3)
 	t4 := Task{
 		Id:     "t4",
@@ -528,7 +528,7 @@ func TestDisplayStatus(t *testing.T) {
 			Type: evergreen.CommandTypeSetup,
 		},
 	}
-	assert.NoError(t, t4.Insert())
+	assert.NoError(t, t4.Insert(t.Context()))
 	checkStatuses(t, evergreen.TaskSetupFailed, t4)
 	t5 := Task{
 		Id:     "t5",
@@ -537,7 +537,7 @@ func TestDisplayStatus(t *testing.T) {
 			Type: evergreen.CommandTypeSystem,
 		},
 	}
-	assert.NoError(t, t5.Insert())
+	assert.NoError(t, t5.Insert(t.Context()))
 	checkStatuses(t, evergreen.TaskSystemFailed, t5)
 	t6 := Task{
 		Id:     "t6",
@@ -547,7 +547,7 @@ func TestDisplayStatus(t *testing.T) {
 			TimedOut: true,
 		},
 	}
-	assert.NoError(t, t6.Insert())
+	assert.NoError(t, t6.Insert(t.Context()))
 	checkStatuses(t, evergreen.TaskSystemTimedOut, t6)
 	t7 := Task{
 		Id:     "t7",
@@ -558,21 +558,21 @@ func TestDisplayStatus(t *testing.T) {
 			Description: evergreen.TaskDescriptionHeartbeat,
 		},
 	}
-	assert.NoError(t, t7.Insert())
+	assert.NoError(t, t7.Insert(t.Context()))
 	checkStatuses(t, evergreen.TaskSystemUnresponse, t7)
 	t8 := Task{
 		Id:        "t8",
 		Status:    evergreen.TaskStarted,
 		Activated: true,
 	}
-	assert.NoError(t, t8.Insert())
+	assert.NoError(t, t8.Insert(t.Context()))
 	checkStatuses(t, evergreen.TaskStarted, t8)
 	t9 := Task{
 		Id:        "t9",
 		Status:    evergreen.TaskUndispatched,
 		Activated: false,
 	}
-	assert.NoError(t, t9.Insert())
+	assert.NoError(t, t9.Insert(t.Context()))
 	checkStatuses(t, evergreen.TaskUnscheduled, t9)
 	t10 := Task{
 		Id:        "t10",
@@ -591,7 +591,7 @@ func TestDisplayStatus(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(t, t10.Insert())
+	assert.NoError(t, t10.Insert(t.Context()))
 	checkStatuses(t, evergreen.TaskStatusBlocked, t10)
 	t11 := Task{
 		Id:        "t11",
@@ -605,7 +605,7 @@ func TestDisplayStatus(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(t, t11.Insert())
+	assert.NoError(t, t11.Insert(t.Context()))
 	checkStatuses(t, evergreen.TaskWillRun, t11)
 	t12 := Task{
 		Id:                   "t12",
@@ -621,7 +621,7 @@ func TestDisplayStatus(t *testing.T) {
 		},
 	}
 	// No CheckStatuses for t12 to avoid paradox
-	assert.NoError(t, t12.Insert())
+	assert.NoError(t, t12.Insert(t.Context()))
 	checkStatuses(t, evergreen.TaskWillRun, t11)
 	t13 := Task{
 		Id:                 "t13",
@@ -629,7 +629,7 @@ func TestDisplayStatus(t *testing.T) {
 		Activated:          true,
 		ContainerAllocated: false,
 	}
-	require.NoError(t, t13.Insert())
+	require.NoError(t, t13.Insert(t.Context()))
 	checkStatuses(t, evergreen.TaskWillRun, t13)
 	t14 := Task{
 		Id:                 "t14",
@@ -637,7 +637,7 @@ func TestDisplayStatus(t *testing.T) {
 		Activated:          true,
 		ContainerAllocated: true,
 	}
-	require.NoError(t, t14.Insert())
+	require.NoError(t, t14.Insert(t.Context()))
 	checkStatuses(t, evergreen.TaskWillRun, t14)
 	t15 := Task{
 		Id:                 "t15",
@@ -645,7 +645,7 @@ func TestDisplayStatus(t *testing.T) {
 		Activated:          false,
 		ContainerAllocated: false,
 	}
-	require.NoError(t, t15.Insert())
+	require.NoError(t, t15.Insert(t.Context()))
 	checkStatuses(t, evergreen.TaskUnscheduled, t15)
 }
 
@@ -664,7 +664,7 @@ func TestFindTaskNamesByBuildVariant(t *testing.T) {
 			Requester:           evergreen.RepotrackerVersionRequester,
 			RevisionOrderNumber: 1,
 		}
-		assert.NoError(t, t1.Insert())
+		assert.NoError(t, t1.Insert(t.Context()))
 		t2 := Task{
 			Id:                  "t2",
 			Status:              evergreen.TaskSucceeded,
@@ -674,7 +674,7 @@ func TestFindTaskNamesByBuildVariant(t *testing.T) {
 			Requester:           evergreen.RepotrackerVersionRequester,
 			RevisionOrderNumber: 1,
 		}
-		assert.NoError(t, t2.Insert())
+		assert.NoError(t, t2.Insert(t.Context()))
 		t3 := Task{
 			Id:                  "t3",
 			Status:              evergreen.TaskSucceeded,
@@ -684,7 +684,7 @@ func TestFindTaskNamesByBuildVariant(t *testing.T) {
 			Requester:           evergreen.RepotrackerVersionRequester,
 			RevisionOrderNumber: 1,
 		}
-		assert.NoError(t, t3.Insert())
+		assert.NoError(t, t3.Insert(t.Context()))
 		t4 := Task{
 			Id:                  "t4",
 			Status:              evergreen.TaskFailed,
@@ -694,7 +694,7 @@ func TestFindTaskNamesByBuildVariant(t *testing.T) {
 			Requester:           evergreen.RepotrackerVersionRequester,
 			RevisionOrderNumber: 1,
 		}
-		assert.NoError(t, t4.Insert())
+		assert.NoError(t, t4.Insert(t.Context()))
 		buildVariantTask, err := FindTaskNamesByBuildVariant(ctx, "evergreen", "ubuntu1604", 1)
 		assert.NoError(t, err)
 		assert.Equal(t, []string{"dist", "test-agent", "test-graphql"}, buildVariantTask)
@@ -711,7 +711,7 @@ func TestFindTaskNamesByBuildVariant(t *testing.T) {
 			Requester:           evergreen.PatchVersionRequester,
 			RevisionOrderNumber: 1,
 		}
-		assert.NoError(t, t1.Insert())
+		assert.NoError(t, t1.Insert(t.Context()))
 		t2 := Task{
 			Id:                  "t2",
 			Status:              evergreen.TaskSucceeded,
@@ -721,7 +721,7 @@ func TestFindTaskNamesByBuildVariant(t *testing.T) {
 			Requester:           evergreen.RepotrackerVersionRequester,
 			RevisionOrderNumber: 1,
 		}
-		assert.NoError(t, t2.Insert())
+		assert.NoError(t, t2.Insert(t.Context()))
 		t3 := Task{
 			Id:                  "t3",
 			Status:              evergreen.TaskSucceeded,
@@ -731,7 +731,7 @@ func TestFindTaskNamesByBuildVariant(t *testing.T) {
 			Requester:           evergreen.PatchVersionRequester,
 			RevisionOrderNumber: 1,
 		}
-		assert.NoError(t, t3.Insert())
+		assert.NoError(t, t3.Insert(t.Context()))
 		t4 := Task{
 			Id:                  "t4",
 			Status:              evergreen.TaskFailed,
@@ -741,7 +741,7 @@ func TestFindTaskNamesByBuildVariant(t *testing.T) {
 			Requester:           evergreen.RepotrackerVersionRequester,
 			RevisionOrderNumber: 1,
 		}
-		assert.NoError(t, t4.Insert())
+		assert.NoError(t, t4.Insert(t.Context()))
 		buildVariantTasks, err := FindTaskNamesByBuildVariant(ctx, "evergreen", "ubuntu1604", 1)
 		assert.NoError(t, err)
 		assert.Equal(t, []string{"test-graphql", "test-something"}, buildVariantTasks)
@@ -769,7 +769,7 @@ func TestFindNeedsContainerAllocation(t *testing.T) {
 	for tName, tCase := range map[string]func(t *testing.T){
 		"IncludesOneContainerTaskWaitingForAllocation": func(t *testing.T) {
 			needsAllocation := getTaskThatNeedsContainerAllocation()
-			require.NoError(t, needsAllocation.Insert())
+			require.NoError(t, needsAllocation.Insert(t.Context()))
 
 			found, err := FindNeedsContainerAllocation(ctx)
 			require.NoError(t, err)
@@ -778,13 +778,13 @@ func TestFindNeedsContainerAllocation(t *testing.T) {
 		},
 		"IncludesAllContainerTasksWaitingForAllocation": func(t *testing.T) {
 			needsAllocation0 := getTaskThatNeedsContainerAllocation()
-			require.NoError(t, needsAllocation0.Insert())
+			require.NoError(t, needsAllocation0.Insert(t.Context()))
 			needsAllocation1 := getTaskThatNeedsContainerAllocation()
 			needsAllocation1.ActivatedTime = time.Now().Add(-time.Hour)
-			require.NoError(t, needsAllocation1.Insert())
+			require.NoError(t, needsAllocation1.Insert(t.Context()))
 			doesNotNeedAllocation := getTaskThatNeedsContainerAllocation()
 			doesNotNeedAllocation.Activated = false
-			require.NoError(t, doesNotNeedAllocation.Insert())
+			require.NoError(t, doesNotNeedAllocation.Insert(t.Context()))
 
 			found, err := FindNeedsContainerAllocation(ctx)
 			require.NoError(t, err)
@@ -805,7 +805,7 @@ func TestFindNeedsContainerAllocation(t *testing.T) {
 					Finished: true,
 				},
 			}
-			require.NoError(t, needsAllocation.Insert())
+			require.NoError(t, needsAllocation.Insert(t.Context()))
 
 			found, err := FindNeedsContainerAllocation(ctx)
 			require.NoError(t, err)
@@ -820,7 +820,7 @@ func TestFindNeedsContainerAllocation(t *testing.T) {
 				},
 			}
 			overriddenDependencies.OverrideDependencies = true
-			require.NoError(t, overriddenDependencies.Insert())
+			require.NoError(t, overriddenDependencies.Insert(t.Context()))
 
 			found, err := FindNeedsContainerAllocation(ctx)
 			require.NoError(t, err)
@@ -834,7 +834,7 @@ func TestFindNeedsContainerAllocation(t *testing.T) {
 					TaskId: "dependency0",
 				},
 			}
-			require.NoError(t, unmetDependencies.Insert())
+			require.NoError(t, unmetDependencies.Insert(t.Context()))
 
 			found, err := FindNeedsContainerAllocation(ctx)
 			require.NoError(t, err)
@@ -843,7 +843,7 @@ func TestFindNeedsContainerAllocation(t *testing.T) {
 		"IgnoresTasksWithoutExecutionPlatform": func(t *testing.T) {
 			doesNotNeedAllocation := getTaskThatNeedsContainerAllocation()
 			doesNotNeedAllocation.ExecutionPlatform = ""
-			require.NoError(t, doesNotNeedAllocation.Insert())
+			require.NoError(t, doesNotNeedAllocation.Insert(t.Context()))
 
 			found, err := FindNeedsContainerAllocation(ctx)
 			require.NoError(t, err)
@@ -852,7 +852,7 @@ func TestFindNeedsContainerAllocation(t *testing.T) {
 		"IgnoresHostTasks": func(t *testing.T) {
 			doesNotNeedAllocation := getTaskThatNeedsContainerAllocation()
 			doesNotNeedAllocation.ExecutionPlatform = ExecutionPlatformHost
-			require.NoError(t, doesNotNeedAllocation.Insert())
+			require.NoError(t, doesNotNeedAllocation.Insert(t.Context()))
 
 			found, err := FindNeedsContainerAllocation(ctx)
 			require.NoError(t, err)
@@ -862,7 +862,7 @@ func TestFindNeedsContainerAllocation(t *testing.T) {
 			doesNotNeedAllocation := getTaskThatNeedsContainerAllocation()
 			doesNotNeedAllocation.Activated = false
 			doesNotNeedAllocation.ActivatedTime = utility.ZeroTime
-			require.NoError(t, doesNotNeedAllocation.Insert())
+			require.NoError(t, doesNotNeedAllocation.Insert(t.Context()))
 
 			found, err := FindNeedsContainerAllocation(ctx)
 			require.NoError(t, err)
@@ -871,7 +871,7 @@ func TestFindNeedsContainerAllocation(t *testing.T) {
 		"IgnoresTasksWithContainerAlreadyAllocated": func(t *testing.T) {
 			doesNotNeedAllocation := getTaskThatNeedsContainerAllocation()
 			doesNotNeedAllocation.ContainerAllocated = true
-			require.NoError(t, doesNotNeedAllocation.Insert())
+			require.NoError(t, doesNotNeedAllocation.Insert(t.Context()))
 
 			found, err := FindNeedsContainerAllocation(ctx)
 			require.NoError(t, err)
@@ -880,7 +880,7 @@ func TestFindNeedsContainerAllocation(t *testing.T) {
 		"IgnoresDisabledTasks": func(t *testing.T) {
 			doesNotNeedAllocation := getTaskThatNeedsContainerAllocation()
 			doesNotNeedAllocation.Priority = evergreen.DisabledTaskPriority
-			require.NoError(t, doesNotNeedAllocation.Insert())
+			require.NoError(t, doesNotNeedAllocation.Insert(t.Context()))
 
 			found, err := FindNeedsContainerAllocation(ctx)
 			require.NoError(t, err)
@@ -908,7 +908,7 @@ func TestFindByStaleRunningTask(t *testing.T) {
 				Status:        evergreen.TaskDispatched,
 				LastHeartbeat: time.Now().Add(-time.Hour),
 			}
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(t.Context()))
 
 			found, err := Find(ctx, ByStaleRunningTask(30*time.Minute))
 			require.NoError(t, err)
@@ -921,7 +921,7 @@ func TestFindByStaleRunningTask(t *testing.T) {
 				Status:        evergreen.TaskStarted,
 				LastHeartbeat: time.Now().Add(-time.Hour),
 			}
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(t.Context()))
 
 			found, err := Find(ctx, ByStaleRunningTask(30*time.Minute))
 			require.NoError(t, err)
@@ -947,7 +947,7 @@ func TestFindByStaleRunningTask(t *testing.T) {
 				},
 			}
 			for _, tsk := range tasks {
-				require.NoError(t, tsk.Insert())
+				require.NoError(t, tsk.Insert(t.Context()))
 			}
 
 			found, err := Find(ctx, ByStaleRunningTask(30*time.Minute))
@@ -963,7 +963,7 @@ func TestFindByStaleRunningTask(t *testing.T) {
 				Status:        evergreen.TaskStarted,
 				LastHeartbeat: time.Now().Add(-time.Minute),
 			}
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(t.Context()))
 
 			found, err := Find(ctx, ByStaleRunningTask(30*time.Minute))
 			require.NoError(t, err)
@@ -975,7 +975,7 @@ func TestFindByStaleRunningTask(t *testing.T) {
 				DisplayOnly: true,
 				Status:      evergreen.TaskDispatched,
 			}
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(t.Context()))
 
 			found, err := Find(ctx, ByStaleRunningTask(0))
 			require.NoError(t, err)
@@ -1009,7 +1009,7 @@ func TestGetTasksByVersionExecTasks(t *testing.T) {
 		DisplayOnly:    true,
 		ExecutionTasks: []string{"execWithDisplayId"},
 	}
-	assert.NoError(t, db.InsertMany(Collection, t1, t2, dt))
+	assert.NoError(t, db.InsertMany(t.Context(), Collection, t1, t2, dt))
 
 	ctx := context.TODO()
 	// execution tasks have been filtered outs
@@ -1036,7 +1036,7 @@ func TestGetTasksByVersionIncludeNeverActivatedTasks(t *testing.T) {
 		DisplayTaskId: utility.ToStringPtr(""),
 	}
 
-	assert.NoError(t, inactiveTask.Insert())
+	assert.NoError(t, inactiveTask.Insert(t.Context()))
 
 	ctx := context.TODO()
 
@@ -1076,7 +1076,7 @@ func TestGetTasksByVersionAnnotations(t *testing.T) {
 		Status:        evergreen.TaskFailed,
 		DisplayTaskId: utility.ToStringPtr(""),
 	}
-	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3))
+	assert.NoError(t, db.InsertMany(t.Context(), Collection, t1, t2, t3))
 
 	ctx := context.TODO()
 
@@ -1142,7 +1142,7 @@ func TestGetTasksByVersionBaseTasks(t *testing.T) {
 		Revision:      "def123",
 		DisplayTaskId: utility.ToStringPtr(""),
 	}
-	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4))
+	assert.NoError(t, db.InsertMany(t.Context(), Collection, t1, t2, t3, t4))
 
 	ctx := context.TODO()
 
@@ -1218,7 +1218,7 @@ func TestGetTasksByVersionErrorHandling(t *testing.T) {
 			task.BuildVariant = fmt.Sprintf("bv_%d", j)
 			tasksToInsert = append(tasksToInsert, task)
 		}
-		assert.NoError(t, db.InsertMany(Collection, tasksToInsert...))
+		assert.NoError(t, db.InsertMany(t.Context(), Collection, tasksToInsert...))
 	}
 	// Normal Patch builds
 	opts := GetTasksByVersionOptions{}
@@ -1285,7 +1285,7 @@ func TestGetTaskStatusesByVersion(t *testing.T) {
 		TimeTaken:     2 * time.Hour,
 		DisplayTaskId: utility.ToStringPtr(""),
 	}
-	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4))
+	assert.NoError(t, db.InsertMany(t.Context(), Collection, t1, t2, t3, t4))
 	ctx := context.TODO()
 	tasks, err := GetTaskStatusesByVersion(ctx, "v1")
 	assert.NoError(t, err)
@@ -1347,7 +1347,7 @@ func TestGetTasksByVersionSorting(t *testing.T) {
 		DisplayTaskId: utility.ToStringPtr(""),
 	}
 
-	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4))
+	assert.NoError(t, db.InsertMany(t.Context(), Collection, t1, t2, t3, t4))
 
 	ctx := context.TODO()
 
@@ -1470,7 +1470,7 @@ func TestGetTaskStatsByVersion(t *testing.T) {
 		Status:        evergreen.TaskFailed,
 		DisplayTaskId: utility.ToStringPtr(""),
 	}
-	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4, t5, t6))
+	assert.NoError(t, db.InsertMany(t.Context(), Collection, t1, t2, t3, t4, t5, t6))
 	ctx := context.TODO()
 	opts := GetTasksByVersionOptions{}
 	stats, err := GetTaskStatsByVersion(ctx, "v1", opts)
@@ -1479,7 +1479,7 @@ func TestGetTaskStatsByVersion(t *testing.T) {
 	assert.True(t, stats.ETA.Equal(time.Date(2009, time.November, 10, 14, 30, 0, 0, time.UTC)))
 
 	assert.NoError(t, db.ClearCollections(Collection))
-	assert.NoError(t, db.InsertMany(Collection, t3, t4, t5, t6))
+	assert.NoError(t, db.InsertMany(t.Context(), Collection, t3, t4, t5, t6))
 	stats, err = GetTaskStatsByVersion(ctx, "v1", opts)
 	assert.NoError(t, err)
 	assert.Nil(t, stats.ETA)
@@ -1542,7 +1542,7 @@ func TestGetGroupedTaskStatsByVersion(t *testing.T) {
 		BuildVariantDisplayName: "Build Variant 2",
 		DisplayTaskId:           utility.ToStringPtr(""),
 	}
-	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4, t5, t6))
+	assert.NoError(t, db.InsertMany(t.Context(), Collection, t1, t2, t3, t4, t5, t6))
 
 	t.Run("Fetch GroupedTaskStats with no filters applied", func(t *testing.T) {
 
@@ -1676,7 +1676,7 @@ func TestGetBaseStatusesForActivatedTasks(t *testing.T) {
 		BuildVariant:  "bv_2",
 		DisplayTaskId: utility.ToStringPtr(""),
 	}
-	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4, t5))
+	assert.NoError(t, db.InsertMany(t.Context(), Collection, t1, t2, t3, t4, t5))
 	ctx := context.TODO()
 	statuses, err := GetBaseStatusesForActivatedTasks(ctx, "v1", "v1_base")
 	assert.NoError(t, err)
@@ -1685,7 +1685,7 @@ func TestGetBaseStatusesForActivatedTasks(t *testing.T) {
 	assert.Equal(t, evergreen.TaskSucceeded, statuses[1])
 
 	assert.NoError(t, db.ClearCollections(Collection))
-	assert.NoError(t, db.InsertMany(Collection, t1, t2, t5))
+	assert.NoError(t, db.InsertMany(t.Context(), Collection, t1, t2, t5))
 	statuses, err = GetBaseStatusesForActivatedTasks(ctx, "v1", "v1_base")
 	assert.NoError(t, err)
 	assert.Empty(t, statuses)
@@ -1750,7 +1750,7 @@ func TestHasMatchingTasks(t *testing.T) {
 		DisplayTaskId:           utility.ToStringPtr(""),
 	}
 
-	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4, t5, t6))
+	assert.NoError(t, db.InsertMany(t.Context(), Collection, t1, t2, t3, t4, t5, t6))
 	opts := HasMatchingTasksOptions{
 		Statuses: []string{evergreen.TaskFailed},
 	}
@@ -1839,7 +1839,7 @@ func TestFindAllUnmarkedDependenciesToBlock(t *testing.T) {
 		},
 	}
 	for _, task := range tasks {
-		assert.NoError(task.Insert())
+		assert.NoError(task.Insert(t.Context()))
 	}
 
 	deps, err := FindAllDependencyTasksToModify(ctx, []Task{*t1}, true, false)
@@ -1881,7 +1881,7 @@ func TestFindAllUnattainableDependenciesToUnbock(t *testing.T) {
 	}
 
 	for _, task := range tasks {
-		assert.NoError(task.Insert())
+		assert.NoError(task.Insert(t.Context()))
 	}
 
 	deps, err := FindAllDependencyTasksToModify(ctx, []Task{*t1}, false, false)
@@ -1968,10 +1968,10 @@ func TestCountNumExecutionsForInterval(t *testing.T) {
 		},
 	}
 	for _, each := range tasks {
-		assert.NoError(t, each.Insert())
+		assert.NoError(t, each.Insert(t.Context()))
 		each.Execution = 0
 		// Duplicate everything for the old task collection to ensure this is working.
-		assert.NoError(t, db.Insert(OldCollection, each))
+		assert.NoError(t, db.Insert(t.Context(), OldCollection, each))
 	}
 
 	for testName, test := range map[string]func(*testing.T){
@@ -2055,7 +2055,7 @@ func TestHasActivatedDependentTasks(t *testing.T) {
 			{TaskId: "secondTask"},
 		},
 	}
-	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3))
+	assert.NoError(t, db.InsertMany(t.Context(), Collection, t1, t2, t3))
 
 	hasDependentTasks, err := HasActivatedDependentTasks(ctx, "current")
 	assert.NoError(t, err)
@@ -2096,7 +2096,7 @@ func TestActivateTasksUpdate(t *testing.T) {
 			Id: "t0",
 		}
 
-		require.NoError(t, t0.Insert())
+		require.NoError(t, t0.Insert(t.Context()))
 		assert.NoError(t, activateTasks(ctx, []string{t0.Id}, caller, activationTime))
 		dbTask, err := FindOneId(ctx, t0.Id)
 		assert.NoError(t, err)
@@ -2122,7 +2122,7 @@ func TestActivateTasksUpdate(t *testing.T) {
 		}
 
 		require.NoError(t, d.Insert(ctx))
-		require.NoError(t, t0.Insert())
+		require.NoError(t, t0.Insert(t.Context()))
 		assert.NoError(t, activateTasks(ctx, []string{t0.Id}, caller, activationTime))
 
 		tasks, err := FindHostSchedulable(ctx, "d")
@@ -2154,7 +2154,7 @@ func TestFindGeneratedTasksFromID(t *testing.T) {
 	}
 	for tName, tCase := range map[string]func(t *testing.T, generatorID string, generated []Task){
 		"ReturnsSingleResult": func(t *testing.T, generatorID string, generated []Task) {
-			require.NoError(t, generated[0].Insert())
+			require.NoError(t, generated[0].Insert(t.Context()))
 			res, err := FindGeneratedTasksFromID(ctx, generatorID)
 			require.NoError(t, err)
 			require.Len(t, res, 1)
@@ -2162,7 +2162,7 @@ func TestFindGeneratedTasksFromID(t *testing.T) {
 		},
 		"ReturnsMultipleResults": func(t *testing.T, generatorID string, generated []Task) {
 			for _, tsk := range generated {
-				require.NoError(t, tsk.Insert())
+				require.NoError(t, tsk.Insert(t.Context()))
 			}
 			res, err := FindGeneratedTasksFromID(ctx, generatorID)
 			require.NoError(t, err)
@@ -2173,7 +2173,7 @@ func TestFindGeneratedTasksFromID(t *testing.T) {
 		},
 		"ReturnsNoResultsForNoMatch": func(t *testing.T, generatorID string, generated []Task) {
 			for _, tsk := range generated {
-				require.NoError(t, tsk.Insert())
+				require.NoError(t, tsk.Insert(t.Context()))
 			}
 			res, err := FindGeneratedTasksFromID(ctx, "nonexistent")
 			require.NoError(t, err)
@@ -2230,7 +2230,7 @@ func TestGetPendingGenerateTasks(t *testing.T) {
 		EstimatedNumGeneratedTasks: utility.ToIntPtr(4),
 		GeneratedTasks:             false,
 	}
-	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4))
+	assert.NoError(t, db.InsertMany(t.Context(), Collection, t1, t2, t3, t4))
 
 	ctx := context.TODO()
 	numPending, err := GetPendingGenerateTasks(ctx)
@@ -2274,7 +2274,7 @@ func TestGetLatestTaskFromImage(t *testing.T) {
 		{Id: "t3", FinishTime: time.Date(2024, time.January, 1, 10, 30, 15, 0, time.UTC), DistroId: "rando"},
 	}
 	for _, task := range tasks {
-		require.NoError(t, task.Insert())
+		require.NoError(t, task.Insert(t.Context()))
 	}
 	latestTask, err := GetLatestTaskFromImage(ctx, imageID)
 	require.NoError(t, err)

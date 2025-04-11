@@ -450,8 +450,8 @@ func TryMarkStarted(ctx context.Context, versionId string, startTime time.Time) 
 }
 
 // Insert inserts the patch into the db, returning any errors that occur
-func (p *Patch) Insert() error {
-	return db.Insert(Collection, p)
+func (p *Patch) Insert(ctx context.Context) error {
+	return db.Insert(ctx, Collection, p)
 }
 
 func (p *Patch) UpdateStatus(ctx context.Context, newStatus string) error {

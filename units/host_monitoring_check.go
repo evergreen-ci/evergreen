@@ -191,7 +191,7 @@ func handleExternallyTerminatedHost(ctx context.Context, id string, env evergree
 			}))
 		}
 
-		event.LogHostTerminatedExternally(h.Id, h.Status)
+		event.LogHostTerminatedExternally(ctx, h.Id, h.Status)
 		grip.Info(message.Fields{
 			"message":      "host terminated externally",
 			"operation":    "handleExternallyTerminatedHost",

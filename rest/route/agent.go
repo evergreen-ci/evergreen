@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/cloud"
@@ -23,6 +22,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testlog"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
@@ -91,7 +91,6 @@ func (h *agentSetup) Run(ctx context.Context) gimlet.Responder {
 		SplunkClientToken:  h.settings.Splunk.SplunkConnectionInfo.Token,
 		SplunkChannel:      h.settings.Splunk.SplunkConnectionInfo.Channel,
 		TaskOutput:         h.settings.Buckets.Credentials,
-		InternalBuckets:    h.settings.Buckets.InternalBuckets,
 		MaxExecTimeoutSecs: h.settings.TaskLimits.MaxExecTimeoutSecs,
 	}
 
@@ -221,7 +220,7 @@ func (h *newPushHandler) Run(ctx context.Context) gimlet.Responder {
 
 	// It's now safe to put the file in its permanent location.
 	newPushLog := model.NewPushLog(v, t, copyToLocation)
-	if err = newPushLog.Insert(); err != nil {
+	if err = newPushLog.Insert(ctx); err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "creating new push log: %+v", newPushLog))
 	}
 	return gimlet.NewJSONResponse(newPushLog)
@@ -780,13 +779,52 @@ func (h *attachTestLogHandler) Run(ctx context.Context) gimlet.Responder {
 		"log_length":   len(h.log.Lines),
 	})
 
-	if err = h.log.Insert(); err != nil {
+	if err = h.log.Insert(ctx); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
 	logReply := struct {
 		Id string `json:"_id"`
 	}{h.log.Id}
 	return gimlet.NewJSONResponse(logReply)
+}
+
+// POST /task/{task_id}/test_results
+type attachTestResultsHandler struct {
+	settings *evergreen.Settings
+	results  []testresult.TestResult
+	taskID   string
+}
+
+func makeAttachTestResults(settings *evergreen.Settings) gimlet.RouteHandler {
+	return &attachTestResultsHandler{
+		settings: settings,
+	}
+}
+
+func (h *attachTestResultsHandler) Factory() gimlet.RouteHandler {
+	return &attachTestResultsHandler{
+		settings: h.settings,
+	}
+}
+
+func (h *attachTestResultsHandler) Parse(ctx context.Context, r *http.Request) error {
+	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
+		return errors.New("missing task ID")
+	}
+	err := utility.ReadJSON(r.Body, &h.results)
+	if err != nil {
+		return errors.Wrap(err, "reading test results from JSON request body")
+	}
+	return nil
+}
+
+func (h *attachTestResultsHandler) Run(ctx context.Context) gimlet.Responder {
+	// TODO: DEVPROD-16200 Implement the new DB/S3-backed Evergreen test results service and delete the below log
+	grip.Debug(message.Fields{
+		"message": "received test results",
+		"results": h.results,
+	})
+	return gimlet.NewJSONResponse(struct{}{})
 }
 
 // POST /task/{task_id}/heartbeat
@@ -940,10 +978,10 @@ func (h *startTaskHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	if len(updates.PatchNewStatus) != 0 {
-		event.LogPatchStateChangeEvent(t.Version, updates.PatchNewStatus)
+		event.LogPatchStateChangeEvent(ctx, t.Version, updates.PatchNewStatus)
 	}
 	if len(updates.BuildNewStatus) != 0 {
-		event.LogBuildStateChangeEvent(t.BuildId, updates.BuildNewStatus)
+		event.LogBuildStateChangeEvent(ctx, t.BuildId, updates.BuildNewStatus)
 	}
 
 	var msg string
@@ -1801,100 +1839,6 @@ func (h *awsAssumeRole) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "assuming role for task '%s'", h.taskID))
 	}
-	return gimlet.NewJSONResponse(apimodels.AWSCredentials{
-		AccessKeyID:     creds.AccessKeyID,
-		SecretAccessKey: creds.SecretAccessKey,
-		SessionToken:    creds.SessionToken,
-		Expiration:      creds.Expiration.String(),
-	})
-}
-
-// POST /rest/v2/task/{task_id}/aws/s3_credentials
-// This route is used to generates credentials for s3 access for a task.
-// s3.put and s3.get call this route when the command is targeting an
-// internal bucket.
-type awsS3Credentials struct {
-	env        evergreen.Environment
-	stsManager cloud.STSManager
-
-	// roleARN is the ARN in use with AWS STS.
-	roleARN string
-
-	body   apimodels.S3CredentialsRequest
-	taskID string
-}
-
-func makeAWSS3Credentials(env evergreen.Environment, stsManager cloud.STSManager, roleARN string) gimlet.RouteHandler {
-	return &awsS3Credentials{env: env, stsManager: stsManager, roleARN: roleARN}
-}
-
-func (h *awsS3Credentials) Factory() gimlet.RouteHandler {
-	return &awsS3Credentials{env: h.env, stsManager: h.stsManager, roleARN: h.roleARN}
-}
-
-func (h *awsS3Credentials) Parse(ctx context.Context, r *http.Request) error {
-	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
-		return errors.New("missing task_id")
-	}
-
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		return errors.Wrap(err, "reading body")
-	}
-
-	if err = json.Unmarshal(body, &h.body); err != nil {
-		return errors.Wrapf(err, "reading s3 body for task '%s'", h.taskID)
-	}
-
-	return errors.Wrapf(h.body.Validate(), "validating s3 body for task '%s'", h.taskID)
-}
-
-func (h *awsS3Credentials) Run(ctx context.Context) gimlet.Responder {
-	t, err := task.FindOneId(ctx, h.taskID)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
-	}
-	if t == nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
-		})
-	}
-
-	sharedBucket := h.env.Settings().Buckets.SharedBucket
-	projectPrefix := fmt.Sprintf("arn:aws:s3:::%s/%s", sharedBucket, t.Project)
-	accessPaths := []string{
-		projectPrefix,
-		fmt.Sprintf("%s/*", projectPrefix),
-	}
-	sessionPolicy := map[string]any{
-		"Version": "2012-10-17",
-		"Statement": []map[string]any{
-			{
-				"Effect": "Allow",
-				"Action": []string{
-					"s3:GetObject",
-					"s3:PutObject",
-					"s3:ListBucket",
-				},
-				"Resource": accessPaths,
-			},
-		},
-	}
-
-	policyJSON, err := json.Marshal(sessionPolicy)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "marshalling session policy for task '%s'", h.taskID))
-	}
-	creds, err := h.stsManager.AssumeRole(ctx, h.taskID, cloud.AssumeRoleOptions{
-		RoleARN:  h.roleARN,
-		Policy:   aws.String(string(policyJSON)),
-		CanCache: true,
-	})
-	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "creating credentials for s3 access for task '%s'", h.taskID))
-	}
-
 	return gimlet.NewJSONResponse(apimodels.AWSCredentials{
 		AccessKeyID:     creds.AccessKeyID,
 		SecretAccessKey: creds.SecretAccessKey,

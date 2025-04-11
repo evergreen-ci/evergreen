@@ -53,7 +53,7 @@ func (h *adminEventsGet) Parse(ctx context.Context, r *http.Request) error {
 func (h *adminEventsGet) Run(ctx context.Context) gimlet.Responder {
 	resp := gimlet.NewResponseBuilder()
 
-	events, err := data.GetAdminEventLog(h.Timestamp, h.Limit+1)
+	events, err := data.GetAdminEventLog(ctx, h.Timestamp, h.Limit+1)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting admin event log"))
 	}

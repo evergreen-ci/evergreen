@@ -50,8 +50,8 @@ func (s *UserConnectorSuite) SetupTest() {
 		APIKey: "apikey1",
 		// no pub keys
 	}
-	s.NoError(user0.Insert())
-	s.NoError(user1.Insert())
+	s.NoError(user0.Insert(s.T().Context()))
+	s.NoError(user1.Insert(s.T().Context()))
 	s.post = makeSetKey()
 	s.get = makeFetchKeys()
 }
@@ -183,8 +183,8 @@ func (s *UserConnectorDeleteSuite) SetupTest() {
 		APIKey: "apikey1",
 		// no pub keys
 	}
-	s.NoError(user0.Insert())
-	s.NoError(user1.Insert())
+	s.NoError(user0.Insert(s.T().Context()))
+	s.NoError(user1.Insert(s.T().Context()))
 
 	s.rm = makeDeleteKeys()
 }

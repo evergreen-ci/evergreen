@@ -1,6 +1,7 @@
 package event
 
 import (
+	"context"
 	"reflect"
 	"time"
 
@@ -39,7 +40,7 @@ type DistroEventData struct {
 	UserId string `bson:"u_id,omitempty" json:"u_id,omitempty"`
 }
 
-func LogDistroEvent(distroId string, eventType string, eventData DistroEventData) {
+func LogDistroEvent(ctx context.Context, distroId string, eventType string, eventData DistroEventData) {
 	event := EventLogEntry{
 		ResourceId:   distroId,
 		Timestamp:    time.Now(),
@@ -48,7 +49,7 @@ func LogDistroEvent(distroId string, eventType string, eventData DistroEventData
 		ResourceType: ResourceTypeDistro,
 	}
 
-	if err := event.Log(); err != nil {
+	if err := event.Log(ctx); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"resource_type": ResourceTypeDistro,
 			"message":       "error logging event",
@@ -58,12 +59,12 @@ func LogDistroEvent(distroId string, eventType string, eventData DistroEventData
 }
 
 // LogDistroAdded should take in DistroData in order to preserve the ProviderSettingsList
-func LogDistroAdded(distroId, userId string, data any) {
-	LogDistroEvent(distroId, EventDistroAdded, DistroEventData{UserId: userId, Data: data})
+func LogDistroAdded(ctx context.Context, distroId, userId string, data any) {
+	LogDistroEvent(ctx, distroId, EventDistroAdded, DistroEventData{UserId: userId, Data: data})
 }
 
 // LogDistroModified should take in DistroData in order to preserve the ProviderSettingsList
-func LogDistroModified(distroId, userId string, before, after any) {
+func LogDistroModified(ctx context.Context, distroId, userId string, before, after any) {
 	// Stop if there are no changes
 	if reflect.DeepEqual(before, after) {
 		grip.Info(message.Fields{
@@ -81,15 +82,15 @@ func LogDistroModified(distroId, userId string, before, after any) {
 		After:  after,
 	}
 
-	LogDistroEvent(distroId, EventDistroModified, data)
+	LogDistroEvent(ctx, distroId, EventDistroModified, data)
 }
 
 // LogDistroRemoved should take in DistroData in order to preserve the ProviderSettingsList
-func LogDistroRemoved(distroId, userId string, data any) {
-	LogDistroEvent(distroId, EventDistroRemoved, DistroEventData{UserId: userId, Data: data})
+func LogDistroRemoved(ctx context.Context, distroId, userId string, data any) {
+	LogDistroEvent(ctx, distroId, EventDistroRemoved, DistroEventData{UserId: userId, Data: data})
 }
 
 // LogDistroAMIModified logs when the default region's AMI is modified.
-func LogDistroAMIModified(distroId, userId string) {
-	LogDistroEvent(distroId, EventDistroAMIModfied, DistroEventData{UserId: userId})
+func LogDistroAMIModified(ctx context.Context, distroId, userId string) {
+	LogDistroEvent(ctx, distroId, EventDistroAMIModfied, DistroEventData{UserId: userId})
 }

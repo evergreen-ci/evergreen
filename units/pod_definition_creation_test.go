@@ -56,7 +56,7 @@ func TestPodDefinitionCreationJob(t *testing.T) {
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, j *podDefinitionCreationJob, p *pod.Pod){
 		"Succeeds": func(ctx context.Context, t *testing.T, j *podDefinitionCreationJob, p *pod.Pod) {
-			require.NoError(t, p.Insert())
+			require.NoError(t, p.Insert(t.Context()))
 
 			j.Run(ctx)
 			require.NoError(t, j.Error())
@@ -109,9 +109,9 @@ func TestPodDefinitionCreationJob(t *testing.T) {
 			}
 		},
 		"NoopsWithAlreadyExistingPodDefinition": func(ctx context.Context, t *testing.T, j *podDefinitionCreationJob, p *pod.Pod) {
-			require.NoError(t, p.Insert())
+			require.NoError(t, p.Insert(t.Context()))
 
-			require.NoError(t, db.Insert(definition.Collection, definition.PodDefinition{
+			require.NoError(t, db.Insert(t.Context(), definition.Collection, definition.PodDefinition{
 				ID:         utility.RandomString(),
 				Family:     j.Family,
 				ExternalID: "external_id",
@@ -144,7 +144,7 @@ func TestPodDefinitionCreationJob(t *testing.T) {
 			assert.Empty(t, cocoaMock.GlobalECSService.TaskDefs, "should not have created an ECS task definition")
 		},
 		"DecommissionsDependentIntentPodsWithNoRetriesRemaining": func(ctx context.Context, t *testing.T, j *podDefinitionCreationJob, p *pod.Pod) {
-			require.NoError(t, p.Insert())
+			require.NoError(t, p.Insert(t.Context()))
 
 			pdm, ok := j.podDefMgr.(*cocoaMock.ECSPodDefinitionManager)
 			require.True(t, ok)

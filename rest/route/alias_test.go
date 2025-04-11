@@ -29,7 +29,7 @@ func TestGetAliasesHandler(t *testing.T) {
 			assert.Equal(t, "project_alias", utility.FromStringPtr(foundAlias.Alias))
 		},
 		"ReturnsRepoLevelAliases": func(ctx context.Context, t *testing.T, h *aliasGetHandler) {
-			projectAliases, err := dbModel.FindAliasesForProjectFromDb("project_ref")
+			projectAliases, err := dbModel.FindAliasesForProjectFromDb(ctx, "project_ref")
 			require.NoError(t, err)
 			require.Len(t, projectAliases, 1)
 			require.NoError(t, dbModel.RemoveProjectAlias(ctx, projectAliases[0].ID.Hex()))
@@ -126,7 +126,7 @@ func TestGetAliasesHandler(t *testing.T) {
 						},
 					},
 				}}
-			require.NoError(t, projectConfig.Insert())
+			require.NoError(t, projectConfig.Insert(t.Context()))
 
 			rh, ok := makeFetchAliases().(*aliasGetHandler)
 			require.True(t, ok)

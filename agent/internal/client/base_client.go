@@ -21,6 +21,7 @@ import (
 	patchmodel "github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testlog"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/evergreen/util"
@@ -578,6 +579,24 @@ func (c *baseCommunicator) SendTestLog(ctx context.Context, taskData TaskData, l
 	logID := logReply.ID
 
 	return logID, nil
+}
+
+// SendTestResults sends test result metadata to the app servers for persistent DB storage.
+func (c *baseCommunicator) SendTestResults(ctx context.Context, taskData TaskData, testResults []testresult.TestResult) error {
+	if len(testResults) == 0 {
+		return nil
+	}
+
+	info := requestInfo{
+		method:   http.MethodPost,
+		taskData: &taskData,
+	}
+	info.setTaskPathSuffix("test_results")
+	resp, err := c.retryRequest(ctx, info, testResults)
+	if err != nil {
+		return util.RespError(resp, errors.Wrap(err, "sending test results").Error())
+	}
+	return nil
 }
 
 func (c *baseCommunicator) SetResultsInfo(ctx context.Context, taskData TaskData, service string, failed bool) error {

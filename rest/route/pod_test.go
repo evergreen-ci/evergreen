@@ -108,7 +108,7 @@ func TestGetPod(t *testing.T) {
 				Type:   pod.TypeAgent,
 				Status: pod.StatusRunning,
 			}
-			require.NoError(t, podToInsert.Insert())
+			require.NoError(t, podToInsert.Insert(t.Context()))
 
 			ph.podID = podID
 			resp := ph.Run(ctx)

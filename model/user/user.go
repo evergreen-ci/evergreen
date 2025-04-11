@@ -307,9 +307,9 @@ func (u *DBUser) UpdatePublicKey(targetKeyName, newKeyName, newKeyValue string) 
 	return nil
 }
 
-func (u *DBUser) Insert() error {
+func (u *DBUser) Insert(ctx context.Context) error {
 	u.CreatedAt = time.Now()
-	return db.Insert(Collection, u)
+	return db.Insert(ctx, Collection, u)
 }
 
 // IncPatchNumber increases the count for the user's patch submissions by one,
@@ -390,7 +390,7 @@ func (u *DBUser) AddRole(ctx context.Context, role string) error {
 	}
 	u.SystemRoles = append(u.SystemRoles, role)
 
-	return event.LogUserEvent(u.Id, event.UserEventTypeRolesUpdate, u.SystemRoles[:len(u.SystemRoles)-1], u.SystemRoles)
+	return event.LogUserEvent(ctx, u.Id, event.UserEventTypeRolesUpdate, u.SystemRoles[:len(u.SystemRoles)-1], u.SystemRoles)
 }
 
 func (u *DBUser) RemoveRole(ctx context.Context, role string) error {
@@ -407,7 +407,7 @@ func (u *DBUser) RemoveRole(ctx context.Context, role string) error {
 		}
 	}
 
-	return event.LogUserEvent(u.Id, event.UserEventTypeRolesUpdate, before, u.SystemRoles)
+	return event.LogUserEvent(ctx, u.Id, event.UserEventTypeRolesUpdate, before, u.SystemRoles)
 }
 
 // GetViewableProjects returns the lists of projects/repos the user can view settings for.
@@ -480,6 +480,18 @@ func (u *DBUser) HasProjectCreatePermission() (bool, error) {
 		}
 	}
 	return false, nil
+}
+
+// HasDistroCreatePermission returns true if the user has permission to create
+// distros. This can also operate as a check for whether the user is a distro
+// admin, since only distro admins can create new distros.
+func (u *DBUser) HasDistroCreatePermission() bool {
+	return u.HasPermission(gimlet.PermissionOpts{
+		Resource:      evergreen.SuperUserPermissionsID,
+		ResourceType:  evergreen.SuperUserResourceType,
+		Permission:    evergreen.PermissionDistroCreate,
+		RequiredLevel: evergreen.DistroCreate.Value,
+	})
 }
 
 func (u *DBUser) DeleteAllRoles() error {

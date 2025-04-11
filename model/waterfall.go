@@ -404,66 +404,6 @@ func getVersionTasksPipeline() []bson.M {
 	}
 }
 
-// GetWaterfallBuildVariants returns all build variants associated with the specified versions. Each build variant contains an array of builds sorted by revision and their tasks.
-func GetWaterfallBuildVariants(ctx context.Context, versionIds []string) ([]WaterfallBuildVariant, error) {
-	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetWaterfallBuildVariants")})
-
-	if len(versionIds) == 0 {
-		return nil, errors.Errorf("no version IDs specified")
-	}
-
-	pipeline := []bson.M{{"$match": bson.M{VersionIdKey: bson.M{"$in": versionIds}}}}
-	pipeline = append(pipeline, bson.M{"$sort": bson.M{VersionRevisionOrderNumberKey: -1}})
-
-	pipeline = append(pipeline, bson.M{"$unwind": bson.M{"path": "$" + VersionBuildVariantsKey}})
-	pipeline = append(pipeline, bson.M{
-		"$group": bson.M{
-			"_id": "$" + bsonutil.GetDottedKeyName(VersionBuildVariantsKey, VersionBuildStatusVariantKey),
-			VersionBuildIdsKey: bson.M{
-				"$push": "$" + bsonutil.GetDottedKeyName(VersionBuildVariantsKey, VersionBuildStatusIdKey),
-			},
-		},
-	})
-	pipeline = append(pipeline, getVersionTasksPipeline()...)
-	// Sorting builds here guarantees a consistent order in the subsequent $group stage
-	pipeline = append(pipeline, bson.M{"$sort": bson.M{bsonutil.GetDottedKeyName(buildsKey, build.RevisionOrderNumberKey): -1}})
-	pipeline = append(pipeline, bson.M{
-		"$group": bson.M{
-			"_id": "$_id",
-			buildsKey: bson.M{
-				"$push": "$" + buildsKey,
-			},
-		},
-	})
-	pipeline = append(pipeline, bson.M{
-		"$project": bson.M{
-			build.VersionKey: bson.M{
-				"$first": "$" + bsonutil.GetDottedKeyName(buildsKey, build.VersionKey),
-			},
-			build.BuildVariantKey: bson.M{
-				"$first": "$" + bsonutil.GetDottedKeyName(buildsKey, build.BuildVariantKey),
-			},
-			build.DisplayNameKey: bson.M{
-				"$first": "$" + bsonutil.GetDottedKeyName(buildsKey, build.DisplayNameKey),
-			},
-			buildsKey: 1,
-		},
-	})
-	pipeline = append(pipeline, bson.M{"$sort": bson.M{build.DisplayNameKey: 1}})
-
-	res := []WaterfallBuildVariant{}
-	env := evergreen.GetEnvironment()
-	cursor, err := env.DB().Collection(VersionCollection).Aggregate(ctx, pipeline)
-	if err != nil {
-		return nil, errors.Wrap(err, "aggregating versions")
-	}
-	if err = cursor.All(ctx, &res); err != nil {
-		return nil, err
-	}
-
-	return res, nil
-}
-
 // GetVersionBuilds returns a list of builds with populated tasks for a given version.
 func GetVersionBuilds(ctx context.Context, versionId string) ([]WaterfallBuild, error) {
 	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetVersionBuilds")})

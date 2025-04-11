@@ -308,20 +308,20 @@ func (e *ProjectChangeEventEntry) SetBSON(raw mgobson.Raw) error {
 }
 
 // MostRecentProjectEvents returns the n most recent project events for the given project ID.
-func MostRecentProjectEvents(id string, n int) (ProjectChangeEvents, error) {
+func MostRecentProjectEvents(ctx context.Context, id string, n int) (ProjectChangeEvents, error) {
 	filter := event.ResourceTypeKeyIs(event.EventResourceTypeProject)
 	filter[event.ResourceIdKey] = id
 
 	query := db.Query(filter).Sort([]string{"-" + event.TimestampKey}).Limit(n)
 	events := ProjectChangeEvents{}
-	err := db.FindAllQ(event.EventCollection, query, &events)
+	err := db.FindAllQ(ctx, event.EventCollection, query, &events)
 
 	return events, err
 }
 
 // ProjectEventsBefore returns the n most recent project events for the given project ID
 // that occurred before the given time.
-func ProjectEventsBefore(id string, before time.Time, n int) (ProjectChangeEvents, error) {
+func ProjectEventsBefore(ctx context.Context, id string, before time.Time, n int) (ProjectChangeEvents, error) {
 	filter := event.ResourceTypeKeyIs(event.EventResourceTypeProject)
 	filter[event.ResourceIdKey] = id
 	filter[event.TimestampKey] = bson.M{
@@ -330,13 +330,13 @@ func ProjectEventsBefore(id string, before time.Time, n int) (ProjectChangeEvent
 
 	query := db.Query(filter).Sort([]string{"-" + event.TimestampKey}).Limit(n)
 	events := ProjectChangeEvents{}
-	err := db.FindAllQ(event.EventCollection, query, &events)
+	err := db.FindAllQ(ctx, event.EventCollection, query, &events)
 
 	return events, err
 }
 
 // LogProjectEvent logs a project event.
-func LogProjectEvent(eventType string, projectId string, eventData ProjectChangeEvent) error {
+func LogProjectEvent(ctx context.Context, eventType string, projectId string, eventData ProjectChangeEvent) error {
 	eventData.RedactSecrets()
 	projectEvent := event.EventLogEntry{
 		Timestamp:    time.Now(),
@@ -346,7 +346,7 @@ func LogProjectEvent(eventType string, projectId string, eventData ProjectChange
 		Data:         eventData,
 	}
 
-	if err := projectEvent.Log(); err != nil {
+	if err := projectEvent.Log(ctx); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"resource_type": event.EventResourceTypeProject,
 			"message":       "error logging event",
@@ -360,8 +360,8 @@ func LogProjectEvent(eventType string, projectId string, eventData ProjectChange
 }
 
 // LogProjectAdded logs a project added event.
-func LogProjectAdded(projectId, username string) error {
-	return LogProjectEvent(event.EventTypeProjectAdded, projectId, ProjectChangeEvent{User: username})
+func LogProjectAdded(ctx context.Context, projectId, username string) error {
+	return LogProjectEvent(ctx, event.EventTypeProjectAdded, projectId, ProjectChangeEvent{User: username})
 }
 
 // GetAndLogProjectModified retrieves the project settings before and after some change, and logs an event for the modification.
@@ -370,7 +370,7 @@ func GetAndLogProjectModified(ctx context.Context, id, userId string, isRepo boo
 	if err != nil {
 		return errors.Wrap(err, "getting after project settings event")
 	}
-	return errors.Wrap(LogProjectModified(id, userId, before, after), "logging project modified")
+	return errors.Wrap(LogProjectModified(ctx, id, userId, before, after), "logging project modified")
 }
 
 // GetAndLogProjectRepoAttachment retrieves the project settings before and after the change, and logs the modification
@@ -381,7 +381,7 @@ func GetAndLogProjectRepoAttachment(ctx context.Context, id, userId, attachmentT
 		return errors.Wrap(err, "getting after project settings event")
 	}
 
-	return errors.Wrap(LogProjectRepoAttachment(id, userId, attachmentType, before, after), "logging project repo attachment")
+	return errors.Wrap(LogProjectRepoAttachment(ctx, id, userId, attachmentType, before, after), "logging project repo attachment")
 }
 
 // resolveDefaults checks if certain project event fields are nil, and if so, sets the field's corresponding flag.
@@ -413,19 +413,19 @@ func (p *ProjectSettings) resolveDefaults() *ProjectSettingsEvent {
 
 // LogProjectModified logs an event for a modification of a project's settings.
 // Secrets are redacted from the event data.
-func LogProjectModified(projectId, username string, before, after *ProjectSettings) error {
+func LogProjectModified(ctx context.Context, projectId, username string, before, after *ProjectSettings) error {
 	eventData := constructProjectChangeEvent(username, before, after)
 	if eventData == nil {
 		return nil
 	}
-	return LogProjectEvent(event.EventTypeProjectModified, projectId, *eventData)
+	return LogProjectEvent(ctx, event.EventTypeProjectModified, projectId, *eventData)
 }
 
 // LogProjectRepoAttachment logs an event for either the attachment of a project to a repo,
 // or a detachment of a project from a repo.
-func LogProjectRepoAttachment(projectId, username, attachmentType string, before, after *ProjectSettings) error {
+func LogProjectRepoAttachment(ctx context.Context, projectId, username, attachmentType string, before, after *ProjectSettings) error {
 	eventData := constructProjectChangeEvent(username, before, after)
-	return LogProjectEvent(attachmentType, projectId, *eventData)
+	return LogProjectEvent(ctx, attachmentType, projectId, *eventData)
 }
 
 func constructProjectChangeEvent(username string, before, after *ProjectSettings) *ProjectChangeEvent {

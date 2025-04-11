@@ -14,7 +14,7 @@ import (
 func TestFindByNeedsTermination(t *testing.T) {
 	for tName, tCase := range map[string]func(t *testing.T){
 		"ReturnsEmptyForNoMatches": func(t *testing.T) {
-			pods, err := FindByNeedsTermination()
+			pods, err := FindByNeedsTermination(t.Context())
 			assert.NoError(t, err)
 			assert.Empty(t, pods)
 		},
@@ -26,7 +26,7 @@ func TestFindByNeedsTermination(t *testing.T) {
 					Starting: time.Now().Add(-time.Hour),
 				},
 			}
-			require.NoError(t, stalePod.Insert())
+			require.NoError(t, stalePod.Insert(t.Context()))
 			runningPod := Pod{
 				ID:     "pod_id1",
 				Status: StatusRunning,
@@ -34,7 +34,7 @@ func TestFindByNeedsTermination(t *testing.T) {
 					Starting: time.Now().Add(-time.Hour),
 				},
 			}
-			require.NoError(t, runningPod.Insert())
+			require.NoError(t, runningPod.Insert(t.Context()))
 			startingPod := Pod{
 				ID:     "pod_id2",
 				Status: StatusRunning,
@@ -42,9 +42,9 @@ func TestFindByNeedsTermination(t *testing.T) {
 					Starting: time.Now(),
 				},
 			}
-			require.NoError(t, startingPod.Insert())
+			require.NoError(t, startingPod.Insert(t.Context()))
 
-			pods, err := FindByNeedsTermination()
+			pods, err := FindByNeedsTermination(t.Context())
 			require.NoError(t, err)
 			require.Len(t, pods, 1)
 			assert.Equal(t, stalePod.ID, pods[0].ID)
@@ -54,9 +54,9 @@ func TestFindByNeedsTermination(t *testing.T) {
 				ID:     "pod_id",
 				Status: StatusDecommissioned,
 			}
-			require.NoError(t, decommissionedPod.Insert())
+			require.NoError(t, decommissionedPod.Insert(t.Context()))
 
-			pods, err := FindByNeedsTermination()
+			pods, err := FindByNeedsTermination(t.Context())
 			require.NoError(t, err)
 			require.Len(t, pods, 1)
 			assert.Equal(t, decommissionedPod.ID, pods[0].ID)
@@ -69,9 +69,9 @@ func TestFindByNeedsTermination(t *testing.T) {
 					RunningTaskID: "task_id",
 				},
 			}
-			require.NoError(t, decommissionedPodWithTask.Insert())
+			require.NoError(t, decommissionedPodWithTask.Insert(t.Context()))
 
-			pods, err := FindByNeedsTermination()
+			pods, err := FindByNeedsTermination(t.Context())
 			require.NoError(t, err)
 			require.Empty(t, pods)
 		},
@@ -83,9 +83,9 @@ func TestFindByNeedsTermination(t *testing.T) {
 					Initializing: time.Now().Add(-time.Hour),
 				},
 			}
-			require.NoError(t, stalePod.Insert())
+			require.NoError(t, stalePod.Insert(t.Context()))
 
-			pods, err := FindByNeedsTermination()
+			pods, err := FindByNeedsTermination(t.Context())
 			require.NoError(t, err)
 			require.Len(t, pods, 1)
 			assert.Equal(t, stalePod.ID, pods[0].ID)
@@ -105,7 +105,7 @@ func TestFindByNeedsTermination(t *testing.T) {
 func TestFindByInitializing(t *testing.T) {
 	for tName, tCase := range map[string]func(t *testing.T){
 		"ReturnsEmptyForNoMatches": func(t *testing.T) {
-			pods, err := FindByInitializing()
+			pods, err := FindByInitializing(t.Context())
 			assert.NoError(t, err)
 			assert.Empty(t, pods)
 		},
@@ -114,21 +114,21 @@ func TestFindByInitializing(t *testing.T) {
 				ID:     utility.RandomString(),
 				Status: StatusInitializing,
 			}
-			require.NoError(t, p1.Insert())
+			require.NoError(t, p1.Insert(t.Context()))
 
 			p2 := &Pod{
 				ID:     utility.RandomString(),
 				Status: StatusStarting,
 			}
-			require.NoError(t, p2.Insert())
+			require.NoError(t, p2.Insert(t.Context()))
 
 			p3 := &Pod{
 				ID:     utility.RandomString(),
 				Status: StatusInitializing,
 			}
-			require.NoError(t, p3.Insert())
+			require.NoError(t, p3.Insert(t.Context()))
 
-			pods, err := FindByInitializing()
+			pods, err := FindByInitializing(t.Context())
 			require.NoError(t, err)
 			require.Len(t, pods, 2)
 			assert.Equal(t, StatusInitializing, pods[0].Status)
@@ -162,19 +162,19 @@ func TestCountByInitializing(t *testing.T) {
 				ID:     utility.RandomString(),
 				Status: StatusInitializing,
 			}
-			require.NoError(t, p1.Insert())
+			require.NoError(t, p1.Insert(t.Context()))
 
 			p2 := &Pod{
 				ID:     utility.RandomString(),
 				Status: StatusStarting,
 			}
-			require.NoError(t, p2.Insert())
+			require.NoError(t, p2.Insert(t.Context()))
 
 			p3 := &Pod{
 				ID:     utility.RandomString(),
 				Status: StatusInitializing,
 			}
-			require.NoError(t, p3.Insert())
+			require.NoError(t, p3.Insert(t.Context()))
 
 			count, err := CountByInitializing(t.Context())
 			require.NoError(t, err)
@@ -199,7 +199,7 @@ func TestFindOneByID(t *testing.T) {
 				ID:     "id",
 				Status: StatusInitializing,
 			}
-			require.NoError(t, p.Insert())
+			require.NoError(t, p.Insert(t.Context()))
 
 			dbPod, err := FindOneByID(t.Context(), p.ID)
 			require.NoError(t, err)
@@ -233,7 +233,7 @@ func TestFindOneByExternalID(t *testing.T) {
 					ExternalID: "external_id",
 				},
 			}
-			require.NoError(t, p.Insert())
+			require.NoError(t, p.Insert(t.Context()))
 
 			dbPod, err := FindOneByExternalID(t.Context(), p.Resources.ExternalID)
 			require.NoError(t, err)
@@ -284,10 +284,10 @@ func TestFindByFamily(t *testing.T) {
 				},
 			}
 			for _, p := range pods {
-				require.NoError(t, p.Insert())
+				require.NoError(t, p.Insert(t.Context()))
 			}
 
-			dbPods, err := FindIntentByFamily(family)
+			dbPods, err := FindIntentByFamily(t.Context(), family)
 			require.NoError(t, err)
 			var numMatches int
 			for _, p := range dbPods {
@@ -306,8 +306,8 @@ func TestFindByFamily(t *testing.T) {
 				Status: StatusStarting,
 				Family: "family",
 			}
-			require.NoError(t, p.Insert())
-			dbPods, err := FindIntentByFamily(p.Family)
+			require.NoError(t, p.Insert(t.Context()))
+			dbPods, err := FindIntentByFamily(t.Context(), p.Family)
 			assert.NoError(t, err)
 			assert.Empty(t, dbPods)
 		},
@@ -317,13 +317,13 @@ func TestFindByFamily(t *testing.T) {
 				Status: StatusStarting,
 				Family: "family",
 			}
-			require.NoError(t, p.Insert())
-			dbPods, err := FindIntentByFamily("foo")
+			require.NoError(t, p.Insert(t.Context()))
+			dbPods, err := FindIntentByFamily(t.Context(), "foo")
 			assert.NoError(t, err)
 			assert.Empty(t, dbPods)
 		},
 		"ReturnsNoErrorForNoMatchingPods": func(t *testing.T) {
-			dbPods, err := FindIntentByFamily("nonexistent")
+			dbPods, err := FindIntentByFamily(t.Context(), "nonexistent")
 			assert.NoError(t, err)
 			assert.Empty(t, dbPods)
 		},
@@ -351,7 +351,7 @@ func TestUpdateOneStatus(t *testing.T) {
 	}
 
 	checkEventLog := func(t *testing.T, p Pod) {
-		events, err := event.Find(event.MostRecentPodEvents(p.ID, 10))
+		events, err := event.Find(t.Context(), event.MostRecentPodEvents(p.ID, 10))
 		require.NoError(t, err)
 		require.Len(t, events, 1)
 		assert.Equal(t, p.ID, events[0].ResourceId)
@@ -362,7 +362,7 @@ func TestUpdateOneStatus(t *testing.T) {
 	for tName, tCase := range map[string]func(t *testing.T, p Pod){
 		"NoopsWithIdenticalStatus": func(t *testing.T, p Pod) {
 			p.Status = StatusInitializing
-			require.NoError(t, p.Insert())
+			require.NoError(t, p.Insert(t.Context()))
 
 			require.NoError(t, p.UpdateStatus(t.Context(), p.Status, ""))
 			assert.Equal(t, StatusInitializing, p.Status)
@@ -374,7 +374,7 @@ func TestUpdateOneStatus(t *testing.T) {
 			assert.Zero(t, dbPod.TimeInfo.Initializing)
 		},
 		"SucceedsWithInitializingStatus": func(t *testing.T, p Pod) {
-			require.NoError(t, p.Insert())
+			require.NoError(t, p.Insert(t.Context()))
 
 			updated := StatusInitializing
 			require.NoError(t, UpdateOneStatus(t.Context(), p.ID, p.Status, updated, time.Now(), ""))
@@ -386,7 +386,7 @@ func TestUpdateOneStatus(t *testing.T) {
 			checkEventLog(t, p)
 		},
 		"SucceedsWithStartingStatus": func(t *testing.T, p Pod) {
-			require.NoError(t, p.Insert())
+			require.NoError(t, p.Insert(t.Context()))
 
 			updated := StatusStarting
 			require.NoError(t, UpdateOneStatus(t.Context(), p.ID, p.Status, updated, time.Now(), ""))
@@ -398,12 +398,12 @@ func TestUpdateOneStatus(t *testing.T) {
 			checkEventLog(t, p)
 		},
 		"FailsWithMismatchedCurrentStatus": func(t *testing.T, p Pod) {
-			require.NoError(t, p.Insert())
+			require.NoError(t, p.Insert(t.Context()))
 
 			assert.Error(t, UpdateOneStatus(t.Context(), p.ID, StatusInitializing, StatusTerminated, time.Now(), ""))
 		},
 		"SucceedsWithTerminatedStatus": func(t *testing.T, p Pod) {
-			require.NoError(t, p.Insert())
+			require.NoError(t, p.Insert(t.Context()))
 
 			updated := StatusTerminated
 			require.NoError(t, UpdateOneStatus(t.Context(), p.ID, p.Status, updated, time.Now(), ""))
@@ -416,7 +416,7 @@ func TestUpdateOneStatus(t *testing.T) {
 			checkEventLog(t, p)
 		},
 		"FailsWithNonexistentPod": func(t *testing.T, p Pod) {
-			require.NoError(t, p.Insert())
+			require.NoError(t, p.Insert(t.Context()))
 
 			assert.Error(t, UpdateOneStatus(t.Context(), "nonexistent", StatusStarting, StatusRunning, time.Now(), ""))
 		},
@@ -450,9 +450,9 @@ func TestFindByLastCommunicatedBefore(t *testing.T) {
 					LastCommunicated: time.Now().Add(-time.Hour),
 				},
 			}
-			require.NoError(t, p.Insert())
+			require.NoError(t, p.Insert(t.Context()))
 
-			found, err := FindByLastCommunicatedBefore(time.Now().Add(-10 * time.Minute))
+			found, err := FindByLastCommunicatedBefore(t.Context(), time.Now().Add(-10*time.Minute))
 			require.NoError(t, err)
 			require.Len(t, found, 1)
 			assert.Equal(t, p.ID, found[0].ID)
@@ -465,9 +465,9 @@ func TestFindByLastCommunicatedBefore(t *testing.T) {
 					LastCommunicated: time.Now().Add(-time.Hour),
 				},
 			}
-			require.NoError(t, p.Insert())
+			require.NoError(t, p.Insert(t.Context()))
 
-			found, err := FindByLastCommunicatedBefore(time.Now().Add(-10 * time.Minute))
+			found, err := FindByLastCommunicatedBefore(t.Context(), time.Now().Add(-10*time.Minute))
 			require.NoError(t, err)
 			require.Len(t, found, 1)
 			assert.Equal(t, p.ID, found[0].ID)
@@ -518,10 +518,10 @@ func TestFindByLastCommunicatedBefore(t *testing.T) {
 				},
 			}
 			for _, p := range pods {
-				require.NoError(t, p.Insert())
+				require.NoError(t, p.Insert(t.Context()))
 			}
 
-			found, err := FindByLastCommunicatedBefore(time.Now().Add(-10 * time.Minute))
+			found, err := FindByLastCommunicatedBefore(t.Context(), time.Now().Add(-10*time.Minute))
 			require.NoError(t, err)
 			require.Len(t, found, 2)
 			assert.ElementsMatch(t, []string{pods[2].ID, pods[4].ID}, []string{found[0].ID, found[1].ID})
@@ -534,9 +534,9 @@ func TestFindByLastCommunicatedBefore(t *testing.T) {
 					LastCommunicated: time.Now().Add(-time.Minute),
 				},
 			}
-			require.NoError(t, p.Insert())
+			require.NoError(t, p.Insert(t.Context()))
 
-			found, err := FindByLastCommunicatedBefore(time.Now().Add(-10 * time.Minute))
+			found, err := FindByLastCommunicatedBefore(t.Context(), time.Now().Add(-10*time.Minute))
 			assert.NoError(t, err)
 			assert.Empty(t, found)
 		},
@@ -548,9 +548,9 @@ func TestFindByLastCommunicatedBefore(t *testing.T) {
 					LastCommunicated: time.Now().Add(-time.Hour),
 				},
 			}
-			require.NoError(t, p.Insert())
+			require.NoError(t, p.Insert(t.Context()))
 
-			found, err := FindByLastCommunicatedBefore(time.Now().Add(-10 * time.Minute))
+			found, err := FindByLastCommunicatedBefore(t.Context(), time.Now().Add(-10*time.Minute))
 			assert.NoError(t, err)
 			assert.Empty(t, found)
 		},
@@ -562,9 +562,9 @@ func TestFindByLastCommunicatedBefore(t *testing.T) {
 					LastCommunicated: time.Now().Add(-time.Hour),
 				},
 			}
-			require.NoError(t, p.Insert())
+			require.NoError(t, p.Insert(t.Context()))
 
-			found, err := FindByLastCommunicatedBefore(time.Now().Add(-10 * time.Minute))
+			found, err := FindByLastCommunicatedBefore(t.Context(), time.Now().Add(-10*time.Minute))
 			assert.NoError(t, err)
 			assert.Empty(t, found)
 		},
@@ -613,7 +613,7 @@ func TestGetStatsByStatus(t *testing.T) {
 					Status: StatusRunning,
 				},
 			} {
-				require.NoError(t, p.Insert())
+				require.NoError(t, p.Insert(t.Context()))
 			}
 
 			stats, err := GetStatsByStatus(t.Context(), StatusRunning)
@@ -668,7 +668,7 @@ func TestGetStatsByStatus(t *testing.T) {
 					Type:   TypeAgent,
 				},
 			} {
-				require.NoError(t, p.Insert())
+				require.NoError(t, p.Insert(t.Context()))
 			}
 
 			stats, err := GetStatsByStatus(t.Context(), StatusInitializing, StatusStarting, StatusRunning)

@@ -25,12 +25,12 @@ func TestRequireProjectAccess(t *testing.T) {
 			SlackMemberId: "testuser",
 		},
 	}
-	require.NoError(t, dbUser.Insert())
+	require.NoError(t, dbUser.Insert(t.Context()))
 
 	project := &model.ProjectRef{
 		Id: "project_id",
 	}
-	require.NoError(t, project.Insert())
+	require.NoError(t, project.Insert(t.Context()))
 
 	const email = "testuser@mongodb.com"
 	const accessToken = "access_token"
@@ -100,7 +100,7 @@ func TestRequireProjectAccessForSettings(t *testing.T) {
 		Identifier: "project_identifier",
 		RepoRefId:  "repo_id",
 	}
-	err = projectRef.Insert()
+	err = projectRef.Insert(t.Context())
 	require.NoError(t, err)
 
 	repoRef := model.RepoRef{ProjectRef: model.ProjectRef{
@@ -173,18 +173,18 @@ func TestRequireProjectAccessForTasks(t *testing.T) {
 			SlackMemberId: "testuser",
 		},
 	}
-	require.NoError(t, dbUser.Insert())
+	require.NoError(t, dbUser.Insert(t.Context()))
 
 	project := &model.ProjectRef{
 		Id: "project_id",
 	}
-	require.NoError(t, project.Insert())
+	require.NoError(t, project.Insert(t.Context()))
 
 	task := &task.Task{
 		Id:      "task_id",
 		Project: project.Id,
 	}
-	require.NoError(t, task.Insert())
+	require.NoError(t, task.Insert(t.Context()))
 
 	const email = "testuser@mongodb.com"
 	const accessToken = "access_token"
@@ -303,18 +303,18 @@ func TestRequireProjectAccessForAnnotations(t *testing.T) {
 			SlackMemberId: "testuser",
 		},
 	}
-	require.NoError(t, dbUser.Insert())
+	require.NoError(t, dbUser.Insert(t.Context()))
 
 	project := &model.ProjectRef{
 		Id: "project_id",
 	}
-	require.NoError(t, project.Insert())
+	require.NoError(t, project.Insert(t.Context()))
 
 	task := &task.Task{
 		Id:      "task_id",
 		Project: project.Id,
 	}
-	require.NoError(t, task.Insert())
+	require.NoError(t, task.Insert(t.Context()))
 
 	const email = "testuser@mongodb.com"
 	const accessToken = "access_token"
@@ -397,18 +397,18 @@ func TestRequireProjectAccessForPatches(t *testing.T) {
 			SlackMemberId: "testuser",
 		},
 	}
-	require.NoError(t, dbUser.Insert())
+	require.NoError(t, dbUser.Insert(t.Context()))
 
 	project := &model.ProjectRef{
 		Id: "project_id",
 	}
-	require.NoError(t, project.Insert())
+	require.NoError(t, project.Insert(t.Context()))
 
 	patch := &patch.Patch{
 		Id:      bson.NewObjectId(),
 		Project: project.Id,
 	}
-	require.NoError(t, patch.Insert())
+	require.NoError(t, patch.Insert(t.Context()))
 
 	const email = "testuser@mongodb.com"
 	const accessToken = "access_token"
@@ -491,12 +491,12 @@ func TestRequireProjectAccessForLogs(t *testing.T) {
 			SlackMemberId: "testuser",
 		},
 	}
-	require.NoError(t, dbUser.Insert())
+	require.NoError(t, dbUser.Insert(t.Context()))
 
 	project := &model.ProjectRef{
 		Id: "project_id",
 	}
-	require.NoError(t, project.Insert())
+	require.NoError(t, project.Insert(t.Context()))
 
 	const email = "testuser@mongodb.com"
 	const accessToken = "access_token"

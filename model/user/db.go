@@ -120,7 +120,7 @@ func FindOneByIdContext(ctx context.Context, id string) (*DBUser, error) {
 // Find gets all DBUser for the given query.
 func Find(ctx context.Context, query db.Q) ([]DBUser, error) {
 	us := []DBUser{}
-	err := db.FindAllQContext(ctx, Collection, query, &us)
+	err := db.FindAllQ(ctx, Collection, query, &us)
 	return us, err
 }
 
@@ -224,9 +224,9 @@ func FindBySlackUsername(ctx context.Context, userName string) (*DBUser, error) 
 	return &u, nil
 }
 
-func FindByRole(role string) ([]DBUser, error) {
+func FindByRole(ctx context.Context, role string) ([]DBUser, error) {
 	res := []DBUser{}
-	err := db.FindAllQ(
+	err := db.FindAllQ(ctx,
 		Collection,
 		db.Query(bson.M{RolesKey: role}),
 		&res,
@@ -261,9 +261,9 @@ func AddOrUpdateServiceUser(ctx context.Context, u DBUser) error {
 }
 
 // FindHumanUsersByRoles returns human users that have any of the given roles.
-func FindHumanUsersByRoles(roles []string) ([]DBUser, error) {
+func FindHumanUsersByRoles(ctx context.Context, roles []string) ([]DBUser, error) {
 	res := []DBUser{}
-	err := db.FindAllQ(
+	err := db.FindAllQ(ctx,
 		Collection,
 		db.Query(bson.M{
 			RolesKey:   bson.M{"$in": roles},

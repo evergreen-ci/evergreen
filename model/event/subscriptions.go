@@ -385,7 +385,7 @@ const (
 
 // FindSubscriptionsByAttributes finds all subscriptions of matching resourceType, and whose
 // filter and regex selectors match the attributes of the event.
-func FindSubscriptionsByAttributes(resourceType string, eventAttributes Attributes) ([]Subscription, error) {
+func FindSubscriptionsByAttributes(ctx context.Context, resourceType string, eventAttributes Attributes) ([]Subscription, error) {
 	if eventAttributes.isUnset() {
 		return nil, nil
 	}
@@ -398,7 +398,7 @@ func FindSubscriptionsByAttributes(resourceType string, eventAttributes Attribut
 	}
 
 	selectorFiltered := []Subscription{}
-	if err := db.FindAllQ(SubscriptionsCollection, db.Query(query), &selectorFiltered); err != nil {
+	if err := db.FindAllQ(ctx, SubscriptionsCollection, db.Query(query), &selectorFiltered); err != nil {
 		return nil, errors.Wrap(err, "finding subscriptions for selectors")
 	}
 
@@ -447,7 +447,7 @@ func regexMatchesValue(regexString string, values []string) bool {
 
 // CopyProjectSubscriptions copies subscriptions from the first project for the second project.
 func CopyProjectSubscriptions(ctx context.Context, oldProject, newProject string) error {
-	subs, err := FindSubscriptionsByOwner(oldProject, OwnerTypeProject)
+	subs, err := FindSubscriptionsByOwner(ctx, oldProject, OwnerTypeProject)
 	if err != nil {
 		return errors.Wrapf(err, "finding subscription for project '%s'", oldProject)
 	}
@@ -686,7 +686,7 @@ func (s *Subscription) String() string {
 	return out
 }
 
-func FindSubscriptionsByOwner(owner string, ownerType OwnerType) ([]Subscription, error) {
+func FindSubscriptionsByOwner(ctx context.Context, owner string, ownerType OwnerType) ([]Subscription, error) {
 	if len(owner) == 0 {
 		return nil, nil
 	}
@@ -698,7 +698,7 @@ func FindSubscriptionsByOwner(owner string, ownerType OwnerType) ([]Subscription
 		subscriptionOwnerTypeKey: ownerType,
 	})
 	subscriptions := []Subscription{}
-	err := db.FindAllQ(SubscriptionsCollection, query, &subscriptions)
+	err := db.FindAllQ(ctx, SubscriptionsCollection, query, &subscriptions)
 	return subscriptions, errors.Wrapf(err, "retrieving subscriptions for owner '%s'", owner)
 }
 

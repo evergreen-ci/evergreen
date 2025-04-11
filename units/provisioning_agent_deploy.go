@@ -204,7 +204,7 @@ func (j *agentDeployJob) startAgentOnHost(ctx context.Context, settings *evergre
 	// Start agent to listen for tasks
 	grip.Info(j.getHostMessage())
 	if logs, err := j.startAgentOnRemote(ctx, settings); err != nil {
-		event.LogHostAgentDeployFailed(j.host.Id, err)
+		event.LogHostAgentDeployFailed(ctx, j.host.Id, err)
 		grip.Info(message.WrapError(err, message.Fields{
 			"message":  "error starting agent on remote",
 			"logs":     logs,
@@ -249,7 +249,7 @@ func (j *agentDeployJob) prepRemoteHost(ctx context.Context) error {
 	}
 	output, err := j.host.RunSSHCommand(curlCtx, curlCmd)
 	if err != nil {
-		event.LogHostAgentDeployFailed(j.host.Id, err)
+		event.LogHostAgentDeployFailed(ctx, j.host.Id, err)
 		grip.Info(message.WrapError(err, message.Fields{
 			"message":  "error prepping remote host",
 			"logs":     output,
@@ -270,7 +270,7 @@ func (j *agentDeployJob) prepRemoteHost(ctx context.Context) error {
 	}
 
 	if output, err = j.host.RunSSHCommand(ctx, j.host.SetupCommand()); err != nil {
-		event.LogHostProvisionFailed(j.host.Id, output)
+		event.LogHostProvisionFailed(ctx, j.host.Id, output)
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":   "provisioning failed",
 			"operation": "running setup script",
@@ -309,7 +309,7 @@ func (j *agentDeployJob) startAgentOnRemote(ctx context.Context, settings *everg
 		return logs, errors.Wrapf(err, "starting agent on host '%s'", j.host.Id)
 	}
 
-	event.LogHostAgentDeployed(j.host.Id)
+	event.LogHostAgentDeployed(ctx, j.host.Id)
 	grip.Info(message.Fields{
 		"message":        "started the agent on a remote host",
 		"operation":      j.ID(),

@@ -656,7 +656,7 @@ func getRedactedAPIVarsForProject(ctx context.Context, projectId string) (*restM
 }
 
 func getAPIAliasesForProject(ctx context.Context, projectId string) ([]*restModel.APIProjectAlias, error) {
-	aliases, err := model.FindAliasesForProjectFromDb(projectId)
+	aliases, err := model.FindAliasesForProjectFromDb(ctx, projectId)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding aliases for project '%s': %s", projectId, err.Error()))
 	}
@@ -670,7 +670,7 @@ func getAPIAliasesForProject(ctx context.Context, projectId string) ([]*restMode
 }
 
 func getAPISubscriptionsForOwner(ctx context.Context, ownerId string, ownerType event.OwnerType) ([]*restModel.APISubscription, error) {
-	subscriptions, err := event.FindSubscriptionsByOwner(ownerId, ownerType)
+	subscriptions, err := event.FindSubscriptionsByOwner(ctx, ownerId, ownerType)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding subscription for owner '%s' and type '%s': %s", ownerId, ownerType, err.Error()))
 	}
@@ -777,8 +777,8 @@ func getValidTaskStatusesFilter(statuses []string) []string {
 	return filteredStatuses
 }
 
-func bbGetCreatedTicketsPointers(taskId string) ([]*thirdparty.JiraTicket, error) {
-	events, err := event.Find(event.TaskEventsForId(taskId))
+func bbGetCreatedTicketsPointers(ctx context.Context, taskId string) ([]*thirdparty.JiraTicket, error) {
+	events, err := event.Find(ctx, event.TaskEventsForId(taskId))
 	if err != nil {
 		return nil, err
 	}
@@ -1028,7 +1028,7 @@ func handleDistroOnSaveOperation(ctx context.Context, distroID string, onSave Di
 			return noHostsUpdated, errors.Wrap(err, fmt.Sprintf("decommissioning hosts for distro '%s'", distroID))
 		}
 		for _, h := range hosts {
-			event.LogHostStatusChanged(h.Id, h.Status, evergreen.HostDecommissioned, userID, "distro page")
+			event.LogHostStatusChanged(ctx, h.Id, h.Status, evergreen.HostDecommissioned, userID, "distro page")
 		}
 	case DistroOnSaveOperationReprovision:
 		failed := []string{}
@@ -1053,15 +1053,6 @@ func handleDistroOnSaveOperation(ctx context.Context, distroID string, onSave Di
 	}
 
 	return len(hosts), nil
-}
-
-func userHasDistroCreatePermission(u *user.DBUser) bool {
-	return u.HasPermission(gimlet.PermissionOpts{
-		Resource:      evergreen.SuperUserPermissionsID,
-		ResourceType:  evergreen.SuperUserResourceType,
-		Permission:    evergreen.PermissionDistroCreate,
-		RequiredLevel: evergreen.DistroCreate.Value,
-	})
 }
 
 func userHasDistroPermission(u *user.DBUser, distroId string, requiredLevel int) bool {
@@ -1322,36 +1313,6 @@ func annotationPermissionHelper(ctx context.Context, taskID string, execution *i
 		return Forbidden.Send(ctx, fmt.Sprintf("not authorized to modify annotation for task '%s'", taskID))
 	}
 	return nil
-}
-
-// groupInactiveVersions partitions a slice of versions into a slice where each entry is either an active version or slice of inactive versions (i.e. versions that don't match filters; they may be technically activated).
-func groupInactiveVersions(ctx context.Context, versions []model.Version) []*WaterfallVersion {
-	waterfallVersions := []*WaterfallVersion{}
-	i := 0
-	for i < len(versions) {
-		if utility.FromBoolPtr(versions[i].Activated) {
-			apiVersion := restModel.APIVersion{}
-			apiVersion.BuildFromService(ctx, versions[i])
-			waterfallVersions = append(waterfallVersions, &WaterfallVersion{
-				InactiveVersions: nil,
-				Version:          &apiVersion,
-			})
-			i++
-		} else {
-			inactiveGroup := []*restModel.APIVersion{}
-			for i < len(versions) && !utility.FromBoolPtr(versions[i].Activated) {
-				apiVersion := restModel.APIVersion{}
-				apiVersion.BuildFromService(ctx, versions[i])
-				inactiveGroup = append(inactiveGroup, &apiVersion)
-				i++
-			}
-			waterfallVersions = append(waterfallVersions, &WaterfallVersion{
-				InactiveVersions: inactiveGroup,
-				Version:          nil,
-			})
-		}
-	}
-	return waterfallVersions
 }
 
 // flattenOtelVariables "flattens" one level of a string map. Any maps that are found as a value within the map are moved to the top level of the map, with "topkey.nestedkey" as their new key, in line with Honeycomb best practices.

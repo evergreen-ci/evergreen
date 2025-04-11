@@ -163,7 +163,7 @@ func DisableTasks(ctx context.Context, caller string, tasks ...task.Task) error 
 
 	for _, t := range tasks {
 		t.Priority = evergreen.DisabledTaskPriority
-		event.LogTaskPriority(t.Id, t.Execution, caller, evergreen.DisabledTaskPriority)
+		event.LogTaskPriority(ctx, t.Id, t.Execution, caller, evergreen.DisabledTaskPriority)
 	}
 
 	if err := task.DeactivateTasks(ctx, tasks, true, caller); err != nil {
@@ -394,7 +394,7 @@ func resetTask(ctx context.Context, taskId, caller string) error {
 		return errors.WithStack(err)
 	}
 
-	event.LogTaskRestarted(t.Id, t.Execution, caller)
+	event.LogTaskRestarted(ctx, t.Id, t.Execution, caller)
 
 	return errors.WithStack(UpdateBuildAndVersionStatusForTask(ctx, t))
 }
@@ -422,7 +422,7 @@ func AbortTask(ctx context.Context, taskId, caller string) error {
 	if err = SetActiveState(ctx, caller, false, *t); err != nil {
 		return err
 	}
-	event.LogTaskAbortRequest(t.Id, t.Execution, caller)
+	event.LogTaskAbortRequest(ctx, t.Id, t.Execution, caller)
 	return t.SetAborted(ctx, task.AbortInfo{User: caller})
 }
 
@@ -820,11 +820,11 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 
 	switch t.ExecutionPlatform {
 	case task.ExecutionPlatformHost:
-		event.LogHostTaskFinished(t.Id, t.Execution, t.HostId, status)
+		event.LogHostTaskFinished(ctx, t.Id, t.Execution, t.HostId, status)
 	case task.ExecutionPlatformContainer:
-		event.LogContainerTaskFinished(t.Id, t.Execution, t.PodID, status)
+		event.LogContainerTaskFinished(ctx, t.Id, t.Execution, t.PodID, status)
 	default:
-		event.LogTaskFinished(t.Id, t.Execution, status)
+		event.LogTaskFinished(ctx, t.Id, t.Execution, status)
 	}
 
 	grip.Info(message.Fields{
@@ -1352,7 +1352,7 @@ func updateBuildGithubStatus(ctx context.Context, b *build.Build, buildTasks []t
 	}
 
 	if evergreen.IsFinishedBuildStatus(buildStatus.status) {
-		event.LogBuildGithubCheckFinishedEvent(b.Id, buildStatus.status)
+		event.LogBuildGithubCheckFinishedEvent(ctx, b.Id, buildStatus.status)
 	}
 
 	return b.UpdateGithubCheckStatus(ctx, buildStatus.status)
@@ -1441,7 +1441,7 @@ func updateBuildStatus(ctx context.Context, b *build.Build) (bool, error) {
 		}
 	}
 
-	event.LogBuildStateChangeEvent(b.Id, buildStatus.status)
+	event.LogBuildStateChangeEvent(ctx, b.Id, buildStatus.status)
 
 	shouldActivate := !buildStatus.allTasksBlocked && !buildStatus.allTasksUnscheduled
 
@@ -1523,7 +1523,7 @@ func getVersionActivationAndStatus(builds []build.Build) (bool, string) {
 // updateVersionStatus updates the status of the version based on the status of
 // its constituent builds. It assumes that the build statuses have already
 // been updated prior to this.
-func updateVersionGithubStatus(v *Version, builds []build.Build) error {
+func updateVersionGithubStatus(ctx context.Context, v *Version, builds []build.Build) error {
 	githubStatusBuilds := make([]build.Build, 0, len(builds))
 	for _, b := range builds {
 		if b.IsGithubCheck {
@@ -1538,7 +1538,7 @@ func updateVersionGithubStatus(v *Version, builds []build.Build) error {
 	_, githubBuildStatus := getVersionActivationAndStatus(githubStatusBuilds)
 
 	if evergreen.IsFinishedBuildStatus(githubBuildStatus) {
-		event.LogVersionGithubCheckFinishedEvent(v.Id, githubBuildStatus)
+		event.LogVersionGithubCheckFinishedEvent(ctx, v.Id, githubBuildStatus)
 	}
 
 	return nil
@@ -1549,13 +1549,13 @@ func updateVersionGithubStatus(v *Version, builds []build.Build) error {
 // unfinished essential tasks. It assumes that the build statuses have already
 // been updated prior to this.
 func updateVersionStatus(ctx context.Context, v *Version) (string, error) {
-	builds, err := build.Find(build.ByVersion(v.Id))
+	builds, err := build.Find(ctx, build.ByVersion(v.Id))
 	if err != nil {
 		return "", errors.Wrapf(err, "getting builds for version '%s'", v.Id)
 	}
 
 	// Regardless of whether the overall version status has changed, the Github status subset may have changed.
-	if err = updateVersionGithubStatus(v, builds); err != nil {
+	if err = updateVersionGithubStatus(ctx, v, builds); err != nil {
 		return "", errors.Wrap(err, "updating version GitHub status")
 	}
 
@@ -1585,7 +1585,7 @@ func updateVersionStatus(ctx context.Context, v *Version) (string, error) {
 		}
 	}
 
-	event.LogVersionStateChangeEvent(v.Id, versionStatus)
+	event.LogVersionStateChangeEvent(ctx, v.Id, versionStatus)
 
 	if evergreen.IsFinishedVersionStatus(versionStatus) {
 		if err = v.MarkFinished(ctx, versionStatus, time.Now()); err != nil {
@@ -1606,7 +1606,7 @@ func UpdatePatchStatus(ctx context.Context, p *patch.Patch, status string) error
 		return nil
 	}
 
-	event.LogPatchStateChangeEvent(p.Version, status)
+	event.LogPatchStateChangeEvent(ctx, p.Version, status)
 
 	if evergreen.IsFinishedVersionStatus(status) {
 		if err := p.MarkFinished(ctx, status, time.Now()); err != nil {
@@ -1626,9 +1626,9 @@ func UpdatePatchStatus(ctx context.Context, p *patch.Patch, status string) error
 			return errors.Wrapf(err, "getting collective status for patch '%s'", p.Id.Hex())
 		}
 		if parentPatch != nil {
-			event.LogPatchChildrenCompletionEvent(parentPatch.Id.Hex(), collectiveStatus, parentPatch.Author)
+			event.LogPatchChildrenCompletionEvent(ctx, parentPatch.Id.Hex(), collectiveStatus, parentPatch.Author)
 		} else {
-			event.LogPatchChildrenCompletionEvent(p.Id.Hex(), collectiveStatus, p.Author)
+			event.LogPatchChildrenCompletionEvent(ctx, p.Id.Hex(), collectiveStatus, p.Author)
 		}
 	}
 
@@ -1713,9 +1713,9 @@ func UpdateBuildAndVersionStatusForTask(ctx context.Context, t *task.Task) error
 				return errors.Wrapf(err, "getting collective status for patch '%s'", p.Id.Hex())
 			}
 			if parentPatch != nil {
-				event.LogVersionChildrenCompletionEvent(parentPatch.Id.Hex(), versionStatus, parentPatch.Author)
+				event.LogVersionChildrenCompletionEvent(ctx, parentPatch.Id.Hex(), versionStatus, parentPatch.Author)
 			} else {
-				event.LogVersionChildrenCompletionEvent(p.Id.Hex(), versionStatus, p.Author)
+				event.LogVersionChildrenCompletionEvent(ctx, p.Id.Hex(), versionStatus, p.Author)
 			}
 			if err = UpdatePatchStatus(ctx, p, newVersionStatus); err != nil {
 				return errors.Wrapf(err, "updating patch '%s' status", p.Id.Hex())
@@ -1739,7 +1739,7 @@ func UpdateVersionAndPatchStatusForBuilds(ctx context.Context, buildIds []string
 	if len(buildIds) == 0 {
 		return nil
 	}
-	builds, err := build.Find(build.ByIds(buildIds))
+	builds, err := build.Find(ctx, build.ByIds(buildIds))
 	if err != nil {
 		return errors.Wrapf(err, "fetching builds")
 	}
@@ -1795,7 +1795,7 @@ func MarkStart(ctx context.Context, t *task.Task, updates *StatusChanges) error 
 	if err = t.MarkStart(ctx, startTime); err != nil {
 		return errors.WithStack(err)
 	}
-	event.LogTaskStarted(t.Id, t.Execution)
+	event.LogTaskStarted(ctx, t.Id, t.Execution)
 
 	// ensure the appropriate build is marked as started if necessary
 	if err = build.TryMarkStarted(ctx, t.BuildId, startTime); err != nil {
@@ -1833,7 +1833,7 @@ func MarkHostTaskDispatched(ctx context.Context, t *task.Task, h *host.Host) err
 			"on host '%s'", t.Id, h.Id)
 	}
 
-	event.LogHostTaskDispatched(t.Id, t.Execution, h.Id)
+	event.LogHostTaskDispatched(ctx, t.Id, t.Execution, h.Id)
 
 	if t.IsPartOfDisplay(ctx) {
 		return UpdateDisplayTaskForTask(ctx, t)
@@ -1896,7 +1896,7 @@ func logExecutionTasksRestarted(ctx context.Context, displayTask *task.Task, exe
 		// to execution 3, the restart event should log for execution 2). This
 		// logic always logs after the execution task has already been
 		// restarted, so it needs to use the previous execution number.
-		event.LogTaskRestarted(execTask.Id, execTask.Execution-1, caller)
+		event.LogTaskRestarted(ctx, execTask.Id, execTask.Execution-1, caller)
 	}
 
 	return catcher.Resolve()
@@ -2295,7 +2295,7 @@ func UpdateDisplayTaskForTask(ctx context.Context, t *task.Task) error {
 	}
 
 	if !originalDisplayTask.IsFinished() && updatedDisplayTask.IsFinished() {
-		event.LogTaskFinished(originalDisplayTask.Id, originalDisplayTask.Execution, updatedDisplayTask.GetDisplayStatus())
+		event.LogTaskFinished(ctx, originalDisplayTask.Id, originalDisplayTask.Execution, updatedDisplayTask.GetDisplayStatus())
 		grip.Info(message.Fields{
 			"message":   "display task finished",
 			"task_id":   originalDisplayTask.Id,

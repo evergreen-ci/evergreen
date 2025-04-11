@@ -85,7 +85,7 @@ func (j *podDefinitionCreationJob) Run(ctx context.Context) {
 		return
 	}
 
-	dependents, err := pod.FindIntentByFamily(j.Family)
+	dependents, err := pod.FindIntentByFamily(ctx, j.Family)
 	if err != nil {
 		j.AddRetryableError(errors.Wrapf(err, "finding dependent intent pods with family '%s'", j.Family))
 		return
@@ -158,7 +158,7 @@ func (j *podDefinitionCreationJob) populateIfUnset(ctx context.Context) error {
 // decommissionDependentIntentPods decommissions all intent pods that depend on
 // the pod definition created by this job.
 func (j *podDefinitionCreationJob) decommissionDependentIntentPods(ctx context.Context) error {
-	podsToDecommission, err := pod.FindIntentByFamily(j.Family)
+	podsToDecommission, err := pod.FindIntentByFamily(ctx, j.Family)
 	if err != nil {
 		return errors.Wrap(err, "finding intent pods to decommission")
 	}

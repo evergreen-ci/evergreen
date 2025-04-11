@@ -199,7 +199,7 @@ func (s *CliIntentSuite) TestFindIntentSpecifically() {
 	})
 	s.Require().NoError(err)
 	s.NotNil(intent)
-	s.Require().NoError(intent.Insert())
+	s.Require().NoError(intent.Insert(s.T().Context()))
 
 	found, err := FindIntent(s.T().Context(), intent.ID(), intent.GetType())
 	s.Require().NoError(err)
@@ -228,7 +228,7 @@ func (s *CliIntentSuite) TestInsert() {
 	s.Require().NoError(err)
 	s.NotNil(intent)
 
-	s.Require().NoError(intent.Insert())
+	s.Require().NoError(intent.Insert(s.T().Context()))
 
 	var intents []*cliIntent
 	intents, err = findCliIntents(s.T().Context(), false)
@@ -252,7 +252,7 @@ func (s *CliIntentSuite) TestSetProcessed() {
 	})
 	s.Require().NoError(err)
 	s.NotNil(intent)
-	s.Require().NoError(intent.Insert())
+	s.Require().NoError(intent.Insert(s.T().Context()))
 
 	s.Require().NoError(intent.SetProcessed(s.T().Context()))
 	s.True(intent.IsProcessed())
@@ -267,7 +267,7 @@ func (s *CliIntentSuite) TestSetProcessed() {
 
 func findCliIntents(ctx context.Context, processed bool) ([]*cliIntent, error) {
 	var intents []*cliIntent
-	err := db.FindAllQContext(ctx, IntentCollection, db.Query(bson.M{cliProcessedKey: processed, cliIntentTypeKey: CliIntentType}), &intents)
+	err := db.FindAllQ(ctx, IntentCollection, db.Query(bson.M{cliProcessedKey: processed, cliIntentTypeKey: CliIntentType}), &intents)
 	if err != nil {
 		return []*cliIntent{}, err
 	}

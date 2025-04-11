@@ -482,7 +482,7 @@ func TestReliabilityRun(t *testing.T) {
 	proj := model.ProjectRef{
 		Id: "project",
 	}
-	require.NoError(t, proj.Insert())
+	require.NoError(t, proj.Insert(t.Context()))
 
 	for opName, opTests := range map[string]func(context.Context, *testing.T, evergreen.Environment){
 		"Run": func(paginationContext context.Context, t *testing.T, env evergreen.Environment) {
@@ -535,7 +535,7 @@ func TestReliabilityRun(t *testing.T) {
 					for i := 0; i < 100; i++ {
 						taskName := fmt.Sprintf("%v%v", "aggregation_expression_multiversion_fuzzer", i)
 						tasks = append(tasks, taskName)
-						err = db.Insert(taskstats.DailyTaskStatsCollection, mgobson.M{
+						err = db.Insert(t.Context(), taskstats.DailyTaskStatsCollection, mgobson.M{
 							"_id": taskstats.DBTaskStatsID{
 								Project:      "project",
 								Requester:    "requester",
@@ -579,7 +579,7 @@ func TestReliabilityRun(t *testing.T) {
 					for i := 0; i < 1001; i++ {
 						taskName := fmt.Sprintf("%v%v", "aggregation_expression_multiversion_fuzzer", i)
 						tasks = append(tasks, taskName)
-						err = db.Insert(taskstats.DailyTaskStatsCollection, mgobson.M{
+						err = db.Insert(t.Context(), taskstats.DailyTaskStatsCollection, mgobson.M{
 							"_id": taskstats.DBTaskStatsID{
 								Project:      "project",
 								Requester:    "requester",
@@ -629,7 +629,7 @@ func TestReliabilityRun(t *testing.T) {
 					for i := 0; i < 99; i++ {
 						taskName := fmt.Sprintf("%v%v", "aggregation_expression_multiversion_fuzzer", i)
 						tasks = append(tasks, taskName)
-						err = db.Insert(taskstats.DailyTaskStatsCollection, mgobson.M{
+						err = db.Insert(t.Context(), taskstats.DailyTaskStatsCollection, mgobson.M{
 							"_id": taskstats.DBTaskStatsID{
 								Project:      "project",
 								Requester:    "requester",
@@ -678,7 +678,7 @@ func TestReliabilityRun(t *testing.T) {
 					for i := 0; i < 101; i++ {
 						taskName := fmt.Sprintf("%v%v", "aggregation_expression_multiversion_fuzzer", i)
 						tasks = append(tasks, taskName)
-						err = db.Insert(taskstats.DailyTaskStatsCollection, mgobson.M{
+						err = db.Insert(t.Context(), taskstats.DailyTaskStatsCollection, mgobson.M{
 							"_id": taskstats.DBTaskStatsID{
 								Project:      "project",
 								Requester:    "requester",
@@ -763,7 +763,7 @@ func TestReliability(t *testing.T) {
 	proj := model.ProjectRef{
 		Id: "project",
 	}
-	require.NoError(t, proj.Insert())
+	require.NoError(t, proj.Insert(t.Context()))
 
 	for opName, opTests := range map[string]func(context.Context, *testing.T, evergreen.Environment){
 		"Pagination": func(paginationContext context.Context, t *testing.T, env evergreen.Environment) {
@@ -786,7 +786,7 @@ func TestReliability(t *testing.T) {
 					for i := 0; i < pageSize; i++ {
 						taskName := fmt.Sprintf("%v%v", "aggregation_expression_multiversion_fuzzer", i)
 						tasks = append(tasks, taskName)
-						err = db.Insert(taskstats.DailyTaskStatsCollection, mgobson.M{
+						err = db.Insert(t.Context(), taskstats.DailyTaskStatsCollection, mgobson.M{
 							"_id": taskstats.DBTaskStatsID{
 								Project:      "project",
 								Requester:    "requester",
@@ -836,7 +836,7 @@ func TestReliability(t *testing.T) {
 					for i := 0; i < pageSize; i++ {
 						taskName := fmt.Sprintf("%v%v", "aggregation_expression_multiversion_fuzzer", i)
 						tasks = append(tasks, taskName)
-						err = db.Insert(taskstats.DailyTaskStatsCollection, mgobson.M{
+						err = db.Insert(t.Context(), taskstats.DailyTaskStatsCollection, mgobson.M{
 							"_id": taskstats.DBTaskStatsID{
 								Project:      "project",
 								Requester:    "requester",
@@ -889,7 +889,7 @@ func TestReliability(t *testing.T) {
 					for i := 0; i < pageSize*2; i++ {
 						taskName := fmt.Sprintf("%v%v", "aggregation_expression_multiversion_fuzzer", i)
 						tasks = append(tasks, taskName)
-						err = db.Insert(taskstats.DailyTaskStatsCollection, mgobson.M{
+						err = db.Insert(t.Context(), taskstats.DailyTaskStatsCollection, mgobson.M{
 							"_id": taskstats.DBTaskStatsID{
 								Project:      "project",
 								Requester:    "requester",

@@ -37,11 +37,11 @@ func TestRepoRefUpdateAdminRoles(t *testing.T) {
 		Id:          "oldAdmin",
 		SystemRoles: []string{adminRole.ID},
 	}
-	require.NoError(t, oldAdmin.Insert())
+	require.NoError(t, oldAdmin.Insert(t.Context()))
 	newAdmin := user.DBUser{
 		Id: "newAdmin",
 	}
-	require.NoError(t, newAdmin.Insert())
+	require.NoError(t, newAdmin.Insert(t.Context()))
 
 	assert.NoError(t, r.UpdateAdminRoles(t.Context(), []string{newAdmin.Id}, []string{oldAdmin.Id}))
 	oldAdminFromDB, err := user.FindOneByIdContext(t.Context(), oldAdmin.Id)

@@ -199,7 +199,7 @@ func (s *UtilizationAllocatorSuite) TestCalcExistingFreeHosts() {
 		BuildVariant:     "bv1",
 		StartTime:        time.Now().Add(-11 * time.Minute),
 	}
-	s.NoError(t1.Insert())
+	s.NoError(t1.Insert(s.T().Context()))
 	t2 := task.Task{
 		Id:               "t2",
 		Project:          s.projectName,
@@ -207,7 +207,7 @@ func (s *UtilizationAllocatorSuite) TestCalcExistingFreeHosts() {
 		BuildVariant:     "bv1",
 		StartTime:        time.Now(),
 	}
-	s.NoError(t2.Insert())
+	s.NoError(t2.Insert(s.T().Context()))
 	t3 := task.Task{
 		Id:               "t3",
 		Project:          s.projectName,
@@ -215,7 +215,7 @@ func (s *UtilizationAllocatorSuite) TestCalcExistingFreeHosts() {
 		BuildVariant:     "bv1",
 		StartTime:        time.Now(),
 	}
-	s.NoError(t3.Insert())
+	s.NoError(t3.Insert(s.T().Context()))
 
 	freeHosts, err := calcExistingFreeHosts(ctx, []host.Host{h1, h2, h3, h4, h5}, 1, evergreen.MaxDurationPerDistroHost)
 	s.NoError(err)
@@ -295,7 +295,7 @@ func (s *UtilizationAllocatorSuite) TestExistingHostsSufficient() {
 		BuildVariant:     "bv1",
 		StartTime:        time.Now().Add(-10 * time.Minute),
 	}
-	s.NoError(t1.Insert())
+	s.NoError(t1.Insert(s.T().Context()))
 	t2 := task.Task{
 		Id:               "t2",
 		Project:          s.projectName,
@@ -303,7 +303,7 @@ func (s *UtilizationAllocatorSuite) TestExistingHostsSufficient() {
 		BuildVariant:     "bv1",
 		StartTime:        time.Now(),
 	}
-	s.NoError(t2.Insert())
+	s.NoError(t2.Insert(s.T().Context()))
 
 	distroQueueInfo := model.DistroQueueInfo{
 		LengthWithDependenciesMet:  3,
@@ -340,7 +340,7 @@ func (s *UtilizationAllocatorSuite) TestLongTasksInQueue1() {
 		BuildVariant:     "bv1",
 		StartTime:        time.Now(),
 	}
-	s.NoError(t1.Insert())
+	s.NoError(t1.Insert(s.T().Context()))
 	t2 := task.Task{
 		Id:               "t2",
 		Project:          s.projectName,
@@ -348,7 +348,7 @@ func (s *UtilizationAllocatorSuite) TestLongTasksInQueue1() {
 		BuildVariant:     "bv1",
 		StartTime:        time.Now(),
 	}
-	s.NoError(t2.Insert())
+	s.NoError(t2.Insert(s.T().Context()))
 
 	taskGroupInfo := model.TaskGroupInfo{
 		Name:                       "",
@@ -394,7 +394,7 @@ func (s *UtilizationAllocatorSuite) TestMinimumHostsThreshold() {
 		BuildVariant:     "bv1",
 		StartTime:        time.Now(),
 	}
-	s.NoError(t1.Insert())
+	s.NoError(t1.Insert(s.T().Context()))
 	t2 := task.Task{
 		Id:               "t2",
 		Project:          s.projectName,
@@ -402,7 +402,7 @@ func (s *UtilizationAllocatorSuite) TestMinimumHostsThreshold() {
 		BuildVariant:     "bv1",
 		StartTime:        time.Now(),
 	}
-	s.NoError(t2.Insert())
+	s.NoError(t2.Insert(s.T().Context()))
 
 	taskGroupInfo := model.TaskGroupInfo{
 		Name:                       "",
@@ -476,7 +476,7 @@ func (s *UtilizationAllocatorSuite) TestLongTasksInQueue2() {
 		BuildVariant:     "bv1",
 		StartTime:        time.Now(),
 	}
-	s.NoError(t1.Insert())
+	s.NoError(t1.Insert(s.T().Context()))
 	t2 := task.Task{
 		Id:               "t2",
 		Project:          s.projectName,
@@ -484,7 +484,7 @@ func (s *UtilizationAllocatorSuite) TestLongTasksInQueue2() {
 		BuildVariant:     "bv1",
 		StartTime:        time.Now(),
 	}
-	s.NoError(t2.Insert())
+	s.NoError(t2.Insert(s.T().Context()))
 
 	taskGroupInfo := model.TaskGroupInfo{
 		Name:                       "",
@@ -532,7 +532,7 @@ func (s *UtilizationAllocatorSuite) TestOverMaxHosts() {
 		BuildVariant:     "bv1",
 		StartTime:        time.Now(),
 	}
-	s.NoError(t1.Insert())
+	s.NoError(t1.Insert(s.T().Context()))
 	t2 := task.Task{
 		Id:               "t2",
 		Project:          s.projectName,
@@ -540,7 +540,7 @@ func (s *UtilizationAllocatorSuite) TestOverMaxHosts() {
 		BuildVariant:     "bv1",
 		StartTime:        time.Now(),
 	}
-	s.NoError(t2.Insert())
+	s.NoError(t2.Insert(s.T().Context()))
 
 	distro := distro.Distro{
 		Provider: evergreen.ProviderNameEc2Fleet,
@@ -593,7 +593,7 @@ func (s *UtilizationAllocatorSuite) TestExistingLongTask() {
 		BuildVariant:     "bv1",
 		StartTime:        time.Now(),
 	}
-	s.NoError(t1.Insert())
+	s.NoError(t1.Insert(s.T().Context()))
 	t2 := task.Task{
 		Id:               "t2",
 		Project:          s.projectName,
@@ -601,7 +601,7 @@ func (s *UtilizationAllocatorSuite) TestExistingLongTask() {
 		BuildVariant:     "bv1",
 		StartTime:        time.Now(),
 	}
-	s.NoError(t2.Insert())
+	s.NoError(t2.Insert(s.T().Context()))
 
 	taskGroupInfo := model.TaskGroupInfo{
 		Name:             "",
@@ -641,7 +641,7 @@ func (s *UtilizationAllocatorSuite) TestOverrunTask() {
 		BuildVariant:     "bv1",
 		StartTime:        time.Now().Add(-1 * time.Hour),
 	}
-	s.NoError(t1.Insert())
+	s.NoError(t1.Insert(s.T().Context()))
 
 	taskGroupInfo := model.TaskGroupInfo{
 		Name:             "",
@@ -696,7 +696,7 @@ func (s *UtilizationAllocatorSuite) TestSoonToBeFree() {
 		BuildVariant:     "bv1",
 		StartTime:        time.Now().Add(-15 * time.Minute),
 	}
-	s.NoError(t1.Insert())
+	s.NoError(t1.Insert(s.T().Context()))
 	t2 := task.Task{
 		Id:               "t2",
 		Project:          s.projectName,
@@ -704,7 +704,7 @@ func (s *UtilizationAllocatorSuite) TestSoonToBeFree() {
 		BuildVariant:     "bv1",
 		StartTime:        time.Now(),
 	}
-	s.NoError(t2.Insert())
+	s.NoError(t2.Insert(s.T().Context()))
 	t3 := task.Task{
 		Id:               "t3",
 		Project:          s.projectName,
@@ -712,7 +712,7 @@ func (s *UtilizationAllocatorSuite) TestSoonToBeFree() {
 		BuildVariant:     "bv1",
 		StartTime:        time.Now().Add(-30 * time.Minute),
 	}
-	s.NoError(t3.Insert())
+	s.NoError(t3.Insert(s.T().Context()))
 	t4 := task.Task{
 		Id:               "t4",
 		Project:          s.projectName,
@@ -720,7 +720,7 @@ func (s *UtilizationAllocatorSuite) TestSoonToBeFree() {
 		BuildVariant:     "bv1",
 		StartTime:        time.Now().Add(-2 * time.Hour),
 	}
-	s.NoError(t4.Insert())
+	s.NoError(t4.Insert(s.T().Context()))
 	t5 := task.Task{
 		Id:               "t5",
 		Project:          s.projectName,
@@ -728,7 +728,7 @@ func (s *UtilizationAllocatorSuite) TestSoonToBeFree() {
 		BuildVariant:     "bv1",
 		StartTime:        time.Now(),
 	}
-	s.NoError(t5.Insert())
+	s.NoError(t5.Insert(s.T().Context()))
 
 	taskGroupInfo := model.TaskGroupInfo{
 		Name:                       "",
@@ -819,7 +819,7 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenario1() {
 		BuildVariant:     "bv1",
 		StartTime:        time.Now().Add(-10 * time.Minute),
 	}
-	s.NoError(t1.Insert())
+	s.NoError(t1.Insert(s.T().Context()))
 	t2 := task.Task{
 		Id:               "t2",
 		Project:          s.projectName,
@@ -827,7 +827,7 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenario1() {
 		BuildVariant:     "bv1",
 		StartTime:        time.Now(),
 	}
-	s.NoError(t2.Insert())
+	s.NoError(t2.Insert(s.T().Context()))
 	t3 := task.Task{
 		Id:               "t3",
 		Project:          s.projectName,
@@ -835,7 +835,7 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenario1() {
 		BuildVariant:     "bv1",
 		StartTime:        time.Now().Add(-10 * time.Minute),
 	}
-	s.NoError(t3.Insert())
+	s.NoError(t3.Insert(s.T().Context()))
 	t4 := task.Task{
 		Id:               "t4",
 		Project:          s.projectName,
@@ -843,7 +843,7 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenario1() {
 		BuildVariant:     "bv1",
 		StartTime:        time.Now().Add(-30 * time.Minute),
 	}
-	s.NoError(t4.Insert())
+	s.NoError(t4.Insert(s.T().Context()))
 
 	taskGroupInfo := model.TaskGroupInfo{
 		Name:                       "",
@@ -905,7 +905,7 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenario2() {
 		BuildVariant:     "bv1",
 		StartTime:        time.Now().Add(-40 * time.Minute),
 	}
-	s.NoError(t1.Insert())
+	s.NoError(t1.Insert(s.T().Context()))
 	t2 := task.Task{
 		Id:               "t2",
 		Project:          s.projectName,
@@ -913,7 +913,7 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenario2() {
 		BuildVariant:     "bv1",
 		StartTime:        time.Now().Add(-30 * time.Minute),
 	}
-	s.NoError(t2.Insert())
+	s.NoError(t2.Insert(s.T().Context()))
 	t3 := task.Task{
 		Id:               "t3",
 		Project:          s.projectName,
@@ -921,7 +921,7 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenario2() {
 		BuildVariant:     "bv1",
 		StartTime:        time.Now().Add(-20 * time.Minute),
 	}
-	s.NoError(t3.Insert())
+	s.NoError(t3.Insert(s.T().Context()))
 	t4 := task.Task{
 		Id:               "t4",
 		Project:          s.projectName,
@@ -929,7 +929,7 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenario2() {
 		BuildVariant:     "bv1",
 		StartTime:        time.Now().Add(-10 * time.Minute),
 	}
-	s.NoError(t4.Insert())
+	s.NoError(t4.Insert(s.T().Context()))
 	t5 := task.Task{
 		Id:               "t5",
 		Project:          s.projectName,
@@ -937,7 +937,7 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenario2() {
 		BuildVariant:     "bv1",
 		StartTime:        time.Now(),
 	}
-	s.NoError(t5.Insert())
+	s.NoError(t5.Insert(s.T().Context()))
 
 	distroQueueInfo := model.DistroQueueInfo{
 		LengthWithDependenciesMet: 8,
@@ -993,7 +993,7 @@ func (s *UtilizationAllocatorSuite) TestRoundingUp() {
 		BuildVariant:     "bv1",
 		StartTime:        time.Now().Add(-40 * time.Minute),
 	}
-	s.NoError(t1.Insert())
+	s.NoError(t1.Insert(s.T().Context()))
 	t2 := task.Task{
 		Id:               "t2",
 		Project:          s.projectName,
@@ -1001,7 +1001,7 @@ func (s *UtilizationAllocatorSuite) TestRoundingUp() {
 		BuildVariant:     "bv1",
 		StartTime:        time.Now().Add(-30 * time.Minute),
 	}
-	s.NoError(t2.Insert())
+	s.NoError(t2.Insert(s.T().Context()))
 	t3 := task.Task{
 		Id:               "t3",
 		Project:          s.projectName,
@@ -1009,7 +1009,7 @@ func (s *UtilizationAllocatorSuite) TestRoundingUp() {
 		BuildVariant:     "bv1",
 		StartTime:        time.Now().Add(-20 * time.Minute),
 	}
-	s.NoError(t3.Insert())
+	s.NoError(t3.Insert(s.T().Context()))
 	t4 := task.Task{
 		Id:               "t4",
 		Project:          s.projectName,
@@ -1017,7 +1017,7 @@ func (s *UtilizationAllocatorSuite) TestRoundingUp() {
 		BuildVariant:     "bv1",
 		StartTime:        time.Now().Add(-10 * time.Minute),
 	}
-	s.NoError(t4.Insert())
+	s.NoError(t4.Insert(s.T().Context()))
 	t5 := task.Task{
 		Id:               "t5",
 		Project:          s.projectName,
@@ -1025,7 +1025,7 @@ func (s *UtilizationAllocatorSuite) TestRoundingUp() {
 		BuildVariant:     "bv1",
 		StartTime:        time.Now(),
 	}
-	s.NoError(t5.Insert())
+	s.NoError(t5.Insert(s.T().Context()))
 	taskGroupInfo := model.TaskGroupInfo{
 		Name:                       "",
 		Count:                      8,
@@ -1111,7 +1111,7 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithContainers() {
 		BuildVariant:     "bv1",
 		StartTime:        time.Now().Add(-5 * time.Minute),
 	}
-	s.NoError(t1.Insert())
+	s.NoError(t1.Insert(s.T().Context()))
 	t2 := task.Task{
 		Id:               "t2",
 		Project:          s.projectName,
@@ -1119,7 +1119,7 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithContainers() {
 		BuildVariant:     "bv1",
 		StartTime:        time.Now().Add(-5 * time.Minute),
 	}
-	s.NoError(t2.Insert())
+	s.NoError(t2.Insert(s.T().Context()))
 	t3 := task.Task{
 		Id:               "t3",
 		Project:          s.projectName,
@@ -1127,7 +1127,7 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithContainers() {
 		BuildVariant:     "bv1",
 		StartTime:        time.Now(),
 	}
-	s.NoError(t3.Insert())
+	s.NoError(t3.Insert(s.T().Context()))
 	t4 := task.Task{
 		Id:               "t4",
 		Project:          s.projectName,
@@ -1135,7 +1135,7 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithContainers() {
 		BuildVariant:     "bv1",
 		StartTime:        time.Now().Add(-10 * time.Minute),
 	}
-	s.NoError(t4.Insert())
+	s.NoError(t4.Insert(s.T().Context()))
 	t5 := task.Task{
 		Id:               "t5",
 		Project:          s.projectName,
@@ -1143,7 +1143,7 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithContainers() {
 		BuildVariant:     "bv1",
 		StartTime:        time.Now(),
 	}
-	s.NoError(t5.Insert())
+	s.NoError(t5.Insert(s.T().Context()))
 
 	distroQueueInfo := model.DistroQueueInfo{
 		LengthWithDependenciesMet: 6,
@@ -1226,7 +1226,7 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithContainers2() {
 		BuildVariant:     "bv1",
 		StartTime:        time.Now().Add(-5 * time.Minute),
 	}
-	s.NoError(t1.Insert())
+	s.NoError(t1.Insert(s.T().Context()))
 	t2 := task.Task{
 		Id:               "t2",
 		Project:          s.projectName,
@@ -1234,7 +1234,7 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithContainers2() {
 		BuildVariant:     "bv1",
 		StartTime:        time.Now().Add(-5 * time.Minute),
 	}
-	s.NoError(t2.Insert())
+	s.NoError(t2.Insert(s.T().Context()))
 	t3 := task.Task{
 		Id:               "t3",
 		Project:          s.projectName,
@@ -1242,7 +1242,7 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithContainers2() {
 		BuildVariant:     "bv1",
 		StartTime:        time.Now(),
 	}
-	s.NoError(t3.Insert())
+	s.NoError(t3.Insert(s.T().Context()))
 	t4 := task.Task{
 		Id:               "t4",
 		Project:          s.projectName,
@@ -1250,7 +1250,7 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithContainers2() {
 		BuildVariant:     "bv1",
 		StartTime:        time.Now().Add(-10 * time.Minute),
 	}
-	s.NoError(t4.Insert())
+	s.NoError(t4.Insert(s.T().Context()))
 	t5 := task.Task{
 		Id:               "t5",
 		Project:          s.projectName,
@@ -1258,7 +1258,7 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithContainers2() {
 		BuildVariant:     "bv1",
 		StartTime:        time.Now(),
 	}
-	s.NoError(t5.Insert())
+	s.NoError(t5.Insert(s.T().Context()))
 
 	taskGroupInfo := model.TaskGroupInfo{
 		Name:                       "",
@@ -1374,7 +1374,7 @@ func (s *UtilizationAllocatorSuite) TestOnlyTaskGroupsSomeRunning() {
 		TaskGroupMaxHosts: 3,
 		StartTime:         time.Now(),
 	}
-	s.NoError(t1.Insert())
+	s.NoError(t1.Insert(s.T().Context()))
 	t2 := task.Task{
 		Id:                "t2",
 		Project:           s.projectName,
@@ -1384,7 +1384,7 @@ func (s *UtilizationAllocatorSuite) TestOnlyTaskGroupsSomeRunning() {
 		TaskGroupMaxHosts: 3,
 		StartTime:         time.Now(),
 	}
-	s.NoError(t2.Insert())
+	s.NoError(t2.Insert(s.T().Context()))
 	t3 := task.Task{
 		Id:                "t3",
 		Project:           s.projectName,
@@ -1394,7 +1394,7 @@ func (s *UtilizationAllocatorSuite) TestOnlyTaskGroupsSomeRunning() {
 		TaskGroupMaxHosts: 1,
 		StartTime:         time.Now(),
 	}
-	s.NoError(t3.Insert())
+	s.NoError(t3.Insert(s.T().Context()))
 
 	group1 := fmt.Sprintf("%s_%s_%s_%s", "g1", "bv1", s.projectName, "v1")
 	taskGroupInfo1 := model.TaskGroupInfo{
@@ -1493,7 +1493,7 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithTaskGroups() {
 		TaskGroupMaxHosts: 3,
 		StartTime:         time.Now(),
 	}
-	s.NoError(t1.Insert())
+	s.NoError(t1.Insert(s.T().Context()))
 	t2 := task.Task{
 		Id:                "t2",
 		Project:           s.projectName,
@@ -1503,7 +1503,7 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithTaskGroups() {
 		TaskGroupMaxHosts: 3,
 		StartTime:         time.Now(),
 	}
-	s.NoError(t2.Insert())
+	s.NoError(t2.Insert(s.T().Context()))
 	t3 := task.Task{
 		Id:                "t3",
 		Project:           s.projectName,
@@ -1513,7 +1513,7 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithTaskGroups() {
 		TaskGroupMaxHosts: 1,
 		StartTime:         time.Now(),
 	}
-	s.NoError(t3.Insert())
+	s.NoError(t3.Insert(s.T().Context()))
 	t4 := task.Task{
 		Id:               "t4",
 		Project:          s.projectName,
@@ -1521,7 +1521,7 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithTaskGroups() {
 		BuildVariant:     "bv1",
 		StartTime:        time.Now().Add(-5 * time.Minute),
 	}
-	s.NoError(t4.Insert())
+	s.NoError(t4.Insert(s.T().Context()))
 	t5 := task.Task{
 		Id:               "t5",
 		Project:          s.projectName,
@@ -1529,7 +1529,7 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithTaskGroups() {
 		BuildVariant:     "bv1",
 		StartTime:        time.Now().Add(-10 * time.Minute),
 	}
-	s.NoError(t5.Insert())
+	s.NoError(t5.Insert(s.T().Context()))
 	t6 := task.Task{
 		Id:               "t6",
 		Project:          s.projectName,
@@ -1537,7 +1537,7 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithTaskGroups() {
 		BuildVariant:     "bv1",
 		StartTime:        time.Now().Add(-10 * time.Minute),
 	}
-	s.NoError(t6.Insert())
+	s.NoError(t6.Insert(s.T().Context()))
 	t7 := task.Task{
 		Id:                "t7",
 		Project:           s.projectName,
@@ -1547,7 +1547,7 @@ func (s *UtilizationAllocatorSuite) TestRealisticScenarioWithTaskGroups() {
 		TaskGroupMaxHosts: 1,
 		StartTime:         time.Now(),
 	}
-	s.NoError(t7.Insert())
+	s.NoError(t7.Insert(s.T().Context()))
 
 	group1 := fmt.Sprintf("%s_%s_%s_%s", "g1", "bv1", s.projectName, "v1")
 	taskGroupInfo1 := model.TaskGroupInfo{
@@ -1727,7 +1727,7 @@ func (s *UtilizationAllocatorSuite) TestHostsWithLongTasks() {
 			CollectedAt: time.Now(),
 		},
 	}
-	s.NoError(t1.Insert())
+	s.NoError(t1.Insert(s.T().Context()))
 	t2 := task.Task{
 		Id:           "t2",
 		Project:      s.projectName,
@@ -1740,7 +1740,7 @@ func (s *UtilizationAllocatorSuite) TestHostsWithLongTasks() {
 			CollectedAt: time.Now(),
 		},
 	}
-	s.NoError(t2.Insert())
+	s.NoError(t2.Insert(s.T().Context()))
 	t3 := task.Task{
 		Id:           "t3",
 		Project:      s.projectName,
@@ -1753,7 +1753,7 @@ func (s *UtilizationAllocatorSuite) TestHostsWithLongTasks() {
 			CollectedAt: time.Now(),
 		},
 	}
-	s.NoError(t3.Insert())
+	s.NoError(t3.Insert(s.T().Context()))
 	t4 := task.Task{
 		Id:           "t4",
 		Project:      s.projectName,
@@ -1766,7 +1766,7 @@ func (s *UtilizationAllocatorSuite) TestHostsWithLongTasks() {
 			CollectedAt: time.Now(),
 		},
 	}
-	s.NoError(t4.Insert())
+	s.NoError(t4.Insert(s.T().Context()))
 
 	taskGroupInfo := model.TaskGroupInfo{
 		Name:                       "",

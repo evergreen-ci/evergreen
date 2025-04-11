@@ -313,66 +313,6 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
     $scope.invalidAccountRoleMapping = "";
   }
 
-  $scope.addProjectToPrefixMapping = function () {
-    if ($scope.Settings.buckets == null) {
-      $scope.Settings.buckets = {
-        "project_to_prefix_mappings": []
-      };
-    }
-    if ($scope.Settings.buckets.project_to_prefix_mappings == null) {
-      $scope.Settings.buckets.project_to_prefix_mappings = [];
-    }
-
-    if (!$scope.validProjectToPrefixMapping($scope.new_project_to_prefix_mapping)) {
-      $scope.invalidProjectToPrefixMapping = "Project and prefix are required.";
-      return
-    }
-
-    $scope.Settings.buckets.project_to_prefix_mappings.push($scope.new_project_to_prefix_mapping);
-    $scope.new_project_to_prefix_mapping = {};
-    $scope.invalidProjectToPrefixMapping = "";
-  }
-
-  $scope.addProjectToBucketMapping = function () {
-    if ($scope.Settings.buckets == null) {
-      $scope.Settings.buckets = {
-        "project_to_bucket_mappings": []
-      };
-    }
-    if ($scope.Settings.buckets.project_to_bucket_mappings == null) {
-      $scope.Settings.buckets.project_to_bucket_mappings = [];
-    }
-
-    if (!$scope.validProjectToBucketMapping($scope.new_project_to_bucket_mapping)) {
-      $scope.invalidProjectToBucketMapping = "Project and bucket are required.";
-      return
-    }
-
-    $scope.Settings.buckets.project_to_bucket_mappings.push($scope.new_project_to_bucket_mapping);
-    $scope.new_project_to_bucket_mapping = {};
-    $scope.invalidProjectToBucketMapping = "";
-  }
-
-  $scope.addInternalBucket = function () {
-    if ($scope.Settings.buckets == null) {
-      $scope.Settings.buckets = {
-        "internal_buckets": []
-      };
-    }
-    if ($scope.Settings.buckets.internal_buckets == null) {
-      $scope.Settings.buckets.internal_buckets = [];
-    }
-
-    if (!$scope.validInternalBucket($scope.new_internal_bucket)) {
-      $scope.invalidInternalBucket = "Bucket name cannot be empty.";
-      return
-    }
-
-    $scope.Settings.buckets.internal_buckets.push($scope.new_internal_bucket);
-    $scope.new_internal_bucket = "";
-    $scope.invalidInternalBucket = "";
-  }
-
   $scope.deleteSubnet = function (index) {
     $scope.Settings.providers.aws.subnets.splice(index, 1);
   }
@@ -387,31 +327,6 @@ mciModule.controller('AdminSettingsController', ['$scope', '$window', '$http', '
 
   $scope.validAccountRoleMapping = function (mapping) {
     return mapping && mapping.account && mapping.role;
-  }
-
-  $scope.deleteProjectToPrefixMapping = function (index) {
-    $scope.Settings.buckets.project_to_prefix_mappings.splice(index, 1);
-  }
-
-  $scope.validProjectToPrefixMapping = function (mapping) {
-    return mapping && mapping.project_id && mapping.prefix;
-  }
-
-  $scope.deleteProjectToBucketMapping = function (index) {
-    $scope.Settings.buckets.project_to_bucket_mappings.splice(index, 1);
-  }
-
-  $scope.validProjectToBucketMapping = function (mapping) {
-    // We do not check mapping.prefix since it is optional.
-    return mapping && mapping.project_id && mapping.bucket;
-  }
-
-  $scope.deleteInternalBucket = function (index) {
-    $scope.Settings.buckets.internal_buckets.splice(index, 1);
-  }
-
-  $scope.validInternalBucket = function (bucket) {
-    return bucket && bucket != "";
   }
 
   $scope.addAWSVPCSubnet = function () {

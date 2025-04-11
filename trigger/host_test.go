@@ -178,7 +178,7 @@ func (s *hostSuite) TestAllTriggers() {
 		Timestamp:    time.Now().Add(-time.Hour * 24 * 31 * 4),
 		Expirable:    true,
 	}
-	s.NoError(db.Insert(event.EventCollection, stoppedEvent))
+	s.NoError(db.Insert(s.ctx, event.EventCollection, stoppedEvent))
 	n, err = NotificationsFromEvent(s.ctx, s.t.event)
 	s.NoError(err)
 	s.Require().Len(n, 1)
@@ -196,7 +196,7 @@ func (s *hostSuite) TestAllTriggers() {
 		Timestamp:    time.Now().Add(-time.Hour * 24 * 31),
 		Expirable:    true,
 	}
-	s.NoError(db.Insert(event.EventCollection, stoppedEvent))
+	s.NoError(db.Insert(s.ctx, event.EventCollection, stoppedEvent))
 
 	n, err = NotificationsFromEvent(s.ctx, s.t.event)
 	s.NoError(err)

@@ -857,7 +857,7 @@ func MarkStaleBuildingAsFailed(ctx context.Context, distroID string) error {
 	}
 
 	for _, id := range ids {
-		event.LogHostCreatedError(id, "stale building host took too long to start")
+		event.LogHostCreatedError(ctx, id, "stale building host took too long to start")
 		grip.Info(message.Fields{
 			"message": "stale building host took too long to start",
 			"host_id": id,
@@ -1284,11 +1284,12 @@ func FindDistroForHost(ctx context.Context, hostID string) (string, error) {
 
 func findVolumes(ctx context.Context, q bson.M) ([]Volume, error) {
 	volumes := []Volume{}
-	return volumes, db.FindAllQContext(ctx, VolumesCollection, db.Query(q), &volumes)
+	return volumes, db.FindAllQ(ctx, VolumesCollection, db.Query(q), &volumes)
 }
 
 type ClientOptions struct {
 	Provider string `bson:"provider"`
+	Account  string `bson:"account"`
 	Region   string `bson:"region"`
 }
 
@@ -1402,6 +1403,7 @@ func hostsByClientPipeline(pipeline []bson.M, limit int) []bson.M {
 			"$group": bson.M{
 				"_id": bson.M{
 					"provider": bsonutil.GetDottedKeyName("$host", DistroKey, distro.ProviderKey),
+					"account":  bsonutil.GetDottedKeyName("$host", DistroKey, distro.ProviderAccountKey),
 					"region":   bsonutil.GetDottedKeyName("$settings_list", awsRegionKey),
 					"key":      bsonutil.GetDottedKeyName("$settings_list", awsKeyKey),
 					"secret":   bsonutil.GetDottedKeyName("$settings_list", awsSecretKey),
@@ -1476,14 +1478,14 @@ func ConsolidateHostsForUser(ctx context.Context, oldUser, newUser string) error
 
 // FindUnexpirableRunning returns all unexpirable spawn hosts that are
 // currently running.
-func FindUnexpirableRunning() ([]Host, error) {
+func FindUnexpirableRunning(ctx context.Context) ([]Host, error) {
 	hosts := []Host{}
 	q := bson.M{
 		StatusKey:       evergreen.HostRunning,
 		StartedByKey:    bson.M{"$ne": evergreen.User},
 		NoExpirationKey: true,
 	}
-	return hosts, db.FindAllQ(Collection, db.Query(q), &hosts)
+	return hosts, db.FindAllQ(ctx, Collection, db.Query(q), &hosts)
 }
 
 // FindOneByPersistentDNSName returns hosts that have a matching persistent DNS

@@ -54,7 +54,7 @@ func (s *VersionSuite) SetupTest() {
 		Requester:           evergreen.RepotrackerVersionRequester,
 		RevisionOrderNumber: 2,
 	}
-	s.NoError(s.version.Insert())
+	s.NoError(s.version.Insert(s.ctx))
 
 	s.data = &event.VersionEventData{
 		Status: versionStatus,
@@ -238,7 +238,7 @@ func (s *VersionSuite) TestVersionRegression() {
 		Requester:           evergreen.RepotrackerVersionRequester,
 		RevisionOrderNumber: 2,
 	}
-	s.NoError(t1.Insert())
+	s.NoError(t1.Insert(s.T().Context()))
 
 	// a successful version should not generate
 	s.data.Status = evergreen.VersionSucceeded
@@ -257,7 +257,7 @@ func (s *VersionSuite) TestVersionRegression() {
 		Requester:           evergreen.RepotrackerVersionRequester,
 		RevisionOrderNumber: 2,
 	}
-	s.NoError(t2.Insert())
+	s.NoError(t2.Insert(s.T().Context()))
 	s.data.Status = evergreen.VersionFailed
 	n, err = s.t.versionRegression(s.ctx, &s.subs[3])
 	s.NoError(err)
@@ -275,8 +275,8 @@ func (s *VersionSuite) TestVersionRegression() {
 		Requester:           evergreen.RepotrackerVersionRequester,
 		RevisionOrderNumber: 1,
 	}
-	s.NoError(t3.Insert())
-	s.NoError(newAlertRecord(s.subs[3].ID, &t3, alertrecord.TaskFailTransitionId).Insert())
+	s.NoError(t3.Insert(s.T().Context()))
+	s.NoError(newAlertRecord(s.subs[3].ID, &t3, alertrecord.TaskFailTransitionId).Insert(s.ctx))
 	n, err = s.t.versionRegression(s.ctx, &s.subs[3])
 	s.NoError(err)
 	s.Nil(n)
@@ -329,7 +329,7 @@ func (s *VersionSuite) TestVersionRuntimeChange() {
 		Status:              evergreen.VersionSucceeded,
 		Requester:           evergreen.RepotrackerVersionRequester,
 	}
-	s.NoError(lastGreen.Insert())
+	s.NoError(lastGreen.Insert(s.T().Context()))
 	n, err = s.t.versionRuntimeChange(s.ctx, &s.subs[5])
 	s.NoError(err)
 	s.NotNil(n)
@@ -365,7 +365,7 @@ func (s *VersionSuite) TestMakeDataForPatchVersion() {
 		Id:     mgobson.ObjectIdHex(s.version.Id),
 		Status: evergreen.VersionSucceeded,
 	}
-	s.Require().NoError(p.Insert())
+	s.Require().NoError(p.Insert(s.T().Context()))
 
 	s.version.Requester = evergreen.PatchVersionRequester
 	sub := s.subs[0]

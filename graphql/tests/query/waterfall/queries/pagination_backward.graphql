@@ -1,18 +1,10 @@
 {
   waterfall(options: { projectIdentifier: "spruce-identifier", minOrder: 42 }) {
-    versions {
-      version {
-        activated
-        author
-        id
-        order
-      }
-      inactiveVersions {
-        activated
-        author
-        id
-        order
-      }
+    flattenedVersions {
+      activated
+      author
+      id
+      order
     }
     pagination {
       nextPageOrder

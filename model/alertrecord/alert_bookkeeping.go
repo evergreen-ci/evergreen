@@ -56,8 +56,8 @@ type AlertRecord struct {
 func (ar *AlertRecord) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(ar) }
 func (ar *AlertRecord) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, ar) }
 
-func (ar *AlertRecord) Insert() error {
-	return db.Insert(Collection, ar)
+func (ar *AlertRecord) Insert(ctx context.Context) error {
+	return db.Insert(ctx, Collection, ar)
 }
 
 var (
@@ -203,7 +203,7 @@ func FindByVolumeExpirationWithHours(ctx context.Context, volumeID string, hours
 	return FindOne(ctx, db.Query(q).Limit(1))
 }
 
-func InsertNewTaskRegressionByTestRecord(subscriptionID, taskID, testName, taskDisplayName, variant, projectID string, revision int) error {
+func InsertNewTaskRegressionByTestRecord(ctx context.Context, subscriptionID, taskID, testName, taskDisplayName, variant, projectID string, revision int) error {
 	record := AlertRecord{
 		Id:                  mgobson.NewObjectId(),
 		SubscriptionID:      subscriptionID,
@@ -217,10 +217,10 @@ func InsertNewTaskRegressionByTestRecord(subscriptionID, taskID, testName, taskD
 		AlertTime:           time.Now(),
 	}
 
-	return errors.Wrapf(record.Insert(), "inserting alert record '%s'", taskRegressionByTest)
+	return errors.Wrapf(record.Insert(ctx), "inserting alert record '%s'", taskRegressionByTest)
 }
 
-func InsertNewSpawnHostExpirationRecord(hostID string, hours int) error {
+func InsertNewSpawnHostExpirationRecord(ctx context.Context, hostID string, hours int) error {
 	alertType := fmt.Sprintf(spawnHostWarningTemplate, hours)
 	record := AlertRecord{
 		Id:             mgobson.NewObjectId(),
@@ -230,12 +230,12 @@ func InsertNewSpawnHostExpirationRecord(hostID string, hours int) error {
 		AlertTime:      time.Now(),
 	}
 
-	return errors.Wrapf(record.Insert(), "inserting alert record '%s'", alertType)
+	return errors.Wrapf(record.Insert(ctx), "inserting alert record '%s'", alertType)
 }
 
 // InsertNewTemporaryExemptionExpirationRecord inserts a new alert record for a
 // temporary exemption that is about to exipre.
-func InsertNewHostTemporaryExemptionExpirationRecord(hostID string, hours int) error {
+func InsertNewHostTemporaryExemptionExpirationRecord(ctx context.Context, hostID string, hours int) error {
 	alertType := fmt.Sprintf(hostTemporaryExemptionWarningTemplate, hours)
 	record := AlertRecord{
 		Id:             mgobson.NewObjectId(),
@@ -245,10 +245,10 @@ func InsertNewHostTemporaryExemptionExpirationRecord(hostID string, hours int) e
 		AlertTime:      time.Now(),
 	}
 
-	return errors.Wrapf(record.Insert(), "inserting alert record '%s'", alertType)
+	return errors.Wrapf(record.Insert(ctx), "inserting alert record '%s'", alertType)
 }
 
-func InsertNewVolumeExpirationRecord(volumeID string, hours int) error {
+func InsertNewVolumeExpirationRecord(ctx context.Context, volumeID string, hours int) error {
 	alertType := fmt.Sprintf(volumeWarningTemplate, hours)
 	record := AlertRecord{
 		Id:             mgobson.NewObjectId(),
@@ -258,5 +258,5 @@ func InsertNewVolumeExpirationRecord(volumeID string, hours int) error {
 		AlertTime:      time.Now(),
 	}
 
-	return errors.Wrapf(record.Insert(), "inserting alert record '%s'", alertType)
+	return errors.Wrapf(record.Insert(ctx), "inserting alert record '%s'", alertType)
 }

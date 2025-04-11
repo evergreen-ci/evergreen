@@ -298,7 +298,7 @@ func (s *statsSuite) insertTask(project string, requester string, taskId string,
 		Details:      details,
 		TimeTaken:    status.TimeTaken,
 	}
-	err := newTask.Insert()
+	err := newTask.Insert(s.T().Context())
 	s.Require().NoError(err)
 	return newTask
 }
@@ -322,7 +322,7 @@ func (s *statsSuite) insertDisplayTask(project string, requester string, taskId 
 		Details:        details,
 		TimeTaken:      status.TimeTaken,
 		ExecutionTasks: executionTasks}
-	err := newTask.Insert()
+	err := newTask.Insert(s.T().Context())
 	s.Require().NoError(err)
 	return newTask
 }
@@ -336,7 +336,7 @@ func (s *statsSuite) insertFinishedTask(project string, requester string, taskNa
 		CreateTime:  createTime,
 		FinishTime:  finishTime,
 	}
-	err := newTask.Insert()
+	err := newTask.Insert(s.T().Context())
 	s.Require().NoError(err)
 }
 

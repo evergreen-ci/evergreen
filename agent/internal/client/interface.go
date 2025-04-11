@@ -15,6 +15,7 @@ import (
 	patchmodel "github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testlog"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/google/go-github/v70/github"
 	"github.com/mongodb/grip"
@@ -89,6 +90,7 @@ type SharedCommunicator interface {
 
 	// The following operations are used by task commands.
 	SendTestLog(context.Context, TaskData, *testlog.TestLog) (string, error)
+	SendTestResults(context.Context, TaskData, []testresult.TestResult) error
 	GetTaskPatch(context.Context, TaskData, string) (*patchmodel.Patch, error)
 	GetTaskVersion(context.Context, TaskData) (*model.Version, error)
 	GetPatchFile(context.Context, TaskData, string) (string, error)

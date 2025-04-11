@@ -69,10 +69,6 @@ type TaskConfig struct {
 	// message of a version to be used in the otel attributes.
 	PatchOrVersionDescription string
 
-	// InternalBuckets are the buckets that Evergreen's app servers have access to
-	// via their IRSA role.
-	InternalBuckets []string
-
 	mu sync.RWMutex
 }
 

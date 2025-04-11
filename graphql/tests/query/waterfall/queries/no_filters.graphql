@@ -1,8 +1,13 @@
 {
   waterfall(options: { projectIdentifier: "spruce-identifier" }) {
-    buildVariants {
-      builds {
+    flattenedVersions {
+      activated
+      author
+      id
+      order
+      waterfallBuilds {
         id
+        displayName
         tasks {
           id
           displayName
@@ -11,22 +16,6 @@
           status
         }
         version
-      }
-      displayName
-      id
-    }
-    versions {
-      version {
-        activated
-        author
-        id
-        order
-      }
-      inactiveVersions {
-        activated
-        author
-        id
-        order
       }
     }
     pagination {

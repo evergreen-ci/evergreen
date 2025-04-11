@@ -20,15 +20,15 @@ func TestLoadContext(t *testing.T) {
 	myProject := ProjectRef{
 		Id: "proj",
 	}
-	assert.NoError(myProject.Insert())
+	assert.NoError(myProject.Insert(ctx))
 	newTask := task.Task{
 		Id: "newtask",
 	}
 	oldTask := task.Task{
 		Id: "oldtask",
 	}
-	assert.NoError(newTask.Insert())
-	assert.NoError(oldTask.Insert())
+	assert.NoError(newTask.Insert(ctx))
+	assert.NoError(oldTask.Insert(ctx))
 	assert.NoError(oldTask.Archive(ctx))
 
 	// test that current tasks are loaded correctly

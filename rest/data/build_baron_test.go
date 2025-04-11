@@ -30,20 +30,20 @@ func TestMakeJiraTicket(t *testing.T) {
 		Project: "proj",
 		BuildId: "b",
 	}
-	assert.NoError(t, t1.Insert())
+	assert.NoError(t, t1.Insert(t.Context()))
 	v := model.Version{
 		Id:       "v",
 		Revision: "1234567890",
 	}
-	assert.NoError(t, v.Insert())
+	assert.NoError(t, v.Insert(t.Context()))
 	b := build.Build{
 		Id: "b",
 	}
-	assert.NoError(t, b.Insert())
+	assert.NoError(t, b.Insert(t.Context()))
 	p := model.ProjectRef{
 		Identifier: "proj",
 	}
-	assert.NoError(t, p.Insert())
+	assert.NoError(t, p.Insert(t.Context()))
 
 	evgSettings := evergreen.Settings{
 		Ui: evergreen.UIConfig{

@@ -61,7 +61,7 @@ func NewTaskHistoryIterator(name string, buildVariants []string, projectName str
 	return TaskHistoryIterator(&taskHistoryIterator{TaskName: name, BuildVariants: buildVariants, ProjectName: projectName})
 }
 
-func (iter *taskHistoryIterator) findAllVersions(v *Version, numRevisions int, before, include bool) ([]Version, bool, error) {
+func (iter *taskHistoryIterator) findAllVersions(ctx context.Context, v *Version, numRevisions int, before, include bool) ([]Version, bool, error) {
 	versionQuery := bson.M{
 		VersionRequesterKey: bson.M{
 			"$in": evergreen.SystemVersionRequesterTypes,
@@ -93,14 +93,14 @@ func (iter *taskHistoryIterator) findAllVersions(v *Version, numRevisions int, b
 
 	// Get the next numRevisions, plus an additional one to check if have
 	// reached the beginning/end of history
-	versions, err := VersionFind(
+	versions, err := VersionFind(ctx,
 		db.Query(versionQuery).WithFields(
 			VersionIdKey,
 			VersionRevisionOrderNumberKey,
 			VersionRevisionKey,
 			VersionMessageKey,
 			VersionCreateTimeKey,
-		).Sort([]string{order}).Limit(numRevisions + 1))
+		).Sort([]string{order}).Limit(numRevisions+1))
 
 	// Check if there were fewer results returned by the query than what
 	// the limit was set as
@@ -132,13 +132,13 @@ func (iter *taskHistoryIterator) GetChunk(ctx context.Context, v *Version, numBe
 		FailedTests: map[string][]string{},
 	}
 
-	versionsBefore, exhausted, err := iter.findAllVersions(v, numBefore, true, include)
+	versionsBefore, exhausted, err := iter.findAllVersions(ctx, v, numBefore, true, include)
 	if err != nil {
 		return chunk, errors.WithStack(err)
 	}
 	chunk.Exhausted.Before = exhausted
 
-	versionsAfter, exhausted, err := iter.findAllVersions(v, numAfter, false, false)
+	versionsAfter, exhausted, err := iter.findAllVersions(ctx, v, numAfter, false, false)
 	if err != nil {
 		return chunk, errors.WithStack(err)
 	}

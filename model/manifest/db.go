@@ -39,8 +39,8 @@ func FindOne(ctx context.Context, query db.Q) (*Manifest, error) {
 // TryInsert writes the manifest to the database if possible.
 // If the document already exists, it returns true and the error
 // If it does not it will return false and the error
-func (m *Manifest) TryInsert() (bool, error) {
-	err := db.Insert(Collection, m)
+func (m *Manifest) TryInsert(ctx context.Context) (bool, error) {
+	err := db.Insert(ctx, Collection, m)
 	if db.IsDuplicateKey(err) {
 		return true, nil
 	}

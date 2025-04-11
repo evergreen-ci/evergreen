@@ -30,7 +30,7 @@ func TestOnlyAPIUserManager(t *testing.T) {
 				Id:     "reg_user",
 				APIKey: "reg_key",
 			}
-			require.NoError(t, regUser.Insert())
+			require.NoError(t, regUser.Insert(t.Context()))
 			apiUser := &user.DBUser{
 				Id:      "api_user",
 				APIKey:  "api_key",
@@ -55,7 +55,7 @@ func TestOnlyAPIUserManager(t *testing.T) {
 				APIKey:  "key1",
 				OnlyAPI: true,
 			}
-			assert.NoError(t, u1.Insert())
+			assert.NoError(t, u1.Insert(t.Context()))
 			um, err := NewOnlyAPIUserManager()
 			require.NoError(t, err)
 			require.NotNil(t, um)
@@ -73,7 +73,7 @@ func TestOnlyAPIUserManager(t *testing.T) {
 				APIKey:  "key1",
 				OnlyAPI: true,
 			}
-			assert.NoError(t, u.Insert())
+			assert.NoError(t, u.Insert(t.Context()))
 
 			um, err := NewOnlyAPIUserManager()
 			require.NoError(t, err)
@@ -88,13 +88,13 @@ func TestOnlyAPIUserManager(t *testing.T) {
 				Id:     "reg_user",
 				APIKey: "reg_key",
 			}
-			require.NoError(t, regUser.Insert())
+			require.NoError(t, regUser.Insert(t.Context()))
 			apiUser := &user.DBUser{
 				Id:      "api_user",
 				APIKey:  "api_key",
 				OnlyAPI: true,
 			}
-			require.NoError(t, apiUser.Insert())
+			require.NoError(t, apiUser.Insert(t.Context()))
 			um, err := NewOnlyAPIUserManager()
 			require.NoError(t, err)
 			require.NotNil(t, um)
@@ -112,7 +112,7 @@ func TestOnlyAPIUserManager(t *testing.T) {
 				APIKey:  "api_key",
 				OnlyAPI: true,
 			}
-			require.NoError(t, apiUser.Insert())
+			require.NoError(t, apiUser.Insert(t.Context()))
 			um, err := NewOnlyAPIUserManager()
 			require.NoError(t, err)
 			require.NotNil(t, um)
@@ -127,7 +127,7 @@ func TestOnlyAPIUserManager(t *testing.T) {
 				APIKey:  "api_key",
 				OnlyAPI: true,
 			}
-			require.NoError(t, apiUser.Insert())
+			require.NoError(t, apiUser.Insert(t.Context()))
 			um, err := NewOnlyAPIUserManager()
 			require.NoError(t, err)
 			require.NotNil(t, um)
@@ -146,7 +146,7 @@ func TestOnlyAPIUserManager(t *testing.T) {
 				APIKey:  "api_key",
 				OnlyAPI: true,
 			}
-			require.NoError(t, apiUser.Insert())
+			require.NoError(t, apiUser.Insert(t.Context()))
 			um, err := NewOnlyAPIUserManager()
 			require.NoError(t, err)
 			require.NotNil(t, um)
@@ -175,12 +175,12 @@ func TestOnlyAPIUserManager(t *testing.T) {
 				APIKey:  "api_key",
 				OnlyAPI: true,
 			}
-			require.NoError(t, apiUser.Insert())
+			require.NoError(t, apiUser.Insert(t.Context()))
 			regUser := &user.DBUser{
 				Id:     "reg_user",
 				APIKey: "reg_key",
 			}
-			require.NoError(t, regUser.Insert())
+			require.NoError(t, regUser.Insert(t.Context()))
 			um, err := NewOnlyAPIUserManager()
 			require.NoError(t, err)
 			require.NotNil(t, um)
@@ -194,12 +194,12 @@ func TestOnlyAPIUserManager(t *testing.T) {
 				APIKey:  "api_key",
 				OnlyAPI: true,
 			}
-			require.NoError(t, apiUser.Insert())
+			require.NoError(t, apiUser.Insert(t.Context()))
 			regUser := &user.DBUser{
 				Id:     "reg_user",
 				APIKey: "reg_key",
 			}
-			require.NoError(t, regUser.Insert())
+			require.NoError(t, regUser.Insert(t.Context()))
 			um, err := NewOnlyAPIUserManager()
 			require.NoError(t, err)
 			require.NotNil(t, um)

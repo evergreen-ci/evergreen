@@ -51,7 +51,7 @@ func TestPatchListModulesEndPoints(t *testing.T) {
 				filepath.Join(testDirectory, "testdata/base_project.yaml"), modelUtil.ExternalPatch)
 			require.NoError(t, err, "problem setting up test server")
 
-			_, err = modelUtil.SetupPatches(modelUtil.ExternalPatch, testData.Build,
+			_, err = modelUtil.SetupPatches(t.Context(), modelUtil.ExternalPatch, testData.Build,
 				modelUtil.PatchRequest{
 					ModuleName: "recursive",
 					FilePath:   filepath.Join(testDirectory, "testdata/testmodule.patch"),
@@ -80,7 +80,7 @@ func TestPatchListModulesEndPoints(t *testing.T) {
 			testData, err := modelUtil.SetupAPITestData(testConfig, "compile", "linux-64",
 				filepath.Join(testDirectory, "testdata/base_project.yaml"), modelUtil.ExternalPatch)
 			require.NoError(t, err, "problem setting up test server")
-			_, err = modelUtil.SetupPatches(modelUtil.InlinePatch, testData.Build,
+			_, err = modelUtil.SetupPatches(t.Context(), modelUtil.InlinePatch, testData.Build,
 				modelUtil.PatchRequest{
 					ModuleName: "evgHome",
 					FilePath:   filepath.Join(testDirectory, "testdata/testaddsmodule.patch"),

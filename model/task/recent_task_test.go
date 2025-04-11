@@ -36,7 +36,7 @@ func TestRecentTasks(t *testing.T) {
 	}
 
 	for _, task := range tasks {
-		err = task.Insert()
+		err = task.Insert(t.Context())
 		assert.NoError(err)
 	}
 

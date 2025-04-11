@@ -279,19 +279,36 @@ func (s *EC2Suite) TestMakeDeviceMappingsTemplate() {
 func (s *EC2Suite) TestConfigure() {
 	settings := &evergreen.Settings{}
 
+	// No region or account specified.
 	// No region specified.
 	s.Require().NoError(s.onDemandManager.Configure(s.ctx, settings))
 	ec2m, ok := s.onDemandManager.(*ec2Manager)
 	s.Require().True(ok)
+	s.Zero(ec2m.account)
+	s.Zero(ec2m.role)
 	s.Equal(evergreen.DefaultEC2Region, ec2m.region)
 
-	// Region specified.
+	// Region and account specified.
+	const (
+		account = "test-account"
+		role    = "test-role"
+	)
 	onDemandWithRegionOpts := &EC2ManagerOptions{
-		client: &awsClientMock{},
-		region: "test-region",
+		client:  &awsClientMock{},
+		account: account,
+		region:  "test-region",
 	}
+	settings.Providers.AWS.AccountRoles = []evergreen.AWSAccountRoleMapping{
+		{
+			Account: account,
+			Role:    role,
+		},
+	}
+
 	onDemandWithRegionManager := &ec2Manager{env: s.env, EC2ManagerOptions: onDemandWithRegionOpts}
 	s.Require().NoError(onDemandWithRegionManager.Configure(s.ctx, settings))
+	s.Equal(account, onDemandWithRegionManager.account)
+	s.Equal(role, onDemandWithRegionManager.role)
 	s.Equal(onDemandWithRegionOpts.region, onDemandWithRegionManager.region)
 }
 
@@ -408,7 +425,7 @@ func (s *EC2Suite) TestSpawnHostForTask() {
 	h.StartedBy = "task_1"
 	h.SpawnOptions.SpawnedByTask = true
 	s.Require().NoError(h.Insert(s.ctx))
-	s.Require().NoError(t.Insert())
+	s.Require().NoError(t.Insert(s.ctx))
 
 	s.Require().NoError(db.Clear(model.ProjectRefCollection))
 	defer func() {
@@ -417,7 +434,7 @@ func (s *EC2Suite) TestSpawnHostForTask() {
 	pRef := &model.ProjectRef{
 		Id: project,
 	}
-	s.Require().NoError(pRef.Insert())
+	s.Require().NoError(pRef.Insert(s.ctx))
 
 	newVars := &model.ProjectVars{
 		Id: pRef.Id,
@@ -426,7 +443,7 @@ func (s *EC2Suite) TestSpawnHostForTask() {
 			model.ProjectAWSSSHKeyValue: "key_material",
 		},
 	}
-	s.Require().NoError(newVars.Insert())
+	s.Require().NoError(newVars.Insert(s.ctx))
 
 	_, err := s.onDemandManager.SpawnHost(s.ctx, h)
 	s.NoError(err)
@@ -581,7 +598,7 @@ func (s *EC2Suite) TestModifyHost() {
 		ID:               "thang",
 		AvailabilityZone: "us-east-1a",
 	}
-	s.Require().NoError(volumeToMount.Insert())
+	s.Require().NoError(volumeToMount.Insert(s.ctx))
 	s.h.Zone = "us-east-1a"
 	s.Require().NoError(s.h.Remove(s.ctx))
 	s.Require().NoError(s.h.Insert(s.ctx))
@@ -1361,10 +1378,12 @@ func (s *EC2Suite) TestGetEC2ManagerOptions() {
 			birch.EC.String("aws_access_key_id", "key"),
 			birch.EC.String("aws_secret_access_key", "secret"),
 		)},
+		ProviderAccount: "account",
 	}
 
 	managerOpts, err := GetManagerOptions(d1)
 	s.NoError(err)
+	s.Equal(d1.ProviderAccount, managerOpts.Account)
 	s.Equal(evergreen.DefaultEC2Region, managerOpts.Region)
 }
 
@@ -1429,7 +1448,7 @@ func (s *EC2Suite) TestCreateVolume() {
 }
 
 func (s *EC2Suite) TestDeleteVolume() {
-	s.NoError(s.volume.Insert())
+	s.NoError(s.volume.Insert(s.ctx))
 	s.NoError(s.onDemandManager.DeleteVolume(s.ctx, s.volume))
 
 	manager, ok := s.onDemandManager.(*ec2Manager)
@@ -1489,7 +1508,7 @@ func (s *EC2Suite) TestDetachVolume() {
 	}
 	s.h.Volumes = []host.VolumeAttachment{oldAttachment}
 	s.Require().NoError(s.h.Insert(s.ctx))
-	s.Require().NoError(s.volume.Insert())
+	s.Require().NoError(s.volume.Insert(s.ctx))
 
 	s.NoError(s.onDemandManager.DetachVolume(s.ctx, s.h, "test-volume"))
 
@@ -1509,7 +1528,7 @@ func (s *EC2Suite) TestDetachVolume() {
 }
 
 func (s *EC2Suite) TestModifyVolumeExpiration() {
-	s.NoError(s.volume.Insert())
+	s.NoError(s.volume.Insert(s.ctx))
 	newExpiration := s.volume.Expiration.Add(time.Hour)
 	s.NoError(s.onDemandManager.ModifyVolume(context.Background(), s.volume, &restmodel.VolumeModifyOptions{Expiration: newExpiration}))
 
@@ -1528,7 +1547,7 @@ func (s *EC2Suite) TestModifyVolumeExpiration() {
 }
 
 func (s *EC2Suite) TestModifyVolumeNoExpiration() {
-	s.NoError(s.volume.Insert())
+	s.NoError(s.volume.Insert(s.ctx))
 	s.NoError(s.onDemandManager.ModifyVolume(context.Background(), s.volume, &restmodel.VolumeModifyOptions{NoExpiration: true}))
 
 	vol, err := host.FindVolumeByID(s.ctx, s.volume.ID)
@@ -1546,7 +1565,7 @@ func (s *EC2Suite) TestModifyVolumeNoExpiration() {
 }
 
 func (s *EC2Suite) TestModifyVolumeSize() {
-	s.NoError(s.volume.Insert())
+	s.NoError(s.volume.Insert(s.ctx))
 	s.NoError(s.onDemandManager.ModifyVolume(context.Background(), s.volume, &restmodel.VolumeModifyOptions{Size: 100}))
 
 	vol, err := host.FindVolumeByID(s.ctx, s.volume.ID)
@@ -1563,7 +1582,7 @@ func (s *EC2Suite) TestModifyVolumeSize() {
 }
 
 func (s *EC2Suite) TestModifyVolumeName() {
-	s.NoError(s.volume.Insert())
+	s.NoError(s.volume.Insert(s.ctx))
 	s.NoError(s.onDemandManager.ModifyVolume(context.Background(), s.volume, &restmodel.VolumeModifyOptions{NewName: "Some new thang"}))
 
 	vol, err := host.FindVolumeByID(s.ctx, s.volume.ID)

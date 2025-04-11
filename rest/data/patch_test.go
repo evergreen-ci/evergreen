@@ -84,10 +84,10 @@ func (s *PatchConnectorFetchByProjectSuite) SetupSuite() {
 			{Project: proj3, CreateTime: nowPlus12},
 		}
 		for _, p := range patches {
-			s.NoError(p.Insert())
+			s.NoError(p.Insert(s.T().Context()))
 		}
 		for _, proj := range projects {
-			s.NoError(proj.Insert())
+			s.NoError(proj.Insert(s.T().Context()))
 		}
 
 		return nil
@@ -196,12 +196,12 @@ func (s *PatchConnectorFetchByIdSuite) SetupSuite() {
 			Id:         "project_id",
 			Identifier: "project_identifier",
 		}
-		s.NoError(projectRef.Insert())
+		s.NoError(projectRef.Insert(s.T().Context()))
 
 		version := dbModel.Version{
 			Id: "version1",
 		}
-		s.NoError(version.Insert())
+		s.NoError(version.Insert(s.T().Context()))
 
 		s.obj_ids = []string{"aabbccddeeff001122334455", "aabbccddeeff001122334456"}
 		patches := []patch.Patch{
@@ -210,7 +210,7 @@ func (s *PatchConnectorFetchByIdSuite) SetupSuite() {
 		}
 
 		for _, p := range patches {
-			if err := p.Insert(); err != nil {
+			if err := p.Insert(s.T().Context()); err != nil {
 				return err
 			}
 		}
@@ -271,19 +271,19 @@ func (s *PatchConnectorAbortByIdSuite) SetupSuite() {
 			Id:         "project_id",
 			Identifier: "project_identifier",
 		}
-		s.NoError(projectRef.Insert())
+		s.NoError(projectRef.Insert(s.T().Context()))
 
 		version := dbModel.Version{
 			Id: "version1",
 		}
-		s.NoError(version.Insert())
+		s.NoError(version.Insert(s.T().Context()))
 		s.obj_ids = []string{"aabbccddeeff001122334455", "aabbccddeeff001122334456"}
 		patches := []patch.Patch{
 			{Id: patch.NewId(s.obj_ids[0]), Version: version.Id, Project: projectRef.Id},
 			{Id: patch.NewId(s.obj_ids[1]), Project: projectRef.Id},
 		}
 		for _, p := range patches {
-			s.NoError(p.Insert())
+			s.NoError(p.Insert(s.T().Context()))
 		}
 
 		return nil
@@ -401,7 +401,7 @@ func (s *PatchConnectorChangeStatusSuite) SetupSuite() {
 			Id:         "project_id",
 			Identifier: "project_identifier",
 		}
-		s.NoError(projectRef.Insert())
+		s.NoError(projectRef.Insert(s.T().Context()))
 
 		patches := []*patch.Patch{
 			{Id: patch.NewId(s.obj_ids[0]), Version: s.obj_ids[0], Project: projectRef.Id},
@@ -411,15 +411,15 @@ func (s *PatchConnectorChangeStatusSuite) SetupSuite() {
 			Id:      "t1",
 			Version: s.obj_ids[0],
 		}
-		s.NoError(task.Insert())
+		s.NoError(task.Insert(s.T().Context()))
 		for _, p := range patches {
-			s.NoError(p.Insert())
+			s.NoError(p.Insert(s.T().Context()))
 		}
 		for _, id := range s.obj_ids {
 			version := dbModel.Version{
 				Id: id,
 			}
-			s.NoError(version.Insert())
+			s.NoError(version.Insert(s.T().Context()))
 		}
 
 		return nil
@@ -477,7 +477,7 @@ func (s *PatchConnectorFetchByUserSuite) SetupSuite() {
 		Id:         "project_id",
 		Identifier: "project_identifier",
 	}
-	s.NoError(projectRef.Insert())
+	s.NoError(projectRef.Insert(s.T().Context()))
 
 	s.time = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.Local)
 	user1 := "user1"
@@ -496,7 +496,7 @@ func (s *PatchConnectorFetchByUserSuite) SetupSuite() {
 		{Author: user1, CreateTime: nowPlus10, Project: projectRef.Id},
 	}
 	for _, p := range patches {
-		s.NoError(p.Insert())
+		s.NoError(p.Insert(s.T().Context()))
 	}
 }
 
@@ -555,7 +555,7 @@ func TestGetRawPatches(t *testing.T) {
 			{ModuleName: "different", Githash: "home fries"},
 		},
 	}
-	assert.NoError(t, p.Insert())
+	assert.NoError(t, p.Insert(t.Context()))
 	raw, err := GetRawPatches(t.Context(), p.Id.Hex())
 	assert.NoError(t, err)
 	// Verify that we populate the raw patch patch githash regardless of whether we have changes.

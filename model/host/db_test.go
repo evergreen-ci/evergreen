@@ -36,7 +36,7 @@ func TestConsolidateHostsForUser(t *testing.T) {
 		StartedBy: "NOT me",
 		Status:    evergreen.HostRunning,
 	}
-	assert.NoError(t, db.InsertMany(Collection, h1, h2, h3, h4))
+	assert.NoError(t, db.InsertMany(t.Context(), Collection, h1, h2, h3, h4))
 
 	v1 := Volume{
 		ID:        "v1",
@@ -46,7 +46,7 @@ func TestConsolidateHostsForUser(t *testing.T) {
 		ID:        "v2",
 		CreatedBy: "NOT me",
 	}
-	assert.NoError(t, db.InsertMany(VolumesCollection, v1, v2))
+	assert.NoError(t, db.InsertMany(t.Context(), VolumesCollection, v1, v2))
 
 	ctx := context.TODO()
 	assert.NoError(t, ConsolidateHostsForUser(ctx, "me", "new_me"))
@@ -89,7 +89,7 @@ func TestFindUnexpirableRunning(t *testing.T) {
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, h *Host){
 		"ReturnsUnexpirableRunningHost": func(ctx context.Context, t *testing.T, h *Host) {
 			require.NoError(t, h.Insert(ctx))
-			hosts, err := FindUnexpirableRunning()
+			hosts, err := FindUnexpirableRunning(ctx)
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
 			assert.Equal(t, h.Id, hosts[0].Id)
@@ -97,21 +97,21 @@ func TestFindUnexpirableRunning(t *testing.T) {
 		"DoesNotReturnExpirableHost": func(ctx context.Context, t *testing.T, h *Host) {
 			h.NoExpiration = false
 			require.NoError(t, h.Insert(ctx))
-			hosts, err := FindUnexpirableRunning()
+			hosts, err := FindUnexpirableRunning(ctx)
 			require.NoError(t, err)
 			assert.Empty(t, hosts)
 		},
 		"DoesNotReturnNonRunningHost": func(ctx context.Context, t *testing.T, h *Host) {
 			h.Status = evergreen.HostStopped
 			require.NoError(t, h.Insert(ctx))
-			hosts, err := FindUnexpirableRunning()
+			hosts, err := FindUnexpirableRunning(ctx)
 			require.NoError(t, err)
 			assert.Empty(t, hosts)
 		},
 		"DoesNotReturnEvergreenOwnedHosts": func(ctx context.Context, t *testing.T, h *Host) {
 			h.StartedBy = evergreen.User
 			require.NoError(t, h.Insert(ctx))
-			hosts, err := FindUnexpirableRunning()
+			hosts, err := FindUnexpirableRunning(ctx)
 			require.NoError(t, err)
 			assert.Empty(t, hosts)
 		},
@@ -287,14 +287,23 @@ func TestFindStartingHostsByClient(t *testing.T) {
 						ProviderSettingsList: []*birch.Document{birch.NewDocument()},
 					},
 				},
+				{
+					Id:     "h4",
+					Status: evergreen.HostStarting,
+					Distro: distro.Distro{
+						Provider:             evergreen.ProviderNameEc2Fleet,
+						ProviderAccount:      "account",
+						ProviderSettingsList: []*birch.Document{birch.NewDocument()},
+					},
+				},
 			}
 			for _, h := range hosts {
 				require.NoError(t, h.Insert(ctx))
 			}
 
-			hostsByClient, err := FindStartingHostsByClient(ctx, 10)
+			hostsByClient, err := FindStartingHostsByClient(ctx, 100)
 			assert.NoError(t, err)
-			assert.Len(t, hostsByClient, 3)
+			assert.Len(t, hostsByClient, 4)
 			for _, hostsByClient := range hostsByClient {
 				foundHosts := hostsByClient.Hosts
 				clientOptions := hostsByClient.Options
@@ -317,6 +326,12 @@ func TestFindStartingHostsByClient(t *testing.T) {
 					require.Len(t, foundHosts, 2)
 					compareHosts(t, hosts[2], foundHosts[0])
 					compareHosts(t, hosts[3], foundHosts[1])
+				case ClientOptions{
+					Provider: evergreen.ProviderNameEc2Fleet,
+					Account:  "account",
+				}:
+					require.Len(t, foundHosts, 1)
+					compareHosts(t, hosts[4], foundHosts[0])
 				default:
 					assert.Fail(t, "unrecognized client options")
 				}
@@ -879,7 +894,7 @@ func TestCountHostsCanRunTasks(t *testing.T) {
 		StartedBy: evergreen.User,
 	}
 
-	assert.NoError(t, db.InsertMany(Collection, h1, h2, h3, h4, h5, h6, h7, h8, h9, h10))
+	assert.NoError(t, db.InsertMany(t.Context(), Collection, h1, h2, h3, h4, h5, h6, h7, h8, h9, h10))
 
 	ctx := context.TODO()
 	count, err := CountHostsCanRunTasks(ctx, "d1")

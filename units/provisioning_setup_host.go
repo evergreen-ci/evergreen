@@ -120,7 +120,7 @@ func (j *setupHostJob) Run(ctx context.Context) {
 func (j *setupHostJob) setupHost(ctx context.Context, settings *evergreen.Settings) error {
 	defer func() {
 		if j.host.Status != evergreen.HostRunning && j.IsLastAttempt() {
-			event.LogHostProvisionFailed(j.host.Id, "host has used up all attempts to provision")
+			event.LogHostProvisionFailed(ctx, j.host.Id, "host has used up all attempts to provision")
 			grip.Info(message.Fields{
 				"message":         "provisioning failed",
 				"reason":          "host has used up all attempts to provision",
@@ -162,7 +162,7 @@ func (j *setupHostJob) setupHost(ctx context.Context, settings *evergreen.Settin
 	})
 
 	if err := j.provisionHost(ctx, settings); err != nil {
-		event.LogHostProvisionError(j.host.Id)
+		event.LogHostProvisionError(ctx, j.host.Id)
 
 		if j.host.Distro.BootstrapSettings.Method == distro.BootstrapMethodSSH {
 			j.AddError(errors.Wrap(j.host.DeleteJasperCredentials(ctx, j.env), "deleting Jasper credentials after failed provision attempt"))
@@ -478,7 +478,7 @@ func (j *setupHostJob) provisionHost(ctx context.Context, settings *evergreen.Se
 			catcher := grip.NewBasicCatcher()
 			catcher.Wrapf(err, "running distro setup script on remote host: %s", logs)
 			catcher.Wrap(j.host.SetUnprovisioned(ctx), "setting host unprovisioned after distro setup script failed")
-			event.LogHostProvisionFailed(j.host.Id, logs)
+			event.LogHostProvisionFailed(ctx, j.host.Id, logs)
 			grip.Error(message.WrapError(catcher.Resolve(), message.Fields{
 				"message":         "provisioning failed",
 				"operation":       "running setup script on spawn host",

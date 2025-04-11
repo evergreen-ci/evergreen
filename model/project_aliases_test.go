@@ -154,12 +154,12 @@ func (s *ProjectAliasSuite) TestRemove() {
 	}
 	var out []ProjectAlias
 	q := db.Query(bson.M{})
-	s.NoError(db.FindAllQContext(s.T().Context(), ProjectAliasCollection, q, &out))
+	s.NoError(db.FindAllQ(s.T().Context(), ProjectAliasCollection, q, &out))
 	s.Len(out, 10)
 
 	for i, a := range s.aliases {
 		s.NoError(RemoveProjectAlias(s.T().Context(), a.ID.Hex()))
-		s.NoError(db.FindAllQContext(s.T().Context(), ProjectAliasCollection, q, &out))
+		s.NoError(db.FindAllQ(s.T().Context(), ProjectAliasCollection, q, &out))
 		s.Len(out, 10-i-1)
 	}
 }
@@ -176,7 +176,7 @@ func (s *ProjectAliasSuite) TestFindAliasesForProject() {
 	}
 	s.NoError(a1.Upsert(s.T().Context()))
 
-	out, err := FindAliasesForProjectFromDb("project-1")
+	out, err := FindAliasesForProjectFromDb(s.T().Context(), "project-1")
 	s.NoError(err)
 	s.Len(out, 2)
 }
@@ -207,7 +207,7 @@ func (s *ProjectAliasSuite) TestFindAliasInProject() {
 	s.NoError(a2.Upsert(s.T().Context()))
 	s.NoError(a3.Upsert(s.T().Context()))
 
-	found, err := findMatchingAliasForProjectRef("project-1", "alias-1")
+	found, err := findMatchingAliasForProjectRef(s.T().Context(), "project-1", "alias-1")
 	s.NoError(err)
 	s.Len(found, 2)
 }
@@ -279,7 +279,7 @@ func (s *ProjectAliasSuite) TestFindAliasInProjectOrConfig() {
 				},
 			},
 		}}
-	s.NoError(projectConfig.Insert())
+	s.NoError(projectConfig.Insert(s.T().Context()))
 
 	projectAliases, err := FindAliasInProjectRepoOrConfig(s.T().Context(), "project-1", evergreen.CommitQueueAlias)
 	s.NoError(err)
@@ -373,7 +373,7 @@ func TestFindMergedAliasesFromProjectRepoOrProjectConfig(t *testing.T) {
 			tempRef := ProjectRef{ // This ref has nothing else enabled so merging should only return project aliases
 				Id: pRef.Id,
 			}
-			res, err := ConstructMergedAliasesByPrecedence(&tempRef, &projectConfig, "")
+			res, err := ConstructMergedAliasesByPrecedence(t.Context(), &tempRef, &projectConfig, "")
 			assert.NoError(t, err)
 			require.Len(t, res, 2)
 			assert.Equal(t, res[0].ProjectID, pRef.Id)
@@ -384,7 +384,7 @@ func TestFindMergedAliasesFromProjectRepoOrProjectConfig(t *testing.T) {
 			assert.NoError(t, UpsertAliasesForProject(t.Context(), cqAliases, pRef.RepoRefId))
 			assert.NoError(t, UpsertAliasesForProject(t.Context(), gitTagAliases, pRef.RepoRefId))
 			assert.NoError(t, UpsertAliasesForProject(t.Context(), githubChecksAlias, pRef.RepoRefId))
-			res, err := ConstructMergedAliasesByPrecedence(&pRef, &projectConfig, pRef.RepoRefId)
+			res, err := ConstructMergedAliasesByPrecedence(t.Context(), &pRef, &projectConfig, pRef.RepoRefId)
 			assert.NoError(t, err)
 			// Uses aliases from project, repo, and config
 			require.Len(t, res, 6)
@@ -410,7 +410,7 @@ func TestFindMergedAliasesFromProjectRepoOrProjectConfig(t *testing.T) {
 			assert.NoError(t, UpsertAliasesForProject(t.Context(), cqAliases, pRef.Id))
 			assert.NoError(t, UpsertAliasesForProject(t.Context(), cqAliases, pRef.RepoRefId))
 			assert.NoError(t, UpsertAliasesForProject(t.Context(), patchAliases, pRef.RepoRefId))
-			res, err := ConstructMergedAliasesByPrecedence(&pRef, &projectConfig, pRef.RepoRefId)
+			res, err := ConstructMergedAliasesByPrecedence(t.Context(), &pRef, &projectConfig, pRef.RepoRefId)
 			assert.NoError(t, err)
 			// Ignores config aliases because they're already used
 			require.Len(t, res, 4)
@@ -481,7 +481,7 @@ func (s *ProjectAliasSuite) TestFindAliasInProjectRepoOrConfig() {
 	s.NoError(repoRef.Replace(s.T().Context()))
 	s.NoError(pRef1.Replace(s.T().Context()))
 	s.NoError(pRef2.Replace(s.T().Context()))
-	s.NoError(projectConfig.Insert())
+	s.NoError(projectConfig.Insert(s.T().Context()))
 
 	for i := 0; i < 3; i++ {
 		alias := ProjectAlias{
@@ -554,12 +554,12 @@ func (s *ProjectAliasSuite) TestUpsertAliasesForProject() {
 	}
 	s.NoError(UpsertAliasesForProject(s.T().Context(), s.aliases, "new-project"))
 
-	found, err := FindAliasesForProjectFromDb("new-project")
+	found, err := FindAliasesForProjectFromDb(s.T().Context(), "new-project")
 	s.NoError(err)
 	s.Len(found, 10)
 
 	// verify old aliases not overwritten
-	found, err = FindAliasesForProjectFromDb("old-project")
+	found, err = FindAliasesForProjectFromDb(s.T().Context(), "old-project")
 	s.NoError(err)
 	s.Len(found, 10)
 }

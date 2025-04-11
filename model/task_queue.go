@@ -426,9 +426,9 @@ func FindMinimumQueuePositionForTask(ctx context.Context, taskId string) (int, e
 	return results[0].Index + 1, err
 }
 
-func FindAllTaskQueues() ([]TaskQueue, error) {
+func FindAllTaskQueues(ctx context.Context) ([]TaskQueue, error) {
 	taskQueues := []TaskQueue{}
-	err := db.FindAllQ(TaskQueuesCollection, db.Query(bson.M{}), &taskQueues)
+	err := db.FindAllQ(ctx, TaskQueuesCollection, db.Query(bson.M{}), &taskQueues)
 	return taskQueues, err
 }
 

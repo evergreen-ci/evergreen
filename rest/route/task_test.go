@@ -39,12 +39,12 @@ func (s *TaskAbortSuite) SetupSuite() {
 		{Id: "task1", Status: evergreen.TaskStarted, Activated: true, BuildId: "b1", Version: "v1"},
 		{Id: "task2", Status: evergreen.TaskStarted, Activated: true, BuildId: "b1", Version: "v1"},
 	}
-	s.NoError((&build.Build{Id: "b1"}).Insert())
-	s.NoError((&serviceModel.Version{Id: "v1"}).Insert())
+	s.NoError((&build.Build{Id: "b1"}).Insert(s.T().Context()))
+	s.NoError((&serviceModel.Version{Id: "v1"}).Insert(s.T().Context()))
 	u := &user.DBUser{Id: "user1"}
-	s.NoError(u.Insert())
+	s.NoError(u.Insert(s.T().Context()))
 	for _, t := range tasks {
-		s.NoError(t.Insert())
+		s.NoError(t.Insert(s.T().Context()))
 	}
 }
 
@@ -92,7 +92,7 @@ func TestFetchArtifacts(t *testing.T) {
 		Status:    evergreen.TaskSucceeded,
 		Execution: 0,
 	}
-	assert.NoError(task1.Insert())
+	assert.NoError(task1.Insert(t.Context()))
 	assert.NoError(task1.Archive(ctx))
 	entry := artifact.Entry{
 		TaskId:          task1.Id,
@@ -120,7 +120,7 @@ func TestFetchArtifacts(t *testing.T) {
 		DisplayOnly: true,
 		Status:      evergreen.TaskSucceeded,
 	}
-	assert.NoError(task2.Insert())
+	assert.NoError(task2.Insert(t.Context()))
 	assert.NoError(task2.Archive(ctx))
 
 	taskGet := taskGetHandler{taskID: task1.Id}
@@ -169,13 +169,13 @@ func TestGetDisplayTask(t *testing.T) {
 				DisplayName:    "display_task_name",
 				ExecutionTasks: []string{tsk.Id},
 			}
-			require.NoError(t, displayTask.Insert())
+			require.NoError(t, displayTask.Insert(t.Context()))
 
 			h := makeGetDisplayTaskHandler()
 			rh, ok := h.(*displayTaskGetHandler)
 			require.True(t, ok)
 			rh.taskID = tsk.Id
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(t.Context()))
 
 			resp := rh.Run(ctx)
 			require.NotNil(t, resp)
@@ -198,7 +198,7 @@ func TestGetDisplayTask(t *testing.T) {
 		"ReturnsOkIfNotPartOfDisplayTask": func(ctx context.Context, t *testing.T) {
 			tsk := task.Task{Id: "task_id"}
 			h := makeGetDisplayTaskHandler()
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(t.Context()))
 			rh, ok := h.(*displayTaskGetHandler)
 			require.True(t, ok)
 			rh.taskID = tsk.Id
@@ -233,7 +233,7 @@ func TestGeneratedTasksGetHandler(t *testing.T) {
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, rh *generatedTasksGetHandler, generatorID string, generated []task.Task){
 		"ReturnsGeneratedTasks": func(ctx context.Context, t *testing.T, rh *generatedTasksGetHandler, generatorID string, generated []task.Task) {
 			for _, tsk := range generated {
-				require.NoError(t, tsk.Insert())
+				require.NoError(t, tsk.Insert(t.Context()))
 			}
 			rh.taskID = generatorID
 

@@ -67,7 +67,7 @@ func TestTaskConnectorFetchByBuildSuite(t *testing.T) {
 				BuildId: fmt.Sprintf("build_%d", bix),
 				Status:  status,
 			}
-			assert.NoError(t, testTask.Insert())
+			assert.NoError(t, testTask.Insert(t.Context()))
 		}
 	}
 
@@ -202,7 +202,7 @@ func TestTaskConnectorFetchByProjectAndCommitSuite(t *testing.T) {
 		pRef := model.ProjectRef{
 			Id: fmt.Sprintf("project_%d", pix),
 		}
-		assert.NoError(t, pRef.Insert())
+		assert.NoError(t, pRef.Insert(t.Context()))
 		for cix := 0; cix < s.numCommits; cix++ {
 			tids := make([]string, s.numTasks)
 			for tix := range tids {
@@ -231,7 +231,7 @@ func TestTaskConnectorFetchByProjectAndCommitSuite(t *testing.T) {
 					DisplayName:  fmt.Sprintf("task_%d", tix),
 					Requester:    evergreen.RepotrackerVersionRequester,
 				}
-				assert.NoError(t, testTask.Insert())
+				assert.NoError(t, testTask.Insert(t.Context()))
 			}
 		}
 	}
@@ -480,7 +480,7 @@ func TestCheckTaskSecret(t *testing.T) {
 		Id:     "task1",
 		Secret: "abcdef",
 	}
-	assert.NoError(task.Insert())
+	assert.NoError(task.Insert(t.Context()))
 
 	r := &http.Request{
 		Header: http.Header{

@@ -85,7 +85,7 @@ func (j *spawnhostStopJob) Run(ctx context.Context) {
 		if j.HasErrors() && j.IsLastAttempt() {
 			// Only log an error if the final job attempt errors. Otherwise, it
 			// may retry and succeed on the next attempt.
-			event.LogHostStopError(j.HostID, string(j.Source), j.Error().Error())
+			event.LogHostStopError(ctx, j.HostID, string(j.Source), j.Error().Error())
 			grip.Error(message.WrapError(j.Error(), message.Fields{
 				"message": "no attempts remaining to stop spawn host",
 				"host_id": j.HostID,
@@ -136,7 +136,7 @@ func (j *spawnhostStopJob) Run(ctx context.Context) {
 			return errors.Wrapf(err, "stopping spawn host '%s'", j.HostID)
 		}
 
-		event.LogHostStopSucceeded(h.Id, string(j.Source))
+		event.LogHostStopSucceeded(ctx, h.Id, string(j.Source))
 		grip.Info(message.Fields{
 			"message":    "stopped spawn host",
 			"host_id":    h.Id,

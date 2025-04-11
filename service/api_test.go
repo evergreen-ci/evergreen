@@ -44,7 +44,7 @@ func TestLimitedProjectEndPoint(t *testing.T) {
 		DisplayName:           "display",
 	}
 
-	require.NoError(t, project.Insert())
+	require.NoError(t, project.Insert(t.Context()))
 
 	url := testApiServer.URL + path
 	request, err := http.NewRequest("GET", fmt.Sprintf(url, ref), bytes.NewBuffer([]byte{}))

@@ -21,11 +21,11 @@ func TestLoggingDistroEvents(t *testing.T) {
 			data := birch.NewDocument().Set(birch.EC.String("ami", "ami-123456")).ExportMap()
 			oldData := birch.NewDocument().Set(birch.EC.String("ami", "ami-0")).ExportMap()
 			// log some events, sleeping in between to make sure the times are different
-			LogDistroAdded(distroId, userId, nil)
+			LogDistroAdded(t.Context(), distroId, userId, nil)
 			time.Sleep(1 * time.Millisecond)
-			LogDistroModified(distroId, userId, oldData, data)
+			LogDistroModified(t.Context(), distroId, userId, oldData, data)
 			time.Sleep(1 * time.Millisecond)
-			LogDistroRemoved(distroId, userId, nil)
+			LogDistroRemoved(t.Context(), distroId, userId, nil)
 			time.Sleep(1 * time.Millisecond)
 
 			// fetch all the events from the database, make sure they are
@@ -84,7 +84,7 @@ func TestLoggingDistroEvents(t *testing.T) {
 			data := birch.NewDocument().Set(birch.EC.String("ami", "ami-123456")).ExportMap()
 			oldData := birch.NewDocument().Set(birch.EC.String("ami", "ami-123456")).ExportMap()
 
-			LogDistroModified(distroId, userId, oldData, data)
+			LogDistroModified(t.Context(), distroId, userId, oldData, data)
 
 			eventsForDistro, err := FindLatestPrimaryDistroEvents(t.Context(), distroId, 10, utility.ZeroTime)
 			So(err, ShouldBeNil)
@@ -99,9 +99,9 @@ func TestLoggingDistroEvents(t *testing.T) {
 
 			timeBeforeEvents := time.Now()
 			time.Sleep(1 * time.Millisecond)
-			LogDistroAdded(distroId, userId, nil)
+			LogDistroAdded(t.Context(), distroId, userId, nil)
 			time.Sleep(1 * time.Millisecond)
-			LogDistroModified(distroId, userId, oldData, data)
+			LogDistroModified(t.Context(), distroId, userId, oldData, data)
 
 			eventsForDistro, err := FindLatestPrimaryDistroEvents(t.Context(), distroId, 10, utility.ZeroTime)
 			So(err, ShouldBeNil)

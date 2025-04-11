@@ -26,7 +26,7 @@ func TestAPIPatch(t *testing.T) {
 		Id:         "mci",
 		Identifier: "evergreen",
 	}
-	assert.NoError(pRef.Insert())
+	assert.NoError(pRef.Insert(t.Context()))
 	p := patch.Patch{
 		Id:            mgobson.NewObjectId(),
 		Description:   "test",
@@ -174,7 +174,7 @@ func TestDownstreamTasks(t *testing.T) {
 		Id:         "mci",
 		Identifier: "evergreen",
 	}
-	assert.NoError(projectRef.Insert())
+	assert.NoError(projectRef.Insert(t.Context()))
 	p := patch.Patch{
 		Id:          mgobson.NewObjectId(),
 		Description: "test",
@@ -201,7 +201,7 @@ func TestDownstreamTasks(t *testing.T) {
 		Activated: true,
 		Status:    evergreen.VersionCreated,
 	}
-	assert.NoError(childPatch.Insert())
+	assert.NoError(childPatch.Insert(t.Context()))
 
 	a := APIPatch{}
 	err := a.BuildFromService(t.Context(), p, &APIPatchArgs{
@@ -235,7 +235,7 @@ func TestPreselectedDisplayTasks(t *testing.T) {
 			},
 		},
 	}
-	require.NoError(t, p.Insert())
+	require.NoError(t, p.Insert(t.Context()))
 
 	a := APIPatch{}
 	err := a.BuildFromService(t.Context(), p, nil)

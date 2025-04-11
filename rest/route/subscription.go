@@ -93,7 +93,7 @@ func (s *subscriptionGetHandler) Parse(ctx context.Context, r *http.Request) err
 }
 
 func (s *subscriptionGetHandler) Run(ctx context.Context) gimlet.Responder {
-	subs, err := data.GetSubscriptions(s.owner, event.OwnerType(s.ownerType))
+	subs, err := data.GetSubscriptions(ctx, s.owner, event.OwnerType(s.ownerType))
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting subscriptions for owner '%s' and owner type '%s'", s.owner, s.ownerType))
 	}

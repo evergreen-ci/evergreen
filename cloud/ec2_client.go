@@ -8,12 +8,14 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/aws-sdk-go-v2/service/route53"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	ststypes "github.com/aws/aws-sdk-go-v2/service/sts/types"
 	"github.com/aws/smithy-go"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -33,7 +35,7 @@ var noReservationError = errors.New("no reservation returned for instance")
 // AWSClient is a wrapper for aws-sdk-go so we can use a mock in testing.
 type AWSClient interface {
 	// Create a new aws-sdk-client or mock if one does not exist, otherwise no-op.
-	Create(context.Context, string) error
+	Create(ctx context.Context, role, region string) error
 
 	// RunInstances is a wrapper for ec2.RunInstances.
 	RunInstances(context.Context, *ec2.RunInstancesInput) (*ec2.RunInstancesOutput, error)
@@ -146,29 +148,47 @@ func awsClientDefaultRetryOptions() utility.RetryOptions {
 	}
 }
 
+// configCache is a cache that maps a unique identifier for the AWS
+// configuration to the corresponding AWS configuration.
 var configCache map[string]*aws.Config = make(map[string]*aws.Config)
 
+func getConfigCacheID(role, region string) string {
+	return fmt.Sprintf("%s-%s", role, region)
+}
+
 // Create a new aws-sdk-client if one does not exist, otherwise no-op.
-func (c *awsClientImpl) Create(ctx context.Context, region string) error {
+func (c *awsClientImpl) Create(ctx context.Context, role, region string) error {
 	if region == "" {
 		return errors.New("region must not be empty")
 	}
 
-	if configCache[region] == nil {
-		config, err := config.LoadDefaultConfig(ctx,
-			config.WithRegion(region),
-		)
+	configID := getConfigCacheID(role, region)
+	if configCache[configID] == nil {
+		opts := []func(*config.LoadOptions) error{config.WithRegion(region)}
+		if role != "" {
+			// Assuming a role to make API calls requires an explicit region.
+			stsConfig, err := config.LoadDefaultConfig(ctx, config.WithRegion(evergreen.DefaultEC2Region))
+			if err != nil {
+				return errors.Wrapf(err, "loading config for assuming role '%s'", role)
+			}
+			stsClient := sts.NewFromConfig(stsConfig)
+			opts = append(opts, config.WithCredentialsProvider(stscreds.NewAssumeRoleProvider(stsClient, role)))
+		}
+
+		config, err := config.LoadDefaultConfig(ctx, opts...)
 		if err != nil {
 			return errors.Wrap(err, "loading config")
 		}
 		otelaws.AppendMiddlewares(&config.APIOptions)
 
-		configCache[region] = &config
+		configCache[configID] = &config
 	}
 
-	c.ec2Client = ec2.NewFromConfig(*configCache[region])
-	c.r53Client = route53.NewFromConfig(*configCache[region])
-	c.stsClient = sts.NewFromConfig(*configCache[region])
+	cachedConfig := *configCache[configID]
+
+	c.ec2Client = ec2.NewFromConfig(cachedConfig)
+	c.r53Client = route53.NewFromConfig(cachedConfig)
+	c.stsClient = sts.NewFromConfig(cachedConfig)
 	return nil
 }
 
@@ -1025,7 +1045,7 @@ type awsClientMock struct { //nolint
 }
 
 // Create a new mock client.
-func (c *awsClientMock) Create(ctx context.Context, region string) error {
+func (c *awsClientMock) Create(ctx context.Context, role, region string) error {
 	return nil
 }
 

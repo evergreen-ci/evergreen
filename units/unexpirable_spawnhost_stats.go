@@ -60,7 +60,7 @@ func NewUnexpirableSpawnHostStatsJob(ts string) amboy.Job {
 func (j *unexpirableSpawnHostStatsJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
-	hosts, err := host.FindUnexpirableRunning()
+	hosts, err := host.FindUnexpirableRunning(ctx)
 	if err != nil {
 		j.AddRetryableError(errors.Wrap(err, "finding unexpirable running hosts"))
 		return

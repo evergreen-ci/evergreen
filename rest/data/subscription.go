@@ -113,7 +113,7 @@ func SaveSubscriptions(ctx context.Context, owner string, subscriptions []restMo
 }
 
 // GetSubscriptions returns the subscriptions that belong to a user
-func GetSubscriptions(owner string, ownerType event.OwnerType) ([]restModel.APISubscription, error) {
+func GetSubscriptions(ctx context.Context, owner string, ownerType event.OwnerType) ([]restModel.APISubscription, error) {
 	if len(owner) == 0 {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -121,7 +121,7 @@ func GetSubscriptions(owner string, ownerType event.OwnerType) ([]restModel.APIS
 		}
 	}
 
-	subs, err := event.FindSubscriptionsByOwner(owner, ownerType)
+	subs, err := event.FindSubscriptionsByOwner(ctx, owner, ownerType)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding subscriptions for user '%s'", owner)
 	}

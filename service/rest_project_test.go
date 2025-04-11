@@ -37,7 +37,7 @@ func TestProjectRoutes(t *testing.T) {
 			Repo:    "repo1",
 			Admins:  []string{},
 		}
-		So(public.Insert(), ShouldBeNil)
+		So(public.Insert(t.Context()), ShouldBeNil)
 
 		url := "/rest/v1/projects/" + publicId
 
@@ -90,7 +90,7 @@ func TestProjectRoutes(t *testing.T) {
 			Repo:    "repo1",
 			Admins:  []string{"testuser"},
 		}
-		So(private.Insert(), ShouldBeNil)
+		So(private.Insert(t.Context()), ShouldBeNil)
 		response := httptest.NewRecorder()
 
 		Convey("users who are not logged in should be denied with a 401", func() {

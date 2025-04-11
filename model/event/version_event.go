@@ -1,6 +1,7 @@
 package event
 
 import (
+	"context"
 	"time"
 
 	"github.com/mongodb/grip"
@@ -31,7 +32,7 @@ type VersionEventData struct {
 	Author            string `bson:"author,omitempty" json:"author,omitempty"`
 }
 
-func LogVersionStateChangeEvent(id, newStatus string) {
+func LogVersionStateChangeEvent(ctx context.Context, id, newStatus string) {
 	event := EventLogEntry{
 		Timestamp:    time.Now().Truncate(0).Round(time.Millisecond),
 		ResourceId:   id,
@@ -42,7 +43,7 @@ func LogVersionStateChangeEvent(id, newStatus string) {
 		},
 	}
 
-	if err := event.Log(); err != nil {
+	if err := event.Log(ctx); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"resource_type": ResourceTypeVersion,
 			"message":       "error logging event",
@@ -51,7 +52,7 @@ func LogVersionStateChangeEvent(id, newStatus string) {
 	}
 }
 
-func LogVersionGithubCheckFinishedEvent(id, newStatus string) {
+func LogVersionGithubCheckFinishedEvent(ctx context.Context, id, newStatus string) {
 	event := EventLogEntry{
 		Timestamp:    time.Now().Truncate(0).Round(time.Millisecond),
 		ResourceId:   id,
@@ -62,7 +63,7 @@ func LogVersionGithubCheckFinishedEvent(id, newStatus string) {
 		},
 	}
 
-	if err := event.Log(); err != nil {
+	if err := event.Log(ctx); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"resource_type": ResourceTypeVersion,
 			"message":       "error logging event",
@@ -71,7 +72,7 @@ func LogVersionGithubCheckFinishedEvent(id, newStatus string) {
 	}
 }
 
-func LogVersionChildrenCompletionEvent(id, status, author string) {
+func LogVersionChildrenCompletionEvent(ctx context.Context, id, status, author string) {
 	event := EventLogEntry{
 		Timestamp:    time.Now().Truncate(0).Round(time.Millisecond),
 		ResourceId:   id,
@@ -83,7 +84,7 @@ func LogVersionChildrenCompletionEvent(id, status, author string) {
 		},
 	}
 
-	if err := event.Log(); err != nil {
+	if err := event.Log(ctx); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"resource_type": ResourceTypeVersion,
 			"message":       "error logging event",

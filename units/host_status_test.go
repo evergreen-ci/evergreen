@@ -220,7 +220,7 @@ func TestSetCloudHostStatus(t *testing.T) {
 			tsk := task.Task{
 				Id: "some_task",
 			}
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(ctx))
 			h.RunningTask = tsk.Id
 			require.NoError(t, h.Insert(ctx))
 			require.NoError(t, j.setCloudHostStatus(ctx, *h, cloud.StatusStopped))

@@ -112,6 +112,6 @@ func tryIdleSpawnHostNotification(ctx context.Context, h *host.Host) error {
 		return errors.Wrap(err, "upserting idle spawn host subscription")
 	}
 
-	event.LogSpawnHostIdleNotification(h.Id)
+	event.LogSpawnHostIdleNotification(ctx, h.Id)
 	return nil
 }

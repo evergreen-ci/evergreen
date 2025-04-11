@@ -38,7 +38,7 @@ func TestFindProject(t *testing.T) {
 	projRef := &ProjectRef{
 		Id: "project_test",
 	}
-	assert.NoError(t, projRef.Insert())
+	assert.NoError(t, projRef.Insert(t.Context()))
 	Convey("When finding a project", t, func() {
 		Convey("an error should be thrown if the project ref's identifier is nil", func() {
 			projRef := &ProjectRef{
@@ -71,8 +71,8 @@ func TestFindProject(t *testing.T) {
 				Repo:   "fakerepo",
 				Branch: "fakebranch",
 			}
-			require.NoError(t, pp.Insert())
-			require.NoError(t, v.Insert(), "failed to insert test version: %v", v)
+			require.NoError(t, pp.Insert(t.Context()))
+			require.NoError(t, v.Insert(t.Context()), "failed to insert test version: %v", v)
 			_, _, _, err := FindLatestVersionWithValidProject(p.Id, false)
 			So(err, ShouldBeNil)
 
@@ -102,9 +102,9 @@ func TestFindProject(t *testing.T) {
 			err := util.UnmarshalYAMLWithFallback([]byte("owner: fakeowner\nrepo: fakerepo\nbranch: fakebranch"), &pp)
 			So(err, ShouldBeNil)
 			pp.Id = "good_version"
-			So(badVersion.Insert(), ShouldBeNil)
-			So(goodVersion.Insert(), ShouldBeNil)
-			So(pp.Insert(), ShouldBeNil)
+			So(badVersion.Insert(t.Context()), ShouldBeNil)
+			So(goodVersion.Insert(t.Context()), ShouldBeNil)
+			So(pp.Insert(t.Context()), ShouldBeNil)
 			v, p, pp, err := FindLatestVersionWithValidProject("project_test", false)
 			So(err, ShouldBeNil)
 			So(pp, ShouldNotBeNil)
@@ -127,10 +127,10 @@ func TestFindProject(t *testing.T) {
 			err := util.UnmarshalYAMLWithFallback([]byte("owner: fakeowner\nrepo: fakerepo\nbranch: fakebranch"), &pp)
 			So(err, ShouldBeNil)
 			pp.Id = "good_version"
-			So(goodVersion.Insert(), ShouldBeNil)
-			So(pp.Insert(), ShouldBeNil)
+			So(goodVersion.Insert(t.Context()), ShouldBeNil)
+			So(pp.Insert(t.Context()), ShouldBeNil)
 			pp.Id = "pre_generation_good_version"
-			So(pp.Insert(), ShouldBeNil)
+			So(pp.Insert(t.Context()), ShouldBeNil)
 			v, p, pp, err := FindLatestVersionWithValidProject("project_test", true)
 			So(err, ShouldBeNil)
 			So(pp, ShouldNotBeNil)
@@ -399,7 +399,7 @@ func TestPopulateExpansions(t *testing.T) {
 		Owner:      "my_org",
 		Repo:       "my_repo",
 	}
-	assert.NoError(projectRef.Insert())
+	assert.NoError(projectRef.Insert(t.Context()))
 	v := &Version{
 		Id:                  "v1",
 		Branch:              "main",
@@ -411,7 +411,7 @@ func TestPopulateExpansions(t *testing.T) {
 			Tag: "release",
 		},
 	}
-	assert.NoError(v.Insert())
+	assert.NoError(v.Insert(t.Context()))
 	taskDoc := &task.Task{
 		Id:           "t1",
 		DisplayName:  "magical task",
@@ -458,7 +458,7 @@ func TestPopulateExpansions(t *testing.T) {
 	p := patch.Patch{
 		Version: v.Id,
 	}
-	require.NoError(t, p.Insert())
+	require.NoError(t, p.Insert(t.Context()))
 
 	expansions, err = PopulateExpansions(ctx, taskDoc, &h, "", "")
 	assert.NoError(err)
@@ -485,7 +485,7 @@ func TestPopulateExpansions(t *testing.T) {
 			HeadCommit: "merge_head_commit",
 		},
 	}
-	require.NoError(t, p.Insert())
+	require.NoError(t, p.Insert(t.Context()))
 	expansions, err = PopulateExpansions(ctx, taskDoc, &h, "", "")
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 27)
@@ -503,7 +503,7 @@ func TestPopulateExpansions(t *testing.T) {
 	p = patch.Patch{
 		Version: v.Id,
 	}
-	require.NoError(t, p.Insert())
+	require.NoError(t, p.Insert(t.Context()))
 	expansions, err = PopulateExpansions(ctx, taskDoc, &h, "", "")
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 27)
@@ -527,7 +527,7 @@ func TestPopulateExpansions(t *testing.T) {
 			HeadHash:  "abc123",
 		},
 	}
-	assert.NoError(patchDoc.Insert())
+	assert.NoError(patchDoc.Insert(t.Context()))
 
 	expansions, err = PopulateExpansions(ctx, taskDoc, &h, "", "")
 	assert.NoError(err)
@@ -547,12 +547,12 @@ func TestPopulateExpansions(t *testing.T) {
 		Project:  "upstreamProject",
 		Version:  "upstreamVersion",
 	}
-	assert.NoError(upstreamTask.Insert())
+	assert.NoError(upstreamTask.Insert(t.Context()))
 	upstreamProject := ProjectRef{
 		Id:     "upstreamProject",
 		Branch: "idk",
 	}
-	assert.NoError(upstreamProject.Insert())
+	assert.NoError(upstreamProject.Insert(t.Context()))
 	taskDoc.TriggerID = "upstreamTask"
 	taskDoc.TriggerType = ProjectTriggerLevelTask
 	expansions, err = PopulateExpansions(ctx, taskDoc, &h, "", "")
@@ -582,11 +582,11 @@ func (s *projectSuite) SetupTest() {
 	pRef := ProjectRef{
 		Id: "project",
 	}
-	s.Require().NoError(pRef.Insert())
+	s.Require().NoError(pRef.Insert(s.T().Context()))
 	s.vars = ProjectVars{
 		Id: pRef.Id,
 	}
-	s.Require().NoError(s.vars.Insert())
+	s.Require().NoError(s.vars.Insert(s.T().Context()))
 
 	s.aliases = []ProjectAlias{
 		{
@@ -1486,7 +1486,7 @@ func (s *projectSuite) TestFetchVersionsBuildsAndTasks() {
 		CreateTime:          time.Now(),
 		RevisionOrderNumber: 1,
 	}
-	s.NoError(v1.Insert())
+	s.NoError(v1.Insert(s.T().Context()))
 	v2 := Version{
 		Id:                  "v2",
 		Identifier:          s.project.Identifier,
@@ -1495,7 +1495,7 @@ func (s *projectSuite) TestFetchVersionsBuildsAndTasks() {
 		CreateTime:          time.Now().Add(1 * time.Minute),
 		RevisionOrderNumber: 2,
 	}
-	s.NoError(v2.Insert())
+	s.NoError(v2.Insert(s.T().Context()))
 	v3 := Version{
 		Id:                  "v3",
 		Identifier:          s.project.Identifier,
@@ -1504,38 +1504,38 @@ func (s *projectSuite) TestFetchVersionsBuildsAndTasks() {
 		CreateTime:          time.Now().Add(5 * time.Minute),
 		RevisionOrderNumber: 3,
 	}
-	s.NoError(v3.Insert())
+	s.NoError(v3.Insert(s.T().Context()))
 	b1 := build.Build{
 		Id:       "b1",
 		Version:  v1.Id,
 		Revision: v1.Revision,
 		Tasks:    []build.TaskCache{{Id: "t1"}, {Id: "t2"}},
 	}
-	s.NoError(b1.Insert())
+	s.NoError(b1.Insert(s.T().Context()))
 	b2 := build.Build{
 		Id:       "b2",
 		Version:  v2.Id,
 		Revision: v2.Revision,
 	}
-	s.NoError(b2.Insert())
+	s.NoError(b2.Insert(s.T().Context()))
 	b3 := build.Build{
 		Id:       "b3",
 		Version:  v3.Id,
 		Revision: v3.Revision,
 	}
-	s.NoError(b3.Insert())
+	s.NoError(b3.Insert(s.T().Context()))
 	t1 := task.Task{
 		Id:      "t1",
 		BuildId: b1.Id,
 		Version: v1.Id,
 	}
-	s.NoError(t1.Insert())
+	s.NoError(t1.Insert(s.T().Context()))
 	t2 := task.Task{
 		Id:      "t2",
 		BuildId: b1.Id,
 		Version: v1.Id,
 	}
-	s.NoError(t2.Insert())
+	s.NoError(t2.Insert(s.T().Context()))
 
 	versions, builds, tasks, err := FetchVersionsBuildsAndTasks(ctx, s.project, 0, 10, false)
 	s.NoError(err)
@@ -1659,7 +1659,7 @@ func TestFindProjectsSuite(t *testing.T) {
 		}
 
 		for _, p := range projects {
-			if err := p.Insert(); err != nil {
+			if err := p.Insert(t.Context()); err != nil {
 				return err
 			}
 			if _, err := GetNewRevisionOrderNumber(p.Id); err != nil {
@@ -1672,7 +1672,7 @@ func TestFindProjectsSuite(t *testing.T) {
 			Vars:        map[string]string{"a": "1", "b": "3"},
 			PrivateVars: map[string]bool{"b": true},
 		}
-		s.NoError(vars.Insert())
+		s.NoError(vars.Insert(t.Context()))
 		checkParametersNamespacedByProject(s.T(), *vars)
 
 		repoWithVars := &RepoRef{ProjectRef{
@@ -1684,7 +1684,7 @@ func TestFindProjectsSuite(t *testing.T) {
 			Vars:        map[string]string{"a": "a_from_repo", "c": "new"},
 			PrivateVars: map[string]bool{"a": true},
 		}
-		s.NoError(repoVars.Insert())
+		s.NoError(repoVars.Insert(t.Context()))
 		checkParametersNamespacedByProject(s.T(), *repoVars)
 
 		before := getMockProjectSettings()
@@ -1707,7 +1707,7 @@ func TestFindProjectsSuite(t *testing.T) {
 		s.Require().NoError(db.ClearCollections(event.EventCollection))
 		for i := 0; i < projEventCount; i++ {
 			eventShallowCpy := h
-			s.NoError(eventShallowCpy.Log())
+			s.NoError(eventShallowCpy.Log(t.Context()))
 		}
 
 		return nil
@@ -1727,60 +1727,60 @@ func (s *FindProjectsSuite) TearDownSuite() {
 }
 
 func (s *FindProjectsSuite) TestFetchTooManyAsc() {
-	projects, err := FindNonHiddenProjects("", 8, 1)
+	projects, err := FindNonHiddenProjects(s.T().Context(), "", 8, 1)
 	s.NoError(err)
 	s.NotNil(projects)
 	s.Len(projects, 7)
 }
 
 func (s *FindProjectsSuite) TestFetchTooManyDesc() {
-	projects, err := FindNonHiddenProjects("zzz", 8, -1)
+	projects, err := FindNonHiddenProjects(s.T().Context(), "zzz", 8, -1)
 	s.NoError(err)
 	s.NotNil(projects)
 	s.Len(projects, 7)
 }
 
 func (s *FindProjectsSuite) TestFetchExactNumber() {
-	projects, err := FindNonHiddenProjects("", 3, 1)
+	projects, err := FindNonHiddenProjects(s.T().Context(), "", 3, 1)
 	s.NoError(err)
 	s.NotNil(projects)
 	s.Len(projects, 3)
 }
 
 func (s *FindProjectsSuite) TestFetchTooFewAsc() {
-	projects, err := FindNonHiddenProjects("", 2, 1)
+	projects, err := FindNonHiddenProjects(s.T().Context(), "", 2, 1)
 	s.NoError(err)
 	s.NotNil(projects)
 	s.Len(projects, 2)
 }
 
 func (s *FindProjectsSuite) TestFetchTooFewDesc() {
-	projects, err := FindNonHiddenProjects("zzz", 2, -1)
+	projects, err := FindNonHiddenProjects(s.T().Context(), "zzz", 2, -1)
 	s.NoError(err)
 	s.NotNil(projects)
 	s.Len(projects, 2)
 }
 
 func (s *FindProjectsSuite) TestFetchKeyWithinBoundAsc() {
-	projects, err := FindNonHiddenProjects("projectB", 1, 1)
+	projects, err := FindNonHiddenProjects(s.T().Context(), "projectB", 1, 1)
 	s.NoError(err)
 	s.Len(projects, 1)
 }
 
 func (s *FindProjectsSuite) TestFetchKeyWithinBoundDesc() {
-	projects, err := FindNonHiddenProjects("projectD", 1, -1)
+	projects, err := FindNonHiddenProjects(s.T().Context(), "projectD", 1, -1)
 	s.NoError(err)
 	s.Len(projects, 1)
 }
 
 func (s *FindProjectsSuite) TestFetchKeyOutOfBoundAsc() {
-	projects, err := FindNonHiddenProjects("zzz", 1, 1)
+	projects, err := FindNonHiddenProjects(s.T().Context(), "zzz", 1, 1)
 	s.NoError(err)
 	s.Empty(projects)
 }
 
 func (s *FindProjectsSuite) TestFetchKeyOutOfBoundDesc() {
-	projects, err := FindNonHiddenProjects("aaa", 1, -1)
+	projects, err := FindNonHiddenProjects(s.T().Context(), "aaa", 1, -1)
 	s.NoError(err)
 	s.Empty(projects)
 }
@@ -2575,7 +2575,7 @@ tasks:
 
 	for tName, tCase := range map[string]func(t *testing.T, p *patch.Patch, pp *ParserProject){
 		"SucceedsWithParserProjectInDB": func(t *testing.T, p *patch.Patch, pp *ParserProject) {
-			require.NoError(t, pp.Insert())
+			require.NoError(t, pp.Insert(t.Context()))
 			p.ProjectStorageMethod = evergreen.ProjectStorageMethodDB
 
 			variantsAndTasks, err := GetVariantsAndTasksFromPatchProject(ctx, env.Settings(), p)
@@ -2590,8 +2590,8 @@ tasks:
 				Id:                   p.Id.Hex(),
 				ProjectStorageMethod: evergreen.ProjectStorageMethodDB,
 			}
-			require.NoError(t, v.Insert())
-			require.NoError(t, pp.Insert())
+			require.NoError(t, v.Insert(t.Context()))
+			require.NoError(t, pp.Insert(t.Context()))
 			p.Version = v.Id
 
 			variantsAndTasks, err := GetVariantsAndTasksFromPatchProject(ctx, env.Settings(), p)

@@ -189,7 +189,7 @@ func (j *volumeMigrationJob) startNewHost(ctx context.Context) {
 		j.AddError(errors.Wrap(err, "inserting new intent host"))
 		return
 	}
-	event.LogHostCreated(intentHost.Id)
+	event.LogHostCreated(ctx, intentHost.Id)
 	grip.Info(message.Fields{
 		"message":        "new intent host created",
 		"job_id":         j.ID(),
@@ -208,7 +208,7 @@ func (j *volumeMigrationJob) finishJob(ctx context.Context) {
 			return
 		}
 		if volumeHost == nil || volumeHost.Id == j.InitialHostID {
-			event.LogVolumeMigrationFailed(j.InitialHostID, j.Error())
+			event.LogVolumeMigrationFailed(ctx, j.InitialHostID, j.Error())
 			grip.Error(message.Fields{
 				"message": "volume failed to migrate",
 				"job_id":  j.ID(),

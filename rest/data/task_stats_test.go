@@ -1,6 +1,7 @@
 package data
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -24,11 +25,11 @@ func TestMockGetTaskStats(t *testing.T) {
 	proj := model.ProjectRef{
 		Id: "project",
 	}
-	require.NoError(t, proj.Insert())
+	require.NoError(t, proj.Insert(t.Context()))
 
 	// Add stats
 	filter := &taskstats.StatsFilter{}
-	assert.NoError(t, insertTaskStats(filter, 102, 100))
+	assert.NoError(t, insertTaskStats(t.Context(), filter, 102, 100))
 
 	stats, err := GetTaskStats(t.Context(), *filter)
 	assert.NoError(t, err)
@@ -47,7 +48,7 @@ func TestGetTaskStats(t *testing.T) {
 	proj := model.ProjectRef{
 		Id: "project",
 	}
-	require.NoError(t, proj.Insert())
+	require.NoError(t, proj.Insert(t.Context()))
 
 	stat := taskstats.DBTaskStats{
 		Id: taskstats.DBTaskStatsID{
@@ -57,12 +58,12 @@ func TestGetTaskStats(t *testing.T) {
 			Requester: evergreen.RepotrackerVersionRequester,
 		},
 	}
-	assert.NoError(t, db.Insert(taskstats.DailyTaskStatsCollection, stat))
+	assert.NoError(t, db.Insert(t.Context(), taskstats.DailyTaskStatsCollection, stat))
 	projectRef := model.ProjectRef{
 		Id:         "projectID",
 		Identifier: "projectName",
 	}
-	assert.NoError(t, projectRef.Insert())
+	assert.NoError(t, projectRef.Insert(t.Context()))
 
 	stats, err := GetTaskStats(t.Context(), taskstats.StatsFilter{
 		Project:      "projectName",
@@ -79,13 +80,13 @@ func TestGetTaskStats(t *testing.T) {
 	require.Len(t, stats, 1)
 }
 
-func insertTaskStats(filter *taskstats.StatsFilter, numTests int, limit int) error {
+func insertTaskStats(ctx context.Context, filter *taskstats.StatsFilter, numTests int, limit int) error {
 	day := time.Now()
 	tasks := []string{}
 	for i := 0; i < numTests; i++ {
 		taskName := fmt.Sprintf("%v%v", "task_", i)
 		tasks = append(tasks, taskName)
-		err := db.Insert(taskstats.DailyTaskStatsCollection, mgobson.M{
+		err := db.Insert(ctx, taskstats.DailyTaskStatsCollection, mgobson.M{
 			"_id": taskstats.DBTaskStatsID{
 				Project:      "project",
 				Requester:    "requester",

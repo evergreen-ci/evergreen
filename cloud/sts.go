@@ -76,7 +76,7 @@ const minAssumeRoleCacheLifetime = 2 * time.Minute
 // AssumeRole gets the credentials for a role as the given task. It handles
 // the AWS API call and generating the ExternalID for the request.
 func (s *stsManagerImpl) AssumeRole(ctx context.Context, taskID string, opts AssumeRoleOptions) (AssumeRoleCredentials, error) {
-	if err := s.client.Create(ctx, evergreen.DefaultEC2Region); err != nil {
+	if err := s.setupClient(ctx); err != nil {
 		return AssumeRoleCredentials{}, errors.Wrapf(err, "creating AWS client")
 	}
 	t, err := task.FindOneId(ctx, taskID)
@@ -121,9 +121,13 @@ func (s *stsManagerImpl) AssumeRole(ctx context.Context, taskID string, opts Ass
 	return creds, nil
 }
 
+func (s *stsManagerImpl) setupClient(ctx context.Context) error {
+	return s.client.Create(ctx, "", evergreen.DefaultEC2Region)
+}
+
 // GetCallerIdentityARN gets the caller identity's ARN.
 func (s *stsManagerImpl) GetCallerIdentityARN(ctx context.Context) (string, error) {
-	if err := s.client.Create(ctx, evergreen.DefaultEC2Region); err != nil {
+	if err := s.setupClient(ctx); err != nil {
 		return "", errors.Wrapf(err, "creating AWS client")
 	}
 	output, err := s.client.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})

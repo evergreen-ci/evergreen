@@ -20,7 +20,7 @@ func TestFindVolumesToDelete(t *testing.T) {
 		{ID: "v2", Expiration: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)},
 	}
 	for _, vol := range volumes {
-		require.NoError(t, vol.Insert())
+		require.NoError(t, vol.Insert(t.Context()))
 	}
 
 	toDelete, err := FindVolumesToDelete(t.Context(), time.Date(2010, time.November, 10, 23, 0, 0, 0, time.UTC))
@@ -40,7 +40,7 @@ func TestFindVolumesWithNoExpirationToExtend(t *testing.T) {
 	}
 
 	for _, vol := range volumes {
-		require.NoError(t, vol.Insert())
+		require.NoError(t, vol.Insert(t.Context()))
 	}
 
 	volumesToExtend, err := FindVolumesWithNoExpirationToExtend(t.Context())
@@ -58,7 +58,7 @@ func TestCountNoExpirationVolumesForUser(t *testing.T) {
 		{ID: "v2", CreatedBy: "me"},
 	}
 	for _, vol := range volumes {
-		require.NoError(t, vol.Insert())
+		require.NoError(t, vol.Insert(t.Context()))
 	}
 
 	count, err := CountNoExpirationVolumesForUser(t.Context(), "me")
@@ -75,7 +75,7 @@ func TestFindVolumesWithTerminatedHost(t *testing.T) {
 		{ID: "v2"}, // No host
 	}
 	for _, vol := range volumes {
-		require.NoError(t, vol.Insert())
+		require.NoError(t, vol.Insert(t.Context()))
 	}
 	hosts := []Host{
 		{Id: "real_host", Status: evergreen.HostStopped},

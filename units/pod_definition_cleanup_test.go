@@ -210,7 +210,7 @@ func TestPodDefinitionCleanupJob(t *testing.T) {
 				ID:           "pod_definition",
 				LastAccessed: time.Now().Add(-1000 * 24 * time.Hour),
 			}
-			require.NoError(t, pd.Insert())
+			require.NoError(t, pd.Insert(t.Context()))
 
 			j.Run(ctx)
 			assert.NoError(t, j.Error())

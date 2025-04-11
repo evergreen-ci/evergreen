@@ -15,7 +15,7 @@ type Intent interface {
 	ID() string
 
 	// Insert inserts a patch intent in the database.
-	Insert() error
+	Insert(ctx context.Context) error
 
 	// SetProcessed should be called by an amboy queue after creating a patch from an intent.
 	SetProcessed(ctx context.Context) error

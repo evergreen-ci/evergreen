@@ -1,16 +1,9 @@
 {
   waterfall(options: { projectIdentifier: "spruce", revision: "foobarbaz" }) {
-    versions {
-      version {
-        id
-        order
-        revision
-      }
-      inactiveVersions {
-        id
-        order
-        revision
-      }
+    flattenedVersions {
+      id
+      order
+      revision
     }
     pagination {
       nextPageOrder

@@ -52,7 +52,7 @@ func New(apiURL string) Config {
 			patchIds[i] = v.(string)
 		}
 
-		patches, err := patch.Find(patch.ByStringIds(patchIds))
+		patches, err := patch.Find(ctx, patch.ByStringIds(patchIds))
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patches '%s': %s", patchIds, err.Error()))
 		}
@@ -123,7 +123,8 @@ func New(apiURL string) Config {
 
 		// If directive is checking for create permissions, no distro ID is required.
 		if access == DistroSettingsAccessCreate {
-			if userHasDistroCreatePermission(user) {
+
+			if user.HasDistroCreatePermission() {
 				return next(ctx)
 			}
 			return nil, Forbidden.Send(ctx, fmt.Sprintf("user '%s' does not have create distro permissions", user.Username()))
@@ -275,7 +276,7 @@ func New(apiURL string) Config {
 
 		if requiredPermission == evergreen.PermissionProjectSettings && permissionInfo.Value == evergreen.ProjectSettingsView.Value {
 			// If we're trying to view a repo project, check if the user has view permission for any branch project instead.
-			hasPermission, err = model.UserHasRepoViewPermission(usr, projectId)
+			hasPermission, err = model.UserHasRepoViewPermission(ctx, usr, projectId)
 			if err != nil {
 				return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem checking repo view permission: %s", err.Error()))
 			}
@@ -311,7 +312,7 @@ func New(apiURL string) Config {
 		}
 
 		// In case this is a repo project, check if the user has view permission for any branch project instead.
-		hasPermission, err = model.UserHasRepoViewPermission(usr, projectId)
+		hasPermission, err = model.UserHasRepoViewPermission(ctx, usr, projectId)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem checking repo view permission: %s", err.Error()))
 		}

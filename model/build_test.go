@@ -32,12 +32,12 @@ func (s *BuildConnectorFetchByIdSuite) SetupSuite() {
 		{Id: "build1", Version: vId},
 		{Id: "build2", Version: vId},
 	}
-	s.NoError(version.Insert())
+	s.NoError(version.Insert(s.T().Context()))
 	for _, item := range builds {
-		s.Require().NoError(item.Insert())
+		s.Require().NoError(item.Insert(s.T().Context()))
 	}
 	projRef := ProjectRef{Repo: "project", Id: "branch"}
-	s.NoError(projRef.Insert())
+	s.NoError(projRef.Insert(s.T().Context()))
 }
 
 func (s *BuildConnectorFetchByIdSuite) TestFindById() {
@@ -89,11 +89,11 @@ func (s *BuildConnectorChangeStatusSuite) SetupSuite() {
 	build1 := &build.Build{Id: "build1", Version: vId, Tasks: []build.TaskCache{{Id: "task1"}}}
 	build2 := &build.Build{Id: "build2", Version: vId, Tasks: []build.TaskCache{{Id: "task2"}}}
 
-	s.NoError(task1.Insert())
-	s.NoError(task2.Insert())
-	s.NoError(build1.Insert())
-	s.NoError(build2.Insert())
-	s.NoError(version.Insert())
+	s.NoError(task1.Insert(s.T().Context()))
+	s.NoError(task2.Insert(s.T().Context()))
+	s.NoError(build1.Insert(s.T().Context()))
+	s.NoError(build2.Insert(s.T().Context()))
+	s.NoError(version.Insert(s.T().Context()))
 }
 
 func (s *BuildConnectorChangeStatusSuite) TestSetActivated() {
@@ -145,8 +145,8 @@ func (s *BuildConnectorAbortSuite) SetupSuite() {
 	version := &Version{Id: vId}
 	build1 := &build.Build{Id: "build1", Version: vId}
 
-	s.NoError(build1.Insert())
-	s.NoError(version.Insert())
+	s.NoError(build1.Insert(s.T().Context()))
+	s.NoError(version.Insert(s.T().Context()))
 }
 
 func (s *BuildConnectorAbortSuite) TestAbort() {
@@ -180,8 +180,8 @@ func (s *BuildConnectorRestartSuite) SetupSuite() {
 	version := &Version{Id: vId}
 	build1 := &build.Build{Id: "build1", Version: vId}
 
-	s.NoError(build1.Insert())
-	s.NoError(version.Insert())
+	s.NoError(build1.Insert(s.T().Context()))
+	s.NoError(version.Insert(s.T().Context()))
 }
 
 func (s *BuildConnectorRestartSuite) TestRestart() {

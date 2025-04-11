@@ -88,7 +88,7 @@ func (j *convertHostToLegacyProvisioningJob) Run(ctx context.Context) {
 				}
 			}
 
-			event.LogHostConvertingProvisioningError(j.host.Id, j.Error())
+			event.LogHostConvertingProvisioningError(ctx, j.host.Id, j.Error())
 			grip.Info(message.WrapError(j.Error(), message.Fields{
 				"message":  "failed to convert host to legacy provisioning",
 				"host_id":  j.host.Id,
@@ -129,7 +129,7 @@ func (j *convertHostToLegacyProvisioningJob) Run(ctx context.Context) {
 		return
 	}
 
-	event.LogHostConvertedProvisioning(j.host.Id, j.host.Distro.BootstrapSettings.Method)
+	event.LogHostConvertedProvisioning(ctx, j.host.Id, j.host.Distro.BootstrapSettings.Method)
 
 	grip.Info(message.Fields{
 		"message": "successfully converted host from non-legacy to legacy provisioning",

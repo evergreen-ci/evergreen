@@ -73,7 +73,7 @@ func (j *userDataDoneJob) Run(ctx context.Context) {
 
 	defer func() {
 		if j.HasErrors() && j.IsLastAttempt() {
-			event.LogHostProvisionFailed(j.HostID, j.Error().Error())
+			event.LogHostProvisionFailed(ctx, j.HostID, j.Error().Error())
 			grip.Error(message.WrapError(j.Error(), message.Fields{
 				"message":         "provisioning failed",
 				"operation":       "user-data-done",

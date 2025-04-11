@@ -59,13 +59,13 @@ func (s *VersionConnectorSuite) SetupTest() {
 	}
 
 	for _, item := range versions {
-		s.Require().NoError(item.Insert())
+		s.Require().NoError(item.Insert(s.T().Context()))
 	}
 	for _, item := range tasks {
-		s.Require().NoError(item.Insert())
+		s.Require().NoError(item.Insert(s.T().Context()))
 	}
 	for _, item := range builds {
-		s.Require().NoError(item.Insert())
+		s.Require().NoError(item.Insert(s.T().Context()))
 	}
 }
 
@@ -79,7 +79,7 @@ func (s *VersionConnectorSuite) TestGetVersionsAndVariants() {
 	projRef := model.ProjectRef{
 		Id: "proj",
 	}
-	s.NoError(projRef.Insert())
+	s.NoError(projRef.Insert(s.T().Context()))
 	proj := model.Project{
 		Identifier: projRef.Id,
 		BuildVariants: model.BuildVariants{
@@ -111,8 +111,8 @@ func (s *VersionConnectorSuite) TestGetVersionsAndVariants() {
 		Requester:           evergreen.RepotrackerVersionRequester,
 		Message:             "I am v2",
 	}
-	s.NoError(v2.Insert())
-	s.NoError(v1.Insert())
+	s.NoError(v2.Insert(s.T().Context()))
+	s.NoError(v1.Insert(s.T().Context()))
 	b11 := build.Build{
 		Id:           "b11",
 		Activated:    true,
@@ -125,7 +125,7 @@ func (s *VersionConnectorSuite) TestGetVersionsAndVariants() {
 			{Id: "t112"},
 		},
 	}
-	s.NoError(b11.Insert())
+	s.NoError(b11.Insert(s.T().Context()))
 	b12 := build.Build{
 		Id:           "b12",
 		Activated:    true,
@@ -138,7 +138,7 @@ func (s *VersionConnectorSuite) TestGetVersionsAndVariants() {
 			{Id: "t122"},
 		},
 	}
-	s.NoError(b12.Insert())
+	s.NoError(b12.Insert(s.T().Context()))
 	b21 := build.Build{
 		Id:           "b21",
 		Version:      v2.Id,
@@ -150,7 +150,7 @@ func (s *VersionConnectorSuite) TestGetVersionsAndVariants() {
 			{Id: "t212"},
 		},
 	}
-	s.NoError(b21.Insert())
+	s.NoError(b21.Insert(s.T().Context()))
 	b22 := build.Build{
 		Id:           "b22",
 		Version:      v2.Id,
@@ -162,7 +162,7 @@ func (s *VersionConnectorSuite) TestGetVersionsAndVariants() {
 			{Id: "t222"},
 		},
 	}
-	s.NoError(b22.Insert())
+	s.NoError(b22.Insert(s.T().Context()))
 	tasks := []task.Task{
 		{
 			Id:        "t111",
@@ -228,7 +228,7 @@ func (s *VersionConnectorSuite) TestGetVersionsAndVariants() {
 		},
 	}
 	for _, t := range tasks {
-		s.NoError(t.Insert())
+		s.NoError(t.Insert(s.T().Context()))
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -275,7 +275,7 @@ func TestCreateVersionFromConfig(t *testing.T) {
 	ref := model.ProjectRef{
 		Id: "mci",
 	}
-	assert.NoError(ref.Insert())
+	assert.NoError(ref.Insert(t.Context()))
 	d := distro.Distro{
 		Id: "d",
 	}
@@ -284,7 +284,7 @@ func TestCreateVersionFromConfig(t *testing.T) {
 		Id:          "u",
 		PatchNumber: 5,
 	}
-	assert.NoError(u.Insert())
+	assert.NoError(u.Insert(t.Context()))
 	config1 := `{
 			"stepback": true,
 			"buildvariants": [{

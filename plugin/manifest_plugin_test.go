@@ -26,7 +26,7 @@ func TestManifest(t *testing.T) {
 			URL:      "randomurl.com",
 		}
 
-		dup, err := m.TryInsert()
+		dup, err := m.TryInsert(t.Context())
 		So(dup, ShouldBeFalse)
 		So(err, ShouldBeNil)
 
@@ -36,7 +36,7 @@ func TestManifest(t *testing.T) {
 				ProjectName: "this_shouldn't_insert",
 				Modules:     map[string]*manifest.Module{},
 			}
-			dup, err = badManifest.TryInsert()
+			dup, err = badManifest.TryInsert(t.Context())
 			So(dup, ShouldBeTrue)
 			So(err, ShouldBeNil)
 		})

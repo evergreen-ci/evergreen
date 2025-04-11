@@ -17,7 +17,7 @@ import (
 )
 
 func checkSpawnHostModificationEvent(t *testing.T, hostID, expectedEvent string, expectedSuccess bool) {
-	events, err := event.FindAllByResourceID(hostID)
+	events, err := event.FindAllByResourceID(t.Context(), hostID)
 	require.NoError(t, err)
 
 	var foundEvent bool

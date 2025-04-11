@@ -126,7 +126,7 @@ func (h *distroIDChangeSetupHandler) Run(ctx context.Context) gimlet.Responder {
 	if err = data.UpdateDistro(ctx, d, d); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "updating distro '%s'", h.distroID))
 	}
-	event.LogDistroModified(h.distroID, usr.Username(), oldDistro.DistroData(), d.DistroData())
+	event.LogDistroModified(ctx, h.distroID, usr.Username(), oldDistro.DistroData(), d.DistroData())
 
 	apiDistro := &model.APIDistro{}
 	apiDistro.BuildFromService(*d)
@@ -224,9 +224,9 @@ func (h *distroIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 		if err = data.UpdateDistro(ctx, original, newDistro); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "updating existing distro '%s'", h.distroID))
 		}
-		event.LogDistroModified(h.distroID, user.Username(), original.DistroData(), newDistro.DistroData())
+		event.LogDistroModified(ctx, h.distroID, user.Username(), original.DistroData(), newDistro.DistroData())
 		if newDistro.GetDefaultAMI() != original.GetDefaultAMI() {
-			event.LogDistroAMIModified(h.distroID, user.Username())
+			event.LogDistroAMIModified(ctx, h.distroID, user.Username())
 		}
 		return gimlet.NewJSONResponse(struct{}{})
 	}
@@ -453,9 +453,9 @@ func (h *distroIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	if err = data.UpdateDistro(ctx, old, d); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "updating distro '%s'", h.distroID))
 	}
-	event.LogDistroModified(h.distroID, user.Username(), old.DistroData(), d.DistroData())
+	event.LogDistroModified(ctx, h.distroID, user.Username(), old.DistroData(), d.DistroData())
 	if d.GetDefaultAMI() != old.GetDefaultAMI() {
-		event.LogDistroAMIModified(h.distroID, user.Username())
+		event.LogDistroAMIModified(ctx, h.distroID, user.Username())
 	}
 	return gimlet.NewJSONResponse(apiDistro)
 }

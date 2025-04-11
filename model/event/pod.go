@@ -1,6 +1,7 @@
 package event
 
 import (
+	"context"
 	"time"
 
 	"github.com/mongodb/grip"
@@ -45,7 +46,7 @@ type PodData struct {
 }
 
 // LogPodEvent logs an event for a pod to the event log.
-func LogPodEvent(id string, kind PodEventType, data PodData) {
+func LogPodEvent(ctx context.Context, id string, kind PodEventType, data PodData) {
 	e := EventLogEntry{
 		Timestamp:    time.Now(),
 		ResourceId:   id,
@@ -54,7 +55,7 @@ func LogPodEvent(id string, kind PodEventType, data PodData) {
 		Data:         data,
 	}
 
-	if err := e.Log(); err != nil {
+	if err := e.Log(ctx); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":    "failed to log pod event",
 			"pod":        id,
@@ -67,8 +68,8 @@ func LogPodEvent(id string, kind PodEventType, data PodData) {
 
 // LogPodStatusChanged logs an event indicating that the pod's status has been
 // updated.
-func LogPodStatusChanged(id, oldStatus, newStatus, reason string) {
-	LogPodEvent(id, EventPodStatusChange, PodData{
+func LogPodStatusChanged(ctx context.Context, id, oldStatus, newStatus, reason string) {
+	LogPodEvent(ctx, id, EventPodStatusChange, PodData{
 		OldStatus: oldStatus,
 		NewStatus: newStatus,
 		Reason:    reason,
@@ -77,12 +78,12 @@ func LogPodStatusChanged(id, oldStatus, newStatus, reason string) {
 
 // LogPodAssignedTask logs an event indicating that the pod has been assigned a
 // task to run.
-func LogPodAssignedTask(id, taskID string, execution int) {
-	LogPodEvent(id, EventPodAssignedTask, PodData{TaskID: taskID, TaskExecution: execution})
+func LogPodAssignedTask(ctx context.Context, id, taskID string, execution int) {
+	LogPodEvent(ctx, id, EventPodAssignedTask, PodData{TaskID: taskID, TaskExecution: execution})
 }
 
 // LogPodRunningTaskCleared logs an event indicating that the pod's current
 // running task has been cleared, so it is no longer assigned to run the task.
-func LogPodRunningTaskCleared(id, taskID string, execution int) {
-	LogPodEvent(id, EventPodClearedTask, PodData{TaskID: taskID, TaskExecution: execution})
+func LogPodRunningTaskCleared(ctx context.Context, id, taskID string, execution int) {
+	LogPodEvent(ctx, id, EventPodClearedTask, PodData{TaskID: taskID, TaskExecution: execution})
 }

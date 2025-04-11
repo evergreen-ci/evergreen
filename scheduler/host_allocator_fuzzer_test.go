@@ -119,7 +119,7 @@ func (s *HostAllocatorFuzzerSuite) randomizeData() {
 			BuildVariant:     "bv1",
 			StartTime:        time.Now().Add(-1 * time.Duration(offset) * time.Minute),
 		}
-		s.NoError(t.Insert())
+		s.NoError(t.Insert(s.ctx))
 		// add up the fraction of hosts free for comparison later
 		fractionFree := float64(time.Duration(offset)*time.Minute) / float64(evergreen.MaxDurationPerDistroHost)
 		if fractionFree > 1 {

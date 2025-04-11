@@ -270,7 +270,7 @@ func getChildPatchesData(ctx context.Context, p patch.Patch) ([]DownstreamTasks,
 	if len(p.Triggers.ChildPatches) <= 0 {
 		return nil, nil, nil
 	}
-	childPatches, err := patch.Find(patch.ByStringIds(p.Triggers.ChildPatches))
+	childPatches, err := patch.Find(ctx, patch.ByStringIds(p.Triggers.ChildPatches))
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "getting child patches")
 	}

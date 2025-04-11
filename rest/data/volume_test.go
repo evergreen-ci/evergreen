@@ -27,7 +27,7 @@ func TestMigrateVolume(t *testing.T) {
 	for tName, tCase := range map[string]func(t *testing.T, ctx context.Context, env *mock.Environment, h *host.Host, v *host.Volume, options *restModel.HostRequestOptions, user *user.DBUser){
 		"StartsJob": func(t *testing.T, ctx context.Context, env *mock.Environment, h *host.Host, v *host.Volume, options *restModel.HostRequestOptions, user *user.DBUser) {
 			require.NoError(t, h.Insert(ctx))
-			require.NoError(t, v.Insert())
+			require.NoError(t, v.Insert(t.Context()))
 
 			jobStarted, err := MigrateVolume(ctx, v.ID, options, user, env)
 			assert.NoError(t, err)
@@ -36,7 +36,7 @@ func TestMigrateVolume(t *testing.T) {
 		},
 		"FailsWithoutKey": func(t *testing.T, ctx context.Context, env *mock.Environment, h *host.Host, v *host.Volume, options *restModel.HostRequestOptions, user *user.DBUser) {
 			require.NoError(t, h.Insert(ctx))
-			require.NoError(t, v.Insert())
+			require.NoError(t, v.Insert(t.Context()))
 
 			options.KeyName = ""
 			jobStarted, err := MigrateVolume(ctx, v.ID, options, user, env)
@@ -64,7 +64,7 @@ func TestMigrateVolume(t *testing.T) {
 				Name: testPublicKeyName,
 				Key:  testPublicKey,
 			})
-			require.NoError(t, testUser.Insert())
+			require.NoError(t, testUser.Insert(t.Context()))
 
 			options := &restmodel.HostRequestOptions{
 				DistroID:     d.Id,

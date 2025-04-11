@@ -87,7 +87,7 @@ func DeleteDistroById(ctx context.Context, u *user.DBUser, distroId string) erro
 		}
 	}
 
-	event.LogDistroRemoved(d.Id, u.Username(), d.DistroData())
+	event.LogDistroRemoved(ctx, d.Id, u.Username(), d.DistroData())
 	return nil
 }
 
@@ -169,6 +169,6 @@ func NewDistro(ctx context.Context, d *distro.Distro, u *user.DBUser) error {
 		}
 	}
 
-	event.LogDistroAdded(d.Id, u.Username(), d.DistroData())
+	event.LogDistroAdded(ctx, d.Id, u.Username(), d.DistroData())
 	return nil
 }

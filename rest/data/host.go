@@ -57,7 +57,7 @@ func NewIntentHost(ctx context.Context, options *restmodel.HostRequestOptions, u
 	if err := intentHost.Insert(ctx); err != nil {
 		return nil, err
 	}
-	event.LogHostCreated(intentHost.Id)
+	event.LogHostCreated(ctx, intentHost.Id)
 	grip.Info(message.Fields{
 		"message":  "inserted intent host",
 		"host_id":  intentHost.Id,
@@ -398,7 +398,7 @@ func transitionIntentHostToStarting(ctx context.Context, env evergreen.Environme
 		return errors.Wrap(err, "replacing intent host with real host")
 	}
 
-	event.LogHostStartSucceeded(hostToStart.Id, evergreen.User)
+	event.LogHostStartSucceeded(ctx, hostToStart.Id, evergreen.User)
 
 	return nil
 }
@@ -422,7 +422,7 @@ func transitionIntentHostToDecommissioned(ctx context.Context, env evergreen.Env
 		return errors.Wrap(err, "replacing intent host with real host")
 	}
 
-	event.LogHostStatusChanged(hostToDecommission.Id, oldStatus, hostToDecommission.Status, evergreen.User, "host started agent but intent host is already considered a failure")
+	event.LogHostStatusChanged(ctx, hostToDecommission.Id, oldStatus, hostToDecommission.Status, evergreen.User, "host started agent but intent host is already considered a failure")
 	grip.Info(message.Fields{
 		"message":    "intent host decommissioned",
 		"host_id":    hostToDecommission.Id,

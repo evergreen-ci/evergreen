@@ -196,7 +196,7 @@ func setupUsers(t *testing.T) {
 			"repo_sandbox",
 		},
 	}
-	assert.NoError(t, adminUsr.Insert())
+	assert.NoError(t, adminUsr.Insert(t.Context()))
 
 	// Privileged user has admin project and distro access, but is not a superuser.
 	privilegedUsr := user.DBUser{
@@ -222,7 +222,7 @@ func setupUsers(t *testing.T) {
 			"project_happyAbyssinian",
 		},
 	}
-	assert.NoError(t, privilegedUsr.Insert())
+	assert.NoError(t, privilegedUsr.Insert(t.Context()))
 
 	// Regular user only has basic project and distro access.
 	regularUser := user.DBUser{
@@ -247,7 +247,7 @@ func setupUsers(t *testing.T) {
 			evergreen.BasicDistroAccessRole,
 		},
 	}
-	assert.NoError(t, regularUser.Insert())
+	assert.NoError(t, regularUser.Insert(t.Context()))
 }
 
 func setupScopesAndRoles(t *testing.T, state *AtomicGraphQLState) {
@@ -639,7 +639,7 @@ func spawnTestHostAndVolume(t *testing.T) {
 		Host:             "i-1104943f",
 		HomeVolume:       true,
 	}
-	require.NoError(t, mountedVolume.Insert())
+	require.NoError(t, mountedVolume.Insert(t.Context()))
 	h := host.Host{
 		Id:     "i-1104943f",
 		Host:   "i-1104943f",

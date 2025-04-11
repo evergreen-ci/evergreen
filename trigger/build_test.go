@@ -47,7 +47,7 @@ func (s *buildSuite) SetupTest() {
 		Status:              evergreen.BuildCreated,
 		RevisionOrderNumber: 2,
 	}
-	s.NoError(s.build.Insert())
+	s.NoError(s.build.Insert(s.ctx))
 
 	s.data = &event.BuildEventData{
 		Status: evergreen.BuildCreated,
@@ -292,7 +292,7 @@ func (s *buildSuite) TestBuildRuntimeChange() {
 		Status:              evergreen.BuildSucceeded,
 		Requester:           evergreen.RepotrackerVersionRequester,
 	}
-	s.NoError(lastGreen.Insert())
+	s.NoError(lastGreen.Insert(s.ctx))
 	n, err = s.t.buildRuntimeChange(s.ctx, &s.subs[4])
 	s.NoError(err)
 	s.NotNil(n)

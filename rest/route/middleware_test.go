@@ -52,13 +52,13 @@ func TestPrefetchProject(t *testing.T) {
 	doc := &model.ProjectRef{
 		Id: "mci",
 	}
-	require.NoError(t, doc.Insert())
+	require.NoError(t, doc.Insert(t.Context()))
 	patchDoc := &patch.Patch{
 		Id: bson.ObjectIdHex("aabbccddeeff112233445566"),
 	}
-	require.NoError(t, patchDoc.Insert())
+	require.NoError(t, patchDoc.Insert(t.Context()))
 	testUser := &user.DBUser{Id: "test_user"}
-	require.NoError(t, testUser.Insert())
+	require.NoError(t, testUser.Insert(t.Context()))
 	Convey("When there is a data and a request", t, func() {
 		req, err := http.NewRequest(http.MethodGet, "/", nil)
 		So(err, ShouldBeNil)
@@ -200,8 +200,8 @@ func TestTaskAuthMiddleware(t *testing.T) {
 		Id:     "host1",
 		Secret: "abcdef",
 	}
-	assert.NoError(task1.Insert())
-	assert.NoError(completedTask.Insert())
+	assert.NoError(task1.Insert(t.Context()))
+	assert.NoError(completedTask.Insert(t.Context()))
 	assert.NoError(host1.Insert(ctx))
 	m := NewTaskAuthMiddleware()
 	r := &http.Request{
@@ -392,7 +392,7 @@ func TestPodAuthMiddleware(t *testing.T) {
 					},
 				},
 			}
-			require.NoError(t, p.Insert())
+			require.NoError(t, p.Insert(t.Context()))
 
 			testCase(t, p, httptest.NewRecorder())
 		})
@@ -550,7 +550,7 @@ func TestPodOrHostAuthMiddleware(t *testing.T) {
 				Secret: "secret",
 			}
 			require.NoError(t, h.Insert(ctx))
-			require.NoError(t, p.Insert())
+			require.NoError(t, p.Insert(t.Context()))
 
 			testCase(t, p, h, httptest.NewRecorder())
 		})
@@ -600,8 +600,8 @@ func TestProjectViewPermission(t *testing.T) {
 	unrestrictedProject := model.ProjectRef{
 		Id: "unrestrictedProject",
 	}
-	assert.NoError(restrictedProject.Insert())
-	assert.NoError(unrestrictedProject.Insert())
+	assert.NoError(restrictedProject.Insert(t.Context()))
+	assert.NoError(unrestrictedProject.Insert(t.Context()))
 	permissionMiddleware := RequiresProjectPermission(evergreen.PermissionTasks, evergreen.TasksView)
 	checkPermission := func(rw http.ResponseWriter, r *http.Request) {
 		permissionMiddleware.ServeHTTP(rw, r, counterFunc)
@@ -715,7 +715,7 @@ func TestEventLogPermission(t *testing.T) {
 	proj1 := model.ProjectRef{
 		Id: "proj1",
 	}
-	assert.NoError(proj1.Insert())
+	assert.NoError(proj1.Insert(t.Context()))
 	distro1 := distro.Distro{
 		Id: "distro1",
 	}

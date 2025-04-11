@@ -126,9 +126,9 @@ func UpdateSettings(ctx context.Context, dbUser *user.DBUser, settings user.User
 	return dbUser.UpdateSettings(ctx, settings)
 }
 
-func SubmitFeedback(in restModel.APIFeedbackSubmission) error {
+func SubmitFeedback(ctx context.Context, in restModel.APIFeedbackSubmission) error {
 	f, _ := in.ToService()
-	return errors.Wrap(f.Insert(), "error saving feedback")
+	return errors.Wrap(f.Insert(ctx), "error saving feedback")
 }
 
 func GetServiceUsers(ctx context.Context) ([]restModel.APIDBUser, error) {

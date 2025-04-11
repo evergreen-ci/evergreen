@@ -41,7 +41,7 @@ func TestUpsertOneFromExisting(t *testing.T) {
 		SystemRoles: []string{"different"},
 		PatchNumber: 1,
 	}
-	assert.NoError(t, db.Insert(Collection, existingUsr))
+	assert.NoError(t, db.Insert(t.Context(), Collection, existingUsr))
 	newUsr, err = UpsertOneFromExisting(t.Context(), oldUsr, "newly.created@new.com")
 	assert.NoError(t, err)
 	assert.Equal(t, "newly.created", newUsr.Id)

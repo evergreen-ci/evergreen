@@ -35,7 +35,7 @@ func NotificationsFromEvent(ctx context.Context, e *event.EventLogEntry) ([]noti
 		return nil, errors.Wrapf(err, "fetching data for event '%s' (resource type: '%s', event type: '%s')", e.ID, e.ResourceType, e.EventType)
 	}
 
-	subscriptions, err := event.FindSubscriptionsByAttributes(e.ResourceType, h.Attributes())
+	subscriptions, err := event.FindSubscriptionsByAttributes(ctx, e.ResourceType, h.Attributes())
 	subIDs := make([]string, 0, len(subscriptions))
 	for _, sub := range subscriptions {
 		subIDs = append(subIDs, sub.ID)

@@ -44,7 +44,7 @@ func TestFindPushLogAfter(t *testing.T) {
 			}
 
 			pushLog := NewPushLog(versionOne, task, fileLoc)
-			So(pushLog.Insert(), ShouldBeNil)
+			So(pushLog.Insert(t.Context()), ShouldBeNil)
 
 			versionTwo := &Version{
 				Id:                  "versionIdTwo",
@@ -70,7 +70,7 @@ func TestFindPushLogAfter(t *testing.T) {
 			}
 
 			pushLog := NewPushLog(versionOne, task, fileLoc)
-			So(pushLog.Insert(), ShouldBeNil)
+			So(pushLog.Insert(t.Context()), ShouldBeNil)
 
 			pushLog, err := FindPushLogAfter(t.Context(), fileLoc, versionOne.RevisionOrderNumber)
 			So(err, ShouldBeNil)
@@ -91,7 +91,7 @@ func TestFindPushLogAfter(t *testing.T) {
 			}
 
 			pushLog := NewPushLog(versionOne, task, fileLoc)
-			So(pushLog.Insert(), ShouldBeNil)
+			So(pushLog.Insert(t.Context()), ShouldBeNil)
 
 			versionTwo := &Version{
 				Id:                  "versionIdTwo",

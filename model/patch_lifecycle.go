@@ -87,7 +87,7 @@ func ValidateTVPairs(p *Project, in []TVPair) error {
 // Given a patch version and a list of variant/task pairs, creates the set of new builds that
 // do not exist yet out of the set of pairs, and adds tasks for builds which already exist.
 func addNewTasksAndBuildsForPatch(ctx context.Context, creationInfo TaskCreationInfo, caller string) error {
-	existingBuilds, err := build.Find(build.ByIds(creationInfo.Version.BuildIds).WithFields(build.IdKey, build.BuildVariantKey, build.CreateTimeKey, build.RequesterKey))
+	existingBuilds, err := build.Find(ctx, build.ByIds(creationInfo.Version.BuildIds).WithFields(build.IdKey, build.BuildVariantKey, build.CreateTimeKey, build.RequesterKey))
 	if err != nil {
 		return err
 	}
@@ -959,7 +959,7 @@ func CancelPatch(ctx context.Context, p *patch.Patch, reason task.AbortInfo) err
 // which are abortable will be aborted, while completed tasks will not be
 // affected.
 func AbortPatchesWithGithubPatchData(ctx context.Context, createdBefore time.Time, closed bool, newPatch, owner, repo string, prNumber int) error {
-	patches, err := patch.Find(patch.ByGithubPRAndCreatedBefore(createdBefore, owner, repo, prNumber))
+	patches, err := patch.Find(ctx, patch.ByGithubPRAndCreatedBefore(createdBefore, owner, repo, prNumber))
 	if err != nil {
 		return errors.Wrap(err, "fetching initial patch")
 	}

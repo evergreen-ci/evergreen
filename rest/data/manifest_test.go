@@ -19,7 +19,7 @@ func TestGetManifestByTask(t *testing.T) {
 	}()
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, tsk *task.Task, mfest *manifest.Manifest){
 		"Succeeds": func(ctx context.Context, t *testing.T, tsk *task.Task, mfest *manifest.Manifest) {
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(t.Context()))
 			require.NoError(t, mfest.InsertWithContext(ctx))
 			dbManifest, err := GetManifestByTask(ctx, tsk.Id)
 			require.NoError(t, err)
@@ -36,7 +36,7 @@ func TestGetManifestByTask(t *testing.T) {
 			assert.Zero(t, dbManifest)
 		},
 		"FailsWithNonexistentManifest": func(ctx context.Context, t *testing.T, tsk *task.Task, mfest *manifest.Manifest) {
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(t.Context()))
 			dbManifest, err := GetManifestByTask(ctx, tsk.Id)
 			assert.Error(t, err)
 			gimErr, ok := err.(gimlet.ErrorResponse)

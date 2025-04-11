@@ -191,9 +191,9 @@ func (h *buildsForVersionHandler) Run(ctx context.Context) gimlet.Responder {
 	var err error
 
 	if h.variant == "" {
-		builds, err = build.Find(build.ByVersion(h.versionId))
+		builds, err = build.Find(ctx, build.ByVersion(h.versionId))
 	} else {
-		builds, err = build.Find(build.ByVersionAndVariant(h.versionId, h.variant))
+		builds, err = build.Find(ctx, build.ByVersionAndVariant(h.versionId, h.variant))
 	}
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "getting builds"))

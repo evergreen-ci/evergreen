@@ -505,7 +505,7 @@ func TestECSSNSHandleNotification(t *testing.T) {
 					ExternalID: taskARN,
 				},
 			}
-			require.NoError(t, podToCreate.Insert())
+			require.NoError(t, podToCreate.Insert(t.Context()))
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
 			q, err := queue.NewLocalLimitedSizeSerializable(1, 1)
