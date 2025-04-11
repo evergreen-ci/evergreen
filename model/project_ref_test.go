@@ -1989,7 +1989,7 @@ func TestCreateNewRepoRef(t *testing.T) {
 	assert.NotContains(t, repoRef.Admins, "bob")
 	assert.NotContains(t, repoRef.Admins, "other bob")
 	assert.Contains(t, repoRef.Admins, "me")
-	users, err := user.FindByRole(GetRepoAdminRole(repoRef.Id))
+	users, err := user.FindByRole(t.Context(), GetRepoAdminRole(repoRef.Id))
 	assert.NoError(t, err)
 	require.Len(t, users, 1)
 	assert.Equal(t, "me", users[0].Id)

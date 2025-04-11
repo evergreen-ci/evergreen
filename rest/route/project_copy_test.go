@@ -121,7 +121,7 @@ func (s *ProjectCopySuite) TestCopyToNewProject() {
 	s.Require().Len(newProject.Admins, 2)
 	s.Contains(utility.FromStringPtrSlice(newProject.Admins), "my-user")
 	s.Contains(utility.FromStringPtrSlice(newProject.Admins), "me")
-	usrs, err := user.FindByRole(model.GetProjectAdminRole(utility.FromStringPtr(newProject.Id)))
+	usrs, err := user.FindByRole(s.T().Context(), model.GetProjectAdminRole(utility.FromStringPtr(newProject.Id)))
 	s.NoError(err)
 	s.Len(usrs, 2)
 
