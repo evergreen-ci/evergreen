@@ -954,9 +954,9 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 
 	maxOrderOpt := utility.FromIntPtr(options.MaxOrder)
 	minOrderOpt := utility.FromIntPtr(options.MinOrder)
-	revision := utility.FromStringPtr(options.Revision)
 
 	if options.Revision != nil {
+		revision := utility.FromStringPtr(options.Revision)
 		order, err := getRevisionOrder(ctx, revision, projectId, limit)
 		if err != nil {
 			graphql.AddError(ctx, PartialError.Send(ctx, err.Error()))
@@ -965,15 +965,11 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 		}
 	} else if options.Date != nil {
 		date := utility.FromTimePtr(options.Date)
-		// Use the end of the provided date to find the most recent version created on or before it
-		eod := time.Date(date.Year(), date.Month(), date.Day(), 23, 59, 59, 0, date.Location())
-		found, err := model.VersionFindOne(ctx, model.VersionByProjectIdAndCreateTime(projectId, eod))
+		order, err := getDateOrder(ctx, date, projectId)
 		if err != nil {
-			graphql.AddError(ctx, PartialError.Send(ctx, fmt.Sprintf("getting version on or before date '%s': %s", eod.Format(time.DateOnly), err.Error())))
-		} else if found == nil {
-			graphql.AddError(ctx, PartialError.Send(ctx, fmt.Sprintf("version on or before date '%s' not found", eod.Format(time.DateOnly))))
+			graphql.AddError(ctx, PartialError.Send(ctx, err.Error()))
 		} else {
-			maxOrderOpt = found.RevisionOrderNumber + 1
+			maxOrderOpt = order
 		}
 	}
 

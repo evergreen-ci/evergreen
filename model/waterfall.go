@@ -65,17 +65,17 @@ func getBuildDisplayNames(match bson.M) bson.M {
 		"$unionWith": bson.M{
 			"coll": VersionCollection,
 			"pipeline": []bson.M{
-				bson.M{"$match": match},
-				bson.M{"$sort": bson.M{VersionRevisionOrderNumberKey: -1}},
-				bson.M{"$limit": MaxWaterfallVersionLimit},
-				bson.M{
+				{"$match": match},
+				{"$sort": bson.M{VersionRevisionOrderNumberKey: -1}},
+				{"$limit": MaxWaterfallVersionLimit},
+				{
 					"$lookup": bson.M{
 						"from":         build.Collection,
 						"localField":   bsonutil.GetDottedKeyName(VersionBuildVariantsKey, VersionBuildStatusIdKey),
 						"foreignField": build.IdKey,
 						"as":           VersionBuildVariantsKey,
 						"pipeline": []bson.M{
-							bson.M{
+							{
 								"$project": bson.M{
 									build.DisplayNameKey:           1,
 									VersionBuildStatusActivatedKey: 1,
@@ -104,13 +104,14 @@ func getBuildVariantFilterPipeline(ctx context.Context, variants []string, match
 
 	// TODO DEVPROD-15118: Delete conditional getBuildDisplayNames check
 	searchOrder := max(versionSearchCutoff, 1)
-	lastSearchableVersion, err := VersionFindOne(ctx, VersionByProjectIdAndOrder(projectId, searchOrder))
+	lastSearchableVersion, err := VersionFindOne(ctx, VersionByProjectIdAndOrder(projectId, searchOrder).WithFields(VersionCreateTimeKey))
 	if err != nil {
 		return []bson.M{}, errors.Wrap(err, "fetching version")
 	}
 
 	buildVariantStatusDate := time.Date(2025, time.February, 7, 0, 0, 0, 0, time.UTC)
 	if lastSearchableVersion != nil && lastSearchableVersion.CreateTime.Before(buildVariantStatusDate) {
+		// Add display names to Version.BuildVariants array.
 		pipeline = append(pipeline, getBuildDisplayNames(matchCopy))
 	}
 	pipeline = append(pipeline, bson.M{"$sort": bson.M{VersionRevisionOrderNumberKey: -1}})
@@ -122,13 +123,14 @@ func getBuildVariantFilterPipeline(ctx context.Context, variants []string, match
 				"$elemMatch": bson.M{
 					VersionBuildStatusActivatedKey: true,
 					"$or": []bson.M{
-						bson.M{VersionBuildStatusVariantKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
-						bson.M{VersionBuildStatusDisplayNameKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
+						{VersionBuildStatusVariantKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
+						{VersionBuildStatusDisplayNameKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
 					},
 				},
 			},
 		},
 	})
+	pipeline = append(pipeline, bson.M{"$project": bson.M{VersionBuildVariantsKey: 0}})
 	return pipeline, nil
 }
 
@@ -219,6 +221,7 @@ func GetActiveVersionsByTaskFilters(ctx context.Context, projectId string, opts 
 			"newRoot": bson.M{"$arrayElemAt": bson.A{"$" + versionLookupKey, 0}},
 		},
 	})
+	pipeline = append(pipeline, bson.M{"$project": bson.M{VersionBuildVariantsKey: 0}})
 
 	res := []Version{}
 	env := evergreen.GetEnvironment()
@@ -298,8 +301,8 @@ func GetActiveWaterfallVersions(ctx context.Context, projectId string, opts Wate
 	} else {
 		pipeline = append(pipeline, bson.M{"$sort": bson.M{VersionRevisionOrderNumberKey: -1}})
 		pipeline = append(pipeline, bson.M{"$limit": opts.Limit})
-
 	}
+	pipeline = append(pipeline, bson.M{"$project": bson.M{VersionBuildVariantsKey: 0}})
 
 	res := []Version{}
 	env := evergreen.GetEnvironment()
@@ -341,6 +344,7 @@ func GetAllWaterfallVersions(ctx context.Context, projectId string, minOrder int
 	pipeline := []bson.M{{"$match": match}}
 	pipeline = append(pipeline, bson.M{"$sort": bson.M{VersionRevisionOrderNumberKey: -1}})
 	pipeline = append(pipeline, bson.M{"$limit": MaxWaterfallVersionLimit})
+	pipeline = append(pipeline, bson.M{"$project": bson.M{VersionBuildVariantsKey: 0}})
 
 	res := []Version{}
 	env := evergreen.GetEnvironment()
@@ -357,7 +361,7 @@ func GetAllWaterfallVersions(ctx context.Context, projectId string, minOrder int
 
 func getVersionTasksPipeline() []bson.M {
 	return []bson.M{
-		bson.M{
+		{
 			"$lookup": bson.M{
 				"from":         build.Collection,
 				"localField":   buildsKey,
@@ -365,13 +369,9 @@ func getVersionTasksPipeline() []bson.M {
 				"as":           buildsKey,
 			},
 		},
-		bson.M{
-			"$unwind": bson.M{
-				"path": "$" + buildsKey,
-			},
-		},
+		{"$unwind": bson.M{"path": "$" + buildsKey}},
 		// Join all tasks that appear in the build's task cache and overwrite the list of task IDs with partial task documents
-		bson.M{
+		{
 			"$lookup": bson.M{
 				"from":         task.Collection,
 				"localField":   bsonutil.GetDottedKeyName(buildsKey, build.TasksKey, build.TaskCacheIdKey),
@@ -394,9 +394,7 @@ func getVersionTasksPipeline() []bson.M {
 							task.StatusKey:             1,
 						},
 					},
-					{
-						"$sort": bson.M{task.DisplayNameKey: 1},
-					},
+					{"$sort": bson.M{task.DisplayNameKey: 1}},
 				},
 				"as": bsonutil.GetDottedKeyName(buildsKey, build.TasksKey),
 			},
@@ -409,17 +407,12 @@ func GetVersionBuilds(ctx context.Context, versionId string) ([]WaterfallBuild, 
 	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{attribute.String(evergreen.AggregationNameOtelAttribute, "GetVersionBuilds")})
 
 	pipeline := []bson.M{{"$match": bson.M{VersionIdKey: versionId}}}
+	pipeline = append(pipeline, bson.M{"$project": bson.M{VersionBuildVariantsKey: 0}})
 	pipeline = append(pipeline, getVersionTasksPipeline()...)
-	pipeline = append(pipeline, bson.M{
-		"$replaceRoot": bson.M{
-			"newRoot": "$" + buildsKey,
-		},
-	})
-	pipeline = append(pipeline, bson.M{
-		"$sort": bson.M{
-			build.DisplayNameKey: 1,
-		},
-	})
+
+	// Replace root with the list of builds, sorted by display name.
+	pipeline = append(pipeline, bson.M{"$replaceRoot": bson.M{"newRoot": "$" + buildsKey}})
+	pipeline = append(pipeline, bson.M{"$sort": bson.M{build.DisplayNameKey: 1}})
 
 	res := []WaterfallBuild{}
 	env := evergreen.GetEnvironment()
@@ -451,6 +444,7 @@ func GetNewerActiveWaterfallVersion(ctx context.Context, projectId string, versi
 		{"$match": match},
 		{"$sort": bson.M{VersionRevisionOrderNumberKey: 1}},
 		{"$limit": 1},
+		{"$project": bson.M{VersionBuildVariantsKey: 0}},
 	}
 
 	res := []Version{}
@@ -486,6 +480,7 @@ func GetOlderActiveWaterfallVersion(ctx context.Context, projectId string, versi
 		{"$match": match},
 		{"$sort": bson.M{VersionRevisionOrderNumberKey: -1}},
 		{"$limit": 1},
+		{"$project": bson.M{VersionBuildVariantsKey: 0}},
 	}
 
 	res := []Version{}
