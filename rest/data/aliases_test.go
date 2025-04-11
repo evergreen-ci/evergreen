@@ -326,7 +326,7 @@ func TestValidateFeaturesHaveAliases(t *testing.T) {
 	}
 
 	// Errors when there aren't aliases for all enabled features.
-	err := validateFeaturesHaveAliases(oldPRef, pRef, aliases)
+	err := validateFeaturesHaveAliases(t.Context(), oldPRef, pRef, aliases)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "GitHub checks")
 
@@ -337,16 +337,16 @@ func TestValidateFeaturesHaveAliases(t *testing.T) {
 	}
 	assert.NoError(t, repoAlias1.Upsert(t.Context()))
 	// No error when there are aliases in the repo.
-	assert.NoError(t, validateFeaturesHaveAliases(oldPRef, pRef, aliases))
+	assert.NoError(t, validateFeaturesHaveAliases(t.Context(), oldPRef, pRef, aliases))
 
 	pRef.GitTagVersionsEnabled = utility.TruePtr()
 	pRef.CommitQueue.Enabled = utility.TruePtr()
-	err = validateFeaturesHaveAliases(oldPRef, pRef, aliases)
+	err = validateFeaturesHaveAliases(t.Context(), oldPRef, pRef, aliases)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Git tag")
 	assert.Contains(t, err.Error(), "Commit queue")
 
 	// No error when version control is enabled.
 	oldPRef.VersionControlEnabled = utility.TruePtr()
-	assert.NoError(t, validateFeaturesHaveAliases(oldPRef, pRef, aliases))
+	assert.NoError(t, validateFeaturesHaveAliases(t.Context(), oldPRef, pRef, aliases))
 }

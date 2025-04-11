@@ -143,12 +143,12 @@ func mergeProjectConfigAndAliases(projectConfig *ProjectConfig, dbAliases []Proj
 }
 
 // FindAliasesForRepo fetches all aliases for a given project
-func FindAliasesForRepo(repoId string) ([]ProjectAlias, error) {
+func FindAliasesForRepo(ctx context.Context, repoId string) ([]ProjectAlias, error) {
 	out := []ProjectAlias{}
 	q := db.Query(bson.M{
 		projectIDKey: repoId,
 	})
-	err := db.FindAllQ(ProjectAliasCollection, q, &out)
+	err := db.FindAllQContext(ctx, ProjectAliasCollection, q, &out)
 	if err != nil {
 		return nil, err
 	}
@@ -269,7 +269,7 @@ func ConstructMergedAliasesByPrecedence(ctx context.Context, projectRef *Project
 	uncoveredAliases := uncoveredAliasTypes(aliasesToReturn)
 	if len(uncoveredAliases) > 0 && repoId != "" {
 		// Get repo aliases and merge with project aliases
-		repoAliases, err := FindAliasesForRepo(repoId)
+		repoAliases, err := FindAliasesForRepo(ctx, repoId)
 		if err != nil {
 			return nil, errors.Wrap(err, "finding repo aliases")
 		}
