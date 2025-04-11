@@ -110,13 +110,13 @@ func (j *githubStatusRefreshJob) fetch(ctx context.Context) error {
 		}
 	}
 
-	j.builds, err = build.Find(build.ByVersion(j.FetchID))
+	j.builds, err = build.Find(ctx, build.ByVersion(j.FetchID))
 	if err != nil {
 		return errors.Wrap(err, "finding builds")
 	}
 
 	if len(j.patch.Triggers.ChildPatches) > 0 {
-		j.childPatches, err = patch.Find(patch.ByStringIds(j.patch.Triggers.ChildPatches))
+		j.childPatches, err = patch.Find(ctx, patch.ByStringIds(j.patch.Triggers.ChildPatches))
 		if err != nil {
 			return errors.Wrap(err, "finding child patches")
 		}

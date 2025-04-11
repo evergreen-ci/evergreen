@@ -39,7 +39,7 @@ func (s *AdminEventSuite) TestEventLogging() {
 		RepotrackerDisabled: true,
 	}
 	s.NoError(LogAdminEvent(s.T().Context(), before.SectionId(), &before, &after, s.username))
-	dbEvents, err := FindAdmin(RecentAdminEvents(1))
+	dbEvents, err := FindAdmin(s.T().Context(), RecentAdminEvents(1))
 	s.NoError(err)
 	s.Require().Len(dbEvents, 1)
 	eventData := dbEvents[0].Data.(*AdminEventData)
@@ -58,7 +58,7 @@ func (s *AdminEventSuite) TestEventLogging2() {
 	}
 	after := evergreen.Settings{}
 	s.NoError(LogAdminEvent(s.T().Context(), before.SectionId(), &before, &after, s.username))
-	dbEvents, err := FindAdmin(RecentAdminEvents(1))
+	dbEvents, err := FindAdmin(s.T().Context(), RecentAdminEvents(1))
 	s.NoError(err)
 	s.Require().Len(dbEvents, 1)
 	eventData := dbEvents[0].Data.(*AdminEventData)
@@ -81,7 +81,7 @@ func (s *AdminEventSuite) TestEventLogging3() {
 		},
 	}
 	s.NoError(LogAdminEvent(s.T().Context(), before.SectionId(), &before, &after, s.username))
-	dbEvents, err := FindAdmin(RecentAdminEvents(1))
+	dbEvents, err := FindAdmin(s.T().Context(), RecentAdminEvents(1))
 	s.NoError(err)
 	s.Require().Len(dbEvents, 1)
 	eventData := dbEvents[0].Data.(*AdminEventData)
@@ -106,7 +106,7 @@ func (s *AdminEventSuite) TestNoSpuriousLogging() {
 		},
 	}
 	s.NoError(LogAdminEvent(s.T().Context(), before.SectionId(), &before, &after, s.username))
-	dbEvents, err := FindAdmin(RecentAdminEvents(5))
+	dbEvents, err := FindAdmin(s.T().Context(), RecentAdminEvents(5))
 	s.NoError(err)
 	s.Empty(dbEvents)
 }
@@ -119,7 +119,7 @@ func (s *AdminEventSuite) TestNoChanges() {
 		TaskFinder: "legacy",
 	}
 	s.NoError(LogAdminEvent(s.T().Context(), before.SectionId(), &before, &after, s.username))
-	dbEvents, err := FindAdmin(RecentAdminEvents(1))
+	dbEvents, err := FindAdmin(s.T().Context(), RecentAdminEvents(1))
 	s.NoError(err)
 	s.Empty(dbEvents)
 }
@@ -137,7 +137,7 @@ func (s *AdminEventSuite) TestReverting() {
 	s.NoError(after.Set(ctx))
 	s.NoError(LogAdminEvent(s.T().Context(), before.SectionId(), &before, &after, s.username))
 
-	dbEvents, err := FindAdmin(RecentAdminEvents(1))
+	dbEvents, err := FindAdmin(s.T().Context(), RecentAdminEvents(1))
 	s.NoError(err)
 	s.Require().Len(dbEvents, 1)
 	eventData := dbEvents[0].Data.(*AdminEventData)
@@ -181,7 +181,7 @@ func (s *AdminEventSuite) TestRevertingRoot() {
 	s.NoError(evergreen.UpdateConfig(ctx, &after))
 	s.NoError(LogAdminEvent(s.T().Context(), before.SectionId(), &before, &after, s.username))
 
-	dbEvents, err := FindAdmin(RecentAdminEvents(1))
+	dbEvents, err := FindAdmin(s.T().Context(), RecentAdminEvents(1))
 	s.NoError(err)
 	s.Require().Len(dbEvents, 1)
 	eventData := dbEvents[0].Data.(*AdminEventData)
@@ -209,7 +209,7 @@ func TestAdminEventsBeforeQuery(t *testing.T) {
 	now := time.Now()
 	time.Sleep(10 * time.Millisecond)
 	assert.NoError(LogAdminEvent(t.Context(), "service_flags", before, after, "afterNow"))
-	events, err := FindAdmin(AdminEventsBefore(now, 5))
+	events, err := FindAdmin(t.Context(), AdminEventsBefore(now, 5))
 	assert.NoError(err)
 	require.Len(t, events, 1)
 	assert.True(events[0].Timestamp.Before(now))

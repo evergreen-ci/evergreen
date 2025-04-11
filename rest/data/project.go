@@ -354,7 +354,7 @@ func GetEventsById(ctx context.Context, id string, before time.Time, n int) ([]r
 	if n == 0 {
 		n = EventLogLimit
 	}
-	events, err := model.ProjectEventsBefore(id, before, n)
+	events, err := model.ProjectEventsBefore(ctx, id, before, n)
 	if err != nil {
 		return nil, err
 	}
@@ -453,7 +453,7 @@ func HideBranch(ctx context.Context, projectID string) error {
 		return errors.Wrapf(err, "removing project admin roles")
 	}
 
-	projectAliases, err := model.FindAliasesForProjectFromDb(pRef.Id)
+	projectAliases, err := model.FindAliasesForProjectFromDb(ctx, pRef.Id)
 	if err != nil {
 		return errors.Wrapf(err, "finding aliases for project '%s'", pRef.Id)
 	}

@@ -60,7 +60,7 @@ func TestGenericBuildFinding(t *testing.T) {
 				buildThree := &Build{Id: "buildThree", Project: "b2"}
 				So(buildThree.Insert(t.Context()), ShouldBeNil)
 
-				found, err := Find(ByProject("b1"))
+				found, err := Find(t.Context(), ByProject("b1"))
 				So(err, ShouldBeNil)
 				So(len(found), ShouldEqual, 2)
 				So(buildIdInSlice(found, buildOne.Id), ShouldBeTrue)
@@ -109,7 +109,7 @@ func TestRecentlyFinishedBuilds(t *testing.T) {
 
 			// only the finished ones should be returned
 
-			found, err := Find(ByFinishedAfter(finishTime, "project1", "r1"))
+			found, err := Find(t.Context(), ByFinishedAfter(finishTime, "project1", "r1"))
 			So(err, ShouldBeNil)
 			So(len(found), ShouldEqual, 2)
 			So(buildIdInSlice(found, finishedOne.Id), ShouldBeTrue)
@@ -154,7 +154,7 @@ func TestRecentlyFinishedBuilds(t *testing.T) {
 			// only the one that finished after the specified time should
 			// be returned
 
-			found, err := Find(ByFinishedAfter(finishTime, "project1", "r1"))
+			found, err := Find(t.Context(), ByFinishedAfter(finishTime, "project1", "r1"))
 			So(err, ShouldBeNil)
 			So(len(found), ShouldEqual, 1)
 			So(found[0].Id, ShouldEqual, finishedOne.Id)
@@ -199,7 +199,7 @@ func TestRecentlyFinishedBuilds(t *testing.T) {
 			// only the one with the correct project and requester should be
 			// returned
 
-			found, err := Find(ByFinishedAfter(finishTime, "project1", "r1"))
+			found, err := Find(t.Context(), ByFinishedAfter(finishTime, "project1", "r1"))
 			So(err, ShouldBeNil)
 			So(len(found), ShouldEqual, 1)
 			So(found[0].Id, ShouldEqual, matching.Id)
@@ -319,13 +319,13 @@ func TestBulkInsert(t *testing.T) {
 	}
 
 	assert.Error(t, builds.InsertMany(context.Background(), true))
-	dbBuilds, err := Find(db.Q{})
+	dbBuilds, err := Find(t.Context(), db.Q{})
 	assert.NoError(t, err)
 	assert.Len(t, dbBuilds, 1)
 
 	assert.NoError(t, db.ClearCollections(Collection))
 	assert.Error(t, builds.InsertMany(context.Background(), false))
-	dbBuilds, err = Find(db.Q{})
+	dbBuilds, err = Find(t.Context(), db.Q{})
 	assert.NoError(t, err)
 	assert.Len(t, dbBuilds, 3)
 }

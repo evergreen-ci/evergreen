@@ -132,7 +132,7 @@ func TestFindOneByLastAccessedBefore(t *testing.T) {
 			for _, podDef := range podDefs {
 				require.NoError(t, podDef.Insert(t.Context()))
 			}
-			found, err := FindByLastAccessedBefore(time.Minute, -1)
+			found, err := FindByLastAccessedBefore(t.Context(), time.Minute, -1)
 			require.NoError(t, err)
 			require.Len(t, found, 2)
 			for _, podDef := range found {
@@ -156,7 +156,7 @@ func TestFindOneByLastAccessedBefore(t *testing.T) {
 			for _, podDef := range podDefs {
 				require.NoError(t, podDef.Insert(t.Context()))
 			}
-			found, err := FindByLastAccessedBefore(time.Minute, 1)
+			found, err := FindByLastAccessedBefore(t.Context(), time.Minute, 1)
 			require.NoError(t, err)
 			require.Len(t, found, 1)
 			assert.True(t, utility.StringSliceContains([]string{
@@ -171,7 +171,7 @@ func TestFindOneByLastAccessedBefore(t *testing.T) {
 			}
 			require.NoError(t, podDef.Insert(t.Context()))
 
-			found, err := FindByLastAccessedBefore(time.Minute, -1)
+			found, err := FindByLastAccessedBefore(t.Context(), time.Minute, -1)
 			require.NoError(t, err)
 			assert.Empty(t, found)
 		},
@@ -181,7 +181,7 @@ func TestFindOneByLastAccessedBefore(t *testing.T) {
 			}
 			require.NoError(t, podDef.Insert(t.Context()))
 
-			found, err := FindByLastAccessedBefore(time.Minute, -1)
+			found, err := FindByLastAccessedBefore(t.Context(), time.Minute, -1)
 			require.NoError(t, err)
 			require.Len(t, found, 1)
 			assert.Equal(t, podDef.ID, found[0].ID)

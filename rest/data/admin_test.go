@@ -192,7 +192,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.Tracer.CollectorInternalEndpoint, settingsFromConnector.Tracer.CollectorInternalEndpoint)
 
 	// spot check events in the event log
-	events, err := event.FindAdmin(event.RecentAdminEvents(1000))
+	events, err := event.FindAdmin(s.T().Context(), event.RecentAdminEvents(1000))
 	s.NoError(err)
 	foundNotifyEvent := false
 	foundFlagsEvent := false

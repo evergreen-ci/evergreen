@@ -205,7 +205,7 @@ func TestDBUtils(t *testing.T) {
 			// one and limit to one (meaning only the second struct should be
 			// returned)
 			out := []insertableStruct{}
-			err = FindAllQContext(t.Context(), collection, Query(bson.M{"field_two": 1}).
+			err = FindAllQ(t.Context(), collection, Query(bson.M{"field_two": 1}).
 				Project(bson.M{"field_three": 0}).
 				Sort([]string{"-field_one"}).
 				Limit(1).
@@ -303,7 +303,7 @@ func TestDBUtils(t *testing.T) {
 			So(err, ShouldBeNil)
 
 			out := []insertableStruct{}
-			err = FindAllQContext(t.Context(), collection, Query(bson.M{"field_two": 3}), &out)
+			err = FindAllQ(t.Context(), collection, Query(bson.M{"field_two": 3}), &out)
 			So(err, ShouldBeNil)
 			So(len(out), ShouldEqual, 2)
 

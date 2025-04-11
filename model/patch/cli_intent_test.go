@@ -267,7 +267,7 @@ func (s *CliIntentSuite) TestSetProcessed() {
 
 func findCliIntents(ctx context.Context, processed bool) ([]*cliIntent, error) {
 	var intents []*cliIntent
-	err := db.FindAllQContext(ctx, IntentCollection, db.Query(bson.M{cliProcessedKey: processed, cliIntentTypeKey: CliIntentType}), &intents)
+	err := db.FindAllQ(ctx, IntentCollection, db.Query(bson.M{cliProcessedKey: processed, cliIntentTypeKey: CliIntentType}), &intents)
 	if err != nil {
 		return []*cliIntent{}, err
 	}

@@ -1653,7 +1653,7 @@ func TestDeactivateStepbackTasksForProject(t *testing.T) {
 		wrongTaskNameTask, wrongVariantTask, runningStepbackTask, notStepbackTask))
 	assert.NoError(t, DeactivateStepbackTask(ctx, "p1", "myVariant", "myTask", "me"))
 
-	events, err := event.Find(db.Q{})
+	events, err := event.Find(t.Context(), db.Q{})
 	assert.NoError(t, err)
 	assert.Len(t, events, 3)
 	var numDeactivated, numAborted int
@@ -2393,7 +2393,7 @@ func TestActivateTasks(t *testing.T) {
 			assert.EqualValues(t, 0, task.Priority)
 			if utility.StringSliceContains(updatedIDs, task.Id) {
 				assert.True(t, task.Activated)
-				events, err := event.FindAllByResourceID(task.Id)
+				events, err := event.FindAllByResourceID(t.Context(), task.Id)
 				require.NoError(t, err)
 				assert.Len(t, events, 1)
 			} else {
@@ -2402,7 +2402,7 @@ func TestActivateTasks(t *testing.T) {
 						assert.Equal(t, origTask.Activated, task.Activated, "task '%s' mismatch", task.Id)
 					}
 				}
-				events, err := event.FindAllByResourceID(task.Id)
+				events, err := event.FindAllByResourceID(t.Context(), task.Id)
 				require.NoError(t, err)
 				assert.Empty(t, events)
 			}
@@ -2428,7 +2428,7 @@ func TestActivateTasks(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Empty(t, activatedDependencyIDs)
 
-		events, err := event.FindAllByResourceID(task.Id)
+		events, err := event.FindAllByResourceID(t.Context(), task.Id)
 		require.NoError(t, err)
 		assert.Empty(t, events)
 
@@ -3974,7 +3974,7 @@ func TestArchive(t *testing.T) {
 		require.NoError(t, err)
 		require.NotZero(t, dbTask)
 
-		events, err := event.FindAllByResourceID(hostID)
+		events, err := event.FindAllByResourceID(t.Context(), hostID)
 		require.NoError(t, err)
 		assert.NotEmpty(t, events)
 
@@ -4107,7 +4107,7 @@ func TestArchiveFailedOnly(t *testing.T) {
 		require.NoError(t, err)
 		require.NotZero(t, dbTask)
 
-		events, err := event.FindAllByResourceID(hostID)
+		events, err := event.FindAllByResourceID(t.Context(), hostID)
 		require.NoError(t, err)
 		assert.NotEmpty(t, events)
 

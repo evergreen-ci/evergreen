@@ -72,7 +72,7 @@ func (s *TaskHistorySuite) SetupTest() {
 
 func (s *TaskHistorySuite) TestGetVersionsInWindow() {
 	radius := 20
-	versions, err := getVersionsInWindow("surround", s.projectID, radius, &s.middleVersion)
+	versions, err := getVersionsInWindow(s.T().Context(), "surround", s.projectID, radius, &s.middleVersion)
 	s.Require().NoError(err)
 
 	for i := 0; i < radius; i++ {
@@ -89,7 +89,7 @@ func (s *TaskHistorySuite) TestGetVersionsInWindow() {
 
 func (s *TaskHistorySuite) TestSurroundingVersions() {
 	radius := 20
-	versionsAfter, err := surroundingVersions(&s.middleVersion, s.projectID, radius, false)
+	versionsAfter, err := surroundingVersions(s.T().Context(), &s.middleVersion, s.projectID, radius, false)
 	s.NoError(err)
 	s.Require().Len(versionsAfter, radius)
 	for i, version := range versionsAfter {
@@ -97,7 +97,7 @@ func (s *TaskHistorySuite) TestSurroundingVersions() {
 		s.True(version.CreateTime.Equal(s.versionsAfter[(len(s.versionsAfter)-radius)+i].CreateTime))
 	}
 
-	versionsBefore, err := surroundingVersions(&s.middleVersion, s.projectID, radius, true)
+	versionsBefore, err := surroundingVersions(s.T().Context(), &s.middleVersion, s.projectID, radius, true)
 	s.NoError(err)
 	s.Len(versionsBefore, radius)
 	for i, version := range versionsBefore {
@@ -106,14 +106,14 @@ func (s *TaskHistorySuite) TestSurroundingVersions() {
 }
 
 func (s *TaskHistorySuite) TestSurroundingVersionsSort() {
-	versionsAfter, err := surroundingVersions(&s.versionsBefore[0], s.projectID, 2, false)
+	versionsAfter, err := surroundingVersions(s.T().Context(), &s.versionsBefore[0], s.projectID, 2, false)
 	s.NoError(err)
 	s.Require().Len(versionsAfter, 2)
 	// sorted ascending, then reversed
 	s.Equal(52, versionsAfter[0].RevisionOrderNumber)
 	s.Equal(51, versionsAfter[1].RevisionOrderNumber)
 
-	versionsBefore, err := surroundingVersions(&s.versionsAfter[49], s.projectID, 2, true)
+	versionsBefore, err := surroundingVersions(s.T().Context(), &s.versionsAfter[49], s.projectID, 2, true)
 	s.NoError(err)
 	s.Require().Len(versionsBefore, 2)
 	// sorted descending

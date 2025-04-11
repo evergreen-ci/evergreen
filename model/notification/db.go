@@ -111,20 +111,20 @@ func Find(ctx context.Context, id string) (*Notification, error) {
 	return &notification, err
 }
 
-func FindByEventID(id string) ([]Notification, error) {
+func FindByEventID(ctx context.Context, id string) ([]Notification, error) {
 	notifications := []Notification{}
 	query := db.Query(bson.M{
 		idKey: primitive.Regex{Pattern: fmt.Sprintf("^%s-", id)},
 	},
 	)
 
-	err := db.FindAllQ(Collection, query, &notifications)
+	err := db.FindAllQ(ctx, Collection, query, &notifications)
 	return notifications, err
 }
 
-func FindUnprocessed() ([]Notification, error) {
+func FindUnprocessed(ctx context.Context) ([]Notification, error) {
 	notifications := []Notification{}
-	err := db.FindAllQ(Collection, db.Query(bson.M{sentAtKey: bson.M{"$exists": false}}), &notifications)
+	err := db.FindAllQ(ctx, Collection, db.Query(bson.M{sentAtKey: bson.M{"$exists": false}}), &notifications)
 
 	return notifications, errors.Wrap(err, "finding unprocessed notifications")
 }

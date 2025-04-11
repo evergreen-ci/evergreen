@@ -269,7 +269,7 @@ func (s *AdminRouteSuite) TestRevertRoute() {
 	before := testutil.NewEnvironment(ctx, s.T()).Settings()
 	_, err := data.SetEvergreenSettings(ctx, &changes, before, user, true)
 	s.NoError(err)
-	dbEvents, err := event.FindAdmin(event.RecentAdminEvents(1))
+	dbEvents, err := event.FindAdmin(s.T().Context(), event.RecentAdminEvents(1))
 	s.NoError(err)
 	s.GreaterOrEqual(len(dbEvents), 1)
 	eventData := dbEvents[0].Data.(*event.AdminEventData)

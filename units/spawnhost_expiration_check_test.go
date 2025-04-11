@@ -86,7 +86,7 @@ func TestTryIdleSpawnHostNotification(t *testing.T) {
 	assert.NoError(t, tryIdleSpawnHostNotification(t.Context(), h))
 
 	fetchedSubs := []event.Subscription{}
-	assert.NoError(t, db.FindAllQContext(t.Context(), event.SubscriptionsCollection, db.Q{}, &fetchedSubs))
+	assert.NoError(t, db.FindAllQ(t.Context(), event.SubscriptionsCollection, db.Q{}, &fetchedSubs))
 	require.Len(t, fetchedSubs, 1)
 	assert.Equal(t, u.EmailAddress, utility.FromStringPtr(fetchedSubs[0].Subscriber.Target.(*string)))
 	assert.Equal(t, event.EmailSubscriberType, fetchedSubs[0].Subscriber.Type)
@@ -95,10 +95,10 @@ func TestTryIdleSpawnHostNotification(t *testing.T) {
 	// Trying to re-insert the subscription doesn't create a new subscription.
 	assert.NoError(t, tryIdleSpawnHostNotification(t.Context(), h))
 	fetchedSubs = []event.Subscription{}
-	assert.NoError(t, db.FindAllQContext(t.Context(), event.SubscriptionsCollection, db.Q{}, &fetchedSubs))
+	assert.NoError(t, db.FindAllQ(t.Context(), event.SubscriptionsCollection, db.Q{}, &fetchedSubs))
 	require.Len(t, fetchedSubs, 1)
 
-	events, err := event.FindAllByResourceID(h.Id)
+	events, err := event.FindAllByResourceID(t.Context(), h.Id)
 	assert.NoError(t, err)
 	assert.Len(t, events, 2)
 }

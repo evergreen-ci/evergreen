@@ -121,23 +121,23 @@ func (s *patchSuite) SetupTest() {
 }
 
 func (s *patchSuite) TestByGithubPRAndCreatedBefore() {
-	patches, err := Find(ByGithubPRAndCreatedBefore(time.Now(), "evergreen-ci", "evergreen", 1))
+	patches, err := Find(s.T().Context(), ByGithubPRAndCreatedBefore(time.Now(), "evergreen-ci", "evergreen", 1))
 	s.NoError(err)
 	s.Empty(patches)
 
-	patches, err = Find(ByGithubPRAndCreatedBefore(time.Now(), "octodog", "evergreen", 9002))
+	patches, err = Find(s.T().Context(), ByGithubPRAndCreatedBefore(time.Now(), "octodog", "evergreen", 9002))
 	s.NoError(err)
 	s.Empty(patches)
 
-	patches, err = Find(ByGithubPRAndCreatedBefore(time.Now(), "", "", 0))
+	patches, err = Find(s.T().Context(), ByGithubPRAndCreatedBefore(time.Now(), "", "", 0))
 	s.NoError(err)
 	s.Empty(patches)
 
-	patches, err = Find(ByGithubPRAndCreatedBefore(s.patches[2].CreateTime, "evergreen-ci", "evergreen", 9001))
+	patches, err = Find(s.T().Context(), ByGithubPRAndCreatedBefore(s.patches[2].CreateTime, "evergreen-ci", "evergreen", 9001))
 	s.NoError(err)
 	s.Len(patches, 2)
 
-	patches, err = Find(ByGithubPRAndCreatedBefore(s.time, "evergreen-ci", "evergreen", 9001))
+	patches, err = Find(s.T().Context(), ByGithubPRAndCreatedBefore(s.time, "evergreen-ci", "evergreen", 9001))
 	s.NoError(err)
 	s.Len(patches, 1)
 }

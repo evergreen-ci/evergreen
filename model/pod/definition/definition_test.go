@@ -87,7 +87,7 @@ func TestPodDefinitionCache(t *testing.T) {
 					DefinitionOpts: *defOpts,
 				}))
 
-				pds, err := Find(db.Query(ByExternalID(externalID)))
+				pds, err := Find(t.Context(), db.Query(ByExternalID(externalID)))
 				require.NoError(t, err)
 				require.Len(t, pds, 1, "putting identical item should not have created any new pod definitions")
 
@@ -105,7 +105,7 @@ func TestPodDefinitionCache(t *testing.T) {
 						DefinitionOpts: *defOpts,
 					}))
 				}
-				pds, err := Find(db.Query(bson.M{}))
+				pds, err := Find(t.Context(), db.Query(bson.M{}))
 				require.NoError(t, err)
 				require.Len(t, pds, numPodDefs)
 			},

@@ -299,7 +299,7 @@ func (r *mutationResolver) UpdateHostStatus(ctx context.Context, hostIds []strin
 func (r *mutationResolver) SetPatchVisibility(ctx context.Context, patchIds []string, hidden bool) ([]*restModel.APIPatch, error) {
 	user := mustHaveUser(ctx)
 	updatedPatches := []*restModel.APIPatch{}
-	patches, err := patch.Find(patch.ByStringIds(patchIds))
+	patches, err := patch.Find(ctx, patch.ByStringIds(patchIds))
 
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patches '%s': %s", patchIds, err.Error()))
@@ -1099,7 +1099,7 @@ func (r *mutationResolver) AddFavoriteProject(ctx context.Context, opts AddFavor
 func (r *mutationResolver) ClearMySubscriptions(ctx context.Context) (int, error) {
 	usr := mustHaveUser(ctx)
 	username := usr.Username()
-	subs, err := event.FindSubscriptionsByOwner(username, event.OwnerTypePerson)
+	subs, err := event.FindSubscriptionsByOwner(ctx, username, event.OwnerTypePerson)
 	if err != nil {
 		return 0, InternalServerError.Send(ctx, fmt.Sprintf("retrieving subscriptions for user '%s': %s", usr.Id, err.Error()))
 	}

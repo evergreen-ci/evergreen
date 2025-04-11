@@ -354,7 +354,7 @@ func TestUpdateStatus(t *testing.T) {
 	}
 
 	checkEventLog := func(t *testing.T, p Pod) {
-		events, err := event.Find(event.MostRecentPodEvents(p.ID, 10))
+		events, err := event.Find(t.Context(), event.MostRecentPodEvents(p.ID, 10))
 		require.NoError(t, err)
 		require.Len(t, events, 1)
 		assert.Equal(t, p.ID, events[0].ResourceId)
@@ -650,7 +650,7 @@ func TestClearRunningTask(t *testing.T) {
 		assert.Zero(t, p.TaskRuntimeInfo.RunningTaskID)
 		assert.Zero(t, p.TaskRuntimeInfo.RunningTaskExecution)
 
-		events, err := event.FindAllByResourceID(podID)
+		events, err := event.FindAllByResourceID(t.Context(), podID)
 		require.NoError(t, err)
 		require.Len(t, events, 1)
 		assert.EqualValues(t, event.EventPodClearedTask, events[0].EventType, "should have logged event indicating task is cleared from pod")
@@ -694,7 +694,7 @@ func TestClearRunningTask(t *testing.T) {
 			assert.Zero(t, dbPod.TaskRuntimeInfo.RunningTaskID)
 			assert.Zero(t, dbPod.TaskRuntimeInfo.RunningTaskExecution)
 
-			events, err := event.FindAllByResourceID(p.ID)
+			events, err := event.FindAllByResourceID(t.Context(), p.ID)
 			require.NoError(t, err)
 			assert.Empty(t, events)
 		},

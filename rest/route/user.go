@@ -412,7 +412,7 @@ func (h *allUsersPermissionsGetHandler) Run(ctx context.Context) gimlet.Responde
 		}
 	}
 	// Get users with roles.
-	usersWithRoles, err := user.FindHumanUsersByRoles(roleIds)
+	usersWithRoles, err := user.FindHumanUsersByRoles(ctx, roleIds)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "finding users for roles %v", roleIds))
 	}
@@ -727,7 +727,7 @@ func (h *usersWithRoleGetHandler) Parse(ctx context.Context, r *http.Request) er
 }
 
 func (h *usersWithRoleGetHandler) Run(ctx context.Context) gimlet.Responder {
-	users, err := user.FindByRole(h.role)
+	users, err := user.FindByRole(ctx, h.role)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
