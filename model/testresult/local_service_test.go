@@ -16,7 +16,7 @@ func TestLocalService(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
-	svc := newLocalService(env)
+	svc := NewLocalService(env)
 	require.NoError(t, ClearLocal(ctx, env))
 	defer func() {
 		assert.NoError(t, ClearLocal(ctx, env))
@@ -33,7 +33,7 @@ func TestLocalService(t *testing.T) {
 		}
 		savedResults0[i] = result
 	}
-	require.NoError(t, InsertLocal(ctx, env, savedResults0...))
+	require.NoError(t, svc.AppendTestResults(ctx, savedResults0))
 
 	task1 := TaskOptions{TaskID: "task1", Execution: 0}
 	savedResults1 := make([]TestResult, 10)
@@ -43,8 +43,7 @@ func TestLocalService(t *testing.T) {
 		result.Execution = task1.Execution
 		savedResults1[i] = result
 	}
-	require.NoError(t, InsertLocal(ctx, env, savedResults1...))
-
+	require.NoError(t, svc.AppendTestResults(ctx, savedResults1))
 	task2 := TaskOptions{TaskID: "task2", Execution: 1}
 	savedResults2 := make([]TestResult, 10)
 	for i := 0; i < len(savedResults2); i++ {
@@ -53,8 +52,7 @@ func TestLocalService(t *testing.T) {
 		result.Execution = task2.Execution
 		savedResults2[i] = result
 	}
-	require.NoError(t, InsertLocal(ctx, env, savedResults2...))
-
+	require.NoError(t, svc.AppendTestResults(ctx, savedResults2))
 	task3 := TaskOptions{TaskID: "task3", Execution: 0}
 	savedResults3 := make([]TestResult, maxSampleSize)
 	for i := 0; i < len(savedResults3); i++ {
@@ -66,8 +64,7 @@ func TestLocalService(t *testing.T) {
 		}
 		savedResults3[i] = result
 	}
-	require.NoError(t, InsertLocal(ctx, env, savedResults3...))
-
+	require.NoError(t, svc.AppendTestResults(ctx, savedResults3))
 	task4 := TaskOptions{TaskID: "task4", Execution: 1}
 	savedResults4 := make([]TestResult, maxSampleSize)
 	for i := 0; i < len(savedResults3); i++ {
@@ -77,8 +74,7 @@ func TestLocalService(t *testing.T) {
 		result.Status = evergreen.TestFailedStatus
 		savedResults4[i] = result
 	}
-	require.NoError(t, InsertLocal(ctx, env, savedResults4...))
-
+	require.NoError(t, svc.AppendTestResults(ctx, savedResults4))
 	emptyTask := TaskOptions{TaskID: "DNE", Execution: 0}
 
 	t.Run("GetMergedTaskTestResults", func(t *testing.T) {
@@ -225,7 +221,7 @@ func TestLocalFilterAndSortTestResults(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
-	svc := newLocalService(env)
+	svc := NewLocalService(env)
 	defer func() {
 		assert.NoError(t, ClearLocal(ctx, env))
 	}()
@@ -288,7 +284,7 @@ func TestLocalFilterAndSortTestResults(t *testing.T) {
 			Status:   "Fail",
 		},
 	}
-	require.NoError(t, InsertLocal(ctx, env, baseResults...))
+	require.NoError(t, svc.AppendTestResults(ctx, baseResults))
 	resultsWithBaseStatus := getResults()
 	require.Len(t, resultsWithBaseStatus, len(baseResults))
 	for i := range resultsWithBaseStatus {
