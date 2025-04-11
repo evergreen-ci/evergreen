@@ -419,6 +419,7 @@ func GetMostRecentWaterfallVersion(ctx context.Context, projectId string) (*Vers
 		{"$match": match},
 		{"$sort": bson.M{VersionRevisionOrderNumberKey: -1}},
 		{"$limit": 1},
+		{"$project": bson.M{VersionBuildVariantsKey: 0}},
 	}
 
 	res := []Version{}
