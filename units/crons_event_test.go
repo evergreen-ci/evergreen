@@ -70,7 +70,7 @@ func (s *cronsEventSuite) SetupTest() {
 	}
 
 	for i := range events {
-		s.NoError(events[i].Log())
+		s.NoError(events[i].Log(s.ctx))
 	}
 
 	s.n = []notification.Notification{
@@ -136,7 +136,7 @@ func (s *cronsEventSuite) TestDegradedMode() {
 	}
 
 	// degraded mode shouldn't process events
-	s.NoError(e.Log())
+	s.NoError(e.Log(s.ctx))
 	jobs, err := eventNotifierJobs(s.ctx, s.env, time.Time{})
 	s.NoError(err)
 	s.Empty(jobs)
@@ -154,7 +154,7 @@ func (s *cronsEventSuite) TestSenderDegradedModeDoesntDispatchJobs() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s.NoError(notification.InsertMany(s.n...))
+	s.NoError(notification.InsertMany(s.ctx, s.n...))
 
 	jobs, err := notificationJobs(ctx, s.n, &flags, time.Time{})
 	s.NoError(err)
@@ -216,13 +216,13 @@ func (s *cronsEventSuite) TestEndToEnd() {
 		Status:  evergreen.VersionFailed,
 		Author:  "somebody",
 	}
-	s.NoError(p.Insert())
+	s.NoError(p.Insert(s.ctx))
 
 	pRef := model.ProjectRef{
 		Id:         "test",
 		Identifier: "testing",
 	}
-	s.NoError(pRef.Insert())
+	s.NoError(pRef.Insert(s.ctx))
 	e := event.EventLogEntry{
 		ResourceType: event.ResourceTypePatch,
 		EventType:    event.PatchStateChange,
@@ -232,7 +232,7 @@ func (s *cronsEventSuite) TestEndToEnd() {
 		},
 	}
 
-	s.NoError(e.Log())
+	s.NoError(e.Log(s.ctx))
 
 	subs := []event.Subscription{
 		{
@@ -306,7 +306,7 @@ func (s *cronsEventSuite) TestEndToEnd() {
 }
 
 func (s *cronsEventSuite) TestSendNotificationJobs() {
-	s.NoError(notification.InsertMany(s.n...))
+	s.NoError(notification.InsertMany(s.ctx, s.n...))
 
 	jobs, err := sendNotificationJobs(s.ctx, s.env, time.Time{})
 	s.NoError(err)

@@ -59,7 +59,7 @@ func TestGithubMergeIntent(t *testing.T) {
 			intent, err := NewGithubMergeIntent("abc123", "auto", mge)
 			assert.NotNil(t, intent)
 			assert.NoError(t, err)
-			assert.NoError(t, intent.Insert())
+			assert.NoError(t, intent.Insert(t.Context()))
 			intents := []githubMergeIntent{}
 			err = db.FindAllQContext(t.Context(), IntentCollection, db.Query(bson.M{}), &intents)
 			assert.NoError(t, err)
@@ -71,7 +71,7 @@ func TestGithubMergeIntent(t *testing.T) {
 			assert.False(t, intent.IsProcessed())
 			assert.NotNil(t, intent)
 			assert.NoError(t, err)
-			assert.NoError(t, intent.Insert())
+			assert.NoError(t, intent.Insert(t.Context()))
 			assert.NoError(t, intent.SetProcessed(t.Context()))
 			intents := []githubMergeIntent{}
 			err = db.FindAllQContext(t.Context(), IntentCollection, db.Query(bson.M{}), &intents)
@@ -100,7 +100,7 @@ func TestGithubMergeIntent(t *testing.T) {
 			intent, err := NewGithubMergeIntent("abc123", "auto", mge)
 			assert.NotNil(t, intent)
 			assert.NoError(t, err)
-			assert.NoError(t, intent.Insert())
+			assert.NoError(t, intent.Insert(t.Context()))
 			p := intent.NewPatch()
 			assert.Equal(t, evergreen.CommitQueueAlias, p.Alias)
 			assert.Equal(t, *mge.MergeGroup.BaseSHA, p.Githash)

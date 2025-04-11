@@ -27,7 +27,7 @@ func TestVolumeExpiration(t *testing.T) {
 		{ID: "v3", Expiration: time.Now().Add(30 * 24 * time.Hour)},
 	}
 	for _, v := range volumes {
-		require.NoError(t, v.Insert())
+		require.NoError(t, v.Insert(t.Context()))
 	}
 
 	j := makeVolumeExpirationWarningsJob()

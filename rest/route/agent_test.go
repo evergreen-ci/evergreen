@@ -168,14 +168,14 @@ func TestAgentGetExpansionsAndVars(t *testing.T) {
 				},
 				ServicePassword: "password",
 			}
-			require.NoError(t, t1.Insert())
-			require.NoError(t, t2.Insert())
-			require.NoError(t, pRef.Insert())
-			require.NoError(t, vars.Insert())
-			require.NoError(t, v1.Insert())
-			require.NoError(t, v2.Insert())
-			require.NoError(t, pp1.Insert())
-			require.NoError(t, pp2.Insert())
+			require.NoError(t, t1.Insert(t.Context()))
+			require.NoError(t, t2.Insert(t.Context()))
+			require.NoError(t, pRef.Insert(t.Context()))
+			require.NoError(t, vars.Insert(t.Context()))
+			require.NoError(t, v1.Insert(t.Context()))
+			require.NoError(t, v2.Insert(t.Context()))
+			require.NoError(t, pp1.Insert(t.Context()))
+			require.NoError(t, pp2.Insert(t.Context()))
 			require.NoError(t, h.Insert(ctx))
 
 			r, ok := makeGetExpansionsAndVars(env.Settings()).(*getExpansionsAndVarsHandler)
@@ -348,13 +348,13 @@ func TestMarkTaskForReset(t *testing.T) {
 			pRef := model.ProjectRef{
 				Id: "p1",
 			}
-			require.NoError(t, pRef.Insert())
-			require.NoError(t, et1.Insert())
-			require.NoError(t, et2.Insert())
-			require.NoError(t, dt.Insert())
-			require.NoError(t, t2.Insert())
-			require.NoError(t, t3.Insert())
-			require.NoError(t, t4.Insert())
+			require.NoError(t, pRef.Insert(t.Context()))
+			require.NoError(t, et1.Insert(t.Context()))
+			require.NoError(t, et2.Insert(t.Context()))
+			require.NoError(t, dt.Insert(t.Context()))
+			require.NoError(t, t2.Insert(t.Context()))
+			require.NoError(t, t3.Insert(t.Context()))
+			require.NoError(t, t4.Insert(t.Context()))
 			r, ok := makeMarkTaskForRestart().(*markTaskForRestartHandler)
 			require.True(t, ok)
 
@@ -505,7 +505,7 @@ func TestDownstreamParams(t *testing.T) {
 		Id:      mgobson.ObjectIdHex(parentPatchId),
 		Version: versionId,
 	}
-	require.NoError(t, parentPatch.Insert())
+	require.NoError(t, parentPatch.Insert(t.Context()))
 
 	hostId := "h1"
 	projectId := "proj"
@@ -521,7 +521,7 @@ func TestDownstreamParams(t *testing.T) {
 		BuildId:   buildID,
 		Version:   versionId,
 	}
-	require.NoError(t, task1.Insert())
+	require.NoError(t, task1.Insert(t.Context()))
 
 	sampleHost := host.Host{
 		Id: hostId,
@@ -571,14 +571,14 @@ func TestAgentGetProjectRef(t *testing.T) {
 		Project: "project1",
 	}
 	projRef1 := &model.ProjectRef{Id: "project1"}
-	require.NoError(t, task1.Insert())
-	require.NoError(t, projRef1.Insert())
+	require.NoError(t, task1.Insert(t.Context()))
+	require.NoError(t, projRef1.Insert(t.Context()))
 
 	task2 := &task.Task{
 		Id:      "task2",
 		Project: "project2",
 	}
-	require.NoError(t, task2.Insert())
+	require.NoError(t, task2.Insert(t.Context()))
 
 	for _, test := range []struct {
 		name           string
@@ -687,7 +687,7 @@ func TestUpsertCheckRunParse(t *testing.T) {
 		Id:      patch.NewId(versionId),
 		Version: versionId,
 	}
-	require.NoError(t, patch.Insert())
+	require.NoError(t, patch.Insert(t.Context()))
 
 	task1 := task.Task{
 		Id:        "task1",
@@ -700,7 +700,7 @@ func TestUpsertCheckRunParse(t *testing.T) {
 		Version:   versionId,
 		Requester: evergreen.GithubPRRequester,
 	}
-	require.NoError(t, task1.Insert())
+	require.NoError(t, task1.Insert(t.Context()))
 
 	r, ok := makeCheckRun(&evergreen.Settings{}).(*checkRunHandler)
 	require.True(t, ok)
@@ -943,7 +943,7 @@ func TestAWSAssumeRole(t *testing.T) {
 
 			t.Run("RunSucceeds", func(t *testing.T) {
 				task := task.Task{Id: taskID, Project: projectID, Requester: "requester"}
-				require.NoError(t, task.Insert())
+				require.NoError(t, task.Insert(t.Context()))
 
 				resp := handler.Run(ctx)
 				require.NotNil(t, resp)
@@ -975,86 +975,4 @@ func TestAWSAssumeRole(t *testing.T) {
 		})
 	}
 
-}
-
-func TestAWSS3(t *testing.T) {
-	route := "/task/%s/aws/s3_credentials"
-	taskID := "taskID"
-	bucket := "bucket"
-
-	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, ar *awsS3Credentials){
-		"ParseErrorsOnNilBody": func(ctx context.Context, t *testing.T, handler *awsS3Credentials) {
-			url := fmt.Sprintf(route, taskID)
-			request, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(nil))
-			require.NoError(t, err)
-
-			options := map[string]string{"task_id": taskID}
-			request = gimlet.SetURLVars(request, options)
-
-			assert.ErrorContains(t, handler.Parse(ctx, request), "reading s3 body for task 'taskID'")
-		},
-		"ParseErrorsOnEmptyBody": func(ctx context.Context, t *testing.T, handler *awsS3Credentials) {
-			url := fmt.Sprintf(route, taskID)
-			request, err := http.NewRequest(http.MethodPost, url, bytes.NewReader([]byte("{}")))
-			require.NoError(t, err)
-
-			options := map[string]string{"task_id": taskID}
-			request = gimlet.SetURLVars(request, options)
-
-			assert.ErrorContains(t, handler.Parse(ctx, request), "validating s3 body for task 'taskID'")
-		},
-		"ParseSucceeds": func(ctx context.Context, t *testing.T, handler *awsS3Credentials) {
-			body, err := json.Marshal(apimodels.S3CredentialsRequest{Bucket: bucket})
-			require.NoError(t, err)
-
-			url := fmt.Sprintf(route, taskID)
-			request, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(body))
-			require.NoError(t, err)
-
-			options := map[string]string{"task_id": taskID}
-			request = gimlet.SetURLVars(request, options)
-
-			require.NoError(t, handler.Parse(ctx, request))
-			assert.Equal(t, taskID, handler.taskID)
-			assert.Equal(t, bucket, handler.body.Bucket)
-
-			t.Run("RunErrorsOnNilTask", func(t *testing.T) {
-				resp := handler.Run(ctx)
-				require.NotNil(t, resp)
-				require.Equal(t, http.StatusNotFound, resp.Status(), resp.Data())
-			})
-
-			t.Run("RunSucceeds", func(t *testing.T) {
-				task := task.Task{Id: taskID, Project: projectID, Requester: "requester"}
-				require.NoError(t, task.Insert())
-
-				resp := handler.Run(ctx)
-				require.NotNil(t, resp)
-				require.Equal(t, http.StatusOK, resp.Status(), resp.Data())
-				data, ok := resp.Data().(apimodels.AWSCredentials)
-				require.True(t, ok)
-				assert.NotEmpty(t, data.AccessKeyID)
-				assert.NotEmpty(t, data.SecretAccessKey)
-				assert.NotEmpty(t, data.SessionToken)
-				assert.NotEmpty(t, data.Expiration)
-			})
-		},
-	} {
-		t.Run(tName, func(t *testing.T) {
-			require.NoError(t, db.ClearCollections(task.Collection))
-
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-
-			env := &mock.Environment{}
-			require.NoError(t, env.Configure(ctx))
-
-			manager := cloud.GetSTSManager(true)
-
-			r, ok := makeAWSS3Credentials(env, manager, "some_role_arn").(*awsS3Credentials)
-			require.True(t, ok)
-
-			tCase(ctx, t, r)
-		})
-	}
 }

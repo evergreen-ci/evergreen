@@ -31,7 +31,7 @@ func TestVolumeExpiration(t *testing.T) {
 		ID:         "v0",
 		Expiration: time.Now().Add(12 * time.Hour),
 	}
-	require.NoError(t, v.Insert())
+	require.NoError(t, v.Insert(t.Context()))
 
 	triggers := makeVolumeTriggers().(*volumeTriggers)
 	triggers.volume = &v

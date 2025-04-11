@@ -51,7 +51,7 @@ func (s *notificationSuite) SetupTest() {
 	}
 
 	for i := range events {
-		s.NoError(db.Insert(event.EventCollection, events[i]))
+		s.NoError(db.Insert(s.T().Context(), event.EventCollection, events[i]))
 	}
 
 	n := []notification.Notification{
@@ -100,7 +100,7 @@ func (s *notificationSuite) SetupTest() {
 		},
 	}
 	for i := range n {
-		s.NoError(db.Insert(notification.Collection, n[i]))
+		s.NoError(db.Insert(s.T().Context(), notification.Collection, n[i]))
 	}
 }
 

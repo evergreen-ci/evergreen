@@ -250,7 +250,7 @@ func SetTaskPriority(ctx context.Context, t task.Task, priority int64, caller st
 		return errors.Wrap(err, "updating priority")
 	}
 	for _, modifiedTask := range tasks {
-		event.LogTaskPriority(modifiedTask.Id, modifiedTask.Execution, caller, priority)
+		event.LogTaskPriority(ctx, modifiedTask.Id, modifiedTask.Execution, caller, priority)
 	}
 
 	// negative priority - deactivate the task
@@ -290,7 +290,7 @@ func setTasksPriority(ctx context.Context, query bson.M, priority int64, caller 
 	for _, t := range tasks {
 		taskIds = append(taskIds, t.Id)
 	}
-	event.LogManyTaskPriority(taskIds, caller, priority)
+	event.LogManyTaskPriority(ctx, taskIds, caller, priority)
 
 	// Tasks with negative priority should never run, so we unschedule them.
 	if priority < 0 {
@@ -410,7 +410,7 @@ func restartTasks(ctx context.Context, allFinishedTasks []task.Task, caller, ver
 	}
 	for _, t := range allFinishedTasks {
 		if !t.IsPartOfSingleHostTaskGroup() { // this will be logged separately if task group is restarted
-			event.LogTaskRestarted(t.Id, t.Execution, caller)
+			event.LogTaskRestarted(ctx, t.Id, t.Execution, caller)
 		}
 		if t.DisplayOnly {
 			grip.Error(message.WrapError(logExecutionTasksRestarted(ctx, &t, t.ExecutionTasks, caller), message.Fields{
@@ -1553,7 +1553,7 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 		}
 
 		allTasks = append(allTasks, tasks...)
-		if err = build.Insert(); err != nil {
+		if err = build.Insert(ctx); err != nil {
 			return nil, nil, errors.Wrapf(err, "inserting build '%s'", build.Id)
 		}
 		newBuildIds = append(newBuildIds, build.Id)
@@ -1725,7 +1725,7 @@ func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationI
 				b.Activated = true
 			}
 			if t.Activated && creationInfo.ActivationInfo.getStepbackTask(t.BuildVariant, t.DisplayName).shouldActivate() {
-				event.LogTaskActivated(t.Id, t.Execution, evergreen.StepbackTaskActivator)
+				event.LogTaskActivated(ctx, t.Id, t.Execution, evergreen.StepbackTaskActivator)
 			}
 		}
 		// update build activation status if tasks have since been activated

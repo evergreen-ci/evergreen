@@ -38,7 +38,7 @@ func (s *DBUserConnectorSuite) SetupTest() {
 				},
 			},
 		}
-		s.NoError(testUser.Insert())
+		s.NoError(testUser.Insert(s.T().Context()))
 		s.users = append(s.users, testUser)
 	}
 }

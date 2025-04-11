@@ -126,7 +126,7 @@ func TestGetAliasesHandler(t *testing.T) {
 						},
 					},
 				}}
-			require.NoError(t, projectConfig.Insert())
+			require.NoError(t, projectConfig.Insert(t.Context()))
 
 			rh, ok := makeFetchAliases().(*aliasGetHandler)
 			require.True(t, ok)

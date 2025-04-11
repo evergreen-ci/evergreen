@@ -2522,7 +2522,7 @@ func TestValidatePlugins(t *testing.T) {
 		Enabled: true,
 		Id:      "p1",
 	}
-	assert.NoError(projectRef.Insert())
+	assert.NoError(projectRef.Insert(t.Context()))
 	Convey("When validating a project", t, func() {
 		Convey("ensure bad plugin configs throw an error", func() {
 			So(validateProjectConfigPlugins(t.Context(), &model.ProjectConfig{}), ShouldResemble, ValidationErrors{})
@@ -4034,8 +4034,8 @@ func TestCheckProjectWarnings(t *testing.T) {
 				Id: "my_version",
 			}
 
-			require.NoError(t, pp.Insert())
-			require.NoError(t, v.Insert(), "failed to insert test version: %v", v)
+			require.NoError(t, pp.Insert(t.Context()))
+			require.NoError(t, v.Insert(t.Context()), "failed to insert test version: %v", v)
 			_, project, _, err := model.FindLatestVersionWithValidProject(projectRef.Id, false)
 			So(err, ShouldBeNil)
 			So(CheckProjectWarnings(project), ShouldResemble, ValidationErrors{})
@@ -5070,7 +5070,7 @@ func TestValidateContainers(t *testing.T) {
 			}
 
 			require.NoError(t, ref.Replace(t.Context()))
-			require.NoError(t, projVars.Insert())
+			require.NoError(t, projVars.Insert(t.Context()))
 			tCase(t, p, ref)
 		})
 	}

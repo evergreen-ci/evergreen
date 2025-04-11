@@ -123,7 +123,7 @@ func (s *UserTestSuite) SetupTest() {
 	}
 
 	for _, user := range s.users {
-		s.NoError(user.Insert())
+		s.NoError(user.Insert(s.T().Context()))
 	}
 
 	rm := s.env.RoleManager()
@@ -636,7 +636,7 @@ func (s *UserTestSuite) TestHasDistroCreatePermission() {
 	usr := DBUser{
 		Id: "basic_user",
 	}
-	s.NoError(usr.Insert())
+	s.NoError(usr.Insert(s.T().Context()))
 	s.Require().False(usr.HasDistroCreatePermission())
 
 	createRole := gimlet.Role{
@@ -899,7 +899,7 @@ func TestViewableProject(t *testing.T) {
 	myUser := DBUser{
 		Id: "me",
 	}
-	assert.NoError(t, myUser.Insert())
+	assert.NoError(t, myUser.Insert(t.Context()))
 	err = myUser.AddRole(t.Context(), evergreen.BasicProjectAccessRole)
 	assert.NoError(t, err)
 
@@ -975,7 +975,7 @@ func TestViewableProjectSettings(t *testing.T) {
 	myUser := DBUser{
 		Id: "me",
 	}
-	assert.NoError(t, myUser.Insert())
+	assert.NoError(t, myUser.Insert(t.Context()))
 	assert.NoError(t, myUser.AddRole(t.Context(), viewRole.ID))
 	assert.NoError(t, myUser.AddRole(t.Context(), editRole.ID))
 	assert.NoError(t, myUser.AddRole(t.Context(), otherRole.ID))
@@ -996,7 +996,7 @@ func TestUpdateParsleySettings(t *testing.T) {
 	usr := DBUser{
 		Id: "me",
 	}
-	require.NoError(t, usr.Insert())
+	require.NoError(t, usr.Insert(t.Context()))
 
 	newSettings := parsley.Settings{
 		SectionsEnabled: utility.FalsePtr(),
@@ -1017,7 +1017,7 @@ func TestUpdateBetaFeatures(t *testing.T) {
 	usr := DBUser{
 		Id: "me",
 	}
-	require.NoError(t, usr.Insert())
+	require.NoError(t, usr.Insert(t.Context()))
 
 	dbUser, err := FindOneByIdContext(t.Context(), usr.Id)
 	require.NoError(t, err)

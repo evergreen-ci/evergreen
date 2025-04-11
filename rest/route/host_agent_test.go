@@ -230,7 +230,7 @@ func TestHostNextTask(t *testing.T) {
 					}
 					require.NoError(t, h.Insert(ctx))
 					require.NoError(t, h.Distro.Insert(ctx))
-					require.NoError(t, v.Insert())
+					require.NoError(t, v.Insert(t.Context()))
 					handler := hostAgentNextTask{
 						env: env,
 					}
@@ -382,10 +382,10 @@ func TestHostNextTask(t *testing.T) {
 						Status:        evergreen.HostRunning,
 						AgentRevision: "out-of-date",
 					}
-					require.NoError(t, task1.Insert())
-					require.NoError(t, task2.Insert())
-					require.NoError(t, task3.Insert())
-					require.NoError(t, task4.Insert())
+					require.NoError(t, task1.Insert(t.Context()))
+					require.NoError(t, task2.Insert(t.Context()))
+					require.NoError(t, task3.Insert(t.Context()))
+					require.NoError(t, task4.Insert(t.Context()))
 					require.NoError(t, nonLegacyHost.Insert(ctx))
 					require.NoError(t, nonLegacyHost.Distro.Insert(ctx))
 					handler.host = nonLegacyHost
@@ -424,7 +424,7 @@ func TestHostNextTask(t *testing.T) {
 						Version:               "version1",
 						HostId:                "sampleHost",
 					}
-					require.NoError(t, stuckTask.Insert())
+					require.NoError(t, stuckTask.Insert(t.Context()))
 					anotherHost := host.Host{
 						Id:            "sampleHost",
 						Secret:        hostSecret,
@@ -458,7 +458,7 @@ func TestHostNextTask(t *testing.T) {
 						Activated: true,
 						BuildId:   "anotherBuild",
 					}
-					require.NoError(t, t1.Insert())
+					require.NoError(t, t1.Insert(t.Context()))
 					anotherHost := host.Host{
 						Id:            "sampleHost",
 						Secret:        hostSecret,
@@ -468,7 +468,7 @@ func TestHostNextTask(t *testing.T) {
 						Status:        evergreen.HostRunning,
 					}
 					anotherBuild := build.Build{Id: "anotherBuild"}
-					require.NoError(t, anotherBuild.Insert())
+					require.NoError(t, anotherBuild.Insert(t.Context()))
 					require.NoError(t, anotherHost.Insert(ctx))
 
 					rh.host = &anotherHost
@@ -488,7 +488,7 @@ func TestHostNextTask(t *testing.T) {
 						Activated: false,
 						BuildId:   "anotherBuild",
 					}
-					require.NoError(t, inactiveTask.Insert())
+					require.NoError(t, inactiveTask.Insert(t.Context()))
 					h3 := host.Host{
 						Id:            "inactive",
 						Secret:        hostSecret,
@@ -499,7 +499,7 @@ func TestHostNextTask(t *testing.T) {
 					}
 					require.NoError(t, h3.Insert(ctx))
 					anotherBuild = build.Build{Id: "b"}
-					require.NoError(t, anotherBuild.Insert())
+					require.NoError(t, anotherBuild.Insert(t.Context()))
 					rh.host = &h3
 					resp = rh.Run(ctx)
 					assert.NotNil(t, resp)
@@ -532,7 +532,7 @@ func TestHostNextTask(t *testing.T) {
 						Activated:             true,
 						NumNextTaskDispatches: 2,
 					}
-					require.NoError(t, existingTask.Insert())
+					require.NoError(t, existingTask.Insert(t.Context()))
 					handler := hostAgentNextTask{
 						env: env,
 					}
@@ -613,15 +613,15 @@ func TestHostNextTask(t *testing.T) {
 			}
 
 			require.NoError(t, d.Insert(ctx))
-			require.NoError(t, task1.Insert())
-			require.NoError(t, task2.Insert())
-			require.NoError(t, task3.Insert())
-			require.NoError(t, task4.Insert())
-			require.NoError(t, testBuild.Insert())
-			require.NoError(t, pref.Insert())
+			require.NoError(t, task1.Insert(t.Context()))
+			require.NoError(t, task2.Insert(t.Context()))
+			require.NoError(t, task3.Insert(t.Context()))
+			require.NoError(t, task4.Insert(t.Context()))
+			require.NoError(t, testBuild.Insert(t.Context()))
+			require.NoError(t, pref.Insert(t.Context()))
 			require.NoError(t, sampleHost.Insert(ctx))
 			require.NoError(t, tq.Save(t.Context()))
-			require.NoError(t, v.Insert())
+			require.NoError(t, v.Insert(t.Context()))
 
 			r, ok := makeHostAgentNextTask(env, nil, nil).(*hostAgentNextTask)
 			require.True(t, ok)
@@ -723,13 +723,13 @@ func TestSingleTaskDistroValidation(t *testing.T) {
 	}
 
 	require.NoError(t, d.Insert(ctx))
-	require.NoError(t, task1.Insert())
-	require.NoError(t, task2.Insert())
-	require.NoError(t, b.Insert())
-	require.NoError(t, pref.Insert())
+	require.NoError(t, task1.Insert(t.Context()))
+	require.NoError(t, task2.Insert(t.Context()))
+	require.NoError(t, b.Insert(t.Context()))
+	require.NoError(t, pref.Insert(t.Context()))
 	require.NoError(t, sampleHost.Insert(ctx))
 	require.NoError(t, tq.Save(t.Context()))
-	require.NoError(t, v.Insert())
+	require.NoError(t, v.Insert(t.Context()))
 
 	r, ok := makeHostAgentNextTask(env, nil, nil).(*hostAgentNextTask)
 	require.True(t, ok)
@@ -864,7 +864,7 @@ func TestHostEndTask(t *testing.T) {
 				BuildId:   buildID,
 				Version:   versionId,
 			}
-			require.NoError(t, task2.Insert())
+			require.NoError(t, task2.Insert(t.Context()))
 
 			sampleHost := host.Host{
 				Id:            "h2",
@@ -904,7 +904,7 @@ func TestHostEndTask(t *testing.T) {
 				BuildVariant: "bv",
 				Version:      versionId,
 			}
-			require.NoError(t, execTask.Insert())
+			require.NoError(t, execTask.Insert(t.Context()))
 			displayTask := task.Task{
 				Id:             "dt",
 				DisplayName:    "displayTask",
@@ -918,7 +918,7 @@ func TestHostEndTask(t *testing.T) {
 				BuildVariant:   "bv",
 				ExecutionTasks: []string{execTask.Id},
 			}
-			require.NoError(t, displayTask.Insert())
+			require.NoError(t, displayTask.Insert(t.Context()))
 
 			sampleHost := host.Host{
 				Id:            "h2",
@@ -957,7 +957,7 @@ func TestHostEndTask(t *testing.T) {
 			}))
 
 			for i := 0; i < 10; i++ {
-				event.LogHostTaskFinished(fmt.Sprintf("some-system-failed-task-%d", i), 0, hostId, evergreen.TaskSystemFailed)
+				event.LogHostTaskFinished(ctx, fmt.Sprintf("some-system-failed-task-%d", i), 0, hostId, evergreen.TaskSystemFailed)
 			}
 
 			details := &apimodels.TaskEndDetail{
@@ -989,7 +989,7 @@ func TestHostEndTask(t *testing.T) {
 			}))
 
 			for i := 0; i < 10; i++ {
-				event.LogHostTaskFinished(fmt.Sprintf("some-system-failed-task-%d", i), 0, hostId, evergreen.TaskSystemTimedOut)
+				event.LogHostTaskFinished(ctx, fmt.Sprintf("some-system-failed-task-%d", i), 0, hostId, evergreen.TaskSystemTimedOut)
 			}
 
 			details := &apimodels.TaskEndDetail{
@@ -1022,7 +1022,7 @@ func TestHostEndTask(t *testing.T) {
 			}))
 
 			for i := 0; i < 10; i++ {
-				event.LogHostTaskFinished(fmt.Sprintf("some-system-failed-task-%d", i), 0, hostId, evergreen.TaskSystemUnresponse)
+				event.LogHostTaskFinished(ctx, fmt.Sprintf("some-system-failed-task-%d", i), 0, hostId, evergreen.TaskSystemUnresponse)
 			}
 
 			details := &apimodels.TaskEndDetail{
@@ -1050,7 +1050,7 @@ func TestHostEndTask(t *testing.T) {
 			require.NoError(t, err)
 			require.NotZero(t, h)
 			for i := 0; i < 8; i++ {
-				event.LogHostTaskFinished(fmt.Sprintf("some-system-failed-task-%d", i), 0, hostId, evergreen.TaskSystemUnresponse)
+				event.LogHostTaskFinished(ctx, fmt.Sprintf("some-system-failed-task-%d", i), 0, hostId, evergreen.TaskSystemUnresponse)
 			}
 
 			require.NoError(t, host.UpdateOne(ctx, host.ById(hostId), bson.M{
@@ -1061,7 +1061,7 @@ func TestHostEndTask(t *testing.T) {
 			}))
 
 			for i := 8; i < 10; i++ {
-				event.LogHostTaskFinished(fmt.Sprintf("some-system-failed-task-%d", i), 0, hostId, evergreen.TaskSystemUnresponse)
+				event.LogHostTaskFinished(ctx, fmt.Sprintf("some-system-failed-task-%d", i), 0, hostId, evergreen.TaskSystemUnresponse)
 			}
 
 			details := &apimodels.TaskEndDetail{
@@ -1109,8 +1109,8 @@ func TestHostEndTask(t *testing.T) {
 			parserProj := model.ParserProject{
 				Id: versionId,
 			}
-			require.NoError(t, parserProj.Insert())
-			require.NoError(t, proj.Insert())
+			require.NoError(t, parserProj.Insert(t.Context()))
+			require.NoError(t, proj.Insert(t.Context()))
 
 			task1 := task.Task{
 				Id:        taskId,
@@ -1122,7 +1122,7 @@ func TestHostEndTask(t *testing.T) {
 				BuildId:   buildID,
 				Version:   versionId,
 			}
-			require.NoError(t, task1.Insert())
+			require.NoError(t, task1.Insert(t.Context()))
 
 			now := time.Now()
 			sampleHost := host.Host{
@@ -1145,13 +1145,13 @@ func TestHostEndTask(t *testing.T) {
 				Project: projectId,
 				Version: versionId,
 			}
-			require.NoError(t, testBuild.Insert())
+			require.NoError(t, testBuild.Insert(t.Context()))
 
 			testVersion := model.Version{
 				Id:     versionId,
 				Branch: projectId,
 			}
-			require.NoError(t, testVersion.Insert())
+			require.NoError(t, testVersion.Insert(t.Context()))
 
 			r, ok := makeHostAgentEndTask(evergreen.GetEnvironment()).(*hostAgentEndTask)
 			r.taskID = task1.Id
@@ -1515,7 +1515,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 				BuildVariant:      d.BuildVariant1.BuildVariant,
 				TaskGroupMaxHosts: 2,
 			}
-			require.NoError(t, tg1Task3.Insert())
+			require.NoError(t, tg1Task3.Insert(t.Context()))
 			require.NoError(t, task.UpdateOne(ctx, bson.M{"_id": d.Tg1Task1.Id},
 				bson.M{"$set": bson.M{"task_group_max_hosts": 2}}))
 			require.NoError(t, task.UpdateOne(ctx, bson.M{"_id": d.Tg1Task2.Id},
@@ -1586,12 +1586,12 @@ func TestAssignNextAvailableTask(t *testing.T) {
 				Id:      "exists",
 				Enabled: true,
 			}
-			require.NoError(t, data.Project1.Insert())
+			require.NoError(t, data.Project1.Insert(t.Context()))
 			data.Project2 = &model.ProjectRef{
 				Id:      "also-exists",
 				Enabled: true,
 			}
-			require.NoError(t, data.Project2.Insert())
+			require.NoError(t, data.Project2.Insert(t.Context()))
 
 			data.Distro1 = &distro.Distro{
 				Id: "d1",
@@ -1615,7 +1615,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 			}
 			require.NoError(t, data.Host2.Insert(ctx))
 			data.Version1 = &model.Version{Id: "v1"}
-			require.NoError(t, data.Version1.Insert())
+			require.NoError(t, data.Version1.Insert(t.Context()))
 			data.BuildVariant1 = &build.Build{
 				Id:           "bv1",
 				BuildVariant: "bv1",
@@ -1625,7 +1625,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 					{Id: "tg1-task2"},
 				},
 			}
-			require.NoError(t, data.BuildVariant1.Insert())
+			require.NoError(t, data.BuildVariant1.Insert(t.Context()))
 			data.Distro2 = &distro.Distro{
 				Id: "d2",
 				DispatcherSettings: distro.DispatcherSettings{
@@ -1649,7 +1649,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 			}
 			require.NoError(t, data.Host4.Insert(ctx))
 			data.Version2 = &model.Version{Id: "v2"}
-			require.NoError(t, data.Version2.Insert())
+			require.NoError(t, data.Version2.Insert(t.Context()))
 			data.BuildVariant2 = &build.Build{
 				Id:           "bv2",
 				BuildVariant: "bv2",
@@ -1661,7 +1661,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 					{Id: "tg2-task2"},
 				},
 			}
-			require.NoError(t, data.BuildVariant2.Insert())
+			require.NoError(t, data.BuildVariant2.Insert(t.Context()))
 			data.Distro3 = &distro.Distro{
 				Id: "d3",
 				DispatcherSettings: distro.DispatcherSettings{
@@ -1684,7 +1684,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 			}
 			require.NoError(t, data.Host6.Insert(ctx))
 			data.Version3 = &model.Version{Id: "v3"}
-			require.NoError(t, data.Version3.Insert())
+			require.NoError(t, data.Version3.Insert(t.Context()))
 			data.BuildVariant3 = &build.Build{
 				Id:           "bv3",
 				BuildVariant: "bv3",
@@ -1694,7 +1694,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 					{Id: "task4"},
 				},
 			}
-			require.NoError(t, data.BuildVariant3.Insert())
+			require.NoError(t, data.BuildVariant3.Insert(t.Context()))
 			tgInfo1 := model.TaskGroupInfo{
 				Name:  "task-group-1",
 				Count: 2,
@@ -1711,7 +1711,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 				BuildVariant:      data.BuildVariant1.BuildVariant,
 				TaskGroupMaxHosts: 1,
 			}
-			require.NoError(t, data.Tg1Task1.Insert())
+			require.NoError(t, data.Tg1Task1.Insert(t.Context()))
 			data.Tg1Task2 = &task.Task{
 				Id:                "tg1-task2",
 				Status:            evergreen.TaskUndispatched,
@@ -1724,7 +1724,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 				BuildVariant:      data.BuildVariant1.BuildVariant,
 				TaskGroupMaxHosts: 1,
 			}
-			require.NoError(t, data.Tg1Task2.Insert())
+			require.NoError(t, data.Tg1Task2.Insert(t.Context()))
 			data.Tq1 = &model.TaskQueue{
 				Distro: data.Distro1.Id,
 				Queue: []model.TaskQueueItem{
@@ -1747,7 +1747,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 				BuildId:      data.BuildVariant2.Id,
 				BuildVariant: data.BuildVariant2.BuildVariant,
 			}
-			require.NoError(t, data.Task1.Insert())
+			require.NoError(t, data.Task1.Insert(t.Context()))
 			data.Task2 = &task.Task{
 				Id:           "task2",
 				Status:       evergreen.TaskUndispatched,
@@ -1758,7 +1758,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 				BuildId:      data.BuildVariant2.Id,
 				BuildVariant: data.BuildVariant2.BuildVariant,
 			}
-			require.NoError(t, data.Task2.Insert())
+			require.NoError(t, data.Task2.Insert(t.Context()))
 			tgInfo2 := model.TaskGroupInfo{
 				Name:  "task-group-2",
 				Count: 2,
@@ -1775,7 +1775,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 				BuildVariant:      data.BuildVariant2.BuildVariant,
 				TaskGroupMaxHosts: 1,
 			}
-			require.NoError(t, data.Tg2Task1.Insert())
+			require.NoError(t, data.Tg2Task1.Insert(t.Context()))
 			data.Tg2Task2 = &task.Task{
 				Id:                "tg2-task2",
 				Status:            evergreen.TaskUndispatched,
@@ -1788,7 +1788,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 				BuildVariant:      data.BuildVariant2.BuildVariant,
 				TaskGroupMaxHosts: 1,
 			}
-			require.NoError(t, data.Tg2Task2.Insert())
+			require.NoError(t, data.Tg2Task2.Insert(t.Context()))
 			data.Tq2 = &model.TaskQueue{
 				Distro: data.Distro2.Id,
 				Queue: []model.TaskQueueItem{
@@ -1813,7 +1813,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 				BuildId:      data.BuildVariant3.Id,
 				BuildVariant: data.BuildVariant3.BuildVariant,
 			}
-			require.NoError(t, data.Task3.Insert())
+			require.NoError(t, data.Task3.Insert(t.Context()))
 			data.Task4 = &task.Task{
 				Id:           "task4",
 				Status:       evergreen.TaskUndispatched,
@@ -1824,7 +1824,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 				BuildId:      data.BuildVariant3.Id,
 				BuildVariant: data.BuildVariant3.BuildVariant,
 			}
-			require.NoError(t, data.Task4.Insert())
+			require.NoError(t, data.Task4.Insert(t.Context()))
 			data.Tq3 = &model.TaskQueue{
 				Distro: data.Distro3.Id,
 				Queue: []model.TaskQueueItem{

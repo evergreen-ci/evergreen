@@ -374,7 +374,7 @@ func (m *mockManager) CreateVolume(ctx context.Context, volume *host.Volume) (*h
 		volume.ID = primitive.NewObjectID().String()
 	}
 	m.Volumes[volume.ID] = MockVolume{}
-	if err := volume.Insert(); err != nil {
+	if err := volume.Insert(ctx); err != nil {
 		return nil, errors.WithStack(err)
 	}
 

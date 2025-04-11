@@ -1185,7 +1185,7 @@ func (m *ec2Manager) CreateVolume(ctx context.Context, volume *host.Volume) (*ho
 	}
 
 	volume.ID = *resp.VolumeId
-	if err = volume.Insert(); err != nil {
+	if err = volume.Insert(ctx); err != nil {
 		return nil, errors.Wrap(err, "creating volume in DB")
 	}
 

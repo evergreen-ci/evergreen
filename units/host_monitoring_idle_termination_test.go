@@ -102,7 +102,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		tsk := task.Task{
 			Id: "t1",
 		}
-		require.NoError(t, tsk.Insert())
+		require.NoError(t, tsk.Insert(ctx))
 
 		// finding idle hosts should not return the host
 		num, hosts := numIdleHostsFound(tctx, env, t)
@@ -137,7 +137,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		tsk := task.Task{
 			Id: "t3",
 		}
-		require.NoError(t, tsk.Insert())
+		require.NoError(t, tsk.Insert(ctx))
 		require.NoError(t, host1.Insert(tctx))
 
 		num, hosts := numIdleHostsFound(tctx, env, t)
@@ -182,7 +182,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			TaskGroup:         "tg1",
 			TaskGroupMaxHosts: 1,
 		}
-		require.NoError(t, tsk.Insert())
+		require.NoError(t, tsk.Insert(ctx))
 
 		// finding idle hosts should not return the host
 		num, hosts := numIdleHostsFound(tctx, env, t)
@@ -226,7 +226,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			TaskGroup:         "tg1",
 			TaskGroupMaxHosts: 1,
 		}
-		require.NoError(t, tsk.Insert())
+		require.NoError(t, tsk.Insert(ctx))
 
 		num, hosts := numIdleHostsFound(tctx, env, t)
 		assert.Equal(t, 1, num, "should idle terminate host in between single host task group tasks that has been idle for a long time")
@@ -272,7 +272,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		tsk1 := task.Task{
 			Id: "t1",
 		}
-		require.NoError(t, tsk1.Insert())
+		require.NoError(t, tsk1.Insert(ctx))
 
 		num, hosts := numIdleHostsFound(tctx, env, t)
 		assert.Equal(t, 0, num, "should not idle terminate host with outdated AMI if host is actively running a task")
@@ -320,7 +320,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		tsk1 := task.Task{
 			Id: "t1",
 		}
-		require.NoError(t, tsk1.Insert())
+		require.NoError(t, tsk1.Insert(ctx))
 
 		num, hosts := numIdleHostsFound(tctx, env, t)
 		assert.Equal(t, 1, num, "should idle terminate host with outdated AMI that is not actively running a task")
@@ -370,7 +370,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			TaskGroup:         "tg1",
 			TaskGroupMaxHosts: 1,
 		}
-		require.NoError(t, tsk.Insert())
+		require.NoError(t, tsk.Insert(ctx))
 
 		// finding idle hosts should not return the host
 		num, hosts := numIdleHostsFound(tctx, env, t)

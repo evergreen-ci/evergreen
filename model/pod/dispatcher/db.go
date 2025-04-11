@@ -145,7 +145,7 @@ func Allocate(ctx context.Context, env evergreen.Environment, t *task.Task, p *p
 		return nil, errors.Wrap(err, "allocating dispatcher in transaction")
 	}
 
-	event.LogTaskContainerAllocated(t.Id, t.Execution, time.Now())
+	event.LogTaskContainerAllocated(ctx, t.Id, t.Execution, time.Now())
 
 	return pd, nil
 }

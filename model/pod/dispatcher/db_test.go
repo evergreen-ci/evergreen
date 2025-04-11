@@ -36,7 +36,7 @@ func TestFindOne(t *testing.T) {
 		},
 		"ReturnsOneMatching": func(t *testing.T, pds []PodDispatcher) {
 			for _, pd := range pds {
-				require.NoError(t, pd.Insert())
+				require.NoError(t, pd.Insert(t.Context()))
 			}
 			found, err := FindOneByID(t.Context(), pds[0].ID)
 			require.NoError(t, err)
@@ -67,7 +67,7 @@ func TestFind(t *testing.T) {
 		},
 		"ReturnsMatching": func(t *testing.T, pds []PodDispatcher) {
 			for _, pd := range pds {
-				require.NoError(t, pd.Insert())
+				require.NoError(t, pd.Insert(t.Context()))
 			}
 			found, err := Find(db.Query(bson.M{}))
 			require.NoError(t, err)
@@ -92,7 +92,7 @@ func TestFindOneByGroupID(t *testing.T) {
 	for tName, tCase := range map[string]func(t *testing.T, pds []PodDispatcher){
 		"FindsMatchingGroupID": func(t *testing.T, pds []PodDispatcher) {
 			for _, pd := range pds {
-				require.NoError(t, pd.Insert())
+				require.NoError(t, pd.Insert(t.Context()))
 			}
 			found, err := FindOneByGroupID(t.Context(), pds[0].GroupID)
 			require.NoError(t, err)
@@ -100,7 +100,7 @@ func TestFindOneByGroupID(t *testing.T) {
 		},
 		"ReturnsNoResultsWithUnmatchedGroupID": func(t *testing.T, pds []PodDispatcher) {
 			for _, pd := range pds {
-				require.NoError(t, pd.Insert())
+				require.NoError(t, pd.Insert(t.Context()))
 			}
 			found, err := FindOneByGroupID(t.Context(), "foo")
 			assert.NoError(t, err)
@@ -128,7 +128,7 @@ func TestFindOneByPodID(t *testing.T) {
 		NewPodDispatcher("group", []string{"task2", "task3"}, []string{"pod2", "pod3"}),
 	}
 	for _, pd := range dispatchers {
-		require.NoError(t, pd.Insert())
+		require.NoError(t, pd.Insert(t.Context()))
 	}
 
 	t.Run("FindsDispatcherWithMatchingPodID", func(t *testing.T) {
@@ -200,7 +200,7 @@ func TestAllocate(t *testing.T) {
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env evergreen.Environment, tsk *task.Task, p *pod.Pod){
 		"SucceedsWithNewPodDispatcher": func(ctx context.Context, t *testing.T, env evergreen.Environment, tsk *task.Task, p *pod.Pod) {
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(t.Context()))
 
 			newDispatcher, err := Allocate(ctx, env, tsk, p)
 			require.NoError(t, err)
@@ -218,8 +218,8 @@ func TestAllocate(t *testing.T) {
 				TaskIDs:           []string{tsk.Id},
 				ModificationCount: 1,
 			}
-			require.NoError(t, pd.Insert())
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, pd.Insert(t.Context()))
+			require.NoError(t, tsk.Insert(t.Context()))
 
 			updatedDispatcher, err := Allocate(ctx, env, tsk, p)
 			require.NoError(t, err)
@@ -241,8 +241,8 @@ func TestAllocate(t *testing.T) {
 				TaskIDs:           []string{tsk.Id},
 				ModificationCount: 1,
 			}
-			require.NoError(t, pd.Insert())
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, pd.Insert(t.Context()))
+			require.NoError(t, tsk.Insert(t.Context()))
 
 			updatedDispatcher, err := Allocate(ctx, env, tsk, p)
 			require.NoError(t, err)

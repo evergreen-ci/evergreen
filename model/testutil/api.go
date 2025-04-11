@@ -88,7 +88,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		Branch:  "main",
 		Enabled: true,
 	}
-	if err = projectRef.Insert(); err != nil {
+	if err = projectRef.Insert(ctx); err != nil {
 		return nil, errors.Wrap(err, "inserting project ref")
 	}
 	modelData.ProjectRef = projectRef
@@ -98,7 +98,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		Identifier: project.DisplayName,
 		Requester:  evergreen.RepotrackerVersionRequester,
 	}
-	if err = version.Insert(); err != nil {
+	if err = version.Insert(ctx); err != nil {
 		return nil, errors.Wrap(err, "inserting version")
 	}
 
@@ -107,7 +107,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		return nil, errors.Wrap(err, "unmarshalling parser project from YAML")
 	}
 	versionParserProject.Id = "sample_version"
-	if err = versionParserProject.Insert(); err != nil {
+	if err = versionParserProject.Insert(ctx); err != nil {
 		return nil, errors.Wrap(err, "inserting parser project")
 	}
 
@@ -143,7 +143,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 	} else {
 		taskOne.Requester = evergreen.PatchVersionRequester
 	}
-	if err = taskOne.Insert(); err != nil {
+	if err = taskOne.Insert(ctx); err != nil {
 		return nil, errors.Wrap(err, "inserting taskOne")
 	}
 	modelData.Task = taskOne
@@ -163,7 +163,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		Activated:      true,
 		TaskOutputInfo: &taskoutput.TaskOutput{},
 	}
-	if err = taskTwo.Insert(); err != nil {
+	if err = taskTwo.Insert(ctx); err != nil {
 		return nil, errors.Wrap(err, "inserting taskTwo")
 	}
 
@@ -186,11 +186,11 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		Id:       taskOne.Version,
 		BuildIds: []string{taskOne.BuildId},
 	}
-	if err = v.Insert(); err != nil {
+	if err = v.Insert(ctx); err != nil {
 		return nil, errors.Wrap(err, "inserting version")
 	}
 	pp.Id = taskOne.Version
-	if err = pp.Insert(); err != nil {
+	if err = pp.Insert(ctx); err != nil {
 		return nil, errors.Wrap(err, "inserting parser project")
 	}
 
@@ -199,7 +199,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		Id:      "testBuildId",
 		Version: v.Id,
 	}
-	if err = build.Insert(); err != nil {
+	if err = build.Insert(ctx); err != nil {
 		return nil, errors.Wrap(err, "inserting build")
 	}
 	modelData.Build = build

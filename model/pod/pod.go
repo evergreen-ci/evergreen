@@ -568,8 +568,8 @@ func (i TaskRuntimeInfo) IsZero() bool {
 
 // Insert inserts a new pod into the collection. This relies on the global Anser
 // DB session.
-func (p *Pod) Insert() error {
-	return db.Insert(Collection, p)
+func (p *Pod) Insert(ctx context.Context) error {
+	return db.Insert(ctx, Collection, p)
 }
 
 // InsertWithContext is the same as Insert, but it respects the given context by
@@ -677,7 +677,7 @@ func (p *Pod) SetRunningTask(ctx context.Context, env evergreen.Environment, tas
 	p.TaskRuntimeInfo.RunningTaskExecution = taskExecution
 	p.Status = StatusDecommissioned
 
-	event.LogPodStatusChanged(p.ID, string(StatusRunning), string(StatusDecommissioned), "pod has been assigned a task and will not be reused")
+	event.LogPodStatusChanged(ctx, p.ID, string(StatusRunning), string(StatusDecommissioned), "pod has been assigned a task and will not be reused")
 
 	return nil
 }
@@ -712,7 +712,7 @@ func (p *Pod) ClearRunningTask(ctx context.Context) error {
 		return errors.Wrap(err, "clearing running task")
 	}
 
-	event.LogPodRunningTaskCleared(p.ID, p.TaskRuntimeInfo.RunningTaskID, p.TaskRuntimeInfo.RunningTaskExecution)
+	event.LogPodRunningTaskCleared(ctx, p.ID, p.TaskRuntimeInfo.RunningTaskID, p.TaskRuntimeInfo.RunningTaskExecution)
 
 	p.TaskRuntimeInfo.RunningTaskID = ""
 	p.TaskRuntimeInfo.RunningTaskExecution = 0

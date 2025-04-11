@@ -33,7 +33,7 @@ func TestFindFromVersion(t *testing.T) {
 		},
 	}
 	for _, mfest := range mfests {
-		_, err := mfest.TryInsert()
+		_, err := mfest.TryInsert(t.Context())
 		assert.NoError(t, err)
 	}
 
@@ -47,7 +47,7 @@ func TestFindFromVersion(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(t, p.Insert())
+	assert.NoError(t, p.Insert(t.Context()))
 
 	mfest, err := FindFromVersion(t.Context(), patchID, projectName, revision, evergreen.PatchVersionRequester)
 	assert.NoError(t, err)
@@ -76,7 +76,7 @@ func TestByBaseProjectAndRevision(t *testing.T) {
 		},
 	}
 	for _, mfest := range mfests {
-		_, err := mfest.TryInsert()
+		_, err := mfest.TryInsert(t.Context())
 		require.NoError(t, err)
 	}
 

@@ -49,7 +49,7 @@ type rawAdminEventData struct {
 	Changes rawConfigDataChange `bson:"changes"`
 }
 
-func LogAdminEvent(section string, before, after evergreen.ConfigSection, user string) error {
+func LogAdminEvent(ctx context.Context, section string, before, after evergreen.ConfigSection, user string) error {
 	if section == evergreen.ConfigDocID {
 		beforeSettings := before.(*evergreen.Settings)
 		afterSettings := after.(*evergreen.Settings)
@@ -72,7 +72,7 @@ func LogAdminEvent(section string, before, after evergreen.ConfigSection, user s
 		ResourceType: ResourceTypeAdmin,
 	}
 
-	if err := event.Log(); err != nil {
+	if err := event.Log(ctx); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"resource_type": ResourceTypeAdmin,
 			"message":       "error logging event",
@@ -188,5 +188,5 @@ func RevertConfig(ctx context.Context, guid string, user string) error {
 		return errors.Wrap(err, "reverting to before settings")
 	}
 
-	return LogAdminEvent(data.Section, current, data.Changes.Before, user)
+	return LogAdminEvent(ctx, data.Section, current, data.Changes.Before, user)
 }

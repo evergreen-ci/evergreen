@@ -9,7 +9,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/pail"
-	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -75,11 +74,6 @@ func (f *File) validate() error {
 	catcher.ErrorfWhen(f.Bucket == "", "bucket is required")
 	catcher.ErrorfWhen(f.FileKey == "", "file key is required")
 
-	// Buckets that are not devprod owned require AWS credentials.
-	if !isInternalBucket(f.Bucket) && f.AWSRoleARN == "" {
-		catcher.ErrorfWhen(f.AWSKey == "" || f.AWSSecret == "", "AWS key/secret or AWS role ARN is required")
-	}
-
 	return catcher.Resolve()
 }
 
@@ -110,14 +104,6 @@ func StripHiddenFiles(ctx context.Context, files []File, hasUser bool) ([]File, 
 func presignFile(ctx context.Context, file File) (string, error) {
 	if err := file.validate(); err != nil {
 		return "", errors.Wrap(err, "file validation failed")
-	}
-
-	// If this bucket is a devprod owned one, we sign the URL
-	// with the app's server IRSA credentials (which is used
-	// when no credentials are provided).
-	if isInternalBucket(file.Bucket) {
-		file.AWSKey = ""
-		file.AWSSecret = ""
 	}
 
 	if file.AWSRoleARN != "" {
@@ -180,10 +166,4 @@ func escapeFile(path string) string {
 		return path
 	}
 	return path[:i] + strings.Replace(path[i:], base, url.QueryEscape(base), 1)
-}
-
-// isInternalBucket returns true if the bucket can be accessed by the app server's
-// IRSA role.
-func isInternalBucket(bucketName string) bool {
-	return utility.StringSliceContains(evergreen.GetEnvironment().Settings().Buckets.InternalBuckets, bucketName)
 }

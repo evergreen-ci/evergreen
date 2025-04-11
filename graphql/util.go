@@ -1028,7 +1028,7 @@ func handleDistroOnSaveOperation(ctx context.Context, distroID string, onSave Di
 			return noHostsUpdated, errors.Wrap(err, fmt.Sprintf("decommissioning hosts for distro '%s'", distroID))
 		}
 		for _, h := range hosts {
-			event.LogHostStatusChanged(h.Id, h.Status, evergreen.HostDecommissioned, userID, "distro page")
+			event.LogHostStatusChanged(ctx, h.Id, h.Status, evergreen.HostDecommissioned, userID, "distro page")
 		}
 	case DistroOnSaveOperationReprovision:
 		failed := []string{}

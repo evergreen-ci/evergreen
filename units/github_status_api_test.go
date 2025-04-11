@@ -79,8 +79,8 @@ func (s *githubStatusUpdateSuite) SetupTest() {
 		Status:       evergreen.BuildFailed,
 	}
 
-	s.NoError(s.patchDoc.Insert())
-	s.NoError(s.buildDoc.Insert())
+	s.NoError(s.patchDoc.Insert(s.ctx))
+	s.NoError(s.buildDoc.Insert(s.ctx))
 }
 
 func (s *githubStatusUpdateSuite) TestRunInDegradedMode() {
@@ -102,7 +102,7 @@ func (s *githubStatusUpdateSuite) TestRunInDegradedMode() {
 func (s *githubStatusUpdateSuite) TestForPatchCreated() {
 	s.NoError(db.ClearCollections(patch.Collection))
 	s.patchDoc.Status = evergreen.VersionCreated
-	s.NoError(s.patchDoc.Insert())
+	s.NoError(s.patchDoc.Insert(s.ctx))
 
 	job, ok := NewGithubStatusUpdateJobForNewPatch(s.patchDoc.Version).(*githubStatusUpdateJob)
 	s.Require().NotNil(job)
@@ -129,7 +129,7 @@ func (s *githubStatusUpdateSuite) TestForProcessingError() {
 		"evergreen-ci/evergreen", "7c38f3f63c05675329518c148d3a176e1da6ec2d", "tychoish/evergreen", "776f608b5b12cd27b8d931c8ee4ca0c13f857299", "tychoish", "Title"))
 	s.NoError(err)
 	s.NotNil(intent)
-	s.NoError(intent.Insert())
+	s.NoError(intent.Insert(s.ctx))
 
 	job, ok := NewGithubStatusUpdateJobForProcessingError("evergreen/commit-queue", "evergreen-ci", "evergreen", "776f608b5b12cd27b8d931c8ee4ca0c13f857299", OtherErrors).(*githubStatusUpdateJob)
 	s.Require().NotNil(job)
@@ -152,7 +152,7 @@ func (s *githubStatusUpdateSuite) TestForProcessingError() {
 func (s *githubStatusUpdateSuite) TestRequestForAuth() {
 	s.NoError(db.ClearCollections(patch.Collection))
 	s.patchDoc.Status = evergreen.VersionCreated
-	s.NoError(s.patchDoc.Insert())
+	s.NoError(s.patchDoc.Insert(s.ctx))
 
 	job, ok := NewGithubStatusUpdateJobForExternalPatch(s.patchDoc.Version).(*githubStatusUpdateJob)
 	s.Require().NotNil(job)

@@ -57,14 +57,14 @@ func (s *ProjectCopySuite) SetupSuite() {
 		},
 	}
 	for _, pRef := range pRefs {
-		s.NoError(pRef.Insert())
+		s.NoError(pRef.Insert(s.T().Context()))
 	}
 	projectVar := &model.ProjectVars{
 		Id:          "12345",
 		Vars:        map[string]string{"a": "1", "b": "2"},
 		PrivateVars: map[string]bool{"b": true},
 	}
-	s.NoError(projectVar.Insert())
+	s.NoError(projectVar.Insert(s.T().Context()))
 }
 
 func (s *ProjectCopySuite) SetupTest() {
@@ -102,8 +102,8 @@ func (s *ProjectCopySuite) TestCopyToExistingProjectFails() {
 func (s *ProjectCopySuite) TestCopyToNewProject() {
 	u := &user.DBUser{Id: "me"}
 	admin := &user.DBUser{Id: "my-user"}
-	s.NoError(u.Insert())
-	s.NoError(admin.Insert())
+	s.NoError(u.Insert(s.T().Context()))
+	s.NoError(admin.Insert(s.T().Context()))
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, u)
 	s.route.oldProject = "projectA"
@@ -171,7 +171,7 @@ func (s *copyVariablesSuite) SetupTest() {
 		},
 	}
 	for _, pRef := range pRefs {
-		s.NoError(pRef.Insert())
+		s.NoError(pRef.Insert(s.T().Context()))
 	}
 	repoRef := model.RepoRef{ProjectRef: model.ProjectRef{
 		Id: "repoRef",
@@ -193,9 +193,9 @@ func (s *copyVariablesSuite) SetupTest() {
 		PrivateVars: map[string]bool{},
 	}
 
-	s.NoError(projectVar1.Insert())
-	s.NoError(projectVar2.Insert())
-	s.NoError(projectVar3.Insert())
+	s.NoError(projectVar1.Insert(s.T().Context()))
+	s.NoError(projectVar2.Insert(s.T().Context()))
+	s.NoError(projectVar3.Insert(s.T().Context()))
 }
 
 func (s *copyVariablesSuite) TearDownTest() {

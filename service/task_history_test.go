@@ -41,7 +41,7 @@ func (s *TaskHistorySuite) SetupTest() {
 			Requester:           evergreen.RepotrackerVersionRequester,
 		}
 		s.versionsAfter = append(s.versionsAfter, version)
-		s.NoError(version.Insert())
+		s.NoError(version.Insert(s.T().Context()))
 	}
 
 	// Middle version with the same createTime as the last version in versionsBefore
@@ -53,7 +53,7 @@ func (s *TaskHistorySuite) SetupTest() {
 		Identifier:          s.projectID,
 		Requester:           evergreen.RepotrackerVersionRequester,
 	}
-	s.NoError(s.middleVersion.Insert())
+	s.NoError(s.middleVersion.Insert(s.T().Context()))
 
 	for i := 0; i < 50; i++ {
 		version := model.Version{
@@ -64,7 +64,7 @@ func (s *TaskHistorySuite) SetupTest() {
 			Requester:           evergreen.RepotrackerVersionRequester,
 		}
 		s.versionsBefore = append(s.versionsBefore, version)
-		s.NoError(version.Insert())
+		s.NoError(version.Insert(s.T().Context()))
 
 		now = now.Add(-time.Minute)
 	}

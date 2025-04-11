@@ -36,7 +36,7 @@ func TestTestLogInsertAndFind(t *testing.T) {
 		}
 
 		Convey("inserting that test log into the db", func() {
-			err := log.Insert()
+			err := log.Insert(t.Context())
 			So(err, ShouldBeNil)
 
 			Convey("the test log should be findable in the db", func() {
@@ -71,8 +71,8 @@ func TestDeleteTestLogsWithLimit(t *testing.T) {
 	})
 	t.Run("QueryValidation", func(t *testing.T) {
 		require.NoError(t, db.Clear(TestLogCollection))
-		require.NoError(t, db.Insert(TestLogCollection, bson.M{"_id": primitive.NewObjectIDFromTimestamp(now.Add(time.Hour)).Hex()}))
-		require.NoError(t, db.Insert(TestLogCollection, bson.M{"_id": primitive.NewObjectIDFromTimestamp(now.Add(-time.Hour)).Hex()}))
+		require.NoError(t, db.Insert(t.Context(), TestLogCollection, bson.M{"_id": primitive.NewObjectIDFromTimestamp(now.Add(time.Hour)).Hex()}))
+		require.NoError(t, db.Insert(t.Context(), TestLogCollection, bson.M{"_id": primitive.NewObjectIDFromTimestamp(now.Add(-time.Hour)).Hex()}))
 
 		num, err := db.Count(t.Context(), TestLogCollection, bson.M{})
 		require.NoError(t, err)
