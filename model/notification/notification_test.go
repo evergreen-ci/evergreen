@@ -178,7 +178,7 @@ func (s *notificationSuite) TestInsertMany() {
 		}
 	}
 
-	out2, err := FindByEventID("1")
+	out2, err := FindByEventID(s.T().Context(), "1")
 	s.NoError(err)
 	s.Len(out2, 2)
 }
@@ -419,7 +419,7 @@ func (s *notificationSuite) TestFindUnprocessed() {
 	s.n.SentAt = time.Now()
 	s.NoError(db.Insert(s.T().Context(), Collection, s.n))
 
-	unprocessedNotifications, err := FindUnprocessed()
+	unprocessedNotifications, err := FindUnprocessed(s.T().Context())
 	s.NoError(err)
 	s.Len(unprocessedNotifications, 1)
 	s.Equal("unsent", unprocessedNotifications[0].ID)

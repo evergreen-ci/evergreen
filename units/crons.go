@@ -144,7 +144,7 @@ func sendNotificationJobs(ctx context.Context, _ evergreen.Environment, ts time.
 		return nil, nil
 	}
 
-	unprocessedNotifications, err := notification.FindUnprocessed()
+	unprocessedNotifications, err := notification.FindUnprocessed(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding unprocessed notifications")
 	}

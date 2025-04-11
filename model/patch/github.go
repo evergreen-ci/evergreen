@@ -110,7 +110,7 @@ var (
 
 // NewGithubIntent creates an Intent from a google/go-github PullRequestEvent,
 // or returns an error if the some part of the struct is invalid
-func NewGithubIntent(msgDeliveryID, patchOwner, calledBy, alias, mergeBase string, pr *github.PullRequest) (Intent, error) {
+func NewGithubIntent(ctx context.Context, msgDeliveryID, patchOwner, calledBy, alias, mergeBase string, pr *github.PullRequest) (Intent, error) {
 	if pr == nil ||
 		pr.Base == nil || pr.Base.Repo == nil ||
 		pr.Head == nil || pr.Head.Repo == nil ||
@@ -155,7 +155,7 @@ func NewGithubIntent(msgDeliveryID, patchOwner, calledBy, alias, mergeBase strin
 	}
 
 	// get the patchId to repeat the definitions from
-	repeat, err := getRepeatPatchId(pr.Base.Repo.Owner.GetLogin(), pr.Base.Repo.GetName(), pr.GetNumber())
+	repeat, err := getRepeatPatchId(ctx, pr.Base.Repo.Owner.GetLogin(), pr.Base.Repo.GetName(), pr.GetNumber())
 	if err != nil {
 		return nil, errors.Wrap(err, "getting patch to repeat definitions from")
 	}
@@ -182,8 +182,8 @@ func NewGithubIntent(msgDeliveryID, patchOwner, calledBy, alias, mergeBase strin
 
 // getRepeatPatchId returns the patch id to repeat the definitions from
 // this information is found on the most recent pr patch
-func getRepeatPatchId(owner, repo string, prNumber int) (string, error) {
-	p, err := FindLatestGithubPRPatch(owner, repo, prNumber)
+func getRepeatPatchId(ctx context.Context, owner, repo string, prNumber int) (string, error) {
+	p, err := FindLatestGithubPRPatch(ctx, owner, repo, prNumber)
 	if err != nil {
 		return "", errors.Errorf("finding latest patch for PR '%s/%s:%d'", owner, repo, prNumber)
 	}

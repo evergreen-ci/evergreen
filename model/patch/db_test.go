@@ -314,7 +314,7 @@ func TestLatestGithubPRPatch(t *testing.T) {
 	}
 
 	assert.NoError(t, db.InsertMany(t.Context(), Collection, patch1, patch2, cqPatch, wrongPRPatch))
-	p, err := FindLatestGithubPRPatch("parks", "rec", 12)
+	p, err := FindLatestGithubPRPatch(t.Context(), "parks", "rec", 12)
 	assert.NoError(t, err)
 	require.NotNil(t, p)
 	assert.Equal(t, p.Id.Hex(), patch2.Id.Hex())

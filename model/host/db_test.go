@@ -89,7 +89,7 @@ func TestFindUnexpirableRunning(t *testing.T) {
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, h *Host){
 		"ReturnsUnexpirableRunningHost": func(ctx context.Context, t *testing.T, h *Host) {
 			require.NoError(t, h.Insert(ctx))
-			hosts, err := FindUnexpirableRunning()
+			hosts, err := FindUnexpirableRunning(ctx)
 			require.NoError(t, err)
 			require.Len(t, hosts, 1)
 			assert.Equal(t, h.Id, hosts[0].Id)
@@ -97,21 +97,21 @@ func TestFindUnexpirableRunning(t *testing.T) {
 		"DoesNotReturnExpirableHost": func(ctx context.Context, t *testing.T, h *Host) {
 			h.NoExpiration = false
 			require.NoError(t, h.Insert(ctx))
-			hosts, err := FindUnexpirableRunning()
+			hosts, err := FindUnexpirableRunning(ctx)
 			require.NoError(t, err)
 			assert.Empty(t, hosts)
 		},
 		"DoesNotReturnNonRunningHost": func(ctx context.Context, t *testing.T, h *Host) {
 			h.Status = evergreen.HostStopped
 			require.NoError(t, h.Insert(ctx))
-			hosts, err := FindUnexpirableRunning()
+			hosts, err := FindUnexpirableRunning(ctx)
 			require.NoError(t, err)
 			assert.Empty(t, hosts)
 		},
 		"DoesNotReturnEvergreenOwnedHosts": func(ctx context.Context, t *testing.T, h *Host) {
 			h.StartedBy = evergreen.User
 			require.NoError(t, h.Insert(ctx))
-			hosts, err := FindUnexpirableRunning()
+			hosts, err := FindUnexpirableRunning(ctx)
 			require.NoError(t, err)
 			assert.Empty(t, hosts)
 		},

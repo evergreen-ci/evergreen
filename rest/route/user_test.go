@@ -140,7 +140,7 @@ func (s *UserRouteSuite) TestSaveFeedback() {
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
 
-	feedback, err := model.FindFeedbackOfType("someType")
+	feedback, err := model.FindFeedbackOfType(s.T().Context(), "someType")
 	s.NoError(err)
 	s.Len(feedback, 1)
 	s.Equal("me", feedback[0].User)
@@ -869,7 +869,7 @@ func TestRenameUser(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Len(t, volumes, 1)
 
-			patches, err := patch.Find(db.Query(mgobson.M{patch.AuthorKey: "new_me"}))
+			patches, err := patch.Find(t.Context(), db.Query(mgobson.M{patch.AuthorKey: "new_me"}))
 			assert.NoError(t, err)
 			assert.Len(t, patches, 3)
 			for _, p := range patches {
@@ -906,7 +906,7 @@ func TestRenameUser(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Len(t, volumes, 1)
 
-			patches, err := patch.Find(db.Query(mgobson.M{patch.AuthorKey: "new_me"}))
+			patches, err := patch.Find(t.Context(), db.Query(mgobson.M{patch.AuthorKey: "new_me"}))
 			assert.NoError(t, err)
 			assert.Len(t, patches, 2)
 		},

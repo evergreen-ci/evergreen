@@ -289,7 +289,7 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 		data.Versions = versions
 	} else {
 		// patches
-		patches, err := patch.Find(patch.ByVersions(versionIds).
+		patches, err := patch.Find(r.Context(), patch.ByVersions(versionIds).
 			WithFields(patch.IdKey, patch.CreateTimeKey, patch.DescriptionKey, patch.AuthorKey, patch.VersionKey, patch.GithashKey))
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusNotFound, errors.Wrap(err, "error finding past patches"))
