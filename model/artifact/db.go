@@ -132,6 +132,6 @@ func FindOne(ctx context.Context, query db.Q) (*Entry, error) {
 // FindAll gets every Entry for the given query
 func FindAll(ctx context.Context, query db.Q) ([]Entry, error) {
 	entries := []Entry{}
-	err := db.FindAllQContext(ctx, Collection, query, &entries)
+	err := db.FindAllQ(ctx, Collection, query, &entries)
 	return entries, err
 }

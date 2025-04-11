@@ -29,8 +29,8 @@ type PodDefinition struct {
 }
 
 // Insert inserts the pod definition into the collection.
-func (pd *PodDefinition) Insert() error {
-	return db.Insert(Collection, pd)
+func (pd *PodDefinition) Insert(ctx context.Context) error {
+	return db.Insert(ctx, Collection, pd)
 }
 
 // Replace updates the pod definition in the db if an entry already exists,

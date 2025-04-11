@@ -26,7 +26,7 @@ func TestGetTestResults(t *testing.T) {
 		Id:              "test_task_id",
 		Status:          evergreen.TaskSucceeded,
 	}
-	err := newTask.Insert()
+	err := newTask.Insert(t.Context())
 	require.NoError(t, err)
 	uis := UIServer{hostCache: make(map[string]hostCacheItem)}
 	projectContext := projectContext{

@@ -358,7 +358,7 @@ func TestRequireDistroAccess(t *testing.T) {
 			SlackMemberId: "testuser",
 		},
 	}
-	require.NoError(t, dbUser.Insert())
+	require.NoError(t, dbUser.Insert(t.Context()))
 
 	const email = "testuser@mongodb.com"
 	const accessToken = "access_token"
@@ -504,7 +504,7 @@ func TestRequireProjectAdmin(t *testing.T) {
 			SlackMemberId: "testuser",
 		},
 	}
-	require.NoError(t, dbUser.Insert())
+	require.NoError(t, dbUser.Insert(t.Context()))
 
 	const email = "testuser@mongodb.com"
 	const accessToken = "access_token"
@@ -533,7 +533,7 @@ func TestRequireProjectAdmin(t *testing.T) {
 		Id:         "project_id",
 		Identifier: "project_identifier",
 	}
-	err = projectRef.Insert()
+	err = projectRef.Insert(t.Context())
 	require.NoError(t, err)
 
 	// superuser should always be successful, no matter the resolver
@@ -673,7 +673,7 @@ func setupUser(t *testing.T) (*user.DBUser, error) {
 			SlackMemberId: "testuser",
 		},
 	}
-	require.NoError(t, dbUser.Insert())
+	require.NoError(t, dbUser.Insert(t.Context()))
 	const email = "testuser@mongodb.com"
 	const accessToken = "access_token"
 	const refreshToken = "refresh_token"
@@ -691,7 +691,7 @@ func TestRequireProjectSettingsAccess(t *testing.T) {
 		Identifier: "project_identifier",
 		RepoRefId:  "repo_project_id",
 	}
-	assert.NoError(t, pRef.Insert())
+	assert.NoError(t, pRef.Insert(t.Context()))
 
 	// callCount keeps track of how many times the function is called
 	callCount := 0
@@ -860,28 +860,28 @@ func TestRequirePatchOwner(t *testing.T) {
 				Id:         "project_id",
 				Identifier: "project_identifier",
 			}
-			require.NoError(t, projectRef.Insert())
+			require.NoError(t, projectRef.Insert(t.Context()))
 			patch1Id := bson.ObjectIdHex("67e2c29f4ebfe834bb02a482")
 			p1 := patch.Patch{
 				Id:      patch1Id,
 				Project: "project_id",
 				Author:  "test_user",
 			}
-			assert.NoError(t, p1.Insert())
+			assert.NoError(t, p1.Insert(t.Context()))
 			patch2Id := bson.ObjectIdHex("67e2c49e4ebfe83f00ee5f65")
 			p2 := patch.Patch{
 				Id:      patch2Id,
 				Project: "project_id",
 				Author:  "not_test_user",
 			}
-			assert.NoError(t, p2.Insert())
+			assert.NoError(t, p2.Insert(t.Context()))
 			patch3Id := bson.ObjectIdHex("64c13ab08edf48a008793cac")
 			p3 := patch.Patch{
 				Id:      patch3Id,
 				Project: "project_id",
 				Author:  "not_test_user",
 			}
-			assert.NoError(t, p3.Insert())
+			assert.NoError(t, p3.Insert(t.Context()))
 			config := New("/graphql")
 			assert.NotNil(t, config)
 			next := func(rctx context.Context) (any, error) {

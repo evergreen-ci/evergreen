@@ -122,7 +122,7 @@ func (j *agentMonitorDeployJob) Run(ctx context.Context) {
 		if !j.HasErrors() {
 			return
 		}
-		event.LogHostAgentMonitorDeployFailed(j.host.Id, j.Error())
+		event.LogHostAgentMonitorDeployFailed(ctx, j.host.Id, j.Error())
 		grip.Error(message.WrapError(j.Error(), message.Fields{
 			"message":  "agent monitor deploy failed",
 			"host_id":  j.host.Id,
@@ -320,7 +320,7 @@ func (j *agentMonitorDeployJob) startAgentMonitor(ctx context.Context, settings 
 		return errors.Wrap(err, "creating agent monitor command")
 	}
 
-	event.LogHostAgentMonitorDeployed(j.host.Id)
+	event.LogHostAgentMonitorDeployed(ctx, j.host.Id)
 	grip.Info(message.Fields{
 		"message":  "agent monitor deployed",
 		"host_id":  j.host.Id,

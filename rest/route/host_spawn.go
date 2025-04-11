@@ -10,6 +10,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -69,6 +70,25 @@ func (hph *hostPostHandler) Run(ctx context.Context) gimlet.Responder {
 
 		hph.options.SleepScheduleOptions.SetDefaultSchedule()
 		hph.options.SetDefaultTimeZone(user.Settings.Timezone)
+	}
+
+	if !user.HasDistroCreatePermission() {
+		d, err := distro.FindOneId(ctx, hph.options.DistroID)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding distro '%s'", hph.options.DistroID))
+		}
+		if d == nil {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusNotFound,
+				Message:    errors.Errorf("distro '%s' not found", hph.options.DistroID).Error(),
+			})
+		}
+		if d.AdminOnly {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusForbidden,
+				Message:    errors.Errorf("not authorized to spawn admin-only distro '%s'", hph.options.DistroID).Error(),
+			})
+		}
 	}
 
 	intentHost, err := data.NewIntentHost(ctx, hph.options, user, hph.env)

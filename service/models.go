@@ -112,7 +112,7 @@ func getBuildVariantHistory(ctx context.Context, buildId string, before int, aft
 		return nil, errors.Errorf("no build with id %v", buildId)
 	}
 
-	lessRecentBuilds, err := build.Find(
+	lessRecentBuilds, err := build.Find(ctx,
 		build.ByBeforeRevision(b.Project, b.BuildVariant, b.RevisionOrderNumber).
 			WithFields(build.IdKey, build.TasksKey, build.StatusKey, build.VersionKey, build.ActivatedKey).
 			Limit(before))
@@ -120,7 +120,7 @@ func getBuildVariantHistory(ctx context.Context, buildId string, before int, aft
 		return nil, errors.WithStack(err)
 	}
 
-	moreRecentBuilds, err := build.Find(
+	moreRecentBuilds, err := build.Find(ctx,
 		build.ByAfterRevision(b.Project, b.BuildVariant, b.RevisionOrderNumber).
 			WithFields(build.IdKey, build.TasksKey, build.StatusKey, build.VersionKey, build.ActivatedKey).
 			Limit(after))

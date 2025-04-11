@@ -52,7 +52,7 @@ func (s *projectTriggerSuite) SetupSuite() {
 		Version:     "v",
 		Requester:   evergreen.RepotrackerVersionRequester,
 	}
-	s.NoError(t.Insert())
+	s.NoError(t.Insert(s.T().Context()))
 	b := build.Build{
 		Id:        "build",
 		Project:   "toTrigger",
@@ -60,11 +60,11 @@ func (s *projectTriggerSuite) SetupSuite() {
 		Version:   "v",
 		Requester: evergreen.RepotrackerVersionRequester,
 	}
-	s.NoError(b.Insert())
+	s.NoError(b.Insert(s.T().Context()))
 	v := model.Version{
 		Id: "v",
 	}
-	s.NoError(v.Insert())
+	s.NoError(v.Insert(s.T().Context()))
 }
 
 func (s *projectTriggerSuite) SetupTest() {
@@ -84,7 +84,7 @@ func (s *projectTriggerSuite) TestSimpleTaskFile() {
 			{Project: "somethingElse", Level: model.ProjectTriggerLevelTask, ConfigFile: "configFile"},
 		},
 	}
-	s.NoError(simpleTaskFile.Insert())
+	s.NoError(simpleTaskFile.Insert(s.T().Context()))
 
 	e := event.EventLogEntry{
 		EventType:  event.TaskFinished,
@@ -107,7 +107,7 @@ func (s *projectTriggerSuite) TestMultipleProjects() {
 			{Project: "toTrigger", Level: model.ProjectTriggerLevelTask, ConfigFile: "configFile"},
 		},
 	}
-	s.NoError(proj1.Insert())
+	s.NoError(proj1.Insert(s.T().Context()))
 	proj2 := model.ProjectRef{
 		Id:      "proj2",
 		Enabled: true,
@@ -115,7 +115,7 @@ func (s *projectTriggerSuite) TestMultipleProjects() {
 			{Project: "toTrigger", Level: model.ProjectTriggerLevelTask, ConfigFile: "configFile"},
 		},
 	}
-	s.NoError(proj2.Insert())
+	s.NoError(proj2.Insert(s.T().Context()))
 	proj3 := model.ProjectRef{
 		Id:      "proj3",
 		Enabled: true,
@@ -123,7 +123,7 @@ func (s *projectTriggerSuite) TestMultipleProjects() {
 			{Project: "toTrigger", Level: model.ProjectTriggerLevelTask, ConfigFile: "configFile"},
 		},
 	}
-	s.NoError(proj3.Insert())
+	s.NoError(proj3.Insert(s.T().Context()))
 
 	e := event.EventLogEntry{
 		EventType:  event.TaskFinished,
@@ -146,7 +146,7 @@ func (s *projectTriggerSuite) TestDateCutoff() {
 			{Project: "toTrigger", Level: model.ProjectTriggerLevelTask, ConfigFile: "configFile", DateCutoff: &date},
 		},
 	}
-	s.NoError(proj.Insert())
+	s.NoError(proj.Insert(s.T().Context()))
 
 	e := event.EventLogEntry{
 		EventType:  event.TaskFinished,
@@ -168,7 +168,7 @@ func (s *projectTriggerSuite) TestWrongEvent() {
 			{Project: "toTrigger", Level: model.ProjectTriggerLevelTask, ConfigFile: "configFile"},
 		},
 	}
-	s.NoError(simpleTaskFile.Insert())
+	s.NoError(simpleTaskFile.Insert(s.T().Context()))
 
 	e := event.EventLogEntry{
 		EventType:  event.TaskStarted,
@@ -190,7 +190,7 @@ func (s *projectTriggerSuite) TestTaskRegex() {
 			{Project: "toTrigger", Level: model.ProjectTriggerLevelTask, TaskRegex: "task*", ConfigFile: "configFile1"},
 		},
 	}
-	s.NoError(proj1.Insert())
+	s.NoError(proj1.Insert(s.T().Context()))
 	proj2 := model.ProjectRef{
 		Id:      "proj2",
 		Enabled: true,
@@ -198,7 +198,7 @@ func (s *projectTriggerSuite) TestTaskRegex() {
 			{Project: "toTrigger", Level: model.ProjectTriggerLevelTask, TaskRegex: "$wontmatch^", ConfigFile: "configFile2"},
 		},
 	}
-	s.NoError(proj2.Insert())
+	s.NoError(proj2.Insert(s.T().Context()))
 
 	e := event.EventLogEntry{
 		EventType:  event.TaskFinished,
@@ -222,7 +222,7 @@ func (s *projectTriggerSuite) TestMultipleTriggers() {
 			{Project: "toTrigger", Level: model.ProjectTriggerLevelTask, ConfigFile: "configFile2"},
 		},
 	}
-	s.NoError(duplicate.Insert())
+	s.NoError(duplicate.Insert(s.T().Context()))
 
 	e := event.EventLogEntry{
 		EventType:  event.TaskFinished,
@@ -246,7 +246,7 @@ func (s *projectTriggerSuite) TestBuildFinish() {
 			{Project: "somethingElse", Level: model.ProjectTriggerLevelBuild, ConfigFile: "configFile"},
 		},
 	}
-	s.NoError(ref.Insert())
+	s.NoError(ref.Insert(s.T().Context()))
 
 	e := event.EventLogEntry{
 		EventType:  event.BuildStateChange,
@@ -289,7 +289,7 @@ func TestProjectTriggerIntegration(t *testing.T) {
 		Version:     "upstreamVersion",
 		Project:     "upstream",
 	}
-	assert.NoError(upstreamTask.Insert())
+	assert.NoError(upstreamTask.Insert(t.Context()))
 	upstreamVersion := model.Version{
 		Id:         "upstreamVersion",
 		Author:     "me",
@@ -297,7 +297,7 @@ func TestProjectTriggerIntegration(t *testing.T) {
 		Revision:   "abc",
 		Identifier: "upstream",
 	}
-	assert.NoError(upstreamVersion.Insert())
+	assert.NoError(upstreamVersion.Insert(t.Context()))
 	downstreamProjectRef := model.ProjectRef{
 		Id:         mgobson.NewObjectId().Hex(),
 		Identifier: "downstream",
@@ -310,7 +310,7 @@ func TestProjectTriggerIntegration(t *testing.T) {
 			{Project: "upstream", Level: "task", DefinitionID: "def1", TaskRegex: "upstream*", Status: evergreen.TaskSucceeded, UnscheduleDownstreamVersions: true, ConfigFile: "trigger/testdata/downstream_config.yml", Alias: "a1"},
 		},
 	}
-	assert.NoError(downstreamProjectRef.Insert())
+	assert.NoError(downstreamProjectRef.Insert(t.Context()))
 	uptreamProjectRef := model.ProjectRef{
 		Id:         mgobson.NewObjectId().Hex(),
 		Identifier: "upstream",
@@ -319,7 +319,7 @@ func TestProjectTriggerIntegration(t *testing.T) {
 		Repo:       "sample",
 		Branch:     "main",
 	}
-	assert.NoError(uptreamProjectRef.Insert())
+	assert.NoError(uptreamProjectRef.Insert(t.Context()))
 	alias := model.ProjectAlias{
 		ID:        mgobson.NewObjectId(),
 		ProjectID: downstreamProjectRef.Id,
@@ -335,7 +335,7 @@ func TestProjectTriggerIntegration(t *testing.T) {
 
 	downstreamVersions, err := EvalProjectTriggers(ctx, &e, TriggerDownstreamVersion)
 	assert.NoError(err)
-	dbVersions, err := model.VersionFind(model.BaseVersionByProjectIdAndRevision(downstreamProjectRef.Id, downstreamRevision))
+	dbVersions, err := model.VersionFind(t.Context(), model.BaseVersionByProjectIdAndRevision(downstreamProjectRef.Id, downstreamRevision))
 	assert.NoError(err)
 	require.Len(downstreamVersions, 1)
 	require.Len(dbVersions, 1)
@@ -351,7 +351,7 @@ func TestProjectTriggerIntegration(t *testing.T) {
 		assert.Equal("task", v.TriggerType)
 		assert.Equal(e.ID, v.TriggerEvent)
 	}
-	builds, err := build.Find(build.ByVersion(downstreamVersions[0].Id))
+	builds, err := build.Find(t.Context(), build.ByVersion(downstreamVersions[0].Id))
 	assert.NoError(err)
 	assert.NotEmpty(builds)
 	for _, b := range builds {
@@ -422,7 +422,7 @@ func TestProjectTriggerIntegrationForBuild(t *testing.T) {
 		Version:     "upstreamVersion",
 		Project:     "upstream",
 	}
-	assert.NoError(upstreamBuild.Insert())
+	assert.NoError(upstreamBuild.Insert(t.Context()))
 	upstreamVersion := model.Version{
 		Id:         "upstreamVersion",
 		Author:     "me",
@@ -430,7 +430,7 @@ func TestProjectTriggerIntegrationForBuild(t *testing.T) {
 		Revision:   "abc",
 		Identifier: "upstream",
 	}
-	assert.NoError(upstreamVersion.Insert())
+	assert.NoError(upstreamVersion.Insert(t.Context()))
 	downstreamProjectRef := model.ProjectRef{
 		Id:         mgobson.NewObjectId().Hex(),
 		Identifier: "downstream",
@@ -443,7 +443,7 @@ func TestProjectTriggerIntegrationForBuild(t *testing.T) {
 			{Project: "upstream", Level: "build", DefinitionID: "def1", TaskRegex: "upstream*", Status: evergreen.BuildSucceeded, ConfigFile: "trigger/testdata/downstream_config.yml", Alias: "a1"},
 		},
 	}
-	assert.NoError(downstreamProjectRef.Insert())
+	assert.NoError(downstreamProjectRef.Insert(t.Context()))
 	uptreamProjectRef := model.ProjectRef{
 		Id:         mgobson.NewObjectId().Hex(),
 		Identifier: "upstream",
@@ -452,7 +452,7 @@ func TestProjectTriggerIntegrationForBuild(t *testing.T) {
 		Repo:       "sample",
 		Branch:     "main",
 	}
-	assert.NoError(uptreamProjectRef.Insert())
+	assert.NoError(uptreamProjectRef.Insert(t.Context()))
 	alias := model.ProjectAlias{
 		ID:        mgobson.NewObjectId(),
 		ProjectID: downstreamProjectRef.Id,
@@ -468,7 +468,7 @@ func TestProjectTriggerIntegrationForBuild(t *testing.T) {
 
 	downstreamVersions, err := EvalProjectTriggers(ctx, &e, TriggerDownstreamVersion)
 	assert.NoError(err)
-	dbVersions, err := model.VersionFind(model.BaseVersionByProjectIdAndRevision(downstreamProjectRef.Id, downstreamRevision))
+	dbVersions, err := model.VersionFind(t.Context(), model.BaseVersionByProjectIdAndRevision(downstreamProjectRef.Id, downstreamRevision))
 	assert.NoError(err)
 	require.Len(downstreamVersions, 1)
 	require.Len(dbVersions, 1)
@@ -484,7 +484,7 @@ func TestProjectTriggerIntegrationForBuild(t *testing.T) {
 		assert.Equal("build", v.TriggerType)
 		assert.Equal(e.ID, v.TriggerEvent)
 	}
-	builds, err := build.Find(build.ByVersion(downstreamVersions[0].Id))
+	builds, err := build.Find(t.Context(), build.ByVersion(downstreamVersions[0].Id))
 	assert.NoError(err)
 	assert.NotEmpty(builds)
 	for _, b := range builds {
@@ -550,7 +550,7 @@ func TestProjectTriggerIntegrationForPush(t *testing.T) {
 			{Project: "upstream", Level: model.ProjectTriggerLevelPush, DefinitionID: "def1", TaskRegex: "upstream*", Status: evergreen.BuildSucceeded, ConfigFile: "trigger/testdata/downstream_config.yml", Alias: "a1"},
 		},
 	}
-	assert.NoError(downstreamProjectRef.Insert())
+	assert.NoError(downstreamProjectRef.Insert(t.Context()))
 	uptreamProjectRef := model.ProjectRef{
 		Id:         mgobson.NewObjectId().Hex(),
 		Identifier: "upstream",
@@ -559,7 +559,7 @@ func TestProjectTriggerIntegrationForPush(t *testing.T) {
 		Repo:       "sample",
 		Branch:     "main",
 	}
-	assert.NoError(uptreamProjectRef.Insert())
+	assert.NoError(uptreamProjectRef.Insert(t.Context()))
 	alias := model.ProjectAlias{
 		ID:        mgobson.NewObjectId(),
 		ProjectID: downstreamProjectRef.Id,
@@ -586,7 +586,7 @@ func TestProjectTriggerIntegrationForPush(t *testing.T) {
 	}
 	err = TriggerDownstreamProjectsForPush(ctx, "upstream", pushEvent, TriggerDownstreamVersion)
 	assert.NoError(err)
-	dbVersions, err := model.VersionFind(model.BaseVersionByProjectIdAndRevision(downstreamProjectRef.Id, downstreamRevision))
+	dbVersions, err := model.VersionFind(t.Context(), model.BaseVersionByProjectIdAndRevision(downstreamProjectRef.Id, downstreamRevision))
 	assert.NoError(err)
 	require.Len(dbVersions, 1)
 	assert.True(utility.FromBoolPtr(dbVersions[0].Activated))
@@ -599,7 +599,7 @@ func TestProjectTriggerIntegrationForPush(t *testing.T) {
 	assert.Equal("3585388b1591dfca47ac26a5b9a564ec8f138a5e", dbVersions[0].TriggerSHA)
 	assert.Equal("upstream", dbVersions[0].TriggerID)
 
-	builds, err := build.Find(build.ByVersion(dbVersions[0].Id))
+	builds, err := build.Find(t.Context(), build.ByVersion(dbVersions[0].Id))
 	assert.NoError(err)
 	assert.NotEmpty(builds)
 	for _, b := range builds {

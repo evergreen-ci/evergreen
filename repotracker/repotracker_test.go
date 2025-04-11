@@ -150,7 +150,7 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 					},
 				},
 			}
-			So(u.Insert(), ShouldBeNil)
+			So(u.Insert(t.Context()), ShouldBeNil)
 
 			err := repoTracker.StoreRevisions(ctx, revisions)
 			So(err, ShouldBeNil)
@@ -184,7 +184,7 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 			Id:        "testproject",
 			BatchTime: 10,
 		}
-		require.NoError(t, pRef.Insert())
+		require.NoError(t, pRef.Insert(t.Context()))
 
 		repoTracker := RepoTracker{
 			testConfig,
@@ -346,7 +346,7 @@ tasks:
 			},
 		},
 	}
-	require.NoError(t, previouslyActivatedVersion.Insert())
+	require.NoError(t, previouslyActivatedVersion.Insert(t.Context()))
 
 	d := distro.Distro{Id: "d1"}
 	require.NoError(t, d.Insert(ctx))
@@ -357,7 +357,7 @@ tasks:
 		Id:        "testproject",
 		BatchTime: 0,
 	}
-	require.NoError(t, pRef.Insert())
+	require.NoError(t, pRef.Insert(t.Context()))
 
 	p := &model.Project{}
 	pp, err := model.LoadProjectInto(ctx, []byte(simpleYml), nil, "testproject", p)
@@ -450,7 +450,7 @@ tasks:
 			},
 		},
 	}
-	assert.NoError(t, previouslyActivatedVersion.Insert())
+	assert.NoError(t, previouslyActivatedVersion.Insert(t.Context()))
 
 	d := distro.Distro{Id: "d1"}
 	assert.NoError(t, d.Insert(ctx))
@@ -461,7 +461,7 @@ tasks:
 		Id:        "testproject",
 		BatchTime: 0,
 	}
-	require.NoError(t, pRef.Insert())
+	require.NoError(t, pRef.Insert(t.Context()))
 
 	p := &model.Project{}
 	pp, err := model.LoadProjectInto(ctx, []byte(simpleYml), nil, "testproject", p)
@@ -583,7 +583,7 @@ func TestBatchTimes(t *testing.T) {
 			Requester:           evergreen.RepotrackerVersionRequester,
 		}
 
-		So(previouslyActivatedVersion.Insert(), ShouldBeNil)
+		So(previouslyActivatedVersion.Insert(t.Context()), ShouldBeNil)
 
 		d := distro.Distro{Id: "test-distro-one"}
 		So(d.Insert(ctx), ShouldBeNil)
@@ -594,7 +594,7 @@ func TestBatchTimes(t *testing.T) {
 			Id:        "testproject",
 			BatchTime: 1,
 		}
-		So(pRef.Insert(), ShouldBeNil)
+		So(pRef.Insert(t.Context()), ShouldBeNil)
 
 		Convey("If the project's batch time has not elapsed, and no buildvariants "+
 			"have overridden their batch times, no variants should be activated", func() {
@@ -749,7 +749,7 @@ func TestBatchTimes(t *testing.T) {
 			RevisionOrderNumber: 0,
 			Requester:           evergreen.RepotrackerVersionRequester,
 		}
-		So(previouslyActivatedVersion.Insert(), ShouldBeNil)
+		So(previouslyActivatedVersion.Insert(t.Context()), ShouldBeNil)
 		d := distro.Distro{Id: "test-distro-one"}
 		So(d.Insert(ctx), ShouldBeNil)
 		d.Id = "test-distro-two"
@@ -758,7 +758,7 @@ func TestBatchTimes(t *testing.T) {
 			Id:        "testproject",
 			BatchTime: 1,
 		}
-		So(pRef.Insert(), ShouldBeNil)
+		So(pRef.Insert(t.Context()), ShouldBeNil)
 		zero := 0
 		project := createTestProject(&zero, nil)
 		revisions := []model.Revision{
@@ -850,7 +850,7 @@ func TestBuildBreakSubscriptions(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(u.Insert())
+	assert.NoError(u.Insert(t.Context()))
 
 	// no notifications in project or user
 	subs := []event.Subscription{}
@@ -866,7 +866,7 @@ func TestBuildBreakSubscriptions(t *testing.T) {
 		Branch:     "branch",
 	}
 	assert.NoError(AddBuildBreakSubscriptions(t.Context(), &v1, &proj1))
-	assert.NoError(db.FindAllQContext(t.Context(), event.SubscriptionsCollection, db.Q{}, &subs))
+	assert.NoError(db.FindAllQ(t.Context(), event.SubscriptionsCollection, db.Q{}, &subs))
 	assert.Empty(subs)
 
 	// just a project
@@ -887,7 +887,7 @@ func TestBuildBreakSubscriptions(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(u2.Insert())
+	assert.NoError(u2.Insert(t.Context()))
 	u3 := user.DBUser{
 		Id:           "u3",
 		EmailAddress: "tess@blizzard.com",
@@ -897,7 +897,7 @@ func TestBuildBreakSubscriptions(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(u3.Insert())
+	assert.NoError(u3.Insert(t.Context()))
 	u4 := user.DBUser{
 		Id:           "u4",
 		EmailAddress: "rehgar@blizzard.com",
@@ -905,9 +905,9 @@ func TestBuildBreakSubscriptions(t *testing.T) {
 			Notifications: user.NotificationPreferences{},
 		},
 	}
-	assert.NoError(u4.Insert())
+	assert.NoError(u4.Insert(t.Context()))
 	assert.NoError(AddBuildBreakSubscriptions(t.Context(), &v1, &proj2))
-	assert.NoError(db.FindAllQContext(t.Context(), event.SubscriptionsCollection, db.Q{}, &subs))
+	assert.NoError(db.FindAllQ(t.Context(), event.SubscriptionsCollection, db.Q{}, &subs))
 	assert.Len(subs, 2)
 
 	// project has it enabled, but user doesn't want notifications
@@ -921,7 +921,7 @@ func TestBuildBreakSubscriptions(t *testing.T) {
 		AuthorID:   u4.Id,
 	}
 	assert.NoError(AddBuildBreakSubscriptions(t.Context(), &v3, &proj2))
-	assert.NoError(db.FindAllQContext(t.Context(), event.SubscriptionsCollection, db.Q{}, &subs))
+	assert.NoError(db.FindAllQ(t.Context(), event.SubscriptionsCollection, db.Q{}, &subs))
 	targetString, ok := subs[0].Subscriber.Target.(*string)
 	assert.True(ok)
 	assert.EqualValues("@hello.itsme", utility.FromStringPtr(targetString))
@@ -944,8 +944,7 @@ func TestCreateVersionFromConfigSuite(t *testing.T) {
 }
 
 func (s *CreateVersionFromConfigSuite) SetupTest() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	s.ctx, s.cancel = context.WithCancel(context.Background())
 
 	s.NoError(db.ClearCollections(model.ProjectRefCollection, model.VersionCollection, model.ParserProjectCollection, build.Collection, task.Collection, distro.Collection, model.ProjectAliasCollection))
 	s.ref = &model.ProjectRef{
@@ -956,7 +955,7 @@ func (s *CreateVersionFromConfigSuite) SetupTest() {
 		RemotePath: "self-tests.yml",
 		Enabled:    true,
 	}
-	s.NoError(s.ref.Insert())
+	s.NoError(s.ref.Insert(s.ctx))
 	s.rev = &model.Revision{
 		Author:          "me",
 		AuthorGithubUID: 123,
@@ -971,8 +970,7 @@ func (s *CreateVersionFromConfigSuite) SetupTest() {
 		Id:       "v",
 		Revision: "abc",
 	}
-	s.NoError(s.d.Insert(ctx))
-	s.ctx, s.cancel = context.WithCancel(context.Background())
+	s.NoError(s.d.Insert(s.ctx))
 	env := &mock.Environment{}
 	s.Require().NoError(env.Configure(s.ctx))
 	s.env = env
@@ -1215,7 +1213,7 @@ tasks:
 	v := &model.Version{
 		Id: makeVersionId(s.ref.Identifier, s.rev.Revision),
 	}
-	s.NoError(v.Insert())
+	s.NoError(v.Insert(s.ctx))
 
 	projectInfo := &model.ProjectInfo{
 		Ref:                 s.ref,
@@ -1686,7 +1684,7 @@ func TestCreateManifest(t *testing.T) {
 		Branch: "main",
 		Id:     "project1",
 	}
-	require.NoError(t, projRef.Insert())
+	require.NoError(t, projRef.Insert(t.Context()))
 
 	projVars := model.ProjectVars{
 		Id: "project1",
@@ -1694,7 +1692,7 @@ func TestCreateManifest(t *testing.T) {
 			"var1": "main",
 		},
 	}
-	require.NoError(t, projVars.Insert())
+	require.NoError(t, projVars.Insert(t.Context()))
 
 	manifest, err := model.CreateManifest(t.Context(), &v, proj.Modules, projRef)
 	assert.NoError(err)
@@ -1819,7 +1817,7 @@ func TestShellVersionFromRevisionGitTags(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(t, usr.Insert())
+	assert.NoError(t, usr.Insert(t.Context()))
 
 	v, err = ShellVersionFromRevision(t.Context(), pRef, metadata)
 	assert.NoError(t, err)

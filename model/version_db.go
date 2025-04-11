@@ -310,16 +310,9 @@ func VersionFindOneId(ctx context.Context, id string) (*Version, error) {
 	return VersionFindOne(ctx, VersionById(id))
 }
 
-func VersionFindByIds(ids []string) ([]Version, error) {
-	return VersionFind(db.Query(bson.M{
-		VersionIdKey: bson.M{
-			"$in": ids,
-		}}))
-}
-
-func VersionFind(query db.Q) ([]Version, error) {
+func VersionFind(ctx context.Context, query db.Q) ([]Version, error) {
 	versions := []Version{}
-	err := db.FindAllQ(VersionCollection, query, &versions)
+	err := db.FindAllQ(ctx, VersionCollection, query, &versions)
 	return versions, err
 }
 
@@ -401,8 +394,8 @@ func GetVersionAuthorID(ctx context.Context, versionID string) (string, error) {
 	return v.AuthorID, nil
 }
 
-func FindLastPeriodicBuild(projectID, definitionID string) (*Version, error) {
-	versions, err := VersionFind(db.Query(bson.M{
+func FindLastPeriodicBuild(ctx context.Context, projectID, definitionID string) (*Version, error) {
+	versions, err := VersionFind(ctx, db.Query(bson.M{
 		VersionPeriodicBuildIDKey: definitionID,
 		VersionIdentifierKey:      projectID,
 	}).Sort([]string{"-" + VersionCreateTimeKey}).Limit(1))

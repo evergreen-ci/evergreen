@@ -19,7 +19,7 @@ func (r *permissionsResolver) CanCreateDistro(ctx context.Context, obj *Permissi
 	if usr == nil {
 		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("user '%s' not found", obj.UserID))
 	}
-	return userHasDistroCreatePermission(usr), nil
+	return usr.HasDistroCreatePermission(), nil
 }
 
 // CanCreateProject is the resolver for the canCreateProject field.
@@ -111,7 +111,7 @@ func (r *permissionsResolver) RepoPermissions(ctx context.Context, obj *Permissi
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("repo '%s' not found", options.RepoID))
 	}
 
-	hasRepoViewPermission, err := model.UserHasRepoViewPermission(usr, repo.Id)
+	hasRepoViewPermission, err := model.UserHasRepoViewPermission(ctx, usr, repo.Id)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("checking repo view permission for user '%s' and repo '%s': %s", usr.Id, repo.Id, err.Error()))
 	}

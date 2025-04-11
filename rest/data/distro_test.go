@@ -95,7 +95,7 @@ func TestDeleteDistroById(t *testing.T) {
 			adminUser := user.DBUser{
 				Id: "admin",
 			}
-			assert.NoError(t, adminUser.Insert())
+			assert.NoError(t, adminUser.Insert(t.Context()))
 
 			tCase(t, tctx, adminUser)
 		})
@@ -203,7 +203,7 @@ func TestCopyDistro(t *testing.T) {
 			adminUser := user.DBUser{
 				Id: "admin",
 			}
-			assert.NoError(t, adminUser.Insert())
+			assert.NoError(t, adminUser.Insert(t.Context()))
 
 			tCase(t, tctx, adminUser)
 		})
@@ -329,7 +329,7 @@ func TestCreateDistro(t *testing.T) {
 			adminUser := user.DBUser{
 				Id: "admin",
 			}
-			assert.NoError(t, adminUser.Insert())
+			assert.NoError(t, adminUser.Insert(t.Context()))
 
 			d := distro.Distro{
 				Id:                 "distro",

@@ -165,7 +165,7 @@ func TestGetDisplayStatusAndColorSort(t *testing.T) {
 		DisplayTaskId: utility.ToStringPtr(""),
 	}
 
-	assert.NoError(t, db.InsertMany(Collection, t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11))
+	assert.NoError(t, db.InsertMany(t.Context(), Collection, t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11))
 
 	pipeline, err := getTasksByVersionPipeline("v1", GetTasksByVersionOptions{})
 	require.NoError(t, err)
@@ -261,9 +261,9 @@ func TestDependenciesMet(t *testing.T) {
 
 		So(db.Clear(Collection), ShouldBeNil)
 		for _, depTask := range depTasks {
-			So(depTask.Insert(), ShouldBeNil)
+			So(depTask.Insert(t.Context()), ShouldBeNil)
 		}
-		So(taskDoc.Insert(), ShouldBeNil)
+		So(taskDoc.Insert(t.Context()), ShouldBeNil)
 
 		Convey("sanity check the local version of the function in the nil case", func() {
 			taskDoc.DependsOn = []Dependency{}
@@ -445,7 +445,7 @@ func TestGetFinishedBlockingDependencies(t *testing.T) {
 	for name, test := range map[string]func(*testing.T){
 		"NoDeps": func(t *testing.T) {
 			taskDoc.DependsOn = []Dependency{}
-			require.NoError(t, taskDoc.Insert())
+			require.NoError(t, taskDoc.Insert(t.Context()))
 
 			tasks, err := taskDoc.GetFinishedBlockingDependencies(ctx, map[string]Task{})
 			assert.NoError(t, err)
@@ -456,7 +456,7 @@ func TestGetFinishedBlockingDependencies(t *testing.T) {
 				{TaskId: depTaskIds[3].TaskId, Status: evergreen.TaskSucceeded},
 				{TaskId: depTaskIds[4].TaskId, Status: evergreen.TaskSucceeded},
 			}
-			require.NoError(t, taskDoc.Insert())
+			require.NoError(t, taskDoc.Insert(t.Context()))
 
 			tasks, err := taskDoc.GetFinishedBlockingDependencies(ctx, map[string]Task{})
 			assert.NoError(t, err)
@@ -467,7 +467,7 @@ func TestGetFinishedBlockingDependencies(t *testing.T) {
 				{TaskId: depTaskIds[3].TaskId, Status: evergreen.TaskSucceeded},
 				{TaskId: "cached-task", Status: evergreen.TaskSucceeded},
 			}
-			require.NoError(t, taskDoc.Insert())
+			require.NoError(t, taskDoc.Insert(t.Context()))
 
 			tasks, err := taskDoc.GetFinishedBlockingDependencies(ctx, map[string]Task{
 				"cached-task": {Id: "cached-task", Status: evergreen.TaskSucceeded},
@@ -481,7 +481,7 @@ func TestGetFinishedBlockingDependencies(t *testing.T) {
 				{TaskId: depTaskIds[3].TaskId, Status: evergreen.TaskSucceeded},
 				{TaskId: depTaskIds[4].TaskId, Status: evergreen.TaskSucceeded},
 			}
-			require.NoError(t, taskDoc.Insert())
+			require.NoError(t, taskDoc.Insert(t.Context()))
 
 			tasks, err := taskDoc.GetFinishedBlockingDependencies(ctx, map[string]Task{})
 			assert.NoError(t, err)
@@ -493,7 +493,7 @@ func TestGetFinishedBlockingDependencies(t *testing.T) {
 				{TaskId: depTaskIds[3].TaskId, Status: evergreen.TaskSucceeded},
 				{TaskId: depTaskIds[4].TaskId, Status: evergreen.TaskSucceeded},
 			}
-			require.NoError(t, taskDoc.Insert())
+			require.NoError(t, taskDoc.Insert(t.Context()))
 
 			tasks, err := taskDoc.GetFinishedBlockingDependencies(ctx, map[string]Task{
 				"cached-task": {Id: "cached-task", Status: evergreen.TaskFailed},
@@ -506,7 +506,7 @@ func TestGetFinishedBlockingDependencies(t *testing.T) {
 				{TaskId: depTaskIds[3].TaskId, Status: evergreen.TaskSucceeded, Unattainable: true},
 				{TaskId: depTaskIds[4].TaskId, Status: evergreen.TaskSucceeded},
 			}
-			require.NoError(t, taskDoc.Insert())
+			require.NoError(t, taskDoc.Insert(t.Context()))
 
 			tasks, err := taskDoc.GetFinishedBlockingDependencies(ctx, map[string]Task{})
 			assert.NoError(t, err)
@@ -519,7 +519,7 @@ func TestGetFinishedBlockingDependencies(t *testing.T) {
 				{TaskId: depTaskIds[4].TaskId, Status: evergreen.TaskSucceeded},
 				{TaskId: "td6", Status: evergreen.TaskSucceeded},
 			}
-			require.NoError(t, taskDoc.Insert())
+			require.NoError(t, taskDoc.Insert(t.Context()))
 
 			tasks, err := taskDoc.GetFinishedBlockingDependencies(ctx, map[string]Task{})
 			assert.NoError(t, err)
@@ -527,7 +527,7 @@ func TestGetFinishedBlockingDependencies(t *testing.T) {
 		}} {
 		require.NoError(t, db.Clear(Collection))
 		for _, depTask := range depTasks {
-			require.NoError(t, depTask.Insert())
+			require.NoError(t, depTask.Insert(t.Context()))
 		}
 		t.Run(name, test)
 	}
@@ -548,7 +548,7 @@ func TestGetDeactivatedBlockingDependencies(t *testing.T) {
 	}
 	require.NoError(t, db.Clear(Collection))
 	for _, depTask := range depTasks {
-		require.NoError(t, depTask.Insert())
+		require.NoError(t, depTask.Insert(t.Context()))
 	}
 	defer func() {
 		assert.NoError(t, db.Clear(Collection))
@@ -625,9 +625,9 @@ func TestMarkDependenciesFinished(t *testing.T) {
 					{TaskId: "task1"},
 				},
 			}
-			require.NoError(t, t0.Insert())
-			require.NoError(t, t1.Insert())
-			require.NoError(t, t2.Insert())
+			require.NoError(t, t0.Insert(t.Context()))
+			require.NoError(t, t1.Insert(t.Context()))
+			require.NoError(t, t2.Insert(t.Context()))
 
 			require.NoError(t, t0.MarkDependenciesFinished(ctx, true))
 
@@ -652,8 +652,8 @@ func TestMarkDependenciesFinished(t *testing.T) {
 					},
 				},
 			}
-			require.NoError(t, t0.Insert())
-			require.NoError(t, t1.Insert())
+			require.NoError(t, t0.Insert(t.Context()))
+			require.NoError(t, t1.Insert(t.Context()))
 
 			t0.FinishTime = time.Now()
 			require.NoError(t, t0.MarkDependenciesFinished(ctx, true))
@@ -679,8 +679,8 @@ func TestMarkDependenciesFinished(t *testing.T) {
 					},
 				},
 			}
-			require.NoError(t, t0.Insert())
-			require.NoError(t, t1.Insert())
+			require.NoError(t, t0.Insert(t.Context()))
+			require.NoError(t, t1.Insert(t.Context()))
 
 			t0.FinishTime = time.Now()
 			require.NoError(t, t0.MarkDependenciesFinished(ctx, true))
@@ -712,8 +712,8 @@ func TestMarkDependenciesFinished(t *testing.T) {
 					},
 				},
 			}
-			require.NoError(t, t0.Insert())
-			require.NoError(t, t1.Insert())
+			require.NoError(t, t0.Insert(t.Context()))
+			require.NoError(t, t1.Insert(t.Context()))
 
 			t0.FinishTime = time.Now().Round(time.Millisecond)
 			require.NoError(t, t0.MarkDependenciesFinished(ctx, true))
@@ -753,9 +753,9 @@ func TestMarkDependenciesFinished(t *testing.T) {
 					},
 				},
 			}
-			require.NoError(t, t0.Insert())
-			require.NoError(t, t1.Insert())
-			require.NoError(t, t2.Insert())
+			require.NoError(t, t0.Insert(t.Context()))
+			require.NoError(t, t1.Insert(t.Context()))
+			require.NoError(t, t2.Insert(t.Context()))
 
 			t0.FinishTime = time.Now()
 			require.NoError(t, t0.MarkDependenciesFinished(ctx, true))
@@ -797,8 +797,8 @@ func TestMarkDependenciesFinished(t *testing.T) {
 					{TaskId: "task4"},
 				},
 			}
-			require.NoError(t, t0.Insert())
-			require.NoError(t, t1.Insert())
+			require.NoError(t, t0.Insert(t.Context()))
+			require.NoError(t, t1.Insert(t.Context()))
 
 			t0.FinishTime = time.Now()
 			require.NoError(t, t0.MarkDependenciesFinished(ctx, true))
@@ -833,9 +833,9 @@ func TestMarkDependenciesFinished(t *testing.T) {
 					{TaskId: "task1"},
 				},
 			}
-			require.NoError(t, t0.Insert())
-			require.NoError(t, t1.Insert())
-			require.NoError(t, t2.Insert())
+			require.NoError(t, t0.Insert(t.Context()))
+			require.NoError(t, t1.Insert(t.Context()))
+			require.NoError(t, t2.Insert(t.Context()))
 
 			t0.FinishTime = time.Now()
 			require.NoError(t, t0.MarkDependenciesFinished(ctx, true))
@@ -868,8 +868,8 @@ func TestMarkDependenciesFinished(t *testing.T) {
 					},
 				},
 			}
-			require.NoError(t, t0.Insert())
-			require.NoError(t, t1.Insert())
+			require.NoError(t, t0.Insert(t.Context()))
+			require.NoError(t, t1.Insert(t.Context()))
 
 			require.NoError(t, t0.MarkDependenciesFinished(ctx, false))
 
@@ -903,7 +903,7 @@ func TestSetTasksScheduledTime(t *testing.T) {
 			{Id: "t3", ScheduledTime: utility.ZeroTime, DependenciesMetTime: utility.ZeroTime, DependsOn: []Dependency{{TaskId: "t2"}}},
 		}
 		for _, task := range tasks {
-			So(task.Insert(), ShouldBeNil)
+			So(task.Insert(t.Context()), ShouldBeNil)
 		}
 		Convey("when updating ScheduledTime for some of the tasks", func() {
 			testTime := time.Unix(31337, 0)
@@ -1013,63 +1013,63 @@ func TestEndingTask(t *testing.T) {
 		So(db.Clear(Collection), ShouldBeNil)
 		Convey("a task that has a start time set", func() {
 			now := time.Now()
-			t := &Task{
+			task := &Task{
 				Id:        "taskId",
 				Status:    evergreen.TaskStarted,
 				StartTime: now.Add(-5 * time.Minute),
 			}
-			So(t.Insert(), ShouldBeNil)
+			So(task.Insert(t.Context()), ShouldBeNil)
 			details := &apimodels.TaskEndDetail{
 				Status: evergreen.TaskFailed,
 			}
 
-			So(t.MarkEnd(ctx, now, details), ShouldBeNil)
-			t, err := FindOne(ctx, db.Query(ById(t.Id)))
+			So(task.MarkEnd(ctx, now, details), ShouldBeNil)
+			task, err := FindOne(ctx, db.Query(ById(task.Id)))
 			So(err, ShouldBeNil)
-			So(t.Status, ShouldEqual, evergreen.TaskFailed)
-			So(t.FinishTime.Unix(), ShouldEqual, now.Unix())
-			So(t.StartTime.Unix(), ShouldEqual, now.Add(-5*time.Minute).Unix())
+			So(task.Status, ShouldEqual, evergreen.TaskFailed)
+			So(task.FinishTime.Unix(), ShouldEqual, now.Unix())
+			So(task.StartTime.Unix(), ShouldEqual, now.Add(-5*time.Minute).Unix())
 		})
 		Convey("a task with no start time set should have one added", func() {
 			now := time.Now()
 			Convey("a task with a create time < 2 hours should have the start time set to the ingest time", func() {
-				t := &Task{
+				task := &Task{
 					Id:         "tid",
 					Status:     evergreen.TaskDispatched,
 					IngestTime: now.Add(-30 * time.Minute),
 				}
-				So(t.Insert(), ShouldBeNil)
+				So(task.Insert(t.Context()), ShouldBeNil)
 				details := &apimodels.TaskEndDetail{
 					Status: evergreen.TaskFailed,
 				}
-				So(t.MarkEnd(ctx, now, details), ShouldBeNil)
-				t, err := FindOne(ctx, db.Query(ById(t.Id)))
+				So(task.MarkEnd(ctx, now, details), ShouldBeNil)
+				task, err := FindOne(ctx, db.Query(ById(task.Id)))
 				So(err, ShouldBeNil)
-				So(t.StartTime.Unix(), ShouldEqual, t.IngestTime.Unix())
-				So(t.FinishTime.Unix(), ShouldEqual, now.Unix())
+				So(task.StartTime.Unix(), ShouldEqual, task.IngestTime.Unix())
+				So(task.FinishTime.Unix(), ShouldEqual, now.Unix())
 			})
 			Convey("a task with a create time > 2 hours should have the start time set to two hours"+
 				"before the finish time", func() {
-				t := &Task{
+				task := &Task{
 					Id:         "tid",
 					Status:     evergreen.TaskDispatched,
 					CreateTime: now.Add(-3 * time.Hour),
 				}
-				So(t.Insert(), ShouldBeNil)
+				So(task.Insert(t.Context()), ShouldBeNil)
 				details := &apimodels.TaskEndDetail{
 					Status: evergreen.TaskFailed,
 				}
-				So(t.MarkEnd(ctx, now, details), ShouldBeNil)
-				t, err := FindOne(ctx, db.Query(ById(t.Id)))
+				So(task.MarkEnd(ctx, now, details), ShouldBeNil)
+				task, err := FindOne(ctx, db.Query(ById(task.Id)))
 				So(err, ShouldBeNil)
 				startTime := now.Add(-2 * time.Hour)
-				So(t.StartTime.Unix(), ShouldEqual, startTime.Unix())
-				So(t.FinishTime.Unix(), ShouldEqual, now.Unix())
+				So(task.StartTime.Unix(), ShouldEqual, startTime.Unix())
+				So(task.FinishTime.Unix(), ShouldEqual, now.Unix())
 			})
 		})
 		Convey("a task that is allocated a container should be deallocated", func() {
 			now := time.Now()
-			t := &Task{
+			task := &Task{
 				Id:                     "taskId",
 				Status:                 evergreen.TaskStarted,
 				StartTime:              now.Add(-5 * time.Minute),
@@ -1077,17 +1077,17 @@ func TestEndingTask(t *testing.T) {
 				ContainerAllocated:     true,
 				ContainerAllocatedTime: time.Now(),
 			}
-			So(t.Insert(), ShouldBeNil)
+			So(task.Insert(t.Context()), ShouldBeNil)
 			details := &apimodels.TaskEndDetail{
 				Status: evergreen.TaskFailed,
 			}
 
-			So(t.MarkEnd(ctx, now, details), ShouldBeNil)
-			t, err := FindOne(ctx, db.Query(ById(t.Id)))
+			So(task.MarkEnd(ctx, now, details), ShouldBeNil)
+			task, err := FindOne(ctx, db.Query(ById(task.Id)))
 			So(err, ShouldBeNil)
-			So(t.Status, ShouldEqual, evergreen.TaskFailed)
-			So(t.ContainerAllocated, ShouldBeFalse)
-			So(t.ContainerAllocatedTime, ShouldBeZeroValue)
+			So(task.Status, ShouldEqual, evergreen.TaskFailed)
+			So(task.ContainerAllocated, ShouldBeFalse)
+			So(task.ContainerAllocatedTime, ShouldBeZeroValue)
 		})
 	})
 }
@@ -1231,7 +1231,7 @@ func TestBlocked(t *testing.T) {
 				Id:     "t2",
 				Status: evergreen.TaskDispatched,
 			}
-			require.NoError(t, t2.Insert())
+			require.NoError(t, t2.Insert(t.Context()))
 			dependencies := map[string]*Task{t2.Id: &t2}
 			state, err := t1.BlockedState(dependencies)
 			assert.NoError(t, err)
@@ -1251,7 +1251,7 @@ func TestBlocked(t *testing.T) {
 					{TaskId: "t3", Unattainable: true},
 				},
 			}
-			require.NoError(t, t2.Insert())
+			require.NoError(t, t2.Insert(t.Context()))
 			dependencies := map[string]*Task{t2.Id: &t2}
 			state, err := t1.BlockedState(dependencies)
 			assert.NoError(t, err)
@@ -1278,7 +1278,7 @@ func TestCircularDependency(t *testing.T) {
 			{TaskId: "t2", Status: evergreen.TaskSucceeded},
 		},
 	}
-	assert.NoError(t1.Insert())
+	assert.NoError(t1.Insert(t.Context()))
 	t2 := Task{
 		Id:          "t2",
 		DisplayName: "t2",
@@ -1288,7 +1288,7 @@ func TestCircularDependency(t *testing.T) {
 			{TaskId: "t1", Status: evergreen.TaskSucceeded},
 		},
 	}
-	assert.NoError(t2.Insert())
+	assert.NoError(t2.Insert(t.Context()))
 	assert.NotPanics(func() {
 		err := t1.CircularDependencies(ctx)
 		assert.Contains(err.Error(), "dependency cycle detected")
@@ -1308,7 +1308,7 @@ func TestSiblingDependency(t *testing.T) {
 			{TaskId: "t3", Status: evergreen.TaskSucceeded},
 		},
 	}
-	assert.NoError(t1.Insert())
+	assert.NoError(t1.Insert(t.Context()))
 	t2 := Task{
 		Id:          "t2",
 		DisplayName: "t2",
@@ -1318,7 +1318,7 @@ func TestSiblingDependency(t *testing.T) {
 			{TaskId: "t4", Status: evergreen.TaskSucceeded},
 		},
 	}
-	assert.NoError(t2.Insert())
+	assert.NoError(t2.Insert(t.Context()))
 	t3 := Task{
 		Id:          "t3",
 		DisplayName: "t3",
@@ -1328,14 +1328,14 @@ func TestSiblingDependency(t *testing.T) {
 			{TaskId: "t4", Status: evergreen.TaskSucceeded},
 		},
 	}
-	assert.NoError(t3.Insert())
+	assert.NoError(t3.Insert(t.Context()))
 	t4 := Task{
 		Id:          "t4",
 		DisplayName: "t4",
 		Activated:   true,
 		Status:      evergreen.TaskSucceeded,
 	}
-	assert.NoError(t4.Insert())
+	assert.NoError(t4.Insert(t.Context()))
 	dependencies := map[string]*Task{
 		"t2": &t2,
 		"t3": &t3,
@@ -1398,7 +1398,7 @@ func TestByBeforeMidwayTaskFromIds(t *testing.T) {
 			Project:             project,
 			RevisionOrderNumber: i,
 		}
-		assert.NoError(task.Insert())
+		assert.NoError(task.Insert(t.Context()))
 		tasks = append(tasks, task)
 	}
 	t10, err := ByBeforeMidwayTaskFromIds(ctx, tasks[0].Id, tasks[19].Id)
@@ -1444,7 +1444,7 @@ func TestByBeforeMidwayTaskFromIds(t *testing.T) {
 			Requester:    requester,
 			Project:      project,
 		}
-		assert.NoError(otherDisplayName.Insert())
+		assert.NoError(otherDisplayName.Insert(t.Context()))
 		task, err := ByBeforeMidwayTaskFromIds(ctx, tasks[0].Id, otherDisplayName.Id)
 		assert.Error(err)
 		assert.Nil(task)
@@ -1456,7 +1456,7 @@ func TestByBeforeMidwayTaskFromIds(t *testing.T) {
 			Requester:    requester,
 			Project:      project,
 		}
-		assert.NoError(otherBuildVariant.Insert())
+		assert.NoError(otherBuildVariant.Insert(t.Context()))
 		task, err = ByBeforeMidwayTaskFromIds(ctx, tasks[0].Id, otherBuildVariant.Id)
 		assert.Error(err)
 		assert.Nil(task)
@@ -1468,7 +1468,7 @@ func TestByBeforeMidwayTaskFromIds(t *testing.T) {
 			Requester:    "Other Requester",
 			Project:      project,
 		}
-		assert.NoError(otherRequester.Insert())
+		assert.NoError(otherRequester.Insert(t.Context()))
 		task, err = ByBeforeMidwayTaskFromIds(ctx, tasks[0].Id, otherRequester.Id)
 		assert.Error(err)
 		assert.Nil(task)
@@ -1480,7 +1480,7 @@ func TestByBeforeMidwayTaskFromIds(t *testing.T) {
 			Requester:    requester,
 			Project:      "Other project",
 		}
-		assert.NoError(otherProject.Insert())
+		assert.NoError(otherProject.Insert(t.Context()))
 		task, err = ByBeforeMidwayTaskFromIds(ctx, tasks[0].Id, otherProject.Id)
 		assert.Error(err)
 		assert.Nil(task)
@@ -1504,7 +1504,7 @@ func TestByBeforeMidwayTaskFromIds(t *testing.T) {
 				Project:             project,
 				RevisionOrderNumber: i,
 			}
-			assert.NoError(task.Insert())
+			assert.NoError(task.Insert(t.Context()))
 		}
 
 		// The midway task would be t10, but since tasks 7-13 are missing
@@ -1552,7 +1552,7 @@ func TestUnscheduleStaleUnderwaterHostTasksNoDistro(t *testing.T) {
 		Priority:      0,
 		ActivatedTime: time.Time{},
 	}
-	assert.NoError(t1.Insert())
+	assert.NoError(t1.Insert(t.Context()))
 
 	t2 := Task{
 		Id:            "t2",
@@ -1561,7 +1561,7 @@ func TestUnscheduleStaleUnderwaterHostTasksNoDistro(t *testing.T) {
 		Priority:      0,
 		ActivatedTime: time.Time{},
 	}
-	assert.NoError(t2.Insert())
+	assert.NoError(t2.Insert(t.Context()))
 
 	tasks, err := UnscheduleStaleUnderwaterHostTasks(ctx, "")
 	assert.NoError(err)
@@ -1649,11 +1649,11 @@ func TestDeactivateStepbackTasksForProject(t *testing.T) {
 		DisplayName:  "myTask",
 		Requester:    evergreen.RepotrackerVersionRequester,
 	}
-	assert.NoError(t, db.InsertMany(Collection, taskDependingOnStepbackTask, wrongProjectTask,
+	assert.NoError(t, db.InsertMany(t.Context(), Collection, taskDependingOnStepbackTask, wrongProjectTask,
 		wrongTaskNameTask, wrongVariantTask, runningStepbackTask, notStepbackTask))
 	assert.NoError(t, DeactivateStepbackTask(ctx, "p1", "myVariant", "myTask", "me"))
 
-	events, err := event.Find(db.Q{})
+	events, err := event.Find(t.Context(), db.Q{})
 	assert.NoError(t, err)
 	assert.Len(t, events, 3)
 	var numDeactivated, numAborted int
@@ -1699,7 +1699,7 @@ func TestUnscheduleStaleUnderwaterHostTasksWithDistro(t *testing.T) {
 		ActivatedTime: time.Time{},
 		DistroId:      "d0",
 	}
-	require.NoError(t, t1.Insert())
+	require.NoError(t, t1.Insert(t.Context()))
 
 	d := distro.Distro{
 		Id: "d0",
@@ -1731,7 +1731,7 @@ func TestUnscheduleStaleUnderwaterHostTasksWithDistroAlias(t *testing.T) {
 		ActivatedTime: time.Time{},
 		DistroId:      "d0.0",
 	}
-	require.NoError(t, t1.Insert())
+	require.NoError(t, t1.Insert(t.Context()))
 
 	d := distro.Distro{
 		Id:      "d0",
@@ -1764,7 +1764,7 @@ func TestGetRecentTaskStats(t *testing.T) {
 		{Id: "t7", Status: evergreen.TaskFailed, DistroId: "d2", FinishTime: time.Now()},
 	}
 	for _, task := range tasks {
-		assert.NoError(task.Insert())
+		assert.NoError(task.Insert(t.Context()))
 	}
 
 	list, err := GetRecentTaskStats(ctx, time.Minute, DistroIdKey)
@@ -1825,7 +1825,7 @@ func TestFindVariantsWithTask(t *testing.T) {
 		&Task{Id: "3", DisplayName: "nomatch", Project: "p", Requester: evergreen.RepotrackerVersionRequester, RevisionOrderNumber: 14, BuildVariant: "bv1"},
 		&Task{Id: "4", DisplayName: "match", Project: "p", Requester: evergreen.RepotrackerVersionRequester, RevisionOrderNumber: 50, BuildVariant: "bv1"},
 	}
-	assert.NoError(tasks.Insert())
+	assert.NoError(tasks.Insert(t.Context()))
 
 	bvs, err := FindVariantsWithTask(ctx, "match", "p", 10, 20)
 	assert.NoError(err)
@@ -1894,7 +1894,7 @@ func TestAddDependency(t *testing.T) {
 			require.NoError(t, db.ClearCollections(Collection))
 
 			tsk := &Task{Id: "t1", DependsOn: depTaskIds, Status: evergreen.TaskUndispatched, Activated: true}
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(t.Context()))
 
 			tCase(t, tsk)
 		})
@@ -1958,7 +1958,7 @@ func TestUnattainableSchedulableHostTasksQuery(t *testing.T) {
 		},
 	}
 	for _, task := range tasks {
-		assert.NoError(task.Insert())
+		assert.NoError(task.Insert(t.Context()))
 	}
 
 	q := db.Query(schedulableHostTasksQuery())
@@ -2053,7 +2053,7 @@ func TestUpdateDependsOn(t *testing.T) {
 
 	require.NoError(t, db.ClearCollections(Collection))
 	t1 := &Task{Id: "t1"}
-	assert.NoError(t, t1.Insert())
+	assert.NoError(t, t1.Insert(t.Context()))
 	t2 := &Task{
 		Id: "t2",
 		DependsOn: []Dependency{
@@ -2061,7 +2061,7 @@ func TestUpdateDependsOn(t *testing.T) {
 			{TaskId: "t5", Status: evergreen.TaskSucceeded},
 		},
 	}
-	assert.NoError(t, t2.Insert())
+	assert.NoError(t, t2.Insert(t.Context()))
 
 	var err error
 	assert.NoError(t, t1.UpdateDependsOn(ctx, evergreen.TaskFailed, []string{"t3", "t4"}))
@@ -2093,7 +2093,7 @@ func TestMarkGeneratedTasks(t *testing.T) {
 	t1 := &Task{
 		Id: "t1",
 	}
-	require.NoError(t, t1.Insert())
+	require.NoError(t, t1.Insert(t.Context()))
 
 	mockError := errors.New("mock error")
 
@@ -2113,7 +2113,7 @@ func TestMarkGeneratedTasks(t *testing.T) {
 	t3 := &Task{
 		Id: "t3",
 	}
-	require.NoError(t, t3.Insert())
+	require.NoError(t, t3.Insert(t.Context()))
 	require.NoError(t, MarkGeneratedTasksErr(ctx, t3.Id, mongo.ErrNoDocuments))
 	found, err = FindOneId(ctx, t3.Id)
 	require.NoError(t, err)
@@ -2124,7 +2124,7 @@ func TestMarkGeneratedTasks(t *testing.T) {
 		Id: "t4",
 	}
 	dupError := errors.New("duplicate key error")
-	require.NoError(t, t4.Insert())
+	require.NoError(t, t4.Insert(t.Context()))
 	require.NoError(t, MarkGeneratedTasksErr(ctx, t4.Id, dupError))
 	found, err = FindOneId(ctx, t4.Id)
 	require.NoError(t, err)
@@ -2159,7 +2159,7 @@ func TestGetAllDependencies(t *testing.T) {
 	assert.Equal(t, "dependedOn0", dependencies[0].TaskId)
 
 	// mix of map and db
-	require.NoError(t, tasks[1].Insert())
+	require.NoError(t, tasks[1].Insert(t.Context()))
 	taskMap := map[string]*Task{tasks[0].Id: &tasks[0]}
 	dependencies, err = GetAllDependencies(ctx, []string{tasks[0].Id, tasks[1].Id}, taskMap)
 	assert.NoError(t, err)
@@ -2181,7 +2181,7 @@ func TestGetRecursiveDependenciesUp(t *testing.T) {
 		{Id: "t5", DependsOn: []Dependency{{TaskId: "t4"}}},
 	}
 	for _, task := range tasks {
-		require.NoError(t, task.Insert())
+		require.NoError(t, task.Insert(t.Context()))
 	}
 
 	taskDependsOn, err := GetRecursiveDependenciesUp(ctx, []Task{tasks[3], tasks[4]}, nil)
@@ -2207,7 +2207,7 @@ func TestGetRecursiveDependenciesUpWithTaskGroup(t *testing.T) {
 	}
 
 	for _, task := range tasks {
-		require.NoError(t, task.Insert())
+		require.NoError(t, task.Insert(t.Context()))
 	}
 	taskDependsOn, err := GetRecursiveDependenciesUp(ctx, []Task{tasks[2], tasks[3]}, nil)
 	assert.NoError(t, err)
@@ -2232,7 +2232,7 @@ func TestGetRecursiveDependenciesDown(t *testing.T) {
 		{Id: "t5", DependsOn: []Dependency{{TaskId: "t4"}}},
 	}
 	for _, task := range tasks {
-		require.NoError(t, task.Insert())
+		require.NoError(t, task.Insert(t.Context()))
 	}
 
 	dependingOnMe, err := getRecursiveDependenciesDown(ctx, []string{"t0"}, nil)
@@ -2259,7 +2259,7 @@ func TestDeactivateDependencies(t *testing.T) {
 		{Id: "t5", DependsOn: []Dependency{{TaskId: "t4"}}, Activated: true},
 	}
 	for _, task := range tasks {
-		require.NoError(t, task.Insert())
+		require.NoError(t, task.Insert(t.Context()))
 	}
 
 	updatedIDs := []string{"t4", "t5"}
@@ -2298,7 +2298,7 @@ func TestActivateDeactivatedDependencies(t *testing.T) {
 		{Id: "t4", DependsOn: []Dependency{{TaskId: "t0", Unattainable: true}, {TaskId: "t3"}}, Activated: false, DeactivatedForDependency: true},
 	}
 	for _, task := range tasks {
-		require.NoError(t, task.Insert())
+		require.NoError(t, task.Insert(t.Context()))
 	}
 
 	updatedIDs := []string{"t3", "t4"}
@@ -2362,7 +2362,7 @@ func TestActivateTasks(t *testing.T) {
 		u := &user.DBUser{
 			Id: "user",
 		}
-		require.NoError(t, u.Insert())
+		require.NoError(t, u.Insert(t.Context()))
 		tasks := []Task{
 			{Id: "t0", Requester: evergreen.PatchVersionRequester, Priority: evergreen.DisabledTaskPriority},
 			{Id: "t1", Requester: evergreen.PatchVersionRequester, DependsOn: []Dependency{{TaskId: "t0"}}, Activated: false, EstimatedNumActivatedGeneratedTasks: utility.ToIntPtr(100)},
@@ -2372,7 +2372,7 @@ func TestActivateTasks(t *testing.T) {
 			{Id: "t5", Requester: evergreen.PatchVersionRequester, DependsOn: []Dependency{{TaskId: "t0"}}, Activated: true, DeactivatedForDependency: true},
 		}
 		for _, task := range tasks {
-			require.NoError(t, task.Insert())
+			require.NoError(t, task.Insert(t.Context()))
 		}
 
 		updatedIDs := []string{"t0", "t3", "t4"}
@@ -2393,7 +2393,7 @@ func TestActivateTasks(t *testing.T) {
 			assert.EqualValues(t, 0, task.Priority)
 			if utility.StringSliceContains(updatedIDs, task.Id) {
 				assert.True(t, task.Activated)
-				events, err := event.FindAllByResourceID(task.Id)
+				events, err := event.FindAllByResourceID(t.Context(), task.Id)
 				require.NoError(t, err)
 				assert.Len(t, events, 1)
 			} else {
@@ -2402,7 +2402,7 @@ func TestActivateTasks(t *testing.T) {
 						assert.Equal(t, origTask.Activated, task.Activated, "task '%s' mismatch", task.Id)
 					}
 				}
-				events, err := event.FindAllByResourceID(task.Id)
+				events, err := event.FindAllByResourceID(t.Context(), task.Id)
 				require.NoError(t, err)
 				assert.Empty(t, events)
 			}
@@ -2422,13 +2422,13 @@ func TestActivateTasks(t *testing.T) {
 			ActivatedTime: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
 			ActivatedBy:   "octocat",
 		}
-		require.NoError(t, task.Insert())
+		require.NoError(t, task.Insert(t.Context()))
 
 		activatedDependencyIDs, err := ActivateTasks(ctx, []Task{task}, time.Now(), true, "abyssinian")
 		assert.NoError(t, err)
 		assert.Empty(t, activatedDependencyIDs)
 
-		events, err := event.FindAllByResourceID(task.Id)
+		events, err := event.FindAllByResourceID(t.Context(), task.Id)
 		require.NoError(t, err)
 		assert.Empty(t, events)
 
@@ -2458,7 +2458,7 @@ func TestDeactivateTasks(t *testing.T) {
 		{Id: "t7", DependsOn: []Dependency{{TaskId: "t6"}}, Activated: true},
 	}
 	for _, task := range tasks {
-		require.NoError(t, task.Insert())
+		require.NoError(t, task.Insert(t.Context()))
 	}
 
 	updatedIDs := []string{"t0", "t4", "t5", "t6", "t7"}
@@ -2533,7 +2533,7 @@ func TestMarkAsContainerDispatched(t *testing.T) {
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, tsks []Task){
 		"Succeeds": func(ctx context.Context, t *testing.T, env *mock.Environment, tsks []Task) {
 			for _, tsk := range tsks {
-				require.NoError(t, tsk.Insert())
+				require.NoError(t, tsk.Insert(t.Context()))
 			}
 			require.NoError(t, tsks[1].MarkAsContainerDispatched(ctx, env, podID, evergreen.AgentVersion))
 			checkTaskDispatched(t, tsks[1].Id)
@@ -2541,7 +2541,7 @@ func TestMarkAsContainerDispatched(t *testing.T) {
 		"FailsWithTaskWithoutContainerAllocated": func(ctx context.Context, t *testing.T, env *mock.Environment, tsks []Task) {
 			tsks[1].ContainerAllocated = false
 			for _, tsk := range tsks {
-				require.NoError(t, tsk.Insert())
+				require.NoError(t, tsk.Insert(t.Context()))
 			}
 
 			assert.Error(t, tsks[1].MarkAsContainerDispatched(ctx, env, podID, evergreen.AgentVersion))
@@ -2549,7 +2549,7 @@ func TestMarkAsContainerDispatched(t *testing.T) {
 		"FailsWithDeactivatedTasks": func(ctx context.Context, t *testing.T, env *mock.Environment, tsks []Task) {
 			tsks[1].Activated = false
 			for _, tsk := range tsks {
-				require.NoError(t, tsk.Insert())
+				require.NoError(t, tsk.Insert(t.Context()))
 			}
 
 			assert.Error(t, tsks[1].MarkAsContainerDispatched(ctx, env, podID, evergreen.AgentVersion))
@@ -2557,7 +2557,7 @@ func TestMarkAsContainerDispatched(t *testing.T) {
 		"FailsWithDisabledTask": func(ctx context.Context, t *testing.T, env *mock.Environment, tsks []Task) {
 			tsks[1].Priority = evergreen.DisabledTaskPriority
 			for _, tsk := range tsks {
-				require.NoError(t, tsk.Insert())
+				require.NoError(t, tsk.Insert(t.Context()))
 			}
 
 			assert.Error(t, tsks[1].MarkAsContainerDispatched(ctx, env, podID, evergreen.AgentVersion))
@@ -2567,7 +2567,7 @@ func TestMarkAsContainerDispatched(t *testing.T) {
 				{TaskId: "task", Finished: true, Unattainable: true},
 			}
 			for _, tsk := range tsks {
-				require.NoError(t, tsk.Insert())
+				require.NoError(t, tsk.Insert(t.Context()))
 			}
 
 			assert.Error(t, tsks[1].MarkAsContainerDispatched(ctx, env, podID, evergreen.AgentVersion))
@@ -2614,46 +2614,46 @@ func TestMarkAsContainerAllocated(t *testing.T) {
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task){
 		"Succeeds": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(t.Context()))
 
 			require.NoError(t, tsk.MarkAsContainerAllocated(ctx, env))
 			checkTaskAllocated(t, tsk.Id)
 		},
 		"FailsWithAllocatedTask": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
 			tsk.ContainerAllocated = true
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(t.Context()))
 
 			assert.Error(t, tsk.MarkAsContainerAllocated(ctx, env))
 		},
 		"FailsWithAllocatedDBTask": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
 			tsk.ContainerAllocated = true
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(t.Context()))
 			tsk.ContainerAllocated = false
 
 			assert.Error(t, tsk.MarkAsContainerAllocated(ctx, env))
 		},
 		"FailsWithTaskWithNoRemainingAllocationAttempts": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
 			tsk.ContainerAllocationAttempts = maxContainerAllocationAttempts
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(t.Context()))
 
 			assert.Error(t, tsk.MarkAsContainerAllocated(ctx, env))
 		},
 		"FailsWithDBTaskWithNoRemainingAllocationAttempts": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
 			tsk.ContainerAllocationAttempts = maxContainerAllocationAttempts
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(t.Context()))
 			tsk.ContainerAllocationAttempts = 0
 
 			assert.Error(t, tsk.MarkAsContainerAllocated(ctx, env))
 		},
 		"FailsWithInactiveTask": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
 			tsk.Activated = false
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(t.Context()))
 
 			assert.Error(t, tsk.MarkAsContainerAllocated(ctx, env))
 		},
 		"FailsForTaskWithStatusOtherThanUndispatched": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
 			tsk.Status = evergreen.TaskSucceeded
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(t.Context()))
 
 			assert.Error(t, tsk.MarkAsContainerAllocated(ctx, env))
 		},
@@ -2664,13 +2664,13 @@ func TestMarkAsContainerAllocated(t *testing.T) {
 					Finished: false,
 				},
 			}
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(t.Context()))
 
 			assert.Error(t, tsk.MarkAsContainerAllocated(ctx, env))
 		},
 		"FailsForHostTask": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
 			tsk.ExecutionPlatform = ExecutionPlatformHost
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(t.Context()))
 
 			assert.Error(t, tsk.MarkAsContainerAllocated(ctx, env))
 		},
@@ -2721,26 +2721,26 @@ func TestMarkAsContainerDeallocated(t *testing.T) {
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task){
 		"Succeeds": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(t.Context()))
 
 			require.NoError(t, tsk.MarkAsContainerDeallocated(ctx, env))
 			checkTaskUnallocated(t, tsk.Id)
 		},
 		"FailsWithUnallocatedTask": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
 			tsk.ContainerAllocated = false
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(t.Context()))
 
 			assert.Error(t, tsk.MarkAsContainerDeallocated(ctx, env))
 		},
 		"FailsWithHostTask": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
 			tsk.ExecutionPlatform = ExecutionPlatformHost
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(t.Context()))
 
 			assert.Error(t, tsk.MarkAsContainerDeallocated(ctx, env))
 		},
 		"FailsWithUnallocatedDBTask": func(ctx context.Context, t *testing.T, env *mock.Environment, tsk Task) {
 			tsk.ContainerAllocated = false
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(t.Context()))
 			tsk.ContainerAllocated = true
 
 			assert.Error(t, tsk.MarkAsContainerDeallocated(ctx, env))
@@ -2795,7 +2795,7 @@ func TestMarkTasksAsContainerDeallocated(t *testing.T) {
 		"Succeeds": func(t *testing.T, tasks []Task) {
 			var taskIDs []string
 			for _, tsk := range tasks {
-				require.NoError(t, tsk.Insert())
+				require.NoError(t, tsk.Insert(t.Context()))
 				taskIDs = append(taskIDs, tsk.Id)
 			}
 
@@ -2806,7 +2806,7 @@ func TestMarkTasksAsContainerDeallocated(t *testing.T) {
 			tasks[0].ExecutionPlatform = ExecutionPlatformHost
 			var taskIDs []string
 			for _, tsk := range tasks {
-				require.NoError(t, tsk.Insert())
+				require.NoError(t, tsk.Insert(t.Context()))
 				taskIDs = append(taskIDs, tsk.Id)
 			}
 
@@ -2822,7 +2822,7 @@ func TestMarkTasksAsContainerDeallocated(t *testing.T) {
 			tasks[0].ContainerAllocated = false
 			var taskIDs []string
 			for _, tsk := range tasks {
-				require.NoError(t, tsk.Insert())
+				require.NoError(t, tsk.Insert(t.Context()))
 				taskIDs = append(taskIDs, tsk.Id)
 			}
 
@@ -2832,7 +2832,7 @@ func TestMarkTasksAsContainerDeallocated(t *testing.T) {
 		"DoesNotUpdateNonexistentTask": func(t *testing.T, tasks []Task) {
 			taskIDs := []string{tasks[0].Id}
 			for _, tsk := range tasks[1:] {
-				require.NoError(t, tsk.Insert())
+				require.NoError(t, tsk.Insert(t.Context()))
 				taskIDs = append(taskIDs, tsk.Id)
 			}
 
@@ -3144,7 +3144,7 @@ func TestMarkAllForUnattainableDependencies(t *testing.T) {
 					},
 				},
 			}
-			require.NoError(t, dependentTask.Insert())
+			require.NoError(t, dependentTask.Insert(t.Context()))
 
 			updatedDependentTasks, err := MarkAllForUnattainableDependencies(ctx, []Task{dependentTask}, []string{"t1"}, true)
 			require.NoError(t, err)
@@ -3194,7 +3194,7 @@ func TestMarkAllForUnattainableDependencies(t *testing.T) {
 				},
 			}
 			for _, dependentTask := range dependentTasks {
-				require.NoError(t, dependentTask.Insert())
+				require.NoError(t, dependentTask.Insert(t.Context()))
 			}
 
 			updatedDependentTasks, err := MarkAllForUnattainableDependencies(ctx, dependentTasks, []string{"t4"}, true)
@@ -3269,7 +3269,7 @@ func TestMarkAllForUnattainableDependencies(t *testing.T) {
 				},
 			}
 			for _, dependentTask := range dependentTasks {
-				require.NoError(t, dependentTask.Insert())
+				require.NoError(t, dependentTask.Insert(t.Context()))
 			}
 
 			updatedDependentTasks, err := MarkAllForUnattainableDependencies(ctx, dependentTasks, []string{"t4", "t5"}, true)
@@ -3320,7 +3320,7 @@ func TestMarkAllForUnattainableDependencies(t *testing.T) {
 					},
 				},
 			}
-			require.NoError(t, dependentTask.Insert())
+			require.NoError(t, dependentTask.Insert(t.Context()))
 
 			updatedDependentTasks, err := MarkAllForUnattainableDependencies(ctx, []Task{dependentTask}, []string{"t3"}, true)
 			require.NoError(t, err)
@@ -3349,7 +3349,7 @@ func TestMarkAllForUnattainableDependencies(t *testing.T) {
 					},
 				},
 			}
-			require.NoError(t, dependentTask.Insert())
+			require.NoError(t, dependentTask.Insert(t.Context()))
 
 			updatedDependentTasks, err := MarkAllForUnattainableDependencies(ctx, []Task{dependentTask}, []string{"t1"}, false)
 			require.NoError(t, err)
@@ -3378,7 +3378,7 @@ func TestMarkAllForUnattainableDependencies(t *testing.T) {
 					},
 				},
 			}
-			require.NoError(t, dependentTask.Insert())
+			require.NoError(t, dependentTask.Insert(t.Context()))
 
 			updatedDependentTasks, err := MarkAllForUnattainableDependencies(ctx, []Task{dependentTask}, []string{"t1"}, false)
 			require.NoError(t, err)
@@ -3407,7 +3407,7 @@ func TestMarkAllForUnattainableDependencies(t *testing.T) {
 					},
 				},
 			}
-			require.NoError(t, dependentTask.Insert())
+			require.NoError(t, dependentTask.Insert(t.Context()))
 
 			dependentTask.DependsOn[1].Unattainable = true
 
@@ -3442,7 +3442,7 @@ func TestSetGeneratedTasksToActivate(t *testing.T) {
 
 	require.NoError(t, db.ClearCollections(Collection))
 	task := Task{Id: "t1"}
-	assert.NoError(t, task.Insert())
+	assert.NoError(t, task.Insert(t.Context()))
 
 	// add stepback task to variant
 	assert.NoError(t, task.SetGeneratedTasksToActivate(ctx, "bv2", "t2"))
@@ -3481,7 +3481,7 @@ func TestSetNextStepbackId(t *testing.T) {
 	assert := assert.New(t)
 	require.NoError(t, db.ClearCollections(Collection))
 	task := Task{Id: "t1"}
-	require.NoError(t, task.Insert())
+	require.NoError(t, task.Insert(t.Context()))
 
 	s := StepbackInfo{
 		LastFailingStepbackTaskId: "t2",
@@ -3507,7 +3507,7 @@ func TestSetLastAndPreviousStepbackIds(t *testing.T) {
 	assert := assert.New(t)
 	require.NoError(t, db.ClearCollections(Collection))
 	task := Task{Id: "t1"}
-	require.NoError(t, task.Insert())
+	require.NoError(t, task.Insert(t.Context()))
 
 	s := StepbackInfo{
 		LastFailingStepbackTaskId: "t2",
@@ -3535,7 +3535,7 @@ func TestGetLatestExecution(t *testing.T) {
 		Id:        "task_id_some_other_stuff",
 		Execution: 55,
 	}
-	assert.NoError(t, sample.Insert())
+	assert.NoError(t, sample.Insert(t.Context()))
 	execution, err := GetLatestExecution(ctx, sample.Id)
 	assert.NoError(t, err)
 	assert.Equal(t, sample.Execution, execution)
@@ -3555,20 +3555,20 @@ func TestArchiveMany(t *testing.T) {
 		Aborted: true,
 		Version: "v",
 	}
-	assert.NoError(t, t1.Insert())
+	assert.NoError(t, t1.Insert(t.Context()))
 	t2 := Task{
 		Id:      "t2",
 		Status:  evergreen.TaskFailed,
 		Aborted: true,
 		Version: "v",
 	}
-	assert.NoError(t, t2.Insert())
+	assert.NoError(t, t2.Insert(t.Context()))
 	et := Task{
 		Id:      "et",
 		Status:  evergreen.TaskSucceeded,
 		Version: "v",
 	}
-	assert.NoError(t, et.Insert())
+	assert.NoError(t, et.Insert(t.Context()))
 	dt := Task{
 		Id:             "dt",
 		Status:         evergreen.TaskSucceeded,
@@ -3576,7 +3576,7 @@ func TestArchiveMany(t *testing.T) {
 		ExecutionTasks: []string{et.Id},
 		Version:        "v",
 	}
-	assert.NoError(t, dt.Insert())
+	assert.NoError(t, dt.Insert(t.Context()))
 
 	tasks := []Task{t1, t2, dt}
 	err := ArchiveMany(ctx, tasks)
@@ -3619,7 +3619,7 @@ func TestArchiveManyAfterFailedOnly(t *testing.T) {
 		Aborted:               true,
 		Version:               "v",
 	}
-	assert.NoError(t, et1.Insert())
+	assert.NoError(t, et1.Insert(t.Context()))
 	et2 := Task{
 		Id:                    "et2",
 		Status:                evergreen.TaskSucceeded,
@@ -3628,7 +3628,7 @@ func TestArchiveManyAfterFailedOnly(t *testing.T) {
 		Aborted:               true,
 		Version:               "v",
 	}
-	assert.NoError(t, et2.Insert())
+	assert.NoError(t, et2.Insert(t.Context()))
 	t1 := Task{
 		Id:             "t1",
 		Status:         evergreen.TaskFailed,
@@ -3638,7 +3638,7 @@ func TestArchiveManyAfterFailedOnly(t *testing.T) {
 		DisplayOnly:    true,
 		Version:        "v",
 	}
-	assert.NoError(t, t1.Insert())
+	assert.NoError(t, t1.Insert(t.Context()))
 	t2 := Task{
 		Id:        "t2",
 		Status:    evergreen.TaskSucceeded,
@@ -3646,7 +3646,7 @@ func TestArchiveManyAfterFailedOnly(t *testing.T) {
 		Aborted:   true,
 		Version:   "v",
 	}
-	assert.NoError(t, t2.Insert())
+	assert.NoError(t, t2.Insert(t.Context()))
 	et3 := Task{
 		Id:        "et3",
 		Status:    evergreen.TaskFailed,
@@ -3654,7 +3654,7 @@ func TestArchiveManyAfterFailedOnly(t *testing.T) {
 		Aborted:   true,
 		Version:   "v",
 	}
-	assert.NoError(t, et3.Insert())
+	assert.NoError(t, et3.Insert(t.Context()))
 	et4 := Task{
 		Id:        "et4",
 		Status:    evergreen.TaskSucceeded,
@@ -3662,7 +3662,7 @@ func TestArchiveManyAfterFailedOnly(t *testing.T) {
 		Aborted:   true,
 		Version:   "v",
 	}
-	assert.NoError(t, et4.Insert())
+	assert.NoError(t, et4.Insert(t.Context()))
 	et5 := Task{
 		Id:        "et5",
 		Status:    evergreen.TaskFailed,
@@ -3670,7 +3670,7 @@ func TestArchiveManyAfterFailedOnly(t *testing.T) {
 		Aborted:   true,
 		Version:   "v",
 	}
-	assert.NoError(t, et5.Insert())
+	assert.NoError(t, et5.Insert(t.Context()))
 	t3 := Task{
 		Id:                      "t3",
 		Status:                  evergreen.TaskFailed,
@@ -3681,7 +3681,7 @@ func TestArchiveManyAfterFailedOnly(t *testing.T) {
 		ResetFailedWhenFinished: true,
 		Version:                 "v",
 	}
-	assert.NoError(t, t3.Insert())
+	assert.NoError(t, t3.Insert(t.Context()))
 	assert.NoError(t, t3.Archive(ctx)) // Failed only is true
 	currentTasks, err := FindAll(ctx, db.Query(ByVersion("v")))
 	assert.NoError(t, err)
@@ -3707,7 +3707,7 @@ func TestArchiveManyAfterFailedOnly(t *testing.T) {
 		Aborted:   true,
 		Version:   "v",
 	}
-	assert.NoError(t, t4.Insert())
+	assert.NoError(t, t4.Insert(t.Context()))
 
 	// During runtime we do not archive the same task multiple times without resetting in between.
 	// For the sake of this test, we manually untoggle CanReset so we can archive the task multiple times in a row.
@@ -3784,13 +3784,13 @@ func TestAddParentDisplayTasks(t *testing.T) {
 		DisplayOnly:    true,
 		ExecutionTasks: []string{"et1", "et2"},
 	}
-	assert.NoError(t, dt1.Insert())
+	assert.NoError(t, dt1.Insert(t.Context()))
 	dt2 := Task{
 		Id:             "dt2",
 		DisplayOnly:    true,
 		ExecutionTasks: []string{"et3", "et4"},
 	}
-	assert.NoError(t, dt2.Insert())
+	assert.NoError(t, dt2.Insert(t.Context()))
 	execTasks := []Task{
 		{Id: "et1"},
 		{Id: "et2"},
@@ -3798,7 +3798,7 @@ func TestAddParentDisplayTasks(t *testing.T) {
 		{Id: "et4"},
 	}
 	for _, et := range execTasks {
-		assert.NoError(t, et.Insert())
+		assert.NoError(t, et.Insert(t.Context()))
 	}
 	tasks, err := AddParentDisplayTasks(ctx, execTasks)
 	assert.NoError(t, err)
@@ -3821,7 +3821,7 @@ func TestSetCheckRunId(t *testing.T) {
 		Id: "t1",
 	}
 
-	assert.NoError(t, t1.Insert())
+	assert.NoError(t, t1.Insert(t.Context()))
 	assert.NoError(t, t1.SetCheckRunId(ctx, 12345))
 
 	var err error
@@ -3850,9 +3850,9 @@ func TestAddDisplayTaskIdToExecTasks(t *testing.T) {
 		Id:            "t3",
 		DisplayTaskId: utility.ToStringPtr(""),
 	}
-	assert.NoError(t, t1.Insert())
-	assert.NoError(t, t2.Insert())
-	assert.NoError(t, t3.Insert())
+	assert.NoError(t, t1.Insert(t.Context()))
+	assert.NoError(t, t2.Insert(t.Context()))
+	assert.NoError(t, t3.Insert(t.Context()))
 
 	assert.NoError(t, AddDisplayTaskIdToExecTasks(ctx, "dt", []string{t1.Id, t2.Id}))
 
@@ -3881,7 +3881,7 @@ func TestAddExecTasksToDisplayTask(t *testing.T) {
 		Activated:      false,
 		ExecutionTasks: []string{"et1", "et2"},
 	}
-	assert.NoError(t, dt1.Insert())
+	assert.NoError(t, dt1.Insert(t.Context()))
 
 	// no tasks to add
 	assert.NoError(t, AddExecTasksToDisplayTask(ctx, dt1.Id, []string{}, false))
@@ -3932,7 +3932,7 @@ func TestAbortVersionTasks(t *testing.T) {
 		Status:         evergreen.TaskStarted,
 		ExecutionTasks: []string{"et1", "et2", "et3"},
 	}
-	assert.NoError(t, db.InsertMany(Collection, finishedExecTask, failingExecTask, otherExecTask, dt))
+	assert.NoError(t, db.InsertMany(t.Context(), Collection, finishedExecTask, failingExecTask, otherExecTask, dt))
 
 	assert.NoError(t, AbortVersionTasks(ctx, "v1", AbortInfo{TaskID: "et2"}))
 
@@ -3974,7 +3974,7 @@ func TestArchive(t *testing.T) {
 		require.NoError(t, err)
 		require.NotZero(t, dbTask)
 
-		events, err := event.FindAllByResourceID(hostID)
+		events, err := event.FindAllByResourceID(t.Context(), hostID)
 		require.NoError(t, err)
 		assert.NotEmpty(t, events)
 
@@ -3989,11 +3989,11 @@ func TestArchive(t *testing.T) {
 		"ArchivesHostTaskAndUpdatesEventLog": func(t *testing.T, tsk Task) {
 			archivedTaskID := MakeOldID(tsk.Id, tsk.Execution)
 			archivedExecution := tsk.Execution
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(t.Context()))
 
 			hostID := "hostID"
-			event.LogHostRunningTaskSet(hostID, tsk.Id, 0)
-			event.LogHostRunningTaskCleared(hostID, tsk.Id, 0)
+			event.LogHostRunningTaskSet(ctx, hostID, tsk.Id, 0)
+			event.LogHostRunningTaskCleared(ctx, hostID, tsk.Id, 0)
 
 			require.NoError(t, tsk.Archive(ctx))
 
@@ -4008,16 +4008,16 @@ func TestArchive(t *testing.T) {
 			}
 			archivedExecTaskID := MakeOldID(execTask.Id, execTask.Execution)
 			archivedExecution := execTask.Execution
-			require.NoError(t, execTask.Insert())
+			require.NoError(t, execTask.Insert(t.Context()))
 
 			hostID := "hostID"
-			event.LogHostRunningTaskSet(hostID, execTask.Id, 0)
-			event.LogHostRunningTaskCleared(hostID, execTask.Id, 0)
+			event.LogHostRunningTaskSet(ctx, hostID, execTask.Id, 0)
+			event.LogHostRunningTaskCleared(ctx, hostID, execTask.Id, 0)
 
 			dt.DisplayOnly = true
 			dt.ExecutionTasks = []string{execTask.Id}
 			archivedDisplayTaskID := MakeOldID(dt.Id, dt.Execution)
-			require.NoError(t, dt.Insert())
+			require.NoError(t, dt.Insert(t.Context()))
 
 			require.NoError(t, dt.Archive(ctx))
 
@@ -4029,7 +4029,7 @@ func TestArchive(t *testing.T) {
 		"ArchivesContainerTask": func(t *testing.T, tsk Task) {
 			archivedTaskID := MakeOldID(tsk.Id, tsk.Execution)
 			tsk.ExecutionPlatform = ExecutionPlatformContainer
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(t.Context()))
 
 			require.NoError(t, tsk.Archive(ctx))
 			checkTaskIsArchived(t, archivedTaskID)
@@ -4060,13 +4060,13 @@ func TestArchiveFailedOnly(t *testing.T) {
 		Status:  evergreen.TaskFailed,
 		Version: "v",
 	}
-	assert.NoError(t, t1.Insert())
+	assert.NoError(t, t1.Insert(t.Context()))
 	t2 := Task{
 		Id:      "t2",
 		Status:  evergreen.TaskSucceeded,
 		Version: "v",
 	}
-	assert.NoError(t, t2.Insert())
+	assert.NoError(t, t2.Insert(t.Context()))
 	dt := &Task{
 		Id:                      "dt",
 		DisplayOnly:             true,
@@ -4075,7 +4075,7 @@ func TestArchiveFailedOnly(t *testing.T) {
 		Version:                 "v",
 		ResetFailedWhenFinished: true,
 	}
-	assert.NoError(t, dt.Insert())
+	assert.NoError(t, dt.Insert(t.Context()))
 
 	checkTaskIsArchived := func(t *testing.T, oldTaskID string) {
 		dbTask, err := FindOneOldId(ctx, oldTaskID)
@@ -4107,7 +4107,7 @@ func TestArchiveFailedOnly(t *testing.T) {
 		require.NoError(t, err)
 		require.NotZero(t, dbTask)
 
-		events, err := event.FindAllByResourceID(hostID)
+		events, err := event.FindAllByResourceID(t.Context(), hostID)
 		require.NoError(t, err)
 		assert.NotEmpty(t, events)
 
@@ -4129,8 +4129,8 @@ func TestArchiveFailedOnly(t *testing.T) {
 		archivedExecution := t1.Execution
 
 		hostID := "hostID"
-		event.LogHostRunningTaskSet(hostID, t1.Id, 0)
-		event.LogHostRunningTaskCleared(hostID, t1.Id, 0)
+		event.LogHostRunningTaskSet(ctx, hostID, t1.Id, 0)
+		event.LogHostRunningTaskCleared(ctx, hostID, t1.Id, 0)
 
 		// Verifies the execution before and after calling Archive
 		archivedDisplayTaskID := MakeOldID(dt.Id, dt.Execution)
@@ -4182,8 +4182,8 @@ func TestArchiveFailedOnly(t *testing.T) {
 		archivedT2 := MakeOldID(t2.Id, t2.Execution)
 
 		hostID := "hostID2"
-		event.LogHostRunningTaskSet(hostID, t1.Id, 1)
-		event.LogHostRunningTaskCleared(hostID, t1.Id, 1)
+		event.LogHostRunningTaskSet(ctx, hostID, t1.Id, 1)
+		event.LogHostRunningTaskCleared(ctx, hostID, t1.Id, 1)
 
 		// Verifies the display task is archived after calling archive
 		archivedDisplayTaskID := MakeOldID(dt.Id, dt.Execution)
@@ -4223,12 +4223,12 @@ func TestByExecutionTasksAndMaxExecution(t *testing.T) {
 			Execution: 1,
 			Status:    evergreen.TaskSucceeded,
 		}
-		assert.NoError(t, db.Insert(Collection, t1))
+		assert.NoError(t, db.Insert(t.Context(), Collection, t1))
 
 		ot1 := t1
 		ot1.Execution = 0
 		ot1 = *ot1.makeArchivedTask()
-		assert.NoError(t, db.Insert(OldCollection, ot1))
+		assert.NoError(t, db.Insert(t.Context(), OldCollection, ot1))
 
 		t2 := Task{
 			Id:        "t2",
@@ -4236,11 +4236,11 @@ func TestByExecutionTasksAndMaxExecution(t *testing.T) {
 			Execution: 1,
 			Status:    evergreen.TaskSucceeded,
 		}
-		assert.NoError(t, db.Insert(Collection, t2))
+		assert.NoError(t, db.Insert(t.Context(), Collection, t2))
 		ot2 := t2
 		ot2.Execution = 0
 		ot2 = *ot2.makeArchivedTask()
-		assert.NoError(t, db.Insert(OldCollection, ot2))
+		assert.NoError(t, db.Insert(t.Context(), OldCollection, ot2))
 
 		tasks, err := FindByExecutionTasksAndMaxExecution(ctx, tasksToFetch, 1)
 		tasks = convertOldTasksIntoTasks(tasks)
@@ -4257,16 +4257,16 @@ func TestByExecutionTasksAndMaxExecution(t *testing.T) {
 			Execution: 2,
 			Status:    evergreen.TaskSucceeded,
 		}
-		assert.NoError(t, db.Insert(Collection, t1))
+		assert.NoError(t, db.Insert(t.Context(), Collection, t1))
 
 		ot1 := t1
 		ot1.Execution = 1
 		ot1 = *ot1.makeArchivedTask()
-		assert.NoError(t, db.Insert(OldCollection, ot1))
+		assert.NoError(t, db.Insert(t.Context(), OldCollection, ot1))
 
 		ot1.Execution = 1
 		ot1 = *ot1.makeArchivedTask()
-		assert.NoError(t, db.Insert(OldCollection, ot1))
+		assert.NoError(t, db.Insert(t.Context(), OldCollection, ot1))
 
 		t2 := Task{
 			Id:        "t2",
@@ -4274,11 +4274,11 @@ func TestByExecutionTasksAndMaxExecution(t *testing.T) {
 			Execution: 1,
 			Status:    evergreen.TaskSucceeded,
 		}
-		assert.NoError(t, db.Insert(Collection, t2))
+		assert.NoError(t, db.Insert(t.Context(), Collection, t2))
 		ot2 := t2
 		ot2.Execution = 0
 		ot2 = *ot2.makeArchivedTask()
-		assert.NoError(t, db.Insert(OldCollection, ot2))
+		assert.NoError(t, db.Insert(t.Context(), OldCollection, ot2))
 
 		tasks, err := FindByExecutionTasksAndMaxExecution(ctx, tasksToFetch, 2)
 		tasks = convertOldTasksIntoTasks(tasks)
@@ -4297,17 +4297,17 @@ func TestByExecutionTasksAndMaxExecution(t *testing.T) {
 			Execution: 2,
 			Status:    evergreen.TaskSucceeded,
 		}
-		assert.NoError(t, db.Insert(Collection, t1))
+		assert.NoError(t, db.Insert(t.Context(), Collection, t1))
 
 		ot1 := t1
 		ot1.Execution = 1
 		ot1 = *ot1.makeArchivedTask()
-		assert.NoError(t, db.Insert(OldCollection, ot1))
+		assert.NoError(t, db.Insert(t.Context(), OldCollection, ot1))
 
 		ot1 = t1
 		ot1.Execution = 0
 		ot1 = *ot1.makeArchivedTask()
-		assert.NoError(t, db.Insert(OldCollection, ot1))
+		assert.NoError(t, db.Insert(t.Context(), OldCollection, ot1))
 
 		t2 := Task{
 			Id:        "t2",
@@ -4315,17 +4315,17 @@ func TestByExecutionTasksAndMaxExecution(t *testing.T) {
 			Execution: 2,
 			Status:    evergreen.TaskFailed,
 		}
-		assert.NoError(t, db.Insert(Collection, t2))
+		assert.NoError(t, db.Insert(t.Context(), Collection, t2))
 
 		ot2 := t2
 		ot2.Execution = 1
 		ot2 = *ot2.makeArchivedTask()
-		assert.NoError(t, db.Insert(OldCollection, ot2))
+		assert.NoError(t, db.Insert(t.Context(), OldCollection, ot2))
 
 		ot2 = t2
 		ot2.Execution = 0
 		ot2 = *ot2.makeArchivedTask()
-		assert.NoError(t, db.Insert(OldCollection, ot2))
+		assert.NoError(t, db.Insert(t.Context(), OldCollection, ot2))
 
 		tasks, err := FindByExecutionTasksAndMaxExecution(ctx, tasksToFetch, 1)
 		tasks = convertOldTasksIntoTasks(tasks)
@@ -4352,7 +4352,7 @@ func TestFindTaskOnPreviousCommit(t *testing.T) {
 		DisplayName:         "dn",
 		Project:             "p",
 	}
-	assert.NoError(t, db.Insert(Collection, t1))
+	assert.NoError(t, db.Insert(t.Context(), Collection, t1))
 	t2 := Task{
 		Id:                  "t2",
 		Version:             "v2",
@@ -4364,7 +4364,7 @@ func TestFindTaskOnPreviousCommit(t *testing.T) {
 		DisplayName:         "dn",
 		Project:             "p",
 	}
-	assert.NoError(t, db.Insert(Collection, t2))
+	assert.NoError(t, db.Insert(t.Context(), Collection, t2))
 
 	task, err := t2.FindTaskOnPreviousCommit(ctx)
 	assert.NoError(t, err)
@@ -4382,7 +4382,7 @@ func TestFindTaskOnPreviousCommit(t *testing.T) {
 		DisplayName:         "dn",
 		Project:             "p",
 	}
-	assert.NoError(t, db.Insert(Collection, t3))
+	assert.NoError(t, db.Insert(t.Context(), Collection, t3))
 	t4 := Task{
 		Id:                  "t4",
 		Version:             "v4",
@@ -4394,7 +4394,7 @@ func TestFindTaskOnPreviousCommit(t *testing.T) {
 		DisplayName:         "dn",
 		Project:             "p",
 	}
-	assert.NoError(t, db.Insert(Collection, t4))
+	assert.NoError(t, db.Insert(t.Context(), Collection, t4))
 
 	// Should fetch the latest mainline commit task and should not consider non gitter tasks
 	task, err = t4.FindTaskOnPreviousCommit(ctx)
@@ -4421,7 +4421,7 @@ func (s *TaskConnectorFetchByIdSuite) SetupTest() {
 			BuildId:       fmt.Sprintf("build_%d", i),
 			DisplayTaskId: utility.ToStringPtr(""),
 		}
-		s.NoError(testTask.Insert())
+		s.NoError(testTask.Insert(s.T().Context()))
 	}
 }
 
@@ -4447,7 +4447,7 @@ func (s *TaskConnectorFetchByIdSuite) TestFindByIdAndExecution() {
 		BuildId:   "build_1",
 		Status:    evergreen.TaskSucceeded,
 	}
-	s.NoError(testTask1.Insert())
+	s.NoError(testTask1.Insert(s.T().Context()))
 	for i := 0; i < 10; i++ {
 		s.NoError(testTask1.Archive(ctx))
 		err := UpdateOne(
@@ -4496,10 +4496,10 @@ func (s *TaskConnectorFetchByIdSuite) TestFindByVersion() {
 		Status:        evergreen.TaskFailed,
 		DisplayTaskId: utility.ToStringPtr(""),
 	}
-	s.NoError(taskKnown2.Insert())
-	s.NoError(taskNotKnown.Insert())
-	s.NoError(taskNoAnnotation.Insert())
-	s.NoError(taskWithEmptyIssues.Insert())
+	s.NoError(taskKnown2.Insert(s.T().Context()))
+	s.NoError(taskNotKnown.Insert(s.T().Context()))
+	s.NoError(taskNoAnnotation.Insert(s.T().Context()))
+	s.NoError(taskWithEmptyIssues.Insert(s.T().Context()))
 
 	issue := annotations.IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", Source: &annotations.Source{Author: "chaya.malik"}}
 
@@ -4551,7 +4551,7 @@ func (s *TaskConnectorFetchByIdSuite) TestFindOldTasksByIDWithDisplayTasks() {
 		Status:        evergreen.TaskSucceeded,
 		DisplayTaskId: utility.ToStringPtr(""),
 	}
-	s.NoError(testTask1.Insert())
+	s.NoError(testTask1.Insert(s.T().Context()))
 	testTask2 := &Task{
 		Id:            "task_2",
 		Execution:     0,
@@ -4560,7 +4560,7 @@ func (s *TaskConnectorFetchByIdSuite) TestFindOldTasksByIDWithDisplayTasks() {
 		Status:        evergreen.TaskSucceeded,
 		DisplayTaskId: utility.ToStringPtr(""),
 	}
-	s.NoError(testTask2.Insert())
+	s.NoError(testTask2.Insert(s.T().Context()))
 	for i := 0; i < 10; i++ {
 		s.NoError(testTask1.Archive(ctx))
 		testTask1.Execution += 1
@@ -4618,7 +4618,7 @@ func TestFindAbortingAndResettingDependencies(t *testing.T) {
 	}()
 	for tName, tCase := range map[string]func(t *testing.T, tsk Task, depTasks []Task){
 		"ReturnsAllMatchingDependencies": func(t *testing.T, tsk Task, depTasks []Task) {
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(t.Context()))
 
 			found, err := tsk.FindAbortingAndResettingDependencies(ctx)
 			assert.NoError(t, err)
@@ -4635,9 +4635,9 @@ func TestFindAbortingAndResettingDependencies(t *testing.T) {
 					{TaskId: depTasks[1].Id},
 				},
 			}
-			require.NoError(t, intermediateDepTask.Insert())
+			require.NoError(t, intermediateDepTask.Insert(t.Context()))
 			tsk.DependsOn = []Dependency{{TaskId: intermediateDepTask.Id}}
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(t.Context()))
 
 			found, err := tsk.FindAbortingAndResettingDependencies(ctx)
 			assert.NoError(t, err)
@@ -4646,7 +4646,7 @@ func TestFindAbortingAndResettingDependencies(t *testing.T) {
 		},
 		"IgnoresNonexistentTasks": func(t *testing.T, tsk Task, depTasks []Task) {
 			tsk.DependsOn = append(tsk.DependsOn, Dependency{TaskId: "nonexistent"})
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(t.Context()))
 
 			found, err := tsk.FindAbortingAndResettingDependencies(ctx)
 			assert.NoError(t, err)
@@ -4658,7 +4658,7 @@ func TestFindAbortingAndResettingDependencies(t *testing.T) {
 		},
 		"IgnoresAbortingAndResettingTasksNotInDependencies": func(t *testing.T, tsk Task, depTasks []Task) {
 			tsk.DependsOn = []Dependency{tsk.DependsOn[0], tsk.DependsOn[2], tsk.DependsOn[3]}
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(t.Context()))
 
 			found, err := tsk.FindAbortingAndResettingDependencies(ctx)
 			assert.NoError(t, err)
@@ -4667,7 +4667,7 @@ func TestFindAbortingAndResettingDependencies(t *testing.T) {
 		},
 		"ReturnsNoResultsForNoDependencies": func(t *testing.T, tsk Task, depTasks []Task) {
 			tsk.DependsOn = nil
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(t.Context()))
 
 			found, err := tsk.FindAbortingAndResettingDependencies(ctx)
 			assert.NoError(t, err)
@@ -4702,7 +4702,7 @@ func TestFindAbortingAndResettingDependencies(t *testing.T) {
 				},
 			}
 			for _, depTask := range depTasks {
-				require.NoError(t, depTask.Insert())
+				require.NoError(t, depTask.Insert(t.Context()))
 				tsk.DependsOn = append(tsk.DependsOn, Dependency{TaskId: depTask.Id})
 			}
 
@@ -5116,7 +5116,7 @@ func TestReset(t *testing.T) {
 			Status:   evergreen.TaskSucceeded,
 			CanReset: true,
 		}
-		assert.NoError(t, t0.Insert())
+		assert.NoError(t, t0.Insert(t.Context()))
 
 		assert.NoError(t, t0.Reset(ctx, "user"))
 		dbTask, err := FindOneId(ctx, t0.Id)
@@ -5138,7 +5138,7 @@ func TestReset(t *testing.T) {
 			Status:   evergreen.TaskSucceeded,
 			CanReset: true,
 		}
-		assert.NoError(t, t0.Insert())
+		assert.NoError(t, t0.Insert(t.Context()))
 
 		assert.NoError(t, t0.Reset(ctx, ""))
 		dbTask, err := FindOneId(ctx, t0.Id)
@@ -5158,7 +5158,7 @@ func TestReset(t *testing.T) {
 			Status:   evergreen.TaskSucceeded,
 			CanReset: true,
 		}
-		assert.NoError(t, t0.Insert())
+		assert.NoError(t, t0.Insert(t.Context()))
 
 		assert.NoError(t, t0.Reset(ctx, ""))
 		dbTask, err := FindOneId(ctx, t0.Id)
@@ -5189,7 +5189,7 @@ func TestReset(t *testing.T) {
 			HostCreateDetails:       []HostCreateDetail{{HostId: "h"}},
 			NumNextTaskDispatches:   3,
 		}
-		assert.NoError(t, t0.Insert())
+		assert.NoError(t, t0.Insert(t.Context()))
 
 		assert.NoError(t, t0.Reset(ctx, ""))
 		dbTask, err := FindOneId(ctx, t0.Id)
@@ -5230,7 +5230,7 @@ func TestResetTasks(t *testing.T) {
 			Status:   evergreen.TaskSucceeded,
 			CanReset: true,
 		}
-		assert.NoError(t, t0.Insert())
+		assert.NoError(t, t0.Insert(t.Context()))
 
 		assert.NoError(t, ResetTasks(ctx, []Task{t0}, "user"))
 		dbTask, err := FindOneId(ctx, t0.Id)
@@ -5252,7 +5252,7 @@ func TestResetTasks(t *testing.T) {
 			Status:   evergreen.TaskSucceeded,
 			CanReset: true,
 		}
-		assert.NoError(t, t0.Insert())
+		assert.NoError(t, t0.Insert(t.Context()))
 
 		assert.NoError(t, ResetTasks(ctx, []Task{t0}, ""))
 		dbTask, err := FindOneId(ctx, t0.Id)
@@ -5272,7 +5272,7 @@ func TestResetTasks(t *testing.T) {
 			Status:   evergreen.TaskSucceeded,
 			CanReset: true,
 		}
-		assert.NoError(t, t0.Insert())
+		assert.NoError(t, t0.Insert(t.Context()))
 
 		assert.NoError(t, ResetTasks(ctx, []Task{t0}, ""))
 		dbTask, err := FindOneId(ctx, t0.Id)
@@ -5291,7 +5291,7 @@ func TestGenerateNotRun(t *testing.T) {
 
 	for tName, tCase := range map[string]func(t *testing.T, tsk *Task){
 		"ReturnsTaskThatNeedsGeneration": func(t *testing.T, tsk *Task) {
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(t.Context()))
 
 			tasks, err := GenerateNotRun(ctx)
 			require.NoError(t, err)
@@ -5300,7 +5300,7 @@ func TestGenerateNotRun(t *testing.T) {
 		},
 		"IgnoresFinishedTasks": func(t *testing.T, tsk *Task) {
 			tsk.Status = evergreen.TaskFailed
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(t.Context()))
 
 			tasks, err := GenerateNotRun(ctx)
 			require.NoError(t, err)
@@ -5308,7 +5308,7 @@ func TestGenerateNotRun(t *testing.T) {
 		},
 		"IgnoresTasksThatAlreadyFinishedGenerating": func(t *testing.T, tsk *Task) {
 			tsk.GeneratedTasks = true
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(t.Context()))
 
 			tasks, err := GenerateNotRun(ctx)
 			require.NoError(t, err)
@@ -5316,7 +5316,7 @@ func TestGenerateNotRun(t *testing.T) {
 		},
 		"IgnoresTasksThatHaveNothingToGenerate": func(t *testing.T, tsk *Task) {
 			tsk.GeneratedJSONAsString = nil
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(t.Context()))
 
 			tasks, err := GenerateNotRun(ctx)
 			require.NoError(t, err)
@@ -5324,7 +5324,7 @@ func TestGenerateNotRun(t *testing.T) {
 		},
 		"IgnoresTasksWhoseGenerationRequestIsStale": func(t *testing.T, tsk *Task) {
 			tsk.StartTime = time.Now().Add(-100000 * time.Hour)
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(t.Context()))
 
 			tasks, err := GenerateNotRun(ctx)
 			require.NoError(t, err)
@@ -5356,7 +5356,7 @@ func TestSetGeneratedJSON(t *testing.T) {
 	for tName, tCase := range map[string]func(t *testing.T, tsk *Task){
 		"Succeeds": func(t *testing.T, tsk *Task) {
 			files := GeneratedJSONFiles{"generated_json"}
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(t.Context()))
 
 			require.NoError(t, tsk.SetGeneratedJSON(ctx, files))
 
@@ -5368,7 +5368,7 @@ func TestSetGeneratedJSON(t *testing.T) {
 		"NoopsForAlreadySetGeneratedJSON": func(t *testing.T, tsk *Task) {
 			originalFiles := GeneratedJSONFiles{"generated_files"}
 			tsk.GeneratedJSONAsString = originalFiles
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(t.Context()))
 
 			require.NoError(t, tsk.SetGeneratedJSON(ctx, []string{"new_generated_json"}))
 
@@ -5382,7 +5382,7 @@ func TestSetGeneratedJSON(t *testing.T) {
 			originalFiles := GeneratedJSONFiles{"generated_json"}
 			tsk.GeneratedJSONAsString = originalFiles
 			tsk.GeneratedJSONStorageMethod = evergreen.ProjectStorageMethodDB
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(t.Context()))
 
 			require.NoError(t, tsk.SetGeneratedJSON(ctx, GeneratedJSONFiles{"new_generated_json"}))
 
@@ -5394,7 +5394,7 @@ func TestSetGeneratedJSON(t *testing.T) {
 		},
 		"NoopsForAlreadySetGeneratedJSONS3Storage": func(t *testing.T, tsk *Task) {
 			tsk.GeneratedJSONStorageMethod = evergreen.ProjectStorageMethodS3
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(t.Context()))
 
 			require.NoError(t, tsk.SetGeneratedJSON(ctx, GeneratedJSONFiles{"new_generated_json"}))
 
@@ -5432,7 +5432,7 @@ func TestSetGeneratedJSONStorageMethod(t *testing.T) {
 
 	for tName, tCase := range map[string]func(t *testing.T, tsk *Task){
 		"Succeeds": func(t *testing.T, tsk *Task) {
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(t.Context()))
 
 			require.NoError(t, tsk.SetGeneratedJSONStorageMethod(ctx, evergreen.ProjectStorageMethodS3))
 
@@ -5443,7 +5443,7 @@ func TestSetGeneratedJSONStorageMethod(t *testing.T) {
 		},
 		"NoopsForAlreadySetGeneratedJSONStorageMethod": func(t *testing.T, tsk *Task) {
 			tsk.GeneratedJSONStorageMethod = evergreen.ProjectStorageMethodDB
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(t.Context()))
 
 			require.NoError(t, tsk.SetGeneratedJSONStorageMethod(ctx, evergreen.ProjectStorageMethodS3))
 

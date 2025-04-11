@@ -203,7 +203,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		as.LoggedError(w, r, http.StatusBadRequest, errors.New("intent could not be created from supplied data"))
 		return
 	}
-	if err = intent.Insert(); err != nil {
+	if err = intent.Insert(r.Context()); err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
 		return
 	}
@@ -334,7 +334,7 @@ func (as *APIServer) listPatches(w http.ResponseWriter, r *http.Request) {
 	if n > 0 {
 		query = query.Limit(n)
 	}
-	patches, err := patch.Find(query)
+	patches, err := patch.Find(r.Context(), query)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError,
 			errors.Wrapf(err, "error finding patches for user %s", dbUser.Id))

@@ -30,7 +30,7 @@ func TestHostTerminationJob(t *testing.T) {
 			Limit:   50,
 			SortAsc: false,
 		}
-		events, err := event.Find(event.HostEvents(hostEventOpts))
+		events, err := event.Find(t.Context(), event.HostEvents(hostEventOpts))
 		require.NoError(t, err)
 		require.NotEmpty(t, events)
 		var foundTerminationEvent bool
@@ -309,8 +309,8 @@ func TestHostTerminationJob(t *testing.T) {
 					},
 				},
 			}
-			require.NoError(t, task1.Insert())
-			require.NoError(t, task2.Insert())
+			require.NoError(t, task1.Insert(t.Context()))
+			require.NoError(t, task2.Insert(t.Context()))
 
 			j := NewHostTerminationJob(env, h, HostTerminationOptions{
 				TerminateIfBusy:   true,
@@ -427,11 +427,11 @@ func TestHostTerminationJob(t *testing.T) {
 					},
 				},
 			}
-			require.NoError(t, task1.Insert())
-			require.NoError(t, task2.Insert())
-			require.NoError(t, task3.Insert())
-			require.NoError(t, task4.Insert())
-			require.NoError(t, task5.Insert())
+			require.NoError(t, task1.Insert(t.Context()))
+			require.NoError(t, task2.Insert(t.Context()))
+			require.NoError(t, task3.Insert(t.Context()))
+			require.NoError(t, task4.Insert(t.Context()))
+			require.NoError(t, task5.Insert(t.Context()))
 
 			j := NewHostTerminationJob(env, h, HostTerminationOptions{
 				TerminateIfBusy:   true,
@@ -527,10 +527,10 @@ func TestHostTerminationJob(t *testing.T) {
 					},
 				},
 			}
-			require.NoError(t, task1.Insert())
-			require.NoError(t, task2.Insert())
-			require.NoError(t, task3.Insert())
-			require.NoError(t, nonTgTask.Insert())
+			require.NoError(t, task1.Insert(t.Context()))
+			require.NoError(t, task2.Insert(t.Context()))
+			require.NoError(t, task3.Insert(t.Context()))
+			require.NoError(t, nonTgTask.Insert(t.Context()))
 
 			j := NewHostTerminationJob(env, h, HostTerminationOptions{
 				TerminateIfBusy:   true,
@@ -579,16 +579,16 @@ func TestHostTerminationJob(t *testing.T) {
 				Id:      "b1",
 				Version: "v1",
 			}
-			require.NoError(t, build.Insert())
+			require.NoError(t, build.Insert(t.Context()))
 			version := model.Version{
 				Id: "v1",
 			}
-			require.NoError(t, version.Insert())
+			require.NoError(t, version.Insert(t.Context()))
 			pref := &model.ProjectRef{
 				Id:      "exists",
 				Enabled: true,
 			}
-			require.NoError(t, pref.Insert())
+			require.NoError(t, pref.Insert(t.Context()))
 			provider := cloud.GetMockProvider()
 			provider.Reset()
 

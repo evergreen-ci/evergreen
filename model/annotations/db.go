@@ -46,7 +46,7 @@ func FindOne(ctx context.Context, query db.Q) (*TaskAnnotation, error) {
 // Find gets every TaskAnnotation matching the given query.
 func Find(ctx context.Context, query db.Q) ([]TaskAnnotation, error) {
 	annotations := []TaskAnnotation{}
-	err := db.FindAllQContext(ctx, Collection, query, &annotations)
+	err := db.FindAllQ(ctx, Collection, query, &annotations)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding task annotations")
 	}

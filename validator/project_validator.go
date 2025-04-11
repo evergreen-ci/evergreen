@@ -279,7 +279,7 @@ func CheckProject(ctx context.Context, project *model.Project, config *model.Pro
 	}
 	verrs = append(verrs, CheckProjectSettings(ctx, evergreen.GetEnvironment().Settings(), project, ref, isConfigDefined)...)
 	// Check project aliases
-	aliases, err := model.ConstructMergedAliasesByPrecedence(ref, config, ref.RepoRefId)
+	aliases, err := model.ConstructMergedAliasesByPrecedence(ctx, ref, config, ref.RepoRefId)
 	if err != nil {
 		return append(verrs, ValidationError{
 			Message: "problem finding aliases; validation will not check alias coverage",

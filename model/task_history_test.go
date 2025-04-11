@@ -96,7 +96,7 @@ func TestFindActiveTasksForHistory(t *testing.T) {
 				DisplayName:         taskName,
 				BuildVariant:        buildVariant,
 			}
-			assert.NoError(t, t1.Insert())
+			assert.NoError(t, t1.Insert(t.Context()))
 
 			t2 := task.Task{
 				Id:                  "t_2",
@@ -107,7 +107,7 @@ func TestFindActiveTasksForHistory(t *testing.T) {
 				DisplayName:         taskName,
 				BuildVariant:        buildVariant,
 			}
-			assert.NoError(t, t2.Insert())
+			assert.NoError(t, t2.Insert(t.Context()))
 
 			t3 := task.Task{
 				Id:                  "t_3",
@@ -118,7 +118,7 @@ func TestFindActiveTasksForHistory(t *testing.T) {
 				DisplayName:         taskName,
 				BuildVariant:        buildVariant,
 			}
-			assert.NoError(t, t3.Insert())
+			assert.NoError(t, t3.Insert(t.Context()))
 
 			t4 := task.Task{
 				Id:                  "t_4",
@@ -129,7 +129,7 @@ func TestFindActiveTasksForHistory(t *testing.T) {
 				DisplayName:         taskName,
 				BuildVariant:        buildVariant,
 			}
-			assert.NoError(t, t4.Insert())
+			assert.NoError(t, t4.Insert(t.Context()))
 
 			tCase(t, t.Context())
 		})
@@ -199,7 +199,7 @@ func TestFindInactiveTasksForHistory(t *testing.T) {
 				DisplayName:         taskName,
 				BuildVariant:        buildVariant,
 			}
-			assert.NoError(t, t1.Insert())
+			assert.NoError(t, t1.Insert(t.Context()))
 
 			t2 := task.Task{
 				Id:                  "t_2",
@@ -210,7 +210,7 @@ func TestFindInactiveTasksForHistory(t *testing.T) {
 				DisplayName:         taskName,
 				BuildVariant:        buildVariant,
 			}
-			assert.NoError(t, t2.Insert())
+			assert.NoError(t, t2.Insert(t.Context()))
 
 			t3 := task.Task{
 				Id:                  "t_3",
@@ -221,7 +221,7 @@ func TestFindInactiveTasksForHistory(t *testing.T) {
 				DisplayName:         taskName,
 				BuildVariant:        buildVariant,
 			}
-			assert.NoError(t, t3.Insert())
+			assert.NoError(t, t3.Insert(t.Context()))
 
 			t4 := task.Task{
 				Id:                  "t_4",
@@ -232,7 +232,7 @@ func TestFindInactiveTasksForHistory(t *testing.T) {
 				DisplayName:         taskName,
 				BuildVariant:        buildVariant,
 			}
-			assert.NoError(t, t4.Insert())
+			assert.NoError(t, t4.Insert(t.Context()))
 
 			t5 := task.Task{
 				Id:                  "t_5",
@@ -243,7 +243,7 @@ func TestFindInactiveTasksForHistory(t *testing.T) {
 				DisplayName:         taskName,
 				BuildVariant:        buildVariant,
 			}
-			assert.NoError(t, t5.Insert())
+			assert.NoError(t, t5.Insert(t.Context()))
 
 			tCase(t, t.Context())
 		})
@@ -332,7 +332,7 @@ func TestFindTasksForHistory(t *testing.T) {
 				DisplayName:         taskName,
 				BuildVariant:        buildVariant,
 			}
-			assert.NoError(t, t1.Insert())
+			assert.NoError(t, t1.Insert(t.Context()))
 
 			t2 := task.Task{
 				Id:                  "t_2",
@@ -343,7 +343,7 @@ func TestFindTasksForHistory(t *testing.T) {
 				DisplayName:         taskName,
 				BuildVariant:        buildVariant,
 			}
-			assert.NoError(t, t2.Insert())
+			assert.NoError(t, t2.Insert(t.Context()))
 
 			t3 := task.Task{
 				Id:                  "t_3",
@@ -354,7 +354,7 @@ func TestFindTasksForHistory(t *testing.T) {
 				DisplayName:         taskName,
 				BuildVariant:        buildVariant,
 			}
-			assert.NoError(t, t3.Insert())
+			assert.NoError(t, t3.Insert(t.Context()))
 
 			t4 := task.Task{
 				Id:                  "t_4",
@@ -365,7 +365,7 @@ func TestFindTasksForHistory(t *testing.T) {
 				DisplayName:         taskName,
 				BuildVariant:        buildVariant,
 			}
-			assert.NoError(t, t4.Insert())
+			assert.NoError(t, t4.Insert(t.Context()))
 
 			t5 := task.Task{
 				Id:                  "t_5",
@@ -376,7 +376,7 @@ func TestFindTasksForHistory(t *testing.T) {
 				DisplayName:         taskName,
 				BuildVariant:        buildVariant,
 			}
-			assert.NoError(t, t5.Insert())
+			assert.NoError(t, t5.Insert(t.Context()))
 
 			tCase(t, t.Context())
 		})
@@ -400,7 +400,7 @@ func TestGetLatestMainlineTask(t *testing.T) {
 		DisplayName:         taskName,
 		BuildVariant:        buildVariant,
 	}
-	assert.NoError(t, t1.Insert())
+	assert.NoError(t, t1.Insert(t.Context()))
 
 	t2 := task.Task{
 		Id:                  "t_2",
@@ -411,7 +411,7 @@ func TestGetLatestMainlineTask(t *testing.T) {
 		DisplayName:         taskName,
 		BuildVariant:        buildVariant,
 	}
-	assert.NoError(t, t2.Insert())
+	assert.NoError(t, t2.Insert(t.Context()))
 
 	t3 := task.Task{
 		Id:                  "t_3",
@@ -422,7 +422,7 @@ func TestGetLatestMainlineTask(t *testing.T) {
 		DisplayName:         taskName,
 		BuildVariant:        buildVariant,
 	}
-	assert.NoError(t, t3.Insert())
+	assert.NoError(t, t3.Insert(t.Context()))
 
 	t4 := task.Task{
 		Id:                  "t_4",
@@ -433,7 +433,7 @@ func TestGetLatestMainlineTask(t *testing.T) {
 		DisplayName:         taskName,
 		BuildVariant:        buildVariant,
 	}
-	assert.NoError(t, t4.Insert())
+	assert.NoError(t, t4.Insert(t.Context()))
 
 	latestMainlineTask, err := GetLatestMainlineTask(t.Context(), FindTaskHistoryOptions{
 		TaskName:     taskName,
@@ -463,7 +463,7 @@ func TestGetOldestMainlineTask(t *testing.T) {
 		DisplayName:         taskName,
 		BuildVariant:        buildVariant,
 	}
-	assert.NoError(t, t1.Insert())
+	assert.NoError(t, t1.Insert(t.Context()))
 
 	t2 := task.Task{
 		Id:                  "t_2",
@@ -474,7 +474,7 @@ func TestGetOldestMainlineTask(t *testing.T) {
 		DisplayName:         taskName,
 		BuildVariant:        buildVariant,
 	}
-	assert.NoError(t, t2.Insert())
+	assert.NoError(t, t2.Insert(t.Context()))
 
 	t3 := task.Task{
 		Id:                  "t_3",
@@ -485,7 +485,7 @@ func TestGetOldestMainlineTask(t *testing.T) {
 		DisplayName:         taskName,
 		BuildVariant:        buildVariant,
 	}
-	assert.NoError(t, t3.Insert())
+	assert.NoError(t, t3.Insert(t.Context()))
 
 	t4 := task.Task{
 		Id:                  "t_4",
@@ -496,7 +496,7 @@ func TestGetOldestMainlineTask(t *testing.T) {
 		DisplayName:         taskName,
 		BuildVariant:        buildVariant,
 	}
-	assert.NoError(t, t4.Insert())
+	assert.NoError(t, t4.Insert(t.Context()))
 
 	oldestMainlineTask, err := GetOldestMainlineTask(t.Context(), FindTaskHistoryOptions{
 		TaskName:     taskName,
@@ -525,7 +525,7 @@ func TestGetNewerActiveMainlineTask(t *testing.T) {
 		DisplayName:         taskName,
 		BuildVariant:        buildVariant,
 	}
-	assert.NoError(t, t1.Insert())
+	assert.NoError(t, t1.Insert(t.Context()))
 
 	t2 := task.Task{
 		Id:                  "t_2",
@@ -536,7 +536,7 @@ func TestGetNewerActiveMainlineTask(t *testing.T) {
 		DisplayName:         taskName,
 		BuildVariant:        buildVariant,
 	}
-	assert.NoError(t, t2.Insert())
+	assert.NoError(t, t2.Insert(t.Context()))
 
 	t3 := task.Task{
 		Id:                  "t_3",
@@ -547,7 +547,7 @@ func TestGetNewerActiveMainlineTask(t *testing.T) {
 		DisplayName:         taskName,
 		BuildVariant:        buildVariant,
 	}
-	assert.NoError(t, t3.Insert())
+	assert.NoError(t, t3.Insert(t.Context()))
 
 	t4 := task.Task{
 		Id:                  "t_4",
@@ -558,7 +558,7 @@ func TestGetNewerActiveMainlineTask(t *testing.T) {
 		DisplayName:         taskName,
 		BuildVariant:        buildVariant,
 	}
-	assert.NoError(t, t4.Insert())
+	assert.NoError(t, t4.Insert(t.Context()))
 
 	t5 := task.Task{
 		Id:                  "t_5",
@@ -569,7 +569,7 @@ func TestGetNewerActiveMainlineTask(t *testing.T) {
 		DisplayName:         taskName,
 		BuildVariant:        buildVariant,
 	}
-	assert.NoError(t, t5.Insert())
+	assert.NoError(t, t5.Insert(t.Context()))
 
 	newerActiveTask, err := getNewerActiveMainlineTask(t.Context(), t1)
 	require.NoError(t, err)
@@ -594,7 +594,7 @@ func TestGetOlderActiveMainlineTask(t *testing.T) {
 		DisplayName:         taskName,
 		BuildVariant:        buildVariant,
 	}
-	assert.NoError(t, t1.Insert())
+	assert.NoError(t, t1.Insert(t.Context()))
 
 	t2 := task.Task{
 		Id:                  "t_2",
@@ -605,7 +605,7 @@ func TestGetOlderActiveMainlineTask(t *testing.T) {
 		DisplayName:         taskName,
 		BuildVariant:        buildVariant,
 	}
-	assert.NoError(t, t2.Insert())
+	assert.NoError(t, t2.Insert(t.Context()))
 
 	t3 := task.Task{
 		Id:                  "t_3",
@@ -616,7 +616,7 @@ func TestGetOlderActiveMainlineTask(t *testing.T) {
 		DisplayName:         taskName,
 		BuildVariant:        buildVariant,
 	}
-	assert.NoError(t, t3.Insert())
+	assert.NoError(t, t3.Insert(t.Context()))
 
 	t4 := task.Task{
 		Id:                  "t_4",
@@ -627,7 +627,7 @@ func TestGetOlderActiveMainlineTask(t *testing.T) {
 		DisplayName:         taskName,
 		BuildVariant:        buildVariant,
 	}
-	assert.NoError(t, t4.Insert())
+	assert.NoError(t, t4.Insert(t.Context()))
 
 	t5 := task.Task{
 		Id:                  "t_5",
@@ -638,7 +638,7 @@ func TestGetOlderActiveMainlineTask(t *testing.T) {
 		DisplayName:         taskName,
 		BuildVariant:        buildVariant,
 	}
-	assert.NoError(t, t5.Insert())
+	assert.NoError(t, t5.Insert(t.Context()))
 
 	olderActiveTask, err := getOlderActiveMainlineTask(t.Context(), t5)
 	require.NoError(t, err)
