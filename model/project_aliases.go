@@ -97,7 +97,7 @@ func FindAliasesForProjectFromDb(ctx context.Context, projectID string) ([]Proje
 	q := db.Query(bson.M{
 		projectIDKey: projectID,
 	})
-	err := db.FindAllQContext(ctx, ProjectAliasCollection, q, &out)
+	err := db.FindAllQ(ctx, ProjectAliasCollection, q, &out)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding project aliases")
 	}
@@ -148,7 +148,7 @@ func FindAliasesForRepo(ctx context.Context, repoId string) ([]ProjectAlias, err
 	q := db.Query(bson.M{
 		projectIDKey: repoId,
 	})
-	err := db.FindAllQContext(ctx, ProjectAliasCollection, q, &out)
+	err := db.FindAllQ(ctx, ProjectAliasCollection, q, &out)
 	if err != nil {
 		return nil, err
 	}
@@ -164,7 +164,7 @@ func findMatchingAliasForRepo(ctx context.Context, repoID, alias string) ([]Proj
 		projectIDKey: repoID,
 		aliasKey:     alias,
 	})
-	err := db.FindAllQContext(ctx, ProjectAliasCollection, q, &out)
+	err := db.FindAllQ(ctx, ProjectAliasCollection, q, &out)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding project aliases for repo")
 	}
@@ -179,7 +179,7 @@ func findMatchingAliasForProjectRef(ctx context.Context, projectID, alias string
 		projectIDKey: projectID,
 		aliasKey:     alias,
 	})
-	err := db.FindAllQContext(ctx, ProjectAliasCollection, q, &out)
+	err := db.FindAllQ(ctx, ProjectAliasCollection, q, &out)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding project aliases")
 	}

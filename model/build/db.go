@@ -204,7 +204,7 @@ func FindBuildsByVersions(ctx context.Context, versionIds []string) ([]Build, er
 // Find returns all builds that satisfy the query.
 func Find(ctx context.Context, query db.Q) ([]Build, error) {
 	builds := []Build{}
-	err := db.FindAllQContext(ctx, Collection, query, &builds)
+	err := db.FindAllQ(ctx, Collection, query, &builds)
 	return builds, err
 }
 

@@ -66,7 +66,7 @@ func FindOneTestLog(ctx context.Context, name, task string, execution int) (*Tes
 
 func findAllTestLogs(ctx context.Context, query db.Q) ([]TestLog, error) {
 	var result []TestLog
-	if err := db.FindAllQContext(ctx, TestLogCollection, query, &result); err != nil {
+	if err := db.FindAllQ(ctx, TestLogCollection, query, &result); err != nil {
 		return nil, errors.Wrap(err, "finding test logs")
 	}
 	return result, nil

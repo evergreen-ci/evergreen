@@ -1516,7 +1516,7 @@ func FindAnyRestrictedProjectRef(ctx context.Context) (*ProjectRef, error) {
 func FindAllMergedTrackedProjectRefs(ctx context.Context) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 	q := db.Query(bson.M{ProjectRefHiddenKey: bson.M{"$ne": true}})
-	err := db.FindAllQContext(ctx, ProjectRefCollection, q, &projectRefs)
+	err := db.FindAllQ(ctx, ProjectRefCollection, q, &projectRefs)
 	if err != nil {
 		return nil, err
 	}
@@ -1533,7 +1533,7 @@ func FindAllMergedEnabledTrackedProjectRefs(ctx context.Context) ([]ProjectRef, 
 		ProjectRefHiddenKey:  bson.M{"$ne": true},
 		ProjectRefEnabledKey: true,
 	})
-	err := db.FindAllQContext(ctx, ProjectRefCollection, q, &projectRefs)
+	err := db.FindAllQ(ctx, ProjectRefCollection, q, &projectRefs)
 	if err != nil {
 		return nil, err
 	}
@@ -1621,7 +1621,7 @@ func FindProjectRefsByIds(ctx context.Context, ids ...string) ([]ProjectRef, err
 func findProjectRefsQ(ctx context.Context, filter bson.M, merged bool) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 	q := db.Query(filter)
-	err := db.FindAllQContext(ctx, ProjectRefCollection, q, &projectRefs)
+	err := db.FindAllQ(ctx, ProjectRefCollection, q, &projectRefs)
 	if err != nil {
 		return nil, err
 	}
@@ -1719,7 +1719,7 @@ func filterProjectsByBranch(pRefs []ProjectRef, branch string) []ProjectRef {
 // UserHasRepoViewPermission returns true if the user has permission to view any branch project settings.
 func UserHasRepoViewPermission(ctx context.Context, u *user.DBUser, repoRefId string) (bool, error) {
 	projectRefs := []ProjectRef{}
-	err := db.FindAllQContext(ctx,
+	err := db.FindAllQ(ctx,
 		ProjectRefCollection,
 		db.Query(bson.M{
 			ProjectRefRepoRefIdKey: repoRefId,
@@ -1945,7 +1945,7 @@ func FindNonHiddenProjects(ctx context.Context, key string, limit int, sortDir i
 	}
 
 	q := db.Query(filter).Sort([]string{sortSpec}).Limit(limit)
-	err := db.FindAllQContext(ctx, ProjectRefCollection, q, &projectRefs)
+	err := db.FindAllQ(ctx, ProjectRefCollection, q, &projectRefs)
 
 	return projectRefs, errors.Wrapf(err, "fetching projects starting at project '%s'", key)
 }
@@ -1996,7 +1996,7 @@ func FindMergedProjectRefsForRepo(ctx context.Context, repoRef *RepoRef) ([]Proj
 			{ProjectRefRepoRefIdKey: repoRef.Id},
 		},
 	})
-	err := db.FindAllQContext(ctx, ProjectRefCollection, q, &projectRefs)
+	err := db.FindAllQ(ctx, ProjectRefCollection, q, &projectRefs)
 	if err != nil {
 		return nil, err
 	}

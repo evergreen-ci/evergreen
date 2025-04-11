@@ -326,7 +326,7 @@ func FindOneId(ctx context.Context, id string) (*Patch, error) {
 // Find runs a patch query, returning all patches that satisfy the query.
 func Find(ctx context.Context, query db.Q) ([]Patch, error) {
 	patches := []Patch{}
-	err := db.FindAllQContext(ctx, Collection, query, &patches)
+	err := db.FindAllQ(ctx, Collection, query, &patches)
 	return patches, err
 }
 

@@ -23,7 +23,7 @@ var (
 // Find finds all pod definitions matching the given query.
 func Find(ctx context.Context, q db.Q) ([]PodDefinition, error) {
 	defs := []PodDefinition{}
-	return defs, errors.WithStack(db.FindAllQContext(ctx, Collection, q, &defs))
+	return defs, errors.WithStack(db.FindAllQ(ctx, Collection, q, &defs))
 }
 
 // FindOne finds one pod definition by the given query.

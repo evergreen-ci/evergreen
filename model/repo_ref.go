@@ -64,7 +64,7 @@ func (r *RepoRef) Replace(ctx context.Context) error {
 
 func FindAllRepoRefs(ctx context.Context) ([]RepoRef, error) {
 	repoRefs := []RepoRef{}
-	err := db.FindAllQContext(ctx, RepoRefCollection, db.Query(nil), &repoRefs)
+	err := db.FindAllQ(ctx, RepoRefCollection, db.Query(nil), &repoRefs)
 	return repoRefs, err
 }
 

@@ -398,7 +398,7 @@ func FindSubscriptionsByAttributes(ctx context.Context, resourceType string, eve
 	}
 
 	selectorFiltered := []Subscription{}
-	if err := db.FindAllQContext(ctx, SubscriptionsCollection, db.Query(query), &selectorFiltered); err != nil {
+	if err := db.FindAllQ(ctx, SubscriptionsCollection, db.Query(query), &selectorFiltered); err != nil {
 		return nil, errors.Wrap(err, "finding subscriptions for selectors")
 	}
 
@@ -698,7 +698,7 @@ func FindSubscriptionsByOwner(ctx context.Context, owner string, ownerType Owner
 		subscriptionOwnerTypeKey: ownerType,
 	})
 	subscriptions := []Subscription{}
-	err := db.FindAllQContext(ctx, SubscriptionsCollection, query, &subscriptions)
+	err := db.FindAllQ(ctx, SubscriptionsCollection, query, &subscriptions)
 	return subscriptions, errors.Wrapf(err, "retrieving subscriptions for owner '%s'", owner)
 }
 

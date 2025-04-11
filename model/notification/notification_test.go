@@ -146,7 +146,7 @@ func (s *notificationSuite) TestInsertMany() {
 	}
 
 	out := []Notification{}
-	s.NoError(db.FindAllQContext(s.T().Context(), Collection, db.Q{}, &out))
+	s.NoError(db.FindAllQ(s.T().Context(), Collection, db.Q{}, &out))
 	s.Len(out, 3)
 
 	for _, n := range out {
@@ -211,7 +211,7 @@ func (s *notificationSuite) TestInsertManyUnordered() {
 
 	s.Error(InsertMany(s.T().Context(), slice...))
 	out := []Notification{}
-	s.NoError(db.FindAllQContext(s.T().Context(), Collection, db.Q{}, &out))
+	s.NoError(db.FindAllQ(s.T().Context(), Collection, db.Q{}, &out))
 	s.Len(out, 2)
 }
 

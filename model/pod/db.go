@@ -75,7 +75,7 @@ func Count(ctx context.Context, q db.Q) (int, error) {
 // Find finds all pods matching the given query.
 func Find(ctx context.Context, q db.Q) ([]Pod, error) {
 	pods := []Pod{}
-	return pods, errors.WithStack(db.FindAllQContext(ctx, Collection, q, &pods))
+	return pods, errors.WithStack(db.FindAllQ(ctx, Collection, q, &pods))
 }
 
 // FindOne finds one pod by the given query.

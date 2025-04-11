@@ -33,7 +33,7 @@ func ResourceTypeKeyIs(key string) bson.M {
 // by one of the query functions, and returns a slice of events.
 func Find(ctx context.Context, query db.Q) ([]EventLogEntry, error) {
 	events := []EventLogEntry{}
-	err := db.FindAllQContext(ctx, EventCollection, query, &events)
+	err := db.FindAllQ(ctx, EventCollection, query, &events)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -48,7 +48,7 @@ func FindPaginatedWithTotalCount(ctx context.Context, query db.Q, limit, page in
 		query = query.Skip(skip)
 	}
 
-	err := db.FindAllQContext(ctx, EventCollection, query, &events)
+	err := db.FindAllQ(ctx, EventCollection, query, &events)
 	if err != nil {
 		return nil, 0, errors.WithStack(err)
 	}
@@ -70,7 +70,7 @@ func FindUnprocessedEvents(ctx context.Context, limit int) ([]EventLogEntry, err
 	if limit > 0 {
 		query = query.Limit(limit)
 	}
-	err := db.FindAllQContext(ctx, EventCollection, query, &out)
+	err := db.FindAllQ(ctx, EventCollection, query, &out)
 	if err != nil {
 		return nil, errors.Wrap(err, "fetching unprocessed events")
 	}

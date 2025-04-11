@@ -1284,7 +1284,7 @@ func FindDistroForHost(ctx context.Context, hostID string) (string, error) {
 
 func findVolumes(ctx context.Context, q bson.M) ([]Volume, error) {
 	volumes := []Volume{}
-	return volumes, db.FindAllQContext(ctx, VolumesCollection, db.Query(q), &volumes)
+	return volumes, db.FindAllQ(ctx, VolumesCollection, db.Query(q), &volumes)
 }
 
 type ClientOptions struct {
@@ -1485,7 +1485,7 @@ func FindUnexpirableRunning(ctx context.Context) ([]Host, error) {
 		StartedByKey:    bson.M{"$ne": evergreen.User},
 		NoExpirationKey: true,
 	}
-	return hosts, db.FindAllQContext(ctx, Collection, db.Query(q), &hosts)
+	return hosts, db.FindAllQ(ctx, Collection, db.Query(q), &hosts)
 }
 
 // FindOneByPersistentDNSName returns hosts that have a matching persistent DNS

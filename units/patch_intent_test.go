@@ -1174,7 +1174,7 @@ func (s *PatchIntentUnitsSuite) TestProcessMergeGroupIntent() {
 	s.verifyVersionDoc(dbPatch, evergreen.GithubMergeRequester, evergreen.GithubMergeUser, baseSHA, 1)
 
 	out := []event.Subscription{}
-	s.NoError(db.FindAllQContext(s.ctx, event.SubscriptionsCollection, db.Query(bson.M{}), &out))
+	s.NoError(db.FindAllQ(s.ctx, event.SubscriptionsCollection, db.Query(bson.M{}), &out))
 	s.Len(out, 2)
 	for _, subscription := range out {
 		s.Equal("github_merge", subscription.Subscriber.Type)
@@ -1302,7 +1302,7 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 	s.gridFSFileExists(dbPatch.Patches[0].PatchSet.PatchFileId)
 
 	out := []event.Subscription{}
-	s.NoError(db.FindAllQContext(s.ctx, event.SubscriptionsCollection, db.Query(bson.M{}), &out))
+	s.NoError(db.FindAllQ(s.ctx, event.SubscriptionsCollection, db.Query(bson.M{}), &out))
 	s.Require().Empty(out)
 }
 
@@ -1370,7 +1370,7 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntentWithoutFinalizing() {
 	s.gridFSFileExists(dbPatch.Patches[0].PatchSet.PatchFileId)
 
 	out := []event.Subscription{}
-	s.NoError(db.FindAllQContext(s.ctx, event.SubscriptionsCollection, db.Query(bson.M{}), &out))
+	s.NoError(db.FindAllQ(s.ctx, event.SubscriptionsCollection, db.Query(bson.M{}), &out))
 	s.Require().Empty(out)
 }
 

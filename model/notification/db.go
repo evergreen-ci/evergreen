@@ -118,13 +118,13 @@ func FindByEventID(ctx context.Context, id string) ([]Notification, error) {
 	},
 	)
 
-	err := db.FindAllQContext(ctx, Collection, query, &notifications)
+	err := db.FindAllQ(ctx, Collection, query, &notifications)
 	return notifications, err
 }
 
 func FindUnprocessed(ctx context.Context) ([]Notification, error) {
 	notifications := []Notification{}
-	err := db.FindAllQContext(ctx, Collection, db.Query(bson.M{sentAtKey: bson.M{"$exists": false}}), &notifications)
+	err := db.FindAllQ(ctx, Collection, db.Query(bson.M{sentAtKey: bson.M{"$exists": false}}), &notifications)
 
 	return notifications, errors.Wrap(err, "finding unprocessed notifications")
 }

@@ -314,7 +314,7 @@ func MostRecentProjectEvents(ctx context.Context, id string, n int) (ProjectChan
 
 	query := db.Query(filter).Sort([]string{"-" + event.TimestampKey}).Limit(n)
 	events := ProjectChangeEvents{}
-	err := db.FindAllQContext(ctx, event.EventCollection, query, &events)
+	err := db.FindAllQ(ctx, event.EventCollection, query, &events)
 
 	return events, err
 }
@@ -330,7 +330,7 @@ func ProjectEventsBefore(ctx context.Context, id string, before time.Time, n int
 
 	query := db.Query(filter).Sort([]string{"-" + event.TimestampKey}).Limit(n)
 	events := ProjectChangeEvents{}
-	err := db.FindAllQContext(ctx, event.EventCollection, query, &events)
+	err := db.FindAllQ(ctx, event.EventCollection, query, &events)
 
 	return events, err
 }

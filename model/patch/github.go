@@ -267,7 +267,7 @@ func (g *githubIntent) GetCalledBy() string {
 // FindUnprocessedGithubIntents finds all patch intents that have not yet been processed.
 func FindUnprocessedGithubIntents(ctx context.Context) ([]*githubIntent, error) {
 	var intents []*githubIntent
-	err := db.FindAllQContext(ctx, IntentCollection, db.Query(bson.M{processedKey: false, intentTypeKey: GithubIntentType}), &intents)
+	err := db.FindAllQ(ctx, IntentCollection, db.Query(bson.M{processedKey: false, intentTypeKey: GithubIntentType}), &intents)
 	if err != nil {
 		return []*githubIntent{}, err
 	}

@@ -312,7 +312,7 @@ func VersionFindOneId(ctx context.Context, id string) (*Version, error) {
 
 func VersionFind(ctx context.Context, query db.Q) ([]Version, error) {
 	versions := []Version{}
-	err := db.FindAllQContext(ctx, VersionCollection, query, &versions)
+	err := db.FindAllQ(ctx, VersionCollection, query, &versions)
 	return versions, err
 }
 
