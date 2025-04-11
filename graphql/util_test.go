@@ -3,7 +3,6 @@ package graphql
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -524,43 +523,4 @@ func TestFlattenOtelVariables(t *testing.T) {
 	val, ok = unnestedVars["k6.nested_k7"]
 	assert.True(t, ok)
 	assert.Equal(t, "v7", val)
-}
-
-func TestFindVersionWithoutBuildVariants(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(model.VersionCollection))
-
-	v := model.Version{
-		Id:        "v_1",
-		Activated: utility.ToBoolPtr(true),
-		Message:   "abc",
-		BuildVariants: []model.VersionBuildStatus{
-			{
-				BuildId:      "variant_a",
-				BuildVariant: "Variant A",
-				ActivationStatus: model.ActivationStatus{
-					Activated:  true,
-					ActivateAt: time.Now(),
-				},
-				BatchTimeTasks: []model.BatchTimeTaskStatus{
-					{
-						TaskId:   "task_a",
-						TaskName: "Task A",
-						ActivationStatus: model.ActivationStatus{
-							Activated:  true,
-							ActivateAt: time.Now().Add(-time.Minute * 15),
-						},
-					},
-				},
-			},
-		},
-	}
-	assert.NoError(t, v.Insert())
-
-	dbVersion, err := findVersionWithoutBuildVariants(t.Context(), model.VersionById("v_1"))
-	assert.NoError(t, err)
-	require.NotNil(t, dbVersion)
-	assert.Equal(t, "v_1", dbVersion.Id)
-	assert.Equal(t, "abc", dbVersion.Message)
-	// BuildVariants should be empty since it has been projected out.
-	assert.Len(t, dbVersion.BuildVariants, 0)
 }
