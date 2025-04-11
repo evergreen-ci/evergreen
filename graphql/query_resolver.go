@@ -365,7 +365,7 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 
 // TaskQueueDistros is the resolver for the taskQueueDistros field.
 func (r *queryResolver) TaskQueueDistros(ctx context.Context) ([]*TaskQueueDistro, error) {
-	queues, err := model.FindAllTaskQueues()
+	queues, err := model.FindAllTaskQueues(ctx)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching all task queues: %s", err.Error()))
 	}
