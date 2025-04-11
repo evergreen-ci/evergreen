@@ -354,7 +354,7 @@ func GetEventsById(ctx context.Context, id string, before time.Time, n int) ([]r
 	if n == 0 {
 		n = EventLogLimit
 	}
-	events, err := model.ProjectEventsBefore(id, before, n)
+	events, err := model.ProjectEventsBefore(ctx, id, before, n)
 	if err != nil {
 		return nil, err
 	}

@@ -332,7 +332,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 				catcher.Wrap(err, "updating repo admin roles")
 			}
 			newProjectRef.Admins = repoRef.Admins
-			branchProjects, err := model.FindMergedProjectRefsForRepo(repoRef)
+			branchProjects, err := model.FindMergedProjectRefsForRepo(ctx, repoRef)
 			if err != nil {
 				return nil, errors.Wrapf(err, "finding branch projects for repo")
 			}

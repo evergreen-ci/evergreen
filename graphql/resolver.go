@@ -276,7 +276,7 @@ func New(apiURL string) Config {
 
 		if requiredPermission == evergreen.PermissionProjectSettings && permissionInfo.Value == evergreen.ProjectSettingsView.Value {
 			// If we're trying to view a repo project, check if the user has view permission for any branch project instead.
-			hasPermission, err = model.UserHasRepoViewPermission(usr, projectId)
+			hasPermission, err = model.UserHasRepoViewPermission(ctx, usr, projectId)
 			if err != nil {
 				return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem checking repo view permission: %s", err.Error()))
 			}
@@ -312,7 +312,7 @@ func New(apiURL string) Config {
 		}
 
 		// In case this is a repo project, check if the user has view permission for any branch project instead.
-		hasPermission, err = model.UserHasRepoViewPermission(usr, projectId)
+		hasPermission, err = model.UserHasRepoViewPermission(ctx, usr, projectId)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("problem checking repo view permission: %s", err.Error()))
 		}

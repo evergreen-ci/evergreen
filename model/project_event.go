@@ -321,7 +321,7 @@ func MostRecentProjectEvents(ctx context.Context, id string, n int) (ProjectChan
 
 // ProjectEventsBefore returns the n most recent project events for the given project ID
 // that occurred before the given time.
-func ProjectEventsBefore(id string, before time.Time, n int) (ProjectChangeEvents, error) {
+func ProjectEventsBefore(ctx context.Context, id string, before time.Time, n int) (ProjectChangeEvents, error) {
 	filter := event.ResourceTypeKeyIs(event.EventResourceTypeProject)
 	filter[event.ResourceIdKey] = id
 	filter[event.TimestampKey] = bson.M{
@@ -330,7 +330,7 @@ func ProjectEventsBefore(id string, before time.Time, n int) (ProjectChangeEvent
 
 	query := db.Query(filter).Sort([]string{"-" + event.TimestampKey}).Limit(n)
 	events := ProjectChangeEvents{}
-	err := db.FindAllQ(event.EventCollection, query, &events)
+	err := db.FindAllQContext(ctx, event.EventCollection, query, &events)
 
 	return events, err
 }

@@ -316,7 +316,7 @@ func TestProjectSettingsUpdateViewRepo(t *testing.T) {
 	assert.NoError(t, err)
 	require.Len(t, dbUser.SystemRoles, 1)
 	assert.Contains(t, dbUser.SystemRoles, roles[0].ID)
-	hasPermission, err := model.UserHasRepoViewPermission(dbUser, "myRepo")
+	hasPermission, err := model.UserHasRepoViewPermission(t.Context(), dbUser, "myRepo")
 	assert.NoError(t, err)
 	assert.True(t, hasPermission)
 }

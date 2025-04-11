@@ -871,7 +871,7 @@ func TestAttachToNewRepo(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, userFromDB.SystemRoles, 1)
 	assert.Contains(t, userFromDB.SystemRoles, GetRepoAdminRole(pRefFromDB.RepoRefId))
-	hasPermission, err := UserHasRepoViewPermission(u, pRefFromDB.RepoRefId)
+	hasPermission, err := UserHasRepoViewPermission(t.Context(), u, pRefFromDB.RepoRefId)
 	assert.NoError(t, err)
 	assert.True(t, hasPermission)
 	// Attaching a different project to this repo will result in Github conflicts being unset.
@@ -977,7 +977,7 @@ func TestAttachToRepo(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, u)
 	assert.Contains(t, u.Roles(), GetRepoAdminRole(pRefFromDB.RepoRefId))
-	hasPermission, err := UserHasRepoViewPermission(u, pRefFromDB.RepoRefId)
+	hasPermission, err := UserHasRepoViewPermission(t.Context(), u, pRefFromDB.RepoRefId)
 	assert.NoError(t, err)
 	assert.True(t, hasPermission)
 
@@ -1070,7 +1070,7 @@ func TestDetachFromRepo(t *testing.T) {
 			dbUser, err = user.FindOneByIdContext(t.Context(), "me")
 			assert.NoError(t, err)
 			assert.NotNil(t, dbUser)
-			hasPermission, err := UserHasRepoViewPermission(dbUser, pRefFromDB.RepoRefId)
+			hasPermission, err := UserHasRepoViewPermission(t.Context(), dbUser, pRefFromDB.RepoRefId)
 			assert.NoError(t, err)
 			assert.False(t, hasPermission)
 		},
@@ -4143,7 +4143,7 @@ func TestUserHasRepoViewPermission(t *testing.T) {
 			require.NoError(t, roleManager.UpdateRole(wrongProjectRole))
 
 			assert.NoError(t, usr.AddRole(t.Context(), wrongProjectRole.ID))
-			hasPermission, err := UserHasRepoViewPermission(usr, "myRepoId")
+			hasPermission, err := UserHasRepoViewPermission(t.Context(), usr, "myRepoId")
 			assert.NoError(t, err)
 			assert.False(t, hasPermission)
 		},
@@ -4156,7 +4156,7 @@ func TestUserHasRepoViewPermission(t *testing.T) {
 			require.NoError(t, roleManager.UpdateRole(wrongPermissionRole))
 
 			assert.NoError(t, usr.AddRole(t.Context(), wrongPermissionRole.ID))
-			hasPermission, err := UserHasRepoViewPermission(usr, "myRepoId")
+			hasPermission, err := UserHasRepoViewPermission(t.Context(), usr, "myRepoId")
 			assert.NoError(t, err)
 			assert.False(t, hasPermission)
 		},
@@ -4169,7 +4169,7 @@ func TestUserHasRepoViewPermission(t *testing.T) {
 			require.NoError(t, roleManager.UpdateRole(viewBranchRole))
 
 			assert.NoError(t, usr.AddRole(t.Context(), viewBranchRole.ID))
-			hasPermission, err := UserHasRepoViewPermission(usr, "myRepoId")
+			hasPermission, err := UserHasRepoViewPermission(t.Context(), usr, "myRepoId")
 			assert.NoError(t, err)
 			assert.True(t, hasPermission)
 		},
