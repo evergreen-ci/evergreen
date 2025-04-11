@@ -275,10 +275,8 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 		}
 	}
 
-	if p.Finalize && p.Alias == "" && !p.RepeatFailed && !p.RepeatDefinition {
-		if len(p.Variants)+len(p.RegexVariants) == 0 || len(p.Tasks)+len(p.RegexTasks) == 0 {
-			return ref, errors.Errorf("Need to specify at least one task/variant or alias when finalizing")
-		}
+	if p.Finalize && p.Alias == "" && !p.RepeatFailed && !p.RepeatDefinition && !p.hasTasksAndVariants() {
+		return ref, errors.Errorf("Need to specify at least one task/variant or alias when finalizing")
 	}
 
 	return ref, nil
@@ -304,6 +302,11 @@ func (p *patchParams) setNonRepeatedDefaults(conf *ClientSettings) {
 	if err := p.loadTriggerAliases(conf); err != nil {
 		grip.Warningf("warning - failed to set default trigger aliases: %s\n", err)
 	}
+}
+
+// hasTasksAndVariants is true if both tasks and variants were specified directly or via regex.
+func (p *patchParams) hasTasksAndVariants() bool {
+	return len(p.Variants)+len(p.RegexVariants) != 0 && len(p.Tasks)+len(p.RegexTasks) != 0
 }
 
 func (p *patchParams) loadProject(conf *ClientSettings) error {
@@ -396,7 +399,7 @@ func (p *patchParams) loadAlias(conf *ClientSettings) error {
 				return errors.Wrap(err, "setting default alias")
 			}
 		}
-	} else if len(p.Variants) == 0 || len(p.Tasks) == 0 {
+	} else if !p.hasTasksAndVariants() {
 		// No --alias or variant/task pair was passed, use the default
 		p.Alias = conf.FindDefaultAlias(p.Project)
 		grip.InfoWhen(p.Alias != "", "Using default alias set in local config")
@@ -416,7 +419,7 @@ func (p *patchParams) loadVariants(conf *ClientSettings) error {
 				return errors.Wrap(err, "setting default variants")
 			}
 		}
-	} else if p.Alias == "" && !p.isUsingLocalAlias {
+	} else if p.Alias == "" && len(p.RegexVariants) == 0 && !p.isUsingLocalAlias {
 		p.Variants = conf.FindDefaultVariants(p.Project)
 		grip.InfoWhen(len(p.Variants) > 0, "Using default variants set in local config")
 	}
@@ -460,7 +463,8 @@ func (p *patchParams) loadTasks(conf *ClientSettings) error {
 				return errors.Wrap(err, "setting default tasks")
 			}
 		}
-	} else if p.Alias == "" && !p.isUsingLocalAlias {
+	} else if p.Alias == "" && len(p.RegexTasks) == 0 && !p.isUsingLocalAlias {
+		// Only use default tasks if no alias or regex tasks were specified.
 		p.Tasks = conf.FindDefaultTasks(p.Project)
 		grip.InfoWhen(len(p.Tasks) > 0, "Using default tasks set in local config")
 

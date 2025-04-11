@@ -37,15 +37,15 @@ func (s *PatchUtilTestSuite) TestLoadAliasFromFile() {
    - myvariant2
   tasks:
    - mytask1
-   - mytask2`
+   - mytask2
+`
 
 	err := os.WriteFile(s.testConfigFile, []byte(fileContents), 0644)
 	s.Require().NoError(err)
-
-	pp := patchParams{Project: "mci"}
 	conf, err := NewClientSettings(s.testConfigFile)
 	s.Require().NoError(err)
 
+	pp := patchParams{Project: "mci"}
 	s.Require().NoError(pp.loadAlias(conf))
 	s.Require().NoError(pp.loadVariants(conf))
 	s.Require().NoError(pp.loadTasks(conf))
@@ -53,6 +53,16 @@ func (s *PatchUtilTestSuite) TestLoadAliasFromFile() {
 	s.Equal("testing", pp.Alias)
 	s.Nil(pp.Variants)
 	s.Nil(pp.Tasks)
+
+	// If tasks/variants are specified, then we should not set the alias or task/variant defaults.
+	pp = patchParams{Project: "mci", RegexTasks: []string{".*"}, RegexVariants: []string{".*"}}
+	s.Require().NoError(pp.loadAlias(conf))
+	s.Require().NoError(pp.loadVariants(conf))
+	s.Require().NoError(pp.loadTasks(conf))
+
+	s.Empty(pp.Alias)
+	s.Empty(pp.Tasks)
+	s.Empty(pp.Variants)
 }
 
 func (s *PatchUtilTestSuite) TestLoadVariantsTasksFromFile() {
