@@ -18,7 +18,7 @@ Parameters can be defined in multiple different places, and can overwrite existi
 
 * Project-specific default parameters defined in the user’s local configuration.
 
-* Default parameters defined for the patch alias on the Project Page, if applicable (only project admins have access to these). These do not apply to periodic builds. 
+* Default parameters defined for the patch alias on the Project Page, if applicable (only project admins have access to these).
 
 * Default parameters defined in the project YAML.
 
@@ -60,8 +60,8 @@ If defaults are defined here, they will overwrite defaults in the project YAML.
 ### Project Page Usage
 
 You can default parameters for specific patch aliases from the Project Page. 
-This is only available for CLI patches, not for PR patches. As detailed in the hierarchy, 
-these can be overwritten by users.
+This is only available for CLI patches, not for PR patches or periodic builds.
+As detailed in the hierarchy, these can be overwritten by users.
 
 ![patch_parameters](../images/project_page_parameters.png)
 
