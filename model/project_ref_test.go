@@ -1110,7 +1110,7 @@ func TestDetachFromRepo(t *testing.T) {
 
 			assert.NoError(t, pRef.DetachFromRepo(t.Context(), dbUser))
 			checkRepoAttachmentEventLog(t, *pRef, event.EventTypeProjectDetachedFromRepo)
-			aliases, err := FindAliasesForProjectFromDb(pRef.Id)
+			aliases, err := FindAliasesForProjectFromDb(t.Context(), pRef.Id)
 			assert.NoError(t, err)
 			assert.Len(t, aliases, 1)
 			assert.Equal(t, aliases[0].Alias, projectAlias.Alias)
@@ -1122,7 +1122,7 @@ func TestDetachFromRepo(t *testing.T) {
 			assert.NoError(t, RemoveProjectAlias(ctx, projectAlias.ID.Hex()))
 
 			assert.NoError(t, pRef.DetachFromRepo(t.Context(), dbUser))
-			aliases, err = FindAliasesForProjectFromDb(pRef.Id)
+			aliases, err = FindAliasesForProjectFromDb(t.Context(), pRef.Id)
 			assert.NoError(t, err)
 			assert.Len(t, aliases, 1)
 			assert.Equal(t, aliases[0].Alias, repoAlias.Alias)
@@ -1141,7 +1141,7 @@ func TestDetachFromRepo(t *testing.T) {
 
 			assert.NoError(t, pRef.DetachFromRepo(t.Context(), dbUser))
 			checkRepoAttachmentEventLog(t, *pRef, event.EventTypeProjectDetachedFromRepo)
-			aliases, err := FindAliasesForProjectFromDb(pRef.Id)
+			aliases, err := FindAliasesForProjectFromDb(t.Context(), pRef.Id)
 			assert.NoError(t, err)
 			assert.Len(t, aliases, 3)
 			gitTagCount := 0
@@ -1334,7 +1334,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 			assert.NotEmpty(t, varsFromDb.Id)
 		},
 		ProjectPageGithubAndCQSection: func(t *testing.T, id string) {
-			aliases, err := FindAliasesForProjectFromDb(id)
+			aliases, err := FindAliasesForProjectFromDb(t.Context(), id)
 			assert.NoError(t, err)
 			assert.Len(t, aliases, 5)
 			assert.NoError(t, DefaultSectionToRepo(t.Context(), id, ProjectPageGithubAndCQSection, "me"))
@@ -1345,7 +1345,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 			assert.Nil(t, pRefFromDb.PRTestingEnabled)
 			assert.Nil(t, pRefFromDb.GithubChecksEnabled)
 			assert.Nil(t, pRefFromDb.GitTagAuthorizedUsers)
-			aliases, err = FindAliasesForProjectFromDb(id)
+			aliases, err = FindAliasesForProjectFromDb(t.Context(), id)
 			assert.NoError(t, err)
 			assert.Len(t, aliases, 1)
 			// assert that only patch aliases are left
@@ -1361,7 +1361,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 			assert.Nil(t, pRefFromDb.NotifyOnBuildFailure)
 		},
 		ProjectPagePatchAliasSection: func(t *testing.T, id string) {
-			aliases, err := FindAliasesForProjectFromDb(id)
+			aliases, err := FindAliasesForProjectFromDb(t.Context(), id)
 			assert.NoError(t, err)
 			assert.Len(t, aliases, 5)
 
@@ -1371,7 +1371,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 			assert.NotNil(t, pRefFromDb)
 			assert.Nil(t, pRefFromDb.PatchTriggerAliases)
 
-			aliases, err = FindAliasesForProjectFromDb(id)
+			aliases, err = FindAliasesForProjectFromDb(t.Context(), id)
 			assert.NoError(t, err)
 			assert.Len(t, aliases, 4)
 			// assert that no patch aliases are left

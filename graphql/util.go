@@ -656,7 +656,7 @@ func getRedactedAPIVarsForProject(ctx context.Context, projectId string) (*restM
 }
 
 func getAPIAliasesForProject(ctx context.Context, projectId string) ([]*restModel.APIProjectAlias, error) {
-	aliases, err := model.FindAliasesForProjectFromDb(projectId)
+	aliases, err := model.FindAliasesForProjectFromDb(ctx, projectId)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding aliases for project '%s': %s", projectId, err.Error()))
 	}

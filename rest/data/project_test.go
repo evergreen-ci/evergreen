@@ -653,7 +653,7 @@ func TestHideBranch(t *testing.T) {
 	}
 	assert.Equal(t, skeletonProj, *hiddenProj)
 
-	projAliases, err := model.FindAliasesForProjectFromDb(project.Id)
+	projAliases, err := model.FindAliasesForProjectFromDb(t.Context(), project.Id)
 	assert.NoError(t, err)
 	assert.Empty(t, projAliases)
 

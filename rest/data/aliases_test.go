@@ -258,7 +258,7 @@ func (a *AliasSuite) TestUpdateProjectAliases() {
 }
 
 func (a *AliasSuite) TestUpdateAliasesForSection() {
-	originalAliases, err := model.FindAliasesForProjectFromDb("project_id")
+	originalAliases, err := model.FindAliasesForProjectFromDb(a.T().Context(), "project_id")
 	a.NoError(err)
 	a.Len(originalAliases, 4)
 
@@ -287,7 +287,7 @@ func (a *AliasSuite) TestUpdateAliasesForSection() {
 	a.NoError(err)
 	a.True(modified)
 
-	aliasesFromDb, err := model.FindAliasesForProjectFromDb("project_id")
+	aliasesFromDb, err := model.FindAliasesForProjectFromDb(a.T().Context(), "project_id")
 	a.NoError(err)
 	a.Len(aliasesFromDb, 4)
 	for _, alias := range aliasesFromDb {
@@ -301,7 +301,7 @@ func (a *AliasSuite) TestUpdateAliasesForSection() {
 	modified, err = updateAliasesForSection(a.T().Context(), "project_id", updatedAliases, originalAliases, model.ProjectPageGithubAndCQSection)
 	a.NoError(err)
 	a.True(modified)
-	aliasesFromDb, err = model.FindAliasesForProjectFromDb("project_id")
+	aliasesFromDb, err = model.FindAliasesForProjectFromDb(a.T().Context(), "project_id")
 	a.NoError(err)
 	a.Len(aliasesFromDb, 4) // adds internal alias
 }

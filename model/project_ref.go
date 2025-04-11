@@ -1302,7 +1302,7 @@ func (p *ProjectRef) createNewRepoRef(ctx context.Context, u *user.DBUser) (repo
 		return nil, errors.Wrap(err, "inserting project variables for repo")
 	}
 
-	commonAliases, err := getCommonAliases(enabledProjectIds)
+	commonAliases, err := getCommonAliases(ctx, enabledProjectIds)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting common project aliases")
 	}
@@ -1315,10 +1315,10 @@ func (p *ProjectRef) createNewRepoRef(ctx context.Context, u *user.DBUser) (repo
 	return repoRef, nil
 }
 
-func getCommonAliases(projectIds []string) (ProjectAliases, error) {
+func getCommonAliases(ctx context.Context, projectIds []string) (ProjectAliases, error) {
 	commonAliases := []ProjectAlias{}
 	for i, id := range projectIds {
-		aliases, err := FindAliasesForProjectFromDb(id)
+		aliases, err := FindAliasesForProjectFromDb(ctx, id)
 		if err != nil {
 			return nil, errors.Wrap(err, "finding aliases for project")
 		}
@@ -2070,7 +2070,7 @@ func GetProjectSettings(ctx context.Context, p *ProjectRef) (*ProjectSettings, e
 	if projectVars == nil {
 		projectVars = &ProjectVars{}
 	}
-	projectAliases, err := FindAliasesForProjectFromDb(p.Id)
+	projectAliases, err := FindAliasesForProjectFromDb(ctx, p.Id)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding aliases for project '%s'", p.Id)
 	}

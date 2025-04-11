@@ -29,7 +29,7 @@ func FindMergedProjectAliases(ctx context.Context, projectId, repoId string, ali
 			return nil, errors.Wrapf(err, "finding project config for project '%s'", projectId)
 		}
 	}
-	aliases, err := model.ConstructMergedAliasesByPrecedence(projectRef, projectConfig, repoId)
+	aliases, err := model.ConstructMergedAliasesByPrecedence(ctx, projectRef, projectConfig, repoId)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding merged aliases for project '%s'", projectId)
 	}

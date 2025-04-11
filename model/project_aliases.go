@@ -92,12 +92,12 @@ const (
 type ProjectAliases []ProjectAlias
 
 // FindAliasesForProjectFromDb fetches all aliases for a given project without merging with aliases from the parser project
-func FindAliasesForProjectFromDb(projectID string) ([]ProjectAlias, error) {
+func FindAliasesForProjectFromDb(ctx context.Context, projectID string) ([]ProjectAlias, error) {
 	var out []ProjectAlias
 	q := db.Query(bson.M{
 		projectIDKey: projectID,
 	})
-	err := db.FindAllQ(ProjectAliasCollection, q, &out)
+	err := db.FindAllQContext(ctx, ProjectAliasCollection, q, &out)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding project aliases")
 	}
@@ -241,11 +241,11 @@ const patchAliasKey = "patch_alias"
 
 // ConstructMergedAliasesByPrecedence will construct a merged list of aliases based on what aliases
 // are found at the project level, repo level, and project config level.
-func ConstructMergedAliasesByPrecedence(projectRef *ProjectRef, projectConfig *ProjectConfig, repoId string) ([]ProjectAlias, error) {
+func ConstructMergedAliasesByPrecedence(ctx context.Context, projectRef *ProjectRef, projectConfig *ProjectConfig, repoId string) ([]ProjectAlias, error) {
 	var projectAliases []ProjectAlias
 	var err error
 	if projectRef != nil {
-		projectAliases, err = FindAliasesForProjectFromDb(projectRef.Id)
+		projectAliases, err = FindAliasesForProjectFromDb(ctx, projectRef.Id)
 		if err != nil {
 			return nil, errors.Wrap(err, "finding project aliases")
 		}
@@ -382,7 +382,7 @@ func HasMatchingGitTagAliasAndRemotePath(ctx context.Context, projectId, tag str
 
 // CopyProjectAliases finds the aliases for a given project and inserts them for the new project.
 func CopyProjectAliases(ctx context.Context, oldProjectId, newProjectId string) error {
-	aliases, err := FindAliasesForProjectFromDb(oldProjectId)
+	aliases, err := FindAliasesForProjectFromDb(ctx, oldProjectId)
 	if err != nil {
 		return errors.Wrapf(err, "finding aliases for project '%s'", oldProjectId)
 	}
