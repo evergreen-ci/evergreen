@@ -151,8 +151,8 @@ func (restapi restAPI) getRecentVersions(w http.ResponseWriter, r *http.Request)
 	// only look for versions if the project can be found, otherwise continue without error
 	if err == nil {
 		// add one to limit to determine if a new page is necessary
-		versions, err = model.VersionFind(model.VersionBySystemRequesterOrdered(projectId, start).
-			Limit(l + 1))
+		versions, err = model.VersionFind(r.Context(), model.VersionBySystemRequesterOrdered(projectId, start).
+			Limit(l+1))
 		if err != nil {
 			msg := fmt.Sprintf("Error finding recent versions of project '%v'", projectIdentifier)
 			grip.Error(errors.Wrap(err, msg))

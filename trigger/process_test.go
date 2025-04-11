@@ -335,7 +335,7 @@ func TestProjectTriggerIntegration(t *testing.T) {
 
 	downstreamVersions, err := EvalProjectTriggers(ctx, &e, TriggerDownstreamVersion)
 	assert.NoError(err)
-	dbVersions, err := model.VersionFind(model.BaseVersionByProjectIdAndRevision(downstreamProjectRef.Id, downstreamRevision))
+	dbVersions, err := model.VersionFind(t.Context(), model.BaseVersionByProjectIdAndRevision(downstreamProjectRef.Id, downstreamRevision))
 	assert.NoError(err)
 	require.Len(downstreamVersions, 1)
 	require.Len(dbVersions, 1)
@@ -468,7 +468,7 @@ func TestProjectTriggerIntegrationForBuild(t *testing.T) {
 
 	downstreamVersions, err := EvalProjectTriggers(ctx, &e, TriggerDownstreamVersion)
 	assert.NoError(err)
-	dbVersions, err := model.VersionFind(model.BaseVersionByProjectIdAndRevision(downstreamProjectRef.Id, downstreamRevision))
+	dbVersions, err := model.VersionFind(t.Context(), model.BaseVersionByProjectIdAndRevision(downstreamProjectRef.Id, downstreamRevision))
 	assert.NoError(err)
 	require.Len(downstreamVersions, 1)
 	require.Len(dbVersions, 1)
@@ -586,7 +586,7 @@ func TestProjectTriggerIntegrationForPush(t *testing.T) {
 	}
 	err = TriggerDownstreamProjectsForPush(ctx, "upstream", pushEvent, TriggerDownstreamVersion)
 	assert.NoError(err)
-	dbVersions, err := model.VersionFind(model.BaseVersionByProjectIdAndRevision(downstreamProjectRef.Id, downstreamRevision))
+	dbVersions, err := model.VersionFind(t.Context(), model.BaseVersionByProjectIdAndRevision(downstreamProjectRef.Id, downstreamRevision))
 	assert.NoError(err)
 	require.Len(dbVersions, 1)
 	assert.True(utility.FromBoolPtr(dbVersions[0].Activated))

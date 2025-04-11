@@ -432,7 +432,7 @@ func (uis *UIServer) versionFind(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
-	foundVersions, err := model.VersionFind(model.VersionByProjectIdAndRevisionPrefix(id, revision).Limit(2))
+	foundVersions, err := model.VersionFind(r.Context(), model.VersionByProjectIdAndRevisionPrefix(id, revision).Limit(2))
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return

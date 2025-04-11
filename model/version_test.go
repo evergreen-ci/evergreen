@@ -117,7 +117,7 @@ func TestFindLastPeriodicBuild(t *testing.T) {
 	}
 	assert.NoError(v4.Insert(t.Context()))
 
-	mostRecent, err := FindLastPeriodicBuild("myProj", "a")
+	mostRecent, err := FindLastPeriodicBuild(t.Context(), "myProj", "a")
 	assert.NoError(err)
 	assert.Equal(v2.Id, mostRecent.Id)
 }

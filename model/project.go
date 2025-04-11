@@ -2114,7 +2114,7 @@ func dependenciesForTaskUnit(taskUnits []BuildVariantTaskUnit) []task.Dependency
 // and a map of build ID -> each build's tasks
 func FetchVersionsBuildsAndTasks(ctx context.Context, project *Project, skip int, numVersions int, showTriggered bool) ([]Version, map[string][]build.Build, map[string][]task.Task, error) {
 	// fetch the versions from the db
-	versionsFromDB, err := VersionFind(VersionByProjectAndTrigger(project.Identifier, showTriggered).
+	versionsFromDB, err := VersionFind(ctx, VersionByProjectAndTrigger(project.Identifier, showTriggered).
 		WithFields(
 			VersionRevisionKey,
 			VersionErrorsKey,
