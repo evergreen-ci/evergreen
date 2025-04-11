@@ -61,7 +61,7 @@ func TestFind(t *testing.T) {
 
 	for tName, tCase := range map[string]func(t *testing.T, pds []PodDispatcher){
 		"ReturnsEmptyForNoMatches": func(t *testing.T, pds []PodDispatcher) {
-			found, err := Find(db.Query(bson.M{}))
+			found, err := Find(t.Context(), db.Query(bson.M{}))
 			assert.NoError(t, err)
 			assert.Empty(t, found)
 		},
@@ -69,7 +69,7 @@ func TestFind(t *testing.T) {
 			for _, pd := range pds {
 				require.NoError(t, pd.Insert(t.Context()))
 			}
-			found, err := Find(db.Query(bson.M{}))
+			found, err := Find(t.Context(), db.Query(bson.M{}))
 			require.NoError(t, err)
 			require.Len(t, found, 2)
 		},
