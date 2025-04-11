@@ -33,9 +33,9 @@ func (s *alertRecordSuite) TestInsertNewTaskRegressionByTestRecord() {
 		projectID       = "project"
 	)
 	beforeRevision := 2
-	s.NoError(InsertNewTaskRegressionByTestRecord(sub, taskID, testName, taskDisplayName, variant, projectID, beforeRevision))
+	s.NoError(InsertNewTaskRegressionByTestRecord(s.T().Context(), sub, taskID, testName, taskDisplayName, variant, projectID, beforeRevision))
 	beforeRevision = 5
-	s.NoError(InsertNewTaskRegressionByTestRecord(sub, taskID, testName, taskDisplayName, variant, projectID, beforeRevision))
+	s.NoError(InsertNewTaskRegressionByTestRecord(s.T().Context(), sub, taskID, testName, taskDisplayName, variant, projectID, beforeRevision))
 
 	record, err := FindByLastTaskRegressionByTest(s.T().Context(), sub, testName, taskDisplayName, variant, projectID)
 	s.NoError(err)
@@ -64,7 +64,7 @@ func (s *alertRecordSuite) TestByLastFailureTransition() {
 		TaskId:              "t1",
 		RevisionOrderNumber: 1,
 	}
-	s.NoError(alert1.Insert())
+	s.NoError(alert1.Insert(s.T().Context()))
 	alert2 := AlertRecord{
 		Id:                  mgobson.NewObjectId(),
 		Type:                TaskFailTransitionId,
@@ -74,7 +74,7 @@ func (s *alertRecordSuite) TestByLastFailureTransition() {
 		TaskId:              "t2",
 		RevisionOrderNumber: 2,
 	}
-	s.NoError(alert2.Insert())
+	s.NoError(alert2.Insert(s.T().Context()))
 	alert, err := FindOne(s.T().Context(), ByLastFailureTransition("", "t", "v", "p"))
 	s.NoError(err)
 	s.Equal("t2", alert.TaskId)
@@ -88,7 +88,7 @@ func (s *alertRecordSuite) TestByLastFailureTransition() {
 		TaskId:              "t3",
 		RevisionOrderNumber: 3,
 	}
-	s.NoError(alert3.Insert())
+	s.NoError(alert3.Insert(s.T().Context()))
 	alert, err = FindOne(s.T().Context(), ByLastFailureTransition("", "t", "v", "p"))
 	s.NoError(err)
 	s.Equal("t3", alert.TaskId)
@@ -103,7 +103,7 @@ func (s *alertRecordSuite) TestByLastFailureTransition() {
 		RevisionOrderNumber: 4,
 		AlertTime:           time.Now(),
 	}
-	s.NoError(alert4.Insert())
+	s.NoError(alert4.Insert(s.T().Context()))
 	alert, err = FindOne(s.T().Context(), ByLastFailureTransition("", "t", "v", "p"))
 	s.NoError(err)
 	s.Equal("t4", alert.TaskId)
@@ -118,7 +118,7 @@ func (s *alertRecordSuite) TestByLastFailureTransition() {
 		RevisionOrderNumber: 5,
 		AlertTime:           time.Now().Add(-1 * time.Hour),
 	}
-	s.NoError(alert5.Insert())
+	s.NoError(alert5.Insert(s.T().Context()))
 	alert, err = FindOne(s.T().Context(), ByLastFailureTransition("", "t", "v", "p"))
 	s.NoError(err)
 	s.Equal("t4", alert.TaskId)
@@ -149,9 +149,9 @@ func (s *alertRecordSuite) TestFindOneWithUnsetIDQuery() {
 		ProjectIdKey:           "otherproject",
 		RevisionOrderNumberKey: 2,
 	}
-	s.NoError(db.Insert(Collection, &oldStyle0))
-	s.NoError(db.Insert(Collection, &oldStyle1))
-	s.NoError(db.Insert(Collection, &oldStyle3))
+	s.NoError(db.Insert(s.T().Context(), Collection, &oldStyle0))
+	s.NoError(db.Insert(s.T().Context(), Collection, &oldStyle1))
+	s.NoError(db.Insert(s.T().Context(), Collection, &oldStyle3))
 
 	rec, err := FindOne(s.T().Context(), ByLastFailureTransition(legacyAlertsSubscription, "task", "variant", "project"))
 	s.NoError(err)
@@ -167,7 +167,7 @@ func (s *alertRecordSuite) TestFindOneWithUnsetIDQuery() {
 		ProjectId:           "project",
 		RevisionOrderNumber: 2,
 	}
-	s.NoError(newStyle.Insert())
+	s.NoError(newStyle.Insert(s.T().Context()))
 
 	rec, err = FindOne(s.T().Context(), ByLastFailureTransition(legacyAlertsSubscription, "task", "variant", "project"))
 	s.NoError(err)
@@ -191,7 +191,7 @@ func (s *alertRecordSuite) TestFindByLastTaskRegressionByTest() {
 		TestName:            "test",
 		RevisionOrderNumber: 1,
 	}
-	s.NoError(alert1.Insert())
+	s.NoError(alert1.Insert(s.T().Context()))
 	alert2 := AlertRecord{
 		Id:                  mgobson.NewObjectId(),
 		Type:                taskRegressionByTest,
@@ -202,7 +202,7 @@ func (s *alertRecordSuite) TestFindByLastTaskRegressionByTest() {
 		TestName:            "test",
 		RevisionOrderNumber: 2,
 	}
-	s.NoError(alert2.Insert())
+	s.NoError(alert2.Insert(s.T().Context()))
 
 	//test that sorting by revision works
 	alert, err := FindByLastTaskRegressionByTest(s.T().Context(), "", "test", "t", "v", "p")
@@ -221,7 +221,7 @@ func (s *alertRecordSuite) TestFindByLastTaskRegressionByTest() {
 		RevisionOrderNumber: 3,
 		AlertTime:           time.Now(),
 	}
-	s.NoError(alert3.Insert())
+	s.NoError(alert3.Insert(s.T().Context()))
 	alert, err = FindByLastTaskRegressionByTest(s.T().Context(), "", "test", "t", "v", "p")
 	s.NoError(err)
 	s.Equal("t3", alert.TaskId)
@@ -238,7 +238,7 @@ func (s *alertRecordSuite) TestFindByLastTaskRegressionByTest() {
 		RevisionOrderNumber: 4,
 		AlertTime:           time.Now().Add(-1 * time.Hour),
 	}
-	s.NoError(alert4.Insert())
+	s.NoError(alert4.Insert(s.T().Context()))
 	alert, err = FindByLastTaskRegressionByTest(s.T().Context(), "", "test", "t", "v", "p")
 	s.NoError(err)
 	s.Equal("t3", alert.TaskId)
@@ -255,7 +255,7 @@ func (s *alertRecordSuite) TestFindByTaskRegressionByTaskTest() {
 		TestName:  "test",
 		AlertTime: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
 	}
-	s.NoError(alert1.Insert())
+	s.NoError(alert1.Insert(s.T().Context()))
 	alert2 := AlertRecord{
 		Id:        mgobson.NewObjectId(),
 		Type:      taskRegressionByTest,
@@ -266,7 +266,7 @@ func (s *alertRecordSuite) TestFindByTaskRegressionByTaskTest() {
 		TestName:  "test",
 		AlertTime: time.Date(2010, time.November, 10, 23, 0, 0, 0, time.UTC),
 	}
-	s.NoError(alert2.Insert())
+	s.NoError(alert2.Insert(s.T().Context()))
 
 	alert, err := FindByTaskRegressionByTaskTest(s.T().Context(), "", "test", "t", "v", "p", "t2")
 	s.NoError(err)
@@ -284,7 +284,7 @@ func (s *alertRecordSuite) TestFindByTaskRegressionTestAndOrderNumber() {
 		TestName:            "test",
 		RevisionOrderNumber: 1,
 	}
-	s.NoError(alert1.Insert())
+	s.NoError(alert1.Insert(s.T().Context()))
 	alert2 := AlertRecord{
 		Id:                  mgobson.NewObjectId(),
 		Type:                taskRegressionByTest,
@@ -295,7 +295,7 @@ func (s *alertRecordSuite) TestFindByTaskRegressionTestAndOrderNumber() {
 		TestName:            "test",
 		RevisionOrderNumber: 2,
 	}
-	s.NoError(alert2.Insert())
+	s.NoError(alert2.Insert(s.T().Context()))
 
 	alert, err := FindByTaskRegressionTestAndOrderNumber(s.T().Context(), "", "test", "t", "v", "p", 1)
 	s.NoError(err)

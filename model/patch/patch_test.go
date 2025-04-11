@@ -110,7 +110,7 @@ func (s *patchSuite) SetupTest() {
 	}
 
 	for _, patch := range s.patches {
-		s.NoError(patch.Insert())
+		s.NoError(patch.Insert(s.T().Context()))
 	}
 
 	s.True(s.patches[0].IsGithubPRPatch())
@@ -350,14 +350,14 @@ func TestSetParametersFromParent(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(parentPatch.Insert())
+	assert.NoError(parentPatch.Insert(t.Context()))
 	p := Patch{
 		Id: bson.NewObjectId(),
 		Triggers: TriggerInfo{
 			ParentPatch: parentPatchID.Hex(),
 		},
 	}
-	assert.NoError(p.Insert())
+	assert.NoError(p.Insert(t.Context()))
 	_, err := p.SetParametersFromParent(t.Context())
 	assert.NoError(err)
 	assert.Equal(parentPatch.Triggers.DownstreamParameters[0].Key, p.Parameters[0].Key)
@@ -378,7 +378,7 @@ func TestSetDownstreamParameters(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(p.Insert())
+	assert.NoError(p.Insert(t.Context()))
 
 	paramsToAdd := []Parameter{
 		{
@@ -407,7 +407,7 @@ func TestSetTriggerAliases(t *testing.T) {
 			Aliases: []string{"alias_0"},
 		},
 	}
-	assert.NoError(p.Insert())
+	assert.NoError(p.Insert(t.Context()))
 
 	p.Triggers.Aliases = []string{
 		"alias_1",
@@ -433,7 +433,7 @@ func TestSetChildPatches(t *testing.T) {
 			ChildPatches: []string{"id_0"},
 		},
 	}
-	assert.NoError(p.Insert())
+	assert.NoError(p.Insert(t.Context()))
 
 	p.Triggers.ChildPatches = []string{
 		"id_1",
@@ -480,7 +480,7 @@ func TestGetRequester(t *testing.T) {
 			HeadOwner: "me",
 		},
 	}
-	require.NoError(t, p1.Insert())
+	require.NoError(t, p1.Insert(t.Context()))
 
 	p2 := Patch{
 		Id:    bson.NewObjectId(),
@@ -489,13 +489,13 @@ func TestGetRequester(t *testing.T) {
 			HeadSHA: "1234567",
 		},
 	}
-	require.NoError(t, p2.Insert())
+	require.NoError(t, p2.Insert(t.Context()))
 
 	p3 := Patch{
 		Id:    bson.NewObjectId(),
 		Alias: "",
 	}
-	require.NoError(t, p3.Insert())
+	require.NoError(t, p3.Insert(t.Context()))
 
 	require.Equal(t, evergreen.GithubPRRequester, p1.GetRequester())
 	require.Equal(t, evergreen.GithubMergeRequester, p2.GetRequester())

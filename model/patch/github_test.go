@@ -129,7 +129,7 @@ func (s *GithubSuite) TestNewGithubIntent() {
 			RepeatPatchIdNextPatch: patchId,
 		},
 	}
-	s.NoError(patch.Insert())
+	s.NoError(patch.Insert(s.T().Context()))
 	intent, err = NewGithubIntent("4", "", "", "", "", testutil.NewGithubPR(s.pr, s.baseRepo, s.baseHash, s.headRepo, s.hash, s.user, s.title))
 	s.NoError(err)
 	s.NotNil(intent)
@@ -143,7 +143,7 @@ func (s *GithubSuite) TestInsert() {
 	intent, err := NewGithubIntent("1", "", "", "", "", testutil.NewGithubPR(s.pr, s.baseRepo, s.baseHash, s.headRepo, s.hash, s.user, s.title))
 	s.NoError(err)
 	s.NotNil(intent)
-	s.NoError(intent.Insert())
+	s.NoError(intent.Insert(s.T().Context()))
 
 	intents, err := FindUnprocessedGithubIntents()
 	s.NoError(err)
@@ -163,7 +163,7 @@ func (s *GithubSuite) TestFindIntentSpecifically() {
 	intent, err := NewGithubIntent("300", "", "", "", "", testutil.NewGithubPR(s.pr, s.baseRepo, s.baseHash, s.headRepo, s.hash, s.user, s.title))
 	s.NoError(err)
 	s.NotNil(intent)
-	s.NoError(intent.Insert())
+	s.NoError(intent.Insert(s.T().Context()))
 
 	found, err := FindIntent(s.T().Context(), intent.ID(), intent.GetType())
 	s.NoError(err)
@@ -182,7 +182,7 @@ func (s *GithubSuite) TestSetProcessed() {
 	intent, err := NewGithubIntent("1", "", "", "", "", testutil.NewGithubPR(s.pr, s.baseRepo, s.baseHash, s.headRepo, s.hash, s.user, s.title))
 	s.NoError(err)
 	s.NotNil(intent)
-	s.NoError(intent.Insert())
+	s.NoError(intent.Insert(s.T().Context()))
 	s.NoError(intent.SetProcessed(s.T().Context()))
 
 	found, err := FindUnprocessedGithubIntents()
@@ -240,7 +240,7 @@ func (s *GithubSuite) TestFindUnprocessedGithubIntents() {
 	}
 
 	for _, intent := range intents {
-		s.NoError(intent.Insert())
+		s.NoError(intent.Insert(s.T().Context()))
 	}
 
 	found, err := FindUnprocessedGithubIntents()
@@ -253,7 +253,7 @@ func (s *GithubSuite) TestNewPatch() {
 	intent, err := NewGithubIntent("4", "", "", "", s.baseHash, testutil.NewGithubPR(s.pr, s.baseRepo, s.baseHash, s.headRepo, s.hash, s.user, s.title))
 	s.NoError(err)
 	s.NotNil(intent)
-	s.NoError(intent.Insert())
+	s.NoError(intent.Insert(s.T().Context()))
 
 	patchDoc := intent.NewPatch()
 	s.NotNil(patchDoc)
@@ -287,7 +287,7 @@ func (s *GithubSuite) TestNewPatchWithCustomAlias() {
 	intent, err := NewGithubIntent("4", "", "", "custom-alias", "", testutil.NewGithubPR(s.pr, s.baseRepo, s.baseHash, s.headRepo, s.hash, s.user, s.title))
 	s.NoError(err)
 	s.NotNil(intent)
-	s.NoError(intent.Insert())
+	s.NoError(intent.Insert(s.T().Context()))
 
 	patchDoc := intent.NewPatch()
 	s.NotNil(patchDoc)

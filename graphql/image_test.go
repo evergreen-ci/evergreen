@@ -213,19 +213,19 @@ func TestLatestTask(t *testing.T) {
 		DistroId:   "ubuntu1604-small",
 		FinishTime: time.Date(2023, time.February, 1, 10, 30, 15, 0, time.UTC),
 	}
-	require.NoError(t, taskA.Insert())
+	require.NoError(t, taskA.Insert(t.Context()))
 	taskB := &task.Task{
 		Id:         "task_b",
 		DistroId:   "ubuntu1604-large",
 		FinishTime: time.Date(2023, time.March, 1, 10, 30, 15, 0, time.UTC),
 	}
-	require.NoError(t, taskB.Insert())
+	require.NoError(t, taskB.Insert(t.Context()))
 	taskC := &task.Task{
 		Id:         "task_c",
 		DistroId:   "ubuntu2204-large",
 		FinishTime: time.Date(2023, time.April, 1, 10, 30, 15, 0, time.UTC),
 	}
-	require.NoError(t, taskC.Insert())
+	require.NoError(t, taskC.Insert(t.Context()))
 	image := model.APIImage{
 		ID: utility.ToStringPtr("ubuntu1604"),
 	}

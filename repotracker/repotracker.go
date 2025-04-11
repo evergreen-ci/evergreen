@@ -270,7 +270,7 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 					}
 					stubVersion.Errors = versionErrs.Errors
 					stubVersion.Warnings = versionErrs.Warnings
-					err = stubVersion.Insert()
+					err = stubVersion.Insert(ctx)
 					grip.Error(message.WrapError(err, message.Fields{
 						"message":            "error inserting shell version",
 						"runner":             RunnerName,
@@ -666,7 +666,7 @@ func CreateVersionFromConfig(ctx context.Context, projectInfo *model.ProjectInfo
 				return nil, errors.Wrapf(err, "upserting parser project '%s' for version '%s'", projectInfo.IntermediateProject.Id, v.Id)
 			}
 			v.ProjectStorageMethod = ppStorageMethod
-			if err = v.Insert(); err != nil {
+			if err = v.Insert(ctx); err != nil {
 				return nil, errors.Wrap(err, "inserting version")
 			}
 			return v, nil

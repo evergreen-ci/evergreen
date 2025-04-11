@@ -173,8 +173,8 @@ func (v *Version) SetAborted(ctx context.Context, aborted bool) error {
 	)
 }
 
-func (v *Version) Insert() error {
-	return db.Insert(VersionCollection, v)
+func (v *Version) Insert(ctx context.Context) error {
+	return db.Insert(ctx, VersionCollection, v)
 }
 
 func (v *Version) IsChild() bool {
@@ -834,7 +834,7 @@ func CreateManifest(ctx context.Context, v *Version, modules ModuleList, project
 	if newManifest == nil {
 		return nil, nil
 	}
-	_, err = newManifest.TryInsert()
+	_, err = newManifest.TryInsert(ctx)
 	return newManifest, errors.Wrap(err, "inserting manifest")
 }
 

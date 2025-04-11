@@ -1,6 +1,7 @@
 package testutil
 
 import (
+	"context"
 	"os"
 	"strings"
 
@@ -28,7 +29,7 @@ type PatchRequest struct {
 	Githash    string
 }
 
-func SetupPatches(patchMode PatchTestMode, b *build.Build, patches ...PatchRequest) (*patch.Patch, error) {
+func SetupPatches(ctx context.Context, patchMode PatchTestMode, b *build.Build, patches ...PatchRequest) (*patch.Patch, error) {
 	if patchMode == NoPatch {
 		return nil, errors.New("no patch defined")
 	}
@@ -64,5 +65,5 @@ func SetupPatches(patchMode PatchTestMode, b *build.Build, patches ...PatchReque
 			})
 		}
 	}
-	return ptch, ptch.Insert()
+	return ptch, ptch.Insert(ctx)
 }

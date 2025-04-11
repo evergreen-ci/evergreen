@@ -91,7 +91,7 @@ func RequestS3Creds(ctx context.Context, projectIdentifier, userEmail string) er
 		return err
 	}
 
-	err = notification.InsertMany(*n)
+	err = notification.InsertMany(ctx, *n)
 	if err != nil {
 		return errors.Wrap(err, "batch inserting notifications")
 	}
@@ -158,7 +158,7 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 		}
 	}
 
-	err = model.LogProjectAdded(projectRef.Id, u.DisplayName())
+	err = model.LogProjectAdded(ctx, projectRef.Id, u.DisplayName())
 	grip.Error(message.WrapError(err, message.Fields{
 		"message":            "problem logging project added",
 		"project_id":         projectRef.Id,

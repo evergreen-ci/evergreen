@@ -203,7 +203,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		as.LoggedError(w, r, http.StatusBadRequest, errors.New("intent could not be created from supplied data"))
 		return
 	}
-	if err = intent.Insert(); err != nil {
+	if err = intent.Insert(r.Context()); err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
 		return
 	}

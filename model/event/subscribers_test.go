@@ -53,7 +53,7 @@ func TestSubscribers(t *testing.T) {
 		"evergreen-webhook-https://example.com", "email-hi@example.com",
 		"jira-issue-BF-Fail", "jira-comment-BF-1234"}
 	for i := range subs {
-		assert.NoError(db.Insert(SubscriptionsCollection, subs[i]))
+		assert.NoError(db.Insert(t.Context(), SubscriptionsCollection, subs[i]))
 		assert.Equal(expected[i], subs[i].String())
 	}
 
@@ -68,7 +68,7 @@ func TestSubscribers(t *testing.T) {
 
 	// test we reject unknown subscribers
 	assert.NoError(db.ClearCollections(SubscriptionsCollection))
-	assert.NoError(db.Insert(SubscriptionsCollection, Subscriber{
+	assert.NoError(db.Insert(t.Context(), SubscriptionsCollection, Subscriber{
 		Type:   "something completely different",
 		Target: "*boom*",
 	}))

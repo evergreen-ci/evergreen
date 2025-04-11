@@ -141,7 +141,7 @@ func (s *eventNotificationSuite) SetupTest() {
 	s.jiraComment = &s.notifications[3]
 	s.jiraIssue = &s.notifications[4]
 
-	s.NoError(notification.InsertMany(s.notifications...))
+	s.NoError(notification.InsertMany(s.ctx, s.notifications...))
 }
 
 func (s *eventNotificationSuite) notificationHasError(ctx context.Context, id string, pattern string) time.Time {
@@ -260,7 +260,7 @@ func (s *eventNotificationSuite) TestSendFailureResultsInNoMessages() {
 	for i := range n {
 		// make the payload malformed
 		n[i].Payload = nil
-		s.NoError(notification.InsertMany(n[i]))
+		s.NoError(notification.InsertMany(s.ctx, n[i]))
 
 		job := NewEventSendJob(n[i].ID, "").(*eventSendJob)
 		job.env = s.env

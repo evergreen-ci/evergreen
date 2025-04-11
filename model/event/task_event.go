@@ -53,9 +53,9 @@ type TaskEventData struct {
 	Priority  int64     `bson:"pri,omitempty" json:"priority,omitempty"`
 }
 
-func logTaskEvent(taskId string, eventType string, eventData TaskEventData) {
+func logTaskEvent(ctx context.Context, taskId string, eventType string, eventData TaskEventData) {
 	event := getTaskEvent(taskId, eventType, eventData)
-	grip.Error(message.WrapError(event.Log(), message.Fields{
+	grip.Error(message.WrapError(event.Log(ctx), message.Fields{
 		"resource_type": ResourceTypeTask,
 		"message":       "error logging event",
 		"source":        "event-log-fail",
@@ -72,7 +72,7 @@ func getTaskEvent(taskId string, eventType string, eventData TaskEventData) Even
 	}
 }
 
-func logManyTaskEvents(taskIds []string, eventType string, eventData TaskEventData) {
+func logManyTaskEvents(ctx context.Context, taskIds []string, eventType string, eventData TaskEventData) {
 	if len(taskIds) == 0 {
 		grip.Error(message.Fields{
 			"message":    "logManyTaskEvents cannot be called with no task IDs",
@@ -94,7 +94,7 @@ func logManyTaskEvents(taskIds []string, eventType string, eventData TaskEventDa
 		}
 		events = append(events, event)
 	}
-	if err := LogManyEvents(events); err != nil {
+	if err := LogManyEvents(ctx, events); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"resource_type": ResourceTypeTask,
 			"message":       "error logging events",
@@ -103,66 +103,66 @@ func logManyTaskEvents(taskIds []string, eventType string, eventData TaskEventDa
 	}
 }
 
-func LogJiraIssueCreated(taskId string, execution int, jiraIssue string) {
-	logTaskEvent(taskId, TaskJiraAlertCreated, TaskEventData{Execution: execution, JiraIssue: jiraIssue})
+func LogJiraIssueCreated(ctx context.Context, taskId string, execution int, jiraIssue string) {
+	logTaskEvent(ctx, taskId, TaskJiraAlertCreated, TaskEventData{Execution: execution, JiraIssue: jiraIssue})
 }
 
-func LogTaskPriority(taskId string, execution int, userId string, priority int64) {
-	logTaskEvent(taskId, TaskPriorityChanged, TaskEventData{Execution: execution, UserId: userId, Priority: priority})
+func LogTaskPriority(ctx context.Context, taskId string, execution int, userId string, priority int64) {
+	logTaskEvent(ctx, taskId, TaskPriorityChanged, TaskEventData{Execution: execution, UserId: userId, Priority: priority})
 }
 
-func LogTaskCreated(taskId string, execution int) {
-	logTaskEvent(taskId, TaskCreated, TaskEventData{Execution: execution})
+func LogTaskCreated(ctx context.Context, taskId string, execution int) {
+	logTaskEvent(ctx, taskId, TaskCreated, TaskEventData{Execution: execution})
 }
 
 // LogHostTaskDispatched logs an event for a host task being dispatched.
-func LogHostTaskDispatched(taskId string, execution int, hostId string) {
-	logTaskEvent(taskId, TaskDispatched, TaskEventData{Execution: execution, HostId: hostId})
+func LogHostTaskDispatched(ctx context.Context, taskId string, execution int, hostId string) {
+	logTaskEvent(ctx, taskId, TaskDispatched, TaskEventData{Execution: execution, HostId: hostId})
 }
 
 // LogContainerTaskDispatched logs an event for a container task being
 // dispatched to a pod.
-func LogContainerTaskDispatched(taskID string, execution int, podID string) {
-	logTaskEvent(taskID, TaskDispatched, TaskEventData{Execution: execution, PodID: podID})
+func LogContainerTaskDispatched(ctx context.Context, taskID string, execution int, podID string) {
+	logTaskEvent(ctx, taskID, TaskDispatched, TaskEventData{Execution: execution, PodID: podID})
 }
 
 // LogHostTaskUndispatched logs an event for a host being marked undispatched.
-func LogHostTaskUndispatched(taskId string, execution int, hostId string) {
-	logTaskEvent(taskId, TaskUndispatched, TaskEventData{Execution: execution, HostId: hostId})
+func LogHostTaskUndispatched(ctx context.Context, taskId string, execution int, hostId string) {
+	logTaskEvent(ctx, taskId, TaskUndispatched, TaskEventData{Execution: execution, HostId: hostId})
 }
 
-func LogTaskStarted(taskId string, execution int) {
-	logTaskEvent(taskId, TaskStarted, TaskEventData{Execution: execution, Status: evergreen.TaskStarted})
+func LogTaskStarted(ctx context.Context, taskId string, execution int) {
+	logTaskEvent(ctx, taskId, TaskStarted, TaskEventData{Execution: execution, Status: evergreen.TaskStarted})
 }
 
 // LogTaskFinished logs an event indicating that the task has finished.
-func LogTaskFinished(taskId string, execution int, status string) {
-	logTaskEvent(taskId, TaskFinished, TaskEventData{Execution: execution, Status: status})
+func LogTaskFinished(ctx context.Context, taskId string, execution int, status string) {
+	logTaskEvent(ctx, taskId, TaskFinished, TaskEventData{Execution: execution, Status: status})
 }
 
 // LogHostTaskFinished logs an event for a host task being marked finished. If
 // it was assigned to run on a host, it logs an additional host event indicating
 // that its assigned task has finished.
-func LogHostTaskFinished(taskId string, execution int, hostId, status string) {
-	LogTaskFinished(taskId, execution, status)
+func LogHostTaskFinished(ctx context.Context, taskId string, execution int, hostId, status string) {
+	LogTaskFinished(ctx, taskId, execution, status)
 	if hostId != "" {
-		LogHostEvent(hostId, EventHostTaskFinished, HostEventData{Execution: strconv.Itoa(execution), TaskStatus: status, TaskId: taskId})
+		LogHostEvent(ctx, hostId, EventHostTaskFinished, HostEventData{Execution: strconv.Itoa(execution), TaskStatus: status, TaskId: taskId})
 	}
 }
 
 // LogContainerTaskFinished logs an event for a container task being marked
 // finished. If it was assigned to run on a pod, it logs an additional pod event
 // indicating that its assigned task has finished.
-func LogContainerTaskFinished(taskID string, execution int, podID, status string) {
-	LogTaskFinished(taskID, execution, status)
+func LogContainerTaskFinished(ctx context.Context, taskID string, execution int, podID, status string) {
+	LogTaskFinished(ctx, taskID, execution, status)
 	if podID != "" {
-		LogPodEvent(podID, EventPodFinishedTask, PodData{TaskExecution: execution, TaskStatus: status, TaskID: taskID})
+		LogPodEvent(ctx, podID, EventPodFinishedTask, PodData{TaskExecution: execution, TaskStatus: status, TaskID: taskID})
 	}
 }
 
 // LogTaskRestarted updates the DB with a task restarted event.
-func LogTaskRestarted(taskId string, execution int, userId string) {
-	logTaskEvent(taskId, TaskRestarted, TaskEventData{Execution: execution, UserId: userId})
+func LogTaskRestarted(ctx context.Context, taskId string, execution int, userId string) {
+	logTaskEvent(ctx, taskId, TaskRestarted, TaskEventData{Execution: execution, UserId: userId})
 }
 
 // TaskBlockedData is event data for logging a single task blocked event.
@@ -204,8 +204,8 @@ func LogManyTasksBlocked(ctx context.Context, data []TaskBlockedData) {
 }
 
 // LogTaskActivated updates the DB with a task activated event.
-func LogTaskActivated(taskId string, execution int, userId string) {
-	logTaskEvent(taskId, TaskActivated, TaskEventData{Execution: execution, UserId: userId})
+func LogTaskActivated(ctx context.Context, taskId string, execution int, userId string) {
+	logTaskEvent(ctx, taskId, TaskActivated, TaskEventData{Execution: execution, UserId: userId})
 }
 
 // GetTaskActivatedEvent retrieves the task activated event.
@@ -219,31 +219,31 @@ func GetTaskDeactivatedEvent(taskId string, execution int, userId string) EventL
 }
 
 // LogTaskAbortRequest updates the DB with a task abort request event.
-func LogTaskAbortRequest(taskId string, execution int, userId string) {
-	logTaskEvent(taskId, TaskAbortRequest,
+func LogTaskAbortRequest(ctx context.Context, taskId string, execution int, userId string) {
+	logTaskEvent(ctx, taskId, TaskAbortRequest,
 		TaskEventData{Execution: execution, UserId: userId})
 }
 
 // LogManyTaskAbortRequests updates the DB with task abort request events.
-func LogManyTaskAbortRequests(taskIds []string, userId string) {
-	logManyTaskEvents(taskIds, TaskAbortRequest,
+func LogManyTaskAbortRequests(ctx context.Context, taskIds []string, userId string) {
+	logManyTaskEvents(ctx, taskIds, TaskAbortRequest,
 		TaskEventData{UserId: userId})
 }
 
 // LogManyTaskPriority updates the DB with a task started events.
-func LogManyTaskPriority(taskIds []string, userId string, priority int64) {
-	logManyTaskEvents(taskIds, TaskPriorityChanged,
+func LogManyTaskPriority(ctx context.Context, taskIds []string, userId string, priority int64) {
+	logManyTaskEvents(ctx, taskIds, TaskPriorityChanged,
 		TaskEventData{UserId: userId, Priority: priority})
 }
 
 // LogTaskContainerAllocated updates the DB with a container allocated event.
-func LogTaskContainerAllocated(taskId string, execution int, containerAllocatedTime time.Time) {
-	logTaskEvent(taskId, ContainerAllocated,
+func LogTaskContainerAllocated(ctx context.Context, taskId string, execution int, containerAllocatedTime time.Time) {
+	logTaskEvent(ctx, taskId, ContainerAllocated,
 		TaskEventData{Execution: execution, Timestamp: containerAllocatedTime})
 }
 
 // LogTaskDependenciesOverridden updates the DB with a task dependencies overridden event.
-func LogTaskDependenciesOverridden(taskId string, execution int, userID string) {
-	logTaskEvent(taskId, TaskDependenciesOverridden,
+func LogTaskDependenciesOverridden(ctx context.Context, taskId string, execution int, userID string) {
+	logTaskEvent(ctx, taskId, TaskDependenciesOverridden,
 		TaskEventData{Execution: execution, UserId: userID})
 }

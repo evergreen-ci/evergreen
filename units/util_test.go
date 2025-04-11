@@ -32,21 +32,21 @@ func TestHandlePoisonedHost(t *testing.T) {
 				HostId:  "container2",
 				Project: "v",
 			}
-			require.NoError(t, t1.Insert())
+			require.NoError(t, t1.Insert(t.Context()))
 			b := build.Build{Id: "b", Version: "v"}
-			require.NoError(t, b.Insert())
+			require.NoError(t, b.Insert(t.Context()))
 			v := model.Version{
 				Id: b.Version,
 			}
-			require.NoError(t, v.Insert())
+			require.NoError(t, v.Insert(t.Context()))
 			pp := model.ParserProject{
 				Id: v.Id,
 			}
-			require.NoError(t, pp.Insert())
+			require.NoError(t, pp.Insert(t.Context()))
 			pRef := model.ProjectRef{
 				Id: v.Id,
 			}
-			require.NoError(t, pRef.Insert())
+			require.NoError(t, pRef.Insert(t.Context()))
 
 			parent := &host.Host{
 				Id:            "parent",
@@ -97,13 +97,13 @@ func TestHandlePoisonedHost(t *testing.T) {
 				HostId:  "runningTask",
 				Project: "v",
 			}
-			require.NoError(t, t1.Insert())
+			require.NoError(t, t1.Insert(t.Context()))
 			b := build.Build{Id: "b", Version: "v"}
-			require.NoError(t, b.Insert())
+			require.NoError(t, b.Insert(t.Context()))
 			v := model.Version{
 				Id: b.Version,
 			}
-			require.NoError(t, v.Insert())
+			require.NoError(t, v.Insert(t.Context()))
 
 			hostRunningTask := &host.Host{
 				Id:          "runningTask",
@@ -115,11 +115,11 @@ func TestHandlePoisonedHost(t *testing.T) {
 			pp := model.ParserProject{
 				Id: v.Id,
 			}
-			require.NoError(t, pp.Insert())
+			require.NoError(t, pp.Insert(t.Context()))
 			pRef := model.ProjectRef{
 				Id: v.Id,
 			}
-			require.NoError(t, pRef.Insert())
+			require.NoError(t, pRef.Insert(t.Context()))
 
 			assert.NoError(t, HandlePoisonedHost(ctx, env, hostRunningTask, ""))
 			hostRunningTask, err := host.FindOneId(ctx, hostRunningTask.Id)

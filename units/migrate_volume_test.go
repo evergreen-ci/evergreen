@@ -30,7 +30,7 @@ func TestVolumeMigrateJob(t *testing.T) {
 	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, v *host.Volume, d *distro.Distro, spawnOptions cloud.SpawnOptions){
 		"VolumeMigratesToNewHost": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, v *host.Volume, d *distro.Distro, spawnOptions cloud.SpawnOptions) {
 			require.NoError(t, d.Insert(ctx))
-			require.NoError(t, v.Insert())
+			require.NoError(t, v.Insert(ctx))
 			require.NoError(t, h.Insert(ctx))
 
 			ts := utility.RoundPartOfMinute(1).Format(TSFormat)
@@ -85,7 +85,7 @@ func TestVolumeMigrateJob(t *testing.T) {
 			d.Provider = ""
 			h.Distro.Provider = ""
 			require.NoError(t, d.Insert(ctx))
-			require.NoError(t, v.Insert())
+			require.NoError(t, v.Insert(ctx))
 			require.NoError(t, h.Insert(ctx))
 
 			j := NewVolumeMigrationJob(env, v.ID, spawnOptions, "123")
@@ -143,7 +143,7 @@ func TestVolumeMigrateJob(t *testing.T) {
 			// Invalid public key will prevent new host from spinning up
 			spawnOptions.PublicKey = ""
 			require.NoError(t, d.Insert(ctx))
-			require.NoError(t, v.Insert())
+			require.NoError(t, v.Insert(ctx))
 			require.NoError(t, h.Insert(ctx))
 
 			j := NewVolumeMigrationJob(env, v.ID, spawnOptions, "123")
@@ -187,7 +187,7 @@ func TestVolumeMigrateJob(t *testing.T) {
 			h.Status = evergreen.HostTerminated
 			v.Host = ""
 			require.NoError(t, d.Insert(ctx))
-			require.NoError(t, v.Insert())
+			require.NoError(t, v.Insert(ctx))
 			require.NoError(t, h.Insert(ctx))
 
 			j := NewVolumeMigrationJob(env, v.ID, spawnOptions, "123")
@@ -216,7 +216,7 @@ func TestVolumeMigrateJob(t *testing.T) {
 		},
 		"NonexistentVolumeFailsGracefully": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, v *host.Volume, d *distro.Distro, spawnOptions cloud.SpawnOptions) {
 			require.NoError(t, d.Insert(ctx))
-			require.NoError(t, v.Insert())
+			require.NoError(t, v.Insert(ctx))
 			require.NoError(t, h.Insert(ctx))
 
 			j := NewVolumeMigrationJob(env, "foo", spawnOptions, "123")

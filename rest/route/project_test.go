@@ -57,7 +57,7 @@ func (s *ProjectPatchByIDSuite) SetupTest() {
 		Id:          "langdon.alger",
 		SystemRoles: []string{"admin"},
 	}
-	s.NoError(user.Insert())
+	s.NoError(user.Insert(s.T().Context()))
 	s.NoError(getTestProjectRef().Add(s.T().Context(), &user))
 	project2 := getTestProjectRef()
 	project2.Id = "project2"
@@ -70,7 +70,7 @@ func (s *ProjectPatchByIDSuite) SetupTest() {
 	for _, alias := range aliases {
 		s.NoError(alias.Upsert(s.T().Context()))
 	}
-	s.NoError(db.Insert(serviceModel.RepositoriesCollection, serviceModel.Repository{
+	s.NoError(db.Insert(s.T().Context(), serviceModel.RepositoriesCollection, serviceModel.Repository{
 		Project:      "dimoxinil",
 		LastRevision: "something",
 	}))
@@ -391,7 +391,7 @@ func (s *ProjectPatchByIDSuite) TestPatchTriggerAliases() {
 		Id:         "firstborn",
 		Identifier: "child",
 	}
-	s.NoError(childProject.Insert())
+	s.NoError(childProject.Insert(s.T().Context()))
 	resp = s.rm.Run(ctx)
 	s.NotNil(resp)
 	s.NotNil(resp.Data())
@@ -560,7 +560,7 @@ func (s *ProjectPutSuite) SetupTest() {
 	defer cancel()
 
 	s.NoError(db.ClearCollections(serviceModel.ProjectRefCollection, serviceModel.ProjectVarsCollection, fakeparameter.Collection, user.Collection))
-	s.NoError(getTestProjectRef().Insert())
+	s.NoError(getTestProjectRef().Insert(s.T().Context()))
 
 	settings := s.env.Settings()
 	s.settings = settings
@@ -606,7 +606,7 @@ func (s *ProjectPutSuite) TestRunNewWithValidEntity() {
 	u := user.DBUser{
 		Id: "user",
 	}
-	s.NoError(u.Insert())
+	s.NoError(u.Insert(s.T().Context()))
 	json := []byte(
 		`{
 				"owner_name": "Rembrandt Q. Einstein",
@@ -682,9 +682,9 @@ func TestProjectGetByIDSuite(t *testing.T) {
 
 func (s *ProjectGetByIDSuite) SetupTest() {
 	s.NoError(db.ClearCollections(serviceModel.ProjectRefCollection, serviceModel.ProjectVarsCollection, fakeparameter.Collection, serviceModel.ProjectConfigCollection))
-	s.NoError(getTestProjectRef().Insert())
-	s.NoError(getTestVar().Insert())
-	s.NoError(getTestProjectConfig().Insert())
+	s.NoError(getTestProjectRef().Insert(s.T().Context()))
+	s.NoError(getTestVar().Insert(s.T().Context()))
+	s.NoError(getTestProjectConfig().Insert(s.T().Context()))
 	s.rm = makeGetProjectByID().(*projectIDGetHandler)
 }
 
@@ -770,7 +770,7 @@ func (s *ProjectGetSuite) SetupSuite() {
 		},
 	}
 	for _, pRef := range pRefs {
-		s.NoError(pRef.Insert())
+		s.NoError(pRef.Insert(s.T().Context()))
 	}
 }
 
@@ -928,8 +928,8 @@ func TestGetProjectTasks(t *testing.T) {
 		Id:         projectId,
 		Identifier: "p1",
 	}
-	assert.NoError(project.Insert())
-	assert.NoError(db.Insert(serviceModel.RepositoriesCollection, serviceModel.Repository{
+	assert.NoError(project.Insert(t.Context()))
+	assert.NoError(db.Insert(t.Context(), serviceModel.RepositoriesCollection, serviceModel.Repository{
 		Project:             projectId,
 		RevisionOrderNumber: 20,
 	}))
@@ -942,7 +942,7 @@ func TestGetProjectTasks(t *testing.T) {
 			Status:              evergreen.TaskSucceeded,
 			Requester:           evergreen.RepotrackerVersionRequester,
 		}
-		assert.NoError(myTask.Insert())
+		assert.NoError(myTask.Insert(t.Context()))
 	}
 
 	h := getProjectTasksHandler{
@@ -969,35 +969,35 @@ func TestGetProjectVersions(t *testing.T) {
 		Id:         projectId,
 		Identifier: "something-else",
 	}
-	assert.NoError(project.Insert())
+	assert.NoError(project.Insert(t.Context()))
 	v1 := serviceModel.Version{
 		Id:                  "v1",
 		Identifier:          projectId,
 		Requester:           evergreen.AdHocRequester,
 		RevisionOrderNumber: 1,
 	}
-	assert.NoError(v1.Insert())
+	assert.NoError(v1.Insert(t.Context()))
 	v2 := serviceModel.Version{
 		Id:                  "v2",
 		Identifier:          projectId,
 		Requester:           evergreen.AdHocRequester,
 		RevisionOrderNumber: 2,
 	}
-	assert.NoError(v2.Insert())
+	assert.NoError(v2.Insert(t.Context()))
 	v3 := serviceModel.Version{
 		Id:                  "v3",
 		Identifier:          projectId,
 		Requester:           evergreen.RepotrackerVersionRequester,
 		RevisionOrderNumber: 3,
 	}
-	assert.NoError(v3.Insert())
+	assert.NoError(v3.Insert(t.Context()))
 	v4 := serviceModel.Version{
 		Id:                  "v4",
 		Identifier:          projectId,
 		Requester:           evergreen.AdHocRequester,
 		RevisionOrderNumber: 4,
 	}
-	assert.NoError(v4.Insert())
+	assert.NoError(v4.Insert(t.Context()))
 
 	h := getProjectVersionsHandler{
 		projectName: "something-else",
@@ -1038,7 +1038,7 @@ func TestDeleteProject(t *testing.T) {
 	u := user.DBUser{
 		Id: "me",
 	}
-	require.NoError(t, u.Insert())
+	require.NoError(t, u.Insert(t.Context()))
 
 	repo := serviceModel.RepoRef{
 		ProjectRef: serviceModel.ProjectRef{
@@ -1142,7 +1142,7 @@ func TestDeleteProject(t *testing.T) {
 		Id:        "non_tracking_project",
 		RepoRefId: "",
 	}
-	require.NoError(t, nonTrackingProject.Insert())
+	require.NoError(t, nonTrackingProject.Insert(t.Context()))
 	pdh.projectName = nonTrackingProject.Id
 	resp = pdh.Run(ctx)
 	assert.Equal(t, http.StatusOK, resp.Status())
@@ -1156,7 +1156,7 @@ func TestAttachProjectToRepo(t *testing.T) {
 		evergreen.ScopeCollection, evergreen.RoleCollection, evergreen.ConfigCollection))
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	u := &user.DBUser{Id: "me"}
-	assert.NoError(t, u.Insert())
+	assert.NoError(t, u.Insert(t.Context()))
 
 	pRef := serviceModel.ProjectRef{
 		Id:         "project1",
@@ -1168,11 +1168,11 @@ func TestAttachProjectToRepo(t *testing.T) {
 		Enabled:    true,
 		Admins:     []string{"me"},
 	}
-	assert.NoError(t, pRef.Insert())
+	assert.NoError(t, pRef.Insert(t.Context()))
 	projVars := serviceModel.ProjectVars{
 		Id: "project1",
 	}
-	assert.NoError(t, projVars.Insert())
+	assert.NoError(t, projVars.Insert(t.Context()))
 
 	req, _ := http.NewRequest(http.MethodPost, "http://example.com/api/rest/v2/projects/project1/attach_to_repo", nil)
 	req = gimlet.SetURLVars(req, map[string]string{"project_id": "project1"})
@@ -1223,7 +1223,7 @@ func TestDetachProjectFromRepo(t *testing.T) {
 		evergreen.ScopeCollection, evergreen.RoleCollection))
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
 	u := &user.DBUser{Id: "me"}
-	assert.NoError(t, u.Insert())
+	assert.NoError(t, u.Insert(t.Context()))
 
 	pRef := serviceModel.ProjectRef{
 		Id:         "project1",
@@ -1234,11 +1234,11 @@ func TestDetachProjectFromRepo(t *testing.T) {
 		Enabled:    true,
 		Admins:     []string{"me"},
 	}
-	assert.NoError(t, pRef.Insert())
+	assert.NoError(t, pRef.Insert(t.Context()))
 	projVars := serviceModel.ProjectVars{
 		Id: "project1",
 	}
-	assert.NoError(t, projVars.Insert())
+	assert.NoError(t, projVars.Insert(t.Context()))
 
 	repoRef := &serviceModel.RepoRef{ProjectRef: serviceModel.ProjectRef{
 		Id:                    "myRepo",
@@ -1288,7 +1288,7 @@ func TestGetProjectTaskExecutions(t *testing.T) {
 		Id:         "123",
 		Identifier: "myProject",
 	}
-	assert.NoError(t, projRef.Insert())
+	assert.NoError(t, projRef.Insert(t.Context()))
 
 	assert.NoError(t, db.ClearCollections(task.Collection, task.OldCollection))
 
@@ -1367,10 +1367,10 @@ func TestGetProjectTaskExecutions(t *testing.T) {
 		},
 	}
 	for _, each := range tasks {
-		assert.NoError(t, each.Insert())
+		assert.NoError(t, each.Insert(t.Context()))
 		each.Execution = 0
 		// Duplicate everything for the old task collection to ensure this is working.
-		assert.NoError(t, db.Insert(task.OldCollection, each))
+		assert.NoError(t, db.Insert(t.Context(), task.OldCollection, each))
 	}
 	for testName, test := range map[string]func(*testing.T, *getProjectTaskExecutionsHandler){
 		"parseSuccess": func(t *testing.T, rm *getProjectTaskExecutionsHandler) {
@@ -1544,7 +1544,7 @@ func TestModifyProjectVersions(t *testing.T) {
 	project := serviceModel.ProjectRef{
 		Id: projectId,
 	}
-	assert.NoError(project.Insert())
+	assert.NoError(project.Insert(t.Context()))
 	for testName, test := range map[string]func(*testing.T, *modifyProjectVersionsHandler){
 		"parseSuccess": func(t *testing.T, rm *modifyProjectVersionsHandler) {
 			body := []byte(`
@@ -1698,7 +1698,7 @@ func TestModifyProjectVersions(t *testing.T) {
 				RevisionOrderNumber: 1,
 				CreateTime:          time.Date(2022, time.November, 1, 0, 0, 0, 0, time.UTC),
 			}
-			assert.NoError(v1.Insert())
+			assert.NoError(v1.Insert(t.Context()))
 			v2 := serviceModel.Version{
 				Id:                  "v2",
 				Identifier:          projectId,
@@ -1706,7 +1706,7 @@ func TestModifyProjectVersions(t *testing.T) {
 				RevisionOrderNumber: 2,
 				CreateTime:          time.Date(2022, time.November, 2, 0, 0, 0, 0, time.UTC),
 			}
-			assert.NoError(v2.Insert())
+			assert.NoError(v2.Insert(t.Context()))
 			v3 := serviceModel.Version{
 				Id:                  "v3",
 				Identifier:          projectId,
@@ -1714,7 +1714,7 @@ func TestModifyProjectVersions(t *testing.T) {
 				RevisionOrderNumber: 3,
 				CreateTime:          time.Date(2022, time.November, 3, 0, 0, 0, 0, time.UTC),
 			}
-			assert.NoError(v3.Insert())
+			assert.NoError(v3.Insert(t.Context()))
 			v4 := serviceModel.Version{
 				Id:                  "v4",
 				Identifier:          projectId,
@@ -1722,7 +1722,7 @@ func TestModifyProjectVersions(t *testing.T) {
 				RevisionOrderNumber: 4,
 				CreateTime:          time.Date(2022, time.November, 4, 0, 0, 0, 0, time.UTC),
 			}
-			assert.NoError(v4.Insert())
+			assert.NoError(v4.Insert(t.Context()))
 			tasks := []task.Task{
 				{
 					Version:   "v1",
@@ -1768,10 +1768,10 @@ func TestModifyProjectVersions(t *testing.T) {
 				},
 			}
 			for _, tsk := range tasks {
-				assert.NoError(tsk.Insert())
+				assert.NoError(tsk.Insert(t.Context()))
 			}
 			for _, b := range builds {
-				assert.NoError(b.Insert())
+				assert.NoError(b.Insert(t.Context()))
 			}
 			rm := makeModifyProjectVersionsHandler("").(*modifyProjectVersionsHandler)
 			test(t, rm)

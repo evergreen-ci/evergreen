@@ -222,7 +222,7 @@ func (h *newPushHandler) Run(ctx context.Context) gimlet.Responder {
 
 	// It's now safe to put the file in its permanent location.
 	newPushLog := model.NewPushLog(v, t, copyToLocation)
-	if err = newPushLog.Insert(); err != nil {
+	if err = newPushLog.Insert(ctx); err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "creating new push log: %+v", newPushLog))
 	}
 	return gimlet.NewJSONResponse(newPushLog)
@@ -781,7 +781,7 @@ func (h *attachTestLogHandler) Run(ctx context.Context) gimlet.Responder {
 		"log_length":   len(h.log.Lines),
 	})
 
-	if err = h.log.Insert(); err != nil {
+	if err = h.log.Insert(ctx); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
 	logReply := struct {
@@ -980,10 +980,10 @@ func (h *startTaskHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	if len(updates.PatchNewStatus) != 0 {
-		event.LogPatchStateChangeEvent(t.Version, updates.PatchNewStatus)
+		event.LogPatchStateChangeEvent(ctx, t.Version, updates.PatchNewStatus)
 	}
 	if len(updates.BuildNewStatus) != 0 {
-		event.LogBuildStateChangeEvent(t.BuildId, updates.BuildNewStatus)
+		event.LogBuildStateChangeEvent(ctx, t.BuildId, updates.BuildNewStatus)
 	}
 
 	var msg string

@@ -30,7 +30,7 @@ buildvariants:
 
 	require.NoError(t, db.ClearCollections(model.ProjectRefCollection))
 	ref := model.ProjectRef{Id: "proj"}
-	require.NoError(t, ref.Insert())
+	require.NoError(t, ref.Insert(t.Context()))
 
 	input := validator.ValidationInput{
 		ProjectYaml: []byte(invalidYml),

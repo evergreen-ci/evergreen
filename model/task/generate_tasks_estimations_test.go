@@ -39,7 +39,7 @@ func TestGenerateTasksEstimations(t *testing.T) {
 		FinishTime:                 time.Now().Add(-1 * 9 * time.Hour),
 		GeneratedTasks:             true,
 	}
-	assert.NoError(t1.Insert())
+	assert.NoError(t1.Insert(t.Context()))
 	t2 := Task{
 		Id:                         "t2",
 		DisplayName:                displayName,
@@ -53,7 +53,7 @@ func TestGenerateTasksEstimations(t *testing.T) {
 		FinishTime:                 time.Now().Add(-1 * 19 * time.Hour),
 		GeneratedTasks:             true,
 	}
-	assert.NoError(t2.Insert())
+	assert.NoError(t2.Insert(t.Context()))
 	t3 := Task{
 		Id:                         "t3",
 		DisplayName:                displayName,
@@ -67,7 +67,7 @@ func TestGenerateTasksEstimations(t *testing.T) {
 		FinishTime:                 time.Now().Add(-1 * 29 * time.Hour),
 		GeneratedTasks:             true,
 	}
-	assert.NoError(t3.Insert())
+	assert.NoError(t3.Insert(t.Context()))
 	t4 := Task{
 		GenerateTask: true,
 		Id:           "t4",
@@ -75,7 +75,7 @@ func TestGenerateTasksEstimations(t *testing.T) {
 		BuildVariant: bv,
 		Project:      project,
 	}
-	assert.NoError(t4.Insert())
+	assert.NoError(t4.Insert(t.Context()))
 
 	err = t4.SetGenerateTasksEstimations(ctx)
 	assert.NoError(err)
@@ -100,7 +100,7 @@ func TestGenerateTasksEstimationsNoPreviousTasks(t *testing.T) {
 		Project:      "project",
 		GenerateTask: true,
 	}
-	assert.NoError(t1.Insert())
+	assert.NoError(t1.Insert(t.Context()))
 
 	err = t1.SetGenerateTasksEstimations(ctx)
 	assert.NoError(err)
@@ -122,7 +122,7 @@ func TestGenerateTasksEstimationsDoesNotRun(t *testing.T) {
 		Project:      "project",
 		GenerateTask: false,
 	}
-	assert.NoError(t1.Insert())
+	assert.NoError(t1.Insert(t.Context()))
 
 	err := t1.SetGenerateTasksEstimations(ctx)
 	assert.NoError(err)

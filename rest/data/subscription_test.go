@@ -153,7 +153,7 @@ func TestConvertVersionSubscription(t *testing.T) {
 				Id:        "version_id",
 				Requester: evergreen.GithubPRRequester,
 			}
-			require.NoError(t, v.Insert())
+			require.NoError(t, v.Insert(t.Context()))
 
 			test(t)
 		})
@@ -409,13 +409,13 @@ func TestSaveVersionSubscriptions(t *testing.T) {
 				Id:        "version-1",
 				Requester: evergreen.AdHocRequester,
 			}
-			require.NoError(t, v1.Insert())
+			require.NoError(t, v1.Insert(t.Context()))
 
 			v2 := &model.Version{
 				Id:        "version-2",
 				Requester: evergreen.PatchVersionRequester,
 			}
-			require.NoError(t, v2.Insert())
+			require.NoError(t, v2.Insert(t.Context()))
 
 			test(t)
 		})

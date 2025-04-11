@@ -40,7 +40,7 @@ func TestDistroAliases(t *testing.T) {
 	require.NoError(t, db.Clear(model.TaskSecondaryQueuesCollection))
 
 	require.NoError(t, db.Clear(model.VersionCollection))
-	require.NoError(t, (&model.Version{Id: "foo"}).Insert())
+	require.NoError(t, (&model.Version{Id: "foo"}).Insert(t.Context()))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

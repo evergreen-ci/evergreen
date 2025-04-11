@@ -23,14 +23,14 @@ func TestGetActiveWaterfallVersions(t *testing.T) {
 		Id:         "a_project",
 		Identifier: "a_project_identifier",
 	}
-	assert.NoError(t, p.Insert())
+	assert.NoError(t, p.Insert(t.Context()))
 
 	b := build.Build{
 		Id:          "b_1",
 		DisplayName: "Build Variant 1",
 		Activated:   true,
 	}
-	assert.NoError(t, b.Insert())
+	assert.NoError(t, b.Insert(t.Context()))
 
 	v := Version{
 		Id:                  "v_1",
@@ -45,7 +45,7 @@ func TestGetActiveWaterfallVersions(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(t, v.Insert())
+	assert.NoError(t, v.Insert(t.Context()))
 	v = Version{
 		Id:                  "v_2",
 		Identifier:          "a_project",
@@ -54,7 +54,7 @@ func TestGetActiveWaterfallVersions(t *testing.T) {
 		CreateTime:          start.Add(-2 * time.Minute),
 		Activated:           utility.FalsePtr(),
 	}
-	assert.NoError(t, v.Insert())
+	assert.NoError(t, v.Insert(t.Context()))
 	v = Version{
 		Id:                  "v_3",
 		Identifier:          "a_project",
@@ -72,7 +72,7 @@ func TestGetActiveWaterfallVersions(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(t, v.Insert())
+	assert.NoError(t, v.Insert(t.Context()))
 	v = Version{
 		Id:                  "v_4",
 		Identifier:          "a_project",
@@ -90,7 +90,7 @@ func TestGetActiveWaterfallVersions(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(t, v.Insert())
+	assert.NoError(t, v.Insert(t.Context()))
 	v = Version{
 		Id:                  "v_5",
 		Identifier:          "a_project",
@@ -99,7 +99,7 @@ func TestGetActiveWaterfallVersions(t *testing.T) {
 		CreateTime:          start.Add(-2 * time.Minute),
 		Activated:           utility.TruePtr(),
 	}
-	assert.NoError(t, v.Insert())
+	assert.NoError(t, v.Insert(t.Context()))
 
 	versions, err := GetActiveWaterfallVersions(t.Context(), p.Id, WaterfallOptions{
 		Limit:      4,
@@ -160,7 +160,7 @@ func TestGetActiveWaterfallVersions(t *testing.T) {
 		CreateTime:          time.Date(2024, time.February, 7, 0, 0, 0, 0, time.UTC),
 		Activated:           utility.TruePtr(),
 	}
-	assert.NoError(t, v.Insert())
+	assert.NoError(t, v.Insert(t.Context()))
 
 	versions, err = GetActiveWaterfallVersions(t.Context(), p.Id,
 		WaterfallOptions{
@@ -190,7 +190,7 @@ func TestGetAllWaterfallVersions(t *testing.T) {
 		Id:         "a_project",
 		Identifier: "a_project_identifier",
 	}
-	assert.NoError(t, p.Insert())
+	assert.NoError(t, p.Insert(t.Context()))
 
 	v := Version{
 		Id:                  "v_1",
@@ -200,7 +200,7 @@ func TestGetAllWaterfallVersions(t *testing.T) {
 		CreateTime:          start,
 		Activated:           utility.TruePtr(),
 	}
-	assert.NoError(t, v.Insert())
+	assert.NoError(t, v.Insert(t.Context()))
 	v = Version{
 		Id:                  "v_2",
 		Identifier:          "a_project",
@@ -209,7 +209,7 @@ func TestGetAllWaterfallVersions(t *testing.T) {
 		CreateTime:          start.Add(-2 * time.Minute),
 		Activated:           utility.FalsePtr(),
 	}
-	assert.NoError(t, v.Insert())
+	assert.NoError(t, v.Insert(t.Context()))
 	v = Version{
 		Id:                  "v_3",
 		Identifier:          "a_project",
@@ -218,7 +218,7 @@ func TestGetAllWaterfallVersions(t *testing.T) {
 		CreateTime:          start.Add(-2 * time.Minute),
 		Activated:           utility.TruePtr(),
 	}
-	assert.NoError(t, v.Insert())
+	assert.NoError(t, v.Insert(t.Context()))
 	v = Version{
 		Id:                  "v_4",
 		Identifier:          "a_project",
@@ -227,7 +227,7 @@ func TestGetAllWaterfallVersions(t *testing.T) {
 		CreateTime:          start.Add(-2 * time.Minute),
 		Activated:           utility.TruePtr(),
 	}
-	assert.NoError(t, v.Insert())
+	assert.NoError(t, v.Insert(t.Context()))
 	v = Version{
 		Id:                  "v_5",
 		Identifier:          "a_project",
@@ -236,7 +236,7 @@ func TestGetAllWaterfallVersions(t *testing.T) {
 		CreateTime:          start.Add(-2 * time.Minute),
 		Activated:           utility.TruePtr(),
 	}
-	assert.NoError(t, v.Insert())
+	assert.NoError(t, v.Insert(t.Context()))
 
 	versions, err := GetAllWaterfallVersions(t.Context(), p.Id, 7, 9)
 	assert.NoError(t, err)
@@ -270,7 +270,7 @@ func TestGetVersionBuilds(t *testing.T) {
 		Id:         "a_project",
 		Identifier: "a_project_identifier",
 	}
-	assert.NoError(t, p.Insert())
+	assert.NoError(t, p.Insert(t.Context()))
 
 	v := Version{
 		Id:                  "v_1",
@@ -281,7 +281,7 @@ func TestGetVersionBuilds(t *testing.T) {
 		Activated:           utility.TruePtr(),
 		BuildIds:            []string{"a", "b"},
 	}
-	assert.NoError(t, v.Insert())
+	assert.NoError(t, v.Insert(t.Context()))
 
 	b := build.Build{
 		Id:          "b",
@@ -303,7 +303,7 @@ func TestGetVersionBuilds(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(t, b.Insert())
+	assert.NoError(t, b.Insert(t.Context()))
 	b = build.Build{
 		Id:          "a",
 		Activated:   true,
@@ -321,22 +321,22 @@ func TestGetVersionBuilds(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(t, b.Insert())
+	assert.NoError(t, b.Insert(t.Context()))
 
 	tsk := task.Task{Id: "t_80", DisplayName: "Task 80", Status: evergreen.TaskSucceeded}
-	assert.NoError(t, tsk.Insert())
+	assert.NoError(t, tsk.Insert(t.Context()))
 	tsk = task.Task{Id: "t_79", DisplayName: "Task 79", Status: evergreen.TaskFailed}
-	assert.NoError(t, tsk.Insert())
+	assert.NoError(t, tsk.Insert(t.Context()))
 	tsk = task.Task{Id: "t_86", DisplayName: "Task 86", Status: evergreen.TaskSucceeded}
-	assert.NoError(t, tsk.Insert())
+	assert.NoError(t, tsk.Insert(t.Context()))
 	tsk = task.Task{Id: "t_200", DisplayName: "Task 200", Status: evergreen.TaskSucceeded}
-	assert.NoError(t, tsk.Insert())
+	assert.NoError(t, tsk.Insert(t.Context()))
 	tsk = task.Task{Id: "t_45", DisplayName: "Task 12", Status: evergreen.TaskWillRun}
-	assert.NoError(t, tsk.Insert())
+	assert.NoError(t, tsk.Insert(t.Context()))
 	tsk = task.Task{Id: "t_12", DisplayName: "Task 12", Status: evergreen.TaskWillRun}
-	assert.NoError(t, tsk.Insert())
+	assert.NoError(t, tsk.Insert(t.Context()))
 	tsk = task.Task{Id: "t_66", DisplayName: "Task 66", Status: evergreen.TaskWillRun, Requester: evergreen.RepotrackerVersionRequester}
-	assert.NoError(t, tsk.Insert())
+	assert.NoError(t, tsk.Insert(t.Context()))
 
 	builds, err := GetVersionBuilds(t.Context(), v.Id)
 	assert.NoError(t, err)
@@ -354,7 +354,7 @@ func TestGetNewerActiveWaterfallVersion(t *testing.T) {
 		Id:         "a_project",
 		Identifier: "a_project_identifier",
 	}
-	assert.NoError(t, p.Insert())
+	assert.NoError(t, p.Insert(t.Context()))
 
 	// Versions are ordered from new to old.
 	v := Version{
@@ -365,7 +365,7 @@ func TestGetNewerActiveWaterfallVersion(t *testing.T) {
 		CreateTime:          start,
 		Activated:           utility.TruePtr(),
 	}
-	assert.NoError(t, v.Insert())
+	assert.NoError(t, v.Insert(t.Context()))
 	v = Version{
 		Id:                  "v_1",
 		Identifier:          "a_project",
@@ -374,7 +374,7 @@ func TestGetNewerActiveWaterfallVersion(t *testing.T) {
 		CreateTime:          start.Add(-2 * time.Minute),
 		Activated:           utility.TruePtr(),
 	}
-	assert.NoError(t, v.Insert())
+	assert.NoError(t, v.Insert(t.Context()))
 	v = Version{
 		Id:                  "v_2",
 		Identifier:          "a_project",
@@ -383,7 +383,7 @@ func TestGetNewerActiveWaterfallVersion(t *testing.T) {
 		CreateTime:          start.Add(-2 * time.Minute),
 		Activated:           utility.FalsePtr(),
 	}
-	assert.NoError(t, v.Insert())
+	assert.NoError(t, v.Insert(t.Context()))
 	v = Version{
 		Id:                  "v_3",
 		Identifier:          "a_project",
@@ -392,7 +392,7 @@ func TestGetNewerActiveWaterfallVersion(t *testing.T) {
 		CreateTime:          start.Add(-2 * time.Minute),
 		Activated:           utility.FalsePtr(),
 	}
-	assert.NoError(t, v.Insert())
+	assert.NoError(t, v.Insert(t.Context()))
 	v = Version{
 		Id:                  "v_4",
 		Identifier:          "a_project",
@@ -401,7 +401,7 @@ func TestGetNewerActiveWaterfallVersion(t *testing.T) {
 		CreateTime:          start.Add(-2 * time.Minute),
 		Activated:           utility.TruePtr(),
 	}
-	assert.NoError(t, v.Insert())
+	assert.NoError(t, v.Insert(t.Context()))
 
 	version, err := GetNewerActiveWaterfallVersion(t.Context(), p.Id, v)
 	assert.NoError(t, err)
@@ -416,7 +416,7 @@ func TestGetOlderActiveWaterfallVersion(t *testing.T) {
 		Id:         "a_project",
 		Identifier: "a_project_identifier",
 	}
-	assert.NoError(t, p.Insert())
+	assert.NoError(t, p.Insert(t.Context()))
 
 	// Versions are ordered from old to new.
 	v := Version{
@@ -427,7 +427,7 @@ func TestGetOlderActiveWaterfallVersion(t *testing.T) {
 		CreateTime:          start,
 		Activated:           utility.TruePtr(),
 	}
-	assert.NoError(t, v.Insert())
+	assert.NoError(t, v.Insert(t.Context()))
 	v = Version{
 		Id:                  "v_4",
 		Identifier:          "a_project",
@@ -436,7 +436,7 @@ func TestGetOlderActiveWaterfallVersion(t *testing.T) {
 		CreateTime:          start.Add(2 * time.Minute),
 		Activated:           utility.TruePtr(),
 	}
-	assert.NoError(t, v.Insert())
+	assert.NoError(t, v.Insert(t.Context()))
 	v = Version{
 		Id:                  "v_3",
 		Identifier:          "a_project",
@@ -445,7 +445,7 @@ func TestGetOlderActiveWaterfallVersion(t *testing.T) {
 		CreateTime:          start.Add(2 * time.Minute),
 		Activated:           utility.FalsePtr(),
 	}
-	assert.NoError(t, v.Insert())
+	assert.NoError(t, v.Insert(t.Context()))
 	v = Version{
 		Id:                  "v_2",
 		Identifier:          "a_project",
@@ -454,7 +454,7 @@ func TestGetOlderActiveWaterfallVersion(t *testing.T) {
 		CreateTime:          start.Add(2 * time.Minute),
 		Activated:           utility.FalsePtr(),
 	}
-	assert.NoError(t, v.Insert())
+	assert.NoError(t, v.Insert(t.Context()))
 	v = Version{
 		Id:                  "v_1",
 		Identifier:          "a_project",
@@ -463,7 +463,7 @@ func TestGetOlderActiveWaterfallVersion(t *testing.T) {
 		CreateTime:          start.Add(2 * time.Minute),
 		Activated:           utility.TruePtr(),
 	}
-	assert.NoError(t, v.Insert())
+	assert.NoError(t, v.Insert(t.Context()))
 
 	version, err := GetOlderActiveWaterfallVersion(t.Context(), p.Id, v)
 	assert.NoError(t, err)
@@ -579,7 +579,7 @@ func TestGetActiveVersionsByTaskFilters(t *testing.T) {
 				DisplayName: "Build Variant 1",
 				Activated:   true,
 			}
-			assert.NoError(t, b.Insert())
+			assert.NoError(t, b.Insert(t.Context()))
 
 			v := Version{
 				Id:                  "v_1",
@@ -589,7 +589,7 @@ func TestGetActiveVersionsByTaskFilters(t *testing.T) {
 				CreateTime:          start,
 				Activated:           utility.TruePtr(),
 			}
-			assert.NoError(t, v.Insert())
+			assert.NoError(t, v.Insert(t.Context()))
 
 			v = Version{
 				Id:                  "v_2",
@@ -608,7 +608,7 @@ func TestGetActiveVersionsByTaskFilters(t *testing.T) {
 					},
 				},
 			}
-			assert.NoError(t, v.Insert())
+			assert.NoError(t, v.Insert(t.Context()))
 
 			v = Version{
 				Id:                  "v_3",
@@ -618,7 +618,7 @@ func TestGetActiveVersionsByTaskFilters(t *testing.T) {
 				CreateTime:          start,
 				Activated:           utility.TruePtr(),
 			}
-			assert.NoError(t, v.Insert())
+			assert.NoError(t, v.Insert(t.Context()))
 
 			tsk := task.Task{
 				Id:                      "t_80",
@@ -633,7 +633,7 @@ func TestGetActiveVersionsByTaskFilters(t *testing.T) {
 				BuildVariant:            "bv_1",
 				BuildVariantDisplayName: "Build Variant 1",
 			}
-			assert.NoError(t, tsk.Insert())
+			assert.NoError(t, tsk.Insert(t.Context()))
 
 			tsk = task.Task{
 				Id:                      "t_100",
@@ -648,7 +648,7 @@ func TestGetActiveVersionsByTaskFilters(t *testing.T) {
 				BuildVariant:            "bv_1",
 				BuildVariantDisplayName: "Build Variant 1",
 			}
-			assert.NoError(t, tsk.Insert())
+			assert.NoError(t, tsk.Insert(t.Context()))
 
 			tsk = task.Task{
 				Id:                      "t_120",
@@ -663,7 +663,7 @@ func TestGetActiveVersionsByTaskFilters(t *testing.T) {
 				BuildVariant:            "bv_2",
 				BuildVariantDisplayName: "Build Variant 2",
 			}
-			assert.NoError(t, tsk.Insert())
+			assert.NoError(t, tsk.Insert(t.Context()))
 
 			tsk = task.Task{
 				Id:                      "t_80_2",

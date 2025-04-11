@@ -33,7 +33,7 @@ func TestAssumeRole(t *testing.T) {
 		},
 		"Success": func(t *testing.T, manager STSManager, awsClientMock *awsClientMock) {
 			task := task.Task{Id: taskID, Project: projectID, Requester: requester}
-			require.NoError(t, task.Insert())
+			require.NoError(t, task.Insert(t.Context()))
 
 			creds, err := manager.AssumeRole(t.Context(), taskID, AssumeRoleOptions{
 				RoleARN:         roleARN,

@@ -58,7 +58,7 @@ func TestPodTerminationJob(t *testing.T) {
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, j *podTerminationJob){
 		"TerminatesAndDeletesResourcesForRunningPod": func(ctx context.Context, t *testing.T, j *podTerminationJob) {
-			require.NoError(t, j.pod.Insert())
+			require.NoError(t, j.pod.Insert(t.Context()))
 
 			j.Run(ctx)
 			require.NoError(t, j.Error())
@@ -68,7 +68,7 @@ func TestPodTerminationJob(t *testing.T) {
 			assert.Equal(t, cocoa.StatusDeleted, j.ecsPod.StatusInfo().Status)
 		},
 		"SucceedsWithPodFromDB": func(ctx context.Context, t *testing.T, j *podTerminationJob) {
-			require.NoError(t, j.pod.Insert())
+			require.NoError(t, j.pod.Insert(t.Context()))
 			j.pod = nil
 			j.ecsPod = nil
 
@@ -80,7 +80,7 @@ func TestPodTerminationJob(t *testing.T) {
 			assert.Equal(t, cocoa.StatusDeleted, j.ecsPod.StatusInfo().Status)
 		},
 		"SucceedsWhenDeletingNonexistentCloudPod": func(ctx context.Context, t *testing.T, j *podTerminationJob) {
-			require.NoError(t, j.pod.Insert())
+			require.NoError(t, j.pod.Insert(t.Context()))
 			// This simulates a condition where the cloud pod may have been long
 			// since cleaned up, so it has no more information about the pod. In
 			// the case that the cloud pod does not exist, termination should
@@ -100,7 +100,7 @@ func TestPodTerminationJob(t *testing.T) {
 			assert.Equal(t, cocoa.StatusDeleted, j.ecsPod.StatusInfo().Status)
 		},
 		"SucceedsWhenTerminatingAlreadyTerminatedPod": func(ctx context.Context, t *testing.T, j *podTerminationJob) {
-			require.NoError(t, j.pod.Insert())
+			require.NoError(t, j.pod.Insert(t.Context()))
 
 			j.Run(ctx)
 			assert.NoError(t, j.Error())
@@ -130,10 +130,10 @@ func TestPodTerminationJob(t *testing.T) {
 				LastHeartbeat:      time.Now(),
 				ContainerAllocated: false,
 			}
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(t.Context()))
 			j.pod.TaskRuntimeInfo.RunningTaskID = tsk.Id
 			j.pod.TaskRuntimeInfo.RunningTaskExecution = tsk.Execution
-			require.NoError(t, j.pod.Insert())
+			require.NoError(t, j.pod.Insert(t.Context()))
 
 			j.Run(ctx)
 			assert.NoError(t, j.Error())
@@ -157,7 +157,7 @@ func TestPodTerminationJob(t *testing.T) {
 		"TerminatesWithoutDeletingResourcesForIntentPod": func(ctx context.Context, t *testing.T, j *podTerminationJob) {
 			j.pod.Status = pod.StatusInitializing
 			j.pod.Resources = pod.ResourceInfo{}
-			require.NoError(t, j.pod.Insert())
+			require.NoError(t, j.pod.Insert(t.Context()))
 
 			j.Run(ctx)
 			require.NoError(t, j.Error())
@@ -169,7 +169,7 @@ func TestPodTerminationJob(t *testing.T) {
 		},
 		"NoopsforTerminatedPod": func(ctx context.Context, t *testing.T, j *podTerminationJob) {
 			j.pod.Status = pod.StatusTerminated
-			require.NoError(t, j.pod.Insert())
+			require.NoError(t, j.pod.Insert(t.Context()))
 
 			j.Run(ctx)
 			require.NoError(t, j.Error())
@@ -184,12 +184,12 @@ func TestPodTerminationJob(t *testing.T) {
 				Id:     "build_id",
 				Status: evergreen.BuildStarted,
 			}
-			require.NoError(t, b.Insert())
+			require.NoError(t, b.Insert(t.Context()))
 			v := model.Version{
 				Id:     "version_id",
 				Status: evergreen.VersionStarted,
 			}
-			require.NoError(t, v.Insert())
+			require.NoError(t, v.Insert(t.Context()))
 			tsk := task.Task{
 				Id:                 "task_id",
 				Execution:          0,
@@ -205,10 +205,10 @@ func TestPodTerminationJob(t *testing.T) {
 				LastHeartbeat:      time.Now(),
 				ContainerAllocated: true,
 			}
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(t.Context()))
 			j.pod.TaskRuntimeInfo.RunningTaskID = tsk.Id
 			j.pod.TaskRuntimeInfo.RunningTaskExecution = tsk.Execution
-			require.NoError(t, j.pod.Insert())
+			require.NoError(t, j.pod.Insert(t.Context()))
 
 			j.Run(ctx)
 			require.NoError(t, j.Error())
@@ -241,8 +241,8 @@ func TestPodTerminationJob(t *testing.T) {
 		},
 		"RemovesPodFromDispatcher": func(ctx context.Context, t *testing.T, j *podTerminationJob) {
 			pd := dispatcher.NewPodDispatcher("group_id", []string{"task_id"}, []string{j.pod.ID, "another_pod_id"})
-			require.NoError(t, pd.Insert())
-			require.NoError(t, j.pod.Insert())
+			require.NoError(t, pd.Insert(t.Context()))
+			require.NoError(t, j.pod.Insert(t.Context()))
 
 			j.Run(ctx)
 			require.NoError(t, j.Error())
@@ -270,26 +270,26 @@ func TestPodTerminationJob(t *testing.T) {
 				PodID:                  j.pod.ID,
 				Project:                "project-ref",
 			}
-			require.NoError(t, t0.Insert())
+			require.NoError(t, t0.Insert(t.Context()))
 			projectRef := model.ProjectRef{
 				Identifier: "project-ref",
 			}
-			require.NoError(t, projectRef.Insert())
+			require.NoError(t, projectRef.Insert(t.Context()))
 			v := model.Version{
 				Id:     "version_id",
 				Status: evergreen.VersionCreated,
 			}
-			require.NoError(t, v.Insert())
+			require.NoError(t, v.Insert(t.Context()))
 			b := build.Build{
 				Id:      "build_id",
 				Version: v.Id,
 				Status:  evergreen.BuildCreated,
 			}
-			require.NoError(t, b.Insert())
+			require.NoError(t, b.Insert(t.Context()))
 			pp := model.ParserProject{
 				Id: v.Id,
 			}
-			require.NoError(t, pp.Insert())
+			require.NoError(t, pp.Insert(t.Context()))
 			t1 := task.Task{
 				Id:                          "task_id1",
 				BuildId:                     b.Id,
@@ -303,10 +303,10 @@ func TestPodTerminationJob(t *testing.T) {
 				ContainerAllocatedTime:      time.Now(),
 				ContainerAllocationAttempts: 100,
 			}
-			require.NoError(t, t1.Insert())
+			require.NoError(t, t1.Insert(t.Context()))
 			pd := dispatcher.NewPodDispatcher("group_id", []string{t0.Id, t1.Id}, []string{j.pod.ID})
-			require.NoError(t, pd.Insert())
-			require.NoError(t, j.pod.Insert())
+			require.NoError(t, pd.Insert(t.Context()))
+			require.NoError(t, j.pod.Insert(t.Context()))
 
 			j.Run(ctx)
 			require.NoError(t, j.Error())
