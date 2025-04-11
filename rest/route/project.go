@@ -865,7 +865,7 @@ func (h *projectIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 	if projectModel.Aliases, err = data.FindMergedProjectAliases(ctx, project.Id, repoId, nil, h.includeProjectConfig); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding aliases for project '%s'", project.Id))
 	}
-	if projectModel.Subscriptions, err = data.GetSubscriptions(project.Id, event.OwnerTypeProject); err != nil {
+	if projectModel.Subscriptions, err = data.GetSubscriptions(ctx, project.Id, event.OwnerTypeProject); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting subscriptions for project '%s'", project.Id))
 	}
 	return gimlet.NewJSONResponse(projectModel)

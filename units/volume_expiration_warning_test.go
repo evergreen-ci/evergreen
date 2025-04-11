@@ -33,7 +33,7 @@ func TestVolumeExpiration(t *testing.T) {
 	j := makeVolumeExpirationWarningsJob()
 	j.Run(context.Background())
 
-	events, err := event.FindUnprocessedEvents(-1)
+	events, err := event.FindUnprocessedEvents(t.Context(), -1)
 	assert.NoError(t, err)
 	// one event each for v0, v1, v2
 	assert.Len(t, events, 3)

@@ -1195,7 +1195,7 @@ func TestDetachFromRepo(t *testing.T) {
 			assert.NoError(t, pRef.DetachFromRepo(t.Context(), dbUser))
 			checkRepoAttachmentEventLog(t, *pRef, event.EventTypeProjectDetachedFromRepo)
 
-			subs, err := event.FindSubscriptionsByOwner(pRef.Id, event.OwnerTypeProject)
+			subs, err := event.FindSubscriptionsByOwner(t.Context(), pRef.Id, event.OwnerTypeProject)
 			assert.NoError(t, err)
 			require.Len(t, subs, 1)
 			assert.Equal(t, subs[0].Owner, pRef.Id)
@@ -1206,7 +1206,7 @@ func TestDetachFromRepo(t *testing.T) {
 			assert.NoError(t, event.RemoveSubscription(ctx, projectSubscription.ID))
 			assert.NoError(t, pRef.DetachFromRepo(t.Context(), dbUser))
 
-			subs, err = event.FindSubscriptionsByOwner(pRef.Id, event.OwnerTypeProject)
+			subs, err = event.FindSubscriptionsByOwner(t.Context(), pRef.Id, event.OwnerTypeProject)
 			assert.NoError(t, err)
 			assert.Len(t, subs, 1)
 			assert.Equal(t, subs[0].Owner, pRef.Id)

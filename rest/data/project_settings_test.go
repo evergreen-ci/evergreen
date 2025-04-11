@@ -772,7 +772,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 				settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageNotificationsSection, false, "me")
 				require.NoError(t, err)
 				require.NotNil(t, settings)
-				subsFromDb, err := event.FindSubscriptionsByOwner(ref.Id, event.OwnerTypeProject)
+				subsFromDb, err := event.FindSubscriptionsByOwner(t.Context(), ref.Id, event.OwnerTypeProject)
 				require.NoError(t, err)
 				require.Len(t, subsFromDb, 2)
 				assert.Equal(t, event.TriggerSuccess, subsFromDb[0].Trigger)
@@ -825,7 +825,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 				settings, err := SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageNotificationsSection, false, "me")
 				require.NoError(t, err)
 				require.NotNil(t, settings)
-				subsFromDb, err := event.FindSubscriptionsByOwner(ref.Id, event.OwnerTypeProject)
+				subsFromDb, err := event.FindSubscriptionsByOwner(t.Context(), ref.Id, event.OwnerTypeProject)
 				require.NoError(t, err)
 				require.Len(t, subsFromDb, 1)
 				// Check if webhooks Authorization header is the new value.

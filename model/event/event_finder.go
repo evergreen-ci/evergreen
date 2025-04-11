@@ -48,7 +48,7 @@ func FindPaginatedWithTotalCount(ctx context.Context, query db.Q, limit, page in
 		query = query.Skip(skip)
 	}
 
-	err := db.FindAllQ(EventCollection, query, &events)
+	err := db.FindAllQContext(ctx, EventCollection, query, &events)
 	if err != nil {
 		return nil, 0, errors.WithStack(err)
 	}
@@ -64,13 +64,13 @@ func FindPaginatedWithTotalCount(ctx context.Context, query db.Q, limit, page in
 
 // FindUnprocessedEvents returns all unprocessed events in EventCollection.
 // Events are considered unprocessed if their "processed_at" time IsZero
-func FindUnprocessedEvents(limit int) ([]EventLogEntry, error) {
+func FindUnprocessedEvents(ctx context.Context, limit int) ([]EventLogEntry, error) {
 	out := []EventLogEntry{}
 	query := db.Query(unprocessedEvents()).Sort([]string{TimestampKey})
 	if limit > 0 {
 		query = query.Limit(limit)
 	}
-	err := db.FindAllQ(EventCollection, query, &out)
+	err := db.FindAllQContext(ctx, EventCollection, query, &out)
 	if err != nil {
 		return nil, errors.Wrap(err, "fetching unprocessed events")
 	}

@@ -1099,7 +1099,7 @@ func (r *mutationResolver) AddFavoriteProject(ctx context.Context, opts AddFavor
 func (r *mutationResolver) ClearMySubscriptions(ctx context.Context) (int, error) {
 	usr := mustHaveUser(ctx)
 	username := usr.Username()
-	subs, err := event.FindSubscriptionsByOwner(username, event.OwnerTypePerson)
+	subs, err := event.FindSubscriptionsByOwner(ctx, username, event.OwnerTypePerson)
 	if err != nil {
 		return 0, InternalServerError.Send(ctx, fmt.Sprintf("retrieving subscriptions for user '%s': %s", usr.Id, err.Error()))
 	}

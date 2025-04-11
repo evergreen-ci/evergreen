@@ -301,7 +301,7 @@ func TestHostModifyHandlers(t *testing.T) {
 	}()
 
 	checkSubscriptions := func(t *testing.T, userID string, numSubs int) {
-		subscriptions, err := data.GetSubscriptions(userID, event.OwnerTypePerson)
+		subscriptions, err := data.GetSubscriptions(t.Context(), userID, event.OwnerTypePerson)
 		assert.NoError(t, err)
 		assert.Len(t, subscriptions, numSubs)
 	}

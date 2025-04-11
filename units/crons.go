@@ -166,7 +166,7 @@ func eventNotifierJobs(ctx context.Context, env evergreen.Environment, ts time.T
 		return nil, nil
 	}
 
-	events, err := event.FindUnprocessedEvents(-1)
+	events, err := event.FindUnprocessedEvents(ctx, -1)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding all unprocessed events")
 	}

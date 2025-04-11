@@ -335,7 +335,7 @@ func (s *eventSuite) TestFindUnprocessedEvents() {
 	for i := range data {
 		s.NoError(db.Insert(s.T().Context(), EventCollection, data[i]))
 	}
-	events, err := FindUnprocessedEvents(-1)
+	events, err := FindUnprocessedEvents(s.T().Context(), -1)
 	s.NoError(err)
 	s.Len(events, 1)
 
@@ -504,7 +504,7 @@ func (s *eventSuite) TestLogManyEvents() {
 	}
 	s.NoError(LogManyEvents(s.T().Context(), []EventLogEntry{event1, event2}))
 	events := []EventLogEntry{}
-	s.NoError(db.FindAllQ(EventCollection, db.Query(bson.M{}), &events))
+	s.NoError(db.FindAllQContext(s.T().Context(), EventCollection, db.Query(bson.M{}), &events))
 	s.Len(events, 2)
 	s.Equal("resource_id_1", events[0].ResourceId)
 	s.Equal("some_type", events[0].EventType)

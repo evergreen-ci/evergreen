@@ -863,7 +863,7 @@ func (p *ProjectRef) DetachFromRepo(ctx context.Context, u *user.DBUser) error {
 
 	if len(before.Subscriptions) == 0 {
 		// Save repo subscriptions as project subscriptions if none exist
-		subs, err := event.FindSubscriptionsByOwner(before.ProjectRef.RepoRefId, event.OwnerTypeProject)
+		subs, err := event.FindSubscriptionsByOwner(ctx, before.ProjectRef.RepoRefId, event.OwnerTypeProject)
 		catcher.Wrap(err, "finding repo subscriptions")
 
 		for _, s := range subs {
@@ -2074,7 +2074,7 @@ func GetProjectSettings(ctx context.Context, p *ProjectRef) (*ProjectSettings, e
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding aliases for project '%s'", p.Id)
 	}
-	subscriptions, err := event.FindSubscriptionsByOwner(p.Id, event.OwnerTypeProject)
+	subscriptions, err := event.FindSubscriptionsByOwner(ctx, p.Id, event.OwnerTypeProject)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding subscription for project '%s'", p.Id)
 	}
