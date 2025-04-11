@@ -73,9 +73,9 @@ func Count(ctx context.Context, q db.Q) (int, error) {
 }
 
 // Find finds all pods matching the given query.
-func Find(q db.Q) ([]Pod, error) {
+func Find(ctx context.Context, q db.Q) ([]Pod, error) {
 	pods := []Pod{}
-	return pods, errors.WithStack(db.FindAllQ(Collection, q, &pods))
+	return pods, errors.WithStack(db.FindAllQContext(ctx, Collection, q, &pods))
 }
 
 // FindOne finds one pod by the given query.
@@ -111,9 +111,9 @@ func UpdateOne(ctx context.Context, query any, update any) error {
 // terminated, which includes:
 // * Pods that have been provisioning for too long.
 // * Pods that are decommissioned and have no running task.
-func FindByNeedsTermination() ([]Pod, error) {
+func FindByNeedsTermination(ctx context.Context) ([]Pod, error) {
 	staleCutoff := time.Now().Add(-15 * time.Minute)
-	return Find(db.Query(bson.M{
+	return Find(ctx, db.Query(bson.M{
 		"$or": []bson.M{
 			{
 				StatusKey: StatusInitializing,
@@ -133,8 +133,8 @@ func FindByNeedsTermination() ([]Pod, error) {
 
 // FindByInitializing find all pods that are initializing but have not started
 // any containers.
-func FindByInitializing() ([]Pod, error) {
-	return Find(db.Query(bson.M{
+func FindByInitializing(ctx context.Context) ([]Pod, error) {
+	return Find(ctx, db.Query(bson.M{
 		StatusKey: StatusInitializing,
 	}))
 }
@@ -153,8 +153,8 @@ func FindOneByExternalID(ctx context.Context, id string) (*Pod, error) {
 }
 
 // FindIntentByFamily finds intent pods that have a matching family name.
-func FindIntentByFamily(family string) ([]Pod, error) {
-	return Find(db.Query(bson.M{
+func FindIntentByFamily(ctx context.Context, family string) ([]Pod, error) {
+	return Find(ctx, db.Query(bson.M{
 		StatusKey: StatusInitializing,
 		FamilyKey: family,
 	}))
@@ -193,9 +193,9 @@ func UpdateOneStatus(ctx context.Context, id string, current, updated Status, ts
 
 // FindByLastCommunicatedBefore finds all active pods whose last communication
 // was before the given threshold.
-func FindByLastCommunicatedBefore(ts time.Time) ([]Pod, error) {
+func FindByLastCommunicatedBefore(ctx context.Context, ts time.Time) ([]Pod, error) {
 	lastCommunicatedKey := bsonutil.GetDottedKeyName(TimeInfoKey, TimeInfoLastCommunicatedKey)
-	return Find(db.Query(bson.M{
+	return Find(ctx, db.Query(bson.M{
 		StatusKey:           bson.M{"$in": []Status{StatusStarting, StatusRunning}},
 		lastCommunicatedKey: bson.M{"$lte": ts},
 	}))
