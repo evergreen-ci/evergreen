@@ -300,6 +300,18 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 		input.IamInstanceProfile = &types.IamInstanceProfileSpecification{Arn: aws.String(ec2Settings.IAMInstanceProfileARN)}
 	}
 
+	useElasticIP := shouldAssignPublicIPv4Address(h, ec2Settings) && canUseElasticIP(m.settings, ec2Settings, h)
+	if useElasticIP && h.IPAllocationID == "" {
+		// If the host can't be allocated an IP address, continue on error
+		// because the host should fall back to using an AWS-provided IP
+		// address. Using an elastic IP address is a best-effort attempt to save
+		// money.
+		grip.Notice(message.WrapError(allocateIPAddressForHost(ctx, m.settings, m.client, h), message.Fields{
+			"message": "could not allocate elastic IP address for host, falling back to using AWS-managed IP",
+			"host_id": h.Id,
+		}))
+	}
+
 	assignPublicIPv4 := shouldAssignPublicIPv4Address(h, ec2Settings)
 
 	useElasticIP := assignPublicIPv4 && canUseElasticIP(m.settings, ec2Settings, h)
