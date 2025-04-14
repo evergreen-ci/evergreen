@@ -349,6 +349,7 @@ func MockConfig() *evergreen.Settings {
 						Role:    "role",
 					},
 				},
+				IPAMPoolID: "pool_id",
 			},
 			Docker: evergreen.DockerConfig{
 				APIVersion: "docker_version",
