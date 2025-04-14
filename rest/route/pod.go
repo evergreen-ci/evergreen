@@ -51,7 +51,7 @@ func (h *podPostHandler) Parse(ctx context.Context, r *http.Request) error {
 
 // Run creates a new pod based on the request payload.
 func (h *podPostHandler) Run(ctx context.Context) gimlet.Responder {
-	res, err := data.CreatePod(h.p)
+	res, err := data.CreatePod(ctx, h.p)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "creating new pod"))
 	}

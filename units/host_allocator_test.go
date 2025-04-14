@@ -56,7 +56,7 @@ func TestSingleTaskDistroHostAllocatorJob(t *testing.T) {
 			LengthWithDependenciesMet: 2,
 		},
 	}
-	require.NoError(tq.Save())
+	require.NoError(tq.Save(t.Context()))
 
 	h := host.Host{
 		Id:     "h1",

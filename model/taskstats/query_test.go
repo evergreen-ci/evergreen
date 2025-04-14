@@ -1,6 +1,7 @@
 package taskstats
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -270,7 +271,7 @@ func (s *statsQuerySuite) TestFilterInvalidGroupBy() {
 func (s *statsQuerySuite) TestGetTaskStatsEmptyCollection() {
 	require := s.Require()
 
-	docs, err := GetTaskStats(s.baseTaskFilter)
+	docs, err := GetTaskStats(s.T().Context(), s.baseTaskFilter)
 	require.NoError(err)
 	require.Empty(docs)
 }
@@ -278,9 +279,9 @@ func (s *statsQuerySuite) TestGetTaskStatsEmptyCollection() {
 func (s *statsQuerySuite) TestGetTaskStatsOneDocument() {
 	require := s.Require()
 
-	s.insertDailyTaskStats("p1", "r1", "task1", "v1", "d1", day1, 10, 5, 1, 1, 1, 2, 10.5)
+	s.insertDailyTaskStats(s.T().Context(), "p1", "r1", "task1", "v1", "d1", day1, 10, 5, 1, 1, 1, 2, 10.5)
 
-	docs, err := GetTaskStats(s.baseTaskFilter)
+	docs, err := GetTaskStats(s.T().Context(), s.baseTaskFilter)
 	require.NoError(err)
 	require.Len(docs, 1)
 	s.checkTaskStats(docs[0], "task1", "v1", "d1", day1, 10, 5, 1, 1, 2, float64(10.5))
@@ -289,10 +290,10 @@ func (s *statsQuerySuite) TestGetTaskStatsOneDocument() {
 func (s *statsQuerySuite) TestGetTaskStatsTwoDocuments() {
 	require := s.Require()
 
-	s.insertDailyTaskStats("p1", "r1", "task1", "v1", "d1", day1, 10, 5, 1, 1, 1, 2, 10.5)
-	s.insertDailyTaskStats("p1", "r1", "task1", "v1", "d1", day2, 20, 7, 7, 0, 0, 0, 20.0)
+	s.insertDailyTaskStats(s.T().Context(), "p1", "r1", "task1", "v1", "d1", day1, 10, 5, 1, 1, 1, 2, 10.5)
+	s.insertDailyTaskStats(s.T().Context(), "p1", "r1", "task1", "v1", "d1", day2, 20, 7, 7, 0, 0, 0, 20.0)
 
-	docs, err := GetTaskStats(s.baseTaskFilter)
+	docs, err := GetTaskStats(s.T().Context(), s.baseTaskFilter)
 	require.NoError(err)
 	require.Len(docs, 2)
 	s.checkTaskStats(docs[0], "task1", "v1", "d1", day1, 10, 5, 1, 1, 2, float64(10.5))
@@ -303,16 +304,16 @@ func (s *statsQuerySuite) TestGetTaskStatsFilterScope() {
 	require := s.Require()
 
 	// Adding documents in filter scope
-	s.insertDailyTaskStats("p1", "r1", "task1", "v1", "d1", day1, 10, 5, 1, 1, 1, 2, 10.5)
-	s.insertDailyTaskStats("p1", "r1", "task1", "v1", "d1", day2, 20, 7, 7, 0, 0, 0, 20.0)
+	s.insertDailyTaskStats(s.T().Context(), "p1", "r1", "task1", "v1", "d1", day1, 10, 5, 1, 1, 1, 2, 10.5)
+	s.insertDailyTaskStats(s.T().Context(), "p1", "r1", "task1", "v1", "d1", day2, 20, 7, 7, 0, 0, 0, 20.0)
 	// Adding documents out of filter scope, the returned stats should be the same
-	s.insertDailyTaskStats("p3", "r1", "task1", "v1", "d1", day1, 1, 1, 1, 0, 0, 0, 1)
-	s.insertDailyTaskStats("p1", "r3", "task1", "v1", "d1", day1, 1, 1, 1, 0, 0, 0, 1)
-	s.insertDailyTaskStats("p1", "r1", "task3", "v1", "d1", day1, 1, 1, 1, 0, 0, 0, 1)
-	s.insertDailyTaskStats("p1", "r1", "task1", "v3", "d1", day1, 1, 1, 1, 0, 0, 0, 1)
-	s.insertDailyTaskStats("p1", "r1", "task1", "v1", "d1", day8, 1, 1, 1, 0, 0, 0, 1)
+	s.insertDailyTaskStats(s.T().Context(), "p3", "r1", "task1", "v1", "d1", day1, 1, 1, 1, 0, 0, 0, 1)
+	s.insertDailyTaskStats(s.T().Context(), "p1", "r3", "task1", "v1", "d1", day1, 1, 1, 1, 0, 0, 0, 1)
+	s.insertDailyTaskStats(s.T().Context(), "p1", "r1", "task3", "v1", "d1", day1, 1, 1, 1, 0, 0, 0, 1)
+	s.insertDailyTaskStats(s.T().Context(), "p1", "r1", "task1", "v3", "d1", day1, 1, 1, 1, 0, 0, 0, 1)
+	s.insertDailyTaskStats(s.T().Context(), "p1", "r1", "task1", "v1", "d1", day8, 1, 1, 1, 0, 0, 0, 1)
 
-	docs, err := GetTaskStats(s.baseTaskFilter)
+	docs, err := GetTaskStats(s.T().Context(), s.baseTaskFilter)
 	require.NoError(err)
 	require.Len(docs, 2)
 	s.checkTaskStats(docs[0], "task1", "v1", "d1", day1, 10, 5, 1, 1, 2, float64(10.5))
@@ -322,12 +323,12 @@ func (s *statsQuerySuite) TestGetTaskStatsFilterScope() {
 func (s *statsQuerySuite) TestGetTaskStatsSortOrder() {
 	require := s.Require()
 
-	s.insertDailyTaskStats("p1", "r1", "task1", "v1", "d1", day1, 10, 5, 1, 1, 1, 2, 10.5)
-	s.insertDailyTaskStats("p1", "r1", "task1", "v1", "d1", day2, 20, 7, 7, 0, 0, 0, 20.0)
+	s.insertDailyTaskStats(s.T().Context(), "p1", "r1", "task1", "v1", "d1", day1, 10, 5, 1, 1, 1, 2, 10.5)
+	s.insertDailyTaskStats(s.T().Context(), "p1", "r1", "task1", "v1", "d1", day2, 20, 7, 7, 0, 0, 0, 20.0)
 
 	s.baseTaskFilter.Sort = SortEarliestFirst
 
-	docs, err := GetTaskStats(s.baseTaskFilter)
+	docs, err := GetTaskStats(s.T().Context(), s.baseTaskFilter)
 	require.NoError(err)
 	require.Len(docs, 2)
 	s.checkTaskStats(docs[0], "task1", "v1", "d1", day1, 10, 5, 1, 1, 2, float64(10.5))
@@ -335,7 +336,7 @@ func (s *statsQuerySuite) TestGetTaskStatsSortOrder() {
 
 	s.baseTaskFilter.Sort = SortLatestFirst
 
-	docs, err = GetTaskStats(s.baseTaskFilter)
+	docs, err = GetTaskStats(s.T().Context(), s.baseTaskFilter)
 	require.NoError(err)
 	require.Len(docs, 2)
 	s.checkTaskStats(docs[0], "task1", "v1", "d1", day2, 20, 7, 0, 0, 0, float64(20))
@@ -345,11 +346,11 @@ func (s *statsQuerySuite) TestGetTaskStatsSortOrder() {
 func (s *statsQuerySuite) TestGetTaskStatsGroupNumDays() {
 	require := s.Require()
 
-	s.insertDailyTaskStats("p1", "r1", "task1", "v1", "d1", day1, 10, 5, 1, 1, 1, 2, 10.5)
-	s.insertDailyTaskStats("p1", "r1", "task1", "v1", "d1", day2, 20, 7, 7, 0, 0, 0, 20.0)
+	s.insertDailyTaskStats(s.T().Context(), "p1", "r1", "task1", "v1", "d1", day1, 10, 5, 1, 1, 1, 2, 10.5)
+	s.insertDailyTaskStats(s.T().Context(), "p1", "r1", "task1", "v1", "d1", day2, 20, 7, 7, 0, 0, 0, 20.0)
 
 	s.baseTaskFilter.GroupNumDays = 2
-	docs, err := GetTaskStats(s.baseTaskFilter)
+	docs, err := GetTaskStats(s.T().Context(), s.baseTaskFilter)
 	require.NoError(err)
 	require.Len(docs, 1)
 	s.checkTaskStats(docs[0], "task1", "v1", "d1", day1, 30, 12, 1, 1, 2, float64(16.833333333333332))
@@ -359,15 +360,15 @@ func (s *statsQuerySuite) TestGetTaskStatsGroupByDistro() {
 	require := s.Require()
 
 	// Adding documents with same task+variant+distro, they should be grouped together in the results
-	s.insertDailyTaskStats("p1", "r1", "task1", "v1", "d1", day1, 10, 5, 1, 1, 1, 2, 10.5)
-	s.insertDailyTaskStats("p1", "r1", "task1", "v1", "d1", day2, 20, 7, 7, 0, 0, 0, 20.0)
+	s.insertDailyTaskStats(s.T().Context(), "p1", "r1", "task1", "v1", "d1", day1, 10, 5, 1, 1, 1, 2, 10.5)
+	s.insertDailyTaskStats(s.T().Context(), "p1", "r1", "task1", "v1", "d1", day2, 20, 7, 7, 0, 0, 0, 20.0)
 	// Adding a document for task1+v1+d2 that should appear separately in the results
-	s.insertDailyTaskStats("p1", "r1", "task1", "v1", "d2", day1, 2, 3, 2, 1, 0, 0, 10)
+	s.insertDailyTaskStats(s.T().Context(), "p1", "r1", "task1", "v1", "d2", day1, 2, 3, 2, 1, 0, 0, 10)
 
 	s.baseTaskFilter.GroupNumDays = 2
 	s.baseTaskFilter.GroupBy = GroupByDistro
 
-	docs, err := GetTaskStats(s.baseTaskFilter)
+	docs, err := GetTaskStats(s.T().Context(), s.baseTaskFilter)
 	require.NoError(err)
 	require.Len(docs, 2)
 	s.checkTaskStats(docs[0], "task1", "v1", "d1", day1, 30, 12, 1, 1, 2, float64(16.833333333333332))
@@ -378,17 +379,17 @@ func (s *statsQuerySuite) TestGetTaskStatsGroupByVariant() {
 	require := s.Require()
 
 	// Adding documents with same task+variant+distro, they should be grouped together in the results
-	s.insertDailyTaskStats("p1", "r1", "task1", "v1", "d1", day1, 10, 5, 1, 1, 1, 2, 10.5)
-	s.insertDailyTaskStats("p1", "r1", "task1", "v1", "d1", day2, 20, 7, 7, 0, 0, 0, 20.0)
+	s.insertDailyTaskStats(s.T().Context(), "p1", "r1", "task1", "v1", "d1", day1, 10, 5, 1, 1, 1, 2, 10.5)
+	s.insertDailyTaskStats(s.T().Context(), "p1", "r1", "task1", "v1", "d1", day2, 20, 7, 7, 0, 0, 0, 20.0)
 	// Adding a document for task1+v1+d2 that should also be grouped with the previous stats in the results
-	s.insertDailyTaskStats("p1", "r1", "task1", "v1", "d2", day1, 2, 3, 2, 1, 0, 0, 10)
+	s.insertDailyTaskStats(s.T().Context(), "p1", "r1", "task1", "v1", "d2", day1, 2, 3, 2, 1, 0, 0, 10)
 	// Adding a document for task1+v2+d2 that should appear separately in the results
-	s.insertDailyTaskStats("p1", "r1", "task1", "v2", "d2", day1, 2, 3, 2, 1, 0, 0, 10)
+	s.insertDailyTaskStats(s.T().Context(), "p1", "r1", "task1", "v2", "d2", day1, 2, 3, 2, 1, 0, 0, 10)
 
 	s.baseTaskFilter.GroupNumDays = 2
 	s.baseTaskFilter.GroupBy = GroupByVariant
 
-	docs, err := GetTaskStats(s.baseTaskFilter)
+	docs, err := GetTaskStats(s.T().Context(), s.baseTaskFilter)
 	require.NoError(err)
 	require.Len(docs, 2)
 	s.checkTaskStats(docs[0], "task1", "v1", "", day1, 32, 15, 2, 1, 2, float64(16.40625))
@@ -399,19 +400,19 @@ func (s *statsQuerySuite) TestGetTaskStatsGroupByTask() {
 	require := s.Require()
 
 	// Adding documents with same task+variant+distro, they should be grouped together in the results
-	s.insertDailyTaskStats("p1", "r1", "task1", "v1", "d1", day1, 10, 5, 1, 1, 1, 2, 10.5)
-	s.insertDailyTaskStats("p1", "r1", "task1", "v1", "d1", day2, 20, 7, 7, 0, 0, 0, 20.0)
+	s.insertDailyTaskStats(s.T().Context(), "p1", "r1", "task1", "v1", "d1", day1, 10, 5, 1, 1, 1, 2, 10.5)
+	s.insertDailyTaskStats(s.T().Context(), "p1", "r1", "task1", "v1", "d1", day2, 20, 7, 7, 0, 0, 0, 20.0)
 	// Adding a document for task1+v1+d2 that should also be grouped with the previous stats in the results
-	s.insertDailyTaskStats("p1", "r1", "task1", "v1", "d2", day1, 2, 3, 2, 1, 0, 0, 10)
+	s.insertDailyTaskStats(s.T().Context(), "p1", "r1", "task1", "v1", "d2", day1, 2, 3, 2, 1, 0, 0, 10)
 	// Adding a document for task1+v2+d2 that should also be grouped with the previous stats in the results
-	s.insertDailyTaskStats("p1", "r1", "task1", "v2", "d2", day1, 2, 3, 2, 1, 0, 0, 10)
+	s.insertDailyTaskStats(s.T().Context(), "p1", "r1", "task1", "v2", "d2", day1, 2, 3, 2, 1, 0, 0, 10)
 	// Adding a document for test1+task2+v2+d2 that should appear separately in the results
-	s.insertDailyTaskStats("p1", "r1", "task2", "v2", "d2", day1, 2, 3, 2, 1, 0, 0, 10)
+	s.insertDailyTaskStats(s.T().Context(), "p1", "r1", "task2", "v2", "d2", day1, 2, 3, 2, 1, 0, 0, 10)
 
 	s.baseTaskFilter.GroupNumDays = 2
 	s.baseTaskFilter.GroupBy = GroupByTask
 
-	docs, err := GetTaskStats(s.baseTaskFilter)
+	docs, err := GetTaskStats(s.T().Context(), s.baseTaskFilter)
 	require.NoError(err)
 	require.Len(docs, 2)
 	s.checkTaskStats(docs[0], "task1", "", "", day1, 34, 18, 3, 1, 2, float64(16.029411764705884))
@@ -421,19 +422,19 @@ func (s *statsQuerySuite) TestGetTaskStatsGroupByTask() {
 func (s *statsQuerySuite) TestGetTaskStatsPagination() {
 	require := s.Require()
 
-	s.insertDailyTaskStats("p2", "r1", "task1", "v2", "d2", day1, 1, 1, 1, 0, 0, 0, 10)
-	s.insertDailyTaskStats("p2", "r1", "task2", "v2", "d1", day1, 1, 1, 1, 0, 0, 0, 10)
-	s.insertDailyTaskStats("p2", "r1", "task3", "v2", "d1", day1, 1, 1, 1, 0, 0, 0, 10)
-	s.insertDailyTaskStats("p2", "r1", "task4", "v1", "d2", day1, 1, 1, 1, 0, 0, 0, 10)
-	s.insertDailyTaskStats("p2", "r1", "task5", "v1", "d1", day1, 1, 1, 1, 0, 0, 0, 10)
-	s.insertDailyTaskStats("p2", "r1", "task6", "v1", "d1", day1, 1, 1, 1, 0, 0, 0, 10)
-	s.insertDailyTaskStats("p2", "r1", "task1", "v1", "d1", day2, 1, 1, 1, 0, 0, 0, 10)
+	s.insertDailyTaskStats(s.T().Context(), "p2", "r1", "task1", "v2", "d2", day1, 1, 1, 1, 0, 0, 0, 10)
+	s.insertDailyTaskStats(s.T().Context(), "p2", "r1", "task2", "v2", "d1", day1, 1, 1, 1, 0, 0, 0, 10)
+	s.insertDailyTaskStats(s.T().Context(), "p2", "r1", "task3", "v2", "d1", day1, 1, 1, 1, 0, 0, 0, 10)
+	s.insertDailyTaskStats(s.T().Context(), "p2", "r1", "task4", "v1", "d2", day1, 1, 1, 1, 0, 0, 0, 10)
+	s.insertDailyTaskStats(s.T().Context(), "p2", "r1", "task5", "v1", "d1", day1, 1, 1, 1, 0, 0, 0, 10)
+	s.insertDailyTaskStats(s.T().Context(), "p2", "r1", "task6", "v1", "d1", day1, 1, 1, 1, 0, 0, 0, 10)
+	s.insertDailyTaskStats(s.T().Context(), "p2", "r1", "task1", "v1", "d1", day2, 1, 1, 1, 0, 0, 0, 10)
 
 	s.baseTaskFilter.Project = "p2"
 	s.baseTaskFilter.Tasks = []string{"task1", "task2", "task3", "task4", "task5", "task6"}
 	s.baseTaskFilter.Limit = 3
 
-	docs, err := GetTaskStats(s.baseTaskFilter)
+	docs, err := GetTaskStats(s.T().Context(), s.baseTaskFilter)
 	require.NoError(err)
 	require.Len(docs, 3)
 	// expecting the results ordered by date/variant/task/test/distro
@@ -443,7 +444,7 @@ func (s *statsQuerySuite) TestGetTaskStatsPagination() {
 
 	s.baseTaskFilter.StartAt = &StartAt{Date: day1, Task: "task6", BuildVariant: "v1", Distro: "d1"}
 
-	docs, err = GetTaskStats(s.baseTaskFilter)
+	docs, err = GetTaskStats(s.T().Context(), s.baseTaskFilter)
 	require.NoError(err)
 	require.Len(docs, 3)
 	s.checkTaskStats(docs[0], "task6", "v1", "d1", day1, 1, 1, 0, 0, 0, float64(10))
@@ -452,7 +453,7 @@ func (s *statsQuerySuite) TestGetTaskStatsPagination() {
 
 	s.baseTaskFilter.StartAt = &StartAt{Date: day1, Task: "task2", BuildVariant: "v2", Distro: "d1"}
 
-	docs, err = GetTaskStats(s.baseTaskFilter)
+	docs, err = GetTaskStats(s.T().Context(), s.baseTaskFilter)
 	require.NoError(err)
 	require.Len(docs, 3)
 	s.checkTaskStats(docs[0], "task2", "v2", "d1", day1, 1, 1, 0, 0, 0, float64(10))
@@ -463,19 +464,19 @@ func (s *statsQuerySuite) TestGetTaskStatsPagination() {
 func (s *statsQuerySuite) TestGetTaskStatsPaginationGroupByTask() {
 	require := s.Require()
 
-	s.insertDailyTaskStats("p2", "r1", "task1", "v2", "d2", day1, 1, 1, 1, 0, 0, 0, 10)
-	s.insertDailyTaskStats("p2", "r1", "task2", "v2", "d1", day1, 1, 1, 1, 0, 0, 0, 10)
-	s.insertDailyTaskStats("p2", "r1", "task3", "v2", "d1", day1, 1, 1, 1, 0, 0, 0, 10)
-	s.insertDailyTaskStats("p2", "r1", "task4", "v1", "d2", day1, 1, 1, 1, 0, 0, 0, 10)
-	s.insertDailyTaskStats("p2", "r1", "task5", "v1", "d1", day1, 1, 1, 1, 0, 0, 0, 10)
-	s.insertDailyTaskStats("p2", "r1", "task6", "v1", "d1", day1, 1, 1, 1, 0, 0, 0, 10)
+	s.insertDailyTaskStats(s.T().Context(), "p2", "r1", "task1", "v2", "d2", day1, 1, 1, 1, 0, 0, 0, 10)
+	s.insertDailyTaskStats(s.T().Context(), "p2", "r1", "task2", "v2", "d1", day1, 1, 1, 1, 0, 0, 0, 10)
+	s.insertDailyTaskStats(s.T().Context(), "p2", "r1", "task3", "v2", "d1", day1, 1, 1, 1, 0, 0, 0, 10)
+	s.insertDailyTaskStats(s.T().Context(), "p2", "r1", "task4", "v1", "d2", day1, 1, 1, 1, 0, 0, 0, 10)
+	s.insertDailyTaskStats(s.T().Context(), "p2", "r1", "task5", "v1", "d1", day1, 1, 1, 1, 0, 0, 0, 10)
+	s.insertDailyTaskStats(s.T().Context(), "p2", "r1", "task6", "v1", "d1", day1, 1, 1, 1, 0, 0, 0, 10)
 
 	s.baseTaskFilter.Project = "p2"
 	s.baseTaskFilter.Tasks = []string{"task1", "task2", "task3", "task4", "task5", "task6"}
 	s.baseTaskFilter.Limit = 3
 	s.baseTaskFilter.GroupBy = GroupByTask
 
-	docs, err := GetTaskStats(s.baseTaskFilter)
+	docs, err := GetTaskStats(s.T().Context(), s.baseTaskFilter)
 	require.NoError(err)
 	require.Len(docs, 3)
 	s.checkTaskStats(docs[0], "task1", "", "", day1, 1, 1, 0, 0, 0, float64(10))
@@ -484,7 +485,7 @@ func (s *statsQuerySuite) TestGetTaskStatsPaginationGroupByTask() {
 
 	s.baseTaskFilter.StartAt = &StartAt{Date: day1, Task: "task3"}
 
-	docs, err = GetTaskStats(s.baseTaskFilter)
+	docs, err = GetTaskStats(s.T().Context(), s.baseTaskFilter)
 	require.NoError(err)
 	require.Len(docs, 3)
 	s.checkTaskStats(docs[0], "task3", "", "", day1, 1, 1, 0, 0, 0, float64(10))
@@ -495,13 +496,13 @@ func (s *statsQuerySuite) TestGetTaskStatsPaginationGroupByTask() {
 func (s *statsQuerySuite) TestGetTaskStatsPaginationGroupNumDays() {
 	require := s.Require()
 
-	s.insertDailyTaskStats("p2", "r1", "task1", "v1", "d1", day1, 1, 1, 1, 0, 0, 0, float64(10))
-	s.insertDailyTaskStats("p2", "r1", "task2", "v1", "d1", day1, 1, 1, 1, 0, 0, 0, float64(10))
-	s.insertDailyTaskStats("p2", "r1", "task1", "v1", "d1", day2, 1, 1, 1, 0, 0, 0, float64(10))
-	s.insertDailyTaskStats("p2", "r1", "task3", "v1", "d1", day2, 1, 1, 1, 0, 0, 0, float64(10))
-	s.insertDailyTaskStats("p2", "r1", "task4", "v1", "d1", day2, 1, 1, 1, 0, 0, 0, float64(10))
-	s.insertDailyTaskStats("p2", "r1", "task1", "v1", "d1", day8, 1, 1, 1, 0, 0, 0, float64(10))
-	s.insertDailyTaskStats("p2", "r1", "task2", "v1", "d1", day8, 1, 1, 1, 0, 0, 0, float64(10))
+	s.insertDailyTaskStats(s.T().Context(), "p2", "r1", "task1", "v1", "d1", day1, 1, 1, 1, 0, 0, 0, float64(10))
+	s.insertDailyTaskStats(s.T().Context(), "p2", "r1", "task2", "v1", "d1", day1, 1, 1, 1, 0, 0, 0, float64(10))
+	s.insertDailyTaskStats(s.T().Context(), "p2", "r1", "task1", "v1", "d1", day2, 1, 1, 1, 0, 0, 0, float64(10))
+	s.insertDailyTaskStats(s.T().Context(), "p2", "r1", "task3", "v1", "d1", day2, 1, 1, 1, 0, 0, 0, float64(10))
+	s.insertDailyTaskStats(s.T().Context(), "p2", "r1", "task4", "v1", "d1", day2, 1, 1, 1, 0, 0, 0, float64(10))
+	s.insertDailyTaskStats(s.T().Context(), "p2", "r1", "task1", "v1", "d1", day8, 1, 1, 1, 0, 0, 0, float64(10))
+	s.insertDailyTaskStats(s.T().Context(), "p2", "r1", "task2", "v1", "d1", day8, 1, 1, 1, 0, 0, 0, float64(10))
 
 	s.baseTaskFilter.Project = "p2"
 	s.baseTaskFilter.Tasks = []string{"task1", "task2", "task3", "task4"}
@@ -509,7 +510,7 @@ func (s *statsQuerySuite) TestGetTaskStatsPaginationGroupNumDays() {
 	s.baseTaskFilter.BeforeDate = day8.Add(7 * 24 * time.Hour)
 	s.baseTaskFilter.GroupNumDays = 7
 
-	docs, err := GetTaskStats(s.baseTaskFilter)
+	docs, err := GetTaskStats(s.T().Context(), s.baseTaskFilter)
 	require.NoError(err)
 	require.Len(docs, 3)
 	s.checkTaskStats(docs[0], "task1", "v1", "d1", day1, 2, 2, 0, 0, 0, float64(10))
@@ -517,7 +518,7 @@ func (s *statsQuerySuite) TestGetTaskStatsPaginationGroupNumDays() {
 	s.checkTaskStats(docs[2], "task3", "v1", "d1", day1, 1, 1, 0, 0, 0, float64(10))
 
 	s.baseTaskFilter.StartAt = &StartAt{Date: day1, Task: "task3", BuildVariant: "v1", Distro: "d1"}
-	docs, err = GetTaskStats(s.baseTaskFilter)
+	docs, err = GetTaskStats(s.T().Context(), s.baseTaskFilter)
 	require.NoError(err)
 	require.Len(docs, 3)
 	s.checkTaskStats(docs[0], "task3", "v1", "d1", day1, 1, 1, 0, 0, 0, float64(10))
@@ -525,7 +526,7 @@ func (s *statsQuerySuite) TestGetTaskStatsPaginationGroupNumDays() {
 	s.checkTaskStats(docs[2], "task1", "v1", "d1", day8, 1, 1, 0, 0, 0, float64(10))
 
 	s.baseTaskFilter.StartAt = &StartAt{Date: day8, Task: "task1", BuildVariant: "v1", Distro: "d1"}
-	docs, err = GetTaskStats(s.baseTaskFilter)
+	docs, err = GetTaskStats(s.T().Context(), s.baseTaskFilter)
 	require.NoError(err)
 	require.Len(docs, 2)
 	s.checkTaskStats(docs[0], "task1", "v1", "d1", day8, 1, 1, 0, 0, 0, float64(10))
@@ -557,9 +558,9 @@ func (s *statsQuerySuite) clearCollection(name string) {
 	s.Require().NoError(err)
 }
 
-func (s *statsQuerySuite) insertDailyTaskStats(project string, requester string, taskName string, variant string, distro string, date time.Time, numSuccess, numFailed, numTimeout, numTestFailed, numSystemFailed, numSetupFailed int, avgDuration float64) {
+func (s *statsQuerySuite) insertDailyTaskStats(ctx context.Context, project string, requester string, taskName string, variant string, distro string, date time.Time, numSuccess, numFailed, numTimeout, numTestFailed, numSystemFailed, numSetupFailed int, avgDuration float64) {
 
-	err := db.Insert(DailyTaskStatsCollection, bson.M{
+	err := db.Insert(ctx, DailyTaskStatsCollection, bson.M{
 		"_id": DBTaskStatsID{
 			Project:      project,
 			Requester:    requester,

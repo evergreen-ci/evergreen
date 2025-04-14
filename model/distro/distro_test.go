@@ -536,7 +536,7 @@ func TestAddPermissions(t *testing.T) {
 	u := user.DBUser{
 		Id: "me",
 	}
-	require.NoError(t, u.Insert())
+	require.NoError(t, u.Insert(t.Context()))
 	d := Distro{
 		Id: "myDistro",
 	}
@@ -577,8 +577,8 @@ func TestLogDistroModifiedWithDistroData(t *testing.T) {
 			birch.NewDocument().Set(birch.EC.SliceString("groups", []string{"group1", "group2"})),
 		},
 	}
-	event.LogDistroModified(d.Id, "user1", oldDistro.DistroData(), d.DistroData())
-	eventsForDistro, err := event.FindLatestPrimaryDistroEvents(d.Id, 10, utility.ZeroTime)
+	event.LogDistroModified(t.Context(), d.Id, "user1", oldDistro.DistroData(), d.DistroData())
+	eventsForDistro, err := event.FindLatestPrimaryDistroEvents(t.Context(), d.Id, 10, utility.ZeroTime)
 	assert.NoError(t, err)
 	require.Len(t, eventsForDistro, 1)
 	eventData, ok := eventsForDistro[0].Data.(*event.DistroEventData)

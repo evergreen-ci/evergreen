@@ -132,7 +132,7 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 		}
 
 		for _, p := range projects {
-			if err := p.Insert(); err != nil {
+			if err := p.Insert(t.Context()); err != nil {
 				return err
 			}
 			if _, err := model.GetNewRevisionOrderNumber(p.Id); err != nil {
@@ -145,20 +145,20 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 			Vars:        map[string]string{"a": "1", "b": "3", "d": "4"},
 			PrivateVars: map[string]bool{"b": true},
 		}
-		s.NoError(projVars.Insert())
+		s.NoError(projVars.Insert(t.Context()))
 
 		repoWithVars := &model.RepoRef{
 			ProjectRef: model.ProjectRef{
 				Id: repoProjectId,
 			},
 		}
-		s.Require().NoError(repoWithVars.Upsert())
+		s.Require().NoError(repoWithVars.Replace(t.Context()))
 		repoVars := &model.ProjectVars{
 			Id:          repoProjectId,
 			Vars:        map[string]string{"a": "a_from_repo", "c": "new"},
 			PrivateVars: map[string]bool{"a": true},
 		}
-		s.NoError(repoVars.Insert())
+		s.NoError(repoVars.Insert(t.Context()))
 
 		before := getMockProjectSettings()
 		after := getMockProjectSettings()
@@ -178,7 +178,7 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 
 		s.Require().NoError(db.ClearCollections(event.EventCollection))
 		for i := 0; i < projEventCount; i++ {
-			s.NoError(model.LogProjectModified(projectId, username, &before, &after))
+			s.NoError(model.LogProjectModified(t.Context(), projectId, username, &before, &after))
 		}
 
 		return nil
@@ -301,7 +301,7 @@ func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
 		PrivateVars:  map[string]bool{"b": false, "c": true},
 		VarsToDelete: varsToDelete,
 	}
-	s.NoError(UpdateProjectVars(projectId, &newVars, false))
+	s.NoError(UpdateProjectVars(s.T().Context(), projectId, &newVars, false))
 
 	s.Empty(newVars.Vars["b"]) // can't unredact previously redacted variables
 	s.Empty(newVars.Vars["c"])
@@ -335,9 +335,9 @@ func (s *ProjectConnectorGetSuite) TestUpdateProjectVars() {
 	newProjRef := model.ProjectRef{
 		Id: "new_project",
 	}
-	s.Require().NoError(newProjRef.Insert())
+	s.Require().NoError(newProjRef.Insert(s.T().Context()))
 	// successful upsert
-	s.NoError(UpdateProjectVars(newProjRef.Id, &newVars, false))
+	s.NoError(UpdateProjectVars(s.T().Context(), newProjRef.Id, &newVars, false))
 
 	dbUpsertedVars, err := model.FindOneProjectVars(s.T().Context(), newProjRef.Id)
 	s.NoError(err)
@@ -354,7 +354,7 @@ func (s *ProjectConnectorGetSuite) TestCopyProjectVars() {
 	pRef := model.ProjectRef{
 		Id: "project-copy",
 	}
-	s.Require().NoError(pRef.Insert())
+	s.Require().NoError(pRef.Insert(s.T().Context()))
 	s.NoError(model.CopyProjectVars(s.T().Context(), projectId, pRef.Id))
 	origProj, err := FindProjectVarsById(s.T().Context(), projectId, "", false)
 	s.NoError(err)
@@ -386,14 +386,14 @@ func TestGetProjectAliasResults(t *testing.T) {
 		Variant:   "^bv1$",
 		Task:      ".*",
 	}
-	require.NoError(t, alias1.Upsert())
+	require.NoError(t, alias1.Upsert(t.Context()))
 	alias2 := model.ProjectAlias{
 		Alias:     "select_bv2",
 		ProjectID: p.Identifier,
 		Variant:   "^bv2$",
 		Task:      ".*",
 	}
-	require.NoError(t, alias2.Upsert())
+	require.NoError(t, alias2.Upsert(t.Context()))
 
 	variantTasks, err := GetProjectAliasResults(t.Context(), &p, alias1.Alias, false)
 	assert.NoError(t, err)
@@ -440,14 +440,14 @@ func TestCreateProject(t *testing.T) {
 			assert.NotZero(t, utility.FromStringPtr(getValOut.SecretString))
 		},
 		"FailsWithAlreadyExistingID": func(ctx context.Context, t *testing.T, env *mock.Environment, pRef model.ProjectRef, u user.DBUser) {
-			require.NoError(t, pRef.Insert())
+			require.NoError(t, pRef.Insert(t.Context()))
 			pRef.Identifier = "some new identifier"
 			created, err := CreateProject(ctx, env, &pRef, &u)
 			require.Error(t, err)
 			require.False(t, created)
 		},
 		"FailsWithAlreadyExistingIdentifier": func(ctx context.Context, t *testing.T, env *mock.Environment, pRef model.ProjectRef, u user.DBUser) {
-			require.NoError(t, pRef.Insert())
+			require.NoError(t, pRef.Insert(t.Context()))
 			pRef.Id = "some new ID"
 			created, err := CreateProject(ctx, env, &pRef, &u)
 			require.Error(t, err)
@@ -523,7 +523,7 @@ func TestCreateProject(t *testing.T) {
 			adminUser := user.DBUser{
 				Id: "the_evergreen_admin",
 			}
-			require.NoError(t, adminUser.Insert())
+			require.NoError(t, adminUser.Insert(t.Context()))
 
 			tCase(tctx, t, env, pRef, adminUser)
 		})
@@ -534,7 +534,7 @@ func TestGetLegacyProjectEvents(t *testing.T) {
 	require.NoError(t, db.ClearCollections(event.EventCollection))
 
 	project := &model.ProjectRef{Id: projectId}
-	require.NoError(t, project.Insert())
+	require.NoError(t, project.Insert(t.Context()))
 
 	before := getMockProjectSettings()
 	after := getMockProjectSettings()
@@ -552,7 +552,7 @@ func TestGetLegacyProjectEvents(t *testing.T) {
 		},
 	}
 
-	require.NoError(t, h.Log())
+	require.NoError(t, h.Log(t.Context()))
 
 	events, err := GetProjectEventLog(t.Context(), projectId, time.Now(), 0)
 	require.NoError(t, err)
@@ -574,7 +574,7 @@ func TestRequestS3Creds(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(notification.Collection, evergreen.ConfigCollection))
 	assert.Error(t, RequestS3Creds(ctx, "", ""))
 	assert.NoError(t, RequestS3Creds(ctx, "identifier", "user@email.com"))
-	n, err := notification.FindUnprocessed()
+	n, err := notification.FindUnprocessed(t.Context())
 	assert.NoError(t, err)
 	assert.Empty(t, n)
 	projectCreationConfig := evergreen.ProjectCreationConfig{
@@ -582,7 +582,7 @@ func TestRequestS3Creds(t *testing.T) {
 	}
 	assert.NoError(t, projectCreationConfig.Set(ctx))
 	assert.NoError(t, RequestS3Creds(ctx, "identifier", "user@email.com"))
-	n, err = notification.FindUnprocessed()
+	n, err = notification.FindUnprocessed(t.Context())
 	assert.NoError(t, err)
 	assert.Len(t, n, 1)
 	assert.Equal(t, event.JIRAIssueSubscriberType, n[0].Subscriber.Type)
@@ -607,7 +607,7 @@ func TestHideBranch(t *testing.T) {
 			Repo:  "test_repo",
 		},
 	}
-	assert.NoError(t, repo.Upsert())
+	assert.NoError(t, repo.Replace(t.Context()))
 
 	project := &model.ProjectRef{
 		Identifier:  projectId,
@@ -620,7 +620,7 @@ func TestHideBranch(t *testing.T) {
 		Enabled:     true,
 		Hidden:      utility.ToBoolPtr(false),
 	}
-	require.NoError(t, project.Upsert())
+	require.NoError(t, project.Replace(t.Context()))
 
 	alias := model.ProjectAlias{
 		ProjectID: project.Id,
@@ -628,14 +628,14 @@ func TestHideBranch(t *testing.T) {
 		Variant:   "^bv1$",
 		Task:      ".*",
 	}
-	require.NoError(t, alias.Upsert())
+	require.NoError(t, alias.Upsert(t.Context()))
 
 	vars := &model.ProjectVars{
 		Id:          project.Id,
 		Vars:        map[string]string{"a": "1", "b": "3"},
 		PrivateVars: map[string]bool{"b": true},
 	}
-	require.NoError(t, vars.Insert())
+	require.NoError(t, vars.Insert(t.Context()))
 
 	err := HideBranch(t.Context(), project.Id)
 	assert.NoError(t, err)
@@ -653,7 +653,7 @@ func TestHideBranch(t *testing.T) {
 	}
 	assert.Equal(t, skeletonProj, *hiddenProj)
 
-	projAliases, err := model.FindAliasesForProjectFromDb(project.Id)
+	projAliases, err := model.FindAliasesForProjectFromDb(t.Context(), project.Id)
 	assert.NoError(t, err)
 	assert.Empty(t, projAliases)
 

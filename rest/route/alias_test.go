@@ -29,7 +29,7 @@ func TestGetAliasesHandler(t *testing.T) {
 			assert.Equal(t, "project_alias", utility.FromStringPtr(foundAlias.Alias))
 		},
 		"ReturnsRepoLevelAliases": func(ctx context.Context, t *testing.T, h *aliasGetHandler) {
-			projectAliases, err := dbModel.FindAliasesForProjectFromDb("project_ref")
+			projectAliases, err := dbModel.FindAliasesForProjectFromDb(ctx, "project_ref")
 			require.NoError(t, err)
 			require.Len(t, projectAliases, 1)
 			require.NoError(t, dbModel.RemoveProjectAlias(ctx, projectAliases[0].ID.Hex()))
@@ -99,8 +99,8 @@ func TestGetAliasesHandler(t *testing.T) {
 				RepoRefId:             "repo_ref",
 				VersionControlEnabled: utility.TruePtr(),
 			}
-			require.NoError(t, repoRef.Upsert())
-			require.NoError(t, projectRef.Upsert())
+			require.NoError(t, repoRef.Replace(t.Context()))
+			require.NoError(t, projectRef.Replace(t.Context()))
 
 			repoAlias := &dbModel.ProjectAlias{
 				ProjectID: repoRef.Id,
@@ -112,8 +112,8 @@ func TestGetAliasesHandler(t *testing.T) {
 				Alias:     "project_alias",
 				Variant:   "test_variant",
 			}
-			require.NoError(t, repoAlias.Upsert())
-			require.NoError(t, projectAlias.Upsert())
+			require.NoError(t, repoAlias.Upsert(t.Context()))
+			require.NoError(t, projectAlias.Upsert(t.Context()))
 
 			projectConfig := &dbModel.ProjectConfig{
 				Id:      "project-1",
@@ -126,7 +126,7 @@ func TestGetAliasesHandler(t *testing.T) {
 						},
 					},
 				}}
-			require.NoError(t, projectConfig.Insert())
+			require.NoError(t, projectConfig.Insert(t.Context()))
 
 			rh, ok := makeFetchAliases().(*aliasGetHandler)
 			require.True(t, ok)

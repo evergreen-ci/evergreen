@@ -29,9 +29,9 @@ type Volume struct {
 }
 
 // Insert a volume into the volumes collection.
-func (v *Volume) Insert() error {
+func (v *Volume) Insert(ctx context.Context) error {
 	v.CreationDate = time.Now()
-	return db.Insert(VolumesCollection, v)
+	return db.Insert(ctx, VolumesCollection, v)
 }
 
 func (v *Volume) SetHost(ctx context.Context, id string) error {
@@ -149,7 +149,7 @@ func FindVolumesWithTerminatedHost(ctx context.Context) ([]Volume, error) {
 	project := bson.M{"$project": bson.M{"host_doc": 0}}
 	pipeline := []bson.M{match, lookup, matchTerminatedHosts, project}
 	volumes := []Volume{}
-	if err := db.AggregateContext(ctx, VolumesCollection, pipeline, &volumes); err != nil {
+	if err := db.Aggregate(ctx, VolumesCollection, pipeline, &volumes); err != nil {
 		return nil, err
 	}
 	return volumes, nil
@@ -185,7 +185,7 @@ func FindTotalVolumeSizeByUser(ctx context.Context, user string) (int, error) {
 	}
 
 	out := []volumeSize{}
-	err := db.AggregateContext(ctx, VolumesCollection, pipeline, &out)
+	err := db.Aggregate(ctx, VolumesCollection, pipeline, &out)
 	if err != nil || len(out) == 0 {
 		return 0, err
 	}
@@ -250,7 +250,7 @@ func ValidateVolumeCanBeAttached(ctx context.Context, volumeID string) (*Volume,
 }
 
 func CountNoExpirationVolumesForUser(ctx context.Context, userID string) (int, error) {
-	return db.CountContext(ctx, VolumesCollection, bson.M{
+	return db.Count(ctx, VolumesCollection, bson.M{
 		VolumeNoExpirationKey: true,
 		VolumeCreatedByKey:    userID,
 	})

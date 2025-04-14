@@ -77,7 +77,7 @@ func setupCLITestHarness(ctx context.Context) cliTestHarness {
 		ShouldBeNil)
 	So(db.Clear(patch.Collection), ShouldBeNil)
 	So(db.Clear(model.ProjectRefCollection), ShouldBeNil)
-	So((&user.DBUser{Id: "testuser", APIKey: "testapikey", EmailAddress: "tester@mongodb.com"}).Insert(), ShouldBeNil)
+	So((&user.DBUser{Id: "testuser", APIKey: "testapikey", EmailAddress: "tester@mongodb.com"}).Insert(ctx), ShouldBeNil)
 	localConfBytes, err := os.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "sample.yml"))
 	So(err, ShouldBeNil)
 
@@ -90,20 +90,20 @@ func setupCLITestHarness(ctx context.Context) cliTestHarness {
 		Enabled:    true,
 		BatchTime:  180,
 	}
-	So(projectRef.Insert(), ShouldBeNil)
+	So(projectRef.Insert(ctx), ShouldBeNil)
 
 	version := &model.Version{
 		Id:         "sample_version",
 		Identifier: "sample",
 		Requester:  evergreen.RepotrackerVersionRequester,
 	}
-	So(version.Insert(), ShouldBeNil)
+	So(version.Insert(ctx), ShouldBeNil)
 
 	pp := model.ParserProject{}
 	err = util.UnmarshalYAMLWithFallback(localConfBytes, &pp)
 	So(err, ShouldBeNil)
 	pp.Id = "sample_version"
-	So(pp.Insert(), ShouldBeNil)
+	So(pp.Insert(ctx), ShouldBeNil)
 
 	d := distro.Distro{Id: "localtestdistro"}
 	So(d.Insert(ctx), ShouldBeNil)
@@ -229,7 +229,7 @@ func TestCLIFetchArtifacts(t *testing.T) {
 			Revision:     "abcdef1234",
 			DependsOn:    []task.Dependency{{TaskId: "rest_task_test_id2"}},
 			DisplayName:  "task_one",
-		}).Insert()
+		}).Insert(ctx)
 		So(err, ShouldBeNil)
 
 		err = (&task.Task{
@@ -238,21 +238,21 @@ func TestCLIFetchArtifacts(t *testing.T) {
 			BuildVariant: "rest_task_variant",
 			DependsOn:    []task.Dependency{},
 			DisplayName:  "task_two",
-		}).Insert()
+		}).Insert(ctx)
 		So(err, ShouldBeNil)
 
 		err = (&artifact.Entry{
 			TaskId:          "rest_task_test_id1",
 			TaskDisplayName: "task_one",
 			Files:           []artifact.File{{Link: "http://www.google.com/robots.txt"}},
-		}).Upsert()
+		}).Upsert(t.Context())
 		So(err, ShouldBeNil)
 
 		err = (&artifact.Entry{
 			TaskId:          "rest_task_test_id2",
 			TaskDisplayName: "task_two",
 			Files:           []artifact.File{{Link: "http://www.google.com/humans.txt"}},
-		}).Upsert()
+		}).Upsert(t.Context())
 		So(err, ShouldBeNil)
 
 		client, err := NewClientSettings(testSetup.settingsFilePath)
@@ -304,7 +304,7 @@ func TestCLITestHistory(t *testing.T) {
 				Identifier:          project,
 				Requester:           evergreen.RepotrackerVersionRequester,
 			}
-			So(testVersion.Insert(), ShouldBeNil)
+			So(testVersion.Insert(ctx), ShouldBeNil)
 			testVersion2 := model.Version{
 				Id:                  "version2",
 				Revision:            fmt.Sprintf("%vversion2", revisionBeginning),
@@ -312,7 +312,7 @@ func TestCLITestHistory(t *testing.T) {
 				Identifier:          project,
 				Requester:           evergreen.RepotrackerVersionRequester,
 			}
-			So(testVersion2.Insert(), ShouldBeNil)
+			So(testVersion2.Insert(ctx), ShouldBeNil)
 			testVersion3 := model.Version{
 				Id:                  "version3",
 				Revision:            fmt.Sprintf("%vversion3", revisionBeginning),
@@ -320,7 +320,7 @@ func TestCLITestHistory(t *testing.T) {
 				Identifier:          project,
 				Requester:           evergreen.RepotrackerVersionRequester,
 			}
-			So(testVersion3.Insert(), ShouldBeNil)
+			So(testVersion3.Insert(ctx), ShouldBeNil)
 			// create tasks with three different display names that start and finish at various times
 			for i := 0; i < 10; i++ {
 				tsk := task.Task{
@@ -333,7 +333,7 @@ func TestCLITestHistory(t *testing.T) {
 					Status:         evergreen.TaskFailed,
 					ResultsService: testresult.TestResultsServiceLocal,
 				}
-				So(tsk.Insert(), ShouldBeNil)
+				So(tsk.Insert(ctx), ShouldBeNil)
 
 				startTime := now.Add(time.Minute * time.Duration(i)).UTC()
 				endTime := now.Add(time.Minute * time.Duration(i+1)).UTC()

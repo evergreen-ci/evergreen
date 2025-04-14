@@ -155,8 +155,8 @@ type parserTask struct {
 	MustHaveResults   *bool                     `yaml:"must_have_test_results,omitempty" bson:"must_have_test_results,omitempty"`
 }
 
-func (pp *ParserProject) Insert() error {
-	return db.Insert(ParserProjectCollection, pp)
+func (pp *ParserProject) Insert(ctx context.Context) error {
+	return db.Insert(ctx, ParserProjectCollection, pp)
 }
 
 func (pp *ParserProject) MarshalBSON() ([]byte, error) {

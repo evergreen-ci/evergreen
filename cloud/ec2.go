@@ -39,8 +39,10 @@ type EC2ProviderSettings struct {
 	IPv6 bool `mapstructure:"ipv6" json:"ipv6,omitempty" bson:"ipv6,omitempty"`
 
 	// DoNotAssignPublicIPv4Address, if true, skips assigning a public IPv4
-	// address to hosts. Does not apply if the host is using IPv6 or spawn hosts
-	// which need an IPv4 address for SSH.
+	// address to task hosts. An AWS SSH key will be assigned to the host only
+	// if a public IPv4 address is also assigned.
+	// Does not apply if the host is using IPv6 or if the host is a spawn host
+	// or host.create host, which need an IPv4 address for SSH.
 	DoNotAssignPublicIPv4Address bool `mapstructure:"do_not_assign_public_ipv4_address" json:"do_not_assign_public_ipv4_address,omitempty" bson:"do_not_assign_public_ipv4_address,omitempty"`
 
 	// KeyName is the AWS SSH key name.
@@ -230,9 +232,12 @@ var (
 type EC2ManagerOptions struct {
 	// client is the client library for communicating with AWS.
 	client AWSClient
-
-	// region is the AWS region specified by distro
+	// region is the AWS region specified by the distro.
 	region string
+	// account is the AWS account in which API calls are being made.
+	account string
+	// role is the role to assume when making AWS API calls for a distro.
+	role string
 }
 
 // ec2Manager starts and configures instances in EC2.
@@ -250,7 +255,31 @@ func (m *ec2Manager) Configure(ctx context.Context, settings *evergreen.Settings
 		m.region = evergreen.DefaultEC2Region
 	}
 
+	role, err := getRoleForAccount(settings, m.account)
+	if err != nil {
+		return errors.Wrap(err, "getting role for account")
+	}
+	m.role = role
+
 	return nil
+}
+
+func getRoleForAccount(settings *evergreen.Settings, account string) (string, error) {
+	if account == "" {
+		return "", nil
+	}
+
+	for _, m := range settings.Providers.AWS.AccountRoles {
+		if m.Account == account {
+			return m.Role, nil
+		}
+	}
+
+	return "", errors.Errorf("account '%s' has no associated role", account)
+}
+
+func (m *ec2Manager) setupClient(ctx context.Context) error {
+	return m.client.Create(ctx, m.role, m.region)
 }
 
 func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings, blockDevices []types.BlockDeviceMapping) error {
@@ -258,7 +287,6 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 		MinCount:            aws.Int32(1),
 		MaxCount:            aws.Int32(1),
 		ImageId:             &ec2Settings.AMI,
-		KeyName:             &ec2Settings.KeyName,
 		InstanceType:        types.InstanceType(ec2Settings.InstanceType),
 		BlockDeviceMappings: blockDevices,
 		TagSpecifications:   makeTagSpecifications(makeTags(h)),
@@ -268,13 +296,14 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 		input.IamInstanceProfile = &types.IamInstanceProfileSpecification{Arn: aws.String(ec2Settings.IAMInstanceProfileARN)}
 	}
 
+	assignPublicIPv4 := shouldAssignPublicIPv4Address(h, ec2Settings)
+	if assignPublicIPv4 {
+		// Only set an SSH key for the host if the host actually has a public
+		// IPv4 address. Hosts that don't have a public IPv4 address aren't
+		// reachable with SSH even if a key is set.
+		input.KeyName = aws.String(ec2Settings.KeyName)
+	}
 	if ec2Settings.IsVpc {
-		assignPublicIPv4 := !ec2Settings.DoNotAssignPublicIPv4Address
-		if h.UserHost {
-			// Spawn hosts need a public IPv4 address so that users can SSH into
-			// them.
-			assignPublicIPv4 = true
-		}
 		input.NetworkInterfaces = []types.InstanceNetworkInterfaceSpecification{
 			{
 				AssociatePublicIpAddress: aws.Bool(assignPublicIPv4),
@@ -285,7 +314,6 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 		}
 		if ec2Settings.IPv6 {
 			input.NetworkInterfaces[0].Ipv6AddressCount = aws.Int32(1)
-			input.NetworkInterfaces[0].AssociatePublicIpAddress = aws.Bool(false)
 		}
 	} else {
 		input.SecurityGroups = ec2Settings.SecurityGroupIDs
@@ -427,7 +455,7 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 			h.Distro.Id, h.Distro.Provider)
 	}
 
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.setupClient(ctx); err != nil {
 		return nil, errors.Wrap(err, "creating client")
 	}
 
@@ -536,7 +564,7 @@ func (m *ec2Manager) setInstanceType(ctx context.Context, h *host.Host, instance
 }
 
 func (m *ec2Manager) CheckInstanceType(ctx context.Context, instanceType string) error {
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.setupClient(ctx); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
 	output, err := m.client.DescribeInstanceTypeOfferings(ctx, &ec2.DescribeInstanceTypeOfferingsInput{})
@@ -646,7 +674,7 @@ func (m *ec2Manager) extendExpiration(ctx context.Context, h *host.Host, extensi
 
 // ModifyHost modifies a spawn host according to the changes specified by a HostModifyOptions struct.
 func (m *ec2Manager) ModifyHost(ctx context.Context, h *host.Host, opts host.HostModifyOptions) error {
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.setupClient(ctx); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
 
@@ -725,7 +753,7 @@ func addPublicKey(ctx context.Context, h *host.Host, key string) error {
 
 // GetInstanceStatuses returns the current status of a slice of EC2 instances.
 func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host) (map[string]CloudStatus, error) {
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.setupClient(ctx); err != nil {
 		return nil, errors.Wrap(err, "creating client")
 	}
 
@@ -795,7 +823,7 @@ func (m *ec2Manager) GetInstanceStatuses(ctx context.Context, hosts []host.Host)
 func (m *ec2Manager) GetInstanceState(ctx context.Context, h *host.Host) (CloudInstanceState, error) {
 	info := CloudInstanceState{Status: StatusUnknown}
 
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.setupClient(ctx); err != nil {
 		return info, errors.Wrap(err, "creating client")
 	}
 
@@ -844,7 +872,7 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 		}))
 	}
 
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.setupClient(ctx); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
 
@@ -928,7 +956,7 @@ func (m *ec2Manager) StopInstance(ctx context.Context, h *host.Host, shouldKeepO
 		return errors.Errorf("host cannot be stopped because its status ('%s') is not a stoppable state", h.Status)
 	}
 
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.setupClient(ctx); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
 
@@ -1011,7 +1039,7 @@ func (m *ec2Manager) StartInstance(ctx context.Context, h *host.Host, user strin
 		return errors.Errorf("host cannot be started because its status ('%s') is not a startable state", h.Status)
 	}
 
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.setupClient(ctx); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
 
@@ -1057,7 +1085,7 @@ func (m *ec2Manager) StartInstance(ctx context.Context, h *host.Host, user strin
 }
 
 func (m *ec2Manager) AttachVolume(ctx context.Context, h *host.Host, attachment *host.VolumeAttachment) error {
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.setupClient(ctx); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
 
@@ -1097,7 +1125,7 @@ func (m *ec2Manager) DetachVolume(ctx context.Context, h *host.Host, volumeID st
 		return errors.Errorf("volume '%s' not found", volumeID)
 	}
 
-	if err = m.client.Create(ctx, m.region); err != nil {
+	if err = m.setupClient(ctx); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
 
@@ -1119,7 +1147,7 @@ func (m *ec2Manager) DetachVolume(ctx context.Context, h *host.Host, volumeID st
 }
 
 func (m *ec2Manager) CreateVolume(ctx context.Context, volume *host.Volume) (*host.Volume, error) {
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.setupClient(ctx); err != nil {
 		return nil, errors.Wrap(err, "creating client")
 	}
 
@@ -1157,7 +1185,7 @@ func (m *ec2Manager) CreateVolume(ctx context.Context, volume *host.Volume) (*ho
 	}
 
 	volume.ID = *resp.VolumeId
-	if err = volume.Insert(); err != nil {
+	if err = volume.Insert(ctx); err != nil {
 		return nil, errors.Wrap(err, "creating volume in DB")
 	}
 
@@ -1165,7 +1193,7 @@ func (m *ec2Manager) CreateVolume(ctx context.Context, volume *host.Volume) (*ho
 }
 
 func (m *ec2Manager) DeleteVolume(ctx context.Context, volume *host.Volume) error {
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.setupClient(ctx); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
 
@@ -1180,7 +1208,7 @@ func (m *ec2Manager) DeleteVolume(ctx context.Context, volume *host.Volume) erro
 }
 
 func (m *ec2Manager) GetVolumeAttachment(ctx context.Context, volumeID string) (*VolumeAttachment, error) {
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.setupClient(ctx); err != nil {
 		return nil, errors.Wrap(err, "creating client")
 	}
 
@@ -1235,7 +1263,7 @@ func (m *ec2Manager) modifyVolumeExpiration(ctx context.Context, volume *host.Vo
 }
 
 func (m *ec2Manager) ModifyVolume(ctx context.Context, volume *host.Volume, opts *model.VolumeModifyOptions) error {
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.setupClient(ctx); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
 
@@ -1290,7 +1318,7 @@ func (m *ec2Manager) ModifyVolume(ctx context.Context, volume *host.Volume, opts
 
 // GetDNSName returns the DNS name for the host.
 func (m *ec2Manager) GetDNSName(ctx context.Context, h *host.Host) (string, error) {
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.setupClient(ctx); err != nil {
 		return "", errors.Wrap(err, "creating client")
 	}
 

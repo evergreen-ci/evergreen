@@ -548,12 +548,11 @@ func (r *versionResolver) WaterfallBuilds(ctx context.Context, obj *restModel.AP
 		}
 	}
 
-	versionBuilds := []*model.WaterfallBuild{}
 	builds, err := model.GetVersionBuilds(ctx, versionID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting build variants for version '%s': %s", versionID, err.Error()))
 	}
-
+	versionBuilds := []*model.WaterfallBuild{}
 	for _, b := range builds {
 		bCopy := b
 		versionBuilds = append(versionBuilds, &bCopy)

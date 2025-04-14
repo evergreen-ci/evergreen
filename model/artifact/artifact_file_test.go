@@ -65,7 +65,7 @@ func (s *TestArtifactFileSuite) SetupTest() {
 
 	// hack to insert an entry without execution number (representative of
 	// existing data)
-	s.NoError(db.Insert(Collection, struct {
+	s.NoError(db.Insert(s.T().Context(), Collection, struct {
 		TaskId          string `json:"task" bson:"task"`
 		TaskDisplayName string `json:"task_name" bson:"task_name"`
 		BuildId         string `json:"build" bson:"build"`
@@ -87,10 +87,10 @@ func (s *TestArtifactFileSuite) SetupTest() {
 	}))
 
 	for _, entry := range s.testEntries {
-		s.NoError(entry.Upsert())
+		s.NoError(entry.Upsert(s.T().Context()))
 	}
 
-	count, err := db.Count(Collection, bson.M{})
+	count, err := db.Count(s.T().Context(), Collection, bson.M{})
 	s.NoError(err)
 	s.Equal(3, count)
 }
@@ -129,9 +129,9 @@ func (s *TestArtifactFileSuite) TestArtifactFieldsAfterUpdate() {
 			AWSSecret:      "secret",
 		},
 	}
-	s.NoError(s.testEntries[0].Upsert())
+	s.NoError(s.testEntries[0].Upsert(s.T().Context()))
 
-	count, err := db.Count(Collection, bson.M{})
+	count, err := db.Count(s.T().Context(), Collection, bson.M{})
 	s.NoError(err)
 	s.Equal(3, count)
 

@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"time"
 
 	"github.com/mongodb/anser/bsonutil"
@@ -29,14 +30,14 @@ type QuestionAnswer struct {
 	Answer string `json:"answer" bson:"answer"`
 }
 
-func (s *FeedbackSubmission) Insert() error {
-	return db.Insert(FeedbackCollection, s)
+func (s *FeedbackSubmission) Insert(ctx context.Context) error {
+	return db.Insert(ctx, FeedbackCollection, s)
 }
 
-func FindFeedbackOfType(t string) ([]FeedbackSubmission, error) {
+func FindFeedbackOfType(ctx context.Context, t string) ([]FeedbackSubmission, error) {
 	out := []FeedbackSubmission{}
 	query := db.Query(bson.M{FeedbackTypeKey: t})
-	err := db.FindAllQ(FeedbackCollection, query, &out)
+	err := db.FindAllQ(ctx, FeedbackCollection, query, &out)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding feedback documents")
 	}

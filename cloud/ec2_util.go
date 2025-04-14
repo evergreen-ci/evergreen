@@ -632,13 +632,14 @@ func validateEc2DescribeInstancesOutput(describeInstancesResponse *ec2.DescribeI
 	return catcher.Resolve()
 }
 
-func getEC2ManagerOptionsFromSettings(provider string, settings *EC2ProviderSettings) ManagerOpts {
+func getEC2ManagerOptionsFromSettings(d distro.Distro, settings *EC2ProviderSettings) ManagerOpts {
 	region := settings.Region
 	if region == "" {
 		region = evergreen.DefaultEC2Region
 	}
 	return ManagerOpts{
-		Provider: provider,
+		Provider: d.Provider,
+		Account:  d.ProviderAccount,
 		Region:   region,
 	}
 }
@@ -746,4 +747,15 @@ func isEC2InstanceNotFound(err error) bool {
 		return true
 	}
 	return false
+}
+
+func shouldAssignPublicIPv4Address(h *host.Host, ec2Settings *EC2ProviderSettings) bool {
+	if h.UserHost || h.SpawnOptions.SpawnedByTask {
+		// Spawn hosts and host.create hosts need to have a public IPv4 address
+		// because SSH is currently the only means for the user/task to access
+		// the host.
+		return true
+	}
+
+	return !ec2Settings.DoNotAssignPublicIPv4Address && !ec2Settings.IPv6
 }

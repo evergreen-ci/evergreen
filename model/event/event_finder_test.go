@@ -16,11 +16,11 @@ func TestMostRecentPaginatedPodEvents(t *testing.T) {
 		if i%2 == 0 {
 			podId = "pod2"
 		}
-		LogPodAssignedTask(podId, "task", i)
+		LogPodAssignedTask(t.Context(), podId, "task", i)
 	}
 
 	// Query for pod1 events, limit 10, page 0
-	events, count, err := MostRecentPaginatedPodEvents("pod1", 10, 0)
+	events, count, err := MostRecentPaginatedPodEvents(t.Context(), "pod1", 10, 0)
 	assert.NoError(t, err)
 	assert.Equal(t, 10, count)
 	assert.Len(t, events, 10)
@@ -31,13 +31,13 @@ func TestMostRecentPaginatedPodEvents(t *testing.T) {
 	}
 
 	// Query for pod1 events, limit 10, page 1
-	events, count, err = MostRecentPaginatedPodEvents("pod1", 10, 1)
+	events, count, err = MostRecentPaginatedPodEvents(t.Context(), "pod1", 10, 1)
 	assert.NoError(t, err)
 	assert.Equal(t, 10, count)
 	assert.Empty(t, events)
 
 	// Query for pod1 events, limit 5, page 1
-	events, count, err = MostRecentPaginatedPodEvents("pod1", 5, 1)
+	events, count, err = MostRecentPaginatedPodEvents(t.Context(), "pod1", 5, 1)
 	assert.NoError(t, err)
 	assert.Equal(t, 10, count)
 	assert.Len(t, events, 5)
@@ -47,7 +47,7 @@ func TestMostRecentPaginatedPodEvents(t *testing.T) {
 	}
 
 	// Query for pod1 events, limit 11, page 0
-	events, count, err = MostRecentPaginatedPodEvents("pod1", 11, 0)
+	events, count, err = MostRecentPaginatedPodEvents(t.Context(), "pod1", 11, 0)
 	assert.NoError(t, err)
 	assert.Equal(t, 10, count)
 	assert.Len(t, events, 10)
@@ -64,12 +64,12 @@ func TestGetPaginatedHostEvents(t *testing.T) {
 	tag := "host-tag"
 
 	// Log various events for the host.
-	LogHostCreated(hostID)                                               // HOST_CREATED
-	LogHostAgentDeployed(hostID)                                         // HOST_AGENT_DEPLOYED
-	LogHostDNSNameSet(hostID, "dns-name")                                // HOST_DNS_NAME_SET
-	LogHostTaskFinished("task-1", 0, hostID, evergreen.TaskSystemFailed) // HOST_TASK_FINISHED
-	LogHostModifySucceeded(hostID, evergreen.User)                       // HOST_MODIFIED
-	LogHostTaskFinished("task-2", 0, tag, evergreen.TaskSucceeded)       // HOST_TASK_FINISHED
+	LogHostCreated(t.Context(), hostID)                                               // HOST_CREATED
+	LogHostAgentDeployed(t.Context(), hostID)                                         // HOST_AGENT_DEPLOYED
+	LogHostDNSNameSet(t.Context(), hostID, "dns-name")                                // HOST_DNS_NAME_SET
+	LogHostTaskFinished(t.Context(), "task-1", 0, hostID, evergreen.TaskSystemFailed) // HOST_TASK_FINISHED
+	LogHostModifySucceeded(t.Context(), hostID, evergreen.User)                       // HOST_MODIFIED
+	LogHostTaskFinished(t.Context(), "task-2", 0, tag, evergreen.TaskSucceeded)       // HOST_TASK_FINISHED
 
 	// Filters by tag correctly.
 	opts := PaginatedHostEventsOpts{
@@ -80,7 +80,7 @@ func TestGetPaginatedHostEvents(t *testing.T) {
 		SortAsc:    false,
 		EventTypes: []string{},
 	}
-	entries, totalCount, err := GetPaginatedHostEvents(opts)
+	entries, totalCount, err := GetPaginatedHostEvents(t.Context(), opts)
 	require.NoError(t, err)
 	require.Equal(t, 5, totalCount)
 	require.NotNil(t, entries[0])
@@ -94,7 +94,7 @@ func TestGetPaginatedHostEvents(t *testing.T) {
 		SortAsc:    false,
 		EventTypes: []string{},
 	}
-	entries, totalCount, err = GetPaginatedHostEvents(opts)
+	entries, totalCount, err = GetPaginatedHostEvents(t.Context(), opts)
 	require.NoError(t, err)
 	require.Equal(t, 6, totalCount)
 	require.NotNil(t, entries[0])
@@ -109,7 +109,7 @@ func TestGetPaginatedHostEvents(t *testing.T) {
 		SortAsc:    false,
 		EventTypes: []string{EventHostTaskFinished},
 	}
-	entries, totalCount, err = GetPaginatedHostEvents(opts)
+	entries, totalCount, err = GetPaginatedHostEvents(t.Context(), opts)
 	require.NoError(t, err)
 	require.Equal(t, 2, totalCount)
 	require.NotNil(t, entries[0])
@@ -126,7 +126,7 @@ func TestGetPaginatedHostEvents(t *testing.T) {
 		SortAsc:    true,
 		EventTypes: []string{},
 	}
-	entries, totalCount, err = GetPaginatedHostEvents(opts)
+	entries, totalCount, err = GetPaginatedHostEvents(t.Context(), opts)
 	require.NoError(t, err)
 	require.Equal(t, 6, totalCount)
 	require.NotNil(t, entries[0])
@@ -140,15 +140,15 @@ func TestGetEventTypesForHost(t *testing.T) {
 	tag := "host-tag"
 
 	// Log various events for the host.
-	LogHostCreated(hostID)                                               // HOST_CREATED
-	LogHostAgentDeployed(hostID)                                         // HOST_AGENT_DEPLOYED
-	LogHostDNSNameSet(hostID, "dns-name")                                // HOST_DNS_NAME_SET
-	LogHostTaskFinished("task-1", 0, hostID, evergreen.TaskSystemFailed) // HOST_TASK_FINISHED
-	LogHostModifySucceeded(hostID, evergreen.User)                       // HOST_MODIFIED
-	LogHostTaskFinished("task-2", 0, tag, evergreen.TaskSucceeded)       // HOST_TASK_FINISHED
+	LogHostCreated(t.Context(), hostID)                                               // HOST_CREATED
+	LogHostAgentDeployed(t.Context(), hostID)                                         // HOST_AGENT_DEPLOYED
+	LogHostDNSNameSet(t.Context(), hostID, "dns-name")                                // HOST_DNS_NAME_SET
+	LogHostTaskFinished(t.Context(), "task-1", 0, hostID, evergreen.TaskSystemFailed) // HOST_TASK_FINISHED
+	LogHostModifySucceeded(t.Context(), hostID, evergreen.User)                       // HOST_MODIFIED
+	LogHostTaskFinished(t.Context(), "task-2", 0, tag, evergreen.TaskSucceeded)       // HOST_TASK_FINISHED
 
 	// Should return non-duplicate host event types.
-	eventTypes, err := GetEventTypesForHost(hostID, tag)
+	eventTypes, err := GetEventTypesForHost(t.Context(), hostID, tag)
 	require.NoError(t, err)
 	require.NotNil(t, eventTypes)
 	require.Len(t, eventTypes, 5)
@@ -158,7 +158,7 @@ func TestGetEventTypesForHost(t *testing.T) {
 	}
 
 	// Should return 0 event types if a host has no events.
-	eventTypes, err = GetEventTypesForHost("host-with-no-events", "")
+	eventTypes, err = GetEventTypesForHost(t.Context(), "host-with-no-events", "")
 	require.NoError(t, err)
 	require.NotNil(t, eventTypes)
 	require.Empty(t, eventTypes)

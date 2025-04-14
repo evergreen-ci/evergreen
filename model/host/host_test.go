@@ -1913,7 +1913,7 @@ func TestHostStats(t *testing.T) {
 	assert.NoError(host8.Insert(ctx))
 
 	// test GetStatsByDistro
-	stats, err := GetStatsByDistro()
+	stats, err := GetStatsByDistro(t.Context())
 	assert.NoError(err)
 	for _, entry := range stats {
 		if entry.Distro == d1 {
@@ -1970,9 +1970,9 @@ func TestHostFindingWithTask(t *testing.T) {
 		Id:     "host4",
 		Status: evergreen.HostTerminated,
 	}
-	assert.NoError(task1.Insert())
-	assert.NoError(task2.Insert())
-	assert.NoError(task3.Insert())
+	assert.NoError(task1.Insert(t.Context()))
+	assert.NoError(task2.Insert(t.Context()))
+	assert.NoError(task3.Insert(t.Context()))
 	assert.NoError(host1.Insert(ctx))
 	assert.NoError(host2.Insert(ctx))
 	assert.NoError(host3.Insert(ctx))
@@ -2026,7 +2026,7 @@ func TestInactiveHostCountPipeline(t *testing.T) {
 	assert.NoError(h5.Insert(ctx))
 
 	var out []InactiveHostCounts
-	err := db.Aggregate(Collection, inactiveHostCountPipeline(), &out)
+	err := db.Aggregate(t.Context(), Collection, inactiveHostCountPipeline(), &out)
 	assert.NoError(err)
 	assert.Len(out, 2)
 	for _, count := range out {
@@ -2959,7 +2959,7 @@ func TestLastContainerFinishTimePipeline(t *testing.T) {
 		},
 		StartTime: startTimeOne,
 	}
-	assert.NoError(t1.Insert())
+	assert.NoError(t1.Insert(t.Context()))
 	t2 := task.Task{
 		Id: "t2",
 		DurationPrediction: util.CachedDurationValue{
@@ -2967,7 +2967,7 @@ func TestLastContainerFinishTimePipeline(t *testing.T) {
 		},
 		StartTime: startTimeTwo,
 	}
-	assert.NoError(t2.Insert())
+	assert.NoError(t2.Insert(t.Context()))
 	t3 := task.Task{
 		Id: "t3",
 		DurationPrediction: util.CachedDurationValue{
@@ -2975,7 +2975,7 @@ func TestLastContainerFinishTimePipeline(t *testing.T) {
 		},
 		StartTime: startTimeThree,
 	}
-	assert.NoError(t3.Insert())
+	assert.NoError(t3.Insert(t.Context()))
 	t4 := task.Task{
 		Id: "t4",
 		DurationPrediction: util.CachedDurationValue{
@@ -2983,7 +2983,7 @@ func TestLastContainerFinishTimePipeline(t *testing.T) {
 		},
 		StartTime: startTimeOne,
 	}
-	assert.NoError(t4.Insert())
+	assert.NoError(t4.Insert(t.Context()))
 	t5 := task.Task{
 		Id: "t5",
 		DurationPrediction: util.CachedDurationValue{
@@ -2991,7 +2991,7 @@ func TestLastContainerFinishTimePipeline(t *testing.T) {
 		},
 		StartTime: startTimeOne,
 	}
-	assert.NoError(t5.Insert())
+	assert.NoError(t5.Insert(t.Context()))
 	t6 := task.Task{
 		Id: "t6",
 		DurationPrediction: util.CachedDurationValue{
@@ -2999,12 +2999,12 @@ func TestLastContainerFinishTimePipeline(t *testing.T) {
 		},
 		StartTime: startTimeOne,
 	}
-	assert.NoError(t6.Insert())
+	assert.NoError(t6.Insert(t.Context()))
 
 	var out []FinishTime
 	var results = make(map[string]time.Time)
 
-	err := db.Aggregate(Collection, lastContainerFinishTimePipeline(), &out)
+	err := db.Aggregate(t.Context(), Collection, lastContainerFinishTimePipeline(), &out)
 	assert.NoError(err)
 
 	for _, doc := range out {
@@ -3382,18 +3382,18 @@ func TestHostsSpawnedByTasks(t *testing.T) {
 		Id:     "running_task",
 		Status: evergreen.TaskSucceeded,
 	}
-	require.NoError(finishedTask.Insert())
+	require.NoError(finishedTask.Insert(t.Context()))
 	finishedTaskNewExecution := &task.Task{
 		Id:        "restarted_task",
 		Status:    evergreen.TaskStarted,
 		Execution: 1,
 	}
-	require.NoError(finishedTaskNewExecution.Insert())
+	require.NoError(finishedTaskNewExecution.Insert(t.Context()))
 	finishedBuild := &build.Build{
 		Id:     "running_build",
 		Status: evergreen.BuildSucceeded,
 	}
-	require.NoError(finishedBuild.Insert())
+	require.NoError(finishedBuild.Insert(t.Context()))
 	hosts := []*Host{
 		{
 			Id:     "running_host_timeout",
@@ -4164,8 +4164,8 @@ func TestFindAvailableParent(t *testing.T) {
 	assert.NoError(host2.Insert(ctx))
 	assert.NoError(host3.Insert(ctx))
 	assert.NoError(host4.Insert(ctx))
-	assert.NoError(task1.Insert())
-	assert.NoError(task2.Insert())
+	assert.NoError(task1.Insert(t.Context()))
+	assert.NoError(task2.Insert(t.Context()))
 
 	availableParent, err := GetContainersOnParents(ctx, d)
 	assert.NoError(err)
@@ -4240,8 +4240,8 @@ func TestFindNoAvailableParent(t *testing.T) {
 	assert.NoError(host2.Insert(ctx))
 	assert.NoError(host3.Insert(ctx))
 	assert.NoError(host4.Insert(ctx))
-	assert.NoError(task1.Insert())
-	assert.NoError(task2.Insert())
+	assert.NoError(task1.Insert(t.Context()))
+	assert.NoError(task2.Insert(t.Context()))
 
 	availableParent, err := GetContainersOnParents(ctx, d)
 	assert.NoError(err)
@@ -4550,7 +4550,7 @@ func TestAggregateSpawnhostData(t *testing.T) {
 		},
 	}
 	for _, v := range volumes {
-		assert.NoError(t, v.Insert())
+		assert.NoError(t, v.Insert(t.Context()))
 	}
 
 	res, err := AggregateSpawnhostData(ctx)
@@ -5277,13 +5277,13 @@ func TestFindHostsSuite(t *testing.T) {
 			user := &user.DBUser{
 				Id: id,
 			}
-			s.NoError(user.Insert())
+			s.NoError(user.Insert(t.Context()))
 		}
 		root := user.DBUser{
 			Id:          "root",
 			SystemRoles: []string{"root"},
 		}
-		s.NoError(root.Insert())
+		s.NoError(root.Insert(t.Context()))
 		rm := evergreen.GetEnvironment().RoleManager()
 		s.NoError(rm.AddScope(gimlet.Scope{
 			ID:        "root",

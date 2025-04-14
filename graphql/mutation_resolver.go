@@ -68,7 +68,7 @@ func (r *mutationResolver) AddAnnotationIssue(ctx context.Context, taskID string
 		}
 		return true, nil
 	} else {
-		if err := annotations.AddSuspectedIssueToAnnotation(taskID, execution, *issue, usr.Username()); err != nil {
+		if err := annotations.AddSuspectedIssueToAnnotation(ctx, taskID, execution, *issue, usr.Username()); err != nil {
 			return false, InternalServerError.Send(ctx, fmt.Sprintf("adding suspected issue: %s", err.Error()))
 		}
 		return true, nil
@@ -226,11 +226,11 @@ func (r *mutationResolver) SaveDistro(ctx context.Context, opts SaveDistroInput)
 		}
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("updating distro '%s': %s", d.Id, err.Error()))
 	}
-	event.LogDistroModified(d.Id, usr.Username(), oldDistro.DistroData(), d.DistroData())
+	event.LogDistroModified(ctx, d.Id, usr.Username(), oldDistro.DistroData(), d.DistroData())
 
 	// AMI events are not displayed in the event log, but are used by the backend to determine if hosts have become stale.
 	if d.GetDefaultAMI() != oldDistro.GetDefaultAMI() {
-		event.LogDistroAMIModified(d.Id, usr.Username())
+		event.LogDistroAMIModified(ctx, d.Id, usr.Username())
 	}
 
 	numHostsUpdated, err := handleDistroOnSaveOperation(ctx, d.Id, opts.OnSave, usr.Username())
@@ -299,7 +299,7 @@ func (r *mutationResolver) UpdateHostStatus(ctx context.Context, hostIds []strin
 func (r *mutationResolver) SetPatchVisibility(ctx context.Context, patchIds []string, hidden bool) ([]*restModel.APIPatch, error) {
 	user := mustHaveUser(ctx)
 	updatedPatches := []*restModel.APIPatch{}
-	patches, err := patch.Find(patch.ByStringIds(patchIds))
+	patches, err := patch.Find(ctx, patch.ByStringIds(patchIds))
 
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching patches '%s': %s", patchIds, err.Error()))
@@ -496,7 +496,7 @@ func (r *mutationResolver) DeleteGithubAppCredentials(ctx context.Context, opts 
 	after := model.ProjectSettings{
 		GitHubAppAuth: githubapp.GithubAppAuth{},
 	}
-	if err = model.LogProjectModified(opts.ProjectID, usr.Id, &before, &after); err != nil {
+	if err = model.LogProjectModified(ctx, opts.ProjectID, usr.Id, &before, &after); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("logging modification for project '%s': %s", opts.ProjectID, err.Error()))
 	}
 	return &DeleteGithubAppCredentialsPayload{
@@ -752,6 +752,20 @@ func (r *mutationResolver) SpawnHost(ctx context.Context, spawnHostInput *SpawnH
 	options, err := getHostRequestOptions(ctx, usr, spawnHostInput)
 	if err != nil {
 		return nil, err
+	}
+
+	if !usr.HasDistroCreatePermission() {
+		d, err := distro.FindOneId(ctx, options.DistroID)
+		if err != nil {
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching distro '%s': %s", options.DistroID, err.Error()))
+		}
+		if d == nil {
+			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("distro '%s' not found", options.DistroID))
+		}
+		if d.AdminOnly {
+			// Admin-only distros can only be spawned by distro admins.
+			return nil, Forbidden.Send(ctx, fmt.Sprintf("not authorized to spawn host in admin-only distro '%s'", options.DistroID))
+		}
 	}
 
 	spawnHost, err := data.NewIntentHost(ctx, options, usr, evergreen.GetEnvironment())
@@ -1085,7 +1099,7 @@ func (r *mutationResolver) AddFavoriteProject(ctx context.Context, opts AddFavor
 func (r *mutationResolver) ClearMySubscriptions(ctx context.Context) (int, error) {
 	usr := mustHaveUser(ctx)
 	username := usr.Username()
-	subs, err := event.FindSubscriptionsByOwner(username, event.OwnerTypePerson)
+	subs, err := event.FindSubscriptionsByOwner(ctx, username, event.OwnerTypePerson)
 	if err != nil {
 		return 0, InternalServerError.Send(ctx, fmt.Sprintf("retrieving subscriptions for user '%s': %s", usr.Id, err.Error()))
 	}

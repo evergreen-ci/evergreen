@@ -15,9 +15,9 @@ func TestPodEvents(t *testing.T) {
 			oldStatus := "initializing"
 			newStatus := "starting"
 			reason := "some reason"
-			LogPodStatusChanged(id, oldStatus, newStatus, reason)
+			LogPodStatusChanged(t.Context(), id, oldStatus, newStatus, reason)
 
-			events, err := Find(MostRecentPodEvents(id, 10))
+			events, err := Find(t.Context(), MostRecentPodEvents(id, 10))
 			require.NoError(t, err)
 			require.Len(t, events, 1)
 
@@ -33,9 +33,9 @@ func TestPodEvents(t *testing.T) {
 			podID := "pod_id"
 			taskID := "task_id"
 			execution := 5
-			LogPodAssignedTask(podID, taskID, 5)
+			LogPodAssignedTask(t.Context(), podID, taskID, 5)
 
-			events, err := Find(MostRecentPodEvents(podID, 10))
+			events, err := Find(t.Context(), MostRecentPodEvents(podID, 10))
 			require.NoError(t, err)
 			require.Len(t, events, 1)
 

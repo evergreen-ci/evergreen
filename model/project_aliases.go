@@ -92,12 +92,12 @@ const (
 type ProjectAliases []ProjectAlias
 
 // FindAliasesForProjectFromDb fetches all aliases for a given project without merging with aliases from the parser project
-func FindAliasesForProjectFromDb(projectID string) ([]ProjectAlias, error) {
+func FindAliasesForProjectFromDb(ctx context.Context, projectID string) ([]ProjectAlias, error) {
 	var out []ProjectAlias
 	q := db.Query(bson.M{
 		projectIDKey: projectID,
 	})
-	err := db.FindAllQ(ProjectAliasCollection, q, &out)
+	err := db.FindAllQ(ctx, ProjectAliasCollection, q, &out)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding project aliases")
 	}
@@ -143,12 +143,12 @@ func mergeProjectConfigAndAliases(projectConfig *ProjectConfig, dbAliases []Proj
 }
 
 // FindAliasesForRepo fetches all aliases for a given project
-func FindAliasesForRepo(repoId string) ([]ProjectAlias, error) {
+func FindAliasesForRepo(ctx context.Context, repoId string) ([]ProjectAlias, error) {
 	out := []ProjectAlias{}
 	q := db.Query(bson.M{
 		projectIDKey: repoId,
 	})
-	err := db.FindAllQ(ProjectAliasCollection, q, &out)
+	err := db.FindAllQ(ctx, ProjectAliasCollection, q, &out)
 	if err != nil {
 		return nil, err
 	}
@@ -158,13 +158,13 @@ func FindAliasesForRepo(repoId string) ([]ProjectAlias, error) {
 
 // findMatchingAliasForRepo finds all aliases with a given name for a repo.
 // Typically FindAliasInProjectRepoOrConfig should be used.
-func findMatchingAliasForRepo(repoID, alias string) ([]ProjectAlias, error) {
+func findMatchingAliasForRepo(ctx context.Context, repoID, alias string) ([]ProjectAlias, error) {
 	var out []ProjectAlias
 	q := db.Query(bson.M{
 		projectIDKey: repoID,
 		aliasKey:     alias,
 	})
-	err := db.FindAllQ(ProjectAliasCollection, q, &out)
+	err := db.FindAllQ(ctx, ProjectAliasCollection, q, &out)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding project aliases for repo")
 	}
@@ -173,13 +173,13 @@ func findMatchingAliasForRepo(repoID, alias string) ([]ProjectAlias, error) {
 
 // findMatchingAliasForProjectRef finds all aliases with a given name for a project.
 // Typically FindAliasInProjectRepoOrConfig should be used.
-func findMatchingAliasForProjectRef(projectID, alias string) ([]ProjectAlias, error) {
+func findMatchingAliasForProjectRef(ctx context.Context, projectID, alias string) ([]ProjectAlias, error) {
 	var out []ProjectAlias
 	q := db.Query(bson.M{
 		projectIDKey: projectID,
 		aliasKey:     alias,
 	})
-	err := db.FindAllQ(ProjectAliasCollection, q, &out)
+	err := db.FindAllQ(ctx, ProjectAliasCollection, q, &out)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding project aliases")
 	}
@@ -241,11 +241,11 @@ const patchAliasKey = "patch_alias"
 
 // ConstructMergedAliasesByPrecedence will construct a merged list of aliases based on what aliases
 // are found at the project level, repo level, and project config level.
-func ConstructMergedAliasesByPrecedence(projectRef *ProjectRef, projectConfig *ProjectConfig, repoId string) ([]ProjectAlias, error) {
+func ConstructMergedAliasesByPrecedence(ctx context.Context, projectRef *ProjectRef, projectConfig *ProjectConfig, repoId string) ([]ProjectAlias, error) {
 	var projectAliases []ProjectAlias
 	var err error
 	if projectRef != nil {
-		projectAliases, err = FindAliasesForProjectFromDb(projectRef.Id)
+		projectAliases, err = FindAliasesForProjectFromDb(ctx, projectRef.Id)
 		if err != nil {
 			return nil, errors.Wrap(err, "finding project aliases")
 		}
@@ -269,7 +269,7 @@ func ConstructMergedAliasesByPrecedence(projectRef *ProjectRef, projectConfig *P
 	uncoveredAliases := uncoveredAliasTypes(aliasesToReturn)
 	if len(uncoveredAliases) > 0 && repoId != "" {
 		// Get repo aliases and merge with project aliases
-		repoAliases, err := FindAliasesForRepo(repoId)
+		repoAliases, err := FindAliasesForRepo(ctx, repoId)
 		if err != nil {
 			return nil, errors.Wrap(err, "finding repo aliases")
 		}
@@ -338,7 +338,7 @@ func FindAliasInProjectRepoOrProjectConfig(ctx context.Context, projectID, alias
 // findAliasInProjectOrRepoFromDb finds all aliases with a given name for a project without merging with parser project.
 // If the project has no aliases, the repo is checked for aliases.
 func findAliasInProjectOrRepoFromDb(ctx context.Context, projectID, alias string) ([]ProjectAlias, error) {
-	aliases, err := findMatchingAliasForProjectRef(projectID, alias)
+	aliases, err := findMatchingAliasForProjectRef(ctx, projectID, alias)
 	if err != nil {
 		return aliases, errors.Wrapf(err, "finding aliases for project ref '%s'", projectID)
 	}
@@ -360,7 +360,7 @@ func tryGetRepoAliases(ctx context.Context, projectID string, alias string, alia
 		return aliases, nil
 	}
 
-	aliases, err = findMatchingAliasForRepo(project.RepoRefId, alias)
+	aliases, err = findMatchingAliasForRepo(ctx, project.RepoRefId, alias)
 	if err != nil {
 		return aliases, errors.Wrapf(err, "finding aliases for repo '%s'", project.RepoRefId)
 	}
@@ -381,13 +381,13 @@ func HasMatchingGitTagAliasAndRemotePath(ctx context.Context, projectId, tag str
 }
 
 // CopyProjectAliases finds the aliases for a given project and inserts them for the new project.
-func CopyProjectAliases(oldProjectId, newProjectId string) error {
-	aliases, err := FindAliasesForProjectFromDb(oldProjectId)
+func CopyProjectAliases(ctx context.Context, oldProjectId, newProjectId string) error {
+	aliases, err := FindAliasesForProjectFromDb(ctx, oldProjectId)
 	if err != nil {
 		return errors.Wrapf(err, "finding aliases for project '%s'", oldProjectId)
 	}
 	if aliases != nil {
-		if err = UpsertAliasesForProject(aliases, newProjectId); err != nil {
+		if err = UpsertAliasesForProject(ctx, aliases, newProjectId); err != nil {
 			return errors.Wrapf(err, "inserting aliases for project '%s'", newProjectId)
 		}
 	}
@@ -419,7 +419,7 @@ func IsValidId(id string) bool {
 // NewId constructs a valid patch Id from the given hex string.
 func NewId(id string) mgobson.ObjectId { return mgobson.ObjectIdHex(id) }
 
-func (p *ProjectAlias) Upsert() error {
+func (p *ProjectAlias) Upsert(ctx context.Context) error {
 	if len(p.ProjectID) == 0 {
 		return errors.New("empty project ID")
 	}
@@ -439,7 +439,7 @@ func (p *ProjectAlias) Upsert() error {
 		parametersKey:  p.Parameters,
 	}
 
-	_, err := db.Upsert(ProjectAliasCollection, bson.M{
+	_, err := db.Upsert(ctx, ProjectAliasCollection, bson.M{
 		idKey: p.ID,
 	}, bson.M{"$set": update})
 	if err != nil {
@@ -448,14 +448,14 @@ func (p *ProjectAlias) Upsert() error {
 	return nil
 }
 
-func UpsertAliasesForProject(aliases []ProjectAlias, projectId string) error {
+func UpsertAliasesForProject(ctx context.Context, aliases []ProjectAlias, projectId string) error {
 	catcher := grip.NewBasicCatcher()
 	for i := range aliases {
 		if aliases[i].ProjectID != projectId { // new project, so we need a new document (new ID)
 			aliases[i].ProjectID = projectId
 			aliases[i].ID = ""
 		}
-		catcher.Add(aliases[i].Upsert())
+		catcher.Add(aliases[i].Upsert(ctx))
 	}
 	grip.Debug(message.WrapError(catcher.Resolve(), message.Fields{
 		"message":    "problem getting aliases",

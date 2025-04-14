@@ -66,7 +66,7 @@ func TestGenerateExecuteWithSmallFileInDB(t *testing.T) {
 		Id:      "task_id",
 		Version: "version_id",
 	}
-	require.NoError(t, tsk.Insert())
+	require.NoError(t, tsk.Insert(t.Context()))
 
 	env := &mock.Environment{}
 	require.NoError(t, env.Configure(ctx))
@@ -129,7 +129,7 @@ func TestGenerateExecuteWithLargeFileInS3(t *testing.T) {
 		Id:      "task_id",
 		Version: "version_id",
 	}
-	require.NoError(t, tsk.Insert())
+	require.NoError(t, tsk.Insert(t.Context()))
 
 	// Create string that is over the DB's 16 MB document limit to ensure it
 	// gets stored in S3.
@@ -197,7 +197,7 @@ func TestGeneratePollRun(t *testing.T) {
 		},
 	}
 	for _, task := range tasks {
-		require.NoError(t, task.Insert())
+		require.NoError(t, task.Insert(t.Context()))
 	}
 
 	h := makeGenerateTasksPollHandler()

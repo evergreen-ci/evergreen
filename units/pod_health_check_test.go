@@ -27,7 +27,7 @@ func TestPodHealthCheckJob(t *testing.T) {
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, j *podHealthCheckJob){
 		"EnqueuesPodTerminationJobForStoppedCloudPod": func(ctx context.Context, t *testing.T, j *podHealthCheckJob) {
-			require.NoError(t, j.pod.Insert())
+			require.NoError(t, j.pod.Insert(t.Context()))
 			require.NoError(t, j.ecsPod.Delete(ctx))
 
 			j.Run(ctx)
@@ -43,7 +43,7 @@ func TestPodHealthCheckJob(t *testing.T) {
 			assert.True(t, podTerminationJobFound, "should enqueue pod termination job for unhealthy pod")
 		},
 		"NoopsForRunningCloudPod": func(ctx context.Context, t *testing.T, j *podHealthCheckJob) {
-			require.NoError(t, j.pod.Insert())
+			require.NoError(t, j.pod.Insert(t.Context()))
 
 			j.Run(ctx)
 			require.NoError(t, j.Error())
@@ -59,7 +59,7 @@ func TestPodHealthCheckJob(t *testing.T) {
 		},
 		"NoopsForAlreadyTerminatedPod": func(ctx context.Context, t *testing.T, j *podHealthCheckJob) {
 			j.pod.Status = pod.StatusTerminated
-			require.NoError(t, j.pod.Insert())
+			require.NoError(t, j.pod.Insert(t.Context()))
 
 			j.Run(ctx)
 			require.NoError(t, j.Error())

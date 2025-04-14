@@ -52,7 +52,7 @@ func TestModifyHostStatusWithUpdateStatus(t *testing.T) {
 			Limit:   1,
 			SortAsc: false,
 		}
-		events, err := event.Find(event.HostEvents(hostEventOpts))
+		events, err := event.Find(t.Context(), event.HostEvents(hostEventOpts))
 		assert.NoError(err)
 		assert.Len(events, 1)
 		hostevent, ok := events[0].Data.(*event.HostEventData)

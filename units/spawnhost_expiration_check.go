@@ -95,7 +95,7 @@ func (j *spawnhostExpirationCheckJob) Run(ctx context.Context) {
 
 // tryIdleSpawnHostNotification attempts to insert a subscription and notification for this spawn host.
 func tryIdleSpawnHostNotification(ctx context.Context, h *host.Host) error {
-	shouldNotify, err := h.ShouldNotifyStoppedSpawnHostIdle()
+	shouldNotify, err := h.ShouldNotifyStoppedSpawnHostIdle(ctx)
 	if err != nil || !shouldNotify {
 		return err
 	}
@@ -108,10 +108,10 @@ func tryIdleSpawnHostNotification(ctx context.Context, h *host.Host) error {
 	}
 	subscriber := event.NewEmailSubscriber(usr.Email())
 	subscription := event.NewSpawnHostIdleWarningSubscription(h.Id, subscriber)
-	if err = subscription.Upsert(); err != nil {
+	if err = subscription.Upsert(ctx); err != nil {
 		return errors.Wrap(err, "upserting idle spawn host subscription")
 	}
 
-	event.LogSpawnHostIdleNotification(h.Id)
+	event.LogSpawnHostIdleNotification(ctx, h.Id)
 	return nil
 }

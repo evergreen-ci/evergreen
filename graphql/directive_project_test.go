@@ -25,12 +25,12 @@ func TestRequireProjectAccess(t *testing.T) {
 			SlackMemberId: "testuser",
 		},
 	}
-	require.NoError(t, dbUser.Insert())
+	require.NoError(t, dbUser.Insert(t.Context()))
 
 	project := &model.ProjectRef{
 		Id: "project_id",
 	}
-	require.NoError(t, project.Insert())
+	require.NoError(t, project.Insert(t.Context()))
 
 	const email = "testuser@mongodb.com"
 	const accessToken = "access_token"
@@ -100,18 +100,18 @@ func TestRequireProjectAccessForSettings(t *testing.T) {
 		Identifier: "project_identifier",
 		RepoRefId:  "repo_id",
 	}
-	err = projectRef.Insert()
+	err = projectRef.Insert(t.Context())
 	require.NoError(t, err)
 
 	repoRef := model.RepoRef{ProjectRef: model.ProjectRef{
 		Id: "repo_id",
 	}}
-	err = repoRef.Upsert()
+	err = repoRef.Replace(ctx)
 	require.NoError(t, err)
 
 	obj := any(map[string]any{"projectIdentifier": "invalid_identifier"})
 	res, err := config.Directives.RequireProjectAccess(ctx, obj, next, ProjectPermissionSettings, AccessLevelEdit)
-	require.EqualError(t, err, "input: project 'invalid_identifier' not found")
+	require.EqualError(t, err, "input: project/repo 'invalid_identifier' not found")
 	require.Nil(t, res)
 	require.Equal(t, 0, callCount)
 
@@ -173,18 +173,18 @@ func TestRequireProjectAccessForTasks(t *testing.T) {
 			SlackMemberId: "testuser",
 		},
 	}
-	require.NoError(t, dbUser.Insert())
+	require.NoError(t, dbUser.Insert(t.Context()))
 
 	project := &model.ProjectRef{
 		Id: "project_id",
 	}
-	require.NoError(t, project.Insert())
+	require.NoError(t, project.Insert(t.Context()))
 
 	task := &task.Task{
 		Id:      "task_id",
 		Project: project.Id,
 	}
-	require.NoError(t, task.Insert())
+	require.NoError(t, task.Insert(t.Context()))
 
 	const email = "testuser@mongodb.com"
 	const accessToken = "access_token"
@@ -303,18 +303,18 @@ func TestRequireProjectAccessForAnnotations(t *testing.T) {
 			SlackMemberId: "testuser",
 		},
 	}
-	require.NoError(t, dbUser.Insert())
+	require.NoError(t, dbUser.Insert(t.Context()))
 
 	project := &model.ProjectRef{
 		Id: "project_id",
 	}
-	require.NoError(t, project.Insert())
+	require.NoError(t, project.Insert(t.Context()))
 
 	task := &task.Task{
 		Id:      "task_id",
 		Project: project.Id,
 	}
-	require.NoError(t, task.Insert())
+	require.NoError(t, task.Insert(t.Context()))
 
 	const email = "testuser@mongodb.com"
 	const accessToken = "access_token"
@@ -397,18 +397,18 @@ func TestRequireProjectAccessForPatches(t *testing.T) {
 			SlackMemberId: "testuser",
 		},
 	}
-	require.NoError(t, dbUser.Insert())
+	require.NoError(t, dbUser.Insert(t.Context()))
 
 	project := &model.ProjectRef{
 		Id: "project_id",
 	}
-	require.NoError(t, project.Insert())
+	require.NoError(t, project.Insert(t.Context()))
 
 	patch := &patch.Patch{
 		Id:      bson.NewObjectId(),
 		Project: project.Id,
 	}
-	require.NoError(t, patch.Insert())
+	require.NoError(t, patch.Insert(t.Context()))
 
 	const email = "testuser@mongodb.com"
 	const accessToken = "access_token"
@@ -491,12 +491,12 @@ func TestRequireProjectAccessForLogs(t *testing.T) {
 			SlackMemberId: "testuser",
 		},
 	}
-	require.NoError(t, dbUser.Insert())
+	require.NoError(t, dbUser.Insert(t.Context()))
 
 	project := &model.ProjectRef{
 		Id: "project_id",
 	}
-	require.NoError(t, project.Insert())
+	require.NoError(t, project.Insert(t.Context()))
 
 	const email = "testuser@mongodb.com"
 	const accessToken = "access_token"

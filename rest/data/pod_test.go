@@ -38,7 +38,7 @@ func TestCreatePod(t *testing.T) {
 		PodSecretExternalID: utility.ToStringPtr("pod_secret_external_id"),
 		PodSecretValue:      utility.ToStringPtr("pod_secret_value"),
 	}
-	res, err := CreatePod(p)
+	res, err := CreatePod(t.Context(), p)
 	require.NoError(t, err)
 	require.NotZero(t, res)
 
@@ -69,7 +69,7 @@ func TestFindAPIPodByID(t *testing.T) {
 			Type:   pod.TypeAgent,
 			Status: pod.StatusInitializing,
 		}
-		require.NoError(t, p.Insert())
+		require.NoError(t, p.Insert(t.Context()))
 
 		apiPod, err := FindAPIPodByID(t.Context(), p.ID)
 		require.NoError(t, err)
@@ -145,7 +145,7 @@ func TestCheckPodSecret(t *testing.T) {
 					},
 				},
 			}
-			require.NoError(t, p.Insert())
+			require.NoError(t, p.Insert(t.Context()))
 
 			tCase(t, p, secretVal)
 		})

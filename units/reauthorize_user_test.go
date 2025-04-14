@@ -189,7 +189,7 @@ func TestReauthorizeUserJob(t *testing.T) {
 					TTL:   time.Now().Add(-time.Hour),
 				},
 			}
-			require.NoError(t, u.Insert())
+			require.NoError(t, u.Insert(ctx))
 
 			um := &mockReauthUserManager{}
 			env.SetUserManager(um)

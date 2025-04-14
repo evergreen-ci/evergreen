@@ -69,7 +69,7 @@ func (p *projectGetHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (p *projectGetHandler) Run(ctx context.Context) gimlet.Responder {
-	projects, err := dbModel.FindNonHiddenProjects(p.key, p.limit+1, 1)
+	projects, err := dbModel.FindNonHiddenProjects(ctx, p.key, p.limit+1, 1)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "Database error"))
 	}
@@ -353,7 +353,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "validating owner and repo"))
 	}
 	if h.newProjectRef.Identifier != h.originalProject.Identifier {
-		if err := h.newProjectRef.ValidateIdentifier(); err != nil {
+		if err := h.newProjectRef.ValidateIdentifier(ctx); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "validating project identifier"))
 		}
 	}
@@ -391,7 +391,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting evergreen settings"))
 		}
-		_, err = dbModel.ValidateEnabledProjectsLimit(h.newProjectRef.Id, settings, h.originalProject, mergedProjectRef)
+		_, err = dbModel.ValidateEnabledProjectsLimit(ctx, h.newProjectRef.Id, settings, h.originalProject, mergedProjectRef)
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "validating project creation for project '%s'", h.newProjectRef.Identifier))
 		}
@@ -554,7 +554,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	// complete all updates
-	if err = h.newProjectRef.Upsert(); err != nil {
+	if err = h.newProjectRef.Replace(ctx); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "updating project '%s'", h.newProjectRef.Id))
 	}
 
@@ -568,7 +568,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 		"project_identifier": h.newProjectRef.Identifier,
 	}))
 
-	if err = data.UpdateProjectVars(h.newProjectRef.Id, &h.apiNewProjectRef.Variables, false); err != nil { // destructively modifies h.apiNewProjectRef.Variables
+	if err = data.UpdateProjectVars(ctx, h.newProjectRef.Id, &h.apiNewProjectRef.Variables, false); err != nil { // destructively modifies h.apiNewProjectRef.Variables
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "updating variables for project '%s'", h.project))
 	}
 	if err = data.UpdateProjectAliases(ctx, h.newProjectRef.Id, h.apiNewProjectRef.Aliases); err != nil {
@@ -597,7 +597,7 @@ func (h *projectIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting project settings after update for project '%s'", h.project))
 	}
-	if err = dbModel.LogProjectModified(h.newProjectRef.Id, h.user.Username(), before, after); err != nil {
+	if err = dbModel.LogProjectModified(ctx, h.newProjectRef.Id, h.user.Username(), before, after); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "logging modification event for project '%s'", h.project))
 	}
 
@@ -865,7 +865,7 @@ func (h *projectIDGetHandler) Run(ctx context.Context) gimlet.Responder {
 	if projectModel.Aliases, err = data.FindMergedProjectAliases(ctx, project.Id, repoId, nil, h.includeProjectConfig); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding aliases for project '%s'", project.Id))
 	}
-	if projectModel.Subscriptions, err = data.GetSubscriptions(project.Id, event.OwnerTypeProject); err != nil {
+	if projectModel.Subscriptions, err = data.GetSubscriptions(ctx, project.Id, event.OwnerTypeProject); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting subscriptions for project '%s'", project.Id))
 	}
 	return gimlet.NewJSONResponse(projectModel)
@@ -1263,7 +1263,7 @@ func (h *getProjectTaskExecutionsHandler) Run(ctx context.Context) gimlet.Respon
 		StartTime:    h.startTime,
 		EndTime:      h.endTime,
 	}
-	numTasks, err := task.CountNumExecutionsForInterval(input)
+	numTasks, err := task.CountNumExecutionsForInterval(ctx, input)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(err)
 	}

@@ -385,7 +385,7 @@ const (
 
 // FindSubscriptionsByAttributes finds all subscriptions of matching resourceType, and whose
 // filter and regex selectors match the attributes of the event.
-func FindSubscriptionsByAttributes(resourceType string, eventAttributes Attributes) ([]Subscription, error) {
+func FindSubscriptionsByAttributes(ctx context.Context, resourceType string, eventAttributes Attributes) ([]Subscription, error) {
 	if eventAttributes.isUnset() {
 		return nil, nil
 	}
@@ -398,7 +398,7 @@ func FindSubscriptionsByAttributes(resourceType string, eventAttributes Attribut
 	}
 
 	selectorFiltered := []Subscription{}
-	if err := db.FindAllQ(SubscriptionsCollection, db.Query(query), &selectorFiltered); err != nil {
+	if err := db.FindAllQ(ctx, SubscriptionsCollection, db.Query(query), &selectorFiltered); err != nil {
 		return nil, errors.Wrap(err, "finding subscriptions for selectors")
 	}
 
@@ -446,8 +446,8 @@ func regexMatchesValue(regexString string, values []string) bool {
 }
 
 // CopyProjectSubscriptions copies subscriptions from the first project for the second project.
-func CopyProjectSubscriptions(oldProject, newProject string) error {
-	subs, err := FindSubscriptionsByOwner(oldProject, OwnerTypeProject)
+func CopyProjectSubscriptions(ctx context.Context, oldProject, newProject string) error {
+	subs, err := FindSubscriptionsByOwner(ctx, oldProject, OwnerTypeProject)
 	if err != nil {
 		return errors.Wrapf(err, "finding subscription for project '%s'", oldProject)
 	}
@@ -462,12 +462,12 @@ func CopyProjectSubscriptions(oldProject, newProject string) error {
 				sub.Filter.Project = newProject
 			}
 		}
-		catcher.Add(sub.Upsert())
+		catcher.Add(sub.Upsert(ctx))
 	}
 	return catcher.Resolve()
 }
 
-func (s *Subscription) Upsert() error {
+func (s *Subscription) Upsert(ctx context.Context) error {
 	if s.ID == "" {
 		s.ID = mgobson.NewObjectId().Hex()
 	}
@@ -487,7 +487,7 @@ func (s *Subscription) Upsert() error {
 	}
 
 	// note: this prevents changing the owner of an existing subscription, which is desired
-	c, err := db.Upsert(SubscriptionsCollection, bson.M{
+	c, err := db.ReplaceContext(ctx, SubscriptionsCollection, bson.M{
 		subscriptionIDKey:    s.ID,
 		subscriptionOwnerKey: s.Owner,
 	}, update)
@@ -686,7 +686,7 @@ func (s *Subscription) String() string {
 	return out
 }
 
-func FindSubscriptionsByOwner(owner string, ownerType OwnerType) ([]Subscription, error) {
+func FindSubscriptionsByOwner(ctx context.Context, owner string, ownerType OwnerType) ([]Subscription, error) {
 	if len(owner) == 0 {
 		return nil, nil
 	}
@@ -698,7 +698,7 @@ func FindSubscriptionsByOwner(owner string, ownerType OwnerType) ([]Subscription
 		subscriptionOwnerTypeKey: ownerType,
 	})
 	subscriptions := []Subscription{}
-	err := db.FindAllQ(SubscriptionsCollection, query, &subscriptions)
+	err := db.FindAllQ(ctx, SubscriptionsCollection, query, &subscriptions)
 	return subscriptions, errors.Wrapf(err, "retrieving subscriptions for owner '%s'", owner)
 }
 
@@ -748,7 +748,7 @@ func CreateOrUpdateGeneralSubscription(ctx context.Context, resourceType string,
 		sub.OwnerType = OwnerTypePerson
 		sub.Owner = user
 
-		if err := sub.Upsert(); err != nil {
+		if err := sub.Upsert(ctx); err != nil {
 			return nil, errors.Wrap(err, "upserting subscription")
 		}
 	} else {

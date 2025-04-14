@@ -49,7 +49,7 @@ type rawAdminEventData struct {
 	Changes rawConfigDataChange `bson:"changes"`
 }
 
-func LogAdminEvent(section string, before, after evergreen.ConfigSection, user string) error {
+func LogAdminEvent(ctx context.Context, section string, before, after evergreen.ConfigSection, user string) error {
 	if section == evergreen.ConfigDocID {
 		beforeSettings := before.(*evergreen.Settings)
 		afterSettings := after.(*evergreen.Settings)
@@ -72,7 +72,7 @@ func LogAdminEvent(section string, before, after evergreen.ConfigSection, user s
 		ResourceType: ResourceTypeAdmin,
 	}
 
-	if err := event.Log(); err != nil {
+	if err := event.Log(ctx); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"resource_type": ResourceTypeAdmin,
 			"message":       "error logging event",
@@ -103,8 +103,8 @@ func stripInteriorSections(config *evergreen.Settings) *evergreen.Settings {
 	return configInterface.(*evergreen.Settings)
 }
 
-func FindAdmin(query db.Q) ([]EventLogEntry, error) {
-	eventsRaw, err := Find(query)
+func FindAdmin(ctx context.Context, query db.Q) ([]EventLogEntry, error) {
+	eventsRaw, err := Find(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -166,7 +166,7 @@ func convertRaw(in rawAdminEventData) (*AdminEventData, error) {
 
 // RevertConfig reverts one config section to the before state of the specified GUID in the event log
 func RevertConfig(ctx context.Context, guid string, user string) error {
-	events, err := FindAdmin(ByAdminGuid(guid))
+	events, err := FindAdmin(ctx, ByAdminGuid(guid))
 	if err != nil {
 		return errors.Wrap(err, "finding events")
 	}
@@ -188,5 +188,5 @@ func RevertConfig(ctx context.Context, guid string, user string) error {
 		return errors.Wrap(err, "reverting to before settings")
 	}
 
-	return LogAdminEvent(data.Section, current, data.Changes.Before, user)
+	return LogAdminEvent(ctx, data.Section, current, data.Changes.Before, user)
 }

@@ -703,12 +703,12 @@ func (h *Host) IdleTime() time.Duration {
 }
 
 // ShouldNotifyStoppedSpawnHostIdle returns true if the stopped spawn host has been idle long enough to notify the user.
-func (h *Host) ShouldNotifyStoppedSpawnHostIdle() (bool, error) {
+func (h *Host) ShouldNotifyStoppedSpawnHostIdle(ctx context.Context) (bool, error) {
 	if !h.NoExpiration || h.Status != evergreen.HostStopped {
 		return false, nil
 	}
 	timeToNotifyForStoppedHosts := time.Now().Add(-time.Hour * 24 * evergreen.SpawnHostExpireDays * 3)
-	return event.HasNoRecentStoppedHostEvent(h.Id, timeToNotifyForStoppedHosts)
+	return event.HasNoRecentStoppedHostEvent(ctx, h.Id, timeToNotifyForStoppedHosts)
 }
 
 // WastedComputeTime returns the duration of compute we've paid for that
@@ -868,7 +868,7 @@ func (h *Host) setStatusAndFields(ctx context.Context, newStatus string, query, 
 		return err
 	}
 
-	event.LogHostStatusChanged(h.Id, h.Status, newStatus, user, logs)
+	event.LogHostStatusChanged(ctx, h.Id, h.Status, newStatus, user, logs)
 	grip.Info(message.Fields{
 		"message":    "host status changed",
 		"host_id":    h.Id,
@@ -911,7 +911,7 @@ func (h *Host) SetStatusAtomically(ctx context.Context, newStatus, user string, 
 		return errors.WithStack(err)
 	}
 
-	event.LogHostStatusChanged(h.Id, h.Status, newStatus, user, logs)
+	event.LogHostStatusChanged(ctx, h.Id, h.Status, newStatus, user, logs)
 	grip.Info(message.Fields{
 		"message":    "host status changed atomically",
 		"host_id":    h.Id,
@@ -1026,7 +1026,7 @@ func (h *Host) SetStopped(ctx context.Context, shouldKeepOff bool, user string) 
 		return errors.Wrap(err, "setting host status to stopped")
 	}
 
-	event.LogHostStatusChanged(h.Id, h.Status, evergreen.HostStopped, user, "")
+	event.LogHostStatusChanged(ctx, h.Id, h.Status, evergreen.HostStopped, user, "")
 	grip.Info(message.Fields{
 		"message":    "host stopped",
 		"host_id":    h.Id,
@@ -1405,7 +1405,7 @@ func (h *Host) MarkAsProvisioned(ctx context.Context) error {
 		return err
 	}
 
-	event.LogHostProvisioned(h.Id)
+	event.LogHostProvisioned(ctx, h.Id)
 	grip.Info(message.Fields{
 		"message":    "host marked provisioned",
 		"host_id":    h.Id,
@@ -1470,7 +1470,7 @@ func (h *Host) UpdateStartingToRunning(ctx context.Context) error {
 
 	h.Status = evergreen.HostRunning
 
-	event.LogHostProvisioned(h.Id)
+	event.LogHostProvisioned(ctx, h.Id)
 	grip.Info(message.Fields{
 		"message":   "host marked provisioned",
 		"host_id":   h.Id,
@@ -1544,7 +1544,7 @@ func (h *Host) setAwaitingJasperRestart(ctx context.Context, user string) error 
 		return err
 	}
 
-	event.LogHostJasperRestarting(h.Id, user)
+	event.LogHostJasperRestarting(ctx, h.Id, user)
 	grip.Info(message.Fields{
 		"message":               "set needs reprovision",
 		"host_id":               h.Id,
@@ -1619,7 +1619,7 @@ func (h *Host) setAwaitingReprovisionToNew(ctx context.Context, user string) err
 		return err
 	}
 
-	event.LogHostConvertingProvisioning(h.Id, h.Distro.BootstrapSettings.Method, user)
+	event.LogHostConvertingProvisioning(ctx, h.Id, h.Distro.BootstrapSettings.Method, user)
 	grip.Info(message.Fields{
 		"message":               "set needs reprovision",
 		"host_id":               h.Id,
@@ -1755,7 +1755,7 @@ func (h *Host) ClearRunningAndSetLastTask(ctx context.Context, t *task.Task) err
 		return err
 	}
 
-	event.LogHostRunningTaskCleared(h.Id, h.RunningTask, h.RunningTaskExecution)
+	event.LogHostRunningTaskCleared(ctx, h.Id, h.RunningTask, h.RunningTaskExecution)
 	grip.Info(message.Fields{
 		"message":         "cleared host running task and set last task",
 		"host_id":         h.Id,
@@ -1795,7 +1795,7 @@ func (h *Host) ClearRunningTask(ctx context.Context) error {
 	}
 
 	if hadRunningTask {
-		event.LogHostRunningTaskCleared(h.Id, h.RunningTask, h.RunningTaskExecution)
+		event.LogHostRunningTaskCleared(ctx, h.Id, h.RunningTask, h.RunningTaskExecution)
 		grip.Info(message.Fields{
 			"message":        "cleared host running task",
 			"host_id":        h.Id,
@@ -2010,7 +2010,7 @@ func (h *Host) MarkReachable(ctx context.Context) error {
 		return errors.WithStack(err)
 	}
 
-	event.LogHostStatusChanged(h.Id, h.Status, evergreen.HostRunning, evergreen.User, "")
+	event.LogHostStatusChanged(ctx, h.Id, h.Status, evergreen.HostRunning, evergreen.User, "")
 	grip.Info(message.Fields{
 		"message":    "host marked reachable",
 		"host_id":    h.Id,

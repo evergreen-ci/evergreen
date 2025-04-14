@@ -382,7 +382,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 	patchDoc.ProjectStorageMethod = ppStorageMethod
 
-	if err = patchDoc.Insert(); err != nil {
+	if err = patchDoc.Insert(ctx); err != nil {
 		// If this is a duplicate key error, we already inserted the patch
 		// in to the DB but it failed later in the patch intent job (i.e.
 		// context cancelling early from deploy). To reduce stuck patches,
@@ -407,7 +407,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		if numCheckRuns > checkRunLimit {
 			return errors.Errorf("total number of checkRuns (%d) exceeds maximum limit (%d)", numCheckRuns, checkRunLimit)
 		}
-		catcher.Wrap(j.createGitHubSubscriptions(patchDoc), "creating GitHub PR patch subscriptions")
+		catcher.Wrap(j.createGitHubSubscriptions(ctx, patchDoc), "creating GitHub PR patch subscriptions")
 	}
 
 	if patchDoc.IsMergeQueuePatch() {
@@ -424,7 +424,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 			"source":      "patch intents",
 		}))
 	}
-	event.LogPatchStateChangeEvent(patchDoc.Id.Hex(), patchDoc.Status)
+	event.LogPatchStateChangeEvent(ctx, patchDoc.Id.Hex(), patchDoc.Status)
 
 	if canFinalize && j.intent.ShouldFinalizePatch() {
 		if _, err = model.FinalizePatch(ctx, patchDoc, j.intent.RequesterIdentity()); err != nil {
@@ -482,7 +482,7 @@ func (j *patchIntentProcessor) setGitHubPatchingError(err error) error {
 
 // createGitHubSubscriptions creates subscriptions for notifications related to
 // GitHub PR patches.
-func (j *patchIntentProcessor) createGitHubSubscriptions(p *patch.Patch) error {
+func (j *patchIntentProcessor) createGitHubSubscriptions(ctx context.Context, p *patch.Patch) error {
 	catcher := grip.NewBasicCatcher()
 	ghSub := event.NewGithubStatusAPISubscriber(event.GithubPullRequestSubscriber{
 		Owner:    p.GithubPatchData.BaseOwner,
@@ -491,9 +491,9 @@ func (j *patchIntentProcessor) createGitHubSubscriptions(p *patch.Patch) error {
 		Ref:      p.GithubPatchData.HeadHash,
 	})
 	patchSub := event.NewExpiringPatchOutcomeSubscription(j.PatchID.Hex(), ghSub)
-	catcher.Wrap(patchSub.Upsert(), "inserting patch subscription for GitHub PR")
+	catcher.Wrap(patchSub.Upsert(ctx), "inserting patch subscription for GitHub PR")
 	buildSub := event.NewExpiringBuildOutcomeSubscriptionByVersion(j.PatchID.Hex(), ghSub)
-	catcher.Wrap(buildSub.Upsert(), "inserting build subscription for GitHub PR")
+	catcher.Wrap(buildSub.Upsert(ctx), "inserting build subscription for GitHub PR")
 	if p.IsParent() {
 		// add a subscription on each child patch to report it's status to github when it's done.
 		for _, childPatch := range p.Triggers.ChildPatches {
@@ -505,7 +505,7 @@ func (j *patchIntentProcessor) createGitHubSubscriptions(p *patch.Patch) error {
 				ChildId:  childPatch,
 			})
 			patchSub := event.NewExpiringPatchChildOutcomeSubscription(childPatch, childGhStatusSub)
-			catcher.Wrap(patchSub.Upsert(), "inserting child patch subscription for GitHub PR")
+			catcher.Wrap(patchSub.Upsert(ctx), "inserting child patch subscription for GitHub PR")
 		}
 	}
 	return catcher.Resolve()
@@ -521,9 +521,9 @@ func (j *patchIntentProcessor) createGitHubMergeSubscription(ctx context.Context
 	})
 
 	patchSub := event.NewExpiringPatchOutcomeSubscription(j.PatchID.Hex(), ghSub)
-	catcher.Wrap(patchSub.Upsert(), "inserting patch subscription for GitHub merge queue")
+	catcher.Wrap(patchSub.Upsert(ctx), "inserting patch subscription for GitHub merge queue")
 	buildSub := event.NewExpiringBuildOutcomeSubscriptionByVersion(j.PatchID.Hex(), ghSub)
-	catcher.Wrap(buildSub.Upsert(), "inserting build subscription for GitHub merge queue")
+	catcher.Wrap(buildSub.Upsert(ctx), "inserting build subscription for GitHub merge queue")
 
 	input := thirdparty.SendGithubStatusInput{
 		VersionId: j.PatchID.Hex(),
@@ -760,7 +760,7 @@ func ProcessTriggerAliases(ctx context.Context, p *patch.Patch, projectRef *mode
 			Definitions:        definitions,
 		})
 
-		if err := triggerIntent.Insert(); err != nil {
+		if err := triggerIntent.Insert(ctx); err != nil {
 			return errors.Wrap(err, "inserting trigger intent")
 		}
 
@@ -1137,7 +1137,7 @@ func findEvergreenUserForPR(ctx context.Context, githubUID int) (*user.DBUser, e
 			DispName: "GitHub Pull Requests",
 			APIKey:   utility.RandomString(),
 		}
-		if err = u.Insert(); err != nil {
+		if err = u.Insert(ctx); err != nil {
 			return nil, errors.Wrap(err, "inserting GitHub patch user")
 		}
 	}
@@ -1157,7 +1157,7 @@ func findEvergreenUserForGithubMergeGroup(ctx context.Context) (*user.DBUser, er
 			DispName: "GitHub Merge Queue",
 			APIKey:   utility.RandomString(),
 		}
-		if err = u.Insert(); err != nil {
+		if err = u.Insert(ctx); err != nil {
 			return nil, errors.Wrap(err, "inserting GitHub patch user")
 		}
 	}

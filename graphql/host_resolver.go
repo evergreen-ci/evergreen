@@ -50,7 +50,7 @@ func (r *hostResolver) Events(ctx context.Context, obj *restModel.APIHost, opts 
 		SortAsc:    sortAsc,
 		EventTypes: opts.EventTypes,
 	}
-	events, count, err := event.GetPaginatedHostEvents(hostQueryOpts)
+	events, count, err := event.GetPaginatedHostEvents(ctx, hostQueryOpts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching events for host '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
 	}
@@ -71,7 +71,7 @@ func (r *hostResolver) Events(ctx context.Context, obj *restModel.APIHost, opts 
 
 // EventTypes is the resolver for the eventTypes field.
 func (r *hostResolver) EventTypes(ctx context.Context, obj *restModel.APIHost) ([]string, error) {
-	eventTypes, err := event.GetEventTypesForHost(utility.FromStringPtr(obj.Id), utility.FromStringPtr(obj.Tag))
+	eventTypes, err := event.GetEventTypesForHost(ctx, utility.FromStringPtr(obj.Id), utility.FromStringPtr(obj.Tag))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting event types for host '%s': %s", utility.FromStringPtr(obj.Id), err.Error()))
 	}

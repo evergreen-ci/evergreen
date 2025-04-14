@@ -21,9 +21,9 @@ require (
 	github.com/evergreen-ci/birch v0.0.0-20250224221624-64f481f4b888
 	github.com/evergreen-ci/certdepot v0.0.0-20250313151408-76b756321eda
 	github.com/evergreen-ci/cocoa v0.0.0-20250225172339-717c91acad92
-	github.com/evergreen-ci/gimlet v0.0.0-20250313150823-622a429ac456
+	github.com/evergreen-ci/gimlet v0.0.0-20250410201752-38682bd5bae1
 	github.com/evergreen-ci/juniper v0.0.0-20230901183147-c805ea7351aa
-	github.com/evergreen-ci/pail v0.0.0-20250326174825-f0b9ab79c57c
+	github.com/evergreen-ci/pail v0.0.0-20250411132802-95faee445373
 	github.com/evergreen-ci/poplar v0.0.0-20250313160224-22f0e4e98238
 	github.com/evergreen-ci/shrub v0.0.0-20250224222152-c8b72a51163b
 	github.com/evergreen-ci/timber v0.0.0-20250225175618-52d1e1841945
@@ -42,7 +42,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/mongodb/amboy v0.0.0-20250313150805-ef0cd9968322
 	github.com/mongodb/anser v0.0.0-20250324144457-fcc2c57eee09
-	github.com/mongodb/grip v0.0.0-20250402143321-b38487c98aeb
+	github.com/mongodb/grip v0.0.0-20250410161241-7cb1e90e324d
 	github.com/pkg/errors v0.9.1
 	github.com/ravilushqa/otelgqlgen v0.15.0
 	github.com/robbiet480/go.sns v0.0.0-20210223081447-c7c9eb6836cb

@@ -121,7 +121,7 @@ func (s *GithubWebhookRouteSuite) TestAddIntentAndFailsWithDuplicate() {
 		Id:               "ident0",
 		PRTestingEnabled: utility.TruePtr(),
 	}
-	s.NoError(doc.Insert())
+	s.NoError(doc.Insert(s.T().Context()))
 	event, err := github.ParseWebHook("pull_request", s.prBody)
 	s.NotNil(event)
 	s.NoError(err)
@@ -132,13 +132,13 @@ func (s *GithubWebhookRouteSuite) TestAddIntentAndFailsWithDuplicate() {
 	ctx := context.Background()
 	resp := s.h.Run(ctx)
 	s.Equal(http.StatusOK, resp.Status())
-	count, err := db.CountQ(patch.IntentCollection, db.Query(bson.M{}))
+	count, err := db.CountQ(s.T().Context(), patch.IntentCollection, db.Query(bson.M{}))
 	s.NoError(err)
 	s.Equal(1, count)
 
 	resp = s.h.Run(ctx)
 	s.NotEqual(http.StatusOK, resp.Status())
-	count, err = db.CountQ(patch.IntentCollection, db.Query(bson.M{}))
+	count, err = db.CountQ(s.T().Context(), patch.IntentCollection, db.Query(bson.M{}))
 	s.NoError(err)
 	s.Equal(1, count)
 }
@@ -217,7 +217,7 @@ func (s *GithubWebhookRouteSuite) TestPushEventTriggersRepoTracker() {
 		Repo:    "public-repo",
 		Branch:  "changes",
 	}
-	s.Require().NoError(ref.Insert())
+	s.Require().NoError(ref.Insert(s.T().Context()))
 	event, err := github.ParseWebHook("push", s.pushBody)
 	s.NotNil(event)
 	s.NoError(err)
@@ -330,8 +330,8 @@ func (s *GithubWebhookRouteSuite) TestCreateVersionForTag() {
 		GitTag:     "release",
 		RemotePath: "rest/route/testdata/release.yml",
 	}
-	s.NoError(pRef.Insert())
-	s.NoError(projectAlias.Upsert())
+	s.NoError(pRef.Insert(s.T().Context()))
+	s.NoError(projectAlias.Upsert(s.T().Context()))
 
 	v, err := s.mock.createVersionForTag(context.Background(), pRef, nil, model.Revision{}, tag)
 	s.NoError(err)
@@ -427,7 +427,7 @@ func TestPRDef(t *testing.T) {
 			RepeatPatchIdNextPatch: patchId.Hex(),
 		},
 	}
-	assert.NoError(t, p.Insert())
+	assert.NoError(t, p.Insert(t.Context()))
 	err := keepPRPatchDefinition(t.Context(), owner, repo, 5)
 	assert.NoError(t, err)
 
@@ -477,7 +477,7 @@ func TestHandleGitHubMergeGroup(t *testing.T) {
 	}
 	for testCase, test := range map[string]func(*testing.T){
 		"githubMergeQueueSelected": func(t *testing.T) {
-			require.NoError(t, p.Insert())
+			require.NoError(t, p.Insert(t.Context()))
 			response := gh.handleMergeGroupChecksRequested(t.Context(), event)
 			// check for error returned by GitHub merge queue handler
 			str := fmt.Sprintf("%#v", response)

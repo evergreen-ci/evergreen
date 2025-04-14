@@ -56,7 +56,7 @@ func TestPodProvisioningScript(t *testing.T) {
 	t.Run("RunGeneratesScriptSuccessfully", func(t *testing.T) {
 		for tName, tCase := range map[string]func(t *testing.T, env evergreen.Environment, p *pod.Pod){
 			"ClientDownloadsWithLinuxPod": func(t *testing.T, env evergreen.Environment, p *pod.Pod) {
-				require.NoError(t, p.Insert())
+				require.NoError(t, p.Insert(t.Context()))
 
 				rh := getRoute(t, env, p.ID)
 				resp := rh.Run(ctx)
@@ -72,7 +72,7 @@ func TestPodProvisioningScript(t *testing.T) {
 			},
 			"ClientDownloadsWithWindowsPod": func(t *testing.T, env evergreen.Environment, p *pod.Pod) {
 				p.TaskContainerCreationOpts.OS = pod.OSWindows
-				require.NoError(t, p.Insert())
+				require.NoError(t, p.Insert(t.Context()))
 
 				rh := getRoute(t, env, p.ID)
 				resp := rh.Run(ctx)
@@ -156,16 +156,16 @@ func TestPodAgentNextTask(t *testing.T) {
 		},
 		"RunFailsWithNonexistentPod": func(ctx context.Context, t *testing.T, rh *podAgentNextTask, env evergreen.Environment) {
 			tsk := getTask()
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(t.Context()))
 			d := dispatcher.NewPodDispatcher("group", []string{tsk.Id}, []string{"nonexistent_pod"})
-			require.NoError(t, d.Insert())
+			require.NoError(t, d.Insert(t.Context()))
 			rh.podID = "nonexistent_pod"
 			resp := rh.Run(ctx)
 			assert.Equal(t, http.StatusNotFound, resp.Status())
 		},
 		"RunFailsWithNonexistentDispatcher": func(ctx context.Context, t *testing.T, rh *podAgentNextTask, env evergreen.Environment) {
 			p := getPod()
-			require.NoError(t, p.Insert())
+			require.NoError(t, p.Insert(t.Context()))
 			rh.podID = p.ID
 
 			resp := rh.Run(ctx)
@@ -174,7 +174,7 @@ func TestPodAgentNextTask(t *testing.T) {
 		"RunShouldEnqueueTerminationJobWithNonRunningPod": func(ctx context.Context, t *testing.T, rh *podAgentNextTask, env evergreen.Environment) {
 			p := getPod()
 			p.Status = pod.StatusTerminated
-			require.NoError(t, p.Insert())
+			require.NoError(t, p.Insert(t.Context()))
 			rh.podID = p.ID
 
 			resp := rh.Run(ctx)
@@ -184,13 +184,13 @@ func TestPodAgentNextTask(t *testing.T) {
 		},
 		"RunCorrectlyMarksContainerTaskDispatched": func(ctx context.Context, t *testing.T, rh *podAgentNextTask, env evergreen.Environment) {
 			p := getPod()
-			require.NoError(t, p.Insert())
+			require.NoError(t, p.Insert(t.Context()))
 			proj := getProject()
-			require.NoError(t, proj.Insert())
+			require.NoError(t, proj.Insert(t.Context()))
 			tsk := getTask()
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(t.Context()))
 			d := dispatcher.NewPodDispatcher("group", []string{tsk.Id}, []string{p.ID})
-			require.NoError(t, d.Insert())
+			require.NoError(t, d.Insert(t.Context()))
 			rh.podID = p.ID
 
 			resp := rh.Run(ctx)
@@ -205,11 +205,11 @@ func TestPodAgentNextTask(t *testing.T) {
 		"RunPreparesToTerminatePodWhenThereAreNoTasksToDispatch": func(ctx context.Context, t *testing.T, rh *podAgentNextTask, env evergreen.Environment) {
 			p := getPod()
 			p.TimeInfo.Initializing = time.Now()
-			require.NoError(t, p.Insert())
+			require.NoError(t, p.Insert(t.Context()))
 			rh.podID = p.ID
 
 			d := dispatcher.NewPodDispatcher("group", []string{}, []string{p.ID})
-			require.NoError(t, d.Insert())
+			require.NoError(t, d.Insert(t.Context()))
 
 			resp := rh.Run(ctx)
 			assert.Equal(t, http.StatusOK, resp.Status())
@@ -226,16 +226,16 @@ func TestPodAgentNextTask(t *testing.T) {
 		"RunUpdatesStartingPodToDecommissionedAfterTaskDispatch": func(ctx context.Context, t *testing.T, rh *podAgentNextTask, env evergreen.Environment) {
 			p := getPod()
 			p.TimeInfo.Initializing = time.Now()
-			require.NoError(t, p.Insert())
+			require.NoError(t, p.Insert(t.Context()))
 			assert.Equal(t, pod.StatusStarting, p.Status, "initial pod status should be starting")
 			rh.podID = p.ID
 
 			proj := getProject()
-			require.NoError(t, proj.Insert())
+			require.NoError(t, proj.Insert(t.Context()))
 			tsk := getTask()
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(t.Context()))
 			d := dispatcher.NewPodDispatcher("group", []string{tsk.Id}, []string{p.ID})
-			require.NoError(t, d.Insert())
+			require.NoError(t, d.Insert(t.Context()))
 
 			resp := rh.Run(ctx)
 			assert.Equal(t, http.StatusOK, resp.Status())
@@ -250,11 +250,11 @@ func TestPodAgentNextTask(t *testing.T) {
 		},
 		"RunReturnsRunningTaskIfItExists": func(ctx context.Context, t *testing.T, rh *podAgentNextTask, env evergreen.Environment) {
 			tsk := getTask()
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(t.Context()))
 			p := getPod()
 			p.TaskRuntimeInfo.RunningTaskID = tsk.Id
 			p.TaskRuntimeInfo.RunningTaskExecution = tsk.Execution
-			require.NoError(t, p.Insert())
+			require.NoError(t, p.Insert(t.Context()))
 
 			rh.podID = p.ID
 			resp := rh.Run(ctx)
@@ -274,9 +274,9 @@ func TestPodAgentNextTask(t *testing.T) {
 				TaskDispatchDisabled: true,
 			}))
 			p := getPod()
-			require.NoError(t, p.Insert())
+			require.NoError(t, p.Insert(t.Context()))
 			tsk := getTask()
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(t.Context()))
 			rh.podID = p.ID
 			resp := rh.Run(ctx)
 			nextTaskResp, ok := resp.Data().(*apimodels.NextTaskResponse)
@@ -367,7 +367,7 @@ func TestPodAgentEndTask(t *testing.T) {
 			podToInsert := &pod.Pod{
 				ID: podID,
 			}
-			require.NoError(t, podToInsert.Insert())
+			require.NoError(t, podToInsert.Insert(t.Context()))
 			resp = rh.Run(ctx)
 			assert.Equal(t, http.StatusNotFound, resp.Status())
 		},
@@ -379,12 +379,12 @@ func TestPodAgentEndTask(t *testing.T) {
 					RunningTaskExecution: 0,
 				},
 			}
-			require.NoError(t, podToInsert.Insert())
+			require.NoError(t, podToInsert.Insert(t.Context()))
 			taskToInsert := &task.Task{
 				Id:        taskID,
 				Execution: taskExecution,
 			}
-			require.NoError(t, taskToInsert.Insert())
+			require.NoError(t, taskToInsert.Insert(t.Context()))
 			rh.podID = podID
 			rh.taskID = taskID
 			resp := rh.Run(ctx)
@@ -406,7 +406,7 @@ func TestPodAgentEndTask(t *testing.T) {
 					RunningTaskExecution: taskExecution,
 				},
 			}
-			require.NoError(t, podToInsert.Insert())
+			require.NoError(t, podToInsert.Insert(t.Context()))
 			taskToInsert := &task.Task{
 				Id:                taskID,
 				Execution:         taskExecution,
@@ -416,25 +416,25 @@ func TestPodAgentEndTask(t *testing.T) {
 				PodID:             podID,
 				ExecutionPlatform: task.ExecutionPlatformContainer,
 			}
-			require.NoError(t, taskToInsert.Insert())
+			require.NoError(t, taskToInsert.Insert(t.Context()))
 			buildToInsert := &build.Build{
 				Id:      buildID,
 				Project: projID,
 			}
-			require.NoError(t, buildToInsert.Insert())
+			require.NoError(t, buildToInsert.Insert(t.Context()))
 			versionToInsert := &model.Version{
 				Id: versionID,
 			}
-			require.NoError(t, versionToInsert.Insert())
+			require.NoError(t, versionToInsert.Insert(t.Context()))
 			projectToInsert := model.ProjectRef{
 				Id:         projID,
 				Identifier: "identifier",
 			}
-			require.NoError(t, projectToInsert.Insert())
+			require.NoError(t, projectToInsert.Insert(t.Context()))
 			parserProjectToInsert := model.ParserProject{
 				Id: versionToInsert.Id,
 			}
-			require.NoError(t, parserProjectToInsert.Insert())
+			require.NoError(t, parserProjectToInsert.Insert(t.Context()))
 			rh.podID = podID
 			rh.taskID = taskID
 			rh.details = *td
@@ -455,7 +455,7 @@ func TestPodAgentEndTask(t *testing.T) {
 					RunningTaskExecution: taskExecution,
 				},
 			}
-			require.NoError(t, podToInsert.Insert())
+			require.NoError(t, podToInsert.Insert(t.Context()))
 			taskToInsert := &task.Task{
 				Id:                taskID,
 				Execution:         taskExecution,
@@ -465,25 +465,25 @@ func TestPodAgentEndTask(t *testing.T) {
 				PodID:             podID,
 				ExecutionPlatform: task.ExecutionPlatformContainer,
 			}
-			require.NoError(t, taskToInsert.Insert())
+			require.NoError(t, taskToInsert.Insert(t.Context()))
 			buildToInsert := &build.Build{
 				Id:      buildID,
 				Project: projID,
 			}
-			require.NoError(t, buildToInsert.Insert())
+			require.NoError(t, buildToInsert.Insert(t.Context()))
 			versionToInsert := &model.Version{
 				Id: versionID,
 			}
-			require.NoError(t, versionToInsert.Insert())
+			require.NoError(t, versionToInsert.Insert(t.Context()))
 			projectToInsert := model.ProjectRef{
 				Id:         projID,
 				Identifier: "identifier",
 			}
-			require.NoError(t, projectToInsert.Insert())
+			require.NoError(t, projectToInsert.Insert(t.Context()))
 			parserProjectToInsert := model.ParserProject{
 				Id: versionToInsert.Id,
 			}
-			require.NoError(t, parserProjectToInsert.Insert())
+			require.NoError(t, parserProjectToInsert.Insert(t.Context()))
 			rh.podID = podID
 			rh.taskID = taskID
 			rh.details = *td

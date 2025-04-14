@@ -95,8 +95,9 @@ func BySecret(secret string) db.Q {
 
 // Upsert updates the files entry in the db if an entry already exists,
 // overwriting the existing file data. If no entry exists, one is created
-func (e Entry) Upsert() error {
+func (e Entry) Upsert(ctx context.Context) error {
 	_, err := db.Upsert(
+		ctx,
 		Collection,
 		bson.M{
 			TaskIdKey:    e.TaskId,
@@ -131,6 +132,6 @@ func FindOne(ctx context.Context, query db.Q) (*Entry, error) {
 // FindAll gets every Entry for the given query
 func FindAll(ctx context.Context, query db.Q) ([]Entry, error) {
 	entries := []Entry{}
-	err := db.FindAllQContext(ctx, Collection, query, &entries)
+	err := db.FindAllQ(ctx, Collection, query, &entries)
 	return entries, err
 }

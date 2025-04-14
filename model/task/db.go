@@ -819,7 +819,7 @@ func GetRecentTasks(ctx context.Context, period time.Duration) ([]Task, error) {
 	)
 
 	tasks := []Task{}
-	err := db.FindAllQContext(ctx, Collection, query, &tasks)
+	err := db.FindAllQ(ctx, Collection, query, &tasks)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting recently-finished tasks")
 	}
@@ -929,7 +929,7 @@ func FindByExecutionTasksAndMaxExecution(ctx context.Context, taskIds []string, 
 		oldTaskPipeline = append(oldTaskPipeline, bson.M{"$replaceRoot": bson.M{"newRoot": "$root"}})
 
 		var oldTasks []Task
-		if err := db.Aggregate(OldCollection, oldTaskPipeline, &oldTasks); err != nil {
+		if err := db.Aggregate(ctx, OldCollection, oldTaskPipeline, &oldTasks); err != nil {
 			return nil, errors.Wrap(err, "finding old tasks")
 		}
 		tasks = append(tasks, oldTasks...)
@@ -1381,7 +1381,7 @@ func findOneOldByIdAndExecutionWithDisplayStatus(ctx context.Context, id string,
 		addDisplayStatus,
 	}
 
-	if err := db.AggregateContext(ctx, OldCollection, pipeline, &tasks); err != nil {
+	if err := db.Aggregate(ctx, OldCollection, pipeline, &tasks); err != nil {
 		return nil, errors.Wrap(err, "finding task")
 	}
 	if len(tasks) != 0 {
@@ -1456,7 +1456,7 @@ func FindOneIdWithFields(ctx context.Context, id string, projected ...string) (*
 // findAllTaskIDs returns a list of task IDs associated with the given query.
 func findAllTaskIDs(ctx context.Context, q db.Q) ([]string, error) {
 	tasks := []Task{}
-	err := db.FindAllQContext(ctx, Collection, q, &tasks)
+	err := db.FindAllQ(ctx, Collection, q, &tasks)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding tasks")
 	}
@@ -1502,7 +1502,7 @@ func FindAllTaskIDsFromBuild(ctx context.Context, buildId string) ([]string, err
 func FindAllTasksFromVersionWithDependencies(ctx context.Context, versionId string) ([]Task, error) {
 	q := db.Query(ByVersion(versionId)).WithFields(IdKey, DependsOnKey)
 	tasks := []Task{}
-	err := db.FindAllQContext(ctx, Collection, q, &tasks)
+	err := db.FindAllQ(ctx, Collection, q, &tasks)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding task IDs for version '%s'", versionId)
 	}
@@ -1549,7 +1549,7 @@ func FindTaskGroupFromBuild(ctx context.Context, buildId, taskGroup string) ([]T
 func FindOldWithDisplayTasks(ctx context.Context, filter bson.M) ([]Task, error) {
 	tasks := []Task{}
 	query := db.Query(filter)
-	err := db.FindAllQContext(ctx, OldCollection, query, &tasks)
+	err := db.FindAllQ(ctx, OldCollection, query, &tasks)
 
 	return tasks, err
 }
@@ -1603,7 +1603,7 @@ func Find(ctx context.Context, filter bson.M) ([]Task, error) {
 		filter[DisplayOnlyKey] = bson.M{"$ne": true}
 	}
 	query := db.Query(filter)
-	err := db.FindAllQContext(ctx, Collection, query, &tasks)
+	err := db.FindAllQ(ctx, Collection, query, &tasks)
 
 	return tasks, err
 }
@@ -1615,7 +1615,7 @@ func FindWithFields(ctx context.Context, filter bson.M, fields ...string) ([]Tas
 		filter[DisplayOnlyKey] = bson.M{"$ne": true}
 	}
 	query := db.Query(filter).WithFields(fields...)
-	err := db.FindAllQContext(ctx, Collection, query, &tasks)
+	err := db.FindAllQ(ctx, Collection, query, &tasks)
 
 	return tasks, err
 }
@@ -1627,7 +1627,7 @@ func FindWithSort(ctx context.Context, filter bson.M, sort []string) ([]Task, er
 		filter[DisplayOnlyKey] = bson.M{"$ne": true}
 	}
 	query := db.Query(filter).Sort(sort)
-	err := db.FindAllQContext(ctx, Collection, query, &tasks)
+	err := db.FindAllQ(ctx, Collection, query, &tasks)
 
 	return tasks, err
 }
@@ -1635,14 +1635,14 @@ func FindWithSort(ctx context.Context, filter bson.M, sort []string) ([]Task, er
 // Find returns really all tasks that satisfy the query.
 func FindAll(ctx context.Context, query db.Q) ([]Task, error) {
 	tasks := []Task{}
-	err := db.FindAllQContext(ctx, Collection, query, &tasks)
+	err := db.FindAllQ(ctx, Collection, query, &tasks)
 	return tasks, err
 }
 
 // Find returns really all tasks that satisfy the query.
 func FindAllOld(ctx context.Context, query db.Q) ([]Task, error) {
 	tasks := []Task{}
-	err := db.FindAllQContext(ctx, OldCollection, query, &tasks)
+	err := db.FindAllQ(ctx, OldCollection, query, &tasks)
 	return tasks, err
 }
 
@@ -1684,7 +1684,7 @@ func Remove(ctx context.Context, id string) error {
 }
 
 func Aggregate(ctx context.Context, pipeline []bson.M, results any) error {
-	return db.AggregateContext(ctx,
+	return db.Aggregate(ctx,
 		Collection,
 		pipeline,
 		results)
@@ -1692,7 +1692,7 @@ func Aggregate(ctx context.Context, pipeline []bson.M, results any) error {
 
 // Count returns the number of tasks that satisfy the given query.
 func Count(ctx context.Context, query db.Q) (int, error) {
-	return db.CountQ(Collection, query)
+	return db.CountQ(ctx, Collection, query)
 }
 
 func FindProjectForTask(ctx context.Context, taskID string) (string, error) {
@@ -2701,7 +2701,7 @@ type NumExecutionsForIntervalInput struct {
 	EndTime      time.Time
 }
 
-func CountNumExecutionsForInterval(input NumExecutionsForIntervalInput) (int, error) {
+func CountNumExecutionsForInterval(ctx context.Context, input NumExecutionsForIntervalInput) (int, error) {
 	query := bson.M{
 		ProjectKey:      input.ProjectId,
 		BuildVariantKey: input.BuildVarName,
@@ -2721,11 +2721,11 @@ func CountNumExecutionsForInterval(input NumExecutionsForIntervalInput) (int, er
 	} else {
 		query[FinishTimeKey] = bson.M{"$gt": input.StartTime}
 	}
-	numTasks, err := db.Count(Collection, query)
+	numTasks, err := db.Count(ctx, Collection, query)
 	if err != nil {
 		return 0, errors.Wrap(err, "counting task executions")
 	}
-	numOldTasks, err := db.Count(OldCollection, query)
+	numOldTasks, err := db.Count(ctx, OldCollection, query)
 	if err != nil {
 		return 0, errors.Wrap(err, "counting old task executions")
 	}
