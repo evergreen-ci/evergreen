@@ -145,7 +145,7 @@ func (p *APIParameter) BuildFromService(param *patch.Parameter) {
 type APIPatchArgs struct {
 	IncludeProjectIdentifier bool
 	IncludeChildPatches      bool
-	IncludeBranch            bool // TODO: remove this after a year, since this will be cached with the patch document.
+	IncludeBranch            bool // TODO DEVPROD-16824: remove since this will be cached with the patch document.
 }
 
 // BuildFromService converts from service level structs to an APIPatch.

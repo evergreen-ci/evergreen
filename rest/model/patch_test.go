@@ -104,7 +104,7 @@ func TestAPIPatch(t *testing.T) {
 }
 
 func TestAPIPatchIncludeBranch(t *testing.T) {
-	// TODO: remove after <>, since this tests backwards compatibility behavior.
+	// TODO DEVPROD-1682: remove, since this tests backwards compatibility behavior.
 	assert.NoError(t, db.ClearCollections(model.ProjectRefCollection))
 	pRef := model.ProjectRef{
 		Id:         "mci",
