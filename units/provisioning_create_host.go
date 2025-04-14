@@ -430,6 +430,17 @@ func (j *createHostJob) isImageBuilt(ctx context.Context) (bool, error) {
 
 // spawnAndUpdateHost attempts to spawn the host and update the host document.
 func (j *createHostJob) spawnAndReplaceHost(ctx context.Context, cloudMgr cloud.Manager) (replaced bool, err error) {
+	// Use a context that ignores cancellation because this is a set of critical
+	// operations that, in an ideal world, would occur atomically.
+	// Unfortunately, they don't occur atomically, so if any
+	// external resources are created in the cloud provider during SpawnHost
+	// when the job context cancels (e.g. due to an app server shutdown), it's
+	// best to try continuing onward, because those resources must be saved back
+	// to the host document. Trying to save the info reduces the likelihood of
+	// resource leaks.
+	// kim: TODO: determine whether this is really worth adding. Probably not
+	// ctx = context.WithoutCancel(ctx)
+
 	if _, err = cloudMgr.SpawnHost(ctx, j.host); err != nil {
 		return false, errors.Wrapf(err, "spawning host '%s'", j.host.Id)
 	}
