@@ -423,11 +423,28 @@ func (m *ec2FleetManager) spawnFleetSpotHost(ctx context.Context, h *host.Host, 
 		return errors.Wrapf(err, "unable to upload launch template for host '%s'", h.Id)
 	}
 
+	// kim: TODO: needs AWS SDK upgrade for IpamPoolId.
+	allocateAddrOut, err := m.client.AllocateAddress(ctx, &ec2.AllocateAddressInput{
+		IpamPoolId: aws.String("kim: TODO: IPAM POOL ID GOES HERE"),
+	})
+	if err != nil {
+		return errors.Wrap(err, "allocating address for host")
+	}
+	// kim: TODO: save this into host doc for reuse.
+	allocationID := aws.ToString(allocateAddrOut.AllocationId)
+
 	instanceID, err := m.requestFleet(ctx, h, ec2Settings)
 	if err != nil {
 		return errors.Wrapf(err, "requesting fleet")
 	}
 	h.Id = instanceID
+
+	if _, err := m.client.AssociateAddress(ctx, &ec2.AssociateAddressInput{
+		AllocationId: aws.String(allocationID),
+		InstanceId:   aws.String(instanceID),
+	}); err != nil {
+		return errors.Wrapf(err, "associating address from allocation '%s' with instance '%s'", allocationID, instanceID)
+	}
 
 	return nil
 }
