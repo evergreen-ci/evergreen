@@ -21,9 +21,9 @@ var (
 )
 
 // Find finds all pod definitions matching the given query.
-func Find(q db.Q) ([]PodDefinition, error) {
+func Find(ctx context.Context, q db.Q) ([]PodDefinition, error) {
 	defs := []PodDefinition{}
-	return defs, errors.WithStack(db.FindAllQ(Collection, q, &defs))
+	return defs, errors.WithStack(db.FindAllQ(ctx, Collection, q, &defs))
 }
 
 // FindOne finds one pod definition by the given query.
@@ -39,7 +39,7 @@ func FindOne(ctx context.Context, q db.Q) (*PodDefinition, error) {
 // UpsertOne updates an existing pod definition if it exists based on the
 // query; otherwise, it inserts a new pod definition.
 func UpsertOne(ctx context.Context, query, update any) (*adb.ChangeInfo, error) {
-	return db.UpsertContext(ctx, Collection, query, update)
+	return db.Upsert(ctx, Collection, query, update)
 }
 
 // UpdateOne updates an existing pod definition.
@@ -78,8 +78,8 @@ func FindOneByFamily(ctx context.Context, family string) (*PodDefinition, error)
 // FindByLastAccessedBefore finds all pod definitions that were last accessed
 // before the TTL. If a positive limit is given, it will return at most that
 // number of results; otherwise, the results are unlimited.
-func FindByLastAccessedBefore(ttl time.Duration, limit int) ([]PodDefinition, error) {
-	return Find(db.Query(bson.M{
+func FindByLastAccessedBefore(ctx context.Context, ttl time.Duration, limit int) ([]PodDefinition, error) {
+	return Find(ctx, db.Query(bson.M{
 		"$or": []bson.M{
 			{
 				LastAccessedKey: bson.M{"$lt": time.Now().Add(-ttl)},

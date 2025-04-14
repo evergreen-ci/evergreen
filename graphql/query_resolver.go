@@ -30,7 +30,7 @@ import (
 
 // BbGetCreatedTickets is the resolver for the bbGetCreatedTickets field.
 func (r *queryResolver) BbGetCreatedTickets(ctx context.Context, taskID string) ([]*thirdparty.JiraTicket, error) {
-	createdTickets, err := bbGetCreatedTicketsPointers(taskID)
+	createdTickets, err := bbGetCreatedTicketsPointers(ctx, taskID)
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +124,7 @@ func (r *queryResolver) DistroEvents(ctx context.Context, opts DistroEventsInput
 		limit = utility.FromIntPtr(opts.Limit)
 	}
 
-	events, err := event.FindLatestPrimaryDistroEvents(opts.DistroID, limit, before)
+	events, err := event.FindLatestPrimaryDistroEvents(ctx, opts.DistroID, limit, before)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("retrieving events for distro '%s': %s", opts.DistroID, err.Error()))
 	}
@@ -164,7 +164,7 @@ func (r *queryResolver) Distros(ctx context.Context, onlySpawnable bool) ([]*res
 		distros = d
 	}
 
-	userHasDistroCreatePermission := userHasDistroCreatePermission(usr)
+	userHasDistroCreatePermission := usr.HasDistroCreatePermission()
 
 	for _, d := range distros {
 		// Omit admin-only distros if user lacks permissions
@@ -181,7 +181,7 @@ func (r *queryResolver) Distros(ctx context.Context, onlySpawnable bool) ([]*res
 
 // DistroTaskQueue is the resolver for the distroTaskQueue field.
 func (r *queryResolver) DistroTaskQueue(ctx context.Context, distroID string) ([]*restModel.APITaskQueueItem, error) {
-	distroQueue, err := model.LoadTaskQueue(distroID)
+	distroQueue, err := model.LoadTaskQueue(ctx, distroID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting task queue for distro '%s': %s", distroID, err.Error()))
 	}
@@ -244,7 +244,7 @@ func (r *queryResolver) HostEvents(ctx context.Context, hostID string, hostTag *
 		Page:    utility.FromIntPtr(page),
 		SortAsc: false,
 	}
-	events, count, err := event.GetPaginatedHostEvents(hostQueryOpts)
+	events, count, err := event.GetPaginatedHostEvents(ctx, hostQueryOpts)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching events for host '%s': %s", hostID, err.Error()))
 	}
@@ -365,7 +365,7 @@ func (r *queryResolver) Hosts(ctx context.Context, hostID *string, distroID *str
 
 // TaskQueueDistros is the resolver for the taskQueueDistros field.
 func (r *queryResolver) TaskQueueDistros(ctx context.Context) ([]*TaskQueueDistro, error) {
-	queues, err := model.FindAllTaskQueues()
+	queues, err := model.FindAllTaskQueues(ctx)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching all task queues: %s", err.Error()))
 	}
@@ -1070,8 +1070,6 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 		activeVersionIds = append(activeVersionIds, v.Id)
 	}
 
-	waterfallVersions := groupInactiveVersions(ctx, allVersions)
-
 	prevPageOrder := 0
 	nextPageOrder := 0
 	if len(allVersions) > 0 {
@@ -1098,7 +1096,6 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 
 	results := &Waterfall{
 		FlattenedVersions: flattenedVersions,
-		Versions:          waterfallVersions,
 		Pagination: &WaterfallPagination{
 			ActiveVersionIds:       activeVersionIds,
 			NextPageOrder:          nextPageOrder,
@@ -1107,24 +1104,6 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 			HasNextPage:            nextPageOrder > 0,
 			HasPrevPage:            prevPageOrder > 0,
 		},
-	}
-
-	// If buildVariants its not included in the request, skip that agg pipeline
-	if utility.StringSliceContains(graphql.CollectAllFields(ctx), "buildVariants") {
-		bv := []*model.WaterfallBuildVariant{}
-
-		if len(activeVersionIds) > 0 {
-			buildVariants, err := model.GetWaterfallBuildVariants(ctx, activeVersionIds)
-			if err != nil {
-				return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting waterfall build variants: %s", err.Error()))
-			}
-
-			for _, b := range buildVariants {
-				bCopy := b
-				bv = append(bv, &bCopy)
-			}
-		}
-		results.BuildVariants = bv
 	}
 
 	return results, nil

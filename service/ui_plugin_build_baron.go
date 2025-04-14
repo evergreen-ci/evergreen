@@ -55,7 +55,7 @@ func bbSaveNote(w http.ResponseWriter, r *http.Request) {
 
 	n.TaskId = taskId
 	n.UnixNanoTime = time.Now().UnixNano()
-	if err := n.Upsert(); err != nil {
+	if err := n.Replace(r.Context()); err != nil {
 		gimlet.WriteJSONInternalError(w, err.Error())
 		return
 	}
@@ -80,7 +80,7 @@ func bbGetNote(w http.ResponseWriter, r *http.Request) {
 func (uis *UIServer) bbGetCreatedTickets(w http.ResponseWriter, r *http.Request) {
 	taskId := gimlet.GetVars(r)["task_id"]
 
-	events, err := event.Find(event.TaskEventsForId(taskId))
+	events, err := event.Find(r.Context(), event.TaskEventsForId(taskId))
 	if err != nil {
 		gimlet.WriteJSONInternalError(w, err.Error())
 		return

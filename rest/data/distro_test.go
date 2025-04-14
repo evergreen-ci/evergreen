@@ -37,11 +37,11 @@ func TestDeleteDistroById(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, evergreen.HostTerminated, dbHost.Status)
 
-			dbQueue, err := model.LoadTaskQueue("distro")
+			dbQueue, err := model.LoadTaskQueue(t.Context(), "distro")
 			assert.NoError(t, err)
 			assert.Empty(t, dbQueue.Queue)
 
-			events, err := event.FindLatestPrimaryDistroEvents("distro", 10, utility.ZeroTime)
+			events, err := event.FindLatestPrimaryDistroEvents(t.Context(), "distro", 10, utility.ZeroTime)
 			assert.NoError(t, err)
 			assert.Len(t, events, 1)
 		},
@@ -49,7 +49,7 @@ func TestDeleteDistroById(t *testing.T) {
 			err := DeleteDistroById(ctx, &u, "distro-no-task-queue")
 			assert.NoError(t, err)
 
-			events, err := event.FindLatestPrimaryDistroEvents("distro-no-task-queue", 10, utility.ZeroTime)
+			events, err := event.FindLatestPrimaryDistroEvents(t.Context(), "distro-no-task-queue", 10, utility.ZeroTime)
 			assert.NoError(t, err)
 			assert.Len(t, events, 1)
 		},
@@ -58,7 +58,7 @@ func TestDeleteDistroById(t *testing.T) {
 			assert.Error(t, err)
 			assert.Equal(t, "400 (Bad Request): distro 'nonexistent' not found", err.Error())
 
-			events, err := event.FindLatestPrimaryDistroEvents("nonexistent", 10, utility.ZeroTime)
+			events, err := event.FindLatestPrimaryDistroEvents(t.Context(), "nonexistent", 10, utility.ZeroTime)
 			assert.NoError(t, err)
 			assert.Empty(t, events)
 		},
@@ -87,7 +87,7 @@ func TestDeleteDistroById(t *testing.T) {
 				Distro: d.Id,
 				Queue:  []model.TaskQueueItem{{Id: "task"}},
 			}
-			assert.NoError(t, queue.Save())
+			assert.NoError(t, queue.Save(t.Context()))
 
 			d.Id = "distro-no-task-queue"
 			assert.NoError(t, d.Insert(tctx))
@@ -95,7 +95,7 @@ func TestDeleteDistroById(t *testing.T) {
 			adminUser := user.DBUser{
 				Id: "admin",
 			}
-			assert.NoError(t, adminUser.Insert())
+			assert.NoError(t, adminUser.Insert(t.Context()))
 
 			tCase(t, tctx, adminUser)
 		})
@@ -120,7 +120,7 @@ func TestCopyDistro(t *testing.T) {
 			require.NotNil(t, newDistro)
 			assert.Nil(t, newDistro.Aliases)
 
-			events, err := event.FindLatestPrimaryDistroEvents("new-distro", 10, utility.ZeroTime)
+			events, err := event.FindLatestPrimaryDistroEvents(t.Context(), "new-distro", 10, utility.ZeroTime)
 			assert.NoError(t, err)
 			assert.Len(t, events, 1)
 		},
@@ -134,7 +134,7 @@ func TestCopyDistro(t *testing.T) {
 			assert.Error(t, err)
 			assert.Equal(t, "validator encountered errors: 'ERROR: distro 'distro2' uses an existing identifier'", err.Error())
 
-			events, err := event.FindLatestPrimaryDistroEvents("distro", 10, utility.ZeroTime)
+			events, err := event.FindLatestPrimaryDistroEvents(t.Context(), "distro", 10, utility.ZeroTime)
 			assert.NoError(t, err)
 			assert.Empty(t, events)
 		},
@@ -147,7 +147,7 @@ func TestCopyDistro(t *testing.T) {
 			assert.Error(t, err)
 			assert.Equal(t, "400 (Bad Request): new and existing distro IDs are identical", err.Error())
 
-			events, err := event.FindLatestPrimaryDistroEvents("distro", 10, utility.ZeroTime)
+			events, err := event.FindLatestPrimaryDistroEvents(t.Context(), "distro", 10, utility.ZeroTime)
 			assert.NoError(t, err)
 			assert.Empty(t, events)
 		},
@@ -160,7 +160,7 @@ func TestCopyDistro(t *testing.T) {
 			assert.Error(t, err)
 			assert.Equal(t, "404 (Not Found): distro 'my-distro' not found", err.Error())
 
-			events, err := event.FindLatestPrimaryDistroEvents("new-distro", 10, utility.ZeroTime)
+			events, err := event.FindLatestPrimaryDistroEvents(t.Context(), "new-distro", 10, utility.ZeroTime)
 			assert.NoError(t, err)
 			assert.Empty(t, events)
 		},
@@ -203,7 +203,7 @@ func TestCopyDistro(t *testing.T) {
 			adminUser := user.DBUser{
 				Id: "admin",
 			}
-			assert.NoError(t, adminUser.Insert())
+			assert.NoError(t, adminUser.Insert(t.Context()))
 
 			tCase(t, tctx, adminUser)
 		})
@@ -223,7 +223,7 @@ func TestUpdateDistro(t *testing.T) {
 			assert.NotNil(t, dbDistro)
 			assert.Equal(t, *dbDistro, *new)
 
-			dbQueue, err := model.LoadTaskQueue("distro")
+			dbQueue, err := model.LoadTaskQueue(t.Context(), "distro")
 			assert.NoError(t, err)
 			assert.NotEmpty(t, dbQueue.Queue)
 		},
@@ -236,7 +236,7 @@ func TestUpdateDistro(t *testing.T) {
 			assert.NotNil(t, dbDistro)
 			assert.Equal(t, *dbDistro, *new)
 
-			dbQueue, err := model.LoadTaskQueue("distro")
+			dbQueue, err := model.LoadTaskQueue(t.Context(), "distro")
 			assert.NoError(t, err)
 			assert.Empty(t, dbQueue.Queue)
 		},
@@ -272,7 +272,7 @@ func TestUpdateDistro(t *testing.T) {
 				Distro: d.Id,
 				Queue:  []model.TaskQueueItem{{Id: "task"}},
 			}
-			assert.NoError(t, queue.Save())
+			assert.NoError(t, queue.Save(t.Context()))
 
 			tCase(t, tctx, &d, &updatedDistro)
 		})
@@ -291,7 +291,7 @@ func TestCreateDistro(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, newDistro)
 
-			events, err := event.FindLatestPrimaryDistroEvents("new-distro", 10, utility.ZeroTime)
+			events, err := event.FindLatestPrimaryDistroEvents(t.Context(), "new-distro", 10, utility.ZeroTime)
 			assert.NoError(t, err)
 			assert.Len(t, events, 1)
 
@@ -304,7 +304,7 @@ func TestCreateDistro(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, newDistro)
 
-			events, err := event.FindLatestPrimaryDistroEvents("new-distro", 10, utility.ZeroTime)
+			events, err := event.FindLatestPrimaryDistroEvents(t.Context(), "new-distro", 10, utility.ZeroTime)
 			assert.NoError(t, err)
 			assert.Len(t, events, 1)
 
@@ -315,7 +315,7 @@ func TestCreateDistro(t *testing.T) {
 			assert.Error(t, err)
 			assert.Equal(t, "validator encountered errors: 'ERROR: distro 'distro' uses an existing identifier'", err.Error())
 
-			events, err := event.FindLatestPrimaryDistroEvents("distro", 10, utility.ZeroTime)
+			events, err := event.FindLatestPrimaryDistroEvents(t.Context(), "distro", 10, utility.ZeroTime)
 			assert.NoError(t, err)
 			assert.Empty(t, events)
 		},
@@ -329,7 +329,7 @@ func TestCreateDistro(t *testing.T) {
 			adminUser := user.DBUser{
 				Id: "admin",
 			}
-			assert.NoError(t, adminUser.Insert())
+			assert.NoError(t, adminUser.Insert(t.Context()))
 
 			d := distro.Distro{
 				Id:                 "distro",

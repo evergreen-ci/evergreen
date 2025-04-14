@@ -15,8 +15,8 @@ import (
 )
 
 // AddPRPatchIntent inserts the intent and adds it to the queue if PR testing is enabled for the branch.
-func AddPRPatchIntent(intent patch.Intent, queue amboy.Queue) error {
-	if err := intent.Insert(); err != nil {
+func AddPRPatchIntent(ctx context.Context, intent patch.Intent, queue amboy.Queue) error {
+	if err := intent.Insert(ctx); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":   "couldn't insert patch intent",
 			"id":        intent.ID(),
@@ -52,8 +52,8 @@ func AddPRPatchIntent(intent patch.Intent, queue amboy.Queue) error {
 	return nil
 }
 
-func AddGithubMergeIntent(intent patch.Intent, queue amboy.Queue) error {
-	if err := intent.Insert(); err != nil {
+func AddGithubMergeIntent(ctx context.Context, intent patch.Intent, queue amboy.Queue) error {
+	if err := intent.Insert(ctx); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":   "couldn't insert GitHub merge group intent",
 			"id":        intent.ID(),

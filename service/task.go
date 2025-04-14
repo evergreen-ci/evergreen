@@ -279,7 +279,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 
 	uiTask.DependsOn = deps
 	uiTask.TaskWaiting = taskWaiting
-	uiTask.MinQueuePos, err = model.FindMinimumQueuePositionForTask(uiTask.Id)
+	uiTask.MinQueuePos, err = model.FindMinimumQueuePositionForTask(ctx, uiTask.Id)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -519,7 +519,7 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 
 	logType := r.FormValue("type")
 	if logType == "EV" {
-		loggedEvents, err := event.Find(event.MostRecentTaskEvents(projCtx.Task.Id, DefaultLogMessages))
+		loggedEvents, err := event.Find(r.Context(), event.MostRecentTaskEvents(projCtx.Task.Id, DefaultLogMessages))
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return

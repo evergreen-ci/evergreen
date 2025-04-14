@@ -51,8 +51,8 @@ func NewPodDispatcher(groupID string, taskIDs, podIDs []string) PodDispatcher {
 }
 
 // Insert inserts the pod dispatcher into the DB.
-func (pd *PodDispatcher) Insert() error {
-	return db.Insert(Collection, pd)
+func (pd *PodDispatcher) Insert(ctx context.Context) error {
+	return db.Insert(ctx, Collection, pd)
 }
 
 func (pd *PodDispatcher) atomicUpsertQuery() bson.M {
@@ -82,9 +82,9 @@ func (pd *PodDispatcher) atomicUpsertUpdate(lastModified time.Time) bson.M {
 
 // UpsertAtomically inserts/updates the pod dispatcher depending on whether the
 // document already exists.
-func (pd *PodDispatcher) UpsertAtomically() (*adb.ChangeInfo, error) {
+func (pd *PodDispatcher) UpsertAtomically(ctx context.Context) (*adb.ChangeInfo, error) {
 	lastModified := utility.BSONTime(time.Now())
-	change, err := UpsertOne(pd.atomicUpsertQuery(), pd.atomicUpsertUpdate(lastModified))
+	change, err := UpsertOne(ctx, pd.atomicUpsertQuery(), pd.atomicUpsertUpdate(lastModified))
 	if err != nil {
 		return change, err
 	}
@@ -143,8 +143,8 @@ func (pd *PodDispatcher) AssignNextTask(ctx context.Context, env evergreen.Envir
 			return nil, errors.Wrapf(err, "dispatching task '%s' to pod '%s'", t.Id, p.ID)
 		}
 
-		event.LogPodAssignedTask(p.ID, t.Id, t.Execution)
-		event.LogContainerTaskDispatched(t.Id, t.Execution, p.ID)
+		event.LogPodAssignedTask(ctx, p.ID, t.Id, t.Execution)
+		event.LogContainerTaskDispatched(ctx, t.Id, t.Execution, p.ID)
 
 		if t.IsPartOfDisplay(ctx) {
 			if err := model.UpdateDisplayTaskForTask(ctx, t); err != nil {

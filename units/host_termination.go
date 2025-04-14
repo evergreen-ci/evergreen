@@ -341,7 +341,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	}
 
 	if utility.StringSliceContains(evergreen.ProvisioningHostStatus, prevStatus) && j.host.TaskCount == 0 {
-		event.LogHostProvisionFailed(j.HostID, fmt.Sprintf("terminating host in status '%s'", prevStatus))
+		event.LogHostProvisionFailed(ctx, j.HostID, fmt.Sprintf("terminating host in status '%s'", prevStatus))
 		grip.Info(message.Fields{
 			"message":          "provisioning failure",
 			"status":           prevStatus,

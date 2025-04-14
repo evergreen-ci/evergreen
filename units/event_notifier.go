@@ -106,7 +106,7 @@ func (j *eventNotifierJob) processEvent(ctx context.Context, e *event.EventLogEn
 	catcher.Add(err)
 	catcher.Add(e.MarkProcessed(ctx))
 
-	if err = notification.InsertMany(n...); err != nil {
+	if err = notification.InsertMany(ctx, n...); err != nil {
 		// Consider that duplicate key errors are expected.
 		shouldLogError := !db.IsDuplicateKey(err)
 		grip.ErrorWhen(shouldLogError, message.WrapError(err, message.Fields{

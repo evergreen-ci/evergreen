@@ -120,7 +120,7 @@ func FindOneByIdContext(ctx context.Context, id string) (*DBUser, error) {
 // Find gets all DBUser for the given query.
 func Find(ctx context.Context, query db.Q) ([]DBUser, error) {
 	us := []DBUser{}
-	err := db.FindAllQContext(ctx, Collection, query, &us)
+	err := db.FindAllQ(ctx, Collection, query, &us)
 	return us, err
 }
 
@@ -153,8 +153,9 @@ func UpdateAll(query any, update any) error {
 }
 
 // UpsertOne upserts a user.
-func UpsertOne(query any, update any) (*adb.ChangeInfo, error) {
+func UpsertOne(ctx context.Context, query any, update any) (*adb.ChangeInfo, error) {
 	return db.Upsert(
+		ctx,
 		Collection,
 		query,
 		update,
@@ -223,9 +224,9 @@ func FindBySlackUsername(ctx context.Context, userName string) (*DBUser, error) 
 	return &u, nil
 }
 
-func FindByRole(role string) ([]DBUser, error) {
+func FindByRole(ctx context.Context, role string) ([]DBUser, error) {
 	res := []DBUser{}
-	err := db.FindAllQ(
+	err := db.FindAllQ(ctx,
 		Collection,
 		db.Query(bson.M{RolesKey: role}),
 		&res,
@@ -235,7 +236,7 @@ func FindByRole(role string) ([]DBUser, error) {
 
 // AddOrUpdateServiceUser upserts a service user by ID. If it's a new user, it
 // generates a new API key for the user.
-func AddOrUpdateServiceUser(u DBUser) error {
+func AddOrUpdateServiceUser(ctx context.Context, u DBUser) error {
 	if !u.OnlyAPI {
 		return errors.New("cannot update a non-service user")
 	}
@@ -255,14 +256,14 @@ func AddOrUpdateServiceUser(u DBUser) error {
 			EmailAddressKey: u.EmailAddress,
 		},
 	}
-	_, err := UpsertOne(query, update)
+	_, err := UpsertOne(ctx, query, update)
 	return err
 }
 
 // FindHumanUsersByRoles returns human users that have any of the given roles.
-func FindHumanUsersByRoles(roles []string) ([]DBUser, error) {
+func FindHumanUsersByRoles(ctx context.Context, roles []string) ([]DBUser, error) {
 	res := []DBUser{}
-	err := db.FindAllQ(
+	err := db.FindAllQ(ctx,
 		Collection,
 		db.Query(bson.M{
 			RolesKey:   bson.M{"$in": roles},
@@ -537,7 +538,7 @@ func ClearAllLoginCaches() error {
 }
 
 // UpsertOneFromExisting creates a new user with the same necessary data as oldUsr.
-func UpsertOneFromExisting(oldUsr *DBUser, newEmail string) (*DBUser, error) {
+func UpsertOneFromExisting(ctx context.Context, oldUsr *DBUser, newEmail string) (*DBUser, error) {
 	splitString := strings.Split(newEmail, "@")
 	if len(splitString) == 1 {
 		return nil, errors.New("email address is missing '@'")
@@ -557,7 +558,7 @@ func UpsertOneFromExisting(oldUsr *DBUser, newEmail string) (*DBUser, error) {
 		PubKeys:          oldUsr.PublicKeys(),
 	}
 
-	_, err := UpsertOne(bson.M{IdKey: newUsername}, bson.M{"$set": bson.M{
+	_, err := UpsertOne(ctx, bson.M{IdKey: newUsername}, bson.M{"$set": bson.M{
 		EmailAddressKey:     newUsr.Email(),
 		FavoriteProjectsKey: newUsr.FavoriteProjects,
 		PatchNumberKey:      newUsr.PatchNumber,

@@ -31,7 +31,7 @@ func TestVolumeExpiration(t *testing.T) {
 		ID:         "v0",
 		Expiration: time.Now().Add(12 * time.Hour),
 	}
-	require.NoError(t, v.Insert())
+	require.NoError(t, v.Insert(t.Context()))
 
 	triggers := makeVolumeTriggers().(*volumeTriggers)
 	triggers.volume = &v
@@ -72,7 +72,7 @@ func TestVolumeExpiration(t *testing.T) {
 					Target: "foo@bar.com",
 				}),
 			}
-			require.NoError(t, subscriptions[0].Upsert())
+			require.NoError(t, subscriptions[0].Upsert(t.Context()))
 
 			n, err := NotificationsFromEvent(ctx, &event.EventLogEntry{
 				ResourceType: event.ResourceTypeHost,

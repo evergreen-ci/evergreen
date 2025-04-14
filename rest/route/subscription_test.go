@@ -65,7 +65,7 @@ func (s *SubscriptionRouteSuite) TestSubscriptionPost() {
 
 	s.NotNil(resp)
 
-	dbSubscriptions, err := event.FindSubscriptionsByOwner("me", event.OwnerTypePerson)
+	dbSubscriptions, err := event.FindSubscriptionsByOwner(s.T().Context(), "me", event.OwnerTypePerson)
 	s.NoError(err)
 	s.Require().Len(dbSubscriptions, 1)
 	s.Equal(event.ResourceTypeTask, dbSubscriptions[0].ResourceType)
@@ -100,7 +100,7 @@ func (s *SubscriptionRouteSuite) TestSubscriptionPost() {
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
 
-	dbSubscriptions, err = event.FindSubscriptionsByOwner("me", event.OwnerTypePerson)
+	dbSubscriptions, err = event.FindSubscriptionsByOwner(s.T().Context(), "me", event.OwnerTypePerson)
 	s.NoError(err)
 	s.Len(dbSubscriptions, 1)
 	s.Equal(event.ResourceTypePatch, dbSubscriptions[0].ResourceType)
@@ -135,7 +135,7 @@ func (s *SubscriptionRouteSuite) TestProjectSubscription() {
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
 
-	dbSubscriptions, err := event.FindSubscriptionsByOwner("myproj", event.OwnerTypeProject)
+	dbSubscriptions, err := event.FindSubscriptionsByOwner(s.T().Context(), "myproj", event.OwnerTypeProject)
 	s.NoError(err)
 	s.Require().Len(dbSubscriptions, 1)
 	s.Equal(event.ResourceTypeTask, dbSubscriptions[0].ResourceType)
@@ -262,7 +262,7 @@ func (s *SubscriptionRouteSuite) TestDeleteValidation() {
 			Type: "email",
 		},
 	}
-	s.NoError(subscription.Upsert())
+	s.NoError(subscription.Upsert(s.T().Context()))
 	r, err = http.NewRequest(http.MethodDelete, "/subscriptions?id=5949645c9acd9604fdd202da", nil)
 	s.NoError(err)
 	s.NoError(d.Parse(ctx, r))

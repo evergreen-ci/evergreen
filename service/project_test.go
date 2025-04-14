@@ -15,7 +15,7 @@ func TestValidateBbProject(t *testing.T) {
 	p := model.ProjectRef{
 		Identifier: "proj1",
 	}
-	assert.NoError(p.Insert())
+	assert.NoError(p.Insert(t.Context()))
 	assert.NoError(model.ValidateBbProject(t.Context(), "proj1", evergreen.BuildBaronSettings{
 		TicketCreateProject:  "BFG",
 		TicketSearchProjects: []string{"BF", "BFG"},
@@ -46,7 +46,7 @@ func TestBuildBaronPluginConfigureBFSuggestion(t *testing.T) {
 	p := model.ProjectRef{
 		Identifier: "proj1",
 	}
-	assert.NoError(p.Insert())
+	assert.NoError(p.Insert(t.Context()))
 	assert.NoError(model.ValidateBbProject(t.Context(), "proj1", evergreen.BuildBaronSettings{
 		TicketCreateProject:     "BFG",
 		TicketSearchProjects:    []string{"BF", "BFG"},

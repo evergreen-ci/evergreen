@@ -324,9 +324,9 @@ func FindOneId(ctx context.Context, id string) (*Patch, error) {
 }
 
 // Find runs a patch query, returning all patches that satisfy the query.
-func Find(query db.Q) ([]Patch, error) {
+func Find(ctx context.Context, query db.Q) ([]Patch, error) {
 	patches := []Patch{}
-	err := db.FindAllQ(Collection, query, &patches)
+	err := db.FindAllQ(ctx, Collection, query, &patches)
 	return patches, err
 }
 
@@ -373,7 +373,7 @@ func ConsolidatePatchesForUser(ctx context.Context, oldAuthor string, newUsr *us
 
 	// It's not likely that the user would've already created patches for the new user, but if there are any, make
 	// sure that they don't have overlapping patch numbers.
-	patchesForNewAuthor, err := Find(db.Query(byUser(newUsr.Id)))
+	patchesForNewAuthor, err := Find(ctx, db.Query(byUser(newUsr.Id)))
 	if err != nil {
 		return errors.Wrapf(err, "finding existing patches for '%s'", newUsr.Id)
 	}
@@ -399,8 +399,8 @@ func ConsolidatePatchesForUser(ctx context.Context, oldAuthor string, newUsr *us
 }
 
 // FindLatestGithubPRPatch returns the latest PR patch for the given PR, if there is one.
-func FindLatestGithubPRPatch(owner, repo string, prNumber int) (*Patch, error) {
-	patches, err := Find(db.Query(bson.M{
+func FindLatestGithubPRPatch(ctx context.Context, owner, repo string, prNumber int) (*Patch, error) {
+	patches, err := Find(ctx, db.Query(bson.M{
 		AliasKey: bson.M{"$ne": evergreen.CommitQueueAlias},
 		bsonutil.GetDottedKeyName(githubPatchDataKey, thirdparty.GithubPatchBaseOwnerKey): owner,
 		bsonutil.GetDottedKeyName(githubPatchDataKey, thirdparty.GithubPatchBaseRepoKey):  repo,
@@ -441,7 +441,7 @@ func GetFinalizedChildPatchIdsForPatch(ctx context.Context, patchID string) ([]s
 		return nil, nil
 	}
 
-	childPatches, err := Find(ByStringIds(p.Triggers.ChildPatches).WithFields(VersionKey))
+	childPatches, err := Find(ctx, ByStringIds(p.Triggers.ChildPatches).WithFields(VersionKey))
 	if err != nil {
 		return nil, errors.Wrap(err, "getting child patches")
 	}

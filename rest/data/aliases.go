@@ -29,7 +29,7 @@ func FindMergedProjectAliases(ctx context.Context, projectId, repoId string, ali
 			return nil, errors.Wrapf(err, "finding project config for project '%s'", projectId)
 		}
 	}
-	aliases, err := model.ConstructMergedAliasesByPrecedence(projectRef, projectConfig, repoId)
+	aliases, err := model.ConstructMergedAliasesByPrecedence(ctx, projectRef, projectConfig, repoId)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding merged aliases for project '%s'", projectId)
 	}
@@ -75,7 +75,7 @@ func UpdateProjectAliases(ctx context.Context, projectId string, aliases []restM
 	if catcher.HasErrors() {
 		return catcher.Resolve()
 	}
-	if err := model.UpsertAliasesForProject(aliasesToUpsert, projectId); err != nil {
+	if err := model.UpsertAliasesForProject(ctx, aliasesToUpsert, projectId); err != nil {
 		return errors.Wrap(err, "upserting project aliases")
 	}
 	for _, aliasId := range aliasesToDelete {
@@ -122,7 +122,7 @@ func updateAliasesForSection(ctx context.Context, projectId string, updatedAlias
 // validateFeaturesHaveAliases returns an error if project/repo aliases are not defined for a Github/CQ feature.
 // Does not error if version control is enabled. To check for version control, we pass in the original project ref
 // along with the newly changed project ref because the new project ref only contains github / CQ section data.
-func validateFeaturesHaveAliases(originalProjectRef *model.ProjectRef, newProjectRef *model.ProjectRef, aliases []restModel.APIProjectAlias) error {
+func validateFeaturesHaveAliases(ctx context.Context, originalProjectRef *model.ProjectRef, newProjectRef *model.ProjectRef, aliases []restModel.APIProjectAlias) error {
 	if originalProjectRef.IsVersionControlEnabled() {
 		return nil
 	}
@@ -133,7 +133,7 @@ func validateFeaturesHaveAliases(originalProjectRef *model.ProjectRef, newProjec
 	}
 
 	if newProjectRef.UseRepoSettings() {
-		repoAliases, err := model.FindAliasesForRepo(newProjectRef.RepoRefId)
+		repoAliases, err := model.FindAliasesForRepo(ctx, newProjectRef.RepoRefId)
 		if err != nil {
 			return err
 		}

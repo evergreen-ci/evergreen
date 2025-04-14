@@ -54,7 +54,7 @@ func (s *statsSuite) TestStatsStatus() {
 	s.WithinDuration(expected, status.ProcessedTasksUntil, oneDayOneMinute)
 
 	// Check that we can update the status and read the new values.
-	err = UpdateStatsStatus("p1", baseHour, baseDay, time.Hour)
+	err = UpdateStatsStatus(s.T().Context(), "p1", baseHour, baseDay, time.Hour)
 	s.NoError(err)
 
 	status, err = GetStatsStatus(s.T().Context(), "p1")
@@ -78,7 +78,7 @@ func (s *statsSuite) TestGenerateStats() {
 		Date:      baseHour,
 		Tasks:     []string{"unknown_task"},
 	}))
-	s.Equal(0, s.countDailyTaskDocs())
+	s.Equal(0, s.countDailyTaskDocs(s.T().Context()))
 
 	// Generate task stats for project p1.
 	s.Require().NoError(GenerateStats(ctx, GenerateStatsOptions{
@@ -87,7 +87,7 @@ func (s *statsSuite) TestGenerateStats() {
 		Date:      baseHour,
 		Tasks:     []string{"task1", "task2"},
 	}))
-	s.Equal(3, s.countDailyTaskDocs())
+	s.Equal(3, s.countDailyTaskDocs(s.T().Context()))
 	doc, err := GetDailyTaskDoc(s.T().Context(), DBTaskStatsID{
 		Project:      "p1",
 		Requester:    "r1",
@@ -121,7 +121,7 @@ func (s *statsSuite) TestGenerateStats() {
 
 	// Generate task stats for project p4 to check status aggregation.
 	s.Require().NoError(GenerateStats(ctx, GenerateStatsOptions{ProjectID: "p4", Requester: "r1", Date: baseHour, Tasks: []string{"task1"}}))
-	s.Equal(4, s.countDailyTaskDocs()) // 1 more task combination was added to the collection.
+	s.Equal(4, s.countDailyTaskDocs(s.T().Context())) // 1 more task combination was added to the collection.
 	doc, err = GetDailyTaskDoc(s.T().Context(), DBTaskStatsID{
 		Project:      "p4",
 		Requester:    "r1",
@@ -144,7 +144,7 @@ func (s *statsSuite) TestGenerateStats() {
 
 	// Generate task for project p2
 	s.Require().NoError(GenerateStats(ctx, GenerateStatsOptions{ProjectID: "p2", Requester: "r1", Date: baseHour, Tasks: []string{"task1"}}))
-	s.Equal(5, s.countDailyTaskDocs()) // 1 more task combination was added to the collection.
+	s.Equal(5, s.countDailyTaskDocs(s.T().Context())) // 1 more task combination was added to the collection.
 	doc, err = GetDailyTaskDoc(s.T().Context(), DBTaskStatsID{
 		Project:      "p2",
 		Requester:    "r1",
@@ -171,23 +171,23 @@ func (s *statsSuite) TestFindStatsToUpdate() {
 	// Find stats for p5 for a period with no finished tasks.
 	start := baseHour
 	end := baseHour.Add(time.Hour)
-	statsList, err := FindStatsToUpdate(FindStatsToUpdateOptions{ProjectID: "p5", Requesters: nil, Start: start, End: end})
+	statsList, err := FindStatsToUpdate(s.T().Context(), FindStatsToUpdateOptions{ProjectID: "p5", Requesters: nil, Start: start, End: end})
 	s.Require().NoError(err)
 	s.Empty(statsList)
 
 	// Find stats for p5 for a period around finish1.
 	start = finish1.Add(-1 * time.Hour)
 	end = finish1.Add(time.Hour)
-	statsList, err = FindStatsToUpdate(FindStatsToUpdateOptions{ProjectID: "p5", Requesters: nil, Start: start, End: end})
+	statsList, err = FindStatsToUpdate(s.T().Context(), FindStatsToUpdateOptions{ProjectID: "p5", Requesters: nil, Start: start, End: end})
 	s.Require().NoError(err)
 	s.Len(statsList, 2)
 
 	// Find stats for p5 for a period around finished1, filtering by
 	// requester.
-	statsList, err = FindStatsToUpdate(FindStatsToUpdateOptions{ProjectID: "p5", Requesters: []string{"r2"}, Start: start, End: end})
+	statsList, err = FindStatsToUpdate(s.T().Context(), FindStatsToUpdateOptions{ProjectID: "p5", Requesters: []string{"r2"}, Start: start, End: end})
 	s.Require().NoError(err)
 	s.Len(statsList, 1)
-	statsList, err = FindStatsToUpdate(FindStatsToUpdateOptions{ProjectID: "p5", Requesters: []string{"r1", "r2"}, Start: start, End: end})
+	statsList, err = FindStatsToUpdate(s.T().Context(), FindStatsToUpdateOptions{ProjectID: "p5", Requesters: []string{"r1", "r2"}, Start: start, End: end})
 	s.Require().NoError(err)
 	s.Require().Len(statsList, 2)
 
@@ -199,7 +199,7 @@ func (s *statsSuite) TestFindStatsToUpdate() {
 	// Find stats for p5 for a period around finish1
 	start = finish1.Add(-1 * time.Hour)
 	end = finish1.Add(time.Hour)
-	statsList, err = FindStatsToUpdate(FindStatsToUpdateOptions{ProjectID: "p5", Requesters: nil, Start: start, End: end})
+	statsList, err = FindStatsToUpdate(s.T().Context(), FindStatsToUpdateOptions{ProjectID: "p5", Requesters: nil, Start: start, End: end})
 	s.Require().NoError(err)
 	s.Require().Len(statsList, 2)
 	// The results are sorted so we know the order
@@ -298,7 +298,7 @@ func (s *statsSuite) insertTask(project string, requester string, taskId string,
 		Details:      details,
 		TimeTaken:    status.TimeTaken,
 	}
-	err := newTask.Insert()
+	err := newTask.Insert(s.T().Context())
 	s.Require().NoError(err)
 	return newTask
 }
@@ -322,7 +322,7 @@ func (s *statsSuite) insertDisplayTask(project string, requester string, taskId 
 		Details:        details,
 		TimeTaken:      status.TimeTaken,
 		ExecutionTasks: executionTasks}
-	err := newTask.Insert()
+	err := newTask.Insert(s.T().Context())
 	s.Require().NoError(err)
 	return newTask
 }
@@ -336,7 +336,7 @@ func (s *statsSuite) insertFinishedTask(project string, requester string, taskNa
 		CreateTime:  createTime,
 		FinishTime:  finishTime,
 	}
-	err := newTask.Insert()
+	err := newTask.Insert(s.T().Context())
 	s.Require().NoError(err)
 }
 
@@ -344,12 +344,12 @@ func (s *statsSuite) insertFinishedTask(project string, requester string, taskNa
 // Methods to access database data //
 /////////////////////////////////////
 
-func (s *statsSuite) countDocs(collection string) int {
-	count, err := db.Count(collection, bson.M{})
+func (s *statsSuite) countDocs(ctx context.Context, collection string) int {
+	count, err := db.Count(ctx, collection, bson.M{})
 	s.Require().NoError(err)
 	return count
 }
 
-func (s *statsSuite) countDailyTaskDocs() int {
-	return s.countDocs(DailyTaskStatsCollection)
+func (s *statsSuite) countDailyTaskDocs(ctx context.Context) int {
+	return s.countDocs(ctx, DailyTaskStatsCollection)
 }

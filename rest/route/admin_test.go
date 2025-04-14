@@ -88,12 +88,12 @@ func (s *AdminRouteSuite) SetupSuite() {
 	p := &model.ProjectRef{
 		Id: "sample",
 	}
-	s.NoError(b.Insert())
-	s.NoError(v.Insert())
-	s.NoError(testTask1.Insert())
-	s.NoError(testTask2.Insert())
-	s.NoError(testTask3.Insert())
-	s.NoError(p.Insert())
+	s.NoError(b.Insert(s.T().Context()))
+	s.NoError(v.Insert(s.T().Context()))
+	s.NoError(testTask1.Insert(s.T().Context()))
+	s.NoError(testTask2.Insert(s.T().Context()))
+	s.NoError(testTask3.Insert(s.T().Context()))
+	s.NoError(p.Insert(s.T().Context()))
 	s.getHandler = makeFetchAdminSettings()
 	s.postHandler = makeSetAdminSettings()
 	s.IsType(&adminGetHandler{}, s.getHandler)
@@ -269,7 +269,7 @@ func (s *AdminRouteSuite) TestRevertRoute() {
 	before := testutil.NewEnvironment(ctx, s.T()).Settings()
 	_, err := data.SetEvergreenSettings(ctx, &changes, before, user, true)
 	s.NoError(err)
-	dbEvents, err := event.FindAdmin(event.RecentAdminEvents(1))
+	dbEvents, err := event.FindAdmin(s.T().Context(), event.RecentAdminEvents(1))
 	s.NoError(err)
 	s.GreaterOrEqual(len(dbEvents), 1)
 	eventData := dbEvents[0].Data.(*event.AdminEventData)
@@ -423,13 +423,13 @@ func (s *AdminRouteSuite) TestClearTaskQueueRoute() {
 	}
 	queue := model.NewTaskQueue(distro, tasks, model.DistroQueueInfo{})
 	s.Len(queue.Queue, 3)
-	s.NoError(queue.Save())
+	s.NoError(queue.Save(s.T().Context()))
 
 	route.distro = distro
 	resp := route.Run(context.Background())
 	s.Equal(http.StatusOK, resp.Status())
 
-	queueFromDb, err := model.LoadTaskQueue(distro)
+	queueFromDb, err := model.LoadTaskQueue(s.T().Context(), distro)
 	s.NoError(err)
 	s.Empty(queueFromDb.Queue)
 }

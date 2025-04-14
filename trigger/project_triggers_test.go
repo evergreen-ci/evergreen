@@ -27,7 +27,7 @@ func TestMetadataFromArgsWithVersion(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(author.Insert())
+	assert.NoError(author.Insert(t.Context()))
 	source := model.Version{
 		Author:     "name",
 		CreateTime: time.Now(),

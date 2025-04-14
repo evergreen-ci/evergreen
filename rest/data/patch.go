@@ -40,7 +40,7 @@ func FindPatchesByProject(ctx context.Context, projectId string, ts time.Time, l
 	if err != nil {
 		return nil, errors.Wrapf(err, "fetching project '%s'", projectId)
 	}
-	patches, err := patch.Find(patch.PatchesByProject(id, ts, limit))
+	patches, err := patch.Find(ctx, patch.PatchesByProject(id, ts, limit))
 	if err != nil {
 		return nil, errors.Wrapf(err, "fetching patches for project '%s'", id)
 	}
@@ -152,7 +152,7 @@ func SetPatchActivated(ctx context.Context, patchId string, user string, activat
 
 // FindPatchesByUser finds patches for the input user as ordered by creation time
 func FindPatchesByUser(ctx context.Context, user string, ts time.Time, limit int) ([]restModel.APIPatch, error) {
-	patches, err := patch.Find(patch.ByUserPaginated(user, ts, limit))
+	patches, err := patch.Find(ctx, patch.ByUserPaginated(user, ts, limit))
 	if err != nil {
 		return nil, errors.Wrapf(err, "fetching patches for user '%s'", user)
 	}

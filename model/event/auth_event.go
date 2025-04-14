@@ -1,6 +1,7 @@
 package event
 
 import (
+	"context"
 	"time"
 
 	"github.com/pkg/errors"
@@ -40,7 +41,7 @@ type userData struct {
 }
 
 // LogUserEvent logs a DB User change to the event log collection.
-func LogUserEvent(user string, eventType UserEventType, before, after any) error {
+func LogUserEvent(ctx context.Context, user string, eventType UserEventType, before, after any) error {
 	if err := eventType.validate(); err != nil {
 		return errors.Wrapf(err, "invalid user event for user '%s'", user)
 	}
@@ -57,7 +58,7 @@ func LogUserEvent(user string, eventType UserEventType, before, after any) error
 		Data:         data,
 		ResourceType: ResourceTypeUser,
 	}
-	if err := event.Log(); err != nil {
+	if err := event.Log(ctx); err != nil {
 		return errors.Wrapf(err, "logging user event for user '%s'", user)
 	}
 

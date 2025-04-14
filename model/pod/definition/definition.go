@@ -29,13 +29,14 @@ type PodDefinition struct {
 }
 
 // Insert inserts the pod definition into the collection.
-func (pd *PodDefinition) Insert() error {
-	return db.Insert(Collection, pd)
+func (pd *PodDefinition) Insert(ctx context.Context) error {
+	return db.Insert(ctx, Collection, pd)
 }
 
-// Upsert upserts the pod definition into the collection.
-func (pd *PodDefinition) Upsert() error {
-	_, err := db.Upsert(Collection, ByID(pd.ID), pd)
+// Replace updates the pod definition in the db if an entry already exists,
+// overwriting the existing definition. If no definition exists, a new one is created.
+func (pd *PodDefinition) Replace(ctx context.Context) error {
+	_, err := db.ReplaceContext(ctx, Collection, ByID(pd.ID), pd)
 	return err
 }
 

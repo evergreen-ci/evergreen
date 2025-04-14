@@ -47,7 +47,7 @@ func (s *buildSuite) SetupTest() {
 		Status:              evergreen.BuildCreated,
 		RevisionOrderNumber: 2,
 	}
-	s.NoError(s.build.Insert())
+	s.NoError(s.build.Insert(s.ctx))
 
 	s.data = &event.BuildEventData{
 		Status: evergreen.BuildCreated,
@@ -113,7 +113,7 @@ func (s *buildSuite) SetupTest() {
 	}
 
 	for i := range s.subs {
-		s.NoError(s.subs[i].Upsert())
+		s.NoError(s.subs[i].Upsert(s.ctx))
 	}
 
 	ui := &evergreen.UIConfig{
@@ -139,7 +139,8 @@ func (s *buildSuite) TestAllTriggers() {
 
 	s.build.Status = evergreen.BuildSucceeded
 	s.data.Status = evergreen.BuildSucceeded
-	s.NoError(db.ReplaceContext(s.ctx, build.Collection, bson.M{"_id": s.build.Id}, &s.build))
+	_, err = db.ReplaceContext(s.ctx, build.Collection, bson.M{"_id": s.build.Id}, &s.build)
+	s.NoError(err)
 
 	n, err = NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)
@@ -147,7 +148,8 @@ func (s *buildSuite) TestAllTriggers() {
 
 	s.build.Status = evergreen.BuildFailed
 	s.data.Status = evergreen.BuildFailed
-	s.NoError(db.ReplaceContext(s.ctx, build.Collection, bson.M{"_id": s.build.Id}, &s.build))
+	_, err = db.ReplaceContext(s.ctx, build.Collection, bson.M{"_id": s.build.Id}, &s.build)
+	s.NoError(err)
 
 	n, err = NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)
@@ -155,7 +157,8 @@ func (s *buildSuite) TestAllTriggers() {
 
 	s.build.Status = evergreen.BuildFailed
 	s.data.Status = evergreen.BuildCreated
-	s.NoError(db.ReplaceContext(s.ctx, build.Collection, bson.M{"_id": s.build.Id}, &s.build))
+	_, err = db.ReplaceContext(s.ctx, build.Collection, bson.M{"_id": s.build.Id}, &s.build)
+	s.NoError(err)
 
 	n, err = NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)
@@ -163,7 +166,8 @@ func (s *buildSuite) TestAllTriggers() {
 
 	s.build.GithubCheckStatus = evergreen.BuildFailed
 	s.data.GithubCheckStatus = evergreen.BuildFailed
-	s.NoError(db.ReplaceContext(s.ctx, build.Collection, bson.M{"_id": s.build.Id}, &s.build))
+	_, err = db.ReplaceContext(s.ctx, build.Collection, bson.M{"_id": s.build.Id}, &s.build)
+	s.NoError(err)
 
 	n, err = NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)
@@ -288,7 +292,7 @@ func (s *buildSuite) TestBuildRuntimeChange() {
 		Status:              evergreen.BuildSucceeded,
 		Requester:           evergreen.RepotrackerVersionRequester,
 	}
-	s.NoError(lastGreen.Insert())
+	s.NoError(lastGreen.Insert(s.ctx))
 	n, err = s.t.buildRuntimeChange(s.ctx, &s.subs[4])
 	s.NoError(err)
 	s.NotNil(n)

@@ -46,7 +46,7 @@ func FindOne(ctx context.Context, query db.Q) (*TaskAnnotation, error) {
 // Find gets every TaskAnnotation matching the given query.
 func Find(ctx context.Context, query db.Q) ([]TaskAnnotation, error) {
 	annotations := []TaskAnnotation{}
-	err := db.FindAllQContext(ctx, Collection, query, &annotations)
+	err := db.FindAllQ(ctx, Collection, query, &annotations)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding task annotations")
 	}
@@ -67,7 +67,7 @@ func FindByTaskId(ctx context.Context, id string) ([]TaskAnnotation, error) {
 }
 
 // Upsert writes the task_annotation to the database.
-func (a *TaskAnnotation) Upsert() error {
+func (a *TaskAnnotation) Upsert(ctx context.Context) error {
 	set := bson.M{
 		NoteKey:            a.Note,
 		IssuesKey:          a.Issues,
@@ -79,6 +79,7 @@ func (a *TaskAnnotation) Upsert() error {
 		set[MetadataKey] = a.Metadata
 	}
 	_, err := db.Upsert(
+		ctx,
 		Collection,
 		ByTaskIdAndExecution(a.TaskId, a.TaskExecution),
 		bson.M{

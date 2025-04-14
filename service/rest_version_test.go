@@ -66,7 +66,7 @@ func TestGetRecentVersions(t *testing.T) {
 				RevisionOrderNumber: i + 1,
 				Requester:           evergreen.RepotrackerVersionRequester,
 			}
-			So(v.Insert(), ShouldBeNil)
+			So(v.Insert(t.Context()), ShouldBeNil)
 			versions = append(versions, v)
 		}
 
@@ -82,7 +82,7 @@ func TestGetRecentVersions(t *testing.T) {
 			RevisionOrderNumber: 0,
 			Requester:           evergreen.RepotrackerVersionRequester,
 		}
-		So(earlyVersion.Insert(), ShouldBeNil)
+		So(earlyVersion.Insert(t.Context()), ShouldBeNil)
 
 		// Construct a version that should not be present in the response
 		// since it belongs to a different project
@@ -95,7 +95,7 @@ func TestGetRecentVersions(t *testing.T) {
 			RevisionOrderNumber: NumRecentVersions + 1,
 			Requester:           evergreen.RepotrackerVersionRequester,
 		}
-		So(otherVersion.Insert(), ShouldBeNil)
+		So(otherVersion.Insert(t.Context()), ShouldBeNil)
 
 		builds := make([]*build.Build, 0, NumRecentVersions)
 		tasks := make([]*task.Task, 0, NumRecentVersions)
@@ -107,7 +107,7 @@ func TestGetRecentVersions(t *testing.T) {
 				BuildVariant: "some-build-variant",
 				DisplayName:  "Some Build Variant",
 			}
-			So(build.Insert(), ShouldBeNil)
+			So(build.Insert(t.Context()), ShouldBeNil)
 			builds = append(builds, build)
 
 			task := &task.Task{
@@ -118,7 +118,7 @@ func TestGetRecentVersions(t *testing.T) {
 				TimeTaken:    100 * time.Millisecond,
 				BuildVariant: build.BuildVariant,
 			}
-			So(task.Insert(), ShouldBeNil)
+			So(task.Insert(t.Context()), ShouldBeNil)
 			tasks = append(tasks, task)
 		}
 
@@ -281,7 +281,7 @@ func TestGetVersionInfo(t *testing.T) {
 			RemotePath:          "",
 			Requester:           evergreen.RepotrackerVersionRequester,
 		}
-		So(v.Insert(), ShouldBeNil)
+		So(v.Insert(t.Context()), ShouldBeNil)
 
 		url := "/rest/v1/versions/" + versionId
 
@@ -366,7 +366,7 @@ func TestGetVersionInfoViaRevision(t *testing.T) {
 			RemotePath:          "",
 			Requester:           evergreen.RepotrackerVersionRequester,
 		}
-		So(v.Insert(), ShouldBeNil)
+		So(v.Insert(t.Context()), ShouldBeNil)
 
 		url := fmt.Sprintf("/rest/v1/projects/%s/revisions/%s", projectName, revision)
 
@@ -428,7 +428,7 @@ func TestActivateVersion(t *testing.T) {
 			Id:           "some-build-id",
 			BuildVariant: "some-build-variant",
 		}
-		So(build.Insert(), ShouldBeNil)
+		So(build.Insert(t.Context()), ShouldBeNil)
 
 		v := &model.Version{
 			Id:          versionId,
@@ -458,7 +458,7 @@ func TestActivateVersion(t *testing.T) {
 			RemotePath:          "",
 			Requester:           evergreen.RepotrackerVersionRequester,
 		}
-		So(v.Insert(), ShouldBeNil)
+		So(v.Insert(t.Context()), ShouldBeNil)
 
 		url := "/rest/v1/versions/" + versionId
 
@@ -560,7 +560,7 @@ func TestGetVersionStatus(t *testing.T) {
 			BuildVariant: "some-build-variant",
 			Version:      versionId,
 		}
-		So(task.Insert(), ShouldBeNil)
+		So(task.Insert(t.Context()), ShouldBeNil)
 		build := &build.Build{
 			Id:           "some-build-id",
 			Version:      versionId,
@@ -568,7 +568,7 @@ func TestGetVersionStatus(t *testing.T) {
 			DisplayName:  "Some Build Variant",
 			Tasks:        []build.TaskCache{{Id: task.Id}},
 		}
-		So(build.Insert(), ShouldBeNil)
+		So(build.Insert(t.Context()), ShouldBeNil)
 
 		Convey("grouped by tasks", func() {
 			groupBy := "tasks"

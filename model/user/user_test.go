@@ -25,6 +25,7 @@ func init() {
 
 type UserTestSuite struct {
 	suite.Suite
+	env   evergreen.Environment
 	users []*DBUser
 }
 
@@ -34,8 +35,9 @@ func TestUserTestSuite(t *testing.T) {
 }
 
 func (s *UserTestSuite) SetupSuite() {
-	rm := evergreen.GetEnvironment().RoleManager()
-	s.NoError(rm.RegisterPermissions([]string{"permission"}))
+	env := testutil.NewEnvironment(s.T().Context(), s.T())
+	s.env = env
+	s.NoError(env.RoleManager().RegisterPermissions([]string{"permission"}))
 }
 
 func (s *UserTestSuite) SetupTest() {
@@ -121,10 +123,10 @@ func (s *UserTestSuite) SetupTest() {
 	}
 
 	for _, user := range s.users {
-		s.NoError(user.Insert())
+		s.NoError(user.Insert(s.T().Context()))
 	}
 
-	rm := evergreen.GetEnvironment().RoleManager()
+	rm := s.env.RoleManager()
 	scope1 := gimlet.Scope{
 		ID:          "1",
 		Resources:   []string{"resource1", "resource2"},
@@ -196,7 +198,7 @@ func (s *UserTestSuite) SetupTest() {
 }
 
 func (s *UserTestSuite) TearDownTest() {
-	s.NoError(db.ClearCollections(Collection))
+	s.NoError(db.ClearCollections(Collection, evergreen.ScopeCollection, evergreen.RoleCollection))
 }
 
 func (s *UserTestSuite) TestGetPublicKey() {
@@ -628,6 +630,35 @@ func (s *UserTestSuite) TestHasPermission() {
 	s.True(hasPermission)
 }
 
+func (s *UserTestSuite) TestHasDistroCreatePermission() {
+	roleManager := s.env.RoleManager()
+
+	usr := DBUser{
+		Id: "basic_user",
+	}
+	s.NoError(usr.Insert(s.T().Context()))
+	s.Require().False(usr.HasDistroCreatePermission())
+
+	createRole := gimlet.Role{
+		ID:          "create_distro",
+		Name:        "create_distro",
+		Scope:       "superuser_scope",
+		Permissions: map[string]int{evergreen.PermissionDistroCreate: evergreen.DistroCreate.Value},
+	}
+	s.Require().NoError(roleManager.UpdateRole(createRole))
+	s.Require().NoError(usr.AddRole(s.T().Context(), createRole.ID))
+
+	superUserScope := gimlet.Scope{
+		ID:        "superuser_scope",
+		Name:      "superuser scope",
+		Type:      evergreen.SuperUserResourceType,
+		Resources: []string{evergreen.SuperUserPermissionsID},
+	}
+	s.Require().NoError(roleManager.AddScope(superUserScope))
+
+	s.True(usr.HasDistroCreatePermission())
+}
+
 func (s *UserTestSuite) TestFindNeedsReauthorization() {
 	containsUsers := func(users []DBUser, names ...string) bool {
 		foundNames := make([]string, 0, len(users))
@@ -671,9 +702,9 @@ func TestServiceUserOperations(t *testing.T) {
 		SystemRoles:  []string{"one"},
 		EmailAddress: "myemail@mailplace.com",
 	}
-	assert.EqualError(t, AddOrUpdateServiceUser(u), "cannot update a non-service user")
+	assert.EqualError(t, AddOrUpdateServiceUser(t.Context(), u), "cannot update a non-service user")
 	u.OnlyAPI = true
-	assert.NoError(t, AddOrUpdateServiceUser(u))
+	assert.NoError(t, AddOrUpdateServiceUser(t.Context(), u))
 	dbUser, err := FindOneByIdContext(t.Context(), u.Id)
 	assert.NoError(t, err)
 	assert.True(t, dbUser.OnlyAPI)
@@ -684,7 +715,7 @@ func TestServiceUserOperations(t *testing.T) {
 
 	u.DispName = "another"
 	u.SystemRoles = []string{"one", "two"}
-	assert.NoError(t, AddOrUpdateServiceUser(u))
+	assert.NoError(t, AddOrUpdateServiceUser(t.Context(), u))
 	dbUser, err = FindOneByIdContext(t.Context(), u.Id)
 	assert.NoError(t, err)
 	assert.True(t, dbUser.OnlyAPI)
@@ -868,7 +899,7 @@ func TestViewableProject(t *testing.T) {
 	myUser := DBUser{
 		Id: "me",
 	}
-	assert.NoError(t, myUser.Insert())
+	assert.NoError(t, myUser.Insert(t.Context()))
 	err = myUser.AddRole(t.Context(), evergreen.BasicProjectAccessRole)
 	assert.NoError(t, err)
 
@@ -944,7 +975,7 @@ func TestViewableProjectSettings(t *testing.T) {
 	myUser := DBUser{
 		Id: "me",
 	}
-	assert.NoError(t, myUser.Insert())
+	assert.NoError(t, myUser.Insert(t.Context()))
 	assert.NoError(t, myUser.AddRole(t.Context(), viewRole.ID))
 	assert.NoError(t, myUser.AddRole(t.Context(), editRole.ID))
 	assert.NoError(t, myUser.AddRole(t.Context(), otherRole.ID))
@@ -965,7 +996,7 @@ func TestUpdateParsleySettings(t *testing.T) {
 	usr := DBUser{
 		Id: "me",
 	}
-	require.NoError(t, usr.Insert())
+	require.NoError(t, usr.Insert(t.Context()))
 
 	newSettings := parsley.Settings{
 		SectionsEnabled: utility.FalsePtr(),
@@ -986,7 +1017,7 @@ func TestUpdateBetaFeatures(t *testing.T) {
 	usr := DBUser{
 		Id: "me",
 	}
-	require.NoError(t, usr.Insert())
+	require.NoError(t, usr.Insert(t.Context()))
 
 	dbUser, err := FindOneByIdContext(t.Context(), usr.Id)
 	require.NoError(t, err)

@@ -96,7 +96,7 @@ func TestGeneratedJSONStorage(t *testing.T) {
 					tsk := &Task{
 						Id: fmt.Sprintf("%s-%s", path.Base(t.Name()), utility.RandomString()),
 					}
-					require.NoError(t, tsk.Insert())
+					require.NoError(t, tsk.Insert(t.Context()))
 
 					testCase(ctx, t, env, tsk)
 				})

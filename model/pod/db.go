@@ -68,14 +68,14 @@ func ByExternalID(id string) bson.M {
 }
 
 // Count counts the number of pods matching the given query.
-func Count(q db.Q) (int, error) {
-	return db.CountQ(Collection, q)
+func Count(ctx context.Context, q db.Q) (int, error) {
+	return db.CountQ(ctx, Collection, q)
 }
 
 // Find finds all pods matching the given query.
-func Find(q db.Q) ([]Pod, error) {
+func Find(ctx context.Context, q db.Q) ([]Pod, error) {
 	pods := []Pod{}
-	return pods, errors.WithStack(db.FindAllQ(Collection, q, &pods))
+	return pods, errors.WithStack(db.FindAllQ(ctx, Collection, q, &pods))
 }
 
 // FindOne finds one pod by the given query.
@@ -111,9 +111,9 @@ func UpdateOne(ctx context.Context, query any, update any) error {
 // terminated, which includes:
 // * Pods that have been provisioning for too long.
 // * Pods that are decommissioned and have no running task.
-func FindByNeedsTermination() ([]Pod, error) {
+func FindByNeedsTermination(ctx context.Context) ([]Pod, error) {
 	staleCutoff := time.Now().Add(-15 * time.Minute)
-	return Find(db.Query(bson.M{
+	return Find(ctx, db.Query(bson.M{
 		"$or": []bson.M{
 			{
 				StatusKey: StatusInitializing,
@@ -133,16 +133,16 @@ func FindByNeedsTermination() ([]Pod, error) {
 
 // FindByInitializing find all pods that are initializing but have not started
 // any containers.
-func FindByInitializing() ([]Pod, error) {
-	return Find(db.Query(bson.M{
+func FindByInitializing(ctx context.Context) ([]Pod, error) {
+	return Find(ctx, db.Query(bson.M{
 		StatusKey: StatusInitializing,
 	}))
 }
 
 // CountByInitializing counts the number of pods that are initializing but have
 // not started any containers.
-func CountByInitializing() (int, error) {
-	return Count(db.Query(bson.M{
+func CountByInitializing(ctx context.Context) (int, error) {
+	return Count(ctx, db.Query(bson.M{
 		StatusKey: StatusInitializing,
 	}))
 }
@@ -153,8 +153,8 @@ func FindOneByExternalID(ctx context.Context, id string) (*Pod, error) {
 }
 
 // FindIntentByFamily finds intent pods that have a matching family name.
-func FindIntentByFamily(family string) ([]Pod, error) {
-	return Find(db.Query(bson.M{
+func FindIntentByFamily(ctx context.Context, family string) ([]Pod, error) {
+	return Find(ctx, db.Query(bson.M{
 		StatusKey: StatusInitializing,
 		FamilyKey: family,
 	}))
@@ -186,16 +186,16 @@ func UpdateOneStatus(ctx context.Context, id string, current, updated Status, ts
 		return err
 	}
 
-	event.LogPodStatusChanged(id, string(current), string(updated), reason)
+	event.LogPodStatusChanged(ctx, id, string(current), string(updated), reason)
 
 	return nil
 }
 
 // FindByLastCommunicatedBefore finds all active pods whose last communication
 // was before the given threshold.
-func FindByLastCommunicatedBefore(ts time.Time) ([]Pod, error) {
+func FindByLastCommunicatedBefore(ctx context.Context, ts time.Time) ([]Pod, error) {
 	lastCommunicatedKey := bsonutil.GetDottedKeyName(TimeInfoKey, TimeInfoLastCommunicatedKey)
-	return Find(db.Query(bson.M{
+	return Find(ctx, db.Query(bson.M{
 		StatusKey:           bson.M{"$in": []Status{StatusStarting, StatusRunning}},
 		lastCommunicatedKey: bson.M{"$lte": ts},
 	}))
@@ -213,7 +213,7 @@ type StatusCount struct {
 // for running tasks. For each pod status, it returns the counts for the number
 // of pods and number of running tasks in that particular status. Terminated
 // pods are excluded from these statistics.
-func GetStatsByStatus(statuses ...Status) ([]StatusCount, error) {
+func GetStatsByStatus(ctx context.Context, statuses ...Status) ([]StatusCount, error) {
 	if len(statuses) == 0 {
 		return []StatusCount{}, nil
 	}
@@ -250,7 +250,7 @@ func GetStatsByStatus(statuses ...Status) ([]StatusCount, error) {
 	}
 
 	stats := []StatusCount{}
-	if err := db.Aggregate(Collection, pipeline, &stats); err != nil {
+	if err := db.Aggregate(ctx, Collection, pipeline, &stats); err != nil {
 		return nil, err
 	}
 

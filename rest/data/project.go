@@ -91,7 +91,7 @@ func RequestS3Creds(ctx context.Context, projectIdentifier, userEmail string) er
 		return err
 	}
 
-	err = notification.InsertMany(*n)
+	err = notification.InsertMany(ctx, *n)
 	if err != nil {
 		return errors.Wrap(err, "batch inserting notifications")
 	}
@@ -119,7 +119,7 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 	}
 	// Always warn because created projects are never enabled.
 	warningCatcher := grip.NewBasicCatcher()
-	statusCode, err := model.ValidateEnabledProjectsLimit(projectRef.Id, env.Settings(), nil, projectRef)
+	statusCode, err := model.ValidateEnabledProjectsLimit(ctx, projectRef.Id, env.Settings(), nil, projectRef)
 	if err != nil {
 		if statusCode != http.StatusBadRequest {
 			return false, gimlet.ErrorResponse{
@@ -158,7 +158,7 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 		}
 	}
 
-	err = model.LogProjectAdded(projectRef.Id, u.DisplayName())
+	err = model.LogProjectAdded(ctx, projectRef.Id, u.DisplayName())
 	grip.Error(message.WrapError(err, message.Fields{
 		"message":            "problem logging project added",
 		"project_id":         projectRef.Id,
@@ -304,7 +304,7 @@ func FindProjectVarsById(ctx context.Context, id string, repoId string, redact b
 // will be fully replaced by those in varsModel. Otherwise, it will only set the
 // value for variables that are explicitly present in varsModel and will not
 // delete variables that are omitted.
-func UpdateProjectVars(projectId string, varsModel *restModel.APIProjectVars, overwrite bool) error {
+func UpdateProjectVars(ctx context.Context, projectId string, varsModel *restModel.APIProjectVars, overwrite bool) error {
 	if varsModel == nil {
 		return nil
 	}
@@ -318,7 +318,7 @@ func UpdateProjectVars(projectId string, varsModel *restModel.APIProjectVars, ov
 		}
 	}
 	if overwrite {
-		if _, err := vars.Upsert(); err != nil {
+		if _, err := vars.Upsert(ctx); err != nil {
 			return errors.Wrapf(err, "overwriting variables for project '%s'", vars.Id)
 		}
 	} else {
@@ -354,7 +354,7 @@ func GetEventsById(ctx context.Context, id string, before time.Time, n int) ([]r
 	if n == 0 {
 		n = EventLogLimit
 	}
-	events, err := model.ProjectEventsBefore(id, before, n)
+	events, err := model.ProjectEventsBefore(ctx, id, before, n)
 	if err != nil {
 		return nil, err
 	}
@@ -446,14 +446,14 @@ func HideBranch(ctx context.Context, projectID string) error {
 		Enabled:   false,
 		Hidden:    utility.TruePtr(),
 	}
-	if err := skeletonProj.Upsert(); err != nil {
+	if err := skeletonProj.Replace(ctx); err != nil {
 		return errors.Wrapf(err, "updating project '%s'", pRef.Id)
 	}
 	if err := model.UpdateAdminRoles(ctx, pRef, nil, pRef.Admins); err != nil {
 		return errors.Wrapf(err, "removing project admin roles")
 	}
 
-	projectAliases, err := model.FindAliasesForProjectFromDb(pRef.Id)
+	projectAliases, err := model.FindAliasesForProjectFromDb(ctx, pRef.Id)
 	if err != nil {
 		return errors.Wrapf(err, "finding aliases for project '%s'", pRef.Id)
 	}
@@ -466,7 +466,7 @@ func HideBranch(ctx context.Context, projectID string) error {
 	skeletonProjVars := model.ProjectVars{
 		Id: pRef.Id,
 	}
-	if _, err := skeletonProjVars.Upsert(); err != nil {
+	if _, err := skeletonProjVars.Upsert(ctx); err != nil {
 		return errors.Wrapf(err, "updating vars for project '%s'", pRef.Id)
 	}
 

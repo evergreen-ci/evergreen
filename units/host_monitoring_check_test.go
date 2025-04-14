@@ -93,13 +93,13 @@ func TestHandleUnresponsiveStaticHost(t *testing.T) {
 				Id:     "version_id",
 				Status: evergreen.VersionStarted,
 			}
-			require.NoError(t, v.Insert())
+			require.NoError(t, v.Insert(ctx))
 			b := build.Build{
 				Id:      "build_id",
 				Version: v.Id,
 				Status:  evergreen.BuildStarted,
 			}
-			require.NoError(t, b.Insert())
+			require.NoError(t, b.Insert(ctx))
 			tsk := task.Task{
 				Id:        "task_id",
 				Execution: 1,
@@ -108,7 +108,7 @@ func TestHandleUnresponsiveStaticHost(t *testing.T) {
 				Status:    evergreen.TaskStarted,
 				HostId:    h.Id,
 			}
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, tsk.Insert(ctx))
 
 			h.RunningTask = tsk.Id
 			h.RunningTaskExecution = tsk.Execution
@@ -206,7 +206,7 @@ func TestHandleExternallyTerminatedHost(t *testing.T) {
 					Id:      "t1",
 					BuildId: "b1",
 				}
-				require.NoError(t, tsk.Insert())
+				require.NoError(t, tsk.Insert(t.Context()))
 
 				h := &host.Host{
 					Id:          "h1",
@@ -247,7 +247,7 @@ func TestHandleExternallyTerminatedHost(t *testing.T) {
 			BuildId: "b1",
 			HostId:  h.Id,
 		}
-		require.NoError(t, tsk.Insert())
+		require.NoError(t, tsk.Insert(ctx))
 		h.RunningTask = tsk.Id
 		require.NoError(t, h.Insert(ctx))
 
@@ -496,7 +496,7 @@ func TestHandleTerminatedHostSpawnedByTask(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			tctx := testutil.TestSpan(ctx, t)
 			require.NoError(t, db.ClearCollections(host.Collection, task.Collection))
-			require.NoError(t, testCase.t.Insert())
+			require.NoError(t, testCase.t.Insert(t.Context()))
 
 			assert.NoError(t, handleTerminatedHostSpawnedByTask(tctx, testCase.h))
 

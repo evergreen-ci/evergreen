@@ -76,12 +76,12 @@ func (s *AdminDataSuite) SetupSuite() {
 	p := &model.ProjectRef{
 		Id: "sample",
 	}
-	s.Require().NoError(b.Insert())
-	s.Require().NoError(v.Insert())
-	s.Require().NoError(testTask1.Insert())
-	s.Require().NoError(testTask2.Insert())
-	s.Require().NoError(testTask3.Insert())
-	s.Require().NoError(p.Insert())
+	s.Require().NoError(b.Insert(s.T().Context()))
+	s.Require().NoError(v.Insert(s.T().Context()))
+	s.Require().NoError(testTask1.Insert(s.T().Context()))
+	s.Require().NoError(testTask2.Insert(s.T().Context()))
+	s.Require().NoError(testTask3.Insert(s.T().Context()))
+	s.Require().NoError(p.Insert(s.T().Context()))
 }
 
 func (s *AdminDataSuite) TestSetAndGetSettings() {
@@ -192,7 +192,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.Tracer.CollectorInternalEndpoint, settingsFromConnector.Tracer.CollectorInternalEndpoint)
 
 	// spot check events in the event log
-	events, err := event.FindAdmin(event.RecentAdminEvents(1000))
+	events, err := event.FindAdmin(s.T().Context(), event.RecentAdminEvents(1000))
 	s.NoError(err)
 	foundNotifyEvent := false
 	foundFlagsEvent := false

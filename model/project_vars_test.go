@@ -34,7 +34,7 @@ func TestFindOneProjectVar(t *testing.T) {
 	pRef := ProjectRef{
 		Id: "mongodb",
 	}
-	require.NoError(t, pRef.Insert())
+	require.NoError(t, pRef.Insert(t.Context()))
 	vars := map[string]string{
 		"a": "b",
 		"c": "d",
@@ -43,7 +43,7 @@ func TestFindOneProjectVar(t *testing.T) {
 		Id:   pRef.Id,
 		Vars: vars,
 	}
-	change, err := projectVars.Upsert()
+	change, err := projectVars.Upsert(t.Context())
 	assert.NotNil(change)
 	assert.NoError(err)
 	assert.Equal(1, change.Updated, "%+v", change)
@@ -68,7 +68,7 @@ func TestFindMergedProjectVars(t *testing.T) {
 		Owner: "mongodb",
 		Repo:  "test_repo",
 	}}
-	require.NoError(t, repo.Upsert())
+	require.NoError(t, repo.Replace(t.Context()))
 
 	project0 := ProjectRef{
 		Id:        "project_0",
@@ -84,8 +84,8 @@ func TestFindMergedProjectVars(t *testing.T) {
 		Repo:      "test_repo",
 		RepoRefId: "repo_ref",
 	}
-	require.NoError(t, project0.Insert())
-	require.NoError(t, project1.Insert())
+	require.NoError(t, project0.Insert(t.Context()))
+	require.NoError(t, project1.Insert(t.Context()))
 
 	repoVars := ProjectVars{
 		Id:            repo.Id,
@@ -97,8 +97,8 @@ func TestFindMergedProjectVars(t *testing.T) {
 		Id:   project0.Id,
 		Vars: map[string]string{"world": "goodbye", "new": "var"},
 	}
-	require.NoError(t, repoVars.Insert())
-	require.NoError(t, project0Vars.Insert())
+	require.NoError(t, repoVars.Insert(t.Context()))
+	require.NoError(t, project0Vars.Insert(t.Context()))
 
 	checkParametersNamespacedByProject(t, project0Vars)
 	checkParametersNamespacedByProject(t, repoVars)
@@ -147,7 +147,7 @@ func TestFindMergedProjectVars(t *testing.T) {
 	// Testing existing project vars but no repo vars
 	require.NoError(t, db.ClearCollections(ProjectVarsCollection, fakeparameter.Collection))
 
-	require.NoError(t, project0Vars.Insert())
+	require.NoError(t, project0Vars.Insert(t.Context()))
 
 	mergedVars, err = FindMergedProjectVars(t.Context(), project0.Id)
 	assert.NoError(err)
@@ -162,7 +162,7 @@ func TestFindMergedProjectVars(t *testing.T) {
 
 	// Testing ProjectRef.RepoRefId == ""
 	project0.RepoRefId = ""
-	require.NoError(t, project0.Upsert())
+	require.NoError(t, project0.Replace(t.Context()))
 	mergedVars, err = FindMergedProjectVars(t.Context(), project0.Id)
 	assert.NoError(err)
 	require.NotZero(t, mergedVars)
@@ -210,35 +210,35 @@ func TestProjectVarsInsert(t *testing.T) {
 
 	for tName, tCase := range map[string]func(t *testing.T, pRef ProjectRef, vars ProjectVars){
 		"Succeeds": func(t *testing.T, pRef ProjectRef, vars ProjectVars) {
-			require.NoError(t, pRef.Insert())
-			require.NoError(t, vars.Insert())
+			require.NoError(t, pRef.Insert(t.Context()))
+			require.NoError(t, vars.Insert(t.Context()))
 
 			checkProjectVars(t, vars)
 		},
 		"MultipleInsertsFail": func(t *testing.T, pRef ProjectRef, vars ProjectVars) {
-			require.NoError(t, pRef.Insert())
-			require.NoError(t, vars.Insert())
+			require.NoError(t, pRef.Insert(t.Context()))
+			require.NoError(t, vars.Insert(t.Context()))
 
 			checkProjectVars(t, vars)
 
-			assert.Error(t, vars.Insert())
+			assert.Error(t, vars.Insert(t.Context()))
 
 			checkProjectVars(t, vars)
 		},
 		"ShouldCreateNewVarsForSeparateProject": func(t *testing.T, pRef ProjectRef, vars ProjectVars) {
 			oldProjectID := vars.Id
-			require.NoError(t, pRef.Insert())
-			require.NoError(t, vars.Insert())
+			require.NoError(t, pRef.Insert(t.Context()))
+			require.NoError(t, vars.Insert(t.Context()))
 
 			checkProjectVars(t, vars)
 
 			newProjRef := ProjectRef{
 				Id: "new_project",
 			}
-			require.NoError(t, newProjRef.Insert())
+			require.NoError(t, newProjRef.Insert(t.Context()))
 			newVars := vars
 			newVars.Id = newProjRef.Id
-			require.NoError(t, newVars.Insert())
+			require.NoError(t, newVars.Insert(t.Context()))
 
 			// Original project vars should not be modified at all.
 			checkProjectVars(t, vars)
@@ -311,22 +311,22 @@ func TestProjectVarsUpsert(t *testing.T) {
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, pRef ProjectRef, vars ProjectVars){
 		"InsertsNewVars": func(ctx context.Context, t *testing.T, pRef ProjectRef, vars ProjectVars) {
-			require.NoError(t, pRef.Insert())
-			_, err := vars.Upsert()
+			require.NoError(t, pRef.Insert(t.Context()))
+			_, err := vars.Upsert(t.Context())
 			require.NoError(t, err)
 
 			checkProjectVars(t, vars)
 		},
 		"UpdatesExistingVars": func(ctx context.Context, t *testing.T, pRef ProjectRef, vars ProjectVars) {
-			require.NoError(t, pRef.Insert())
-			_, err := vars.Upsert()
+			require.NoError(t, pRef.Insert(t.Context()))
+			_, err := vars.Upsert(t.Context())
 			require.NoError(t, err)
 
 			checkProjectVars(t, vars)
 
 			vars.Vars["c"] = "3"
 			delete(vars.Vars, "a")
-			_, err = vars.Upsert()
+			_, err = vars.Upsert(t.Context())
 			require.NoError(t, err)
 
 			dbProjVars, err := FindOneProjectVars(t.Context(), vars.Id)
@@ -349,8 +349,8 @@ func TestProjectVarsUpsert(t *testing.T) {
 		},
 		"CreatesNewVarsForSeparateProject": func(ctx context.Context, t *testing.T, pRef ProjectRef, vars ProjectVars) {
 			oldProjectID := vars.Id
-			require.NoError(t, pRef.Insert())
-			_, err := vars.Upsert()
+			require.NoError(t, pRef.Insert(t.Context()))
+			_, err := vars.Upsert(t.Context())
 			require.NoError(t, err)
 
 			checkProjectVars(t, vars)
@@ -358,10 +358,10 @@ func TestProjectVarsUpsert(t *testing.T) {
 			newProjRef := ProjectRef{
 				Id: "new_project",
 			}
-			require.NoError(t, newProjRef.Insert())
+			require.NoError(t, newProjRef.Insert(t.Context()))
 			newVars := vars
 			newVars.Id = newProjRef.Id
-			require.NoError(t, newVars.Insert())
+			require.NoError(t, newVars.Insert(t.Context()))
 
 			// Original project vars should not be modified at all.
 			checkProjectVars(t, vars)
@@ -415,14 +415,14 @@ func TestProjectVarsFindAndModify(t *testing.T) {
 			pRef := ProjectRef{
 				Id: "123",
 			}
-			require.NoError(t, pRef.Insert())
+			require.NoError(t, pRef.Insert(t.Context()))
 
 			vars := &ProjectVars{
 				Id:          pRef.Id,
 				Vars:        map[string]string{"a": "1", "b": "3", "d": "4"},
 				PrivateVars: map[string]bool{"b": true, "d": true},
 			}
-			assert.NoError(t, vars.Insert())
+			assert.NoError(t, vars.Insert(t.Context()))
 
 			dbVars, err := FindOneProjectVars(t.Context(), vars.Id)
 			require.NoError(t, err)
@@ -473,7 +473,7 @@ func TestProjectVarsFindAndModify(t *testing.T) {
 			pRef := ProjectRef{
 				Id: "234",
 			}
-			require.NoError(t, pRef.Insert())
+			require.NoError(t, pRef.Insert(t.Context()))
 
 			vars := &ProjectVars{
 				Id:          pRef.Id,
@@ -504,7 +504,7 @@ func TestProjectVarsFindAndModify(t *testing.T) {
 			pRef := ProjectRef{
 				Id: "234",
 			}
-			require.NoError(t, pRef.Insert())
+			require.NoError(t, pRef.Insert(t.Context()))
 
 			vars := &ProjectVars{
 				Id:          pRef.Id,
@@ -534,7 +534,7 @@ func TestProjectVarsFindAndModify(t *testing.T) {
 			newProjRef := ProjectRef{
 				Id: "new_project",
 			}
-			require.NoError(t, newProjRef.Insert())
+			require.NoError(t, newProjRef.Insert(t.Context()))
 
 			newVars := *vars
 			newVars.Id = newProjRef.Id
@@ -607,13 +607,13 @@ func TestAWSVars(t *testing.T) {
 	project := ProjectRef{
 		Id: "mci",
 	}
-	assert.NoError(project.Insert())
+	assert.NoError(project.Insert(t.Context()))
 
 	// empty vars
 	newVars := &ProjectVars{
 		Id: project.Id,
 	}
-	require.NoError(newVars.Insert())
+	require.NoError(newVars.Insert(t.Context()))
 	k, err := GetAWSKeyForProject(t.Context(), project.Id)
 	assert.NoError(err)
 	require.NotZero(k)
@@ -632,7 +632,7 @@ func TestAWSVars(t *testing.T) {
 		Vars:        vars,
 		PrivateVars: privateVars,
 	}
-	_, err = projectVars.Upsert()
+	_, err = projectVars.Upsert(t.Context())
 	assert.NoError(err)
 
 	// canaries
@@ -1022,8 +1022,8 @@ func TestShouldGetAdminOnlyVars(t *testing.T) {
 		adminUsr := user.DBUser{
 			Id: adminUsrId,
 		}
-		assert.NoError(t, usr.Insert())
-		assert.NoError(t, adminUsr.Insert())
+		assert.NoError(t, usr.Insert(t.Context()))
+		assert.NoError(t, adminUsr.Insert(t.Context()))
 		env := evergreen.GetEnvironment()
 		roleManager := env.RoleManager()
 		projectScope := gimlet.Scope{

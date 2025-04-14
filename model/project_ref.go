@@ -657,8 +657,8 @@ var adminPermissions = gimlet.Permissions{
 	evergreen.PermissionLogs:            evergreen.LogsView.Value,
 }
 
-func (projectRef *ProjectRef) Insert() error {
-	return db.Insert(ProjectRefCollection, projectRef)
+func (projectRef *ProjectRef) Insert(ctx context.Context) error {
+	return db.Insert(ctx, ProjectRefCollection, projectRef)
 }
 
 func (p *ProjectRef) Add(ctx context.Context, creator *user.DBUser) error {
@@ -680,7 +680,7 @@ func (p *ProjectRef) Add(ctx context.Context, creator *user.DBUser) error {
 		}
 		if hidden != nil {
 			p.Id = hidden.Id
-			err := p.Upsert()
+			err := p.Replace(ctx)
 			if err != nil {
 				return errors.Wrapf(err, "upserting project ref '%s'", hidden.Id)
 			}
@@ -689,7 +689,7 @@ func (p *ProjectRef) Add(ctx context.Context, creator *user.DBUser) error {
 		}
 	}
 
-	err := db.Insert(ProjectRefCollection, p)
+	err := db.Insert(ctx, ProjectRefCollection, p)
 	if err != nil {
 		return errors.Wrap(err, "inserting project ref")
 	}
@@ -697,7 +697,7 @@ func (p *ProjectRef) Add(ctx context.Context, creator *user.DBUser) error {
 	newProjectVars := ProjectVars{
 		Id: p.Id,
 	}
-	if err = newProjectVars.Insert(); err != nil {
+	if err = newProjectVars.Insert(ctx); err != nil {
 		return errors.Wrapf(err, "adding project variables for project '%s'", p.Id)
 	}
 	return p.addPermissions(ctx, creator)
@@ -850,31 +850,31 @@ func (p *ProjectRef) DetachFromRepo(ctx context.Context, u *user.DBUser) error {
 	}
 
 	mergedProject.RepoRefId = ""
-	if err := mergedProject.Upsert(); err != nil {
+	if err := mergedProject.Replace(ctx); err != nil {
 		return errors.Wrap(err, "detaching project from repo")
 	}
 
 	// catch any resulting errors so that we log before returning
 	catcher := grip.NewBasicCatcher()
 	if mergedVars != nil {
-		_, err = mergedVars.Upsert()
+		_, err = mergedVars.Upsert(ctx)
 		catcher.Wrap(err, "saving merged vars")
 	}
 
 	if len(before.Subscriptions) == 0 {
 		// Save repo subscriptions as project subscriptions if none exist
-		subs, err := event.FindSubscriptionsByOwner(before.ProjectRef.RepoRefId, event.OwnerTypeProject)
+		subs, err := event.FindSubscriptionsByOwner(ctx, before.ProjectRef.RepoRefId, event.OwnerTypeProject)
 		catcher.Wrap(err, "finding repo subscriptions")
 
 		for _, s := range subs {
 			s.ID = ""
 			s.Owner = p.Id
-			catcher.Add(s.Upsert())
+			catcher.Add(s.Upsert(ctx))
 		}
 	}
 
 	// Handle each category of aliases as its own case
-	repoAliases, err := FindAliasesForRepo(before.ProjectRef.RepoRefId)
+	repoAliases, err := FindAliasesForRepo(ctx, before.ProjectRef.RepoRefId)
 	catcher.Wrap(err, "finding repo aliases")
 
 	hasInternalAliases := map[string]bool{}
@@ -905,7 +905,7 @@ func (p *ProjectRef) DetachFromRepo(ctx context.Context, u *user.DBUser) error {
 			}
 		}
 	}
-	catcher.Add(UpsertAliasesForProject(repoAliasesToCopy, p.Id))
+	catcher.Add(UpsertAliasesForProject(ctx, repoAliasesToCopy, p.Id))
 
 	catcher.Add(GetAndLogProjectRepoAttachment(ctx, p.Id, u.Id, event.EventTypeProjectDetachedFromRepo, false, before))
 	return catcher.Resolve()
@@ -1139,20 +1139,20 @@ func FindMergedProjectRef(ctx context.Context, identifier string, version string
 }
 
 // GetNumberOfEnabledProjects returns the current number of enabled projects on evergreen.
-func GetNumberOfEnabledProjects() (int, error) {
+func GetNumberOfEnabledProjects(ctx context.Context) (int, error) {
 	// Empty owner and repo will return all enabled project count.
-	return getNumberOfEnabledProjects("", "")
+	return getNumberOfEnabledProjects(ctx, "", "")
 }
 
 // GetNumberOfEnabledProjectsForOwnerRepo returns the number of enabled projects for a given owner/repo.
-func GetNumberOfEnabledProjectsForOwnerRepo(owner, repo string) (int, error) {
+func GetNumberOfEnabledProjectsForOwnerRepo(ctx context.Context, owner, repo string) (int, error) {
 	if owner == "" || repo == "" {
 		return 0, errors.New("owner and repo must be specified")
 	}
-	return getNumberOfEnabledProjects(owner, repo)
+	return getNumberOfEnabledProjects(ctx, owner, repo)
 }
 
-func getNumberOfEnabledProjects(owner, repo string) (int, error) {
+func getNumberOfEnabledProjects(ctx context.Context, owner, repo string) (int, error) {
 	pipeline := []bson.M{
 		{"$match": bson.M{ProjectRefEnabledKey: true}},
 	}
@@ -1165,7 +1165,7 @@ func getNumberOfEnabledProjects(owner, repo string) (int, error) {
 		Count int `bson:"count"`
 	}
 	count := []Count{}
-	err := db.Aggregate(ProjectRefCollection, pipeline, &count)
+	err := db.Aggregate(ctx, ProjectRefCollection, pipeline, &count)
 	if err != nil {
 		return 0, err
 	}
@@ -1281,7 +1281,7 @@ func (p *ProjectRef) createNewRepoRef(ctx context.Context, u *user.DBUser) (repo
 	if err = repoRef.Add(ctx, u); err != nil {
 		return nil, errors.Wrapf(err, "adding new repo repo ref for '%s/%s'", p.Owner, p.Repo)
 	}
-	err = LogProjectAdded(repoRef.Id, u.DisplayName())
+	err = LogProjectAdded(ctx, repoRef.Id, u.DisplayName())
 	grip.Error(message.WrapError(err, message.Fields{
 		"message":            "problem logging repo added",
 		"project_id":         repoRef.Id,
@@ -1298,27 +1298,27 @@ func (p *ProjectRef) createNewRepoRef(ctx context.Context, u *user.DBUser) (repo
 		return nil, errors.Wrap(err, "getting common project variables")
 	}
 	commonProjectVars.Id = repoRef.Id
-	if err = commonProjectVars.Insert(); err != nil {
+	if err = commonProjectVars.Insert(ctx); err != nil {
 		return nil, errors.Wrap(err, "inserting project variables for repo")
 	}
 
-	commonAliases, err := getCommonAliases(enabledProjectIds)
+	commonAliases, err := getCommonAliases(ctx, enabledProjectIds)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting common project aliases")
 	}
 	for _, a := range commonAliases {
 		a.ProjectID = repoRef.Id
-		if err = a.Upsert(); err != nil {
+		if err = a.Upsert(ctx); err != nil {
 			return nil, errors.Wrap(err, "upserting alias for repo")
 		}
 	}
 	return repoRef, nil
 }
 
-func getCommonAliases(projectIds []string) (ProjectAliases, error) {
+func getCommonAliases(ctx context.Context, projectIds []string) (ProjectAliases, error) {
 	commonAliases := []ProjectAlias{}
 	for i, id := range projectIds {
-		aliases, err := FindAliasesForProjectFromDb(id)
+		aliases, err := FindAliasesForProjectFromDb(ctx, id)
 		if err != nil {
 			return nil, errors.Wrap(err, "finding aliases for project")
 		}
@@ -1430,8 +1430,8 @@ func GetIdentifierForProject(ctx context.Context, id string) (string, error) {
 	return pRef.Identifier, nil
 }
 
-func CountProjectRefsWithIdentifier(identifier string) (int, error) {
-	return db.CountQ(ProjectRefCollection, byId(identifier))
+func CountProjectRefsWithIdentifier(ctx context.Context, identifier string) (int, error) {
+	return db.CountQ(ctx, ProjectRefCollection, byId(identifier))
 }
 
 type GetProjectTasksOpts struct {
@@ -1483,8 +1483,10 @@ func GetTasksWithOptions(ctx context.Context, projectName string, taskName strin
 	pipeline := []bson.M{{"$match": match}}
 	pipeline = append(pipeline, bson.M{"$sort": bson.M{task.RevisionOrderNumberKey: -1}})
 
+	aggregateCtx, cancel := context.WithTimeout(ctx, tasksByProjectQueryMaxTime)
+	defer cancel()
 	res := []task.Task{}
-	if err = db.AggregateWithMaxTime(task.Collection, pipeline, &res, tasksByProjectQueryMaxTime); err != nil {
+	if err = db.Aggregate(aggregateCtx, task.Collection, pipeline, &res); err != nil {
 		return nil, errors.Wrapf(err, "aggregating tasks")
 	}
 	return res, nil
@@ -1514,7 +1516,7 @@ func FindAnyRestrictedProjectRef(ctx context.Context) (*ProjectRef, error) {
 func FindAllMergedTrackedProjectRefs(ctx context.Context) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 	q := db.Query(bson.M{ProjectRefHiddenKey: bson.M{"$ne": true}})
-	err := db.FindAllQ(ProjectRefCollection, q, &projectRefs)
+	err := db.FindAllQ(ctx, ProjectRefCollection, q, &projectRefs)
 	if err != nil {
 		return nil, err
 	}
@@ -1531,7 +1533,7 @@ func FindAllMergedEnabledTrackedProjectRefs(ctx context.Context) ([]ProjectRef, 
 		ProjectRefHiddenKey:  bson.M{"$ne": true},
 		ProjectRefEnabledKey: true,
 	})
-	err := db.FindAllQ(ProjectRefCollection, q, &projectRefs)
+	err := db.FindAllQ(ctx, ProjectRefCollection, q, &projectRefs)
 	if err != nil {
 		return nil, err
 	}
@@ -1619,7 +1621,7 @@ func FindProjectRefsByIds(ctx context.Context, ids ...string) ([]ProjectRef, err
 func findProjectRefsQ(ctx context.Context, filter bson.M, merged bool) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 	q := db.Query(filter)
-	err := db.FindAllQ(ProjectRefCollection, q, &projectRefs)
+	err := db.FindAllQ(ctx, ProjectRefCollection, q, &projectRefs)
 	if err != nil {
 		return nil, err
 	}
@@ -1674,7 +1676,7 @@ func FindMergedEnabledProjectRefsByRepoAndBranch(ctx context.Context, owner, rep
 	match[ProjectRefEnabledKey] = true
 	pipeline := []bson.M{{"$match": match}}
 	pipeline = append(pipeline, lookupRepoStep)
-	err := db.Aggregate(ProjectRefCollection, pipeline, &projectRefs)
+	err := db.Aggregate(ctx, ProjectRefCollection, pipeline, &projectRefs)
 	if err != nil {
 		return nil, err
 	}
@@ -1693,7 +1695,7 @@ func FindMergedProjectRefsThatUseRepoSettingsByRepoAndBranch(ctx context.Context
 	q := byOwnerRepoAndBranch(owner, repoName, branch, true)
 	q[ProjectRefRepoRefIdKey] = bson.M{"$exists": true, "$ne": ""}
 	pipeline := []bson.M{{"$match": q}}
-	err := db.AggregateContext(ctx, ProjectRefCollection, pipeline, &projectRefs)
+	err := db.Aggregate(ctx, ProjectRefCollection, pipeline, &projectRefs)
 	if err != nil {
 		return nil, err
 	}
@@ -1714,29 +1716,10 @@ func filterProjectsByBranch(pRefs []ProjectRef, branch string) []ProjectRef {
 	return res
 }
 
-func FindBranchAdminsForRepo(repoId string) ([]string, error) {
-	projectRefs := []ProjectRef{}
-	err := db.FindAllQ(
-		ProjectRefCollection,
-		db.Query(bson.M{
-			ProjectRefRepoRefIdKey: repoId,
-		}).WithFields(ProjectRefAdminsKey),
-		&projectRefs,
-	)
-	if err != nil {
-		return nil, err
-	}
-	allBranchAdmins := []string{}
-	for _, pRef := range projectRefs {
-		allBranchAdmins = append(allBranchAdmins, pRef.Admins...)
-	}
-	return utility.UniqueStrings(allBranchAdmins), nil
-}
-
 // UserHasRepoViewPermission returns true if the user has permission to view any branch project settings.
-func UserHasRepoViewPermission(u *user.DBUser, repoRefId string) (bool, error) {
+func UserHasRepoViewPermission(ctx context.Context, u *user.DBUser, repoRefId string) (bool, error) {
 	projectRefs := []ProjectRef{}
-	err := db.FindAllQ(
+	err := db.FindAllQ(ctx,
 		ProjectRefCollection,
 		db.Query(bson.M{
 			ProjectRefRepoRefIdKey: repoRefId,
@@ -1763,10 +1746,10 @@ func UserHasRepoViewPermission(u *user.DBUser, repoRefId string) (bool, error) {
 
 // FindDownstreamProjects finds projects that have that trigger enabled or
 // inherits it from the repo project.
-func FindDownstreamProjects(project string) ([]ProjectRef, error) {
+func FindDownstreamProjects(ctx context.Context, project string) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 
-	err := db.Aggregate(ProjectRefCollection, projectRefPipelineForMatchingTrigger(project), &projectRefs)
+	err := db.Aggregate(ctx, ProjectRefCollection, projectRefPipelineForMatchingTrigger(project), &projectRefs)
 	if err != nil {
 		return nil, err
 	}
@@ -1947,7 +1930,7 @@ func UpdateAdminRoles(ctx context.Context, project *ProjectRef, toAdd, toDelete 
 }
 
 // FindNonHiddenProjects returns limit visible project refs starting at project id key in the sortDir direction.
-func FindNonHiddenProjects(key string, limit int, sortDir int) ([]ProjectRef, error) {
+func FindNonHiddenProjects(ctx context.Context, key string, limit int, sortDir int) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 	filter := bson.M{
 		ProjectRefHiddenKey: bson.M{"$ne": true},
@@ -1962,7 +1945,7 @@ func FindNonHiddenProjects(key string, limit int, sortDir int) ([]ProjectRef, er
 	}
 
 	q := db.Query(filter).Sort([]string{sortSpec}).Limit(limit)
-	err := db.FindAllQ(ProjectRefCollection, q, &projectRefs)
+	err := db.FindAllQ(ctx, ProjectRefCollection, q, &projectRefs)
 
 	return projectRefs, errors.Wrapf(err, "fetching projects starting at project '%s'", key)
 }
@@ -1991,7 +1974,7 @@ func FindMergedEnabledProjectRefsByOwnerAndRepo(ctx context.Context, owner, repo
 	match[ProjectRefEnabledKey] = true
 	pipeline := []bson.M{{"$match": match}}
 	pipeline = append(pipeline, lookupRepoStep)
-	err := db.AggregateContext(ctx, ProjectRefCollection, pipeline, &projectRefs)
+	err := db.Aggregate(ctx, ProjectRefCollection, pipeline, &projectRefs)
 	if err != nil {
 		return nil, err
 	}
@@ -2001,7 +1984,7 @@ func FindMergedEnabledProjectRefsByOwnerAndRepo(ctx context.Context, owner, repo
 
 // FindMergedProjectRefsForRepo considers either owner/repo and repo ref ID, in case the owner/repo of the repo ref is going to change.
 // So we get all the branch projects in the new repo, and all the branch projects that might change owner/repo.
-func FindMergedProjectRefsForRepo(repoRef *RepoRef) ([]ProjectRef, error) {
+func FindMergedProjectRefsForRepo(ctx context.Context, repoRef *RepoRef) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 
 	q := db.Query(bson.M{
@@ -2013,7 +1996,7 @@ func FindMergedProjectRefsForRepo(repoRef *RepoRef) ([]ProjectRef, error) {
 			{ProjectRefRepoRefIdKey: repoRef.Id},
 		},
 	})
-	err := db.FindAllQ(ProjectRefCollection, q, &projectRefs)
+	err := db.FindAllQ(ctx, ProjectRefCollection, q, &projectRefs)
 	if err != nil {
 		return nil, err
 	}
@@ -2068,11 +2051,11 @@ func GetProjectSettings(ctx context.Context, p *ProjectRef) (*ProjectSettings, e
 	if projectVars == nil {
 		projectVars = &ProjectVars{}
 	}
-	projectAliases, err := FindAliasesForProjectFromDb(p.Id)
+	projectAliases, err := FindAliasesForProjectFromDb(ctx, p.Id)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding aliases for project '%s'", p.Id)
 	}
-	subscriptions, err := event.FindSubscriptionsByOwner(p.Id, event.OwnerTypeProject)
+	subscriptions, err := event.FindSubscriptionsByOwner(ctx, p.Id, event.OwnerTypeProject)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding subscription for project '%s'", p.Id)
 	}
@@ -2142,10 +2125,10 @@ func (p *ProjectRef) CanEnableCommitQueue(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
-// Upsert updates the project ref in the db if an entry already exists,
+// Replace updates the project ref in the db if an entry already exists,
 // overwriting the existing ref. If no project ref exists, a new one is created.
-func (p *ProjectRef) Upsert() error {
-	_, err := db.Upsert(ProjectRefCollection, bson.M{ProjectRefIdKey: p.Id}, p)
+func (p *ProjectRef) Replace(ctx context.Context) error {
+	_, err := db.ReplaceContext(ctx, ProjectRefCollection, bson.M{ProjectRefIdKey: p.Id}, p)
 	return err
 }
 
@@ -2740,7 +2723,7 @@ func shouldValidateOwnerRepoLimit(isNewProject bool, config *evergreen.Settings,
 // ValidateEnabledProjectsLimit takes in a the original and new merged project refs and validates project limits,
 // assuming the given project is going to be enabled.
 // Returns a status code and error if we are already at limit with enabled projects.
-func ValidateEnabledProjectsLimit(projectId string, config *evergreen.Settings, originalMergedRef, mergedRefToValidate *ProjectRef) (int, error) {
+func ValidateEnabledProjectsLimit(ctx context.Context, projectId string, config *evergreen.Settings, originalMergedRef, mergedRefToValidate *ProjectRef) (int, error) {
 	if config.ProjectCreation.TotalProjectLimit == 0 || config.ProjectCreation.RepoProjectLimit == 0 {
 		return http.StatusOK, nil
 	}
@@ -2748,7 +2731,7 @@ func ValidateEnabledProjectsLimit(projectId string, config *evergreen.Settings, 
 	isNewProject := originalMergedRef == nil
 	catcher := grip.NewBasicCatcher()
 	if shouldValidateTotalProjectLimit(isNewProject, originalMergedRef) {
-		allEnabledProjects, err := GetNumberOfEnabledProjects()
+		allEnabledProjects, err := GetNumberOfEnabledProjects(ctx)
 		if err != nil {
 			return http.StatusInternalServerError, errors.Wrap(err, "getting number of enabled projects")
 		}
@@ -2758,7 +2741,7 @@ func ValidateEnabledProjectsLimit(projectId string, config *evergreen.Settings, 
 	}
 
 	if shouldValidateOwnerRepoLimit(isNewProject, config, originalMergedRef, mergedRefToValidate) {
-		enabledOwnerRepoProjects, err := GetNumberOfEnabledProjectsForOwnerRepo(mergedRefToValidate.Owner, mergedRefToValidate.Repo)
+		enabledOwnerRepoProjects, err := GetNumberOfEnabledProjectsForOwnerRepo(ctx, mergedRefToValidate.Owner, mergedRefToValidate.Repo)
 		if err != nil {
 			return http.StatusInternalServerError, errors.Wrapf(err, "getting number of projects for '%s/%s'", mergedRefToValidate.Owner, mergedRefToValidate.Repo)
 		}
@@ -2791,11 +2774,11 @@ func validateOwner(owner string, validOrgs []string) error {
 	return nil
 }
 
-func (p *ProjectRef) ValidateIdentifier() error {
+func (p *ProjectRef) ValidateIdentifier(ctx context.Context) error {
 	if p.Id == p.Identifier { // we already know the id is unique
 		return nil
 	}
-	count, err := CountProjectRefsWithIdentifier(p.Identifier)
+	count, err := CountProjectRefsWithIdentifier(ctx, p.Identifier)
 	if err != nil {
 		return errors.Wrap(err, "counting other project refs")
 	}

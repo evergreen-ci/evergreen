@@ -1,6 +1,7 @@
 package host
 
 import (
+	"context"
 	"sort"
 	"testing"
 
@@ -10,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func insertTestDocuments() error {
+func insertTestDocuments(ctx context.Context) error {
 	input := []any{
 		Host{
 			Id:     "one",
@@ -71,7 +72,7 @@ func insertTestDocuments() error {
 		},
 	}
 
-	return db.InsertMany(Collection, input...)
+	return db.InsertMany(ctx, Collection, input...)
 }
 
 func TestHostStatsByProvider(t *testing.T) {
@@ -80,17 +81,17 @@ func TestHostStatsByProvider(t *testing.T) {
 	defer func() {
 		assert.NoError(db.ClearCollections(Collection))
 	}()
-	assert.NoError(insertTestDocuments())
+	assert.NoError(insertTestDocuments(t.Context()))
 
 	result := ProviderStats{}
 
-	assert.NoError(db.Aggregate(Collection, statsByProviderPipeline(), &result))
+	assert.NoError(db.Aggregate(t.Context(), Collection, statsByProviderPipeline(), &result))
 	assert.Len(result, 2, "%+v", result)
 
 	rmap := result.Map()
 	assert.Equal(3, rmap[evergreen.ProviderNameEc2Fleet])
 
-	alt, err := GetProviderCounts()
+	alt, err := GetProviderCounts(t.Context())
 	assert.NoError(err)
 	sort.Slice(alt, func(i, j int) bool { return alt[i].Provider < alt[j].Provider })
 	sort.Slice(result, func(i, j int) bool { return result[i].Provider < result[j].Provider })
@@ -103,11 +104,11 @@ func TestHostStatsByDistro(t *testing.T) {
 	defer func() {
 		assert.NoError(db.ClearCollections(Collection))
 	}()
-	assert.NoError(insertTestDocuments())
+	assert.NoError(insertTestDocuments(t.Context()))
 
 	result := DistroStats{}
 
-	assert.NoError(db.Aggregate(Collection, statsByDistroPipeline(), &result))
+	assert.NoError(db.Aggregate(t.Context(), Collection, statsByDistroPipeline(), &result))
 	assert.Len(result, 3, "%+v", result)
 
 	rcmap := result.CountMap()
@@ -122,7 +123,7 @@ func TestHostStatsByDistro(t *testing.T) {
 	assert.Len(exceeded, 2)
 	assert.NotContains(exceeded, "bar")
 
-	alt, err := GetStatsByDistro()
+	alt, err := GetStatsByDistro(t.Context())
 	assert.NoError(err)
 	sort.Slice(alt, func(i, j int) bool { return alt[i].Distro < alt[j].Distro })
 	sort.Slice(result, func(i, j int) bool { return result[i].Distro < result[j].Distro })

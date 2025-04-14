@@ -32,7 +32,7 @@ func TestGetLatestExecutions(t *testing.T) {
 		},
 	}
 	for _, a := range taskAnnotations {
-		assert.NoError(t, a.Upsert())
+		assert.NoError(t, a.Upsert(t.Context()))
 	}
 
 	taskAnnotations, err := FindByTaskIds(t.Context(), []string{"t1", "t2"})
@@ -72,7 +72,7 @@ func TestSetAnnotationMetadataLinks(t *testing.T) {
 func TestAddSuspectedIssueToAnnotation(t *testing.T) {
 	assert.NoError(t, db.Clear(Collection))
 	issue := IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234"}
-	assert.NoError(t, AddSuspectedIssueToAnnotation("t1", 0, issue, "annie.black"))
+	assert.NoError(t, AddSuspectedIssueToAnnotation(t.Context(), "t1", 0, issue, "annie.black"))
 
 	annotation, err := FindOneByTaskIdAndExecution(t.Context(), "t1", 0)
 	assert.NoError(t, err)
@@ -83,7 +83,7 @@ func TestAddSuspectedIssueToAnnotation(t *testing.T) {
 	assert.Equal(t, UIRequester, annotation.SuspectedIssues[0].Source.Requester)
 	assert.Equal(t, "annie.black", annotation.SuspectedIssues[0].Source.Author)
 
-	assert.NoError(t, AddSuspectedIssueToAnnotation("t1", 0, issue, "not.annie.black"))
+	assert.NoError(t, AddSuspectedIssueToAnnotation(t.Context(), "t1", 0, issue, "not.annie.black"))
 	annotation, err = FindOneByTaskIdAndExecution(t.Context(), "t1", 0)
 	assert.NoError(t, err)
 	assert.NotNil(t, annotation)
@@ -97,7 +97,7 @@ func TestRemoveSuspectedIssueFromAnnotation(t *testing.T) {
 	issue2 := IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", Source: &Source{Author: "not.annie.black"}}
 	assert.NoError(t, db.Clear(Collection))
 	a := TaskAnnotation{TaskId: "t1", SuspectedIssues: []IssueLink{issue1, issue2}}
-	assert.NoError(t, a.Upsert())
+	assert.NoError(t, a.Upsert(t.Context()))
 
 	assert.NoError(t, RemoveSuspectedIssueFromAnnotation(t.Context(), "t1", 0, issue1))
 	annotationFromDB, err := FindOneByTaskIdAndExecution(t.Context(), "t1", 0)

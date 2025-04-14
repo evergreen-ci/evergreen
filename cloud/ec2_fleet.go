@@ -78,8 +78,10 @@ func (c instanceTypeSubnetCache) getAZs(ctx context.Context, settings *evergreen
 }
 
 type EC2FleetManagerOptions struct {
-	client AWSClient
-	region string
+	client  AWSClient
+	region  string
+	account string
+	role    string
 }
 
 type ec2FleetManager struct {
@@ -95,7 +97,17 @@ func (m *ec2FleetManager) Configure(ctx context.Context, settings *evergreen.Set
 		m.region = evergreen.DefaultEC2Region
 	}
 
+	role, err := getRoleForAccount(settings, m.account)
+	if err != nil {
+		return errors.Wrap(err, "getting role for account")
+	}
+	m.role = role
+
 	return nil
+}
+
+func (m *ec2FleetManager) setupClient(ctx context.Context) error {
+	return m.client.Create(ctx, m.role, m.region)
 }
 
 func (m *ec2FleetManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, error) {
@@ -103,7 +115,7 @@ func (m *ec2FleetManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Ho
 		return nil, errors.Errorf("can't spawn instance for distro '%s': distro provider is '%s'", h.Distro.Id, h.Distro.Provider)
 	}
 
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.setupClient(ctx); err != nil {
 		return nil, errors.Wrap(err, "creating client")
 	}
 
@@ -151,7 +163,7 @@ func (m *ec2FleetManager) GetInstanceStatuses(ctx context.Context, hosts []host.
 		instanceIDs = append(instanceIDs, h.Id)
 	}
 
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.setupClient(ctx); err != nil {
 		return nil, errors.Wrap(err, "creating client")
 	}
 
@@ -210,7 +222,7 @@ func (m *ec2FleetManager) GetInstanceStatuses(ctx context.Context, hosts []host.
 func (m *ec2FleetManager) GetInstanceState(ctx context.Context, h *host.Host) (CloudInstanceState, error) {
 	info := CloudInstanceState{Status: StatusUnknown}
 
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.setupClient(ctx); err != nil {
 		return info, errors.Wrap(err, "creating client")
 	}
 
@@ -251,7 +263,7 @@ func (m *ec2FleetManager) SetPortMappings(context.Context, *host.Host, *host.Hos
 }
 
 func (m *ec2FleetManager) CheckInstanceType(ctx context.Context, instanceType string) error {
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.setupClient(ctx); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
 	output, err := m.client.DescribeInstanceTypeOfferings(ctx, &ec2.DescribeInstanceTypeOfferingsInput{})
@@ -272,7 +284,7 @@ func (m *ec2FleetManager) TerminateInstance(ctx context.Context, h *host.Host, u
 	if h.Status == evergreen.HostTerminated {
 		return errors.Errorf("cannot terminate host '%s' because it's already marked as terminated", h.Id)
 	}
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.setupClient(ctx); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
 
@@ -325,7 +337,7 @@ func (m *ec2FleetManager) StartInstance(context.Context, *host.Host, string) err
 }
 
 func (m *ec2FleetManager) Cleanup(ctx context.Context) error {
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.setupClient(ctx); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
 
@@ -385,7 +397,7 @@ func (m *ec2FleetManager) GetVolumeAttachment(context.Context, string) (*VolumeA
 }
 
 func (m *ec2FleetManager) GetDNSName(ctx context.Context, h *host.Host) (string, error) {
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.setupClient(ctx); err != nil {
 		return "", errors.Wrap(err, "creating client")
 	}
 
@@ -428,7 +440,6 @@ func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host
 
 	launchTemplate := &types.RequestLaunchTemplateData{
 		ImageId:             aws.String(ec2Settings.AMI),
-		KeyName:             aws.String(ec2Settings.KeyName),
 		InstanceType:        types.InstanceType(ec2Settings.InstanceType),
 		BlockDeviceMappings: blockDevices,
 		TagSpecifications:   makeTagTemplate(makeTags(h)),
@@ -438,11 +449,14 @@ func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host
 		launchTemplate.IamInstanceProfile = &types.LaunchTemplateIamInstanceProfileSpecificationRequest{Arn: aws.String(ec2Settings.IAMInstanceProfileARN)}
 	}
 
+	assignPublicIPv4 := shouldAssignPublicIPv4Address(h, ec2Settings)
+	if assignPublicIPv4 {
+		// Only set an SSH key for the host if the host actually has a public
+		// IPv4 address. Hosts that don't have a public IPv4 address aren't
+		// reachable with SSH even if a key is set.
+		launchTemplate.KeyName = aws.String(ec2Settings.KeyName)
+	}
 	if ec2Settings.IsVpc {
-		assignPublicIPv4 := !ec2Settings.DoNotAssignPublicIPv4Address
-		if h.UserHost {
-			assignPublicIPv4 = true
-		}
 		launchTemplate.NetworkInterfaces = []types.LaunchTemplateInstanceNetworkInterfaceSpecificationRequest{
 			{
 				AssociatePublicIpAddress: aws.Bool(assignPublicIPv4),
@@ -453,7 +467,6 @@ func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host
 		}
 		if ec2Settings.IPv6 {
 			launchTemplate.NetworkInterfaces[0].Ipv6AddressCount = aws.Int32(1)
-			launchTemplate.NetworkInterfaces[0].AssociatePublicIpAddress = aws.Bool(false)
 		}
 	} else {
 		launchTemplate.SecurityGroups = ec2Settings.SecurityGroupIDs

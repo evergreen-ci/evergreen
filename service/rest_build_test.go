@@ -58,7 +58,7 @@ func TestGetBuildInfo(t *testing.T) {
 			TimeTaken:   100 * time.Millisecond,
 			BuildId:     buildId,
 		}
-		So(task.Insert(), ShouldBeNil)
+		So(task.Insert(t.Context()), ShouldBeNil)
 		build := &build.Build{
 			Id:                  buildId,
 			CreateTime:          time.Now().Add(-20 * time.Minute),
@@ -77,7 +77,7 @@ func TestGetBuildInfo(t *testing.T) {
 			DisplayName:         "My build",
 			Requester:           evergreen.RepotrackerVersionRequester,
 		}
-		So(build.Insert(), ShouldBeNil)
+		So(build.Insert(t.Context()), ShouldBeNil)
 
 		url := "/rest/v1/builds/" + buildId
 
@@ -198,7 +198,7 @@ func TestGetBuildStatus(t *testing.T) {
 			DisplayName:  "Some Build Variant",
 			Tasks:        []build.TaskCache{{Id: taskId}},
 		}
-		So(build.Insert(), ShouldBeNil)
+		So(build.Insert(t.Context()), ShouldBeNil)
 
 		task := task.Task{
 			Id:          taskId,
@@ -207,7 +207,7 @@ func TestGetBuildStatus(t *testing.T) {
 			Status:      "success",
 			TimeTaken:   100 * time.Millisecond,
 		}
-		So(task.Insert(), ShouldBeNil)
+		So(task.Insert(t.Context()), ShouldBeNil)
 
 		url := "/rest/v1/builds/" + buildId + "/status"
 

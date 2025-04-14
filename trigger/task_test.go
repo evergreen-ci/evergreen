@@ -38,18 +38,18 @@ func TestBuildBreakNotificationsFromRepotracker(t *testing.T) {
 		NotifyOnBuildFailure: utility.TruePtr(),
 		Admins:               []string{"admin"},
 	}
-	assert.NoError(proj.Insert())
+	assert.NoError(proj.Insert(t.Context()))
 	v1 := model.Version{
 		Id:         "v1",
 		Identifier: proj.Id,
 		Requester:  evergreen.RepotrackerVersionRequester,
 	}
-	assert.NoError(v1.Insert())
+	assert.NoError(v1.Insert(t.Context()))
 	b1 := build.Build{
 		Id:      "b1",
 		Version: v1.Id,
 	}
-	assert.NoError(b1.Insert())
+	assert.NoError(b1.Insert(t.Context()))
 	t1 := task.Task{
 		Id:          "t1",
 		Version:     v1.Id,
@@ -59,7 +59,7 @@ func TestBuildBreakNotificationsFromRepotracker(t *testing.T) {
 		Requester:   evergreen.RepotrackerVersionRequester,
 		DisplayName: "t1",
 	}
-	assert.NoError(t1.Insert())
+	assert.NoError(t1.Insert(t.Context()))
 	u := user.DBUser{
 		Id:           "admin",
 		EmailAddress: "a@b.com",
@@ -69,7 +69,7 @@ func TestBuildBreakNotificationsFromRepotracker(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(u.Insert())
+	assert.NoError(u.Insert(t.Context()))
 
 	// a build break that no one is subscribed to should go to admins
 	assert.NoError(repotracker.AddBuildBreakSubscriptions(ctx, &v1, &proj))
@@ -92,12 +92,12 @@ func TestBuildBreakNotificationsFromRepotracker(t *testing.T) {
 		Identifier: proj.Id,
 		Requester:  evergreen.RepotrackerVersionRequester,
 	}
-	assert.NoError(v2.Insert())
+	assert.NoError(v2.Insert(t.Context()))
 	b2 := build.Build{
 		Id:      "b2",
 		Version: v2.Id,
 	}
-	assert.NoError(b2.Insert())
+	assert.NoError(b2.Insert(t.Context()))
 	t2 := task.Task{
 		Id:          "t2",
 		Version:     v2.Id,
@@ -108,12 +108,12 @@ func TestBuildBreakNotificationsFromRepotracker(t *testing.T) {
 		TriggerID:   "abc",
 		DisplayName: "t2",
 	}
-	assert.NoError(t2.Insert())
+	assert.NoError(t2.Insert(t.Context()))
 	sub := event.NewBuildBreakSubscriptionByOwner("me", event.Subscriber{
 		Type:   event.EmailSubscriberType,
 		Target: "committer@example.com",
 	})
-	assert.NoError(sub.Upsert())
+	assert.NoError(sub.Upsert(t.Context()))
 	assert.NoError(repotracker.AddBuildBreakSubscriptions(ctx, &v2, &proj))
 	e = event.EventLogEntry{
 		ResourceType: event.ResourceTypeTask,
@@ -203,17 +203,17 @@ func (s *taskSuite) SetupTest() {
 		RevisionOrderNumber: 1,
 		Requester:           evergreen.RepotrackerVersionRequester,
 	}
-	s.NoError(s.task.Insert())
+	s.NoError(s.task.Insert(s.ctx))
 
 	s.projectRef = model.ProjectRef{
 		Id: "test_project",
 	}
-	s.NoError(s.projectRef.Insert())
+	s.NoError(s.projectRef.Insert(s.ctx))
 
 	s.build = build.Build{
 		Id: "test_build_id",
 	}
-	s.NoError(s.build.Insert())
+	s.NoError(s.build.Insert(s.ctx))
 
 	s.data = &event.TaskEventData{
 		Status: evergreen.TaskStarted,
@@ -229,7 +229,7 @@ func (s *taskSuite) SetupTest() {
 		Id:       "test_version_id",
 		AuthorID: "me",
 	}
-	s.NoError(v.Insert())
+	s.NoError(v.Insert(s.ctx))
 
 	apiSub := event.Subscriber{
 		Type: event.EvergreenWebhookSubscriberType,
@@ -320,7 +320,7 @@ func (s *taskSuite) SetupTest() {
 	}
 
 	for i := range s.subs {
-		s.NoError(s.subs[i].Upsert())
+		s.NoError(s.subs[i].Upsert(s.ctx))
 	}
 
 	ui := &evergreen.UIConfig{
@@ -361,7 +361,7 @@ func (s *taskSuite) TestTriggerEvent() {
 		},
 		Owner: "someone",
 	}
-	s.NoError(sub.Upsert())
+	s.NoError(sub.Upsert(s.ctx))
 	t := task.Task{
 		Id:                  "test",
 		Version:             "test_version_id",
@@ -374,7 +374,7 @@ func (s *taskSuite) TestTriggerEvent() {
 		Requester:           evergreen.TriggerRequester,
 		Status:              evergreen.TaskFailed,
 	}
-	s.NoError(t.Insert())
+	s.NoError(t.Insert(s.ctx))
 
 	s.data.Status = evergreen.TaskFailed
 	s.event.Data = s.data
@@ -390,7 +390,7 @@ func (s *taskSuite) TestGithubPREvent() {
 		Type:   event.SlackSubscriberType,
 		Target: "@annie",
 	})
-	s.NoError(sub.Upsert())
+	s.NoError(sub.Upsert(s.ctx))
 	t := task.Task{
 		Id:           "test",
 		Version:      "test_version_id",
@@ -401,7 +401,7 @@ func (s *taskSuite) TestGithubPREvent() {
 		Requester:    evergreen.GithubPRRequester,
 		Status:       evergreen.TaskFailed,
 	}
-	s.NoError(t.Insert())
+	s.NoError(t.Insert(s.ctx))
 
 	s.data.Status = evergreen.TaskFailed
 	s.event.Data = s.data
@@ -417,7 +417,8 @@ func (s *taskSuite) TestAllTriggers() {
 
 	s.task.Status = evergreen.TaskSucceeded
 	s.data.Status = evergreen.TaskSucceeded
-	s.NoError(db.ReplaceContext(s.ctx, task.Collection, bson.M{"_id": s.task.Id}, &s.task))
+	_, err = db.ReplaceContext(s.ctx, task.Collection, bson.M{"_id": s.task.Id}, &s.task)
+	s.NoError(err)
 
 	n, err = NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)
@@ -425,14 +426,16 @@ func (s *taskSuite) TestAllTriggers() {
 
 	s.task.Status = evergreen.TaskFailed
 	s.data.Status = evergreen.TaskFailed
-	s.NoError(db.ReplaceContext(s.ctx, task.Collection, bson.M{"_id": s.task.Id}, &s.task))
+	_, err = db.ReplaceContext(s.ctx, task.Collection, bson.M{"_id": s.task.Id}, &s.task)
+	s.NoError(err)
 
 	n, err = NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)
 	s.Len(n, 5)
 
 	s.task.DisplayOnly = true
-	s.NoError(db.ReplaceContext(s.ctx, task.Collection, bson.M{"_id": s.task.Id}, &s.task))
+	_, err = db.ReplaceContext(s.ctx, task.Collection, bson.M{"_id": s.task.Id}, &s.task)
+	s.NoError(err)
 	n, err = NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)
 	s.Len(n, 4)
@@ -447,7 +450,8 @@ func (s *taskSuite) TestAbortedTaskDoesNotNotify() {
 	s.NotEmpty(n)
 
 	s.task.Aborted = true
-	s.NoError(db.ReplaceContext(s.ctx, task.Collection, bson.M{"_id": s.task.Id}, &s.task))
+	_, err = db.ReplaceContext(s.ctx, task.Collection, bson.M{"_id": s.task.Id}, &s.task)
+	s.NoError(err)
 
 	// works even if the task is archived
 	s.NoError(s.task.Archive(ctx))
@@ -463,7 +467,7 @@ func (s *taskSuite) TestExecutionTask() {
 		DisplayName:    "displaytask",
 		ExecutionTasks: []string{s.task.Id},
 	}
-	s.NoError(t.Insert())
+	s.NoError(t.Insert(s.ctx))
 	n, err := NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)
 	s.Empty(n)
@@ -554,7 +558,8 @@ func (s *taskSuite) TestFailedOrBlocked() {
 func (s *taskSuite) TestFirstFailureInVersion() {
 	s.data.Status = evergreen.TaskFailed
 	s.task.Status = evergreen.TaskFailed
-	s.NoError(db.ReplaceContext(s.ctx, task.Collection, bson.M{"_id": s.task.Id}, &s.task))
+	_, err := db.ReplaceContext(s.ctx, task.Collection, bson.M{"_id": s.task.Id}, &s.task)
+	s.NoError(err)
 
 	n, err := s.t.taskFirstFailureInVersion(s.ctx, &s.subs[2])
 	s.NoError(err)
@@ -567,24 +572,26 @@ func (s *taskSuite) TestFirstFailureInVersion() {
 
 	// subsequent runs with other tasks should not do anything
 	s.task.Id = "task2"
-	s.NoError(s.task.Insert())
+	s.NoError(s.task.Insert(s.ctx))
 	n, err = s.t.taskFirstFailureInVersion(s.ctx, &s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
 
 	// subsequent runs with other tasks in other builds should not do anything
 	s.build.Id = "test2"
-	s.NoError(s.build.Insert())
+	s.NoError(s.build.Insert(s.ctx))
 	s.task.BuildId = "test2"
 	s.task.BuildVariant = "test2"
-	s.NoError(db.ReplaceContext(s.ctx, task.Collection, bson.M{"_id": s.task.Id}, &s.task))
+	_, err = db.ReplaceContext(s.ctx, task.Collection, bson.M{"_id": s.task.Id}, &s.task)
+	s.NoError(err)
 	n, err = s.t.taskFirstFailureInVersion(s.ctx, &s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
 
 	// subsequent runs with other tasks in other versions should still generate
 	s.task.Version = "test2"
-	s.NoError(db.ReplaceContext(s.ctx, task.Collection, bson.M{"_id": s.task.Id}, &s.task))
+	_, err = db.ReplaceContext(s.ctx, task.Collection, bson.M{"_id": s.task.Id}, &s.task)
+	s.NoError(err)
 	n, err = s.t.taskFirstFailureInVersion(s.ctx, &s.subs[2])
 	s.NoError(err)
 	s.NotNil(n)
@@ -593,7 +600,8 @@ func (s *taskSuite) TestFirstFailureInVersion() {
 func (s *taskSuite) TestFirstFailureInBuild() {
 	s.data.Status = evergreen.TaskFailed
 	s.task.Status = evergreen.TaskFailed
-	s.NoError(db.ReplaceContext(s.ctx, task.Collection, bson.M{"_id": s.task.Id}, &s.task))
+	_, err := db.ReplaceContext(s.ctx, task.Collection, bson.M{"_id": s.task.Id}, &s.task)
+	s.NoError(err)
 
 	n, err := s.t.taskFirstFailureInBuild(s.ctx, &s.subs[2])
 	s.NoError(err)
@@ -606,24 +614,26 @@ func (s *taskSuite) TestFirstFailureInBuild() {
 
 	// subsequent runs with other tasks should not do anything
 	s.task.Id = "task2"
-	s.NoError(s.task.Insert())
+	s.NoError(s.task.Insert(s.ctx))
 	n, err = s.t.taskFirstFailureInBuild(s.ctx, &s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
 
 	// subsequent runs with other tasks in other builds should generate
 	s.build.Id = "test2"
-	s.NoError(s.build.Insert())
+	s.NoError(s.build.Insert(s.ctx))
 	s.task.BuildId = "test2"
 	s.task.BuildVariant = "test2"
-	s.NoError(db.ReplaceContext(s.ctx, task.Collection, bson.M{"_id": s.task.Id}, &s.task))
+	_, err = db.ReplaceContext(s.ctx, task.Collection, bson.M{"_id": s.task.Id}, &s.task)
+	s.NoError(err)
 	n, err = s.t.taskFirstFailureInBuild(s.ctx, &s.subs[2])
 	s.NoError(err)
 	s.NotNil(n)
 
 	// subsequent runs with other tasks in other versions should generate
 	s.task.Version = "test2"
-	s.NoError(db.ReplaceContext(s.ctx, task.Collection, bson.M{"_id": s.task.Id}, &s.task))
+	_, err = db.ReplaceContext(s.ctx, task.Collection, bson.M{"_id": s.task.Id}, &s.task)
+	s.NoError(err)
 	n, err = s.t.taskFirstFailureInBuild(s.ctx, &s.subs[2])
 	s.NoError(err)
 	s.NotNil(n)
@@ -632,7 +642,8 @@ func (s *taskSuite) TestFirstFailureInBuild() {
 func (s *taskSuite) TestFirstFailureInVersionWithName() {
 	s.data.Status = evergreen.TaskFailed
 	s.task.Status = evergreen.TaskFailed
-	s.NoError(db.ReplaceContext(s.ctx, task.Collection, bson.M{"_id": s.task.Id}, &s.task))
+	_, err := db.ReplaceContext(s.ctx, task.Collection, bson.M{"_id": s.task.Id}, &s.task)
+	s.NoError(err)
 
 	n, err := s.t.taskFirstFailureInVersionWithName(s.ctx, &s.subs[2])
 	s.NoError(err)
@@ -645,24 +656,26 @@ func (s *taskSuite) TestFirstFailureInVersionWithName() {
 
 	// subsequent runs with other tasks should not do anything
 	s.task.Id = "task2"
-	s.NoError(s.task.Insert())
+	s.NoError(s.task.Insert(s.ctx))
 	n, err = s.t.taskFirstFailureInVersionWithName(s.ctx, &s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
 
 	// subsequent runs with other tasks in other builds should not generate
 	s.build.Id = "test2"
-	s.NoError(s.build.Insert())
+	s.NoError(s.build.Insert(s.ctx))
 	s.task.BuildId = "test2"
 	s.task.BuildVariant = "test2"
-	s.NoError(db.ReplaceContext(s.ctx, task.Collection, bson.M{"_id": s.task.Id}, &s.task))
+	_, err = db.ReplaceContext(s.ctx, task.Collection, bson.M{"_id": s.task.Id}, &s.task)
+	s.NoError(err)
 	n, err = s.t.taskFirstFailureInVersionWithName(s.ctx, &s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
 
 	// subsequent runs in other versions should generate
 	s.task.Version = "test2"
-	s.NoError(db.ReplaceContext(s.ctx, task.Collection, bson.M{"_id": s.task.Id}, &s.task))
+	_, err = db.ReplaceContext(s.ctx, task.Collection, bson.M{"_id": s.task.Id}, &s.task)
+	s.NoError(err)
 	n, err = s.t.taskFirstFailureInVersionWithName(s.ctx, &s.subs[2])
 	s.NoError(err)
 	s.NotNil(n)
@@ -672,12 +685,13 @@ func (s *taskSuite) TestRegression() {
 	s.data.Status = evergreen.TaskFailed
 	s.task.Status = evergreen.TaskFailed
 	s.task.RevisionOrderNumber = 0
-	s.NoError(db.ReplaceContext(s.ctx, task.Collection, bson.M{"_id": s.task.Id}, &s.task))
+	_, err := db.ReplaceContext(s.ctx, task.Collection, bson.M{"_id": s.task.Id}, &s.task)
+	s.NoError(err)
 
 	// brand new task fails should generate
 	s.task.RevisionOrderNumber = 1
 	s.task.Id = "task1"
-	s.NoError(s.task.Insert())
+	s.NoError(s.task.Insert(s.ctx))
 	n, err := s.t.taskRegression(s.ctx, &s.subs[2])
 	s.NoError(err)
 	s.NotNil(n)
@@ -685,7 +699,7 @@ func (s *taskSuite) TestRegression() {
 	// next fail shouldn't generate
 	s.task.RevisionOrderNumber = 2
 	s.task.Id = "test2"
-	s.NoError(s.task.Insert())
+	s.NoError(s.task.Insert(s.ctx))
 
 	n, err = s.t.taskRegression(s.ctx, &s.subs[2])
 	s.NoError(err)
@@ -693,14 +707,14 @@ func (s *taskSuite) TestRegression() {
 
 	// successful task shouldn't generate
 	s.build.Id = "test3"
-	s.NoError(s.build.Insert())
+	s.NoError(s.build.Insert(s.ctx))
 	s.task.Id = "test3"
 	s.task.Version = "test3"
 	s.task.BuildId = "test3"
 	s.task.RevisionOrderNumber = 3
 	s.task.Status = evergreen.TaskSucceeded
 	s.data.Status = evergreen.TaskSucceeded
-	s.NoError(s.task.Insert())
+	s.NoError(s.task.Insert(s.ctx))
 
 	n, err = s.t.taskRegression(s.ctx, &s.subs[2])
 	s.NoError(err)
@@ -708,14 +722,14 @@ func (s *taskSuite) TestRegression() {
 
 	// formerly succeeding task should generate
 	s.build.Id = "test4"
-	s.NoError(s.build.Insert())
+	s.NoError(s.build.Insert(s.ctx))
 	s.task.Id = "test4"
 	s.task.Version = "test4"
 	s.task.BuildId = "test4"
 	s.task.RevisionOrderNumber = 4
 	s.task.Status = evergreen.TaskFailed
 	s.data.Status = evergreen.TaskFailed
-	s.NoError(s.task.Insert())
+	s.NoError(s.task.Insert(s.ctx))
 
 	n, err = s.t.taskRegression(s.ctx, &s.subs[2])
 	s.NoError(err)
@@ -723,12 +737,12 @@ func (s *taskSuite) TestRegression() {
 
 	// Don't renotify if it's recent
 	s.build.Id = "test5"
-	s.NoError(s.build.Insert())
+	s.NoError(s.build.Insert(s.ctx))
 	s.task.Id = "test5"
 	s.task.Version = "test5"
 	s.task.BuildId = "test5"
 	s.task.RevisionOrderNumber = 5
-	s.NoError(s.task.Insert())
+	s.NoError(s.task.Insert(s.ctx))
 	n, err = s.t.taskRegression(s.ctx, &s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
@@ -742,12 +756,12 @@ func (s *taskSuite) TestRegression() {
 		},
 	}))
 	s.build.Id = "test6"
-	s.NoError(s.build.Insert())
+	s.NoError(s.build.Insert(s.ctx))
 	s.task.Id = "test6"
 	s.task.Version = "test6"
 	s.task.BuildId = "test6"
 	s.task.RevisionOrderNumber = 6
-	s.NoError(s.task.Insert())
+	s.NoError(s.task.Insert(s.ctx))
 	n, err = s.t.taskRegression(s.ctx, &s.subs[2])
 	s.NoError(err)
 	s.Nil(n)
@@ -757,26 +771,27 @@ func (s *taskSuite) TestRegression() {
 	n, err = s.t.taskRegression(s.ctx, &s.subs[2])
 	s.NoError(err)
 	s.NotNil(n)
-	s.NoError(db.ReplaceContext(s.ctx, task.Collection, bson.M{"_id": s.task.Id}, &s.task))
+	_, err = db.ReplaceContext(s.ctx, task.Collection, bson.M{"_id": s.task.Id}, &s.task)
+	s.NoError(err)
 
 	// if regression was trigged after an older success, we should generate
 	s.build.Id = "test7"
-	s.NoError(s.build.Insert())
+	s.NoError(s.build.Insert(s.ctx))
 	s.task.Id = "test7"
 	s.task.Version = "test7"
 	s.task.BuildId = "test7"
 	s.task.RevisionOrderNumber = 7
 	s.task.Status = evergreen.TaskSucceeded
-	s.NoError(s.task.Insert())
+	s.NoError(s.task.Insert(s.ctx))
 
 	s.build.Id = "test8"
-	s.NoError(s.build.Insert())
+	s.NoError(s.build.Insert(s.ctx))
 	s.task.Id = "test8"
 	s.task.Version = "test8"
 	s.task.BuildId = "test8"
 	s.task.RevisionOrderNumber = 8
 	s.task.Status = evergreen.TaskFailed
-	s.NoError(s.task.Insert())
+	s.NoError(s.task.Insert(s.ctx))
 	n, err = s.t.taskRegression(s.ctx, &s.subs[2])
 	s.NoError(err)
 	s.NotNil(n)
@@ -803,14 +818,14 @@ func (s *taskSuite) makeTask(n int, taskStatus string) {
 	s.task.ResultsFailed = false
 	s.data.Status = taskStatus
 	s.event.ResourceId = s.task.Id
-	s.Require().NoError(s.task.Insert())
+	s.Require().NoError(s.task.Insert(s.ctx))
 	v := model.Version{
 		Id: s.task.Version,
 	}
-	s.Require().NoError(v.Insert())
+	s.Require().NoError(v.Insert(s.ctx))
 
 	s.build.Id = s.task.BuildId
-	s.Require().NoError(s.build.Insert())
+	s.Require().NoError(s.build.Insert(s.ctx))
 }
 
 func (s *taskSuite) makeTest(ctx context.Context, testName, testStatus string) {
@@ -939,7 +954,8 @@ func (s *taskSuite) TestRegressionByTestWithReruns() {
 	s.task.Execution = 1
 	s.event.ResourceId = s.task.Id
 	s.data.Status = s.task.Status
-	s.NoError(db.ReplaceContext(s.ctx, task.Collection, bson.M{"_id": s.task.Id}, &s.task))
+	_, err := db.ReplaceContext(s.ctx, task.Collection, bson.M{"_id": s.task.Id}, &s.task)
+	s.NoError(err)
 
 	s.makeTest(ctx, "", evergreen.TestFailedStatus)
 	s.tryDoubleTrigger(true)
@@ -949,7 +965,8 @@ func (s *taskSuite) TestRegressionByTestWithReruns() {
 	s.task.Status = evergreen.TaskFailed
 	s.task.Execution = 2
 	s.event.ResourceId = s.task.Id
-	s.NoError(db.ReplaceContext(s.ctx, task.Collection, bson.M{"_id": s.task.Id}, &s.task))
+	_, err = db.ReplaceContext(s.ctx, task.Collection, bson.M{"_id": s.task.Id}, &s.task)
+	s.NoError(err)
 	s.makeTest(ctx, "", evergreen.TestFailedStatus)
 	s.tryDoubleTrigger(false)
 }
@@ -974,7 +991,8 @@ func (s *taskSuite) TestRegressionByTestWithTasksWithoutTests() {
 
 	// force fully move the time of task 25 back 48 hours
 	s.task.FinishTime = time.Now().Add(-48 * time.Hour)
-	s.NoError(db.ReplaceContext(s.ctx, task.Collection, bson.M{task.IdKey: s.task.Id}, &s.task))
+	_, err := db.ReplaceContext(s.ctx, task.Collection, bson.M{task.IdKey: s.task.Id}, &s.task)
+	s.NoError(err)
 
 	s.makeTask(26, evergreen.TaskFailed)
 	s.makeTest(ctx, "", evergreen.TestFailedStatus)
@@ -1043,13 +1061,13 @@ func (s *taskSuite) TestRegressionByTestWithRegex() {
 		},
 		Owner: "someone",
 	}
-	s.NoError(sub.Upsert())
+	s.NoError(sub.Upsert(s.ctx))
 
 	v1 := model.Version{
 		Id:        "v1",
 		Requester: evergreen.RepotrackerVersionRequester,
 	}
-	s.NoError(v1.Insert())
+	s.NoError(v1.Insert(s.ctx))
 
 	t1 := task.Task{
 		Id:             "t1",
@@ -1062,7 +1080,7 @@ func (s *taskSuite) TestRegressionByTestWithRegex() {
 		ResultsService: "local",
 		ResultsFailed:  true,
 	}
-	s.NoError(t1.Insert())
+	s.NoError(t1.Insert(s.ctx))
 	t2 := task.Task{
 		Id:             "t2",
 		Requester:      evergreen.RepotrackerVersionRequester,
@@ -1074,7 +1092,7 @@ func (s *taskSuite) TestRegressionByTestWithRegex() {
 		ResultsService: "local",
 		ResultsFailed:  true,
 	}
-	s.NoError(t2.Insert())
+	s.NoError(t2.Insert(s.ctx))
 	s.Require().NoError(testresult.InsertLocal(
 		ctx,
 		s.env,
@@ -1087,7 +1105,7 @@ func (s *taskSuite) TestRegressionByTestWithRegex() {
 	ref := model.ProjectRef{
 		Id: "myproj",
 	}
-	s.NoError(ref.Insert())
+	s.NoError(ref.Insert(s.ctx))
 
 	willNotify := event.EventLogEntry{
 		ResourceType: event.ResourceTypeTask,
@@ -1190,7 +1208,8 @@ func (s *taskSuite) TestTaskExceedsTime() {
 		EventType: event.TaskFinished,
 	}
 	s.t.data.Status = evergreen.TaskSucceeded
-	s.NoError(db.ReplaceContext(s.ctx, task.Collection, bson.M{"_id": s.task.Id}, &s.task))
+	_, err := db.ReplaceContext(s.ctx, task.Collection, bson.M{"_id": s.task.Id}, &s.task)
+	s.NoError(err)
 	n, err := s.t.taskExceedsDuration(s.ctx, &s.subs[3])
 	s.NoError(err)
 	s.NotNil(n)
@@ -1201,7 +1220,8 @@ func (s *taskSuite) TestTaskExceedsTime() {
 		StartTime:  now,
 		FinishTime: now.Add(1 * time.Minute),
 	}
-	s.NoError(db.ReplaceContext(s.ctx, task.Collection, bson.M{"_id": s.task.Id}, &s.task))
+	_, err = db.ReplaceContext(s.ctx, task.Collection, bson.M{"_id": s.task.Id}, &s.task)
+	s.NoError(err)
 	n, err = s.t.taskExceedsDuration(s.ctx, &s.subs[3])
 	s.NoError(err)
 	s.Nil(n)
@@ -1219,14 +1239,16 @@ func (s *taskSuite) TestSuccessfulTaskExceedsTime() {
 		EventType: event.TaskFinished,
 	}
 	s.t.data.Status = evergreen.TaskSucceeded
-	s.NoError(db.ReplaceContext(s.ctx, task.Collection, bson.M{"_id": s.task.Id}, &s.task))
+	_, err := db.ReplaceContext(s.ctx, task.Collection, bson.M{"_id": s.task.Id}, &s.task)
+	s.NoError(err)
 	n, err := s.t.taskExceedsDuration(s.ctx, &s.subs[3])
 	s.NoError(err)
 	s.NotNil(n)
 
 	// task that is not successful should not generate
 	s.t.data.Status = evergreen.TaskFailed
-	s.NoError(db.ReplaceContext(s.ctx, task.Collection, bson.M{"_id": s.task.Id}, &s.task))
+	_, err = db.ReplaceContext(s.ctx, task.Collection, bson.M{"_id": s.task.Id}, &s.task)
+	s.NoError(err)
 	n, err = s.t.taskSuccessfulExceedsDuration(s.ctx, &s.subs[3])
 	s.NoError(err)
 	s.Nil(n)
@@ -1254,7 +1276,7 @@ func (s *taskSuite) TestTaskRuntimeChange() {
 		Requester:           evergreen.RepotrackerVersionRequester,
 	}
 	lastGreen.FinishTime = lastGreen.StartTime.Add(10 * time.Minute)
-	s.NoError(lastGreen.Insert())
+	s.NoError(lastGreen.Insert(s.ctx))
 	s.t.task.Status = evergreen.TaskSucceeded
 	n, err = s.t.taskRuntimeChange(s.ctx, &s.subs[4])
 	s.NoError(err)
@@ -1285,7 +1307,7 @@ func (s *taskSuite) TestProjectTrigger() {
 		Status:              evergreen.TaskSucceeded,
 	}
 	lastGreen.FinishTime = lastGreen.StartTime.Add(10 * time.Minute)
-	s.NoError(lastGreen.Insert())
+	s.NoError(lastGreen.Insert(s.ctx))
 
 	n, err := NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)
@@ -1303,7 +1325,7 @@ func (s *taskSuite) TestBuildBreak() {
 		RevisionOrderNumber: -1,
 		Status:              evergreen.TaskSucceeded,
 	}
-	s.NoError(lastGreen.Insert())
+	s.NoError(lastGreen.Insert(s.ctx))
 
 	// successful task should not trigger
 	s.task.Status = evergreen.TaskSucceeded
@@ -1342,11 +1364,11 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 	}()
 
 	b := build.Build{Id: "b0"}
-	require.NoError(t, b.Insert())
+	require.NoError(t, b.Insert(t.Context()))
 	projectRef := model.ProjectRef{Id: "p0"}
-	require.NoError(t, projectRef.Insert())
+	require.NoError(t, projectRef.Insert(t.Context()))
 	v := model.Version{Id: "v0", Revision: "abcdef01"}
-	require.NoError(t, v.Insert())
+	require.NoError(t, v.Insert(t.Context()))
 
 	tasks := []task.Task{
 		{
@@ -1399,7 +1421,7 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 		},
 	}
 	for _, task := range tasks {
-		require.NoError(t, task.Insert())
+		require.NoError(t, task.Insert(t.Context()))
 	}
 	require.NoError(t, testresult.InsertLocal(
 		ctx,

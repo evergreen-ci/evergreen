@@ -56,22 +56,22 @@ func TestGetSubscriptions(t *testing.T) {
 	}
 
 	for i := range subs {
-		assert.NoError(subs[i].Upsert())
+		assert.NoError(subs[i].Upsert(t.Context()))
 	}
 
-	apiSubs, err := GetSubscriptions("someone", event.OwnerTypePerson)
+	apiSubs, err := GetSubscriptions(t.Context(), "someone", event.OwnerTypePerson)
 	assert.NoError(err)
 	assert.Len(apiSubs, 1)
 
-	apiSubs, err = GetSubscriptions("someoneelse", event.OwnerTypePerson)
+	apiSubs, err = GetSubscriptions(t.Context(), "someoneelse", event.OwnerTypePerson)
 	assert.NoError(err)
 	assert.Len(apiSubs, 1)
 
-	apiSubs, err = GetSubscriptions("who", event.OwnerTypePerson)
+	apiSubs, err = GetSubscriptions(t.Context(), "who", event.OwnerTypePerson)
 	assert.NoError(err)
 	assert.Empty(apiSubs)
 
-	apiSubs, err = GetSubscriptions("", event.OwnerTypePerson)
+	apiSubs, err = GetSubscriptions(t.Context(), "", event.OwnerTypePerson)
 	assert.EqualError(err, "400 (Bad Request): no subscription owner provided")
 	assert.Empty(apiSubs)
 }
@@ -153,7 +153,7 @@ func TestConvertVersionSubscription(t *testing.T) {
 				Id:        "version_id",
 				Requester: evergreen.GithubPRRequester,
 			}
-			require.NoError(t, v.Insert())
+			require.NoError(t, v.Insert(t.Context()))
 
 			test(t)
 		})
@@ -203,7 +203,7 @@ func TestSaveProjectSubscriptions(t *testing.T) {
 				[]restModel.APISubscription{subscription},
 				false))
 
-			dbSubs, err := GetSubscriptions(utility.FromStringPtr(subscription.Owner), event.OwnerTypeProject)
+			dbSubs, err := GetSubscriptions(t.Context(), utility.FromStringPtr(subscription.Owner), event.OwnerTypeProject)
 			assert.NoError(t, err)
 			require.Len(t, dbSubs, 1)
 			require.Equal(t, event.TriggerOutcome, utility.FromStringPtr(dbSubs[0].Trigger))
@@ -230,7 +230,7 @@ func TestSaveProjectSubscriptions(t *testing.T) {
 				[]restModel.APISubscription{subscription},
 				false))
 
-			dbSubs, err := GetSubscriptions(utility.FromStringPtr(subscription.Owner), event.OwnerTypeProject)
+			dbSubs, err := GetSubscriptions(t.Context(), utility.FromStringPtr(subscription.Owner), event.OwnerTypeProject)
 			assert.NoError(t, err)
 			require.Len(t, dbSubs, 1)
 			require.Equal(t, event.TriggerFamilyOutcome, utility.FromStringPtr(dbSubs[0].Trigger))
@@ -261,7 +261,7 @@ func TestSaveProjectSubscriptions(t *testing.T) {
 			subscription.Selectors[0].Data = newData
 			assert.NoError(t, SaveSubscriptions(t.Context(), utility.FromStringPtr(subscription.Owner), []restModel.APISubscription{subscription}, true))
 
-			dbSubs, err := GetSubscriptions(utility.FromStringPtr(subscription.Owner), event.OwnerTypeProject)
+			dbSubs, err := GetSubscriptions(t.Context(), utility.FromStringPtr(subscription.Owner), event.OwnerTypeProject)
 			assert.NoError(t, err)
 			require.Len(t, dbSubs, 1)
 			require.Equal(t, dbSubs[0].Selectors[0].Data, newData)
@@ -304,7 +304,7 @@ func TestSaveProjectSubscriptions(t *testing.T) {
 					Target: "a@domain.invalid",
 				},
 			}
-			assert.NoError(t, projectSubscription.Upsert())
+			assert.NoError(t, projectSubscription.Upsert(t.Context()))
 			test(t)
 		})
 	}
@@ -368,7 +368,7 @@ func TestSaveVersionSubscriptions(t *testing.T) {
 			}
 			assert.NoError(t, SaveSubscriptions(t.Context(), "me", []restModel.APISubscription{subscription}, false))
 
-			dbSubs, err := GetSubscriptions("me", event.OwnerTypePerson)
+			dbSubs, err := GetSubscriptions(t.Context(), "me", event.OwnerTypePerson)
 			assert.NoError(t, err)
 			require.Len(t, dbSubs, 1)
 			require.Equal(t, event.TriggerOutcome, utility.FromStringPtr(dbSubs[0].Trigger))
@@ -396,7 +396,7 @@ func TestSaveVersionSubscriptions(t *testing.T) {
 			}
 			assert.NoError(t, SaveSubscriptions(t.Context(), "me", []restModel.APISubscription{subscription}, false))
 
-			dbSubs, err := GetSubscriptions("me", event.OwnerTypePerson)
+			dbSubs, err := GetSubscriptions(t.Context(), "me", event.OwnerTypePerson)
 			assert.NoError(t, err)
 			require.Len(t, dbSubs, 1)
 			require.Equal(t, event.TriggerFamilyOutcome, utility.FromStringPtr(dbSubs[0].Trigger))
@@ -409,13 +409,13 @@ func TestSaveVersionSubscriptions(t *testing.T) {
 				Id:        "version-1",
 				Requester: evergreen.AdHocRequester,
 			}
-			require.NoError(t, v1.Insert())
+			require.NoError(t, v1.Insert(t.Context()))
 
 			v2 := &model.Version{
 				Id:        "version-2",
 				Requester: evergreen.PatchVersionRequester,
 			}
-			require.NoError(t, v2.Insert())
+			require.NoError(t, v2.Insert(t.Context()))
 
 			test(t)
 		})
@@ -429,7 +429,7 @@ func TestDeleteProjectSubscriptions(t *testing.T) {
 		},
 		"ValidOwner": func(t *testing.T, ids []string) {
 			assert.NoError(t, DeleteSubscriptions(t.Context(), "my-project", []string{ids[0]}))
-			subs, err := event.FindSubscriptionsByOwner("my-project", event.OwnerTypeProject)
+			subs, err := event.FindSubscriptionsByOwner(t.Context(), "my-project", event.OwnerTypeProject)
 			assert.NoError(t, err)
 			assert.Empty(t, subs)
 		},
@@ -474,7 +474,7 @@ func TestDeleteProjectSubscriptions(t *testing.T) {
 			}
 			toDelete := []string{}
 			for _, sub := range subs {
-				assert.NoError(t, sub.Upsert())
+				assert.NoError(t, sub.Upsert(t.Context()))
 				toDelete = append(toDelete, sub.ID)
 			}
 			test(t, toDelete)

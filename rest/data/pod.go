@@ -17,7 +17,7 @@ import (
 )
 
 // CreatePod creates a new pod from the given REST model and returns its ID.
-func CreatePod(apiPod model.APICreatePod) (*model.APICreatePodResponse, error) {
+func CreatePod(ctx context.Context, apiPod model.APICreatePod) (*model.APICreatePodResponse, error) {
 	if apiPod.PodSecretValue == nil {
 		env := evergreen.GetEnvironment()
 		ctx, cancel := env.Context()
@@ -48,7 +48,7 @@ func CreatePod(apiPod model.APICreatePod) (*model.APICreatePodResponse, error) {
 		}
 	}
 
-	if err := dbPod.Insert(); err != nil {
+	if err := dbPod.Insert(ctx); err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrapf(err, "inserting new intent pod '%s'", dbPod.ID).Error(),

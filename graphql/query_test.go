@@ -33,7 +33,7 @@ func getContext(t *testing.T) context.Context {
 			SlackMemberId: "testuser",
 		},
 	}
-	require.NoError(t, dbUser.Insert())
+	require.NoError(t, dbUser.Insert(t.Context()))
 	const email = "testuser@mongodb.com"
 	const accessToken = "access_token"
 	const refreshToken = "refresh_token"
@@ -65,7 +65,7 @@ func populateMainlineCommits(t *testing.T) {
 			RevisionOrderNumber: 12 - i,
 			Identifier:          projectId,
 		}
-		require.NoError(t, v.Insert())
+		require.NoError(t, v.Insert(t.Context()))
 		if isActivated {
 			// Every third version should have a task with a failure. This emulates filtering by task status
 			hasFailure := i%3 == 0
@@ -81,7 +81,7 @@ func populateMainlineCommits(t *testing.T) {
 				} else {
 					aTask.Status = evergreen.TaskSucceeded
 				}
-				require.NoError(t, aTask.Insert())
+				require.NoError(t, aTask.Insert(t.Context()))
 			}
 		}
 	}
@@ -98,7 +98,7 @@ func TestMainlineCommits(t *testing.T) {
 		Id:         projectId,
 		Identifier: "evergreen",
 	}
-	require.NoError(t, ref.Insert())
+	require.NoError(t, ref.Insert(t.Context()))
 
 	// Should return all mainline commits while folding up inactive ones when there are no filters
 	mainlineCommitOptions := MainlineCommitsOptions{

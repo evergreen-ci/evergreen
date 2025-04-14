@@ -114,7 +114,7 @@ func PopulatePodHealthCheckJobs() amboy.QueueOperation {
 			return nil
 		}
 
-		pods, err := pod.FindByLastCommunicatedBefore(time.Now().Add(-podReachabilityThreshold))
+		pods, err := pod.FindByLastCommunicatedBefore(ctx, time.Now().Add(-podReachabilityThreshold))
 		if err != nil {
 			return errors.Wrap(err, "finding pods that have not communicated recently")
 		}
@@ -144,7 +144,7 @@ func sendNotificationJobs(ctx context.Context, _ evergreen.Environment, ts time.
 		return nil, nil
 	}
 
-	unprocessedNotifications, err := notification.FindUnprocessed()
+	unprocessedNotifications, err := notification.FindUnprocessed(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding unprocessed notifications")
 	}
@@ -166,7 +166,7 @@ func eventNotifierJobs(ctx context.Context, env evergreen.Environment, ts time.T
 		return nil, nil
 	}
 
-	events, err := event.FindUnprocessedEvents(-1)
+	events, err := event.FindUnprocessedEvents(ctx, -1)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding all unprocessed events")
 	}
@@ -1070,7 +1070,7 @@ func podAllocatorJobs(ctx context.Context, _ evergreen.Environment, ts time.Time
 		}))
 	}
 
-	numInitializing, err := pod.CountByInitializing()
+	numInitializing, err := pod.CountByInitializing(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "counting initializing pods")
 	}
@@ -1109,7 +1109,7 @@ func podAllocatorJobs(ctx context.Context, _ evergreen.Environment, ts time.Time
 }
 
 func podCreationJobs(ctx context.Context, _ evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
-	pods, err := pod.FindByInitializing()
+	pods, err := pod.FindByInitializing(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding initializing pods")
 	}
@@ -1123,7 +1123,7 @@ func podCreationJobs(ctx context.Context, _ evergreen.Environment, ts time.Time)
 }
 
 func podTerminationJobs(ctx context.Context, _ evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
-	pods, err := pod.FindByNeedsTermination()
+	pods, err := pod.FindByNeedsTermination(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding pods that need to be terminated")
 	}
@@ -1138,7 +1138,7 @@ func podTerminationJobs(ctx context.Context, _ evergreen.Environment, ts time.Ti
 // podDefinitionCreationJobs populates the jobs to create pod
 // definitions.
 func podDefinitionCreationJobs(ctx context.Context, env evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
-	pods, err := pod.FindByInitializing()
+	pods, err := pod.FindByInitializing(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding initializing pods")
 	}

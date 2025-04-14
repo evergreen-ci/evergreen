@@ -30,7 +30,7 @@ func TestExpectedDuration(t *testing.T) {
 		StartTime:    now.Add(-10 * time.Minute),
 		TimeTaken:    10 * time.Minute,
 	}
-	assert.NoError(t1.Insert())
+	assert.NoError(t1.Insert(t.Context()))
 	t2 := Task{
 		Id:           "t2",
 		BuildVariant: bv,
@@ -40,7 +40,7 @@ func TestExpectedDuration(t *testing.T) {
 		StartTime:    now.Add(-30 * time.Minute),
 		TimeTaken:    30 * time.Minute,
 	}
-	assert.NoError(t2.Insert())
+	assert.NoError(t2.Insert(t.Context()))
 	t3 := Task{
 		Id:           "t3",
 		BuildVariant: bv,
@@ -50,7 +50,7 @@ func TestExpectedDuration(t *testing.T) {
 		StartTime:    now.Add(-35 * time.Minute),
 		TimeTaken:    35 * time.Minute,
 	}
-	assert.NoError(t3.Insert())
+	assert.NoError(t3.Insert(t.Context()))
 	t4 := Task{
 		Id:           "t4",
 		BuildVariant: bv,
@@ -60,7 +60,7 @@ func TestExpectedDuration(t *testing.T) {
 		StartTime:    now.Add(-25 * time.Minute),
 		TimeTaken:    25 * time.Minute,
 	}
-	assert.NoError(t4.Insert())
+	assert.NoError(t4.Insert(t.Context()))
 
 	results, err := getExpectedDurationsForWindow("", project, bv, now.Add(-1*time.Hour), now)
 	assert.NoError(err)

@@ -51,10 +51,10 @@ func TestBbGetProject(t *testing.T) {
 		Version:   "proj2",
 	}
 
-	assert.NoError(t, testTask.Insert())
-	assert.NoError(t, myProject.Insert())
-	assert.NoError(t, myProject2.Insert())
-	assert.NoError(t, myProjectConfig.Insert())
+	assert.NoError(t, testTask.Insert(t.Context()))
+	assert.NoError(t, myProject.Insert(t.Context()))
+	assert.NoError(t, myProject2.Insert(t.Context()))
+	assert.NoError(t, myProjectConfig.Insert(t.Context()))
 
 	bbProj, ok1 := model.GetBuildBaronSettings(t.Context(), testTask.Project, testTask.Version)
 	bbProj2, ok2 := model.GetBuildBaronSettings(t.Context(), testTask2.Project, testTask2.Version)

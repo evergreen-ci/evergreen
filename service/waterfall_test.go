@@ -32,41 +32,41 @@ func TestGetVersionsAndVariants(t *testing.T) {
 		Id:         firstVersionID,
 		Requester:  evergreen.RepotrackerVersionRequester,
 		CreateTime: firstCreationTime,
-	}).Insert())
+	}).Insert(t.Context()))
 
 	require.NoError(t, (&build.Build{
 		Id:          firstBuildID,
 		Version:     firstVersionID,
 		Tasks:       []build.TaskCache{{Id: firstTaskID}},
 		DisplayName: "old-bv",
-	}).Insert())
+	}).Insert(t.Context()))
 
 	require.NoError(t, (&task.Task{
 		Id:        firstTaskID,
 		Version:   firstVersionID,
 		BuildId:   firstBuildID,
 		Activated: true,
-	}).Insert())
+	}).Insert(t.Context()))
 
 	for x := 0; x < model.MaxMainlineCommitVersionLimit; x++ {
 		require.NoError(t, (&model.Version{
 			Id:         fmt.Sprintf("version_%d", x),
 			Requester:  evergreen.RepotrackerVersionRequester,
 			CreateTime: firstCreationTime.Add(time.Duration(x+1) * time.Second),
-		}).Insert())
+		}).Insert(t.Context()))
 
 		require.NoError(t, (&build.Build{
 			Id:      fmt.Sprintf("build_%d", x),
 			Version: fmt.Sprintf("version_%d", x),
 			Tasks:   []build.TaskCache{{Id: fmt.Sprintf("task_%d", x)}},
-		}).Insert())
+		}).Insert(t.Context()))
 
 		require.NoError(t, (&task.Task{
 			Id:        fmt.Sprintf("task_%d", x),
 			Version:   fmt.Sprintf("version_%d", x),
 			BuildId:   fmt.Sprintf("build_%d", x),
 			Activated: true,
-		}).Insert())
+		}).Insert(t.Context()))
 	}
 
 	t.Run("NoFilter", func(t *testing.T) {
