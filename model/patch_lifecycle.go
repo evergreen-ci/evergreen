@@ -546,7 +546,6 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 	if projectRef == nil {
 		return nil, errors.Errorf("project '%s' not found", p.Project)
 	}
-	p.Branch = projectRef.Branch
 
 	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
