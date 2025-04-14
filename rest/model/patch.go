@@ -23,8 +23,9 @@ type APIPatch struct {
 	Id *string `json:"patch_id"`
 	// Description of the patch
 	Description *string `json:"description"`
-	// Name of the project
-	ProjectId         *string `json:"project_id"`
+	// Immutable ID for the project
+	ProjectId *string `json:"project_id"`
+	// Identifier for the project
 	ProjectIdentifier *string `json:"project_identifier"`
 	// The branch on which the patch was initiated
 	Branch *string `json:"branch"`
@@ -192,7 +193,7 @@ func (apiPatch *APIPatch) buildBasePatch(p patch.Patch) {
 	apiPatch.Id = utility.ToStringPtr(p.Id.Hex())
 	apiPatch.Description = utility.ToStringPtr(p.Description)
 	apiPatch.ProjectId = utility.ToStringPtr(p.Project)
-	apiPatch.Branch = utility.ToStringPtr(p.Project)
+	apiPatch.Branch = utility.ToStringPtr(p.Branch)
 	apiPatch.Githash = utility.ToStringPtr(p.Githash)
 	apiPatch.PatchNumber = p.PatchNumber
 	apiPatch.Author = utility.ToStringPtr(p.Author)
@@ -386,6 +387,7 @@ func (apiPatch *APIPatch) ToService() (patch.Patch, error) {
 	res.Id = bson.ObjectIdHex(utility.FromStringPtr(apiPatch.Id))
 	res.Description = utility.FromStringPtr(apiPatch.Description)
 	res.Project = utility.FromStringPtr(apiPatch.ProjectId)
+	res.Branch = utility.FromStringPtr(apiPatch.Branch)
 	res.Githash = utility.FromStringPtr(apiPatch.Githash)
 	res.PatchNumber = apiPatch.PatchNumber
 	res.Hidden = apiPatch.Hidden

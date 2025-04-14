@@ -25,12 +25,14 @@ func TestAPIPatch(t *testing.T) {
 	pRef := model.ProjectRef{
 		Id:         "mci",
 		Identifier: "evergreen",
+		Branch:     "main",
 	}
 	assert.NoError(pRef.Insert())
 	p := patch.Patch{
 		Id:            mgobson.NewObjectId(),
 		Description:   "test",
 		Project:       pRef.Id,
+		Branch:        pRef.Branch,
 		Githash:       "hash",
 		PatchNumber:   9000,
 		Author:        "root",
@@ -77,7 +79,7 @@ func TestAPIPatch(t *testing.T) {
 	assert.Equal(p.Description, utility.FromStringPtr(a.Description))
 	assert.Equal(p.Project, utility.FromStringPtr(a.ProjectId))
 	assert.Equal(pRef.Identifier, utility.FromStringPtr(a.ProjectIdentifier))
-	assert.Equal(p.Project, utility.FromStringPtr(a.Branch))
+	assert.Equal(p.Branch, utility.FromStringPtr(a.Branch))
 	assert.Equal(p.Githash, utility.FromStringPtr(a.Githash))
 	assert.Equal(p.PatchNumber, a.PatchNumber)
 	assert.Equal(p.Author, utility.FromStringPtr(a.Author))

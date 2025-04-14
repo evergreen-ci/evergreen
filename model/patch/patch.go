@@ -143,6 +143,8 @@ type Patch struct {
 	// tasks/variants are now scheduled to run). If true, the patch has been
 	// finalized.
 	Activated bool `bson:"activated"`
+	// Branch contains the branch that the project tracks.
+	Branch string `bson:"branch_name" json:"branch_name,omitempty"`
 	// ProjectStorageMethod describes how the parser project is stored for this
 	// patch before it's finalized. This field is only set while the patch is
 	// unfinalized and is cleared once the patch has been finalized.
