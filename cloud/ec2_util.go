@@ -759,3 +759,17 @@ func shouldAssignPublicIPv4Address(h *host.Host, ec2Settings *EC2ProviderSetting
 
 	return !ec2Settings.DoNotAssignPublicIPv4Address && !ec2Settings.IPv6
 }
+
+func canUseIPAM(settings *evergreen.Settings, ec2Settings *EC2ProviderSettings, h *host.Host) bool {
+	if h.UserHost || h.SpawnOptions.SpawnedByTask {
+		// Spawn hosts and host.create hosts do not need to use IPAM because the
+		// feature is primarily intended for task hosts.
+		return false
+	}
+	// kim: TODO: needs DEVPROD-16708 for admin setting.
+	if settings.Providers.AWS.IPAMPoolID == "" {
+		return false
+	}
+
+	return ec2Settings.IPAMEnabled
+}

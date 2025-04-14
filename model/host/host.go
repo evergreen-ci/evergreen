@@ -51,6 +51,9 @@ type Host struct {
 	IP string `bson:"ip_address" json:"ip_address"`
 	// IPv4 is the host's private IPv4 address.
 	IPv4 string `bson:"ipv4_address" json:"ipv4_address"`
+	// IPAllocationID is the ID associated with the IP allocated for this host.
+	// Only sets for hosts using IPAM.
+	IPAllocationID string `bson:"ip_allocation_id,omitempty" json:"ip_allocation_id,omitempty"`
 	// PersistentDNSName is the long-lived DNS name of the host, which should
 	// never change once set.
 	PersistentDNSName string `bson:"persistent_dns_name,omitempty" json:"persistent_dns_name,omitempty"`

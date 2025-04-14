@@ -936,6 +936,8 @@ func (c *awsClientImpl) AllocateAddress(ctx context.Context, input *ec2.Allocate
 	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
+			// kim: TODO: handle non-retryable errors, like if there's no
+			// addresses in the pool.
 			msg := makeAWSLogMessage("AllocateAddress", fmt.Sprintf("%T", c), input)
 			output, err = c.ec2Client.AllocateAddress(ctx, input)
 			if err != nil {
@@ -954,12 +956,16 @@ func (c *awsClientImpl) AllocateAddress(ctx context.Context, input *ec2.Allocate
 	return output, nil
 }
 
+// kim: TODO: consider using fewer retries for IPAM API calls to avoid taking up
+// too much time.
 func (c *awsClientImpl) AssociateAddress(ctx context.Context, input *ec2.AssociateAddressInput) (*ec2.AssociateAddressOutput, error) {
 	var output *ec2.AssociateAddressOutput
 	var err error
 	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
+			// kim: TODO: handle non-retryable errors, like if the address is
+			// already associated.
 			msg := makeAWSLogMessage("AssociateAddress", fmt.Sprintf("%T", c), input)
 			output, err = c.ec2Client.AssociateAddress(ctx, input)
 			if err != nil {

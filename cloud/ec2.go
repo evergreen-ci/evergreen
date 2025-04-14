@@ -82,6 +82,10 @@ type EC2ProviderSettings struct {
 
 	// FleetOptions specifies options for creating host with Fleet. It is ignored by other managers.
 	FleetOptions FleetConfig `mapstructure:"fleet_options" json:"fleet_options,omitempty" bson:"fleet_options,omitempty"`
+
+	// IPAMEnabled determines if instance can use IP Address Manager (IPAM) for
+	// their IP addresses.
+	IPAMEnabled bool `mapstructure:"ipam_enabled" json:"ipam_enabled,omitempty" bson:"ipam_enabled,omitempty"`
 }
 
 // Validate that essential EC2ProviderSettings fields are not empty.
@@ -283,6 +287,7 @@ func (m *ec2Manager) setupClient(ctx context.Context) error {
 }
 
 func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings, blockDevices []types.BlockDeviceMapping) error {
+	// kim: TODO: add logic to allocate/associate address.
 	input := &ec2.RunInstancesInput{
 		MinCount:            aws.Int32(1),
 		MaxCount:            aws.Int32(1),

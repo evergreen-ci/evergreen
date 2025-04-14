@@ -409,8 +409,8 @@ func (m *ec2FleetManager) TimeTilNextPayment(h *host.Host) time.Duration {
 }
 
 func (m *ec2FleetManager) spawnFleetSpotHost(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings) error {
-	// Cleanup
 	defer func() {
+		// Cleanup
 		_, err := m.client.DeleteLaunchTemplate(ctx, &ec2.DeleteLaunchTemplateInput{LaunchTemplateName: aws.String(cleanLaunchTemplateName(h.Tag))})
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":  "can't delete launch template",
@@ -419,19 +419,36 @@ func (m *ec2FleetManager) spawnFleetSpotHost(ctx context.Context, h *host.Host, 
 		}))
 	}()
 
+	useIPAM := shouldAssignPublicIPv4Address(h, ec2Settings) && canUseIPAM(m.env.Settings(), ec2Settings, h)
+	if useIPAM && h.IPAllocationID == "" {
+		// This must be done before creating the launch template because
+		// allocating the address using IPAM is a best-effort attempt to save
+		// money and isn't guaranteed to succeed. For example, if the IPAM pool
+		// has no addresses available currently, Evergreen still needs a usable
+		// host, so the launch template has to specify falling back to using an
+		// elastic IP in case this fails.
+		allocateAddrOut, err := m.client.AllocateAddress(ctx, &ec2.AllocateAddressInput{
+			// kim: TODO: needs AWS SDK upgrade for IpamPoolId.
+			IpamPoolId: aws.String("kim: TODO: IPAM POOL ID GOES HERE"),
+		})
+		// If the host can't be allocated an IP address, continue anyways
+		// because the host should fall back to using an elastic IP. Using an
+		// IPAM address is a best-effort attempt to save money.
+		grip.Notice(message.WrapError(err, message.Fields{
+			"message": "could not allocate new IP address from IPAM for host, falling back to elastic IP",
+			"host_id": h.Id,
+		}))
+		if allocateAddrOut != nil {
+			h.IPAllocationID = aws.ToString(allocateAddrOut.AllocationId)
+		}
+		// kim: TODO: save allocationID to host doc. Should persist so it can be
+		// reused across retries and cleaned up later, even if the API calls
+		// below fail.
+	}
+
 	if err := m.uploadLaunchTemplate(ctx, h, ec2Settings); err != nil {
 		return errors.Wrapf(err, "unable to upload launch template for host '%s'", h.Id)
 	}
-
-	// kim: TODO: needs AWS SDK upgrade for IpamPoolId.
-	allocateAddrOut, err := m.client.AllocateAddress(ctx, &ec2.AllocateAddressInput{
-		IpamPoolId: aws.String("kim: TODO: IPAM POOL ID GOES HERE"),
-	})
-	if err != nil {
-		return errors.Wrap(err, "allocating address for host")
-	}
-	// kim: TODO: save this into host doc for reuse.
-	allocationID := aws.ToString(allocateAddrOut.AllocationId)
 
 	instanceID, err := m.requestFleet(ctx, h, ec2Settings)
 	if err != nil {
@@ -439,13 +456,25 @@ func (m *ec2FleetManager) spawnFleetSpotHost(ctx context.Context, h *host.Host, 
 	}
 	h.Id = instanceID
 
-	if _, err := m.client.AssociateAddress(ctx, &ec2.AssociateAddressInput{
-		AllocationId: aws.String(allocationID),
-		InstanceId:   aws.String(instanceID),
-	}); err != nil {
-		return errors.Wrapf(err, "associating address from allocation '%s' with instance '%s'", allocationID, instanceID)
+	if useIPAM && h.IPAllocationID != "" {
+		// kim: TODO: verify that it's not necessary to specify ID for network
+		// interface because the host has only one.
+		_, err := m.client.AssociateAddress(ctx, &ec2.AssociateAddressInput{
+			AllocationId: aws.String(h.IPAllocationID),
+			InstanceId:   aws.String(h.Id),
+		})
+		// If this errors, the host is unusable because it was already
+		// created but lacks an IP address. The instance already exists in
+		// EC2 though, so the error needs to be suppressed to ensure that
+		// the host is saved back to the DB. Otherwise, the host will be
+		// leaked. This host will eventually be terminated since it's not
+		// usable.
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":       "host was created and allocated IP address from IPAM but could not associate the host with the IP address; host will not be usable",
+			"host_id":       h.Id,
+			"allocation_id": h.IPAllocationID,
+		}))
 	}
-
 	return nil
 }
 
@@ -466,6 +495,8 @@ func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host
 		launchTemplate.IamInstanceProfile = &types.LaunchTemplateIamInstanceProfileSpecificationRequest{Arn: aws.String(ec2Settings.IAMInstanceProfileARN)}
 	}
 
+	// kim: TODO: check canUseIPAM + assignPublicIPv4 when deciding whether or
+	// not to
 	assignPublicIPv4 := shouldAssignPublicIPv4Address(h, ec2Settings)
 	if assignPublicIPv4 {
 		// Only set an SSH key for the host if the host actually has a public
@@ -474,9 +505,15 @@ func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host
 		launchTemplate.KeyName = aws.String(ec2Settings.KeyName)
 	}
 	if ec2Settings.IsVpc {
+		// If a host has an IP allocation ID, then it's been allocated an IP
+		// address from IPAM and doesn't need an elastic IP to be provided by
+		// AWS.
+		useElasticIPv4Addr := assignPublicIPv4 && h.IPAllocationID == ""
 		launchTemplate.NetworkInterfaces = []types.LaunchTemplateInstanceNetworkInterfaceSpecificationRequest{
 			{
-				AssociatePublicIpAddress: aws.Bool(assignPublicIPv4),
+				// kim: TODO: test that it's okay to disable this for elastic
+				// IPs and just rely on AssociateAddress.
+				AssociatePublicIpAddress: aws.Bool(useElasticIPv4Addr),
 				DeviceIndex:              aws.Int32(0),
 				Groups:                   ec2Settings.SecurityGroupIDs,
 				SubnetId:                 aws.String(ec2Settings.SubnetId),
