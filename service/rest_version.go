@@ -151,8 +151,8 @@ func (restapi restAPI) getRecentVersions(w http.ResponseWriter, r *http.Request)
 	// only look for versions if the project can be found, otherwise continue without error
 	if err == nil {
 		// add one to limit to determine if a new page is necessary
-		versions, err = model.VersionFind(model.VersionBySystemRequesterOrdered(projectId, start).
-			Limit(l + 1))
+		versions, err = model.VersionFind(r.Context(), model.VersionBySystemRequesterOrdered(projectId, start).
+			Limit(l+1))
 		if err != nil {
 			msg := fmt.Sprintf("Error finding recent versions of project '%v'", projectIdentifier)
 			grip.Error(errors.Wrap(err, msg))
@@ -223,7 +223,7 @@ func (restapi restAPI) getRecentVersions(w http.ResponseWriter, r *http.Request)
 }
 
 func (r *recentVersionsContent) populateBuildsAndTasks(ctx context.Context, versionIds []string, versionIdx map[string]int) error {
-	builds, err := build.FindBuildsByVersions(versionIds)
+	builds, err := build.FindBuildsByVersions(ctx, versionIds)
 	if err != nil {
 		return errors.Wrap(err, "Error finding recent versions")
 	}
@@ -517,7 +517,7 @@ func (restapi *restAPI) getVersionStatusByTask(ctx context.Context, versionId st
 // particular task.
 func (restapi restAPI) getVersionStatusByBuild(ctx context.Context, versionId string, w http.ResponseWriter) {
 	// Get all of the builds corresponding to this version
-	builds, err := build.Find(
+	builds, err := build.Find(ctx,
 		build.ByVersion(versionId).WithFields(build.BuildVariantKey, bsonutil.GetDottedKeyName(build.TasksKey, build.TaskCacheIdKey)),
 	)
 	if err != nil {

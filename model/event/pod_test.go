@@ -17,7 +17,7 @@ func TestPodEvents(t *testing.T) {
 			reason := "some reason"
 			LogPodStatusChanged(t.Context(), id, oldStatus, newStatus, reason)
 
-			events, err := Find(MostRecentPodEvents(id, 10))
+			events, err := Find(t.Context(), MostRecentPodEvents(id, 10))
 			require.NoError(t, err)
 			require.Len(t, events, 1)
 
@@ -35,7 +35,7 @@ func TestPodEvents(t *testing.T) {
 			execution := 5
 			LogPodAssignedTask(t.Context(), podID, taskID, 5)
 
-			events, err := Find(MostRecentPodEvents(podID, 10))
+			events, err := Find(t.Context(), MostRecentPodEvents(podID, 10))
 			require.NoError(t, err)
 			require.Len(t, events, 1)
 

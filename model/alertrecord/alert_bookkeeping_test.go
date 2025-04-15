@@ -175,7 +175,7 @@ func (s *alertRecordSuite) TestFindOneWithUnsetIDQuery() {
 	s.Equal(2, rec.RevisionOrderNumber)
 
 	records := []AlertRecord{}
-	err = db.FindAllQContext(s.T().Context(), Collection, ByLastFailureTransition(legacyAlertsSubscription, "task", "variant", "project").Limit(999), &records)
+	err = db.FindAllQ(s.T().Context(), Collection, ByLastFailureTransition(legacyAlertsSubscription, "task", "variant", "project").Limit(999), &records)
 	s.NoError(err)
 	s.Len(records, 3)
 }

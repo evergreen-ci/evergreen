@@ -103,8 +103,8 @@ func stripInteriorSections(config *evergreen.Settings) *evergreen.Settings {
 	return configInterface.(*evergreen.Settings)
 }
 
-func FindAdmin(query db.Q) ([]EventLogEntry, error) {
-	eventsRaw, err := Find(query)
+func FindAdmin(ctx context.Context, query db.Q) ([]EventLogEntry, error) {
+	eventsRaw, err := Find(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -166,7 +166,7 @@ func convertRaw(in rawAdminEventData) (*AdminEventData, error) {
 
 // RevertConfig reverts one config section to the before state of the specified GUID in the event log
 func RevertConfig(ctx context.Context, guid string, user string) error {
-	events, err := FindAdmin(ByAdminGuid(guid))
+	events, err := FindAdmin(ctx, ByAdminGuid(guid))
 	if err != nil {
 		return errors.Wrap(err, "finding events")
 	}

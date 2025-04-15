@@ -314,7 +314,7 @@ func TestFinalizePatch(t *testing.T) {
 			require.NotZero(t, dbPatch)
 			assert.True(t, dbPatch.Activated)
 			// ensure the relevant builds/tasks were created
-			builds, err := build.Find(build.All)
+			builds, err := build.Find(t.Context(), build.All)
 			require.NoError(t, err)
 			assert.Len(t, builds, 1)
 			assert.Len(t, builds[0].Tasks, 2)
@@ -414,7 +414,7 @@ func TestFinalizePatch(t *testing.T) {
 			require.NotZero(t, dbPatch)
 			assert.True(t, dbPatch.Activated)
 
-			builds, err := build.Find(build.All)
+			builds, err := build.Find(t.Context(), build.All)
 			require.NoError(t, err)
 			assert.Len(t, builds, 1)
 			assert.Len(t, builds[0].Tasks, 2)

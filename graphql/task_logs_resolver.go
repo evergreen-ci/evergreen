@@ -24,7 +24,7 @@ func (r *taskLogsResolver) AllLogs(ctx context.Context, obj *TaskLogs) ([]*apimo
 func (r *taskLogsResolver) EventLogs(ctx context.Context, obj *TaskLogs) ([]*restModel.TaskAPIEventLogEntry, error) {
 	const logMessageCount = 100
 	// loggedEvents is ordered ts descending
-	loggedEvents, err := event.Find(event.MostRecentTaskEvents(obj.TaskID, logMessageCount))
+	loggedEvents, err := event.Find(ctx, event.MostRecentTaskEvents(obj.TaskID, logMessageCount))
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching EventLogs for task '%s': %s", obj.TaskID, err.Error()))
 	}

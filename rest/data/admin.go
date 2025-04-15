@@ -155,8 +155,8 @@ func RestartFailedTasks(ctx context.Context, queue amboy.Queue, opts model.Resta
 	}, nil
 }
 
-func GetAdminEventLog(before time.Time, n int) ([]restModel.APIAdminEvent, error) {
-	events, err := event.FindAdmin(event.AdminEventsBefore(before, n))
+func GetAdminEventLog(ctx context.Context, before time.Time, n int) ([]restModel.APIAdminEvent, error) {
+	events, err := event.FindAdmin(ctx, event.AdminEventsBefore(before, n))
 	if err != nil {
 		return nil, err
 	}

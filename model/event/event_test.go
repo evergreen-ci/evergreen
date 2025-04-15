@@ -75,7 +75,7 @@ func (s *eventSuite) TestWithRealData() {
 		},
 	}
 	s.NoError(db.Insert(s.T().Context(), EventCollection, data))
-	entries, err := Find(db.Query(bson.M{idKey: mgobson.ObjectIdHex("5949645c9acd9604fdd202d8")}))
+	entries, err := Find(s.T().Context(), db.Query(bson.M{idKey: mgobson.ObjectIdHex("5949645c9acd9604fdd202d8")}))
 	s.NoError(err)
 	s.Len(entries, 1)
 	s.NotPanics(func() {
@@ -110,7 +110,7 @@ func (s *eventSuite) TestWithRealData() {
 		},
 	}
 	s.NoError(db.Insert(s.T().Context(), EventCollection, data))
-	entries, err = Find(db.Query(bson.M{idKey: mgobson.ObjectIdHex("5949645c9acd9604fdd202d9")}))
+	entries, err = Find(s.T().Context(), db.Query(bson.M{idKey: mgobson.ObjectIdHex("5949645c9acd9604fdd202d9")}))
 	s.NoError(err)
 	s.Len(entries, 1)
 	s.NotPanics(func() {
@@ -134,7 +134,7 @@ func (s *eventSuite) TestWithRealData() {
 	// check that string IDs are preserved in the DB
 	data[idKey] = "elephant"
 	s.NoError(db.Insert(s.T().Context(), EventCollection, data))
-	entries, err = Find(db.Query(bson.M{idKey: "elephant"}))
+	entries, err = Find(s.T().Context(), db.Query(bson.M{idKey: "elephant"}))
 	s.NoError(err)
 	s.Len(entries, 1)
 	s.Equal("elephant", entries[0].ID)
@@ -153,7 +153,7 @@ func (s *eventSuite) TestEventWithNilData() {
 	s.NotPanics(func() {
 		// But reading this back should not panic, if it somehow got into the db
 		s.NoError(db.Insert(s.T().Context(), EventCollection, event))
-		fetchedEvents, err := Find(db.Query(bson.M{}))
+		fetchedEvents, err := Find(s.T().Context(), db.Query(bson.M{}))
 		s.Require().Error(err)
 		s.Nil(fetchedEvents)
 	})
@@ -335,7 +335,7 @@ func (s *eventSuite) TestFindUnprocessedEvents() {
 	for i := range data {
 		s.NoError(db.Insert(s.T().Context(), EventCollection, data[i]))
 	}
-	events, err := FindUnprocessedEvents(-1)
+	events, err := FindUnprocessedEvents(s.T().Context(), -1)
 	s.NoError(err)
 	s.Len(events, 1)
 
@@ -504,7 +504,7 @@ func (s *eventSuite) TestLogManyEvents() {
 	}
 	s.NoError(LogManyEvents(s.T().Context(), []EventLogEntry{event1, event2}))
 	events := []EventLogEntry{}
-	s.NoError(db.FindAllQ(EventCollection, db.Query(bson.M{}), &events))
+	s.NoError(db.FindAllQ(s.T().Context(), EventCollection, db.Query(bson.M{}), &events))
 	s.Len(events, 2)
 	s.Equal("resource_id_1", events[0].ResourceId)
 	s.Equal("some_type", events[0].EventType)

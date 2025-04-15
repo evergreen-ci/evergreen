@@ -39,7 +39,7 @@ func TestLoggingHostEvents(t *testing.T) {
 			Limit:   50,
 			SortAsc: false,
 		}
-		eventsForHost, err := Find(HostEvents(hostEventOpts))
+		eventsForHost, err := Find(t.Context(), HostEvents(hostEventOpts))
 		assert.NoError(t, err)
 
 		assert.Len(t, eventsForHost, 6)

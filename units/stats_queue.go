@@ -45,7 +45,7 @@ func makeQueueStatsCollector() *queueStatsCollector {
 	return j
 }
 
-func (j *queueStatsCollector) Run(_ context.Context) {
+func (j *queueStatsCollector) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
 	env := evergreen.GetEnvironment()
@@ -54,7 +54,7 @@ func (j *queueStatsCollector) Run(_ context.Context) {
 		return
 	}
 
-	queues, err := model.FindAllTaskQueues()
+	queues, err := model.FindAllTaskQueues(ctx)
 	if err != nil {
 		j.AddError(err)
 		return

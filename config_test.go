@@ -875,24 +875,6 @@ func (s *AdminSuite) TestBucketsConfig() {
 			Name: "logs",
 			Type: "s3",
 		},
-		SharedBucket: "shared-across",
-		InternalBuckets: []string{
-			"test-bucket",
-			"test2-bucket",
-		},
-		ProjectToPrefixMappings: []ProjectToPrefixMapping{
-			{
-				ProjectID: "project-A",
-				Prefix:    "project-B",
-			},
-		},
-		ProjectToBucketMappings: []ProjectToBucketMapping{
-			{
-				ProjectID: "project-C",
-				Bucket:    "bucket-C",
-				Prefix:    "prefix-1",
-			},
-		},
 	}
 
 	err := config.Set(ctx)
@@ -903,17 +885,6 @@ func (s *AdminSuite) TestBucketsConfig() {
 	s.Equal(config, settings.Buckets)
 
 	config.LogBucket.Name = "logs-2"
-	config.SharedBucket = "many-projects"
-	config.InternalBuckets = []string{"new-bucket"}
-	config.ProjectToPrefixMappings = []ProjectToPrefixMapping{{
-		ProjectID: "project-C",
-		Prefix:    "project-D",
-	}}
-	config.ProjectToBucketMappings = []ProjectToBucketMapping{{
-		ProjectID: "project-A",
-		Bucket:    "bucket-A",
-		Prefix:    "prefix-2",
-	}}
 	s.NoError(config.Set(ctx))
 
 	settings, err = GetConfig(ctx)

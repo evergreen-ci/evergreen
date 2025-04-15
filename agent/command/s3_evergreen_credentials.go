@@ -17,40 +17,28 @@ type evergreenCredentialProvider struct {
 	taskData client.TaskData
 
 	// roleARN is the ARN of the role to assume.
-	// It takes precedence over internalBucket.
 	roleARN string
-
-	// internalBucket is the name of the internal bucket to get credentials for.
-	internalBucket string
 }
 
 // createEvergreenCredentials creates a new evergreenCredentialProvider. It supports
 // long operations or operations that might need to request new credentials during
 // the operation (e.g. multipart bucket uploads).
-// roleARN takes precedence over internalBucket, only one is used to decide
-// the underlying credentials used.
-func createEvergreenCredentials(comm client.Communicator, taskData client.TaskData, roleARN, internalBucket string) *evergreenCredentialProvider {
+func createEvergreenCredentials(comm client.Communicator, taskData client.TaskData, roleARN string) *evergreenCredentialProvider {
 	return &evergreenCredentialProvider{
-		comm:           comm,
-		taskData:       taskData,
-		roleARN:        roleARN,
-		internalBucket: internalBucket,
+		comm:     comm,
+		taskData: taskData,
+		roleARN:  roleARN,
 	}
 }
 
 func (p *evergreenCredentialProvider) Retrieve(ctx context.Context) (aws.Credentials, error) {
-	var creds *apimodels.AWSCredentials
-	var err error
-
-	if p.roleARN != "" {
-		creds, err = p.comm.AssumeRole(ctx, p.taskData, apimodels.AssumeRoleRequest{
-			RoleARN: p.roleARN,
-		})
-	} else if p.internalBucket != "" {
-		creds, err = p.comm.S3Credentials(ctx, p.taskData, p.internalBucket)
-	} else {
-		return aws.Credentials{}, errors.New("no role ARN or internal bucket provided")
+	if p.roleARN == "" {
+		return aws.Credentials{}, errors.New("no role ARN provided")
 	}
+
+	creds, err := p.comm.AssumeRole(ctx, p.taskData, apimodels.AssumeRoleRequest{
+		RoleARN: p.roleARN,
+	})
 
 	if err != nil {
 		return aws.Credentials{}, errors.Wrap(err, "getting S3 credentials")

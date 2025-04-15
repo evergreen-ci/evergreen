@@ -61,7 +61,7 @@ func TestGithubMergeIntent(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NoError(t, intent.Insert(t.Context()))
 			intents := []githubMergeIntent{}
-			err = db.FindAllQContext(t.Context(), IntentCollection, db.Query(bson.M{}), &intents)
+			err = db.FindAllQ(t.Context(), IntentCollection, db.Query(bson.M{}), &intents)
 			assert.NoError(t, err)
 			assert.Len(t, intents, 1)
 			assert.Equal(t, intent, &intents[0])
@@ -74,7 +74,7 @@ func TestGithubMergeIntent(t *testing.T) {
 			assert.NoError(t, intent.Insert(t.Context()))
 			assert.NoError(t, intent.SetProcessed(t.Context()))
 			intents := []githubMergeIntent{}
-			err = db.FindAllQContext(t.Context(), IntentCollection, db.Query(bson.M{}), &intents)
+			err = db.FindAllQ(t.Context(), IntentCollection, db.Query(bson.M{}), &intents)
 			assert.NoError(t, err)
 			assert.Len(t, intents, 1)
 			assert.True(t, intents[0].IsProcessed())

@@ -37,7 +37,7 @@ func TestLoggingTaskEvents(t *testing.T) {
 			time.Sleep(1 * time.Millisecond)
 			LogHostTaskFinished(t.Context(), taskId, 1, hostId, evergreen.TaskSucceeded)
 
-			eventsForTask, err := Find(TaskEventsInOrder(taskId))
+			eventsForTask, err := Find(t.Context(), TaskEventsInOrder(taskId))
 			So(err, ShouldEqual, nil)
 
 			event := eventsForTask[0]
@@ -114,6 +114,6 @@ func TestLogManyTestEvents(t *testing.T) {
 	require.NoError(db.ClearCollections(EventCollection))
 	LogManyTaskAbortRequests(t.Context(), []string{"task_1", "task_2"}, "example_user")
 	events := []EventLogEntry{}
-	assert.NoError(db.FindAllQContext(t.Context(), EventCollection, db.Query(bson.M{}), &events))
+	assert.NoError(db.FindAllQ(t.Context(), EventCollection, db.Query(bson.M{}), &events))
 	assert.Len(events, 2)
 }

@@ -140,7 +140,7 @@ func (s *UserRouteSuite) TestSaveFeedback() {
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
 
-	feedback, err := model.FindFeedbackOfType("someType")
+	feedback, err := model.FindFeedbackOfType(s.T().Context(), "someType")
 	s.NoError(err)
 	s.Len(feedback, 1)
 	s.Equal("me", feedback[0].User)
@@ -316,7 +316,7 @@ func TestProjectSettingsUpdateViewRepo(t *testing.T) {
 	assert.NoError(t, err)
 	require.Len(t, dbUser.SystemRoles, 1)
 	assert.Contains(t, dbUser.SystemRoles, roles[0].ID)
-	hasPermission, err := model.UserHasRepoViewPermission(dbUser, "myRepo")
+	hasPermission, err := model.UserHasRepoViewPermission(t.Context(), dbUser, "myRepo")
 	assert.NoError(t, err)
 	assert.True(t, hasPermission)
 }
@@ -869,7 +869,7 @@ func TestRenameUser(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Len(t, volumes, 1)
 
-			patches, err := patch.Find(db.Query(mgobson.M{patch.AuthorKey: "new_me"}))
+			patches, err := patch.Find(t.Context(), db.Query(mgobson.M{patch.AuthorKey: "new_me"}))
 			assert.NoError(t, err)
 			assert.Len(t, patches, 3)
 			for _, p := range patches {
@@ -906,7 +906,7 @@ func TestRenameUser(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Len(t, volumes, 1)
 
-			patches, err := patch.Find(db.Query(mgobson.M{patch.AuthorKey: "new_me"}))
+			patches, err := patch.Find(t.Context(), db.Query(mgobson.M{patch.AuthorKey: "new_me"}))
 			assert.NoError(t, err)
 			assert.Len(t, patches, 2)
 		},

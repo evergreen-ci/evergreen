@@ -656,7 +656,7 @@ func getRedactedAPIVarsForProject(ctx context.Context, projectId string) (*restM
 }
 
 func getAPIAliasesForProject(ctx context.Context, projectId string) ([]*restModel.APIProjectAlias, error) {
-	aliases, err := model.FindAliasesForProjectFromDb(projectId)
+	aliases, err := model.FindAliasesForProjectFromDb(ctx, projectId)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding aliases for project '%s': %s", projectId, err.Error()))
 	}
@@ -670,7 +670,7 @@ func getAPIAliasesForProject(ctx context.Context, projectId string) ([]*restMode
 }
 
 func getAPISubscriptionsForOwner(ctx context.Context, ownerId string, ownerType event.OwnerType) ([]*restModel.APISubscription, error) {
-	subscriptions, err := event.FindSubscriptionsByOwner(ownerId, ownerType)
+	subscriptions, err := event.FindSubscriptionsByOwner(ctx, ownerId, ownerType)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding subscription for owner '%s' and type '%s': %s", ownerId, ownerType, err.Error()))
 	}
@@ -777,8 +777,8 @@ func getValidTaskStatusesFilter(statuses []string) []string {
 	return filteredStatuses
 }
 
-func bbGetCreatedTicketsPointers(taskId string) ([]*thirdparty.JiraTicket, error) {
-	events, err := event.Find(event.TaskEventsForId(taskId))
+func bbGetCreatedTicketsPointers(ctx context.Context, taskId string) ([]*thirdparty.JiraTicket, error) {
+	events, err := event.Find(ctx, event.TaskEventsForId(taskId))
 	if err != nil {
 		return nil, err
 	}

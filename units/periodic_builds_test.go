@@ -61,7 +61,7 @@ func TestPeriodicBuildsJob(t *testing.T) {
 	// test that a version is created when the job runs
 	j.Run(ctx)
 	assert.NoError(j.Error())
-	createdVersion, err := model.FindLastPeriodicBuild(sampleProject.Id, sampleProject.PeriodicBuilds[0].ID)
+	createdVersion, err := model.FindLastPeriodicBuild(t.Context(), sampleProject.Id, sampleProject.PeriodicBuilds[0].ID)
 	assert.NoError(err)
 	assert.Equal(evergreen.AdHocRequester, createdVersion.Requester)
 	assert.Equal(prevVersion.Revision, createdVersion.Revision)

@@ -40,9 +40,9 @@ func FindOne(ctx context.Context, q db.Q) (*PodDispatcher, error) {
 }
 
 // Find finds all pod dispatchers for the given query.
-func Find(q db.Q) ([]PodDispatcher, error) {
+func Find(ctx context.Context, q db.Q) ([]PodDispatcher, error) {
 	pds := []PodDispatcher{}
-	return pds, errors.WithStack(db.FindAllQ(Collection, q, &pds))
+	return pds, errors.WithStack(db.FindAllQ(ctx, Collection, q, &pds))
 }
 
 // UpsertOne updates an existing pod dispatcher if it exists based on the

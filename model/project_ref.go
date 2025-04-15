@@ -863,7 +863,7 @@ func (p *ProjectRef) DetachFromRepo(ctx context.Context, u *user.DBUser) error {
 
 	if len(before.Subscriptions) == 0 {
 		// Save repo subscriptions as project subscriptions if none exist
-		subs, err := event.FindSubscriptionsByOwner(before.ProjectRef.RepoRefId, event.OwnerTypeProject)
+		subs, err := event.FindSubscriptionsByOwner(ctx, before.ProjectRef.RepoRefId, event.OwnerTypeProject)
 		catcher.Wrap(err, "finding repo subscriptions")
 
 		for _, s := range subs {
@@ -874,7 +874,7 @@ func (p *ProjectRef) DetachFromRepo(ctx context.Context, u *user.DBUser) error {
 	}
 
 	// Handle each category of aliases as its own case
-	repoAliases, err := FindAliasesForRepo(before.ProjectRef.RepoRefId)
+	repoAliases, err := FindAliasesForRepo(ctx, before.ProjectRef.RepoRefId)
 	catcher.Wrap(err, "finding repo aliases")
 
 	hasInternalAliases := map[string]bool{}
@@ -1302,7 +1302,7 @@ func (p *ProjectRef) createNewRepoRef(ctx context.Context, u *user.DBUser) (repo
 		return nil, errors.Wrap(err, "inserting project variables for repo")
 	}
 
-	commonAliases, err := getCommonAliases(enabledProjectIds)
+	commonAliases, err := getCommonAliases(ctx, enabledProjectIds)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting common project aliases")
 	}
@@ -1315,10 +1315,10 @@ func (p *ProjectRef) createNewRepoRef(ctx context.Context, u *user.DBUser) (repo
 	return repoRef, nil
 }
 
-func getCommonAliases(projectIds []string) (ProjectAliases, error) {
+func getCommonAliases(ctx context.Context, projectIds []string) (ProjectAliases, error) {
 	commonAliases := []ProjectAlias{}
 	for i, id := range projectIds {
-		aliases, err := FindAliasesForProjectFromDb(id)
+		aliases, err := FindAliasesForProjectFromDb(ctx, id)
 		if err != nil {
 			return nil, errors.Wrap(err, "finding aliases for project")
 		}
@@ -1516,7 +1516,7 @@ func FindAnyRestrictedProjectRef(ctx context.Context) (*ProjectRef, error) {
 func FindAllMergedTrackedProjectRefs(ctx context.Context) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 	q := db.Query(bson.M{ProjectRefHiddenKey: bson.M{"$ne": true}})
-	err := db.FindAllQ(ProjectRefCollection, q, &projectRefs)
+	err := db.FindAllQ(ctx, ProjectRefCollection, q, &projectRefs)
 	if err != nil {
 		return nil, err
 	}
@@ -1533,7 +1533,7 @@ func FindAllMergedEnabledTrackedProjectRefs(ctx context.Context) ([]ProjectRef, 
 		ProjectRefHiddenKey:  bson.M{"$ne": true},
 		ProjectRefEnabledKey: true,
 	})
-	err := db.FindAllQ(ProjectRefCollection, q, &projectRefs)
+	err := db.FindAllQ(ctx, ProjectRefCollection, q, &projectRefs)
 	if err != nil {
 		return nil, err
 	}
@@ -1621,7 +1621,7 @@ func FindProjectRefsByIds(ctx context.Context, ids ...string) ([]ProjectRef, err
 func findProjectRefsQ(ctx context.Context, filter bson.M, merged bool) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 	q := db.Query(filter)
-	err := db.FindAllQ(ProjectRefCollection, q, &projectRefs)
+	err := db.FindAllQ(ctx, ProjectRefCollection, q, &projectRefs)
 	if err != nil {
 		return nil, err
 	}
@@ -1716,29 +1716,10 @@ func filterProjectsByBranch(pRefs []ProjectRef, branch string) []ProjectRef {
 	return res
 }
 
-func FindBranchAdminsForRepo(repoId string) ([]string, error) {
-	projectRefs := []ProjectRef{}
-	err := db.FindAllQ(
-		ProjectRefCollection,
-		db.Query(bson.M{
-			ProjectRefRepoRefIdKey: repoId,
-		}).WithFields(ProjectRefAdminsKey),
-		&projectRefs,
-	)
-	if err != nil {
-		return nil, err
-	}
-	allBranchAdmins := []string{}
-	for _, pRef := range projectRefs {
-		allBranchAdmins = append(allBranchAdmins, pRef.Admins...)
-	}
-	return utility.UniqueStrings(allBranchAdmins), nil
-}
-
 // UserHasRepoViewPermission returns true if the user has permission to view any branch project settings.
-func UserHasRepoViewPermission(u *user.DBUser, repoRefId string) (bool, error) {
+func UserHasRepoViewPermission(ctx context.Context, u *user.DBUser, repoRefId string) (bool, error) {
 	projectRefs := []ProjectRef{}
-	err := db.FindAllQ(
+	err := db.FindAllQ(ctx,
 		ProjectRefCollection,
 		db.Query(bson.M{
 			ProjectRefRepoRefIdKey: repoRefId,
@@ -1949,7 +1930,7 @@ func UpdateAdminRoles(ctx context.Context, project *ProjectRef, toAdd, toDelete 
 }
 
 // FindNonHiddenProjects returns limit visible project refs starting at project id key in the sortDir direction.
-func FindNonHiddenProjects(key string, limit int, sortDir int) ([]ProjectRef, error) {
+func FindNonHiddenProjects(ctx context.Context, key string, limit int, sortDir int) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 	filter := bson.M{
 		ProjectRefHiddenKey: bson.M{"$ne": true},
@@ -1964,7 +1945,7 @@ func FindNonHiddenProjects(key string, limit int, sortDir int) ([]ProjectRef, er
 	}
 
 	q := db.Query(filter).Sort([]string{sortSpec}).Limit(limit)
-	err := db.FindAllQ(ProjectRefCollection, q, &projectRefs)
+	err := db.FindAllQ(ctx, ProjectRefCollection, q, &projectRefs)
 
 	return projectRefs, errors.Wrapf(err, "fetching projects starting at project '%s'", key)
 }
@@ -2003,7 +1984,7 @@ func FindMergedEnabledProjectRefsByOwnerAndRepo(ctx context.Context, owner, repo
 
 // FindMergedProjectRefsForRepo considers either owner/repo and repo ref ID, in case the owner/repo of the repo ref is going to change.
 // So we get all the branch projects in the new repo, and all the branch projects that might change owner/repo.
-func FindMergedProjectRefsForRepo(repoRef *RepoRef) ([]ProjectRef, error) {
+func FindMergedProjectRefsForRepo(ctx context.Context, repoRef *RepoRef) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 
 	q := db.Query(bson.M{
@@ -2015,7 +1996,7 @@ func FindMergedProjectRefsForRepo(repoRef *RepoRef) ([]ProjectRef, error) {
 			{ProjectRefRepoRefIdKey: repoRef.Id},
 		},
 	})
-	err := db.FindAllQ(ProjectRefCollection, q, &projectRefs)
+	err := db.FindAllQ(ctx, ProjectRefCollection, q, &projectRefs)
 	if err != nil {
 		return nil, err
 	}
@@ -2070,11 +2051,11 @@ func GetProjectSettings(ctx context.Context, p *ProjectRef) (*ProjectSettings, e
 	if projectVars == nil {
 		projectVars = &ProjectVars{}
 	}
-	projectAliases, err := FindAliasesForProjectFromDb(p.Id)
+	projectAliases, err := FindAliasesForProjectFromDb(ctx, p.Id)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding aliases for project '%s'", p.Id)
 	}
-	subscriptions, err := event.FindSubscriptionsByOwner(p.Id, event.OwnerTypeProject)
+	subscriptions, err := event.FindSubscriptionsByOwner(ctx, p.Id, event.OwnerTypeProject)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding subscription for project '%s'", p.Id)
 	}

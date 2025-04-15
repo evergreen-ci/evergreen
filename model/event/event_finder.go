@@ -31,9 +31,9 @@ func ResourceTypeKeyIs(key string) bson.M {
 
 // Find takes a collection storing events and a query, generated
 // by one of the query functions, and returns a slice of events.
-func Find(query db.Q) ([]EventLogEntry, error) {
+func Find(ctx context.Context, query db.Q) ([]EventLogEntry, error) {
 	events := []EventLogEntry{}
-	err := db.FindAllQ(EventCollection, query, &events)
+	err := db.FindAllQ(ctx, EventCollection, query, &events)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -48,7 +48,7 @@ func FindPaginatedWithTotalCount(ctx context.Context, query db.Q, limit, page in
 		query = query.Skip(skip)
 	}
 
-	err := db.FindAllQ(EventCollection, query, &events)
+	err := db.FindAllQ(ctx, EventCollection, query, &events)
 	if err != nil {
 		return nil, 0, errors.WithStack(err)
 	}
@@ -64,13 +64,13 @@ func FindPaginatedWithTotalCount(ctx context.Context, query db.Q, limit, page in
 
 // FindUnprocessedEvents returns all unprocessed events in EventCollection.
 // Events are considered unprocessed if their "processed_at" time IsZero
-func FindUnprocessedEvents(limit int) ([]EventLogEntry, error) {
+func FindUnprocessedEvents(ctx context.Context, limit int) ([]EventLogEntry, error) {
 	out := []EventLogEntry{}
 	query := db.Query(unprocessedEvents()).Sort([]string{TimestampKey})
 	if limit > 0 {
 		query = query.Limit(limit)
 	}
-	err := db.FindAllQ(EventCollection, query, &out)
+	err := db.FindAllQ(ctx, EventCollection, query, &out)
 	if err != nil {
 		return nil, errors.Wrap(err, "fetching unprocessed events")
 	}
@@ -327,8 +327,8 @@ func AdminEventsBefore(before time.Time, n int) db.Q {
 	return db.Query(filter).Sort([]string{"-" + TimestampKey}).Limit(n)
 }
 
-func FindAllByResourceID(resourceID string) ([]EventLogEntry, error) {
-	return Find(db.Query(bson.M{ResourceIdKey: resourceID}))
+func FindAllByResourceID(ctx context.Context, resourceID string) ([]EventLogEntry, error) {
+	return Find(ctx, db.Query(bson.M{ResourceIdKey: resourceID}))
 }
 
 // Pod events

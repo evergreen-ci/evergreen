@@ -665,7 +665,7 @@ func (gh *githubHookApi) createPRPatch(ctx context.Context, owner, repo, calledB
 // When the next github patch intent is created for that PR, it will look at this field on the last pr patch
 // to determine if the task definitions should be reused from the specified ID or the default definition
 func keepPRPatchDefinition(ctx context.Context, owner, repo string, prNumber int) error {
-	p, err := patch.FindLatestGithubPRPatch(owner, repo, prNumber)
+	p, err := patch.FindLatestGithubPRPatch(ctx, owner, repo, prNumber)
 	if err != nil || p == nil {
 		return errors.Wrap(err, "getting most recent patch for pr")
 	}
@@ -673,7 +673,7 @@ func keepPRPatchDefinition(ctx context.Context, owner, repo string, prNumber int
 }
 
 func resetPRPatchDefinition(ctx context.Context, owner, repo string, prNumber int) error {
-	p, err := patch.FindLatestGithubPRPatch(owner, repo, prNumber)
+	p, err := patch.FindLatestGithubPRPatch(ctx, owner, repo, prNumber)
 	if err != nil {
 		return errors.Wrap(err, "getting most recent patch for pr")
 	}
@@ -684,7 +684,7 @@ func resetPRPatchDefinition(ctx context.Context, owner, repo string, prNumber in
 }
 
 func (gh *githubHookApi) refreshPatchStatus(ctx context.Context, owner, repo string, prNumber int) error {
-	p, err := patch.FindLatestGithubPRPatch(owner, repo, prNumber)
+	p, err := patch.FindLatestGithubPRPatch(ctx, owner, repo, prNumber)
 	if err != nil {
 		return errors.Wrap(err, "finding patch")
 	}
@@ -731,7 +731,7 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 		return errors.Wrapf(err, "getting merge base between branches '%s' and '%s'", pr.Base.GetLabel(), pr.Head.GetLabel())
 	}
 
-	ghi, err := patch.NewGithubIntent(gh.msgID, owner, calledBy, alias, mergeBase, pr)
+	ghi, err := patch.NewGithubIntent(ctx, gh.msgID, owner, calledBy, alias, mergeBase, pr)
 	if err != nil {
 		return errors.Wrap(err, "creating GitHub patch intent")
 	}
@@ -755,7 +755,7 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 		}
 	}
 
-	conflictingPatches, err := getOtherPatchesWithHash(pr.Head.GetSHA(), pr.GetNumber())
+	conflictingPatches, err := getOtherPatchesWithHash(ctx, pr.Head.GetSHA(), pr.GetNumber())
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":           "error getting same hash patches",
@@ -1100,8 +1100,8 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 	return gh.sc.CreateVersionFromConfig(ctx, &projectInfo, metadata)
 }
 
-func getOtherPatchesWithHash(githash string, prNum int) ([]patch.Patch, error) {
-	patches, err := patch.Find(patch.ByGithash(githash))
+func getOtherPatchesWithHash(ctx context.Context, githash string, prNum int) ([]patch.Patch, error) {
+	patches, err := patch.Find(ctx, patch.ByGithash(githash))
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting same hash patches")
 	}

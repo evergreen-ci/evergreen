@@ -314,7 +314,7 @@ func (uis *UIServer) versionHistoryDrawer(w http.ResponseWriter, r *http.Request
 	}
 
 	// get the versions in the requested window
-	versions, err := getVersionsInWindow(drawerInfo.window, projCtx.Version.Identifier, drawerInfo.radius, projCtx.Version)
+	versions, err := getVersionsInWindow(r.Context(), drawerInfo.window, projCtx.Version.Identifier, drawerInfo.radius, projCtx.Version)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -353,7 +353,7 @@ func (uis *UIServer) taskHistoryDrawer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// get the versions in the requested window
-	versions, err := getVersionsInWindow(drawerInfo.window, projCtx.Version.Identifier, drawerInfo.radius, projCtx.Version)
+	versions, err := getVersionsInWindow(r.Context(), drawerInfo.window, projCtx.Version.Identifier, drawerInfo.radius, projCtx.Version)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -373,21 +373,21 @@ func (uis *UIServer) taskHistoryDrawer(w http.ResponseWriter, r *http.Request) {
 
 // Get the versions for projectID within radius around the center version, sorted backwards in time
 // wt indicates the direction away from center
-func getVersionsInWindow(wt, projectID string, radius int, center *model.Version) ([]model.Version, error) {
+func getVersionsInWindow(ctx context.Context, wt, projectID string, radius int, center *model.Version) ([]model.Version, error) {
 	if wt == beforeWindow {
-		return surroundingVersions(center, projectID, radius, true)
+		return surroundingVersions(ctx, center, projectID, radius, true)
 	} else if wt == afterWindow {
-		after, err := surroundingVersions(center, projectID, radius, false)
+		after, err := surroundingVersions(ctx, center, projectID, radius, false)
 		if err != nil {
 			return nil, err
 		}
 		return after, nil
 	}
-	before, err := surroundingVersions(center, projectID, radius, true)
+	before, err := surroundingVersions(ctx, center, projectID, radius, true)
 	if err != nil {
 		return nil, err
 	}
-	after, err := surroundingVersions(center, projectID, radius, false)
+	after, err := surroundingVersions(ctx, center, projectID, radius, false)
 	if err != nil {
 		return nil, err
 	}
@@ -398,7 +398,7 @@ func getVersionsInWindow(wt, projectID string, radius int, center *model.Version
 // Helper to query the versions collection for versions created before
 // or after the center, indicated by "before", and sorted backwards in time
 // Results are sorted on create_time and revision order number, similar to the waterfall
-func surroundingVersions(center *model.Version, projectId string, versionsToFetch int, before bool) ([]model.Version, error) {
+func surroundingVersions(ctx context.Context, center *model.Version, projectId string, versionsToFetch int, before bool) ([]model.Version, error) {
 	direction := "$gt"
 	sortOnConsecutive := []string{model.VersionCreateTimeKey, model.VersionRevisionOrderNumberKey}
 	sortOnConcurrent := []string{model.VersionRevisionOrderNumberKey}
@@ -412,7 +412,7 @@ func surroundingVersions(center *model.Version, projectId string, versionsToFetc
 	// Since we know they can just be concatenated this allows us to use the index efficiently
 
 	// fetch concurrent versions
-	versions, err := model.VersionFind(
+	versions, err := model.VersionFind(ctx,
 		db.Query(bson.M{
 			model.VersionIdentifierKey: projectId,
 			model.VersionCreateTimeKey: center.CreateTime,
@@ -435,7 +435,7 @@ func surroundingVersions(center *model.Version, projectId string, versionsToFetc
 
 	if len(versions) < versionsToFetch {
 		// fetch consecutive versions
-		consecutiveVersions, err := model.VersionFind(
+		consecutiveVersions, err := model.VersionFind(ctx,
 			db.Query(bson.M{
 				model.VersionIdentifierKey: projectId,
 				model.VersionCreateTimeKey: bson.M{direction: center.CreateTime},
@@ -450,7 +450,7 @@ func surroundingVersions(center *model.Version, projectId string, versionsToFetc
 				model.VersionErrorsKey,
 				model.VersionWarningsKey,
 				model.VersionIgnoredKey,
-			).Sort(sortOnConsecutive).Limit(versionsToFetch - len(versions)))
+			).Sort(sortOnConsecutive).Limit(versionsToFetch-len(versions)))
 		if err != nil {
 			return nil, errors.Wrap(err, "can't get consecutive versions")
 		}

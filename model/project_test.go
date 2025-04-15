@@ -1727,60 +1727,60 @@ func (s *FindProjectsSuite) TearDownSuite() {
 }
 
 func (s *FindProjectsSuite) TestFetchTooManyAsc() {
-	projects, err := FindNonHiddenProjects("", 8, 1)
+	projects, err := FindNonHiddenProjects(s.T().Context(), "", 8, 1)
 	s.NoError(err)
 	s.NotNil(projects)
 	s.Len(projects, 7)
 }
 
 func (s *FindProjectsSuite) TestFetchTooManyDesc() {
-	projects, err := FindNonHiddenProjects("zzz", 8, -1)
+	projects, err := FindNonHiddenProjects(s.T().Context(), "zzz", 8, -1)
 	s.NoError(err)
 	s.NotNil(projects)
 	s.Len(projects, 7)
 }
 
 func (s *FindProjectsSuite) TestFetchExactNumber() {
-	projects, err := FindNonHiddenProjects("", 3, 1)
+	projects, err := FindNonHiddenProjects(s.T().Context(), "", 3, 1)
 	s.NoError(err)
 	s.NotNil(projects)
 	s.Len(projects, 3)
 }
 
 func (s *FindProjectsSuite) TestFetchTooFewAsc() {
-	projects, err := FindNonHiddenProjects("", 2, 1)
+	projects, err := FindNonHiddenProjects(s.T().Context(), "", 2, 1)
 	s.NoError(err)
 	s.NotNil(projects)
 	s.Len(projects, 2)
 }
 
 func (s *FindProjectsSuite) TestFetchTooFewDesc() {
-	projects, err := FindNonHiddenProjects("zzz", 2, -1)
+	projects, err := FindNonHiddenProjects(s.T().Context(), "zzz", 2, -1)
 	s.NoError(err)
 	s.NotNil(projects)
 	s.Len(projects, 2)
 }
 
 func (s *FindProjectsSuite) TestFetchKeyWithinBoundAsc() {
-	projects, err := FindNonHiddenProjects("projectB", 1, 1)
+	projects, err := FindNonHiddenProjects(s.T().Context(), "projectB", 1, 1)
 	s.NoError(err)
 	s.Len(projects, 1)
 }
 
 func (s *FindProjectsSuite) TestFetchKeyWithinBoundDesc() {
-	projects, err := FindNonHiddenProjects("projectD", 1, -1)
+	projects, err := FindNonHiddenProjects(s.T().Context(), "projectD", 1, -1)
 	s.NoError(err)
 	s.Len(projects, 1)
 }
 
 func (s *FindProjectsSuite) TestFetchKeyOutOfBoundAsc() {
-	projects, err := FindNonHiddenProjects("zzz", 1, 1)
+	projects, err := FindNonHiddenProjects(s.T().Context(), "zzz", 1, 1)
 	s.NoError(err)
 	s.Empty(projects)
 }
 
 func (s *FindProjectsSuite) TestFetchKeyOutOfBoundDesc() {
-	projects, err := FindNonHiddenProjects("aaa", 1, -1)
+	projects, err := FindNonHiddenProjects(s.T().Context(), "aaa", 1, -1)
 	s.NoError(err)
 	s.Empty(projects)
 }

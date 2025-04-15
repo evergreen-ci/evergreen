@@ -21,9 +21,9 @@ var (
 )
 
 // Find finds all pod definitions matching the given query.
-func Find(q db.Q) ([]PodDefinition, error) {
+func Find(ctx context.Context, q db.Q) ([]PodDefinition, error) {
 	defs := []PodDefinition{}
-	return defs, errors.WithStack(db.FindAllQ(Collection, q, &defs))
+	return defs, errors.WithStack(db.FindAllQ(ctx, Collection, q, &defs))
 }
 
 // FindOne finds one pod definition by the given query.
@@ -78,8 +78,8 @@ func FindOneByFamily(ctx context.Context, family string) (*PodDefinition, error)
 // FindByLastAccessedBefore finds all pod definitions that were last accessed
 // before the TTL. If a positive limit is given, it will return at most that
 // number of results; otherwise, the results are unlimited.
-func FindByLastAccessedBefore(ttl time.Duration, limit int) ([]PodDefinition, error) {
-	return Find(db.Query(bson.M{
+func FindByLastAccessedBefore(ctx context.Context, ttl time.Duration, limit int) ([]PodDefinition, error) {
+	return Find(ctx, db.Query(bson.M{
 		"$or": []bson.M{
 			{
 				LastAccessedKey: bson.M{"$lt": time.Now().Add(-ttl)},

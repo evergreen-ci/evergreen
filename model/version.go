@@ -344,14 +344,14 @@ func VersionGetHistory(ctx context.Context, versionId string, N int) ([]Version,
 	// Versions in the same push event, assuming that no two push events happen at the exact same time
 	// Never want more than 2N+1 versions, so make sure we add a limit
 
-	siblingVersions, err := VersionFind(db.Query(
+	siblingVersions, err := VersionFind(ctx, db.Query(
 		bson.M{
 			VersionRevisionOrderNumberKey: v.RevisionOrderNumber,
 			VersionRequesterKey: bson.M{
 				"$in": evergreen.SystemVersionRequesterTypes,
 			},
 			VersionIdentifierKey: v.Identifier,
-		}).Sort([]string{VersionRevisionOrderNumberKey}).Limit(2*N + 1))
+		}).Sort([]string{VersionRevisionOrderNumberKey}).Limit(2*N+1))
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -369,7 +369,7 @@ func VersionGetHistory(ctx context.Context, versionId string, N int) ([]Version,
 	if versionIndex < N {
 		// There are less than N later versions from the same push event
 		// N subsequent versions plus the specified one
-		subsequentVersions, err := VersionFind(
+		subsequentVersions, err := VersionFind(ctx,
 			//TODO encapsulate this query in version pkg
 			db.Query(bson.M{
 				VersionRevisionOrderNumberKey: bson.M{"$gt": v.RevisionOrderNumber},
@@ -377,7 +377,7 @@ func VersionGetHistory(ctx context.Context, versionId string, N int) ([]Version,
 					"$in": evergreen.SystemVersionRequesterTypes,
 				},
 				VersionIdentifierKey: v.Identifier,
-			}).Sort([]string{VersionRevisionOrderNumberKey}).Limit(N - versionIndex))
+			}).Sort([]string{VersionRevisionOrderNumberKey}).Limit(N-versionIndex))
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
@@ -391,7 +391,7 @@ func VersionGetHistory(ctx context.Context, versionId string, N int) ([]Version,
 	}
 
 	if numSiblings-versionIndex < N {
-		previousVersions, err := VersionFind(db.Query(bson.M{
+		previousVersions, err := VersionFind(ctx, db.Query(bson.M{
 			VersionRevisionOrderNumberKey: bson.M{"$lt": v.RevisionOrderNumber},
 			VersionRequesterKey: bson.M{
 				"$in": evergreen.SystemVersionRequesterTypes,
@@ -700,7 +700,7 @@ func GetVersionsToModify(ctx context.Context, projectName string, opts ModifyVer
 	} else {
 		match[VersionCreateTimeKey] = bson.M{"$gte": startTime, "$lte": endTime}
 	}
-	versions, err := VersionFind(db.Query(match))
+	versions, err := VersionFind(ctx, db.Query(match))
 	if err != nil {
 		return nil, errors.Wrap(err, "finding versions")
 	}

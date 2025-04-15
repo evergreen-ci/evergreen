@@ -871,7 +871,7 @@ func TestAttachToNewRepo(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, userFromDB.SystemRoles, 1)
 	assert.Contains(t, userFromDB.SystemRoles, GetRepoAdminRole(pRefFromDB.RepoRefId))
-	hasPermission, err := UserHasRepoViewPermission(u, pRefFromDB.RepoRefId)
+	hasPermission, err := UserHasRepoViewPermission(t.Context(), u, pRefFromDB.RepoRefId)
 	assert.NoError(t, err)
 	assert.True(t, hasPermission)
 	// Attaching a different project to this repo will result in Github conflicts being unset.
@@ -908,7 +908,7 @@ func TestAttachToNewRepo(t *testing.T) {
 }
 
 func checkRepoAttachmentEventLog(t *testing.T, project ProjectRef, attachmentType string) {
-	events, err := MostRecentProjectEvents(project.Id, 10)
+	events, err := MostRecentProjectEvents(t.Context(), project.Id, 10)
 	require.NoError(t, err)
 	require.Len(t, events, 1)
 	assert.Equal(t, project.Id, events[0].ResourceId)
@@ -977,7 +977,7 @@ func TestAttachToRepo(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, u)
 	assert.Contains(t, u.Roles(), GetRepoAdminRole(pRefFromDB.RepoRefId))
-	hasPermission, err := UserHasRepoViewPermission(u, pRefFromDB.RepoRefId)
+	hasPermission, err := UserHasRepoViewPermission(t.Context(), u, pRefFromDB.RepoRefId)
 	assert.NoError(t, err)
 	assert.True(t, hasPermission)
 
@@ -1070,7 +1070,7 @@ func TestDetachFromRepo(t *testing.T) {
 			dbUser, err = user.FindOneByIdContext(t.Context(), "me")
 			assert.NoError(t, err)
 			assert.NotNil(t, dbUser)
-			hasPermission, err := UserHasRepoViewPermission(dbUser, pRefFromDB.RepoRefId)
+			hasPermission, err := UserHasRepoViewPermission(t.Context(), dbUser, pRefFromDB.RepoRefId)
 			assert.NoError(t, err)
 			assert.False(t, hasPermission)
 		},
@@ -1110,7 +1110,7 @@ func TestDetachFromRepo(t *testing.T) {
 
 			assert.NoError(t, pRef.DetachFromRepo(t.Context(), dbUser))
 			checkRepoAttachmentEventLog(t, *pRef, event.EventTypeProjectDetachedFromRepo)
-			aliases, err := FindAliasesForProjectFromDb(pRef.Id)
+			aliases, err := FindAliasesForProjectFromDb(t.Context(), pRef.Id)
 			assert.NoError(t, err)
 			assert.Len(t, aliases, 1)
 			assert.Equal(t, aliases[0].Alias, projectAlias.Alias)
@@ -1122,7 +1122,7 @@ func TestDetachFromRepo(t *testing.T) {
 			assert.NoError(t, RemoveProjectAlias(ctx, projectAlias.ID.Hex()))
 
 			assert.NoError(t, pRef.DetachFromRepo(t.Context(), dbUser))
-			aliases, err = FindAliasesForProjectFromDb(pRef.Id)
+			aliases, err = FindAliasesForProjectFromDb(t.Context(), pRef.Id)
 			assert.NoError(t, err)
 			assert.Len(t, aliases, 1)
 			assert.Equal(t, aliases[0].Alias, repoAlias.Alias)
@@ -1141,7 +1141,7 @@ func TestDetachFromRepo(t *testing.T) {
 
 			assert.NoError(t, pRef.DetachFromRepo(t.Context(), dbUser))
 			checkRepoAttachmentEventLog(t, *pRef, event.EventTypeProjectDetachedFromRepo)
-			aliases, err := FindAliasesForProjectFromDb(pRef.Id)
+			aliases, err := FindAliasesForProjectFromDb(t.Context(), pRef.Id)
 			assert.NoError(t, err)
 			assert.Len(t, aliases, 3)
 			gitTagCount := 0
@@ -1195,7 +1195,7 @@ func TestDetachFromRepo(t *testing.T) {
 			assert.NoError(t, pRef.DetachFromRepo(t.Context(), dbUser))
 			checkRepoAttachmentEventLog(t, *pRef, event.EventTypeProjectDetachedFromRepo)
 
-			subs, err := event.FindSubscriptionsByOwner(pRef.Id, event.OwnerTypeProject)
+			subs, err := event.FindSubscriptionsByOwner(t.Context(), pRef.Id, event.OwnerTypeProject)
 			assert.NoError(t, err)
 			require.Len(t, subs, 1)
 			assert.Equal(t, subs[0].Owner, pRef.Id)
@@ -1206,7 +1206,7 @@ func TestDetachFromRepo(t *testing.T) {
 			assert.NoError(t, event.RemoveSubscription(ctx, projectSubscription.ID))
 			assert.NoError(t, pRef.DetachFromRepo(t.Context(), dbUser))
 
-			subs, err = event.FindSubscriptionsByOwner(pRef.Id, event.OwnerTypeProject)
+			subs, err = event.FindSubscriptionsByOwner(t.Context(), pRef.Id, event.OwnerTypeProject)
 			assert.NoError(t, err)
 			assert.Len(t, subs, 1)
 			assert.Equal(t, subs[0].Owner, pRef.Id)
@@ -1334,7 +1334,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 			assert.NotEmpty(t, varsFromDb.Id)
 		},
 		ProjectPageGithubAndCQSection: func(t *testing.T, id string) {
-			aliases, err := FindAliasesForProjectFromDb(id)
+			aliases, err := FindAliasesForProjectFromDb(t.Context(), id)
 			assert.NoError(t, err)
 			assert.Len(t, aliases, 5)
 			assert.NoError(t, DefaultSectionToRepo(t.Context(), id, ProjectPageGithubAndCQSection, "me"))
@@ -1345,7 +1345,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 			assert.Nil(t, pRefFromDb.PRTestingEnabled)
 			assert.Nil(t, pRefFromDb.GithubChecksEnabled)
 			assert.Nil(t, pRefFromDb.GitTagAuthorizedUsers)
-			aliases, err = FindAliasesForProjectFromDb(id)
+			aliases, err = FindAliasesForProjectFromDb(t.Context(), id)
 			assert.NoError(t, err)
 			assert.Len(t, aliases, 1)
 			// assert that only patch aliases are left
@@ -1361,7 +1361,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 			assert.Nil(t, pRefFromDb.NotifyOnBuildFailure)
 		},
 		ProjectPagePatchAliasSection: func(t *testing.T, id string) {
-			aliases, err := FindAliasesForProjectFromDb(id)
+			aliases, err := FindAliasesForProjectFromDb(t.Context(), id)
 			assert.NoError(t, err)
 			assert.Len(t, aliases, 5)
 
@@ -1371,7 +1371,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 			assert.NotNil(t, pRefFromDb)
 			assert.Nil(t, pRefFromDb.PatchTriggerAliases)
 
-			aliases, err = FindAliasesForProjectFromDb(id)
+			aliases, err = FindAliasesForProjectFromDb(t.Context(), id)
 			assert.NoError(t, err)
 			assert.Len(t, aliases, 4)
 			// assert that no patch aliases are left
@@ -1989,7 +1989,7 @@ func TestCreateNewRepoRef(t *testing.T) {
 	assert.NotContains(t, repoRef.Admins, "bob")
 	assert.NotContains(t, repoRef.Admins, "other bob")
 	assert.Contains(t, repoRef.Admins, "me")
-	users, err := user.FindByRole(GetRepoAdminRole(repoRef.Id))
+	users, err := user.FindByRole(t.Context(), GetRepoAdminRole(repoRef.Id))
 	assert.NoError(t, err)
 	require.Len(t, users, 1)
 	assert.Equal(t, "me", users[0].Id)
@@ -2003,7 +2003,7 @@ func TestCreateNewRepoRef(t *testing.T) {
 	assert.Equal(t, "green", projectVars.Vars["ever"])
 	assert.True(t, projectVars.PrivateVars["sdc"])
 
-	projectAliases, err = FindAliasesForRepo(repoRef.Id)
+	projectAliases, err = FindAliasesForRepo(t.Context(), repoRef.Id)
 	assert.NoError(t, err)
 	assert.Len(t, projectAliases, 2)
 	for _, a := range projectAliases {
@@ -4143,7 +4143,7 @@ func TestUserHasRepoViewPermission(t *testing.T) {
 			require.NoError(t, roleManager.UpdateRole(wrongProjectRole))
 
 			assert.NoError(t, usr.AddRole(t.Context(), wrongProjectRole.ID))
-			hasPermission, err := UserHasRepoViewPermission(usr, "myRepoId")
+			hasPermission, err := UserHasRepoViewPermission(t.Context(), usr, "myRepoId")
 			assert.NoError(t, err)
 			assert.False(t, hasPermission)
 		},
@@ -4156,7 +4156,7 @@ func TestUserHasRepoViewPermission(t *testing.T) {
 			require.NoError(t, roleManager.UpdateRole(wrongPermissionRole))
 
 			assert.NoError(t, usr.AddRole(t.Context(), wrongPermissionRole.ID))
-			hasPermission, err := UserHasRepoViewPermission(usr, "myRepoId")
+			hasPermission, err := UserHasRepoViewPermission(t.Context(), usr, "myRepoId")
 			assert.NoError(t, err)
 			assert.False(t, hasPermission)
 		},
@@ -4169,7 +4169,7 @@ func TestUserHasRepoViewPermission(t *testing.T) {
 			require.NoError(t, roleManager.UpdateRole(viewBranchRole))
 
 			assert.NoError(t, usr.AddRole(t.Context(), viewBranchRole.ID))
-			hasPermission, err := UserHasRepoViewPermission(usr, "myRepoId")
+			hasPermission, err := UserHasRepoViewPermission(t.Context(), usr, "myRepoId")
 			assert.NoError(t, err)
 			assert.True(t, hasPermission)
 		},

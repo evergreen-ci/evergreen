@@ -419,12 +419,7 @@ func FindOneQContext(ctx context.Context, collection string, q Q, out any) error
 }
 
 // FindAllQ runs a Q query against the given collection, applying the results to "out."
-func FindAllQ(collection string, q Q, out any) error {
-	return FindAllQContext(context.Background(), collection, q, out)
-}
-
-// FindAllQContext runs a Q query against the given collection, applying the results to "out."
-func FindAllQContext(ctx context.Context, collection string, q Q, out any) error {
+func FindAllQ(ctx context.Context, collection string, q Q, out any) error {
 	if q.maxTime > 0 {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, q.maxTime)

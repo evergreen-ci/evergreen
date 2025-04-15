@@ -574,7 +574,7 @@ func TestRequestS3Creds(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(notification.Collection, evergreen.ConfigCollection))
 	assert.Error(t, RequestS3Creds(ctx, "", ""))
 	assert.NoError(t, RequestS3Creds(ctx, "identifier", "user@email.com"))
-	n, err := notification.FindUnprocessed()
+	n, err := notification.FindUnprocessed(t.Context())
 	assert.NoError(t, err)
 	assert.Empty(t, n)
 	projectCreationConfig := evergreen.ProjectCreationConfig{
@@ -582,7 +582,7 @@ func TestRequestS3Creds(t *testing.T) {
 	}
 	assert.NoError(t, projectCreationConfig.Set(ctx))
 	assert.NoError(t, RequestS3Creds(ctx, "identifier", "user@email.com"))
-	n, err = notification.FindUnprocessed()
+	n, err = notification.FindUnprocessed(t.Context())
 	assert.NoError(t, err)
 	assert.Len(t, n, 1)
 	assert.Equal(t, event.JIRAIssueSubscriberType, n[0].Subscriber.Type)
@@ -653,7 +653,7 @@ func TestHideBranch(t *testing.T) {
 	}
 	assert.Equal(t, skeletonProj, *hiddenProj)
 
-	projAliases, err := model.FindAliasesForProjectFromDb(project.Id)
+	projAliases, err := model.FindAliasesForProjectFromDb(t.Context(), project.Id)
 	assert.NoError(t, err)
 	assert.Empty(t, projAliases)
 

@@ -30,7 +30,7 @@ func TestHostTerminationJob(t *testing.T) {
 			Limit:   50,
 			SortAsc: false,
 		}
-		events, err := event.Find(event.HostEvents(hostEventOpts))
+		events, err := event.Find(t.Context(), event.HostEvents(hostEventOpts))
 		require.NoError(t, err)
 		require.NotEmpty(t, events)
 		var foundTerminationEvent bool

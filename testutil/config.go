@@ -188,7 +188,6 @@ func MockConfig() *evergreen.Settings {
 				Name: "logs",
 				Type: evergreen.BucketTypeS3,
 			},
-			InternalBuckets: []string{"bucket1", "bucket2"},
 			Credentials: evergreen.S3Credentials{
 				Key:    "aws_key",
 				Secret: "aws_secret",
@@ -350,6 +349,7 @@ func MockConfig() *evergreen.Settings {
 						Role:    "role",
 					},
 				},
+				IPAMPoolID: "pool_id",
 			},
 			Docker: evergreen.DockerConfig{
 				APIVersion: "docker_version",

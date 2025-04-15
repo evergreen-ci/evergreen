@@ -66,7 +66,7 @@ func (bvhi *buildVariantHistoryIterator) GetItems(ctx context.Context, beforeCom
 	).Sort([]string{"-" + VersionRevisionOrderNumberKey}).Limit(numRevisions)
 
 	//Get the next numCommits
-	versions, err := VersionFind(versionQuery)
+	versions, err := VersionFind(ctx, versionQuery)
 
 	if err != nil {
 		return nil, nil, err

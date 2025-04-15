@@ -1174,7 +1174,7 @@ func (s *PatchIntentUnitsSuite) TestProcessMergeGroupIntent() {
 	s.verifyVersionDoc(dbPatch, evergreen.GithubMergeRequester, evergreen.GithubMergeUser, baseSHA, 1)
 
 	out := []event.Subscription{}
-	s.NoError(db.FindAllQContext(s.ctx, event.SubscriptionsCollection, db.Query(bson.M{}), &out))
+	s.NoError(db.FindAllQ(s.ctx, event.SubscriptionsCollection, db.Query(bson.M{}), &out))
 	s.Len(out, 2)
 	for _, subscription := range out {
 		s.Equal("github_merge", subscription.Subscriber.Type)
@@ -1217,7 +1217,7 @@ func (s *PatchIntentUnitsSuite) TestProcessGitHubIntentWithMergeBase() {
 	}
 	testutil.ConfigureIntegrationTest(s.T(), s.env.Settings())
 	// SHA ed42b5e51e81724c5258686a0b9d515a99696eac is newer than the oldest allowed merge base and should be accepted
-	intent, err := patch.NewGithubIntent("id", "auto", "", "", "ed42b5e51e81724c5258686a0b9d515a99696eac", pr)
+	intent, err := patch.NewGithubIntent(s.ctx, "id", "auto", "", "", "ed42b5e51e81724c5258686a0b9d515a99696eac", pr)
 
 	s.NoError(err)
 	s.Require().NotNil(intent)
@@ -1228,7 +1228,7 @@ func (s *PatchIntentUnitsSuite) TestProcessGitHubIntentWithMergeBase() {
 	s.Empty(j.gitHubError)
 
 	// SHA 4aa79c5e7ef7af351764b843a2c05fab98c23881 is older than the oldest allowed merge base and should be rejected
-	intent, err = patch.NewGithubIntent("another_id", "auto", "", "", "4aa79c5e7ef7af351764b843a2c05fab98c23881", pr)
+	intent, err = patch.NewGithubIntent(s.ctx, "another_id", "auto", "", "", "4aa79c5e7ef7af351764b843a2c05fab98c23881", pr)
 
 	s.NoError(err)
 	s.Require().NotNil(intent)
@@ -1302,7 +1302,7 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 	s.gridFSFileExists(dbPatch.Patches[0].PatchSet.PatchFileId)
 
 	out := []event.Subscription{}
-	s.NoError(db.FindAllQContext(s.ctx, event.SubscriptionsCollection, db.Query(bson.M{}), &out))
+	s.NoError(db.FindAllQ(s.ctx, event.SubscriptionsCollection, db.Query(bson.M{}), &out))
 	s.Require().Empty(out)
 }
 
@@ -1370,7 +1370,7 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntentWithoutFinalizing() {
 	s.gridFSFileExists(dbPatch.Patches[0].PatchSet.PatchFileId)
 
 	out := []event.Subscription{}
-	s.NoError(db.FindAllQContext(s.ctx, event.SubscriptionsCollection, db.Query(bson.M{}), &out))
+	s.NoError(db.FindAllQ(s.ctx, event.SubscriptionsCollection, db.Query(bson.M{}), &out))
 	s.Require().Empty(out)
 }
 
@@ -1492,7 +1492,7 @@ func (s *PatchIntentUnitsSuite) TestRunInDegradedModeWithGithubIntent() {
 	}
 	s.NoError(evergreen.SetServiceFlags(s.ctx, flags))
 
-	intent, err := patch.NewGithubIntent("1", "", "", "", "", testutil.NewGithubPR(s.prNumber, s.repo, s.baseHash, s.headRepo, s.hash, "tychoish", "title1"))
+	intent, err := patch.NewGithubIntent(s.ctx, "1", "", "", "", "", testutil.NewGithubPR(s.prNumber, s.repo, s.baseHash, s.headRepo, s.hash, "tychoish", "title1"))
 	s.NoError(err)
 	s.NotNil(intent)
 	s.NoError(intent.Insert(s.ctx))
@@ -1510,7 +1510,7 @@ func (s *PatchIntentUnitsSuite) TestRunInDegradedModeWithGithubIntent() {
 	s.NoError(err)
 	s.Nil(patchDoc)
 
-	unprocessedIntents, err := patch.FindUnprocessedGithubIntents()
+	unprocessedIntents, err := patch.FindUnprocessedGithubIntents(s.ctx)
 	s.Require().NoError(err)
 	s.Require().Len(unprocessedIntents, 1)
 
@@ -1524,7 +1524,7 @@ func (s *PatchIntentUnitsSuite) TestGithubPRTestFromUnknownUserDoesntCreateVersi
 	s.Require().NoError(evergreen.SetServiceFlags(s.ctx, flags))
 
 	testutil.ConfigureIntegrationTest(s.T(), s.env.Settings())
-	intent, err := patch.NewGithubIntent("1", "", "", "", "", testutil.NewGithubPR(s.prNumber, "evergreen-ci/evergreen", s.baseHash, s.headRepo, "8a425038834326c212d65289e0c9e80e48d07e7e", "octocat", "title1"))
+	intent, err := patch.NewGithubIntent(s.ctx, "1", "", "", "", "", testutil.NewGithubPR(s.prNumber, "evergreen-ci/evergreen", s.baseHash, s.headRepo, "8a425038834326c212d65289e0c9e80e48d07e7e", "octocat", "title1"))
 	s.NoError(err)
 	s.NotNil(intent)
 	s.NoError(intent.Insert(s.ctx))
@@ -1546,7 +1546,7 @@ func (s *PatchIntentUnitsSuite) TestGithubPRTestFromUnknownUserDoesntCreateVersi
 	s.NoError(err)
 	s.Nil(versionDoc)
 
-	unprocessedIntents, err := patch.FindUnprocessedGithubIntents()
+	unprocessedIntents, err := patch.FindUnprocessedGithubIntents(s.ctx)
 	s.NoError(err)
 	s.Require().Empty(unprocessedIntents)
 }

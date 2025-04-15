@@ -14,7 +14,7 @@ import (
 func TestFindByNeedsTermination(t *testing.T) {
 	for tName, tCase := range map[string]func(t *testing.T){
 		"ReturnsEmptyForNoMatches": func(t *testing.T) {
-			pods, err := FindByNeedsTermination()
+			pods, err := FindByNeedsTermination(t.Context())
 			assert.NoError(t, err)
 			assert.Empty(t, pods)
 		},
@@ -44,7 +44,7 @@ func TestFindByNeedsTermination(t *testing.T) {
 			}
 			require.NoError(t, startingPod.Insert(t.Context()))
 
-			pods, err := FindByNeedsTermination()
+			pods, err := FindByNeedsTermination(t.Context())
 			require.NoError(t, err)
 			require.Len(t, pods, 1)
 			assert.Equal(t, stalePod.ID, pods[0].ID)
@@ -56,7 +56,7 @@ func TestFindByNeedsTermination(t *testing.T) {
 			}
 			require.NoError(t, decommissionedPod.Insert(t.Context()))
 
-			pods, err := FindByNeedsTermination()
+			pods, err := FindByNeedsTermination(t.Context())
 			require.NoError(t, err)
 			require.Len(t, pods, 1)
 			assert.Equal(t, decommissionedPod.ID, pods[0].ID)
@@ -71,7 +71,7 @@ func TestFindByNeedsTermination(t *testing.T) {
 			}
 			require.NoError(t, decommissionedPodWithTask.Insert(t.Context()))
 
-			pods, err := FindByNeedsTermination()
+			pods, err := FindByNeedsTermination(t.Context())
 			require.NoError(t, err)
 			require.Empty(t, pods)
 		},
@@ -85,7 +85,7 @@ func TestFindByNeedsTermination(t *testing.T) {
 			}
 			require.NoError(t, stalePod.Insert(t.Context()))
 
-			pods, err := FindByNeedsTermination()
+			pods, err := FindByNeedsTermination(t.Context())
 			require.NoError(t, err)
 			require.Len(t, pods, 1)
 			assert.Equal(t, stalePod.ID, pods[0].ID)
@@ -105,7 +105,7 @@ func TestFindByNeedsTermination(t *testing.T) {
 func TestFindByInitializing(t *testing.T) {
 	for tName, tCase := range map[string]func(t *testing.T){
 		"ReturnsEmptyForNoMatches": func(t *testing.T) {
-			pods, err := FindByInitializing()
+			pods, err := FindByInitializing(t.Context())
 			assert.NoError(t, err)
 			assert.Empty(t, pods)
 		},
@@ -128,7 +128,7 @@ func TestFindByInitializing(t *testing.T) {
 			}
 			require.NoError(t, p3.Insert(t.Context()))
 
-			pods, err := FindByInitializing()
+			pods, err := FindByInitializing(t.Context())
 			require.NoError(t, err)
 			require.Len(t, pods, 2)
 			assert.Equal(t, StatusInitializing, pods[0].Status)
@@ -287,7 +287,7 @@ func TestFindByFamily(t *testing.T) {
 				require.NoError(t, p.Insert(t.Context()))
 			}
 
-			dbPods, err := FindIntentByFamily(family)
+			dbPods, err := FindIntentByFamily(t.Context(), family)
 			require.NoError(t, err)
 			var numMatches int
 			for _, p := range dbPods {
@@ -307,7 +307,7 @@ func TestFindByFamily(t *testing.T) {
 				Family: "family",
 			}
 			require.NoError(t, p.Insert(t.Context()))
-			dbPods, err := FindIntentByFamily(p.Family)
+			dbPods, err := FindIntentByFamily(t.Context(), p.Family)
 			assert.NoError(t, err)
 			assert.Empty(t, dbPods)
 		},
@@ -318,12 +318,12 @@ func TestFindByFamily(t *testing.T) {
 				Family: "family",
 			}
 			require.NoError(t, p.Insert(t.Context()))
-			dbPods, err := FindIntentByFamily("foo")
+			dbPods, err := FindIntentByFamily(t.Context(), "foo")
 			assert.NoError(t, err)
 			assert.Empty(t, dbPods)
 		},
 		"ReturnsNoErrorForNoMatchingPods": func(t *testing.T) {
-			dbPods, err := FindIntentByFamily("nonexistent")
+			dbPods, err := FindIntentByFamily(t.Context(), "nonexistent")
 			assert.NoError(t, err)
 			assert.Empty(t, dbPods)
 		},
@@ -351,7 +351,7 @@ func TestUpdateOneStatus(t *testing.T) {
 	}
 
 	checkEventLog := func(t *testing.T, p Pod) {
-		events, err := event.Find(event.MostRecentPodEvents(p.ID, 10))
+		events, err := event.Find(t.Context(), event.MostRecentPodEvents(p.ID, 10))
 		require.NoError(t, err)
 		require.Len(t, events, 1)
 		assert.Equal(t, p.ID, events[0].ResourceId)
@@ -452,7 +452,7 @@ func TestFindByLastCommunicatedBefore(t *testing.T) {
 			}
 			require.NoError(t, p.Insert(t.Context()))
 
-			found, err := FindByLastCommunicatedBefore(time.Now().Add(-10 * time.Minute))
+			found, err := FindByLastCommunicatedBefore(t.Context(), time.Now().Add(-10*time.Minute))
 			require.NoError(t, err)
 			require.Len(t, found, 1)
 			assert.Equal(t, p.ID, found[0].ID)
@@ -467,7 +467,7 @@ func TestFindByLastCommunicatedBefore(t *testing.T) {
 			}
 			require.NoError(t, p.Insert(t.Context()))
 
-			found, err := FindByLastCommunicatedBefore(time.Now().Add(-10 * time.Minute))
+			found, err := FindByLastCommunicatedBefore(t.Context(), time.Now().Add(-10*time.Minute))
 			require.NoError(t, err)
 			require.Len(t, found, 1)
 			assert.Equal(t, p.ID, found[0].ID)
@@ -521,7 +521,7 @@ func TestFindByLastCommunicatedBefore(t *testing.T) {
 				require.NoError(t, p.Insert(t.Context()))
 			}
 
-			found, err := FindByLastCommunicatedBefore(time.Now().Add(-10 * time.Minute))
+			found, err := FindByLastCommunicatedBefore(t.Context(), time.Now().Add(-10*time.Minute))
 			require.NoError(t, err)
 			require.Len(t, found, 2)
 			assert.ElementsMatch(t, []string{pods[2].ID, pods[4].ID}, []string{found[0].ID, found[1].ID})
@@ -536,7 +536,7 @@ func TestFindByLastCommunicatedBefore(t *testing.T) {
 			}
 			require.NoError(t, p.Insert(t.Context()))
 
-			found, err := FindByLastCommunicatedBefore(time.Now().Add(-10 * time.Minute))
+			found, err := FindByLastCommunicatedBefore(t.Context(), time.Now().Add(-10*time.Minute))
 			assert.NoError(t, err)
 			assert.Empty(t, found)
 		},
@@ -550,7 +550,7 @@ func TestFindByLastCommunicatedBefore(t *testing.T) {
 			}
 			require.NoError(t, p.Insert(t.Context()))
 
-			found, err := FindByLastCommunicatedBefore(time.Now().Add(-10 * time.Minute))
+			found, err := FindByLastCommunicatedBefore(t.Context(), time.Now().Add(-10*time.Minute))
 			assert.NoError(t, err)
 			assert.Empty(t, found)
 		},
@@ -564,7 +564,7 @@ func TestFindByLastCommunicatedBefore(t *testing.T) {
 			}
 			require.NoError(t, p.Insert(t.Context()))
 
-			found, err := FindByLastCommunicatedBefore(time.Now().Add(-10 * time.Minute))
+			found, err := FindByLastCommunicatedBefore(t.Context(), time.Now().Add(-10*time.Minute))
 			assert.NoError(t, err)
 			assert.Empty(t, found)
 		},
