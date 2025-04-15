@@ -130,7 +130,6 @@ func getBuildVariantFilterPipeline(ctx context.Context, variants []string, match
 			},
 		},
 	})
-	pipeline = append(pipeline, bson.M{"$project": bson.M{VersionBuildVariantsKey: 0}})
 	return pipeline, nil
 }
 
