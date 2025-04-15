@@ -70,6 +70,16 @@ func insertTestDocuments(ctx context.Context) error {
 			},
 			RunningTask: "foo",
 		},
+		Host{
+			Id:     "seven",
+			Status: evergreen.HostRunning,
+			Distro: distro.Distro{
+				Id:               "release",
+				Provider:         evergreen.ProviderNameStatic,
+				SingleTaskDistro: true,
+			},
+			StartedBy: evergreen.User,
+		},
 	}
 
 	return db.InsertMany(ctx, Collection, input...)
@@ -109,7 +119,7 @@ func TestHostStatsByDistro(t *testing.T) {
 	result := DistroStats{}
 
 	assert.NoError(db.Aggregate(t.Context(), Collection, statsByDistroPipeline(), &result))
-	assert.Len(result, 3, "%+v", result)
+	assert.Len(result, 4, "%+v", result)
 
 	rcmap := result.CountMap()
 	assert.Equal(2, rcmap["debian"])
@@ -122,6 +132,14 @@ func TestHostStatsByDistro(t *testing.T) {
 	exceeded := result.MaxHostsExceeded()
 	assert.Len(exceeded, 2)
 	assert.NotContains(exceeded, "bar")
+
+	for _, stat := range result {
+		if stat.Distro == "release" {
+			assert.True(stat.SingleTaskDistro)
+		} else {
+			assert.False(stat.SingleTaskDistro)
+		}
+	}
 
 	alt, err := GetStatsByDistro(t.Context())
 	assert.NoError(err)

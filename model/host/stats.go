@@ -25,6 +25,8 @@ type StatsByDistro struct {
 	NumTasks int `bson:"num_tasks_running" json:"num_tasks_running"`
 	// MaxHosts reports the pool size of the distro.
 	MaxHosts int `bson:"max_hosts" json:"max_hosts"`
+	// SingleTaskDistro is true if the distro is a single task distro.
+	SingleTaskDistro bool `bson:"single_task_distro" json:"single_task_distro"`
 }
 
 func (d *StatsByDistro) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(d) }
@@ -137,17 +139,21 @@ func statsByDistroPipeline() []bson.M {
 					// Grab any provider, since all hosts in a distro have the same provider
 					"$first": "$" + bsonutil.GetDottedKeyName(DistroKey, distro.ProviderKey),
 				},
+				"single_task_distro": bson.M{
+					"$first": "$" + bsonutil.GetDottedKeyName(DistroKey, distro.SingleTaskDistroKey),
+				},
 			},
 		},
 		{
 			"$project": bson.M{
-				"distro":            "$_id.distro",
-				"status":            "$_id.status",
-				"max_hosts":         1,
-				"count":             1,
-				"num_tasks_running": bson.M{"$size": "$tasks"},
-				"_id":               0,
-				"provider":          1,
+				"distro":             "$_id.distro",
+				"status":             "$_id.status",
+				"max_hosts":          1,
+				"count":              1,
+				"num_tasks_running":  bson.M{"$size": "$tasks"},
+				"_id":                0,
+				"provider":           1,
+				"single_task_distro": 1,
 			},
 		},
 	}
