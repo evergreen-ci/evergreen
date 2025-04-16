@@ -186,8 +186,9 @@ func (apiPatch *APIPatch) setBranch(ctx context.Context) {
 
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
-			"message": "could not get branch project",
-			"project": apiPatch.ProjectId,
+			"message":  "could not get branch project",
+			"project":  apiPatch.ProjectId,
+			"patch_id": utility.FromStringPtr(apiPatch.Id),
 		}))
 		return
 	}
@@ -202,8 +203,9 @@ func (apiPatch *APIPatch) GetIdentifier(ctx context.Context) {
 		identifier, err := model.GetIdentifierForProject(ctx, utility.FromStringPtr(apiPatch.ProjectId))
 
 		grip.Error(message.WrapError(err, message.Fields{
-			"message": "could not get identifier for project",
-			"project": apiPatch.ProjectId,
+			"message":  "could not get identifier for project",
+			"project":  apiPatch.ProjectId,
+			"patch_id": utility.FromStringPtr(apiPatch.Id),
 		}))
 
 		if err == nil && identifier != "" {

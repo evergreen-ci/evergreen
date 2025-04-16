@@ -122,7 +122,6 @@ type Patch struct {
 	Id                 mgobson.ObjectId `bson:"_id,omitempty"`
 	Description        string           `bson:"desc"`
 	Path               string           `bson:"path,omitempty"`
-	Project            string           `bson:"branch"`
 	Githash            string           `bson:"githash"`
 	Hidden             bool             `bson:"hidden"`
 	PatchNumber        int              `bson:"patch_number"`
@@ -143,7 +142,10 @@ type Patch struct {
 	// tasks/variants are now scheduled to run). If true, the patch has been
 	// finalized.
 	Activated bool `bson:"activated"`
-	// Branch contains the branch that the project tracks.
+	// Project contains the project ID for the patch. The bson tag here is `branch` due to legacy usage.
+	Project string `bson:"branch"`
+	// Branch contains the branch that the project tracks. The tag `branch_name` is
+	// used to avoid conflict with legacy usage of the Project field.
 	Branch string `bson:"branch_name" json:"branch_name,omitempty"`
 	// ProjectStorageMethod describes how the parser project is stored for this
 	// patch before it's finalized. This field is only set while the patch is

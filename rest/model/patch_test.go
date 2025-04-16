@@ -104,14 +104,14 @@ func TestAPIPatch(t *testing.T) {
 }
 
 func TestAPIPatchIncludeBranch(t *testing.T) {
-	// TODO DEVPROD-1682: remove, since this tests backwards compatibility behavior.
+	// TODO DEVPROD-16824: remove, since this tests backwards compatibility behavior.
 	assert.NoError(t, db.ClearCollections(model.ProjectRefCollection))
 	pRef := model.ProjectRef{
 		Id:         "mci",
 		Identifier: "evergreen",
 		Branch:     "main",
 	}
-	assert.NoError(t, pRef.Insert())
+	assert.NoError(t, pRef.Insert(context.Background()))
 	p := patch.Patch{
 		Id:          mgobson.NewObjectId(),
 		Description: "test",
