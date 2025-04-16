@@ -3447,6 +3447,38 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 			So(len(errs), ShouldEqual, 1)
 			So(errs[0].Message, ShouldContainSubstring, "project not specified, skipping single task distro validation")
 		})
+
+		Convey("error should be thrown for single task distros "+
+			"that use generate tasks", func() {
+			project := &model.Project{
+				Identifier: "project",
+				BuildVariants: []model.BuildVariant{
+					{
+						Name:  "bv",
+						RunOn: []string{"singleTaskDistro"},
+						Tasks: []model.BuildVariantTaskUnit{
+							{
+								Name: "allowedSingleTask",
+							},
+						},
+					},
+				},
+				Tasks: []model.ProjectTask{
+					{
+						Name: "allowedSingleTask",
+						Commands: []model.PluginCommandConf{
+							{
+								Command: "generate.tasks",
+							},
+						},
+					},
+				},
+			}
+			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroWhitelist, nil)
+			So(errs, ShouldNotResemble, ValidationErrors{})
+			So(len(errs), ShouldEqual, 1)
+			So(errs[0].Message, ShouldContainSubstring, "task 'allowedSingleTask' in buildvariant 'bv' runs on a single task distro 'singleTaskDistro' and cannot use the generate tasks")
+		})
 	})
 }
 
