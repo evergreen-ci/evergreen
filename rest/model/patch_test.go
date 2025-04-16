@@ -78,6 +78,7 @@ func TestAPIPatch(t *testing.T) {
 	assert.Equal(p.Id.Hex(), utility.FromStringPtr(a.Id))
 	assert.Equal(p.Description, utility.FromStringPtr(a.Description))
 	assert.Equal(p.Project, utility.FromStringPtr(a.ProjectId))
+	assert.Equal(p.Project, utility.FromStringPtr(a.LegacyProjectId))
 	assert.Equal(pRef.Identifier, utility.FromStringPtr(a.ProjectIdentifier))
 	assert.Equal(p.Branch, utility.FromStringPtr(a.Branch))
 	assert.Equal(p.Githash, utility.FromStringPtr(a.Githash))
@@ -126,6 +127,7 @@ func TestAPIPatchIncludeBranch(t *testing.T) {
 
 	assert.Equal(t, p.Id.Hex(), utility.FromStringPtr(a.Id))
 	assert.Equal(t, p.Project, utility.FromStringPtr(a.ProjectId))
+	assert.Equal(t, p.Project, utility.FromStringPtr(a.LegacyProjectId))
 	assert.Equal(t, pRef.Branch, utility.FromStringPtr(a.Branch))
 
 }

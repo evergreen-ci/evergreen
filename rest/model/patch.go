@@ -24,11 +24,13 @@ type APIPatch struct {
 	// Description of the patch
 	Description *string `json:"description"`
 	// Immutable ID for the project
-	ProjectId *string `json:"project_id"`
+	ProjectId       *string `json:"project_id"`
+	LegacyProjectId *string `json:"branch"` // this is also the project ID, but is deprecated, and shouldn't be used anymore. We support this for backwards compatibility.
 	// Identifier for the project
 	ProjectIdentifier *string `json:"project_identifier"`
-	// The branch on which the patch was initiated
-	Branch *string `json:"branch"`
+
+	// The branch on which the patch was initiated. The tag is `branch_name` to avoid legacy conflict.
+	Branch *string `json:"branch_name"`
 	// Hash of commit off which the patch was initiated
 	Githash *string `json:"git_hash"`
 	// Incrementing counter of user's patches
@@ -218,6 +220,7 @@ func (apiPatch *APIPatch) buildBasePatch(p patch.Patch) {
 	apiPatch.Id = utility.ToStringPtr(p.Id.Hex())
 	apiPatch.Description = utility.ToStringPtr(p.Description)
 	apiPatch.ProjectId = utility.ToStringPtr(p.Project)
+	apiPatch.LegacyProjectId = utility.ToStringPtr(p.Project)
 	apiPatch.Branch = utility.ToStringPtr(p.Branch)
 	apiPatch.Githash = utility.ToStringPtr(p.Githash)
 	apiPatch.PatchNumber = p.PatchNumber
