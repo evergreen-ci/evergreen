@@ -352,7 +352,7 @@ We do limit the [number of included files](../Reference/Limits#include-limits) t
 An alternative to relying on Evergreen for including the files would be to use `evergreen evaluate` as a pre-commit hook. 
 [This command](#Validating-changes-to-config-files) generates the effective project yaml from all the include files and remove the includes list, 
 so you could have one "generated" yaml that's committed to your repo to use for Evergreen testing that doesn't need to pull files from GitHub.
-**Note that files included from modules aren't supported right now.** If you have questions about this please reach out.
+Note that files included from modules aren't supported right now for the `evaluate` command. If you have questions about this please reach out.
 
 #### Merging Rules
 
