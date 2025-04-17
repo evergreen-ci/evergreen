@@ -318,13 +318,10 @@ func FindOneQ(collection string, q Q, out any) error {
 // FindOneQContext runs a Q query against the given collection, applying the results to "out."
 // Only reads one document from the DB.
 func FindOneQContext(ctx context.Context, collection string, q Q, out any) error {
-	val, found := findFromCache(ctx, collection, q)
+	_, found := findFromCache(ctx, collection, q)
 	trace.SpanFromContext(ctx).SetAttributes(
 		attribute.Bool("evergreen.db.deduplicatecall", found),
 	)
-	if found {
-		return errors.Wrap(setObject(out, val), "getting object from cache")
-	}
 
 	if q.maxTime > 0 {
 		var cancel context.CancelFunc
