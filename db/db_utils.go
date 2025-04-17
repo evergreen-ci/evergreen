@@ -318,8 +318,7 @@ func FindOneQ(collection string, q Q, out any) error {
 func FindOneQContext(ctx context.Context, collection string, q Q, out any) error {
 	t, found := findFromCache(ctx, collection, q)
 	if found {
-		setObject(out, t)
-		return nil
+		return errors.Wrap(setObject(out, t), "getting object from cache")
 	}
 
 	if q.maxTime > 0 {
