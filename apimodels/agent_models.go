@@ -137,7 +137,6 @@ type EndTaskResponse struct {
 
 type CreateHost struct {
 	// agent-controlled settings
-	CloudProvider       string `mapstructure:"provider" json:"provider" yaml:"provider" plugin:"expand"`
 	NumHosts            string `mapstructure:"num_hosts" json:"num_hosts" yaml:"num_hosts" plugin:"expand"`
 	Scope               string `mapstructure:"scope" json:"scope" yaml:"scope" plugin:"expand"`
 	SetupTimeoutSecs    int    `mapstructure:"timeout_setup_secs" json:"timeout_setup_secs" yaml:"timeout_setup_secs"`

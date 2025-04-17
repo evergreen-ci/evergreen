@@ -63,7 +63,6 @@ func TestMakeHost(t *testing.T) {
 	// spawn an evergreen distro
 	c := apimodels.CreateHost{
 		Distro:              "archlinux-test",
-		CloudProvider:       "ec2",
 		NumHosts:            "1",
 		Scope:               "task",
 		SetupTimeoutSecs:    600,
@@ -110,7 +109,6 @@ func TestMakeHost(t *testing.T) {
 	require.NoError(myTask.Insert(t.Context()))
 	c = apimodels.CreateHost{
 		Distro:              "archlinux-test",
-		CloudProvider:       "ec2",
 		NumHosts:            "1",
 		Scope:               "build",
 		SetupTimeoutSecs:    600,
@@ -137,7 +135,6 @@ func TestMakeHost(t *testing.T) {
 	// Using an alias should resolve to the actual distro
 	c = apimodels.CreateHost{
 		Distro:              "archlinux-alias",
-		CloudProvider:       "ec2",
 		NumHosts:            "1",
 		Scope:               "task",
 		SetupTimeoutSecs:    600,
@@ -167,7 +164,6 @@ func TestMakeHost(t *testing.T) {
 	// override some evergreen distro settings
 	c = apimodels.CreateHost{
 		Distro:              "archlinux-test",
-		CloudProvider:       "ec2",
 		NumHosts:            "1",
 		Scope:               "task",
 		SetupTimeoutSecs:    600,
@@ -206,7 +202,6 @@ func TestMakeHost(t *testing.T) {
 	// bring your own ami
 	c = apimodels.CreateHost{
 		AMI:                 "ami-654321",
-		CloudProvider:       "ec2",
 		NumHosts:            "1",
 		Scope:               "task",
 		SetupTimeoutSecs:    600,
@@ -243,7 +238,6 @@ func TestMakeHost(t *testing.T) {
 	require.NoError(d.ReplaceOne(ctx))
 	c = apimodels.CreateHost{
 		Distro:              "archlinux-test",
-		CloudProvider:       "ec2",
 		NumHosts:            "1",
 		Scope:               "task",
 		SetupTimeoutSecs:    600,
@@ -313,7 +307,6 @@ func TestHostCreateHandler(t *testing.T) {
 
 	c := apimodels.CreateHost{
 		Distro:              "archlinux-test",
-		CloudProvider:       "ec2",
 		NumHosts:            "3",
 		Scope:               "task",
 		Subnet:              "sub",
