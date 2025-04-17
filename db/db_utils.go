@@ -316,9 +316,9 @@ func FindOneQ(collection string, q Q, out any) error {
 // FindOneQContext runs a Q query against the given collection, applying the results to "out."
 // Only reads one document from the DB.
 func FindOneQContext(ctx context.Context, collection string, q Q, out any) error {
-	t, found := findFromCache(ctx, collection, q)
+	val, found := findFromCache(ctx, collection, q)
 	if found {
-		return errors.Wrap(setObject(out, t), "getting object from cache")
+		return errors.Wrap(setObject(out, val), "getting object from cache")
 	}
 
 	if q.maxTime > 0 {
