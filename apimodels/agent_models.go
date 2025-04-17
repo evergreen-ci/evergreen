@@ -3,7 +3,6 @@ package apimodels
 import (
 	"context"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -15,8 +14,6 @@ import (
 )
 
 const (
-	ProviderEC2                     = "ec2"
-	ProviderDocker                  = "docker"
 	ScopeTask                       = "task"
 	ScopeBuild                      = "build"
 	DefaultSetupTimeoutSecs         = 600
@@ -161,23 +158,6 @@ type CreateHost struct {
 	// UserdataCommand is the content of the userdata file. Users can't actually
 	// set this directly, instead they pass in a userdata file.
 	UserdataCommand string `json:"userdata_command" yaml:"userdata_command" plugin:"expand"`
-
-	// docker-related settings
-	Image                    string           `mapstructure:"image" json:"image" yaml:"image" plugin:"expand"`
-	Command                  string           `mapstructure:"command" json:"command" yaml:"command" plugin:"expand"`
-	PublishPorts             bool             `mapstructure:"publish_ports" json:"publish_ports" yaml:"publish_ports"`
-	Registry                 RegistrySettings `mapstructure:"registry" json:"registry" yaml:"registry" plugin:"expand"`
-	Background               bool             `mapstructure:"background" json:"background" yaml:"background"` // default is true
-	ContainerWaitTimeoutSecs int              `mapstructure:"container_wait_timeout_secs" json:"container_wait_timeout_secs" yaml:"container_wait_timeout_secs"`
-	PollFrequency            int              `mapstructure:"poll_frequency_secs" json:"poll_frequency_secs" yaml:"poll_frequency_secs"` // poll frequency in seconds
-	StdinFile                string           `mapstructure:"stdin_file_name" json:"stdin_file_name" yaml:"stdin_file_name" plugin:"expand"`
-	// StdinFileContents is the full file content of the StdinFile on the host,
-	// which is then sent to the app server.
-	StdinFileContents []byte            `mapstructure:"-" json:"stdin_file_contents" yaml:"-"`
-	StdoutFile        string            `mapstructure:"stdout_file_name" json:"stdout_file_name" yaml:"stdout_file_name" plugin:"expand"`
-	StderrFile        string            `mapstructure:"stderr_file_name" json:"stderr_file_name" yaml:"stderr_file_name" plugin:"expand"`
-	EnvironmentVars   map[string]string `mapstructure:"environment_vars" json:"environment_vars" yaml:"environment_vars" plugin:"expand"`
-	ExtraHosts        []string          `mapstructure:"extra_hosts" json:"extra_hosts" yaml:"extra_hosts" plugin:"expand"`
 }
 
 type EbsDevice struct {
@@ -250,39 +230,6 @@ func (ted *TaskEndDetail) IsEmpty() bool {
 	return ted == nil || ted.Status == ""
 }
 
-func (ch *CreateHost) validateDocker() error {
-	catcher := grip.NewBasicCatcher()
-
-	catcher.Add(ch.setNumHosts())
-	catcher.Add(ch.validateAgentOptions())
-
-	catcher.NewWhen(ch.Image == "", "Docker image must be set")
-	catcher.NewWhen(ch.Distro == "", "must set a distro to run Docker container in")
-
-	if ch.ContainerWaitTimeoutSecs <= 0 {
-		ch.ContainerWaitTimeoutSecs = DefaultContainerWaitTimeoutSecs
-	} else if ch.ContainerWaitTimeoutSecs >= 3600 || ch.ContainerWaitTimeoutSecs <= 10 {
-		catcher.New("container wait timeout (seconds) must be between 10 and 3600 seconds")
-	}
-
-	if ch.PollFrequency <= 0 {
-		ch.PollFrequency = DefaultPollFrequency
-	} else if ch.PollFrequency > 60 {
-		catcher.New("poll frequency must not be greater than 60 seconds")
-	}
-
-	if (ch.Registry.Username != "" && ch.Registry.Password == "") ||
-		(ch.Registry.Username == "" && ch.Registry.Password != "") {
-		catcher.New("username and password must both be set or unset")
-	}
-
-	for _, h := range ch.ExtraHosts {
-		catcher.ErrorfWhen(len(strings.Split(h, ":")) != 2, "extra host '%s' must be of the form hostname:IP", h)
-	}
-
-	return catcher.Resolve()
-}
-
 func (ch *CreateHost) validateEC2() error {
 	catcher := grip.NewBasicCatcher()
 
@@ -346,33 +293,21 @@ func (ch *CreateHost) setNumHosts() error {
 	if ch.NumHosts == "" {
 		ch.NumHosts = "1"
 	}
-	if ch.CloudProvider == ProviderDocker && ch.NumHosts != "1" {
-		return errors.Errorf("num hosts cannot be greater than 1 for cloud provider '%s'", ProviderDocker)
-	} else {
-		numHosts, err := strconv.Atoi(ch.NumHosts)
-		if err != nil {
-			return errors.Wrapf(err, "parsing num hosts specification '%s' as an int", ch.NumHosts)
-		}
-		if numHosts > 10 || numHosts < 0 {
-			return errors.New("num hosts must be between 1 and 10")
-		} else if numHosts == 0 {
-			ch.NumHosts = "1"
-		}
+
+	numHosts, err := strconv.Atoi(ch.NumHosts)
+	if err != nil {
+		return errors.Wrapf(err, "parsing num hosts specification '%s' as an int", ch.NumHosts)
+	}
+	if numHosts > 10 || numHosts < 0 {
+		return errors.New("num hosts must be between 1 and 10")
+	} else if numHosts == 0 {
+		ch.NumHosts = "1"
 	}
 	return nil
 }
 
 func (ch *CreateHost) Validate(ctx context.Context) error {
-	if ch.CloudProvider == ProviderEC2 || ch.CloudProvider == "" { //default
-		ch.CloudProvider = ProviderEC2
-		return ch.validateEC2()
-	}
-
-	if ch.CloudProvider == ProviderDocker {
-		return ch.validateDocker()
-	}
-
-	return errors.Errorf("cloud provider must be either '%s' or '%s'", ProviderEC2, ProviderDocker)
+	return ch.validateEC2()
 }
 
 func (ch *CreateHost) Expand(exp *util.Expansions) error {
