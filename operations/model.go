@@ -13,8 +13,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/client"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/kardianos/osext"
-	"github.com/mitchellh/go-homedir"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
@@ -37,13 +37,7 @@ type ClientProjectConf struct {
 func findConfigFilePath(fn string) (string, error) {
 	currentBinPath, _ := osext.Executable()
 
-	userHome, err := homedir.Dir()
-	if err != nil {
-		// workaround for cygwin if we're on windows but couldn't get a homedir
-		if runtime.GOOS == "windows" && len(os.Getenv("HOME")) > 0 {
-			userHome = os.Getenv("HOME")
-		}
-	}
+	userHome, _ := util.GetUserHome()
 
 	if fn != "" {
 		if isValidPath(fn) {
