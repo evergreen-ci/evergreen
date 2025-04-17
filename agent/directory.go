@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/globals"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/utility"
+	"github.com/mitchellh/go-homedir"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
@@ -300,11 +301,13 @@ func (a *Agent) SetHomeDirectory() {
 		return
 	}
 
-	usr, err := user.Current()
+	userHome, err := homedir.Dir()
 	if err != nil {
-		grip.Warning(errors.Wrap(err, "getting current user to set the home directory"))
-		return
+		// workaround for cygwin if we're on windows but couldn't get a homedir
+		if runtime.GOOS == "windows" && len(os.Getenv("HOME")) > 0 {
+			userHome = os.Getenv("HOME")
+		}
 	}
 
-	a.opts.HomeDirectory = usr.HomeDir
+	a.opts.HomeDirectory = userHome
 }

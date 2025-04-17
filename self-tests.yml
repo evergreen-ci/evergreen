@@ -691,10 +691,6 @@ tasks:
       - command: shell.exec
         params:
           script: |
-            # TODO (DEVPROD-15806): removing these files is a temporary workaround to ensure the git
-            # configuration/credentials files are clean on Windows. Once DEVPROD-15806 is addressed, this can be removed.
-            rm -f ~/.gitconfig
-            rm -f ~/.git-credentials
             # Set GitHub app dynamic token to ensure it can clone non-public repos for Go modules.
             git config --global url."https://x-access-token:${github_token}@github.com/evergreen-ci/".insteadOf https://github.com/evergreen-ci/
       - command: subprocess.exec
