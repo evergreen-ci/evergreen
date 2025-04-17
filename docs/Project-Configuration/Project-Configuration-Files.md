@@ -1489,8 +1489,7 @@ Parameters:
     handler](#timeout-handler).
 -   `callback_timeout_secs`: set a timeout for the `timeout` block. Defaults to
     15 minutes.
--   `share_processes`: by default, processes and Docker state changes
-    (e.g. containers, images, volumes) are cleaned up between each
+-   `share_processes`: by default, processes are cleaned up between each
     task's execution. If this is set to true, cleanup will be deferred
     until the task group is finished. Defaults to false.
 
