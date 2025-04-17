@@ -653,6 +653,7 @@ const (
 	DefaultDatabaseReadMode  = "majority"
 
 	DefaultAmboyDatabaseURL = "mongodb://localhost:27017"
+	DefaultCedarDatabaseURL = "mongodb://localhost:27017"
 
 	// version requester types
 	PatchVersionRequester       = "patch_request"

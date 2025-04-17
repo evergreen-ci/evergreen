@@ -9,6 +9,7 @@ import (
 )
 
 type CedarConfig struct {
+	DbURL       string `bson:"db_url" json:"db_url" yaml:"db_url"`
 	BaseURL     string `bson:"base_url" json:"base_url" yaml:"base_url"`
 	GRPCBaseURL string `bson:"grpc_base_url" json:"grpc_base_url" yaml:"grpc_base_url"`
 	RPCPort     string `bson:"rpc_port" json:"rpc_port" yaml:"rpc_port"`

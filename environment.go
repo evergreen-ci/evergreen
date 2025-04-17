@@ -252,6 +252,7 @@ func NewEnvironment(ctx context.Context, confPath, versionID, clientS3Bucket str
 		catcher.Add(e.initDB(ctx, e.settings.Database, tracer))
 	}
 
+	catcher.Add(e.initCedarDB(ctx, tracer))
 	catcher.Add(e.initJasper(ctx, tracer))
 	catcher.Add(e.initDepot(ctx, tracer))
 	catcher.Add(e.initParameterManager(ctx, tracer))
@@ -284,6 +285,7 @@ type envState struct {
 	settings                *Settings
 	dbName                  string
 	client                  *mongo.Client
+	cedarClient             *mongo.Client
 	sharedDBClient          *mongo.Client
 	mu                      sync.RWMutex
 	clientConfig            *ClientConfig
@@ -398,6 +400,24 @@ func (e *envState) initDB(ctx context.Context, settings DBSettings, tracer trace
 			return errors.Wrap(err, "connecting to the shared Evergreen database")
 		}
 	}
+
+	return nil
+}
+
+func (e *envState) initCedarDB(ctx context.Context, tracer trace.Tracer) error {
+	_, span := tracer.Start(ctx, "InitCedarDB")
+	defer span.End()
+
+	var err error
+	url := e.settings.Cedar.DbURL
+	if url == "" {
+		url = DefaultCedarDatabaseURL
+	}
+	client, err := mongo.Connect(ctx, e.settings.Database.mongoOptions(url))
+	if err != nil {
+		return errors.Wrap(err, "connecting to the Cedar database")
+	}
+	e.cedarClient = client
 
 	return nil
 }
