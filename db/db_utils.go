@@ -20,6 +20,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 var (
@@ -317,6 +319,9 @@ func FindOneQ(collection string, q Q, out any) error {
 // Only reads one document from the DB.
 func FindOneQContext(ctx context.Context, collection string, q Q, out any) error {
 	val, found := findFromCache(ctx, collection, q)
+	trace.SpanFromContext(ctx).SetAttributes(
+		attribute.Bool("evergreen.db.deduplicatecall", found),
+	)
 	if found {
 		return errors.Wrap(setObject(out, val), "getting object from cache")
 	}
