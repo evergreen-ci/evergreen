@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"errors"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/mongodb/anser/db"
 )
