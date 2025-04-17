@@ -32,9 +32,8 @@ var (
 	VersionParametersKey  = bsonutil.MustHaveTag(Version{}, "Parameters")
 	VersionBuildIdsKey    = bsonutil.MustHaveTag(Version{}, "BuildIds")
 	// VersionBuildVariantsKey can be a large array. Prefer to exclude it from
-	// queries unless explicitly needed. Otherwise, use
-	// (Version).GetBuildVariants to fetch the build variants lazily when
-	// needed.
+	// queries unless it's needed. Otherwise, use (Version).GetBuildVariants to
+	// fetch the build variants lazily when needed.
 	VersionBuildVariantsKey                     = bsonutil.MustHaveTag(Version{}, "BuildVariants")
 	VersionRevisionOrderNumberKey               = bsonutil.MustHaveTag(Version{}, "RevisionOrderNumber")
 	VersionRequesterKey                         = bsonutil.MustHaveTag(Version{}, "Requester")

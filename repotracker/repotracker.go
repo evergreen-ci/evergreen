@@ -968,9 +968,6 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			"runner":             RunnerName,
 		})
 		v.BuildIds = append(v.BuildIds, b.Id)
-		// kim: TODO: ensure callers of createVersionItems load BuildVariants. I
-		// don't think it's needed here because this is the version before it's
-		// inserted in the transaction.
 		v.BuildVariants = append(v.BuildVariants, model.VersionBuildStatus{
 			BuildVariant:   buildvariant.Name,
 			BuildId:        b.Id,
