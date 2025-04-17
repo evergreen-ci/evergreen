@@ -6,7 +6,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
@@ -114,14 +113,6 @@ func (c *createHost) logAMI(ctx context.Context, comm client.Communicator, logge
 	}
 
 	logger.Task().Infof("host.create: using AMI '%s' (for distro '%s').", ami, c.CreateHost.Distro)
-}
-
-type logBatchInfo struct {
-	hostID     string
-	outFile    *os.File
-	errFile    *os.File
-	batchStart time.Time
-	batchEnd   time.Time
 }
 
 func (c *createHost) populateUserdata() error {
