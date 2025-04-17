@@ -41,10 +41,12 @@ func (s *localService) AppendTestResults(ctx context.Context, results []TestResu
 		ids[id] = append(ids[id], result)
 	}
 
+	catcher := grip.NewBasicCatcher()
 	for id, results := range ids {
-		if err := s.appendResults(ctx, results, id); err != nil {
-			return err
-		}
+		catcher.Add(s.appendResults(ctx, results, id))
+	}
+	if catcher.HasErrors() {
+		return errors.Wrap(catcher.Resolve(), "appending test results")
 	}
 
 	return nil
