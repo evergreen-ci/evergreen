@@ -261,6 +261,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	if pref == nil {
 		return errors.Errorf("project ref '%s' not found", patchDoc.Project)
 	}
+	patchDoc.Branch = pref.Branch
 
 	// hidden projects can only run PR patches
 	if !pref.Enabled && (j.IntentType != patch.GithubIntentType || !pref.IsHidden()) {

@@ -80,6 +80,7 @@ func FindPatchById(ctx context.Context, patchId string) (*restModel.APIPatch, er
 	err = apiPatch.BuildFromService(ctx, *p, &restModel.APIPatchArgs{
 		IncludeChildPatches:      true,
 		IncludeProjectIdentifier: true,
+		IncludeBranch:            true,
 	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "converting patch '%s' to API model", p.Id.Hex())
