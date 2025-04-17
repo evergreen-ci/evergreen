@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
-	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -275,14 +274,14 @@ func (p *Patch) ClearPatchData() {
 
 // FetchPatchFiles dereferences externally-stored patch diffs by fetching them from gridfs
 // and placing their contents into the patch object.
-func (p *Patch) FetchPatchFiles() error {
+func (p *Patch) FetchPatchFiles(ctx context.Context) error {
 	for i, patchPart := range p.Patches {
 		// If the patch isn't stored externally, no need to do anything.
 		if patchPart.PatchSet.PatchFileId == "" {
 			continue
 		}
 
-		rawStr, err := FetchPatchContents(patchPart.PatchSet.PatchFileId)
+		rawStr, err := FetchPatchContents(ctx, patchPart.PatchSet.PatchFileId)
 		if err != nil {
 			return errors.Wrapf(err, "getting patch contents for patchfile '%s'", patchPart.PatchSet.PatchFileId)
 		}
@@ -292,8 +291,8 @@ func (p *Patch) FetchPatchFiles() error {
 	return nil
 }
 
-func FetchPatchContents(patchfileID string) (string, error) {
-	fileReader, err := db.GetGridFile(GridFSPrefix, patchfileID)
+func FetchPatchContents(ctx context.Context, patchfileID string) (string, error) {
+	fileReader, err := db.GetGridFile(ctx, GridFSPrefix, patchfileID)
 	if err != nil {
 		return "", errors.Wrap(err, "getting grid file")
 	}
@@ -386,32 +385,6 @@ func (p *Patch) SetVariantsTasks(ctx context.Context, variantsTasks []VariantTas
 			},
 		},
 	)
-}
-
-// AddBuildVariants adds more buildvarints to a patch document.
-// This is meant to be used after initial patch creation.
-func (p *Patch) AddBuildVariants(bvs []string) error {
-	change := adb.Change{
-		Update: bson.M{
-			"$addToSet": bson.M{BuildVariantsKey: bson.M{"$each": bvs}},
-		},
-		ReturnNew: true,
-	}
-	_, err := db.FindAndModify(Collection, bson.M{IdKey: p.Id}, nil, change, p)
-	return err
-}
-
-// AddTasks adds more tasks to a patch document.
-// This is meant to be used after initial patch creation, to reconfigure the patch.
-func (p *Patch) AddTasks(tasks []string) error {
-	change := adb.Change{
-		Update: bson.M{
-			"$addToSet": bson.M{TasksKey: bson.M{"$each": tasks}},
-		},
-		ReturnNew: true,
-	}
-	_, err := db.FindAndModify(Collection, bson.M{IdKey: p.Id}, nil, change, p)
-	return err
 }
 
 // UpdateRepeatPatchId updates the repeat patch Id value to be used for subsequent pr patches

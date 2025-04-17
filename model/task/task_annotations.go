@@ -21,7 +21,7 @@ func MoveIssueToSuspectedIssue(ctx context.Context, taskId string, taskExecution
 	q := annotations.ByTaskIdAndExecution(taskId, taskExecution)
 	q[bsonutil.GetDottedKeyName(annotations.IssuesKey, annotations.IssueLinkIssueKey)] = issue.IssueKey
 	annotation := &annotations.TaskAnnotation{}
-	_, err := db.FindAndModify(
+	_, err := db.FindAndModify(ctx,
 		annotations.Collection,
 		q,
 		nil,
@@ -89,7 +89,7 @@ func AddIssueToAnnotation(ctx context.Context, taskId string, execution int, iss
 // associated task document as having annotations if this was the last issue removed from the annotation.
 func RemoveIssueFromAnnotation(ctx context.Context, taskId string, execution int, issue annotations.IssueLink) error {
 	annotation := &annotations.TaskAnnotation{}
-	_, err := db.FindAndModify(
+	_, err := db.FindAndModify(ctx,
 		annotations.Collection,
 		annotations.ByTaskIdAndExecution(taskId, execution),
 		nil,

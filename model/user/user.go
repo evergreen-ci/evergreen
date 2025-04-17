@@ -248,7 +248,7 @@ func (u *DBUser) AddPublicKey(ctx context.Context, keyName, keyValue string) err
 	return nil
 }
 
-func (u *DBUser) DeletePublicKey(keyName string) error {
+func (u *DBUser) DeletePublicKey(ctx context.Context, keyName string) error {
 	newUser := DBUser{}
 
 	selector := bson.M{
@@ -265,7 +265,7 @@ func (u *DBUser) DeletePublicKey(keyName string) error {
 		},
 		ReturnNew: true,
 	}
-	change, err := db.FindAndModify(Collection, selector, nil, c, &newUser)
+	change, err := db.FindAndModify(ctx, Collection, selector, nil, c, &newUser)
 
 	if err != nil {
 		return errors.Wrap(err, "couldn't delete public key from user")
@@ -277,7 +277,7 @@ func (u *DBUser) DeletePublicKey(keyName string) error {
 	return nil
 }
 
-func (u *DBUser) UpdatePublicKey(targetKeyName, newKeyName, newKeyValue string) error {
+func (u *DBUser) UpdatePublicKey(ctx context.Context, targetKeyName, newKeyName, newKeyValue string) error {
 	newUser := DBUser{}
 	targetKeySelector := bson.M{
 		IdKey: u.Id,
@@ -296,7 +296,7 @@ func (u *DBUser) UpdatePublicKey(targetKeyName, newKeyName, newKeyValue string) 
 		},
 		ReturnNew: true,
 	}
-	change, err := db.FindAndModify(Collection, targetKeySelector, nil, c, &newUser)
+	change, err := db.FindAndModify(ctx, Collection, targetKeySelector, nil, c, &newUser)
 	if err != nil {
 		return errors.Wrap(err, "updating public key from user")
 	}
@@ -314,9 +314,9 @@ func (u *DBUser) Insert(ctx context.Context) error {
 
 // IncPatchNumber increases the count for the user's patch submissions by one,
 // and then returns the new count.
-func (u *DBUser) IncPatchNumber() (int, error) {
+func (u *DBUser) IncPatchNumber(ctx context.Context) (int, error) {
 	dbUser := &DBUser{}
-	_, err := db.FindAndModify(
+	_, err := db.FindAndModify(ctx,
 		Collection,
 		bson.M{
 			IdKey: u.Id,
@@ -494,8 +494,8 @@ func (u *DBUser) HasDistroCreatePermission() bool {
 	})
 }
 
-func (u *DBUser) DeleteAllRoles() error {
-	info, err := db.FindAndModify(
+func (u *DBUser) DeleteAllRoles(ctx context.Context) error {
+	info, err := db.FindAndModify(ctx,
 		Collection,
 		bson.M{IdKey: u.Id},
 		nil,
@@ -513,11 +513,11 @@ func (u *DBUser) DeleteAllRoles() error {
 	return nil
 }
 
-func (u *DBUser) DeleteRoles(roles []string) error {
+func (u *DBUser) DeleteRoles(ctx context.Context, roles []string) error {
 	if len(roles) == 0 {
 		return nil
 	}
-	info, err := db.FindAndModify(
+	info, err := db.FindAndModify(ctx,
 		Collection,
 		bson.M{IdKey: u.Id},
 		nil,

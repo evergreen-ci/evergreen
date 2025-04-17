@@ -257,7 +257,7 @@ func TestGetPatchedProjectAndGetPatchedProjectConfig(t *testing.T) {
 				configPatch := resetProjectlessPatchSetup(ctx, t)
 
 				patchFileID := primitive.NewObjectID()
-				So(db.WriteGridFile(patch.GridFSPrefix, patchFileID.Hex(), strings.NewReader(configPatch.Patches[0].PatchSet.Patch)), ShouldBeNil)
+				So(db.WriteGridFile(t.Context(), patch.GridFSPrefix, patchFileID.Hex(), strings.NewReader(configPatch.Patches[0].PatchSet.Patch)), ShouldBeNil)
 				configPatch.Patches[0].PatchSet.Patch = ""
 				configPatch.Patches[0].PatchSet.PatchFileId = patchFileID.Hex()
 

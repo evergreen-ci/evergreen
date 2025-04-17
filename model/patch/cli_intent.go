@@ -106,7 +106,7 @@ var (
 func (c *cliIntent) Insert(ctx context.Context) error {
 	if len(c.PatchContent) > 0 {
 		patchFileID := mgobson.NewObjectId()
-		if err := db.WriteGridFile(GridFSPrefix, patchFileID.Hex(), strings.NewReader(c.PatchContent)); err != nil {
+		if err := db.WriteGridFile(ctx, GridFSPrefix, patchFileID.Hex(), strings.NewReader(c.PatchContent)); err != nil {
 			return err
 		}
 

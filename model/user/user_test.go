@@ -332,7 +332,7 @@ func (s *UserTestSuite) checkUserNotDestroyed(fromDB *DBUser, expected *DBUser) 
 }
 
 func (s *UserTestSuite) TestUpdatePublicKey() {
-	s.NoError(s.users[5].UpdatePublicKey("key1", "key1", "this is an amazing key"))
+	s.NoError(s.users[5].UpdatePublicKey(s.T().Context(), "key1", "key1", "this is an amazing key"))
 	s.Len(s.users[5].PubKeys, 1)
 	s.Contains(s.users[5].PubKeys[0].Name, "key1")
 	s.Contains(s.users[5].PubKeys[0].Key, "this is an amazing key")
@@ -343,7 +343,7 @@ func (s *UserTestSuite) TestUpdatePublicKey() {
 }
 
 func (s *UserTestSuite) TestUpdatePublicKeyWithSameKeyName() {
-	s.NoError(s.users[5].UpdatePublicKey("key1", "keyAmazing", "this is an amazing key"))
+	s.NoError(s.users[5].UpdatePublicKey(s.T().Context(), "key1", "keyAmazing", "this is an amazing key"))
 	s.Len(s.users[5].PubKeys, 1)
 	s.Contains(s.users[5].PubKeys[0].Name, "keyAmazing")
 	s.Contains(s.users[5].PubKeys[0].Key, "this is an amazing key")
@@ -354,7 +354,7 @@ func (s *UserTestSuite) TestUpdatePublicKeyWithSameKeyName() {
 }
 
 func (s *UserTestSuite) TestUpdatePublicKeyThatDoesntExist() {
-	s.Error(s.users[5].UpdatePublicKey("non-existent-key", "keyAmazing", "this is an amazing key"))
+	s.Error(s.users[5].UpdatePublicKey(s.T().Context(), "non-existent-key", "keyAmazing", "this is an amazing key"))
 	s.Len(s.users[5].PubKeys, 1)
 	s.Contains(s.users[5].PubKeys[0].Name, "key1")
 	s.Contains(s.users[5].PubKeys[0].Key, "ssh-mock 12345")
@@ -365,7 +365,7 @@ func (s *UserTestSuite) TestUpdatePublicKeyThatDoesntExist() {
 }
 
 func (s *UserTestSuite) TestDeletePublicKey() {
-	s.NoError(s.users[1].DeletePublicKey("key1"))
+	s.NoError(s.users[1].DeletePublicKey(s.T().Context(), "key1"))
 	s.Empty(s.users[1].PubKeys)
 	s.Equal("67890", s.users[1].APIKey)
 
@@ -375,7 +375,7 @@ func (s *UserTestSuite) TestDeletePublicKey() {
 }
 
 func (s *UserTestSuite) TestDeletePublicKeyThatDoesntExist() {
-	s.Error(s.users[0].DeletePublicKey("key1"))
+	s.Error(s.users[0].DeletePublicKey(s.T().Context(), "key1"))
 	s.Empty(s.users[0].PubKeys)
 	s.Equal("12345", s.users[0].APIKey)
 

@@ -121,7 +121,7 @@ func (uis *UIServer) diffPage(w http.ResponseWriter, r *http.Request) {
 			http.StatusInternalServerError)
 		return
 	}
-	if err = fullPatch.FetchPatchFiles(); err != nil {
+	if err = fullPatch.FetchPatchFiles(r.Context()); err != nil {
 		http.Error(w, fmt.Sprintf("finding patch files: %s", err.Error()),
 			http.StatusInternalServerError)
 		return
@@ -146,7 +146,7 @@ func (uis *UIServer) fileDiffPage(w http.ResponseWriter, r *http.Request) {
 			http.StatusInternalServerError)
 		return
 	}
-	if err = fullPatch.FetchPatchFiles(); err != nil {
+	if err = fullPatch.FetchPatchFiles(r.Context()); err != nil {
 		http.Error(w, fmt.Sprintf("error finding patch: %s", err.Error()),
 			http.StatusInternalServerError)
 	}
@@ -176,7 +176,7 @@ func (uis *UIServer) rawDiffPage(w http.ResponseWriter, r *http.Request) {
 			http.StatusInternalServerError)
 		return
 	}
-	if err = fullPatch.FetchPatchFiles(); err != nil {
+	if err = fullPatch.FetchPatchFiles(r.Context()); err != nil {
 		http.Error(w, fmt.Sprintf("error fetching patch files: %s", err.Error()),
 			http.StatusInternalServerError)
 		return

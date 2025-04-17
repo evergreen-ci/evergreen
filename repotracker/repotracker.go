@@ -703,7 +703,7 @@ func ShellVersionFromRevision(ctx context.Context, ref *model.ProjectRef, metada
 		metadata.User = usr
 	}
 
-	number, err := model.GetNewRevisionOrderNumber(ref.Id)
+	number, err := model.GetNewRevisionOrderNumber(ctx, ref.Id)
 	if err != nil {
 		return nil, err
 	}

@@ -1486,7 +1486,7 @@ func (s *PatchIntentUnitsSuite) verifyVersionDoc(patchDoc *patch.Patch, expected
 }
 
 func (s *PatchIntentUnitsSuite) gridFSFileExists(patchFileID string) {
-	patchContents, err := patch.FetchPatchContents(patchFileID)
+	patchContents, err := patch.FetchPatchContents(s.ctx, patchFileID)
 	s.Require().NoError(err)
 	s.NotEmpty(patchContents)
 }
@@ -1567,11 +1567,11 @@ index ca20f6c..224168e 100644
 +  new line",
 
 `
-	s.Require().NoError(db.WriteGridFile(patch.GridFSPrefix, "testPatch", strings.NewReader(patchString)))
+	s.Require().NoError(db.WriteGridFile(s.ctx, patch.GridFSPrefix, "testPatch", strings.NewReader(patchString)))
 
 	modulePatch := patch.ModulePatch{}
 	modulePatch.PatchSet.PatchFileId = "testPatch"
-	modulePatch, err := getModulePatch(modulePatch)
+	modulePatch, err := getModulePatch(s.ctx, modulePatch)
 	s.NotEmpty(modulePatch.PatchSet.Summary)
 	s.NoError(err)
 }

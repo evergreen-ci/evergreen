@@ -359,7 +359,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 
 	// set the patch number based on patch author
-	patchDoc.PatchNumber, err = j.user.IncPatchNumber()
+	patchDoc.PatchNumber, err = j.user.IncPatchNumber(ctx)
 	if err != nil {
 		return errors.Wrap(err, "computing patch number")
 	}
@@ -831,7 +831,7 @@ func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *p
 	}
 
 	if len(patchDoc.Patches) > 0 {
-		if patchDoc.Patches[0], err = getModulePatch(patchDoc.Patches[0]); err != nil {
+		if patchDoc.Patches[0], err = getModulePatch(ctx, patchDoc.Patches[0]); err != nil {
 			return errors.Wrap(err, "getting module patch from GridFS")
 		}
 	}
@@ -841,8 +841,8 @@ func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *p
 
 // getModulePatch reads the patch from GridFS, processes it, and
 // stores the resulting summaries in the returned ModulePatch
-func getModulePatch(modulePatch patch.ModulePatch) (patch.ModulePatch, error) {
-	patchContents, err := patch.FetchPatchContents(modulePatch.PatchSet.PatchFileId)
+func getModulePatch(ctx context.Context, modulePatch patch.ModulePatch) (patch.ModulePatch, error) {
+	patchContents, err := patch.FetchPatchContents(ctx, modulePatch.PatchSet.PatchFileId)
 	if err != nil {
 		return modulePatch, errors.Wrap(err, "fetching patch contents")
 	}
@@ -959,7 +959,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 		},
 	})
 
-	if err = db.WriteGridFile(patch.GridFSPrefix, patchFileID, strings.NewReader(patchContent)); err != nil {
+	if err = db.WriteGridFile(ctx, patch.GridFSPrefix, patchFileID, strings.NewReader(patchContent)); err != nil {
 		return isMember, errors.Wrap(err, "writing patch file to DB")
 	}
 
