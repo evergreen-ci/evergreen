@@ -5,13 +5,11 @@ import (
 	"fmt"
 	"io"
 	"strings"
-	"testing"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/pail"
 	"github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -258,22 +256,6 @@ func ReplaceContext(ctx context.Context, collection string, query any, replaceme
 
 // UpdateAllContext updates all matching documents in the collection.
 func UpdateAllContext(ctx context.Context, collection string, query any, update any) (*db.ChangeInfo, error) {
-	switch query.(type) {
-	case *Q, Q:
-		grip.EmergencyPanic(message.Fields{
-			"message":    "invalid query passed to update all",
-			"cause":      "programmer error",
-			"query":      query,
-			"collection": collection,
-		})
-	case nil:
-		grip.EmergencyPanic(message.Fields{
-			"message":    "nil query passed to update all",
-			"query":      query,
-			"collection": collection,
-		})
-	}
-
 	res, err := evergreen.GetEnvironment().DB().Collection(collection).UpdateMany(ctx,
 		query,
 		update,
@@ -305,22 +287,6 @@ func UpdateIdContext(ctx context.Context, collection string, id, update any) err
 // DEPRECATED (DEVPROD-15398): This is only here to support a cache
 // with Gimlet, use UpdateAllContext instead.
 func UpdateAll(collection string, query any, update any) (*db.ChangeInfo, error) {
-	switch query.(type) {
-	case *Q, Q:
-		grip.EmergencyPanic(message.Fields{
-			"message":    "invalid query passed to update all",
-			"cause":      "programmer error",
-			"query":      query,
-			"collection": collection,
-		})
-	case nil:
-		grip.EmergencyPanic(message.Fields{
-			"message":    "nil query passed to update all",
-			"query":      query,
-			"collection": collection,
-		})
-	}
-
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
 		grip.Errorf("error establishing db connection: %+v", err)
@@ -334,35 +300,6 @@ func UpdateAll(collection string, query any, update any) (*db.ChangeInfo, error)
 
 // Upsert run the specified update against the collection as an upsert operation.
 func Upsert(ctx context.Context, collection string, query any, update any) (*db.ChangeInfo, error) {
-	// Temporarily, we check if the document has a key beginning with '$', this would
-	// indicate a proper upsert operation. If not, it's a document intended for replacement.
-	// If the document is unable to be transformed (aka err != nil, e.g. a pipeline), we
-	// also default to an update operation.
-	// This will be removed in DEVPROD-16579.
-
-	doc, err := transformDocument(update)
-	if err != nil || hasDollarKey(doc) {
-		return upsert(ctx, collection, query, update)
-	}
-
-	msg := "upsert document must contain a key beginning with '$'"
-	grip.Debug(message.Fields{
-		"message": msg,
-		"error":   errors.New(msg),
-		"ticket":  "DEVPROD-16579",
-	})
-
-	// This is to prevent new tests from using the upsert operation as a replacement operation.
-	// This will be removed (as will the fallback completely) in DEVPROD-16579.
-	if testing.Testing() {
-		return nil, errors.New("CHANGE TO REPLACE")
-	}
-
-	return ReplaceContext(ctx, collection, query, update)
-}
-
-// Upsert run the specified update against the collection as an upsert operation.
-func upsert(ctx context.Context, collection string, query any, update any) (*db.ChangeInfo, error) {
 	res, err := evergreen.GetEnvironment().DB().Collection(collection).UpdateOne(
 		ctx,
 		query,
