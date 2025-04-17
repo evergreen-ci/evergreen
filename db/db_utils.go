@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/pail"
@@ -455,27 +454,4 @@ func Aggregate(ctx context.Context, collection string, pipeline any, out any) er
 	pipe := db.C(collection).Pipe(pipeline)
 
 	return errors.WithStack(pipe.All(out))
-}
-
-func transformDocument(val any) (bson.Raw, error) {
-	if val == nil {
-		return nil, errors.WithStack(mongo.ErrNilDocument)
-	}
-
-	b, err := bson.Marshal(val)
-	if err != nil {
-		return nil, mongo.MarshalError{Value: val, Err: err}
-	}
-
-	return bson.Raw(b), nil
-}
-
-// TODO: Use these because upsert is being used as upsert and replace, so we need to do the same
-// workaround we did for update and replace
-func hasDollarKey(doc bson.Raw) bool {
-	if elem, err := doc.IndexErr(0); err == nil && strings.HasPrefix(elem.Key(), "$") {
-		return true
-	}
-
-	return false
 }
