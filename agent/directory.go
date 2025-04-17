@@ -15,6 +15,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/agent/globals"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -300,11 +301,10 @@ func (a *Agent) SetHomeDirectory() {
 		return
 	}
 
-	usr, err := user.Current()
+	userHome, err := util.GetUserHome()
 	if err != nil {
-		grip.Warning(errors.Wrap(err, "getting current user to set the home directory"))
-		return
+		grip.Warning(errors.Wrap(err, "setting the agent's home directory"))
 	}
 
-	a.opts.HomeDirectory = usr.HomeDir
+	a.opts.HomeDirectory = userHome
 }

@@ -273,7 +273,6 @@ func (restapi restAPI) getVersionInfo(w http.ResponseWriter, r *http.Request) {
 	copyVersion(srcVersion, destVersion)
 	for _, buildStatus := range srcVersion.BuildVariants {
 		destVersion.BuildVariants = append(destVersion.BuildVariants, buildStatus.BuildVariant)
-		grip.Infof("adding BuildVariant %s", buildStatus.BuildVariant)
 	}
 
 	gimlet.WriteJSON(w, destVersion)
@@ -349,6 +348,7 @@ func (restapi restAPI) getVersionInfoViaRevision(w http.ResponseWriter, r *http.
 	projectId, err := model.GetIdForProject(r.Context(), projectName)
 	if err != nil {
 		gimlet.WriteJSONError(w, responseError{Message: "project doesn't exist"})
+		return
 	}
 	srcVersion, err := model.VersionFindOne(r.Context(), model.BaseVersionByProjectIdAndRevision(projectId, revision))
 	if err != nil || srcVersion == nil {
@@ -369,7 +369,6 @@ func (restapi restAPI) getVersionInfoViaRevision(w http.ResponseWriter, r *http.
 
 	for _, buildStatus := range srcVersion.BuildVariants {
 		destVersion.BuildVariants = append(destVersion.BuildVariants, buildStatus.BuildVariant)
-		grip.Infof("adding BuildVariant %s", buildStatus.BuildVariant)
 	}
 
 	gimlet.WriteJSON(w, destVersion)

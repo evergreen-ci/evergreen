@@ -3,15 +3,14 @@ package main
 import (
 	"os"
 	"path/filepath"
-	"runtime"
 
 	// this *must* be included in the binary so that the legacy
 	// plugins are built into the binary.
 	_ "github.com/evergreen-ci/evergreen/plugin"
+	"github.com/evergreen-ci/evergreen/util"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/operations"
-	"github.com/mitchellh/go-homedir"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/send"
@@ -69,13 +68,7 @@ func buildApp() *cli.App {
 		operations.PatchCancel(),
 	}
 
-	userHome, err := homedir.Dir()
-	if err != nil {
-		// workaround for cygwin if we're on windows but couldn't get a homedir
-		if runtime.GOOS == "windows" && len(os.Getenv("HOME")) > 0 {
-			userHome = os.Getenv("HOME")
-		}
-	}
+	userHome, _ := util.GetUserHome()
 	confPath := filepath.Join(userHome, evergreen.DefaultEvergreenConfig)
 
 	// These are global options. Use this to configure logging or

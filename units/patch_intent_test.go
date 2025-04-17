@@ -1167,6 +1167,7 @@ func (s *PatchIntentUnitsSuite) TestProcessMergeGroupIntent() {
 	tasks := []string{"bynntask"}
 	s.verifyPatchDoc(dbPatch, j.PatchID, baseSHA, false, variants, tasks)
 	s.projectExists(j.PatchID.Hex())
+	s.Equal("main", dbPatch.Branch)
 
 	s.Zero(dbPatch.ProjectStorageMethod, "patch's project storage method should be unset after patch is finalized")
 	s.verifyParserProjectDoc(dbPatch, 4)
@@ -1226,6 +1227,8 @@ func (s *PatchIntentUnitsSuite) TestProcessGitHubIntentWithMergeBase() {
 	patchDoc := intent.NewPatch()
 	s.NoError(j.finishPatch(s.ctx, patchDoc))
 	s.Empty(j.gitHubError)
+
+	s.Equal("main", patchDoc.Branch)
 
 	// SHA 4aa79c5e7ef7af351764b843a2c05fab98c23881 is older than the oldest allowed merge base and should be rejected
 	intent, err = patch.NewGithubIntent(s.ctx, "another_id", "auto", "", "", "4aa79c5e7ef7af351764b843a2c05fab98c23881", pr)
@@ -1288,6 +1291,7 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 	s.NoError(err)
 	s.Require().NotNil(dbPatch)
 	s.True(patchDoc.Activated, "patch should be finalized")
+	s.Equal("main", patchDoc.Branch)
 
 	variants := []string{"ubuntu1604", "ubuntu1604-arm64", "ubuntu1604-debug", "race-detector"}
 	tasks := []string{"dist", "dist-test"}
@@ -1354,6 +1358,7 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntentWithoutFinalizing() {
 	s.NoError(err)
 	s.Require().NotNil(dbPatch)
 	s.False(patchDoc.Activated, "patch should not be finalized")
+	s.Equal("main", patchDoc.Branch)
 
 	variants := []string{"ubuntu1604", "ubuntu1604-arm64", "ubuntu1604-debug", "race-detector"}
 	tasks := []string{"dist", "dist-test"}
@@ -1481,7 +1486,7 @@ func (s *PatchIntentUnitsSuite) verifyVersionDoc(patchDoc *patch.Patch, expected
 }
 
 func (s *PatchIntentUnitsSuite) gridFSFileExists(patchFileID string) {
-	patchContents, err := patch.FetchPatchContents(patchFileID)
+	patchContents, err := patch.FetchPatchContents(s.ctx, patchFileID)
 	s.Require().NoError(err)
 	s.NotEmpty(patchContents)
 }
@@ -1562,11 +1567,11 @@ index ca20f6c..224168e 100644
 +  new line",
 
 `
-	s.Require().NoError(db.WriteGridFile(patch.GridFSPrefix, "testPatch", strings.NewReader(patchString)))
+	s.Require().NoError(db.WriteGridFile(s.ctx, patch.GridFSPrefix, "testPatch", strings.NewReader(patchString)))
 
 	modulePatch := patch.ModulePatch{}
 	modulePatch.PatchSet.PatchFileId = "testPatch"
-	modulePatch, err := getModulePatch(modulePatch)
+	modulePatch, err := getModulePatch(s.ctx, modulePatch)
 	s.NotEmpty(modulePatch.PatchSet.Summary)
 	s.NoError(err)
 }

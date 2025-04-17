@@ -171,7 +171,7 @@ func ConfigurePatch(ctx context.Context, settings *evergreen.Settings, p *patch.
 				ActivationInfo: specificActivationInfo{},
 				GeneratedBy:    "",
 			}
-			err = addNewTasksAndBuildsForPatch(context.Background(), creationInfo, patchUpdateReq.Caller)
+			err = addNewTasksAndBuildsForPatch(ctx, creationInfo, patchUpdateReq.Caller)
 			if err != nil {
 				return http.StatusInternalServerError, errors.Wrapf(err, "creating new tasks/builds for version '%s'", version.Id)
 			}
@@ -390,7 +390,7 @@ func MakePatchedConfig(ctx context.Context, opts GetProjectOpts, projectConfig s
 		var patchFilePath, localConfigPath, renamedFilePath, patchContents string
 		var err error
 		if patchPart.PatchSet.Patch == "" {
-			patchContents, err = patch.FetchPatchContents(patchPart.PatchSet.PatchFileId)
+			patchContents, err = patch.FetchPatchContents(ctx, patchPart.PatchSet.PatchFileId)
 			if err != nil {
 				return nil, errors.Wrap(err, "fetching patch contents")
 			}

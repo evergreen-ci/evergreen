@@ -80,6 +80,7 @@ func FindPatchById(ctx context.Context, patchId string) (*restModel.APIPatch, er
 	err = apiPatch.BuildFromService(ctx, *p, &restModel.APIPatchArgs{
 		IncludeChildPatches:      true,
 		IncludeProjectIdentifier: true,
+		IncludeBranch:            true,
 	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "converting patch '%s' to API model", p.Id.Hex())
@@ -208,7 +209,7 @@ func GetRawPatches(ctx context.Context, patchID string) (*restModel.APIRawPatch,
 		}
 	}
 
-	if err = patchDoc.FetchPatchFiles(); err != nil {
+	if err = patchDoc.FetchPatchFiles(ctx); err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrap(err, "getting patch contents").Error(),

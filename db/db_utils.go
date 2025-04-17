@@ -106,90 +106,6 @@ func InsertManyUnordered(ctx context.Context, collection string, items ...any) e
 	return errors.Wrapf(errors.WithStack(err), "inserting unordered documents")
 }
 
-// CreateCollections ensures that all the given collections are created,
-// returning an error immediately if creating any one of them fails.
-func CreateCollections(collections ...string) error {
-	session, db, err := GetGlobalSessionFactory().GetSession()
-	if err != nil {
-		return err
-	}
-	defer session.Close()
-
-	const namespaceExistsErrCode = 48
-	for _, collection := range collections {
-		_, err := db.CreateCollection(collection)
-		if err == nil {
-			continue
-		}
-		// If the collection already exists, this does not count as an error.
-		if mongoErr, ok := errors.Cause(err).(mongo.CommandError); ok && mongoErr.HasErrorCode(namespaceExistsErrCode) {
-			continue
-		}
-		if err != nil {
-			return errors.Wrapf(err, "creating collection '%s'", collection)
-		}
-	}
-	return nil
-}
-
-// Clear removes all documents from a specified collection.
-func Clear(collection string) error {
-	session, db, err := GetGlobalSessionFactory().GetSession()
-	if err != nil {
-		return err
-	}
-	defer session.Close()
-
-	_, err = db.C(collection).RemoveAll(bson.M{})
-
-	return err
-}
-
-// ClearCollections clears all documents from all the specified collections,
-// returning an error immediately if clearing any one of them fails.
-func ClearCollections(collections ...string) error {
-	session, db, err := GetGlobalSessionFactory().GetSession()
-	if err != nil {
-		return err
-	}
-	defer session.Close()
-	for _, collection := range collections {
-		_, err := db.C(collection).RemoveAll(bson.M{})
-
-		if err != nil {
-			return errors.Wrapf(err, "Couldn't clear collection '%v'", collection)
-		}
-	}
-	return nil
-}
-
-// DropCollections drops the specified collections, returning an error
-// immediately if dropping any one of them fails.
-func DropCollections(collections ...string) error {
-	session, db, err := GetGlobalSessionFactory().GetSession()
-	if err != nil {
-		return err
-	}
-	defer session.Close()
-	for _, coll := range collections {
-		if err := db.C(coll).DropCollection(); err != nil {
-			return errors.Wrapf(err, "dropping collection '%s'", coll)
-		}
-	}
-	return nil
-}
-
-// EnsureIndex takes in a collection and ensures that the index is created if it
-// does not already exist.
-func EnsureIndex(collection string, index mongo.IndexModel) error {
-	env := evergreen.GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-	_, err := env.DB().Collection(collection).Indexes().CreateOne(ctx, index)
-
-	return errors.WithStack(err)
-}
-
 // Remove removes one item matching the query from the specified collection.
 func Remove(ctx context.Context, collection string, query any) error {
 	_, err := evergreen.GetEnvironment().DB().Collection(collection).DeleteOne(ctx,
@@ -390,8 +306,8 @@ func RemoveAllQ(ctx context.Context, collection string, q Q) error {
 
 // FindAndModify runs the specified query and change against the collection,
 // unmarshaling the result into the specified interface.
-func FindAndModify(collection string, query any, sort []string, change db.Change, out any) (*db.ChangeInfo, error) {
-	session, db, err := GetGlobalSessionFactory().GetSession()
+func FindAndModify(ctx context.Context, collection string, query any, sort []string, change db.Change, out any) (*db.ChangeInfo, error) {
+	session, db, err := GetGlobalSessionFactory().GetContextSession(ctx)
 	if err != nil {
 		grip.Errorf("error establishing db connection: %+v", err)
 
@@ -403,10 +319,8 @@ func FindAndModify(collection string, query any, sort []string, change db.Change
 
 // WriteGridFile writes the data in the source Reader to a GridFS collection with
 // the given prefix and filename.
-func WriteGridFile(fsPrefix, name string, source io.Reader) error {
+func WriteGridFile(ctx context.Context, fsPrefix, name string, source io.Reader) error {
 	env := evergreen.GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
 	bucket, err := pail.NewGridFSBucketWithClient(ctx, env.Client(), pail.GridFSOptions{
 		Database: env.DB().Name(),
 		Name:     fsPrefix,
@@ -419,10 +333,8 @@ func WriteGridFile(fsPrefix, name string, source io.Reader) error {
 }
 
 // GetGridFile returns a ReadCloser for a file stored with the given name under the GridFS prefix.
-func GetGridFile(fsPrefix, name string) (io.ReadCloser, error) {
+func GetGridFile(ctx context.Context, fsPrefix, name string) (io.ReadCloser, error) {
 	env := evergreen.GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
 	bucket, err := pail.NewGridFSBucketWithClient(ctx, env.Client(), pail.GridFSOptions{
 		Database: env.DB().Name(),
 		Name:     fsPrefix,
@@ -433,10 +345,6 @@ func GetGridFile(fsPrefix, name string) (io.ReadCloser, error) {
 	}
 
 	return bucket.Get(ctx, name)
-}
-
-func ClearGridCollections(fsPrefix string) error {
-	return ClearCollections(fmt.Sprintf("%s.files", fsPrefix), fmt.Sprintf("%s.chunks", fsPrefix))
 }
 
 // Aggregate runs an aggregation pipeline on a collection and unmarshals
@@ -454,4 +362,96 @@ func Aggregate(ctx context.Context, collection string, pipeline any, out any) er
 	pipe := db.C(collection).Pipe(pipeline)
 
 	return errors.WithStack(pipe.All(out))
+}
+
+// =============================================
+// ============ Test only functions ============
+// =============================================
+
+// CreateCollections ensures that all the given collections are created,
+// returning an error immediately if creating any one of them fails.
+func CreateCollections(collections ...string) error {
+	session, db, err := GetGlobalSessionFactory().GetSession()
+	if err != nil {
+		return err
+	}
+	defer session.Close()
+
+	const namespaceExistsErrCode = 48
+	for _, collection := range collections {
+		_, err := db.CreateCollection(collection)
+		if err == nil {
+			continue
+		}
+		// If the collection already exists, this does not count as an error.
+		if mongoErr, ok := errors.Cause(err).(mongo.CommandError); ok && mongoErr.HasErrorCode(namespaceExistsErrCode) {
+			continue
+		}
+		if err != nil {
+			return errors.Wrapf(err, "creating collection '%s'", collection)
+		}
+	}
+	return nil
+}
+
+// Clear removes all documents from a specified collection.
+func Clear(collection string) error {
+	session, db, err := GetGlobalSessionFactory().GetSession()
+	if err != nil {
+		return err
+	}
+	defer session.Close()
+
+	_, err = db.C(collection).RemoveAll(bson.M{})
+
+	return err
+}
+
+// ClearCollections clears all documents from all the specified collections,
+// returning an error immediately if clearing any one of them fails.
+func ClearCollections(collections ...string) error {
+	session, db, err := GetGlobalSessionFactory().GetSession()
+	if err != nil {
+		return err
+	}
+	defer session.Close()
+	for _, collection := range collections {
+		_, err := db.C(collection).RemoveAll(bson.M{})
+
+		if err != nil {
+			return errors.Wrapf(err, "Couldn't clear collection '%v'", collection)
+		}
+	}
+	return nil
+}
+
+func ClearGridCollections(fsPrefix string) error {
+	return ClearCollections(fmt.Sprintf("%s.files", fsPrefix), fmt.Sprintf("%s.chunks", fsPrefix))
+}
+
+// DropCollections drops the specified collections, returning an error
+// immediately if dropping any one of them fails.
+func DropCollections(collections ...string) error {
+	session, db, err := GetGlobalSessionFactory().GetSession()
+	if err != nil {
+		return err
+	}
+	defer session.Close()
+	for _, coll := range collections {
+		if err := db.C(coll).DropCollection(); err != nil {
+			return errors.Wrapf(err, "dropping collection '%s'", coll)
+		}
+	}
+	return nil
+}
+
+// EnsureIndex takes in a collection and ensures that the index is created if it
+// does not already exist.
+func EnsureIndex(collection string, index mongo.IndexModel) error {
+	env := evergreen.GetEnvironment()
+	ctx, cancel := env.Context()
+	defer cancel()
+	_, err := env.DB().Collection(collection).Indexes().CreateOne(ctx, index)
+
+	return errors.WithStack(err)
 }

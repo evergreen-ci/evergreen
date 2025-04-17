@@ -2500,6 +2500,9 @@ func (p *ProjectRef) GetActivationTimeForVariant(ctx context.Context, variant *B
 		return versionCreateTime, nil
 	}
 
+	if _, err := lastActivated.GetBuildVariants(ctx); err != nil {
+		return time.Time{}, errors.Wrap(err, "getting build variant info for version")
+	}
 	// find matching activated build variant
 	for _, buildStatus := range lastActivated.BuildVariants {
 		if buildStatus.BuildVariant != variant.Name || !buildStatus.Activated {
@@ -2632,6 +2635,9 @@ func (p *ProjectRef) GetActivationTimeForTask(ctx context.Context, t *BuildVaria
 	}
 	if lastActivated == nil {
 		return versionCreateTime, nil
+	}
+	if _, err := lastActivated.GetBuildVariants(ctx); err != nil {
+		return versionCreateTime, errors.Wrap(err, "getting build variant info for version")
 	}
 
 	for _, buildStatus := range lastActivated.BuildVariants {

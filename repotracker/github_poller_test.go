@@ -128,7 +128,7 @@ func TestGetRevisionsSince(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, testConfig)
 
 	// Initialize repo revisions for project
-	_, err := model.GetNewRevisionOrderNumber(projectRef.Id)
+	_, err := model.GetNewRevisionOrderNumber(t.Context(), projectRef.Id)
 	require.NoError(t, err)
 
 	// The test repository contains only 3 revisions.

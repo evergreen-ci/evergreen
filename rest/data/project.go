@@ -322,7 +322,7 @@ func UpdateProjectVars(ctx context.Context, projectId string, varsModel *restMod
 			return errors.Wrapf(err, "overwriting variables for project '%s'", vars.Id)
 		}
 	} else {
-		_, err := vars.FindAndModify(varsModel.VarsToDelete)
+		_, err := vars.FindAndModify(ctx, varsModel.VarsToDelete)
 		if err != nil {
 			return errors.Wrapf(err, "updating variables for project '%s'", vars.Id)
 		}

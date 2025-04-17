@@ -1187,7 +1187,7 @@ func (r *queryResolver) TaskHistory(ctx context.Context, options TaskHistoryOpts
 
 // HasVersion is the resolver for the hasVersion field.
 func (r *queryResolver) HasVersion(ctx context.Context, patchID string) (bool, error) {
-	v, err := model.VersionFindOne(ctx, model.VersionById(patchID))
+	v, err := model.VersionFindOne(ctx, model.VersionById(patchID).WithFields(model.VersionIdKey))
 	if err != nil {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", patchID, err.Error()))
 	}
@@ -1209,7 +1209,7 @@ func (r *queryResolver) HasVersion(ctx context.Context, patchID string) (bool, e
 
 // Version is the resolver for the version field.
 func (r *queryResolver) Version(ctx context.Context, versionID string) (*restModel.APIVersion, error) {
-	v, err := model.VersionFindOneId(ctx, versionID)
+	v, err := model.VersionFindOneIdWithBuildVariants(ctx, versionID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", versionID, err.Error()))
 	}

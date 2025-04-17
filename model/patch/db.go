@@ -379,7 +379,7 @@ func ConsolidatePatchesForUser(ctx context.Context, oldAuthor string, newUsr *us
 	}
 	if len(patchesForNewAuthor) > 0 {
 		for _, p := range patchesForNewAuthor {
-			patchNum, err := newUsr.IncPatchNumber()
+			patchNum, err := newUsr.IncPatchNumber(ctx)
 			if err != nil {
 				return errors.Wrap(err, "incrementing patch number to resolve existing patches")
 			}
