@@ -252,7 +252,7 @@ func (r *patchResolver) VersionFull(ctx context.Context, obj *restModel.APIPatch
 	if versionID == "" {
 		return nil, nil
 	}
-	v, err := model.VersionFindOneId(ctx, versionID)
+	v, err := model.VersionFindOneIdWithBuildVariants(ctx, versionID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", versionID, err.Error()))
 	}

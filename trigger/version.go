@@ -59,7 +59,7 @@ func (t *versionTriggers) Fetch(ctx context.Context, e *event.EventLogEntry) err
 		return errors.Wrap(err, "fetching UI config")
 	}
 
-	t.version, err = model.VersionFindOne(ctx, model.VersionById(e.ResourceId))
+	t.version, err = model.VersionFindOneId(ctx, e.ResourceId)
 	if err != nil {
 		return errors.Wrapf(err, "finding version '%s'", e.ResourceId)
 	}

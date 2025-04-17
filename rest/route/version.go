@@ -55,7 +55,7 @@ func (vh *versionHandler) Parse(ctx context.Context, r *http.Request) error {
 // Execute calls the data model.VersionFindOneId function and returns the version
 // from the provider.
 func (vh *versionHandler) Run(ctx context.Context) gimlet.Responder {
-	foundVersion, err := dbModel.VersionFindOneId(ctx, vh.versionId)
+	foundVersion, err := dbModel.VersionFindOneIdWithBuildVariants(ctx, vh.versionId)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding version '%s'", vh.versionId))
 	}
@@ -269,7 +269,7 @@ func (h *versionAbortHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "aborting version '%s'", h.versionId))
 	}
 
-	foundVersion, err := dbModel.VersionFindOneId(ctx, h.versionId)
+	foundVersion, err := dbModel.VersionFindOneIdWithBuildVariants(ctx, h.versionId)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding version '%s'", h.versionId))
 	}

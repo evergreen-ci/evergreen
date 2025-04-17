@@ -146,7 +146,7 @@ func (c *Context) populateTaskBuildVersion(ctx context.Context, taskId, buildId,
 		}
 	}
 	if len(versionId) > 0 {
-		c.Version, err = VersionFindOne(ctx, VersionById(versionId))
+		c.Version, err = VersionFindOneIdWithBuildVariants(ctx, versionId)
 		if err != nil {
 			return "", err
 		}
@@ -179,7 +179,7 @@ func (ctx *Context) populatePatch(c context.Context, patchId string) error {
 	// If there's a finalized patch loaded into context but not a version, load the version
 	// associated with the patch as the context's version.
 	if ctx.Version == nil && ctx.Patch != nil && ctx.Patch.Version != "" {
-		ctx.Version, err = VersionFindOne(c, VersionById(ctx.Patch.Version))
+		ctx.Version, err = VersionFindOneIdWithBuildVariants(c, ctx.Patch.Version)
 		if err != nil {
 			return errors.WithStack(err)
 		}

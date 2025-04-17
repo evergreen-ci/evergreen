@@ -652,3 +652,100 @@ func TestUpdatePreGenerationProjectStorageMethod(t *testing.T) {
 	}
 
 }
+
+func TestGetBuildVariants(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(VersionCollection))
+	}()
+
+	checkBuildVariantsMatch := func(t *testing.T, bvs0, bvs1 []VersionBuildStatus) {
+		require.Len(t, bvs0, len(bvs1), "lengths should match")
+		for i := range bvs0 {
+			bv0 := bvs0[i]
+			bv1 := bvs1[i]
+			assert.Equal(t, bv0.BuildVariant, bv1.BuildVariant)
+			assert.Equal(t, bv0.DisplayName, bv1.DisplayName)
+			assert.Equal(t, bv0.BuildId, bv1.BuildId)
+			assert.Equal(t, bv0.ActivationStatus.Activated, bv1.ActivationStatus.Activated)
+			assert.WithinDuration(t, bv0.ActivationStatus.ActivateAt, bv1.ActivationStatus.ActivateAt, 0)
+		}
+	}
+
+	for tName, tCase := range map[string]func(t *testing.T, v *Version){
+		"LoadsBuildVariantsIdempotently": func(t *testing.T, v *Version) {
+			activateAt := utility.BSONTime(time.Now().Add(time.Hour))
+			v.BuildVariants = []VersionBuildStatus{
+				{
+					BuildVariant: "bv",
+					DisplayName:  "bv_name",
+					BuildId:      "build_id",
+					ActivationStatus: ActivationStatus{
+						Activated:  false,
+						ActivateAt: activateAt,
+					},
+				},
+			}
+			require.NoError(t, v.Insert(t.Context()))
+
+			dbVersion, err := VersionFindOneId(t.Context(), v.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbVersion)
+			assert.Nil(t, dbVersion.BuildVariants, "build variants should not be loaded by default from query")
+
+			bvs, err := dbVersion.GetBuildVariants(t.Context())
+			require.NoError(t, err)
+			checkBuildVariantsMatch(t, v.BuildVariants, bvs)
+			checkBuildVariantsMatch(t, v.BuildVariants, dbVersion.BuildVariants)
+
+			bvs, err = dbVersion.GetBuildVariants(t.Context())
+			require.NoError(t, err)
+			checkBuildVariantsMatch(t, v.BuildVariants, bvs)
+			checkBuildVariantsMatch(t, v.BuildVariants, dbVersion.BuildVariants)
+		},
+		"ReturnsBuildVariantsIfAlreadySetInMemory": func(t *testing.T, v *Version) {
+			activateAt := utility.BSONTime(time.Now().Add(time.Hour))
+			originalBVs := []VersionBuildStatus{
+				{
+					BuildVariant: "bv",
+					DisplayName:  "bv_name",
+					BuildId:      "build_id",
+					ActivationStatus: ActivationStatus{
+						Activated:  false,
+						ActivateAt: activateAt,
+					},
+				},
+			}
+			v.BuildVariants = originalBVs
+
+			bvs, err := v.GetBuildVariants(t.Context())
+			require.NoError(t, err)
+			checkBuildVariantsMatch(t, originalBVs, bvs)
+			checkBuildVariantsMatch(t, originalBVs, v.BuildVariants)
+		},
+		"ReturnsEmptyBuildVariantsIfNotSetInDB": func(t *testing.T, v *Version) {
+			require.NoError(t, v.Insert(t.Context()))
+			bvs, err := v.GetBuildVariants(t.Context())
+			require.NoError(t, err)
+			assert.NotNil(t, bvs, "loaded build variants should be empty slice, not nil")
+			assert.Empty(t, bvs, "loaded build variants should be empty slice")
+			assert.Equal(t, bvs, v.BuildVariants)
+		},
+		"ReturnsEmptyBuildVariantsIfVersionNotInDB": func(t *testing.T, v *Version) {
+			bvs, err := v.GetBuildVariants(t.Context())
+			require.NoError(t, err)
+			assert.NotNil(t, bvs, "loaded build variants should be empty slice, not nil")
+			assert.Empty(t, bvs, "loaded build variants should be empty slice")
+			assert.Equal(t, bvs, v.BuildVariants)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(VersionCollection))
+
+			v := Version{
+				Id: "version_id",
+			}
+
+			tCase(t, &v)
+		})
+	}
+}

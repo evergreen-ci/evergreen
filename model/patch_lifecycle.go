@@ -171,7 +171,7 @@ func ConfigurePatch(ctx context.Context, settings *evergreen.Settings, p *patch.
 				ActivationInfo: specificActivationInfo{},
 				GeneratedBy:    "",
 			}
-			err = addNewTasksAndBuildsForPatch(context.Background(), creationInfo, patchUpdateReq.Caller)
+			err = addNewTasksAndBuildsForPatch(ctx, creationInfo, patchUpdateReq.Caller)
 			if err != nil {
 				return http.StatusInternalServerError, errors.Wrapf(err, "creating new tasks/builds for version '%s'", version.Id)
 			}
