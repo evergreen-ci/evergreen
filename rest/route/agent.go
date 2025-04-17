@@ -1009,10 +1009,10 @@ func (h *startTaskHandler) Run(ctx context.Context) gimlet.Responder {
 		msg = fmt.Sprintf("task %s started on host %s", t.Id, foundHost.Id)
 
 		if foundHost.Distro.IsEphemeral() {
-			if err = foundHost.IncTaskCount(); err != nil {
+			if err = foundHost.IncTaskCount(ctx); err != nil {
 				return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "incrementing task count for task '%s' on host '%s'", t.Id, foundHost.Id))
 			}
-			if err = foundHost.IncIdleTime(foundHost.WastedComputeTime()); err != nil {
+			if err = foundHost.IncIdleTime(ctx, foundHost.WastedComputeTime()); err != nil {
 				return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "incrementing total idle time on host '%s'", foundHost.Id))
 			}
 			grip.Info(foundHost.TaskStartMessage())
@@ -1245,7 +1245,7 @@ func (h *keyvalIncHandler) Parse(ctx context.Context, r *http.Request) error {
 
 func (h *keyvalIncHandler) Run(ctx context.Context) gimlet.Responder {
 	keyVal := &model.KeyVal{Key: h.key}
-	if err := keyVal.Inc(); err != nil {
+	if err := keyVal.Inc(ctx); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "doing findAndModify on key '%s'", h.key))
 	}
 	return gimlet.NewJSONResponse(keyVal)

@@ -358,7 +358,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 
 	// set the patch number based on patch author
-	patchDoc.PatchNumber, err = j.user.IncPatchNumber()
+	patchDoc.PatchNumber, err = j.user.IncPatchNumber(ctx)
 	if err != nil {
 		return errors.Wrap(err, "computing patch number")
 	}

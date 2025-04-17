@@ -148,7 +148,7 @@ func TestTaskHistoryPickaxe(t *testing.T) {
 	assert.NoError(t3.Insert(t.Context()))
 	assert.NoError(t4.Insert(t.Context()))
 	for i := 0; i < 5; i++ {
-		_, err := GetNewRevisionOrderNumber(proj.Identifier)
+		_, err := GetNewRevisionOrderNumber(t.Context(), proj.Identifier)
 		assert.NoError(err)
 	}
 

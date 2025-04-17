@@ -89,9 +89,9 @@ func UpdateLastRevision(ctx context.Context, projectId, revision string) error {
 }
 
 // GetNewRevisionOrderNumber gets a new revision order number for a project.
-func GetNewRevisionOrderNumber(projectId string) (int, error) {
+func GetNewRevisionOrderNumber(ctx context.Context, projectId string) (int, error) {
 	repo := &Repository{}
-	_, err := db.FindAndModify(
+	_, err := db.FindAndModify(ctx,
 		RepositoriesCollection,
 		bson.M{
 			RepoProjectKey: projectId,

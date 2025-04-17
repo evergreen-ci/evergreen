@@ -368,7 +368,7 @@ func (j *hostTerminationJob) incrementIdleTime(ctx context.Context) error {
 		idleTime += pad
 	}
 
-	return j.host.IncIdleTime(idleTime)
+	return j.host.IncIdleTime(ctx, idleTime)
 }
 
 // checkAndTerminateCloudHost checks if the host is still up according to the

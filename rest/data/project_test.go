@@ -135,7 +135,7 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 			if err := p.Insert(t.Context()); err != nil {
 				return err
 			}
-			if _, err := model.GetNewRevisionOrderNumber(p.Id); err != nil {
+			if _, err := model.GetNewRevisionOrderNumber(t.Context(), p.Id); err != nil {
 				return err
 			}
 		}

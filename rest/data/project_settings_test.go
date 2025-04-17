@@ -860,7 +860,7 @@ func TestSaveProjectSettingsForSection(t *testing.T) {
 			assert.Error(t, err)
 			assert.Nil(t, settings)
 
-			_, err = model.GetNewRevisionOrderNumber(ref.Id)
+			_, err = model.GetNewRevisionOrderNumber(t.Context(), ref.Id)
 			assert.NoError(t, err)
 			settings, err = SaveProjectSettingsForSection(ctx, ref.Id, apiChanges, model.ProjectPageTriggersSection, false, "me")
 			assert.NoError(t, err)

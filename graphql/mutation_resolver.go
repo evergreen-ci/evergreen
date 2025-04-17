@@ -1160,7 +1160,7 @@ func (r *mutationResolver) RemovePublicKey(ctx context.Context, keyName string) 
 	if !doesPublicKeyNameAlreadyExist(ctx, keyName) {
 		return nil, InputValidationError.Send(ctx, fmt.Sprintf("key name '%s' does not exist", keyName))
 	}
-	err := mustHaveUser(ctx).DeletePublicKey(keyName)
+	err := mustHaveUser(ctx).DeletePublicKey(ctx, keyName)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("deleting public key: %s", err.Error()))
 	}
@@ -1265,7 +1265,7 @@ func (r *mutationResolver) UpdatePublicKey(ctx context.Context, targetKeyName st
 		return nil, err
 	}
 	usr := mustHaveUser(ctx)
-	err = usr.UpdatePublicKey(targetKeyName, updateInfo.Name, updateInfo.Key)
+	err = usr.UpdatePublicKey(ctx, targetKeyName, updateInfo.Name, updateInfo.Key)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("updating public key '%s': %s", targetKeyName, err.Error()))
 	}

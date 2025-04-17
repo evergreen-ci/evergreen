@@ -390,7 +390,7 @@ func TestDBUtils(t *testing.T) {
 			}
 
 			out := &insertableStruct{}
-			cInfo, err := FindAndModify(
+			cInfo, err := FindAndModify(t.Context(),
 				collection,
 				bson.M{
 					"field_one": in.FieldOne,

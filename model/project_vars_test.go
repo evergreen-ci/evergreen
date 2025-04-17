@@ -447,7 +447,7 @@ func TestProjectVarsFindAndModify(t *testing.T) {
 			}
 			varsToDelete := []string{"d"}
 
-			info, err := newVars.FindAndModify(varsToDelete)
+			info, err := newVars.FindAndModify(t.Context(), varsToDelete)
 			assert.NoError(t, err)
 			require.NotNil(t, info)
 			assert.Equal(t, 1, info.Updated)
@@ -481,7 +481,7 @@ func TestProjectVarsFindAndModify(t *testing.T) {
 				PrivateVars: map[string]bool{"b": false, "a": true},
 			}
 			varsToDelete := []string{"d"}
-			_, err := vars.FindAndModify(varsToDelete)
+			_, err := vars.FindAndModify(t.Context(), varsToDelete)
 			assert.NoError(t, err)
 
 			dbVars, err := FindOneProjectVars(t.Context(), vars.Id)
@@ -512,7 +512,7 @@ func TestProjectVarsFindAndModify(t *testing.T) {
 				PrivateVars: map[string]bool{"b": false, "a": true},
 			}
 			varsToDelete := []string{"d"}
-			_, err := vars.FindAndModify(varsToDelete)
+			_, err := vars.FindAndModify(t.Context(), varsToDelete)
 			assert.NoError(t, err)
 
 			dbVars, err := FindOneProjectVars(t.Context(), vars.Id)
@@ -538,7 +538,7 @@ func TestProjectVarsFindAndModify(t *testing.T) {
 
 			newVars := *vars
 			newVars.Id = newProjRef.Id
-			_, err = newVars.FindAndModify(varsToDelete)
+			_, err = newVars.FindAndModify(t.Context(), varsToDelete)
 			require.NoError(t, err)
 
 			// Original project vars should not be modified at all.

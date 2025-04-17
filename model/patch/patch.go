@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
-	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -382,32 +381,6 @@ func (p *Patch) SetVariantsTasks(ctx context.Context, variantsTasks []VariantTas
 			},
 		},
 	)
-}
-
-// AddBuildVariants adds more buildvarints to a patch document.
-// This is meant to be used after initial patch creation.
-func (p *Patch) AddBuildVariants(bvs []string) error {
-	change := adb.Change{
-		Update: bson.M{
-			"$addToSet": bson.M{BuildVariantsKey: bson.M{"$each": bvs}},
-		},
-		ReturnNew: true,
-	}
-	_, err := db.FindAndModify(Collection, bson.M{IdKey: p.Id}, nil, change, p)
-	return err
-}
-
-// AddTasks adds more tasks to a patch document.
-// This is meant to be used after initial patch creation, to reconfigure the patch.
-func (p *Patch) AddTasks(tasks []string) error {
-	change := adb.Change{
-		Update: bson.M{
-			"$addToSet": bson.M{TasksKey: bson.M{"$each": tasks}},
-		},
-		ReturnNew: true,
-	}
-	_, err := db.FindAndModify(Collection, bson.M{IdKey: p.Id}, nil, change, p)
-	return err
 }
 
 // UpdateRepeatPatchId updates the repeat patch Id value to be used for subsequent pr patches
