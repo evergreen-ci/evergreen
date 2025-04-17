@@ -32,12 +32,12 @@ var validCaches = []cacheContextKey{
 
 func Embed(ctx context.Context, namePrefix string) context.Context {
 	for _, collections := range validCaches {
-		if ctx.Value(cacheContextKey(collections)) != nil {
+		if ctx.Value(collections) != nil {
 			continue
 		}
 		cacheName := fmt.Sprintf("%s-db-cache-%s", namePrefix, collections)
 		var cache ttlcache.Cache[any] = ttlcache.WithOtel(ttlcache.NewWeakInMemory[any](), cacheName)
-		ctx = context.WithValue(ctx, cacheContextKey(collections), cache)
+		ctx = context.WithValue(ctx, collections, cache)
 	}
 
 	return ctx
