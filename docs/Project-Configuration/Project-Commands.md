@@ -824,10 +824,7 @@ Agent Parameters:
     finished, tear down this host after this many seconds. Must be 60
     &lt;= `timeout_teardown_secs` &lt;= 604800 (7 days). Default to 21600 (6
     hours).
-
-EC2 Parameters:
-
--   `ami` - For an `ec2` provider, the AMI to start. Must set `ami` or `distro`
+-   `ami` - The AMI to start. Must set `ami` or `distro`
     but must not set both.
 -   `device_name` - name of EBS device
 -   `distro` - Evergreen distro to start. Must set either `ami` only or
@@ -923,7 +920,6 @@ tasks:
           aws_secret_access_key: ${aws_secret_access_key}
           instance_type: ${instance_type|m3.medium}
           key_name: ${key_name}
-          provider: ec2
           security_group_ids:
             - ${security_group_id}
           subnet_id: ${subnet_id}
