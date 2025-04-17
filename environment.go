@@ -107,6 +107,7 @@ type Environment interface {
 
 	Session() db.Session
 	ContextSession(ctx context.Context) db.Session
+	CedarContextSession(ctx context.Context) db.Session
 	Client() *mongo.Client
 
 	// DB returns a database that is dedicated to this instance of
@@ -115,6 +116,7 @@ type Environment interface {
 	// SharedDB returns a database that is shared between multiple
 	// instances of Evergreen. Returns nil when no shared database
 	// is configured.
+	CedarDB() *mongo.Database
 	SharedDB() *mongo.Database
 
 	// The Environment provides access to several amboy queues for
@@ -473,6 +475,14 @@ func (e *envState) DB() *mongo.Database {
 	defer e.mu.RUnlock()
 
 	return e.client.Database(e.dbName)
+}
+
+// CedarDB returns a database that is dedicated to the cluster's Cedar DB instance.
+func (e *envState) CedarDB() *mongo.Database {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	return e.cedarClient.Database(e.settings.Cedar.DbName)
 }
 
 // SharedDB returns a database that is shared between multiple instances
@@ -1185,6 +1195,13 @@ func (e *envState) ContextSession(ctx context.Context) db.Session {
 	defer e.mu.RUnlock()
 
 	return db.WrapClient(ctx, e.client).Clone()
+}
+
+func (e *envState) CedarContextSession(ctx context.Context) db.Session {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	return db.WrapClient(ctx, e.cedarClient).Clone()
 }
 
 func (e *envState) ClientConfig() *ClientConfig {
