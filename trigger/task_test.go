@@ -832,13 +832,14 @@ func (s *taskSuite) makeTest(ctx context.Context, testName, testStatus string) {
 	if len(testName) == 0 {
 		testName = "test_0"
 	}
+	svc := testresult.NewLocalService(s.env)
 
-	s.Require().NoError(testresult.InsertLocal(ctx, s.env, testresult.TestResult{
+	s.Require().NoError(svc.AppendTestResults(ctx, []testresult.TestResult{{
 		TestName:  testName,
 		TaskID:    s.task.Id,
 		Execution: s.task.Execution,
 		Status:    testStatus,
-	}))
+	}}))
 	s.Require().NoError(s.task.SetResultsInfo(ctx, testresult.TestResultsServiceLocal, testStatus == evergreen.TestFailedStatus))
 }
 
@@ -1093,14 +1094,8 @@ func (s *taskSuite) TestRegressionByTestWithRegex() {
 		ResultsFailed:  true,
 	}
 	s.NoError(t2.Insert(s.ctx))
-	s.Require().NoError(testresult.InsertLocal(
-		ctx,
-		s.env,
-		testresult.TestResult{TaskID: "t1", TestName: "test1", Status: evergreen.TestFailedStatus},
-		testresult.TestResult{TaskID: "t1", TestName: "something", Status: evergreen.TestSucceededStatus},
-		testresult.TestResult{TaskID: "t2", TestName: "test1", Status: evergreen.TestSucceededStatus},
-		testresult.TestResult{TaskID: "t2", TestName: "something", Status: evergreen.TestFailedStatus},
-	))
+	svc := testresult.NewLocalService(s.env)
+	s.Require().NoError(svc.AppendTestResults(ctx, []testresult.TestResult{{TaskID: "t1", TestName: "test1", Status: evergreen.TestFailedStatus}, {TaskID: "t1", TestName: "something", Status: evergreen.TestSucceededStatus}, {TaskID: "t2", TestName: "test1", Status: evergreen.TestSucceededStatus}, {TaskID: "t2", TestName: "something", Status: evergreen.TestFailedStatus}}))
 
 	ref := model.ProjectRef{
 		Id: "myproj",
@@ -1362,6 +1357,7 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 		assert.NoError(t, db.ClearCollections(task.Collection, alertrecord.Collection, build.Collection, model.VersionCollection, model.ProjectRefCollection))
 		assert.NoError(t, testresult.ClearLocal(ctx, env))
 	}()
+	svc := testresult.NewLocalService(env)
 
 	b := build.Build{Id: "b0"}
 	require.NoError(t, b.Insert(t.Context()))
@@ -1423,13 +1419,7 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 	for _, task := range tasks {
 		require.NoError(t, task.Insert(t.Context()))
 	}
-	require.NoError(t, testresult.InsertLocal(
-		ctx,
-		env,
-		testresult.TestResult{TaskID: "et0_0", TestName: "f0", Status: evergreen.TestFailedStatus},
-		testresult.TestResult{TaskID: "et1_0", TestName: "f1", Status: evergreen.TestSucceededStatus},
-		testresult.TestResult{TaskID: "et1_1", TestName: "f0", Status: evergreen.TestFailedStatus},
-	))
+	require.NoError(t, svc.AppendTestResults(ctx, []testresult.TestResult{{TaskID: "et0_0", TestName: "f0", Status: evergreen.TestFailedStatus}, {TaskID: "et1_0", TestName: "f1", Status: evergreen.TestSucceededStatus}, {TaskID: "et1_1", TestName: "f0", Status: evergreen.TestFailedStatus}}))
 
 	tr := taskTriggers{event: &event.EventLogEntry{ID: "e0"}, jiraMappings: &evergreen.JIRANotificationsConfig{}}
 	subscriber := event.Subscriber{Type: event.JIRAIssueSubscriberType, Target: &event.JIRAIssueSubscriber{}}
@@ -1449,11 +1439,11 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 
 	// alert for the second run of the display task with the same execution task (et0) failing with a new test (f1)
 	tr.task = &tasks[3]
-	require.NoError(t, testresult.InsertLocal(ctx, env, testresult.TestResult{
+	require.NoError(t, svc.AppendTestResults(ctx, []testresult.TestResult{{
 		TaskID:   "et0_1",
 		TestName: "f1",
 		Status:   evergreen.TestFailedStatus,
-	}))
+	}}))
 	require.NoError(t, tasks[4].SetResultsInfo(ctx, testresult.TestResultsServiceLocal, true))
 	notification, err = tr.taskRegressionByTest(ctx, &event.Subscription{ID: "s1", Subscriber: subscriber, Trigger: "t1"})
 	assert.NoError(t, err)
