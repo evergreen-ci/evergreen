@@ -483,10 +483,8 @@ func WriteGridFile(fsPrefix, name string, source io.Reader) error {
 }
 
 // GetGridFile returns a ReadCloser for a file stored with the given name under the GridFS prefix.
-func GetGridFile(fsPrefix, name string) (io.ReadCloser, error) {
+func GetGridFile(ctx context.Context, fsPrefix, name string) (io.ReadCloser, error) {
 	env := evergreen.GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
 	bucket, err := pail.NewGridFSBucketWithClient(ctx, env.Client(), pail.GridFSOptions{
 		Database: env.DB().Name(),
 		Name:     fsPrefix,

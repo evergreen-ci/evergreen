@@ -830,7 +830,7 @@ func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *p
 	}
 
 	if len(patchDoc.Patches) > 0 {
-		if patchDoc.Patches[0], err = getModulePatch(patchDoc.Patches[0]); err != nil {
+		if patchDoc.Patches[0], err = getModulePatch(ctx, patchDoc.Patches[0]); err != nil {
 			return errors.Wrap(err, "getting module patch from GridFS")
 		}
 	}
@@ -840,8 +840,8 @@ func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *p
 
 // getModulePatch reads the patch from GridFS, processes it, and
 // stores the resulting summaries in the returned ModulePatch
-func getModulePatch(modulePatch patch.ModulePatch) (patch.ModulePatch, error) {
-	patchContents, err := patch.FetchPatchContents(modulePatch.PatchSet.PatchFileId)
+func getModulePatch(ctx context.Context, modulePatch patch.ModulePatch) (patch.ModulePatch, error) {
+	patchContents, err := patch.FetchPatchContents(ctx, modulePatch.PatchSet.PatchFileId)
 	if err != nil {
 		return modulePatch, errors.Wrap(err, "fetching patch contents")
 	}

@@ -1116,7 +1116,7 @@ func (h *gitServePatchFileHandler) Parse(ctx context.Context, r *http.Request) e
 }
 
 func (h *gitServePatchFileHandler) Run(ctx context.Context) gimlet.Responder {
-	patchContents, err := patch.FetchPatchContents(h.patchID)
+	patchContents, err := patch.FetchPatchContents(ctx, h.patchID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "reading patch file from db"))
 	}
