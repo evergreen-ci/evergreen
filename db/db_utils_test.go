@@ -5,11 +5,13 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/db/cache"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	_ "github.com/evergreen-ci/evergreen/testutil"
 	adb "github.com/mongodb/anser/db"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -473,4 +475,102 @@ func TestClearGridFSCollections(t *testing.T) {
 	reader, err = GetGridFile(t.Context(), "testfiles", "test.txt")
 	assert.Error(err)
 	assert.Nil(reader)
+}
+
+func TestSetObject(t *testing.T) {
+	type furtherNestedStruct struct {
+		FieldOne string
+		FieldTwo int
+	}
+
+	type nestedStruct struct {
+		FieldOne      string
+		FieldTwo      int
+		NestedStruct  *furtherNestedStruct
+		NestedStruct2 furtherNestedStruct
+	}
+
+	type testStruct struct {
+		FieldOne      string
+		FieldTwo      int
+		NestedStruct  nestedStruct
+		NestedStruct2 *nestedStruct
+	}
+
+	in := &testStruct{
+		FieldOne: "one",
+		FieldTwo: 1,
+		NestedStruct: nestedStruct{
+			FieldOne: "two",
+			FieldTwo: 2,
+			NestedStruct: &furtherNestedStruct{
+				FieldOne: "three",
+				FieldTwo: 3,
+			},
+			NestedStruct2: furtherNestedStruct{
+				FieldOne: "four",
+				FieldTwo: 4,
+			},
+		},
+		NestedStruct2: &nestedStruct{
+			FieldOne: "five",
+			FieldTwo: 5,
+			NestedStruct: &furtherNestedStruct{
+				FieldOne: "six",
+				FieldTwo: 6,
+			},
+			NestedStruct2: furtherNestedStruct{
+				FieldOne: "seven",
+				FieldTwo: 7,
+			},
+		},
+	}
+	out := &testStruct{}
+
+	require.NoError(t, setObject(in, out))
+	assert.Equal(t, in, out)
+}
+
+func TestCache(t *testing.T) {
+	t.Run("With_id", func(t *testing.T) {
+		ctx := cache.Embed(t.Context(), "testing")
+
+		q := Q{}.Filter(bson.M{"_id": "test"})
+		val, found := findFromCache(ctx, "tasks", q)
+		assert.False(t, found)
+		assert.Nil(t, val)
+		setInCache(ctx, "tasks", q, "value")
+		val, found = findFromCache(ctx, "tasks", q)
+		assert.True(t, found)
+		assert.Equal(t, "value", val)
+	})
+
+	t.Run("WithOtherFields", func(t *testing.T) {
+		ctx := cache.Embed(t.Context(), "testing")
+
+		q := Q{}.Filter(bson.M{"onefield": "test", "twofield": "secondtest"})
+		val, found := findFromCache(ctx, "tasks", q)
+		assert.False(t, found)
+		assert.Nil(t, val)
+
+		setInCache(ctx, "tasks", q, "value")
+
+		// Switch the query's field order.
+		q = Q{}.Filter(bson.M{"twofield": "secondtest", "onefield": "test"})
+		val, found = findFromCache(ctx, "tasks", q)
+		assert.True(t, found)
+		assert.Equal(t, "value", val)
+
+		// Our query can be a bson.M filter.
+		q2 := bson.M{"twofield": "secondtest", "onefield": "test"}
+		val, found = findFromCache(ctx, "tasks", q2)
+		assert.True(t, found)
+		assert.Equal(t, "value", val)
+
+		// Our query can be a mgobson.M filter.
+		q3 := mgobson.M{"twofield": "secondtest", "onefield": "test"}
+		val, found = findFromCache(ctx, "tasks", q3)
+		assert.True(t, found)
+		assert.Equal(t, "value", val)
+	})
 }

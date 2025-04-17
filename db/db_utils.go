@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -559,16 +559,13 @@ func EnsureIndex(collection string, index mongo.IndexModel) error {
 	return errors.WithStack(err)
 }
 
-func setObject(out any, in any) error {
-	val := reflect.ValueOf(out)
-	if val.Kind() != reflect.Ptr || val.IsNil() {
-		return errors.New("invalid type: 'out' must be a non-nil pointer")
+func setObject(src, dst any) error {
+	bytes, err := bson.Marshal(src)
+	if err != nil {
+		return errors.Wrap(err, "marshalling src")
 	}
-	if !val.CanSet() {
-		return errors.New("invalid type: 'out' must be a settable pointer")
-	}
-	val.Elem().Set(reflect.ValueOf(in))
-	return nil
+
+	return errors.Wrap(bson.Unmarshal(bytes, dst), "unmarshalling dst")
 }
 
 func findFromCache(ctx context.Context, collection string, query any) (any, bool) {
@@ -593,20 +590,14 @@ func getIDFromQuery(query any) (string, bool) {
 	if query, ok := query.(Q); ok {
 		return getIDFromQuery(query.filter)
 	}
-
 	if filter, ok := query.(bson.M); ok {
-		if id, ok := filter["_id"]; ok {
-			if idStr, ok := id.(string); ok {
-				return idStr, true
-			} else if idBson, ok := id.(primitive.ObjectID); ok {
-				return idBson.Hex(), true
-			} else if idMgoBson, ok := id.(mgobson.ObjectId); ok {
-				return idMgoBson.Hex(), true
-			}
-		}
+		return getIDFromQuery(map[string]interface{}(filter))
+	}
+	if filter, ok := query.(mgobson.M); ok {
+		return getIDFromQuery(map[string]interface{}(filter))
 	}
 
-	if filter, ok := query.(mgobson.M); ok {
+	if filter, ok := query.(map[string]interface{}); ok {
 		if id, ok := filter["_id"]; ok {
 			if idStr, ok := id.(string); ok {
 				return idStr, true
@@ -616,6 +607,17 @@ func getIDFromQuery(query any) (string, bool) {
 				return idMgoBson.Hex(), true
 			}
 		}
+
+		var filterPairs []string
+		for k, v := range filter {
+			if valStr, ok := v.(string); ok {
+				filterPairs = append(filterPairs, fmt.Sprintf("%s:%s", k, valStr))
+			}
+		}
+		// The order of the fields should not affect the cache key, so we sort for consistency.
+		slices.Sort(filterPairs)
+
+		return strings.Join(filterPairs, ","), true
 	}
 
 	return "", false
