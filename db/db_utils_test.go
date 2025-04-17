@@ -83,7 +83,7 @@ func TestDBUtils(t *testing.T) {
 			So(Clear("testfiles.files"), ShouldBeNil)
 			id := mgobson.NewObjectId().Hex()
 			So(WriteGridFile("testfiles", id, strings.NewReader(id)), ShouldBeNil)
-			file, err := GetGridFile("testfiles", id)
+			file, err := GetGridFile(t.Context(), "testfiles", id)
 			So(err, ShouldBeNil)
 			raw, err := io.ReadAll(file)
 			So(err, ShouldBeNil)
@@ -459,7 +459,7 @@ func TestClearGridFSCollections(t *testing.T) {
 
 	assert.NoError(WriteGridFile("testfiles", "test.txt", strings.NewReader("lorem ipsum")))
 
-	reader, err := GetGridFile("testfiles", "test.txt")
+	reader, err := GetGridFile(t.Context(), "testfiles", "test.txt")
 	assert.NoError(err)
 	defer reader.Close()
 
@@ -470,7 +470,7 @@ func TestClearGridFSCollections(t *testing.T) {
 
 	assert.NoError(ClearGridCollections("testfiles"))
 
-	reader, err = GetGridFile("testfiles", "test.txt")
+	reader, err = GetGridFile(t.Context(), "testfiles", "test.txt")
 	assert.Error(err)
 	assert.Nil(reader)
 }
