@@ -66,8 +66,6 @@ type buildDetail struct {
 }
 
 // BuildFromService converts from service level structs to an APIVersion.
-// kim: TODO: audit every call to determine if BuildVariants is needed. Only
-// callers that need it should load it for BuildFromService.
 func (apiVersion *APIVersion) BuildFromService(ctx context.Context, v model.Version) {
 	apiVersion.Id = utility.ToStringPtr(v.Id)
 	apiVersion.CreateTime = ToTimePtr(v.CreateTime)

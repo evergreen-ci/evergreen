@@ -36,7 +36,9 @@ type Version struct {
 	Owner               string    `bson:"owner_name" json:"owner_name,omitempty"`
 	Repo                string    `bson:"repo_name" json:"repo_name,omitempty"`
 	Branch              string    `bson:"branch_name" json:"branch_name,omitempty"`
-	// kim: TODO: turn this into a helper, like GetDisplayTask
+	// BuildVariants contains information about build variant activation. This
+	// is not always loaded in version document queries because it can be large.
+	// See (Version).GetBuildVariants to fetch this field.
 	BuildVariants   []VersionBuildStatus `bson:"build_variants_status,omitempty" json:"build_variants_status,omitempty"`
 	PeriodicBuildID string               `bson:"periodic_build_id,omitempty" json:"periodic_build_id,omitempty"`
 	Aborted         bool                 `bson:"aborted,omitempty" json:"aborted,omitempty"`
@@ -281,12 +283,8 @@ func (v *Version) UpdatePreGenerationProjectStorageMethod(ctx context.Context, m
 // already has build variants cached, it'll use that; otherwise, it will load
 // the build variants from the DB. If the version does not exist in the DB yet,
 // it'll return v's own in-memory BuildVariants, if any.
-// kim: TODO: add unit test
 func (v *Version) GetBuildVariants(ctx context.Context) ([]VersionBuildStatus, error) {
 	if v.BuildVariants != nil {
-		// kim: TODO: confirm that DB will return nil if the field is empty.
-		// Then setting it to explicitly empty but not zero array below allows
-		// subsequent calls to avoid the query below.
 		return v.BuildVariants, nil
 	}
 	versionWithBuildVariants, err := VersionFindOneIdWithBuildVariants(ctx, v.Id)

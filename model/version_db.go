@@ -310,7 +310,6 @@ func VersionFindOne(ctx context.Context, query db.Q) (*Version, error) {
 	return version, err
 }
 
-// kim: TODO: find usages and tease apart which ones rely on BuildVariants.
 // VersionFindOneId returns a version by ID, excluding its BuildVariants. If the
 // version needs to load BuildVariants, use VersionFindOneIdWithBuildVariants.
 func VersionFindOneId(ctx context.Context, id string) (*Version, error) {
