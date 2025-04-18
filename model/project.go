@@ -1439,6 +1439,20 @@ func (p *Project) FindProjectTask(name string) *ProjectTask {
 	return nil
 }
 
+// FindBuildVariantTaskUnit finds the bvtu given the bv and task name.
+func (p *Project) FindBuildVariantTaskUnit(bv, task string) *BuildVariantTaskUnit {
+	bvUnit := p.FindBuildVariant(bv)
+	if bvUnit == nil {
+		return nil
+	}
+	for _, t := range bvUnit.Tasks {
+		if t.Name == task {
+			return &t
+		}
+	}
+	return nil
+}
+
 // findMatchingProjectTasks returns a list of tasks in a project that match the given regexp.
 func (p *Project) findMatchingProjectTasks(tRegex *regexp.Regexp) []string {
 	var res []string
