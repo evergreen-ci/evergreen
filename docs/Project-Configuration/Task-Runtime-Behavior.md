@@ -154,7 +154,7 @@ clean up the task directory.
 
 **Evergreen will only accept requests to clean up global files with clear security implications.**
 
-Right now, we delete the .git-credentials, .gitconfig, and .netcr files from the home directory.
+Right now, we delete the .git-credentials, .gitconfig, and .netrc files from the home directory.
 For tasks not in a task group, this is done at the end of the task after all commands 
 have finished running. For task groups, the deletion will occur after 
 all the tasks in the task group have finished.

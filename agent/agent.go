@@ -42,7 +42,7 @@ const hostAttribute = "evergreen.host"
 var (
 	shouldExitAttribute = fmt.Sprintf("%s.should_exit", hostAttribute)
 	// globalFilesToCleanup are used for cleaning up at the end of the task; these files are appended to the home directory.
-	globalFilesToCleanup = []string{".gitconfig", ".git-credentials", ".netcr"}
+	globalFilesToCleanup = []string{".gitconfig", ".git-credentials", ".netrc"}
 )
 
 // Agent manages the data necessary to run tasks in a runtime environment.
@@ -1294,7 +1294,7 @@ func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupC
 }
 
 // clearGlobalFiles cleans up certain files that were created in the home directory, including
-// the global git config file, git credentials file, and netcr file.
+// the global git config file, git credentials file, and netrc file.
 func (a *Agent) clearGlobalFiles(tc *taskContext) {
 	logger := grip.GetDefaultJournaler()
 	if tc.logger != nil && !tc.logger.Closed() {
