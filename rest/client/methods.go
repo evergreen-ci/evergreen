@@ -1368,7 +1368,7 @@ func (c *communicatorImpl) GetRawPatchWithModules(ctx context.Context, patchId s
 
 	resp, err := c.request(ctx, info, nil)
 	if err != nil {
-		return nil, errors.Wrapf(err, "sending request to find host by IP address")
+		return nil, errors.Wrapf(err, "sending request to get raw modules")
 	}
 	defer resp.Body.Close()
 
@@ -1376,7 +1376,7 @@ func (c *communicatorImpl) GetRawPatchWithModules(ctx context.Context, patchId s
 		return nil, util.RespError(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, util.RespError(resp, "getting host by IP address")
+		return nil, util.RespError(resp, "getting raw module")
 	}
 
 	rp := restmodel.APIRawPatch{}
