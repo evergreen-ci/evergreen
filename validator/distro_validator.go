@@ -53,10 +53,10 @@ func CheckDistro(ctx context.Context, d *distro.Distro, s *evergreen.Settings, n
 	}
 
 	if newDistro {
-		validationErrs = append(validationErrs, ensureUniqueId(d, allDistroIDs)...)
+		validationErrs = append(validationErrs, ensureUniqueId(d, allDistroIDs, allDistroAliases)...)
 	}
 
-	validationErrs = append(validationErrs, validateAliases(d, allDistroAliases)...)
+	validationErrs = append(validationErrs, validateAliases(d, allDistroAliases, allDistroIDs)...)
 
 	for _, v := range distroSyntaxValidators {
 		validationErrs = append(validationErrs, v(ctx, d, s)...)
@@ -186,21 +186,30 @@ func validateSingleProviderSettings(d *distro.Distro) error {
 	return nil
 }
 
-// ensureUniqueId checks that the distro's id does not collide with an existing id.
-func ensureUniqueId(d *distro.Distro, distroIds []string) ValidationErrors {
+// ensureUniqueId checks that the distro's id does not collide with an existing id or an alias.
+func ensureUniqueId(d *distro.Distro, distroIds []string, distroAliases []string) ValidationErrors {
 	if utility.StringSliceContains(distroIds, d.Id) {
 		return ValidationErrors{{Error, fmt.Sprintf("distro '%v' uses an existing identifier", d.Id)}}
+	}
+	if utility.StringSliceContains(distroAliases, d.Id) {
+		return ValidationErrors{{Error, fmt.Sprintf("distro '%v' uses an existing alias name", d.Id)}}
 	}
 	return nil
 }
 
-func ensureValidAliases(d *distro.Distro) ValidationErrors {
+func ensureValidAliases(d *distro.Distro, allDistroIDs []string) ValidationErrors {
 	var errs ValidationErrors
 	for _, a := range d.Aliases {
 		if d.Id == a {
 			errs = append(errs, ValidationError{
 				Level:   Error,
 				Message: fmt.Sprintf("'%s' cannot be an distro alias of itself", a),
+			})
+		}
+		if utility.StringSliceContains(allDistroIDs, a) {
+			errs = append(errs, ValidationError{
+				Level:   Error,
+				Message: fmt.Sprintf("alias '%s' cannot match an existing distro ID", a),
 			})
 		}
 	}
@@ -517,14 +526,14 @@ func ensureHasValidVirtualWorkstationSettings(ctx context.Context, d *distro.Dis
 	return errs
 }
 
-func validateAliases(d *distro.Distro, allDistroAliases []string) ValidationErrors {
+func validateAliases(d *distro.Distro, allDistroAliases, allDistroIDs []string) ValidationErrors {
 	var validationErrs ValidationErrors
 	// Parent and container distros do not support aliases.
 	if d.ContainerPool != "" || d.Provider == evergreen.ProviderNameDocker {
 		validationErrs = append(validationErrs, ensureNoAliases(d, allDistroAliases)...)
 	}
 	if len(d.Aliases) > 0 {
-		validationErrs = append(validationErrs, ensureValidAliases(d)...)
+		validationErrs = append(validationErrs, ensureValidAliases(d, allDistroIDs)...)
 	}
 	return validationErrs
 }
