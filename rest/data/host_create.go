@@ -255,22 +255,18 @@ func createHostFromCommand(cmd model.PluginCommandConf) (*apimodels.CreateHost, 
 
 // MakeHost creates a host or container to run for host.create.
 func MakeHost(ctx context.Context, env evergreen.Environment, taskID, userID, publicKey string, createHost apimodels.CreateHost, distro distro.Distro) (*host.Host, error) {
-	return makeEC2IntentHost(ctx, env, taskID, userID, publicKey, createHost, distro)
-}
-
-func makeEC2IntentHost(ctx context.Context, env evergreen.Environment, taskID, userID, publicKey string, createHost apimodels.CreateHost, d distro.Distro) (*host.Host, error) {
 	if createHost.Region == "" {
 		createHost.Region = evergreen.DefaultEC2Region
 	}
 	ec2Settings := cloud.EC2ProviderSettings{}
 	if createHost.Distro != "" {
-		if err := ec2Settings.FromDistroSettings(d, createHost.Region); err != nil {
+		if err := ec2Settings.FromDistroSettings(distro, createHost.Region); err != nil {
 			return nil, errors.Wrapf(err, "getting EC2 provider settings from distro '%s' in region '%s'", createHost.Distro, createHost.Region)
 		}
 	}
 
 	if publicKey != "" {
-		d.Setup += fmt.Sprintf("\necho \"\n%s\" >> %s\n", publicKey, d.GetAuthorizedKeysFile())
+		distro.Setup += fmt.Sprintf("\necho \"\n%s\" >> %s\n", publicKey, distro.GetAuthorizedKeysFile())
 	}
 
 	// set provider settings
@@ -320,9 +316,9 @@ func makeEC2IntentHost(ctx context.Context, env evergreen.Environment, taskID, u
 	if err != nil {
 		return nil, errors.Wrap(err, "marshalling EC2 settings to BSON document")
 	}
-	d.ProviderSettingsList = []*birch.Document{doc}
+	distro.ProviderSettingsList = []*birch.Document{doc}
 
-	options, err := getHostCreationOptions(ctx, d, taskID, userID, createHost)
+	options, err := getHostCreationOptions(ctx, distro, taskID, userID, createHost)
 	if err != nil {
 		return nil, errors.Wrap(err, "making intent host options")
 	}
