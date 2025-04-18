@@ -96,9 +96,10 @@ task as failed.
 
 ### Process Cleanup during a Task
 
-In between some command blocks, the task will try to clean up processes that were
-potentially created by commands. Process cleanup will
-stop any lingering processes. For example, if the task has a background `mongod` process
+In between some command blocks, the task will try to clean up processes and
+Docker resources that were potentially created by commands. Process cleanup will
+stop any lingering processes and clean up Docker resources such as containers,
+images, and volumes. For example, if the task has a background `mongod` process
 started via [`subprocess.exec`](Project-Commands#subprocessexec) or if a `subprocess.exec` executable has also
 started some child processes, the resource cleanup process will catch these
 processes and kill them.
