@@ -2835,7 +2835,7 @@ func (s *AgentSuite) TestClearGlobalFiles() {
 	// create a fake git config file
 	gitConfigPath := filepath.Join(s.a.opts.HomeDirectory, ".gitconfig")
 	gitCredentialsPath := filepath.Join(s.a.opts.HomeDirectory, ".git-credentials")
-	netcrPath := filepath.Join(s.a.opts.HomeDirectory, ".netcr")
+	netrcPath := filepath.Join(s.a.opts.HomeDirectory, ".netrc")
 	contents := `
 [user]
   name = foo bar
@@ -2855,9 +2855,9 @@ login myUsername
 password myPassword
 `
 
-	err = os.WriteFile(netcrPath, []byte(contents), 0600)
+	err = os.WriteFile(netrcPath, []byte(contents), 0600)
 	s.Require().NoError(err)
-	s.Require().FileExists(netcrPath)
+	s.Require().FileExists(netrcPath)
 
 	s.a.runTeardownGroupCommands(s.ctx, s.tc)
 	s.NoError(err)
@@ -2868,8 +2868,8 @@ password myPassword
 		"Cleared '.gitconfig'.",
 		"Clearing '.git-credentials'.",
 		"Cleared '.git-credentials'.",
-		"Clearing '.netcr'.",
-		"Cleared '.netcr'.",
+		"Clearing '.netrc'.",
+		"Cleared '.netrc'.",
 	}, []string{
 		panicLog,
 		"Running task commands failed",
