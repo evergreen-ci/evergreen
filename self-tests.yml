@@ -818,13 +818,13 @@ tasks:
   - <<: *build-and-push-client
     name: build-darwin_amd64
     # Only run this in commits because the MacOS client has to be notarized and
-    # signed. Apple has strict limits on how many files can be notarized.
+    # signed. Apple has strict limits on how many files can be notarized per day.
     patchable: false
     tags: ["build"]
   - <<: *build-and-push-client
     name: build-darwin_arm64
     # Only run this in commits because the MacOS client has to be notarized and
-    # signed. Apple has strict limits on how many files can be notarized.
+    # signed. Apple has strict limits on how many files can be notarized per day.
     patchable: false
     tags: ["build"]
   - <<: *tar-and-push-static-assets
