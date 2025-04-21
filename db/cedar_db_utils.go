@@ -21,7 +21,7 @@ func GetCedarGlobalSessionFactory() SessionFactory {
 	}
 }
 
-// GetCedarContextSession creates a cedar database session and connection that uses the associated
+// GetContextSession creates a cedar database session and connection that uses the associated
 // context in its operations.
 func (s *cedarShimFactoryImpl) GetContextSession(ctx context.Context) (db.Session, db.Database, error) {
 	if s.env == nil {
@@ -49,29 +49,4 @@ func (s *cedarShimFactoryImpl) GetSession() (db.Session, db.Database, error) {
 	}
 
 	return session, session.DB(s.db), nil
-}
-
-// FindOneQContextCedar runs a Q query against the given collection, applying the results to "out."
-// Only reads one document from the DB.
-func FindOneQContextCedar(ctx context.Context, collection string, q Q, out any) error {
-	if q.maxTime > 0 {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, q.maxTime)
-		defer cancel()
-	}
-
-	session, db, err := GetCedarGlobalSessionFactory().GetContextSession(ctx)
-	if err != nil {
-		return err
-	}
-	defer session.Close()
-
-	return db.C(collection).
-		Find(q.filter).
-		Select(q.projection).
-		Sort(q.sort...).
-		Skip(q.skip).
-		Limit(1).
-		Hint(q.hint).
-		One(out)
 }

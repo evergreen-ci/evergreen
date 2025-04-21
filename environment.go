@@ -113,10 +113,12 @@ type Environment interface {
 	// DB returns a database that is dedicated to this instance of
 	// Evergreen.
 	DB() *mongo.Database
+	// CedarDB returns a database that is dedicated to our Cedar
+	// database cluster.
+	CedarDB() *mongo.Database
 	// SharedDB returns a database that is shared between multiple
 	// instances of Evergreen. Returns nil when no shared database
 	// is configured.
-	CedarDB() *mongo.Database
 	SharedDB() *mongo.Database
 
 	// The Environment provides access to several amboy queues for
@@ -477,7 +479,8 @@ func (e *envState) DB() *mongo.Database {
 	return e.client.Database(e.dbName)
 }
 
-// CedarDB returns a database that is dedicated to the cluster's Cedar DB instance.
+// CedarDB returns a database that is dedicated to our Cedar
+// database cluster.
 func (e *envState) CedarDB() *mongo.Database {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
