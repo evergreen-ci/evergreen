@@ -413,7 +413,7 @@ func (e *envState) initCedarDB(ctx context.Context, tracer trace.Tracer) error {
 	defer span.End()
 
 	var err error
-	url := e.settings.Cedar.DbURL
+	url := e.settings.Cedar.DBURL
 	if url == "" {
 		url = DefaultCedarDatabaseURL
 	}
@@ -485,7 +485,7 @@ func (e *envState) CedarDB() *mongo.Database {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
-	return e.cedarClient.Database(e.settings.Cedar.DbName)
+	return e.cedarClient.Database(e.settings.Cedar.DBName)
 }
 
 // SharedDB returns a database that is shared between multiple instances
