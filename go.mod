@@ -7,12 +7,12 @@ require (
 	github.com/PuerkitoBio/rehttp v1.4.0
 	github.com/aws/aws-sdk-go v1.55.5 // indirect
 	github.com/aws/aws-sdk-go-v2 v1.36.3
-	github.com/aws/aws-sdk-go-v2/config v1.29.7
-	github.com/aws/aws-sdk-go-v2/credentials v1.17.60
+	github.com/aws/aws-sdk-go-v2/config v1.29.14
+	github.com/aws/aws-sdk-go-v2/credentials v1.17.67
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.211.3
-	github.com/aws/aws-sdk-go-v2/service/ecs v1.53.16
-	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.25.19
-	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.34.19
+	github.com/aws/aws-sdk-go-v2/service/ecs v1.55.0
+	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.26.3
+	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.35.4
 	github.com/aws/smithy-go v1.22.3
 	github.com/cheynewallace/tabby v1.1.1
 	github.com/docker/docker v24.0.9+incompatible
@@ -83,7 +83,7 @@ require (
 	github.com/agnivade/levenshtein v1.2.0 // indirect
 	github.com/andybalholm/brotli v1.0.3 // indirect
 	github.com/andygrunwald/go-jira v1.16.0
-	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.16.29 // indirect
+	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.16.30 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.3.34 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.6.34 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.8.3 // indirect
@@ -93,9 +93,9 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.12.15 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ses v1.29.11 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.37.15 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sso v1.24.16 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.28.15 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sts v1.33.15
+	github.com/aws/aws-sdk-go-v2/service/sso v1.25.3 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.30.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sts v1.33.19
 	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/brunoscheufler/aws-ecs-metadata-go v0.0.0-20220812150832-b6b31c6eeeaf // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
@@ -188,9 +188,9 @@ require (
 )
 
 require (
-	github.com/aws/aws-sdk-go-v2/service/route53 v1.42.1
-	github.com/aws/aws-sdk-go-v2/service/s3 v1.77.1
-	github.com/aws/aws-sdk-go-v2/service/ssm v1.52.3
+	github.com/aws/aws-sdk-go-v2/service/route53 v1.51.1
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.79.2
+	github.com/aws/aws-sdk-go-v2/service/ssm v1.58.2
 	github.com/bradleyfalzon/ghinstallation v1.1.1
 	github.com/evergreen-ci/evg-lint v0.0.0-20211115144425-3b19c8e83a57
 	github.com/evergreen-ci/plank v0.0.0-20230207190607-5f47f8a30da1
@@ -213,9 +213,9 @@ require (
 	filippo.io/edwards25519 v1.0.0 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.6.10 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.17.10 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/v4a v1.3.33 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.6.1 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.18.14 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/v4a v1.3.34 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.7.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.18.15 // indirect
 	github.com/coreos/go-oidc v2.2.1+incompatible // indirect
 	github.com/docker/distribution v2.8.2+incompatible // indirect
 	github.com/go-test/deep v1.1.0 // indirect
