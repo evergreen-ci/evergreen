@@ -37,6 +37,7 @@ type shimFactoryImpl struct {
 	db  string
 }
 
+// GetGlobalSessionFactory initializes a session factory to connect to the Evergreen database.
 func GetGlobalSessionFactory() SessionFactory {
 	env := evergreen.GetEnvironment()
 	return &shimFactoryImpl{
