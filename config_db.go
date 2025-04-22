@@ -77,6 +77,7 @@ var (
 	githubStatusAPIDisabledKey         = bsonutil.MustHaveTag(ServiceFlags{}, "GithubStatusAPIDisabled")
 	taskLoggingDisabledKey             = bsonutil.MustHaveTag(ServiceFlags{}, "TaskLoggingDisabled")
 	cacheStatsJobDisabledKey           = bsonutil.MustHaveTag(ServiceFlags{}, "CacheStatsJobDisabled")
+	evergreenTestResultsDisabledKey    = bsonutil.MustHaveTag(ServiceFlags{}, "EvergreenTestResultsDisabled")
 	cacheStatsEndpointDisabledKey      = bsonutil.MustHaveTag(ServiceFlags{}, "CacheStatsEndpointDisabled")
 	taskReliabilityDisabledKey         = bsonutil.MustHaveTag(ServiceFlags{}, "TaskReliabilityDisabled")
 	hostAllocatorDisabledKey           = bsonutil.MustHaveTag(ServiceFlags{}, "HostAllocatorDisabled")

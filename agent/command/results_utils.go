@@ -26,7 +26,7 @@ func sendTestResults(ctx context.Context, comm client.Communicator, logger clien
 	logger.Task().Info("Attaching test results...")
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 
-	if err := sendTestResultsToCedar(ctx, conf, td, comm, results); err != nil {
+	if err := attachTestResults(ctx, conf, td, comm, results); err != nil {
 		return errors.Wrap(err, "sending test results to Cedar")
 	}
 
@@ -58,7 +58,7 @@ func sendTestLogsAndResults(ctx context.Context, comm client.Communicator, logge
 	return sendTestResults(ctx, comm, logger, conf, results)
 }
 
-func sendTestResultsToCedar(ctx context.Context, conf *internal.TaskConfig, td client.TaskData, comm client.Communicator, results []testresult.TestResult) error {
+func attachTestResults(ctx context.Context, conf *internal.TaskConfig, td client.TaskData, comm client.Communicator, results []testresult.TestResult) error {
 	conn, err := comm.GetCedarGRPCConn(ctx)
 	if err != nil {
 		return errors.Wrap(err, "getting Cedar connection")
@@ -90,6 +90,10 @@ func sendTestResultsToCedar(ctx context.Context, conf *internal.TaskConfig, td c
 
 	if err := comm.SetResultsInfo(ctx, td, testresult.TestResultsServiceCedar, failed); err != nil {
 		return errors.Wrap(err, "setting results info in the task")
+	}
+
+	if err = comm.SendTestResults(ctx, td, results); err != nil {
+		return errors.Wrap(err, "sending test results")
 	}
 
 	return nil
