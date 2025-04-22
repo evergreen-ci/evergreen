@@ -61,17 +61,13 @@ func (s *createHostSuite) TestParamDefaults() {
 
 	s.NoError(s.cmd.ParseParams(s.params))
 	s.NoError(s.cmd.expandAndValidate(ctx, s.conf))
-	s.Equal(apimodels.ProviderEC2, s.cmd.CreateHost.CloudProvider)
 	s.Equal(apimodels.DefaultSetupTimeoutSecs, s.cmd.CreateHost.SetupTimeoutSecs)
 	s.Equal(apimodels.DefaultTeardownTimeoutSecs, s.cmd.CreateHost.TeardownTimeoutSecs)
 
-	s.params["provider"] = apimodels.ProviderDocker
 	s.params["image"] = "my-image"
 	s.params["command"] = "echo hi"
 	s.NoError(s.cmd.ParseParams(s.params))
 	s.NoError(s.cmd.expandAndValidate(ctx, s.conf))
-	s.True(s.cmd.CreateHost.Background)
-	s.Equal(apimodels.DefaultContainerWaitTimeoutSecs, s.cmd.CreateHost.ContainerWaitTimeoutSecs)
 }
 
 func (s *createHostSuite) TestParseFromFile() {
@@ -104,7 +100,6 @@ func (s *createHostSuite) TestParseFromFile() {
 
 	s.NoError(s.cmd.ParseParams(s.params))
 	s.NoError(s.cmd.expandAndValidate(ctx, s.conf))
-	s.True(s.cmd.CreateHost.Background)
 	s.Equal("myDistro", s.cmd.CreateHost.Distro)
 	s.Equal("task", s.cmd.CreateHost.Scope)
 	s.Equal("subnet-123456", s.cmd.CreateHost.Subnet)
@@ -122,7 +117,6 @@ func (s *createHostSuite) TestParseFromFile() {
 
 	s.NoError(s.cmd.ParseParams(s.params))
 	s.NoError(s.cmd.expandAndValidate(ctx, s.conf))
-	s.True(s.cmd.CreateHost.Background)
 	s.Equal("myDistro", s.cmd.CreateHost.Distro)
 	s.Equal("task", s.cmd.CreateHost.Scope)
 	s.Equal("subnet-123456", s.cmd.CreateHost.Subnet)
@@ -193,30 +187,6 @@ func (s *createHostSuite) TestParamValidation() {
 	s.params["num_hosts"] = 2
 	s.NoError(s.cmd.ParseParams(s.params))
 	s.NoError(s.cmd.expandAndValidate(ctx, s.conf))
-
-	// Validate docker requirements
-	s.params["provider"] = apimodels.ProviderDocker
-	s.NoError(s.cmd.ParseParams(s.params))
-	s.params["distro"] = ""
-
-	err = s.cmd.expandAndValidate(ctx, s.conf)
-	s.Require().Error(err)
-	s.Contains(err.Error(), "Docker image must be set")
-	s.Contains(err.Error(), "must set a distro to run Docker container in")
-	s.Contains(err.Error(), "num hosts cannot be greater than 1")
-
-	s.params["image"] = "my-image"
-	s.params["command"] = "echo hi"
-	s.params["num_hosts"] = 1
-	s.params["distro"] = "distro-that-runs-docker"
-	s.NoError(s.cmd.ParseParams(s.params))
-	s.NoError(s.cmd.expandAndValidate(ctx, s.conf))
-
-	s.params["extra_hosts"] = []string{"invalid extra host"}
-	s.NoError(s.cmd.ParseParams(s.params))
-	err = s.cmd.expandAndValidate(ctx, s.conf)
-	s.Require().Error(err)
-	s.Contains(err.Error(), "extra host")
 }
 
 func (s *createHostSuite) TestPopulateUserdata() {

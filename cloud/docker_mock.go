@@ -1,10 +1,8 @@
 package cloud
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"math/rand"
 	"time"
 
@@ -101,17 +99,6 @@ func (c *dockerClientMock) GetContainer(context.Context, *host.Host, string) (*t
 	}
 
 	return container, nil
-}
-
-func (c *dockerClientMock) GetDockerLogs(_ context.Context, containerID string, _ *host.Host, _ types.ContainerLogsOptions) (io.Reader, error) {
-	return bytes.NewBufferString("this is a log message"), nil
-}
-
-func (c *dockerClientMock) GetDockerStatus(_ context.Context, containerID string, _ *host.Host) (*ContainerStatus, error) {
-	if containerID == "" {
-		return &ContainerStatus{HasStarted: false}, nil
-	}
-	return &ContainerStatus{HasStarted: true}, nil
 }
 
 func (c *dockerClientMock) ListContainers(context.Context, *host.Host) ([]types.Container, error) {

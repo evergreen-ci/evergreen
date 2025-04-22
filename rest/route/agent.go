@@ -819,11 +819,14 @@ func (h *attachTestResultsHandler) Parse(ctx context.Context, r *http.Request) e
 }
 
 func (h *attachTestResultsHandler) Run(ctx context.Context) gimlet.Responder {
-	// TODO: DEVPROD-16200 Implement the new DB/S3-backed Evergreen test results service and delete the below log
-	grip.Debug(message.Fields{
-		"message": "received test results",
-		"results": h.results,
-	})
+	flags, err := evergreen.GetServiceFlags(ctx)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "retrieving service flags"))
+	}
+	if flags.EvergreenTestResultsDisabled {
+		return gimlet.NewJSONResponse(struct{}{})
+	}
+	// TODO: DEVPROD-16200 Implement the new DB/S3-backed Evergreen test results service
 	return gimlet.NewJSONResponse(struct{}{})
 }
 

@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -1086,66 +1085,6 @@ func (c *communicatorImpl) SendNotification(ctx context.Context, notificationTyp
 	return nil
 }
 
-// GetDockerStatus returns status of the container for the given host
-func (c *communicatorImpl) GetDockerStatus(ctx context.Context, hostID string) (*cloud.ContainerStatus, error) {
-	info := requestInfo{
-		method: http.MethodGet,
-		path:   fmt.Sprintf("hosts/%s/status", hostID),
-	}
-	resp, err := c.request(ctx, info, nil)
-	if err != nil {
-		return nil, errors.Wrapf(err, "sending request to get status for container '%s'", hostID)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, util.RespErrorf(resp, "getting status for container '%s'", hostID)
-	}
-	status := cloud.ContainerStatus{}
-	if err := utility.ReadJSON(resp.Body, &status); err != nil {
-		return nil, errors.Wrap(err, "reading JSON response body")
-	}
-
-	return &status, nil
-}
-
-func (c *communicatorImpl) GetDockerLogs(ctx context.Context, hostID string, startTime time.Time, endTime time.Time, isError bool) ([]byte, error) {
-	path := fmt.Sprintf("/hosts/%s/logs", hostID)
-	if isError {
-		path = fmt.Sprintf("%s/error", path)
-	} else {
-		path = fmt.Sprintf("%s/output", path)
-	}
-	if !utility.IsZeroTime(startTime) && !utility.IsZeroTime(endTime) {
-		path = fmt.Sprintf("%s?start_time=%s&end_time=%s", path, startTime.Format(time.RFC3339), endTime.Format(time.RFC3339))
-	} else if !utility.IsZeroTime(startTime) {
-		path = fmt.Sprintf("%s?start_time=%s", path, startTime.Format(time.RFC3339))
-	} else if !utility.IsZeroTime(endTime) {
-		path = fmt.Sprintf("%s?end_time=%s", path, endTime.Format(time.RFC3339))
-	}
-
-	info := requestInfo{
-		method: http.MethodGet,
-		path:   path,
-	}
-	resp, err := c.request(ctx, info, "")
-	if err != nil {
-		return nil, errors.Wrapf(err, "sending request to get logs for container '%s'", hostID)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, util.RespErrorf(resp, "getting logs for container '%s'", hostID)
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, errors.Wrap(err, "reading JSON response body")
-	}
-
-	return body, nil
-}
-
 func (c *communicatorImpl) GetManifestByTask(ctx context.Context, taskId string) (*manifest.Manifest, error) {
 	info := requestInfo{
 		method: http.MethodGet,
@@ -1429,7 +1368,7 @@ func (c *communicatorImpl) GetRawPatchWithModules(ctx context.Context, patchId s
 
 	resp, err := c.request(ctx, info, nil)
 	if err != nil {
-		return nil, errors.Wrapf(err, "sending request to find host by IP address")
+		return nil, errors.Wrapf(err, "sending request to get raw patch with modules")
 	}
 	defer resp.Body.Close()
 
@@ -1437,7 +1376,7 @@ func (c *communicatorImpl) GetRawPatchWithModules(ctx context.Context, patchId s
 		return nil, util.RespError(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, util.RespError(resp, "getting host by IP address")
+		return nil, util.RespError(resp, "getting raw patch with modules")
 	}
 
 	rp := restmodel.APIRawPatch{}
