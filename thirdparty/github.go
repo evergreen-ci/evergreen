@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
+	"github.com/evergreen-ci/utility/ttlcache"
 	"github.com/gonzojive/httpcache"
 	"github.com/google/go-github/v70/github"
 	"github.com/mongodb/anser/bsonutil"
@@ -658,8 +659,13 @@ func getCommitComparison(ctx context.Context, owner, repo, baseRevision, current
 	return compare, nil
 }
 
+// ghCommitEventCache is the in-memory instance of the cache for GitHub
+// installation tokens.
+var ghCommitEventCache = ttlcache.WithOtel(ttlcache.NewInMemory[*github.RepositoryCommit](), "github-commit-event")
+
 func GetCommitEvent(ctx context.Context, owner, repo, githash string) (*github.RepositoryCommit, error) {
 	caller := "GetCommitEvent"
+
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
 		attribute.String(githubOwnerAttribute, owner),
@@ -667,6 +673,10 @@ func GetCommitEvent(ctx context.Context, owner, repo, githash string) (*github.R
 		attribute.String(githubRefAttribute, githash),
 	))
 	defer span.End()
+
+	ghCommitEventCacheKey := fmt.Sprintf("%s/%s/%s", owner, repo, githash)
+	// TODO (DEVPROD-12908): Check cache metrics to see if this will be useful.
+	ghCommitEventCache.Get(ctx, ghCommitEventCacheKey, 0)
 
 	var err error
 	token, err := getInstallationToken(ctx, owner, repo, nil)
@@ -716,6 +726,7 @@ func GetCommitEvent(ctx context.Context, owner, repo, githash string) (*github.R
 		return nil, errors.New("commit not found in github")
 	}
 
+	ghCommitEventCache.Put(ctx, ghCommitEventCacheKey, commit, time.Now().Add(time.Hour*24))
 	return commit, nil
 }
 
