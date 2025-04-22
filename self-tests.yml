@@ -817,15 +817,19 @@ tasks:
     tags: ["build"]
   - <<: *build-and-push-client
     name: build-darwin_amd64
-    # Only run this in commits because the MacOS client has to be notarized and
-    # signed. Apple has strict limits on how many files can be notarized per day.
-    patchable: false
+    # Run this only on a daily cron because the MacOS client has to be notarized
+    # and signed. Apple has strict limits on how many files can be notarized per
+    # day. Using a daily cron ensures that the daily deploy will still have some
+    # commit to deploy if there was one, without notarizing all of them.
+    cron: "0 11 * * *" # 11 AM UTC
     tags: ["build"]
   - <<: *build-and-push-client
     name: build-darwin_arm64
-    # Only run this in commits because the MacOS client has to be notarized and
-    # signed. Apple has strict limits on how many files can be notarized per day.
-    patchable: false
+    # Run this only on a daily cron because the MacOS client has to be notarized
+    # and signed. Apple has strict limits on how many files can be notarized per
+    # day. Using a daily cron ensures that the daily deploy will still have some
+    # commit to deploy if there was one, without notarizing all of them.
+    cron: "0 11 * * *" # 11 AM UTC
     tags: ["build"]
   - <<: *tar-and-push-static-assets
     name: tar-and-push-static-assets
