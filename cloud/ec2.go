@@ -83,9 +83,9 @@ type EC2ProviderSettings struct {
 	// FleetOptions specifies options for creating host with Fleet. It is ignored by other managers.
 	FleetOptions FleetConfig `mapstructure:"fleet_options" json:"fleet_options,omitempty" bson:"fleet_options,omitempty"`
 
-	// IPAMEnabled determines if instance can use IP Address Manager (IPAM) for
-	// their IP addresses.
-	IPAMEnabled bool `mapstructure:"ipam_enabled" json:"ipam_enabled,omitempty" bson:"ipam_enabled,omitempty"`
+	// ElasticIPsEnabled determines if hosts can use elastic IPs to obtain their
+	// IP addresses.
+	ElasticIPsEnabled bool `mapstructure:"elastic_ips_enabled" json:"elastic_ips_enabled,omitempty" bson:"elastic_ips_enabled,omitempty"`
 }
 
 // Validate that essential EC2ProviderSettings fields are not empty.

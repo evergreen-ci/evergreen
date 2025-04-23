@@ -780,7 +780,7 @@ func canUseElasticIP(settings *evergreen.Settings, ec2Settings *EC2ProviderSetti
 		return false
 	}
 
-	return ec2Settings.IPAMEnabled
+	return ec2Settings.ElasticIPsEnabled
 }
 
 // allocateIPAddressForHost allocates an elastic IP address from an IPAM pool
