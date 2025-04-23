@@ -661,7 +661,9 @@ func getCommitComparison(ctx context.Context, owner, repo, baseRevision, current
 
 // ghCommitEventCache is the in-memory instance of the cache for GitHub
 // installation tokens.
-var ghCommitEventCache = ttlcache.WithOtel(ttlcache.NewInMemory[*github.RepositoryCommit](), "github-commit-event")
+var ghCommitEventCache1 = ttlcache.WithOtel(ttlcache.NewInMemory[struct{}](), "github-commit-event-1day")
+var ghCommitEventCache2 = ttlcache.WithOtel(ttlcache.NewInMemory[struct{}](), "github-commit-event-15min")
+var ghCommitEventCache3 = ttlcache.WithOtel(ttlcache.NewInMemory[struct{}](), "github-commit-event-1min")
 
 func GetCommitEvent(ctx context.Context, owner, repo, githash string) (*github.RepositoryCommit, error) {
 	caller := "GetCommitEvent"
@@ -676,7 +678,9 @@ func GetCommitEvent(ctx context.Context, owner, repo, githash string) (*github.R
 
 	ghCommitEventCacheKey := fmt.Sprintf("%s/%s/%s", owner, repo, githash)
 	// TODO (DEVPROD-12908): Check cache metrics to see if this will be useful.
-	ghCommitEventCache.Get(ctx, ghCommitEventCacheKey, 0)
+	ghCommitEventCache1.Get(ctx, ghCommitEventCacheKey, 0)
+	ghCommitEventCache2.Get(ctx, ghCommitEventCacheKey, 0)
+	ghCommitEventCache3.Get(ctx, ghCommitEventCacheKey, 0)
 
 	var err error
 	token, err := getInstallationToken(ctx, owner, repo, nil)
@@ -726,7 +730,9 @@ func GetCommitEvent(ctx context.Context, owner, repo, githash string) (*github.R
 		return nil, errors.New("commit not found in github")
 	}
 
-	ghCommitEventCache.Put(ctx, ghCommitEventCacheKey, commit, time.Now().Add(time.Hour*24))
+	ghCommitEventCache1.Put(ctx, ghCommitEventCacheKey, struct{}{}, time.Now().Add(time.Hour*24))
+	ghCommitEventCache2.Put(ctx, ghCommitEventCacheKey, struct{}{}, time.Now().Add(time.Minute*15))
+	ghCommitEventCache3.Put(ctx, ghCommitEventCacheKey, struct{}{}, time.Now().Add(time.Minute))
 	return commit, nil
 }
 
