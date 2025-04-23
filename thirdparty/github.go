@@ -410,12 +410,6 @@ func getInstallationTokenWithDefaultOwnerRepo(ctx context.Context, opts *github.
 	return githubapp.CreateCachedInstallationTokenWithDefaultOwnerRepo(ctx, settings, defaultGitHubAPIRequestLifetime, opts)
 }
 
-// ghCommitsCache is a cache for commit slices. The reason we use two separate caches
-// is because we want the first cache to allow for garabage collection since it's a slice of
-// pointers. The second cache is a simple int that we don't need garbage collection for.
-var ghCommitsCache = ttlcache.WithOtel(ttlcache.NewInMemory[[]*github.RepositoryCommit](), "github-get-commits-event")
-var ghCommitsNextPageCache = ttlcache.WithOtel(ttlcache.NewInMemory[int](), "github-get-commits-event-next-page")
-
 // GetGithubCommits returns a slice of GithubCommit objects from
 // the given commitsURL when provided a valid oauth token
 func GetGithubCommits(ctx context.Context, owner, repo, ref string, until time.Time, commitPage int) ([]*github.RepositoryCommit, int, error) {
@@ -427,15 +421,6 @@ func GetGithubCommits(ctx context.Context, owner, repo, ref string, until time.T
 		attribute.String(githubRefAttribute, ref),
 	))
 	defer span.End()
-
-	ghCommitsKey := fmt.Sprintf("%s/%s/%s/%s", owner, repo, ref, until.Format(time.RFC3339))
-	commits, found := ghCommitsCache.Get(ctx, ghCommitsKey, 0)
-	span.SetAttributes(attribute.Bool(githubLocalCachedAttribute, found))
-	if found {
-		// nextPage is guaranteed to be populated if the other cache is populated.
-		nextPage, _ := ghCommitsNextPageCache.Get(ctx, ghCommitsKey, 0)
-		return commits, nextPage, nil
-	}
 
 	token, err := getInstallationToken(ctx, owner, repo, nil)
 	if err != nil {
@@ -467,9 +452,6 @@ func GetGithubCommits(ctx context.Context, owner, repo, ref string, until time.T
 		grip.Error(errMsg)
 		return nil, 0, APIResponseError{errMsg}
 	}
-
-	ghCommitsCache.Put(ctx, ghCommitsKey, commits, time.Now().Add(time.Hour*24))
-	ghCommitsNextPageCache.Put(ctx, ghCommitsKey, resp.NextPage, time.Now().Add(time.Hour*24))
 
 	return commits, resp.NextPage, nil
 }
