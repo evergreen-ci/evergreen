@@ -44,13 +44,14 @@ const (
 )
 
 const (
-	githubEndpointAttribute = "evergreen.github.endpoint"
-	githubOwnerAttribute    = "evergreen.github.owner"
-	githubRepoAttribute     = "evergreen.github.repo"
-	githubRefAttribute      = "evergreen.github.ref"
-	githubPathAttribute     = "evergreen.github.path"
-	githubRetriesAttribute  = "evergreen.github.retries"
-	githubCachedAttribute   = "evergreen.github.cached"
+	githubEndpointAttribute    = "evergreen.github.endpoint"
+	githubOwnerAttribute       = "evergreen.github.owner"
+	githubRepoAttribute        = "evergreen.github.repo"
+	githubRefAttribute         = "evergreen.github.ref"
+	githubPathAttribute        = "evergreen.github.path"
+	githubRetriesAttribute     = "evergreen.github.retries"
+	githubCachedAttribute      = "evergreen.github.cached"
+	githubLocalCachedAttribute = "evergreen.github.local_cached"
 )
 
 var UnblockedGithubStatuses = []string{
@@ -664,7 +665,6 @@ var ghCommitEventCache = ttlcache.WithOtel(ttlcache.NewInMemory[*github.Reposito
 
 func GetCommitEvent(ctx context.Context, owner, repo, githash string) (*github.RepositoryCommit, error) {
 	caller := "GetCommitEvent"
-
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
 		attribute.String(githubOwnerAttribute, owner),
@@ -674,8 +674,8 @@ func GetCommitEvent(ctx context.Context, owner, repo, githash string) (*github.R
 	defer span.End()
 
 	ghCommitEventCacheKey := fmt.Sprintf("%s/%s/%s", owner, repo, githash)
-	// TODO (DEVPROD-12908): Check cache metrics to see if this will be useful.
 	commit, found := ghCommitEventCache.Get(ctx, ghCommitEventCacheKey, 0)
+	span.SetAttributes(attribute.Bool(githubLocalCachedAttribute, found))
 	if found {
 		return commit, nil
 	}
