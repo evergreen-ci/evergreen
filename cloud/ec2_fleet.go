@@ -419,20 +419,19 @@ func (m *ec2FleetManager) spawnFleetSpotHost(ctx context.Context, h *host.Host, 
 		}))
 	}()
 
-	useIPAM := shouldAssignPublicIPv4Address(h, ec2Settings) && canUseIPAM(m.env.Settings(), ec2Settings, h)
-	if useIPAM && h.IPAllocationID == "" {
+	useElasticIP := shouldAssignPublicIPv4Address(h, ec2Settings) && canUseElasticIP(m.env.Settings(), ec2Settings, h)
+	if useElasticIP && h.IPAllocationID == "" {
 		// If the host can't be allocated an IP address, continue on error
 		// because the host should fall back to using an AWS-provided IP
-		// address. Using an IPAM address is a best-effort attempt to save
+		// address. Using an elastic IP address is a best-effort attempt to save
 		// money.
 		// This must be done before creating the launch template because
-		// allocating the address using IPAM is a best-effort attempt to save
-		// money and isn't guaranteed to succeed. For example, if the IPAM pool
-		// has no addresses available currently, Evergreen still needs a usable
-		// host, so the launch template has to fall back to using an AWS-managed
-		// IP address.
+		// allocating the address is only a best-effort attempt and isn't
+		// guaranteed to succeed. For example, if the IPAM pool has no addresses
+		// available currently, Evergreen still needs a usable host, so the
+		// launch template has to fall back to using an AWS-managed IP address.
 		grip.Notice(message.WrapError(allocateIPAddressForHost(ctx, m.settings, m.client, h), message.Fields{
-			"message": "could not allocate IP address from IPAM for host, falling back to using AWS-managed IP",
+			"message": "could not allocate elastic IP address for host, falling back to using AWS-managed IP",
 			"host_id": h.Id,
 		}))
 	}
@@ -447,7 +446,7 @@ func (m *ec2FleetManager) spawnFleetSpotHost(ctx context.Context, h *host.Host, 
 	}
 	h.Id = instanceID
 
-	if useIPAM && h.IPAllocationID != "" {
+	if useElasticIP && h.IPAllocationID != "" {
 		// Associate the IP address that was allocated for this host. This is
 		// necessary for the host to be usable because otherwise, it has no IP
 		// address.
@@ -459,7 +458,7 @@ func (m *ec2FleetManager) spawnFleetSpotHost(ctx context.Context, h *host.Host, 
 		// TODO (DEVPROD-17136): consider making this step more resilient
 		// against AWS timing problems.
 		grip.Error(message.WrapError(associateIPAddressForHost(ctx, m.client, h), message.Fields{
-			"message":       "host was created and allocated IP address from IPAM but could not associate the host with the IP address; host will not be usable",
+			"message":       "host was created and allocated elastic IP address but could not associate the host with the IP address; host will not be usable",
 			"host_id":       h.Id,
 			"allocation_id": h.IPAllocationID,
 		}))
@@ -493,8 +492,7 @@ func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host
 	}
 	if ec2Settings.IsVpc {
 		// Fall back to using an AWS-provided IPv4 address if this host needs a
-		// public IPv4 address and it hasn't been allocated a IP address from
-		// IPAM.
+		// public IPv4 address and it hasn't been allocated an elastic IP.
 		useAWSIPv4Addr := assignPublicIPv4 && h.IPAllocationID == ""
 		launchTemplate.NetworkInterfaces = []types.LaunchTemplateInstanceNetworkInterfaceSpecificationRequest{
 			{

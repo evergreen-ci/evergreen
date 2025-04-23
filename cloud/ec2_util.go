@@ -760,10 +760,7 @@ func isEC2InstanceNotFound(err error) bool {
 }
 
 func shouldAssignPublicIPv4Address(h *host.Host, ec2Settings *EC2ProviderSettings) bool {
-	// kim: TODO: uncomment this once done testing manually. Easiest to use
-	// spawn hosts to test this.
-	// if h.UserHost || h.SpawnOptions.SpawnedByTask {
-	if h.SpawnOptions.SpawnedByTask {
+	if h.UserHost || h.SpawnOptions.SpawnedByTask {
 		// Spawn hosts and host.create hosts need to have a public IPv4 address
 		// because SSH is currently the only means for the user/task to access
 		// the host.
@@ -773,16 +770,12 @@ func shouldAssignPublicIPv4Address(h *host.Host, ec2Settings *EC2ProviderSetting
 	return !ec2Settings.DoNotAssignPublicIPv4Address && !ec2Settings.IPv6
 }
 
-func canUseIPAM(settings *evergreen.Settings, ec2Settings *EC2ProviderSettings, h *host.Host) bool {
-	// kim: TODO: uncomment this once done testing manually. Easiest to use
-	// spawn hosts to test this.
-	// if h.UserHost || h.SpawnOptions.SpawnedByTask {
-	if h.SpawnOptions.SpawnedByTask {
-		// Spawn hosts and host.create hosts do not need to use IPAM because the
-		// feature is primarily intended for task hosts.
+func canUseElasticIP(settings *evergreen.Settings, ec2Settings *EC2ProviderSettings, h *host.Host) bool {
+	if h.UserHost || h.SpawnOptions.SpawnedByTask {
+		// Spawn hosts and host.create hosts should not use an elastic IP
+		// because the feature is primarily intended for task hosts.
 		return false
 	}
-	// kim: TODO: needs DEVPROD-16708 for admin setting.
 	if settings.Providers.AWS.IPAMPoolID == "" {
 		return false
 	}
@@ -790,8 +783,8 @@ func canUseIPAM(settings *evergreen.Settings, ec2Settings *EC2ProviderSettings, 
 	return ec2Settings.IPAMEnabled
 }
 
-// allocateIPAddressForHost allocates an IPv4 address from an IPAM pool for
-// the host.
+// allocateIPAddressForHost allocates an elastic IP address from an IPAM pool
+// for the host.
 func allocateIPAddressForHost(ctx context.Context, settings *evergreen.Settings, c AWSClient, h *host.Host) error {
 	hostname, err := os.Hostname()
 	if err != nil {

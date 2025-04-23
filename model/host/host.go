@@ -48,10 +48,10 @@ type Host struct {
 	Distro          distro.Distro `bson:"distro" json:"distro"`
 	Provider        string        `bson:"host_type" json:"host_type"`
 	// IPAllocationID is the ID for the IP allocated to this host.
-	// Only set for hosts using IPAM.
+	// Only set for hosts using elastic IPs.
 	IPAllocationID string `bson:"ip_allocation_id,omitempty" json:"ip_allocation_id,omitempty"`
 	// IPAssociationID is the ID for the association link between this host and
-	// its IP. Only set for hosts using IPAM.
+	// its IP. Only set for hosts using elastic IPs.
 	IPAssociationID string `bson:"ip_association_id,omitempty" json:"ip_association_id,omitempty"`
 	// IP holds the IPv6 address when applicable.
 	IP string `bson:"ip_address" json:"ip_address"`

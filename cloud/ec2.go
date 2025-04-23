@@ -300,25 +300,16 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 		input.IamInstanceProfile = &types.IamInstanceProfileSpecification{Arn: aws.String(ec2Settings.IAMInstanceProfileARN)}
 	}
 
-	useIPAM := shouldAssignPublicIPv4Address(h, ec2Settings) && canUseIPAM(m.settings, ec2Settings, h)
-	if useIPAM && h.IPAllocationID == "" {
-		grip.Info(message.Fields{
-			"message": "kim: using IPAM to allocate address",
-			"host_id": h.Id,
-		})
+	useElasticIP := shouldAssignPublicIPv4Address(h, ec2Settings) && canUseElasticIP(m.settings, ec2Settings, h)
+	if useElasticIP && h.IPAllocationID == "" {
 		// If the host can't be allocated an IP address, continue on error
 		// because the host should fall back to using an AWS-provided IP
-		// address. Using an IPAM address is a best-effort attempt to save
+		// address. Using an elastic IP address is a best-effort attempt to save
 		// money.
 		grip.Notice(message.WrapError(allocateIPAddressForHost(ctx, m.settings, m.client, h), message.Fields{
-			"message": "could not allocate IP address from IPAM for host, falling back to using AWS-managed IP",
+			"message": "could not allocate elastic IP address for host, falling back to using AWS-managed IP",
 			"host_id": h.Id,
 		}))
-		grip.Info(message.Fields{
-			"message":       "kim: finished using IPAM to allocate address",
-			"host_id":       h.Id,
-			"allocation_id": h.IPAllocationID,
-		})
 	}
 
 	assignPublicIPv4 := shouldAssignPublicIPv4Address(h, ec2Settings)
@@ -330,8 +321,8 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 	}
 	if ec2Settings.IsVpc {
 		// Fall back to using an AWS-provided IPv4 address if this host needs a
-		// public IPv4 address and it hasn't been allocated a IP address from
-		// IPAM.
+		// public IPv4 address and it hasn't been allocated a elastic IP
+		// address.
 		useAWSIPv4Addr := assignPublicIPv4 && h.IPAllocationID == ""
 		input.NetworkInterfaces = []types.InstanceNetworkInterfaceSpecification{
 			{
@@ -437,12 +428,7 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 	instance := reservation.Instances[0]
 	h.Id = *instance.InstanceId
 
-	if useIPAM && h.IPAllocationID != "" {
-		grip.Info(message.Fields{
-			"message":       "kim: using IPAM to associate address",
-			"host_id":       h.Id,
-			"allocation_id": h.IPAllocationID,
-		})
+	if useElasticIP && h.IPAllocationID != "" {
 		// Associate the IP address that was allocated for this host. This is
 		// necessary for the host to be usable because otherwise, it has no IP
 		// address.
@@ -454,16 +440,10 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 		// TODO (DEVPROD-17136): consider making this step more resilient
 		// against AWS timing problems.
 		grip.Error(message.WrapError(associateIPAddressForHost(ctx, m.client, h), message.Fields{
-			"message":       "host was created and allocated IP address from IPAM but could not associate the host with the IP address; host will not be usable",
+			"message":       "host was created and allocated an elastic IP address but could not associate the host with the IP address; host will not be usable",
 			"host_id":       h.Id,
 			"allocation_id": h.IPAllocationID,
 		}))
-		grip.Info(message.Fields{
-			"message":        "kim: finished using IPAM to associate address",
-			"host_id":        h.Id,
-			"allocation_id":  h.IPAllocationID,
-			"association_id": h.IPAssociationID,
-		})
 	}
 
 	return nil

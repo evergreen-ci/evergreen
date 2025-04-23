@@ -944,10 +944,6 @@ func (c *awsClientImpl) AllocateAddress(ctx context.Context, input *ec2.Allocate
 			msg := makeAWSLogMessage("AllocateAddress", fmt.Sprintf("%T", c), input)
 			output, err = c.ec2Client.AllocateAddress(ctx, input)
 			if err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
-					"message": "kim: AllocateAddress error",
-					"input":   *input,
-				}))
 				var apiErr smithy.APIError
 				if errors.As(err, &apiErr) {
 					grip.Debug(message.WrapError(apiErr, msg))
@@ -975,10 +971,6 @@ func (c *awsClientImpl) AssociateAddress(ctx context.Context, input *ec2.Associa
 			msg := makeAWSLogMessage("AssociateAddress", fmt.Sprintf("%T", c), input)
 			output, err = c.ec2Client.AssociateAddress(ctx, input)
 			if err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
-					"message": "kim: AssociateAddress error",
-					"input":   *input,
-				}))
 				var apiErr smithy.APIError
 				if errors.As(err, &apiErr) {
 					grip.Debug(message.WrapError(apiErr, msg))
