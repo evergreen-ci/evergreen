@@ -931,47 +931,60 @@ func (c *awsClientImpl) GetPublicDNSName(ctx context.Context, h *host.Host) (str
 }
 
 func (c *awsClientImpl) AllocateAddress(ctx context.Context, input *ec2.AllocateAddressInput) (*ec2.AllocateAddressOutput, error) {
+	retryOpts := awsClientDefaultRetryOptions()
+	// Use fewer attempts to allocate an address because this is just an
+	// optimization to attempt to reduce costs for using public IPv4 addresses
+	// for hosts.
+	retryOpts.MaxAttempts = 3
 	var output *ec2.AllocateAddressOutput
 	var err error
 	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
-			// kim: TODO: handle non-retryable errors, like if there's no
-			// addresses in the pool.
 			msg := makeAWSLogMessage("AllocateAddress", fmt.Sprintf("%T", c), input)
 			output, err = c.ec2Client.AllocateAddress(ctx, input)
 			if err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"message": "kim: AllocateAddress error",
+					"input":   *input,
+				}))
 				var apiErr smithy.APIError
 				if errors.As(err, &apiErr) {
 					grip.Debug(message.WrapError(apiErr, msg))
+				}
+				if strings.Contains(apiErr.Error(), ec2InsufficientAddressCapacity) || strings.Contains(apiErr.Error(), ec2AddressLimitExceeded) {
+					return false, err
 				}
 				return true, err
 			}
 			grip.Info(msg)
 			return false, nil
-		}, awsClientDefaultRetryOptions())
+		}, retryOpts)
 	if err != nil {
 		return nil, err
 	}
 	return output, nil
 }
 
-// kim: TODO: consider using fewer retries for IPAM API calls to avoid taking up
-// too much time.
 func (c *awsClientImpl) AssociateAddress(ctx context.Context, input *ec2.AssociateAddressInput) (*ec2.AssociateAddressOutput, error) {
 	var output *ec2.AssociateAddressOutput
 	var err error
 	err = utility.Retry(
 		ctx,
 		func() (bool, error) {
-			// kim: TODO: handle non-retryable errors, like if the address is
-			// already associated.
 			msg := makeAWSLogMessage("AssociateAddress", fmt.Sprintf("%T", c), input)
 			output, err = c.ec2Client.AssociateAddress(ctx, input)
 			if err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"message": "kim: AssociateAddress error",
+					"input":   *input,
+				}))
 				var apiErr smithy.APIError
 				if errors.As(err, &apiErr) {
 					grip.Debug(message.WrapError(apiErr, msg))
+				}
+				if strings.Contains(err.Error(), ec2ResourceAlreadyAssociated) {
+					return false, err
 				}
 				return true, err
 			}

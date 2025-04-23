@@ -47,13 +47,16 @@ type Host struct {
 	Tag             string        `bson:"tag" json:"tag"`
 	Distro          distro.Distro `bson:"distro" json:"distro"`
 	Provider        string        `bson:"host_type" json:"host_type"`
+	// IPAllocationID is the ID for the IP allocated to this host.
+	// Only set for hosts using IPAM.
+	IPAllocationID string `bson:"ip_allocation_id,omitempty" json:"ip_allocation_id,omitempty"`
+	// IPAssociationID is the ID for the association link between this host and
+	// its IP. Only set for hosts using IPAM.
+	IPAssociationID string `bson:"ip_association_id,omitempty" json:"ip_association_id,omitempty"`
 	// IP holds the IPv6 address when applicable.
 	IP string `bson:"ip_address" json:"ip_address"`
 	// IPv4 is the host's private IPv4 address.
 	IPv4 string `bson:"ipv4_address" json:"ipv4_address"`
-	// IPAllocationID is the ID associated with the IP allocated for this host.
-	// Only sets for hosts using IPAM.
-	IPAllocationID string `bson:"ip_allocation_id,omitempty" json:"ip_allocation_id,omitempty"`
 	// PersistentDNSName is the long-lived DNS name of the host, which should
 	// never change once set.
 	PersistentDNSName string `bson:"persistent_dns_name,omitempty" json:"persistent_dns_name,omitempty"`
@@ -4211,6 +4214,39 @@ func (h *Host) SetNextScheduledStartAndStopTimes(ctx context.Context, nextStart,
 
 	h.SleepSchedule.NextStartTime = nextStart
 	h.SleepSchedule.NextStopTime = nextStop
+
+	return nil
+}
+
+// SetIPAllocationID sets the host's IP allocation ID
+func (h *Host) SetIPAllocationID(ctx context.Context, allocationID string) error {
+	if err := UpdateOne(ctx, bson.M{IdKey: h.Id}, bson.M{
+		"$set": bson.M{IPAllocationIDKey: allocationID},
+	}); err != nil {
+		return err
+	}
+
+	h.IPAllocationID = allocationID
+
+	return nil
+}
+
+// SetIPAllocationID sets the host association ID with its IP.
+func (h *Host) SetIPAssociationID(ctx context.Context, associationID string) error {
+	// This needs to be more permissive and look up by either the host ID or its
+	// tag (i.e. the intent host ID). This is because the IP can be associated
+	// during an intermediate state after the host ID has already changed but
+	// before the host document has been replaced in the DB. In that case, it's
+	// not possible to find the host by its ID because there's no such document,
+	// but you can still look up the host by its tag.
+	if err := UpdateOne(ctx, bson.M{IdKey: bson.M{"$in": []string{h.Id, h.Tag}}},
+		bson.M{
+			"$set": bson.M{IPAssociationIDKey: associationID},
+		}); err != nil {
+		return err
+	}
+
+	h.IPAssociationID = associationID
 
 	return nil
 }

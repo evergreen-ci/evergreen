@@ -287,7 +287,6 @@ func (m *ec2Manager) setupClient(ctx context.Context) error {
 }
 
 func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings, blockDevices []types.BlockDeviceMapping) error {
-	// kim: TODO: add logic to allocate/associate address.
 	input := &ec2.RunInstancesInput{
 		MinCount:            aws.Int32(1),
 		MaxCount:            aws.Int32(1),
@@ -301,6 +300,27 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 		input.IamInstanceProfile = &types.IamInstanceProfileSpecification{Arn: aws.String(ec2Settings.IAMInstanceProfileARN)}
 	}
 
+	useIPAM := shouldAssignPublicIPv4Address(h, ec2Settings) && canUseIPAM(m.settings, ec2Settings, h)
+	if useIPAM && h.IPAllocationID == "" {
+		grip.Info(message.Fields{
+			"message": "kim: using IPAM to allocate address",
+			"host_id": h.Id,
+		})
+		// If the host can't be allocated an IP address, continue on error
+		// because the host should fall back to using an AWS-provided IP
+		// address. Using an IPAM address is a best-effort attempt to save
+		// money.
+		grip.Notice(message.WrapError(allocateIPAddressForHost(ctx, m.settings, m.client, h), message.Fields{
+			"message": "could not allocate IP address from IPAM for host, falling back to using AWS-managed IP",
+			"host_id": h.Id,
+		}))
+		grip.Info(message.Fields{
+			"message":       "kim: finished using IPAM to allocate address",
+			"host_id":       h.Id,
+			"allocation_id": h.IPAllocationID,
+		})
+	}
+
 	assignPublicIPv4 := shouldAssignPublicIPv4Address(h, ec2Settings)
 	if assignPublicIPv4 {
 		// Only set an SSH key for the host if the host actually has a public
@@ -309,9 +329,13 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 		input.KeyName = aws.String(ec2Settings.KeyName)
 	}
 	if ec2Settings.IsVpc {
+		// Fall back to using an AWS-provided IPv4 address if this host needs a
+		// public IPv4 address and it hasn't been allocated a IP address from
+		// IPAM.
+		useAWSIPv4Addr := assignPublicIPv4 && h.IPAllocationID == ""
 		input.NetworkInterfaces = []types.InstanceNetworkInterfaceSpecification{
 			{
-				AssociatePublicIpAddress: aws.Bool(assignPublicIPv4),
+				AssociatePublicIpAddress: aws.Bool(useAWSIPv4Addr),
 				DeviceIndex:              aws.Int32(0),
 				Groups:                   ec2Settings.SecurityGroupIDs,
 				SubnetId:                 &ec2Settings.SubnetId,
@@ -412,6 +436,35 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 
 	instance := reservation.Instances[0]
 	h.Id = *instance.InstanceId
+
+	if useIPAM && h.IPAllocationID != "" {
+		grip.Info(message.Fields{
+			"message":       "kim: using IPAM to associate address",
+			"host_id":       h.Id,
+			"allocation_id": h.IPAllocationID,
+		})
+		// Associate the IP address that was allocated for this host. This is
+		// necessary for the host to be usable because otherwise, it has no IP
+		// address.
+		// Unfortunately, this step is prone to timing issues because EC2 only
+		// allows an IP address to be associated with the host after the
+		// EC2 instance reaches the "running" state. If AWS is slow at getting
+		// the host to "running", this could run out of attempts to associate
+		// the IP address and the host would end up unusable.
+		// TODO (DEVPROD-17136): consider making this step more resilient
+		// against AWS timing problems.
+		grip.Error(message.WrapError(associateIPAddressForHost(ctx, m.client, h), message.Fields{
+			"message":       "host was created and allocated IP address from IPAM but could not associate the host with the IP address; host will not be usable",
+			"host_id":       h.Id,
+			"allocation_id": h.IPAllocationID,
+		}))
+		grip.Info(message.Fields{
+			"message":        "kim: finished using IPAM to associate address",
+			"host_id":        h.Id,
+			"allocation_id":  h.IPAllocationID,
+			"association_id": h.IPAssociationID,
+		})
+	}
 
 	return nil
 }
