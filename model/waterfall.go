@@ -47,15 +47,15 @@ type WaterfallBuildVariant struct {
 }
 
 type WaterfallOptions struct {
-	Limit                  int      `bson:"-" json:"-"`
-	MaxOrder               int      `bson:"-" json:"-"`
-	MinOrder               int      `bson:"-" json:"-"`
-	Requesters             []string `bson:"-" json:"-"`
-	Statuses               []string `bson:"-" json:"-"`
-	Tasks                  []string `bson:"-" json:"-"`
-	Variants               []string `bson:"-" json:"-"`
-	VariantCaseInsensitive bool     `bson:"-" json:"-"`
-	TaskCaseInsensitive    bool     `bson:"-" json:"-"`
+	Limit                int      `bson:"-" json:"-"`
+	MaxOrder             int      `bson:"-" json:"-"`
+	MinOrder             int      `bson:"-" json:"-"`
+	Requesters           []string `bson:"-" json:"-"`
+	Statuses             []string `bson:"-" json:"-"`
+	Tasks                []string `bson:"-" json:"-"`
+	TaskCaseSensitive    bool     `bson:"-" json:"-"`
+	Variants             []string `bson:"-" json:"-"`
+	VariantCaseSensitive bool     `bson:"-" json:"-"`
 }
 
 // Older versions don't have their build display names saved in the version document.
@@ -95,7 +95,7 @@ func getBuildDisplayNames(match bson.M) bson.M {
 
 // This pipeline matches on versions that have a build with an ID or display name that matches variants
 // It checks if the version with order number versionSearchCutoff is old enough to require a join with the builds collection in order to obtain build variant display names.
-func getBuildVariantFilterPipeline(ctx context.Context, variants []string, caseInsensitive bool, match bson.M, projectId string, versionSearchCutoff int) ([]bson.M, error) {
+func getBuildVariantFilterPipeline(ctx context.Context, variants []string, caseSensitive bool, match bson.M, projectId string, versionSearchCutoff int) ([]bson.M, error) {
 	pipeline := []bson.M{}
 	match[bsonutil.GetDottedKeyName(VersionBuildVariantsKey, VersionBuildStatusDisplayNameKey)] = bson.M{"$exists": true}
 	pipeline = append(pipeline, bson.M{"$match": match})
@@ -121,15 +121,15 @@ func getBuildVariantFilterPipeline(ctx context.Context, variants []string, caseI
 	variantsAsRegex := strings.Join(variants, "|")
 
 	var buildVariantMatch []bson.M
-	if caseInsensitive {
-		buildVariantMatch = []bson.M{
-			{VersionBuildStatusVariantKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
-			{VersionBuildStatusDisplayNameKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
-		}
-	} else {
+	if caseSensitive {
 		buildVariantMatch = []bson.M{
 			{VersionBuildStatusVariantKey: bson.M{"$regex": variantsAsRegex}},
 			{VersionBuildStatusDisplayNameKey: bson.M{"$regex": variantsAsRegex}},
+		}
+	} else {
+		buildVariantMatch = []bson.M{
+			{VersionBuildStatusVariantKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
+			{VersionBuildStatusDisplayNameKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
 		}
 	}
 
@@ -179,28 +179,27 @@ func GetActiveVersionsByTaskFilters(ctx context.Context, projectId string, opts 
 
 	if len(opts.Tasks) > 0 {
 		taskNamesAsRegex := strings.Join(opts.Tasks, "|")
-		if opts.TaskCaseInsensitive {
-			match[task.DisplayNameKey] = bson.M{"$regex": taskNamesAsRegex, "$options": "i"}
-		} else {
+		if opts.TaskCaseSensitive {
 			match[task.DisplayNameKey] = bson.M{"$regex": taskNamesAsRegex}
+		} else {
+			match[task.DisplayNameKey] = bson.M{"$regex": taskNamesAsRegex, "$options": "i"}
 		}
 
 	}
 
 	if len(opts.Variants) > 0 {
 		variantsAsRegex := strings.Join(opts.Variants, "|")
-		if opts.VariantCaseInsensitive {
-			match["$or"] = []bson.M{
-				{task.BuildVariantKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
-				{task.BuildVariantDisplayNameKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
-			}
-		} else {
+		if opts.VariantCaseSensitive {
 			match["$or"] = []bson.M{
 				{task.BuildVariantKey: bson.M{"$regex": variantsAsRegex}},
 				{task.BuildVariantDisplayNameKey: bson.M{"$regex": variantsAsRegex}},
 			}
+		} else {
+			match["$or"] = []bson.M{
+				{task.BuildVariantKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
+				{task.BuildVariantDisplayNameKey: bson.M{"$regex": variantsAsRegex, "$options": "i"}},
+			}
 		}
-
 	}
 
 	pipeline := []bson.M{{"$match": match}}
@@ -307,7 +306,7 @@ func GetActiveWaterfallVersions(ctx context.Context, projectId string, opts Wate
 			versionSearchCutoff = mostRecentVersion.RevisionOrderNumber - MaxWaterfallVersionLimit
 		}
 
-		buildVariantPipeline, err := getBuildVariantFilterPipeline(ctx, opts.Variants, opts.VariantCaseInsensitive, match, projectId, versionSearchCutoff)
+		buildVariantPipeline, err := getBuildVariantFilterPipeline(ctx, opts.Variants, opts.VariantCaseSensitive, match, projectId, versionSearchCutoff)
 		if err != nil {
 			return nil, errors.Wrap(err, "creating build variant filter pipeline")
 		}

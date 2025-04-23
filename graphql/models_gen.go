@@ -653,15 +653,17 @@ type WaterfallOptions struct {
 	// Return versions with an order greater than minOrder. Used for paginating backward.
 	MinOrder *int `json:"minOrder,omitempty"`
 	// Return versions with an order lower than maxOrder. Used for paginating forward.
-	MaxOrder               *int     `json:"maxOrder,omitempty"`
-	ProjectIdentifier      string   `json:"projectIdentifier"`
-	Requesters             []string `json:"requesters,omitempty"`
-	Revision               *string  `json:"revision,omitempty"`
-	Statuses               []string `json:"statuses,omitempty"`
-	Tasks                  []string `json:"tasks,omitempty"`
-	Variants               []string `json:"variants,omitempty"`
-	VariantCaseInsensitive *bool    `json:"variantCaseInsensitive,omitempty"`
-	TaskCaseInsensitive    *bool    `json:"taskCaseInsensitive,omitempty"`
+	MaxOrder          *int     `json:"maxOrder,omitempty"`
+	ProjectIdentifier string   `json:"projectIdentifier"`
+	Requesters        []string `json:"requesters,omitempty"`
+	Revision          *string  `json:"revision,omitempty"`
+	Statuses          []string `json:"statuses,omitempty"`
+	Tasks             []string `json:"tasks,omitempty"`
+	// Toggle case sensitivity when matching on task names. Note that if false, performance will be slower.
+	TaskCaseSensitive *bool    `json:"taskCaseSensitive,omitempty"`
+	Variants          []string `json:"variants,omitempty"`
+	// Toggle case sensitivity when matching on variant names. Note that if false, performance will be slower.
+	VariantCaseSensitive *bool `json:"variantCaseSensitive,omitempty"`
 }
 
 type WaterfallPagination struct {

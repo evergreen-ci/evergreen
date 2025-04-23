@@ -68,10 +68,10 @@ func TestGetActiveWaterfallVersions(t *testing.T) {
 		},
 		"Finds active versions with given build variant (case sensitive)": func(t *testing.T, ctx context.Context) {
 			versions, err := GetActiveWaterfallVersions(t.Context(), projectId, WaterfallOptions{
-				Limit:                  4,
-				Requesters:             evergreen.SystemVersionRequesterTypes,
-				Variants:               []string{"Build Variant 1"},
-				VariantCaseInsensitive: false,
+				Limit:                4,
+				Requesters:           evergreen.SystemVersionRequesterTypes,
+				Variants:             []string{"Build Variant 1"},
+				VariantCaseSensitive: true,
 			})
 			assert.NoError(t, err)
 			require.Len(t, versions, 1)
@@ -79,20 +79,20 @@ func TestGetActiveWaterfallVersions(t *testing.T) {
 		},
 		"Finds active versions with given build variant, no results (case sensitive)": func(t *testing.T, ctx context.Context) {
 			versions, err := GetActiveWaterfallVersions(t.Context(), projectId, WaterfallOptions{
-				Limit:                  4,
-				Requesters:             evergreen.SystemVersionRequesterTypes,
-				Variants:               []string{"build variant 1"},
-				VariantCaseInsensitive: false,
+				Limit:                4,
+				Requesters:           evergreen.SystemVersionRequesterTypes,
+				Variants:             []string{"build variant 1"},
+				VariantCaseSensitive: true,
 			})
 			assert.NoError(t, err)
 			assert.Len(t, versions, 0)
 		},
 		"Finds active versions with given build variant (case insensitive)": func(t *testing.T, ctx context.Context) {
 			versions, err := GetActiveWaterfallVersions(t.Context(), projectId, WaterfallOptions{
-				Limit:                  4,
-				Requesters:             evergreen.SystemVersionRequesterTypes,
-				Variants:               []string{"build variant 1"},
-				VariantCaseInsensitive: true,
+				Limit:                4,
+				Requesters:           evergreen.SystemVersionRequesterTypes,
+				Variants:             []string{"build variant 1"},
+				VariantCaseSensitive: false,
 			})
 			assert.NoError(t, err)
 			require.Len(t, versions, 1)
@@ -517,10 +517,10 @@ func TestGetActiveVersionsByTaskFilters(t *testing.T) {
 		"Applies a task name filter (case sensitive)": func(t *testing.T, ctx context.Context) {
 			versions, err := GetActiveVersionsByTaskFilters(ctx, "a_project",
 				WaterfallOptions{
-					Limit:               5,
-					Requesters:          evergreen.SystemVersionRequesterTypes,
-					Tasks:               []string{"Task 80"},
-					TaskCaseInsensitive: false,
+					Limit:             5,
+					Requesters:        evergreen.SystemVersionRequesterTypes,
+					Tasks:             []string{"Task 80"},
+					TaskCaseSensitive: true,
 				}, 1002)
 			assert.NoError(t, err)
 			require.Len(t, versions, 1)
@@ -529,10 +529,10 @@ func TestGetActiveVersionsByTaskFilters(t *testing.T) {
 		"Applies a task name filter, no results (case sensitive)": func(t *testing.T, ctx context.Context) {
 			versions, err := GetActiveVersionsByTaskFilters(ctx, "a_project",
 				WaterfallOptions{
-					Limit:               5,
-					Requesters:          evergreen.SystemVersionRequesterTypes,
-					Tasks:               []string{"task 80"},
-					TaskCaseInsensitive: false,
+					Limit:             5,
+					Requesters:        evergreen.SystemVersionRequesterTypes,
+					Tasks:             []string{"task 80"},
+					TaskCaseSensitive: true,
 				}, 1002)
 			assert.NoError(t, err)
 			assert.Len(t, versions, 0)
@@ -540,10 +540,10 @@ func TestGetActiveVersionsByTaskFilters(t *testing.T) {
 		"Applies a task name filter (case insensitive)": func(t *testing.T, ctx context.Context) {
 			versions, err := GetActiveVersionsByTaskFilters(ctx, "a_project",
 				WaterfallOptions{
-					Limit:               5,
-					Requesters:          evergreen.SystemVersionRequesterTypes,
-					Tasks:               []string{"task 80"},
-					TaskCaseInsensitive: true,
+					Limit:             5,
+					Requesters:        evergreen.SystemVersionRequesterTypes,
+					Tasks:             []string{"task 80"},
+					TaskCaseSensitive: false,
 				}, 1002)
 			assert.NoError(t, err)
 			require.Len(t, versions, 1)
@@ -587,12 +587,12 @@ func TestGetActiveVersionsByTaskFilters(t *testing.T) {
 		"Applies a task name and build variant filter (case sensitive)": func(t *testing.T, ctx context.Context) {
 			versions, err := GetActiveVersionsByTaskFilters(ctx, "a_project",
 				WaterfallOptions{
-					Limit:                  5,
-					Requesters:             evergreen.SystemVersionRequesterTypes,
-					Tasks:                  []string{"Task 100"},
-					Variants:               []string{"Build Variant 1"},
-					TaskCaseInsensitive:    false,
-					VariantCaseInsensitive: false,
+					Limit:                5,
+					Requesters:           evergreen.SystemVersionRequesterTypes,
+					Tasks:                []string{"Task 100"},
+					Variants:             []string{"Build Variant 1"},
+					TaskCaseSensitive:    true,
+					VariantCaseSensitive: true,
 				}, 1002)
 			assert.NoError(t, err)
 			require.Len(t, versions, 1)
@@ -601,12 +601,12 @@ func TestGetActiveVersionsByTaskFilters(t *testing.T) {
 		"Applies a task name and build variant filter (case insensitive)": func(t *testing.T, ctx context.Context) {
 			versions, err := GetActiveVersionsByTaskFilters(ctx, "a_project",
 				WaterfallOptions{
-					Limit:                  5,
-					Requesters:             evergreen.SystemVersionRequesterTypes,
-					Tasks:                  []string{"task 100"},
-					Variants:               []string{"build variant 1"},
-					TaskCaseInsensitive:    true,
-					VariantCaseInsensitive: true,
+					Limit:                5,
+					Requesters:           evergreen.SystemVersionRequesterTypes,
+					Tasks:                []string{"task 100"},
+					Variants:             []string{"build variant 1"},
+					TaskCaseSensitive:    false,
+					VariantCaseSensitive: false,
 				}, 1002)
 			assert.NoError(t, err)
 			require.Len(t, versions, 1)
