@@ -16,171 +16,213 @@ import (
 )
 
 func TestGetActiveWaterfallVersions(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection, ProjectRefCollection))
+	}()
 
-	assert.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection, ProjectRefCollection))
-	start := time.Now()
-	p := ProjectRef{
-		Id:         "a_project",
-		Identifier: "a_project_identifier",
-	}
-	assert.NoError(t, p.Insert(t.Context()))
+	projectId := "a_project"
 
-	b := build.Build{
-		Id:          "b_1",
-		DisplayName: "Build Variant 1",
-		Activated:   true,
-	}
-	assert.NoError(t, b.Insert(t.Context()))
-
-	v := Version{
-		Id:                  "v_1",
-		Identifier:          "a_project",
-		Requester:           evergreen.RepotrackerVersionRequester,
-		RevisionOrderNumber: 1000,
-		CreateTime:          start,
-		Activated:           utility.TruePtr(),
-		BuildVariants: []VersionBuildStatus{
-			{
-				BuildId: "b_1",
-			},
+	for tName, tCase := range map[string]func(t *testing.T, ctx context.Context){
+		"Finds active versions with no order range specified": func(t *testing.T, ctx context.Context) {
+			versions, err := GetActiveWaterfallVersions(t.Context(), projectId, WaterfallOptions{
+				Limit:      4,
+				Requesters: evergreen.SystemVersionRequesterTypes,
+			})
+			assert.NoError(t, err)
+			require.Len(t, versions, 4)
+			assert.EqualValues(t, "v_1", versions[0].Id)
+			assert.EqualValues(t, "v_3", versions[1].Id)
+			assert.EqualValues(t, "v_4", versions[2].Id)
+			assert.EqualValues(t, "v_5", versions[3].Id)
 		},
-	}
-	assert.NoError(t, v.Insert(t.Context()))
-	v = Version{
-		Id:                  "v_2",
-		Identifier:          "a_project",
-		Requester:           evergreen.RepotrackerVersionRequester,
-		RevisionOrderNumber: 999,
-		CreateTime:          start.Add(-2 * time.Minute),
-		Activated:           utility.FalsePtr(),
-	}
-	assert.NoError(t, v.Insert(t.Context()))
-	v = Version{
-		Id:                  "v_3",
-		Identifier:          "a_project",
-		Requester:           evergreen.RepotrackerVersionRequester,
-		RevisionOrderNumber: 998,
-		CreateTime:          start.Add(-2 * time.Minute),
-		Activated:           utility.TruePtr(),
-		BuildVariants: []VersionBuildStatus{
-			{
-				BuildId:     "b_2",
-				DisplayName: "Build Variant 2",
-				ActivationStatus: ActivationStatus{
-					Activated: false,
-				},
-			},
+		"Finds active versions with MaxOrder parameter": func(t *testing.T, ctx context.Context) {
+			versions, err := GetActiveWaterfallVersions(t.Context(), projectId, WaterfallOptions{
+				Limit:      2,
+				Requesters: evergreen.SystemVersionRequesterTypes,
+				MaxOrder:   999,
+			})
+			assert.NoError(t, err)
+			require.Len(t, versions, 2)
+			assert.EqualValues(t, "v_3", versions[0].Id)
+			assert.EqualValues(t, "v_4", versions[1].Id)
 		},
-	}
-	assert.NoError(t, v.Insert(t.Context()))
-	v = Version{
-		Id:                  "v_4",
-		Identifier:          "a_project",
-		Requester:           evergreen.RepotrackerVersionRequester,
-		RevisionOrderNumber: 997,
-		CreateTime:          start.Add(-2 * time.Minute),
-		Activated:           utility.TruePtr(),
-		BuildVariants: []VersionBuildStatus{
-			{
-				BuildId:     "b_1",
+		"Finds active versions with MinOrder parameter": func(t *testing.T, ctx context.Context) {
+			versions, err := GetActiveWaterfallVersions(t.Context(), projectId, WaterfallOptions{
+				Limit:      5,
+				Requesters: evergreen.SystemVersionRequesterTypes,
+				MinOrder:   997,
+			})
+			assert.NoError(t, err)
+			require.Len(t, versions, 2)
+			assert.EqualValues(t, "v_1", versions[0].Id)
+			assert.EqualValues(t, "v_3", versions[1].Id)
+		},
+		"Errors when given invalid requester": func(t *testing.T, ctx context.Context) {
+			versions, err := GetActiveWaterfallVersions(t.Context(), projectId, WaterfallOptions{
+				Limit:      4,
+				Requesters: []string{"foo"},
+			})
+			assert.Nil(t, versions)
+			assert.Error(t, err)
+			assert.True(t, strings.HasPrefix(err.Error(), "invalid requester"))
+		},
+		"Finds active versions with given build variant (case sensitive)": func(t *testing.T, ctx context.Context) {
+			versions, err := GetActiveWaterfallVersions(t.Context(), projectId, WaterfallOptions{
+				Limit:                  4,
+				Requesters:             evergreen.SystemVersionRequesterTypes,
+				Variants:               []string{"Build Variant 1"},
+				VariantCaseInsensitive: false,
+			})
+			assert.NoError(t, err)
+			require.Len(t, versions, 1)
+			assert.EqualValues(t, "v_4", versions[0].Id)
+		},
+		"Finds active versions with given build variant, no results (case sensitive)": func(t *testing.T, ctx context.Context) {
+			versions, err := GetActiveWaterfallVersions(t.Context(), projectId, WaterfallOptions{
+				Limit:                  4,
+				Requesters:             evergreen.SystemVersionRequesterTypes,
+				Variants:               []string{"build variant 1"},
+				VariantCaseInsensitive: false,
+			})
+			assert.NoError(t, err)
+			assert.Len(t, versions, 0)
+		},
+		"Finds active versions with given build variant (case insensitive)": func(t *testing.T, ctx context.Context) {
+			versions, err := GetActiveWaterfallVersions(t.Context(), projectId, WaterfallOptions{
+				Limit:                  4,
+				Requesters:             evergreen.SystemVersionRequesterTypes,
+				Variants:               []string{"build variant 1"},
+				VariantCaseInsensitive: true,
+			})
+			assert.NoError(t, err)
+			require.Len(t, versions, 1)
+			assert.EqualValues(t, "v_4", versions[0].Id)
+		},
+		"Finds active versions with given build variant (fetch display names)": func(t *testing.T, ctx context.Context) {
+			// Inserting this version causes the pipeline to run a $unionWith stage that fetches build display names from the builds collection
+			v := Version{
+				Id:                  "v_6",
+				Identifier:          "a_project",
+				Requester:           evergreen.RepotrackerVersionRequester,
+				RevisionOrderNumber: 1,
+				CreateTime:          time.Date(2024, time.February, 7, 0, 0, 0, 0, time.UTC),
+				Activated:           utility.TruePtr(),
+			}
+			assert.NoError(t, v.Insert(t.Context()))
+
+			versions, err := GetActiveWaterfallVersions(t.Context(), projectId, WaterfallOptions{
+				Limit:      4,
+				Requesters: evergreen.SystemVersionRequesterTypes,
+				Variants:   []string{"Build Variant 1"},
+			})
+			assert.Nil(t, err)
+			require.Len(t, versions, 2)
+			assert.EqualValues(t, "v_1", versions[0].Id)
+			assert.EqualValues(t, "v_4", versions[1].Id)
+		},
+		"Returns no versions if there is no matching active build variant": func(t *testing.T, ctx context.Context) {
+			versions, err := GetActiveWaterfallVersions(t.Context(), projectId, WaterfallOptions{
+				Limit:      4,
+				Requesters: evergreen.SystemVersionRequesterTypes,
+				Variants:   []string{"Build Variant 2"},
+			})
+			assert.NoError(t, err)
+			require.Len(t, versions, 0)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			assert.NoError(t, db.ClearCollections(VersionCollection, build.Collection, task.Collection, ProjectRefCollection))
+
+			start := time.Now()
+			p := ProjectRef{
+				Id:         projectId,
+				Identifier: "a_project_identifier",
+			}
+			assert.NoError(t, p.Insert(t.Context()))
+
+			b := build.Build{
+				Id:          "b_1",
 				DisplayName: "Build Variant 1",
-				ActivationStatus: ActivationStatus{
-					Activated: true,
+				Activated:   true,
+			}
+			assert.NoError(t, b.Insert(t.Context()))
+
+			v := Version{
+				Id:                  "v_1",
+				Identifier:          p.Id,
+				Requester:           evergreen.RepotrackerVersionRequester,
+				RevisionOrderNumber: 1000,
+				CreateTime:          start,
+				Activated:           utility.TruePtr(),
+				BuildVariants: []VersionBuildStatus{
+					{
+						BuildId: "b_1",
+					},
 				},
-			},
-		},
+			}
+			assert.NoError(t, v.Insert(t.Context()))
+
+			v = Version{
+				Id:                  "v_2",
+				Identifier:          p.Id,
+				Requester:           evergreen.RepotrackerVersionRequester,
+				RevisionOrderNumber: 999,
+				CreateTime:          start.Add(-2 * time.Minute),
+				Activated:           utility.FalsePtr(),
+			}
+			assert.NoError(t, v.Insert(t.Context()))
+
+			v = Version{
+				Id:                  "v_3",
+				Identifier:          p.Id,
+				Requester:           evergreen.RepotrackerVersionRequester,
+				RevisionOrderNumber: 998,
+				CreateTime:          start.Add(-2 * time.Minute),
+				Activated:           utility.TruePtr(),
+				BuildVariants: []VersionBuildStatus{
+					{
+						BuildId:     "b_2",
+						DisplayName: "Build Variant 2",
+						ActivationStatus: ActivationStatus{
+							Activated: false,
+						},
+					},
+				},
+			}
+			assert.NoError(t, v.Insert(t.Context()))
+
+			v = Version{
+				Id:                  "v_4",
+				Identifier:          p.Id,
+				Requester:           evergreen.RepotrackerVersionRequester,
+				RevisionOrderNumber: 997,
+				CreateTime:          start.Add(-2 * time.Minute),
+				Activated:           utility.TruePtr(),
+				BuildVariants: []VersionBuildStatus{
+					{
+						BuildId:     "b_1",
+						DisplayName: "Build Variant 1",
+						ActivationStatus: ActivationStatus{
+							Activated: true,
+						},
+					},
+				},
+			}
+			assert.NoError(t, v.Insert(t.Context()))
+
+			v = Version{
+				Id:                  "v_5",
+				Identifier:          p.Id,
+				Requester:           evergreen.RepotrackerVersionRequester,
+				RevisionOrderNumber: 996,
+				CreateTime:          start.Add(-2 * time.Minute),
+				Activated:           utility.TruePtr(),
+			}
+			assert.NoError(t, v.Insert(t.Context()))
+
+			tCase(t, t.Context())
+		})
 	}
-	assert.NoError(t, v.Insert(t.Context()))
-	v = Version{
-		Id:                  "v_5",
-		Identifier:          "a_project",
-		Requester:           evergreen.RepotrackerVersionRequester,
-		RevisionOrderNumber: 996,
-		CreateTime:          start.Add(-2 * time.Minute),
-		Activated:           utility.TruePtr(),
-	}
-	assert.NoError(t, v.Insert(t.Context()))
-
-	versions, err := GetActiveWaterfallVersions(t.Context(), p.Id, WaterfallOptions{
-		Limit:      4,
-		Requesters: evergreen.SystemVersionRequesterTypes,
-	})
-	assert.NoError(t, err)
-	require.Len(t, versions, 4)
-	assert.EqualValues(t, "v_1", versions[0].Id)
-	assert.EqualValues(t, "v_3", versions[1].Id)
-	assert.EqualValues(t, "v_4", versions[2].Id)
-	assert.EqualValues(t, "v_5", versions[3].Id)
-
-	versions, err = GetActiveWaterfallVersions(t.Context(), p.Id, WaterfallOptions{
-		Limit:      2,
-		Requesters: evergreen.SystemVersionRequesterTypes,
-		MaxOrder:   999,
-	})
-	assert.NoError(t, err)
-	require.Len(t, versions, 2)
-	assert.EqualValues(t, "v_3", versions[0].Id)
-	assert.EqualValues(t, "v_4", versions[1].Id)
-
-	versions, err = GetActiveWaterfallVersions(t.Context(), p.Id, WaterfallOptions{
-		Limit:      5,
-		Requesters: evergreen.SystemVersionRequesterTypes,
-		MinOrder:   997,
-	})
-	assert.NoError(t, err)
-	require.Len(t, versions, 2)
-	assert.EqualValues(t, "v_1", versions[0].Id)
-	assert.EqualValues(t, "v_3", versions[1].Id)
-
-	versions, err = GetActiveWaterfallVersions(t.Context(), p.Id,
-		WaterfallOptions{
-			Limit:      4,
-			Requesters: []string{"foo"},
-		})
-	assert.Nil(t, versions)
-	assert.Error(t, err)
-	assert.True(t, strings.HasPrefix(err.Error(), "invalid requester"))
-
-	versions, err = GetActiveWaterfallVersions(t.Context(), p.Id,
-		WaterfallOptions{
-			Limit:      4,
-			Requesters: evergreen.SystemVersionRequesterTypes,
-			Variants:   []string{"Build Variant 1"},
-		})
-	assert.NoError(t, err)
-	require.Len(t, versions, 1)
-	assert.EqualValues(t, "v_4", versions[0].Id)
-
-	// Inserting this version causes the pipeline to run a $unionWith stage that fetches build display names from the builds collection
-	v = Version{
-		Id:                  "v_6",
-		Identifier:          "a_project",
-		Requester:           evergreen.RepotrackerVersionRequester,
-		RevisionOrderNumber: 1,
-		CreateTime:          time.Date(2024, time.February, 7, 0, 0, 0, 0, time.UTC),
-		Activated:           utility.TruePtr(),
-	}
-	assert.NoError(t, v.Insert(t.Context()))
-
-	versions, err = GetActiveWaterfallVersions(t.Context(), p.Id,
-		WaterfallOptions{
-			Limit:      4,
-			Requesters: evergreen.SystemVersionRequesterTypes,
-			Variants:   []string{"Build Variant 1"},
-		})
-	assert.Nil(t, err)
-	require.Len(t, versions, 2)
-	assert.EqualValues(t, "v_1", versions[0].Id)
-	assert.EqualValues(t, "v_4", versions[1].Id)
-
-	versions, err = GetActiveWaterfallVersions(t.Context(), p.Id,
-		WaterfallOptions{
-			Limit:      4,
-			Requesters: evergreen.SystemVersionRequesterTypes,
-			Variants:   []string{"Build Variant 2"},
-		})
-	assert.NoError(t, err)
-	require.Len(t, versions, 0)
 }
 
 func TestGetAllWaterfallVersions(t *testing.T) {
@@ -289,18 +331,10 @@ func TestGetVersionBuilds(t *testing.T) {
 		DisplayName: "Lint",
 		Version:     "v_1",
 		Tasks: []build.TaskCache{
-			{
-				Id: "t_80",
-			},
-			{
-				Id: "t_79",
-			},
-			{
-				Id: "t_86",
-			},
-			{
-				Id: "t_200",
-			},
+			{Id: "t_80"},
+			{Id: "t_79"},
+			{Id: "t_86"},
+			{Id: "t_200"},
 		},
 	}
 	assert.NoError(t, b.Insert(t.Context()))
@@ -310,15 +344,9 @@ func TestGetVersionBuilds(t *testing.T) {
 		DisplayName: "Ubuntu 2204",
 		Version:     "v_1",
 		Tasks: []build.TaskCache{
-			{
-				Id: "t_45",
-			},
-			{
-				Id: "t_12",
-			},
-			{
-				Id: "t_66",
-			},
+			{Id: "t_45"},
+			{Id: "t_12"},
+			{Id: "t_66"},
 		},
 	}
 	assert.NoError(t, b.Insert(t.Context()))
@@ -486,12 +514,36 @@ func TestGetActiveVersionsByTaskFilters(t *testing.T) {
 			assert.NoError(t, err)
 			require.Len(t, versions, 2)
 		},
-		"Applies a task name filter": func(t *testing.T, ctx context.Context) {
+		"Applies a task name filter (case sensitive)": func(t *testing.T, ctx context.Context) {
 			versions, err := GetActiveVersionsByTaskFilters(ctx, "a_project",
 				WaterfallOptions{
-					Limit:      5,
-					Requesters: evergreen.SystemVersionRequesterTypes,
-					Tasks:      []string{"Task 80"},
+					Limit:               5,
+					Requesters:          evergreen.SystemVersionRequesterTypes,
+					Tasks:               []string{"Task 80"},
+					TaskCaseInsensitive: false,
+				}, 1002)
+			assert.NoError(t, err)
+			require.Len(t, versions, 1)
+			assert.Equal(t, versions[0].Id, "v_1")
+		},
+		"Applies a task name filter, no results (case sensitive)": func(t *testing.T, ctx context.Context) {
+			versions, err := GetActiveVersionsByTaskFilters(ctx, "a_project",
+				WaterfallOptions{
+					Limit:               5,
+					Requesters:          evergreen.SystemVersionRequesterTypes,
+					Tasks:               []string{"task 80"},
+					TaskCaseInsensitive: false,
+				}, 1002)
+			assert.NoError(t, err)
+			assert.Len(t, versions, 0)
+		},
+		"Applies a task name filter (case insensitive)": func(t *testing.T, ctx context.Context) {
+			versions, err := GetActiveVersionsByTaskFilters(ctx, "a_project",
+				WaterfallOptions{
+					Limit:               5,
+					Requesters:          evergreen.SystemVersionRequesterTypes,
+					Tasks:               []string{"task 80"},
+					TaskCaseInsensitive: true,
 				}, 1002)
 			assert.NoError(t, err)
 			require.Len(t, versions, 1)
@@ -532,13 +584,29 @@ func TestGetActiveVersionsByTaskFilters(t *testing.T) {
 			require.Len(t, versions, 1)
 			assert.Equal(t, versions[0].Id, "v_2")
 		},
-		"Applies a task name and build variant filter": func(t *testing.T, ctx context.Context) {
+		"Applies a task name and build variant filter (case sensitive)": func(t *testing.T, ctx context.Context) {
 			versions, err := GetActiveVersionsByTaskFilters(ctx, "a_project",
 				WaterfallOptions{
-					Limit:      5,
-					Requesters: evergreen.SystemVersionRequesterTypes,
-					Tasks:      []string{"Task 100"},
-					Variants:   []string{"Build Variant 1"},
+					Limit:                  5,
+					Requesters:             evergreen.SystemVersionRequesterTypes,
+					Tasks:                  []string{"Task 100"},
+					Variants:               []string{"Build Variant 1"},
+					TaskCaseInsensitive:    false,
+					VariantCaseInsensitive: false,
+				}, 1002)
+			assert.NoError(t, err)
+			require.Len(t, versions, 1)
+			assert.Equal(t, versions[0].Id, "v_1")
+		},
+		"Applies a task name and build variant filter (case insensitive)": func(t *testing.T, ctx context.Context) {
+			versions, err := GetActiveVersionsByTaskFilters(ctx, "a_project",
+				WaterfallOptions{
+					Limit:                  5,
+					Requesters:             evergreen.SystemVersionRequesterTypes,
+					Tasks:                  []string{"task 100"},
+					Variants:               []string{"build variant 1"},
+					TaskCaseInsensitive:    true,
+					VariantCaseInsensitive: true,
 				}, 1002)
 			assert.NoError(t, err)
 			require.Len(t, versions, 1)

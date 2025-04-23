@@ -81717,8 +81717,14 @@ func (ec *executionContext) unmarshalInputWaterfallOptions(ctx context.Context, 
 	if _, present := asMap["limit"]; !present {
 		asMap["limit"] = 5
 	}
+	if _, present := asMap["variantCaseInsensitive"]; !present {
+		asMap["variantCaseInsensitive"] = false
+	}
+	if _, present := asMap["taskCaseInsensitive"]; !present {
+		asMap["taskCaseInsensitive"] = false
+	}
 
-	fieldsInOrder := [...]string{"date", "limit", "minOrder", "maxOrder", "projectIdentifier", "requesters", "revision", "statuses", "tasks", "variants"}
+	fieldsInOrder := [...]string{"date", "limit", "minOrder", "maxOrder", "projectIdentifier", "requesters", "revision", "statuses", "tasks", "variants", "variantCaseInsensitive", "taskCaseInsensitive"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -81820,6 +81826,20 @@ func (ec *executionContext) unmarshalInputWaterfallOptions(ctx context.Context, 
 				return it, err
 			}
 			it.Variants = data
+		case "variantCaseInsensitive":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("variantCaseInsensitive"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.VariantCaseInsensitive = data
+		case "taskCaseInsensitive":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskCaseInsensitive"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TaskCaseInsensitive = data
 		}
 	}
 

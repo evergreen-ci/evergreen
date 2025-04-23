@@ -12,6 +12,8 @@ input WaterfallOptions {
   statuses: [String!]
   tasks: [String!]
   variants: [String!]
+  variantCaseInsensitive: Boolean = false
+  taskCaseInsensitive: Boolean = false
 }
 
 type WaterfallTask {
