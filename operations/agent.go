@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/evergreen-ci/evergreen"
@@ -218,7 +219,10 @@ func Agent() cli.Command {
 					"message": "agent is exiting due to unrecoverable error",
 				}
 				msg = opts.AddLoggableInfo(msg)
-				grip.Emergency(message.WrapError(err, msg))
+				// Although we still want to return an error, it's an acceptable state for an agent to be unauthorized
+				// as ec2 doesn't immediately shut down hosts, so avoid logging it as an emergency.
+				isUnauthorizedErr := strings.Contains(err.Error(), "401 (Unauthorized)")
+				grip.EmergencyWhen(!isUnauthorizedErr, message.WrapError(err, msg))
 				return err
 			}
 
