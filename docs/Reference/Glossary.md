@@ -35,3 +35,4 @@ Here is a list of valid requester types:
 - ad_hoc: Periodic builds.
 - patch_request: CLI requests.
 
+Using our [REST API](../API/REST-V2-Usage.mdx) you can find the requester type of a version or patch.
