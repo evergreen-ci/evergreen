@@ -20,19 +20,18 @@
 * **version**: A version, which corresponds to a vertical slice of tasks on the waterfall, is all tasks for a given commit or patch build.
 * **working directory**: The working directory is the temporary directory which Evergreen creates to run a task. It is available as [an expansion](../Project-Configuration/Project-Configuration-Files#default-expansions).
 
-
 ## Requesters
 
-The requester is field in the version/patch document that indicates how it was created. These are secure, immutable fields that are set upon creation.
+The requester is a field in the version/patch document that indicates how it was created. These immutable values are set upon creation. They are used to provide elevated permissions to certain versions/patches. For example, a project can have [admin only](../Project-Configuration/Project-and-Distro-Settings.md#variables) variables that only get provided to versions/patches by admins or from mainline commits. They can also be used with [ec2.assume_role](../Project-Configuration/Project-Commands.md#ec2assume_role) to allow specific requesters to assume a role (e.g.mainline commits) and prevent others from not (e.g. CLI requests.).
 
 Here is a list of valid requester types:
 
-- github_pull_request: A pull request from GitHub.
-- github_merge_request: A merge request from GitHub.
-- git_tag_request: A tag from GitHub.
-- gitter_request: A commit on the tracking GitHub branch.
-- trigger_request: Trigger patches.
-- ad_hoc: Periodic builds.
-- patch_request: CLI requests.
+- `github_pull_request`: A pull request from GitHub.
+- `github_merge_request`: A merge request from GitHub.
+- `git_tag_request`: A tag from GitHub.
+- `gitter_request`: A commit on the tracking GitHub branch.
+- `trigger_request`: Trigger patches.
+- `ad_hoc`: Periodic builds.
+- `patch_request`: CLI requests.
 
 Using our [REST API](../API/REST-V2-Usage.mdx) you can find the requester type of a version or patch.
