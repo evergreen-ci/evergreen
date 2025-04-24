@@ -728,6 +728,10 @@ func GetCommitEvent(ctx context.Context, owner, repo, githash string) (*github.R
 		return nil, errors.New("commit not found in github")
 	}
 
+	// We use 24 hours as the expiration time for the item in the cache
+	// because the cache only holds weak pointers to the items in it.
+	// This means that the items in the cache can be garbage collected
+	// if there are no strong references to them.
 	ghCommitCache.Put(ctx, ghCommitKey, commit, time.Now().Add(time.Hour*24))
 	return commit, nil
 }
