@@ -45,9 +45,6 @@ const (
 	// ec2ResourceAlreadyAssociated means an elastic IP is already associated
 	// with another resource.
 	ec2ResourceAlreadyAssociated = "Resource.AlreadyAssociated"
-	// ec2AssociationIDNotFound means that the association ID between a host and
-	// its elastic IP does not exist.
-	ec2AssociationIDNotFound = "InvalidAssociationID.NotFound"
 
 	r53InvalidInput       = "InvalidInput"
 	r53InvalidChangeBatch = "InvalidChangeBatch"

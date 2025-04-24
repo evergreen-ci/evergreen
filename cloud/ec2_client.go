@@ -962,6 +962,30 @@ func (c *awsClientImpl) AllocateAddress(ctx context.Context, input *ec2.Allocate
 	return output, nil
 }
 
+func (c *awsClientImpl) ReleaseAddress(ctx context.Context, input *ec2.ReleaseAddressInput) (*ec2.ReleaseAddressOutput, error) {
+	var output *ec2.ReleaseAddressOutput
+	var err error
+	err = utility.Retry(
+		ctx,
+		func() (bool, error) {
+			msg := makeAWSLogMessage("ReleaseAddress", fmt.Sprintf("%T", c), input)
+			output, err = c.ec2Client.ReleaseAddress(ctx, input)
+			if err != nil {
+				var apiErr smithy.APIError
+				if errors.As(err, &apiErr) {
+					grip.Debug(message.WrapError(apiErr, msg))
+				}
+				return true, err
+			}
+			grip.Info(msg)
+			return false, nil
+		}, awsClientDefaultRetryOptions())
+	if err != nil {
+		return nil, err
+	}
+	return output, nil
+}
+
 func (c *awsClientImpl) AssociateAddress(ctx context.Context, input *ec2.AssociateAddressInput) (*ec2.AssociateAddressOutput, error) {
 	var output *ec2.AssociateAddressOutput
 	var err error
@@ -997,33 +1021,6 @@ func (c *awsClientImpl) DisassociateAddress(ctx context.Context, input *ec2.Disa
 		func() (bool, error) {
 			msg := makeAWSLogMessage("DisassociateAddress", fmt.Sprintf("%T", c), input)
 			output, err = c.ec2Client.DisassociateAddress(ctx, input)
-			if err != nil {
-				var apiErr smithy.APIError
-				if errors.As(err, &apiErr) {
-					grip.Debug(message.WrapError(apiErr, msg))
-				}
-				if strings.Contains(err.Error(), ec2AssociationIDNotFound) {
-					return false, err
-				}
-				return true, err
-			}
-			grip.Info(msg)
-			return false, nil
-		}, awsClientDefaultRetryOptions())
-	if err != nil {
-		return nil, err
-	}
-	return output, nil
-}
-
-func (c *awsClientImpl) ReleaseAddress(ctx context.Context, input *ec2.ReleaseAddressInput) (*ec2.ReleaseAddressOutput, error) {
-	var output *ec2.ReleaseAddressOutput
-	var err error
-	err = utility.Retry(
-		ctx,
-		func() (bool, error) {
-			msg := makeAWSLogMessage("ReleaseAddress", fmt.Sprintf("%T", c), input)
-			output, err = c.ec2Client.ReleaseAddress(ctx, input)
 			if err != nil {
 				var apiErr smithy.APIError
 				if errors.As(err, &apiErr) {
