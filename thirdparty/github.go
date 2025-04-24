@@ -661,7 +661,7 @@ func getCommitComparison(ctx context.Context, owner, repo, baseRevision, current
 }
 
 // ghCommitCache is a cache for commits.
-var ghCommitCache = ttlcache.WithOtel(ttlcache.NewInMemory[*github.RepositoryCommit](), "github-get-commit-event")
+var ghCommitCache = ttlcache.WithOtel(ttlcache.NewWeakInMemory[github.RepositoryCommit](), "github-get-commit-event")
 
 func GetCommitEvent(ctx context.Context, owner, repo, githash string) (*github.RepositoryCommit, error) {
 	caller := "GetCommitEvent"
@@ -676,7 +676,7 @@ func GetCommitEvent(ctx context.Context, owner, repo, githash string) (*github.R
 	ghCommitKey := fmt.Sprintf("%s/%s/%s", owner, repo, githash)
 	commit, found := ghCommitCache.Get(ctx, ghCommitKey, 0)
 	span.SetAttributes(attribute.Bool(githubLocalCachedAttribute, found))
-	if found {
+	if found && commit != nil {
 		return commit, nil
 	}
 
