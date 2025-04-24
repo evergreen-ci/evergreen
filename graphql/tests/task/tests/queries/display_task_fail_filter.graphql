@@ -1,0 +1,11 @@
+{
+  task(taskId: "im_a_display_task", execution: 0) {
+    id
+    execution
+    tests(opts: {statuses: ["fail", "silentfail"]}) {
+      testResults {
+        taskId
+      }
+    }
+  }
+}
