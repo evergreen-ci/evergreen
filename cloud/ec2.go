@@ -929,13 +929,6 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 		}))
 	}
 
-	grip.Info(message.Fields{
-		"message":        "kim: start disassociating IP address",
-		"provider":       h.Distro.Provider,
-		"host_id":        h.Id,
-		"association_id": h.IPAssociationID,
-		"allocation_id":  h.IPAllocationID,
-	})
 	grip.Error(message.WrapError(disassociateIPAddressForHost(ctx, m.client, h), message.Fields{
 		"message":        "could not disassociate elastic IP address from host",
 		"provider":       h.Distro.Provider,
@@ -943,19 +936,7 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 		"association_id": h.IPAssociationID,
 		"allocation_id":  h.IPAllocationID,
 	}))
-	grip.Info(message.Fields{
-		"message":        "kim: finished disassociating IP address",
-		"provider":       h.Distro.Provider,
-		"host_id":        h.Id,
-		"association_id": h.IPAssociationID,
-		"allocation_id":  h.IPAllocationID,
-	})
 
-	grip.Info(message.Fields{
-		"message":  "kim: start terminating host",
-		"provider": h.Distro.Provider,
-		"host_id":  h.Id,
-	})
 	resp, err := m.client.TerminateInstances(ctx, &ec2.TerminateInstancesInput{
 		InstanceIds: []string{h.Id},
 	})
@@ -969,11 +950,6 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 		}))
 		return err
 	}
-	grip.Info(message.Fields{
-		"message":  "kim: finished terminating host",
-		"provider": h.Distro.Provider,
-		"host_id":  h.Id,
-	})
 
 	for _, stateChange := range resp.TerminatingInstances {
 		grip.Info(message.Fields{
@@ -986,13 +962,6 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 		})
 	}
 
-	grip.Info(message.Fields{
-		"message":        "kim: start releasing IP address",
-		"provider":       h.Distro.Provider,
-		"host_id":        h.Id,
-		"association_id": h.IPAssociationID,
-		"allocation_id":  h.IPAllocationID,
-	})
 	grip.Error(message.WrapError(releaseIPAddressForHost(ctx, m.client, h), message.Fields{
 		"message":        "could not release elastic IP address from host",
 		"provider":       h.Distro.Provider,
@@ -1000,13 +969,6 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 		"association_id": h.IPAssociationID,
 		"allocation_id":  h.IPAllocationID,
 	}))
-	grip.Info(message.Fields{
-		"message":        "kim: finished releasing IP address",
-		"provider":       h.Distro.Provider,
-		"host_id":        h.Id,
-		"association_id": h.IPAssociationID,
-		"allocation_id":  h.IPAllocationID,
-	})
 
 	for _, vol := range h.Volumes {
 		volDB, err := host.FindVolumeByID(ctx, vol.VolumeID)

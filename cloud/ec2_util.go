@@ -763,9 +763,7 @@ func isEC2InstanceNotFound(err error) bool {
 }
 
 func shouldAssignPublicIPv4Address(h *host.Host, ec2Settings *EC2ProviderSettings) bool {
-	// kim: TODO: revert when done testing in spawn hosts.
-	// if h.UserHost || h.SpawnOptions.SpawnedByTask {
-	if h.SpawnOptions.SpawnedByTask {
+	if h.UserHost || h.SpawnOptions.SpawnedByTask {
 		// Spawn hosts and host.create hosts need to have a public IPv4 address
 		// because SSH is currently the only means for the user/task to access
 		// the host.
@@ -776,9 +774,7 @@ func shouldAssignPublicIPv4Address(h *host.Host, ec2Settings *EC2ProviderSetting
 }
 
 func canUseElasticIP(settings *evergreen.Settings, ec2Settings *EC2ProviderSettings, account string, h *host.Host) bool {
-	// kim: TODO: revert when done testing in spawn hosts.
-	// if h.UserHost || h.SpawnOptions.SpawnedByTask {
-	if h.SpawnOptions.SpawnedByTask {
+	if h.UserHost || h.SpawnOptions.SpawnedByTask {
 		// Spawn hosts and host.create hosts should not use an elastic IP
 		// because the feature is primarily intended for task hosts.
 		return false
@@ -866,15 +862,15 @@ func associateIPAddressForHost(ctx context.Context, c AWSClient, h *host.Host) e
 	return nil
 }
 
-// disassociateIPAddressForHost disassociates the elastic IP address from the
-// host, if it has an elastic IP.
+// disassociateIPAddressForHost initiates the process of disassociating the
+// elastic IP address from the host, if it has an elastic IP. This is not
+// synchronous, so the address is not guaranteed to be disassociated when this
+// returns.
 func disassociateIPAddressForHost(ctx context.Context, c AWSClient, h *host.Host) error {
 	if h.IPAssociationID == "" {
 		return nil
 	}
 
-	// kim: NOTE: this is not synchronous, so the address is not guaranteed to
-	// be disassociated when this returns.
 	_, err := c.DisassociateAddress(ctx, &ec2.DisassociateAddressInput{
 		AssociationId: aws.String(h.IPAssociationID),
 	})
