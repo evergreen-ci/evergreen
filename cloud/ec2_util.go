@@ -56,6 +56,10 @@ const (
 	stsErrorAccessDenied = "AccessDenied"
 	// This means the role to be assumed does not exist or does not have a trust relationship with the role doing the assuming.
 	stsErrorAssumeRoleAccessDenied = "AssumeRoleAccessDenied"
+
+	// filterTagKey is the key used to filter resources by their tag key's name
+	// in the EC2 API.
+	filterTagKey = "tag-key"
 )
 
 var (
@@ -875,4 +879,68 @@ func disassociateIPAddressForHost(ctx context.Context, c AWSClient, h *host.Host
 		AssociationId: aws.String(h.IPAssociationID),
 	})
 	return errors.Wrapf(err, "disassociating host IP address with association ID '%s'", h.IPAssociationID)
+}
+
+func cleanupStaleElasticIPs(ctx context.Context, c AWSClient) error {
+	idleAddrAllocationIDs, err := getIdleElasticIPs(ctx, c)
+	if err != nil {
+		return errors.Wrap(err, "getting idle elastic IP addresses for initial check")
+	}
+	if len(idleAddrAllocationIDs) == 0 {
+		return nil
+	}
+
+	// Wait for a few minutes and check again to see which of the idle addresses
+	// is still idle. This is slightly hacky but necessary because the AWS API
+	// doesn't provide information on when an address was allocated. Therefore,
+	// it's hard to tell if the address is idle because it's truly an unused and
+	// leaked elastic IP or if it was just allocated and is waiting to be
+	// associated with a host.
+	const idleAddrRecheck = 3 * time.Minute
+	timer := time.NewTimer(idleAddrRecheck)
+
+	select {
+	case <-timer.C:
+		idleAddrAllocationIDsRecheck, err := getIdleElasticIPs(ctx, c)
+		if err != nil {
+			return errors.Wrap(err, "getting idle elastic IP addresses for recheck")
+		}
+		idleAddrs := utility.StringSliceIntersection(idleAddrAllocationIDs, idleAddrAllocationIDsRecheck)
+		if len(idleAddrs) > 0 {
+			for _, idleAddr := range idleAddrs {
+				// kim: NOTE: Needs DEVPROD-16713 merged
+				if err := c.ReleaseAddress(ctx, &ec2.ReleaseAddressInput{
+					AllocationId: aws.String(idleAddr),
+				}); err != nil {
+					return errors.Wrapf(err, "releasing idle elastic IP address with allocation ID '%s'", idleAddr)
+				}
+			}
+		}
+
+	case <-ctx.Done():
+		return errors.Wrap(ctx.Err(), "context was done while waiting for idle addresses")
+	}
+
+	return nil
+}
+
+func getIdleElasticIPs(ctx context.Context, c AWSClient) ([]string, error) {
+	descAddrOut, err := c.DescribeAddresses(ctx, &ec2.DescribeAddressesInput{
+		Filters: []types.Filter{
+			{Name: aws.String(filterTagKey), Values: []string{evergreen.TagEvergreenService}},
+		},
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "describing elastic IP addresses")
+	}
+
+	var idleAddrAllocationIDs []string
+	for _, addr := range descAddrOut.Addresses {
+		if aws.ToString(addr.AssociationId) == "" && aws.ToString(addr.AllocationId) != "" {
+			idleAddrAllocationIDs = append(idleAddrAllocationIDs, aws.ToString(addr.AllocationId))
+		}
+	}
+	return idleAddrAllocationIDs, nil
+>>>>>>> 7da34765b (Add logic to clean up idle elastic IP addresses)
+>>>>>>> d63ab4bfe (Add logic to clean up idle elastic IP addresses)
 }
