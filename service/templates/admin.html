@@ -337,6 +337,17 @@ Admin Settings
 												</td>
 											</tr>
 											<tr>
+												<td>Use Evergreen for Test Results Service</td>
+												<td colspan="2">
+													<md-radio-group
+															data-ng-model="Settings.service_flags.evergreen_test_results_disabled"
+															layout="row">
+														<md-radio-button data-ng-value="false"></md-radio-button>
+														<md-radio-button data-ng-value="true"></md-radio-button>
+													</md-radio-group>
+												</td>
+											</tr>
+											<tr>
 												<td>Host Allocator</td>
 												<td colspan="2">
 													<md-radio-group
@@ -1407,6 +1418,14 @@ Admin Settings
 									<md-input-container class="control" style="width:45%;">
 										<label>API Key</label>
 										<input type="text" ng-model="Settings.cedar.api_key">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>DB URL</label>
+										<input type="text" ng-model="Settings.cedar.db_url">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>DB Name</label>
+										<input type="text" ng-model="Settings.cedar.db_name">
 									</md-input-container>
 								</md-card-content>
 							</md-card>

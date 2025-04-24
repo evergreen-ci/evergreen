@@ -409,8 +409,8 @@ func (m *ec2FleetManager) TimeTilNextPayment(h *host.Host) time.Duration {
 }
 
 func (m *ec2FleetManager) spawnFleetSpotHost(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings) error {
-	// Cleanup
 	defer func() {
+		// Cleanup
 		_, err := m.client.DeleteLaunchTemplate(ctx, &ec2.DeleteLaunchTemplateInput{LaunchTemplateName: aws.String(cleanLaunchTemplateName(h.Tag))})
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":  "can't delete launch template",
@@ -418,6 +418,23 @@ func (m *ec2FleetManager) spawnFleetSpotHost(ctx context.Context, h *host.Host, 
 			"host_tag": h.Tag,
 		}))
 	}()
+
+	useElasticIP := shouldAssignPublicIPv4Address(h, ec2Settings) && canUseElasticIP(m.env.Settings(), ec2Settings, h)
+	if useElasticIP && h.IPAllocationID == "" {
+		// If the host can't be allocated an IP address, continue on error
+		// because the host should fall back to using an AWS-provided IP
+		// address. Using an elastic IP address is a best-effort attempt to save
+		// money.
+		// This must be done before creating the launch template because
+		// allocating the address is only a best-effort attempt and isn't
+		// guaranteed to succeed. For example, if the IPAM pool has no addresses
+		// available currently, Evergreen still needs a usable host, so the
+		// launch template has to fall back to using an AWS-managed IP address.
+		grip.Notice(message.WrapError(allocateIPAddressForHost(ctx, m.settings, m.client, h), message.Fields{
+			"message": "could not allocate elastic IP address for host, falling back to using AWS-managed IP",
+			"host_id": h.Id,
+		}))
+	}
 
 	if err := m.uploadLaunchTemplate(ctx, h, ec2Settings); err != nil {
 		return errors.Wrapf(err, "unable to upload launch template for host '%s'", h.Id)
@@ -429,6 +446,23 @@ func (m *ec2FleetManager) spawnFleetSpotHost(ctx context.Context, h *host.Host, 
 	}
 	h.Id = instanceID
 
+	if useElasticIP && h.IPAllocationID != "" {
+		// Associate the IP address that was allocated for this host. This is
+		// necessary for the host to be usable because otherwise, it has no IP
+		// address.
+		// Unfortunately, this step is prone to timing issues because EC2 only
+		// allows an IP address to be associated with the host after the
+		// EC2 instance reaches the "running" state. If AWS is slow at getting
+		// the host to "running", this could run out of attempts to associate
+		// the IP address and the host would end up unusable.
+		// TODO (DEVPROD-17136): consider making this step more resilient
+		// against AWS timing problems.
+		grip.Error(message.WrapError(associateIPAddressForHost(ctx, m.client, h), message.Fields{
+			"message":       "host was created and allocated elastic IP address but could not associate the host with the IP address; host will not be usable",
+			"host_id":       h.Id,
+			"allocation_id": h.IPAllocationID,
+		}))
+	}
 	return nil
 }
 
@@ -457,9 +491,12 @@ func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host
 		launchTemplate.KeyName = aws.String(ec2Settings.KeyName)
 	}
 	if ec2Settings.IsVpc {
+		// Fall back to using an AWS-provided IPv4 address if this host needs a
+		// public IPv4 address and it hasn't been allocated an elastic IP.
+		useAWSIPv4Addr := assignPublicIPv4 && h.IPAllocationID == ""
 		launchTemplate.NetworkInterfaces = []types.LaunchTemplateInstanceNetworkInterfaceSpecificationRequest{
 			{
-				AssociatePublicIpAddress: aws.Bool(assignPublicIPv4),
+				AssociatePublicIpAddress: aws.Bool(useAWSIPv4Addr),
 				DeviceIndex:              aws.Int32(0),
 				Groups:                   ec2Settings.SecurityGroupIDs,
 				SubnetId:                 aws.String(ec2Settings.SubnetId),

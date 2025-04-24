@@ -239,6 +239,12 @@ func (e *Environment) ContextSession(_ context.Context) db.Session {
 	return e.DBSession
 }
 
+func (e *Environment) CedarContextSession(_ context.Context) db.Session {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return e.DBSession
+}
+
 func (e *Environment) Client() *mongo.Client {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
@@ -246,6 +252,13 @@ func (e *Environment) Client() *mongo.Client {
 }
 
 func (e *Environment) DB() *mongo.Database {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	return e.MongoClient.Database(e.DatabaseName)
+}
+
+func (e *Environment) CedarDB() *mongo.Database {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 

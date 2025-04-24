@@ -974,13 +974,15 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 	}
 
 	opts := model.WaterfallOptions{
-		Limit:      limit,
-		MaxOrder:   maxOrderOpt,
-		MinOrder:   minOrderOpt,
-		Requesters: requesters,
-		Statuses:   utility.FilterSlice(options.Statuses, func(s string) bool { return s != "" }),
-		Tasks:      utility.FilterSlice(options.Tasks, func(s string) bool { return s != "" }),
-		Variants:   utility.FilterSlice(options.Variants, func(s string) bool { return s != "" }),
+		Limit:                limit,
+		MaxOrder:             maxOrderOpt,
+		MinOrder:             minOrderOpt,
+		Requesters:           requesters,
+		Statuses:             utility.FilterSlice(options.Statuses, func(s string) bool { return s != "" }),
+		Tasks:                utility.FilterSlice(options.Tasks, func(s string) bool { return s != "" }),
+		TaskCaseSensitive:    utility.FromBoolTPtr(options.TaskCaseSensitive), // Default to true for performance reasons.
+		Variants:             utility.FilterSlice(options.Variants, func(s string) bool { return s != "" }),
+		VariantCaseSensitive: utility.FromBoolTPtr(options.TaskCaseSensitive), // Default to true for performance reasons.
 	}
 
 	mostRecentWaterfallVersion, err := model.GetMostRecentWaterfallVersion(ctx, projectId)
