@@ -3,6 +3,7 @@ package graphql
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -581,9 +582,19 @@ func (r *taskResolver) TaskLogs(ctx context.Context, obj *restModel.APITask) (*T
 
 // TaskOwnerTeam is the resolver for the taskOwnerTeam field.
 func (r *taskResolver) TaskOwnerTeam(ctx context.Context, obj *restModel.APITask) (*TaskOwnerTeam, error) {
+	httpClient := utility.GetHTTPClient()
+	defer utility.PutHTTPClient(httpClient)
+
 	cfg := fws.NewConfiguration()
-	cfg.UserAgent = "Evergreen OPENAPI-client 1.0.0"
-	cfg.Host = "https://foliage-web-services.cloud-build.staging.corp.mongodb.com"
+	cfg.HTTPClient = httpClient
+	cfg.HTTPClient.Timeout = 50 * time.Second
+	cfg.Servers = fws.ServerConfigurations{
+		fws.ServerConfiguration{
+			Description: "Foliage Web Services",
+			URL:         `http://foliage-web-services-webapp-web-app.cloud-build.svc.cluster.local`,
+		},
+	}
+
 	client := fws.NewAPIClient(cfg)
 	req := client.OwnerAPI.ByFoliageLogicApiOwnerByFoliageLogicTaskIdGet(ctx, *obj.Id)
 	results, _, err := req.Execute()
