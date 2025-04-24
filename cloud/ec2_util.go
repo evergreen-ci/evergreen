@@ -820,6 +820,18 @@ func allocateIPAddressForHost(ctx context.Context, settings *evergreen.Settings,
 	return nil
 }
 
+// releaseIPAddressForHost releases the elastic IP address that was associated
+// with the host, if it has an elastic IP.
+func releaseIPAddressForHost(ctx context.Context, c AWSClient, h *host.Host) error {
+	if h.IPAllocationID == "" {
+		return nil
+	}
+	_, err := c.ReleaseAddress(ctx, &ec2.ReleaseAddressInput{
+		AllocationId: aws.String(h.IPAllocationID),
+	})
+	return err
+}
+
 // associateIPAddressForHost associates the allocated IP address with the host.
 func associateIPAddressForHost(ctx context.Context, c AWSClient, h *host.Host) error {
 	assocAddrOut, err := c.AssociateAddress(ctx, &ec2.AssociateAddressInput{
@@ -840,4 +852,17 @@ func associateIPAddressForHost(ctx context.Context, c AWSClient, h *host.Host) e
 		return errors.Wrapf(err, "setting IP association ID '%s' for host", associationID)
 	}
 	return nil
+}
+
+// disassociateIPAddressForHost disassociates the elastic IP address from the
+// host, if it has an elastic IP.
+func disassociateIPAddressForHost(ctx context.Context, c AWSClient, h *host.Host) error {
+	if h.IPAllocationID == "" {
+		return nil
+	}
+
+	_, err := c.DisassociateAddress(ctx, &ec2.DisassociateAddressInput{
+		AssociationId: aws.String(h.IPAllocationID),
+	})
+	return err
 }

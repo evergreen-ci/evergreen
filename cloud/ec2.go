@@ -942,6 +942,15 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 		}))
 	}
 
+	if h.IPAssociationID != "" {
+		grip.Error(message.WrapError(disassociateIPAddressForHost(ctx, m.client, h), message.Fields{
+			"message":        "could not disassociate elastic IP address from host",
+			"host_id":        h.Id,
+			"association_id": h.IPAssociationID,
+			"allocation_id":  h.IPAllocationID,
+		}))
+	}
+
 	resp, err := m.client.TerminateInstances(ctx, &ec2.TerminateInstancesInput{
 		InstanceIds: []string{h.Id},
 	})
@@ -961,10 +970,19 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 			"message":       "terminated instance",
 			"user":          user,
 			"host_provider": h.Distro.Provider,
-			"instance_id":   *stateChange.InstanceId,
+			"instance_id":   aws.ToString(stateChange.InstanceId),
 			"host_id":       h.Id,
 			"distro":        h.Distro.Id,
 		})
+	}
+
+	if h.IPAllocationID != "" {
+		grip.Error(message.WrapError(releaseIPAddressForHost(ctx, m.client, h), message.Fields{
+			"message":        "could not release elastic IP address from host",
+			"host_id":        h.Id,
+			"association_id": h.IPAssociationID,
+			"allocation_id":  h.IPAllocationID,
+		}))
 	}
 
 	for _, vol := range h.Volumes {
@@ -1379,6 +1397,18 @@ func (m *ec2Manager) GetDNSName(ctx context.Context, h *host.Host) (string, erro
 // TimeTilNextPayment returns how long until the next payment is due for a host.
 func (m *ec2Manager) TimeTilNextPayment(host *host.Host) time.Duration {
 	return timeTilNextEC2Payment(host)
+}
+
+// CleanupIP disassociates the IP address from the host's network interface and
+// releases the IP address back into the IPAM pool.
+func (m *ec2Manager) CleanupIP(ctx context.Context, h *host.Host) error {
+	if err := disassociateIPAddressForHost(ctx, m.client, h); err != nil {
+		return errors.Wrapf(err, "disassociating host IP address with association ID '%s'", h.IPAssociationID)
+	}
+	if err := releaseIPAddressForHost(ctx, m.client, h); err != nil {
+		return errors.Wrapf(err, "releasing host IP address with allocation ID '%s'", h.IPAllocationID)
+	}
+	return nil
 }
 
 // Cleanup is a noop for the EC2 provider.
