@@ -660,7 +660,8 @@ func getCommitComparison(ctx context.Context, owner, repo, baseRevision, current
 	return compare, nil
 }
 
-// ghCommitCache is a weak cache for GitHub commits.
+// ghCommitCache is a weak cache for GitHub commits. We can use a cache because
+// the commit data doesn't change.
 var ghCommitCache = ttlcache.WithOtel(ttlcache.NewWeakInMemory[github.RepositoryCommit](), "github-get-commit-event")
 
 func GetCommitEvent(ctx context.Context, owner, repo, githash string) (*github.RepositoryCommit, error) {
