@@ -48,6 +48,7 @@ type Config struct {
 }
 
 type ResolverRoot interface {
+	AdminSettings() AdminSettingsResolver
 	Annotation() AnnotationResolver
 	BootstrapSettings() BootstrapSettingsResolver
 	ContainerPool() ContainerPoolResolver
@@ -122,6 +123,10 @@ type ComplexityRoot struct {
 		User                    func(childComplexity int) int
 	}
 
+	AdminSettings struct {
+		Announcements func(childComplexity int) int
+	}
+
 	Annotation struct {
 		CreatedIssues     func(childComplexity int) int
 		Id                func(childComplexity int) int
@@ -132,6 +137,11 @@ type ComplexityRoot struct {
 		TaskExecution     func(childComplexity int) int
 		TaskId            func(childComplexity int) int
 		WebhookConfigured func(childComplexity int) int
+	}
+
+	Announcements struct {
+		BannerText func(childComplexity int) int
+		BannerType func(childComplexity int) int
 	}
 
 	BetaFeatures struct {
@@ -1752,6 +1762,9 @@ type ComplexityRoot struct {
 	}
 }
 
+type AdminSettingsResolver interface {
+	Announcements(ctx context.Context, obj *model.APIAdminSettings) (*Announcements, error)
+}
 type AnnotationResolver interface {
 	WebhookConfigured(ctx context.Context, obj *model.APITaskAnnotation) (bool, error)
 }
@@ -2240,6 +2253,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.AbortInfo.User(childComplexity), true
 
+	case "AdminSettings.announcements":
+		if e.complexity.AdminSettings.Announcements == nil {
+			break
+		}
+
+		return e.complexity.AdminSettings.Announcements(childComplexity), true
+
 	case "Annotation.createdIssues":
 		if e.complexity.Annotation.CreatedIssues == nil {
 			break
@@ -2302,6 +2322,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Annotation.WebhookConfigured(childComplexity), true
+
+	case "Announcements.bannerText":
+		if e.complexity.Announcements.BannerText == nil {
+			break
+		}
+
+		return e.complexity.Announcements.BannerText(childComplexity), true
+
+	case "Announcements.bannerType":
+		if e.complexity.Announcements.BannerType == nil {
+			break
+		}
+
+		return e.complexity.Announcements.BannerType(childComplexity), true
 
 	case "BetaFeatures.spruceWaterfallEnabled":
 		if e.complexity.BetaFeatures.SpruceWaterfallEnabled == nil {
@@ -16807,6 +16841,53 @@ func (ec *executionContext) fieldContext_AbortInfo_user(_ context.Context, field
 	return fc, nil
 }
 
+func (ec *executionContext) _AdminSettings_announcements(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AdminSettings_announcements(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.AdminSettings().Announcements(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*Announcements)
+	fc.Result = res
+	return ec.marshalOAnnouncements2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAnnouncements(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AdminSettings_announcements(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdminSettings",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "bannerText":
+				return ec.fieldContext_Announcements_bannerText(ctx, field)
+			case "bannerType":
+				return ec.fieldContext_Announcements_bannerType(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Announcements", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Annotation_id(ctx context.Context, field graphql.CollectedField, obj *model.APITaskAnnotation) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Annotation_id(ctx, field)
 	if err != nil {
@@ -17233,6 +17314,88 @@ func (ec *executionContext) fieldContext_Annotation_webhookConfigured(_ context.
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Announcements_bannerText(ctx context.Context, field graphql.CollectedField, obj *Announcements) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Announcements_bannerText(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BannerText, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Announcements_bannerText(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Announcements",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Announcements_bannerType(ctx context.Context, field graphql.CollectedField, obj *Announcements) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Announcements_bannerType(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BannerType, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Announcements_bannerType(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Announcements",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -82228,6 +82391,73 @@ func (ec *executionContext) _AbortInfo(ctx context.Context, sel ast.SelectionSet
 	return out
 }
 
+var adminSettingsImplementors = []string{"AdminSettings"}
+
+func (ec *executionContext) _AdminSettings(ctx context.Context, sel ast.SelectionSet, obj *model.APIAdminSettings) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, adminSettingsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AdminSettings")
+		case "announcements":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._AdminSettings_announcements(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var annotationImplementors = []string{"Annotation"}
 
 func (ec *executionContext) _Annotation(ctx context.Context, sel ast.SelectionSet, obj *model.APITaskAnnotation) graphql.Marshaler {
@@ -82300,6 +82530,44 @@ func (ec *executionContext) _Annotation(ctx context.Context, sel ast.SelectionSe
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var announcementsImplementors = []string{"Announcements"}
+
+func (ec *executionContext) _Announcements(ctx context.Context, sel ast.SelectionSet, obj *Announcements) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, announcementsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Announcements")
+		case "bannerText":
+			out.Values[i] = ec._Announcements_bannerText(ctx, field, obj)
+		case "bannerType":
+			out.Values[i] = ec._Announcements_bannerType(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -103616,6 +103884,13 @@ func (ec *executionContext) marshalOAnnotation2ᚖgithubᚗcomᚋevergreenᚑci�
 		return graphql.Null
 	}
 	return ec._Annotation(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOAnnouncements2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAnnouncements(ctx context.Context, sel ast.SelectionSet, v *Announcements) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._Announcements(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOBetaFeatures2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBetaFeatures(ctx context.Context, sel ast.SelectionSet, v *model.APIBetaFeatures) graphql.Marshaler {

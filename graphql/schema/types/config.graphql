@@ -17,6 +17,15 @@ type SpruceConfig {
   ui: UIConfig!
 }
 
+type AdminSettings {
+  announcements: Announcements
+}
+
+type Announcements {
+  bannerText: String
+  bannerType: String
+}
+
 type ContainerPoolsConfig {
   pools: [ContainerPool!]!
 }
