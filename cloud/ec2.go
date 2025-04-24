@@ -300,7 +300,9 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 		input.IamInstanceProfile = &types.IamInstanceProfileSpecification{Arn: aws.String(ec2Settings.IAMInstanceProfileARN)}
 	}
 
-	useElasticIP := shouldAssignPublicIPv4Address(h, ec2Settings) && canUseElasticIP(m.settings, ec2Settings, h)
+	assignPublicIPv4 := shouldAssignPublicIPv4Address(h, ec2Settings)
+
+	useElasticIP := assignPublicIPv4 && canUseElasticIP(m.settings, ec2Settings, h)
 	if useElasticIP && h.IPAllocationID == "" {
 		// If the host can't be allocated an IP address, continue on error
 		// because the host should fall back to using an AWS-provided IP
@@ -312,7 +314,6 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 		}))
 	}
 
-	assignPublicIPv4 := shouldAssignPublicIPv4Address(h, ec2Settings)
 	if assignPublicIPv4 {
 		// Only set an SSH key for the host if the host actually has a public
 		// IPv4 address. Hosts that don't have a public IPv4 address aren't
