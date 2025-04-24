@@ -9,7 +9,7 @@
 * **distro**: A distro is a set of hosts that runs tasks. A static distro is configured with a list of IP addresses, while a dynamic distro scales with demand.
 * **expansions**: Expansions are Evergreen- and user-specified variables that can be used in the project configuration file. They can be set by the `expansions.update` command, in the variant, on the project page, and on the distro page.
 * **function**: Commands may be grouped together in functions.
-* **requester**: The type of patch or version. Valid requester types are documented [here](#requesters)
+* **requester**: The type of patch or version. Valid requester types are documented [here](#requesters).
 * **patch build**: A patch build is a version not triggered by a commit to a repository. It either runs tasks on a base commit plus some diff if submitted by the CLI or on a git branch if created by a GitHub pull request.
 * **project configuration file**: The project configuration file is a file parsed by Evergreen that defines commands, functions, build variants, and tasks.
 * **stepback** When a task fails and the offending commit is unknown, Evergreen will perform linear or bisection stepback depending on the project settings. Linear incrementally runs the same task in previous versions in O(n) tasks while bisection performs binary search in O(logn) tasks.
@@ -23,7 +23,7 @@
 
 ## Requesters
 
-The requester is field in the version/patch document that indicates how the version was created. These are secure, immutable fields that are set upon creation.
+The requester is field in the version/patch document that indicates how it was created. These are secure, immutable fields that are set upon creation.
 
 Here is a list of valid requester types:
 
