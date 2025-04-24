@@ -1846,6 +1846,6 @@ func (h *awsAssumeRole) Run(ctx context.Context) gimlet.Responder {
 		AccessKeyID:     creds.AccessKeyID,
 		SecretAccessKey: creds.SecretAccessKey,
 		SessionToken:    creds.SessionToken,
-		Expiration:      creds.Expiration.String(),
+		Expiration:      creds.Expiration.Format(time.RFC3339),
 	})
 }

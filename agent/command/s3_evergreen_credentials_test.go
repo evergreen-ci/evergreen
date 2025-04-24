@@ -21,21 +21,39 @@ func TestEvergreenCredentials(t *testing.T) {
 	})
 
 	t.Run("RoleARN", func(t *testing.T) {
-		expires := time.Now().Add(time.Hour).Format(time.RFC3339)
-		comm.AssumeRoleResponse = &apimodels.AWSCredentials{
-			AccessKeyID:     "assume_access_key",
-			SecretAccessKey: "secret_access_key",
-			SessionToken:    "session_token",
-			Expiration:      expires,
-		}
+		t.Run("PassesWithValidTimeFormat", func(t *testing.T) {
+			expires := time.Now().Add(time.Hour).Format(time.RFC3339)
+			comm.AssumeRoleResponse = &apimodels.AWSCredentials{
+				AccessKeyID:     "assume_access_key",
+				SecretAccessKey: "secret_access_key",
+				SessionToken:    "session_token",
+				Expiration:      expires,
+			}
 
-		provider := createEvergreenCredentials(comm, taskData, "role_arn")
+			provider := createEvergreenCredentials(comm, taskData, "role_arn")
 
-		creds, err := provider.Retrieve(t.Context())
-		require.NoError(t, err)
-		assert.Equal(t, "assume_access_key", creds.AccessKeyID)
-		assert.Equal(t, "secret_access_key", creds.SecretAccessKey)
-		assert.Equal(t, "session_token", creds.SessionToken)
-		assert.Equal(t, expires, creds.Expires.Format(time.RFC3339))
+			creds, err := provider.Retrieve(t.Context())
+			require.NoError(t, err)
+			assert.Equal(t, "assume_access_key", creds.AccessKeyID)
+			assert.Equal(t, "secret_access_key", creds.SecretAccessKey)
+			assert.Equal(t, "session_token", creds.SessionToken)
+			assert.Equal(t, expires, creds.Expires.Format(time.RFC3339))
+		})
+
+		t.Run("FailsWithInvalidTimeFormat", func(t *testing.T) {
+			expires := time.Now().Add(time.Hour).String()
+			comm.AssumeRoleResponse = &apimodels.AWSCredentials{
+				AccessKeyID:     "assume_access_key",
+				SecretAccessKey: "secret_access_key",
+				SessionToken:    "session_token",
+				Expiration:      expires,
+			}
+
+			provider := createEvergreenCredentials(comm, taskData, "role_arn")
+
+			creds, err := provider.Retrieve(t.Context())
+			require.Error(t, err)
+			assert.Empty(t, creds)
+		})
 	})
 }
