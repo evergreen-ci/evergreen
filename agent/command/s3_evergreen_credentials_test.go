@@ -51,7 +51,7 @@ func TestEvergreenCredentials(t *testing.T) {
 
 			creds, err := provider.Retrieve(t.Context())
 			require.Error(t, err)
-			assert.Nil(t, creds)
+			assert.Empty(t, creds)
 		})
 	})
 }
