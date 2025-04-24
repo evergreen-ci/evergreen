@@ -1028,9 +1028,6 @@ func (c *awsClientImpl) DisassociateAddress(ctx context.Context, input *ec2.Disa
 				if errors.As(err, &apiErr) {
 					grip.Debug(message.WrapError(apiErr, msg))
 				}
-				if strings.Contains(err.Error(), ec2AssociationIDNotFound) {
-					return false, err
-				}
 				return true, err
 			}
 			grip.Info(msg)

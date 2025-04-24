@@ -45,9 +45,6 @@ const (
 	// ec2ResourceAlreadyAssociated means an elastic IP is already associated
 	// with another resource.
 	ec2ResourceAlreadyAssociated = "Resource.AlreadyAssociated"
-	// ec2AssociationIDNotFound means that the association ID between a host and
-	// its elastic IP does not exist.
-	ec2AssociationIDNotFound = "InvalidAssociationID.NotFound"
 
 	r53InvalidInput       = "InvalidInput"
 	r53InvalidChangeBatch = "InvalidChangeBatch"
@@ -905,11 +902,9 @@ func cleanupStaleElasticIPs(ctx context.Context, c AWSClient) error {
 		if err != nil {
 			return errors.Wrap(err, "getting idle elastic IP addresses for recheck")
 		}
-		idleAddrs := utility.StringSliceIntersection(idleAddrAllocationIDs, idleAddrAllocationIDsRecheck)
-		if len(idleAddrs) > 0 {
+		if idleAddrs := utility.StringSliceIntersection(idleAddrAllocationIDs, idleAddrAllocationIDsRecheck); len(idleAddrs) > 0 {
 			for _, idleAddr := range idleAddrs {
-				// kim: NOTE: Needs DEVPROD-16713 merged
-				if err := c.ReleaseAddress(ctx, &ec2.ReleaseAddressInput{
+				if _, err := c.ReleaseAddress(ctx, &ec2.ReleaseAddressInput{
 					AllocationId: aws.String(idleAddr),
 				}); err != nil {
 					return errors.Wrapf(err, "releasing idle elastic IP address with allocation ID '%s'", idleAddr)
@@ -941,6 +936,4 @@ func getIdleElasticIPs(ctx context.Context, c AWSClient) ([]string, error) {
 		}
 	}
 	return idleAddrAllocationIDs, nil
->>>>>>> 7da34765b (Add logic to clean up idle elastic IP addresses)
->>>>>>> d63ab4bfe (Add logic to clean up idle elastic IP addresses)
 }
