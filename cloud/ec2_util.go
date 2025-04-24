@@ -770,13 +770,18 @@ func shouldAssignPublicIPv4Address(h *host.Host, ec2Settings *EC2ProviderSetting
 	return !ec2Settings.DoNotAssignPublicIPv4Address && !ec2Settings.IPv6
 }
 
-func canUseElasticIP(settings *evergreen.Settings, ec2Settings *EC2ProviderSettings, h *host.Host) bool {
+func canUseElasticIP(settings *evergreen.Settings, ec2Settings *EC2ProviderSettings, account string, h *host.Host) bool {
 	if h.UserHost || h.SpawnOptions.SpawnedByTask {
 		// Spawn hosts and host.create hosts should not use an elastic IP
 		// because the feature is primarily intended for task hosts.
 		return false
 	}
 	if settings.Providers.AWS.IPAMPoolID == "" {
+		return false
+	}
+	if account != "" {
+		// The IPAM pool is only available to the default AWS account. Other AWS
+		// accounts do not have an IPAM pool so cannot use elastic IPs.
 		return false
 	}
 
