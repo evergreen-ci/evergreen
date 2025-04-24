@@ -237,6 +237,10 @@ github.com/evergreen-ci/timber v0.0.0-20250225175618-52d1e1841945/go.mod h1:j76U
 github.com/evergreen-ci/utility v0.0.0-20230104160902-3f0e05a638bd/go.mod h1:vkCEVgfCMIDajzbG/PHZURszI2Y1SuFqNWX9EUxmLLI=
 github.com/evergreen-ci/utility v0.0.0-20250404164817-04ef334e215a h1:k7FLEvTQf9RfrdbVIdtjnArl7E3f3KdsCI+xUAzjc44=
 github.com/evergreen-ci/utility v0.0.0-20250404164817-04ef334e215a/go.mod h1:AGAekBl7zMjMvHB6yqkVkE81JuHBxBPaPozF49DsU70=
+github.com/evergreen-ci/utility v0.0.0-20250424132646-c73faa7645ce h1:Zkbb/4GfP5YgI3sU49FTGeDu98rj9R/rcHQPwgdWXAU=
+github.com/evergreen-ci/utility v0.0.0-20250424132646-c73faa7645ce/go.mod h1:AGAekBl7zMjMvHB6yqkVkE81JuHBxBPaPozF49DsU70=
+github.com/evergreen-ci/utility v0.0.0-20250424141600-fde5f3a474b7 h1:UmNnwNAyI0oHVsfC6Ft9pQgEphUEYIqFl4vBbIuRtZk=
+github.com/evergreen-ci/utility v0.0.0-20250424141600-fde5f3a474b7/go.mod h1:AGAekBl7zMjMvHB6yqkVkE81JuHBxBPaPozF49DsU70=
 github.com/fatih/structs v1.1.0 h1:Q7juDM0QtcnhCpeyLGQKyg4TOIghuNXrkL32pHAUMxo=
 github.com/fatih/structs v1.1.0/go.mod h1:9NiDSp5zOcgEDl+j00MP/WkGVPOlPRLejGD8Ga6PJ7M=
 github.com/felixge/httpsnoop v1.0.4 h1:NFTV2Zj1bL4mc9sqWACXbQFVBBg2W3GPvqp8/ESS2Wg=
