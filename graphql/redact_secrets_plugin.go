@@ -74,21 +74,21 @@ func isFieldRedacted(fieldName string, fieldsToRedact map[string]bool) bool {
 
 // RedactFieldsInMap recursively searches for and redacts fields in a map.
 // Assumes map structure like map[string]interface{} where interface{} can be another map, a slice, or a basic datatype.
-func RedactFieldsInMap(data map[string]interface{}, fieldsToRedact map[string]bool) map[string]interface{} {
-	dataCopy := map[string]interface{}{}
+func RedactFieldsInMap(data map[string]any, fieldsToRedact map[string]bool) map[string]any {
+	dataCopy := map[string]any{}
 	if err := util.DeepCopy(data, &dataCopy); err != nil {
 		// If theres an error copying the data, log it and return an empty map.
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "failed to deep copy request variables",
 		}))
-		return map[string]interface{}{}
+		return map[string]any{}
 	}
 	recursivelyRedactFieldsInMap(dataCopy, fieldsToRedact)
 
 	return dataCopy
 }
 
-func recursivelyRedactFieldsInMap(data map[string]interface{}, fieldsToRedact map[string]bool) {
+func recursivelyRedactFieldsInMap(data map[string]any, fieldsToRedact map[string]bool) {
 	for key, value := range data {
 		// If the current key matches a field that should be redacted, redact it.
 		if isFieldRedacted(key, fieldsToRedact) {
@@ -102,7 +102,7 @@ func recursivelyRedactFieldsInMap(data map[string]interface{}, fieldsToRedact ma
 		}
 		// If the value is a map, recursively redact fields within it.
 		if reflect.TypeOf(value).Kind() == reflect.Map {
-			if subMap, ok := value.(map[string]interface{}); ok {
+			if subMap, ok := value.(map[string]any); ok {
 				recursivelyRedactFieldsInMap(subMap, fieldsToRedact)
 			}
 		}
@@ -113,7 +113,7 @@ func recursivelyRedactFieldsInMap(data map[string]interface{}, fieldsToRedact ma
 			for i := 0; i < sliceVal.Len(); i++ {
 				elem := sliceVal.Index(i).Interface()
 				if reflect.TypeOf(elem).Kind() == reflect.Map {
-					if elemMap, ok := elem.(map[string]interface{}); ok {
+					if elemMap, ok := elem.(map[string]any); ok {
 						recursivelyRedactFieldsInMap(elemMap, fieldsToRedact)
 					}
 				}

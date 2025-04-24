@@ -50,7 +50,7 @@ func TestPodCreationJob(t *testing.T) {
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, j *podCreationJob){
 		"Succeeds": func(ctx context.Context, t *testing.T, j *podCreationJob) {
-			require.NoError(t, j.pod.Insert())
+			require.NoError(t, j.pod.Insert(t.Context()))
 			assert.Equal(t, pod.StatusInitializing, j.pod.Status)
 
 			podDefOpts, err := cloud.ExportECSPodDefinitionOptions(j.env.Settings(), j.pod.TaskContainerCreationOpts)
@@ -69,7 +69,7 @@ func TestPodCreationJob(t *testing.T) {
 			assert.Equal(t, clusterName, utility.FromStringPtr(res.Cluster))
 			require.Len(t, res.Containers, 1)
 
-			dbPod, err := pod.FindOneByID(j.PodID)
+			dbPod, err := pod.FindOneByID(ctx, j.PodID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 
@@ -85,7 +85,7 @@ func TestPodCreationJob(t *testing.T) {
 			assert.Len(t, dbPod.Resources.Containers, 1, "should have created a pod with 1 container")
 		},
 		"RetriesWithPodDefinitionNotYetCreated": func(ctx context.Context, t *testing.T, j *podCreationJob) {
-			require.NoError(t, j.pod.Insert())
+			require.NoError(t, j.pod.Insert(t.Context()))
 
 			j.Run(ctx)
 			assert.Error(t, j.Error())
@@ -93,8 +93,8 @@ func TestPodCreationJob(t *testing.T) {
 			assert.True(t, j.RetryInfo().ShouldRetry(), "job should retry because the pod's definition does not yet exist")
 		},
 		"FailsWithStartingStatus": func(ctx context.Context, t *testing.T, j *podCreationJob) {
-			require.NoError(t, j.pod.Insert())
-			require.NoError(t, j.pod.UpdateStatus(pod.StatusStarting, ""))
+			require.NoError(t, j.pod.Insert(t.Context()))
+			require.NoError(t, j.pod.UpdateStatus(ctx, pod.StatusStarting, ""))
 			assert.Equal(t, pod.StatusStarting, j.pod.Status)
 
 			j.Run(ctx)
@@ -103,14 +103,14 @@ func TestPodCreationJob(t *testing.T) {
 			require.Zero(t, j.pod.Resources)
 			assert.Empty(t, cocoaMock.GlobalECSService.Clusters[clusterName])
 
-			dbPod, err := pod.FindOneByID(j.PodID)
+			dbPod, err := pod.FindOneByID(ctx, j.PodID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Equal(t, pod.StatusStarting, dbPod.Status)
 		},
 		"FailsWithRunningStatus": func(ctx context.Context, t *testing.T, j *podCreationJob) {
-			require.NoError(t, j.pod.Insert())
-			require.NoError(t, j.pod.UpdateStatus(pod.StatusRunning, ""))
+			require.NoError(t, j.pod.Insert(t.Context()))
+			require.NoError(t, j.pod.UpdateStatus(ctx, pod.StatusRunning, ""))
 			assert.Equal(t, pod.StatusRunning, j.pod.Status)
 
 			j.Run(ctx)
@@ -119,14 +119,14 @@ func TestPodCreationJob(t *testing.T) {
 			assert.Zero(t, j.pod.Resources)
 			assert.Empty(t, cocoaMock.GlobalECSService.Clusters[clusterName])
 
-			dbPod, err := pod.FindOneByID(j.PodID)
+			dbPod, err := pod.FindOneByID(ctx, j.PodID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Equal(t, pod.StatusRunning, dbPod.Status)
 		},
 		"FailsWithTerminatedStatus": func(ctx context.Context, t *testing.T, j *podCreationJob) {
-			require.NoError(t, j.pod.Insert())
-			require.NoError(t, j.pod.UpdateStatus(pod.StatusTerminated, ""))
+			require.NoError(t, j.pod.Insert(t.Context()))
+			require.NoError(t, j.pod.UpdateStatus(ctx, pod.StatusTerminated, ""))
 
 			j.Run(ctx)
 			require.Error(t, j.Error())
@@ -134,7 +134,7 @@ func TestPodCreationJob(t *testing.T) {
 			assert.Zero(t, j.pod.Resources)
 			assert.Empty(t, cocoaMock.GlobalECSService.Clusters[clusterName])
 
-			dbPod, err := pod.FindOneByID(j.PodID)
+			dbPod, err := pod.FindOneByID(ctx, j.PodID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Equal(t, pod.StatusTerminated, dbPod.Status)
@@ -180,7 +180,7 @@ func TestPodCreationJob(t *testing.T) {
 			require.NoError(t, err)
 
 			pd := dispatcher.NewPodDispatcher("group_id", []string{}, []string{p.ID})
-			require.NoError(t, pd.Insert())
+			require.NoError(t, pd.Insert(t.Context()))
 
 			j, ok := NewPodCreationJob(p.ID, utility.RoundPartOfMinute(0).Format(TSFormat)).(*podCreationJob)
 			require.True(t, ok)

@@ -1,6 +1,7 @@
 package patch
 
 import (
+	"context"
 	"strings"
 	"time"
 
@@ -102,10 +103,10 @@ var (
 	cliIntentTypeKey  = bsonutil.MustHaveTag(cliIntent{}, "IntentType")
 )
 
-func (c *cliIntent) Insert() error {
+func (c *cliIntent) Insert(ctx context.Context) error {
 	if len(c.PatchContent) > 0 {
 		patchFileID := mgobson.NewObjectId()
-		if err := db.WriteGridFile(GridFSPrefix, patchFileID.Hex(), strings.NewReader(c.PatchContent)); err != nil {
+		if err := db.WriteGridFile(ctx, GridFSPrefix, patchFileID.Hex(), strings.NewReader(c.PatchContent)); err != nil {
 			return err
 		}
 
@@ -115,7 +116,7 @@ func (c *cliIntent) Insert() error {
 
 	c.CreatedAt = time.Now().UTC().Round(time.Millisecond)
 
-	if err := db.Insert(IntentCollection, c); err != nil {
+	if err := db.Insert(ctx, IntentCollection, c); err != nil {
 		c.CreatedAt = time.Time{}
 		return err
 	}
@@ -123,10 +124,11 @@ func (c *cliIntent) Insert() error {
 	return nil
 }
 
-func (c *cliIntent) SetProcessed() error {
+func (c *cliIntent) SetProcessed(ctx context.Context) error {
 	c.Processed = true
 	c.ProcessedAt = time.Now().UTC().Round(time.Millisecond)
 	return updateOneIntent(
+		ctx,
 		bson.M{cliDocumentIDKey: c.DocumentID},
 		bson.M{"$set": bson.M{
 			cliProcessedKey:   c.Processed,

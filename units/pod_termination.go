@@ -116,7 +116,7 @@ func (j *podTerminationJob) Run(ctx context.Context) {
 		})
 	}
 
-	if err := j.pod.UpdateStatus(pod.StatusTerminated, j.Reason); err != nil {
+	if err := j.pod.UpdateStatus(ctx, pod.StatusTerminated, j.Reason); err != nil {
 		j.AddError(errors.Wrap(err, "marking pod as terminated"))
 	}
 
@@ -139,7 +139,7 @@ func (j *podTerminationJob) populateIfUnset(ctx context.Context) error {
 	}
 
 	if j.pod == nil {
-		p, err := pod.FindOneByID(j.PodID)
+		p, err := pod.FindOneByID(ctx, j.PodID)
 		if err != nil {
 			return errors.Wrapf(err, "finding pod '%s'", j.PodID)
 		}
@@ -187,7 +187,7 @@ func (j *podTerminationJob) fixStrandedTasks(ctx context.Context) error {
 		return errors.Wrapf(err, "fixing container task stranded on pod '%s'", j.pod.ID)
 	}
 
-	disp, err := dispatcher.FindOneByPodID(j.pod.ID)
+	disp, err := dispatcher.FindOneByPodID(ctx, j.pod.ID)
 	if err != nil {
 		return errors.Wrapf(err, "finding dispatcher associated with pod '%s'", j.pod.ID)
 	}

@@ -36,7 +36,7 @@ func BbFileTicket(ctx context.Context, taskId string, execution int) (int, error
 		return http.StatusNotFound, errors.Wrapf(err, "task '%s' not found with execution '%d'", taskId, execution)
 	}
 
-	webHook, ok, err := model.IsWebhookConfigured(t.Project, t.Version)
+	webHook, ok, err := model.IsWebhookConfigured(ctx, t.Project, t.Version)
 	if err != nil {
 		return http.StatusInternalServerError, errors.Wrapf(err, "retrieving webhook config for project '%s'", t.Project)
 	}
@@ -53,7 +53,7 @@ func BbFileTicket(ctx context.Context, taskId string, execution int) (int, error
 	env := evergreen.GetEnvironment()
 	settings := env.Settings()
 	queue := env.RemoteQueue()
-	bbProject, ok := model.GetBuildBaronSettings(t.Project, t.Version)
+	bbProject, ok := model.GetBuildBaronSettings(ctx, t.Project, t.Version)
 	if !ok {
 		return http.StatusInternalServerError, errors.Errorf("could not find build baron plugin for task '%s' with execution '%d'", taskId, execution)
 	}
@@ -160,7 +160,7 @@ func makeJiraNotification(ctx context.Context, settings *evergreen.Settings, t *
 	}
 	n.SetTaskMetadata(t.Id, t.Execution)
 
-	err = notification.InsertMany(*n)
+	err = notification.InsertMany(ctx, *n)
 	if err != nil {
 		return nil, errors.Wrap(err, "batch inserting notifications")
 	}

@@ -505,12 +505,12 @@ func TestGenerateTasksWithDifferentGeneratedJSONStorageMethods(t *testing.T) {
 				Identifier: "mci",
 				BuildIds:   []string{"sample_build_id"},
 			}
-			require.NoError(randomVersion.Insert())
+			require.NoError(randomVersion.Insert(t.Context()))
 			randomPatch := patch.Patch{
 				Id:      mgobson.NewObjectId(),
 				Version: randomVersion.Id,
 			}
-			require.NoError(randomPatch.Insert())
+			require.NoError(randomPatch.Insert(t.Context()))
 			sampleVersion := model.Version{
 				Id:         "sample_version",
 				Identifier: "mci",
@@ -520,22 +520,22 @@ func TestGenerateTasksWithDifferentGeneratedJSONStorageMethods(t *testing.T) {
 				Id:      mgobson.NewObjectId(),
 				Version: sampleVersion.Id,
 			}
-			require.NoError(samplePatch.Insert())
-			require.NoError(sampleVersion.Insert())
+			require.NoError(samplePatch.Insert(t.Context()))
+			require.NoError(sampleVersion.Insert(t.Context()))
 			sampleBuild := build.Build{
 				Id:           "sample_build_id",
 				BuildVariant: "race-detector",
 				Version:      "sample_version",
 			}
-			require.NoError(sampleBuild.Insert())
+			require.NoError(sampleBuild.Insert(t.Context()))
 
 			pp := model.ParserProject{}
 			err := util.UnmarshalYAMLWithFallback([]byte(sampleBaseProject), &pp)
 			require.NoError(err)
 			pp.Id = "sample_version"
-			require.NoError(pp.Insert())
+			require.NoError(pp.Insert(t.Context()))
 			pp.Id = "random_version"
-			require.NoError(pp.Insert())
+			require.NoError(pp.Insert(t.Context()))
 
 			sampleTask := task.Task{
 				Id:          "sample_task",
@@ -545,7 +545,7 @@ func TestGenerateTasksWithDifferentGeneratedJSONStorageMethods(t *testing.T) {
 				DisplayName: "sample_task",
 				Status:      evergreen.TaskStarted,
 			}
-			require.NoError(sampleTask.Insert())
+			require.NoError(sampleTask.Insert(t.Context()))
 
 			require.NoError(task.GeneratedJSONInsert(ctx, env.Settings(), &sampleTask, sampleGeneratedProject, storageMethod))
 
@@ -561,7 +561,7 @@ func TestGenerateTasksWithDifferentGeneratedJSONStorageMethods(t *testing.T) {
 				require.NoError(d.Insert(ctx))
 			}
 			projectRef := model.ProjectRef{Id: "mci", Identifier: "mci_identifier"}
-			require.NoError(projectRef.Insert())
+			require.NoError(projectRef.Insert(t.Context()))
 
 			j := NewGenerateTasksJob(env, sampleTask.Version, sampleTask.Id, "1")
 			j.Run(ctx)
@@ -588,7 +588,7 @@ func TestGenerateTasksWithDifferentGeneratedJSONStorageMethods(t *testing.T) {
 			}
 
 			// Make sure first project was not changed
-			v, err := model.VersionFindOneId("random_version")
+			v, err := model.VersionFindOneId(ctx, "random_version")
 			assert.NoError(err)
 			p, _, err := model.FindAndTranslateProjectForVersion(ctx, env.Settings(), v, false)
 			assert.NoError(err)
@@ -599,7 +599,7 @@ func TestGenerateTasksWithDifferentGeneratedJSONStorageMethods(t *testing.T) {
 			assert.Len(p.BuildVariants[1].Tasks, 2)
 
 			// Verify second project was changed
-			v, err = model.VersionFindOneId("sample_version")
+			v, err = model.VersionFindOneId(ctx, "sample_version")
 			assert.NoError(err)
 			p, _, err = model.FindAndTranslateProjectForVersion(ctx, env.Settings(), v, false)
 			assert.NoError(err)
@@ -611,7 +611,7 @@ func TestGenerateTasksWithDifferentGeneratedJSONStorageMethods(t *testing.T) {
 			require.Len(p.TaskGroups, 1)
 			assert.Len(p.TaskGroups[0].Tasks, 2)
 
-			b, err := build.FindOneId("sample_build_id")
+			b, err := build.FindOneId(t.Context(), "sample_build_id")
 			assert.NoError(err)
 			assert.Equal("mci_identifier_race_detector_display_my_display_task__01_01_01_00_00_00", b.Tasks[0].Id)
 		})
@@ -644,7 +644,7 @@ func TestGeneratedTasksAreNotDependencies(t *testing.T) {
 			BuildId:      "b3",
 		}},
 	}
-	require.NoError(v.Insert())
+	require.NoError(v.Insert(t.Context()))
 	b1 := build.Build{
 		Id:           "b1",
 		BuildVariant: "generate-tasks-for-version",
@@ -663,15 +663,15 @@ func TestGeneratedTasksAreNotDependencies(t *testing.T) {
 		Version:      "sample_version",
 		Activated:    true,
 	}
-	require.NoError(b1.Insert())
-	require.NoError(b2.Insert())
-	require.NoError(b3.Insert())
+	require.NoError(b1.Insert(t.Context()))
+	require.NoError(b2.Insert(t.Context()))
+	require.NoError(b3.Insert(t.Context()))
 
 	pp := model.ParserProject{}
 	err := util.UnmarshalYAMLWithFallback([]byte(omitGeneratedTasksConfig), &pp)
 	require.NoError(err)
 	pp.Id = "sample_version"
-	require.NoError(pp.Insert())
+	require.NoError(pp.Insert(t.Context()))
 	generateTask := task.Task{
 		Id:                    "mci_identifier_generate_tasks_for_version_version_gen__01_01_01_00_00_00",
 		Version:               "sample_version",
@@ -682,9 +682,9 @@ func TestGeneratedTasksAreNotDependencies(t *testing.T) {
 		GeneratedJSONAsString: sampleGeneratedProject2,
 		Status:                evergreen.TaskStarted,
 	}
-	require.NoError(generateTask.Insert())
+	require.NoError(generateTask.Insert(t.Context()))
 	projectRef := model.ProjectRef{Id: "mci", Identifier: "mci_identifier"}
-	require.NoError(projectRef.Insert())
+	require.NoError(projectRef.Insert(t.Context()))
 
 	j := NewGenerateTasksJob(env, generateTask.Version, generateTask.Id, "1")
 	j.Run(ctx)
@@ -715,7 +715,7 @@ func TestGeneratedTasksAreNotDependencies(t *testing.T) {
 	err = util.UnmarshalYAMLWithFallback([]byte(dependOnGeneratedTasksConfig), &pp)
 	require.NoError(err)
 	pp.Id = "sample_version"
-	require.NoError(pp.Insert())
+	require.NoError(pp.Insert(t.Context()))
 	generateTaskWithoutFlag := task.Task{
 		Id:                    "mci_identifier_generate_tasks_for_version_version_gen__01_01_01_00_00_00",
 		Version:               "sample_version",
@@ -725,7 +725,7 @@ func TestGeneratedTasksAreNotDependencies(t *testing.T) {
 		GeneratedJSONAsString: sampleGeneratedProject2,
 		Status:                evergreen.TaskStarted,
 	}
-	require.NoError(generateTaskWithoutFlag.Insert())
+	require.NoError(generateTaskWithoutFlag.Insert(t.Context()))
 	j = NewGenerateTasksJob(env, generateTask.Version, generateTask.Id, "1")
 	j.Run(ctx)
 	assert.NoError(j.Error())
@@ -753,7 +753,7 @@ func TestGeneratedTasksAreNotDependencies(t *testing.T) {
 	err = util.UnmarshalYAMLWithFallback([]byte(shouldGenerateNewBVConfig), &pp)
 	require.NoError(err)
 	pp.Id = "sample_version"
-	require.NoError(pp.Insert())
+	require.NoError(pp.Insert(t.Context()))
 	generateTask = task.Task{
 		Id:                    "mci_identifier_generate_tasks_for_version_version_gen__01_01_01_00_00_00",
 		Version:               "sample_version",
@@ -763,7 +763,7 @@ func TestGeneratedTasksAreNotDependencies(t *testing.T) {
 		GeneratedJSONAsString: sampleGeneratedProject3,
 		Status:                evergreen.TaskStarted,
 	}
-	require.NoError(generateTask.Insert())
+	require.NoError(generateTask.Insert(t.Context()))
 	j = NewGenerateTasksJob(env, generateTask.Version, generateTask.Id, "1")
 	j.Run(ctx)
 	assert.NoError(j.Error())
@@ -871,14 +871,14 @@ buildvariants:
 		Requester:  evergreen.RepotrackerVersionRequester,
 		BuildIds:   []string{"sample_build_id"},
 	}
-	require.NoError(sampleVersion.Insert())
+	require.NoError(sampleVersion.Insert(t.Context()))
 	sampleBuild := build.Build{
 		Id:           "sample_build_id",
 		BuildVariant: "race-detector",
 		Version:      "sample_version",
 		Requester:    evergreen.RepotrackerVersionRequester,
 	}
-	require.NoError(sampleBuild.Insert())
+	require.NoError(sampleBuild.Insert(t.Context()))
 	sampleTask := task.Task{
 		Id:                    "generator",
 		Version:               sampleVersion.Id,
@@ -898,14 +898,14 @@ buildvariants:
 	err := util.UnmarshalYAMLWithFallback([]byte(sampleBaseProject), &sampleParserProject)
 	require.NoError(err)
 	sampleParserProject.Id = "sample_version"
-	require.NoError(sampleParserProject.Insert())
+	require.NoError(sampleParserProject.Insert(t.Context()))
 
 	for _, d := range sampleDistros {
 		require.NoError(d.Insert(ctx))
 	}
-	require.NoError(sampleTask.Insert())
+	require.NoError(sampleTask.Insert(t.Context()))
 	projectRef := model.ProjectRef{Id: "mci"}
-	require.NoError(projectRef.Insert())
+	require.NoError(projectRef.Insert(t.Context()))
 
 	j := NewGenerateTasksJob(env, sampleTask.Version, sampleTask.Id, "1")
 	j.Run(ctx)
@@ -942,7 +942,7 @@ func TestMarkGeneratedTasksError(t *testing.T) {
 		GeneratedJSONAsString: sampleGeneratedProject,
 		Status:                evergreen.TaskStarted,
 	}
-	require.NoError(t, sampleTask.Insert())
+	require.NoError(t, sampleTask.Insert(t.Context()))
 
 	j := NewGenerateTasksJob(env, sampleTask.Version, sampleTask.Id, "1")
 	j.Run(ctx)

@@ -1,13 +1,14 @@
 package event
 
 import (
+	"context"
 	"time"
 
 	"github.com/pkg/errors"
 )
 
 func init() {
-	registry.AddType(ResourceTypeUser, func() interface{} { return &userData{} })
+	registry.AddType(ResourceTypeUser, func() any { return &userData{} })
 }
 
 const (
@@ -34,13 +35,13 @@ func (e UserEventType) validate() error {
 }
 
 type userData struct {
-	User   string      `bson:"user" json:"user"`
-	Before interface{} `bson:"before" json:"before"`
-	After  interface{} `bson:"after" json:"after"`
+	User   string `bson:"user" json:"user"`
+	Before any    `bson:"before" json:"before"`
+	After  any    `bson:"after" json:"after"`
 }
 
 // LogUserEvent logs a DB User change to the event log collection.
-func LogUserEvent(user string, eventType UserEventType, before, after interface{}) error {
+func LogUserEvent(ctx context.Context, user string, eventType UserEventType, before, after any) error {
 	if err := eventType.validate(); err != nil {
 		return errors.Wrapf(err, "invalid user event for user '%s'", user)
 	}
@@ -57,7 +58,7 @@ func LogUserEvent(user string, eventType UserEventType, before, after interface{
 		Data:         data,
 		ResourceType: ResourceTypeUser,
 	}
-	if err := event.Log(); err != nil {
+	if err := event.Log(ctx); err != nil {
 		return errors.Wrapf(err, "logging user event for user '%s'", user)
 	}
 

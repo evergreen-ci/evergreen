@@ -30,7 +30,7 @@ func TestVolumeMigrateJob(t *testing.T) {
 	for testName, testCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, v *host.Volume, d *distro.Distro, spawnOptions cloud.SpawnOptions){
 		"VolumeMigratesToNewHost": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, v *host.Volume, d *distro.Distro, spawnOptions cloud.SpawnOptions) {
 			require.NoError(t, d.Insert(ctx))
-			require.NoError(t, v.Insert())
+			require.NoError(t, v.Insert(ctx))
 			require.NoError(t, h.Insert(ctx))
 
 			ts := utility.RoundPartOfMinute(1).Format(TSFormat)
@@ -53,7 +53,7 @@ func TestVolumeMigrateJob(t *testing.T) {
 			assert.True(t, ok)
 			assert.NoError(t, j.Error())
 
-			volume, err := host.FindVolumeByID(v.ID)
+			volume, err := host.FindVolumeByID(ctx, v.ID)
 			assert.NoError(t, err)
 			assert.NotNil(t, volume)
 			assert.NotEqual(t, volume.Host, h.Id)
@@ -85,7 +85,7 @@ func TestVolumeMigrateJob(t *testing.T) {
 			d.Provider = ""
 			h.Distro.Provider = ""
 			require.NoError(t, d.Insert(ctx))
-			require.NoError(t, v.Insert())
+			require.NoError(t, v.Insert(ctx))
 			require.NoError(t, h.Insert(ctx))
 
 			j := NewVolumeMigrationJob(env, v.ID, spawnOptions, "123")
@@ -122,7 +122,7 @@ func TestVolumeMigrateJob(t *testing.T) {
 			assert.Contains(t, j.Error().Error(), "not yet stopped")
 
 			// Verify volume remains attached to initial host
-			volume, err := host.FindVolumeByID(v.ID)
+			volume, err := host.FindVolumeByID(ctx, v.ID)
 			assert.NoError(t, err)
 			assert.NotNil(t, volume)
 			assert.Equal(t, h.Id, volume.Host)
@@ -134,7 +134,7 @@ func TestVolumeMigrateJob(t *testing.T) {
 			assert.Equal(t, evergreen.HostRunning, initialHost.Status)
 			assert.Equal(t, initialHost.HomeVolumeID, volume.ID)
 
-			events, err := event.FindAllByResourceID(h.Id)
+			events, err := event.FindAllByResourceID(t.Context(), h.Id)
 			assert.NoError(t, err)
 			require.Len(t, events, 1)
 			assert.Equal(t, event.EventVolumeMigrationFailed, events[0].EventType)
@@ -143,7 +143,7 @@ func TestVolumeMigrateJob(t *testing.T) {
 			// Invalid public key will prevent new host from spinning up
 			spawnOptions.PublicKey = ""
 			require.NoError(t, d.Insert(ctx))
-			require.NoError(t, v.Insert())
+			require.NoError(t, v.Insert(ctx))
 			require.NoError(t, h.Insert(ctx))
 
 			j := NewVolumeMigrationJob(env, v.ID, spawnOptions, "123")
@@ -166,7 +166,7 @@ func TestVolumeMigrateJob(t *testing.T) {
 			assert.Contains(t, j.Error().Error(), "creating new intent host")
 
 			// Should finish with initial host stopped and volume detached
-			volume, err := host.FindVolumeByID(v.ID)
+			volume, err := host.FindVolumeByID(ctx, v.ID)
 			assert.NoError(t, err)
 			assert.NotNil(t, volume)
 			assert.Equal(t, "", volume.Host)
@@ -177,7 +177,7 @@ func TestVolumeMigrateJob(t *testing.T) {
 			assert.Equal(t, evergreen.HostStopped, initialHost.Status)
 			assert.Equal(t, "", initialHost.HomeVolumeID)
 
-			events, err := event.FindAllByResourceID(h.Id)
+			events, err := event.FindAllByResourceID(t.Context(), h.Id)
 			assert.NoError(t, err)
 			assert.Len(t, events, 3)
 		},
@@ -187,7 +187,7 @@ func TestVolumeMigrateJob(t *testing.T) {
 			h.Status = evergreen.HostTerminated
 			v.Host = ""
 			require.NoError(t, d.Insert(ctx))
-			require.NoError(t, v.Insert())
+			require.NoError(t, v.Insert(ctx))
 			require.NoError(t, h.Insert(ctx))
 
 			j := NewVolumeMigrationJob(env, v.ID, spawnOptions, "123")
@@ -198,7 +198,7 @@ func TestVolumeMigrateJob(t *testing.T) {
 			require.True(t, amboy.WaitInterval(ctx, env.RemoteQueue(), 1000*time.Millisecond))
 			assert.NoError(t, j.Error())
 
-			volume, err := host.FindVolumeByID(v.ID)
+			volume, err := host.FindVolumeByID(ctx, v.ID)
 			assert.NoError(t, err)
 			assert.NotNil(t, volume)
 			assert.NotEqual(t, volume.Host, h.Id)
@@ -216,7 +216,7 @@ func TestVolumeMigrateJob(t *testing.T) {
 		},
 		"NonexistentVolumeFailsGracefully": func(ctx context.Context, t *testing.T, env *mock.Environment, h *host.Host, v *host.Volume, d *distro.Distro, spawnOptions cloud.SpawnOptions) {
 			require.NoError(t, d.Insert(ctx))
-			require.NoError(t, v.Insert())
+			require.NoError(t, v.Insert(ctx))
 			require.NoError(t, h.Insert(ctx))
 
 			j := NewVolumeMigrationJob(env, "foo", spawnOptions, "123")

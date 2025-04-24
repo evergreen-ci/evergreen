@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/evergreen-ci/evergreen"
@@ -25,6 +26,7 @@ const (
 	agentCloudProviderFlagName = "provider"
 	agentHostIDFlagName        = "host_id"
 	agentHostSecretFlagName    = "host_secret"
+	singleTaskDistroFlagName   = "single_task_distro"
 )
 
 func Agent() cli.Command {
@@ -112,6 +114,10 @@ func Agent() cli.Command {
 				Name:  joinFlagNames(versionFlagName, "v"),
 				Usage: "print the agent revision of the current binary and exit",
 			},
+			cli.BoolFlag{
+				Name:  singleTaskDistroFlagName,
+				Usage: "marks the agent as running in single task distro",
+			},
 		},
 		Before: mergeBeforeFuncs(
 			func(c *cli.Context) error {
@@ -159,6 +165,7 @@ func Agent() cli.Command {
 				Cleanup:                    c.Bool(cleanupFlagName),
 				CloudProvider:              c.String(agentCloudProviderFlagName),
 				SendTaskLogsToGlobalSender: c.Bool(sendTaskLogsToGlobalSenderFlagName),
+				SingleTaskDistro:           c.Bool(singleTaskDistroFlagName),
 			}
 
 			// Once the agent has retrieved the host ID and secret, unset those
@@ -176,10 +183,11 @@ func Agent() cli.Command {
 			}
 
 			grip.Info(message.Fields{
-				"message":  "starting agent",
-				"commands": command.RegisteredCommandNames(),
-				"dir":      opts.WorkingDirectory,
-				"host_id":  opts.HostID,
+				"message":            "starting agent",
+				"commands":           command.RegisteredCommandNames(),
+				"dir":                opts.WorkingDirectory,
+				"host_id":            opts.HostID,
+				"single_task_distro": opts.SingleTaskDistro,
 			})
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -211,7 +219,10 @@ func Agent() cli.Command {
 					"message": "agent is exiting due to unrecoverable error",
 				}
 				msg = opts.AddLoggableInfo(msg)
-				grip.Emergency(message.WrapError(err, msg))
+				// Although we still want to return an error, it's an acceptable state for an agent to be unauthorized
+				// as ec2 doesn't immediately shut down hosts, so avoid logging it as an emergency.
+				isUnauthorizedErr := strings.Contains(err.Error(), "401 (Unauthorized)")
+				grip.EmergencyWhen(!isUnauthorizedErr, message.WrapError(err, msg))
 				return err
 			}
 
@@ -220,7 +231,7 @@ func Agent() cli.Command {
 	}
 }
 
-func hardShutdownForSignals(ctx context.Context, serviceCanceler context.CancelFunc, closeAgent func(ctx context.Context)) {
+func hardShutdownForSignals(ctx context.Context, serviceCanceler context.CancelFunc, closeAgent func(context.Context)) {
 	defer recovery.LogStackTraceAndExit("agent signal handler")
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGTERM)

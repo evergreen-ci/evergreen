@@ -80,6 +80,15 @@ func FindOne(query db.Q) (*DBUser, error) {
 	return u, err
 }
 
+func FindOneContext(ctx context.Context, query db.Q) (*DBUser, error) {
+	u := &DBUser{}
+	err := db.FindOneQContext(ctx, Collection, query, u)
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+	return u, err
+}
+
 // FindOneById gets a DBUser by ID.
 func FindOneById(id string) (*DBUser, error) {
 	u := &DBUser{}
@@ -94,15 +103,29 @@ func FindOneById(id string) (*DBUser, error) {
 	return u, nil
 }
 
+// FindOneById gets a DBUser by ID.
+func FindOneByIdContext(ctx context.Context, id string) (*DBUser, error) {
+	u := &DBUser{}
+	query := ById(id)
+	err := db.FindOneQContext(ctx, Collection, query, u)
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "finding user by ID")
+	}
+	return u, nil
+}
+
 // Find gets all DBUser for the given query.
-func Find(query db.Q) ([]DBUser, error) {
+func Find(ctx context.Context, query db.Q) ([]DBUser, error) {
 	us := []DBUser{}
-	err := db.FindAllQ(Collection, query, &us)
+	err := db.FindAllQ(ctx, Collection, query, &us)
 	return us, err
 }
 
 // UpdateOne updates one user.
-func UpdateOne(query interface{}, update interface{}) error {
+func UpdateOne(query any, update any) error {
 	return db.Update(
 		Collection,
 		query,
@@ -110,8 +133,17 @@ func UpdateOne(query interface{}, update interface{}) error {
 	)
 }
 
+func UpdateOneContext(ctx context.Context, query any, update any) error {
+	return db.UpdateContext(
+		ctx,
+		Collection,
+		query,
+		update,
+	)
+}
+
 // UpdateAll updates all users.
-func UpdateAll(query interface{}, update interface{}) error {
+func UpdateAll(query any, update any) error {
 	_, err := db.UpdateAll(
 		Collection,
 		query,
@@ -121,8 +153,9 @@ func UpdateAll(query interface{}, update interface{}) error {
 }
 
 // UpsertOne upserts a user.
-func UpsertOne(query interface{}, update interface{}) (*adb.ChangeInfo, error) {
+func UpsertOne(ctx context.Context, query any, update any) (*adb.ChangeInfo, error) {
 	return db.Upsert(
+		ctx,
 		Collection,
 		query,
 		update,
@@ -144,9 +177,9 @@ func FindOneByToken(token string) (*DBUser, error) {
 }
 
 // FindByGithubUID finds a user with the given GitHub UID.
-func FindByGithubUID(uid int) (*DBUser, error) {
+func FindByGithubUID(ctx context.Context, uid int) (*DBUser, error) {
 	u := DBUser{}
-	err := db.FindOneQ(Collection, db.Query(bson.M{
+	err := db.FindOneQContext(ctx, Collection, db.Query(bson.M{
 		bsonutil.GetDottedKeyName(SettingsKey, UserSettingsGithubUserKey, GithubUserUIDKey): uid,
 	}), &u)
 	if adb.ResultsNotFound(err) {
@@ -160,9 +193,9 @@ func FindByGithubUID(uid int) (*DBUser, error) {
 }
 
 // FindByGithubName finds a user with the given GitHub username.
-func FindByGithubName(name string) (*DBUser, error) {
+func FindByGithubName(ctx context.Context, name string) (*DBUser, error) {
 	u := DBUser{}
-	err := db.FindOneQ(Collection, db.Query(bson.M{
+	err := db.FindOneQContext(ctx, Collection, db.Query(bson.M{
 		bsonutil.GetDottedKeyName(SettingsKey, UserSettingsGithubUserKey, githubUserLastKnownAsKey): name,
 	}), &u)
 	if adb.ResultsNotFound(err) {
@@ -176,9 +209,9 @@ func FindByGithubName(name string) (*DBUser, error) {
 }
 
 // FindBySlackUsername finds a user with the given Slack Username.
-func FindBySlackUsername(userName string) (*DBUser, error) {
+func FindBySlackUsername(ctx context.Context, userName string) (*DBUser, error) {
 	u := DBUser{}
-	err := db.FindOneQ(Collection, db.Query(bson.M{
+	err := db.FindOneQContext(ctx, Collection, db.Query(bson.M{
 		bsonutil.GetDottedKeyName(SettingsKey, userSettingsSlackUsernameKey): userName,
 	}), &u)
 	if adb.ResultsNotFound(err) {
@@ -191,9 +224,9 @@ func FindBySlackUsername(userName string) (*DBUser, error) {
 	return &u, nil
 }
 
-func FindByRole(role string) ([]DBUser, error) {
+func FindByRole(ctx context.Context, role string) ([]DBUser, error) {
 	res := []DBUser{}
-	err := db.FindAllQ(
+	err := db.FindAllQ(ctx,
 		Collection,
 		db.Query(bson.M{RolesKey: role}),
 		&res,
@@ -203,7 +236,7 @@ func FindByRole(role string) ([]DBUser, error) {
 
 // AddOrUpdateServiceUser upserts a service user by ID. If it's a new user, it
 // generates a new API key for the user.
-func AddOrUpdateServiceUser(u DBUser) error {
+func AddOrUpdateServiceUser(ctx context.Context, u DBUser) error {
 	if !u.OnlyAPI {
 		return errors.New("cannot update a non-service user")
 	}
@@ -223,14 +256,14 @@ func AddOrUpdateServiceUser(u DBUser) error {
 			EmailAddressKey: u.EmailAddress,
 		},
 	}
-	_, err := UpsertOne(query, update)
+	_, err := UpsertOne(ctx, query, update)
 	return err
 }
 
 // FindHumanUsersByRoles returns human users that have any of the given roles.
-func FindHumanUsersByRoles(roles []string) ([]DBUser, error) {
+func FindHumanUsersByRoles(ctx context.Context, roles []string) ([]DBUser, error) {
 	res := []DBUser{}
-	err := db.FindAllQ(
+	err := db.FindAllQ(ctx,
 		Collection,
 		db.Query(bson.M{
 			RolesKey:   bson.M{"$in": roles},
@@ -241,46 +274,17 @@ func FindHumanUsersByRoles(roles []string) ([]DBUser, error) {
 	return res, errors.Wrapf(err, "finding users with roles '%s'", roles)
 }
 
-// GetPatchUser gets a user from their GitHub UID. If no such user is found, it
-// defaults to the global GitHub pull request user.
-func GetPatchUser(gitHubUID int) (*DBUser, error) {
-	u, err := FindByGithubUID(gitHubUID)
-	if err != nil {
-		return nil, errors.Wrap(err, "finding user by GitHub UID")
-	}
-	if u == nil {
-		// set to a default user
-		u, err = FindOne(ById(evergreen.GithubPatchUser))
-		if err != nil {
-			return nil, errors.Wrap(err, "getting user for PR")
-		}
-		// default user doesn't exist yet
-		if u == nil {
-			u = &DBUser{
-				Id:       evergreen.GithubPatchUser,
-				DispName: "GitHub Pull Requests",
-				APIKey:   utility.RandomString(),
-			}
-			if err = u.Insert(); err != nil {
-				return nil, errors.Wrap(err, "creating GitHub patch user")
-			}
-		}
-	}
-
-	return u, nil
-}
-
 // GetPeriodicBuild returns the matching user if applicable, and otherwise returns the default periodic build user.
-func GetPeriodicBuildUser(user string) (*DBUser, error) {
+func GetPeriodicBuildUser(ctx context.Context, user string) (*DBUser, error) {
 	if user != "" {
-		usr, err := FindOneById(user)
+		usr, err := FindOneByIdContext(ctx, user)
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding user '%s'", user)
 		}
 		return usr, nil
 	}
 
-	usr, err := FindOneById(evergreen.PeriodicBuildUser)
+	usr, err := FindOneByIdContext(ctx, evergreen.PeriodicBuildUser)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting periodic build user")
 	}
@@ -349,7 +353,7 @@ func GetOrCreateUser(userId, displayName, email, accessToken, refreshToken strin
 
 	}
 
-	if err := setSlackInformation(env, u); err != nil {
+	if err := setSlackInformation(ctx, env, u); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":       "could not set Slack information for user",
 			"user_id":       u.Id,
@@ -361,7 +365,7 @@ func GetOrCreateUser(userId, displayName, email, accessToken, refreshToken strin
 	return u, nil
 }
 
-func setSlackInformation(env evergreen.Environment, u *DBUser) error {
+func setSlackInformation(ctx context.Context, env evergreen.Environment, u *DBUser) error {
 	if u.Settings.SlackMemberId != "" {
 		// user already has a slack member id set
 		return nil
@@ -394,7 +398,7 @@ func setSlackInformation(env evergreen.Environment, u *DBUser) error {
 
 	update := bson.M{"$set": slackFields}
 
-	if err := UpdateOne(bson.M{IdKey: u.Id}, update); err != nil {
+	if err := UpdateOneContext(ctx, bson.M{IdKey: u.Id}, update); err != nil {
 		return errors.Wrap(err, "updating slack information")
 	}
 
@@ -405,9 +409,9 @@ func setSlackInformation(env evergreen.Environment, u *DBUser) error {
 // FindNeedsReauthorization finds all users that need to be reauthorized after
 // the given period has passed and who have not exceeded the max reauthorization
 // attempts.
-func FindNeedsReauthorization(reauthorizeAfter time.Duration) ([]DBUser, error) {
+func FindNeedsReauthorization(ctx context.Context, reauthorizeAfter time.Duration) ([]DBUser, error) {
 	cutoff := time.Now().Add(-reauthorizeAfter)
-	users, err := Find(db.Query(bson.M{
+	users, err := Find(ctx, db.Query(bson.M{
 		bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTokenKey): bson.M{"$exists": true},
 		bsonutil.GetDottedKeyName(LoginCacheKey, LoginCacheTTLKey):   bson.M{"$lte": cutoff},
 	}))
@@ -415,11 +419,11 @@ func FindNeedsReauthorization(reauthorizeAfter time.Duration) ([]DBUser, error) 
 }
 
 // FindServiceUsers returns all API-only users.
-func FindServiceUsers() ([]DBUser, error) {
+func FindServiceUsers(ctx context.Context) ([]DBUser, error) {
 	query := bson.M{
 		OnlyAPIKey: true,
 	}
-	return Find(db.Query(query))
+	return Find(ctx, db.Query(query))
 }
 
 // PutLoginCache generates a token if one does not exist, and sets the TTL to
@@ -496,7 +500,7 @@ func ClearLoginCache(user gimlet.User) error {
 
 // ClearUser clears the users settings, roles and invalidates their login cache.
 // It also sets their settings to use Spruce so rehires have Spruce enabled by default.
-func ClearUser(userId string) error {
+func ClearUser(ctx context.Context, userId string) error {
 	unsetUpdate := bson.M{
 		"$unset": bson.M{
 			SettingsKey:   1,
@@ -507,7 +511,7 @@ func ClearUser(userId string) error {
 		},
 	}
 	query := bson.M{IdKey: userId}
-	if err := UpdateOne(query, unsetUpdate); err != nil {
+	if err := UpdateOneContext(ctx, query, unsetUpdate); err != nil {
 		return errors.Wrap(err, "unsetting user settings")
 	}
 	setUpdate := bson.M{
@@ -519,7 +523,7 @@ func ClearUser(userId string) error {
 			},
 		},
 	}
-	return errors.Wrap(UpdateOne(query, setUpdate), "defaulting spruce setting")
+	return errors.Wrap(UpdateOneContext(ctx, query, setUpdate), "defaulting spruce setting")
 }
 
 // ClearAllLoginCaches clears all users' login caches, forcibly logging them
@@ -534,7 +538,7 @@ func ClearAllLoginCaches() error {
 }
 
 // UpsertOneFromExisting creates a new user with the same necessary data as oldUsr.
-func UpsertOneFromExisting(oldUsr *DBUser, newEmail string) (*DBUser, error) {
+func UpsertOneFromExisting(ctx context.Context, oldUsr *DBUser, newEmail string) (*DBUser, error) {
 	splitString := strings.Split(newEmail, "@")
 	if len(splitString) == 1 {
 		return nil, errors.New("email address is missing '@'")
@@ -554,7 +558,7 @@ func UpsertOneFromExisting(oldUsr *DBUser, newEmail string) (*DBUser, error) {
 		PubKeys:          oldUsr.PublicKeys(),
 	}
 
-	_, err := UpsertOne(bson.M{IdKey: newUsername}, bson.M{"$set": bson.M{
+	_, err := UpsertOne(ctx, bson.M{IdKey: newUsername}, bson.M{"$set": bson.M{
 		EmailAddressKey:     newUsr.Email(),
 		FavoriteProjectsKey: newUsr.FavoriteProjects,
 		PatchNumberKey:      newUsr.PatchNumber,

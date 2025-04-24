@@ -84,7 +84,7 @@ func (m *staticManager) SetPortMappings(context.Context, *host.Host, *host.Host)
 func (staticMgr *staticManager) TerminateInstance(ctx context.Context, host *host.Host, user, reason string) error {
 	// a decommissioned static host will be removed from the database
 	if host.Status == evergreen.HostDecommissioned {
-		event.LogHostStatusChanged(host.Id, host.Status, evergreen.HostDecommissioned, evergreen.User, reason)
+		event.LogHostStatusChanged(ctx, host.Id, host.Status, evergreen.HostDecommissioned, evergreen.User, reason)
 		grip.Debug(message.Fields{
 			"message":  "removing decommissioned static host",
 			"distro":   host.Distro.Id,
@@ -159,8 +159,4 @@ func (staticMgr *staticManager) Cleanup(context.Context) error {
 // return 0 for this number
 func (staticMgr *staticManager) TimeTilNextPayment(host *host.Host) time.Duration {
 	return time.Duration(0)
-}
-
-func (staticMgr *staticManager) AddSSHKey(ctx context.Context, pair evergreen.SSHKeyPair) error {
-	return nil
 }

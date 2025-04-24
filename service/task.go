@@ -279,7 +279,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 
 	uiTask.DependsOn = deps
 	uiTask.TaskWaiting = taskWaiting
-	uiTask.MinQueuePos, err = model.FindMinimumQueuePositionForTask(uiTask.Id)
+	uiTask.MinQueuePos, err = model.FindMinimumQueuePositionForTask(ctx, uiTask.Id)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -411,7 +411,7 @@ func getAbortedBy(ctx context.Context, abortedByTaskId string) (*abortedByDispla
 	if err != nil {
 		return nil, errors.Wrap(err, "problem getting abortedBy task")
 	}
-	buildDisplay, err := build.FindOne(build.ById(abortedTask.BuildId))
+	buildDisplay, err := build.FindOne(ctx, build.ById(abortedTask.BuildId))
 	if err != nil {
 		return nil, errors.Wrap(err, "problem getting abortedBy build")
 	}
@@ -519,7 +519,7 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 
 	logType := r.FormValue("type")
 	if logType == "EV" {
-		loggedEvents, err := event.Find(event.MostRecentTaskEvents(projCtx.Task.Id, DefaultLogMessages))
+		loggedEvents, err := event.Find(r.Context(), event.MostRecentTaskEvents(projCtx.Task.Id, DefaultLogMessages))
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
@@ -649,7 +649,7 @@ func (uis *UIServer) taskFileRaw(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	taskFiles, err := artifact.GetAllArtifacts([]artifact.TaskIDAndExecution{{TaskID: projCtx.Task.Id, Execution: executionNum}})
+	taskFiles, err := artifact.GetAllArtifacts(r.Context(), []artifact.TaskIDAndExecution{{TaskID: projCtx.Task.Id, Execution: executionNum}})
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "unable to find artifacts for task '%s'", projCtx.Task.Id))
 		return

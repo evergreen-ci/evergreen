@@ -22,23 +22,26 @@ import (
 )
 
 type Version struct {
-	Id                  string               `bson:"_id" json:"id,omitempty"`
-	CreateTime          time.Time            `bson:"create_time" json:"create_time,omitempty"`
-	StartTime           time.Time            `bson:"start_time" json:"start_time,omitempty"`
-	FinishTime          time.Time            `bson:"finish_time" json:"finish_time,omitempty"`
-	Revision            string               `bson:"gitspec" json:"revision,omitempty"`
-	Author              string               `bson:"author" json:"author,omitempty"`
-	AuthorEmail         string               `bson:"author_email" json:"author_email,omitempty"`
-	Message             string               `bson:"message" json:"message,omitempty"`
-	Status              string               `bson:"status" json:"status,omitempty"`
-	RevisionOrderNumber int                  `bson:"order,omitempty" json:"order,omitempty"`
-	Ignored             bool                 `bson:"ignored" json:"ignored"`
-	Owner               string               `bson:"owner_name" json:"owner_name,omitempty"`
-	Repo                string               `bson:"repo_name" json:"repo_name,omitempty"`
-	Branch              string               `bson:"branch_name" json:"branch_name,omitempty"`
-	BuildVariants       []VersionBuildStatus `bson:"build_variants_status,omitempty" json:"build_variants_status,omitempty"`
-	PeriodicBuildID     string               `bson:"periodic_build_id,omitempty" json:"periodic_build_id,omitempty"`
-	Aborted             bool                 `bson:"aborted,omitempty" json:"aborted,omitempty"`
+	Id                  string    `bson:"_id" json:"id,omitempty"`
+	CreateTime          time.Time `bson:"create_time" json:"create_time,omitempty"`
+	StartTime           time.Time `bson:"start_time" json:"start_time,omitempty"`
+	FinishTime          time.Time `bson:"finish_time" json:"finish_time,omitempty"`
+	Revision            string    `bson:"gitspec" json:"revision,omitempty"`
+	Author              string    `bson:"author" json:"author,omitempty"`
+	AuthorEmail         string    `bson:"author_email" json:"author_email,omitempty"`
+	Message             string    `bson:"message" json:"message,omitempty"`
+	Status              string    `bson:"status" json:"status,omitempty"`
+	RevisionOrderNumber int       `bson:"order,omitempty" json:"order,omitempty"`
+	Ignored             bool      `bson:"ignored" json:"ignored"`
+	Owner               string    `bson:"owner_name" json:"owner_name,omitempty"`
+	Repo                string    `bson:"repo_name" json:"repo_name,omitempty"`
+	Branch              string    `bson:"branch_name" json:"branch_name,omitempty"`
+	// BuildVariants contains information about build variant activation. This
+	// is not always loaded in version document queries because it can be large.
+	// See (Version).GetBuildVariants to fetch this field.
+	BuildVariants   []VersionBuildStatus `bson:"build_variants_status,omitempty" json:"build_variants_status,omitempty"`
+	PeriodicBuildID string               `bson:"periodic_build_id,omitempty" json:"periodic_build_id,omitempty"`
+	Aborted         bool                 `bson:"aborted,omitempty" json:"aborted,omitempty"`
 
 	// This stores whether or not a version has tasks which were activated.
 	// We use a bool ptr in order to to distinguish the unset value from the default value
@@ -114,9 +117,12 @@ func (v *Version) IsFinished() bool {
 	return evergreen.IsFinishedVersionStatus(v.Status)
 }
 
-func (v *Version) LastSuccessful() (*Version, error) {
-	lastGreen, err := VersionFindOne(VersionBySuccessfulBeforeRevision(v.Identifier, v.RevisionOrderNumber).Sort(
-		[]string{"-" + VersionRevisionOrderNumberKey}))
+// LastSuccessful returns the last successful version before the current
+// version.
+func (v *Version) LastSuccessful(ctx context.Context) (*Version, error) {
+	lastGreen, err := VersionFindOne(ctx, VersionBySuccessfulBeforeRevision(v.Identifier, v.RevisionOrderNumber).
+		Project(bson.M{VersionBuildVariantsKey: 0}).
+		Sort([]string{"-" + VersionRevisionOrderNumberKey}))
 	if err != nil {
 		return nil, errors.Wrap(err, "retrieving last successful version")
 	}
@@ -124,30 +130,36 @@ func (v *Version) LastSuccessful() (*Version, error) {
 }
 
 // ActivateAndSetBuildVariants activates the version and sets its build variants.
-func (v *Version) ActivateAndSetBuildVariants() error {
+func (v *Version) ActivateAndSetBuildVariants(ctx context.Context) error {
+	bvs, err := v.GetBuildVariants(ctx)
+	if err != nil {
+		return errors.Wrap(err, "getting build variant info for version")
+	}
 	return VersionUpdateOne(
+		ctx,
 		bson.M{VersionIdKey: v.Id},
 		bson.M{
 			"$set": bson.M{
 				VersionActivatedKey:     true,
-				VersionBuildVariantsKey: v.BuildVariants,
+				VersionBuildVariantsKey: bvs,
 			},
 		},
 	)
 }
 
 // SetActivated sets version activated field to specified boolean.
-func (v *Version) SetActivated(activated bool) error {
+func (v *Version) SetActivated(ctx context.Context, activated bool) error {
 	if utility.FromBoolPtr(v.Activated) == activated {
 		return nil
 	}
 	v.Activated = utility.ToBoolPtr(activated)
-	return SetVersionActivated(v.Id, activated)
+	return SetVersionActivated(ctx, v.Id, activated)
 }
 
 // SetVersionActivated sets version activated field to specified boolean given a version id.
-func SetVersionActivated(versionId string, activated bool) error {
+func SetVersionActivated(ctx context.Context, versionId string, activated bool) error {
 	return VersionUpdateOne(
+		ctx,
 		bson.M{VersionIdKey: versionId},
 		bson.M{
 			"$set": bson.M{
@@ -158,9 +170,10 @@ func SetVersionActivated(versionId string, activated bool) error {
 }
 
 // SetAborted sets the version as aborted.
-func (v *Version) SetAborted(aborted bool) error {
+func (v *Version) SetAborted(ctx context.Context, aborted bool) error {
 	v.Aborted = aborted
 	return VersionUpdateOne(
+		ctx,
 		bson.M{VersionIdKey: v.Id},
 		bson.M{
 			"$set": bson.M{
@@ -170,46 +183,34 @@ func (v *Version) SetAborted(aborted bool) error {
 	)
 }
 
-func (v *Version) Insert() error {
-	return db.Insert(VersionCollection, v)
+func (v *Version) Insert(ctx context.Context) error {
+	return db.Insert(ctx, VersionCollection, v)
 }
 
 func (v *Version) IsChild() bool {
 	return v.ParentPatchID != ""
 }
 
-func (v *Version) GetParentVersion() (*Version, error) {
-	if v.ParentPatchID == "" {
-		return nil, errors.Errorf("version '%s' is missing parent patch ID", v.Id)
-	}
-	parentVersion, err := VersionFindOne(VersionById(v.ParentPatchID))
-	if err != nil {
-		return nil, errors.WithStack(err)
-	} else if parentVersion == nil {
-		return nil, errors.Errorf("version '%s' not found", v.ParentPatchID)
-	}
-	return parentVersion, nil
-}
-
-func (v *Version) AddSatisfiedTrigger(definitionID string) error {
+func (v *Version) AddSatisfiedTrigger(ctx context.Context, definitionID string) error {
 	if v.SatisfiedTriggers == nil {
 		v.SatisfiedTriggers = []string{}
 	}
 	v.SatisfiedTriggers = append(v.SatisfiedTriggers, definitionID)
-	return errors.Wrap(AddSatisfiedTrigger(v.Id, definitionID), "adding satisfied trigger")
+	return errors.Wrap(AddSatisfiedTrigger(ctx, v.Id, definitionID), "adding satisfied trigger")
 }
 
-func (v *Version) UpdateStatus(newStatus string) error {
+func (v *Version) UpdateStatus(ctx context.Context, newStatus string) error {
 	if v.Status == newStatus {
 		return nil
 	}
 
 	v.Status = newStatus
-	return setVersionStatus(v.Id, newStatus)
+	return setVersionStatus(ctx, v.Id, newStatus)
 }
 
-func setVersionStatus(versionId, newStatus string) error {
+func setVersionStatus(ctx context.Context, versionId, newStatus string) error {
 	return VersionUpdateOne(
+		ctx,
 		bson.M{VersionIdKey: versionId},
 		bson.M{"$set": bson.M{
 			VersionStatusKey: newStatus,
@@ -234,10 +235,11 @@ func (v *Version) GetTimeSpent(ctx context.Context) (time.Duration, time.Duratio
 	return timeTaken, makespan, nil
 }
 
-func (v *Version) MarkFinished(status string, finishTime time.Time) error {
+func (v *Version) MarkFinished(ctx context.Context, status string, finishTime time.Time) error {
 	v.Status = status
 	v.FinishTime = finishTime
 	return VersionUpdateOne(
+		ctx,
 		bson.M{VersionIdKey: v.Id},
 		bson.M{"$set": bson.M{
 			VersionFinishTimeKey: finishTime,
@@ -248,12 +250,12 @@ func (v *Version) MarkFinished(status string, finishTime time.Time) error {
 
 // UpdateProjectStorageMethod updates the version's parser project storage
 // method.
-func (v *Version) UpdateProjectStorageMethod(method evergreen.ParserProjectStorageMethod) error {
+func (v *Version) UpdateProjectStorageMethod(ctx context.Context, method evergreen.ParserProjectStorageMethod) error {
 	if method == v.ProjectStorageMethod {
 		return nil
 	}
 
-	if err := VersionUpdateOne(bson.M{VersionIdKey: v.Id}, bson.M{
+	if err := VersionUpdateOne(ctx, bson.M{VersionIdKey: v.Id}, bson.M{
 		"$set": bson.M{VersionProjectStorageMethodKey: method},
 	}); err != nil {
 		return err
@@ -264,17 +266,42 @@ func (v *Version) UpdateProjectStorageMethod(method evergreen.ParserProjectStora
 
 // UpdatePreGenerationProjectStorageMethod updates the version's pre-generation parser project storage
 // method.
-func (v *Version) UpdatePreGenerationProjectStorageMethod(method evergreen.ParserProjectStorageMethod) error {
+func (v *Version) UpdatePreGenerationProjectStorageMethod(ctx context.Context, method evergreen.ParserProjectStorageMethod) error {
 	if method == v.PreGenerationProjectStorageMethod {
 		return nil
 	}
-	if err := VersionUpdateOne(bson.M{VersionIdKey: v.Id}, bson.M{
+	if err := VersionUpdateOne(ctx, bson.M{VersionIdKey: v.Id}, bson.M{
 		"$set": bson.M{VersionPreGenerationProjectStorageMethodKey: method},
 	}); err != nil {
 		return err
 	}
 	v.PreGenerationProjectStorageMethod = method
 	return nil
+}
+
+// GetBuildVariants returns the build variants for the version. If the version
+// already has build variants cached, it'll use that; otherwise, it will load
+// the build variants from the DB. If the version does not exist in the DB yet,
+// it'll return v's own in-memory BuildVariants, if any.
+func (v *Version) GetBuildVariants(ctx context.Context) ([]VersionBuildStatus, error) {
+	if v.BuildVariants != nil {
+		return v.BuildVariants, nil
+	}
+	versionWithBuildVariants, err := VersionFindOneIdWithBuildVariants(ctx, v.Id)
+	if err != nil {
+		return nil, errors.Wrapf(err, "finding version '%s'", v.Id)
+	}
+	bvs := []VersionBuildStatus{}
+	// If the version is nil, then the version doesn't exist in the DB, so it's
+	// safe to assume that BuildVariants is not populated. This intentionally
+	// does not error if the version doesn't exist in the DB so that this method
+	// can be called even if the version hasn't been inserted into the DB yet.
+	if versionWithBuildVariants != nil && versionWithBuildVariants.BuildVariants != nil {
+		bvs = versionWithBuildVariants.BuildVariants
+	}
+	v.BuildVariants = bvs
+
+	return v.BuildVariants, nil
 }
 
 // VersionBuildStatus stores metadata relating to each build
@@ -341,19 +368,8 @@ type DuplicateVersions struct {
 	Versions []Version           `bson:"versions"`
 }
 
-func IsAborted(id string) (bool, error) {
-	v, err := VersionFindOne(VersionById(id))
-	if err != nil {
-		return false, errors.Errorf("finding version '%s'", id)
-	}
-	if v == nil {
-		return false, errors.Errorf("version '%s' not found", id)
-	}
-	return v.Aborted, nil
-}
-
-func VersionGetHistory(versionId string, N int) ([]Version, error) {
-	v, err := VersionFindOne(VersionById(versionId))
+func VersionGetHistory(ctx context.Context, versionId string, N int) ([]Version, error) {
+	v, err := VersionFindOne(ctx, VersionById(versionId))
 	if err != nil {
 		return nil, errors.WithStack(err)
 	} else if v == nil {
@@ -363,14 +379,14 @@ func VersionGetHistory(versionId string, N int) ([]Version, error) {
 	// Versions in the same push event, assuming that no two push events happen at the exact same time
 	// Never want more than 2N+1 versions, so make sure we add a limit
 
-	siblingVersions, err := VersionFind(db.Query(
+	siblingVersions, err := VersionFind(ctx, db.Query(
 		bson.M{
 			VersionRevisionOrderNumberKey: v.RevisionOrderNumber,
 			VersionRequesterKey: bson.M{
 				"$in": evergreen.SystemVersionRequesterTypes,
 			},
 			VersionIdentifierKey: v.Identifier,
-		}).Sort([]string{VersionRevisionOrderNumberKey}).Limit(2*N + 1))
+		}).Sort([]string{VersionRevisionOrderNumberKey}).Limit(2*N+1))
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -388,7 +404,7 @@ func VersionGetHistory(versionId string, N int) ([]Version, error) {
 	if versionIndex < N {
 		// There are less than N later versions from the same push event
 		// N subsequent versions plus the specified one
-		subsequentVersions, err := VersionFind(
+		subsequentVersions, err := VersionFind(ctx,
 			//TODO encapsulate this query in version pkg
 			db.Query(bson.M{
 				VersionRevisionOrderNumberKey: bson.M{"$gt": v.RevisionOrderNumber},
@@ -396,7 +412,7 @@ func VersionGetHistory(versionId string, N int) ([]Version, error) {
 					"$in": evergreen.SystemVersionRequesterTypes,
 				},
 				VersionIdentifierKey: v.Identifier,
-			}).Sort([]string{VersionRevisionOrderNumberKey}).Limit(N - versionIndex))
+			}).Sort([]string{VersionRevisionOrderNumberKey}).Limit(N-versionIndex))
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
@@ -410,7 +426,7 @@ func VersionGetHistory(versionId string, N int) ([]Version, error) {
 	}
 
 	if numSiblings-versionIndex < N {
-		previousVersions, err := VersionFind(db.Query(bson.M{
+		previousVersions, err := VersionFind(ctx, db.Query(bson.M{
 			VersionRevisionOrderNumberKey: bson.M{"$lt": v.RevisionOrderNumber},
 			VersionRequesterKey: bson.M{
 				"$in": evergreen.SystemVersionRequesterTypes,
@@ -438,6 +454,7 @@ func GetMostRecentWaterfallVersion(ctx context.Context, projectId string) (*Vers
 		{"$match": match},
 		{"$sort": bson.M{VersionRevisionOrderNumberKey: -1}},
 		{"$limit": 1},
+		{"$project": bson.M{VersionBuildVariantsKey: 0}},
 	}
 
 	res := []Version{}
@@ -569,8 +586,8 @@ type GetVersionsOptions struct {
 
 // GetVersionsWithOptions returns versions for a project, that satisfy a set of query parameters defined by
 // the input GetVersionsOptions.
-func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Version, error) {
-	projectId, err := GetIdForProject(projectName)
+func GetVersionsWithOptions(ctx context.Context, projectName string, opts GetVersionsOptions) ([]Version, error) {
+	projectId, err := GetIdForProject(ctx, projectName)
 	if err != nil {
 		return nil, err
 	}
@@ -641,7 +658,7 @@ func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Vers
 		if opts.IncludeTasks {
 			taskMatch := []bson.M{
 				{"$eq": []string{"$build_id", "$$temp_build_id"}},
-				{"$eq": []interface{}{"$activated", true}},
+				{"$eq": []any{"$activated", true}},
 			}
 			if opts.ByTask != "" {
 				taskMatch = append(taskMatch, bson.M{"$eq": []string{"$display_name", opts.ByTask}})
@@ -659,7 +676,7 @@ func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Vers
 
 			// filter out builds that don't have any tasks included
 			matchTasksExist := bson.M{
-				"tasks": bson.M{"$exists": true, "$ne": []interface{}{}},
+				"tasks": bson.M{"$exists": true, "$ne": []any{}},
 			}
 			innerPipeline = append(innerPipeline, bson.M{"$match": matchTasksExist})
 		}
@@ -673,7 +690,7 @@ func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Vers
 		//
 		// filter out versions that don't have any activated builds
 		matchBuildsExist := bson.M{
-			"build_variants": bson.M{"$exists": true, "$ne": []interface{}{}},
+			"build_variants": bson.M{"$exists": true, "$ne": []any{}},
 		}
 		pipeline = append(pipeline, bson.M{"$match": matchBuildsExist})
 	}
@@ -685,7 +702,7 @@ func GetVersionsWithOptions(projectName string, opts GetVersionsOptions) ([]Vers
 
 	res := []Version{}
 
-	if err := db.Aggregate(VersionCollection, pipeline, &res); err != nil {
+	if err := db.Aggregate(ctx, VersionCollection, pipeline, &res); err != nil {
 		return nil, errors.Wrap(err, "aggregating versions and builds")
 	}
 	return res, nil
@@ -702,8 +719,8 @@ type ModifyVersionsOptions struct {
 }
 
 // GetVersionsToModify returns a slice of versions intended to be modified that satisfy the given ModifyVersionsOptions.
-func GetVersionsToModify(projectName string, opts ModifyVersionsOptions, startTime, endTime time.Time) ([]Version, error) {
-	projectId, err := GetIdForProject(projectName)
+func GetVersionsToModify(ctx context.Context, projectName string, opts ModifyVersionsOptions, startTime, endTime time.Time) ([]Version, error) {
+	projectId, err := GetIdForProject(ctx, projectName)
 	if err != nil {
 		return nil, err
 	}
@@ -718,7 +735,7 @@ func GetVersionsToModify(projectName string, opts ModifyVersionsOptions, startTi
 	} else {
 		match[VersionCreateTimeKey] = bson.M{"$gte": startTime, "$lte": endTime}
 	}
-	versions, err := VersionFind(db.Query(match))
+	versions, err := VersionFind(ctx, db.Query(match))
 	if err != nil {
 		return nil, errors.Wrap(err, "finding versions")
 	}
@@ -726,7 +743,7 @@ func GetVersionsToModify(projectName string, opts ModifyVersionsOptions, startTi
 }
 
 // constructManifest will construct a manifest from the given project and version.
-func constructManifest(v *Version, projectRef *ProjectRef, moduleList ModuleList) (*manifest.Manifest, error) {
+func constructManifest(ctx context.Context, v *Version, projectRef *ProjectRef, moduleList ModuleList) (*manifest.Manifest, error) {
 	if len(moduleList) == 0 {
 		return nil, nil
 	}
@@ -738,7 +755,7 @@ func constructManifest(v *Version, projectRef *ProjectRef, moduleList ModuleList
 		IsBase:      v.Requester == evergreen.RepotrackerVersionRequester,
 	}
 
-	projVars, err := FindMergedProjectVars(projectRef.Id)
+	projVars, err := FindMergedProjectVars(ctx, projectRef.Id)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting project vars for project '%s'", projectRef.Id)
 	}
@@ -754,7 +771,7 @@ func constructManifest(v *Version, projectRef *ProjectRef, moduleList ModuleList
 	var baseManifest *manifest.Manifest
 	shouldUseBaseRevision := utility.StringSliceContains(evergreen.PatchRequesters, v.Requester) || v.Requester == evergreen.AdHocRequester
 	if shouldUseBaseRevision {
-		baseManifest, err = manifest.FindFromVersion(v.Id, v.Identifier, v.Revision, v.Requester)
+		baseManifest, err = manifest.FindFromVersion(ctx, v.Id, v.Identifier, v.Revision, v.Requester)
 		if err != nil {
 			return nil, errors.Wrap(err, "getting base manifest")
 		}
@@ -845,15 +862,15 @@ func getManifestModule(v *Version, projectRef *ProjectRef, module Module) (*mani
 }
 
 // CreateManifest inserts a newly constructed manifest into the DB.
-func CreateManifest(v *Version, modules ModuleList, projectRef *ProjectRef) (*manifest.Manifest, error) {
-	newManifest, err := constructManifest(v, projectRef, modules)
+func CreateManifest(ctx context.Context, v *Version, modules ModuleList, projectRef *ProjectRef) (*manifest.Manifest, error) {
+	newManifest, err := constructManifest(ctx, v, projectRef, modules)
 	if err != nil {
 		return nil, errors.Wrap(err, "constructing manifest")
 	}
 	if newManifest == nil {
 		return nil, nil
 	}
-	_, err = newManifest.TryInsert()
+	_, err = newManifest.TryInsert(ctx)
 	return newManifest, errors.Wrap(err, "inserting manifest")
 }
 

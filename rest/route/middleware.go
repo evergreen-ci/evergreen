@@ -14,13 +14,12 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
-	"github.com/google/go-github/v52/github"
+	"github.com/google/go-github/v70/github"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -60,7 +59,7 @@ func (m *projCtxMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, n
 
 	user := gimlet.GetUser(ctx)
 
-	if opCtx.ProjectRef != nil && user == nil {
+	if opCtx.HasProjectOrRepoRef() && user == nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    "project not found",
@@ -141,7 +140,7 @@ func (m *projectAdminMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 	opCtx := MustHaveProjectContext(ctx)
 	user := MustHaveUser(ctx)
 
-	if opCtx == nil || opCtx.ProjectRef == nil {
+	if opCtx == nil || !opCtx.HasProjectOrRepoRef() {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
 			Message:    "no project found",
@@ -150,7 +149,7 @@ func (m *projectAdminMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 	}
 
 	isAdmin := user.HasPermission(gimlet.PermissionOpts{
-		Resource:      opCtx.ProjectRef.Id,
+		Resource:      opCtx.GetProjectOrRepoRefId(),
 		ResourceType:  evergreen.ProjectResourceType,
 		Permission:    evergreen.PermissionProjectSettings,
 		RequiredLevel: evergreen.ProjectSettingsEdit.Value,
@@ -189,68 +188,6 @@ func (m *canCreateMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request,
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusUnauthorized,
 			Message:    "not authorized",
-		}))
-		return
-	}
-
-	next(rw, r)
-}
-
-// NewTaskHostAuthMiddleware returns route middleware that authenticates a host
-// created by a task and verifies the secret of the host that created this host.
-func NewTaskHostAuthMiddleware() gimlet.Middleware {
-	return &TaskHostAuthMiddleware{}
-}
-
-type TaskHostAuthMiddleware struct {
-}
-
-func (m *TaskHostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	vars := gimlet.GetVars(r)
-	hostID, ok := vars["host_id"]
-	if !ok {
-		hostID = r.Header.Get(evergreen.HostHeader)
-		if hostID == "" {
-			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusUnauthorized,
-				Message:    "not authorized",
-			}))
-			return
-		}
-	}
-	h, err := host.FindOneId(r.Context(), hostID)
-	if err != nil {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(err))
-		return
-	}
-	if h == nil {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("host '%s' not found", hostID),
-		}))
-		return
-	}
-
-	if h.StartedBy == "" {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.Errorf("host '%s' is not started by any task", h.Id)))
-		return
-	}
-	t, err := task.FindOneId(r.Context(), h.StartedBy)
-	if err != nil {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s' started by host '%s'", h.StartedBy, h.Id)))
-		return
-	}
-	if t == nil {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("task '%s' not found", h.StartedBy),
-		}))
-		return
-	}
-	if _, code, err := model.ValidateHost(t.HostId, r); err != nil {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: code,
-			Message:    errors.Wrapf(err, "invalid host '%s' associated with task '%s'", t.HostId, t.Id).Error(),
 		}))
 		return
 	}
@@ -345,7 +282,7 @@ func checkPodSecret(r *http.Request, podID string) error {
 	if secret == "" {
 		return errors.New("missing pod secret")
 	}
-	if err := data.CheckPodSecret(podID, secret); err != nil {
+	if err := data.CheckPodSecret(r.Context(), podID, secret); err != nil {
 		return errors.Wrap(err, "checking pod secret")
 	}
 	return nil
@@ -395,7 +332,7 @@ func (m *alertmanagerMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Reque
 		}))
 		return
 	}
-	u, err := user.FindOneById(username)
+	u, err := user.FindOneByIdContext(r.Context(), username)
 	if err != nil {
 		gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding user '%s'", username)))
 		return

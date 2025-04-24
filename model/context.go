@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 // Context is the set of all the related entities in a
@@ -19,6 +20,7 @@ type Context struct {
 	Version    *Version
 	Patch      *patch.Patch
 	ProjectRef *ProjectRef
+	RepoRef    *RepoRef
 
 	project *Project
 }
@@ -38,7 +40,7 @@ func LoadContext(ctx context.Context, taskId, buildId, versionId, patchId, proje
 		projectId = pID
 	}
 
-	err = c.populatePatch(patchId)
+	err = c.populatePatch(ctx, patchId)
 	if err != nil {
 		return c, err
 	}
@@ -49,7 +51,11 @@ func LoadContext(ctx context.Context, taskId, buildId, versionId, patchId, proje
 	// Try to load project for the ID we found, and set cookie with it for subsequent requests
 	if len(projectId) > 0 {
 		// Also lookup the ProjectRef itself and add it to context.
-		c.ProjectRef, err = FindMergedProjectRef(projectId, versionId, true)
+		c.ProjectRef, err = FindMergedProjectRef(ctx, projectId, versionId, true)
+		if err != nil && !errors.Is(err, mongo.ErrNoDocuments) {
+			return c, err
+		}
+		c.RepoRef, err = FindOneRepoRef(ctx, projectId)
 		if err != nil {
 			return c, err
 		}
@@ -58,11 +64,11 @@ func LoadContext(ctx context.Context, taskId, buildId, versionId, patchId, proje
 	return c, nil
 }
 
-func (ctx *Context) GetProjectRef() (*ProjectRef, error) {
+func (ctx *Context) GetProjectRef(c context.Context) (*ProjectRef, error) {
 	// if no project, use the default
 	if ctx.ProjectRef == nil {
 		var err error
-		ctx.ProjectRef, err = FindAnyRestrictedProjectRef()
+		ctx.ProjectRef, err = FindAnyRestrictedProjectRef(c)
 		if err != nil {
 			return nil, errors.Wrap(err, "finding project ref")
 		}
@@ -72,12 +78,12 @@ func (ctx *Context) GetProjectRef() (*ProjectRef, error) {
 }
 
 // GetProject returns the project associated with the Context.
-func (ctx *Context) GetProject() (*Project, error) {
+func (ctx *Context) GetProject(c context.Context) (*Project, error) {
 	if ctx.project != nil {
 		return ctx.project, nil
 	}
 
-	pref, err := ctx.GetProjectRef()
+	pref, err := ctx.GetProjectRef(c)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding project")
 	}
@@ -88,6 +94,17 @@ func (ctx *Context) GetProject() (*Project, error) {
 	}
 
 	return ctx.project, nil
+}
+
+func (ctx *Context) HasProjectOrRepoRef() bool {
+	return ctx.ProjectRef != nil || ctx.RepoRef != nil
+}
+
+func (ctx *Context) GetProjectOrRepoRefId() string {
+	if ctx.ProjectRef != nil {
+		return ctx.ProjectRef.Id
+	}
+	return ctx.RepoRef.Id
 }
 
 // populateTaskBuildVersion takes a task, build, and version ID and populates a Context
@@ -119,7 +136,7 @@ func (c *Context) populateTaskBuildVersion(ctx context.Context, taskId, buildId,
 
 	// Fetch build if there's a build ID present; if we find one, populate version ID from it
 	if len(buildId) > 0 {
-		c.Build, err = build.FindOne(build.ById(buildId))
+		c.Build, err = build.FindOne(ctx, build.ById(buildId))
 		if err != nil {
 			return "", err
 		}
@@ -129,7 +146,7 @@ func (c *Context) populateTaskBuildVersion(ctx context.Context, taskId, buildId,
 		}
 	}
 	if len(versionId) > 0 {
-		c.Version, err = VersionFindOne(VersionById(versionId))
+		c.Version, err = VersionFindOneIdWithBuildVariants(ctx, versionId)
 		if err != nil {
 			return "", err
 		}
@@ -143,17 +160,17 @@ func (c *Context) populateTaskBuildVersion(ctx context.Context, taskId, buildId,
 // populatePatch loads a patch into the project context, using patchId if provided.
 // If patchId is blank, will try to infer the patch ID from the version already loaded
 // into context, if available.
-func (ctx *Context) populatePatch(patchId string) error {
+func (ctx *Context) populatePatch(c context.Context, patchId string) error {
 	var err error
 	if len(patchId) > 0 {
 		// The patch is explicitly identified in the URL, so fetch it
 		if !patch.IsValidId(patchId) {
 			return errors.Errorf("patch id '%s' is not an object id", patchId)
 		}
-		ctx.Patch, err = patch.FindOne(patch.ByStringId(patchId).Project(patch.ExcludePatchDiff))
+		ctx.Patch, err = patch.FindOne(c, patch.ByStringId(patchId).Project(patch.ExcludePatchDiff))
 	} else if ctx.Version != nil {
 		// patch isn't in URL but the version in context has one, get it
-		ctx.Patch, err = patch.FindOne(patch.ByVersion(ctx.Version.Id).Project(patch.ExcludePatchDiff))
+		ctx.Patch, err = patch.FindOne(c, patch.ByVersion(ctx.Version.Id).Project(patch.ExcludePatchDiff))
 	}
 	if err != nil {
 		return err
@@ -162,7 +179,7 @@ func (ctx *Context) populatePatch(patchId string) error {
 	// If there's a finalized patch loaded into context but not a version, load the version
 	// associated with the patch as the context's version.
 	if ctx.Version == nil && ctx.Patch != nil && ctx.Patch.Version != "" {
-		ctx.Version, err = VersionFindOne(VersionById(ctx.Patch.Version))
+		ctx.Version, err = VersionFindOneIdWithBuildVariants(c, ctx.Patch.Version)
 		if err != nil {
 			return errors.WithStack(err)
 		}

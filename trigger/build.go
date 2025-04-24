@@ -52,7 +52,7 @@ func (t *buildTriggers) Fetch(ctx context.Context, e *event.EventLogEntry) error
 		return errors.Wrap(err, "fetching UI config")
 	}
 
-	t.build, err = build.FindOne(build.ById(e.ResourceId))
+	t.build, err = build.FindOne(ctx, build.ById(e.ResourceId))
 	if err != nil {
 		return errors.Wrapf(err, "finding build '%s'", e.ResourceId)
 	}
@@ -115,7 +115,7 @@ func (t *buildTriggers) buildGithubCheckOutcome(ctx context.Context, sub *event.
 	if t.data.GithubCheckStatus != evergreen.BuildSucceeded && t.data.GithubCheckStatus != evergreen.BuildFailed {
 		return nil, nil
 	}
-	return t.generate(sub, "")
+	return t.generate(ctx, sub, "")
 }
 
 func (t *buildTriggers) buildOutcome(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
@@ -123,7 +123,7 @@ func (t *buildTriggers) buildOutcome(ctx context.Context, sub *event.Subscriptio
 		return nil, nil
 	}
 
-	return t.generate(sub, "")
+	return t.generate(ctx, sub, "")
 }
 
 func (t *buildTriggers) buildFailure(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
@@ -131,7 +131,7 @@ func (t *buildTriggers) buildFailure(ctx context.Context, sub *event.Subscriptio
 		return nil, nil
 	}
 
-	return t.generate(sub, "")
+	return t.generate(ctx, sub, "")
 }
 
 func (t *buildTriggers) buildSuccess(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
@@ -139,7 +139,7 @@ func (t *buildTriggers) buildSuccess(ctx context.Context, sub *event.Subscriptio
 		return nil, nil
 	}
 
-	return t.generate(sub, "")
+	return t.generate(ctx, sub, "")
 }
 
 func (t *buildTriggers) buildExceedsDuration(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
@@ -159,7 +159,7 @@ func (t *buildTriggers) buildExceedsDuration(ctx context.Context, sub *event.Sub
 	if t.build.TimeTaken < maxDuration {
 		return nil, nil
 	}
-	return t.generate(sub, fmt.Sprintf("exceeded %d seconds", threshold))
+	return t.generate(ctx, sub, fmt.Sprintf("exceeded %d seconds", threshold))
 }
 
 func (t *buildTriggers) buildRuntimeChange(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
@@ -175,7 +175,7 @@ func (t *buildTriggers) buildRuntimeChange(ctx context.Context, sub *event.Subsc
 		return nil, errors.Wrapf(err, "subscription '%s' has an invalid percentage", sub.ID)
 	}
 
-	lastGreen, err := t.build.PreviousSuccessful()
+	lastGreen, err := t.build.PreviousSuccessful(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "retrieving last green build")
 	}
@@ -188,12 +188,12 @@ func (t *buildTriggers) buildRuntimeChange(ctx context.Context, sub *event.Subsc
 	if !shouldNotify {
 		return nil, nil
 	}
-	return t.generate(sub, fmt.Sprintf("changed in runtime by %.1f%% (over threshold of %s%%)", percentChange, percentString))
+	return t.generate(ctx, sub, fmt.Sprintf("changed in runtime by %.1f%% (over threshold of %s%%)", percentChange, percentString))
 }
 
-func (t *buildTriggers) makeData(sub *event.Subscription, pastTenseOverride string) (*commonTemplateData, error) {
+func (t *buildTriggers) makeData(ctx context.Context, sub *event.Subscription, pastTenseOverride string) (*commonTemplateData, error) {
 	api := restModel.APIBuild{}
-	api.BuildFromService(*t.build, nil)
+	api.BuildFromService(ctx, *t.build, nil)
 	projectName := t.build.Project
 	if api.ProjectIdentifier != nil {
 		projectName = utility.FromStringPtr(api.ProjectIdentifier)
@@ -296,8 +296,8 @@ func (t *buildTriggers) buildAttachments(data *commonTemplateData) []message.Sla
 	return attachments
 }
 
-func (t *buildTriggers) generate(sub *event.Subscription, pastTenseOverride string) (*notification.Notification, error) {
-	data, err := t.makeData(sub, pastTenseOverride)
+func (t *buildTriggers) generate(ctx context.Context, sub *event.Subscription, pastTenseOverride string) (*notification.Notification, error) {
+	data, err := t.makeData(ctx, sub, pastTenseOverride)
 	if err != nil {
 		return nil, errors.Wrap(err, "collecting build data")
 	}

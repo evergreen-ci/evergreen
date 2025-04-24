@@ -176,7 +176,7 @@ func TestTestLogDirectoryHandlerRun(t *testing.T) {
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			tsk, h := setupTestTestLogDirectoryHandler(t, comm, test.redactOpts)
+			tsk, h := setupTestTestLogDirectoryHandler(t, comm, test.redactOpts, 20)
 			for _, li := range test.logs {
 				require.NoError(t, os.MkdirAll(filepath.Join(h.dir, filepath.Dir(li.logPath)), 0777))
 				require.NoError(t, os.WriteFile(filepath.Join(h.dir, li.logPath), []byte(strings.Join(li.inputLines, "\n")+"\n"), 0777))
@@ -231,7 +231,7 @@ func TestTestLogDirectoryHandlerGetSpecFile(t *testing.T) {
 
 	for _, test := range []struct {
 		name     string
-		specData interface{}
+		specData any
 	}{
 		{
 			name:     "InvalidYAML",
@@ -250,7 +250,7 @@ func TestTestLogDirectoryHandlerGetSpecFile(t *testing.T) {
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			tsk, h := setupTestTestLogDirectoryHandler(t, comm, redactor.RedactionOptions{})
+			tsk, h := setupTestTestLogDirectoryHandler(t, comm, redactor.RedactionOptions{}, 0)
 
 			// Set the expected test log spec and write spec file
 			// if spec data exists.
@@ -304,26 +304,26 @@ func TestTestLogSpecGetParser(t *testing.T) {
 	for _, test := range []struct {
 		name string
 		spec testLogSpec
-		test func(*testing.T, taskoutput.LogLineParser)
+		test func(*testing.T, log.LineParser)
 	}{
 		{
 			name: "DefaultFormat",
 			spec: testLogSpec{},
-			test: func(t *testing.T, parser taskoutput.LogLineParser) {
+			test: func(t *testing.T, parser log.LineParser) {
 				assert.Nil(t, parser)
 			},
 		},
 		{
 			name: "Text",
 			spec: testLogSpec{Format: testLogFormatDefault},
-			test: func(t *testing.T, parser taskoutput.LogLineParser) {
+			test: func(t *testing.T, parser log.LineParser) {
 				assert.Nil(t, parser)
 			},
 		},
 		{
 			name: "TextTimestamp",
 			spec: testLogSpec{Format: testLogFormatTextTimestamp},
-			test: func(t *testing.T, parser taskoutput.LogLineParser) {
+			test: func(t *testing.T, parser log.LineParser) {
 				ts := time.Now().UnixNano()
 				data := "This is a log line."
 
@@ -396,7 +396,7 @@ func TestTestLogFormatValidate(t *testing.T) {
 	}
 }
 
-func setupTestTestLogDirectoryHandler(t *testing.T, comm *client.Mock, redactOpts redactor.RedactionOptions) (*task.Task, *testLogDirectoryHandler) {
+func setupTestTestLogDirectoryHandler(t *testing.T, comm *client.Mock, redactOpts redactor.RedactionOptions, seqSize int64) (*task.Task, *testLogDirectoryHandler) {
 	tsk := &task.Task{
 		Project: "project",
 		Id:      utility.RandomString(),
@@ -412,11 +412,18 @@ func setupTestTestLogDirectoryHandler(t *testing.T, comm *client.Mock, redactOpt
 	}
 	logger, err := comm.GetLoggerProducer(context.TODO(), tsk, nil)
 	require.NoError(t, err)
-	h := newTestLogDirectoryHandler(t.TempDir(), tsk.TaskOutputInfo, taskoutput.TaskOptions{
+	taskOpts := taskoutput.TaskOptions{
 		ProjectID: tsk.Project,
 		TaskID:    tsk.Id,
 		Execution: tsk.Execution,
-	}, redactOpts, logger)
+	}
+	handlerOpts := directoryHandlerOpts{
+		redactorOpts: redactOpts,
+		output:       tsk.TaskOutputInfo,
+		taskOpts:     taskOpts,
+	}
+	h := newTestLogDirectoryHandler(t.TempDir(), logger, handlerOpts).(*testLogDirectoryHandler)
+	h.sequenceSize = seqSize
 
-	return tsk, h.(*testLogDirectoryHandler)
+	return tsk, h
 }

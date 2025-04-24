@@ -27,17 +27,17 @@ func TestLoggingTaskEvents(t *testing.T) {
 			taskId := "task_id"
 			hostId := "host_id"
 
-			LogTaskCreated(taskId, 1)
+			LogTaskCreated(t.Context(), taskId, 1)
 			time.Sleep(1 * time.Millisecond)
-			LogHostTaskDispatched(taskId, 1, hostId)
+			LogHostTaskDispatched(t.Context(), taskId, 1, hostId)
 			time.Sleep(1 * time.Millisecond)
-			LogHostTaskUndispatched(taskId, 1, hostId)
+			LogHostTaskUndispatched(t.Context(), taskId, 1, hostId)
 			time.Sleep(1 * time.Millisecond)
-			LogTaskStarted(taskId, 1)
+			LogTaskStarted(t.Context(), taskId, 1)
 			time.Sleep(1 * time.Millisecond)
-			LogHostTaskFinished(taskId, 1, hostId, evergreen.TaskSucceeded)
+			LogHostTaskFinished(t.Context(), taskId, 1, hostId, evergreen.TaskSucceeded)
 
-			eventsForTask, err := Find(TaskEventsInOrder(taskId))
+			eventsForTask, err := Find(t.Context(), TaskEventsInOrder(taskId))
 			So(err, ShouldEqual, nil)
 
 			event := eventsForTask[0]
@@ -112,8 +112,8 @@ func TestLogManyTestEvents(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 	require.NoError(db.ClearCollections(EventCollection))
-	LogManyTaskAbortRequests([]string{"task_1", "task_2"}, "example_user")
+	LogManyTaskAbortRequests(t.Context(), []string{"task_1", "task_2"}, "example_user")
 	events := []EventLogEntry{}
-	assert.NoError(db.FindAllQ(EventCollection, db.Query(bson.M{}), &events))
+	assert.NoError(db.FindAllQ(t.Context(), EventCollection, db.Query(bson.M{}), &events))
 	assert.Len(events, 2)
 }

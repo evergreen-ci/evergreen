@@ -2,165 +2,647 @@ package model
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
-	. "github.com/smartystreets/goconvey/convey"
+	"github.com/evergreen-ci/utility"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
-func TestTaskHistory(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+func TestFindActiveTasksForHistory(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(task.Collection))
+	}()
 
-	Convey("With a task history iterator", t, func() {
+	projectId := "evergreen"
+	taskName := "test-graphql"
+	buildVariant := "ubuntu2204"
 
-		buildVariants := []string{"bv_0", "bv_1", "bv_2"}
-		projectName := "project"
-		taskHistoryIterator := NewTaskHistoryIterator("compile",
-			buildVariants, projectName)
+	for tName, tCase := range map[string]func(t *testing.T, ctx context.Context){
+		"with lower bound only": func(t *testing.T, ctx context.Context) {
+			tasks, err := findActiveTasksForHistory(t.Context(), FindTaskHistoryOptions{
+				TaskName:     taskName,
+				BuildVariant: buildVariant,
+				ProjectId:    projectId,
+				LowerBound:   utility.ToIntPtr(98),
+				UpperBound:   nil,
+			})
+			require.NoError(t, err)
+			require.Len(t, tasks, 2)
+			assert.Equal(t, "t_4", tasks[0].Id)
+			assert.Equal(t, 101, tasks[0].RevisionOrderNumber)
+			assert.Equal(t, "t_2", tasks[1].Id)
+			assert.Equal(t, 99, tasks[1].RevisionOrderNumber)
+		},
+		"with upper bound only": func(t *testing.T, ctx context.Context) {
+			tasks, err := findActiveTasksForHistory(t.Context(), FindTaskHistoryOptions{
+				TaskName:     taskName,
+				BuildVariant: buildVariant,
+				ProjectId:    projectId,
+				LowerBound:   nil,
+				UpperBound:   utility.ToIntPtr(101),
+			})
+			require.NoError(t, err)
+			require.Len(t, tasks, 2)
+			assert.Equal(t, "t_4", tasks[0].Id)
+			assert.Equal(t, 101, tasks[0].RevisionOrderNumber)
+			assert.Equal(t, "t_2", tasks[1].Id)
+			assert.Equal(t, 99, tasks[1].RevisionOrderNumber)
+		},
+		"limit works with lower bound": func(t *testing.T, ctx context.Context) {
+			tasks, err := findActiveTasksForHistory(t.Context(), FindTaskHistoryOptions{
+				TaskName:     taskName,
+				BuildVariant: buildVariant,
+				ProjectId:    projectId,
+				LowerBound:   utility.ToIntPtr(98),
+				UpperBound:   nil,
+				Limit:        utility.ToIntPtr(1),
+			})
+			require.NoError(t, err)
+			require.Len(t, tasks, 1)
+			// Since lower bound means paginating backwards, older task should be returned.
+			assert.Equal(t, "t_2", tasks[0].Id)
+			assert.Equal(t, 99, tasks[0].RevisionOrderNumber)
+		},
+		"limit works with upper bound": func(t *testing.T, ctx context.Context) {
+			tasks, err := findActiveTasksForHistory(t.Context(), FindTaskHistoryOptions{
+				TaskName:     taskName,
+				BuildVariant: buildVariant,
+				ProjectId:    projectId,
+				LowerBound:   nil,
+				UpperBound:   utility.ToIntPtr(101),
+				Limit:        utility.ToIntPtr(1),
+			})
+			require.NoError(t, err)
+			require.Len(t, tasks, 1)
+			// Since upper bound means paginating forwards, newer task should be returned.
+			assert.Equal(t, "t_4", tasks[0].Id)
+			assert.Equal(t, 101, tasks[0].RevisionOrderNumber)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			assert.NoError(t, db.ClearCollections(task.Collection))
 
-		Convey("when finding task history items", func() {
-			require.NoError(t, db.ClearCollections(VersionCollection, task.Collection))
-
-			for i := 10; i < 20; i++ {
-				projectToUse := projectName
-				if i == 14 {
-					projectToUse = "otherBranch"
-				}
-
-				vid := fmt.Sprintf("v%v", i)
-				ver := &Version{
-					Id:                  vid,
-					RevisionOrderNumber: i,
-					Revision:            vid,
-					Requester:           evergreen.RepotrackerVersionRequester,
-					Identifier:          projectToUse,
-				}
-
-				require.NoError(t, ver.Insert(),
-					"Error inserting version")
-				for j := 0; j < 3; j++ {
-					newTask := &task.Task{
-						Id:                  fmt.Sprintf("t%v_%v", i, j),
-						BuildVariant:        fmt.Sprintf("bv_%v", j),
-						DisplayName:         "compile",
-						RevisionOrderNumber: i,
-						Revision:            vid,
-						Requester:           evergreen.RepotrackerVersionRequester,
-						Project:             projectToUse,
-					}
-					require.NoError(t, newTask.Insert(),
-						"Error inserting task")
-				}
-
+			t1 := task.Task{
+				Id:                  "t_1",
+				Requester:           evergreen.GithubPRRequester,
+				RevisionOrderNumber: 98,
+				Activated:           false,
+				Project:             projectId,
+				DisplayName:         taskName,
+				BuildVariant:        buildVariant,
 			}
+			assert.NoError(t, t1.Insert(t.Context()))
 
-			Convey("the specified number of task history items should be"+
-				" fetched, starting at the specified version", func() {
+			t2 := task.Task{
+				Id:                  "t_2",
+				Requester:           evergreen.TriggerRequester,
+				RevisionOrderNumber: 99,
+				Activated:           true,
+				Project:             projectId,
+				DisplayName:         taskName,
+				BuildVariant:        buildVariant,
+			}
+			assert.NoError(t, t2.Insert(t.Context()))
 
-				taskHistoryChunk, err := taskHistoryIterator.GetChunk(ctx, nil, 5, 0, false)
-				versions := taskHistoryChunk.Versions
-				tasks := taskHistoryChunk.Tasks
-				So(err, ShouldBeNil)
-				So(taskHistoryChunk.Exhausted.Before, ShouldBeFalse)
-				So(taskHistoryChunk.Exhausted.After, ShouldBeTrue)
-				So(len(versions), ShouldEqual, 5)
-				So(len(tasks), ShouldEqual, len(versions))
-				So(versions[0].Id, ShouldEqual, tasks[0]["_id"])
-				So(versions[len(versions)-1].Id, ShouldEqual, "v15")
-				So(tasks[len(tasks)-1]["_id"], ShouldEqual,
-					versions[len(versions)-1].Id)
+			t3 := task.Task{
+				Id:                  "t_3",
+				Requester:           evergreen.RepotrackerVersionRequester,
+				RevisionOrderNumber: 100,
+				Activated:           false,
+				Project:             projectId,
+				DisplayName:         taskName,
+				BuildVariant:        buildVariant,
+			}
+			assert.NoError(t, t3.Insert(t.Context()))
 
-			})
+			t4 := task.Task{
+				Id:                  "t_4",
+				Requester:           evergreen.AdHocRequester,
+				RevisionOrderNumber: 101,
+				Activated:           true,
+				Project:             projectId,
+				DisplayName:         taskName,
+				BuildVariant:        buildVariant,
+			}
+			assert.NoError(t, t4.Insert(t.Context()))
 
-			Convey("tasks from a different project should be filtered"+
-				" out", func() {
-
-				vBefore, err := VersionFindOne(VersionById("v15"))
-				So(err, ShouldBeNil)
-
-				taskHistoryChunk, err := taskHistoryIterator.GetChunk(ctx, vBefore, 5, 0, false)
-				versions := taskHistoryChunk.Versions
-				tasks := taskHistoryChunk.Tasks
-				So(err, ShouldBeNil)
-				So(taskHistoryChunk.Exhausted.Before, ShouldBeTrue)
-				So(taskHistoryChunk.Exhausted.After, ShouldBeFalse)
-				// Should skip 14 because its in another project
-				So(versions[0].Id, ShouldEqual, "v13")
-				So(versions[0].Id, ShouldEqual, tasks[0]["_id"])
-				So(len(tasks), ShouldEqual, 4)
-				So(len(tasks), ShouldEqual, len(versions))
-				So(tasks[len(tasks)-1]["_id"], ShouldEqual,
-					versions[len(versions)-1].Id)
-
-			})
-
+			tCase(t, t.Context())
 		})
-
-	})
-
+	}
 }
 
-func TestTaskHistoryPickaxe(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+func TestFindInactiveTasksForHistory(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(task.Collection))
+	}()
 
-	require.NoError(t, db.ClearCollections(task.Collection, RepositoriesCollection))
-	assert := assert.New(t)
-	proj := Project{
-		Identifier: "proj",
+	projectId := "evergreen"
+	taskName := "test-graphql"
+	buildVariant := "ubuntu2204"
+
+	for tName, tCase := range map[string]func(t *testing.T, ctx context.Context){
+		"with lower bound only": func(t *testing.T, ctx context.Context) {
+			tasks, err := findInactiveTasksForHistory(t.Context(), FindTaskHistoryOptions{
+				TaskName:     taskName,
+				BuildVariant: buildVariant,
+				ProjectId:    projectId,
+				LowerBound:   utility.ToIntPtr(98),
+				UpperBound:   nil,
+			})
+			require.NoError(t, err)
+			require.Len(t, tasks, 2)
+			assert.Equal(t, "t_5", tasks[0].Id)
+			assert.Equal(t, 102, tasks[0].RevisionOrderNumber)
+			assert.Equal(t, "t_3", tasks[1].Id)
+			assert.Equal(t, 100, tasks[1].RevisionOrderNumber)
+		},
+		"with upper bound only": func(t *testing.T, ctx context.Context) {
+			tasks, err := findInactiveTasksForHistory(t.Context(), FindTaskHistoryOptions{
+				TaskName:     taskName,
+				BuildVariant: buildVariant,
+				ProjectId:    projectId,
+				LowerBound:   nil,
+				UpperBound:   utility.ToIntPtr(102),
+			})
+			require.NoError(t, err)
+			require.Len(t, tasks, 2)
+			assert.Equal(t, "t_5", tasks[0].Id)
+			assert.Equal(t, 102, tasks[0].RevisionOrderNumber)
+			assert.Equal(t, "t_3", tasks[1].Id)
+			assert.Equal(t, 100, tasks[1].RevisionOrderNumber)
+		},
+		"with both lower and upper bounds": func(t *testing.T, ctx context.Context) {
+			tasks, err := findInactiveTasksForHistory(t.Context(), FindTaskHistoryOptions{
+				TaskName:     taskName,
+				BuildVariant: buildVariant,
+				ProjectId:    projectId,
+				LowerBound:   utility.ToIntPtr(98),
+				UpperBound:   utility.ToIntPtr(99),
+			})
+			require.NoError(t, err)
+			require.Len(t, tasks, 0)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			assert.NoError(t, db.ClearCollections(task.Collection))
+			t1 := task.Task{
+				Id:                  "t_1",
+				Requester:           evergreen.GithubPRRequester,
+				RevisionOrderNumber: 98,
+				Activated:           false,
+				Project:             projectId,
+				DisplayName:         taskName,
+				BuildVariant:        buildVariant,
+			}
+			assert.NoError(t, t1.Insert(t.Context()))
+
+			t2 := task.Task{
+				Id:                  "t_2",
+				Requester:           evergreen.TriggerRequester,
+				RevisionOrderNumber: 99,
+				Activated:           true,
+				Project:             projectId,
+				DisplayName:         taskName,
+				BuildVariant:        buildVariant,
+			}
+			assert.NoError(t, t2.Insert(t.Context()))
+
+			t3 := task.Task{
+				Id:                  "t_3",
+				Requester:           evergreen.RepotrackerVersionRequester,
+				RevisionOrderNumber: 100,
+				Activated:           false,
+				Project:             projectId,
+				DisplayName:         taskName,
+				BuildVariant:        buildVariant,
+			}
+			assert.NoError(t, t3.Insert(t.Context()))
+
+			t4 := task.Task{
+				Id:                  "t_4",
+				Requester:           evergreen.AdHocRequester,
+				RevisionOrderNumber: 101,
+				Activated:           true,
+				Project:             projectId,
+				DisplayName:         taskName,
+				BuildVariant:        buildVariant,
+			}
+			assert.NoError(t, t4.Insert(t.Context()))
+
+			t5 := task.Task{
+				Id:                  "t_5",
+				Requester:           evergreen.AdHocRequester,
+				RevisionOrderNumber: 102,
+				Activated:           false,
+				Project:             projectId,
+				DisplayName:         taskName,
+				BuildVariant:        buildVariant,
+			}
+			assert.NoError(t, t5.Insert(t.Context()))
+
+			tCase(t, t.Context())
+		})
 	}
+}
+
+func TestFindTasksForHistory(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(task.Collection))
+	}()
+
+	projectId := "evergreen"
+	taskName := "test-graphql"
+	buildVariant := "ubuntu2204"
+
+	for tName, tCase := range map[string]func(t *testing.T, ctx context.Context){
+		"errors when both bounds are defined": func(t *testing.T, ctx context.Context) {
+			tasks, err := FindTasksForHistory(t.Context(), FindTaskHistoryOptions{
+				TaskName:     taskName,
+				BuildVariant: buildVariant,
+				ProjectId:    projectId,
+				LowerBound:   utility.ToIntPtr(98),
+				UpperBound:   utility.ToIntPtr(102),
+			})
+			assert.Error(t, err)
+			assert.Nil(t, tasks)
+		},
+		"errors when no bounds are defined": func(t *testing.T, ctx context.Context) {
+			tasks, err := FindTasksForHistory(t.Context(), FindTaskHistoryOptions{
+				TaskName:     taskName,
+				BuildVariant: buildVariant,
+				ProjectId:    projectId,
+				LowerBound:   nil,
+				UpperBound:   nil,
+			})
+			assert.Error(t, err)
+			assert.Nil(t, tasks)
+		},
+		"with lower bound": func(t *testing.T, ctx context.Context) {
+			tasks, err := FindTasksForHistory(t.Context(), FindTaskHistoryOptions{
+				TaskName:     taskName,
+				BuildVariant: buildVariant,
+				ProjectId:    projectId,
+				LowerBound:   utility.ToIntPtr(98),
+				UpperBound:   nil,
+			})
+			require.NoError(t, err)
+			require.Len(t, tasks, 4)
+			assert.Equal(t, "t_5", tasks[0].Id)
+			assert.Equal(t, 102, tasks[0].RevisionOrderNumber)
+			assert.Equal(t, "t_4", tasks[1].Id)
+			assert.Equal(t, 101, tasks[1].RevisionOrderNumber)
+			assert.Equal(t, "t_3", tasks[2].Id)
+			assert.Equal(t, 100, tasks[2].RevisionOrderNumber)
+			assert.Equal(t, "t_2", tasks[3].Id)
+			assert.Equal(t, 99, tasks[3].RevisionOrderNumber)
+		},
+		"with upper bound": func(t *testing.T, ctx context.Context) {
+			tasks, err := FindTasksForHistory(t.Context(), FindTaskHistoryOptions{
+				TaskName:     taskName,
+				BuildVariant: buildVariant,
+				ProjectId:    projectId,
+				LowerBound:   nil,
+				UpperBound:   utility.ToIntPtr(102),
+			})
+			require.NoError(t, err)
+			require.Len(t, tasks, 4)
+			assert.Equal(t, "t_5", tasks[0].Id)
+			assert.Equal(t, 102, tasks[0].RevisionOrderNumber)
+			assert.Equal(t, "t_4", tasks[1].Id)
+			assert.Equal(t, 101, tasks[1].RevisionOrderNumber)
+			assert.Equal(t, "t_3", tasks[2].Id)
+			assert.Equal(t, 100, tasks[2].RevisionOrderNumber)
+			assert.Equal(t, "t_2", tasks[3].Id)
+			assert.Equal(t, 99, tasks[3].RevisionOrderNumber)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			assert.NoError(t, db.ClearCollections(task.Collection))
+			t1 := task.Task{
+				Id:                  "t_1",
+				Requester:           evergreen.GithubPRRequester,
+				RevisionOrderNumber: 98,
+				Activated:           true,
+				Project:             projectId,
+				DisplayName:         taskName,
+				BuildVariant:        buildVariant,
+			}
+			assert.NoError(t, t1.Insert(t.Context()))
+
+			t2 := task.Task{
+				Id:                  "t_2",
+				Requester:           evergreen.TriggerRequester,
+				RevisionOrderNumber: 99,
+				Activated:           true,
+				Project:             projectId,
+				DisplayName:         taskName,
+				BuildVariant:        buildVariant,
+			}
+			assert.NoError(t, t2.Insert(t.Context()))
+
+			t3 := task.Task{
+				Id:                  "t_3",
+				Requester:           evergreen.RepotrackerVersionRequester,
+				RevisionOrderNumber: 100,
+				Activated:           false,
+				Project:             projectId,
+				DisplayName:         taskName,
+				BuildVariant:        buildVariant,
+			}
+			assert.NoError(t, t3.Insert(t.Context()))
+
+			t4 := task.Task{
+				Id:                  "t_4",
+				Requester:           evergreen.AdHocRequester,
+				RevisionOrderNumber: 101,
+				Activated:           false,
+				Project:             projectId,
+				DisplayName:         taskName,
+				BuildVariant:        buildVariant,
+			}
+			assert.NoError(t, t4.Insert(t.Context()))
+
+			t5 := task.Task{
+				Id:                  "t_5",
+				Requester:           evergreen.AdHocRequester,
+				RevisionOrderNumber: 102,
+				Activated:           true,
+				Project:             projectId,
+				DisplayName:         taskName,
+				BuildVariant:        buildVariant,
+			}
+			assert.NoError(t, t5.Insert(t.Context()))
+
+			tCase(t, t.Context())
+		})
+	}
+}
+
+func TestGetLatestMainlineTask(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(task.Collection))
+	assert.NoError(t, db.EnsureIndex(task.Collection, mongo.IndexModel{Keys: TaskHistoryIndex}))
+
+	projectId := "evergreen"
+	taskName := "test-graphql"
+	buildVariant := "ubuntu2204"
+
 	t1 := task.Task{
-		Id:                  "t1",
-		Project:             proj.Identifier,
-		DisplayName:         "matchingName",
-		BuildVariant:        "bv",
-		RevisionOrderNumber: 1,
+		Id:                  "t_1",
+		Requester:           evergreen.GithubPRRequester,
+		RevisionOrderNumber: 102,
+		Activated:           true,
+		Project:             projectId,
+		DisplayName:         taskName,
+		BuildVariant:        buildVariant,
 	}
-	t2 := task.Task{
-		Id:                  "t2",
-		Project:             proj.Identifier,
-		DisplayName:         "notMatchingName",
-		BuildVariant:        "bv",
-		RevisionOrderNumber: 2,
-	}
-	t3 := task.Task{
-		Id:                  "t3",
-		Project:             proj.Identifier,
-		DisplayName:         "matchingName",
-		BuildVariant:        "bv",
-		RevisionOrderNumber: 3,
-	}
-	t4 := task.Task{
-		Id:                  "t4",
-		Project:             proj.Identifier,
-		DisplayName:         "matchingName",
-		BuildVariant:        "bv",
-		RevisionOrderNumber: 4,
-	}
-	assert.NoError(t1.Insert())
-	assert.NoError(t2.Insert())
-	assert.NoError(t3.Insert())
-	assert.NoError(t4.Insert())
-	for i := 0; i < 5; i++ {
-		_, err := GetNewRevisionOrderNumber(proj.Identifier)
-		assert.NoError(err)
-	}
+	assert.NoError(t, t1.Insert(t.Context()))
 
-	// test that a basic case returns the correct results
-	params := PickaxeParams{
-		Project:       &proj,
-		TaskName:      "matchingName",
-		NewestOrder:   4,
-		OldestOrder:   1,
-		BuildVariants: []string{"bv"},
+	t2 := task.Task{
+		Id:                  "t_2",
+		Requester:           evergreen.PatchVersionRequester,
+		RevisionOrderNumber: 101,
+		Activated:           true,
+		Project:             projectId,
+		DisplayName:         taskName,
+		BuildVariant:        buildVariant,
 	}
-	results, err := TaskHistoryPickaxe(ctx, params)
+	assert.NoError(t, t2.Insert(t.Context()))
+
+	t3 := task.Task{
+		Id:                  "t_3",
+		Requester:           evergreen.TriggerRequester,
+		RevisionOrderNumber: 100,
+		Activated:           false,
+		Project:             projectId,
+		DisplayName:         taskName,
+		BuildVariant:        buildVariant,
+	}
+	assert.NoError(t, t3.Insert(t.Context()))
+
+	t4 := task.Task{
+		Id:                  "t_4",
+		Requester:           evergreen.GitTagRequester,
+		RevisionOrderNumber: 99,
+		Activated:           true,
+		Project:             projectId,
+		DisplayName:         taskName,
+		BuildVariant:        buildVariant,
+	}
+	assert.NoError(t, t4.Insert(t.Context()))
+
+	latestMainlineTask, err := GetLatestMainlineTask(t.Context(), FindTaskHistoryOptions{
+		TaskName:     taskName,
+		BuildVariant: buildVariant,
+		ProjectId:    projectId,
+	})
 	require.NoError(t, err)
-	require.Len(t, results, 3)
+	require.NotNil(t, latestMainlineTask)
+	assert.Equal(t, "t_3", latestMainlineTask.Id)
+	assert.Equal(t, 100, latestMainlineTask.RevisionOrderNumber)
+}
+
+func TestGetOldestMainlineTask(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(task.Collection))
+	assert.NoError(t, db.EnsureIndex(task.Collection, mongo.IndexModel{Keys: TaskHistoryIndex}))
+
+	projectId := "evergreen"
+	taskName := "test-graphql"
+	buildVariant := "ubuntu2204"
+
+	t1 := task.Task{
+		Id:                  "t_1",
+		Requester:           evergreen.GithubPRRequester,
+		RevisionOrderNumber: 98,
+		Activated:           true,
+		Project:             projectId,
+		DisplayName:         taskName,
+		BuildVariant:        buildVariant,
+	}
+	assert.NoError(t, t1.Insert(t.Context()))
+
+	t2 := task.Task{
+		Id:                  "t_2",
+		Requester:           evergreen.PatchVersionRequester,
+		RevisionOrderNumber: 99,
+		Activated:           true,
+		Project:             projectId,
+		DisplayName:         taskName,
+		BuildVariant:        buildVariant,
+	}
+	assert.NoError(t, t2.Insert(t.Context()))
+
+	t3 := task.Task{
+		Id:                  "t_3",
+		Requester:           evergreen.TriggerRequester,
+		RevisionOrderNumber: 100,
+		Activated:           true,
+		Project:             projectId,
+		DisplayName:         taskName,
+		BuildVariant:        buildVariant,
+	}
+	assert.NoError(t, t3.Insert(t.Context()))
+
+	t4 := task.Task{
+		Id:                  "t_4",
+		Requester:           evergreen.GitTagRequester,
+		RevisionOrderNumber: 101,
+		Activated:           true,
+		Project:             projectId,
+		DisplayName:         taskName,
+		BuildVariant:        buildVariant,
+	}
+	assert.NoError(t, t4.Insert(t.Context()))
+
+	oldestMainlineTask, err := GetOldestMainlineTask(t.Context(), FindTaskHistoryOptions{
+		TaskName:     taskName,
+		BuildVariant: buildVariant,
+		ProjectId:    projectId,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, oldestMainlineTask)
+	assert.Equal(t, "t_3", oldestMainlineTask.Id)
+	assert.Equal(t, 100, oldestMainlineTask.RevisionOrderNumber)
+}
+
+func TestGetNewerActiveMainlineTask(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(task.Collection))
+
+	projectId := "evergreen"
+	taskName := "test-graphql"
+	buildVariant := "ubuntu2204"
+
+	t1 := task.Task{
+		Id:                  "t_1",
+		Requester:           evergreen.TriggerRequester,
+		RevisionOrderNumber: 98,
+		Activated:           true,
+		Project:             projectId,
+		DisplayName:         taskName,
+		BuildVariant:        buildVariant,
+	}
+	assert.NoError(t, t1.Insert(t.Context()))
+
+	t2 := task.Task{
+		Id:                  "t_2",
+		Requester:           evergreen.PatchVersionRequester,
+		RevisionOrderNumber: 99,
+		Activated:           true,
+		Project:             projectId,
+		DisplayName:         taskName,
+		BuildVariant:        buildVariant,
+	}
+	assert.NoError(t, t2.Insert(t.Context()))
+
+	t3 := task.Task{
+		Id:                  "t_3",
+		Requester:           evergreen.TriggerRequester,
+		RevisionOrderNumber: 100,
+		Activated:           false,
+		Project:             projectId,
+		DisplayName:         taskName,
+		BuildVariant:        buildVariant,
+	}
+	assert.NoError(t, t3.Insert(t.Context()))
+
+	t4 := task.Task{
+		Id:                  "t_4",
+		Requester:           evergreen.GitTagRequester,
+		RevisionOrderNumber: 101,
+		Activated:           true,
+		Project:             projectId,
+		DisplayName:         taskName,
+		BuildVariant:        buildVariant,
+	}
+	assert.NoError(t, t4.Insert(t.Context()))
+
+	t5 := task.Task{
+		Id:                  "t_5",
+		Requester:           evergreen.GitTagRequester,
+		RevisionOrderNumber: 102,
+		Activated:           true,
+		Project:             projectId,
+		DisplayName:         taskName,
+		BuildVariant:        buildVariant,
+	}
+	assert.NoError(t, t5.Insert(t.Context()))
+
+	newerActiveTask, err := getNewerActiveMainlineTask(t.Context(), t1)
+	require.NoError(t, err)
+	require.NotNil(t, newerActiveTask)
+	assert.Equal(t, "t_4", newerActiveTask.Id)
+	assert.Equal(t, 101, newerActiveTask.RevisionOrderNumber)
+}
+
+func TestGetOlderActiveMainlineTask(t *testing.T) {
+	assert.NoError(t, db.ClearCollections(task.Collection))
+
+	projectId := "evergreen"
+	taskName := "test-graphql"
+	buildVariant := "ubuntu2204"
+
+	t1 := task.Task{
+		Id:                  "t_1",
+		Requester:           evergreen.TriggerRequester,
+		RevisionOrderNumber: 98,
+		Activated:           true,
+		Project:             projectId,
+		DisplayName:         taskName,
+		BuildVariant:        buildVariant,
+	}
+	assert.NoError(t, t1.Insert(t.Context()))
+
+	t2 := task.Task{
+		Id:                  "t_2",
+		Requester:           evergreen.RepotrackerVersionRequester,
+		RevisionOrderNumber: 99,
+		Activated:           true,
+		Project:             projectId,
+		DisplayName:         taskName,
+		BuildVariant:        buildVariant,
+	}
+	assert.NoError(t, t2.Insert(t.Context()))
+
+	t3 := task.Task{
+		Id:                  "t_3",
+		Requester:           evergreen.PatchVersionRequester,
+		RevisionOrderNumber: 100,
+		Activated:           true,
+		Project:             projectId,
+		DisplayName:         taskName,
+		BuildVariant:        buildVariant,
+	}
+	assert.NoError(t, t3.Insert(t.Context()))
+
+	t4 := task.Task{
+		Id:                  "t_4",
+		Requester:           evergreen.GitTagRequester,
+		RevisionOrderNumber: 101,
+		Activated:           false,
+		Project:             projectId,
+		DisplayName:         taskName,
+		BuildVariant:        buildVariant,
+	}
+	assert.NoError(t, t4.Insert(t.Context()))
+
+	t5 := task.Task{
+		Id:                  "t_5",
+		Requester:           evergreen.GitTagRequester,
+		RevisionOrderNumber: 102,
+		Activated:           true,
+		Project:             projectId,
+		DisplayName:         taskName,
+		BuildVariant:        buildVariant,
+	}
+	assert.NoError(t, t5.Insert(t.Context()))
+
+	olderActiveTask, err := getOlderActiveMainlineTask(t.Context(), t5)
+	require.NoError(t, err)
+	require.NotNil(t, olderActiveTask)
+	assert.Equal(t, "t_2", olderActiveTask.Id)
+	assert.Equal(t, 99, olderActiveTask.RevisionOrderNumber)
 }

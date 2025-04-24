@@ -6,7 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/db/mgo/bson"
+	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -164,8 +164,8 @@ func TestCanScheduleTask(t *testing.T) {
 
 func TestGetDisplayStatus(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(model.VersionCollection, patch.Collection))
-	patchId := bson.NewObjectId()
-	childPatchId := bson.NewObjectId()
+	patchId := mgobson.NewObjectId()
+	childPatchId := mgobson.NewObjectId()
 	version := &model.Version{
 		Id:        patchId.Hex(),
 		Aborted:   true,
@@ -173,7 +173,7 @@ func TestGetDisplayStatus(t *testing.T) {
 		Requester: evergreen.PatchVersionRequester,
 	}
 
-	assert.NoError(t, version.Insert())
+	assert.NoError(t, version.Insert(t.Context()))
 
 	p := &patch.Patch{
 		Id:     patchId,
@@ -182,56 +182,24 @@ func TestGetDisplayStatus(t *testing.T) {
 			ChildPatches: []string{childPatchId.Hex()},
 		},
 	}
-	assert.NoError(t, p.Insert())
+	assert.NoError(t, p.Insert(t.Context()))
 
 	cv := model.Version{
 		Id:      childPatchId.Hex(),
 		Aborted: true,
 		Status:  evergreen.VersionFailed,
 	}
-	assert.NoError(t, cv.Insert())
+	assert.NoError(t, cv.Insert(t.Context()))
 
 	cp := &patch.Patch{
 		Id:     childPatchId,
 		Status: evergreen.VersionFailed,
 	}
-	assert.NoError(t, cp.Insert())
+	assert.NoError(t, cp.Insert(t.Context()))
 
-	status, err := getDisplayStatus(version)
+	status, err := getDisplayStatus(t.Context(), version)
 	require.NoError(t, err)
 	assert.Equal(t, evergreen.VersionAborted, status)
-}
-
-func TestUserHasDistroCreatePermission(t *testing.T) {
-	assert.NoError(t, db.ClearCollections(user.Collection, evergreen.RoleCollection, evergreen.ScopeCollection))
-
-	env := evergreen.GetEnvironment()
-	roleManager := env.RoleManager()
-
-	usr := user.DBUser{
-		Id: "basic_user",
-	}
-	assert.NoError(t, usr.Insert())
-	assert.False(t, userHasDistroCreatePermission(&usr))
-
-	createRole := gimlet.Role{
-		ID:          "create_distro",
-		Name:        "create_distro",
-		Scope:       "superuser_scope",
-		Permissions: map[string]int{"distro_create": 10},
-	}
-	require.NoError(t, roleManager.UpdateRole(createRole))
-	require.NoError(t, usr.AddRole("create_distro"))
-
-	superUserScope := gimlet.Scope{
-		ID:        "superuser_scope",
-		Name:      "superuser scope",
-		Type:      evergreen.SuperUserResourceType,
-		Resources: []string{evergreen.SuperUserPermissionsID},
-	}
-	require.NoError(t, roleManager.AddScope(superUserScope))
-
-	assert.True(t, userHasDistroCreatePermission(&usr))
 }
 
 func TestConcurrentlyBuildVersionsMatchingTasksMap(t *testing.T) {
@@ -299,7 +267,7 @@ func TestConcurrentlyBuildVersionsMatchingTasksMap(t *testing.T) {
 		DisplayTaskId:           utility.ToStringPtr(""),
 	}
 
-	assert.NoError(t, db.InsertMany(task.Collection, t1, t2, t3, t4, t5, t6))
+	assert.NoError(t, db.InsertMany(t.Context(), task.Collection, t1, t2, t3, t4, t5, t6))
 
 	opts := task.HasMatchingTasksOptions{
 		TaskNames:                  []string{"agent"},
@@ -362,36 +330,36 @@ func TestConcurrentlyBuildVersionsMatchingTasksMap(t *testing.T) {
 func TestIsPatchAuthorForTask(t *testing.T) {
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T){
 		"TrueWhenUserIsPatchAuthor": func(ctx context.Context, t *testing.T) {
-			versionAndPatchID := bson.NewObjectId()
+			versionAndPatchID := mgobson.NewObjectId()
 			patch := patch.Patch{
 				Id:     versionAndPatchID,
 				Author: "basic_user",
 			}
-			assert.NoError(t, patch.Insert())
+			assert.NoError(t, patch.Insert(t.Context()))
 			task := restModel.APITask{ProjectId: utility.ToStringPtr("random_project_id"), Version: utility.ToStringPtr(versionAndPatchID.Hex()), Requester: utility.ToStringPtr(evergreen.PatchVersionRequester)}
 			isPatchAuthor, err := isPatchAuthorForTask(ctx, &task)
 			assert.NoError(t, err)
 			assert.True(t, isPatchAuthor)
 		},
 		"FalseWhenUserIsNotPatchAuthor": func(ctx context.Context, t *testing.T) {
-			versionAndPatchID := bson.NewObjectId()
+			versionAndPatchID := mgobson.NewObjectId()
 			patch := patch.Patch{
 				Id:     versionAndPatchID,
 				Author: "someone_else",
 			}
-			assert.NoError(t, patch.Insert())
+			assert.NoError(t, patch.Insert(t.Context()))
 			task := restModel.APITask{ProjectId: utility.ToStringPtr("random_project_id"), Version: utility.ToStringPtr(versionAndPatchID.Hex()), Requester: utility.ToStringPtr(evergreen.PatchVersionRequester)}
 			isPatchAuthor, err := isPatchAuthorForTask(ctx, &task)
 			assert.NoError(t, err)
 			assert.False(t, isPatchAuthor)
 		},
 		"FalseWhenTaskRequesterIsNotPatchVersionRequester": func(ctx context.Context, t *testing.T) {
-			versionAndPatchID := bson.NewObjectId()
+			versionAndPatchID := mgobson.NewObjectId()
 			patch := patch.Patch{
 				Id:     versionAndPatchID,
 				Author: "basic_user",
 			}
-			assert.NoError(t, patch.Insert())
+			assert.NoError(t, patch.Insert(t.Context()))
 			task := restModel.APITask{ProjectId: utility.ToStringPtr("random_project_id"), Version: utility.ToStringPtr(versionAndPatchID.Hex()), Requester: utility.ToStringPtr(evergreen.TriggerRequester)}
 			isPatchAuthor, err := isPatchAuthorForTask(ctx, &task)
 			assert.NoError(t, err)
@@ -403,7 +371,7 @@ func TestIsPatchAuthorForTask(t *testing.T) {
 			usr := user.DBUser{
 				Id: "basic_user",
 			}
-			assert.NoError(t, usr.Insert())
+			assert.NoError(t, usr.Insert(t.Context()))
 			ctx := gimlet.AttachUser(context.Background(), &usr)
 			tCase(ctx, t)
 		})
@@ -430,11 +398,11 @@ func TestHasLogViewPermission(t *testing.T) {
 			userWithoutRole := user.DBUser{
 				Id: "basic_user",
 			}
-			assert.NoError(t, userWithoutRole.Insert())
+			assert.NoError(t, userWithoutRole.Insert(t.Context()))
 			userWithRole := user.DBUser{
 				Id: "usr_with_log_view_role",
 			}
-			assert.NoError(t, userWithRole.Insert())
+			assert.NoError(t, userWithRole.Insert(t.Context()))
 			ctx := gimlet.AttachUser(context.Background(), &userWithRole)
 			env := evergreen.GetEnvironment()
 			roleManager := env.RoleManager()
@@ -453,7 +421,7 @@ func TestHasLogViewPermission(t *testing.T) {
 			}
 			require.NoError(t, roleManager.UpdateRole(logViewRole))
 
-			require.NoError(t, userWithRole.AddRole("view_log"))
+			require.NoError(t, userWithRole.AddRole(t.Context(), "view_log"))
 			require.NoError(t, err)
 
 			tCase(ctx, t, &userWithRole, &userWithoutRole)
@@ -475,12 +443,12 @@ func TestHasAnnotationPermission(t *testing.T) {
 			assert.False(t, hasAccess)
 		},
 		"TrueWhenUserIsPatchOwnerButDoesNotHaveRequiredLevel": func(ctx context.Context, t *testing.T) {
-			versionAndPatchID := bson.NewObjectId()
+			versionAndPatchID := mgobson.NewObjectId()
 			patch := patch.Patch{
 				Id:     versionAndPatchID,
 				Author: "basic_user",
 			}
-			assert.NoError(t, patch.Insert())
+			assert.NoError(t, patch.Insert(t.Context()))
 			task := restModel.APITask{ProjectId: utility.ToStringPtr("random_project_id"), Version: utility.ToStringPtr(versionAndPatchID.Hex()), Requester: utility.ToStringPtr(evergreen.PatchVersionRequester)}
 			hasAccess, err := hasAnnotationPermission(ctx, &task, evergreen.AnnotationsView.Value)
 			assert.NoError(t, err)
@@ -492,7 +460,7 @@ func TestHasAnnotationPermission(t *testing.T) {
 			usr := user.DBUser{
 				Id: "basic_user",
 			}
-			assert.NoError(t, usr.Insert())
+			assert.NoError(t, usr.Insert(t.Context()))
 			ctx := gimlet.AttachUser(context.Background(), &usr)
 
 			env := evergreen.GetEnvironment()
@@ -512,7 +480,7 @@ func TestHasAnnotationPermission(t *testing.T) {
 			}
 			require.NoError(t, roleManager.UpdateRole(annotationViewRole))
 
-			require.NoError(t, usr.AddRole("view_annotation"))
+			require.NoError(t, usr.AddRole(t.Context(), "view_annotation"))
 			require.NoError(t, err)
 
 			tCase(ctx, t)
@@ -520,45 +488,15 @@ func TestHasAnnotationPermission(t *testing.T) {
 	}
 }
 
-func TestGroupInactiveVersions(t *testing.T) {
-	v0 := model.Version{Id: "0", Activated: utility.ToBoolPtr(false)}
-	v1 := model.Version{Id: "1", Activated: utility.ToBoolPtr(false)}
-	v2 := model.Version{Id: "2", Activated: utility.ToBoolPtr(true)}
-	v3 := model.Version{Id: "3", Activated: utility.ToBoolPtr(true)}
-	v4 := model.Version{Id: "4", Activated: utility.ToBoolPtr(false)}
-	v5 := model.Version{Id: "5", Activated: utility.ToBoolPtr(true)}
-
-	waterfallVersions := groupInactiveVersions([]model.Version{v0, v1, v2, v3, v4, v5})
-	require.Len(t, waterfallVersions, 5)
-
-	assert.Nil(t, waterfallVersions[0].Version)
-	assert.Len(t, waterfallVersions[0].InactiveVersions, 2)
-	assert.Equal(t, utility.FromStringPtr(waterfallVersions[0].InactiveVersions[0].Id), v0.Id)
-	assert.Equal(t, utility.FromStringPtr(waterfallVersions[0].InactiveVersions[1].Id), v1.Id)
-
-	assert.Equal(t, utility.FromStringPtr(waterfallVersions[1].Version.Id), v2.Id)
-	assert.Nil(t, waterfallVersions[1].InactiveVersions)
-
-	assert.Equal(t, utility.FromStringPtr(waterfallVersions[2].Version.Id), v3.Id)
-	assert.Nil(t, waterfallVersions[2].InactiveVersions)
-
-	assert.Nil(t, waterfallVersions[3].Version)
-	assert.Len(t, waterfallVersions[3].InactiveVersions, 1)
-	assert.Equal(t, utility.FromStringPtr(waterfallVersions[3].InactiveVersions[0].Id), v4.Id)
-
-	assert.Equal(t, utility.FromStringPtr(waterfallVersions[4].Version.Id), v5.Id)
-	assert.Nil(t, waterfallVersions[4].InactiveVersions)
-}
-
 func TestFlattenOtelVariables(t *testing.T) {
-	nestedVars := map[string]interface{}{
+	nestedVars := map[string]any{
 		"k1": "v1",
-		"k2": map[string]interface{}{
+		"k2": map[string]any{
 			"nested_k3": "v3",
 			"nested_k4": "v4",
 		},
 		"k5": "v5",
-		"k6": map[string]interface{}{
+		"k6": map[string]any{
 			"nested_k7": "v7",
 		},
 	}

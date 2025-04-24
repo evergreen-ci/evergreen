@@ -8,12 +8,14 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/aws-sdk-go-v2/service/route53"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	ststypes "github.com/aws/aws-sdk-go-v2/service/sts/types"
 	"github.com/aws/smithy-go"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -33,7 +35,7 @@ var noReservationError = errors.New("no reservation returned for instance")
 // AWSClient is a wrapper for aws-sdk-go so we can use a mock in testing.
 type AWSClient interface {
 	// Create a new aws-sdk-client or mock if one does not exist, otherwise no-op.
-	Create(context.Context, string) error
+	Create(ctx context.Context, role, region string) error
 
 	// RunInstances is a wrapper for ec2.RunInstances.
 	RunInstances(context.Context, *ec2.RunInstancesInput) (*ec2.RunInstancesOutput, error)
@@ -110,6 +112,11 @@ type AWSClient interface {
 
 	GetVolumeIDs(context.Context, *host.Host) ([]string, error)
 
+	// AllocateAddress is a wrapper for ec2.AllocateAddress.
+	AllocateAddress(context.Context, *ec2.AllocateAddressInput) (*ec2.AllocateAddressOutput, error)
+	// AssociateAddress is a wrapper for ec2.AssociateAddress.
+	AssociateAddress(context.Context, *ec2.AssociateAddressInput) (*ec2.AssociateAddressOutput, error)
+
 	GetPublicDNSName(ctx context.Context, h *host.Host) (string, error)
 
 	// ChangeResourceRecordSets is a wrapper for route53.ChangeResourceRecordSets.
@@ -146,29 +153,47 @@ func awsClientDefaultRetryOptions() utility.RetryOptions {
 	}
 }
 
+// configCache is a cache that maps a unique identifier for the AWS
+// configuration to the corresponding AWS configuration.
 var configCache map[string]*aws.Config = make(map[string]*aws.Config)
 
+func getConfigCacheID(role, region string) string {
+	return fmt.Sprintf("%s-%s", role, region)
+}
+
 // Create a new aws-sdk-client if one does not exist, otherwise no-op.
-func (c *awsClientImpl) Create(ctx context.Context, region string) error {
+func (c *awsClientImpl) Create(ctx context.Context, role, region string) error {
 	if region == "" {
 		return errors.New("region must not be empty")
 	}
 
-	if configCache[region] == nil {
-		config, err := config.LoadDefaultConfig(ctx,
-			config.WithRegion(region),
-		)
+	configID := getConfigCacheID(role, region)
+	if configCache[configID] == nil {
+		opts := []func(*config.LoadOptions) error{config.WithRegion(region)}
+		if role != "" {
+			// Assuming a role to make API calls requires an explicit region.
+			stsConfig, err := config.LoadDefaultConfig(ctx, config.WithRegion(evergreen.DefaultEC2Region))
+			if err != nil {
+				return errors.Wrapf(err, "loading config for assuming role '%s'", role)
+			}
+			stsClient := sts.NewFromConfig(stsConfig)
+			opts = append(opts, config.WithCredentialsProvider(stscreds.NewAssumeRoleProvider(stsClient, role)))
+		}
+
+		config, err := config.LoadDefaultConfig(ctx, opts...)
 		if err != nil {
 			return errors.Wrap(err, "loading config")
 		}
 		otelaws.AppendMiddlewares(&config.APIOptions)
 
-		configCache[region] = &config
+		configCache[configID] = &config
 	}
 
-	c.ec2Client = ec2.NewFromConfig(*configCache[region])
-	c.r53Client = route53.NewFromConfig(*configCache[region])
-	c.stsClient = sts.NewFromConfig(*configCache[region])
+	cachedConfig := *configCache[configID]
+
+	c.ec2Client = ec2.NewFromConfig(cachedConfig)
+	c.r53Client = route53.NewFromConfig(cachedConfig)
+	c.stsClient = sts.NewFromConfig(cachedConfig)
 	return nil
 }
 
@@ -823,7 +848,7 @@ func (c *awsClientImpl) GetKey(ctx context.Context, h *host.Host) (string, error
 	if t == nil {
 		return "", errors.Errorf("task '%s' not found", h.StartedBy)
 	}
-	k, err := model.GetAWSKeyForProject(t.Project)
+	k, err := model.GetAWSKeyForProject(ctx, t.Project)
 	if err != nil {
 		return "", errors.Wrap(err, "getting key for project")
 	}
@@ -852,7 +877,7 @@ func (c *awsClientImpl) makeNewKey(ctx context.Context, project string) (string,
 		return "", errors.Wrap(err, "creating key pair")
 	}
 
-	if err := model.SetAWSKeyForProject(project, &model.AWSSSHKey{Name: name, Value: *resp.KeyMaterial}); err != nil {
+	if err := model.SetAWSKeyForProject(ctx, project, &model.AWSSSHKey{Name: name, Value: *resp.KeyMaterial}); err != nil {
 		return "", errors.Wrap(err, "setting key for project")
 	}
 
@@ -899,6 +924,65 @@ func (c *awsClientImpl) GetPublicDNSName(ctx context.Context, h *host.Host) (str
 	}
 
 	return *instance.PublicDnsName, nil
+}
+
+func (c *awsClientImpl) AllocateAddress(ctx context.Context, input *ec2.AllocateAddressInput) (*ec2.AllocateAddressOutput, error) {
+	retryOpts := awsClientDefaultRetryOptions()
+	// Use fewer attempts to allocate an address because this is just an
+	// optimization to attempt to reduce costs for using public IPv4 addresses
+	// for hosts.
+	retryOpts.MaxAttempts = 3
+	var output *ec2.AllocateAddressOutput
+	var err error
+	err = utility.Retry(
+		ctx,
+		func() (bool, error) {
+			msg := makeAWSLogMessage("AllocateAddress", fmt.Sprintf("%T", c), input)
+			output, err = c.ec2Client.AllocateAddress(ctx, input)
+			if err != nil {
+				var apiErr smithy.APIError
+				if errors.As(err, &apiErr) {
+					grip.Debug(message.WrapError(apiErr, msg))
+				}
+				if strings.Contains(apiErr.Error(), ec2InsufficientAddressCapacity) || strings.Contains(apiErr.Error(), ec2AddressLimitExceeded) {
+					return false, err
+				}
+				return true, err
+			}
+			grip.Info(msg)
+			return false, nil
+		}, retryOpts)
+	if err != nil {
+		return nil, err
+	}
+	return output, nil
+}
+
+func (c *awsClientImpl) AssociateAddress(ctx context.Context, input *ec2.AssociateAddressInput) (*ec2.AssociateAddressOutput, error) {
+	var output *ec2.AssociateAddressOutput
+	var err error
+	err = utility.Retry(
+		ctx,
+		func() (bool, error) {
+			msg := makeAWSLogMessage("AssociateAddress", fmt.Sprintf("%T", c), input)
+			output, err = c.ec2Client.AssociateAddress(ctx, input)
+			if err != nil {
+				var apiErr smithy.APIError
+				if errors.As(err, &apiErr) {
+					grip.Debug(message.WrapError(apiErr, msg))
+				}
+				if strings.Contains(err.Error(), ec2ResourceAlreadyAssociated) {
+					return false, err
+				}
+				return true, err
+			}
+			grip.Info(msg)
+			return false, nil
+		}, awsClientDefaultRetryOptions())
+	if err != nil {
+		return nil, err
+	}
+	return output, nil
 }
 
 func (c *awsClientImpl) ChangeResourceRecordSets(ctx context.Context, input *route53.ChangeResourceRecordSetsInput) (*route53.ChangeResourceRecordSetsOutput, error) {
@@ -1010,6 +1094,10 @@ type awsClientMock struct { //nolint
 	*ec2.CreateLaunchTemplateInput
 	*ec2.DeleteLaunchTemplateInput
 	*ec2.CreateFleetInput
+	*ec2.AllocateAddressInput
+	*ec2.AllocateAddressOutput
+	*ec2.AssociateAddressInput
+	*ec2.AssociateAddressOutput
 	*sts.AssumeRoleInput
 	*sts.GetCallerIdentityOutput
 
@@ -1025,7 +1113,7 @@ type awsClientMock struct { //nolint
 }
 
 // Create a new mock client.
-func (c *awsClientMock) Create(ctx context.Context, region string) error {
+func (c *awsClientMock) Create(ctx context.Context, role, region string) error {
 	return nil
 }
 
@@ -1341,6 +1429,16 @@ func (c *awsClientMock) GetPublicDNSName(ctx context.Context, h *host.Host) (str
 	return "public_dns_name", nil
 }
 
+func (c *awsClientMock) AllocateAddress(ctx context.Context, input *ec2.AllocateAddressInput) (*ec2.AllocateAddressOutput, error) {
+	c.AllocateAddressInput = input
+	return c.AllocateAddressOutput, nil
+}
+
+func (c *awsClientMock) AssociateAddress(ctx context.Context, input *ec2.AssociateAddressInput) (*ec2.AssociateAddressOutput, error) {
+	c.AssociateAddressInput = input
+	return c.AssociateAddressOutput, nil
+}
+
 func (c *awsClientMock) ChangeResourceRecordSets(ctx context.Context, input *route53.ChangeResourceRecordSetsInput) (*route53.ChangeResourceRecordSetsOutput, error) {
 	c.ChangeResourceRecordSetsInput = input
 	return c.ChangeResourceRecordSetsOutput, nil
@@ -1349,7 +1447,7 @@ func (c *awsClientMock) ChangeResourceRecordSets(ctx context.Context, input *rou
 func (c *awsClientMock) AssumeRole(ctx context.Context, input *sts.AssumeRoleInput) (*sts.AssumeRoleOutput, error) {
 	c.AssumeRoleInput = input
 	if input.DurationSeconds == nil {
-		input.DurationSeconds = aws.Int32(int32(time.Hour.Seconds()))
+		input.DurationSeconds = aws.Int32(int32(time.Hour.Seconds() / 4))
 	}
 	return &sts.AssumeRoleOutput{
 		Credentials: &ststypes.Credentials{
@@ -1372,14 +1470,14 @@ func (c *awsClientMock) GetCallerIdentity(ctx context.Context, input *sts.GetCal
 	}, nil
 }
 
-func makeAWSLogMessage(name, client string, args interface{}) message.Fields {
+func makeAWSLogMessage(name, client string, args any) message.Fields {
 	msg := message.Fields{
 		"message":  "AWS API call",
 		"api_name": name,
 		"client":   client,
 	}
 
-	argMap := make(map[string]interface{})
+	argMap := make(map[string]any)
 	if err := mapstructure.Decode(args, &argMap); err == nil {
 		msg["args"] = argMap
 	} else {

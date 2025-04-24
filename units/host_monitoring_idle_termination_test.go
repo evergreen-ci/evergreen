@@ -102,7 +102,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		tsk := task.Task{
 			Id: "t1",
 		}
-		require.NoError(t, tsk.Insert())
+		require.NoError(t, tsk.Insert(ctx))
 
 		// finding idle hosts should not return the host
 		num, hosts := numIdleHostsFound(tctx, env, t)
@@ -137,7 +137,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		tsk := task.Task{
 			Id: "t3",
 		}
-		require.NoError(t, tsk.Insert())
+		require.NoError(t, tsk.Insert(ctx))
 		require.NoError(t, host1.Insert(tctx))
 
 		num, hosts := numIdleHostsFound(tctx, env, t)
@@ -182,7 +182,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			TaskGroup:         "tg1",
 			TaskGroupMaxHosts: 1,
 		}
-		require.NoError(t, tsk.Insert())
+		require.NoError(t, tsk.Insert(ctx))
 
 		// finding idle hosts should not return the host
 		num, hosts := numIdleHostsFound(tctx, env, t)
@@ -226,7 +226,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			TaskGroup:         "tg1",
 			TaskGroupMaxHosts: 1,
 		}
-		require.NoError(t, tsk.Insert())
+		require.NoError(t, tsk.Insert(ctx))
 
 		num, hosts := numIdleHostsFound(tctx, env, t)
 		assert.Equal(t, 1, num, "should idle terminate host in between single host task group tasks that has been idle for a long time")
@@ -272,7 +272,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		tsk1 := task.Task{
 			Id: "t1",
 		}
-		require.NoError(t, tsk1.Insert())
+		require.NoError(t, tsk1.Insert(ctx))
 
 		num, hosts := numIdleHostsFound(tctx, env, t)
 		assert.Equal(t, 0, num, "should not idle terminate host with outdated AMI if host is actively running a task")
@@ -320,7 +320,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		tsk1 := task.Task{
 			Id: "t1",
 		}
-		require.NoError(t, tsk1.Insert())
+		require.NoError(t, tsk1.Insert(ctx))
 
 		num, hosts := numIdleHostsFound(tctx, env, t)
 		assert.Equal(t, 1, num, "should idle terminate host with outdated AMI that is not actively running a task")
@@ -370,7 +370,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			TaskGroup:         "tg1",
 			TaskGroupMaxHosts: 1,
 		}
-		require.NoError(t, tsk.Insert())
+		require.NoError(t, tsk.Insert(ctx))
 
 		// finding idle hosts should not return the host
 		num, hosts := numIdleHostsFound(tctx, env, t)
@@ -799,15 +799,6 @@ func TestTearingDownIsNotConsideredIdle(t *testing.T) {
 	distro1 := distro.Distro{
 		Id:       "distro1",
 		Provider: evergreen.ProviderNameMock,
-		HostAllocatorSettings: distro.HostAllocatorSettings{
-			// TODO (DEVPROD-7795): this test doesn't pass currently unless you
-			// set the acceptable host idle time to be non-zero. However, it
-			// should pass even if it's acceptable idle time is 0 since the host
-			// should be busy running the teardown group. Once DEVPROD-7795 is
-			// fixed, this distro setting can/should be modified/removed and the
-			// test should still pass.
-			AcceptableHostIdleTime: time.Minute,
-		},
 	}
 	require.NoError(t, distro1.Insert(tctx))
 
@@ -830,15 +821,37 @@ func TestTearingDownIsNotConsideredIdle(t *testing.T) {
 		StartedBy:                  evergreen.User,
 		TaskGroupTeardownStartTime: time.Now(),
 	}
+	host3 := host.Host{
+		Id:                         utility.RandomString(),
+		Distro:                     distro1,
+		Provider:                   evergreen.ProviderNameMock,
+		CreationTime:               time.Now().Add(-30 * time.Minute),
+		LastCommunicationTime:      time.Now(),
+		Status:                     evergreen.HostRunning,
+		StartedBy:                  evergreen.User,
+		TaskGroupTeardownStartTime: time.Now().Add(-20 * time.Minute),
+	}
+	host4 := host.Host{
+		Id:                         utility.RandomString(),
+		Distro:                     distro1,
+		Provider:                   evergreen.ProviderNameMock,
+		CreationTime:               time.Now().Add(-30 * time.Minute),
+		LastCommunicationTime:      time.Now().Add(-20 * time.Minute),
+		Status:                     evergreen.HostRunning,
+		StartedBy:                  evergreen.User,
+		TaskGroupTeardownStartTime: time.Now(),
+	}
 
 	require.NoError(t, host1.Insert(tctx))
 	require.NoError(t, host2.Insert(tctx))
+	require.NoError(t, host3.Insert(tctx))
+	require.NoError(t, host4.Insert(tctx))
 
 	// The host tearing down should not be flagged as idle.
 	num, hosts := numIdleHostsFound(tctx, env, t)
-	require.Equal(t, 1, num)
-	assert.Equal(t, host1.Id, hosts[0])
-
+	require.Equal(t, 2, num)
+	assert.Contains(t, hosts, host1.Id)
+	assert.Contains(t, hosts, host3.Id)
 }
 func TestPopulateIdleHostJobsCalculations(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())

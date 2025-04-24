@@ -185,7 +185,7 @@ func TestECSSNSHandleNotification(t *testing.T) {
 		taskARN = "external_id"
 	)
 
-	makeJSON := func(t *testing.T, i interface{}) json.RawMessage {
+	makeJSON := func(t *testing.T, i any) json.RawMessage {
 		b, err := json.Marshal(i)
 		require.NoError(t, err)
 		return json.RawMessage(b)
@@ -203,7 +203,7 @@ func TestECSSNSHandleNotification(t *testing.T) {
 			}
 			require.NoError(t, rh.handleNotification(ctx, notification))
 
-			p, err := pod.FindOneByExternalID(taskARN)
+			p, err := pod.FindOneByExternalID(ctx, taskARN)
 			assert.NoError(t, err)
 			assert.Equal(t, pod.StatusDecommissioned, p.Status)
 		},
@@ -405,7 +405,7 @@ func TestECSSNSHandleNotification(t *testing.T) {
 			}
 			assert.Error(t, rh.handleNotification(ctx, notification))
 
-			p, err := pod.FindOneByExternalID(taskARN)
+			p, err := pod.FindOneByExternalID(ctx, taskARN)
 			require.NoError(t, err)
 			require.NotZero(t, p)
 			assert.Equal(t, pod.StatusRunning, p.Status)
@@ -421,7 +421,7 @@ func TestECSSNSHandleNotification(t *testing.T) {
 			}
 			assert.Error(t, rh.handleNotification(ctx, notification))
 
-			p, err := pod.FindOneByExternalID(taskARN)
+			p, err := pod.FindOneByExternalID(ctx, taskARN)
 			require.NoError(t, err)
 			require.NotZero(t, p)
 			assert.Equal(t, pod.StatusRunning, p.Status)
@@ -433,7 +433,7 @@ func TestECSSNSHandleNotification(t *testing.T) {
 			}
 			assert.Error(t, rh.handleNotification(ctx, notification))
 
-			p, err := pod.FindOneByExternalID(taskARN)
+			p, err := pod.FindOneByExternalID(ctx, taskARN)
 			require.NoError(t, err)
 			require.NotZero(t, p)
 			assert.Equal(t, pod.StatusRunning, p.Status)
@@ -473,7 +473,7 @@ func TestECSSNSHandleNotification(t *testing.T) {
 			}
 			assert.NoError(t, rh.handleNotification(ctx, notification))
 
-			p, err := pod.FindOneByExternalID(taskARN)
+			p, err := pod.FindOneByExternalID(ctx, taskARN)
 			require.NoError(t, err)
 			require.NotZero(t, p)
 			assert.Equal(t, pod.StatusDecommissioned, p.Status)
@@ -489,7 +489,7 @@ func TestECSSNSHandleNotification(t *testing.T) {
 			}
 			assert.NoError(t, rh.handleNotification(ctx, notification))
 
-			p, err := pod.FindOneByExternalID(taskARN)
+			p, err := pod.FindOneByExternalID(ctx, taskARN)
 			require.NoError(t, err)
 			require.NotZero(t, p)
 			assert.Equal(t, pod.StatusRunning, p.Status)
@@ -505,7 +505,7 @@ func TestECSSNSHandleNotification(t *testing.T) {
 					ExternalID: taskARN,
 				},
 			}
-			require.NoError(t, podToCreate.Insert())
+			require.NoError(t, podToCreate.Insert(t.Context()))
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
 			q, err := queue.NewLocalLimitedSizeSerializable(1, 1)

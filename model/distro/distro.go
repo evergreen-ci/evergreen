@@ -24,13 +24,15 @@ import (
 )
 
 type Distro struct {
-	Id                    string                `bson:"_id" json:"_id,omitempty" mapstructure:"_id,omitempty"`
-	AdminOnly             bool                  `bson:"admin_only,omitempty" json:"admin_only,omitempty" mapstructure:"admin_only,omitempty"`
-	Aliases               []string              `bson:"aliases,omitempty" json:"aliases,omitempty" mapstructure:"aliases,omitempty"`
-	Arch                  string                `bson:"arch" json:"arch,omitempty" mapstructure:"arch,omitempty"`
-	WorkDir               string                `bson:"work_dir" json:"work_dir,omitempty" mapstructure:"work_dir,omitempty"`
-	Provider              string                `bson:"provider" json:"provider,omitempty" mapstructure:"provider,omitempty"`
-	ProviderSettingsList  []*birch.Document     `bson:"provider_settings,omitempty" json:"provider_settings,omitempty" mapstructure:"provider_settings,omitempty"`
+	Id                   string            `bson:"_id" json:"_id,omitempty" mapstructure:"_id,omitempty"`
+	AdminOnly            bool              `bson:"admin_only,omitempty" json:"admin_only,omitempty" mapstructure:"admin_only,omitempty"`
+	Aliases              []string          `bson:"aliases,omitempty" json:"aliases,omitempty" mapstructure:"aliases,omitempty"`
+	Arch                 string            `bson:"arch" json:"arch,omitempty" mapstructure:"arch,omitempty"`
+	WorkDir              string            `bson:"work_dir" json:"work_dir,omitempty" mapstructure:"work_dir,omitempty"`
+	Provider             string            `bson:"provider" json:"provider,omitempty" mapstructure:"provider,omitempty"`
+	ProviderSettingsList []*birch.Document `bson:"provider_settings,omitempty" json:"provider_settings,omitempty" mapstructure:"provider_settings,omitempty"`
+	// ProviderAccount is the identifier for the provider's account.
+	ProviderAccount       string                `bson:"provider_account,omitempty" json:"provider_account,omitempty" mapstructure:"provider_account,omitempty"`
 	SetupAsSudo           bool                  `bson:"setup_as_sudo,omitempty" json:"setup_as_sudo,omitempty" mapstructure:"setup_as_sudo,omitempty"`
 	Setup                 string                `bson:"setup,omitempty" json:"setup,omitempty" mapstructure:"setup,omitempty"`
 	User                  string                `bson:"user,omitempty" json:"user,omitempty" mapstructure:"user,omitempty"`
@@ -66,14 +68,14 @@ type Distro struct {
 // DistroData is the same as a distro, with the only difference being that all
 // the provider settings are stored as maps instead of Birch BSON documents.
 type DistroData struct {
-	Distro              Distro                   `bson:",inline"`
-	ProviderSettingsMap []map[string]interface{} `bson:"provider_settings_list" json:"provider_settings_list"`
+	Distro              Distro           `bson:",inline"`
+	ProviderSettingsMap []map[string]any `bson:"provider_settings_list" json:"provider_settings_list"`
 }
 
 // DistroData creates distro data from this distro. The provider settings are
 // converted into maps instead of Birch BSON documents.
 func (d *Distro) DistroData() DistroData {
-	res := DistroData{ProviderSettingsMap: []map[string]interface{}{}}
+	res := DistroData{ProviderSettingsMap: []map[string]any{}}
 	res.Distro = *d
 	for _, each := range d.ProviderSettingsList {
 		res.ProviderSettingsMap = append(res.ProviderSettingsMap, each.ExportMap())
@@ -527,7 +529,7 @@ func (d *Distro) GetPoolSize() int {
 	switch d.Provider {
 	case evergreen.ProviderNameStatic:
 		if len(d.ProviderSettingsList) > 0 {
-			hosts, ok := d.ProviderSettingsList[0].Lookup("hosts").Interface().([]interface{})
+			hosts, ok := d.ProviderSettingsList[0].Lookup("hosts").Interface().([]any)
 			if !ok {
 				return 0
 			}
@@ -716,7 +718,7 @@ func (d *Distro) GetResolvedPlannerSettings(s *evergreen.Settings) (PlannerSetti
 	}
 
 	if resolved.Version == "" {
-		resolved.Version = config.Planner
+		resolved.Version = evergreen.PlannerVersionTunable
 	}
 	if !utility.StringSliceContains(evergreen.ValidTaskPlannerVersions, resolved.Version) {
 		catcher.Errorf("'%s' is not a valid planner version", resolved.Version)
@@ -765,10 +767,10 @@ func (d *Distro) Add(ctx context.Context, creator *user.DBUser) error {
 	if err != nil {
 		return errors.Wrap(err, "Error inserting distro")
 	}
-	return d.AddPermissions(creator)
+	return d.AddPermissions(ctx, creator)
 }
 
-func (d *Distro) AddPermissions(creator *user.DBUser) error {
+func (d *Distro) AddPermissions(ctx context.Context, creator *user.DBUser) error {
 	rm := evergreen.GetEnvironment().RoleManager()
 	if err := rm.AddResourceToScope(evergreen.AllDistrosScope, d.Id); err != nil {
 		return errors.Wrapf(err, "adding distro '%s' to permissions scope containing all distros", d.Id)
@@ -796,7 +798,7 @@ func (d *Distro) AddPermissions(creator *user.DBUser) error {
 		return errors.Wrapf(err, "adding admin role for distro '%s'", d.Id)
 	}
 	if creator != nil {
-		if err := creator.AddRole(newRole.ID); err != nil {
+		if err := creator.AddRole(ctx, newRole.ID); err != nil {
 			return errors.Wrapf(err, "adding role '%s' to user '%s'", newRole.ID, creator.Id)
 		}
 	}
@@ -875,41 +877,27 @@ func AllDistros(ctx context.Context) ([]Distro, error) {
 // distro must be a Docker distro. If the provider is EC2, the distro
 // name is optional.
 func GetHostCreateDistro(ctx context.Context, createHost apimodels.CreateHost) (*Distro, error) {
-	var err error
 	d := &Distro{}
-	isDockerProvider := evergreen.IsDockerProvider(createHost.CloudProvider)
-	if isDockerProvider {
-		d, err = FindOneId(ctx, createHost.Distro)
+	if createHost.Distro != "" {
+		var dat AliasLookupTable
+		dat, err := NewDistroAliasesLookupTable(ctx)
+		if err != nil {
+			return nil, errors.Wrap(err, "getting distro lookup table")
+		}
+		distroIDs := dat.Expand([]string{createHost.Distro})
+		if len(distroIDs) == 0 {
+			return nil, errors.Wrap(err, "distro lookup returned no matching distro IDs")
+		}
+		d, err = FindOneId(ctx, distroIDs[0])
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding distro '%s'", createHost.Distro)
 		}
 		if d == nil {
 			return nil, errors.Errorf("distro '%s' not found", createHost.Distro)
 		}
-		if !evergreen.IsDockerProvider(d.Provider) {
-			return nil, errors.Errorf("distro '%s' provider must support Docker but actual provider is '%s'", d.Id, d.Provider)
-		}
-	} else {
-		if createHost.Distro != "" {
-			var dat AliasLookupTable
-			dat, err := NewDistroAliasesLookupTable(ctx)
-			if err != nil {
-				return nil, errors.Wrap(err, "getting distro lookup table")
-			}
-			distroIDs := dat.Expand([]string{createHost.Distro})
-			if len(distroIDs) == 0 {
-				return nil, errors.Wrap(err, "distro lookup returned no matching distro IDs")
-			}
-			d, err = FindOneId(ctx, distroIDs[0])
-			if err != nil {
-				return nil, errors.Wrapf(err, "finding distro '%s'", createHost.Distro)
-			}
-			if d == nil {
-				return nil, errors.Errorf("distro '%s' not found", createHost.Distro)
-			}
-		}
-		d.Provider = evergreen.ProviderNameEc2OnDemand
 	}
+	d.Provider = evergreen.ProviderNameEc2OnDemand
+
 	// Do not provision task-spawned hosts.
 	d.BootstrapSettings.Method = BootstrapMethodNone
 	return d, nil

@@ -52,7 +52,7 @@ func (s *patchSuite) SetupTest() {
 		Id:         "test",
 		Identifier: "testing",
 	}
-	s.NoError(pRef.Insert())
+	s.NoError(pRef.Insert(s.ctx))
 	s.patch = patch.Patch{
 		Id:         patchID,
 		Project:    "test",
@@ -69,7 +69,7 @@ func (s *patchSuite) SetupTest() {
 		},
 	}
 	s.patch.Version = s.patch.Id.Hex()
-	s.NoError(s.patch.Insert())
+	s.NoError(s.patch.Insert(s.ctx))
 
 	childPatch := patch.Patch{
 		Id:         mgobson.ObjectIdHex(childPatchId),
@@ -87,18 +87,18 @@ func (s *patchSuite) SetupTest() {
 			HeadHash:  "776f608b5b12cd27b8d931c8ee4ca0c13f857299",
 		},
 	}
-	s.NoError(childPatch.Insert())
+	s.NoError(childPatch.Insert(s.ctx))
 
 	version := model.Version{
 		Id:      s.patch.Id.Hex(),
 		Aborted: false,
 	}
-	s.NoError(version.Insert())
+	s.NoError(version.Insert(s.ctx))
 	childVersion := model.Version{
 		Id:      childPatchId,
 		Aborted: false,
 	}
-	s.NoError(childVersion.Insert())
+	s.NoError(childVersion.Insert(s.ctx))
 
 	s.data = &event.PatchEventData{
 		Status: evergreen.VersionCreated,
@@ -125,7 +125,7 @@ func (s *patchSuite) SetupTest() {
 	}
 
 	for i := range s.subs {
-		s.NoError(s.subs[i].Upsert())
+		s.NoError(s.subs[i].Upsert(s.ctx))
 	}
 
 	ui := &evergreen.UIConfig{
@@ -163,7 +163,8 @@ func (s *patchSuite) TestAllTriggers() {
 
 	s.patch.Status = evergreen.VersionSucceeded
 	s.data.Status = evergreen.VersionSucceeded
-	s.NoError(db.Update(patch.Collection, bson.M{"_id": s.patch.Id}, &s.patch))
+	_, err = db.ReplaceContext(s.ctx, patch.Collection, bson.M{"_id": s.patch.Id}, &s.patch)
+	s.NoError(err)
 
 	n, err = NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)
@@ -171,7 +172,8 @@ func (s *patchSuite) TestAllTriggers() {
 
 	s.patch.Status = evergreen.VersionFailed
 	s.data.Status = evergreen.VersionFailed
-	s.NoError(db.Update(patch.Collection, bson.M{"_id": s.patch.Id}, &s.patch))
+	_, err = db.ReplaceContext(s.ctx, patch.Collection, bson.M{"_id": s.patch.Id}, &s.patch)
+	s.NoError(err)
 
 	n, err = NotificationsFromEvent(s.ctx, &s.event)
 	s.NoError(err)
@@ -262,7 +264,7 @@ func (s *patchSuite) TestRunChildrenOnPatchOutcome() {
 	}
 
 	for i := range s.subs {
-		s.NoError(s.subs[i].Upsert())
+		s.NoError(s.subs[i].Upsert(s.ctx))
 	}
 	s.data.Status = evergreen.VersionSucceeded
 	n, err := s.t.patchOutcome(s.ctx, &s.subs[0])
@@ -290,6 +292,110 @@ func (s *patchSuite) TestRunChildrenOnPatchOutcome() {
 	s.Contains(err.Error(), "finalizing child patch")
 	s.Nil(n)
 
+}
+
+func (s *patchSuite) TestPatchFamilyOutcomeWithAbortedPatch() {
+	patchID := mgobson.NewObjectId()
+	eventData := event.PatchEventData{
+		Status: evergreen.VersionFailed,
+		Author: "myself",
+	}
+	e := event.EventLogEntry{
+		ResourceType: event.ResourceTypePatch,
+		EventType:    event.PatchChildrenCompletion,
+		ResourceId:   patchID.Hex(),
+		Data:         &eventData,
+	}
+
+	p := patch.Patch{
+		Id:     patchID,
+		Status: evergreen.VersionFailed,
+	}
+	s.Require().NoError(p.Insert(s.ctx))
+
+	v := model.Version{
+		Id:        patchID.Hex(),
+		Status:    evergreen.VersionFailed,
+		Requester: evergreen.PatchVersionRequester,
+		Aborted:   true,
+	}
+	s.Require().NoError(v.Insert(s.ctx))
+
+	subscriber := event.Subscriber{
+		Type: event.EvergreenWebhookSubscriberType,
+		Target: &event.WebhookSubscriber{
+			URL:    "http://example.com/2",
+			Secret: []byte("secret"),
+		},
+	}
+	subscription := event.NewSubscriptionByID(event.ResourceTypePatch, event.TriggerFamilyOutcome, e.ResourceId, subscriber)
+	s.Require().NoError(subscription.Upsert(s.ctx))
+
+	t := makePatchTriggers().(*patchTriggers)
+	t.event = &e
+	t.data = &eventData
+	t.patch = &p
+
+	suppressable, err := t.isNotificationSuppressableForAbort(s.ctx, &subscription)
+	s.Require().NoError(err)
+	s.True(suppressable)
+
+	n, err := t.patchFamilyOutcome(s.ctx, &subscription)
+	s.NoError(err)
+	s.Zero(n, "should not create notification for aborted user patch")
+}
+
+func (s *patchSuite) TestPatchFamilyOutcomeWithAbortedGitHubMergePatch() {
+	patchID := mgobson.NewObjectId()
+	eventData := event.PatchEventData{
+		Status: evergreen.VersionFailed,
+		Author: evergreen.GithubMergeUser,
+	}
+	e := event.EventLogEntry{
+		ResourceType: event.ResourceTypePatch,
+		EventType:    event.PatchChildrenCompletion,
+		ResourceId:   patchID.Hex(),
+		Data:         &eventData,
+	}
+
+	p := patch.Patch{
+		Id:     patchID,
+		Status: evergreen.VersionFailed,
+	}
+	s.Require().NoError(p.Insert(s.ctx))
+
+	v := model.Version{
+		Id:        patchID.Hex(),
+		Status:    evergreen.VersionFailed,
+		Requester: evergreen.GithubMergeRequester,
+		Aborted:   true,
+	}
+	s.Require().NoError(v.Insert(s.ctx))
+
+	subscriber := event.Subscriber{
+		Type: event.GithubMergeSubscriberType,
+		Target: &event.GithubMergeSubscriber{
+			Owner: "owner",
+			Repo:  "repo",
+			Ref:   "abc123",
+		},
+	}
+	subscription := event.NewSubscriptionByID(event.ResourceTypePatch, event.TriggerFamilyOutcome, e.ResourceId, subscriber)
+	s.Require().NoError(subscription.Upsert(s.ctx))
+
+	t := makePatchTriggers().(*patchTriggers)
+	t.event = &e
+	t.data = &eventData
+	t.patch = &p
+
+	suppressable, err := t.isNotificationSuppressableForAbort(s.ctx, &subscription)
+	s.Require().NoError(err)
+	s.False(suppressable)
+
+	n, err := t.patchFamilyOutcome(s.ctx, &subscription)
+	s.NoError(err)
+	s.NotNil(n)
+	s.NotNil(n, "should create notification for aborted GitHub merge queue patch because the subscriber is the merge queue status check")
 }
 
 func (s *patchSuite) TestPatchStarted() {

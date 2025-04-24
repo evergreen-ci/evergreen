@@ -14,7 +14,7 @@ import (
 
 func DoProjectActivation(ctx context.Context, id string, ts time.Time) (bool, error) {
 	// fetch the most recent, non-ignored version (before the given time) to activate
-	activateVersion, err := VersionFindOne(VersionByMostRecentNonIgnored(id, ts))
+	activateVersion, err := VersionFindOne(ctx, VersionByMostRecentNonIgnored(id, ts))
 	if err != nil {
 		return false, errors.WithStack(err)
 	}
@@ -43,6 +43,11 @@ func ActivateElapsedBuildsAndTasks(ctx context.Context, v *Version) (bool, error
 	elapsedBuildIds := []string{}
 	allReadyTaskIds := []string{}
 	allIgnoreTaskIds := []string{}
+
+	if _, err := v.GetBuildVariants(ctx); err != nil {
+		return false, errors.Wrap(err, "getting build variant info for version")
+	}
+
 	for i, bv := range v.BuildVariants {
 		// If there are batchtime tasks, consider if these should/shouldn't be activated, regardless of build
 		ignoreTasks := []string{}
@@ -121,7 +126,7 @@ func ActivateElapsedBuildsAndTasks(ctx context.Context, v *Version) (bool, error
 	}
 	if len(buildIdsToActivate) > 0 {
 		// Don't need to set the version in here since we do it ourselves in a single update
-		if err := build.UpdateActivation(buildIdsToActivate, true, evergreen.BuildActivator); err != nil {
+		if err := build.UpdateActivation(ctx, buildIdsToActivate, true, evergreen.BuildActivator); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"operation": "project-activation",
 				"message":   "problem activating builds",
@@ -152,5 +157,5 @@ func ActivateElapsedBuildsAndTasks(ctx context.Context, v *Version) (bool, error
 		}
 	}
 	// Update the stored version so that we don't attempt to reactivate any variants/tasks
-	return true, v.ActivateAndSetBuildVariants()
+	return true, v.ActivateAndSetBuildVariants(ctx)
 }

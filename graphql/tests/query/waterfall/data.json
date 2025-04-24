@@ -8,7 +8,7 @@
       "activated": true,
       "author": "mohamed.khelif",
       "status": "failed",
-      "order": 39,
+      "order": 1,
       "create_time": {
         "$date": "2019-12-30T00:00:03Z"
       }
@@ -28,7 +28,7 @@
     },
     {
       "_id": "evergreen_version1",
-      "gitspec": "revision1",
+      "gitspec": "d7b7a086cc4f4edeb9a5eb59f3dd4f2f7c3f7ddb",
       "identifier": "spruce",
       "r": "git_tag_request",
       "activated": true,
@@ -36,14 +36,16 @@
       "status": "success",
       "order": 41,
       "create_time": {
-        "$date": "2020-01-01T00:00:00Z"
+        "$date": "2025-03-01T00:00:00Z"
       },
-      "build_variants_status": {
-        "activated": true,
-        "build_id": "evergreen_version1_build",
-        "build_variant": "enterprise-ubuntu1604-64",
-        "display_name": "01 Ubuntu 16.04"
-      },
+      "build_variants_status": [
+        {
+          "activated": true,
+          "build_id": "evergreen_version1_build",
+          "build_variant": "enterprise-ubuntu1604-64",
+          "display_name": "01 Ubuntu 16.04"
+        }
+      ],
       "builds": ["evergreen_version1_build"]
     },
     {
@@ -58,11 +60,13 @@
       "create_time": {
         "$date": "2020-01-02T06:43:00Z"
       },
-      "build_variants_status": {
-        "activated": true,
-        "build_id": "evergreen_version2_build",
-        "build_variant": "enterprise-ubuntu1604-64"
-      },
+      "build_variants_status": [
+        {
+          "activated": true,
+          "build_id": "evergreen_version2_build",
+          "build_variant": "enterprise-ubuntu1604-64"
+        }
+      ],
       "builds": ["evergreen_version2_build"]
     },
     {
@@ -77,11 +81,19 @@
       "create_time": {
         "$date": "2020-01-03T13:30:00Z"
       },
-      "build_variants_status": {
-        "activated": true,
-        "build_id": "evergreen_version3_build",
-        "build_variant": "lint"
-      }
+      "build_variants_status": [
+        {
+          "activated": true,
+          "build_id": "evergreen_version3_build",
+          "build_variant": "lint"
+        },
+        {
+          "activated": false,
+          "build_id": "evergreen_version1_build_b",
+          "build_variant": "enterprise-ubuntu1604-64",
+          "display_name": "01 Ubuntu 16.04"
+        }
+      ]
     },
     {
       "_id": "evergreen_version4",
@@ -182,6 +194,7 @@
       "display_status_cache": "success",
       "display_name": "Task A",
       "activated": true,
+      "branch": "spruce",
       "build_variant": "enterprise-ubuntu1604-64",
       "build_variant_display_name": "Ubuntu 16.04",
       "build_id": "evergreen_version1_build",
@@ -190,6 +203,7 @@
       },
       "execution": 0,
       "display_task_id": "",
+      "order": 41,
       "r": "gitter_request"
     },
     {
@@ -199,6 +213,7 @@
       "display_status_cache": "success",
       "display_name": "Task B",
       "activated": true,
+      "branch": "spruce",
       "build_variant": "enterprise-ubuntu1604-64",
       "build_variant_display_name": "Ubuntu 16.04",
       "build_id": "evergreen_version1_build",
@@ -207,6 +222,7 @@
       },
       "execution": 1,
       "display_task_id": "",
+      "order": 41,
       "r": "gitter_request"
     },
     {
@@ -219,6 +235,7 @@
       },
       "display_name": "Task A",
       "activated": true,
+      "branch": "spruce",
       "build_variant": "enterprise-ubuntu1604-64",
       "build_variant_display_name": "Ubuntu 16.04",
       "build_id": "evergreen_version2_build",
@@ -227,6 +244,7 @@
       },
       "execution": 0,
       "display_task_id": "",
+      "order": 42,
       "r": "gitter_request"
     },
     {
@@ -236,6 +254,7 @@
       "display_status_cache": "success",
       "display_name": "Task B",
       "activated": true,
+      "branch": "spruce",
       "build_variant": "enterprise-ubuntu1604-64",
       "build_variant_display_name": "Ubuntu 16.04",
       "build_id": "evergreen_version2_build",
@@ -244,15 +263,17 @@
       },
       "execution": 0,
       "display_task_id": "",
+      "order": 42,
       "r": "gitter_request"
     },
     {
       "_id": "task_5",
       "version": "evergreen_version5",
-      "status": "success",
-      "display_status_cache": "success",
+      "status": "failed",
+      "display_status_cache": "system-failed",
       "display_name": "Task C",
       "activated": true,
+      "branch": "spruce",
       "build_variant": "lint",
       "build_variant_display_name": "Linter",
       "build_id": "evergreen_version3_build",
@@ -261,6 +282,7 @@
       },
       "execution": 0,
       "display_task_id": "",
+      "order": 45,
       "r": "gitter_request"
     }
   ],

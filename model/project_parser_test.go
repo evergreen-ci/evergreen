@@ -29,7 +29,7 @@ import (
 
 // ShouldContainResembling tests whether a slice contains an element that DeepEquals
 // the expected input.
-func ShouldContainResembling(actual interface{}, expected ...interface{}) string {
+func ShouldContainResembling(actual any, expected ...any) string {
 	if len(expected) != 1 || expected == nil {
 		return "ShouldContainResembling takes 1 argument"
 	}
@@ -2929,8 +2929,8 @@ func TestFindAndTranslateProjectForPatch(t *testing.T) {
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, p *patch.Patch, pp *ParserProject){
 		"SucceedsWithUnfinalizedPatch": func(ctx context.Context, t *testing.T, p *patch.Patch, pp *ParserProject) {
 			p.ProjectStorageMethod = evergreen.ProjectStorageMethodDB
-			require.NoError(t, p.Insert())
-			require.NoError(t, pp.Insert())
+			require.NoError(t, p.Insert(t.Context()))
+			require.NoError(t, pp.Insert(t.Context()))
 
 			project, ppFromDB, err := FindAndTranslateProjectForPatch(ctx, env.Settings(), p)
 			require.NoError(t, err)
@@ -2944,12 +2944,12 @@ func TestFindAndTranslateProjectForPatch(t *testing.T) {
 				Id:                   p.Id.Hex(),
 				ProjectStorageMethod: evergreen.ProjectStorageMethodDB,
 			}
-			require.NoError(t, v.Insert())
+			require.NoError(t, v.Insert(t.Context()))
 
 			p.Activated = true
 			p.Version = v.Id
-			require.NoError(t, p.Insert())
-			require.NoError(t, pp.Insert())
+			require.NoError(t, p.Insert(t.Context()))
+			require.NoError(t, pp.Insert(t.Context()))
 
 			project, ppFromDB, err := FindAndTranslateProjectForPatch(ctx, env.Settings(), p)
 			require.NoError(t, err)
@@ -2960,7 +2960,7 @@ func TestFindAndTranslateProjectForPatch(t *testing.T) {
 		},
 		"FailsWithoutStoredParserProject": func(ctx context.Context, t *testing.T, p *patch.Patch, pp *ParserProject) {
 			p.ProjectStorageMethod = evergreen.ProjectStorageMethodDB
-			require.NoError(t, p.Insert())
+			require.NoError(t, p.Insert(t.Context()))
 
 			_, _, err := FindAndTranslateProjectForPatch(ctx, env.Settings(), p)
 			assert.Error(t, err)

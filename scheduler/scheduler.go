@@ -27,12 +27,8 @@ type TaskPlanner func(*distro.Distro, []task.Task, TaskPlannerOptions) ([]task.T
 func PrioritizeTasks(ctx context.Context, d *distro.Distro, tasks []task.Task, opts TaskPlannerOptions) ([]task.Task, error) {
 	opts.IncludesDependencies = d.DispatcherSettings.Version == evergreen.DispatcherVersionRevisedWithDependencies
 
-	switch d.PlannerSettings.Version {
-	case evergreen.PlannerVersionTunable:
-		return runTunablePlanner(ctx, d, tasks, opts)
-	default:
-		return runLegacyPlanner(ctx, d, tasks, opts)
-	}
+	// Currently, only the tunable planner is available, so we don't need to check the settings.
+	return runTunablePlanner(ctx, d, tasks, opts)
 }
 
 func runTunablePlanner(ctx context.Context, d *distro.Distro, tasks []task.Task, opts TaskPlannerOptions) ([]task.Task, error) {
@@ -54,71 +50,7 @@ func runTunablePlanner(ctx context.Context, d *distro.Distro, tasks []task.Task,
 	return plan, nil
 }
 
-////////////////////////////////////////////////////////////////////////
-//
-// UseLegacy Scheduler Implementation
-
-func runLegacyPlanner(ctx context.Context, d *distro.Distro, tasks []task.Task, opts TaskPlannerOptions) ([]task.Task, error) {
-	runnableTasks, versions, err := FilterTasksWithVersionCache(tasks)
-	if err != nil {
-		return nil, errors.Wrap(err, "filtering tasks against the versions' cache")
-	}
-
-	ds := &distroScheduler{
-		TaskPrioritizer: &CmpBasedTaskPrioritizer{
-			runtimeID: opts.ID,
-		},
-		opts:      opts,
-		runtimeID: opts.ID,
-		startedAt: opts.StartedAt,
-	}
-
-	prioritizedTasks, err := ds.scheduleDistro(ctx, d.Id, runnableTasks, versions, d.GetTargetTime(), opts.IsSecondaryQueue)
-	if err != nil {
-		return nil, errors.Wrapf(err, "calculating distro plan for distro '%s'", d.Id)
-	}
-
-	return prioritizedTasks, nil
-}
-
-// Responsible for prioritizing and scheduling tasks to be run, on a per-distro
-// basis.
-type Scheduler struct {
-	*evergreen.Settings
-	TaskPrioritizer
-	HostAllocator
-
-	FindRunnableTasks TaskFinder
-}
-
 const RunnerName = "scheduler"
-
-type distroScheduler struct {
-	startedAt time.Time
-	runtimeID string
-	opts      TaskPlannerOptions
-	TaskPrioritizer
-}
-
-func (s *distroScheduler) scheduleDistro(ctx context.Context, distroID string, runnableTasks []task.Task, versions map[string]model.Version, maxThreshold time.Duration, isSecondaryQueue bool) ([]task.Task, error) {
-	prioritizedTasks, _, err := s.PrioritizeTasks(ctx, distroID, runnableTasks, versions)
-	if err != nil {
-		return nil, errors.Wrapf(err, "prioritizing tasks for distro '%s'", distroID)
-
-	}
-
-	distroQueueInfo := GetDistroQueueInfo(ctx, distroID, prioritizedTasks, maxThreshold, s.opts)
-	distroQueueInfo.SecondaryQueue = isSecondaryQueue
-	distroQueueInfo.PlanCreatedAt = s.startedAt
-
-	// persist the queue of tasks and its associated distroQueueInfo
-	err = PersistTaskQueue(ctx, distroID, prioritizedTasks, distroQueueInfo)
-	if err != nil {
-		return nil, errors.Wrapf(err, "saving the task queue for distro '%s'", distroID)
-	}
-
-	return prioritizedTasks, nil
-}
 
 // GetDistroQueueInfo returns the distroQueueInfo for the given set of tasks having set the task.ExpectedDuration for each task.
 func GetDistroQueueInfo(ctx context.Context, distroID string, tasks []task.Task, maxDurationThreshold time.Duration, opts TaskPlannerOptions) model.DistroQueueInfo {
@@ -283,7 +215,7 @@ func SpawnHosts(ctx context.Context, d distro.Distro, newHostsNeeded int, pool *
 	for _, h := range hostsSpawned {
 		hostIDs = append(hostIDs, h.Id)
 	}
-	event.LogManyHostsCreated(hostIDs)
+	event.LogManyHostsCreated(ctx, hostIDs)
 
 	grip.Info(message.Fields{
 		"runner":        RunnerName,

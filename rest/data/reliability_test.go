@@ -25,7 +25,7 @@ func TestMockGetTaskReliability(t *testing.T) {
 	proj := model.ProjectRef{
 		Id: "project",
 	}
-	require.NoError(t, proj.Insert())
+	require.NoError(t, proj.Insert(t.Context()))
 	filter := reliability.TaskReliabilityFilter{
 		StatsFilter: taskstats.StatsFilter{
 			Limit:        100,
@@ -39,7 +39,7 @@ func TestMockGetTaskReliability(t *testing.T) {
 			AfterDate:    utility.GetUTCDay(time.Now().Add(-dayInHours)),
 		},
 	}
-	scores, err := GetTaskReliabilityScores(filter)
+	scores, err := GetTaskReliabilityScores(t.Context(), filter)
 	assert.NoError(err)
 	assert.Empty(scores)
 
@@ -49,7 +49,7 @@ func TestMockGetTaskReliability(t *testing.T) {
 	for i := 0; i < 102; i++ {
 		taskName := fmt.Sprintf("%v%v", "task_", i)
 		tasks = append(tasks, taskName)
-		err = db.Insert(taskstats.DailyTaskStatsCollection, mgobson.M{
+		err = db.Insert(t.Context(), taskstats.DailyTaskStatsCollection, mgobson.M{
 			"_id": taskstats.DBTaskStatsID{
 				Project:      "project",
 				Requester:    "requester",
@@ -75,7 +75,7 @@ func TestMockGetTaskReliability(t *testing.T) {
 		},
 	}
 
-	scores, err = GetTaskReliabilityScores(filter)
+	scores, err = GetTaskReliabilityScores(t.Context(), filter)
 	assert.NoError(err)
 	assert.Len(scores, 100)
 
@@ -101,7 +101,7 @@ func TestGetTaskReliability(t *testing.T) {
 	proj := model.ProjectRef{
 		Id: "project",
 	}
-	require.NoError(t, proj.Insert())
+	require.NoError(t, proj.Insert(t.Context()))
 	stat := taskstats.DBTaskStats{
 		Id: taskstats.DBTaskStatsID{
 			Project:   "projectID",
@@ -110,12 +110,12 @@ func TestGetTaskReliability(t *testing.T) {
 			Requester: evergreen.RepotrackerVersionRequester,
 		},
 	}
-	assert.NoError(t, db.Insert(taskstats.DailyTaskStatsCollection, stat))
+	assert.NoError(t, db.Insert(t.Context(), taskstats.DailyTaskStatsCollection, stat))
 	projectRef := model.ProjectRef{
 		Id:         "projectID",
 		Identifier: "projectName",
 	}
-	assert.NoError(t, projectRef.Insert())
+	assert.NoError(t, projectRef.Insert(t.Context()))
 
 	filter := reliability.TaskReliabilityFilter{}
 	filter.Project = "projectName"
@@ -127,7 +127,7 @@ func TestGetTaskReliability(t *testing.T) {
 	filter.BeforeDate = time.Date(2022, 02, 16, 0, 0, 0, 0, time.UTC)
 	filter.Limit = 1
 	filter.Tasks = []string{"t0"}
-	scores, err := GetTaskReliabilityScores(filter)
+	scores, err := GetTaskReliabilityScores(t.Context(), filter)
 
 	assert.NoError(t, err)
 	require.Len(t, scores, 1)

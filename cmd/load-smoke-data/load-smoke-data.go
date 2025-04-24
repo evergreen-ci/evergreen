@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -61,12 +62,9 @@ func insertFileDocsToDB(ctx context.Context, fn string, db *mongo.Database) erro
 	switch collName {
 	case task.Collection:
 		if _, err = collection.Indexes().CreateMany(ctx, []mongo.IndexModel{
-			{
-				Keys: task.ActivatedTasksByDistroIndex,
-			},
-			{
-				Keys: task.DurationIndex,
-			},
+			{Keys: task.ActivatedTasksByDistroIndex},
+			{Keys: task.DurationIndex},
+			{Keys: model.TaskHistoryIndex},
 		}); err != nil {
 			return errors.Wrap(err, "creating task indexes")
 		}
@@ -109,7 +107,7 @@ func insertFileDocsToDB(ctx context.Context, fn string, db *mongo.Database) erro
 func writeDummyGridFSFile(ctx context.Context, db *mongo.Database) error {
 	bucket, err := gridfs.NewBucket(db, &options.BucketOptions{Name: utility.ToStringPtr(patch.GridFSPrefix)})
 	if err != nil {
-		return errors.Wrap(err, "creating GridFS bucket")
+		return errors.Wrap(err, "Creating gridFS bucket")
 	}
 	_, err = bucket.UploadFromStream(gridFSFileID, strings.NewReader("sample_patch"), nil)
 	if err != nil {

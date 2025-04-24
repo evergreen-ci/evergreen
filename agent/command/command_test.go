@@ -27,7 +27,7 @@ func setupTestPatchData(apiData *modelutil.TestModelData, patchPath string, t *t
 			},
 		}
 
-		require.NoError(t, patch.Insert())
+		require.NoError(t, patch.Insert(t.Context()))
 
 	}
 

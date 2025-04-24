@@ -258,7 +258,7 @@ func TestByTaskGroupOrder(t *testing.T) {
 	v := &model.Version{
 		Id: "version_id",
 	}
-	require.NoError(v.Insert())
+	require.NoError(v.Insert(t.Context()))
 	taskComparator.tasks = tasks
 	taskComparator.versions = map[string]model.Version{"version_id": *v}
 	result, _, err = byTaskGroupOrderCmp.compare(tasks[0], tasks[1], taskComparator)
@@ -288,12 +288,12 @@ func TestPrioritizeTasksWithSameTaskGroupsAndDifferentBuilds(t *testing.T) {
 		Id: "version_1",
 	}
 	versions := map[string]model.Version{"version_1": v}
-	require.NoError(v.Insert())
+	require.NoError(v.Insert(t.Context()))
 	v = model.Version{
 		Id: "version_2",
 	}
 	versions["version_2"] = v
-	require.NoError(v.Insert())
+	require.NoError(v.Insert(t.Context()))
 	tasks := task.Tasks{
 		{
 			Id:             "task_1",
@@ -332,7 +332,7 @@ func TestPrioritizeTasksWithSameTaskGroupsAndDifferentBuilds(t *testing.T) {
 			TaskGroupOrder: 1,
 		},
 	}
-	require.NoError(tasks.Insert())
+	require.NoError(tasks.Insert(t.Context()))
 
 	prioritizer := &CmpBasedTaskPrioritizer{}
 	sorted, _, err := prioritizer.PrioritizeTasks(ctx, "distro", tasks.Export(), versions)
@@ -358,12 +358,12 @@ func TestTaskGroupsNotOutOfOrderFromOtherComparators(t *testing.T) {
 		Id: "version_1",
 	}
 	versions := map[string]model.Version{"version_1": v}
-	require.NoError(v.Insert())
+	require.NoError(v.Insert(t.Context()))
 	v = model.Version{
 		Id: "version_2",
 	}
 	versions["version_2"] = v
-	require.NoError(v.Insert())
+	require.NoError(v.Insert(t.Context()))
 
 	tasks := []task.Task{
 		{

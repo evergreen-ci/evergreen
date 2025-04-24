@@ -67,7 +67,7 @@ func (s *StatusSuite) SetupTest() {
 		},
 	}
 	for _, t := range tasks {
-		s.NoError(t.Insert())
+		s.NoError(t.Insert(s.T().Context()))
 	}
 	s.h = &recentTasksGetHandler{}
 }
@@ -215,29 +215,29 @@ func (s *StatusSuite) TaskTaskType() {
 	resp := s.h.Run(context.Background())
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
-	found := resp.Data().([]interface{})[0].(*model.APITask)
+	found := resp.Data().([]any)[0].(*model.APITask)
 	s.Equal(utility.ToStringPtr("task1"), found.Id)
 
 	s.h.taskType = evergreen.TaskStarted
 	resp = s.h.Run(context.Background())
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
-	found = resp.Data().([]interface{})[0].(*model.APITask)
+	found = resp.Data().([]any)[0].(*model.APITask)
 	s.Equal(utility.ToStringPtr("task2"), found.Id)
 
 	s.h.taskType = evergreen.TaskSucceeded
 	resp = s.h.Run(context.Background())
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
-	found = resp.Data().([]interface{})[0].(*model.APITask)
+	found = resp.Data().([]any)[0].(*model.APITask)
 	s.Equal(utility.ToStringPtr("task3"), found.Id)
-	found = resp.Data().([]interface{})[1].(*model.APITask)
+	found = resp.Data().([]any)[1].(*model.APITask)
 	s.Equal(utility.ToStringPtr("task4"), found.Id)
 
 	s.h.taskType = evergreen.TaskSystemTimedOut
 	resp = s.h.Run(context.Background())
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
-	found = resp.Data().([]interface{})[0].(*model.APITask)
+	found = resp.Data().([]any)[0].(*model.APITask)
 	s.Equal(utility.ToStringPtr("task5"), found.Id)
 }

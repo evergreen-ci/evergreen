@@ -25,6 +25,7 @@ func init() {
 
 type UserTestSuite struct {
 	suite.Suite
+	env   evergreen.Environment
 	users []*DBUser
 }
 
@@ -34,8 +35,9 @@ func TestUserTestSuite(t *testing.T) {
 }
 
 func (s *UserTestSuite) SetupSuite() {
-	rm := evergreen.GetEnvironment().RoleManager()
-	s.NoError(rm.RegisterPermissions([]string{"permission"}))
+	env := testutil.NewEnvironment(s.T().Context(), s.T())
+	s.env = env
+	s.NoError(env.RoleManager().RegisterPermissions([]string{"permission"}))
 }
 
 func (s *UserTestSuite) SetupTest() {
@@ -121,10 +123,10 @@ func (s *UserTestSuite) SetupTest() {
 	}
 
 	for _, user := range s.users {
-		s.NoError(user.Insert())
+		s.NoError(user.Insert(s.T().Context()))
 	}
 
-	rm := evergreen.GetEnvironment().RoleManager()
+	rm := s.env.RoleManager()
 	scope1 := gimlet.Scope{
 		ID:          "1",
 		Resources:   []string{"resource1", "resource2"},
@@ -196,7 +198,7 @@ func (s *UserTestSuite) SetupTest() {
 }
 
 func (s *UserTestSuite) TearDownTest() {
-	s.NoError(db.ClearCollections(Collection))
+	s.NoError(db.ClearCollections(Collection, evergreen.ScopeCollection, evergreen.RoleCollection))
 }
 
 func (s *UserTestSuite) TestGetPublicKey() {
@@ -212,12 +214,12 @@ func (s *UserTestSuite) TestGetPublicKeyThatDoesntExist() {
 }
 
 func (s *UserTestSuite) TestAddKey() {
-	s.Require().NoError(s.users[0].AddPublicKey("key1", "ssh-mock 67890"))
+	s.Require().NoError(s.users[0].AddPublicKey(s.T().Context(), "key1", "ssh-mock 67890"))
 	key, err := s.users[0].GetPublicKey("key1")
 	s.Require().NoError(err)
 	s.Equal("ssh-mock 67890", key)
 
-	u, err := FindOne(ById(s.users[0].Id))
+	u, err := FindOneContext(s.T().Context(), ById(s.users[0].Id))
 	s.Require().NoError(err)
 	s.Require().NotNil(u)
 
@@ -232,40 +234,40 @@ func (s *UserTestSuite) TestCheckAndUpdateSchedulingLimit() {
 	maxScheduledTasks := 100
 
 	// Should not be able to go to a negative counter
-	s.Require().NoError(u.CheckAndUpdateSchedulingLimit(maxScheduledTasks, 100, false))
-	u, err := FindOne(ById(u.Id))
+	s.Require().NoError(u.CheckAndUpdateSchedulingLimit(s.T().Context(), maxScheduledTasks, 100, false))
+	u, err := FindOneContext(s.T().Context(), ById(u.Id))
 	s.Require().NoError(err)
 	s.Require().NotNil(u)
 	s.Equal(0, u.NumScheduledPatchTasks)
 
 	// Confirm scheduling tasks less than the limit is allowed
-	s.Require().NoError(u.CheckAndUpdateSchedulingLimit(maxScheduledTasks, 99, true))
-	u, err = FindOne(ById(u.Id))
+	s.Require().NoError(u.CheckAndUpdateSchedulingLimit(s.T().Context(), maxScheduledTasks, 99, true))
+	u, err = FindOneContext(s.T().Context(), ById(u.Id))
 	s.Require().NoError(err)
 	s.Require().NotNil(u)
 	s.Equal(99, u.NumScheduledPatchTasks)
 
 	// Confirm NumScheduledPatchTasks is unchanged and we receive an error after breaching the limit
-	err = u.CheckAndUpdateSchedulingLimit(maxScheduledTasks, 1, true)
+	err = u.CheckAndUpdateSchedulingLimit(s.T().Context(), maxScheduledTasks, 1, true)
 	s.Require().Error(err)
 	s.Contains(err.Error(), fmt.Sprintf("user '%s' has scheduled %d out of %d allowed tasks in the past hour", u.Id, u.NumScheduledPatchTasks, maxScheduledTasks))
-	u, err = FindOne(ById(u.Id))
+	u, err = FindOneContext(s.T().Context(), ById(u.Id))
 	s.Require().NoError(err)
 	s.Require().NotNil(u)
 	s.Equal(99, u.NumScheduledPatchTasks)
 
 	// Confirm unscheduling one task brings the count-down to 98
-	err = u.CheckAndUpdateSchedulingLimit(maxScheduledTasks, 1, false)
+	err = u.CheckAndUpdateSchedulingLimit(s.T().Context(), maxScheduledTasks, 1, false)
 	s.Require().NoError(err)
-	u, err = FindOne(ById(u.Id))
+	u, err = FindOneContext(s.T().Context(), ById(u.Id))
 	s.Require().NoError(err)
 	s.Require().NotNil(u)
 	s.Equal(98, u.NumScheduledPatchTasks)
 
 	// Confirm that scheduling one more task is now possible
-	err = u.CheckAndUpdateSchedulingLimit(maxScheduledTasks, 1, true)
+	err = u.CheckAndUpdateSchedulingLimit(s.T().Context(), maxScheduledTasks, 1, true)
 	s.Require().NoError(err)
-	u, err = FindOne(ById(u.Id))
+	u, err = FindOneContext(s.T().Context(), ById(u.Id))
 	s.Require().NoError(err)
 	s.Require().NotNil(u)
 	s.Equal(99, u.NumScheduledPatchTasks)
@@ -273,9 +275,9 @@ func (s *UserTestSuite) TestCheckAndUpdateSchedulingLimit() {
 	// When the last time the user has scheduled tasks falls out of the hour, we should reset the
 	// counter, and we should not be able to go negative
 	u.LastScheduledTasksAt = time.Now().Add(-1 * time.Hour)
-	err = u.CheckAndUpdateSchedulingLimit(maxScheduledTasks, 5, true)
+	err = u.CheckAndUpdateSchedulingLimit(s.T().Context(), maxScheduledTasks, 5, true)
 	s.Require().NoError(err)
-	u, err = FindOne(ById(u.Id))
+	u, err = FindOneContext(s.T().Context(), ById(u.Id))
 	s.Require().NoError(err)
 	s.Require().NotNil(u)
 	s.Equal(5, u.NumScheduledPatchTasks)
@@ -283,19 +285,19 @@ func (s *UserTestSuite) TestCheckAndUpdateSchedulingLimit() {
 	// When the last time the user has scheduled tasks falls out of the hour, we should reset the
 	// counter, and we should not be able to go negative
 	u.LastScheduledTasksAt = time.Now().Add(-1 * time.Hour)
-	err = u.CheckAndUpdateSchedulingLimit(maxScheduledTasks, 5, false)
+	err = u.CheckAndUpdateSchedulingLimit(s.T().Context(), maxScheduledTasks, 5, false)
 	s.Require().NoError(err)
-	u, err = FindOne(ById(u.Id))
+	u, err = FindOneContext(s.T().Context(), ById(u.Id))
 	s.Require().NoError(err)
 	s.Require().NotNil(u)
 	s.Equal(0, u.NumScheduledPatchTasks)
 
 	// Confirm you cannot schedule more tasks than the limit, even if your counter is zero
 	u.LastScheduledTasksAt = time.Now().Add(-1 * time.Hour)
-	err = u.CheckAndUpdateSchedulingLimit(maxScheduledTasks, 101, true)
+	err = u.CheckAndUpdateSchedulingLimit(s.T().Context(), maxScheduledTasks, 101, true)
 	s.Require().Error(err)
 	s.Contains(err.Error(), fmt.Sprintf("cannot schedule %d tasks, maximum hourly per-user limit is %d", 101, 100))
-	u, err = FindOne(ById(u.Id))
+	u, err = FindOneContext(s.T().Context(), ById(u.Id))
 	s.Require().NoError(err)
 	s.Require().NotNil(u)
 	s.Equal(0, u.NumScheduledPatchTasks)
@@ -304,21 +306,21 @@ func (s *UserTestSuite) TestCheckAndUpdateSchedulingLimit() {
 	u.LastScheduledTasksAt = time.Now().Add(-1 * time.Minute)
 	u.NumScheduledPatchTasks = 120
 	update := bson.M{"$set": bson.M{NumScheduledPatchTasksKey: 120}}
-	s.Require().NoError(UpdateOne(bson.M{IdKey: u.Id}, update))
-	err = u.CheckAndUpdateSchedulingLimit(maxScheduledTasks, 10, false)
+	s.Require().NoError(UpdateOneContext(s.T().Context(), bson.M{IdKey: u.Id}, update))
+	err = u.CheckAndUpdateSchedulingLimit(s.T().Context(), maxScheduledTasks, 10, false)
 	s.Require().NoError(err)
-	u, err = FindOne(ById(u.Id))
+	u, err = FindOneContext(s.T().Context(), ById(u.Id))
 	s.Require().NoError(err)
 	s.Require().NotNil(u)
 	s.Equal(110, u.NumScheduledPatchTasks)
 }
 
 func (s *UserTestSuite) TestAddDuplicateKeyFails() {
-	err := s.users[1].AddPublicKey("key1", "ssh-mock 67890")
+	err := s.users[1].AddPublicKey(s.T().Context(), "key1", "ssh-mock 67890")
 	s.Error(err)
 	s.Contains(err.Error(), "not found")
 
-	u, err := FindOne(ById(s.users[1].Id))
+	u, err := FindOneContext(s.T().Context(), ById(s.users[1].Id))
 	s.NoError(err)
 	s.NotNil(u)
 	s.checkUserNotDestroyed(u, s.users[1])
@@ -330,68 +332,68 @@ func (s *UserTestSuite) checkUserNotDestroyed(fromDB *DBUser, expected *DBUser) 
 }
 
 func (s *UserTestSuite) TestUpdatePublicKey() {
-	s.NoError(s.users[5].UpdatePublicKey("key1", "key1", "this is an amazing key"))
+	s.NoError(s.users[5].UpdatePublicKey(s.T().Context(), "key1", "key1", "this is an amazing key"))
 	s.Len(s.users[5].PubKeys, 1)
 	s.Contains(s.users[5].PubKeys[0].Name, "key1")
 	s.Contains(s.users[5].PubKeys[0].Key, "this is an amazing key")
 
-	u, err := FindOne(ById(s.users[5].Id))
+	u, err := FindOneContext(s.T().Context(), ById(s.users[5].Id))
 	s.NoError(err)
 	s.checkUserNotDestroyed(u, s.users[5])
 }
 
 func (s *UserTestSuite) TestUpdatePublicKeyWithSameKeyName() {
-	s.NoError(s.users[5].UpdatePublicKey("key1", "keyAmazing", "this is an amazing key"))
+	s.NoError(s.users[5].UpdatePublicKey(s.T().Context(), "key1", "keyAmazing", "this is an amazing key"))
 	s.Len(s.users[5].PubKeys, 1)
 	s.Contains(s.users[5].PubKeys[0].Name, "keyAmazing")
 	s.Contains(s.users[5].PubKeys[0].Key, "this is an amazing key")
 
-	u, err := FindOne(ById(s.users[5].Id))
+	u, err := FindOneContext(s.T().Context(), ById(s.users[5].Id))
 	s.NoError(err)
 	s.checkUserNotDestroyed(u, s.users[5])
 }
 
 func (s *UserTestSuite) TestUpdatePublicKeyThatDoesntExist() {
-	s.Error(s.users[5].UpdatePublicKey("non-existent-key", "keyAmazing", "this is an amazing key"))
+	s.Error(s.users[5].UpdatePublicKey(s.T().Context(), "non-existent-key", "keyAmazing", "this is an amazing key"))
 	s.Len(s.users[5].PubKeys, 1)
 	s.Contains(s.users[5].PubKeys[0].Name, "key1")
 	s.Contains(s.users[5].PubKeys[0].Key, "ssh-mock 12345")
 
-	u, err := FindOne(ById(s.users[5].Id))
+	u, err := FindOneContext(s.T().Context(), ById(s.users[5].Id))
 	s.NoError(err)
 	s.checkUserNotDestroyed(u, s.users[5])
 }
 
 func (s *UserTestSuite) TestDeletePublicKey() {
-	s.NoError(s.users[1].DeletePublicKey("key1"))
+	s.NoError(s.users[1].DeletePublicKey(s.T().Context(), "key1"))
 	s.Empty(s.users[1].PubKeys)
 	s.Equal("67890", s.users[1].APIKey)
 
-	u, err := FindOne(ById(s.users[1].Id))
+	u, err := FindOneContext(s.T().Context(), ById(s.users[1].Id))
 	s.NoError(err)
 	s.checkUserNotDestroyed(u, s.users[1])
 }
 
 func (s *UserTestSuite) TestDeletePublicKeyThatDoesntExist() {
-	s.Error(s.users[0].DeletePublicKey("key1"))
+	s.Error(s.users[0].DeletePublicKey(s.T().Context(), "key1"))
 	s.Empty(s.users[0].PubKeys)
 	s.Equal("12345", s.users[0].APIKey)
 
-	u, err := FindOne(ById(s.users[0].Id))
+	u, err := FindOneContext(s.T().Context(), ById(s.users[0].Id))
 	s.NoError(err)
 	s.checkUserNotDestroyed(u, s.users[0])
 }
 
 func (s *UserTestSuite) TestFindByGithubUID() {
-	u, err := FindByGithubUID(1234)
+	u, err := FindByGithubUID(s.T().Context(), 1234)
 	s.NoError(err)
 	s.Equal("Test1", u.Id)
 
-	u, err = FindByGithubUID(0)
+	u, err = FindByGithubUID(s.T().Context(), 0)
 	s.NoError(err)
 	s.Nil(u)
 
-	u, err = FindByGithubUID(-1)
+	u, err = FindByGithubUID(s.T().Context(), -1)
 	s.NoError(err)
 	s.Nil(u)
 }
@@ -413,12 +415,12 @@ func (s *UserTestSuite) TestFindOneByToken() {
 }
 
 func (s *UserTestSuite) TestFindOneById() {
-	u, err := FindOneById(s.users[0].Id)
+	u, err := FindOneByIdContext(s.T().Context(), s.users[0].Id)
 	s.NoError(err)
 	s.NotNil(u)
 	s.Equal("Test1", u.Id)
 
-	u, err = FindOneById(s.users[1].Id)
+	u, err = FindOneByIdContext(s.T().Context(), s.users[1].Id)
 	s.NoError(err)
 	s.NotNil(u)
 	s.Equal("Test2", u.Id)
@@ -441,13 +443,13 @@ func (s *UserTestSuite) TestPutLoginCache() {
 	s.Error(err)
 	s.Empty(token3)
 
-	u1, err := FindOneById(s.users[0].Id)
+	u1, err := FindOneByIdContext(s.T().Context(), s.users[0].Id)
 	s.NoError(err)
 	s.Equal(s.users[0].Id, u1.Id)
 	s.Equal(s.users[0].LoginCache.AccessToken, u1.LoginCache.AccessToken)
 	s.Equal(s.users[0].LoginCache.RefreshToken, u1.LoginCache.RefreshToken)
 
-	u2, err := FindOneById(s.users[1].Id)
+	u2, err := FindOneByIdContext(s.T().Context(), s.users[1].Id)
 	s.NoError(err)
 	s.Equal(s.users[1].Id, u2.Id)
 	s.Equal(s.users[0].LoginCache.AccessToken, u1.LoginCache.AccessToken)
@@ -461,7 +463,7 @@ func (s *UserTestSuite) TestPutLoginCache() {
 	time.Sleep(time.Millisecond) // sleep to check TTL changed
 	token4, err := PutLoginCache(s.users[0])
 	s.NoError(err)
-	u4, err := FindOneById(s.users[0].Id)
+	u4, err := FindOneByIdContext(s.T().Context(), s.users[0].Id)
 	s.NoError(err)
 	s.Equal(u1.LoginCache.Token, u4.LoginCache.Token)
 	s.NotEqual(u1.LoginCache.TTL, u4.LoginCache.TTL)
@@ -472,7 +474,7 @@ func (s *UserTestSuite) TestPutLoginCache() {
 	s.users[0].LoginCache.RefreshToken = "new_refresh_token"
 	token5, err := PutLoginCache(s.users[0])
 	s.NoError(err)
-	u5, err := FindOneById(s.users[0].Id)
+	u5, err := FindOneByIdContext(s.T().Context(), s.users[0].Id)
 	s.NoError(err)
 	s.Equal(u1.LoginCache.Token, u5.LoginCache.Token)
 	s.Equal(token1, token5)
@@ -482,7 +484,7 @@ func (s *UserTestSuite) TestPutLoginCache() {
 	// Fresh user with no token should generate new token
 	token6, err := PutLoginCache(s.users[2])
 	s.NoError(err)
-	u6, err := FindOneById(s.users[2].Id)
+	u6, err := FindOneByIdContext(s.T().Context(), s.users[2].Id)
 	s.Equal(token6, u6.LoginCache.Token)
 	s.NoError(err)
 	s.NotEmpty(token6)
@@ -549,41 +551,20 @@ func (s *UserTestSuite) TestClearAllLoginCaches() {
 	s.Nil(u)
 }
 
-func (s *UserTestSuite) TestGetPatchUser() {
-	uid := 1234
-	u, err := GetPatchUser(uid)
-	s.NoError(err)
-	s.Require().NotNil(u)
-	s.Equal("Test1", u.Id)
-
-	uid = 9876
-	u, err = GetPatchUser(uid)
-	s.NoError(err)
-	s.NotNil(u)
-	s.Equal(evergreen.GithubPatchUser, u.Id)
-}
-
-func (s *UserTestSuite) TestGetSlackMemberId() {
-	username := "person"
-	memberId, err := GetSlackMemberId(username)
-	s.NoError(err)
-	s.Equal("12345member", memberId)
-}
-
 func (s *UserTestSuite) TestRoles() {
 	u := s.users[0]
 	for i := 1; i <= 3; i++ {
-		s.NoError(u.AddRole(strconv.Itoa(i)))
+		s.NoError(u.AddRole(s.T().Context(), strconv.Itoa(i)))
 	}
-	dbUser, err := FindOneById(u.Id)
+	dbUser, err := FindOneByIdContext(s.T().Context(), u.Id)
 	s.NoError(err)
 	s.EqualValues(dbUser.SystemRoles, u.SystemRoles)
 
-	s.NoError(u.RemoveRole("2"))
-	dbUser, err = FindOneById(u.Id)
+	s.NoError(u.RemoveRole(s.T().Context(), "2"))
+	dbUser, err = FindOneByIdContext(s.T().Context(), u.Id)
 	s.NoError(err)
 	s.EqualValues(dbUser.SystemRoles, u.SystemRoles)
-	s.NoError(u.RemoveRole("definitely non-existent role"))
+	s.NoError(u.RemoveRole(s.T().Context(), "definitely non-existent role"))
 }
 
 func (s *UserTestSuite) TestFavoriteProjects() {
@@ -592,24 +573,24 @@ func (s *UserTestSuite) TestFavoriteProjects() {
 	expected := []string{projID}
 
 	// add a project
-	err := u.AddFavoritedProject(projID)
+	err := u.AddFavoritedProject(s.T().Context(), projID)
 	s.NoError(err)
 	s.EqualValues(expected, u.FavoriteProjects)
 
 	// try to add the same project again
-	err = u.AddFavoritedProject(projID)
+	err = u.AddFavoritedProject(s.T().Context(), projID)
 	s.Require().Error(err)
 	s.EqualValues(expected, u.FavoriteProjects)
 
 	// remove a project
 	expected = []string{}
 
-	err = u.RemoveFavoriteProject(projID)
+	err = u.RemoveFavoriteProject(s.T().Context(), projID)
 	s.NoError(err)
 	s.EqualValues(expected, u.FavoriteProjects)
 
 	// try to remove a project that does not exist
-	err = u.RemoveFavoriteProject(projID)
+	err = u.RemoveFavoriteProject(s.T().Context(), projID)
 	s.Require().Error(err)
 	s.EqualValues(expected, u.FavoriteProjects)
 }
@@ -622,7 +603,7 @@ func (s *UserTestSuite) TestHasPermission() {
 	s.False(hasPermission)
 
 	// has a role with explicit permission to the resource
-	s.NoError(u.AddRole("r1p1"))
+	s.NoError(u.AddRole(s.T().Context(), "r1p1"))
 	hasPermission = u.HasPermission(gimlet.PermissionOpts{Resource: "resource1", Permission: "permission", RequiredLevel: 1})
 	s.True(hasPermission)
 	hasPermission = u.HasPermission(gimlet.PermissionOpts{Resource: "resource1", Permission: "permission", RequiredLevel: 0})
@@ -633,7 +614,7 @@ func (s *UserTestSuite) TestHasPermission() {
 	s.False(hasPermission)
 
 	// role with a parent scope
-	s.NoError(u.AddRole("r12p1"))
+	s.NoError(u.AddRole(s.T().Context(), "r12p1"))
 	hasPermission = u.HasPermission(gimlet.PermissionOpts{Resource: "resource2", Permission: "permission", RequiredLevel: 1})
 	s.True(hasPermission)
 
@@ -642,11 +623,40 @@ func (s *UserTestSuite) TestHasPermission() {
 	s.False(hasPermission)
 
 	// permission to everything
-	s.NoError(u.RemoveRole("r1p1"))
-	s.NoError(u.RemoveRole("r12p1"))
-	s.NoError(u.AddRole("r1234p2"))
+	s.NoError(u.RemoveRole(s.T().Context(), "r1p1"))
+	s.NoError(u.RemoveRole(s.T().Context(), "r12p1"))
+	s.NoError(u.AddRole(s.T().Context(), "r1234p2"))
 	hasPermission = u.HasPermission(gimlet.PermissionOpts{Resource: "resource4", Permission: "permission", RequiredLevel: 2})
 	s.True(hasPermission)
+}
+
+func (s *UserTestSuite) TestHasDistroCreatePermission() {
+	roleManager := s.env.RoleManager()
+
+	usr := DBUser{
+		Id: "basic_user",
+	}
+	s.NoError(usr.Insert(s.T().Context()))
+	s.Require().False(usr.HasDistroCreatePermission())
+
+	createRole := gimlet.Role{
+		ID:          "create_distro",
+		Name:        "create_distro",
+		Scope:       "superuser_scope",
+		Permissions: map[string]int{evergreen.PermissionDistroCreate: evergreen.DistroCreate.Value},
+	}
+	s.Require().NoError(roleManager.UpdateRole(createRole))
+	s.Require().NoError(usr.AddRole(s.T().Context(), createRole.ID))
+
+	superUserScope := gimlet.Scope{
+		ID:        "superuser_scope",
+		Name:      "superuser scope",
+		Type:      evergreen.SuperUserResourceType,
+		Resources: []string{evergreen.SuperUserPermissionsID},
+	}
+	s.Require().NoError(roleManager.AddScope(superUserScope))
+
+	s.True(usr.HasDistroCreatePermission())
 }
 
 func (s *UserTestSuite) TestFindNeedsReauthorization() {
@@ -659,24 +669,24 @@ func (s *UserTestSuite) TestFindNeedsReauthorization() {
 		return len(left) == 0 && len(right) == 0
 	}
 
-	users, err := FindNeedsReauthorization(0)
+	users, err := FindNeedsReauthorization(s.T().Context(), 0)
 	s.NoError(err)
 	s.Require().Len(users, 4)
 	s.True(containsUsers(users, "Test1", "Test2", "Test4", "Test5"), "should find all logged in users")
 	s.False(containsUsers(users, "Test3"), "should not find logged out users")
 
-	users, err = FindNeedsReauthorization(0)
+	users, err = FindNeedsReauthorization(s.T().Context(), 0)
 	s.NoError(err)
 	s.Require().Len(users, 4)
 	s.True(containsUsers(users, "Test1", "Test2", "Test4", "Test5"), "should find logged in users who have not exceeded max reauth attempts")
 	s.False(containsUsers(users, "Test3", "Test6"), "should not find logged out users or users who have exceeded max reauth attempts")
 
-	users, err = FindNeedsReauthorization(30 * time.Minute)
+	users, err = FindNeedsReauthorization(s.T().Context(), 30*time.Minute)
 	s.NoError(err)
 	s.Require().Len(users, 1)
 	s.True(containsUsers(users, "Test2"), "should find logged in users who have exceeded the reauth limit")
 
-	users, err = FindNeedsReauthorization(24 * time.Hour)
+	users, err = FindNeedsReauthorization(s.T().Context(), 24*time.Hour)
 	s.NoError(err)
 	s.Empty(users, "should not find users who have not exceeded the reauth limit")
 }
@@ -692,10 +702,10 @@ func TestServiceUserOperations(t *testing.T) {
 		SystemRoles:  []string{"one"},
 		EmailAddress: "myemail@mailplace.com",
 	}
-	assert.EqualError(t, AddOrUpdateServiceUser(u), "cannot update a non-service user")
+	assert.EqualError(t, AddOrUpdateServiceUser(t.Context(), u), "cannot update a non-service user")
 	u.OnlyAPI = true
-	assert.NoError(t, AddOrUpdateServiceUser(u))
-	dbUser, err := FindOneById(u.Id)
+	assert.NoError(t, AddOrUpdateServiceUser(t.Context(), u))
+	dbUser, err := FindOneByIdContext(t.Context(), u.Id)
 	assert.NoError(t, err)
 	assert.True(t, dbUser.OnlyAPI)
 	assert.Equal(t, u.DispName, dbUser.DispName)
@@ -705,8 +715,8 @@ func TestServiceUserOperations(t *testing.T) {
 
 	u.DispName = "another"
 	u.SystemRoles = []string{"one", "two"}
-	assert.NoError(t, AddOrUpdateServiceUser(u))
-	dbUser, err = FindOneById(u.Id)
+	assert.NoError(t, AddOrUpdateServiceUser(t.Context(), u))
+	dbUser, err = FindOneByIdContext(t.Context(), u.Id)
 	assert.NoError(t, err)
 	assert.True(t, dbUser.OnlyAPI)
 	assert.Equal(t, u.DispName, dbUser.DispName)
@@ -714,7 +724,7 @@ func TestServiceUserOperations(t *testing.T) {
 	assert.Equal(t, u.APIKey, dbUser.APIKey)
 	assert.Equal(t, u.EmailAddress, dbUser.EmailAddress)
 
-	users, err := FindServiceUsers()
+	users, err := FindServiceUsers(t.Context())
 	assert.NoError(t, err)
 	assert.Len(t, users, 1)
 
@@ -722,7 +732,7 @@ func TestServiceUserOperations(t *testing.T) {
 	assert.EqualError(t, err, "service user 'doesntexist' not found")
 	err = DeleteServiceUser(ctx, u.Id)
 	assert.NoError(t, err)
-	dbUser, err = FindOneById(u.Id)
+	dbUser, err = FindOneByIdContext(t.Context(), u.Id)
 	assert.NoError(t, err)
 	assert.Nil(t, dbUser)
 }
@@ -750,7 +760,7 @@ func TestGetOrCreateUser(t *testing.T) {
 			apiKey := user.GetAPIKey()
 			assert.NotEmpty(t, apiKey)
 
-			dbUser, err := FindOneById(id)
+			dbUser, err := FindOneByIdContext(t.Context(), id)
 			require.NoError(t, err)
 			require.NotZero(t, dbUser)
 			checkUser(t, dbUser, id, name, email, accessToken, refreshToken)
@@ -889,8 +899,8 @@ func TestViewableProject(t *testing.T) {
 	myUser := DBUser{
 		Id: "me",
 	}
-	assert.NoError(t, myUser.Insert())
-	err = myUser.AddRole(evergreen.BasicProjectAccessRole)
+	assert.NoError(t, myUser.Insert(t.Context()))
+	err = myUser.AddRole(t.Context(), evergreen.BasicProjectAccessRole)
 	assert.NoError(t, err)
 
 	// assert that viewable projects contains the edit projects and the view projects
@@ -901,7 +911,7 @@ func TestViewableProject(t *testing.T) {
 	assert.Contains(t, projects, "spruce")
 
 	// assert that adding a role to the user allows them to view the restricted project they didn't have access to before
-	err = myUser.AddRole(parsleyAccessRoleId)
+	err = myUser.AddRole(t.Context(), parsleyAccessRoleId)
 	assert.NoError(t, err)
 
 	projects, err = myUser.GetViewableProjects(ctx)
@@ -965,10 +975,10 @@ func TestViewableProjectSettings(t *testing.T) {
 	myUser := DBUser{
 		Id: "me",
 	}
-	assert.NoError(t, myUser.Insert())
-	assert.NoError(t, myUser.AddRole(viewRole.ID))
-	assert.NoError(t, myUser.AddRole(editRole.ID))
-	assert.NoError(t, myUser.AddRole(otherRole.ID))
+	assert.NoError(t, myUser.Insert(t.Context()))
+	assert.NoError(t, myUser.AddRole(t.Context(), viewRole.ID))
+	assert.NoError(t, myUser.AddRole(t.Context(), editRole.ID))
+	assert.NoError(t, myUser.AddRole(t.Context(), otherRole.ID))
 
 	// assert that viewable projects contains the edit projects and the view projects
 	projects, err := myUser.GetViewableProjectSettings(ctx)
@@ -986,16 +996,16 @@ func TestUpdateParsleySettings(t *testing.T) {
 	usr := DBUser{
 		Id: "me",
 	}
-	require.NoError(t, usr.Insert())
+	require.NoError(t, usr.Insert(t.Context()))
 
 	newSettings := parsley.Settings{
 		SectionsEnabled: utility.FalsePtr(),
 	}
-	err := usr.UpdateParsleySettings(newSettings)
+	err := usr.UpdateParsleySettings(t.Context(), newSettings)
 	require.NoError(t, err)
 	assert.False(t, utility.FromBoolPtr(usr.ParsleySettings.SectionsEnabled))
 
-	dbUser, err := FindOneById(usr.Id)
+	dbUser, err := FindOneByIdContext(t.Context(), usr.Id)
 	require.NoError(t, err)
 	require.NotNil(t, dbUser)
 	assert.False(t, utility.FromBoolPtr(dbUser.ParsleySettings.SectionsEnabled))
@@ -1007,9 +1017,9 @@ func TestUpdateBetaFeatures(t *testing.T) {
 	usr := DBUser{
 		Id: "me",
 	}
-	require.NoError(t, usr.Insert())
+	require.NoError(t, usr.Insert(t.Context()))
 
-	dbUser, err := FindOneById(usr.Id)
+	dbUser, err := FindOneByIdContext(t.Context(), usr.Id)
 	require.NoError(t, err)
 	require.NotNil(t, dbUser)
 	assert.False(t, dbUser.BetaFeatures.SpruceWaterfallEnabled)
@@ -1017,11 +1027,11 @@ func TestUpdateBetaFeatures(t *testing.T) {
 	newBetaFeatureSettings := evergreen.BetaFeatures{
 		SpruceWaterfallEnabled: true,
 	}
-	err = usr.UpdateBetaFeatures(newBetaFeatureSettings)
+	err = usr.UpdateBetaFeatures(t.Context(), newBetaFeatureSettings)
 	require.NoError(t, err)
 	assert.True(t, usr.BetaFeatures.SpruceWaterfallEnabled)
 
-	dbUser, err = FindOneById(usr.Id)
+	dbUser, err = FindOneByIdContext(t.Context(), usr.Id)
 	require.NoError(t, err)
 	require.NotNil(t, dbUser)
 	assert.True(t, dbUser.BetaFeatures.SpruceWaterfallEnabled)
@@ -1029,22 +1039,22 @@ func TestUpdateBetaFeatures(t *testing.T) {
 
 func (s *UserTestSuite) TestClearUser() {
 	// Error on non-existent user.
-	s.Error(ClearUser("asdf"))
+	s.Error(ClearUser(s.T().Context(), "asdf"))
 
-	u, err := FindOneById(s.users[0].Id)
+	u, err := FindOneByIdContext(s.T().Context(), s.users[0].Id)
 	s.NoError(err)
 	s.NotNil(u)
 	s.NotEmpty(u.Settings)
 	s.Equal("Test1", u.Id)
 	s.True(u.Settings.UseSpruceOptions.SpruceV1)
-	s.NoError(u.AddRole("r1p1"))
+	s.NoError(u.AddRole(s.T().Context(), "r1p1"))
 	s.NotEmpty(u.SystemRoles)
 	s.NotEmpty(u.APIKey)
 
-	s.NoError(ClearUser(u.Id))
+	s.NoError(ClearUser(s.T().Context(), u.Id))
 
 	// Sensitive settings and roles should now be empty.
-	u, err = FindOneById(s.users[0].Id)
+	u, err = FindOneByIdContext(s.T().Context(), s.users[0].Id)
 	s.NoError(err)
 	s.NotNil(u)
 
@@ -1059,12 +1069,12 @@ func (s *UserTestSuite) TestClearUser() {
 	s.True(u.Settings.UseSpruceOptions.SpruceV1)
 
 	// Should enable for user that previously had it false
-	u, err = FindOneById(s.users[1].Id)
+	u, err = FindOneByIdContext(s.T().Context(), s.users[1].Id)
 	s.NoError(err)
 	s.NotNil(u)
 	s.False(u.Settings.UseSpruceOptions.SpruceV1)
-	s.NoError(ClearUser(u.Id))
-	u, err = FindOneById(s.users[1].Id)
+	s.NoError(ClearUser(s.T().Context(), u.Id))
+	u, err = FindOneByIdContext(s.T().Context(), s.users[1].Id)
 	s.NoError(err)
 	s.True(u.Settings.UseSpruceOptions.SpruceV1)
 }

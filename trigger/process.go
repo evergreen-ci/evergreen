@@ -12,7 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
-	"github.com/google/go-github/v52/github"
+	"github.com/google/go-github/v70/github"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -35,7 +35,7 @@ func NotificationsFromEvent(ctx context.Context, e *event.EventLogEntry) ([]noti
 		return nil, errors.Wrapf(err, "fetching data for event '%s' (resource type: '%s', event type: '%s')", e.ID, e.ResourceType, e.EventType)
 	}
 
-	subscriptions, err := event.FindSubscriptionsByAttributes(e.ResourceType, h.Attributes())
+	subscriptions, err := event.FindSubscriptionsByAttributes(ctx, e.ResourceType, h.Attributes())
 	subIDs := make([]string, 0, len(subscriptions))
 	for _, sub := range subscriptions {
 		subIDs = append(subIDs, sub.ID)
@@ -129,7 +129,7 @@ func EvalProjectTriggers(ctx context.Context, e *event.EventLogEntry, processor 
 		if data.Status != evergreen.BuildFailed && data.Status != evergreen.BuildSucceeded {
 			return nil, nil
 		}
-		b, err := build.FindOneId(e.ResourceId)
+		b, err := build.FindOneId(ctx, e.ResourceId)
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding build '%s'", e.ResourceId)
 		}
@@ -146,11 +146,11 @@ func triggerDownstreamProjectsForTask(ctx context.Context, t *task.Task, e *even
 	if t.Requester != evergreen.RepotrackerVersionRequester {
 		return nil, nil
 	}
-	downstreamProjects, err := model.FindDownstreamProjects(t.Project)
+	downstreamProjects, err := model.FindDownstreamProjects(ctx, t.Project)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding downstream projects of project '%s'", t.Project)
 	}
-	sourceVersion, err := model.VersionFindOneId(t.Version)
+	sourceVersion, err := model.VersionFindOneId(ctx, t.Version)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding source version '%s'", t.Version)
 	}
@@ -230,11 +230,11 @@ func triggerDownstreamProjectsForBuild(ctx context.Context, b *build.Build, e *e
 	if b.Requester != evergreen.RepotrackerVersionRequester {
 		return nil, nil
 	}
-	downstreamProjects, err := model.FindDownstreamProjects(b.Project)
+	downstreamProjects, err := model.FindDownstreamProjects(ctx, b.Project)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding downstream projects of project '%s'", b.Project)
 	}
-	sourceVersion, err := model.VersionFindOneId(b.Version)
+	sourceVersion, err := model.VersionFindOneId(ctx, b.Version)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding source version '%s'", b.Version)
 	}
@@ -299,7 +299,7 @@ func triggerDownstreamProjectsForBuild(ctx context.Context, b *build.Build, e *e
 // TriggerDownstreamProjectsForPush triggers downstream projects for a push event from a repo that does not
 // have repotracker enabled.
 func TriggerDownstreamProjectsForPush(ctx context.Context, projectId string, event *github.PushEvent, processor projectProcessor) error {
-	downstreamProjects, err := model.FindDownstreamProjects(projectId)
+	downstreamProjects, err := model.FindDownstreamProjects(ctx, projectId)
 	if err != nil {
 		return errors.Wrapf(err, "finding downstream projects of project '%s'", projectId)
 	}

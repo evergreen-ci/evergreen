@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -19,6 +18,8 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/validator"
+	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
 )
@@ -683,7 +684,7 @@ func (c *communicatorImpl) UpdateSettings(ctx context.Context, update *model.API
 	return newSettings, nil
 }
 
-func (c *communicatorImpl) GetEvents(ctx context.Context, ts time.Time, limit int) ([]interface{}, error) {
+func (c *communicatorImpl) GetEvents(ctx context.Context, ts time.Time, limit int) ([]any, error) {
 	info := requestInfo{
 		method: http.MethodGet,
 		path:   fmt.Sprintf("admin/events?ts=%s&limit=%d", ts.Format(time.RFC3339), limit),
@@ -694,7 +695,7 @@ func (c *communicatorImpl) GetEvents(ctx context.Context, ts time.Time, limit in
 	}
 	defer resp.Body.Close()
 
-	events := []interface{}{}
+	events := []any{}
 	err = utility.ReadJSON(resp.Body, &events)
 	if err != nil {
 		return nil, errors.Wrap(err, "reading JSON response body")
@@ -1062,7 +1063,7 @@ func (c *communicatorImpl) GetSubscriptions(ctx context.Context) ([]event.Subscr
 	return subs, nil
 }
 
-func (c *communicatorImpl) SendNotification(ctx context.Context, notificationType string, data interface{}) error {
+func (c *communicatorImpl) SendNotification(ctx context.Context, notificationType string, data any) error {
 	info := requestInfo{
 		method: http.MethodPost,
 		path:   "notifications/" + notificationType,
@@ -1082,66 +1083,6 @@ func (c *communicatorImpl) SendNotification(ctx context.Context, notificationTyp
 	}
 
 	return nil
-}
-
-// GetDockerStatus returns status of the container for the given host
-func (c *communicatorImpl) GetDockerStatus(ctx context.Context, hostID string) (*cloud.ContainerStatus, error) {
-	info := requestInfo{
-		method: http.MethodGet,
-		path:   fmt.Sprintf("hosts/%s/status", hostID),
-	}
-	resp, err := c.request(ctx, info, nil)
-	if err != nil {
-		return nil, errors.Wrapf(err, "sending request to get status for container '%s'", hostID)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, util.RespErrorf(resp, "getting status for container '%s'", hostID)
-	}
-	status := cloud.ContainerStatus{}
-	if err := utility.ReadJSON(resp.Body, &status); err != nil {
-		return nil, errors.Wrap(err, "reading JSON response body")
-	}
-
-	return &status, nil
-}
-
-func (c *communicatorImpl) GetDockerLogs(ctx context.Context, hostID string, startTime time.Time, endTime time.Time, isError bool) ([]byte, error) {
-	path := fmt.Sprintf("/hosts/%s/logs", hostID)
-	if isError {
-		path = fmt.Sprintf("%s/error", path)
-	} else {
-		path = fmt.Sprintf("%s/output", path)
-	}
-	if !utility.IsZeroTime(startTime) && !utility.IsZeroTime(endTime) {
-		path = fmt.Sprintf("%s?start_time=%s&end_time=%s", path, startTime.Format(time.RFC3339), endTime.Format(time.RFC3339))
-	} else if !utility.IsZeroTime(startTime) {
-		path = fmt.Sprintf("%s?start_time=%s", path, startTime.Format(time.RFC3339))
-	} else if !utility.IsZeroTime(endTime) {
-		path = fmt.Sprintf("%s?end_time=%s", path, endTime.Format(time.RFC3339))
-	}
-
-	info := requestInfo{
-		method: http.MethodGet,
-		path:   path,
-	}
-	resp, err := c.request(ctx, info, "")
-	if err != nil {
-		return nil, errors.Wrapf(err, "sending request to get logs for container '%s'", hostID)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, util.RespErrorf(resp, "getting logs for container '%s'", hostID)
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, errors.Wrap(err, "reading JSON response body")
-	}
-
-	return body, nil
 }
 
 func (c *communicatorImpl) GetManifestByTask(ctx context.Context, taskId string) (*manifest.Manifest, error) {
@@ -1327,13 +1268,14 @@ func (c *communicatorImpl) GetClientURLs(ctx context.Context, distroID string) (
 	return urls, nil
 }
 
-func (c *communicatorImpl) PostHostIsUp(ctx context.Context, ec2InstanceID string) (*restmodel.APIHost, error) {
+func (c *communicatorImpl) PostHostIsUp(ctx context.Context, ec2InstanceID, hostname string) (*restmodel.APIHost, error) {
 	info := requestInfo{
 		method: http.MethodPost,
 		path:   fmt.Sprintf("/hosts/%s/is_up", c.hostID),
 	}
 	opts := restmodel.APIHostIsUpOptions{
 		HostID:        c.hostID,
+		Hostname:      hostname,
 		EC2InstanceID: ec2InstanceID,
 	}
 	r, err := c.createRequest(info, opts)
@@ -1391,35 +1333,6 @@ func (c *communicatorImpl) GetHostProvisioningOptions(ctx context.Context) (*res
 	return &opts, nil
 }
 
-func (c *communicatorImpl) CompareTasks(ctx context.Context, tasks []string, useLegacy bool) ([]string, map[string]map[string]string, error) {
-	info := requestInfo{
-		method: http.MethodPost,
-		path:   "/scheduler/compare_tasks",
-	}
-	body := restmodel.CompareTasksRequest{
-		Tasks:     tasks,
-		UseLegacy: useLegacy,
-	}
-	r, err := c.createRequest(info, body)
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "creating request")
-	}
-	resp, err := c.doRequest(ctx, r)
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "sending request to get task comparison")
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, nil, util.RespError(resp, "getting task comparison")
-	}
-	var results restmodel.CompareTasksResponse
-	if err = utility.ReadJSON(resp.Body, &results); err != nil {
-		return nil, nil, errors.Wrap(err, "reading JSON response body")
-	}
-
-	return results.Order, results.Logic, nil
-}
-
 // FindHostByIpAddress queries the database for the host with ip matching the ip address
 func (c *communicatorImpl) FindHostByIpAddress(ctx context.Context, ip string) (*model.APIHost, error) {
 	info := requestInfo{
@@ -1455,7 +1368,7 @@ func (c *communicatorImpl) GetRawPatchWithModules(ctx context.Context, patchId s
 
 	resp, err := c.request(ctx, info, nil)
 	if err != nil {
-		return nil, errors.Wrapf(err, "sending request to find host by IP address")
+		return nil, errors.Wrapf(err, "sending request to get raw patch with modules")
 	}
 	defer resp.Body.Close()
 
@@ -1463,7 +1376,7 @@ func (c *communicatorImpl) GetRawPatchWithModules(ctx context.Context, patchId s
 		return nil, util.RespError(resp, AuthError)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, util.RespError(resp, "getting host by IP address")
+		return nil, util.RespError(resp, "getting raw patch with modules")
 	}
 
 	rp := restmodel.APIRawPatch{}
@@ -1576,4 +1489,55 @@ func (c *communicatorImpl) GetTestLogs(ctx context.Context, opts GetTestLogsOpti
 	header.Add(evergreen.APIUserHeader, c.apiUser)
 	header.Add(evergreen.APIKeyHeader, c.apiKey)
 	return utility.NewPaginatedReadCloser(ctx, c.httpClient, resp, header), nil
+}
+
+const server400 = "server returned status 400"
+
+func (c *communicatorImpl) Validate(ctx context.Context, data []byte, quiet bool, projectID string) (validator.ValidationErrors, error) {
+	// 413 errors are transient when validating large project configurations
+	// so we want to retry on them.
+	info := requestInfo{
+		method:     http.MethodPost,
+		path:       "validate",
+		retryOn413: true,
+	}
+
+	body := validator.ValidationInput{
+		ProjectYaml: data,
+		Quiet:       quiet,
+		ProjectID:   projectID,
+	}
+	resp, err := c.retryRequest(ctx, info, body)
+	defer resp.Body.Close()
+
+	// we want to ignore the error if it's a 400, since that is expected when validation fails
+	if err != nil && err.Error() != server400 {
+		return nil, util.RespError(resp, "validating project")
+	}
+
+	if resp.StatusCode == http.StatusBadRequest {
+		rawData, _ := io.ReadAll(resp.Body)
+
+		var errorResponse gimlet.ErrorResponse
+		err := json.Unmarshal(rawData, &errorResponse)
+		if err == nil {
+			// if it successfully unmarshaled to a gimlet error response,
+			// that means it's an error message rather than project errors and
+			// we should return the error.
+			return nil, errors.New(errorResponse.Message)
+		}
+
+		errors := validator.ValidationErrors{}
+		err = json.Unmarshal(rawData, &errors)
+		if err != nil {
+			return nil, util.RespError(resp, "reading validation errors")
+		}
+		return errors, nil
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, util.RespError(resp, "validating project")
+	}
+
+	return nil, nil
 }

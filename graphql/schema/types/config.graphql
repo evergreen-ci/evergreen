@@ -11,6 +11,7 @@ type SpruceConfig {
   jira: JiraConfig
   providers: CloudProviderConfig
   secretFields: [String!]!
+  singleTaskDistro: SingleTaskDistroConfig
   slack: SlackConfig
   spawnHost: SpawnHostConfig!
   ui: UIConfig!
@@ -80,4 +81,14 @@ type ClientBinary {
   displayName: String
   os: String
   url: String
+}
+
+type SingleTaskDistroConfig {
+  projectTasksPairs: [ProjectTasksPair!]!
+}
+
+type ProjectTasksPair {
+  projectId: String!
+  allowedTasks: [String!]!
+  allowedBVs: [String!]!
 }

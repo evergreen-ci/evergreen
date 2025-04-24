@@ -25,12 +25,14 @@ func TestAPIPatch(t *testing.T) {
 	pRef := model.ProjectRef{
 		Id:         "mci",
 		Identifier: "evergreen",
+		Branch:     "main",
 	}
-	assert.NoError(pRef.Insert())
+	assert.NoError(pRef.Insert(t.Context()))
 	p := patch.Patch{
 		Id:            mgobson.NewObjectId(),
 		Description:   "test",
 		Project:       pRef.Id,
+		Branch:        pRef.Branch,
 		Githash:       "hash",
 		PatchNumber:   9000,
 		Author:        "root",
@@ -68,7 +70,7 @@ func TestAPIPatch(t *testing.T) {
 	}
 
 	a := APIPatch{}
-	err := a.BuildFromService(p, &APIPatchArgs{
+	err := a.BuildFromService(t.Context(), p, &APIPatchArgs{
 		IncludeProjectIdentifier: true,
 	})
 	assert.NoError(err)
@@ -76,8 +78,9 @@ func TestAPIPatch(t *testing.T) {
 	assert.Equal(p.Id.Hex(), utility.FromStringPtr(a.Id))
 	assert.Equal(p.Description, utility.FromStringPtr(a.Description))
 	assert.Equal(p.Project, utility.FromStringPtr(a.ProjectId))
+	assert.Equal(p.Project, utility.FromStringPtr(a.LegacyProjectId))
 	assert.Equal(pRef.Identifier, utility.FromStringPtr(a.ProjectIdentifier))
-	assert.Equal(p.Project, utility.FromStringPtr(a.Branch))
+	assert.Equal(p.Branch, utility.FromStringPtr(a.Branch))
 	assert.Equal(p.Githash, utility.FromStringPtr(a.Githash))
 	assert.Equal(p.PatchNumber, a.PatchNumber)
 	assert.Equal(p.Author, utility.FromStringPtr(a.Author))
@@ -101,6 +104,33 @@ func TestAPIPatch(t *testing.T) {
 	assert.Len(a.VariantsTasks[0].Tasks, 1)
 }
 
+func TestAPIPatchIncludeBranch(t *testing.T) {
+	// TODO DEVPROD-16824: remove, since this tests backwards compatibility behavior.
+	assert.NoError(t, db.ClearCollections(model.ProjectRefCollection))
+	pRef := model.ProjectRef{
+		Id:         "mci",
+		Identifier: "evergreen",
+		Branch:     "main",
+	}
+	assert.NoError(t, pRef.Insert(context.Background()))
+	p := patch.Patch{
+		Id:          mgobson.NewObjectId(),
+		Description: "test",
+		Project:     pRef.Id,
+	}
+
+	a := APIPatch{}
+	err := a.BuildFromService(t.Context(), p, &APIPatchArgs{
+		IncludeBranch: true,
+	})
+	assert.NoError(t, err)
+
+	assert.Equal(t, p.Id.Hex(), utility.FromStringPtr(a.Id))
+	assert.Equal(t, p.Project, utility.FromStringPtr(a.ProjectId))
+	assert.Equal(t, p.Project, utility.FromStringPtr(a.LegacyProjectId))
+	assert.Equal(t, pRef.Branch, utility.FromStringPtr(a.Branch))
+
+}
 func TestAPIPatchBuildModuleChanges(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -174,7 +204,7 @@ func TestDownstreamTasks(t *testing.T) {
 		Id:         "mci",
 		Identifier: "evergreen",
 	}
-	assert.NoError(projectRef.Insert())
+	assert.NoError(projectRef.Insert(t.Context()))
 	p := patch.Patch{
 		Id:          mgobson.NewObjectId(),
 		Description: "test",
@@ -201,10 +231,10 @@ func TestDownstreamTasks(t *testing.T) {
 		Activated: true,
 		Status:    evergreen.VersionCreated,
 	}
-	assert.NoError(childPatch.Insert())
+	assert.NoError(childPatch.Insert(t.Context()))
 
 	a := APIPatch{}
-	err := a.BuildFromService(p, &APIPatchArgs{
+	err := a.BuildFromService(t.Context(), p, &APIPatchArgs{
 		IncludeChildPatches: true,
 	})
 	assert.NoError(err)
@@ -235,10 +265,10 @@ func TestPreselectedDisplayTasks(t *testing.T) {
 			},
 		},
 	}
-	require.NoError(t, p.Insert())
+	require.NoError(t, p.Insert(t.Context()))
 
 	a := APIPatch{}
-	err := a.BuildFromService(p, nil)
+	err := a.BuildFromService(t.Context(), p, nil)
 	require.NoError(t, err)
 
 	// We expect the tasks from the patch to be only non-execution tasks + display tasks.

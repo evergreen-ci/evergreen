@@ -27,7 +27,7 @@ func TestMetadataFromArgsWithVersion(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(author.Insert())
+	assert.NoError(author.Insert(t.Context()))
 	source := model.Version{
 		Author:     "name",
 		CreateTime: time.Now(),
@@ -44,14 +44,14 @@ func TestMetadataFromArgsWithVersion(t *testing.T) {
 		TriggerType:       model.ProjectTriggerLevelPush,
 	}
 	// Without updating the repositories collection, this errors.
-	_, err := getMetadataFromArgs(args)
+	_, err := getMetadataFromArgs(t.Context(), args)
 	assert.Error(err)
 
-	_, err = model.GetNewRevisionOrderNumber(ref.Id)
+	_, err = model.GetNewRevisionOrderNumber(t.Context(), ref.Id)
 	assert.NoError(err)
-	assert.NoError(model.UpdateLastRevision(ref.Id, "def"))
+	assert.NoError(model.UpdateLastRevision(t.Context(), ref.Id, "def"))
 
-	metadata, err := getMetadataFromArgs(args)
+	metadata, err := getMetadataFromArgs(t.Context(), args)
 	assert.NoError(err)
 	assert.Equal(source.Author, metadata.Revision.Author)
 	assert.Equal(source.CreateTime, metadata.Revision.CreateTime)
@@ -77,13 +77,13 @@ func TestMetadataFromArgsWithoutVersion(t *testing.T) {
 	}
 
 	// Without updating the repositories collection, this errors.
-	_, err := getMetadataFromArgs(args)
+	_, err := getMetadataFromArgs(t.Context(), args)
 	assert.Error(err)
 
-	_, err = model.GetNewRevisionOrderNumber(ref.Id)
+	_, err = model.GetNewRevisionOrderNumber(t.Context(), ref.Id)
 	assert.NoError(err)
-	assert.NoError(model.UpdateLastRevision(ref.Id, "def"))
-	metadata, err := getMetadataFromArgs(args)
+	assert.NoError(model.UpdateLastRevision(t.Context(), ref.Id, "def"))
+	metadata, err := getMetadataFromArgs(t.Context(), args)
 	assert.NoError(err)
 	assert.True(metadata.Activate)
 	assert.Equal(args.TriggerType, metadata.TriggerType)

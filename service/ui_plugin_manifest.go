@@ -14,12 +14,12 @@ func (uis *UIServer) GetManifest(w http.ResponseWriter, r *http.Request) {
 	project := vars["project_id"]
 	revision := vars["revision"]
 
-	projectId, err := model.GetIdForProject(project)
+	projectId, err := model.GetIdForProject(r.Context(), project)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	version, err := model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(projectId, revision))
+	version, err := model.VersionFindOne(r.Context(), model.BaseVersionByProjectIdAndRevision(projectId, revision))
 	if err != nil {
 		http.Error(w, fmt.Sprintf("error getting version for project %v with revision %v: %v",
 			project, revision, err), http.StatusInternalServerError)
@@ -31,7 +31,7 @@ func (uis *UIServer) GetManifest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	foundManifest, err := manifest.FindFromVersion(version.Id, version.Identifier, version.Revision, version.Requester)
+	foundManifest, err := manifest.FindFromVersion(r.Context(), version.Id, version.Identifier, version.Revision, version.Requester)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("error getting manifest with version id %v: %v",
 			version.Id, err), http.StatusInternalServerError)

@@ -5,7 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/google/go-github/v52/github"
+	"github.com/google/go-github/v70/github"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
@@ -59,9 +59,9 @@ func TestGithubMergeIntent(t *testing.T) {
 			intent, err := NewGithubMergeIntent("abc123", "auto", mge)
 			assert.NotNil(t, intent)
 			assert.NoError(t, err)
-			assert.NoError(t, intent.Insert())
+			assert.NoError(t, intent.Insert(t.Context()))
 			intents := []githubMergeIntent{}
-			err = db.FindAllQ(IntentCollection, db.Query(bson.M{}), &intents)
+			err = db.FindAllQ(t.Context(), IntentCollection, db.Query(bson.M{}), &intents)
 			assert.NoError(t, err)
 			assert.Len(t, intents, 1)
 			assert.Equal(t, intent, &intents[0])
@@ -71,10 +71,10 @@ func TestGithubMergeIntent(t *testing.T) {
 			assert.False(t, intent.IsProcessed())
 			assert.NotNil(t, intent)
 			assert.NoError(t, err)
-			assert.NoError(t, intent.Insert())
-			assert.NoError(t, intent.SetProcessed())
+			assert.NoError(t, intent.Insert(t.Context()))
+			assert.NoError(t, intent.SetProcessed(t.Context()))
 			intents := []githubMergeIntent{}
-			err = db.FindAllQ(IntentCollection, db.Query(bson.M{}), &intents)
+			err = db.FindAllQ(t.Context(), IntentCollection, db.Query(bson.M{}), &intents)
 			assert.NoError(t, err)
 			assert.Len(t, intents, 1)
 			assert.True(t, intents[0].IsProcessed())
@@ -100,7 +100,7 @@ func TestGithubMergeIntent(t *testing.T) {
 			intent, err := NewGithubMergeIntent("abc123", "auto", mge)
 			assert.NotNil(t, intent)
 			assert.NoError(t, err)
-			assert.NoError(t, intent.Insert())
+			assert.NoError(t, intent.Insert(t.Context()))
 			p := intent.NewPatch()
 			assert.Equal(t, evergreen.CommitQueueAlias, p.Alias)
 			assert.Equal(t, *mge.MergeGroup.BaseSHA, p.Githash)

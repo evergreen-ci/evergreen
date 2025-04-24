@@ -50,14 +50,14 @@ func (h *userSettingsPostHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "updating user settings for user '%s'", u.Username()))
 	}
 
-	if err = data.UpdateSettings(u, *userSettings); err != nil {
+	if err = data.UpdateSettings(ctx, u, *userSettings); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "saving updated settings for user '%s'", u.Username()))
 	}
 
 	if h.settings.SpruceFeedback != nil {
 		h.settings.SpruceFeedback.SubmittedAt = model.ToTimePtr(time.Now())
 		h.settings.SpruceFeedback.User = utility.ToStringPtr(u.Username())
-		if err = data.SubmitFeedback(*h.settings.SpruceFeedback); err != nil {
+		if err = data.SubmitFeedback(ctx, *h.settings.SpruceFeedback); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "submitting Spruce feedback"))
 		}
 	}
@@ -114,7 +114,7 @@ func (h *getUserHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *getUserHandler) Run(ctx context.Context) gimlet.Responder {
-	usr, err := user.FindOneById(h.userId)
+	usr, err := user.FindOneByIdContext(ctx, h.userId)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "finding user by ID"))
 	}
@@ -192,7 +192,7 @@ func (h *userPermissionsPostHandler) Parse(ctx context.Context, r *http.Request)
 }
 
 func (h *userPermissionsPostHandler) Run(ctx context.Context) gimlet.Responder {
-	u, err := user.FindOneById(h.userID)
+	u, err := user.FindOneByIdContext(ctx, h.userID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting user '%s'", h.userID))
 	}
@@ -207,7 +207,7 @@ func (h *userPermissionsPostHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.NewTextInternalErrorResponse(err.Error())
 	}
-	if err = u.AddRole(newRole.ID); err != nil {
+	if err = u.AddRole(ctx, newRole.ID); err != nil {
 		return gimlet.NewTextInternalErrorResponse(err.Error())
 	}
 
@@ -278,7 +278,7 @@ func (h *userPermissionsDeleteHandler) Parse(ctx context.Context, r *http.Reques
 }
 
 func (h *userPermissionsDeleteHandler) Run(ctx context.Context) gimlet.Responder {
-	u, err := user.FindOneById(h.userID)
+	u, err := user.FindOneByIdContext(ctx, h.userID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding user '%s'", h.userID))
 	}
@@ -290,7 +290,7 @@ func (h *userPermissionsDeleteHandler) Run(ctx context.Context) gimlet.Responder
 	}
 
 	if h.resourceType == allResourceType {
-		err = u.DeleteAllRoles()
+		err = u.DeleteAllRoles(ctx)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "deleting all roles for user '%s'", u.Username()))
 		}
@@ -327,7 +327,7 @@ func (h *userPermissionsDeleteHandler) Run(ctx context.Context) gimlet.Responder
 		"resource_type": h.resourceType,
 		"resource_id":   h.resourceId,
 	})
-	err = u.DeleteRoles(rolesToRemove)
+	err = u.DeleteRoles(ctx, rolesToRemove)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "deleting roles for user '%s'", u.Username()))
 	}
@@ -412,7 +412,7 @@ func (h *allUsersPermissionsGetHandler) Run(ctx context.Context) gimlet.Responde
 		}
 	}
 	// Get users with roles.
-	usersWithRoles, err := user.FindHumanUsersByRoles(roleIds)
+	usersWithRoles, err := user.FindHumanUsersByRoles(ctx, roleIds)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "finding users for roles %v", roleIds))
 	}
@@ -507,7 +507,7 @@ func (h *userPermissionsGetHandler) Parse(ctx context.Context, r *http.Request) 
 }
 
 func (h *userPermissionsGetHandler) Run(ctx context.Context) gimlet.Responder {
-	u, err := user.FindOneById(h.userID)
+	u, err := user.FindOneByIdContext(ctx, h.userID)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error finding user",
@@ -528,13 +528,13 @@ func (h *userPermissionsGetHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "getting permissions for user '%s'", h.userID))
 	}
 	// Hidden projects are not meant to be exposed to the user, so we remove them from the response here.
-	if err = removeHiddenProjects(permissions); err != nil {
+	if err = removeHiddenProjects(ctx, permissions); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
 	return gimlet.NewJSONResponse(permissions)
 }
 
-func removeHiddenProjects(permissions []rolemanager.PermissionSummary) error {
+func removeHiddenProjects(ctx context.Context, permissions []rolemanager.PermissionSummary) error {
 	var projectIDs []string
 	var projectResourceIndex int
 	for i, permission := range permissions {
@@ -545,7 +545,7 @@ func removeHiddenProjects(permissions []rolemanager.PermissionSummary) error {
 			}
 		}
 	}
-	projectRefs, err := serviceModel.FindProjectRefsByIds(projectIDs...)
+	projectRefs, err := serviceModel.FindProjectRefsByIds(ctx, projectIDs...)
 	if err != nil {
 		return errors.Wrapf(err, "getting projects")
 	}
@@ -618,7 +618,7 @@ func (h *userRolesPostHandler) Parse(ctx context.Context, r *http.Request) error
 }
 
 func (h *userRolesPostHandler) Run(ctx context.Context) gimlet.Responder {
-	u, err := user.FindOneById(h.userID)
+	u, err := user.FindOneByIdContext(ctx, h.userID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding user '%s'", h.userID))
 	}
@@ -670,12 +670,12 @@ func (h *userRolesPostHandler) Run(ctx context.Context) gimlet.Responder {
 
 	catcher := grip.NewBasicCatcher()
 	for _, toAdd := range h.rolesToAdd {
-		if err = u.AddRole(toAdd); err != nil {
+		if err = u.AddRole(ctx, toAdd); err != nil {
 			catcher.Wrapf(err, "adding role '%s' to user '%s'", toAdd, u.Username())
 		}
 	}
 	for _, toRemove := range h.rolesToRemove {
-		if err = u.RemoveRole(toRemove); err != nil {
+		if err = u.RemoveRole(ctx, toRemove); err != nil {
 			catcher.Wrapf(err, "removing the role '%s' from user '%s'", toRemove, u.Username())
 		}
 	}
@@ -727,7 +727,7 @@ func (h *usersWithRoleGetHandler) Parse(ctx context.Context, r *http.Request) er
 }
 
 func (h *usersWithRoleGetHandler) Run(ctx context.Context) gimlet.Responder {
-	users, err := user.FindByRole(h.role)
+	users, err := user.FindByRole(ctx, h.role)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
@@ -778,7 +778,7 @@ func (h *serviceUserPostHandler) Run(ctx context.Context) gimlet.Responder {
 	if h.u == nil {
 		return gimlet.NewJSONErrorResponse("no user read from request body")
 	}
-	err := data.AddOrUpdateServiceUser(*h.u)
+	err := data.AddOrUpdateServiceUser(ctx, *h.u)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "adding/updating service user '%s'", utility.FromStringPtr(h.u.UserID)))
 	}
@@ -848,7 +848,7 @@ func (h *serviceUsersGetHandler) Parse(ctx context.Context, r *http.Request) err
 }
 
 func (h *serviceUsersGetHandler) Run(ctx context.Context) gimlet.Responder {
-	users, err := data.GetServiceUsers()
+	users, err := data.GetServiceUsers(ctx)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting all service users"))
 	}
@@ -912,7 +912,7 @@ func (h *renameUserHandler) Parse(ctx context.Context, r *http.Request) error {
 	if username == "" {
 		return errors.New("no user could be parsed from the email address")
 	}
-	h.oldUsr, err = user.FindOneById(username)
+	h.oldUsr, err = user.FindOneByIdContext(ctx, username)
 	if err != nil {
 		return gimlet.ErrorResponse{
 			Message:    errors.Wrapf(err, "finding user '%s'", username).Error(),
@@ -935,17 +935,17 @@ func (h *renameUserHandler) Run(ctx context.Context) gimlet.Responder {
 	githubUID := h.oldUsr.Settings.GithubUser.UID
 	h.oldUsr.Settings.GithubUser.UID = 0
 
-	newUsr, err := user.UpsertOneFromExisting(h.oldUsr, h.newEmail)
+	newUsr, err := user.UpsertOneFromExisting(ctx, h.oldUsr, h.newEmail)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(err)
 	}
 
 	catcher := grip.NewBasicCatcher()
-	catcher.Add(user.ClearUser(h.oldUsr.Id))
+	catcher.Add(user.ClearUser(ctx, h.oldUsr.Id))
 	newUsr.Settings.GithubUser.UID = githubUID
-	catcher.Add(newUsr.UpdateSettings(newUsr.Settings))
+	catcher.Add(newUsr.UpdateSettings(ctx, newUsr.Settings))
 
-	catcher.Add(patch.ConsolidatePatchesForUser(h.oldUsr.Id, newUsr))
+	catcher.Add(patch.ConsolidatePatchesForUser(ctx, h.oldUsr.Id, newUsr))
 	catcher.Add(host.ConsolidateHostsForUser(ctx, h.oldUsr.Id, newUsr.Id))
 
 	if catcher.HasErrors() {
@@ -1016,7 +1016,7 @@ func (ch *offboardUserHandler) Parse(ctx context.Context, r *http.Request) error
 	if ch.user == "" {
 		return errors.New("no user could be parsed from the email address")
 	}
-	u, err := user.FindOneById(ch.user)
+	u, err := user.FindOneByIdContext(ctx, ch.user)
 	if err != nil {
 		return gimlet.ErrorResponse{
 			Message:    errors.Wrapf(err, "finding user '%s'", ch.user).Error(),
@@ -1045,7 +1045,7 @@ func (ch *offboardUserHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "getting user hosts from options"))
 	}
 
-	volumes, err := host.FindVolumesByUser(ch.user)
+	volumes, err := host.FindVolumesByUser(ctx, ch.user)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "finding user volumes"))
 	}
@@ -1068,7 +1068,7 @@ func (ch *offboardUserHandler) Run(ctx context.Context) gimlet.Responder {
 	for _, v := range volumes {
 		if v.NoExpiration {
 			if !ch.dryRun {
-				catcher.Wrapf(v.SetNoExpiration(false), "marking volume '%s' expirable", v.ID)
+				catcher.Wrapf(v.SetNoExpiration(ctx, false), "marking volume '%s' expirable", v.ID)
 			}
 			toTerminate.TerminatedVolumes = append(toTerminate.TerminatedVolumes, v.ID)
 		}
@@ -1082,7 +1082,7 @@ func (ch *offboardUserHandler) Run(ctx context.Context) gimlet.Responder {
 			"terminated_volumes": toTerminate.TerminatedVolumes,
 		})
 
-		grip.Error(message.WrapError(serviceModel.RemoveAdminFromProjects(ch.user), message.Fields{
+		grip.Error(message.WrapError(serviceModel.RemoveAdminFromProjects(ctx, ch.user), message.Fields{
 			"message": "could not remove user as an admin",
 			"context": "user offboarding",
 			"user":    ch.user,
@@ -1093,7 +1093,7 @@ func (ch *offboardUserHandler) Run(ctx context.Context) gimlet.Responder {
 			"context": "user offboarding",
 			"user":    ch.user,
 		}))
-		err = user.ClearUser(ch.user)
+		err = user.ClearUser(ctx, ch.user)
 		catcher.Wrapf(err, "clearing user '%s'", ch.user)
 	}
 

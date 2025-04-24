@@ -14,7 +14,7 @@ type BuildBaronPlugin struct{}
 
 func (bbp *BuildBaronPlugin) Name() string { return "buildbaron" }
 
-func (bbp *BuildBaronPlugin) Configure(map[string]interface{}) error { return nil }
+func (bbp *BuildBaronPlugin) Configure(map[string]any) error { return nil }
 
 func (bbp *BuildBaronPlugin) GetPanelConfig() (*PanelConfig, error) {
 	return &PanelConfig{
@@ -27,8 +27,8 @@ func (bbp *BuildBaronPlugin) GetPanelConfig() (*PanelConfig, error) {
 					template.HTML(`<link href="/static/plugins/buildbaron/css/task_build_baron.css" rel="stylesheet"/>`),
 					template.HTML(`<script type="text/javascript" src="/static/plugins/buildbaron/js/task_build_baron.js"></script>`),
 				},
-				DataFunc: func(context UIContext) (interface{}, error) {
-					bbSettings, ok := model.GetBuildBaronSettings(context.ProjectRef.Id, "")
+				DataFunc: func(context UIContext) (any, error) {
+					bbSettings, ok := model.GetBuildBaronSettings(context.Request.Context(), context.ProjectRef.Id, "")
 					enabled := ok && len(bbSettings.TicketSearchProjects) > 0
 					return struct {
 						Enabled bool `json:"enabled"`

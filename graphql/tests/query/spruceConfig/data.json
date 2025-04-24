@@ -54,6 +54,22 @@
       "ssh_key_pairs": []
     },
     {
+      "_id": "single_task_distro",
+      "project_tasks_pairs": [
+          {
+            "project_id": "evergreen",
+            "allowed_tasks": ["compile", "test"],
+            "allowed_bvs": ["ubuntu1604", "windows"]
+
+          }, 
+          {
+            "project_id": "spruce",
+            "allowed_tasks": ["lint", "storybook"],
+            "allowed_bvs": ["macOS"]
+          }
+        ]
+    },
+    {
       "_id": "jira",
       "basic_auth": {
         "username": "mohamed.khelif",

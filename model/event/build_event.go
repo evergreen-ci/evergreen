@@ -1,6 +1,7 @@
 package event
 
 import (
+	"context"
 	"time"
 
 	"github.com/mongodb/grip"
@@ -8,7 +9,7 @@ import (
 )
 
 func init() {
-	registry.AddType(ResourceTypeBuild, func() interface{} { return &BuildEventData{} })
+	registry.AddType(ResourceTypeBuild, func() any { return &BuildEventData{} })
 
 	registry.AllowSubscription(ResourceTypeBuild, BuildStateChange)
 	registry.AllowSubscription(ResourceTypeBuild, BuildGithubCheckFinished)
@@ -26,7 +27,7 @@ type BuildEventData struct {
 	GithubCheckStatus string `bson:"github_check_status,omitempty" json:"github_check_status,omitempty"`
 }
 
-func LogBuildStateChangeEvent(id, status string) {
+func LogBuildStateChangeEvent(ctx context.Context, id, status string) {
 	event := EventLogEntry{
 		Timestamp:  time.Now(),
 		ResourceId: id,
@@ -37,7 +38,7 @@ func LogBuildStateChangeEvent(id, status string) {
 		ResourceType: ResourceTypeBuild,
 	}
 
-	if err := event.Log(); err != nil {
+	if err := event.Log(ctx); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"resource_type": event.ResourceType,
 			"event_type":    BuildStateChange,
@@ -47,7 +48,7 @@ func LogBuildStateChangeEvent(id, status string) {
 	}
 }
 
-func LogBuildGithubCheckFinishedEvent(id, status string) {
+func LogBuildGithubCheckFinishedEvent(ctx context.Context, id, status string) {
 	event := EventLogEntry{
 		Timestamp:  time.Now(),
 		ResourceId: id,
@@ -57,7 +58,7 @@ func LogBuildGithubCheckFinishedEvent(id, status string) {
 		},
 		ResourceType: ResourceTypeBuild,
 	}
-	if err := event.Log(); err != nil {
+	if err := event.Log(ctx); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"resource_type": event.ResourceType,
 			"event_type":    BuildGithubCheckFinished,

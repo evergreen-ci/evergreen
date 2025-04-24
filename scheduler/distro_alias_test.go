@@ -40,7 +40,7 @@ func TestDistroAliases(t *testing.T) {
 	require.NoError(t, db.Clear(model.TaskSecondaryQueuesCollection))
 
 	require.NoError(t, db.Clear(model.VersionCollection))
-	require.NoError(t, (&model.Version{Id: "foo"}).Insert())
+	require.NoError(t, (&model.Version{Id: "foo"}).Insert(t.Context()))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -60,29 +60,29 @@ func TestDistroAliases(t *testing.T) {
 			require.Equal(t, "one", output[0].Id)
 			require.Equal(t, "other", output[1].Id)
 
-			ct, err := db.Count(model.TaskQueuesCollection, bson.M{})
+			ct, err := db.Count(t.Context(), model.TaskQueuesCollection, bson.M{})
 			require.NoError(t, err)
 			require.Equal(t, 1, ct)
 
-			ct, err = db.Count(model.TaskSecondaryQueuesCollection, bson.M{})
+			ct, err = db.Count(t.Context(), model.TaskSecondaryQueuesCollection, bson.M{})
 			require.NoError(t, err)
 			require.Equal(t, 0, ct)
 		})
 		t.Run("UseLegacy", func(t *testing.T) {
 			require.NoError(t, db.Clear(model.TaskQueuesCollection))
 
-			distroOne.PlannerSettings.Version = evergreen.PlannerVersionLegacy
+			distroOne.PlannerSettings.Version = evergreen.PlannerVersionTunable
 			output, err := PrioritizeTasks(ctx, distroOne, tasks, TaskPlannerOptions{ID: "legacy-1"})
 			require.NoError(t, err)
 			require.Len(t, output, 2)
 			require.Equal(t, "one", output[0].Id)
 			require.Equal(t, "other", output[1].Id)
 
-			ct, err := db.Count(model.TaskQueuesCollection, bson.M{})
+			ct, err := db.Count(t.Context(), model.TaskQueuesCollection, bson.M{})
 			require.NoError(t, err)
 			require.Equal(t, 1, ct)
 
-			ct, err = db.Count(model.TaskSecondaryQueuesCollection, bson.M{})
+			ct, err = db.Count(t.Context(), model.TaskSecondaryQueuesCollection, bson.M{})
 			require.NoError(t, err)
 			require.Equal(t, 0, ct)
 		})
@@ -106,11 +106,11 @@ func TestDistroAliases(t *testing.T) {
 			require.Equal(t, "one", output[0].Id)
 			require.Equal(t, "other", output[1].Id)
 
-			ct, err := db.Count(model.TaskSecondaryQueuesCollection, bson.M{})
+			ct, err := db.Count(t.Context(), model.TaskSecondaryQueuesCollection, bson.M{})
 			require.NoError(t, err)
 			require.Equal(t, 1, ct)
 
-			ct, err = db.Count(model.TaskQueuesCollection, bson.M{})
+			ct, err = db.Count(t.Context(), model.TaskQueuesCollection, bson.M{})
 			require.NoError(t, err)
 			require.Equal(t, 0, ct)
 
@@ -118,18 +118,18 @@ func TestDistroAliases(t *testing.T) {
 		t.Run("UseLegacy", func(t *testing.T) {
 			require.NoError(t, db.Clear(model.TaskSecondaryQueuesCollection))
 
-			distroTwo.PlannerSettings.Version = evergreen.PlannerVersionLegacy
+			distroTwo.PlannerSettings.Version = evergreen.PlannerVersionTunable
 			output, err := PrioritizeTasks(ctx, distroTwo, tasks, TaskPlannerOptions{ID: "legacy-0", IsSecondaryQueue: true})
 			require.NoError(t, err)
 			require.Len(t, output, 2)
 			require.Equal(t, "one", output[0].Id)
 			require.Equal(t, "other", output[1].Id)
 
-			ct, err := db.Count(model.TaskSecondaryQueuesCollection, bson.M{})
+			ct, err := db.Count(t.Context(), model.TaskSecondaryQueuesCollection, bson.M{})
 			require.NoError(t, err)
 			require.Equal(t, 1, ct)
 
-			ct, err = db.Count(model.TaskQueuesCollection, bson.M{})
+			ct, err = db.Count(t.Context(), model.TaskQueuesCollection, bson.M{})
 			require.NoError(t, err)
 			require.Equal(t, 0, ct)
 		})

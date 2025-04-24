@@ -8,7 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/google/go-github/v52/github"
+	"github.com/google/go-github/v70/github"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -120,7 +120,10 @@ func (s *installationSuite) TestCreateCachedInstallationToken() {
 	)
 
 	// Test without permissions
-	ghInstallationTokenCache.put(installation.InstallationID, unrestrictedToken, nil, time.Now())
+	id, err := createCacheID(installation.InstallationID, nil)
+	s.NoError(err)
+	s.Equal("5678", id)
+	ghInstallationTokenCache.Put(s.ctx, id, unrestrictedToken, time.Now().Add(lifetime*2))
 
 	authFields := GithubAppAuth{
 		AppID: installation.AppID,
@@ -138,7 +141,10 @@ func (s *installationSuite) TestCreateCachedInstallationToken() {
 		Permissions: p,
 	}
 
-	ghInstallationTokenCache.put(installation.InstallationID, restrictedToken, p, time.Now())
+	id, err = createCacheID(installation.InstallationID, p)
+	s.NoError(err)
+	s.Equal("5678_contents:read_issues:write", id)
+	ghInstallationTokenCache.Put(s.ctx, id, restrictedToken, time.Now().Add(lifetime*2))
 
 	token, err = authFields.CreateCachedInstallationToken(s.ctx, installation.Owner, installation.Repo, lifetime, opts)
 	s.Require().NoError(err)
@@ -207,8 +213,8 @@ func TestCreateCacheID(t *testing.T) {
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
 			result, err := createCacheID(tc.installationID, tc.permissions)
-			assert.Equal(t, tc.expected, result)
 			assert.NoError(t, err)
+			assert.Equal(t, tc.expected, result)
 		})
 	}
 }

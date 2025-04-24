@@ -53,7 +53,7 @@ func TestPodDefinitionCleanupJob(t *testing.T) {
 		require.NotZero(t, describeOut.TaskDefinition)
 		assert.Equal(t, podDef.ID, utility.FromStringPtr(describeOut.TaskDefinition.TaskDefinitionArn))
 
-		dbPodDef, err := definition.FindOneByExternalID(podDef.ID)
+		dbPodDef, err := definition.FindOneByExternalID(t.Context(), podDef.ID)
 		require.NoError(t, err)
 		require.NotZero(t, dbPodDef, "DB pod definition should have been created")
 
@@ -141,7 +141,7 @@ func TestPodDefinitionCleanupJob(t *testing.T) {
 		"CleansUpStaleUnusedPodDefinitions": func(ctx context.Context, t *testing.T, j *podDefinitionCleanupJob) {
 			pd := createPodDef(ctx, t, j.podDefMgr, j.ecsClient)
 			pd.LastAccessed = time.Now().Add(-9000 * 24 * time.Hour)
-			require.NoError(t, pd.Upsert())
+			require.NoError(t, pd.Replace(t.Context()))
 
 			j.Run(ctx)
 			require.NoError(t, j.Error())
@@ -153,7 +153,7 @@ func TestPodDefinitionCleanupJob(t *testing.T) {
 			require.NotZero(t, describeOut.TaskDefinition)
 			assert.Equal(t, ecsTypes.TaskDefinitionStatusInactive, describeOut.TaskDefinition.Status, "cloud pod definition should be inactive")
 
-			dbPodDef, err := definition.FindOneID(pd.ID)
+			dbPodDef, err := definition.FindOneID(ctx, pd.ID)
 			assert.NoError(t, err)
 			assert.Zero(t, dbPodDef, "pod definition should have been cleaned up")
 		},
@@ -171,7 +171,7 @@ func TestPodDefinitionCleanupJob(t *testing.T) {
 			require.NotZero(t, describeOut.TaskDefinition)
 			assert.Equal(t, ecsTypes.TaskDefinitionStatusActive, describeOut.TaskDefinition.Status, "cloud pod definition should still be active")
 
-			dbPodDef, err := definition.FindOneID(pd.ID)
+			dbPodDef, err := definition.FindOneID(ctx, pd.ID)
 			assert.NoError(t, err)
 			assert.NotZero(t, dbPodDef, "pod definition should not have been cleaned up")
 		},
@@ -185,7 +185,7 @@ func TestPodDefinitionCleanupJob(t *testing.T) {
 
 			pd := createPodDef(ctx, t, j.podDefMgr, j.ecsClient)
 			pd.LastAccessed = time.Now().Add(-9000 * 24 * time.Hour)
-			require.NoError(t, pd.Upsert())
+			require.NoError(t, pd.Replace(t.Context()))
 
 			j.Run(ctx)
 			assert.Error(t, j.Error())
@@ -197,7 +197,7 @@ func TestPodDefinitionCleanupJob(t *testing.T) {
 			require.NotZero(t, describeOut.TaskDefinition)
 			assert.Equal(t, ecsTypes.TaskDefinitionStatusActive, describeOut.TaskDefinition.Status, "cloud pod definition should still be active")
 
-			dbPodDef, err := definition.FindOneID(pd.ID)
+			dbPodDef, err := definition.FindOneID(ctx, pd.ID)
 			assert.NoError(t, err)
 			assert.NotZero(t, dbPodDef, "pod definition should not have been cleaned up")
 		},
@@ -210,12 +210,12 @@ func TestPodDefinitionCleanupJob(t *testing.T) {
 				ID:           "pod_definition",
 				LastAccessed: time.Now().Add(-1000 * 24 * time.Hour),
 			}
-			require.NoError(t, pd.Insert())
+			require.NoError(t, pd.Insert(t.Context()))
 
 			j.Run(ctx)
 			assert.NoError(t, j.Error())
 
-			dbPodDef, err := definition.FindOneID(pd.ID)
+			dbPodDef, err := definition.FindOneID(ctx, pd.ID)
 			assert.NoError(t, err)
 			assert.Zero(t, dbPodDef)
 		},

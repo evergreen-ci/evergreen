@@ -192,7 +192,7 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 
 	// retrieve the next task off the task queue and attempt to assign it to the host.
 	// If there is already a host that has the task, it will error
-	taskQueue, err := model.LoadTaskQueue(h.host.Distro.Id)
+	taskQueue, err := model.LoadTaskQueue(ctx, h.host.Distro.Id)
 	if err != nil {
 		err = errors.Wrapf(err, "locating distro queue (%s) for host '%s'", h.host.Distro.Id, h.host.Id)
 		grip.Error(err)
@@ -214,7 +214,7 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 	if nextTask == nil && !shouldRunTeardown {
 		// if we couldn't find a task in the task queue,
 		// check the alias queue...
-		secondaryQueue, err := model.LoadDistroSecondaryTaskQueue(h.host.Distro.Id)
+		secondaryQueue, err := model.LoadDistroSecondaryTaskQueue(ctx, h.host.Distro.Id)
 		if err != nil {
 			return gimlet.MakeJSONErrorResponder(err)
 		}
@@ -311,7 +311,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 
 	var amiUpdatedTime time.Time
 	if d.GetDefaultAMI() != currentHost.GetAMI() {
-		amiEvent, err := event.FindLatestAMIModifiedDistroEvent(d.Id)
+		amiEvent, err := event.FindLatestAMIModifiedDistroEvent(ctx, d.Id)
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":   "problem getting AMI event log",
 			"host_id":   currentHost.Id,
@@ -397,7 +397,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 				"project": nextTask.Project,
 			})
 			// Dequeue the task so we don't get it on another iteration of the loop.
-			grip.Warning(message.WrapError(taskQueue.DequeueTask(nextTask.Id), message.Fields{
+			grip.Warning(message.WrapError(taskQueue.DequeueTask(ctx, nextTask.Id), message.Fields{
 				"message":   "nextTask.IsHostDispatchable() is false, but there was an issue dequeuing the task",
 				"distro_id": d.Id,
 				"task_id":   nextTask.Id,
@@ -406,7 +406,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 			continue
 		}
 
-		projectRef, err := model.FindMergedProjectRef(nextTask.Project, nextTask.Version, true)
+		projectRef, err := model.FindMergedProjectRef(ctx, nextTask.Project, nextTask.Version, true)
 		errMsg := message.Fields{
 			"task_id":            nextTask.Id,
 			"message":            "could not find project ref for next task, skipping",
@@ -418,11 +418,13 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 			"task_version":       nextTask.Version,
 		}
 		if err != nil {
-			grip.Alert(message.WrapError(err, errMsg))
+			if !errors.Is(err, context.Canceled) && ctx.Err() == nil {
+				grip.Error(message.WrapError(err, errMsg))
+			}
 			return nil, false, errors.Wrapf(err, "could not find project ref for next task '%s'", nextTask.Id)
 		}
 		if projectRef == nil {
-			grip.Alert(errMsg)
+			grip.Error(errMsg)
 			return nil, false, errors.Errorf("project ref for next task '%s' doesn't exist", nextTask.Id)
 		}
 
@@ -433,7 +435,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 		}
 
 		if isDisabled {
-			grip.Warning(message.WrapError(taskQueue.DequeueTask(nextTask.Id), message.Fields{
+			grip.Warning(message.WrapError(taskQueue.DequeueTask(ctx, nextTask.Id), message.Fields{
 				"message":              "project has dispatching disabled, but there was an issue dequeuing the task",
 				"distro_id":            nextTask.DistroId,
 				"task_id":              nextTask.Id,
@@ -457,7 +459,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 				"project":            projectRef.Id,
 				"project_identifier": projectRef.Enabled,
 			})
-			grip.Warning(message.WrapError(taskQueue.DequeueTask(nextTask.Id), message.Fields{
+			grip.Warning(message.WrapError(taskQueue.DequeueTask(ctx, nextTask.Id), message.Fields{
 				"message":            "top task queue task is blocked, but there was an issue dequeuing the task",
 				"host_id":            currentHost.Id,
 				"distro_id":          nextTask.DistroId,
@@ -487,7 +489,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 
 		if currentHost.Distro.SingleTaskDistro {
 			// If next task exists and the distro is a single task distro, check if the task is allowed on the distro.
-			allowedTasks, err := validator.GetAllowedSingleTaskDistroTasksForProject(ctx, nextTask.Project)
+			singleTaskDistroWhitelist, err := validator.GetAllowedSingleTaskDistroTasksForProject(ctx, nextTask.Project)
 			if err != nil {
 				errMsg = message.Fields{
 					"message":    "could not find allowed single task disto tasks for project",
@@ -498,28 +500,27 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 					"task_group": nextTask.TaskGroup,
 					"project":    projectRef.Id,
 				}
-				grip.Alert(message.WrapError(err, errMsg))
+				grip.Error(message.WrapError(err, errMsg))
 				return nil, false, errors.Wrapf(err, "could not find allowed single task disto tasks for project '%s'", nextTask.Project)
 			}
-			matched := false
-			for _, allowedTask := range allowedTasks {
-				matched, err = regexp.MatchString(allowedTask, nextTask.DisplayName)
-				if err != nil {
-					errMsg = message.Fields{
-						"message":      "could not process regex",
-						"task_id":      nextTask.Id,
-						"task_name":    nextTask.DisplayName,
-						"allowed_task": allowedTask,
-					}
-					grip.Alert(message.WrapError(err, errMsg))
-					return nil, false, errors.Wrapf(err, "could not process regex '%s'", allowedTask)
+			matched, err := validateSingleTaskDistro(singleTaskDistroWhitelist, nextTask)
+			if err != nil {
+				errMsg = message.Fields{
+					"message":            "could not validate single task distro task",
+					"host_id":            currentHost.Id,
+					"distro_id":          nextTask.DistroId,
+					"task_id":            nextTask.Id,
+					"task_name":          nextTask.DisplayName,
+					"task_group":         nextTask.TaskGroup,
+					"project":            projectRef.Id,
+					"project_identifier": projectRef.Identifier,
+					"build_variant":      nextTask.BuildVariant,
 				}
-				if matched {
-					break
-				}
+				grip.Error(message.WrapError(err, errMsg))
+				return nil, false, errors.Wrapf(err, "could not validate single task distro task '%s'", nextTask.Id)
 			}
 			if !matched {
-				grip.Alert(message.Fields{
+				grip.Error(message.Fields{
 					"message":            "top task queue task is not allowed on single task distros",
 					"host_id":            currentHost.Id,
 					"distro_id":          nextTask.DistroId,
@@ -527,29 +528,32 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 					"task_name":          nextTask.DisplayName,
 					"task_group":         nextTask.TaskGroup,
 					"project":            projectRef.Id,
-					"project_identifier": projectRef.Enabled,
+					"project_identifier": projectRef.Identifier,
+					"build_variant":      nextTask.BuildVariant,
 				})
 
 				err = nextTask.MarkSystemFailed(ctx, "Marking disallowed single task distro task as system failed")
 				if err != nil {
 					errMsg = message.Fields{
-						"message":   "could not mark disallowed single task distro task as system failed",
-						"distro_id": nextTask.DistroId,
-						"task_id":   nextTask.Id,
-						"task_name": nextTask.DisplayName,
+						"message":       "could not mark disallowed single task distro task as system failed",
+						"distro_id":     nextTask.DistroId,
+						"task_id":       nextTask.Id,
+						"task_name":     nextTask.DisplayName,
+						"build_variant": nextTask.BuildVariant,
 					}
-					grip.Alert(message.WrapError(err, errMsg))
+					grip.Error(message.WrapError(err, errMsg))
 					return nil, false, errors.Wrapf(err, "could not mark disallowed single task distro task '%s' as system failed", nextTask.Id)
 				}
-				err = taskQueue.DequeueTask(nextTask.Id)
+				err = taskQueue.DequeueTask(ctx, nextTask.Id)
 				if err != nil {
 					errMsg = message.Fields{
-						"message":   "could not dequeue disallowed single task distro task",
-						"distro_id": nextTask.DistroId,
-						"task_id":   nextTask.Id,
-						"task_name": nextTask.DisplayName,
+						"message":       "could not dequeue disallowed single task distro task",
+						"distro_id":     nextTask.DistroId,
+						"task_id":       nextTask.Id,
+						"task_name":     nextTask.DisplayName,
+						"build_variant": nextTask.BuildVariant,
 					}
-					grip.Alert(message.WrapError(err, errMsg))
+					grip.Error(message.WrapError(err, errMsg))
 					return nil, false, errors.Wrapf(err, "could not dequeue disallowed single task distro task '%s'", nextTask.Id)
 				}
 				continue
@@ -603,7 +607,7 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 		}
 
 		// Dequeue the task so we don't get it on another iteration of the loop.
-		grip.Warning(message.WrapError(taskQueue.DequeueTask(nextTask.Id), message.Fields{
+		grip.Warning(message.WrapError(taskQueue.DequeueTask(ctx, nextTask.Id), message.Fields{
 			"message":   "updated the relevant running task fields for the given host, but there was an issue dequeuing the task",
 			"distro_id": nextTask.DistroId,
 			"task_id":   nextTask.Id,
@@ -646,6 +650,37 @@ func assignNextAvailableTask(ctx context.Context, env evergreen.Environment, tas
 	}
 
 	return nil, false, nil
+}
+
+func validateSingleTaskDistro(singleTaskDistroWhitelist evergreen.ProjectTasksPair, nextTask *task.Task) (bool, error) {
+	// Skip single task distro validation if the project allows every task.
+	if singleTaskDistroWhitelist.AllowAll() {
+		return true, nil
+	}
+
+	// Check if the buildvariant is allowed on the distro.
+	for _, allowedBV := range singleTaskDistroWhitelist.AllowedBVs {
+		matched, err := regexp.MatchString(allowedBV, nextTask.BuildVariant)
+		if err != nil {
+			return false, errors.Wrapf(err, "could not process bv regex '%s'", allowedBV)
+		}
+		if matched {
+			return true, nil
+		}
+	}
+
+	// Check if the task is allowed on the distro.
+	for _, allowedTask := range singleTaskDistroWhitelist.AllowedTasks {
+		matched, err := regexp.MatchString(allowedTask, nextTask.DisplayName)
+		if err != nil {
+			return false, errors.Wrapf(err, "could not process task regex '%s'", allowedTask)
+		}
+		if matched {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 // checkHostTaskGroupAfterDispatch checks that the task group max hosts is
@@ -728,8 +763,8 @@ func dispatchHostTaskAtomically(ctx context.Context, env evergreen.Environment, 
 		return err
 	}
 
-	event.LogHostTaskDispatched(t.Id, t.Execution, h.Id)
-	event.LogHostRunningTaskSet(h.Id, t.Id, t.Execution)
+	event.LogHostTaskDispatched(ctx, t.Id, t.Execution, h.Id)
+	event.LogHostRunningTaskSet(ctx, h.Id, t.Id, t.Execution)
 
 	if t.IsPartOfDisplay(ctx) {
 		// The task is already dispatched at this point, so continue if this
@@ -745,14 +780,14 @@ func dispatchHostTaskAtomically(ctx context.Context, env evergreen.Environment, 
 	return nil
 }
 
-func dispatchHostTask(env evergreen.Environment, h *host.Host, t *task.Task) func(mongo.SessionContext) (interface{}, error) {
-	return func(sessCtx mongo.SessionContext) (interface{}, error) {
-		if err := h.UpdateRunningTaskWithContext(sessCtx, env, t); err != nil {
+func dispatchHostTask(env evergreen.Environment, h *host.Host, t *task.Task) func(mongo.SessionContext) (any, error) {
+	return func(ctx mongo.SessionContext) (any, error) {
+		if err := h.UpdateRunningTaskWithContext(ctx, env, t); err != nil {
 			return nil, errors.Wrapf(err, "updating running task for host '%s' to '%s'", h.Id, t.Id)
 		}
 
 		dispatchedAt := time.Now()
-		if err := t.MarkAsHostDispatchedWithContext(sessCtx, env, h.Id, h.Distro.Id, h.AgentRevision, dispatchedAt); err != nil {
+		if err := t.MarkAsHostDispatchedWithContext(ctx, env, h.Id, h.Distro.Id, h.AgentRevision, dispatchedAt); err != nil {
 			return nil, errors.Wrapf(err, "marking task '%s' as dispatched to host '%s'", t.Id, h.Id)
 		}
 
@@ -781,8 +816,8 @@ func undoHostTaskDispatchAtomically(ctx context.Context, env evergreen.Environme
 	}
 
 	if clearedTask != "" {
-		event.LogHostRunningTaskCleared(h.Id, clearedTask, clearedTaskExec)
-		event.LogHostTaskUndispatched(clearedTask, clearedTaskExec, h.Id)
+		event.LogHostRunningTaskCleared(ctx, h.Id, clearedTask, clearedTaskExec)
+		event.LogHostTaskUndispatched(ctx, clearedTask, clearedTaskExec, h.Id)
 	}
 
 	if t.IsPartOfDisplay(ctx) {
@@ -799,12 +834,12 @@ func undoHostTaskDispatchAtomically(ctx context.Context, env evergreen.Environme
 	return nil
 }
 
-func undoHostTaskDispatch(env evergreen.Environment, h *host.Host, t *task.Task) func(mongo.SessionContext) (interface{}, error) {
-	return func(sessCtx mongo.SessionContext) (interface{}, error) {
-		if err := h.ClearRunningTaskWithContext(sessCtx, env); err != nil {
+func undoHostTaskDispatch(env evergreen.Environment, h *host.Host, t *task.Task) func(mongo.SessionContext) (any, error) {
+	return func(ctx mongo.SessionContext) (any, error) {
+		if err := h.ClearRunningTaskWithContext(ctx, env); err != nil {
 			return nil, errors.Wrapf(err, "clearing running task '%s' execution '%d' from host '%s'", h.RunningTask, h.RunningTaskExecution, h.Id)
 		}
-		if err := t.MarkAsHostUndispatchedWithContext(sessCtx, env); err != nil {
+		if err := t.MarkAsHostUndispatchedWithContext(ctx, env); err != nil {
 			return nil, errors.Wrapf(err, "marking task '%s' as no longer dispatched", t.Id)
 		}
 		return nil, nil
@@ -987,7 +1022,7 @@ func handleOldAgentRevision(ctx context.Context, response apimodels.NextTaskResp
 			}))
 		}
 
-		event.LogHostAgentDeployed(h.Id)
+		event.LogHostAgentDeployed(ctx, h.Id)
 		grip.Info(message.Fields{
 			"message":        "updated host agent revision",
 			"operation":      "NextTask",
@@ -1325,16 +1360,21 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 		endTaskResp.ShouldExit = true
 	}
 
-	// Disable hosts and prevent them from performing more work if they have
-	// system failed many tasks in a row.
-	if event.AllRecentHostEventsAreSystemFailed(ctx, currentHost.Id, currentHost.ProvisionTime, consecutiveSystemFailureThreshold) {
-		msg := fmt.Sprintf("host encountered %d consecutive system failures", consecutiveSystemFailureThreshold)
-		grip.Error(message.WrapError(units.HandlePoisonedHost(ctx, h.env, currentHost, msg), message.Fields{
-			"message": "unable to disable poisoned host",
-			"host":    currentHost.Id,
-		}))
+	if currentHost.Provider != evergreen.ProviderNameStatic {
+		// Disable a dynamic host and prevent it from performing more work if it
+		// has system failed multiple tasks in a row. They're assumed to be in
+		// an unhealthy state.
+		// Static hosts are monitored and managed separately, so they are not
+		// quarantined for system failures.
+		if event.AllRecentHostEventsAreSystemFailed(ctx, currentHost.Id, currentHost.ProvisionTime, consecutiveSystemFailureThreshold) {
+			msg := fmt.Sprintf("host encountered %d consecutive system failures", consecutiveSystemFailureThreshold)
+			grip.Error(message.WrapError(units.HandlePoisonedHost(ctx, h.env, currentHost, msg), message.Fields{
+				"message": "unable to disable poisoned host",
+				"host":    currentHost.Id,
+			}))
 
-		endTaskResp.ShouldExit = true
+			endTaskResp.ShouldExit = true
+		}
 	}
 
 	msg := message.Fields{

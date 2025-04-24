@@ -18,11 +18,11 @@ func TestAddIssueToAnnotation(t *testing.T) {
 
 	assert.NoError(t, db.ClearCollections(annotations.Collection, Collection))
 	task := Task{Id: "t1"}
-	assert.NoError(t, task.Insert())
+	assert.NoError(t, task.Insert(t.Context()))
 	issue := annotations.IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", ConfidenceScore: float64(91.23)}
 	assert.NoError(t, AddIssueToAnnotation(ctx, "t1", 0, issue, "annie.black"))
 
-	annotation, err := annotations.FindOneByTaskIdAndExecution("t1", 0)
+	annotation, err := annotations.FindOneByTaskIdAndExecution(t.Context(), "t1", 0)
 	assert.NoError(t, err)
 	assert.NotNil(t, annotation)
 	assert.NotEqual(t, "", annotation.Id)
@@ -34,7 +34,7 @@ func TestAddIssueToAnnotation(t *testing.T) {
 	assert.Equal(t, float64(91.23), annotation.Issues[0].ConfidenceScore)
 
 	assert.NoError(t, AddIssueToAnnotation(ctx, "t1", 0, issue, "not.annie.black"))
-	annotation, err = annotations.FindOneByTaskIdAndExecution("t1", 0)
+	annotation, err = annotations.FindOneByTaskIdAndExecution(t.Context(), "t1", 0)
 	assert.NoError(t, err)
 	assert.NotNil(t, annotation)
 	assert.Len(t, annotation.Issues, 2)
@@ -57,13 +57,13 @@ func TestRemoveIssueFromAnnotation(t *testing.T) {
 	issue2 := annotations.IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", Source: &annotations.Source{Author: "not.annie.black"}}
 	assert.NoError(t, db.ClearCollections(annotations.Collection, Collection))
 	a := annotations.TaskAnnotation{TaskId: "t1", Issues: []annotations.IssueLink{issue1, issue2}}
-	assert.NoError(t, a.Upsert())
+	assert.NoError(t, a.Upsert(t.Context()))
 	task := Task{Id: "t1", HasAnnotations: true, Status: evergreen.TaskFailed, DisplayStatusCache: evergreen.TaskKnownIssue}
-	assert.NoError(t, task.Insert())
+	assert.NoError(t, task.Insert(t.Context()))
 
 	// Task should still have annotations key set after first issue is removed
 	assert.NoError(t, RemoveIssueFromAnnotation(ctx, "t1", 0, issue1))
-	annotationFromDB, err := annotations.FindOneByTaskIdAndExecution("t1", 0)
+	annotationFromDB, err := annotations.FindOneByTaskIdAndExecution(t.Context(), "t1", 0)
 	assert.NoError(t, err)
 	assert.NotNil(t, annotationFromDB)
 	assert.Len(t, annotationFromDB.Issues, 1)
@@ -76,7 +76,7 @@ func TestRemoveIssueFromAnnotation(t *testing.T) {
 
 	// Removing the second issue should mark the task as no longer having annotations
 	assert.NoError(t, RemoveIssueFromAnnotation(ctx, "t1", 0, issue2))
-	annotationFromDB, err = annotations.FindOneByTaskIdAndExecution("t1", 0)
+	annotationFromDB, err = annotations.FindOneByTaskIdAndExecution(t.Context(), "t1", 0)
 	assert.NoError(t, err)
 	assert.NotNil(t, annotationFromDB)
 	assert.Empty(t, annotationFromDB.Issues)
@@ -96,12 +96,12 @@ func TestMoveIssueToSuspectedIssue(t *testing.T) {
 	issue3 := annotations.IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-3456", Source: &annotations.Source{Author: "different user"}}
 	assert.NoError(t, db.ClearCollections(annotations.Collection, Collection))
 	a := annotations.TaskAnnotation{TaskId: "t1", Issues: []annotations.IssueLink{issue1, issue2}, SuspectedIssues: []annotations.IssueLink{issue3}}
-	assert.NoError(t, a.Upsert())
+	assert.NoError(t, a.Upsert(t.Context()))
 	task := Task{Id: "t1", HasAnnotations: true}
-	assert.NoError(t, task.Insert())
+	assert.NoError(t, task.Insert(t.Context()))
 
 	assert.NoError(t, MoveIssueToSuspectedIssue(ctx, a.TaskId, a.TaskExecution, issue1, "someone new"))
-	annotationFromDB, err := annotations.FindOneByTaskIdAndExecution(a.TaskId, a.TaskExecution)
+	annotationFromDB, err := annotations.FindOneByTaskIdAndExecution(t.Context(), a.TaskId, a.TaskExecution)
 	assert.NoError(t, err)
 	assert.NotNil(t, annotationFromDB)
 	// Task should still have annotations key set after first issue is removed
@@ -117,7 +117,7 @@ func TestMoveIssueToSuspectedIssue(t *testing.T) {
 
 	// Removing the second issue should mark the task as no longer having annotations
 	assert.NoError(t, MoveIssueToSuspectedIssue(ctx, a.TaskId, a.TaskExecution, issue2, "someone else new"))
-	annotationFromDB, err = annotations.FindOneByTaskIdAndExecution(a.TaskId, a.TaskExecution)
+	annotationFromDB, err = annotations.FindOneByTaskIdAndExecution(t.Context(), a.TaskId, a.TaskExecution)
 	assert.NoError(t, err)
 	assert.NotNil(t, annotationFromDB)
 	assert.Empty(t, annotationFromDB.Issues)
@@ -141,12 +141,12 @@ func TestMoveSuspectedIssueToIssue(t *testing.T) {
 
 	assert.NoError(t, db.ClearCollections(annotations.Collection, Collection))
 	task := Task{Id: "t1"}
-	assert.NoError(t, task.Insert())
+	assert.NoError(t, task.Insert(t.Context()))
 	a := annotations.TaskAnnotation{TaskId: "t1", SuspectedIssues: []annotations.IssueLink{issue1, issue2}, Issues: []annotations.IssueLink{issue3}}
-	assert.NoError(t, a.Upsert())
+	assert.NoError(t, a.Upsert(t.Context()))
 
 	assert.NoError(t, MoveSuspectedIssueToIssue(ctx, a.TaskId, a.TaskExecution, issue1, "someone new"))
-	annotationFromDB, err := annotations.FindOneByTaskIdAndExecution("t1", 0)
+	annotationFromDB, err := annotations.FindOneByTaskIdAndExecution(t.Context(), "t1", 0)
 	assert.NoError(t, err)
 	assert.NotNil(t, annotationFromDB)
 	assert.Len(t, annotationFromDB.SuspectedIssues, 1)
@@ -167,14 +167,14 @@ func TestPatchIssue(t *testing.T) {
 
 	assert.NoError(t, db.ClearCollections(annotations.Collection, Collection))
 	t1 := Task{Id: "t1"}
-	assert.NoError(t, t1.Insert())
+	assert.NoError(t, t1.Insert(t.Context()))
 	issue1 := annotations.IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-1234", ConfidenceScore: float64(91.23)}
 	assert.NoError(t, AddIssueToAnnotation(ctx, "t1", 0, issue1, "bynn.lee"))
 	issue2 := annotations.IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-2345"}
 	a := annotations.TaskAnnotation{TaskId: "t1", TaskExecution: 0, SuspectedIssues: []annotations.IssueLink{issue2}}
 	assert.NoError(t, PatchAnnotation(ctx, &a, "not bynn", true))
 
-	annotation, err := annotations.FindOneByTaskIdAndExecution(a.TaskId, a.TaskExecution)
+	annotation, err := annotations.FindOneByTaskIdAndExecution(t.Context(), a.TaskId, a.TaskExecution)
 	assert.NoError(t, err)
 	assert.NotNil(t, annotation)
 	assert.NotEqual(t, "", annotation.Id)
@@ -194,7 +194,7 @@ func TestPatchIssue(t *testing.T) {
 	issue3 := annotations.IssueLink{URL: "https://issuelink.com", IssueKey: "EVG-3456"}
 	insert := annotations.TaskAnnotation{TaskId: "t1", TaskExecution: 1, SuspectedIssues: []annotations.IssueLink{issue3}}
 	assert.NoError(t, PatchAnnotation(ctx, &insert, "insert", true))
-	annotation, err = annotations.FindOneByTaskIdAndExecution(insert.TaskId, insert.TaskExecution)
+	annotation, err = annotations.FindOneByTaskIdAndExecution(t.Context(), insert.TaskId, insert.TaskExecution)
 	assert.NoError(t, err)
 	assert.NotNil(t, annotation)
 	assert.NotEqual(t, "", annotation.Id)
@@ -206,7 +206,7 @@ func TestPatchIssue(t *testing.T) {
 
 	upsert := annotations.TaskAnnotation{TaskId: "t1", TaskExecution: 2, Note: &annotations.Note{Message: "should work"}, SuspectedIssues: []annotations.IssueLink{issue3}}
 	assert.NoError(t, PatchAnnotation(ctx, &upsert, "upsert", true))
-	annotation, err = annotations.FindOneByTaskIdAndExecution(upsert.TaskId, upsert.TaskExecution)
+	annotation, err = annotations.FindOneByTaskIdAndExecution(t.Context(), upsert.TaskId, upsert.TaskExecution)
 	assert.NoError(t, err)
 	assert.NotNil(t, annotation)
 	assert.NotEqual(t, "", annotation.Id)
@@ -226,7 +226,7 @@ func TestPatchIssue(t *testing.T) {
 
 	// Check that HasAnnotations field is correctly in sync when patching issues array.
 	t2 := Task{Id: "t2"}
-	assert.NoError(t, t2.Insert())
+	assert.NoError(t, t2.Insert(t.Context()))
 
 	annotationUpdate := annotations.TaskAnnotation{TaskId: "t2", TaskExecution: 0, Issues: []annotations.IssueLink{issue3}}
 	assert.NoError(t, PatchAnnotation(ctx, &annotationUpdate, "jane.smith", true))

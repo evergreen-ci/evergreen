@@ -53,7 +53,7 @@ func (s *UserRouteSuite) TestUpdateNotifications() {
 	s.NoError(err)
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
-	body := map[string]interface{}{
+	body := map[string]any{
 		"slack_username":  "@test",
 		"slack_member_id": "NOTES25BA",
 		"notifications": map[string]string{
@@ -72,7 +72,7 @@ func (s *UserRouteSuite) TestUpdateNotifications() {
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
 
-	dbUser, err := user.FindOne(user.ById("me"))
+	dbUser, err := user.FindOneContext(ctx, user.ById("me"))
 	s.NoError(err)
 	s.EqualValues(user.PreferenceSlack, dbUser.Settings.Notifications.BuildBreak)
 	s.EqualValues(user.PreferenceEmail, dbUser.Settings.Notifications.PatchFinish)
@@ -92,7 +92,7 @@ func (s *UserRouteSuite) TestUndefinedInput() {
 	}
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me", Settings: settings})
-	body := map[string]interface{}{
+	body := map[string]any{
 		"notifications": map[string]string{
 			"build_break": "slack",
 		},
@@ -108,7 +108,7 @@ func (s *UserRouteSuite) TestUndefinedInput() {
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
 
-	dbUser, err := user.FindOne(user.ById("me"))
+	dbUser, err := user.FindOneContext(ctx, user.ById("me"))
 	s.NoError(err)
 	s.EqualValues(user.PreferenceSlack, dbUser.Settings.Notifications.BuildBreak)
 	s.EqualValues("something", dbUser.Settings.SlackUsername)
@@ -121,10 +121,10 @@ func (s *UserRouteSuite) TestSaveFeedback() {
 	s.NoError(err)
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "me"})
-	body := map[string]interface{}{
-		"spruce_feedback": map[string]interface{}{
+	body := map[string]any{
+		"spruce_feedback": map[string]any{
 			"type": "someType",
-			"questions": []map[string]interface{}{
+			"questions": []map[string]any{
 				{"id": "1", "prompt": "this is a question", "answer": "this is an answer"},
 			},
 		},
@@ -140,7 +140,7 @@ func (s *UserRouteSuite) TestSaveFeedback() {
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
 
-	feedback, err := model.FindFeedbackOfType("someType")
+	feedback, err := model.FindFeedbackOfType(s.T().Context(), "someType")
 	s.NoError(err)
 	s.Len(feedback, 1)
 	s.Equal("me", feedback[0].User)
@@ -169,7 +169,7 @@ func (s *userPermissionPostSuite) SetupTest() {
 	s.u = user.DBUser{
 		Id: "user",
 	}
-	s.Require().NoError(s.u.Insert())
+	s.Require().NoError(s.u.Insert(s.T().Context()))
 	s.h = makeModifyUserPermissions(s.env.RoleManager())
 }
 
@@ -221,7 +221,7 @@ func (s *userPermissionPostSuite) TestValidInput() {
 	roles, err := s.env.RoleManager().GetAllRoles()
 	s.NoError(err)
 	s.Len(roles, 1)
-	dbUser, err := user.FindOneById(s.u.Id)
+	dbUser, err := user.FindOneByIdContext(s.T().Context(), s.u.Id)
 	s.NoError(err)
 	s.Equal(dbUser.SystemRoles[0], roles[0].ID)
 	foundScope, err := s.env.RoleManager().FindScopeForResources(evergreen.ProjectResourceType, "foo")
@@ -244,10 +244,10 @@ func (s *userPermissionPostSuite) TestValidInput() {
 	s.Equal(newScope.ID, foundScope.ID)
 
 	// a matching role should just be added
-	dbUser, err = user.FindOneById(s.u.Id)
+	dbUser, err = user.FindOneByIdContext(s.T().Context(), s.u.Id)
 	s.NoError(err)
 	for _, role := range dbUser.Roles() {
-		s.NoError(dbUser.RemoveRole(role))
+		s.NoError(dbUser.RemoveRole(s.T().Context(), role))
 	}
 	_ = s.h.Run(ctx)
 	roles, err = s.env.RoleManager().GetAllRoles()
@@ -257,7 +257,7 @@ func (s *userPermissionPostSuite) TestValidInput() {
 	s.NoError(err)
 	s.NotNil(foundScope)
 	s.Equal(newScope.ID, foundScope.ID)
-	dbUser, err = user.FindOneById(s.u.Id)
+	dbUser, err = user.FindOneByIdContext(s.T().Context(), s.u.Id)
 	s.NoError(err)
 	s.Len(dbUser.Roles(), 1)
 }
@@ -276,17 +276,17 @@ func TestProjectSettingsUpdateViewRepo(t *testing.T) {
 		RepoRefId: "myRepo",
 		Enabled:   true,
 	}
-	assert.NoError(t, pRef.Insert())
+	assert.NoError(t, pRef.Insert(t.Context()))
 	pRef = model.ProjectRef{
 		Id:      "unattached",
 		Enabled: true,
 	}
-	assert.NoError(t, pRef.Insert())
+	assert.NoError(t, pRef.Insert(t.Context()))
 
 	repoRef := model.RepoRef{ProjectRef: model.ProjectRef{
 		Id: "myRepo",
 	}}
-	assert.NoError(t, repoRef.Upsert())
+	assert.NoError(t, repoRef.Replace(t.Context()))
 	scope := gimlet.Scope{
 		ID:        "myRepo_scope",
 		Resources: []string{"myRepo"},
@@ -298,7 +298,7 @@ func TestProjectSettingsUpdateViewRepo(t *testing.T) {
 		Id:          "me",
 		SystemRoles: []string{},
 	}
-	require.NoError(t, u.Insert())
+	require.NoError(t, u.Insert(t.Context()))
 
 	// We should be able to view the repo because of the attached project, and not error because of the unattached project.
 	handler := userPermissionsPostHandler{rm: rm, userID: u.Id}
@@ -312,11 +312,11 @@ func TestProjectSettingsUpdateViewRepo(t *testing.T) {
 	roles, err := rm.GetAllRoles()
 	assert.NoError(t, err)
 	require.Len(t, roles, 1)
-	dbUser, err := user.FindOneById(u.Id)
+	dbUser, err := user.FindOneByIdContext(t.Context(), u.Id)
 	assert.NoError(t, err)
 	require.Len(t, dbUser.SystemRoles, 1)
 	assert.Contains(t, dbUser.SystemRoles, roles[0].ID)
-	hasPermission, err := model.UserHasRepoViewPermission(dbUser, "myRepo")
+	hasPermission, err := model.UserHasRepoViewPermission(t.Context(), dbUser, "myRepo")
 	assert.NoError(t, err)
 	assert.True(t, hasPermission)
 }
@@ -332,7 +332,7 @@ func TestDeleteUserPermissions(t *testing.T) {
 		Id:          "user",
 		SystemRoles: []string{"role1", "role2", "role3", evergreen.BasicProjectAccessRole},
 	}
-	require.NoError(t, u.Insert())
+	require.NoError(t, u.Insert(t.Context()))
 	require.NoError(t, rm.AddScope(gimlet.Scope{ID: "scope1", Resources: []string{"resource1"}, Type: "project"}))
 	require.NoError(t, rm.AddScope(gimlet.Scope{ID: "scope2", Resources: []string{"resource2"}, Type: "project"}))
 	require.NoError(t, rm.AddScope(gimlet.Scope{ID: "scope3", Resources: []string{"resource3"}, Type: "distro"}))
@@ -350,7 +350,7 @@ func TestDeleteUserPermissions(t *testing.T) {
 	assert.NoError(t, handler.Parse(ctx, request))
 	resp := handler.Run(ctx)
 	assert.Equal(t, http.StatusOK, resp.Status())
-	dbUser, err := user.FindOneById(u.Id)
+	dbUser, err := user.FindOneByIdContext(t.Context(), u.Id)
 	require.NoError(t, err)
 	assert.Len(t, dbUser.SystemRoles, 3)
 	assert.NotContains(t, dbUser.SystemRoles, "role1")
@@ -363,7 +363,7 @@ func TestDeleteUserPermissions(t *testing.T) {
 	assert.NoError(t, handler.Parse(ctx, request))
 	resp = handler.Run(ctx)
 	assert.Equal(t, http.StatusOK, resp.Status())
-	dbUser, err = user.FindOneById(u.Id)
+	dbUser, err = user.FindOneByIdContext(t.Context(), u.Id)
 	require.NoError(t, err)
 	assert.Empty(t, dbUser.SystemRoles)
 }
@@ -393,9 +393,9 @@ func TestGetUserPermissions(t *testing.T) {
 		},
 	}
 	for _, projectRef := range projectRefs {
-		require.NoError(t, projectRef.Upsert())
+		require.NoError(t, projectRef.Replace(t.Context()))
 	}
-	require.NoError(t, u.Insert())
+	require.NoError(t, u.Insert(t.Context()))
 	require.NoError(t, rm.AddScope(gimlet.Scope{ID: "scope1", Resources: []string{"resource1"}, Type: "project"}))
 	require.NoError(t, rm.AddScope(gimlet.Scope{ID: "scope2", Resources: []string{"resource2"}, Type: "project"}))
 	require.NoError(t, rm.AddScope(gimlet.Scope{ID: "scope3", Resources: []string{"resource3"}, Type: "project"}))
@@ -421,7 +421,7 @@ func TestPostUserRoles(t *testing.T) {
 	u := user.DBUser{
 		Id: "user",
 	}
-	require.NoError(t, u.Insert())
+	require.NoError(t, u.Insert(t.Context()))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	ctx = gimlet.AttachUser(ctx, &u)
@@ -454,7 +454,7 @@ func TestPostUserRoles(t *testing.T) {
 	assert.NoError(t, handler.Parse(ctx, request))
 	resp = handler.Run(ctx)
 	assert.Equal(t, http.StatusOK, resp.Status())
-	dbUser, err := user.FindOneById(u.Id)
+	dbUser, err := user.FindOneByIdContext(t.Context(), u.Id)
 	assert.NoError(t, err)
 	assert.Equal(t, []string{"role1"}, dbUser.Roles())
 
@@ -465,12 +465,12 @@ func TestPostUserRoles(t *testing.T) {
 	u = user.DBUser{
 		Id: newId,
 	}
-	require.NoError(t, u.Insert())
+	require.NoError(t, u.Insert(t.Context()))
 	require.NoError(t, err)
 	assert.NoError(t, handler.Parse(ctx, request))
 	resp = handler.Run(ctx)
 	assert.Equal(t, http.StatusOK, resp.Status())
-	dbUser, err = user.FindOneById(newId)
+	dbUser, err = user.FindOneByIdContext(t.Context(), newId)
 	assert.NoError(t, err)
 	assert.Equal(t, []string{"role1"}, dbUser.Roles())
 
@@ -490,7 +490,7 @@ func TestPostUserRoles(t *testing.T) {
 	assert.NoError(t, handler.Parse(ctx, request))
 	resp = handler.Run(ctx)
 	assert.Equal(t, http.StatusOK, resp.Status())
-	dbUser, err = user.FindOneById(newId)
+	dbUser, err = user.FindOneByIdContext(t.Context(), newId)
 	assert.NoError(t, err)
 	assert.Empty(t, dbUser.Roles())
 }
@@ -579,7 +579,7 @@ func TestGetUsersForRole(t *testing.T) {
 			"nothing_useful",
 		},
 	}
-	assert.NoError(t, db.InsertMany(user.Collection, u1, u2, u3))
+	assert.NoError(t, db.InsertMany(t.Context(), user.Collection, u1, u2, u3))
 
 	req, err := http.NewRequest(http.MethodGet, "http://example.com/api/rest/v2/roles/basic_project_access/users", nil)
 	require.NoError(t, err)
@@ -617,7 +617,7 @@ func TestRemoveHiddenProjects(t *testing.T) {
 		},
 	}
 	for _, projectRef := range projectRefs {
-		require.NoError(t, projectRef.Upsert())
+		require.NoError(t, projectRef.Replace(t.Context()))
 	}
 
 	permissions := []rolemanager.PermissionSummary{
@@ -648,7 +648,7 @@ func TestRemoveHiddenProjects(t *testing.T) {
 		},
 	}
 
-	assert.NoError(t, removeHiddenProjects(permissions))
+	assert.NoError(t, removeHiddenProjects(t.Context(), permissions))
 	require.Len(t, permissions, 2)
 	require.Len(t, permissions[0].Permissions, 2)
 	require.Nil(t, permissions[0].Permissions["project1"])
@@ -692,7 +692,7 @@ func TestGetUsersForResourceId(t *testing.T) {
 			"bot_access",
 		},
 	}
-	assert.NoError(t, db.InsertMany(user.Collection, u1, u2, u3, u4))
+	assert.NoError(t, db.InsertMany(t.Context(), user.Collection, u1, u2, u3, u4))
 	basicRole := gimlet.Role{
 		ID:    "basic_project_access",
 		Scope: "some_projects",
@@ -835,14 +835,14 @@ func TestRenameUser(t *testing.T) {
 				Author:      "new_me",
 				PatchNumber: 1,
 			}
-			assert.NoError(t, pNew.Insert())
+			assert.NoError(t, pNew.Insert(t.Context()))
 			newUsr := user.DBUser{
 				Id:           "new_me",
 				EmailAddress: "new_me@still_awesome.com",
 				APIKey:       "my_original_key",
 				PatchNumber:  1,
 			}
-			assert.NoError(t, newUsr.Insert())
+			assert.NoError(t, newUsr.Insert(t.Context()))
 			req, err := http.NewRequest(http.MethodPost, "http://example.com/api/rest/v2/users/rename_user", bytes.NewBuffer(body))
 			require.NoError(t, err)
 			handler := makeRenameUser(env)
@@ -853,7 +853,7 @@ func TestRenameUser(t *testing.T) {
 			resp := handler.Run(ctx)
 			assert.Equal(t, http.StatusOK, resp.Status())
 
-			newUsrFromDb, err := user.FindOneById("new_me")
+			newUsrFromDb, err := user.FindOneByIdContext(t.Context(), "new_me")
 			assert.NoError(t, err)
 			assert.NotNil(t, newUsrFromDb)
 			assert.NotEqual(t, newUsr.APIKey, newUsrFromDb.GetAPIKey())
@@ -865,11 +865,11 @@ func TestRenameUser(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Len(t, hosts, 1)
 
-			volumes, err := host.FindVolumesByUser("new_me")
+			volumes, err := host.FindVolumesByUser(ctx, "new_me")
 			assert.NoError(t, err)
 			assert.Len(t, volumes, 1)
 
-			patches, err := patch.Find(db.Query(mgobson.M{patch.AuthorKey: "new_me"}))
+			patches, err := patch.Find(t.Context(), db.Query(mgobson.M{patch.AuthorKey: "new_me"}))
 			assert.NoError(t, err)
 			assert.Len(t, patches, 3)
 			for _, p := range patches {
@@ -890,7 +890,7 @@ func TestRenameUser(t *testing.T) {
 			resp := handler.Run(ctx)
 			assert.Equal(t, http.StatusOK, resp.Status())
 
-			newUsrFromDb, err := user.FindOneById("new_me")
+			newUsrFromDb, err := user.FindOneByIdContext(t.Context(), "new_me")
 			assert.NoError(t, err)
 			assert.NotNil(t, newUsrFromDb)
 			assert.NotEmpty(t, newUsrFromDb.GetAPIKey())
@@ -902,11 +902,11 @@ func TestRenameUser(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Len(t, hosts, 1)
 
-			volumes, err := host.FindVolumesByUser("new_me")
+			volumes, err := host.FindVolumesByUser(ctx, "new_me")
 			assert.NoError(t, err)
 			assert.Len(t, volumes, 1)
 
-			patches, err := patch.Find(db.Query(mgobson.M{patch.AuthorKey: "new_me"}))
+			patches, err := patch.Find(t.Context(), db.Query(mgobson.M{patch.AuthorKey: "new_me"}))
 			assert.NoError(t, err)
 			assert.Len(t, patches, 2)
 		},
@@ -936,7 +936,7 @@ func TestRenameUser(t *testing.T) {
 				UserHost:  true,
 				Status:    evergreen.HostRunning,
 			}
-			assert.NoError(t, db.InsertMany(host.Collection, h1, h2, h3))
+			assert.NoError(t, db.InsertMany(t.Context(), host.Collection, h1, h2, h3))
 
 			v1 := host.Volume{
 				ID:        "v1",
@@ -946,7 +946,7 @@ func TestRenameUser(t *testing.T) {
 				ID:        "v2",
 				CreatedBy: "you",
 			}
-			assert.NoError(t, db.InsertMany(host.VolumesCollection, v1, v2))
+			assert.NoError(t, db.InsertMany(t.Context(), host.VolumesCollection, v1, v2))
 
 			p1 := patch.Patch{
 				Id:          mgobson.NewObjectId(),
@@ -958,7 +958,7 @@ func TestRenameUser(t *testing.T) {
 				Author:      "me",
 				PatchNumber: 7,
 			}
-			assert.NoError(t, db.InsertMany(patch.Collection, p1, p2))
+			assert.NoError(t, db.InsertMany(t.Context(), patch.Collection, p1, p2))
 
 			someOtherUser := user.DBUser{
 				Id:           "some_other_me",
@@ -978,8 +978,8 @@ func TestRenameUser(t *testing.T) {
 					UID: 12,
 				}},
 			}
-			assert.NoError(t, someOtherUser.Insert())
-			assert.NoError(t, oldUsr.Insert())
+			assert.NoError(t, someOtherUser.Insert(t.Context()))
+			assert.NoError(t, oldUsr.Insert(t.Context()))
 			testCase(t)
 		})
 	}
@@ -1032,7 +1032,7 @@ func TestOffboardUserHandlerHosts(t *testing.T) {
 	assert.NoError(t, h1.Insert(ctx))
 	assert.NoError(t, h2.Insert(ctx))
 	assert.NoError(t, h3.Insert(ctx))
-	assert.NoError(t, v1.Insert())
+	assert.NoError(t, v1.Insert(t.Context()))
 
 	handler := offboardUserHandler{}
 	json := []byte(`{"email": "user0@mongodb.com"}`)
@@ -1041,7 +1041,7 @@ func TestOffboardUserHandlerHosts(t *testing.T) {
 	assert.Error(t, handler.Parse(ctx, req)) // user not inserted
 
 	u := user.DBUser{Id: "user0"}
-	assert.NoError(t, u.Insert())
+	assert.NoError(t, u.Insert(t.Context()))
 	req, _ = http.NewRequest(http.MethodPatch, "http://example.com/api/rest/v2/users/offboard_user?dry_run=true", bytes.NewBuffer(json))
 	assert.NoError(t, handler.Parse(ctx, req))
 	assert.Equal(t, "user0", handler.user)
@@ -1082,8 +1082,8 @@ func TestOffboardUserHandlerAdmins(t *testing.T) {
 		Admins:    []string{"user1", "user2"},
 	}
 
-	assert.NoError(t, projectRef0.Insert())
-	assert.NoError(t, projectRef1.Insert())
+	assert.NoError(t, projectRef0.Insert(t.Context()))
+	assert.NoError(t, projectRef1.Insert(t.Context()))
 
 	offboardedUser := "user0"
 	ctx, cancel := context.WithCancel(context.Background())
@@ -1107,7 +1107,7 @@ func TestOffboardUserHandlerAdmins(t *testing.T) {
 	require.Equal(t, http.StatusOK, resp.Status())
 	env.SetUserManager(userManager)
 
-	projectRefs, err := model.FindAllMergedProjectRefs()
+	projectRefs, err := model.FindAllMergedProjectRefs(t.Context())
 	assert.NoError(t, err)
 	require.Len(t, projectRefs, 2)
 	for _, projRef := range projectRefs {
@@ -1177,8 +1177,8 @@ func TestGetUserHandler(t *testing.T) {
 	} {
 		t.Run(testName, func(t *testing.T) {
 			assert.NoError(t, db.ClearCollections(user.Collection))
-			assert.NoError(t, usrToRetrieve.Insert())
-			assert.NoError(t, me.Insert())
+			assert.NoError(t, usrToRetrieve.Insert(t.Context()))
+			assert.NoError(t, me.Insert(t.Context()))
 			testCase(t)
 		})
 	}

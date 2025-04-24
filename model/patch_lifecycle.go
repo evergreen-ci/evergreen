@@ -87,7 +87,7 @@ func ValidateTVPairs(p *Project, in []TVPair) error {
 // Given a patch version and a list of variant/task pairs, creates the set of new builds that
 // do not exist yet out of the set of pairs, and adds tasks for builds which already exist.
 func addNewTasksAndBuildsForPatch(ctx context.Context, creationInfo TaskCreationInfo, caller string) error {
-	existingBuilds, err := build.Find(build.ByIds(creationInfo.Version.BuildIds).WithFields(build.IdKey, build.BuildVariantKey, build.CreateTimeKey, build.RequesterKey))
+	existingBuilds, err := build.Find(ctx, build.ByIds(creationInfo.Version.BuildIds).WithFields(build.IdKey, build.BuildVariantKey, build.CreateTimeKey, build.RequesterKey))
 	if err != nil {
 		return err
 	}
@@ -133,18 +133,18 @@ func ConfigurePatch(ctx context.Context, settings *evergreen.Settings, p *patch.
 
 	// only modify parameters if the patch hasn't been finalized
 	if len(patchUpdateReq.Parameters) > 0 && p.Version == "" {
-		if err = p.SetParameters(patchUpdateReq.Parameters); err != nil {
+		if err = p.SetParameters(ctx, patchUpdateReq.Parameters); err != nil {
 			return http.StatusInternalServerError, errors.Wrap(err, "setting patch parameters")
 		}
 	}
 	// update the description for both reconfigured and new patches
-	if err = p.SetDescription(patchUpdateReq.Description); err != nil {
+	if err = p.SetDescription(ctx, patchUpdateReq.Description); err != nil {
 		return http.StatusInternalServerError, errors.Wrap(err, "setting description")
 	}
 
 	patchVariantTasks := tasks.TVPairsToVariantTasks()
 	if len(patchVariantTasks) > 0 {
-		if err = p.SetVariantsTasks(patchVariantTasks); err != nil {
+		if err = p.SetVariantsTasks(ctx, patchVariantTasks); err != nil {
 			return http.StatusInternalServerError, errors.Wrap(err, "setting description")
 		}
 	}
@@ -156,7 +156,7 @@ func ConfigurePatch(ctx context.Context, settings *evergreen.Settings, p *patch.
 		}
 
 		if version.Message != patchUpdateReq.Description {
-			if err = UpdateVersionMessage(p.Version, patchUpdateReq.Description); err != nil {
+			if err = UpdateVersionMessage(ctx, p.Version, patchUpdateReq.Description); err != nil {
 				return http.StatusInternalServerError, errors.Wrap(err, "setting version message")
 			}
 		}
@@ -171,7 +171,7 @@ func ConfigurePatch(ctx context.Context, settings *evergreen.Settings, p *patch.
 				ActivationInfo: specificActivationInfo{},
 				GeneratedBy:    "",
 			}
-			err = addNewTasksAndBuildsForPatch(context.Background(), creationInfo, patchUpdateReq.Caller)
+			err = addNewTasksAndBuildsForPatch(ctx, creationInfo, patchUpdateReq.Caller)
 			if err != nil {
 				return http.StatusInternalServerError, errors.Wrapf(err, "creating new tasks/builds for version '%s'", version.Id)
 			}
@@ -278,7 +278,7 @@ func GetPatchedProject(ctx context.Context, settings *evergreen.Settings, p *pat
 		return project, patchConfig, nil
 	}
 
-	projectRef, opts, err := getLoadProjectOptsForPatch(p)
+	projectRef, opts, err := getLoadProjectOptsForPatch(ctx, p)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "fetching project options for patch")
 	}
@@ -339,7 +339,7 @@ func GetPatchedProjectConfig(ctx context.Context, settings *evergreen.Settings, 
 
 	// The patch has not been created yet, so do the first-time initialization
 	// to get the parser project and project config.
-	projectRef, opts, err := getLoadProjectOptsForPatch(p)
+	projectRef, opts, err := getLoadProjectOptsForPatch(ctx, p)
 	if err != nil {
 		return "", errors.Wrap(err, "fetching project options for patch")
 	}
@@ -390,7 +390,7 @@ func MakePatchedConfig(ctx context.Context, opts GetProjectOpts, projectConfig s
 		var patchFilePath, localConfigPath, renamedFilePath, patchContents string
 		var err error
 		if patchPart.PatchSet.Patch == "" {
-			patchContents, err = patch.FetchPatchContents(patchPart.PatchSet.PatchFileId)
+			patchContents, err = patch.FetchPatchContents(ctx, patchPart.PatchSet.PatchFileId)
 			if err != nil {
 				return nil, errors.Wrap(err, "fetching patch contents")
 			}
@@ -539,7 +539,7 @@ func parseRenamedOrCopiedFile(patchContents, filename string) string {
 // Creates builds based on the Version
 // Creates a manifest based on the Version
 func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Version, error) {
-	projectRef, err := FindMergedProjectRef(p.Project, p.Version, true)
+	projectRef, err := FindMergedProjectRef(ctx, p.Project, p.Version, true)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding project '%s'", p.Project)
 	}
@@ -576,14 +576,14 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 
 	var parentPatchNumber int
 	if p.IsChild() {
-		parentPatch, err := p.SetParametersFromParent()
+		parentPatch, err := p.SetParametersFromParent(ctx)
 		if err != nil {
 			return nil, errors.Wrap(err, "getting parameters from parent patch")
 		}
 		parentPatchNumber = parentPatch.PatchNumber
 	}
 
-	params, err := getFullPatchParams(p)
+	params, err := getFullPatchParams(ctx, p)
 	if err != nil {
 		return nil, errors.Wrap(err, "fetching patch parameters")
 	}
@@ -593,7 +593,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 		authorEmail = p.GitInfo.Email
 	}
 	if p.Author != "" {
-		u, err := user.FindOneById(p.Author)
+		u, err := user.FindOneByIdContext(ctx, p.Author)
 		if err != nil {
 			return nil, errors.Wrap(err, "getting user")
 		}
@@ -624,7 +624,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 		AuthorEmail:          authorEmail,
 	}
 
-	mfst, err := constructManifest(patchVersion, projectRef, project.Modules)
+	mfst, err := constructManifest(ctx, patchVersion, projectRef, project.Modules)
 	if err != nil {
 		return nil, errors.Wrap(err, "constructing manifest")
 	}
@@ -666,7 +666,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 		Project:    project,
 		ProjectRef: projectRef,
 	}
-	createTime, err := getTaskCreateTime(creationInfo)
+	createTime, err := getTaskCreateTime(ctx, creationInfo)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting create time for tasks in '%s', githash '%s'", p.Project, p.Githash)
 	}
@@ -738,7 +738,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 			numActivatedTasks += utility.FromIntPtr(t.EstimatedNumActivatedGeneratedTasks)
 		}
 	}
-	if err = task.UpdateSchedulingLimit(creationInfo.Version.Author, creationInfo.Version.Requester, numActivatedTasks, true); err != nil {
+	if err = task.UpdateSchedulingLimit(ctx, creationInfo.Version.Author, creationInfo.Version.Requester, numActivatedTasks, true); err != nil {
 		return nil, errors.Wrapf(err, "fetching user '%s' and updating their scheduling limit", creationInfo.Version.Author)
 	}
 
@@ -750,30 +750,30 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 	}
 	defer session.EndSession(ctx)
 
-	txFunc := func(sessCtx mongo.SessionContext) (interface{}, error) {
+	txFunc := func(ctx mongo.SessionContext) (any, error) {
 		db := env.DB()
-		_, err = db.Collection(VersionCollection).InsertOne(sessCtx, patchVersion)
+		_, err = db.Collection(VersionCollection).InsertOne(ctx, patchVersion)
 		if err != nil {
 			return nil, errors.Wrapf(err, "inserting version '%s'", patchVersion.Id)
 		}
 		if config != nil {
-			_, err = db.Collection(ProjectConfigCollection).InsertOne(sessCtx, config)
+			_, err = db.Collection(ProjectConfigCollection).InsertOne(ctx, config)
 			if err != nil {
 				return nil, errors.Wrapf(err, "inserting project config for version '%s'", patchVersion.Id)
 			}
 		}
 		if mfst != nil {
-			if err = mfst.InsertWithContext(sessCtx); err != nil {
+			if err = mfst.InsertWithContext(ctx); err != nil {
 				return nil, errors.Wrapf(err, "inserting manifest for version '%s'", patchVersion.Id)
 			}
 		}
-		if err = buildsToInsert.InsertMany(sessCtx, false); err != nil {
+		if err = buildsToInsert.InsertMany(ctx, false); err != nil {
 			return nil, errors.Wrapf(err, "inserting builds for version '%s'", patchVersion.Id)
 		}
-		if err = tasksToInsert.InsertUnordered(sessCtx); err != nil {
+		if err = tasksToInsert.InsertUnordered(ctx); err != nil {
 			return nil, errors.Wrapf(err, "inserting tasks for version '%s'", patchVersion.Id)
 		}
-		if err = p.SetFinalized(sessCtx, patchVersion.Id); err != nil {
+		if err = p.SetFinalized(ctx, patchVersion.Id); err != nil {
 			return nil, errors.Wrapf(err, "activating patch '%s'", patchVersion.Id)
 		}
 		return nil, err
@@ -814,12 +814,12 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string) (*Vers
 
 // getFullPatchParams will retrieve a merged list of parameters defined on the patch alias (if any)
 // with the parameters that were explicitly user-specified, with the latter taking precedence.
-func getFullPatchParams(p *patch.Patch) ([]patch.Parameter, error) {
+func getFullPatchParams(ctx context.Context, p *patch.Patch) ([]patch.Parameter, error) {
 	paramsMap := map[string]string{}
 	if p.Alias == "" || !IsPatchAlias(p.Alias) {
 		return p.Parameters, nil
 	}
-	aliases, err := findAliasesForPatch(p.Project, p.Alias, p)
+	aliases, err := findAliasesForPatch(ctx, p.Project, p.Alias, p)
 	if err != nil {
 		return nil, errors.Wrapf(err, "retrieving alias '%s' for patch '%s'", p.Alias, p.Id.Hex())
 	}
@@ -843,8 +843,8 @@ func getFullPatchParams(p *patch.Patch) ([]patch.Parameter, error) {
 	return fullParams, nil
 }
 
-func getLoadProjectOptsForPatch(p *patch.Patch) (*ProjectRef, *GetProjectOpts, error) {
-	projectRef, err := FindMergedProjectRef(p.Project, p.Version, true)
+func getLoadProjectOptsForPatch(ctx context.Context, p *patch.Patch) (*ProjectRef, *GetProjectOpts, error) {
+	projectRef, err := FindMergedProjectRef(ctx, p.Project, p.Version, true)
 	if err != nil {
 		return nil, nil, errors.WithStack(err)
 	}
@@ -863,7 +863,7 @@ func getLoadProjectOptsForPatch(p *patch.Patch) (*ProjectRef, *GetProjectOpts, e
 	if p.ReferenceManifestID != "" {
 		manifestID = p.ReferenceManifestID
 	} else {
-		baseVersion, err := VersionFindOne(BaseVersionByProjectIdAndRevision(p.Project, p.Githash))
+		baseVersion, err := VersionFindOne(ctx, BaseVersionByProjectIdAndRevision(p.Project, p.Githash))
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "finding base version for project '%s' and revision '%s'", p.Project, p.Githash)
 		}
@@ -887,7 +887,7 @@ func getLoadProjectOptsForPatch(p *patch.Patch) (*ProjectRef, *GetProjectOpts, e
 }
 
 func finalizeOrSubscribeChildPatch(ctx context.Context, childPatchId string, parentPatch *patch.Patch, requester string) error {
-	intent, err := patch.FindIntent(childPatchId, patch.TriggerIntentType)
+	intent, err := patch.FindIntent(ctx, childPatchId, patch.TriggerIntentType)
 	if err != nil {
 		return errors.Wrap(err, "fetching child patch intent")
 	}
@@ -900,7 +900,7 @@ func finalizeOrSubscribeChildPatch(ctx context.Context, childPatchId string, par
 	}
 	// if the parentStatus is "", finalize without waiting for the parent patch to finish running
 	if triggerIntent.ParentStatus == "" {
-		childPatchDoc, err := patch.FindOneId(childPatchId)
+		childPatchDoc, err := patch.FindOneId(ctx, childPatchId)
 		if err != nil {
 			return errors.Wrap(err, "fetching child patch")
 		}
@@ -922,21 +922,21 @@ func finalizeOrSubscribeChildPatch(ctx context.Context, childPatchId string, par
 		}
 	} else {
 		//subscribe on parent outcome
-		if err = SubscribeOnParentOutcome(triggerIntent.ParentStatus, childPatchId, parentPatch, requester); err != nil {
+		if err = SubscribeOnParentOutcome(ctx, triggerIntent.ParentStatus, childPatchId, parentPatch, requester); err != nil {
 			return errors.Wrap(err, "getting parameters from parent patch")
 		}
 	}
 	return nil
 }
 
-func SubscribeOnParentOutcome(parentStatus string, childPatchId string, parentPatch *patch.Patch, requester string) error {
+func SubscribeOnParentOutcome(ctx context.Context, parentStatus string, childPatchId string, parentPatch *patch.Patch, requester string) error {
 	subscriber := event.NewRunChildPatchSubscriber(event.ChildPatchSubscriber{
 		ParentStatus: parentStatus,
 		ChildPatchId: childPatchId,
 		Requester:    requester,
 	})
 	patchSub := event.NewParentPatchSubscription(parentPatch.Id.Hex(), subscriber)
-	if err := patchSub.Upsert(); err != nil {
+	if err := patchSub.Upsert(ctx); err != nil {
 		return errors.Wrapf(err, "inserting child patch subscription '%s'", childPatchId)
 	}
 	return nil
@@ -951,7 +951,7 @@ func CancelPatch(ctx context.Context, p *patch.Patch, reason task.AbortInfo) err
 		return errors.WithStack(task.AbortVersionTasks(ctx, p.Version, reason))
 	}
 
-	return errors.WithStack(patch.Remove(patch.ById(p.Id)))
+	return errors.WithStack(patch.Remove(ctx, patch.ById(p.Id)))
 }
 
 // AbortPatchesWithGithubPatchData aborts patches created
@@ -959,7 +959,7 @@ func CancelPatch(ctx context.Context, p *patch.Patch, reason task.AbortInfo) err
 // which are abortable will be aborted, while completed tasks will not be
 // affected.
 func AbortPatchesWithGithubPatchData(ctx context.Context, createdBefore time.Time, closed bool, newPatch, owner, repo string, prNumber int) error {
-	patches, err := patch.Find(patch.ByGithubPRAndCreatedBefore(createdBefore, owner, repo, prNumber))
+	patches, err := patch.Find(ctx, patch.ByGithubPRAndCreatedBefore(createdBefore, owner, repo, prNumber))
 	if err != nil {
 		return errors.Wrap(err, "fetching initial patch")
 	}

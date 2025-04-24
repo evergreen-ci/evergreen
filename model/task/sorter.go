@@ -14,10 +14,10 @@ func (t Tasks) Len() int           { return len(t) }
 func (t Tasks) Swap(i, j int)      { t[i], t[j] = t[j], t[i] }
 func (t Tasks) Less(i, j int) bool { return t[i].Id < t[j].Id }
 
-func (t Tasks) getPayload() []interface{} {
-	payload := make([]interface{}, len(t))
+func (t Tasks) getPayload() []any {
+	payload := make([]any, len(t))
 	for idx := range t {
-		payload[idx] = interface{}(t[idx])
+		payload[idx] = any(t[idx])
 	}
 
 	return payload
@@ -31,8 +31,8 @@ func (t Tasks) Export() []Task {
 	return out
 }
 
-func (t Tasks) Insert() error {
-	return db.InsertMany(Collection, t.getPayload()...)
+func (t Tasks) Insert(ctx context.Context) error {
+	return db.InsertMany(ctx, Collection, t.getPayload()...)
 }
 
 func (t Tasks) InsertUnordered(ctx context.Context) error {

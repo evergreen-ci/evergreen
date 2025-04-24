@@ -110,7 +110,7 @@ func (s *patchSuite) SetupTest() {
 	}
 
 	for _, patch := range s.patches {
-		s.NoError(patch.Insert())
+		s.NoError(patch.Insert(s.T().Context()))
 	}
 
 	s.True(s.patches[0].IsGithubPRPatch())
@@ -121,29 +121,29 @@ func (s *patchSuite) SetupTest() {
 }
 
 func (s *patchSuite) TestByGithubPRAndCreatedBefore() {
-	patches, err := Find(ByGithubPRAndCreatedBefore(time.Now(), "evergreen-ci", "evergreen", 1))
+	patches, err := Find(s.T().Context(), ByGithubPRAndCreatedBefore(time.Now(), "evergreen-ci", "evergreen", 1))
 	s.NoError(err)
 	s.Empty(patches)
 
-	patches, err = Find(ByGithubPRAndCreatedBefore(time.Now(), "octodog", "evergreen", 9002))
+	patches, err = Find(s.T().Context(), ByGithubPRAndCreatedBefore(time.Now(), "octodog", "evergreen", 9002))
 	s.NoError(err)
 	s.Empty(patches)
 
-	patches, err = Find(ByGithubPRAndCreatedBefore(time.Now(), "", "", 0))
+	patches, err = Find(s.T().Context(), ByGithubPRAndCreatedBefore(time.Now(), "", "", 0))
 	s.NoError(err)
 	s.Empty(patches)
 
-	patches, err = Find(ByGithubPRAndCreatedBefore(s.patches[2].CreateTime, "evergreen-ci", "evergreen", 9001))
+	patches, err = Find(s.T().Context(), ByGithubPRAndCreatedBefore(s.patches[2].CreateTime, "evergreen-ci", "evergreen", 9001))
 	s.NoError(err)
 	s.Len(patches, 2)
 
-	patches, err = Find(ByGithubPRAndCreatedBefore(s.time, "evergreen-ci", "evergreen", 9001))
+	patches, err = Find(s.T().Context(), ByGithubPRAndCreatedBefore(s.time, "evergreen-ci", "evergreen", 9001))
 	s.NoError(err)
 	s.Len(patches, 1)
 }
 
 func (s *patchSuite) TestUpdateGithashProjectAndTasks() {
-	patch, err := FindOne(ByUserAndCommitQueue("octocat", false))
+	patch, err := FindOne(s.T().Context(), ByUserAndCommitQueue("octocat", false))
 	s.NoError(err)
 	s.Empty(patch.Githash)
 	s.Empty(patch.VariantsTasks)
@@ -160,9 +160,9 @@ func (s *patchSuite) TestUpdateGithashProjectAndTasks() {
 		},
 	}
 
-	s.NoError(patch.UpdateGithashProjectAndTasks())
+	s.NoError(patch.UpdateGithashProjectAndTasks(s.T().Context()))
 
-	dbPatch, err := FindOne(ById(patch.Id))
+	dbPatch, err := FindOne(s.T().Context(), ById(patch.Id))
 	s.NoError(err)
 
 	s.Equal("abcdef", dbPatch.Githash)
@@ -350,15 +350,15 @@ func TestSetParametersFromParent(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(parentPatch.Insert())
+	assert.NoError(parentPatch.Insert(t.Context()))
 	p := Patch{
 		Id: bson.NewObjectId(),
 		Triggers: TriggerInfo{
 			ParentPatch: parentPatchID.Hex(),
 		},
 	}
-	assert.NoError(p.Insert())
-	_, err := p.SetParametersFromParent()
+	assert.NoError(p.Insert(t.Context()))
+	_, err := p.SetParametersFromParent(t.Context())
 	assert.NoError(err)
 	assert.Equal(parentPatch.Triggers.DownstreamParameters[0].Key, p.Parameters[0].Key)
 }
@@ -378,7 +378,7 @@ func TestSetDownstreamParameters(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(p.Insert())
+	assert.NoError(p.Insert(t.Context()))
 
 	paramsToAdd := []Parameter{
 		{
@@ -391,7 +391,7 @@ func TestSetDownstreamParameters(t *testing.T) {
 		},
 	}
 
-	assert.NoError(p.SetDownstreamParameters(paramsToAdd))
+	assert.NoError(p.SetDownstreamParameters(t.Context(), paramsToAdd))
 	assert.Equal("key_0", p.Triggers.DownstreamParameters[0].Key)
 	assert.Equal("key_1", p.Triggers.DownstreamParameters[1].Key)
 	assert.Equal("key_2", p.Triggers.DownstreamParameters[2].Key)
@@ -407,16 +407,16 @@ func TestSetTriggerAliases(t *testing.T) {
 			Aliases: []string{"alias_0"},
 		},
 	}
-	assert.NoError(p.Insert())
+	assert.NoError(p.Insert(t.Context()))
 
 	p.Triggers.Aliases = []string{
 		"alias_1",
 		"alias_2",
 	}
 
-	assert.NoError(p.SetTriggerAliases())
+	assert.NoError(p.SetTriggerAliases(t.Context()))
 
-	dbPatch, err := FindOne(ById(p.Id))
+	dbPatch, err := FindOne(t.Context(), ById(p.Id))
 	assert.NoError(err)
 	assert.Equal("alias_0", dbPatch.Triggers.Aliases[0])
 	assert.Equal("alias_1", dbPatch.Triggers.Aliases[1])
@@ -433,16 +433,16 @@ func TestSetChildPatches(t *testing.T) {
 			ChildPatches: []string{"id_0"},
 		},
 	}
-	assert.NoError(p.Insert())
+	assert.NoError(p.Insert(t.Context()))
 
 	p.Triggers.ChildPatches = []string{
 		"id_1",
 		"id_2",
 	}
 
-	assert.NoError(p.SetChildPatches())
+	assert.NoError(p.SetChildPatches(t.Context()))
 
-	dbPatch, err := FindOne(ById(p.Id))
+	dbPatch, err := FindOne(t.Context(), ById(p.Id))
 	assert.NoError(err)
 	assert.Equal("id_0", dbPatch.Triggers.ChildPatches[0])
 	assert.Equal("id_1", dbPatch.Triggers.ChildPatches[1])
@@ -480,7 +480,7 @@ func TestGetRequester(t *testing.T) {
 			HeadOwner: "me",
 		},
 	}
-	require.NoError(t, p1.Insert())
+	require.NoError(t, p1.Insert(t.Context()))
 
 	p2 := Patch{
 		Id:    bson.NewObjectId(),
@@ -489,13 +489,13 @@ func TestGetRequester(t *testing.T) {
 			HeadSHA: "1234567",
 		},
 	}
-	require.NoError(t, p2.Insert())
+	require.NoError(t, p2.Insert(t.Context()))
 
 	p3 := Patch{
 		Id:    bson.NewObjectId(),
 		Alias: "",
 	}
-	require.NoError(t, p3.Insert())
+	require.NoError(t, p3.Insert(t.Context()))
 
 	require.Equal(t, evergreen.GithubPRRequester, p1.GetRequester())
 	require.Equal(t, evergreen.GithubMergeRequester, p2.GetRequester())

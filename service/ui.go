@@ -58,12 +58,11 @@ type ViewData struct {
 	User        *user.DBUser
 	ProjectData projectContext
 	Project     model.Project
-	Flashes     []interface{}
+	Flashes     []any
 	Banner      string
 	BannerTheme string
 	Csrf        htmlTemplate.HTML
 	JiraHost    string
-	NewRelic    evergreen.NewRelicConfig
 	IsAdmin     bool
 	NewUILink   string
 }
@@ -198,7 +197,7 @@ func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, n
 	}
 	if needsProject {
 		var project *model.Project
-		project, err = projectCtx.GetProject()
+		project, err = projectCtx.GetProject(r.Context())
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "could not find project from project context",
@@ -245,7 +244,6 @@ func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, n
 	viewData.Flashes = PopFlashes(uis.CookieStore, r, w)
 	viewData.Csrf = csrf.TemplateField(r)
 	viewData.JiraHost = uis.Settings.Jira.Host
-	viewData.NewRelic = settings.NewRelic
 	return viewData
 }
 

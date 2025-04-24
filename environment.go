@@ -4,11 +4,15 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"os/exec"
 	"regexp"
+	"strings"
 	"sync"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	"github.com/evergreen-ci/certdepot"
 	"github.com/evergreen-ci/evergreen/cloud/parameterstore"
 	"github.com/evergreen-ci/evergreen/util"
@@ -103,11 +107,15 @@ type Environment interface {
 
 	Session() db.Session
 	ContextSession(ctx context.Context) db.Session
+	CedarContextSession(ctx context.Context) db.Session
 	Client() *mongo.Client
 
 	// DB returns a database that is dedicated to this instance of
 	// Evergreen.
 	DB() *mongo.Database
+	// CedarDB returns a database that is dedicated to our Cedar
+	// database cluster.
+	CedarDB() *mongo.Database
 	// SharedDB returns a database that is shared between multiple
 	// instances of Evergreen. Returns nil when no shared database
 	// is configured.
@@ -248,6 +256,7 @@ func NewEnvironment(ctx context.Context, confPath, versionID, clientS3Bucket str
 		catcher.Add(e.initDB(ctx, e.settings.Database, tracer))
 	}
 
+	catcher.Add(e.initCedarDB(ctx, tracer))
 	catcher.Add(e.initJasper(ctx, tracer))
 	catcher.Add(e.initDepot(ctx, tracer))
 	catcher.Add(e.initParameterManager(ctx, tracer))
@@ -258,6 +267,7 @@ func NewEnvironment(ctx context.Context, confPath, versionID, clientS3Bucket str
 	catcher.Add(e.createNotificationQueue(ctx, tracer))
 	catcher.Add(e.setupRoleManager(ctx, tracer))
 	catcher.Add(e.initTracer(ctx, versionID != "", tracer))
+	catcher.Add(e.initSSH(ctx, tracer))
 	catcher.Extend(e.initQueues(ctx, tracer))
 
 	if catcher.HasErrors() {
@@ -279,6 +289,7 @@ type envState struct {
 	settings                *Settings
 	dbName                  string
 	client                  *mongo.Client
+	cedarClient             *mongo.Client
 	sharedDBClient          *mongo.Client
 	mu                      sync.RWMutex
 	clientConfig            *ClientConfig
@@ -378,7 +389,7 @@ func redactSensitiveCollections(command bson.Raw) bson.Raw {
 }
 
 func (e *envState) initDB(ctx context.Context, settings DBSettings, tracer trace.Tracer) error {
-	ctx, span := tracer.Start(ctx, "InitDB")
+	_, span := tracer.Start(ctx, "InitDB")
 	defer span.End()
 
 	var err error
@@ -393,6 +404,24 @@ func (e *envState) initDB(ctx context.Context, settings DBSettings, tracer trace
 			return errors.Wrap(err, "connecting to the shared Evergreen database")
 		}
 	}
+
+	return nil
+}
+
+func (e *envState) initCedarDB(ctx context.Context, tracer trace.Tracer) error {
+	_, span := tracer.Start(ctx, "InitCedarDB")
+	defer span.End()
+
+	var err error
+	url := e.settings.Cedar.DBURL
+	if url == "" {
+		url = DefaultCedarDatabaseURL
+	}
+	client, err := mongo.Connect(ctx, e.settings.Database.mongoOptions(url))
+	if err != nil {
+		return errors.Wrap(err, "connecting to the Cedar database")
+	}
+	e.cedarClient = client
 
 	return nil
 }
@@ -448,6 +477,15 @@ func (e *envState) DB() *mongo.Database {
 	defer e.mu.RUnlock()
 
 	return e.client.Database(e.dbName)
+}
+
+// CedarDB returns a database that is dedicated to our Cedar
+// database cluster.
+func (e *envState) CedarDB() *mongo.Database {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	return e.cedarClient.Database(e.settings.Cedar.DBName)
 }
 
 // SharedDB returns a database that is shared between multiple instances
@@ -1020,6 +1058,67 @@ func (e *envState) initTracer(ctx context.Context, useInternalDNS bool, tracer t
 	return nil
 }
 
+// initSSH pulls all private keys from Secrets Manager and adds them to the ssh-agent daemon.
+func (e *envState) initSSH(ctx context.Context, tracer trace.Tracer) error {
+	ctx, span := tracer.Start(ctx, "InitSSH")
+	defer span.End()
+
+	catcher := grip.NewBasicCatcher()
+	for _, keyARN := range []string{
+		e.settings.SSH.TaskHostKey.SecretARN,
+		e.settings.SSH.SpawnHostKey.SecretARN,
+	} {
+		if keyARN != "" {
+			catcher.Add(addSSHKey(ctx, keyARN, tracer))
+		}
+	}
+
+	return catcher.Resolve()
+}
+
+func addSSHKey(ctx context.Context, keyARN string, tracer trace.Tracer) error {
+	sshKey, err := getSSHKey(ctx, keyARN, tracer)
+	if err != nil {
+		return errors.Wrap(err, "getting SSH private key")
+	}
+
+	return errors.Wrap(addSSHKeyToAgent(ctx, sshKey, tracer), "adding SSH key to ssh-agent")
+}
+
+func getSSHKey(ctx context.Context, keyARN string, tracer trace.Tracer) (string, error) {
+	ctx, span := tracer.Start(ctx, "GetSSHKey")
+	defer span.End()
+
+	config, err := config.LoadDefaultConfig(ctx,
+		config.WithRegion(DefaultEC2Region),
+	)
+	if err != nil {
+		return "", errors.Wrap(err, "loading AWS config")
+	}
+
+	client := secretsmanager.NewFromConfig(config)
+	output, err := client.GetSecretValue(ctx, &secretsmanager.GetSecretValueInput{
+		SecretId: aws.String(keyARN),
+	})
+	if err != nil {
+		return "", errors.Wrap(err, "getting SSH key secret")
+	}
+	if output.SecretString == nil {
+		return "", errors.New("SSH key secret was empty")
+	}
+	return *output.SecretString, nil
+}
+
+func addSSHKeyToAgent(ctx context.Context, sshKey string, tracer trace.Tracer) error {
+	ctx, span := tracer.Start(ctx, "AddSSHKeyToAgent")
+	defer span.End()
+
+	cmd := exec.CommandContext(ctx, "ssh-add", "-")
+	cmd.Stdin = strings.NewReader(sshKey)
+
+	return errors.Wrap(cmd.Run(), "running ssh-add")
+}
+
 func (e *envState) setupRoleManager(ctx context.Context, tracer trace.Tracer) error {
 	_, span := tracer.Start(ctx, "SetupRoleManager")
 	defer span.End()
@@ -1099,6 +1198,13 @@ func (e *envState) ContextSession(ctx context.Context) db.Session {
 	defer e.mu.RUnlock()
 
 	return db.WrapClient(ctx, e.client).Clone()
+}
+
+func (e *envState) CedarContextSession(ctx context.Context) db.Session {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	return db.WrapClient(ctx, e.cedarClient).Clone()
 }
 
 func (e *envState) ClientConfig() *ClientConfig {

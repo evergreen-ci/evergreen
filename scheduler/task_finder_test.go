@@ -68,6 +68,8 @@ func TestParallelTaskFinder(t *testing.T) {
 }
 
 func (s *TaskFinderSuite) SetupTest() {
+	s.ctx, s.cancel = context.WithCancel(context.Background())
+
 	s.NoError(db.ClearCollections(model.ProjectRefCollection, task.Collection))
 	taskIds := []string{"t0", "t1", "t2", "t3", "t4", "t5"}
 	s.tasks = []task.Task{
@@ -90,10 +92,8 @@ func (s *TaskFinderSuite) SetupTest() {
 		Enabled: true,
 	}
 
-	s.distro.PlannerSettings.Version = evergreen.PlannerVersionLegacy
-	s.NoError(ref.Insert())
-
-	s.ctx, s.cancel = context.WithCancel(context.Background())
+	s.distro.PlannerSettings.Version = evergreen.PlannerVersionTunable
+	s.NoError(ref.Insert(s.ctx))
 }
 
 func (s *TaskFinderSuite) TearDownTest() {
@@ -103,10 +103,10 @@ func (s *TaskFinderSuite) TearDownTest() {
 
 func (s *TaskFinderSuite) insertTasks() {
 	for _, task := range s.tasks {
-		s.NoError(task.Insert())
+		s.NoError(task.Insert(s.ctx))
 	}
 	for _, task := range s.depTasks {
-		s.NoError(task.Insert())
+		s.NoError(task.Insert(s.ctx))
 	}
 }
 
@@ -204,7 +204,7 @@ func (s *TaskFinderSuite) TestTasksWithDisabledProjectNeverReturned() {
 		Id:      "exists",
 		Enabled: false,
 	}
-	s.Require().NoError(ref.Upsert())
+	s.Require().NoError(ref.Replace(s.ctx))
 	runnableTasks, err := s.FindRunnableTasks(s.ctx, s.distro)
 	s.NoError(err)
 	s.Empty(runnableTasks)
@@ -215,7 +215,7 @@ func (s *TaskFinderSuite) TestTasksWithProjectDispatchingDisabledNeverReturned()
 		Id:                  "exists",
 		DispatchingDisabled: utility.TruePtr(),
 	}
-	s.Require().NoError(ref.Upsert())
+	s.Require().NoError(ref.Replace(s.ctx))
 	runnableTasks, err := s.FindRunnableTasks(s.ctx, s.distro)
 	s.NoError(err)
 	s.Empty(runnableTasks)
@@ -242,14 +242,14 @@ func (s *TaskFinderComparisonSuite) SetupSuite() {
 		Id:      "exists",
 		Enabled: true,
 	}
-	s.NoError(ref.Insert())
+	s.NoError(ref.Insert(s.ctx))
 
 	ref = &model.ProjectRef{
 		Id:      "disabled",
 		Enabled: false,
 	}
 
-	s.NoError(ref.Insert())
+	s.NoError(ref.Insert(s.ctx))
 
 	ref = &model.ProjectRef{
 		Id:               "patching-disabled",
@@ -257,7 +257,7 @@ func (s *TaskFinderComparisonSuite) SetupSuite() {
 		Enabled:          true,
 	}
 
-	s.NoError(ref.Insert())
+	s.NoError(ref.Insert(s.ctx))
 
 	ref = &model.ProjectRef{
 		Id:                  "dispatching-disabled",
@@ -265,9 +265,9 @@ func (s *TaskFinderComparisonSuite) SetupSuite() {
 		Enabled:             true,
 	}
 
-	s.NoError(ref.Insert())
+	s.NoError(ref.Insert(s.ctx))
 
-	s.distro.PlannerSettings.Version = evergreen.PlannerVersionLegacy
+	s.distro.PlannerSettings.Version = evergreen.PlannerVersionTunable
 }
 
 func (s *TaskFinderComparisonSuite) TearDownSuite() {
@@ -295,7 +295,7 @@ func (s *TaskFinderComparisonSuite) SetupTest() {
 	for _, task := range s.tasks {
 		task.BuildVariant = "aBuildVariant"
 		task.Tags = []string{"tag1", "tag2"}
-		s.NoError(task.Insert())
+		s.NoError(task.Insert(s.ctx))
 	}
 
 	s.newRunnableTasks, err = RunnableTasksPipeline(s.ctx, s.distro)

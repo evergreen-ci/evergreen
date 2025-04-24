@@ -12,19 +12,19 @@ import (
 
 // CanCreateDistro is the resolver for the canCreateDistro field.
 func (r *permissionsResolver) CanCreateDistro(ctx context.Context, obj *Permissions) (bool, error) {
-	usr, err := user.FindOneById(obj.UserID)
+	usr, err := user.FindOneByIdContext(ctx, obj.UserID)
 	if err != nil {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("fetching user '%s': %s", obj.UserID, err.Error()))
 	}
 	if usr == nil {
 		return false, ResourceNotFound.Send(ctx, fmt.Sprintf("user '%s' not found", obj.UserID))
 	}
-	return userHasDistroCreatePermission(usr), nil
+	return usr.HasDistroCreatePermission(), nil
 }
 
 // CanCreateProject is the resolver for the canCreateProject field.
 func (r *permissionsResolver) CanCreateProject(ctx context.Context, obj *Permissions) (bool, error) {
-	usr, err := user.FindOneById(obj.UserID)
+	usr, err := user.FindOneByIdContext(ctx, obj.UserID)
 	if err != nil {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("fetching user '%s': %s", obj.UserID, err.Error()))
 	}
@@ -33,14 +33,14 @@ func (r *permissionsResolver) CanCreateProject(ctx context.Context, obj *Permiss
 	}
 	canCreate, err := usr.HasProjectCreatePermission()
 	if err != nil {
-		return false, InternalServerError.Send(ctx, fmt.Sprintf("checking user permission: %s", err.Error()))
+		return false, InternalServerError.Send(ctx, fmt.Sprintf("checking project create permissions for user '%s': %s", obj.UserID, err.Error()))
 	}
 	return canCreate, nil
 }
 
 // CanEditAdminSettings is the resolver for the canEditAdminSettings field.
 func (r *permissionsResolver) CanEditAdminSettings(ctx context.Context, obj *Permissions) (bool, error) {
-	usr, err := user.FindOneById(obj.UserID)
+	usr, err := user.FindOneByIdContext(ctx, obj.UserID)
 	if err != nil {
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("fetching user '%s': %s", obj.UserID, err.Error()))
 	}
@@ -58,7 +58,7 @@ func (r *permissionsResolver) CanEditAdminSettings(ctx context.Context, obj *Per
 
 // DistroPermissions is the resolver for the distroPermissions field.
 func (r *permissionsResolver) DistroPermissions(ctx context.Context, obj *Permissions, options DistroPermissionsOptions) (*DistroPermissions, error) {
-	usr, err := user.FindOneById(obj.UserID)
+	usr, err := user.FindOneByIdContext(ctx, obj.UserID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching user '%s': %s", obj.UserID, err.Error()))
 	}
@@ -74,16 +74,16 @@ func (r *permissionsResolver) DistroPermissions(ctx context.Context, obj *Permis
 
 // ProjectPermissions is the resolver for the projectPermissions field.
 func (r *permissionsResolver) ProjectPermissions(ctx context.Context, obj *Permissions, options ProjectPermissionsOptions) (*ProjectPermissions, error) {
-	usr, err := user.FindOneById(obj.UserID)
+	usr, err := user.FindOneByIdContext(ctx, obj.UserID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching user '%s': %s", obj.UserID, err.Error()))
 	}
 	if usr == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("user '%s' not found", obj.UserID))
 	}
-	project, err := model.FindBranchProjectRef(options.ProjectIdentifier)
+	project, err := model.FindBranchProjectRef(ctx, options.ProjectIdentifier)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding project '%s': %s", options.ProjectIdentifier, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching project '%s': %s", options.ProjectIdentifier, err.Error()))
 	}
 	if project == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("project '%s' not found", options.ProjectIdentifier))
@@ -96,24 +96,24 @@ func (r *permissionsResolver) ProjectPermissions(ctx context.Context, obj *Permi
 
 // RepoPermissions is the resolver for the repoPermissions field.
 func (r *permissionsResolver) RepoPermissions(ctx context.Context, obj *Permissions, options RepoPermissionsOptions) (*RepoPermissions, error) {
-	usr, err := user.FindOneById(obj.UserID)
+	usr, err := user.FindOneByIdContext(ctx, obj.UserID)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching user '%s': %s", obj.UserID, err.Error()))
 	}
 	if usr == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("user '%s' not found", obj.UserID))
 	}
-	repo, err := model.FindOneRepoRef(options.RepoID)
+	repo, err := model.FindOneRepoRef(ctx, options.RepoID)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting repo '%s': %s", options.RepoID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching repo '%s': %s", options.RepoID, err.Error()))
 	}
 	if repo == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("repo '%s' not found", options.RepoID))
 	}
 
-	hasRepoViewPermission, err := model.UserHasRepoViewPermission(usr, repo.Id)
+	hasRepoViewPermission, err := model.UserHasRepoViewPermission(ctx, usr, repo.Id)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("checking repo view permission for '%s': %s", repo.Id, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("checking repo view permission for user '%s' and repo '%s': %s", usr.Id, repo.Id, err.Error()))
 	}
 
 	return &RepoPermissions{

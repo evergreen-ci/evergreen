@@ -264,7 +264,7 @@ func (tg TaskGroupsByName) Less(i, j int) bool { return tg[i].Name < tg[j].Name 
 // UnmarshalYAML allows tasks to be referenced as single selector strings.
 // This works by first attempting to unmarshal the YAML into a string
 // and then falling back to the BuildVariantTaskUnit struct.
-func (bvt *BuildVariantTaskUnit) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (bvt *BuildVariantTaskUnit) UnmarshalYAML(unmarshal func(any) error) error {
 	// first, attempt to unmarshal just a selector string
 	var onlySelector string
 	if err := unmarshal(&onlySelector); err == nil {
@@ -528,7 +528,7 @@ type PluginCommandConf struct {
 
 	// Params is used to define params in the yaml and parser project,
 	// but is not stored in the DB (instead see ParamsYAML).
-	Params map[string]interface{} `yaml:"params,omitempty" bson:"-"`
+	Params map[string]any `yaml:"params,omitempty" bson:"-"`
 
 	// ParamsYAML is the marshalled Params to store in the database, to preserve nested interfaces.
 	ParamsYAML string `yaml:"params_yaml,omitempty" bson:"params_yaml,omitempty"`
@@ -548,7 +548,7 @@ type PluginCommandConf struct {
 }
 
 func (c *PluginCommandConf) resolveParams() error {
-	out := map[string]interface{}{}
+	out := map[string]any{}
 	if c == nil {
 		return nil
 	}
@@ -561,19 +561,19 @@ func (c *PluginCommandConf) resolveParams() error {
 	return nil
 }
 
-func (c *PluginCommandConf) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (c *PluginCommandConf) UnmarshalYAML(unmarshal func(any) error) error {
 	temp := struct {
-		Function            string                 `yaml:"func,omitempty" bson:"func,omitempty"`
-		Type                string                 `yaml:"type,omitempty" bson:"type,omitempty"`
-		DisplayName         string                 `yaml:"display_name,omitempty" bson:"display_name,omitempty"`
-		Command             string                 `yaml:"command,omitempty" bson:"command,omitempty"`
-		Variants            []string               `yaml:"variants,omitempty" bson:"variants,omitempty"`
-		TimeoutSecs         int                    `yaml:"timeout_secs,omitempty" bson:"timeout_secs,omitempty"`
-		Params              map[string]interface{} `yaml:"params,omitempty" bson:"params,omitempty"`
-		ParamsYAML          string                 `yaml:"params_yaml,omitempty" bson:"params_yaml,omitempty"`
-		Vars                map[string]string      `yaml:"vars,omitempty" bson:"vars,omitempty"`
-		RetryOnFailure      bool                   `yaml:"retry_on_failure,omitempty" bson:"retry_on_failure,omitempty"`
-		FailureMetadataTags []string               `yaml:"failure_metadata_tags,omitempty" bson:"failure_metadata_tags,omitempty"`
+		Function            string            `yaml:"func,omitempty" bson:"func,omitempty"`
+		Type                string            `yaml:"type,omitempty" bson:"type,omitempty"`
+		DisplayName         string            `yaml:"display_name,omitempty" bson:"display_name,omitempty"`
+		Command             string            `yaml:"command,omitempty" bson:"command,omitempty"`
+		Variants            []string          `yaml:"variants,omitempty" bson:"variants,omitempty"`
+		TimeoutSecs         int               `yaml:"timeout_secs,omitempty" bson:"timeout_secs,omitempty"`
+		Params              map[string]any    `yaml:"params,omitempty" bson:"params,omitempty"`
+		ParamsYAML          string            `yaml:"params_yaml,omitempty" bson:"params_yaml,omitempty"`
+		Vars                map[string]string `yaml:"vars,omitempty" bson:"vars,omitempty"`
+		RetryOnFailure      bool              `yaml:"retry_on_failure,omitempty" bson:"retry_on_failure,omitempty"`
+		FailureMetadataTags []string          `yaml:"failure_metadata_tags,omitempty" bson:"failure_metadata_tags,omitempty"`
 	}{}
 
 	if err := unmarshal(&temp); err != nil {
@@ -604,7 +604,7 @@ func (c *PluginCommandConf) UnmarshalBSON(in []byte) error {
 // If params is passed, then it means that we haven't yet stored this in the DB.
 func (c *PluginCommandConf) unmarshalParams() error {
 	if c.ParamsYAML != "" {
-		out := map[string]interface{}{}
+		out := map[string]any{}
 		if err := yaml.Unmarshal([]byte(c.ParamsYAML), &out); err != nil {
 			return errors.Wrap(err, "unmarshalling params from YAML")
 		}
@@ -636,7 +636,7 @@ func (c *YAMLCommandSet) List() []PluginCommandConf {
 	return []PluginCommandConf{}
 }
 
-func (c *YAMLCommandSet) MarshalYAML() (interface{}, error) {
+func (c *YAMLCommandSet) MarshalYAML() (any, error) {
 	if c == nil {
 		return nil, nil
 	}
@@ -649,7 +649,7 @@ func (c *YAMLCommandSet) MarshalYAML() (interface{}, error) {
 	return res, nil
 }
 
-func (c *YAMLCommandSet) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (c *YAMLCommandSet) UnmarshalYAML(unmarshal func(any) error) error {
 	err1 := unmarshal(&(c.MultiCommand))
 	err2 := unmarshal(&(c.SingleCommand))
 	if err1 == nil || err2 == nil {
@@ -671,7 +671,7 @@ type TaskUnitDependency struct {
 // UnmarshalYAML allows tasks to be referenced as single selector strings.
 // This works by first attempting to unmarshal the YAML into a string
 // and then falling back to the TaskUnitDependency struct.
-func (td *TaskUnitDependency) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (td *TaskUnitDependency) UnmarshalYAML(unmarshal func(any) error) error {
 	// first, attempt to unmarshal just a selector string
 	var onlySelector string
 	if err := unmarshal(&onlySelector); err == nil {
@@ -851,7 +851,7 @@ func (t TaskIdConfig) Length() int {
 // the tasks will be created for this version so only create task IDs for those
 // tasks that actually will be created; otherwise, it will create task IDs for
 // all possible tasks in the version.
-func NewTaskIdConfigForRepotrackerVersion(p *Project, v *Version, pairsToCreate TVPairSet, sourceRev, defID string) TaskIdConfig {
+func NewTaskIdConfigForRepotrackerVersion(ctx context.Context, p *Project, v *Version, pairsToCreate TVPairSet, sourceRev, defID string) TaskIdConfig {
 	// init the variant map
 	execTable := TaskIdTable{}
 	displayTable := TaskIdTable{}
@@ -860,7 +860,7 @@ func NewTaskIdConfigForRepotrackerVersion(p *Project, v *Version, pairsToCreate 
 
 	sort.Stable(p.BuildVariants)
 
-	projectIdentifier, err := GetIdentifierForProject(p.Identifier)
+	projectIdentifier, err := GetIdentifierForProject(ctx, p.Identifier)
 	if err != nil { // default to ID
 		projectIdentifier = p.Identifier
 	}
@@ -1019,7 +1019,7 @@ func PopulateExpansions(ctx context.Context, t *task.Task, h *host.Host, appToke
 		return nil, errors.New("task cannot be nil")
 	}
 
-	projectRef, err := FindBranchProjectRef(t.Project)
+	projectRef, err := FindBranchProjectRef(ctx, t.Project)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding project ref")
 	}
@@ -1035,8 +1035,10 @@ func PopulateExpansions(ctx context.Context, t *task.Task, h *host.Host, appToke
 	expansions.Put("github_commit", t.Revision)
 	expansions.Put(evergreen.GithubKnownHosts, knownHosts)
 	expansions.Put("project", projectRef.Identifier)
-	expansions.Put("project_identifier", projectRef.Identifier) // TODO: deprecate
+	expansions.Put("project_identifier", projectRef.Identifier)
 	expansions.Put("project_id", projectRef.Id)
+	expansions.Put("github_org", projectRef.Owner)
+	expansions.Put("github_repo", projectRef.Repo)
 	if h != nil {
 		expansions.Put("distro_id", h.Distro.Id)
 	}
@@ -1063,7 +1065,7 @@ func PopulateExpansions(ctx context.Context, t *task.Task, h *host.Host, appToke
 			upstreamProjectID = upstreamTask.Project
 		} else if t.TriggerType == ProjectTriggerLevelBuild {
 			var upstreamBuild *build.Build
-			upstreamBuild, err = build.FindOneId(t.TriggerID)
+			upstreamBuild, err = build.FindOneId(ctx, t.TriggerID)
 			if err != nil {
 				return nil, errors.Wrap(err, "finding build")
 			}
@@ -1076,7 +1078,7 @@ func PopulateExpansions(ctx context.Context, t *task.Task, h *host.Host, appToke
 			upstreamProjectID = upstreamBuild.Project
 		}
 		var upstreamProject *ProjectRef
-		upstreamProject, err = FindBranchProjectRef(upstreamProjectID)
+		upstreamProject, err = FindBranchProjectRef(ctx, upstreamProjectID)
 		if err != nil {
 			return nil, errors.Wrap(err, "finding project")
 		}
@@ -1088,7 +1090,7 @@ func PopulateExpansions(ctx context.Context, t *task.Task, h *host.Host, appToke
 		expansions.Put("trigger_branch", upstreamProject.Branch)
 	}
 
-	v, err := VersionFindOneId(t.Version)
+	v, err := VersionFindOneId(ctx, t.Version)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding version")
 	}
@@ -1109,7 +1111,7 @@ func PopulateExpansions(ctx context.Context, t *task.Task, h *host.Host, appToke
 	}
 	if evergreen.IsPatchRequester(v.Requester) {
 		var p *patch.Patch
-		p, err = patch.FindOne(patch.ByVersion(t.Version))
+		p, err = patch.FindOne(ctx, patch.ByVersion(t.Version))
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding patch for version '%s'", t.Version)
 		}
@@ -1121,20 +1123,13 @@ func PopulateExpansions(ctx context.Context, t *task.Task, h *host.Host, appToke
 		expansions.Put("revision_order_id", fmt.Sprintf("%s_%d", v.Author, v.RevisionOrderNumber))
 		expansions.Put("alias", p.Alias)
 
-		if v.Requester == evergreen.GithubMergeRequester {
-			expansions.Put("is_commit_queue", "true")
-		}
-
 		if v.Requester == evergreen.GithubPRRequester {
 			expansions.Put("github_pr_number", fmt.Sprintf("%d", p.GithubPatchData.PRNumber))
-			expansions.Put("github_org", p.GithubPatchData.BaseOwner)
-			expansions.Put("github_repo", p.GithubPatchData.BaseRepo)
 			expansions.Put("github_author", p.GithubPatchData.Author)
 			expansions.Put("github_commit", p.GithubPatchData.HeadHash)
 		}
 		if p.IsMergeQueuePatch() {
-			expansions.Put("github_org", p.GithubMergeData.Org)
-			expansions.Put("github_repo", p.GithubMergeData.Repo)
+			expansions.Put("is_commit_queue", "true")
 			// this looks like "gh-readonly-queue/main/pr-515-9cd8a2532bcddf58369aa82eb66ba88e2323c056"
 			expansions.Put("github_head_branch", p.GithubMergeData.HeadBranch)
 		}
@@ -1238,8 +1233,8 @@ func (p *Project) FindTaskGroupForTask(bvName, taskName string) *TaskGroup {
 	return nil
 }
 
-func FindProjectFromVersionID(versionStr string) (*Project, error) {
-	ver, err := VersionFindOne(VersionById(versionStr))
+func FindProjectFromVersionID(ctx context.Context, versionStr string) (*Project, error) {
+	ver, err := VersionFindOne(ctx, VersionById(versionStr).WithFields(VersionIdKey))
 	if err != nil {
 		return nil, err
 	}
@@ -1296,13 +1291,14 @@ func FindLatestVersionWithValidProject(projectId string, preGeneration bool) (*V
 	var project *Project
 	var pp *ParserProject
 
+	// TODO: ZACKARY PASS CONTEXT
 	revisionOrderNum := -1 // only specify in the event of failure
 	var err error
 	var lastGoodVersion *Version
 	ctx, cancel := context.WithTimeout(context.Background(), DefaultParserProjectAccessTimeout)
 	defer cancel()
 	for i := 0; i < retryCount; i++ {
-		lastGoodVersion, err = FindVersionByLastKnownGoodConfig(projectId, revisionOrderNum)
+		lastGoodVersion, err = FindVersionByLastKnownGoodConfig(ctx, projectId, revisionOrderNum)
 		if err != nil {
 			// Database error, don't log critical but try again.
 			continue
@@ -1437,6 +1433,20 @@ func (p *Project) GetTaskNameAndTags(bvt BuildVariantTaskUnit) (string, []string
 func (p *Project) FindProjectTask(name string) *ProjectTask {
 	for _, t := range p.Tasks {
 		if t.Name == name {
+			return &t
+		}
+	}
+	return nil
+}
+
+// FindBuildVariantTaskUnit finds the bvtu given the bv and task name.
+func (p *Project) FindBuildVariantTaskUnit(bv, task string) *BuildVariantTaskUnit {
+	bvUnit := p.FindBuildVariant(bv)
+	if bvUnit == nil {
+		return nil
+	}
+	for _, t := range bvUnit.Tasks {
+		if t.Name == task {
 			return &t
 		}
 	}
@@ -1673,8 +1683,8 @@ func (p *Project) IgnoresAllFiles(files []string) bool {
 // variants will run and which tasks will run on each build variant. This
 // filters out tasks that cannot run due to being disabled or having an
 // unmatched requester (e.g. a patch-only task for a mainline commit).
-func (p *Project) BuildProjectTVPairs(patchDoc *patch.Patch, alias string) {
-	patchDoc.BuildVariants, patchDoc.Tasks, patchDoc.VariantsTasks = p.ResolvePatchVTs(patchDoc, patchDoc.GetRequester(), alias, true)
+func (p *Project) BuildProjectTVPairs(ctx context.Context, patchDoc *patch.Patch, alias string) {
+	patchDoc.BuildVariants, patchDoc.Tasks, patchDoc.VariantsTasks = p.ResolvePatchVTs(ctx, patchDoc, patchDoc.GetRequester(), alias, true)
 
 	// Connect the execution tasks to the display tasks.
 	displayTasksToExecTasks := map[string][]string{}
@@ -1705,7 +1715,7 @@ func (p *Project) BuildProjectTVPairs(patchDoc *patch.Patch, alias string) {
 // variant. If includeDeps is set, it will also resolve task dependencies. This
 // filters out tasks that cannot run due to being disabled or having an
 // unmatched requester (e.g. a patch-only task for a mainline commit).
-func (p *Project) ResolvePatchVTs(patchDoc *patch.Patch, requester, alias string, includeDeps bool) (resolvedBVs []string, resolvedTasks []string, vts []patch.VariantTasks) {
+func (p *Project) ResolvePatchVTs(ctx context.Context, patchDoc *patch.Patch, requester, alias string, includeDeps bool) (resolvedBVs []string, resolvedTasks []string, vts []patch.VariantTasks) {
 	var bvs, bvTags, tasks, taskTags []string
 	for _, bv := range patchDoc.BuildVariants {
 		// Tags should start with "."
@@ -1786,7 +1796,7 @@ func (p *Project) ResolvePatchVTs(patchDoc *patch.Patch, requester, alias string
 
 	if alias != "" {
 		catcher := grip.NewBasicCatcher()
-		aliases, err := findAliasesForPatch(p.Identifier, alias, patchDoc)
+		aliases, err := findAliasesForPatch(ctx, p.Identifier, alias, patchDoc)
 		catcher.Wrapf(err, "retrieving alias '%s' for patched project config '%s'", alias, patchDoc.Id.Hex())
 
 		aliasPairs := TaskVariantPairs{}
@@ -1881,15 +1891,15 @@ func (p *Project) IsGenerateTask(taskName string) bool {
 	return ok
 }
 
-func findAliasesForPatch(projectId, alias string, patchDoc *patch.Patch) ([]ProjectAlias, error) {
-	aliases, err := findAliasInProjectOrRepoFromDb(projectId, alias)
+func findAliasesForPatch(ctx context.Context, projectId, alias string, patchDoc *patch.Patch) ([]ProjectAlias, error) {
+	aliases, err := findAliasInProjectOrRepoFromDb(ctx, projectId, alias)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting alias from project")
 	}
 	if len(aliases) > 0 {
 		return aliases, nil
 	}
-	pRef, err := FindMergedProjectRef(projectId, "", false)
+	pRef, err := FindMergedProjectRef(ctx, projectId, "", false)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting project ref")
 	}
@@ -1906,7 +1916,7 @@ func findAliasesForPatch(projectId, alias string, patchDoc *patch.Patch) ([]Proj
 			return nil, errors.Wrapf(err, "retrieving alias '%s' from project config", alias)
 		}
 	} else if patchDoc.Version != "" {
-		aliases, err = getMatchingAliasesForProjectConfig(projectId, patchDoc.Version, alias)
+		aliases, err = getMatchingAliasesForProjectConfig(ctx, projectId, patchDoc.Version, alias)
 		if err != nil {
 			return nil, errors.Wrapf(err, "retrieving alias '%s' from project config", alias)
 		}
@@ -2025,12 +2035,12 @@ func (p *Project) BuildProjectTVPairsWithAlias(aliases []ProjectAlias, requester
 	return res, nil
 }
 
-func (p *Project) VariantTasksForSelectors(definitions []patch.PatchTriggerDefinition, requester string) ([]patch.VariantTasks, error) {
+func (p *Project) VariantTasksForSelectors(ctx context.Context, definitions []patch.PatchTriggerDefinition, requester string) ([]patch.VariantTasks, error) {
 	projectAliases := []ProjectAlias{}
 	for _, definition := range definitions {
 		for _, specifier := range definition.TaskSpecifiers {
 			if specifier.PatchAlias != "" {
-				aliases, err := FindAliasInProjectRepoOrConfig(p.Identifier, specifier.PatchAlias)
+				aliases, err := FindAliasInProjectRepoOrConfig(ctx, p.Identifier, specifier.PatchAlias)
 				if err != nil {
 					return nil, errors.Wrap(err, "getting alias from project")
 				}
@@ -2118,7 +2128,7 @@ func dependenciesForTaskUnit(taskUnits []BuildVariantTaskUnit) []task.Dependency
 // and a map of build ID -> each build's tasks
 func FetchVersionsBuildsAndTasks(ctx context.Context, project *Project, skip int, numVersions int, showTriggered bool) ([]Version, map[string][]build.Build, map[string][]task.Task, error) {
 	// fetch the versions from the db
-	versionsFromDB, err := VersionFind(VersionByProjectAndTrigger(project.Identifier, showTriggered).
+	versionsFromDB, err := VersionFind(ctx, VersionByProjectAndTrigger(project.Identifier, showTriggered).
 		WithFields(
 			VersionRevisionKey,
 			VersionErrorsKey,
@@ -2144,7 +2154,7 @@ func FetchVersionsBuildsAndTasks(ctx context.Context, project *Project, skip int
 	}
 
 	// fetch all of the builds (with only relevant fields)
-	buildsFromDb, err := build.Find(
+	buildsFromDb, err := build.Find(ctx,
 		build.ByVersions(versionIds).
 			WithFields(
 				build.BuildVariantKey,

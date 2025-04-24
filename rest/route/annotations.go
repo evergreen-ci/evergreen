@@ -63,7 +63,7 @@ func (h *annotationsByBuildHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "finding task IDs for build '%s'", h.buildId))
 	}
 
-	return getAPIAnnotationsForTaskIds(taskIds, h.fetchAllExecutions)
+	return getAPIAnnotationsForTaskIds(ctx, taskIds, h.fetchAllExecutions)
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -111,11 +111,11 @@ func (h *annotationsByVersionHandler) Run(ctx context.Context) gimlet.Responder 
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "finding task IDs for version '%s'", h.versionId))
 	}
-	return getAPIAnnotationsForTaskIds(taskIds, h.fetchAllExecutions)
+	return getAPIAnnotationsForTaskIds(ctx, taskIds, h.fetchAllExecutions)
 }
 
-func getAPIAnnotationsForTaskIds(taskIds []string, allExecutions bool) gimlet.Responder {
-	allAnnotations, err := annotations.FindByTaskIds(taskIds)
+func getAPIAnnotationsForTaskIds(ctx context.Context, taskIds []string, allExecutions bool) gimlet.Responder {
+	allAnnotations, err := annotations.FindByTaskIds(ctx, taskIds)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "finding task annotations"))
 	}
@@ -194,7 +194,7 @@ func (h *annotationByTaskGetHandler) Parse(ctx context.Context, r *http.Request)
 func (h *annotationByTaskGetHandler) Run(ctx context.Context) gimlet.Responder {
 	// get a specific execution
 	if h.execution != -1 {
-		a, err := annotations.FindOneByTaskIdAndExecution(h.taskId, h.execution)
+		a, err := annotations.FindOneByTaskIdAndExecution(ctx, h.taskId, h.execution)
 		if err != nil {
 			return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "finding task annotation for execution %d of task '%s'", h.execution, h.taskId))
 		}
@@ -205,7 +205,7 @@ func (h *annotationByTaskGetHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONResponse([]restModel.APITaskAnnotation{*taskAnnotation})
 	}
 
-	allAnnotations, err := annotations.FindByTaskId(h.taskId)
+	allAnnotations, err := annotations.FindByTaskId(ctx, h.taskId)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "finding task annotation for task '%s'", h.taskId))
 	}
@@ -481,7 +481,7 @@ func (h *createdTicketByTaskPutHandler) Parse(ctx context.Context, r *http.Reque
 }
 
 func (h *createdTicketByTaskPutHandler) Run(ctx context.Context) gimlet.Responder {
-	err := annotations.AddCreatedTicket(h.taskId, h.execution, *restModel.APIIssueLinkToService(*h.ticket), h.user.DisplayName())
+	err := annotations.AddCreatedTicket(ctx, h.taskId, h.execution, *restModel.APIIssueLinkToService(*h.ticket), h.user.DisplayName())
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(err)
 	}

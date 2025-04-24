@@ -8,15 +8,15 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/evergreen-ci/evergreen/agent/internal/redactor"
 	"github.com/evergreen-ci/evergreen/apimodels"
-	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	patchmodel "github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testlog"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/google/go-github/v52/github"
+	"github.com/google/go-github/v70/github"
 	"github.com/mongodb/grip"
 	"google.golang.org/grpc"
 )
@@ -57,6 +57,8 @@ type SharedCommunicator interface {
 	GetProjectRef(context.Context, TaskData) (*model.ProjectRef, error)
 	// GetDistroView returns the view of the distro information for the task.
 	GetDistroView(context.Context, TaskData) (*apimodels.DistroView, error)
+	// GetHostView returns the view of host information for the task.
+	GetHostView(context.Context, TaskData) (*apimodels.HostView, error)
 	// GetDistroAMI gets the AMI for the given distro/region
 	GetDistroAMI(context.Context, string, string, TaskData) (string, error)
 	// GetProject loads the project using the task's version ID.
@@ -80,13 +82,14 @@ type SharedCommunicator interface {
 	SetResultsInfo(context.Context, TaskData, string, bool) error
 
 	// DisableHost signals to the app server that the host should be disabled.
-	DisableHost(context.Context, string, apimodels.DisableInfo) error
+	DisableHost(ctx context.Context, hostID string, info apimodels.DisableInfo) error
 
 	// GetLoggerProducer constructs a new LogProducer instance for use by tasks.
 	GetLoggerProducer(context.Context, *task.Task, *LoggerConfig) (LoggerProducer, error)
 
 	// The following operations are used by task commands.
 	SendTestLog(context.Context, TaskData, *testlog.TestLog) (string, error)
+	SendTestResults(context.Context, TaskData, []testresult.TestResult) error
 	GetTaskPatch(context.Context, TaskData, string) (*patchmodel.Patch, error)
 	GetTaskVersion(context.Context, TaskData) (*model.Version, error)
 	GetPatchFile(context.Context, TaskData, string) (string, error)
@@ -106,10 +109,6 @@ type SharedCommunicator interface {
 	// Spawn-hosts for tasks methods
 	CreateHost(context.Context, TaskData, apimodels.CreateHost) ([]string, error)
 	ListHosts(context.Context, TaskData) (restmodel.HostListResults, error)
-
-	// GetDockerLogs returns logs for the given docker container
-	GetDockerLogs(ctx context.Context, hostID string, startTime time.Time, endTime time.Time, isError bool) ([]byte, error)
-	GetDockerStatus(ctx context.Context, hostID string) (*cloud.ContainerStatus, error)
 
 	// ConcludeMerge reports the status of a commit queue merge back to the server
 	ConcludeMerge(ctx context.Context, patchId, status string, td TaskData) error
@@ -136,6 +135,9 @@ type SharedCommunicator interface {
 
 	// AssumeRole assumes an AWS role and returns the credentials.
 	AssumeRole(ctx context.Context, td TaskData, request apimodels.AssumeRoleRequest) (*apimodels.AWSCredentials, error)
+
+	// S3Credentials returns the S3 credentials for the task when uploading to devprod owned buckets.
+	S3Credentials(ctx context.Context, td TaskData, bucket string) (*apimodels.AWSCredentials, error)
 }
 
 // TaskData contains the taskData.ID and taskData.Secret. It must be set for

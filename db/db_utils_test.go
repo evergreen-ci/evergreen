@@ -40,10 +40,10 @@ func TestDBUtils(t *testing.T) {
 				FieldTwo: 1,
 			}
 
-			So(Insert(collection, in), ShouldBeNil)
+			So(Insert(t.Context(), collection, in), ShouldBeNil)
 
 			out := &insertableStruct{}
-			err := FindOneQ(collection, Query(bson.M{}), out)
+			err := FindOneQContext(t.Context(), collection, Query(bson.M{}), out)
 			So(err, ShouldBeNil)
 			So(out, ShouldResemble, in)
 
@@ -63,15 +63,15 @@ func TestDBUtils(t *testing.T) {
 			}
 
 			// insert, make sure both were inserted
-			So(Insert(collection, in), ShouldBeNil)
-			So(Insert(collection, inTwo), ShouldBeNil)
-			count, err := Count(collection, bson.M{})
+			So(Insert(t.Context(), collection, in), ShouldBeNil)
+			So(Insert(t.Context(), collection, inTwo), ShouldBeNil)
+			count, err := Count(t.Context(), collection, bson.M{})
 			So(err, ShouldBeNil)
 			So(count, ShouldEqual, 2)
 
 			// clear and validate the collection is empty
 			So(Clear(collection), ShouldBeNil)
-			count, err = Count(collection, bson.M{})
+			count, err = Count(t.Context(), collection, bson.M{})
 			So(err, ShouldBeNil)
 			So(count, ShouldEqual, 0)
 
@@ -82,8 +82,8 @@ func TestDBUtils(t *testing.T) {
 			So(Clear("testfiles.chunks"), ShouldBeNil)
 			So(Clear("testfiles.files"), ShouldBeNil)
 			id := mgobson.NewObjectId().Hex()
-			So(WriteGridFile("testfiles", id, strings.NewReader(id)), ShouldBeNil)
-			file, err := GetGridFile("testfiles", id)
+			So(WriteGridFile(t.Context(), "testfiles", id, strings.NewReader(id)), ShouldBeNil)
+			file, err := GetGridFile(t.Context(), "testfiles", id)
 			So(err, ShouldBeNil)
 			raw, err := io.ReadAll(file)
 			So(err, ShouldBeNil)
@@ -104,21 +104,21 @@ func TestDBUtils(t *testing.T) {
 			}
 
 			// insert, make sure both were inserted
-			So(Insert(collection, in), ShouldBeNil)
-			So(Insert(collection, inTwo), ShouldBeNil)
-			count, err := Count(collection, bson.M{})
+			So(Insert(t.Context(), collection, in), ShouldBeNil)
+			So(Insert(t.Context(), collection, inTwo), ShouldBeNil)
+			count, err := Count(t.Context(), collection, bson.M{})
 			So(err, ShouldBeNil)
 			So(count, ShouldEqual, 2)
 
 			// remove just the first
-			So(Remove(collection, bson.M{"field_one": "1"}),
+			So(Remove(t.Context(), collection, bson.M{"field_one": "1"}),
 				ShouldBeNil)
-			count, err = Count(collection, bson.M{})
+			count, err = Count(t.Context(), collection, bson.M{})
 			So(err, ShouldBeNil)
 			So(count, ShouldEqual, 1)
 
 			out := &insertableStruct{}
-			err = FindOneQ(collection, Query(bson.M{}), out)
+			err = FindOneQContext(t.Context(), collection, Query(bson.M{}), out)
 			So(err, ShouldBeNil)
 			So(out, ShouldResemble, inTwo)
 
@@ -143,22 +143,22 @@ func TestDBUtils(t *testing.T) {
 			}
 
 			// insert, make sure all were inserted
-			So(Insert(collection, in), ShouldBeNil)
-			So(Insert(collection, inTwo), ShouldBeNil)
-			So(Insert(collection, inThree), ShouldBeNil)
-			count, err := Count(collection, bson.M{})
+			So(Insert(t.Context(), collection, in), ShouldBeNil)
+			So(Insert(t.Context(), collection, inTwo), ShouldBeNil)
+			So(Insert(t.Context(), collection, inThree), ShouldBeNil)
+			count, err := Count(t.Context(), collection, bson.M{})
 			So(err, ShouldBeNil)
 			So(count, ShouldEqual, 3)
 
 			// remove just the first
-			So(RemoveAll(collection, bson.M{"field_one": "1"}),
+			So(RemoveAll(t.Context(), collection, bson.M{"field_one": "1"}),
 				ShouldBeNil)
-			count, err = Count(collection, bson.M{})
+			count, err = Count(t.Context(), collection, bson.M{})
 			So(err, ShouldBeNil)
 			So(count, ShouldEqual, 1)
 
 			out := &insertableStruct{}
-			err = FindOneQ(collection, Query(bson.M{}), out)
+			err = FindOneQContext(t.Context(), collection, Query(bson.M{}), out)
 			So(err, ShouldBeNil)
 			So(out, ShouldResemble, inTwo)
 		})
@@ -192,11 +192,11 @@ func TestDBUtils(t *testing.T) {
 			}
 
 			// insert, make sure all were inserted
-			So(Insert(collection, in), ShouldBeNil)
-			So(Insert(collection, inTwo), ShouldBeNil)
-			So(Insert(collection, inThree), ShouldBeNil)
-			So(Insert(collection, inFour), ShouldBeNil)
-			count, err := Count(collection, bson.M{})
+			So(Insert(t.Context(), collection, in), ShouldBeNil)
+			So(Insert(t.Context(), collection, inTwo), ShouldBeNil)
+			So(Insert(t.Context(), collection, inThree), ShouldBeNil)
+			So(Insert(t.Context(), collection, inFour), ShouldBeNil)
+			count, err := Count(t.Context(), collection, bson.M{})
 			So(err, ShouldBeNil)
 			So(count, ShouldEqual, 4)
 
@@ -205,7 +205,7 @@ func TestDBUtils(t *testing.T) {
 			// one and limit to one (meaning only the second struct should be
 			// returned)
 			out := []insertableStruct{}
-			err = FindAllQ(collection, Query(bson.M{"field_two": 1}).
+			err = FindAllQ(t.Context(), collection, Query(bson.M{"field_two": 1}).
 				Project(bson.M{"field_three": 0}).
 				Sort([]string{"-field_one"}).
 				Limit(1).
@@ -233,14 +233,15 @@ func TestDBUtils(t *testing.T) {
 			}
 
 			// insert, make sure both were inserted
-			So(Insert(collection, in), ShouldBeNil)
-			So(Insert(collection, inTwo), ShouldBeNil)
-			count, err := Count(collection, bson.M{})
+			So(Insert(t.Context(), collection, in), ShouldBeNil)
+			So(Insert(t.Context(), collection, inTwo), ShouldBeNil)
+			count, err := Count(t.Context(), collection, bson.M{})
 			So(err, ShouldBeNil)
 			So(count, ShouldEqual, 2)
 
 			// update the second
-			err = Update(
+			err = UpdateContext(
+				t.Context(),
 				collection,
 				bson.M{
 					"field_one": "2",
@@ -254,7 +255,7 @@ func TestDBUtils(t *testing.T) {
 			So(err, ShouldBeNil)
 
 			out := &insertableStruct{}
-			err = FindOneQ(collection, Query(bson.M{"field_one": "2"}), out)
+			err = FindOneQContext(t.Context(), collection, Query(bson.M{"field_one": "2"}), out)
 			So(err, ShouldBeNil)
 			So(out.FieldTwo, ShouldEqual, 3)
 
@@ -279,15 +280,16 @@ func TestDBUtils(t *testing.T) {
 			}
 
 			// insert, make sure all were inserted
-			So(Insert(collection, in), ShouldBeNil)
-			So(Insert(collection, inTwo), ShouldBeNil)
-			So(Insert(collection, inThree), ShouldBeNil)
-			count, err := Count(collection, bson.M{})
+			So(Insert(t.Context(), collection, in), ShouldBeNil)
+			So(Insert(t.Context(), collection, inTwo), ShouldBeNil)
+			So(Insert(t.Context(), collection, inThree), ShouldBeNil)
+			count, err := Count(t.Context(), collection, bson.M{})
 			So(err, ShouldBeNil)
 			So(count, ShouldEqual, 3)
 
 			// update the first and third
-			_, err = UpdateAll(
+			_, err = UpdateAllContext(
+				t.Context(),
 				collection,
 				bson.M{
 					"field_one": "1",
@@ -301,7 +303,7 @@ func TestDBUtils(t *testing.T) {
 			So(err, ShouldBeNil)
 
 			out := []insertableStruct{}
-			err = FindAllQ(collection, Query(bson.M{"field_two": 3}), &out)
+			err = FindAllQ(t.Context(), collection, Query(bson.M{"field_two": 3}), &out)
 			So(err, ShouldBeNil)
 			So(len(out), ShouldEqual, 2)
 
@@ -316,7 +318,7 @@ func TestDBUtils(t *testing.T) {
 					FieldTwo: 1,
 				}
 
-				_, err := Upsert(
+				_, err := Upsert(t.Context(),
 					collection,
 					bson.M{
 						"field_one": in.FieldOne,
@@ -330,7 +332,7 @@ func TestDBUtils(t *testing.T) {
 				So(err, ShouldBeNil)
 
 				out := &insertableStruct{}
-				err = FindOneQ(collection, Query(bson.M{}), out)
+				err = FindOneQContext(t.Context(), collection, Query(bson.M{}), out)
 				So(err, ShouldBeNil)
 				So(out, ShouldResemble, in)
 
@@ -343,10 +345,10 @@ func TestDBUtils(t *testing.T) {
 					FieldTwo: 1,
 				}
 
-				So(Insert(collection, in), ShouldBeNil)
+				So(Insert(t.Context(), collection, in), ShouldBeNil)
 				in.FieldTwo = 2
 
-				_, err := Upsert(
+				_, err := Upsert(t.Context(),
 					collection,
 					bson.M{
 						"field_one": in.FieldOne,
@@ -360,7 +362,7 @@ func TestDBUtils(t *testing.T) {
 				So(err, ShouldBeNil)
 
 				out := &insertableStruct{}
-				err = FindOneQ(collection, Query(bson.M{}), out)
+				err = FindOneQContext(t.Context(), collection, Query(bson.M{}), out)
 				So(err, ShouldBeNil)
 				So(out, ShouldResemble, in)
 			})
@@ -375,7 +377,7 @@ func TestDBUtils(t *testing.T) {
 				FieldTwo: 1,
 			}
 
-			So(Insert(collection, in), ShouldBeNil)
+			So(Insert(t.Context(), collection, in), ShouldBeNil)
 			in.FieldTwo = 2
 
 			change := adb.Change{
@@ -388,7 +390,7 @@ func TestDBUtils(t *testing.T) {
 			}
 
 			out := &insertableStruct{}
-			cInfo, err := FindAndModify(
+			cInfo, err := FindAndModify(t.Context(),
 				collection,
 				bson.M{
 					"field_one": in.FieldOne,
@@ -416,9 +418,9 @@ func TestDBUtils(t *testing.T) {
 				FieldOne: "2",
 				FieldTwo: 3,
 			}
-			So(Insert(collection, in), ShouldBeNil)
-			So(Insert(collection, inTwo), ShouldBeNil)
-			So(Insert(collection, inThree), ShouldBeNil)
+			So(Insert(t.Context(), collection, in), ShouldBeNil)
+			So(Insert(t.Context(), collection, inTwo), ShouldBeNil)
+			So(Insert(t.Context(), collection, inThree), ShouldBeNil)
 
 			testPipeline := []bson.M{
 				{"$group": bson.M{
@@ -428,7 +430,7 @@ func TestDBUtils(t *testing.T) {
 			}
 
 			output := []bson.M{}
-			err := Aggregate(collection, testPipeline, &output)
+			err := Aggregate(t.Context(), collection, testPipeline, &output)
 			So(err, ShouldBeNil)
 			So(len(output), ShouldEqual, 2)
 			So(output[0]["total"], ShouldEqual, 5)
@@ -442,7 +444,7 @@ func TestDBUtils(t *testing.T) {
 					TotalSum int    `bson:"total"`
 				}
 				output := []ResultStruct{}
-				err := Aggregate(collection, testPipeline, &output)
+				err := Aggregate(t.Context(), collection, testPipeline, &output)
 				So(err, ShouldBeNil)
 				So(len(output), ShouldEqual, 2)
 				So(output[0], ShouldResemble, ResultStruct{"2", 5})
@@ -455,9 +457,9 @@ func TestDBUtils(t *testing.T) {
 func TestClearGridFSCollections(t *testing.T) {
 	assert := assert.New(t)
 
-	assert.NoError(WriteGridFile("testfiles", "test.txt", strings.NewReader("lorem ipsum")))
+	assert.NoError(WriteGridFile(t.Context(), "testfiles", "test.txt", strings.NewReader("lorem ipsum")))
 
-	reader, err := GetGridFile("testfiles", "test.txt")
+	reader, err := GetGridFile(t.Context(), "testfiles", "test.txt")
 	assert.NoError(err)
 	defer reader.Close()
 
@@ -468,7 +470,7 @@ func TestClearGridFSCollections(t *testing.T) {
 
 	assert.NoError(ClearGridCollections("testfiles"))
 
-	reader, err = GetGridFile("testfiles", "test.txt")
+	reader, err = GetGridFile(t.Context(), "testfiles", "test.txt")
 	assert.Error(err)
 	assert.Nil(reader)
 }

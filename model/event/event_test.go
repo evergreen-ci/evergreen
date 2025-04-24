@@ -74,8 +74,8 @@ func (s *eventSuite) TestWithRealData() {
 			hostDataStatusKey: "success",
 		},
 	}
-	s.NoError(db.Insert(EventCollection, data))
-	entries, err := Find(db.Query(bson.M{idKey: mgobson.ObjectIdHex("5949645c9acd9604fdd202d8")}))
+	s.NoError(db.Insert(s.T().Context(), EventCollection, data))
+	entries, err := Find(s.T().Context(), db.Query(bson.M{idKey: mgobson.ObjectIdHex("5949645c9acd9604fdd202d8")}))
 	s.NoError(err)
 	s.Len(entries, 1)
 	s.NotPanics(func() {
@@ -109,8 +109,8 @@ func (s *eventSuite) TestWithRealData() {
 			hostDataStatusKey: "success",
 		},
 	}
-	s.NoError(db.Insert(EventCollection, data))
-	entries, err = Find(db.Query(bson.M{idKey: mgobson.ObjectIdHex("5949645c9acd9604fdd202d9")}))
+	s.NoError(db.Insert(s.T().Context(), EventCollection, data))
+	entries, err = Find(s.T().Context(), db.Query(bson.M{idKey: mgobson.ObjectIdHex("5949645c9acd9604fdd202d9")}))
 	s.NoError(err)
 	s.Len(entries, 1)
 	s.NotPanics(func() {
@@ -133,8 +133,8 @@ func (s *eventSuite) TestWithRealData() {
 
 	// check that string IDs are preserved in the DB
 	data[idKey] = "elephant"
-	s.NoError(db.Insert(EventCollection, data))
-	entries, err = Find(db.Query(bson.M{idKey: "elephant"}))
+	s.NoError(db.Insert(s.T().Context(), EventCollection, data))
+	entries, err = Find(s.T().Context(), db.Query(bson.M{idKey: "elephant"}))
 	s.NoError(err)
 	s.Len(entries, 1)
 	s.Equal("elephant", entries[0].ID)
@@ -148,12 +148,12 @@ func (s *eventSuite) TestEventWithNilData() {
 		Timestamp:  time.Now().Round(time.Millisecond).Truncate(time.Millisecond),
 	}
 	s.Nil(event.Data)
-	s.Errorf(event.Log(), "event log entry cannot have nil data")
+	s.Errorf(event.Log(s.T().Context()), "event log entry cannot have nil data")
 
 	s.NotPanics(func() {
 		// But reading this back should not panic, if it somehow got into the db
-		s.NoError(db.Insert(EventCollection, event))
-		fetchedEvents, err := Find(db.Query(bson.M{}))
+		s.NoError(db.Insert(s.T().Context(), EventCollection, event))
+		fetchedEvents, err := Find(s.T().Context(), db.Query(bson.M{}))
 		s.Require().Error(err)
 		s.Nil(fetchedEvents)
 	})
@@ -254,8 +254,8 @@ func (s *eventSuite) TestFindByID() {
 		Timestamp:    time.Now().Round(time.Millisecond).Truncate(time.Millisecond),
 		Data:         registry.newEventFromType(ResourceTypeHost),
 	}
-	s.Require().NoError(e.Log())
-	dbEvent, err := FindByID(e.ID)
+	s.Require().NoError(e.Log(s.T().Context()))
+	dbEvent, err := FindByID(s.T().Context(), e.ID)
 	s.Require().NoError(err)
 	s.Require().NotZero(dbEvent)
 	s.Equal(e.ResourceId, dbEvent.ResourceId)
@@ -274,26 +274,26 @@ func (s *eventSuite) TestMarkProcessed() {
 	s.False(processed)
 	s.Zero(ptime)
 
-	s.EqualError(event.MarkProcessed(), "event has no ID")
+	s.EqualError(event.MarkProcessed(s.T().Context()), "event has no ID")
 	event.ID = mgobson.NewObjectId().Hex()
-	s.EqualError(event.MarkProcessed(), "updating 'processed at' time: document not found")
-	s.NoError(event.Log())
+	s.EqualError(event.MarkProcessed(s.T().Context()), "updating 'processed at' time: document not found")
+	s.NoError(event.Log(s.T().Context()))
 
-	s.NoError(db.UpdateId(EventCollection, event.ID, bson.M{
+	s.NoError(db.UpdateIdContext(s.T().Context(), EventCollection, event.ID, bson.M{
 		"$set": bson.M{
 			"processed_at": time.Time{},
 		},
 	}))
 
 	var fetchedEvent EventLogEntry
-	s.NoError(db.FindOneQ(EventCollection, db.Q{}, &fetchedEvent))
+	s.NoError(db.FindOneQContext(s.T().Context(), EventCollection, db.Q{}, &fetchedEvent))
 
 	processed, ptime = fetchedEvent.Processed()
 	s.False(processed)
 	s.Zero(ptime)
 
 	time.Sleep(time.Millisecond)
-	s.NoError(fetchedEvent.MarkProcessed())
+	s.NoError(fetchedEvent.MarkProcessed(s.T().Context()))
 	processed, ptime = fetchedEvent.Processed()
 	s.True(processed)
 	s.True(ptime.After(startTime))
@@ -333,9 +333,9 @@ func (s *eventSuite) TestFindUnprocessedEvents() {
 		},
 	}
 	for i := range data {
-		s.NoError(db.Insert(EventCollection, data[i]))
+		s.NoError(db.Insert(s.T().Context(), EventCollection, data[i]))
 	}
-	events, err := FindUnprocessedEvents(-1)
+	events, err := FindUnprocessedEvents(s.T().Context(), -1)
 	s.NoError(err)
 	s.Len(events, 1)
 
@@ -385,10 +385,10 @@ func (s *eventSuite) TestFindLastProcessedEvent() {
 		},
 	}
 	for i := range events {
-		s.NoError(db.Insert(EventCollection, events[i]))
+		s.NoError(db.Insert(s.T().Context(), EventCollection, events[i]))
 	}
 
-	e, err := FindLastProcessedEvent()
+	e, err := FindLastProcessedEvent(s.T().Context())
 	s.NoError(err)
 	s.Require().NotNil(e)
 	s.Equal("macos.example.com2", e.ResourceId)
@@ -432,10 +432,10 @@ func (s *eventSuite) TestCountUnprocessedEvents() {
 		},
 	}
 	for i := range events {
-		s.NoError(db.Insert(EventCollection, events[i]))
+		s.NoError(db.Insert(s.T().Context(), EventCollection, events[i]))
 	}
 
-	n, err := CountUnprocessedEvents()
+	n, err := CountUnprocessedEvents(s.T().Context())
 	s.NoError(err)
 	s.Equal(2, n)
 }
@@ -445,7 +445,7 @@ func (s *eventSuite) TestCountUnprocessedEvents() {
 // If not, this function returns false. If it the struct had "r_type" (without
 // omitempty), it will return that field's value, otherwise it returns an
 // empty string
-func findResourceTypeIn(data interface{}) (bool, string) {
+func findResourceTypeIn(data any) (bool, string) {
 	const resourceTypeKeyWithOmitEmpty = resourceTypeKey + ",omitempty"
 
 	if data == nil {
@@ -502,9 +502,9 @@ func (s *eventSuite) TestLogManyEvents() {
 		Data:         registry.newEventFromType(ResourceTypeTask),
 		ResourceType: "TASK",
 	}
-	s.NoError(LogManyEvents([]EventLogEntry{event1, event2}))
+	s.NoError(LogManyEvents(s.T().Context(), []EventLogEntry{event1, event2}))
 	events := []EventLogEntry{}
-	s.NoError(db.FindAllQ(EventCollection, db.Query(bson.M{}), &events))
+	s.NoError(db.FindAllQ(s.T().Context(), EventCollection, db.Query(bson.M{}), &events))
 	s.Len(events, 2)
 	s.Equal("resource_id_1", events[0].ResourceId)
 	s.Equal("some_type", events[0].EventType)

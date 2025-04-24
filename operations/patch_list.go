@@ -79,7 +79,7 @@ func PatchList() cli.Command {
 				outputJSON: outputJSON,
 			}
 
-			disp, err := getPatchDisplay(ac, params)
+			disp, err := getPatchDisplay(ctx, ac, params)
 			if err != nil {
 				return err
 			}

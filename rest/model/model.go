@@ -8,6 +8,6 @@ package model
 // interface{}; instead, pass in and return the actual service model that
 // corresponds to the REST model.
 type Model interface {
-	BuildFromService(interface{}) error
-	ToService() (interface{}, error)
+	BuildFromService(any) error
+	ToService() (any, error)
 }

@@ -24,9 +24,9 @@ func (r *taskLogsResolver) AllLogs(ctx context.Context, obj *TaskLogs) ([]*apimo
 func (r *taskLogsResolver) EventLogs(ctx context.Context, obj *TaskLogs) ([]*restModel.TaskAPIEventLogEntry, error) {
 	const logMessageCount = 100
 	// loggedEvents is ordered ts descending
-	loggedEvents, err := event.Find(event.MostRecentTaskEvents(obj.TaskID, logMessageCount))
+	loggedEvents, err := event.Find(ctx, event.MostRecentTaskEvents(obj.TaskID, logMessageCount))
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to find EventLogs for task %s: %s", obj.TaskID, err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching EventLogs for task '%s': %s", obj.TaskID, err.Error()))
 	}
 
 	// reverse order so it is ascending
@@ -41,7 +41,7 @@ func (r *taskLogsResolver) EventLogs(ctx context.Context, obj *TaskLogs) ([]*res
 		apiEventLog := restModel.TaskAPIEventLogEntry{}
 		err = apiEventLog.BuildFromService(ctx, e)
 		if err != nil {
-			return nil, InternalServerError.Send(ctx, fmt.Sprintf("Unable to build APIEventLogEntry from EventLog: %s", err.Error()))
+			return nil, InternalServerError.Send(ctx, fmt.Sprintf("building APIEventLogEntry from EventLog: %s", err.Error()))
 		}
 		apiEventLogPointers = append(apiEventLogPointers, &apiEventLog)
 	}

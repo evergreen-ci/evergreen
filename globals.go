@@ -216,6 +216,8 @@ const (
 	// disableLocalLoggingEnvVar is an environment variable to disable all local application logging
 	// besides for fallback logging to stderr.
 	disableLocalLoggingEnvVar = "DISABLE_LOCAL_LOGGING"
+	// AWSRoleARNEnvVar is an environment variable injected by IRSA that provides the role ARN.
+	AWSRoleARNEnvVar = "AWS_ROLE_ARN"
 
 	// APIServerTaskActivator represents Evergreen's internal API activator
 	APIServerTaskActivator = "apiserver"
@@ -272,7 +274,6 @@ const (
 	PowerShellSetupScriptName     = "setup.ps1"
 	PowerShellTempSetupScriptName = "setup-temp.ps1"
 
-	PlannerVersionLegacy  = "legacy"
 	PlannerVersionTunable = "tunable"
 
 	DispatcherVersionRevisedWithDependencies = "revised-with-dependencies"
@@ -378,6 +379,11 @@ const (
 	// should be valid for.
 	PresignMinimumValidTime = 15 * time.Minute
 )
+
+var TestFailureStatuses = []string{
+	TestFailedStatus,
+	TestSilentlyFailedStatus,
+}
 
 var TaskStatuses = []string{
 	TaskStarted,
@@ -513,8 +519,10 @@ const (
 	ProjectOrgOtelAttribute        = "evergreen.project.org"
 	ProjectRepoOtelAttribute       = "evergreen.project.repo"
 	ProjectIDOtelAttribute         = "evergreen.project.id"
+	RepoRefIDOtelAttribute         = "evergreen.project.repo_ref_id"
 	DistroIDOtelAttribute          = "evergreen.distro.id"
 	HostIDOtelAttribute            = "evergreen.host.id"
+	HostnameOtelAttribute          = "evergreen.host.hostname"
 	HostStartedByOtelAttribute     = "evergreen.host.started_by"
 	HostNoExpirationOtelAttribute  = "evergreen.host.no_expiration"
 	HostInstanceTypeOtelAttribute  = "evergreen.host.instance_type"
@@ -645,6 +653,7 @@ const (
 	DefaultDatabaseReadMode  = "majority"
 
 	DefaultAmboyDatabaseURL = "mongodb://localhost:27017"
+	DefaultCedarDatabaseURL = "mongodb://localhost:27017"
 
 	// version requester types
 	PatchVersionRequester       = "patch_request"
@@ -980,7 +989,6 @@ var (
 
 	// Set of valid PlannerSettings.Version strings that can be user set via the API
 	ValidTaskPlannerVersions = []string{
-		PlannerVersionLegacy,
 		PlannerVersionTunable,
 	}
 
@@ -1101,8 +1109,10 @@ func IsGithubMergeQueueRequester(requester string) bool {
 	return requester == GithubMergeRequester
 }
 
+// ShouldConsiderBatchtime checks if the requester is for a mainline commit,
+// as this is the only requester checked for project activation.
 func ShouldConsiderBatchtime(requester string) bool {
-	return !IsPatchRequester(requester) && requester != AdHocRequester && requester != GitTagRequester
+	return requester == RepotrackerVersionRequester
 }
 
 func PermissionsDisabledForTests() bool {
@@ -1488,7 +1498,7 @@ var validKeyTypes = []string{
 	publicKeyECDSA,
 }
 
-var sensitiveCollections = []string{"project_vars", "events"}
+var sensitiveCollections = []string{"events"}
 
 // ValidateSSHKey errors if the given key does not start with one of the allowed prefixes.
 func ValidateSSHKey(key string) error {

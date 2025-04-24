@@ -80,10 +80,6 @@ type Manager interface {
 
 	// Cleanup triggers the manager to clean up resources left behind by day-to-day operations.
 	Cleanup(context.Context) error
-
-	// AddSSHKey adds an SSH key for this manager's hosts. Adding an existing
-	// key is a no-op.
-	AddSSHKey(context.Context, evergreen.SSHKeyPair) error
 }
 
 type ContainerManager interface {
@@ -114,7 +110,11 @@ type BatchManager interface {
 // of the proper type.
 type ManagerOpts struct {
 	Provider string
-	Region   string
+	// Account is the account where API calls are being made.
+	Account string
+	// Region is the geographical region where the cloud operations should
+	// occur.
+	Region string
 }
 
 // GetSettings returns an uninitialized ProviderSettings based on the given
@@ -143,16 +143,18 @@ func GetManager(ctx context.Context, env evergreen.Environment, mgrOpts ManagerO
 		provider = &ec2Manager{
 			env: env,
 			EC2ManagerOptions: &EC2ManagerOptions{
-				client: &awsClientImpl{},
-				region: mgrOpts.Region,
+				client:  &awsClientImpl{},
+				account: mgrOpts.Account,
+				region:  mgrOpts.Region,
 			},
 		}
 	case evergreen.ProviderNameEc2Fleet:
 		provider = &ec2FleetManager{
 			env: env,
 			EC2FleetManagerOptions: &EC2FleetManagerOptions{
-				client: &awsClientImpl{},
-				region: mgrOpts.Region,
+				client:  &awsClientImpl{},
+				account: mgrOpts.Account,
+				region:  mgrOpts.Region,
 			},
 		}
 	case evergreen.ProviderNameStatic:
@@ -198,10 +200,10 @@ func GetManagerOptions(d distro.Distro) (ManagerOpts, error) {
 			return ManagerOpts{}, errors.Wrapf(err, "getting EC2 provider settings from distro")
 		}
 
-		return getEC2ManagerOptionsFromSettings(d.Provider, s), nil
+		return getEC2ManagerOptionsFromSettings(d, s), nil
 	}
 	if d.Provider == evergreen.ProviderNameMock {
-		return getMockManagerOptions(d.Provider, d.ProviderSettingsList)
+		return getMockManagerOptions(d)
 	}
 	return ManagerOpts{Provider: d.Provider}, nil
 }

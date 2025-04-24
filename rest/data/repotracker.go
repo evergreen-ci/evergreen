@@ -12,7 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
-	"github.com/google/go-github/v52/github"
+	"github.com/google/go-github/v70/github"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -67,7 +67,7 @@ func TriggerRepotracker(ctx context.Context, q amboy.Queue, msgID string, event 
 		return errors.New("owner from push event is invalid")
 	}
 
-	refs, err := model.FindMergedEnabledProjectRefsByRepoAndBranch(*event.Repo.Owner.Name, *event.Repo.Name, branch)
+	refs, err := model.FindMergedEnabledProjectRefsByRepoAndBranch(ctx, *event.Repo.Owner.Name, *event.Repo.Name, branch)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"source":  "GitHub hook",

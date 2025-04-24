@@ -18,7 +18,7 @@ import (
 )
 
 type createHostSuite struct {
-	params map[string]interface{}
+	params map[string]any
 	cmd    createHost
 	conf   *internal.TaskConfig
 	comm   client.Communicator
@@ -46,7 +46,7 @@ func (s *createHostSuite) SetupSuite() {
 }
 
 func (s *createHostSuite) SetupTest() {
-	s.params = map[string]interface{}{
+	s.params = map[string]any{
 		"distro":    "myDistro",
 		"scope":     "task",
 		"subnet_id": "${subnet_id}",
@@ -61,17 +61,13 @@ func (s *createHostSuite) TestParamDefaults() {
 
 	s.NoError(s.cmd.ParseParams(s.params))
 	s.NoError(s.cmd.expandAndValidate(ctx, s.conf))
-	s.Equal(apimodels.ProviderEC2, s.cmd.CreateHost.CloudProvider)
 	s.Equal(apimodels.DefaultSetupTimeoutSecs, s.cmd.CreateHost.SetupTimeoutSecs)
 	s.Equal(apimodels.DefaultTeardownTimeoutSecs, s.cmd.CreateHost.TeardownTimeoutSecs)
 
-	s.params["provider"] = apimodels.ProviderDocker
 	s.params["image"] = "my-image"
 	s.params["command"] = "echo hi"
 	s.NoError(s.cmd.ParseParams(s.params))
 	s.NoError(s.cmd.expandAndValidate(ctx, s.conf))
-	s.True(s.cmd.CreateHost.Background)
-	s.Equal(apimodels.DefaultContainerWaitTimeoutSecs, s.cmd.CreateHost.ContainerWaitTimeoutSecs)
 }
 
 func (s *createHostSuite) TestParseFromFile() {
@@ -80,14 +76,14 @@ func (s *createHostSuite) TestParseFromFile() {
 
 	//file for testing parsing from a json file
 	tmpdir := s.T().TempDir()
-	ebsDevice := []map[string]interface{}{
+	ebsDevice := []map[string]any{
 		{
 			"device_name": "myDevice",
 			"ebs_size":    1,
 		},
 	}
 	path := filepath.Join(tmpdir, "example.json")
-	fileContent := map[string]interface{}{
+	fileContent := map[string]any{
 		"distro":           "myDistro",
 		"scope":            "task",
 		"subnet_id":        "${subnet_id}",
@@ -98,13 +94,12 @@ func (s *createHostSuite) TestParseFromFile() {
 	s.NoError(utility.WriteJSONFile(path, fileContent))
 	_, err := os.Stat(path)
 	s.Require().False(os.IsNotExist(err))
-	s.params = map[string]interface{}{
+	s.params = map[string]any{
 		"file": path,
 	}
 
 	s.NoError(s.cmd.ParseParams(s.params))
 	s.NoError(s.cmd.expandAndValidate(ctx, s.conf))
-	s.True(s.cmd.CreateHost.Background)
 	s.Equal("myDistro", s.cmd.CreateHost.Distro)
 	s.Equal("task", s.cmd.CreateHost.Scope)
 	s.Equal("subnet-123456", s.cmd.CreateHost.Subnet)
@@ -116,13 +111,12 @@ func (s *createHostSuite) TestParseFromFile() {
 	s.NoError(utility.WriteYAMLFile(path, fileContent))
 	_, err = os.Stat(path)
 	s.Require().False(os.IsNotExist(err))
-	s.params = map[string]interface{}{
+	s.params = map[string]any{
 		"file": path,
 	}
 
 	s.NoError(s.cmd.ParseParams(s.params))
 	s.NoError(s.cmd.expandAndValidate(ctx, s.conf))
-	s.True(s.cmd.CreateHost.Background)
 	s.Equal("myDistro", s.cmd.CreateHost.Distro)
 	s.Equal("task", s.cmd.CreateHost.Scope)
 	s.Equal("subnet-123456", s.cmd.CreateHost.Subnet)
@@ -130,7 +124,7 @@ func (s *createHostSuite) TestParseFromFile() {
 	s.Equal("myDevice", s.cmd.CreateHost.EBSDevices[0].DeviceName)
 
 	//test with both file and other params
-	s.params = map[string]interface{}{
+	s.params = map[string]any{
 		"file":   path,
 		"distro": "myDistro",
 	}
@@ -193,30 +187,6 @@ func (s *createHostSuite) TestParamValidation() {
 	s.params["num_hosts"] = 2
 	s.NoError(s.cmd.ParseParams(s.params))
 	s.NoError(s.cmd.expandAndValidate(ctx, s.conf))
-
-	// Validate docker requirements
-	s.params["provider"] = apimodels.ProviderDocker
-	s.NoError(s.cmd.ParseParams(s.params))
-	s.params["distro"] = ""
-
-	err = s.cmd.expandAndValidate(ctx, s.conf)
-	s.Require().Error(err)
-	s.Contains(err.Error(), "Docker image must be set")
-	s.Contains(err.Error(), "must set a distro to run Docker container in")
-	s.Contains(err.Error(), "num hosts cannot be greater than 1")
-
-	s.params["image"] = "my-image"
-	s.params["command"] = "echo hi"
-	s.params["num_hosts"] = 1
-	s.params["distro"] = "distro-that-runs-docker"
-	s.NoError(s.cmd.ParseParams(s.params))
-	s.NoError(s.cmd.expandAndValidate(ctx, s.conf))
-
-	s.params["extra_hosts"] = []string{"invalid extra host"}
-	s.NoError(s.cmd.ParseParams(s.params))
-	err = s.cmd.expandAndValidate(ctx, s.conf)
-	s.Require().Error(err)
-	s.Contains(err.Error(), "extra host")
 }
 
 func (s *createHostSuite) TestPopulateUserdata() {

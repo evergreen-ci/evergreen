@@ -20,21 +20,21 @@ func TestEC2AssumeRoleParse(t *testing.T) {
 	for tName, tCase := range map[string]func(t *testing.T){
 		"FailsWithNoARN": func(t *testing.T) {
 			c := &ec2AssumeRole{}
-			assert.Error(t, c.ParseParams(map[string]interface{}{}))
+			assert.Error(t, c.ParseParams(map[string]any{}))
 		},
 		"FailsWithInvalidDuration": func(t *testing.T) {
 			c := &ec2AssumeRole{
 				RoleARN:         "randomRoleArn1234567890",
 				DurationSeconds: -10,
 			}
-			assert.Error(t, c.ParseParams(map[string]interface{}{}))
+			assert.Error(t, c.ParseParams(map[string]any{}))
 		},
 		"SucceedsWithValidParams": func(t *testing.T) {
 			c := &ec2AssumeRole{
 				RoleARN:         "randomRoleArn1234567890",
 				DurationSeconds: 10,
 			}
-			assert.NoError(t, c.ParseParams(map[string]interface{}{}))
+			assert.NoError(t, c.ParseParams(map[string]any{}))
 		},
 	} {
 		t.Run(tName, tCase)
@@ -70,6 +70,8 @@ func TestEC2AssumeRoleExecute(t *testing.T) {
 			assert.Equal(t, "secret_access_key", conf.NewExpansions.Get(globals.AWSSecretAccessKey))
 			assert.Equal(t, "session_token", conf.NewExpansions.Get(globals.AWSSessionToken))
 			assert.Equal(t, "expiration", conf.NewExpansions.Get(globals.AWSRoleExpiration))
+
+			assert.Equal(t, c.RoleARN, conf.AssumeRoleRoles[comm.AssumeRoleResponse.SessionToken])
 
 			t.Run("KeysAreRedacted", func(t *testing.T) {
 				hasAccessKey := false
@@ -117,8 +119,9 @@ func TestEC2AssumeRoleExecute(t *testing.T) {
 				ProjectRef: model.ProjectRef{
 					Id: "project_identifier",
 				},
-				Expansions:    expansions,
-				NewExpansions: agentutil.NewDynamicExpansions(expansions),
+				Expansions:      expansions,
+				NewExpansions:   agentutil.NewDynamicExpansions(expansions),
+				AssumeRoleRoles: map[string]string{},
 			}
 
 			comm := client.NewMock("localhost")

@@ -9,7 +9,13 @@ input WaterfallOptions {
     @requireProjectAccess(permission: TASKS, access: VIEW)
   requesters: [String!]
   revision: String
+  statuses: [String!]
+  tasks: [String!]
+  "Toggle case sensitivity when matching on task names. Note that if false, performance will be slower."
+  taskCaseSensitive: Boolean
   variants: [String!]
+  "Toggle case sensitivity when matching on variant names. Note that if false, performance will be slower."
+  variantCaseSensitive: Boolean
 }
 
 type WaterfallTask {
@@ -51,8 +57,6 @@ type WaterfallPagination {
 }
 
 type Waterfall {
-  buildVariants: [WaterfallBuildVariant!]!
-  versions: [WaterfallVersion!]!
   flattenedVersions: [Version!]!
   pagination: WaterfallPagination!
 }

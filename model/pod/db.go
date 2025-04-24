@@ -1,6 +1,7 @@
 package pod
 
 import (
+	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
@@ -67,20 +68,20 @@ func ByExternalID(id string) bson.M {
 }
 
 // Count counts the number of pods matching the given query.
-func Count(q db.Q) (int, error) {
-	return db.CountQ(Collection, q)
+func Count(ctx context.Context, q db.Q) (int, error) {
+	return db.CountQ(ctx, Collection, q)
 }
 
 // Find finds all pods matching the given query.
-func Find(q db.Q) ([]Pod, error) {
+func Find(ctx context.Context, q db.Q) ([]Pod, error) {
 	pods := []Pod{}
-	return pods, errors.WithStack(db.FindAllQ(Collection, q, &pods))
+	return pods, errors.WithStack(db.FindAllQ(ctx, Collection, q, &pods))
 }
 
 // FindOne finds one pod by the given query.
-func FindOne(q db.Q) (*Pod, error) {
+func FindOne(ctx context.Context, q db.Q) (*Pod, error) {
 	var p Pod
-	err := db.FindOneQ(Collection, q, &p)
+	err := db.FindOneQContext(ctx, Collection, q, &p)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -88,8 +89,8 @@ func FindOne(q db.Q) (*Pod, error) {
 }
 
 // FindOneByID finds one pod by its ID.
-func FindOneByID(id string) (*Pod, error) {
-	p, err := FindOne(db.Query(ByID(id)))
+func FindOneByID(ctx context.Context, id string) (*Pod, error) {
+	p, err := FindOne(ctx, db.Query(ByID(id)))
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding pod '%s'", id)
 	}
@@ -97,8 +98,9 @@ func FindOneByID(id string) (*Pod, error) {
 }
 
 // UpdateOne updates one pod.
-func UpdateOne(query interface{}, update interface{}) error {
-	return db.Update(
+func UpdateOne(ctx context.Context, query any, update any) error {
+	return db.UpdateContext(
+		ctx,
 		Collection,
 		query,
 		update,
@@ -109,9 +111,9 @@ func UpdateOne(query interface{}, update interface{}) error {
 // terminated, which includes:
 // * Pods that have been provisioning for too long.
 // * Pods that are decommissioned and have no running task.
-func FindByNeedsTermination() ([]Pod, error) {
+func FindByNeedsTermination(ctx context.Context) ([]Pod, error) {
 	staleCutoff := time.Now().Add(-15 * time.Minute)
-	return Find(db.Query(bson.M{
+	return Find(ctx, db.Query(bson.M{
 		"$or": []bson.M{
 			{
 				StatusKey: StatusInitializing,
@@ -131,28 +133,28 @@ func FindByNeedsTermination() ([]Pod, error) {
 
 // FindByInitializing find all pods that are initializing but have not started
 // any containers.
-func FindByInitializing() ([]Pod, error) {
-	return Find(db.Query(bson.M{
+func FindByInitializing(ctx context.Context) ([]Pod, error) {
+	return Find(ctx, db.Query(bson.M{
 		StatusKey: StatusInitializing,
 	}))
 }
 
 // CountByInitializing counts the number of pods that are initializing but have
 // not started any containers.
-func CountByInitializing() (int, error) {
-	return Count(db.Query(bson.M{
+func CountByInitializing(ctx context.Context) (int, error) {
+	return Count(ctx, db.Query(bson.M{
 		StatusKey: StatusInitializing,
 	}))
 }
 
 // FindOneByExternalID finds a pod that has a matching external identifier.
-func FindOneByExternalID(id string) (*Pod, error) {
-	return FindOne(db.Query(ByExternalID(id)))
+func FindOneByExternalID(ctx context.Context, id string) (*Pod, error) {
+	return FindOne(ctx, db.Query(ByExternalID(id)))
 }
 
 // FindIntentByFamily finds intent pods that have a matching family name.
-func FindIntentByFamily(family string) ([]Pod, error) {
-	return Find(db.Query(bson.M{
+func FindIntentByFamily(ctx context.Context, family string) ([]Pod, error) {
+	return Find(ctx, db.Query(bson.M{
 		StatusKey: StatusInitializing,
 		FamilyKey: family,
 	}))
@@ -162,7 +164,7 @@ func FindIntentByFamily(family string) ([]Pod, error) {
 // information about the status update. If the current status is identical to
 // the updated one, this will no-op. If the current status does not match the
 // stored status, this will error.
-func UpdateOneStatus(id string, current, updated Status, ts time.Time, reason string) error {
+func UpdateOneStatus(ctx context.Context, id string, current, updated Status, ts time.Time, reason string) error {
 	if current == updated {
 		return nil
 	}
@@ -178,22 +180,22 @@ func UpdateOneStatus(id string, current, updated Status, ts time.Time, reason st
 		setFields[bsonutil.GetDottedKeyName(TimeInfoKey, TimeInfoStartingKey)] = ts
 	}
 
-	if err := UpdateOne(byIDAndStatus, bson.M{
+	if err := UpdateOne(ctx, byIDAndStatus, bson.M{
 		"$set": setFields,
 	}); err != nil {
 		return err
 	}
 
-	event.LogPodStatusChanged(id, string(current), string(updated), reason)
+	event.LogPodStatusChanged(ctx, id, string(current), string(updated), reason)
 
 	return nil
 }
 
 // FindByLastCommunicatedBefore finds all active pods whose last communication
 // was before the given threshold.
-func FindByLastCommunicatedBefore(ts time.Time) ([]Pod, error) {
+func FindByLastCommunicatedBefore(ctx context.Context, ts time.Time) ([]Pod, error) {
 	lastCommunicatedKey := bsonutil.GetDottedKeyName(TimeInfoKey, TimeInfoLastCommunicatedKey)
-	return Find(db.Query(bson.M{
+	return Find(ctx, db.Query(bson.M{
 		StatusKey:           bson.M{"$in": []Status{StatusStarting, StatusRunning}},
 		lastCommunicatedKey: bson.M{"$lte": ts},
 	}))
@@ -211,7 +213,7 @@ type StatusCount struct {
 // for running tasks. For each pod status, it returns the counts for the number
 // of pods and number of running tasks in that particular status. Terminated
 // pods are excluded from these statistics.
-func GetStatsByStatus(statuses ...Status) ([]StatusCount, error) {
+func GetStatsByStatus(ctx context.Context, statuses ...Status) ([]StatusCount, error) {
 	if len(statuses) == 0 {
 		return []StatusCount{}, nil
 	}
@@ -248,7 +250,7 @@ func GetStatsByStatus(statuses ...Status) ([]StatusCount, error) {
 	}
 
 	stats := []StatusCount{}
-	if err := db.Aggregate(Collection, pipeline, &stats); err != nil {
+	if err := db.Aggregate(ctx, Collection, pipeline, &stats); err != nil {
 		return nil, err
 	}
 

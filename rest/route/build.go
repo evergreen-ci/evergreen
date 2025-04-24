@@ -50,7 +50,7 @@ func (b *buildGetHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (b *buildGetHandler) Run(ctx context.Context) gimlet.Responder {
-	foundBuild, err := build.FindOneId(b.buildId)
+	foundBuild, err := build.FindOneId(ctx, b.buildId)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding build '%s'", b.buildId))
 	}
@@ -61,7 +61,7 @@ func (b *buildGetHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	v, err := serviceModel.VersionFindOneId(foundBuild.Version)
+	v, err := serviceModel.VersionFindOne(ctx, serviceModel.VersionById(foundBuild.Version).WithFields(serviceModel.VersionIdKey, serviceModel.VersionProjectStorageMethodKey))
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding version '%s'", foundBuild.Version))
 	}
@@ -78,7 +78,7 @@ func (b *buildGetHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	buildModel := &model.APIBuild{}
-	buildModel.BuildFromService(*foundBuild, pp)
+	buildModel.BuildFromService(ctx, *foundBuild, pp)
 	if err := setBuildTaskCache(ctx, foundBuild, buildModel); err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "setting task cache for build"))
 	}
@@ -159,7 +159,7 @@ func (b *buildChangeStatusHandler) Parse(ctx context.Context, r *http.Request) e
 
 func (b *buildChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 	user := gimlet.GetUser(ctx)
-	foundBuild, err := build.FindOneId(b.buildId)
+	foundBuild, err := build.FindOneId(ctx, b.buildId)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding build '%s'", b.buildId))
 	}
@@ -191,7 +191,7 @@ func (b *buildChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 
-	updatedBuild, err := build.FindOneId(b.buildId)
+	updatedBuild, err := build.FindOneId(ctx, b.buildId)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "finding updated build '%s'", b.buildId))
 	}
@@ -203,7 +203,7 @@ func (b *buildChangeStatusHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	buildModel := &model.APIBuild{}
-	buildModel.BuildFromService(*updatedBuild, nil)
+	buildModel.BuildFromService(ctx, *updatedBuild, nil)
 	return gimlet.NewJSONResponse(buildModel)
 }
 
@@ -245,7 +245,7 @@ func (b *buildAbortHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "aborting build '%s'", b.buildId))
 	}
 
-	foundBuild, err := build.FindOneId(b.buildId)
+	foundBuild, err := build.FindOneId(ctx, b.buildId)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding updated build '%s'", b.buildId))
 	}
@@ -257,7 +257,7 @@ func (b *buildAbortHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	buildModel := &model.APIBuild{}
-	buildModel.BuildFromService(*foundBuild, nil)
+	buildModel.BuildFromService(ctx, *foundBuild, nil)
 	return gimlet.NewJSONResponse(buildModel)
 }
 
@@ -299,7 +299,7 @@ func (b *buildRestartHandler) Run(ctx context.Context) gimlet.Responder {
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting tasks for build '%s'", b.buildId))
 	}
-	foundBuild, err := build.FindOneId(b.buildId)
+	foundBuild, err := build.FindOneId(ctx, b.buildId)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding build '%s'", b.buildId))
 	}
@@ -315,7 +315,7 @@ func (b *buildRestartHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "restarting all tasks in build '%s'", b.buildId))
 	}
 
-	updatedBuild, err := build.FindOneId(b.buildId)
+	updatedBuild, err := build.FindOneId(ctx, b.buildId)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding build '%s'", b.buildId))
 	}
@@ -327,6 +327,6 @@ func (b *buildRestartHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	buildModel := &model.APIBuild{}
-	buildModel.BuildFromService(*updatedBuild, nil)
+	buildModel.BuildFromService(ctx, *updatedBuild, nil)
 	return gimlet.NewJSONResponse(buildModel)
 }

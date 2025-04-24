@@ -29,7 +29,7 @@ import (
 
 // CopyProject copies the passed in project with the given project identifier, and returns the new project.
 func CopyProject(ctx context.Context, env evergreen.Environment, opts restModel.CopyProjectOpts) (*restModel.APIProjectRef, error) {
-	projectToCopy, err := FindProjectById(opts.ProjectIdToCopy, false, false)
+	projectToCopy, err := FindProjectById(ctx, opts.ProjectIdToCopy, false, false)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding project '%s'", opts.ProjectIdToCopy)
 	}
@@ -63,22 +63,22 @@ func CopyProject(ctx context.Context, env evergreen.Environment, opts restModel.
 		catcher.Add(err)
 	}
 	apiProjectRef := &restModel.APIProjectRef{}
-	if err := apiProjectRef.BuildFromService(*projectToCopy); err != nil {
+	if err := apiProjectRef.BuildFromService(ctx, *projectToCopy); err != nil {
 		return nil, errors.Wrap(err, "converting project to API model")
 	}
 
 	// Copy variables, aliases, and subscriptions
-	if err := model.CopyProjectVars(oldId, projectToCopy.Id); err != nil {
+	if err := model.CopyProjectVars(ctx, oldId, projectToCopy.Id); err != nil {
 		catcher.Wrapf(err, "copying project vars from project '%s'", oldIdentifier)
 	}
-	if err := model.CopyProjectAliases(oldId, projectToCopy.Id); err != nil {
+	if err := model.CopyProjectAliases(ctx, oldId, projectToCopy.Id); err != nil {
 		catcher.Wrapf(err, "copying aliases from project '%s'", oldIdentifier)
 	}
-	if err := event.CopyProjectSubscriptions(oldId, projectToCopy.Id); err != nil {
+	if err := event.CopyProjectSubscriptions(ctx, oldId, projectToCopy.Id); err != nil {
 		catcher.Wrapf(err, "copying subscriptions from project '%s'", oldIdentifier)
 	}
 	// Set the same admin roles from the old project on the newly copied project.
-	if err := model.UpdateAdminRoles(projectToCopy, projectToCopy.Admins, nil); err != nil {
+	if err := model.UpdateAdminRoles(ctx, projectToCopy, projectToCopy.Admins, nil); err != nil {
 		catcher.Wrapf(err, "updating admins for project '%s'", opts.NewProjectIdentifier)
 	}
 
@@ -111,7 +111,7 @@ func PromoteVarsToRepo(ctx context.Context, projectIdentifier string, varNames [
 	projectId := project.ProjectRef.Id
 	repoId := project.ProjectRef.RepoRefId
 
-	projectVars, err := model.FindOneProjectVars(projectId)
+	projectVars, err := model.FindOneProjectVars(ctx, projectId)
 	if err != nil {
 		return errors.Wrapf(err, "getting project variables for project '%s'", projectIdentifier)
 	}
@@ -120,7 +120,7 @@ func PromoteVarsToRepo(ctx context.Context, projectIdentifier string, varNames [
 	if err != nil {
 		return errors.Wrapf(err, "getting repo settings for repo '%s'", repoId)
 	}
-	repoVars, err := model.FindOneProjectVars(repoId)
+	repoVars, err := model.FindOneProjectVars(ctx, repoId)
 	if err != nil {
 		return errors.Wrapf(err, "getting repo variables for repo '%s'", repoId)
 	}
@@ -143,7 +143,7 @@ func PromoteVarsToRepo(ctx context.Context, projectIdentifier string, varNames [
 		}
 	}
 
-	if err = UpdateProjectVars(repoId, apiRepoVars, true); err != nil {
+	if err = UpdateProjectVars(ctx, repoId, apiRepoVars, true); err != nil {
 		return errors.Wrapf(err, "adding variables from project '%s' to repo", projectIdentifier)
 	}
 
@@ -152,7 +152,7 @@ func PromoteVarsToRepo(ctx context.Context, projectIdentifier string, varNames [
 	if err != nil {
 		return errors.Wrapf(err, "getting settings for repo '%s' after adding promoted variables", repoId)
 	}
-	if err = model.LogProjectModified(repoId, userId, repo, repoAfter); err != nil {
+	if err = model.LogProjectModified(ctx, repoId, userId, repo, repoAfter); err != nil {
 		return errors.Wrapf(err, "logging repo '%s' modified", repoId)
 	}
 
@@ -180,7 +180,7 @@ func PromoteVarsToRepo(ctx context.Context, projectIdentifier string, varNames [
 		}
 	}
 
-	if err := UpdateProjectVars(projectId, apiProjectVars, true); err != nil {
+	if err := UpdateProjectVars(ctx, projectId, apiProjectVars, true); err != nil {
 		return errors.Wrapf(err, "removing promoted project variables from project '%s'", projectIdentifier)
 	}
 
@@ -188,7 +188,7 @@ func PromoteVarsToRepo(ctx context.Context, projectIdentifier string, varNames [
 	if err != nil {
 		return errors.Wrapf(err, "getting settings for project '%s' after removing promoted variables", projectIdentifier)
 	}
-	if err = model.LogProjectModified(projectId, userId, project, projectAfter); err != nil {
+	if err = model.LogProjectModified(ctx, projectId, userId, project, projectAfter); err != nil {
 		return errors.Wrapf(err, "logging project '%s' modified", projectIdentifier)
 	}
 
@@ -217,13 +217,13 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 
 	// If the project ref doesn't use the repo, or we're using a repo ref, then this will just be the same as the passed in ref.
 	// Used to verify that if something is set to nil, we properly validate using the merged project ref.
-	mergedSection, err := model.GetProjectRefMergedWithRepo(*newProjectRef)
+	mergedSection, err := model.GetProjectRefMergedWithRepo(ctx, *newProjectRef)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting merged project ref")
 	}
 
 	// mergedBeforeRef represents the original merged project ref (i.e. the project ref without any edits).
-	mergedBeforeRef, err := model.GetProjectRefMergedWithRepo(before.ProjectRef)
+	mergedBeforeRef, err := model.GetProjectRefMergedWithRepo(ctx, before.ProjectRef)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting the original merged project ref")
 	}
@@ -236,7 +236,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 	switch section {
 	case model.ProjectPageGeneralSection:
 		if mergedSection.Identifier != mergedBeforeRef.Identifier {
-			if err = validateModifiedIdentifier(mergedSection); err != nil {
+			if err = validateModifiedIdentifier(ctx, mergedSection); err != nil {
 				return nil, err
 			}
 		}
@@ -258,7 +258,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		// Only need to check GitHub conflicts once so we use else if statements to handle this.
 		// Handle conflicts using the ref from the DB, since only general section settings are passed in from the UI.
 		if mergedSection.Owner != mergedBeforeRef.Owner || mergedSection.Repo != mergedBeforeRef.Repo {
-			if err = handleGithubConflicts(mergedBeforeRef, "Changing owner/repo"); err != nil {
+			if err = handleGithubConflicts(ctx, mergedBeforeRef, "Changing owner/repo"); err != nil {
 				return nil, err
 			}
 			// Check if webhook is enabled if the owner/repo has changed.
@@ -269,11 +269,11 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 			}
 			modified = true
 		} else if mergedSection.Enabled && !mergedBeforeRef.Enabled {
-			if err = handleGithubConflicts(mergedBeforeRef, "Enabling project"); err != nil {
+			if err = handleGithubConflicts(ctx, mergedBeforeRef, "Enabling project"); err != nil {
 				return nil, err
 			}
 		} else if mergedSection.Branch != mergedBeforeRef.Branch {
-			if err = handleGithubConflicts(mergedBeforeRef, "Changing branch"); err != nil {
+			if err = handleGithubConflicts(ctx, mergedBeforeRef, "Changing branch"); err != nil {
 				return nil, err
 			}
 		}
@@ -288,7 +288,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 			if err != nil {
 				return nil, errors.Wrap(err, "getting evergreen config")
 			}
-			_, err = model.ValidateEnabledProjectsLimit(projectId, config, mergedBeforeRef, mergedSection)
+			_, err = model.ValidateEnabledProjectsLimit(ctx, projectId, config, mergedBeforeRef, mergedSection)
 			if err != nil {
 				return nil, errors.Wrap(err, "validating project creation")
 			}
@@ -328,11 +328,11 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 			modified = true
 			// For repos, we need to use the repo ref functions, as they update different scopes/roles.
 			repoRef := &model.RepoRef{ProjectRef: *newProjectRef}
-			if err = repoRef.UpdateAdminRoles(adminsToAdd, adminsToDelete); err != nil {
+			if err = repoRef.UpdateAdminRoles(ctx, adminsToAdd, adminsToDelete); err != nil {
 				catcher.Wrap(err, "updating repo admin roles")
 			}
 			newProjectRef.Admins = repoRef.Admins
-			branchProjects, err := model.FindMergedProjectRefsForRepo(repoRef)
+			branchProjects, err := model.FindMergedProjectRefsForRepo(ctx, repoRef)
 			if err != nil {
 				return nil, errors.Wrapf(err, "finding branch projects for repo")
 			}
@@ -343,7 +343,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 				catcher.Wrap(repoRef.MakeUnrestricted(branchProjects), "making repo unrestricted")
 			}
 		} else {
-			if modified, err = newProjectRef.UpdateAdminRoles(adminsToAdd, adminsToDelete); err != nil {
+			if modified, err = newProjectRef.UpdateAdminRoles(ctx, adminsToAdd, adminsToDelete); err != nil {
 				catcher.Wrap(err, "error updating project admin roles")
 				if !modified { // return before we save any admin updates to the project ref collection
 					return nil, catcher.Resolve()
@@ -366,7 +366,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 				changes.Vars.Vars[key] = value
 			}
 		}
-		if err = UpdateProjectVars(projectId, &changes.Vars, true); err != nil { // destructively modifies vars
+		if err = UpdateProjectVars(ctx, projectId, &changes.Vars, true); err != nil { // destructively modifies vars
 			return nil, errors.Wrapf(err, "updating project variables for project '%s'", projectId)
 		}
 		modified = true
@@ -374,27 +374,27 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		mergedSection.Owner = mergedBeforeRef.Owner
 		mergedSection.Repo = mergedBeforeRef.Repo
 		mergedSection.Branch = mergedBeforeRef.Branch
-		if err = handleGithubConflicts(mergedSection, "Toggling GitHub features"); err != nil {
+		if err = handleGithubConflicts(ctx, mergedSection, "Toggling GitHub features"); err != nil {
 			return nil, err
 		}
 
-		if err = validateFeaturesHaveAliases(mergedBeforeRef, mergedSection, changes.Aliases); err != nil {
+		if err = validateFeaturesHaveAliases(ctx, mergedBeforeRef, mergedSection, changes.Aliases); err != nil {
 			return nil, err
 		}
 		if err = mergedSection.ValidateGitHubPermissionGroupsByRequester(); err != nil {
 			return nil, err
 		}
-		modified, err = updateAliasesForSection(projectId, changes.Aliases, before.Aliases, section)
+		modified, err = updateAliasesForSection(ctx, projectId, changes.Aliases, before.Aliases, section)
 		catcher.Add(err)
 	case model.ProjectPagePatchAliasSection:
 		for i := range mergedSection.PatchTriggerAliases {
-			mergedSection.PatchTriggerAliases[i], err = model.ValidateTriggerDefinition(mergedSection.PatchTriggerAliases[i], projectId)
+			mergedSection.PatchTriggerAliases[i], err = model.ValidateTriggerDefinition(ctx, mergedSection.PatchTriggerAliases[i], projectId)
 			catcher.Add(err)
 		}
 		if catcher.HasErrors() {
 			return nil, errors.Wrap(catcher.Resolve(), "invalid patch trigger aliases")
 		}
-		modified, err = updateAliasesForSection(projectId, changes.Aliases, before.Aliases, section)
+		modified, err = updateAliasesForSection(ctx, projectId, changes.Aliases, before.Aliases, section)
 		catcher.Add(err)
 	case model.ProjectPageNotificationsSection:
 		// Some subscription values are redacted like webhook secret and 'Authorization' header.
@@ -404,7 +404,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		if err != nil {
 			return nil, errors.Wrap(err, "unredacting subscriptions")
 		}
-		if err = SaveSubscriptions(projectId, unredactedSubscriptions, true); err != nil {
+		if err = SaveSubscriptions(ctx, projectId, unredactedSubscriptions, true); err != nil {
 			return nil, errors.Wrapf(err, "saving subscriptions for project '%s'", projectId)
 		}
 		modified = true
@@ -420,7 +420,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 				toDelete = append(toDelete, originalSub.ID)
 			}
 		}
-		catcher.Wrapf(DeleteSubscriptions(projectId, toDelete), "deleting subscriptions")
+		catcher.Wrapf(DeleteSubscriptions(ctx, projectId, toDelete), "deleting subscriptions")
 	case model.ProjectPageContainerSection:
 		for _, size := range mergedSection.ContainerSizeDefinitions {
 			catcher.Add(errors.Wrapf(size.Validate(evergreen.GetEnvironment().Settings().Providers.AWS.Pod.ECS), "invalid container size '%s'", size.Name))
@@ -438,7 +438,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		}
 	case model.ProjectPageTriggersSection:
 		if !isRepo { // Check this for project refs only, as repo projects won't have last version information stored.
-			repository, err := model.FindRepository(projectId)
+			repository, err := model.FindRepository(ctx, projectId)
 			if err != nil {
 				return nil, errors.Wrapf(err, "finding repository for project '%s'", projectId)
 			}
@@ -448,7 +448,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		}
 
 		for i := range mergedSection.Triggers {
-			catcher.Add(mergedSection.Triggers[i].Validate(projectId))
+			catcher.Add(mergedSection.Triggers[i].Validate(ctx, projectId))
 		}
 		if catcher.HasErrors() {
 			return nil, errors.Wrap(catcher.Resolve(), "invalid project trigger")
@@ -487,7 +487,7 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		modified = true
 	}
 
-	modifiedProjectRef, err := model.SaveProjectPageForSection(projectId, newProjectRef, section, isRepo)
+	modifiedProjectRef, err := model.SaveProjectPageForSection(ctx, projectId, newProjectRef, section, isRepo)
 	if err != nil {
 		return nil, errors.Wrapf(err, "saving project for section '%s'", section)
 	}
@@ -497,10 +497,10 @@ func SaveProjectSettingsForSection(ctx context.Context, projectId string, change
 		if err != nil {
 			catcher.Wrapf(err, "getting after project settings event")
 		} else {
-			catcher.Add(model.LogProjectModified(projectId, userId, before, after))
+			catcher.Add(model.LogProjectModified(ctx, projectId, userId, before, after))
 			after.Vars = *after.Vars.RedactPrivateVars() // ensure that we're not returning private variables back to the UI
 			after.GitHubAppAuth = *after.GitHubAppAuth.RedactPrivateKey()
-			res, err = restModel.DbProjectSettingsToRestModel(*after)
+			res, err = restModel.DbProjectSettingsToRestModel(ctx, *after)
 			if err != nil {
 				catcher.Wrapf(err, "converting project settings")
 			}
@@ -587,8 +587,8 @@ func getSubscription[T any](subscriptions []event.Subscription, id string) (*T, 
 	return nil, nil
 }
 
-func validateModifiedIdentifier(pRef *model.ProjectRef) error {
-	conflictingRef, err := model.FindBranchProjectRef(pRef.Identifier)
+func validateModifiedIdentifier(ctx context.Context, pRef *model.ProjectRef) error {
+	conflictingRef, err := model.FindBranchProjectRef(ctx, pRef.Identifier)
 	if err != nil {
 		return errors.Wrapf(err, "checking for conflicting project ref")
 	}
@@ -605,12 +605,12 @@ func validateModifiedIdentifier(pRef *model.ProjectRef) error {
 }
 
 // handleGithubConflicts returns an error containing any potential Github project conflicts.
-func handleGithubConflicts(pRef *model.ProjectRef, reason string) error {
+func handleGithubConflicts(ctx context.Context, pRef *model.ProjectRef, reason string) error {
 	if !pRef.IsPRTestingEnabled() && !pRef.CommitQueue.IsEnabled() && !pRef.IsGithubChecksEnabled() {
 		return nil // if nothing is toggled on, then there's no reason to look for conflicts
 	}
 	conflictMsgs := []string{}
-	conflicts, err := pRef.GetGithubProjectConflicts()
+	conflicts, err := pRef.GetGithubProjectConflicts(ctx)
 	if err != nil {
 		return errors.Wrapf(err, "getting GitHub project conflicts")
 	}

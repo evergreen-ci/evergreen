@@ -72,9 +72,9 @@ func (s *ProjectEventsTestSuite) SetupSuite() {
 		Id:      "mci2",
 		Enabled: true,
 	}
-	s.NoError(projectRef.Insert())
+	s.NoError(projectRef.Insert(s.T().Context()))
 
-	s.NoError(model.LogProjectEvent(event.EventTypeProjectAdded, "mci2", s.event))
+	s.NoError(model.LogProjectEvent(s.T().Context(), event.EventTypeProjectAdded, "mci2", s.event))
 }
 
 func (s *ProjectEventsTestSuite) TestGetProjectEvents() {
@@ -86,7 +86,7 @@ func (s *ProjectEventsTestSuite) TestGetProjectEvents() {
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
 
-	responseData, ok := resp.Data().([]interface{})
+	responseData, ok := resp.Data().([]any)
 	s.Require().True(ok)
 	apiEvent := responseData[0].(*restModel.APIProjectEvent)
 	s.Equal(s.event.Before.ProjectRef.Identifier, *apiEvent.Before.ProjectRef.Identifier)

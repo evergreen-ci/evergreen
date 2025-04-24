@@ -35,7 +35,7 @@ type PatchAPIResponse struct {
 // getAuthor returns the author for the patch. If githubAuthor or patchAuthor is provided and exists, will use that
 // author instead of the submitter if the submitter is authorized to submit patches on behalf of users.
 // Returns the author, status code, and error.
-func (as *APIServer) getAuthor(data patchData, dbUser *user.DBUser, projectId, patchID string) (string, int, error) {
+func (as *APIServer) getAuthor(ctx context.Context, data patchData, dbUser *user.DBUser, projectId, patchID string) (string, int, error) {
 	author := dbUser.Id
 	if data.GithubAuthor == "" && data.PatchAuthor == "" {
 		return author, http.StatusOK, nil
@@ -52,7 +52,7 @@ func (as *APIServer) getAuthor(data patchData, dbUser *user.DBUser, projectId, p
 	}
 
 	if data.GithubAuthor != "" {
-		specifiedUser, err := user.FindByGithubName(data.GithubAuthor)
+		specifiedUser, err := user.FindByGithubName(ctx, data.GithubAuthor)
 		if err != nil {
 			return "", http.StatusInternalServerError, errors.Wrapf(err, "error looking for github author '%s'", data.GithubAuthor)
 		}
@@ -72,7 +72,7 @@ func (as *APIServer) getAuthor(data patchData, dbUser *user.DBUser, projectId, p
 			"patch_id":        patchID,
 		})
 	} else if data.PatchAuthor != "" {
-		specifiedUser, err := user.FindOneById(data.PatchAuthor)
+		specifiedUser, err := user.FindOneByIdContext(ctx, data.PatchAuthor)
 		if err != nil {
 			return "", http.StatusInternalServerError, errors.Wrapf(err, "error looking for author '%s'", data.PatchAuthor)
 		}
@@ -129,7 +129,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pref, err := model.FindMergedProjectRef(data.Project, "", true)
+	pref, err := model.FindMergedProjectRef(r.Context(), data.Project, "", true)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, errors.Wrapf(err, "project '%s' is not specified", data.Project))
 		return
@@ -166,7 +166,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	patchID := mgobson.NewObjectId()
-	author, statusCode, err := as.getAuthor(data, dbUser, pref.Id, patchID.Hex())
+	author, statusCode, err := as.getAuthor(r.Context(), data, dbUser, pref.Id, patchID.Hex())
 	if err != nil {
 		as.LoggedError(w, r, statusCode, err)
 		return
@@ -203,7 +203,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		as.LoggedError(w, r, http.StatusBadRequest, errors.New("intent could not be created from supplied data"))
 		return
 	}
-	if err = intent.Insert(); err != nil {
+	if err = intent.Insert(r.Context()); err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
 		return
 	}
@@ -231,7 +231,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	patchDoc, err := patch.FindOne(patch.ById(patchID))
+	patchDoc, err := patch.FindOne(r.Context(), patch.ById(patchID))
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, errors.New("can't fetch patch data"))
 		return
@@ -253,7 +253,7 @@ func getPatchFromRequest(r *http.Request) (*patch.Patch, error) {
 	}
 
 	// find the patch
-	existingPatch, err := patch.FindOneId(patchIdStr)
+	existingPatch, err := patch.FindOneId(r.Context(), patchIdStr)
 	if err != nil {
 		return nil, err
 	}
@@ -298,7 +298,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 
 	// write the patch content into a GridFS file under a new ObjectId.
 	patchFileId := mgobson.NewObjectId().Hex()
-	err = db.WriteGridFile(patch.GridFSPrefix, patchFileId, strings.NewReader(patchContent))
+	err = db.WriteGridFile(r.Context(), patch.GridFSPrefix, patchFileId, strings.NewReader(patchContent))
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "failed to write patch file to db"))
 		return
@@ -313,7 +313,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 			CommitMessages: commitMessages,
 		},
 	}
-	if err = p.UpdateModulePatch(modulePatch); err != nil {
+	if err = p.UpdateModulePatch(r.Context(), modulePatch); err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
@@ -334,7 +334,7 @@ func (as *APIServer) listPatches(w http.ResponseWriter, r *http.Request) {
 	if n > 0 {
 		query = query.Limit(n)
 	}
-	patches, err := patch.Find(query)
+	patches, err := patch.Find(r.Context(), query)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError,
 			errors.Wrapf(err, "error finding patches for user %s", dbUser.Id))
@@ -377,7 +377,7 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 	// dispatch to handlers based on specified action
 	switch action {
 	case "update":
-		err = p.SetDescription(desc)
+		err = p.SetDescription(ctx, desc)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
@@ -457,7 +457,7 @@ func (as *APIServer) listPatchModules(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	projectName := project.Identifier // this might be the ID, so use identifier if we can
-	identifier, _ := model.GetIdentifierForProject(project.Identifier)
+	identifier, _ := model.GetIdentifierForProject(r.Context(), project.Identifier)
 	if identifier != "" {
 		projectName = identifier
 	}
@@ -509,7 +509,7 @@ func (as *APIServer) deletePatchModule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = p.RemoveModulePatch(moduleName)
+	err = p.RemoveModulePatch(r.Context(), moduleName)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return

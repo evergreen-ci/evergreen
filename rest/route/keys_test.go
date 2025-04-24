@@ -50,8 +50,8 @@ func (s *UserConnectorSuite) SetupTest() {
 		APIKey: "apikey1",
 		// no pub keys
 	}
-	s.NoError(user0.Insert())
-	s.NoError(user1.Insert())
+	s.NoError(user0.Insert(s.T().Context()))
+	s.NoError(user1.Insert(s.T().Context()))
 	s.post = makeSetKey()
 	s.get = makeFetchKeys()
 }
@@ -69,7 +69,7 @@ func (s *UserConnectorSuite) TestGetSSHKeys() {
 	resp := s.get.Run(ctx)
 
 	s.Equal(http.StatusOK, resp.Status())
-	payload := resp.Data().([]interface{})
+	payload := resp.Data().([]any)
 	s.Len(payload, 2)
 	for i, result := range payload {
 		s.IsType(new(model.APIPubKey), result)
@@ -104,7 +104,7 @@ func (s *UserConnectorSuite) TestAddSSHKey() {
 	resp := s.post.Run(ctx)
 	s.Equal(http.StatusOK, resp.Status())
 
-	user0, err := user.FindOneById("user0")
+	user0, err := user.FindOneByIdContext(s.T().Context(), "user0")
 	s.NoError(err)
 	s.Len(user0.PubKeys, 3)
 	s.Equal("Test", user0.PubKeys[2].Name)
@@ -116,7 +116,7 @@ func (s *UserConnectorSuite) TestAddDuplicateSSHKeyFails() {
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user0"})
 	s.TestAddSSHKey()
 
-	user0, err := user.FindOneById("user0")
+	user0, err := user.FindOneByIdContext(s.T().Context(), "user0")
 	s.NoError(err)
 	s.Len(user0.PubKeys, 3)
 
@@ -126,7 +126,7 @@ func (s *UserConnectorSuite) TestAddDuplicateSSHKeyFails() {
 	resp := s.post.Run(ctx)
 	s.NotEqual(http.StatusOK, resp.Status())
 
-	user0, err = user.FindOneById("user0")
+	user0, err = user.FindOneByIdContext(s.T().Context(), "user0")
 	s.NoError(err)
 	s.Len(user0.PubKeys, 3)
 }
@@ -183,8 +183,8 @@ func (s *UserConnectorDeleteSuite) SetupTest() {
 		APIKey: "apikey1",
 		// no pub keys
 	}
-	s.NoError(user0.Insert())
-	s.NoError(user1.Insert())
+	s.NoError(user0.Insert(s.T().Context()))
+	s.NoError(user1.Insert(s.T().Context()))
 
 	s.rm = makeDeleteKeys()
 }
@@ -196,14 +196,14 @@ func (s *UserConnectorDeleteSuite) TestDeleteSSHKeys() {
 	s.rm.(*keysDeleteHandler).keyName = "user0_pubkey0"
 	resp := s.rm.Run(ctx)
 	s.Equal(http.StatusOK, resp.Status())
-	user0, err := user.FindOneById("user0")
+	user0, err := user.FindOneByIdContext(s.T().Context(), "user0")
 	s.NoError(err)
 	s.Len(user0.PubKeys, 1)
 
 	s.rm.(*keysDeleteHandler).keyName = "user0_pubkey1"
 	resp = s.rm.Run(ctx)
 	s.Equal(http.StatusOK, resp.Status())
-	user0, err = user.FindOneById("user0")
+	user0, err = user.FindOneByIdContext(s.T().Context(), "user0")
 	s.NoError(err)
 	s.Empty(user0.PubKeys)
 }

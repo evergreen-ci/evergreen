@@ -29,25 +29,26 @@ type PodDefinition struct {
 }
 
 // Insert inserts the pod definition into the collection.
-func (pd *PodDefinition) Insert() error {
-	return db.Insert(Collection, pd)
+func (pd *PodDefinition) Insert(ctx context.Context) error {
+	return db.Insert(ctx, Collection, pd)
 }
 
-// Upsert upserts the pod definition into the collection.
-func (pd *PodDefinition) Upsert() error {
-	_, err := db.Upsert(Collection, ByID(pd.ID), pd)
+// Replace updates the pod definition in the db if an entry already exists,
+// overwriting the existing definition. If no definition exists, a new one is created.
+func (pd *PodDefinition) Replace(ctx context.Context) error {
+	_, err := db.ReplaceContext(ctx, Collection, ByID(pd.ID), pd)
 	return err
 }
 
 // Remove removes the pod definition from the collection.
-func (pd *PodDefinition) Remove() error {
-	return db.Remove(Collection, ByID(pd.ID))
+func (pd *PodDefinition) Remove(ctx context.Context) error {
+	return db.Remove(ctx, Collection, ByID(pd.ID))
 }
 
 // UpdateLastAccessed updates the time this pod definition was last accessed to
 // now.
-func (pd *PodDefinition) UpdateLastAccessed() error {
-	return UpdateOne(ByID(pd.ID), bson.M{
+func (pd *PodDefinition) UpdateLastAccessed(ctx context.Context) error {
+	return UpdateOne(ctx, ByID(pd.ID), bson.M{
 		"$set": bson.M{
 			LastAccessedKey: time.Now(),
 		},
@@ -60,7 +61,7 @@ type PodDefinitionCache struct{}
 
 // Put inserts a new pod definition; if an identical one already exists, this is
 // a no-op.
-func (pdc PodDefinitionCache) Put(_ context.Context, item cocoa.ECSPodDefinitionItem) error {
+func (pdc PodDefinitionCache) Put(ctx context.Context, item cocoa.ECSPodDefinitionItem) error {
 	family := utility.FromStringPtr(item.DefinitionOpts.Name)
 	idAndFamily := bson.M{
 		ExternalIDKey: item.ID,
@@ -76,7 +77,7 @@ func (pdc PodDefinitionCache) Put(_ context.Context, item cocoa.ECSPodDefinition
 			IDKey: primitive.NewObjectID().Hex(),
 		},
 	}
-	if _, err := UpsertOne(idAndFamily, newPodDef); err != nil {
+	if _, err := UpsertOne(ctx, idAndFamily, newPodDef); err != nil {
 		return errors.Wrap(err, "upserting pod definition")
 	}
 	return nil
@@ -84,8 +85,8 @@ func (pdc PodDefinitionCache) Put(_ context.Context, item cocoa.ECSPodDefinition
 
 // Delete deletes a new pod definition by its external ID. If the pod definition
 // does not exist, this is a no-op.
-func (pdc PodDefinitionCache) Delete(_ context.Context, externalID string) error {
-	if err := db.Remove(Collection, bson.M{
+func (pdc PodDefinitionCache) Delete(ctx context.Context, externalID string) error {
+	if err := db.Remove(ctx, Collection, bson.M{
 		ExternalIDKey: externalID,
 	}); err != nil {
 		return errors.Wrapf(err, "deleting pod definition with external ID '%s'", externalID)

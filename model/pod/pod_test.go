@@ -125,7 +125,7 @@ func TestImportWindowsVersion(t *testing.T) {
 func TestInsertAndFindOneByID(t *testing.T) {
 	for tName, tCase := range map[string]func(t *testing.T){
 		"FindOneByIDReturnsNoResultForNonexistentPod": func(t *testing.T) {
-			p, err := FindOneByID("foo")
+			p, err := FindOneByID(t.Context(), "foo")
 			assert.NoError(t, err)
 			assert.Zero(t, p)
 		},
@@ -159,9 +159,9 @@ func TestInsertAndFindOneByID(t *testing.T) {
 					},
 				},
 			}
-			require.NoError(t, p.Insert())
+			require.NoError(t, p.Insert(t.Context()))
 
-			dbPod, err := FindOneByID(p.ID)
+			dbPod, err := FindOneByID(t.Context(), p.ID)
 			require.NoError(t, err)
 			require.NotNil(t, dbPod)
 
@@ -188,25 +188,25 @@ func TestRemove(t *testing.T) {
 			p := Pod{
 				ID: "nonexistent",
 			}
-			dbPod, err := FindOneByID(p.ID)
+			dbPod, err := FindOneByID(t.Context(), p.ID)
 			assert.NoError(t, err)
 			assert.Zero(t, dbPod)
 
-			assert.NoError(t, p.Remove())
+			assert.NoError(t, p.Remove(t.Context()))
 		},
 		"SucceedsWithExistingPod": func(t *testing.T) {
 			p := Pod{
 				ID: "id",
 			}
-			require.NoError(t, p.Insert())
+			require.NoError(t, p.Insert(t.Context()))
 
-			dbPod, err := FindOneByID(p.ID)
+			dbPod, err := FindOneByID(t.Context(), p.ID)
 			require.NoError(t, err)
 			require.NotNil(t, dbPod)
 
-			require.NoError(t, p.Remove())
+			require.NoError(t, p.Remove(t.Context()))
 
-			dbPod, err = FindOneByID(p.ID)
+			dbPod, err = FindOneByID(t.Context(), p.ID)
 			assert.NoError(t, err)
 			assert.Zero(t, dbPod)
 		},
@@ -330,14 +330,14 @@ func TestNewTaskIntentPod(t *testing.T) {
 
 func TestUpdateStatus(t *testing.T) {
 	checkStatus := func(t *testing.T, p Pod) {
-		dbPod, err := FindOneByID(p.ID)
+		dbPod, err := FindOneByID(t.Context(), p.ID)
 		require.NoError(t, err)
 		require.NotZero(t, dbPod)
 		assert.Equal(t, p.Status, dbPod.Status)
 	}
 
 	checkStatusAndTimeInfo := func(t *testing.T, p Pod) {
-		dbPod, err := FindOneByID(p.ID)
+		dbPod, err := FindOneByID(t.Context(), p.ID)
 		require.NoError(t, err)
 		require.NotZero(t, dbPod)
 		assert.Equal(t, p.Status, dbPod.Status)
@@ -354,7 +354,7 @@ func TestUpdateStatus(t *testing.T) {
 	}
 
 	checkEventLog := func(t *testing.T, p Pod) {
-		events, err := event.Find(event.MostRecentPodEvents(p.ID, 10))
+		events, err := event.Find(t.Context(), event.MostRecentPodEvents(p.ID, 10))
 		require.NoError(t, err)
 		require.Len(t, events, 1)
 		assert.Equal(t, p.ID, events[0].ResourceId)
@@ -364,55 +364,55 @@ func TestUpdateStatus(t *testing.T) {
 
 	for tName, tCase := range map[string]func(t *testing.T, p Pod){
 		"SucceedsWithInitializingStatus": func(t *testing.T, p Pod) {
-			require.NoError(t, p.Insert())
+			require.NoError(t, p.Insert(t.Context()))
 
-			require.NoError(t, p.UpdateStatus(StatusInitializing, ""))
+			require.NoError(t, p.UpdateStatus(t.Context(), StatusInitializing, ""))
 			assert.Equal(t, StatusInitializing, p.Status)
 
 			checkStatusAndTimeInfo(t, p)
 			checkEventLog(t, p)
 		},
 		"SucceedsWithStartingStatus": func(t *testing.T, p Pod) {
-			require.NoError(t, p.Insert())
+			require.NoError(t, p.Insert(t.Context()))
 
-			require.NoError(t, p.UpdateStatus(StatusStarting, ""))
+			require.NoError(t, p.UpdateStatus(t.Context(), StatusStarting, ""))
 			assert.Equal(t, StatusStarting, p.Status)
 
 			checkStatusAndTimeInfo(t, p)
 			checkEventLog(t, p)
 		},
 		"SucceedsWithTerminatedStatus": func(t *testing.T, p Pod) {
-			require.NoError(t, p.Insert())
+			require.NoError(t, p.Insert(t.Context()))
 
-			require.NoError(t, p.UpdateStatus(StatusTerminated, ""))
+			require.NoError(t, p.UpdateStatus(t.Context(), StatusTerminated, ""))
 			assert.Equal(t, StatusTerminated, p.Status)
 
 			checkStatus(t, p)
 			checkEventLog(t, p)
 		},
 		"NoopsWithIdenticalStatus": func(t *testing.T, p Pod) {
-			require.NoError(t, p.Insert())
+			require.NoError(t, p.Insert(t.Context()))
 
-			require.NoError(t, p.UpdateStatus(p.Status, ""))
+			require.NoError(t, p.UpdateStatus(t.Context(), p.Status, ""))
 			checkStatus(t, p)
 		},
 		"FailsWithNonexistentPod": func(t *testing.T, p Pod) {
-			assert.Error(t, p.UpdateStatus(StatusTerminated, ""))
+			assert.Error(t, p.UpdateStatus(t.Context(), StatusTerminated, ""))
 
-			dbPod, err := FindOneByID(p.ID)
+			dbPod, err := FindOneByID(t.Context(), p.ID)
 			assert.NoError(t, err)
 			assert.Zero(t, dbPod)
 		},
 		"FailsWithChangedPodStatus": func(t *testing.T, p Pod) {
-			require.NoError(t, p.Insert())
+			require.NoError(t, p.Insert(t.Context()))
 
-			require.NoError(t, UpdateOne(ByID(p.ID), bson.M{
+			require.NoError(t, UpdateOne(t.Context(), ByID(p.ID), bson.M{
 				"$set": bson.M{StatusKey: StatusInitializing},
 			}))
 
-			assert.Error(t, p.UpdateStatus(StatusTerminated, ""))
+			assert.Error(t, p.UpdateStatus(t.Context(), StatusTerminated, ""))
 
-			dbPod, err := FindOneByID(p.ID)
+			dbPod, err := FindOneByID(t.Context(), p.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Equal(t, StatusInitializing, dbPod.Status)
@@ -433,7 +433,7 @@ func TestUpdateStatus(t *testing.T) {
 
 func TestUpdateResources(t *testing.T) {
 	checkResources := func(t *testing.T, p Pod) {
-		dbPod, err := FindOneByID(p.ID)
+		dbPod, err := FindOneByID(t.Context(), p.ID)
 		require.NoError(t, err)
 		require.NotZero(t, dbPod)
 		assert.Equal(t, p.Resources, dbPod.Resources)
@@ -441,46 +441,46 @@ func TestUpdateResources(t *testing.T) {
 
 	for tName, tCase := range map[string]func(t *testing.T, p Pod){
 		"SucceedsForEmptyResources": func(t *testing.T, p Pod) {
-			require.NoError(t, p.Insert())
+			require.NoError(t, p.Insert(t.Context()))
 
-			require.NoError(t, p.UpdateResources(p.Resources))
+			require.NoError(t, p.UpdateResources(t.Context(), p.Resources))
 			checkResources(t, p)
 		},
 		"SuccessWithCluster": func(t *testing.T, p Pod) {
-			require.NoError(t, p.Insert())
+			require.NoError(t, p.Insert(t.Context()))
 
 			info := ResourceInfo{
 				Cluster: "cluster",
 			}
-			require.NoError(t, p.UpdateResources(info))
+			require.NoError(t, p.UpdateResources(t.Context(), info))
 			assert.Equal(t, "cluster", p.Resources.Cluster)
 
 			checkResources(t, p)
 		},
 		"SuccessWithExternalID": func(t *testing.T, p Pod) {
-			require.NoError(t, p.Insert())
+			require.NoError(t, p.Insert(t.Context()))
 
 			info := ResourceInfo{
 				ExternalID: "external",
 			}
-			require.NoError(t, p.UpdateResources(info))
+			require.NoError(t, p.UpdateResources(t.Context(), info))
 			assert.Equal(t, "external", p.Resources.ExternalID)
 
 			checkResources(t, p)
 		},
 		"SuccessWithDefinitionID": func(t *testing.T, p Pod) {
-			require.NoError(t, p.Insert())
+			require.NoError(t, p.Insert(t.Context()))
 
 			info := ResourceInfo{
 				DefinitionID: "definition",
 			}
-			require.NoError(t, p.UpdateResources(info))
+			require.NoError(t, p.UpdateResources(t.Context(), info))
 			assert.Equal(t, "definition", p.Resources.DefinitionID)
 
 			checkResources(t, p)
 		},
 		"SuccessWithContainers": func(t *testing.T, p Pod) {
-			require.NoError(t, p.Insert())
+			require.NoError(t, p.Insert(t.Context()))
 
 			containerInfo := ContainerResourceInfo{
 				ExternalID: "container_id",
@@ -490,7 +490,7 @@ func TestUpdateResources(t *testing.T) {
 			info := ResourceInfo{
 				Containers: []ContainerResourceInfo{containerInfo},
 			}
-			require.NoError(t, p.UpdateResources(info))
+			require.NoError(t, p.UpdateResources(t.Context(), info))
 			require.Len(t, p.Resources.Containers, 1)
 			assert.Equal(t, containerInfo.ExternalID, p.Resources.Containers[0].ExternalID)
 			assert.Equal(t, containerInfo.Name, p.Resources.Containers[0].Name)
@@ -499,9 +499,9 @@ func TestUpdateResources(t *testing.T) {
 			checkResources(t, p)
 		},
 		"FailsWithNonexistentPod": func(t *testing.T, p Pod) {
-			assert.Error(t, p.UpdateResources(ResourceInfo{}))
+			assert.Error(t, p.UpdateResources(t.Context(), ResourceInfo{}))
 
-			dbPod, err := FindOneByID(p.ID)
+			dbPod, err := FindOneByID(t.Context(), p.ID)
 			assert.NoError(t, err)
 			assert.Zero(t, dbPod)
 		},
@@ -571,12 +571,12 @@ func TestSetRunningTask(t *testing.T) {
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, p Pod){
 		"Succeeds": func(ctx context.Context, t *testing.T, env *mock.Environment, p Pod) {
-			require.NoError(t, p.Insert())
+			require.NoError(t, p.Insert(t.Context()))
 			const taskID = "task"
 			const taskExecution = 1
 			require.NoError(t, p.SetRunningTask(ctx, env, taskID, taskExecution))
 
-			dbPod, err := FindOneByID(p.ID)
+			dbPod, err := FindOneByID(t.Context(), p.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Equal(t, taskID, dbPod.TaskRuntimeInfo.RunningTaskID)
@@ -588,10 +588,10 @@ func TestSetRunningTask(t *testing.T) {
 			const taskExecution = 2
 			p.TaskRuntimeInfo.RunningTaskID = taskID
 			p.TaskRuntimeInfo.RunningTaskExecution = taskExecution
-			require.NoError(t, p.Insert())
+			require.NoError(t, p.Insert(t.Context()))
 			assert.NoError(t, p.SetRunningTask(ctx, env, taskID, taskExecution))
 
-			dbPod, err := FindOneByID(p.ID)
+			dbPod, err := FindOneByID(t.Context(), p.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Equal(t, taskID, dbPod.TaskRuntimeInfo.RunningTaskID)
@@ -602,23 +602,23 @@ func TestSetRunningTask(t *testing.T) {
 			const taskExecution = 2
 			p.TaskRuntimeInfo.RunningTaskID = taskID
 			p.TaskRuntimeInfo.RunningTaskExecution = taskExecution
-			require.NoError(t, p.Insert())
+			require.NoError(t, p.Insert(t.Context()))
 			assert.Error(t, p.SetRunningTask(ctx, env, taskID, taskExecution+1))
 		},
 		"FailsWithNonRunningPod": func(ctx context.Context, t *testing.T, env *mock.Environment, p Pod) {
 			p.Status = StatusDecommissioned
-			require.NoError(t, p.Insert())
+			require.NoError(t, p.Insert(t.Context()))
 			assert.Error(t, p.SetRunningTask(ctx, env, "task", 0))
 		},
 		"FailsWithPodAlreadyRunningDifferentTask": func(ctx context.Context, t *testing.T, env *mock.Environment, p Pod) {
 			p.TaskRuntimeInfo.RunningTaskID = "some-other-task"
-			require.NoError(t, p.Insert())
+			require.NoError(t, p.Insert(t.Context()))
 			assert.Error(t, p.SetRunningTask(ctx, env, "task", 0))
 		},
 		"FailsWithNonexistentPod": func(ctx context.Context, t *testing.T, env *mock.Environment, p Pod) {
 			assert.Error(t, p.SetRunningTask(ctx, env, "task", 0))
 
-			dbPod, err := FindOneByID(p.ID)
+			dbPod, err := FindOneByID(t.Context(), p.ID)
 			assert.NoError(t, err)
 			assert.Zero(t, dbPod)
 		},
@@ -644,13 +644,13 @@ func TestClearRunningTask(t *testing.T) {
 	}()
 
 	checkContainerTaskCleared := func(t *testing.T, podID string) {
-		p, err := FindOneByID(podID)
+		p, err := FindOneByID(t.Context(), podID)
 		require.NoError(t, err)
 		require.NotZero(t, p)
 		assert.Zero(t, p.TaskRuntimeInfo.RunningTaskID)
 		assert.Zero(t, p.TaskRuntimeInfo.RunningTaskExecution)
 
-		events, err := event.FindAllByResourceID(podID)
+		events, err := event.FindAllByResourceID(t.Context(), podID)
 		require.NoError(t, err)
 		require.Len(t, events, 1)
 		assert.EqualValues(t, event.EventPodClearedTask, events[0].EventType, "should have logged event indicating task is cleared from pod")
@@ -660,8 +660,8 @@ func TestClearRunningTask(t *testing.T) {
 		"Succeeds": func(t *testing.T, p Pod) {
 			p.TaskRuntimeInfo.RunningTaskID = "task_id"
 			p.TaskRuntimeInfo.RunningTaskExecution = 5
-			require.NoError(t, p.Insert())
-			require.NoError(t, p.ClearRunningTask())
+			require.NoError(t, p.Insert(t.Context()))
+			require.NoError(t, p.ClearRunningTask(t.Context()))
 
 			assert.Zero(t, p.TaskRuntimeInfo.RunningTaskID)
 			assert.Zero(t, p.TaskRuntimeInfo.RunningTaskExecution)
@@ -671,8 +671,8 @@ func TestClearRunningTask(t *testing.T) {
 		"SucceedsWithTaskExecutionZero": func(t *testing.T, p Pod) {
 			p.TaskRuntimeInfo.RunningTaskID = "task_id"
 			p.TaskRuntimeInfo.RunningTaskExecution = 0
-			require.NoError(t, p.Insert())
-			require.NoError(t, p.ClearRunningTask())
+			require.NoError(t, p.Insert(t.Context()))
+			require.NoError(t, p.ClearRunningTask(t.Context()))
 
 			assert.Zero(t, p.TaskRuntimeInfo.RunningTaskID)
 			assert.Zero(t, p.TaskRuntimeInfo.RunningTaskExecution)
@@ -682,19 +682,19 @@ func TestClearRunningTask(t *testing.T) {
 		"SucceedsWhenNotRunningAnyTask": func(t *testing.T, p Pod) {
 			p.TaskRuntimeInfo.RunningTaskID = ""
 			p.TaskRuntimeInfo.RunningTaskExecution = 0
-			require.NoError(t, p.Insert())
-			require.NoError(t, p.ClearRunningTask())
+			require.NoError(t, p.Insert(t.Context()))
+			require.NoError(t, p.ClearRunningTask(t.Context()))
 
 			assert.Zero(t, p.TaskRuntimeInfo.RunningTaskID)
 			assert.Zero(t, p.TaskRuntimeInfo.RunningTaskExecution)
 
-			dbPod, err := FindOneByID(p.ID)
+			dbPod, err := FindOneByID(t.Context(), p.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Zero(t, dbPod.TaskRuntimeInfo.RunningTaskID)
 			assert.Zero(t, dbPod.TaskRuntimeInfo.RunningTaskExecution)
 
-			events, err := event.FindAllByResourceID(p.ID)
+			events, err := event.FindAllByResourceID(t.Context(), p.ID)
 			require.NoError(t, err)
 			assert.Empty(t, events)
 		},
@@ -703,12 +703,12 @@ func TestClearRunningTask(t *testing.T) {
 			const taskExecution = 3
 			p.TaskRuntimeInfo.RunningTaskID = taskID
 			p.TaskRuntimeInfo.RunningTaskExecution = taskExecution
-			require.NoError(t, p.Insert())
+			require.NoError(t, p.Insert(t.Context()))
 			p.TaskRuntimeInfo.RunningTaskID = ""
 			p.TaskRuntimeInfo.RunningTaskExecution = 0
-			require.NoError(t, p.ClearRunningTask())
+			require.NoError(t, p.ClearRunningTask(t.Context()))
 
-			dbPod, err := FindOneByID(p.ID)
+			dbPod, err := FindOneByID(t.Context(), p.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Equal(t, taskID, dbPod.TaskRuntimeInfo.RunningTaskID)
@@ -716,20 +716,20 @@ func TestClearRunningTask(t *testing.T) {
 		},
 		"FailsWithNonexistentPod": func(t *testing.T, p Pod) {
 			p.TaskRuntimeInfo.RunningTaskID = "task_id"
-			assert.Error(t, p.ClearRunningTask())
+			assert.Error(t, p.ClearRunningTask(t.Context()))
 
-			dbPod, err := FindOneByID(p.ID)
+			dbPod, err := FindOneByID(t.Context(), p.ID)
 			assert.NoError(t, err)
 			assert.Zero(t, dbPod)
 		},
 		"FailsWhenInMemoryPodHasDifferentRunningTaskIDFromDB": func(t *testing.T, p Pod) {
 			const taskID = "task_id"
 			p.TaskRuntimeInfo.RunningTaskID = taskID
-			require.NoError(t, p.Insert())
+			require.NoError(t, p.Insert(t.Context()))
 			p.TaskRuntimeInfo.RunningTaskID = "some_other_task_id"
-			assert.Error(t, p.ClearRunningTask())
+			assert.Error(t, p.ClearRunningTask(t.Context()))
 
-			dbPod, err := FindOneByID(p.ID)
+			dbPod, err := FindOneByID(t.Context(), p.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Equal(t, taskID, dbPod.TaskRuntimeInfo.RunningTaskID)
@@ -739,11 +739,11 @@ func TestClearRunningTask(t *testing.T) {
 			const taskExecution = 5
 			p.TaskRuntimeInfo.RunningTaskID = taskID
 			p.TaskRuntimeInfo.RunningTaskExecution = taskExecution
-			require.NoError(t, p.Insert())
+			require.NoError(t, p.Insert(t.Context()))
 			p.TaskRuntimeInfo.RunningTaskExecution = taskExecution + 1
-			assert.Error(t, p.ClearRunningTask())
+			assert.Error(t, p.ClearRunningTask(t.Context()))
 
-			dbPod, err := FindOneByID(p.ID)
+			dbPod, err := FindOneByID(t.Context(), p.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.Equal(t, taskID, dbPod.TaskRuntimeInfo.RunningTaskID)
@@ -772,19 +772,19 @@ func TestUpdateAgentStartTime(t *testing.T) {
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, p Pod){
 		"Succeeds": func(ctx context.Context, t *testing.T, p Pod) {
-			require.NoError(t, p.Insert())
-			require.NoError(t, p.UpdateAgentStartTime())
+			require.NoError(t, p.Insert(t.Context()))
+			require.NoError(t, p.UpdateAgentStartTime(ctx))
 
-			dbPod, err := FindOneByID(p.ID)
+			dbPod, err := FindOneByID(t.Context(), p.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.NotZero(t, dbPod.TimeInfo.AgentStarted)
 			assert.Equal(t, p.TimeInfo.AgentStarted, dbPod.TimeInfo.AgentStarted)
 		},
 		"FailsWithNonexistentPod": func(ctx context.Context, t *testing.T, p Pod) {
-			assert.Error(t, p.UpdateAgentStartTime())
+			assert.Error(t, p.UpdateAgentStartTime(ctx))
 
-			dbPod, err := FindOneByID(p.ID)
+			dbPod, err := FindOneByID(t.Context(), p.ID)
 			assert.NoError(t, err)
 			assert.Zero(t, dbPod)
 		},
@@ -813,19 +813,19 @@ func TestUpdateLastCommunicated(t *testing.T) {
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, p Pod){
 		"Succeeds": func(ctx context.Context, t *testing.T, p Pod) {
-			require.NoError(t, p.Insert())
-			require.NoError(t, p.UpdateLastCommunicated())
+			require.NoError(t, p.Insert(t.Context()))
+			require.NoError(t, p.UpdateLastCommunicated(ctx))
 
-			dbPod, err := FindOneByID(p.ID)
+			dbPod, err := FindOneByID(t.Context(), p.ID)
 			require.NoError(t, err)
 			require.NotZero(t, dbPod)
 			assert.NotZero(t, dbPod.TimeInfo.LastCommunicated)
 			assert.Equal(t, p.TimeInfo.LastCommunicated, dbPod.TimeInfo.LastCommunicated)
 		},
 		"FailsWithNonexistentPod": func(ctx context.Context, t *testing.T, p Pod) {
-			assert.Error(t, p.UpdateLastCommunicated())
+			assert.Error(t, p.UpdateLastCommunicated(ctx))
 
-			dbPod, err := FindOneByID(p.ID)
+			dbPod, err := FindOneByID(t.Context(), p.ID)
 			assert.NoError(t, err)
 			assert.Zero(t, dbPod)
 		},

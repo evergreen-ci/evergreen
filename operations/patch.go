@@ -219,9 +219,11 @@ func Patch() cli.Command {
 			if err = params.validateSubmission(diffData); err != nil {
 				return err
 			}
-
+			// Initialize module path cache in case these have already been set by the user. We use a cache here
+			// to avoid asking the user repeatedly for paths, in the case that they aren't writing them back to their configuration file.
+			modulePathCache := conf.getModulePathsForProject(params.Project)
 			if params.IncludeModules {
-				localModuleIncludes, err := getLocalModuleIncludes(params, conf, params.Path, ref.RemotePath)
+				localModuleIncludes, err := getLocalModuleIncludes(params, conf, params.Path, ref.RemotePath, modulePathCache)
 				if err != nil {
 					return err
 				}
@@ -243,7 +245,7 @@ func Patch() cli.Command {
 				}
 
 				for _, module := range proj.Modules {
-					modulePath, err := params.getModulePath(conf, module.Name)
+					modulePath, err := params.getModulePath(conf, module.Name, modulePathCache)
 					if err != nil {
 						grip.Error(err)
 						continue
@@ -272,7 +274,7 @@ func Patch() cli.Command {
 				uiHost:     conf.UIServerHost,
 				outputJSON: outputJSON,
 			}
-			if err = params.displayPatch(ac, outputParams); err != nil {
+			if err = params.displayPatch(ctx, ac, outputParams); err != nil {
 				grip.Error(err)
 			}
 			params.setDefaultProject(conf)
@@ -380,7 +382,6 @@ func PatchFile() cli.Command {
 		),
 		Before: mergeBeforeFuncs(
 			autoUpdateCLI,
-			setPlainLogger,
 			mutuallyExclusiveArgs(false, patchDescriptionFlagName, autoDescriptionFlag),
 			mutuallyExclusiveArgs(false, diffPathFlagName, diffPatchIdFlagName),
 			mutuallyExclusiveArgs(false, allowEmptyFlagName, diffPatchIdFlagName),
@@ -397,21 +398,12 @@ func PatchFile() cli.Command {
 				}
 			}
 			confPath := c.Parent().String(confFlagName)
-			outputJSON := c.Bool(jsonFlagName)
-			if outputJSON {
-				// If outputting the patch data as JSON, suppress any non-error
-				// logs since the logs won't be in JSON format. Errors should
-				// still appear so users can diagnose issues.
-				l := grip.GetSender().Level()
-				l.Threshold = level.Error
-				grip.Error(errors.Wrap(grip.SetLevel(l), "increasing log level to suppress non-errors for JSON output"))
-			}
 			params := &patchParams{
 				Project:          c.String(projectFlagName),
 				Variants:         utility.SplitCommas(c.StringSlice(variantsFlagName)),
 				Tasks:            utility.SplitCommas(c.StringSlice(tasksFlagName)),
 				Alias:            c.String(patchAliasFlagName),
-				SkipConfirm:      c.Bool(skipConfirmFlagName) || outputJSON,
+				SkipConfirm:      c.Bool(skipConfirmFlagName),
 				Description:      c.String(patchDescriptionFlagName),
 				AutoDescription:  c.Bool(autoDescriptionFlag),
 				ShowSummary:      c.Bool(patchVerboseFlagName),
@@ -439,7 +431,7 @@ func PatchFile() cli.Command {
 				return errors.Wrap(err, "loading configuration")
 			}
 
-			comm, err := conf.setupRestCommunicator(ctx, !outputJSON)
+			comm, err := conf.setupRestCommunicator(ctx, true)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}
@@ -519,16 +511,16 @@ func PatchFile() cli.Command {
 			outputParams := outputPatchParams{
 				patches:    []patch.Patch{*newPatch},
 				uiHost:     conf.UIServerHost,
-				outputJSON: outputJSON,
+				outputJSON: c.Bool(jsonFlagName),
 			}
 
-			return params.displayPatch(ac, outputParams)
+			return params.displayPatch(ctx, ac, outputParams)
 		},
 	}
 }
 
 // getLocalModuleIncludes reads and saves files module includes from the local project config.
-func getLocalModuleIncludes(params *patchParams, conf *ClientSettings, path, remotePath string) ([]patch.LocalModuleInclude, error) {
+func getLocalModuleIncludes(params *patchParams, conf *ClientSettings, path, remotePath string, modulePathCache map[string]string) ([]patch.LocalModuleInclude, error) {
 	var yml []byte
 	var err error
 	if path != "" {
@@ -550,7 +542,7 @@ func getLocalModuleIncludes(params *patchParams, conf *ClientSettings, path, rem
 		if include.Module == "" {
 			continue
 		}
-		modulePath, err := params.getModulePath(conf, include.Module)
+		modulePath, err := params.getModulePath(conf, include.Module, modulePathCache)
 		if err != nil {
 			grip.Error(errors.Wrapf(err, "getting module path for '%s'", include.Module))
 			continue

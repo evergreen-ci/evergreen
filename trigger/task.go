@@ -124,7 +124,7 @@ func getShouldExecuteError(t, previousTask *task.Task) message.Fields {
 	}
 
 	if previousTask != nil {
-		m["previous"] = map[string]interface{}{
+		m["previous"] = map[string]any{
 			"id":          previousTask.Id,
 			"variant":     previousTask.BuildVariant,
 			"project":     previousTask.Project,
@@ -183,7 +183,7 @@ func (t *taskTriggers) Fetch(ctx context.Context, e *event.EventLogEntry) error 
 		return errors.Wrapf(err, "getting parent display task for task '%s'", t.task.Id)
 	}
 
-	author, err := model.GetVersionAuthorID(t.task.Version)
+	author, err := model.GetVersionAuthorID(ctx, t.task.Version)
 	if err != nil {
 		return errors.Wrapf(err, "getting owner for version '%s'", t.task.Version)
 	}
@@ -232,8 +232,8 @@ func (t *taskTriggers) Attributes() event.Attributes {
 	return attributes
 }
 
-func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride, testNames string) (*commonTemplateData, error) {
-	buildDoc, err := build.FindOne(build.ById(t.task.BuildId))
+func (t *taskTriggers) makeData(ctx context.Context, sub *event.Subscription, pastTenseOverride, testNames string) (*commonTemplateData, error) {
+	buildDoc, err := build.FindOne(ctx, build.ById(t.task.BuildId))
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding build '%s' while building email payload", t.task.BuildId)
 	}
@@ -241,7 +241,7 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride, test
 		return nil, errors.Errorf("build '%s' not found while building email payload", t.task.BuildId)
 	}
 
-	projectRef, err := model.FindMergedProjectRef(t.task.Project, t.task.Version, true)
+	projectRef, err := model.FindMergedProjectRef(ctx, t.task.Project, t.task.Version, true)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding project ref '%s' for version '%s' while building email payload", t.task.Project, t.task.Version)
 	}
@@ -333,7 +333,7 @@ func (t *taskTriggers) makeData(sub *event.Subscription, pastTenseOverride, test
 }
 
 func (t *taskTriggers) generate(ctx context.Context, sub *event.Subscription, pastTenseOverride, testNames string) (*notification.Notification, error) {
-	var payload interface{}
+	var payload any
 	if sub.Subscriber.Type == event.JIRAIssueSubscriberType {
 		issueSub, ok := sub.Subscriber.Target.(*event.JIRAIssueSubscriber)
 		if !ok {
@@ -346,7 +346,7 @@ func (t *taskTriggers) generate(ctx context.Context, sub *event.Subscription, pa
 		}
 
 	} else {
-		data, err := t.makeData(sub, pastTenseOverride, testNames)
+		data, err := t.makeData(ctx, sub, pastTenseOverride, testNames)
 		if err != nil {
 			return nil, errors.Wrap(err, "collecting task data")
 		}
@@ -376,7 +376,7 @@ func (t *taskTriggers) generateWithAlertRecord(ctx context.Context, sub *event.S
 	}
 
 	// verify another alert record hasn't been inserted in this time
-	rec, err := GetRecordByTriggerType(sub.ID, triggerType, t.task)
+	rec, err := GetRecordByTriggerType(ctx, sub.ID, triggerType, t.task)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -385,7 +385,7 @@ func (t *taskTriggers) generateWithAlertRecord(ctx context.Context, sub *event.S
 	}
 
 	newRec := newAlertRecord(sub.ID, t.task, alertType)
-	grip.Error(message.WrapError(newRec.Insert(), message.Fields{
+	grip.Error(message.WrapError(newRec.Insert(ctx), message.Fields{
 		"source":  "alert-record",
 		"type":    alertType,
 		"task_id": t.task.Id,
@@ -394,18 +394,18 @@ func (t *taskTriggers) generateWithAlertRecord(ctx context.Context, sub *event.S
 	return n, nil
 }
 
-func GetRecordByTriggerType(subID, triggerType string, t *task.Task) (*alertrecord.AlertRecord, error) {
+func GetRecordByTriggerType(ctx context.Context, subID, triggerType string, t *task.Task) (*alertrecord.AlertRecord, error) {
 	var rec *alertrecord.AlertRecord
 	var err error
 	switch triggerType {
 	case triggerTaskFirstFailureInBuild:
-		rec, err = alertrecord.FindOne(alertrecord.ByFirstFailureInVariant(subID, t.Version, t.BuildVariant))
+		rec, err = alertrecord.FindOne(ctx, alertrecord.ByFirstFailureInVariant(subID, t.Version, t.BuildVariant))
 	case event.TriggerTaskFirstFailureInVersion:
-		rec, err = alertrecord.FindOne(alertrecord.ByFirstFailureInVersion(subID, t.Version))
+		rec, err = alertrecord.FindOne(ctx, alertrecord.ByFirstFailureInVersion(subID, t.Version))
 	case triggerTaskFirstFailureInVersionWithName:
-		rec, err = alertrecord.FindOne(alertrecord.ByFirstFailureInTaskType(subID, t.Version, t.DisplayName))
+		rec, err = alertrecord.FindOne(ctx, alertrecord.ByFirstFailureInTaskType(subID, t.Version, t.DisplayName))
 	case triggerBuildBreak:
-		rec, err = alertrecord.FindByFirstRegressionInVersion(subID, t.Version)
+		rec, err = alertrecord.FindByFirstRegressionInVersion(ctx, subID, t.Version)
 	}
 	if err != nil {
 		return nil, errors.Wrapf(err, "fetching alertrecord for trigger type '%s'", triggerType)
@@ -496,7 +496,7 @@ func (t *taskTriggers) taskFirstFailureInBuild(ctx context.Context, sub *event.S
 	if t.data.Status != evergreen.TaskFailed || t.task.IsUnfinishedSystemUnresponsive() {
 		return nil, nil
 	}
-	rec, err := GetRecordByTriggerType(sub.ID, triggerTaskFirstFailureInBuild, t.task)
+	rec, err := GetRecordByTriggerType(ctx, sub.ID, triggerTaskFirstFailureInBuild, t.task)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -514,7 +514,7 @@ func (t *taskTriggers) taskFirstFailureInVersion(ctx context.Context, sub *event
 	if t.data.Status != evergreen.TaskFailed || t.task.IsUnfinishedSystemUnresponsive() {
 		return nil, nil
 	}
-	rec, err := GetRecordByTriggerType(sub.ID, event.TriggerTaskFirstFailureInVersion, t.task)
+	rec, err := GetRecordByTriggerType(ctx, sub.ID, event.TriggerTaskFirstFailureInVersion, t.task)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -529,7 +529,7 @@ func (t *taskTriggers) taskFirstFailureInVersionWithName(ctx context.Context, su
 	if t.data.Status != evergreen.TaskFailed || t.task.IsUnfinishedSystemUnresponsive() {
 		return nil, nil
 	}
-	rec, err := GetRecordByTriggerType(sub.ID, triggerTaskFirstFailureInVersionWithName, t.task)
+	rec, err := GetRecordByTriggerType(ctx, sub.ID, triggerTaskFirstFailureInVersionWithName, t.task)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -556,7 +556,7 @@ func (t *taskTriggers) taskRegression(ctx context.Context, sub *event.Subscripti
 	if err != nil {
 		return nil, err
 	}
-	return n, errors.Wrap(alert.Insert(), "processing regression trigger")
+	return n, errors.Wrap(alert.Insert(ctx), "processing regression trigger")
 }
 
 func isTaskRegression(ctx context.Context, sub *event.Subscription, t *task.Task) (bool, *alertrecord.AlertRecord, error) {
@@ -605,7 +605,7 @@ func shouldSendTaskRegression(ctx context.Context, sub *event.Subscription, t *t
 		// the task transitioned to failure - but we will only trigger an alert if we haven't recorded
 		// a sent alert for a transition after the same previously passing task.
 		q := alertrecord.ByLastFailureTransition(sub.ID, t.DisplayName, t.BuildVariant, t.Project)
-		lastAlerted, err := alertrecord.FindOne(q)
+		lastAlerted, err := alertrecord.FindOne(ctx, q)
 		if err != nil {
 			errMessage := getShouldExecuteError(t, previousTask)
 			errMessage[message.FieldsMsgName] = "could not find a record for the last alert"
@@ -629,7 +629,7 @@ func shouldSendTaskRegression(ctx context.Context, sub *event.Subscription, t *t
 	if previousTask.Status == evergreen.TaskFailed {
 		// check if enough time has passed since our last transition alert
 		q := alertrecord.ByLastFailureTransition(sub.ID, t.DisplayName, t.BuildVariant, t.Project)
-		lastAlerted, err := alertrecord.FindOne(q)
+		lastAlerted, err := alertrecord.FindOne(ctx, q)
 		if err != nil {
 			errMessage := getShouldExecuteError(t, previousTask)
 			errMessage[message.FieldsMsgName] = "could not find a record for the last alert"
@@ -759,7 +759,7 @@ func (t *taskTriggers) shouldIncludeTest(ctx context.Context, sub *event.Subscri
 		return false, nil
 	}
 
-	alertForTask, err := alertrecord.FindByTaskRegressionByTaskTest(sub.ID, test.GetDisplayTestName(), currentTask.DisplayName, currentTask.BuildVariant, currentTask.Project, currentTask.Id)
+	alertForTask, err := alertrecord.FindByTaskRegressionByTaskTest(ctx, sub.ID, test.GetDisplayTestName(), currentTask.DisplayName, currentTask.BuildVariant, currentTask.Project, currentTask.Id)
 	if err != nil {
 		return false, errors.Wrap(err, "finding alerts for task test")
 	}
@@ -781,7 +781,7 @@ func (t *taskTriggers) shouldIncludeTest(ctx context.Context, sub *event.Subscri
 
 	if isTestStatusRegression(oldTestResult.Status, test.Status) {
 		// try to find a stepback alert
-		alertForStepback, err := alertrecord.FindByTaskRegressionTestAndOrderNumber(sub.ID, test.GetDisplayTestName(), currentTask.DisplayName, currentTask.BuildVariant, currentTask.Project, previousTask.RevisionOrderNumber)
+		alertForStepback, err := alertrecord.FindByTaskRegressionTestAndOrderNumber(ctx, sub.ID, test.GetDisplayTestName(), currentTask.DisplayName, currentTask.BuildVariant, currentTask.Project, previousTask.RevisionOrderNumber)
 		if err != nil {
 			return false, errors.Wrap(err, "getting alert for stepback")
 		}
@@ -790,7 +790,7 @@ func (t *taskTriggers) shouldIncludeTest(ctx context.Context, sub *event.Subscri
 			return true, nil
 		}
 	} else {
-		mostRecentAlert, err := alertrecord.FindByLastTaskRegressionByTest(sub.ID, test.GetDisplayTestName(), currentTask.DisplayName, currentTask.BuildVariant, currentTask.Project)
+		mostRecentAlert, err := alertrecord.FindByLastTaskRegressionByTest(ctx, sub.ID, test.GetDisplayTestName(), currentTask.DisplayName, currentTask.BuildVariant, currentTask.Project)
 		if err != nil {
 			return false, errors.Wrap(err, "getting most recent alert")
 		}
@@ -876,7 +876,7 @@ func (t *taskTriggers) taskRegressionByTest(ctx context.Context, sub *event.Subs
 			if previousCompleteTask != nil {
 				orderNumber = previousCompleteTask.RevisionOrderNumber
 			}
-			if err = alertrecord.InsertNewTaskRegressionByTestRecord(sub.ID, t.task.Id, test.GetDisplayTestName(), t.task.DisplayName, t.task.BuildVariant, t.task.Project, orderNumber); err != nil {
+			if err = alertrecord.InsertNewTaskRegressionByTestRecord(ctx, sub.ID, t.task.Id, test.GetDisplayTestName(), t.task.DisplayName, t.task.BuildVariant, t.task.Project, orderNumber); err != nil {
 				catcher.Add(err)
 				continue
 			}
@@ -939,7 +939,7 @@ type JiraIssueParameters struct {
 
 // JIRATaskPayload creates a Jira issue for a given task.
 func JIRATaskPayload(ctx context.Context, params JiraIssueParameters) (*message.JiraIssue, error) {
-	buildDoc, err := build.FindOne(build.ById(params.Task.BuildId))
+	buildDoc, err := build.FindOne(ctx, build.ById(params.Task.BuildId))
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding build '%s' while building Jira task payload", params.Task.BuildId)
 	}
@@ -949,13 +949,13 @@ func JIRATaskPayload(ctx context.Context, params JiraIssueParameters) (*message.
 
 	var podDoc *pod.Pod
 	if params.Task.PodID != "" {
-		podDoc, err = pod.FindOneByID(params.Task.PodID)
+		podDoc, err = pod.FindOneByID(ctx, params.Task.PodID)
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding pod '%s' while building Jira task payload", params.Task.PodID)
 		}
 	}
 
-	versionDoc, err := model.VersionFindOneId(params.Task.Version)
+	versionDoc, err := model.VersionFindOneId(ctx, params.Task.Version)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding version '%s' while building Jira task payload", params.Task.Version)
 	}
@@ -963,7 +963,7 @@ func JIRATaskPayload(ctx context.Context, params JiraIssueParameters) (*message.
 		return nil, errors.Errorf("version '%s' not found while building Jira task payload", params.Task.Version)
 	}
 
-	projectRef, err := model.FindMergedProjectRef(params.Task.Project, params.Task.Version, true)
+	projectRef, err := model.FindMergedProjectRef(ctx, params.Task.Project, params.Task.Version, true)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding project ref '%s' for version '%s' while building Jira task payload", params.Task.Version, params.Task.Version)
 	}
@@ -1066,7 +1066,7 @@ func (t *taskTriggers) buildBreak(ctx context.Context, sub *event.Subscription) 
 		return nil, nil
 	}
 
-	lastAlert, err := GetRecordByTriggerType(sub.ID, triggerBuildBreak, t.task)
+	lastAlert, err := GetRecordByTriggerType(ctx, sub.ID, triggerBuildBreak, t.task)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}

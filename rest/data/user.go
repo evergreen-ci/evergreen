@@ -1,6 +1,7 @@
 package data
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strings"
@@ -13,7 +14,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func UpdateSettings(dbUser *user.DBUser, settings user.UserSettings) error {
+func UpdateSettings(ctx context.Context, dbUser *user.DBUser, settings user.UserSettings) error {
 	if strings.HasPrefix(settings.SlackUsername, "#") {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -39,7 +40,7 @@ func UpdateSettings(dbUser *user.DBUser, settings user.UserSettings) error {
 	case user.PreferenceEmail:
 		patchSubscriber = event.NewEmailSubscriber(dbUser.Email())
 	}
-	patchSubscription, err := event.CreateOrUpdateGeneralSubscription(event.GeneralSubscriptionPatchOutcome,
+	patchSubscription, err := event.CreateOrUpdateGeneralSubscription(ctx, event.GeneralSubscriptionPatchOutcome,
 		dbUser.Settings.Notifications.PatchFinishID, patchSubscriber, dbUser.Id)
 	if err != nil {
 		return err
@@ -57,7 +58,7 @@ func UpdateSettings(dbUser *user.DBUser, settings user.UserSettings) error {
 	case user.PreferenceEmail:
 		patchFailureSubscriber = event.NewEmailSubscriber(dbUser.Email())
 	}
-	patchFailureSubscription, err := event.CreateOrUpdateGeneralSubscription(event.GeneralSubscriptionPatchFirstFailure,
+	patchFailureSubscription, err := event.CreateOrUpdateGeneralSubscription(ctx, event.GeneralSubscriptionPatchFirstFailure,
 		dbUser.Settings.Notifications.PatchFirstFailureID, patchFailureSubscriber, dbUser.Id)
 	if err != nil {
 		return err
@@ -75,7 +76,7 @@ func UpdateSettings(dbUser *user.DBUser, settings user.UserSettings) error {
 	case user.PreferenceEmail:
 		buildBreakSubscriber = event.NewEmailSubscriber(dbUser.Email())
 	}
-	buildBreakSubscription, err := event.CreateOrUpdateGeneralSubscription(event.GeneralSubscriptionBuildBreak,
+	buildBreakSubscription, err := event.CreateOrUpdateGeneralSubscription(ctx, event.GeneralSubscriptionBuildBreak,
 		dbUser.Settings.Notifications.BuildBreakID, buildBreakSubscriber, dbUser.Id)
 	if err != nil {
 		return err
@@ -93,7 +94,7 @@ func UpdateSettings(dbUser *user.DBUser, settings user.UserSettings) error {
 	case user.PreferenceEmail:
 		spawnhostSubscriber = event.NewEmailSubscriber(dbUser.Email())
 	}
-	spawnhostSubscription, err := event.CreateOrUpdateGeneralSubscription(event.GeneralSubscriptionSpawnhostExpiration,
+	spawnhostSubscription, err := event.CreateOrUpdateGeneralSubscription(ctx, event.GeneralSubscriptionSpawnhostExpiration,
 		dbUser.Settings.Notifications.SpawnHostExpirationID, spawnhostSubscriber, dbUser.Id)
 	if err != nil {
 		return err
@@ -111,7 +112,7 @@ func UpdateSettings(dbUser *user.DBUser, settings user.UserSettings) error {
 	case user.PreferenceEmail:
 		spawnHostOutcomeSubscriber = event.NewEmailSubscriber(dbUser.Email())
 	}
-	spawnHostOutcomeSubscription, err := event.CreateOrUpdateGeneralSubscription(event.GeneralSubscriptionSpawnHostOutcome,
+	spawnHostOutcomeSubscription, err := event.CreateOrUpdateGeneralSubscription(ctx, event.GeneralSubscriptionSpawnHostOutcome,
 		dbUser.Settings.Notifications.SpawnHostOutcomeID, spawnHostOutcomeSubscriber, dbUser.Id)
 	if err != nil {
 		return errors.Wrap(err, "creating spawn host outcome subscription")
@@ -122,16 +123,16 @@ func UpdateSettings(dbUser *user.DBUser, settings user.UserSettings) error {
 		settings.Notifications.SpawnHostOutcomeID = ""
 	}
 
-	return dbUser.UpdateSettings(settings)
+	return dbUser.UpdateSettings(ctx, settings)
 }
 
-func SubmitFeedback(in restModel.APIFeedbackSubmission) error {
+func SubmitFeedback(ctx context.Context, in restModel.APIFeedbackSubmission) error {
 	f, _ := in.ToService()
-	return errors.Wrap(f.Insert(), "error saving feedback")
+	return errors.Wrap(f.Insert(ctx), "error saving feedback")
 }
 
-func GetServiceUsers() ([]restModel.APIDBUser, error) {
-	users, err := user.FindServiceUsers()
+func GetServiceUsers(ctx context.Context) ([]restModel.APIDBUser, error) {
+	users, err := user.FindServiceUsers(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding service users")
 	}
@@ -144,9 +145,9 @@ func GetServiceUsers() ([]restModel.APIDBUser, error) {
 	return apiUsers, nil
 }
 
-func AddOrUpdateServiceUser(toUpdate restModel.APIDBUser) error {
+func AddOrUpdateServiceUser(ctx context.Context, toUpdate restModel.APIDBUser) error {
 	userID := utility.FromStringPtr(toUpdate.UserID)
-	existingUser, err := user.FindOneById(userID)
+	existingUser, err := user.FindOneByIdContext(ctx, userID)
 	if err != nil {
 		return errors.Wrapf(err, "finding user '%s'", userID)
 	}
@@ -162,5 +163,5 @@ func AddOrUpdateServiceUser(toUpdate restModel.APIDBUser) error {
 	if dbUser == nil {
 		return errors.Wrapf(err, "cannot perform add or update with nil user")
 	}
-	return errors.Wrap(user.AddOrUpdateServiceUser(*dbUser), "updating service user")
+	return errors.Wrap(user.AddOrUpdateServiceUser(ctx, *dbUser), "updating service user")
 }

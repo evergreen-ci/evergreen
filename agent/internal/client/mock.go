@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal/redactor"
 	"github.com/evergreen-ci/evergreen/apimodels"
-	"github.com/evergreen-ci/evergreen/cloud"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/log"
@@ -26,7 +25,7 @@ import (
 	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
-	"github.com/google/go-github/v52/github"
+	"github.com/google/go-github/v70/github"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
@@ -72,6 +71,7 @@ type Mock struct {
 	CreateGitHubDynamicAccessTokenFail   bool
 	RevokeGitHubDynamicAccessTokenFail   bool
 	AssumeRoleResponse                   *apimodels.AWSCredentials
+	S3Response                           *apimodels.AWSCredentials
 
 	CedarGRPCConn *grpc.ClientConn
 
@@ -210,6 +210,10 @@ func (c *Mock) GetProjectRef(ctx context.Context, td TaskData) (*serviceModel.Pr
 
 func (c *Mock) GetDistroView(context.Context, TaskData) (*apimodels.DistroView, error) {
 	return &apimodels.DistroView{}, nil
+}
+
+func (c *Mock) GetHostView(context.Context, TaskData) (*apimodels.HostView, error) {
+	return &apimodels.HostView{}, nil
 }
 
 func (c *Mock) GetDistroAMI(context.Context, string, string, TaskData) (string, error) {
@@ -480,6 +484,12 @@ func (c *Mock) SendTestLog(ctx context.Context, td TaskData, log *testlog.TestLo
 	return c.LogID, nil
 }
 
+// SendTestResults appends test results to the local list of test results.
+func (c *Mock) SendTestResults(ctx context.Context, td TaskData, testResults []testresult.TestResult) error {
+	c.LocalTestResults = append(c.LocalTestResults, testResults...)
+	return nil
+}
+
 func (c *Mock) GetManifest(ctx context.Context, td TaskData) (*manifest.Manifest, error) {
 	return &manifest.Manifest{}, nil
 }
@@ -528,14 +538,6 @@ func (c *Mock) CreateHost(ctx context.Context, td TaskData, options apimodels.Cr
 
 func (c *Mock) ListHosts(_ context.Context, _ TaskData) (model.HostListResults, error) {
 	return model.HostListResults{}, nil
-}
-
-func (c *Mock) GetDockerLogs(context.Context, string, time.Time, time.Time, bool) ([]byte, error) {
-	return []byte("this is a log"), nil
-}
-
-func (c *Mock) GetDockerStatus(context.Context, string) (*cloud.ContainerStatus, error) {
-	return &cloud.ContainerStatus{HasStarted: true}, nil
 }
 
 func (c *Mock) ConcludeMerge(ctx context.Context, patchId, status string, td TaskData) error {
@@ -609,4 +611,8 @@ func (c *Mock) UpsertCheckRun(ctx context.Context, td TaskData, checkRunOutput a
 
 func (c *Mock) AssumeRole(ctx context.Context, td TaskData, request apimodels.AssumeRoleRequest) (*apimodels.AWSCredentials, error) {
 	return c.AssumeRoleResponse, nil
+}
+
+func (c *Mock) S3Credentials(ctx context.Context, td TaskData, bucket string) (*apimodels.AWSCredentials, error) {
+	return c.S3Response, nil
 }

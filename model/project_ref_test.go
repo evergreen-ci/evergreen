@@ -23,7 +23,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
-	"github.com/google/go-github/v52/github"
+	"github.com/google/go-github/v70/github"
 	adb "github.com/mongodb/anser/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -41,9 +41,9 @@ func TestFindOneProjectRef(t *testing.T) {
 		BatchTime: 10,
 		Id:        "ident",
 	}
-	assert.NoError(projectRef.Insert())
+	assert.NoError(projectRef.Insert(t.Context()))
 
-	projectRefFromDB, err := FindBranchProjectRef("ident")
+	projectRefFromDB, err := FindBranchProjectRef(t.Context(), "ident")
 	assert.NoError(err)
 	assert.NotNil(projectRefFromDB)
 
@@ -68,7 +68,7 @@ func TestFindMergedProjectRef(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(t, projectConfig.Insert())
+	assert.NoError(t, projectConfig.Insert(t.Context()))
 
 	projectRef := &ProjectRef{
 		Owner:                 "mongodb",
@@ -97,7 +97,7 @@ func TestFindMergedProjectRef(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(t, projectRef.Insert())
+	assert.NoError(t, projectRef.Insert(t.Context()))
 	repoRef := &RepoRef{ProjectRef{
 		Id:                    "mongodb_mci",
 		Repo:                  "mci",
@@ -122,9 +122,9 @@ func TestFindMergedProjectRef(t *testing.T) {
 			},
 		},
 	}}
-	assert.NoError(t, repoRef.Upsert())
+	assert.NoError(t, repoRef.Replace(t.Context()))
 
-	mergedProject, err := FindMergedProjectRef("ident", "ident", true)
+	mergedProject, err := FindMergedProjectRef(t.Context(), "ident", "ident", true)
 	assert.NoError(t, err)
 	require.NotNil(t, mergedProject)
 	assert.Equal(t, "ident", mergedProject.Id)
@@ -157,14 +157,14 @@ func TestFindMergedProjectRef(t *testing.T) {
 	// Assert that mergeParsleyFilters correctly handles projects with repo filters but not project filters.
 	projectRef.ParsleyFilters = []parsley.Filter{}
 
-	assert.NoError(t, projectRef.Upsert())
-	mergedProject, err = FindMergedProjectRef("ident", "ident", true)
+	assert.NoError(t, projectRef.Replace(t.Context()))
+	mergedProject, err = FindMergedProjectRef(t.Context(), "ident", "ident", true)
 	assert.NoError(t, err)
 	assert.Len(t, mergedProject.ParsleyFilters, 1)
 
 	projectRef.ParsleyFilters = nil
-	assert.NoError(t, projectRef.Upsert())
-	mergedProject, err = FindMergedProjectRef("ident", "ident", true)
+	assert.NoError(t, projectRef.Replace(t.Context()))
+	mergedProject, err = FindMergedProjectRef(t.Context(), "ident", "ident", true)
 	assert.NoError(t, err)
 	assert.Len(t, mergedProject.ParsleyFilters, 1)
 }
@@ -182,7 +182,7 @@ func TestFindMergedEnabledProjectRefsByIds(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(t, projectConfig.Insert())
+	assert.NoError(t, projectConfig.Insert(t.Context()))
 
 	projectConfig = &ProjectConfig{
 		Id: "ident2",
@@ -194,7 +194,7 @@ func TestFindMergedEnabledProjectRefsByIds(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(t, projectConfig.Insert())
+	assert.NoError(t, projectConfig.Insert(t.Context()))
 	projectRef := &ProjectRef{
 		Owner:                 "mongodb",
 		RepoRefId:             "mongodb_mci",
@@ -222,7 +222,7 @@ func TestFindMergedEnabledProjectRefsByIds(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(t, projectRef.Insert())
+	assert.NoError(t, projectRef.Insert(t.Context()))
 
 	projectRef = &ProjectRef{
 		Owner:                 "mongodb",
@@ -251,7 +251,7 @@ func TestFindMergedEnabledProjectRefsByIds(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(t, projectRef.Insert())
+	assert.NoError(t, projectRef.Insert(t.Context()))
 
 	repoRef := &RepoRef{ProjectRef{
 		Id:                    "mongodb_mci",
@@ -277,9 +277,9 @@ func TestFindMergedEnabledProjectRefsByIds(t *testing.T) {
 			},
 		},
 	}}
-	assert.NoError(t, repoRef.Upsert())
+	assert.NoError(t, repoRef.Replace(t.Context()))
 
-	mergedProjects, err := FindMergedEnabledProjectRefsByIds("ident", "ident_enabled")
+	mergedProjects, err := FindMergedEnabledProjectRefsByIds(t.Context(), "ident", "ident_enabled")
 	assert.NoError(t, err)
 	require.NotNil(t, mergedProjects)
 	assert.Len(t, mergedProjects, 1)
@@ -294,33 +294,33 @@ func TestGetNumberOfEnabledProjects(t *testing.T) {
 		Repo:    "repo",
 		Enabled: true,
 	}
-	assert.NoError(t, enabled1.Insert())
+	assert.NoError(t, enabled1.Insert(t.Context()))
 	enabled2 := &ProjectRef{
 		Id:      "enabled2",
 		Owner:   "mongodb",
 		Repo:    "mci",
 		Enabled: true,
 	}
-	assert.NoError(t, enabled2.Insert())
+	assert.NoError(t, enabled2.Insert(t.Context()))
 	disabled1 := &ProjectRef{
 		Id:      "disabled1",
 		Owner:   "mongodb",
 		Repo:    "mci",
 		Enabled: false,
 	}
-	assert.NoError(t, disabled1.Insert())
+	assert.NoError(t, disabled1.Insert(t.Context()))
 	disabled2 := &ProjectRef{
 		Id:      "disabled2",
 		Owner:   "mongodb",
 		Repo:    "mci",
 		Enabled: false,
 	}
-	assert.NoError(t, disabled2.Insert())
+	assert.NoError(t, disabled2.Insert(t.Context()))
 
-	enabledProjects, err := GetNumberOfEnabledProjects()
+	enabledProjects, err := GetNumberOfEnabledProjects(t.Context())
 	assert.NoError(t, err)
 	assert.Equal(t, 2, enabledProjects)
-	enabledProjectsOwnerRepo, err := GetNumberOfEnabledProjectsForOwnerRepo(enabled2.Owner, enabled2.Repo)
+	enabledProjectsOwnerRepo, err := GetNumberOfEnabledProjectsForOwnerRepo(t.Context(), enabled2.Owner, enabled2.Repo)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, enabledProjectsOwnerRepo)
 }
@@ -333,49 +333,49 @@ func TestValidateEnabledProjectsLimit(t *testing.T) {
 		Repo:    "mci",
 		Enabled: true,
 	}
-	assert.NoError(t, enabled1.Insert())
+	assert.NoError(t, enabled1.Insert(t.Context()))
 	enabled2 := &ProjectRef{
 		Id:      "enabled2",
 		Owner:   "owner_exception",
 		Repo:    "repo_exception",
 		Enabled: true,
 	}
-	assert.NoError(t, enabled2.Insert())
+	assert.NoError(t, enabled2.Insert(t.Context()))
 	disabled1 := &ProjectRef{
 		Id:      "disabled1",
 		Owner:   "mongodb",
 		Repo:    "mci",
 		Enabled: false,
 	}
-	assert.NoError(t, disabled1.Insert())
+	assert.NoError(t, disabled1.Insert(t.Context()))
 	enabledByRepo := &ProjectRef{
 		Id:        "enabledByRepo",
 		Owner:     "enable_mongodb",
 		Repo:      "enable_mci",
 		RepoRefId: "enable_repo",
 	}
-	assert.NoError(t, enabledByRepo.Insert())
+	assert.NoError(t, enabledByRepo.Insert(t.Context()))
 	enableRef := &RepoRef{ProjectRef{
 		Id:      "enable_repo",
 		Owner:   "enable_mongodb",
 		Repo:    "enable_mci",
 		Enabled: true,
 	}}
-	assert.NoError(t, enableRef.Upsert())
+	assert.NoError(t, enableRef.Replace(t.Context()))
 	disabledByRepo := &ProjectRef{
 		Id:        "disabledByRepo",
 		Owner:     "disable_mongodb",
 		Repo:      "disable_mci",
 		RepoRefId: "disable_repo",
 	}
-	assert.NoError(t, disabledByRepo.Insert())
+	assert.NoError(t, disabledByRepo.Insert(t.Context()))
 	disableRepo := &RepoRef{ProjectRef{
 		Id:      "disable_repo",
 		Owner:   "disable_mongodb",
 		Repo:    "disable_mci",
 		Enabled: true,
 	}}
-	assert.NoError(t, disableRepo.Upsert())
+	assert.NoError(t, disableRepo.Replace(t.Context()))
 
 	var settings evergreen.Settings
 	settings.ProjectCreation.TotalProjectLimit = 4
@@ -389,9 +389,9 @@ func TestValidateEnabledProjectsLimit(t *testing.T) {
 
 	// Should error when trying to enable an existing project past limits.
 	disabled1.Enabled = true
-	original, err := FindMergedProjectRef(disabled1.Id, "", false)
+	original, err := FindMergedProjectRef(t.Context(), disabled1.Id, "", false)
 	assert.NoError(t, err)
-	statusCode, err := ValidateEnabledProjectsLimit(disabled1.Id, &settings, original, disabled1)
+	statusCode, err := ValidateEnabledProjectsLimit(t.Context(), disabled1.Id, &settings, original, disabled1)
 	assert.Error(t, err)
 	assert.Equal(t, http.StatusBadRequest, statusCode)
 
@@ -402,9 +402,9 @@ func TestValidateEnabledProjectsLimit(t *testing.T) {
 		Repo:    "repo_exception",
 		Enabled: true,
 	}
-	original, err = FindMergedProjectRef(exception.Id, "", false)
+	original, err = FindMergedProjectRef(t.Context(), exception.Id, "", false)
 	assert.NoError(t, err)
-	_, err = ValidateEnabledProjectsLimit(enabled1.Id, &settings, original, exception)
+	_, err = ValidateEnabledProjectsLimit(t.Context(), enabled1.Id, &settings, original, exception)
 	assert.NoError(t, err)
 
 	// Should error if owner/repo is not part of exception.
@@ -414,36 +414,36 @@ func TestValidateEnabledProjectsLimit(t *testing.T) {
 		Repo:    "mci",
 		Enabled: true,
 	}
-	original, err = FindMergedProjectRef(notException.Id, "", false)
+	original, err = FindMergedProjectRef(t.Context(), notException.Id, "", false)
 	assert.NoError(t, err)
-	statusCode, err = ValidateEnabledProjectsLimit(notException.Id, &settings, original, notException)
+	statusCode, err = ValidateEnabledProjectsLimit(t.Context(), notException.Id, &settings, original, notException)
 	assert.Error(t, err)
 	assert.Equal(t, http.StatusBadRequest, statusCode)
 
 	// Should not error if a repo defaulted project is enabled.
 	disableRepo.Enabled = true
-	assert.NoError(t, disableRepo.Upsert())
-	mergedRef, err := GetProjectRefMergedWithRepo(*disabledByRepo)
+	assert.NoError(t, disableRepo.Replace(t.Context()))
+	mergedRef, err := GetProjectRefMergedWithRepo(t.Context(), *disabledByRepo)
 	assert.NoError(t, err)
-	original, err = FindMergedProjectRef(disabledByRepo.Id, "", false)
+	original, err = FindMergedProjectRef(t.Context(), disabledByRepo.Id, "", false)
 	assert.NoError(t, err)
-	_, err = ValidateEnabledProjectsLimit(disabledByRepo.Id, &settings, original, mergedRef)
+	_, err = ValidateEnabledProjectsLimit(t.Context(), disabledByRepo.Id, &settings, original, mergedRef)
 	assert.NoError(t, err)
 
 	// Should error on enabled if you try to change owner/repo past limit.
 	enabled2.Owner = "mongodb"
 	enabled2.Repo = "mci"
-	original, err = FindMergedProjectRef(enabled2.Id, "", false)
+	original, err = FindMergedProjectRef(t.Context(), enabled2.Id, "", false)
 	assert.NoError(t, err)
-	statusCode, err = ValidateEnabledProjectsLimit(enabled2.Id, &settings, original, enabled2)
+	statusCode, err = ValidateEnabledProjectsLimit(t.Context(), enabled2.Id, &settings, original, enabled2)
 	assert.Error(t, err)
 	assert.Equal(t, http.StatusBadRequest, statusCode)
 
 	// Total project limit cannot be exceeded. Even with the exception.
 	settings.ProjectCreation.TotalProjectLimit = 2
-	original, err = FindMergedProjectRef(exception.Id, "", false)
+	original, err = FindMergedProjectRef(t.Context(), exception.Id, "", false)
 	assert.NoError(t, err)
-	statusCode, err = ValidateEnabledProjectsLimit(exception.Id, &settings, original, exception)
+	statusCode, err = ValidateEnabledProjectsLimit(t.Context(), exception.Id, &settings, original, exception)
 	assert.Error(t, err)
 	assert.Equal(t, http.StatusBadRequest, statusCode)
 }
@@ -536,16 +536,16 @@ func TestGetActivationTimeForTask(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(t, versionWithoutTask.Insert())
-	assert.NoError(t, versionWithTask.Insert())
+	assert.NoError(t, versionWithoutTask.Insert(t.Context()))
+	assert.NoError(t, versionWithTask.Insert(t.Context()))
 
 	currentTime := time.Now()
-	activationTime, err := projectRef.GetActivationTimeForTask(bvt, currentTime, time.Now())
+	activationTime, err := projectRef.GetActivationTimeForTask(t.Context(), bvt, currentTime, time.Now())
 	assert.NoError(t, err)
 	assert.True(t, activationTime.Equal(prevTime.Add(time.Hour)))
 
 	// Activation time should be the zero time, because this variant is disabled.
-	activationTime, err = projectRef.GetActivationTimeForTask(bvt2, currentTime, time.Now())
+	activationTime, err = projectRef.GetActivationTimeForTask(t.Context(), bvt2, currentTime, time.Now())
 	assert.NoError(t, err)
 	assert.True(t, utility.IsZeroTime(activationTime))
 }
@@ -622,10 +622,10 @@ func TestGetActivationTimeWithCron(t *testing.T) {
 
 	for activationType, getActivationTime := range map[string]func(versionCreatedAt time.Time, now time.Time) (time.Time, error){
 		"Task": func(versionCreatedAt time.Time, now time.Time) (time.Time, error) {
-			return pRef.GetActivationTimeForTask(&bvtu, versionCreatedAt, now)
+			return pRef.GetActivationTimeForTask(t.Context(), &bvtu, versionCreatedAt, now)
 		},
 		"Variant": func(versionCreatedAt time.Time, now time.Time) (time.Time, error) {
-			return pRef.GetActivationTimeForVariant(&bv, versionCreatedAt, now)
+			return pRef.GetActivationTimeForVariant(t.Context(), &bv, versionCreatedAt, now)
 		},
 	} {
 		t.Run(activationType, func(t *testing.T) {
@@ -662,7 +662,7 @@ func TestGetActivationTimeWithCron(t *testing.T) {
 							},
 						},
 					}
-					require.NoError(t, conflictingVersionWithCron.Insert())
+					require.NoError(t, conflictingVersionWithCron.Insert(t.Context()))
 
 					activateAt, err := getActivationTime(v.CreateTime, now)
 					require.NoError(t, err)
@@ -694,7 +694,7 @@ func TestGetActivationTimeWithCron(t *testing.T) {
 							},
 						},
 					}
-					require.NoError(t, recentVersionWithCron.Insert())
+					require.NoError(t, recentVersionWithCron.Insert(t.Context()))
 
 					activateAt, err := getActivationTime(v.CreateTime, now)
 					require.NoError(t, err)
@@ -727,7 +727,7 @@ func TestGetActivationTimeWithCron(t *testing.T) {
 							},
 						},
 					}
-					require.NoError(t, recentVersionWithCron.Insert())
+					require.NoError(t, recentVersionWithCron.Insert(t.Context()))
 
 					activateAt, err := getActivationTime(v.CreateTime, now)
 					require.NoError(t, err)
@@ -758,7 +758,7 @@ func TestGetActivationTimeWithCron(t *testing.T) {
 							},
 						},
 					}
-					require.NoError(t, conflictingVersionWithCron.Insert())
+					require.NoError(t, conflictingVersionWithCron.Insert(t.Context()))
 
 					activateAt, err := getActivationTime(v.CreateTime, now)
 					require.NoError(t, err)
@@ -818,14 +818,14 @@ func TestAttachToNewRepo(t *testing.T) {
 		PRTestingEnabled: utility.TruePtr(),
 		TracksPushEvents: utility.TruePtr(),
 	}
-	assert.NoError(t, pRef.Insert())
+	assert.NoError(t, pRef.Insert(t.Context()))
 	repoRef := RepoRef{ProjectRef{
 		Id: "myRepo",
 	}}
-	assert.NoError(t, repoRef.Upsert())
+	assert.NoError(t, repoRef.Replace(t.Context()))
 	u := &user.DBUser{Id: "me"}
 
-	assert.NoError(t, u.Insert())
+	assert.NoError(t, u.Insert(t.Context()))
 	installation := githubapp.GitHubAppInstallation{
 		Owner:          pRef.Owner,
 		Repo:           pRef.Repo,
@@ -849,7 +849,7 @@ func TestAttachToNewRepo(t *testing.T) {
 	assert.NoError(t, newInstallation.Upsert(ctx))
 	assert.NoError(t, pRef.AttachToNewRepo(t.Context(), u))
 
-	pRefFromDB, err := FindBranchProjectRef(pRef.Id)
+	pRefFromDB, err := FindBranchProjectRef(t.Context(), pRef.Id)
 	assert.NoError(t, err)
 	assert.NotNil(t, pRefFromDB)
 	assert.NotEqual(t, "myRepo", pRefFromDB.RepoRefId)
@@ -857,21 +857,21 @@ func TestAttachToNewRepo(t *testing.T) {
 	assert.Equal(t, "newRepo", pRefFromDB.Repo)
 	assert.Nil(t, pRefFromDB.TracksPushEvents)
 
-	newRepoRef, err := FindOneRepoRef(pRef.RepoRefId)
+	newRepoRef, err := FindOneRepoRef(t.Context(), pRef.RepoRefId)
 	assert.NoError(t, err)
 	assert.NotNil(t, newRepoRef)
 
 	assert.True(t, newRepoRef.DoesTrackPushEvents())
 
-	mergedRef, err := FindMergedProjectRef(pRef.Id, "", false)
+	mergedRef, err := FindMergedProjectRef(t.Context(), pRef.Id, "", false)
 	assert.NoError(t, err)
 	assert.True(t, mergedRef.DoesTrackPushEvents())
 
-	userFromDB, err := user.FindOneById("me")
+	userFromDB, err := user.FindOneByIdContext(t.Context(), "me")
 	assert.NoError(t, err)
 	assert.Len(t, userFromDB.SystemRoles, 1)
 	assert.Contains(t, userFromDB.SystemRoles, GetRepoAdminRole(pRefFromDB.RepoRefId))
-	hasPermission, err := UserHasRepoViewPermission(u, pRefFromDB.RepoRefId)
+	hasPermission, err := UserHasRepoViewPermission(t.Context(), u, pRefFromDB.RepoRefId)
 	assert.NoError(t, err)
 	assert.True(t, hasPermission)
 	// Attaching a different project to this repo will result in Github conflicts being unset.
@@ -888,14 +888,14 @@ func TestAttachToNewRepo(t *testing.T) {
 		GithubChecksEnabled: utility.TruePtr(),
 		Enabled:             true,
 	}
-	assert.NoError(t, pRef.Insert())
+	assert.NoError(t, pRef.Insert(t.Context()))
 	pRef.Owner = "newOwner"
 	pRef.Repo = "newRepo"
 	assert.NoError(t, pRef.AttachToNewRepo(t.Context(), u))
 	assert.True(t, pRef.UseRepoSettings())
 	assert.NotEmpty(t, pRef.RepoRefId)
 
-	pRefFromDB, err = FindBranchProjectRef(pRef.Id)
+	pRefFromDB, err = FindBranchProjectRef(t.Context(), pRef.Id)
 	assert.NoError(t, err)
 	assert.NotNil(t, pRefFromDB)
 	assert.True(t, pRefFromDB.UseRepoSettings())
@@ -908,7 +908,7 @@ func TestAttachToNewRepo(t *testing.T) {
 }
 
 func checkRepoAttachmentEventLog(t *testing.T, project ProjectRef, attachmentType string) {
-	events, err := MostRecentProjectEvents(project.Id, 10)
+	events, err := MostRecentProjectEvents(t.Context(), project.Id, 10)
 	require.NoError(t, err)
 	require.Len(t, events, 1)
 	assert.Equal(t, project.Id, events[0].ResourceId)
@@ -940,7 +940,7 @@ func TestAttachToRepo(t *testing.T) {
 		TracksPushEvents:    utility.TruePtr(),
 		Enabled:             true,
 	}
-	assert.NoError(t, pRef.Insert())
+	assert.NoError(t, pRef.Insert(t.Context()))
 
 	installation := githubapp.GitHubAppInstallation{
 		Owner:          pRef.Owner,
@@ -951,14 +951,14 @@ func TestAttachToRepo(t *testing.T) {
 	assert.NoError(t, installation.Upsert(ctx))
 
 	u := &user.DBUser{Id: "me"}
-	assert.NoError(t, u.Insert())
+	assert.NoError(t, u.Insert(t.Context()))
 	// No repo exists, but one should be created.
 	assert.NoError(t, pRef.AttachToRepo(ctx, u))
 	assert.True(t, pRef.UseRepoSettings())
 	assert.NotEmpty(t, pRef.RepoRefId)
 	checkRepoAttachmentEventLog(t, pRef, event.EventTypeProjectAttachedToRepo)
 
-	pRefFromDB, err := FindBranchProjectRef(pRef.Id)
+	pRefFromDB, err := FindBranchProjectRef(t.Context(), pRef.Id)
 	assert.NoError(t, err)
 	assert.NotNil(t, pRefFromDB)
 	assert.True(t, pRefFromDB.UseRepoSettings())
@@ -968,16 +968,16 @@ func TestAttachToRepo(t *testing.T) {
 	assert.True(t, pRefFromDB.IsGithubChecksEnabled())
 	assert.Nil(t, pRefFromDB.TracksPushEvents)
 
-	repoRef, err := FindOneRepoRef(pRef.RepoRefId)
+	repoRef, err := FindOneRepoRef(t.Context(), pRef.RepoRefId)
 	assert.NoError(t, err)
 	require.NotNil(t, repoRef)
 	assert.True(t, repoRef.DoesTrackPushEvents())
 
-	u, err = user.FindOneById("me")
+	u, err = user.FindOneByIdContext(t.Context(), "me")
 	assert.NoError(t, err)
 	assert.NotNil(t, u)
 	assert.Contains(t, u.Roles(), GetRepoAdminRole(pRefFromDB.RepoRefId))
-	hasPermission, err := UserHasRepoViewPermission(u, pRefFromDB.RepoRefId)
+	hasPermission, err := UserHasRepoViewPermission(t.Context(), u, pRefFromDB.RepoRefId)
 	assert.NoError(t, err)
 	assert.True(t, hasPermission)
 
@@ -994,13 +994,13 @@ func TestAttachToRepo(t *testing.T) {
 		PRTestingEnabled: utility.TruePtr(),
 		Enabled:          true,
 	}
-	assert.NoError(t, pRef.Insert())
+	assert.NoError(t, pRef.Insert(t.Context()))
 	assert.NoError(t, pRef.AttachToRepo(ctx, u))
 	assert.True(t, pRef.UseRepoSettings())
 	assert.NotEmpty(t, pRef.RepoRefId)
 	checkRepoAttachmentEventLog(t, pRef, event.EventTypeProjectAttachedToRepo)
 
-	pRefFromDB, err = FindBranchProjectRef(pRef.Id)
+	pRefFromDB, err = FindBranchProjectRef(t.Context(), pRef.Id)
 	assert.NoError(t, err)
 	assert.NotNil(t, pRefFromDB)
 	assert.True(t, pRefFromDB.UseRepoSettings())
@@ -1017,7 +1017,7 @@ func TestAttachToRepo(t *testing.T) {
 		Repo:   "evergreen",
 		Branch: "main",
 	}
-	assert.NoError(t, pRef.Insert())
+	assert.NoError(t, pRef.Insert(t.Context()))
 	assert.Error(t, pRef.AttachToRepo(ctx, u))
 }
 
@@ -1054,7 +1054,7 @@ func TestDetachFromRepo(t *testing.T) {
 		"ProjectRefIsUpdatedCorrectly": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
 			assert.NoError(t, pRef.DetachFromRepo(t.Context(), dbUser))
 			checkRepoAttachmentEventLog(t, *pRef, event.EventTypeProjectDetachedFromRepo)
-			pRefFromDB, err := FindBranchProjectRef(pRef.Id)
+			pRefFromDB, err := FindBranchProjectRef(t.Context(), pRef.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDB)
 			assert.False(t, pRefFromDB.UseRepoSettings())
@@ -1067,17 +1067,17 @@ func TestDetachFromRepo(t *testing.T) {
 			assert.Equal(t, []string{"my_trigger"}, pRefFromDB.GithubTriggerAliases)
 			assert.True(t, pRefFromDB.DoesTrackPushEvents())
 
-			dbUser, err = user.FindOneById("me")
+			dbUser, err = user.FindOneByIdContext(t.Context(), "me")
 			assert.NoError(t, err)
 			assert.NotNil(t, dbUser)
-			hasPermission, err := UserHasRepoViewPermission(dbUser, pRefFromDB.RepoRefId)
+			hasPermission, err := UserHasRepoViewPermission(t.Context(), dbUser, pRefFromDB.RepoRefId)
 			assert.NoError(t, err)
 			assert.False(t, hasPermission)
 		},
 		"NewRepoVarsAreMerged": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
 			assert.NoError(t, pRef.DetachFromRepo(t.Context(), dbUser))
 			checkRepoAttachmentEventLog(t, *pRef, event.EventTypeProjectDetachedFromRepo)
-			vars, err := FindOneProjectVars(pRef.Id)
+			vars, err := FindOneProjectVars(t.Context(), pRef.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, vars)
 			assert.Equal(t, "only", vars.Vars["project"])
@@ -1088,12 +1088,12 @@ func TestDetachFromRepo(t *testing.T) {
 			assert.True(t, vars.PrivateVars["repo"]) // added from repo
 		},
 		"ProjectAndRepoVarsAreMergedAndStoredInParameterStore": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
-			expectedVars, err := FindMergedProjectVars(pRef.Id)
+			expectedVars, err := FindMergedProjectVars(t.Context(), pRef.Id)
 			require.NoError(t, err)
 
 			assert.NoError(t, pRef.DetachFromRepo(t.Context(), dbUser))
 			checkRepoAttachmentEventLog(t, *pRef, event.EventTypeProjectDetachedFromRepo)
-			vars, err := FindOneProjectVars(pRef.Id)
+			vars, err := FindOneProjectVars(t.Context(), pRef.Id)
 			require.NoError(t, err)
 			require.NotZero(t, vars)
 
@@ -1103,14 +1103,14 @@ func TestDetachFromRepo(t *testing.T) {
 		"PatchAliases": func(t *testing.T, pRef *ProjectRef, dbUser *user.DBUser) {
 			// no patch aliases are copied if the project has a patch alias
 			projectAlias := ProjectAlias{Alias: "myProjectAlias", ProjectID: pRef.Id}
-			assert.NoError(t, projectAlias.Upsert())
+			assert.NoError(t, projectAlias.Upsert(t.Context()))
 
 			repoAlias := ProjectAlias{Alias: "myRepoAlias", ProjectID: pRef.RepoRefId}
-			assert.NoError(t, repoAlias.Upsert())
+			assert.NoError(t, repoAlias.Upsert(t.Context()))
 
 			assert.NoError(t, pRef.DetachFromRepo(t.Context(), dbUser))
 			checkRepoAttachmentEventLog(t, *pRef, event.EventTypeProjectDetachedFromRepo)
-			aliases, err := FindAliasesForProjectFromDb(pRef.Id)
+			aliases, err := FindAliasesForProjectFromDb(t.Context(), pRef.Id)
 			assert.NoError(t, err)
 			assert.Len(t, aliases, 1)
 			assert.Equal(t, aliases[0].Alias, projectAlias.Alias)
@@ -1119,10 +1119,10 @@ func TestDetachFromRepo(t *testing.T) {
 			assert.NoError(t, pRef.AttachToRepo(ctx, dbUser))
 			assert.NotEmpty(t, pRef.RepoRefId)
 			assert.True(t, pRef.UseRepoSettings())
-			assert.NoError(t, RemoveProjectAlias(projectAlias.ID.Hex()))
+			assert.NoError(t, RemoveProjectAlias(ctx, projectAlias.ID.Hex()))
 
 			assert.NoError(t, pRef.DetachFromRepo(t.Context(), dbUser))
-			aliases, err = FindAliasesForProjectFromDb(pRef.Id)
+			aliases, err = FindAliasesForProjectFromDb(t.Context(), pRef.Id)
 			assert.NoError(t, err)
 			assert.Len(t, aliases, 1)
 			assert.Equal(t, aliases[0].Alias, repoAlias.Alias)
@@ -1132,16 +1132,16 @@ func TestDetachFromRepo(t *testing.T) {
 				{Alias: evergreen.GitTagAlias, Variant: "projectVariant"},
 				{Alias: evergreen.CommitQueueAlias},
 			}
-			assert.NoError(t, UpsertAliasesForProject(projectAliases, pRef.Id))
+			assert.NoError(t, UpsertAliasesForProject(t.Context(), projectAliases, pRef.Id))
 			repoAliases := []ProjectAlias{
 				{Alias: evergreen.GitTagAlias, Variant: "repoVariant"},
 				{Alias: evergreen.GithubPRAlias},
 			}
-			assert.NoError(t, UpsertAliasesForProject(repoAliases, pRef.RepoRefId))
+			assert.NoError(t, UpsertAliasesForProject(t.Context(), repoAliases, pRef.RepoRefId))
 
 			assert.NoError(t, pRef.DetachFromRepo(t.Context(), dbUser))
 			checkRepoAttachmentEventLog(t, *pRef, event.EventTypeProjectDetachedFromRepo)
-			aliases, err := FindAliasesForProjectFromDb(pRef.Id)
+			aliases, err := FindAliasesForProjectFromDb(t.Context(), pRef.Id)
 			assert.NoError(t, err)
 			assert.Len(t, aliases, 3)
 			gitTagCount := 0
@@ -1177,7 +1177,7 @@ func TestDetachFromRepo(t *testing.T) {
 					Target: "a@domain.invalid",
 				},
 			}
-			assert.NoError(t, projectSubscription.Upsert())
+			assert.NoError(t, projectSubscription.Upsert(t.Context()))
 			repoSubscription := event.Subscription{
 				Owner:        pRef.RepoRefId,
 				OwnerType:    event.OwnerTypeProject,
@@ -1191,11 +1191,11 @@ func TestDetachFromRepo(t *testing.T) {
 					Target: "a@domain.invalid",
 				},
 			}
-			assert.NoError(t, repoSubscription.Upsert())
+			assert.NoError(t, repoSubscription.Upsert(t.Context()))
 			assert.NoError(t, pRef.DetachFromRepo(t.Context(), dbUser))
 			checkRepoAttachmentEventLog(t, *pRef, event.EventTypeProjectDetachedFromRepo)
 
-			subs, err := event.FindSubscriptionsByOwner(pRef.Id, event.OwnerTypeProject)
+			subs, err := event.FindSubscriptionsByOwner(t.Context(), pRef.Id, event.OwnerTypeProject)
 			assert.NoError(t, err)
 			require.Len(t, subs, 1)
 			assert.Equal(t, subs[0].Owner, pRef.Id)
@@ -1203,10 +1203,10 @@ func TestDetachFromRepo(t *testing.T) {
 
 			// reattach to repo to test without subscription
 			assert.NoError(t, pRef.AttachToRepo(ctx, dbUser))
-			assert.NoError(t, event.RemoveSubscription(projectSubscription.ID))
+			assert.NoError(t, event.RemoveSubscription(ctx, projectSubscription.ID))
 			assert.NoError(t, pRef.DetachFromRepo(t.Context(), dbUser))
 
-			subs, err = event.FindSubscriptionsByOwner(pRef.Id, event.OwnerTypeProject)
+			subs, err = event.FindSubscriptionsByOwner(t.Context(), pRef.Id, event.OwnerTypeProject)
 			assert.NoError(t, err)
 			assert.Len(t, subs, 1)
 			assert.Equal(t, subs[0].Owner, pRef.Id)
@@ -1230,7 +1230,7 @@ func TestDetachFromRepo(t *testing.T) {
 				GitTagVersionsEnabled: utility.TruePtr(),
 				GithubChecksEnabled:   nil, // for now this is defaulting to repo
 			}
-			assert.NoError(t, pRef.Insert())
+			assert.NoError(t, pRef.Insert(t.Context()))
 
 			repoRef := RepoRef{ProjectRef{
 				Id:                    pRef.RepoRefId,
@@ -1245,7 +1245,7 @@ func TestDetachFromRepo(t *testing.T) {
 					{ID: "my_build"},
 				},
 			}}
-			assert.NoError(t, repoRef.Upsert())
+			assert.NoError(t, repoRef.Replace(t.Context()))
 
 			pVars := &ProjectVars{
 				Id: pRef.Id,
@@ -1257,10 +1257,10 @@ func TestDetachFromRepo(t *testing.T) {
 					"in": true,
 				},
 			}
-			_, err := pVars.Upsert()
+			_, err := pVars.Upsert(t.Context())
 			assert.NoError(t, err)
 
-			dbProjRef, err := FindBranchProjectRef(pRef.Id)
+			dbProjRef, err := FindBranchProjectRef(t.Context(), pRef.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbProjRef)
 
@@ -1274,17 +1274,17 @@ func TestDetachFromRepo(t *testing.T) {
 					"repo": true,
 				},
 			}
-			_, err = repoVars.Upsert()
+			_, err = repoVars.Upsert(t.Context())
 			assert.NoError(t, err)
 
-			dbRepoRef, err := FindOneRepoRef(repoRef.Id)
+			dbRepoRef, err := FindOneRepoRef(t.Context(), repoRef.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbRepoRef)
 
 			u := &user.DBUser{
 				Id: "me",
 			}
-			assert.NoError(t, u.Insert())
+			assert.NoError(t, u.Insert(t.Context()))
 			test(t, pRef, u)
 		})
 	}
@@ -1302,10 +1302,10 @@ func TestDefaultRepoBySection(t *testing.T) {
 					Enabled: false,
 				},
 			}
-			assert.NoError(t, repoRef.Upsert())
+			assert.NoError(t, repoRef.Replace(t.Context()))
 			assert.NoError(t, DefaultSectionToRepo(t.Context(), id, ProjectPageGeneralSection, "me"))
 
-			pRefFromDb, err := FindBranchProjectRef(id)
+			pRefFromDb, err := FindBranchProjectRef(t.Context(), id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDb)
 			assert.NotEqual(t, "", pRefFromDb.Identifier)
@@ -1317,7 +1317,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 		ProjectPageAccessSection: func(t *testing.T, id string) {
 			assert.NoError(t, DefaultSectionToRepo(t.Context(), id, ProjectPageAccessSection, "me"))
 
-			pRefFromDb, err := FindBranchProjectRef(id)
+			pRefFromDb, err := FindBranchProjectRef(t.Context(), id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDb)
 			assert.Nil(t, pRefFromDb.Restricted)
@@ -1326,7 +1326,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 		ProjectPageVariablesSection: func(t *testing.T, id string) {
 			assert.NoError(t, DefaultSectionToRepo(t.Context(), id, ProjectPageVariablesSection, "me"))
 
-			varsFromDb, err := FindOneProjectVars(id)
+			varsFromDb, err := FindOneProjectVars(t.Context(), id)
 			assert.NoError(t, err)
 			assert.NotNil(t, varsFromDb)
 			assert.Empty(t, varsFromDb.Vars)
@@ -1334,18 +1334,18 @@ func TestDefaultRepoBySection(t *testing.T) {
 			assert.NotEmpty(t, varsFromDb.Id)
 		},
 		ProjectPageGithubAndCQSection: func(t *testing.T, id string) {
-			aliases, err := FindAliasesForProjectFromDb(id)
+			aliases, err := FindAliasesForProjectFromDb(t.Context(), id)
 			assert.NoError(t, err)
 			assert.Len(t, aliases, 5)
 			assert.NoError(t, DefaultSectionToRepo(t.Context(), id, ProjectPageGithubAndCQSection, "me"))
 
-			pRefFromDb, err := FindBranchProjectRef(id)
+			pRefFromDb, err := FindBranchProjectRef(t.Context(), id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDb)
 			assert.Nil(t, pRefFromDb.PRTestingEnabled)
 			assert.Nil(t, pRefFromDb.GithubChecksEnabled)
 			assert.Nil(t, pRefFromDb.GitTagAuthorizedUsers)
-			aliases, err = FindAliasesForProjectFromDb(id)
+			aliases, err = FindAliasesForProjectFromDb(t.Context(), id)
 			assert.NoError(t, err)
 			assert.Len(t, aliases, 1)
 			// assert that only patch aliases are left
@@ -1355,23 +1355,23 @@ func TestDefaultRepoBySection(t *testing.T) {
 		},
 		ProjectPageNotificationsSection: func(t *testing.T, id string) {
 			assert.NoError(t, DefaultSectionToRepo(t.Context(), id, ProjectPageNotificationsSection, "me"))
-			pRefFromDb, err := FindBranchProjectRef(id)
+			pRefFromDb, err := FindBranchProjectRef(t.Context(), id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDb)
 			assert.Nil(t, pRefFromDb.NotifyOnBuildFailure)
 		},
 		ProjectPagePatchAliasSection: func(t *testing.T, id string) {
-			aliases, err := FindAliasesForProjectFromDb(id)
+			aliases, err := FindAliasesForProjectFromDb(t.Context(), id)
 			assert.NoError(t, err)
 			assert.Len(t, aliases, 5)
 
 			assert.NoError(t, DefaultSectionToRepo(t.Context(), id, ProjectPagePatchAliasSection, "me"))
-			pRefFromDb, err := FindBranchProjectRef(id)
+			pRefFromDb, err := FindBranchProjectRef(t.Context(), id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDb)
 			assert.Nil(t, pRefFromDb.PatchTriggerAliases)
 
-			aliases, err = FindAliasesForProjectFromDb(id)
+			aliases, err = FindAliasesForProjectFromDb(t.Context(), id)
 			assert.NoError(t, err)
 			assert.Len(t, aliases, 4)
 			// assert that no patch aliases are left
@@ -1381,14 +1381,14 @@ func TestDefaultRepoBySection(t *testing.T) {
 		},
 		ProjectPageTriggersSection: func(t *testing.T, id string) {
 			assert.NoError(t, DefaultSectionToRepo(t.Context(), id, ProjectPageTriggersSection, "me"))
-			pRefFromDb, err := FindBranchProjectRef(id)
+			pRefFromDb, err := FindBranchProjectRef(t.Context(), id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDb)
 			assert.Nil(t, pRefFromDb.Triggers)
 		},
 		ProjectPageWorkstationsSection: func(t *testing.T, id string) {
 			assert.NoError(t, DefaultSectionToRepo(t.Context(), id, ProjectPageWorkstationsSection, "me"))
-			pRefFromDb, err := FindBranchProjectRef(id)
+			pRefFromDb, err := FindBranchProjectRef(t.Context(), id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDb)
 			assert.Nil(t, pRefFromDb.WorkstationConfig.GitClone)
@@ -1396,7 +1396,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 		},
 		ProjectPagePluginSection: func(t *testing.T, id string) {
 			assert.NoError(t, DefaultSectionToRepo(t.Context(), id, ProjectPagePluginSection, "me"))
-			pRefFromDb, err := FindBranchProjectRef(id)
+			pRefFromDb, err := FindBranchProjectRef(t.Context(), id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDb)
 			assert.Equal(t, "", pRefFromDb.TaskAnnotationSettings.FileTicketWebhook.Endpoint)
@@ -1405,13 +1405,13 @@ func TestDefaultRepoBySection(t *testing.T) {
 		},
 		ProjectPagePeriodicBuildsSection: func(t *testing.T, id string) {
 			assert.NoError(t, DefaultSectionToRepo(t.Context(), id, ProjectPagePeriodicBuildsSection, "me"))
-			pRefFromDb, err := FindBranchProjectRef(id)
+			pRefFromDb, err := FindBranchProjectRef(t.Context(), id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDb)
 			assert.Nil(t, pRefFromDb.PeriodicBuilds)
 		},
 		ProjectPageGithubAppSettingsSection: func(t *testing.T, id string) {
-			pRefFromDb, err := FindBranchProjectRef(id)
+			pRefFromDb, err := FindBranchProjectRef(t.Context(), id)
 			assert.NoError(t, err)
 
 			auth := githubapp.GithubAppAuth{
@@ -1422,7 +1422,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 			err = githubapp.UpsertGitHubAppAuth(t.Context(), &auth)
 			assert.NoError(t, err)
 			assert.NoError(t, DefaultSectionToRepo(t.Context(), id, ProjectPageGithubAppSettingsSection, "me"))
-			pRefFromDb, err = FindBranchProjectRef(id)
+			pRefFromDb, err = FindBranchProjectRef(t.Context(), id)
 			assert.NoError(t, err)
 			require.NotNil(t, pRefFromDb)
 			assert.Nil(t, pRefFromDb.GitHubDynamicTokenPermissionGroups)
@@ -1435,7 +1435,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 		},
 		ProjectPageGithubPermissionsSection: func(t *testing.T, id string) {
 			assert.NoError(t, DefaultSectionToRepo(t.Context(), id, ProjectPageGithubPermissionsSection, "me"))
-			pRefFromDb, err := FindBranchProjectRef(id)
+			pRefFromDb, err := FindBranchProjectRef(t.Context(), id)
 			assert.NoError(t, err)
 			assert.NotNil(t, pRefFromDb)
 			assert.Nil(t, pRefFromDb.GitHubDynamicTokenPermissionGroups)
@@ -1490,21 +1490,21 @@ func TestDefaultRepoBySection(t *testing.T) {
 					TicketSearchProjects: []string{"BF", "BFG"},
 				},
 			}
-			assert.NoError(t, pRef.Insert())
+			assert.NoError(t, pRef.Insert(t.Context()))
 
 			repoRef := RepoRef{
 				ProjectRef: ProjectRef{
 					Id: pRef.RepoRefId,
 				},
 			}
-			assert.NoError(t, repoRef.Upsert())
+			assert.NoError(t, repoRef.Replace(t.Context()))
 
 			pVars := ProjectVars{
 				Id:          pRef.Id,
 				Vars:        map[string]string{"hello": "world"},
 				PrivateVars: map[string]bool{"hello": true},
 			}
-			assert.NoError(t, pVars.Insert())
+			assert.NoError(t, pVars.Insert(t.Context()))
 			checkParametersNamespacedByProject(t, pVars)
 
 			aliases := []ProjectAlias{
@@ -1545,7 +1545,7 @@ func TestDefaultRepoBySection(t *testing.T) {
 				},
 			}
 			for _, a := range aliases {
-				assert.NoError(t, a.Upsert())
+				assert.NoError(t, a.Upsert(t.Context()))
 			}
 			test(t, pRef.Id)
 		})
@@ -1566,7 +1566,7 @@ func TestGetGitHubProjectConflicts(t *testing.T) {
 		Id:      "p1",
 		Enabled: true,
 	}
-	require.NoError(p1.Insert())
+	require.NoError(p1.Insert(t.Context()))
 	p2 := &ProjectRef{
 		Owner:   "mongodb",
 		Repo:    "not-mci1",
@@ -1574,8 +1574,8 @@ func TestGetGitHubProjectConflicts(t *testing.T) {
 		Id:      "p2",
 		Enabled: true,
 	}
-	require.NoError(p2.Insert())
-	conflicts, err := p1.GetGithubProjectConflicts()
+	require.NoError(p2.Insert(t.Context()))
+	conflicts, err := p1.GetGithubProjectConflicts(t.Context())
 	require.NoError(err)
 	assert.Empty(conflicts.PRTestingIdentifiers)
 	assert.Empty(conflicts.CommitQueueIdentifiers)
@@ -1589,7 +1589,7 @@ func TestGetGitHubProjectConflicts(t *testing.T) {
 		Id:      "p3",
 		Enabled: true,
 	}
-	require.NoError(p3.Insert())
+	require.NoError(p3.Insert(t.Context()))
 	p4 := &ProjectRef{
 		Owner:   "mongodb",
 		Repo:    "mci2",
@@ -1597,8 +1597,8 @@ func TestGetGitHubProjectConflicts(t *testing.T) {
 		Id:      "p4",
 		Enabled: true,
 	}
-	require.NoError(p4.Insert())
-	conflicts, err = p3.GetGithubProjectConflicts()
+	require.NoError(p4.Insert(t.Context()))
+	conflicts, err = p3.GetGithubProjectConflicts(t.Context())
 	require.NoError(err)
 	assert.Empty(conflicts.PRTestingIdentifiers)
 	assert.Empty(conflicts.CommitQueueIdentifiers)
@@ -1613,7 +1613,7 @@ func TestGetGitHubProjectConflicts(t *testing.T) {
 		Enabled:          true,
 		PRTestingEnabled: utility.TruePtr(),
 	}
-	require.NoError(p5.Insert())
+	require.NoError(p5.Insert(t.Context()))
 	p6 := &ProjectRef{
 		Owner:       "mongodb",
 		Repo:        "mci3",
@@ -1622,7 +1622,7 @@ func TestGetGitHubProjectConflicts(t *testing.T) {
 		Enabled:     true,
 		CommitQueue: CommitQueueParams{Enabled: utility.TruePtr()},
 	}
-	require.NoError(p6.Insert())
+	require.NoError(p6.Insert(t.Context()))
 	p7 := &ProjectRef{
 		Owner:               "mongodb",
 		Repo:                "mci3",
@@ -1631,7 +1631,7 @@ func TestGetGitHubProjectConflicts(t *testing.T) {
 		Enabled:             true,
 		GithubChecksEnabled: utility.TruePtr(),
 	}
-	require.NoError(p7.Insert())
+	require.NoError(p7.Insert(t.Context()))
 	p8 := &ProjectRef{
 		Owner:   "mongodb",
 		Repo:    "mci3",
@@ -1639,27 +1639,27 @@ func TestGetGitHubProjectConflicts(t *testing.T) {
 		Id:      "p8",
 		Enabled: true,
 	}
-	require.NoError(p8.Insert())
+	require.NoError(p8.Insert(t.Context()))
 	// p5 should have conflicting with commit queue and commit check.
-	conflicts, err = p5.GetGithubProjectConflicts()
+	conflicts, err = p5.GetGithubProjectConflicts(t.Context())
 	require.NoError(err)
 	assert.Empty(conflicts.PRTestingIdentifiers)
 	assert.Len(conflicts.CommitQueueIdentifiers, 1)
 	assert.Len(conflicts.CommitCheckIdentifiers, 1)
 	// p6 should have conflicting with pr testing and commit check.
-	conflicts, err = p6.GetGithubProjectConflicts()
+	conflicts, err = p6.GetGithubProjectConflicts(t.Context())
 	require.NoError(err)
 	assert.Len(conflicts.PRTestingIdentifiers, 1)
 	assert.Empty(conflicts.CommitQueueIdentifiers)
 	assert.Len(conflicts.CommitCheckIdentifiers, 1)
 	// p7 should have conflicting with pr testing and commit queue.
-	conflicts, err = p7.GetGithubProjectConflicts()
+	conflicts, err = p7.GetGithubProjectConflicts(t.Context())
 	require.NoError(err)
 	assert.Len(conflicts.PRTestingIdentifiers, 1)
 	assert.Len(conflicts.CommitQueueIdentifiers, 1)
 	assert.Empty(conflicts.CommitCheckIdentifiers)
 	// p8 should have conflicting with all
-	conflicts, err = p8.GetGithubProjectConflicts()
+	conflicts, err = p8.GetGithubProjectConflicts(t.Context())
 	require.NoError(err)
 	assert.Len(conflicts.PRTestingIdentifiers, 1)
 	assert.Len(conflicts.CommitQueueIdentifiers, 1)
@@ -1676,11 +1676,11 @@ func TestGetGitHubProjectConflicts(t *testing.T) {
 		Enabled:          true,
 		PRTestingEnabled: utility.TruePtr(),
 	}
-	require.NoError(p9.Insert())
+	require.NoError(p9.Insert(t.Context()))
 	r9 := &RepoRef{
 		ProjectRef: *p9,
 	}
-	require.NoError(r9.Upsert())
+	require.NoError(r9.Replace(t.Context()))
 	p10 := &ProjectRef{
 		Owner:     "mongodb",
 		Repo:      "mci4",
@@ -1689,15 +1689,15 @@ func TestGetGitHubProjectConflicts(t *testing.T) {
 		Enabled:   true,
 		RepoRefId: p9.Id,
 	}
-	require.NoError(p10.Insert())
+	require.NoError(p10.Insert(t.Context()))
 	// p9 should not have any potential conflicts.
-	conflicts, err = p9.GetGithubProjectConflicts()
+	conflicts, err = p9.GetGithubProjectConflicts(t.Context())
 	require.NoError(err)
 	assert.Empty(conflicts.PRTestingIdentifiers)
 	assert.Empty(conflicts.CommitQueueIdentifiers)
 	assert.Empty(conflicts.CommitCheckIdentifiers)
 	// p10 should have a potential conflict because p9 has something enabled.
-	conflicts, err = p10.GetGithubProjectConflicts()
+	conflicts, err = p10.GetGithubProjectConflicts(t.Context())
 	require.NoError(err)
 	assert.Len(conflicts.PRTestingIdentifiers, 1)
 	assert.Empty(conflicts.CommitQueueIdentifiers)
@@ -1710,7 +1710,7 @@ func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
 
 	assert.NoError(db.ClearCollections(ProjectRefCollection, RepoRefCollection))
 
-	projectRefs, err := FindMergedEnabledProjectRefsByRepoAndBranch("mongodb", "mci", "main")
+	projectRefs, err := FindMergedEnabledProjectRefsByRepoAndBranch(t.Context(), "mongodb", "mci", "main")
 	assert.NoError(err)
 	assert.Empty(projectRefs)
 
@@ -1723,23 +1723,23 @@ func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
 		Id:               "iden_",
 		PRTestingEnabled: utility.TruePtr(),
 	}
-	assert.NoError(projectRef.Insert())
-	projectRefs, err = FindMergedEnabledProjectRefsByRepoAndBranch("mongodb", "mci", "main")
+	assert.NoError(projectRef.Insert(t.Context()))
+	projectRefs, err = FindMergedEnabledProjectRefsByRepoAndBranch(t.Context(), "mongodb", "mci", "main")
 	assert.NoError(err)
 	assert.Empty(projectRefs)
 
 	projectRef.Id = "ident"
 	projectRef.Enabled = true
-	assert.NoError(projectRef.Insert())
+	assert.NoError(projectRef.Insert(t.Context()))
 
-	projectRefs, err = FindMergedEnabledProjectRefsByRepoAndBranch("mongodb", "mci", "main")
+	projectRefs, err = FindMergedEnabledProjectRefsByRepoAndBranch(t.Context(), "mongodb", "mci", "main")
 	assert.NoError(err)
 	require.Len(projectRefs, 1)
 	assert.Equal("ident", projectRefs[0].Id)
 
 	projectRef.Id = "ident2"
-	assert.NoError(projectRef.Insert())
-	projectRefs, err = FindMergedEnabledProjectRefsByRepoAndBranch("mongodb", "mci", "main")
+	assert.NoError(projectRef.Insert(t.Context()))
+	projectRefs, err = FindMergedEnabledProjectRefsByRepoAndBranch(t.Context(), "mongodb", "mci", "main")
 	assert.NoError(err)
 	assert.Len(projectRefs, 2)
 }
@@ -1824,7 +1824,7 @@ func TestSetGithubAppCredentials(t *testing.T) {
 			p := &ProjectRef{
 				Id: "id1",
 			}
-			require.NoError(t, p.Insert())
+			require.NoError(t, p.Insert(t.Context()))
 			test(t, p)
 		})
 	}
@@ -1849,7 +1849,7 @@ func TestCreateNewRepoRef(t *testing.T) {
 		NotifyOnBuildFailure: utility.TruePtr(),
 		CommitQueue:          CommitQueueParams{Message: "my message"},
 	}
-	assert.NoError(t, doc1.Insert())
+	assert.NoError(t, doc1.Insert(t.Context()))
 	doc2 := &ProjectRef{
 		Id:                   "id2",
 		Identifier:           "identifier",
@@ -1864,7 +1864,7 @@ func TestCreateNewRepoRef(t *testing.T) {
 		GithubChecksEnabled:  utility.TruePtr(),
 		CommitQueue:          CommitQueueParams{Message: "my message"},
 	}
-	assert.NoError(t, doc2.Insert())
+	assert.NoError(t, doc2.Insert(t.Context()))
 	doc3 := &ProjectRef{
 		Id:      "id3",
 		Owner:   "mongodb",
@@ -1872,7 +1872,7 @@ func TestCreateNewRepoRef(t *testing.T) {
 		Branch:  "mci2",
 		Enabled: false,
 	}
-	assert.NoError(t, doc3.Insert())
+	assert.NoError(t, doc3.Insert(t.Context()))
 
 	installation := githubapp.GitHubAppInstallation{
 		Owner:          "mongodb",
@@ -1915,7 +1915,7 @@ func TestCreateNewRepoRef(t *testing.T) {
 		},
 	}
 	for _, vars := range projectVariables {
-		assert.NoError(t, vars.Insert())
+		assert.NoError(t, vars.Insert(t.Context()))
 	}
 
 	projectAliases := ProjectAliases{
@@ -1962,16 +1962,16 @@ func TestCreateNewRepoRef(t *testing.T) {
 		},
 	}
 	for _, a := range projectAliases {
-		assert.NoError(t, a.Upsert())
+		assert.NoError(t, a.Upsert(t.Context()))
 	}
 	u := user.DBUser{Id: "me"}
-	assert.NoError(t, u.Insert())
+	assert.NoError(t, u.Insert(t.Context()))
 
 	// This will create the new repo ref
-	assert.NoError(t, doc2.AddToRepoScope(&u))
+	assert.NoError(t, doc2.AddToRepoScope(t.Context(), &u))
 	assert.NotEmpty(t, doc2.RepoRefId)
 
-	repoRef, err := FindOneRepoRef(doc2.RepoRefId)
+	repoRef, err := FindOneRepoRef(t.Context(), doc2.RepoRefId)
 	assert.NoError(t, err)
 	assert.NotNil(t, repoRef)
 
@@ -1989,12 +1989,12 @@ func TestCreateNewRepoRef(t *testing.T) {
 	assert.NotContains(t, repoRef.Admins, "bob")
 	assert.NotContains(t, repoRef.Admins, "other bob")
 	assert.Contains(t, repoRef.Admins, "me")
-	users, err := user.FindByRole(GetRepoAdminRole(repoRef.Id))
+	users, err := user.FindByRole(t.Context(), GetRepoAdminRole(repoRef.Id))
 	assert.NoError(t, err)
 	require.Len(t, users, 1)
 	assert.Equal(t, "me", users[0].Id)
 
-	projectVars, err := FindOneProjectVars(repoRef.Id)
+	projectVars, err := FindOneProjectVars(t.Context(), repoRef.Id)
 	assert.NoError(t, err)
 	assert.Len(t, projectVars.Vars, 3)
 	assert.Len(t, projectVars.PrivateVars, 1)
@@ -2003,7 +2003,7 @@ func TestCreateNewRepoRef(t *testing.T) {
 	assert.Equal(t, "green", projectVars.Vars["ever"])
 	assert.True(t, projectVars.PrivateVars["sdc"])
 
-	projectAliases, err = FindAliasesForRepo(repoRef.Id)
+	projectAliases, err = FindAliasesForRepo(t.Context(), repoRef.Id)
 	assert.NoError(t, err)
 	assert.Len(t, projectAliases, 2)
 	for _, a := range projectAliases {
@@ -2093,7 +2093,7 @@ func TestGithubPermissionGroups(t *testing.T) {
 		GitHubDynamicTokenPermissionGroups: orgGroup,
 		GitHubPermissionGroupByRequester:   orgRequesters,
 	}
-	require.NoError(p.Insert())
+	require.NoError(p.Insert(t.Context()))
 
 	t.Run("Not found requester should return default permissions", func(t *testing.T) {
 		group, found := p.GetGitHubPermissionGroup("requester")
@@ -2277,7 +2277,7 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 	require.NoError(db.ClearCollections(ProjectRefCollection, RepoRefCollection, ProjectVarsCollection, fakeparameter.Collection, evergreen.ScopeCollection, evergreen.RoleCollection))
 	require.NoError(db.CreateCollections(evergreen.ScopeCollection))
 
-	projectRef, err := FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "main", "")
+	projectRef, err := FindOneProjectRefByRepoAndBranchWithPRTesting(t.Context(), "mongodb", "mci", "main", "")
 	assert.NoError(err)
 	assert.Nil(projectRef)
 
@@ -2290,10 +2290,10 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 		Id:               "ident0",
 		PRTestingEnabled: utility.FalsePtr(),
 	}
-	require.NoError(doc.Insert())
+	require.NoError(doc.Insert(t.Context()))
 
 	// 1 disabled document = no match
-	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "main", "")
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting(t.Context(), "mongodb", "mci", "main", "")
 	assert.NoError(err)
 	assert.Nil(projectRef)
 
@@ -2301,24 +2301,24 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 	doc.Id = "ident_"
 	doc.PRTestingEnabled = utility.FalsePtr()
 	doc.Enabled = true
-	require.NoError(doc.Insert())
-	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "main", "")
+	require.NoError(doc.Insert(t.Context()))
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting(t.Context(), "mongodb", "mci", "main", "")
 	assert.NoError(err)
 	require.Nil(projectRef)
 
 	// 3 docs, 2 enabled, but only 1 has pr testing enabled = match
 	doc.Id = "ident1"
 	doc.PRTestingEnabled = utility.TruePtr()
-	require.NoError(doc.Insert())
-	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "main", "")
+	require.NoError(doc.Insert(t.Context()))
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting(t.Context(), "mongodb", "mci", "main", "")
 	assert.NoError(err)
 	require.NotNil(projectRef)
 	assert.Equal("ident1", projectRef.Id)
 
 	// 2 matching documents, we just return one of those projects
 	doc.Id = "ident2"
-	require.NoError(doc.Insert())
-	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "main", "")
+	require.NoError(doc.Insert(t.Context()))
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting(t.Context(), "mongodb", "mci", "main", "")
 	assert.NoError(err)
 	assert.NotNil(projectRef)
 
@@ -2328,7 +2328,7 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 		Repo:       "mci",
 		RemotePath: "",
 	}}
-	assert.NoError(repoDoc.Upsert())
+	assert.NoError(repoDoc.Replace(t.Context()))
 	doc = &ProjectRef{
 		Id:        "defaulting_project",
 		Owner:     "mongodb",
@@ -2337,7 +2337,7 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 		Enabled:   true,
 		RepoRefId: repoDoc.Id,
 	}
-	assert.NoError(doc.Insert())
+	assert.NoError(doc.Insert(t.Context()))
 	doc2 := &ProjectRef{
 		Id:               "hidden_project",
 		Owner:            "mongodb",
@@ -2348,16 +2348,16 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 		PRTestingEnabled: utility.FalsePtr(),
 		Hidden:           utility.TruePtr(),
 	}
-	assert.NoError(doc2.Insert())
+	assert.NoError(doc2.Insert(t.Context()))
 
 	// repo doesn't have PR testing enabled, so no project returned
-	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "mine", "")
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting(t.Context(), "mongodb", "mci", "mine", "")
 	assert.NoError(err)
 	assert.Nil(projectRef)
 
 	repoDoc.PRTestingEnabled = utility.TruePtr()
-	assert.NoError(repoDoc.Upsert())
-	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "mine", "")
+	assert.NoError(repoDoc.Replace(t.Context()))
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting(t.Context(), "mongodb", "mci", "mine", "")
 	assert.NoError(err)
 	require.NotNil(projectRef)
 	assert.Equal("defaulting_project", projectRef.Id)
@@ -2365,65 +2365,65 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 	// project PR testing explicitly disabled
 	doc.PRTestingEnabled = utility.FalsePtr()
 	doc.ManualPRTestingEnabled = utility.FalsePtr()
-	assert.NoError(doc.Upsert())
-	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "mine", "")
+	assert.NoError(doc.Replace(t.Context()))
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting(t.Context(), "mongodb", "mci", "mine", "")
 	assert.NoError(err)
 	assert.Nil(projectRef)
-	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "mine", patch.AutomatedCaller)
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting(t.Context(), "mongodb", "mci", "mine", patch.AutomatedCaller)
 	assert.NoError(err)
 	assert.Nil(projectRef)
-	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "mine", patch.ManualCaller)
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting(t.Context(), "mongodb", "mci", "mine", patch.ManualCaller)
 	assert.NoError(err)
 	assert.Nil(projectRef)
 
 	// project auto PR testing enabled, manual disabled
 	doc.PRTestingEnabled = utility.TruePtr()
 	doc.ManualPRTestingEnabled = utility.FalsePtr()
-	assert.NoError(doc.Upsert())
-	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "mine", "")
+	assert.NoError(doc.Replace(t.Context()))
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting(t.Context(), "mongodb", "mci", "mine", "")
 	assert.NoError(err)
 	assert.NotNil(projectRef)
-	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "mine", patch.AutomatedCaller)
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting(t.Context(), "mongodb", "mci", "mine", patch.AutomatedCaller)
 	assert.NoError(err)
 	assert.NotNil(projectRef)
-	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "mine", patch.ManualCaller)
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting(t.Context(), "mongodb", "mci", "mine", patch.ManualCaller)
 	assert.NoError(err)
 	assert.Nil(projectRef)
 
 	// project auto PR testing disabled, manual enabled
 	doc.PRTestingEnabled = utility.FalsePtr()
 	doc.ManualPRTestingEnabled = utility.TruePtr()
-	assert.NoError(doc.Upsert())
-	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "mine", "")
+	assert.NoError(doc.Replace(t.Context()))
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting(t.Context(), "mongodb", "mci", "mine", "")
 	assert.NoError(err)
 	assert.NotNil(projectRef)
-	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "mine", patch.AutomatedCaller)
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting(t.Context(), "mongodb", "mci", "mine", patch.AutomatedCaller)
 	assert.NoError(err)
 	assert.Nil(projectRef)
-	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "mine", patch.ManualCaller)
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting(t.Context(), "mongodb", "mci", "mine", patch.ManualCaller)
 	assert.NoError(err)
 	assert.NotNil(projectRef)
 
 	// project explicitly disabled
 	repoDoc.RemotePath = "my_path"
-	assert.NoError(repoDoc.Upsert())
+	assert.NoError(repoDoc.Replace(t.Context()))
 	doc.Enabled = false
 	doc.PRTestingEnabled = utility.TruePtr()
-	assert.NoError(doc.Upsert())
-	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "mine", "")
+	assert.NoError(doc.Replace(t.Context()))
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting(t.Context(), "mongodb", "mci", "mine", "")
 	assert.NoError(err)
 	assert.Nil(projectRef)
 
 	// branch with no project doesn't work and returns an error if repo not configured with a remote path
 	repoDoc.RemotePath = ""
-	assert.NoError(repoDoc.Upsert())
-	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "yours", "")
+	assert.NoError(repoDoc.Replace(t.Context()))
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting(t.Context(), "mongodb", "mci", "yours", "")
 	assert.Error(err)
 	assert.Nil(projectRef)
 
 	repoDoc.RemotePath = "my_path"
-	assert.NoError(repoDoc.Upsert())
-	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "yours", "")
+	assert.NoError(repoDoc.Replace(t.Context()))
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting(t.Context(), "mongodb", "mci", "yours", "")
 	assert.NoError(err)
 	require.NotNil(projectRef)
 	assert.Equal("yours", projectRef.Branch)
@@ -2431,7 +2431,7 @@ func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
 	firstAttemptId := projectRef.Id
 
 	// verify we return the same hidden project
-	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "yours", "")
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting(t.Context(), "mongodb", "mci", "yours", "")
 	assert.NoError(err)
 	require.NotNil(projectRef)
 	assert.Equal(firstAttemptId, projectRef.Id)
@@ -2443,7 +2443,7 @@ func TestFindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(t *testing.T) {
 
 	require.NoError(db.ClearCollections(ProjectRefCollection, RepoRefCollection))
 
-	projectRef, err := FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch("mongodb", "mci", "main")
+	projectRef, err := FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(t.Context(), "mongodb", "mci", "main")
 	assert.NoError(err)
 	assert.Nil(projectRef)
 
@@ -2454,24 +2454,25 @@ func TestFindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(t *testing.T) {
 		Id:      "mci",
 		Enabled: true,
 	}
-	require.NoError(doc.Insert())
+	require.NoError(doc.Insert(t.Context()))
 
-	projectRef, err = FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch("mongodb", "mci", "main")
+	projectRef, err = FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(t.Context(), "mongodb", "mci", "main")
 	assert.NoError(err)
 	assert.Nil(projectRef)
 
 	doc.CommitQueue.Enabled = utility.TruePtr()
-	require.NoError(db.Update(ProjectRefCollection, mgobson.M{ProjectRefIdKey: "mci"}, doc))
+	_, err = db.ReplaceContext(t.Context(), ProjectRefCollection, mgobson.M{ProjectRefIdKey: "mci"}, doc)
+	require.NoError(err)
 
-	projectRef, err = FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch("mongodb", "mci", "main")
+	projectRef, err = FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(t.Context(), "mongodb", "mci", "main")
 	assert.NoError(err)
 	assert.NotNil(projectRef)
 	assert.Equal("mci", projectRef.Id)
 
 	// doc doesn't default to repo
 	doc.CommitQueue.Enabled = utility.FalsePtr()
-	assert.NoError(doc.Upsert())
-	projectRef, err = FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch("mongodb", "mci", "not_main")
+	assert.NoError(doc.Replace(t.Context()))
+	projectRef, err = FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(t.Context(), "mongodb", "mci", "not_main")
 	assert.NoError(err)
 	assert.Nil(projectRef)
 }
@@ -2490,7 +2491,7 @@ func TestValidateEnabledRepotracker(t *testing.T) {
 		Enabled:             true,
 		RepotrackerDisabled: utility.TruePtr(),
 	}
-	require.NoError(p1.Insert())
+	require.NoError(p1.Insert(t.Context()))
 	assert.NoError(p1.ValidateEnabledRepotracker())
 	// A project that doesn't have repotracker enabled and a valid config.
 	p2 := &ProjectRef{
@@ -2502,7 +2503,7 @@ func TestValidateEnabledRepotracker(t *testing.T) {
 		RepotrackerDisabled: utility.TruePtr(),
 		RemotePath:          "valid!",
 	}
-	require.NoError(p2.Insert())
+	require.NoError(p2.Insert(t.Context()))
 	assert.NoError(p2.ValidateEnabledRepotracker())
 	// A project that does have repotracker enabled and a invalid config.
 	p3 := &ProjectRef{
@@ -2513,7 +2514,7 @@ func TestValidateEnabledRepotracker(t *testing.T) {
 		Enabled:             true,
 		RepotrackerDisabled: utility.FalsePtr(),
 	}
-	require.NoError(p3.Insert())
+	require.NoError(p3.Insert(t.Context()))
 	assert.Error(p3.ValidateEnabledRepotracker())
 	// A project that does have repotracker enabled and a valid config.
 	p4 := &ProjectRef{
@@ -2525,7 +2526,7 @@ func TestValidateEnabledRepotracker(t *testing.T) {
 		RepotrackerDisabled: utility.FalsePtr(),
 		RemotePath:          "valid!",
 	}
-	require.NoError(p4.Insert())
+	require.NoError(p4.Insert(t.Context()))
 	assert.NoError(p4.ValidateEnabledRepotracker())
 }
 
@@ -2544,8 +2545,8 @@ func TestCanEnableCommitQueue(t *testing.T) {
 			Enabled: utility.TruePtr(),
 		},
 	}
-	require.NoError(doc.Insert())
-	ok, err := doc.CanEnableCommitQueue()
+	require.NoError(doc.Insert(t.Context()))
+	ok, err := doc.CanEnableCommitQueue(t.Context())
 	assert.NoError(err)
 	assert.True(ok)
 
@@ -2559,8 +2560,8 @@ func TestCanEnableCommitQueue(t *testing.T) {
 			Enabled: utility.FalsePtr(),
 		},
 	}
-	require.NoError(doc2.Insert())
-	ok, err = doc2.CanEnableCommitQueue()
+	require.NoError(doc2.Insert(t.Context()))
+	ok, err = doc2.CanEnableCommitQueue(t.Context())
 	assert.NoError(err)
 	assert.False(ok)
 }
@@ -2942,14 +2943,14 @@ func TestContainerSecretCache(t *testing.T) {
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, pRef ProjectRef, c ContainerSecretCache){
 		"PutSucceeds": func(ctx context.Context, t *testing.T, pRef ProjectRef, c ContainerSecretCache) {
 			pRef.ContainerSecrets[0].ExternalID = ""
-			require.NoError(t, pRef.Insert())
+			require.NoError(t, pRef.Insert(t.Context()))
 			const externalID = "external_id"
 			require.NoError(t, c.Put(ctx, cocoa.SecretCacheItem{
 				ID:   externalID,
 				Name: pRef.ContainerSecrets[0].ExternalName,
 			}))
 
-			dbProjRef, err := FindMergedProjectRef(pRef.Id, "", false)
+			dbProjRef, err := FindMergedProjectRef(t.Context(), pRef.Id, "", false)
 			require.NoError(t, err)
 			require.NotZero(t, dbProjRef)
 			require.Len(t, dbProjRef.ContainerSecrets, len(pRef.ContainerSecrets))
@@ -2967,13 +2968,13 @@ func TestContainerSecretCache(t *testing.T) {
 			assert.Error(t, c.Put(ctx, cocoa.SecretCacheItem{ID: "external_id", Name: pRef.ContainerSecrets[0].ExternalName}))
 		},
 		"PutFailsWithoutMatchingContainerSecretExternalName": func(ctx context.Context, t *testing.T, pRef ProjectRef, c ContainerSecretCache) {
-			require.NoError(t, pRef.Insert())
+			require.NoError(t, pRef.Insert(t.Context()))
 			assert.Error(t, c.Put(ctx, cocoa.SecretCacheItem{
 				ID:   "external_id",
 				Name: "nonexistent",
 			}))
 
-			dbProjRef, err := FindMergedProjectRef(pRef.Id, "", false)
+			dbProjRef, err := FindMergedProjectRef(t.Context(), pRef.Id, "", false)
 			require.NoError(t, err)
 			require.NotZero(t, dbProjRef)
 			require.Len(t, dbProjRef.ContainerSecrets, len(pRef.ContainerSecrets))
@@ -2983,13 +2984,13 @@ func TestContainerSecretCache(t *testing.T) {
 		},
 		"PutSucceedsWithContainerSecretThatAlreadyHasSameExternalIDAlreadySet": func(ctx context.Context, t *testing.T, pRef ProjectRef, c ContainerSecretCache) {
 			pRef.ContainerSecrets[0].ExternalID = "external_id"
-			require.NoError(t, pRef.Insert())
+			require.NoError(t, pRef.Insert(t.Context()))
 			require.NoError(t, c.Put(ctx, cocoa.SecretCacheItem{
 				ID:   pRef.ContainerSecrets[0].ExternalID,
 				Name: pRef.ContainerSecrets[0].ExternalName,
 			}))
 
-			dbProjRef, err := FindMergedProjectRef(pRef.Id, "", false)
+			dbProjRef, err := FindMergedProjectRef(t.Context(), pRef.Id, "", false)
 			require.NoError(t, err)
 			require.NotZero(t, dbProjRef)
 			require.Len(t, dbProjRef.ContainerSecrets, len(pRef.ContainerSecrets))
@@ -3000,13 +3001,13 @@ func TestContainerSecretCache(t *testing.T) {
 		"PutFailsWithContainerSecretThatHasDifferentExternalIDAlreadySet": func(ctx context.Context, t *testing.T, pRef ProjectRef, c ContainerSecretCache) {
 			const externalID = "external_id"
 			pRef.ContainerSecrets[0].ExternalID = "something_else"
-			require.NoError(t, pRef.Insert())
+			require.NoError(t, pRef.Insert(t.Context()))
 			require.Error(t, c.Put(ctx, cocoa.SecretCacheItem{
 				ID:   externalID,
 				Name: pRef.ContainerSecrets[0].ExternalName,
 			}))
 
-			dbProjRef, err := FindMergedProjectRef(pRef.Id, "", false)
+			dbProjRef, err := FindMergedProjectRef(t.Context(), pRef.Id, "", false)
 			require.NoError(t, err)
 			require.NotZero(t, dbProjRef)
 			require.Len(t, dbProjRef.ContainerSecrets, len(pRef.ContainerSecrets))
@@ -3015,10 +3016,10 @@ func TestContainerSecretCache(t *testing.T) {
 			}
 		},
 		"DeleteSucceeds": func(ctx context.Context, t *testing.T, pRef ProjectRef, c ContainerSecretCache) {
-			require.NoError(t, pRef.Insert())
+			require.NoError(t, pRef.Insert(t.Context()))
 			require.NoError(t, c.Delete(ctx, pRef.ContainerSecrets[1].ExternalID))
 
-			dbProjRef, err := FindMergedProjectRef(pRef.Id, "", false)
+			dbProjRef, err := FindMergedProjectRef(t.Context(), pRef.Id, "", false)
 			require.NoError(t, err)
 			require.NotZero(t, dbProjRef)
 			require.Len(t, dbProjRef.ContainerSecrets, len(pRef.ContainerSecrets)-1)
@@ -3026,13 +3027,13 @@ func TestContainerSecretCache(t *testing.T) {
 		},
 		"DeleteNoopsWithNonexistentProjectRef": func(ctx context.Context, t *testing.T, pRef ProjectRef, c ContainerSecretCache) {
 			assert.NoError(t, c.Delete(ctx, "external_id"), "should not for nonexistent project ref")
-			assert.True(t, adb.ResultsNotFound(db.FindOneQ(ProjectRefCollection, db.Query(bson.M{}), &pRef)))
+			assert.True(t, adb.ResultsNotFound(db.FindOneQContext(t.Context(), ProjectRefCollection, db.Query(bson.M{}), &pRef)))
 		},
 		"DeleteNoopsWithoutMatchingContainerSecretExternalID": func(ctx context.Context, t *testing.T, pRef ProjectRef, c ContainerSecretCache) {
-			require.NoError(t, pRef.Insert())
+			require.NoError(t, pRef.Insert(t.Context()))
 			assert.NoError(t, c.Delete(ctx, "nonexistent"), "should not error for nonexistent container secret")
 
-			dbProjRef, err := FindMergedProjectRef(pRef.Id, "", false)
+			dbProjRef, err := FindMergedProjectRef(t.Context(), pRef.Id, "", false)
 			require.NoError(t, err)
 			require.NotZero(t, dbProjRef)
 			assert.Len(t, dbProjRef.ContainerSecrets, len(pRef.ContainerSecrets))
@@ -3096,16 +3097,16 @@ func TestFindDownstreamProjects(t *testing.T) {
 		Enabled:  true,
 		Triggers: []TriggerDefinition{{Project: "grip"}},
 	}
-	require.NoError(t, proj1.Insert())
+	require.NoError(t, proj1.Insert(t.Context()))
 
 	proj2 := ProjectRef{
 		Id:       "mci",
 		Enabled:  false,
 		Triggers: []TriggerDefinition{{Project: "grip"}},
 	}
-	require.NoError(t, proj2.Insert())
+	require.NoError(t, proj2.Insert(t.Context()))
 
-	projects, err := FindDownstreamProjects("grip")
+	projects, err := FindDownstreamProjects(t.Context(), "grip")
 	assert.NoError(t, err)
 	assert.Len(t, projects, 1)
 	assert.Equal(t, proj1, projects[0])
@@ -3116,13 +3117,13 @@ func TestAddEmptyBranch(t *testing.T) {
 	u := user.DBUser{
 		Id: "me",
 	}
-	require.NoError(t, u.Insert())
+	require.NoError(t, u.Insert(t.Context()))
 	p := ProjectRef{
 		Identifier: "myProject",
 		Owner:      "mongodb",
 		Repo:       "mongo",
 	}
-	assert.NoError(t, p.Add(&u))
+	assert.NoError(t, p.Add(t.Context(), &u))
 	assert.NotEmpty(t, p.Id)
 	assert.Empty(t, p.Branch)
 	assert.Equal(t, []string{u.Id}, p.Admins)
@@ -3138,7 +3139,7 @@ func TestAddPermissions(t *testing.T) {
 	u := user.DBUser{
 		Id: "me",
 	}
-	assert.NoError(u.Insert())
+	assert.NoError(u.Insert(t.Context()))
 	p := ProjectRef{
 		Identifier: "myProject",
 		Owner:      "mongodb",
@@ -3146,7 +3147,7 @@ func TestAddPermissions(t *testing.T) {
 		Branch:     "main",
 		Hidden:     utility.TruePtr(),
 	}
-	assert.NoError(p.Add(&u))
+	assert.NoError(p.Add(t.Context(), &u))
 	assert.NotEmpty(p.Id)
 	assert.Equal([]string{u.Id}, p.Admins)
 	assert.True(mgobson.IsObjectIdHex(p.Id))
@@ -3163,17 +3164,17 @@ func TestAddPermissions(t *testing.T) {
 	})
 	assert.NoError(err)
 	assert.NotNil(role)
-	dbUser, err := user.FindOneById(u.Id)
+	dbUser, err := user.FindOneByIdContext(t.Context(), u.Id)
 	assert.NoError(err)
 	assert.Contains(dbUser.Roles(), fmt.Sprintf("admin_project_%s", p.Id))
 	projectId := p.Id
 
 	// check that an added project uses the hidden project's ID
 	u = user.DBUser{Id: "you"}
-	assert.NoError(u.Insert())
+	assert.NoError(u.Insert(t.Context()))
 	p.Identifier = "differentProject"
 	p.Id = ""
-	assert.NoError(p.Add(&u))
+	assert.NoError(p.Add(t.Context(), &u))
 	assert.NotEmpty(p.Id)
 	assert.Contains(p.Admins, u.Id)
 	assert.True(mgobson.IsObjectIdHex(p.Id))
@@ -3190,7 +3191,7 @@ func TestAddPermissions(t *testing.T) {
 	})
 	assert.NoError(err)
 	assert.NotNil(role)
-	dbUser, err = user.FindOneById(u.Id)
+	dbUser, err = user.FindOneByIdContext(t.Context(), u.Id)
 	assert.NoError(err)
 	assert.Contains(dbUser.Roles(), fmt.Sprintf("admin_project_%s", p.Id))
 }
@@ -3218,23 +3219,23 @@ func TestUpdateAdminRoles(t *testing.T) {
 		Id:          "oldAdmin",
 		SystemRoles: []string{"admin"},
 	}
-	require.NoError(t, oldAdmin.Insert())
+	require.NoError(t, oldAdmin.Insert(t.Context()))
 	newAdmin := user.DBUser{
 		Id: "newAdmin",
 	}
-	require.NoError(t, newAdmin.Insert())
+	require.NoError(t, newAdmin.Insert(t.Context()))
 	p := ProjectRef{
 		Id: "proj",
 	}
-	require.NoError(t, p.Insert())
+	require.NoError(t, p.Insert(t.Context()))
 
-	modified, err := p.UpdateAdminRoles([]string{newAdmin.Id}, []string{oldAdmin.Id})
+	modified, err := p.UpdateAdminRoles(t.Context(), []string{newAdmin.Id}, []string{oldAdmin.Id})
 	assert.NoError(t, err)
 	assert.True(t, modified)
-	oldAdminFromDB, err := user.FindOneById(oldAdmin.Id)
+	oldAdminFromDB, err := user.FindOneByIdContext(t.Context(), oldAdmin.Id)
 	assert.NoError(t, err)
 	assert.Empty(t, oldAdminFromDB.Roles())
-	newAdminFromDB, err := user.FindOneById(newAdmin.Id)
+	newAdminFromDB, err := user.FindOneByIdContext(t.Context(), newAdmin.Id)
 	assert.NoError(t, err)
 	assert.Len(t, newAdminFromDB.Roles(), 1)
 }
@@ -3249,19 +3250,19 @@ func TestUpdateAdminRolesError(t *testing.T) {
 		Id:          "oldAdmin",
 		SystemRoles: []string{"admin"},
 	}
-	require.NoError(t, oldAdmin.Insert())
+	require.NoError(t, oldAdmin.Insert(t.Context()))
 	newAdmin := user.DBUser{
 		Id: "newAdmin",
 	}
-	require.NoError(t, newAdmin.Insert())
+	require.NoError(t, newAdmin.Insert(t.Context()))
 	p := ProjectRef{
 		Id:     "proj",
 		Admins: []string{oldAdmin.Id},
 	}
-	require.NoError(t, p.Insert())
+	require.NoError(t, p.Insert(t.Context()))
 
 	// check that, without a valid role, the whole update fails
-	modified, err := p.UpdateAdminRoles([]string{"nonexistent-user", newAdmin.Id}, []string{"nonexistent-user", oldAdmin.Id})
+	modified, err := p.UpdateAdminRoles(t.Context(), []string{"nonexistent-user", newAdmin.Id}, []string{"nonexistent-user", oldAdmin.Id})
 	assert.Error(t, err)
 	assert.False(t, modified)
 	assert.Equal(t, []string{oldAdmin.Id}, p.Admins)
@@ -3281,13 +3282,13 @@ func TestUpdateAdminRolesError(t *testing.T) {
 	require.NoError(t, rm.UpdateRole(adminRole))
 
 	// check that the existing users have been added and removed while returning an error
-	modified, err = p.UpdateAdminRoles([]string{"nonexistent-user", newAdmin.Id}, []string{"nonexistent-user", oldAdmin.Id})
+	modified, err = p.UpdateAdminRoles(t.Context(), []string{"nonexistent-user", newAdmin.Id}, []string{"nonexistent-user", oldAdmin.Id})
 	assert.Error(t, err)
 	assert.True(t, modified)
-	oldAdminFromDB, err := user.FindOneById(oldAdmin.Id)
+	oldAdminFromDB, err := user.FindOneByIdContext(t.Context(), oldAdmin.Id)
 	assert.NoError(t, err)
 	assert.Empty(t, oldAdminFromDB.Roles())
-	newAdminFromDB, err := user.FindOneById(newAdmin.Id)
+	newAdminFromDB, err := user.FindOneByIdContext(t.Context(), newAdmin.Id)
 	assert.NoError(t, err)
 	assert.Len(t, newAdminFromDB.Roles(), 1)
 }
@@ -3298,8 +3299,8 @@ func TestGetProjectTasksWithOptions(t *testing.T) {
 		Id:         "my_project",
 		Identifier: "my_ident",
 	}
-	assert.NoError(t, p.Insert())
-	assert.NoError(t, db.Insert(RepositoriesCollection, Repository{
+	assert.NoError(t, p.Insert(t.Context()))
+	assert.NoError(t, db.Insert(t.Context(), RepositoriesCollection, Repository{
 		Project:             "my_project",
 		RevisionOrderNumber: 100,
 	}))
@@ -3323,18 +3324,18 @@ func TestGetProjectTasksWithOptions(t *testing.T) {
 		if i%2 == 0 {
 			myTask.Status = evergreen.TaskUndispatched
 		}
-		assert.NoError(t, myTask.Insert())
+		assert.NoError(t, myTask.Insert(t.Context()))
 	}
 	opts := GetProjectTasksOpts{}
 
-	tasks, err := GetTasksWithOptions("my_ident", "t1", opts)
+	tasks, err := GetTasksWithOptions(t.Context(), "my_ident", "t1", opts)
 	assert.NoError(t, err)
 	// Returns 7 tasks because 40 tasks exist within the default version limit,
 	// but 1/2 are undispatched and only 1/3 have a system requester
 	assert.Len(t, tasks, 7)
 
 	opts.Limit = 5
-	tasks, err = GetTasksWithOptions("my_ident", "t1", opts)
+	tasks, err = GetTasksWithOptions(t.Context(), "my_ident", "t1", opts)
 	assert.NoError(t, err)
 	assert.Len(t, tasks, 2)
 	assert.Equal(t, 99, tasks[0].RevisionOrderNumber)
@@ -3342,21 +3343,21 @@ func TestGetProjectTasksWithOptions(t *testing.T) {
 
 	opts.Limit = 10
 	opts.StartAt = 80
-	tasks, err = GetTasksWithOptions("my_ident", "t1", opts)
+	tasks, err = GetTasksWithOptions(t.Context(), "my_ident", "t1", opts)
 	assert.NoError(t, err)
 	assert.Len(t, tasks, 3)
 	assert.Equal(t, 78, tasks[0].RevisionOrderNumber)
 	assert.Equal(t, 72, tasks[2].RevisionOrderNumber)
 
 	opts.Requesters = []string{evergreen.PatchVersionRequester}
-	tasks, err = GetTasksWithOptions("my_ident", "t1", opts)
+	tasks, err = GetTasksWithOptions(t.Context(), "my_ident", "t1", opts)
 	assert.NoError(t, err)
 	assert.Len(t, tasks, 7)
 	assert.Equal(t, 80, tasks[0].RevisionOrderNumber)
 	assert.Equal(t, 71, tasks[6].RevisionOrderNumber)
 
 	opts.Requesters = []string{evergreen.RepotrackerVersionRequester}
-	tasks, err = GetTasksWithOptions("my_ident", "t1", opts)
+	tasks, err = GetTasksWithOptions(t.Context(), "my_ident", "t1", opts)
 	assert.NoError(t, err)
 	assert.Len(t, tasks, 3)
 	assert.Equal(t, 78, tasks[0].RevisionOrderNumber)
@@ -3366,7 +3367,7 @@ func TestGetProjectTasksWithOptions(t *testing.T) {
 	opts.Limit = defaultVersionLimit
 	opts.StartAt = 90
 	opts.BuildVariant = "bv1"
-	tasks, err = GetTasksWithOptions("my_ident", "t1", opts)
+	tasks, err = GetTasksWithOptions(t.Context(), "my_ident", "t1", opts)
 	// Returns 7 tasks because 40 tasks exist within the default version limit,
 	// but only 1/6 matches the bv and is not undispatched
 	assert.NoError(t, err)
@@ -3397,21 +3398,37 @@ func TestUpdateNextPeriodicBuild(t *testing.T) {
 					{ID: "1", NextRunTime: later},
 				},
 			}}
-			assert.NoError(p.Insert())
-			assert.NoError(repoRef.Upsert())
+			assert.NoError(p.Insert(t.Context()))
+			assert.NoError(repoRef.Replace(t.Context()))
 
-			assert.NoError(UpdateNextPeriodicBuild("proj", &p.PeriodicBuilds[1]))
-			dbProject, err := FindBranchProjectRef(p.Id)
+			assert.NoError(UpdateNextPeriodicBuild(t.Context(), "proj", &p.PeriodicBuilds[1]))
+			dbProject, err := FindBranchProjectRef(t.Context(), p.Id)
 			assert.NoError(err)
 			require.NotNil(dbProject)
 			assert.True(now.Equal(dbProject.PeriodicBuilds[0].NextRunTime))
 			assert.True(muchLater.Equal(dbProject.PeriodicBuilds[1].NextRunTime))
 
-			dbRepo, err := FindOneRepoRef(p.RepoRefId)
+			dbRepo, err := FindOneRepoRef(t.Context(), p.RepoRefId)
 			assert.NoError(err)
 			require.NotNil(dbRepo)
 			// Repo wasn't updated because the branch project definitions take precedent.
 			assert.True(later.Equal(dbRepo.PeriodicBuilds[0].NextRunTime))
+		},
+		"updatesProjectFromThePast": func(t *testing.T) {
+			p := ProjectRef{
+				Id: "proj",
+				PeriodicBuilds: []PeriodicBuildDefinition{
+					{ID: "0", NextRunTime: now.Add(-48 * time.Hour), IntervalHours: 5},
+				},
+			}
+			assert.NoError(p.Insert(t.Context()))
+
+			assert.NoError(UpdateNextPeriodicBuild(t.Context(), "proj", &p.PeriodicBuilds[0]))
+			dbProject, err := FindBranchProjectRef(t.Context(), p.Id)
+			assert.NoError(err)
+			require.NotNil(dbProject)
+			nextRunTime := now.Add(5 * time.Hour).Round(time.Hour)
+			assert.True(nextRunTime.Equal(dbProject.PeriodicBuilds[0].NextRunTime.Round(time.Hour)))
 		},
 		"updatesRepoOnly": func(t *testing.T) {
 			p := ProjectRef{
@@ -3425,12 +3442,12 @@ func TestUpdateNextPeriodicBuild(t *testing.T) {
 					{ID: "0", NextRunTime: later, IntervalHours: 9},
 				},
 			}}
-			assert.NoError(p.Insert())
-			assert.NoError(repoRef.Upsert())
-			assert.NoError(UpdateNextPeriodicBuild("proj", &repoRef.PeriodicBuilds[0]))
+			assert.NoError(p.Insert(t.Context()))
+			assert.NoError(repoRef.Replace(t.Context()))
+			assert.NoError(UpdateNextPeriodicBuild(t.Context(), "proj", &repoRef.PeriodicBuilds[0]))
 
 			// Repo is updated because the branch project doesn't have any periodic build override defined.
-			dbRepo, err := FindOneRepoRef(p.RepoRefId)
+			dbRepo, err := FindOneRepoRef(t.Context(), p.RepoRefId)
 			assert.NoError(err)
 			require.NotNil(dbRepo)
 			assert.True(muchLater.Equal(dbRepo.PeriodicBuilds[0].NextRunTime))
@@ -3447,19 +3464,19 @@ func TestUpdateNextPeriodicBuild(t *testing.T) {
 					{ID: "0", NextRunTime: later, IntervalHours: 9},
 				},
 			}}
-			assert.NoError(p.Insert())
-			assert.NoError(repoRef.Upsert())
+			assert.NoError(p.Insert(t.Context()))
+			assert.NoError(repoRef.Replace(t.Context()))
 			// Should error because definition isn't relevant for this project, since
 			// we ignore repo definitions when the project has any override defined.
-			assert.Error(UpdateNextPeriodicBuild("proj", &repoRef.PeriodicBuilds[0]))
+			assert.Error(UpdateNextPeriodicBuild(t.Context(), "proj", &repoRef.PeriodicBuilds[0]))
 
-			dbRepo, err := FindOneRepoRef(p.RepoRefId)
+			dbRepo, err := FindOneRepoRef(t.Context(), p.RepoRefId)
 			assert.NoError(err)
 			assert.NotNil(dbRepo)
 			assert.True(later.Equal(dbRepo.PeriodicBuilds[0].NextRunTime))
 		},
 		"updateProjectWithCron": func(t *testing.T) {
-			nextRunTime := time.Date(2022, 12, 12, 0, 0, 0, 0, time.UTC)
+			nextRunTime := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
 			nextDay := nextRunTime.Add(24 * time.Hour)
 			laterRunTime := nextRunTime.Add(12 * time.Hour)
 			dailyCron := "0 0 * * *"
@@ -3477,19 +3494,19 @@ func TestUpdateNextPeriodicBuild(t *testing.T) {
 					{ID: "1", NextRunTime: later},
 				},
 			}}
-			assert.NoError(p.Insert())
-			assert.NoError(repoRef.Upsert())
+			assert.NoError(p.Insert(t.Context()))
+			assert.NoError(repoRef.Replace(t.Context()))
 
-			assert.NoError(UpdateNextPeriodicBuild("proj", &p.PeriodicBuilds[0]))
-			dbProject, err := FindBranchProjectRef(p.Id)
+			assert.NoError(UpdateNextPeriodicBuild(t.Context(), "proj", &p.PeriodicBuilds[0]))
+			dbProject, err := FindBranchProjectRef(t.Context(), p.Id)
 			assert.NoError(err)
 			require.NotNil(dbProject)
 			assert.True(nextDay.Equal(dbProject.PeriodicBuilds[0].NextRunTime))
 			assert.True(laterRunTime.Equal(dbProject.PeriodicBuilds[1].NextRunTime))
 
 			// Even with a different runtime we get the same result, since we're using a cron.
-			assert.NoError(UpdateNextPeriodicBuild("proj", &p.PeriodicBuilds[1]))
-			dbProject, err = FindBranchProjectRef(p.Id)
+			assert.NoError(UpdateNextPeriodicBuild(t.Context(), "proj", &p.PeriodicBuilds[1]))
+			dbProject, err = FindBranchProjectRef(t.Context(), p.Id)
 			assert.NoError(err)
 			require.NotNil(dbProject)
 			assert.True(nextDay.Equal(dbProject.PeriodicBuilds[1].NextRunTime))
@@ -3525,10 +3542,10 @@ func TestFindFirstProjectRef(t *testing.T) {
 		Restricted: utility.TruePtr(),
 		Enabled:    true,
 	}
-	assert.NoError(t, projectRef.Insert())
+	assert.NoError(t, projectRef.Insert(t.Context()))
 
 	assert.NotPanics(t, func() {
-		_, err = FindAnyRestrictedProjectRef()
+		_, err = FindAnyRestrictedProjectRef(t.Context())
 	}, "Should not panic if there are no matching projects")
 	assert.Error(t, err, "Should return error if there are no matching projects")
 
@@ -3536,9 +3553,9 @@ func TestFindFirstProjectRef(t *testing.T) {
 		Id:      "p1",
 		Enabled: true,
 	}
-	assert.NoError(t, projectRef.Insert())
+	assert.NoError(t, projectRef.Insert(t.Context()))
 
-	resultRef, err := FindAnyRestrictedProjectRef()
+	resultRef, err := FindAnyRestrictedProjectRef(t.Context())
 	assert.NoError(t, err)
 	assert.Equal(t, "p1", resultRef.Id)
 }
@@ -3550,7 +3567,7 @@ func TestFindPeriodicProjects(t *testing.T) {
 		Id:             "my_repo",
 		PeriodicBuilds: []PeriodicBuildDefinition{{ID: "repo_def"}},
 	}}
-	assert.NoError(t, repoRef.Upsert())
+	assert.NoError(t, repoRef.Replace(t.Context()))
 
 	pRef := ProjectRef{
 		Id:             "p1",
@@ -3558,24 +3575,24 @@ func TestFindPeriodicProjects(t *testing.T) {
 		Enabled:        true,
 		PeriodicBuilds: []PeriodicBuildDefinition{},
 	}
-	assert.NoError(t, pRef.Insert())
+	assert.NoError(t, pRef.Insert(t.Context()))
 
 	pRef.Id = "p2"
 	pRef.Enabled = true
 	pRef.PeriodicBuilds = []PeriodicBuildDefinition{{ID: "p1"}}
-	assert.NoError(t, pRef.Insert())
+	assert.NoError(t, pRef.Insert(t.Context()))
 
 	pRef.Id = "p3"
 	pRef.Enabled = true
 	pRef.PeriodicBuilds = nil
-	assert.NoError(t, pRef.Insert())
+	assert.NoError(t, pRef.Insert(t.Context()))
 
 	pRef.Id = "p4"
 	pRef.Enabled = false
 	pRef.PeriodicBuilds = []PeriodicBuildDefinition{{ID: "p1"}}
-	assert.NoError(t, pRef.Insert())
+	assert.NoError(t, pRef.Insert(t.Context()))
 
-	projects, err := FindPeriodicProjects()
+	projects, err := FindPeriodicProjects(t.Context())
 	assert.NoError(t, err)
 	assert.Len(t, projects, 2)
 	for _, p := range projects {
@@ -3609,38 +3626,38 @@ func TestRemoveAdminFromProjects(t *testing.T) {
 		Id: "adminless_repo",
 	}}
 
-	assert.NoError(t, pRef.Upsert())
-	assert.NoError(t, pRef2.Upsert())
-	assert.NoError(t, pRef3.Upsert())
-	assert.NoError(t, repoRef.Upsert())
-	assert.NoError(t, repoRef2.Upsert())
-	assert.NoError(t, repoRef3.Upsert())
+	assert.NoError(t, pRef.Replace(t.Context()))
+	assert.NoError(t, pRef2.Replace(t.Context()))
+	assert.NoError(t, pRef3.Replace(t.Context()))
+	assert.NoError(t, repoRef.Replace(t.Context()))
+	assert.NoError(t, repoRef2.Replace(t.Context()))
+	assert.NoError(t, repoRef3.Replace(t.Context()))
 
-	assert.NoError(t, RemoveAdminFromProjects("villain"))
+	assert.NoError(t, RemoveAdminFromProjects(t.Context(), "villain"))
 
 	// verify that we carry out multiple updates
-	pRefFromDB, err := FindBranchProjectRef(pRef.Id)
+	pRefFromDB, err := FindBranchProjectRef(t.Context(), pRef.Id)
 	assert.NoError(t, err)
 	assert.NotNil(t, pRefFromDB)
 	assert.NotContains(t, pRefFromDB.Admins, "villain")
-	pRefFromDB, err = FindBranchProjectRef(pRef2.Id)
+	pRefFromDB, err = FindBranchProjectRef(t.Context(), pRef2.Id)
 	assert.NoError(t, err)
 	assert.NotNil(t, pRefFromDB)
 	assert.NotContains(t, pRefFromDB.Admins, "villain")
-	pRefFromDB, err = FindBranchProjectRef(pRef3.Id)
+	pRefFromDB, err = FindBranchProjectRef(t.Context(), pRef3.Id)
 	assert.NoError(t, err)
 	assert.NotNil(t, pRefFromDB)
 	assert.NotContains(t, pRefFromDB.Admins, "villain")
 
-	repoRefFromDB, err := FindOneRepoRef(repoRef.Id)
+	repoRefFromDB, err := FindOneRepoRef(t.Context(), repoRef.Id)
 	assert.NoError(t, err)
 	assert.NotNil(t, repoRefFromDB)
 	assert.NotContains(t, repoRefFromDB.Admins, "villain")
-	repoRefFromDB, err = FindOneRepoRef(repoRef2.Id)
+	repoRefFromDB, err = FindOneRepoRef(t.Context(), repoRef2.Id)
 	assert.NoError(t, err)
 	assert.NotNil(t, repoRefFromDB)
 	assert.NotContains(t, repoRefFromDB.Admins, "villain")
-	repoRefFromDB, err = FindOneRepoRef(repoRef3.Id)
+	repoRefFromDB, err = FindOneRepoRef(t.Context(), repoRef3.Id)
 	assert.NoError(t, err)
 	assert.NotNil(t, repoRefFromDB)
 	assert.NotContains(t, repoRefFromDB.Admins, "villain")
@@ -3658,14 +3675,14 @@ func TestPointers(t *testing.T) {
 		MyStruct: WorkstationConfig{GitClone: utility.TruePtr()},
 	}
 
-	assert.NoError(t, db.Insert(ProjectRefCollection, ref))
+	assert.NoError(t, db.Insert(t.Context(), ProjectRefCollection, ref))
 
 	pointerRef := struct {
 		PtrString *string            `bson:"my_str"`
 		PtrBool   *bool              `bson:"my_bool"`
 		PtrStruct *WorkstationConfig `bson:"config"`
 	}{}
-	assert.NoError(t, db.FindOneQ(ProjectRefCollection, db.Query(bson.M{}), &pointerRef))
+	assert.NoError(t, db.FindOneQContext(t.Context(), ProjectRefCollection, db.Query(bson.M{}), &pointerRef))
 	assert.Equal(t, ref.MyString, *pointerRef.PtrString)
 	assert.False(t, utility.FromBoolTPtr(pointerRef.PtrBool))
 	assert.NotNil(t, pointerRef.PtrStruct)
@@ -3732,10 +3749,10 @@ func TestMergeWithProjectConfig(t *testing.T) {
 			GithubTriggerAliases: []string{"one", "two"},
 		},
 	}
-	assert.NoError(t, projectRef.Insert())
-	assert.NoError(t, projectConfig.Insert())
+	assert.NoError(t, projectRef.Insert(t.Context()))
+	assert.NoError(t, projectConfig.Insert(t.Context()))
 
-	err := projectRef.MergeWithProjectConfig("version1")
+	err := projectRef.MergeWithProjectConfig(t.Context(), "version1")
 	assert.NoError(t, err)
 	require.NotNil(t, projectRef)
 	assert.Equal(t, "ident", projectRef.Id)
@@ -3761,7 +3778,7 @@ func TestMergeWithProjectConfig(t *testing.T) {
 			MemoryMB: 800,
 		},
 	}
-	err = projectRef.MergeWithProjectConfig("version1")
+	err = projectRef.MergeWithProjectConfig(t.Context(), "version1")
 	assert.NoError(t, err)
 	require.NotNil(t, projectRef)
 	assert.Equal(t, 4, projectRef.ContainerSizeDefinitions[0].CPU)
@@ -3785,8 +3802,8 @@ func TestSaveProjectPageForSection(t *testing.T) {
 		Identifier:       "identifier",
 		PRTestingEnabled: utility.TruePtr(),
 	}
-	assert.NoError(projectRef.Insert())
-	projectRef, err := FindBranchProjectRef("identifier")
+	assert.NoError(projectRef.Insert(t.Context()))
+	projectRef, err := FindBranchProjectRef(t.Context(), "identifier")
 	assert.NoError(err)
 	assert.NotNil(t, projectRef)
 
@@ -3801,7 +3818,7 @@ func TestSaveProjectPageForSection(t *testing.T) {
 		Owner:   "evergreen-ci",
 		Repo:    "test",
 	}
-	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGeneralSection, false)
+	_, err = SaveProjectPageForSection(t.Context(), "iden_", update, ProjectPageGeneralSection, false)
 	assert.NoError(err)
 
 	// Verify that Parsley filters and project health view are saved correctly.
@@ -3811,10 +3828,10 @@ func TestSaveProjectPageForSection(t *testing.T) {
 		},
 		ProjectHealthView: ProjectHealthViewAll,
 	}
-	_, err = SaveProjectPageForSection("iden_", update, ProjectPageViewsAndFiltersSection, false)
+	_, err = SaveProjectPageForSection(t.Context(), "iden_", update, ProjectPageViewsAndFiltersSection, false)
 	assert.NoError(err)
 
-	projectRef, err = FindBranchProjectRef("iden_")
+	projectRef, err = FindBranchProjectRef(t.Context(), "iden_")
 	assert.NoError(err)
 	require.NotNil(t, projectRef)
 	assert.Len(projectRef.ParsleyFilters, 1)
@@ -3824,10 +3841,10 @@ func TestSaveProjectPageForSection(t *testing.T) {
 	update = &ProjectRef{
 		Restricted: utility.TruePtr(),
 	}
-	_, err = SaveProjectPageForSection("iden_", update, ProjectPageAccessSection, false)
+	_, err = SaveProjectPageForSection(t.Context(), "iden_", update, ProjectPageAccessSection, false)
 	assert.NoError(err)
 
-	projectRef, err = FindBranchProjectRef("iden_")
+	projectRef, err = FindBranchProjectRef(t.Context(), "iden_")
 	assert.NoError(err)
 	require.NotNil(t, projectRef)
 	assert.True(utility.FromBoolPtr(projectRef.Restricted))
@@ -3843,10 +3860,10 @@ func TestSaveProjectPageForSection(t *testing.T) {
 			},
 		},
 	}
-	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGithubPermissionsSection, false)
+	_, err = SaveProjectPageForSection(t.Context(), "iden_", update, ProjectPageGithubPermissionsSection, false)
 	assert.NoError(err)
 
-	projectRef, err = FindBranchProjectRef("iden_")
+	projectRef, err = FindBranchProjectRef(t.Context(), "iden_")
 	assert.NoError(err)
 	require.NotNil(t, projectRef)
 	require.Len(t, projectRef.GitHubDynamicTokenPermissionGroups, 1)
@@ -3859,10 +3876,10 @@ func TestSaveProjectPageForSection(t *testing.T) {
 			evergreen.PatchVersionRequester: "some-group",
 		},
 	}
-	_, err = SaveProjectPageForSection("iden_", update, ProjectPageGithubAppSettingsSection, false)
+	_, err = SaveProjectPageForSection(t.Context(), "iden_", update, ProjectPageGithubAppSettingsSection, false)
 	assert.NoError(err)
 
-	projectRef, err = FindBranchProjectRef("iden_")
+	projectRef, err = FindBranchProjectRef(t.Context(), "iden_")
 	require.NoError(t, err)
 	require.NotNil(t, projectRef)
 	require.NotNil(t, projectRef.GitHubPermissionGroupByRequester)
@@ -3887,7 +3904,7 @@ func TestValidateOwnerAndRepo(t *testing.T) {
 		Enabled: true,
 		Repo:    "repo",
 	}
-	require.NoError(t, project.Insert())
+	require.NoError(t, project.Insert(t.Context()))
 
 	err := project.ValidateOwnerAndRepo([]string{"evergreen-ci"})
 	assert.Error(t, err)
@@ -4012,23 +4029,23 @@ func TestSetRepotrackerError(t *testing.T) {
 			MergeBaseRevision: "def456",
 		},
 	}
-	require.NoError(t, pRef.Insert())
+	require.NoError(t, pRef.Insert(t.Context()))
 	t.Run("OverwritesError", func(t *testing.T) {
 		repotrackerErr := &RepositoryErrorDetails{
 			Exists:            true,
 			InvalidRevision:   "invalid_revision",
 			MergeBaseRevision: "merge_base_revision",
 		}
-		require.NoError(t, pRef.SetRepotrackerError(repotrackerErr))
-		dbProjRef, err := FindBranchProjectRef(pRef.Identifier)
+		require.NoError(t, pRef.SetRepotrackerError(t.Context(), repotrackerErr))
+		dbProjRef, err := FindBranchProjectRef(t.Context(), pRef.Identifier)
 		require.NoError(t, err)
 		require.NotZero(t, dbProjRef)
 		require.NotZero(t, dbProjRef.RepotrackerError)
 		assert.Equal(t, *repotrackerErr, *dbProjRef.RepotrackerError)
 	})
 	t.Run("ClearsError", func(t *testing.T) {
-		require.NoError(t, pRef.SetRepotrackerError(&RepositoryErrorDetails{}))
-		dbProjRef, err := FindBranchProjectRef(pRef.Identifier)
+		require.NoError(t, pRef.SetRepotrackerError(t.Context(), &RepositoryErrorDetails{}))
+		dbProjRef, err := FindBranchProjectRef(t.Context(), pRef.Identifier)
 		require.NoError(t, err)
 		require.NotZero(t, dbProjRef)
 		assert.Empty(t, dbProjRef.RepotrackerError)
@@ -4045,7 +4062,7 @@ func TestSetContainerSecrets(t *testing.T) {
 		Identifier:       "identifier",
 		ContainerSecrets: []ContainerSecret{{Name: "secret"}},
 	}
-	require.NoError(t, pRef.Insert())
+	require.NoError(t, pRef.Insert(t.Context()))
 	t.Run("OverwritesContainerSecrets", func(t *testing.T) {
 		secrets := []ContainerSecret{{
 			Name:         "new_secret",
@@ -4053,16 +4070,16 @@ func TestSetContainerSecrets(t *testing.T) {
 			ExternalName: "external_name",
 			ExternalID:   "external_id",
 		}}
-		require.NoError(t, pRef.SetContainerSecrets(secrets))
-		dbProjRef, err := FindBranchProjectRef(pRef.Identifier)
+		require.NoError(t, pRef.SetContainerSecrets(t.Context(), secrets))
+		dbProjRef, err := FindBranchProjectRef(t.Context(), pRef.Identifier)
 		require.NoError(t, err)
 		require.NotZero(t, dbProjRef)
 		require.NotZero(t, dbProjRef.ContainerSecrets)
 		assert.Equal(t, secrets, dbProjRef.ContainerSecrets)
 	})
 	t.Run("ClearsContainerSecrets", func(t *testing.T) {
-		require.NoError(t, pRef.SetContainerSecrets(nil))
-		dbProjRef, err := FindBranchProjectRef(pRef.Identifier)
+		require.NoError(t, pRef.SetContainerSecrets(t.Context(), nil))
+		dbProjRef, err := FindBranchProjectRef(t.Context(), pRef.Identifier)
 		require.NoError(t, err)
 		require.NotZero(t, dbProjRef)
 		assert.Empty(t, dbProjRef.RepotrackerError)
@@ -4080,11 +4097,11 @@ func TestGetActivationTimeForVariant(t *testing.T) {
 		Id:         "ident",
 		Identifier: "identifier",
 	}
-	assert.NoError(projectRef.Insert())
+	assert.NoError(projectRef.Insert(t.Context()))
 
 	// Set based on last activation time when no version is found
 	versionCreatedAt := time.Now().Add(-1 * time.Minute)
-	activationTime, err := projectRef.GetActivationTimeForVariant(&BuildVariant{Name: "bv"}, versionCreatedAt, time.Now())
+	activationTime, err := projectRef.GetActivationTimeForVariant(t.Context(), &BuildVariant{Name: "bv"}, versionCreatedAt, time.Now())
 	assert.NoError(err)
 	assert.Equal(activationTime, versionCreatedAt)
 
@@ -4104,9 +4121,9 @@ func TestGetActivationTimeForVariant(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(version.Insert())
+	assert.NoError(version.Insert(t.Context()))
 
-	activationTime, err = projectRef.GetActivationTimeForVariant(&BuildVariant{Name: "bv"}, versionCreatedAt, time.Now())
+	activationTime, err = projectRef.GetActivationTimeForVariant(t.Context(), &BuildVariant{Name: "bv"}, versionCreatedAt, time.Now())
 	assert.NoError(err)
 	assert.NotZero(activationTime)
 	assert.Equal(activationTime, versionCreatedAt)
@@ -4125,8 +4142,8 @@ func TestUserHasRepoViewPermission(t *testing.T) {
 			}
 			require.NoError(t, roleManager.UpdateRole(wrongProjectRole))
 
-			assert.NoError(t, usr.AddRole(wrongProjectRole.ID))
-			hasPermission, err := UserHasRepoViewPermission(usr, "myRepoId")
+			assert.NoError(t, usr.AddRole(t.Context(), wrongProjectRole.ID))
+			hasPermission, err := UserHasRepoViewPermission(t.Context(), usr, "myRepoId")
 			assert.NoError(t, err)
 			assert.False(t, hasPermission)
 		},
@@ -4138,8 +4155,8 @@ func TestUserHasRepoViewPermission(t *testing.T) {
 			}
 			require.NoError(t, roleManager.UpdateRole(wrongPermissionRole))
 
-			assert.NoError(t, usr.AddRole(wrongPermissionRole.ID))
-			hasPermission, err := UserHasRepoViewPermission(usr, "myRepoId")
+			assert.NoError(t, usr.AddRole(t.Context(), wrongPermissionRole.ID))
+			hasPermission, err := UserHasRepoViewPermission(t.Context(), usr, "myRepoId")
 			assert.NoError(t, err)
 			assert.False(t, hasPermission)
 		},
@@ -4151,8 +4168,8 @@ func TestUserHasRepoViewPermission(t *testing.T) {
 			}
 			require.NoError(t, roleManager.UpdateRole(viewBranchRole))
 
-			assert.NoError(t, usr.AddRole(viewBranchRole.ID))
-			hasPermission, err := UserHasRepoViewPermission(usr, "myRepoId")
+			assert.NoError(t, usr.AddRole(t.Context(), viewBranchRole.ID))
+			hasPermission, err := UserHasRepoViewPermission(t.Context(), usr, "myRepoId")
 			assert.NoError(t, err)
 			assert.True(t, hasPermission)
 		},
@@ -4166,8 +4183,8 @@ func TestUserHasRepoViewPermission(t *testing.T) {
 			wrongRef := ProjectRef{
 				Id: "project2",
 			}
-			assert.NoError(t, pRef.Insert())
-			assert.NoError(t, wrongRef.Insert())
+			assert.NoError(t, pRef.Insert(t.Context()))
+			assert.NoError(t, wrongRef.Insert(t.Context()))
 			env := evergreen.GetEnvironment()
 			roleManager := env.RoleManager()
 			projectScope := gimlet.Scope{
@@ -4184,7 +4201,7 @@ func TestUserHasRepoViewPermission(t *testing.T) {
 			assert.NoError(t, roleManager.AddScope(wrongProjectScope))
 
 			usr := &user.DBUser{Id: "usr"}
-			assert.NoError(t, usr.Insert())
+			assert.NoError(t, usr.Insert(t.Context()))
 			testCase(t, usr, roleManager)
 		})
 	}

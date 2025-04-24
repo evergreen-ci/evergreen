@@ -29,7 +29,7 @@ func (h *clearTaskQueueHandler) Parse(ctx context.Context, r *http.Request) erro
 }
 
 func (h *clearTaskQueueHandler) Run(ctx context.Context) gimlet.Responder {
-	tq, err := model.LoadTaskQueue(h.distro)
+	tq, err := model.LoadTaskQueue(ctx, h.distro)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task queue for distro '%s'", h.distro))
 	}
@@ -40,7 +40,7 @@ func (h *clearTaskQueueHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	if err := model.ClearTaskQueue(h.distro); err != nil {
+	if err := model.ClearTaskQueue(ctx, h.distro); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
 

@@ -39,7 +39,7 @@ import (
 
 type Host struct {
 	Id string `bson:"_id" json:"id"`
-	// Host is the ephemeral DNS name of the host.
+	// Host is the ephemeral DNS name of the host when available.
 	Host            string        `bson:"host_id" json:"host"`
 	User            string        `bson:"user" json:"user"`
 	Secret          string        `bson:"secret" json:"secret"`
@@ -47,6 +47,12 @@ type Host struct {
 	Tag             string        `bson:"tag" json:"tag"`
 	Distro          distro.Distro `bson:"distro" json:"distro"`
 	Provider        string        `bson:"host_type" json:"host_type"`
+	// IPAllocationID is the ID for the IP allocated to this host.
+	// Only set for hosts using elastic IPs.
+	IPAllocationID string `bson:"ip_allocation_id,omitempty" json:"ip_allocation_id,omitempty"`
+	// IPAssociationID is the ID for the association link between this host and
+	// its IP. Only set for hosts using elastic IPs.
+	IPAssociationID string `bson:"ip_association_id,omitempty" json:"ip_association_id,omitempty"`
 	// IP holds the IPv6 address when applicable.
 	IP string `bson:"ip_address" json:"ip_address"`
 	// IPv4 is the host's private IPv4 address.
@@ -54,7 +60,7 @@ type Host struct {
 	// PersistentDNSName is the long-lived DNS name of the host, which should
 	// never change once set.
 	PersistentDNSName string `bson:"persistent_dns_name,omitempty" json:"persistent_dns_name,omitempty"`
-	// PublicIPv4 is the host's IPv4 address.
+	// PublicIPv4 is the host's IPv4 address when available.
 	PublicIPv4 string `bson:"public_ipv4_address,omitempty" json:"public_ipv4_address,omitempty"`
 
 	// secondary (external) identifier for the host
@@ -703,12 +709,12 @@ func (h *Host) IdleTime() time.Duration {
 }
 
 // ShouldNotifyStoppedSpawnHostIdle returns true if the stopped spawn host has been idle long enough to notify the user.
-func (h *Host) ShouldNotifyStoppedSpawnHostIdle() (bool, error) {
+func (h *Host) ShouldNotifyStoppedSpawnHostIdle(ctx context.Context) (bool, error) {
 	if !h.NoExpiration || h.Status != evergreen.HostStopped {
 		return false, nil
 	}
 	timeToNotifyForStoppedHosts := time.Now().Add(-time.Hour * 24 * evergreen.SpawnHostExpireDays * 3)
-	return event.HasNoRecentStoppedHostEvent(h.Id, timeToNotifyForStoppedHosts)
+	return event.HasNoRecentStoppedHostEvent(ctx, h.Id, timeToNotifyForStoppedHosts)
 }
 
 // WastedComputeTime returns the duration of compute we've paid for that
@@ -868,7 +874,7 @@ func (h *Host) setStatusAndFields(ctx context.Context, newStatus string, query, 
 		return err
 	}
 
-	event.LogHostStatusChanged(h.Id, h.Status, newStatus, user, logs)
+	event.LogHostStatusChanged(ctx, h.Id, h.Status, newStatus, user, logs)
 	grip.Info(message.Fields{
 		"message":    "host status changed",
 		"host_id":    h.Id,
@@ -911,7 +917,7 @@ func (h *Host) SetStatusAtomically(ctx context.Context, newStatus, user string, 
 		return errors.WithStack(err)
 	}
 
-	event.LogHostStatusChanged(h.Id, h.Status, newStatus, user, logs)
+	event.LogHostStatusChanged(ctx, h.Id, h.Status, newStatus, user, logs)
 	grip.Info(message.Fields{
 		"message":    "host status changed atomically",
 		"host_id":    h.Id,
@@ -1026,7 +1032,7 @@ func (h *Host) SetStopped(ctx context.Context, shouldKeepOff bool, user string) 
 		return errors.Wrap(err, "setting host status to stopped")
 	}
 
-	event.LogHostStatusChanged(h.Id, h.Status, evergreen.HostStopped, user, "")
+	event.LogHostStatusChanged(ctx, h.Id, h.Status, evergreen.HostStopped, user, "")
 	grip.Info(message.Fields{
 		"message":    "host stopped",
 		"host_id":    h.Id,
@@ -1318,34 +1324,30 @@ func (h *Host) Terminate(ctx context.Context, user, reason string) error {
 	return nil
 }
 
-// SetDNSName updates the DNS name for a given host once
+// SetDNSName updates the DNS name for a given host. If the dnsName is empty,
+// this will no-op and will not unset the existing DNS name.
 func (h *Host) SetDNSName(ctx context.Context, dnsName string) error {
-	err := UpdateOne(
+	if h.Host == dnsName || dnsName == "" {
+		return nil
+	}
+
+	if err := UpdateOne(
 		ctx,
 		bson.M{
-			IdKey:  h.Id,
-			DNSKey: "",
+			IdKey: h.Id,
 		},
 		bson.M{
 			"$set": bson.M{
 				DNSKey: dnsName,
 			},
 		},
-	)
-	if err == nil {
-		h.Host = dnsName
-		event.LogHostDNSNameSet(h.Id, dnsName)
-		grip.Info(message.Fields{
-			"message":  "set host DNS name",
-			"host_id":  h.Id,
-			"host_tag": h.Tag,
-			"dns_name": dnsName,
-		})
+	); err != nil {
+		return err
 	}
-	if adb.ResultsNotFound(err) {
-		return nil
-	}
-	return err
+
+	h.Host = dnsName
+
+	return nil
 }
 
 // probably don't want to store the port mapping exactly this way
@@ -1409,7 +1411,7 @@ func (h *Host) MarkAsProvisioned(ctx context.Context) error {
 		return err
 	}
 
-	event.LogHostProvisioned(h.Id)
+	event.LogHostProvisioned(ctx, h.Id)
 	grip.Info(message.Fields{
 		"message":    "host marked provisioned",
 		"host_id":    h.Id,
@@ -1474,7 +1476,7 @@ func (h *Host) UpdateStartingToRunning(ctx context.Context) error {
 
 	h.Status = evergreen.HostRunning
 
-	event.LogHostProvisioned(h.Id)
+	event.LogHostProvisioned(ctx, h.Id)
 	grip.Info(message.Fields{
 		"message":   "host marked provisioned",
 		"host_id":   h.Id,
@@ -1548,7 +1550,7 @@ func (h *Host) setAwaitingJasperRestart(ctx context.Context, user string) error 
 		return err
 	}
 
-	event.LogHostJasperRestarting(h.Id, user)
+	event.LogHostJasperRestarting(ctx, h.Id, user)
 	grip.Info(message.Fields{
 		"message":               "set needs reprovision",
 		"host_id":               h.Id,
@@ -1623,7 +1625,7 @@ func (h *Host) setAwaitingReprovisionToNew(ctx context.Context, user string) err
 		return err
 	}
 
-	event.LogHostConvertingProvisioning(h.Id, h.Distro.BootstrapSettings.Method, user)
+	event.LogHostConvertingProvisioning(ctx, h.Id, h.Distro.BootstrapSettings.Method, user)
 	grip.Info(message.Fields{
 		"message":               "set needs reprovision",
 		"host_id":               h.Id,
@@ -1759,7 +1761,7 @@ func (h *Host) ClearRunningAndSetLastTask(ctx context.Context, t *task.Task) err
 		return err
 	}
 
-	event.LogHostRunningTaskCleared(h.Id, h.RunningTask, h.RunningTaskExecution)
+	event.LogHostRunningTaskCleared(ctx, h.Id, h.RunningTask, h.RunningTaskExecution)
 	grip.Info(message.Fields{
 		"message":         "cleared host running task and set last task",
 		"host_id":         h.Id,
@@ -1799,7 +1801,7 @@ func (h *Host) ClearRunningTask(ctx context.Context) error {
 	}
 
 	if hadRunningTask {
-		event.LogHostRunningTaskCleared(h.Id, h.RunningTask, h.RunningTaskExecution)
+		event.LogHostRunningTaskCleared(ctx, h.Id, h.RunningTask, h.RunningTaskExecution)
 		grip.Info(message.Fields{
 			"message":        "cleared host running task",
 			"host_id":        h.Id,
@@ -2014,7 +2016,7 @@ func (h *Host) MarkReachable(ctx context.Context) error {
 		return errors.WithStack(err)
 	}
 
-	event.LogHostStatusChanged(h.Id, h.Status, evergreen.HostRunning, evergreen.User, "")
+	event.LogHostStatusChanged(ctx, h.Id, h.Status, evergreen.HostRunning, evergreen.User, "")
 	grip.Info(message.Fields{
 		"message":    "host marked reachable",
 		"host_id":    h.Id,
@@ -2105,16 +2107,21 @@ func CacheAllCloudProviderData(ctx context.Context, env evergreen.Environment, h
 // cacheCloudProviderDataUpdate returns an update for caching cloud provider
 // data.
 func cacheCloudProviderDataUpdate(data CloudProviderData) bson.M {
+	setFields := bson.M{
+		ZoneKey:      data.Zone,
+		StartTimeKey: data.StartedAt,
+		IPv4Key:      data.PrivateIPv4,
+		IPKey:        data.IPv6,
+		VolumesKey:   data.Volumes,
+	}
+	if data.PublicIPv4 != "" {
+		setFields[PublicIPv4Key] = data.PublicIPv4
+	}
+	if data.PublicDNS != "" {
+		setFields[DNSKey] = data.PublicDNS
+	}
 	return bson.M{
-		"$set": bson.M{
-			ZoneKey:       data.Zone,
-			StartTimeKey:  data.StartedAt,
-			DNSKey:        data.PublicDNS,
-			PublicIPv4Key: data.PublicIPv4,
-			IPv4Key:       data.PrivateIPv4,
-			IPKey:         data.IPv6,
-			VolumesKey:    data.Volumes,
-		},
+		"$set": setFields,
 	}
 }
 
@@ -2189,7 +2196,7 @@ func (h *Host) GetElapsedCommunicationTime() time.Duration {
 // TeardownTimeExceededMax checks if the time since the host's task group teardown start time
 // has exceeded the maximum teardown threshold.
 func (h *Host) TeardownTimeExceededMax() bool {
-	return time.Since(h.TaskGroupTeardownStartTime) < evergreen.MaxTeardownGroupThreshold
+	return time.Since(h.TaskGroupTeardownStartTime) > evergreen.MaxTeardownGroupThreshold
 }
 
 // DecommissionHostsWithDistroId marks all up hosts intended for running tasks
@@ -3032,8 +3039,8 @@ func AggregateSpawnhostData(ctx context.Context) (*SpawnHostUsage, error) {
 		{"$group": bson.M{
 			"_id":         nil,
 			"hosts":       bson.M{"$sum": 1},
-			"stopped":     bson.M{"$sum": bson.M{"$cond": []interface{}{bson.M{"$eq": []string{"$" + StatusKey, evergreen.HostStopped}}, 1, 0}}},
-			"unexpirable": bson.M{"$sum": bson.M{"$cond": []interface{}{"$" + NoExpirationKey, 1, 0}}},
+			"stopped":     bson.M{"$sum": bson.M{"$cond": []any{bson.M{"$eq": []string{"$" + StatusKey, evergreen.HostStopped}}, 1, 0}}},
+			"unexpirable": bson.M{"$sum": bson.M{"$cond": []any{"$" + NoExpirationKey, 1, 0}}},
 			"users":       bson.M{"$addToSet": "$" + StartedByKey},
 		}},
 		{"$project": bson.M{
@@ -3136,6 +3143,17 @@ func CountSpawnhostsWithNoExpirationByUser(ctx context.Context, user string) (in
 		StartedByKey:    user,
 		NoExpirationKey: true,
 		StatusKey:       bson.M{"$in": evergreen.UpHostStatus},
+	}
+	return Count(ctx, query)
+}
+
+// CountIntentHosts counts the number of intent hosts Evergreen will soon
+// attempt to create.
+func CountIntentHosts(ctx context.Context) (int, error) {
+	query := bson.M{
+		IdKey:        bson.M{"$regex": "^evg.*"},
+		StartedByKey: evergreen.User,
+		StatusKey:    bson.M{"$in": evergreen.UpHostStatus},
 	}
 	return Count(ctx, query)
 }
@@ -3320,25 +3338,6 @@ func FindLatestTerminatedHostWithHomeVolume(ctx context.Context, homeVolumeID st
 		HomeVolumeIDKey: homeVolumeID,
 	}
 	return FindOne(ctx, q, options.FindOne().SetSort(bson.M{TerminationTimeKey: -1}))
-}
-
-// FindStaticNeedsNewSSHKeys finds all static hosts that do not have the same
-// set of SSH keys as those in the global settings.
-func FindStaticNeedsNewSSHKeys(ctx context.Context, settings *evergreen.Settings) ([]Host, error) {
-	if len(settings.SSHKeyPairs) == 0 {
-		return nil, nil
-	}
-
-	names := []string{}
-	for _, pair := range settings.SSHKeyPairs {
-		names = append(names, pair.Name)
-	}
-
-	return Find(ctx, bson.M{
-		StatusKey:      evergreen.HostRunning,
-		ProviderKey:    evergreen.ProviderNameStatic,
-		SSHKeyNamesKey: bson.M{"$not": bson.M{"$all": names}},
-	})
 }
 
 func (h *Host) IsSubjectToHostCreationThrottle() bool {
@@ -4215,6 +4214,39 @@ func (h *Host) SetNextScheduledStartAndStopTimes(ctx context.Context, nextStart,
 
 	h.SleepSchedule.NextStartTime = nextStart
 	h.SleepSchedule.NextStopTime = nextStop
+
+	return nil
+}
+
+// SetIPAllocationID sets the host's IP allocation ID
+func (h *Host) SetIPAllocationID(ctx context.Context, allocationID string) error {
+	if err := UpdateOne(ctx, bson.M{IdKey: h.Id}, bson.M{
+		"$set": bson.M{IPAllocationIDKey: allocationID},
+	}); err != nil {
+		return err
+	}
+
+	h.IPAllocationID = allocationID
+
+	return nil
+}
+
+// SetIPAllocationID sets the host association ID with its IP.
+func (h *Host) SetIPAssociationID(ctx context.Context, associationID string) error {
+	// This needs to be more permissive and look up by either the host ID or its
+	// tag (i.e. the intent host ID). This is because the IP can be associated
+	// during an intermediate state after the host ID has already changed but
+	// before the host document has been replaced in the DB. In that case, it's
+	// not possible to find the host by its ID because there's no such document,
+	// but you can still look up the host by its tag.
+	if err := UpdateOne(ctx, bson.M{IdKey: bson.M{"$in": []string{h.Id, h.Tag}}},
+		bson.M{
+			"$set": bson.M{IPAssociationIDKey: associationID},
+		}); err != nil {
+		return err
+	}
+
+	h.IPAssociationID = associationID
 
 	return nil
 }

@@ -69,7 +69,7 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 	}
 	var err error
 	// Use a fully merged project for the rest of the job, since we need it for creating the version
-	j.project, err = model.FindMergedProjectRef(j.ProjectID, "", true)
+	j.project, err = model.FindMergedProjectRef(ctx, j.ProjectID, "", true)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "finding project '%s'", j.ProjectID))
 		return
@@ -86,7 +86,7 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 		return
 	}
 	defer func() {
-		err = model.UpdateNextPeriodicBuild(j.ProjectID, definition)
+		err = model.UpdateNextPeriodicBuild(ctx, j.ProjectID, definition)
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":    "unable to set next periodic build job time",
 			"project":    j.ProjectID,
@@ -94,12 +94,12 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 		}))
 	}()
 
-	mostRecentRevision, authorID, err := model.FindLatestRevisionAndAuthorForProject(j.ProjectID)
+	mostRecentRevision, authorID, err := model.FindLatestRevisionAndAuthorForProject(ctx, j.ProjectID)
 	if err != nil {
 		j.AddError(err)
 		return
 	}
-	usr, err := user.GetPeriodicBuildUser(authorID)
+	usr, err := user.GetPeriodicBuildUser(ctx, authorID)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "problem getting periodic build user",
@@ -124,7 +124,7 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 		// If the version fails to be added, create a stub version and
 		// log an event so users can get notified when notifications are configured
 		metadata.Activate = false
-		stubVersion, dbErr := repotracker.ShellVersionFromRevision(j.project, metadata)
+		stubVersion, dbErr := repotracker.ShellVersionFromRevision(ctx, j.project, metadata)
 		if dbErr != nil {
 			grip.Error(message.WrapError(dbErr, message.Fields{
 				"message":            "error creating stub version for periodic build",
@@ -139,7 +139,7 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 			return
 		}
 		stubVersion.Errors = []string{versionErr.Error()}
-		insertError := stubVersion.Insert()
+		insertError := stubVersion.Insert(ctx)
 		if err != nil {
 			grip.Error(message.WrapError(insertError, message.Fields{
 				"message":            "error inserting stub version for periodic build",
@@ -149,7 +149,7 @@ func (j *periodicBuildJob) Run(ctx context.Context) {
 				"definitionID":       j.DefinitionID,
 			}))
 		}
-		event.LogVersionStateChangeEvent(stubVersion.Id, evergreen.VersionFailed)
+		event.LogVersionStateChangeEvent(ctx, stubVersion.Id, evergreen.VersionFailed)
 
 		j.AddError(versionErr)
 		return
@@ -197,7 +197,7 @@ func (j *periodicBuildJob) addVersion(ctx context.Context, metadata model.Versio
 		return errors.New("no version created")
 	}
 
-	_, err = model.CreateManifest(v, projectInfo.Project.Modules, projectInfo.Ref)
+	_, err = model.CreateManifest(ctx, v, projectInfo.Project.Modules, projectInfo.Ref)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":               "error creating manifest",

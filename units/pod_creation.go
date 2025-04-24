@@ -76,7 +76,7 @@ func (j *podCreationJob) Run(ctx context.Context) {
 		j.MarkComplete()
 
 		if j.pod != nil && j.pod.Status == pod.StatusInitializing && j.IsLastAttempt() {
-			j.AddError(errors.Wrap(j.pod.UpdateStatus(pod.StatusDecommissioned, "pod failed to start and will not retry"), "updating pod status to decommissioned after pod failed to start"))
+			j.AddError(errors.Wrap(j.pod.UpdateStatus(ctx, pod.StatusDecommissioned, "pod failed to start and will not retry"), "updating pod status to decommissioned after pod failed to start"))
 
 			terminationJob := NewPodTerminationJob(j.PodID, fmt.Sprintf("pod creation job hit max attempts %d", j.RetryInfo().MaxAttempts), time.Now())
 			if err := amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), terminationJob); err != nil {
@@ -105,7 +105,7 @@ func (j *podCreationJob) Run(ctx context.Context) {
 
 		// Wait for the pod definition to be asynchronously created. If the pod
 		// definition is not ready yet, retry again later.
-		podDef, err := j.checkForPodDefinition(j.pod.Family)
+		podDef, err := j.checkForPodDefinition(ctx, j.pod.Family)
 		if err != nil {
 			j.AddRetryableError(errors.Wrap(err, "waiting for pod definition to be created"))
 			return
@@ -120,17 +120,17 @@ func (j *podCreationJob) Run(ctx context.Context) {
 		j.ecsPod = p
 
 		res := p.Resources()
-		if err := j.pod.UpdateResources(cloud.ImportECSPodResources(res)); err != nil {
+		if err := j.pod.UpdateResources(ctx, cloud.ImportECSPodResources(res)); err != nil {
 			j.AddError(errors.Wrap(err, "updating pod resources"))
 		}
 
 		// Bump the last communication time to ensure that the pod has a
 		// sufficient grace period to start up.
-		if err := j.pod.UpdateLastCommunicated(); err != nil {
+		if err := j.pod.UpdateLastCommunicated(ctx); err != nil {
 			j.AddError(errors.Wrap(err, "updating pod last communication time"))
 		}
 
-		if err := j.pod.UpdateStatus(pod.StatusStarting, "pod successfully started"); err != nil {
+		if err := j.pod.UpdateStatus(ctx, pod.StatusStarting, "pod successfully started"); err != nil {
 			j.AddError(errors.Wrap(err, "marking pod as starting"))
 		}
 
@@ -148,7 +148,7 @@ func (j *podCreationJob) populateIfUnset(ctx context.Context) error {
 	}
 
 	if j.pod == nil {
-		p, err := pod.FindOneByID(j.PodID)
+		p, err := pod.FindOneByID(ctx, j.PodID)
 		if err != nil {
 			return err
 		}
@@ -183,8 +183,8 @@ func (j *podCreationJob) populateIfUnset(ctx context.Context) error {
 	return nil
 }
 
-func (j *podCreationJob) checkForPodDefinition(family string) (*definition.PodDefinition, error) {
-	podDef, err := definition.FindOneByFamily(family)
+func (j *podCreationJob) checkForPodDefinition(ctx context.Context, family string) (*definition.PodDefinition, error) {
+	podDef, err := definition.FindOneByFamily(ctx, family)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding pod definition with family '%s'", family)
 	}
@@ -199,7 +199,7 @@ func (j *podCreationJob) checkForPodDefinition(family string) (*definition.PodDe
 		"job":            j.ID(),
 	})
 
-	if err := podDef.UpdateLastAccessed(); err != nil {
+	if err := podDef.UpdateLastAccessed(ctx); err != nil {
 		return nil, errors.Wrapf(err, "updating last access time for pod definition '%s'", podDef.ID)
 	}
 
@@ -211,7 +211,7 @@ func (j *podCreationJob) logTaskTimingStats(ctx context.Context) error {
 		return nil
 	}
 
-	disp, err := dispatcher.FindOneByPodID(j.pod.ID)
+	disp, err := dispatcher.FindOneByPodID(ctx, j.pod.ID)
 	if err != nil {
 		return errors.Wrap(err, "finding dispatcher for task")
 	}

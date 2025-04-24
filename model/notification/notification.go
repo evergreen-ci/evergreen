@@ -1,6 +1,7 @@
 package notification
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -27,7 +28,7 @@ func makeNotificationID(eventID, trigger string, subscriber *event.Subscriber) s
 }
 
 // New returns a new Notification, with a correctly initialised ID
-func New(eventID, trigger string, subscriber *event.Subscriber, payload interface{}) (*Notification, error) {
+func New(eventID, trigger string, subscriber *event.Subscriber, payload any) (*Notification, error) {
 	if len(trigger) == 0 {
 		return nil, errors.New("cannot create notification from nil trigger")
 	}
@@ -48,7 +49,7 @@ func New(eventID, trigger string, subscriber *event.Subscriber, payload interfac
 type Notification struct {
 	ID         string           `bson:"_id"`
 	Subscriber event.Subscriber `bson:"subscriber"`
-	Payload    interface{}      `bson:"payload"`
+	Payload    any              `bson:"payload"`
 
 	SentAt   time.Time            `bson:"sent_at,omitempty"`
 	Error    string               `bson:"error,omitempty"`
@@ -90,7 +91,7 @@ func (n *Notification) SenderKey() (evergreen.SenderKey, error) {
 // Composer builds a grip/message.Composer for the notification. Composer is
 // guaranteed to be non-nil if error is nil, but the composer may not be
 // loggable
-func (n *Notification) Composer() (message.Composer, error) {
+func (n *Notification) Composer(ctx context.Context) (message.Composer, error) {
 	switch n.Subscriber.Type {
 	case event.EvergreenWebhookSubscriberType:
 		sub, ok := n.Subscriber.Target.(*event.WebhookSubscriber)
@@ -142,7 +143,7 @@ func (n *Notification) Composer() (message.Composer, error) {
 		payload.Project = jiraIssue.Project
 		payload.Type = jiraIssue.IssueType
 		payload.Callback = func(issueKey string) {
-			event.LogJiraIssueCreated(n.Metadata.TaskID, n.Metadata.TaskExecution, issueKey)
+			event.LogJiraIssueCreated(ctx, n.Metadata.TaskID, n.Metadata.TaskExecution, issueKey)
 		}
 
 		return message.MakeJiraMessage(payload), nil
@@ -166,7 +167,7 @@ func (n *Notification) Composer() (message.Composer, error) {
 			return nil, errors.New("slack subscriber is invalid")
 		}
 
-		formattedTarget, err := FormatSlackTarget(*sub)
+		formattedTarget, err := FormatSlackTarget(ctx, *sub)
 		if err != nil {
 			return nil, errors.Wrap(err, "formatting slack target")
 		}
@@ -216,7 +217,7 @@ func (n *Notification) Composer() (message.Composer, error) {
 	}
 }
 
-func (n *Notification) MarkSent() error {
+func (n *Notification) MarkSent(ctx context.Context) error {
 	if len(n.ID) == 0 {
 		return errors.New("notification has no ID")
 	}
@@ -229,14 +230,14 @@ func (n *Notification) MarkSent() error {
 		},
 	}
 
-	if err := db.UpdateId(Collection, n.ID, update); err != nil {
+	if err := db.UpdateIdContext(ctx, Collection, n.ID, update); err != nil {
 		return errors.Wrap(err, "marking notification as sent")
 	}
 
 	return nil
 }
 
-func (n *Notification) MarkError(sendErr error) error {
+func (n *Notification) MarkError(ctx context.Context, sendErr error) error {
 	if sendErr == nil {
 		return nil
 	}
@@ -244,7 +245,7 @@ func (n *Notification) MarkError(sendErr error) error {
 		return errors.New("notification has no ID")
 	}
 	if n.SentAt.IsZero() {
-		if err := n.MarkSent(); err != nil {
+		if err := n.MarkSent(ctx); err != nil {
 			return err
 		}
 	}
@@ -257,7 +258,7 @@ func (n *Notification) MarkError(sendErr error) error {
 	}
 	n.Error = errMsg
 
-	if err := db.UpdateId(Collection, n.ID, update); err != nil {
+	if err := db.UpdateIdContext(ctx, Collection, n.ID, update); err != nil {
 		n.Error = ""
 		return errors.Wrap(err, "setting error for notification")
 	}
@@ -271,10 +272,10 @@ func (n *Notification) SetTaskMetadata(ID string, execution int) {
 }
 
 // FormatSlackTarget uses the slackMemberId instead of the userName when possible.
-func FormatSlackTarget(target string) (string, error) {
+func FormatSlackTarget(ctx context.Context, target string) (string, error) {
 	if strings.HasPrefix(target, "@") {
 		trimmedTarget := strings.TrimPrefix(target, "@")
-		user, err := user.FindBySlackUsername(trimmedTarget)
+		user, err := user.FindBySlackUsername(ctx, trimmedTarget)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "could not find user by Slack username, falling back to default target instead of using the member ID",
@@ -300,7 +301,7 @@ type NotificationStats struct {
 	GithubMerge       int `json:"github_merge" bson:"github_merge" yaml:"github_merge"`
 }
 
-func CollectUnsentNotificationStats() (*NotificationStats, error) {
+func CollectUnsentNotificationStats(ctx context.Context) (*NotificationStats, error) {
 	const subscriberTypeKey = "type"
 	pipeline := []bson.M{
 		{
@@ -325,7 +326,7 @@ func CollectUnsentNotificationStats() (*NotificationStats, error) {
 		Count int    `bson:"n"`
 	}{}
 
-	if err := db.Aggregate(Collection, pipeline, &stats); err != nil {
+	if err := db.Aggregate(ctx, Collection, pipeline, &stats); err != nil {
 		return nil, errors.Wrap(err, "counting unsent notifications")
 	}
 

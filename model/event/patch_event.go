@@ -1,6 +1,7 @@
 package event
 
 import (
+	"context"
 	"time"
 
 	"github.com/mongodb/grip"
@@ -13,7 +14,7 @@ func init() {
 	registry.AllowSubscription(ResourceTypePatch, PatchChildrenCompletion)
 }
 
-func patchEventDataFactory() interface{} {
+func patchEventDataFactory() any {
 	return &PatchEventData{}
 }
 
@@ -29,7 +30,7 @@ type PatchEventData struct {
 	Author string `bson:"author,omitempty" json:"author,omitempty"`
 }
 
-func LogPatchStateChangeEvent(id, newStatus string) {
+func LogPatchStateChangeEvent(ctx context.Context, id, newStatus string) {
 	event := EventLogEntry{
 		Timestamp:    time.Now().Truncate(0).Round(time.Millisecond),
 		ResourceId:   id,
@@ -40,7 +41,7 @@ func LogPatchStateChangeEvent(id, newStatus string) {
 		},
 	}
 
-	if err := event.Log(); err != nil {
+	if err := event.Log(ctx); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"resource_type": ResourceTypePatch,
 			"message":       "error logging event",
@@ -49,7 +50,7 @@ func LogPatchStateChangeEvent(id, newStatus string) {
 	}
 }
 
-func LogPatchChildrenCompletionEvent(id, status, author string) {
+func LogPatchChildrenCompletionEvent(ctx context.Context, id, status, author string) {
 	event := EventLogEntry{
 		Timestamp:    time.Now().Truncate(0).Round(time.Millisecond),
 		ResourceId:   id,
@@ -61,7 +62,7 @@ func LogPatchChildrenCompletionEvent(id, status, author string) {
 		},
 	}
 
-	if err := event.Log(); err != nil {
+	if err := event.Log(ctx); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"resource_type": ResourceTypePatch,
 			"message":       "error logging event",

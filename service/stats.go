@@ -77,7 +77,7 @@ type UIStats struct {
 
 func (uis *UIServer) taskTimingPage(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
-	project, err := projCtx.GetProject()
+	project, err := projCtx.GetProject(r.Context())
 
 	if err != nil || project == nil {
 		uis.LoggedError(w, r, http.StatusNotFound, errors.New("project not found"))
@@ -140,7 +140,7 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 	taskName := vars["task_name"]
 	request := vars["request"]
 
-	project, err := projCtx.GetProject()
+	project, err := projCtx.GetProject(r.Context())
 	if err != nil || project == nil {
 		uis.LoggedError(w, r, http.StatusNotFound, errors.New("not found"))
 		return
@@ -165,7 +165,7 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 		// TODO: switch this to be a query on the builds TaskCache
 		var builds []build.Build
 
-		builds, err = build.Find(build.ByProjectAndVariant(project.Identifier, buildVariant, request, statuses).
+		builds, err = build.Find(r.Context(), build.ByProjectAndVariant(project.Identifier, buildVariant, request, statuses).
 			WithFields(build.IdKey, build.CreateTimeKey, build.VersionKey,
 				build.TimeTakenKey, build.FinishTimeKey, build.StartTimeKey, build.StatusKey).
 			Sort([]string{"-" + build.CreateTimeKey}).
@@ -273,7 +273,7 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 	orderedVersionIDs := make([]string, 0, len(versionIds))
 	// Populate the versions field if with commits, otherwise patches field
 	if utility.StringSliceContains(evergreen.SystemVersionRequesterTypes, request) {
-		versions, err := model.VersionFind(model.VersionByIds(versionIds).
+		versions, err := model.VersionFind(r.Context(), model.VersionByIds(versionIds).
 			WithFields(model.VersionIdKey, model.VersionCreateTimeKey, model.VersionMessageKey,
 				model.VersionAuthorKey, model.VersionRevisionKey))
 		if err != nil {
@@ -289,7 +289,7 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 		data.Versions = versions
 	} else {
 		// patches
-		patches, err := patch.Find(patch.ByVersions(versionIds).
+		patches, err := patch.Find(r.Context(), patch.ByVersions(versionIds).
 			WithFields(patch.IdKey, patch.CreateTimeKey, patch.DescriptionKey, patch.AuthorKey, patch.VersionKey, patch.GithashKey))
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusNotFound, errors.Wrap(err, "error finding past patches"))

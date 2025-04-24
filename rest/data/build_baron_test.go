@@ -30,20 +30,20 @@ func TestMakeJiraTicket(t *testing.T) {
 		Project: "proj",
 		BuildId: "b",
 	}
-	assert.NoError(t, t1.Insert())
+	assert.NoError(t, t1.Insert(t.Context()))
 	v := model.Version{
 		Id:       "v",
 		Revision: "1234567890",
 	}
-	assert.NoError(t, v.Insert())
+	assert.NoError(t, v.Insert(t.Context()))
 	b := build.Build{
 		Id: "b",
 	}
-	assert.NoError(t, b.Insert())
+	assert.NoError(t, b.Insert(t.Context()))
 	p := model.ProjectRef{
 		Identifier: "proj",
 	}
-	assert.NoError(t, p.Insert())
+	assert.NoError(t, p.Insert(t.Context()))
 
 	evgSettings := evergreen.Settings{
 		Ui: evergreen.UIConfig{
@@ -58,7 +58,7 @@ func TestMakeJiraTicket(t *testing.T) {
 		require.True(t, ok)
 		assert.EqualValues(t, expectedSub, jiraSub)
 
-		dbNotification, err := notification.Find(n.ID)
+		dbNotification, err := notification.Find(t.Context(), n.ID)
 		require.NoError(t, err)
 		require.NotZero(t, dbNotification)
 		assert.Equal(t, n.Subscriber.Type, dbNotification.Subscriber.Type)

@@ -42,7 +42,7 @@ func TestPeriodicBuildsJob(t *testing.T) {
 			{IntervalHours: 1, ID: "abc", ConfigFile: "evergreen.yml", NextRunTime: now.Add(time.Hour)},
 		},
 	}
-	assert.NoError(sampleProject.Insert())
+	assert.NoError(sampleProject.Insert(t.Context()))
 	j.ProjectID = sampleProject.Id
 	j.DefinitionID = "abc"
 
@@ -52,23 +52,23 @@ func TestPeriodicBuildsJob(t *testing.T) {
 		Requester:  evergreen.RepotrackerVersionRequester,
 		Revision:   "88dcc12106a40cb4917f552deab7574ececd9a3e",
 	}
-	assert.NoError(prevVersion.Insert())
+	assert.NoError(prevVersion.Insert(t.Context()))
 
 	usr := user.DBUser{
 		Id: evergreen.PeriodicBuildUser,
 	}
-	assert.NoError(usr.Insert())
+	assert.NoError(usr.Insert(t.Context()))
 	// test that a version is created when the job runs
 	j.Run(ctx)
 	assert.NoError(j.Error())
-	createdVersion, err := model.FindLastPeriodicBuild(sampleProject.Id, sampleProject.PeriodicBuilds[0].ID)
+	createdVersion, err := model.FindLastPeriodicBuild(t.Context(), sampleProject.Id, sampleProject.PeriodicBuilds[0].ID)
 	assert.NoError(err)
 	assert.Equal(evergreen.AdHocRequester, createdVersion.Requester)
 	assert.Equal(prevVersion.Revision, createdVersion.Revision)
 	tasks, err := task.Find(ctx, task.ByVersion(createdVersion.Id))
 	require.NoError(t, err)
 	assert.True(tasks[0].Activated)
-	dbProject, err := model.FindBranchProjectRef(sampleProject.Id)
+	dbProject, err := model.FindBranchProjectRef(t.Context(), sampleProject.Id)
 	assert.NoError(err)
 	assert.True(sampleProject.PeriodicBuilds[0].NextRunTime.Add(time.Hour).Equal(dbProject.PeriodicBuilds[0].NextRunTime))
 	assert.Equal(usr.Id, createdVersion.AuthorID)

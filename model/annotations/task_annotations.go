@@ -82,13 +82,13 @@ func GetLatestExecutions(annotations []TaskAnnotation) []TaskAnnotation {
 	return res
 }
 
-func UpdateAnnotationNote(taskId string, execution int, originalMessage, newMessage, username string) error {
+func UpdateAnnotationNote(ctx context.Context, taskId string, execution int, originalMessage, newMessage, username string) error {
 	note := Note{
 		Message: newMessage,
 		Source:  &Source{Requester: UIRequester, Author: username, Time: time.Now()},
 	}
 
-	annotation, err := FindOneByTaskIdAndExecution(taskId, execution)
+	annotation, err := FindOneByTaskIdAndExecution(ctx, taskId, execution)
 	if err != nil {
 		return errors.Wrap(err, "finding task annotation")
 	}
@@ -97,6 +97,7 @@ func UpdateAnnotationNote(taskId string, execution int, originalMessage, newMess
 		return errors.New("note is out of sync, please try again")
 	}
 	_, err = db.Upsert(
+		ctx,
 		Collection,
 		ByTaskIdAndExecution(taskId, execution),
 		bson.M{
@@ -118,6 +119,7 @@ func SetAnnotationMetadataLinks(ctx context.Context, taskId string, execution in
 	}
 
 	_, err := db.Upsert(
+		ctx,
 		Collection,
 		ByTaskIdAndExecution(taskId, execution),
 		bson.M{
@@ -127,7 +129,7 @@ func SetAnnotationMetadataLinks(ctx context.Context, taskId string, execution in
 	return errors.Wrapf(err, "setting task links for task '%s'", taskId)
 }
 
-func AddSuspectedIssueToAnnotation(taskId string, execution int, issue IssueLink, username string) error {
+func AddSuspectedIssueToAnnotation(ctx context.Context, taskId string, execution int, issue IssueLink, username string) error {
 	issue.Source = &Source{
 		Author:    username,
 		Time:      time.Now(),
@@ -135,6 +137,7 @@ func AddSuspectedIssueToAnnotation(taskId string, execution int, issue IssueLink
 	}
 
 	_, err := db.Upsert(
+		ctx,
 		Collection,
 		ByTaskIdAndExecution(taskId, execution),
 		bson.M{
@@ -144,8 +147,9 @@ func AddSuspectedIssueToAnnotation(taskId string, execution int, issue IssueLink
 	return errors.Wrapf(err, "adding task annotation suspected issue for task '%s'", taskId)
 }
 
-func RemoveSuspectedIssueFromAnnotation(taskId string, execution int, issue IssueLink) error {
-	return db.Update(
+func RemoveSuspectedIssueFromAnnotation(ctx context.Context, taskId string, execution int, issue IssueLink) error {
+	return db.UpdateContext(
+		ctx,
 		Collection,
 		ByTaskIdAndExecution(taskId, execution),
 		bson.M{"$pull": bson.M{SuspectedIssuesKey: issue}},
@@ -181,7 +185,7 @@ func CreateAnnotationUpdate(annotation *TaskAnnotation, userDisplayName string) 
 	return update
 }
 
-func AddCreatedTicket(taskId string, execution int, ticket IssueLink, userDisplayName string) error {
+func AddCreatedTicket(ctx context.Context, taskId string, execution int, ticket IssueLink, userDisplayName string) error {
 	source := &Source{
 		Author:    userDisplayName,
 		Time:      time.Now(),
@@ -189,6 +193,7 @@ func AddCreatedTicket(taskId string, execution int, ticket IssueLink, userDispla
 	}
 	ticket.Source = source
 	_, err := db.Upsert(
+		ctx,
 		Collection,
 		ByTaskIdAndExecution(taskId, execution),
 		bson.M{

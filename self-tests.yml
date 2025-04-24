@@ -189,12 +189,14 @@ functions:
       type: setup
       params:
         expansion_name: github_token
+        permissions:
+          contents: read
     - command: git.get_project
       type: setup
       params:
         directory: evergreen
         token: ${github_token}
-        use_scalar: true
+        shallow_clone: true
     - command: shell.exec
       type: setup
       params:
@@ -202,9 +204,6 @@ functions:
         include_expansions_in_env: ["GOROOT", "github_token"]
         shell: bash
         script: |
-          # Set GitHub app dynamic token to ensure it can clone non-public repos for Go modules.
-          git config --global url."https://x-access-token:${github_token}@github.com/evergreen-ci/".insteadOf https://github.com/evergreen-ci/
-
           # Downloading modules is flaky in the ubuntu1604-arm64 distros, because the TCP connection is sometimes reset
           # by the peer for unknown reasons (this does not happen in other distros). Retry the module download multiple
           # times to reduce the flakiness.
@@ -271,9 +270,6 @@ functions:
         EVG_CLIENT_S3_BUCKET: evg-bucket-evergreen
 
   setup-credentials:
-    - command: github.generate_token
-      params:
-        expansion_name: github_token
     - command: subprocess.exec
       type: setup
       params:
@@ -622,12 +618,15 @@ tasks:
       - command: github.generate_token
         params:
           expansion_name: github_token
+          permissions:
+            contents: read
       - command: git.get_project
         type: setup
         params:
           directory: evergreen
           token: ${github_token}
-          use_scalar: true
+          # The test-repotracker relies on HEAD~100
+          clone_depth: 110
       - func: setup-credentials
       - func: setup-mongodb
       - func: run-make
@@ -678,17 +677,14 @@ tasks:
       - command: github.generate_token
         params:
           expansion_name: github_token
+          permissions:
+            contents: read
       - command: git.get_project
         type: setup
         params:
           directory: evergreen
           token: ${github_token}
-          use_scalar: true
-      - command: shell.exec
-        params:
-          script: |
-            # Set GitHub app dynamic token to ensure it can clone non-public repos for Go modules.
-            git config --global url."https://x-access-token:${github_token}@github.com/evergreen-ci/".insteadOf https://github.com/evergreen-ci/
+          shallow_clone: true
       - command: subprocess.exec
         params:
           working_dir: evergreen
@@ -821,10 +817,10 @@ tasks:
     tags: ["build"]
   - <<: *build-and-push-client
     name: build-darwin_amd64
-    tags: ["build"]
+    tags: ["build-macos"]
   - <<: *build-and-push-client
     name: build-darwin_arm64
-    tags: ["build"]
+    tags: ["build-macos"]
   - <<: *tar-and-push-static-assets
     name: tar-and-push-static-assets
     tags: ["build"]
@@ -967,6 +963,13 @@ buildvariants:
       - ubuntu2204-small
     tasks:
       - name: ".build"
+      - name: ".build-macos"
+        # Run MacOS compile/notarization tasks on a daily cron because the MacOS
+        # client has to be notarized and signed. Apple has strict limits on how
+        # many files can be notarized per day. Using a daily cron ensures that
+        # the daily deploy will still have some commit to deploy if there was
+        # one, without notarizing all of them.
+        cron: "0 11 * * *" # 11 AM UTC
       - name: ".build-staging"
         activate: false
       - name: ".build-unsigned"
@@ -978,6 +981,7 @@ buildvariants:
       - name: build-and-push
         execution_tasks:
           - ".build"
+          - ".build-macos"
       - name: build-and-push-staging
         execution_tasks:
           - ".build-staging"

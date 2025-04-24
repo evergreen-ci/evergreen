@@ -71,7 +71,7 @@ func TestGotestPluginOnFailingTests(t *testing.T) {
 				So(updatedTask.LocalTestResults[4].Status, ShouldEqual, "fail")
 
 				Convey("with relevant logs present in the DB as well", func() {
-					log, err := testlog.FindOneTestLog("0_badpkg", "testTaskId", 0)
+					log, err := testlog.FindOneTestLog(t.Context(), "0_badpkg", "testTaskId", 0)
 					So(log, ShouldNotBeNil)
 					So(err, ShouldBeNil)
 					So(log.Lines[0], ShouldContainSubstring, "TestFail01")
@@ -137,7 +137,7 @@ func TestGotestPluginOnPassingTests(t *testing.T) {
 					updatedTask.LocalTestResults[1].TestEndTime)
 
 				Convey("with relevant logs present in the DB as well", func() {
-					log, err := testlog.FindOneTestLog("0_goodpkg", "testTaskId", 0)
+					log, err := testlog.FindOneTestLog(t.Context(), "0_goodpkg", "testTaskId", 0)
 					So(log, ShouldNotBeNil)
 					So(err, ShouldBeNil)
 					So(log.Lines[0], ShouldContainSubstring, "TestPass01")

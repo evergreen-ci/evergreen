@@ -1,6 +1,7 @@
 package notification
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -84,24 +85,24 @@ func (n *Notification) SetBSON(raw mgobson.Raw) error {
 	return nil
 }
 
-func InsertMany(items ...Notification) error {
+func InsertMany(ctx context.Context, items ...Notification) error {
 	if len(items) == 0 {
 		return nil
 	}
 
-	interfaces := make([]interface{}, len(items))
+	interfaces := make([]any, len(items))
 	for i := range items {
 		interfaces[i] = &items[i]
 	}
 
 	// notification IDs are intended to collide when multiple subscriptions exist to the same event
 	// insert unordered will continue on error so the rest of the notifications in items will still be inserted
-	return db.InsertManyUnordered(Collection, interfaces...)
+	return db.InsertManyUnordered(ctx, Collection, interfaces...)
 }
 
-func Find(id string) (*Notification, error) {
+func Find(ctx context.Context, id string) (*Notification, error) {
 	notification := Notification{}
-	err := db.FindOneQ(Collection, byID(id), &notification)
+	err := db.FindOneQContext(ctx, Collection, byID(id), &notification)
 
 	if adb.ResultsNotFound(err) {
 		return nil, nil
@@ -110,20 +111,20 @@ func Find(id string) (*Notification, error) {
 	return &notification, err
 }
 
-func FindByEventID(id string) ([]Notification, error) {
+func FindByEventID(ctx context.Context, id string) ([]Notification, error) {
 	notifications := []Notification{}
 	query := db.Query(bson.M{
 		idKey: primitive.Regex{Pattern: fmt.Sprintf("^%s-", id)},
 	},
 	)
 
-	err := db.FindAllQ(Collection, query, &notifications)
+	err := db.FindAllQ(ctx, Collection, query, &notifications)
 	return notifications, err
 }
 
-func FindUnprocessed() ([]Notification, error) {
+func FindUnprocessed(ctx context.Context) ([]Notification, error) {
 	notifications := []Notification{}
-	err := db.FindAllQ(Collection, db.Query(bson.M{sentAtKey: bson.M{"$exists": false}}), &notifications)
+	err := db.FindAllQ(ctx, Collection, db.Query(bson.M{sentAtKey: bson.M{"$exists": false}}), &notifications)
 
 	return notifications, errors.Wrap(err, "finding unprocessed notifications")
 }

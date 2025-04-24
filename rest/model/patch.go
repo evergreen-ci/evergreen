@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"time"
@@ -22,11 +23,15 @@ type APIPatch struct {
 	Id *string `json:"patch_id"`
 	// Description of the patch
 	Description *string `json:"description"`
-	// Name of the project
-	ProjectId         *string `json:"project_id"`
+	// Immutable ID for the project
+	ProjectId *string `json:"project_id"`
+	// Deprecated -- this is equivalent to project_id, and shouldn't be used.
+	LegacyProjectId *string `json:"branch"`
+	// Identifier for the project
 	ProjectIdentifier *string `json:"project_identifier"`
-	// The branch on which the patch was initiated
-	Branch *string `json:"branch"`
+
+	// The branch on which the patch was initiated.
+	Branch *string `json:"branch_name"`
 	// Hash of commit off which the patch was initiated
 	Githash *string `json:"git_hash"`
 	// Incrementing counter of user's patches
@@ -143,18 +148,19 @@ func (p *APIParameter) BuildFromService(param *patch.Parameter) {
 type APIPatchArgs struct {
 	IncludeProjectIdentifier bool
 	IncludeChildPatches      bool
+	IncludeBranch            bool // TODO DEVPROD-16824: remove since this will be cached with the patch document.
 }
 
 // BuildFromService converts from service level structs to an APIPatch.
 // An APIPatch expects the VariantTasks to be populated with only non-execution tasks and display tasks.
-// If args are set, includes identifier, commit queue position, and/or child patches from the DB, if applicable.
-func (apiPatch *APIPatch) BuildFromService(p patch.Patch, args *APIPatchArgs) error {
+// If args are set, includes identifier, branch, and/or child patches from the DB, if applicable.
+func (apiPatch *APIPatch) BuildFromService(ctx context.Context, p patch.Patch, args *APIPatchArgs) error {
 	apiPatch.buildBasePatch(p)
 
 	projectIdentifier := p.Project
 	if args != nil {
 		if args.IncludeProjectIdentifier && p.Project != "" {
-			apiPatch.GetIdentifier()
+			apiPatch.GetIdentifier(ctx)
 			if apiPatch.ProjectIdentifier != nil {
 				projectIdentifier = utility.FromStringPtr(apiPatch.ProjectIdentifier)
 			}
@@ -164,21 +170,45 @@ func (apiPatch *APIPatch) BuildFromService(p patch.Patch, args *APIPatchArgs) er
 	apiPatch.buildModuleChanges(p, projectIdentifier)
 
 	if args != nil && args.IncludeChildPatches {
-		return apiPatch.buildChildPatches(p)
+		return apiPatch.buildChildPatches(ctx, p)
+	}
+
+	if args != nil && args.IncludeBranch {
+		apiPatch.setBranch(ctx)
 	}
 	return nil
 }
 
-func (apiPatch *APIPatch) GetIdentifier() {
+func (apiPatch *APIPatch) setBranch(ctx context.Context) {
+	projectId := utility.FromStringPtr(apiPatch.ProjectId)
+	// If the branch wasn't added in the base patch, add it now.
+	if utility.FromStringPtr(apiPatch.Branch) != "" || projectId == "" {
+		return
+	}
+	pRef, err := model.FindBranchProjectRef(ctx, projectId)
+
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":  "could not get branch project",
+			"project":  apiPatch.ProjectId,
+			"patch_id": utility.FromStringPtr(apiPatch.Id),
+		}))
+		return
+	}
+	apiPatch.Branch = utility.ToStringPtr(pRef.Branch)
+}
+
+func (apiPatch *APIPatch) GetIdentifier(ctx context.Context) {
 	if utility.FromStringPtr(apiPatch.ProjectIdentifier) != "" {
 		return
 	}
 	if utility.FromStringPtr(apiPatch.ProjectId) != "" {
-		identifier, err := model.GetIdentifierForProject(utility.FromStringPtr(apiPatch.ProjectId))
+		identifier, err := model.GetIdentifierForProject(ctx, utility.FromStringPtr(apiPatch.ProjectId))
 
 		grip.Error(message.WrapError(err, message.Fields{
-			"message": "could not get identifier for project",
-			"project": apiPatch.ProjectId,
+			"message":  "could not get identifier for project",
+			"project":  apiPatch.ProjectId,
+			"patch_id": utility.FromStringPtr(apiPatch.Id),
 		}))
 
 		if err == nil && identifier != "" {
@@ -191,7 +221,8 @@ func (apiPatch *APIPatch) buildBasePatch(p patch.Patch) {
 	apiPatch.Id = utility.ToStringPtr(p.Id.Hex())
 	apiPatch.Description = utility.ToStringPtr(p.Description)
 	apiPatch.ProjectId = utility.ToStringPtr(p.Project)
-	apiPatch.Branch = utility.ToStringPtr(p.Project)
+	apiPatch.LegacyProjectId = utility.ToStringPtr(p.Project)
+	apiPatch.Branch = utility.ToStringPtr(p.Branch)
 	apiPatch.Githash = utility.ToStringPtr(p.Githash)
 	apiPatch.PatchNumber = p.PatchNumber
 	apiPatch.Author = utility.ToStringPtr(p.Author)
@@ -265,11 +296,11 @@ func (apiPatch *APIPatch) buildBasePatch(p patch.Patch) {
 	apiPatch.GithubPatchData.BuildFromService(p.GithubPatchData)
 }
 
-func getChildPatchesData(p patch.Patch) ([]DownstreamTasks, []APIPatch, error) {
+func getChildPatchesData(ctx context.Context, p patch.Patch) ([]DownstreamTasks, []APIPatch, error) {
 	if len(p.Triggers.ChildPatches) <= 0 {
 		return nil, nil, nil
 	}
-	childPatches, err := patch.Find(patch.ByStringIds(p.Triggers.ChildPatches))
+	childPatches, err := patch.Find(ctx, patch.ByStringIds(p.Triggers.ChildPatches))
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "getting child patches")
 	}
@@ -295,7 +326,7 @@ func getChildPatchesData(p patch.Patch) ([]DownstreamTasks, []APIPatch, error) {
 			VariantTasks: variantTasks,
 		}
 		apiPatch := APIPatch{}
-		err = apiPatch.BuildFromService(childPatch, &APIPatchArgs{IncludeProjectIdentifier: true})
+		err = apiPatch.BuildFromService(ctx, childPatch, &APIPatchArgs{IncludeProjectIdentifier: true})
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "converting child patch to API model")
 		}
@@ -305,8 +336,8 @@ func getChildPatchesData(p patch.Patch) ([]DownstreamTasks, []APIPatch, error) {
 	return downstreamTasks, apiChildPatches, nil
 }
 
-func (apiPatch *APIPatch) buildChildPatches(p patch.Patch) error {
-	downstreamTasks, childPatches, err := getChildPatchesData(p)
+func (apiPatch *APIPatch) buildChildPatches(ctx context.Context, p patch.Patch) error {
+	downstreamTasks, childPatches, err := getChildPatchesData(ctx, p)
 	if err != nil {
 		return errors.Wrap(err, "getting downstream tasks")
 	}
@@ -385,6 +416,7 @@ func (apiPatch *APIPatch) ToService() (patch.Patch, error) {
 	res.Id = bson.ObjectIdHex(utility.FromStringPtr(apiPatch.Id))
 	res.Description = utility.FromStringPtr(apiPatch.Description)
 	res.Project = utility.FromStringPtr(apiPatch.ProjectId)
+	res.Branch = utility.FromStringPtr(apiPatch.Branch)
 	res.Githash = utility.FromStringPtr(apiPatch.Githash)
 	res.PatchNumber = apiPatch.PatchNumber
 	res.Hidden = apiPatch.Hidden

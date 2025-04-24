@@ -38,7 +38,7 @@ func TestFindProject(t *testing.T) {
 	projRef := &ProjectRef{
 		Id: "project_test",
 	}
-	assert.NoError(t, projRef.Insert())
+	assert.NoError(t, projRef.Insert(t.Context()))
 	Convey("When finding a project", t, func() {
 		Convey("an error should be thrown if the project ref's identifier is nil", func() {
 			projRef := &ProjectRef{
@@ -71,8 +71,8 @@ func TestFindProject(t *testing.T) {
 				Repo:   "fakerepo",
 				Branch: "fakebranch",
 			}
-			require.NoError(t, pp.Insert())
-			require.NoError(t, v.Insert(), "failed to insert test version: %v", v)
+			require.NoError(t, pp.Insert(t.Context()))
+			require.NoError(t, v.Insert(t.Context()), "failed to insert test version: %v", v)
 			_, _, _, err := FindLatestVersionWithValidProject(p.Id, false)
 			So(err, ShouldBeNil)
 
@@ -102,9 +102,9 @@ func TestFindProject(t *testing.T) {
 			err := util.UnmarshalYAMLWithFallback([]byte("owner: fakeowner\nrepo: fakerepo\nbranch: fakebranch"), &pp)
 			So(err, ShouldBeNil)
 			pp.Id = "good_version"
-			So(badVersion.Insert(), ShouldBeNil)
-			So(goodVersion.Insert(), ShouldBeNil)
-			So(pp.Insert(), ShouldBeNil)
+			So(badVersion.Insert(t.Context()), ShouldBeNil)
+			So(goodVersion.Insert(t.Context()), ShouldBeNil)
+			So(pp.Insert(t.Context()), ShouldBeNil)
 			v, p, pp, err := FindLatestVersionWithValidProject("project_test", false)
 			So(err, ShouldBeNil)
 			So(pp, ShouldNotBeNil)
@@ -127,10 +127,10 @@ func TestFindProject(t *testing.T) {
 			err := util.UnmarshalYAMLWithFallback([]byte("owner: fakeowner\nrepo: fakerepo\nbranch: fakebranch"), &pp)
 			So(err, ShouldBeNil)
 			pp.Id = "good_version"
-			So(goodVersion.Insert(), ShouldBeNil)
-			So(pp.Insert(), ShouldBeNil)
+			So(goodVersion.Insert(t.Context()), ShouldBeNil)
+			So(pp.Insert(t.Context()), ShouldBeNil)
 			pp.Id = "pre_generation_good_version"
-			So(pp.Insert(), ShouldBeNil)
+			So(pp.Insert(t.Context()), ShouldBeNil)
 			v, p, pp, err := FindLatestVersionWithValidProject("project_test", true)
 			So(err, ShouldBeNil)
 			So(pp, ShouldNotBeNil)
@@ -396,8 +396,10 @@ func TestPopulateExpansions(t *testing.T) {
 	projectRef := &ProjectRef{
 		Id:         "mci",
 		Identifier: "mci-favorite",
+		Owner:      "my_org",
+		Repo:       "my_repo",
 	}
-	assert.NoError(projectRef.Insert())
+	assert.NoError(projectRef.Insert(t.Context()))
 	v := &Version{
 		Id:                  "v1",
 		Branch:              "main",
@@ -409,7 +411,7 @@ func TestPopulateExpansions(t *testing.T) {
 			Tag: "release",
 		},
 	}
-	assert.NoError(v.Insert())
+	assert.NoError(v.Insert(t.Context()))
 	taskDoc := &task.Task{
 		Id:           "t1",
 		DisplayName:  "magical task",
@@ -423,7 +425,7 @@ func TestPopulateExpansions(t *testing.T) {
 
 	expansions, err := PopulateExpansions(ctx, taskDoc, &h, "appToken", "")
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 23)
+	assert.Len(map[string]string(expansions), 25)
 	assert.Equal("0", expansions.Get("execution"))
 	assert.Equal("v1", expansions.Get("version_id"))
 	assert.Equal("t1", expansions.Get("task_id"))
@@ -435,6 +437,8 @@ func TestPopulateExpansions(t *testing.T) {
 	assert.Equal("mci-favorite", expansions.Get("project"))
 	assert.Equal("mci", expansions.Get("project_id"))
 	assert.Equal("mci-favorite", expansions.Get("project_identifier"))
+	assert.Equal("my_org", expansions.Get("github_org"))
+	assert.Equal("my_repo", expansions.Get("github_repo"))
 	assert.Equal("main", expansions.Get("branch_name"))
 	assert.Equal("somebody", expansions.Get("author"))
 	assert.Equal("somebody@somewhere.com", expansions.Get("author_email"))
@@ -446,61 +450,60 @@ func TestPopulateExpansions(t *testing.T) {
 	assert.False(expansions.Exists("is_commit_queue"))
 	assert.Equal("github_tag", expansions.Get("requester"))
 	assert.False(expansions.Exists("github_pr_number"))
-	assert.False(expansions.Exists("github_repo"))
 	assert.False(expansions.Exists("github_author"))
 
-	assert.NoError(VersionUpdateOne(bson.M{VersionIdKey: v.Id}, bson.M{
+	assert.NoError(VersionUpdateOne(ctx, bson.M{VersionIdKey: v.Id}, bson.M{
 		"$set": bson.M{VersionRequesterKey: evergreen.PatchVersionRequester},
 	}))
 	p := patch.Patch{
 		Version: v.Id,
 	}
-	require.NoError(t, p.Insert())
+	require.NoError(t, p.Insert(t.Context()))
 
 	expansions, err = PopulateExpansions(ctx, taskDoc, &h, "", "")
 	assert.NoError(err)
-	assert.Len(map[string]string(expansions), 23)
+	assert.Len(map[string]string(expansions), 25)
 	assert.Equal("true", expansions.Get("is_patch"))
 	assert.Equal("patch", expansions.Get("requester"))
+	assert.Equal("my_repo", expansions.Get("github_repo"))
 	assert.False(expansions.Exists("is_commit_queue"))
 	assert.False(expansions.Exists("github_pr_number"))
-	assert.False(expansions.Exists("github_repo"))
 	assert.False(expansions.Exists("github_author"))
 	assert.False(expansions.Exists("triggered_by_git_tag"))
 	require.NoError(t, db.ClearCollections(patch.Collection))
 
-	assert.NoError(VersionUpdateOne(bson.M{VersionIdKey: v.Id}, bson.M{
+	assert.NoError(VersionUpdateOne(ctx, bson.M{VersionIdKey: v.Id}, bson.M{
 		"$set": bson.M{VersionRequesterKey: evergreen.GithubMergeRequester},
 	}))
 	p = patch.Patch{
 		Version: v.Id,
 		GithubMergeData: thirdparty.GithubMergeGroup{
-			Org:        "my_merge_org",
-			Repo:       "my_merge_repo",
+			Org:        "my_org",
+			Repo:       "my_repo",
 			HeadBranch: "merge_head_branch",
 			HeadSHA:    "merge_head_sha",
 			HeadCommit: "merge_head_commit",
 		},
 	}
-	require.NoError(t, p.Insert())
+	require.NoError(t, p.Insert(t.Context()))
 	expansions, err = PopulateExpansions(ctx, taskDoc, &h, "", "")
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 27)
 	assert.Equal("true", expansions.Get("is_patch"))
 	assert.Equal("true", expansions.Get("is_commit_queue"))
 	assert.Equal("github_merge_queue", expansions.Get("requester"))
-	assert.Equal("my_merge_org", expansions.Get("github_org"))
-	assert.Equal("my_merge_repo", expansions.Get("github_repo"))
+	assert.Equal("my_org", expansions.Get("github_org"))
+	assert.Equal("my_repo", expansions.Get("github_repo"))
 	assert.Equal("merge_head_branch", expansions.Get("github_head_branch"))
 	require.NoError(t, db.ClearCollections(patch.Collection))
 
-	assert.NoError(VersionUpdateOne(bson.M{VersionIdKey: v.Id}, bson.M{
+	assert.NoError(VersionUpdateOne(ctx, bson.M{VersionIdKey: v.Id}, bson.M{
 		"$set": bson.M{VersionRequesterKey: evergreen.GithubPRRequester},
 	}))
 	p = patch.Patch{
 		Version: v.Id,
 	}
-	require.NoError(t, p.Insert())
+	require.NoError(t, p.Insert(t.Context()))
 	expansions, err = PopulateExpansions(ctx, taskDoc, &h, "", "")
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 27)
@@ -518,24 +521,24 @@ func TestPopulateExpansions(t *testing.T) {
 		Version: v.Id,
 		GithubPatchData: thirdparty.GithubPatch{
 			PRNumber:  42,
-			BaseOwner: "evergreen-ci",
-			BaseRepo:  "evergreen",
+			BaseOwner: "my_org",
+			BaseRepo:  "my_repo",
 			Author:    "octocat",
 			HeadHash:  "abc123",
 		},
 	}
-	assert.NoError(patchDoc.Insert())
+	assert.NoError(patchDoc.Insert(t.Context()))
 
 	expansions, err = PopulateExpansions(ctx, taskDoc, &h, "", "")
 	assert.NoError(err)
 	assert.Len(map[string]string(expansions), 27)
 	assert.Equal("github_pr", expansions.Get("requester"))
 	assert.Equal("true", expansions.Get("is_patch"))
-	assert.Equal("evergreen", expansions.Get("github_repo"))
+	assert.Equal("my_repo", expansions.Get("github_repo"))
 	assert.Equal("octocat", expansions.Get("github_author"))
 	assert.Equal("42", expansions.Get("github_pr_number"))
 	assert.Equal("abc123", expansions.Get("github_commit"))
-	assert.Equal("evergreen-ci", expansions.Get("github_org"))
+	assert.Equal("my_org", expansions.Get("github_org"))
 
 	upstreamTask := task.Task{
 		Id:       "upstreamTask",
@@ -544,12 +547,12 @@ func TestPopulateExpansions(t *testing.T) {
 		Project:  "upstreamProject",
 		Version:  "upstreamVersion",
 	}
-	assert.NoError(upstreamTask.Insert())
+	assert.NoError(upstreamTask.Insert(t.Context()))
 	upstreamProject := ProjectRef{
 		Id:     "upstreamProject",
 		Branch: "idk",
 	}
-	assert.NoError(upstreamProject.Insert())
+	assert.NoError(upstreamProject.Insert(t.Context()))
 	taskDoc.TriggerID = "upstreamTask"
 	taskDoc.TriggerType = ProjectTriggerLevelTask
 	expansions, err = PopulateExpansions(ctx, taskDoc, &h, "", "")
@@ -579,11 +582,11 @@ func (s *projectSuite) SetupTest() {
 	pRef := ProjectRef{
 		Id: "project",
 	}
-	s.Require().NoError(pRef.Insert())
+	s.Require().NoError(pRef.Insert(s.T().Context()))
 	s.vars = ProjectVars{
 		Id: pRef.Id,
 	}
-	s.Require().NoError(s.vars.Insert())
+	s.Require().NoError(s.vars.Insert(s.T().Context()))
 
 	s.aliases = []ProjectAlias{
 		{
@@ -642,7 +645,7 @@ func (s *projectSuite) SetupTest() {
 		},
 	}
 	for _, alias := range s.aliases {
-		s.NoError(alias.Upsert())
+		s.NoError(alias.Upsert(s.T().Context()))
 	}
 	s.project = &Project{
 		Identifier: pRef.Id,
@@ -921,7 +924,7 @@ func (s *projectSuite) TestBuildProjectTVPairs() {
 		Tasks:         []string{"all"},
 	}
 
-	s.project.BuildProjectTVPairs(&patchDoc, evergreen.PatchVersionRequester)
+	s.project.BuildProjectTVPairs(s.T().Context(), &patchDoc, evergreen.PatchVersionRequester)
 
 	s.Len(patchDoc.BuildVariants, 2)
 	s.ElementsMatch([]string{"bv_1", "bv_2"}, patchDoc.BuildVariants)
@@ -965,7 +968,7 @@ func (s *projectSuite) TestBuildProjectTVPairs() {
 	patchDoc.Tasks = []string{"all"}
 	patchDoc.VariantsTasks = []patch.VariantTasks{}
 
-	s.project.BuildProjectTVPairs(&patchDoc, evergreen.PatchVersionRequester)
+	s.project.BuildProjectTVPairs(s.T().Context(), &patchDoc, evergreen.PatchVersionRequester)
 
 	s.Len(patchDoc.BuildVariants, 2)
 	s.Len(patchDoc.Tasks, 6)
@@ -974,7 +977,7 @@ func (s *projectSuite) TestBuildProjectTVPairs() {
 	patchDoc.BuildVariants = []string{"all"}
 	patchDoc.VariantsTasks = []patch.VariantTasks{}
 
-	s.project.BuildProjectTVPairs(&patchDoc, evergreen.PatchVersionRequester)
+	s.project.BuildProjectTVPairs(s.T().Context(), &patchDoc, evergreen.PatchVersionRequester)
 
 	s.Len(patchDoc.BuildVariants, 2)
 	s.Len(patchDoc.Tasks, 6)
@@ -987,7 +990,7 @@ func (s *projectSuite) TestResolvePatchVTs() {
 		Tasks:         []string{"all"},
 	}
 
-	bvs, tasks, variantTasks := s.project.ResolvePatchVTs(&patchDoc, patchDoc.GetRequester(), "", true)
+	bvs, tasks, variantTasks := s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), "", true)
 	s.Len(bvs, 2)
 	s.ElementsMatch([]string{"bv_1", "bv_2"}, bvs)
 	s.Len(tasks, 7)
@@ -1034,7 +1037,7 @@ func (s *projectSuite) TestResolvePatchVTs() {
 		RegexTasks:         []string{"_1$"},
 	}
 
-	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(&patchDoc, patchDoc.GetRequester(), "", true)
+	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), "", true)
 	s.Len(bvs, 2)
 	s.Len(tasks, 7)
 	s.Len(variantTasks, 2)
@@ -1045,7 +1048,7 @@ func (s *projectSuite) TestResolvePatchVTs() {
 		RegexTasks:         []string{"_1$"},
 	}
 
-	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(&patchDoc, patchDoc.GetRequester(), "", true)
+	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), "", true)
 	s.Len(bvs, 2)
 	s.Contains(bvs, "bv_1")
 	s.Contains(bvs, "bv_2")
@@ -1067,7 +1070,7 @@ func (s *projectSuite) TestResolvePatchVTs() {
 		RegexTasks:    []string{"_1$"},
 	}
 
-	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(&patchDoc, patchDoc.GetRequester(), "", true)
+	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), "", true)
 	s.Len(bvs, 2)
 	s.Contains(bvs, "bv_1")
 	s.Contains(bvs, "bv_2")
@@ -1089,7 +1092,7 @@ func (s *projectSuite) TestResolvePatchVTs() {
 		RegexTasks:    []string{"_1$"},
 	}
 
-	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(&patchDoc, patchDoc.GetRequester(), "", true)
+	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), "", true)
 	s.Len(bvs, 2)
 	s.Contains(bvs, "bv_1")
 	s.Contains(bvs, "bv_2")
@@ -1111,7 +1114,7 @@ func (s *projectSuite) TestResolvePatchVTs() {
 		RegexTasks:         []string{"_1$"},
 	}
 
-	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(&patchDoc, patchDoc.GetRequester(), "aTags", true)
+	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), "aTags", true)
 	s.Len(bvs, 2)
 	s.Contains(bvs, "bv_1")
 	s.Contains(bvs, "bv_2")
@@ -1135,7 +1138,7 @@ func (s *projectSuite) TestResolvePatchVTs() {
 		Tasks:         []string{".a", ".1"},
 	}
 
-	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(&patchDoc, patchDoc.GetRequester(), "", true)
+	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), "", true)
 	s.Len(bvs, 1)
 	s.Contains(bvs, "bv_2")
 	s.Len(tasks, 3)
@@ -1158,7 +1161,7 @@ func (s *projectSuite) TestResolvePatchVTs() {
 		Tasks:         []string{".a", ".1", "b_task_2"},
 	}
 
-	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(&patchDoc, patchDoc.GetRequester(), "", true)
+	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), "", true)
 	s.Len(bvs, 2)
 	s.Contains(bvs, "bv_1")
 	s.Contains(bvs, "bv_2")
@@ -1185,7 +1188,7 @@ func (s *projectSuite) TestResolvePatchVTs() {
 		RegexTasks:    []string{"_1$"},
 	}
 
-	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(&patchDoc, patchDoc.GetRequester(), "", true)
+	bvs, tasks, variantTasks = s.project.ResolvePatchVTs(s.T().Context(), &patchDoc, patchDoc.GetRequester(), "", true)
 	s.Len(bvs, 2)
 	s.Contains(bvs, "bv_1")
 	s.Contains(bvs, "bv_2")
@@ -1208,7 +1211,7 @@ func (s *projectSuite) TestResolvePatchVTs() {
 func (s *projectSuite) TestBuildProjectTVPairsWithAlias() {
 	patchDoc := patch.Patch{}
 
-	s.project.BuildProjectTVPairs(&patchDoc, "2tasks(obsolete)")
+	s.project.BuildProjectTVPairs(s.T().Context(), &patchDoc, "2tasks(obsolete)")
 
 	s.Len(patchDoc.BuildVariants, 2)
 	s.Contains(patchDoc.BuildVariants, "bv_1")
@@ -1234,7 +1237,7 @@ func (s *projectSuite) TestBuildProjectTVPairsWithBadBuildVariant() {
 		Tasks:         []string{"a_task_1", "b_task_1"},
 	}
 
-	s.project.BuildProjectTVPairs(&patchDoc, "")
+	s.project.BuildProjectTVPairs(s.T().Context(), &patchDoc, "")
 
 	s.Require().Len(patchDoc.Tasks, 2)
 	s.Contains(patchDoc.Tasks, "a_task_1")
@@ -1257,7 +1260,7 @@ func (s *projectSuite) TestBuildProjectTVPairsWithBadBuildVariant() {
 func (s *projectSuite) TestBuildProjectTVPairsWithAliasWithTags() {
 	patchDoc := patch.Patch{}
 
-	s.project.BuildProjectTVPairs(&patchDoc, "aTags")
+	s.project.BuildProjectTVPairs(s.T().Context(), &patchDoc, "aTags")
 
 	s.Len(patchDoc.BuildVariants, 2)
 	s.Contains(patchDoc.BuildVariants, "bv_1")
@@ -1280,7 +1283,7 @@ func (s *projectSuite) TestBuildProjectTVPairsWithAliasWithTags() {
 func (s *projectSuite) TestBuildProjectTVPairsWithAliasWithDisplayTask() {
 	patchDoc := patch.Patch{}
 
-	s.project.BuildProjectTVPairs(&patchDoc, "memes")
+	s.project.BuildProjectTVPairs(s.T().Context(), &patchDoc, "memes")
 	s.Len(patchDoc.BuildVariants, 2)
 	s.Contains(patchDoc.BuildVariants, "bv_1")
 	s.Contains(patchDoc.BuildVariants, "bv_2")
@@ -1307,7 +1310,7 @@ func (s *projectSuite) TestBuildProjectTVPairsWithAliasWithDisplayTask() {
 func (s *projectSuite) TestBuildProjectTVPairsWithDisabledBuildVariant() {
 	patchDoc := patch.Patch{}
 
-	s.project.BuildProjectTVPairs(&patchDoc, "disabled_stuff")
+	s.project.BuildProjectTVPairs(s.T().Context(), &patchDoc, "disabled_stuff")
 	s.Empty(patchDoc.BuildVariants)
 	s.Empty(patchDoc.Tasks)
 	s.Empty(patchDoc.VariantsTasks)
@@ -1317,7 +1320,7 @@ func (s *projectSuite) TestBuildProjectTVPairsWithDisabledBuildVariant() {
 		Tasks:         []string{"disabled_task"},
 	}
 
-	s.project.BuildProjectTVPairs(&patchDoc, "")
+	s.project.BuildProjectTVPairs(s.T().Context(), &patchDoc, "")
 	s.Empty(patchDoc.BuildVariants)
 	s.Empty(patchDoc.Tasks)
 	s.Empty(patchDoc.VariantsTasks)
@@ -1329,7 +1332,7 @@ func (s *projectSuite) TestBuildProjectTVPairsWithDisplayTaskWithDependencies() 
 		Tasks:         []string{"memes"},
 	}
 
-	s.project.BuildProjectTVPairs(&patchDoc, "")
+	s.project.BuildProjectTVPairs(s.T().Context(), &patchDoc, "")
 	s.Len(patchDoc.BuildVariants, 2)
 	s.Contains(patchDoc.BuildVariants, "bv_1")
 	s.Contains(patchDoc.BuildVariants, "bv_2")
@@ -1361,7 +1364,7 @@ func (s *projectSuite) TestBuildProjectTVPairsWithDisplayTaskWithDependencies() 
 
 func (s *projectSuite) TestBuildProjectTVPairsWithExecutionTaskFromTags() {
 	patchDoc := patch.Patch{}
-	s.project.BuildProjectTVPairs(&patchDoc, "part_of_memes")
+	s.project.BuildProjectTVPairs(s.T().Context(), &patchDoc, "part_of_memes")
 	s.Len(patchDoc.BuildVariants, 2)
 	s.Contains(patchDoc.BuildVariants, "bv_1")
 	s.Len(patchDoc.Tasks, 3)
@@ -1388,7 +1391,7 @@ func (s *projectSuite) TestBuildProjectTVPairsWithExecutionTask() {
 		BuildVariants: []string{"bv_1"},
 		Tasks:         []string{"9001_task"},
 	}
-	s.project.BuildProjectTVPairs(&patchDoc, "")
+	s.project.BuildProjectTVPairs(s.T().Context(), &patchDoc, "")
 	s.Len(patchDoc.BuildVariants, 2)
 	s.Contains(patchDoc.BuildVariants, "bv_1")
 	s.Contains(patchDoc.BuildVariants, "bv_2")
@@ -1483,7 +1486,7 @@ func (s *projectSuite) TestFetchVersionsBuildsAndTasks() {
 		CreateTime:          time.Now(),
 		RevisionOrderNumber: 1,
 	}
-	s.NoError(v1.Insert())
+	s.NoError(v1.Insert(s.T().Context()))
 	v2 := Version{
 		Id:                  "v2",
 		Identifier:          s.project.Identifier,
@@ -1492,7 +1495,7 @@ func (s *projectSuite) TestFetchVersionsBuildsAndTasks() {
 		CreateTime:          time.Now().Add(1 * time.Minute),
 		RevisionOrderNumber: 2,
 	}
-	s.NoError(v2.Insert())
+	s.NoError(v2.Insert(s.T().Context()))
 	v3 := Version{
 		Id:                  "v3",
 		Identifier:          s.project.Identifier,
@@ -1501,38 +1504,38 @@ func (s *projectSuite) TestFetchVersionsBuildsAndTasks() {
 		CreateTime:          time.Now().Add(5 * time.Minute),
 		RevisionOrderNumber: 3,
 	}
-	s.NoError(v3.Insert())
+	s.NoError(v3.Insert(s.T().Context()))
 	b1 := build.Build{
 		Id:       "b1",
 		Version:  v1.Id,
 		Revision: v1.Revision,
 		Tasks:    []build.TaskCache{{Id: "t1"}, {Id: "t2"}},
 	}
-	s.NoError(b1.Insert())
+	s.NoError(b1.Insert(s.T().Context()))
 	b2 := build.Build{
 		Id:       "b2",
 		Version:  v2.Id,
 		Revision: v2.Revision,
 	}
-	s.NoError(b2.Insert())
+	s.NoError(b2.Insert(s.T().Context()))
 	b3 := build.Build{
 		Id:       "b3",
 		Version:  v3.Id,
 		Revision: v3.Revision,
 	}
-	s.NoError(b3.Insert())
+	s.NoError(b3.Insert(s.T().Context()))
 	t1 := task.Task{
 		Id:      "t1",
 		BuildId: b1.Id,
 		Version: v1.Id,
 	}
-	s.NoError(t1.Insert())
+	s.NoError(t1.Insert(s.T().Context()))
 	t2 := task.Task{
 		Id:      "t2",
 		BuildId: b1.Id,
 		Version: v1.Id,
 	}
-	s.NoError(t2.Insert())
+	s.NoError(t2.Insert(s.T().Context()))
 
 	versions, builds, tasks, err := FetchVersionsBuildsAndTasks(ctx, s.project, 0, 10, false)
 	s.NoError(err)
@@ -1656,10 +1659,10 @@ func TestFindProjectsSuite(t *testing.T) {
 		}
 
 		for _, p := range projects {
-			if err := p.Insert(); err != nil {
+			if err := p.Insert(t.Context()); err != nil {
 				return err
 			}
-			if _, err := GetNewRevisionOrderNumber(p.Id); err != nil {
+			if _, err := GetNewRevisionOrderNumber(t.Context(), p.Id); err != nil {
 				return err
 			}
 		}
@@ -1669,19 +1672,19 @@ func TestFindProjectsSuite(t *testing.T) {
 			Vars:        map[string]string{"a": "1", "b": "3"},
 			PrivateVars: map[string]bool{"b": true},
 		}
-		s.NoError(vars.Insert())
+		s.NoError(vars.Insert(t.Context()))
 		checkParametersNamespacedByProject(s.T(), *vars)
 
 		repoWithVars := &RepoRef{ProjectRef{
 			Id: repoProjectId,
 		}}
-		s.Require().NoError(repoWithVars.Upsert())
+		s.Require().NoError(repoWithVars.Replace(t.Context()))
 		repoVars := &ProjectVars{
 			Id:          repoProjectId,
 			Vars:        map[string]string{"a": "a_from_repo", "c": "new"},
 			PrivateVars: map[string]bool{"a": true},
 		}
-		s.NoError(repoVars.Insert())
+		s.NoError(repoVars.Insert(t.Context()))
 		checkParametersNamespacedByProject(s.T(), *repoVars)
 
 		before := getMockProjectSettings()
@@ -1704,7 +1707,7 @@ func TestFindProjectsSuite(t *testing.T) {
 		s.Require().NoError(db.ClearCollections(event.EventCollection))
 		for i := 0; i < projEventCount; i++ {
 			eventShallowCpy := h
-			s.NoError(eventShallowCpy.Log())
+			s.NoError(eventShallowCpy.Log(t.Context()))
 		}
 
 		return nil
@@ -1724,70 +1727,70 @@ func (s *FindProjectsSuite) TearDownSuite() {
 }
 
 func (s *FindProjectsSuite) TestFetchTooManyAsc() {
-	projects, err := FindNonHiddenProjects("", 8, 1)
+	projects, err := FindNonHiddenProjects(s.T().Context(), "", 8, 1)
 	s.NoError(err)
 	s.NotNil(projects)
 	s.Len(projects, 7)
 }
 
 func (s *FindProjectsSuite) TestFetchTooManyDesc() {
-	projects, err := FindNonHiddenProjects("zzz", 8, -1)
+	projects, err := FindNonHiddenProjects(s.T().Context(), "zzz", 8, -1)
 	s.NoError(err)
 	s.NotNil(projects)
 	s.Len(projects, 7)
 }
 
 func (s *FindProjectsSuite) TestFetchExactNumber() {
-	projects, err := FindNonHiddenProjects("", 3, 1)
+	projects, err := FindNonHiddenProjects(s.T().Context(), "", 3, 1)
 	s.NoError(err)
 	s.NotNil(projects)
 	s.Len(projects, 3)
 }
 
 func (s *FindProjectsSuite) TestFetchTooFewAsc() {
-	projects, err := FindNonHiddenProjects("", 2, 1)
+	projects, err := FindNonHiddenProjects(s.T().Context(), "", 2, 1)
 	s.NoError(err)
 	s.NotNil(projects)
 	s.Len(projects, 2)
 }
 
 func (s *FindProjectsSuite) TestFetchTooFewDesc() {
-	projects, err := FindNonHiddenProjects("zzz", 2, -1)
+	projects, err := FindNonHiddenProjects(s.T().Context(), "zzz", 2, -1)
 	s.NoError(err)
 	s.NotNil(projects)
 	s.Len(projects, 2)
 }
 
 func (s *FindProjectsSuite) TestFetchKeyWithinBoundAsc() {
-	projects, err := FindNonHiddenProjects("projectB", 1, 1)
+	projects, err := FindNonHiddenProjects(s.T().Context(), "projectB", 1, 1)
 	s.NoError(err)
 	s.Len(projects, 1)
 }
 
 func (s *FindProjectsSuite) TestFetchKeyWithinBoundDesc() {
-	projects, err := FindNonHiddenProjects("projectD", 1, -1)
+	projects, err := FindNonHiddenProjects(s.T().Context(), "projectD", 1, -1)
 	s.NoError(err)
 	s.Len(projects, 1)
 }
 
 func (s *FindProjectsSuite) TestFetchKeyOutOfBoundAsc() {
-	projects, err := FindNonHiddenProjects("zzz", 1, 1)
+	projects, err := FindNonHiddenProjects(s.T().Context(), "zzz", 1, 1)
 	s.NoError(err)
 	s.Empty(projects)
 }
 
 func (s *FindProjectsSuite) TestFetchKeyOutOfBoundDesc() {
-	projects, err := FindNonHiddenProjects("aaa", 1, -1)
+	projects, err := FindNonHiddenProjects(s.T().Context(), "aaa", 1, -1)
 	s.NoError(err)
 	s.Empty(projects)
 }
 
 func (s *FindProjectsSuite) TestGetProjectWithCommitQueueByOwnerRepoAndBranch() {
-	projRef, err := FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch("octocat", "hello-world", "main")
+	projRef, err := FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(s.T().Context(), "octocat", "hello-world", "main")
 	s.NoError(err)
 	s.Nil(projRef)
 
-	projRef, err = FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch("evergreen-ci", "evergreen", "main")
+	projRef, err = FindOneProjectRefWithCommitQueueByOwnerRepoAndBranch(s.T().Context(), "evergreen-ci", "evergreen", "main")
 	s.NoError(err)
 	s.NotNil(projRef)
 }
@@ -2063,7 +2066,7 @@ func TestVariantTasksForSelectors(t *testing.T) {
 		Variant:   "bv0",
 		Task:      "t0",
 	}
-	require.NoError(t, patchAlias.Upsert())
+	require.NoError(t, patchAlias.Upsert(t.Context()))
 
 	project := Project{
 		Identifier: projectID,
@@ -2085,7 +2088,7 @@ func TestVariantTasksForSelectors(t *testing.T) {
 	for testName, test := range map[string]func(*testing.T){
 		"patch alias selector": func(t *testing.T) {
 			definitions := []patch.PatchTriggerDefinition{{TaskSpecifiers: []patch.TaskSpecifier{{PatchAlias: alias}}}}
-			vts, err := project.VariantTasksForSelectors(definitions, "")
+			vts, err := project.VariantTasksForSelectors(t.Context(), definitions, "")
 			assert.NoError(t, err)
 			require.Len(t, vts, 1)
 			require.Len(t, vts[0].Tasks, 1)
@@ -2093,7 +2096,7 @@ func TestVariantTasksForSelectors(t *testing.T) {
 		},
 		"selector with dependency": func(t *testing.T) {
 			definitions := []patch.PatchTriggerDefinition{{TaskSpecifiers: []patch.TaskSpecifier{{VariantRegex: "bv0", TaskRegex: "t1"}}}}
-			vts, err := project.VariantTasksForSelectors(definitions, "")
+			vts, err := project.VariantTasksForSelectors(t.Context(), definitions, "")
 			assert.NoError(t, err)
 			require.Len(t, vts, 1)
 			require.Len(t, vts[0].Tasks, 2)
@@ -2102,7 +2105,7 @@ func TestVariantTasksForSelectors(t *testing.T) {
 		},
 		"selector with display task": func(t *testing.T) {
 			definitions := []patch.PatchTriggerDefinition{{TaskSpecifiers: []patch.TaskSpecifier{{VariantRegex: "bv0", TaskRegex: "dt0"}}}}
-			vts, err := project.VariantTasksForSelectors(definitions, "")
+			vts, err := project.VariantTasksForSelectors(t.Context(), definitions, "")
 			assert.NoError(t, err)
 			require.Len(t, vts, 1)
 			require.Len(t, vts[0].Tasks, 1)
@@ -2572,7 +2575,7 @@ tasks:
 
 	for tName, tCase := range map[string]func(t *testing.T, p *patch.Patch, pp *ParserProject){
 		"SucceedsWithParserProjectInDB": func(t *testing.T, p *patch.Patch, pp *ParserProject) {
-			require.NoError(t, pp.Insert())
+			require.NoError(t, pp.Insert(t.Context()))
 			p.ProjectStorageMethod = evergreen.ProjectStorageMethodDB
 
 			variantsAndTasks, err := GetVariantsAndTasksFromPatchProject(ctx, env.Settings(), p)
@@ -2587,8 +2590,8 @@ tasks:
 				Id:                   p.Id.Hex(),
 				ProjectStorageMethod: evergreen.ProjectStorageMethodDB,
 			}
-			require.NoError(t, v.Insert())
-			require.NoError(t, pp.Insert())
+			require.NoError(t, v.Insert(t.Context()))
+			require.NoError(t, pp.Insert(t.Context()))
 			p.Version = v.Id
 
 			variantsAndTasks, err := GetVariantsAndTasksFromPatchProject(ctx, env.Settings(), p)

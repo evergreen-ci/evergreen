@@ -14,20 +14,20 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal/redactor"
 	"github.com/evergreen-ci/evergreen/apimodels"
-	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	patchmodel "github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testlog"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/juniper/gopb"
 	"github.com/evergreen-ci/timber"
 	"github.com/evergreen-ci/utility"
-	"github.com/google/go-github/v52/github"
+	"github.com/google/go-github/v70/github"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/logging"
@@ -239,6 +239,23 @@ func (c *baseCommunicator) GetDistroView(ctx context.Context, taskData TaskData)
 	return &dv, nil
 }
 
+func (c *baseCommunicator) GetHostView(ctx context.Context, taskData TaskData) (*apimodels.HostView, error) {
+	info := requestInfo{
+		method:   http.MethodGet,
+		taskData: &taskData,
+	}
+	info.setTaskPathSuffix("host_view")
+	resp, err := c.retryRequest(ctx, info, nil)
+	if err != nil {
+		return nil, util.RespError(resp, errors.Wrap(err, "getting host view").Error())
+	}
+	var hv apimodels.HostView
+	if err = utility.ReadJSON(resp.Body, &hv); err != nil {
+		return nil, errors.Wrap(err, "reading host view from response")
+	}
+	return &hv, nil
+}
+
 // GetDistroAMI returns the distro for the task.
 func (c *baseCommunicator) GetDistroAMI(ctx context.Context, distro, region string, taskData TaskData) (string, error) {
 	info := requestInfo{
@@ -320,7 +337,7 @@ func (c *baseCommunicator) GetExpansionsAndVars(ctx context.Context, taskData Ta
 }
 
 func (c *baseCommunicator) Heartbeat(ctx context.Context, taskData TaskData) (string, error) {
-	data := interface{}("heartbeat")
+	data := any("heartbeat")
 	ctx, cancel := context.WithTimeout(ctx, heartbeatTimeout)
 	defer cancel()
 	info := requestInfo{
@@ -563,6 +580,24 @@ func (c *baseCommunicator) SendTestLog(ctx context.Context, taskData TaskData, l
 	return logID, nil
 }
 
+// SendTestResults sends test result metadata to the app servers for persistent DB storage.
+func (c *baseCommunicator) SendTestResults(ctx context.Context, taskData TaskData, testResults []testresult.TestResult) error {
+	if len(testResults) == 0 {
+		return nil
+	}
+
+	info := requestInfo{
+		method:   http.MethodPost,
+		taskData: &taskData,
+	}
+	info.setTaskPathSuffix("test_results")
+	resp, err := c.retryRequest(ctx, info, testResults)
+	if err != nil {
+		return util.RespError(resp, errors.Wrap(err, "sending test results").Error())
+	}
+	return nil
+}
+
 func (c *baseCommunicator) SetResultsInfo(ctx context.Context, taskData TaskData, service string, failed bool) error {
 	info := requestInfo{
 		method:   http.MethodPost,
@@ -696,6 +731,10 @@ func (c *baseCommunicator) GenerateTasks(ctx context.Context, td TaskData, jsonB
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &td,
+		// When generated tasks are large and evergreen is under load, we may not be able to ingest the
+		// data fast enough leading to a buffer overflow and a 413 status code. Therefore, a 413 status
+		// code in this case is transitive and we should retry.
+		retryOn413: true,
 	}
 	info.path = fmt.Sprintf("task/%s/generate", td.ID)
 	resp, err := c.retryRequest(ctx, info, jsonBytes)
@@ -808,65 +847,6 @@ func (c *baseCommunicator) StartTask(ctx context.Context, taskData TaskData) err
 	return nil
 }
 
-// GetDockerStatus returns status of the container for the given host
-func (c *baseCommunicator) GetDockerStatus(ctx context.Context, hostID string) (*cloud.ContainerStatus, error) {
-	info := requestInfo{
-		method: http.MethodGet,
-		path:   fmt.Sprintf("hosts/%s/status", hostID),
-	}
-	resp, err := c.request(ctx, info, nil)
-	if err != nil {
-		return nil, errors.Wrapf(err, "getting status for container '%s'", hostID)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, util.RespErrorf(resp, "getting status for container '%s'", hostID)
-	}
-	status := cloud.ContainerStatus{}
-	if err := utility.ReadJSON(resp.Body, &status); err != nil {
-		return nil, errors.Wrapf(err, "reading container status from response for container '%s'", hostID)
-	}
-
-	return &status, nil
-}
-
-func (c *baseCommunicator) GetDockerLogs(ctx context.Context, hostID string, startTime time.Time, endTime time.Time, isError bool) ([]byte, error) {
-	path := fmt.Sprintf("/hosts/%s/logs", hostID)
-	if isError {
-		path = fmt.Sprintf("%s/error", path)
-	} else {
-		path = fmt.Sprintf("%s/output", path)
-	}
-	if !utility.IsZeroTime(startTime) && !utility.IsZeroTime(endTime) {
-		path = fmt.Sprintf("%s?start_time=%s&end_time=%s", path, startTime.Format(time.RFC3339), endTime.Format(time.RFC3339))
-	} else if !utility.IsZeroTime(startTime) {
-		path = fmt.Sprintf("%s?start_time=%s", path, startTime.Format(time.RFC3339))
-	} else if !utility.IsZeroTime(endTime) {
-		path = fmt.Sprintf("%s?end_time=%s", path, endTime.Format(time.RFC3339))
-	}
-
-	info := requestInfo{
-		method: http.MethodGet,
-		path:   path,
-	}
-	resp, err := c.request(ctx, info, "")
-	if err != nil {
-		return nil, errors.Wrapf(err, "getting logs for container '%s'", hostID)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, util.RespErrorf(resp, "getting logs for container '%s'", hostID)
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, errors.Wrap(err, "reading logs from response")
-	}
-
-	return body, nil
-}
-
 func (c *baseCommunicator) ConcludeMerge(ctx context.Context, patchId, status string, td TaskData) error {
 	info := requestInfo{
 		method:   http.MethodPost,
@@ -976,7 +956,12 @@ func (c *baseCommunicator) RevokeGitHubDynamicAccessToken(ctx context.Context, t
 }
 
 // MarkFailedTaskToRestart will mark the task to automatically restart upon completion
+// This is sometimes called with a context that is cancelled due to task timeouts,
+// so we need to ensure that the context is still valid but still apply a timeout
+// to ensure the request doesn't hang indefinitely.
 func (c *baseCommunicator) MarkFailedTaskToRestart(ctx context.Context, td TaskData) error {
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), restartFailedTimout)
+	defer cancel()
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &td,
@@ -1022,6 +1007,28 @@ func (c *baseCommunicator) AssumeRole(ctx context.Context, td TaskData, request 
 	var creds apimodels.AWSCredentials
 	if err := utility.ReadJSON(resp.Body, &creds); err != nil {
 		return nil, errors.Wrap(err, "reading assume role response")
+	}
+	return &creds, nil
+}
+
+func (c *baseCommunicator) S3Credentials(ctx context.Context, td TaskData, bucket string) (*apimodels.AWSCredentials, error) {
+	info := requestInfo{
+		method:   http.MethodPost,
+		taskData: &td,
+	}
+	info.setTaskPathSuffix("aws/s3_credentials")
+	resp, err := c.retryRequest(ctx, info, apimodels.S3CredentialsRequest{
+		Bucket: bucket,
+	})
+	if err != nil {
+		return nil, util.RespError(resp, errors.Wrap(err, "getting s3 credentials").Error())
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, util.RespError(resp, "trouble getting s3 credentials")
+	}
+	var creds apimodels.AWSCredentials
+	if err := utility.ReadJSON(resp.Body, &creds); err != nil {
+		return nil, errors.Wrap(err, "reading s3 credentials response")
 	}
 	return &creds, nil
 }

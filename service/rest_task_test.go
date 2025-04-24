@@ -26,6 +26,7 @@ import (
 )
 
 func insertTaskForTesting(ctx context.Context, env evergreen.Environment, taskId, versionId, projectName string, testResults []testresult.TestResult) (*task.Task, error) {
+	svc := testresult.NewLocalService(env)
 	task := &task.Task{
 		Id:                  taskId,
 		CreateTime:          time.Now().Add(-20 * time.Minute),
@@ -61,11 +62,11 @@ func insertTaskForTesting(ctx context.Context, env evergreen.Environment, taskId
 
 	if len(testResults) > 0 {
 		task.ResultsService = testresult.TestResultsServiceLocal
-		if err := testresult.InsertLocal(ctx, env, testResults...); err != nil {
+		if err := svc.AppendTestResults(ctx, testResults); err != nil {
 			return nil, err
 		}
 	}
-	if err := task.Insert(); err != nil {
+	if err := task.Insert(ctx); err != nil {
 		return nil, err
 	}
 
@@ -117,7 +118,7 @@ func TestGetTaskInfo(t *testing.T) {
 			TaskId: taskId,
 			Files:  []artifact.File{publicFile, noVisibilityFile},
 		}
-		So(taskArtifacts.Upsert(), ShouldBeNil)
+		So(taskArtifacts.Upsert(t.Context()), ShouldBeNil)
 
 		url := "/rest/v1/tasks/" + taskId
 
@@ -133,7 +134,7 @@ func TestGetTaskInfo(t *testing.T) {
 		So(response.Code, ShouldEqual, http.StatusOK)
 
 		Convey("response should match contents of database and should omit hidden artifacts", func() {
-			var jsonBody map[string]interface{}
+			var jsonBody map[string]any
 			err = json.Unmarshal(response.Body.Bytes(), &jsonBody)
 			So(err, ShouldBeNil)
 
@@ -199,7 +200,7 @@ func TestGetTaskInfo(t *testing.T) {
 
 			jsonStatusDetails, ok := jsonBody["status_details"]
 			So(ok, ShouldBeTrue)
-			statusDetails, ok := jsonStatusDetails.(map[string]interface{})
+			statusDetails, ok := jsonStatusDetails.(map[string]any)
 			So(ok, ShouldBeTrue)
 
 			So(statusDetails["timed_out"], ShouldEqual, testTask.Details.TimedOut)
@@ -211,13 +212,13 @@ func TestGetTaskInfo(t *testing.T) {
 
 			jsonTestResults, ok := jsonBody["test_results"]
 			So(ok, ShouldBeTrue)
-			testResults, ok := jsonTestResults.(map[string]interface{})
+			testResults, ok := jsonTestResults.(map[string]any)
 			So(ok, ShouldBeTrue)
 			So(len(testResults), ShouldEqual, 1)
 
 			jsonTestResult, ok := testResults[testResult.TestName]
 			So(ok, ShouldBeTrue)
-			testResultForTestName, ok := jsonTestResult.(map[string]interface{})
+			testResultForTestName, ok := jsonTestResult.(map[string]any)
 			So(ok, ShouldBeTrue)
 
 			So(testResultForTestName["status"], ShouldEqual, testResult.Status)
@@ -225,12 +226,12 @@ func TestGetTaskInfo(t *testing.T) {
 
 			jsonTestResultLogs, ok := testResultForTestName["logs"]
 			So(ok, ShouldBeTrue)
-			testResultLogs, ok := jsonTestResultLogs.(map[string]interface{})
+			testResultLogs, ok := jsonTestResultLogs.(map[string]any)
 			So(ok, ShouldBeTrue)
 
 			So(testResultLogs["url"], ShouldEqual, testResult.LogURL)
 
-			var jsonFiles []map[string]interface{}
+			var jsonFiles []map[string]any
 			err = json.Unmarshal(*rawJSONBody["files"], &jsonFiles)
 			So(err, ShouldBeNil)
 			So(len(jsonFiles), ShouldEqual, 1)
@@ -258,7 +259,7 @@ func TestGetTaskInfo(t *testing.T) {
 		So(response.Code, ShouldEqual, http.StatusNotFound)
 
 		Convey("response should contain a sensible error message", func() {
-			var jsonBody map[string]interface{}
+			var jsonBody map[string]any
 			err = json.Unmarshal(response.Body.Bytes(), &jsonBody)
 			So(err, ShouldBeNil)
 			So(len(jsonBody["message"].(string)), ShouldBeGreaterThan, 0)
@@ -273,7 +274,7 @@ func TestGetTaskStatus(t *testing.T) {
 	require.NoError(t, env.Configure(ctx))
 	router, err := newTestUIRouter(ctx, env)
 	require.NoError(t, err, "error setting up router")
-
+	svc := testresult.NewLocalService(env)
 	Convey("When finding the status of a particular task", t, func() {
 		require.NoError(t, db.ClearCollections(task.Collection),
 			"Error clearing '%v' collection", task.Collection)
@@ -299,8 +300,8 @@ func TestGetTaskStatus(t *testing.T) {
 			TestStartTime: time.Now().Add(-9 * time.Minute),
 			TestEndTime:   time.Now().Add(-1 * time.Minute),
 		}
-		require.NoError(t, testTask.Insert())
-		require.NoError(t, testresult.InsertLocal(ctx, env, testResult))
+		require.NoError(t, testTask.Insert(t.Context()))
+		require.NoError(t, svc.AppendTestResults(ctx, []testresult.TestResult{testResult}))
 
 		url := "/rest/v1/tasks/" + taskId + "/status"
 
@@ -316,7 +317,7 @@ func TestGetTaskStatus(t *testing.T) {
 		So(response.Code, ShouldEqual, http.StatusOK)
 
 		Convey("response should match contents of database", func() {
-			var jsonBody map[string]interface{}
+			var jsonBody map[string]any
 			err = json.Unmarshal(response.Body.Bytes(), &jsonBody)
 			So(err, ShouldBeNil)
 
@@ -330,7 +331,7 @@ func TestGetTaskStatus(t *testing.T) {
 
 			jsonStatusDetails, ok := jsonBody["status_details"]
 			So(ok, ShouldBeTrue)
-			statusDetails, ok := jsonStatusDetails.(map[string]interface{})
+			statusDetails, ok := jsonStatusDetails.(map[string]any)
 			So(ok, ShouldBeTrue)
 
 			So(statusDetails["timed_out"], ShouldEqual, testTask.Details.TimedOut)
@@ -338,13 +339,13 @@ func TestGetTaskStatus(t *testing.T) {
 
 			jsonTestResults, ok := jsonBody["tests"]
 			So(ok, ShouldBeTrue)
-			testResults, ok := jsonTestResults.(map[string]interface{})
+			testResults, ok := jsonTestResults.(map[string]any)
 			So(ok, ShouldBeTrue)
 			So(len(testResults), ShouldEqual, 1)
 
 			jsonTestResult, ok := testResults[testResult.TestName]
 			So(ok, ShouldBeTrue)
-			testResultForTestName, ok := jsonTestResult.(map[string]interface{})
+			testResultForTestName, ok := jsonTestResult.(map[string]any)
 			So(ok, ShouldBeTrue)
 
 			So(testResultForTestName["status"], ShouldEqual, testResult.Status)
@@ -352,7 +353,7 @@ func TestGetTaskStatus(t *testing.T) {
 
 			jsonTestResultLogs, ok := testResultForTestName["logs"]
 			So(ok, ShouldBeTrue)
-			testResultLogs, ok := jsonTestResultLogs.(map[string]interface{})
+			testResultLogs, ok := jsonTestResultLogs.(map[string]any)
 			So(ok, ShouldBeTrue)
 
 			So(testResultLogs["url"], ShouldEqual, testResult.LogURL)
@@ -376,7 +377,7 @@ func TestGetTaskStatus(t *testing.T) {
 		So(response.Code, ShouldEqual, http.StatusNotFound)
 
 		Convey("response should contain a sensible error message", func() {
-			var jsonBody map[string]interface{}
+			var jsonBody map[string]any
 			err = json.Unmarshal(response.Body.Bytes(), &jsonBody)
 			So(err, ShouldBeNil)
 			So(len(jsonBody["message"].(string)), ShouldBeGreaterThan, 0)
@@ -418,7 +419,7 @@ func TestGetDisplayTaskInfo(t *testing.T) {
 	displayTask, err := insertTaskForTesting(ctx, env, displayTaskId, versionId, projectName, nil)
 	assert.NoError(err)
 	displayTask.ExecutionTasks = []string{executionTaskId}
-	err = db.Update(task.Collection,
+	err = db.UpdateContext(t.Context(), task.Collection,
 		bson.M{task.IdKey: displayTaskId},
 		bson.M{"$set": bson.M{
 			task.ExecutionTasksKey: []string{executionTaskId},
@@ -437,12 +438,12 @@ func TestGetDisplayTaskInfo(t *testing.T) {
 
 	assert.Equal(http.StatusOK, response.Code)
 
-	var jsonBody map[string]interface{}
+	var jsonBody map[string]any
 	err = json.Unmarshal(response.Body.Bytes(), &jsonBody)
 
 	assert.NoError(err)
 	assert.Equal(displayTask.Id, jsonBody["id"])
-	found, ok := jsonBody["test_results"].(map[string]interface{})
+	found, ok := jsonBody["test_results"].(map[string]any)
 	assert.True(ok)
 	assert.Contains(found, "some-test")
 }

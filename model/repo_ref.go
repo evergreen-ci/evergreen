@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/evergreen-ci/evergreen"
@@ -32,11 +33,11 @@ var (
 	RepoRefTriggersKey       = bsonutil.MustHaveTag(RepoRef{}, "Triggers")
 )
 
-func (r *RepoRef) Add(creator *user.DBUser) error {
-	if err := r.Upsert(); err != nil {
+func (r *RepoRef) Add(ctx context.Context, creator *user.DBUser) error {
+	if err := r.Replace(ctx); err != nil {
 		return errors.Wrap(err, "upserting repo ref")
 	}
-	return r.addPermissions(creator)
+	return r.addPermissions(ctx, creator)
 }
 
 // Insert is included here so ProjectRef.Insert() isn't mistakenly used.
@@ -44,13 +45,14 @@ func (r *RepoRef) Insert() error {
 	return errors.New("insert not supported for repoRef")
 }
 
-// Upsert updates the project ref in the db if an entry already exists,
+// Replace updates the project ref in the db if an entry already exists,
 // overwriting the existing ref. If no project ref exists, one is created.
 // Ensures that fields that aren't relevant to repos aren't set.
-func (r *RepoRef) Upsert() error {
+func (r *RepoRef) Replace(ctx context.Context) error {
 	r.RepoRefId = ""
 	r.Branch = ""
-	_, err := db.Upsert(
+	_, err := db.ReplaceContext(
+		ctx,
 		RepoRefCollection,
 		bson.M{
 			RepoRefIdKey: r.Id,
@@ -60,10 +62,16 @@ func (r *RepoRef) Upsert() error {
 	return err
 }
 
+func FindAllRepoRefs(ctx context.Context) ([]RepoRef, error) {
+	repoRefs := []RepoRef{}
+	err := db.FindAllQ(ctx, RepoRefCollection, db.Query(nil), &repoRefs)
+	return repoRefs, err
+}
+
 // findOneRepoRefQ returns one RepoRef that satisfies the query.
-func findOneRepoRefQ(query db.Q) (*RepoRef, error) {
+func findOneRepoRefQ(ctx context.Context, query db.Q) (*RepoRef, error) {
 	repoRef := &RepoRef{}
-	err := db.FindOneQ(RepoRefCollection, query, repoRef)
+	err := db.FindOneQContext(ctx, RepoRefCollection, query, repoRef)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -72,16 +80,16 @@ func findOneRepoRefQ(query db.Q) (*RepoRef, error) {
 
 // FindOneRepoRef gets a project ref given the owner name, the repo
 // name and the project name
-func FindOneRepoRef(identifier string) (*RepoRef, error) {
-	return findOneRepoRefQ(db.Query(bson.M{
+func FindOneRepoRef(ctx context.Context, identifier string) (*RepoRef, error) {
+	return findOneRepoRefQ(ctx, db.Query(bson.M{
 		RepoRefIdKey: identifier,
 	}))
 }
 
 // FindRepoRefsByRepoAndBranch finds RepoRefs with matching repo/branch
 // that are enabled and setup for PR testing
-func FindRepoRefByOwnerAndRepo(owner, repoName string) (*RepoRef, error) {
-	return findOneRepoRefQ(db.Query(bson.M{
+func FindRepoRefByOwnerAndRepo(ctx context.Context, owner, repoName string) (*RepoRef, error) {
+	return findOneRepoRefQ(ctx, db.Query(bson.M{
 		RepoRefOwnerKey: owner,
 		RepoRefRepoKey:  repoName,
 	}))
@@ -89,7 +97,7 @@ func FindRepoRefByOwnerAndRepo(owner, repoName string) (*RepoRef, error) {
 
 // addPermissions adds the repo ref to the general scope and gives the inputted creator admin permissions
 // for the repo and branches.
-func (r *RepoRef) addPermissions(creator *user.DBUser) error {
+func (r *RepoRef) addPermissions(ctx context.Context, creator *user.DBUser) error {
 	rm := evergreen.GetEnvironment().RoleManager()
 	// Add to the general scope.
 	if err := rm.AddResourceToScope(evergreen.AllProjectsScope, r.Id); err != nil {
@@ -125,7 +133,7 @@ func (r *RepoRef) addPermissions(creator *user.DBUser) error {
 		return errors.Wrapf(err, "adding admin role for repo project '%s'", r.Id)
 	}
 	if creator != nil {
-		if err := creator.AddRole(newAdminRole.ID); err != nil {
+		if err := creator.AddRole(ctx, newAdminRole.ID); err != nil {
 			return errors.Wrapf(err, "adding role '%s' to user '%s'", newAdminRole.ID, creator.Id)
 		}
 	}
@@ -175,7 +183,7 @@ func (r *RepoRef) MakeUnrestricted(branchProjects []ProjectRef) error {
 	return nil
 }
 
-func (r *RepoRef) UpdateAdminRoles(toAdd, toRemove []string) error {
+func (r *RepoRef) UpdateAdminRoles(ctx context.Context, toAdd, toRemove []string) error {
 	if len(toAdd) == 0 && len(toRemove) == 0 {
 		return nil
 	}
@@ -183,7 +191,7 @@ func (r *RepoRef) UpdateAdminRoles(toAdd, toRemove []string) error {
 	catcher := grip.NewBasicCatcher()
 	adminRole := GetRepoAdminRole(r.Id)
 	for _, addedUser := range toAdd {
-		adminUser, err := user.FindOneById(addedUser)
+		adminUser, err := user.FindOneByIdContext(ctx, addedUser)
 		if err != nil {
 			catcher.Wrapf(err, "finding user '%s'", addedUser)
 			r.removeFromAdminsList(addedUser)
@@ -194,7 +202,7 @@ func (r *RepoRef) UpdateAdminRoles(toAdd, toRemove []string) error {
 			r.removeFromAdminsList(addedUser)
 			continue
 		}
-		if err = adminUser.AddRole(adminRole); err != nil {
+		if err = adminUser.AddRole(ctx, adminRole); err != nil {
 			catcher.Wrapf(err, "adding role '%s' to user '%s'", adminRole, addedUser)
 			r.removeFromAdminsList(addedUser)
 			continue
@@ -202,7 +210,7 @@ func (r *RepoRef) UpdateAdminRoles(toAdd, toRemove []string) error {
 
 	}
 	for _, removedUser := range toRemove {
-		adminUser, err := user.FindOneById(removedUser)
+		adminUser, err := user.FindOneByIdContext(ctx, removedUser)
 		if err != nil {
 			catcher.Wrapf(err, "finding user '%s'", removedUser)
 			continue
@@ -211,7 +219,7 @@ func (r *RepoRef) UpdateAdminRoles(toAdd, toRemove []string) error {
 			continue
 		}
 
-		if err = adminUser.RemoveRole(adminRole); err != nil {
+		if err = adminUser.RemoveRole(ctx, adminRole); err != nil {
 			catcher.Wrapf(err, "removing role '%s' from user '%s'", adminRole, removedUser)
 			r.Admins = append(r.Admins, removedUser)
 			continue

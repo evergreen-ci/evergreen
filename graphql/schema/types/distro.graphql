@@ -14,7 +14,6 @@ enum FinderVersion {
 }
 
 enum PlannerVersion {
-  LEGACY
   TUNABLE
 }
 
@@ -88,6 +87,7 @@ CreateDistroInput is the input to the createDistro mutation.
 """
 input CreateDistroInput {
   newDistroId: String!
+  singleTaskDistro: Boolean
 }
 
 """

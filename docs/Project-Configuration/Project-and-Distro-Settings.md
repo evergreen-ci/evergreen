@@ -332,6 +332,10 @@ project) will trigger builds in their current project (the "downstream"
 project). Configure triggers **in the downstream project** from the Project Triggers
 section of the project configuration page. Click "Add Project Trigger".
 
+The purpose of a trigger is to trigger all needed tasks; as such **project triggers do not respect batchtime, cron, 
+or other activation settings.** To reduce the number of tasks/variants run in a trigger, we recommend supplying a 
+smaller config file, or an alias.
+
 Options:
 
 -   **Project**: The upstream project identifier to listen to for commits.
@@ -582,17 +586,13 @@ that all execute independently:
     production because it is the most stable, but the other
     implementations are equivalent.
 
-2. *Task Planning* manages how tasks are ordered in the queue. There
-    are two implementations, Evergreen's Legacy implementation which
-    orders tasks using a short circuiting list of comparison operation,
-    and the "Tunable" implementation which uses a point-based
-    algorithim that makes it possible to tune the factors that impact
+2. *Task Planning* manages how tasks are ordered in the queue. We currently
+    use the "tunable" implementation, which uses a point-based
+    algorithm that makes it possible to tune the factors that impact
     the ordering of a task. The tunable factors are:
 
-    -   Target time for the queue, or the number of minutes that the
-        queue should take. (This will move to the host allocator
-        settings after
-        [EVG-703](https://jira.mongodb.org/browse/EVG-703)).
+    -   *Target Time* is the ideal maximum number of minutes that a 
+        task should be in the queue.
     -   *Patch Factor* how much to weight patches over non-patch builds.
         For most workloads, privileging patches over mainline builds
         will improve the throughput of your team to complete requests,

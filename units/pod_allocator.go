@@ -184,7 +184,7 @@ func (j *podAllocatorJob) systemCanAllocate(ctx context.Context) (canAllocate bo
 	if err != nil {
 		return false, errors.Wrap(err, "getting admin settings")
 	}
-	numInitializing, err := pod.CountByInitializing()
+	numInitializing, err := pod.CountByInitializing(ctx)
 	if err != nil {
 		return false, errors.Wrap(err, "counting initializing pods")
 	}
@@ -218,7 +218,7 @@ func (j *podAllocatorJob) populate(ctx context.Context) error {
 	}
 
 	if j.pRef == nil {
-		pRef, err := model.FindBranchProjectRef(j.task.Project)
+		pRef, err := model.FindBranchProjectRef(ctx, j.task.Project)
 		if err != nil {
 			return errors.Wrapf(err, "finding project ref '%s' for task '%s'", j.task.Project, j.TaskID)
 		}
@@ -286,7 +286,7 @@ func (j *podAllocatorJob) getIntentPodOptions(ctx context.Context) (*pod.TaskInt
 	}
 
 	image := j.task.ContainerOpts.Image
-	projVars, err := model.FindMergedProjectVars(j.pRef.Id)
+	projVars, err := model.FindMergedProjectVars(ctx, j.pRef.Id)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting project vars for project '%s'", j.pRef.Id)
 	}

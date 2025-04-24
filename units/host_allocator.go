@@ -27,6 +27,9 @@ const (
 	hostAllocatorJobName         = "host-allocator"
 	hostAllocatorAttributePrefix = "evergreen.host_allocator"
 	maxHostAllocatorJobTime      = 10 * time.Minute
+	// maxIntentHosts represents the maximum number of intent hosts we can
+	// be processing at once, in order to prevent over-logging
+	maxIntentHosts = 5000
 )
 
 func init() {
@@ -140,7 +143,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	// host-allocation phase
 	////////////////////////
 
-	distroQueueInfo, err := model.GetDistroQueueInfo(j.DistroID)
+	distroQueueInfo, err := model.GetDistroQueueInfo(ctx, j.DistroID)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "getting distro queue info for distro '%s'", j.DistroID))
 		return
@@ -197,6 +200,25 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 	//////////////////////
 	// host-spawning phase
 	//////////////////////
+
+	numIntentHosts, err := host.CountIntentHosts(ctx)
+	grip.Error(message.WrapError(err, message.Fields{
+		"runner":   hostAllocatorJobName,
+		"instance": j.ID(),
+		"distro":   j.DistroID,
+		"message":  "failed to count intent hosts",
+	}))
+
+	if numIntentHosts > maxIntentHosts {
+		grip.Info(message.Fields{
+			"runner":    hostAllocatorJobName,
+			"instance":  j.ID(),
+			"distro":    j.DistroID,
+			"message":   "too many intent hosts, skipping host allocation",
+			"max_hosts": maxIntentHosts,
+		})
+		return
+	}
 
 	hostSpawningBegins := time.Now()
 	// Number of new hosts to be allocated

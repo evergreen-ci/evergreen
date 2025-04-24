@@ -114,7 +114,7 @@ func PopulatePodHealthCheckJobs() amboy.QueueOperation {
 			return nil
 		}
 
-		pods, err := pod.FindByLastCommunicatedBefore(time.Now().Add(-podReachabilityThreshold))
+		pods, err := pod.FindByLastCommunicatedBefore(ctx, time.Now().Add(-podReachabilityThreshold))
 		if err != nil {
 			return errors.Wrap(err, "finding pods that have not communicated recently")
 		}
@@ -144,7 +144,7 @@ func sendNotificationJobs(ctx context.Context, _ evergreen.Environment, ts time.
 		return nil, nil
 	}
 
-	unprocessedNotifications, err := notification.FindUnprocessed()
+	unprocessedNotifications, err := notification.FindUnprocessed(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding unprocessed notifications")
 	}
@@ -166,7 +166,7 @@ func eventNotifierJobs(ctx context.Context, env evergreen.Environment, ts time.T
 		return nil, nil
 	}
 
-	events, err := event.FindUnprocessedEvents(-1)
+	events, err := event.FindUnprocessedEvents(ctx, -1)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding all unprocessed events")
 	}
@@ -839,7 +839,7 @@ func PopulateCacheHistoricalTaskDataJob(part int) amboy.QueueOperation {
 			return nil
 		}
 
-		projects, err := model.FindAllMergedTrackedProjectRefs()
+		projects, err := model.FindAllMergedTrackedProjectRefs(ctx)
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -897,7 +897,7 @@ func PopulateCloudCleanupJob(env evergreen.Environment) amboy.QueueOperation {
 
 func PopulateVolumeExpirationCheckJob() amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
-		volumes, err := host.FindVolumesWithNoExpirationToExtend()
+		volumes, err := host.FindVolumesWithNoExpirationToExtend(ctx)
 		if err != nil {
 			return errors.Wrap(err, "finding expired volumes")
 		}
@@ -914,7 +914,7 @@ func PopulateVolumeExpirationCheckJob() amboy.QueueOperation {
 
 func PopulateVolumeExpirationJob() amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
-		volumes, err := host.FindVolumesToDelete(time.Now())
+		volumes, err := host.FindVolumesToDelete(ctx, time.Now())
 		if err != nil {
 			return errors.Wrap(err, "finding volumes to delete")
 		}
@@ -934,7 +934,7 @@ func PopulateVolumeExpirationJob() amboy.QueueOperation {
 func PopulateUnstickVolumesJob() amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		catcher := grip.NewBasicCatcher()
-		volumes, err := host.FindVolumesWithTerminatedHost()
+		volumes, err := host.FindVolumesWithTerminatedHost(ctx)
 		if err != nil {
 			return errors.Wrap(err, "finding volumes to delete")
 
@@ -976,7 +976,7 @@ func PopulateLocalQueueJobs(env evergreen.Environment) amboy.QueueOperation {
 
 func PopulatePeriodicBuilds() amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
-		projects, err := model.FindPeriodicProjects()
+		projects, err := model.FindPeriodicProjects(ctx)
 		if err != nil {
 			return errors.Wrap(err, "finding periodic projects")
 		}
@@ -1007,43 +1007,6 @@ func userDataDoneJobs(ctx context.Context, env evergreen.Environment, ts time.Ti
 	return jobs, nil
 }
 
-// PopulateSSHKeyUpdates updates the remote SSH keys in the cloud providers and
-// static hosts.
-func PopulateSSHKeyUpdates(env evergreen.Environment) amboy.QueueOperation {
-	return func(ctx context.Context, queue amboy.Queue) error {
-		catcher := grip.NewBasicCatcher()
-		ts := utility.RoundPartOfHour(0).Format(TSFormat)
-		settings := env.Settings()
-
-		allRegions := settings.Providers.AWS.AllowedRegions
-		// Enqueue jobs to update SSH keys in the cloud provider.
-		updateRegions := map[string]bool{}
-		for _, key := range settings.SSHKeyPairs {
-			for _, region := range allRegions {
-				if utility.StringSliceContains(key.EC2Regions, region) {
-					continue
-				}
-				updateRegions[region] = true
-			}
-		}
-		for region := range updateRegions {
-			catcher.Wrapf(queue.Put(ctx, NewCloudUpdateSSHKeysJob(evergreen.ProviderNameEc2Fleet, region, ts)), "enqueueing jobs to update SSH keys for EC2 region '%s'", region)
-		}
-
-		// Enqueue jobs to update authorized keys on static hosts.
-		hosts, err := host.FindStaticNeedsNewSSHKeys(ctx, settings)
-		if err != nil {
-			catcher.Wrap(err, "finding static hosts that need to update their SSH keys")
-			return catcher.Resolve()
-		}
-		for _, h := range hosts {
-			catcher.Wrapf(queue.Put(ctx, NewStaticUpdateSSHKeysJob(h, ts)), "enqueueing jobs to update SSH keys for static host '%s'", h.Id)
-		}
-
-		return catcher.Resolve()
-	}
-}
-
 func PopulateReauthorizeUserJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		if !env.UserManagerInfo().CanReauthorize {
@@ -1067,7 +1030,7 @@ func PopulateReauthorizeUserJobs(env evergreen.Environment) amboy.QueueOperation
 		if reauthAfter == 0 {
 			reauthAfter = defaultBackgroundReauth
 		}
-		users, err := user.FindNeedsReauthorization(reauthAfter)
+		users, err := user.FindNeedsReauthorization(ctx, reauthAfter)
 		if err != nil {
 			return errors.Wrap(err, "finding users that need to reauthorize")
 		}
@@ -1107,7 +1070,7 @@ func podAllocatorJobs(ctx context.Context, _ evergreen.Environment, ts time.Time
 		}))
 	}
 
-	numInitializing, err := pod.CountByInitializing()
+	numInitializing, err := pod.CountByInitializing(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "counting initializing pods")
 	}
@@ -1146,7 +1109,7 @@ func podAllocatorJobs(ctx context.Context, _ evergreen.Environment, ts time.Time
 }
 
 func podCreationJobs(ctx context.Context, _ evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
-	pods, err := pod.FindByInitializing()
+	pods, err := pod.FindByInitializing(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding initializing pods")
 	}
@@ -1160,7 +1123,7 @@ func podCreationJobs(ctx context.Context, _ evergreen.Environment, ts time.Time)
 }
 
 func podTerminationJobs(ctx context.Context, _ evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
-	pods, err := pod.FindByNeedsTermination()
+	pods, err := pod.FindByNeedsTermination(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding pods that need to be terminated")
 	}
@@ -1175,7 +1138,7 @@ func podTerminationJobs(ctx context.Context, _ evergreen.Environment, ts time.Ti
 // podDefinitionCreationJobs populates the jobs to create pod
 // definitions.
 func podDefinitionCreationJobs(ctx context.Context, env evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
-	pods, err := pod.FindByInitializing()
+	pods, err := pod.FindByInitializing(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding initializing pods")
 	}

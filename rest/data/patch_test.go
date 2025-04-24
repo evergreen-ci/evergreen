@@ -15,7 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/google/go-github/v52/github"
+	"github.com/google/go-github/v70/github"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -84,10 +84,10 @@ func (s *PatchConnectorFetchByProjectSuite) SetupSuite() {
 			{Project: proj3, CreateTime: nowPlus12},
 		}
 		for _, p := range patches {
-			s.NoError(p.Insert())
+			s.NoError(p.Insert(s.T().Context()))
 		}
 		for _, proj := range projects {
-			s.NoError(proj.Insert())
+			s.NoError(proj.Insert(s.T().Context()))
 		}
 
 		return nil
@@ -102,7 +102,7 @@ func (s *PatchConnectorFetchByProjectSuite) TearDownSuite() {
 }
 
 func (s *PatchConnectorFetchByProjectSuite) TestFetchTooManyAsc() {
-	patches, err := FindPatchesByProject("project2", s.time.Add(time.Second*10), 3)
+	patches, err := FindPatchesByProject(s.T().Context(), "project2", s.time.Add(time.Second*10), 3)
 	s.NoError(err)
 	s.NotNil(patches)
 	if s.Len(patches, 2) {
@@ -113,7 +113,7 @@ func (s *PatchConnectorFetchByProjectSuite) TestFetchTooManyAsc() {
 }
 
 func (s *PatchConnectorFetchByProjectSuite) TestFetchTooManyDesc() {
-	patches, err := FindPatchesByProject("project2", s.time.Add(time.Second*10), 3)
+	patches, err := FindPatchesByProject(s.T().Context(), "project2", s.time.Add(time.Second*10), 3)
 	s.NoError(err)
 	s.NotNil(patches)
 	if s.Len(patches, 2) {
@@ -124,7 +124,7 @@ func (s *PatchConnectorFetchByProjectSuite) TestFetchTooManyDesc() {
 }
 
 func (s *PatchConnectorFetchByProjectSuite) TestFetchExactNumber() {
-	patches, err := FindPatchesByProject("project2", s.time.Add(time.Second*10), 1)
+	patches, err := FindPatchesByProject(s.T().Context(), "project2", s.time.Add(time.Second*10), 1)
 	s.NoError(err)
 	s.NotNil(patches)
 
@@ -133,7 +133,7 @@ func (s *PatchConnectorFetchByProjectSuite) TestFetchExactNumber() {
 }
 
 func (s *PatchConnectorFetchByProjectSuite) TestFetchTooFew() {
-	patches, err := FindPatchesByProject("project1", s.time.Add(time.Second*10), 1)
+	patches, err := FindPatchesByProject(s.T().Context(), "project1", s.time.Add(time.Second*10), 1)
 	s.NoError(err)
 	s.NotNil(patches)
 	s.Len(patches, 1)
@@ -141,18 +141,18 @@ func (s *PatchConnectorFetchByProjectSuite) TestFetchTooFew() {
 }
 
 func (s *PatchConnectorFetchByProjectSuite) TestProjectNonexistentFail() {
-	_, err := FindPatchesByProject("zzz", s.time, 1)
+	_, err := FindPatchesByProject(s.T().Context(), "zzz", s.time, 1)
 	s.Error(err)
 }
 
 func (s *PatchConnectorFetchByProjectSuite) TestEmptyPatchesOkay() {
-	patches, err := FindPatchesByProject("project4", s.time, 1)
+	patches, err := FindPatchesByProject(s.T().Context(), "project4", s.time, 1)
 	s.NoError(err)
 	s.Empty(patches)
 }
 
 func (s *PatchConnectorFetchByProjectSuite) TestFetchKeyWithinBound() {
-	patches, err := FindPatchesByProject("project1", s.time.Add(time.Second*6), 1)
+	patches, err := FindPatchesByProject(s.T().Context(), "project1", s.time.Add(time.Second*6), 1)
 	s.NoError(err)
 	s.NotNil(patches)
 	s.Len(patches, 1)
@@ -160,13 +160,13 @@ func (s *PatchConnectorFetchByProjectSuite) TestFetchKeyWithinBound() {
 }
 
 func (s *PatchConnectorFetchByProjectSuite) TestFetchKeyOutOfBound() {
-	patches, err := FindPatchesByProject("project1", s.time.Add(-time.Hour), 1)
+	patches, err := FindPatchesByProject(s.T().Context(), "project1", s.time.Add(-time.Hour), 1)
 	s.NoError(err)
 	s.Empty(patches)
 }
 
 func (s *PatchConnectorFetchByProjectSuite) TestFindPatchesByIdentifier() {
-	patches, err := FindPatchesByProject("project_three", s.time.Add(time.Second*14), 1)
+	patches, err := FindPatchesByProject(s.T().Context(), "project_three", s.time.Add(time.Second*14), 1)
 	s.NoError(err)
 	s.NotNil(patches)
 	s.Len(patches, 1)
@@ -196,12 +196,12 @@ func (s *PatchConnectorFetchByIdSuite) SetupSuite() {
 			Id:         "project_id",
 			Identifier: "project_identifier",
 		}
-		s.NoError(projectRef.Insert())
+		s.NoError(projectRef.Insert(s.T().Context()))
 
 		version := dbModel.Version{
 			Id: "version1",
 		}
-		s.NoError(version.Insert())
+		s.NoError(version.Insert(s.T().Context()))
 
 		s.obj_ids = []string{"aabbccddeeff001122334455", "aabbccddeeff001122334456"}
 		patches := []patch.Patch{
@@ -210,7 +210,7 @@ func (s *PatchConnectorFetchByIdSuite) SetupSuite() {
 		}
 
 		for _, p := range patches {
-			if err := p.Insert(); err != nil {
+			if err := p.Insert(s.T().Context()); err != nil {
 				return err
 			}
 		}
@@ -230,7 +230,7 @@ func (s *PatchConnectorFetchByIdSuite) TearDownSuite() {
 }
 
 func (s *PatchConnectorFetchByIdSuite) TestFetchById() {
-	p, err := FindPatchById(s.obj_ids[0])
+	p, err := FindPatchById(s.T().Context(), s.obj_ids[0])
 	s.Require().NoError(err)
 	s.Require().NotNil(p)
 	s.Equal(s.obj_ids[0], *p.Id)
@@ -241,7 +241,7 @@ func (s *PatchConnectorFetchByIdSuite) TestFetchByIdFail() {
 	for _, i := range s.obj_ids {
 		s.NotEqual(new_id, i)
 	}
-	p, err := FindPatchById(new_id.Hex())
+	p, err := FindPatchById(s.T().Context(), new_id.Hex())
 	s.Error(err)
 	s.Nil(p)
 }
@@ -271,19 +271,19 @@ func (s *PatchConnectorAbortByIdSuite) SetupSuite() {
 			Id:         "project_id",
 			Identifier: "project_identifier",
 		}
-		s.NoError(projectRef.Insert())
+		s.NoError(projectRef.Insert(s.T().Context()))
 
 		version := dbModel.Version{
 			Id: "version1",
 		}
-		s.NoError(version.Insert())
+		s.NoError(version.Insert(s.T().Context()))
 		s.obj_ids = []string{"aabbccddeeff001122334455", "aabbccddeeff001122334456"}
 		patches := []patch.Patch{
 			{Id: patch.NewId(s.obj_ids[0]), Version: version.Id, Project: projectRef.Id},
 			{Id: patch.NewId(s.obj_ids[1]), Project: projectRef.Id},
 		}
 		for _, p := range patches {
-			s.NoError(p.Insert())
+			s.NoError(p.Insert(s.T().Context()))
 		}
 
 		return nil
@@ -305,18 +305,18 @@ func (s *PatchConnectorAbortByIdSuite) TearDownSuite() {
 func (s *PatchConnectorAbortByIdSuite) TestAbort() {
 	err := AbortPatch(context.Background(), s.obj_ids[0], "user1")
 	s.NoError(err)
-	p, err := FindPatchById(s.obj_ids[0])
+	p, err := FindPatchById(s.T().Context(), s.obj_ids[0])
 	s.Require().NoError(err)
 	s.Require().NotNil(p)
 	s.Equal(s.obj_ids[0], *p.Id)
-	abortedPatch, err := FindPatchById(s.obj_ids[0])
+	abortedPatch, err := FindPatchById(s.T().Context(), s.obj_ids[0])
 	s.NoError(err)
 	s.Equal(evergreen.PatchVersionRequester, *abortedPatch.Requester)
 
 	err = AbortPatch(context.Background(), s.obj_ids[1], "user1")
 	s.NoError(err)
 
-	p, err = FindPatchById(s.obj_ids[1])
+	p, err = FindPatchById(s.T().Context(), s.obj_ids[1])
 
 	s.Error(err)
 	s.Nil(p)
@@ -401,7 +401,7 @@ func (s *PatchConnectorChangeStatusSuite) SetupSuite() {
 			Id:         "project_id",
 			Identifier: "project_identifier",
 		}
-		s.NoError(projectRef.Insert())
+		s.NoError(projectRef.Insert(s.T().Context()))
 
 		patches := []*patch.Patch{
 			{Id: patch.NewId(s.obj_ids[0]), Version: s.obj_ids[0], Project: projectRef.Id},
@@ -411,15 +411,15 @@ func (s *PatchConnectorChangeStatusSuite) SetupSuite() {
 			Id:      "t1",
 			Version: s.obj_ids[0],
 		}
-		s.NoError(task.Insert())
+		s.NoError(task.Insert(s.T().Context()))
 		for _, p := range patches {
-			s.NoError(p.Insert())
+			s.NoError(p.Insert(s.T().Context()))
 		}
 		for _, id := range s.obj_ids {
 			version := dbModel.Version{
 				Id: id,
 			}
-			s.NoError(version.Insert())
+			s.NoError(version.Insert(s.T().Context()))
 		}
 
 		return nil
@@ -440,14 +440,14 @@ func (s *PatchConnectorChangeStatusSuite) TestSetActivation() {
 	settings := testutil.MockConfig()
 	err := SetPatchActivated(context.Background(), s.obj_ids[0], "user1", true, settings)
 	s.NoError(err)
-	p, err := FindPatchById(s.obj_ids[0])
+	p, err := FindPatchById(s.T().Context(), s.obj_ids[0])
 	s.NoError(err)
 	s.Require().NotNil(p)
 	s.True(p.Activated)
 
 	err = SetPatchActivated(context.Background(), s.obj_ids[0], "user1", false, settings)
 	s.NoError(err)
-	p, err = FindPatchById(s.obj_ids[0])
+	p, err = FindPatchById(s.T().Context(), s.obj_ids[0])
 	s.NoError(err)
 	s.False(p.Activated)
 
@@ -477,7 +477,7 @@ func (s *PatchConnectorFetchByUserSuite) SetupSuite() {
 		Id:         "project_id",
 		Identifier: "project_identifier",
 	}
-	s.NoError(projectRef.Insert())
+	s.NoError(projectRef.Insert(s.T().Context()))
 
 	s.time = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.Local)
 	user1 := "user1"
@@ -496,12 +496,12 @@ func (s *PatchConnectorFetchByUserSuite) SetupSuite() {
 		{Author: user1, CreateTime: nowPlus10, Project: projectRef.Id},
 	}
 	for _, p := range patches {
-		s.NoError(p.Insert())
+		s.NoError(p.Insert(s.T().Context()))
 	}
 }
 
 func (s *PatchConnectorFetchByUserSuite) TestFetchTooMany() {
-	patches, err := FindPatchesByUser("user2", s.time.Add(time.Second*10), 3)
+	patches, err := FindPatchesByUser(s.T().Context(), "user2", s.time.Add(time.Second*10), 3)
 	s.NoError(err)
 	s.NotNil(patches)
 	s.Len(patches, 2)
@@ -511,7 +511,7 @@ func (s *PatchConnectorFetchByUserSuite) TestFetchTooMany() {
 }
 
 func (s *PatchConnectorFetchByUserSuite) TestFetchExactNumber() {
-	patches, err := FindPatchesByUser("user2", s.time.Add(time.Second*10), 1)
+	patches, err := FindPatchesByUser(s.T().Context(), "user2", s.time.Add(time.Second*10), 1)
 	s.NoError(err)
 	if s.NotNil(patches) && s.Len(patches, 1) {
 		s.Equal("user2", *patches[0].Author)
@@ -519,7 +519,7 @@ func (s *PatchConnectorFetchByUserSuite) TestFetchExactNumber() {
 }
 
 func (s *PatchConnectorFetchByUserSuite) TestFetchTooFew() {
-	patches, err := FindPatchesByUser("user1", s.time.Add(time.Second*10), 1)
+	patches, err := FindPatchesByUser(s.T().Context(), "user1", s.time.Add(time.Second*10), 1)
 	s.NoError(err)
 	s.NotNil(patches)
 	s.Len(patches, 1)
@@ -527,13 +527,13 @@ func (s *PatchConnectorFetchByUserSuite) TestFetchTooFew() {
 }
 
 func (s *PatchConnectorFetchByUserSuite) TestFetchNonexistentFail() {
-	patches, err := FindPatchesByUser("zzz", s.time, 1)
+	patches, err := FindPatchesByUser(s.T().Context(), "zzz", s.time, 1)
 	s.NoError(err)
 	s.Empty(patches)
 }
 
 func (s *PatchConnectorFetchByUserSuite) TestFetchKeyWithinBound() {
-	patches, err := FindPatchesByUser("user1", s.time.Add(time.Second*6), 1)
+	patches, err := FindPatchesByUser(s.T().Context(), "user1", s.time.Add(time.Second*6), 1)
 	s.NoError(err)
 	s.NotNil(patches)
 	s.Len(patches, 1)
@@ -541,7 +541,7 @@ func (s *PatchConnectorFetchByUserSuite) TestFetchKeyWithinBound() {
 }
 
 func (s *PatchConnectorFetchByUserSuite) TestFetchKeyOutOfBound() {
-	patches, err := FindPatchesByUser("user1", s.time.Add(-time.Hour), 1)
+	patches, err := FindPatchesByUser(s.T().Context(), "user1", s.time.Add(-time.Hour), 1)
 	s.NoError(err)
 	s.Empty(patches)
 }
@@ -555,8 +555,8 @@ func TestGetRawPatches(t *testing.T) {
 			{ModuleName: "different", Githash: "home fries"},
 		},
 	}
-	assert.NoError(t, p.Insert())
-	raw, err := GetRawPatches(p.Id.Hex())
+	assert.NoError(t, p.Insert(t.Context()))
+	raw, err := GetRawPatches(t.Context(), p.Id.Hex())
 	assert.NoError(t, err)
 	// Verify that we populate the raw patch patch githash regardless of whether we have changes.
 	assert.Equal(t, p.Githash, raw.Patch.Githash)

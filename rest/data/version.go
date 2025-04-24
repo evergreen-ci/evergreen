@@ -19,15 +19,15 @@ import (
 type DBVersionConnector struct{}
 
 // GetProjectVersionsWithOptions returns the versions that fit the given constraint.
-func GetProjectVersionsWithOptions(projectName string, opts model.GetVersionsOptions) ([]restModel.APIVersion, error) {
-	versions, err := model.GetVersionsWithOptions(projectName, opts)
+func GetProjectVersionsWithOptions(ctx context.Context, projectName string, opts model.GetVersionsOptions) ([]restModel.APIVersion, error) {
+	versions, err := model.GetVersionsWithOptions(ctx, projectName, opts)
 	if err != nil {
 		return nil, err
 	}
 	res := []restModel.APIVersion{}
 	for _, v := range versions {
 		apiVersion := restModel.APIVersion{}
-		apiVersion.BuildFromService(v)
+		apiVersion.BuildFromService(ctx, v)
 		res = append(res, apiVersion)
 	}
 	return res, nil
@@ -107,7 +107,7 @@ func GetVersionsAndVariants(ctx context.Context, skip, numVersionElements int, p
 
 				// add the version data into the last rolled-up version
 				newVersion := restModel.APIVersion{}
-				newVersion.BuildFromService(versionFromDB)
+				newVersion.BuildFromService(ctx, versionFromDB)
 				lastRolledUpVersion.Versions = append(lastRolledUpVersion.Versions, newVersion)
 
 				// move on to the next version
@@ -151,13 +151,13 @@ func GetVersionsAndVariants(ctx context.Context, skip, numVersionElements int, p
 			// if the version can not be rolled up, create a fully fledged
 			// version for it
 			activeVersion := restModel.APIVersion{}
-			activeVersion.BuildFromService(versionFromDB)
+			activeVersion.BuildFromService(ctx, versionFromDB)
 
 			// add the builds to the "row"
 			for _, b := range buildsInVersion {
 				currentRow := buildList[b.BuildVariant]
 				buildsForRow := restModel.APIBuild{}
-				buildsForRow.BuildFromService(b, nil)
+				buildsForRow.BuildFromService(ctx, b, nil)
 				buildsForRow.SetTaskCache(tasksByBuild[b.Id])
 
 				currentRow.Builds[versionFromDB.Id] = buildsForRow

@@ -25,6 +25,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func init() { testutil.Setup() }
@@ -35,7 +36,7 @@ func TestFetchRevisions(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	Convey("With a GithubRepositoryPoller", t, func() {
-		err := modelutil.CreateTestLocalConfig(testConfig, "mci-test", "")
+		err := modelutil.CreateTestLocalConfig(t.Context(), testConfig, "mci-test", "")
 		So(err, ShouldBeNil)
 
 		resetProjectRefs()
@@ -53,7 +54,7 @@ func TestFetchRevisions(t *testing.T) {
 		Convey("Fetching commits for a disabled repotracker should create no versions", func() {
 			evgProjectRef.RepotrackerDisabled = utility.TruePtr()
 			So(repoTracker.FetchRevisions(ctx), ShouldBeNil)
-			numVersions, err := model.VersionCount(model.VersionAll)
+			numVersions, err := model.VersionCount(t.Context(), model.VersionAll)
 			require.NoError(t, err, "Error finding all versions")
 			So(numVersions, ShouldEqual, 0)
 			evgProjectRef.RepotrackerDisabled = utility.FalsePtr()
@@ -65,7 +66,7 @@ func TestFetchRevisions(t *testing.T) {
 			testConfig.RepoTracker.NumNewRepoRevisionsToFetch = 2
 			require.NoError(t, repoTracker.FetchRevisions(ctx),
 				"Error running repository process %s", repoTracker.Settings.Id)
-			numVersions, err := model.VersionCount(model.VersionAll)
+			numVersions, err := model.VersionCount(t.Context(), model.VersionAll)
 			require.NoError(t, err, "Error finding all versions")
 			So(numVersions, ShouldEqual, 2)
 		})
@@ -81,7 +82,7 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	Convey("When storing revisions gotten from a repository...", t, func() {
-		err := modelutil.CreateTestLocalConfig(testConfig, "mci-test", "")
+		err := modelutil.CreateTestLocalConfig(t.Context(), testConfig, "mci-test", "")
 		So(err, ShouldBeNil)
 		repoTracker := RepoTracker{testConfig, evgProjectRef, NewGithubRepositoryPoller(evgProjectRef)}
 
@@ -101,7 +102,7 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 			err := repoTracker.StoreRevisions(ctx, revisions)
 			require.NoError(t, err, "Error storing repository revisions %s", revisionOne.Revision)
 
-			newestVersion, err := model.VersionFindOne(model.VersionByMostRecentSystemRequester(evgProjectRef.Id))
+			newestVersion, err := model.VersionFindOne(t.Context(), model.VersionByMostRecentSystemRequester(evgProjectRef.Id))
 			require.NoError(t, err, "Error retreiving newest version")
 			require.NotNil(t, newestVersion)
 
@@ -122,10 +123,10 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 			err := repoTracker.StoreRevisions(ctx, revisions)
 			require.NoError(t, err, "Error storing repository revisions %s, %s", revisionOne.Revision, revisionTwo.Revision)
 
-			versionOne, err := model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(evgProjectRef.Id, revisionOne.Revision))
+			versionOne, err := model.VersionFindOne(t.Context(), model.BaseVersionByProjectIdAndRevision(evgProjectRef.Id, revisionOne.Revision))
 			require.NoError(t, err, "Error retrieving first stored version")
 			require.NotNil(t, versionOne)
-			versionTwo, err := model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(evgProjectRef.Id, revisionTwo.Revision))
+			versionTwo, err := model.VersionFindOne(t.Context(), model.BaseVersionByProjectIdAndRevision(evgProjectRef.Id, revisionTwo.Revision))
 			require.NoError(t, err, "Error retreiving second stored version")
 			require.NotNil(t, versionTwo)
 
@@ -149,16 +150,16 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 					},
 				},
 			}
-			So(u.Insert(), ShouldBeNil)
+			So(u.Insert(t.Context()), ShouldBeNil)
 
 			err := repoTracker.StoreRevisions(ctx, revisions)
 			So(err, ShouldBeNil)
-			versionOne, err := model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(evgProjectRef.Id, revisionOne.Revision))
+			versionOne, err := model.VersionFindOne(t.Context(), model.BaseVersionByProjectIdAndRevision(evgProjectRef.Id, revisionOne.Revision))
 			So(err, ShouldBeNil)
 			So(versionOne, ShouldNotBeNil)
 			So(versionOne.AuthorID, ShouldEqual, "testUser")
 
-			u2, err := user.FindOne(user.ById("testUser"))
+			u2, err := user.FindOneContext(ctx, user.ById("testUser"))
 			So(err, ShouldBeNil)
 			So(u2, ShouldNotBeNil)
 			So(u2.Settings.GithubUser.LastKnownAs, ShouldEqual, "somebody")
@@ -183,7 +184,7 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 			Id:        "testproject",
 			BatchTime: 10,
 		}
-		require.NoError(t, pRef.Insert())
+		require.NoError(t, pRef.Insert(t.Context()))
 
 		repoTracker := RepoTracker{
 			testConfig,
@@ -221,7 +222,7 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 			// We want this error to get swallowed so a config error
 			// doesn't stop additional versions from getting created
 			So(err, ShouldBeNil)
-			stubVersion, err := model.VersionFindOne(model.VersionByMostRecentSystemRequester("testproject"))
+			stubVersion, err := model.VersionFindOne(t.Context(), model.VersionByMostRecentSystemRequester("testproject"))
 			So(err, ShouldBeNil)
 			So(stubVersion, ShouldNotBeNil)
 			So(stubVersion.Errors, ShouldResemble, errStrs)
@@ -232,7 +233,7 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 			poller.setNextError(errors.New(model.MergeProjectConfigError))
 			err := repoTracker.StoreRevisions(ctx, revisions)
 			So(err, ShouldBeNil)
-			stubVersion, err := model.VersionFindOne(model.VersionByMostRecentSystemRequester("testproject"))
+			stubVersion, err := model.VersionFindOne(t.Context(), model.VersionByMostRecentSystemRequester("testproject"))
 			So(err, ShouldBeNil)
 			So(stubVersion, ShouldNotBeNil)
 			So(stubVersion.Errors[0], ShouldContainSubstring, model.MergeProjectConfigError)
@@ -243,7 +244,7 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 			poller.addBadDistro("Cray-Y-MP")
 			err := repoTracker.StoreRevisions(ctx, revisions)
 			So(err, ShouldBeNil)
-			v, err := model.VersionFindOne(model.VersionByMostRecentSystemRequester("testproject"))
+			v, err := model.VersionFindOne(t.Context(), model.VersionByMostRecentSystemRequester("testproject"))
 			So(err, ShouldBeNil)
 			So(v, ShouldNotBeNil)
 			So(len(v.BuildVariants), ShouldBeGreaterThan, 0)
@@ -260,7 +261,7 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 				poller.setNextError(unexpectedError)
 				err := repoTracker.StoreRevisions(ctx, revisions)
 				So(err.Error(), ShouldEqual, unexpectedError.Error())
-				v, err := model.VersionFindOne(model.VersionByMostRecentSystemRequester("testproject"))
+				v, err := model.VersionFindOne(t.Context(), model.VersionByMostRecentSystemRequester("testproject"))
 				So(err, ShouldBeNil)
 				So(v, ShouldBeNil)
 			},
@@ -345,7 +346,7 @@ tasks:
 			},
 		},
 	}
-	require.NoError(t, previouslyActivatedVersion.Insert())
+	require.NoError(t, previouslyActivatedVersion.Insert(t.Context()))
 
 	d := distro.Distro{Id: "d1"}
 	require.NoError(t, d.Insert(ctx))
@@ -356,7 +357,7 @@ tasks:
 		Id:        "testproject",
 		BatchTime: 0,
 	}
-	require.NoError(t, pRef.Insert())
+	require.NoError(t, pRef.Insert(t.Context()))
 
 	p := &model.Project{}
 	pp, err := model.LoadProjectInto(ctx, []byte(simpleYml), nil, "testproject", p)
@@ -449,7 +450,7 @@ tasks:
 			},
 		},
 	}
-	assert.NoError(t, previouslyActivatedVersion.Insert())
+	assert.NoError(t, previouslyActivatedVersion.Insert(t.Context()))
 
 	d := distro.Distro{Id: "d1"}
 	assert.NoError(t, d.Insert(ctx))
@@ -460,7 +461,7 @@ tasks:
 		Id:        "testproject",
 		BatchTime: 0,
 	}
-	require.NoError(t, pRef.Insert())
+	require.NoError(t, pRef.Insert(t.Context()))
 
 	p := &model.Project{}
 	pp, err := model.LoadProjectInto(ctx, []byte(simpleYml), nil, "testproject", p)
@@ -476,7 +477,7 @@ tasks:
 		NewMockRepoPoller(pp, revisions),
 	}
 	assert.NoError(t, repoTracker.StoreRevisions(ctx, revisions))
-	v, err := model.VersionFindOne(model.VersionByMostRecentSystemRequester("testproject"))
+	v, err := model.VersionFindOne(t.Context(), model.VersionByMostRecentSystemRequester("testproject"))
 	require.NoError(t, err)
 	require.NotNil(t, v)
 	assert.Len(t, v.BuildVariants, 3)
@@ -498,7 +499,7 @@ tasks:
 	assert.Len(t, bv.BatchTimeTasks, 1)
 	assert.False(t, bv.BatchTimeTasks[0].Activated)
 
-	build1, err := build.FindOneId(bv.BuildId)
+	build1, err := build.FindOneId(t.Context(), bv.BuildId)
 	assert.NoError(t, err)
 	require.NotZero(t, build1)
 
@@ -521,7 +522,7 @@ tasks:
 
 	bv, _ = findStatus(v, "bv3")
 
-	build3, err := build.FindOneId(bv.BuildId)
+	build3, err := build.FindOneId(t.Context(), bv.BuildId)
 	assert.NoError(t, err)
 	require.NotZero(t, build3)
 
@@ -547,7 +548,7 @@ tasks:
 	assert.True(t, bv.BatchTimeTasks[0].Activated)
 
 	// validate that the activation time of the entire build was not changed
-	build2, err := build.FindOneId(bv.BuildId)
+	build2, err := build.FindOneId(t.Context(), bv.BuildId)
 	assert.NoError(t, err)
 	assert.Equal(t, build1.ActivatedTime, build2.ActivatedTime)
 }
@@ -582,7 +583,7 @@ func TestBatchTimes(t *testing.T) {
 			Requester:           evergreen.RepotrackerVersionRequester,
 		}
 
-		So(previouslyActivatedVersion.Insert(), ShouldBeNil)
+		So(previouslyActivatedVersion.Insert(t.Context()), ShouldBeNil)
 
 		d := distro.Distro{Id: "test-distro-one"}
 		So(d.Insert(ctx), ShouldBeNil)
@@ -593,7 +594,7 @@ func TestBatchTimes(t *testing.T) {
 			Id:        "testproject",
 			BatchTime: 1,
 		}
-		So(pRef.Insert(), ShouldBeNil)
+		So(pRef.Insert(t.Context()), ShouldBeNil)
 
 		Convey("If the project's batch time has not elapsed, and no buildvariants "+
 			"have overridden their batch times, no variants should be activated", func() {
@@ -612,7 +613,7 @@ func TestBatchTimes(t *testing.T) {
 			}
 			err := repoTracker.StoreRevisions(ctx, revisions)
 			So(err, ShouldBeNil)
-			v, err := model.VersionFindOne(model.VersionByMostRecentSystemRequester("testproject"))
+			v, err := model.VersionFindOne(t.Context(), model.VersionByMostRecentSystemRequester("testproject"))
 			So(err, ShouldBeNil)
 			So(v, ShouldNotBeNil)
 			So(len(v.BuildVariants), ShouldEqual, 2)
@@ -639,7 +640,7 @@ func TestBatchTimes(t *testing.T) {
 			}
 			err := repoTracker.StoreRevisions(ctx, revisions)
 			So(err, ShouldBeNil)
-			version, err := model.VersionFindOne(model.VersionByMostRecentSystemRequester("testproject"))
+			version, err := model.VersionFindOne(t.Context(), model.VersionByMostRecentSystemRequester("testproject"))
 			So(err, ShouldBeNil)
 			So(version, ShouldNotBeNil)
 			ok, err := model.ActivateElapsedBuildsAndTasks(ctx, version)
@@ -676,7 +677,7 @@ func TestBatchTimes(t *testing.T) {
 			}
 			err := repoTracker.StoreRevisions(ctx, revisions)
 			So(err, ShouldBeNil)
-			version, err := model.VersionFindOne(model.VersionByMostRecentSystemRequester("testproject"))
+			version, err := model.VersionFindOne(t.Context(), model.VersionByMostRecentSystemRequester("testproject"))
 			So(err, ShouldBeNil)
 			So(version, ShouldNotBeNil)
 			ok, err := model.ActivateElapsedBuildsAndTasks(ctx, version)
@@ -711,7 +712,7 @@ func TestBatchTimes(t *testing.T) {
 			}
 			err := repoTracker.StoreRevisions(ctx, revisions)
 			So(err, ShouldBeNil)
-			version, err := model.VersionFindOne(model.VersionByMostRecentSystemRequester("testproject"))
+			version, err := model.VersionFindOne(t.Context(), model.VersionByMostRecentSystemRequester("testproject"))
 			So(err, ShouldBeNil)
 			So(version, ShouldNotBeNil)
 			ok, err := model.ActivateElapsedBuildsAndTasks(ctx, version)
@@ -748,7 +749,7 @@ func TestBatchTimes(t *testing.T) {
 			RevisionOrderNumber: 0,
 			Requester:           evergreen.RepotrackerVersionRequester,
 		}
-		So(previouslyActivatedVersion.Insert(), ShouldBeNil)
+		So(previouslyActivatedVersion.Insert(t.Context()), ShouldBeNil)
 		d := distro.Distro{Id: "test-distro-one"}
 		So(d.Insert(ctx), ShouldBeNil)
 		d.Id = "test-distro-two"
@@ -757,7 +758,7 @@ func TestBatchTimes(t *testing.T) {
 			Id:        "testproject",
 			BatchTime: 1,
 		}
-		So(pRef.Insert(), ShouldBeNil)
+		So(pRef.Insert(t.Context()), ShouldBeNil)
 		zero := 0
 		project := createTestProject(&zero, nil)
 		revisions := []model.Revision{
@@ -773,7 +774,7 @@ func TestBatchTimes(t *testing.T) {
 		}
 		err := repoTracker.StoreRevisions(ctx, revisions)
 		So(err, ShouldBeNil)
-		version, err := model.VersionFindOne(model.VersionByMostRecentSystemRequester("testproject"))
+		version, err := model.VersionFindOne(t.Context(), model.VersionByMostRecentSystemRequester("testproject"))
 		So(err, ShouldBeNil)
 		So(version, ShouldNotBeNil)
 
@@ -828,7 +829,7 @@ func createTestProject(override1, override2 *int) *model.ParserProject {
 
 	pp.AddTask("t1", []model.PluginCommandConf{{
 		Command: "shell.exec",
-		Params: map[string]interface{}{
+		Params: map[string]any{
 			"script": "echo hi",
 		},
 	}})
@@ -849,7 +850,7 @@ func TestBuildBreakSubscriptions(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(u.Insert())
+	assert.NoError(u.Insert(t.Context()))
 
 	// no notifications in project or user
 	subs := []event.Subscription{}
@@ -864,8 +865,8 @@ func TestBuildBreakSubscriptions(t *testing.T) {
 		Requester:  evergreen.RepotrackerVersionRequester,
 		Branch:     "branch",
 	}
-	assert.NoError(AddBuildBreakSubscriptions(&v1, &proj1))
-	assert.NoError(db.FindAllQ(event.SubscriptionsCollection, db.Q{}, &subs))
+	assert.NoError(AddBuildBreakSubscriptions(t.Context(), &v1, &proj1))
+	assert.NoError(db.FindAllQ(t.Context(), event.SubscriptionsCollection, db.Q{}, &subs))
 	assert.Empty(subs)
 
 	// just a project
@@ -886,7 +887,7 @@ func TestBuildBreakSubscriptions(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(u2.Insert())
+	assert.NoError(u2.Insert(t.Context()))
 	u3 := user.DBUser{
 		Id:           "u3",
 		EmailAddress: "tess@blizzard.com",
@@ -896,7 +897,7 @@ func TestBuildBreakSubscriptions(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(u3.Insert())
+	assert.NoError(u3.Insert(t.Context()))
 	u4 := user.DBUser{
 		Id:           "u4",
 		EmailAddress: "rehgar@blizzard.com",
@@ -904,9 +905,9 @@ func TestBuildBreakSubscriptions(t *testing.T) {
 			Notifications: user.NotificationPreferences{},
 		},
 	}
-	assert.NoError(u4.Insert())
-	assert.NoError(AddBuildBreakSubscriptions(&v1, &proj2))
-	assert.NoError(db.FindAllQ(event.SubscriptionsCollection, db.Q{}, &subs))
+	assert.NoError(u4.Insert(t.Context()))
+	assert.NoError(AddBuildBreakSubscriptions(t.Context(), &v1, &proj2))
+	assert.NoError(db.FindAllQ(t.Context(), event.SubscriptionsCollection, db.Q{}, &subs))
 	assert.Len(subs, 2)
 
 	// project has it enabled, but user doesn't want notifications
@@ -919,8 +920,8 @@ func TestBuildBreakSubscriptions(t *testing.T) {
 		Branch:     "branch",
 		AuthorID:   u4.Id,
 	}
-	assert.NoError(AddBuildBreakSubscriptions(&v3, &proj2))
-	assert.NoError(db.FindAllQ(event.SubscriptionsCollection, db.Q{}, &subs))
+	assert.NoError(AddBuildBreakSubscriptions(t.Context(), &v3, &proj2))
+	assert.NoError(db.FindAllQ(t.Context(), event.SubscriptionsCollection, db.Q{}, &subs))
 	targetString, ok := subs[0].Subscriber.Target.(*string)
 	assert.True(ok)
 	assert.EqualValues("@hello.itsme", utility.FromStringPtr(targetString))
@@ -943,8 +944,7 @@ func TestCreateVersionFromConfigSuite(t *testing.T) {
 }
 
 func (s *CreateVersionFromConfigSuite) SetupTest() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	s.ctx, s.cancel = context.WithCancel(context.Background())
 
 	s.NoError(db.ClearCollections(model.ProjectRefCollection, model.VersionCollection, model.ParserProjectCollection, build.Collection, task.Collection, distro.Collection, model.ProjectAliasCollection))
 	s.ref = &model.ProjectRef{
@@ -955,7 +955,7 @@ func (s *CreateVersionFromConfigSuite) SetupTest() {
 		RemotePath: "self-tests.yml",
 		Enabled:    true,
 	}
-	s.NoError(s.ref.Insert())
+	s.NoError(s.ref.Insert(s.ctx))
 	s.rev = &model.Revision{
 		Author:          "me",
 		AuthorGithubUID: 123,
@@ -970,8 +970,7 @@ func (s *CreateVersionFromConfigSuite) SetupTest() {
 		Id:       "v",
 		Revision: "abc",
 	}
-	s.NoError(s.d.Insert(ctx))
-	s.ctx, s.cancel = context.WithCancel(context.Background())
+	s.NoError(s.d.Insert(s.ctx))
 	env := &mock.Environment{}
 	s.Require().NoError(env.Configure(s.ctx))
 	s.env = env
@@ -1009,7 +1008,7 @@ tasks:
 	s.NoError(err)
 	s.Require().NotNil(v)
 
-	dbVersion, err := model.VersionFindOneId(v.Id)
+	dbVersion, err := model.VersionFindOneId(s.ctx, v.Id)
 	s.NoError(err)
 	s.NotNil(dbVersion)
 	s.Equal(evergreen.VersionCreated, dbVersion.Status)
@@ -1024,7 +1023,7 @@ tasks:
 	s.Len(dbParserProject.Tasks, 2)
 
 	s.False(utility.FromBoolPtr(dbVersion.Activated))
-	dbBuild, err := build.FindOneId(v.BuildIds[0])
+	dbBuild, err := build.FindOneId(s.T().Context(), v.BuildIds[0])
 	s.NoError(err)
 	s.Equal(v.Id, dbBuild.Version)
 	s.Len(dbBuild.Tasks, 2)
@@ -1063,7 +1062,7 @@ tasks:
 	s.NoError(err)
 	s.Require().NotNil(v)
 
-	dbVersion, err := model.VersionFindOneId(v.Id)
+	dbVersion, err := model.VersionFindOneId(s.ctx, v.Id)
 	s.NoError(err)
 	s.NotNil(dbVersion)
 	s.Require().Len(dbVersion.Errors, 1)
@@ -1079,7 +1078,7 @@ tasks:
 	s.Len(dbParserProject.BuildVariants, 1)
 	s.Len(dbParserProject.Tasks, 2)
 
-	dbBuild, err := build.FindOne(build.ByVersion(v.Id))
+	dbBuild, err := build.FindOne(s.T().Context(), build.ByVersion(v.Id))
 	s.NoError(err)
 	s.Nil(dbBuild)
 
@@ -1116,7 +1115,7 @@ tasks:
 	s.NoError(err)
 	s.Require().NotNil(v)
 
-	dbVersion, err := model.VersionFindOneId(v.Id)
+	dbVersion, err := model.VersionFindOneId(s.ctx, v.Id)
 	s.NoError(err)
 	s.NotNil(dbVersion)
 	s.Require().Len(dbVersion.Errors, 1)
@@ -1129,7 +1128,7 @@ tasks:
 	s.Len(dbParserProject.BuildVariants, 1)
 	s.Len(dbParserProject.Tasks, 2)
 
-	dbBuild, err := build.FindOne(build.ByVersion(v.Id))
+	dbBuild, err := build.FindOne(s.T().Context(), build.ByVersion(v.Id))
 	s.NoError(err)
 	s.Nil(dbBuild)
 
@@ -1176,7 +1175,7 @@ tasks:
 	s.NoError(err)
 	s.Require().NotNil(v)
 
-	dbVersion, err := model.VersionFindOneId(v.Id)
+	dbVersion, err := model.VersionFindOneId(s.ctx, v.Id)
 	s.NoError(err)
 	s.NotNil(dbVersion)
 	s.Len(dbVersion.Errors, 2)
@@ -1214,7 +1213,7 @@ tasks:
 	v := &model.Version{
 		Id: makeVersionId(s.ref.Identifier, s.rev.Revision),
 	}
-	s.NoError(v.Insert())
+	s.NoError(v.Insert(s.ctx))
 
 	projectInfo := &model.ProjectInfo{
 		Ref:                 s.ref,
@@ -1362,11 +1361,11 @@ tasks:
 			tomorrow := versionCreateTime.Add(time.Hour * 24) // next day
 			y, m, d := tomorrow.Date()
 
-			if requester == evergreen.PatchVersionRequester {
+			if !evergreen.ShouldConsiderBatchtime(v.Requester) {
 				s.Len(v.BuildVariants, 2)
 				for _, bv := range v.BuildVariants {
-					s.NotEqual(versionCreateTime, bv.ActivateAt, "build variant activation should be based on version create time because patch")
-					s.Require().Len(bv.BatchTimeTasks, 0, "task cron activation should be empty because patch")
+					s.NotEqual(versionCreateTime, bv.ActivateAt, "build variant activation should be based on version create time because not mainline")
+					s.Require().Len(bv.BatchTimeTasks, 0, "task cron activation should be empty because not mainline")
 				}
 			} else {
 				for _, bv := range v.BuildVariants {
@@ -1427,12 +1426,12 @@ tasks:
 		Task:      "task1",
 		Variant:   ".*",
 	}
-	s.NoError(alias.Upsert())
+	s.NoError(alias.Upsert(s.ctx))
 	v, err := CreateVersionFromConfig(s.ctx, projectInfo, model.VersionMetadata{Revision: *s.rev, Alias: evergreen.GithubPRAlias}, false, nil)
 	s.NoError(err)
 	s.Require().NotNil(v)
 
-	dbVersion, err := model.VersionFindOneId(v.Id)
+	dbVersion, err := model.VersionFindOneId(s.ctx, v.Id)
 	s.NoError(err)
 	s.NotNil(dbVersion)
 	s.Require().NotNil(dbVersion)
@@ -1440,7 +1439,7 @@ tasks:
 	s.Equal(s.rev.RevisionMessage, dbVersion.Message)
 
 	s.Require().Len(v.BuildIds, 1)
-	dbBuild, err := build.FindOneId(v.BuildIds[0])
+	dbBuild, err := build.FindOneId(s.T().Context(), v.BuildIds[0])
 	s.NoError(err)
 	s.Equal(v.Id, dbBuild.Version)
 	s.Len(dbBuild.Tasks, 2)
@@ -1479,7 +1478,7 @@ tasks:
 		Task:      "task1",
 		Variant:   ".*",
 	}
-	s.NoError(alias.Upsert())
+	s.NoError(alias.Upsert(s.ctx))
 
 	projectInfo := &model.ProjectInfo{
 		Ref:                 s.ref,
@@ -1536,7 +1535,7 @@ task_groups:
 		Task:      "tg1",
 		Variant:   ".*",
 	}
-	s.NoError(alias.Upsert())
+	s.NoError(alias.Upsert(s.ctx))
 
 	projectInfo := &model.ProjectInfo{
 		Ref:                 s.ref,
@@ -1604,7 +1603,7 @@ tasks:
 		Task:      "(task1)|(task2)",
 		Variant:   ".*",
 	}
-	s.NoError(alias.Upsert())
+	s.NoError(alias.Upsert(s.ctx))
 
 	projectInfo := &model.ProjectInfo{
 		Ref:                 s.ref,
@@ -1685,7 +1684,7 @@ func TestCreateManifest(t *testing.T) {
 		Branch: "main",
 		Id:     "project1",
 	}
-	require.NoError(t, projRef.Insert())
+	require.NoError(t, projRef.Insert(t.Context()))
 
 	projVars := model.ProjectVars{
 		Id: "project1",
@@ -1693,9 +1692,9 @@ func TestCreateManifest(t *testing.T) {
 			"var1": "main",
 		},
 	}
-	require.NoError(t, projVars.Insert())
+	require.NoError(t, projVars.Insert(t.Context()))
 
-	manifest, err := model.CreateManifest(&v, proj.Modules, projRef)
+	manifest, err := model.CreateManifest(t.Context(), &v, proj.Modules, projRef)
 	assert.NoError(err)
 	assert.Equal(v.Id, manifest.Id)
 	assert.Equal(v.Revision, manifest.Revision)
@@ -1708,7 +1707,7 @@ func TestCreateManifest(t *testing.T) {
 	assert.Equal("b27779f856b211ffaf97cbc124b7082a20ea8bc0", module.Revision)
 
 	proj.Modules[0].AutoUpdate = true
-	manifest, err = model.CreateManifest(&patchVersion, proj.Modules, projRef)
+	manifest, err = model.CreateManifest(t.Context(), &patchVersion, proj.Modules, projRef)
 	assert.NoError(err)
 	assert.Equal(patchVersion.Id, manifest.Id)
 	assert.Equal(patchVersion.Revision, manifest.Revision)
@@ -1735,7 +1734,7 @@ func TestCreateManifest(t *testing.T) {
 			},
 		},
 	}
-	manifest, err = model.CreateManifest(&v, proj.Modules, projRef)
+	manifest, err = model.CreateManifest(t.Context(), &v, proj.Modules, projRef)
 	assert.NoError(err)
 	assert.Equal(v.Id, manifest.Id)
 	assert.Equal(v.Revision, manifest.Revision)
@@ -1760,7 +1759,7 @@ func TestCreateManifest(t *testing.T) {
 			},
 		},
 	}
-	manifest, err = model.CreateManifest(&v, proj.Modules, projRef)
+	_, err = model.CreateManifest(t.Context(), &v, proj.Modules, projRef)
 	assert.Contains(err.Error(), "No commit found for SHA")
 }
 
@@ -1785,14 +1784,14 @@ func TestShellVersionFromRevisionGitTags(t *testing.T) {
 		},
 	}
 	pRef := &model.ProjectRef{
-		Id:                    bson.NewObjectId().Hex(),
+		Id:                    primitive.NewObjectID().Hex(),
 		Identifier:            "my-project",
 		GitTagAuthorizedUsers: []string{"release-bot", "not-release-bot"},
 		GitTagVersionsEnabled: utility.TruePtr(),
 	}
 
 	assert.NoError(t, evergreen.UpdateConfig(ctx, testutil.TestConfig()))
-	v, err := ShellVersionFromRevision(pRef, metadata)
+	v, err := ShellVersionFromRevision(t.Context(), pRef, metadata)
 	assert.NoError(t, err)
 	require.NotNil(t, v)
 	assert.Equal(t, evergreen.GitTagRequester, v.Requester)
@@ -1818,9 +1817,9 @@ func TestShellVersionFromRevisionGitTags(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(t, usr.Insert())
+	assert.NoError(t, usr.Insert(t.Context()))
 
-	v, err = ShellVersionFromRevision(pRef, metadata)
+	v, err = ShellVersionFromRevision(t.Context(), pRef, metadata)
 	assert.NoError(t, err)
 	require.NotNil(t, v)
 	assert.Equal(t, evergreen.GitTagRequester, v.Requester)

@@ -27,7 +27,7 @@ func UpdateDistro(ctx context.Context, old, new *distro.Distro) error {
 	}
 
 	if old.DispatcherSettings.Version == evergreen.DispatcherVersionRevisedWithDependencies && new.DispatcherSettings.Version != evergreen.DispatcherVersionRevisedWithDependencies {
-		if err := model.RemoveTaskQueues(new.Id); err != nil {
+		if err := model.RemoveTaskQueues(ctx, new.Id); err != nil {
 			return gimlet.ErrorResponse{
 				StatusCode: http.StatusInternalServerError,
 				Message:    errors.Wrapf(err, "removing task queues for distro '%s'", new.Id).Error(),
@@ -36,7 +36,7 @@ func UpdateDistro(ctx context.Context, old, new *distro.Distro) error {
 	}
 
 	if !old.Disabled && new.Disabled {
-		if err := model.ClearTaskQueue(new.Id); err != nil {
+		if err := model.ClearTaskQueue(ctx, new.Id); err != nil {
 			return gimlet.ErrorResponse{
 				StatusCode: http.StatusInternalServerError,
 				Message:    errors.Wrapf(err, "clearing task queues for distro '%s'", new.Id).Error(),
@@ -80,14 +80,14 @@ func DeleteDistroById(ctx context.Context, u *user.DBUser, distroId string) erro
 			Message:    errors.Wrapf(err, "deleting distro '%s'", distroId).Error(),
 		}
 	}
-	if err = model.ClearTaskQueue(distroId); err != nil {
+	if err = model.ClearTaskQueue(ctx, distroId); err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrapf(err, "clearing task queue for distro '%s'", distroId).Error(),
 		}
 	}
 
-	event.LogDistroRemoved(d.Id, u.Username(), d.DistroData())
+	event.LogDistroRemoved(ctx, d.Id, u.Username(), d.DistroData())
 	return nil
 }
 
@@ -112,12 +112,13 @@ func CopyDistro(ctx context.Context, u *user.DBUser, opts restModel.CopyDistroOp
 	}
 
 	distroToCopy.Id = opts.NewDistroId
-	return newDistro(ctx, distroToCopy, u)
+	distroToCopy.Aliases = nil
+	return NewDistro(ctx, distroToCopy, u)
 }
 
 // CreateDistro creates a new distro with the provided ID using the default settings specified here.
 // It returns an error if one is encountered.
-func CreateDistro(ctx context.Context, u *user.DBUser, newDistroId string) error {
+func CreateDistro(ctx context.Context, u *user.DBUser, newDistroId string, singleTaskDistro bool) error {
 	defaultDistro := &distro.Distro{
 		Id:   newDistroId,
 		Arch: evergreen.ArchLinuxAmd64,
@@ -137,15 +138,17 @@ func CreateDistro(ctx context.Context, u *user.DBUser, newDistroId string) error
 		PlannerSettings: distro.PlannerSettings{
 			Version: evergreen.PlannerVersionTunable,
 		},
-		Provider: evergreen.ProviderNameStatic,
-		WorkDir:  "/data/mci",
-		User:     "ubuntu",
+		Provider:         evergreen.ProviderNameStatic,
+		SingleTaskDistro: singleTaskDistro,
+		User:             "ubuntu",
+		WorkDir:          "/data/mci",
 	}
 
-	return newDistro(ctx, defaultDistro, u)
+	return NewDistro(ctx, defaultDistro, u)
 }
 
-func newDistro(ctx context.Context, d *distro.Distro, u *user.DBUser) error {
+// NewDistro creates a new distro in the database with the given user as the creator and creates an event log.
+func NewDistro(ctx context.Context, d *distro.Distro, u *user.DBUser) error {
 	settings, err := evergreen.GetConfig(ctx)
 	if err != nil {
 		return errors.Wrap(err, "getting admin settings")
@@ -166,6 +169,6 @@ func newDistro(ctx context.Context, d *distro.Distro, u *user.DBUser) error {
 		}
 	}
 
-	event.LogDistroAdded(d.Id, u.Username(), d.DistroData())
+	event.LogDistroAdded(ctx, d.Id, u.Username(), d.DistroData())
 	return nil
 }

@@ -82,7 +82,7 @@ func (j *eventNotifierJob) Run(ctx context.Context) {
 		return
 	}
 
-	e, err := event.FindByID(j.EventID)
+	e, err := event.FindByID(ctx, j.EventID)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "finding event '%s'", j.EventID))
 		return
@@ -104,9 +104,9 @@ func (j *eventNotifierJob) processEvent(ctx context.Context, e *event.EventLogEn
 
 	n, err := j.processEventTriggers(ctx, e)
 	catcher.Add(err)
-	catcher.Add(e.MarkProcessed())
+	catcher.Add(e.MarkProcessed(ctx))
 
-	if err = notification.InsertMany(n...); err != nil {
+	if err = notification.InsertMany(ctx, n...); err != nil {
 		// Consider that duplicate key errors are expected.
 		shouldLogError := !db.IsDuplicateKey(err)
 		grip.ErrorWhen(shouldLogError, message.WrapError(err, message.Fields{
@@ -231,7 +231,7 @@ func notificationJobs(ctx context.Context, notifications []notification.Notifica
 		if notificationIsEnabled(flags, &notifications[i]) {
 			jobs = append(jobs, NewEventSendJob(notifications[i].ID, ts.Format(TSFormat)))
 		} else {
-			catcher.Wrapf(notifications[i].MarkError(errors.New("notification is disabled")), "setting error for notification '%s'", notifications[i].ID)
+			catcher.Wrapf(notifications[i].MarkError(ctx, errors.New("notification is disabled")), "setting error for notification '%s'", notifications[i].ID)
 		}
 	}
 	return jobs, catcher.Resolve()

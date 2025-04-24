@@ -188,7 +188,6 @@ func MockConfig() *evergreen.Settings {
 				Name: "logs",
 				Type: evergreen.BucketTypeS3,
 			},
-			InternalBuckets: []string{"bucket1", "bucket2"},
 			Credentials: evergreen.S3Credentials{
 				Key:    "aws_key",
 				Secret: "aws_secret",
@@ -229,7 +228,8 @@ func MockConfig() *evergreen.Settings {
 			Version:          "version",
 		},
 		Jira: evergreen.JiraConfig{
-			Host: "host",
+			Host:                "host",
+			PersonalAccessToken: "personal_access_token",
 			BasicAuthConfig: evergreen.JiraBasicAuthConfig{
 				Username: "username",
 				Password: "password",
@@ -246,13 +246,7 @@ func MockConfig() *evergreen.Settings {
 			},
 		},
 		LogPath: "logpath",
-		NewRelic: evergreen.NewRelicConfig{
-			AccountID:     "123123123",
-			TrustKey:      "098765",
-			AgentID:       "45678",
-			LicenseKey:    "890765",
-			ApplicationID: "8888888",
-		},
+
 		Notify: evergreen.NotifyConfig{
 			SES: evergreen.SESConfig{
 				SenderAddress: "from",
@@ -266,7 +260,7 @@ func MockConfig() *evergreen.Settings {
 		ParameterStore: evergreen.ParameterStoreConfig{
 			Prefix: "/prefix",
 		},
-		Plugins: map[string]map[string]interface{}{"k4": {"k5": "v5"}},
+		Plugins: map[string]map[string]any{"k4": {"k5": "v5"}},
 		PodLifecycle: evergreen.PodLifecycleConfig{
 			MaxParallelPodRequests:      2000,
 			MaxPodDefinitionCleanupRate: 100,
@@ -349,6 +343,13 @@ func MockConfig() *evergreen.Settings {
 						SecretPrefix: "secret_prefix",
 					},
 				},
+				AccountRoles: []evergreen.AWSAccountRoleMapping{
+					{
+						Account: "account",
+						Role:    "role",
+					},
+				},
+				IPAMPoolID: "pool_id",
 			},
 			Docker: evergreen.DockerConfig{
 				APIVersion: "docker_version",
@@ -400,12 +401,14 @@ func MockConfig() *evergreen.Settings {
 		SleepSchedule: evergreen.SleepScheduleConfig{
 			PermanentlyExemptHosts: []string{"host0", "host1"},
 		},
-		SSHKeyDirectory: "/ssh_key_directory",
-		SSHKeyPairs: []evergreen.SSHKeyPair{
-			{
-				Name:    "key",
-				Public:  "public",
-				Private: "private",
+		SSH: evergreen.SSHConfig{
+			TaskHostKey: evergreen.SSHKeyPair{
+				Name:      "task-host-key",
+				SecretARN: "arn:aws:secretsmanager:us-east-1:012345678901:secret/top-secret-private-key",
+			},
+			SpawnHostKey: evergreen.SSHKeyPair{
+				Name:      "spawn-host-key",
+				SecretARN: "arn:aws:secretsmanager:us-east-1:012345678901:secret/confidential-private-key",
 			},
 		},
 		Slack: evergreen.SlackConfig{

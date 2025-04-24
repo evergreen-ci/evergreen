@@ -4,13 +4,11 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/pail"
 	"github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -18,11 +16,11 @@ import (
 )
 
 var (
-	NoProjection             = bson.M{}
-	NoSort                   = []string{}
-	NoSkip                   = 0
-	NoLimit                  = 0
-	NoHint       interface{} = nil
+	NoProjection     = bson.M{}
+	NoSort           = []string{}
+	NoSkip           = 0
+	NoLimit          = 0
+	NoHint       any = nil
 )
 
 type SessionFactory interface {
@@ -39,6 +37,7 @@ type shimFactoryImpl struct {
 	db  string
 }
 
+// GetGlobalSessionFactory initializes a session factory to connect to the Evergreen database.
 func GetGlobalSessionFactory() SessionFactory {
 	env := evergreen.GetEnvironment()
 	return &shimFactoryImpl{
@@ -78,40 +77,297 @@ func (s *shimFactoryImpl) GetContextSession(ctx context.Context) (db.Session, db
 }
 
 // Insert inserts the specified item into the specified collection.
-func Insert(collection string, item interface{}) error {
-	session, db, err := GetGlobalSessionFactory().GetSession()
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	defer session.Close()
-
-	return db.C(collection).Insert(item)
+func Insert(ctx context.Context, collection string, item any) error {
+	_, err := evergreen.GetEnvironment().DB().Collection(collection).InsertOne(ctx,
+		item,
+	)
+	return errors.Wrapf(errors.WithStack(err), "inserting document")
 }
 
-func InsertMany(collection string, items ...interface{}) error {
+func InsertMany(ctx context.Context, collection string, items ...any) error {
 	if len(items) == 0 {
 		return nil
 	}
-	session, db, err := GetGlobalSessionFactory().GetSession()
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	defer session.Close()
 
-	return db.C(collection).Insert(items...)
+	_, err := evergreen.GetEnvironment().DB().Collection(collection).InsertMany(ctx,
+		items,
+	)
+	return errors.Wrapf(errors.WithStack(err), "inserting documents")
 }
 
-func InsertManyUnordered(c string, items ...interface{}) error {
+func InsertManyUnordered(ctx context.Context, collection string, items ...any) error {
 	if len(items) == 0 {
 		return nil
 	}
+
+	_, err := evergreen.GetEnvironment().DB().Collection(collection).InsertMany(ctx,
+		items,
+		options.InsertMany().SetOrdered(false),
+	)
+	return errors.Wrapf(errors.WithStack(err), "inserting unordered documents")
+}
+
+// Remove removes one item matching the query from the specified collection.
+func Remove(ctx context.Context, collection string, query any) error {
+	_, err := evergreen.GetEnvironment().DB().Collection(collection).DeleteOne(ctx,
+		query,
+	)
+	return errors.Wrapf(errors.WithStack(err), "deleting document")
+}
+
+// RemoveAll removes all items matching the query from the specified collection.
+func RemoveAll(ctx context.Context, collection string, query any) error {
+	_, err := evergreen.GetEnvironment().DB().Collection(collection).DeleteMany(ctx,
+		query,
+	)
+	return errors.Wrapf(errors.WithStack(err), "deleting documents")
+}
+
+// Update updates one matching document in the collection.
+// DEPRECATED (DEVPROD-15398): This is only here to support a cache
+// with Gimlet, use UpdateContext instead.
+func Update(collection string, query any, update any) error {
+	session, db, err := GetGlobalSessionFactory().GetSession()
+	if err != nil {
+		grip.Errorf("error establishing db connection: %+v", err)
+
+		return err
+	}
+	defer session.Close()
+
+	return db.C(collection).Update(query, update)
+}
+
+// UpdateContext updates one matching document in the collection.
+func UpdateContext(ctx context.Context, collection string, query any, update any) error {
+	res, err := evergreen.GetEnvironment().DB().Collection(collection).UpdateOne(ctx,
+		query,
+		update,
+	)
+	if err != nil {
+		return errors.Wrapf(err, "updating task")
+	}
+	if res.MatchedCount == 0 {
+		return db.ErrNotFound
+	}
+
+	return nil
+}
+
+// ReplaceContext replaces one matching document in the collection. If a matching
+// document is not found, it will be upserted. It returns the upserted ID if
+// one was created.
+func ReplaceContext(ctx context.Context, collection string, query any, replacement any) (*db.ChangeInfo, error) {
+	res, err := evergreen.GetEnvironment().DB().Collection(collection).ReplaceOne(ctx,
+		query,
+		replacement,
+		options.Replace().SetUpsert(true),
+	)
+	if err != nil {
+		return nil, errors.Wrapf(err, "replacing document")
+	}
+
+	return &db.ChangeInfo{Updated: int(res.UpsertedCount) + int(res.ModifiedCount), UpsertedId: res.UpsertedID}, nil
+}
+
+// UpdateAllContext updates all matching documents in the collection.
+func UpdateAllContext(ctx context.Context, collection string, query any, update any) (*db.ChangeInfo, error) {
+	res, err := evergreen.GetEnvironment().DB().Collection(collection).UpdateMany(ctx,
+		query,
+		update,
+	)
+	if err != nil {
+		return nil, errors.Wrapf(err, "updating task")
+	}
+
+	return &db.ChangeInfo{Updated: int(res.ModifiedCount)}, nil
+}
+
+// UpdateIdContext updates one _id-matching document in the collection.
+func UpdateIdContext(ctx context.Context, collection string, id, update any) error {
+	res, err := evergreen.GetEnvironment().DB().Collection(collection).UpdateOne(ctx,
+		bson.D{{Key: "_id", Value: id}},
+		update,
+	)
+	if err != nil {
+		return errors.Wrapf(err, "updating task")
+	}
+	if res.MatchedCount == 0 {
+		return db.ErrNotFound
+	}
+
+	return nil
+}
+
+// UpdateAll updates all matching documents in the collection.
+// DEPRECATED (DEVPROD-15398): This is only here to support a cache
+// with Gimlet, use UpdateAllContext instead.
+func UpdateAll(collection string, query any, update any) (*db.ChangeInfo, error) {
+	session, db, err := GetGlobalSessionFactory().GetSession()
+	if err != nil {
+		grip.Errorf("error establishing db connection: %+v", err)
+
+		return nil, err
+	}
+	defer session.Close()
+
+	return db.C(collection).UpdateAll(query, update)
+}
+
+// Upsert run the specified update against the collection as an upsert operation.
+func Upsert(ctx context.Context, collection string, query any, update any) (*db.ChangeInfo, error) {
+	res, err := evergreen.GetEnvironment().DB().Collection(collection).UpdateOne(
+		ctx,
+		query,
+		update,
+		options.Update().SetUpsert(true),
+	)
+	if err != nil {
+		return nil, errors.Wrapf(err, "upserting")
+	}
+
+	return &db.ChangeInfo{Updated: int(res.UpsertedCount) + int(res.ModifiedCount), UpsertedId: res.UpsertedID}, nil
+}
+
+// Count run a count command with the specified query against the collection.
+func Count(ctx context.Context, collection string, query any) (int, error) {
+	res, err := evergreen.GetEnvironment().DB().Collection(collection).CountDocuments(
+		ctx,
+		query,
+	)
+	return int(res), errors.WithStack(err)
+}
+
+// FindOneQ runs a Q query against the given collection, applying the results to "out."
+// Only reads one document from the DB.
+// DEPRECATED (DEVPROD-15398): This is only here to support a cache
+// with Gimlet, use FindOneQContext instead.
+func FindOneQ(collection string, q Q, out any) error {
+	return FindOneQContext(context.Background(), collection, q, out)
+}
+
+// FindOneQContext runs a Q query against the given collection, applying the results to "out."
+// Only reads one document from the DB.
+func FindOneQContext(ctx context.Context, collection string, q Q, out any) error {
+	if q.maxTime > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, q.maxTime)
+		defer cancel()
+	}
+
+	session, db, err := GetGlobalSessionFactory().GetContextSession(ctx)
+	if err != nil {
+		return err
+	}
+	defer session.Close()
+
+	return db.C(collection).
+		Find(q.filter).
+		Select(q.projection).
+		Sort(q.sort...).
+		Skip(q.skip).
+		Limit(1).
+		Hint(q.hint).
+		One(out)
+}
+
+// FindAllQ runs a Q query against the given collection, applying the results to "out."
+func FindAllQ(ctx context.Context, collection string, q Q, out any) error {
+	if q.maxTime > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, q.maxTime)
+		defer cancel()
+	}
+
+	session, db, err := GetGlobalSessionFactory().GetContextSession(ctx)
+	if err != nil {
+		return err
+	}
+	defer session.Close()
+
+	return db.C(collection).
+		Find(q.filter).
+		Select(q.projection).
+		Sort(q.sort...).
+		Skip(q.skip).
+		Limit(q.limit).
+		Hint(q.hint).
+		All(out)
+}
+
+// CountQ runs a Q count query against the given collection.
+func CountQ(ctx context.Context, collection string, q Q) (int, error) {
+	return Count(ctx, collection, q.filter)
+}
+
+// RemoveAllQ removes all docs that satisfy the query
+func RemoveAllQ(ctx context.Context, collection string, q Q) error {
+	return Remove(ctx, collection, q.filter)
+}
+
+// FindAndModify runs the specified query and change against the collection,
+// unmarshaling the result into the specified interface.
+func FindAndModify(ctx context.Context, collection string, query any, sort []string, change db.Change, out any) (*db.ChangeInfo, error) {
+	session, db, err := GetGlobalSessionFactory().GetContextSession(ctx)
+	if err != nil {
+		grip.Errorf("error establishing db connection: %+v", err)
+
+		return nil, err
+	}
+	defer session.Close()
+	return db.C(collection).Find(query).Sort(sort...).Apply(change, out)
+}
+
+// WriteGridFile writes the data in the source Reader to a GridFS collection with
+// the given prefix and filename.
+func WriteGridFile(ctx context.Context, fsPrefix, name string, source io.Reader) error {
 	env := evergreen.GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-	_, err := env.DB().Collection(c).InsertMany(ctx, items, options.InsertMany().SetOrdered(false))
+	bucket, err := pail.NewGridFSBucketWithClient(ctx, env.Client(), pail.GridFSOptions{
+		Database: env.DB().Name(),
+		Name:     fsPrefix,
+	})
 
-	return errors.WithStack(err)
+	if err != nil {
+		return errors.Wrap(err, "problem constructing bucket access")
+	}
+	return errors.Wrap(bucket.Put(ctx, name, source), "problem writing file")
 }
+
+// GetGridFile returns a ReadCloser for a file stored with the given name under the GridFS prefix.
+func GetGridFile(ctx context.Context, fsPrefix, name string) (io.ReadCloser, error) {
+	env := evergreen.GetEnvironment()
+	bucket, err := pail.NewGridFSBucketWithClient(ctx, env.Client(), pail.GridFSOptions{
+		Database: env.DB().Name(),
+		Name:     fsPrefix,
+	})
+
+	if err != nil {
+		return nil, errors.Wrap(err, "problem constructing bucket access")
+	}
+
+	return bucket.Get(ctx, name)
+}
+
+// Aggregate runs an aggregation pipeline on a collection and unmarshals
+// the results to the given "out" interface (usually a pointer
+// to an array of structs/bson.M)
+func Aggregate(ctx context.Context, collection string, pipeline any, out any) error {
+	session, db, err := GetGlobalSessionFactory().GetContextSession(ctx)
+	if err != nil {
+		err = errors.Wrap(err, "establishing db connection")
+		grip.Error(err)
+		return err
+	}
+	defer session.Close()
+
+	pipe := db.C(collection).Pipe(pipeline)
+
+	return errors.WithStack(pipe.All(out))
+}
+
+// =============================================
+// ============ Test only functions ============
+// =============================================
 
 // CreateCollections ensures that all the given collections are created,
 // returning an error immediately if creating any one of them fails.
@@ -170,6 +426,10 @@ func ClearCollections(collections ...string) error {
 	return nil
 }
 
+func ClearGridCollections(fsPrefix string) error {
+	return ClearCollections(fmt.Sprintf("%s.files", fsPrefix), fmt.Sprintf("%s.chunks", fsPrefix))
+}
+
 // DropCollections drops the specified collections, returning an error
 // immediately if dropping any one of them fails.
 func DropCollections(collections ...string) error {
@@ -195,288 +455,4 @@ func EnsureIndex(collection string, index mongo.IndexModel) error {
 	_, err := env.DB().Collection(collection).Indexes().CreateOne(ctx, index)
 
 	return errors.WithStack(err)
-}
-
-// Remove removes one item matching the query from the specified collection.
-func Remove(collection string, query interface{}) error {
-	session, db, err := GetGlobalSessionFactory().GetSession()
-	if err != nil {
-		return err
-	}
-	defer session.Close()
-
-	return db.C(collection).Remove(query)
-}
-
-func RemoveContext(ctx context.Context, collection string, query interface{}) error {
-	session, db, err := GetGlobalSessionFactory().GetContextSession(ctx)
-	if err != nil {
-		return err
-	}
-	defer session.Close()
-
-	return db.C(collection).Remove(query)
-}
-
-// RemoveAll removes all items matching the query from the specified collection.
-func RemoveAll(collection string, query interface{}) error {
-	session, db, err := GetGlobalSessionFactory().GetSession()
-	if err != nil {
-		return err
-	}
-	defer session.Close()
-
-	_, err = db.C(collection).RemoveAll(query)
-	return err
-}
-
-// Update updates one matching document in the collection.
-func Update(collection string, query interface{}, update interface{}) error {
-	session, db, err := GetGlobalSessionFactory().GetSession()
-	if err != nil {
-		grip.Errorf("error establishing db connection: %+v", err)
-
-		return err
-	}
-	defer session.Close()
-
-	return db.C(collection).Update(query, update)
-}
-
-// Update updates one matching document in the collection.
-func UpdateContext(ctx context.Context, collection string, query interface{}, update interface{}) error {
-	res, err := evergreen.GetEnvironment().DB().Collection(collection).UpdateOne(ctx,
-		query,
-		update,
-	)
-	if err != nil {
-		return errors.Wrapf(err, "updating task")
-	}
-	if res.MatchedCount == 0 {
-		return db.ErrNotFound
-	}
-
-	return nil
-}
-
-func UpdateAllContext(ctx context.Context, collection string, query interface{}, update interface{}) (*db.ChangeInfo, error) {
-	switch query.(type) {
-	case *Q, Q:
-		grip.EmergencyPanic(message.Fields{
-			"message":    "invalid query passed to update all",
-			"cause":      "programmer error",
-			"query":      query,
-			"collection": collection,
-		})
-	case nil:
-		grip.EmergencyPanic(message.Fields{
-			"message":    "nil query passed to update all",
-			"query":      query,
-			"collection": collection,
-		})
-	}
-
-	res, err := evergreen.GetEnvironment().DB().Collection(collection).UpdateMany(ctx,
-		query,
-		update,
-	)
-	if err != nil {
-		return nil, errors.Wrapf(err, "updating task")
-	}
-
-	return &db.ChangeInfo{Updated: int(res.ModifiedCount)}, nil
-}
-
-// UpdateId updates one _id-matching document in the collection.
-func UpdateId(collection string, id, update interface{}) error {
-	session, db, err := GetGlobalSessionFactory().GetSession()
-	if err != nil {
-		grip.Errorf("error establishing db connection: %+v", err)
-
-		return err
-	}
-	defer session.Close()
-
-	return db.C(collection).UpdateId(id, update)
-}
-
-// UpdateAll updates all matching documents in the collection.
-func UpdateAll(collection string, query interface{}, update interface{}) (*db.ChangeInfo, error) {
-	switch query.(type) {
-	case *Q, Q:
-		grip.EmergencyPanic(message.Fields{
-			"message":    "invalid query passed to update all",
-			"cause":      "programmer error",
-			"query":      query,
-			"collection": collection,
-		})
-	case nil:
-		grip.EmergencyPanic(message.Fields{
-			"message":    "nil query passed to update all",
-			"query":      query,
-			"collection": collection,
-		})
-	}
-
-	session, db, err := GetGlobalSessionFactory().GetSession()
-	if err != nil {
-		grip.Errorf("error establishing db connection: %+v", err)
-
-		return nil, err
-	}
-	defer session.Close()
-
-	return db.C(collection).UpdateAll(query, update)
-}
-
-// Upsert run the specified update against the collection as an upsert operation.
-func Upsert(collection string, query interface{}, update interface{}) (*db.ChangeInfo, error) {
-	session, db, err := GetGlobalSessionFactory().GetSession()
-	if err != nil {
-		grip.Errorf("error establishing db connection: %+v", err)
-
-		return nil, err
-	}
-	defer session.Close()
-
-	return db.C(collection).Upsert(query, update)
-}
-
-// UpsertContext run the specified update against the collection as an upsert operation.
-func UpsertContext(ctx context.Context, collection string, query interface{}, update interface{}) (*db.ChangeInfo, error) {
-	res, err := evergreen.GetEnvironment().DB().Collection(collection).UpdateOne(ctx,
-		query,
-		update,
-		options.Update().SetUpsert(true),
-	)
-	if err != nil {
-		return nil, errors.Wrapf(err, "updating")
-	}
-
-	return &db.ChangeInfo{Updated: int(res.UpsertedCount) + int(res.ModifiedCount), UpsertedId: res.UpsertedID}, nil
-}
-
-// Count run a count command with the specified query against the collection.
-func Count(collection string, query interface{}) (int, error) {
-	session, db, err := GetGlobalSessionFactory().GetSession()
-	if err != nil {
-		grip.Errorf("error establishing db connection: %+v", err)
-
-		return 0, err
-	}
-	defer session.Close()
-
-	return db.C(collection).Find(query).Count()
-}
-
-// Count run a count command with the specified query against the collection.
-func CountContext(ctx context.Context, collection string, query interface{}) (int, error) {
-	session, db, err := GetGlobalSessionFactory().GetContextSession(ctx)
-	if err != nil {
-		grip.Errorf("error establishing db connection: %+v", err)
-
-		return 0, err
-	}
-	defer session.Close()
-
-	return db.C(collection).Find(query).Count()
-}
-
-// FindAndModify runs the specified query and change against the collection,
-// unmarshaling the result into the specified interface.
-func FindAndModify(collection string, query interface{}, sort []string, change db.Change, out interface{}) (*db.ChangeInfo, error) {
-	session, db, err := GetGlobalSessionFactory().GetSession()
-	if err != nil {
-		grip.Errorf("error establishing db connection: %+v", err)
-
-		return nil, err
-	}
-	defer session.Close()
-	return db.C(collection).Find(query).Sort(sort...).Apply(change, out)
-}
-
-// WriteGridFile writes the data in the source Reader to a GridFS collection with
-// the given prefix and filename.
-func WriteGridFile(fsPrefix, name string, source io.Reader) error {
-	env := evergreen.GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-	bucket, err := pail.NewGridFSBucketWithClient(ctx, env.Client(), pail.GridFSOptions{
-		Database: env.DB().Name(),
-		Name:     fsPrefix,
-	})
-
-	if err != nil {
-		return errors.Wrap(err, "problem constructing bucket access")
-	}
-	return errors.Wrap(bucket.Put(ctx, name, source), "problem writing file")
-}
-
-// GetGridFile returns a ReadCloser for a file stored with the given name under the GridFS prefix.
-func GetGridFile(fsPrefix, name string) (io.ReadCloser, error) {
-	env := evergreen.GetEnvironment()
-	ctx, cancel := env.Context()
-	defer cancel()
-	bucket, err := pail.NewGridFSBucketWithClient(ctx, env.Client(), pail.GridFSOptions{
-		Database: env.DB().Name(),
-		Name:     fsPrefix,
-	})
-
-	if err != nil {
-		return nil, errors.Wrap(err, "problem constructing bucket access")
-	}
-
-	return bucket.Get(ctx, name)
-}
-
-func ClearGridCollections(fsPrefix string) error {
-	return ClearCollections(fmt.Sprintf("%s.files", fsPrefix), fmt.Sprintf("%s.chunks", fsPrefix))
-}
-
-// Aggregate runs an aggregation pipeline on a collection and unmarshals
-// the results to the given "out" interface (usually a pointer
-// to an array of structs/bson.M)
-func Aggregate(collection string, pipeline interface{}, out interface{}) error {
-	session, db, err := GetGlobalSessionFactory().GetSession()
-	if err != nil {
-		err = errors.Wrap(err, "establishing db connection")
-		grip.Error(err)
-		return err
-	}
-	defer session.Close()
-
-	pipe := db.C(collection).Pipe(pipeline)
-
-	return errors.WithStack(pipe.All(out))
-}
-
-// AggregateContext runs an aggregation pipeline on a collection and unmarshals
-// the results to the given "out" interface (usually a pointer
-// to an array of structs/bson.M)
-func AggregateContext(ctx context.Context, collection string, pipeline interface{}, out interface{}) error {
-	session, db, err := GetGlobalSessionFactory().GetContextSession(ctx)
-	if err != nil {
-		err = errors.Wrap(err, "establishing db connection")
-		grip.Error(err)
-		return err
-	}
-	defer session.Close()
-
-	pipe := db.C(collection).Pipe(pipeline)
-
-	return errors.WithStack(pipe.All(out))
-}
-
-// AggregateWithMaxTime runs aggregate and specifies a max query time which
-// ensures the query won't go on indefinitely when the request is cancelled.
-func AggregateWithMaxTime(collection string, pipeline interface{}, out interface{}, maxTime time.Duration) error {
-	session, database, err := GetGlobalSessionFactory().GetSession()
-	if err != nil {
-		err = errors.Wrap(err, "establishing DB connection")
-		grip.Error(err)
-		return err
-	}
-	defer session.Close()
-
-	return database.C(collection).Pipe(pipeline).MaxTime(maxTime).All(out)
 }

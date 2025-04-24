@@ -27,9 +27,9 @@ var (
 )
 
 // FindOne gets one Manifest for the given query.
-func FindOne(query db.Q) (*Manifest, error) {
+func FindOne(ctx context.Context, query db.Q) (*Manifest, error) {
 	m := &Manifest{}
-	err := db.FindOneQ(Collection, query, m)
+	err := db.FindOneQContext(ctx, Collection, query, m)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -39,8 +39,8 @@ func FindOne(query db.Q) (*Manifest, error) {
 // TryInsert writes the manifest to the database if possible.
 // If the document already exists, it returns true and the error
 // If it does not it will return false and the error
-func (m *Manifest) TryInsert() (bool, error) {
-	err := db.Insert(Collection, m)
+func (m *Manifest) TryInsert(ctx context.Context) (bool, error) {
+	err := db.Insert(ctx, Collection, m)
 	if db.IsDuplicateKey(err) {
 		return true, nil
 	}
@@ -69,8 +69,8 @@ func ByBaseProjectAndRevision(project, revision string) db.Q {
 	})
 }
 
-func FindFromVersion(versionID, project, revision, requester string) (*Manifest, error) {
-	manifest, err := FindOne(ById(versionID))
+func FindFromVersion(ctx context.Context, versionID, project, revision, requester string) (*Manifest, error) {
+	manifest, err := FindOne(ctx, ById(versionID))
 	if err != nil {
 		return nil, errors.Wrap(err, "finding manifest")
 	}
@@ -80,7 +80,7 @@ func FindFromVersion(versionID, project, revision, requester string) (*Manifest,
 
 	// the version wasn't from the repotracker
 	// find the base commit's manifest
-	manifest, err = FindOne(ByBaseProjectAndRevision(project, revision))
+	manifest, err = FindOne(ctx, ByBaseProjectAndRevision(project, revision))
 	if err != nil {
 		return nil, errors.Wrap(err, "finding manifest")
 	}
@@ -90,7 +90,7 @@ func FindFromVersion(versionID, project, revision, requester string) (*Manifest,
 
 	if evergreen.IsPatchRequester(requester) {
 		var p *patch.Patch
-		p, err = patch.FindOneId(versionID)
+		p, err = patch.FindOneId(ctx, versionID)
 		if err != nil {
 			return nil, errors.Wrapf(err, "getting patch '%s'", versionID)
 		}

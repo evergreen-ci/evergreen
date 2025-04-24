@@ -69,7 +69,7 @@ type taskStatusDetails struct {
 type taskTestResult struct {
 	Status    string        `json:"status"`
 	TimeTaken time.Duration `json:"time_taken"`
-	Logs      interface{}   `json:"logs"`
+	Logs      any           `json:"logs"`
 }
 
 type taskTestLogURL struct {
@@ -127,7 +127,7 @@ func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 	destTask.ModulePaths = srcTask.Details.Modules.Prefixes
 
 	var err error
-	destTask.MinQueuePos, err = model.FindMinimumQueuePositionForTask(destTask.Id)
+	destTask.MinQueuePos, err = model.FindMinimumQueuePositionForTask(r.Context(), destTask.Id)
 	if err != nil {
 		msg := fmt.Sprintf("Error calculating task queue position for '%v'", srcTask.Id)
 		grip.Errorf("%v: %+v", msg, err)
@@ -161,7 +161,7 @@ func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Copy over artifacts and binaries.
-	entries, err := artifact.FindAll(artifact.ByTaskId(srcTask.Id))
+	entries, err := artifact.FindAll(r.Context(), artifact.ByTaskId(srcTask.Id))
 	if err != nil {
 		msg := fmt.Sprintf("Error finding task '%s'", srcTask.Id)
 		grip.Errorf("%v: %+v", msg, err)

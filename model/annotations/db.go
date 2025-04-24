@@ -1,6 +1,8 @@
 package annotations
 
 import (
+	"context"
+
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
@@ -32,9 +34,9 @@ const (
 )
 
 // FindOne gets one TaskAnnotation for the given query.
-func FindOne(query db.Q) (*TaskAnnotation, error) {
+func FindOne(ctx context.Context, query db.Q) (*TaskAnnotation, error) {
 	annotation := &TaskAnnotation{}
-	err := db.FindOneQ(Collection, query, annotation)
+	err := db.FindOneQContext(ctx, Collection, query, annotation)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -42,9 +44,9 @@ func FindOne(query db.Q) (*TaskAnnotation, error) {
 }
 
 // Find gets every TaskAnnotation matching the given query.
-func Find(query db.Q) ([]TaskAnnotation, error) {
+func Find(ctx context.Context, query db.Q) ([]TaskAnnotation, error) {
 	annotations := []TaskAnnotation{}
-	err := db.FindAllQ(Collection, query, &annotations)
+	err := db.FindAllQ(ctx, Collection, query, &annotations)
 	if err != nil {
 		return nil, errors.Wrap(err, "finding task annotations")
 	}
@@ -52,20 +54,20 @@ func Find(query db.Q) ([]TaskAnnotation, error) {
 	return annotations, err
 }
 
-func FindOneByTaskIdAndExecution(id string, execution int) (*TaskAnnotation, error) {
-	return FindOne(db.Query(ByTaskIdAndExecution(id, execution)))
+func FindOneByTaskIdAndExecution(ctx context.Context, id string, execution int) (*TaskAnnotation, error) {
+	return FindOne(ctx, db.Query(ByTaskIdAndExecution(id, execution)))
 }
 
-func FindByTaskIds(ids []string) ([]TaskAnnotation, error) {
-	return Find(ByTaskIds(ids))
+func FindByTaskIds(ctx context.Context, ids []string) ([]TaskAnnotation, error) {
+	return Find(ctx, ByTaskIds(ids))
 }
 
-func FindByTaskId(id string) ([]TaskAnnotation, error) {
-	return Find(db.Query(ByTaskId(id)))
+func FindByTaskId(ctx context.Context, id string) ([]TaskAnnotation, error) {
+	return Find(ctx, db.Query(ByTaskId(id)))
 }
 
 // Upsert writes the task_annotation to the database.
-func (a *TaskAnnotation) Upsert() error {
+func (a *TaskAnnotation) Upsert(ctx context.Context) error {
 	set := bson.M{
 		NoteKey:            a.Note,
 		IssuesKey:          a.Issues,
@@ -77,6 +79,7 @@ func (a *TaskAnnotation) Upsert() error {
 		set[MetadataKey] = a.Metadata
 	}
 	_, err := db.Upsert(
+		ctx,
 		Collection,
 		ByTaskIdAndExecution(a.TaskId, a.TaskExecution),
 		bson.M{

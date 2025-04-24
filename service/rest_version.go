@@ -147,12 +147,12 @@ func (restapi restAPI) getRecentVersions(w http.ResponseWriter, r *http.Request)
 		}
 	}
 	var versions []model.Version
-	projectId, err := model.GetIdForProject(projectIdentifier)
+	projectId, err := model.GetIdForProject(r.Context(), projectIdentifier)
 	// only look for versions if the project can be found, otherwise continue without error
 	if err == nil {
 		// add one to limit to determine if a new page is necessary
-		versions, err = model.VersionFind(model.VersionBySystemRequesterOrdered(projectId, start).
-			Limit(l + 1))
+		versions, err = model.VersionFind(r.Context(), model.VersionBySystemRequesterOrdered(projectId, start).
+			Limit(l+1))
 		if err != nil {
 			msg := fmt.Sprintf("Error finding recent versions of project '%v'", projectIdentifier)
 			grip.Error(errors.Wrap(err, msg))
@@ -223,7 +223,7 @@ func (restapi restAPI) getRecentVersions(w http.ResponseWriter, r *http.Request)
 }
 
 func (r *recentVersionsContent) populateBuildsAndTasks(ctx context.Context, versionIds []string, versionIdx map[string]int) error {
-	builds, err := build.FindBuildsByVersions(versionIds)
+	builds, err := build.FindBuildsByVersions(ctx, versionIds)
 	if err != nil {
 		return errors.Wrap(err, "Error finding recent versions")
 	}
@@ -273,7 +273,6 @@ func (restapi restAPI) getVersionInfo(w http.ResponseWriter, r *http.Request) {
 	copyVersion(srcVersion, destVersion)
 	for _, buildStatus := range srcVersion.BuildVariants {
 		destVersion.BuildVariants = append(destVersion.BuildVariants, buildStatus.BuildVariant)
-		grip.Infof("adding BuildVariant %s", buildStatus.BuildVariant)
 	}
 
 	gimlet.WriteJSON(w, destVersion)
@@ -346,11 +345,12 @@ func (restapi restAPI) getVersionInfoViaRevision(w http.ResponseWriter, r *http.
 	projectName := vars["project_id"]
 	revision := vars["revision"]
 
-	projectId, err := model.GetIdForProject(projectName)
+	projectId, err := model.GetIdForProject(r.Context(), projectName)
 	if err != nil {
 		gimlet.WriteJSONError(w, responseError{Message: "project doesn't exist"})
+		return
 	}
-	srcVersion, err := model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(projectId, revision))
+	srcVersion, err := model.VersionFindOne(r.Context(), model.BaseVersionByProjectIdAndRevision(projectId, revision))
 	if err != nil || srcVersion == nil {
 		msg := fmt.Sprintf("Error finding revision '%v' for project '%v'", revision, projectId)
 		statusCode := http.StatusNotFound
@@ -369,7 +369,6 @@ func (restapi restAPI) getVersionInfoViaRevision(w http.ResponseWriter, r *http.
 
 	for _, buildStatus := range srcVersion.BuildVariants {
 		destVersion.BuildVariants = append(destVersion.BuildVariants, buildStatus.BuildVariant)
-		grip.Infof("adding BuildVariant %s", buildStatus.BuildVariant)
 	}
 
 	gimlet.WriteJSON(w, destVersion)
@@ -425,7 +424,7 @@ func (restapi *restAPI) getVersionStatus(w http.ResponseWriter, r *http.Request)
 	case "": // default to group by tasks
 		fallthrough
 	case "tasks":
-		restapi.getVersionStatusByTask(versionId, w)
+		restapi.getVersionStatusByTask(r.Context(), versionId, w)
 		return
 	case "builds":
 		restapi.getVersionStatusByBuild(r.Context(), versionId, w)
@@ -441,7 +440,7 @@ func (restapi *restAPI) getVersionStatus(w http.ResponseWriter, r *http.Request)
 // grouped on the tasks. The keys of the object are the task names,
 // with each key in the nested object representing a particular build
 // variant.
-func (restapi *restAPI) getVersionStatusByTask(versionId string, w http.ResponseWriter) {
+func (restapi *restAPI) getVersionStatusByTask(ctx context.Context, versionId string, w http.ResponseWriter) {
 	id := "_id"
 
 	pipeline := []bson.M{
@@ -482,7 +481,7 @@ func (restapi *restAPI) getVersionStatusByTask(versionId string, w http.Response
 		Tasks       []task.Task `bson:"tasks"`
 	}
 
-	err := db.Aggregate(task.Collection, pipeline, &groupedTasks)
+	err := db.Aggregate(ctx, task.Collection, pipeline, &groupedTasks)
 	if err != nil {
 		msg := fmt.Sprintf("Error finding status for version '%v'", versionId)
 		grip.Errorf("%v: %+v", msg, err)
@@ -517,7 +516,7 @@ func (restapi *restAPI) getVersionStatusByTask(versionId string, w http.Response
 // particular task.
 func (restapi restAPI) getVersionStatusByBuild(ctx context.Context, versionId string, w http.ResponseWriter) {
 	// Get all of the builds corresponding to this version
-	builds, err := build.Find(
+	builds, err := build.Find(ctx,
 		build.ByVersion(versionId).WithFields(build.BuildVariantKey, bsonutil.GetDottedKeyName(build.TasksKey, build.TaskCacheIdKey)),
 	)
 	if err != nil {
@@ -565,7 +564,7 @@ func (restapi restAPI) getVersionStatusByBuild(ctx context.Context, versionId st
 // lastGreen returns the most recent version for which the supplied variants completely pass.
 func (ra *restAPI) lastGreen(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveRESTContext(r)
-	project, err := projCtx.GetProject()
+	project, err := projCtx.GetProject(r.Context())
 	if err != nil || project == nil {
 		http.Error(w, "project not found", http.StatusNotFound)
 		return
@@ -583,7 +582,7 @@ func (ra *restAPI) lastGreen(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get latest version for which all the given build variants passed.
-	version, err := model.FindLastPassingVersionForBuildVariants(project, bvs)
+	version, err := model.FindLastPassingVersionForBuildVariants(r.Context(), project, bvs)
 	if err != nil {
 		ra.LoggedError(w, r, http.StatusInternalServerError, err)
 		return

@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -54,12 +55,13 @@ func NewPushLog(v *Version, task *task.Task, location string) *PushLog {
 	}
 }
 
-func (pl *PushLog) Insert() error {
-	return db.Insert(PushlogCollection, pl)
+func (pl *PushLog) Insert(ctx context.Context) error {
+	return db.Insert(ctx, PushlogCollection, pl)
 }
 
-func (pl *PushLog) UpdateStatus(newStatus string) error {
-	return db.Update(
+func (pl *PushLog) UpdateStatus(ctx context.Context, newStatus string) error {
+	return db.UpdateContext(
+		ctx,
 		PushlogCollection,
 		bson.M{
 			PushLogIdKey: pl.Id,
@@ -72,11 +74,11 @@ func (pl *PushLog) UpdateStatus(newStatus string) error {
 	)
 }
 
-func FindOnePushLog(query interface{}, projection interface{},
+func FindOnePushLog(ctx context.Context, query any, projection any,
 	sort []string) (*PushLog, error) {
 	pushLog := &PushLog{}
 	q := db.Query(query).Project(projection).Sort(sort)
-	err := db.FindOneQ(PushlogCollection, q, pushLog)
+	err := db.FindOneQContext(ctx, PushlogCollection, q, pushLog)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -85,7 +87,7 @@ func FindOnePushLog(query interface{}, projection interface{},
 
 // FindNewerPushLog returns a PushLog item if there is a file pushed from
 // this version or a newer one, or one already in progress.
-func FindPushLogAfter(fileLoc string, revisionOrderNumber int) (*PushLog, error) {
+func FindPushLogAfter(ctx context.Context, fileLoc string, revisionOrderNumber int) (*PushLog, error) {
 	query := bson.M{
 		PushLogStatusKey: bson.M{
 			"$in": []string{
@@ -98,6 +100,7 @@ func FindPushLogAfter(fileLoc string, revisionOrderNumber int) (*PushLog, error)
 		},
 	}
 	existingPushLog, err := FindOnePushLog(
+		ctx,
 		query,
 		db.NoProjection,
 		[]string{"-" + PushLogRonKey},

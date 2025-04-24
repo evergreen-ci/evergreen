@@ -21,7 +21,7 @@ func (r *imageResolver) Distros(ctx context.Context, obj *model.APIImage) ([]*mo
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding distros for image '%s': %s", imageID, err.Error()))
 	}
 
-	userHasDistroCreatePermission := userHasDistroCreatePermission(usr)
+	userHasDistroCreatePermission := usr.HasDistroCreatePermission()
 
 	apiDistros := []*model.APIDistro{}
 	for _, d := range distros {
@@ -40,7 +40,7 @@ func (r *imageResolver) Distros(ctx context.Context, obj *model.APIImage) ([]*mo
 func (r *imageResolver) Events(ctx context.Context, obj *model.APIImage, limit int, page int) (*ImageEventsPayload, error) {
 	config, err := evergreen.GetConfig(ctx)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting evergreen configuration: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Evergreen configuration: %s", err.Error()))
 	}
 	c := thirdparty.NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
 	opts := thirdparty.EventHistoryOptions{
@@ -80,7 +80,7 @@ func (r *imageResolver) LatestTask(ctx context.Context, obj *model.APIImage) (*m
 		IncludeAMI: true,
 	})
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("building API task from service: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting task '%s' to APITask: %s", latestTask.Id, err.Error()))
 	}
 	return apiLatestTask, nil
 }
@@ -89,7 +89,7 @@ func (r *imageResolver) LatestTask(ctx context.Context, obj *model.APIImage) (*m
 func (r *imageResolver) OperatingSystem(ctx context.Context, obj *model.APIImage, opts thirdparty.OSInfoFilterOptions) (*ImageOperatingSystemPayload, error) {
 	config, err := evergreen.GetConfig(ctx)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting evergreen configuration: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Evergreen configuration: %s", err.Error()))
 	}
 	c := thirdparty.NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
 	opts.AMI = utility.FromStringPtr(obj.AMI)
@@ -114,7 +114,7 @@ func (r *imageResolver) OperatingSystem(ctx context.Context, obj *model.APIImage
 func (r *imageResolver) Packages(ctx context.Context, obj *model.APIImage, opts thirdparty.PackageFilterOptions) (*ImagePackagesPayload, error) {
 	config, err := evergreen.GetConfig(ctx)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting evergreen configuration: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Evergreen configuration: %s", err.Error()))
 	}
 	c := thirdparty.NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
 	opts.AMI = utility.FromStringPtr(obj.AMI)
@@ -139,7 +139,7 @@ func (r *imageResolver) Packages(ctx context.Context, obj *model.APIImage, opts 
 func (r *imageResolver) Toolchains(ctx context.Context, obj *model.APIImage, opts thirdparty.ToolchainFilterOptions) (*ImageToolchainsPayload, error) {
 	config, err := evergreen.GetConfig(ctx)
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting evergreen configuration: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Evergreen configuration: %s", err.Error()))
 	}
 	c := thirdparty.NewRuntimeEnvironmentsClient(config.RuntimeEnvironments.BaseURL, config.RuntimeEnvironments.APIKey)
 	opts.AMI = utility.FromStringPtr(obj.AMI)

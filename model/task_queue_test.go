@@ -27,26 +27,26 @@ func TestDequeueTask(t *testing.T) {
 		So(db.Clear(TaskQueuesCollection), ShouldBeNil)
 
 		Convey("if the task queue is empty, an error should not be thrown", func() {
-			So(taskQueue.Save(), ShouldBeNil)
-			So(taskQueue.DequeueTask(taskIds[0]), ShouldBeNil)
+			So(taskQueue.Save(t.Context()), ShouldBeNil)
+			So(taskQueue.DequeueTask(t.Context(), taskIds[0]), ShouldBeNil)
 		})
 
 		Convey("if the task is not present in the queue, an error should not be"+
 			" thrown", func() {
 			taskQueue.Queue = append(taskQueue.Queue,
 				TaskQueueItem{Id: taskIds[1]})
-			So(taskQueue.Save(), ShouldBeNil)
-			So(taskQueue.DequeueTask(taskIds[0]), ShouldBeNil)
+			So(taskQueue.Save(t.Context()), ShouldBeNil)
+			So(taskQueue.DequeueTask(t.Context(), taskIds[0]), ShouldBeNil)
 		})
 
 		Convey("if the task is present in the in-memory queue but not in the db queue"+
 			", an error should not be thrown", func() {
 			taskQueue.Queue = append(taskQueue.Queue,
 				TaskQueueItem{Id: taskIds[1]})
-			So(taskQueue.Save(), ShouldBeNil)
+			So(taskQueue.Save(t.Context()), ShouldBeNil)
 			taskQueue.Queue = append(taskQueue.Queue,
 				TaskQueueItem{Id: taskIds[0]})
-			So(taskQueue.DequeueTask(taskIds[0]), ShouldBeNil)
+			So(taskQueue.DequeueTask(t.Context(), taskIds[0]), ShouldBeNil)
 		})
 
 		Convey("if the task is present in the queue, it should be removed"+
@@ -56,8 +56,8 @@ func TestDequeueTask(t *testing.T) {
 				{Id: taskIds[1]},
 				{Id: taskIds[2]},
 			}
-			So(taskQueue.Save(), ShouldBeNil)
-			So(taskQueue.DequeueTask(taskIds[1]), ShouldBeNil)
+			So(taskQueue.Save(t.Context()), ShouldBeNil)
+			So(taskQueue.DequeueTask(t.Context(), taskIds[1]), ShouldBeNil)
 
 			// make sure the queue was updated in memory
 			So(taskQueue.Length(), ShouldEqual, 2)
@@ -66,20 +66,20 @@ func TestDequeueTask(t *testing.T) {
 
 			var err error
 			// make sure the db representation was updated
-			taskQueue, err = LoadTaskQueue(distroId)
+			taskQueue, err = LoadTaskQueue(t.Context(), distroId)
 			So(err, ShouldBeNil)
 			So(taskQueue.Length(), ShouldEqual, 2)
 			So(taskQueue.Queue[0].Id, ShouldEqual, taskIds[0])
 			So(taskQueue.Queue[1].Id, ShouldEqual, taskIds[2])
 
 			// should be safe to remove the last item
-			So(taskQueue.DequeueTask(taskIds[2]), ShouldBeNil)
+			So(taskQueue.DequeueTask(t.Context(), taskIds[2]), ShouldBeNil)
 			So(taskQueue.Length(), ShouldEqual, 1)
 
-			So(taskQueue.DequeueTask(taskIds[0]), ShouldBeNil)
+			So(taskQueue.DequeueTask(t.Context(), taskIds[0]), ShouldBeNil)
 			So(taskQueue.Length(), ShouldEqual, 0)
 
-			So(taskQueue.DequeueTask("foo"), ShouldBeNil)
+			So(taskQueue.DequeueTask(t.Context(), "foo"), ShouldBeNil)
 			So(taskQueue.Length(), ShouldEqual, 0)
 		})
 		Convey("modern: duplicate tasks shouldn't lead to anics", func() {
@@ -88,9 +88,9 @@ func TestDequeueTask(t *testing.T) {
 				{Id: taskIds[1]},
 				{Id: taskIds[0]},
 			}
-			So(taskQueue.Save(), ShouldBeNil)
+			So(taskQueue.Save(t.Context()), ShouldBeNil)
 
-			So(taskQueue.DequeueTask(taskIds[0]), ShouldBeNil)
+			So(taskQueue.DequeueTask(t.Context(), taskIds[0]), ShouldBeNil)
 			So(taskQueue.Length(), ShouldEqual, 1)
 		})
 	})
@@ -124,16 +124,16 @@ func TestClearTaskQueue(t *testing.T) {
 
 	queue := NewTaskQueue(distro, tasks, info)
 	assert.Len(queue.Queue, 3)
-	assert.NoError(queue.Save())
+	assert.NoError(queue.Save(t.Context()))
 	otherQueue := NewTaskQueue(otherDistro, tasks, info)
 	assert.Len(otherQueue.Queue, 3)
-	assert.NoError(otherQueue.Save())
+	assert.NoError(otherQueue.Save(t.Context()))
 
-	assert.NoError(ClearTaskQueue(distro))
-	queueFromDb, err := LoadTaskQueue(distro)
+	assert.NoError(ClearTaskQueue(t.Context(), distro))
+	queueFromDb, err := LoadTaskQueue(t.Context(), distro)
 	assert.NoError(err)
 	assert.Empty(queueFromDb.Queue)
-	otherQueueFromDb, err := LoadTaskQueue(otherDistro)
+	otherQueueFromDb, err := LoadTaskQueue(t.Context(), otherDistro)
 	assert.NoError(err)
 	assert.Len(otherQueueFromDb.Queue, 3)
 }
@@ -169,9 +169,9 @@ func TestFindDistroTaskQueue(t *testing.T) {
 	}
 
 	taskQueueIn := NewTaskQueue(distroID, taskQueueItems, info)
-	assert.NoError(taskQueueIn.Save())
+	assert.NoError(taskQueueIn.Save(t.Context()))
 
-	taskQueueOut, err := FindDistroTaskQueue(distroID)
+	taskQueueOut, err := FindDistroTaskQueue(t.Context(), distroID)
 	assert.NoError(err)
 	assert.Equal(distroID, taskQueueOut.Distro)
 	assert.Len(taskQueueOut.Queue, 8)
@@ -209,9 +209,9 @@ func TestGetDistroQueueInfo(t *testing.T) {
 	}
 
 	taskQueueIn := NewTaskQueue(distroID, taskQueueItems, info)
-	assert.NoError(taskQueueIn.Save())
+	assert.NoError(taskQueueIn.Save(t.Context()))
 
-	distroQueueInfoOut, err := GetDistroQueueInfo(distroID)
+	distroQueueInfoOut, err := GetDistroQueueInfo(t.Context(), distroID)
 	assert.NoError(err)
 	assert.Equal(8, distroQueueInfoOut.Length)
 	assert.Len(distroQueueInfoOut.TaskGroupInfos, 1)
@@ -227,7 +227,7 @@ func TestFindDuplicateEnqueuedTasks(t *testing.T) {
 		for _, id := range ids {
 			tq.Queue = append(tq.Queue, TaskQueueItem{Id: id})
 		}
-		require.NoError(t, tq.Save())
+		require.NoError(t, tq.Save(t.Context()))
 		return tq
 	}
 	for testName, testCase := range map[string]func(t *testing.T){
@@ -235,7 +235,7 @@ func TestFindDuplicateEnqueuedTasks(t *testing.T) {
 			_ = makeTaskQueue(t, "d1", "task1", "task2", "task3")
 			_ = makeTaskQueue(t, "d2", "task1", "task3", "task4", "task5", "task6")
 			_ = makeTaskQueue(t, "d3", "task3")
-			dups, err := FindDuplicateEnqueuedTasks(coll)
+			dups, err := FindDuplicateEnqueuedTasks(t.Context(), coll)
 			require.NoError(t, err)
 			require.Len(t, dups, 2)
 			var task1Found, task3Found bool
@@ -258,20 +258,20 @@ func TestFindDuplicateEnqueuedTasks(t *testing.T) {
 		},
 		"DoesNotMatchDuplicatesWithinSameQueue": func(t *testing.T) {
 			_ = makeTaskQueue(t, "d1", "task1", "task1", "task2")
-			dups, err := FindDuplicateEnqueuedTasks(coll)
+			dups, err := FindDuplicateEnqueuedTasks(t.Context(), coll)
 			assert.NoError(t, err)
 			assert.Empty(t, dups)
 		},
 		"DoesNotMatchEmptyQueues": func(t *testing.T) {
 			_ = makeTaskQueue(t, "d1")
-			dups, err := FindDuplicateEnqueuedTasks(coll)
+			dups, err := FindDuplicateEnqueuedTasks(t.Context(), coll)
 			assert.NoError(t, err)
 			assert.Empty(t, dups)
 		},
 		"DoesNotMatchAllUnique": func(t *testing.T) {
 			_ = makeTaskQueue(t, "d1", "task1", "task2")
 			_ = makeTaskQueue(t, "d2", "task3", "task4")
-			dups, err := FindDuplicateEnqueuedTasks(coll)
+			dups, err := FindDuplicateEnqueuedTasks(t.Context(), coll)
 			assert.NoError(t, err)
 			assert.Empty(t, dups)
 		},

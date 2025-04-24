@@ -653,7 +653,7 @@ func (t *Task) SetOverrideDependencies(ctx context.Context, userID string) error
 	t.OverrideDependencies = true
 	t.DependenciesMetTime = dependenciesMetTime
 	t.DisplayStatusCache = t.DetermineDisplayStatus()
-	event.LogTaskDependenciesOverridden(t.Id, t.Execution, userID)
+	event.LogTaskDependenciesOverridden(ctx, t.Id, t.Execution, userID)
 	return UpdateOne(
 		ctx,
 		bson.M{
@@ -1556,7 +1556,7 @@ func UnscheduleStaleUnderwaterHostTasks(ctx context.Context, distroID string) ([
 		return nil, errors.Wrap(err, "unscheduling stale underwater tasks")
 	}
 	for _, modifiedTask := range tasks {
-		event.LogTaskPriority(modifiedTask.Id, modifiedTask.Execution, evergreen.UnderwaterTaskUnscheduler, evergreen.DisabledTaskPriority)
+		event.LogTaskPriority(ctx, modifiedTask.Id, modifiedTask.Execution, evergreen.UnderwaterTaskUnscheduler, evergreen.DisabledTaskPriority)
 	}
 	return tasks, nil
 }
@@ -1575,7 +1575,7 @@ func DeactivateStepbackTask(ctx context.Context, projectId, buildVariantName, ta
 		return errors.Wrap(err, "deactivating stepback task")
 	}
 	if t.IsAbortable() {
-		event.LogTaskAbortRequest(t.Id, t.Execution, caller)
+		event.LogTaskAbortRequest(ctx, t.Id, t.Execution, caller)
 		if err = t.SetAborted(ctx, AbortInfo{User: caller}); err != nil {
 			return errors.Wrap(err, "setting task aborted")
 		}
@@ -1607,11 +1607,11 @@ func (t *Task) MarkSystemFailed(ctx context.Context, description string) error {
 
 	switch t.ExecutionPlatform {
 	case ExecutionPlatformHost:
-		event.LogHostTaskFinished(t.Id, t.Execution, t.HostId, evergreen.TaskSystemFailed)
+		event.LogHostTaskFinished(ctx, t.Id, t.Execution, t.HostId, evergreen.TaskSystemFailed)
 	case ExecutionPlatformContainer:
-		event.LogContainerTaskFinished(t.Id, t.Execution, t.PodID, evergreen.TaskSystemFailed)
+		event.LogContainerTaskFinished(ctx, t.Id, t.Execution, t.PodID, evergreen.TaskSystemFailed)
 	default:
-		event.LogTaskFinished(t.Id, t.Execution, evergreen.TaskSystemFailed)
+		event.LogTaskFinished(ctx, t.Id, t.Execution, evergreen.TaskSystemFailed)
 	}
 	grip.Info(message.Fields{
 		"message":            "marking task system failed",
@@ -1727,14 +1727,12 @@ func SetGeneratedStepbackInfoForGenerator(ctx context.Context, taskId string, s 
 				bsonutil.GetDottedKeyName(StepbackInfoKey, GeneratedStepbackInfoKey, "$[elem]", PreviousStepbackTaskIdKey):    s.PreviousStepbackTaskId,
 			},
 		},
-		options.Update().SetArrayFilters(options.ArrayFilters{
-			Filters: []interface{}{
-				bson.M{
-					bsonutil.GetDottedKeyName("elem", DisplayNameKey):  s.DisplayName,
-					bsonutil.GetDottedKeyName("elem", BuildVariantKey): s.BuildVariant,
-				},
+		options.Update().SetArrayFilters(options.ArrayFilters{Filters: []interface{}{
+			bson.M{
+				bsonutil.GetDottedKeyName("elem", DisplayNameKey):  s.DisplayName,
+				bsonutil.GetDottedKeyName("elem", BuildVariantKey): s.BuildVariant,
 			},
-		}),
+		}}),
 	)
 	// If no documents were modified, fallback to adding the new StepbackInfo.
 	if r.ModifiedCount == 0 {
@@ -1939,7 +1937,7 @@ func ActivateTasks(ctx context.Context, tasks []Task, activationTime time.Time, 
 	// Tasks passed into this function will all be from the same version or build, so we can assume
 	// all tasks also share the same requester field.
 	numTasksModified := len(taskIDs) + len(depTaskIDsToUpdate) + numEstimatedActivatedGeneratedTasks
-	if err = UpdateSchedulingLimit(caller, tasks[0].Requester, numTasksModified, true); err != nil {
+	if err = UpdateSchedulingLimit(ctx, caller, tasks[0].Requester, numTasksModified, true); err != nil {
 		return nil, err
 	}
 	err = activateTasks(ctx, taskIDs, caller, activationTime)
@@ -1950,7 +1948,7 @@ func ActivateTasks(ctx context.Context, tasks []Task, activationTime time.Time, 
 	for _, t := range tasksToActivate {
 		logs = append(logs, event.GetTaskActivatedEvent(t.Id, t.Execution, caller))
 	}
-	grip.Error(message.WrapError(event.LogManyEvents(logs), message.Fields{
+	grip.Error(message.WrapError(event.LogManyEvents(ctx, logs), message.Fields{
 		"message":  "problem logging task activated events",
 		"task_ids": taskIDs,
 		"caller":   caller,
@@ -1969,7 +1967,7 @@ func ActivateTasks(ctx context.Context, tasks []Task, activationTime time.Time, 
 
 // UpdateSchedulingLimit retrieves a user from the DB and updates their hourly scheduling limit info
 // if they are not a service user.
-func UpdateSchedulingLimit(username, requester string, numTasksModified int, activated bool) error {
+func UpdateSchedulingLimit(ctx context.Context, username, requester string, numTasksModified int, activated bool) error {
 	if evergreen.IsSystemActivator(username) || !evergreen.IsPatchRequester(requester) || numTasksModified == 0 {
 		return nil
 	}
@@ -1978,12 +1976,12 @@ func UpdateSchedulingLimit(username, requester string, numTasksModified int, act
 	if maxScheduledTasks == 0 {
 		return nil
 	}
-	u, err := user.FindOneById(username)
+	u, err := user.FindOneByIdContext(ctx, username)
 	if err != nil {
 		return errors.Wrap(err, "getting user")
 	}
 	if u != nil && !u.OnlyAPI {
-		return errors.Wrapf(u.CheckAndUpdateSchedulingLimit(maxScheduledTasks, numTasksModified, activated), "checking task scheduling limit for user '%s'", u.Id)
+		return errors.Wrapf(u.CheckAndUpdateSchedulingLimit(ctx, maxScheduledTasks, numTasksModified, activated), "checking task scheduling limit for user '%s'", u.Id)
 	}
 	return nil
 }
@@ -2118,7 +2116,7 @@ func activateDeactivatedDependencies(ctx context.Context, tasksToActivate map[st
 	for _, t := range tasksToActivate {
 		logs = append(logs, event.GetTaskActivatedEvent(t.Id, t.Execution, caller))
 	}
-	grip.Error(message.WrapError(event.LogManyEvents(logs), message.Fields{
+	grip.Error(message.WrapError(event.LogManyEvents(ctx, logs), message.Fields{
 		"message":  "problem logging task activated events",
 		"task_ids": taskIDsToActivate,
 		"caller":   caller,
@@ -2208,7 +2206,7 @@ func DeactivateTasks(ctx context.Context, tasks []Task, updateDependencies bool,
 	// Tasks passed into this function will all be from the same version or build, so we can assume
 	// all tasks also share the same requester field.
 	numTasksModified := len(taskIDs) + len(depTaskIDsToUpdate) + numEstimatedActivatedGeneratedTasks
-	if err = UpdateSchedulingLimit(caller, tasks[0].Requester, numTasksModified, false); err != nil {
+	if err = UpdateSchedulingLimit(ctx, caller, tasks[0].Requester, numTasksModified, false); err != nil {
 		return err
 	}
 
@@ -2217,12 +2215,15 @@ func DeactivateTasks(ctx context.Context, tasks []Task, updateDependencies bool,
 		bson.M{
 			IdKey: bson.M{"$in": taskIDs},
 		},
-		bson.M{
-			"$set": bson.M{
-				ActivatedKey:     false,
-				ActivatedByKey:   caller,
-				ScheduledTimeKey: utility.ZeroTime,
+		[]bson.M{
+			{
+				"$set": bson.M{
+					ActivatedKey:     false,
+					ActivatedByKey:   caller,
+					ScheduledTimeKey: utility.ZeroTime,
+				},
 			},
+			addDisplayStatusCache,
 		},
 	)
 	if err != nil {
@@ -2233,7 +2234,7 @@ func DeactivateTasks(ctx context.Context, tasks []Task, updateDependencies bool,
 	for _, t := range tasks {
 		logs = append(logs, event.GetTaskDeactivatedEvent(t.Id, t.Execution, caller))
 	}
-	grip.Error(message.WrapError(event.LogManyEvents(logs), message.Fields{
+	grip.Error(message.WrapError(event.LogManyEvents(ctx, logs), message.Fields{
 		"message":  "problem logging task deactivated events",
 		"task_ids": taskIDs,
 		"caller":   caller,
@@ -2288,7 +2289,7 @@ func deactivateDependencies(ctx context.Context, tasksToUpdate []Task, taskIDsTo
 	for _, t := range tasksToUpdate {
 		logs = append(logs, event.GetTaskDeactivatedEvent(t.Id, t.Execution, caller))
 	}
-	grip.Error(message.WrapError(event.LogManyEvents(logs), message.Fields{
+	grip.Error(message.WrapError(event.LogManyEvents(ctx, logs), message.Fields{
 		"message":  "problem logging task deactivated events",
 		"task_ids": taskIDsToUpdate,
 		"caller":   caller,
@@ -2970,7 +2971,7 @@ func abortTasksByQuery(ctx context.Context, q bson.M, reason AbortInfo) error {
 	if err != nil {
 		return errors.Wrap(err, "setting aborted statuses")
 	}
-	event.LogManyTaskAbortRequests(ids, reason.User)
+	event.LogManyTaskAbortRequests(ctx, ids, reason.User)
 	return nil
 }
 
@@ -2994,8 +2995,8 @@ func (t *Task) String() (taskStruct string) {
 }
 
 // Insert writes the task to the db.
-func (t *Task) Insert() error {
-	return db.Insert(Collection, t)
+func (t *Task) Insert(ctx context.Context) error {
+	return db.Insert(ctx, Collection, t)
 }
 
 // Archive modifies the current execution of the task so that it is no longer
@@ -3011,7 +3012,7 @@ func (t *Task) Archive(ctx context.Context) error {
 	} else {
 		// Archiving a single task.
 		archiveTask := t.makeArchivedTask()
-		err := db.Insert(OldCollection, archiveTask)
+		err := db.Insert(ctx, OldCollection, archiveTask)
 		if err != nil && !db.IsDuplicateKey(err) {
 			return errors.Wrap(err, "inserting archived task into old tasks")
 		}
@@ -3052,7 +3053,7 @@ func ArchiveMany(ctx context.Context, tasks []Task) error {
 	allTaskIds := []string{}          // Contains all tasks and display tasks IDs
 	execTaskIds := []string{}         // Contains all exec tasks IDs
 	toUpdateExecTaskIds := []string{} // Contains all exec tasks IDs that should update and have new execution
-	archivedTasks := []interface{}{}  // Contains all archived tasks (task, display, and execution). Created by Task.makeArchivedTask()
+	archivedTasks := []any{}          // Contains all archived tasks (task, display, and execution). Created by Task.makeArchivedTask()
 
 	for _, t := range tasks {
 		if !utility.StringSliceContains(evergreen.TaskCompletedStatuses, t.Status) {
@@ -3098,7 +3099,7 @@ func ArchiveMany(ctx context.Context, tasks []Task) error {
 // - execTaskIds            : All execution task IDs
 // - toRestartExecTaskIds   : All execution task IDs for execution tasks that will be archived/restarted
 // - archivedTasks          : All archived tasks created by Task.makeArchivedTask()
-func archiveAll(ctx context.Context, taskIds, execTaskIds, toRestartExecTaskIds []string, archivedTasks []interface{}) error {
+func archiveAll(ctx context.Context, taskIds, execTaskIds, toRestartExecTaskIds []string, archivedTasks []any) error {
 	mongoClient := evergreen.GetEnvironment().Client()
 	session, err := mongoClient.StartSession()
 	if err != nil {
@@ -3106,17 +3107,17 @@ func archiveAll(ctx context.Context, taskIds, execTaskIds, toRestartExecTaskIds 
 	}
 	defer session.EndSession(ctx)
 
-	txFunc := func(sessCtx mongo.SessionContext) (interface{}, error) {
+	txFunc := func(ctx mongo.SessionContext) (any, error) {
 		var err error
 		if len(archivedTasks) > 0 {
 			oldTaskColl := evergreen.GetEnvironment().DB().Collection(OldCollection)
-			_, err = oldTaskColl.InsertMany(sessCtx, archivedTasks)
+			_, err = oldTaskColl.InsertMany(ctx, archivedTasks)
 			if err != nil {
 				return nil, errors.Wrap(err, "archiving tasks")
 			}
 		}
 		if len(taskIds) > 0 {
-			_, err = evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(sessCtx,
+			_, err = evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(ctx,
 				bson.M{
 					IdKey:     bson.M{"$in": taskIds},
 					StatusKey: bson.M{"$in": evergreen.TaskCompletedStatuses},
@@ -3140,7 +3141,7 @@ func archiveAll(ctx context.Context, taskIds, execTaskIds, toRestartExecTaskIds 
 			}
 		}
 		if len(execTaskIds) > 0 {
-			_, err = evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(sessCtx,
+			_, err = evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(ctx,
 				bson.M{IdKey: bson.M{"$in": execTaskIds}}, // Query all execution tasks
 				bson.A{ // Pipeline
 					bson.M{"$set": bson.M{ // Sets LatestParentExecution (LPE) = LPE + 1
@@ -3156,7 +3157,7 @@ func archiveAll(ctx context.Context, taskIds, execTaskIds, toRestartExecTaskIds 
 			}
 
 			// Call to update all tasks that are actually restarting
-			_, err = evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(sessCtx,
+			_, err = evergreen.GetEnvironment().DB().Collection(Collection).UpdateMany(ctx,
 				bson.M{IdKey: bson.M{"$in": toRestartExecTaskIds}}, // Query all archiving/restarting execution tasks
 				bson.A{ // Pipeline
 					bson.M{"$set": bson.M{ // Execution = LPE
@@ -3442,7 +3443,7 @@ func CheckUsersPatchTaskLimit(ctx context.Context, requester, username string, i
 			numTasksToActivate += utility.FromIntPtr(t.EstimatedNumActivatedGeneratedTasks)
 		}
 	}
-	return UpdateSchedulingLimit(username, requester, numTasksToActivate, true)
+	return UpdateSchedulingLimit(ctx, username, requester, numTasksToActivate, true)
 }
 
 func FindExecTasksToReset(ctx context.Context, t *Task) ([]string, error) {
@@ -4007,7 +4008,7 @@ func (t *Task) UpdateDependsOn(ctx context.Context, status string, newDependency
 		[]bson.M{
 			bson.M{"$set": bson.M{
 				DependsOnKey: bson.M{
-					"$concatArrays": []interface{}{"$" + DependsOnKey, newDependencies},
+					"$concatArrays": []any{"$" + DependsOnKey, newDependencies},
 				},
 			}},
 			addDisplayStatusCache,

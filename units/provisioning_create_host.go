@@ -152,13 +152,15 @@ func (j *createHostJob) Run(ctx context.Context) {
 		removeHostIntent := false
 		if distroActiveHosts > j.host.Distro.HostAllocatorSettings.MaximumHosts {
 			grip.Info(message.Fields{
-				"host_id":   j.HostID,
-				"attempt":   j.RetryInfo().CurrentAttempt,
-				"distro":    j.host.Distro.Id,
-				"job":       j.ID(),
-				"provider":  j.host.Provider,
-				"message":   "not provisioning host to respect maxhosts",
-				"max_hosts": j.host.Distro.HostAllocatorSettings.MaximumHosts,
+				"host_id":            j.HostID,
+				"attempt":            j.RetryInfo().CurrentAttempt,
+				"distro":             j.host.Distro.Id,
+				"single_task_distro": j.host.Distro.SingleTaskDistro,
+				"job":                j.ID(),
+				"provider":           j.host.Provider,
+				"message":            "not provisioning host to respect maxhosts",
+				"max_hosts":          j.host.Distro.HostAllocatorSettings.MaximumHosts,
+				"active_hosts":       distroActiveHosts,
 			})
 			removeHostIntent = true
 		}
@@ -261,7 +263,7 @@ func (j *createHostJob) selfThrottle(ctx context.Context, hostInit evergreen.Hos
 	} else if numProv >= hostInit.HostThrottle {
 		reason := "host creation throttle"
 		j.AddError(errors.Wrapf(j.host.SetStatusAtomically(ctx, evergreen.HostBuildingFailed, evergreen.User, reason), "getting rid of intent host '%s' for host creation throttle", j.host.Id))
-		event.LogHostCreatedError(j.host.Id, reason)
+		event.LogHostCreatedError(ctx, j.host.Id, reason)
 		return true
 	}
 
@@ -279,11 +281,12 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 		return errors.Wrap(err, "creating host")
 	}
 	grip.Info(message.Fields{
-		"message":      "attempting to start host",
-		"host_id":      j.host.Id,
-		"job":          j.ID(),
-		"attempt":      j.RetryInfo().CurrentAttempt,
-		"max_attempts": j.RetryInfo().MaxAttempts,
+		"message":            "attempting to start host",
+		"host_id":            j.host.Id,
+		"single_task_distro": j.host.Distro.SingleTaskDistro,
+		"job":                j.ID(),
+		"attempt":            j.RetryInfo().CurrentAttempt,
+		"max_attempts":       j.RetryInfo().MaxAttempts,
 	})
 
 	span := trace.SpanFromContext(ctx)
@@ -351,26 +354,27 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 			// host errors more efficient because the notification system can
 			// process just spawn host errors rather than every single host
 			// creation error.
-			event.LogSpawnHostCreatedError(j.host.Id, err.Error())
+			event.LogSpawnHostCreatedError(ctx, j.host.Id, err.Error())
 		}
-		event.LogHostCreatedError(j.host.Id, err.Error())
+		event.LogHostCreatedError(ctx, j.host.Id, err.Error())
 		return errors.Wrapf(err, "spawning and updating host '%s'", j.host.Id)
 	}
 
 	if hostReplaced {
-		event.LogHostStartSucceeded(j.host.Id, evergreen.User)
+		event.LogHostStartSucceeded(ctx, j.host.Id, evergreen.User)
 	}
 
 	grip.Info(message.Fields{
-		"message":      "successfully started host",
-		"host_id":      j.host.Id,
-		"host_tag":     j.host.Tag,
-		"distro":       j.host.Distro.Id,
-		"provider":     j.host.Provider,
-		"subnet":       j.host.GetSubnetID(),
-		"job":          j.ID(),
-		"runtime_secs": time.Since(j.start).Seconds(),
-		"num_attempts": j.RetryInfo().CurrentAttempt,
+		"message":            "successfully started host",
+		"host_id":            j.host.Id,
+		"host_tag":           j.host.Tag,
+		"distro":             j.host.Distro.Id,
+		"single_task_distro": j.host.Distro.SingleTaskDistro,
+		"provider":           j.host.Provider,
+		"subnet":             j.host.GetSubnetID(),
+		"job":                j.ID(),
+		"runtime_secs":       time.Since(j.start).Seconds(),
+		"num_attempts":       j.RetryInfo().CurrentAttempt,
 	})
 	span.SetAttributes(attribute.Bool(fmt.Sprintf("%s.spawned_host", provisioningCreateHostAttributePrefix), true))
 

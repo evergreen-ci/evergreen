@@ -154,11 +154,10 @@ clean up the task directory.
 
 **Evergreen will only accept requests to clean up global files with clear security implications.**
 
-For tasks not in a task group, the global git config and git credentials will be reset 
-at the end of the task after all commands have finished running. This will be done by 
-deleting the .git-credentials and .gitconfig files from the home directory. 
-For a tasks in a task group, the reset will occur after the all the tasks in the task 
-group tasks have finished.
+Right now, we delete the .git-credentials, .gitconfig, and .netrc files from the home directory.
+For tasks not in a task group, this is done at the end of the task after all commands 
+have finished running. For task groups, the deletion will occur after 
+all the tasks in the task group have finished.
 
 ## Task Timeouts
 

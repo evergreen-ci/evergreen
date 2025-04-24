@@ -23,10 +23,6 @@ func TestCheckDistro(t *testing.T) {
 	env := evergreen.GetEnvironment()
 	conf := env.Settings()
 	conf.Providers.AWS.EC2Keys = []evergreen.EC2Key{{Key: "key", Secret: "secret"}}
-	conf.SSHKeyPairs = []evergreen.SSHKeyPair{{Name: "a"}}
-	defer func() {
-		conf.SSHKeyPairs = nil
-	}()
 
 	Convey("When validating a distro", t, func() {
 
@@ -143,14 +139,21 @@ func TestCheckDistro(t *testing.T) {
 func TestEnsureUniqueId(t *testing.T) {
 	Convey("When validating a distro's ids...", t, func() {
 		distroIds := []string{"a", "b", "c"}
+		distroAliases := []string{"alias_a"}
+
 		Convey("if a distro has a duplicate id, an error should be returned", func() {
-			err := ensureUniqueId(&distro.Distro{Id: "c"}, distroIds)
+			err := ensureUniqueId(&distro.Distro{Id: "c"}, distroIds, distroAliases)
 			So(err, ShouldNotResemble, ValidationErrors{})
 			So(len(err), ShouldEqual, 1)
 		})
 		Convey("if a distro doesn't have a duplicate id, no error should be returned", func() {
-			err := ensureUniqueId(&distro.Distro{Id: "d"}, distroIds)
+			err := ensureUniqueId(&distro.Distro{Id: "d"}, distroIds, distroAliases)
 			So(err, ShouldBeNil)
+		})
+		Convey("if a distro's id collides with an existing alias, an error should be returned", func() {
+			err := ensureUniqueId(&distro.Distro{Id: "alias_a"}, distroIds, distroAliases)
+			So(err, ShouldNotResemble, ValidationErrors{})
+			So(len(err), ShouldEqual, 1)
 		})
 	})
 }
@@ -159,12 +162,19 @@ func TestEnsureValidAliases(t *testing.T) {
 	Convey("When validating a distro's aliases...", t, func() {
 		d := distro.Distro{Id: "c", Aliases: []string{"c"}}
 		Convey("if a distro is declared as an alias of itself, an error should be returned", func() {
-			vErrors := ensureValidAliases(&d)
+			vErrors := ensureValidAliases(&d, []string{})
 			So(vErrors, ShouldNotResemble, ValidationErrors{})
 			So(len(vErrors), ShouldEqual, 1)
 			So(vErrors[0].Message, ShouldEqual, "'c' cannot be an distro alias of itself")
 		})
 
+		Convey("if a distro is declared with an alias that matches another distro's id, an error should be returned", func() {
+			d2 := distro.Distro{Id: "c", Aliases: []string{"anotherDistro"}}
+			vErrors := ensureValidAliases(&d2, []string{"anotherDistro"})
+			So(vErrors, ShouldNotResemble, ValidationErrors{})
+			So(len(vErrors), ShouldEqual, 1)
+			So(vErrors[0].Message, ShouldContainSubstring, "alias 'anotherDistro' cannot match an existing distro ID")
+		})
 	})
 }
 
@@ -663,22 +673,6 @@ func TestEnsureValidStaticBootstrapSettings(t *testing.T) {
 	assert.NotNil(t, ensureValidStaticBootstrapSettings(ctx, &d, &evergreen.Settings{}))
 }
 
-func TestEnsureStaticHasAuthorizedKeysFile(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	settings := &evergreen.Settings{
-		SSHKeyPairs: []evergreen.SSHKeyPair{
-			{
-				Name: "ssh_key_pair1",
-			},
-		},
-	}
-	assert.Nil(t, ensureStaticHasAuthorizedKeysFile(ctx, &distro.Distro{Provider: evergreen.ProviderNameStatic, AuthorizedKeysFile: "~/.ssh/authorized_keys"}, settings))
-	assert.NotNil(t, ensureStaticHasAuthorizedKeysFile(ctx, &distro.Distro{Provider: evergreen.ProviderNameStatic}, settings))
-	assert.Nil(t, ensureStaticHasAuthorizedKeysFile(ctx, &distro.Distro{Provider: evergreen.ProviderNameEc2Fleet}, settings))
-}
-
 func TestEnsureHasValidVirtualWorkstationSettings(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -709,40 +703,40 @@ func TestValidateAliases(t *testing.T) {
 		Provider:      evergreen.ProviderNameDocker,
 		ContainerPool: "",
 		Aliases:       []string{"alias_1", "alias_2"},
-	}, []string{}))
+	}, []string{}, []string{}))
 
 	assert.NotNil(t, validateAliases(&distro.Distro{
 		Id:            "distro",
 		Provider:      evergreen.ProviderNameStatic,
 		ContainerPool: "container_pool",
 		Aliases:       []string{"alias_1", "alias_2"},
-	}, []string{}))
+	}, []string{}, []string{}))
 
 	assert.NotNil(t, validateAliases(&distro.Distro{
 		Id:            "distro",
 		Provider:      evergreen.ProviderNameStatic,
 		ContainerPool: "container_pool",
 		Aliases:       []string{},
-	}, []string{"distro"}))
+	}, []string{"distro"}, []string{}))
 
 	assert.NotNil(t, validateAliases(&distro.Distro{
 		Id:            "distro",
 		Provider:      evergreen.ProviderNameStatic,
 		ContainerPool: "",
 		Aliases:       []string{"distro"},
-	}, []string{}))
+	}, []string{}, []string{}))
 
 	assert.Nil(t, validateAliases(&distro.Distro{
 		Id:            "distro",
 		Provider:      evergreen.ProviderNameDocker,
 		ContainerPool: "container_pool",
 		Aliases:       []string{},
-	}, []string{"something_else"}))
+	}, []string{"something_else"}, []string{}))
 
 	assert.Nil(t, validateAliases(&distro.Distro{
 		Id:            "distro",
 		Provider:      evergreen.ProviderNameStatic,
 		ContainerPool: "",
 		Aliases:       []string{"alias_1", "alias_2"},
-	}, []string{}))
+	}, []string{}, []string{}))
 }

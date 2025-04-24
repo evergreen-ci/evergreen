@@ -9,7 +9,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/pail"
-	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -55,10 +54,12 @@ type File struct {
 	Visibility string `json:"visibility" bson:"visibility"`
 	// When true, these artifacts are excluded from reproduction
 	IgnoreForFetch bool `bson:"fetch_ignore,omitempty" json:"ignore_for_fetch"`
-	// AwsKey is the key with which the file was uploaded to S3.
-	AwsKey string `json:"aws_key,omitempty" bson:"aws_key,omitempty"`
-	// AwsSecret is the secret with which the file was uploaded to S3.
-	AwsSecret string `json:"aws_secret,omitempty" bson:"aws_secret,omitempty"`
+	// AWSKey is the key with which the file was uploaded to S3.
+	AWSKey string `json:"aws_key,omitempty" bson:"aws_key,omitempty"`
+	// AWSSecret is the secret with which the file was uploaded to S3.
+	AWSSecret string `json:"aws_secret,omitempty" bson:"aws_secret,omitempty"`
+	// AWSRoleARN is the role ARN with which the file was uploaded to S3.
+	AWSRoleARN string `json:"aws_role_arn,omitempty" bson:"aws_role_arn,omitempty"`
 	// Bucket is the aws bucket in which the file is stored.
 	Bucket string `json:"bucket,omitempty" bson:"bucket,omitempty"`
 	// FileKey is the path to the file in the bucket.
@@ -72,12 +73,6 @@ func (f *File) validate() error {
 
 	catcher.ErrorfWhen(f.Bucket == "", "bucket is required")
 	catcher.ErrorfWhen(f.FileKey == "", "file key is required")
-
-	// Buckets that are not devprod owned require AWS credentials.
-	if !isInternalBucket(f.Bucket) {
-		catcher.ErrorfWhen(f.AwsKey == "", "AWS key is required")
-		catcher.ErrorfWhen(f.AwsSecret == "", "AWS secret is required")
-	}
 
 	return catcher.Resolve()
 }
@@ -111,26 +106,24 @@ func presignFile(ctx context.Context, file File) (string, error) {
 		return "", errors.Wrap(err, "file validation failed")
 	}
 
-	// If this bucket is a devprod owned one, we sign the URL
-	// with the app's server IRSA credentials (which is used
-	// when no credentials are provided).
-	if isInternalBucket(file.Bucket) {
-		file.AwsKey = ""
-		file.AwsSecret = ""
+	if file.AWSRoleARN != "" {
+		file.AWSKey = ""
+		file.AWSSecret = ""
 	}
 
 	requestParams := pail.PreSignRequestParams{
 		Bucket:                file.Bucket,
 		FileKey:               file.FileKey,
-		AwsKey:                file.AwsKey,
-		AwsSecret:             file.AwsSecret,
+		AWSKey:                file.AWSKey,
+		AWSSecret:             file.AWSSecret,
+		AWSRoleARN:            file.AWSRoleARN,
 		SignatureExpiryWindow: evergreen.PresignMinimumValidTime,
 	}
 	return pail.PreSign(ctx, requestParams)
 }
 
-func GetAllArtifacts(tasks []TaskIDAndExecution) ([]File, error) {
-	artifacts, err := FindAll(ByTaskIdsAndExecutions(tasks))
+func GetAllArtifacts(ctx context.Context, tasks []TaskIDAndExecution) ([]File, error) {
+	artifacts, err := FindAll(ctx, ByTaskIdsAndExecutions(tasks))
 	if err != nil {
 		return nil, errors.Wrap(err, "finding artifact files for task")
 	}
@@ -139,7 +132,7 @@ func GetAllArtifacts(tasks []TaskIDAndExecution) ([]File, error) {
 		for _, t := range tasks {
 			taskIds = append(taskIds, t.TaskID)
 		}
-		artifacts, err = FindAll(ByTaskIds(taskIds))
+		artifacts, err = FindAll(ctx, ByTaskIds(taskIds))
 		if err != nil {
 			return nil, errors.Wrap(err, "finding artifact files for task without execution number")
 		}
@@ -152,29 +145,6 @@ func GetAllArtifacts(tasks []TaskIDAndExecution) ([]File, error) {
 		files = append(files, artifact.Files...)
 	}
 	return files, nil
-}
-
-func RotateSecrets(toReplace, replacement string, dryRun bool) (map[TaskIDAndExecution][]string, error) {
-	catcher := grip.NewBasicCatcher()
-	artifacts, err := FindAll(BySecret(toReplace))
-	catcher.Wrap(err, "finding artifact files by secret")
-	changes := map[TaskIDAndExecution][]string{}
-	for i, artifact := range artifacts {
-		for j, file := range artifact.Files {
-			if file.AwsSecret == toReplace {
-				if !dryRun {
-					artifacts[i].Files[j].AwsSecret = replacement
-					catcher.Wrapf(artifacts[i].Update(), "updating artifact file info for task '%s', execution %d", artifact.TaskId, artifact.Execution)
-				}
-				key := TaskIDAndExecution{
-					TaskID:    artifact.TaskId,
-					Execution: artifact.Execution,
-				}
-				changes[key] = append(changes[key], file.Name)
-			}
-		}
-	}
-	return changes, catcher.Resolve()
 }
 
 // EscapeFiles escapes the base of the file link to avoid issues opening links
@@ -196,10 +166,4 @@ func escapeFile(path string) string {
 		return path
 	}
 	return path[:i] + strings.Replace(path[i:], base, url.QueryEscape(base), 1)
-}
-
-// isInternalBucket returns true if the bucket can be accessed by the app server's
-// IRSA role.
-func isInternalBucket(bucketName string) bool {
-	return utility.StringSliceContains(evergreen.GetEnvironment().Settings().Buckets.InternalBuckets, bucketName)
 }

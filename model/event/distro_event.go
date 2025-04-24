@@ -1,6 +1,7 @@
 package event
 
 import (
+	"context"
 	"reflect"
 	"time"
 
@@ -9,7 +10,7 @@ import (
 )
 
 func init() {
-	registry.AddType(ResourceTypeDistro, func() interface{} { return &DistroEventData{} })
+	registry.AddType(ResourceTypeDistro, func() any { return &DistroEventData{} })
 	registry.setUnexpirable(ResourceTypeDistro, EventDistroAdded)
 	registry.setUnexpirable(ResourceTypeDistro, EventDistroModified)
 	registry.setUnexpirable(ResourceTypeDistro, EventDistroAMIModfied)
@@ -29,17 +30,17 @@ const (
 
 // DistroEventData implements EventData.
 type DistroEventData struct {
-	DistroId string      `bson:"d_id,omitempty" json:"d_id,omitempty"`
-	User     string      `bson:"user,omitempty" json:"user,omitempty"`
-	Before   interface{} `bson:"before" json:"before"`
-	After    interface{} `bson:"after" json:"after"`
+	DistroId string `bson:"d_id,omitempty" json:"d_id,omitempty"`
+	User     string `bson:"user,omitempty" json:"user,omitempty"`
+	Before   any    `bson:"before" json:"before"`
+	After    any    `bson:"after" json:"after"`
 
 	// Fields used by legacy UI
-	Data   interface{} `bson:"dstr,omitempty" json:"dstr,omitempty"`
-	UserId string      `bson:"u_id,omitempty" json:"u_id,omitempty"`
+	Data   any    `bson:"dstr,omitempty" json:"dstr,omitempty"`
+	UserId string `bson:"u_id,omitempty" json:"u_id,omitempty"`
 }
 
-func LogDistroEvent(distroId string, eventType string, eventData DistroEventData) {
+func LogDistroEvent(ctx context.Context, distroId string, eventType string, eventData DistroEventData) {
 	event := EventLogEntry{
 		ResourceId:   distroId,
 		Timestamp:    time.Now(),
@@ -48,7 +49,7 @@ func LogDistroEvent(distroId string, eventType string, eventData DistroEventData
 		ResourceType: ResourceTypeDistro,
 	}
 
-	if err := event.Log(); err != nil {
+	if err := event.Log(ctx); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"resource_type": ResourceTypeDistro,
 			"message":       "error logging event",
@@ -58,12 +59,12 @@ func LogDistroEvent(distroId string, eventType string, eventData DistroEventData
 }
 
 // LogDistroAdded should take in DistroData in order to preserve the ProviderSettingsList
-func LogDistroAdded(distroId, userId string, data interface{}) {
-	LogDistroEvent(distroId, EventDistroAdded, DistroEventData{UserId: userId, Data: data})
+func LogDistroAdded(ctx context.Context, distroId, userId string, data any) {
+	LogDistroEvent(ctx, distroId, EventDistroAdded, DistroEventData{UserId: userId, Data: data})
 }
 
 // LogDistroModified should take in DistroData in order to preserve the ProviderSettingsList
-func LogDistroModified(distroId, userId string, before, after interface{}) {
+func LogDistroModified(ctx context.Context, distroId, userId string, before, after any) {
 	// Stop if there are no changes
 	if reflect.DeepEqual(before, after) {
 		grip.Info(message.Fields{
@@ -81,15 +82,15 @@ func LogDistroModified(distroId, userId string, before, after interface{}) {
 		After:  after,
 	}
 
-	LogDistroEvent(distroId, EventDistroModified, data)
+	LogDistroEvent(ctx, distroId, EventDistroModified, data)
 }
 
 // LogDistroRemoved should take in DistroData in order to preserve the ProviderSettingsList
-func LogDistroRemoved(distroId, userId string, data interface{}) {
-	LogDistroEvent(distroId, EventDistroRemoved, DistroEventData{UserId: userId, Data: data})
+func LogDistroRemoved(ctx context.Context, distroId, userId string, data any) {
+	LogDistroEvent(ctx, distroId, EventDistroRemoved, DistroEventData{UserId: userId, Data: data})
 }
 
 // LogDistroAMIModified logs when the default region's AMI is modified.
-func LogDistroAMIModified(distroId, userId string) {
-	LogDistroEvent(distroId, EventDistroAMIModfied, DistroEventData{UserId: userId})
+func LogDistroAMIModified(ctx context.Context, distroId, userId string) {
+	LogDistroEvent(ctx, distroId, EventDistroAMIModfied, DistroEventData{UserId: userId})
 }

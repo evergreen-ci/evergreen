@@ -165,8 +165,8 @@ func clearCollection() error {
 	return db.Clear(taskstats.DailyTaskStatsCollection)
 }
 
-func InsertDailyTaskStats(taskStats ...interface{}) error {
-	err := db.InsertManyUnordered(taskstats.DailyTaskStatsCollection, taskStats...)
+func InsertDailyTaskStats(ctx context.Context, taskStats ...any) error {
+	err := db.InsertManyUnordered(ctx, taskstats.DailyTaskStatsCollection, taskStats...)
 	return err
 }
 
@@ -178,9 +178,9 @@ func handleNoFormat(format string, i int) string {
 	return format
 }
 
-func InsertManyDailyTaskStats(many int, prototype taskstats.DBTaskStats, projectFmt string, requesterFmt string, taskNameFmt string, variantFmt string, distroFmt string) error {
+func InsertManyDailyTaskStats(ctx context.Context, many int, prototype taskstats.DBTaskStats, projectFmt string, requesterFmt string, taskNameFmt string, variantFmt string, distroFmt string) error {
 
-	items := make([]interface{}, many)
+	items := make([]any, many)
 	for i := 0; i < many; i++ {
 		item := prototype
 		item.Id.Project = handleNoFormat(projectFmt, i)
@@ -191,7 +191,7 @@ func InsertManyDailyTaskStats(many int, prototype taskstats.DBTaskStats, project
 		items[i] = item
 	}
 
-	return InsertDailyTaskStats(items...)
+	return InsertDailyTaskStats(ctx, items...)
 }
 
 func TestValidFilter(t *testing.T) {
@@ -311,7 +311,7 @@ func TestGetTaskStatsEmptyCollection(t *testing.T) {
 
 	filter := createValidFilter()
 
-	docs, err := GetTaskReliabilityScores(filter)
+	docs, err := GetTaskReliabilityScores(t.Context(), filter)
 	require.NoError(err)
 	require.Empty(docs)
 }
@@ -324,9 +324,9 @@ func TestGetTaskStatsOneDocument(t *testing.T) {
 	err := clearCollection()
 	require.NoError(err)
 
-	require.NoError(InsertDailyTaskStats(task1Item1))
+	require.NoError(InsertDailyTaskStats(t.Context(), task1Item1))
 
-	docs, err := GetTaskReliabilityScores(filter)
+	docs, err := GetTaskReliabilityScores(t.Context(), filter)
 	require.NoError(err)
 	require.Len(docs, 1)
 	//nolint:testifylint // We expect it to be exactly 0.42.
@@ -341,8 +341,8 @@ func TestGetTaskStatsTwoDocuments(t *testing.T) {
 	err := clearCollection()
 	require.NoError(err)
 
-	require.NoError(InsertDailyTaskStats(task1Item1, task1Item2))
-	docs, err := GetTaskReliabilityScores(filter)
+	require.NoError(InsertDailyTaskStats(t.Context(), task1Item1, task1Item2))
+	docs, err := GetTaskReliabilityScores(t.Context(), filter)
 	require.NoError(err)
 	require.Len(docs, 2)
 	//nolint:testifylint // We expect it to be exactly equal.
@@ -368,7 +368,7 @@ func TestGetTaskReliability(t *testing.T) {
 		err := clearCollection()
 		require.NoError(t, err)
 
-		require.NoError(t, InsertDailyTaskStats(task1Item1, task1Item2, task2Item1, task2Item2))
+		require.NoError(t, InsertDailyTaskStats(ctx, task1Item1, task1Item2, task2Item1, task2Item2))
 	}
 
 	for opName, opTests := range map[string]func(ctx context.Context, t *testing.T, env evergreen.Environment){
@@ -378,7 +378,7 @@ func TestGetTaskReliability(t *testing.T) {
 					require := require.New(t)
 					withCancelledContext(ctx, func(ctx context.Context) {
 						filter.StatsFilter.Tasks = []string{"this won't match anything"}
-						docs, err := GetTaskReliabilityScores(filter)
+						docs, err := GetTaskReliabilityScores(t.Context(), filter)
 						require.NoError(err)
 						require.Empty(docs)
 					})
@@ -389,7 +389,7 @@ func TestGetTaskReliability(t *testing.T) {
 						filter.StatsFilter.Tasks = []string{task1}
 						filter.StatsFilter.BuildVariants = []string{variant2}
 						filter.StatsFilter.Distros = []string{distro2}
-						docs, err := GetTaskReliabilityScores(filter)
+						docs, err := GetTaskReliabilityScores(t.Context(), filter)
 						require.NoError(err)
 						require.Empty(docs)
 					})
@@ -400,7 +400,7 @@ func TestGetTaskReliability(t *testing.T) {
 						filter.StatsFilter.Tasks = []string{task2}
 						filter.StatsFilter.BuildVariants = []string{variant1}
 						filter.StatsFilter.Distros = []string{distro1}
-						docs, err := GetTaskReliabilityScores(filter)
+						docs, err := GetTaskReliabilityScores(t.Context(), filter)
 						require.NoError(err)
 						require.Empty(docs)
 					})
@@ -411,7 +411,7 @@ func TestGetTaskReliability(t *testing.T) {
 						filter.StatsFilter.Tasks = []string{task1}
 						filter.StatsFilter.BuildVariants = []string{variant1, variant2}
 						filter.StatsFilter.Distros = []string{distro1, distro2}
-						docs, err := GetTaskReliabilityScores(filter)
+						docs, err := GetTaskReliabilityScores(t.Context(), filter)
 						require.NoError(err)
 						require.Len(docs, 2)
 						for _, doc := range docs {
@@ -427,7 +427,7 @@ func TestGetTaskReliability(t *testing.T) {
 						filter.StatsFilter.Tasks = []string{task2}
 						filter.StatsFilter.BuildVariants = []string{variant1, variant2}
 						filter.StatsFilter.Distros = []string{distro1, distro2}
-						docs, err := GetTaskReliabilityScores(filter)
+						docs, err := GetTaskReliabilityScores(t.Context(), filter)
 						require.NoError(err)
 						require.Len(docs, 2)
 						for _, doc := range docs {
@@ -441,7 +441,7 @@ func TestGetTaskReliability(t *testing.T) {
 					require := require.New(t)
 					withCancelledContext(ctx, func(ctx context.Context) {
 						filter.StatsFilter.Tasks = []string{task1, task2}
-						docs, err := GetTaskReliabilityScores(filter)
+						docs, err := GetTaskReliabilityScores(t.Context(), filter)
 						require.NoError(err)
 						require.NotEmpty(docs)
 					})
@@ -449,12 +449,12 @@ func TestGetTaskReliability(t *testing.T) {
 				"MaxQueryLimit": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
 					require := require.New(t)
 					withCancelledContext(ctx, func(ctx context.Context) {
-						require.NoError(InsertManyDailyTaskStats(MaxQueryLimit, task3item1, project, requesters[0], task3, variantFmt, distroFmt))
+						require.NoError(InsertManyDailyTaskStats(ctx, MaxQueryLimit, task3item1, project, requesters[0], task3, variantFmt, distroFmt))
 
 						filter.StatsFilter.Tasks = []string{task1, task2, task3}
 						filter.StatsFilter.BuildVariants = []string{}
 						filter.StatsFilter.Distros = []string{}
-						docs, err := GetTaskReliabilityScores(filter)
+						docs, err := GetTaskReliabilityScores(t.Context(), filter)
 						require.NoError(err)
 						require.Len(docs, MaxQueryLimit)
 					})
@@ -530,7 +530,7 @@ func TestGetTaskReliabilityScores(t *testing.T) {
 		err := clearCollection()
 		require.NoError(t, err)
 
-		require.NoError(t, InsertDailyTaskStats(
+		require.NoError(t, InsertDailyTaskStats(ctx,
 			taskstats.DBTaskStats{
 				Id: taskstats.DBTaskStatsID{
 					Project:      project,
@@ -569,7 +569,7 @@ func TestGetTaskReliabilityScores(t *testing.T) {
 		// 60 relates to the max date range test, picked a value to ensure that there is more than enough data.
 		for i := 1; i < 60; i++ {
 			delta := time.Duration(i) * 24 * time.Hour
-			require.NoError(t, InsertDailyTaskStats(
+			require.NoError(t, InsertDailyTaskStats(ctx,
 				taskstats.DBTaskStats{
 					Id: taskstats.DBTaskStatsID{
 						Project:      project,
@@ -614,7 +614,7 @@ func TestGetTaskReliabilityScores(t *testing.T) {
 				"1": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
 					require := require.New(t)
 					withCancelledContext(ctx, func(ctx context.Context) {
-						docs, err := GetTaskReliabilityScores(filter)
+						docs, err := GetTaskReliabilityScores(t.Context(), filter)
 						require.NoError(err)
 						require.Len(docs, 1)
 
@@ -628,7 +628,7 @@ func TestGetTaskReliabilityScores(t *testing.T) {
 					withCancelledContext(ctx, func(ctx context.Context) {
 						filter.StatsFilter.GroupNumDays = 2
 						filter.StatsFilter.BeforeDate = day2
-						docs, err := GetTaskReliabilityScores(filter)
+						docs, err := GetTaskReliabilityScores(t.Context(), filter)
 						require.NoError(err)
 						require.Len(docs, 1)
 
@@ -642,7 +642,7 @@ func TestGetTaskReliabilityScores(t *testing.T) {
 					withCancelledContext(ctx, func(ctx context.Context) {
 						filter.StatsFilter.GroupNumDays = 7
 						filter.StatsFilter.BeforeDate = day1.Add(time.Duration(filter.StatsFilter.GroupNumDays-1) * 24 * time.Hour)
-						docs, err := GetTaskReliabilityScores(filter)
+						docs, err := GetTaskReliabilityScores(t.Context(), filter)
 						require.NoError(err)
 						require.Len(docs, 1)
 
@@ -656,7 +656,7 @@ func TestGetTaskReliabilityScores(t *testing.T) {
 					withCancelledContext(ctx, func(ctx context.Context) {
 						filter.StatsFilter.GroupNumDays = 28
 						filter.StatsFilter.BeforeDate = day1.Add(time.Duration(filter.StatsFilter.GroupNumDays-1) * 24 * time.Hour)
-						docs, err := GetTaskReliabilityScores(filter)
+						docs, err := GetTaskReliabilityScores(t.Context(), filter)
 						require.NoError(err)
 						require.Len(docs, 1)
 
@@ -683,7 +683,7 @@ func TestGetTaskReliabilityScores(t *testing.T) {
 						filter.StatsFilter.Sort = taskstats.SortLatestFirst
 						filter.StatsFilter.GroupNumDays = 1
 						filter.StatsFilter.BeforeDate = day1.Add(time.Duration(duration-1) * 24 * time.Hour)
-						docs, err := GetTaskReliabilityScores(filter)
+						docs, err := GetTaskReliabilityScores(t.Context(), filter)
 						require.NoError(err)
 						require.Len(docs, duration)
 
@@ -705,7 +705,7 @@ func TestGetTaskReliabilityScores(t *testing.T) {
 						filter.StatsFilter.Sort = taskstats.SortEarliestFirst
 						filter.StatsFilter.GroupNumDays = 1
 						filter.StatsFilter.BeforeDate = day1.Add(time.Duration(duration-1) * 24 * time.Hour)
-						docs, err := GetTaskReliabilityScores(filter)
+						docs, err := GetTaskReliabilityScores(t.Context(), filter)
 						require.NoError(err)
 						require.Len(docs, duration)
 
@@ -734,7 +734,7 @@ func TestGetTaskReliabilityScores(t *testing.T) {
 				"1 Day": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
 					require := require.New(t)
 					withCancelledContext(ctx, func(ctx context.Context) {
-						docs, err := GetTaskReliabilityScores(filter)
+						docs, err := GetTaskReliabilityScores(t.Context(), filter)
 						require.NoError(err)
 						require.Len(docs, 1)
 
@@ -748,7 +748,7 @@ func TestGetTaskReliabilityScores(t *testing.T) {
 					withCancelledContext(ctx, func(ctx context.Context) {
 						filter.StatsFilter.GroupNumDays = 1
 						filter.StatsFilter.BeforeDate = day2
-						docs, err := GetTaskReliabilityScores(filter)
+						docs, err := GetTaskReliabilityScores(t.Context(), filter)
 						require.NoError(err)
 						require.Len(docs, 2)
 
@@ -765,7 +765,7 @@ func TestGetTaskReliabilityScores(t *testing.T) {
 					withCancelledContext(ctx, func(ctx context.Context) {
 						filter.StatsFilter.GroupNumDays = 1
 						filter.StatsFilter.BeforeDate = day1.Add(6 * 24 * time.Hour)
-						docs, err := GetTaskReliabilityScores(filter)
+						docs, err := GetTaskReliabilityScores(t.Context(), filter)
 						require.NoError(err)
 						require.Len(docs, 7)
 
@@ -785,7 +785,7 @@ func TestGetTaskReliabilityScores(t *testing.T) {
 					withCancelledContext(ctx, func(ctx context.Context) {
 						filter.StatsFilter.GroupNumDays = 1
 						filter.StatsFilter.BeforeDate = day1.Add(27 * 24 * time.Hour)
-						docs, err := GetTaskReliabilityScores(filter)
+						docs, err := GetTaskReliabilityScores(t.Context(), filter)
 						require.NoError(err)
 						require.Len(docs, 28)
 
@@ -805,7 +805,7 @@ func TestGetTaskReliabilityScores(t *testing.T) {
 					withCancelledContext(ctx, func(ctx context.Context) {
 						filter.StatsFilter.GroupNumDays = 56
 						filter.StatsFilter.BeforeDate = day1.Add(time.Duration(filter.StatsFilter.GroupNumDays-1) * 24 * time.Hour)
-						docs, err := GetTaskReliabilityScores(filter)
+						docs, err := GetTaskReliabilityScores(t.Context(), filter)
 						require.NoError(err)
 						require.Len(docs, 1)
 
@@ -830,7 +830,7 @@ func TestGetTaskReliabilityScores(t *testing.T) {
 				"1 Day / Group 1": func(ctx context.Context, t *testing.T, filter TaskReliabilityFilter) {
 					require := require.New(t)
 					withCancelledContext(ctx, func(ctx context.Context) {
-						docs, err := GetTaskReliabilityScores(filter)
+						docs, err := GetTaskReliabilityScores(t.Context(), filter)
 						require.NoError(err)
 						require.Len(docs, 1)
 
@@ -847,7 +847,7 @@ func TestGetTaskReliabilityScores(t *testing.T) {
 						filter.StatsFilter.Sort = taskstats.SortLatestFirst
 						filter.StatsFilter.GroupNumDays = 1
 						filter.StatsFilter.BeforeDate = day1.Add(time.Duration(duration-1) * 24 * time.Hour)
-						docs, err := GetTaskReliabilityScores(filter)
+						docs, err := GetTaskReliabilityScores(t.Context(), filter)
 						require.NoError(err)
 						require.Len(docs, duration)
 
@@ -870,7 +870,7 @@ func TestGetTaskReliabilityScores(t *testing.T) {
 						filter.StatsFilter.Sort = taskstats.SortEarliestFirst
 						filter.StatsFilter.GroupNumDays = 1
 						filter.StatsFilter.BeforeDate = day1.Add(time.Duration(duration-1) * 24 * time.Hour)
-						docs, err := GetTaskReliabilityScores(filter)
+						docs, err := GetTaskReliabilityScores(t.Context(), filter)
 						require.NoError(err)
 						require.Len(docs, duration)
 
@@ -892,7 +892,7 @@ func TestGetTaskReliabilityScores(t *testing.T) {
 						duration := 28
 						filter.StatsFilter.GroupNumDays = 1
 						filter.StatsFilter.BeforeDate = day1.Add(time.Duration(duration-1) * 24 * time.Hour)
-						docs, err := GetTaskReliabilityScores(filter)
+						docs, err := GetTaskReliabilityScores(t.Context(), filter)
 						require.NoError(err)
 						require.Len(docs, duration)
 
@@ -913,7 +913,7 @@ func TestGetTaskReliabilityScores(t *testing.T) {
 					withCancelledContext(ctx, func(ctx context.Context) {
 						filter.StatsFilter.GroupNumDays = 28
 						filter.StatsFilter.BeforeDate = day1.Add(time.Duration(filter.StatsFilter.GroupNumDays-1) * 24 * time.Hour)
-						docs, err := GetTaskReliabilityScores(filter)
+						docs, err := GetTaskReliabilityScores(t.Context(), filter)
 						require.NoError(err)
 						require.Len(docs, 1)
 

@@ -51,8 +51,8 @@ func NewPodDispatcher(groupID string, taskIDs, podIDs []string) PodDispatcher {
 }
 
 // Insert inserts the pod dispatcher into the DB.
-func (pd *PodDispatcher) Insert() error {
-	return db.Insert(Collection, pd)
+func (pd *PodDispatcher) Insert(ctx context.Context) error {
+	return db.Insert(ctx, Collection, pd)
 }
 
 func (pd *PodDispatcher) atomicUpsertQuery() bson.M {
@@ -82,9 +82,9 @@ func (pd *PodDispatcher) atomicUpsertUpdate(lastModified time.Time) bson.M {
 
 // UpsertAtomically inserts/updates the pod dispatcher depending on whether the
 // document already exists.
-func (pd *PodDispatcher) UpsertAtomically() (*adb.ChangeInfo, error) {
+func (pd *PodDispatcher) UpsertAtomically(ctx context.Context) (*adb.ChangeInfo, error) {
 	lastModified := utility.BSONTime(time.Now())
-	change, err := UpsertOne(pd.atomicUpsertQuery(), pd.atomicUpsertUpdate(lastModified))
+	change, err := UpsertOne(ctx, pd.atomicUpsertQuery(), pd.atomicUpsertUpdate(lastModified))
 	if err != nil {
 		return change, err
 	}
@@ -128,7 +128,7 @@ func (pd *PodDispatcher) AssignNextTask(ctx context.Context, env evergreen.Envir
 			continue
 		}
 
-		isDispatchable, err := pd.checkTaskIsDispatchable(t)
+		isDispatchable, err := pd.checkTaskIsDispatchable(ctx, t)
 		if err != nil {
 			return nil, errors.Wrap(err, "checking task dispatchability")
 		}
@@ -143,8 +143,8 @@ func (pd *PodDispatcher) AssignNextTask(ctx context.Context, env evergreen.Envir
 			return nil, errors.Wrapf(err, "dispatching task '%s' to pod '%s'", t.Id, p.ID)
 		}
 
-		event.LogPodAssignedTask(p.ID, t.Id, t.Execution)
-		event.LogContainerTaskDispatched(t.Id, t.Execution, p.ID)
+		event.LogPodAssignedTask(ctx, p.ID, t.Id, t.Execution)
+		event.LogContainerTaskDispatched(ctx, t.Id, t.Execution, p.ID)
 
 		if t.IsPartOfDisplay(ctx) {
 			if err := model.UpdateDisplayTaskForTask(ctx, t); err != nil {
@@ -182,17 +182,17 @@ func (pd *PodDispatcher) dispatchTaskAtomically(ctx context.Context, env evergre
 	return nil
 }
 
-func (pd *PodDispatcher) dispatchTask(env evergreen.Environment, p *pod.Pod, t *task.Task) func(mongo.SessionContext) (interface{}, error) {
-	return func(sessCtx mongo.SessionContext) (interface{}, error) {
-		if err := p.SetRunningTask(sessCtx, env, t.Id, t.Execution); err != nil {
+func (pd *PodDispatcher) dispatchTask(env evergreen.Environment, p *pod.Pod, t *task.Task) func(ctx mongo.SessionContext) (any, error) {
+	return func(ctx mongo.SessionContext) (any, error) {
+		if err := p.SetRunningTask(ctx, env, t.Id, t.Execution); err != nil {
 			return nil, errors.Wrapf(err, "setting pod's running task")
 		}
 
-		if err := t.MarkAsContainerDispatched(sessCtx, env, p.ID, p.AgentVersion); err != nil {
+		if err := t.MarkAsContainerDispatched(ctx, env, p.ID, p.AgentVersion); err != nil {
 			return nil, errors.Wrapf(err, "marking task as dispatched")
 		}
 
-		if err := pd.dequeue(sessCtx, env); err != nil {
+		if err := pd.dequeue(ctx, env); err != nil {
 			return nil, errors.Wrapf(err, "dequeueing task")
 		}
 
@@ -246,7 +246,7 @@ func (pd *PodDispatcher) dequeueUndispatchableTask(ctx context.Context, env ever
 
 // checkTaskIsDispatchable checks if a task is able to dispatch based on its
 // current state and its project ref's settings.
-func (pd *PodDispatcher) checkTaskIsDispatchable(t *task.Task) (shouldRun bool, err error) {
+func (pd *PodDispatcher) checkTaskIsDispatchable(ctx context.Context, t *task.Task) (shouldRun bool, err error) {
 	if !t.IsContainerDispatchable() {
 		grip.Notice(message.Fields{
 			"message":    "container task in dispatch queue is not dispatchable",
@@ -258,7 +258,7 @@ func (pd *PodDispatcher) checkTaskIsDispatchable(t *task.Task) (shouldRun bool, 
 		return false, nil
 	}
 
-	refs, err := model.FindProjectRefsByIds(t.Project)
+	refs, err := model.FindProjectRefsByIds(ctx, t.Project)
 	if err != nil {
 		return false, errors.Wrapf(err, "finding project ref '%s' for task '%s'", t.Project, t.Id)
 	}

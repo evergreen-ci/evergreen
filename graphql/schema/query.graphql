@@ -18,9 +18,9 @@ type Query {
   distroTaskQueue(distroId: String!): [TaskQueueItem!]!
 
   # hosts
-  host(hostId: String!): Host
+  host(hostId: String! @requireHostAccess(access: VIEW)): Host
   hostEvents(
-    hostId: String!
+    hostId: String!  @requireHostAccess(access: VIEW)
     hostTag: String = ""
     limit: Int = 0
     page: Int = 0
@@ -89,6 +89,9 @@ type Query {
 
   # waterfall
   waterfall(options: WaterfallOptions!): Waterfall!
+  
+  # task history
+  taskHistory(options: TaskHistoryOpts!): TaskHistory!
 
   # version
   hasVersion(patchId: String!): Boolean!

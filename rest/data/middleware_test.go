@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func TestGetProjectIdFromParams(t *testing.T) {
@@ -30,7 +31,7 @@ func TestGetProjectIdFromParams(t *testing.T) {
 		Id:         "project_id",
 		Identifier: "project_identifier",
 	}
-	require.NoError(t, project.Insert())
+	require.NoError(t, project.Insert(t.Context()))
 	projectId, statusCode, err := GetProjectIdFromParams(ctx, map[string]string{"projectId": project.Id})
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, statusCode)
@@ -46,7 +47,7 @@ func TestGetProjectIdFromParams(t *testing.T) {
 		Id:      "task_id",
 		Project: project.Identifier,
 	}
-	require.NoError(t, task.Insert())
+	require.NoError(t, task.Insert(t.Context()))
 	projectId, statusCode, err = GetProjectIdFromParams(ctx, map[string]string{"taskId": task.Id})
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, statusCode)
@@ -62,7 +63,7 @@ func TestGetProjectIdFromParams(t *testing.T) {
 		Id:         "version_id",
 		Identifier: project.Identifier,
 	}
-	require.NoError(t, version.Insert())
+	require.NoError(t, version.Insert(t.Context()))
 	projectId, statusCode, err = GetProjectIdFromParams(ctx, map[string]string{"versionId": version.Id})
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, statusCode)
@@ -79,7 +80,7 @@ func TestGetProjectIdFromParams(t *testing.T) {
 		Id:      patchId,
 		Project: project.Identifier,
 	}
-	require.NoError(t, patch.Insert())
+	require.NoError(t, patch.Insert(t.Context()))
 	projectId, statusCode, err = GetProjectIdFromParams(ctx, map[string]string{"patchId": patchId.Hex()})
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, statusCode)
@@ -90,7 +91,7 @@ func TestGetProjectIdFromParams(t *testing.T) {
 	require.Equal(t, http.StatusBadRequest, statusCode)
 	require.Equal(t, "", projectId)
 
-	projectId, statusCode, err = GetProjectIdFromParams(ctx, map[string]string{"patchId": bson.NewObjectId().Hex()})
+	projectId, statusCode, err = GetProjectIdFromParams(ctx, map[string]string{"patchId": primitive.NewObjectID().Hex()})
 	require.Error(t, err)
 	require.Equal(t, http.StatusNotFound, statusCode)
 	require.Equal(t, "", projectId)
@@ -100,7 +101,7 @@ func TestGetProjectIdFromParams(t *testing.T) {
 		Id:      "build_id",
 		Project: project.Identifier,
 	}
-	require.NoError(t, build.Insert())
+	require.NoError(t, build.Insert(t.Context()))
 	projectId, statusCode, err = GetProjectIdFromParams(ctx, map[string]string{"buildId": build.Id})
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, statusCode)
@@ -117,7 +118,7 @@ func TestGetProjectIdFromParams(t *testing.T) {
 		Task: task.Id,
 		Name: "this is a test",
 	}
-	require.NoError(t, testLog.Insert())
+	require.NoError(t, testLog.Insert(t.Context()))
 	projectId, statusCode, err = GetProjectIdFromParams(ctx, map[string]string{"logId": testLog.Id})
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, statusCode)
@@ -134,7 +135,7 @@ func TestGetProjectIdFromParams(t *testing.T) {
 			Id: "repo_id",
 		},
 	}
-	require.NoError(t, repo.Upsert())
+	require.NoError(t, repo.Replace(t.Context()))
 	projectId, statusCode, err = GetProjectIdFromParams(ctx, map[string]string{"repoId": repo.ProjectRef.Id})
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, statusCode)

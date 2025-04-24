@@ -73,7 +73,7 @@ func TestModifySpawnHostProviderSettings(t *testing.T) {
 		ID:               "v0",
 		AvailabilityZone: "us-east-1a",
 	}
-	require.NoError(t, vol.Insert())
+	require.NoError(t, vol.Insert(t.Context()))
 
 	config := evergreen.Settings{}
 	config.Providers.AWS.Subnets = []evergreen.Subnet{{AZ: "us-east-1a", SubnetID: "new_id"}}
@@ -84,7 +84,7 @@ func TestModifySpawnHostProviderSettings(t *testing.T) {
 		)},
 	}
 
-	settingsList, err := modifySpawnHostProviderSettings(d, &config, "", vol.ID)
+	settingsList, err := modifySpawnHostProviderSettings(t.Context(), d, &config, "", vol.ID)
 	assert.NoError(t, err)
 	assert.Equal(t, "new_id", settingsList[0].LookupElement("subnet_id").Value().StringValue())
 }

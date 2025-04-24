@@ -155,15 +155,15 @@ type parserTask struct {
 	MustHaveResults   *bool                     `yaml:"must_have_test_results,omitempty" bson:"must_have_test_results,omitempty"`
 }
 
-func (pp *ParserProject) Insert() error {
-	return db.Insert(ParserProjectCollection, pp)
+func (pp *ParserProject) Insert(ctx context.Context) error {
+	return db.Insert(ctx, ParserProjectCollection, pp)
 }
 
 func (pp *ParserProject) MarshalBSON() ([]byte, error) {
 	return mgobson.Marshal(pp)
 }
 
-func (pp *ParserProject) MarshalYAML() (interface{}, error) {
+func (pp *ParserProject) MarshalYAML() (any, error) {
 	for i, pt := range pp.Tasks {
 		for j := range pt.Commands {
 			if err := pp.Tasks[i].Commands[j].resolveParams(); err != nil {
@@ -199,7 +199,7 @@ type parserDependencies []parserDependency
 
 // UnmarshalYAML reads YAML into an array of parserDependency. It will
 // successfully unmarshal arrays of dependency entries or single dependency entry.
-func (pds *parserDependencies) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (pds *parserDependencies) UnmarshalYAML(unmarshal func(any) error) error {
 	// first check if we are handling a single dep that is not in an array.
 	pd := parserDependency{}
 	if err := unmarshal(&pd); err == nil {
@@ -216,7 +216,7 @@ func (pds *parserDependencies) UnmarshalYAML(unmarshal func(interface{}) error) 
 
 // UnmarshalYAML reads YAML into a parserDependency. A single selector string
 // will be also be accepted.
-func (pd *parserDependency) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (pd *parserDependency) UnmarshalYAML(unmarshal func(any) error) error {
 	type copyType parserDependency
 	var copy copyType
 	if err := unmarshal(&copy); err != nil {
@@ -263,7 +263,7 @@ type variantSelector struct {
 // UnmarshalYAML allows variants to be referenced as single selector strings or
 // as a matrix definition. This works by first attempting to unmarshal the YAML
 // into a string and then falling back to the matrix.
-func (vs *variantSelector) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (vs *variantSelector) UnmarshalYAML(unmarshal func(any) error) error {
 	// first, attempt to unmarshal just a selector string
 	// ignore errors here, because there may be other fields that are valid with single-string selectors
 	var onlySelector string
@@ -284,7 +284,7 @@ func (vs *variantSelector) UnmarshalYAML(unmarshal func(interface{}) error) erro
 	return nil
 }
 
-func (vs *variantSelector) MarshalYAML() (interface{}, error) {
+func (vs *variantSelector) MarshalYAML() (any, error) {
 	if vs == nil || vs.StringSelector == "" {
 		return nil, nil
 	}
@@ -296,7 +296,7 @@ func (vs *variantSelector) MarshalYAML() (interface{}, error) {
 // UnmarshalYAML allows tasks to be referenced as single selector strings.
 // This works by first attempting to unmarshal the YAML into a string
 // and then falling back to the TaskSelector struct.
-func (ts *taskSelector) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (ts *taskSelector) UnmarshalYAML(unmarshal func(any) error) error {
 	// first, attempt to unmarshal just a selector string
 	var onlySelector string
 	if _ = unmarshal(&onlySelector); onlySelector != "" {
@@ -354,7 +354,7 @@ type parserBV struct {
 func (pbv *parserBV) name() string   { return pbv.Name }
 func (pbv *parserBV) tags() []string { return pbv.Tags }
 
-func (pbv *parserBV) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (pbv *parserBV) UnmarshalYAML(unmarshal func(any) error) error {
 	// first attempt to unmarshal into a matrix
 	m := matrix{}
 	merr := unmarshal(&m)
@@ -446,7 +446,7 @@ type parserBVTaskUnit struct {
 
 // UnmarshalYAML allows the YAML parser to read both a single selector string or
 // a fully defined parserBVTaskUnit.
-func (pbvt *parserBVTaskUnit) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (pbvt *parserBVTaskUnit) UnmarshalYAML(unmarshal func(any) error) error {
 	// first, attempt to unmarshal just a selector string
 	var onlySelector string
 	if err := unmarshal(&onlySelector); err == nil {
@@ -481,7 +481,7 @@ type parserBVTaskUnits []parserBVTaskUnit
 
 // UnmarshalYAML allows the YAML parser to read both a single parserBVTaskUnit or
 // an array of them into a slice.
-func (pbvts *parserBVTaskUnits) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (pbvts *parserBVTaskUnits) UnmarshalYAML(unmarshal func(any) error) error {
 	// first, attempt to unmarshal just a selector string
 	var single parserBVTaskUnit
 	if err := unmarshal(&single); err == nil {
@@ -502,7 +502,7 @@ type parserStringSlice []string
 
 // UnmarshalYAML allows the YAML parser to read both a single string or
 // an array of them into a slice.
-func (pss *parserStringSlice) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (pss *parserStringSlice) UnmarshalYAML(unmarshal func(any) error) error {
 	var single string
 	if err := unmarshal(&single); err == nil {
 		*pss = []string{single}
@@ -550,7 +550,7 @@ func FindAndTranslateProjectForPatch(ctx context.Context, settings *evergreen.Se
 	}
 
 	// This fallback handles the case where the patch is already finalized.
-	v, err := VersionFindOneId(p.Version)
+	v, err := VersionFindOneId(ctx, p.Version)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "finding version '%s' for patch '%s'", p.Version, p.Id.Hex())
 	}
@@ -599,7 +599,7 @@ func FindAndTranslateProjectForVersion(ctx context.Context, settings *evergreen.
 func LoadProjectInfoForVersion(ctx context.Context, settings *evergreen.Settings, v *Version, id string) (ProjectInfo, error) {
 	var err error
 
-	pRef, err := FindMergedProjectRef(id, "", false)
+	pRef, err := FindMergedProjectRef(ctx, id, "", false)
 	if err != nil {
 		return ProjectInfo{}, errors.Wrap(err, "finding project ref")
 	}
@@ -608,7 +608,7 @@ func LoadProjectInfoForVersion(ctx context.Context, settings *evergreen.Settings
 	}
 	var pc *ProjectConfig
 	if pRef.IsVersionControlEnabled() {
-		pc, err = FindProjectConfigById(v.Id)
+		pc, err = FindProjectConfigById(ctx, v.Id)
 		if err != nil {
 			return ProjectInfo{}, errors.Wrap(err, "finding project config")
 		}
@@ -857,7 +857,7 @@ func retrieveFile(ctx context.Context, opts GetProjectOpts) ([]byte, error) {
 func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules ModuleList, include parserInclude) ([]byte, error) {
 	// Check if the module has a local change passed in through the CLI or previous patch.
 	if opts.ReferencePatchID != "" {
-		p, err := patch.FindOneId(opts.ReferencePatchID)
+		p, err := patch.FindOneId(ctx, opts.ReferencePatchID)
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding patch to repeat '%s'", opts.ReferencePatchID)
 		}
@@ -905,7 +905,7 @@ func retrieveFileForModule(ctx context.Context, opts GetProjectOpts, modules Mod
 
 	// If a reference manifest is provided, use the module revision from the manifest.
 	if opts.ReferenceManifestID != "" {
-		m, err := manifest.FindOne(manifest.ById(opts.ReferenceManifestID))
+		m, err := manifest.FindOne(ctx, manifest.ById(opts.ReferenceManifestID))
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding manifest to reference '%s'", opts.ReferenceManifestID)
 		}
@@ -997,7 +997,7 @@ func createIntermediateProject(yml []byte, unmarshalStrict bool) (*ParserProject
 			ProjectConfigFields `yaml:"pc,inline"`
 			// Variables is only used to suppress yaml unmarshalling errors related
 			// to a non-existent variables field.
-			Variables interface{} `yaml:"variables,omitempty" bson:"-"`
+			Variables any `yaml:"variables,omitempty" bson:"-"`
 		}{}
 		if err := util.UnmarshalYAMLStrictWithFallback(yml, &strictProjectWithVariables); err != nil {
 			return nil, err

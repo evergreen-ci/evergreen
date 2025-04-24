@@ -18,12 +18,12 @@ func TestPodDefinitionUpdateLastAccessed(t *testing.T) {
 	}()
 	for tName, tCase := range map[string]func(t *testing.T, pd PodDefinition){
 		"SetsLastAccessedTime": func(t *testing.T, pd PodDefinition) {
-			require.NoError(t, pd.Insert())
+			require.NoError(t, pd.Insert(t.Context()))
 
-			require.NoError(t, pd.UpdateLastAccessed())
+			require.NoError(t, pd.UpdateLastAccessed(t.Context()))
 		},
 		"FailsForNonexistentPodDefinition": func(t *testing.T, pd PodDefinition) {
-			assert.Error(t, pd.UpdateLastAccessed())
+			assert.Error(t, pd.UpdateLastAccessed(t.Context()))
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
@@ -56,7 +56,7 @@ func TestPodDefinitionCache(t *testing.T) {
 					ID:             externalID,
 					DefinitionOpts: *defOpts,
 				}))
-				pd, err := FindOneByExternalID(externalID)
+				pd, err := FindOneByExternalID(ctx, externalID)
 				require.NoError(t, err)
 				require.NotZero(t, pd)
 				assert.NotZero(t, pd.ID)
@@ -72,7 +72,7 @@ func TestPodDefinitionCache(t *testing.T) {
 					DefinitionOpts: *defOpts,
 				}))
 
-				pd, err := FindOneByExternalID(externalID)
+				pd, err := FindOneByExternalID(ctx, externalID)
 				require.NoError(t, err)
 				require.NotZero(t, pd)
 
@@ -87,7 +87,7 @@ func TestPodDefinitionCache(t *testing.T) {
 					DefinitionOpts: *defOpts,
 				}))
 
-				pds, err := Find(db.Query(ByExternalID(externalID)))
+				pds, err := Find(t.Context(), db.Query(ByExternalID(externalID)))
 				require.NoError(t, err)
 				require.Len(t, pds, 1, "putting identical item should not have created any new pod definitions")
 
@@ -105,7 +105,7 @@ func TestPodDefinitionCache(t *testing.T) {
 						DefinitionOpts: *defOpts,
 					}))
 				}
-				pds, err := Find(db.Query(bson.M{}))
+				pds, err := Find(t.Context(), db.Query(bson.M{}))
 				require.NoError(t, err)
 				require.Len(t, pds, numPodDefs)
 			},
@@ -130,11 +130,11 @@ func TestPodDefinitionCache(t *testing.T) {
 					ID:         "pod_definition_id",
 					ExternalID: "external_id",
 				}
-				require.NoError(t, pd.Insert())
+				require.NoError(t, pd.Insert(t.Context()))
 
 				require.NoError(t, pdc.Delete(ctx, pd.ExternalID))
 
-				dbPodDef, err := FindOneByExternalID(pd.ExternalID)
+				dbPodDef, err := FindOneByExternalID(ctx, pd.ExternalID)
 				assert.NoError(t, err)
 				assert.Zero(t, dbPodDef)
 			},
@@ -146,12 +146,12 @@ func TestPodDefinitionCache(t *testing.T) {
 					ID:         "pod_definition_id",
 					ExternalID: "external_id",
 				}
-				require.NoError(t, pd.Insert())
+				require.NoError(t, pd.Insert(t.Context()))
 
 				for i := 0; i < 3; i++ {
 					require.NoError(t, pdc.Delete(ctx, pd.ExternalID))
 
-					pd, err := FindOneByExternalID(pd.ExternalID)
+					pd, err := FindOneByExternalID(ctx, pd.ExternalID)
 					assert.NoError(t, err)
 					assert.Zero(t, pd)
 				}

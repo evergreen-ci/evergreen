@@ -356,12 +356,7 @@ func (h *hostFilterGetHandler) Run(ctx context.Context) gimlet.Responder {
 	dbUser := MustHaveUser(ctx)
 	username := ""
 	// only admins see hosts that aren't theirs
-	if h.params.Mine || !dbUser.HasPermission(gimlet.PermissionOpts{
-		Resource:      evergreen.SuperUserPermissionsID,
-		ResourceType:  evergreen.SuperUserResourceType,
-		Permission:    evergreen.PermissionDistroCreate,
-		RequiredLevel: evergreen.DistroCreate.Value,
-	}) {
+	if h.params.Mine || !dbUser.HasDistroCreatePermission() {
 		username = dbUser.Username()
 	}
 
@@ -421,7 +416,7 @@ func (rh *hostProvisioningOptionsGetHandler) Run(ctx context.Context) gimlet.Res
 	return gimlet.NewJSONResponse(apiOpts)
 }
 
-// GET /hosts/{host_id}/is_up
+// POST /hosts/{host_id}/is_up
 
 type hostIsUpPostHandler struct {
 	params model.APIHostIsUpOptions

@@ -11,16 +11,18 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	s3Types "github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/grip/send"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -38,7 +40,7 @@ func TestS3PutValidateParams(t *testing.T) {
 
 			Convey("a missing aws key should cause an error", func() {
 
-				params := map[string]interface{}{
+				params := map[string]any{
 					"aws_secret":   "secret",
 					"local_file":   "local",
 					"remote_file":  "remote",
@@ -53,7 +55,7 @@ func TestS3PutValidateParams(t *testing.T) {
 			})
 			Convey("a defined local file and inclusion filter should cause an error", func() {
 
-				params := map[string]interface{}{
+				params := map[string]any{
 					"aws_secret":                 "secret",
 					"aws_key":                    "key",
 					"local_file":                 "local",
@@ -70,7 +72,7 @@ func TestS3PutValidateParams(t *testing.T) {
 			})
 			Convey("a defined inclusion filter with optional upload should cause an error", func() {
 
-				params := map[string]interface{}{
+				params := map[string]any{
 					"aws_secret":                 "secret",
 					"aws_key":                    "key",
 					"local_files_include_filter": []string{"local"},
@@ -101,7 +103,7 @@ func TestS3PutValidateParams(t *testing.T) {
 
 			Convey("a missing aws secret should cause an error", func() {
 
-				params := map[string]interface{}{
+				params := map[string]any{
 					"aws_key":      "key",
 					"local_file":   "local",
 					"remote_file":  "remote",
@@ -117,7 +119,7 @@ func TestS3PutValidateParams(t *testing.T) {
 
 			Convey("a missing local file should cause an error", func() {
 
-				params := map[string]interface{}{
+				params := map[string]any{
 					"aws_key":      "key",
 					"aws_secret":   "secret",
 					"remote_file":  "remote",
@@ -133,7 +135,7 @@ func TestS3PutValidateParams(t *testing.T) {
 
 			Convey("a missing remote file should cause an error", func() {
 
-				params := map[string]interface{}{
+				params := map[string]any{
 					"aws_key":      "key",
 					"aws_secret":   "secret",
 					"local_file":   "local",
@@ -149,7 +151,7 @@ func TestS3PutValidateParams(t *testing.T) {
 
 			Convey("a missing bucket should cause an error", func() {
 
-				params := map[string]interface{}{
+				params := map[string]any{
 					"aws_key":      "key",
 					"aws_secret":   "secret",
 					"local_file":   "local",
@@ -165,7 +167,7 @@ func TestS3PutValidateParams(t *testing.T) {
 
 			Convey("a missing s3 permission should cause an error", func() {
 
-				params := map[string]interface{}{
+				params := map[string]any{
 					"aws_key":      "key",
 					"aws_secret":   "secret",
 					"local_file":   "local",
@@ -181,7 +183,7 @@ func TestS3PutValidateParams(t *testing.T) {
 
 			Convey("an invalid s3 permission should cause an error", func() {
 
-				params := map[string]interface{}{
+				params := map[string]any{
 					"aws_key":      "key",
 					"aws_secret":   "secret",
 					"local_file":   "local",
@@ -198,7 +200,7 @@ func TestS3PutValidateParams(t *testing.T) {
 
 			Convey("a missing content type should cause an error", func() {
 
-				params := map[string]interface{}{
+				params := map[string]any{
 					"aws_key":      "key",
 					"aws_secret":   "secret",
 					"local_file":   "local",
@@ -214,7 +216,7 @@ func TestS3PutValidateParams(t *testing.T) {
 
 			Convey("an invalid visibility type should cause an error", func() {
 
-				params := map[string]interface{}{
+				params := map[string]any{
 					"aws_key":      "key",
 					"aws_secret":   "secret",
 					"local_file":   "local",
@@ -232,7 +234,7 @@ func TestS3PutValidateParams(t *testing.T) {
 
 			Convey("a valid set of params should not cause an error", func() {
 
-				params := map[string]interface{}{
+				params := map[string]any{
 					"aws_key":      "key",
 					"aws_secret":   "secret",
 					"local_file":   "local",
@@ -252,22 +254,20 @@ func TestS3PutValidateParams(t *testing.T) {
 				So(cmd.ResourceDisplayName, ShouldEqual, params["display_name"])
 			})
 
-			Convey("combining temporary credentials with signed visibility should cause an error", func() {
-				params := map[string]interface{}{
+			Convey("combining temporary credentials with signed visibility should not cause an error", func() {
+				params := map[string]any{
 					"aws_key":           "key",
 					"aws_secret":        "secret",
 					"aws_session_token": "temporary_token",
 					"local_file":        "local",
 					"remote_file":       "remote",
 					"bucket":            "bck",
-					"permissions":       "public-read",
+					"permissions":       "private",
 					"content_type":      "application/x-tar",
 					"display_name":      "test_file",
 					"visibility":        "signed",
 				}
-				err := cmd.ParseParams(params)
-				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldContainSubstring, "cannot use temporary AWS credentials with signed link visibility")
+				So(cmd.ParseParams(params), ShouldBeNil)
 			})
 		})
 
@@ -382,12 +382,12 @@ func TestSignedUrlVisibility(t *testing.T) {
 			for _, file := range v {
 				assert.NotEqual(t, " ", string(file.Name[0]))
 				if file.Visibility == artifact.Signed {
-					assert.Equal(t, file.AwsKey, s.AwsKey)
-					assert.Equal(t, file.AwsSecret, s.AwsSecret)
+					assert.Equal(t, file.AWSKey, s.AwsKey)
+					assert.Equal(t, file.AWSSecret, s.AwsSecret)
 
 				} else {
-					assert.Equal(t, "", file.AwsKey)
-					assert.Equal(t, "", file.AwsSecret)
+					assert.Equal(t, "", file.AWSKey)
+					assert.Equal(t, "", file.AWSSecret)
 				}
 			}
 		}
@@ -671,7 +671,9 @@ func TestS3PutSkipExisting(t *testing.T) {
 
 	id := utility.RandomString()
 
-	remoteFile := fmt.Sprintf("tests/%s/%s", t.Name(), id)
+	testPrefix := fmt.Sprintf("tests/%s/%s", t.Name(), id)
+
+	remoteFile := fmt.Sprintf("%s/file", testPrefix)
 
 	cmd := s3PutFactory()
 	params := map[string]any{
@@ -687,19 +689,37 @@ func TestS3PutSkipExisting(t *testing.T) {
 		"permissions":       "private",
 	}
 
+	creds := credentials.NewStaticCredentialsProvider(accessKeyID, secretAccessKey, token)
+
 	require.NoError(t, cmd.ParseParams(params))
 
 	tconf := &internal.TaskConfig{
-		Task:    task.Task{},
+		Task: task.Task{
+			Project: testPrefix,
+			Id:      "task-abc123",
+			TaskOutputInfo: &taskoutput.TaskOutput{
+				TaskLogs: taskoutput.TaskLogOutput{
+					Version: 1,
+					BucketConfig: evergreen.BucketConfig{
+						Name: bucketName,
+						Type: evergreen.BucketTypeS3,
+					},
+					AWSCredentials: creds,
+				},
+				TestLogs: taskoutput.TestLogOutput{},
+			},
+		},
 		WorkDir: temproot,
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	sender := send.MakeInternalLogger()
-	logger := client.NewSingleChannelLogHarness("test", sender)
 	comm := client.NewMock("")
+	baseComm := client.NewHostCommunicator("", "", "")
+
+	logger, err := baseComm.GetLoggerProducer(ctx, &tconf.Task, nil)
+	require.NoError(t, err)
 
 	require.NoError(t, cmd.Execute(ctx, comm, logger, tconf))
 
@@ -708,7 +728,7 @@ func TestS3PutSkipExisting(t *testing.T) {
 
 	require.NoError(t, cmd.Execute(ctx, comm, logger, tconf))
 
-	creds := credentials.NewStaticCredentialsProvider(accessKeyID, secretAccessKey, token)
+	require.NoError(t, logger.Flush(ctx))
 
 	opts := pail.S3Options{
 		Region:      region,
@@ -727,4 +747,14 @@ func TestS3PutSkipExisting(t *testing.T) {
 
 	// verify that file content wasn't overwritten by the second file
 	assert.Equal(t, payload, content)
+
+	logopts := taskoutput.TaskLogGetOptions{
+		LogType: taskoutput.TaskLogTypeAll,
+	}
+
+	it, err := tconf.Task.GetTaskLogs(ctx, logopts)
+	require.NoError(t, err)
+
+	_, err = apimodels.ReadLogToSlice(it)
+	require.NoError(t, err)
 }

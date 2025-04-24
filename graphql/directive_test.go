@@ -7,7 +7,11 @@ import (
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -41,6 +45,7 @@ func setupPermissions(t *testing.T) {
 			evergreen.PermissionProjectCreate: evergreen.ProjectCreate.Value,
 			evergreen.PermissionDistroCreate:  evergreen.DistroCreate.Value,
 			evergreen.PermissionRoleModify:    evergreen.RoleModify.Value,
+			evergreen.PermissionAdminSettings: evergreen.AdminSettingsEdit.Value,
 		},
 	}
 	err = roleManager.UpdateRole(superUserRole)
@@ -160,6 +165,20 @@ func setupPermissions(t *testing.T) {
 	}
 	require.NoError(t, roleManager.UpdateRole(distroViewRole))
 
+	hostEditRole := gimlet.Role{
+		ID:          "edit_host-id",
+		Scope:       distroScope.ID,
+		Permissions: map[string]int{evergreen.PermissionHosts: evergreen.HostsEdit.Value},
+	}
+	require.NoError(t, roleManager.UpdateRole(hostEditRole))
+
+	hostViewRole := gimlet.Role{
+		ID:          "view_host-id",
+		Scope:       distroScope.ID,
+		Permissions: map[string]int{evergreen.PermissionHosts: evergreen.HostsView.Value},
+	}
+	require.NoError(t, roleManager.UpdateRole(hostViewRole))
+
 	taskAdminRole := gimlet.Role{
 		ID:          "admin_task",
 		Scope:       projectScope.ID,
@@ -216,7 +235,118 @@ func setupPermissions(t *testing.T) {
 	}
 	require.NoError(t, roleManager.UpdateRole(logViewRole))
 }
-
+func TestRequireHostAccess(t *testing.T) {
+	defer func() {
+		require.NoError(t, db.ClearCollections(host.Collection, user.Collection),
+			"unable to clear user or host collection")
+	}()
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser){
+		"FailsWhenHostIdIsNotSpecified": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser) {
+			obj := any(nil)
+			_, err := config.Directives.RequireHostAccess(ctx, obj, next, HostAccessLevelEdit)
+			assert.EqualError(t, err, "input: host not specified")
+		},
+		"FailsWhenHostDoesNotExist": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser) {
+			obj := any(map[string]any{"hostId": "a-non-existent-host-id"})
+			_, err := config.Directives.RequireHostAccess(ctx, obj, next, HostAccessLevelEdit)
+			assert.EqualError(t, err, "input: No matching hosts found")
+		},
+		"ViewFailsWhenUserDoesNotHaveViewPermission": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser) {
+			obj := any(map[string]any{"hostId": "host1"})
+			_, err := config.Directives.RequireHostAccess(ctx, obj, next, HostAccessLevelView)
+			assert.EqualError(t, err, "input: user 'test_user' does not have permission to access host 'host1'")
+		},
+		"EditFailsWhenUserDoesNotHaveEditPermission": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser) {
+			obj := any(map[string]any{"hostId": "host1"})
+			_, err := config.Directives.RequireHostAccess(ctx, obj, next, HostAccessLevelEdit)
+			assert.EqualError(t, err, "input: user 'test_user' does not have permission to access host 'host1'")
+		},
+		"ViewSucceedsWhenUserHasViewPermission": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser) {
+			assert.NoError(t, usr.AddRole(ctx, "view_host-id"))
+			nextCalled := false
+			wrappedNext := func(rctx context.Context) (any, error) {
+				nextCalled = true
+				return nil, nil
+			}
+			obj := any(map[string]any{"hostId": "host1"})
+			res, err := config.Directives.RequireHostAccess(ctx, obj, wrappedNext, HostAccessLevelView)
+			assert.NoError(t, err)
+			assert.Nil(t, res)
+			assert.Equal(t, true, nextCalled)
+			assert.NoError(t, usr.RemoveRole(ctx, "view_host-id"))
+		},
+		"EditSucceedsWhenUserHasEditPermission": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser) {
+			assert.NoError(t, usr.AddRole(ctx, "edit_host-id"))
+			nextCalled := false
+			wrappedNext := func(rctx context.Context) (any, error) {
+				nextCalled = true
+				return nil, nil
+			}
+			obj := any(map[string]any{"hostId": "host1"})
+			res, err := config.Directives.RequireHostAccess(ctx, obj, wrappedNext, HostAccessLevelEdit)
+			assert.NoError(t, err)
+			assert.Nil(t, res)
+			assert.Equal(t, true, nextCalled)
+			assert.NoError(t, usr.RemoveRole(ctx, "edit_host-id"))
+		},
+		"ViewSucceedsWhenHostIsStartedByUser": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser) {
+			nextCalled := false
+			wrappedNext := func(rctx context.Context) (any, error) {
+				nextCalled = true
+				return nil, nil
+			}
+			obj := any(map[string]any{"hostId": "host2"})
+			res, err := config.Directives.RequireHostAccess(ctx, obj, wrappedNext, HostAccessLevelView)
+			assert.NoError(t, err)
+			assert.Nil(t, res)
+			assert.Equal(t, true, nextCalled)
+		},
+		"EditSucceedsWhenHostIsStartedByUser": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser) {
+			nextCalled := false
+			wrappedNext := func(rctx context.Context) (any, error) {
+				nextCalled = true
+				return nil, nil
+			}
+			obj := any(map[string]any{"hostId": "host2"})
+			res, err := config.Directives.RequireHostAccess(ctx, obj, wrappedNext, HostAccessLevelEdit)
+			assert.NoError(t, err)
+			assert.Nil(t, res)
+			assert.Equal(t, true, nextCalled)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			setupPermissions(t)
+			usr, err := setupUser(t)
+			assert.NoError(t, err)
+			assert.NotNil(t, usr)
+			ctx = gimlet.AttachUser(ctx, usr)
+			assert.NotNil(t, ctx)
+			h1 := host.Host{
+				Id: "host1",
+				Distro: distro.Distro{
+					Id: "distro-id",
+				},
+			}
+			assert.NoError(t, h1.Insert(ctx))
+			h2 := host.Host{
+				Id:        "host2",
+				StartedBy: testUser,
+				Distro: distro.Distro{
+					Id: "distro-id",
+				},
+			}
+			assert.NoError(t, h2.Insert(ctx))
+			config := New("/graphql")
+			assert.NotNil(t, config)
+			next := func(rctx context.Context) (any, error) {
+				return nil, nil
+			}
+			tCase(ctx, t, next, config, usr)
+		})
+	}
+}
 func TestRequireDistroAccess(t *testing.T) {
 	setupPermissions(t)
 	require.NoError(t, db.ClearCollections(model.ProjectRefCollection, user.Collection),
@@ -228,7 +358,7 @@ func TestRequireDistroAccess(t *testing.T) {
 			SlackMemberId: "testuser",
 		},
 	}
-	require.NoError(t, dbUser.Insert())
+	require.NoError(t, dbUser.Insert(t.Context()))
 
 	const email = "testuser@mongodb.com"
 	const accessToken = "access_token"
@@ -236,11 +366,11 @@ func TestRequireDistroAccess(t *testing.T) {
 	config := New("/graphql")
 	require.NotNil(t, config)
 	ctx := context.Background()
-	obj := interface{}(nil)
+	obj := any(nil)
 
 	// callCount keeps track of how many times the function is called
 	callCount := 0
-	next := func(rctx context.Context) (interface{}, error) {
+	next := func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
 		callCount++
 		return nil, nil
@@ -261,19 +391,19 @@ func TestRequireDistroAccess(t *testing.T) {
 	assert.EqualError(t, err, "input: user 'test_user' does not have create distro permissions")
 
 	// superuser should be successful for create with no distro ID specified
-	require.NoError(t, usr.AddRole("superuser"))
+	require.NoError(t, usr.AddRole(t.Context(), "superuser"))
 
 	res, err := config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessCreate)
 	assert.NoError(t, err)
 	assert.Nil(t, res)
 	assert.Equal(t, 1, callCount)
 
-	require.NoError(t, usr.RemoveRole("superuser"))
+	require.NoError(t, usr.RemoveRole(t.Context(), "superuser"))
 
 	// superuser_distro_access is successful for admin, edit, view
-	require.NoError(t, usr.AddRole("superuser_distro_access"))
+	require.NoError(t, usr.AddRole(t.Context(), "superuser_distro_access"))
 
-	obj = interface{}(map[string]interface{}{"distroId": "distro-id"})
+	obj = any(map[string]any{"distroId": "distro-id"})
 	res, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessAdmin)
 	assert.NoError(t, err)
 	assert.Nil(t, res)
@@ -289,10 +419,10 @@ func TestRequireDistroAccess(t *testing.T) {
 	assert.Nil(t, res)
 	assert.Equal(t, 4, callCount)
 
-	require.NoError(t, usr.RemoveRole("superuser_distro_access"))
+	require.NoError(t, usr.RemoveRole(t.Context(), "superuser_distro_access"))
 
 	// admin access is successful for admin, edit, view
-	require.NoError(t, usr.AddRole("admin_distro-id"))
+	require.NoError(t, usr.AddRole(t.Context(), "admin_distro-id"))
 
 	res, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessAdmin)
 	assert.NoError(t, err)
@@ -309,10 +439,10 @@ func TestRequireDistroAccess(t *testing.T) {
 	assert.Nil(t, res)
 	assert.Equal(t, 7, callCount)
 
-	require.NoError(t, usr.RemoveRole("admin_distro-id"))
+	require.NoError(t, usr.RemoveRole(t.Context(), "admin_distro-id"))
 
 	// edit access fails for admin, is successful for edit & view
-	require.NoError(t, usr.AddRole("edit_distro-id"))
+	require.NoError(t, usr.AddRole(t.Context(), "edit_distro-id"))
 
 	res, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessAdmin)
 	assert.Nil(t, res)
@@ -329,10 +459,10 @@ func TestRequireDistroAccess(t *testing.T) {
 	assert.Nil(t, res)
 	assert.Equal(t, 9, callCount)
 
-	require.NoError(t, usr.RemoveRole("edit_distro-id"))
+	require.NoError(t, usr.RemoveRole(t.Context(), "edit_distro-id"))
 
 	// view access fails for admin & edit, is successful for view
-	require.NoError(t, usr.AddRole("view_distro-id"))
+	require.NoError(t, usr.AddRole(t.Context(), "view_distro-id"))
 
 	_, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessAdmin)
 	assert.Equal(t, 9, callCount)
@@ -347,7 +477,7 @@ func TestRequireDistroAccess(t *testing.T) {
 	assert.Nil(t, res)
 	assert.Equal(t, 10, callCount)
 
-	require.NoError(t, usr.RemoveRole("view_distro-id"))
+	require.NoError(t, usr.RemoveRole(t.Context(), "view_distro-id"))
 
 	// no access fails all query attempts
 	_, err = config.Directives.RequireDistroAccess(ctx, obj, next, DistroSettingsAccessAdmin)
@@ -374,7 +504,7 @@ func TestRequireProjectAdmin(t *testing.T) {
 			SlackMemberId: "testuser",
 		},
 	}
-	require.NoError(t, dbUser.Insert())
+	require.NoError(t, dbUser.Insert(t.Context()))
 
 	const email = "testuser@mongodb.com"
 	const accessToken = "access_token"
@@ -382,11 +512,11 @@ func TestRequireProjectAdmin(t *testing.T) {
 	config := New("/graphql")
 	require.NotNil(t, config)
 	ctx := context.Background()
-	obj := interface{}(nil)
+	obj := any(nil)
 
 	// callCount keeps track of how many times the function is called
 	callCount := 0
-	next := func(rctx context.Context) (interface{}, error) {
+	next := func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
 		callCount++
 		return nil, nil
@@ -403,11 +533,11 @@ func TestRequireProjectAdmin(t *testing.T) {
 		Id:         "project_id",
 		Identifier: "project_identifier",
 	}
-	err = projectRef.Insert()
+	err = projectRef.Insert(t.Context())
 	require.NoError(t, err)
 
 	// superuser should always be successful, no matter the resolver
-	err = usr.AddRole("superuser")
+	err = usr.AddRole(t.Context(), "superuser")
 	require.NoError(t, err)
 
 	res, err := config.Directives.RequireProjectAdmin(ctx, obj, next)
@@ -415,7 +545,7 @@ func TestRequireProjectAdmin(t *testing.T) {
 	assert.Nil(t, res)
 	assert.Equal(t, 1, callCount)
 
-	err = usr.RemoveRole("superuser")
+	err = usr.RemoveRole(t.Context(), "superuser")
 	require.NoError(t, err)
 
 	// CreateProject - permission denied
@@ -423,8 +553,8 @@ func TestRequireProjectAdmin(t *testing.T) {
 		OperationName: CreateProjectMutation,
 	}
 	ctx = graphql.WithOperationContext(ctx, operationContext)
-	obj = map[string]interface{}{
-		"project": map[string]interface{}{
+	obj = map[string]any{
+		"project": map[string]any{
 			"identifier": "anything",
 		},
 	}
@@ -434,7 +564,7 @@ func TestRequireProjectAdmin(t *testing.T) {
 	assert.Equal(t, 1, callCount)
 
 	// CreateProject - successful
-	err = usr.AddRole("admin_project")
+	err = usr.AddRole(t.Context(), "admin_project")
 	require.NoError(t, err)
 	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
 	assert.NoError(t, err)
@@ -446,8 +576,8 @@ func TestRequireProjectAdmin(t *testing.T) {
 		OperationName: CopyProjectMutation,
 	}
 	ctx = graphql.WithOperationContext(ctx, operationContext)
-	obj = map[string]interface{}{
-		"project": map[string]interface{}{
+	obj = map[string]any{
+		"project": map[string]any{
 			"projectIdToCopy": "anything",
 		},
 	}
@@ -457,8 +587,8 @@ func TestRequireProjectAdmin(t *testing.T) {
 	assert.Equal(t, 2, callCount)
 
 	// CopyProject - successful
-	obj = map[string]interface{}{
-		"project": map[string]interface{}{
+	obj = map[string]any{
+		"project": map[string]any{
 			"projectIdToCopy": "project_id",
 		},
 	}
@@ -472,14 +602,14 @@ func TestRequireProjectAdmin(t *testing.T) {
 		OperationName: DeleteProjectMutation,
 	}
 	ctx = graphql.WithOperationContext(ctx, operationContext)
-	obj = map[string]interface{}{"projectId": "anything"}
+	obj = map[string]any{"projectId": "anything"}
 	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
 	assert.EqualError(t, err, "input: user test_user does not have permission to access the DeleteProject resolver")
 	assert.Nil(t, res)
 	assert.Equal(t, 3, callCount)
 
 	// DeleteProject - successful
-	obj = map[string]interface{}{"projectId": "project_id"}
+	obj = map[string]any{"projectId": "project_id"}
 	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
 	assert.NoError(t, err)
 	assert.Nil(t, res)
@@ -490,8 +620,8 @@ func TestRequireProjectAdmin(t *testing.T) {
 		OperationName: SetLastRevisionMutation,
 	}
 	ctx = graphql.WithOperationContext(ctx, operationContext)
-	obj = map[string]interface{}{
-		"opts": map[string]interface{}{
+	obj = map[string]any{
+		"opts": map[string]any{
 			"projectIdentifier": "project_identifier",
 		},
 	}
@@ -505,8 +635,8 @@ func TestRequireProjectAdmin(t *testing.T) {
 		OperationName: SetLastRevisionMutation,
 	}
 	ctx = graphql.WithOperationContext(ctx, operationContext)
-	obj = map[string]interface{}{
-		"opts": map[string]interface{}{
+	obj = map[string]any{
+		"opts": map[string]any{
 			"projectIdentifier": "project_whatever",
 		},
 	}
@@ -520,12 +650,12 @@ func TestRequireProjectAdmin(t *testing.T) {
 		OperationName: SetLastRevisionMutation,
 	}
 	ctx = graphql.WithOperationContext(ctx, operationContext)
-	obj = map[string]interface{}{
-		"opts": map[string]interface{}{
+	obj = map[string]any{
+		"opts": map[string]any{
 			"projectIdentifier": "project_identifier",
 		},
 	}
-	require.NoError(t, usr.RemoveRole("admin_project"))
+	require.NoError(t, usr.RemoveRole(t.Context(), "admin_project"))
 	res, err = config.Directives.RequireProjectAdmin(ctx, obj, next)
 	assert.EqualError(t, err, "input: user test_user does not have permission to access the SetLastRevision resolver")
 	assert.Nil(t, res)
@@ -543,7 +673,7 @@ func setupUser(t *testing.T) (*user.DBUser, error) {
 			SlackMemberId: "testuser",
 		},
 	}
-	require.NoError(t, dbUser.Insert())
+	require.NoError(t, dbUser.Insert(t.Context()))
 	const email = "testuser@mongodb.com"
 	const accessToken = "access_token"
 	const refreshToken = "refresh_token"
@@ -561,11 +691,11 @@ func TestRequireProjectSettingsAccess(t *testing.T) {
 		Identifier: "project_identifier",
 		RepoRefId:  "repo_project_id",
 	}
-	assert.NoError(t, pRef.Insert())
+	assert.NoError(t, pRef.Insert(t.Context()))
 
 	// callCount keeps track of how many times the function is called
 	callCount := 0
-	next := func(rctx context.Context) (interface{}, error) {
+	next := func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
 		callCount++
 		return nil, nil
@@ -594,7 +724,7 @@ func TestRequireProjectSettingsAccess(t *testing.T) {
 	}
 	ctx = graphql.WithFieldContext(ctx, fieldCtx)
 
-	res, err := config.Directives.RequireProjectSettingsAccess(ctx, interface{}(nil), next)
+	res, err := config.Directives.RequireProjectSettingsAccess(ctx, any(nil), next)
 	assert.EqualError(t, err, "input: project not valid")
 	assert.Nil(t, res)
 	assert.Equal(t, 0, callCount)
@@ -628,7 +758,7 @@ func TestRequireProjectSettingsAccess(t *testing.T) {
 	assert.Nil(t, res)
 	assert.Equal(t, 0, callCount)
 
-	err = usr.AddRole("view_project")
+	err = usr.AddRole(t.Context(), "view_project")
 	require.NoError(t, err)
 
 	res, err = config.Directives.RequireProjectSettingsAccess(ctx, validApiProjectSettings, next)
@@ -641,4 +771,123 @@ func TestRequireProjectSettingsAccess(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Nil(t, res)
 	assert.Equal(t, 2, callCount)
+}
+
+func TestRequirePatchOwner(t *testing.T) {
+	defer func() {
+		require.NoError(t, db.ClearCollections(model.ProjectRefCollection, patch.Collection, user.Collection),
+			"unable to clear projectRef, patch, or user collection")
+
+	}()
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser, patch1Id bson.ObjectId, patch2Id bson.ObjectId, patch3Id bson.ObjectId){
+		"SucceedsWhenUserIsPatchAuthor": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser, patch1Id bson.ObjectId, patch2Id bson.ObjectId, patch3Id bson.ObjectId) {
+			nextCalled := false
+			wrappedNext := func(rctx context.Context) (any, error) {
+				nextCalled = true
+				return nil, nil
+			}
+			obj := map[string]any{"patchIds": []any{patch1Id.Hex()}}
+			res, err := config.Directives.RequirePatchOwner(ctx, obj, wrappedNext)
+			assert.NoError(t, err)
+			assert.Nil(t, res)
+			assert.Equal(t, true, nextCalled)
+		},
+		"SucceeedsWhenUserIsProjectAdmin": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser, patch1Id bson.ObjectId, patch2Id bson.ObjectId, patch3Id bson.ObjectId) {
+			assert.NoError(t, usr.AddRole(ctx, "admin_project"))
+			nextCalled := false
+			wrappedNext := func(rctx context.Context) (any, error) {
+				nextCalled = true
+				return nil, nil
+			}
+			obj := map[string]any{"patchIds": []any{patch2Id.Hex(), patch3Id.Hex()}}
+			res, err := config.Directives.RequirePatchOwner(ctx, obj, wrappedNext)
+			assert.NoError(t, err)
+			assert.Nil(t, res)
+			assert.Equal(t, true, nextCalled)
+			assert.NoError(t, usr.RemoveRole(ctx, "admin_project"))
+		},
+		"SucceedsWhenUserIsSuperUser": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser, patch1Id bson.ObjectId, patch2Id bson.ObjectId, patch3Id bson.ObjectId) {
+			assert.NoError(t, usr.AddRole(ctx, "superuser"))
+			nextCalled := false
+			wrappedNext := func(rctx context.Context) (any, error) {
+				nextCalled = true
+				return nil, nil
+			}
+			obj := map[string]any{"patchIds": []any{patch1Id.Hex(), patch2Id.Hex(), patch3Id.Hex()}}
+			res, err := config.Directives.RequirePatchOwner(ctx, obj, wrappedNext)
+			assert.NoError(t, err)
+			assert.Nil(t, res)
+			assert.Equal(t, true, nextCalled)
+			assert.NoError(t, usr.RemoveRole(ctx, "superuser"))
+		},
+		"SucceedsWhenUserIsPatchAdmin": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser, patch1Id bson.ObjectId, patch2Id bson.ObjectId, patch3Id bson.ObjectId) {
+			assert.NoError(t, usr.AddRole(ctx, "admin_patch"))
+			nextCalled := false
+			wrappedNext := func(rctx context.Context) (any, error) {
+				nextCalled = true
+				return nil, nil
+			}
+			obj := map[string]any{"patchIds": []any{patch1Id.Hex(), patch2Id.Hex(), patch3Id.Hex()}}
+			res, err := config.Directives.RequirePatchOwner(ctx, obj, wrappedNext)
+			assert.NoError(t, err)
+			assert.Nil(t, res)
+			assert.Equal(t, true, nextCalled)
+			assert.NoError(t, usr.RemoveRole(ctx, "admin_patch"))
+		},
+		"FailsWhenUserIsNotASuperuserOrAdminOrAuthor": func(ctx context.Context, t *testing.T, next func(rctx context.Context) (any, error), config Config, usr *user.DBUser, patch1Id bson.ObjectId, patch2Id bson.ObjectId, patch3Id bson.ObjectId) {
+			nextCalled := false
+			wrappedNext := func(rctx context.Context) (any, error) {
+				nextCalled = true
+				return nil, nil
+			}
+			obj := map[string]any{"patchIds": []any{patch1Id.Hex(), patch2Id.Hex(), patch3Id.Hex()}}
+			res, err := config.Directives.RequirePatchOwner(ctx, obj, wrappedNext)
+			assert.EqualError(t, err, "input: user 'test_user' does not have permission to modify patches: '64c13ab08edf48a008793cac, 67e2c49e4ebfe83f00ee5f65'")
+			assert.Nil(t, res)
+			assert.Equal(t, false, nextCalled)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			setupPermissions(t)
+			usr, err := setupUser(t)
+			assert.NoError(t, err)
+			assert.NotNil(t, usr)
+			ctx = gimlet.AttachUser(ctx, usr)
+			assert.NotNil(t, ctx)
+			projectRef := model.ProjectRef{
+				Id:         "project_id",
+				Identifier: "project_identifier",
+			}
+			require.NoError(t, projectRef.Insert(t.Context()))
+			patch1Id := bson.ObjectIdHex("67e2c29f4ebfe834bb02a482")
+			p1 := patch.Patch{
+				Id:      patch1Id,
+				Project: "project_id",
+				Author:  "test_user",
+			}
+			assert.NoError(t, p1.Insert(t.Context()))
+			patch2Id := bson.ObjectIdHex("67e2c49e4ebfe83f00ee5f65")
+			p2 := patch.Patch{
+				Id:      patch2Id,
+				Project: "project_id",
+				Author:  "not_test_user",
+			}
+			assert.NoError(t, p2.Insert(t.Context()))
+			patch3Id := bson.ObjectIdHex("64c13ab08edf48a008793cac")
+			p3 := patch.Patch{
+				Id:      patch3Id,
+				Project: "project_id",
+				Author:  "not_test_user",
+			}
+			assert.NoError(t, p3.Insert(t.Context()))
+			config := New("/graphql")
+			assert.NotNil(t, config)
+			next := func(rctx context.Context) (any, error) {
+				return nil, nil
+			}
+			tCase(ctx, t, next, config, usr, patch1Id, patch2Id, patch3Id)
+		})
+	}
 }

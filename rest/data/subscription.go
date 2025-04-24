@@ -1,6 +1,7 @@
 package data
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
@@ -17,7 +18,7 @@ import (
 // There are special requirements for the VERSION resource type. Patch requesters should use family triggers
 // when possible, while non-patch requesters should use regular triggers. The content of selectors changes based
 // on the owner type.
-func convertVersionSubscription(s *event.Subscription) error {
+func convertVersionSubscription(ctx context.Context, s *event.Subscription) error {
 	var requester string
 
 	if s.OwnerType == event.OwnerTypeProject { // Handle project subscriptions.
@@ -31,7 +32,7 @@ func convertVersionSubscription(s *event.Subscription) error {
 		for _, selector := range s.Selectors {
 			if selector.Type == event.SelectorID {
 				versionId := selector.Data
-				v, err := model.VersionFindOneId(versionId)
+				v, err := model.VersionFindOneId(ctx, versionId)
 				if err != nil {
 					return errors.Wrapf(err, "retrieving version '%s'", versionId)
 				}
@@ -50,7 +51,7 @@ func convertVersionSubscription(s *event.Subscription) error {
 	return nil
 }
 
-func SaveSubscriptions(owner string, subscriptions []restModel.APISubscription, isProjectOwner bool) error {
+func SaveSubscriptions(ctx context.Context, owner string, subscriptions []restModel.APISubscription, isProjectOwner bool) error {
 	dbSubscriptions := []event.Subscription{}
 	for _, subscription := range subscriptions {
 		dbSubscription, err := subscription.ToService()
@@ -66,7 +67,7 @@ func SaveSubscriptions(owner string, subscriptions []restModel.APISubscription, 
 		}
 
 		if dbSubscription.ResourceType == event.ResourceTypeVersion {
-			if err = convertVersionSubscription(&dbSubscription); err != nil {
+			if err = convertVersionSubscription(ctx, &dbSubscription); err != nil {
 				return gimlet.ErrorResponse{
 					StatusCode: http.StatusInternalServerError,
 					Message:    errors.Wrap(err, "converting version subscription").Error(),
@@ -106,13 +107,13 @@ func SaveSubscriptions(owner string, subscriptions []restModel.APISubscription, 
 
 	catcher := grip.NewSimpleCatcher()
 	for _, subscription := range dbSubscriptions {
-		catcher.Add(subscription.Upsert())
+		catcher.Add(subscription.Upsert(ctx))
 	}
 	return catcher.Resolve()
 }
 
 // GetSubscriptions returns the subscriptions that belong to a user
-func GetSubscriptions(owner string, ownerType event.OwnerType) ([]restModel.APISubscription, error) {
+func GetSubscriptions(ctx context.Context, owner string, ownerType event.OwnerType) ([]restModel.APISubscription, error) {
 	if len(owner) == 0 {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -120,7 +121,7 @@ func GetSubscriptions(owner string, ownerType event.OwnerType) ([]restModel.APIS
 		}
 	}
 
-	subs, err := event.FindSubscriptionsByOwner(owner, ownerType)
+	subs, err := event.FindSubscriptionsByOwner(ctx, owner, ownerType)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding subscriptions for user '%s'", owner)
 	}
@@ -137,9 +138,9 @@ func GetSubscriptions(owner string, ownerType event.OwnerType) ([]restModel.APIS
 	return apiSubs, nil
 }
 
-func DeleteSubscriptions(owner string, ids []string) error {
+func DeleteSubscriptions(ctx context.Context, owner string, ids []string) error {
 	for _, id := range ids {
-		subscription, err := event.FindSubscriptionByID(id)
+		subscription, err := event.FindSubscriptionByID(ctx, id)
 		if err != nil {
 			return gimlet.ErrorResponse{
 				StatusCode: http.StatusInternalServerError,
@@ -162,7 +163,7 @@ func DeleteSubscriptions(owner string, ids []string) error {
 
 	catcher := grip.NewBasicCatcher()
 	for _, id := range ids {
-		catcher.Wrapf(event.RemoveSubscription(id), "removing subscription '%s'", id)
+		catcher.Wrapf(event.RemoveSubscription(ctx, id), "removing subscription '%s'", id)
 	}
 	return catcher.Resolve()
 }

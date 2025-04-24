@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
-	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -122,7 +121,6 @@ type Patch struct {
 	Id                 mgobson.ObjectId `bson:"_id,omitempty"`
 	Description        string           `bson:"desc"`
 	Path               string           `bson:"path,omitempty"`
-	Project            string           `bson:"branch"`
 	Githash            string           `bson:"githash"`
 	Hidden             bool             `bson:"hidden"`
 	PatchNumber        int              `bson:"patch_number"`
@@ -143,6 +141,11 @@ type Patch struct {
 	// tasks/variants are now scheduled to run). If true, the patch has been
 	// finalized.
 	Activated bool `bson:"activated"`
+	// Project contains the project ID for the patch. The bson tag here is `branch` due to legacy usage.
+	Project string `bson:"branch"`
+	// Branch contains the branch that the project tracks. The tag `branch_name` is
+	// used to avoid conflict with legacy usage of the Project field.
+	Branch string `bson:"branch_name" json:"branch_name,omitempty"`
 	// ProjectStorageMethod describes how the parser project is stored for this
 	// patch before it's finalized. This field is only set while the patch is
 	// unfinalized and is cleared once the patch has been finalized.
@@ -224,28 +227,17 @@ func (p *Patch) IsFinished() bool {
 }
 
 // SetDescription sets a patch's description in the database
-func (p *Patch) SetDescription(desc string) error {
+func (p *Patch) SetDescription(ctx context.Context, desc string) error {
 	if p.Description == desc {
 		return nil
 	}
 	p.Description = desc
 	return UpdateOne(
+		ctx,
 		bson.M{IdKey: p.Id},
 		bson.M{
 			"$set": bson.M{
 				DescriptionKey: desc,
-			},
-		},
-	)
-}
-
-func (p *Patch) SetMergePatch(newPatchID string) error {
-	p.MergePatch = newPatchID
-	return UpdateOne(
-		bson.M{IdKey: p.Id},
-		bson.M{
-			"$set": bson.M{
-				MergePatchKey: newPatchID,
 			},
 		},
 	)
@@ -282,14 +274,14 @@ func (p *Patch) ClearPatchData() {
 
 // FetchPatchFiles dereferences externally-stored patch diffs by fetching them from gridfs
 // and placing their contents into the patch object.
-func (p *Patch) FetchPatchFiles() error {
+func (p *Patch) FetchPatchFiles(ctx context.Context) error {
 	for i, patchPart := range p.Patches {
 		// If the patch isn't stored externally, no need to do anything.
 		if patchPart.PatchSet.PatchFileId == "" {
 			continue
 		}
 
-		rawStr, err := FetchPatchContents(patchPart.PatchSet.PatchFileId)
+		rawStr, err := FetchPatchContents(ctx, patchPart.PatchSet.PatchFileId)
 		if err != nil {
 			return errors.Wrapf(err, "getting patch contents for patchfile '%s'", patchPart.PatchSet.PatchFileId)
 		}
@@ -299,8 +291,8 @@ func (p *Patch) FetchPatchFiles() error {
 	return nil
 }
 
-func FetchPatchContents(patchfileID string) (string, error) {
-	fileReader, err := db.GetGridFile(GridFSPrefix, patchfileID)
+func FetchPatchContents(ctx context.Context, patchfileID string) (string, error) {
+	fileReader, err := db.GetGridFile(ctx, GridFSPrefix, patchfileID)
 	if err != nil {
 		return "", errors.Wrap(err, "getting grid file")
 	}
@@ -324,9 +316,10 @@ func (p *Patch) UpdateVariantsTasks(variantsTasks []VariantTasks) {
 	p.VariantsTasks = variantsTasks
 }
 
-func (p *Patch) SetParameters(parameters []Parameter) error {
+func (p *Patch) SetParameters(ctx context.Context, parameters []Parameter) error {
 	p.Parameters = parameters
 	return UpdateOne(
+		ctx,
 		bson.M{IdKey: p.Id},
 		bson.M{
 			"$set": bson.M{
@@ -336,11 +329,12 @@ func (p *Patch) SetParameters(parameters []Parameter) error {
 	)
 }
 
-func (p *Patch) SetDownstreamParameters(parameters []Parameter) error {
+func (p *Patch) SetDownstreamParameters(ctx context.Context, parameters []Parameter) error {
 	p.Triggers.DownstreamParameters = append(p.Triggers.DownstreamParameters, parameters...)
 
 	triggersKey := bsonutil.GetDottedKeyName(TriggersKey, TriggerInfoDownstreamParametersKey)
 	return UpdateOne(
+		ctx,
 		bson.M{IdKey: p.Id},
 		bson.M{
 			"$push": bson.M{triggersKey: bson.M{"$each": parameters}},
@@ -378,9 +372,10 @@ func ResolveVariantTasks(vts []VariantTasks) (bvs []string, tasks []string) {
 // SetVariantsTasks updates the variant/tasks pairs in the database.
 // Also updates the Tasks and Variants fields to maintain backwards compatibility between
 // the old and new fields.
-func (p *Patch) SetVariantsTasks(variantsTasks []VariantTasks) error {
+func (p *Patch) SetVariantsTasks(ctx context.Context, variantsTasks []VariantTasks) error {
 	p.UpdateVariantsTasks(variantsTasks)
 	return UpdateOne(
+		ctx,
 		bson.M{IdKey: p.Id},
 		bson.M{
 			"$set": bson.M{
@@ -392,36 +387,11 @@ func (p *Patch) SetVariantsTasks(variantsTasks []VariantTasks) error {
 	)
 }
 
-// AddBuildVariants adds more buildvarints to a patch document.
-// This is meant to be used after initial patch creation.
-func (p *Patch) AddBuildVariants(bvs []string) error {
-	change := adb.Change{
-		Update: bson.M{
-			"$addToSet": bson.M{BuildVariantsKey: bson.M{"$each": bvs}},
-		},
-		ReturnNew: true,
-	}
-	_, err := db.FindAndModify(Collection, bson.M{IdKey: p.Id}, nil, change, p)
-	return err
-}
-
-// AddTasks adds more tasks to a patch document.
-// This is meant to be used after initial patch creation, to reconfigure the patch.
-func (p *Patch) AddTasks(tasks []string) error {
-	change := adb.Change{
-		Update: bson.M{
-			"$addToSet": bson.M{TasksKey: bson.M{"$each": tasks}},
-		},
-		ReturnNew: true,
-	}
-	_, err := db.FindAndModify(Collection, bson.M{IdKey: p.Id}, nil, change, p)
-	return err
-}
-
 // UpdateRepeatPatchId updates the repeat patch Id value to be used for subsequent pr patches
-func (p *Patch) UpdateRepeatPatchId(patchId string) error {
+func (p *Patch) UpdateRepeatPatchId(ctx context.Context, patchId string) error {
 	repeatKey := bsonutil.GetDottedKeyName(githubPatchDataKey, thirdparty.RepeatPatchIdNextPatchKey)
 	return UpdateOne(
+		ctx,
 		bson.M{IdKey: p.Id},
 		bson.M{
 			"$set": bson.M{
@@ -442,7 +412,7 @@ func (p *Patch) FindModule(moduleName string) *ModulePatch {
 
 // TryMarkStarted attempts to mark a patch as started if it
 // isn't already marked as such
-func TryMarkStarted(versionId string, startTime time.Time) error {
+func TryMarkStarted(ctx context.Context, versionId string, startTime time.Time) error {
 	filter := bson.M{
 		VersionKey: versionId,
 		StatusKey:  evergreen.VersionCreated,
@@ -453,15 +423,15 @@ func TryMarkStarted(versionId string, startTime time.Time) error {
 			StatusKey:    evergreen.VersionStarted,
 		},
 	}
-	return UpdateOne(filter, update)
+	return UpdateOne(ctx, filter, update)
 }
 
 // Insert inserts the patch into the db, returning any errors that occur
-func (p *Patch) Insert() error {
-	return db.Insert(Collection, p)
+func (p *Patch) Insert(ctx context.Context) error {
+	return db.Insert(ctx, Collection, p)
 }
 
-func (p *Patch) UpdateStatus(newStatus string) error {
+func (p *Patch) UpdateStatus(ctx context.Context, newStatus string) error {
 	if p.Status == newStatus {
 		return nil
 	}
@@ -472,13 +442,14 @@ func (p *Patch) UpdateStatus(newStatus string) error {
 			StatusKey: newStatus,
 		},
 	}
-	return UpdateOne(bson.M{IdKey: p.Id}, update)
+	return UpdateOne(ctx, bson.M{IdKey: p.Id}, update)
 }
 
-func (p *Patch) MarkFinished(status string, finishTime time.Time) error {
+func (p *Patch) MarkFinished(ctx context.Context, status string, finishTime time.Time) error {
 	p.Status = status
 	p.FinishTime = finishTime
 	return UpdateOne(
+		ctx,
 		bson.M{IdKey: p.Id},
 		bson.M{"$set": bson.M{
 			FinishTimeKey: finishTime,
@@ -541,9 +512,10 @@ func (p *Patch) SetFinalized(ctx context.Context, versionId string) error {
 }
 
 // SetTriggerAliases appends the names of invoked trigger aliases to the DB
-func (p *Patch) SetTriggerAliases() error {
+func (p *Patch) SetTriggerAliases(ctx context.Context) error {
 	triggersKey := bsonutil.GetDottedKeyName(TriggersKey, TriggerInfoAliasesKey)
 	return UpdateOne(
+		ctx,
 		bson.M{IdKey: p.Id},
 		bson.M{
 			"$addToSet": bson.M{triggersKey: bson.M{"$each": p.Triggers.Aliases}},
@@ -552,9 +524,10 @@ func (p *Patch) SetTriggerAliases() error {
 }
 
 // SetChildPatches appends the IDs of downstream patches to the db
-func (p *Patch) SetChildPatches() error {
+func (p *Patch) SetChildPatches(ctx context.Context) error {
 	triggersKey := bsonutil.GetDottedKeyName(TriggersKey, TriggerInfoChildPatchesKey)
 	return UpdateOne(
+		ctx,
 		bson.M{IdKey: p.Id},
 		bson.M{
 			"$addToSet": bson.M{triggersKey: bson.M{"$each": p.Triggers.ChildPatches}},
@@ -564,9 +537,10 @@ func (p *Patch) SetChildPatches() error {
 
 // SetActivation sets the patch to the desired activation state without
 // modifying the activation status of the possibly corresponding version.
-func (p *Patch) SetActivation(activated bool) error {
+func (p *Patch) SetActivation(ctx context.Context, activated bool) error {
 	p.Activated = activated
 	return UpdateOne(
+		ctx,
 		bson.M{IdKey: p.Id},
 		bson.M{
 			"$set": bson.M{
@@ -578,12 +552,13 @@ func (p *Patch) SetActivation(activated bool) error {
 
 // SetPatchVisibility set the patch visibility to the desired state.
 // This is used to hide patches that the user does not need to see.
-func (p *Patch) SetPatchVisibility(hidden bool) error {
+func (p *Patch) SetPatchVisibility(ctx context.Context, hidden bool) error {
 	if p.Hidden == hidden {
 		return nil
 	}
 	p.Hidden = hidden
 	return UpdateOne(
+		ctx,
 		bson.M{IdKey: p.Id},
 		bson.M{
 			"$set": bson.M{
@@ -594,7 +569,7 @@ func (p *Patch) SetPatchVisibility(hidden bool) error {
 }
 
 // UpdateModulePatch adds or updates a module within a patch.
-func (p *Patch) UpdateModulePatch(modulePatch ModulePatch) error {
+func (p *Patch) UpdateModulePatch(ctx context.Context, modulePatch ModulePatch) error {
 	// update the in-memory patch
 	patchFound := false
 	for i, patch := range p.Patches {
@@ -614,7 +589,7 @@ func (p *Patch) UpdateModulePatch(modulePatch ModulePatch) error {
 		PatchesKey + "." + ModulePatchNameKey: modulePatch.ModuleName,
 	}
 	update := bson.M{PatchesKey + ".$": modulePatch}
-	result, err := UpdateAll(query, bson.M{"$set": update})
+	result, err := UpdateAll(ctx, query, bson.M{"$set": update})
 	if err != nil {
 		return err
 	}
@@ -628,11 +603,11 @@ func (p *Patch) UpdateModulePatch(modulePatch ModulePatch) error {
 	update = bson.M{
 		"$push": bson.M{PatchesKey: modulePatch},
 	}
-	return UpdateOne(query, update)
+	return UpdateOne(ctx, query, update)
 }
 
 // RemoveModulePatch removes a module that's part of a patch request
-func (p *Patch) RemoveModulePatch(moduleName string) error {
+func (p *Patch) RemoveModulePatch(ctx context.Context, moduleName string) error {
 	// check that a patch for this module exists
 	query := bson.M{
 		IdKey: p.Id,
@@ -642,10 +617,10 @@ func (p *Patch) RemoveModulePatch(moduleName string) error {
 			PatchesKey: bson.M{ModulePatchNameKey: moduleName},
 		},
 	}
-	return UpdateOne(query, update)
+	return UpdateOne(ctx, query, update)
 }
 
-func (p *Patch) UpdateGithashProjectAndTasks() error {
+func (p *Patch) UpdateGithashProjectAndTasks(ctx context.Context) error {
 	query := bson.M{
 		IdKey: p.Id,
 	}
@@ -661,7 +636,7 @@ func (p *Patch) UpdateGithashProjectAndTasks() error {
 		},
 	}
 
-	return UpdateOne(query, update)
+	return UpdateOne(ctx, query, update)
 }
 
 func (p *Patch) IsGithubPRPatch() bool {
@@ -680,11 +655,11 @@ func (p *Patch) IsChild() bool {
 // CollectiveStatus returns the aggregate status of all tasks and child patches.
 // If this is meant for display on the UI, we should also consider the display status aborted.
 // NOTE that the result of this should not be compared against version statuses, as those can be different.
-func (p *Patch) CollectiveStatus() (string, error) {
+func (p *Patch) CollectiveStatus(ctx context.Context) (string, error) {
 	parentPatch := p
 	if p.IsChild() {
 		var err error
-		parentPatch, err = FindOneId(p.Triggers.ParentPatch)
+		parentPatch, err = FindOneId(ctx, p.Triggers.ParentPatch)
 		if err != nil {
 			return "", errors.Wrap(err, "getting parent patch")
 		}
@@ -694,7 +669,7 @@ func (p *Patch) CollectiveStatus() (string, error) {
 	}
 	allStatuses := []string{parentPatch.Status}
 	for _, childPatchId := range parentPatch.Triggers.ChildPatches {
-		cp, err := FindOneId(childPatchId)
+		cp, err := FindOneId(ctx, childPatchId)
 		if err != nil {
 			return "", errors.Wrapf(err, "getting child patch '%s' ", childPatchId)
 		}
@@ -749,13 +724,13 @@ func GetGithubContextForChildPatch(projectIdentifier string, parentPatch, childP
 	return githubContext, nil
 }
 
-func (p *Patch) GetFamilyInformation() (bool, *Patch, error) {
+func (p *Patch) GetFamilyInformation(ctx context.Context) (bool, *Patch, error) {
 	if !p.IsChild() && !p.IsParent() {
 		return evergreen.IsFinishedVersionStatus(p.Status), nil, nil
 	}
 
 	isDone := false
-	childrenOrSiblings, parentPatch, err := p.GetPatchFamily()
+	childrenOrSiblings, parentPatch, err := p.GetPatchFamily(ctx)
 	if err != nil {
 		return isDone, parentPatch, errors.Wrap(err, "getting child or sibling patches")
 	}
@@ -764,7 +739,7 @@ func (p *Patch) GetFamilyInformation() (bool, *Patch, error) {
 	if p.IsChild() && !evergreen.IsFinishedVersionStatus(parentPatch.Status) {
 		return isDone, parentPatch, nil
 	}
-	childrenStatus, err := GetChildrenOrSiblingsReadiness(childrenOrSiblings)
+	childrenStatus, err := GetChildrenOrSiblingsReadiness(ctx, childrenOrSiblings)
 	if err != nil {
 		return isDone, parentPatch, errors.Wrap(err, "getting child or sibling information")
 	}
@@ -777,13 +752,13 @@ func (p *Patch) GetFamilyInformation() (bool, *Patch, error) {
 	return isDone, parentPatch, err
 }
 
-func GetChildrenOrSiblingsReadiness(childrenOrSiblings []string) (string, error) {
+func GetChildrenOrSiblingsReadiness(ctx context.Context, childrenOrSiblings []string) (string, error) {
 	if len(childrenOrSiblings) == 0 {
 		return "", nil
 	}
 	childrenStatus := evergreen.VersionSucceeded
 	for _, childPatch := range childrenOrSiblings {
-		childPatchDoc, err := FindOneId(childPatch)
+		childPatchDoc, err := FindOneId(ctx, childPatch)
 		if err != nil {
 			return "", errors.Wrapf(err, "getting tasks for child patch '%s'", childPatch)
 		}
@@ -802,7 +777,7 @@ func GetChildrenOrSiblingsReadiness(childrenOrSiblings []string) (string, error)
 	return childrenStatus, nil
 
 }
-func (p *Patch) GetPatchFamily() ([]string, *Patch, error) {
+func (p *Patch) GetPatchFamily(ctx context.Context) ([]string, *Patch, error) {
 	var childrenOrSiblings []string
 	var parentPatch *Patch
 	var err error
@@ -811,7 +786,7 @@ func (p *Patch) GetPatchFamily() ([]string, *Patch, error) {
 	}
 	if p.IsChild() {
 		parentPatchId := p.Triggers.ParentPatch
-		parentPatch, err = FindOneId(parentPatchId)
+		parentPatch, err = FindOneId(ctx, parentPatchId)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "getting parent patch")
 		}
@@ -824,9 +799,9 @@ func (p *Patch) GetPatchFamily() ([]string, *Patch, error) {
 	return childrenOrSiblings, parentPatch, nil
 }
 
-func (p *Patch) SetParametersFromParent() (*Patch, error) {
+func (p *Patch) SetParametersFromParent(ctx context.Context) (*Patch, error) {
 	parentPatchId := p.Triggers.ParentPatch
-	parentPatch, err := FindOneId(parentPatchId)
+	parentPatch, err := FindOneId(ctx, parentPatchId)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting parent patch")
 	}
@@ -835,7 +810,7 @@ func (p *Patch) SetParametersFromParent() (*Patch, error) {
 	}
 
 	if downstreamParams := parentPatch.Triggers.DownstreamParameters; len(downstreamParams) > 0 {
-		err = p.SetParameters(downstreamParams)
+		err = p.SetParameters(ctx, downstreamParams)
 		if err != nil {
 			return nil, errors.Wrap(err, "setting downstream parameters")
 		}

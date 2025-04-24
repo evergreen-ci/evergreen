@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"strings"
 	"time"
 
@@ -61,10 +62,10 @@ func (tags GitTags) String() string {
 }
 
 // FindRepository gets the repository object of a project.
-func FindRepository(projectId string) (*Repository, error) {
+func FindRepository(ctx context.Context, projectId string) (*Repository, error) {
 	repository := &Repository{}
 	q := db.Query(bson.M{RepoProjectKey: projectId})
-	err := db.FindOneQ(RepositoriesCollection, q, repository)
+	err := db.FindOneQContext(ctx, RepositoriesCollection, q, repository)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -72,8 +73,9 @@ func FindRepository(projectId string) (*Repository, error) {
 }
 
 // UpdateLastRevision updates the last created revision of a project.
-func UpdateLastRevision(projectId, revision string) error {
-	return db.Update(
+func UpdateLastRevision(ctx context.Context, projectId, revision string) error {
+	return db.UpdateContext(
+		ctx,
 		RepositoriesCollection,
 		bson.M{
 			RepoProjectKey: projectId,
@@ -87,9 +89,9 @@ func UpdateLastRevision(projectId, revision string) error {
 }
 
 // GetNewRevisionOrderNumber gets a new revision order number for a project.
-func GetNewRevisionOrderNumber(projectId string) (int, error) {
+func GetNewRevisionOrderNumber(ctx context.Context, projectId string) (int, error) {
 	repo := &Repository{}
-	_, err := db.FindAndModify(
+	_, err := db.FindAndModify(ctx,
 		RepositoriesCollection,
 		bson.M{
 			RepoProjectKey: projectId,

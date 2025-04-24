@@ -1,6 +1,7 @@
 package alertrecord
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -55,8 +56,8 @@ type AlertRecord struct {
 func (ar *AlertRecord) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(ar) }
 func (ar *AlertRecord) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, ar) }
 
-func (ar *AlertRecord) Insert() error {
-	return db.Insert(Collection, ar)
+func (ar *AlertRecord) Insert(ctx context.Context) error {
+	return db.Insert(ctx, Collection, ar)
 }
 
 var (
@@ -76,9 +77,9 @@ var (
 )
 
 // FindOne gets one AlertRecord for the given query.
-func FindOne(query db.Q) (*AlertRecord, error) {
+func FindOne(ctx context.Context, query db.Q) (*AlertRecord, error) {
 	alertRec := &AlertRecord{}
-	err := db.FindOneQ(Collection, query, alertRec)
+	err := db.FindOneQContext(ctx, Collection, query, alertRec)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -135,24 +136,24 @@ func ByFirstFailureInTaskType(subscriptionID, versionId, taskName string) db.Q {
 	return db.Query(q).Limit(1)
 }
 
-func FindByFirstRegressionInVersion(subscriptionID, versionId string) (*AlertRecord, error) {
+func FindByFirstRegressionInVersion(ctx context.Context, subscriptionID, versionId string) (*AlertRecord, error) {
 	q := subscriptionIDQuery(subscriptionID)
 	q[TypeKey] = FirstRegressionInVersion
 	q[VersionIdKey] = versionId
-	return FindOne(db.Query(q).Limit(1))
+	return FindOne(ctx, db.Query(q).Limit(1))
 }
 
-func FindByLastTaskRegressionByTest(subscriptionID, testName, taskDisplayName, variant, projectID string) (*AlertRecord, error) {
+func FindByLastTaskRegressionByTest(ctx context.Context, subscriptionID, testName, taskDisplayName, variant, projectID string) (*AlertRecord, error) {
 	q := subscriptionIDQuery(subscriptionID)
 	q[TypeKey] = taskRegressionByTest
 	q[testNameKey] = testName
 	q[TaskNameKey] = taskDisplayName
 	q[VariantKey] = variant
 	q[ProjectIdKey] = projectID
-	return FindOne(db.Query(q).Sort([]string{"-" + AlertTimeKey, "-" + RevisionOrderNumberKey}))
+	return FindOne(ctx, db.Query(q).Sort([]string{"-" + AlertTimeKey, "-" + RevisionOrderNumberKey}))
 }
 
-func FindByTaskRegressionByTaskTest(subscriptionID, testName, taskDisplayName, variant, projectID, taskID string) (*AlertRecord, error) {
+func FindByTaskRegressionByTaskTest(ctx context.Context, subscriptionID, testName, taskDisplayName, variant, projectID, taskID string) (*AlertRecord, error) {
 	q := subscriptionIDQuery(subscriptionID)
 	q[TypeKey] = taskRegressionByTest
 	q[testNameKey] = testName
@@ -160,10 +161,10 @@ func FindByTaskRegressionByTaskTest(subscriptionID, testName, taskDisplayName, v
 	q[VariantKey] = variant
 	q[ProjectIdKey] = projectID
 	q[TaskIdKey] = taskID
-	return FindOne(db.Query(q).Sort([]string{"-" + AlertTimeKey}))
+	return FindOne(ctx, db.Query(q).Sort([]string{"-" + AlertTimeKey}))
 }
 
-func FindByTaskRegressionTestAndOrderNumber(subscriptionID, testName, taskDisplayName, variant, projectID string, revisionOrderNumber int) (*AlertRecord, error) {
+func FindByTaskRegressionTestAndOrderNumber(ctx context.Context, subscriptionID, testName, taskDisplayName, variant, projectID string, revisionOrderNumber int) (*AlertRecord, error) {
 	q := subscriptionIDQuery(subscriptionID)
 	q[TypeKey] = taskRegressionByTest
 	q[testNameKey] = testName
@@ -171,38 +172,38 @@ func FindByTaskRegressionTestAndOrderNumber(subscriptionID, testName, taskDispla
 	q[VariantKey] = variant
 	q[ProjectIdKey] = projectID
 	q[RevisionOrderNumberKey] = revisionOrderNumber
-	return FindOne(db.Query(q))
+	return FindOne(ctx, db.Query(q))
 }
 
 // FindByMostRecentSpawnHostExpirationWithHours finds the most recent alert
 // record for a spawn host that is about to expire.
-func FindByMostRecentSpawnHostExpirationWithHours(hostID string, hours int) (*AlertRecord, error) {
+func FindByMostRecentSpawnHostExpirationWithHours(ctx context.Context, hostID string, hours int) (*AlertRecord, error) {
 	alertType := fmt.Sprintf(spawnHostWarningTemplate, hours)
 	q := subscriptionIDQuery(legacyAlertsSubscription)
 	q[TypeKey] = alertType
 	q[HostIdKey] = hostID
-	return FindOne(db.Query(q).Sort([]string{"-" + AlertTimeKey}).Limit(1))
+	return FindOne(ctx, db.Query(q).Sort([]string{"-" + AlertTimeKey}).Limit(1))
 }
 
 // FindByMostRecentTemporaryExemptionExpirationWithHours finds the most recent
 // alert record for a spawn host's temporary exemption that is about to expire.
-func FindByMostRecentTemporaryExemptionExpirationWithHours(hostID string, hours int) (*AlertRecord, error) {
+func FindByMostRecentTemporaryExemptionExpirationWithHours(ctx context.Context, hostID string, hours int) (*AlertRecord, error) {
 	alertType := fmt.Sprintf(hostTemporaryExemptionWarningTemplate, hours)
 	q := subscriptionIDQuery(legacyAlertsSubscription)
 	q[TypeKey] = alertType
 	q[HostIdKey] = hostID
-	return FindOne(db.Query(q).Sort([]string{"-" + AlertTimeKey}).Limit(1))
+	return FindOne(ctx, db.Query(q).Sort([]string{"-" + AlertTimeKey}).Limit(1))
 }
 
-func FindByVolumeExpirationWithHours(volumeID string, hours int) (*AlertRecord, error) {
+func FindByVolumeExpirationWithHours(ctx context.Context, volumeID string, hours int) (*AlertRecord, error) {
 	alertType := fmt.Sprintf(volumeWarningTemplate, hours)
 	q := subscriptionIDQuery(legacyAlertsSubscription)
 	q[TypeKey] = alertType
 	q[VolumeIdKey] = volumeID
-	return FindOne(db.Query(q).Limit(1))
+	return FindOne(ctx, db.Query(q).Limit(1))
 }
 
-func InsertNewTaskRegressionByTestRecord(subscriptionID, taskID, testName, taskDisplayName, variant, projectID string, revision int) error {
+func InsertNewTaskRegressionByTestRecord(ctx context.Context, subscriptionID, taskID, testName, taskDisplayName, variant, projectID string, revision int) error {
 	record := AlertRecord{
 		Id:                  mgobson.NewObjectId(),
 		SubscriptionID:      subscriptionID,
@@ -216,10 +217,10 @@ func InsertNewTaskRegressionByTestRecord(subscriptionID, taskID, testName, taskD
 		AlertTime:           time.Now(),
 	}
 
-	return errors.Wrapf(record.Insert(), "inserting alert record '%s'", taskRegressionByTest)
+	return errors.Wrapf(record.Insert(ctx), "inserting alert record '%s'", taskRegressionByTest)
 }
 
-func InsertNewSpawnHostExpirationRecord(hostID string, hours int) error {
+func InsertNewSpawnHostExpirationRecord(ctx context.Context, hostID string, hours int) error {
 	alertType := fmt.Sprintf(spawnHostWarningTemplate, hours)
 	record := AlertRecord{
 		Id:             mgobson.NewObjectId(),
@@ -229,12 +230,12 @@ func InsertNewSpawnHostExpirationRecord(hostID string, hours int) error {
 		AlertTime:      time.Now(),
 	}
 
-	return errors.Wrapf(record.Insert(), "inserting alert record '%s'", alertType)
+	return errors.Wrapf(record.Insert(ctx), "inserting alert record '%s'", alertType)
 }
 
 // InsertNewTemporaryExemptionExpirationRecord inserts a new alert record for a
 // temporary exemption that is about to exipre.
-func InsertNewHostTemporaryExemptionExpirationRecord(hostID string, hours int) error {
+func InsertNewHostTemporaryExemptionExpirationRecord(ctx context.Context, hostID string, hours int) error {
 	alertType := fmt.Sprintf(hostTemporaryExemptionWarningTemplate, hours)
 	record := AlertRecord{
 		Id:             mgobson.NewObjectId(),
@@ -244,10 +245,10 @@ func InsertNewHostTemporaryExemptionExpirationRecord(hostID string, hours int) e
 		AlertTime:      time.Now(),
 	}
 
-	return errors.Wrapf(record.Insert(), "inserting alert record '%s'", alertType)
+	return errors.Wrapf(record.Insert(ctx), "inserting alert record '%s'", alertType)
 }
 
-func InsertNewVolumeExpirationRecord(volumeID string, hours int) error {
+func InsertNewVolumeExpirationRecord(ctx context.Context, volumeID string, hours int) error {
 	alertType := fmt.Sprintf(volumeWarningTemplate, hours)
 	record := AlertRecord{
 		Id:             mgobson.NewObjectId(),
@@ -257,5 +258,5 @@ func InsertNewVolumeExpirationRecord(volumeID string, hours int) error {
 		AlertTime:      time.Now(),
 	}
 
-	return errors.Wrapf(record.Insert(), "inserting alert record '%s'", alertType)
+	return errors.Wrapf(record.Insert(ctx), "inserting alert record '%s'", alertType)
 }

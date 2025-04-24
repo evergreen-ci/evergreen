@@ -88,12 +88,12 @@ func (s *AdminRouteSuite) SetupSuite() {
 	p := &model.ProjectRef{
 		Id: "sample",
 	}
-	s.NoError(b.Insert())
-	s.NoError(v.Insert())
-	s.NoError(testTask1.Insert())
-	s.NoError(testTask2.Insert())
-	s.NoError(testTask3.Insert())
-	s.NoError(p.Insert())
+	s.NoError(b.Insert(s.T().Context()))
+	s.NoError(v.Insert(s.T().Context()))
+	s.NoError(testTask1.Insert(s.T().Context()))
+	s.NoError(testTask2.Insert(s.T().Context()))
+	s.NoError(testTask3.Insert(s.T().Context()))
+	s.NoError(p.Insert(s.T().Context()))
 	s.getHandler = makeFetchAdminSettings()
 	s.postHandler = makeSetAdminSettings()
 	s.IsType(&adminGetHandler{}, s.getHandler)
@@ -167,6 +167,7 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.EqualValues(testSettings.HostJasper.URL, settings.HostJasper.URL)
 	s.EqualValues(testSettings.HostInit.HostThrottle, settings.HostInit.HostThrottle)
 	s.EqualValues(testSettings.Jira.BasicAuthConfig.Username, settings.Jira.BasicAuthConfig.Username)
+	s.EqualValues(testSettings.Jira.PersonalAccessToken, settings.Jira.PersonalAccessToken)
 	s.Equal(level.Info.String(), settings.LoggerConfig.DefaultLevel)
 	s.EqualValues(testSettings.LoggerConfig.Buffer.Count, settings.LoggerConfig.Buffer.Count)
 	s.EqualValues(testSettings.LoggerConfig.Buffer.UseAsync, settings.LoggerConfig.Buffer.UseAsync)
@@ -182,6 +183,11 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.Equal(len(testSettings.Providers.AWS.EC2Keys), len(settings.Providers.AWS.EC2Keys))
 	s.EqualValues(testSettings.Providers.AWS.PersistentDNS.HostedZoneID, settings.Providers.AWS.PersistentDNS.HostedZoneID)
 	s.EqualValues(testSettings.Providers.AWS.PersistentDNS.Domain, settings.Providers.AWS.PersistentDNS.Domain)
+	s.Require().Len(testSettings.Providers.AWS.AccountRoles, len(settings.Providers.AWS.AccountRoles))
+	for i := range testSettings.Providers.AWS.AccountRoles {
+		s.Equal(testSettings.Providers.AWS.AccountRoles[i], settings.Providers.AWS.AccountRoles[i])
+	}
+	s.EqualValues(testSettings.Providers.AWS.IPAMPoolID, settings.Providers.AWS.IPAMPoolID)
 	s.EqualValues(testSettings.Providers.Docker.APIVersion, settings.Providers.Docker.APIVersion)
 	s.EqualValues(testSettings.RepoTracker.MaxConcurrentRequests, settings.RepoTracker.MaxConcurrentRequests)
 	s.EqualValues(testSettings.Scheduler.TaskFinder, settings.Scheduler.TaskFinder)
@@ -198,6 +204,10 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.EqualValues(testSettings.Slack.Options.Channel, settings.Slack.Options.Channel)
 	s.ElementsMatch(testSettings.SleepSchedule.PermanentlyExemptHosts, settings.SleepSchedule.PermanentlyExemptHosts)
 	s.EqualValues(testSettings.Splunk.SplunkConnectionInfo.Channel, settings.Splunk.SplunkConnectionInfo.Channel)
+	s.EqualValues(testSettings.SSH.SpawnHostKey.Name, settings.SSH.SpawnHostKey.Name)
+	s.EqualValues(testSettings.SSH.SpawnHostKey.SecretARN, settings.SSH.SpawnHostKey.SecretARN)
+	s.EqualValues(testSettings.SSH.TaskHostKey.Name, settings.SSH.TaskHostKey.Name)
+	s.EqualValues(testSettings.SSH.TaskHostKey.SecretARN, settings.SSH.TaskHostKey.SecretARN)
 	s.EqualValues(testSettings.TaskLimits.MaxTasksPerVersion, settings.TaskLimits.MaxTasksPerVersion)
 	s.EqualValues(testSettings.TestSelection.URL, settings.TestSelection.URL)
 	s.EqualValues(testSettings.Ui.HttpListenAddr, settings.Ui.HttpListenAddr)
@@ -260,7 +270,7 @@ func (s *AdminRouteSuite) TestRevertRoute() {
 	before := testutil.NewEnvironment(ctx, s.T()).Settings()
 	_, err := data.SetEvergreenSettings(ctx, &changes, before, user, true)
 	s.NoError(err)
-	dbEvents, err := event.FindAdmin(event.RecentAdminEvents(1))
+	dbEvents, err := event.FindAdmin(s.T().Context(), event.RecentAdminEvents(1))
 	s.NoError(err)
 	s.GreaterOrEqual(len(dbEvents), 1)
 	eventData := dbEvents[0].Data.(*event.AdminEventData)
@@ -375,7 +385,7 @@ func (s *AdminRouteSuite) TestAdminEventRoute() {
 	s.NotNil(resp)
 	count := 0
 
-	data := response.Data().([]interface{})
+	data := response.Data().([]any)
 	for _, model := range data {
 		evt, ok := model.(*restModel.APIAdminEvent)
 		s.True(ok)
@@ -414,13 +424,13 @@ func (s *AdminRouteSuite) TestClearTaskQueueRoute() {
 	}
 	queue := model.NewTaskQueue(distro, tasks, model.DistroQueueInfo{})
 	s.Len(queue.Queue, 3)
-	s.NoError(queue.Save())
+	s.NoError(queue.Save(s.T().Context()))
 
 	route.distro = distro
 	resp := route.Run(context.Background())
 	s.Equal(http.StatusOK, resp.Status())
 
-	queueFromDb, err := model.LoadTaskQueue(distro)
+	queueFromDb, err := model.LoadTaskQueue(s.T().Context(), distro)
 	s.NoError(err)
 	s.Empty(queueFromDb.Queue)
 }

@@ -17,7 +17,6 @@ type SchedulerConfig struct {
 	HostsOverallocatedRule        string  `bson:"hosts_overallocated_rule" json:"hosts_overallocated_rule" mapstructure:"hosts_overallocated_rule"`
 	FutureHostFraction            float64 `bson:"free_host_fraction" json:"free_host_fraction" yaml:"free_host_fraction"`
 	CacheDurationSeconds          int     `bson:"cache_duration_seconds" json:"cache_duration_seconds" yaml:"cache_duration_seconds"`
-	Planner                       string  `bson:"planner" json:"planner" mapstructure:"planner"`
 	TargetTimeSeconds             int     `bson:"target_time_seconds" json:"target_time_seconds" mapstructure:"target_time_seconds"`
 	AcceptableHostIdleTimeSeconds int     `bson:"acceptable_host_idle_time_seconds" json:"acceptable_host_idle_time_seconds" mapstructure:"acceptable_host_idle_time_seconds"`
 	GroupVersions                 bool    `bson:"group_versions" json:"group_versions" mapstructure:"group_versions"`
@@ -47,7 +46,6 @@ func (c *SchedulerConfig) Set(ctx context.Context) error {
 			"hosts_overallocated_rule":          c.HostsOverallocatedRule,
 			"free_host_fraction":                c.FutureHostFraction,
 			"cache_duration_seconds":            c.CacheDurationSeconds,
-			"planner":                           c.Planner,
 			"target_time_seconds":               c.TargetTimeSeconds,
 			"acceptable_host_idle_time_seconds": c.AcceptableHostIdleTimeSeconds,
 			"group_versions":                    c.GroupVersions,
@@ -121,16 +119,6 @@ func (c *SchedulerConfig) ValidateAndDefault() error {
 
 	if c.CacheDurationSeconds <= 0 {
 		c.CacheDurationSeconds = 20
-	}
-
-	if c.Planner == "" {
-		// default to 'legacy'
-		c.Planner = PlannerVersionLegacy
-	}
-
-	if !utility.StringSliceContains(ValidTaskPlannerVersions, c.Planner) {
-		return errors.Errorf("supported planners are %s; %s is not supported",
-			ValidTaskPlannerVersions, c.Planner)
 	}
 
 	if c.TargetTimeSeconds < 0 {

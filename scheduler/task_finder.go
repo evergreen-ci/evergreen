@@ -44,7 +44,7 @@ func LegacyFindRunnableTasks(ctx context.Context, d distro.Distro) ([]task.Task,
 		return nil, err
 	}
 
-	projectRefCache, err := getProjectRefCache()
+	projectRefCache, err := getProjectRefCache(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +133,7 @@ func AlternateTaskFinder(ctx context.Context, d distro.Distro) ([]task.Task, err
 		return nil, err
 	}
 
-	projectRefCache, err := getProjectRefCache()
+	projectRefCache, err := getProjectRefCache(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -242,7 +242,7 @@ func ParallelTaskFinder(ctx context.Context, d distro.Distro) ([]task.Task, erro
 		return nil, err
 	}
 
-	projectRefCache, err := getProjectRefCache()
+	projectRefCache, err := getProjectRefCache(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -362,9 +362,9 @@ func ParallelTaskFinder(ctx context.Context, d distro.Distro) ([]task.Task, erro
 	return runnabletasks, nil
 }
 
-func getProjectRefCache() (map[string]model.ProjectRef, error) {
+func getProjectRefCache(ctx context.Context) (map[string]model.ProjectRef, error) {
 	out := map[string]model.ProjectRef{}
-	refs, err := model.FindAllMergedProjectRefs()
+	refs, err := model.FindAllMergedProjectRefs(ctx)
 	if err != nil {
 		return out, err
 	}
@@ -374,39 +374,4 @@ func getProjectRefCache() (map[string]model.ProjectRef, error) {
 	}
 
 	return out, nil
-}
-
-// FilterTasksWithVersionCache finds tasks whose versions have already been
-// created, and returns those tasks, as well as a map of version IDs to
-// versions.
-func FilterTasksWithVersionCache(tasks []task.Task) ([]task.Task, map[string]model.Version, error) {
-	ids := make(map[string]struct{})
-
-	for _, t := range tasks {
-		ids[t.Version] = struct{}{}
-	}
-
-	idlist := []string{}
-	for id := range ids {
-		idlist = append(idlist, id)
-	}
-
-	vs, err := model.VersionFindByIds(idlist)
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "problem resolving version cache")
-	}
-
-	versions := make(map[string]model.Version)
-	for _, v := range vs {
-		versions[v.Id] = v
-	}
-
-	filteredTasks := []task.Task{}
-	for _, t := range tasks {
-		if _, ok := versions[t.Version]; ok {
-			filteredTasks = append(filteredTasks, t)
-		}
-	}
-
-	return filteredTasks, versions, nil
 }

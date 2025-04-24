@@ -1,6 +1,7 @@
 package data
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
@@ -16,7 +17,7 @@ import (
 )
 
 // CreatePod creates a new pod from the given REST model and returns its ID.
-func CreatePod(apiPod model.APICreatePod) (*model.APICreatePodResponse, error) {
+func CreatePod(ctx context.Context, apiPod model.APICreatePod) (*model.APICreatePodResponse, error) {
 	if apiPod.PodSecretValue == nil {
 		env := evergreen.GetEnvironment()
 		ctx, cancel := env.Context()
@@ -47,7 +48,7 @@ func CreatePod(apiPod model.APICreatePod) (*model.APICreatePodResponse, error) {
 		}
 	}
 
-	if err := dbPod.Insert(); err != nil {
+	if err := dbPod.Insert(ctx); err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrapf(err, "inserting new intent pod '%s'", dbPod.ID).Error(),
@@ -60,8 +61,8 @@ func CreatePod(apiPod model.APICreatePod) (*model.APICreatePodResponse, error) {
 // CheckPodSecret checks for a pod with a matching ID and secret in the
 // database. It returns an error if the secret does not match the one assigned
 // to the pod.
-func CheckPodSecret(id, secret string) error {
-	p, err := FindPodByID(id)
+func CheckPodSecret(ctx context.Context, id, secret string) error {
+	p, err := FindPodByID(ctx, id)
 	if err != nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -85,7 +86,7 @@ func CheckPodSecret(id, secret string) error {
 
 	// The pod just successfully authed into the app server, so bump its last
 	// communicated time.
-	grip.Warning(message.WrapError(p.UpdateLastCommunicated(), message.Fields{
+	grip.Warning(message.WrapError(p.UpdateLastCommunicated(ctx), message.Fields{
 		"message": "failed to update last communication time",
 		"pod":     p.ID,
 	}))
@@ -94,8 +95,8 @@ func CheckPodSecret(id, secret string) error {
 }
 
 // FindPodByID finds the pod by the given ID.
-func FindPodByID(podID string) (*pod.Pod, error) {
-	p, err := pod.FindOneByID(podID)
+func FindPodByID(ctx context.Context, podID string) (*pod.Pod, error) {
+	p, err := pod.FindOneByID(ctx, podID)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -114,8 +115,8 @@ func FindPodByID(podID string) (*pod.Pod, error) {
 
 // FindAPIPodByID finds a pod by the given ID and returns its equivalent API model.
 // It returns a nil result if no such pod is found.
-func FindAPIPodByID(id string) (*model.APIPod, error) {
-	p, err := FindPodByID(id)
+func FindAPIPodByID(ctx context.Context, id string) (*model.APIPod, error) {
+	p, err := FindPodByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}

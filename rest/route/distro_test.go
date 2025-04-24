@@ -126,7 +126,7 @@ func (s *DistroPatchSetupByIDSuite) TestRunValidId() {
 	s.Require().True(ok)
 	s.Equal(apiDistro.Setup, utility.ToStringPtr("New set-up script"))
 
-	dbEvents, err := event.FindAllByResourceID(h.distroID)
+	dbEvents, err := event.FindAllByResourceID(s.T().Context(), h.distroID)
 	s.Require().NoError(err)
 	s.Require().Len(dbEvents, 1)
 	eventData, ok := dbEvents[0].Data.(*event.DistroEventData)
@@ -349,20 +349,10 @@ func (s *DistroPutSuite) SetupTest() {
 			Id: "distro4",
 		},
 	}
-	settings := &evergreen.Settings{
-		SSHKeyPairs: []evergreen.SSHKeyPair{
-			{
-				Name:    "SSH Key",
-				Public:  "public_key",
-				Private: "private_key",
-			},
-		},
-	}
 	for _, d := range distros {
 		err := d.Insert(ctx)
 		s.NoError(err)
 	}
-	s.NoError(evergreen.UpdateConfig(ctx, settings))
 	s.rm = makePutDistro()
 }
 
@@ -548,7 +538,7 @@ func (s *DistroDeleteByIDSuite) TestRunValidDistroId() {
 		Distro:      "distro1",
 		GeneratedAt: now,
 	}
-	s.NoError(db.Insert(model.TaskQueuesCollection, taskQueue))
+	s.NoError(db.Insert(s.T().Context(), model.TaskQueuesCollection, taskQueue))
 	h := s.rm.(*distroIDDeleteHandler)
 	h.distroID = "distro1"
 
@@ -589,7 +579,6 @@ func (s *DistroPatchByIDSuite) SetupTest() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	sshKey := "SSH Key"
 	settingsList := []*birch.Document{birch.NewDocument(
 		birch.EC.Double("bid_price", 0.2),
 		birch.EC.String("instance_type", "m3.large"),
@@ -622,6 +611,9 @@ func (s *DistroPatchByIDSuite) SetupTest() {
 				"BatchMode=yes",
 				"ConnectTimeout=10"},
 			SpawnAllowed: false,
+			PlannerSettings: distro.PlannerSettings{
+				Version: evergreen.PlannerVersionTunable,
+			},
 			Expansions: []distro.Expansion{
 				{
 					Key:   "decompress",
@@ -640,25 +632,10 @@ func (s *DistroPatchByIDSuite) SetupTest() {
 			ContainerPool: "",
 		},
 	}
-	settings := &evergreen.Settings{
-		SSHKeyPairs: []evergreen.SSHKeyPair{
-			{
-				Name:    sshKey,
-				Public:  "public",
-				Private: "private",
-			},
-			{
-				Name:    "New SSH Key",
-				Public:  "new_public",
-				Private: "new_private",
-			},
-		},
-	}
 	for _, d := range distros {
 		err := d.Insert(ctx)
 		s.NoError(err)
 	}
-	s.NoError(evergreen.UpdateConfig(ctx, settings))
 	s.rm = makePatchDistroByID()
 }
 
@@ -916,7 +893,7 @@ func (s *DistroPatchByIDSuite) TestRunValidContainer() {
 	apiDistro, ok := (resp.Data()).(*restModel.APIDistro)
 	s.Require().True(ok)
 	s.Equal(apiDistro.ContainerPool, utility.ToStringPtr(""))
-	s.Equal(apiDistro.PlannerSettings.Version, utility.ToStringPtr("legacy"))
+	s.Equal(utility.ToStringPtr(evergreen.PlannerVersionTunable), apiDistro.PlannerSettings.Version)
 }
 
 func (s *DistroPatchByIDSuite) TestRunInvalidEmptyStringValues() {
@@ -999,7 +976,7 @@ func (s *DistroPatchByIDSuite) TestRunValidFinderSettingsVersion() {
 	s.Equal(http.StatusOK, resp.Status())
 	apiDistro, ok := (resp.Data()).(*restModel.APIDistro)
 	s.Require().True(ok)
-	s.Equal(utility.ToStringPtr("legacy"), apiDistro.PlannerSettings.Version)
+	s.Equal(utility.ToStringPtr(evergreen.PlannerVersionTunable), apiDistro.PlannerSettings.Version)
 }
 
 func (s *DistroPatchByIDSuite) TestRunValidBootstrapMethod() {
@@ -1336,6 +1313,7 @@ func getMockDistrosdata() error {
 			WorkDir: "/data/mci",
 			HostAllocatorSettings: distro.HostAllocatorSettings{
 				MaximumHosts: 30,
+				Version:      evergreen.HostAllocatorUtilization,
 			},
 			Provider: "mock",
 			ProviderSettingsList: []*birch.Document{birch.NewDocument(
@@ -1350,7 +1328,7 @@ func getMockDistrosdata() error {
 						birch.EC.String("virtual_name", "ephemeral0"),
 					)),
 				)),
-				birch.EC.Interface("mount_points", map[string]interface{}{
+				birch.EC.Interface("mount_points", map[string]any{
 					"device_name":  "/dev/xvdb",
 					"virtual_name": "ephemeral0"}),
 			)},
@@ -1378,6 +1356,20 @@ func getMockDistrosdata() error {
 			},
 			Disabled:      false,
 			ContainerPool: "",
+			BootstrapSettings: distro.BootstrapSettings{
+				Method:        distro.BootstrapMethodNone,
+				Communication: distro.CommunicationMethodLegacySSH,
+			},
+			PlannerSettings: distro.PlannerSettings{
+				Version: evergreen.PlannerVersionTunable,
+			},
+			FinderSettings: distro.FinderSettings{
+				Version: evergreen.FinderVersionLegacy,
+			},
+			DispatcherSettings: distro.DispatcherSettings{
+				Version: evergreen.DispatcherVersionRevisedWithDependencies,
+			},
+			Aliases: []string{"alias1", "alias2"},
 		},
 	}
 	for _, d := range distros {
@@ -1445,4 +1437,65 @@ func (s *distroClientURLsGetSuite) TestRunNonexistentDistro() {
 	resp := s.rh.Run(ctx)
 	s.NotNil(resp.Data())
 	s.Equal(http.StatusNotFound, resp.Status())
+}
+
+// Tests for PUT /rest/v2/distros/{distro_id}/copy/{new_distro_id}
+
+type distroCopySuite struct {
+	rm gimlet.RouteHandler
+
+	suite.Suite
+}
+
+func TestDistroCopySuite(t *testing.T) {
+	suite.Run(t, new(distroCopySuite))
+}
+
+func (s *distroCopySuite) SetupTest() {
+	s.NoError(db.ClearCollections(distro.Collection, user.Collection))
+	s.NoError(getMockDistrosdata())
+	_, err := user.GetOrCreateUser("user", "user", "", "token", "", nil)
+	s.NoError(err)
+	s.rm = makeCopyDistro()
+}
+
+func (s *distroCopySuite) TestParseInvalidIDs() {
+	ctx := context.Background()
+	req, _ := http.NewRequest(http.MethodPut, "http://example.com/api/rest/v2/distros/distro1/copy/distro1?single_task_distro=true", nil)
+	err := s.rm.Parse(ctx, req)
+	s.Error(err)
+}
+
+func (s *distroCopySuite) TestRunValidCopy() {
+	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
+	h := s.rm.(*distroCopyHandler)
+	h.distroToCopy = "fedora8"
+	h.newDistroID = "newDistro"
+	h.singleTaskDistro = true
+
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp.Data())
+	s.Equal(http.StatusCreated, resp.Status())
+
+	copied, err := distro.FindOneId(ctx, "newDistro")
+	s.NoError(err)
+	s.NotNil(copied)
+	s.Equal("newDistro", copied.Id)
+	s.Equal(true, copied.SingleTaskDistro)
+	s.Nil(copied.Aliases)
+}
+
+func (s *distroCopySuite) TestRunInvalidCopyNonexistentID() {
+	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
+	h := s.rm.(*distroCopyHandler)
+	h.distroToCopy = "nonexistent"
+	h.newDistroID = "distro3"
+
+	resp := s.rm.Run(ctx)
+	s.NotNil(resp.Data())
+	s.Equal(http.StatusNotFound, resp.Status())
+	err := (resp.Data()).(gimlet.ErrorResponse)
+	s.Equal("distro 'nonexistent' not found", err.Message)
 }

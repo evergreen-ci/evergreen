@@ -60,7 +60,7 @@ func (s *githubStatusRefreshSuite) SetupTest() {
 		Id:         "myChildProject",
 		Identifier: "myChildProjectIdentifier",
 	}
-	s.NoError(pRef.Insert())
+	s.NoError(pRef.Insert(s.ctx))
 
 	startTime := time.Now().Truncate(time.Millisecond)
 	id := mgobson.NewObjectId()
@@ -81,7 +81,7 @@ func (s *githubStatusRefreshSuite) SetupTest() {
 			HeadHash:  "776f608b5b12cd27b8d931c8ee4ca0c13f857299",
 		},
 	}
-	s.NoError(s.patchDoc.Insert())
+	s.NoError(s.patchDoc.Insert(s.ctx))
 
 }
 
@@ -106,13 +106,13 @@ func (s *githubStatusRefreshSuite) TestFetch() {
 		Version: s.patchDoc.Version,
 		Status:  evergreen.BuildStarted,
 	}
-	s.NoError(b.Insert())
+	s.NoError(b.Insert(s.ctx))
 	childPatch := patch.Patch{
 		Id: mgobson.NewObjectId(),
 	}
-	s.NoError(childPatch.Insert())
+	s.NoError(childPatch.Insert(s.ctx))
 	s.patchDoc.Triggers.ChildPatches = []string{childPatch.Id.Hex()}
-	s.NoError(s.patchDoc.SetChildPatches())
+	s.NoError(s.patchDoc.SetChildPatches(s.ctx))
 
 	job, ok := NewGithubStatusRefreshJob(s.patchDoc).(*githubStatusRefreshJob)
 	s.Require().NotNil(job)
@@ -135,7 +135,7 @@ func (s *githubStatusRefreshSuite) TestStatusPending() {
 		Activated:    true,
 		Status:       evergreen.TaskStarted,
 	}
-	s.NoError(tsk.Insert())
+	s.NoError(tsk.Insert(s.ctx))
 
 	b := build.Build{
 		Id:           "b1",
@@ -143,7 +143,7 @@ func (s *githubStatusRefreshSuite) TestStatusPending() {
 		Version:      s.patchDoc.Version,
 		Status:       evergreen.BuildStarted,
 	}
-	s.NoError(b.Insert())
+	s.NoError(b.Insert(s.ctx))
 
 	childPatch := patch.Patch{
 		Id:        mgobson.NewObjectId(),
@@ -155,7 +155,7 @@ func (s *githubStatusRefreshSuite) TestStatusPending() {
 		},
 		DisplayNewUI: true,
 	}
-	s.NoError(childPatch.Insert())
+	s.NoError(childPatch.Insert(s.ctx))
 	s.patchDoc.Triggers.ChildPatches = []string{childPatch.Id.Hex()}
 
 	job, ok := NewGithubStatusRefreshJob(s.patchDoc).(*githubStatusRefreshJob)
@@ -198,7 +198,7 @@ func (s *githubStatusRefreshSuite) TestStatusPendingDueToEssentialTaskThatWillRu
 		Status:               evergreen.TaskStarted,
 		IsEssentialToSucceed: true,
 	}
-	s.NoError(tsk.Insert())
+	s.NoError(tsk.Insert(s.ctx))
 
 	b := build.Build{
 		Id:           "b1",
@@ -206,7 +206,7 @@ func (s *githubStatusRefreshSuite) TestStatusPendingDueToEssentialTaskThatWillRu
 		Version:      s.patchDoc.Version,
 		Status:       evergreen.BuildStarted,
 	}
-	s.NoError(b.Insert())
+	s.NoError(b.Insert(s.ctx))
 
 	job, ok := NewGithubStatusRefreshJob(s.patchDoc).(*githubStatusRefreshJob)
 	s.Require().NotNil(job)
@@ -241,7 +241,7 @@ func (s *githubStatusRefreshSuite) TestStatusPendingDueToAllUnscheduledEssential
 		Status:               evergreen.TaskUndispatched,
 		IsEssentialToSucceed: true,
 	}
-	s.NoError(tsk.Insert())
+	s.NoError(tsk.Insert(s.ctx))
 
 	b := build.Build{
 		Id:           "b1",
@@ -249,7 +249,7 @@ func (s *githubStatusRefreshSuite) TestStatusPendingDueToAllUnscheduledEssential
 		Version:      s.patchDoc.Version,
 		Status:       evergreen.BuildStarted,
 	}
-	s.NoError(b.Insert())
+	s.NoError(b.Insert(s.ctx))
 
 	job, ok := NewGithubStatusRefreshJob(s.patchDoc).(*githubStatusRefreshJob)
 	s.Require().NotNil(job)
@@ -284,7 +284,7 @@ func (s *githubStatusRefreshSuite) TestStatusFailedDueToMixOfFailedAndUnschedule
 		Status:               evergreen.TaskFailed,
 		IsEssentialToSucceed: true,
 	}
-	s.NoError(failedTask.Insert())
+	s.NoError(failedTask.Insert(s.ctx))
 	unscheduledEssentialTask := task.Task{
 		Id:                   "t2",
 		BuildId:              "b1",
@@ -294,7 +294,7 @@ func (s *githubStatusRefreshSuite) TestStatusFailedDueToMixOfFailedAndUnschedule
 		Status:               evergreen.TaskUndispatched,
 		IsEssentialToSucceed: true,
 	}
-	s.NoError(unscheduledEssentialTask.Insert())
+	s.NoError(unscheduledEssentialTask.Insert(s.ctx))
 
 	startTime := time.Now()
 	b := build.Build{
@@ -305,7 +305,7 @@ func (s *githubStatusRefreshSuite) TestStatusFailedDueToMixOfFailedAndUnschedule
 		Version:      s.patchDoc.Version,
 		Status:       evergreen.BuildFailed,
 	}
-	s.NoError(b.Insert())
+	s.NoError(b.Insert(s.ctx))
 
 	job, ok := NewGithubStatusRefreshJob(s.patchDoc).(*githubStatusRefreshJob)
 	s.Require().NotNil(job)
@@ -340,14 +340,14 @@ func (s *githubStatusRefreshSuite) TestStatusSucceeded() {
 		StartTime:    startTime,
 		FinishTime:   startTime.Add(time.Minute),
 	}
-	s.NoError(b.Insert())
+	s.NoError(b.Insert(s.ctx))
 	t1 := task.Task{
 		Id:      "t1",
 		Version: s.patchDoc.Version,
 		BuildId: b.Id,
 		Status:  evergreen.TaskSucceeded,
 	}
-	s.NoError(t1.Insert())
+	s.NoError(t1.Insert(s.ctx))
 
 	childPatch := patch.Patch{
 		Id:         mgobson.NewObjectId(),
@@ -361,7 +361,7 @@ func (s *githubStatusRefreshSuite) TestStatusSucceeded() {
 		},
 		DisplayNewUI: true,
 	}
-	s.NoError(childPatch.Insert())
+	s.NoError(childPatch.Insert(s.ctx))
 	s.patchDoc.Triggers.ChildPatches = []string{childPatch.Id.Hex()}
 	s.patchDoc.Status = evergreen.VersionSucceeded
 
@@ -406,14 +406,14 @@ func (s *githubStatusRefreshSuite) TestStatusFailed() {
 		StartTime:    startTime,
 		FinishTime:   startTime.Add(time.Minute),
 	}
-	s.NoError(b.Insert())
+	s.NoError(b.Insert(s.ctx))
 	t1 := task.Task{
 		Id:      "t1",
 		Version: s.patchDoc.Version,
 		BuildId: b.Id,
 		Status:  evergreen.TaskFailed,
 	}
-	s.NoError(t1.Insert())
+	s.NoError(t1.Insert(s.ctx))
 
 	childPatch := patch.Patch{
 		Id:         mgobson.NewObjectId(),
@@ -427,7 +427,7 @@ func (s *githubStatusRefreshSuite) TestStatusFailed() {
 		},
 		DisplayNewUI: true,
 	}
-	s.NoError(childPatch.Insert())
+	s.NoError(childPatch.Insert(s.ctx))
 	s.patchDoc.Triggers.ChildPatches = []string{childPatch.Id.Hex()}
 	s.patchDoc.Status = evergreen.VersionSucceeded
 

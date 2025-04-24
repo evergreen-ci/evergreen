@@ -74,12 +74,6 @@ func TestModelConversion(t *testing.T) {
 			assert.Equal(v2, apiSettings.Plugins[k][k2])
 		}
 	}
-	require.Len(apiSettings.SSHKeyPairs, len(testSettings.SSHKeyPairs))
-	for i := 0; i < len(testSettings.SSHKeyPairs); i++ {
-		assert.Equal(testSettings.SSHKeyPairs[i].Name, utility.FromStringPtr(apiSettings.SSHKeyPairs[i].Name))
-		assert.Equal(testSettings.SSHKeyPairs[i].Public, utility.FromStringPtr(apiSettings.SSHKeyPairs[i].Public))
-		assert.Equal(testSettings.SSHKeyPairs[i].Private, utility.FromStringPtr(apiSettings.SSHKeyPairs[i].Private))
-	}
 	assert.Equal(testSettings.ShutdownWaitSeconds, *apiSettings.ShutdownWaitSeconds)
 
 	assert.EqualValues(testSettings.Amboy.Name, utility.FromStringPtr(apiSettings.Amboy.Name))
@@ -113,7 +107,6 @@ func TestModelConversion(t *testing.T) {
 	assert.Equal(testSettings.Buckets.LogBucket.Name, utility.FromStringPtr(apiSettings.Buckets.LogBucket.Name))
 	assert.EqualValues(testSettings.Buckets.LogBucket.Type, utility.FromStringPtr(apiSettings.Buckets.LogBucket.Type))
 	assert.Equal(testSettings.Buckets.LogBucket.DBName, utility.FromStringPtr(apiSettings.Buckets.LogBucket.DBName))
-	assert.Equal(testSettings.Buckets.InternalBuckets, apiSettings.Buckets.InternalBuckets)
 	assert.EqualValues(testSettings.Buckets.Credentials.Key, utility.FromStringPtr(apiSettings.Buckets.Credentials.Key))
 	assert.EqualValues(testSettings.Buckets.Credentials.Secret, utility.FromStringPtr(apiSettings.Buckets.Credentials.Secret))
 	assert.Equal(testSettings.Cedar.BaseURL, utility.FromStringPtr(apiSettings.Cedar.BaseURL))
@@ -134,6 +127,7 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.HostInit.CloudStatusBatchSize, apiSettings.HostInit.CloudStatusBatchSize)
 	assert.EqualValues(testSettings.HostInit.MaxTotalDynamicHosts, apiSettings.HostInit.MaxTotalDynamicHosts)
 	assert.EqualValues(testSettings.Jira.BasicAuthConfig.Username, utility.FromStringPtr(apiSettings.Jira.BasicAuthConfig.Username))
+	assert.EqualValues(testSettings.Jira.PersonalAccessToken, utility.FromStringPtr(apiSettings.Jira.PersonalAccessToken))
 	assert.EqualValues(testSettings.LoggerConfig.DefaultLevel, utility.FromStringPtr(apiSettings.LoggerConfig.DefaultLevel))
 	assert.EqualValues(testSettings.LoggerConfig.Buffer.Count, apiSettings.LoggerConfig.Buffer.Count)
 	assert.EqualValues(testSettings.LoggerConfig.Buffer.UseAsync, apiSettings.LoggerConfig.Buffer.UseAsync)
@@ -188,6 +182,11 @@ func TestModelConversion(t *testing.T) {
 		assert.EqualValues(cp.WindowsVersion, utility.FromStringPtr(apiSettings.Providers.AWS.Pod.ECS.CapacityProviders[i].WindowsVersion))
 	}
 	assert.EqualValues(testSettings.Providers.AWS.Pod.SecretsManager.SecretPrefix, utility.FromStringPtr(apiSettings.Providers.AWS.Pod.SecretsManager.SecretPrefix))
+	require.Len(apiSettings.Providers.AWS.AccountRoles, len(testSettings.Providers.AWS.AccountRoles))
+	for i, ar := range testSettings.Providers.AWS.AccountRoles {
+		assert.Equal(ar.Account, utility.FromStringPtr(apiSettings.Providers.AWS.AccountRoles[i].Account))
+		assert.Equal(ar.Role, utility.FromStringPtr(apiSettings.Providers.AWS.AccountRoles[i].Role))
+	}
 	assert.EqualValues(testSettings.Providers.Docker.APIVersion, utility.FromStringPtr(apiSettings.Providers.Docker.APIVersion))
 	assert.EqualValues(testSettings.RepoTracker.MaxConcurrentRequests, apiSettings.RepoTracker.MaxConcurrentRequests)
 	assert.EqualValues(testSettings.Scheduler.TaskFinder, utility.FromStringPtr(apiSettings.Scheduler.TaskFinder))
@@ -205,6 +204,10 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Slack.Options.Channel, utility.FromStringPtr(apiSettings.Slack.Options.Channel))
 	assert.ElementsMatch(testSettings.SleepSchedule.PermanentlyExemptHosts, apiSettings.SleepSchedule.PermanentlyExemptHosts)
 	assert.EqualValues(testSettings.Splunk.SplunkConnectionInfo.Channel, utility.FromStringPtr(apiSettings.Splunk.SplunkConnectionInfo.Channel))
+	assert.EqualValues(testSettings.SSH.SpawnHostKey.Name, utility.FromStringPtr(apiSettings.SSH.SpawnHostKey.Name))
+	assert.EqualValues(testSettings.SSH.SpawnHostKey.SecretARN, utility.FromStringPtr(apiSettings.SSH.SpawnHostKey.SecretARN))
+	assert.EqualValues(testSettings.SSH.TaskHostKey.Name, utility.FromStringPtr(apiSettings.SSH.TaskHostKey.Name))
+	assert.EqualValues(testSettings.SSH.TaskHostKey.SecretARN, utility.FromStringPtr(apiSettings.SSH.TaskHostKey.SecretARN))
 	assert.EqualValues(testSettings.TaskLimits.MaxTasksPerVersion, utility.FromIntPtr(apiSettings.TaskLimits.MaxTasksPerVersion))
 	assert.EqualValues(testSettings.TestSelection.URL, utility.FromStringPtr(apiSettings.TestSelection.URL))
 	assert.EqualValues(testSettings.Triggers.GenerateTaskDistro, utility.FromStringPtr(apiSettings.Triggers.GenerateTaskDistro))
@@ -264,6 +267,7 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.ContainerPools.Pools[0].Port, dbSettings.ContainerPools.Pools[0].Port)
 	assert.EqualValues(testSettings.HostInit.HostThrottle, dbSettings.HostInit.HostThrottle)
 	assert.EqualValues(testSettings.Jira.BasicAuthConfig.Username, dbSettings.Jira.BasicAuthConfig.Username)
+	assert.EqualValues(testSettings.Jira.PersonalAccessToken, dbSettings.Jira.PersonalAccessToken)
 	assert.EqualValues(testSettings.LoggerConfig.DefaultLevel, dbSettings.LoggerConfig.DefaultLevel)
 	assert.EqualValues(testSettings.LoggerConfig.Buffer.Count, dbSettings.LoggerConfig.Buffer.Count)
 	assert.EqualValues(testSettings.LoggerConfig.Buffer.UseAsync, dbSettings.LoggerConfig.Buffer.UseAsync)
@@ -304,18 +308,16 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.ServiceFlags.SleepScheduleDisabled, dbSettings.ServiceFlags.SleepScheduleDisabled)
 	assert.EqualValues(testSettings.ServiceFlags.SystemFailedTaskRestartDisabled, apiSettings.ServiceFlags.SystemFailedTaskRestartDisabled)
 	assert.EqualValues(testSettings.ServiceFlags.CPUDegradedModeDisabled, apiSettings.ServiceFlags.DegradedModeDisabled)
-	require.Len(dbSettings.SSHKeyPairs, len(testSettings.SSHKeyPairs))
-	for i := 0; i < len(testSettings.SSHKeyPairs); i++ {
-		assert.Equal(dbSettings.SSHKeyPairs[i].Name, testSettings.SSHKeyPairs[i].Name)
-		assert.Equal(dbSettings.SSHKeyPairs[i].Public, testSettings.SSHKeyPairs[i].Public)
-		assert.Equal(dbSettings.SSHKeyPairs[i].Private, testSettings.SSHKeyPairs[i].Private)
-	}
 	assert.EqualValues(testSettings.SingleTaskDistro.ProjectTasksPairs[0].ProjectID, dbSettings.SingleTaskDistro.ProjectTasksPairs[0].ProjectID)
 	assert.ElementsMatch(testSettings.SingleTaskDistro.ProjectTasksPairs[0].AllowedTasks, dbSettings.SingleTaskDistro.ProjectTasksPairs[0].AllowedTasks)
 	assert.EqualValues(testSettings.Slack.Level, dbSettings.Slack.Level)
 	assert.EqualValues(testSettings.Slack.Options.Channel, dbSettings.Slack.Options.Channel)
 	assert.ElementsMatch(testSettings.SleepSchedule.PermanentlyExemptHosts, apiSettings.SleepSchedule.PermanentlyExemptHosts)
 	assert.EqualValues(testSettings.Splunk.SplunkConnectionInfo.Channel, dbSettings.Splunk.SplunkConnectionInfo.Channel)
+	assert.EqualValues(testSettings.SSH.SpawnHostKey.Name, dbSettings.SSH.SpawnHostKey.Name)
+	assert.EqualValues(testSettings.SSH.SpawnHostKey.SecretARN, dbSettings.SSH.SpawnHostKey.SecretARN)
+	assert.EqualValues(testSettings.SSH.TaskHostKey.Name, dbSettings.SSH.TaskHostKey.Name)
+	assert.EqualValues(testSettings.SSH.TaskHostKey.SecretARN, dbSettings.SSH.TaskHostKey.SecretARN)
 	assert.EqualValues(testSettings.TaskLimits.MaxTasksPerVersion, dbSettings.TaskLimits.MaxTasksPerVersion)
 	assert.EqualValues(testSettings.TestSelection.URL, dbSettings.TestSelection.URL)
 	assert.EqualValues(testSettings.Triggers.GenerateTaskDistro, dbSettings.Triggers.GenerateTaskDistro)
@@ -395,7 +397,7 @@ func TestAPIServiceFlagsModelInterface(t *testing.T) {
 	allStructFieldsTrue(t, &newFlags)
 }
 
-func allStructFieldsTrue(t *testing.T, s interface{}) {
+func allStructFieldsTrue(t *testing.T, s any) {
 	elem := reflect.ValueOf(s).Elem()
 	for i := 0; i < elem.NumField(); i++ {
 		f := elem.Field(i)

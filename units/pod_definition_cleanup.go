@@ -139,7 +139,7 @@ func (j *podDefinitionCleanupJob) cleanupStrandedPodDefinitions(ctx context.Cont
 }
 
 func (j *podDefinitionCleanupJob) cleanupStalePodDefinitions(ctx context.Context, limit int) (numDeleted int, err error) {
-	podDefs, err := definition.FindByLastAccessedBefore(podDefinitionTTL, limit)
+	podDefs, err := definition.FindByLastAccessedBefore(ctx, podDefinitionTTL, limit)
 	if err != nil {
 		return 0, errors.Wrapf(err, "finding pod definitions last accessed before %s", time.Now().Add(-podDefinitionTTL))
 	}
@@ -147,7 +147,7 @@ func (j *podDefinitionCleanupJob) cleanupStalePodDefinitions(ctx context.Context
 	catcher := grip.NewBasicCatcher()
 	for _, podDef := range podDefs {
 		if podDef.ExternalID == "" {
-			if err := podDef.Remove(); err != nil {
+			if err := podDef.Remove(ctx); err != nil {
 				catcher.Wrapf(err, "deleting pod definition '%s' which is missing an external ID", podDef.ID)
 				continue
 			}

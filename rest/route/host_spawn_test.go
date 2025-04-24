@@ -28,110 +28,6 @@ import (
 )
 
 func TestHostPostHandler(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	require.NoError(t, db.ClearCollections(distro.Collection, host.Collection))
-
-	env := &mock.Environment{}
-	assert.NoError(t, env.Configure(ctx))
-	env.EvergreenSettings.Spawnhost.SpawnHostsPerUser = 10
-	env.EvergreenSettings.Spawnhost.UnexpirableHostsPerUser = 5
-	var err error
-	env.RemoteGroup, err = queue.NewLocalQueueGroup(ctx, queue.LocalQueueGroupOptions{
-		DefaultQueue: queue.LocalQueueOptions{Constructor: func(context.Context) (amboy.Queue, error) {
-			return queue.NewLocalLimitedSize(2, 1048), nil
-		}}})
-	assert.NoError(t, err)
-
-	doc := birch.NewDocument(
-		birch.EC.String("ami", "ami-123"),
-		birch.EC.String("region", evergreen.DefaultEC2Region),
-	)
-	d := &distro.Distro{
-		Id:                   "distro",
-		SpawnAllowed:         true,
-		Provider:             evergreen.ProviderNameEc2OnDemand,
-		ProviderSettingsList: []*birch.Document{doc},
-	}
-	require.NoError(t, d.Insert(ctx))
-	assert.NoError(t, err)
-	h := &hostPostHandler{
-		env: env,
-		options: &model.HostRequestOptions{
-			TaskID:   "task",
-			DistroID: "distro",
-			KeyName:  "ssh-rsa YWJjZDEyMzQK",
-		},
-	}
-	u := &user.DBUser{
-		Id:       "user",
-		Settings: user.UserSettings{Timezone: "Asia/Macau"},
-	}
-	ctx = gimlet.AttachUser(ctx, u)
-
-	resp := h.Run(ctx)
-	assert.NotNil(t, t, resp)
-	assert.Equal(t, http.StatusOK, resp.Status())
-
-	h0 := resp.Data().(*model.APIHost)
-	d0, err := distro.FindOneId(ctx, "distro")
-	assert.NoError(t, err)
-	userdata, ok := d0.ProviderSettingsList[0].Lookup("user_data").StringValueOK()
-	assert.False(t, ok)
-	assert.Empty(t, userdata)
-	assert.Empty(t, h0.InstanceTags)
-	assert.Empty(t, h0.InstanceType)
-
-	resp = h.Run(ctx)
-	assert.NotNil(t, resp)
-	assert.Equal(t, http.StatusOK, resp.Status())
-
-	doc = birch.NewDocument(
-		birch.EC.String("ami", "ami-123"),
-		birch.EC.String("user_data", "#!/bin/bash\necho my script"),
-		birch.EC.String("region", evergreen.DefaultEC2Region),
-	)
-	d.ProviderSettingsList = []*birch.Document{doc}
-	assert.NoError(t, d.ReplaceOne(ctx))
-
-	h1 := resp.Data().(*model.APIHost)
-	d1, err := distro.FindOneId(ctx, "distro")
-	assert.NoError(t, err)
-	userdata, ok = d1.ProviderSettingsList[0].Lookup("user_data").StringValueOK()
-	assert.True(t, ok)
-	assert.Equal(t, "#!/bin/bash\necho my script", userdata)
-	assert.Empty(t, h1.InstanceTags)
-	assert.Empty(t, h1.InstanceType)
-
-	h.options.InstanceTags = []host.Tag{
-		{
-			Key:           "ssh-rsa YWJjZDEyMzQK",
-			Value:         "value",
-			CanBeModified: true,
-		},
-	}
-	resp = h.Run(ctx)
-	assert.NotNil(t, resp)
-	assert.Equal(t, http.StatusOK, resp.Status())
-
-	h2 := resp.Data().(*model.APIHost)
-	assert.Equal(t, []host.Tag{{Key: "ssh-rsa YWJjZDEyMzQK", Value: "value", CanBeModified: true}}, h2.InstanceTags)
-	assert.Empty(t, h2.InstanceType)
-
-	d.Provider = evergreen.ProviderNameMock
-	assert.NoError(t, d.ReplaceOne(ctx))
-	env.EvergreenSettings.Providers.AWS.AllowedInstanceTypes = append(env.EvergreenSettings.Providers.AWS.AllowedInstanceTypes, "test_instance_type")
-	h.options.InstanceType = "test_instance_type"
-	h.options.UserData = ""
-	resp = h.Run(ctx)
-	require.NotNil(t, resp)
-	assert.Equal(t, http.StatusOK, resp.Status())
-
-	h3, ok := resp.Data().(*model.APIHost)
-	require.True(t, ok)
-	assert.Equal(t, "test_instance_type", *h3.InstanceType)
-
 	checkUnexpirableHostSchedule := func(t *testing.T, h *host.Host, opts host.SleepScheduleOptions) {
 		assert.True(t, h.NoExpiration)
 		assert.Equal(t, opts.WholeWeekdaysOff, h.SleepSchedule.WholeWeekdaysOff)
@@ -142,107 +38,258 @@ func TestHostPostHandler(t *testing.T) {
 		assert.NotZero(t, h.SleepSchedule.NextStopTime)
 	}
 
-	t.Run("UnexpirableHostSetsDefaultSchedule", func(t *testing.T) {
-		h.options.NoExpiration = true
-		resp := h.Run(ctx)
-		require.NotZero(t, resp)
-		assert.Equal(t, http.StatusOK, resp.Status(), resp.Data())
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, env *mock.Environment, rh *hostPostHandler, u *user.DBUser, d *distro.Distro){
+		"SpawnsHostForTask": func(ctx context.Context, t *testing.T, env *mock.Environment, rh *hostPostHandler, u *user.DBUser, d *distro.Distro) {
+			rh.options.TaskID = "task"
+			rh.options.KeyName = "ssh-rsa YWJjZDEyMzQK"
 
-		apiHost, ok := resp.Data().(*model.APIHost)
-		require.True(t, ok)
+			resp := rh.Run(ctx)
+			require.NotNil(t, t, resp)
+			assert.Equal(t, http.StatusOK, resp.Status(), resp.Data())
 
-		dbHost, err := host.FindOneId(ctx, utility.FromStringPtr(apiHost.Id))
-		require.NoError(t, err)
-		require.NotZero(t, dbHost)
+			dbHost := resp.Data().(*model.APIHost)
+			dbDistro, err := distro.FindOneId(ctx, d.Id)
+			assert.NoError(t, err)
+			require.NotZero(t, dbDistro)
+			userdata, ok := dbDistro.ProviderSettingsList[0].Lookup("user_data").StringValueOK()
+			assert.False(t, ok)
+			assert.Empty(t, userdata)
+			assert.Empty(t, dbHost.InstanceTags)
+			assert.Empty(t, dbHost.InstanceType)
+		},
+		"SpawnsHostWithUserData": func(ctx context.Context, t *testing.T, env *mock.Environment, rh *hostPostHandler, u *user.DBUser, d *distro.Distro) {
+			doc := birch.NewDocument(
+				birch.EC.String("ami", "ami-123"),
+				birch.EC.String("user_data", "#!/bin/bash\necho my script"),
+				birch.EC.String("region", evergreen.DefaultEC2Region),
+			)
+			d.ProviderSettingsList = []*birch.Document{doc}
+			assert.NoError(t, d.ReplaceOne(ctx))
 
-		var defaultSchedule host.SleepScheduleOptions
-		defaultSchedule.SetDefaultSchedule()
-		defaultSchedule.SetDefaultTimeZone(u.Settings.Timezone)
-		checkUnexpirableHostSchedule(t, dbHost, defaultSchedule)
-	})
-	t.Run("UnexpirableHostSetsExplicitScheduleWithUserDefaultTimeZone", func(t *testing.T) {
-		h.options.NoExpiration = true
-		expectedOpts := host.SleepScheduleOptions{
-			WholeWeekdaysOff: []time.Weekday{time.Monday, time.Tuesday},
-			DailyStartTime:   "01:00",
-			DailyStopTime:    "05:00",
-		}
-		h.options.SleepScheduleOptions = expectedOpts
-		resp := h.Run(ctx)
-		require.NotZero(t, resp)
-		assert.Equal(t, http.StatusOK, resp.Status(), resp.Data())
+			resp := rh.Run(ctx)
+			require.NotNil(t, t, resp)
+			assert.Equal(t, http.StatusOK, resp.Status(), resp.Data())
 
-		apiHost, ok := resp.Data().(*model.APIHost)
-		require.True(t, ok)
+			dbHost := resp.Data().(*model.APIHost)
+			dbDistro, err := distro.FindOneId(ctx, "distro")
+			assert.NoError(t, err)
+			userdata, ok := dbDistro.ProviderSettingsList[0].Lookup("user_data").StringValueOK()
+			assert.True(t, ok)
+			assert.Equal(t, "#!/bin/bash\necho my script", userdata)
+			assert.Empty(t, dbHost.InstanceTags)
+			assert.Empty(t, dbHost.InstanceType)
+		},
+		"SpawnsHostWithInstanceTags": func(ctx context.Context, t *testing.T, env *mock.Environment, rh *hostPostHandler, u *user.DBUser, d *distro.Distro) {
+			rh.options.InstanceTags = []host.Tag{
+				{
+					Key:           "ssh-rsa YWJjZDEyMzQK",
+					Value:         "value",
+					CanBeModified: true,
+				},
+			}
+			resp := rh.Run(ctx)
+			require.NotNil(t, resp)
+			assert.Equal(t, http.StatusOK, resp.Status(), resp.Data())
 
-		dbHost, err := host.FindOneId(ctx, utility.FromStringPtr(apiHost.Id))
-		require.NoError(t, err)
-		require.NotZero(t, dbHost)
+			dbHost := resp.Data().(*model.APIHost)
+			assert.Equal(t, []host.Tag{{Key: "ssh-rsa YWJjZDEyMzQK", Value: "value", CanBeModified: true}}, dbHost.InstanceTags)
+			assert.Empty(t, dbHost.InstanceType)
+		},
+		"SpawnsHostWithExplicitInstanceType": func(ctx context.Context, t *testing.T, env *mock.Environment, rh *hostPostHandler, u *user.DBUser, d *distro.Distro) {
+			d.Provider = evergreen.ProviderNameMock
+			require.NoError(t, d.ReplaceOne(ctx))
 
-		expectedOpts.TimeZone = u.Settings.Timezone
-		checkUnexpirableHostSchedule(t, dbHost, expectedOpts)
-	})
-	t.Run("UnexpirableHostSetsExplicitTimeZoneWithDefaultSchedule", func(t *testing.T) {
-		h.options.NoExpiration = true
-		h.options.SleepScheduleOptions = host.SleepScheduleOptions{
-			TimeZone: "Asia/Seoul",
-		}
-		resp := h.Run(ctx)
-		require.NotZero(t, resp)
-		assert.Equal(t, http.StatusOK, resp.Status(), resp.Data())
+			env.EvergreenSettings.Providers.AWS.AllowedInstanceTypes = append(env.EvergreenSettings.Providers.AWS.AllowedInstanceTypes, "test_instance_type")
 
-		apiHost, ok := resp.Data().(*model.APIHost)
-		require.True(t, ok)
+			rh.options.InstanceType = "test_instance_type"
+			rh.options.UserData = ""
+			resp := rh.Run(ctx)
+			require.NotNil(t, resp)
+			assert.Equal(t, http.StatusOK, resp.Status(), resp.Data())
 
-		dbHost, err := host.FindOneId(ctx, utility.FromStringPtr(apiHost.Id))
-		require.NoError(t, err)
-		require.NotZero(t, dbHost)
+			dbHost, ok := resp.Data().(*model.APIHost)
+			require.True(t, ok)
+			assert.Equal(t, rh.options.InstanceType, *dbHost.InstanceType)
+		},
+		"AdminOnlyDistroCannotBeSpawnedByNonAdmin": func(ctx context.Context, t *testing.T, env *mock.Environment, rh *hostPostHandler, u *user.DBUser, d *distro.Distro) {
+			assert.False(t, u.HasDistroCreatePermission())
 
-		var defaultSchedule host.SleepScheduleOptions
-		defaultSchedule.SetDefaultSchedule()
-		defaultSchedule.SetDefaultTimeZone("Asia/Seoul")
-		checkUnexpirableHostSchedule(t, dbHost, defaultSchedule)
-	})
-	t.Run("UnexpirableHostSetsExplicitScheduleAndExplicitTimeZone", func(t *testing.T) {
-		h.options.NoExpiration = true
-		expectedOpts := host.SleepScheduleOptions{
-			WholeWeekdaysOff: []time.Weekday{time.Monday, time.Tuesday},
-			DailyStartTime:   "01:00",
-			DailyStopTime:    "05:00",
-			TimeZone:         "Asia/Macau",
-		}
-		h.options.SleepScheduleOptions = expectedOpts
-		resp := h.Run(ctx)
-		require.NotZero(t, resp)
-		assert.Equal(t, http.StatusOK, resp.Status(), resp.Data())
+			d.AdminOnly = true
+			require.NoError(t, d.ReplaceOne(ctx))
 
-		apiHost, ok := resp.Data().(*model.APIHost)
-		require.True(t, ok)
+			resp := rh.Run(ctx)
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusForbidden, resp.Status(), resp.Data())
+		},
+		"AdminOnlyDistroCanBeSpawnedByDistroAdmin": func(ctx context.Context, t *testing.T, env *mock.Environment, rh *hostPostHandler, u *user.DBUser, d *distro.Distro) {
+			createDistroRole := gimlet.Role{
+				ID:          "create_distro",
+				Name:        "create_distro",
+				Scope:       "superuser_scope",
+				Permissions: map[string]int{evergreen.PermissionDistroCreate: evergreen.DistroCreate.Value},
+			}
+			require.NoError(t, env.RoleManager().UpdateRole(createDistroRole))
+			require.NoError(t, u.AddRole(ctx, createDistroRole.ID))
 
-		dbHost, err := host.FindOneId(ctx, utility.FromStringPtr(apiHost.Id))
-		require.NoError(t, err)
-		require.NotZero(t, dbHost)
+			superuserScope := gimlet.Scope{
+				ID:        "superuser_scope",
+				Name:      "superuser scope",
+				Type:      evergreen.SuperUserResourceType,
+				Resources: []string{evergreen.SuperUserPermissionsID},
+			}
+			require.NoError(t, env.RoleManager().AddScope(superuserScope))
 
-		checkUnexpirableHostSchedule(t, dbHost, expectedOpts)
-	})
-	t.Run("UnexpirableHostSetsOnlyTimeZoneAndUsesDefaultSchedule", func(t *testing.T) {
-		h.options.NoExpiration = true
-		h.options.SleepScheduleOptions = host.SleepScheduleOptions{
-			TimeZone: "Asia/Macau",
-		}
-		resp := h.Run(ctx)
-		require.NotZero(t, resp)
-		assert.Equal(t, http.StatusOK, resp.Status(), resp.Data())
-	})
-	t.Run("ExpirableHostCannotSetSleepSchedule", func(t *testing.T) {
-		h.options.NoExpiration = false
-		var defaultSchedule host.SleepScheduleOptions
-		defaultSchedule.SetDefaultSchedule()
-		h.options.SleepScheduleOptions = defaultSchedule
-		resp := h.Run(ctx)
-		require.NotZero(t, resp)
-		assert.NotEqual(t, http.StatusOK, resp.Status(), resp.Data())
-	})
+			assert.True(t, u.HasDistroCreatePermission())
+
+			resp := rh.Run(ctx)
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusOK, resp.Status(), resp.Data())
+		},
+		"UnexpirableHostSetsDefaultSchedule": func(ctx context.Context, t *testing.T, env *mock.Environment, rh *hostPostHandler, u *user.DBUser, d *distro.Distro) {
+			rh.options.NoExpiration = true
+			resp := rh.Run(ctx)
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusOK, resp.Status(), resp.Data())
+
+			apiHost, ok := resp.Data().(*model.APIHost)
+			require.True(t, ok)
+
+			dbHost, err := host.FindOneId(ctx, utility.FromStringPtr(apiHost.Id))
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+
+			var defaultSchedule host.SleepScheduleOptions
+			defaultSchedule.SetDefaultSchedule()
+			defaultSchedule.SetDefaultTimeZone(u.Settings.Timezone)
+			checkUnexpirableHostSchedule(t, dbHost, defaultSchedule)
+		},
+		"UnexpirableHostSetsExplicitScheduleWithUserDefaultTimeZone": func(ctx context.Context, t *testing.T, env *mock.Environment, rh *hostPostHandler, u *user.DBUser, d *distro.Distro) {
+			rh.options.NoExpiration = true
+			expectedOpts := host.SleepScheduleOptions{
+				WholeWeekdaysOff: []time.Weekday{time.Monday, time.Tuesday},
+				DailyStartTime:   "01:00",
+				DailyStopTime:    "05:00",
+			}
+			rh.options.SleepScheduleOptions = expectedOpts
+			resp := rh.Run(ctx)
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusOK, resp.Status(), resp.Data())
+
+			apiHost, ok := resp.Data().(*model.APIHost)
+			require.True(t, ok)
+
+			dbHost, err := host.FindOneId(ctx, utility.FromStringPtr(apiHost.Id))
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+
+			expectedOpts.TimeZone = u.Settings.Timezone
+			checkUnexpirableHostSchedule(t, dbHost, expectedOpts)
+		},
+		"UnexpirableHostSetsExplicitTimeZoneWithDefaultSchedule": func(ctx context.Context, t *testing.T, env *mock.Environment, rh *hostPostHandler, u *user.DBUser, d *distro.Distro) {
+			rh.options.NoExpiration = true
+			rh.options.SleepScheduleOptions = host.SleepScheduleOptions{
+				TimeZone: "Asia/Seoul",
+			}
+			resp := rh.Run(ctx)
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusOK, resp.Status(), resp.Data())
+
+			apiHost, ok := resp.Data().(*model.APIHost)
+			require.True(t, ok)
+
+			dbHost, err := host.FindOneId(ctx, utility.FromStringPtr(apiHost.Id))
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+
+			var defaultSchedule host.SleepScheduleOptions
+			defaultSchedule.SetDefaultSchedule()
+			defaultSchedule.SetDefaultTimeZone("Asia/Seoul")
+			checkUnexpirableHostSchedule(t, dbHost, defaultSchedule)
+		},
+		"UnexpirableHostSetsExplicitScheduleAndExplicitTimeZone": func(ctx context.Context, t *testing.T, env *mock.Environment, rh *hostPostHandler, u *user.DBUser, d *distro.Distro) {
+			rh.options.NoExpiration = true
+			expectedOpts := host.SleepScheduleOptions{
+				WholeWeekdaysOff: []time.Weekday{time.Monday, time.Tuesday},
+				DailyStartTime:   "01:00",
+				DailyStopTime:    "05:00",
+				TimeZone:         "Asia/Macau",
+			}
+			rh.options.SleepScheduleOptions = expectedOpts
+			resp := rh.Run(ctx)
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusOK, resp.Status(), resp.Data())
+
+			apiHost, ok := resp.Data().(*model.APIHost)
+			require.True(t, ok)
+
+			dbHost, err := host.FindOneId(ctx, utility.FromStringPtr(apiHost.Id))
+			require.NoError(t, err)
+			require.NotZero(t, dbHost)
+
+			checkUnexpirableHostSchedule(t, dbHost, expectedOpts)
+		},
+		"UnexpirableHostSetsOnlyTimeZoneAndUsesDefaultSchedule": func(ctx context.Context, t *testing.T, env *mock.Environment, rh *hostPostHandler, u *user.DBUser, d *distro.Distro) {
+			rh.options.NoExpiration = true
+			rh.options.SleepScheduleOptions = host.SleepScheduleOptions{
+				TimeZone: "Asia/Macau",
+			}
+			resp := rh.Run(ctx)
+			require.NotZero(t, resp)
+			assert.Equal(t, http.StatusOK, resp.Status(), resp.Data())
+		},
+		"ExpirableHostCannotSetSleepSchedule": func(ctx context.Context, t *testing.T, env *mock.Environment, rh *hostPostHandler, u *user.DBUser, d *distro.Distro) {
+			rh.options.NoExpiration = false
+			var defaultSchedule host.SleepScheduleOptions
+			defaultSchedule.SetDefaultSchedule()
+			rh.options.SleepScheduleOptions = defaultSchedule
+			resp := rh.Run(ctx)
+			require.NotZero(t, resp)
+			assert.NotEqual(t, http.StatusOK, resp.Status(), resp.Data())
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			ctx := t.Context()
+
+			require.NoError(t, db.ClearCollections(distro.Collection, host.Collection))
+			env := &mock.Environment{}
+			assert.NoError(t, env.Configure(ctx))
+			env.EvergreenSettings.Spawnhost.SpawnHostsPerUser = 10
+			env.EvergreenSettings.Spawnhost.UnexpirableHostsPerUser = 5
+			var err error
+			env.RemoteGroup, err = queue.NewLocalQueueGroup(ctx, queue.LocalQueueGroupOptions{
+				DefaultQueue: queue.LocalQueueOptions{Constructor: func(context.Context) (amboy.Queue, error) {
+					return queue.NewLocalLimitedSize(2, 1048), nil
+				}}})
+			require.NoError(t, err)
+
+			doc := birch.NewDocument(
+				birch.EC.String("ami", "ami-123"),
+				birch.EC.String("region", evergreen.DefaultEC2Region),
+			)
+			d := &distro.Distro{
+				Id:                   "distro",
+				SpawnAllowed:         true,
+				Provider:             evergreen.ProviderNameEc2OnDemand,
+				ProviderSettingsList: []*birch.Document{doc},
+			}
+			require.NoError(t, d.Insert(ctx))
+			assert.NoError(t, err)
+			rh := &hostPostHandler{
+				env: env,
+				options: &model.HostRequestOptions{
+					DistroID: d.Id,
+					KeyName:  "ssh-rsa YWJjZDEyMzQK",
+				},
+			}
+			u := &user.DBUser{
+				Id:       "user",
+				Settings: user.UserSettings{Timezone: "Asia/Macau"},
+			}
+			ctx = gimlet.AttachUser(ctx, u)
+
+			tCase(ctx, t, env, rh, u, d)
+		})
+	}
 }
 
 func TestHostModifyHandlers(t *testing.T) {
@@ -254,7 +301,7 @@ func TestHostModifyHandlers(t *testing.T) {
 	}()
 
 	checkSubscriptions := func(t *testing.T, userID string, numSubs int) {
-		subscriptions, err := data.GetSubscriptions(userID, event.OwnerTypePerson)
+		subscriptions, err := data.GetSubscriptions(t.Context(), userID, event.OwnerTypePerson)
 		assert.NoError(t, err)
 		assert.Len(t, subscriptions, numSubs)
 	}
@@ -557,11 +604,11 @@ func TestCreateVolumeHandler(t *testing.T) {
 	}
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user"})
 	v := host.Volume{ID: "volume1", Size: 15, CreatedBy: "user"}
-	assert.NoError(t, v.Insert())
+	assert.NoError(t, v.Insert(t.Context()))
 	v = host.Volume{ID: "volume2", Size: 35, CreatedBy: "user"}
-	assert.NoError(t, v.Insert())
+	assert.NoError(t, v.Insert(t.Context()))
 	v = host.Volume{ID: "not-relevant", Size: 400, CreatedBy: "someone-else"}
-	assert.NoError(t, v.Insert())
+	assert.NoError(t, v.Insert(t.Context()))
 
 	h.env.Settings().Providers.AWS.MaxVolumeSizePerUser = 100
 	h.env.Settings().Providers.AWS.Subnets = []evergreen.Subnet{
@@ -615,7 +662,7 @@ func TestDeleteVolumeHandler(t *testing.T) {
 		assert.NoError(t, hostToAdd.Insert(ctx))
 	}
 	for _, volumeToAdd := range volumes {
-		assert.NoError(t, volumeToAdd.Insert())
+		assert.NoError(t, volumeToAdd.Insert(t.Context()))
 	}
 	h.VolumeID = "my-volume"
 	resp := h.Run(ctx)
@@ -663,7 +710,7 @@ func TestAttachVolumeHandler(t *testing.T) {
 	volume := host.Volume{
 		ID: v.VolumeID,
 	}
-	assert.NoError(t, volume.Insert())
+	assert.NoError(t, volume.Insert(t.Context()))
 
 	jsonBody, err = json.Marshal(v)
 	assert.NoError(t, err)
@@ -739,7 +786,7 @@ func TestModifyVolumeHandler(t *testing.T) {
 		Size:             64,
 		AvailabilityZone: evergreen.DefaultEBSAvailabilityZone,
 	}
-	assert.NoError(t, volume.Insert())
+	assert.NoError(t, volume.Insert(t.Context()))
 
 	// parse request
 	opts := &model.VolumeModifyOptions{Size: 20, NewName: "my-favorite-volume"}
@@ -836,7 +883,7 @@ func TestGetVolumesHandler(t *testing.T) {
 		},
 	}
 	for _, volumeToAdd := range volumesToAdd {
-		assert.NoError(t, volumeToAdd.Insert())
+		assert.NoError(t, volumeToAdd.Insert(t.Context()))
 	}
 	assert.NoError(t, h1.Insert(ctx))
 	resp := h.Run(ctx)
@@ -886,7 +933,7 @@ func TestGetVolumeByIDHandler(t *testing.T) {
 		Size:             64,
 		AvailabilityZone: evergreen.DefaultEBSAvailabilityZone,
 	}
-	assert.NoError(t, volume.Insert())
+	assert.NoError(t, volume.Insert(t.Context()))
 	assert.NoError(t, h1.Insert(ctx))
 	r, err := http.NewRequest(http.MethodGet, "/volumes/volume1", nil)
 	assert.NoError(t, err)

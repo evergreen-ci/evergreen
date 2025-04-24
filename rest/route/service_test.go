@@ -91,7 +91,7 @@ func TestHostPaginator(t *testing.T) {
 				" a full next and previous page and a full set of models", func() {
 				hostToStartAt := 100
 				limit := 100
-				expectedHosts := []interface{}{}
+				expectedHosts := []any{}
 				for i := hostToStartAt; i < hostToStartAt+limit; i++ {
 					prefix := int(math.Log10(float64(i)))
 					if i == 0 {
@@ -146,7 +146,7 @@ func TestHostPaginator(t *testing.T) {
 				" a limited next and full previous page and a full set of models", func() {
 				hostToStartAt := 150
 				limit := 100
-				expectedHosts := []interface{}{}
+				expectedHosts := []any{}
 				for i := hostToStartAt; i < hostToStartAt+limit; i++ {
 					prefix := int(math.Log10(float64(i)))
 					if i == 0 {
@@ -202,7 +202,7 @@ func TestHostPaginator(t *testing.T) {
 				" a full next and a limited previous page and a full set of models", func() {
 				hostToStartAt := 50
 				limit := 100
-				expectedHosts := []interface{}{}
+				expectedHosts := []any{}
 				for i := hostToStartAt; i < hostToStartAt+limit; i++ {
 					prefix := int(math.Log10(float64(i)))
 					if i == 0 {
@@ -257,7 +257,7 @@ func TestHostPaginator(t *testing.T) {
 				" page and a full set of models", func() {
 				hostToStartAt := 0
 				limit := 100
-				expectedHosts := []interface{}{}
+				expectedHosts := []any{}
 				for i := hostToStartAt; i < hostToStartAt+limit; i++ {
 					prefix := int(math.Log10(float64(i)))
 					if i == 0 {
@@ -326,7 +326,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 			Id:         projectId,
 			Identifier: projectName,
 		}
-		assert.NoError(t, p.Insert())
+		assert.NoError(t, p.Insert(t.Context()))
 		Convey("and there are tasks to be found", func() {
 			cachedTasks := []task.Task{}
 			for i := 0; i < numTasks; i++ {
@@ -343,14 +343,14 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 				cachedTasks = append(cachedTasks, nextTask)
 			}
 			for _, cachedTask := range cachedTasks {
-				err := db.Insert(task.Collection, cachedTask)
+				err := db.Insert(t.Context(), task.Collection, cachedTask)
 				So(err, ShouldBeNil)
 			}
 			Convey("then finding a key in the middle of the set should produce"+
 				" a full next and previous page and a full set of models", func() {
 				taskToStartAt := 100
 				limit := 100
-				expectedTasks := []interface{}{}
+				expectedTasks := []any{}
 				for i := taskToStartAt; i < taskToStartAt+limit; i++ {
 					prefix := int(math.Log10(float64(i)))
 					if i == 0 {
@@ -392,7 +392,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 				" a limited next and full previous page and a full set of models", func() {
 				taskToStartAt := 150
 				limit := 100
-				expectedTasks := []interface{}{}
+				expectedTasks := []any{}
 				for i := taskToStartAt; i < taskToStartAt+limit; i++ {
 					prefix := int(math.Log10(float64(i)))
 					if i == 0 {
@@ -439,7 +439,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 				" a full next and a limited previous page and a full set of models", func() {
 				taskToStartAt := 50
 				limit := 100
-				expectedTasks := []interface{}{}
+				expectedTasks := []any{}
 				for i := taskToStartAt; i < taskToStartAt+limit; i++ {
 					prefix := int(math.Log10(float64(i)))
 					if i == 0 {
@@ -482,7 +482,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 				" page and a full set of models", func() {
 				taskToStartAt := 0
 				limit := 100
-				expectedTasks := []interface{}{}
+				expectedTasks := []any{}
 				for i := taskToStartAt; i < taskToStartAt+limit; i++ {
 					prefix := int(math.Log10(float64(i)))
 					if i == 0 {
@@ -585,7 +585,7 @@ func TestTaskByBuildPaginator(t *testing.T) {
 				nextTask := task.Task{
 					Id: fmt.Sprintf("%dbuild%d", prefix, i),
 				}
-				So(db.Insert(task.Collection, nextTask), ShouldBeNil)
+				So(db.Insert(t.Context(), task.Collection, nextTask), ShouldBeNil)
 			}
 			for i := 0; i < 5; i++ {
 				prefix := int(math.Log10(float64(i)))
@@ -597,14 +597,14 @@ func TestTaskByBuildPaginator(t *testing.T) {
 					OldTaskId: "0build0",
 					Execution: i,
 				}
-				So(db.Insert(task.OldCollection, nextTask), ShouldBeNil)
+				So(db.Insert(t.Context(), task.OldCollection, nextTask), ShouldBeNil)
 				cachedOldTasks = append(cachedOldTasks, nextTask)
 			}
 			Convey("then finding a key in the middle of the set should produce"+
 				" a full next and previous page and a full set of models", func() {
 				taskToStartAt := 100
 				limit := 100
-				expectedTasks := []interface{}{}
+				expectedTasks := []any{}
 				for i := taskToStartAt; i < taskToStartAt+limit; i++ {
 					prefix := int(math.Log10(float64(i)))
 					if i == 0 {
@@ -648,7 +648,7 @@ func TestTaskByBuildPaginator(t *testing.T) {
 				" a limited next and full previous page and a full set of models", func() {
 				taskToStartAt := 150
 				limit := 100
-				expectedTasks := []interface{}{}
+				expectedTasks := []any{}
 				for i := taskToStartAt; i < taskToStartAt+limit; i++ {
 					prefix := int(math.Log10(float64(i)))
 					if i == 0 {
@@ -692,7 +692,7 @@ func TestTaskByBuildPaginator(t *testing.T) {
 				" a full next and a limited previous page and a full set of models", func() {
 				taskToStartAt := 50
 				limit := 100
-				expectedTasks := []interface{}{}
+				expectedTasks := []any{}
 				for i := taskToStartAt; i < taskToStartAt+limit; i++ {
 					prefix := int(math.Log10(float64(i)))
 					if i == 0 {
@@ -736,7 +736,7 @@ func TestTaskByBuildPaginator(t *testing.T) {
 				" page and a full set of models", func() {
 				taskToStartAt := 0
 				limit := 100
-				expectedTasks := []interface{}{}
+				expectedTasks := []any{}
 				for i := taskToStartAt; i < taskToStartAt+limit; i++ {
 					prefix := int(math.Log10(float64(i)))
 					if i == 0 {
@@ -776,7 +776,7 @@ func TestTaskByBuildPaginator(t *testing.T) {
 			})
 
 			Convey("pagination with tasks with previous executions", func() {
-				expectedTasks := []interface{}{}
+				expectedTasks := []any{}
 				serviceModel := &task.Task{
 					Id: "0build0",
 				}
@@ -920,9 +920,9 @@ func TestTaskExecutionPatchExecute(t *testing.T) {
 			Activated: false,
 			Priority:  10,
 		}
-		So(testTask.Insert(), ShouldBeNil)
-		So(version.Insert(), ShouldBeNil)
-		So(build.Insert(), ShouldBeNil)
+		So(testTask.Insert(t.Context()), ShouldBeNil)
+		So(version.Insert(t.Context()), ShouldBeNil)
+		So(build.Insert(t.Context()), ShouldBeNil)
 		ctx := context.Background()
 		Convey("then setting priority should change it's priority", func() {
 			act := true
@@ -1052,8 +1052,8 @@ func TestTaskGetHandler(t *testing.T) {
 				Id:        "testTaskId_0",
 				OldTaskId: "testTaskId",
 			}
-			So(db.Insert(task.Collection, newTask), ShouldBeNil)
-			So(db.Insert(task.OldCollection, oldTask), ShouldBeNil)
+			So(db.Insert(t.Context(), task.Collection, newTask), ShouldBeNil)
+			So(db.Insert(t.Context(), task.OldCollection, oldTask), ShouldBeNil)
 
 			app := gimlet.NewApp()
 			app.SetPrefix("rest")
@@ -1124,7 +1124,7 @@ func TestTaskResetExecute(t *testing.T) {
 			Version:      "v1",
 			Status:       evergreen.TaskSucceeded,
 		}
-		So(testTask.Insert(), ShouldBeNil)
+		So(testTask.Insert(t.Context()), ShouldBeNil)
 
 		testTask2 := task.Task{
 			Id:           "testTaskId2",
@@ -1135,7 +1135,7 @@ func TestTaskResetExecute(t *testing.T) {
 			Version:      "v1",
 			Status:       evergreen.TaskFailed,
 		}
-		So(testTask2.Insert(), ShouldBeNil)
+		So(testTask2.Insert(t.Context()), ShouldBeNil)
 
 		testTask3 := task.Task{
 			Id:           "testTaskId3",
@@ -1146,7 +1146,7 @@ func TestTaskResetExecute(t *testing.T) {
 			Version:      "v1",
 			Status:       evergreen.TaskSucceeded,
 		}
-		So(testTask3.Insert(), ShouldBeNil)
+		So(testTask3.Insert(t.Context()), ShouldBeNil)
 
 		displayTask := &task.Task{
 			Id:             "displayTask",
@@ -1159,12 +1159,12 @@ func TestTaskResetExecute(t *testing.T) {
 			Status:         evergreen.TaskFailed,
 			DispatchTime:   time.Now(),
 		}
-		So(displayTask.Insert(), ShouldBeNil)
+		So(displayTask.Insert(t.Context()), ShouldBeNil)
 
 		v := &serviceModel.Version{Id: "v1"}
-		So(v.Insert(), ShouldBeNil)
+		So(v.Insert(t.Context()), ShouldBeNil)
 		b := build.Build{Id: "b0", Version: "v1", Activated: true}
-		So(b.Insert(), ShouldBeNil)
+		So(b.Insert(t.Context()), ShouldBeNil)
 
 		ctx := context.Background()
 		Convey("and an error from the service function", func() {
@@ -1177,7 +1177,7 @@ func TestTaskResetExecute(t *testing.T) {
 				Version:      "v1",
 				Status:       evergreen.TaskStarted,
 			}
-			So(testTask4.Insert(), ShouldBeNil)
+			So(testTask4.Insert(t.Context()), ShouldBeNil)
 			trh := &taskRestartHandler{
 				taskId:   "testTaskId4",
 				username: "testUser",
@@ -1258,10 +1258,10 @@ func TestParentTaskInfo(t *testing.T) {
 		BuildId: buildID,
 	}
 
-	assert.NoError(t, displayTask.Insert())
-	assert.NoError(t, execTask0.Insert())
-	assert.NoError(t, execTask1.Insert())
-	assert.NoError(t, randomTask.Insert())
+	assert.NoError(t, displayTask.Insert(t.Context()))
+	assert.NoError(t, execTask0.Insert(t.Context()))
+	assert.NoError(t, execTask1.Insert(t.Context()))
+	assert.NoError(t, randomTask.Insert(t.Context()))
 	tbh := &tasksByBuildHandler{
 		limit: 100,
 		url:   "http://evergreen.example.net",
@@ -1276,7 +1276,7 @@ func TestParentTaskInfo(t *testing.T) {
 	assert.True(t, tbh.fetchParentIds)
 
 	resp := tbh.Run(ctx)
-	data, ok := resp.Data().([]interface{})
+	data, ok := resp.Data().([]any)
 	assert.True(t, ok)
 	assert.Len(t, data, 3)
 
@@ -1305,7 +1305,7 @@ func TestOptionsRequest(t *testing.T) {
 
 }
 
-func validatePaginatedResponse(t *testing.T, h gimlet.RouteHandler, expected []interface{}, pages *gimlet.ResponsePages) {
+func validatePaginatedResponse(t *testing.T, h gimlet.RouteHandler, expected []any, pages *gimlet.ResponsePages) {
 	require.NotNil(t, h)
 	require.NotNil(t, pages)
 
@@ -1332,7 +1332,7 @@ func validatePaginatedResponse(t *testing.T, h gimlet.RouteHandler, expected []i
 
 	assert.EqualValues(t, pages, rpg)
 
-	data, ok := resp.Data().([]interface{})
+	data, ok := resp.Data().([]any)
 	assert.True(t, ok)
 
 	if !assert.Equal(t, len(expected), len(data)) {

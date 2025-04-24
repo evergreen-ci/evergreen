@@ -15,7 +15,7 @@ import (
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
-	"github.com/google/go-github/v52/github"
+	"github.com/google/go-github/v70/github"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -34,19 +34,19 @@ func ValidatePatchID(patchId string) error {
 
 // FindPatchesByProject uses the service layer's patches type to query the backing database for
 // the patches.
-func FindPatchesByProject(projectId string, ts time.Time, limit int) ([]restModel.APIPatch, error) {
+func FindPatchesByProject(ctx context.Context, projectId string, ts time.Time, limit int) ([]restModel.APIPatch, error) {
 	apiPatches := []restModel.APIPatch{}
-	id, err := model.GetIdForProject(projectId)
+	id, err := model.GetIdForProject(ctx, projectId)
 	if err != nil {
 		return nil, errors.Wrapf(err, "fetching project '%s'", projectId)
 	}
-	patches, err := patch.Find(patch.PatchesByProject(id, ts, limit))
+	patches, err := patch.Find(ctx, patch.PatchesByProject(id, ts, limit))
 	if err != nil {
 		return nil, errors.Wrapf(err, "fetching patches for project '%s'", id)
 	}
 	for _, p := range patches {
 		apiPatch := restModel.APIPatch{}
-		err = apiPatch.BuildFromService(p, &restModel.APIPatchArgs{
+		err = apiPatch.BuildFromService(ctx, p, &restModel.APIPatchArgs{
 			IncludeProjectIdentifier: true,
 			IncludeChildPatches:      true,
 		})
@@ -60,12 +60,12 @@ func FindPatchesByProject(projectId string, ts time.Time, limit int) ([]restMode
 }
 
 // FindPatchById queries the backing database for the patch matching patchId.
-func FindPatchById(patchId string) (*restModel.APIPatch, error) {
+func FindPatchById(ctx context.Context, patchId string) (*restModel.APIPatch, error) {
 	if err := ValidatePatchID(patchId); err != nil {
 		return nil, errors.WithStack(err)
 	}
 
-	p, err := patch.FindOneId(patchId)
+	p, err := patch.FindOneId(ctx, patchId)
 	if err != nil {
 		return nil, err
 	}
@@ -77,9 +77,10 @@ func FindPatchById(patchId string) (*restModel.APIPatch, error) {
 	}
 
 	apiPatch := restModel.APIPatch{}
-	err = apiPatch.BuildFromService(*p, &restModel.APIPatchArgs{
+	err = apiPatch.BuildFromService(ctx, *p, &restModel.APIPatchArgs{
 		IncludeChildPatches:      true,
 		IncludeProjectIdentifier: true,
+		IncludeBranch:            true,
 	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "converting patch '%s' to API model", p.Id.Hex())
@@ -95,7 +96,7 @@ func AbortPatch(ctx context.Context, patchId string, user string) error {
 		return errors.WithStack(err)
 	}
 
-	p, err := patch.FindOne(patch.ById(mgobson.ObjectIdHex(patchId)))
+	p, err := patch.FindOne(ctx, patch.ById(mgobson.ObjectIdHex(patchId)))
 	if err != nil {
 		return err
 	}
@@ -110,14 +111,14 @@ func AbortPatch(ctx context.Context, patchId string, user string) error {
 
 // SetPatchActivated attempts to activate the patch and create a new version (if activated is set to true)
 func SetPatchActivated(ctx context.Context, patchId string, user string, activated bool, settings *evergreen.Settings) error {
-	p, err := patch.FindOne(patch.ById(mgobson.ObjectIdHex(patchId)))
+	p, err := patch.FindOne(ctx, patch.ById(mgobson.ObjectIdHex(patchId)))
 	if err != nil {
 		return err
 	}
 	if p == nil {
 		return errors.Errorf("could not find patch '%s'", patchId)
 	}
-	err = p.SetActivation(activated)
+	err = p.SetActivation(ctx, activated)
 	if err != nil {
 		return err
 	}
@@ -151,15 +152,15 @@ func SetPatchActivated(ctx context.Context, patchId string, user string, activat
 }
 
 // FindPatchesByUser finds patches for the input user as ordered by creation time
-func FindPatchesByUser(user string, ts time.Time, limit int) ([]restModel.APIPatch, error) {
-	patches, err := patch.Find(patch.ByUserPaginated(user, ts, limit))
+func FindPatchesByUser(ctx context.Context, user string, ts time.Time, limit int) ([]restModel.APIPatch, error) {
+	patches, err := patch.Find(ctx, patch.ByUserPaginated(user, ts, limit))
 	if err != nil {
 		return nil, errors.Wrapf(err, "fetching patches for user '%s'", user)
 	}
 	apiPatches := []restModel.APIPatch{}
 	for _, p := range patches {
 		apiPatch := restModel.APIPatch{}
-		err = apiPatch.BuildFromService(p, &restModel.APIPatchArgs{
+		err = apiPatch.BuildFromService(ctx, p, &restModel.APIPatchArgs{
 			IncludeProjectIdentifier: true,
 			IncludeChildPatches:      true,
 		})
@@ -193,8 +194,8 @@ func AbortPatchesFromPullRequest(ctx context.Context, event *github.PullRequestE
 }
 
 // GetRawPatches fetches the raw patches for a patch.
-func GetRawPatches(patchID string) (*restModel.APIRawPatch, error) {
-	patchDoc, err := patch.FindOneId(patchID)
+func GetRawPatches(ctx context.Context, patchID string) (*restModel.APIRawPatch, error) {
+	patchDoc, err := patch.FindOneId(ctx, patchID)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -208,7 +209,7 @@ func GetRawPatches(patchID string) (*restModel.APIRawPatch, error) {
 		}
 	}
 
-	if err = patchDoc.FetchPatchFiles(); err != nil {
+	if err = patchDoc.FetchPatchFiles(ctx); err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrap(err, "getting patch contents").Error(),

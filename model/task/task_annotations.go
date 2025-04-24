@@ -21,7 +21,7 @@ func MoveIssueToSuspectedIssue(ctx context.Context, taskId string, taskExecution
 	q := annotations.ByTaskIdAndExecution(taskId, taskExecution)
 	q[bsonutil.GetDottedKeyName(annotations.IssuesKey, annotations.IssueLinkIssueKey)] = issue.IssueKey
 	annotation := &annotations.TaskAnnotation{}
-	_, err := db.FindAndModify(
+	_, err := db.FindAndModify(ctx,
 		annotations.Collection,
 		q,
 		nil,
@@ -50,7 +50,8 @@ func MoveSuspectedIssueToIssue(ctx context.Context, taskId string, taskExecution
 	newIssue.Source = &annotations.Source{Requester: annotations.UIRequester, Author: username, Time: time.Now()}
 	q := annotations.ByTaskIdAndExecution(taskId, taskExecution)
 	q[bsonutil.GetDottedKeyName(annotations.SuspectedIssuesKey, annotations.IssueLinkIssueKey)] = issue.IssueKey
-	if err := db.Update(
+	if err := db.UpdateContext(
+		ctx,
 		annotations.Collection,
 		q,
 		bson.M{
@@ -72,6 +73,7 @@ func AddIssueToAnnotation(ctx context.Context, taskId string, execution int, iss
 		Requester: annotations.UIRequester,
 	}
 	if _, err := db.Upsert(
+		ctx,
 		annotations.Collection,
 		annotations.ByTaskIdAndExecution(taskId, execution),
 		bson.M{
@@ -87,7 +89,7 @@ func AddIssueToAnnotation(ctx context.Context, taskId string, execution int, iss
 // associated task document as having annotations if this was the last issue removed from the annotation.
 func RemoveIssueFromAnnotation(ctx context.Context, taskId string, execution int, issue annotations.IssueLink) error {
 	annotation := &annotations.TaskAnnotation{}
-	_, err := db.FindAndModify(
+	_, err := db.FindAndModify(ctx,
 		annotations.Collection,
 		annotations.ByTaskIdAndExecution(taskId, execution),
 		nil,
@@ -145,6 +147,7 @@ func UpsertAnnotation(ctx context.Context, a *annotations.TaskAnnotation, userDi
 		return nil
 	}
 	if _, err := db.Upsert(
+		ctx,
 		annotations.Collection,
 		annotations.ByTaskIdAndExecution(a.TaskId, a.TaskExecution),
 		bson.M{
@@ -165,7 +168,7 @@ func UpsertAnnotation(ctx context.Context, a *annotations.TaskAnnotation, userDi
 // PatchAnnotation adds issues onto existing annotations, and marks its associated task document
 // as having annotations if the patch includes a non-nil Issues field.
 func PatchAnnotation(ctx context.Context, a *annotations.TaskAnnotation, userDisplayName string, upsert bool) error {
-	existingAnnotation, err := annotations.FindOneByTaskIdAndExecution(a.TaskId, a.TaskExecution)
+	existingAnnotation, err := annotations.FindOneByTaskIdAndExecution(ctx, a.TaskId, a.TaskExecution)
 	if err != nil {
 		return errors.Wrapf(err, "finding annotation for task '%s' and execution %d", a.TaskId, a.TaskExecution)
 	}
@@ -190,7 +193,8 @@ func PatchAnnotation(ctx context.Context, a *annotations.TaskAnnotation, userDis
 		return nil
 	}
 
-	if err = db.Update(
+	if err = db.UpdateContext(
+		ctx,
 		annotations.Collection,
 		annotations.ByTaskIdAndExecution(a.TaskId, a.TaskExecution),
 		bson.M{

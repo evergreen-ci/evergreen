@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
@@ -8,12 +9,19 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"time"
 
+	"github.com/evergreen-ci/evergreen/agent/globals"
+	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
+	"github.com/shirou/gopsutil/v3/disk"
 )
 
 // createTaskDirectory makes a directory for the agent to execute the current
@@ -22,17 +30,12 @@ import (
 // a new task directory based on the current task data.
 func (a *Agent) createTaskDirectory(tc *taskContext, taskDir string) (string, error) {
 	if taskDir == "" {
-		h := md5.New()
-
-		_, err := h.Write([]byte(
-			fmt.Sprintf("%s_%d_%d", tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution, os.Getpid())))
+		var err error
+		taskDir, err = a.generateTaskDirectoryName(tc)
 		if err != nil {
-			tc.logger.Execution().Error(errors.Wrap(err, "creating task directory name"))
+			tc.logger.Execution().Error(errors.Wrap(err, "generating task directory name"))
 			return "", err
 		}
-
-		dirName := hex.EncodeToString(h.Sum(nil))
-		taskDir = filepath.Join(a.opts.WorkingDirectory, dirName)
 	}
 
 	tc.logger.Execution().Infof("Making task directory '%s' for task execution.", taskDir)
@@ -52,11 +55,83 @@ func (a *Agent) createTaskDirectory(tc *taskContext, taskDir string) (string, er
 	return taskDir, nil
 }
 
-// removeTaskDirectory removes the folder the agent created for the task it
-// was executing. It does not return an error because it is executed at the end of
-// a task run, and the agent loop will start another task regardless of how this
-// exits.
-func (a *Agent) removeTaskDirectory(tc *taskContext) {
+// generateTaskDirectoryName generates a task directory path. Typically, this is
+// in the format: <agent_working_directory>/<hash>.
+//
+// On Windows hosts, the hash portion is shorter than on other distros because
+// it has a max file path length. Having a long task directory's path can cause
+// issues for some tasks that have deep paths that hit the Windows path length
+// limit. Shortening the typical 32-character directory name reduces the
+// problem.
+func (a *Agent) generateTaskDirectoryName(tc *taskContext) (string, error) {
+	dirName, err := a.generateTaskDirectoryHash(fmt.Sprintf("%s_%d_%d", tc.taskConfig.Task.Id, tc.taskConfig.Task.Execution, os.Getpid()))
+	if err != nil {
+		return "", errors.Wrap(err, "generating hash for randomized task directory")
+	}
+
+	taskDirPath := filepath.Join(a.opts.WorkingDirectory, dirName)
+	if runtime.GOOS != "windows" {
+		return taskDirPath, nil
+	}
+
+	// On Windows, the task directory path's hash is shortened due to max path
+	// length limits. Reducing the length of the hash also creates a new
+	// potential issue by reducing the randomness of the task directory path. If
+	// the agent fails to clean up task directories (ideally shouldn't happen,
+	// but this does unfortunately happen sometimes in practice), then the agent
+	// runs the risk of reusing a directory from a previous unrelated task. To
+	// guard against this, check if the directory already exists.
+	if !utility.FileExists(taskDirPath) {
+		return taskDirPath, nil
+	}
+
+	// If the initially proposed shortened task directory already exists, try to
+	// generate a new task directory. Practically, it's unlikely that it would
+	// generate a colliding hash 10 times, this just puts a reasonable bound on
+	// the maximum number of attempts.
+	const maxAttempts = 10
+	for i := 0; i < maxAttempts; i++ {
+		dirName, err = a.generateTaskDirectoryHash(dirName)
+		if err != nil {
+			return "", errors.Wrapf(err, "writing hash for randomized task directory (attempt %d/%d)", i+1, maxAttempts)
+		}
+
+		taskDirPath := filepath.Join(a.opts.WorkingDirectory, dirName)
+		if !utility.FileExists(taskDirPath) {
+			return taskDirPath, nil
+		}
+	}
+
+	return "", errors.Errorf("failed to generate a unique task directory after %d attempts", maxAttempts)
+}
+
+// generateTaskDirectoryHash generates a hashed string for a task directory.
+func (a *Agent) generateTaskDirectoryHash(toHash string) (string, error) {
+	h := md5.New()
+	if _, err := h.Write([]byte(toHash)); err != nil {
+		return "", errors.Wrap(err, "writing task directory hash")
+	}
+
+	md5Sum := h.Sum(nil)
+	dirName := hex.EncodeToString(md5Sum)
+
+	if runtime.GOOS != "windows" {
+		return dirName, nil
+	}
+
+	// On Windows, the agent has to use a shorter task working directory due to
+	// max file path length limitations. To accommodate this, try shortening the
+	// long hash.
+	const maxWindowsHashLength = 4
+	return dirName[:maxWindowsHashLength], nil
+}
+
+// removeTaskDirectory removes the folder the agent created for the task it was
+// executing. It does not return an error because it is executed at the end of a
+// task run, and the agent loop will start another task regardless of how this
+// exits. If it cannot remove the task directory, the agent may disable the host
+// because leaving the task directory behind could impact later tasks.
+func (a *Agent) removeTaskDirectory(ctx context.Context, tc *taskContext) {
 	if tc.taskConfig == nil || tc.taskConfig.WorkDir == "" {
 		grip.Info("Task directory is not set, not removing.")
 		return
@@ -73,12 +148,34 @@ func (a *Agent) removeTaskDirectory(tc *taskContext) {
 		grip.Critical(errors.Wrapf(err, "getting absolute path for task directory '%s'", dir))
 		return
 	}
-	err = a.removeAll(abs)
-	grip.Critical(errors.Wrapf(err, "removing task directory '%s'", dir))
-	grip.InfoWhen(err == nil, message.Fields{
-		"message":   "Successfully deleted directory for completed task.",
-		"directory": tc.taskConfig.WorkDir,
-	})
+	if err := a.removeAllAndCheck(ctx, abs); err != nil {
+		grip.Critical(errors.Wrapf(err, "removing task directory '%s'", dir))
+	} else {
+		grip.Info(message.Fields{
+			"message":   "Successfully deleted directory for completed task.",
+			"directory": tc.taskConfig.WorkDir,
+		})
+	}
+}
+
+// removeAllAndCheck removes the directory and checks the data directory
+// usage afterwards. If the data directory is unhealthy, the host is disabled.
+func (a *Agent) removeAllAndCheck(ctx context.Context, dir string) error {
+	removeErr := a.removeAll(dir)
+	if removeErr == nil {
+		return nil
+	}
+
+	checkCtx, checkCancel := context.WithTimeout(ctx, time.Minute)
+	defer checkCancel()
+	if err := a.checkDataDirectoryHealth(checkCtx); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":               "failed to check data directory usage",
+			"unremovable_directory": dir,
+		}))
+	}
+
+	return removeErr
 }
 
 // removeAll is the same as os.RemoveAll, but recursively changes permissions
@@ -113,7 +210,7 @@ func (a *Agent) removeAll(dir string) error {
 // management, and only attempts to clean up the agent's working
 // directory, so files not located in a directory may still cause
 // issues.
-func (a *Agent) tryCleanupDirectory(dir string) {
+func (a *Agent) tryCleanupDirectory(ctx context.Context, dir string) {
 	defer recovery.LogStackTraceAndContinue("clean up directories")
 
 	if dir == "" {
@@ -174,10 +271,27 @@ func (a *Agent) tryCleanupDirectory(dir string) {
 
 	grip.Infof("Attempting to clean up directory '%s'.", dir)
 	for _, p := range paths {
-		if err = a.removeAll(p); err != nil {
-			grip.Notice(errors.Wrapf(err, "removing path '%s'", p))
+		if err = a.removeAllAndCheck(ctx, p); err != nil {
+			grip.Critical(errors.Wrapf(err, "removing path '%s'", p))
 		}
 	}
+}
+
+func (a *Agent) checkDataDirectoryHealth(ctx context.Context) error {
+	usage, err := disk.UsageWithContext(ctx, a.opts.WorkingDirectory)
+	if err != nil {
+		return errors.Wrap(err, "getting disk usage")
+	}
+	if usage.UsedPercent > globals.MaxPercentageDataVolumeUsage {
+		err := a.comm.DisableHost(ctx, a.opts.HostID, apimodels.DisableInfo{
+			Reason: fmt.Sprintf("data directory usage (%f%%) is too high to run a new task", usage.UsedPercent),
+		})
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // SetHomeDirectory sets the agent's home directory to the user's home directory
@@ -187,10 +301,10 @@ func (a *Agent) SetHomeDirectory() {
 		return
 	}
 
-	homeDir, err := os.UserHomeDir()
+	userHome, err := util.GetUserHome()
 	if err != nil {
-		grip.Warning(errors.Wrap(err, "getting home directory"))
-		return
+		grip.Warning(errors.Wrap(err, "setting the agent's home directory"))
 	}
-	a.opts.HomeDirectory = homeDir
+
+	a.opts.HomeDirectory = userHome
 }

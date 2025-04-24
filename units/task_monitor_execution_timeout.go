@@ -145,14 +145,14 @@ func (j *taskExecutionTimeoutJob) Run(ctx context.Context) {
 func (j *taskExecutionTimeoutJob) cleanUpTimedOutTask(ctx context.Context) error {
 	if j.task.IsContainerTask() {
 		if j.task.PodID != "" {
-			foundPod, err := pod.FindOneByID(j.task.PodID)
+			foundPod, err := pod.FindOneByID(ctx, j.task.PodID)
 			if err != nil {
 				return errors.Wrapf(err, "finding pod '%s' for task '%s'", j.task.PodID, j.task.Id)
 			}
 			if foundPod == nil {
 				return errors.Errorf("pod '%s' not found for task '%s'", j.task.PodID, j.task.Id)
 			}
-			if err = foundPod.ClearRunningTask(); err != nil {
+			if err = foundPod.ClearRunningTask(ctx); err != nil {
 				return errors.Wrapf(err, "clearing running task from pod '%s'", foundPod.ID)
 			}
 			if err := amboy.EnqueueUniqueJob(ctx, j.env.RemoteQueue(), NewPodHealthCheckJob(j.task.PodID, utility.RoundPartOfHour(0))); err != nil {

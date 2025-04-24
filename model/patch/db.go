@@ -153,7 +153,7 @@ var requesterExpression = bson.M{
 			{
 				"case": bson.M{
 					"$and": []bson.M{
-						{"$ifNull": []interface{}{"$" + githubPatchDataKey, false}},
+						{"$ifNull": []any{"$" + githubPatchDataKey, false}},
 						{"$ne": []string{"$" + bsonutil.GetDottedKeyName(githubPatchDataKey, githubPatchHeadOwnerKey), ""}},
 					},
 				},
@@ -162,7 +162,7 @@ var requesterExpression = bson.M{
 			{
 				"case": bson.M{
 					"$and": []bson.M{
-						{"$ifNull": []interface{}{"$" + githubMergeDataKey, false}},
+						{"$ifNull": []any{"$" + githubMergeDataKey, false}},
 						{"$ne": []string{"$" + bsonutil.GetDottedKeyName(githubMergeDataKey, githubMergeGroupHeadSHAKey), ""}},
 					},
 				},
@@ -307,42 +307,42 @@ var ExcludePatchDiff = bson.M{
 // Query Functions
 
 // FindOne runs a patch query, returning one patch.
-func FindOne(query db.Q) (*Patch, error) {
+func FindOne(ctx context.Context, query db.Q) (*Patch, error) {
 	patch := &Patch{}
-	err := db.FindOneQ(Collection, query, patch)
+	err := db.FindOneQContext(ctx, Collection, query, patch)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
 	return patch, err
 }
 
-func FindOneId(id string) (*Patch, error) {
+func FindOneId(ctx context.Context, id string) (*Patch, error) {
 	if !IsValidId(id) {
 		return nil, errors.Errorf("'%s' is not a valid ObjectId", id)
 	}
-	return FindOne(ByStringId(id))
+	return FindOne(ctx, ByStringId(id))
 }
 
 // Find runs a patch query, returning all patches that satisfy the query.
-func Find(query db.Q) ([]Patch, error) {
+func Find(ctx context.Context, query db.Q) ([]Patch, error) {
 	patches := []Patch{}
-	err := db.FindAllQ(Collection, query, &patches)
+	err := db.FindAllQ(ctx, Collection, query, &patches)
 	return patches, err
 }
 
 // Remove removes all patch documents that satisfy the query.
-func Remove(query db.Q) error {
-	return db.RemoveAllQ(Collection, query)
+func Remove(ctx context.Context, query db.Q) error {
+	return db.RemoveAllQ(ctx, Collection, query)
 }
 
 // UpdateAll runs an update on all patch documents.
-func UpdateAll(query interface{}, update interface{}) (info *adb.ChangeInfo, err error) {
-	return db.UpdateAll(Collection, query, update)
+func UpdateAll(ctx context.Context, query any, update any) (info *adb.ChangeInfo, err error) {
+	return db.UpdateAllContext(ctx, Collection, query, update)
 }
 
 // UpdateOne runs an update on a single patch document.
-func UpdateOne(query interface{}, update interface{}) error {
-	return db.Update(Collection, query, update)
+func UpdateOne(ctx context.Context, query any, update any) error {
+	return db.UpdateContext(ctx, Collection, query, update)
 }
 
 // PatchesByProject builds a query for patches that match the given
@@ -369,22 +369,22 @@ func ByGithubPRAndCreatedBefore(t time.Time, owner, repo string, prNumber int) d
 
 // ConsolidatePatchesForUser updates all patches authored by oldAuthor to be authored by newAuthor,
 // and if any patches have been authored by the new author already, update the patch numbers to come after the new author.
-func ConsolidatePatchesForUser(oldAuthor string, newUsr *user.DBUser) error {
+func ConsolidatePatchesForUser(ctx context.Context, oldAuthor string, newUsr *user.DBUser) error {
 
 	// It's not likely that the user would've already created patches for the new user, but if there are any, make
 	// sure that they don't have overlapping patch numbers.
-	patchesForNewAuthor, err := Find(db.Query(byUser(newUsr.Id)))
+	patchesForNewAuthor, err := Find(ctx, db.Query(byUser(newUsr.Id)))
 	if err != nil {
 		return errors.Wrapf(err, "finding existing patches for '%s'", newUsr.Id)
 	}
 	if len(patchesForNewAuthor) > 0 {
 		for _, p := range patchesForNewAuthor {
-			patchNum, err := newUsr.IncPatchNumber()
+			patchNum, err := newUsr.IncPatchNumber(ctx)
 			if err != nil {
 				return errors.Wrap(err, "incrementing patch number to resolve existing patches")
 			}
 			update := bson.M{"$set": bson.M{NumberKey: patchNum}}
-			if err := UpdateOne(bson.M{IdKey: p.Id}, update); err != nil {
+			if err := UpdateOne(ctx, bson.M{IdKey: p.Id}, update); err != nil {
 				return errors.Wrap(err, "updating patch number")
 			}
 		}
@@ -394,13 +394,13 @@ func ConsolidatePatchesForUser(oldAuthor string, newUsr *user.DBUser) error {
 	update := bson.M{
 		"$set": bson.M{AuthorKey: newUsr.Id},
 	}
-	_, err = UpdateAll(byUser(oldAuthor), update)
+	_, err = UpdateAll(ctx, byUser(oldAuthor), update)
 	return err
 }
 
 // FindLatestGithubPRPatch returns the latest PR patch for the given PR, if there is one.
-func FindLatestGithubPRPatch(owner, repo string, prNumber int) (*Patch, error) {
-	patches, err := Find(db.Query(bson.M{
+func FindLatestGithubPRPatch(ctx context.Context, owner, repo string, prNumber int) (*Patch, error) {
+	patches, err := Find(ctx, db.Query(bson.M{
 		AliasKey: bson.M{"$ne": evergreen.CommitQueueAlias},
 		bsonutil.GetDottedKeyName(githubPatchDataKey, thirdparty.GithubPatchBaseOwnerKey): owner,
 		bsonutil.GetDottedKeyName(githubPatchDataKey, thirdparty.GithubPatchBaseRepoKey):  repo,
@@ -415,8 +415,8 @@ func FindLatestGithubPRPatch(owner, repo string, prNumber int) (*Patch, error) {
 	return &patches[0], nil
 }
 
-func FindProjectForPatch(patchID mgobson.ObjectId) (string, error) {
-	p, err := FindOne(ById(patchID).Project(bson.M{ProjectKey: 1}))
+func FindProjectForPatch(ctx context.Context, patchID mgobson.ObjectId) (string, error) {
+	p, err := FindOne(ctx, ById(patchID).Project(bson.M{ProjectKey: 1}))
 	if err != nil {
 		return "", err
 	}
@@ -427,10 +427,10 @@ func FindProjectForPatch(patchID mgobson.ObjectId) (string, error) {
 }
 
 // GetFinalizedChildPatchIdsForPatch returns patchIds for any finalized children of the given patch.
-func GetFinalizedChildPatchIdsForPatch(patchID string) ([]string, error) {
+func GetFinalizedChildPatchIdsForPatch(ctx context.Context, patchID string) ([]string, error) {
 	withKey := bsonutil.GetDottedKeyName(TriggersKey, TriggerInfoChildPatchesKey)
 	//do the same for child patches
-	p, err := FindOne(ByStringId(patchID).WithFields(withKey))
+	p, err := FindOne(ctx, ByStringId(patchID).WithFields(withKey))
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding patch '%s'", patchID)
 	}
@@ -441,7 +441,7 @@ func GetFinalizedChildPatchIdsForPatch(patchID string) ([]string, error) {
 		return nil, nil
 	}
 
-	childPatches, err := Find(ByStringIds(p.Triggers.ChildPatches).WithFields(VersionKey))
+	childPatches, err := Find(ctx, ByStringIds(p.Triggers.ChildPatches).WithFields(VersionKey))
 	if err != nil {
 		return nil, errors.Wrap(err, "getting child patches")
 	}

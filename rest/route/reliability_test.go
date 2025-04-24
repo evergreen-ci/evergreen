@@ -59,7 +59,7 @@ func truncatedTime(deltaHours time.Duration) time.Time {
 	return time.Now().UTC().Add(deltaHours).Truncate(24 * time.Hour)
 }
 
-func getURL(projectID string, parameters map[string]interface{}) string {
+func getURL(projectID string, parameters map[string]any) string {
 	url := fmt.Sprintf("https://example.net/api/rest/v2/projects/%s/logs/task_reliability", projectID)
 	params := []string{}
 	for key, value := range parameters {
@@ -438,7 +438,7 @@ func TestReliabilityParse(t *testing.T) {
 					err := setupTest(t)
 					require.NoError(t, err)
 
-					url := getURL(projectID, map[string]interface{}{
+					url := getURL(projectID, map[string]any{
 						"tasks":         "aggregation_expression_multiversion_fuzzer",
 						"after_date":    "2019-01-02",
 						"group_by_days": "10",
@@ -482,7 +482,7 @@ func TestReliabilityRun(t *testing.T) {
 	proj := model.ProjectRef{
 		Id: "project",
 	}
-	require.NoError(t, proj.Insert())
+	require.NoError(t, proj.Insert(t.Context()))
 
 	for opName, opTests := range map[string]func(context.Context, *testing.T, evergreen.Environment){
 		"Run": func(paginationContext context.Context, t *testing.T, env evergreen.Environment) {
@@ -521,7 +521,7 @@ func TestReliabilityRun(t *testing.T) {
 
 					require.NotNil(t, resp)
 					require.Equal(t, http.StatusOK, resp.Status())
-					data := resp.Data().([]interface{})
+					data := resp.Data().([]any)
 					require.Empty(t, data)
 					require.Nil(t, resp.Pages())
 				},
@@ -535,7 +535,7 @@ func TestReliabilityRun(t *testing.T) {
 					for i := 0; i < 100; i++ {
 						taskName := fmt.Sprintf("%v%v", "aggregation_expression_multiversion_fuzzer", i)
 						tasks = append(tasks, taskName)
-						err = db.Insert(taskstats.DailyTaskStatsCollection, mgobson.M{
+						err = db.Insert(t.Context(), taskstats.DailyTaskStatsCollection, mgobson.M{
 							"_id": taskstats.DBTaskStatsID{
 								Project:      "project",
 								Requester:    "requester",
@@ -565,7 +565,7 @@ func TestReliabilityRun(t *testing.T) {
 
 					require.NotNil(t, resp)
 					require.Equal(t, http.StatusOK, resp.Status())
-					data := resp.Data().([]interface{})
+					data := resp.Data().([]any)
 					require.Len(t, data, 1)
 					require.NotNil(t, resp.Pages())
 				},
@@ -579,7 +579,7 @@ func TestReliabilityRun(t *testing.T) {
 					for i := 0; i < 1001; i++ {
 						taskName := fmt.Sprintf("%v%v", "aggregation_expression_multiversion_fuzzer", i)
 						tasks = append(tasks, taskName)
-						err = db.Insert(taskstats.DailyTaskStatsCollection, mgobson.M{
+						err = db.Insert(t.Context(), taskstats.DailyTaskStatsCollection, mgobson.M{
 							"_id": taskstats.DBTaskStatsID{
 								Project:      "project",
 								Requester:    "requester",
@@ -609,7 +609,7 @@ func TestReliabilityRun(t *testing.T) {
 
 					require.NotNil(t, resp)
 					require.Equal(t, http.StatusOK, resp.Status())
-					data := resp.Data().([]interface{})
+					data := resp.Data().([]any)
 					require.Len(t, data, handler.filter.StatsFilter.Limit)
 					require.NotNil(t, resp.Pages())
 				},
@@ -629,7 +629,7 @@ func TestReliabilityRun(t *testing.T) {
 					for i := 0; i < 99; i++ {
 						taskName := fmt.Sprintf("%v%v", "aggregation_expression_multiversion_fuzzer", i)
 						tasks = append(tasks, taskName)
-						err = db.Insert(taskstats.DailyTaskStatsCollection, mgobson.M{
+						err = db.Insert(t.Context(), taskstats.DailyTaskStatsCollection, mgobson.M{
 							"_id": taskstats.DBTaskStatsID{
 								Project:      "project",
 								Requester:    "requester",
@@ -658,7 +658,7 @@ func TestReliabilityRun(t *testing.T) {
 
 					require.NotNil(t, resp)
 					require.Equal(t, http.StatusOK, resp.Status())
-					data := resp.Data().([]interface{})
+					data := resp.Data().([]any)
 					require.Len(t, data, handler.filter.StatsFilter.Limit-1)
 					require.Nil(t, resp.Pages())
 				},
@@ -678,7 +678,7 @@ func TestReliabilityRun(t *testing.T) {
 					for i := 0; i < 101; i++ {
 						taskName := fmt.Sprintf("%v%v", "aggregation_expression_multiversion_fuzzer", i)
 						tasks = append(tasks, taskName)
-						err = db.Insert(taskstats.DailyTaskStatsCollection, mgobson.M{
+						err = db.Insert(t.Context(), taskstats.DailyTaskStatsCollection, mgobson.M{
 							"_id": taskstats.DBTaskStatsID{
 								Project:      "project",
 								Requester:    "requester",
@@ -707,10 +707,10 @@ func TestReliabilityRun(t *testing.T) {
 
 					require.NotNil(t, resp)
 					require.Equal(t, http.StatusOK, resp.Status())
-					respData := resp.Data().([]interface{})
+					respData := resp.Data().([]any)
 					require.Len(t, respData, handler.filter.StatsFilter.Limit)
 					require.NotNil(t, resp.Pages())
-					docs, err := data.GetTaskReliabilityScores(handler.filter)
+					docs, err := data.GetTaskReliabilityScores(t.Context(), handler.filter)
 					require.NoError(t, err)
 					require.Equal(t, docs[handler.filter.StatsFilter.Limit-1].StartAtKey(), resp.Pages().Next.Key)
 				},
@@ -763,7 +763,7 @@ func TestReliability(t *testing.T) {
 	proj := model.ProjectRef{
 		Id: "project",
 	}
-	require.NoError(t, proj.Insert())
+	require.NoError(t, proj.Insert(t.Context()))
 
 	for opName, opTests := range map[string]func(context.Context, *testing.T, evergreen.Environment){
 		"Pagination": func(paginationContext context.Context, t *testing.T, env evergreen.Environment) {
@@ -772,7 +772,7 @@ func TestReliability(t *testing.T) {
 				"Less Than One Page": func(ctx context.Context, t *testing.T) {
 					err := setupTest(t)
 					require.NoError(t, err)
-					url := getURL(projectID, map[string]interface{}{
+					url := getURL(projectID, map[string]any{
 						"tasks":         "aggregation_expression_multiversion_fuzzer",
 						"after_date":    "2019-01-02",
 						"group_by_days": "10",
@@ -786,7 +786,7 @@ func TestReliability(t *testing.T) {
 					for i := 0; i < pageSize; i++ {
 						taskName := fmt.Sprintf("%v%v", "aggregation_expression_multiversion_fuzzer", i)
 						tasks = append(tasks, taskName)
-						err = db.Insert(taskstats.DailyTaskStatsCollection, mgobson.M{
+						err = db.Insert(t.Context(), taskstats.DailyTaskStatsCollection, mgobson.M{
 							"_id": taskstats.DBTaskStatsID{
 								Project:      "project",
 								Requester:    "requester",
@@ -821,7 +821,7 @@ func TestReliability(t *testing.T) {
 				"Exactly One Page": func(ctx context.Context, t *testing.T) {
 					err := setupTest(t)
 					require.NoError(t, err)
-					url := getURL(projectID, map[string]interface{}{
+					url := getURL(projectID, map[string]any{
 						"tasks":         "aggregation_expression_multiversion_fuzzer",
 						"after_date":    "2019-01-02",
 						"group_by_days": "10",
@@ -836,7 +836,7 @@ func TestReliability(t *testing.T) {
 					for i := 0; i < pageSize; i++ {
 						taskName := fmt.Sprintf("%v%v", "aggregation_expression_multiversion_fuzzer", i)
 						tasks = append(tasks, taskName)
-						err = db.Insert(taskstats.DailyTaskStatsCollection, mgobson.M{
+						err = db.Insert(t.Context(), taskstats.DailyTaskStatsCollection, mgobson.M{
 							"_id": taskstats.DBTaskStatsID{
 								Project:      "project",
 								Requester:    "requester",
@@ -867,14 +867,14 @@ func TestReliability(t *testing.T) {
 					require.NotNil(t, resp)
 					require.Equal(t, http.StatusOK, resp.Status())
 					require.NotNil(t, resp.Pages())
-					docs, err := data.GetTaskReliabilityScores(handler.filter)
+					docs, err := data.GetTaskReliabilityScores(t.Context(), handler.filter)
 					require.NoError(t, err)
 					require.Equal(t, docs[pageSize-1].StartAtKey(), resp.Pages().Next.Key)
 				},
 				"More Than One Page": func(ctx context.Context, t *testing.T) {
 					err := setupTest(t)
 					require.NoError(t, err)
-					url := getURL(projectID, map[string]interface{}{
+					url := getURL(projectID, map[string]any{
 						"tasks":         "aggregation_expression_multiversion_fuzzer",
 						"after_date":    "2019-01-02",
 						"group_by_days": "10",
@@ -889,7 +889,7 @@ func TestReliability(t *testing.T) {
 					for i := 0; i < pageSize*2; i++ {
 						taskName := fmt.Sprintf("%v%v", "aggregation_expression_multiversion_fuzzer", i)
 						tasks = append(tasks, taskName)
-						err = db.Insert(taskstats.DailyTaskStatsCollection, mgobson.M{
+						err = db.Insert(t.Context(), taskstats.DailyTaskStatsCollection, mgobson.M{
 							"_id": taskstats.DBTaskStatsID{
 								Project:      "project",
 								Requester:    "requester",
@@ -920,7 +920,7 @@ func TestReliability(t *testing.T) {
 					require.NotNil(t, resp)
 					require.Equal(t, http.StatusOK, resp.Status())
 					require.NotNil(t, resp.Pages())
-					docs, err := data.GetTaskReliabilityScores(handler.filter)
+					docs, err := data.GetTaskReliabilityScores(t.Context(), handler.filter)
 					require.NoError(t, err)
 					require.Equal(t, docs[pageSize-1].StartAtKey(), resp.Pages().Next.Key)
 				},

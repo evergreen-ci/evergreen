@@ -28,8 +28,8 @@ func TestLastKnownGoodConfig(t *testing.T) {
 				Requester:  evergreen.RepotrackerVersionRequester,
 				Errors:     []string{"error 1", "error 2"},
 			}
-			require.NoError(t, v.Insert(), "Error inserting test version: %s", v.Id)
-			lastGood, err := FindVersionByLastKnownGoodConfig(identifier, -1)
+			require.NoError(t, v.Insert(t.Context()), "Error inserting test version: %s", v.Id)
+			lastGood, err := FindVersionByLastKnownGoodConfig(t.Context(), identifier, -1)
 			require.NoError(t, err, "error finding last known good")
 			So(lastGood, ShouldBeNil)
 		})
@@ -38,8 +38,8 @@ func TestLastKnownGoodConfig(t *testing.T) {
 				Identifier: identifier,
 				Requester:  evergreen.RepotrackerVersionRequester,
 			}
-			require.NoError(t, v.Insert(), "Error inserting test version: %s", v.Id)
-			lastGood, err := FindVersionByLastKnownGoodConfig(identifier, -1)
+			require.NoError(t, v.Insert(t.Context()), "Error inserting test version: %s", v.Id)
+			lastGood, err := FindVersionByLastKnownGoodConfig(t.Context(), identifier, -1)
 			require.NoError(t, err, "error finding last known good: %s", lastGood.Id)
 			So(lastGood, ShouldNotBeNil)
 		})
@@ -50,14 +50,14 @@ func TestLastKnownGoodConfig(t *testing.T) {
 				Requester:           evergreen.RepotrackerVersionRequester,
 				RevisionOrderNumber: 1,
 			}
-			require.NoError(t, v.Insert(), "Error inserting test version: %s", v.Id)
+			require.NoError(t, v.Insert(t.Context()), "Error inserting test version: %s", v.Id)
 			v.Id = "5"
 			v.RevisionOrderNumber = 5
-			require.NoError(t, v.Insert(), "Error inserting test version: %s", v.Id)
+			require.NoError(t, v.Insert(t.Context()), "Error inserting test version: %s", v.Id)
 			v.Id = "2"
 			v.RevisionOrderNumber = 2
-			require.NoError(t, v.Insert(), "Error inserting test version: %s", v.Id)
-			lastGood, err := FindVersionByLastKnownGoodConfig(identifier, -1)
+			require.NoError(t, v.Insert(t.Context()), "Error inserting test version: %s", v.Id)
+			lastGood, err := FindVersionByLastKnownGoodConfig(t.Context(), identifier, -1)
 			require.NoError(t, err, "error finding last known good: %s", v.Id)
 			So(lastGood, ShouldNotBeNil)
 		})
@@ -94,30 +94,30 @@ func TestFindLastPeriodicBuild(t *testing.T) {
 		Identifier:      "myProj",
 		CreateTime:      now.Add(-10 * time.Minute),
 	}
-	assert.NoError(v1.Insert())
+	assert.NoError(v1.Insert(t.Context()))
 	v2 := Version{
 		Id:              "v2",
 		PeriodicBuildID: "a",
 		Identifier:      "myProj",
 		CreateTime:      now.Add(-5 * time.Minute),
 	}
-	assert.NoError(v2.Insert())
+	assert.NoError(v2.Insert(t.Context()))
 	v3 := Version{
 		Id:              "v3",
 		PeriodicBuildID: "b",
 		Identifier:      "myProj",
 		CreateTime:      now,
 	}
-	assert.NoError(v3.Insert())
+	assert.NoError(v3.Insert(t.Context()))
 	v4 := Version{
 		Id:              "v4",
 		PeriodicBuildID: "a",
 		Identifier:      "someProj",
 		CreateTime:      now,
 	}
-	assert.NoError(v4.Insert())
+	assert.NoError(v4.Insert(t.Context()))
 
-	mostRecent, err := FindLastPeriodicBuild("myProj", "a")
+	mostRecent, err := FindLastPeriodicBuild(t.Context(), "myProj", "a")
 	assert.NoError(err)
 	assert.Equal(v2.Id, mostRecent.Id)
 }
@@ -168,7 +168,7 @@ func TestGetVersionsWithTaskOptions(t *testing.T) {
 		Id:         "my_project",
 		Identifier: "my_ident",
 	}
-	assert.NoError(t, p.Insert())
+	assert.NoError(t, p.Insert(t.Context()))
 
 	for i := 0; i <= 20; i++ {
 		myTask := task.Task{
@@ -202,16 +202,16 @@ func TestGetVersionsWithTaskOptions(t *testing.T) {
 		if i == 0 || i == 1 || i == 20 {
 			myTask.Activated = true
 		}
-		assert.NoError(t, v.Insert())
-		assert.NoError(t, bv.Insert())
-		assert.NoError(t, myTask.Insert())
+		assert.NoError(t, v.Insert(t.Context()))
+		assert.NoError(t, bv.Insert(t.Context()))
+		assert.NoError(t, myTask.Insert(t.Context()))
 	}
 
 	// test with tasks
 	opts := GetVersionsOptions{Requester: evergreen.RepotrackerVersionRequester, IncludeBuilds: true, IncludeTasks: true,
 		Limit: 2}
 
-	versions, err := GetVersionsWithOptions("my_ident", opts)
+	versions, err := GetVersionsWithOptions(t.Context(), "my_ident", opts)
 	assert.NoError(t, err)
 	require.Len(t, versions, 2)
 	assert.Equal(t, "v20", versions[0].Id)
@@ -229,7 +229,7 @@ func TestGetVersionsWithTaskOptions(t *testing.T) {
 	opts = GetVersionsOptions{Requester: evergreen.RepotrackerVersionRequester, IncludeBuilds: true, IncludeTasks: true,
 		ByBuildVariant: "my_bv", ByTask: "my_task", Limit: 2}
 
-	versions, err = GetVersionsWithOptions("my_ident", opts)
+	versions, err = GetVersionsWithOptions(t.Context(), "my_ident", opts)
 	assert.NoError(t, err)
 	require.Len(t, versions, 2)
 	assert.Equal(t, "v20", versions[0].Id)
@@ -251,7 +251,7 @@ func TestGetVersionsWithOptions(t *testing.T) {
 		Id:         "my_project",
 		Identifier: "my_ident",
 	}
-	assert.NoError(t, p.Insert())
+	assert.NoError(t, p.Insert(t.Context()))
 	v := Version{
 		Id:                  "my_version",
 		Identifier:          "my_project",
@@ -269,7 +269,7 @@ func TestGetVersionsWithOptions(t *testing.T) {
 		},
 		CreateTime: start,
 	}
-	assert.NoError(t, v.Insert())
+	assert.NoError(t, v.Insert(t.Context()))
 	v = Version{
 		Id:                  "your_version",
 		Identifier:          "my_project",
@@ -282,7 +282,7 @@ func TestGetVersionsWithOptions(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(t, v.Insert())
+	assert.NoError(t, v.Insert(t.Context()))
 	v = Version{
 		Id:                  "another_version",
 		Requester:           evergreen.RepotrackerVersionRequester,
@@ -290,7 +290,7 @@ func TestGetVersionsWithOptions(t *testing.T) {
 		Identifier:          "my_project",
 		CreateTime:          start.Add(-2 * time.Minute),
 	}
-	assert.NoError(t, v.Insert())
+	assert.NoError(t, v.Insert(t.Context()))
 	v = Version{
 		Id:                  "seven_version",
 		Requester:           evergreen.RepotrackerVersionRequester,
@@ -298,7 +298,7 @@ func TestGetVersionsWithOptions(t *testing.T) {
 		Identifier:          "my_project",
 		CreateTime:          start.Add(-3 * time.Minute),
 	}
-	assert.NoError(t, v.Insert())
+	assert.NoError(t, v.Insert(t.Context()))
 
 	bv := build.Build{
 		Id:           "bv1",
@@ -310,7 +310,7 @@ func TestGetVersionsWithOptions(t *testing.T) {
 		Activated: true,
 		Status:    evergreen.BuildFailed,
 	}
-	assert.NoError(t, bv.Insert())
+	assert.NoError(t, bv.Insert(t.Context()))
 	bv = build.Build{
 		Id:           "bv_not_activated",
 		Version:      "your_version",
@@ -318,7 +318,7 @@ func TestGetVersionsWithOptions(t *testing.T) {
 		Activated:    false,
 		Status:       evergreen.BuildFailed,
 	}
-	assert.NoError(t, bv.Insert())
+	assert.NoError(t, bv.Insert(t.Context()))
 	bv = build.Build{
 		Id:           "bv2",
 		Version:      "my_version",
@@ -329,7 +329,7 @@ func TestGetVersionsWithOptions(t *testing.T) {
 		Activated: true,
 		Status:    evergreen.BuildSucceeded,
 	}
-	assert.NoError(t, bv.Insert())
+	assert.NoError(t, bv.Insert(t.Context()))
 
 	t1 := task.Task{
 		Id:          "t1",
@@ -339,7 +339,7 @@ func TestGetVersionsWithOptions(t *testing.T) {
 		Version:     "my_version",
 		Activated:   true,
 	}
-	assert.NoError(t, t1.Insert())
+	assert.NoError(t, t1.Insert(t.Context()))
 	t2 := task.Task{
 		Id:          "t2",
 		DisplayName: "your_task",
@@ -348,10 +348,10 @@ func TestGetVersionsWithOptions(t *testing.T) {
 		Version:     "my_version",
 		Activated:   true,
 	}
-	assert.NoError(t, t2.Insert())
+	assert.NoError(t, t2.Insert(t.Context()))
 
 	opts := GetVersionsOptions{Requester: evergreen.RepotrackerVersionRequester}
-	versions, err := GetVersionsWithOptions("my_ident", opts)
+	versions, err := GetVersionsWithOptions(t.Context(), "my_ident", opts)
 	assert.NoError(t, err)
 	require.Len(t, versions, 4)
 	assert.Equal(t, "my_version", versions[0].Id)
@@ -359,14 +359,14 @@ func TestGetVersionsWithOptions(t *testing.T) {
 
 	// filter out versions with no builds/tasks
 	opts = GetVersionsOptions{IncludeBuilds: true, IncludeTasks: true, Requester: evergreen.RepotrackerVersionRequester}
-	versions, err = GetVersionsWithOptions("my_ident", opts)
+	versions, err = GetVersionsWithOptions(t.Context(), "my_ident", opts)
 	assert.NoError(t, err)
 	require.Len(t, versions, 1)
 	assert.Equal(t, "my_version", versions[0].Id)
 
 	opts.ByBuildVariant = "my_bv"
 	opts.IncludeTasks = false
-	versions, err = GetVersionsWithOptions("my_ident", opts)
+	versions, err = GetVersionsWithOptions(t.Context(), "my_ident", opts)
 	assert.NoError(t, err)
 	require.Len(t, versions, 1)
 	require.Len(t, versions[0].Builds, 1)
@@ -376,7 +376,7 @@ func TestGetVersionsWithOptions(t *testing.T) {
 	require.Empty(t, versions[0].Builds[0].Tasks) // not including tasks
 
 	opts = GetVersionsOptions{Limit: 1, Requester: evergreen.RepotrackerVersionRequester}
-	versions, err = GetVersionsWithOptions("my_ident", opts)
+	versions, err = GetVersionsWithOptions(t.Context(), "my_ident", opts)
 	assert.NoError(t, err)
 	require.Len(t, versions, 1)
 	assert.Equal(t, "my_version", versions[0].Id)
@@ -384,7 +384,7 @@ func TestGetVersionsWithOptions(t *testing.T) {
 	assert.Len(t, versions[0].BuildVariants, 2)
 
 	opts = GetVersionsOptions{Skip: 1, Requester: evergreen.RepotrackerVersionRequester}
-	versions, err = GetVersionsWithOptions("my_project", opts)
+	versions, err = GetVersionsWithOptions(t.Context(), "my_project", opts)
 	assert.NoError(t, err)
 	require.Len(t, versions, 3)
 	assert.Equal(t, "your_version", versions[0].Id)
@@ -392,28 +392,28 @@ func TestGetVersionsWithOptions(t *testing.T) {
 	assert.Equal(t, "seven_version", versions[2].Id)
 
 	opts = GetVersionsOptions{Start: 9, Requester: evergreen.RepotrackerVersionRequester}
-	versions, err = GetVersionsWithOptions("my_project", opts)
+	versions, err = GetVersionsWithOptions(t.Context(), "my_project", opts)
 	assert.NoError(t, err)
 	require.Len(t, versions, 2)
 	assert.Equal(t, "another_version", versions[0].Id)
 	assert.Equal(t, "seven_version", versions[1].Id)
 
 	opts = GetVersionsOptions{Start: 9, Requester: evergreen.RepotrackerVersionRequester}
-	versions, err = GetVersionsWithOptions("my_project", opts)
+	versions, err = GetVersionsWithOptions(t.Context(), "my_project", opts)
 	assert.NoError(t, err)
 	require.Len(t, versions, 2)
 	assert.Equal(t, "another_version", versions[0].Id)
 	assert.Equal(t, "seven_version", versions[1].Id)
 
 	opts = GetVersionsOptions{RevisionEnd: 9, Requester: evergreen.RepotrackerVersionRequester}
-	versions, err = GetVersionsWithOptions("my_project", opts)
+	versions, err = GetVersionsWithOptions(t.Context(), "my_project", opts)
 	assert.NoError(t, err)
 	require.Len(t, versions, 2)
 	assert.Equal(t, "my_version", versions[0].Id)
 	assert.Equal(t, "your_version", versions[1].Id)
 
 	opts = GetVersionsOptions{Start: 9, RevisionEnd: 8, Requester: evergreen.RepotrackerVersionRequester}
-	versions, err = GetVersionsWithOptions("my_project", opts)
+	versions, err = GetVersionsWithOptions(t.Context(), "my_project", opts)
 	assert.NoError(t, err)
 	require.Len(t, versions, 1)
 	assert.Equal(t, "another_version", versions[0].Id)
@@ -426,7 +426,7 @@ func TestGetMainlineCommitVersionsWithOptions(t *testing.T) {
 		Id:         "my_project",
 		Identifier: "my_ident",
 	}
-	assert.NoError(t, p.Insert())
+	assert.NoError(t, p.Insert(t.Context()))
 	v := Version{
 		Id:                  "my_version",
 		Identifier:          "my_project",
@@ -435,7 +435,7 @@ func TestGetMainlineCommitVersionsWithOptions(t *testing.T) {
 		CreateTime:          start,
 		Activated:           utility.TruePtr(),
 	}
-	assert.NoError(t, v.Insert())
+	assert.NoError(t, v.Insert(t.Context()))
 	v = Version{
 		Id:                  "your_version",
 		Identifier:          "my_project",
@@ -444,7 +444,7 @@ func TestGetMainlineCommitVersionsWithOptions(t *testing.T) {
 		CreateTime:          start.Add(-1 * time.Minute),
 		Activated:           utility.TruePtr(),
 	}
-	assert.NoError(t, v.Insert())
+	assert.NoError(t, v.Insert(t.Context()))
 	v = Version{
 		Id:                  "another_version",
 		Requester:           evergreen.RepotrackerVersionRequester,
@@ -453,7 +453,7 @@ func TestGetMainlineCommitVersionsWithOptions(t *testing.T) {
 		CreateTime:          start.Add(-2 * time.Minute),
 		Activated:           utility.FalsePtr(),
 	}
-	assert.NoError(t, v.Insert())
+	assert.NoError(t, v.Insert(t.Context()))
 	v = Version{
 		Id:                  "yet_another_version",
 		Requester:           evergreen.RepotrackerVersionRequester,
@@ -461,7 +461,7 @@ func TestGetMainlineCommitVersionsWithOptions(t *testing.T) {
 		Identifier:          "my_project",
 		CreateTime:          start.Add(-2 * time.Minute),
 	}
-	assert.NoError(t, v.Insert())
+	assert.NoError(t, v.Insert(t.Context()))
 
 	opts := MainlineCommitVersionOptions{
 		Limit:      4,
@@ -516,7 +516,7 @@ func TestGetPreviousPageCommit(t *testing.T) {
 		Id:         "my_project",
 		Identifier: "my_ident",
 	}
-	assert.NoError(t, p.Insert())
+	assert.NoError(t, p.Insert(t.Context()))
 	v := Version{
 		Id:                  "my_version",
 		Identifier:          "my_project",
@@ -525,7 +525,7 @@ func TestGetPreviousPageCommit(t *testing.T) {
 		CreateTime:          start,
 		Activated:           utility.TruePtr(),
 	}
-	assert.NoError(t, v.Insert())
+	assert.NoError(t, v.Insert(t.Context()))
 	v = Version{
 		Id:                  "your_version",
 		Identifier:          "my_project",
@@ -534,7 +534,7 @@ func TestGetPreviousPageCommit(t *testing.T) {
 		CreateTime:          start.Add(-1 * time.Minute),
 		Activated:           utility.TruePtr(),
 	}
-	assert.NoError(t, v.Insert())
+	assert.NoError(t, v.Insert(t.Context()))
 	v = Version{
 		Id:                  "another_version",
 		Requester:           evergreen.RepotrackerVersionRequester,
@@ -543,7 +543,7 @@ func TestGetPreviousPageCommit(t *testing.T) {
 		CreateTime:          start.Add(-2 * time.Minute),
 		Activated:           utility.FalsePtr(),
 	}
-	assert.NoError(t, v.Insert())
+	assert.NoError(t, v.Insert(t.Context()))
 	v = Version{
 		Id:                  "yet_another_version",
 		Requester:           evergreen.RepotrackerVersionRequester,
@@ -551,7 +551,7 @@ func TestGetPreviousPageCommit(t *testing.T) {
 		Identifier:          "my_project",
 		CreateTime:          start.Add(-2 * time.Minute),
 	}
-	assert.NoError(t, v.Insert())
+	assert.NoError(t, v.Insert(t.Context()))
 	ctx := context.TODO()
 	// If you are viewing the latest commit it should return nil to indicate that there is no previous page.
 	orderNumber, err := GetPreviousPageCommitOrderNumber(ctx, p.Id, 10, 2, evergreen.SystemVersionRequesterTypes)
@@ -576,22 +576,22 @@ func TestUpdateProjectStorageMethod(t *testing.T) {
 
 	for tName, tCase := range map[string]func(t *testing.T, v *Version){
 		"ChangesProjectStorageMethod": func(t *testing.T, v *Version) {
-			assert.NoError(t, v.UpdateProjectStorageMethod(evergreen.ProjectStorageMethodS3))
+			assert.NoError(t, v.UpdateProjectStorageMethod(t.Context(), evergreen.ProjectStorageMethodS3))
 
 			assert.Equal(t, evergreen.ProjectStorageMethodS3, v.ProjectStorageMethod)
 
-			dbVersion, err := VersionFindOneId(v.Id)
+			dbVersion, err := VersionFindOneId(t.Context(), v.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbVersion)
 			assert.Equal(t, evergreen.ProjectStorageMethodS3, dbVersion.ProjectStorageMethod)
 		},
 		"NoopsWhenVersionStorageMethodIsIdentical": func(t *testing.T, v *Version) {
 			v.ProjectStorageMethod = evergreen.ProjectStorageMethodS3
-			assert.NoError(t, v.UpdateProjectStorageMethod(evergreen.ProjectStorageMethodS3))
+			assert.NoError(t, v.UpdateProjectStorageMethod(t.Context(), evergreen.ProjectStorageMethodS3))
 
 			assert.Equal(t, evergreen.ProjectStorageMethodS3, v.ProjectStorageMethod)
 
-			dbVersion, err := VersionFindOneId(v.Id)
+			dbVersion, err := VersionFindOneId(t.Context(), v.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbVersion)
 			assert.Equal(t, evergreen.ProjectStorageMethodDB, dbVersion.ProjectStorageMethod)
@@ -603,7 +603,7 @@ func TestUpdateProjectStorageMethod(t *testing.T) {
 				Id:                   "id",
 				ProjectStorageMethod: evergreen.ProjectStorageMethodDB,
 			}
-			require.NoError(t, v.Insert())
+			require.NoError(t, v.Insert(t.Context()))
 
 			tCase(t, &v)
 		})
@@ -618,22 +618,22 @@ func TestUpdatePreGenerationProjectStorageMethod(t *testing.T) {
 
 	for tName, tCase := range map[string]func(t *testing.T, v *Version){
 		"ChangesPreGenerationProjectStorageMethod": func(t *testing.T, v *Version) {
-			assert.NoError(t, v.UpdatePreGenerationProjectStorageMethod(evergreen.ProjectStorageMethodS3))
+			assert.NoError(t, v.UpdatePreGenerationProjectStorageMethod(t.Context(), evergreen.ProjectStorageMethodS3))
 
 			assert.Equal(t, evergreen.ProjectStorageMethodS3, v.PreGenerationProjectStorageMethod)
 
-			dbVersion, err := VersionFindOneId(v.Id)
+			dbVersion, err := VersionFindOneId(t.Context(), v.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbVersion)
 			assert.Equal(t, evergreen.ProjectStorageMethodS3, dbVersion.PreGenerationProjectStorageMethod)
 		},
 		"NoopsWhenVersionStorageMethodIsIdentical": func(t *testing.T, v *Version) {
 			v.PreGenerationProjectStorageMethod = evergreen.ProjectStorageMethodS3
-			assert.NoError(t, v.UpdatePreGenerationProjectStorageMethod(evergreen.ProjectStorageMethodS3))
+			assert.NoError(t, v.UpdatePreGenerationProjectStorageMethod(t.Context(), evergreen.ProjectStorageMethodS3))
 
 			assert.Equal(t, evergreen.ProjectStorageMethodS3, v.PreGenerationProjectStorageMethod)
 
-			dbVersion, err := VersionFindOneId(v.Id)
+			dbVersion, err := VersionFindOneId(t.Context(), v.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbVersion)
 			assert.Equal(t, evergreen.ProjectStorageMethodDB, dbVersion.PreGenerationProjectStorageMethod)
@@ -645,10 +645,107 @@ func TestUpdatePreGenerationProjectStorageMethod(t *testing.T) {
 				Id:                                "id",
 				PreGenerationProjectStorageMethod: evergreen.ProjectStorageMethodDB,
 			}
-			require.NoError(t, v.Insert())
+			require.NoError(t, v.Insert(t.Context()))
 
 			tCase(t, &v)
 		})
 	}
 
+}
+
+func TestGetBuildVariants(t *testing.T) {
+	defer func() {
+		assert.NoError(t, db.ClearCollections(VersionCollection))
+	}()
+
+	checkBuildVariantsMatch := func(t *testing.T, bvs0, bvs1 []VersionBuildStatus) {
+		require.Len(t, bvs0, len(bvs1), "lengths should match")
+		for i := range bvs0 {
+			bv0 := bvs0[i]
+			bv1 := bvs1[i]
+			assert.Equal(t, bv0.BuildVariant, bv1.BuildVariant)
+			assert.Equal(t, bv0.DisplayName, bv1.DisplayName)
+			assert.Equal(t, bv0.BuildId, bv1.BuildId)
+			assert.Equal(t, bv0.ActivationStatus.Activated, bv1.ActivationStatus.Activated)
+			assert.WithinDuration(t, bv0.ActivationStatus.ActivateAt, bv1.ActivationStatus.ActivateAt, 0)
+		}
+	}
+
+	for tName, tCase := range map[string]func(t *testing.T, v *Version){
+		"LoadsBuildVariantsIdempotently": func(t *testing.T, v *Version) {
+			activateAt := utility.BSONTime(time.Now().Add(time.Hour))
+			v.BuildVariants = []VersionBuildStatus{
+				{
+					BuildVariant: "bv",
+					DisplayName:  "bv_name",
+					BuildId:      "build_id",
+					ActivationStatus: ActivationStatus{
+						Activated:  false,
+						ActivateAt: activateAt,
+					},
+				},
+			}
+			require.NoError(t, v.Insert(t.Context()))
+
+			dbVersion, err := VersionFindOneId(t.Context(), v.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbVersion)
+			assert.Nil(t, dbVersion.BuildVariants, "build variants should not be loaded by default from query")
+
+			bvs, err := dbVersion.GetBuildVariants(t.Context())
+			require.NoError(t, err)
+			checkBuildVariantsMatch(t, v.BuildVariants, bvs)
+			checkBuildVariantsMatch(t, v.BuildVariants, dbVersion.BuildVariants)
+
+			bvs, err = dbVersion.GetBuildVariants(t.Context())
+			require.NoError(t, err)
+			checkBuildVariantsMatch(t, v.BuildVariants, bvs)
+			checkBuildVariantsMatch(t, v.BuildVariants, dbVersion.BuildVariants)
+		},
+		"ReturnsBuildVariantsIfAlreadySetInMemory": func(t *testing.T, v *Version) {
+			activateAt := utility.BSONTime(time.Now().Add(time.Hour))
+			originalBVs := []VersionBuildStatus{
+				{
+					BuildVariant: "bv",
+					DisplayName:  "bv_name",
+					BuildId:      "build_id",
+					ActivationStatus: ActivationStatus{
+						Activated:  false,
+						ActivateAt: activateAt,
+					},
+				},
+			}
+			v.BuildVariants = originalBVs
+
+			bvs, err := v.GetBuildVariants(t.Context())
+			require.NoError(t, err)
+			checkBuildVariantsMatch(t, originalBVs, bvs)
+			checkBuildVariantsMatch(t, originalBVs, v.BuildVariants)
+		},
+		"ReturnsEmptyBuildVariantsIfNotSetInDB": func(t *testing.T, v *Version) {
+			require.NoError(t, v.Insert(t.Context()))
+			bvs, err := v.GetBuildVariants(t.Context())
+			require.NoError(t, err)
+			assert.NotNil(t, bvs, "loaded build variants should be empty slice, not nil")
+			assert.Empty(t, bvs, "loaded build variants should be empty slice")
+			assert.Equal(t, bvs, v.BuildVariants)
+		},
+		"ReturnsEmptyBuildVariantsIfVersionNotInDB": func(t *testing.T, v *Version) {
+			bvs, err := v.GetBuildVariants(t.Context())
+			require.NoError(t, err)
+			assert.NotNil(t, bvs, "loaded build variants should be empty slice, not nil")
+			assert.Empty(t, bvs, "loaded build variants should be empty slice")
+			assert.Equal(t, bvs, v.BuildVariants)
+		},
+	} {
+		t.Run(tName, func(t *testing.T) {
+			require.NoError(t, db.ClearCollections(VersionCollection))
+
+			v := Version{
+				Id: "version_id",
+			}
+
+			tCase(t, &v)
+		})
+	}
 }

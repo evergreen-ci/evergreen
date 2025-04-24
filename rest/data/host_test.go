@@ -105,13 +105,13 @@ func TestHostConnectorSuite(t *testing.T) {
 			user := &user.DBUser{
 				Id: id,
 			}
-			s.NoError(user.Insert())
+			s.NoError(user.Insert(t.Context()))
 		}
 		root := user.DBUser{
 			Id:          "root",
 			SystemRoles: []string{"root"},
 		}
-		s.NoError(root.Insert())
+		s.NoError(root.Insert(t.Context()))
 		rm := s.env.RoleManager()
 		s.NoError(rm.AddScope(gimlet.Scope{
 			ID:        "root",
@@ -186,7 +186,7 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 		Name: testPublicKeyName,
 		Key:  testPublicKey,
 	})
-	s.NoError(testUser.Insert())
+	s.NoError(testUser.Insert(s.T().Context()))
 
 	for tName, tCase := range map[string]func(t *testing.T, options *restmodel.HostRequestOptions){
 		"IntentHostCreatedSuccessfully": func(t *testing.T, options *restmodel.HostRequestOptions) {
@@ -262,7 +262,7 @@ func (s *HostConnectorSuite) TestFindHostByIdWithOwner() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	u, err := user.FindOneById(testUser)
+	u, err := user.FindOneByIdContext(s.T().Context(), testUser)
 	s.NoError(err)
 
 	h, err := FindHostByIdWithOwner(ctx, "host1", u)
@@ -274,7 +274,7 @@ func (s *HostConnectorSuite) TestFindHostByIdFailsWithWrongUser() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	u, err := user.FindOneById(testUser)
+	u, err := user.FindOneByIdContext(s.T().Context(), testUser)
 	s.NoError(err)
 	s.NotNil(u)
 
@@ -287,7 +287,7 @@ func (s *HostConnectorSuite) TestFindHostByIdWithSuperUser() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	u, err := user.FindOneById("root")
+	u, err := user.FindOneByIdContext(s.T().Context(), "root")
 	s.NoError(err)
 
 	h, err := FindHostByIdWithOwner(ctx, "host2", u)

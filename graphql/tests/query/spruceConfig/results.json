@@ -55,6 +55,40 @@
       }
     },
     {
+      "query_file": "single_task_distro.graphql",
+      "result": {
+        "data": {
+          "spruceConfig": {
+            "singleTaskDistro": {
+              "projectTasksPairs": [
+                {
+                  "projectId": "evergreen",
+                  "allowedTasks": [
+                    "compile",
+                    "test"
+                  ],
+                  "allowedBVs": [
+                    "ubuntu1604",
+                    "windows"
+                  ]
+                },
+                {
+                  "projectId": "spruce",
+                  "allowedTasks": [
+                    "lint",
+                    "storybook"
+                  ],
+                  "allowedBVs": [
+                    "macOS"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
       "query_file": "container_pools.graphql",
       "result": {
         "data": {

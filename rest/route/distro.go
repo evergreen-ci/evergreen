@@ -126,7 +126,7 @@ func (h *distroIDChangeSetupHandler) Run(ctx context.Context) gimlet.Responder {
 	if err = data.UpdateDistro(ctx, d, d); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "updating distro '%s'", h.distroID))
 	}
-	event.LogDistroModified(h.distroID, usr.Username(), oldDistro.DistroData(), d.DistroData())
+	event.LogDistroModified(ctx, h.distroID, usr.Username(), oldDistro.DistroData(), d.DistroData())
 
 	apiDistro := &model.APIDistro{}
 	apiDistro.BuildFromService(*d)
@@ -193,7 +193,7 @@ func (h *distroIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 			Version: utility.ToStringPtr(evergreen.FinderVersionLegacy),
 		},
 		PlannerSettings: model.APIPlannerSettings{
-			Version: utility.ToStringPtr(evergreen.PlannerVersionLegacy),
+			Version: utility.ToStringPtr(evergreen.PlannerVersionTunable),
 		},
 		DispatcherSettings: model.APIDispatcherSettings{
 			Version: utility.ToStringPtr(evergreen.DispatcherVersionRevisedWithDependencies),
@@ -224,9 +224,9 @@ func (h *distroIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 		if err = data.UpdateDistro(ctx, original, newDistro); err != nil {
 			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "updating existing distro '%s'", h.distroID))
 		}
-		event.LogDistroModified(h.distroID, user.Username(), original.DistroData(), newDistro.DistroData())
+		event.LogDistroModified(ctx, h.distroID, user.Username(), original.DistroData(), newDistro.DistroData())
 		if newDistro.GetDefaultAMI() != original.GetDefaultAMI() {
-			event.LogDistroAMIModified(h.distroID, user.Username())
+			event.LogDistroAMIModified(ctx, h.distroID, user.Username())
 		}
 		return gimlet.NewJSONResponse(struct{}{})
 	}
@@ -244,6 +244,81 @@ func (h *distroIDPutHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "inserting new distro"))
 	}
 
+	return responder
+}
+
+// PUT /rest/v2/distros/{distro_id}/copy/{new_distro_id}
+
+type distroCopyHandler struct {
+	distroToCopy     string
+	newDistroID      string
+	singleTaskDistro bool
+}
+
+func makeCopyDistro() gimlet.RouteHandler {
+	return &distroCopyHandler{}
+}
+
+// Factory creates an instance of the handler.
+//
+//	@Summary		Copy an existing distro
+//	@Description	Create a new distro by copying an existing distro. Specifying "single task distro" will mark the copied distro as a single task distro. Aliases will not be copied.
+//	@Tags			distros
+//	@Router			/distros/{distro_id}/copy/{new_distro_id} [put]
+//	@Security		Api-User || Api-Key
+//	@Param			distro_id			path	string	true	"distro ID to copy"
+//	@Param			new_distro_id		path	string	true	"ID of new distro to be created"
+//	@Param			single_task_distro	query	bool	false	"if should the copied distro should be single task"
+//	@Success		201
+//	@Success		200
+func (h *distroCopyHandler) Factory() gimlet.RouteHandler {
+	return &distroCopyHandler{}
+}
+
+// Parse fetches the distroId and JSON payload from the http request.
+func (h *distroCopyHandler) Parse(ctx context.Context, r *http.Request) error {
+	h.distroToCopy = gimlet.GetVars(r)["distro_id"]
+	h.newDistroID = gimlet.GetVars(r)["new_distro_id"]
+	h.singleTaskDistro = r.URL.Query().Get("single_task_distro") == "true"
+
+	if h.distroToCopy == h.newDistroID {
+		return errors.New("new and existing distro IDs cannot be identical")
+	}
+
+	return nil
+}
+
+// Run creates a new distro by copying an existing distro.
+func (h *distroCopyHandler) Run(ctx context.Context) gimlet.Responder {
+	user := MustHaveUser(ctx)
+	toCopy, err := distro.FindOneId(ctx, h.distroToCopy)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding distro '%s'", h.distroToCopy))
+	}
+	if toCopy == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("distro '%s' not found", h.distroToCopy),
+		})
+	}
+
+	toCopy.Id = h.newDistroID
+	if h.singleTaskDistro {
+		toCopy.SingleTaskDistro = true
+	}
+
+	// Do not copy aliases because it could lead to the wrong distros being used.
+	toCopy.Aliases = nil
+
+	err = data.NewDistro(ctx, toCopy, user)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "creating and inserting new distro '%s'", h.newDistroID))
+	}
+
+	responder := gimlet.NewJSONResponse(struct{}{})
+	if err = responder.SetStatus(http.StatusCreated); err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "setting HTTP status code to %d", http.StatusCreated))
+	}
 	return responder
 }
 
@@ -361,6 +436,7 @@ func (h *distroIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	if err = json.Unmarshal(h.body, apiDistro); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "unmarshalling request body into distro API model"))
 	}
+
 	if len(apiDistro.ProviderSettingsList) == 0 {
 		apiDistro.ProviderSettingsList = oldSettingsList
 	}
@@ -377,9 +453,9 @@ func (h *distroIDPatchHandler) Run(ctx context.Context) gimlet.Responder {
 	if err = data.UpdateDistro(ctx, old, d); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "updating distro '%s'", h.distroID))
 	}
-	event.LogDistroModified(h.distroID, user.Username(), old.DistroData(), d.DistroData())
+	event.LogDistroModified(ctx, h.distroID, user.Username(), old.DistroData(), d.DistroData())
 	if d.GetDefaultAMI() != old.GetDefaultAMI() {
-		event.LogDistroAMIModified(h.distroID, user.Username())
+		event.LogDistroAMIModified(ctx, h.distroID, user.Username())
 	}
 	return gimlet.NewJSONResponse(apiDistro)
 }
@@ -556,7 +632,6 @@ func validateDistro(ctx context.Context, apiDistro *model.APIDistro, resourceID 
 			Message:    fmt.Sprintf("distro name '%s' is immutable so it cannot be renamed to '%s'", id, resourceID),
 		})
 	}
-
 	vErrors, err := validator.CheckDistro(ctx, d, settings, isNewDistro)
 	if err != nil {
 		return nil, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{

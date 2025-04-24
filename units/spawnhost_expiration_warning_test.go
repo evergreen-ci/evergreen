@@ -95,7 +95,7 @@ func (s *spawnHostExpirationSuite) SetupTest() {
 
 func (s *spawnHostExpirationSuite) TestEventsAreLogged() {
 	s.j.Run(s.ctx)
-	events, err := event.FindUnprocessedEvents(-1)
+	events, err := event.FindUnprocessedEvents(s.T().Context(), -1)
 	s.NoError(err)
 	s.Len(events, 6)
 
@@ -136,19 +136,19 @@ func (s *spawnHostExpirationSuite) TestEventsAreLogged() {
 
 func (s *spawnHostExpirationSuite) TestDuplicateEventsAreNotLoggedWithinRenotificationInterval() {
 	s.j.Run(s.ctx)
-	events, err := event.FindUnprocessedEvents(-1)
+	events, err := event.FindUnprocessedEvents(s.T().Context(), -1)
 	s.NoError(err)
 	s.Len(events, 6, "should log expected events on first run")
 
 	s.j.Run(s.ctx)
-	eventsAfterRerun, err := event.FindUnprocessedEvents(-1)
+	eventsAfterRerun, err := event.FindUnprocessedEvents(s.T().Context(), -1)
 	s.NoError(err)
 	s.Len(eventsAfterRerun, len(events), "should not log duplicate events on second run")
 }
 
 func (s *spawnHostExpirationSuite) TestDuplicateEventsAreLoggedAfterRenotificationIntervalElapses() {
 	s.j.Run(s.ctx)
-	events, err := event.FindUnprocessedEvents(-1)
+	events, err := event.FindUnprocessedEvents(s.T().Context(), -1)
 	s.NoError(err)
 	s.Len(events, 6, "should log expected events on first run")
 
@@ -164,7 +164,7 @@ func (s *spawnHostExpirationSuite) TestDuplicateEventsAreLoggedAfterRenotificati
 			numHostsToRenotify++
 		}
 	}
-	res, err := db.UpdateAll(alertrecord.Collection, bson.M{
+	res, err := db.UpdateAllContext(s.ctx, alertrecord.Collection, bson.M{
 		alertrecord.HostIdKey: bson.M{"$in": []string{"h1", "h2", "h3", "h4", "h5"}}}, bson.M{
 		"$set": bson.M{
 			alertrecord.AlertTimeKey: time.Now().Add(-7 * utility.Day),
@@ -174,12 +174,12 @@ func (s *spawnHostExpirationSuite) TestDuplicateEventsAreLoggedAfterRenotificati
 	s.Equal(numHostsToRenotify, res.Updated, "should have updated the alert records for expiration warnings so that they are old")
 
 	s.j.Run(s.ctx)
-	eventsAfterRerun, err := event.FindUnprocessedEvents(-1)
+	eventsAfterRerun, err := event.FindUnprocessedEvents(s.T().Context(), -1)
 	s.NoError(err)
 	s.Len(eventsAfterRerun, len(events)+numHostsToRenotify, "should log new expiration warnings when renotification interval has passed")
 
 	s.j.Run(s.ctx)
-	eventsAfterSecondRerun, err := event.FindUnprocessedEvents(-1)
+	eventsAfterSecondRerun, err := event.FindUnprocessedEvents(s.T().Context(), -1)
 	s.NoError(err)
 	s.Len(eventsAfterSecondRerun, len(events)+numHostsToRenotify, "should not log any more expiration warnings when the host was recently renotified")
 }
@@ -189,7 +189,7 @@ func (s *spawnHostExpirationSuite) TestCanceledJob() {
 	cancel()
 
 	s.j.Run(ctx)
-	events, err := event.FindUnprocessedEvents(-1)
+	events, err := event.FindUnprocessedEvents(s.T().Context(), -1)
 	s.NoError(err)
 	s.Empty(events)
 }

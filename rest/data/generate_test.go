@@ -25,7 +25,7 @@ func TestGeneratePoll(t *testing.T) {
 		Version:        "version-1",
 		GenerateTask:   true,
 		GeneratedTasks: false,
-	}).Insert())
+	}).Insert(t.Context()))
 
 	finished, generateErrs, err = GeneratePoll(ctx, "task-1")
 	assert.False(t, finished)
@@ -37,7 +37,7 @@ func TestGeneratePoll(t *testing.T) {
 		Version:        "version-1",
 		GenerateTask:   true,
 		GeneratedTasks: true,
-	}).Insert())
+	}).Insert(t.Context()))
 
 	finished, generateErrs, err = GeneratePoll(ctx, "task-2")
 	assert.True(t, finished)
@@ -50,7 +50,7 @@ func TestGeneratePoll(t *testing.T) {
 		GenerateTask:       true,
 		GeneratedTasks:     true,
 		GenerateTasksError: "this is an error",
-	}).Insert())
+	}).Insert(t.Context()))
 
 	finished, generateErrs, err = GeneratePoll(ctx, "task-3")
 	assert.True(t, finished)

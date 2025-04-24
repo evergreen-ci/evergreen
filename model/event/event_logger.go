@@ -12,15 +12,15 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func (e *EventLogEntry) Log() error {
+func (e *EventLogEntry) Log(ctx context.Context) error {
 	if err := e.validateEvent(); err != nil {
 		return errors.Wrap(err, "not logging event, event is invalid")
 	}
 
-	return errors.Wrap(db.Insert(EventCollection, e), "inserting event")
+	return errors.Wrap(db.Insert(ctx, EventCollection, e), "inserting event")
 }
 
-func (e *EventLogEntry) MarkProcessed() error {
+func (e *EventLogEntry) MarkProcessed(ctx context.Context) error {
 	if e.ID == "" {
 		return errors.New("event has no ID")
 	}
@@ -38,7 +38,7 @@ func (e *EventLogEntry) MarkProcessed() error {
 		},
 	}
 
-	if err := db.Update(EventCollection, filter, update); err != nil {
+	if err := db.UpdateContext(ctx, EventCollection, filter, update); err != nil {
 		return errors.Wrap(err, "updating 'processed at' time")
 	}
 
@@ -46,9 +46,9 @@ func (e *EventLogEntry) MarkProcessed() error {
 	return nil
 }
 
-func LogManyEvents(events []EventLogEntry) error {
+func LogManyEvents(ctx context.Context, events []EventLogEntry) error {
 	catcher := grip.NewBasicCatcher()
-	interfaces := make([]interface{}, len(events))
+	interfaces := make([]any, len(events))
 	for i := range events {
 		e := &events[i]
 		if err := e.validateEvent(); err != nil {
@@ -61,14 +61,14 @@ func LogManyEvents(events []EventLogEntry) error {
 		return errors.Wrap(catcher.Resolve(), "invalid events")
 	}
 
-	return db.InsertMany(EventCollection, interfaces...)
+	return db.InsertMany(ctx, EventCollection, interfaces...)
 }
 
 // LogManyUnorderedEventsWithContext logs many events without any ordering on
 // insertion. Do not use this if the events must be inserted in order.
 func LogManyUnorderedEventsWithContext(ctx context.Context, events []EventLogEntry) error {
 	catcher := grip.NewBasicCatcher()
-	interfaces := make([]interface{}, len(events))
+	interfaces := make([]any, len(events))
 	for i := range events {
 		e := &events[i]
 		if err := e.validateEvent(); err != nil {

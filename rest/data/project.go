@@ -32,15 +32,15 @@ type DBProjectConnector struct{}
 // FindProjectById queries the database for the project matching the projectRef.Id. If the bool flag is set,
 // the project config properties in the project YAML will be merged into the result if the properties are
 // not set on the project page.
-func FindProjectById(id string, includeRepo bool, includeProjectConfig bool) (*model.ProjectRef, error) {
+func FindProjectById(ctx context.Context, id string, includeRepo bool, includeProjectConfig bool) (*model.ProjectRef, error) {
 	var p *model.ProjectRef
 	var err error
 	if includeRepo && includeProjectConfig {
-		p, err = model.FindMergedProjectRef(id, "", true)
+		p, err = model.FindMergedProjectRef(ctx, id, "", true)
 	} else if includeRepo {
-		p, err = model.FindMergedProjectRef(id, "", false)
+		p, err = model.FindMergedProjectRef(ctx, id, "", false)
 	} else {
-		p, err = model.FindBranchProjectRef(id)
+		p, err = model.FindBranchProjectRef(ctx, id)
 	}
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding project '%s'", id)
@@ -74,7 +74,7 @@ func RequestS3Creds(ctx context.Context, projectIdentifier, userEmail string) er
 		Summary:     summary,
 		Description: description,
 		Reporter:    userEmail,
-		Fields: map[string]interface{}{
+		Fields: map[string]any{
 			evergreen.DevProdServiceFieldName: evergreen.DevProdJiraServiceField,
 		},
 	}
@@ -91,7 +91,7 @@ func RequestS3Creds(ctx context.Context, projectIdentifier, userEmail string) er
 		return err
 	}
 
-	err = notification.InsertMany(*n)
+	err = notification.InsertMany(ctx, *n)
 	if err != nil {
 		return errors.Wrap(err, "batch inserting notifications")
 	}
@@ -105,7 +105,7 @@ func RequestS3Creds(ctx context.Context, projectIdentifier, userEmail string) er
 // Returns true if the project was successfully created.
 func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *model.ProjectRef, u *user.DBUser) (bool, error) {
 	if projectRef.Identifier != "" {
-		if err := ValidateProjectName(projectRef.Identifier); err != nil {
+		if err := ValidateProjectName(ctx, projectRef.Identifier); err != nil {
 			return false, err
 		}
 	}
@@ -114,12 +114,12 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 			projectRef.Id = mgobson.NewObjectId().Hex()
 		}
 	}
-	if err := ValidateProjectName(projectRef.Id); err != nil {
+	if err := ValidateProjectName(ctx, projectRef.Id); err != nil {
 		return false, err
 	}
 	// Always warn because created projects are never enabled.
 	warningCatcher := grip.NewBasicCatcher()
-	statusCode, err := model.ValidateEnabledProjectsLimit(projectRef.Id, env.Settings(), nil, projectRef)
+	statusCode, err := model.ValidateEnabledProjectsLimit(ctx, projectRef.Id, env.Settings(), nil, projectRef)
 	if err != nil {
 		if statusCode != http.StatusBadRequest {
 			return false, gimlet.ErrorResponse{
@@ -144,7 +144,7 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 		}))
 	}
 
-	if err = projectRef.Add(u); err != nil {
+	if err = projectRef.Add(ctx, u); err != nil {
 		return false, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
 			Message:    errors.Wrapf(err, "inserting project '%s'", projectRef.Identifier).Error(),
@@ -158,7 +158,7 @@ func CreateProject(ctx context.Context, env evergreen.Environment, projectRef *m
 		}
 	}
 
-	err = model.LogProjectAdded(projectRef.Id, u.DisplayName())
+	err = model.LogProjectAdded(ctx, projectRef.Id, u.DisplayName())
 	grip.Error(message.WrapError(err, message.Fields{
 		"message":            "problem logging project added",
 		"project_id":         projectRef.Id,
@@ -183,7 +183,7 @@ func tryCopyingContainerSecrets(ctx context.Context, settings *evergreen.Setting
 	if err != nil {
 		return errors.Wrapf(err, "copying existing container secrets")
 	}
-	if err := pRef.SetContainerSecrets(secrets); err != nil {
+	if err := pRef.SetContainerSecrets(ctx, secrets); err != nil {
 		return errors.Wrap(err, "setting container secrets")
 	}
 
@@ -211,8 +211,8 @@ var projectIDRegexp = regexp.MustCompile(`^[0-9a-zA-Z-._~\(\) ]*$`)
 
 // ValidateProjectName checks that a project ID / identifier is not already in use
 // and has only valid characters.
-func ValidateProjectName(name string) error {
-	_, err := FindProjectById(name, false, false)
+func ValidateProjectName(ctx context.Context, name string) error {
+	_, err := FindProjectById(ctx, name, false, false)
 	if err == nil {
 		return gimlet.ErrorResponse{
 			StatusCode: http.StatusBadRequest,
@@ -239,7 +239,7 @@ func ValidateProjectName(name string) error {
 
 // GetProjectTasksWithOptions finds the previous tasks that have run on a project that adhere to the passed in options.
 func GetProjectTasksWithOptions(ctx context.Context, projectName string, taskName string, opts model.GetProjectTasksOpts) ([]restModel.APITask, error) {
-	tasks, err := model.GetTasksWithOptions(projectName, taskName, opts)
+	tasks, err := model.GetTasksWithOptions(ctx, projectName, taskName, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -258,11 +258,11 @@ func GetProjectTasksWithOptions(ctx context.Context, projectName string, taskNam
 }
 
 // FindProjectVarsById returns the variables associated with the project and repo (if given).
-func FindProjectVarsById(id string, repoId string, redact bool) (*restModel.APIProjectVars, error) {
+func FindProjectVarsById(ctx context.Context, id string, repoId string, redact bool) (*restModel.APIProjectVars, error) {
 	var repoVars *model.ProjectVars
 	var err error
 	if repoId != "" {
-		repoVars, err = model.FindOneProjectVars(repoId)
+		repoVars, err = model.FindOneProjectVars(ctx, repoId)
 		if err != nil {
 			return nil, errors.Wrapf(err, "problem fetching variables for repo '%s'", repoId)
 		}
@@ -275,7 +275,7 @@ func FindProjectVarsById(id string, repoId string, redact bool) (*restModel.APIP
 	}
 	var vars *model.ProjectVars
 	if id != "" {
-		vars, err = model.FindOneProjectVars(id)
+		vars, err = model.FindOneProjectVars(ctx, id)
 		if err != nil {
 			return nil, errors.Wrapf(err, "problem fetching variables for project '%s'", id)
 		}
@@ -304,7 +304,7 @@ func FindProjectVarsById(id string, repoId string, redact bool) (*restModel.APIP
 // will be fully replaced by those in varsModel. Otherwise, it will only set the
 // value for variables that are explicitly present in varsModel and will not
 // delete variables that are omitted.
-func UpdateProjectVars(projectId string, varsModel *restModel.APIProjectVars, overwrite bool) error {
+func UpdateProjectVars(ctx context.Context, projectId string, varsModel *restModel.APIProjectVars, overwrite bool) error {
 	if varsModel == nil {
 		return nil
 	}
@@ -318,11 +318,11 @@ func UpdateProjectVars(projectId string, varsModel *restModel.APIProjectVars, ov
 		}
 	}
 	if overwrite {
-		if _, err := vars.Upsert(); err != nil {
+		if _, err := vars.Upsert(ctx); err != nil {
 			return errors.Wrapf(err, "overwriting variables for project '%s'", vars.Id)
 		}
 	} else {
-		_, err := vars.FindAndModify(varsModel.VarsToDelete)
+		_, err := vars.FindAndModify(ctx, varsModel.VarsToDelete)
 		if err != nil {
 			return errors.Wrapf(err, "updating variables for project '%s'", vars.Id)
 		}
@@ -336,8 +336,8 @@ func UpdateProjectVars(projectId string, varsModel *restModel.APIProjectVars, ov
 	return nil
 }
 
-func GetProjectEventLog(project string, before time.Time, n int) ([]restModel.APIProjectEvent, error) {
-	id, err := model.GetIdForProject(project)
+func GetProjectEventLog(ctx context.Context, project string, before time.Time, n int) ([]restModel.APIProjectEvent, error) {
+	id, err := model.GetIdForProject(ctx, project)
 	if err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
 			"func":    "GetProjectEventLog",
@@ -347,14 +347,14 @@ func GetProjectEventLog(project string, before time.Time, n int) ([]restModel.AP
 		// don't return an error here to preserve existing behavior
 		return nil, nil
 	}
-	return GetEventsById(id, before, n)
+	return GetEventsById(ctx, id, before, n)
 }
 
-func GetEventsById(id string, before time.Time, n int) ([]restModel.APIProjectEvent, error) {
+func GetEventsById(ctx context.Context, id string, before time.Time, n int) ([]restModel.APIProjectEvent, error) {
 	if n == 0 {
 		n = EventLogLimit
 	}
-	events, err := model.ProjectEventsBefore(id, before, n)
+	events, err := model.ProjectEventsBefore(ctx, id, before, n)
 	if err != nil {
 		return nil, err
 	}
@@ -364,7 +364,7 @@ func GetEventsById(id string, before time.Time, n int) ([]restModel.APIProjectEv
 	catcher := grip.NewBasicCatcher()
 	for _, evt := range events {
 		apiEvent := restModel.APIProjectEvent{}
-		err = apiEvent.BuildFromService(evt)
+		err = apiEvent.BuildFromService(ctx, evt)
 		if err != nil {
 			catcher.Wrapf(err, "converting event '%s' to API model", evt.ID)
 			continue
@@ -374,8 +374,8 @@ func GetEventsById(id string, before time.Time, n int) ([]restModel.APIProjectEv
 	return out, catcher.Resolve()
 }
 
-func GetProjectAliasResults(p *model.Project, alias string, includeDeps bool) ([]restModel.APIVariantTasks, error) {
-	projectAliases, err := model.FindAliasInProjectRepoOrConfig(p.Identifier, alias)
+func GetProjectAliasResults(ctx context.Context, p *model.Project, alias string, includeDeps bool) ([]restModel.APIVariantTasks, error) {
+	projectAliases, err := model.FindAliasInProjectRepoOrConfig(ctx, p.Identifier, alias)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
@@ -385,7 +385,7 @@ func GetProjectAliasResults(p *model.Project, alias string, includeDeps bool) ([
 	matches := []restModel.APIVariantTasks{}
 	for _, projectAlias := range projectAliases {
 		requester := getRequesterFromAlias(projectAlias.Alias)
-		_, _, variantTasks := p.ResolvePatchVTs(&patch.Patch{}, requester, projectAlias.Alias, includeDeps)
+		_, _, variantTasks := p.ResolvePatchVTs(ctx, &patch.Patch{}, requester, projectAlias.Alias, includeDeps)
 		for _, variantTask := range variantTasks {
 			matches = append(matches, restModel.APIVariantTasksBuildFromService(variantTask))
 		}
@@ -418,8 +418,8 @@ func (pc *DBProjectConnector) GetProjectFromFile(ctx context.Context, pRef model
 
 // HideBranch is used to "delete" a project via the rest route or the UI. It overwrites the project with a skeleton project.
 // It also clears project admin roles, project aliases, and project vars.
-func HideBranch(projectID string) error {
-	pRef, err := model.FindBranchProjectRef(projectID)
+func HideBranch(ctx context.Context, projectID string) error {
+	pRef, err := model.FindBranchProjectRef(ctx, projectID)
 	if err != nil {
 		return errors.Wrapf(err, "finding project '%s'", projectID)
 	}
@@ -446,19 +446,19 @@ func HideBranch(projectID string) error {
 		Enabled:   false,
 		Hidden:    utility.TruePtr(),
 	}
-	if err := skeletonProj.Upsert(); err != nil {
+	if err := skeletonProj.Replace(ctx); err != nil {
 		return errors.Wrapf(err, "updating project '%s'", pRef.Id)
 	}
-	if err := model.UpdateAdminRoles(pRef, nil, pRef.Admins); err != nil {
+	if err := model.UpdateAdminRoles(ctx, pRef, nil, pRef.Admins); err != nil {
 		return errors.Wrapf(err, "removing project admin roles")
 	}
 
-	projectAliases, err := model.FindAliasesForProjectFromDb(pRef.Id)
+	projectAliases, err := model.FindAliasesForProjectFromDb(ctx, pRef.Id)
 	if err != nil {
 		return errors.Wrapf(err, "finding aliases for project '%s'", pRef.Id)
 	}
 	for _, alias := range projectAliases {
-		if err := model.RemoveProjectAlias(alias.ID.Hex()); err != nil {
+		if err := model.RemoveProjectAlias(ctx, alias.ID.Hex()); err != nil {
 			return errors.Wrapf(err, "removing project alias '%s' for project '%s'", alias.ID.Hex(), pRef.Id)
 		}
 	}
@@ -466,7 +466,7 @@ func HideBranch(projectID string) error {
 	skeletonProjVars := model.ProjectVars{
 		Id: pRef.Id,
 	}
-	if _, err := skeletonProjVars.Upsert(); err != nil {
+	if _, err := skeletonProjVars.Upsert(ctx); err != nil {
 		return errors.Wrapf(err, "updating vars for project '%s'", pRef.Id)
 	}
 

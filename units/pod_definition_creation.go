@@ -76,7 +76,7 @@ func (j *podDefinitionCreationJob) Run(ctx context.Context) {
 
 	defer func() {
 		if j.HasErrors() && j.IsLastAttempt() {
-			j.AddError(errors.Wrap(j.decommissionDependentIntentPods(), "decommissioning intent pods after pod definition creation failed"))
+			j.AddError(errors.Wrap(j.decommissionDependentIntentPods(ctx), "decommissioning intent pods after pod definition creation failed"))
 		}
 	}()
 
@@ -85,7 +85,7 @@ func (j *podDefinitionCreationJob) Run(ctx context.Context) {
 		return
 	}
 
-	dependents, err := pod.FindIntentByFamily(j.Family)
+	dependents, err := pod.FindIntentByFamily(ctx, j.Family)
 	if err != nil {
 		j.AddRetryableError(errors.Wrapf(err, "finding dependent intent pods with family '%s'", j.Family))
 		return
@@ -101,7 +101,7 @@ func (j *podDefinitionCreationJob) Run(ctx context.Context) {
 		return
 	}
 
-	podDef, err := definition.FindOneByFamily(j.Family)
+	podDef, err := definition.FindOneByFamily(ctx, j.Family)
 	if err != nil {
 		j.AddRetryableError(errors.Wrapf(err, "checking for existing pod definition with family '%s'", j.Family))
 		return
@@ -157,15 +157,15 @@ func (j *podDefinitionCreationJob) populateIfUnset(ctx context.Context) error {
 
 // decommissionDependentIntentPods decommissions all intent pods that depend on
 // the pod definition created by this job.
-func (j *podDefinitionCreationJob) decommissionDependentIntentPods() error {
-	podsToDecommission, err := pod.FindIntentByFamily(j.Family)
+func (j *podDefinitionCreationJob) decommissionDependentIntentPods(ctx context.Context) error {
+	podsToDecommission, err := pod.FindIntentByFamily(ctx, j.Family)
 	if err != nil {
 		return errors.Wrap(err, "finding intent pods to decommission")
 	}
 	catcher := grip.NewBasicCatcher()
 	var podIDs []string
 	for _, p := range podsToDecommission {
-		catcher.Wrapf(p.UpdateStatus(pod.StatusDecommissioned, "pod definition could not be created"), "pod '%s'", p.ID)
+		catcher.Wrapf(p.UpdateStatus(ctx, pod.StatusDecommissioned, "pod definition could not be created"), "pod '%s'", p.ID)
 		podIDs = append(podIDs, p.ID)
 	}
 

@@ -33,10 +33,10 @@ func TestGetRecentVersions(t *testing.T) {
 	router, err := newTestUIRouter(ctx, env)
 	require.NoError(t, err, "error setting up router")
 
-	err = modelutil.CreateTestLocalConfig(buildTestConfig, "mci-test", "")
+	err = modelutil.CreateTestLocalConfig(ctx, buildTestConfig, "mci-test", "")
 	require.NoError(t, err, "Error loading local config mci-test")
 
-	err = modelutil.CreateTestLocalConfig(buildTestConfig, "render", "")
+	err = modelutil.CreateTestLocalConfig(ctx, buildTestConfig, "render", "")
 	require.NoError(t, err, "Error loading local config render")
 
 	Convey("When finding recent versions", t, func() {
@@ -44,7 +44,7 @@ func TestGetRecentVersions(t *testing.T) {
 
 		projectName := "project_test"
 
-		err = modelutil.CreateTestLocalConfig(buildTestConfig, projectName, "")
+		err = modelutil.CreateTestLocalConfig(ctx, buildTestConfig, projectName, "")
 		So(err, ShouldBeNil)
 		otherProjectName := "my-other-project"
 		So(projectName, ShouldNotEqual, otherProjectName) // sanity-check
@@ -66,7 +66,7 @@ func TestGetRecentVersions(t *testing.T) {
 				RevisionOrderNumber: i + 1,
 				Requester:           evergreen.RepotrackerVersionRequester,
 			}
-			So(v.Insert(), ShouldBeNil)
+			So(v.Insert(t.Context()), ShouldBeNil)
 			versions = append(versions, v)
 		}
 
@@ -82,7 +82,7 @@ func TestGetRecentVersions(t *testing.T) {
 			RevisionOrderNumber: 0,
 			Requester:           evergreen.RepotrackerVersionRequester,
 		}
-		So(earlyVersion.Insert(), ShouldBeNil)
+		So(earlyVersion.Insert(t.Context()), ShouldBeNil)
 
 		// Construct a version that should not be present in the response
 		// since it belongs to a different project
@@ -95,7 +95,7 @@ func TestGetRecentVersions(t *testing.T) {
 			RevisionOrderNumber: NumRecentVersions + 1,
 			Requester:           evergreen.RepotrackerVersionRequester,
 		}
-		So(otherVersion.Insert(), ShouldBeNil)
+		So(otherVersion.Insert(t.Context()), ShouldBeNil)
 
 		builds := make([]*build.Build, 0, NumRecentVersions)
 		tasks := make([]*task.Task, 0, NumRecentVersions)
@@ -107,7 +107,7 @@ func TestGetRecentVersions(t *testing.T) {
 				BuildVariant: "some-build-variant",
 				DisplayName:  "Some Build Variant",
 			}
-			So(build.Insert(), ShouldBeNil)
+			So(build.Insert(t.Context()), ShouldBeNil)
 			builds = append(builds, build)
 
 			task := &task.Task{
@@ -118,7 +118,7 @@ func TestGetRecentVersions(t *testing.T) {
 				TimeTaken:    100 * time.Millisecond,
 				BuildVariant: build.BuildVariant,
 			}
-			So(task.Insert(), ShouldBeNil)
+			So(task.Insert(t.Context()), ShouldBeNil)
 			tasks = append(tasks, task)
 		}
 
@@ -135,7 +135,7 @@ func TestGetRecentVersions(t *testing.T) {
 		So(response.Code, ShouldEqual, http.StatusOK)
 
 		Convey("response should match contents of database", func() {
-			var jsonBody map[string]interface{}
+			var jsonBody map[string]any
 			err = json.Unmarshal(response.Body.Bytes(), &jsonBody)
 			So(err, ShouldBeNil)
 			link := response.Header().Get("Link")
@@ -149,7 +149,7 @@ func TestGetRecentVersions(t *testing.T) {
 
 			So(jsonBody["project"], ShouldEqual, projectName)
 
-			var jsonVersions []map[string]interface{}
+			var jsonVersions []map[string]any
 			err = json.Unmarshal(*rawJsonBody["versions"], &jsonVersions)
 			So(err, ShouldBeNil)
 			So(len(jsonVersions), ShouldEqual, len(versions))
@@ -164,13 +164,13 @@ func TestGetRecentVersions(t *testing.T) {
 
 				_jsonBuilds, ok := jsonVersion["builds"]
 				So(ok, ShouldBeTrue)
-				jsonBuilds, ok := _jsonBuilds.(map[string]interface{})
+				jsonBuilds, ok := _jsonBuilds.(map[string]any)
 				So(ok, ShouldBeTrue)
 				So(len(jsonBuilds), ShouldEqual, 1)
 
 				_jsonBuild, ok := jsonBuilds[builds[i].BuildVariant]
 				So(ok, ShouldBeTrue)
-				jsonBuild, ok := _jsonBuild.(map[string]interface{})
+				jsonBuild, ok := _jsonBuild.(map[string]any)
 				So(ok, ShouldBeTrue)
 
 				So(jsonBuild["build_id"], ShouldEqual, builds[i].Id)
@@ -178,13 +178,13 @@ func TestGetRecentVersions(t *testing.T) {
 
 				_jsonTasks, ok := jsonBuild["tasks"]
 				So(ok, ShouldBeTrue)
-				jsonTasks, ok := _jsonTasks.(map[string]interface{})
+				jsonTasks, ok := _jsonTasks.(map[string]any)
 				So(ok, ShouldBeTrue)
 				So(len(jsonTasks), ShouldEqual, 1)
 
 				_jsonTask, ok := jsonTasks[tasks[i].DisplayName]
 				So(ok, ShouldBeTrue)
-				jsonTask, ok := _jsonTask.(map[string]interface{})
+				jsonTask, ok := _jsonTask.(map[string]any)
 				So(ok, ShouldBeTrue)
 
 				So(jsonTask["task_id"], ShouldEqual, tasks[i].Id)
@@ -211,7 +211,7 @@ func TestGetRecentVersions(t *testing.T) {
 		So(response.Code, ShouldEqual, http.StatusOK)
 
 		Convey("response should contain no versions", func() {
-			var jsonBody map[string]interface{}
+			var jsonBody map[string]any
 			err = json.Unmarshal(response.Body.Bytes(), &jsonBody)
 			So(err, ShouldBeNil)
 
@@ -221,7 +221,7 @@ func TestGetRecentVersions(t *testing.T) {
 
 			So(jsonBody["project"], ShouldEqual, projectName)
 
-			var jsonVersions []map[string]interface{}
+			var jsonVersions []map[string]any
 			err = json.Unmarshal(*rawJsonBody["versions"], &jsonVersions)
 			So(err, ShouldBeNil)
 			So(jsonVersions, ShouldBeEmpty)
@@ -238,10 +238,10 @@ func TestGetVersionInfo(t *testing.T) {
 	router, err := newTestUIRouter(ctx, env)
 	require.NoError(t, err, "error setting up router")
 
-	err = modelutil.CreateTestLocalConfig(buildTestConfig, "mci-test", "")
+	err = modelutil.CreateTestLocalConfig(ctx, buildTestConfig, "mci-test", "")
 	require.NoError(t, err, "Error loading local config mci-test")
 
-	err = modelutil.CreateTestLocalConfig(buildTestConfig, "render", "")
+	err = modelutil.CreateTestLocalConfig(ctx, buildTestConfig, "render", "")
 	require.NoError(t, err, "Error loading local config render")
 
 	Convey("When finding info on a particular version", t, func() {
@@ -251,7 +251,7 @@ func TestGetVersionInfo(t *testing.T) {
 		versionId := "my-version"
 		projectName := "project_test"
 
-		err = modelutil.CreateTestLocalConfig(buildTestConfig, projectName, "")
+		err = modelutil.CreateTestLocalConfig(ctx, buildTestConfig, projectName, "")
 		So(err, ShouldBeNil)
 
 		v := &model.Version{
@@ -281,7 +281,7 @@ func TestGetVersionInfo(t *testing.T) {
 			RemotePath:          "",
 			Requester:           evergreen.RepotrackerVersionRequester,
 		}
-		So(v.Insert(), ShouldBeNil)
+		So(v.Insert(t.Context()), ShouldBeNil)
 
 		url := "/rest/v1/versions/" + versionId
 
@@ -314,7 +314,7 @@ func TestGetVersionInfo(t *testing.T) {
 		So(response.Code, ShouldEqual, http.StatusNotFound)
 
 		Convey("response should contain a sensible error message", func() {
-			var jsonBody map[string]interface{}
+			var jsonBody map[string]any
 			err = json.Unmarshal(response.Body.Bytes(), &jsonBody)
 			So(err, ShouldBeNil)
 			So(len(jsonBody["message"].(string)), ShouldBeGreaterThan, 0)
@@ -366,7 +366,7 @@ func TestGetVersionInfoViaRevision(t *testing.T) {
 			RemotePath:          "",
 			Requester:           evergreen.RepotrackerVersionRequester,
 		}
-		So(v.Insert(), ShouldBeNil)
+		So(v.Insert(t.Context()), ShouldBeNil)
 
 		url := fmt.Sprintf("/rest/v1/projects/%s/revisions/%s", projectName, revision)
 
@@ -400,7 +400,7 @@ func TestGetVersionInfoViaRevision(t *testing.T) {
 		So(response.Code, ShouldEqual, http.StatusNotFound)
 
 		Convey("response should contain a sensible error message", func() {
-			var jsonBody map[string]interface{}
+			var jsonBody map[string]any
 			err = json.Unmarshal(response.Body.Bytes(), &jsonBody)
 			So(err, ShouldBeNil)
 			So(len(jsonBody["message"].(string)), ShouldBeGreaterThan, 0)
@@ -428,7 +428,7 @@ func TestActivateVersion(t *testing.T) {
 			Id:           "some-build-id",
 			BuildVariant: "some-build-variant",
 		}
-		So(build.Insert(), ShouldBeNil)
+		So(build.Insert(t.Context()), ShouldBeNil)
 
 		v := &model.Version{
 			Id:          versionId,
@@ -458,11 +458,11 @@ func TestActivateVersion(t *testing.T) {
 			RemotePath:          "",
 			Requester:           evergreen.RepotrackerVersionRequester,
 		}
-		So(v.Insert(), ShouldBeNil)
+		So(v.Insert(t.Context()), ShouldBeNil)
 
 		url := "/rest/v1/versions/" + versionId
 
-		var body = map[string]interface{}{
+		var body = map[string]any{
 			"activated": true,
 		}
 		jsonBytes, err := json.Marshal(body)
@@ -489,7 +489,7 @@ func TestActivateVersion(t *testing.T) {
 
 		url := "/rest/v1/versions/" + versionId
 
-		var body = map[string]interface{}{
+		var body = map[string]any{
 			"activated": true,
 		}
 		jsonBytes, err := json.Marshal(body)
@@ -507,7 +507,7 @@ func TestActivateVersion(t *testing.T) {
 		So(response.Code, ShouldEqual, http.StatusNotFound)
 
 		Convey("response should contain a sensible error message", func() {
-			var jsonBody map[string]interface{}
+			var jsonBody map[string]any
 			err = json.Unmarshal(response.Body.Bytes(), &jsonBody)
 			So(err, ShouldBeNil)
 			So(len(jsonBody["message"].(string)), ShouldBeGreaterThan, 0)
@@ -519,7 +519,7 @@ func TestActivateVersion(t *testing.T) {
 
 		url := "/rest/v1/versions/" + versionId
 
-		var body = map[string]interface{}{
+		var body = map[string]any{
 			"activated": true,
 		}
 		jsonBytes, err := json.Marshal(body)
@@ -560,7 +560,7 @@ func TestGetVersionStatus(t *testing.T) {
 			BuildVariant: "some-build-variant",
 			Version:      versionId,
 		}
-		So(task.Insert(), ShouldBeNil)
+		So(task.Insert(t.Context()), ShouldBeNil)
 		build := &build.Build{
 			Id:           "some-build-id",
 			Version:      versionId,
@@ -568,7 +568,7 @@ func TestGetVersionStatus(t *testing.T) {
 			DisplayName:  "Some Build Variant",
 			Tasks:        []build.TaskCache{{Id: task.Id}},
 		}
-		So(build.Insert(), ShouldBeNil)
+		So(build.Insert(t.Context()), ShouldBeNil)
 
 		Convey("grouped by tasks", func() {
 			groupBy := "tasks"
@@ -587,7 +587,7 @@ func TestGetVersionStatus(t *testing.T) {
 			So(response.Code, ShouldEqual, http.StatusOK)
 
 			Convey("response should match contents of database", func() {
-				var jsonBody map[string]interface{}
+				var jsonBody map[string]any
 				err = json.Unmarshal(response.Body.Bytes(), &jsonBody)
 				So(err, ShouldBeNil)
 
@@ -595,18 +595,18 @@ func TestGetVersionStatus(t *testing.T) {
 
 				_jsonTasks, ok := jsonBody["tasks"]
 				So(ok, ShouldBeTrue)
-				jsonTasks, ok := _jsonTasks.(map[string]interface{})
+				jsonTasks, ok := _jsonTasks.(map[string]any)
 				So(ok, ShouldBeTrue)
 				So(len(jsonTasks), ShouldEqual, 1)
 
 				_jsonTask, ok := jsonTasks[task.DisplayName]
 				So(ok, ShouldBeTrue)
-				jsonTask, ok := _jsonTask.(map[string]interface{})
+				jsonTask, ok := _jsonTask.(map[string]any)
 				So(ok, ShouldBeTrue)
 
 				_jsonBuild, ok := jsonTask[task.BuildVariant]
 				So(ok, ShouldBeTrue)
-				jsonBuild, ok := _jsonBuild.(map[string]interface{})
+				jsonBuild, ok := _jsonBuild.(map[string]any)
 				So(ok, ShouldBeTrue)
 
 				So(jsonBuild["task_id"], ShouldEqual, task.Id)
@@ -648,7 +648,7 @@ func TestGetVersionStatus(t *testing.T) {
 			So(response.Code, ShouldEqual, http.StatusOK)
 
 			Convey("response should match contents of database", func() {
-				var jsonBody map[string]interface{}
+				var jsonBody map[string]any
 				err = json.Unmarshal(response.Body.Bytes(), &jsonBody)
 				So(err, ShouldBeNil)
 
@@ -656,18 +656,18 @@ func TestGetVersionStatus(t *testing.T) {
 
 				_jsonBuilds, ok := jsonBody["builds"]
 				So(ok, ShouldBeTrue)
-				jsonBuilds, ok := _jsonBuilds.(map[string]interface{})
+				jsonBuilds, ok := _jsonBuilds.(map[string]any)
 				So(ok, ShouldBeTrue)
 				So(len(jsonBuilds), ShouldEqual, 1)
 
 				_jsonBuild, ok := jsonBuilds[build.BuildVariant]
 				So(ok, ShouldBeTrue)
-				jsonBuild, ok := _jsonBuild.(map[string]interface{})
+				jsonBuild, ok := _jsonBuild.(map[string]any)
 				So(ok, ShouldBeTrue)
 
 				_jsonTask, ok := jsonBuild[task.DisplayName]
 				So(ok, ShouldBeTrue)
-				jsonTask, ok := _jsonTask.(map[string]interface{})
+				jsonTask, ok := _jsonTask.(map[string]any)
 				So(ok, ShouldBeTrue)
 
 				So(jsonTask["task_id"], ShouldEqual, task.Id)
@@ -692,7 +692,7 @@ func TestGetVersionStatus(t *testing.T) {
 
 			So(response.Code, ShouldEqual, http.StatusBadRequest)
 
-			var jsonBody map[string]interface{}
+			var jsonBody map[string]any
 			err = json.Unmarshal(response.Body.Bytes(), &jsonBody)
 			So(err, ShouldBeNil)
 
@@ -721,13 +721,13 @@ func TestGetVersionStatus(t *testing.T) {
 			So(response.Code, ShouldEqual, http.StatusOK)
 
 			Convey("response should contain a sensible error message", func() {
-				var jsonBody map[string]interface{}
+				var jsonBody map[string]any
 				err = json.Unmarshal(response.Body.Bytes(), &jsonBody)
 				So(err, ShouldBeNil)
 
 				_jsonTasks, ok := jsonBody["tasks"]
 				So(ok, ShouldBeTrue)
-				jsonTasks, ok := _jsonTasks.(map[string]interface{})
+				jsonTasks, ok := _jsonTasks.(map[string]any)
 				So(ok, ShouldBeTrue)
 				So(jsonTasks, ShouldBeEmpty)
 			})
@@ -751,13 +751,13 @@ func TestGetVersionStatus(t *testing.T) {
 			So(response.Code, ShouldEqual, http.StatusOK)
 
 			Convey("response should contain a sensible error message", func() {
-				var jsonBody map[string]interface{}
+				var jsonBody map[string]any
 				err = json.Unmarshal(response.Body.Bytes(), &jsonBody)
 				So(err, ShouldBeNil)
 
 				_jsonBuilds, ok := jsonBody["builds"]
 				So(ok, ShouldBeTrue)
-				jsonBuilds, ok := _jsonBuilds.(map[string]interface{})
+				jsonBuilds, ok := _jsonBuilds.(map[string]any)
 				So(ok, ShouldBeTrue)
 				So(jsonBuilds, ShouldBeEmpty)
 			})
@@ -767,7 +767,7 @@ func TestGetVersionStatus(t *testing.T) {
 
 func validateVersionInfo(v *model.Version, response *httptest.ResponseRecorder) {
 	Convey("response should match contents of database", func() {
-		var jsonBody map[string]interface{}
+		var jsonBody map[string]any
 		err := json.Unmarshal(response.Body.Bytes(), &jsonBody)
 		So(err, ShouldBeNil)
 

@@ -18,7 +18,7 @@ func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 	}
 
 	// propagate version metadata to the downstream version
-	metadata, err := getMetadataFromArgs(args)
+	metadata, err := getMetadataFromArgs(ctx, args)
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +41,7 @@ func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 		return nil, errors.Wrap(err, "creating version")
 	}
 	if args.SourceVersion != nil {
-		if err = args.SourceVersion.AddSatisfiedTrigger(args.DefinitionID); err != nil {
+		if err = args.SourceVersion.AddSatisfiedTrigger(ctx, args.DefinitionID); err != nil {
 			return nil, err
 		}
 	}
@@ -55,7 +55,7 @@ func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 		projectID = args.SourceVersion.Identifier
 		versionID = args.SourceVersion.Id
 	}
-	upstreamProject, err := model.FindMergedProjectRef(projectID, versionID, true)
+	upstreamProject, err := model.FindMergedProjectRef(ctx, projectID, versionID, true)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding project ref '%s' for source version '%s'", projectID, versionID)
 	}
@@ -73,25 +73,25 @@ func TriggerDownstreamVersion(ctx context.Context, args ProcessorArgs) (*model.V
 			if args.TriggerType == model.ProjectTriggerLevelPush {
 				moduleList[i].Ref = metadata.SourceCommit
 			}
-			_, err = model.CreateManifest(v, moduleList, projectInfo.Ref)
+			_, err = model.CreateManifest(ctx, v, moduleList, projectInfo.Ref)
 			if err != nil {
 				return nil, errors.WithStack(err)
 			}
 			break
 		}
 	}
-	err = model.UpdateLastRevision(v.Identifier, v.Revision)
+	err = model.UpdateLastRevision(ctx, v.Identifier, v.Revision)
 	if err != nil {
 		return nil, errors.Wrap(err, "updating last revision")
 	}
-	err = repotracker.AddBuildBreakSubscriptions(v, &args.DownstreamProject)
+	err = repotracker.AddBuildBreakSubscriptions(ctx, v, &args.DownstreamProject)
 	if err != nil {
 		return nil, errors.Wrap(err, "adding build break subscriptions")
 	}
 	return v, nil
 }
 
-func getMetadataFromArgs(args ProcessorArgs) (model.VersionMetadata, error) {
+func getMetadataFromArgs(ctx context.Context, args ProcessorArgs) (model.VersionMetadata, error) {
 	metadata := model.VersionMetadata{
 		SourceVersion:       args.SourceVersion,
 		Activate:            !args.UnscheduleDownstreamVersions,
@@ -109,7 +109,7 @@ func getMetadataFromArgs(args ProcessorArgs) (model.VersionMetadata, error) {
 			RevisionMessage: args.SourceVersion.Message,
 		}
 
-		author, err := user.FindOneById(args.SourceVersion.AuthorID)
+		author, err := user.FindOneByIdContext(ctx, args.SourceVersion.AuthorID)
 		if err != nil {
 			return metadata, errors.Wrapf(err, "finding version author '%s'", args.SourceVersion.AuthorID)
 		}
@@ -120,7 +120,7 @@ func getMetadataFromArgs(args ProcessorArgs) (model.VersionMetadata, error) {
 		metadata.Revision = args.PushRevision
 		metadata.SourceCommit = args.PushRevision.Revision
 	}
-	repo, err := model.FindRepository(args.DownstreamProject.Id)
+	repo, err := model.FindRepository(ctx, args.DownstreamProject.Id)
 	if err != nil {
 		return metadata, errors.Wrapf(err, "finding most recent revision for '%s'", args.DownstreamProject.Id)
 	}

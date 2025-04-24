@@ -73,7 +73,7 @@ func resetPatchSetup(ctx context.Context, t *testing.T, testPath string) *patch.
 		require.NoError(t, err, "Couldn't insert test distro: %v", err)
 	}
 
-	err := projectRef.Insert()
+	err := projectRef.Insert(t.Context())
 	require.NoError(t, err, "Couldn't insert test project ref: %v", err)
 
 	baseVersion := &Version{
@@ -82,7 +82,7 @@ func resetPatchSetup(ctx context.Context, t *testing.T, testPath string) *patch.
 		Revision:   patchedRevision,
 		Requester:  evergreen.RepotrackerVersionRequester,
 	}
-	err = baseVersion.Insert()
+	err = baseVersion.Insert(t.Context())
 	require.NoError(t, err, "Couldn't insert test base version: %v", err)
 
 	fileBytes, err := os.ReadFile(patchFile)
@@ -131,7 +131,7 @@ func resetProjectlessPatchSetup(ctx context.Context, t *testing.T) *patch.Patch 
 		require.NoError(t, err, "Couldn't insert test distro: %v", err)
 	}
 
-	err := projectRef.Insert()
+	err := projectRef.Insert(t.Context())
 	require.NoError(t, err, "Couldn't insert test project ref: %v", err)
 
 	fileBytes, err := os.ReadFile(newProjectPatchFile)
@@ -153,7 +153,7 @@ func resetProjectlessPatchSetup(ctx context.Context, t *testing.T) *patch.Patch 
 			},
 		},
 	}
-	err = configPatch.Insert()
+	err = configPatch.Insert(t.Context())
 	require.NoError(t, err, "Couldn't insert test patch: %v", err)
 	return configPatch
 }
@@ -175,10 +175,10 @@ func TestSetPriority(t *testing.T) {
 		Version:       "something_else",
 		ParentPatchID: t1.Version,
 	}
-	assert.NoError(t, t1.Insert())
-	assert.NoError(t, t2.Insert())
+	assert.NoError(t, t1.Insert(t.Context()))
+	assert.NoError(t, t2.Insert(t.Context()))
 	for _, p := range patches {
-		assert.NoError(t, p.Insert())
+		assert.NoError(t, p.Insert(t.Context()))
 	}
 	err := SetVersionsPriority(ctx, []string{"aabbccddeeff001122334455"}, 7, "")
 	assert.NoError(t, err)
@@ -218,7 +218,7 @@ func TestGetPatchedProjectAndGetPatchedProjectConfig(t *testing.T) {
 
 					// Simulate what patch creation does.
 					patchConfig.PatchedParserProject.Id = configPatch.Id.Hex()
-					So(patchConfig.PatchedParserProject.Insert(), ShouldBeNil)
+					So(patchConfig.PatchedParserProject.Insert(t.Context()), ShouldBeNil)
 					configPatch.ProjectStorageMethod = evergreen.ProjectStorageMethodDB
 					configPatch.PatchedProjectConfig = patchConfig.PatchedProjectConfig
 
@@ -257,7 +257,7 @@ func TestGetPatchedProjectAndGetPatchedProjectConfig(t *testing.T) {
 				configPatch := resetProjectlessPatchSetup(ctx, t)
 
 				patchFileID := primitive.NewObjectID()
-				So(db.WriteGridFile(patch.GridFSPrefix, patchFileID.Hex(), strings.NewReader(configPatch.Patches[0].PatchSet.Patch)), ShouldBeNil)
+				So(db.WriteGridFile(t.Context(), patch.GridFSPrefix, patchFileID.Hex(), strings.NewReader(configPatch.Patches[0].PatchSet.Patch)), ShouldBeNil)
 				configPatch.Patches[0].PatchSet.Patch = ""
 				configPatch.Patches[0].PatchSet.PatchFileId = patchFileID.Hex()
 
@@ -298,10 +298,10 @@ func TestFinalizePatch(t *testing.T) {
 			assert.NotNil(t, project)
 
 			patchConfig.PatchedParserProject.Id = p.Id.Hex()
-			require.NoError(t, patchConfig.PatchedParserProject.Insert())
+			require.NoError(t, patchConfig.PatchedParserProject.Insert(t.Context()))
 			ppStorageMethod := evergreen.ProjectStorageMethodDB
 			p.ProjectStorageMethod = ppStorageMethod
-			require.NoError(t, p.Insert())
+			require.NoError(t, p.Insert(t.Context()))
 
 			version, err := FinalizePatch(ctx, p, evergreen.PatchVersionRequester)
 			require.NoError(t, err)
@@ -309,12 +309,12 @@ func TestFinalizePatch(t *testing.T) {
 			assert.Len(t, version.Parameters, 1)
 			assert.Equal(t, ppStorageMethod, version.ProjectStorageMethod, "version's project storage method should match that of its patch")
 
-			dbPatch, err := patch.FindOneId(p.Id.Hex())
+			dbPatch, err := patch.FindOneId(t.Context(), p.Id.Hex())
 			require.NoError(t, err)
 			require.NotZero(t, dbPatch)
 			assert.True(t, dbPatch.Activated)
 			// ensure the relevant builds/tasks were created
-			builds, err := build.Find(build.All)
+			builds, err := build.Find(t.Context(), build.All)
 			require.NoError(t, err)
 			assert.Len(t, builds, 1)
 			assert.Len(t, builds[0].Tasks, 2)
@@ -342,10 +342,10 @@ func TestFinalizePatch(t *testing.T) {
 			patchConfig.PatchedParserProject.Id = p.Id.Hex()
 			patchConfig.PatchedParserProject.Modules = modules
 			patchConfig.PatchedParserProject.Identifier = utility.ToStringPtr(p.Project)
-			require.NoError(t, patchConfig.PatchedParserProject.Insert())
+			require.NoError(t, patchConfig.PatchedParserProject.Insert(t.Context()))
 
 			p.ProjectStorageMethod = evergreen.ProjectStorageMethodDB
-			require.NoError(t, p.Insert())
+			require.NoError(t, p.Insert(t.Context()))
 
 			project, patchConfig, err := GetPatchedProject(ctx, patchTestConfig, p)
 			require.NoError(t, err)
@@ -360,7 +360,7 @@ func TestFinalizePatch(t *testing.T) {
 				},
 				IsBase: true,
 			}
-			_, err = baseManifest.TryInsert()
+			_, err = baseManifest.TryInsert(t.Context())
 			require.NoError(t, err)
 
 			version, err := FinalizePatch(ctx, p, evergreen.PatchVersionRequester)
@@ -368,7 +368,7 @@ func TestFinalizePatch(t *testing.T) {
 			assert.NotNil(t, version)
 			// Ensure that the manifest was created and that auto_update worked for
 			// sandbox module but was skipped for evergreen
-			mfst, err := manifest.FindOne(manifest.ById(p.Id.Hex()))
+			mfst, err := manifest.FindOne(ctx, manifest.ById(p.Id.Hex()))
 			require.NoError(t, err)
 			assert.NotNil(t, mfst)
 			assert.Len(t, mfst.Modules, 2)
@@ -377,7 +377,7 @@ func TestFinalizePatch(t *testing.T) {
 		},
 		"EmptyCommitQueuePatchDoesntCreateVersion": func(t *testing.T, p *patch.Patch, patchConfig *PatchConfig) {
 			patchConfig.PatchedParserProject.Id = p.Id.Hex()
-			require.NoError(t, patchConfig.PatchedParserProject.Insert())
+			require.NoError(t, patchConfig.PatchedParserProject.Insert(t.Context()))
 			ppStorageMethod := evergreen.ProjectStorageMethodDB
 			p.ProjectStorageMethod = ppStorageMethod
 
@@ -385,7 +385,7 @@ func TestFinalizePatch(t *testing.T) {
 			p.Tasks = []string{}
 			p.BuildVariants = []string{}
 			p.VariantsTasks = []patch.VariantTasks{}
-			require.NoError(t, p.Insert())
+			require.NoError(t, p.Insert(t.Context()))
 
 			_, err := FinalizePatch(ctx, p, evergreen.PatchVersionRequester)
 			require.Error(t, err)
@@ -399,9 +399,9 @@ func TestFinalizePatch(t *testing.T) {
 		},
 		"GitHubPRPatchCreatesAllEssentialTasks": func(t *testing.T, p *patch.Patch, patchConfig *PatchConfig) {
 			patchConfig.PatchedParserProject.Id = p.Id.Hex()
-			require.NoError(t, patchConfig.PatchedParserProject.Insert())
+			require.NoError(t, patchConfig.PatchedParserProject.Insert(t.Context()))
 			p.ProjectStorageMethod = evergreen.ProjectStorageMethodDB
-			require.NoError(t, p.Insert())
+			require.NoError(t, p.Insert(t.Context()))
 
 			version, err := FinalizePatch(ctx, p, evergreen.GithubPRRequester)
 			require.NoError(t, err)
@@ -409,12 +409,12 @@ func TestFinalizePatch(t *testing.T) {
 			assert.Len(t, version.Parameters, 1)
 			assert.Equal(t, evergreen.ProjectStorageMethodDB, version.ProjectStorageMethod, "version's project storage method should be set")
 
-			dbPatch, err := patch.FindOneId(p.Id.Hex())
+			dbPatch, err := patch.FindOneId(t.Context(), p.Id.Hex())
 			require.NoError(t, err)
 			require.NotZero(t, dbPatch)
 			assert.True(t, dbPatch.Activated)
 
-			builds, err := build.Find(build.All)
+			builds, err := build.Find(t.Context(), build.All)
 			require.NoError(t, err)
 			assert.Len(t, builds, 1)
 			assert.Len(t, builds[0].Tasks, 2)
@@ -475,11 +475,11 @@ func TestGetFullPatchParams(t *testing.T) {
 	pRef := ProjectRef{
 		Id: "p1",
 	}
-	require.NoError(t, pRef.Insert())
-	require.NoError(t, p.Insert())
-	require.NoError(t, alias.Upsert())
+	require.NoError(t, pRef.Insert(t.Context()))
+	require.NoError(t, p.Insert(t.Context()))
+	require.NoError(t, alias.Upsert(t.Context()))
 
-	params, err := getFullPatchParams(&p)
+	params, err := getFullPatchParams(t.Context(), &p)
 	require.NoError(t, err)
 	require.Len(t, params, 3)
 	for _, param := range params {
@@ -715,7 +715,7 @@ index 748e345..7e70f15 100644
 
 // shouldContainPair returns a blank string if its arguments resemble each other, and returns a
 // list of pretty-printed diffs between the objects if they do not match.
-func shouldContainPair(actual interface{}, expected ...interface{}) string {
+func shouldContainPair(actual any, expected ...any) string {
 	actualPairsList, ok := actual.([]TVPair)
 
 	if !ok {
@@ -791,15 +791,15 @@ func TestAddNewPatch(t *testing.T) {
 		Identifier: "project",
 		CreateTime: baseCommitTime,
 	}
-	assert.NoError(u.Insert())
-	assert.NoError(p.Insert())
-	assert.NoError(v.Insert())
-	assert.NoError(baseVersion.Insert())
+	assert.NoError(u.Insert(t.Context()))
+	assert.NoError(p.Insert(t.Context()))
+	assert.NoError(v.Insert(t.Context()))
+	assert.NoError(baseVersion.Insert(t.Context()))
 	ref := ProjectRef{
 		Id:         "project",
 		Identifier: "project_name",
 	}
-	assert.NoError(ref.Insert())
+	assert.NoError(ref.Insert(t.Context()))
 
 	proj := &Project{
 		Identifier: "project",
@@ -844,11 +844,11 @@ func TestAddNewPatch(t *testing.T) {
 	}
 	_, _, err := addNewBuilds(ctx, creationInfo, nil)
 	assert.NoError(err)
-	dbBuild, err := build.FindOne(db.Q{})
+	dbBuild, err := build.FindOne(t.Context(), db.Q{})
 	assert.NoError(err)
 	require.NotNil(t, dbBuild)
 	assert.Len(dbBuild.Tasks, 2)
-	dbVersion, err := VersionFindOne(db.Q{})
+	dbVersion, err := VersionFindOne(t.Context(), db.Q{})
 	assert.NoError(err)
 	require.NotNil(t, dbVersion)
 	assert.Len(dbVersion.BuildVariants, 1)
@@ -857,7 +857,7 @@ func TestAddNewPatch(t *testing.T) {
 
 	_, _, err = addNewTasksToExistingBuilds(ctx, creationInfo, []build.Build{*dbBuild}, "")
 	assert.NoError(err)
-	dbUser, err := user.FindOneById(u.Id)
+	dbUser, err := user.FindOneByIdContext(t.Context(), u.Id)
 	assert.NoError(err)
 	require.NotNil(t, dbUser)
 	assert.Equal(4, dbUser.NumScheduledPatchTasks)
@@ -895,13 +895,13 @@ func TestAddNewPatchWithMissingBaseVersion(t *testing.T) {
 		Requester:  evergreen.PatchVersionRequester,
 		CreateTime: time.Now(),
 	}
-	assert.NoError(p.Insert())
-	assert.NoError(v.Insert())
+	assert.NoError(p.Insert(t.Context()))
+	assert.NoError(v.Insert(t.Context()))
 	ref := ProjectRef{
 		Id:         "project",
 		Identifier: "project_name",
 	}
-	assert.NoError(ref.Insert())
+	assert.NoError(ref.Insert(t.Context()))
 
 	proj := &Project{
 		Identifier: "project",
@@ -945,7 +945,7 @@ func TestAddNewPatchWithMissingBaseVersion(t *testing.T) {
 	}
 	_, _, err := addNewBuilds(context.Background(), creationInfo, nil)
 	assert.NoError(err)
-	dbBuild, err := build.FindOne(db.Q{})
+	dbBuild, err := build.FindOne(t.Context(), db.Q{})
 	assert.NoError(err)
 	assert.NotNil(dbBuild)
 	assert.Len(dbBuild.Tasks, 2)
@@ -998,8 +998,8 @@ func TestAbortPatchesWithGithubPatchData(t *testing.T) {
 	}()
 	for tName, tCase := range map[string]func(t *testing.T, p *patch.Patch, v *Version, tsk *task.Task){
 		"AbortsGitHubPRPatch": func(t *testing.T, p *patch.Patch, v *Version, tsk *task.Task) {
-			require.NoError(t, p.Insert())
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, p.Insert(t.Context()))
+			require.NoError(t, tsk.Insert(t.Context()))
 
 			require.NoError(t, AbortPatchesWithGithubPatchData(ctx, time.Now(), false, "", p.GithubPatchData.BaseOwner, p.GithubPatchData.BaseRepo, p.GithubPatchData.PRNumber))
 
@@ -1010,8 +1010,8 @@ func TestAbortPatchesWithGithubPatchData(t *testing.T) {
 		},
 		"IgnoresGitHubPRPatchCreatedAfterTimestamp": func(t *testing.T, p *patch.Patch, v *Version, tsk *task.Task) {
 			p.CreateTime = time.Now()
-			require.NoError(t, p.Insert())
-			require.NoError(t, tsk.Insert())
+			require.NoError(t, p.Insert(t.Context()))
+			require.NoError(t, tsk.Insert(t.Context()))
 
 			require.NoError(t, AbortPatchesWithGithubPatchData(ctx, time.Now().Add(-time.Hour), false, "", p.GithubPatchData.BaseOwner, p.GithubPatchData.BaseRepo, p.GithubPatchData.PRNumber))
 
@@ -1029,7 +1029,7 @@ func TestAbortPatchesWithGithubPatchData(t *testing.T) {
 				Status:    evergreen.VersionStarted,
 				Activated: utility.TruePtr(),
 			}
-			require.NoError(t, v.Insert())
+			require.NoError(t, v.Insert(t.Context()))
 			p := patch.Patch{
 				Id:         id,
 				Version:    v.Id,
@@ -1081,7 +1081,7 @@ func TestConfigurePatchWithOnlyUpdatedDescription(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(t, p.Insert())
+	assert.NoError(t, p.Insert(t.Context()))
 	pRef := &ProjectRef{
 		Id: mgobson.NewObjectId().Hex(),
 	}
@@ -1091,11 +1091,11 @@ func TestConfigurePatchWithOnlyUpdatedDescription(t *testing.T) {
 	pp := ParserProject{
 		Id: id.Hex(),
 	}
-	assert.NoError(t, pp.Insert())
+	assert.NoError(t, pp.Insert(t.Context()))
 	_, err := ConfigurePatch(ctx, &evergreen.Settings{}, p, nil, pRef, req)
 	assert.NoError(t, err)
 
-	p, err = patch.FindOneId(id.Hex())
+	p, err = patch.FindOneId(t.Context(), id.Hex())
 	assert.NoError(t, err)
 	require.NotNil(t, p)
 	assert.Equal(t, p.Description, req.Description)

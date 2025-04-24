@@ -24,7 +24,7 @@ func (uis *UIServer) fullEventLogs(w http.ResponseWriter, r *http.Request) {
 	var err error
 	switch resourceType {
 	case event.ResourceTypeTask:
-		loggedEvents, err = event.Find(event.MostRecentTaskEvents(resourceID, 100))
+		loggedEvents, err = event.Find(r.Context(), event.MostRecentTaskEvents(resourceID, 100))
 	case event.ResourceTypeHost:
 		if u == nil {
 			uis.RedirectToLogin(w, r)
@@ -46,13 +46,13 @@ func (uis *UIServer) fullEventLogs(w http.ResponseWriter, r *http.Request) {
 			Limit:   5000,
 			SortAsc: false,
 		}
-		loggedEvents, err = event.Find(event.HostEvents(hostEventsOpts))
+		loggedEvents, err = event.Find(r.Context(), event.HostEvents(hostEventsOpts))
 	case event.ResourceTypeAdmin:
 		if u == nil {
 			uis.RedirectToLogin(w, r)
 			return
 		}
-		loggedEvents, err = event.Find(event.RecentAdminEvents(100))
+		loggedEvents, err = event.Find(r.Context(), event.RecentAdminEvents(100))
 	case event.EventResourceTypeProject:
 		if u == nil {
 			uis.RedirectToLogin(w, r)
@@ -60,7 +60,7 @@ func (uis *UIServer) fullEventLogs(w http.ResponseWriter, r *http.Request) {
 		}
 
 		var project *model.ProjectRef
-		project, err = model.FindBranchProjectRef(resourceID)
+		project, err = model.FindBranchProjectRef(ctx, resourceID)
 		if err != nil {
 			http.Error(w, "database error", http.StatusInternalServerError)
 			return
@@ -80,7 +80,7 @@ func (uis *UIServer) fullEventLogs(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		var loggedProjectEvents model.ProjectChangeEvents
-		loggedProjectEvents, err = model.MostRecentProjectEvents(resourceID, 200)
+		loggedProjectEvents, err = model.MostRecentProjectEvents(r.Context(), resourceID, 200)
 		for _, event := range loggedProjectEvents {
 			loggedEvents = append(loggedEvents, event.EventLogEntry)
 		}

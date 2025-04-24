@@ -41,7 +41,7 @@ var SubscriberTypes = []string{
 type Subscriber struct {
 	Type string `bson:"type"`
 	// sad violin
-	Target interface{} `bson:"target"`
+	Target any `bson:"target"`
 }
 
 type unmarshalSubscriber struct {
@@ -202,20 +202,24 @@ type GithubCheckSubscriber struct {
 	Ref   string `bson:"ref"`
 }
 
+func (s *GithubCheckSubscriber) String() string {
+	return fmt.Sprintf("%s-%s-%s", s.Owner, s.Repo, s.Ref)
+}
+
 type GithubMergeSubscriber struct {
 	Owner string `bson:"owner"`
 	Repo  string `bson:"repo"`
 	Ref   string `bson:"ref"`
 }
 
+func (s *GithubMergeSubscriber) String() string {
+	return fmt.Sprintf("%s-%s-%s", s.Owner, s.Repo, s.Ref)
+}
+
 type ChildPatchSubscriber struct {
 	ParentStatus string `bson:"parent_status"`
 	ChildPatchId string `bson:"child_patch_id"`
 	Requester    string `bson:"requester"`
-}
-
-func (s *GithubCheckSubscriber) String() string {
-	return fmt.Sprintf("%s-%s-%s", s.Owner, s.Repo, s.Ref)
 }
 
 func NewRunChildPatchSubscriber(s ChildPatchSubscriber) Subscriber {

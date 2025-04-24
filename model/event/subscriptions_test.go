@@ -146,13 +146,13 @@ func (s *subscriptionsSuite) SetupTest() {
 	}
 
 	for _, sub := range s.subscriptions {
-		s.NoError(sub.Upsert())
+		s.NoError(sub.Upsert(s.T().Context()))
 	}
 }
 
 func (s *subscriptionsSuite) TestUpsert() {
 	out := []Subscription{}
-	s.NoError(db.FindAllQ(SubscriptionsCollection, db.Q{}, &out))
+	s.NoError(db.FindAllQ(s.T().Context(), SubscriptionsCollection, db.Q{}, &out))
 
 	s.Require().Len(out, 6)
 
@@ -171,10 +171,10 @@ func (s *subscriptionsSuite) TestUpsert() {
 
 func (s *subscriptionsSuite) TestRemove() {
 	for i := range s.subscriptions {
-		s.NoError(RemoveSubscription(s.subscriptions[i].ID))
+		s.NoError(RemoveSubscription(s.T().Context(), s.subscriptions[i].ID))
 
 		out := []Subscription{}
-		s.NoError(db.FindAllQ(SubscriptionsCollection, db.Q{}, &out))
+		s.NoError(db.FindAllQ(s.T().Context(), SubscriptionsCollection, db.Q{}, &out))
 		s.Len(out, len(s.subscriptions)-i-1)
 	}
 }
@@ -275,13 +275,13 @@ func (s *subscriptionsSuite) TestAttributesValuesForSelector() {
 
 func (s *subscriptionsSuite) TestFindSubscriptionsByAttributes() {
 	s.Run("EmptySelectors", func() {
-		subs, err := FindSubscriptionsByAttributes("type2", Attributes{})
+		subs, err := FindSubscriptionsByAttributes(s.T().Context(), "type2", Attributes{})
 		s.NoError(err)
 		s.Empty(subs)
 	})
 
 	s.Run("NothingMatches", func() {
-		subs, err := FindSubscriptionsByAttributes("type1", Attributes{
+		subs, err := FindSubscriptionsByAttributes(s.T().Context(), "type1", Attributes{
 			Object: []string{"nothing_matches"},
 		})
 		s.NoError(err)
@@ -289,7 +289,7 @@ func (s *subscriptionsSuite) TestFindSubscriptionsByAttributes() {
 	})
 
 	s.Run("MatchesMultipleSubscriptions", func() {
-		subs, err := FindSubscriptionsByAttributes("type2", Attributes{
+		subs, err := FindSubscriptionsByAttributes(s.T().Context(), "type2", Attributes{
 			Object: []string{"somethingspecial"},
 		})
 		s.NoError(err)
@@ -301,7 +301,7 @@ func (s *subscriptionsSuite) TestFindSubscriptionsByAttributes() {
 	})
 
 	s.Run("MatchesRegexSelector", func() {
-		subs, err := FindSubscriptionsByAttributes("type1", Attributes{
+		subs, err := FindSubscriptionsByAttributes(s.T().Context(), "type1", Attributes{
 			ID:      []string{"something"},
 			Project: []string{"somethingelse"},
 		})
@@ -513,7 +513,7 @@ func (s *subscriptionsSuite) TestFromSelectors() {
 }
 
 func (s *subscriptionsSuite) TestFindByOwnerForPerson() {
-	subscriptions, err := FindSubscriptionsByOwner("me", OwnerTypePerson)
+	subscriptions, err := FindSubscriptionsByOwner(s.T().Context(), "me", OwnerTypePerson)
 	s.NoError(err)
 	s.Len(subscriptions, 2)
 	for _, sub := range subscriptions {
@@ -523,7 +523,7 @@ func (s *subscriptionsSuite) TestFindByOwnerForPerson() {
 }
 
 func (s *subscriptionsSuite) TestFindByOwnerForProject() {
-	subscriptions, err := FindSubscriptionsByOwner("me", OwnerTypeProject)
+	subscriptions, err := FindSubscriptionsByOwner(s.T().Context(), "me", OwnerTypeProject)
 	s.NoError(err)
 	s.Require().Len(subscriptions, 1)
 	s.Equal("me", subscriptions[0].Owner)
@@ -532,14 +532,14 @@ func (s *subscriptionsSuite) TestFindByOwnerForProject() {
 
 func (s *subscriptionsSuite) TestFindSubscriptionsByOwner() {
 	for i := range s.subscriptions {
-		sub, err := FindSubscriptionByID(s.subscriptions[i].ID)
+		sub, err := FindSubscriptionByID(s.T().Context(), s.subscriptions[i].ID)
 		s.NoError(err)
 		s.NotNil(sub)
 		s.NotEqual("", sub.ID)
 	}
 
 	s.NoError(db.ClearCollections(SubscriptionsCollection))
-	sub, err := FindSubscriptionByID(s.subscriptions[0].ID)
+	sub, err := FindSubscriptionByID(s.T().Context(), s.subscriptions[0].ID)
 	s.NoError(err)
 	s.Nil(sub)
 }
@@ -550,11 +550,11 @@ func (s *subscriptionsSuite) TestCreateOrUpdateGeneralSubscription() {
 		Target: "@octocat",
 	}
 
-	subscription, err := CreateOrUpdateGeneralSubscription(GeneralSubscriptionPatchOutcome, "",
+	subscription, err := CreateOrUpdateGeneralSubscription(s.T().Context(), GeneralSubscriptionPatchOutcome, "",
 		subscriber, "octocat")
 	s.NoError(err)
 
-	subscriptions, err := FindSubscriptionsByOwner("octocat", OwnerTypePerson)
+	subscriptions, err := FindSubscriptionsByOwner(s.T().Context(), "octocat", OwnerTypePerson)
 	s.NoError(err)
 	s.Require().Len(subscriptions, 1)
 	s.Equal(subscriptions[0].ID, subscription.ID)
@@ -602,20 +602,20 @@ func TestCopyProjectSubscriptions(t *testing.T) {
 		},
 	}
 	for _, sub := range subs {
-		assert.NoError(t, sub.Upsert())
+		assert.NoError(t, sub.Upsert(t.Context()))
 	}
 
 	for name, test := range map[string]func(t *testing.T){
 		"FromNonExistentProject": func(t *testing.T) {
-			assert.NoError(t, CopyProjectSubscriptions("not-a-project", "my-new-project"))
-			apiSubs, err := FindSubscriptionsByOwner("my-new-project", OwnerTypeProject)
+			assert.NoError(t, CopyProjectSubscriptions(t.Context(), "not-a-project", "my-new-project"))
+			apiSubs, err := FindSubscriptionsByOwner(t.Context(), "my-new-project", OwnerTypeProject)
 			assert.NoError(t, err)
 			require.Empty(t, apiSubs)
 		},
 		"FromExistentProject": func(t *testing.T) {
 			newProjectId := "my-newest-project"
-			assert.NoError(t, CopyProjectSubscriptions(oldProjectId, newProjectId))
-			apiSubs, err := FindSubscriptionsByOwner(oldProjectId, OwnerTypeProject)
+			assert.NoError(t, CopyProjectSubscriptions(t.Context(), oldProjectId, newProjectId))
+			apiSubs, err := FindSubscriptionsByOwner(t.Context(), oldProjectId, OwnerTypeProject)
 			assert.NoError(t, err)
 			require.Len(t, apiSubs, 1)
 			assert.Equal(t, subs[0].ID, apiSubs[0].ID)
@@ -623,7 +623,7 @@ func TestCopyProjectSubscriptions(t *testing.T) {
 			assert.Equal(t, oldProjectId, apiSubs[0].Selectors[0].Data)
 			assert.Equal(t, oldProjectId, apiSubs[0].Filter.Project)
 
-			apiSubs, err = FindSubscriptionsByOwner(newProjectId, OwnerTypeProject)
+			apiSubs, err = FindSubscriptionsByOwner(t.Context(), newProjectId, OwnerTypeProject)
 			assert.NoError(t, err)
 			require.Len(t, apiSubs, 1)
 			assert.NotEqual(t, subs[0].ID, apiSubs[0].ID)

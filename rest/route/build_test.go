@@ -39,13 +39,13 @@ func TestBuildByIdSuite(t *testing.T) {
 func (s *BuildByIdSuite) SetupSuite() {
 	s.NoError(db.ClearCollections(serviceModel.ProjectRefCollection, build.Collection, task.Collection, serviceModel.VersionCollection, serviceModel.ParserProjectCollection))
 	projRef := serviceModel.ProjectRef{Repo: "project", Id: "branch"}
-	s.NoError(projRef.Insert())
+	s.NoError(projRef.Insert(s.T().Context()))
 	tasks := []task.Task{
 		{Id: "task1", Status: evergreen.TaskFailed, BuildId: "build1", DisplayOnly: true},
 		{Id: "task2", Status: evergreen.TaskSucceeded, BuildId: "build2"},
 	}
 	for _, task := range tasks {
-		s.Require().NoError(task.Insert())
+		s.Require().NoError(task.Insert(s.T().Context()))
 	}
 	builds := []build.Build{
 		{
@@ -68,13 +68,13 @@ func (s *BuildByIdSuite) SetupSuite() {
 		},
 	}
 	for _, build := range builds {
-		s.Require().NoError(build.Insert())
+		s.Require().NoError(build.Insert(s.T().Context()))
 	}
 
 	v := serviceModel.Version{
 		Id: "myVersion",
 	}
-	s.Require().NoError(v.Insert())
+	s.Require().NoError(v.Insert(s.T().Context()))
 
 	configFile := `
 buildvariants:
@@ -88,7 +88,7 @@ buildvariants:
 	var pp *serviceModel.ParserProject
 	s.NoError(yaml.Unmarshal([]byte(configFile), &pp))
 	pp.Id = "myVersion"
-	s.NoError(pp.Insert())
+	s.NoError(pp.Insert(s.T().Context()))
 }
 
 func (s *BuildByIdSuite) SetupTest() {
@@ -168,10 +168,10 @@ func (s *BuildChangeStatusSuite) SetupSuite() {
 		BuildId: "build1",
 		Status:  evergreen.TaskWillRun,
 	}
-	s.NoError(task.Insert())
-	s.NoError((&serviceModel.Version{Id: "v1"}).Insert())
+	s.NoError(task.Insert(s.T().Context()))
+	s.NoError((&serviceModel.Version{Id: "v1"}).Insert(s.T().Context()))
 	for _, item := range builds {
-		s.Require().NoError(item.Insert())
+		s.Require().NoError(item.Insert(s.T().Context()))
 	}
 	s.rm = makeChangeStatusForBuild()
 }
@@ -187,7 +187,7 @@ func (s *BuildChangeStatusSuite) TestSetActivation() {
 	res := s.rm.Run(ctx)
 	s.NotNil(res)
 
-	b, err := build.FindOneId("build1")
+	b, err := build.FindOneId(s.T().Context(), "build1")
 	s.NoError(err)
 	s.True(b.Activated)
 	s.Equal(utility.ToStringPtr("user1"), &b.ActivatedBy)
@@ -250,13 +250,13 @@ func TestBuildAbortSuite(t *testing.T) {
 func (s *BuildAbortSuite) SetupSuite() {
 	s.NoError(db.ClearCollections(serviceModel.ProjectRefCollection, build.Collection))
 	projRef := serviceModel.ProjectRef{Repo: "project", Id: "branch"}
-	s.NoError(projRef.Insert())
+	s.NoError(projRef.Insert(s.T().Context()))
 	builds := []build.Build{
 		{Id: "build1", Project: "branch"},
 		{Id: "build2", Project: "notbranch"},
 	}
 	for _, item := range builds {
-		s.Require().NoError(item.Insert())
+		s.Require().NoError(item.Insert(s.T().Context()))
 	}
 }
 
@@ -273,10 +273,10 @@ func (s *BuildAbortSuite) TestAbort() {
 	s.Equal(http.StatusOK, res.Status())
 	s.NotNil(res)
 
-	build1, err := build.FindOneId("build1")
+	build1, err := build.FindOneId(s.T().Context(), "build1")
 	s.NoError(err)
 	s.Equal("user1", build1.ActivatedBy)
-	build2, err := build.FindOneId("build2")
+	build2, err := build.FindOneId(s.T().Context(), "build2")
 	s.NoError(err)
 	s.Equal("", build2.ActivatedBy)
 	b, ok := res.Data().(*model.APIBuild)
@@ -285,10 +285,10 @@ func (s *BuildAbortSuite) TestAbort() {
 
 	res = s.rm.Run(ctx)
 	s.NotNil(res)
-	build1, err = build.FindOneId("build1")
+	build1, err = build.FindOneId(s.T().Context(), "build1")
 	s.NoError(err)
 	s.Equal("user1", build1.ActivatedBy)
-	build2, err = build.FindOneId("build2")
+	build2, err = build.FindOneId(s.T().Context(), "build2")
 	s.NoError(err)
 	s.Equal("", build2.ActivatedBy)
 	b, ok = res.Data().(*model.APIBuild)
@@ -317,10 +317,10 @@ func (s *BuildRestartSuite) SetupSuite() {
 		{Id: "build2", Project: "notbranch", Version: "version"},
 	}
 	for _, item := range builds {
-		s.Require().NoError(item.Insert())
+		s.Require().NoError(item.Insert(s.T().Context()))
 	}
 	v := &serviceModel.Version{Id: "version"}
-	s.Require().NoError(v.Insert())
+	s.Require().NoError(v.Insert(s.T().Context()))
 }
 
 func (s *BuildRestartSuite) SetupTest() {

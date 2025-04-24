@@ -51,7 +51,7 @@ func (h *podProvisioningScript) Parse(ctx context.Context, r *http.Request) erro
 // because the pod's containers unlikely to be equipped with the tooling to
 // parse JSON output.
 func (h *podProvisioningScript) Run(ctx context.Context) gimlet.Responder {
-	p, err := pod.FindOneByID(h.podID)
+	p, err := pod.FindOneByID(ctx, h.podID)
 	if err != nil {
 		return gimlet.NewTextInternalErrorResponse(errors.Wrap(err, "finding pod"))
 	}
@@ -206,16 +206,16 @@ func (h *podAgentNextTask) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *podAgentNextTask) Run(ctx context.Context) gimlet.Responder {
-	p, err := data.FindPodByID(h.podID)
+	p, err := data.FindPodByID(ctx, h.podID)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
 
-	if err := h.transitionStartingToRunning(p); err != nil {
+	if err := h.transitionStartingToRunning(ctx, p); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "marking pod as running"))
 	}
 
-	h.setAgentFirstContactTime(p)
+	h.setAgentFirstContactTime(ctx, p)
 
 	if p.Status == pod.StatusTerminated || p.Status == pod.StatusDecommissioned {
 		if err = h.prepareForPodTermination(ctx, p, "pod is no longer running"); err != nil {
@@ -242,7 +242,7 @@ func (h *podAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 		}
 	}
 
-	pd, err := h.findDispatcher()
+	pd, err := h.findDispatcher(ctx)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
@@ -272,7 +272,7 @@ func (h *podAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 // a detailed reason for doing so.
 func (h *podAgentNextTask) prepareForPodTermination(ctx context.Context, p *pod.Pod, reason string) error {
 	if p.Status != pod.StatusDecommissioned && p.Status != pod.StatusTerminated {
-		if err := p.UpdateStatus(pod.StatusDecommissioned, reason); err != nil {
+		if err := p.UpdateStatus(ctx, pod.StatusDecommissioned, reason); err != nil {
 			return errors.Wrap(err, "updating pod status to decommissioned")
 		}
 	}
@@ -286,20 +286,20 @@ func (h *podAgentNextTask) prepareForPodTermination(ctx context.Context, p *pod.
 
 // transitionStartingToRunning transitions the pod that is still starting up to
 // indicate that it is running and ready to accept tasks.
-func (h *podAgentNextTask) transitionStartingToRunning(p *pod.Pod) error {
+func (h *podAgentNextTask) transitionStartingToRunning(ctx context.Context, p *pod.Pod) error {
 	if p.Status != pod.StatusStarting {
 		return nil
 	}
 
-	return p.UpdateStatus(pod.StatusRunning, "agent requested next task to run, indicating that it is now running")
+	return p.UpdateStatus(ctx, pod.StatusRunning, "agent requested next task to run, indicating that it is now running")
 }
 
-func (h *podAgentNextTask) setAgentFirstContactTime(p *pod.Pod) {
+func (h *podAgentNextTask) setAgentFirstContactTime(ctx context.Context, p *pod.Pod) {
 	if p.TimeInfo.Initializing.IsZero() {
 		return
 	}
 
-	if err := p.UpdateAgentStartTime(); err != nil {
+	if err := p.UpdateAgentStartTime(ctx); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "could not update pod's agent first contact time",
 			"pod":     p.ID,
@@ -316,8 +316,8 @@ func (h *podAgentNextTask) setAgentFirstContactTime(p *pod.Pod) {
 	})
 }
 
-func (h *podAgentNextTask) findDispatcher() (*dispatcher.PodDispatcher, error) {
-	pd, err := dispatcher.FindOneByPodID(h.podID)
+func (h *podAgentNextTask) findDispatcher(ctx context.Context) (*dispatcher.PodDispatcher, error) {
+	pd, err := dispatcher.FindOneByPodID(ctx, h.podID)
 	if err != nil {
 		return nil, gimlet.ErrorResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -389,7 +389,7 @@ func (h *podAgentNextTask) cleanUpPodAfterRedispatchFailure(ctx context.Context,
 		"status":    taskStatus,
 	})
 
-	if err := p.ClearRunningTask(); err != nil {
+	if err := p.ClearRunningTask(ctx); err != nil {
 		return errors.Wrapf(err, "clearing task '%s' execution %d assigned to pod", taskID, taskExecution)
 	}
 	if err := h.prepareForPodTermination(ctx, p, reason); err != nil {
@@ -445,7 +445,7 @@ func (h *podAgentEndTask) Parse(ctx context.Context, r *http.Request) error {
 // It then marks the task as finished. If the task is aborted, this will no-op.
 func (h *podAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 	finishTime := time.Now()
-	p, err := data.FindPodByID(h.podID)
+	p, err := data.FindPodByID(ctx, h.podID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
@@ -472,7 +472,7 @@ func (h *podAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONResponse(endTaskResp)
 	}
 
-	projectRef, err := model.FindMergedProjectRef(t.Project, t.Version, true)
+	projectRef, err := model.FindMergedProjectRef(ctx, t.Project, t.Version, true)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project '%s' for version '%s'", t.Project, t.Version))
 	}
@@ -488,7 +488,7 @@ func (h *podAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 	// order. See the host end task route for more detailed explanation.
 
 	// Clear the running task on the pod now that the task has finished.
-	if err = p.ClearRunningTask(); err != nil {
+	if err = p.ClearRunningTask(ctx); err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "clearing running task '%s' for pod '%s'", t.Id, p.ID))
 	}
 

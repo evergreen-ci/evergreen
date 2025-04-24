@@ -1,6 +1,8 @@
 package data
 
 import (
+	"context"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
@@ -15,19 +17,19 @@ import (
 // 3. aliases defined in the project config YAML
 // The includeProjectConfig flag determines whether to include aliases defined in the project config YAML.
 // If the aliasesToAdd parameter is defined, we fold those aliases in and remove any that are marked as deleted.
-func FindMergedProjectAliases(projectId, repoId string, aliasesToAdd []restModel.APIProjectAlias, includeProjectConfig bool) ([]restModel.APIProjectAlias, error) {
-	projectRef, err := model.FindMergedProjectRef(projectId, "", false)
+func FindMergedProjectAliases(ctx context.Context, projectId, repoId string, aliasesToAdd []restModel.APIProjectAlias, includeProjectConfig bool) ([]restModel.APIProjectAlias, error) {
+	projectRef, err := model.FindMergedProjectRef(ctx, projectId, "", false)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding project ref for project '%s'", projectId)
 	}
 	var projectConfig *model.ProjectConfig
 	if includeProjectConfig {
-		projectConfig, err = model.FindLastKnownGoodProjectConfig(projectId)
+		projectConfig, err = model.FindLastKnownGoodProjectConfig(ctx, projectId)
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding project config for project '%s'", projectId)
 		}
 	}
-	aliases, err := model.ConstructMergedAliasesByPrecedence(projectRef, projectConfig, repoId)
+	aliases, err := model.ConstructMergedAliasesByPrecedence(ctx, projectRef, projectConfig, repoId)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding merged aliases for project '%s'", projectId)
 	}
@@ -53,7 +55,7 @@ func FindMergedProjectAliases(projectId, repoId string, aliasesToAdd []restModel
 }
 
 // UpdateProjectAliases upserts/deletes aliases for the given project
-func UpdateProjectAliases(projectId string, aliases []restModel.APIProjectAlias) error {
+func UpdateProjectAliases(ctx context.Context, projectId string, aliases []restModel.APIProjectAlias) error {
 	aliasesToUpsert := []model.ProjectAlias{}
 	aliasesToDelete := []string{}
 	catcher := grip.NewBasicCatcher()
@@ -73,11 +75,11 @@ func UpdateProjectAliases(projectId string, aliases []restModel.APIProjectAlias)
 	if catcher.HasErrors() {
 		return catcher.Resolve()
 	}
-	if err := model.UpsertAliasesForProject(aliasesToUpsert, projectId); err != nil {
+	if err := model.UpsertAliasesForProject(ctx, aliasesToUpsert, projectId); err != nil {
 		return errors.Wrap(err, "upserting project aliases")
 	}
 	for _, aliasId := range aliasesToDelete {
-		catcher.Wrapf(model.RemoveProjectAlias(aliasId), "deleting project alias '%s'", aliasId)
+		catcher.Wrapf(model.RemoveProjectAlias(ctx, aliasId), "deleting project alias '%s'", aliasId)
 	}
 	return catcher.Resolve()
 }
@@ -85,7 +87,7 @@ func UpdateProjectAliases(projectId string, aliases []restModel.APIProjectAlias)
 // updateAliasesForSection, given a project, a list of current aliases, a list of previous aliases, and a project page section,
 // upserts any current aliases, and deletes any aliases that existed previously but not anymore (only
 // considers the aliases that are relevant for the section). Returns if any aliases have been modified.
-func updateAliasesForSection(projectId string, updatedAliases []restModel.APIProjectAlias,
+func updateAliasesForSection(ctx context.Context, projectId string, updatedAliases []restModel.APIProjectAlias,
 	originalAliases []model.ProjectAlias, section model.ProjectPageSection) (bool, error) {
 	aliasesIdMap := map[string]bool{}
 	aliasesToUpdate := []restModel.APIProjectAlias{}
@@ -97,7 +99,7 @@ func updateAliasesForSection(projectId string, updatedAliases []restModel.APIPro
 		aliasesToUpdate = append(aliasesToUpdate, a)
 		aliasesIdMap[utility.FromStringPtr(a.ID)] = true
 	}
-	if err := UpdateProjectAliases(projectId, aliasesToUpdate); err != nil {
+	if err := UpdateProjectAliases(ctx, projectId, aliasesToUpdate); err != nil {
 		return false, errors.Wrap(err, "updating project aliases")
 	}
 	modified := len(aliasesToUpdate) > 0
@@ -110,7 +112,7 @@ func updateAliasesForSection(projectId string, updatedAliases []restModel.APIPro
 		}
 		id := originalAlias.ID.Hex()
 		if _, ok := aliasesIdMap[id]; !ok {
-			catcher.Add(model.RemoveProjectAlias(id))
+			catcher.Add(model.RemoveProjectAlias(ctx, id))
 			modified = true
 		}
 	}
@@ -120,7 +122,7 @@ func updateAliasesForSection(projectId string, updatedAliases []restModel.APIPro
 // validateFeaturesHaveAliases returns an error if project/repo aliases are not defined for a Github/CQ feature.
 // Does not error if version control is enabled. To check for version control, we pass in the original project ref
 // along with the newly changed project ref because the new project ref only contains github / CQ section data.
-func validateFeaturesHaveAliases(originalProjectRef *model.ProjectRef, newProjectRef *model.ProjectRef, aliases []restModel.APIProjectAlias) error {
+func validateFeaturesHaveAliases(ctx context.Context, originalProjectRef *model.ProjectRef, newProjectRef *model.ProjectRef, aliases []restModel.APIProjectAlias) error {
 	if originalProjectRef.IsVersionControlEnabled() {
 		return nil
 	}
@@ -131,7 +133,7 @@ func validateFeaturesHaveAliases(originalProjectRef *model.ProjectRef, newProjec
 	}
 
 	if newProjectRef.UseRepoSettings() {
-		repoAliases, err := model.FindAliasesForRepo(newProjectRef.RepoRefId)
+		repoAliases, err := model.FindAliasesForRepo(ctx, newProjectRef.RepoRefId)
 		if err != nil {
 			return err
 		}

@@ -38,6 +38,9 @@ func (c *CloudProviders) Set(ctx context.Context) error {
 func (c *CloudProviders) ValidateAndDefault() error {
 	catcher := grip.NewBasicCatcher()
 	catcher.Wrap(c.AWS.Pod.Validate(), "invalid ECS config")
+	for i, m := range c.AWS.AccountRoles {
+		catcher.Wrapf(m.Validate(), "invalid account role mapping at index %d", i)
+	}
 	return catcher.Resolve()
 }
 
@@ -76,6 +79,27 @@ type AWSConfig struct {
 
 	// Pod represents configuration for using pods in AWS.
 	Pod AWSPodConfig `bson:"pod" json:"pod" yaml:"pod"`
+
+	AccountRoles []AWSAccountRoleMapping `bson:"account_roles" json:"account_roles" yaml:"account_roles"`
+
+	// IPAMPoolID is the ID for the IP address management (IPAM) pool in AWS.
+	IPAMPoolID string `bson:"ipam_pool_id" json:"ipam_pool_id" yaml:"ipam_pool_id"`
+}
+
+// AccountRoleMapping is a mapping of an AWS account to the role that needs to
+// be assumed to make authorized API calls in that account.
+type AWSAccountRoleMapping struct {
+	// Account is the identifier for the AWS account.
+	Account string `bson:"account" json:"account" yaml:"account"`
+	// Role is the the role to assume to make authorized API calls.
+	Role string `bson:"role" json:"role" yaml:"role"`
+}
+
+func (m *AWSAccountRoleMapping) Validate() error {
+	catcher := grip.NewBasicCatcher()
+	catcher.NewWhen(m.Account == "", "account must not be empty")
+	catcher.NewWhen(m.Role == "", "role must not be empty")
+	return catcher.Resolve()
 }
 
 type S3Credentials struct {

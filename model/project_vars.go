@@ -148,10 +148,10 @@ type AWSSSHKey struct {
 
 // FindOneProjectVars finds the project variables document for a given project
 // ID.
-func FindOneProjectVars(projectId string) (*ProjectVars, error) {
+func FindOneProjectVars(ctx context.Context, projectId string) (*ProjectVars, error) {
 	projectVars := &ProjectVars{}
 	q := db.Query(bson.M{projectVarIdKey: projectId})
-	err := db.FindOneQ(ProjectVarsCollection, q, projectVars)
+	err := db.FindOneQContext(ctx, ProjectVarsCollection, q, projectVars)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -199,8 +199,8 @@ func (projectVars *ProjectVars) findParameterStore(ctx context.Context) (*Projec
 }
 
 // FindMergedProjectVars merges vars from the target project's ProjectVars and its parent repo's vars
-func FindMergedProjectVars(projectID string) (*ProjectVars, error) {
-	project, err := FindBranchProjectRef(projectID)
+func FindMergedProjectVars(ctx context.Context, projectID string) (*ProjectVars, error) {
+	project, err := FindBranchProjectRef(ctx, projectID)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting project '%s'", projectID)
 	}
@@ -208,7 +208,7 @@ func FindMergedProjectVars(projectID string) (*ProjectVars, error) {
 		return nil, errors.Errorf("project '%s' does not exist", projectID)
 	}
 
-	projectVars, err := FindOneProjectVars(project.Id)
+	projectVars, err := FindOneProjectVars(ctx, project.Id)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting project vars for project '%s'", projectID)
 	}
@@ -216,7 +216,7 @@ func FindMergedProjectVars(projectID string) (*ProjectVars, error) {
 		return projectVars, nil
 	}
 
-	repoVars, err := FindOneProjectVars(project.RepoRefId)
+	repoVars, err := FindOneProjectVars(ctx, project.RepoRefId)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting project vars for repo '%s'", project.RepoRefId)
 	}
@@ -233,8 +233,8 @@ func FindMergedProjectVars(projectID string) (*ProjectVars, error) {
 }
 
 // CopyProjectVars copies the variables for the first project to the second
-func CopyProjectVars(oldProjectId, newProjectId string) error {
-	vars, err := FindOneProjectVars(oldProjectId)
+func CopyProjectVars(ctx context.Context, oldProjectId, newProjectId string) error {
+	vars, err := FindOneProjectVars(ctx, oldProjectId)
 	if err != nil {
 		return errors.Wrapf(err, "finding variables for project '%s'", oldProjectId)
 	}
@@ -243,12 +243,12 @@ func CopyProjectVars(oldProjectId, newProjectId string) error {
 	}
 
 	vars.Id = newProjectId
-	_, err = vars.Upsert()
+	_, err = vars.Upsert(ctx)
 	return errors.Wrapf(err, "inserting variables for project '%s", newProjectId)
 }
 
-func SetAWSKeyForProject(projectId string, ssh *AWSSSHKey) error {
-	vars, err := FindOneProjectVars(projectId)
+func SetAWSKeyForProject(ctx context.Context, projectId string, ssh *AWSSSHKey) error {
+	vars, err := FindOneProjectVars(ctx, projectId)
 	if err != nil {
 		return errors.Wrap(err, "getting project vars")
 	}
@@ -265,12 +265,12 @@ func SetAWSKeyForProject(projectId string, ssh *AWSSSHKey) error {
 	vars.Vars[ProjectAWSSSHKeyName] = ssh.Name
 	vars.Vars[ProjectAWSSSHKeyValue] = ssh.Value
 	vars.PrivateVars[ProjectAWSSSHKeyValue] = true // redact value, but not key name
-	_, err = vars.Upsert()
+	_, err = vars.Upsert(ctx)
 	return errors.Wrap(err, "saving project keys")
 }
 
-func GetAWSKeyForProject(projectId string) (*AWSSSHKey, error) {
-	vars, err := FindMergedProjectVars(projectId)
+func GetAWSKeyForProject(ctx context.Context, projectId string) (*AWSSSHKey, error) {
+	vars, err := FindMergedProjectVars(ctx, projectId)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting project vars")
 	}
@@ -293,8 +293,8 @@ const defaultParameterStoreAccessTimeout = 30 * time.Second
 // Upsert creates or updates a project vars document and stores all the project
 // variables in the DB. If Parameter Store is enabled for the project, it also
 // stores the variables in Parameter Store.
-func (projectVars *ProjectVars) Upsert() (*adb.ChangeInfo, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), defaultParameterStoreAccessTimeout)
+func (projectVars *ProjectVars) Upsert(ctx context.Context) (*adb.ChangeInfo, error) {
+	ctx, cancel := context.WithTimeout(ctx, defaultParameterStoreAccessTimeout)
 	defer cancel()
 
 	pm, err := projectVars.upsertParameterStore(ctx)
@@ -316,6 +316,7 @@ func (projectVars *ProjectVars) Upsert() (*adb.ChangeInfo, error) {
 	update["$set"] = setUpdate
 
 	return db.Upsert(
+		ctx,
 		ProjectVarsCollection,
 		bson.M{
 			projectVarIdKey: projectVars.Id,
@@ -330,7 +331,7 @@ func (projectVars *ProjectVars) upsertParameterStore(ctx context.Context) (*Para
 	projectID := projectVars.Id
 	after := projectVars
 
-	before, err := FindOneProjectVars(projectID)
+	before, err := FindOneProjectVars(ctx, projectID)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding original project vars for project '%s'", projectID)
 	}
@@ -498,11 +499,11 @@ func getUpdatedParamMappings(original ParameterMappings, upserted, deleted map[s
 // Insert creates a new project vars document and stores all the project
 // variables in the DB. If Parameter Store is enabled for the project, it also
 // stores the variables in Parameter Store.
-func (projectVars *ProjectVars) Insert() error {
+func (projectVars *ProjectVars) Insert(ctx context.Context) error {
 	// This has to be done after inserting the initial document because it
 	// upserts the project vars doc. If this ran first, it would cause the DB
 	// insert to fail due to the ID already existing.
-	ctx, cancel := context.WithTimeout(context.Background(), defaultParameterStoreAccessTimeout)
+	ctx, cancel := context.WithTimeout(ctx, defaultParameterStoreAccessTimeout)
 	defer cancel()
 
 	pm, err := insertParameterStore(ctx, projectVars)
@@ -512,6 +513,7 @@ func (projectVars *ProjectVars) Insert() error {
 	projectVars.Parameters = *pm
 
 	return db.Insert(
+		ctx,
 		ProjectVarsCollection,
 		projectVars,
 	)
@@ -537,8 +539,8 @@ func insertParameterStore(ctx context.Context, vars *ProjectVars) (*ParameterMap
 // deleted unless that variable is explicitly listed in varsToDelete. If this
 // succeeds, projectVars will contain all the project variables, including those
 // that were not explicitly modified.
-func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.ChangeInfo, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), defaultParameterStoreAccessTimeout)
+func (projectVars *ProjectVars) FindAndModify(ctx context.Context, varsToDelete []string) (*adb.ChangeInfo, error) {
+	ctx, cancel := context.WithTimeoutCause(ctx, defaultParameterStoreAccessTimeout, errors.New("parameter store access timeout"))
 	defer cancel()
 
 	pm, err := projectVars.findAndModifyParameterStore(ctx, varsToDelete)
@@ -577,7 +579,7 @@ func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.Chang
 		update["$unset"] = unsetUpdate
 	}
 
-	change, err := db.FindAndModify(
+	change, err := db.FindAndModify(ctx,
 		ProjectVarsCollection,
 		bson.M{projectVarIdKey: projectVars.Id},
 		nil,
@@ -614,7 +616,7 @@ func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.Chang
 func (projectVars *ProjectVars) findAndModifyParameterStore(ctx context.Context, varsToDelete []string) (*ParameterMappings, error) {
 	projectID := projectVars.Id
 
-	before, err := FindOneProjectVars(projectID)
+	before, err := FindOneProjectVars(ctx, projectID)
 	if err != nil {
 		return nil, errors.Wrapf(err, "finding original project vars for project '%s'", projectID)
 	}
@@ -642,7 +644,7 @@ func (projectVars *ProjectVars) findAndModifyParameterStore(ctx context.Context,
 }
 
 // Clears clears all variables for a project.
-func (projectVars *ProjectVars) Clear() error {
+func (projectVars *ProjectVars) Clear(ctx context.Context) error {
 	projectVars.Vars = map[string]string{}
 	projectVars.PrivateVars = map[string]bool{}
 	projectVars.AdminOnlyVars = map[string]bool{}
@@ -653,7 +655,7 @@ func (projectVars *ProjectVars) Clear() error {
 		return errors.Wrap(err, "clearing project vars from Parameter Store")
 	}
 
-	err := db.Update(ProjectVarsCollection,
+	err := db.UpdateContext(ctx, ProjectVarsCollection,
 		bson.M{ProjectRefIdKey: projectVars.Id},
 		bson.M{
 			"$unset": bson.M{
@@ -669,9 +671,9 @@ func (projectVars *ProjectVars) Clear() error {
 	return nil
 }
 
-func (projectVars *ProjectVars) GetVars(t *task.Task) map[string]string {
+func (projectVars *ProjectVars) GetVars(ctx context.Context, t *task.Task) map[string]string {
 	vars := map[string]string{}
-	isAdmin := shouldGetAdminOnlyVars(t)
+	isAdmin := shouldGetAdminOnlyVars(ctx, t)
 	for k, v := range projectVars.Vars {
 		if !projectVars.AdminOnlyVars[k] || isAdmin {
 			vars[k] = v
@@ -682,13 +684,13 @@ func (projectVars *ProjectVars) GetVars(t *task.Task) map[string]string {
 
 // shouldGetAdminOnlyVars returns true if the task is part of a version that can't be modified by users,
 // or if the task was activated by a project admin.
-func shouldGetAdminOnlyVars(t *task.Task) bool {
+func shouldGetAdminOnlyVars(ctx context.Context, t *task.Task) bool {
 	if utility.StringSliceContains(evergreen.SystemVersionRequesterTypes, t.Requester) {
 		return true
 	} else if t.ActivatedBy == "" {
 		return false
 	}
-	u, err := user.FindOneById(t.ActivatedBy)
+	u, err := user.FindOneByIdContext(ctx, t.ActivatedBy)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": fmt.Sprintf("problem with fetching user '%s'", t.ActivatedBy),

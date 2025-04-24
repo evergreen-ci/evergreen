@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/cloud"
@@ -23,10 +22,11 @@ import (
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testlog"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
-	"github.com/google/go-github/v52/github"
+	"github.com/google/go-github/v70/github"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -91,7 +91,6 @@ func (h *agentSetup) Run(ctx context.Context) gimlet.Responder {
 		SplunkClientToken:  h.settings.Splunk.SplunkConnectionInfo.Token,
 		SplunkChannel:      h.settings.Splunk.SplunkConnectionInfo.Channel,
 		TaskOutput:         h.settings.Buckets.Credentials,
-		InternalBuckets:    h.settings.Buckets.InternalBuckets,
 		MaxExecTimeoutSecs: h.settings.TaskLimits.MaxExecTimeoutSecs,
 	}
 
@@ -139,7 +138,7 @@ func (h *updatePushStatusHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	err = errors.Wrapf(h.pushLog.UpdateStatus(h.pushLog.Status),
+	err = errors.Wrapf(h.pushLog.UpdateStatus(ctx, h.pushLog.Status),
 		"updating pushlog status failed for task %s", t.Id)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
@@ -193,7 +192,7 @@ func (h *newPushHandler) Run(ctx context.Context) gimlet.Responder {
 
 	// Get the version for this task, so we can check if it has
 	// any already-done pushes
-	v, err := model.VersionFindOne(model.VersionById(t.Version))
+	v, err := model.VersionFindOne(ctx, model.VersionById(t.Version))
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "problem querying task %s with version id %s", t.Id, t.Version))
 	}
@@ -209,7 +208,7 @@ func (h *newPushHandler) Run(ctx context.Context) gimlet.Responder {
 
 	copyToLocation := strings.Join([]string{h.s3CopyReq.S3DestinationBucket, h.s3CopyReq.S3DestinationPath}, "/")
 
-	newestPushLog, err := model.FindPushLogAfter(copyToLocation, v.RevisionOrderNumber)
+	newestPushLog, err := model.FindPushLogAfter(ctx, copyToLocation, v.RevisionOrderNumber)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "querying for push log at '%s' for '%s'", copyToLocation, t.Id))
 	}
@@ -221,7 +220,7 @@ func (h *newPushHandler) Run(ctx context.Context) gimlet.Responder {
 
 	// It's now safe to put the file in its permanent location.
 	newPushLog := model.NewPushLog(v, t, copyToLocation)
-	if err = newPushLog.Insert(); err != nil {
+	if err = newPushLog.Insert(ctx); err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrapf(err, "creating new push log: %+v", newPushLog))
 	}
 	return gimlet.NewJSONResponse(newPushLog)
@@ -279,7 +278,7 @@ func (h *markTaskForRestartHandler) Run(ctx context.Context) gimlet.Responder {
 			Message:    fmt.Sprintf("task has already reached the maximum (%d) number of automatic restarts", evergreen.MaxAutomaticRestarts),
 		})
 	}
-	projectRef, err := model.FindMergedProjectRef(t.Project, t.Version, false)
+	projectRef, err := model.FindMergedProjectRef(ctx, t.Project, t.Version, false)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project '%s' for version '%s'", t.Project, t.Version))
 	}
@@ -294,7 +293,7 @@ func (h *markTaskForRestartHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting admin settings"))
 	}
 	maxDailyAutoRestarts := settings.TaskLimits.MaxDailyAutomaticRestarts
-	if err = projectRef.CheckAndUpdateAutoRestartLimit(maxDailyAutoRestarts); err != nil {
+	if err = projectRef.CheckAndUpdateAutoRestartLimit(ctx, maxDailyAutoRestarts); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "checking auto restart limit for '%s'", projectRef.Id))
 	}
 	if err = taskToRestart.SetResetWhenFinishedWithInc(ctx); err != nil {
@@ -364,7 +363,7 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 		}
 	}
 
-	pRef, err := model.FindBranchProjectRef(t.Project)
+	pRef, err := model.FindBranchProjectRef(ctx, t.Project)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project ref '%s'", t.Project))
 	}
@@ -400,18 +399,18 @@ func (h *getExpansionsAndVarsHandler) Run(ctx context.Context) gimlet.Responder 
 		res.InternalRedactions[hostServicePasswordPlaceholder] = foundHost.ServicePassword
 	}
 
-	projectVars, err := model.FindMergedProjectVars(t.Project)
+	projectVars, err := model.FindMergedProjectVars(ctx, t.Project)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting merged project vars"))
 	}
 	if projectVars != nil {
-		res.Vars = projectVars.GetVars(t)
+		res.Vars = projectVars.GetVars(ctx, t)
 		if projectVars.PrivateVars != nil {
 			res.PrivateVars = projectVars.PrivateVars
 		}
 	}
 
-	v, err := model.VersionFindOneId(t.Version)
+	v, err := model.VersionFindOne(ctx, model.VersionById(t.Version).WithFields(model.VersionParametersKey))
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding version '%s'", t.Version))
 	}
@@ -461,7 +460,7 @@ func (h *getProjectRefHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	p, err := model.FindMergedProjectRef(t.Project, t.Version, true)
+	p, err := model.FindMergedProjectRef(ctx, t.Project, t.Version, true)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
@@ -508,7 +507,7 @@ func (h *getParserProjectHandler) Run(ctx context.Context) gimlet.Responder {
 			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
 		})
 	}
-	v, err := model.VersionFindOne(model.VersionById(t.Version))
+	v, err := model.VersionFindOne(ctx, model.VersionById(t.Version).WithFields(model.VersionIdKey, model.VersionProjectStorageMethodKey))
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
@@ -577,6 +576,44 @@ func (h *getDistroViewHandler) Run(ctx context.Context) gimlet.Responder {
 	return gimlet.NewJSONResponse(dv)
 }
 
+// GET /task/{task_id}/host_view
+type getHostViewHandler struct {
+	hostID string
+}
+
+func makeGetHostView() gimlet.RouteHandler {
+	return &getHostViewHandler{}
+}
+
+func (rh *getHostViewHandler) Factory() gimlet.RouteHandler {
+	return &getHostViewHandler{}
+}
+
+func (rh *getHostViewHandler) Parse(ctx context.Context, r *http.Request) error {
+	if rh.hostID = r.Header.Get(evergreen.HostHeader); rh.hostID == "" {
+		return errors.New("missing host ID")
+	}
+	return nil
+}
+
+func (rh *getHostViewHandler) Run(ctx context.Context) gimlet.Responder {
+	h, err := host.FindOneId(ctx, rh.hostID)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "getting host"))
+	}
+	if h == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("host '%s' not found", rh.hostID)},
+		)
+	}
+
+	hv := apimodels.HostView{
+		Hostname: h.Host,
+	}
+	return gimlet.NewJSONResponse(hv)
+}
+
 // POST /task/{task_id}/files
 type attachFilesHandler struct {
 	taskID string
@@ -626,7 +663,7 @@ func (h *attachFilesHandler) Run(ctx context.Context) gimlet.Responder {
 		Files:           artifact.EscapeFiles(h.files),
 	}
 
-	if err = entry.Upsert(); err != nil {
+	if err = entry.Upsert(ctx); err != nil {
 		message := fmt.Sprintf("updating artifact file info for task %s: %v", t.Id, err)
 		grip.Error(message)
 		return gimlet.MakeJSONInternalErrorResponder(errors.New(message))
@@ -742,13 +779,55 @@ func (h *attachTestLogHandler) Run(ctx context.Context) gimlet.Responder {
 		"log_length":   len(h.log.Lines),
 	})
 
-	if err = h.log.Insert(); err != nil {
+	if err = h.log.Insert(ctx); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
 	logReply := struct {
 		Id string `json:"_id"`
 	}{h.log.Id}
 	return gimlet.NewJSONResponse(logReply)
+}
+
+// POST /task/{task_id}/test_results
+type attachTestResultsHandler struct {
+	settings *evergreen.Settings
+	results  []testresult.TestResult
+	taskID   string
+}
+
+func makeAttachTestResults(settings *evergreen.Settings) gimlet.RouteHandler {
+	return &attachTestResultsHandler{
+		settings: settings,
+	}
+}
+
+func (h *attachTestResultsHandler) Factory() gimlet.RouteHandler {
+	return &attachTestResultsHandler{
+		settings: h.settings,
+	}
+}
+
+func (h *attachTestResultsHandler) Parse(ctx context.Context, r *http.Request) error {
+	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
+		return errors.New("missing task ID")
+	}
+	err := utility.ReadJSON(r.Body, &h.results)
+	if err != nil {
+		return errors.Wrap(err, "reading test results from JSON request body")
+	}
+	return nil
+}
+
+func (h *attachTestResultsHandler) Run(ctx context.Context) gimlet.Responder {
+	flags, err := evergreen.GetServiceFlags(ctx)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "retrieving service flags"))
+	}
+	if flags.EvergreenTestResultsDisabled {
+		return gimlet.NewJSONResponse(struct{}{})
+	}
+	// TODO: DEVPROD-16200 Implement the new DB/S3-backed Evergreen test results service
+	return gimlet.NewJSONResponse(struct{}{})
 }
 
 // POST /task/{task_id}/heartbeat
@@ -902,10 +981,10 @@ func (h *startTaskHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	if len(updates.PatchNewStatus) != 0 {
-		event.LogPatchStateChangeEvent(t.Version, updates.PatchNewStatus)
+		event.LogPatchStateChangeEvent(ctx, t.Version, updates.PatchNewStatus)
 	}
 	if len(updates.BuildNewStatus) != 0 {
-		event.LogBuildStateChangeEvent(t.BuildId, updates.BuildNewStatus)
+		event.LogBuildStateChangeEvent(ctx, t.BuildId, updates.BuildNewStatus)
 	}
 
 	var msg string
@@ -933,16 +1012,16 @@ func (h *startTaskHandler) Run(ctx context.Context) gimlet.Responder {
 		msg = fmt.Sprintf("task %s started on host %s", t.Id, foundHost.Id)
 
 		if foundHost.Distro.IsEphemeral() {
-			if err = foundHost.IncTaskCount(); err != nil {
+			if err = foundHost.IncTaskCount(ctx); err != nil {
 				return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "incrementing task count for task '%s' on host '%s'", t.Id, foundHost.Id))
 			}
-			if err = foundHost.IncIdleTime(foundHost.WastedComputeTime()); err != nil {
+			if err = foundHost.IncIdleTime(ctx, foundHost.WastedComputeTime()); err != nil {
 				return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "incrementing total idle time on host '%s'", foundHost.Id))
 			}
 			grip.Info(foundHost.TaskStartMessage())
 		}
 	} else {
-		foundPod, err = pod.FindOneByID(h.podID)
+		foundPod, err = pod.FindOneByID(ctx, h.podID)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding pod running task %s", t.Id))
 		}
@@ -1040,7 +1119,7 @@ func (h *gitServePatchFileHandler) Parse(ctx context.Context, r *http.Request) e
 }
 
 func (h *gitServePatchFileHandler) Run(ctx context.Context) gimlet.Responder {
-	patchContents, err := patch.FetchPatchContents(h.patchID)
+	patchContents, err := patch.FetchPatchContents(ctx, h.patchID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "reading patch file from db"))
 	}
@@ -1086,7 +1165,7 @@ func (h *servePatchHandler) Run(ctx context.Context) gimlet.Responder {
 		h.patchID = t.Version
 	}
 
-	p, err := patch.FindOne(patch.ByVersion(h.patchID))
+	p, err := patch.FindOne(ctx, patch.ByVersion(h.patchID))
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding patch '%s'", h.patchID))
 	}
@@ -1132,7 +1211,7 @@ func (h *serveVersionHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	v, err := model.VersionFindOneId(t.Version)
+	v, err := model.VersionFindOneId(ctx, t.Version)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding version '%s'", t.Version))
 	}
@@ -1169,7 +1248,7 @@ func (h *keyvalIncHandler) Parse(ctx context.Context, r *http.Request) error {
 
 func (h *keyvalIncHandler) Run(ctx context.Context) gimlet.Responder {
 	keyVal := &model.KeyVal{Key: h.key}
-	if err := keyVal.Inc(); err != nil {
+	if err := keyVal.Inc(ctx); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "doing findAndModify on key '%s'", h.key))
 	}
 	return gimlet.NewJSONResponse(keyVal)
@@ -1216,7 +1295,7 @@ func (h *manifestLoadHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	projectRef, err := model.FindMergedProjectRef(task.Project, task.Version, true)
+	projectRef, err := model.FindMergedProjectRef(ctx, task.Project, task.Version, true)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding project '%s'", task.Project))
 	}
@@ -1224,7 +1303,7 @@ func (h *manifestLoadHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Errorf("project ref '%s' doesn't exist", task.Project))
 	}
 
-	v, err := model.VersionFindOne(model.VersionById(task.Version))
+	v, err := model.VersionFindOne(ctx, model.VersionById(task.Version))
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "retrieving version for task"))
 	}
@@ -1234,7 +1313,7 @@ func (h *manifestLoadHandler) Run(ctx context.Context) gimlet.Responder {
 			Message:    fmt.Sprintf("version not found: %s", task.Version),
 		})
 	}
-	currentManifest, err := manifest.FindFromVersion(v.Id, v.Identifier, v.Revision, v.Requester)
+	currentManifest, err := manifest.FindFromVersion(ctx, v.Id, v.Identifier, v.Revision, v.Requester)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "retrieving manifest with version id '%s'", task.Version))
 	}
@@ -1256,7 +1335,7 @@ func (h *manifestLoadHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 
 	// attempt to insert a manifest after making GitHub API calls
-	manifest, err := model.CreateManifest(v, project.Modules, projectRef)
+	manifest, err := model.CreateManifest(ctx, v, project.Modules, projectRef)
 	if err != nil {
 		if apiErr, ok := errors.Cause(err).(thirdparty.APIRequestError); ok && apiErr.StatusCode == http.StatusNotFound {
 			return gimlet.MakeJSONErrorResponder(errors.Wrap(err, "manifest resource not found"))
@@ -1310,7 +1389,7 @@ func (h *setDownstreamParamsHandler) Run(ctx context.Context) gimlet.Responder {
 	}
 	grip.Infoln("Setting downstream expansions for task:", t.Id)
 
-	p, err := patch.FindOne(patch.ByVersion(t.Version))
+	p, err := patch.FindOne(ctx, patch.ByVersion(t.Version))
 
 	if err != nil {
 		errorMessage := fmt.Sprintf("loading patch: %s: ", err.Error())
@@ -1333,7 +1412,7 @@ func (h *setDownstreamParamsHandler) Run(ctx context.Context) gimlet.Responder {
 		})
 	}
 
-	if err = p.SetDownstreamParameters(h.downstreamParams); err != nil {
+	if err = p.SetDownstreamParameters(ctx, h.downstreamParams); err != nil {
 		errorMessage := fmt.Sprintf("setting patch parameters: %s", err.Error())
 		grip.Error(message.Fields{
 			"message": errorMessage,
@@ -1473,7 +1552,7 @@ func (h *checkRunHandler) Run(ctx context.Context) gimlet.Responder {
 
 	}
 
-	p, err := patch.FindOneId(t.Version)
+	p, err := patch.FindOneId(ctx, t.Version)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
@@ -1608,7 +1687,7 @@ func (h *createGitHubDynamicAccessToken) Run(ctx context.Context) gimlet.Respond
 	// When creating a token for a task, we want to consider the project's
 	// permission groups. These permission groups can restrict the permissions
 	// so that each requester only gets the permissions they have been set.
-	p, err := model.FindMergedProjectRef(t.Project, t.Version, true)
+	p, err := model.FindMergedProjectRef(ctx, t.Project, t.Version, true)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
@@ -1767,96 +1846,6 @@ func (h *awsAssumeRole) Run(ctx context.Context) gimlet.Responder {
 		AccessKeyID:     creds.AccessKeyID,
 		SecretAccessKey: creds.SecretAccessKey,
 		SessionToken:    creds.SessionToken,
-		Expiration:      creds.Expiration.String(),
-	})
-}
-
-// POST /rest/v2/task/{task_id}/aws/s3_credentials
-// This route is used to generates credentials for s3 access for a task.
-// s3.put and s3.get call this route when the command is targeting an
-// internal bucket.
-type awsS3Credentials struct {
-	env        evergreen.Environment
-	stsManager cloud.STSManager
-
-	// callerARN is the ARN in use with AWS STS.
-	// This is saved across requests to avoid unnecessary calls to AWS STS.
-	callerARN string
-
-	body   apimodels.S3CredentialsRequest
-	taskID string
-}
-
-func makeAWSS3Credentials(env evergreen.Environment, stsManager cloud.STSManager) gimlet.RouteHandler {
-	return &awsS3Credentials{env: env, stsManager: stsManager}
-}
-
-func (h *awsS3Credentials) Factory() gimlet.RouteHandler {
-	return &awsS3Credentials{env: h.env, stsManager: h.stsManager, callerARN: h.callerARN}
-}
-
-func (h *awsS3Credentials) Parse(ctx context.Context, r *http.Request) error {
-	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
-		return errors.New("missing task_id")
-	}
-
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		return errors.Wrap(err, "reading body")
-	}
-
-	if err = json.Unmarshal(body, &h.body); err != nil {
-		return errors.Wrapf(err, "reading s3 body for task '%s'", h.taskID)
-	}
-
-	return errors.Wrapf(h.body.Validate(), "validating s3 body for task '%s'", h.taskID)
-}
-
-func (h *awsS3Credentials) Run(ctx context.Context) gimlet.Responder {
-	t, err := task.FindOneId(ctx, h.taskID)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
-	}
-	if t == nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
-		})
-	}
-
-	if h.callerARN == "" {
-		h.callerARN, err = h.stsManager.GetCallerIdentityARN(ctx)
-		if err != nil {
-			return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "getting caller identity for task '%s'", h.taskID))
-		}
-	}
-	// TODO (DEVPROD-13978): Create correct session policy based off of provided task.
-	sessionPolicy := map[string]interface{}{
-		"Version": "2012-10-17",
-		"Statement": []map[string]interface{}{
-			{
-				"Effect":   "Deny",
-				"Action":   "*",
-				"Resource": "*",
-			},
-		},
-	}
-	policyJSON, err := json.Marshal(sessionPolicy)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "marshalling session policy for task '%s'", h.taskID))
-	}
-	creds, err := h.stsManager.AssumeRole(ctx, h.taskID, cloud.AssumeRoleOptions{
-		RoleARN: h.callerARN,
-		Policy:  aws.String(string(policyJSON)),
-	})
-	if err != nil {
-		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "creating credentials for s3 access for task '%s'", h.taskID))
-	}
-
-	return gimlet.NewJSONResponse(apimodels.AWSCredentials{
-		AccessKeyID:     creds.AccessKeyID,
-		SecretAccessKey: creds.SecretAccessKey,
-		SessionToken:    creds.SessionToken,
-		Expiration:      creds.Expiration.String(),
+		Expiration:      creds.Expiration.Format(time.RFC3339),
 	})
 }

@@ -87,7 +87,7 @@ func (as *APIServer) requireProject(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		projectRef, err := model.FindBranchProjectRef(projectId)
+		projectRef, err := model.FindBranchProjectRef(r.Context(), projectId)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 		}
@@ -124,7 +124,7 @@ func (as *APIServer) FetchTask(w http.ResponseWriter, r *http.Request) {
 // No new information should be added to this route, instead a REST v2 route should be added.
 func (as *APIServer) fetchLimitedProjectRef(w http.ResponseWriter, r *http.Request) {
 	id := gimlet.GetVars(r)["projectId"]
-	p, err := model.FindMergedProjectRef(id, "", true)
+	p, err := model.FindMergedProjectRef(r.Context(), id, "", true)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -156,7 +156,7 @@ func (as *APIServer) fetchLimitedProjectRef(w http.ResponseWriter, r *http.Reque
 
 // listProjects returns the projects merged with the repo settings
 func (as *APIServer) listProjects(w http.ResponseWriter, r *http.Request) {
-	allProjs, err := model.FindAllMergedTrackedProjectRefs()
+	allProjs, err := model.FindAllMergedTrackedProjectRefs(r.Context())
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -184,6 +184,8 @@ func (as *APIServer) listVariants(w http.ResponseWriter, r *http.Request) {
 
 // validateProjectConfig returns a slice containing a list of any errors
 // found in validating the given project configuration
+// Please do not add any functionality to this, it is deprecated.
+// Use the REST v2 /validate route instead.
 func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Request) {
 	body := utility.NewRequestReader(r)
 	defer body.Close()
@@ -207,7 +209,7 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 		ReadFileFrom: model.ReadFromLocal,
 	}
 	validationErr := validator.ValidationError{}
-	if _, err = model.LoadProjectInto(ctx, input.ProjectYaml, opts, "", project); err != nil {
+	if _, err = model.LoadProjectInto(ctx, input.ProjectYaml, opts, input.ProjectID, project); err != nil {
 		validationErr.Message = err.Error()
 		gimlet.WriteJSONError(w, validator.ValidationErrors{validationErr})
 		return
@@ -218,7 +220,7 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	projectRef, err := model.FindMergedProjectRef(input.ProjectID, "", false)
+	projectRef, err := model.FindMergedProjectRef(r.Context(), input.ProjectID, "", false)
 	errs := validator.CheckProject(ctx, project, projectConfig, projectRef, input.ProjectID, err)
 
 	if input.Quiet {
@@ -283,6 +285,7 @@ func (as *APIServer) GetServiceApp() *gimlet.APIApp {
 
 	// Project lookup and validation routes
 	app.AddRoute("/ref/{projectId}").Wrap(requireUser).Handler(as.fetchLimitedProjectRef).Get()
+	// Please do not use this route internally, it is deprecated. Use the REST v2 /validate route instead.
 	app.AddRoute("/validate").Wrap(requireUser).Handler(as.validateProjectConfig).Post()
 
 	// Internal status reporting

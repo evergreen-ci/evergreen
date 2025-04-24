@@ -56,7 +56,7 @@ func (s *PatchByIdSuite) SetupSuite() {
 		{Id: patch.NewId(s.objIds[1])},
 	}
 	for _, p := range patches {
-		s.NoError(p.Insert())
+		s.NoError(p.Insert(s.T().Context()))
 	}
 }
 
@@ -136,10 +136,10 @@ func (s *PatchesByProjectSuite) SetupSuite() {
 		{Project: proj1, CreateTime: nowPlus10},
 	}
 	for _, p := range patches {
-		s.NoError(p.Insert())
+		s.NoError(p.Insert(s.T().Context()))
 	}
 	for _, proj := range projects {
-		s.NoError(proj.Insert())
+		s.NoError(proj.Insert(s.T().Context()))
 	}
 }
 
@@ -175,7 +175,7 @@ func (s *PatchesByProjectSuite) TestPaginatorShouldReturnResultsIfDataExists() {
 	resp := s.route.Run(context.Background())
 	s.NotNil(resp)
 
-	payload := resp.Data().([]interface{})
+	payload := resp.Data().([]any)
 	s.NotNil(payload)
 
 	s.Len(payload, 2)
@@ -197,7 +197,7 @@ func (s *PatchesByProjectSuite) TestPaginatorShouldReturnEmptyResultsIfDataIsEmp
 	s.route.limit = 100
 
 	resp := s.route.Run(context.Background())
-	s.Len(resp.Data().([]interface{}), 2)
+	s.Len(resp.Data().([]any), 2)
 
 	s.Nil(resp.Pages())
 }
@@ -250,7 +250,7 @@ func (s *PatchAbortSuite) SetupSuite() {
 		Id:         "project_id",
 		Identifier: "project_identifier",
 	}
-	s.NoError(projectRef.Insert())
+	s.NoError(projectRef.Insert(s.T().Context()))
 
 	patches := []patch.Patch{
 		{Id: patch.NewId(s.objIds[0]), Version: version1, Activated: true, Project: projectRef.Id},
@@ -272,16 +272,16 @@ func (s *PatchAbortSuite) SetupSuite() {
 	}
 
 	for _, item := range versions {
-		s.NoError(item.Insert())
+		s.NoError(item.Insert(s.T().Context()))
 	}
 	for _, item := range tasks {
-		s.NoError(item.Insert())
+		s.NoError(item.Insert(s.T().Context()))
 	}
 	for _, item := range builds {
-		s.NoError(item.Insert())
+		s.NoError(item.Insert(s.T().Context()))
 	}
 	for _, p := range patches {
-		s.NoError(p.Insert())
+		s.NoError(p.Insert(s.T().Context()))
 	}
 }
 
@@ -364,18 +364,18 @@ func (s *PatchesChangeStatusSuite) SetupSuite() {
 		{Id: patch.NewId(s.objIds[1]), Version: "v1", Project: "proj", PatchNumber: 0},
 	}
 	for _, p := range patches {
-		s.NoError(p.Insert())
+		s.NoError(p.Insert(s.T().Context()))
 	}
 	v := &serviceModel.Version{Id: "v1"}
-	s.NoError(v.Insert())
+	s.NoError(v.Insert(s.T().Context()))
 	b := build.Build{Id: "b0", Version: "v1", Activated: true}
-	s.NoError(b.Insert())
+	s.NoError(b.Insert(s.T().Context()))
 	tasks := []task.Task{
 		{Id: "t0", BuildId: "b0", Activated: true, Status: evergreen.TaskUndispatched},
 		{Id: "t1", BuildId: "b0", Activated: true, Status: evergreen.TaskSucceeded},
 	}
 	for _, t := range tasks {
-		s.NoError(t.Insert())
+		s.NoError(t.Insert(s.T().Context()))
 	}
 }
 
@@ -384,7 +384,7 @@ func (s *PatchesChangeStatusSuite) TestChangeStatus() {
 		Id:         "proj",
 		Identifier: "proj",
 	}
-	s.NoError(p.Insert())
+	s.NoError(p.Insert(s.T().Context()))
 	ctx := context.Background()
 	ctx = gimlet.AttachUser(ctx, &user.DBUser{Id: "user1"})
 	env := testutil.NewEnvironment(ctx, s.T())
@@ -397,9 +397,9 @@ func (s *PatchesChangeStatusSuite) TestChangeStatus() {
 	rm.Priority = &tmp_seven
 	res := rm.Run(ctx)
 	s.NotNil(res)
-	p1, err := data.FindPatchById(s.objIds[0])
+	p1, err := data.FindPatchById(s.T().Context(), s.objIds[0])
 	s.NoError(err)
-	p2, err := data.FindPatchById(s.objIds[1])
+	p2, err := data.FindPatchById(s.T().Context(), s.objIds[1])
 	s.NoError(err)
 	s.Equal(7, p1.PatchNumber)
 	s.Equal(0, p2.PatchNumber)
@@ -426,7 +426,7 @@ func (s *PatchRestartSuite) SetupSuite() {
 		Id:         "project_id",
 		Identifier: "project_identifier",
 	}
-	s.NoError(projectRef.Insert())
+	s.NoError(projectRef.Insert(s.T().Context()))
 
 	s.objIds = []string{"aabbccddeeff001122334455", "aabbccddeeff001122334456"}
 	version1 := "version1"
@@ -450,13 +450,13 @@ func (s *PatchRestartSuite) SetupSuite() {
 		{Id: patch.NewId(s.objIds[1]), Project: projectRef.Id},
 	}
 	for _, p := range patches {
-		s.NoError(p.Insert())
+		s.NoError(p.Insert(s.T().Context()))
 	}
 	for _, v := range versions {
-		s.NoError(v.Insert())
+		s.NoError(v.Insert(s.T().Context()))
 	}
 	for _, t := range tasks {
-		s.NoError(t.Insert())
+		s.NoError(t.Insert(s.T().Context()))
 	}
 }
 
@@ -470,7 +470,7 @@ func (s *PatchRestartSuite) TestRestart() {
 	s.NotNil(res)
 
 	s.Equal(http.StatusOK, res.Status())
-	restartedPatch, err := data.FindPatchById(s.objIds[0])
+	restartedPatch, err := data.FindPatchById(s.T().Context(), s.objIds[0])
 	s.NoError(err)
 	s.Equal(evergreen.PatchVersionRequester, *restartedPatch.Requester)
 }
@@ -498,7 +498,7 @@ func (s *PatchesByUserSuite) SetupTest() {
 		Id:         "project_id",
 		Identifier: "project_identifier",
 	}
-	s.NoError(projectRef.Insert())
+	s.NoError(projectRef.Insert(s.T().Context()))
 
 	s.route = &patchesByUserHandler{
 		url: "http://evergreen.example.net/",
@@ -520,7 +520,7 @@ func (s *PatchesByUserSuite) SetupTest() {
 		{Author: user1, CreateTime: nowPlus10, Project: projectRef.Id},
 	}
 	for _, p := range patches {
-		s.NoError(p.Insert())
+		s.NoError(p.Insert(s.T().Context()))
 	}
 }
 
@@ -541,7 +541,7 @@ func (s *PatchesByUserSuite) TestPaginatorShouldReturnResultsIfDataExists() {
 
 	resp := s.route.Run(context.Background())
 	s.Equal(http.StatusOK, resp.Status())
-	payload := resp.Data().([]interface{})
+	payload := resp.Data().([]any)
 
 	s.Len(payload, 2)
 	s.Equal(s.now.Add(time.Second*6), *(payload[0]).(restModel.APIPatch).CreateTime)
@@ -565,7 +565,7 @@ func (s *PatchesByUserSuite) TestPaginatorShouldReturnEmptyResultsIfDataIsEmpty(
 	s.NotNil(resp)
 	s.Equal(http.StatusOK, resp.Status())
 
-	s.Len(resp.Data().([]interface{}), 2)
+	s.Len(resp.Data().([]any), 2)
 
 	s.Nil(resp.Pages())
 }
@@ -608,7 +608,7 @@ func (s *CountEstimatedGeneratedTasksSuite) SetupSuite() {
 	s.NoError(db.ClearCollections(patch.Collection, task.Collection))
 
 	p := patch.Patch{Id: patch.NewId("aabbccddeeff001122334455"), Project: "proj"}
-	s.NoError(p.Insert())
+	s.NoError(p.Insert(s.T().Context()))
 
 	tasks := []task.Task{
 		{Id: "t0", DisplayName: "t0", BuildVariant: "v1", Version: "aabbccddeeff001122334455", Project: "proj", GenerateTask: true, EstimatedNumActivatedGeneratedTasks: utility.ToIntPtr(5)},
@@ -619,7 +619,7 @@ func (s *CountEstimatedGeneratedTasksSuite) SetupSuite() {
 		{Id: "t5", DisplayName: "t5", BuildVariant: "v2", Version: "aabbccddeeff001122334455", Project: "proj", GenerateTask: true, EstimatedNumActivatedGeneratedTasks: utility.ToIntPtr(99)},
 	}
 	for _, t := range tasks {
-		s.NoError(t.Insert())
+		s.NoError(t.Insert(s.T().Context()))
 	}
 
 }
@@ -670,11 +670,11 @@ func TestPatchRawModulesHandler(t *testing.T) {
 	require.NoError(t, db.ClearCollections(patch.Collection))
 	require.NoError(t, db.ClearGridCollections(patch.GridFSPrefix))
 	patchString := `main diff`
-	require.NoError(t, db.WriteGridFile(patch.GridFSPrefix, "testPatch", strings.NewReader(patchString)))
+	require.NoError(t, db.WriteGridFile(t.Context(), patch.GridFSPrefix, "testPatch", strings.NewReader(patchString)))
 	patchString = `module1 diff`
-	require.NoError(t, db.WriteGridFile(patch.GridFSPrefix, "module1Patch", strings.NewReader(patchString)))
+	require.NoError(t, db.WriteGridFile(t.Context(), patch.GridFSPrefix, "module1Patch", strings.NewReader(patchString)))
 	patchString = `module2 diff`
-	require.NoError(t, db.WriteGridFile(patch.GridFSPrefix, "module2Patch", strings.NewReader(patchString)))
+	require.NoError(t, db.WriteGridFile(t.Context(), patch.GridFSPrefix, "module2Patch", strings.NewReader(patchString)))
 	patchId := mgobson.NewObjectId()
 	patchToInsert := patch.Patch{
 		Id: patchId,
@@ -702,7 +702,7 @@ func TestPatchRawModulesHandler(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(t, patchToInsert.Insert())
+	assert.NoError(t, patchToInsert.Insert(t.Context()))
 
 	route := &moduleRawHandler{
 		patchID: patchId.Hex(),
@@ -731,9 +731,9 @@ func TestPatchRawHandler(t *testing.T) {
 	require.NoError(t, db.ClearCollections(patch.Collection))
 	require.NoError(t, db.ClearGridCollections(patch.GridFSPrefix))
 	patchString := `main diff`
-	require.NoError(t, db.WriteGridFile(patch.GridFSPrefix, "testPatch", strings.NewReader(patchString)))
+	require.NoError(t, db.WriteGridFile(t.Context(), patch.GridFSPrefix, "testPatch", strings.NewReader(patchString)))
 	patchString = `module1 diff`
-	require.NoError(t, db.WriteGridFile(patch.GridFSPrefix, "module1Patch", strings.NewReader(patchString)))
+	require.NoError(t, db.WriteGridFile(t.Context(), patch.GridFSPrefix, "module1Patch", strings.NewReader(patchString)))
 	patchId := "aabbccddeeff001122334455"
 	patchToInsert := patch.Patch{
 		Id: patch.NewId(patchId),
@@ -754,7 +754,7 @@ func TestPatchRawHandler(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(t, patchToInsert.Insert())
+	assert.NoError(t, patchToInsert.Insert(t.Context()))
 
 	route := &patchRawHandler{
 		patchID:    patchId,
@@ -941,7 +941,7 @@ buildvariants:
 		Enabled:    true,
 		BatchTime:  180,
 	}
-	require.NoError(t, projectRef.Insert())
+	require.NoError(t, projectRef.Insert(t.Context()))
 	unfinalized := patch.Patch{
 		Id:                   mgobson.NewObjectId(),
 		Project:              projectRef.Id,
@@ -949,12 +949,12 @@ buildvariants:
 		ProjectStorageMethod: evergreen.ProjectStorageMethodDB,
 		PatchedProjectConfig: config,
 	}
-	require.NoError(t, unfinalized.Insert())
+	require.NoError(t, unfinalized.Insert(t.Context()))
 
 	pp := &serviceModel.ParserProject{}
 	require.NoError(t, util.UnmarshalYAMLWithFallback([]byte(config), pp))
 	pp.Id = unfinalized.Id.Hex()
-	require.NoError(t, pp.Insert())
+	require.NoError(t, pp.Insert(t.Context()))
 
 	handler := makeSchedulePatchHandler(env).(*schedulePatchHandler)
 
@@ -997,7 +997,7 @@ buildvariants:
 	assert.True(t, foundCompile)
 	assert.True(t, foundPassing)
 
-	dbPatch, err := patch.FindOneId(unfinalized.Id.Hex())
+	dbPatch, err := patch.FindOneId(t.Context(), unfinalized.Id.Hex())
 	require.NotNil(t, dbPatch)
 	assert.NoError(t, err)
 	assert.Equal(t, len(dbPatch.VariantsTasks[0].Tasks), len(tasks))
@@ -1040,7 +1040,7 @@ buildvariants:
 
 	// ensure that the patch contains both the previously-scheduled and newly-scheduled tasks,
 	// and didn't overwrite the previous tasks with the new tasks
-	dbPatch, err = patch.FindOneId(unfinalized.Id.Hex())
+	dbPatch, err = patch.FindOneId(t.Context(), unfinalized.Id.Hex())
 	require.NotNil(t, dbPatch)
 	assert.NoError(t, err)
 	assert.Equal(t, len(dbPatch.VariantsTasks[0].Tasks), len(tasks))
@@ -1053,12 +1053,12 @@ buildvariants:
 		ProjectStorageMethod: evergreen.ProjectStorageMethodDB,
 		PatchedProjectConfig: config,
 	}
-	assert.NoError(t, patch2.Insert())
+	assert.NoError(t, patch2.Insert(t.Context()))
 
 	err = util.UnmarshalYAMLWithFallback([]byte(config), &pp)
 	require.NoError(t, err)
 	pp.Id = patch2.Id.Hex()
-	require.NoError(t, pp.Insert())
+	require.NoError(t, pp.Insert(t.Context()))
 
 	handler = makeSchedulePatchHandler(env).(*schedulePatchHandler)
 	body = patchTasks{
@@ -1087,12 +1087,12 @@ buildvariants:
 		ProjectStorageMethod: evergreen.ProjectStorageMethodDB,
 		PatchedProjectConfig: config,
 	}
-	assert.NoError(t, patch3.Insert())
+	assert.NoError(t, patch3.Insert(t.Context()))
 
 	err = util.UnmarshalYAMLWithFallback([]byte(config), &pp)
 	require.NoError(t, err)
 	pp.Id = patch3.Id.Hex()
-	require.NoError(t, pp.Insert())
+	require.NoError(t, pp.Insert(t.Context()))
 	handler = makeSchedulePatchHandler(env).(*schedulePatchHandler)
 	body = patchTasks{
 		Variants: []variant{{Id: "ubuntu_task_group", Tasks: []string{"task_group_task_2"}}},
@@ -1362,7 +1362,7 @@ tasks:
 		Enabled:    true,
 		BatchTime:  180,
 	}
-	require.NoError(t, projectRef.Insert())
+	require.NoError(t, projectRef.Insert(t.Context()))
 	unfinalized := patch.Patch{
 		Id:                   mgobson.NewObjectId(),
 		Project:              projectRef.Id,
@@ -1370,12 +1370,12 @@ tasks:
 		ProjectStorageMethod: evergreen.ProjectStorageMethodDB,
 		PatchedProjectConfig: config,
 	}
-	require.NoError(t, unfinalized.Insert())
+	require.NoError(t, unfinalized.Insert(t.Context()))
 
 	pp := &serviceModel.ParserProject{}
 	require.NoError(t, util.UnmarshalYAMLWithFallback([]byte(config), pp))
 	pp.Id = unfinalized.Id.Hex()
-	require.NoError(t, pp.Insert())
+	require.NoError(t, pp.Insert(t.Context()))
 
 	// schedule patch with task generator for the first run
 	handler := makeSchedulePatchHandler(env).(*schedulePatchHandler)

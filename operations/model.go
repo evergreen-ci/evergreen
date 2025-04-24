@@ -13,8 +13,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/client"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/kardianos/osext"
-	"github.com/mitchellh/go-homedir"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
@@ -37,13 +37,7 @@ type ClientProjectConf struct {
 func findConfigFilePath(fn string) (string, error) {
 	currentBinPath, _ := osext.Executable()
 
-	userHome, err := homedir.Dir()
-	if err != nil {
-		// workaround for cygwin if we're on windows but couldn't get a homedir
-		if runtime.GOOS == "windows" && len(os.Getenv("HOME")) > 0 {
-			userHome = os.Getenv("HOME")
-		}
-	}
+	userHome, _ := util.GetUserHome()
 
 	if fn != "" {
 		if isValidPath(fn) {
@@ -260,32 +254,27 @@ func (s *ClientSettings) FindDefaultProject(cwd string, useRoot bool) string {
 	return ""
 }
 
-func (s *ClientSettings) getModulePath(project, moduleName string) string {
-	var modulePath string
+// getModulePathsForProject returns the map of modules to local paths for the given project.
+func (s *ClientSettings) getModulePathsForProject(project string) map[string]string {
 	for _, p := range s.Projects {
-		if p.Name == project && p.ModulePaths[moduleName] != "" {
-			modulePath = p.ModulePaths[moduleName]
-			break
+		if p.Name == project && p.ModulePaths != nil {
+			return p.ModulePaths
 		}
 	}
-	return modulePath
+	return map[string]string{}
 }
 
-// setModulePath updates the given client settings to include the new module path. It does this
-// regardless of whether auto updating is disabled, so that the path is cached locally in case of include files.
-func (s *ClientSettings) setModulePath(project, moduleName, modulePath string) {
+// setModulePath updates the given client settings to match the given module patch cache.
+func (s *ClientSettings) setModulePath(project string, modulePathCache map[string]string) {
 	for i, p := range s.Projects {
 		if p.Name == project {
-			if s.Projects[i].ModulePaths == nil {
-				s.Projects[i].ModulePaths = map[string]string{}
-			}
-			s.Projects[i].ModulePaths[moduleName] = modulePath
+			s.Projects[i].ModulePaths = modulePathCache
 			return
 		}
 	}
 	s.Projects = append(s.Projects, ClientProjectConf{
 		Name:        project,
-		ModulePaths: map[string]string{moduleName: modulePath},
+		ModulePaths: modulePathCache,
 	})
 }
 

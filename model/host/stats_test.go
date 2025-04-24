@@ -1,6 +1,7 @@
 package host
 
 import (
+	"context"
 	"sort"
 	"testing"
 
@@ -10,8 +11,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func insertTestDocuments() error {
-	input := []interface{}{
+func insertTestDocuments(ctx context.Context) error {
+	input := []any{
 		Host{
 			Id:     "one",
 			Status: evergreen.HostRunning,
@@ -69,9 +70,19 @@ func insertTestDocuments() error {
 			},
 			RunningTask: "foo",
 		},
+		Host{
+			Id:     "seven",
+			Status: evergreen.HostRunning,
+			Distro: distro.Distro{
+				Id:               "release",
+				Provider:         evergreen.ProviderNameStatic,
+				SingleTaskDistro: true,
+			},
+			StartedBy: evergreen.User,
+		},
 	}
 
-	return db.InsertMany(Collection, input...)
+	return db.InsertMany(ctx, Collection, input...)
 }
 
 func TestHostStatsByProvider(t *testing.T) {
@@ -80,17 +91,17 @@ func TestHostStatsByProvider(t *testing.T) {
 	defer func() {
 		assert.NoError(db.ClearCollections(Collection))
 	}()
-	assert.NoError(insertTestDocuments())
+	assert.NoError(insertTestDocuments(t.Context()))
 
 	result := ProviderStats{}
 
-	assert.NoError(db.Aggregate(Collection, statsByProviderPipeline(), &result))
+	assert.NoError(db.Aggregate(t.Context(), Collection, statsByProviderPipeline(), &result))
 	assert.Len(result, 2, "%+v", result)
 
 	rmap := result.Map()
 	assert.Equal(3, rmap[evergreen.ProviderNameEc2Fleet])
 
-	alt, err := GetProviderCounts()
+	alt, err := GetProviderCounts(t.Context())
 	assert.NoError(err)
 	sort.Slice(alt, func(i, j int) bool { return alt[i].Provider < alt[j].Provider })
 	sort.Slice(result, func(i, j int) bool { return result[i].Provider < result[j].Provider })
@@ -103,12 +114,12 @@ func TestHostStatsByDistro(t *testing.T) {
 	defer func() {
 		assert.NoError(db.ClearCollections(Collection))
 	}()
-	assert.NoError(insertTestDocuments())
+	assert.NoError(insertTestDocuments(t.Context()))
 
 	result := DistroStats{}
 
-	assert.NoError(db.Aggregate(Collection, statsByDistroPipeline(), &result))
-	assert.Len(result, 3, "%+v", result)
+	assert.NoError(db.Aggregate(t.Context(), Collection, statsByDistroPipeline(), &result))
+	assert.Len(result, 4, "%+v", result)
 
 	rcmap := result.CountMap()
 	assert.Equal(2, rcmap["debian"])
@@ -122,7 +133,15 @@ func TestHostStatsByDistro(t *testing.T) {
 	assert.Len(exceeded, 2)
 	assert.NotContains(exceeded, "bar")
 
-	alt, err := GetStatsByDistro()
+	for _, stat := range result {
+		if stat.Distro == "release" {
+			assert.True(stat.SingleTaskDistro)
+		} else {
+			assert.False(stat.SingleTaskDistro)
+		}
+	}
+
+	alt, err := GetStatsByDistro(t.Context())
 	assert.NoError(err)
 	sort.Slice(alt, func(i, j int) bool { return alt[i].Distro < alt[j].Distro })
 	sort.Slice(result, func(i, j int) bool { return result[i].Distro < result[j].Distro })

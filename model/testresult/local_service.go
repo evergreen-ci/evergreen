@@ -15,12 +15,6 @@ import (
 
 const maxSampleSize = 10
 
-// InsertLocal inserts the given test results into the local test results store
-// for testing and local development.
-func InsertLocal(ctx context.Context, env evergreen.Environment, results ...TestResult) error {
-	return errors.Wrap(appendDBResults(ctx, env, results), "inserting local test results")
-}
-
 // ClearLocal clears the local test results store.
 func ClearLocal(ctx context.Context, env evergreen.Environment) error {
 	return errors.Wrap(env.DB().Collection(Collection).Drop(ctx), "clearing the local test results store")
@@ -31,9 +25,31 @@ type localService struct {
 	env evergreen.Environment
 }
 
-// newLocalService returns a local test results service implementation.
-func newLocalService(env evergreen.Environment) *localService {
+// NewLocalService returns a local test results service implementation.
+func NewLocalService(env evergreen.Environment) *localService {
 	return &localService{env: env}
+}
+
+// AppendTestResults appends test results to the local test results collection.
+func (s *localService) AppendTestResults(ctx context.Context, results []TestResult) error {
+	ids := map[dbTaskTestResultsID][]TestResult{}
+	for _, result := range results {
+		id := dbTaskTestResultsID{
+			TaskID:    result.TaskID,
+			Execution: result.Execution,
+		}
+		ids[id] = append(ids[id], result)
+	}
+
+	catcher := grip.NewBasicCatcher()
+	for id, results := range ids {
+		catcher.Add(s.appendResults(ctx, results, id))
+	}
+	if catcher.HasErrors() {
+		return errors.Wrap(catcher.Resolve(), "appending test results")
+	}
+
+	return nil
 }
 
 func (s *localService) GetMergedTaskTestResults(ctx context.Context, taskOpts []TaskOptions, filterOpts *FilterOptions) (TaskTestResults, error) {

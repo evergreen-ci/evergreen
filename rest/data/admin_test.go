@@ -76,12 +76,12 @@ func (s *AdminDataSuite) SetupSuite() {
 	p := &model.ProjectRef{
 		Id: "sample",
 	}
-	s.Require().NoError(b.Insert())
-	s.Require().NoError(v.Insert())
-	s.Require().NoError(testTask1.Insert())
-	s.Require().NoError(testTask2.Insert())
-	s.Require().NoError(testTask3.Insert())
-	s.Require().NoError(p.Insert())
+	s.Require().NoError(b.Insert(s.T().Context()))
+	s.Require().NoError(v.Insert(s.T().Context()))
+	s.Require().NoError(testTask1.Insert(s.T().Context()))
+	s.Require().NoError(testTask2.Insert(s.T().Context()))
+	s.Require().NoError(testTask3.Insert(s.T().Context()))
+	s.Require().NoError(p.Insert(s.T().Context()))
 }
 
 func (s *AdminDataSuite) TestSetAndGetSettings() {
@@ -140,6 +140,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.PodLifecycle.MaxPodDefinitionCleanupRate, settingsFromConnector.PodLifecycle.MaxPodDefinitionCleanupRate)
 	s.EqualValues(testSettings.PodLifecycle.MaxSecretCleanupRate, settingsFromConnector.PodLifecycle.MaxSecretCleanupRate)
 	s.EqualValues(testSettings.Jira.BasicAuthConfig.Username, settingsFromConnector.Jira.BasicAuthConfig.Username)
+	s.EqualValues(testSettings.Jira.PersonalAccessToken, settingsFromConnector.Jira.PersonalAccessToken)
 
 	s.Equal(level.Info.String(), settingsFromConnector.LoggerConfig.DefaultLevel)
 
@@ -159,6 +160,11 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.Equal(testSettings.Providers.AWS.ParserProject.GeneratedJSONPrefix, settingsFromConnector.Providers.AWS.ParserProject.GeneratedJSONPrefix)
 	s.Equal(testSettings.Providers.AWS.PersistentDNS.HostedZoneID, settingsFromConnector.Providers.AWS.PersistentDNS.HostedZoneID)
 	s.Equal(testSettings.Providers.AWS.PersistentDNS.Domain, settingsFromConnector.Providers.AWS.PersistentDNS.Domain)
+	s.Require().Len(testSettings.Providers.AWS.AccountRoles, len(settingsFromConnector.Providers.AWS.AccountRoles))
+	for i := range testSettings.Providers.AWS.AccountRoles {
+		s.Equal(testSettings.Providers.AWS.AccountRoles[i], settingsFromConnector.Providers.AWS.AccountRoles[i])
+	}
+	s.Equal(testSettings.Providers.AWS.IPAMPoolID, settingsFromConnector.Providers.AWS.IPAMPoolID)
 	s.EqualValues(testSettings.Providers.Docker.APIVersion, settingsFromConnector.Providers.Docker.APIVersion)
 	s.EqualValues(testSettings.RepoTracker.MaxConcurrentRequests, settingsFromConnector.RepoTracker.MaxConcurrentRequests)
 	s.EqualValues(testSettings.Scheduler.TaskFinder, settingsFromConnector.Scheduler.TaskFinder)
@@ -175,6 +181,10 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.Slack.Options.Channel, settingsFromConnector.Slack.Options.Channel)
 	s.ElementsMatch(testSettings.SleepSchedule.PermanentlyExemptHosts, settingsFromConnector.SleepSchedule.PermanentlyExemptHosts)
 	s.EqualValues(testSettings.Splunk.SplunkConnectionInfo.Channel, settingsFromConnector.Splunk.SplunkConnectionInfo.Channel)
+	s.EqualValues(testSettings.SSH.SpawnHostKey.Name, settingsFromConnector.SSH.SpawnHostKey.Name)
+	s.EqualValues(testSettings.SSH.SpawnHostKey.SecretARN, settingsFromConnector.SSH.SpawnHostKey.SecretARN)
+	s.EqualValues(testSettings.SSH.TaskHostKey.Name, settingsFromConnector.SSH.TaskHostKey.Name)
+	s.EqualValues(testSettings.SSH.TaskHostKey.SecretARN, settingsFromConnector.SSH.TaskHostKey.SecretARN)
 	s.EqualValues(testSettings.Ui.HttpListenAddr, settingsFromConnector.Ui.HttpListenAddr)
 	s.EqualValues(testSettings.Ui.StagingEnvironment, settingsFromConnector.Ui.StagingEnvironment)
 	s.EqualValues(testSettings.TestSelection.URL, settingsFromConnector.TestSelection.URL)
@@ -183,7 +193,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.Tracer.CollectorInternalEndpoint, settingsFromConnector.Tracer.CollectorInternalEndpoint)
 
 	// spot check events in the event log
-	events, err := event.FindAdmin(event.RecentAdminEvents(1000))
+	events, err := event.FindAdmin(s.T().Context(), event.RecentAdminEvents(1000))
 	s.NoError(err)
 	foundNotifyEvent := false
 	foundFlagsEvent := false
@@ -270,6 +280,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.Equal(testSettings.AuthConfig.Multi.ReadWrite[0], settingsFromConnector.AuthConfig.Multi.ReadWrite[0])
 	s.EqualValues(testSettings.AuthConfig.Kanopy.Issuer, settingsFromConnector.AuthConfig.Kanopy.Issuer)
 	s.EqualValues(testSettings.Jira.BasicAuthConfig.Username, settingsFromConnector.Jira.BasicAuthConfig.Username)
+	s.EqualValues(testSettings.Jira.PersonalAccessToken, settingsFromConnector.Jira.PersonalAccessToken)
 	s.Equal(testSettings.Buckets.Credentials.Key, settingsFromConnector.Buckets.Credentials.Key)
 	s.Equal(testSettings.Buckets.Credentials.Secret, settingsFromConnector.Buckets.Credentials.Secret)
 
@@ -306,6 +317,10 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.Slack.Options.Channel, settingsFromConnector.Slack.Options.Channel)
 	s.ElementsMatch(testSettings.SleepSchedule.PermanentlyExemptHosts, settingsFromConnector.SleepSchedule.PermanentlyExemptHosts)
 	s.EqualValues(testSettings.Splunk.SplunkConnectionInfo.Channel, settingsFromConnector.Splunk.SplunkConnectionInfo.Channel)
+	s.EqualValues(testSettings.SSH.SpawnHostKey.Name, settingsFromConnector.SSH.SpawnHostKey.Name)
+	s.EqualValues(testSettings.SSH.SpawnHostKey.SecretARN, settingsFromConnector.SSH.SpawnHostKey.SecretARN)
+	s.EqualValues(testSettings.SSH.TaskHostKey.Name, settingsFromConnector.SSH.TaskHostKey.Name)
+	s.EqualValues(testSettings.SSH.TaskHostKey.SecretARN, settingsFromConnector.SSH.TaskHostKey.SecretARN)
 	s.EqualValues(testSettings.TaskLimits.MaxTasksPerVersion, settingsFromConnector.TaskLimits.MaxTasksPerVersion)
 	s.EqualValues(testSettings.TestSelection.URL, settingsFromConnector.TestSelection.URL)
 	s.EqualValues(testSettings.Ui.HttpListenAddr, settingsFromConnector.Ui.HttpListenAddr)

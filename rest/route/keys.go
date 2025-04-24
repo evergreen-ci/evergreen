@@ -137,7 +137,7 @@ func (h *keysPostHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Errorf("public key '%s' already exists for user '%s'", h.keyName, u.Username()))
 	}
 
-	if err := u.AddPublicKey(h.keyName, h.keyValue); err != nil {
+	if err := u.AddPublicKey(ctx, h.keyName, h.keyValue); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "adding public key"))
 	}
 
@@ -184,7 +184,7 @@ func (h *keysDeleteHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Errorf("public key '%s' not found", h.keyName))
 	}
 
-	if err := user.DeletePublicKey(h.keyName); err != nil {
+	if err := user.DeletePublicKey(ctx, h.keyName); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "deleting public key '%s'", h.keyName))
 	}
 

@@ -2522,34 +2522,34 @@ func TestValidatePlugins(t *testing.T) {
 		Enabled: true,
 		Id:      "p1",
 	}
-	assert.NoError(projectRef.Insert())
+	assert.NoError(projectRef.Insert(t.Context()))
 	Convey("When validating a project", t, func() {
 		Convey("ensure bad plugin configs throw an error", func() {
-			So(validateProjectConfigPlugins(&model.ProjectConfig{}), ShouldResemble, ValidationErrors{})
-			So(validateProjectConfigPlugins(&model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
+			So(validateProjectConfigPlugins(t.Context(), &model.ProjectConfig{}), ShouldResemble, ValidationErrors{})
+			So(validateProjectConfigPlugins(t.Context(), &model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject:  "BFG",
 				TicketSearchProjects: []string{"BF", "BFG"},
 			}}}), ShouldResemble, ValidationErrors{})
 
-			So(validateProjectConfigPlugins(&model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
+			So(validateProjectConfigPlugins(t.Context(), &model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject:  "BFG",
 				TicketSearchProjects: []string{"BF", "BFG"},
 			}}}), ShouldResemble, ValidationErrors{})
 
-			So(validateProjectConfigPlugins(&model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
+			So(validateProjectConfigPlugins(t.Context(), &model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject:  "BFG",
 				TicketSearchProjects: []string{"BF", "BFG"},
 			}}}), ShouldResemble, ValidationErrors{})
 
-			So(validateProjectConfigPlugins(&model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
+			So(validateProjectConfigPlugins(t.Context(), &model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject: "BFG",
 			}}}), ShouldNotBeNil)
 
-			So(validateProjectConfigPlugins(&model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
+			So(validateProjectConfigPlugins(t.Context(), &model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketSearchProjects: []string{"BF", "BFG"},
 			}}}), ShouldNotBeNil)
 
-			So(validateProjectConfigPlugins(&model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
+			So(validateProjectConfigPlugins(t.Context(), &model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject:     "BFG",
 				TicketSearchProjects:    []string{"BF", "BFG"},
 				BFSuggestionServer:      "https://evergreen.mongodb.com",
@@ -2558,48 +2558,48 @@ func TestValidatePlugins(t *testing.T) {
 				BFSuggestionTimeoutSecs: 10,
 			}}}), ShouldResemble, ValidationErrors{})
 
-			So(validateProjectConfigPlugins(&model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
+			So(validateProjectConfigPlugins(t.Context(), &model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject:     "BFG",
 				TicketSearchProjects:    []string{"BF", "BFG"},
 				BFSuggestionServer:      "https://evergreen.mongodb.com",
 				BFSuggestionTimeoutSecs: 10,
 			}}}), ShouldResemble, ValidationErrors{})
 
-			So(validateProjectConfigPlugins(&model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
+			So(validateProjectConfigPlugins(t.Context(), &model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject:  "BFG",
 				TicketSearchProjects: []string{"BF", "BFG"},
 				BFSuggestionUsername: "user",
 				BFSuggestionPassword: "pass",
 			}}}), ShouldNotBeNil)
 
-			So(validateProjectConfigPlugins(&model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
+			So(validateProjectConfigPlugins(t.Context(), &model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject:     "BFG",
 				TicketSearchProjects:    []string{"BF", "BFG"},
 				BFSuggestionTimeoutSecs: 10,
 			}}}), ShouldNotBeNil)
 
-			So(validateProjectConfigPlugins(&model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
+			So(validateProjectConfigPlugins(t.Context(), &model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject:     "BFG",
 				TicketSearchProjects:    []string{"BF", "BFG"},
 				BFSuggestionServer:      "://evergreen.mongodb.com",
 				BFSuggestionTimeoutSecs: 10,
 			}}}), ShouldNotBeNil)
 
-			So(validateProjectConfigPlugins(&model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
+			So(validateProjectConfigPlugins(t.Context(), &model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject:     "BFG",
 				TicketSearchProjects:    []string{"BF", "BFG"},
 				BFSuggestionServer:      "https://evergreen.mongodb.com",
 				BFSuggestionPassword:    "pass",
 				BFSuggestionTimeoutSecs: 10,
 			}}}), ShouldNotBeNil)
-			So(validateProjectConfigPlugins(&model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
+			So(validateProjectConfigPlugins(t.Context(), &model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject:     "BFG",
 				TicketSearchProjects:    []string{"BF", "BFG"},
 				BFSuggestionServer:      "https://evergreen.mongodb.com",
 				BFSuggestionTimeoutSecs: 0,
 			}}}), ShouldNotBeNil)
 
-			So(validateProjectConfigPlugins(&model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
+			So(validateProjectConfigPlugins(t.Context(), &model.ProjectConfig{Id: "", ProjectConfigFields: model.ProjectConfigFields{BuildBaronSettings: &evergreen.BuildBaronSettings{
 				TicketCreateProject:     "BFG",
 				TicketSearchProjects:    []string{"BF", "BFG"},
 				BFSuggestionServer:      "https://evergreen.mongodb.com",
@@ -3073,7 +3073,7 @@ func TestValidateProjectAliases(t *testing.T) {
 					},
 				},
 			}
-			validationErrs := validateProjectConfigAliases(projectConfig)
+			validationErrs := validateProjectConfigAliases(t.Context(), projectConfig)
 			So(validationErrs, ShouldNotResemble, ValidationErrors{})
 			So(len(validationErrs), ShouldEqual, 8)
 			So(validationErrs[0].Message, ShouldContainSubstring, "can't be empty string")
@@ -3112,8 +3112,8 @@ func TestCheckTaskCommands(t *testing.T) {
 							Commands: []model.PluginCommandConf{
 								{
 									Command: "gotest.parse_files",
-									Params: map[string]interface{}{
-										"files": []interface{}{"test"},
+									Params: map[string]any{
+										"files": []any{"test"},
 									},
 								},
 							},
@@ -3132,8 +3132,8 @@ func TestCheckTaskCommands(t *testing.T) {
 								{
 									Command: "gotest.parse_files",
 									Type:    "setup",
-									Params: map[string]interface{}{
-										"files": []interface{}{"test"},
+									Params: map[string]any{
+										"files": []any{"test"},
 									},
 								},
 							},
@@ -3150,7 +3150,10 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 		distroIds := []string{"rhel55", "singleTaskDistro"}
 		distroAliases := []string{"rhel55-alias"}
 		singleTaskDistroIDs := []string{"singleTaskDistro"}
-		allowedSingleTaskDistroTasks := []string{".*SingleT.*"}
+		singleTaskDistroWhitelist := evergreen.ProjectTasksPair{
+			AllowedTasks: []string{".*SingleT.*"},
+			AllowedBVs:   []string{"bv"},
+		}
 		distroWarnings := map[string]string{
 			"rhel55":       "55 is not the best number",
 			"rhel55-alias": "and this is not the best alias",
@@ -3172,7 +3175,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, allowedSingleTaskDistroTasks, nil)
+			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroWhitelist, nil)
 			So(errs, ShouldNotResemble, ValidationErrors{})
 			So(len(errs), ShouldEqual, 1)
 		})
@@ -3191,7 +3194,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			So(ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, allowedSingleTaskDistroTasks, nil), ShouldResemble,
+			So(ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroWhitelist, nil), ShouldResemble,
 				ValidationErrors{})
 		})
 		Convey("an error should be thrown if a task references a distro has a warning", func() {
@@ -3208,7 +3211,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, allowedSingleTaskDistroTasks, distroWarnings)
+			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroWhitelist, distroWarnings)
 			So(errs, ShouldNotResemble, ValidationErrors{})
 			So(len(errs.AtLevel(Notice)), ShouldEqual, 1)
 			So(errs[0].Message, ShouldContainSubstring, "distro 'rhel55' with the following admin-defined warning(s): 55 is not the best number")
@@ -3228,7 +3231,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, allowedSingleTaskDistroTasks, distroWarnings)
+			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroWhitelist, distroWarnings)
 			So(errs, ShouldNotResemble, ValidationErrors{})
 			So(len(errs.AtLevel(Notice)), ShouldEqual, 1)
 			So(errs[0].Message, ShouldContainSubstring, "distro 'rhel55-alias' with the following admin-defined warning: and this is not the best alias")
@@ -3243,13 +3246,14 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, allowedSingleTaskDistroTasks, nil)
+			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroWhitelist, nil)
 			So(errs, ShouldNotResemble, ValidationErrors{})
 			So(len(errs), ShouldEqual, 1)
 		})
 		Convey("an error should be thrown if a referenced distro for a "+
 			"task is a single task only distro and the task is not allowed", func() {
 			project := &model.Project{
+				Identifier: "project",
 				Tasks: []model.ProjectTask{
 					{Name: "compile"},
 				},
@@ -3263,13 +3267,14 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, allowedSingleTaskDistroTasks, nil)
+			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroWhitelist, nil)
 			So(errs, ShouldNotResemble, ValidationErrors{})
 			So(len(errs), ShouldEqual, 1)
 		})
 		Convey("an error should be thrown if a refrerenced distro for a "+
 			"buildvariant is a single task only distro", func() {
 			project := &model.Project{
+				Identifier: "project",
 				BuildVariants: []model.BuildVariant{
 					{
 						Name:  "enterprise",
@@ -3277,7 +3282,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, allowedSingleTaskDistroTasks, nil)
+			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroWhitelist, nil)
 			So(errs, ShouldNotResemble, ValidationErrors{})
 			So(len(errs), ShouldEqual, 1)
 		})
@@ -3294,7 +3299,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 			containerNameMap := map[string]bool{
 				"rhel55": true,
 			}
-			errs := ensureReferentialIntegrity(project, containerNameMap, distroIds, distroAliases, singleTaskDistroIDs, allowedSingleTaskDistroTasks, nil)
+			errs := ensureReferentialIntegrity(project, containerNameMap, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroWhitelist, nil)
 			So(errs, ShouldNotResemble, ValidationErrors{})
 			So(len(errs), ShouldEqual, 2)
 			So(errs[0].Message, ShouldContainSubstring, "buildvariant 'enterprise' references a container name overlapping with an existing distro 'rhel55'")
@@ -3313,7 +3318,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 			containerNameMap := map[string]bool{
 				"c1": true,
 			}
-			errs := ensureReferentialIntegrity(project, containerNameMap, distroIds, distroAliases, singleTaskDistroIDs, allowedSingleTaskDistroTasks, nil)
+			errs := ensureReferentialIntegrity(project, containerNameMap, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroWhitelist, nil)
 			So(errs, ShouldNotResemble, ValidationErrors{})
 			So(len(errs), ShouldEqual, 1)
 			So(errs[0].Message, ShouldContainSubstring, "run_on cannot contain a mixture of containers and distros")
@@ -3329,7 +3334,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			So(ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, allowedSingleTaskDistroTasks, nil), ShouldResemble, ValidationErrors{})
+			So(ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroWhitelist, nil), ShouldResemble, ValidationErrors{})
 		})
 
 		Convey("no error should be thrown if a referenced distro alias for a"+
@@ -3342,17 +3347,137 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			So(ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, allowedSingleTaskDistroTasks, nil), ShouldResemble, ValidationErrors{})
+			So(ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroWhitelist, nil), ShouldResemble, ValidationErrors{})
 		})
 
 		Convey("no error should be thrown if a referenced single task distro ID for a "+
 			"task is allowed to use single task distros", func() {
 			project := &model.Project{
+				BuildVariants: []model.BuildVariant{
+					{
+						Name:  "bv",
+						RunOn: []string{"rhel55"},
+						Tasks: []model.BuildVariantTaskUnit{
+							{
+								Name: "allowedSingleTask",
+							},
+						},
+					},
+				},
 				Tasks: []model.ProjectTask{
-					{Name: "allowedSingleTask", RunOn: []string{"singleTaskDistro"}},
+					{
+						Name:  "allowedSingleTask",
+						RunOn: []string{"singleTaskDistro"},
+					},
 				},
 			}
-			So(ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, allowedSingleTaskDistroTasks, nil), ShouldResemble, ValidationErrors{})
+			So(ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroWhitelist, nil), ShouldResemble, ValidationErrors{})
+		})
+
+		Convey("no error should be thrown if a referenced single task distro ID for a "+
+			"bv is allowed to use single task distros", func() {
+			project := &model.Project{
+				Identifier: "project",
+				BuildVariants: []model.BuildVariant{
+					{
+						Name:  "bv",
+						RunOn: []string{"singleTaskDistro"},
+					},
+				},
+			}
+			So(ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroWhitelist, nil), ShouldResemble, ValidationErrors{})
+		})
+
+		Convey("no error should be thrown if a referenced single task distro ID for a "+
+			"project is allowed to use single task distros", func() {
+			allowAll := evergreen.ProjectTasksPair{
+				AllowedTasks: []string{"all"},
+			}
+			project := &model.Project{
+				Identifier: "project",
+				BuildVariants: []model.BuildVariant{
+					{
+						Name:  "bv",
+						RunOn: []string{"singleTaskDistro"},
+						Tasks: []model.BuildVariantTaskUnit{
+							{
+								Name: "anytask",
+							},
+							{
+								Name: "allowedSingleTask",
+							},
+						},
+					},
+				},
+				Tasks: []model.ProjectTask{
+					{
+						Name: "allowedSingleTask",
+					},
+					{
+						Name: "anytask",
+					},
+				},
+			}
+			So(ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, allowAll, nil), ShouldResemble, ValidationErrors{})
+		})
+
+		Convey("warning should be thrown if single task distro is used"+
+			"without a specified project", func() {
+			project := &model.Project{
+				BuildVariants: []model.BuildVariant{
+					{
+						Name:  "bv",
+						RunOn: []string{"rhel55"},
+						Tasks: []model.BuildVariantTaskUnit{
+							{
+								Name:  "allowedSingleTask",
+								RunOn: []string{"singleTaskDistro"},
+							},
+						},
+					},
+				},
+				Tasks: []model.ProjectTask{
+					{
+						Name: "allowedSingleTask",
+					},
+				},
+			}
+			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroWhitelist, nil)
+			So(errs, ShouldNotResemble, ValidationErrors{})
+			So(len(errs), ShouldEqual, 1)
+			So(errs[0].Message, ShouldContainSubstring, "project not specified, skipping single task distro validation")
+		})
+
+		Convey("error should be thrown for single task distros "+
+			"that use generate tasks", func() {
+			project := &model.Project{
+				Identifier: "project",
+				BuildVariants: []model.BuildVariant{
+					{
+						Name:  "bv",
+						RunOn: []string{"singleTaskDistro"},
+						Tasks: []model.BuildVariantTaskUnit{
+							{
+								Name: "allowedSingleTask",
+							},
+						},
+					},
+				},
+				Tasks: []model.ProjectTask{
+					{
+						Name: "allowedSingleTask",
+						Commands: []model.PluginCommandConf{
+							{
+								Command: "generate.tasks",
+							},
+						},
+					},
+				},
+			}
+			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroWhitelist, nil)
+			So(errs, ShouldNotResemble, ValidationErrors{})
+			So(len(errs), ShouldEqual, 1)
+			So(errs[0].Message, ShouldContainSubstring, "task 'allowedSingleTask' in buildvariant 'bv' runs on a single task distro 'singleTaskDistro' and cannot use the generate tasks")
 		})
 	})
 }
@@ -3375,7 +3500,7 @@ func TestValidateProjectConfigContainers(t *testing.T) {
 				},
 			},
 		}
-		errs := validateProjectConfigContainers(&pc)
+		errs := validateProjectConfigContainers(t.Context(), &pc)
 		assert.Empty(t, errs)
 	})
 	t.Run("FailsWithInvalidContainerResources", func(t *testing.T) {
@@ -3390,7 +3515,7 @@ func TestValidateProjectConfigContainers(t *testing.T) {
 				},
 			},
 		}
-		errs := validateProjectConfigContainers(&pc)
+		errs := validateProjectConfigContainers(t.Context(), &pc)
 		assert.NotEmpty(t, errs)
 	})
 	t.Run("FailsWithUnnamedContainerSize", func(t *testing.T) {
@@ -3405,7 +3530,7 @@ func TestValidateProjectConfigContainers(t *testing.T) {
 				},
 			},
 		}
-		errs := validateProjectConfigContainers(&pc)
+		errs := validateProjectConfigContainers(t.Context(), &pc)
 		assert.NotEmpty(t, errs)
 	})
 	t.Run("FailsWithContainerSizeExceedingGlobalLimits", func(t *testing.T) {
@@ -3431,7 +3556,7 @@ func TestValidateProjectConfigContainers(t *testing.T) {
 					},
 				},
 			}
-			errs := validateProjectConfigContainers(&pc)
+			errs := validateProjectConfigContainers(t.Context(), &pc)
 			assert.NotEmpty(t, errs)
 		})
 		t.Run("Memory", func(t *testing.T) {
@@ -3446,7 +3571,7 @@ func TestValidateProjectConfigContainers(t *testing.T) {
 					},
 				},
 			}
-			errs := validateProjectConfigContainers(&pc)
+			errs := validateProjectConfigContainers(t.Context(), &pc)
 			assert.NotEmpty(t, errs)
 		})
 	})
@@ -3463,7 +3588,7 @@ func TestValidatePluginCommands(t *testing.T) {
 							{
 								Function: "",
 								Command:  "a.b",
-								Params:   map[string]interface{}{},
+								Params:   map[string]any{},
 							},
 						},
 					},
@@ -3478,8 +3603,8 @@ func TestValidatePluginCommands(t *testing.T) {
 					"funcOne": {
 						SingleCommand: &model.PluginCommandConf{
 							Command: "gotest.parse_files",
-							Params: map[string]interface{}{
-								"blah": []interface{}{"test"},
+							Params: map[string]any{
+								"blah": []any{"test"},
 							},
 						},
 					},
@@ -3516,8 +3641,8 @@ tasks:
 						SingleCommand: &model.PluginCommandConf{
 							Command: "shell.exec",
 							Type:    "system",
-							Params: map[string]interface{}{
-								"files": []interface{}{"test"},
+							Params: map[string]any{
+								"files": []any{"test"},
 							},
 						},
 					},
@@ -3535,7 +3660,7 @@ tasks:
 						SingleCommand: &model.PluginCommandConf{
 							Command: "shell.exec",
 							Type:    "system",
-							Params: map[string]interface{}{
+							Params: map[string]any{
 								"script": "echo hi",
 							},
 						},
@@ -3568,8 +3693,8 @@ tasks:
 					"funcOne": {
 						SingleCommand: &model.PluginCommandConf{
 							Command: "gotest.parse_files",
-							Params: map[string]interface{}{
-								"files": []interface{}{"test"},
+							Params: map[string]any{
+								"files": []any{"test"},
 							},
 						},
 					},
@@ -3581,8 +3706,8 @@ tasks:
 							{
 								Function: "funcOne",
 								Command:  "gotest.parse_files",
-								Params: map[string]interface{}{
-									"files": []interface{}{"test"},
+								Params: map[string]any{
+									"files": []any{"test"},
 								},
 							},
 						},
@@ -3598,8 +3723,8 @@ tasks:
 				Functions: map[string]*model.YAMLCommandSet{
 					"funcOne": {
 						SingleCommand: &model.PluginCommandConf{
-							Params: map[string]interface{}{
-								"blah": []interface{}{"test"},
+							Params: map[string]any{
+								"blah": []any{"test"},
 							},
 						},
 					},
@@ -3614,8 +3739,8 @@ tasks:
 					"funcOne": {
 						SingleCommand: &model.PluginCommandConf{
 							Command: "gotest.parse_files",
-							Params: map[string]interface{}{
-								"files": []interface{}{"test"},
+							Params: map[string]any{
+								"files": []any{"test"},
 							},
 						},
 					},
@@ -3631,16 +3756,16 @@ tasks:
 						SingleCommand: &model.PluginCommandConf{
 							Function: "b",
 							Command:  "gotest.parse_files",
-							Params: map[string]interface{}{
-								"files": []interface{}{"test"},
+							Params: map[string]any{
+								"files": []any{"test"},
 							},
 						},
 					},
 					"b": {
 						SingleCommand: &model.PluginCommandConf{
 							Command: "gotest.parse_files",
-							Params: map[string]interface{}{
-								"files": []interface{}{"test"},
+							Params: map[string]any{
+								"files": []any{"test"},
 							},
 						},
 					},
@@ -3657,8 +3782,8 @@ tasks:
 						SingleCommand: &model.PluginCommandConf{
 							Function: "b",
 							Command:  "gotest.parse_files",
-							Params: map[string]interface{}{
-								"files": []interface{}{"test"},
+							Params: map[string]any{
+								"files": []any{"test"},
 							},
 						},
 					},
@@ -3674,7 +3799,7 @@ tasks:
 					MultiCommand: []model.PluginCommandConf{
 						{
 							Command: "gotest.parse_files",
-							Params:  map[string]interface{}{},
+							Params:  map[string]any{},
 						},
 					},
 				},
@@ -3689,8 +3814,8 @@ tasks:
 						{
 							Function: "",
 							Command:  "gotest.parse_files",
-							Params: map[string]interface{}{
-								"files": []interface{}{"test"},
+							Params: map[string]any{
+								"files": []any{"test"},
 							},
 						},
 					},
@@ -3705,7 +3830,7 @@ tasks:
 						{
 							Function: "",
 							Command:  "gotest.parse_files",
-							Params:   map[string]interface{}{},
+							Params:   map[string]any{},
 						},
 					},
 				},
@@ -3720,8 +3845,8 @@ tasks:
 						{
 							Function: "",
 							Command:  "gotest.parse_files",
-							Params: map[string]interface{}{
-								"files": []interface{}{"test"},
+							Params: map[string]any{
+								"files": []any{"test"},
 							},
 						},
 					},
@@ -3736,7 +3861,7 @@ tasks:
 						{
 							Function: "",
 							Command:  "gotest.parse_files",
-							Params:   map[string]interface{}{},
+							Params:   map[string]any{},
 						},
 					},
 				},
@@ -3751,8 +3876,8 @@ tasks:
 						{
 							Function: "",
 							Command:  "gotest.parse_files",
-							Params: map[string]interface{}{
-								"files": []interface{}{"test"},
+							Params: map[string]any{
+								"files": []any{"test"},
 							},
 						},
 					},
@@ -3770,7 +3895,7 @@ tasks:
 							{
 								Function: "",
 								Command:  "archive.targz_pack",
-								Params: map[string]interface{}{
+								Params: map[string]any{
 									"target":     "tgz",
 									"source_dir": "src",
 									"include":    []string{":"},
@@ -3791,7 +3916,7 @@ tasks:
 							{
 								Function: "",
 								Command:  "archive.targz_pack",
-								Params: map[string]interface{}{
+								Params: map[string]any{
 									"target":     "tgz",
 									"source_dir": "src",
 									"include":    []string{":"},
@@ -3805,16 +3930,16 @@ tasks:
 			So(validatePluginCommands(project), ShouldResemble, ValidationErrors{})
 		})
 		Convey("an error should be thrown if a referenced plugin contains invalid parameters", func() {
-			params := map[string]interface{}{
+			params := map[string]any{
 				"aws_key":    "key",
 				"aws_secret": "sec",
-				"s3_copy_files": []interface{}{
-					map[string]interface{}{
-						"source": map[string]interface{}{
+				"s3_copy_files": []any{
+					map[string]any{
+						"source": map[string]any{
 							"bucket": "long3nough",
 							"path":   "fghij",
 						},
-						"destination": map[string]interface{}{
+						"destination": map[string]any{
 							"bucket": "..long-but-invalid",
 							"path":   "fghij",
 						},
@@ -3841,16 +3966,16 @@ tasks:
 		Convey("no error should be thrown if a referenced plugin that "+
 			"exists contains params that appear invalid but are in expansions",
 			func() {
-				params := map[string]interface{}{
+				params := map[string]any{
 					"aws_key":    "key",
 					"aws_secret": "sec",
-					"s3_copy_files": []interface{}{
-						map[string]interface{}{
-							"source": map[string]interface{}{
+					"s3_copy_files": []any{
+						map[string]any{
+							"source": map[string]any{
 								"bucket": "long3nough",
 								"path":   "fghij",
 							},
-							"destination": map[string]interface{}{
+							"destination": map[string]any{
 								"bucket": "${..longButInvalid}",
 								"path":   "fghij",
 							},
@@ -3875,16 +4000,16 @@ tasks:
 			})
 		Convey("no error should be thrown if a referenced plugin contains all "+
 			"the necessary and valid parameters", func() {
-			params := map[string]interface{}{
+			params := map[string]any{
 				"aws_key":    "key",
 				"aws_secret": "sec",
-				"s3_copy_files": []interface{}{
-					map[string]interface{}{
-						"source": map[string]interface{}{
+				"s3_copy_files": []any{
+					map[string]any{
+						"source": map[string]any{
 							"bucket": "abcde",
 							"path":   "fghij",
 						},
-						"destination": map[string]interface{}{
+						"destination": map[string]any{
 							"bucket": "abcde",
 							"path":   "fghij",
 						},
@@ -3941,8 +4066,8 @@ func TestCheckProjectWarnings(t *testing.T) {
 				Id: "my_version",
 			}
 
-			require.NoError(t, pp.Insert())
-			require.NoError(t, v.Insert(), "failed to insert test version: %v", v)
+			require.NoError(t, pp.Insert(t.Context()))
+			require.NoError(t, v.Insert(t.Context()), "failed to insert test version: %v", v)
 			_, project, _, err := model.FindLatestVersionWithValidProject(projectRef.Id, false)
 			So(err, ShouldBeNil)
 			So(CheckProjectWarnings(project), ShouldResemble, ValidationErrors{})
@@ -4976,8 +5101,8 @@ func TestValidateContainers(t *testing.T) {
 				},
 			}
 
-			require.NoError(t, ref.Upsert())
-			require.NoError(t, projVars.Insert())
+			require.NoError(t, ref.Replace(t.Context()))
+			require.NoError(t, projVars.Insert(t.Context()))
 			tCase(t, p, ref)
 		})
 	}
@@ -6032,7 +6157,7 @@ func TestValidateTaskGroupsInBV(t *testing.T) {
 	}
 	for testName, testCase := range tests {
 		t.Run(testName, func(t *testing.T) {
-			errs := ensureReferentialIntegrity(&testCase.project, nil, []string{}, []string{}, []string{}, []string{}, nil)
+			errs := ensureReferentialIntegrity(&testCase.project, nil, []string{}, []string{}, []string{}, evergreen.ProjectTasksPair{}, nil)
 			if testCase.expectErr {
 				assert.Equal(t, testCase.expectedErrMsg, errs[0].Message)
 			} else {

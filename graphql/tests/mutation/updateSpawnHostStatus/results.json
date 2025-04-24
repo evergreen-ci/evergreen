@@ -1,38 +1,42 @@
 {
-    "tests": [
-        {
-            "query_file": "terminate_host.graphql",
-            "result": {
-              "errors": [
-                  {
-                      "message": "You are not authorized to modify this host",
-                      "path": [
-                          "updateSpawnHostStatus"
-                      ],
-                      "extensions": {
-                          "code": "FORBIDDEN"
-                      }
-                  }
-              ],
-              "data": null
+  "tests": [
+    {
+      "query_file": "terminate_host.graphql",
+      "result": {
+        "errors": [
+          {
+            "message": "user 'admin_user' does not have permission to access host 'i-085085e236d598a60'",
+            "path": [
+              "updateSpawnHostStatus",
+              "updateSpawnHostStatusInput",
+              "hostId"
+            ],
+            "extensions": {
+              "code": "FORBIDDEN"
             }
-        },
-        {
-            "query_file": "stop_host.graphql",
-            "result": {
-              "errors": [
-                  {
-                      "message": "You are not authorized to modify this host",
-                      "path": [
-                          "updateSpawnHostStatus"
-                      ],
-                      "extensions": {
-                          "code": "FORBIDDEN"
-                      }
-                  }
+          }
+        ],
+        "data": null
+      }
+    },
+    {
+      "query_file": "stop_host.graphql",
+      "result": {
+        "data": null,
+        "errors": [
+            {
+              "message": "user 'admin_user' does not have permission to access host 'i-085085e236d598a60'",
+              "path": [
+                  "updateSpawnHostStatus",
+                  "updateSpawnHostStatusInput",
+                  "hostId"
               ],
-              "data": null
+            "extensions": {
+                "code": "FORBIDDEN"
             }
-        }
-    ]
+          }
+        ]
+      }
+    }
+  ]
 }

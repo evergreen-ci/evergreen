@@ -1,6 +1,7 @@
 package event
 
 import (
+	"context"
 	"strconv"
 	"time"
 
@@ -11,7 +12,7 @@ import (
 )
 
 func init() {
-	registry.AddType(ResourceTypeHost, func() interface{} { return &HostEventData{} })
+	registry.AddType(ResourceTypeHost, func() any { return &HostEventData{} })
 	registry.AllowSubscription(ResourceTypeHost, EventHostExpirationWarningSent)
 	registry.AllowSubscription(ResourceTypeHost, EventHostTemporaryExemptionExpirationWarningSent)
 	registry.AllowSubscription(ResourceTypeHost, EventVolumeExpirationWarningSent)
@@ -93,7 +94,7 @@ var (
 	hostDataStatusKey = bsonutil.MustHaveTag(HostEventData{}, "TaskStatus")
 )
 
-func LogHostEvent(hostId string, eventType string, eventData HostEventData) {
+func LogHostEvent(ctx context.Context, hostId string, eventType string, eventData HostEventData) {
 	event := EventLogEntry{
 		Timestamp:    time.Now(),
 		ResourceId:   hostId,
@@ -102,7 +103,7 @@ func LogHostEvent(hostId string, eventType string, eventData HostEventData) {
 		ResourceType: ResourceTypeHost,
 	}
 
-	if err := event.Log(); err != nil {
+	if err := event.Log(ctx); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"resource_type": ResourceTypeHost,
 			"message":       "error logging event",
@@ -112,12 +113,12 @@ func LogHostEvent(hostId string, eventType string, eventData HostEventData) {
 }
 
 // LogHostCreated logs an event indicating that the host was created.
-func LogHostCreated(hostId string) {
-	LogHostEvent(hostId, EventHostCreated, HostEventData{Successful: true})
+func LogHostCreated(ctx context.Context, hostId string) {
+	LogHostEvent(ctx, hostId, EventHostCreated, HostEventData{Successful: true})
 }
 
 // LogManyHostsCreated is the same as LogHostCreated but for multiple hosts.
-func LogManyHostsCreated(hostIDs []string) {
+func LogManyHostsCreated(ctx context.Context, hostIDs []string) {
 	events := make([]EventLogEntry, 0, len(hostIDs))
 	for _, hostID := range hostIDs {
 		e := EventLogEntry{
@@ -129,7 +130,7 @@ func LogManyHostsCreated(hostIDs []string) {
 		}
 		events = append(events, e)
 	}
-	if err := LogManyEvents(events); err != nil {
+	if err := LogManyEvents(ctx, events); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"resource_type": ResourceTypeHost,
 			"message":       "error logging events",
@@ -140,114 +141,114 @@ func LogManyHostsCreated(hostIDs []string) {
 
 // LogHostCreatedError logs an event indicating that the host errored while it
 // was being created.
-func LogHostCreatedError(hostID, logs string) {
-	LogHostEvent(hostID, EventHostCreatedError, HostEventData{Successful: false, Logs: logs})
+func LogHostCreatedError(ctx context.Context, hostID, logs string) {
+	LogHostEvent(ctx, hostID, EventHostCreatedError, HostEventData{Successful: false, Logs: logs})
 }
 
 // LogSpawnHostCreatedError is the same as LogHostCreatedError but specifically
 // for spawn hosts. The spawn host event is separate from the more general host
 // creation errors to make notifications on spawn host creation errors more
 // efficient.
-func LogSpawnHostCreatedError(hostID, logs string) {
-	LogHostEvent(hostID, EventSpawnHostCreatedError, HostEventData{Successful: false, Logs: logs})
+func LogSpawnHostCreatedError(ctx context.Context, hostID, logs string) {
+	LogHostEvent(ctx, hostID, EventSpawnHostCreatedError, HostEventData{Successful: false, Logs: logs})
 }
 
 // LogHostStartSucceeded logs an event indicating that the host was successfully
 // started.
-func LogHostStartSucceeded(hostID string, source string) {
-	LogHostEvent(hostID, EventHostStarted, HostEventData{Successful: true, Source: source})
+func LogHostStartSucceeded(ctx context.Context, hostID string, source string) {
+	LogHostEvent(ctx, hostID, EventHostStarted, HostEventData{Successful: true, Source: source})
 }
 
 // LogHostStartError logs an event indicating that the host errored while
 // starting.
-func LogHostStartError(hostID, source, logs string) {
-	LogHostEvent(hostID, EventHostStarted, HostEventData{Successful: false, Source: source, Logs: logs})
+func LogHostStartError(ctx context.Context, hostID, source, logs string) {
+	LogHostEvent(ctx, hostID, EventHostStarted, HostEventData{Successful: false, Source: source, Logs: logs})
 }
 
 // LogHostStopSucceeded logs an event indicating that the host was successfully
 // stopped.
-func LogHostStopSucceeded(hostID, source string) {
-	LogHostEvent(hostID, EventHostStopped, HostEventData{Successful: true, Source: source})
+func LogHostStopSucceeded(ctx context.Context, hostID, source string) {
+	LogHostEvent(ctx, hostID, EventHostStopped, HostEventData{Successful: true, Source: source})
 }
 
 // LogHostStopError logs an event indicating that the host errored while
 // stopping.
-func LogHostStopError(hostID, source, logs string) {
-	LogHostEvent(hostID, EventHostStopped, HostEventData{Successful: false, Source: source, Logs: logs})
+func LogHostStopError(ctx context.Context, hostID, source, logs string) {
+	LogHostEvent(ctx, hostID, EventHostStopped, HostEventData{Successful: false, Source: source, Logs: logs})
 }
 
 // LogHostModifySucceeded logs an event indicating that the host was
 // successfully modified.
-func LogHostModifySucceeded(hostID, source string) {
-	LogHostEvent(hostID, EventHostModified, HostEventData{Successful: true, Source: source})
+func LogHostModifySucceeded(ctx context.Context, hostID, source string) {
+	LogHostEvent(ctx, hostID, EventHostModified, HostEventData{Successful: true, Source: source})
 }
 
 // LogHostModifyError logs an event indicating that the host errored while being
 // modified.
-func LogHostModifyError(hostID, logs string) {
-	LogHostEvent(hostID, EventHostModified, HostEventData{Successful: false, Logs: logs})
+func LogHostModifyError(ctx context.Context, hostID, logs string) {
+	LogHostEvent(ctx, hostID, EventHostModified, HostEventData{Successful: false, Logs: logs})
 }
 
-func LogHostAgentDeployed(hostId string) {
-	LogHostEvent(hostId, EventHostAgentDeployed, HostEventData{
+func LogHostAgentDeployed(ctx context.Context, hostID string) {
+	LogHostEvent(ctx, hostID, EventHostAgentDeployed, HostEventData{
 		AgentRevision: evergreen.AgentVersion,
 		AgentBuild:    evergreen.BuildRevision,
 	})
 }
 
-func LogHostAgentDeployFailed(hostId string, err error) {
-	LogHostEvent(hostId, EventHostAgentDeployFailed, HostEventData{Logs: err.Error()})
+func LogHostAgentDeployFailed(ctx context.Context, hostID string, err error) {
+	LogHostEvent(ctx, hostID, EventHostAgentDeployFailed, HostEventData{Logs: err.Error()})
 }
 
-func LogHostAgentMonitorDeployed(hostId string) {
-	LogHostEvent(hostId, EventHostAgentMonitorDeployed, HostEventData{
+func LogHostAgentMonitorDeployed(ctx context.Context, hostID string) {
+	LogHostEvent(ctx, hostID, EventHostAgentMonitorDeployed, HostEventData{
 		AgentBuild:    evergreen.BuildRevision,
 		AgentRevision: evergreen.AgentVersion,
 	})
 }
 
-func LogHostAgentMonitorDeployFailed(hostId string, err error) {
-	LogHostEvent(hostId, EventHostAgentMonitorDeployFailed, HostEventData{Logs: err.Error()})
+func LogHostAgentMonitorDeployFailed(ctx context.Context, hostID string, err error) {
+	LogHostEvent(ctx, hostID, EventHostAgentMonitorDeployFailed, HostEventData{Logs: err.Error()})
 }
 
-func LogHostJasperRestarting(hostId, user string) {
-	LogHostEvent(hostId, EventHostJasperRestarting, HostEventData{User: user})
+func LogHostJasperRestarting(ctx context.Context, hostID, user string) {
+	LogHostEvent(ctx, hostID, EventHostJasperRestarting, HostEventData{User: user})
 }
 
-func LogHostJasperRestarted(hostId, revision string) {
-	LogHostEvent(hostId, EventHostJasperRestarted, HostEventData{JasperRevision: revision})
+func LogHostJasperRestarted(ctx context.Context, hostID, revision string) {
+	LogHostEvent(ctx, hostID, EventHostJasperRestarted, HostEventData{JasperRevision: revision})
 }
 
-func LogHostJasperRestartError(hostId string, err error) {
-	LogHostEvent(hostId, EventHostJasperRestartError, HostEventData{Logs: err.Error()})
+func LogHostJasperRestartError(ctx context.Context, hostID string, err error) {
+	LogHostEvent(ctx, hostID, EventHostJasperRestartError, HostEventData{Logs: err.Error()})
 }
 
-func LogHostConvertingProvisioning(hostID, method, user string) {
-	LogHostEvent(hostID, EventHostConvertingProvisioning, HostEventData{ProvisioningMethod: method, User: user})
+func LogHostConvertingProvisioning(ctx context.Context, hostID, method, user string) {
+	LogHostEvent(ctx, hostID, EventHostConvertingProvisioning, HostEventData{ProvisioningMethod: method, User: user})
 }
 
-func LogHostConvertedProvisioning(hostID, method string) {
-	LogHostEvent(hostID, EventHostConvertedProvisioning, HostEventData{ProvisioningMethod: method})
+func LogHostConvertedProvisioning(ctx context.Context, hostID, method string) {
+	LogHostEvent(ctx, hostID, EventHostConvertedProvisioning, HostEventData{ProvisioningMethod: method})
 }
 
-func LogHostConvertingProvisioningError(hostId string, err error) {
-	LogHostEvent(hostId, EventHostConvertingProvisioningError, HostEventData{Logs: err.Error()})
+func LogHostConvertingProvisioningError(ctx context.Context, hostID string, err error) {
+	LogHostEvent(ctx, hostID, EventHostConvertingProvisioningError, HostEventData{Logs: err.Error()})
 }
 
 // LogHostProvisionError is used to log each failed provision attempt
-func LogHostProvisionError(hostId string) {
-	LogHostEvent(hostId, EventHostProvisionError, HostEventData{})
+func LogHostProvisionError(ctx context.Context, hostID string) {
+	LogHostEvent(ctx, hostID, EventHostProvisionError, HostEventData{})
 }
 
-func LogHostTerminatedExternally(hostId, oldStatus string) {
-	LogHostEvent(hostId, EventHostStatusChanged, HostEventData{OldStatus: oldStatus, NewStatus: EventHostTerminatedExternally, User: evergreen.HostExternalUserName})
+func LogHostTerminatedExternally(ctx context.Context, hostID, oldStatus string) {
+	LogHostEvent(ctx, hostID, EventHostStatusChanged, HostEventData{OldStatus: oldStatus, NewStatus: EventHostTerminatedExternally, User: evergreen.HostExternalUserName})
 }
 
-func LogHostStatusChanged(hostId, oldStatus, newStatus, user string, logs string) {
+func LogHostStatusChanged(ctx context.Context, hostId, oldStatus, newStatus, user string, logs string) {
 	if oldStatus == newStatus {
 		return
 	}
-	LogHostEvent(hostId, EventHostStatusChanged, HostEventData{
+	LogHostEvent(ctx, hostId, EventHostStatusChanged, HostEventData{
 		OldStatus: oldStatus,
 		NewStatus: newStatus,
 		User:      user,
@@ -255,25 +256,25 @@ func LogHostStatusChanged(hostId, oldStatus, newStatus, user string, logs string
 	})
 }
 
-func LogHostDNSNameSet(hostId string, dnsName string) {
-	LogHostEvent(hostId, EventHostDNSNameSet,
+func LogHostDNSNameSet(ctx context.Context, hostID string, dnsName string) {
+	LogHostEvent(ctx, hostID, EventHostDNSNameSet,
 		HostEventData{Hostname: dnsName})
 }
 
-func LogHostProvisioned(hostId string) {
-	LogHostEvent(hostId, EventHostProvisioned, HostEventData{})
+func LogHostProvisioned(ctx context.Context, hostID string) {
+	LogHostEvent(ctx, hostID, EventHostProvisioned, HostEventData{})
 }
 
-func LogHostRunningTaskSet(hostId string, taskId string, taskExecution int) {
-	LogHostEvent(hostId, EventHostRunningTaskSet,
+func LogHostRunningTaskSet(ctx context.Context, hostID string, taskId string, taskExecution int) {
+	LogHostEvent(ctx, hostID, EventHostRunningTaskSet,
 		HostEventData{
 			TaskId:    taskId,
 			Execution: strconv.Itoa(taskExecution),
 		})
 }
 
-func LogHostRunningTaskCleared(hostId string, taskId string, taskExecution int) {
-	LogHostEvent(hostId, EventHostRunningTaskCleared,
+func LogHostRunningTaskCleared(ctx context.Context, hostID string, taskId string, taskExecution int) {
+	LogHostEvent(ctx, hostID, EventHostRunningTaskCleared,
 		HostEventData{
 			TaskId:    taskId,
 			Execution: strconv.Itoa(taskExecution),
@@ -282,41 +283,41 @@ func LogHostRunningTaskCleared(hostId string, taskId string, taskExecution int) 
 
 // LogHostProvisionFailed is used when Evergreen gives up on provisioning a host
 // after several retries.
-func LogHostProvisionFailed(hostId string, setupLogs string) {
-	LogHostEvent(hostId, EventHostProvisionFailed, HostEventData{Logs: setupLogs})
+func LogHostProvisionFailed(ctx context.Context, hostID string, setupLogs string) {
+	LogHostEvent(ctx, hostID, EventHostProvisionFailed, HostEventData{Logs: setupLogs})
 }
 
-func LogSpawnhostExpirationWarningSent(hostID string) {
-	LogHostEvent(hostID, EventHostExpirationWarningSent, HostEventData{})
+func LogSpawnhostExpirationWarningSent(ctx context.Context, hostID string) {
+	LogHostEvent(ctx, hostID, EventHostExpirationWarningSent, HostEventData{})
 }
 
 // LogHostTemporaryExemptionExpirationWarningSent logs an event warning about
 // the host's temporary exemption, which is about to expire.
-func LogHostTemporaryExemptionExpirationWarningSent(hostID string) {
-	LogHostEvent(hostID, EventHostTemporaryExemptionExpirationWarningSent, HostEventData{})
+func LogHostTemporaryExemptionExpirationWarningSent(ctx context.Context, hostID string) {
+	LogHostEvent(ctx, hostID, EventHostTemporaryExemptionExpirationWarningSent, HostEventData{})
 }
 
-func LogVolumeExpirationWarningSent(volumeID string) {
-	LogHostEvent(volumeID, EventVolumeExpirationWarningSent, HostEventData{})
+func LogVolumeExpirationWarningSent(ctx context.Context, volumeID string) {
+	LogHostEvent(ctx, volumeID, EventVolumeExpirationWarningSent, HostEventData{})
 }
 
 // LogSpawnHostIdleNotification logs an event for the spawn host being idle.
-func LogSpawnHostIdleNotification(hostID string) {
-	LogHostEvent(hostID, EventSpawnHostIdleNotification, HostEventData{})
+func LogSpawnHostIdleNotification(ctx context.Context, hostID string) {
+	LogHostEvent(ctx, hostID, EventSpawnHostIdleNotification, HostEventData{})
 }
 
-func LogHostScriptExecuted(hostID string, logs string) {
-	LogHostEvent(hostID, EventHostScriptExecuted, HostEventData{Logs: logs})
+func LogHostScriptExecuted(ctx context.Context, hostID string, logs string) {
+	LogHostEvent(ctx, hostID, EventHostScriptExecuted, HostEventData{Logs: logs})
 }
 
-func LogHostScriptExecuteFailed(hostID, logs string, err error) {
+func LogHostScriptExecuteFailed(ctx context.Context, hostID, logs string, err error) {
 	if logs == "" {
 		logs = err.Error()
 	}
-	LogHostEvent(hostID, EventHostScriptExecuteFailed, HostEventData{Logs: logs})
+	LogHostEvent(ctx, hostID, EventHostScriptExecuteFailed, HostEventData{Logs: logs})
 }
 
 // LogVolumeMigrationFailed is used when a volume is unable to migrate to a new host.
-func LogVolumeMigrationFailed(hostID string, err error) {
-	LogHostEvent(hostID, EventVolumeMigrationFailed, HostEventData{Logs: err.Error()})
+func LogVolumeMigrationFailed(ctx context.Context, hostID string, err error) {
+	LogHostEvent(ctx, hostID, EventVolumeMigrationFailed, HostEventData{Logs: err.Error()})
 }

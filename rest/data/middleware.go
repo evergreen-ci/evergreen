@@ -39,7 +39,7 @@ func GetProjectIdFromParams(ctx context.Context, paramsMap map[string]string) (s
 	var err error
 	versionID := paramsMap[versionIdKey]
 	if projectID == "" && versionID != "" {
-		projectID, err = model.FindProjectForVersion(versionID)
+		projectID, err = model.FindProjectForVersion(ctx, versionID)
 		if err != nil {
 			return "", http.StatusNotFound, errors.Wrapf(err, "finding version '%s'", versionID)
 		}
@@ -50,7 +50,7 @@ func GetProjectIdFromParams(ctx context.Context, paramsMap map[string]string) (s
 		if !patch.IsValidId(patchID) {
 			return "", http.StatusBadRequest, errors.New("not a valid patch ID")
 		}
-		projectID, err = patch.FindProjectForPatch(patch.NewId(patchID))
+		projectID, err = patch.FindProjectForPatch(ctx, patch.NewId(patchID))
 		if err != nil {
 			return "", http.StatusNotFound, errors.Wrapf(err, "finding project for patch '%s'", patchID)
 		}
@@ -58,7 +58,7 @@ func GetProjectIdFromParams(ctx context.Context, paramsMap map[string]string) (s
 
 	buildID := paramsMap[buildIdKey]
 	if projectID == "" && buildID != "" {
-		projectID, err = build.FindProjectForBuild(buildID)
+		projectID, err = build.FindProjectForBuild(ctx, buildID)
 		if err != nil {
 			return "", http.StatusNotFound, errors.Wrapf(err, "finding project for build '%s'", buildID)
 		}
@@ -67,7 +67,7 @@ func GetProjectIdFromParams(ctx context.Context, paramsMap map[string]string) (s
 	testLog := paramsMap[logIdKey]
 	if projectID == "" && testLog != "" {
 		var test *testlog.TestLog
-		test, err = testlog.FindOneTestLogById(testLog)
+		test, err = testlog.FindOneTestLogById(ctx, testLog)
 		if err != nil {
 			return "", http.StatusInternalServerError, errors.Wrapf(err, "finding test log '%s'", testLog)
 		}
@@ -90,7 +90,7 @@ func GetProjectIdFromParams(ctx context.Context, paramsMap map[string]string) (s
 
 	if repoID != "" {
 		var repoRef *model.RepoRef
-		repoRef, err = model.FindOneRepoRef(repoID)
+		repoRef, err = model.FindOneRepoRef(ctx, repoID)
 		if err != nil {
 			return "", http.StatusInternalServerError, errors.Wrap(err, "finding repo")
 		}
@@ -105,28 +105,41 @@ func GetProjectIdFromParams(ctx context.Context, paramsMap map[string]string) (s
 		return "", http.StatusNotFound, errors.New("no project found")
 	}
 
-	projectRef, err := model.FindMergedProjectRef(projectID, versionID, true)
+	projectRef, err := model.FindMergedProjectRef(ctx, projectID, versionID, true)
 	if err != nil {
 		return "", http.StatusInternalServerError, errors.Wrap(err, "finding project")
 	}
-	if projectRef == nil {
-		return "", http.StatusNotFound, errors.Errorf("project '%s' not found", projectID)
+	var id string
+	if projectRef != nil {
+		id = projectRef.Id
+	} else {
+		// If the project wasn't found, it's sometimes because it's a repo
+		// ref id.
+		repoRef, err := model.FindOneRepoRef(ctx, projectID)
+		if err != nil {
+			return "", http.StatusInternalServerError, errors.Wrap(err, "finding repo project")
+		}
+		if repoRef == nil {
+			return "", http.StatusNotFound, errors.Errorf("project/repo '%s' not found", projectID)
+		}
+		id = repoRef.Id
 	}
+
 	usr := gimlet.GetUser(ctx)
 	if usr == nil {
 		return "", http.StatusUnauthorized, errors.New("unauthorized")
 	}
 
-	if projectRef.Id == "" {
+	if id == "" {
 		return "", http.StatusInternalServerError, errors.New("project ID is blank")
 	}
 
-	return projectRef.Id, http.StatusOK, nil
+	return id, http.StatusOK, nil
 }
 
 // BuildProjectParameterMapForGraphQL builds the parameters map that can be used as an input to GetProjectIdFromParams.
 // It is used by the GraphQL @requireProjectAccess directive.
-func BuildProjectParameterMapForGraphQL(args map[string]interface{}) (map[string]string, error) {
+func BuildProjectParameterMapForGraphQL(args map[string]any) (map[string]string, error) {
 	paramsMap := map[string]string{}
 
 	if projectIdentifier, hasProjectIdentifier := args[projectIdentifierKey].(string); hasProjectIdentifier {

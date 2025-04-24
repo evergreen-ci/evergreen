@@ -1,6 +1,8 @@
 package patch
 
 import (
+	"context"
+
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
@@ -13,10 +15,10 @@ type Intent interface {
 	ID() string
 
 	// Insert inserts a patch intent in the database.
-	Insert() error
+	Insert(ctx context.Context) error
 
 	// SetProcessed should be called by an amboy queue after creating a patch from an intent.
-	SetProcessed() error
+	SetProcessed(ctx context.Context) error
 
 	// IsProcessed returns whether a patch exists for this intent.
 	IsProcessed() bool
@@ -53,13 +55,13 @@ type Intent interface {
 }
 
 // FindIntent returns an intent of the specified type from the database
-func FindIntent(id, intentType string) (Intent, error) {
+func FindIntent(ctx context.Context, id, intentType string) (Intent, error) {
 	intent, ok := GetIntent(intentType)
 	if !ok {
 		return nil, errors.Errorf("no intent of type '%s' registered", intentType)
 	}
 
-	err := db.FindOneQ(IntentCollection, db.Query(bson.M{"_id": id}), intent)
+	err := db.FindOneQContext(ctx, IntentCollection, db.Query(bson.M{"_id": id}), intent)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}

@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -20,26 +21,26 @@ func TestFindLastPassingVersionForBuildVariants(t *testing.T) {
 			Identifier: project,
 		}
 
-		insertVersion("1", 1, project)
-		insertVersion("2", 2, project)
-		insertVersion("3", 3, project)
+		insertVersion(t.Context(), "1", 1, project)
+		insertVersion(t.Context(), "2", 2, project)
+		insertVersion(t.Context(), "3", 3, project)
 
-		insertBuild("1a", project, bv1, evergreen.BuildSucceeded, 1)
-		insertBuild("1b", project, bv2, evergreen.BuildSucceeded, 1)
-		insertPatchBuild("1ap", project, bv1, evergreen.BuildSucceeded, 1)
-		insertPatchBuild("1bp", project, bv2, evergreen.BuildSucceeded, 1)
+		insertBuild(t.Context(), "1a", project, bv1, evergreen.BuildSucceeded, 1)
+		insertBuild(t.Context(), "1b", project, bv2, evergreen.BuildSucceeded, 1)
+		insertPatchBuild(t.Context(), "1ap", project, bv1, evergreen.BuildSucceeded, 1)
+		insertPatchBuild(t.Context(), "1bp", project, bv2, evergreen.BuildSucceeded, 1)
 
-		insertBuild("2a", project, bv1, evergreen.BuildSucceeded, 2)
-		insertBuild("2b", project, bv2, evergreen.BuildSucceeded, 2)
-		insertPatchBuild("2ap", project, bv1, evergreen.BuildSucceeded, 2)
-		insertPatchBuild("2bp", project, bv2, evergreen.BuildSucceeded, 2)
+		insertBuild(t.Context(), "2a", project, bv1, evergreen.BuildSucceeded, 2)
+		insertBuild(t.Context(), "2b", project, bv2, evergreen.BuildSucceeded, 2)
+		insertPatchBuild(t.Context(), "2ap", project, bv1, evergreen.BuildSucceeded, 2)
+		insertPatchBuild(t.Context(), "2bp", project, bv2, evergreen.BuildSucceeded, 2)
 
-		insertBuild("3a", project, bv1, evergreen.BuildSucceeded, 3)
-		insertBuild("3b", project, bv2, evergreen.BuildFailed, 3)
-		insertPatchBuild("3ap", project, bv1, evergreen.BuildSucceeded, 3)
-		insertPatchBuild("3bp", project, bv2, evergreen.BuildFailed, 3)
+		insertBuild(t.Context(), "3a", project, bv1, evergreen.BuildSucceeded, 3)
+		insertBuild(t.Context(), "3b", project, bv2, evergreen.BuildFailed, 3)
+		insertPatchBuild(t.Context(), "3ap", project, bv1, evergreen.BuildSucceeded, 3)
+		insertPatchBuild(t.Context(), "3bp", project, bv2, evergreen.BuildFailed, 3)
 
-		version, err := FindLastPassingVersionForBuildVariants(&projectObj, []string{bv1, bv2})
+		version, err := FindLastPassingVersionForBuildVariants(t.Context(), &projectObj, []string{bv1, bv2})
 
 		So(err, ShouldBeNil)
 		So(version, ShouldNotBeNil)
@@ -48,7 +49,7 @@ func TestFindLastPassingVersionForBuildVariants(t *testing.T) {
 	})
 }
 
-func insertBuild(id string, project string, buildVariant string, status string, order int) {
+func insertBuild(ctx context.Context, id string, project string, buildVariant string, status string, order int) {
 	b := &build.Build{
 		Id:                  id,
 		Project:             project,
@@ -57,10 +58,10 @@ func insertBuild(id string, project string, buildVariant string, status string, 
 		Requester:           evergreen.RepotrackerVersionRequester,
 		RevisionOrderNumber: order,
 	}
-	So(b.Insert(), ShouldBeNil)
+	So(b.Insert(ctx), ShouldBeNil)
 }
 
-func insertPatchBuild(id string, project string, buildVariant string, status string, order int) {
+func insertPatchBuild(ctx context.Context, id string, project string, buildVariant string, status string, order int) {
 	b := &build.Build{
 		Id:                  id,
 		Project:             project,
@@ -69,15 +70,15 @@ func insertPatchBuild(id string, project string, buildVariant string, status str
 		Requester:           evergreen.GithubPRRequester,
 		RevisionOrderNumber: order,
 	}
-	So(b.Insert(), ShouldBeNil)
+	So(b.Insert(ctx), ShouldBeNil)
 }
 
-func insertVersion(id string, order int, project string) {
+func insertVersion(ctx context.Context, id string, order int, project string) {
 	v := &Version{
 		Id:                  id,
 		RevisionOrderNumber: order,
 		Identifier:          project,
 		Requester:           evergreen.RepotrackerVersionRequester,
 	}
-	So(v.Insert(), ShouldBeNil)
+	So(v.Insert(ctx), ShouldBeNil)
 }

@@ -20,7 +20,7 @@ func TestRepoRefUpdateAdminRoles(t *testing.T) {
 	r := RepoRef{ProjectRef{
 		Id: "proj",
 	}}
-	require.NoError(t, r.Upsert())
+	require.NoError(t, r.Replace(t.Context()))
 	adminScope := gimlet.Scope{
 		ID:        "repo_scope",
 		Type:      evergreen.ProjectResourceType,
@@ -37,17 +37,17 @@ func TestRepoRefUpdateAdminRoles(t *testing.T) {
 		Id:          "oldAdmin",
 		SystemRoles: []string{adminRole.ID},
 	}
-	require.NoError(t, oldAdmin.Insert())
+	require.NoError(t, oldAdmin.Insert(t.Context()))
 	newAdmin := user.DBUser{
 		Id: "newAdmin",
 	}
-	require.NoError(t, newAdmin.Insert())
+	require.NoError(t, newAdmin.Insert(t.Context()))
 
-	assert.NoError(t, r.UpdateAdminRoles([]string{newAdmin.Id}, []string{oldAdmin.Id}))
-	oldAdminFromDB, err := user.FindOneById(oldAdmin.Id)
+	assert.NoError(t, r.UpdateAdminRoles(t.Context(), []string{newAdmin.Id}, []string{oldAdmin.Id}))
+	oldAdminFromDB, err := user.FindOneByIdContext(t.Context(), oldAdmin.Id)
 	assert.NoError(t, err)
 	assert.Empty(t, oldAdminFromDB.Roles())
-	newAdminFromDB, err := user.FindOneById(newAdmin.Id)
+	newAdminFromDB, err := user.FindOneByIdContext(t.Context(), newAdmin.Id)
 	assert.NoError(t, err)
 	assert.Len(t, newAdminFromDB.Roles(), 1)
 }

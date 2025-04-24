@@ -38,10 +38,10 @@ var (
 	TestLogLinesKey         = bsonutil.MustHaveTag(TestLog{}, "Lines")
 )
 
-func FindOneTestLogById(id string) (*TestLog, error) {
+func FindOneTestLogById(ctx context.Context, id string) (*TestLog, error) {
 	tl := &TestLog{}
 	q := db.Query(bson.M{TestLogIdKey: id})
-	err := db.FindOneQ(TestLogCollection, q, tl)
+	err := db.FindOneQContext(ctx, TestLogCollection, q, tl)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -50,23 +50,23 @@ func FindOneTestLogById(id string) (*TestLog, error) {
 
 // FindOneTestLog returns a TestLog, given the test's name, task id,
 // and execution.
-func FindOneTestLog(name, task string, execution int) (*TestLog, error) {
+func FindOneTestLog(ctx context.Context, name, task string, execution int) (*TestLog, error) {
 	tl := &TestLog{}
 	q := db.Query(bson.M{
 		TestLogNameKey:          name,
 		TestLogTaskKey:          task,
 		TestLogTaskExecutionKey: execution,
 	})
-	err := db.FindOneQ(TestLogCollection, q, tl)
+	err := db.FindOneQContext(ctx, TestLogCollection, q, tl)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
 	return tl, errors.WithStack(err)
 }
 
-func findAllTestLogs(query db.Q) ([]TestLog, error) {
+func findAllTestLogs(ctx context.Context, query db.Q) ([]TestLog, error) {
 	var result []TestLog
-	if err := db.FindAllQ(TestLogCollection, query, &result); err != nil {
+	if err := db.FindAllQ(ctx, TestLogCollection, query, &result); err != nil {
 		return nil, errors.Wrap(err, "finding test logs")
 	}
 	return result, nil
@@ -77,7 +77,7 @@ func DeleteTestLogsWithLimit(ctx context.Context, env evergreen.Environment, ts 
 		return 0, errors.Errorf("cannot delete more than %d documents in a single operation", maxDeleteCount)
 	}
 
-	docsToDelete, err := findAllTestLogs(db.Query(bson.M{TestLogIdKey: bson.M{"$lt": primitive.NewObjectIDFromTimestamp(ts).Hex()}}).WithFields(TestLogIdKey).Limit(limit))
+	docsToDelete, err := findAllTestLogs(ctx, db.Query(bson.M{TestLogIdKey: bson.M{"$lt": primitive.NewObjectIDFromTimestamp(ts).Hex()}}).WithFields(TestLogIdKey).Limit(limit))
 	if err != nil {
 		return 0, errors.Wrap(err, "getting docs to delete")
 	}
@@ -100,12 +100,12 @@ func DeleteTestLogsWithLimit(ctx context.Context, env evergreen.Environment, ts 
 }
 
 // Insert inserts the TestLog into the database
-func (tl *TestLog) Insert() error {
+func (tl *TestLog) Insert(ctx context.Context) error {
 	tl.Id = mgobson.NewObjectId().Hex()
 	if err := tl.Validate(); err != nil {
 		return errors.Wrap(err, "invalid test log")
 	}
-	return errors.WithStack(db.Insert(TestLogCollection, tl))
+	return errors.WithStack(db.Insert(ctx, TestLogCollection, tl))
 }
 
 // Validate makes sure the log will accessible in the database

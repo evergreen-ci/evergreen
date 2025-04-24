@@ -1,6 +1,7 @@
 package patch
 
 import (
+	"context"
 	"strings"
 	"time"
 
@@ -8,7 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/thirdparty"
-	"github.com/google/go-github/v52/github"
+	"github.com/google/go-github/v70/github"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -125,10 +126,11 @@ func NewGithubMergeIntent(msgDeliveryID string, caller string, mg *github.MergeG
 }
 
 // SetProcessed should be called by an amboy queue after creating a patch from an intent.
-func (g *githubMergeIntent) SetProcessed() error {
+func (g *githubMergeIntent) SetProcessed(ctx context.Context) error {
 	g.Processed = true
 	g.ProcessedAt = time.Now().UTC().Round(time.Millisecond)
 	return updateOneIntent(
+		ctx,
 		bson.M{documentIDKey: g.DocumentID},
 		bson.M{"$set": bson.M{
 			processedKey:   g.Processed,
@@ -148,9 +150,9 @@ func (g *githubMergeIntent) GetType() string {
 }
 
 // Insert inserts a patch intent in the database.
-func (g *githubMergeIntent) Insert() error {
+func (g *githubMergeIntent) Insert(ctx context.Context) error {
 	g.CreatedAt = time.Now().UTC().Round(time.Millisecond)
-	err := db.Insert(IntentCollection, g)
+	err := db.Insert(ctx, IntentCollection, g)
 	if err != nil {
 		g.CreatedAt = time.Time{}
 		return err

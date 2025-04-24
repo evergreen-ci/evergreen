@@ -20,7 +20,7 @@ import (
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
-	"github.com/google/go-github/v52/github"
+	"github.com/google/go-github/v70/github"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
@@ -63,7 +63,7 @@ type githubHookApi struct {
 	queue  amboy.Queue
 	secret []byte
 
-	event     interface{}
+	event     any
 	eventType string
 	msgID     string
 	sc        data.Connector
@@ -262,7 +262,7 @@ func (gh *githubHookApi) Run(_ context.Context) gimlet.Responder {
 			break
 		}
 		if event.GetAction() == githubActionChecksRequested {
-			return gh.handleMergeGroupChecksRequested(event)
+			return gh.handleMergeGroupChecksRequested(ctx, event)
 		}
 
 	case *github.CheckRunEvent:
@@ -308,7 +308,7 @@ func (gh *githubHookApi) rerunCheckRun(ctx context.Context, owner, repo string, 
 	if !utility.StringSliceContains(evergreen.TaskCompletedStatuses, taskToRestart.Status) {
 		return errors.Errorf("task '%s' is not in a completed state", taskIDFromCheckrun)
 	}
-	githubUser, err := user.FindByGithubUID(uid)
+	githubUser, err := user.FindByGithubUID(ctx, uid)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"source":  "GitHub hook",
@@ -445,7 +445,7 @@ func (gh *githubHookApi) handleCheckSuiteRerequested(ctx context.Context, event 
 	return nil
 }
 
-func (gh *githubHookApi) handleMergeGroupChecksRequested(event *github.MergeGroupEvent) gimlet.Responder {
+func (gh *githubHookApi) handleMergeGroupChecksRequested(ctx context.Context, event *github.MergeGroupEvent) gimlet.Responder {
 	org := event.GetOrg().GetLogin()
 	repo := event.GetRepo().GetName()
 	branch := strings.TrimPrefix(event.MergeGroup.GetBaseRef(), "refs/heads/")
@@ -461,14 +461,14 @@ func (gh *githubHookApi) handleMergeGroupChecksRequested(event *github.MergeGrou
 		"message":  "merge group received",
 	})
 	// Ensure that a project exists before creating an intent. Otherwise, intent creation will fail which will always yield an unactionable 'Evergreen error' posted to GitHub.
-	projectRefs, err := model.FindMergedEnabledProjectRefsByRepoAndBranch(org, repo, branch)
+	projectRefs, err := model.FindMergedEnabledProjectRefsByRepoAndBranch(ctx, org, repo, branch)
 	if err != nil {
 		return gimlet.NewJSONInternalErrorResponse(errors.Wrap(err, "finding project ref"))
 	}
 	if len(projectRefs) == 0 {
 		return gimlet.NewJSONInternalErrorResponse(errors.New("no matching project ref"))
 	}
-	if err := gh.AddIntentForGithubMerge(event); err != nil {
+	if err := gh.AddIntentForGithubMerge(ctx, event); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"source":   "GitHub hook",
 			"msg_id":   gh.msgID,
@@ -486,12 +486,12 @@ func (gh *githubHookApi) handleMergeGroupChecksRequested(event *github.MergeGrou
 }
 
 // AddIntentForGithubMerge creates and inserts an intent document in response to a GitHub merge group event.
-func (gh *githubHookApi) AddIntentForGithubMerge(mg *github.MergeGroupEvent) error {
+func (gh *githubHookApi) AddIntentForGithubMerge(ctx context.Context, mg *github.MergeGroupEvent) error {
 	intent, err := patch.NewGithubMergeIntent(gh.msgID, patch.AutomatedCaller, mg)
 	if err != nil {
 		return errors.Wrap(err, "creating GitHub merge intent")
 	}
-	if err := data.AddGithubMergeIntent(intent, gh.queue); err != nil {
+	if err := data.AddGithubMergeIntent(ctx, intent, gh.queue); err != nil {
 		return errors.Wrap(err, "saving GitHub merge intent")
 	}
 	return nil
@@ -543,7 +543,7 @@ func (gh *githubHookApi) handleComment(ctx context.Context, event *github.IssueC
 	if isKeepDefinitionsComment(commentBody) {
 		grip.Info(gh.getCommentLogWithMessage(event, fmt.Sprintf("'%s' triggered", commentBody)))
 
-		err := keepPRPatchDefinition(event.Repo.Owner.GetLogin(), event.Repo.GetName(), event.Issue.GetNumber())
+		err := keepPRPatchDefinition(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), event.Issue.GetNumber())
 
 		grip.Error(message.WrapError(err, gh.getCommentLogWithMessage(event,
 			"problem keeping pr patch definitions")))
@@ -555,7 +555,7 @@ func (gh *githubHookApi) handleComment(ctx context.Context, event *github.IssueC
 	if isResetDefinitionsComment(commentBody) {
 		grip.Info(gh.getCommentLogWithMessage(event, fmt.Sprintf("'%s' triggered", commentBody)))
 
-		err := resetPRPatchDefinition(event.Repo.Owner.GetLogin(), event.Repo.GetName(), event.Issue.GetNumber())
+		err := resetPRPatchDefinition(ctx, event.Repo.Owner.GetLogin(), event.Repo.GetName(), event.Issue.GetNumber())
 
 		grip.Error(message.WrapError(err, gh.getCommentLogWithMessage(event,
 			"problem resetting pr patch definitions")))
@@ -589,11 +589,11 @@ func (gh *githubHookApi) displayHelpText(ctx context.Context, owner, repo string
 		return errors.New("PR contains no base branch label")
 	}
 	branch := pr.Base.GetRef()
-	repoRef, err := model.FindRepoRefByOwnerAndRepo(owner, repo)
+	repoRef, err := model.FindRepoRefByOwnerAndRepo(ctx, owner, repo)
 	if err != nil {
 		return errors.Wrapf(err, "fetching repo ref for '%s'%s'", owner, repo)
 	}
-	projectRefs, err := model.FindMergedEnabledProjectRefsByRepoAndBranch(owner, repo, branch)
+	projectRefs, err := model.FindMergedEnabledProjectRefsByRepoAndBranch(ctx, owner, repo, branch)
 	if err != nil {
 		return errors.Wrapf(err, "fetching merged project refs for repo '%s/%s' with branch '%s'",
 			owner, repo, branch)
@@ -664,27 +664,27 @@ func (gh *githubHookApi) createPRPatch(ctx context.Context, owner, repo, calledB
 // RepeatPatchIdNextPatch field in the githubPatchData to the patch id of the latest patch.
 // When the next github patch intent is created for that PR, it will look at this field on the last pr patch
 // to determine if the task definitions should be reused from the specified ID or the default definition
-func keepPRPatchDefinition(owner, repo string, prNumber int) error {
-	p, err := patch.FindLatestGithubPRPatch(owner, repo, prNumber)
+func keepPRPatchDefinition(ctx context.Context, owner, repo string, prNumber int) error {
+	p, err := patch.FindLatestGithubPRPatch(ctx, owner, repo, prNumber)
 	if err != nil || p == nil {
 		return errors.Wrap(err, "getting most recent patch for pr")
 	}
-	return p.UpdateRepeatPatchId(p.Id.Hex())
+	return p.UpdateRepeatPatchId(ctx, p.Id.Hex())
 }
 
-func resetPRPatchDefinition(owner, repo string, prNumber int) error {
-	p, err := patch.FindLatestGithubPRPatch(owner, repo, prNumber)
+func resetPRPatchDefinition(ctx context.Context, owner, repo string, prNumber int) error {
+	p, err := patch.FindLatestGithubPRPatch(ctx, owner, repo, prNumber)
 	if err != nil {
 		return errors.Wrap(err, "getting most recent patch for pr")
 	}
 	if p == nil {
 		return errors.Errorf("couldn't find patch for PR '%s/%s:%d'", owner, repo, prNumber)
 	}
-	return p.UpdateRepeatPatchId("")
+	return p.UpdateRepeatPatchId(ctx, "")
 }
 
 func (gh *githubHookApi) refreshPatchStatus(ctx context.Context, owner, repo string, prNumber int) error {
-	p, err := patch.FindLatestGithubPRPatch(owner, repo, prNumber)
+	p, err := patch.FindLatestGithubPRPatch(ctx, owner, repo, prNumber)
 	if err != nil {
 		return errors.Wrap(err, "finding patch")
 	}
@@ -713,7 +713,7 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 	// Verify that the owner/repo uses PR testing before inserting the intent.
 	baseRepoName := pr.Base.Repo.GetFullName()
 	baseRepo := strings.Split(baseRepoName, "/")
-	projectRef, err := model.FindOneProjectRefByRepoAndBranchWithPRTesting(baseRepo[0],
+	projectRef, err := model.FindOneProjectRefByRepoAndBranchWithPRTesting(ctx, baseRepo[0],
 		baseRepo[1], pr.Base.GetRef(), calledBy)
 	if err != nil {
 		return errors.Wrap(err, "finding project ref for patch")
@@ -731,7 +731,7 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 		return errors.Wrapf(err, "getting merge base between branches '%s' and '%s'", pr.Base.GetLabel(), pr.Head.GetLabel())
 	}
 
-	ghi, err := patch.NewGithubIntent(gh.msgID, owner, calledBy, alias, mergeBase, pr)
+	ghi, err := patch.NewGithubIntent(ctx, gh.msgID, owner, calledBy, alias, mergeBase, pr)
 	if err != nil {
 		return errors.Wrap(err, "creating GitHub patch intent")
 	}
@@ -755,7 +755,7 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 		}
 	}
 
-	conflictingPatches, err := getOtherPatchesWithHash(pr.Head.GetSHA(), pr.GetNumber())
+	conflictingPatches, err := getOtherPatchesWithHash(ctx, pr.Head.GetSHA(), pr.GetNumber())
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":           "error getting same hash patches",
@@ -771,7 +771,7 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 
 	// If no conflicting patches exist, we can create the patch
 	if len(conflictingPatches) == 0 {
-		return errors.Wrap(data.AddPRPatchIntent(ghi, gh.queue), "saving GitHub patch intent")
+		return errors.Wrap(data.AddPRPatchIntent(ctx, ghi, gh.queue), "saving GitHub patch intent")
 	}
 
 	// If we don't want to override any existing patches, comment to inform the user and no-op.
@@ -794,7 +794,7 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 		return errors.Wrap(err, "overriding other PRs")
 	}
 
-	return errors.Wrap(data.AddPRPatchIntent(ghi, gh.queue), "saving GitHub patch intent")
+	return errors.Wrap(data.AddPRPatchIntent(ctx, ghi, gh.queue), "saving GitHub patch intent")
 }
 
 // overrideOtherPRs aborts the given patches and comments on each patch's PR to inform the user that their patch
@@ -877,7 +877,7 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 		}))
 		return errors.Wrapf(err, "getting commit for tag '%s'", tag.Tag)
 	}
-	projectRefs, err := model.FindMergedEnabledProjectRefsByOwnerAndRepo(ownerAndRepo[0], ownerAndRepo[1])
+	projectRefs, err := model.FindMergedEnabledProjectRefsByOwnerAndRepo(ctx, ownerAndRepo[0], ownerAndRepo[1])
 	if err != nil {
 		grip.Debug(message.WrapError(err, message.Fields{
 			"source":  "GitHub hook",
@@ -925,7 +925,7 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 				var existingVersion *model.Version
 				// If a version for this revision exists for this project, add tag
 				// Retry in case a commit and a tag are pushed at around the same time, and the version isn't ready yet
-				existingVersion, err = model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(pRef.Id, hash))
+				existingVersion, err = model.VersionFindOne(ctx, model.BaseVersionByProjectIdAndRevision(pRef.Id, hash))
 				if err != nil {
 					retryCatcher.Wrapf(err, "finding version for project '%s' with revision '%s'", pRef.Id, hash)
 					continue
@@ -948,7 +948,7 @@ func (gh *githubHookApi) handleGitTag(ctx context.Context, event *github.PushEve
 					"tag":     tag,
 				})
 
-				if err = model.AddGitTag(existingVersion.Id, tag); err != nil {
+				if err = model.AddGitTag(ctx, existingVersion.Id, tag); err != nil {
 					catcher.Wrapf(err, "adding tag '%s' to version '%s''", tag.Tag, existingVersion.Id)
 					continue
 				}
@@ -1020,7 +1020,7 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 			Revision: revision,
 			GitTag:   tag,
 		}
-		stubVersion, dbErr := repotracker.ShellVersionFromRevision(&pRef, metadata)
+		stubVersion, dbErr := repotracker.ShellVersionFromRevision(ctx, &pRef, metadata)
 		if dbErr != nil {
 			grip.Error(message.WrapError(dbErr, message.Fields{
 				"message":            "error creating shell version",
@@ -1030,7 +1030,7 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 			}))
 		}
 		stubVersion.Errors = []string{errors.Errorf("user '%s' not authorized for git tag version", tag.Pusher).Error()}
-		err := stubVersion.Insert()
+		err := stubVersion.Insert(ctx)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":            "error inserting stub version for failed git tag version",
@@ -1039,8 +1039,8 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 				"revision":           revision,
 			}))
 		}
-		event.LogVersionStateChangeEvent(stubVersion.Id, evergreen.VersionFailed)
-		userDoc, err := user.FindByGithubName(tag.Pusher)
+		event.LogVersionStateChangeEvent(ctx, stubVersion.Id, evergreen.VersionFailed)
+		userDoc, err := user.FindByGithubName(ctx, tag.Pusher)
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding user '%s'", tag.Pusher)
 		}
@@ -1062,7 +1062,7 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 		}
 		return nil, nil
 	}
-	hasAliases, remotePath, err := model.HasMatchingGitTagAliasAndRemotePath(pRef.Id, tag.Tag)
+	hasAliases, remotePath, err := model.HasMatchingGitTagAliasAndRemotePath(ctx, pRef.Id, tag.Tag)
 	if err != nil {
 		return nil, err
 	}
@@ -1100,8 +1100,8 @@ func (gh *githubHookApi) createVersionForTag(ctx context.Context, pRef model.Pro
 	return gh.sc.CreateVersionFromConfig(ctx, &projectInfo, metadata)
 }
 
-func getOtherPatchesWithHash(githash string, prNum int) ([]patch.Patch, error) {
-	patches, err := patch.Find(patch.ByGithash(githash))
+func getOtherPatchesWithHash(ctx context.Context, githash string, prNum int) ([]patch.Patch, error) {
+	patches, err := patch.Find(ctx, patch.ByGithash(githash))
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting same hash patches")
 	}

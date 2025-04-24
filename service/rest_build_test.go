@@ -42,13 +42,13 @@ func TestGetBuildInfo(t *testing.T) {
 		versionId := "my-version"
 		projectName := "mci-test"
 
-		err := modelutil.CreateTestLocalConfig(buildTestConfig, "mci-test", "")
+		err := modelutil.CreateTestLocalConfig(ctx, buildTestConfig, "mci-test", "")
 		So(err, ShouldBeNil)
 
-		err = modelutil.CreateTestLocalConfig(buildTestConfig, "render", "")
+		err = modelutil.CreateTestLocalConfig(ctx, buildTestConfig, "render", "")
 		So(err, ShouldBeNil)
 
-		err = modelutil.CreateTestLocalConfig(buildTestConfig, "project_test", "")
+		err = modelutil.CreateTestLocalConfig(ctx, buildTestConfig, "project_test", "")
 		So(err, ShouldBeNil)
 
 		task := task.Task{
@@ -58,7 +58,7 @@ func TestGetBuildInfo(t *testing.T) {
 			TimeTaken:   100 * time.Millisecond,
 			BuildId:     buildId,
 		}
-		So(task.Insert(), ShouldBeNil)
+		So(task.Insert(t.Context()), ShouldBeNil)
 		build := &build.Build{
 			Id:                  buildId,
 			CreateTime:          time.Now().Add(-20 * time.Minute),
@@ -77,7 +77,7 @@ func TestGetBuildInfo(t *testing.T) {
 			DisplayName:         "My build",
 			Requester:           evergreen.RepotrackerVersionRequester,
 		}
-		So(build.Insert(), ShouldBeNil)
+		So(build.Insert(t.Context()), ShouldBeNil)
 
 		url := "/rest/v1/builds/" + buildId
 
@@ -91,7 +91,7 @@ func TestGetBuildInfo(t *testing.T) {
 		So(response.Code, ShouldEqual, http.StatusOK)
 
 		Convey("response should match contents of database", func() {
-			var jsonBody map[string]interface{}
+			var jsonBody map[string]any
 			err = json.Unmarshal(response.Body.Bytes(), &jsonBody)
 			So(err, ShouldBeNil)
 
@@ -132,13 +132,13 @@ func TestGetBuildInfo(t *testing.T) {
 
 			_jsonTasks, ok := jsonBody["tasks"]
 			So(ok, ShouldBeTrue)
-			jsonTasks, ok := _jsonTasks.(map[string]interface{})
+			jsonTasks, ok := _jsonTasks.(map[string]any)
 			So(ok, ShouldBeTrue)
 			So(len(jsonTasks), ShouldEqual, 1)
 
 			_jsonTask, ok := jsonTasks[task.DisplayName]
 			So(ok, ShouldBeTrue)
-			jsonTask, ok := _jsonTask.(map[string]interface{})
+			jsonTask, ok := _jsonTask.(map[string]any)
 			So(ok, ShouldBeTrue)
 
 			So(jsonTask["task_id"], ShouldEqual, task.Id)
@@ -168,7 +168,7 @@ func TestGetBuildInfo(t *testing.T) {
 		So(response.Code, ShouldEqual, http.StatusNotFound)
 
 		Convey("response should contain a sensible error message", func() {
-			var jsonBody map[string]interface{}
+			var jsonBody map[string]any
 			err = json.Unmarshal(response.Body.Bytes(), &jsonBody)
 			So(err, ShouldBeNil)
 			So(len(jsonBody["message"].(string)), ShouldBeGreaterThan, 0)
@@ -198,7 +198,7 @@ func TestGetBuildStatus(t *testing.T) {
 			DisplayName:  "Some Build Variant",
 			Tasks:        []build.TaskCache{{Id: taskId}},
 		}
-		So(build.Insert(), ShouldBeNil)
+		So(build.Insert(t.Context()), ShouldBeNil)
 
 		task := task.Task{
 			Id:          taskId,
@@ -207,7 +207,7 @@ func TestGetBuildStatus(t *testing.T) {
 			Status:      "success",
 			TimeTaken:   100 * time.Millisecond,
 		}
-		So(task.Insert(), ShouldBeNil)
+		So(task.Insert(t.Context()), ShouldBeNil)
 
 		url := "/rest/v1/builds/" + buildId + "/status"
 
@@ -223,7 +223,7 @@ func TestGetBuildStatus(t *testing.T) {
 		So(response.Code, ShouldEqual, http.StatusOK)
 
 		Convey("response should match contents of database", func() {
-			var jsonBody map[string]interface{}
+			var jsonBody map[string]any
 			err = json.Unmarshal(response.Body.Bytes(), &jsonBody)
 			So(err, ShouldBeNil)
 
@@ -236,13 +236,13 @@ func TestGetBuildStatus(t *testing.T) {
 
 			_jsonTasks, ok := jsonBody["tasks"]
 			So(ok, ShouldBeTrue)
-			jsonTasks, ok := _jsonTasks.(map[string]interface{})
+			jsonTasks, ok := _jsonTasks.(map[string]any)
 			So(ok, ShouldBeTrue)
 			So(len(jsonTasks), ShouldEqual, 1)
 
 			_jsonTask, ok := jsonTasks[task.DisplayName]
 			So(ok, ShouldBeTrue)
-			jsonTask, ok := _jsonTask.(map[string]interface{})
+			jsonTask, ok := _jsonTask.(map[string]any)
 			So(ok, ShouldBeTrue)
 
 			So(jsonTask["task_id"], ShouldEqual, task.Id)
@@ -268,7 +268,7 @@ func TestGetBuildStatus(t *testing.T) {
 		So(response.Code, ShouldEqual, http.StatusNotFound)
 
 		Convey("response should contain a sensible error message", func() {
-			var jsonBody map[string]interface{}
+			var jsonBody map[string]any
 			err = json.Unmarshal(response.Body.Bytes(), &jsonBody)
 			So(err, ShouldBeNil)
 			So(len(jsonBody["message"].(string)), ShouldBeGreaterThan, 0)

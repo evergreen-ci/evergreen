@@ -76,7 +76,7 @@ func (j *volumeMigrationJob) Run(ctx context.Context) {
 		return
 	}
 
-	if err := j.volume.SetMigrating(true); err != nil {
+	if err := j.volume.SetMigrating(ctx, true); err != nil {
 		j.AddRetryableError(err)
 		return
 	}
@@ -112,7 +112,7 @@ func (j *volumeMigrationJob) Run(ctx context.Context) {
 		}
 
 		// Update in-memory volume
-		volume, err := host.FindVolumeByID(j.VolumeID)
+		volume, err := host.FindVolumeByID(ctx, j.VolumeID)
 		if err != nil {
 			j.AddError(errors.Wrapf(err, "finding volume '%s'", j.VolumeID))
 			return
@@ -189,7 +189,7 @@ func (j *volumeMigrationJob) startNewHost(ctx context.Context) {
 		j.AddError(errors.Wrap(err, "inserting new intent host"))
 		return
 	}
-	event.LogHostCreated(intentHost.Id)
+	event.LogHostCreated(ctx, intentHost.Id)
 	grip.Info(message.Fields{
 		"message":        "new intent host created",
 		"job_id":         j.ID(),
@@ -208,7 +208,7 @@ func (j *volumeMigrationJob) finishJob(ctx context.Context) {
 			return
 		}
 		if volumeHost == nil || volumeHost.Id == j.InitialHostID {
-			event.LogVolumeMigrationFailed(j.InitialHostID, j.Error())
+			event.LogVolumeMigrationFailed(ctx, j.InitialHostID, j.Error())
 			grip.Error(message.Fields{
 				"message": "volume failed to migrate",
 				"job_id":  j.ID(),
@@ -217,7 +217,7 @@ func (j *volumeMigrationJob) finishJob(ctx context.Context) {
 		}
 
 		if j.volume != nil {
-			err := j.volume.SetMigrating(false)
+			err := j.volume.SetMigrating(ctx, false)
 			if err != nil {
 				j.AddRetryableError(err)
 				return
@@ -236,7 +236,7 @@ func (j *volumeMigrationJob) populateIfUnset(ctx context.Context) error {
 	}
 
 	if j.volume == nil {
-		volume, err := host.FindVolumeByID(j.VolumeID)
+		volume, err := host.FindVolumeByID(ctx, j.VolumeID)
 		if err != nil {
 			return errors.Wrapf(err, "finding volume '%s'", j.VolumeID)
 		}

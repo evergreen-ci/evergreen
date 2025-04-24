@@ -1,6 +1,8 @@
 package model
 
 import (
+	"context"
+
 	"github.com/evergreen-ci/evergreen/db"
 	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
@@ -14,7 +16,7 @@ type KeyVal struct {
 	Value int64  `bson:"value" json:"value"`
 }
 
-func (kv *KeyVal) Inc() error {
+func (kv *KeyVal) Inc(ctx context.Context) error {
 	key := kv.Key
 	change := adb.Change{
 		Update: bson.M{
@@ -24,7 +26,7 @@ func (kv *KeyVal) Inc() error {
 		Upsert:    true,
 	}
 
-	_, err := db.FindAndModify(KeyValCollection, bson.M{"_id": key}, nil, change, kv)
+	_, err := db.FindAndModify(ctx, KeyValCollection, bson.M{"_id": key}, nil, change, kv)
 
 	if err != nil {
 		return errors.Wrapf(err, "incrementing key '%s'", key)

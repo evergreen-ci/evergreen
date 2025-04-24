@@ -1,13 +1,11 @@
 package agent
 
 import (
-	"bytes"
 	"context"
 	"encoding/hex"
 	"fmt"
 	"io/fs"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -20,13 +18,11 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/agent/internal/testutil"
-	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/taskoutput"
-	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -34,7 +30,6 @@ import (
 	"github.com/mongodb/jasper/mock"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.opentelemetry.io/otel"
 )
@@ -145,10 +140,22 @@ func (s *AgentSuite) SetupTest() {
 		},
 		BuildVariants: []model.BuildVariant{{Name: bvName}},
 	}
-	taskConfig, err := internal.NewTaskConfig(s.testTmpDirName, &apimodels.DistroView{}, project, &s.task, &model.ProjectRef{
-		Id:         "project_id",
-		Identifier: "project_identifier",
-	}, &patch.Patch{}, nil, &apimodels.ExpansionsAndVars{Expansions: util.Expansions{}})
+	tcOpts := internal.TaskConfigOptions{
+		WorkDir: s.testTmpDirName,
+		Distro:  &apimodels.DistroView{},
+		Host:    &apimodels.HostView{},
+		Project: project,
+		Task:    &s.task,
+		ProjectRef: &model.ProjectRef{
+			Id:         "project_id",
+			Identifier: "project_identifier",
+		},
+		Patch: &patch.Patch{},
+		ExpansionsAndVars: &apimodels.ExpansionsAndVars{
+			Expansions: util.Expansions{},
+		},
+	}
+	taskConfig, err := internal.NewTaskConfig(tcOpts)
 	s.Require().NoError(err)
 
 	s.tc = &taskContext{
@@ -290,6 +297,17 @@ func (s *AgentSuite) TestAgentEndTaskShouldExit() {
 	s.Equal(evergreen.TaskSucceeded, endDetail.Status, "the task should succeed")
 	s.Empty(endDetail.Description, "should not set description when it's not defined by the user or system failure")
 	s.Empty(endDetail.FailingCommand, "should not include end task failing command for successful task")
+}
+
+func (s *AgentSuite) TestAgentExitsSingleTaskDistros() {
+	s.setupRunTask(defaultProjYml)
+	s.mockCommunicator.EndTaskResponse = &apimodels.EndTaskResponse{}
+	s.a.opts.SingleTaskDistro = true
+	ctx, cancel := context.WithTimeout(s.ctx, 5*time.Second)
+	defer cancel()
+
+	// The loop should exit after one execution because it is on a single host distro
+	s.NoError(s.a.loop(ctx))
 }
 
 func (s *AgentSuite) TestFinishTaskWithNormalCompletedTask() {
@@ -2812,11 +2830,12 @@ tasks:
 	s.Equal(expectedLines, actualLines)
 }
 
-func (s *AgentSuite) TestClearsGitConfig() {
+func (s *AgentSuite) TestClearGlobalFiles() {
 	s.setupRunTask(defaultProjYml)
 	// create a fake git config file
 	gitConfigPath := filepath.Join(s.a.opts.HomeDirectory, ".gitconfig")
 	gitCredentialsPath := filepath.Join(s.a.opts.HomeDirectory, ".git-credentials")
+	netrcPath := filepath.Join(s.a.opts.HomeDirectory, ".netrc")
 	contents := `
 [user]
   name = foo bar
@@ -2830,15 +2849,27 @@ func (s *AgentSuite) TestClearsGitConfig() {
 	s.Require().NoError(err)
 	s.Require().FileExists(gitCredentialsPath)
 
+	contents = `
+machine example.com
+login myUsername
+password myPassword
+`
+
+	err = os.WriteFile(netrcPath, []byte(contents), 0600)
+	s.Require().NoError(err)
+	s.Require().FileExists(netrcPath)
+
 	s.a.runTeardownGroupCommands(s.ctx, s.tc)
 	s.NoError(err)
 
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
-		"Clearing git config.",
-		"Cleared git config.",
-		"Clearing git credentials.",
-		"Cleared git credentials.",
+		"Clearing '.gitconfig'.",
+		"Cleared '.gitconfig'.",
+		"Clearing '.git-credentials'.",
+		"Cleared '.git-credentials'.",
+		"Clearing '.netrc'.",
+		"Cleared '.netrc'.",
 	}, []string{
 		panicLog,
 		"Running task commands failed",
@@ -2944,44 +2975,4 @@ func checkMockLogs(t *testing.T, mc *client.Mock, taskID string, logsToFind []st
 	if displayLogs {
 		grip.Infof("Logs for task '%s':\n%s\n", taskID, strings.Join(allLogs, "\n"))
 	}
-}
-
-// TestUnregisterScalar tests the unregisterScalar function without using a mock.
-func TestUnregisterScalar(t *testing.T) {
-	// Check if the Git version meets the minimum required version
-	isScalarAvailable, err := agentutil.IsGitVersionMinimumForScalar(thirdparty.RequiredScalarGitVersion)
-	require.NoError(t, err)
-	if !isScalarAvailable {
-		t.Skip("Git version does not meet the minimum required version for Scalar")
-	}
-
-	// Create a temporary directory to act as the repository
-	tempDir, err := os.MkdirTemp("", "scalar-test")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempDir)
-
-	// Clone the repository using Scalar
-	cmd := exec.Command("scalar", "clone", "https://github.com/evergreen-ci/sample", tempDir)
-	err = cmd.Run()
-	require.NoError(t, err)
-
-	// Verify that the repository is registered
-	cmd = exec.Command("scalar", "list")
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	err = cmd.Run()
-	require.NoError(t, err)
-	assert.Contains(t, out.String(), tempDir)
-
-	// Call unregisterScalar
-	err = unregisterScalar()
-	require.NoError(t, err)
-
-	// Verify that the repository is unregistered
-	cmd = exec.Command("scalar", "list")
-	out.Reset()
-	cmd.Stdout = &out
-	err = cmd.Run()
-	require.NoError(t, err)
-	assert.NotContains(t, out.String(), tempDir)
 }

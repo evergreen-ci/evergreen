@@ -51,13 +51,9 @@ var (
 	githubOrgsKey          = bsonutil.MustHaveTag(Settings{}, "GithubOrgs")
 	githubWebhookSecretKey = bsonutil.MustHaveTag(Settings{}, "GithubWebhookSecret")
 	disabledGQLQueriesKey  = bsonutil.MustHaveTag(Settings{}, "DisabledGQLQueries")
-	sshKeyDirectoryKey     = bsonutil.MustHaveTag(Settings{}, "SSHKeyDirectory")
-	sshKeyPairsKey         = bsonutil.MustHaveTag(Settings{}, "SSHKeyPairs")
 	spawnhostKey           = bsonutil.MustHaveTag(Settings{}, "Spawnhost")
 	shutdownWaitKey        = bsonutil.MustHaveTag(Settings{}, "ShutdownWaitSeconds")
-
-	sshKeyPairNameKey       = bsonutil.MustHaveTag(SSHKeyPair{}, "Name")
-	sshKeyPairEC2RegionsKey = bsonutil.MustHaveTag(SSHKeyPair{}, "EC2Regions")
+	sshKey                 = bsonutil.MustHaveTag(Settings{}, "SSH")
 
 	// degraded mode flags
 	taskDispatchKey                    = bsonutil.MustHaveTag(ServiceFlags{}, "TaskDispatchDisabled")
@@ -81,6 +77,7 @@ var (
 	githubStatusAPIDisabledKey         = bsonutil.MustHaveTag(ServiceFlags{}, "GithubStatusAPIDisabled")
 	taskLoggingDisabledKey             = bsonutil.MustHaveTag(ServiceFlags{}, "TaskLoggingDisabled")
 	cacheStatsJobDisabledKey           = bsonutil.MustHaveTag(ServiceFlags{}, "CacheStatsJobDisabled")
+	evergreenTestResultsDisabledKey    = bsonutil.MustHaveTag(ServiceFlags{}, "EvergreenTestResultsDisabled")
 	cacheStatsEndpointDisabledKey      = bsonutil.MustHaveTag(ServiceFlags{}, "CacheStatsEndpointDisabled")
 	taskReliabilityDisabledKey         = bsonutil.MustHaveTag(ServiceFlags{}, "TaskReliabilityDisabled")
 	hostAllocatorDisabledKey           = bsonutil.MustHaveTag(ServiceFlags{}, "HostAllocatorDisabled")
@@ -88,7 +85,6 @@ var (
 	backgroundReauthDisabledKey        = bsonutil.MustHaveTag(ServiceFlags{}, "BackgroundReauthDisabled")
 	backgroundCleanupDisabledKey       = bsonutil.MustHaveTag(ServiceFlags{}, "BackgroundCleanupDisabled")
 	cloudCleanupDisabledKey            = bsonutil.MustHaveTag(ServiceFlags{}, "CloudCleanupDisabled")
-	globalGitHubTokenDisabledKey       = bsonutil.MustHaveTag(ServiceFlags{}, "GlobalGitHubTokenDisabled")
 	unrecognizedPodCleanupDisabledKey  = bsonutil.MustHaveTag(ServiceFlags{}, "UnrecognizedPodCleanupDisabled")
 	sleepScheduleDisabledKey           = bsonutil.MustHaveTag(ServiceFlags{}, "SleepScheduleDisabled")
 	systemFailedTaskRestartDisabledKey = bsonutil.MustHaveTag(ServiceFlags{}, "SystemFailedTaskRestartDisabled")

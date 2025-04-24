@@ -114,7 +114,7 @@ func MakeTestsInDirectory(state *AtomicGraphQLState, pathToTests string) func(t 
 				if testUserId == "" {
 					testUserId = adminUser
 				}
-				foundUser, err := user.FindOneById(testUserId)
+				foundUser, err := user.FindOneByIdContext(t.Context(), testUserId)
 				require.NoError(t, err)
 				r.Header.Add(evergreen.APIUserHeader, foundUser.Id)
 				r.Header.Add(evergreen.APIKeyHeader, foundUser.APIKey)
@@ -196,7 +196,7 @@ func setupUsers(t *testing.T) {
 			"repo_sandbox",
 		},
 	}
-	assert.NoError(t, adminUsr.Insert())
+	assert.NoError(t, adminUsr.Insert(t.Context()))
 
 	// Privileged user has admin project and distro access, but is not a superuser.
 	privilegedUsr := user.DBUser{
@@ -222,7 +222,7 @@ func setupUsers(t *testing.T) {
 			"project_happyAbyssinian",
 		},
 	}
-	assert.NoError(t, privilegedUsr.Insert())
+	assert.NoError(t, privilegedUsr.Insert(t.Context()))
 
 	// Regular user only has basic project and distro access.
 	regularUser := user.DBUser{
@@ -247,7 +247,7 @@ func setupUsers(t *testing.T) {
 			evergreen.BasicDistroAccessRole,
 		},
 	}
-	assert.NoError(t, regularUser.Insert())
+	assert.NoError(t, regularUser.Insert(t.Context()))
 }
 
 func setupScopesAndRoles(t *testing.T, state *AtomicGraphQLState) {
@@ -311,7 +311,7 @@ func setupScopesAndRoles(t *testing.T, state *AtomicGraphQLState) {
 		ID:        evergreen.AllDistrosScope,
 		Name:      "all distros",
 		Type:      evergreen.DistroResourceType,
-		Resources: []string{"ubuntu1604-small", "ubuntu1604-large", "localhost", "localhost2", "rhel71-power8-large", "windows-64-vs2015-small"},
+		Resources: []string{"ubuntu1604-small", "ubuntu1604-large", "localhost", "localhost2", "rhel71-power8-large", "windows-64-vs2015-small", "ubuntu1604-power8-large", "centos6-perf", "macos-1014", "debian92-small", "ubuntu1804-power8-small"},
 	}
 	err = roleManager.AddScope(distroScope)
 	require.NoError(t, err)
@@ -501,9 +501,13 @@ func escapeGQLQuery(in string) string {
 
 // setupDBIndexes ensures that the indexes required for the tests are created.
 func setupDBIndexes() error {
-	return db.EnsureIndex(host.Collection, mongo.IndexModel{
-		Keys: host.DistroIdStatusIndex,
-	})
+	if err := db.EnsureIndex(host.Collection, mongo.IndexModel{Keys: host.DistroIdStatusIndex}); err != nil {
+		return errors.Wrap(err, "setting up host collection indexes")
+	}
+	if err := db.EnsureIndex(task.Collection, mongo.IndexModel{Keys: model.TaskHistoryIndex}); err != nil {
+		return errors.Wrap(err, "setting up task collection indexes")
+	}
+	return nil
 }
 
 func setupDBData(ctx context.Context, env evergreen.Environment, data map[string]json.RawMessage) error {
@@ -513,7 +517,7 @@ func setupDBData(ctx context.Context, env evergreen.Environment, data map[string
 		// The docs to insert as part of setup need to be deserialized
 		// as extended JSON, whereas the rest of the test spec is
 		// normal JSON.
-		var docs []interface{}
+		var docs []any
 		catcher.Add(bson.UnmarshalExtJSON(d, false, &docs))
 		_, err := env.DB().Collection(coll).InsertMany(ctx, docs)
 		catcher.Add(err)
@@ -635,7 +639,7 @@ func spawnTestHostAndVolume(t *testing.T) {
 		Host:             "i-1104943f",
 		HomeVolume:       true,
 	}
-	require.NoError(t, mountedVolume.Insert())
+	require.NoError(t, mountedVolume.Insert(t.Context()))
 	h := host.Host{
 		Id:     "i-1104943f",
 		Host:   "i-1104943f",

@@ -23,7 +23,7 @@ type Override struct {
 	// Field is the name of the field being overridden. A nested field is indicated with dot notation.
 	Field string `bson:"field" json:"field" yaml:"field"`
 	// Value is the new value to set the field to.
-	Value interface{} `bson:"value" json:"value" yaml:"value"`
+	Value any `bson:"value" json:"value" yaml:"value"`
 }
 
 func (c *OverridesConfig) SectionId() string { return overridesSectionID }

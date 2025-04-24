@@ -1,6 +1,7 @@
 package data
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -37,13 +38,13 @@ func (s *DBUserConnectorSuite) SetupTest() {
 				},
 			},
 		}
-		s.NoError(testUser.Insert())
+		s.NoError(testUser.Insert(s.T().Context()))
 		s.users = append(s.users, testUser)
 	}
 }
 
-func (s *DBUserConnectorSuite) getNotificationSettings(index int) *user.NotificationPreferences {
-	found, err := user.FindOneById(s.users[index].Id)
+func (s *DBUserConnectorSuite) getNotificationSettings(ctx context.Context, index int) *user.NotificationPreferences {
+	found, err := user.FindOneByIdContext(ctx, s.users[index].Id)
 	s.NoError(err)
 	s.Require().NotNil(found)
 
@@ -63,17 +64,17 @@ func (s *DBUserConnectorSuite) TestUpdateSettings() {
 	}
 	settings.Notifications.PatchFinish = ""
 
-	s.NoError(UpdateSettings(s.users[0], settings))
-	pref := s.getNotificationSettings(0)
+	s.NoError(UpdateSettings(s.T().Context(), s.users[0], settings))
+	pref := s.getNotificationSettings(s.T().Context(), 0)
 	s.NotNil(pref)
 	s.Equal("", pref.PatchFinishID)
 
 	// Should create a new subscription
 	settings.Notifications.PatchFinish = user.PreferenceSlack
-	s.NoError(UpdateSettings(s.users[0], settings))
-	pref = s.getNotificationSettings(0)
+	s.NoError(UpdateSettings(s.T().Context(), s.users[0], settings))
+	pref = s.getNotificationSettings(s.T().Context(), 0)
 	s.NotEqual("", pref.PatchFinishID)
-	sub, err := event.FindSubscriptionByID(pref.PatchFinishID)
+	sub, err := event.FindSubscriptionByID(s.T().Context(), pref.PatchFinishID)
 	s.NoError(err)
 	s.Require().NotNil(sub)
 	s.Equal(event.SlackSubscriberType, sub.Subscriber.Type)
@@ -81,11 +82,11 @@ func (s *DBUserConnectorSuite) TestUpdateSettings() {
 
 	// should modify the existing subscription
 	settings.Notifications.PatchFinish = user.PreferenceEmail
-	s.NoError(UpdateSettings(s.users[0], settings))
-	pref = s.getNotificationSettings(0)
+	s.NoError(UpdateSettings(s.T().Context(), s.users[0], settings))
+	pref = s.getNotificationSettings(s.T().Context(), 0)
 	s.NotNil(pref)
 	s.NotEqual("", pref.PatchFinishID)
-	sub, err = event.FindSubscriptionByID(pref.PatchFinishID)
+	sub, err = event.FindSubscriptionByID(s.T().Context(), pref.PatchFinishID)
 	s.NoError(err)
 	s.Require().NotNil(sub)
 	s.Equal(event.EmailSubscriberType, sub.Subscriber.Type)
@@ -93,15 +94,15 @@ func (s *DBUserConnectorSuite) TestUpdateSettings() {
 
 	// should delete the existing subscription
 	settings.Notifications.PatchFinish = ""
-	s.NoError(UpdateSettings(s.users[0], settings))
-	pref = s.getNotificationSettings(0)
+	s.NoError(UpdateSettings(s.T().Context(), s.users[0], settings))
+	pref = s.getNotificationSettings(s.T().Context(), 0)
 	s.NotNil(pref)
 	s.Equal("", pref.PatchFinishID)
 	settings.Notifications = *pref
 
 	settings.SlackUsername = "#Test"
 	settings.SlackMemberId = "NOTES25BA"
-	s.EqualError(UpdateSettings(s.users[0], settings), "400 (Bad Request): expected a Slack username, but got a channel")
+	s.EqualError(UpdateSettings(s.T().Context(), s.users[0], settings), "400 (Bad Request): expected a Slack username, but got a channel")
 }
 
 func TestDBUserConnector(t *testing.T) {

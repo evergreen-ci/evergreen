@@ -588,7 +588,7 @@ func waterfallDataAdaptor(ctx context.Context, vvData versionVariantData, projec
 	finalData.Rows = rows
 
 	// compute the total number of versions that exist
-	finalData.TotalVersions, err = model.VersionCount(model.VersionByProjectId(project.Identifier))
+	finalData.TotalVersions, err = model.VersionCount(ctx, model.VersionByProjectId(project.Identifier))
 	if err != nil {
 		return waterfallData{}, err
 	}
@@ -612,7 +612,7 @@ func waterfallDataAdaptor(ctx context.Context, vvData versionVariantData, projec
 // Http handler for the waterfall page
 func (uis *UIServer) waterfallPage(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
-	project, err := projCtx.GetProject()
+	project, err := projCtx.GetProject(r.Context())
 
 	if err != nil || project == nil {
 		uis.LoggedError(w, r, http.StatusNotFound, errors.New("project not found"))
@@ -621,7 +621,7 @@ func (uis *UIServer) waterfallPage(w http.ResponseWriter, r *http.Request) {
 
 	newUILink := ""
 	if len(uis.Settings.Ui.UIv2Url) > 0 {
-		newUILink = fmt.Sprintf("%s/commits/%s", uis.Settings.Ui.UIv2Url, project.Identifier)
+		newUILink = fmt.Sprintf("%s/project/%s/waterfall", uis.Settings.Ui.UIv2Url, project.Identifier)
 	}
 
 	if RedirectSpruceUsers(w, r, newUILink) {
@@ -635,15 +635,23 @@ func (uis *UIServer) waterfallPage(w http.ResponseWriter, r *http.Request) {
 	}{newUILink, uis.Settings.Jira.Host, uis.GetCommonViewData(w, r, false, true)}, "base", "waterfall.html", "base_angular.html", "menu.html")
 }
 
-// Create and return a redirect to the spruce mainline commits page if the user is opted in to the new UI.
+// Create and return a redirect to the Spruce waterfall page if the user is opted in to the new UI.
 func (uis *UIServer) mainlineCommitsRedirect(w http.ResponseWriter, r *http.Request) {
+	projCtx := MustHaveProjectContext(r)
+	project, err := projCtx.GetProject(r.Context())
+
+	if err != nil || project == nil {
+		uis.LoggedError(w, r, http.StatusNotFound, errors.New("project not found"))
+		return
+	}
+
 	u := gimlet.GetUser(r.Context())
 	if u != nil {
 		usr, ok := u.(*user.DBUser)
 		if ok {
 			// If the user is opted in to the new UI, redirect to the new UI.
 			if usr.Settings.UseSpruceOptions.SpruceV1 {
-				http.Redirect(w, r, fmt.Sprintf("%s/commits/", uis.Settings.Ui.UIv2Url), http.StatusSeeOther)
+				http.Redirect(w, r, fmt.Sprintf("%s/project/%s/waterfall", uis.Settings.Ui.UIv2Url, project.Identifier), http.StatusSeeOther)
 			}
 		}
 	}
@@ -654,7 +662,7 @@ func (uis *UIServer) mainlineCommitsRedirect(w http.ResponseWriter, r *http.Requ
 
 func (restapi restAPI) getWaterfallData(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveRESTContext(r)
-	project, err := projCtx.GetProject()
+	project, err := projCtx.GetProject(r.Context())
 	if err != nil || project == nil {
 		gimlet.WriteJSONResponse(w, http.StatusNotFound, responseError{Message: "error finding project"})
 		return

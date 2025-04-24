@@ -30,6 +30,7 @@ func TestGetMergedTaskTestResults(t *testing.T) {
 	}()
 	srv, handler := newMockCedarServer(env)
 	defer srv.Close()
+	svc := NewLocalService(env)
 
 	task0 := TaskOptions{
 		TaskID:         "task0",
@@ -46,7 +47,7 @@ func TestGetMergedTaskTestResults(t *testing.T) {
 		}
 		savedResults0[i] = result
 	}
-	require.NoError(t, InsertLocal(ctx, env, savedResults0...))
+	require.NoError(t, svc.AppendTestResults(ctx, savedResults0))
 
 	task1 := TaskOptions{
 		TaskID:         "task1",
@@ -60,7 +61,7 @@ func TestGetMergedTaskTestResults(t *testing.T) {
 		result.Execution = task1.Execution
 		savedResults1[i] = result
 	}
-	require.NoError(t, InsertLocal(ctx, env, savedResults1...))
+	require.NoError(t, svc.AppendTestResults(ctx, savedResults1))
 
 	task2 := TaskOptions{
 		TaskID:         "task2",
@@ -74,7 +75,7 @@ func TestGetMergedTaskTestResults(t *testing.T) {
 		result.Execution = task2.Execution
 		savedResults2[i] = result
 	}
-	require.NoError(t, InsertLocal(ctx, env, savedResults2...))
+	require.NoError(t, svc.AppendTestResults(ctx, savedResults2))
 
 	externalServiceTask := TaskOptions{
 		TaskID:         "external_service_task",
@@ -203,6 +204,7 @@ func TestGetMergedTaskTestResultsStats(t *testing.T) {
 	}()
 	srv, handler := newMockCedarServer(env)
 	defer srv.Close()
+	svc := NewLocalService(env)
 
 	task0 := TaskOptions{
 		TaskID:         "task0",
@@ -219,7 +221,7 @@ func TestGetMergedTaskTestResultsStats(t *testing.T) {
 		}
 		savedResults0[i] = result
 	}
-	require.NoError(t, InsertLocal(ctx, env, savedResults0...))
+	require.NoError(t, svc.AppendTestResults(ctx, savedResults0))
 
 	task1 := TaskOptions{
 		TaskID:         "task1",
@@ -233,7 +235,7 @@ func TestGetMergedTaskTestResultsStats(t *testing.T) {
 		result.Execution = task1.Execution
 		savedResults1[i] = result
 	}
-	require.NoError(t, InsertLocal(ctx, env, savedResults1...))
+	require.NoError(t, svc.AppendTestResults(ctx, savedResults1))
 
 	externalServiceTask := TaskOptions{
 		TaskID:         "external_service_task",
@@ -332,6 +334,7 @@ func TestGetMergedFailedTestSample(t *testing.T) {
 	}()
 	srv, handler := newMockCedarServer(env)
 	defer srv.Close()
+	svc := NewLocalService(env)
 
 	task0 := TaskOptions{
 		TaskID:         "task0",
@@ -345,7 +348,7 @@ func TestGetMergedFailedTestSample(t *testing.T) {
 		result.Execution = task0.Execution
 		result.Status = evergreen.TestFailedStatus
 		sample0[i] = result.GetDisplayTestName()
-		require.NoError(t, InsertLocal(ctx, env, result))
+		require.NoError(t, svc.AppendTestResults(ctx, []TestResult{result}))
 	}
 
 	task1 := TaskOptions{
@@ -360,7 +363,7 @@ func TestGetMergedFailedTestSample(t *testing.T) {
 		result.Execution = task1.Execution
 		result.Status = evergreen.TestFailedStatus
 		sample1[i] = result.GetDisplayTestName()
-		require.NoError(t, InsertLocal(ctx, env, result))
+		require.NoError(t, svc.AppendTestResults(ctx, []TestResult{result}))
 	}
 
 	externalServiceTask := TaskOptions{
@@ -451,6 +454,7 @@ func TestGetFailedTestSamples(t *testing.T) {
 	}()
 	srv, handler := newMockCedarServer(env)
 	defer srv.Close()
+	svc := NewLocalService(env)
 
 	task0 := TaskOptions{
 		TaskID:         "task0",
@@ -464,7 +468,7 @@ func TestGetFailedTestSamples(t *testing.T) {
 		result.Execution = task0.Execution
 		result.Status = evergreen.TestFailedStatus
 		sample0[i] = result.GetDisplayTestName()
-		require.NoError(t, InsertLocal(ctx, env, result))
+		require.NoError(t, svc.AppendTestResults(ctx, []TestResult{result}))
 	}
 
 	task1 := TaskOptions{
@@ -479,7 +483,7 @@ func TestGetFailedTestSamples(t *testing.T) {
 		result.Execution = task1.Execution
 		result.Status = evergreen.TestFailedStatus
 		sample1[i] = result.GetDisplayTestName()
-		require.NoError(t, InsertLocal(ctx, env, result))
+		require.NoError(t, svc.AppendTestResults(ctx, []TestResult{result}))
 	}
 
 	externalServiceTask := TaskOptions{

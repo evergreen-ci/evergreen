@@ -1,6 +1,8 @@
 package model
 
 import (
+	"context"
+
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
@@ -20,9 +22,10 @@ type Note struct {
 
 var NoteTaskIdKey = bsonutil.MustHaveTag(Note{}, "TaskId")
 
-// Upsert overwrites an existing note.
-func (n *Note) Upsert() error {
-	_, err := db.Upsert(
+// Replace overwrites an existing note if found, or inserts if not found.
+func (n *Note) Replace(ctx context.Context) error {
+	_, err := db.ReplaceContext(
+		ctx,
 		NotesCollection,
 		bson.M{NoteTaskIdKey: n.TaskId},
 		n,
@@ -31,9 +34,10 @@ func (n *Note) Upsert() error {
 }
 
 // NoteForTask returns the note for the given task Id, if it exists.
-func NoteForTask(taskId string) (*Note, error) {
+func NoteForTask(ctx context.Context, taskId string) (*Note, error) {
 	n := &Note{}
-	err := db.FindOneQ(
+	err := db.FindOneQContext(
+		ctx,
 		NotesCollection,
 		db.Query(bson.M{NoteTaskIdKey: taskId}),
 		n,

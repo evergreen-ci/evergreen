@@ -27,7 +27,7 @@ func TestMostRecentByUserAndProject(t *testing.T) {
 		CreateTime: now,
 		Activated:  true,
 	}
-	assert.NoError(t, previousPatch.Insert())
+	assert.NoError(t, previousPatch.Insert(t.Context()))
 	yourPatch := Patch{
 		Id:         bson.NewObjectId(),
 		Project:    "correct",
@@ -35,7 +35,7 @@ func TestMostRecentByUserAndProject(t *testing.T) {
 		CreateTime: now,
 		Activated:  true,
 	}
-	assert.NoError(t, yourPatch.Insert())
+	assert.NoError(t, yourPatch.Insert(t.Context()))
 	notActivatedPatch := Patch{
 		Id:         bson.NewObjectId(),
 		Project:    "correct",
@@ -43,7 +43,7 @@ func TestMostRecentByUserAndProject(t *testing.T) {
 		CreateTime: now,
 		Activated:  false,
 	}
-	assert.NoError(t, notActivatedPatch.Insert())
+	assert.NoError(t, notActivatedPatch.Insert(t.Context()))
 	wrongPatch := Patch{
 		Id:         bson.NewObjectId(),
 		Project:    "wrong",
@@ -51,7 +51,7 @@ func TestMostRecentByUserAndProject(t *testing.T) {
 		CreateTime: now,
 		Activated:  true,
 	}
-	assert.NoError(t, wrongPatch.Insert())
+	assert.NoError(t, wrongPatch.Insert(t.Context()))
 	prPatch := Patch{
 		Id:         bson.NewObjectId(),
 		Project:    "correct",
@@ -60,7 +60,7 @@ func TestMostRecentByUserAndProject(t *testing.T) {
 		Alias:      evergreen.GithubPRAlias,
 		Activated:  true,
 	}
-	assert.NoError(t, prPatch.Insert())
+	assert.NoError(t, prPatch.Insert(t.Context()))
 	oldPatch := Patch{
 		Id:         bson.NewObjectId(),
 		Project:    "correct",
@@ -68,9 +68,9 @@ func TestMostRecentByUserAndProject(t *testing.T) {
 		CreateTime: now.Add(-time.Minute),
 		Activated:  true,
 	}
-	assert.NoError(t, oldPatch.Insert())
+	assert.NoError(t, oldPatch.Insert(t.Context()))
 
-	p, err := FindOne(MostRecentPatchByUserAndProject("me", "correct"))
+	p, err := FindOne(t.Context(), MostRecentPatchByUserAndProject("me", "correct"))
 	assert.NoError(t, err)
 	assert.NotNil(t, p)
 	assert.Equal(t, p.Id, previousPatch.Id)
@@ -164,7 +164,7 @@ func TestByPatchNameStatusesMergeQueuePaginatedRequestersOption(t *testing.T) {
 					HeadOwner: "me", // indicates github_pull_request requester
 				},
 			}
-			assert.NoError(t, ghPRPatch.Insert())
+			assert.NoError(t, ghPRPatch.Insert(t.Context()))
 			ghMergePatch := Patch{
 				Id:          bson.NewObjectId(),
 				Project:     "evergreen",
@@ -173,14 +173,14 @@ func TestByPatchNameStatusesMergeQueuePaginatedRequestersOption(t *testing.T) {
 					HeadSHA: "head_sha_value", // indicates github_merge_test requester
 				},
 			}
-			assert.NoError(t, ghMergePatch.Insert())
+			assert.NoError(t, ghMergePatch.Insert(t.Context()))
 
 			patchRequestPatch := Patch{
 				Id:          bson.NewObjectId(),
 				Project:     "evergreen",
 				Description: "Patch Request Patch", // patch_request requester
 			}
-			assert.NoError(t, patchRequestPatch.Insert())
+			assert.NoError(t, patchRequestPatch.Insert(t.Context()))
 			tCase(ctx, t)
 		})
 	}
@@ -203,7 +203,7 @@ func TestByPatchNameStatusesMergeQueuePaginated(t *testing.T) {
 			patch.Alias = evergreen.CommitQueueAlias
 			patch.GithubMergeData.HeadSHA = "head_sha_value"
 		}
-		assert.NoError(t, patch.Insert())
+		assert.NoError(t, patch.Insert(t.Context()))
 	}
 	opts := ByPatchNameStatusesMergeQueuePaginatedOptions{
 		Project: utility.ToStringPtr("evergreen"),
@@ -266,8 +266,8 @@ func TestGetFinalizedChildPatchIdsForPatch(t *testing.T) {
 		},
 	}
 
-	assert.NoError(t, db.InsertMany(Collection, p, childPatch, childPatch2))
-	childPatchIds, err := GetFinalizedChildPatchIdsForPatch(p.Id.Hex())
+	assert.NoError(t, db.InsertMany(t.Context(), Collection, p, childPatch, childPatch2))
+	childPatchIds, err := GetFinalizedChildPatchIdsForPatch(t.Context(), p.Id.Hex())
 	assert.NoError(t, err)
 	require.Len(t, childPatchIds, 1)
 	assert.Equal(t, childPatchIds[0], childPatch.Id.Hex())
@@ -313,8 +313,8 @@ func TestLatestGithubPRPatch(t *testing.T) {
 		},
 	}
 
-	assert.NoError(t, db.InsertMany(Collection, patch1, patch2, cqPatch, wrongPRPatch))
-	p, err := FindLatestGithubPRPatch("parks", "rec", 12)
+	assert.NoError(t, db.InsertMany(t.Context(), Collection, patch1, patch2, cqPatch, wrongPRPatch))
+	p, err := FindLatestGithubPRPatch(t.Context(), "parks", "rec", 12)
 	assert.NoError(t, err)
 	require.NotNil(t, p)
 	assert.Equal(t, p.Id.Hex(), patch2.Id.Hex())
@@ -342,40 +342,40 @@ func TestConsolidatePatchesForUser(t *testing.T) {
 		Author:      "new_me",
 		PatchNumber: 2,
 	}
-	assert.NoError(t, db.InsertMany(Collection, p1, p2, pNew, pNewAlso))
+	assert.NoError(t, db.InsertMany(t.Context(), Collection, p1, p2, pNew, pNewAlso))
 
 	newUsr := &user.DBUser{
 		Id:          "new_me",
 		PatchNumber: 7,
 	}
-	assert.NoError(t, db.Insert(user.Collection, newUsr))
-	assert.NoError(t, ConsolidatePatchesForUser("me", newUsr))
+	assert.NoError(t, db.Insert(t.Context(), user.Collection, newUsr))
+	assert.NoError(t, ConsolidatePatchesForUser(t.Context(), "me", newUsr))
 
-	patchFromDB, err := FindOneId(p1.Id.Hex())
+	patchFromDB, err := FindOneId(t.Context(), p1.Id.Hex())
 	assert.NoError(t, err)
 	require.NotNil(t, patchFromDB)
 	assert.Equal(t, "new_me", patchFromDB.Author)
 	assert.Equal(t, p1.PatchNumber, patchFromDB.PatchNumber)
 
-	patchFromDB, err = FindOneId(p2.Id.Hex())
+	patchFromDB, err = FindOneId(t.Context(), p2.Id.Hex())
 	assert.NoError(t, err)
 	require.NotNil(t, patchFromDB)
 	assert.Equal(t, "new_me", patchFromDB.Author)
 	assert.Equal(t, p2.PatchNumber, patchFromDB.PatchNumber)
 
-	patchFromDB, err = FindOneId(pNew.Id.Hex())
+	patchFromDB, err = FindOneId(t.Context(), pNew.Id.Hex())
 	assert.NoError(t, err)
 	require.NotNil(t, patchFromDB)
 	assert.Equal(t, "new_me", patchFromDB.Author)
 	assert.Equal(t, 8, patchFromDB.PatchNumber)
 
-	patchFromDB, err = FindOneId(pNewAlso.Id.Hex())
+	patchFromDB, err = FindOneId(t.Context(), pNewAlso.Id.Hex())
 	assert.NoError(t, err)
 	require.NotNil(t, patchFromDB)
 	assert.Equal(t, "new_me", patchFromDB.Author)
 	assert.Equal(t, 9, patchFromDB.PatchNumber)
 
-	usr, err := user.FindOneById("new_me")
+	usr, err := user.FindOneByIdContext(t.Context(), "new_me")
 	assert.NoError(t, err)
 	require.NotNil(t, usr)
 	assert.Equal(t, 9, usr.PatchNumber)

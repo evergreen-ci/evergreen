@@ -180,9 +180,9 @@ func ByAfterRevision(project, buildVariant string, revision int) db.Q {
 // DB Boilerplate
 
 // FindOne returns one build that satisfies the query.
-func FindOne(query db.Q) (*Build, error) {
+func FindOne(ctx context.Context, query db.Q) (*Build, error) {
 	build := &Build{}
-	err := db.FindOneQ(Collection, query, build)
+	err := db.FindOneQContext(ctx, Collection, query, build)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -190,35 +190,37 @@ func FindOne(query db.Q) (*Build, error) {
 }
 
 // FindOneId returns one build by Id.
-func FindOneId(id string) (*Build, error) {
-	return FindOne(ById(id))
+func FindOneId(ctx context.Context, id string) (*Build, error) {
+	return FindOne(ctx, ById(id))
 }
 
 // FindBuildsByVersions finds builds matching the version. This only populates a
 // subset of the build fields.
-func FindBuildsByVersions(versionIds []string) ([]Build, error) {
-	return Find(ByVersions(versionIds).
+func FindBuildsByVersions(ctx context.Context, versionIds []string) ([]Build, error) {
+	return Find(ctx, ByVersions(versionIds).
 		WithFields(BuildVariantKey, DisplayNameKey, TasksKey, VersionKey, StatusKey, TimeTakenKey, PredictedMakespanKey, ActualMakespanKey, HasUnfinishedEssentialTaskKey))
 }
 
 // Find returns all builds that satisfy the query.
-func Find(query db.Q) ([]Build, error) {
+func Find(ctx context.Context, query db.Q) ([]Build, error) {
 	builds := []Build{}
-	err := db.FindAllQ(Collection, query, &builds)
+	err := db.FindAllQ(ctx, Collection, query, &builds)
 	return builds, err
 }
 
 // UpdateOne updates one build.
-func UpdateOne(query interface{}, update interface{}) error {
-	return db.Update(
+func UpdateOne(ctx context.Context, query any, update any) error {
+	return db.UpdateContext(
+		ctx,
 		Collection,
 		query,
 		update,
 	)
 }
 
-func UpdateAllBuilds(query interface{}, update interface{}) error {
-	_, err := db.UpdateAll(
+func UpdateAllBuilds(ctx context.Context, query any, update any) error {
+	_, err := db.UpdateAllContext(
+		ctx,
 		Collection,
 		query,
 		update,
@@ -226,8 +228,8 @@ func UpdateAllBuilds(query interface{}, update interface{}) error {
 	return err
 }
 
-func FindProjectForBuild(buildID string) (string, error) {
-	b, err := FindOne(ById(buildID).Project(bson.M{ProjectKey: 1}))
+func FindProjectForBuild(ctx context.Context, buildID string) (string, error) {
+	b, err := FindOne(ctx, ById(buildID).Project(bson.M{ProjectKey: 1}))
 	if err != nil {
 		return "", err
 	}
@@ -238,7 +240,7 @@ func FindProjectForBuild(buildID string) (string, error) {
 }
 
 // FindBuildsForTasks returns all builds that cover the given tasks
-func FindBuildsForTasks(tasks []task.Task) ([]Build, error) {
+func FindBuildsForTasks(ctx context.Context, tasks []task.Task) ([]Build, error) {
 	buildIdsMap := map[string]bool{}
 	var buildIds []string
 	for _, t := range tasks {
@@ -247,7 +249,7 @@ func FindBuildsForTasks(tasks []task.Task) ([]Build, error) {
 	for buildId := range buildIdsMap {
 		buildIds = append(buildIds, buildId)
 	}
-	builds, err := Find(ByIds(buildIds))
+	builds, err := Find(ctx, ByIds(buildIds))
 	if err != nil {
 		return nil, errors.Wrap(err, "getting builds")
 	}
@@ -255,7 +257,7 @@ func FindBuildsForTasks(tasks []task.Task) ([]Build, error) {
 }
 
 // SetBuildStartedForTasks sets tasks' builds status to started and activates them
-func SetBuildStartedForTasks(tasks []task.Task, caller string) error {
+func SetBuildStartedForTasks(ctx context.Context, tasks []task.Task, caller string) error {
 	buildIdSet := map[string]bool{}
 	for _, t := range tasks {
 		buildIdSet[t.BuildId] = true
@@ -269,6 +271,7 @@ func SetBuildStartedForTasks(tasks []task.Task, caller string) error {
 	update[StartTimeKey] = time.Now()
 	// Set the build status/activation for all the builds containing the tasks that we touched.
 	err := UpdateAllBuilds(
+		ctx,
 		bson.M{IdKey: bson.M{"$in": buildIdList}},
 		bson.M{"$set": update},
 	)

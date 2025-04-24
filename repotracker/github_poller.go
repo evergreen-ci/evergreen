@@ -6,7 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
-	"github.com/google/go-github/v52/github"
+	"github.com/google/go-github/v70/github"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -98,7 +98,7 @@ func (gRepoPoller *GithubRepositoryPoller) GetChangedFiles(ctx context.Context, 
 // commits more recent than that revision, in order of most recent to least recent. Otherwise, if it
 // cannot find the revision, it will attempt to add the base revision between the most recent commit
 // and the given revision.
-func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(revision string, maxRevisionsToSearch int) ([]model.Revision, error) {
+func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(ctx context.Context, revision string, maxRevisionsToSearch int) ([]model.Revision, error) {
 	ctx, cancel := context.WithTimeout(context.TODO(), 30*time.Second)
 	defer cancel()
 
@@ -188,7 +188,7 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(revision string, ma
 			revisionError := errors.Wrapf(err,
 				"unable to find a suggested merge base commit for revision '%s', must fix on projects settings page",
 				revision)
-			if err := gRepoPoller.ProjectRef.SetRepotrackerError(revisionDetails); err != nil {
+			if err := gRepoPoller.ProjectRef.SetRepotrackerError(ctx, revisionDetails); err != nil {
 				return []model.Revision{}, errors.Wrap(err, "setting repotracker error")
 			}
 			return []model.Revision{}, revisionError
@@ -213,7 +213,7 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(revision string, ma
 			"project":            gRepoPoller.ProjectRef.Id,
 			"project_identifier": gRepoPoller.ProjectRef.Identifier,
 		})
-		if err = model.UpdateLastRevision(gRepoPoller.ProjectRef.Id, baseRevision); err != nil {
+		if err = model.UpdateLastRevision(ctx, gRepoPoller.ProjectRef.Id, baseRevision); err != nil {
 			return nil, errors.Wrapf(err, "updating last revision to base revision '%s'", baseRevision)
 		}
 	}

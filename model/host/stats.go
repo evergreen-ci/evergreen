@@ -1,6 +1,8 @@
 package host
 
 import (
+	"context"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
@@ -23,6 +25,8 @@ type StatsByDistro struct {
 	NumTasks int `bson:"num_tasks_running" json:"num_tasks_running"`
 	// MaxHosts reports the pool size of the distro.
 	MaxHosts int `bson:"max_hosts" json:"max_hosts"`
+	// SingleTaskDistro is true if the distro is a single task distro.
+	SingleTaskDistro bool `bson:"single_task_distro" json:"single_task_distro"`
 }
 
 func (d *StatsByDistro) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(d) }
@@ -83,18 +87,18 @@ func (d DistroStats) MaxHostsExceeded() map[string]int {
 }
 
 // GetStatsByDistro returns counts of up hosts broken down by distro
-func GetStatsByDistro() (DistroStats, error) {
+func GetStatsByDistro(ctx context.Context) (DistroStats, error) {
 	stats := []StatsByDistro{}
-	if err := db.Aggregate(Collection, statsByDistroPipeline(), &stats); err != nil {
+	if err := db.Aggregate(ctx, Collection, statsByDistroPipeline(), &stats); err != nil {
 		return nil, err
 	}
 	return stats, nil
 }
 
 // GetProviderCounts returns data on the number of hosts by different provider stats.
-func GetProviderCounts() (ProviderStats, error) {
+func GetProviderCounts(ctx context.Context) (ProviderStats, error) {
 	stats := []StatsByProvider{}
-	if err := db.Aggregate(Collection, statsByProviderPipeline(), &stats); err != nil {
+	if err := db.Aggregate(ctx, Collection, statsByProviderPipeline(), &stats); err != nil {
 		return nil, err
 	}
 	return stats, nil
@@ -135,17 +139,21 @@ func statsByDistroPipeline() []bson.M {
 					// Grab any provider, since all hosts in a distro have the same provider
 					"$first": "$" + bsonutil.GetDottedKeyName(DistroKey, distro.ProviderKey),
 				},
+				"single_task_distro": bson.M{
+					"$first": "$" + bsonutil.GetDottedKeyName(DistroKey, distro.SingleTaskDistroKey),
+				},
 			},
 		},
 		{
 			"$project": bson.M{
-				"distro":            "$_id.distro",
-				"status":            "$_id.status",
-				"max_hosts":         1,
-				"count":             1,
-				"num_tasks_running": bson.M{"$size": "$tasks"},
-				"_id":               0,
-				"provider":          1,
+				"distro":             "$_id.distro",
+				"status":             "$_id.status",
+				"max_hosts":          1,
+				"count":              1,
+				"num_tasks_running":  bson.M{"$size": "$tasks"},
+				"_id":                0,
+				"provider":           1,
+				"single_task_distro": 1,
 			},
 		},
 	}

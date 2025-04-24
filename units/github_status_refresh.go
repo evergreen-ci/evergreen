@@ -101,7 +101,7 @@ func (j *githubStatusRefreshJob) fetch(ctx context.Context) error {
 		return err
 	}
 	if j.patch == nil {
-		j.patch, err = patch.FindOneId(j.FetchID)
+		j.patch, err = patch.FindOneId(ctx, j.FetchID)
 		if err != nil {
 			return errors.Wrap(err, "finding patch")
 		}
@@ -110,13 +110,13 @@ func (j *githubStatusRefreshJob) fetch(ctx context.Context) error {
 		}
 	}
 
-	j.builds, err = build.Find(build.ByVersion(j.FetchID))
+	j.builds, err = build.Find(ctx, build.ByVersion(j.FetchID))
 	if err != nil {
 		return errors.Wrap(err, "finding builds")
 	}
 
 	if len(j.patch.Triggers.ChildPatches) > 0 {
-		j.childPatches, err = patch.Find(patch.ByStringIds(j.patch.Triggers.ChildPatches))
+		j.childPatches, err = patch.Find(ctx, patch.ByStringIds(j.patch.Triggers.ChildPatches))
 		if err != nil {
 			return errors.Wrap(err, "finding child patches")
 		}
@@ -144,7 +144,7 @@ func (j *githubStatusRefreshJob) sendStatus(status *message.GithubStatus) {
 }
 
 // sendChildPatchStatuses iterates through child patches if relevant and builds/sends statuses.
-func (j *githubStatusRefreshJob) sendChildPatchStatuses() error {
+func (j *githubStatusRefreshJob) sendChildPatchStatuses(ctx context.Context) error {
 	if len(j.childPatches) == 0 {
 		return nil
 	}
@@ -156,7 +156,7 @@ func (j *githubStatusRefreshJob) sendChildPatchStatuses() error {
 	}
 
 	for _, childPatch := range j.childPatches {
-		projectIdentifier, err := model.GetIdentifierForProject(childPatch.Project)
+		projectIdentifier, err := model.GetIdentifierForProject(ctx, childPatch.Project)
 		if err != nil {
 			return errors.Wrap(err, "finding project identifier")
 		}
@@ -247,7 +247,7 @@ func (j *githubStatusRefreshJob) Run(ctx context.Context) {
 	j.sendStatus(status)
 
 	// Send child patch statuses.
-	if err := j.sendChildPatchStatuses(); err != nil {
+	if err := j.sendChildPatchStatuses(ctx); err != nil {
 		j.AddError(err)
 		return
 	}

@@ -19,6 +19,7 @@ package reliability
 // See taskstats.db.go for details on the structure of the backing daily_task_stats collection.
 
 import (
+	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
@@ -57,7 +58,7 @@ func (filter TaskReliabilityFilter) dateBoundaries() []time.Time {
 // BuildTaskPaginationOrBranches builds an expression for the conditions imposed by the filter StartAt field.
 func (filter TaskReliabilityFilter) buildTaskPaginationOrBranches() []bson.M {
 	var dateDescending = filter.Sort == taskstats.SortLatestFirst
-	var nextDate interface{}
+	var nextDate any
 
 	if filter.GroupNumDays > 1 {
 		nextDate = filter.StartAt.Date
@@ -122,7 +123,7 @@ func (filter TaskReliabilityFilter) buildMatchStageForTask() bson.M {
 
 // buildDateStageGroupID builds the date of the grouped
 // period the stats document belongs in.
-func (filter TaskReliabilityFilter) buildDateStageGroupID(inputDateFieldName string) interface{} {
+func (filter TaskReliabilityFilter) buildDateStageGroupID(inputDateFieldName string) any {
 	numDays := filter.GroupNumDays
 	inputDateFieldRef := "$" + inputDateFieldName
 	if numDays <= 1 {
@@ -186,8 +187,8 @@ func (filter TaskReliabilityFilter) taskReliabilityQueryPipeline() []bson.M {
 }
 
 // GetTaskStats create an aggregation to find task stats matching the filter state.
-func (filter TaskReliabilityFilter) GetTaskStats() (taskStats []taskstats.TaskStats, err error) {
+func (filter TaskReliabilityFilter) GetTaskStats(ctx context.Context) (taskStats []taskstats.TaskStats, err error) {
 	pipeline := filter.taskReliabilityQueryPipeline()
-	err = db.Aggregate(taskstats.DailyTaskStatsCollection, pipeline, &taskStats)
+	err = db.Aggregate(ctx, taskstats.DailyTaskStatsCollection, pipeline, &taskStats)
 	return
 }

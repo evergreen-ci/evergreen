@@ -111,13 +111,13 @@ func (s *VersionSuite) SetupSuite() {
 	builds := []build.Build{testBuild1, testBuild2}
 
 	for _, item := range versions {
-		s.Require().NoError(item.Insert())
+		s.Require().NoError(item.Insert(s.ctx))
 	}
 	for _, item := range tasks {
-		s.Require().NoError(item.Insert())
+		s.Require().NoError(item.Insert(s.ctx))
 	}
 	for _, item := range builds {
-		s.Require().NoError(item.Insert())
+		s.Require().NoError(item.Insert(s.ctx))
 	}
 }
 
@@ -156,10 +156,10 @@ func (s *VersionSuite) TestPatchVersionVersion() {
 	s.NotNil(res)
 	s.Equal(http.StatusOK, res.Status())
 
-	v, err := serviceModel.VersionFindOneId(versionId)
+	v, err := serviceModel.VersionFindOneId(s.ctx, versionId)
 	s.NoError(err)
 	for _, b := range v.BuildIds {
-		build, err := build.FindOneId(b)
+		build, err := build.FindOneId(s.ctx, b)
 		s.NoError(err)
 		s.True(build.Activated)
 	}
@@ -287,7 +287,7 @@ func (s *VersionSuite) TestRestartVersion() {
 	h, ok := (version).(*model.APIVersion)
 	s.True(ok)
 	s.Equal(utility.ToStringPtr(versionId), h.Id)
-	v, err := serviceModel.VersionFindOneId("versionId")
+	v, err := serviceModel.VersionFindOneId(s.ctx, "versionId")
 	s.NoError(err)
 	s.Equal(evergreen.VersionStarted, v.Status)
 }

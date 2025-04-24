@@ -78,8 +78,10 @@ func (c instanceTypeSubnetCache) getAZs(ctx context.Context, settings *evergreen
 }
 
 type EC2FleetManagerOptions struct {
-	client AWSClient
-	region string
+	client  AWSClient
+	region  string
+	account string
+	role    string
 }
 
 type ec2FleetManager struct {
@@ -95,7 +97,17 @@ func (m *ec2FleetManager) Configure(ctx context.Context, settings *evergreen.Set
 		m.region = evergreen.DefaultEC2Region
 	}
 
+	role, err := getRoleForAccount(settings, m.account)
+	if err != nil {
+		return errors.Wrap(err, "getting role for account")
+	}
+	m.role = role
+
 	return nil
+}
+
+func (m *ec2FleetManager) setupClient(ctx context.Context) error {
+	return m.client.Create(ctx, m.role, m.region)
 }
 
 func (m *ec2FleetManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, error) {
@@ -103,7 +115,7 @@ func (m *ec2FleetManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Ho
 		return nil, errors.Errorf("can't spawn instance for distro '%s': distro provider is '%s'", h.Distro.Id, h.Distro.Provider)
 	}
 
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.setupClient(ctx); err != nil {
 		return nil, errors.Wrap(err, "creating client")
 	}
 
@@ -115,15 +127,10 @@ func (m *ec2FleetManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Ho
 		return nil, errors.Wrapf(err, "invalid EC2 settings in distro '%s': %+v", h.Distro.Id, ec2Settings)
 	}
 
-	if ec2Settings.KeyName == "" && !h.UserHost {
-		if !h.SpawnOptions.SpawnedByTask {
-			return nil, errors.New("key name must not be empty")
-		}
-		k, err := m.client.GetKey(ctx, h)
-		if err != nil {
-			return nil, errors.Wrap(err, "getting public key")
-		}
-		ec2Settings.KeyName = k
+	var err error
+	ec2Settings.KeyName, err = getKeyName(ctx, h, m.settings, m.client)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting key name")
 	}
 
 	if err := m.spawnFleetSpotHost(ctx, h, ec2Settings); err != nil {
@@ -156,7 +163,7 @@ func (m *ec2FleetManager) GetInstanceStatuses(ctx context.Context, hosts []host.
 		instanceIDs = append(instanceIDs, h.Id)
 	}
 
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.setupClient(ctx); err != nil {
 		return nil, errors.Wrap(err, "creating client")
 	}
 
@@ -215,7 +222,7 @@ func (m *ec2FleetManager) GetInstanceStatuses(ctx context.Context, hosts []host.
 func (m *ec2FleetManager) GetInstanceState(ctx context.Context, h *host.Host) (CloudInstanceState, error) {
 	info := CloudInstanceState{Status: StatusUnknown}
 
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.setupClient(ctx); err != nil {
 		return info, errors.Wrap(err, "creating client")
 	}
 
@@ -256,7 +263,7 @@ func (m *ec2FleetManager) SetPortMappings(context.Context, *host.Host, *host.Hos
 }
 
 func (m *ec2FleetManager) CheckInstanceType(ctx context.Context, instanceType string) error {
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.setupClient(ctx); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
 	output, err := m.client.DescribeInstanceTypeOfferings(ctx, &ec2.DescribeInstanceTypeOfferingsInput{})
@@ -277,7 +284,7 @@ func (m *ec2FleetManager) TerminateInstance(ctx context.Context, h *host.Host, u
 	if h.Status == evergreen.HostTerminated {
 		return errors.Errorf("cannot terminate host '%s' because it's already marked as terminated", h.Id)
 	}
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.setupClient(ctx); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
 
@@ -330,7 +337,7 @@ func (m *ec2FleetManager) StartInstance(context.Context, *host.Host, string) err
 }
 
 func (m *ec2FleetManager) Cleanup(ctx context.Context) error {
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.setupClient(ctx); err != nil {
 		return errors.Wrap(err, "creating client")
 	}
 
@@ -390,7 +397,7 @@ func (m *ec2FleetManager) GetVolumeAttachment(context.Context, string) (*VolumeA
 }
 
 func (m *ec2FleetManager) GetDNSName(ctx context.Context, h *host.Host) (string, error) {
-	if err := m.client.Create(ctx, m.region); err != nil {
+	if err := m.setupClient(ctx); err != nil {
 		return "", errors.Wrap(err, "creating client")
 	}
 
@@ -402,8 +409,8 @@ func (m *ec2FleetManager) TimeTilNextPayment(h *host.Host) time.Duration {
 }
 
 func (m *ec2FleetManager) spawnFleetSpotHost(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings) error {
-	// Cleanup
 	defer func() {
+		// Cleanup
 		_, err := m.client.DeleteLaunchTemplate(ctx, &ec2.DeleteLaunchTemplateInput{LaunchTemplateName: aws.String(cleanLaunchTemplateName(h.Tag))})
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":  "can't delete launch template",
@@ -411,6 +418,23 @@ func (m *ec2FleetManager) spawnFleetSpotHost(ctx context.Context, h *host.Host, 
 			"host_tag": h.Tag,
 		}))
 	}()
+
+	useElasticIP := shouldAssignPublicIPv4Address(h, ec2Settings) && canUseElasticIP(m.env.Settings(), ec2Settings, h)
+	if useElasticIP && h.IPAllocationID == "" {
+		// If the host can't be allocated an IP address, continue on error
+		// because the host should fall back to using an AWS-provided IP
+		// address. Using an elastic IP address is a best-effort attempt to save
+		// money.
+		// This must be done before creating the launch template because
+		// allocating the address is only a best-effort attempt and isn't
+		// guaranteed to succeed. For example, if the IPAM pool has no addresses
+		// available currently, Evergreen still needs a usable host, so the
+		// launch template has to fall back to using an AWS-managed IP address.
+		grip.Notice(message.WrapError(allocateIPAddressForHost(ctx, m.settings, m.client, h), message.Fields{
+			"message": "could not allocate elastic IP address for host, falling back to using AWS-managed IP",
+			"host_id": h.Id,
+		}))
+	}
 
 	if err := m.uploadLaunchTemplate(ctx, h, ec2Settings); err != nil {
 		return errors.Wrapf(err, "unable to upload launch template for host '%s'", h.Id)
@@ -422,6 +446,23 @@ func (m *ec2FleetManager) spawnFleetSpotHost(ctx context.Context, h *host.Host, 
 	}
 	h.Id = instanceID
 
+	if useElasticIP && h.IPAllocationID != "" {
+		// Associate the IP address that was allocated for this host. This is
+		// necessary for the host to be usable because otherwise, it has no IP
+		// address.
+		// Unfortunately, this step is prone to timing issues because EC2 only
+		// allows an IP address to be associated with the host after the
+		// EC2 instance reaches the "running" state. If AWS is slow at getting
+		// the host to "running", this could run out of attempts to associate
+		// the IP address and the host would end up unusable.
+		// TODO (DEVPROD-17136): consider making this step more resilient
+		// against AWS timing problems.
+		grip.Error(message.WrapError(associateIPAddressForHost(ctx, m.client, h), message.Fields{
+			"message":       "host was created and allocated elastic IP address but could not associate the host with the IP address; host will not be usable",
+			"host_id":       h.Id,
+			"allocation_id": h.IPAllocationID,
+		}))
+	}
 	return nil
 }
 
@@ -433,7 +474,6 @@ func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host
 
 	launchTemplate := &types.RequestLaunchTemplateData{
 		ImageId:             aws.String(ec2Settings.AMI),
-		KeyName:             aws.String(ec2Settings.KeyName),
 		InstanceType:        types.InstanceType(ec2Settings.InstanceType),
 		BlockDeviceMappings: blockDevices,
 		TagSpecifications:   makeTagTemplate(makeTags(h)),
@@ -443,10 +483,20 @@ func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host
 		launchTemplate.IamInstanceProfile = &types.LaunchTemplateIamInstanceProfileSpecificationRequest{Arn: aws.String(ec2Settings.IAMInstanceProfileARN)}
 	}
 
+	assignPublicIPv4 := shouldAssignPublicIPv4Address(h, ec2Settings)
+	if assignPublicIPv4 {
+		// Only set an SSH key for the host if the host actually has a public
+		// IPv4 address. Hosts that don't have a public IPv4 address aren't
+		// reachable with SSH even if a key is set.
+		launchTemplate.KeyName = aws.String(ec2Settings.KeyName)
+	}
 	if ec2Settings.IsVpc {
+		// Fall back to using an AWS-provided IPv4 address if this host needs a
+		// public IPv4 address and it hasn't been allocated an elastic IP.
+		useAWSIPv4Addr := assignPublicIPv4 && h.IPAllocationID == ""
 		launchTemplate.NetworkInterfaces = []types.LaunchTemplateInstanceNetworkInterfaceSpecificationRequest{
 			{
-				AssociatePublicIpAddress: aws.Bool(true),
+				AssociatePublicIpAddress: aws.Bool(useAWSIPv4Addr),
 				DeviceIndex:              aws.Int32(0),
 				Groups:                   ec2Settings.SecurityGroupIDs,
 				SubnetId:                 aws.String(ec2Settings.SubnetId),
@@ -454,7 +504,6 @@ func (m *ec2FleetManager) uploadLaunchTemplate(ctx context.Context, h *host.Host
 		}
 		if ec2Settings.IPv6 {
 			launchTemplate.NetworkInterfaces[0].Ipv6AddressCount = aws.Int32(1)
-			launchTemplate.NetworkInterfaces[0].AssociatePublicIpAddress = aws.Bool(false)
 		}
 	} else {
 		launchTemplate.SecurityGroups = ec2Settings.SecurityGroupIDs
@@ -560,12 +609,4 @@ func (m *ec2FleetManager) makeOverrides(ctx context.Context, ec2Settings *EC2Pro
 	}
 
 	return overrides, nil
-}
-
-func (m *ec2FleetManager) AddSSHKey(ctx context.Context, pair evergreen.SSHKeyPair) error {
-	if err := m.client.Create(ctx, m.region); err != nil {
-		return errors.Wrap(err, "creating client")
-	}
-
-	return errors.Wrap(addSSHKey(ctx, m.client, pair), "adding public SSH key")
 }

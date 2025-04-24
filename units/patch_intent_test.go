@@ -26,7 +26,7 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
-	"github.com/google/go-github/v52/github"
+	"github.com/google/go-github/v70/github"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/assert"
@@ -130,7 +130,7 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 				TaskSpecifiers: []patch.TaskSpecifier{{PatchAlias: "childProj-patch-alias"}},
 			},
 		},
-	}).Insert())
+	}).Insert(s.ctx))
 
 	s.NoError((&model.ProjectRef{
 		Owner:            "evergreen-ci",
@@ -145,7 +145,7 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 			Enabled: utility.TruePtr(),
 		},
 		OldestAllowedMergeBase: "536cde7f7b29f7e117371a48a3e59540a44af1ac",
-	}).Insert())
+	}).Insert(s.ctx))
 
 	s.NoError((&model.ProjectRef{
 		Id:         "childProj",
@@ -155,40 +155,40 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 		Branch:     "main",
 		Enabled:    true,
 		RemotePath: "self-tests.yml",
-	}).Insert())
+	}).Insert(s.ctx))
 
 	s.NoError((&user.DBUser{
 		Id: evergreen.GithubPatchUser,
-	}).Insert())
+	}).Insert(s.ctx))
 
 	s.NoError((&model.ProjectVars{
 		Id: "mci",
-	}).Insert())
+	}).Insert(s.ctx))
 
 	s.NoError((&model.ProjectAlias{
 		ProjectID: "mci",
 		Alias:     evergreen.GithubPRAlias,
 		Variant:   "ubuntu.*",
 		Task:      "dist.*",
-	}).Upsert())
+	}).Upsert(s.ctx))
 	s.NoError((&model.ProjectAlias{
 		ProjectID: "mci",
 		Alias:     evergreen.GithubPRAlias,
 		Variant:   "race.*",
 		Task:      "dist.*",
-	}).Upsert())
+	}).Upsert(s.ctx))
 	s.NoError((&model.ProjectAlias{
 		ProjectID: "mci",
 		Alias:     "doesntexist",
 		Variant:   "fake",
 		Task:      "fake",
-	}).Upsert())
+	}).Upsert(s.ctx))
 	s.NoError((&model.ProjectAlias{
 		ProjectID: "commit-queue-sandbox",
 		Alias:     evergreen.CommitQueueAlias,
 		Variant:   "^ubuntu2004$",
 		Task:      "^bynntask$",
-	}).Upsert())
+	}).Upsert(s.ctx))
 
 	s.NoError((&distro.Distro{Id: "ubuntu1604-test"}).Insert(s.ctx))
 	s.NoError((&distro.Distro{Id: "ubuntu1604-build"}).Insert(s.ctx))
@@ -234,7 +234,7 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 		CreateTime: time.Now(),
 		Revision:   s.hash,
 		Requester:  evergreen.RepotrackerVersionRequester,
-	}).Insert())
+	}).Insert(s.ctx))
 
 	factory, err := registry.GetJobFactory(patchIntentJobName)
 	s.NoError(err)
@@ -261,7 +261,7 @@ func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithNoTasksAndVariants() {
 	})
 	s.NoError(err)
 	s.Require().NotNil(intent)
-	s.NoError(intent.Insert())
+	s.NoError(intent.Insert(s.ctx))
 
 	testutil.ConfigureIntegrationTest(s.T(), s.env.Settings())
 	j := NewPatchIntentProcessor(s.env, mgobson.NewObjectId(), intent).(*patchIntentProcessor)
@@ -291,7 +291,7 @@ func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithBadAlias() {
 	})
 	s.NoError(err)
 	s.Require().NotNil(intent)
-	s.NoError(intent.Insert())
+	s.NoError(intent.Insert(s.ctx))
 
 	testutil.ConfigureIntegrationTest(s.T(), s.env.Settings())
 	j := NewPatchIntentProcessor(s.env, mgobson.NewObjectId(), intent).(*patchIntentProcessor)
@@ -315,7 +315,7 @@ func (s *PatchIntentUnitsSuite) TestCantFinishCommitQueuePatchWithNoTasksAndVari
 	s.NoError((&model.ProjectAlias{
 		ProjectID: s.project,
 		Alias:     evergreen.CommitQueueAlias,
-	}).Upsert())
+	}).Upsert(s.ctx))
 
 	intent, err := patch.NewCliIntent(patch.CLIIntentParams{
 		User:         s.user,
@@ -327,7 +327,7 @@ func (s *PatchIntentUnitsSuite) TestCantFinishCommitQueuePatchWithNoTasksAndVari
 	})
 	s.NoError(err)
 	s.Require().NotNil(intent)
-	s.NoError(intent.Insert())
+	s.NoError(intent.Insert(s.ctx))
 	testutil.ConfigureIntegrationTest(s.T(), s.env.Settings())
 	j := NewPatchIntentProcessor(s.env, mgobson.NewObjectId(), intent).(*patchIntentProcessor)
 	j.env = s.env
@@ -356,7 +356,7 @@ func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithDisabledCommitQueue() {
 			Enabled: utility.FalsePtr(),
 		},
 	}
-	s.Require().NoError(disabledMergeQueueProject.Upsert())
+	s.Require().NoError(disabledMergeQueueProject.Replace(s.ctx))
 
 	org := github.Organization{
 		Login: &orgName,
@@ -378,7 +378,7 @@ func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithDisabledCommitQueue() {
 
 	s.NoError(err)
 	s.Require().NotNil(intent)
-	s.NoError(intent.Insert())
+	s.NoError(intent.Insert(s.ctx))
 
 	j := NewPatchIntentProcessor(s.env, mgobson.NewObjectId(), intent).(*patchIntentProcessor)
 
@@ -422,7 +422,7 @@ func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 		BuildVariants: []string{"bv1", "bv2", "bv3"},
 		RegexTasks:    []string{"1$"},
 	}
-	s.NoError((previousPatchDoc).Insert())
+	s.NoError((previousPatchDoc).Insert(s.ctx))
 
 	reusePatchId := mgobson.NewObjectId().Hex()
 	reusePatchDoc := &patch.Patch{
@@ -442,7 +442,7 @@ func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 		Tasks:         []string{"diffTask1", "diffTask2"},
 		BuildVariants: []string{"bv1"},
 	}
-	s.NoError((reusePatchDoc).Insert())
+	s.NoError((reusePatchDoc).Insert(s.ctx))
 
 	project := model.Project{Identifier: s.project, BuildVariants: model.BuildVariants{
 		{
@@ -634,7 +634,7 @@ func (s *PatchIntentUnitsSuite) TestSetToPreviousPatchDefinition() {
 			Status:       evergreen.TaskSucceeded,
 			Activated:    true,
 		}
-		s.NoError(db.InsertMany(task.Collection, t1, t2, tgt1, tgt2, tgt3, tgt4,
+		s.NoError(db.InsertMany(s.ctx, task.Collection, t1, t2, tgt1, tgt2, tgt3, tgt4,
 			dt1, et1, dt2, et2, notActivated, diffTask1, diffTask2))
 
 		intent, err := patch.NewCliIntent(patch.CLIIntentParams{
@@ -706,7 +706,7 @@ func (s *PatchIntentUnitsSuite) TestBuildTasksAndVariantsWithRepeatFailed() {
 	}
 
 	for _, t := range tasks {
-		s.NoError(t.Insert())
+		s.NoError(t.Insert(s.ctx))
 	}
 
 	previousPatchDoc := &patch.Patch{
@@ -726,7 +726,7 @@ func (s *PatchIntentUnitsSuite) TestBuildTasksAndVariantsWithRepeatFailed() {
 			},
 		},
 	}
-	s.NoError((previousPatchDoc).Insert())
+	s.NoError((previousPatchDoc).Insert(s.ctx))
 
 	intent, err := patch.NewCliIntent(patch.CLIIntentParams{
 		User:        s.user,
@@ -838,7 +838,7 @@ func (s *PatchIntentUnitsSuite) TestBuildTasksAndVariantsWithReuse() {
 	}
 
 	for _, t := range tasks {
-		s.NoError(t.Insert())
+		s.NoError(t.Insert(s.ctx))
 	}
 
 	previousPatchDoc := &patch.Patch{
@@ -862,7 +862,7 @@ func (s *PatchIntentUnitsSuite) TestBuildTasksAndVariantsWithReuse() {
 			},
 		},
 	}
-	s.NoError((previousPatchDoc).Insert())
+	s.NoError((previousPatchDoc).Insert(s.ctx))
 
 	intent, err := patch.NewCliIntent(patch.CLIIntentParams{
 		User:        s.user,
@@ -1009,7 +1009,7 @@ func (s *PatchIntentUnitsSuite) TestBuildTasksAndVariantsWithReusePatchId() {
 	}
 
 	for _, t := range tasks {
-		s.NoError(t.Insert())
+		s.NoError(t.Insert(s.ctx))
 	}
 
 	// Add a more recent patch to ensure that it uses the passed
@@ -1032,7 +1032,7 @@ func (s *PatchIntentUnitsSuite) TestBuildTasksAndVariantsWithReusePatchId() {
 			},
 		},
 	}
-	s.NoError((previousPatchDoc).Insert())
+	s.NoError((previousPatchDoc).Insert(s.ctx))
 
 	earlierPatchDoc := &patch.Patch{
 		Id:            patch.NewId(earlierPatchId),
@@ -1051,7 +1051,7 @@ func (s *PatchIntentUnitsSuite) TestBuildTasksAndVariantsWithReusePatchId() {
 			},
 		},
 	}
-	s.NoError((earlierPatchDoc).Insert())
+	s.NoError((earlierPatchDoc).Insert(s.ctx))
 
 	intent, err := patch.NewCliIntent(patch.CLIIntentParams{
 		User:        s.user,
@@ -1148,7 +1148,7 @@ func (s *PatchIntentUnitsSuite) TestProcessMergeGroupIntent() {
 
 	s.NoError(err)
 	s.Require().NotNil(intent)
-	s.NoError(intent.Insert())
+	s.NoError(intent.Insert(s.ctx))
 
 	j := NewPatchIntentProcessor(s.env, mgobson.NewObjectId(), intent).(*patchIntentProcessor)
 
@@ -1158,7 +1158,7 @@ func (s *PatchIntentUnitsSuite) TestProcessMergeGroupIntent() {
 	s.NoError(j.Error())
 	s.False(j.HasErrors())
 
-	dbPatch, err := patch.FindOne(patch.ById(j.PatchID))
+	dbPatch, err := patch.FindOne(s.ctx, patch.ById(j.PatchID))
 	s.NoError(err)
 	s.Require().NotNil(dbPatch)
 	s.True(patchDoc.Activated, "patch should be finalized")
@@ -1167,6 +1167,7 @@ func (s *PatchIntentUnitsSuite) TestProcessMergeGroupIntent() {
 	tasks := []string{"bynntask"}
 	s.verifyPatchDoc(dbPatch, j.PatchID, baseSHA, false, variants, tasks)
 	s.projectExists(j.PatchID.Hex())
+	s.Equal("main", dbPatch.Branch)
 
 	s.Zero(dbPatch.ProjectStorageMethod, "patch's project storage method should be unset after patch is finalized")
 	s.verifyParserProjectDoc(dbPatch, 4)
@@ -1174,7 +1175,7 @@ func (s *PatchIntentUnitsSuite) TestProcessMergeGroupIntent() {
 	s.verifyVersionDoc(dbPatch, evergreen.GithubMergeRequester, evergreen.GithubMergeUser, baseSHA, 1)
 
 	out := []event.Subscription{}
-	s.NoError(db.FindAllQ(event.SubscriptionsCollection, db.Query(bson.M{}), &out))
+	s.NoError(db.FindAllQ(s.ctx, event.SubscriptionsCollection, db.Query(bson.M{}), &out))
 	s.Len(out, 2)
 	for _, subscription := range out {
 		s.Equal("github_merge", subscription.Subscriber.Type)
@@ -1217,22 +1218,24 @@ func (s *PatchIntentUnitsSuite) TestProcessGitHubIntentWithMergeBase() {
 	}
 	testutil.ConfigureIntegrationTest(s.T(), s.env.Settings())
 	// SHA ed42b5e51e81724c5258686a0b9d515a99696eac is newer than the oldest allowed merge base and should be accepted
-	intent, err := patch.NewGithubIntent("id", "auto", "", "", "ed42b5e51e81724c5258686a0b9d515a99696eac", pr)
+	intent, err := patch.NewGithubIntent(s.ctx, "id", "auto", "", "", "ed42b5e51e81724c5258686a0b9d515a99696eac", pr)
 
 	s.NoError(err)
 	s.Require().NotNil(intent)
-	s.NoError(intent.Insert())
+	s.NoError(intent.Insert(s.ctx))
 	j := NewPatchIntentProcessor(s.env, mgobson.NewObjectId(), intent).(*patchIntentProcessor)
 	patchDoc := intent.NewPatch()
 	s.NoError(j.finishPatch(s.ctx, patchDoc))
 	s.Empty(j.gitHubError)
 
+	s.Equal("main", patchDoc.Branch)
+
 	// SHA 4aa79c5e7ef7af351764b843a2c05fab98c23881 is older than the oldest allowed merge base and should be rejected
-	intent, err = patch.NewGithubIntent("another_id", "auto", "", "", "4aa79c5e7ef7af351764b843a2c05fab98c23881", pr)
+	intent, err = patch.NewGithubIntent(s.ctx, "another_id", "auto", "", "", "4aa79c5e7ef7af351764b843a2c05fab98c23881", pr)
 
 	s.NoError(err)
 	s.Require().NotNil(intent)
-	s.NoError(intent.Insert())
+	s.NoError(intent.Insert(s.ctx))
 	j = NewPatchIntentProcessor(s.env, mgobson.NewObjectId(), intent).(*patchIntentProcessor)
 	patchDoc = intent.NewPatch()
 	s.Error(j.finishPatch(s.ctx, patchDoc))
@@ -1273,7 +1276,7 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 	})
 	s.NoError(err)
 	s.Require().NotNil(intent)
-	s.NoError(intent.Insert())
+	s.NoError(intent.Insert(s.ctx))
 
 	j := NewPatchIntentProcessor(s.env, mgobson.NewObjectId(), intent).(*patchIntentProcessor)
 	j.env = s.env
@@ -1284,10 +1287,11 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 	s.NoError(j.Error())
 	s.False(j.HasErrors())
 
-	dbPatch, err := patch.FindOne(patch.ById(j.PatchID))
+	dbPatch, err := patch.FindOne(s.ctx, patch.ById(j.PatchID))
 	s.NoError(err)
 	s.Require().NotNil(dbPatch)
 	s.True(patchDoc.Activated, "patch should be finalized")
+	s.Equal("main", patchDoc.Branch)
 
 	variants := []string{"ubuntu1604", "ubuntu1604-arm64", "ubuntu1604-debug", "race-detector"}
 	tasks := []string{"dist", "dist-test"}
@@ -1302,7 +1306,7 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 	s.gridFSFileExists(dbPatch.Patches[0].PatchSet.PatchFileId)
 
 	out := []event.Subscription{}
-	s.NoError(db.FindAllQ(event.SubscriptionsCollection, db.Query(bson.M{}), &out))
+	s.NoError(db.FindAllQ(s.ctx, event.SubscriptionsCollection, db.Query(bson.M{}), &out))
 	s.Require().Empty(out)
 }
 
@@ -1339,7 +1343,7 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntentWithoutFinalizing() {
 	})
 	s.NoError(err)
 	s.Require().NotNil(intent)
-	s.NoError(intent.Insert())
+	s.NoError(intent.Insert(s.ctx))
 
 	j := NewPatchIntentProcessor(s.env, mgobson.NewObjectId(), intent).(*patchIntentProcessor)
 	j.env = s.env
@@ -1350,10 +1354,11 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntentWithoutFinalizing() {
 	s.NoError(j.Error())
 	s.False(j.HasErrors())
 
-	dbPatch, err := patch.FindOne(patch.ById(j.PatchID))
+	dbPatch, err := patch.FindOne(s.ctx, patch.ById(j.PatchID))
 	s.NoError(err)
 	s.Require().NotNil(dbPatch)
 	s.False(patchDoc.Activated, "patch should not be finalized")
+	s.Equal("main", patchDoc.Branch)
 
 	variants := []string{"ubuntu1604", "ubuntu1604-arm64", "ubuntu1604-debug", "race-detector"}
 	tasks := []string{"dist", "dist-test"}
@@ -1363,14 +1368,14 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntentWithoutFinalizing() {
 	s.Equal(evergreen.ProjectStorageMethodDB, dbPatch.ProjectStorageMethod, "unfinalized patch should have project storage method set")
 	s.verifyParserProjectDoc(dbPatch, 8)
 
-	dbVersion, err := model.VersionFindOne(model.VersionById(patchDoc.Id.Hex()))
+	dbVersion, err := model.VersionFindOne(s.ctx, model.VersionById(patchDoc.Id.Hex()))
 	s.NoError(err)
 	s.Zero(dbVersion, "should not create version for unfinalized patch")
 
 	s.gridFSFileExists(dbPatch.Patches[0].PatchSet.PatchFileId)
 
 	out := []event.Subscription{}
-	s.NoError(db.FindAllQ(event.SubscriptionsCollection, db.Query(bson.M{}), &out))
+	s.NoError(db.FindAllQ(s.ctx, event.SubscriptionsCollection, db.Query(bson.M{}), &out))
 	s.Require().Empty(out)
 }
 
@@ -1384,21 +1389,21 @@ func (s *PatchIntentUnitsSuite) TestFindEvergreenUserForPR() {
 			},
 		},
 	}
-	s.NoError(dbUser.Insert())
+	s.NoError(dbUser.Insert(s.ctx))
 
-	u, err := findEvergreenUserForPR(1234)
+	u, err := findEvergreenUserForPR(s.ctx, 1234)
 	s.NoError(err)
 	s.Require().NotNil(u)
 	s.Equal("testuser", u.Id)
 
-	u, err = findEvergreenUserForPR(123)
+	u, err = findEvergreenUserForPR(s.ctx, 123)
 	s.NoError(err)
 	s.Require().NotNil(u)
 	s.Equal(evergreen.GithubPatchUser, u.Id)
 }
 
 func (s *PatchIntentUnitsSuite) TestFindEvergreenUserForGithubMergeGroup() {
-	u, err := findEvergreenUserForGithubMergeGroup()
+	u, err := findEvergreenUserForGithubMergeGroup(s.ctx)
 	s.NoError(err)
 	s.Require().NotNil(u)
 	s.Equal(evergreen.GithubMergeUser, u.Id)
@@ -1451,7 +1456,7 @@ func (s *PatchIntentUnitsSuite) projectExists(projectId string) {
 }
 
 func (s *PatchIntentUnitsSuite) verifyVersionDoc(patchDoc *patch.Patch, expectedRequester, expectedUser, hash string, builds int) {
-	versionDoc, err := model.VersionFindOne(model.VersionById(patchDoc.Id.Hex()))
+	versionDoc, err := model.VersionFindOne(s.ctx, model.VersionById(patchDoc.Id.Hex()))
 	s.NoError(err)
 	s.Require().NotNil(versionDoc)
 
@@ -1481,7 +1486,7 @@ func (s *PatchIntentUnitsSuite) verifyVersionDoc(patchDoc *patch.Patch, expected
 }
 
 func (s *PatchIntentUnitsSuite) gridFSFileExists(patchFileID string) {
-	patchContents, err := patch.FetchPatchContents(patchFileID)
+	patchContents, err := patch.FetchPatchContents(s.ctx, patchFileID)
 	s.Require().NoError(err)
 	s.NotEmpty(patchContents)
 }
@@ -1492,10 +1497,10 @@ func (s *PatchIntentUnitsSuite) TestRunInDegradedModeWithGithubIntent() {
 	}
 	s.NoError(evergreen.SetServiceFlags(s.ctx, flags))
 
-	intent, err := patch.NewGithubIntent("1", "", "", "", "", testutil.NewGithubPR(s.prNumber, s.repo, s.baseHash, s.headRepo, s.hash, "tychoish", "title1"))
+	intent, err := patch.NewGithubIntent(s.ctx, "1", "", "", "", "", testutil.NewGithubPR(s.prNumber, s.repo, s.baseHash, s.headRepo, s.hash, "tychoish", "title1"))
 	s.NoError(err)
 	s.NotNil(intent)
-	s.NoError(intent.Insert())
+	s.NoError(intent.Insert(s.ctx))
 
 	patchID := mgobson.NewObjectId()
 	j, ok := NewPatchIntentProcessor(s.env, patchID, intent).(*patchIntentProcessor)
@@ -1506,11 +1511,11 @@ func (s *PatchIntentUnitsSuite) TestRunInDegradedModeWithGithubIntent() {
 	s.Error(j.Error())
 	s.Contains(j.Error().Error(), "not processing PR because GitHub PR testing is disabled")
 
-	patchDoc, err := patch.FindOne(patch.ById(patchID))
+	patchDoc, err := patch.FindOne(s.ctx, patch.ById(patchID))
 	s.NoError(err)
 	s.Nil(patchDoc)
 
-	unprocessedIntents, err := patch.FindUnprocessedGithubIntents()
+	unprocessedIntents, err := patch.FindUnprocessedGithubIntents(s.ctx)
 	s.Require().NoError(err)
 	s.Require().Len(unprocessedIntents, 1)
 
@@ -1524,10 +1529,10 @@ func (s *PatchIntentUnitsSuite) TestGithubPRTestFromUnknownUserDoesntCreateVersi
 	s.Require().NoError(evergreen.SetServiceFlags(s.ctx, flags))
 
 	testutil.ConfigureIntegrationTest(s.T(), s.env.Settings())
-	intent, err := patch.NewGithubIntent("1", "", "", "", "", testutil.NewGithubPR(s.prNumber, "evergreen-ci/evergreen", s.baseHash, s.headRepo, "8a425038834326c212d65289e0c9e80e48d07e7e", "octocat", "title1"))
+	intent, err := patch.NewGithubIntent(s.ctx, "1", "", "", "", "", testutil.NewGithubPR(s.prNumber, "evergreen-ci/evergreen", s.baseHash, s.headRepo, "8a425038834326c212d65289e0c9e80e48d07e7e", "octocat", "title1"))
 	s.NoError(err)
 	s.NotNil(intent)
-	s.NoError(intent.Insert())
+	s.NoError(intent.Insert(s.ctx))
 
 	patchID := mgobson.NewObjectId()
 	j, ok := NewPatchIntentProcessor(s.env, patchID, intent).(*patchIntentProcessor)
@@ -1537,16 +1542,16 @@ func (s *PatchIntentUnitsSuite) TestGithubPRTestFromUnknownUserDoesntCreateVersi
 	j.Run(s.ctx)
 	s.Error(j.Error())
 	filter := patch.ById(patchID)
-	patchDoc, err := patch.FindOne(filter)
+	patchDoc, err := patch.FindOne(s.ctx, filter)
 	s.NoError(err)
 	s.Require().NotNil(patchDoc)
 	s.Empty(patchDoc.Version)
 
-	versionDoc, err := model.VersionFindOne(model.VersionById(patchID.Hex()))
+	versionDoc, err := model.VersionFindOne(s.ctx, model.VersionById(patchID.Hex()))
 	s.NoError(err)
 	s.Nil(versionDoc)
 
-	unprocessedIntents, err := patch.FindUnprocessedGithubIntents()
+	unprocessedIntents, err := patch.FindUnprocessedGithubIntents(s.ctx)
 	s.NoError(err)
 	s.Require().Empty(unprocessedIntents)
 }
@@ -1562,11 +1567,11 @@ index ca20f6c..224168e 100644
 +  new line",
 
 `
-	s.Require().NoError(db.WriteGridFile(patch.GridFSPrefix, "testPatch", strings.NewReader(patchString)))
+	s.Require().NoError(db.WriteGridFile(s.ctx, patch.GridFSPrefix, "testPatch", strings.NewReader(patchString)))
 
 	modulePatch := patch.ModulePatch{}
 	modulePatch.PatchSet.PatchFileId = "testPatch"
-	modulePatch, err := getModulePatch(modulePatch)
+	modulePatch, err := getModulePatch(s.ctx, modulePatch)
 	s.NotEmpty(modulePatch.PatchSet.Summary)
 	s.NoError(err)
 }
@@ -1577,7 +1582,7 @@ func (s *PatchIntentUnitsSuite) TestProcessTriggerAliases() {
 		Identifier: "childProj",
 		Requester:  evergreen.RepotrackerVersionRequester,
 	}
-	s.Require().NoError(latestVersion.Insert())
+	s.Require().NoError(latestVersion.Insert(s.ctx))
 
 	latestVersionParserProject := &model.ParserProject{}
 	s.Require().NoError(util.UnmarshalYAMLWithFallback([]byte(`
@@ -1591,7 +1596,7 @@ buildvariants:
 tasks:
 - name: my-task`), latestVersionParserProject))
 	latestVersionParserProject.Id = latestVersion.Id
-	s.Require().NoError(latestVersionParserProject.Insert())
+	s.Require().NoError(latestVersionParserProject.Insert(s.ctx))
 
 	childPatchAlias := model.ProjectAlias{
 		ProjectID: "childProj",
@@ -1599,7 +1604,7 @@ tasks:
 		Task:      "my-task",
 		Variant:   "my-build-variant",
 	}
-	s.Require().NoError(childPatchAlias.Upsert())
+	s.Require().NoError(childPatchAlias.Upsert(s.ctx))
 
 	p := &patch.Patch{
 		Id:      mgobson.NewObjectId(),
@@ -1607,31 +1612,31 @@ tasks:
 		Author:  evergreen.GithubPatchUser,
 		Githash: s.hash,
 	}
-	s.NoError(p.Insert())
+	s.NoError(p.Insert(s.ctx))
 	pp := &model.ParserProject{
 		Id: p.Id.Hex(),
 	}
-	s.NoError(pp.Insert())
+	s.NoError(pp.Insert(s.ctx))
 
 	u := &user.DBUser{
 		Id: evergreen.ParentPatchUser,
 	}
-	s.NoError(u.Insert())
+	s.NoError(u.Insert(s.ctx))
 
-	projectRef, err := model.FindBranchProjectRef(s.project)
+	projectRef, err := model.FindBranchProjectRef(s.ctx, s.project)
 	s.Require().NotNil(projectRef)
 	s.NoError(err)
 
 	s.Empty(p.Triggers.ChildPatches)
 	s.NoError(ProcessTriggerAliases(s.ctx, p, projectRef, s.env, []string{"patch-alias"}))
 
-	dbPatch, err := patch.FindOneId(p.Id.Hex())
+	dbPatch, err := patch.FindOneId(s.ctx, p.Id.Hex())
 	s.NoError(err)
 	s.Require().NotZero(dbPatch)
 	s.Equal(p.Triggers.ChildPatches, dbPatch.Triggers.ChildPatches)
 
 	s.Require().Len(dbPatch.Triggers.ChildPatches, 1)
-	dbChildPatch, err := patch.FindOneId(dbPatch.Triggers.ChildPatches[0])
+	dbChildPatch, err := patch.FindOneId(s.ctx, dbPatch.Triggers.ChildPatches[0])
 	s.NoError(err)
 	s.Require().NotZero(dbChildPatch)
 	s.Require().Len(dbChildPatch.VariantsTasks, 1, "child patch with valid trigger alias in the child project must have the expected variants and tasks")
@@ -1647,7 +1652,7 @@ func (s *PatchIntentUnitsSuite) TestTriggerAliasWithDownstreamRevision() {
 		Revision:   "abc",
 		Requester:  evergreen.RepotrackerVersionRequester,
 	}
-	s.Require().NoError(specificRevision.Insert())
+	s.Require().NoError(specificRevision.Insert(s.ctx))
 
 	specificVersionParserProject := &model.ParserProject{}
 	s.Require().NoError(util.UnmarshalYAMLWithFallback([]byte(`
@@ -1661,7 +1666,7 @@ buildvariants:
 tasks:
 - name: my-task`), specificVersionParserProject))
 	specificVersionParserProject.Id = specificRevision.Id
-	s.Require().NoError(specificVersionParserProject.Insert())
+	s.Require().NoError(specificVersionParserProject.Insert(s.ctx))
 
 	childPatchAlias := model.ProjectAlias{
 		ProjectID: "childProj",
@@ -1669,7 +1674,7 @@ tasks:
 		Task:      "my-task",
 		Variant:   "my-build-variant",
 	}
-	s.Require().NoError(childPatchAlias.Upsert())
+	s.Require().NoError(childPatchAlias.Upsert(s.ctx))
 
 	p := &patch.Patch{
 		Id:      mgobson.NewObjectId(),
@@ -1677,14 +1682,14 @@ tasks:
 		Author:  evergreen.GithubPatchUser,
 		Githash: s.hash,
 	}
-	s.NoError(p.Insert())
+	s.NoError(p.Insert(s.ctx))
 
 	u := &user.DBUser{
 		Id: evergreen.ParentPatchUser,
 	}
-	s.NoError(u.Insert())
+	s.NoError(u.Insert(s.ctx))
 
-	projectRef, err := model.FindBranchProjectRef(s.project)
+	projectRef, err := model.FindBranchProjectRef(s.ctx, s.project)
 	s.Require().NotNil(projectRef)
 	s.NoError(err)
 	s.Require().Len(projectRef.PatchTriggerAliases, 1)
@@ -1692,13 +1697,13 @@ tasks:
 
 	s.NoError(ProcessTriggerAliases(s.ctx, p, projectRef, s.env, []string{"patch-alias"}))
 
-	dbPatch, err := patch.FindOneId(p.Id.Hex())
+	dbPatch, err := patch.FindOneId(s.ctx, p.Id.Hex())
 	s.NoError(err)
 	s.Require().NotZero(dbPatch)
 	s.Equal(p.Triggers.ChildPatches, dbPatch.Triggers.ChildPatches)
 
 	s.Require().Len(dbPatch.Triggers.ChildPatches, 1)
-	dbChildPatch, err := patch.FindOneId(dbPatch.Triggers.ChildPatches[0])
+	dbChildPatch, err := patch.FindOneId(s.ctx, dbPatch.Triggers.ChildPatches[0])
 	s.NoError(err)
 	s.Require().NotZero(dbChildPatch)
 	s.Require().Len(dbChildPatch.VariantsTasks, 1, "child patch with valid trigger alias in the child project must have the expected variants and tasks")
@@ -1714,17 +1719,17 @@ func (s *PatchIntentUnitsSuite) TestProcessTriggerAliasesWithAliasThatDoesNotMat
 		Author:  evergreen.GithubPatchUser,
 		Githash: s.hash,
 	}
-	s.NoError(p.Insert())
+	s.NoError(p.Insert(s.ctx))
 	pp := &model.ParserProject{
 		Id: p.Id.Hex(),
 	}
-	s.NoError(pp.Insert())
+	s.NoError(pp.Insert(s.ctx))
 	latestVersion := model.Version{
 		Id:         "childProj-some-version",
 		Identifier: "childProj",
 		Requester:  evergreen.RepotrackerVersionRequester,
 	}
-	s.Require().NoError(latestVersion.Insert())
+	s.Require().NoError(latestVersion.Insert(s.ctx))
 
 	latestVersionParserProject := &model.ParserProject{}
 	s.Require().NoError(util.UnmarshalYAMLWithFallback([]byte(`
@@ -1738,14 +1743,14 @@ buildvariants:
 tasks:
 - name: my-task`), latestVersionParserProject))
 	latestVersionParserProject.Id = latestVersion.Id
-	s.Require().NoError(latestVersionParserProject.Insert())
+	s.Require().NoError(latestVersionParserProject.Insert(s.ctx))
 
 	u := &user.DBUser{
 		Id: evergreen.ParentPatchUser,
 	}
-	s.NoError(u.Insert())
+	s.NoError(u.Insert(s.ctx))
 
-	projectRef, err := model.FindBranchProjectRef(s.project)
+	projectRef, err := model.FindBranchProjectRef(s.ctx, s.project)
 	s.Require().NotNil(projectRef)
 	s.NoError(err)
 
@@ -1753,7 +1758,7 @@ tasks:
 	s.Error(ProcessTriggerAliases(s.ctx, p, projectRef, s.env, []string{"patch-alias"}), "should error if no tasks/variants match")
 	s.Len(p.Triggers.ChildPatches, 1)
 
-	dbPatch, err := patch.FindOneId(p.Id.Hex())
+	dbPatch, err := patch.FindOneId(s.ctx, p.Id.Hex())
 	s.NoError(err)
 	s.Equal(p.Triggers.ChildPatches, dbPatch.Triggers.ChildPatches)
 }

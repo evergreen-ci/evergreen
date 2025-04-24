@@ -1,6 +1,7 @@
 package definition
 
 import (
+	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
@@ -20,15 +21,15 @@ var (
 )
 
 // Find finds all pod definitions matching the given query.
-func Find(q db.Q) ([]PodDefinition, error) {
+func Find(ctx context.Context, q db.Q) ([]PodDefinition, error) {
 	defs := []PodDefinition{}
-	return defs, errors.WithStack(db.FindAllQ(Collection, q, &defs))
+	return defs, errors.WithStack(db.FindAllQ(ctx, Collection, q, &defs))
 }
 
 // FindOne finds one pod definition by the given query.
-func FindOne(q db.Q) (*PodDefinition, error) {
+func FindOne(ctx context.Context, q db.Q) (*PodDefinition, error) {
 	var def PodDefinition
-	err := db.FindOneQ(Collection, q, &def)
+	err := db.FindOneQContext(ctx, Collection, q, &def)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -37,18 +38,18 @@ func FindOne(q db.Q) (*PodDefinition, error) {
 
 // UpsertOne updates an existing pod definition if it exists based on the
 // query; otherwise, it inserts a new pod definition.
-func UpsertOne(query, update interface{}) (*adb.ChangeInfo, error) {
-	return db.Upsert(Collection, query, update)
+func UpsertOne(ctx context.Context, query, update any) (*adb.ChangeInfo, error) {
+	return db.Upsert(ctx, Collection, query, update)
 }
 
 // UpdateOne updates an existing pod definition.
-func UpdateOne(query, update interface{}) error {
-	return db.Update(Collection, query, update)
+func UpdateOne(ctx context.Context, query, update any) error {
+	return db.UpdateContext(ctx, Collection, query, update)
 }
 
 // FindOneID returns a query to find a pod definition with the given ID.
-func FindOneID(id string) (*PodDefinition, error) {
-	return FindOne(db.Query(ByID(id)))
+func FindOneID(ctx context.Context, id string) (*PodDefinition, error) {
+	return FindOne(ctx, db.Query(ByID(id)))
 }
 
 // ByID returns a query to find pod definitions with the given ID.
@@ -63,13 +64,13 @@ func ByExternalID(id string) bson.M {
 }
 
 // FindOneByExternalID find a pod definition with the given external ID.
-func FindOneByExternalID(id string) (*PodDefinition, error) {
-	return FindOne(db.Query(ByExternalID(id)))
+func FindOneByExternalID(ctx context.Context, id string) (*PodDefinition, error) {
+	return FindOne(ctx, db.Query(ByExternalID(id)))
 }
 
 // FindOneByFamily finds a pod definition with the given family name.
-func FindOneByFamily(family string) (*PodDefinition, error) {
-	return FindOne(db.Query(bson.M{
+func FindOneByFamily(ctx context.Context, family string) (*PodDefinition, error) {
+	return FindOne(ctx, db.Query(bson.M{
 		FamilyKey: family,
 	}))
 }
@@ -77,8 +78,8 @@ func FindOneByFamily(family string) (*PodDefinition, error) {
 // FindByLastAccessedBefore finds all pod definitions that were last accessed
 // before the TTL. If a positive limit is given, it will return at most that
 // number of results; otherwise, the results are unlimited.
-func FindByLastAccessedBefore(ttl time.Duration, limit int) ([]PodDefinition, error) {
-	return Find(db.Query(bson.M{
+func FindByLastAccessedBefore(ctx context.Context, ttl time.Duration, limit int) ([]PodDefinition, error) {
+	return Find(ctx, db.Query(bson.M{
 		"$or": []bson.M{
 			{
 				LastAccessedKey: bson.M{"$lt": time.Now().Add(-ttl)},

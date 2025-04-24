@@ -25,7 +25,7 @@ type hostsData struct {
 type pluginData struct {
 	Includes []template.HTML
 	Panels   plugin.PanelLayout
-	Data     map[string]interface{}
+	Data     map[string]any
 }
 
 type uiVersion struct {
@@ -51,7 +51,7 @@ type uiUpstreamData struct {
 
 type uiPatch struct {
 	Patch       patch.Patch
-	StatusDiffs interface{}
+	StatusDiffs any
 
 	// only used on task pages
 	BaseTimeTaken time.Duration `json:"base_time_taken"`
@@ -103,8 +103,8 @@ type uiTask struct {
 // getBuildVariantHistory returns a slice of builds that surround a given build.
 // As many as 'before' builds (less recent builds) plus as many as 'after' builds
 // (more recent builds) are returned.
-func getBuildVariantHistory(buildId string, before int, after int) ([]build.Build, error) {
-	b, err := build.FindOne(build.ById(buildId))
+func getBuildVariantHistory(ctx context.Context, buildId string, before int, after int) ([]build.Build, error) {
+	b, err := build.FindOne(ctx, build.ById(buildId))
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -112,7 +112,7 @@ func getBuildVariantHistory(buildId string, before int, after int) ([]build.Buil
 		return nil, errors.Errorf("no build with id %v", buildId)
 	}
 
-	lessRecentBuilds, err := build.Find(
+	lessRecentBuilds, err := build.Find(ctx,
 		build.ByBeforeRevision(b.Project, b.BuildVariant, b.RevisionOrderNumber).
 			WithFields(build.IdKey, build.TasksKey, build.StatusKey, build.VersionKey, build.ActivatedKey).
 			Limit(before))
@@ -120,7 +120,7 @@ func getBuildVariantHistory(buildId string, before int, after int) ([]build.Buil
 		return nil, errors.WithStack(err)
 	}
 
-	moreRecentBuilds, err := build.Find(
+	moreRecentBuilds, err := build.Find(ctx,
 		build.ByAfterRevision(b.Project, b.BuildVariant, b.RevisionOrderNumber).
 			WithFields(build.IdKey, build.TasksKey, build.StatusKey, build.VersionKey, build.ActivatedKey).
 			Limit(after))
@@ -137,15 +137,15 @@ func getBuildVariantHistory(buildId string, before int, after int) ([]build.Buil
 }
 
 // Given build id, get last successful build before this one
-func getBuildVariantHistoryLastSuccess(buildId string) (*build.Build, error) {
-	b, err := build.FindOne(build.ById(buildId))
+func getBuildVariantHistoryLastSuccess(ctx context.Context, buildId string) (*build.Build, error) {
+	b, err := build.FindOne(ctx, build.ById(buildId))
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 	if b.Status == evergreen.BuildSucceeded {
 		return b, nil
 	}
-	b, err = b.PreviousSuccessful()
+	b, err = b.PreviousSuccessful(ctx)
 	return b, errors.WithStack(err)
 }
 

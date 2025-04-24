@@ -1,11 +1,9 @@
 package agent
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -22,7 +20,6 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/thirdparty/docker"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
@@ -35,6 +32,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 )
@@ -43,6 +41,8 @@ const hostAttribute = "evergreen.host"
 
 var (
 	shouldExitAttribute = fmt.Sprintf("%s.should_exit", hostAttribute)
+	// globalFilesToCleanup are used for cleaning up at the end of the task; these files are appended to the home directory.
+	globalFilesToCleanup = []string{".gitconfig", ".git-credentials", ".netrc"}
 )
 
 // Agent manages the data necessary to run tasks in a runtime environment.
@@ -88,6 +88,7 @@ type Options struct {
 	// sent to the global agent file log.
 	SendTaskLogsToGlobalSender bool
 	HomeDirectory              string
+	SingleTaskDistro           bool
 }
 
 // AddLoggableInfo is a helper to add relevant information about the agent
@@ -220,7 +221,7 @@ func (a *Agent) Start(ctx context.Context) error {
 		return errors.Wrap(err, "starting status server")
 	}
 	if a.opts.Cleanup {
-		a.tryCleanupDirectory(a.opts.WorkingDirectory)
+		a.tryCleanupDirectory(ctx, a.opts.WorkingDirectory)
 	}
 
 	return errors.Wrap(a.loop(ctx), "executing main agent loop")
@@ -287,7 +288,12 @@ func (a *Agent) loop(ctx context.Context) error {
 			if ntr.tc != nil {
 				tc = ntr.tc
 			}
-
+			// Single task distros should exit after running a single task.
+			// However, if the task group needs tearing down, we should continue
+			// the loop so the teardown group can run in the next iteration.
+			if !needTeardownGroup && a.opts.SingleTaskDistro {
+				return a.comm.DisableHost(ctx, a.opts.HostID, apimodels.DisableInfo{Reason: "Single task distro ran a task"})
+			}
 			if ntr.shouldExit {
 				return nil
 			}
@@ -339,6 +345,22 @@ func (a *Agent) processNextTask(ctx context.Context, nt *apimodels.NextTaskRespo
 	if nt.ShouldTeardownGroup {
 		// Tear down the task group if the task group is finished.
 		a.runTeardownGroupCommands(ctx, tc)
+
+		var err error
+		// Terminate host if a task groups is complete in a single host distro.
+		if a.opts.SingleTaskDistro {
+			err = a.comm.DisableHost(ctx, a.opts.HostID, apimodels.DisableInfo{Reason: "Single task distro ran a task"})
+			if err != nil {
+				span.RecordError(err, trace.WithAttributes(attribute.String("task.id", tc.task.ID)), trace.WithStackTrace(true))
+				grip.Critical(message.WrapError(err, message.Fields{
+					"message":    "error disabling host after task group completion",
+					"task":       tc.task.ID,
+					"host":       a.opts.HostID,
+					"task_group": nt.TaskGroup,
+				}))
+			}
+		}
+
 		return processNextResponse{
 			// Running the teardown group commands implies exiting the group, so
 			// destroy prior task information.
@@ -346,7 +368,7 @@ func (a *Agent) processNextTask(ctx context.Context, nt *apimodels.NextTaskRespo
 				logger: client.NewSingleChannelLogHarness("default", a.defaultLogger),
 			},
 			needTeardownGroup: false,
-		}, nil
+		}, err
 	}
 
 	if nt.TaskId == "" && needTeardownGroup {
@@ -504,14 +526,21 @@ func (a *Agent) setupTask(agentCtx, setupCtx context.Context, initialTC *taskCon
 	tc.taskConfig.WorkDir = taskDirectory
 	tc.taskConfig.NewExpansions.Put("workdir", tc.taskConfig.WorkDir)
 
+	traceClient := otlptracegrpc.NewClient(otlptracegrpc.WithGRPCConn(a.otelGrpcConn))
 	// Set up a new task output directory regardless if the task is part of
 	// a task group.
-	redactorOpts := redactor.RedactionOptions{
-		Expansions:         tc.taskConfig.NewExpansions,
-		Redacted:           tc.taskConfig.Redacted,
-		InternalRedactions: tc.taskConfig.InternalRedactions,
+	opts := taskoutput.DirectoryOpts{
+		Root:        tc.taskConfig.WorkDir,
+		Tsk:         &tc.taskConfig.Task,
+		Logger:      tc.logger,
+		TraceClient: traceClient,
+		RedactorOpts: redactor.RedactionOptions{
+			Expansions:         tc.taskConfig.NewExpansions,
+			Redacted:           tc.taskConfig.Redacted,
+			InternalRedactions: tc.taskConfig.InternalRedactions,
+		},
 	}
-	tc.taskConfig.TaskOutputDir = taskoutput.NewDirectory(tc.taskConfig.WorkDir, &tc.taskConfig.Task, redactorOpts, tc.logger)
+	tc.taskConfig.TaskOutputDir = taskoutput.NewDirectory(opts)
 	if err := tc.taskConfig.TaskOutputDir.Setup(); err != nil {
 		return a.handleSetupError(setupCtx, tc, errors.Wrap(err, "creating task output directory"))
 	}
@@ -901,7 +930,7 @@ func (a *Agent) runPostOrTeardownTaskCommands(ctx context.Context, tc *taskConte
 }
 
 func (a *Agent) runTeardownGroupCommands(ctx context.Context, tc *taskContext) {
-	defer a.removeTaskDirectory(tc)
+	defer a.removeTaskDirectory(ctx, tc)
 	if tc.taskConfig == nil {
 		return
 	}
@@ -918,7 +947,7 @@ func (a *Agent) runTeardownGroupCommands(ctx context.Context, tc *taskContext) {
 			grip.Error(tc.logger.Close())
 		}
 	}()
-	defer a.clearGitConfig(tc)
+	defer a.clearGlobalFiles(tc)
 
 	teardownGroup, err := tc.getTeardownGroup()
 	if err != nil {
@@ -1044,7 +1073,6 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 	// was setup, regardless of the task status.
 	if tc.taskConfig != nil && tc.taskConfig.TaskOutputDir != nil {
 		toCtx, span := a.tracer.Start(ctx, "task-output-ingestion")
-		tc.logger.Execution().Error(errors.Wrap(a.uploadTraces(toCtx, tc.taskConfig.WorkDir), "uploading traces"))
 		tc.logger.Execution().Error(errors.Wrap(tc.taskConfig.TaskOutputDir.Run(toCtx), "ingesting task output"))
 		span.End()
 	}
@@ -1265,75 +1293,25 @@ func (a *Agent) killProcs(ctx context.Context, tc *taskContext, ignoreTaskGroupC
 	}
 }
 
-// clearGitConfig cleans up git files that were created in the home directory including
-// the global git config file and credentials file. It also unregisters any repositories
-// that were cloned with scalar to stop the background maintenance of the repositories.
-func (a *Agent) clearGitConfig(tc *taskContext) {
+// clearGlobalFiles cleans up certain files that were created in the home directory, including
+// the global git config file, git credentials file, and netrc file.
+func (a *Agent) clearGlobalFiles(tc *taskContext) {
 	logger := grip.GetDefaultJournaler()
 	if tc.logger != nil && !tc.logger.Closed() {
 		logger = tc.logger.Execution()
 	}
 
-	logger.Infof("Clearing git config.")
-
-	globalGitConfigPath := filepath.Join(a.opts.HomeDirectory, ".gitconfig")
-	if _, err := os.Stat(globalGitConfigPath); os.IsNotExist(err) {
-		logger.Info("Global git config file does not exist.")
-	} else if err := os.Remove(globalGitConfigPath); err != nil {
-		logger.Error(errors.Wrap(err, "removing global git config file"))
-	} else {
-		logger.Info("Cleared git config.")
-	}
-
-	logger.Infof("Clearing git credentials.")
-	globalGitCredentialsPath := filepath.Join(a.opts.HomeDirectory, ".git-credentials")
-	if _, err := os.Stat(globalGitCredentialsPath); os.IsNotExist(err) {
-		logger.Info("Global git credentials file does not exist.")
-	} else if err := os.Remove(globalGitCredentialsPath); err != nil {
-		logger.Error(errors.Wrap(err, "removing global git credentials file"))
-	} else {
-		logger.Info("Cleared git credentials.")
-	}
-
-	if err := unregisterScalar(); err != nil {
-		logger.Error(errors.Wrap(err, "unregistering scalar repositories"))
-	}
-}
-
-// unregisterScalar unregisters a repository that was cloned (and therefore registered) with Scalar.
-// This should be done for each repository after it is cloned with scalar to stop the background maintenance processes.
-func unregisterScalar() error {
-	isScalarAvailable, err := agentutil.IsGitVersionMinimumForScalar(thirdparty.RequiredScalarGitVersion)
-
-	if err != nil {
-		return errors.Wrap(err, "checking git version")
-	}
-	// If scalar is not available, don't unregister it (in this case it also wasn't used to clone the repo).
-	if !isScalarAvailable {
-		return nil
-	}
-
-	// Run scalar list to get all registered repositories
-	cmd := exec.Command("scalar", "list")
-	var out bytes.Buffer
-	cmd.Stdout = &out
-
-	if err = cmd.Run(); err != nil {
-		return errors.Wrap(err, "running scalar list")
-	}
-	repoPaths := strings.Split(strings.TrimSpace(out.String()), "\n")
-
-	// Unregister each registered repository
-	catcher := grip.NewBasicCatcher()
-	for _, repoPath := range repoPaths {
-		c := exec.Command("scalar", "unregister", repoPath)
-		c.Stdout, c.Stderr = os.Stdout, os.Stderr
-
-		if err = c.Run(); err != nil {
-			catcher.Add(errors.Wrapf(err, "unregistering repo from scalar: %s", repoPath))
+	for _, file := range globalFilesToCleanup {
+		logger.Infof("Clearing '%s'.", file)
+		globalPath := filepath.Join(a.opts.HomeDirectory, file)
+		if _, err := os.Stat(globalPath); os.IsNotExist(err) {
+			logger.Infof("Global '%s' file does not exist.", file)
+		} else if err := os.Remove(globalPath); err != nil {
+			logger.Error(errors.Wrapf(err, "removing global '%s' file", file))
+		} else {
+			logger.Infof("Cleared '%s'.", file)
 		}
 	}
-	return catcher.Resolve()
 }
 
 func (a *Agent) shouldKill(tc *taskContext, ignoreTaskGroupCheck bool) bool {

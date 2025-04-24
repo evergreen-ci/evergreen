@@ -59,7 +59,7 @@ func (t *versionTriggers) Fetch(ctx context.Context, e *event.EventLogEntry) err
 		return errors.Wrap(err, "fetching UI config")
 	}
 
-	t.version, err = model.VersionFindOne(model.VersionById(e.ResourceId))
+	t.version, err = model.VersionFindOneId(ctx, e.ResourceId)
 	if err != nil {
 		return errors.Wrapf(err, "finding version '%s'", e.ResourceId)
 	}
@@ -102,9 +102,9 @@ func (t *versionTriggers) Attributes() event.Attributes {
 	return attributes
 }
 
-func (t *versionTriggers) makeData(sub *event.Subscription, pastTenseOverride string) (*commonTemplateData, error) {
+func (t *versionTriggers) makeData(ctx context.Context, sub *event.Subscription, pastTenseOverride string) (*commonTemplateData, error) {
 	api := restModel.APIVersion{}
-	api.BuildFromService(*t.version)
+	api.BuildFromService(ctx, *t.version)
 	projectName := t.version.Identifier
 	if api.ProjectIdentifier != nil {
 		projectName = utility.FromStringPtr(api.ProjectIdentifier)
@@ -113,7 +113,7 @@ func (t *versionTriggers) makeData(sub *event.Subscription, pastTenseOverride st
 	versionStatus := t.data.Status
 	if evergreen.IsPatchRequester(t.version.Requester) {
 		var err error
-		p, err := patch.FindOneId(t.version.Id)
+		p, err := patch.FindOneId(ctx, t.version.Id)
 		if err != nil {
 			return nil, errors.Wrapf(err, "getting patch for version '%s'", t.version.Id)
 		}
@@ -122,7 +122,7 @@ func (t *versionTriggers) makeData(sub *event.Subscription, pastTenseOverride st
 		}
 
 		// Look at collective status because we don't know whether the last patch to finish in the version was a child or a parent.
-		versionStatus, err = p.CollectiveStatus()
+		versionStatus, err = p.CollectiveStatus(ctx)
 		if err != nil {
 			return nil, errors.Wrap(err, "getting collective status for patch")
 		}
@@ -188,8 +188,8 @@ func (t *versionTriggers) makeData(sub *event.Subscription, pastTenseOverride st
 	return &data, nil
 }
 
-func (t *versionTriggers) generate(sub *event.Subscription, pastTenseOverride string) (*notification.Notification, error) {
-	data, err := t.makeData(sub, pastTenseOverride)
+func (t *versionTriggers) generate(ctx context.Context, sub *event.Subscription, pastTenseOverride string) (*notification.Notification, error) {
+	data, err := t.makeData(ctx, sub, pastTenseOverride)
 	if err != nil {
 		return nil, errors.Wrap(err, "collecting version data")
 	}
@@ -205,7 +205,7 @@ func (t *versionTriggers) versionOutcome(ctx context.Context, sub *event.Subscri
 		return nil, nil
 	}
 
-	return t.generate(sub, "")
+	return t.generate(ctx, sub, "")
 }
 
 func (t *versionTriggers) versionGithubCheckOutcome(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
@@ -213,7 +213,7 @@ func (t *versionTriggers) versionGithubCheckOutcome(ctx context.Context, sub *ev
 		return nil, nil
 	}
 
-	return t.generate(sub, "")
+	return t.generate(ctx, sub, "")
 }
 
 func (t *versionTriggers) versionFailure(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
@@ -236,7 +236,7 @@ func (t *versionTriggers) versionFailure(ctx context.Context, sub *event.Subscri
 	if skipNotification {
 		return nil, nil
 	}
-	return t.generate(sub, "")
+	return t.generate(ctx, sub, "")
 }
 
 func (t *versionTriggers) versionSuccess(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
@@ -244,7 +244,7 @@ func (t *versionTriggers) versionSuccess(ctx context.Context, sub *event.Subscri
 		return nil, nil
 	}
 
-	return t.generate(sub, "")
+	return t.generate(ctx, sub, "")
 }
 
 func (t *versionTriggers) versionExceedsDuration(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
@@ -264,7 +264,7 @@ func (t *versionTriggers) versionExceedsDuration(ctx context.Context, sub *event
 	if !t.version.StartTime.Add(maxDuration).Before(t.version.FinishTime) {
 		return nil, nil
 	}
-	return t.generate(sub, fmt.Sprintf("exceeded %d seconds", threshold))
+	return t.generate(ctx, sub, fmt.Sprintf("exceeded %d seconds", threshold))
 }
 func (t *versionTriggers) versionFamilyOutcome(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
 	if !evergreen.IsFinishedVersionStatus(t.data.Status) {
@@ -273,7 +273,7 @@ func (t *versionTriggers) versionFamilyOutcome(ctx context.Context, sub *event.S
 	if t.event.EventType != event.VersionChildrenCompletion {
 		return nil, nil
 	}
-	return t.generate(sub, "")
+	return t.generate(ctx, sub, "")
 }
 
 func (t *versionTriggers) versionFamilyFailure(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
@@ -297,7 +297,7 @@ func (t *versionTriggers) versionFamilyFailure(ctx context.Context, sub *event.S
 		return nil, nil
 	}
 
-	return t.generate(sub, "")
+	return t.generate(ctx, sub, "")
 }
 
 func (t *versionTriggers) versionFamilySuccess(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
@@ -305,7 +305,7 @@ func (t *versionTriggers) versionFamilySuccess(ctx context.Context, sub *event.S
 		return nil, nil
 	}
 
-	return t.generate(sub, "")
+	return t.generate(ctx, sub, "")
 }
 
 func (t *versionTriggers) versionRuntimeChange(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
@@ -321,7 +321,7 @@ func (t *versionTriggers) versionRuntimeChange(ctx context.Context, sub *event.S
 		return nil, fmt.Errorf("subscription '%s' has an invalid percentage", sub.ID)
 	}
 
-	lastGreen, err := t.version.LastSuccessful()
+	lastGreen, err := t.version.LastSuccessful(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "retrieving last green build")
 	}
@@ -334,7 +334,7 @@ func (t *versionTriggers) versionRuntimeChange(ctx context.Context, sub *event.S
 	if !shouldNotify {
 		return nil, nil
 	}
-	return t.generate(sub, fmt.Sprintf("changed in runtime by %.1f%% (over threshold of %s%%)", percentChange, percentString))
+	return t.generate(ctx, sub, fmt.Sprintf("changed in runtime by %.1f%% (over threshold of %s%%)", percentChange, percentString))
 }
 
 func (t *versionTriggers) versionRegression(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
@@ -353,7 +353,7 @@ func (t *versionTriggers) versionRegression(ctx context.Context, sub *event.Subs
 			return nil, errors.Wrap(err, "evaluating task regression")
 		}
 		if isRegression {
-			return t.generate(sub, "")
+			return t.generate(ctx, sub, "")
 		}
 	}
 	return nil, nil

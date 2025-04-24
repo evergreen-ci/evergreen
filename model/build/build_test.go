@@ -37,12 +37,12 @@ func TestGenericBuildFinding(t *testing.T) {
 		Convey("when finding one build", func() {
 			Convey("the matching build should be returned", func() {
 				buildOne := &Build{Id: "buildOne"}
-				So(buildOne.Insert(), ShouldBeNil)
+				So(buildOne.Insert(t.Context()), ShouldBeNil)
 
 				buildTwo := &Build{Id: "buildTwo"}
-				So(buildTwo.Insert(), ShouldBeNil)
+				So(buildTwo.Insert(t.Context()), ShouldBeNil)
 
-				found, err := FindOne(ById(buildOne.Id))
+				found, err := FindOne(t.Context(), ById(buildOne.Id))
 				So(err, ShouldBeNil)
 				So(found.Id, ShouldEqual, buildOne.Id)
 			})
@@ -52,15 +52,15 @@ func TestGenericBuildFinding(t *testing.T) {
 			Convey("a slice of all of the matching builds should be returned", func() {
 
 				buildOne := &Build{Id: "buildOne", Project: "b1"}
-				So(buildOne.Insert(), ShouldBeNil)
+				So(buildOne.Insert(t.Context()), ShouldBeNil)
 
 				buildTwo := &Build{Id: "buildTwo", Project: "b1"}
-				So(buildTwo.Insert(), ShouldBeNil)
+				So(buildTwo.Insert(t.Context()), ShouldBeNil)
 
 				buildThree := &Build{Id: "buildThree", Project: "b2"}
-				So(buildThree.Insert(), ShouldBeNil)
+				So(buildThree.Insert(t.Context()), ShouldBeNil)
 
-				found, err := Find(ByProject("b1"))
+				found, err := Find(t.Context(), ByProject("b1"))
 				So(err, ShouldBeNil)
 				So(len(found), ShouldEqual, 2)
 				So(buildIdInSlice(found, buildOne.Id), ShouldBeTrue)
@@ -89,7 +89,7 @@ func TestRecentlyFinishedBuilds(t *testing.T) {
 				TimeTaken:  time.Duration(1),
 				FinishTime: finishTime.Add(1 * time.Second),
 			}
-			So(finishedOne.Insert(), ShouldBeNil)
+			So(finishedOne.Insert(t.Context()), ShouldBeNil)
 
 			finishedTwo := &Build{
 				Id:         "fin2",
@@ -98,18 +98,18 @@ func TestRecentlyFinishedBuilds(t *testing.T) {
 				TimeTaken:  time.Duration(1),
 				FinishTime: finishTime.Add(2 * time.Second),
 			}
-			So(finishedTwo.Insert(), ShouldBeNil)
+			So(finishedTwo.Insert(t.Context()), ShouldBeNil)
 
 			unfinished := &Build{
 				Id:        "unfin",
 				Project:   "project1",
 				Requester: "r1",
 			}
-			So(unfinished.Insert(), ShouldBeNil)
+			So(unfinished.Insert(t.Context()), ShouldBeNil)
 
 			// only the finished ones should be returned
 
-			found, err := Find(ByFinishedAfter(finishTime, "project1", "r1"))
+			found, err := Find(t.Context(), ByFinishedAfter(finishTime, "project1", "r1"))
 			So(err, ShouldBeNil)
 			So(len(found), ShouldEqual, 2)
 			So(buildIdInSlice(found, finishedOne.Id), ShouldBeTrue)
@@ -131,7 +131,7 @@ func TestRecentlyFinishedBuilds(t *testing.T) {
 				TimeTaken:  time.Duration(1),
 				FinishTime: finishTime.Add(1 * time.Second),
 			}
-			So(finishedOne.Insert(), ShouldBeNil)
+			So(finishedOne.Insert(t.Context()), ShouldBeNil)
 
 			finishedTwo := &Build{
 				Id:         "fin2",
@@ -140,7 +140,7 @@ func TestRecentlyFinishedBuilds(t *testing.T) {
 				TimeTaken:  time.Duration(1),
 				FinishTime: finishTime,
 			}
-			So(finishedTwo.Insert(), ShouldBeNil)
+			So(finishedTwo.Insert(t.Context()), ShouldBeNil)
 
 			finishedThree := &Build{
 				Id:         "fin3",
@@ -149,12 +149,12 @@ func TestRecentlyFinishedBuilds(t *testing.T) {
 				TimeTaken:  time.Duration(1),
 				FinishTime: finishTime.Add(-1 * time.Second),
 			}
-			So(finishedThree.Insert(), ShouldBeNil)
+			So(finishedThree.Insert(t.Context()), ShouldBeNil)
 
 			// only the one that finished after the specified time should
 			// be returned
 
-			found, err := Find(ByFinishedAfter(finishTime, "project1", "r1"))
+			found, err := Find(t.Context(), ByFinishedAfter(finishTime, "project1", "r1"))
 			So(err, ShouldBeNil)
 			So(len(found), ShouldEqual, 1)
 			So(found[0].Id, ShouldEqual, finishedOne.Id)
@@ -176,7 +176,7 @@ func TestRecentlyFinishedBuilds(t *testing.T) {
 				TimeTaken:  time.Duration(1),
 				FinishTime: finishTime.Add(1 * time.Second),
 			}
-			So(wrongReq.Insert(), ShouldBeNil)
+			So(wrongReq.Insert(t.Context()), ShouldBeNil)
 
 			wrongProject := &Build{
 				Id:         "wrongProject",
@@ -185,7 +185,7 @@ func TestRecentlyFinishedBuilds(t *testing.T) {
 				TimeTaken:  time.Duration(1),
 				FinishTime: finishTime.Add(1 * time.Second),
 			}
-			So(wrongProject.Insert(), ShouldBeNil)
+			So(wrongProject.Insert(t.Context()), ShouldBeNil)
 
 			matching := &Build{
 				Id:         "matching",
@@ -194,12 +194,12 @@ func TestRecentlyFinishedBuilds(t *testing.T) {
 				TimeTaken:  time.Duration(1),
 				FinishTime: finishTime.Add(1 * time.Second),
 			}
-			So(matching.Insert(), ShouldBeNil)
+			So(matching.Insert(t.Context()), ShouldBeNil)
 
 			// only the one with the correct project and requester should be
 			// returned
 
-			found, err := Find(ByFinishedAfter(finishTime, "project1", "r1"))
+			found, err := Find(t.Context(), ByFinishedAfter(finishTime, "project1", "r1"))
 			So(err, ShouldBeNil)
 			So(len(found), ShouldEqual, 1)
 			So(found[0].Id, ShouldEqual, matching.Id)
@@ -220,15 +220,16 @@ func TestGenericBuildUpdating(t *testing.T) {
 			" in the database", func() {
 
 			buildOne := &Build{Id: "buildOne"}
-			So(buildOne.Insert(), ShouldBeNil)
+			So(buildOne.Insert(t.Context()), ShouldBeNil)
 
 			err := UpdateOne(
+				t.Context(),
 				bson.M{IdKey: buildOne.Id},
 				bson.M{"$set": bson.M{ProjectKey: "blah"}},
 			)
 			So(err, ShouldBeNil)
 
-			buildOne, err = FindOne(ById(buildOne.Id))
+			buildOne, err = FindOne(t.Context(), ById(buildOne.Id))
 			So(err, ShouldBeNil)
 			So(buildOne.Project, ShouldEqual, "blah")
 		})
@@ -244,13 +245,13 @@ func TestBuildUpdateStatus(t *testing.T) {
 
 		var err error
 		build := &Build{Id: "build"}
-		So(build.Insert(), ShouldBeNil)
+		So(build.Insert(t.Context()), ShouldBeNil)
 
 		Convey("setting its status should update it both in-memory and"+
 			" in the database", func() {
-			So(build.UpdateStatus(evergreen.BuildSucceeded), ShouldBeNil)
+			So(build.UpdateStatus(t.Context(), evergreen.BuildSucceeded), ShouldBeNil)
 			So(build.Status, ShouldEqual, evergreen.BuildSucceeded)
-			build, err = FindOne(ById(build.Id))
+			build, err = FindOne(t.Context(), ById(build.Id))
 			So(err, ShouldBeNil)
 			So(build.Status, ShouldEqual, evergreen.BuildSucceeded)
 		})
@@ -263,36 +264,36 @@ func TestBuildSetHasUnfinishedEssentialTask(t *testing.T) {
 	}()
 	for tName, tCase := range map[string]func(t *testing.T, b Build){
 		"FailsWithNonexistentBuild": func(t *testing.T, b Build) {
-			assert.Error(t, b.SetHasUnfinishedEssentialTask(true))
+			assert.Error(t, b.SetHasUnfinishedEssentialTask(t.Context(), true))
 			assert.False(t, b.HasUnfinishedEssentialTask)
 		},
 		"NoopsWithSameValue": func(t *testing.T, b Build) {
-			require.NoError(t, b.Insert())
-			require.NoError(t, b.SetHasUnfinishedEssentialTask(false))
+			require.NoError(t, b.Insert(t.Context()))
+			require.NoError(t, b.SetHasUnfinishedEssentialTask(t.Context(), false))
 			assert.False(t, b.HasUnfinishedEssentialTask)
 
-			dbBuild, err := FindOneId(b.Id)
+			dbBuild, err := FindOneId(t.Context(), b.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbBuild)
 			assert.False(t, dbBuild.HasUnfinishedEssentialTask)
 		},
 		"SetsFlag": func(t *testing.T, b Build) {
-			require.NoError(t, b.Insert())
-			require.NoError(t, b.SetHasUnfinishedEssentialTask(true))
+			require.NoError(t, b.Insert(t.Context()))
+			require.NoError(t, b.SetHasUnfinishedEssentialTask(t.Context(), true))
 			assert.True(t, b.HasUnfinishedEssentialTask)
 
-			dbBuild, err := FindOneId(b.Id)
+			dbBuild, err := FindOneId(t.Context(), b.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbBuild)
 			assert.True(t, dbBuild.HasUnfinishedEssentialTask)
 		},
 		"ClearsFlag": func(t *testing.T, b Build) {
 			b.HasUnfinishedEssentialTask = true
-			require.NoError(t, b.Insert())
-			require.NoError(t, b.SetHasUnfinishedEssentialTask(false))
+			require.NoError(t, b.Insert(t.Context()))
+			require.NoError(t, b.SetHasUnfinishedEssentialTask(t.Context(), false))
 			assert.False(t, b.HasUnfinishedEssentialTask)
 
-			dbBuild, err := FindOneId(b.Id)
+			dbBuild, err := FindOneId(t.Context(), b.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbBuild)
 			assert.False(t, dbBuild.HasUnfinishedEssentialTask)
@@ -318,13 +319,13 @@ func TestBulkInsert(t *testing.T) {
 	}
 
 	assert.Error(t, builds.InsertMany(context.Background(), true))
-	dbBuilds, err := Find(db.Q{})
+	dbBuilds, err := Find(t.Context(), db.Q{})
 	assert.NoError(t, err)
 	assert.Len(t, dbBuilds, 1)
 
 	assert.NoError(t, db.ClearCollections(Collection))
 	assert.Error(t, builds.InsertMany(context.Background(), false))
-	dbBuilds, err = Find(db.Q{})
+	dbBuilds, err = Find(t.Context(), db.Q{})
 	assert.NoError(t, err)
 	assert.Len(t, dbBuilds, 3)
 }

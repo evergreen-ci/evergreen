@@ -21,9 +21,11 @@ const (
 	maxGeneratedBuildVariants = 200
 	maxGeneratedTasks         = 25000
 
-	numGenerateTaskBVAttribute         = "evergreen.generate_tasks.num_build_variants"
-	numGenerateTasksAttribute          = "evergreen.generate_tasks.num_created"
-	numActivatedGenerateTasksAttribute = "evergreen.generate_tasks.num_activated"
+	numGenerateTaskBVAttribute           = "evergreen.generate_tasks.num_build_variants"
+	numGenerateTasksAttribute            = "evergreen.generate_tasks.num_created"
+	numActivatedGenerateTasksAttribute   = "evergreen.generate_tasks.num_activated"
+	skippingGenerateTasksAttribute       = "evergreen.generate_tasks.skipping"
+	firstGenerateTasksOnVersionAttribute = "evergreen.generate_tasks.first_generate_tasks_on_version"
 )
 
 var DependencyCycleError = errors.New("adding dependencies creates a dependency cycle")
@@ -185,8 +187,12 @@ func (g *GeneratedProject) Save(ctx context.Context, settings *evergreen.Setting
 // updateParserProject updates the parser project along with generated task ID
 // and updated config number.
 func updateParserProject(ctx context.Context, settings *evergreen.Settings, v *Version, pp *ParserProject, taskId string) error {
+	ctx, span := tracer.Start(ctx, "update-parser-project")
+	defer span.End()
+
 	if utility.StringSliceContains(pp.UpdatedByGenerators, taskId) {
 		// This generator has already updated the parser project so continue.
+		span.SetAttributes(attribute.Bool(skippingGenerateTasksAttribute, true))
 		return nil
 	}
 
@@ -195,6 +201,7 @@ func updateParserProject(ctx context.Context, settings *evergreen.Settings, v *V
 	// a special case that enables child patches to reference a pre-generated copy of the parser project
 	// so that they can call generate.tasks again without getting a "redefining tasks" error.
 	if len(pp.UpdatedByGenerators) == 0 {
+		span.SetAttributes(attribute.Bool(firstGenerateTasksOnVersionAttribute, true))
 		oldPP, err := ParserProjectFindOneByID(ctx, settings, v.ProjectStorageMethod, v.Id)
 		if err != nil {
 			return errors.Wrapf(err, "finding parser project '%s' from before task generation", v.Id)
@@ -207,7 +214,7 @@ func updateParserProject(ctx context.Context, settings *evergreen.Settings, v *V
 		if err != nil {
 			return errors.Wrapf(err, "upserting pre-generation parser project '%s'", oldPP.Id)
 		}
-		if err = v.UpdatePreGenerationProjectStorageMethod(preGenerationStorageMethod); err != nil {
+		if err = v.UpdatePreGenerationProjectStorageMethod(ctx, preGenerationStorageMethod); err != nil {
 			return errors.Wrapf(err, "updating version's parser project pre-generation storage method from '%s' to '%s'", v.ProjectStorageMethod, preGenerationStorageMethod)
 		}
 	}
@@ -218,7 +225,7 @@ func updateParserProject(ctx context.Context, settings *evergreen.Settings, v *V
 	if err != nil {
 		return errors.Wrapf(err, "upserting parser project '%s'", pp.Id)
 	}
-	if err := v.UpdateProjectStorageMethod(ppStorageMethod); err != nil {
+	if err := v.UpdateProjectStorageMethod(ctx, ppStorageMethod); err != nil {
 		return errors.Wrapf(err, "updating version's parser project storage method from '%s' to '%s'", v.ProjectStorageMethod, ppStorageMethod)
 	}
 
@@ -256,7 +263,7 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, settings *
 		}
 	}
 
-	existingBuilds, err := build.Find(build.ByVersion(v.Id))
+	existingBuilds, err := build.Find(ctx, build.ByVersion(v.Id))
 	if err != nil {
 		return errors.Wrap(err, "finding builds for version")
 	}
@@ -294,7 +301,7 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, settings *
 	}
 
 	// This will only be populated for patches, not mainline commits.
-	projectRef, err := FindMergedProjectRef(p.Identifier, v.Id, true)
+	projectRef, err := FindMergedProjectRef(ctx, p.Identifier, v.Id, true)
 	if err != nil {
 		return errors.Wrapf(err, "finding merged project ref '%s' for version '%s'", p.Identifier, v.Id)
 	}
@@ -311,7 +318,7 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(ctx context.Context, settings *
 		return errors.Wrap(err, "creating task ID table for new variant-tasks to create")
 	}
 	tasksToBeGenerated := allTasksToBeCreatedIncludingDeps.Length()
-	if err = validateGeneratedProjectMaxTasks(ctx, v, tasksToBeGenerated); err != nil {
+	if err = validateGeneratedProjectMaxTasks(ctx, v, g.Task.Id, tasksToBeGenerated); err != nil {
 		return errors.Wrapf(err, "validating the number of tasks to be added by '%s'", g.Task.Id)
 	}
 	span.SetAttributes(attribute.Int(numGenerateTasksAttribute, tasksToBeGenerated))
@@ -400,9 +407,10 @@ func getBuildVariantsFromPairs(pairs TaskVariantPairs) []string {
 	return uniqueBVs
 }
 
-func validateGeneratedProjectMaxTasks(ctx context.Context, v *Version, tasksToBeCreated int) error {
+func validateGeneratedProjectMaxTasks(ctx context.Context, v *Version, taskID string, tasksToBeCreated int) error {
 	numExistingTasks, err := task.Count(ctx, db.Query(bson.M{
-		task.VersionKey: v.Id,
+		task.VersionKey:     v.Id,
+		task.GeneratedByKey: bson.M{"$ne": taskID},
 	}))
 	if err != nil {
 		return errors.Wrapf(err, "counting tasks for version '%s'", v.Id)
@@ -543,7 +551,7 @@ func (g *GeneratedProject) addDependencyEdgesToGraph(ctx context.Context, newTas
 
 // filterInactiveTasks returns a copy of tasks with the tasks that will not be activated by the generator removed.
 func (g *GeneratedProject) filterInactiveTasks(ctx context.Context, tasks TVPairSet, v *Version, p *Project) (TVPairSet, error) {
-	existingBuilds, err := build.Find(build.ByVersion(v.Id))
+	existingBuilds, err := build.Find(ctx, build.ByVersion(v.Id))
 	if err != nil {
 		return nil, errors.Wrap(err, "finding builds for version")
 	}

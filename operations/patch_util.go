@@ -170,8 +170,8 @@ func (p *patchParams) validateSubmission(diffData *localDiff) error {
 
 // displayPatch outputs the given patch(es) to the user. If there is only one patch,
 // and browse is true, it will open the patch in the user's default web browser.
-func (p *patchParams) displayPatch(ac *legacyClient, params outputPatchParams) error {
-	patchDisp, err := getPatchDisplay(ac, params)
+func (p *patchParams) displayPatch(ctx context.Context, ac *legacyClient, params outputPatchParams) error {
+	patchDisp, err := getPatchDisplay(ctx, ac, params)
 	if err != nil {
 		return err
 	}
@@ -275,10 +275,8 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 		}
 	}
 
-	if p.Finalize && p.Alias == "" && !p.RepeatFailed && !p.RepeatDefinition {
-		if len(p.Variants)+len(p.RegexVariants) == 0 || len(p.Tasks)+len(p.RegexTasks) == 0 {
-			return ref, errors.Errorf("Need to specify at least one task/variant or alias when finalizing")
-		}
+	if p.Finalize && p.Alias == "" && !p.RepeatFailed && !p.RepeatDefinition && !p.hasTasksAndVariants() {
+		return ref, errors.Errorf("Need to specify at least one task/variant or alias when finalizing")
 	}
 
 	return ref, nil
@@ -304,6 +302,11 @@ func (p *patchParams) setNonRepeatedDefaults(conf *ClientSettings) {
 	if err := p.loadTriggerAliases(conf); err != nil {
 		grip.Warningf("warning - failed to set default trigger aliases: %s\n", err)
 	}
+}
+
+// hasTasksAndVariants is true if both tasks and variants were specified directly or via regex.
+func (p *patchParams) hasTasksAndVariants() bool {
+	return len(p.Variants)+len(p.RegexVariants) != 0 && len(p.Tasks)+len(p.RegexTasks) != 0
 }
 
 func (p *patchParams) loadProject(conf *ClientSettings) error {
@@ -396,7 +399,7 @@ func (p *patchParams) loadAlias(conf *ClientSettings) error {
 				return errors.Wrap(err, "setting default alias")
 			}
 		}
-	} else if len(p.Variants) == 0 || len(p.Tasks) == 0 {
+	} else if !p.hasTasksAndVariants() {
 		// No --alias or variant/task pair was passed, use the default
 		p.Alias = conf.FindDefaultAlias(p.Project)
 		grip.InfoWhen(p.Alias != "", "Using default alias set in local config")
@@ -416,7 +419,7 @@ func (p *patchParams) loadVariants(conf *ClientSettings) error {
 				return errors.Wrap(err, "setting default variants")
 			}
 		}
-	} else if p.Alias == "" && !p.isUsingLocalAlias {
+	} else if p.Alias == "" && len(p.RegexVariants) == 0 && !p.isUsingLocalAlias {
 		p.Variants = conf.FindDefaultVariants(p.Project)
 		grip.InfoWhen(len(p.Variants) > 0, "Using default variants set in local config")
 	}
@@ -460,7 +463,8 @@ func (p *patchParams) loadTasks(conf *ClientSettings) error {
 				return errors.Wrap(err, "setting default tasks")
 			}
 		}
-	} else if p.Alias == "" && !p.isUsingLocalAlias {
+	} else if p.Alias == "" && len(p.RegexTasks) == 0 && !p.isUsingLocalAlias {
+		// Only use default tasks if no alias or regex tasks were specified.
 		p.Tasks = conf.FindDefaultTasks(p.Project)
 		grip.InfoWhen(len(p.Tasks) > 0, "Using default tasks set in local config")
 
@@ -496,8 +500,10 @@ func (p *patchParams) getDescription() string {
 	return description
 }
 
-func (p *patchParams) getModulePath(conf *ClientSettings, module string) (string, error) {
-	modulePath := conf.getModulePath(p.Project, module)
+// getModulePath takes in a cache in addition to the conf, so that if we've disabled auto-defaulting, we can use the cache
+// without making any updates to conf, since this may be written to for future operations as well.
+func (p *patchParams) getModulePath(conf *ClientSettings, module string, modulePathCache map[string]string) (string, error) {
+	modulePath := modulePathCache[module]
 	if modulePath != "" || p.SkipConfirm {
 		return modulePath, nil
 	}
@@ -506,15 +512,14 @@ func (p *patchParams) getModulePath(conf *ClientSettings, module string) (string
 	if modulePath == "" {
 		return "", errors.Errorf("no module path given")
 	}
-	// Set path locally regardless of auto defaulting, so that its cached for the rest of the command.
-	conf.setModulePath(p.Project, module, modulePath)
+	modulePathCache[module] = modulePath
 
 	if !conf.DisableAutoDefaulting {
 		// Verify that the path is correct before auto defaulting
 		if _, err := gitUncommittedChanges(modulePath); err != nil {
 			return "", errors.Wrapf(err, "verifying module '%s''", module)
 		}
-
+		conf.setModulePath(p.Project, modulePathCache)
 		grip.Infof("Project module '%s' will be set to use path '%s'. "+
 			"To disable automatic defaulting, set 'disable_auto_defaulting' to true.", module, modulePath)
 
@@ -522,7 +527,6 @@ func (p *patchParams) getModulePath(conf *ClientSettings, module string) (string
 			grip.Errorf("problem setting module '%s' path in config: %s", module, err.Error())
 		}
 	}
-
 	return modulePath, nil
 }
 
@@ -551,9 +555,9 @@ type outputPatchParams struct {
 
 // getPatchDisplay returns a string representation of the given patches
 // according to the outputPatchParams.
-func getPatchDisplay(ac *legacyClient, params outputPatchParams) (string, error) {
+func getPatchDisplay(ctx context.Context, ac *legacyClient, params outputPatchParams) (string, error) {
 	if params.outputJSON {
-		return getJSONPatchDisplay(params)
+		return getJSONPatchDisplay(ctx, params)
 	}
 	return getGenericPatchDisplay(ac, params)
 }
@@ -597,11 +601,11 @@ func getGenericPatchDisplay(ac *legacyClient, params outputPatchParams) (string,
 // using the JSON format. If there is only one patch, it will be displayed
 // as a single JSON object. If there are multiple patches, they will be
 // displayed as a JSON array.
-func getJSONPatchDisplay(params outputPatchParams) (string, error) {
+func getJSONPatchDisplay(ctx context.Context, params outputPatchParams) (string, error) {
 	display := []restModel.APIPatch{}
 	for _, p := range params.patches {
 		api := restModel.APIPatch{}
-		err := api.BuildFromService(p, nil)
+		err := api.BuildFromService(ctx, p, nil)
 		if err != nil {
 			return "", errors.Wrap(err, "converting patch to API model")
 		}
@@ -867,7 +871,7 @@ func getGitVersion() (string, error) {
 	if err != nil {
 		return "", errors.Wrap(err, "getting git version")
 	}
-	version, _, err := thirdparty.ParseGitVersion(strings.TrimSpace(versionString))
+	version, err := thirdparty.ParseGitVersion(strings.TrimSpace(versionString))
 
 	return version, err
 }

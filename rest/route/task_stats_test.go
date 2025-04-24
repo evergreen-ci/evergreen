@@ -37,7 +37,7 @@ func (s *TaskStatsSuite) SetupSuite() {
 	proj := model.ProjectRef{
 		Id: "project",
 	}
-	s.NoError(proj.Insert())
+	s.NoError(proj.Insert(s.T().Context()))
 }
 
 func (s *TaskStatsSuite) TestParseStatsFilter() {
@@ -93,7 +93,7 @@ func (s *TaskStatsSuite) TestRunTaskHandler() {
 	s.Equal(http.StatusOK, resp.Status())
 	s.NotNil(resp.Pages())
 
-	docs, err := data.GetTaskReliabilityScores(reliability.TaskReliabilityFilter{StatsFilter: handler.filter})
+	docs, err := data.GetTaskReliabilityScores(s.T().Context(), reliability.TaskReliabilityFilter{StatsFilter: handler.filter})
 	s.Require().NoError(err)
 	s.Equal(docs[handler.filter.Limit-1].StartAtKey(), resp.Pages().Next.Key)
 }
@@ -104,7 +104,7 @@ func (s *TaskStatsSuite) insertTaskStats(handler *taskStatsHandler, numTests int
 	for i := 0; i < numTests; i++ {
 		taskName := fmt.Sprintf("%v%v", "task", i)
 		tasks = append(tasks, taskName)
-		err := db.Insert(taskstats.DailyTaskStatsCollection, mgobson.M{
+		err := db.Insert(s.T().Context(), taskstats.DailyTaskStatsCollection, mgobson.M{
 			"_id": taskstats.DBTaskStatsID{
 				Project:      "project",
 				Requester:    "requester",

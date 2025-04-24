@@ -51,7 +51,7 @@ func (h *podPostHandler) Parse(ctx context.Context, r *http.Request) error {
 
 // Run creates a new pod based on the request payload.
 func (h *podPostHandler) Run(ctx context.Context) gimlet.Responder {
-	res, err := data.CreatePod(h.p)
+	res, err := data.CreatePod(ctx, h.p)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(errors.Wrapf(err, "creating new pod"))
 	}
@@ -103,7 +103,7 @@ func (h *podGetHandler) Parse(ctx context.Context, r *http.Request) error {
 
 // Run finds and returns the REST pod.
 func (h *podGetHandler) Run(ctx context.Context) gimlet.Responder {
-	p, err := data.FindAPIPodByID(h.podID)
+	p, err := data.FindAPIPodByID(ctx, h.podID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding pod '%s'", h.podID))
 	}

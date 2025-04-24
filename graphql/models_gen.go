@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/apimodels"
-	model1 "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -48,7 +47,14 @@ type BuildVariantOptions struct {
 
 // CreateDistroInput is the input to the createDistro mutation.
 type CreateDistroInput struct {
-	NewDistroID string `json:"newDistroId"`
+	NewDistroID      string `json:"newDistroId"`
+	SingleTaskDistro *bool  `json:"singleTaskDistro,omitempty"`
+}
+
+type CursorParams struct {
+	CursorID      string               `json:"cursorId"`
+	Direction     TaskHistoryDirection `json:"direction"`
+	IncludeCursor bool                 `json:"includeCursor"`
 }
 
 // DeactivateStepbackTaskInput is the input to the deactivateStepbackTask mutation.
@@ -476,6 +482,25 @@ type TaskFilterOptions struct {
 	Variant                    *string      `json:"variant,omitempty"`
 }
 
+type TaskHistory struct {
+	Tasks      []*model.APITask       `json:"tasks"`
+	Pagination *TaskHistoryPagination `json:"pagination"`
+}
+
+type TaskHistoryOpts struct {
+	ProjectIdentifier string        `json:"projectIdentifier"`
+	TaskName          string        `json:"taskName"`
+	BuildVariant      string        `json:"buildVariant"`
+	CursorParams      *CursorParams `json:"cursorParams"`
+	Limit             *int          `json:"limit,omitempty"`
+	Date              *time.Time    `json:"date,omitempty"`
+}
+
+type TaskHistoryPagination struct {
+	MostRecentTaskOrder int `json:"mostRecentTaskOrder"`
+	OldestTaskOrder     int `json:"oldestTaskOrder"`
+}
+
 // TaskLogs is the return value for the task.taskLogs query.
 // It contains the logs for a given task on a given execution.
 type TaskLogs struct {
@@ -627,10 +652,8 @@ type VolumeHost struct {
 }
 
 type Waterfall struct {
-	BuildVariants     []*model1.WaterfallBuildVariant `json:"buildVariants"`
-	Versions          []*WaterfallVersion             `json:"versions"`
-	FlattenedVersions []*model.APIVersion             `json:"flattenedVersions"`
-	Pagination        *WaterfallPagination            `json:"pagination"`
+	FlattenedVersions []*model.APIVersion  `json:"flattenedVersions"`
+	Pagination        *WaterfallPagination `json:"pagination"`
 }
 
 type WaterfallOptions struct {
@@ -643,7 +666,13 @@ type WaterfallOptions struct {
 	ProjectIdentifier string   `json:"projectIdentifier"`
 	Requesters        []string `json:"requesters,omitempty"`
 	Revision          *string  `json:"revision,omitempty"`
+	Statuses          []string `json:"statuses,omitempty"`
+	Tasks             []string `json:"tasks,omitempty"`
+	// Toggle case sensitivity when matching on task names. Note that if false, performance will be slower.
+	TaskCaseSensitive *bool    `json:"taskCaseSensitive,omitempty"`
 	Variants          []string `json:"variants,omitempty"`
+	// Toggle case sensitivity when matching on variant names. Note that if false, performance will be slower.
+	VariantCaseSensitive *bool `json:"variantCaseSensitive,omitempty"`
 }
 
 type WaterfallPagination struct {
@@ -1057,6 +1086,47 @@ func (e FinderVersion) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
+type HostAccessLevel string
+
+const (
+	HostAccessLevelEdit HostAccessLevel = "EDIT"
+	HostAccessLevelView HostAccessLevel = "VIEW"
+)
+
+var AllHostAccessLevel = []HostAccessLevel{
+	HostAccessLevelEdit,
+	HostAccessLevelView,
+}
+
+func (e HostAccessLevel) IsValid() bool {
+	switch e {
+	case HostAccessLevelEdit, HostAccessLevelView:
+		return true
+	}
+	return false
+}
+
+func (e HostAccessLevel) String() string {
+	return string(e)
+}
+
+func (e *HostAccessLevel) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = HostAccessLevel(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid HostAccessLevel", str)
+	}
+	return nil
+}
+
+func (e HostAccessLevel) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
 type HostAllocatorVersion string
 
 const (
@@ -1240,18 +1310,16 @@ func (e OverallocatedRule) MarshalGQL(w io.Writer) {
 type PlannerVersion string
 
 const (
-	PlannerVersionLegacy  PlannerVersion = "LEGACY"
 	PlannerVersionTunable PlannerVersion = "TUNABLE"
 )
 
 var AllPlannerVersion = []PlannerVersion{
-	PlannerVersionLegacy,
 	PlannerVersionTunable,
 }
 
 func (e PlannerVersion) IsValid() bool {
 	switch e {
-	case PlannerVersionLegacy, PlannerVersionTunable:
+	case PlannerVersionTunable:
 		return true
 	}
 	return false
@@ -1602,6 +1670,47 @@ func (e *SpawnHostStatusActions) UnmarshalGQL(v any) error {
 }
 
 func (e SpawnHostStatusActions) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+type TaskHistoryDirection string
+
+const (
+	TaskHistoryDirectionAfter  TaskHistoryDirection = "AFTER"
+	TaskHistoryDirectionBefore TaskHistoryDirection = "BEFORE"
+)
+
+var AllTaskHistoryDirection = []TaskHistoryDirection{
+	TaskHistoryDirectionAfter,
+	TaskHistoryDirectionBefore,
+}
+
+func (e TaskHistoryDirection) IsValid() bool {
+	switch e {
+	case TaskHistoryDirectionAfter, TaskHistoryDirectionBefore:
+		return true
+	}
+	return false
+}
+
+func (e TaskHistoryDirection) String() string {
+	return string(e)
+}
+
+func (e *TaskHistoryDirection) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = TaskHistoryDirection(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid TaskHistoryDirection", str)
+	}
+	return nil
+}
+
+func (e TaskHistoryDirection) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 

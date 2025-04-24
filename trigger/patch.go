@@ -53,7 +53,7 @@ func (t *patchTriggers) Fetch(ctx context.Context, e *event.EventLogEntry) error
 
 	oid := mgobson.ObjectIdHex(e.ResourceId)
 
-	t.patch, err = patch.FindOne(patch.ById(oid))
+	t.patch, err = patch.FindOne(ctx, patch.ById(oid))
 	if err != nil {
 		return errors.Wrapf(err, "finding patch '%s'", e.ResourceId)
 	}
@@ -106,14 +106,14 @@ func (t *patchTriggers) patchOutcome(ctx context.Context, sub *event.Subscriptio
 		anyOutcome := ps == patchAllOutcomes
 
 		if successOutcome || failureOutcome || anyOutcome {
-			aborted, err := model.IsAborted(t.patch.Id.Hex())
+			suppressable, err := t.isNotificationSuppressableForAbort(ctx, sub)
 			if err != nil {
 				return nil, errors.Wrapf(err, "getting aborted status for patch '%s'", t.patch.Id.Hex())
 			}
-			if aborted {
+			if suppressable {
 				return nil, nil
 			}
-			err = finalizeChildPatch(sub)
+			err = finalizeChildPatch(ctx, sub)
 
 			if err != nil {
 				return nil, errors.Wrap(err, "finalizing child patch")
@@ -124,6 +124,28 @@ func (t *patchTriggers) patchOutcome(ctx context.Context, sub *event.Subscriptio
 	return t.generate(ctx, sub)
 }
 
+// isNotificationSuppressableForAbort checks if a user-owned patch was aborted
+// and allows the notification to be suppressed. Users generally don't want to
+// be informed of the patch completion if it was aborted.
+func (t *patchTriggers) isNotificationSuppressableForAbort(ctx context.Context, sub *event.Subscription) (bool, error) {
+	if sub.Subscriber.Type == event.GithubMergeSubscriberType {
+		// If this is a GitHub merge queue patch and the subscription is for
+		// GitHub merge queue status checks, never suppress the notification
+		// because the patch still needs to send required status checks back to
+		// the GitHub merge queue.
+		return false, nil
+	}
+	versionID := t.patch.Id.Hex()
+	v, err := model.VersionFindOneId(ctx, versionID)
+	if err != nil {
+		return false, errors.Errorf("finding version '%s'", versionID)
+	}
+	if v == nil {
+		return false, errors.Errorf("version '%s' not found", versionID)
+	}
+	return v.Aborted, nil
+}
+
 func (t *patchTriggers) patchFailure(ctx context.Context, sub *event.Subscription) (*notification.Notification, error) {
 	if t.data.Status != evergreen.VersionFailed || t.event.EventType == event.PatchChildrenCompletion {
 		return nil, nil
@@ -132,12 +154,12 @@ func (t *patchTriggers) patchFailure(ctx context.Context, sub *event.Subscriptio
 	return t.generate(ctx, sub)
 }
 
-func finalizeChildPatch(sub *event.Subscription) error {
+func finalizeChildPatch(ctx context.Context, sub *event.Subscription) error {
 	target, ok := sub.Subscriber.Target.(*event.ChildPatchSubscriber)
 	if !ok {
 		return errors.Errorf("target '%s' had unexpected type %T", sub.Subscriber.Target, sub.Subscriber.Target)
 	}
-	childPatch, err := patch.FindOneId(target.ChildPatchId)
+	childPatch, err := patch.FindOneId(ctx, target.ChildPatchId)
 	if err != nil {
 		return errors.Wrap(err, "finding child patch")
 	}
@@ -185,7 +207,7 @@ func (t *patchTriggers) patchStarted(ctx context.Context, sub *event.Subscriptio
 
 func (t *patchTriggers) makeData(ctx context.Context, sub *event.Subscription) (*commonTemplateData, error) {
 	api := restModel.APIPatch{}
-	if err := api.BuildFromService(*t.patch, &restModel.APIPatchArgs{
+	if err := api.BuildFromService(ctx, *t.patch, &restModel.APIPatchArgs{
 		IncludeProjectIdentifier: true,
 	}); err != nil {
 		return nil, errors.Wrap(err, "building patch args from service model")
@@ -200,7 +222,7 @@ func (t *patchTriggers) makeData(ctx context.Context, sub *event.Subscription) (
 	collectiveStatus := t.data.Status
 	if t.patch.IsParent() {
 		var err error
-		collectiveStatus, err = t.patch.CollectiveStatus()
+		collectiveStatus, err = t.patch.CollectiveStatus(ctx)
 		if err != nil {
 			return nil, errors.Wrapf(err, "getting collective patch status for patch '%s'", t.patch.Id)
 		}
@@ -230,7 +252,7 @@ func (t *patchTriggers) makeData(ctx context.Context, sub *event.Subscription) (
 	}
 
 	if t.patch.IsChild() {
-		githubContext, err := t.getGithubContext(projectName)
+		githubContext, err := t.getGithubContext(ctx, projectName)
 		if err != nil {
 			return nil, errors.Wrapf(err, "getting GitHub context for patch '%s'", t.patch.Id)
 		}
@@ -316,8 +338,8 @@ func (t *patchTriggers) generate(ctx context.Context, sub *event.Subscription) (
 	return notification.New(t.event.ID, sub.Trigger, &sub.Subscriber, payload)
 }
 
-func (t *patchTriggers) getGithubContext(projectIdentifier string) (string, error) {
-	parentPatch, err := patch.FindOneId(t.patch.Triggers.ParentPatch)
+func (t *patchTriggers) getGithubContext(ctx context.Context, projectIdentifier string) (string, error) {
+	parentPatch, err := patch.FindOneId(ctx, t.patch.Triggers.ParentPatch)
 	if err != nil {
 		return "", errors.Wrapf(err, "getting parent patch '%s'", t.patch.Triggers.ParentPatch)
 	}
@@ -335,12 +357,11 @@ func (t *patchTriggers) patchFamilyOutcome(ctx context.Context, sub *event.Subsc
 		return nil, nil
 	}
 
-	// Don't notify the user of the patch outcome if they aborted the patch
-	aborted, err := model.IsAborted(t.patch.Id.Hex())
+	suppressable, err := t.isNotificationSuppressableForAbort(ctx, sub)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting aborted status for patch '%s'", t.patch.Id.Hex())
 	}
-	if aborted {
+	if suppressable {
 		return nil, nil
 	}
 

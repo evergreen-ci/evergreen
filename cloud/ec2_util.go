@@ -36,6 +36,16 @@ const (
 	EC2VolumeResizeRate     = "VolumeModificationRateExceeded"
 	ec2TemplateNameExists   = "InvalidLaunchTemplateName.AlreadyExistsException"
 
+	// ec2InsufficientAddressCapacity means that there are no IP addresses
+	// available to allocate.
+	ec2InsufficientAddressCapacity = "InsufficientAddressCapacity"
+	// ec2InsufficientAddressCapacity means that the account has reached its
+	// limit on the number of elastic IPs it can allocate.
+	ec2AddressLimitExceeded = "AddressLimitExceeded"
+	// ec2ResourceAlreadyAssociated means an elastic IP is already associated
+	// with another resource.
+	ec2ResourceAlreadyAssociated = "Resource.AlreadyAssociated"
+
 	r53InvalidInput       = "InvalidInput"
 	r53InvalidChangeBatch = "InvalidChangeBatch"
 
@@ -370,7 +380,6 @@ func validateCloudProviderData(instance *types.Instance) error {
 	catcher.ErrorfWhen(instance.Placement == nil || instance.Placement.AvailabilityZone == nil, "instance missing availability zone")
 	catcher.ErrorfWhen(instance.LaunchTime == nil, "instance missing launch time")
 	catcher.ErrorfWhen(instance.PublicDnsName == nil, "instance missing public DNS name")
-	catcher.ErrorfWhen(instance.PublicIpAddress == nil, "instance missing public IP address")
 	catcher.ErrorfWhen(instance.PrivateIpAddress == nil, "instance missing private IP address")
 	return catcher.Resolve()
 }
@@ -633,13 +642,14 @@ func validateEc2DescribeInstancesOutput(describeInstancesResponse *ec2.DescribeI
 	return catcher.Resolve()
 }
 
-func getEC2ManagerOptionsFromSettings(provider string, settings *EC2ProviderSettings) ManagerOpts {
+func getEC2ManagerOptionsFromSettings(d distro.Distro, settings *EC2ProviderSettings) ManagerOpts {
 	region := settings.Region
 	if region == "" {
 		region = evergreen.DefaultEC2Region
 	}
 	return ManagerOpts{
-		Provider: provider,
+		Provider: d.Provider,
+		Account:  d.ProviderAccount,
 		Region:   region,
 	}
 }
@@ -673,20 +683,16 @@ func getSubnetForZone(subnets []evergreen.Subnet, zone string) (string, error) {
 	return "", errors.Errorf("invalid availability zone '%s', valid availability zones are: %s", zone, zones)
 }
 
-// addSSHKey adds an SSH key for the given client. If an SSH key already exists
-// with the given name, this no-ops.
-func addSSHKey(ctx context.Context, client AWSClient, pair evergreen.SSHKeyPair) error {
-	if _, err := client.ImportKeyPair(ctx, &ec2.ImportKeyPairInput{
-		KeyName:           aws.String(pair.Name),
-		PublicKeyMaterial: []byte(pair.Public),
-	}); err != nil {
-		var apiErr smithy.APIError
-		if errors.As(err, &apiErr) && apiErr.ErrorCode() == EC2DuplicateKeyPair {
-			return nil
-		}
-		return errors.Wrap(err, "importing public SSH key")
+// getKeyName returns the name of the public key to use for the host. Task spawned hosts use a key
+// created for the project, user spawned hosts use the spawn host key, and task hosts use the task host key.
+func getKeyName(ctx context.Context, h *host.Host, settings *evergreen.Settings, client AWSClient) (string, error) {
+	if h.SpawnOptions.SpawnedByTask {
+		return client.GetKey(ctx, h)
 	}
-	return nil
+	if h.UserHost {
+		return settings.SSH.SpawnHostKey.Name, nil
+	}
+	return settings.SSH.TaskHostKey.Name, nil
 }
 
 func AttachVolumeBadRequest(err error) bool {
@@ -751,4 +757,87 @@ func isEC2InstanceNotFound(err error) bool {
 		return true
 	}
 	return false
+}
+
+func shouldAssignPublicIPv4Address(h *host.Host, ec2Settings *EC2ProviderSettings) bool {
+	if h.UserHost || h.SpawnOptions.SpawnedByTask {
+		// Spawn hosts and host.create hosts need to have a public IPv4 address
+		// because SSH is currently the only means for the user/task to access
+		// the host.
+		return true
+	}
+
+	return !ec2Settings.DoNotAssignPublicIPv4Address && !ec2Settings.IPv6
+}
+
+func canUseElasticIP(settings *evergreen.Settings, ec2Settings *EC2ProviderSettings, h *host.Host) bool {
+	if h.UserHost || h.SpawnOptions.SpawnedByTask {
+		// Spawn hosts and host.create hosts should not use an elastic IP
+		// because the feature is primarily intended for task hosts.
+		return false
+	}
+	if settings.Providers.AWS.IPAMPoolID == "" {
+		return false
+	}
+
+	return ec2Settings.ElasticIPsEnabled
+}
+
+// allocateIPAddressForHost allocates an elastic IP address from an IPAM pool
+// for the host.
+func allocateIPAddressForHost(ctx context.Context, settings *evergreen.Settings, c AWSClient, h *host.Host) error {
+	hostname, err := os.Hostname()
+	if err != nil {
+		hostname = "unknown"
+	}
+	input := &ec2.AllocateAddressInput{
+		IpamPoolId: aws.String(settings.Providers.AWS.IPAMPoolID),
+		TagSpecifications: []types.TagSpecification{
+			{
+				ResourceType: types.ResourceTypeElasticIp,
+				Tags: []types.Tag{
+					{Key: aws.String(evergreen.TagEvergreenService), Value: aws.String(hostname)},
+					{Key: aws.String(evergreen.TagMode), Value: aws.String("production")},
+				},
+			},
+		},
+	}
+
+	allocateAddrOut, err := c.AllocateAddress(ctx, input)
+	if err != nil {
+		return errors.Wrap(err, "allocating new IP address for host")
+	}
+	if allocateAddrOut == nil {
+		return errors.New("address allocation returned nil result")
+	}
+	allocationID := aws.ToString(allocateAddrOut.AllocationId)
+	if allocationID == "" {
+		return errors.New("address allocation did not return an allocation ID")
+	}
+	if err := h.SetIPAllocationID(ctx, allocationID); err != nil {
+		return errors.Wrapf(err, "setting IP allocation ID '%s' for host", allocationID)
+	}
+	return nil
+}
+
+// associateIPAddressForHost associates the allocated IP address with the host.
+func associateIPAddressForHost(ctx context.Context, c AWSClient, h *host.Host) error {
+	assocAddrOut, err := c.AssociateAddress(ctx, &ec2.AssociateAddressInput{
+		InstanceId:   aws.String(h.Id),
+		AllocationId: aws.String(h.IPAllocationID),
+	})
+	if err != nil {
+		return errors.Wrap(err, "associating IP address with host")
+	}
+	if assocAddrOut == nil {
+		return errors.New("address association returned nil result")
+	}
+	associationID := aws.ToString(assocAddrOut.AssociationId)
+	if associationID == "" {
+		return errors.New("address association did not return an association ID")
+	}
+	if err := h.SetIPAssociationID(ctx, associationID); err != nil {
+		return errors.Wrapf(err, "setting IP association ID '%s' for host", associationID)
+	}
+	return nil
 }

@@ -34,7 +34,7 @@ func TestFindOneProjectVar(t *testing.T) {
 	pRef := ProjectRef{
 		Id: "mongodb",
 	}
-	require.NoError(t, pRef.Insert())
+	require.NoError(t, pRef.Insert(t.Context()))
 	vars := map[string]string{
 		"a": "b",
 		"c": "d",
@@ -43,12 +43,12 @@ func TestFindOneProjectVar(t *testing.T) {
 		Id:   pRef.Id,
 		Vars: vars,
 	}
-	change, err := projectVars.Upsert()
+	change, err := projectVars.Upsert(t.Context())
 	assert.NotNil(change)
 	assert.NoError(err)
 	assert.Equal(1, change.Updated, "%+v", change)
 
-	projectVarsFromDB, err := FindOneProjectVars("mongodb")
+	projectVarsFromDB, err := FindOneProjectVars(t.Context(), "mongodb")
 	assert.NoError(err)
 	require.NotZero(t, projectVarsFromDB)
 
@@ -68,7 +68,7 @@ func TestFindMergedProjectVars(t *testing.T) {
 		Owner: "mongodb",
 		Repo:  "test_repo",
 	}}
-	require.NoError(t, repo.Upsert())
+	require.NoError(t, repo.Replace(t.Context()))
 
 	project0 := ProjectRef{
 		Id:        "project_0",
@@ -84,8 +84,8 @@ func TestFindMergedProjectVars(t *testing.T) {
 		Repo:      "test_repo",
 		RepoRefId: "repo_ref",
 	}
-	require.NoError(t, project0.Insert())
-	require.NoError(t, project1.Insert())
+	require.NoError(t, project0.Insert(t.Context()))
+	require.NoError(t, project1.Insert(t.Context()))
 
 	repoVars := ProjectVars{
 		Id:            repo.Id,
@@ -97,21 +97,21 @@ func TestFindMergedProjectVars(t *testing.T) {
 		Id:   project0.Id,
 		Vars: map[string]string{"world": "goodbye", "new": "var"},
 	}
-	require.NoError(t, repoVars.Insert())
-	require.NoError(t, project0Vars.Insert())
+	require.NoError(t, repoVars.Insert(t.Context()))
+	require.NoError(t, project0Vars.Insert(t.Context()))
 
 	checkParametersNamespacedByProject(t, project0Vars)
 	checkParametersNamespacedByProject(t, repoVars)
 
 	// Testing merging of project vars and repo vars
-	mergedVars, err := FindMergedProjectVars(project0.Id)
+	mergedVars, err := FindMergedProjectVars(t.Context(), project0.Id)
 	assert.NoError(err)
 	require.NotZero(t, mergedVars)
 
-	dbProject0Vars, err := FindOneProjectVars(project0.Id)
+	dbProject0Vars, err := FindOneProjectVars(t.Context(), project0.Id)
 	require.NoError(t, err)
 	require.NotZero(t, dbProject0Vars)
-	dbRepoVars, err := FindOneProjectVars(repo.Id)
+	dbRepoVars, err := FindOneProjectVars(t.Context(), repo.Id)
 	require.NoError(t, err)
 	require.NotZero(t, dbRepoVars)
 	expectedMergedVars := ProjectVars{
@@ -134,11 +134,11 @@ func TestFindMergedProjectVars(t *testing.T) {
 	// Testing existing repo vars but no project vars
 	expectedMergedVars = repoVars
 	expectedMergedVars.Id = project1.Id
-	mergedVars, err = FindMergedProjectVars(project1.Id)
+	mergedVars, err = FindMergedProjectVars(t.Context(), project1.Id)
 	assert.NoError(err)
 	require.NotZero(t, mergedVars)
 
-	dbRepoVars, err = FindOneProjectVars(repo.Id)
+	dbRepoVars, err = FindOneProjectVars(t.Context(), repo.Id)
 	require.NoError(t, err)
 	require.NotZero(t, dbRepoVars)
 	expectedMergedVars.Parameters = dbRepoVars.Parameters
@@ -147,14 +147,14 @@ func TestFindMergedProjectVars(t *testing.T) {
 	// Testing existing project vars but no repo vars
 	require.NoError(t, db.ClearCollections(ProjectVarsCollection, fakeparameter.Collection))
 
-	require.NoError(t, project0Vars.Insert())
+	require.NoError(t, project0Vars.Insert(t.Context()))
 
-	mergedVars, err = FindMergedProjectVars(project0.Id)
+	mergedVars, err = FindMergedProjectVars(t.Context(), project0.Id)
 	assert.NoError(err)
 	require.NotZero(t, mergedVars)
 
 	assert.Equal(project0Vars.Vars, mergedVars.Vars)
-	dbProject0Vars, err = FindOneProjectVars(project0.Id)
+	dbProject0Vars, err = FindOneProjectVars(t.Context(), project0.Id)
 	require.NoError(t, err)
 	require.NotZero(t, dbProject0Vars)
 	assert.Equal(dbProject0Vars.Parameters, mergedVars.Parameters, "merged parameters for branch project vars should exactly match the branch project vars from the DB when there's no repo vars")
@@ -162,20 +162,20 @@ func TestFindMergedProjectVars(t *testing.T) {
 
 	// Testing ProjectRef.RepoRefId == ""
 	project0.RepoRefId = ""
-	require.NoError(t, project0.Upsert())
-	mergedVars, err = FindMergedProjectVars(project0.Id)
+	require.NoError(t, project0.Replace(t.Context()))
+	mergedVars, err = FindMergedProjectVars(t.Context(), project0.Id)
 	assert.NoError(err)
 	require.NotZero(t, mergedVars)
 	assert.Equal(project0Vars, *mergedVars)
 
 	// Testing no project vars and no repo vars
 	require.NoError(t, db.ClearCollections(ProjectVarsCollection, fakeparameter.Collection))
-	mergedVars, err = FindMergedProjectVars(project1.Id)
+	mergedVars, err = FindMergedProjectVars(t.Context(), project1.Id)
 	assert.NoError(err)
 	assert.Nil(mergedVars)
 
 	// Testing non-existent project
-	mergedVars, err = FindMergedProjectVars("bad_project")
+	mergedVars, err = FindMergedProjectVars(t.Context(), "bad_project")
 	assert.Error(err)
 	assert.Nil(mergedVars)
 }
@@ -189,7 +189,7 @@ func TestProjectVarsInsert(t *testing.T) {
 	}()
 
 	checkProjectVars := func(t *testing.T, vars ProjectVars) {
-		dbProjVars, err := FindOneProjectVars(vars.Id)
+		dbProjVars, err := FindOneProjectVars(t.Context(), vars.Id)
 		require.NoError(t, err)
 		require.NotZero(t, dbProjVars)
 
@@ -210,40 +210,40 @@ func TestProjectVarsInsert(t *testing.T) {
 
 	for tName, tCase := range map[string]func(t *testing.T, pRef ProjectRef, vars ProjectVars){
 		"Succeeds": func(t *testing.T, pRef ProjectRef, vars ProjectVars) {
-			require.NoError(t, pRef.Insert())
-			require.NoError(t, vars.Insert())
+			require.NoError(t, pRef.Insert(t.Context()))
+			require.NoError(t, vars.Insert(t.Context()))
 
 			checkProjectVars(t, vars)
 		},
 		"MultipleInsertsFail": func(t *testing.T, pRef ProjectRef, vars ProjectVars) {
-			require.NoError(t, pRef.Insert())
-			require.NoError(t, vars.Insert())
+			require.NoError(t, pRef.Insert(t.Context()))
+			require.NoError(t, vars.Insert(t.Context()))
 
 			checkProjectVars(t, vars)
 
-			assert.Error(t, vars.Insert())
+			assert.Error(t, vars.Insert(t.Context()))
 
 			checkProjectVars(t, vars)
 		},
 		"ShouldCreateNewVarsForSeparateProject": func(t *testing.T, pRef ProjectRef, vars ProjectVars) {
 			oldProjectID := vars.Id
-			require.NoError(t, pRef.Insert())
-			require.NoError(t, vars.Insert())
+			require.NoError(t, pRef.Insert(t.Context()))
+			require.NoError(t, vars.Insert(t.Context()))
 
 			checkProjectVars(t, vars)
 
 			newProjRef := ProjectRef{
 				Id: "new_project",
 			}
-			require.NoError(t, newProjRef.Insert())
+			require.NoError(t, newProjRef.Insert(t.Context()))
 			newVars := vars
 			newVars.Id = newProjRef.Id
-			require.NoError(t, newVars.Insert())
+			require.NoError(t, newVars.Insert(t.Context()))
 
 			// Original project vars should not be modified at all.
 			checkProjectVars(t, vars)
 
-			dbNewVars, err := FindOneProjectVars(newProjRef.Id)
+			dbNewVars, err := FindOneProjectVars(t.Context(), newProjRef.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbNewVars)
 
@@ -290,7 +290,7 @@ func TestProjectVarsUpsert(t *testing.T) {
 	}()
 
 	checkProjectVars := func(t *testing.T, vars ProjectVars) {
-		dbProjVars, err := FindOneProjectVars(vars.Id)
+		dbProjVars, err := FindOneProjectVars(t.Context(), vars.Id)
 		require.NoError(t, err)
 		require.NotZero(t, dbProjVars)
 
@@ -311,25 +311,25 @@ func TestProjectVarsUpsert(t *testing.T) {
 
 	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, pRef ProjectRef, vars ProjectVars){
 		"InsertsNewVars": func(ctx context.Context, t *testing.T, pRef ProjectRef, vars ProjectVars) {
-			require.NoError(t, pRef.Insert())
-			_, err := vars.Upsert()
+			require.NoError(t, pRef.Insert(t.Context()))
+			_, err := vars.Upsert(t.Context())
 			require.NoError(t, err)
 
 			checkProjectVars(t, vars)
 		},
 		"UpdatesExistingVars": func(ctx context.Context, t *testing.T, pRef ProjectRef, vars ProjectVars) {
-			require.NoError(t, pRef.Insert())
-			_, err := vars.Upsert()
+			require.NoError(t, pRef.Insert(t.Context()))
+			_, err := vars.Upsert(t.Context())
 			require.NoError(t, err)
 
 			checkProjectVars(t, vars)
 
 			vars.Vars["c"] = "3"
 			delete(vars.Vars, "a")
-			_, err = vars.Upsert()
+			_, err = vars.Upsert(t.Context())
 			require.NoError(t, err)
 
-			dbProjVars, err := FindOneProjectVars(vars.Id)
+			dbProjVars, err := FindOneProjectVars(t.Context(), vars.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbProjVars)
 
@@ -349,8 +349,8 @@ func TestProjectVarsUpsert(t *testing.T) {
 		},
 		"CreatesNewVarsForSeparateProject": func(ctx context.Context, t *testing.T, pRef ProjectRef, vars ProjectVars) {
 			oldProjectID := vars.Id
-			require.NoError(t, pRef.Insert())
-			_, err := vars.Upsert()
+			require.NoError(t, pRef.Insert(t.Context()))
+			_, err := vars.Upsert(t.Context())
 			require.NoError(t, err)
 
 			checkProjectVars(t, vars)
@@ -358,15 +358,15 @@ func TestProjectVarsUpsert(t *testing.T) {
 			newProjRef := ProjectRef{
 				Id: "new_project",
 			}
-			require.NoError(t, newProjRef.Insert())
+			require.NoError(t, newProjRef.Insert(t.Context()))
 			newVars := vars
 			newVars.Id = newProjRef.Id
-			require.NoError(t, newVars.Insert())
+			require.NoError(t, newVars.Insert(t.Context()))
 
 			// Original project vars should not be modified at all.
 			checkProjectVars(t, vars)
 
-			dbNewVars, err := FindOneProjectVars(newProjRef.Id)
+			dbNewVars, err := FindOneProjectVars(t.Context(), newProjRef.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbNewVars)
 
@@ -415,16 +415,16 @@ func TestProjectVarsFindAndModify(t *testing.T) {
 			pRef := ProjectRef{
 				Id: "123",
 			}
-			require.NoError(t, pRef.Insert())
+			require.NoError(t, pRef.Insert(t.Context()))
 
 			vars := &ProjectVars{
 				Id:          pRef.Id,
 				Vars:        map[string]string{"a": "1", "b": "3", "d": "4"},
 				PrivateVars: map[string]bool{"b": true, "d": true},
 			}
-			assert.NoError(t, vars.Insert())
+			assert.NoError(t, vars.Insert(t.Context()))
 
-			dbVars, err := FindOneProjectVars(vars.Id)
+			dbVars, err := FindOneProjectVars(t.Context(), vars.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbVars)
 
@@ -447,12 +447,12 @@ func TestProjectVarsFindAndModify(t *testing.T) {
 			}
 			varsToDelete := []string{"d"}
 
-			info, err := newVars.FindAndModify(varsToDelete)
+			info, err := newVars.FindAndModify(t.Context(), varsToDelete)
 			assert.NoError(t, err)
 			require.NotNil(t, info)
 			assert.Equal(t, 1, info.Updated)
 
-			dbVars, err = FindOneProjectVars(vars.Id)
+			dbVars, err = FindOneProjectVars(t.Context(), vars.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbVars)
 
@@ -473,7 +473,7 @@ func TestProjectVarsFindAndModify(t *testing.T) {
 			pRef := ProjectRef{
 				Id: "234",
 			}
-			require.NoError(t, pRef.Insert())
+			require.NoError(t, pRef.Insert(t.Context()))
 
 			vars := &ProjectVars{
 				Id:          pRef.Id,
@@ -481,10 +481,10 @@ func TestProjectVarsFindAndModify(t *testing.T) {
 				PrivateVars: map[string]bool{"b": false, "a": true},
 			}
 			varsToDelete := []string{"d"}
-			_, err := vars.FindAndModify(varsToDelete)
+			_, err := vars.FindAndModify(t.Context(), varsToDelete)
 			assert.NoError(t, err)
 
-			dbVars, err := FindOneProjectVars(vars.Id)
+			dbVars, err := FindOneProjectVars(t.Context(), vars.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbVars)
 
@@ -504,7 +504,7 @@ func TestProjectVarsFindAndModify(t *testing.T) {
 			pRef := ProjectRef{
 				Id: "234",
 			}
-			require.NoError(t, pRef.Insert())
+			require.NoError(t, pRef.Insert(t.Context()))
 
 			vars := &ProjectVars{
 				Id:          pRef.Id,
@@ -512,10 +512,10 @@ func TestProjectVarsFindAndModify(t *testing.T) {
 				PrivateVars: map[string]bool{"b": false, "a": true},
 			}
 			varsToDelete := []string{"d"}
-			_, err := vars.FindAndModify(varsToDelete)
+			_, err := vars.FindAndModify(t.Context(), varsToDelete)
 			assert.NoError(t, err)
 
-			dbVars, err := FindOneProjectVars(vars.Id)
+			dbVars, err := FindOneProjectVars(t.Context(), vars.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbVars)
 
@@ -534,15 +534,15 @@ func TestProjectVarsFindAndModify(t *testing.T) {
 			newProjRef := ProjectRef{
 				Id: "new_project",
 			}
-			require.NoError(t, newProjRef.Insert())
+			require.NoError(t, newProjRef.Insert(t.Context()))
 
 			newVars := *vars
 			newVars.Id = newProjRef.Id
-			_, err = newVars.FindAndModify(varsToDelete)
+			_, err = newVars.FindAndModify(t.Context(), varsToDelete)
 			require.NoError(t, err)
 
 			// Original project vars should not be modified at all.
-			dbVars, err = FindOneProjectVars(vars.Id)
+			dbVars, err = FindOneProjectVars(t.Context(), vars.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbVars)
 
@@ -555,7 +555,7 @@ func TestProjectVarsFindAndModify(t *testing.T) {
 			assert.True(t, dbVars.PrivateVars["a"])
 			assert.False(t, dbVars.PrivateVars["b"])
 
-			dbNewVars, err := FindOneProjectVars(newVars.Id)
+			dbNewVars, err := FindOneProjectVars(t.Context(), newVars.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbNewVars)
 
@@ -607,14 +607,14 @@ func TestAWSVars(t *testing.T) {
 	project := ProjectRef{
 		Id: "mci",
 	}
-	assert.NoError(project.Insert())
+	assert.NoError(project.Insert(t.Context()))
 
 	// empty vars
 	newVars := &ProjectVars{
 		Id: project.Id,
 	}
-	require.NoError(newVars.Insert())
-	k, err := GetAWSKeyForProject(project.Id)
+	require.NoError(newVars.Insert(t.Context()))
+	k, err := GetAWSKeyForProject(t.Context(), project.Id)
 	assert.NoError(err)
 	require.NotZero(k)
 	assert.Empty(k.Name)
@@ -632,11 +632,11 @@ func TestAWSVars(t *testing.T) {
 		Vars:        vars,
 		PrivateVars: privateVars,
 	}
-	_, err = projectVars.Upsert()
+	_, err = projectVars.Upsert(t.Context())
 	assert.NoError(err)
 
 	// canaries
-	found, err := FindOneProjectVars(project.Id)
+	found, err := FindOneProjectVars(t.Context(), project.Id)
 	assert.NoError(err)
 	assert.Equal("foo", found.Vars["a"])
 	assert.Equal("bar", found.Vars["b"])
@@ -644,7 +644,7 @@ func TestAWSVars(t *testing.T) {
 	assert.False(found.PrivateVars["b"])
 
 	// empty aws values
-	k, err = GetAWSKeyForProject(project.Id)
+	k, err = GetAWSKeyForProject(t.Context(), project.Id)
 	assert.NoError(err)
 	require.NotZero(k)
 	assert.Empty(k.Name)
@@ -655,15 +655,15 @@ func TestAWSVars(t *testing.T) {
 		Name:  "aws_key_name",
 		Value: "aws_key_value",
 	}
-	assert.NoError(SetAWSKeyForProject(project.Id, k))
-	k, err = GetAWSKeyForProject(project.Id)
+	assert.NoError(SetAWSKeyForProject(t.Context(), project.Id, k))
+	k, err = GetAWSKeyForProject(t.Context(), project.Id)
 	assert.NoError(err)
 	require.NotZero(k)
 	assert.Equal("aws_key_name", k.Name)
 	assert.Equal("aws_key_value", k.Value)
 
 	// canaries, again
-	found, err = FindOneProjectVars(project.Id)
+	found, err = FindOneProjectVars(t.Context(), project.Id)
 	assert.NoError(err)
 	require.NotZero(found)
 	assert.Equal("foo", found.Vars["a"])
@@ -1022,8 +1022,8 @@ func TestShouldGetAdminOnlyVars(t *testing.T) {
 		adminUsr := user.DBUser{
 			Id: adminUsrId,
 		}
-		assert.NoError(t, usr.Insert())
-		assert.NoError(t, adminUsr.Insert())
+		assert.NoError(t, usr.Insert(t.Context()))
+		assert.NoError(t, adminUsr.Insert(t.Context()))
 		env := evergreen.GetEnvironment()
 		roleManager := env.RoleManager()
 		projectScope := gimlet.Scope{
@@ -1039,7 +1039,7 @@ func TestShouldGetAdminOnlyVars(t *testing.T) {
 			Permissions: gimlet.Permissions{evergreen.PermissionProjectSettings: evergreen.ProjectSettingsEdit.Value},
 		}
 		require.NoError(t, roleManager.UpdateRole(role))
-		require.NoError(t, adminUsr.AddRole(role.ID))
+		require.NoError(t, adminUsr.AddRole(t.Context(), role.ID))
 		tsk := &task.Task{
 			Id:      "t1",
 			Project: "myProject",
@@ -1049,7 +1049,7 @@ func TestShouldGetAdminOnlyVars(t *testing.T) {
 			tsk.Requester = testCase.requester
 			tsk.ActivatedBy = testCase.usrId
 
-			assert.Equal(t, testCase.shouldGetAdminVars, shouldGetAdminOnlyVars(tsk))
+			assert.Equal(t, testCase.shouldGetAdminVars, shouldGetAdminOnlyVars(t.Context(), tsk))
 		})
 	}
 

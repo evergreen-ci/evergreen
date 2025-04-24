@@ -32,8 +32,8 @@ func (s *TestArtifactFileSuite) SetupTest() {
 					Link:           "http://placekitten.com/800/600",
 					Visibility:     "signed",
 					IgnoreForFetch: false,
-					AwsKey:         "key",
-					AwsSecret:      "secret",
+					AWSKey:         "key",
+					AWSSecret:      "secret",
 					Bucket:         "bucket",
 					FileKey:        "filekey",
 				},
@@ -55,8 +55,8 @@ func (s *TestArtifactFileSuite) SetupTest() {
 					Link:           "http://example.com/other",
 					Visibility:     "",
 					IgnoreForFetch: false,
-					AwsKey:         "key",
-					AwsSecret:      "secret",
+					AWSKey:         "key",
+					AWSSecret:      "secret",
 				},
 			},
 			Execution: 5,
@@ -65,7 +65,7 @@ func (s *TestArtifactFileSuite) SetupTest() {
 
 	// hack to insert an entry without execution number (representative of
 	// existing data)
-	s.NoError(db.Insert(Collection, struct {
+	s.NoError(db.Insert(s.T().Context(), Collection, struct {
 		TaskId          string `json:"task" bson:"task"`
 		TaskDisplayName string `json:"task_name" bson:"task_name"`
 		BuildId         string `json:"build" bson:"build"`
@@ -80,23 +80,23 @@ func (s *TestArtifactFileSuite) SetupTest() {
 				Link:           "http://example.com/other",
 				Visibility:     "",
 				IgnoreForFetch: false,
-				AwsKey:         "key",
-				AwsSecret:      "secret",
+				AWSKey:         "key",
+				AWSSecret:      "secret",
 			},
 		},
 	}))
 
 	for _, entry := range s.testEntries {
-		s.NoError(entry.Upsert())
+		s.NoError(entry.Upsert(s.T().Context()))
 	}
 
-	count, err := db.Count(Collection, bson.M{})
+	count, err := db.Count(s.T().Context(), Collection, bson.M{})
 	s.NoError(err)
 	s.Equal(3, count)
 }
 
 func (s *TestArtifactFileSuite) TestArtifactFieldsArePresent() {
-	entryFromDb, err := FindOne(ByTaskId("task1"))
+	entryFromDb, err := FindOne(s.T().Context(), ByTaskId("task1"))
 	s.NoError(err)
 
 	s.Equal("task1", entryFromDb.TaskId)
@@ -117,25 +117,25 @@ func (s *TestArtifactFileSuite) TestArtifactFieldsAfterUpdate() {
 			Link:           "http://placekitten.com/300/400",
 			Visibility:     "",
 			IgnoreForFetch: false,
-			AwsKey:         "key",
-			AwsSecret:      "secret",
+			AWSKey:         "key",
+			AWSSecret:      "secret",
 		},
 		{
 			Name:           "the_value_of_four",
 			Link:           "4",
 			Visibility:     "",
 			IgnoreForFetch: false,
-			AwsKey:         "key",
-			AwsSecret:      "secret",
+			AWSKey:         "key",
+			AWSSecret:      "secret",
 		},
 	}
-	s.NoError(s.testEntries[0].Upsert())
+	s.NoError(s.testEntries[0].Upsert(s.T().Context()))
 
-	count, err := db.Count(Collection, bson.M{})
+	count, err := db.Count(s.T().Context(), Collection, bson.M{})
 	s.NoError(err)
 	s.Equal(3, count)
 
-	entryFromDb, err := FindOne(ByTaskId("task1"))
+	entryFromDb, err := FindOne(s.T().Context(), ByTaskId("task1"))
 	s.NoError(err)
 	s.NotNil(entryFromDb)
 
@@ -155,19 +155,19 @@ func (s *TestArtifactFileSuite) TestArtifactFieldsAfterUpdate() {
 }
 
 func (s *TestArtifactFileSuite) TestFindByTaskIdAndExecution() {
-	entries, err := FindAll(ByTaskIdAndExecution("task1", 1))
+	entries, err := FindAll(s.T().Context(), ByTaskIdAndExecution("task1", 1))
 	s.Len(entries, 1)
 	s.NoError(err)
 	s.NotNil(entries[0])
 	s.Equal(1, entries[0].Execution)
 	s.Equal("task1", entries[0].TaskId)
 
-	entries, err = FindAll(ByTaskIdAndExecution("task2", 0))
+	entries, err = FindAll(s.T().Context(), ByTaskIdAndExecution("task2", 0))
 	s.Empty(entries)
 	s.NoError(err)
 	s.Empty(entries)
 
-	entries, err = FindAll(ByTaskIdAndExecution("task2", 5))
+	entries, err = FindAll(s.T().Context(), ByTaskIdAndExecution("task2", 5))
 	s.Len(entries, 1)
 	s.NoError(err)
 	s.NotNil(entries[0])
@@ -176,11 +176,11 @@ func (s *TestArtifactFileSuite) TestFindByTaskIdAndExecution() {
 }
 
 func (s *TestArtifactFileSuite) TestFindByTaskIdWithoutExecution() {
-	entries, err := FindAll(ByTaskIdWithoutExecution("task1"))
+	entries, err := FindAll(s.T().Context(), ByTaskIdWithoutExecution("task1"))
 	s.Empty(entries)
 	s.NoError(err)
 
-	entries, err = FindAll(ByTaskIdWithoutExecution("task2"))
+	entries, err = FindAll(s.T().Context(), ByTaskIdWithoutExecution("task2"))
 	s.Len(entries, 1)
 	s.NoError(err)
 	s.NotNil(entries[0])
@@ -193,30 +193,15 @@ func (s *TestArtifactFileSuite) TestFindByIdsAndExecutions() {
 		{TaskID: "task1", Execution: 1},
 		{TaskID: "task2", Execution: 5},
 	}
-	entries, err := FindAll(ByTaskIdsAndExecutions(tasks))
+	entries, err := FindAll(s.T().Context(), ByTaskIdsAndExecutions(tasks))
 	s.NoError(err)
 	s.Len(entries, 2)
 }
 
 func (s *TestArtifactFileSuite) TestFindByIds() {
-	entries, err := FindAll(ByTaskIds([]string{"task1", "task2"}))
+	entries, err := FindAll(s.T().Context(), ByTaskIds([]string{"task1", "task2"}))
 	s.NoError(err)
 	s.Len(entries, 3)
-}
-
-func (s *TestArtifactFileSuite) TestRotateSecret() {
-	changes, err := RotateSecrets("secret", "changedSecret", true)
-	s.NoError(err)
-	s.Len(changes, 3)
-	entryFromDb, err := FindOne(ByTaskId("task1"))
-	s.NoError(err)
-	s.Equal("secret", entryFromDb.Files[0].AwsSecret)
-	changes, err = RotateSecrets("secret", "changedSecret", false)
-	s.NoError(err)
-	s.Len(changes, 3)
-	entryFromDb, err = FindOne(ByTaskId("task1"))
-	s.NoError(err)
-	s.Equal("changedSecret", entryFromDb.Files[0].AwsSecret)
 }
 
 func (s *TestArtifactFileSuite) TestEscapeFiles() {

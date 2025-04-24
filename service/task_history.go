@@ -67,7 +67,7 @@ type taskBlurb struct {
 // Serves the task history page itself.
 func (uis *UIServer) taskHistoryPage(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
-	project, err := projCtx.GetProject()
+	project, err := projCtx.GetProject(r.Context())
 
 	taskName := gimlet.GetVars(r)["task_name"]
 
@@ -90,7 +90,7 @@ func (uis *UIServer) taskHistoryPage(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	repo, err := model.FindRepository(project.Identifier)
+	repo, err := model.FindRepository(r.Context(), project.Identifier)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -106,7 +106,7 @@ func (uis *UIServer) taskHistoryPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if revision := r.FormValue("revision"); revision != "" {
-		v, err = model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(project.Identifier, revision))
+		v, err = model.VersionFindOne(r.Context(), model.BaseVersionByProjectIdAndRevision(project.Identifier, revision))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -167,7 +167,7 @@ func (uis *UIServer) variantHistory(w http.ResponseWriter, r *http.Request) {
 	var err error
 	beforeCommit = nil
 	if beforeCommitId != "" {
-		beforeCommit, err = model.VersionFindOne(model.VersionById(beforeCommitId))
+		beforeCommit, err = model.VersionFindOne(r.Context(), model.VersionById(beforeCommitId))
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
@@ -188,7 +188,7 @@ func (uis *UIServer) variantHistory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	iter := model.NewBuildVariantHistoryIterator(variant, bv.Name, project.Identifier)
-	tasks, versions, err := iter.GetItems(beforeCommit, 50)
+	tasks, versions, err := iter.GetItems(r.Context(), beforeCommit, 50)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -213,7 +213,7 @@ func (uis *UIServer) variantHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	uis.render.WriteResponse(w, http.StatusOK, struct {
-		Data interface{}
+		Data any
 		ViewData
 	}{data, uis.GetCommonViewData(w, r, false, true)}, "base",
 		"build_variant_history.html", "base_angular.html", "menu.html")
@@ -222,7 +222,7 @@ func (uis *UIServer) variantHistory(w http.ResponseWriter, r *http.Request) {
 func (uis *UIServer) taskHistoryPickaxe(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
 
-	project, err := projCtx.GetProject()
+	project, err := projCtx.GetProject(r.Context())
 	if err != nil || project == nil {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
@@ -314,7 +314,7 @@ func (uis *UIServer) versionHistoryDrawer(w http.ResponseWriter, r *http.Request
 	}
 
 	// get the versions in the requested window
-	versions, err := getVersionsInWindow(drawerInfo.window, projCtx.Version.Identifier, drawerInfo.radius, projCtx.Version)
+	versions, err := getVersionsInWindow(r.Context(), drawerInfo.window, projCtx.Version.Identifier, drawerInfo.radius, projCtx.Version)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -353,7 +353,7 @@ func (uis *UIServer) taskHistoryDrawer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// get the versions in the requested window
-	versions, err := getVersionsInWindow(drawerInfo.window, projCtx.Version.Identifier, drawerInfo.radius, projCtx.Version)
+	versions, err := getVersionsInWindow(r.Context(), drawerInfo.window, projCtx.Version.Identifier, drawerInfo.radius, projCtx.Version)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -373,21 +373,21 @@ func (uis *UIServer) taskHistoryDrawer(w http.ResponseWriter, r *http.Request) {
 
 // Get the versions for projectID within radius around the center version, sorted backwards in time
 // wt indicates the direction away from center
-func getVersionsInWindow(wt, projectID string, radius int, center *model.Version) ([]model.Version, error) {
+func getVersionsInWindow(ctx context.Context, wt, projectID string, radius int, center *model.Version) ([]model.Version, error) {
 	if wt == beforeWindow {
-		return surroundingVersions(center, projectID, radius, true)
+		return surroundingVersions(ctx, center, projectID, radius, true)
 	} else if wt == afterWindow {
-		after, err := surroundingVersions(center, projectID, radius, false)
+		after, err := surroundingVersions(ctx, center, projectID, radius, false)
 		if err != nil {
 			return nil, err
 		}
 		return after, nil
 	}
-	before, err := surroundingVersions(center, projectID, radius, true)
+	before, err := surroundingVersions(ctx, center, projectID, radius, true)
 	if err != nil {
 		return nil, err
 	}
-	after, err := surroundingVersions(center, projectID, radius, false)
+	after, err := surroundingVersions(ctx, center, projectID, radius, false)
 	if err != nil {
 		return nil, err
 	}
@@ -398,7 +398,7 @@ func getVersionsInWindow(wt, projectID string, radius int, center *model.Version
 // Helper to query the versions collection for versions created before
 // or after the center, indicated by "before", and sorted backwards in time
 // Results are sorted on create_time and revision order number, similar to the waterfall
-func surroundingVersions(center *model.Version, projectId string, versionsToFetch int, before bool) ([]model.Version, error) {
+func surroundingVersions(ctx context.Context, center *model.Version, projectId string, versionsToFetch int, before bool) ([]model.Version, error) {
 	direction := "$gt"
 	sortOnConsecutive := []string{model.VersionCreateTimeKey, model.VersionRevisionOrderNumberKey}
 	sortOnConcurrent := []string{model.VersionRevisionOrderNumberKey}
@@ -412,7 +412,7 @@ func surroundingVersions(center *model.Version, projectId string, versionsToFetc
 	// Since we know they can just be concatenated this allows us to use the index efficiently
 
 	// fetch concurrent versions
-	versions, err := model.VersionFind(
+	versions, err := model.VersionFind(ctx,
 		db.Query(bson.M{
 			model.VersionIdentifierKey: projectId,
 			model.VersionCreateTimeKey: center.CreateTime,
@@ -435,7 +435,7 @@ func surroundingVersions(center *model.Version, projectId string, versionsToFetc
 
 	if len(versions) < versionsToFetch {
 		// fetch consecutive versions
-		consecutiveVersions, err := model.VersionFind(
+		consecutiveVersions, err := model.VersionFind(ctx,
 			db.Query(bson.M{
 				model.VersionIdentifierKey: projectId,
 				model.VersionCreateTimeKey: bson.M{direction: center.CreateTime},
@@ -450,7 +450,7 @@ func surroundingVersions(center *model.Version, projectId string, versionsToFetc
 				model.VersionErrorsKey,
 				model.VersionWarningsKey,
 				model.VersionIgnoredKey,
-			).Sort(sortOnConsecutive).Limit(versionsToFetch - len(versions)))
+			).Sort(sortOnConsecutive).Limit(versionsToFetch-len(versions)))
 		if err != nil {
 			return nil, errors.Wrap(err, "can't get consecutive versions")
 		}

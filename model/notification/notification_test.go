@@ -54,20 +54,20 @@ func (s *notificationSuite) SetupTest() {
 
 func (s *notificationSuite) TestMarkSent() {
 	// MarkSent with notification that hasn't been stored
-	s.EqualError(s.n.MarkSent(), "notification has no ID")
+	s.EqualError(s.n.MarkSent(s.T().Context()), "notification has no ID")
 	s.Empty(s.n.ID)
 	s.Empty(s.n.Error)
 	s.Zero(s.n.SentAt)
 
 	s.n.ID = "1"
-	s.NoError(InsertMany(s.n))
+	s.NoError(InsertMany(s.T().Context(), s.n))
 
 	// mark that notification as sent
-	s.NoError(s.n.MarkSent())
+	s.NoError(s.n.MarkSent(s.T().Context()))
 	s.Empty(s.n.Error)
 	s.NotZero(s.n.SentAt)
 
-	n, err := Find(s.n.ID)
+	n, err := Find(s.T().Context(), s.n.ID)
 	s.NoError(err)
 	s.Require().NotNil(n)
 	s.Empty(n.Error)
@@ -76,25 +76,25 @@ func (s *notificationSuite) TestMarkSent() {
 
 func (s *notificationSuite) TestMarkError() {
 	// MarkError, uninserted notification
-	s.EqualError(s.n.MarkError(errors.New("")), "notification has no ID")
+	s.EqualError(s.n.MarkError(s.T().Context(), errors.New("")), "notification has no ID")
 	s.Empty(s.n.ID)
 	s.Empty(s.n.Error)
 	s.Zero(s.n.SentAt)
 
-	s.NoError(s.n.MarkError(nil))
+	s.NoError(s.n.MarkError(s.T().Context(), nil))
 	s.Empty(s.n.ID)
 	s.Empty(s.n.Error)
 	s.Zero(s.n.SentAt)
 
 	// MarkError, non nil error
 	s.n.ID = "1"
-	s.NoError(InsertMany(s.n))
+	s.NoError(InsertMany(s.T().Context(), s.n))
 
-	s.NoError(s.n.MarkError(errors.New("test")))
+	s.NoError(s.n.MarkError(s.T().Context(), errors.New("test")))
 	s.NotEmpty(s.n.ID)
 	s.Equal("test", s.n.Error)
 	s.NotZero(s.n.SentAt)
-	n, err := Find(s.n.ID)
+	n, err := Find(s.T().Context(), s.n.ID)
 	s.NoError(err)
 	s.Require().NotNil(n)
 	s.Equal("test", n.Error)
@@ -103,11 +103,11 @@ func (s *notificationSuite) TestMarkError() {
 
 func (s *notificationSuite) TestMarkErrorWithNilErrorHasNoSideEffect() {
 	s.n.ID = "1"
-	s.NoError(InsertMany(s.n))
+	s.NoError(InsertMany(s.T().Context(), s.n))
 
 	// nil error should have no side effect
-	s.NoError(s.n.MarkError(nil))
-	n, err := Find(s.n.ID)
+	s.NoError(s.n.MarkError(s.T().Context(), nil))
+	n, err := Find(s.T().Context(), s.n.ID)
 	s.NoError(err)
 	s.Empty(n.Error)
 	s.Zero(n.SentAt)
@@ -139,14 +139,14 @@ func (s *notificationSuite) TestInsertMany() {
 
 	slice := []Notification{s.n, n2, n3}
 
-	s.NoError(InsertMany(slice...))
+	s.NoError(InsertMany(s.T().Context(), slice...))
 
 	for i := range slice {
 		s.NotEmpty(slice[i].ID)
 	}
 
 	out := []Notification{}
-	s.NoError(db.FindAllQ(Collection, db.Q{}, &out))
+	s.NoError(db.FindAllQ(s.T().Context(), Collection, db.Q{}, &out))
 	s.Len(out, 3)
 
 	for _, n := range out {
@@ -178,7 +178,7 @@ func (s *notificationSuite) TestInsertMany() {
 		}
 	}
 
-	out2, err := FindByEventID("1")
+	out2, err := FindByEventID(s.T().Context(), "1")
 	s.NoError(err)
 	s.Len(out2, 2)
 }
@@ -209,9 +209,9 @@ func (s *notificationSuite) TestInsertManyUnordered() {
 
 	slice := []Notification{s.n, n2, n3}
 
-	s.Error(InsertMany(slice...))
+	s.Error(InsertMany(s.T().Context(), slice...))
 	out := []Notification{}
-	s.NoError(db.FindAllQ(Collection, db.Q{}, &out))
+	s.NoError(db.FindAllQ(s.T().Context(), Collection, db.Q{}, &out))
 	s.Len(out, 2)
 }
 
@@ -227,15 +227,15 @@ func (s *notificationSuite) TestWebhookPayload() {
 		Body: []byte(jsonData),
 	}
 
-	s.NoError(InsertMany(s.n))
+	s.NoError(InsertMany(s.T().Context(), s.n))
 
-	n, err := Find(s.n.ID)
+	n, err := Find(s.T().Context(), s.n.ID)
 	s.NoError(err)
 	s.NotNil(n)
 
 	s.JSONEq(jsonData, string(n.Payload.(*util.EvergreenWebhook).Body))
 
-	c, err := n.Composer()
+	c, err := n.Composer(s.T().Context())
 	s.NoError(err)
 	s.Require().NotNil(c)
 	s.True(c.Loggable())
@@ -248,15 +248,15 @@ func (s *notificationSuite) TestJIRACommentPayload() {
 	s.n.Subscriber.Target = target
 	s.n.Payload = "hi"
 
-	s.NoError(InsertMany(s.n))
+	s.NoError(InsertMany(s.T().Context(), s.n))
 
-	n, err := Find(s.n.ID)
+	n, err := Find(s.T().Context(), s.n.ID)
 	s.NoError(err)
 	s.NotNil(n)
 
 	s.Equal("hi", *n.Payload.(*string))
 
-	c, err := n.Composer()
+	c, err := n.Composer(s.T().Context())
 	s.NoError(err)
 	s.Require().NotNil(c)
 	s.Equal("hi", c.String())
@@ -278,22 +278,22 @@ func (s *notificationSuite) TestJIRAIssuePayload() {
 		Assignee:    "4",
 		Components:  []string{"6"},
 		Labels:      []string{"7"},
-		Fields: map[string]interface{}{
+		Fields: map[string]any{
 			"8":  "9",
 			"10": "11",
 		},
 		FixVersions: []string{},
 	}
 
-	s.NoError(InsertMany(s.n))
+	s.NoError(InsertMany(s.T().Context(), s.n))
 
-	n, err := Find(s.n.ID)
+	n, err := Find(s.T().Context(), s.n.ID)
 	s.NoError(err)
 	s.NotNil(n)
 
 	s.Equal(s.n, *n)
 
-	c, err := n.Composer()
+	c, err := n.Composer(s.T().Context())
 	s.NoError(err)
 	s.Require().NotNil(c)
 	s.True(c.Loggable())
@@ -314,15 +314,15 @@ func (s *notificationSuite) TestEmailPayload() {
 		Recipients: []string{},
 	}
 
-	s.NoError(InsertMany(s.n))
+	s.NoError(InsertMany(s.T().Context(), s.n))
 
-	n, err := Find(s.n.ID)
+	n, err := Find(s.T().Context(), s.n.ID)
 	s.NoError(err)
 	s.NotNil(n)
 
 	s.Equal(s.n, *n)
 
-	c, err := n.Composer()
+	c, err := n.Composer(s.T().Context())
 	s.NoError(err)
 	s.Require().NotNil(c)
 
@@ -341,15 +341,15 @@ func (s *notificationSuite) TestSlackPayload() {
 		Attachments: []message.SlackAttachment{},
 	}
 
-	s.NoError(InsertMany(s.n))
+	s.NoError(InsertMany(s.T().Context(), s.n))
 
-	n, err := Find(s.n.ID)
+	n, err := Find(s.T().Context(), s.n.ID)
 	s.NoError(err)
 	s.NotNil(n)
 
 	s.Equal(s.n, *n)
 
-	c, err := n.Composer()
+	c, err := n.Composer(s.T().Context())
 	s.NoError(err)
 	s.Require().NotNil(c)
 	s.True(c.Loggable())
@@ -366,15 +366,15 @@ func (s *notificationSuite) TestGithubPayload() {
 		Description: "hi",
 	}
 
-	s.NoError(InsertMany(s.n))
+	s.NoError(InsertMany(s.T().Context(), s.n))
 
-	n, err := Find(s.n.ID)
+	n, err := Find(s.T().Context(), s.n.ID)
 	s.NoError(err)
 	s.NotNil(n)
 
 	s.Equal(s.n, *n)
 
-	c, err := n.Composer()
+	c, err := n.Composer(s.T().Context())
 	s.NoError(err)
 	s.Require().NotNil(c)
 	s.True(c.Loggable())
@@ -392,15 +392,15 @@ func (s *notificationSuite) TestCollectUnsentNotificationStats() {
 		n = append(n, s.n)
 		n[i].ID = mgobson.NewObjectId().Hex()
 		n[i].Subscriber.Type = type_
-		s.NoError(db.Insert(Collection, n[i]))
+		s.NoError(db.Insert(s.T().Context(), Collection, n[i]))
 	}
 
 	// add one more, mark it sent
 	s.n.ID = mgobson.NewObjectId().Hex()
 	s.n.SentAt = time.Now()
-	s.NoError(db.Insert(Collection, s.n))
+	s.NoError(db.Insert(s.T().Context(), Collection, s.n))
 
-	stats, err := CollectUnsentNotificationStats()
+	stats, err := CollectUnsentNotificationStats(s.T().Context())
 	s.NoError(err)
 	s.Require().NotNil(stats)
 
@@ -414,12 +414,12 @@ func (s *notificationSuite) TestCollectUnsentNotificationStats() {
 
 func (s *notificationSuite) TestFindUnprocessed() {
 	s.n.ID = "unsent"
-	s.NoError(db.Insert(Collection, s.n))
+	s.NoError(db.Insert(s.T().Context(), Collection, s.n))
 	s.n.ID = "sent"
 	s.n.SentAt = time.Now()
-	s.NoError(db.Insert(Collection, s.n))
+	s.NoError(db.Insert(s.T().Context(), Collection, s.n))
 
-	unprocessedNotifications, err := FindUnprocessed()
+	unprocessedNotifications, err := FindUnprocessed(s.T().Context())
 	s.NoError(err)
 	s.Len(unprocessedNotifications, 1)
 	s.Equal("unsent", unprocessedNotifications[0].ID)

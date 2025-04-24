@@ -10,16 +10,6 @@ import (
 	"github.com/evergreen-ci/utility"
 )
 
-// CommitQueue is the resolver for the commitQueue field.
-func (r *notificationsResolver) CommitQueue(ctx context.Context, obj *restModel.APINotificationPreferences) (*string, error) {
-	panic(fmt.Errorf("not implemented: CommitQueue - commitQueue"))
-}
-
-// CommitQueueID is the resolver for the commitQueueId field.
-func (r *notificationsResolver) CommitQueueID(ctx context.Context, obj *restModel.APINotificationPreferences) (*string, error) {
-	panic(fmt.Errorf("not implemented: CommitQueueID - commitQueueId"))
-}
-
 // Patches is the resolver for the patches field.
 func (r *userResolver) Patches(ctx context.Context, obj *restModel.APIDBUser, patchesInput PatchesInput) (*Patches, error) {
 	opts := patch.ByPatchNameStatusesMergeQueuePaginatedOptions{
@@ -39,7 +29,7 @@ func (r *userResolver) Patches(ctx context.Context, obj *restModel.APIDBUser, pa
 	apiPatches := []*restModel.APIPatch{}
 	for _, p := range patches {
 		apiPatch := restModel.APIPatch{}
-		if err = apiPatch.BuildFromService(p, nil); err != nil { // Injecting DB info into APIPatch is handled by the resolvers.
+		if err = apiPatch.BuildFromService(ctx, p, nil); err != nil { // Injecting DB info into APIPatch is handled by the resolvers.
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting patch to APIPatch for patch '%s': %s", p.Id, err.Error()))
 		}
 		apiPatches = append(apiPatches, &apiPatch)
@@ -57,32 +47,17 @@ func (r *userResolver) Subscriptions(ctx context.Context, obj *restModel.APIDBUs
 	return getAPISubscriptionsForOwner(ctx, utility.FromStringPtr(obj.UserID), event.OwnerTypePerson)
 }
 
-// CommitQueue is the resolver for the commitQueue field.
-func (r *notificationsInputResolver) CommitQueue(ctx context.Context, obj *restModel.APINotificationPreferences, data *string) error {
-	panic(fmt.Errorf("not implemented: CommitQueue - commitQueue"))
-}
-
 // Target is the resolver for the target field.
 func (r *subscriberInputResolver) Target(ctx context.Context, obj *restModel.APISubscriber, data string) error {
 	obj.Target = data
 	return nil
 }
 
-// Notifications returns NotificationsResolver implementation.
-func (r *Resolver) Notifications() NotificationsResolver { return &notificationsResolver{r} }
-
 // User returns UserResolver implementation.
 func (r *Resolver) User() UserResolver { return &userResolver{r} }
-
-// NotificationsInput returns NotificationsInputResolver implementation.
-func (r *Resolver) NotificationsInput() NotificationsInputResolver {
-	return &notificationsInputResolver{r}
-}
 
 // SubscriberInput returns SubscriberInputResolver implementation.
 func (r *Resolver) SubscriberInput() SubscriberInputResolver { return &subscriberInputResolver{r} }
 
-type notificationsResolver struct{ *Resolver }
 type userResolver struct{ *Resolver }
-type notificationsInputResolver struct{ *Resolver }
 type subscriberInputResolver struct{ *Resolver }

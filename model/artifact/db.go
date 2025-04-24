@@ -1,6 +1,8 @@
 package artifact
 
 import (
+	"context"
+
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
@@ -18,7 +20,7 @@ var (
 	NameKey        = bsonutil.MustHaveTag(File{}, "Name")
 	LinkKey        = bsonutil.MustHaveTag(File{}, "Link")
 	ContentTypeKey = bsonutil.MustHaveTag(File{}, "ContentType")
-	AwsSecretKey   = bsonutil.MustHaveTag(File{}, "AwsSecret")
+	AWSSecretKey   = bsonutil.MustHaveTag(File{}, "AWSSecret")
 )
 
 type TaskIDAndExecution struct {
@@ -83,7 +85,7 @@ func BySecret(secret string) db.Q {
 	return db.Query(bson.M{
 		FilesKey: bson.M{
 			"$elemMatch": bson.M{
-				AwsSecretKey: secret,
+				AWSSecretKey: secret,
 			},
 		},
 	})
@@ -93,8 +95,9 @@ func BySecret(secret string) db.Q {
 
 // Upsert updates the files entry in the db if an entry already exists,
 // overwriting the existing file data. If no entry exists, one is created
-func (e Entry) Upsert() error {
+func (e Entry) Upsert(ctx context.Context) error {
 	_, err := db.Upsert(
+		ctx,
 		Collection,
 		bson.M{
 			TaskIdKey:    e.TaskId,
@@ -116,38 +119,10 @@ func (e Entry) Upsert() error {
 	return err
 }
 
-func (e Entry) Update() error {
-	update := bson.M{
-		TaskIdKey:   e.TaskId,
-		TaskNameKey: e.TaskDisplayName,
-		BuildIdKey:  e.BuildId,
-	}
-	if e.Execution == 0 {
-		update["$or"] = []bson.M{
-			bson.M{ExecutionKey: bson.M{"$exists": false}},
-			bson.M{ExecutionKey: 0},
-		}
-	} else {
-		update[ExecutionKey] = e.Execution
-	}
-
-	err := db.Update(
-		Collection,
-		update,
-		bson.M{
-			"$set": bson.M{
-				FilesKey: e.Files,
-			},
-		},
-	)
-
-	return err
-}
-
 // FindOne gets one Entry for the given query
-func FindOne(query db.Q) (*Entry, error) {
+func FindOne(ctx context.Context, query db.Q) (*Entry, error) {
 	entry := &Entry{}
-	err := db.FindOneQ(Collection, query, entry)
+	err := db.FindOneQContext(ctx, Collection, query, entry)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
 	}
@@ -155,8 +130,8 @@ func FindOne(query db.Q) (*Entry, error) {
 }
 
 // FindAll gets every Entry for the given query
-func FindAll(query db.Q) ([]Entry, error) {
+func FindAll(ctx context.Context, query db.Q) ([]Entry, error) {
 	entries := []Entry{}
-	err := db.FindAllQ(Collection, query, &entries)
+	err := db.FindAllQ(ctx, Collection, query, &entries)
 	return entries, err
 }

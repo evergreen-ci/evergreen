@@ -41,20 +41,20 @@ func (uis *UIServer) setRevision(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	projectRef, err := model.FindBranchProjectRef(project)
+	projectRef, err := model.FindBranchProjectRef(r.Context(), project)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
 
 	// update the latest revision to be the revision id
-	err = model.UpdateLastRevision(projectRef.Id, revision)
+	err = model.UpdateLastRevision(r.Context(), projectRef.Id, revision)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
 
-	if err := projectRef.SetRepotrackerError(&model.RepositoryErrorDetails{}); err != nil {
+	if err := projectRef.SetRepotrackerError(r.Context(), &model.RepositoryErrorDetails{}); err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
@@ -71,7 +71,7 @@ func (uis *UIServer) setRevision(w http.ResponseWriter, r *http.Request) {
 func (uis *UIServer) projectEvents(w http.ResponseWriter, r *http.Request) {
 	// Validate the project exists
 	id := gimlet.GetVars(r)["project_id"]
-	projectRef, err := model.FindBranchProjectRef(id)
+	projectRef, err := model.FindBranchProjectRef(r.Context(), id)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return

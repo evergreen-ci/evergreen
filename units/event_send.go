@@ -82,7 +82,7 @@ func (j *eventSendJob) Run(ctx context.Context) {
 		return
 	}
 
-	n, err := notification.Find(j.NotificationID)
+	n, err := notification.Find(ctx, j.NotificationID)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "finding notification '%s'", j.NotificationID))
 		return
@@ -93,7 +93,7 @@ func (j *eventSendJob) Run(ctx context.Context) {
 	}
 
 	if err = j.checkDegradedMode(n); err != nil {
-		j.AddError(errors.Wrapf(n.MarkError(errors.Wrap(err, "checking degraded mode")), "setting error for notification '%s'", n.ID))
+		j.AddError(errors.Wrapf(n.MarkError(ctx, errors.Wrap(err, "checking degraded mode")), "setting error for notification '%s'", n.ID))
 		return
 	}
 
@@ -102,7 +102,7 @@ func (j *eventSendJob) Run(ctx context.Context) {
 		return
 	}
 
-	err = j.send(n)
+	err = j.send(ctx, n)
 	grip.Error(message.WrapError(err, message.Fields{
 		"job_id":            j.ID(),
 		"notification_id":   n.ID,
@@ -110,12 +110,12 @@ func (j *eventSendJob) Run(ctx context.Context) {
 		"message":           "send failed",
 	}))
 	j.AddError(err)
-	j.AddError(errors.Wrapf(n.MarkSent(), "marking notification '%s' as sent", n.ID))
-	j.AddError(errors.Wrapf(n.MarkError(err), "setting error for notification '%s'", n.ID))
+	j.AddError(errors.Wrapf(n.MarkSent(ctx), "marking notification '%s' as sent", n.ID))
+	j.AddError(errors.Wrapf(n.MarkError(ctx, err), "setting error for notification '%s'", n.ID))
 }
 
-func (j *eventSendJob) send(n *notification.Notification) error {
-	c, err := n.Composer()
+func (j *eventSendJob) send(ctx context.Context, n *notification.Notification) error {
+	c, err := n.Composer(ctx)
 	if err != nil {
 		return err
 	}

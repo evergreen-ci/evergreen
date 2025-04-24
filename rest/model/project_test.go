@@ -6,7 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/utility"
-	"github.com/google/go-github/v52/github"
+	"github.com/google/go-github/v70/github"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -23,7 +23,7 @@ func TestRepoBuildFromService(t *testing.T) {
 		}},
 	}
 	apiRef := &APIProjectRef{}
-	assert.NoError(t, apiRef.BuildFromService(repoRef.ProjectRef))
+	assert.NoError(t, apiRef.BuildFromService(t.Context(), repoRef.ProjectRef))
 	// not defaulted yet
 	require.NotNil(t, apiRef)
 	assert.Nil(t, apiRef.GitTagVersionsEnabled)

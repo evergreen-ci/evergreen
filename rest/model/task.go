@@ -474,7 +474,7 @@ func (at *APITask) BuildFromService(ctx context.Context, t *task.Task, args *API
 		}
 	}
 	if args.IncludeProjectIdentifier {
-		at.GetProjectIdentifier()
+		at.GetProjectIdentifier(ctx)
 	}
 
 	return nil
@@ -499,12 +499,12 @@ func (at *APITask) GetAMI(ctx context.Context) error {
 	return nil
 }
 
-func (at *APITask) GetProjectIdentifier() {
+func (at *APITask) GetProjectIdentifier(ctx context.Context) {
 	if at.ProjectIdentifier != nil {
 		return
 	}
 	if utility.FromStringPtr(at.ProjectId) != "" {
-		identifier, err := model.GetIdentifierForProject(utility.FromStringPtr(at.ProjectId))
+		identifier, err := model.GetIdentifierForProject(ctx, utility.FromStringPtr(at.ProjectId))
 		if err == nil {
 			at.ProjectIdentifier = utility.ToStringPtr(identifier)
 		}
@@ -615,10 +615,10 @@ func (at *APITask) getArtifacts(ctx context.Context) error {
 			ets = append(ets, artifact.TaskIDAndExecution{TaskID: *t, Execution: at.Execution})
 		}
 		if len(ets) > 0 {
-			entries, err = artifact.FindAll(artifact.ByTaskIdsAndExecutions(ets))
+			entries, err = artifact.FindAll(ctx, artifact.ByTaskIdsAndExecutions(ets))
 		}
 	} else {
-		entries, err = artifact.FindAll(artifact.ByTaskIdAndExecution(utility.FromStringPtr(at.Id), at.Execution))
+		entries, err = artifact.FindAll(ctx, artifact.ByTaskIdAndExecution(utility.FromStringPtr(at.Id), at.Execution))
 	}
 	if err != nil {
 		return errors.Wrap(err, "retrieving artifacts")

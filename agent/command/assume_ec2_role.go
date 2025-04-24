@@ -32,7 +32,7 @@ type ec2AssumeRole struct {
 func ec2AssumeRoleFactory() Command   { return &ec2AssumeRole{} }
 func (r *ec2AssumeRole) Name() string { return "ec2.assume_role" }
 
-func (r *ec2AssumeRole) ParseParams(params map[string]interface{}) error {
+func (r *ec2AssumeRole) ParseParams(params map[string]any) error {
 	if err := mapstructure.Decode(params, r); err != nil {
 		return errors.Wrap(err, "decoding mapstructure params")
 	}
@@ -78,6 +78,10 @@ func (r *ec2AssumeRole) Execute(ctx context.Context, comm client.Communicator, l
 	conf.NewExpansions.PutAndRedact(globals.AWSSecretAccessKey, creds.SecretAccessKey)
 	conf.NewExpansions.PutAndRedact(globals.AWSSessionToken, creds.SessionToken)
 	conf.NewExpansions.Put(globals.AWSRoleExpiration, creds.Expiration)
+
+	// Store the role ARN in the task config, so s3 operations can identify the corresponding
+	// role ARN that the credentials are associated with.
+	conf.AssumeRoleRoles[creds.SessionToken] = request.RoleARN
 
 	return nil
 }

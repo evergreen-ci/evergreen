@@ -128,17 +128,17 @@ func (p *copyVariablesHandler) Parse(ctx context.Context, r *http.Request) error
 }
 
 func (p *copyVariablesHandler) Run(ctx context.Context) gimlet.Responder {
-	copyToProjectId, copyIdIsProject, err := getProjectOrRepoId(p.opts.CopyTo)
+	copyToProjectId, copyIdIsProject, err := getProjectOrRepoId(ctx, p.opts.CopyTo)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
-	copyFromProjectId, _, err := getProjectOrRepoId(p.copyFrom)
+	copyFromProjectId, _, err := getProjectOrRepoId(ctx, p.copyFrom)
 	if err != nil {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
 
 	// Don't redact private variables unless it's a dry run
-	varsToCopy, err := data.FindProjectVarsById(copyFromProjectId, "", p.opts.DryRun)
+	varsToCopy, err := data.FindProjectVarsById(ctx, copyFromProjectId, "", p.opts.DryRun)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding vars for source project '%s'", p.copyFrom))
 	}
@@ -162,7 +162,7 @@ func (p *copyVariablesHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "getting settings for project '%s' before copying variables", copyToProjectId))
 	}
 
-	if err := data.UpdateProjectVars(copyToProjectId, varsToCopy, p.opts.Overwrite); err != nil {
+	if err := data.UpdateProjectVars(ctx, copyToProjectId, varsToCopy, p.opts.Overwrite); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "copying project vars from source project '%s' to target project '%s'", p.copyFrom, p.opts.CopyTo))
 	}
 
@@ -174,11 +174,11 @@ func (p *copyVariablesHandler) Run(ctx context.Context) gimlet.Responder {
 }
 
 // getProjectOrRepoId returns the ID, and returns true if this is a project ref, and false otherwise.
-func getProjectOrRepoId(identifier string) (string, bool, error) {
-	id, err := model.GetIdForProject(identifier) // Ensure project is existing
+func getProjectOrRepoId(ctx context.Context, identifier string) (string, bool, error) {
+	id, err := model.GetIdForProject(ctx, identifier) // Ensure project is existing
 	if err != nil {
 		// Check if this is a repo project instead
-		repoRef, err := model.FindOneRepoRef(identifier)
+		repoRef, err := model.FindOneRepoRef(ctx, identifier)
 		if err != nil {
 			return "", false, gimlet.ErrorResponse{
 				StatusCode: http.StatusInternalServerError,

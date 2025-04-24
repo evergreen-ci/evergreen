@@ -37,7 +37,7 @@ func TestProjectRoutes(t *testing.T) {
 			Repo:    "repo1",
 			Admins:  []string{},
 		}
-		So(public.Insert(), ShouldBeNil)
+		So(public.Insert(t.Context()), ShouldBeNil)
 
 		url := "/rest/v1/projects/" + publicId
 
@@ -90,7 +90,7 @@ func TestProjectRoutes(t *testing.T) {
 			Repo:    "repo1",
 			Admins:  []string{"testuser"},
 		}
-		So(private.Insert(), ShouldBeNil)
+		So(private.Insert(t.Context()), ShouldBeNil)
 		response := httptest.NewRecorder()
 
 		Convey("users who are not logged in should be denied with a 401", func() {
@@ -153,7 +153,7 @@ func TestProjectRoutes(t *testing.T) {
 			Convey("for a public user", func() {
 				router.ServeHTTP(response, request)
 				So(response.Code, ShouldEqual, http.StatusNotFound)
-				var jsonBody map[string]interface{}
+				var jsonBody map[string]any
 				err = json.Unmarshal(response.Body.Bytes(), &jsonBody)
 				So(err, ShouldBeNil)
 				So(len(jsonBody["message"].(string)), ShouldBeGreaterThan, 0)
@@ -162,7 +162,7 @@ func TestProjectRoutes(t *testing.T) {
 				request.AddCookie(&http.Cookie{Name: evergreen.AuthTokenCookie, Value: "token"})
 				router.ServeHTTP(response, request)
 				So(response.Code, ShouldEqual, http.StatusNotFound)
-				var jsonBody map[string]interface{}
+				var jsonBody map[string]any
 				err = json.Unmarshal(response.Body.Bytes(), &jsonBody)
 				So(err, ShouldBeNil)
 				So(len(jsonBody["message"].(string)), ShouldBeGreaterThan, 0)

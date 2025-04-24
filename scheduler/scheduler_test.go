@@ -98,7 +98,7 @@ func TestUnderwaterUnschedule(t *testing.T) {
 		BuildId:       "b",
 		Version:       "v",
 	}
-	assert.NoError(t1.Insert())
+	assert.NoError(t1.Insert(ctx))
 
 	t2 := task.Task{
 		Id:            "t2",
@@ -110,7 +110,7 @@ func TestUnderwaterUnschedule(t *testing.T) {
 		BuildId:       "b",
 		Version:       "v",
 	}
-	assert.NoError(t2.Insert())
+	assert.NoError(t2.Insert(ctx))
 
 	t3 := task.Task{
 		Id:            "t3",
@@ -122,7 +122,7 @@ func TestUnderwaterUnschedule(t *testing.T) {
 		BuildId:       "b",
 		Version:       "v",
 	}
-	assert.NoError(t3.Insert())
+	assert.NoError(t3.Insert(ctx))
 
 	dt := task.Task{
 		Id:             "dt",
@@ -136,7 +136,7 @@ func TestUnderwaterUnschedule(t *testing.T) {
 		BuildId:        "b",
 		Version:        "v",
 	}
-	assert.NoError(dt.Insert())
+	assert.NoError(dt.Insert(ctx))
 	execTasks := []task.Task{
 		{
 			Id:            "et1",
@@ -160,7 +160,7 @@ func TestUnderwaterUnschedule(t *testing.T) {
 		},
 	}
 	for _, et := range execTasks {
-		assert.NoError(et.Insert())
+		assert.NoError(et.Insert(ctx))
 	}
 
 	d := distro.Distro{
@@ -177,16 +177,16 @@ func TestUnderwaterUnschedule(t *testing.T) {
 		Status: evergreen.VersionStarted,
 	}
 	assert.NoError(d.Insert(ctx))
-	assert.NoError(b.Insert())
-	assert.NoError(v.Insert())
+	assert.NoError(b.Insert(ctx))
+	assert.NoError(v.Insert(ctx))
 
 	err := underwaterUnschedule(ctx, "d")
 	assert.NoError(err)
 
-	foundBuild, err := build.FindOneId(b.Id)
+	foundBuild, err := build.FindOneId(t.Context(), b.Id)
 	assert.NoError(err)
 	require.NotNil(t, foundBuild)
-	foundVersion, err := model.VersionFindOneId(v.Id)
+	foundVersion, err := model.VersionFindOneId(t.Context(), v.Id)
 	assert.NoError(err)
 	require.NotNil(t, foundVersion)
 	foundT1, err := task.FindOneId(ctx, t1.Id)

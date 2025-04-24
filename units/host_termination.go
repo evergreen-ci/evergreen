@@ -167,6 +167,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			if err := j.host.Terminate(ctx, evergreen.User, j.TerminationReason); err != nil {
 				j.AddError(errors.Wrapf(err, "terminating intent host '%s' in DB", j.host.Id))
 			}
+			return
 		}
 	case evergreen.HostTerminated:
 		if host.IsIntentHostId(j.host.Id) {
@@ -310,6 +311,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		"message":            "host successfully terminated",
 		"host_id":            j.host.Id,
 		"distro":             j.host.Distro.Id,
+		"single_task_distro": j.host.Distro.SingleTaskDistro,
 		"job":                j.ID(),
 		"reason":             j.TerminationReason,
 		"total_idle_secs":    j.host.TotalIdleTime.Seconds(),
@@ -339,7 +341,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	}
 
 	if utility.StringSliceContains(evergreen.ProvisioningHostStatus, prevStatus) && j.host.TaskCount == 0 {
-		event.LogHostProvisionFailed(j.HostID, fmt.Sprintf("terminating host in status '%s'", prevStatus))
+		event.LogHostProvisionFailed(ctx, j.HostID, fmt.Sprintf("terminating host in status '%s'", prevStatus))
 		grip.Info(message.Fields{
 			"message":          "provisioning failure",
 			"status":           prevStatus,
@@ -366,7 +368,7 @@ func (j *hostTerminationJob) incrementIdleTime(ctx context.Context) error {
 		idleTime += pad
 	}
 
-	return j.host.IncIdleTime(idleTime)
+	return j.host.IncIdleTime(ctx, idleTime)
 }
 
 // checkAndTerminateCloudHost checks if the host is still up according to the
@@ -398,10 +400,12 @@ func (j *hostTerminationJob) checkAndTerminateCloudHost(ctx context.Context) err
 	}
 
 	if cloudInfo.Status == cloud.StatusTerminated {
-		catcher := grip.NewBasicCatcher()
-		catcher.Errorf("host is already terminated in the cloud: '%s'", cloudInfo.StateReason)
-		catcher.Wrap(j.host.Terminate(ctx, evergreen.User, "cloud provider indicated that host was already terminated"), "marking host as terminated")
-		return catcher.Resolve()
+		grip.Info(message.Fields{
+			"message":             "host is already terminated in the cloud, setting the host status to terminated",
+			"cloud_status":        cloudInfo.Status,
+			"cloud_status_reason": cloudInfo.StateReason,
+		})
+		return j.host.Terminate(ctx, evergreen.User, "cloud provider indicated that the host was already terminated")
 	}
 
 	if err := cloudHost.TerminateInstance(ctx, evergreen.User, j.TerminationReason); err != nil {

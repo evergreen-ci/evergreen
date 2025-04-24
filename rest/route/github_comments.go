@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/google/go-github/v52/github"
+	"github.com/google/go-github/v70/github"
 )
 
 type githubComments struct {

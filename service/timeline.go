@@ -89,7 +89,7 @@ func (uis *UIServer) patchTimelineJson(w http.ResponseWriter, r *http.Request) {
 	user := gimlet.GetVars(r)["user_id"]
 	var patches []patch.Patch
 	if len(user) > 0 {
-		patches, err = patch.Find(patch.ByUserAndCommitQueue(user, filterCommitQueue).
+		patches, err = patch.Find(r.Context(), patch.ByUserAndCommitQueue(user, filterCommitQueue).
 			Project(patch.ExcludePatchDiff).
 			Sort([]string{"-" + patch.CreateTimeKey}).
 			Skip(skip).Limit(DefaultLimit))
@@ -101,13 +101,13 @@ func (uis *UIServer) patchTimelineJson(w http.ResponseWriter, r *http.Request) {
 	} else {
 		projectID := gimlet.GetVars(r)["project_id"]
 		var project *model.Project
-		project, err = projCtx.GetProject()
+		project, err = projCtx.GetProject(r.Context())
 		if err != nil || project == nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err,
 				"Error fetching project %v", projectID))
 			return
 		}
-		patches, err = patch.Find(patch.ByProjectAndCommitQueue(project.Identifier, filterCommitQueue).
+		patches, err = patch.Find(r.Context(), patch.ByProjectAndCommitQueue(project.Identifier, filterCommitQueue).
 			Sort([]string{"-" + patch.CreateTimeKey}).
 			Project(patch.ExcludePatchDiff).
 			Skip(skip).Limit(DefaultLimit))
@@ -125,7 +125,7 @@ func (uis *UIServer) patchTimelineJson(w http.ResponseWriter, r *http.Request) {
 			versionIds = append(versionIds, patch.Version)
 		}
 		var baseVersion *model.Version
-		baseVersion, err = model.VersionFindOne(model.BaseVersionByProjectIdAndRevision(patch.Project, patch.Githash))
+		baseVersion, err = model.VersionFindOne(r.Context(), model.BaseVersionByProjectIdAndRevision(patch.Project, patch.Githash))
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
@@ -147,7 +147,7 @@ func (uis *UIServer) patchTimelineJson(w http.ResponseWriter, r *http.Request) {
 			Alias:         patch.Alias,
 		})
 	}
-	versions, err := model.VersionFind(model.VersionByIds(versionIds))
+	versions, err := model.VersionFind(r.Context(), model.VersionByIds(versionIds))
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error fetching versions for patches"))
 		return
@@ -173,7 +173,7 @@ func (uis *UIServer) patchTimelineJson(w http.ResponseWriter, r *http.Request) {
 }
 
 func getBuildInfo(ctx context.Context, buildIds []string) ([]BuildInfo, error) {
-	dbBuilds, err := build.Find(build.ByIds(buildIds))
+	dbBuilds, err := build.Find(ctx, build.ByIds(buildIds))
 	if err != nil {
 		return nil, errors.Wrap(err, "can't get builds")
 	}
