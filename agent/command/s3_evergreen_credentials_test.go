@@ -37,5 +37,21 @@ func TestEvergreenCredentials(t *testing.T) {
 		assert.Equal(t, "secret_access_key", creds.SecretAccessKey)
 		assert.Equal(t, "session_token", creds.SessionToken)
 		assert.Equal(t, expires, creds.Expires.Format(time.RFC3339))
+
+		t.Run("FailsWithInvalidTimeFormat", func(t *testing.T) {
+			expires := time.Now().Add(time.Hour).String()
+			comm.AssumeRoleResponse = &apimodels.AWSCredentials{
+				AccessKeyID:     "assume_access_key",
+				SecretAccessKey: "secret_access_key",
+				SessionToken:    "session_token",
+				Expiration:      expires,
+			}
+
+			provider := createEvergreenCredentials(comm, taskData, "role_arn")
+
+			creds, err := provider.Retrieve(t.Context())
+			require.Error(t, err)
+			assert.Nil(t, creds)
+		})
 	})
 }
