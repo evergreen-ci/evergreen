@@ -795,6 +795,9 @@ func canUseElasticIP(settings *evergreen.Settings, ec2Settings *EC2ProviderSetti
 // allocateIPAddressForHost allocates an elastic IP address from an IPAM pool
 // for the host.
 func allocateIPAddressForHost(ctx context.Context, settings *evergreen.Settings, c AWSClient, h *host.Host) error {
+	ctx, span := tracer.Start(ctx, "allocateIPAddressForHost")
+	defer span.End()
+
 	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		return errors.Wrap(err, "getting service flags")
@@ -863,6 +866,9 @@ func releaseIPAddressForHost(ctx context.Context, c AWSClient, h *host.Host) err
 
 // associateIPAddressForHost associates the allocated IP address with the host.
 func associateIPAddressForHost(ctx context.Context, c AWSClient, h *host.Host) error {
+	ctx, span := tracer.Start(ctx, "associateIPAddressForHost")
+	defer span.End()
+
 	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		return errors.Wrap(err, "getting service flags")
