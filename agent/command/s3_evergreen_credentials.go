@@ -10,8 +10,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-const defaultTimeFormat = "2006-01-02 15:04:05.999999999 -0700 MST"
-
 // evergreenCredentialProvider is an AWS credential provider that
 // retrieves credentials from Evergreen.
 type evergreenCredentialProvider struct {
@@ -49,7 +47,7 @@ func (p *evergreenCredentialProvider) Retrieve(ctx context.Context) (aws.Credent
 		return aws.Credentials{}, errors.New("nil credentials returned")
 	}
 
-	expires, err := time.Parse(defaultTimeFormat, creds.Expiration)
+	expires, err := time.Parse(time.RFC3339, creds.Expiration)
 	if err != nil {
 		return aws.Credentials{}, errors.Wrap(err, "parsing expiration time")
 	}
