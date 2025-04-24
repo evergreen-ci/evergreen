@@ -36,6 +36,7 @@ type ServiceFlags struct {
 	SleepScheduleDisabled           bool `bson:"sleep_schedule_disabled" json:"sleep_schedule_disabled"`
 	SystemFailedTaskRestartDisabled bool `bson:"system_failed_task_restart_disabled" json:"system_failed_task_restart_disabled"`
 	CPUDegradedModeDisabled         bool `bson:"cpu_degraded_mode_disabled" json:"cpu_degraded_mode_disabled"`
+	ElasticIPsDisabled              bool `bson:"elastic_ips_disabled" json:"elastic_ips_disabled"`
 
 	// Notification Flags
 	EventProcessingDisabled      bool `bson:"event_processing_disabled" json:"event_processing_disabled"`
@@ -86,6 +87,7 @@ func (c *ServiceFlags) Set(ctx context.Context) error {
 			cloudCleanupDisabledKey:            c.CloudCleanupDisabled,
 			unrecognizedPodCleanupDisabledKey:  c.UnrecognizedPodCleanupDisabled,
 			sleepScheduleDisabledKey:           c.SleepScheduleDisabled,
+			elasticIPsDisabledKey:              c.ElasticIPsDisabled,
 			systemFailedTaskRestartDisabledKey: c.SystemFailedTaskRestartDisabled,
 			cpuDegradedModeDisabledKey:         c.CPUDegradedModeDisabled,
 		}}), "updating config section '%s'", c.SectionId(),
