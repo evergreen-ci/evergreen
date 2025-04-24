@@ -82,6 +82,10 @@ type EC2ProviderSettings struct {
 
 	// FleetOptions specifies options for creating host with Fleet. It is ignored by other managers.
 	FleetOptions FleetConfig `mapstructure:"fleet_options" json:"fleet_options,omitempty" bson:"fleet_options,omitempty"`
+
+	// ElasticIPsEnabled determines if hosts can use elastic IPs to obtain their
+	// IP addresses.
+	ElasticIPsEnabled bool `mapstructure:"elastic_ips_enabled" json:"elastic_ips_enabled,omitempty" bson:"elastic_ips_enabled,omitempty"`
 }
 
 // Validate that essential EC2ProviderSettings fields are not empty.
@@ -297,6 +301,19 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 	}
 
 	assignPublicIPv4 := shouldAssignPublicIPv4Address(h, ec2Settings)
+
+	useElasticIP := assignPublicIPv4 && canUseElasticIP(m.settings, ec2Settings, h)
+	if useElasticIP && h.IPAllocationID == "" {
+		// If the host can't be allocated an IP address, continue on error
+		// because the host should fall back to using an AWS-provided IP
+		// address. Using an elastic IP address is a best-effort attempt to save
+		// money.
+		grip.Notice(message.WrapError(allocateIPAddressForHost(ctx, m.settings, m.client, h), message.Fields{
+			"message": "could not allocate elastic IP address for host, falling back to using AWS-managed IP",
+			"host_id": h.Id,
+		}))
+	}
+
 	if assignPublicIPv4 {
 		// Only set an SSH key for the host if the host actually has a public
 		// IPv4 address. Hosts that don't have a public IPv4 address aren't
@@ -304,9 +321,13 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 		input.KeyName = aws.String(ec2Settings.KeyName)
 	}
 	if ec2Settings.IsVpc {
+		// Fall back to using an AWS-provided IPv4 address if this host needs a
+		// public IPv4 address and it hasn't been allocated a elastic IP
+		// address.
+		useAWSIPv4Addr := assignPublicIPv4 && h.IPAllocationID == ""
 		input.NetworkInterfaces = []types.InstanceNetworkInterfaceSpecification{
 			{
-				AssociatePublicIpAddress: aws.Bool(assignPublicIPv4),
+				AssociatePublicIpAddress: aws.Bool(useAWSIPv4Addr),
 				DeviceIndex:              aws.Int32(0),
 				Groups:                   ec2Settings.SecurityGroupIDs,
 				SubnetId:                 &ec2Settings.SubnetId,
@@ -407,6 +428,24 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 
 	instance := reservation.Instances[0]
 	h.Id = *instance.InstanceId
+
+	if useElasticIP && h.IPAllocationID != "" {
+		// Associate the IP address that was allocated for this host. This is
+		// necessary for the host to be usable because otherwise, it has no IP
+		// address.
+		// Unfortunately, this step is prone to timing issues because EC2 only
+		// allows an IP address to be associated with the host after the
+		// EC2 instance reaches the "running" state. If AWS is slow at getting
+		// the host to "running", this could run out of attempts to associate
+		// the IP address and the host would end up unusable.
+		// TODO (DEVPROD-17136): consider making this step more resilient
+		// against AWS timing problems.
+		grip.Error(message.WrapError(associateIPAddressForHost(ctx, m.client, h), message.Fields{
+			"message":       "host was created and allocated an elastic IP address but could not associate the host with the IP address; host will not be usable",
+			"host_id":       h.Id,
+			"allocation_id": h.IPAllocationID,
+		}))
+	}
 
 	return nil
 }

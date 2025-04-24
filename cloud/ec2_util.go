@@ -36,6 +36,16 @@ const (
 	EC2VolumeResizeRate     = "VolumeModificationRateExceeded"
 	ec2TemplateNameExists   = "InvalidLaunchTemplateName.AlreadyExistsException"
 
+	// ec2InsufficientAddressCapacity means that there are no IP addresses
+	// available to allocate.
+	ec2InsufficientAddressCapacity = "InsufficientAddressCapacity"
+	// ec2InsufficientAddressCapacity means that the account has reached its
+	// limit on the number of elastic IPs it can allocate.
+	ec2AddressLimitExceeded = "AddressLimitExceeded"
+	// ec2ResourceAlreadyAssociated means an elastic IP is already associated
+	// with another resource.
+	ec2ResourceAlreadyAssociated = "Resource.AlreadyAssociated"
+
 	r53InvalidInput       = "InvalidInput"
 	r53InvalidChangeBatch = "InvalidChangeBatch"
 
@@ -758,4 +768,76 @@ func shouldAssignPublicIPv4Address(h *host.Host, ec2Settings *EC2ProviderSetting
 	}
 
 	return !ec2Settings.DoNotAssignPublicIPv4Address && !ec2Settings.IPv6
+}
+
+func canUseElasticIP(settings *evergreen.Settings, ec2Settings *EC2ProviderSettings, h *host.Host) bool {
+	if h.UserHost || h.SpawnOptions.SpawnedByTask {
+		// Spawn hosts and host.create hosts should not use an elastic IP
+		// because the feature is primarily intended for task hosts.
+		return false
+	}
+	if settings.Providers.AWS.IPAMPoolID == "" {
+		return false
+	}
+
+	return ec2Settings.ElasticIPsEnabled
+}
+
+// allocateIPAddressForHost allocates an elastic IP address from an IPAM pool
+// for the host.
+func allocateIPAddressForHost(ctx context.Context, settings *evergreen.Settings, c AWSClient, h *host.Host) error {
+	hostname, err := os.Hostname()
+	if err != nil {
+		hostname = "unknown"
+	}
+	input := &ec2.AllocateAddressInput{
+		IpamPoolId: aws.String(settings.Providers.AWS.IPAMPoolID),
+		TagSpecifications: []types.TagSpecification{
+			{
+				ResourceType: types.ResourceTypeElasticIp,
+				Tags: []types.Tag{
+					{Key: aws.String(evergreen.TagEvergreenService), Value: aws.String(hostname)},
+					{Key: aws.String(evergreen.TagMode), Value: aws.String("production")},
+				},
+			},
+		},
+	}
+
+	allocateAddrOut, err := c.AllocateAddress(ctx, input)
+	if err != nil {
+		return errors.Wrap(err, "allocating new IP address for host")
+	}
+	if allocateAddrOut == nil {
+		return errors.New("address allocation returned nil result")
+	}
+	allocationID := aws.ToString(allocateAddrOut.AllocationId)
+	if allocationID == "" {
+		return errors.New("address allocation did not return an allocation ID")
+	}
+	if err := h.SetIPAllocationID(ctx, allocationID); err != nil {
+		return errors.Wrapf(err, "setting IP allocation ID '%s' for host", allocationID)
+	}
+	return nil
+}
+
+// associateIPAddressForHost associates the allocated IP address with the host.
+func associateIPAddressForHost(ctx context.Context, c AWSClient, h *host.Host) error {
+	assocAddrOut, err := c.AssociateAddress(ctx, &ec2.AssociateAddressInput{
+		InstanceId:   aws.String(h.Id),
+		AllocationId: aws.String(h.IPAllocationID),
+	})
+	if err != nil {
+		return errors.Wrap(err, "associating IP address with host")
+	}
+	if assocAddrOut == nil {
+		return errors.New("address association returned nil result")
+	}
+	associationID := aws.ToString(assocAddrOut.AssociationId)
+	if associationID == "" {
+		return errors.New("address association did not return an association ID")
+	}
+	if err := h.SetIPAssociationID(ctx, associationID); err != nil {
+		return errors.Wrapf(err, "setting IP association ID '%s' for host", associationID)
+	}
+	return nil
 }

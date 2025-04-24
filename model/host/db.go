@@ -37,6 +37,8 @@ var (
 	TagKey                                 = bsonutil.MustHaveTag(Host{}, "Tag")
 	DistroKey                              = bsonutil.MustHaveTag(Host{}, "Distro")
 	ProviderKey                            = bsonutil.MustHaveTag(Host{}, "Provider")
+	IPAllocationIDKey                      = bsonutil.MustHaveTag(Host{}, "IPAllocationID")
+	IPAssociationIDKey                     = bsonutil.MustHaveTag(Host{}, "IPAssociationID")
 	IPKey                                  = bsonutil.MustHaveTag(Host{}, "IP")
 	IPv4Key                                = bsonutil.MustHaveTag(Host{}, "IPv4")
 	PersistentDNSNameKey                   = bsonutil.MustHaveTag(Host{}, "PersistentDNSName")
