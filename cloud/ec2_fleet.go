@@ -346,10 +346,10 @@ func (m *ec2FleetManager) StartInstance(context.Context, *host.Host, string) err
 // releases the IP address back into the IPAM pool.
 func (m *ec2FleetManager) CleanupIP(ctx context.Context, h *host.Host) error {
 	if err := disassociateIPAddressForHost(ctx, m.client, h); err != nil {
-		return errors.Wrapf(err, "disassociating host IP address with association ID '%s'", h.IPAssociationID)
+		return err
 	}
 	if err := releaseIPAddressForHost(ctx, m.client, h); err != nil {
-		return errors.Wrapf(err, "releasing host IP address with allocation ID '%s'", h.IPAllocationID)
+		return err
 	}
 	return nil
 }

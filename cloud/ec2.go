@@ -1388,10 +1388,10 @@ func (m *ec2Manager) TimeTilNextPayment(host *host.Host) time.Duration {
 // releases the IP address back into the IPAM pool.
 func (m *ec2Manager) CleanupIP(ctx context.Context, h *host.Host) error {
 	if err := disassociateIPAddressForHost(ctx, m.client, h); err != nil {
-		return errors.Wrapf(err, "disassociating host IP address with association ID '%s'", h.IPAssociationID)
+		return err
 	}
 	if err := releaseIPAddressForHost(ctx, m.client, h); err != nil {
-		return errors.Wrapf(err, "releasing host IP address with allocation ID '%s'", h.IPAllocationID)
+		return err
 	}
 	return nil
 }

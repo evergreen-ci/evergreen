@@ -834,7 +834,7 @@ func releaseIPAddressForHost(ctx context.Context, c AWSClient, h *host.Host) err
 	_, err := c.ReleaseAddress(ctx, &ec2.ReleaseAddressInput{
 		AllocationId: aws.String(h.IPAllocationID),
 	})
-	return err
+	return errors.Wrapf(err, "releasing host IP address with allocation ID '%s'", h.IPAllocationID)
 }
 
 // associateIPAddressForHost associates the allocated IP address with the host.
@@ -871,5 +871,5 @@ func disassociateIPAddressForHost(ctx context.Context, c AWSClient, h *host.Host
 	_, err := c.DisassociateAddress(ctx, &ec2.DisassociateAddressInput{
 		AssociationId: aws.String(h.IPAssociationID),
 	})
-	return err
+	return errors.Wrapf(err, "disassociating host IP address with association ID '%s'", h.IPAssociationID)
 }
