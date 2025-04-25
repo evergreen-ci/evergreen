@@ -11,7 +11,8 @@ packages += taskoutput cloud-parameterstore cloud-parameterstore-fakeparameter
 lintOnlyPackages := api apimodels testutil model-manifest model-testutil service-testutil service-graphql db-mgo db-mgo-bson db-mgo-internal-json rest
 lintOnlyPackages += smoke-internal smoke-internal-host smoke-internal-container smoke-internal-agentmonitor smoke-internal-endpoint
 testOnlyPackages := service-graphql smoke-internal-host smoke-internal-container smoke-internal-agentmonitor smoke-internal-endpoint # has only test files so can't undergo all operations
-orgPath := github.com/evergreen-ci
+orgName := evergreen-ci
+orgPath := github.com/$(orgName)
 projectPath := $(orgPath)/$(name)
 evghome := $(abspath .)
 ifeq ($(OS),Windows_NT)
@@ -375,7 +376,7 @@ swaggo-render:
 OPENAPI_FWS_CONFIG_URL := https://foliage-web-services.cloud-build.staging.corp.mongodb.com/foliage_web_services.json
 OPENAPI_FWS_HARDCODED_CONFIG := thirdparty/clients/fws/foliage_web_services.json
 OPENAPI_FWS_OUTPUT_DIR := thirdparty/clients/fws
-OPENAPI_FWS_CONFIG := packageName=fws,packageVersion=1.0.0,packageTitle=FoliageWebServices
+OPENAPI_FWS_CONFIG := packageName=fws,packageVersion=1.0.0,packageTitle=FoliageWebServices,gitUserId=$(orgName),gitRepoId=$(name),packageDescription="Foliage Web Services"
 OPENAPI_GENERATOR := bin/openapi-generator-cli.sh
 
 # Main rule for generating the client
