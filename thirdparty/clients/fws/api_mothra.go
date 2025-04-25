@@ -48,7 +48,7 @@ func (a *MothraAPIService) GetAllTeamsApiMothraAllTeamsGet(ctx context.Context) 
 }
 
 // Execute executes the request
-//  @return []TeamData
+//	@return	[]TeamData
 func (a *MothraAPIService) GetAllTeamsApiMothraAllTeamsGetExecute(r ApiGetAllTeamsApiMothraAllTeamsGetRequest) ([]TeamData, *http.Response, error) {
 	var (
 		localVarHTTPMethod   = http.MethodGet
@@ -153,7 +153,7 @@ func (a *MothraAPIService) GetTeamByNameAndProjectApiMothraTeamByNameAndProjectN
 }
 
 // Execute executes the request
-//  @return TeamData
+//	@return	TeamData
 func (a *MothraAPIService) GetTeamByNameAndProjectApiMothraTeamByNameAndProjectNameProjectGetExecute(r ApiGetTeamByNameAndProjectApiMothraTeamByNameAndProjectNameProjectGetRequest) (*TeamData, *http.Response, error) {
 	var (
 		localVarHTTPMethod   = http.MethodGet
@@ -267,7 +267,7 @@ func (a *MothraAPIService) GetTeamByTagApiMothraTeamByTagTagGet(ctx context.Cont
 }
 
 // Execute executes the request
-//  @return TeamData
+//	@return	TeamData
 func (a *MothraAPIService) GetTeamByTagApiMothraTeamByTagTagGetExecute(r ApiGetTeamByTagApiMothraTeamByTagTagGetRequest) (*TeamData, *http.Response, error) {
 	var (
 		localVarHTTPMethod   = http.MethodGet
@@ -380,7 +380,7 @@ func (a *MothraAPIService) GetTeamProjectsByNameApiMothraTeamProjectsByNameNameG
 }
 
 // Execute executes the request
-//  @return map[string]TeamData
+//	@return	map[string]TeamData
 func (a *MothraAPIService) GetTeamProjectsByNameApiMothraTeamProjectsByNameNameGetExecute(r ApiGetTeamProjectsByNameApiMothraTeamProjectsByNameNameGetRequest) (*map[string]TeamData, *http.Response, error) {
 	var (
 		localVarHTTPMethod   = http.MethodGet

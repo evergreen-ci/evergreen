@@ -68,7 +68,7 @@ func (a *OwnerAPIService) ByFoliageLogicApiOwnerByFoliageLogicTaskIdGet(ctx cont
 }
 
 // Execute executes the request
-//  @return FinalAssignmentResults
+//	@return	FinalAssignmentResults
 func (a *OwnerAPIService) ByFoliageLogicApiOwnerByFoliageLogicTaskIdGetExecute(r ApiByFoliageLogicApiOwnerByFoliageLogicTaskIdGetRequest) (*FinalAssignmentResults, *http.Response, error) {
 	var (
 		localVarHTTPMethod   = http.MethodGet
@@ -197,7 +197,7 @@ func (a *OwnerAPIService) ByJiraKeyApiOwnerByJiraKeyJiraKeyGet(ctx context.Conte
 }
 
 // Execute executes the request
-//  @return TeamDataWithOwner
+//	@return	TeamDataWithOwner
 func (a *OwnerAPIService) ByJiraKeyApiOwnerByJiraKeyJiraKeyGetExecute(r ApiByJiraKeyApiOwnerByJiraKeyJiraKeyGetRequest) (*TeamDataWithOwner, *http.Response, error) {
 	var (
 		localVarHTTPMethod   = http.MethodGet
@@ -316,7 +316,7 @@ func (a *OwnerAPIService) GetRegexMappingApiOwnerRegexByProjectProjectIdGet(ctx 
 }
 
 // Execute executes the request
-//  @return map[string]GetRegexMappingApiOwnerRegexByProjectProjectIdGet200ResponseValue
+//	@return	map[string]GetRegexMappingApiOwnerRegexByProjectProjectIdGet200ResponseValue
 func (a *OwnerAPIService) GetRegexMappingApiOwnerRegexByProjectProjectIdGetExecute(r ApiGetRegexMappingApiOwnerRegexByProjectProjectIdGetRequest) (*map[string]GetRegexMappingApiOwnerRegexByProjectProjectIdGet200ResponseValue, *http.Response, error) {
 	var (
 		localVarHTTPMethod   = http.MethodGet
