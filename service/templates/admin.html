@@ -414,6 +414,17 @@ Admin Settings
 												</td>
 											</tr>
 											<tr>
+												<td>Use elastic IP features for task hosts</td>
+												<td colspan="2">
+													<md-radio-group
+														data-ng-model="Settings.service_flags.elastic_ips_disabled"
+														layout="row">
+														<md-radio-button data-ng-value="false"></md-radio-button>
+														<md-radio-button data-ng-value="true"></md-radio-button>
+													</md-radio-group>
+												</td>
+											</tr>
+											<tr>
 												<td>Unexpirable host sleep schedule</td>
 												<td colspan="2">
 													<md-radio-group
