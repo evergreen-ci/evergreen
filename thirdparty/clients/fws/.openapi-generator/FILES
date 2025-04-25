@@ -30,4 +30,6 @@ model_team_data_with_owner.go
 model_validation_error.go
 model_validation_error_loc_inner.go
 response.go
+test/api_mothra_test.go
+test/api_owner_test.go
 utils.go

@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
-	openapiclient "github.com/evergreen/evergreen-ci"
+	openapiclient "github.com/evergreen-ci/evergreen"
 )
 
 func Test_fws_MothraAPIService(t *testing.T) {
