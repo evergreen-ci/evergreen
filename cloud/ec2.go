@@ -287,6 +287,9 @@ func (m *ec2Manager) setupClient(ctx context.Context) error {
 }
 
 func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings, blockDevices []types.BlockDeviceMapping) error {
+	ctx, span := tracer.Start(ctx, "spawnOnDemandHost")
+	defer span.End()
+
 	input := &ec2.RunInstancesInput{
 		MinCount:            aws.Int32(1),
 		MaxCount:            aws.Int32(1),

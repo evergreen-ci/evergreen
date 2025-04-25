@@ -133,7 +133,7 @@ func (m *ec2FleetManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Ho
 		return nil, errors.Wrap(err, "getting key name")
 	}
 
-	if err := m.spawnFleetSpotHost(ctx, h, ec2Settings); err != nil {
+	if err := m.spawnFleetHost(ctx, h, ec2Settings); err != nil {
 		msg := "error spawning spot host with Fleet"
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":       msg,
@@ -412,6 +412,9 @@ func (m *ec2FleetManager) cleanupIdleElasticIPs(ctx context.Context) error {
 		return nil
 	}
 
+	ctx, span := tracer.Start(ctx, "cleanupIdleElasticIPs")
+	defer span.End()
+
 	idleAddrAllocationIDs, err := m.getIdleElasticIPs(ctx)
 	if err != nil {
 		return errors.Wrap(err, "getting idle elastic IP addresses for initial check")
@@ -520,7 +523,7 @@ func (m *ec2FleetManager) TimeTilNextPayment(h *host.Host) time.Duration {
 	return timeTilNextEC2Payment(h)
 }
 
-func (m *ec2FleetManager) spawnFleetSpotHost(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings) error {
+func (m *ec2FleetManager) spawnFleetHost(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings) error {
 	defer func() {
 		// Cleanup
 		_, err := m.client.DeleteLaunchTemplate(ctx, &ec2.DeleteLaunchTemplateInput{LaunchTemplateName: aws.String(cleanLaunchTemplateName(h.Tag))})
@@ -530,6 +533,9 @@ func (m *ec2FleetManager) spawnFleetSpotHost(ctx context.Context, h *host.Host, 
 			"host_tag": h.Tag,
 		}))
 	}()
+
+	ctx, span := tracer.Start(ctx, "spawnFleetHost")
+	defer span.End()
 
 	useElasticIP := shouldAssignPublicIPv4Address(h, ec2Settings) && canUseElasticIP(m.env.Settings(), ec2Settings, m.account, h)
 	if useElasticIP && h.IPAllocationID == "" {
