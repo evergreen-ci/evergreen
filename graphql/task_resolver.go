@@ -3,7 +3,6 @@ package graphql
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -582,18 +581,22 @@ func (r *taskResolver) TaskLogs(ctx context.Context, obj *restModel.APITask) (*T
 
 // TaskOwnerTeam is the resolver for the taskOwnerTeam field.
 func (r *taskResolver) TaskOwnerTeam(ctx context.Context, obj *restModel.APITask) (*TaskOwnerTeam, error) {
+	fwsBaseURL := evergreen.GetEnvironment().Settings().FWS.URL
+	if fwsBaseURL == "" {
+		return nil, InternalServerError.Send(ctx, "Foliage Web Services URL not set")
+	}
 	httpClient := utility.GetHTTPClient()
 	defer utility.PutHTTPClient(httpClient)
 
 	cfg := fws.NewConfiguration()
 	cfg.HTTPClient = httpClient
-	cfg.HTTPClient.Timeout = 50 * time.Second
 	cfg.Servers = fws.ServerConfigurations{
 		fws.ServerConfiguration{
 			Description: "Foliage Web Services",
-			URL:         `http://foliage-web-services-webapp-web-app.cloud-build.svc.cluster.local`,
+			URL:         fwsBaseURL,
 		},
 	}
+	cfg.UserAgent = "evergreen"
 
 	client := fws.NewAPIClient(cfg)
 	req := client.OwnerAPI.ByFoliageLogicApiOwnerByFoliageLogicTaskIdGet(ctx, *obj.Id)
