@@ -786,7 +786,7 @@ func constructManifest(ctx context.Context, v *Version, projectRef *ProjectRef, 
 			}
 		}
 
-		mfstModule, err := getManifestModule(v, projectRef, module)
+		mfstModule, err := getManifestModule(ctx, v, projectRef, module)
 		if err != nil {
 			return nil, errors.Wrapf(err, "module '%s'", module.Name)
 		}
@@ -797,14 +797,14 @@ func constructManifest(ctx context.Context, v *Version, projectRef *ProjectRef, 
 	return newManifest, nil
 }
 
-func getManifestModule(v *Version, projectRef *ProjectRef, module Module) (*manifest.Module, error) {
+func getManifestModule(ctx context.Context, v *Version, projectRef *ProjectRef, module Module) (*manifest.Module, error) {
 	owner, repo, err := module.GetOwnerAndRepo()
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting owner and repo for '%s'", module.Name)
 	}
 
 	if module.Ref == "" {
-		ghCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
+		ghCtx, cancel := context.WithTimeout(ctx, time.Minute)
 		defer cancel()
 
 		revisionTime := time.Unix(0, 0)
@@ -842,7 +842,7 @@ func getManifestModule(v *Version, projectRef *ProjectRef, module Module) (*mani
 		}, nil
 	}
 
-	ghCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ghCtx, cancel := context.WithTimeout(ctx, time.Minute)
 	defer cancel()
 
 	sha := module.Ref
