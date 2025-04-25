@@ -22,7 +22,7 @@ go get golang.org/x/net/context
 Put the package under your project folder and add the following in import:
 
 ```go
-import fws "github.com/evergreen/evergreen-ci"
+import fws "github.com/evergreen-ci/evergreen"
 ```
 
 To use a proxy, set the environment variable `HTTP_PROXY`:

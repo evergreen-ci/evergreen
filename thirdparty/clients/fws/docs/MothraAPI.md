@@ -28,7 +28,7 @@ import (
 	"context"
 	"fmt"
 	"os"
-	openapiclient "github.com/evergreen/evergreen-ci"
+	openapiclient "github.com/evergreen-ci/evergreen"
 )
 
 func main() {
@@ -89,7 +89,7 @@ import (
 	"context"
 	"fmt"
 	"os"
-	openapiclient "github.com/evergreen/evergreen-ci"
+	openapiclient "github.com/evergreen-ci/evergreen"
 )
 
 func main() {
@@ -162,7 +162,7 @@ import (
 	"context"
 	"fmt"
 	"os"
-	openapiclient "github.com/evergreen/evergreen-ci"
+	openapiclient "github.com/evergreen-ci/evergreen"
 )
 
 func main() {
@@ -232,7 +232,7 @@ import (
 	"context"
 	"fmt"
 	"os"
-	openapiclient "github.com/evergreen/evergreen-ci"
+	openapiclient "github.com/evergreen-ci/evergreen"
 )
 
 func main() {
