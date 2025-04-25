@@ -442,6 +442,13 @@ func (m *ec2FleetManager) cleanupIdleElasticIPs(ctx context.Context) error {
 				catcher.Wrapf(err, "releasing idle elastic IP address with allocation ID '%s'", idleAddr)
 			}
 		}
+
+		grip.Info(message.Fields{
+			"message":      "cleaned up idle elastic IP addresses",
+			"num_released": len(idleAddrs),
+			"provider":     evergreen.ProviderNameEc2Fleet,
+		})
+
 		return catcher.Resolve()
 	case <-ctx.Done():
 		return errors.Wrap(ctx.Err(), "context was done while waiting for idle addresses")
