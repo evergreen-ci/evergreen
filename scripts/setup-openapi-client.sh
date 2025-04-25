@@ -45,7 +45,7 @@ export PATH="/opt/bin/java/jdk21/bin:${PATH}"
 
 # Generate the OpenAPI client
 if [ -n "$ADDITIONAL_PROPERTIES" ]; then
-    "$OPENAPI_GENERATOR" generate -i "$OPENAPI_HARDCODED_CONFIG" -g go -o "$OPENAPI_OUTPUT_DIR" --additional-properties="$ADDITIONAL_PROPERTIES"
+    "$OPENAPI_GENERATOR" generate -i "$OPENAPI_HARDCODED_CONFIG" -g go -o "$OPENAPI_OUTPUT_DIR" --additional-properties="$ADDITIONAL_PROPERTIES" --git-repo-id evergreen-ci --git-user-id evergreen
 else
     "$OPENAPI_GENERATOR" generate -i "$OPENAPI_HARDCODED_CONFIG" -g go -o "$OPENAPI_OUTPUT_DIR"
 fi

@@ -376,7 +376,7 @@ swaggo-render:
 OPENAPI_FWS_CONFIG_URL := https://foliage-web-services.cloud-build.staging.corp.mongodb.com/foliage_web_services.json
 OPENAPI_FWS_HARDCODED_CONFIG := thirdparty/clients/fws/foliage_web_services.json
 OPENAPI_FWS_OUTPUT_DIR := thirdparty/clients/fws
-OPENAPI_FWS_CONFIG := packageName=fws,packageVersion=1.0.0,packageTitle=FoliageWebServices,gitUserId=$(orgName),gitRepoId=$(name),packageDescription="Foliage Web Services"
+OPENAPI_FWS_CONFIG := packageName=fws,packageVersion=1.0.0,packageTitle=FoliageWebServices,packageDescription="Foliage Web Services"
 OPENAPI_GENERATOR := bin/openapi-generator-cli.sh
 
 # Main rule for generating the client
