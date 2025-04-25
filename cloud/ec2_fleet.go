@@ -361,7 +361,7 @@ func (m *ec2FleetManager) Cleanup(ctx context.Context) error {
 
 	catcher := grip.NewBasicCatcher()
 	catcher.Wrap(m.cleanupStaleLaunchTemplates(ctx), "cleaning up stale launch templates")
-	catcher.Wrap(cleanupStaleElasticIPs(ctx, m.client), "cleaning up stale elastic IPs")
+	catcher.Wrap(cleanupIdleElasticIPs(ctx, m.client), "cleaning up stale elastic IPs")
 
 	return catcher.Resolve()
 }
@@ -380,9 +380,8 @@ func (m *ec2FleetManager) cleanupStaleLaunchTemplates(ctx context.Context) error
 
 	catcher := grip.NewBasicCatcher()
 	deletedCount := 0
-	now := time.Now()
 	for _, template := range launchTemplates {
-		if template.CreateTime != nil && template.CreateTime.Before(now.Add(-launchTemplateExpiration)) {
+		if template.CreateTime != nil && template.CreateTime.Before(time.Now().Add(-launchTemplateExpiration)) {
 			_, err := m.client.DeleteLaunchTemplate(ctx, &ec2.DeleteLaunchTemplateInput{LaunchTemplateId: template.LaunchTemplateId})
 			catcher.Wrapf(err, "deleting launch template '%s'", aws.ToString(template.LaunchTemplateId))
 			if err == nil {

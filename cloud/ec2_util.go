@@ -878,10 +878,10 @@ func disassociateIPAddressForHost(ctx context.Context, c AWSClient, h *host.Host
 	return errors.Wrapf(err, "disassociating host IP address with association ID '%s'", h.IPAssociationID)
 }
 
-// cleanupStaleElasticIPs checks for any elastic IP addresses that are not being
-// used and releases them. This is a very slow operation and can take several
-// minutes.
-func cleanupStaleElasticIPs(ctx context.Context, c AWSClient) error {
+// cleanupIdleElasticIPs checks for any elastic IP addresses that are not
+// being actively used and releases them. This is a very slow operation and can
+// take several minutes.
+func cleanupIdleElasticIPs(ctx context.Context, c AWSClient) error {
 	idleAddrAllocationIDs, err := getIdleElasticIPs(ctx, c)
 	if err != nil {
 		return errors.Wrap(err, "getting idle elastic IP addresses for initial check")
@@ -894,10 +894,10 @@ func cleanupStaleElasticIPs(ctx context.Context, c AWSClient) error {
 	// is still idle. Waiting like this is slightly hacky but important because
 	// the AWS API doesn't provide information on when an address was last
 	// allocated or associated. That makes it hard to tell if the address is
-	// idle because it's truly unused and untracked by Evergreen or if it was
-	// just recently allocated and is waiting to be associated with a host.
-	const idleAddrRecheck = 5 * time.Minute
-	timer := time.NewTimer(idleAddrRecheck)
+	// idle because it's truly unused or if it was just recently allocated and
+	// is waiting to be associated with a host.
+	const recheckIdleAddrsAfter = 5 * time.Minute
+	timer := time.NewTimer(recheckIdleAddrsAfter)
 	defer timer.Stop()
 
 	select {
