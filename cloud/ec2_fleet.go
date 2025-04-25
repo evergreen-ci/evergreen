@@ -404,6 +404,14 @@ func (m *ec2FleetManager) cleanupStaleLaunchTemplates(ctx context.Context) error
 // being actively used and releases them. This is a very slow operation and can
 // take several minutes.
 func (m *ec2FleetManager) cleanupIdleElasticIPs(ctx context.Context) error {
+	flags, err := evergreen.GetServiceFlags(ctx)
+	if err != nil {
+		return errors.Wrap(err, "getting service flags")
+	}
+	if flags.ElasticIPsDisabled {
+		return nil
+	}
+
 	idleAddrAllocationIDs, err := m.getIdleElasticIPs(ctx)
 	if err != nil {
 		return errors.Wrap(err, "getting idle elastic IP addresses for initial check")
