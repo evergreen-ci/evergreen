@@ -22,7 +22,7 @@
 
 ## Requesters
 
-The requester is a field in the version/patch document that indicates how it was created. These immutable values are set upon creation. They are used to provide elevated permissions to certain versions/patches. For example, a project can have [admin only](../Project-Configuration/Project-and-Distro-Settings.md#variables) variables that only get provided to versions/patches by admins or from mainline commits. They can also be used with [ec2.assume_role](../Project-Configuration/Project-Commands.md#ec2assume_role) to allow specific requesters to assume a role (e.g.mainline commits) and prevent others from not (e.g. CLI requests.).
+The requester is a field in the version/patch document that indicates how it was created. These immutable values are set upon creation. They can be used to control what tasks [allow requesters](../Project-Configuration/Project-Configuration-Files.md#allowed-requesters) to run the task (note: the names used for `allowed_requesters` are slightly different than their actual names). There are some shorthands to [limit when a task or variant will run](../Project-Configuration/Project-Configuration-Files.md#limiting-when-a-task-or-variant-will-run). They can also used to provide elevated permissions to certain versions/patches. For example, a project can have [admin only](../Project-Configuration/Project-and-Distro-Settings.md#variables) variables that only get provided to versions/patches by admins or from mainline commits. They can also be used with [ec2.assume_role](../Project-Configuration/Project-Commands.md#ec2assume_role) to allow specific requesters to assume a role (e.g.mainline commits) and prevent others from not (e.g. CLI requests.).
 
 Here is a list of valid requester types:
 
