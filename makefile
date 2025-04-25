@@ -373,8 +373,9 @@ swaggo-render:
 
 
 # Variables
+# TODO: Update this after DEVPROD-14517 is complete
 OPENAPI_FWS_CONFIG_URL := https://foliage-web-services.cloud-build.staging.corp.mongodb.com/foliage_web_services.json
-OPENAPI_FWS_HARDCODED_CONFIG := thirdparty/clients/fws/foliage_web_services.json
+OPENAPI_FWS_HARDCODED_CONFIG := thirdparty/clients/foliage_web_services.json
 OPENAPI_FWS_OUTPUT_DIR := thirdparty/clients/fws
 OPENAPI_FWS_CONFIG := packageName=fws,packageVersion=1.0.0,packageTitle=FoliageWebServices,packageDescription="Foliage Web Services",apiTests=false,modelTests=false
 OPENAPI_GENERATOR := bin/openapi-generator-cli.sh
@@ -391,6 +392,10 @@ download-fws-config:
 generate-fws-client:
 	@echo "Generating OpenAPI client..."
 	scripts/setup-openapi-client.sh $(OPENAPI_FWS_HARDCODED_CONFIG) $(OPENAPI_FWS_OUTPUT_DIR) $(OPENAPI_GENERATOR) $(OPENAPI_FWS_CONFIG)
+	@echo "Generating OpenAPI client done."
+	@echo "Swaggo format..."
+	make swaggo-format
+	@echo "Swaggo format done."
 
 phony += swaggo swaggo-install swaggo-format swaggo-build swaggo-render fws-client download-config generate-fws-client
 
