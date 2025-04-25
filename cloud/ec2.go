@@ -301,8 +301,7 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 	}
 
 	assignPublicIPv4 := shouldAssignPublicIPv4Address(h, ec2Settings)
-
-	useElasticIP := assignPublicIPv4 && canUseElasticIP(m.settings, ec2Settings, h)
+	useElasticIP := assignPublicIPv4 && canUseElasticIP(m.settings, ec2Settings, m.account, h)
 	if useElasticIP && h.IPAllocationID == "" {
 		// If the host can't be allocated an IP address, continue on error
 		// because the host should fall back to using an AWS-provided IP
@@ -930,6 +929,14 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 		}))
 	}
 
+	grip.Error(message.WrapError(disassociateIPAddressForHost(ctx, m.client, h), message.Fields{
+		"message":        "could not disassociate elastic IP address from host",
+		"provider":       h.Distro.Provider,
+		"host_id":        h.Id,
+		"association_id": h.IPAssociationID,
+		"allocation_id":  h.IPAllocationID,
+	}))
+
 	resp, err := m.client.TerminateInstances(ctx, &ec2.TerminateInstancesInput{
 		InstanceIds: []string{h.Id},
 	})
@@ -949,11 +956,19 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 			"message":       "terminated instance",
 			"user":          user,
 			"host_provider": h.Distro.Provider,
-			"instance_id":   *stateChange.InstanceId,
+			"instance_id":   aws.ToString(stateChange.InstanceId),
 			"host_id":       h.Id,
 			"distro":        h.Distro.Id,
 		})
 	}
+
+	grip.Error(message.WrapError(releaseIPAddressForHost(ctx, m.client, h), message.Fields{
+		"message":        "could not release elastic IP address from host",
+		"provider":       h.Distro.Provider,
+		"host_id":        h.Id,
+		"association_id": h.IPAssociationID,
+		"allocation_id":  h.IPAllocationID,
+	}))
 
 	for _, vol := range h.Volumes {
 		volDB, err := host.FindVolumeByID(ctx, vol.VolumeID)
@@ -1367,6 +1382,18 @@ func (m *ec2Manager) GetDNSName(ctx context.Context, h *host.Host) (string, erro
 // TimeTilNextPayment returns how long until the next payment is due for a host.
 func (m *ec2Manager) TimeTilNextPayment(host *host.Host) time.Duration {
 	return timeTilNextEC2Payment(host)
+}
+
+// CleanupIP disassociates the IP address from the host's network interface and
+// releases the IP address back into the IPAM pool.
+func (m *ec2Manager) CleanupIP(ctx context.Context, h *host.Host) error {
+	if err := disassociateIPAddressForHost(ctx, m.client, h); err != nil {
+		return err
+	}
+	if err := releaseIPAddressForHost(ctx, m.client, h); err != nil {
+		return err
+	}
+	return nil
 }
 
 // Cleanup is a noop for the EC2 provider.

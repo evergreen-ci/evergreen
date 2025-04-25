@@ -288,6 +288,14 @@ func (m *ec2FleetManager) TerminateInstance(ctx context.Context, h *host.Host, u
 		return errors.Wrap(err, "creating client")
 	}
 
+	grip.Error(message.WrapError(disassociateIPAddressForHost(ctx, m.client, h), message.Fields{
+		"message":        "could not disassociate elastic IP address from host",
+		"provider":       h.Distro.Provider,
+		"host_id":        h.Id,
+		"association_id": h.IPAssociationID,
+		"allocation_id":  h.IPAllocationID,
+	}))
+
 	resp, err := m.client.TerminateInstances(ctx, &ec2.TerminateInstancesInput{
 		InstanceIds: []string{h.Id},
 	})
@@ -303,25 +311,23 @@ func (m *ec2FleetManager) TerminateInstance(ctx context.Context, h *host.Host, u
 	}
 
 	for _, stateChange := range resp.TerminatingInstances {
-		if stateChange.InstanceId == nil {
-			grip.Error(message.Fields{
-				"message":       "state change missing instance ID",
-				"user":          user,
-				"host_provider": h.Distro.Provider,
-				"host_id":       h.Id,
-				"distro":        h.Distro.Id,
-			})
-			return errors.New("TerminateInstances response did not contain an instance ID")
-		}
 		grip.Info(message.Fields{
 			"message":       "terminated instance",
 			"user":          user,
 			"host_provider": h.Distro.Provider,
-			"instance_id":   *stateChange.InstanceId,
+			"instance_id":   aws.ToString(stateChange.InstanceId),
 			"host_id":       h.Id,
 			"distro":        h.Distro.Id,
 		})
 	}
+
+	grip.Error(message.WrapError(releaseIPAddressForHost(ctx, m.client, h), message.Fields{
+		"message":        "could not release elastic IP address from host",
+		"provider":       h.Distro.Provider,
+		"host_id":        h.Id,
+		"association_id": h.IPAssociationID,
+		"allocation_id":  h.IPAllocationID,
+	}))
 
 	return errors.Wrap(h.Terminate(ctx, user, reason), "terminating instance in DB")
 }
@@ -334,6 +340,18 @@ func (m *ec2FleetManager) StopInstance(context.Context, *host.Host, bool, string
 // StartInstance should do nothing for EC2 Fleet.
 func (m *ec2FleetManager) StartInstance(context.Context, *host.Host, string) error {
 	return errors.New("can't start instances for EC2 fleet provider")
+}
+
+// CleanupIP disassociates the IP address from the host's network interface and
+// releases the IP address back into the IPAM pool.
+func (m *ec2FleetManager) CleanupIP(ctx context.Context, h *host.Host) error {
+	if err := disassociateIPAddressForHost(ctx, m.client, h); err != nil {
+		return err
+	}
+	if err := releaseIPAddressForHost(ctx, m.client, h); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (m *ec2FleetManager) Cleanup(ctx context.Context) error {
@@ -419,7 +437,7 @@ func (m *ec2FleetManager) spawnFleetSpotHost(ctx context.Context, h *host.Host, 
 		}))
 	}()
 
-	useElasticIP := shouldAssignPublicIPv4Address(h, ec2Settings) && canUseElasticIP(m.env.Settings(), ec2Settings, h)
+	useElasticIP := shouldAssignPublicIPv4Address(h, ec2Settings) && canUseElasticIP(m.env.Settings(), ec2Settings, m.account, h)
 	if useElasticIP && h.IPAllocationID == "" {
 		// If the host can't be allocated an IP address, continue on error
 		// because the host should fall back to using an AWS-provided IP

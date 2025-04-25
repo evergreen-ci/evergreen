@@ -770,13 +770,18 @@ func shouldAssignPublicIPv4Address(h *host.Host, ec2Settings *EC2ProviderSetting
 	return !ec2Settings.DoNotAssignPublicIPv4Address && !ec2Settings.IPv6
 }
 
-func canUseElasticIP(settings *evergreen.Settings, ec2Settings *EC2ProviderSettings, h *host.Host) bool {
+func canUseElasticIP(settings *evergreen.Settings, ec2Settings *EC2ProviderSettings, account string, h *host.Host) bool {
 	if h.UserHost || h.SpawnOptions.SpawnedByTask {
 		// Spawn hosts and host.create hosts should not use an elastic IP
 		// because the feature is primarily intended for task hosts.
 		return false
 	}
 	if settings.Providers.AWS.IPAMPoolID == "" {
+		return false
+	}
+	if account != "" {
+		// The IPAM pool is only available to the default AWS account. Other AWS
+		// accounts do not have an IPAM pool so cannot use elastic IPs.
 		return false
 	}
 
@@ -820,6 +825,18 @@ func allocateIPAddressForHost(ctx context.Context, settings *evergreen.Settings,
 	return nil
 }
 
+// releaseIPAddressForHost releases the elastic IP address that was associated
+// with the host, if it has an elastic IP.
+func releaseIPAddressForHost(ctx context.Context, c AWSClient, h *host.Host) error {
+	if h.IPAllocationID == "" {
+		return nil
+	}
+	_, err := c.ReleaseAddress(ctx, &ec2.ReleaseAddressInput{
+		AllocationId: aws.String(h.IPAllocationID),
+	})
+	return errors.Wrapf(err, "releasing host IP address with allocation ID '%s'", h.IPAllocationID)
+}
+
 // associateIPAddressForHost associates the allocated IP address with the host.
 func associateIPAddressForHost(ctx context.Context, c AWSClient, h *host.Host) error {
 	assocAddrOut, err := c.AssociateAddress(ctx, &ec2.AssociateAddressInput{
@@ -840,4 +857,19 @@ func associateIPAddressForHost(ctx context.Context, c AWSClient, h *host.Host) e
 		return errors.Wrapf(err, "setting IP association ID '%s' for host", associationID)
 	}
 	return nil
+}
+
+// disassociateIPAddressForHost initiates the process of disassociating the
+// elastic IP address from the host, if it has an elastic IP. This is not
+// synchronous, so the address is not guaranteed to be disassociated when this
+// returns.
+func disassociateIPAddressForHost(ctx context.Context, c AWSClient, h *host.Host) error {
+	if h.IPAssociationID == "" {
+		return nil
+	}
+
+	_, err := c.DisassociateAddress(ctx, &ec2.DisassociateAddressInput{
+		AssociationId: aws.String(h.IPAssociationID),
+	})
+	return errors.Wrapf(err, "disassociating host IP address with association ID '%s'", h.IPAssociationID)
 }
