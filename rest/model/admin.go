@@ -22,6 +22,7 @@ func NewConfigModel() *APIAdminSettings {
 		Cedar:               &APICedarConfig{},
 		ContainerPools:      &APIContainerPoolsConfig{},
 		Expansions:          map[string]string{},
+		FWS:                 &APIFWSConfig{},
 		HostInit:            &APIHostInitConfig{},
 		HostJasper:          &APIHostJasperConfig{},
 		Jira:                &APIJiraConfig{},
@@ -68,6 +69,7 @@ type APIAdminSettings struct {
 	ContainerPools      *APIContainerPoolsConfig      `json:"container_pools,omitempty"`
 	DomainName          *string                       `json:"domain_name,omitempty"`
 	Expansions          map[string]string             `json:"expansions,omitempty"`
+	FWS                 *APIFWSConfig                 `json:"fws,omitempty"`
 	GithubPRCreatorOrg  *string                       `json:"github_pr_creator_org,omitempty"`
 	GithubOrgs          []string                      `json:"github_orgs,omitempty"`
 	GithubWebhookSecret *string                       `json:"github_webhook_secret,omitempty"`
@@ -2500,6 +2502,26 @@ func (ab *APIBanner) BuildFromService(h any) error {
 // ToService is not yet implemented
 func (ab *APIBanner) ToService() (any, error) {
 	return ab, nil
+}
+
+type APIFWSConfig struct {
+	URL *string `json:"url"`
+}
+
+func (a *APIFWSConfig) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.FWSConfig:
+		a.URL = utility.ToStringPtr(v.URL)
+	default:
+		return errors.Errorf("programmatic error: expected FWS config but got type %T", h)
+	}
+	return nil
+}
+
+func (a *APIFWSConfig) ToService() (interface{}, error) {
+	return evergreen.FWSConfig{
+		URL: utility.FromStringPtr(a.URL),
+	}, nil
 }
 
 // BuildFromService builds a model from the service layer

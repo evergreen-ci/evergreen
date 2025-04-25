@@ -210,8 +210,11 @@ func MockConfig() *evergreen.Settings {
 				},
 			},
 		},
-		DomainName:          "example.com",
-		Expansions:          map[string]string{"k2": "v2"},
+		DomainName: "example.com",
+		Expansions: map[string]string{"k2": "v2"},
+		FWS: evergreen.FWSConfig{
+			URL: "fws_url",
+		},
 		GithubPRCreatorOrg:  "org",
 		GithubWebhookSecret: "secret",
 		HostInit: evergreen.HostInitConfig{
