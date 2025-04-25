@@ -182,8 +182,20 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONResponse(nextTaskResponse)
 	}
 
-	// if there is already a task assigned to the host send back that task
-	if h.host.RunningTask != "" {
+	// Get the latest host from the database to ensure we have the latest information.
+	updatedHost, err := host.FindOneId(ctx, h.hostID)
+	if err != nil {
+		err = errors.Wrapf(err, "finding host '%s'", h.hostID)
+		grip.Error(err)
+		return gimlet.MakeJSONInternalErrorResponder(err)
+	}
+	if updatedHost == nil {
+		err = errors.Errorf("host '%s' not found", h.hostID)
+		grip.Error(err)
+		return gimlet.MakeJSONErrorResponder(err)
+	}
+	// If there is already a task assigned to the host send back that task.
+	if updatedHost.RunningTask != "" {
 		return sendBackRunningTask(ctx, h.env, h.host, nextTaskResponse)
 	}
 
