@@ -293,6 +293,7 @@ func (j *createHostJob) createHost(ctx context.Context) error {
 	span.SetAttributes(
 		attribute.String(evergreen.DistroIDOtelAttribute, j.host.Distro.Id),
 		attribute.String(evergreen.HostIDOtelAttribute, j.host.Id),
+		attribute.String(evergreen.DistroProviderOtelAttribute, j.host.Distro.Provider),
 		attribute.Bool(fmt.Sprintf("%s.spawned_host", provisioningCreateHostAttributePrefix), false),
 	)
 

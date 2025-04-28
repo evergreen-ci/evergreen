@@ -803,6 +803,9 @@ func allocateIPAddressForHost(ctx context.Context, settings *evergreen.Settings,
 		return nil
 	}
 
+	ctx, span := tracer.Start(ctx, "allocateIPAddressForHost")
+	defer span.End()
+
 	hostname, err := os.Hostname()
 	if err != nil {
 		hostname = "unknown"
@@ -852,6 +855,9 @@ func releaseIPAddressForHost(ctx context.Context, c AWSClient, h *host.Host) err
 		return errors.Errorf("elastic IP features are disabled, host will leak IP allocation '%s'", h.IPAllocationID)
 	}
 
+	ctx, span := tracer.Start(ctx, "releaseIPAddressForHost")
+	defer span.End()
+
 	if _, err := c.ReleaseAddress(ctx, &ec2.ReleaseAddressInput{
 		AllocationId: aws.String(h.IPAllocationID),
 	}); err != nil {
@@ -870,6 +876,9 @@ func associateIPAddressForHost(ctx context.Context, c AWSClient, h *host.Host) e
 	if flags.ElasticIPsDisabled {
 		return errors.New("elastic IP features are disabled, host will not have an IP address")
 	}
+
+	ctx, span := tracer.Start(ctx, "associateIPAddressForHost")
+	defer span.End()
 
 	assocAddrOut, err := c.AssociateAddress(ctx, &ec2.AssociateAddressInput{
 		InstanceId:   aws.String(h.Id),
@@ -907,6 +916,9 @@ func disassociateIPAddressForHost(ctx context.Context, c AWSClient, h *host.Host
 	if flags.ElasticIPsDisabled {
 		return errors.Errorf("elastic IP features are disabled, host will not disassociate elastic IP '%s'", h.IPAssociationID)
 	}
+
+	ctx, span := tracer.Start(ctx, "disassociateIPAddressForHost")
+	defer span.End()
 
 	if _, err := c.DisassociateAddress(ctx, &ec2.DisassociateAddressInput{
 		AssociationId: aws.String(h.IPAssociationID),

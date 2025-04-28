@@ -521,6 +521,7 @@ const (
 	ProjectIDOtelAttribute         = "evergreen.project.id"
 	RepoRefIDOtelAttribute         = "evergreen.project.repo_ref_id"
 	DistroIDOtelAttribute          = "evergreen.distro.id"
+	DistroProviderOtelAttribute    = "evergreen.distro.provider"
 	HostIDOtelAttribute            = "evergreen.host.id"
 	HostnameOtelAttribute          = "evergreen.host.hostname"
 	HostStartedByOtelAttribute     = "evergreen.host.started_by"
