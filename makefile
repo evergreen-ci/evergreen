@@ -398,7 +398,7 @@ generate-fws-client:
 	echo "Swaggo format done."
 
 
-phony += swaggo swaggo-install swaggo-format swaggo-build swaggo-render fws-client download-config generate-fws-client
+phony += swaggo swaggo-install swaggo-format swaggo-build swaggo-render fws-client generate-fws-client download-fws-config
 
 # sanitizes a json file by hashing string values. Note that this will not work well with
 # string data that only has a subset of valid values
