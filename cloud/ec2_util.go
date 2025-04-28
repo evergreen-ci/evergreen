@@ -53,6 +53,10 @@ const (
 	stsErrorAccessDenied = "AccessDenied"
 	// This means the role to be assumed does not exist or does not have a trust relationship with the role doing the assuming.
 	stsErrorAssumeRoleAccessDenied = "AssumeRoleAccessDenied"
+
+	// filterTagKey is the key used to filter resources by their tag key's name
+	// in the EC2 API.
+	filterTagKey = "tag-key"
 )
 
 var (

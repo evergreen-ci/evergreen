@@ -386,7 +386,9 @@ func TestUploadLaunchTemplate(t *testing.T) {
 }
 
 func TestCleanup(t *testing.T) {
-	client := &awsClientMock{}
+	client := &awsClientMock{
+		DescribeAddressesOutput: &ec2.DescribeAddressesOutput{},
+	}
 	m := &ec2FleetManager{
 		EC2FleetManagerOptions: &EC2FleetManagerOptions{client: client},
 	}
