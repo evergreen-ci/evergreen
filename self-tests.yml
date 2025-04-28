@@ -23,6 +23,7 @@ post:
       bucket: mciuploads
       content_type: text/plain
       permissions: private
+      visibility: signed
       display_name: Evergreen smoke test application server logs
   - command: s3.put
     display_name: Upload smoke test agent logs to S3
@@ -36,6 +37,7 @@ post:
       bucket: mciuploads
       content_type: text/plain
       permissions: private
+      visibility: signed
       display_name: (Evergreen smoke test agent logs)
 
 #######################################
@@ -132,7 +134,8 @@ variables:
           remote_file: evergreen/${build_id}-${build_variant}/bin/generate-lint.json
           bucket: mciuploads
           content_type: application/json
-          permissions: public-read
+          permissions: private
+          visibility: signed
           display_name: generate-lint.json
       - command: generate.tasks
         params:
