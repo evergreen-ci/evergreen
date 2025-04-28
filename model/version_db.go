@@ -20,17 +20,20 @@ const (
 
 var (
 	// bson fields for the version struct
-	VersionIdKey                                = bsonutil.MustHaveTag(Version{}, "Id")
-	VersionCreateTimeKey                        = bsonutil.MustHaveTag(Version{}, "CreateTime")
-	VersionStartTimeKey                         = bsonutil.MustHaveTag(Version{}, "StartTime")
-	VersionFinishTimeKey                        = bsonutil.MustHaveTag(Version{}, "FinishTime")
-	VersionRevisionKey                          = bsonutil.MustHaveTag(Version{}, "Revision")
-	VersionAuthorKey                            = bsonutil.MustHaveTag(Version{}, "Author")
-	VersionAuthorEmailKey                       = bsonutil.MustHaveTag(Version{}, "AuthorEmail")
-	VersionMessageKey                           = bsonutil.MustHaveTag(Version{}, "Message")
-	VersionStatusKey                            = bsonutil.MustHaveTag(Version{}, "Status")
-	VersionParametersKey                        = bsonutil.MustHaveTag(Version{}, "Parameters")
-	VersionBuildIdsKey                          = bsonutil.MustHaveTag(Version{}, "BuildIds")
+	VersionIdKey          = bsonutil.MustHaveTag(Version{}, "Id")
+	VersionCreateTimeKey  = bsonutil.MustHaveTag(Version{}, "CreateTime")
+	VersionStartTimeKey   = bsonutil.MustHaveTag(Version{}, "StartTime")
+	VersionFinishTimeKey  = bsonutil.MustHaveTag(Version{}, "FinishTime")
+	VersionRevisionKey    = bsonutil.MustHaveTag(Version{}, "Revision")
+	VersionAuthorKey      = bsonutil.MustHaveTag(Version{}, "Author")
+	VersionAuthorEmailKey = bsonutil.MustHaveTag(Version{}, "AuthorEmail")
+	VersionMessageKey     = bsonutil.MustHaveTag(Version{}, "Message")
+	VersionStatusKey      = bsonutil.MustHaveTag(Version{}, "Status")
+	VersionParametersKey  = bsonutil.MustHaveTag(Version{}, "Parameters")
+	VersionBuildIdsKey    = bsonutil.MustHaveTag(Version{}, "BuildIds")
+	// VersionBuildVariantsKey can be a large array. Prefer to exclude it from
+	// queries unless it's needed. Otherwise, use (Version).GetBuildVariants to
+	// fetch the build variants lazily when needed.
 	VersionBuildVariantsKey                     = bsonutil.MustHaveTag(Version{}, "BuildVariants")
 	VersionRevisionOrderNumberKey               = bsonutil.MustHaveTag(Version{}, "RevisionOrderNumber")
 	VersionRequesterKey                         = bsonutil.MustHaveTag(Version{}, "Requester")
@@ -297,6 +300,7 @@ func VersionBySuccessfulBeforeRevision(project string, beforeRevision int) db.Q 
 	)
 }
 
+// VersionFindOne returns a version matching the query.
 func VersionFindOne(ctx context.Context, query db.Q) (*Version, error) {
 	version := &Version{}
 	err := db.FindOneQContext(ctx, VersionCollection, query, version)
@@ -306,10 +310,28 @@ func VersionFindOne(ctx context.Context, query db.Q) (*Version, error) {
 	return version, err
 }
 
+// VersionFindOneId returns a version by ID, excluding its BuildVariants. If the
+// version needs to load BuildVariants, use VersionFindOneIdWithBuildVariants.
 func VersionFindOneId(ctx context.Context, id string) (*Version, error) {
-	return VersionFindOne(ctx, VersionById(id))
+	q := VersionById(id).WithoutFields(VersionBuildVariantsKey)
+	return VersionFindOne(ctx, q)
 }
 
+// VersionFindOneIdWithBuildVariants returns a version by ID, including its
+// BuildVariants. In general, prefer to use VersionFindOneId instead and use
+// GetBuildVariants to load the field when necessary unless BuildVariants is
+// needed because it is expensive to load.
+func VersionFindOneIdWithBuildVariants(ctx context.Context, id string) (*Version, error) {
+	q := VersionById(id)
+	v := &Version{}
+	err := db.FindOneQContext(ctx, VersionCollection, q, v)
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+	return v, err
+}
+
+// VersionFind returns versions matching the query.
 func VersionFind(ctx context.Context, query db.Q) ([]Version, error) {
 	versions := []Version{}
 	err := db.FindAllQ(ctx, VersionCollection, query, &versions)

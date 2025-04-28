@@ -2830,11 +2830,12 @@ tasks:
 	s.Equal(expectedLines, actualLines)
 }
 
-func (s *AgentSuite) TestClearsGitConfig() {
+func (s *AgentSuite) TestClearGlobalFiles() {
 	s.setupRunTask(defaultProjYml)
 	// create a fake git config file
 	gitConfigPath := filepath.Join(s.a.opts.HomeDirectory, ".gitconfig")
 	gitCredentialsPath := filepath.Join(s.a.opts.HomeDirectory, ".git-credentials")
+	netrcPath := filepath.Join(s.a.opts.HomeDirectory, ".netrc")
 	contents := `
 [user]
   name = foo bar
@@ -2848,15 +2849,27 @@ func (s *AgentSuite) TestClearsGitConfig() {
 	s.Require().NoError(err)
 	s.Require().FileExists(gitCredentialsPath)
 
+	contents = `
+machine example.com
+login myUsername
+password myPassword
+`
+
+	err = os.WriteFile(netrcPath, []byte(contents), 0600)
+	s.Require().NoError(err)
+	s.Require().FileExists(netrcPath)
+
 	s.a.runTeardownGroupCommands(s.ctx, s.tc)
 	s.NoError(err)
 
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
-		"Clearing git config.",
-		"Cleared git config.",
-		"Clearing git credentials.",
-		"Cleared git credentials.",
+		"Clearing '.gitconfig'.",
+		"Cleared '.gitconfig'.",
+		"Clearing '.git-credentials'.",
+		"Cleared '.git-credentials'.",
+		"Clearing '.netrc'.",
+		"Cleared '.netrc'.",
 	}, []string{
 		panicLog,
 		"Running task commands failed",

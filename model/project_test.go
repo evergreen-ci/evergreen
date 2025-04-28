@@ -1662,7 +1662,7 @@ func TestFindProjectsSuite(t *testing.T) {
 			if err := p.Insert(t.Context()); err != nil {
 				return err
 			}
-			if _, err := GetNewRevisionOrderNumber(p.Id); err != nil {
+			if _, err := GetNewRevisionOrderNumber(t.Context(), p.Id); err != nil {
 				return err
 			}
 		}

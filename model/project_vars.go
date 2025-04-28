@@ -539,8 +539,8 @@ func insertParameterStore(ctx context.Context, vars *ProjectVars) (*ParameterMap
 // deleted unless that variable is explicitly listed in varsToDelete. If this
 // succeeds, projectVars will contain all the project variables, including those
 // that were not explicitly modified.
-func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.ChangeInfo, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), defaultParameterStoreAccessTimeout)
+func (projectVars *ProjectVars) FindAndModify(ctx context.Context, varsToDelete []string) (*adb.ChangeInfo, error) {
+	ctx, cancel := context.WithTimeoutCause(ctx, defaultParameterStoreAccessTimeout, errors.New("parameter store access timeout"))
 	defer cancel()
 
 	pm, err := projectVars.findAndModifyParameterStore(ctx, varsToDelete)
@@ -579,7 +579,7 @@ func (projectVars *ProjectVars) FindAndModify(varsToDelete []string) (*adb.Chang
 		update["$unset"] = unsetUpdate
 	}
 
-	change, err := db.FindAndModify(
+	change, err := db.FindAndModify(ctx,
 		ProjectVarsCollection,
 		bson.M{projectVarIdKey: projectVars.Id},
 		nil,

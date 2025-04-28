@@ -8,7 +8,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/evergreen-ci/evergreen/agent/internal/redactor"
 	"github.com/evergreen-ci/evergreen/apimodels"
-	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/manifest"
@@ -110,10 +109,6 @@ type SharedCommunicator interface {
 	// Spawn-hosts for tasks methods
 	CreateHost(context.Context, TaskData, apimodels.CreateHost) ([]string, error)
 	ListHosts(context.Context, TaskData) (restmodel.HostListResults, error)
-
-	// GetDockerLogs returns logs for the given docker container
-	GetDockerLogs(ctx context.Context, hostID string, startTime time.Time, endTime time.Time, isError bool) ([]byte, error)
-	GetDockerStatus(ctx context.Context, hostID string) (*cloud.ContainerStatus, error)
 
 	// ConcludeMerge reports the status of a commit queue merge back to the server
 	ConcludeMerge(ctx context.Context, patchId, status string, td TaskData) error

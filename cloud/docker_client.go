@@ -1,7 +1,6 @@
 package cloud
 
 import (
-	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -17,7 +16,6 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
 	docker "github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -34,8 +32,6 @@ type DockerClient interface {
 	BuildImageWithAgent(context.Context, string, *host.Host, string) (string, error)
 	CreateContainer(context.Context, *host.Host, *host.Host) error
 	GetContainer(context.Context, *host.Host, string) (*types.ContainerJSON, error)
-	GetDockerLogs(context.Context, string, *host.Host, types.ContainerLogsOptions) (io.Reader, error)
-	GetDockerStatus(context.Context, string, *host.Host) (*ContainerStatus, error)
 	ListContainers(context.Context, *host.Host) ([]types.Container, error)
 	RemoveImage(context.Context, *host.Host, string) error
 	RemoveContainer(context.Context, *host.Host, string) error
@@ -400,53 +396,6 @@ func (c *dockerClientImpl) CreateContainer(ctx context.Context, parentHost, cont
 	}
 
 	return nil
-}
-
-// GetDockerLogs returns output logs or error logs, based on the given options.
-// This assumes the container is not using TTY.
-func (c *dockerClientImpl) GetDockerLogs(ctx context.Context, containerID string, parent *host.Host, options types.ContainerLogsOptions) (io.Reader, error) {
-	dockerClient, err := c.generateClient(parent)
-	if err != nil {
-		return nil, errors.Wrap(err, "Failed to generate docker client")
-	}
-	stream, err := dockerClient.ContainerLogs(ctx, containerID, options)
-	if err != nil {
-		return nil, errors.Wrapf(err, "Docker logs API call failed for container %s", containerID)
-	}
-	tempout := &bytes.Buffer{}
-	temperr := &bytes.Buffer{}
-
-	_, err = stdcopy.StdCopy(tempout, temperr, stream)
-	if err != nil {
-		return nil, errors.Wrapf(err, "Error copying stream for container %s", containerID)
-	}
-
-	if options.ShowStdout {
-		return tempout, nil
-	}
-	return temperr, nil
-}
-
-func (c *dockerClientImpl) GetDockerStatus(ctx context.Context, containerID string, parent *host.Host) (*ContainerStatus, error) {
-	if utility.StringSliceContains(evergreen.NotRunningStatus, parent.Status) {
-		return &ContainerStatus{HasStarted: false}, nil
-	}
-	container, err := c.GetContainer(ctx, parent, containerID)
-	if err != nil {
-		if docker.IsErrNotFound(err) || docker.IsErrConnectionFailed(err) {
-			return &ContainerStatus{HasStarted: false}, nil
-		}
-		return nil, errors.Wrapf(err, "Error getting container %s", containerID)
-	}
-	if container == nil {
-		return nil, errors.Errorf("Container '%s' returned empty", containerID)
-	}
-
-	status := ContainerStatus{
-		HasStarted: true,
-		IsRunning:  container.State.Running,
-	}
-	return &status, nil
 }
 
 // GetContainer returns low-level information on the Docker container with the

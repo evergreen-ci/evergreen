@@ -20,33 +20,33 @@ func TestGetNewRevisionOrderNumber(t *testing.T) {
 
 		Convey("The returned commit order number should be 1 for a new"+
 			" project", func() {
-			ron, err := GetNewRevisionOrderNumber(projectName)
+			ron, err := GetNewRevisionOrderNumber(t.Context(), projectName)
 			So(err, ShouldBeNil)
 			So(ron, ShouldEqual, 1)
 		})
 
 		Convey("The returned commit order number should be 1 for monotonically"+
 			" incremental on a new project", func() {
-			ron, err := GetNewRevisionOrderNumber(projectName)
+			ron, err := GetNewRevisionOrderNumber(t.Context(), projectName)
 			So(err, ShouldBeNil)
 			So(ron, ShouldEqual, 1)
-			ron, err = GetNewRevisionOrderNumber(projectName)
+			ron, err = GetNewRevisionOrderNumber(t.Context(), projectName)
 			So(err, ShouldBeNil)
 			So(ron, ShouldEqual, 2)
 		})
 
 		Convey("The returned commit order number should be 1 for monotonically"+
 			" incremental within (but not across) projects", func() {
-			ron, err := GetNewRevisionOrderNumber(projectName)
+			ron, err := GetNewRevisionOrderNumber(t.Context(), projectName)
 			So(err, ShouldBeNil)
 			So(ron, ShouldEqual, 1)
-			ron, err = GetNewRevisionOrderNumber(projectName)
+			ron, err = GetNewRevisionOrderNumber(t.Context(), projectName)
 			So(err, ShouldBeNil)
 			So(ron, ShouldEqual, 2)
-			ron, err = GetNewRevisionOrderNumber(projectName + "-12")
+			ron, err = GetNewRevisionOrderNumber(t.Context(), projectName+"-12")
 			So(err, ShouldBeNil)
 			So(ron, ShouldEqual, 1)
-			ron, err = GetNewRevisionOrderNumber(projectName + "-12")
+			ron, err = GetNewRevisionOrderNumber(t.Context(), projectName+"-12")
 			So(err, ShouldBeNil)
 			So(ron, ShouldEqual, 2)
 		})
@@ -64,7 +64,7 @@ func TestUpdateLastRevision(t *testing.T) {
 			assert.Error(t, UpdateLastRevision(t.Context(), project, revision))
 		},
 		"ValidProject": func(t *testing.T, project string, revision string) {
-			_, err := GetNewRevisionOrderNumber(project)
+			_, err := GetNewRevisionOrderNumber(t.Context(), project)
 			assert.NoError(t, err)
 			assert.NoError(t, UpdateLastRevision(t.Context(), project, revision))
 		},

@@ -3215,12 +3215,17 @@ tasks:
    stepback: true
  - name: false
    stepback: false
+ - name: override_false
+   stepback: false
 buildvariants:
  - name: sbnil
  - name: sbtrue
    stepback: true
  - name: sbfalse
    stepback: false
+   tasks:
+     - name: override_false
+       stepback: true
 `
 		pp := &ParserProject{}
 		err := util.UnmarshalYAMLWithFallback([]byte(config), &pp)
@@ -3307,6 +3312,16 @@ buildvariants:
 				val, err := getStepback(ctx, testTask.Id, projRef, project)
 				So(err, ShouldBeNil)
 				So(val.shouldStepback, ShouldBeFalse)
+			})
+		})
+
+		Convey("if the bvtask overrides the setting with false", func() {
+			testTask := &task.Task{Id: "override_false", DisplayName: "override_false", BuildVariant: "sbfalse", Project: projRef.Id, Version: ver.Id}
+			So(testTask.Insert(t.Context()), ShouldBeNil)
+			Convey("then the value should be true", func() {
+				val, err := getStepback(ctx, "override_false", projRef, project)
+				So(err, ShouldBeNil)
+				So(val.shouldStepback, ShouldBeTrue)
 			})
 		})
 

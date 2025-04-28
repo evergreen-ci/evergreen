@@ -711,7 +711,7 @@ func (p *schedulePatchHandler) Run(ctx context.Context) gimlet.Responder {
 		_ = resp.SetStatus(code)
 		return resp
 	}
-	dbVersion, err = dbModel.VersionFindOneId(ctx, p.patchId)
+	dbVersion, err = dbModel.VersionFindOneIdWithBuildVariants(ctx, p.patchId)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding version for patch '%s'", p.patchId))
 	}

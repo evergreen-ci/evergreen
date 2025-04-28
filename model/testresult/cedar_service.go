@@ -29,6 +29,10 @@ func newCedarService(env evergreen.Environment) *cedarService {
 	return &cedarService{baseURL: fmt.Sprintf("%s://%s", httpScheme, cedarSettings.BaseURL)}
 }
 
+func (s *cedarService) AppendTestResults(ctx context.Context, results []TestResult) error {
+	return errors.New("not implemented")
+}
+
 func (s *cedarService) GetMergedTaskTestResults(ctx context.Context, taskOpts []TaskOptions, filterOpts *FilterOptions) (TaskTestResults, error) {
 	data, status, err := testresults.Get(ctx, s.convertOpts(taskOpts, filterOpts))
 	if err != nil {

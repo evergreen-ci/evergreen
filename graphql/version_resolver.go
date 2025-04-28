@@ -55,7 +55,7 @@ func (r *versionResolver) BuildVariants(ctx context.Context, obj *restModel.APIV
 	versionID := utility.FromStringPtr(obj.Id)
 	// If activated is nil in the db we should resolve it and cache it for subsequent queries. There is a very low likely hood of this field being hit
 	if obj.Activated == nil {
-		version, err := model.VersionFindOne(ctx, model.VersionById(versionID))
+		version, err := model.VersionFindOneIdWithBuildVariants(ctx, versionID)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding version '%s': %s", versionID, err.Error()))
 		}
@@ -446,7 +446,7 @@ func (r *versionResolver) UpstreamProject(ctx context.Context, obj *restModel.AP
 			return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("upstream build '%s' not found", v.TriggerID))
 		}
 
-		upstreamVersion, err := model.VersionFindOneId(ctx, upstreamBuild.Version)
+		upstreamVersion, err := model.VersionFindOneIdWithBuildVariants(ctx, upstreamBuild.Version)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching upstream version '%s': %s", upstreamBuild.Version, err.Error()))
 		}

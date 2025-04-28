@@ -3,14 +3,10 @@ package data
 import (
 	"context"
 	"fmt"
-	"io"
 	"net/http"
-	"path"
 	"strconv"
-	"strings"
 	"time"
 
-	"github.com/docker/docker/api/types"
 	"github.com/evergreen-ci/birch"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -259,84 +255,18 @@ func createHostFromCommand(cmd model.PluginCommandConf) (*apimodels.CreateHost, 
 
 // MakeHost creates a host or container to run for host.create.
 func MakeHost(ctx context.Context, env evergreen.Environment, taskID, userID, publicKey string, createHost apimodels.CreateHost, distro distro.Distro) (*host.Host, error) {
-	if evergreen.IsDockerProvider(createHost.CloudProvider) {
-		return makeDockerIntentHost(ctx, env, taskID, userID, createHost, distro)
-	}
-	return makeEC2IntentHost(ctx, env, taskID, userID, publicKey, createHost, distro)
-}
-
-func makeDockerIntentHost(ctx context.Context, env evergreen.Environment, taskID, userID string, createHost apimodels.CreateHost, d distro.Distro) (*host.Host, error) {
-	options, err := getHostCreationOptions(ctx, d, taskID, userID, createHost)
-	if err != nil {
-		return nil, errors.Wrap(err, "making intent host options")
-	}
-
-	method := distro.DockerImageBuildTypeImport
-
-	base := path.Base(createHost.Image)
-	hasPrefix := strings.HasPrefix(base, "http")
-	if !hasPrefix { // not a url
-		method = distro.DockerImageBuildTypePull
-	}
-
-	envVars := []string{}
-	for key, val := range createHost.EnvironmentVars {
-		envVars = append(envVars, fmt.Sprintf("%s=%s", key, val))
-
-	}
-	options.DockerOptions = host.DockerOptions{
-		Image:            createHost.Image,
-		Command:          createHost.Command,
-		PublishPorts:     createHost.PublishPorts,
-		RegistryName:     createHost.Registry.Name,
-		RegistryUsername: createHost.Registry.Username,
-		RegistryPassword: createHost.Registry.Password,
-		StdinData:        createHost.StdinFileContents,
-		Method:           method,
-		SkipImageBuild:   true,
-		EnvironmentVars:  envVars,
-		ExtraHosts:       createHost.ExtraHosts,
-	}
-
-	containerPool := env.Settings().ContainerPools.GetContainerPool(d.ContainerPool)
-	if containerPool == nil {
-		return nil, errors.Errorf("distro '%s' doesn't have a container pool", d.Id)
-	}
-	containerIntents, parentIntents, err := host.MakeContainersAndParents(ctx, d, containerPool, 1, *options)
-	if err != nil {
-		return nil, errors.Wrap(err, "generating container and parent intent hosts")
-	}
-	if len(containerIntents) != 1 {
-		return nil, errors.Errorf("programmatic error: should have created one new container, not %d", len(containerIntents))
-	}
-	if err = host.InsertMany(ctx, containerIntents); err != nil {
-		return nil, errors.Wrap(err, "inserting container intents")
-	}
-	if err = host.InsertMany(ctx, parentIntents); err != nil {
-		return nil, errors.Wrap(err, "inserting parent intent hosts")
-	}
-
-	if err := units.EnqueueHostCreateJobs(ctx, env, append(containerIntents, parentIntents...)); err != nil {
-		return nil, errors.Wrapf(err, "enqueueing host create jobs")
-	}
-
-	return &containerIntents[0], nil
-
-}
-
-func makeEC2IntentHost(ctx context.Context, env evergreen.Environment, taskID, userID, publicKey string, createHost apimodels.CreateHost, d distro.Distro) (*host.Host, error) {
 	if createHost.Region == "" {
 		createHost.Region = evergreen.DefaultEC2Region
 	}
 	ec2Settings := cloud.EC2ProviderSettings{}
 	if createHost.Distro != "" {
-		if err := ec2Settings.FromDistroSettings(d, createHost.Region); err != nil {
+		if err := ec2Settings.FromDistroSettings(distro, createHost.Region); err != nil {
 			return nil, errors.Wrapf(err, "getting EC2 provider settings from distro '%s' in region '%s'", createHost.Distro, createHost.Region)
 		}
 	}
 
 	if publicKey != "" {
-		d.Setup += fmt.Sprintf("\necho \"\n%s\" >> %s\n", publicKey, d.GetAuthorizedKeysFile())
+		distro.Setup += fmt.Sprintf("\necho \"\n%s\" >> %s\n", publicKey, distro.GetAuthorizedKeysFile())
 	}
 
 	// set provider settings
@@ -386,9 +316,9 @@ func makeEC2IntentHost(ctx context.Context, env evergreen.Environment, taskID, u
 	if err != nil {
 		return nil, errors.Wrap(err, "marshalling EC2 settings to BSON document")
 	}
-	d.ProviderSettingsList = []*birch.Document{doc}
+	distro.ProviderSettingsList = []*birch.Document{doc}
 
-	options, err := getHostCreationOptions(ctx, d, taskID, userID, createHost)
+	options, err := getHostCreationOptions(ctx, distro, taskID, userID, createHost)
 	if err != nil {
 		return nil, errors.Wrap(err, "making intent host options")
 	}
@@ -447,34 +377,4 @@ func getHostCreationOptions(ctx context.Context, d distro.Distro, taskID, userID
 		options.SpawnOptions.SpawnedByTask = true
 	}
 	return &options, nil
-}
-
-// GetDockerLogs retrieves the logs for the given container.
-func GetDockerLogs(ctx context.Context, containerId string, parent *host.Host,
-	settings *evergreen.Settings, options types.ContainerLogsOptions) (io.Reader, error) {
-	c := cloud.GetDockerClient(settings)
-
-	if err := c.Init(settings.Providers.Docker.APIVersion); err != nil {
-		return nil, errors.Wrap(err, "initializing Docker client")
-	}
-
-	logs, err := c.GetDockerLogs(ctx, containerId, parent, options)
-	if err != nil {
-		return nil, errors.Wrapf(err, "getting Docker logs for container '%s'", containerId)
-	}
-	return logs, nil
-}
-
-// GetDockerStatus returns the status of the given Docker container.
-func GetDockerStatus(ctx context.Context, containerId string, parent *host.Host, settings *evergreen.Settings) (*cloud.ContainerStatus, error) {
-	c := cloud.GetDockerClient(settings)
-
-	if err := c.Init(settings.Providers.Docker.APIVersion); err != nil {
-		return nil, errors.Wrap(err, "initializing Docker client")
-	}
-	status, err := c.GetDockerStatus(ctx, containerId, parent)
-	if err != nil {
-		return nil, errors.Wrapf(err, "getting status of container '%s'", containerId)
-	}
-	return status, nil
 }

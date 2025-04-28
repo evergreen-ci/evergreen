@@ -184,7 +184,7 @@ func (h *keysDeleteHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(errors.Errorf("public key '%s' not found", h.keyName))
 	}
 
-	if err := user.DeletePublicKey(h.keyName); err != nil {
+	if err := user.DeletePublicKey(ctx, h.keyName); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "deleting public key '%s'", h.keyName))
 	}
 

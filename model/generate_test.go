@@ -1017,7 +1017,7 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasksWithBatchtime() {
 	s.NotNil(preGeneratedPP)
 
 	// verify we stopped saving versions
-	v, err = VersionFindOneId(s.ctx, v.Id)
+	v, err = VersionFindOneIdWithBuildVariants(s.ctx, v.Id)
 	s.Equal(evergreen.ProjectStorageMethodDB, v.PreGenerationProjectStorageMethod)
 	s.NoError(err)
 	s.Require().NotNil(v)
@@ -1217,7 +1217,7 @@ func (s *GenerateSuite) TestSaveNewTasksWithDependencies() {
 	s.NoError(err)
 	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
 
-	v, err = VersionFindOneId(s.ctx, v.Id)
+	v, err = VersionFindOneIdWithBuildVariants(s.ctx, v.Id)
 	s.NoError(err)
 	s.Require().NotNil(v)
 
@@ -1831,7 +1831,7 @@ func (s *GenerateSuite) TestSaveNewTaskWithExistingExecutionTask() {
 	s.Require().NoError(err)
 	s.NoError(g.Save(s.ctx, s.env.Settings(), p, pp, v))
 
-	v, err = VersionFindOneId(s.ctx, v.Id)
+	v, err = VersionFindOneIdWithBuildVariants(s.ctx, v.Id)
 	s.NoError(err)
 	s.Require().NotNil(v)
 

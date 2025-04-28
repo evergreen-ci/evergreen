@@ -337,11 +337,11 @@ Admin Settings
 												</td>
 											</tr>
 											<tr>
-												<td>Process Commit Queue</td>
+												<td>Use Evergreen for Test Results Service</td>
 												<td colspan="2">
 													<md-radio-group
-														data-ng-model="Settings.service_flags.commit_queue_disabled"
-														layout="row">
+															data-ng-model="Settings.service_flags.evergreen_test_results_disabled"
+															layout="row">
 														<md-radio-button data-ng-value="false"></md-radio-button>
 														<md-radio-button data-ng-value="true"></md-radio-button>
 													</md-radio-group>
@@ -414,9 +414,11 @@ Admin Settings
 												</td>
 											</tr>
 											<tr>
-												<td>Global GitHub Token</td>
+												<td>Use elastic IP features for task hosts</td>
 												<td colspan="2">
-													<md-radio-group data-ng-model="Settings.service_flags.global_github_token_disabled" layout="row">
+													<md-radio-group
+														data-ng-model="Settings.service_flags.elastic_ips_disabled"
+														layout="row">
 														<md-radio-button data-ng-value="false"></md-radio-button>
 														<md-radio-button data-ng-value="true"></md-radio-button>
 													</md-radio-group>
@@ -1427,6 +1429,14 @@ Admin Settings
 									<md-input-container class="control" style="width:45%;">
 										<label>API Key</label>
 										<input type="text" ng-model="Settings.cedar.api_key">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>DB URL</label>
+										<input type="text" ng-model="Settings.cedar.db_url">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
+										<label>DB Name</label>
+										<input type="text" ng-model="Settings.cedar.db_name">
 									</md-input-container>
 								</md-card-content>
 							</md-card>

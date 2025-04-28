@@ -26,6 +26,7 @@ import (
 )
 
 func insertTaskForTesting(ctx context.Context, env evergreen.Environment, taskId, versionId, projectName string, testResults []testresult.TestResult) (*task.Task, error) {
+	svc := testresult.NewLocalService(env)
 	task := &task.Task{
 		Id:                  taskId,
 		CreateTime:          time.Now().Add(-20 * time.Minute),
@@ -61,7 +62,7 @@ func insertTaskForTesting(ctx context.Context, env evergreen.Environment, taskId
 
 	if len(testResults) > 0 {
 		task.ResultsService = testresult.TestResultsServiceLocal
-		if err := testresult.InsertLocal(ctx, env, testResults...); err != nil {
+		if err := svc.AppendTestResults(ctx, testResults); err != nil {
 			return nil, err
 		}
 	}
@@ -273,7 +274,7 @@ func TestGetTaskStatus(t *testing.T) {
 	require.NoError(t, env.Configure(ctx))
 	router, err := newTestUIRouter(ctx, env)
 	require.NoError(t, err, "error setting up router")
-
+	svc := testresult.NewLocalService(env)
 	Convey("When finding the status of a particular task", t, func() {
 		require.NoError(t, db.ClearCollections(task.Collection),
 			"Error clearing '%v' collection", task.Collection)
@@ -300,7 +301,7 @@ func TestGetTaskStatus(t *testing.T) {
 			TestEndTime:   time.Now().Add(-1 * time.Minute),
 		}
 		require.NoError(t, testTask.Insert(t.Context()))
-		require.NoError(t, testresult.InsertLocal(ctx, env, testResult))
+		require.NoError(t, svc.AppendTestResults(ctx, []testresult.TestResult{testResult}))
 
 		url := "/rest/v1/tasks/" + taskId + "/status"
 

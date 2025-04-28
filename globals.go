@@ -521,6 +521,7 @@ const (
 	ProjectIDOtelAttribute         = "evergreen.project.id"
 	RepoRefIDOtelAttribute         = "evergreen.project.repo_ref_id"
 	DistroIDOtelAttribute          = "evergreen.distro.id"
+	DistroProviderOtelAttribute    = "evergreen.distro.provider"
 	HostIDOtelAttribute            = "evergreen.host.id"
 	HostnameOtelAttribute          = "evergreen.host.hostname"
 	HostStartedByOtelAttribute     = "evergreen.host.started_by"
@@ -653,6 +654,7 @@ const (
 	DefaultDatabaseReadMode  = "majority"
 
 	DefaultAmboyDatabaseURL = "mongodb://localhost:27017"
+	DefaultCedarDatabaseURL = "mongodb://localhost:27017"
 
 	// version requester types
 	PatchVersionRequester       = "patch_request"

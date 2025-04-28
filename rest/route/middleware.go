@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/util"
@@ -189,68 +188,6 @@ func (m *canCreateMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request,
 		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusUnauthorized,
 			Message:    "not authorized",
-		}))
-		return
-	}
-
-	next(rw, r)
-}
-
-// NewTaskHostAuthMiddleware returns route middleware that authenticates a host
-// created by a task and verifies the secret of the host that created this host.
-func NewTaskHostAuthMiddleware() gimlet.Middleware {
-	return &TaskHostAuthMiddleware{}
-}
-
-type TaskHostAuthMiddleware struct {
-}
-
-func (m *TaskHostAuthMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	vars := gimlet.GetVars(r)
-	hostID, ok := vars["host_id"]
-	if !ok {
-		hostID = r.Header.Get(evergreen.HostHeader)
-		if hostID == "" {
-			gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusUnauthorized,
-				Message:    "not authorized",
-			}))
-			return
-		}
-	}
-	h, err := host.FindOneId(r.Context(), hostID)
-	if err != nil {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(err))
-		return
-	}
-	if h == nil {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("host '%s' not found", hostID),
-		}))
-		return
-	}
-
-	if h.StartedBy == "" {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(errors.Errorf("host '%s' is not started by any task", h.Id)))
-		return
-	}
-	t, err := task.FindOneId(r.Context(), h.StartedBy)
-	if err != nil {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s' started by host '%s'", h.StartedBy, h.Id)))
-		return
-	}
-	if t == nil {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("task '%s' not found", h.StartedBy),
-		}))
-		return
-	}
-	if _, code, err := model.ValidateHost(t.HostId, r); err != nil {
-		gimlet.WriteResponse(rw, gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: code,
-			Message:    errors.Wrapf(err, "invalid host '%s' associated with task '%s'", t.HostId, t.Id).Error(),
 		}))
 		return
 	}

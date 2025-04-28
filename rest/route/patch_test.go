@@ -670,11 +670,11 @@ func TestPatchRawModulesHandler(t *testing.T) {
 	require.NoError(t, db.ClearCollections(patch.Collection))
 	require.NoError(t, db.ClearGridCollections(patch.GridFSPrefix))
 	patchString := `main diff`
-	require.NoError(t, db.WriteGridFile(patch.GridFSPrefix, "testPatch", strings.NewReader(patchString)))
+	require.NoError(t, db.WriteGridFile(t.Context(), patch.GridFSPrefix, "testPatch", strings.NewReader(patchString)))
 	patchString = `module1 diff`
-	require.NoError(t, db.WriteGridFile(patch.GridFSPrefix, "module1Patch", strings.NewReader(patchString)))
+	require.NoError(t, db.WriteGridFile(t.Context(), patch.GridFSPrefix, "module1Patch", strings.NewReader(patchString)))
 	patchString = `module2 diff`
-	require.NoError(t, db.WriteGridFile(patch.GridFSPrefix, "module2Patch", strings.NewReader(patchString)))
+	require.NoError(t, db.WriteGridFile(t.Context(), patch.GridFSPrefix, "module2Patch", strings.NewReader(patchString)))
 	patchId := mgobson.NewObjectId()
 	patchToInsert := patch.Patch{
 		Id: patchId,
@@ -731,9 +731,9 @@ func TestPatchRawHandler(t *testing.T) {
 	require.NoError(t, db.ClearCollections(patch.Collection))
 	require.NoError(t, db.ClearGridCollections(patch.GridFSPrefix))
 	patchString := `main diff`
-	require.NoError(t, db.WriteGridFile(patch.GridFSPrefix, "testPatch", strings.NewReader(patchString)))
+	require.NoError(t, db.WriteGridFile(t.Context(), patch.GridFSPrefix, "testPatch", strings.NewReader(patchString)))
 	patchString = `module1 diff`
-	require.NoError(t, db.WriteGridFile(patch.GridFSPrefix, "module1Patch", strings.NewReader(patchString)))
+	require.NoError(t, db.WriteGridFile(t.Context(), patch.GridFSPrefix, "module1Patch", strings.NewReader(patchString)))
 	patchId := "aabbccddeeff001122334455"
 	patchToInsert := patch.Patch{
 		Id: patch.NewId(patchId),

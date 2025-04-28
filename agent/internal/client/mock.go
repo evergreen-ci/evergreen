@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal/redactor"
 	"github.com/evergreen-ci/evergreen/apimodels"
-	"github.com/evergreen-ci/evergreen/cloud"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/log"
@@ -539,14 +538,6 @@ func (c *Mock) CreateHost(ctx context.Context, td TaskData, options apimodels.Cr
 
 func (c *Mock) ListHosts(_ context.Context, _ TaskData) (model.HostListResults, error) {
 	return model.HostListResults{}, nil
-}
-
-func (c *Mock) GetDockerLogs(context.Context, string, time.Time, time.Time, bool) ([]byte, error) {
-	return []byte("this is a log"), nil
-}
-
-func (c *Mock) GetDockerStatus(context.Context, string) (*cloud.ContainerStatus, error) {
-	return &cloud.ContainerStatus{HasStarted: true}, nil
 }
 
 func (c *Mock) ConcludeMerge(ctx context.Context, patchId, status string, td TaskData) error {

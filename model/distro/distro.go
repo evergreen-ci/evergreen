@@ -877,41 +877,27 @@ func AllDistros(ctx context.Context) ([]Distro, error) {
 // distro must be a Docker distro. If the provider is EC2, the distro
 // name is optional.
 func GetHostCreateDistro(ctx context.Context, createHost apimodels.CreateHost) (*Distro, error) {
-	var err error
 	d := &Distro{}
-	isDockerProvider := evergreen.IsDockerProvider(createHost.CloudProvider)
-	if isDockerProvider {
-		d, err = FindOneId(ctx, createHost.Distro)
+	if createHost.Distro != "" {
+		var dat AliasLookupTable
+		dat, err := NewDistroAliasesLookupTable(ctx)
+		if err != nil {
+			return nil, errors.Wrap(err, "getting distro lookup table")
+		}
+		distroIDs := dat.Expand([]string{createHost.Distro})
+		if len(distroIDs) == 0 {
+			return nil, errors.Wrap(err, "distro lookup returned no matching distro IDs")
+		}
+		d, err = FindOneId(ctx, distroIDs[0])
 		if err != nil {
 			return nil, errors.Wrapf(err, "finding distro '%s'", createHost.Distro)
 		}
 		if d == nil {
 			return nil, errors.Errorf("distro '%s' not found", createHost.Distro)
 		}
-		if !evergreen.IsDockerProvider(d.Provider) {
-			return nil, errors.Errorf("distro '%s' provider must support Docker but actual provider is '%s'", d.Id, d.Provider)
-		}
-	} else {
-		if createHost.Distro != "" {
-			var dat AliasLookupTable
-			dat, err := NewDistroAliasesLookupTable(ctx)
-			if err != nil {
-				return nil, errors.Wrap(err, "getting distro lookup table")
-			}
-			distroIDs := dat.Expand([]string{createHost.Distro})
-			if len(distroIDs) == 0 {
-				return nil, errors.Wrap(err, "distro lookup returned no matching distro IDs")
-			}
-			d, err = FindOneId(ctx, distroIDs[0])
-			if err != nil {
-				return nil, errors.Wrapf(err, "finding distro '%s'", createHost.Distro)
-			}
-			if d == nil {
-				return nil, errors.Errorf("distro '%s' not found", createHost.Distro)
-			}
-		}
-		d.Provider = evergreen.ProviderNameEc2OnDemand
 	}
+	d.Provider = evergreen.ProviderNameEc2OnDemand
+
 	// Do not provision task-spawned hosts.
 	d.BootstrapSettings.Method = BootstrapMethodNone
 	return d, nil

@@ -819,11 +819,14 @@ func (h *attachTestResultsHandler) Parse(ctx context.Context, r *http.Request) e
 }
 
 func (h *attachTestResultsHandler) Run(ctx context.Context) gimlet.Responder {
-	// TODO: DEVPROD-16200 Implement the new DB/S3-backed Evergreen test results service and delete the below log
-	grip.Debug(message.Fields{
-		"message": "received test results",
-		"results": h.results,
-	})
+	flags, err := evergreen.GetServiceFlags(ctx)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "retrieving service flags"))
+	}
+	if flags.EvergreenTestResultsDisabled {
+		return gimlet.NewJSONResponse(struct{}{})
+	}
+	// TODO: DEVPROD-16200 Implement the new DB/S3-backed Evergreen test results service
 	return gimlet.NewJSONResponse(struct{}{})
 }
 
@@ -1009,10 +1012,10 @@ func (h *startTaskHandler) Run(ctx context.Context) gimlet.Responder {
 		msg = fmt.Sprintf("task %s started on host %s", t.Id, foundHost.Id)
 
 		if foundHost.Distro.IsEphemeral() {
-			if err = foundHost.IncTaskCount(); err != nil {
+			if err = foundHost.IncTaskCount(ctx); err != nil {
 				return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "incrementing task count for task '%s' on host '%s'", t.Id, foundHost.Id))
 			}
-			if err = foundHost.IncIdleTime(foundHost.WastedComputeTime()); err != nil {
+			if err = foundHost.IncIdleTime(ctx, foundHost.WastedComputeTime()); err != nil {
 				return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "incrementing total idle time on host '%s'", foundHost.Id))
 			}
 			grip.Info(foundHost.TaskStartMessage())
@@ -1116,7 +1119,7 @@ func (h *gitServePatchFileHandler) Parse(ctx context.Context, r *http.Request) e
 }
 
 func (h *gitServePatchFileHandler) Run(ctx context.Context) gimlet.Responder {
-	patchContents, err := patch.FetchPatchContents(h.patchID)
+	patchContents, err := patch.FetchPatchContents(ctx, h.patchID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "reading patch file from db"))
 	}
@@ -1245,7 +1248,7 @@ func (h *keyvalIncHandler) Parse(ctx context.Context, r *http.Request) error {
 
 func (h *keyvalIncHandler) Run(ctx context.Context) gimlet.Responder {
 	keyVal := &model.KeyVal{Key: h.key}
-	if err := keyVal.Inc(); err != nil {
+	if err := keyVal.Inc(ctx); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "doing findAndModify on key '%s'", h.key))
 	}
 	return gimlet.NewJSONResponse(keyVal)
@@ -1843,6 +1846,6 @@ func (h *awsAssumeRole) Run(ctx context.Context) gimlet.Responder {
 		AccessKeyID:     creds.AccessKeyID,
 		SecretAccessKey: creds.SecretAccessKey,
 		SessionToken:    creds.SessionToken,
-		Expiration:      creds.Expiration.String(),
+		Expiration:      creds.Expiration.Format(time.RFC3339),
 	})
 }

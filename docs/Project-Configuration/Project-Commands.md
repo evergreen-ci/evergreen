@@ -380,6 +380,7 @@ Parameters:
 
 The call to AssumeRole includes an external ID formatted as
 `<project_id>-<requester>`. This cannot be modified by the user.
+The list of requesters can be found [here](../Reference/Glossary.md#requesters).
 The originating role is: 
 `arn:aws:iam::<evergreen_account_id>:role/evergreen.role.production`
 and your role should only trust that exact role. You should add an
@@ -789,12 +790,11 @@ Parameters:
 
 ## host.create
 
-`host.create` starts a host or a Docker container from a task.
+`host.create` starts a host from a task.
 
 ``` yaml
 - command: host.create
   params:
-    provider: ec2
     distro: rhel70-small
 ```
 
@@ -811,8 +811,7 @@ Parse From A File:
 Agent Parameters:
 
 -   `num_hosts` - Number of hosts to start, 1 &lt;= `num_hosts` &lt;= 10.
-    Defaults to 1 (must be 1 if provider is Docker).
--   `provider` - Cloud provider. Must set `ec2` or `docker`.
+    Defaults to 1.
 -   `retries` - How many times Evergreen should try to create this host
     in EC2 before giving up. Evergreen will wait 1 minute between
     retries.
@@ -826,17 +825,13 @@ Agent Parameters:
     finished, tear down this host after this many seconds. Must be 60
     &lt;= `timeout_teardown_secs` &lt;= 604800 (7 days). Default to 21600 (6
     hours).
-
-EC2 Parameters:
-
--   `ami` - For an `ec2` provider, the AMI to start. Must set `ami` or `distro`
+-   `ami` - The AMI to start. Must set `ami` or `distro`
     but must not set both.
 -   `device_name` - name of EBS device
--   `distro` - Evergreen distro to start. For the `ec2` provider, must set
-    either `ami` only or `distro` but must not set both. For the `docker`
-    provider, `distro` must be set to the distro that will run the container.
-    Note that the distro setup script will not run for hosts spawned by this
-    command, so any required initial setup must be done manually.
+-   `distro` - Evergreen distro to start. Must set either `ami` only or
+    `distro` but must not set both. Note that the distro setup script will
+    not run for hosts spawned by this command, so any required initial
+    setup must be done manually.
 -   `ebs_block_device` - list of the following parameters:
 -   `ebs_iops` - EBS provisioned IOPS.
 -   `ebs_size` - Size of EBS volume in GB.
@@ -857,45 +852,6 @@ EC2 Parameters:
 -   `userdata_file` - Path to file to load as EC2 user data on boot. May
     set if `distro` is set, which will override the value from the
     distro configuration. May set if distro is not set.
-
-Docker Parameters:
-
--   `background` - Set to wait for logs in the background, rather than
-    blocking. Default is true.
--   `container_wait_timeout_secs` - Time to wait for the container to
-    finish running the given command. Must be &lt;= 3600 (1 hour). Default
-    to 600 (10 minutes).
--   `command` - The command to run on the container. Does not not
-    support shell interpolation. If not specified, will use the default
-    entrypoint.
--   `distro` - Required. The distro's container pool is used to
-    find/create parents for the container.
--   `image` - Required. The image to use for the container. If image is
-    a URL, then the image is imported, otherwise it is pulled.
--   `poll_frequency_secs` - Check for running container and logs at this
-    interval. Must be &lt;= 60 (1 second). Default to 30.
--   `publish_ports` - Set to make ports available by mapping container
-    ports to ports on the Docker host. Default is false.
--   `extra_hosts` - Optional. This is a list of hosts to be added to
-    /etc/hosts on the container (each should be of the form
-    hostname:IP).
--   `registry_name` - The registry from which to pull/import the image.
-    Defaults to Dockerhub.
--   `registry_username` - Username for the `registry_name` if it
-    requires authentication. Must set if `registry_password` is set.
--   `registry_password` - Password for the `registry_name` if it
-    requires authentication. Must set if `registry_username` is set.
--   `stdin_file_name` - The file containing the content to provide as stdin to
-    the container command. By default, the container command has no input to
-    stdin. Note that if you try to start a spawn host and also choose to start
-    containers started by host.create for the task, the running container will
-    *not* have the stdin file content passed to it.
--   `stdout_file_name` - The file path to write stdout logs from the
-    container. Default is &lt;container_id&gt;.out.log.
--   `stderr_file_name` - The file path to write stderr logs from the
-    container. Default is &lt;container_id&gt;.err.log.
--   `environment_vars` - Environment variables to pass to the container command.
-    By default, no environment variables are passed.
 
 ### Required IAM Policies for `host.create`
 
@@ -965,7 +921,6 @@ tasks:
           aws_secret_access_key: ${aws_secret_access_key}
           instance_type: ${instance_type|m3.medium}
           key_name: ${key_name}
-          provider: ec2
           security_group_ids:
             - ${security_group_id}
           subnet_id: ${subnet_id}
@@ -1012,29 +967,13 @@ If the `path` directive is specified, then the contents of the file
 contain a JSON formatted list of objects. Each object contains the
 following keys:
 
-For EC2, these keys represent the instance. For Docker, they represent
-the Docker host that the container is running on.
+The returned keys represent the instance.
 
 -   `dns_name`: The FQDN of the EC2 instance (if IPv6 instance, this
     will not be populated).
 -   `ip_address`: the IP address of the EC2 instance (currently
     implemented for IPv6).
-
-EC2 Only:
-
 -   `instance_id`: The unique identifier of the EC2 instance.
-
-Docker Only:
-
--   `host_id`: The unique identifier of the container.
--   `parent_id`: The unique identifier of the parent of the container
-    (may be given as the parent host's tag, i.e. evergreen-assigned
-    ID).
--   `image`: The image used for the container.
--   `command`: The command run on the container.
--   `port_bindings`: The map of docker ports (formatted
-    `<port>/<protocol>`) to ports on the container host. Only available
-    if `publish_ports` was set for `host.create`.
 
 If there's an error in host.create, these will be available from
 host.list in this form:
@@ -1052,21 +991,6 @@ host.list in this form:
     {
         "ip_address": "abcd:1234:459c:2d00:cfe4:843b:1d60:8e47",
         "instance_id": "i-106d6766961312a14"
-    }
-    {
-        "dns_name": "ec2-55-123-99-55.compute-1.amazonaws.com",
-        "host_id": "container-7919139205343971456",
-        "parent_id": "evg-archlinux-parent-20190513171239-2182711601109995555",
-        "image": "hello-world",
-        "command": "/hello",
-        "port_bindings": {
-            "4444/tcp": [
-               "32769"
-            ],
-            "5900/tcp": [
-               "32768"
-            ]
-         }
     }
 ]
 ```

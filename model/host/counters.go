@@ -1,6 +1,7 @@
 package host
 
 import (
+	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
@@ -9,7 +10,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-func (h *Host) IncTaskCount() error {
+func (h *Host) IncTaskCount(ctx context.Context) error {
 	query := bson.M{
 		IdKey: h.Id,
 	}
@@ -21,7 +22,7 @@ func (h *Host) IncTaskCount() error {
 		},
 	}
 
-	info, err := db.FindAndModify(Collection, query, []string{}, change, h)
+	info, err := db.FindAndModify(ctx, Collection, query, []string{}, change, h)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -34,7 +35,7 @@ func (h *Host) IncTaskCount() error {
 
 }
 
-func (h *Host) IncContainerBuildAttempt() error {
+func (h *Host) IncContainerBuildAttempt(ctx context.Context) error {
 	query := bson.M{
 		IdKey: h.Id,
 	}
@@ -46,7 +47,7 @@ func (h *Host) IncContainerBuildAttempt() error {
 		},
 	}
 
-	info, err := db.FindAndModify(Collection, query, []string{}, change, h)
+	info, err := db.FindAndModify(ctx, Collection, query, []string{}, change, h)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -59,7 +60,7 @@ func (h *Host) IncContainerBuildAttempt() error {
 }
 
 // IncIdleTime increments the host's TotalIdleTime. Noop if idleTime is non-positive.
-func (h *Host) IncIdleTime(idleTime time.Duration) error {
+func (h *Host) IncIdleTime(ctx context.Context, idleTime time.Duration) error {
 	if idleTime <= 0 {
 		return nil
 	}
@@ -75,7 +76,7 @@ func (h *Host) IncIdleTime(idleTime time.Duration) error {
 		},
 	}
 
-	info, err := db.FindAndModify(Collection, query, []string{}, change, h)
+	info, err := db.FindAndModify(ctx, Collection, query, []string{}, change, h)
 	if err != nil {
 		return errors.WithStack(err)
 	}

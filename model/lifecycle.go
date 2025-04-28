@@ -553,6 +553,9 @@ func addTasksToBuild(ctx context.Context, creationInfo TaskCreationInfo) (*build
 		})
 	}
 
+	if _, err := creationInfo.Version.GetBuildVariants(ctx); err != nil {
+		return nil, nil, errors.Wrapf(err, "getting build variant info for version '%s'", creationInfo.Version.Id)
+	}
 	// update the build in the variant
 	for i, status := range creationInfo.Version.BuildVariants {
 		if status.BuildVariant != creationInfo.Build.BuildVariant {
@@ -1070,7 +1073,7 @@ func getAllNodesInDepGraph(startTaskId, startKey, linkKey string) []bson.M {
 func getTaskCreateTime(ctx context.Context, creationInfo TaskCreationInfo) (time.Time, error) {
 	createTime := time.Time{}
 	if evergreen.IsPatchRequester(creationInfo.Version.Requester) {
-		baseVersion, err := VersionFindOne(ctx, BaseVersionByProjectIdAndRevision(creationInfo.Project.Identifier, creationInfo.Version.Revision))
+		baseVersion, err := VersionFindOne(ctx, BaseVersionByProjectIdAndRevision(creationInfo.Project.Identifier, creationInfo.Version.Revision).WithFields(VersionCreateTimeKey))
 		if err != nil {
 			return createTime, errors.Wrap(err, "finding base version for patch version")
 		}

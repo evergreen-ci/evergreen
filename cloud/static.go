@@ -150,6 +150,10 @@ func (staticMgr *staticManager) CheckInstanceType(context.Context, string) error
 	return errors.New("can't specify instance type with static provider")
 }
 
+func (staticMgr *staticManager) CleanupIP(context.Context, *host.Host) error {
+	return nil
+}
+
 // Cleanup is a noop for the static provider.
 func (staticMgr *staticManager) Cleanup(context.Context) error {
 	return nil

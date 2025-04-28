@@ -296,6 +296,10 @@ func (m *dockerManager) Configure(ctx context.Context, s *evergreen.Settings) er
 	return nil
 }
 
+func (m *dockerManager) CleanupIP(context.Context, *host.Host) error {
+	return nil
+}
+
 // Cleanup is a noop for the docker provider.
 func (m *dockerManager) Cleanup(context.Context) error {
 	return nil

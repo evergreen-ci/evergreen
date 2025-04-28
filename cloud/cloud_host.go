@@ -53,3 +53,7 @@ func (cloudHost *CloudHost) GetInstanceState(ctx context.Context) (CloudInstance
 func (cloudHost *CloudHost) GetDNSName(ctx context.Context) (string, error) {
 	return cloudHost.CloudMgr.GetDNSName(ctx, cloudHost.Host)
 }
+
+func (cloudHost *CloudHost) CleanupIP(ctx context.Context) error {
+	return cloudHost.CloudMgr.CleanupIP(ctx, cloudHost.Host)
+}

@@ -107,11 +107,15 @@ type Environment interface {
 
 	Session() db.Session
 	ContextSession(ctx context.Context) db.Session
+	CedarContextSession(ctx context.Context) db.Session
 	Client() *mongo.Client
 
 	// DB returns a database that is dedicated to this instance of
 	// Evergreen.
 	DB() *mongo.Database
+	// CedarDB returns a database that is dedicated to our Cedar
+	// database cluster.
+	CedarDB() *mongo.Database
 	// SharedDB returns a database that is shared between multiple
 	// instances of Evergreen. Returns nil when no shared database
 	// is configured.
@@ -252,6 +256,7 @@ func NewEnvironment(ctx context.Context, confPath, versionID, clientS3Bucket str
 		catcher.Add(e.initDB(ctx, e.settings.Database, tracer))
 	}
 
+	catcher.Add(e.initCedarDB(ctx, tracer))
 	catcher.Add(e.initJasper(ctx, tracer))
 	catcher.Add(e.initDepot(ctx, tracer))
 	catcher.Add(e.initParameterManager(ctx, tracer))
@@ -284,6 +289,7 @@ type envState struct {
 	settings                *Settings
 	dbName                  string
 	client                  *mongo.Client
+	cedarClient             *mongo.Client
 	sharedDBClient          *mongo.Client
 	mu                      sync.RWMutex
 	clientConfig            *ClientConfig
@@ -402,6 +408,24 @@ func (e *envState) initDB(ctx context.Context, settings DBSettings, tracer trace
 	return nil
 }
 
+func (e *envState) initCedarDB(ctx context.Context, tracer trace.Tracer) error {
+	_, span := tracer.Start(ctx, "InitCedarDB")
+	defer span.End()
+
+	var err error
+	url := e.settings.Cedar.DBURL
+	if url == "" {
+		url = DefaultCedarDatabaseURL
+	}
+	client, err := mongo.Connect(ctx, e.settings.Database.mongoOptions(url))
+	if err != nil {
+		return errors.Wrap(err, "connecting to the Cedar database")
+	}
+	e.cedarClient = client
+
+	return nil
+}
+
 func (e *envState) createRemoteQueues(ctx context.Context, tracer trace.Tracer) error {
 	ctx, span := tracer.Start(ctx, "CreateRemoteQueues")
 	defer span.End()
@@ -453,6 +477,15 @@ func (e *envState) DB() *mongo.Database {
 	defer e.mu.RUnlock()
 
 	return e.client.Database(e.dbName)
+}
+
+// CedarDB returns a database that is dedicated to our Cedar
+// database cluster.
+func (e *envState) CedarDB() *mongo.Database {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	return e.cedarClient.Database(e.settings.Cedar.DBName)
 }
 
 // SharedDB returns a database that is shared between multiple instances
@@ -1165,6 +1198,13 @@ func (e *envState) ContextSession(ctx context.Context) db.Session {
 	defer e.mu.RUnlock()
 
 	return db.WrapClient(ctx, e.client).Clone()
+}
+
+func (e *envState) CedarContextSession(ctx context.Context) db.Session {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	return db.WrapClient(ctx, e.cedarClient).Clone()
 }
 
 func (e *envState) ClientConfig() *ClientConfig {

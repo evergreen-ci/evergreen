@@ -290,7 +290,7 @@ func (h *userPermissionsDeleteHandler) Run(ctx context.Context) gimlet.Responder
 	}
 
 	if h.resourceType == allResourceType {
-		err = u.DeleteAllRoles()
+		err = u.DeleteAllRoles(ctx)
 		if err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "deleting all roles for user '%s'", u.Username()))
 		}
@@ -327,7 +327,7 @@ func (h *userPermissionsDeleteHandler) Run(ctx context.Context) gimlet.Responder
 		"resource_type": h.resourceType,
 		"resource_id":   h.resourceId,
 	})
-	err = u.DeleteRoles(rolesToRemove)
+	err = u.DeleteRoles(ctx, rolesToRemove)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "deleting roles for user '%s'", u.Username()))
 	}
