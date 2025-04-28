@@ -803,7 +803,7 @@ type blockDevice struct {
 	FSType     string        `json:"fstype"`
 	UUID       string        `json:"uuid"`
 	MountPoint string        `json:"mountpoint"`
-	Model      string        `json:model`
+	Model      string        `json:"model"`
 	Children   []blockDevice `json:"children"`
 }
 
