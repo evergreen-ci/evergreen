@@ -600,7 +600,10 @@ func (r *taskResolver) TaskOwnerTeam(ctx context.Context, obj *restModel.APITask
 
 	client := fws.NewAPIClient(cfg)
 	req := client.OwnerAPI.ByFoliageLogicApiOwnerByFoliageLogicTaskIdGet(ctx, *obj.Id)
-	results, _, err := req.Execute()
+	results, resp, err := req.Execute()
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting task owner team: %s", err.Error()))
 	}
