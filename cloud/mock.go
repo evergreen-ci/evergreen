@@ -453,6 +453,10 @@ func (m *mockManager) CheckInstanceType(ctx context.Context, instanceType string
 	return nil
 }
 
+func (m *mockManager) CleanupIP(ctx context.Context, h *host.Host) error {
+	return nil
+}
+
 // Cleanup is a noop for the mock provider.
 func (m *mockManager) Cleanup(context.Context) error {
 	return nil

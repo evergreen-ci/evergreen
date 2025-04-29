@@ -11,16 +11,18 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	s3Types "github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/grip/send"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -669,7 +671,9 @@ func TestS3PutSkipExisting(t *testing.T) {
 
 	id := utility.RandomString()
 
-	remoteFile := fmt.Sprintf("tests/%s/%s", t.Name(), id)
+	testPrefix := fmt.Sprintf("tests/%s/%s", t.Name(), id)
+
+	remoteFile := fmt.Sprintf("%s/file", testPrefix)
 
 	cmd := s3PutFactory()
 	params := map[string]any{
@@ -685,19 +689,37 @@ func TestS3PutSkipExisting(t *testing.T) {
 		"permissions":       "private",
 	}
 
+	creds := credentials.NewStaticCredentialsProvider(accessKeyID, secretAccessKey, token)
+
 	require.NoError(t, cmd.ParseParams(params))
 
 	tconf := &internal.TaskConfig{
-		Task:    task.Task{},
+		Task: task.Task{
+			Project: testPrefix,
+			Id:      "task-abc123",
+			TaskOutputInfo: &taskoutput.TaskOutput{
+				TaskLogs: taskoutput.TaskLogOutput{
+					Version: 1,
+					BucketConfig: evergreen.BucketConfig{
+						Name: bucketName,
+						Type: evergreen.BucketTypeS3,
+					},
+					AWSCredentials: creds,
+				},
+				TestLogs: taskoutput.TestLogOutput{},
+			},
+		},
 		WorkDir: temproot,
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	sender := send.MakeInternalLogger()
-	logger := client.NewSingleChannelLogHarness("test", sender)
 	comm := client.NewMock("")
+	baseComm := client.NewHostCommunicator("", "", "")
+
+	logger, err := baseComm.GetLoggerProducer(ctx, &tconf.Task, nil)
+	require.NoError(t, err)
 
 	require.NoError(t, cmd.Execute(ctx, comm, logger, tconf))
 
@@ -706,7 +728,7 @@ func TestS3PutSkipExisting(t *testing.T) {
 
 	require.NoError(t, cmd.Execute(ctx, comm, logger, tconf))
 
-	creds := credentials.NewStaticCredentialsProvider(accessKeyID, secretAccessKey, token)
+	require.NoError(t, logger.Flush(ctx))
 
 	opts := pail.S3Options{
 		Region:      region,
@@ -725,4 +747,14 @@ func TestS3PutSkipExisting(t *testing.T) {
 
 	// verify that file content wasn't overwritten by the second file
 	assert.Equal(t, payload, content)
+
+	logopts := taskoutput.TaskLogGetOptions{
+		LogType: taskoutput.TaskLogTypeAll,
+	}
+
+	it, err := tconf.Task.GetTaskLogs(ctx, logopts)
+	require.NoError(t, err)
+
+	_, err = apimodels.ReadLogToSlice(it)
+	require.NoError(t, err)
 }

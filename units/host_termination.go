@@ -60,8 +60,9 @@ type HostTerminationOptions struct {
 	// running a task. Otherwise, if it's running a task, termination will
 	// either refuse to terminate the host or will reset the task.
 	TerminateIfBusy bool `bson:"terminate_if_busy,omitempty" json:"terminate_if_busy,omitempty"`
-	// SkipCloudHostTermination, if set, will skip terminating the host in the
-	// cloud. The host will still be marked terminated in the DB.
+	// SkipCloudHostTermination, if set, will skip terminating and cleaning up
+	// the host in the cloud. The host will still be marked terminated in the
+	// DB.
 	SkipCloudHostTermination bool `bson:"skip_cloud_host_termination,omitempty" json:"skip_cloud_host_termination,omitempty"`
 	// TerminationReason is the reason that the host was terminated.
 	TerminationReason string `bson:"termination_reason,omitempty" json:"termination_reason,omitempty"`
@@ -164,9 +165,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		// intent host, and should be marked terminated. There's no host
 		// associated with it in the cloud provider.
 		if host.IsIntentHostId(j.host.Id) {
-			if err := j.host.Terminate(ctx, evergreen.User, j.TerminationReason); err != nil {
-				j.AddError(errors.Wrapf(err, "terminating intent host '%s' in DB", j.host.Id))
-			}
+			j.AddError(errors.Wrapf(j.cleanupIntentHost(ctx), "cleaning up intent host '%s'", j.host.Id))
 			return
 		}
 	case evergreen.HostTerminated:
@@ -369,6 +368,30 @@ func (j *hostTerminationJob) incrementIdleTime(ctx context.Context) error {
 	}
 
 	return j.host.IncIdleTime(ctx, idleTime)
+}
+
+func (j *hostTerminationJob) cleanupIntentHost(ctx context.Context) error {
+	if j.SkipCloudHostTermination {
+		return errors.Wrap(j.host.Terminate(ctx, evergreen.User, j.TerminationReason), "marking DB host terminated")
+	}
+
+	if j.host.IPAllocationID != "" || j.host.IPAssociationID != "" {
+		cloudHost, err := cloud.GetCloudHost(ctx, j.host, j.env)
+		if err != nil {
+			return errors.Wrap(err, "getting cloud host for intent host")
+		}
+		grip.Error(message.WrapError(cloudHost.CleanupIP(ctx), message.Fields{
+			"message":        "could not clean up IP resources for intent host",
+			"host_id":        j.host.Id,
+			"allocation_id":  j.host.IPAllocationID,
+			"association_id": j.host.IPAssociationID,
+		}))
+	}
+
+	if err := j.host.Terminate(ctx, evergreen.User, j.TerminationReason); err != nil {
+		return errors.Wrapf(err, "terminating intent host in DB")
+	}
+	return nil
 }
 
 // checkAndTerminateCloudHost checks if the host is still up according to the

@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
+	"github.com/evergreen-ci/utility/ttlcache"
 	"github.com/gonzojive/httpcache"
 	"github.com/google/go-github/v70/github"
 	"github.com/mongodb/anser/bsonutil"
@@ -43,13 +44,14 @@ const (
 )
 
 const (
-	githubEndpointAttribute = "evergreen.github.endpoint"
-	githubOwnerAttribute    = "evergreen.github.owner"
-	githubRepoAttribute     = "evergreen.github.repo"
-	githubRefAttribute      = "evergreen.github.ref"
-	githubPathAttribute     = "evergreen.github.path"
-	githubRetriesAttribute  = "evergreen.github.retries"
-	githubCachedAttribute   = "evergreen.github.cached"
+	githubEndpointAttribute    = "evergreen.github.endpoint"
+	githubOwnerAttribute       = "evergreen.github.owner"
+	githubRepoAttribute        = "evergreen.github.repo"
+	githubRefAttribute         = "evergreen.github.ref"
+	githubPathAttribute        = "evergreen.github.path"
+	githubRetriesAttribute     = "evergreen.github.retries"
+	githubCachedAttribute      = "evergreen.github.cached"
+	githubLocalCachedAttribute = "evergreen.github.local_cached"
 )
 
 var UnblockedGithubStatuses = []string{
@@ -658,6 +660,10 @@ func getCommitComparison(ctx context.Context, owner, repo, baseRevision, current
 	return compare, nil
 }
 
+// ghCommitCache is a weak cache for GitHub commits. We can use a cache because
+// the commit data doesn't change.
+var ghCommitCache = ttlcache.WithOtel(ttlcache.NewWeakInMemory[github.RepositoryCommit](), "github-get-commit-event")
+
 func GetCommitEvent(ctx context.Context, owner, repo, githash string) (*github.RepositoryCommit, error) {
 	caller := "GetCommitEvent"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
@@ -667,6 +673,13 @@ func GetCommitEvent(ctx context.Context, owner, repo, githash string) (*github.R
 		attribute.String(githubRefAttribute, githash),
 	))
 	defer span.End()
+
+	ghCommitKey := fmt.Sprintf("%s/%s/%s", owner, repo, githash)
+	commit, found := ghCommitCache.Get(ctx, ghCommitKey, 0)
+	span.SetAttributes(attribute.Bool(githubLocalCachedAttribute, found))
+	if found && commit != nil {
+		return commit, nil
+	}
 
 	var err error
 	token, err := getInstallationToken(ctx, owner, repo, nil)
@@ -716,6 +729,11 @@ func GetCommitEvent(ctx context.Context, owner, repo, githash string) (*github.R
 		return nil, errors.New("commit not found in github")
 	}
 
+	// We use 24 hours as the expiration time for the item in the cache
+	// because the cache only holds weak pointers to the items in it.
+	// This means that the items in the cache can be garbage collected
+	// if there are no strong references to them.
+	ghCommitCache.Put(ctx, ghCommitKey, commit, time.Now().Add(time.Hour*24))
 	return commit, nil
 }
 

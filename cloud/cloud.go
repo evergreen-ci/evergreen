@@ -41,7 +41,8 @@ type Manager interface {
 	// SetPortMappings sets the port mappings for the container
 	SetPortMappings(context.Context, *host.Host, *host.Host) error
 
-	// TerminateInstance destroys the host in the underlying provider
+	// TerminateInstance destroys the host in the underlying provider and cleans
+	// up IP resources associated with the host, if any (see CleanupIP).
 	TerminateInstance(context.Context, *host.Host, string, string) error
 
 	// StopInstance stops an instance.
@@ -77,6 +78,10 @@ type Manager interface {
 	// TimeTilNextPayment returns how long there is until the next payment
 	// is due for a particular host
 	TimeTilNextPayment(*host.Host) time.Duration
+
+	// CleanupIP cleans up the IP address resources for a host, if it has any.
+	// If calling TerminateInstance, CleanupIP is not needed.
+	CleanupIP(context.Context, *host.Host) error
 
 	// Cleanup triggers the manager to clean up resources left behind by day-to-day operations.
 	Cleanup(context.Context) error
