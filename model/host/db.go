@@ -1760,7 +1760,7 @@ func SyncPermanentExemptions(ctx context.Context, permanentlyExempt []string) er
 }
 
 // FindByNeedsIPAssociation finds all hosts that have an IP address allocated
-// but are not yet assoicated with that IP address.
+// but are not yet associated with that IP address.
 func FindByNeedsIPAssociation(ctx context.Context) ([]Host, error) {
 	q := bson.M{
 		StatusKey:          evergreen.HostStarting,
