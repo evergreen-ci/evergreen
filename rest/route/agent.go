@@ -5,7 +5,6 @@ import (
 	"crypto/sha1"
 	"encoding/json"
 	"fmt"
-	"hash"
 	"io"
 	"net/http"
 	"strings"
@@ -855,7 +854,7 @@ func (h *attachTestResultsHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 
 		record := createTestResults(makeCedarTestResultsRecord(t, info), h.settings.Cedar.TestResultsBucketType)
-		if err := record.SaveNew(ctx); err != nil {
+		if err := record.saveNew(ctx); err != nil {
 			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "saving test results record"))
 		}
 	}
@@ -888,14 +887,23 @@ type TestResults struct {
 	populated   bool
 }
 
+// TestResultsArtifactInfo describes information on where artifact info
+// is stored.
+type TestResultsArtifactInfo struct {
+	Type    string `bson:"type"`
+	Prefix  string `bson:"prefix"`
+	Version int    `bson:"version"`
+}
+
 func createTestResults(info testresults.CreateOptions, artifactStorageType string) *TestResults {
+	id := getTestResultsID(info)
 	return &TestResults{
-		ID:        getTestResultsID(info),
+		ID:        id,
 		Info:      info,
 		CreatedAt: time.Now(),
 		Artifact: TestResultsArtifactInfo{
 			Type:    artifactStorageType,
-			Prefix:  getTestResultsID(info),
+			Prefix:  id,
 			Version: 1,
 		},
 		populated: true,
@@ -904,9 +912,7 @@ func createTestResults(info testresults.CreateOptions, artifactStorageType strin
 
 // ID creates a unique hash for a TestResults record.
 func getTestResultsID(info testresults.CreateOptions) string {
-	var hash hash.Hash
-
-	hash = sha1.New()
+	hash := sha1.New()
 	_, _ = io.WriteString(hash, info.Project)
 	_, _ = io.WriteString(hash, info.Version)
 	_, _ = io.WriteString(hash, info.Variant)
@@ -916,20 +922,13 @@ func getTestResultsID(info testresults.CreateOptions) string {
 	_, _ = io.WriteString(hash, info.DisplayTaskID)
 	_, _ = io.WriteString(hash, fmt.Sprint(info.Execution))
 	_, _ = io.WriteString(hash, info.RequestType)
-
-	return fmt.Sprintf("%x_evergreen", hash.Sum(nil))
+	return fmt.Sprintf("%x", hash.Sum(nil))
 }
 
-type TestResultsArtifactInfo struct {
-	Type    string `bson:"type"`
-	Prefix  string `bson:"prefix"`
-	Version int    `bson:"version"`
-}
-
-// SaveNew saves a new TestResults record to the DB, if a document with the
+// saveNew saves a new TestResults record to the DB, if a document with the
 // same ID already exists an error is returned. The TestResults record should
 // be populated and the environment should not be nil.
-func (t *TestResults) SaveNew(ctx context.Context) error {
+func (t *TestResults) saveNew(ctx context.Context) error {
 	if !t.populated {
 		return errors.New("cannot save unpopulated test results")
 	}
