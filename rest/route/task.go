@@ -238,6 +238,7 @@ func (tep *taskExecutionPatchHandler) Run(ctx context.Context) gimlet.Responder 
 
 // GET /tasks/{task_id}/display_task
 
+// TODO: DEVPROD-17283 Remove route
 type displayTaskGetHandler struct {
 	taskID string
 }

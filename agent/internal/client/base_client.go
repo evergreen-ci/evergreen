@@ -581,21 +581,35 @@ func (c *baseCommunicator) SendTestLog(ctx context.Context, taskData TaskData, l
 }
 
 // SendTestResults sends test result metadata to the app servers for persistent DB storage.
-func (c *baseCommunicator) SendTestResults(ctx context.Context, taskData TaskData, testResults []testresult.TestResult) error {
+func (c *baseCommunicator) SendTestResults(ctx context.Context, taskData TaskData, testResults []testresult.TestResult, cedarResultsID string) (string, error) {
 	if len(testResults) == 0 {
-		return nil
+		return "", nil
 	}
 
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &taskData,
 	}
-	info.setTaskPathSuffix("test_results")
-	resp, err := c.retryRequest(ctx, info, testResults)
-	if err != nil {
-		return util.RespError(resp, errors.Wrap(err, "sending test results").Error())
+	body := struct {
+		TestResults    []testresult.TestResult `json:"test_results"`
+		CedarResultsID string                  `json:"cedar_results_id"`
+	}{
+		TestResults:    testResults,
+		CedarResultsID: cedarResultsID,
 	}
-	return nil
+	info.setTaskPathSuffix("test_results")
+	resp, err := c.retryRequest(ctx, info, body)
+	if err != nil {
+		return "", util.RespError(resp, errors.Wrap(err, "sending test results").Error())
+	}
+	defer resp.Body.Close()
+
+	var result []byte
+	result, err = io.ReadAll(resp.Body)
+	if err != nil {
+		return "", errors.Wrap(err, "reading cedar test result ID from response")
+	}
+	return string(result), nil
 }
 
 func (c *baseCommunicator) SetResultsInfo(ctx context.Context, taskData TaskData, service string, failed bool) error {

@@ -2,8 +2,10 @@ package route
 
 import (
 	"context"
+	"crypto/sha1"
 	"encoding/json"
 	"fmt"
+	"hash"
 	"io"
 	"net/http"
 	"strings"
@@ -25,6 +27,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/timber/testresults"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v70/github"
 	"github.com/mongodb/grip"
@@ -790,9 +793,10 @@ func (h *attachTestLogHandler) Run(ctx context.Context) gimlet.Responder {
 
 // POST /task/{task_id}/test_results
 type attachTestResultsHandler struct {
-	settings *evergreen.Settings
-	results  []testresult.TestResult
-	taskID   string
+	settings       *evergreen.Settings
+	taskID         string
+	Results        []testresult.TestResult `json:"test_results"`
+	CedarResultsID string                  `json:"cedar_results_id"`
 }
 
 func makeAttachTestResults(settings *evergreen.Settings) gimlet.RouteHandler {
@@ -811,9 +815,12 @@ func (h *attachTestResultsHandler) Parse(ctx context.Context, r *http.Request) e
 	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
 		return errors.New("missing task ID")
 	}
-	err := utility.ReadJSON(r.Body, &h.results)
+	err := utility.ReadJSON(r.Body, h)
 	if err != nil {
 		return errors.Wrap(err, "reading test results from JSON request body")
+	}
+	if h.settings.Cedar.TestResultsBucketType == "" {
+		return errors.New("bucket type not specified")
 	}
 	return nil
 }
@@ -826,8 +833,120 @@ func (h *attachTestResultsHandler) Run(ctx context.Context) gimlet.Responder {
 	if flags.EvergreenTestResultsDisabled {
 		return gimlet.NewJSONResponse(struct{}{})
 	}
-	// TODO: DEVPROD-16200 Implement the new DB/S3-backed Evergreen test results service
-	return gimlet.NewJSONResponse(struct{}{})
+	if h.CedarResultsID == "" {
+		t, err := task.FindOneId(ctx, h.taskID)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
+		}
+		if t == nil {
+			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+				StatusCode: http.StatusNotFound,
+				Message:    fmt.Sprintf("task '%s' not found", h.taskID),
+			})
+		}
+		dt, err := t.GetDisplayTask(ctx)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding display task for task '%s'", h.taskID))
+		}
+		info := &apimodels.DisplayTaskInfo{}
+		if dt != nil {
+			info.ID = dt.Id
+			info.Name = dt.DisplayName
+		}
+
+		record := createTestResults(makeCedarTestResultsRecord(t, info), h.settings.Cedar.TestResultsBucketType)
+		if err := record.SaveNew(ctx); err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "saving test results record"))
+		}
+	}
+	// TODO: DEVPROD-16200 Support actually appending test results here
+	return gimlet.NewTextResponse("")
+}
+
+func makeCedarTestResultsRecord(t *task.Task, displayTaskInfo *apimodels.DisplayTaskInfo) testresults.CreateOptions {
+	return testresults.CreateOptions{
+		Project:         t.Project,
+		Version:         t.Version,
+		Variant:         t.BuildVariant,
+		TaskID:          t.Id,
+		TaskName:        t.DisplayName,
+		DisplayTaskID:   displayTaskInfo.ID,
+		DisplayTaskName: displayTaskInfo.Name,
+		Execution:       int32(t.Execution),
+		RequestType:     t.Requester,
+		Mainline:        !t.IsPatchRequest(),
+	}
+}
+
+// TestResults describes metadata for a task execution and its test results.
+type TestResults struct {
+	ID          string                    `bson:"_id,omitempty"`
+	Info        testresults.CreateOptions `bson:"info"`
+	CreatedAt   time.Time                 `bson:"created_at"`
+	CompletedAt time.Time                 `bson:"completed_at"`
+	Artifact    TestResultsArtifactInfo   `bson:"artifact"`
+	populated   bool
+}
+
+func createTestResults(info testresults.CreateOptions, artifactStorageType string) *TestResults {
+	return &TestResults{
+		ID:        getTestResultsID(info),
+		Info:      info,
+		CreatedAt: time.Now(),
+		Artifact: TestResultsArtifactInfo{
+			Type:    artifactStorageType,
+			Prefix:  getTestResultsID(info),
+			Version: 1,
+		},
+		populated: true,
+	}
+}
+
+// ID creates a unique hash for a TestResults record.
+func getTestResultsID(info testresults.CreateOptions) string {
+	var hash hash.Hash
+
+	hash = sha1.New()
+	_, _ = io.WriteString(hash, info.Project)
+	_, _ = io.WriteString(hash, info.Version)
+	_, _ = io.WriteString(hash, info.Variant)
+	_, _ = io.WriteString(hash, info.TaskName)
+	_, _ = io.WriteString(hash, info.DisplayTaskName)
+	_, _ = io.WriteString(hash, info.TaskID)
+	_, _ = io.WriteString(hash, info.DisplayTaskID)
+	_, _ = io.WriteString(hash, fmt.Sprint(info.Execution))
+	_, _ = io.WriteString(hash, info.RequestType)
+
+	return fmt.Sprintf("%x_evergreen", hash.Sum(nil))
+}
+
+type TestResultsArtifactInfo struct {
+	Type    string `bson:"type"`
+	Prefix  string `bson:"prefix"`
+	Version int    `bson:"version"`
+}
+
+// SaveNew saves a new TestResults record to the DB, if a document with the
+// same ID already exists an error is returned. The TestResults record should
+// be populated and the environment should not be nil.
+func (t *TestResults) SaveNew(ctx context.Context) error {
+	if !t.populated {
+		return errors.New("cannot save unpopulated test results")
+	}
+
+	if t.ID == "" {
+		t.ID = getTestResultsID(t.Info)
+	}
+
+	insertResult, err := evergreen.GetEnvironment().CedarDB().Collection(testresult.Collection).InsertOne(ctx, t)
+	grip.DebugWhen(err == nil, message.Fields{
+		"collection":   testresult.Collection,
+		"id":           t.ID,
+		"insertResult": insertResult,
+		"op":           "save new test results record",
+	})
+
+	return errors.Wrapf(err, "saving new test results record '%s'", t.ID)
 }
 
 // POST /task/{task_id}/heartbeat

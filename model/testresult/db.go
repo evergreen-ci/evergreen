@@ -10,7 +10,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-const Collection = "testresults"
+const Collection = "test_results"
 
 type dbTaskTestResults struct {
 	ID      dbTaskTestResultsID  `bson:"_id"`

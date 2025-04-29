@@ -92,10 +92,13 @@ func attachTestResults(ctx context.Context, conf *internal.TaskConfig, td client
 		return errors.Wrap(err, "setting results info in the task")
 	}
 
-	if err = comm.SendTestResults(ctx, td, results); err != nil {
+	cedarResultsID, err := comm.SendTestResults(ctx, td, results, conf.CedarTestResultsID)
+	if err != nil {
 		return errors.Wrap(err, "sending test results")
 	}
-
+	if cedarResultsID != "" && conf.CedarTestResultsID == "" {
+		conf.CedarTestResultsID = cedarResultsID
+	}
 	return nil
 }
 

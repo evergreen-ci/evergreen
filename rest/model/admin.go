@@ -673,13 +673,14 @@ func (a *APIBucketsConfig) ToService() (any, error) {
 }
 
 type APICedarConfig struct {
-	BaseURL      *string `json:"base_url"`
-	GRPCBaseURL  *string `json:"grpc_base_url"`
-	RPCPort      *string `json:"rpc_port"`
-	User         *string `json:"user"`
-	APIKey       *string `json:"api_key"`
-	SPSURL       *string `json:"sps_url"`
-	SPSKanopyURL *string `json:"sps_kanopy_url"`
+	BaseURL               *string `json:"base_url"`
+	GRPCBaseURL           *string `json:"grpc_base_url"`
+	RPCPort               *string `json:"rpc_port"`
+	User                  *string `json:"user"`
+	APIKey                *string `json:"api_key"`
+	SPSURL                *string `json:"sps_url"`
+	SPSKanopyURL          *string `json:"sps_kanopy_url"`
+	TestResultsBucketType *string `json:"test_results_bucket_type"`
 }
 
 func (a *APICedarConfig) BuildFromService(h any) error {

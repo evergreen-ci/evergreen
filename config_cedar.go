@@ -22,6 +22,8 @@ type CedarConfig struct {
 	SPSURL string `bson:"sps_url" json:"sps_url" yaml:"sps_url"`
 	// SPSKanopyURL tells Evergreen where the SPS internal service is. This is only for Evergreen app servers.
 	SPSKanopyURL string `bson:"sps_kanopy_url" json:"sps_kanopy_url" yaml:"sps_kanopy_url"`
+	// TestResultsBucketType is the type of bucket service to be used to store test results.
+	TestResultsBucketType string `bson:"test_results_bucket_type" json:"test_results_bucket_type" yaml:"test_results_bucket_type"`
 }
 
 var (
