@@ -27,11 +27,6 @@ type AddFavoriteProjectInput struct {
 	ProjectIdentifier string `json:"projectIdentifier"`
 }
 
-type Announcements struct {
-	BannerText *string `json:"bannerText,omitempty"`
-	BannerType *string `json:"bannerType,omitempty"`
-}
-
 // Build Baron is a service that can be integrated into a project (see Confluence Wiki for more details).
 // This type is returned from the buildBaron query, and contains information about Build Baron configurations and suggested
 // tickets from JIRA for a given task on a given execution.

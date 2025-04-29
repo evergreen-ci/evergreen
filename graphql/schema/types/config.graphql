@@ -18,12 +18,8 @@ type SpruceConfig {
 }
 
 type AdminSettings {
-  announcements: Announcements
-}
-
-type Announcements {
-  bannerText: String
-  bannerType: String
+  banner: String
+  bannerTheme: String
 }
 
 type ContainerPoolsConfig {
