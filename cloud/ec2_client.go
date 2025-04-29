@@ -992,8 +992,11 @@ func (c *awsClientImpl) ReleaseAddress(ctx context.Context, input *ec2.ReleaseAd
 }
 
 func (c *awsClientImpl) AssociateAddress(ctx context.Context, input *ec2.AssociateAddressInput) (*ec2.AssociateAddressOutput, error) {
-	// kim: TODO: reduce retries and start with greater delay, move to separate
-	// job to add some delay and support more retries over time.
+	retryOpts := awsClientDefaultRetryOptions()
+	// Cap the delay between attempts because the host needs an IP address for
+	// it to be usable, so waiting longer increases the risk that the host will
+	// fail provisioning due to taking too long.
+	retryOpts.MaxDelay = 30 * time.Second
 	var output *ec2.AssociateAddressOutput
 	var err error
 	err = utility.Retry(

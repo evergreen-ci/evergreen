@@ -19,7 +19,7 @@ import (
 
 const (
 	hostIPAssociationJobName     = "host-ip-association"
-	hostIPAssociationMaxAttempts = 5
+	hostIPAssociationMaxAttempts = 3
 )
 
 func init() {
