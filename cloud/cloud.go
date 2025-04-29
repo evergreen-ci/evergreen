@@ -79,6 +79,10 @@ type Manager interface {
 	// is due for a particular host
 	TimeTilNextPayment(*host.Host) time.Duration
 
+	// AssociateIP associates an IP address allocated to a host with the host's
+	// network interface.
+	AssociateIP(context.Context, *host.Host) error
+
 	// CleanupIP cleans up the IP address resources for a host, if it has any.
 	// If calling TerminateInstance, CleanupIP is not needed.
 	CleanupIP(context.Context, *host.Host) error

@@ -459,6 +459,21 @@ func (j *createHostJob) spawnAndReplaceHost(ctx context.Context, cloudMgr cloud.
 		return hostReplaced, errors.Wrap(err, "attempting host replacement")
 	}
 
+	if j.host.IPAllocationID != "" {
+		// kim: TODO: manually test this job enqueueing in staging
+		appCtx, _ := j.env.Context()
+		hostIPAssociationQueueGroup, _ := j.env.RemoteQueueGroup().Get(appCtx, hostIPAssociationQueueGroup)
+		if hostIPAssociationQueueGroup != nil {
+			if err := amboy.EnqueueUniqueJob(ctx, hostIPAssociationQueueGroup, NewHostIPAssociationJob(j.env, j.host, time.Now().Format(TSFormat))); err != nil {
+				grip.Warning(message.WrapError(err, message.Fields{
+					"message": "could not enqueue host IP association job for host",
+					"host_id": j.host.Id,
+					"distro":  j.host.Distro.Id,
+				}))
+			}
+		}
+	}
+
 	if j.host.HasContainers {
 		grip.Error(message.WrapError(j.host.UpdateParentIDs(ctx), message.Fields{
 			"message": "unable to update parent ID of containers",

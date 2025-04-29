@@ -950,6 +950,7 @@ func (c *awsClientImpl) AllocateAddress(ctx context.Context, input *ec2.Allocate
 				if errors.As(err, &apiErr) {
 					grip.Debug(message.WrapError(apiErr, msg))
 				}
+				// kim: TODO: adjust retries to not retry on RequestLimitExceeded. Some other host can have the IP.
 				if strings.Contains(apiErr.Error(), ec2InsufficientAddressCapacity) || strings.Contains(apiErr.Error(), ec2AddressLimitExceeded) {
 					return false, err
 				}
@@ -965,6 +966,8 @@ func (c *awsClientImpl) AllocateAddress(ctx context.Context, input *ec2.Allocate
 }
 
 func (c *awsClientImpl) ReleaseAddress(ctx context.Context, input *ec2.ReleaseAddressInput) (*ec2.ReleaseAddressOutput, error) {
+	// kim: TODO: adjust retries to have greater delay, which may reduce
+	// RequestLimitExceeded and "IP still in use" errors.
 	var output *ec2.ReleaseAddressOutput
 	var err error
 	err = utility.Retry(
@@ -989,6 +992,8 @@ func (c *awsClientImpl) ReleaseAddress(ctx context.Context, input *ec2.ReleaseAd
 }
 
 func (c *awsClientImpl) AssociateAddress(ctx context.Context, input *ec2.AssociateAddressInput) (*ec2.AssociateAddressOutput, error) {
+	// kim: TODO: reduce retries and start with greater delay, move to separate
+	// job to add some delay and support more retries over time.
 	var output *ec2.AssociateAddressOutput
 	var err error
 	err = utility.Retry(

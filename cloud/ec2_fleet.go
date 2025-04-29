@@ -342,6 +342,16 @@ func (m *ec2FleetManager) StartInstance(context.Context, *host.Host, string) err
 	return errors.New("can't start instances for EC2 fleet provider")
 }
 
+func (m *ec2FleetManager) AssociateIP(ctx context.Context, h *host.Host) error {
+	if h.IPAssociationID == "" {
+		return nil
+	}
+	if err := m.setupClient(ctx); err != nil {
+		return errors.Wrap(err, "creating client")
+	}
+	return errors.Wrapf(associateIPAddressForHost(ctx, m.client, h), "associating allocated IP address '%s' with host '%s'", h.IPAllocationID, h.Id)
+}
+
 // CleanupIP disassociates the IP address from the host's network interface and
 // releases the IP address back into the IPAM pool.
 func (m *ec2FleetManager) CleanupIP(ctx context.Context, h *host.Host) error {
@@ -575,11 +585,12 @@ func (m *ec2FleetManager) spawnFleetHost(ctx context.Context, h *host.Host, ec2S
 		// the IP address and the host would end up unusable.
 		// TODO (DEVPROD-17136): consider making this step more resilient
 		// against AWS timing problems.
-		grip.Error(message.WrapError(associateIPAddressForHost(ctx, m.client, h), message.Fields{
-			"message":       "host was created and allocated elastic IP address but could not associate the host with the IP address; host will not be usable",
-			"host_id":       h.Id,
-			"allocation_id": h.IPAllocationID,
-		}))
+		// kim: TODO: remove and replace with job
+		// grip.Error(message.WrapError(associateIPAddressForHost(ctx, m.client, h), message.Fields{
+		//     "message":       "host was created and allocated elastic IP address but could not associate the host with the IP address; host will not be usable",
+		//     "host_id":       h.Id,
+		//     "allocation_id": h.IPAllocationID,
+		// }))
 	}
 	return nil
 }

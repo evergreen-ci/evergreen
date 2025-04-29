@@ -868,6 +868,8 @@ func releaseIPAddressForHost(ctx context.Context, c AWSClient, h *host.Host) err
 }
 
 // associateIPAddressForHost associates the allocated IP address with the host.
+// kim: TODO: change this to enqueue a job in a dedicated queue group queue
+// rather than synchronously associate the IP. See units.hostIPAssociationJob.
 func associateIPAddressForHost(ctx context.Context, c AWSClient, h *host.Host) error {
 	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {

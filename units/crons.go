@@ -37,6 +37,7 @@ const (
 	podDefinitionCreationQueueGroup = "service.pod.definition.create"
 	podCreationQueueGroup           = "service.pod.create"
 	spawnHostModificationQueueGroup = "service.spawnhost.modify"
+	hostIPAssociationQueueGroup     = "service.host.ip.associate"
 )
 
 type cronJobFactory func(context.Context, evergreen.Environment, time.Time) ([]amboy.Job, error)
@@ -1043,6 +1044,28 @@ func PopulateReauthorizeUserJobs(env evergreen.Environment) amboy.QueueOperation
 
 		return catcher.Resolve()
 	}
+}
+
+func hostIPAssociationJobs(ctx context.Context, env evergreen.Environment, ts time.Time) ([]amboy.Job, error) {
+	flags, err := evergreen.GetServiceFlags(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting service flags")
+	}
+
+	if flags.ElasticIPsDisabled {
+		return nil, nil
+	}
+
+	hosts, err := host.FindByNeedsIPAssociation(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "finding hosts that need to be associated with their IP address")
+	}
+
+	jobs := make([]amboy.Job, 0, len(hosts))
+	for _, h := range hosts {
+		jobs = append(jobs, NewHostIPAssociationJob(env, &h, ts.Format(TSFormat)))
+	}
+	return jobs, nil
 }
 
 // podAllocatorJobs returns the queue operation to enqueue jobs to
