@@ -3,6 +3,7 @@ package units
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
@@ -11,6 +12,8 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -85,7 +88,20 @@ func (j *hostIPAssociationJob) Run(ctx context.Context) {
 	}
 	if err := cloudHost.AssociateIP(ctx, j.host); err != nil {
 		j.AddRetryableError(errors.Wrapf(err, "associating IP for host '%s'", j.host.Id))
+		return
 	}
+
+	msg := message.Fields{
+		"message":                      "successfully associated IP address with host",
+		"host_id":                      j.host.Id,
+		"host_ip_allocation_id":        j.host.IPAllocationID,
+		"host_ip_association_id":       j.host.IPAssociationID,
+		"time_since_host_started_secs": time.Since(j.host.StartTime).Seconds(),
+	}
+	if !utility.IsZeroTime(j.host.BillingStartTime) {
+		msg["time_since_host_billing_started_secs"] = time.Since(j.host.BillingStartTime).Seconds()
+	}
+	grip.Info(msg)
 }
 
 func (j *hostIPAssociationJob) populate(ctx context.Context) error {
