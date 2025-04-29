@@ -1389,7 +1389,7 @@ func (m *ec2Manager) TimeTilNextPayment(host *host.Host) time.Duration {
 }
 
 func (m *ec2Manager) AssociateIP(ctx context.Context, h *host.Host) error {
-	if h.IPAssociationID == "" {
+	if h.IPAllocationID == "" {
 		return nil
 	}
 	if err := m.setupClient(ctx); err != nil {

@@ -968,6 +968,14 @@ func (c *awsClientImpl) AllocateAddress(ctx context.Context, input *ec2.Allocate
 func (c *awsClientImpl) ReleaseAddress(ctx context.Context, input *ec2.ReleaseAddressInput) (*ec2.ReleaseAddressOutput, error) {
 	// kim: TODO: adjust retries to have greater delay, which may reduce
 	// RequestLimitExceeded and "IP still in use" errors.
+	retryOpts := awsClientDefaultRetryOptions()
+	// If the request fails, initiate retries after a longer delay than usual
+	// because the address may still be in use. This reduces the rate of
+	// requests that repeatedly fail due to waiting for the address to be
+	// disassociated from the host's network interface, which helps alleviate
+	// rate limit pressure.
+	retryOpts.MinDelay = 5 * time.Second
+	retryOpts.MaxDelay = 30 * time.Second
 	var output *ec2.ReleaseAddressOutput
 	var err error
 	err = utility.Retry(
@@ -984,7 +992,7 @@ func (c *awsClientImpl) ReleaseAddress(ctx context.Context, input *ec2.ReleaseAd
 			}
 			grip.Info(msg)
 			return false, nil
-		}, awsClientDefaultRetryOptions())
+		}, retryOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -993,9 +1001,11 @@ func (c *awsClientImpl) ReleaseAddress(ctx context.Context, input *ec2.ReleaseAd
 
 func (c *awsClientImpl) AssociateAddress(ctx context.Context, input *ec2.AssociateAddressInput) (*ec2.AssociateAddressOutput, error) {
 	retryOpts := awsClientDefaultRetryOptions()
-	// Cap the delay between attempts because the host needs an IP address for
-	// it to be usable, so waiting longer increases the risk that the host will
-	// fail provisioning due to taking too long.
+	// If the request fails, initiate retries after a longer delay than usual
+	// because the host has to be in the "running" state for this to work. This
+	// reduces the rate of requests that repeatedly fail due to waiting for the
+	// host state to be "running", which helps alleviate rate limit pressure.
+	retryOpts.MinDelay = 5 * time.Second
 	retryOpts.MaxDelay = 30 * time.Second
 	var output *ec2.AssociateAddressOutput
 	var err error
@@ -1016,7 +1026,7 @@ func (c *awsClientImpl) AssociateAddress(ctx context.Context, input *ec2.Associa
 			}
 			grip.Info(msg)
 			return false, nil
-		}, awsClientDefaultRetryOptions())
+		}, retryOpts)
 	if err != nil {
 		return nil, err
 	}
