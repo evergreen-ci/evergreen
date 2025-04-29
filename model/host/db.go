@@ -1763,7 +1763,7 @@ func SyncPermanentExemptions(ctx context.Context, permanentlyExempt []string) er
 // but are not yet assoicated with that IP address.
 func FindByNeedsIPAssociation(ctx context.Context) ([]Host, error) {
 	q := bson.M{
-		StatusKey:          evergreen.HostStarting, // kim: NOTE: probably best to wait until host is "starting" to avoid host replacement racing with this.
+		StatusKey:          evergreen.HostStarting,
 		IPAllocationIDKey:  bson.M{"$exists": true},
 		IPAssociationIDKey: bson.M{"$exists": false},
 	}

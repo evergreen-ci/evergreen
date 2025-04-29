@@ -65,12 +65,11 @@ func NewHostIPAssociationJob(env evergreen.Environment, h *host.Host, ts string)
 	return j
 }
 
-// kim: TODO: manually test job associates address
 func (j *hostIPAssociationJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
 	if err := j.populate(ctx); err != nil {
-		j.AddError(errors.Wrap(err, "populating job"))
+		j.AddError(errors.Wrap(err, "populating job fields"))
 		return
 	}
 

@@ -460,7 +460,6 @@ func (j *createHostJob) spawnAndReplaceHost(ctx context.Context, cloudMgr cloud.
 	}
 
 	if j.host.IPAllocationID != "" {
-		// kim: TODO: manually test this job enqueueing in staging
 		appCtx, _ := j.env.Context()
 		hostIPAssociationQueueGroup, _ := j.env.RemoteQueueGroup().Get(appCtx, hostIPAssociationQueueGroup)
 		if hostIPAssociationQueueGroup != nil {

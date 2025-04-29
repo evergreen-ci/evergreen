@@ -950,8 +950,8 @@ func (c *awsClientImpl) AllocateAddress(ctx context.Context, input *ec2.Allocate
 				if errors.As(err, &apiErr) {
 					grip.Debug(message.WrapError(apiErr, msg))
 				}
-				// kim: TODO: adjust retries to not retry on RequestLimitExceeded. Some other host can have the IP.
-				if strings.Contains(apiErr.Error(), ec2InsufficientAddressCapacity) || strings.Contains(apiErr.Error(), ec2AddressLimitExceeded) {
+				errMsg := err.Error()
+				if strings.Contains(errMsg, ec2InsufficientAddressCapacity) || strings.Contains(errMsg, ec2AddressLimitExceeded) {
 					return false, err
 				}
 				return true, err
@@ -966,11 +966,9 @@ func (c *awsClientImpl) AllocateAddress(ctx context.Context, input *ec2.Allocate
 }
 
 func (c *awsClientImpl) ReleaseAddress(ctx context.Context, input *ec2.ReleaseAddressInput) (*ec2.ReleaseAddressOutput, error) {
-	// kim: TODO: adjust retries to have greater delay, which may reduce
-	// RequestLimitExceeded and "IP still in use" errors.
 	retryOpts := awsClientDefaultRetryOptions()
-	// If the request fails, initiate retries after a longer delay than usual
-	// because the address may still be in use. This reduces the rate of
+	// If the initial request fails, initiate retries after a longer delay than
+	// usual because the address may still be in use. This reduces the rate of
 	// requests that repeatedly fail due to waiting for the address to be
 	// disassociated from the host's network interface, which helps alleviate
 	// rate limit pressure.
@@ -1001,10 +999,11 @@ func (c *awsClientImpl) ReleaseAddress(ctx context.Context, input *ec2.ReleaseAd
 
 func (c *awsClientImpl) AssociateAddress(ctx context.Context, input *ec2.AssociateAddressInput) (*ec2.AssociateAddressOutput, error) {
 	retryOpts := awsClientDefaultRetryOptions()
-	// If the request fails, initiate retries after a longer delay than usual
-	// because the host has to be in the "running" state for this to work. This
-	// reduces the rate of requests that repeatedly fail due to waiting for the
-	// host state to be "running", which helps alleviate rate limit pressure.
+	// If the initial request fails, initiate retries after a longer delay than
+	// usual because the host has to be in the "running" state for this to
+	// succeed. This reduces the rate of requests that repeatedly fail due to
+	// waiting for the host state to be "running", which helps alleviate rate
+	// limit pressure.
 	retryOpts.MinDelay = 5 * time.Second
 	retryOpts.MaxDelay = 30 * time.Second
 	var output *ec2.AssociateAddressOutput
