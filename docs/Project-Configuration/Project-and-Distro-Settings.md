@@ -26,8 +26,8 @@ repository information, access settings, alerts, and keys.
 
 Service users cannot be managed through MANA. Instead, they have a special
 role called `api_user_access`. This role grants them permission to submit
-patches and to edit tasks (restart, set priority, abort) in unrestricted 
-projects. If a service user needs permission to submit patches on behalf 
+patches and to edit tasks (restart, set priority, abort) in unrestricted
+projects. If a service user needs permission to submit patches on behalf
 of another user, the Evergreen team must grant this explicitly.
 
 ### Permissions Requested with MANA
@@ -38,14 +38,14 @@ read or write (or no) access to project settings, logs, task
 annotations, and more. These can be requested for specific members or
 for entire guilds. The project admins (or Evergreen admins, if no
 project admins exist) are then able to approve/reject requested access
-for their project. 
+for their project.
 
-In order to access this functionality, you must look up the the MANA resource 
+In order to access this functionality, you must look up the the MANA resource
 with the type `Evergreen Project` with the name of the project that
-permissions need to be requested for on [MANA](https://mana.corp.mongodbgov.com/). 
+permissions need to be requested for on [MANA](https://mana.corp.mongodbgov.com/).
 Using the filter icon to only view resources of type `Evergreen Project` makes this easier.
-Once the project is selected, click on  the `Request Access` button and fill out the 
-`Requesting for` field to see the specific types of permissions that can be 
+Once the project is selected, click on  the `Request Access` button and fill out the
+`Requesting for` field to see the specific types of permissions that can be
 requested on Evergreen as pictured below.
 
 ![update_mana_permission.png](../images/update-mana-permission.png)
@@ -73,7 +73,7 @@ location or name of the config file in the repository if they would like
 to have Evergreen run tests using a different project file located
 elsewhere, or if they move the config file. The batch time corresponds
 to the interval of time (in minutes) that Evergreen should wait in
-between activating the latest version. For more on batch time and how 
+between activating the latest version. For more on batch time and how
 it differs from cron and [periodic builds](Project-and-Distro-Settings#periodic-builds), see [controlling when tasks run](Controlling-when-tasks-run).
 
 Admins can modify which GitHub repository the project points to and
@@ -84,12 +84,27 @@ Admins can also set the branch project to inherit values from a
 repo-level project settings configuration. This can be learned about at
 ['Using Repo Level Settings'](Repo-Level-Settings).
 
+#### Spawn Host Script Path
+
+The spawn host script path provides an option to run a script from your repo
+when a spawn host starts. This can be useful for workflows where users typically
+want . This should be specified as a file path relative to the project root.
+
+Warning: be careful if the script is meant to run on Windows. On Windows, this
+script does _not_ run as Administrator but rather as a separate service user
+(mci-exec), so you may see differences in things like file permissions and the
+user's home directory (which is `/home/mci-exec` rather than
+`/home/Administrator`). If the script is supposed to run on Windows spawn hosts,
+your script has to handle user-specific things like using `/home/Administrator`
+since user-dependent environment variables like `${HOME}` will not be what you
+expect.
+
 ### Project Flags
 
 Under project flags, admins have a number of options for users to configure what
-runs for their project. For example, admins can enable the ability to unschedule old 
-tasks if a more recent commit passes, or configure tasks to stepback on failure to 
-isolate the cause.  
+runs for their project. For example, admins can enable the ability to unschedule old
+tasks if a more recent commit passes, or configure tasks to stepback on failure to
+isolate the cause.
 
 Check out the settings on the page to see more options.
 
@@ -101,13 +116,13 @@ Admins can enable Stepback Bisection which recursively divides the commits
 in half to reduce the tasks taken from O(n) to O(logn).
 
 #### Repotracker Settings
-By default, Evergreen creates mainline commits (also known as waterfall versions or 
-cron builds) for enabled projects. 
+By default, Evergreen creates mainline commits (also known as waterfall versions or
+cron builds) for enabled projects.
 
 Admins can prevent projects from creating mainline commits by **disabling repotracking**,
 while still allowing for other kinds of versions (periodic builds, patches, etc).
 
-Additionally, admins can **Force Repotracker Run** to check for new commits if needed 
+Additionally, admins can **Force Repotracker Run** to check for new commits if needed
 (Evergreen occasionally misses commits due to misconfiguration or GitHub outages).
 
 ### Access and Admin Settings
@@ -122,7 +137,7 @@ users have basic access to the project (able to view tasks and logs,
 able to submit patches). If checked, users will by default not have any
 access, and access must be manually granted through an external system
 via the REST API. The default for this setting is to allow logged-in
-users basic access to this project. 
+users basic access to this project.
 
 ### Variables
 
@@ -161,7 +176,7 @@ alias. If matching by tags, alias tags support a limited set of the [tag
 selector syntax](../Project-Configuration-Files/#task-and-variant-tags).
 In particular, it supports tag negation and multiple tag criteria separated by
 spaces to get the set intersection of those tags. Unlike the project tag selector
-syntax linked above, alias tags should not be prefixed by a period. 
+syntax linked above, alias tags should not be prefixed by a period.
 
 For example, when defining task tags:
 
@@ -171,14 +186,14 @@ For example, when defining task tags:
   with "primary".
 - `!cool !primary` would return all items that are NOT tagged "cool" and NOT tagged
   with "primary".
-- `!.cool !.primary` is invalid and will not work as expected. Alias tags should not 
+- `!.cool !.primary` is invalid and will not work as expected. Alias tags should not
   be prefixed by a period.
 
-Important note: Each tag definition is considered independently, so as long as a task 
-fully matches one tag definition, it will be included. In other words, the matching 
+Important note: Each tag definition is considered independently, so as long as a task
+fully matches one tag definition, it will be included. In other words, the matching
 variants/tasks are the set union of all the individual tag definitions.
 
-For example: 
+For example:
 - `["!cool", "!primary"]` would return all items that are not tagged "cool" OR not tagged
   "primary". That means that something with the tag "cool" (because it's !primary)
   and something with the tag "primary" (because it's !cool) will still be included.
@@ -243,7 +258,7 @@ Definitions for this section exist under the "GitHub" tab.
 This allows for versions to be created automatically from pushed git tags,
 and these versions will have the following properties:
 
-- The author of the version will match the author from the original waterfall version.  
+- The author of the version will match the author from the original waterfall version.
 - The tag must be pushed after the commit has been merged to ensure
     that the waterfall version has already been created for the
     revision.
@@ -254,7 +269,7 @@ and these versions will have the following properties:
     `<`commit message for this revision`>`"
 -   The expansion `${triggered_by_git_tag}` is set to the git tag that
     was pushed.
--   If the same revision exists for multiple projects, Evergreen will check 
+-   If the same revision exists for multiple projects, Evergreen will check
     each project to determine if a git tag version should be created.
 
 #### How to Configure Git Tag Versions
@@ -284,7 +299,7 @@ created as you expect them to**, please first check that the tag pusher is part 
 one of the above fields.
 
 If you'd like for Git Tag triggered versions to be associated with the pusher,
-ensure that they've set their GitHub username in 
+ensure that they've set their GitHub username in
 [their Evergreen preferences](https://spruce.mongodb.com/preferences/profile).
 
 2.  **Add aliases to determine what tasks will run.**
@@ -299,9 +314,9 @@ There are two options for aliases:
     tags** to use with the existing project configuration (as you would
     for other aliases).
 
-3. **Ensure that a valid waterfall version is created for the commit you're tagging.** 
+3. **Ensure that a valid waterfall version is created for the commit you're tagging.**
 
-Evergreen uses the existing yaml to validate that this is a valid project and simplify internal logic, 
+Evergreen uses the existing yaml to validate that this is a valid project and simplify internal logic,
 as well as to ensure that the tagged commit is tested.
 
 Example:
@@ -332,8 +347,8 @@ project) will trigger builds in their current project (the "downstream"
 project). Configure triggers **in the downstream project** from the Project Triggers
 section of the project configuration page. Click "Add Project Trigger".
 
-The purpose of a trigger is to trigger all needed tasks; as such **project triggers do not respect batchtime, cron, 
-or other activation settings.** To reduce the number of tasks/variants run in a trigger, we recommend supplying a 
+The purpose of a trigger is to trigger all needed tasks; as such **project triggers do not respect batchtime, cron,
+or other activation settings.** To reduce the number of tasks/variants run in a trigger, we recommend supplying a
 smaller config file, or an alias.
 
 Options:
@@ -343,7 +358,7 @@ Options:
     This may be the same as the main project configuration file but does
     not have to be.
 -   **Level**: Accepted values are task, build, and push. Task and build levels will trigger
-    based on the completion of either a task or a build in the upstream project. 
+    based on the completion of either a task or a build in the upstream project.
     - Push level triggers do not require any upstream build or task to run, but instead trigger a downstream version once
     a commit is pushed to the upstream project. This is helpful if the upstream project doesn't regularly run or create commit tasks.
     - For push level triggers, if the upstream project is a module of the downstream project's YAML,
@@ -356,16 +371,16 @@ Options:
     build-level) or variants and tasks (if task-level) completing.
 -   **Alias**: Run a subset of downstream tasks by specifying an alias. Otherwise, all
     tasks run. Aliases are defined on the Patch Aliases section.
--   **Unschedule Downstream Versions**: If toggled, all tasks in the triggered 
-    downstream version will be unscheduled by default, requiring manual scheduling or stepback. 
+-   **Unschedule Downstream Versions**: If toggled, all tasks in the triggered
+    downstream version will be unscheduled by default, requiring manual scheduling or stepback.
     Otherwise, all tasks will be immediately scheduled once the downstream version is created.
 
-**Example:** to have new commits for the Evergreen project trigger end-to-end tests in Spruce, 
+**Example:** to have new commits for the Evergreen project trigger end-to-end tests in Spruce,
 a configuration like this could be added to **Spruce's project page:**
 
 ![project-trigger-example.png](../images/project-trigger-example.png)
 
-In this example, notice that Spruce tasks matching the e2e alias will trigger _only if_ the Evergreen dist task succeeds (and is less than one day old, per the date cutoff), and by default the Spruce tasks are unscheduled. 
+In this example, notice that Spruce tasks matching the e2e alias will trigger _only if_ the Evergreen dist task succeeds (and is less than one day old, per the date cutoff), and by default the Spruce tasks are unscheduled.
 (This is helpful if you only want these tasks to be available for manual scheduling or stepback.)
 
 ### Patch Trigger Aliases
@@ -380,7 +395,7 @@ Options:
 
 - **Alias**: The name of the alias.
 - **Project**: The downstream project identifier.
-- **Module**: If you want tests to include the upstream project's changes, 
+- **Module**: If you want tests to include the upstream project's changes,
 add the upstream project as a module in the downstream project yaml, and specify that module name here.
 - **Wait on**: You can have the child patch wait on a complete (success or
     failed), success, or failed status from the parent. Otherwise, the
@@ -403,15 +418,15 @@ child patch will also include the changes from the parent patch.
 To pass information from the upstream patch to the downstream patch use
 [downstream_expansions.set](Project-Commands#downstream_expansionsset)
 
-**Example**:  to allow testing Spruce tasks as part of patches for the Evergreen project,  
+**Example**:  to allow testing Spruce tasks as part of patches for the Evergreen project,
 a configuration like this could be added to **Evergreen's project page:**
 
 ![patch_trigger_alias_example.png](../images/patch-trigger-alias-example.png)
 
-This makes it possible to optionally add tasks matching the defined regex to any patch, and because 
-"Add to GitHub Trigger Alias" is checked, these tasks will be included as part of PR patches. 
+This makes it possible to optionally add tasks matching the defined regex to any patch, and because
+"Add to GitHub Trigger Alias" is checked, these tasks will be included as part of PR patches.
 
-Additionally, because "evergreen" is defined as a module in the yaml (pictured below), the Spruce tasks will incorporate the patch changes.  
+Additionally, because "evergreen" is defined as a module in the yaml (pictured below), the Spruce tasks will incorporate the patch changes.
 
 ![module_example.png](../images/module-example.png)
 
@@ -422,8 +437,8 @@ project. The Periodic Builds section of the Project Settings page allows you to 
 what should be run periodically, and how often. **This is different than build variant crons** because
 a build variant cron activates build variants on _existing waterfall commits_ based on the cron you specify
 (so if you want it to run daily, it’ll activate the most recent build variant at that time daily),
-whereas a new periodic build will be created each interval regardless of whether there are new commits. For 
-more on those differences, see [controlling when tasks run](Controlling-when-tasks-run). 
+whereas a new periodic build will be created each interval regardless of whether there are new commits. For
+more on those differences, see [controlling when tasks run](Controlling-when-tasks-run).
 
 Options:
 
@@ -521,15 +536,15 @@ Specify Jira projects to create and search tickets for.
 
 Options:
 - Ticket Search Projects: Jira projects for Evergreen to search
-    in when looking for failures to populate the "Related Tickets 
+    in when looking for failures to populate the "Related Tickets
     from Jira" Failure Details tab section
-- Ticket Create Project: The Jira project to file tickets for using 
-    the "File Ticket" Failure Details tab button. Additionally, you 
+- Ticket Create Project: The Jira project to file tickets for using
+    the "File Ticket" Failure Details tab button. Additionally, you
     can configure the issue type.
 
 #### Custom Ticket Creation
 
-Specify the endpoint and secret for a custom webhook to be called when the 
+Specify the endpoint and secret for a custom webhook to be called when the
 File Ticket button is clicked on a failing task.
 
 Options:
@@ -591,7 +606,7 @@ that all execute independently:
     algorithm that makes it possible to tune the factors that impact
     the ordering of a task. The tunable factors are:
 
-    -   *Target Time* is the ideal maximum number of minutes that a 
+    -   *Target Time* is the ideal maximum number of minutes that a
         task should be in the queue.
     -   *Patch Factor* how much to weight patches over non-patch builds.
         For most workloads, privileging patches over mainline builds
@@ -623,7 +638,7 @@ that all execute independently:
     implementations have a slight over-allocation bias.
 
 4. *Task Dispatching* controls how Evergreen dispatches tasks to hosts.
-   There is currently only one implementation, revised-with-dependencies, 
+   There is currently only one implementation, revised-with-dependencies,
    which is a scheduling system developed with the tunable planner and is the only dispatcher that can
    handle dependencies have not yet been satisfied.
 
@@ -647,7 +662,7 @@ which is as follows:
 3. YAML
 
 This means that YAML settings are overridden by repo page settings, which are overridden by project page settings. For example,
-if the YAML defines a [field](#available-fields) such as `patch_aliases`, and the project / repo settings page also defines 
+if the YAML defines a [field](#available-fields) such as `patch_aliases`, and the project / repo settings page also defines
 patch aliases, the YAML settings will be ignored until the corresponding project / repo settings are cleared. This
 is applicable for all settings that may be defined in YAML.
 
