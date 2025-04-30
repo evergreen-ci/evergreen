@@ -92,10 +92,6 @@ func attachTestResults(ctx context.Context, conf *internal.TaskConfig, td client
 		return errors.Wrap(err, "setting results info in the task")
 	}
 
-	if err = comm.SendTestResults(ctx, td, results); err != nil {
-		return errors.Wrap(err, "sending test results")
-	}
-
 	return nil
 }
 
