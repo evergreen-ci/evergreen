@@ -35,6 +35,7 @@ const (
 	EC2VolumeNotFound       = "InvalidVolume.NotFound"
 	EC2VolumeResizeRate     = "VolumeModificationRateExceeded"
 	ec2TemplateNameExists   = "InvalidLaunchTemplateName.AlreadyExistsException"
+	ec2TemplateNotFound     = "InvalidLaunchTemplateId.NotFound"
 
 	// ec2InsufficientAddressCapacity means that there are no IP addresses
 	// available to allocate.
