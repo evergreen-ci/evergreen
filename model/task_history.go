@@ -236,7 +236,9 @@ func getOlderActiveMainlineTask(ctx context.Context, t task.Task) (*task.Task, e
 	return olderActiveTask, nil
 }
 
-func GetTaskDateOrder(ctx context.Context, date time.Time, opts FindTaskHistoryOptions) (int, error) {
+// GetTaskOrderByDate returns the revision order of a system-requested task created on or before the given date.
+// The task must match a specific display name, build variant, and project ID.
+func GetTaskOrderByDate(ctx context.Context, date time.Time, opts FindTaskHistoryOptions) (int, error) {
 	filter := getBaseTaskHistoryFilter(opts)
 	filter[task.CreateTimeKey] = bson.M{"$lte": date}
 	q := db.Query(filter).Sort([]string{"-" + task.RevisionOrderNumberKey}).Limit(1).WithFields(task.RevisionOrderNumberKey).Hint(TaskHistoryIndex)

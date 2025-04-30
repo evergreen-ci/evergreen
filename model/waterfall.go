@@ -528,11 +528,11 @@ func GetOlderActiveWaterfallVersion(ctx context.Context, projectId string, versi
 	return &res[0], nil
 }
 
-func GetVersionRevisionOrder(ctx context.Context, revision string, projectId string, limit int) (int, error) {
+// GetVersionOrderByRevision returns the revision order of a system-requested version with the given revision.
+func GetVersionOrderByRevision(ctx context.Context, revision string, projectId string, limit int) (int, error) {
 	if len(revision) < minRevisionLength {
 		return 0, errors.New(fmt.Sprintf("at least %d characters must be provided for the revision", minRevisionLength))
 	}
-
 	found, err := VersionFindOne(ctx, VersionByProjectIdAndRevisionPrefix(projectId, revision).WithFields(VersionRevisionOrderNumberKey))
 	if err != nil {
 		return 0, errors.New(fmt.Sprintf("finding version with revision '%s': %s", revision, err.Error()))
@@ -543,7 +543,8 @@ func GetVersionRevisionOrder(ctx context.Context, revision string, projectId str
 	return found.RevisionOrderNumber + limit/2 + 1, nil
 }
 
-func GetVersionDateOrder(ctx context.Context, date time.Time, projectId string) (int, error) {
+// GetVersionOrderByDate returns the revision order of a system-requested version created on or before the given date.
+func GetVersionOrderByDate(ctx context.Context, date time.Time, projectId string) (int, error) {
 	// Use the end of the provided date to find the most recent version created on or before it.
 	eod := time.Date(date.Year(), date.Month(), date.Day(), 23, 59, 59, 0, date.Location())
 	found, err := VersionFindOne(ctx, VersionByProjectIdAndCreateTime(projectId, eod).WithFields(VersionRevisionOrderNumberKey))
