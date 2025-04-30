@@ -648,7 +648,7 @@ func TestGetOlderActiveMainlineTask(t *testing.T) {
 	assert.Equal(t, 99, olderActiveTask.RevisionOrderNumber)
 }
 
-func TestGetTaskDateOrder(t *testing.T) {
+func TestGetTaskOrderByDate(t *testing.T) {
 	assert.NoError(t, db.ClearCollections(task.Collection))
 
 	projectId := "evergreen"
@@ -715,7 +715,7 @@ func TestGetTaskDateOrder(t *testing.T) {
 	}
 	assert.NoError(t, t5.Insert(t.Context()))
 
-	order, err := GetTaskDateOrder(t.Context(), time.Date(2024, time.August, 13, 0, 0, 0, 0, time.UTC), FindTaskHistoryOptions{
+	order, err := GetTaskOrderByDate(t.Context(), time.Date(2024, time.August, 13, 0, 0, 0, 0, time.UTC), FindTaskHistoryOptions{
 		TaskName:     taskName,
 		BuildVariant: buildVariant,
 		ProjectId:    projectId,
@@ -723,7 +723,7 @@ func TestGetTaskDateOrder(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 100, order)
 
-	order, err = GetTaskDateOrder(t.Context(), time.Date(2020, time.August, 0, 0, 0, 0, 0, time.UTC), FindTaskHistoryOptions{
+	order, err = GetTaskOrderByDate(t.Context(), time.Date(2020, time.August, 0, 0, 0, 0, 0, time.UTC), FindTaskHistoryOptions{
 		TaskName:     taskName,
 		BuildVariant: buildVariant,
 		ProjectId:    projectId,
