@@ -788,7 +788,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 	revision := utility.FromStringPtr(options.Revision)
 
 	if options.SkipOrderNumber == nil && options.Revision != nil {
-		order, err := model.GetVersionRevisionOrder(ctx, revision, projectId, limit)
+		order, err := model.GetVersionOrderByRevision(ctx, revision, projectId, limit)
 		if err != nil {
 			graphql.AddError(ctx, PartialError.Send(ctx, err.Error()))
 		} else {
@@ -957,7 +957,7 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 
 	if options.Revision != nil {
 		revision := utility.FromStringPtr(options.Revision)
-		order, err := model.GetVersionRevisionOrder(ctx, revision, projectId, limit)
+		order, err := model.GetVersionOrderByRevision(ctx, revision, projectId, limit)
 		if err != nil {
 			graphql.AddError(ctx, PartialError.Send(ctx, err.Error()))
 		} else {
@@ -965,7 +965,7 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 		}
 	} else if options.Date != nil {
 		date := utility.FromTimePtr(options.Date)
-		order, err := model.GetVersionDateOrder(ctx, date, projectId)
+		order, err := model.GetVersionOrderByDate(ctx, date, projectId)
 		if err != nil {
 			graphql.AddError(ctx, PartialError.Send(ctx, err.Error()))
 		} else {
@@ -1156,7 +1156,7 @@ func (r *queryResolver) TaskHistory(ctx context.Context, options TaskHistoryOpts
 
 	if options.Date != nil {
 		date := utility.FromTimePtr(options.Date)
-		order, err := model.GetTaskDateOrder(ctx, date, opts)
+		order, err := model.GetTaskOrderByDate(ctx, date, opts)
 		if err != nil {
 			graphql.AddError(ctx, PartialError.Send(ctx, err.Error()))
 		} else {
