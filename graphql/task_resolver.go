@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/thirdparty/clients/fws"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"go.mongodb.org/mongo-driver/bson"
@@ -576,6 +577,42 @@ func (r *taskResolver) TaskLogs(ctx context.Context, obj *restModel.APITask) (*T
 	// We can avoid the overhead of fetching task logs that we will not view
 	// and we can avoid handling errors that we will not see
 	return &TaskLogs{TaskID: utility.FromStringPtr(obj.Id), Execution: obj.Execution}, nil
+}
+
+// TaskOwnerTeam is the resolver for the taskOwnerTeam field.
+func (r *taskResolver) TaskOwnerTeam(ctx context.Context, obj *restModel.APITask) (*TaskOwnerTeam, error) {
+	fwsBaseURL := evergreen.GetEnvironment().Settings().FWS.URL
+	if fwsBaseURL == "" {
+		return nil, InternalServerError.Send(ctx, "Foliage Web Services URL not set")
+	}
+	httpClient := utility.GetHTTPClient()
+	defer utility.PutHTTPClient(httpClient)
+
+	cfg := fws.NewConfiguration()
+	cfg.HTTPClient = httpClient
+	cfg.Servers = fws.ServerConfigurations{
+		fws.ServerConfiguration{
+			Description: "Foliage Web Services",
+			URL:         fwsBaseURL,
+		},
+	}
+	cfg.UserAgent = "evergreen"
+
+	client := fws.NewAPIClient(cfg)
+	req := client.OwnerAPI.ByFoliageLogicApiOwnerByFoliageLogicTaskIdGet(ctx, *obj.Id)
+	results, resp, err := req.Execute()
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting task owner team: %s", err.Error()))
+	}
+	teamName := results.SelectedAssignment.GetTeamDataWithOwner().TeamData.TeamName
+	return &TaskOwnerTeam{
+		TeamName:       teamName,
+		AssignmentType: string(results.SelectedAssignment.GetAssignmentType()),
+		Messages:       results.SelectedAssignment.GetMessages(),
+	}, nil
 }
 
 // Tests is the resolver for the tests field.

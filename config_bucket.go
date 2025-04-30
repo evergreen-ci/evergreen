@@ -26,24 +26,6 @@ func (b BucketType) validate() error {
 	}
 }
 
-// ProjectToPrefixMapping relates a project to a bucket path prefix.
-type ProjectToPrefixMapping struct {
-	// ProjectID is the project's ID.
-	ProjectID string `yaml:"project_id" bson:"project_id" json:"project_id"`
-	// Prefix is the bucket path prefix that the project should have access to.
-	Prefix string `yaml:"prefix" bson:"prefix" json:"prefix"`
-}
-
-// ProjectToBucketMapping relates a project to a bucket.
-type ProjectToBucketMapping struct {
-	// ProjectID is the project's ID.
-	ProjectID string `yaml:"project_id" bson:"project_id" json:"project_id"`
-	// Bucket is the bucket that the project should have access to.
-	Bucket string `yaml:"bucket" bson:"bucket" json:"bucket"`
-	// Prefix is an optional bucket path prefix that the project should have access to.
-	Prefix string `yaml:"prefix" bson:"prefix" json:"prefix"`
-}
-
 // BucketsConfig represents the admin config section for interally-owned
 // Evergreen data bucket storage.
 type BucketsConfig struct {
