@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -286,6 +287,11 @@ func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunct
 				"url":     url,
 				"outcome": resp.StatusCode,
 			})
+		}
+
+		limit := parseGithubRateLimit(resp.Header)
+		if limit.Remaining == 0 {
+			return false
 		}
 
 		if resp.StatusCode == http.StatusBadGateway {
@@ -835,6 +841,23 @@ func tryGithubPost(ctx context.Context, url string, oauthToken string, data any)
 	}
 
 	return
+}
+
+func parseGithubRateLimit(h http.Header) github.Rate {
+	var rate github.Rate
+	if limit := h.Get("X-Ratelimit-Limit"); limit != "" {
+		rate.Limit, _ = strconv.Atoi(limit)
+	}
+	if remaining := h.Get("X-Ratelimit-Remaining"); remaining != "" {
+		rate.Remaining, _ = strconv.Atoi(remaining)
+	}
+	if reset := h.Get("X-RateLimit-Reset"); reset != "" {
+		if v, _ := strconv.ParseInt(reset, 10, 64); v != 0 {
+			rate.Reset = github.Timestamp{Time: time.Unix(v, 0)}
+		}
+	}
+
+	return rate
 }
 
 // GithubAuthenticate does a POST to github with the code that it received, the ClientId, ClientSecret
