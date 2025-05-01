@@ -1220,7 +1220,7 @@ func logGithubAPILimit(env evergreen.Environment) amboy.QueueOperation {
 		}
 
 		grip.Info(message.Fields{
-			"message":           "Evergreen GitHub API rate limit",
+			"message":           "GitHub API rate limit",
 			"remaining":         limit.Core.Remaining,
 			"limit":             limit.Core.Limit,
 			"reset":             limit.Core.Reset.Time,
