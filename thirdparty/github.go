@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 	"time"
 
@@ -288,12 +287,6 @@ func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunct
 				"outcome": resp.StatusCode,
 			})
 		}
-
-		limit := parseGithubRateLimit(resp.Header)
-		if limit.Remaining == 0 {
-			return false
-		}
-		logGitHubRateLimit(limit)
 
 		if resp.StatusCode == http.StatusBadGateway {
 			grip.Info(message.Fields{
@@ -830,7 +823,6 @@ func tryGithubPost(ctx context.Context, url string, oauthToken string, data any)
 			defer resp.Body.Close()
 			err = errors.Errorf("Calling github POST on %v got a bad response code: %v", url, resp.StatusCode)
 		}
-		logGitHubRateLimit(parseGithubRateLimit(resp.Header))
 
 		return false, nil
 	}, utility.RetryOptions{
@@ -843,45 +835,6 @@ func tryGithubPost(ctx context.Context, url string, oauthToken string, data any)
 	}
 
 	return
-}
-
-func parseGithubRateLimit(h http.Header) github.Rate {
-	var rate github.Rate
-	if limit := h.Get("X-Ratelimit-Limit"); limit != "" {
-		rate.Limit, _ = strconv.Atoi(limit)
-	}
-	if remaining := h.Get("X-Ratelimit-Remaining"); remaining != "" {
-		rate.Remaining, _ = strconv.Atoi(remaining)
-	}
-	if reset := h.Get("X-RateLimit-Reset"); reset != "" {
-		if v, _ := strconv.ParseInt(reset, 10, 64); v != 0 {
-			rate.Reset = github.Timestamp{Time: time.Unix(v, 0)}
-		}
-	}
-
-	return rate
-}
-
-func logGitHubRateLimit(limit github.Rate) {
-	if limit.Limit == 0 {
-		grip.Error(message.Fields{
-			"message": "GitHub API rate limit",
-			"error":   "can't parse rate limit",
-		})
-	} else if limit.Limit == 60 {
-		// Unauthenticated requests have a limit of 60
-		// https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api?apiVersion=2022-11-28#primary-rate-limit-for-unauthenticated-users
-		return
-	} else {
-		grip.Info(message.Fields{
-			"message":           "GitHub API rate limit",
-			"remaining":         limit.Remaining,
-			"limit":             limit.Limit,
-			"reset":             limit.Reset,
-			"minutes_remaining": time.Until(limit.Reset.Time).Minutes(),
-			"percentage":        float32(limit.Remaining) / float32(limit.Limit),
-		})
-	}
 }
 
 // GithubAuthenticate does a POST to github with the code that it received, the ClientId, ClientSecret
