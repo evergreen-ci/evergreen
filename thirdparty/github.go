@@ -1052,9 +1052,9 @@ func GetGithubTokenUser(ctx context.Context, token string, requiredOrg string) (
 	}, isMember, err
 }
 
-// GetGithubAPILimit queries Github for all the API rate limits
-func GetGithubAPILimit(ctx context.Context) (*github.RateLimits, error) {
-	caller := "GetGithubAPILimit"
+// CheckGithubAPILimit queries Github for all the API rate limits
+func CheckGithubAPILimit(ctx context.Context) (*github.RateLimits, error) {
+	caller := "CheckGithubAPILimit"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
 	))
@@ -1084,9 +1084,9 @@ func GetGithubAPILimit(ctx context.Context) (*github.RateLimits, error) {
 	return limits, nil
 }
 
-// CheckGithubAPILimit queries Github for the number of API requests remaining
-func CheckGithubAPILimit(ctx context.Context) (int64, error) {
-	limits, err := GetGithubAPILimit(ctx)
+// CheckGithubResource queries Github for the number of API requests remaining
+func CheckGithubResource(ctx context.Context) (int64, error) {
+	limits, err := CheckGithubAPILimit(ctx)
 	if err != nil {
 		return int64(0), errors.Wrap(err, "getting github rate limit")
 	}

@@ -85,7 +85,7 @@ func ActivateBuildsForProject(ctx context.Context, project model.ProjectRef, ts 
 // CheckGithubAPIResources returns true when the github API is ready,
 // accessible and with sufficient quota to satisfy our needs
 func CheckGithubAPIResources(ctx context.Context) bool {
-	remaining, err := thirdparty.CheckGithubAPILimit(ctx)
+	remaining, err := thirdparty.CheckGithubResource(ctx)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"runner":  RunnerName,

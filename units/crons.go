@@ -1212,7 +1212,7 @@ func populateQueueGroup(ctx context.Context, env evergreen.Environment, queueGro
 	return errors.Wrapf(amboy.EnqueueManyUniqueJobs(ctx, queueGroup, jobs), "populating '%s' queue", queueGroupName)
 }
 
-func checkGithubLimit(env evergreen.Environment) amboy.QueueOperation {
+func logGithubAPILimit(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		limit, err := thirdparty.GetGithubAPILimit(ctx)
 		if err != nil {
