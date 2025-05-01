@@ -1099,9 +1099,9 @@ func GetGithubTokenUser(ctx context.Context, token string, requiredOrg string) (
 	}, isMember, err
 }
 
-// CheckGithubAPILimit queries Github for the number of API requests remaining
-func CheckGithubAPILimit(ctx context.Context) (int64, error) {
-	caller := "CheckGithubAPILimit"
+// GetGithubAPILimit queries Github for all the API rate limits
+func GetGithubAPILimit(ctx context.Context) (*github.RateLimits, error) {
+	caller := "GetGithubAPILimit"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
 	))
@@ -1109,24 +1109,33 @@ func CheckGithubAPILimit(ctx context.Context) (int64, error) {
 
 	token, err := getInstallationTokenWithDefaultOwnerRepo(ctx, nil)
 	if err != nil {
-		return 0, errors.Wrap(err, "getting installation token")
+		return nil, errors.Wrap(err, "getting installation token")
 	}
 
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
 	defer githubClient.Close()
 
-	limits, resp, err := githubClient.RateLimits(ctx)
+	limits, resp, err := githubClient.RateLimit.Get(ctx)
 	if resp != nil {
 		defer resp.Body.Close()
 		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
 	}
 	if err != nil {
 		grip.Errorf("github GET rate limit failed: %+v", err)
-		return 0, err
+		return nil, err
+	}
+	if limits.Core == nil {
+		return nil, errors.New("nil github limits")
 	}
 
-	if limits.Core == nil {
-		return 0, errors.New("nil github limits")
+	return limits, nil
+}
+
+// CheckGithubAPILimit queries Github for the number of API requests remaining
+func CheckGithubAPILimit(ctx context.Context) (int64, error) {
+	limits, err := GetGithubAPILimit(ctx)
+	if err != nil {
+		return int64(0), errors.Wrap(err, "getting github rate limit")
 	}
 	if limits.Core.Remaining < 0 {
 		return int64(0), nil
