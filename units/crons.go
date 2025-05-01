@@ -1214,7 +1214,7 @@ func populateQueueGroup(ctx context.Context, env evergreen.Environment, queueGro
 
 func logGithubAPILimit(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
-		limit, err := thirdparty.GetGithubAPILimit(ctx)
+		limit, err := thirdparty.CheckGithubAPILimit(ctx)
 		if err != nil {
 			return errors.Wrap(err, "checking GitHub API rate limit")
 		}
