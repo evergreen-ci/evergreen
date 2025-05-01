@@ -581,6 +581,8 @@ func (r *taskResolver) TaskLogs(ctx context.Context, obj *restModel.APITask) (*T
 // Tests is the resolver for the tests field.
 func (r *taskResolver) Tests(ctx context.Context, obj *restModel.APITask, opts *TestFilterOptions) (*TaskTestResult, error) {
 	// Return early if it is known that there are no test results to return.
+	// Display tasks cannot take advantage of this optimization since they
+	// don't populate ResultsFailed.
 	if opts != nil && !obj.DisplayOnly && len(opts.Statuses) > 0 {
 		diffFailureStatuses := utility.GetSetDifference(opts.Statuses, evergreen.TestFailureStatuses)
 		if len(diffFailureStatuses) == 0 && !obj.ResultsFailed {
