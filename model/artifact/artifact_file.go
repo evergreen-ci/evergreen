@@ -113,6 +113,11 @@ func presignFile(ctx context.Context, file File) (string, error) {
 		file.AWSSecret = ""
 	}
 
+	var externalID *string
+	if file.ExternalID != "" {
+		externalID = &file.ExternalID
+	}
+
 	requestParams := pail.PreSignRequestParams{
 		Bucket:                file.Bucket,
 		FileKey:               file.FileKey,
@@ -120,7 +125,7 @@ func presignFile(ctx context.Context, file File) (string, error) {
 		AWSKey:                file.AWSKey,
 		AWSSecret:             file.AWSSecret,
 		AWSRoleARN:            file.AWSRoleARN,
-		ExternalID:            &file.ExternalID,
+		ExternalID:            externalID,
 	}
 	return pail.PreSign(ctx, requestParams)
 }
