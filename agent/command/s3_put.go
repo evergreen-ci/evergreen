@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	s3Types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/smithy-go"
 	"github.com/evergreen-ci/evergreen"
@@ -596,6 +597,9 @@ func (s3pc *s3put) createPailBucket(ctx context.Context, comm client.Communicato
 	if s3pc.AwsKey != "" {
 		opts.Credentials = pail.CreateAWSStaticCredentials(s3pc.AwsKey, s3pc.AwsSecret, s3pc.AwsSessionToken)
 	} else if s3pc.getRoleARN() != "" {
+		// ExternalID needs to be set to nil so it can be set
+		// by the evergreenCredentialProvider.
+		s3pc.externalID = aws.String("")
 		opts.Credentials = createEvergreenCredentials(comm, s3pc.taskData, s3pc.getRoleARN(), s3pc.externalID)
 	}
 
