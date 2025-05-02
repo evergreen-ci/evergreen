@@ -142,12 +142,9 @@ variables:
       - func: get-project-and-modules
       - func: run-make
         vars: { target: "${task_name}" }
-      - func: assume-role
-        vars:
-          assume_role_arn: ${client_assume_role_arn}
       - command: s3.put
         params:
-          role_arn: ${assume_role_arn}
+          role_arn: ${client_assume_role_arn}
           local_files_include_filter_prefix: evergreen/clients
           local_files_include_filter: "*_*/evergreen*"
           remote_file: evergreen/clients/${version_id}/
@@ -161,12 +158,9 @@ variables:
       - func: get-project-and-modules
       - func: run-make
         vars: { target: "bin/static_assets.tgz" }
-      - func: assume-role
-        vars:
-          assume_role_arn: ${client_assume_role_arn}
       - command: s3.put
         params:
-          role_arn: ${assume_role_arn}
+          role_arn: ${client_assume_role_arn}
           local_file: evergreen/bin/static_assets.tgz
           remote_file: evergreen/clients/${version_id}/static_assets.tgz
           content_type: application/gzip
