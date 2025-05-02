@@ -599,8 +599,9 @@ func (s3pc *s3put) createPailBucket(ctx context.Context, comm client.Communicato
 	} else if s3pc.getRoleARN() != "" {
 		// ExternalID needs to be set to nil so it can be set
 		// by the evergreenCredentialProvider.
-		s3pc.externalID = aws.String("")
-		opts.Credentials = createEvergreenCredentials(comm, s3pc.taskData, s3pc.getRoleARN(), s3pc.externalID)
+		opts.Credentials = createEvergreenCredentials(comm, s3pc.taskData, s3pc.getRoleARN(), func(s string) {
+			s3pc.externalID = aws.String(s)
+		})
 	}
 
 	bucket, err := pail.NewS3MultiPartBucketWithHTTPClient(ctx, httpClient, opts)

@@ -31,8 +31,10 @@ func TestEvergreenCredentials(t *testing.T) {
 				ExternalID:      "external_id",
 			}
 
-			externalID := aws.String("")
-			provider := createEvergreenCredentials(comm, taskData, "role_arn", externalID)
+			var externalID *string
+			provider := createEvergreenCredentials(comm, taskData, "role_arn", func(s string) {
+				externalID = &s
+			})
 
 			creds, err := provider.Retrieve(t.Context())
 			require.NoError(t, err)
@@ -78,7 +80,7 @@ func TestEvergreenCredentials(t *testing.T) {
 			assert.Equal(t, "secret_access_key", creds.SecretAccessKey)
 			assert.Equal(t, "session_token", creds.SessionToken)
 			assert.Equal(t, expires, creds.Expires.Format(time.RFC3339))
-			assert.Nil(t, provider.externalID)
+			assert.Nil(t, provider.updateExternalID)
 		})
 	})
 }
