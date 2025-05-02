@@ -363,6 +363,10 @@ func MockConfig() *evergreen.Settings {
 			MaxRepoRevisionsToSearch:   20,
 			MaxConcurrentRequests:      30,
 		},
+		ReleaseMode: evergreen.ReleaseModeConfig{
+			DistroMaxHostsFactor: 2.0,
+			TargetTimeOverride:   60,
+		},
 		Scheduler: evergreen.SchedulerConfig{
 			TaskFinder: "legacy",
 		},

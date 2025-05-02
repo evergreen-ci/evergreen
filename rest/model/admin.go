@@ -36,6 +36,7 @@ func NewConfigModel() *APIAdminSettings {
 		ProjectCreation:     &APIProjectCreationConfig{},
 		Providers:           &APICloudProviders{},
 		RepoTracker:         &APIRepoTrackerConfig{},
+		ReleaseMode:         &APIReleaseModeConfig{},
 		RuntimeEnvironments: &APIRuntimeEnvironmentsConfig{},
 		Scheduler:           &APISchedulerConfig{},
 		ServiceFlags:        &APIServiceFlags{},
@@ -90,6 +91,7 @@ type APIAdminSettings struct {
 	ProjectCreation     *APIProjectCreationConfig     `json:"project_creation,omitempty"`
 	Providers           *APICloudProviders            `json:"providers,omitempty"`
 	RepoTracker         *APIRepoTrackerConfig         `json:"repotracker,omitempty"`
+	ReleaseMode         *APIReleaseModeConfig         `json:"release_mode,omitempty"`
 	RuntimeEnvironments *APIRuntimeEnvironmentsConfig `json:"runtime_environments,omitempty"`
 	Scheduler           *APISchedulerConfig           `json:"scheduler,omitempty"`
 	ServiceFlags        *APIServiceFlags              `json:"service_flags,omitempty"`
@@ -2032,6 +2034,29 @@ func (a *APIRepoTrackerConfig) ToService() (any, error) {
 		NumNewRepoRevisionsToFetch: a.NumNewRepoRevisionsToFetch,
 		MaxConcurrentRequests:      a.MaxConcurrentRequests,
 		MaxRepoRevisionsToSearch:   a.MaxRepoRevisionsToSearch,
+	}, nil
+}
+
+type APIReleaseModeConfig struct {
+	DistroMaxHostsFactor float64 `json:"distro_max_hosts_factor"`
+	TargetTimeOverride   int     `json:"target_time_override"`
+}
+
+func (a *APIReleaseModeConfig) BuildFromService(h any) error {
+	switch v := h.(type) {
+	case evergreen.ReleaseModeConfig:
+		a.DistroMaxHostsFactor = v.DistroMaxHostsFactor
+		a.TargetTimeOverride = v.TargetTimeOverride
+	default:
+		return errors.Errorf("programmatic error: expected ReleaseModeConfig but got type %T", h)
+	}
+	return nil
+}
+
+func (a *APIReleaseModeConfig) ToService() (any, error) {
+	return evergreen.ReleaseModeConfig{
+		DistroMaxHostsFactor: a.DistroMaxHostsFactor,
+		TargetTimeOverride:   a.TargetTimeOverride,
 	}, nil
 }
 
