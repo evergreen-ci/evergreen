@@ -59,6 +59,7 @@ Admin Settings
 						<div>Degraded Mode</div>
 						<li class="link" ng-click="scrollTo('degraded')">Service Flags</li>
 						<li class="link" ng-click="scrollTo('announcements')">Announcements</li>
+						<li class="link" ng-click="scrollTo('announcements')">Release Mode</li>
 						<div>Runners</div>
 						<li class="link" ng-click="scrollTo('notify')">Notify</li>
 						<li class="link" ng-click="scrollTo('task_limits')">Task Limits</li>
@@ -178,6 +179,17 @@ Admin Settings
 													<md-radio-group
 														data-ng-model="Settings.service_flags.pod_init_disabled"
 														layout="row">
+														<md-radio-button data-ng-value="false"></md-radio-button>
+														<md-radio-button data-ng-value="true"></md-radio-button>
+													</md-radio-group>
+												</td>
+											</tr>
+											<tr>
+												<td>Release Mode Enabled</td>
+												<td colspan="2">
+													<md-radio-group
+															data-ng-model="Settings.service_flags.release_mode_disabled"
+															layout="row">
 														<md-radio-button data-ng-value="false"></md-radio-button>
 														<md-radio-button data-ng-value="true"></md-radio-button>
 													</md-radio-group>
@@ -563,7 +575,25 @@ Admin Settings
 											</md-select>
 										</md-input-container>
 									</md-card-content>
-
+								</md-card>
+								<md-card flex=50 id="release-mode" style="height:240px">
+									<md-card-title>
+										<md-card-title-text>
+											<span>Release Mode Settings</span>
+										</md-card-title-text>
+									</md-card-title>
+									<md-card-content>
+										<md-input-container class="control" style="width:45%;">
+											<label>Distro Max Hosts Factor</label>
+											<div class="muted small" style="height:25px;">Increase distro max hosts by this factor (default is 1 if unset).</div>
+											<input type="number" ng-model="Settings.release_mode_config.distro_max_hosts_factor">
+										</md-input-container>
+										<md-input-container class="control" style="width:45%; margin-left:50px;">
+											<label>Target Time Seconds Override</label>
+											<div class="muted small">Override for the target time to clear a task from the queue (ignored if 0).</div>
+											<input type="number" ng-model="Settings.release_mode_config.target_time_override">
+										</md-input-container>
+									</md-card-content>
 								</md-card>
 							</section>
 						</section>

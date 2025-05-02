@@ -393,6 +393,7 @@ func MockConfig() *evergreen.Settings {
 			SystemFailedTaskRestartDisabled: true,
 			CPUDegradedModeDisabled:         true,
 			ElasticIPsDisabled:              true,
+			ReleaseModeDisabled:             true,
 		},
 		SingleTaskDistro: evergreen.SingleTaskDistroConfig{
 			ProjectTasksPairs: []evergreen.ProjectTasksPair{
