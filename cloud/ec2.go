@@ -431,24 +431,6 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 	instance := reservation.Instances[0]
 	h.Id = *instance.InstanceId
 
-	if useElasticIP && h.IPAllocationID != "" {
-		// Associate the IP address that was allocated for this host. This is
-		// necessary for the host to be usable because otherwise, it has no IP
-		// address.
-		// Unfortunately, this step is prone to timing issues because EC2 only
-		// allows an IP address to be associated with the host after the
-		// EC2 instance reaches the "running" state. If AWS is slow at getting
-		// the host to "running", this could run out of attempts to associate
-		// the IP address and the host would end up unusable.
-		// TODO (DEVPROD-17136): consider making this step more resilient
-		// against AWS timing problems.
-		grip.Error(message.WrapError(associateIPAddressForHost(ctx, m.client, h), message.Fields{
-			"message":       "host was created and allocated an elastic IP address but could not associate the host with the IP address; host will not be usable",
-			"host_id":       h.Id,
-			"allocation_id": h.IPAllocationID,
-		}))
-	}
-
 	return nil
 }
 
@@ -1385,6 +1367,16 @@ func (m *ec2Manager) GetDNSName(ctx context.Context, h *host.Host) (string, erro
 // TimeTilNextPayment returns how long until the next payment is due for a host.
 func (m *ec2Manager) TimeTilNextPayment(host *host.Host) time.Duration {
 	return timeTilNextEC2Payment(host)
+}
+
+func (m *ec2Manager) AssociateIP(ctx context.Context, h *host.Host) error {
+	if h.IPAllocationID == "" {
+		return nil
+	}
+	if err := m.setupClient(ctx); err != nil {
+		return errors.Wrap(err, "creating client")
+	}
+	return errors.Wrapf(associateIPAddressForHost(ctx, m.client, h), "associating allocated IP address '%s' with host '%s'", h.IPAllocationID, h.Id)
 }
 
 // CleanupIP disassociates the IP address from the host's network interface and
