@@ -58,7 +58,7 @@ func (p *evergreenCredentialProvider) Retrieve(ctx context.Context) (aws.Credent
 	}
 
 	if p.externalID != nil {
-		p.externalID = &creds.ExternalID
+		*p.externalID = creds.ExternalID
 	}
 
 	return aws.Credentials{
