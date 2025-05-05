@@ -671,7 +671,7 @@ func TestHideBranch(t *testing.T) {
 
 	t.Run("AliasesDeleted", func(t *testing.T) {
 		projAliases, err := model.FindAliasesForProjectFromDb(t.Context(), project.Id)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Empty(t, projAliases)
 	})
 
@@ -681,7 +681,7 @@ func TestHideBranch(t *testing.T) {
 			Vars: map[string]string{},
 		}
 		projVars, err := model.FindOneProjectVars(t.Context(), project.Id)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, skeletonProjVars, *projVars)
 	})
 
@@ -692,8 +692,8 @@ func TestHideBranch(t *testing.T) {
 
 		t.Run("FakeParameterDeleted", func(t *testing.T) {
 			fakeParams, err := fakeparameter.FindByIDs(t.Context(), oldGhAppAuth.PrivateKeyParameter)
-			assert.NoError(t, err)
-			require.Empty(t, fakeParams, 0)
+			require.NoError(t, err)
+			assert.Empty(t, fakeParams)
 		})
 	})
 
