@@ -950,7 +950,8 @@ func (c *awsClientImpl) AllocateAddress(ctx context.Context, input *ec2.Allocate
 				if errors.As(err, &apiErr) {
 					grip.Debug(message.WrapError(apiErr, msg))
 				}
-				if strings.Contains(apiErr.Error(), ec2InsufficientAddressCapacity) || strings.Contains(apiErr.Error(), ec2AddressLimitExceeded) {
+				errMsg := err.Error()
+				if strings.Contains(errMsg, ec2InsufficientAddressCapacity) || strings.Contains(errMsg, ec2AddressLimitExceeded) {
 					return false, err
 				}
 				return true, err
@@ -965,6 +966,14 @@ func (c *awsClientImpl) AllocateAddress(ctx context.Context, input *ec2.Allocate
 }
 
 func (c *awsClientImpl) ReleaseAddress(ctx context.Context, input *ec2.ReleaseAddressInput) (*ec2.ReleaseAddressOutput, error) {
+	retryOpts := awsClientDefaultRetryOptions()
+	// If the initial request fails, initiate retries after a longer delay than
+	// usual because the address may still be in use. This reduces the rate of
+	// requests that repeatedly fail due to waiting for the address to be
+	// disassociated from the host's network interface, which helps alleviate
+	// rate limit pressure.
+	retryOpts.MinDelay = 5 * time.Second
+	retryOpts.MaxDelay = 30 * time.Second
 	var output *ec2.ReleaseAddressOutput
 	var err error
 	err = utility.Retry(
@@ -981,7 +990,7 @@ func (c *awsClientImpl) ReleaseAddress(ctx context.Context, input *ec2.ReleaseAd
 			}
 			grip.Info(msg)
 			return false, nil
-		}, awsClientDefaultRetryOptions())
+		}, retryOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -989,6 +998,14 @@ func (c *awsClientImpl) ReleaseAddress(ctx context.Context, input *ec2.ReleaseAd
 }
 
 func (c *awsClientImpl) AssociateAddress(ctx context.Context, input *ec2.AssociateAddressInput) (*ec2.AssociateAddressOutput, error) {
+	retryOpts := awsClientDefaultRetryOptions()
+	// If the initial request fails, initiate retries after a longer delay than
+	// usual because the host has to be in the "running" state for this to
+	// succeed. This reduces the rate of requests that repeatedly fail due to
+	// waiting for the host state to be "running", which helps alleviate rate
+	// limit pressure.
+	retryOpts.MinDelay = 5 * time.Second
+	retryOpts.MaxDelay = 30 * time.Second
 	var output *ec2.AssociateAddressOutput
 	var err error
 	err = utility.Retry(
@@ -1008,7 +1025,7 @@ func (c *awsClientImpl) AssociateAddress(ctx context.Context, input *ec2.Associa
 			}
 			grip.Info(msg)
 			return false, nil
-		}, awsClientDefaultRetryOptions())
+		}, retryOpts)
 	if err != nil {
 		return nil, err
 	}

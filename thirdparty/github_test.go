@@ -162,7 +162,7 @@ func (s *githubSuite) TestGithubShouldRetry() {
 }
 
 func (s *githubSuite) TestCheckGithubAPILimit() {
-	rem, err := CheckGithubAPILimit(s.ctx)
+	rem, err := CheckGithubResource(s.ctx)
 	s.NoError(err)
 	s.NotNil(rem)
 }

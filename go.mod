@@ -9,8 +9,8 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.36.3
 	github.com/aws/aws-sdk-go-v2/config v1.29.14
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.67
-	github.com/aws/aws-sdk-go-v2/service/ec2 v1.211.3
-	github.com/aws/aws-sdk-go-v2/service/ecs v1.55.0
+	github.com/aws/aws-sdk-go-v2/service/ec2 v1.212.0
+	github.com/aws/aws-sdk-go-v2/service/ecs v1.56.2
 	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.26.3
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.35.4
 	github.com/aws/smithy-go v1.22.3
@@ -66,13 +66,13 @@ require (
 	go.opentelemetry.io/otel/sdk/metric v1.35.0
 	go.opentelemetry.io/otel/trace v1.35.0
 	go.opentelemetry.io/proto/otlp v1.5.0
-	golang.org/x/crypto v0.33.0
+	golang.org/x/crypto v0.37.0
 	golang.org/x/oauth2 v0.26.0 // indirect
-	golang.org/x/text v0.23.0
+	golang.org/x/text v0.24.0
 	golang.org/x/tools v0.30.0 // indirect
 	gonum.org/v1/gonum v0.16.0
 	google.golang.org/grpc v1.71.0
-	google.golang.org/protobuf v1.36.5
+	google.golang.org/protobuf v1.36.6
 	gopkg.in/yaml.v2 v2.4.0
 )
 
@@ -180,7 +180,7 @@ require (
 	golang.org/x/mod v0.23.0 // indirect
 	golang.org/x/net v0.35.0 // indirect
 	golang.org/x/sync v0.13.0
-	golang.org/x/sys v0.30.0 // indirect
+	golang.org/x/sys v0.32.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250218202821-56aae31c358a // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250218202821-56aae31c358a // indirect
 	gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22 // indirect
@@ -188,7 +188,7 @@ require (
 
 require (
 	github.com/aws/aws-sdk-go-v2/service/route53 v1.51.1
-	github.com/aws/aws-sdk-go-v2/service/s3 v1.79.2
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.79.3
 	github.com/aws/aws-sdk-go-v2/service/ssm v1.58.2
 	github.com/bradleyfalzon/ghinstallation v1.1.1
 	github.com/evergreen-ci/evg-lint v0.0.0-20211115144425-3b19c8e83a57
@@ -215,7 +215,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.6.10 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.17.10 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/v4a v1.3.34 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.7.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.7.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.18.15 // indirect
 	github.com/coreos/go-oidc v2.2.1+incompatible // indirect
 	github.com/docker/distribution v2.8.2+incompatible // indirect
