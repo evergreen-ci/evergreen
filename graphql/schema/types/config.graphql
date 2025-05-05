@@ -5,7 +5,7 @@ For example, if the banner field is populated, then a sitewide banner will be sh
 """
 type SpruceConfig {
   banner: String
-  bannerTheme: String
+  bannerTheme: BannerTheme
   containerPools: ContainerPoolsConfig
   githubOrgs: [String!]!
   jira: JiraConfig

@@ -2,14 +2,21 @@ package graphql
 
 import (
 	"context"
+	"fmt"
 	"sort"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/model"
 )
 
 // Port is the resolver for the port field.
 func (r *containerPoolResolver) Port(ctx context.Context, obj *model.APIContainerPool) (int, error) {
 	return int(obj.Port), nil
+}
+
+// BannerTheme is the resolver for the bannerTheme field.
+func (r *spruceConfigResolver) BannerTheme(ctx context.Context, obj *model.APIAdminSettings) (*evergreen.BannerTheme, error) {
+	panic(fmt.Errorf("not implemented: BannerTheme - bannerTheme"))
 }
 
 // SecretFields is the resolver for the secretFields field.
@@ -32,17 +39,3 @@ func (r *Resolver) SpruceConfig() SpruceConfigResolver { return &spruceConfigRes
 
 type containerPoolResolver struct{ *Resolver }
 type spruceConfigResolver struct{ *Resolver }
-
-// !!! WARNING !!!
-// The code below was going to be deleted when updating resolvers. It has been copied here so you have
-// one last chance to move it out of harms way if you want. There are two reasons this happens:
-//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
-//    it when you're done.
-//  - You have helper methods in this file. Move them out to keep these resolver files clean.
-/*
-	func (r *adminSettingsResolver) Announcements(ctx context.Context, obj *model.APIAdminSettings) (*Announcements, error) {
-	panic(fmt.Errorf("not implemented: Announcements - announcements"))
-}
-func (r *Resolver) AdminSettings() AdminSettingsResolver { return &adminSettingsResolver{r} }
-type adminSettingsResolver struct{ *Resolver }
-*/
