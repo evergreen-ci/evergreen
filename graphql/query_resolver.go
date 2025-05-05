@@ -788,7 +788,7 @@ func (r *queryResolver) MainlineCommits(ctx context.Context, options MainlineCom
 	revision := utility.FromStringPtr(options.Revision)
 
 	if options.SkipOrderNumber == nil && options.Revision != nil {
-		order, err := model.GetVersionOrderByRevision(ctx, revision, projectId, limit)
+		order, err := model.GetOffsetVersionOrderByRevision(ctx, revision, projectId, limit)
 		if err != nil {
 			graphql.AddError(ctx, PartialError.Send(ctx, err.Error()))
 		} else {
@@ -957,7 +957,7 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 
 	if options.Revision != nil {
 		revision := utility.FromStringPtr(options.Revision)
-		order, err := model.GetVersionOrderByRevision(ctx, revision, projectId, limit)
+		order, err := model.GetOffsetVersionOrderByRevision(ctx, revision, projectId, limit)
 		if err != nil {
 			graphql.AddError(ctx, PartialError.Send(ctx, err.Error()))
 		} else {
@@ -965,7 +965,7 @@ func (r *queryResolver) Waterfall(ctx context.Context, options WaterfallOptions)
 		}
 	} else if options.Date != nil {
 		date := utility.FromTimePtr(options.Date)
-		order, err := model.GetVersionOrderByDate(ctx, date, projectId)
+		order, err := model.GetOffsetVersionOrderByDate(ctx, date, projectId)
 		if err != nil {
 			graphql.AddError(ctx, PartialError.Send(ctx, err.Error()))
 		} else {
