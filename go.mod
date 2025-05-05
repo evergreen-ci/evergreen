@@ -44,7 +44,7 @@ require (
 	github.com/mongodb/anser v0.0.0-20250324144457-fcc2c57eee09
 	github.com/mongodb/grip v0.0.0-20250410161241-7cb1e90e324d
 	github.com/pkg/errors v0.9.1
-	github.com/ravilushqa/otelgqlgen v0.15.0
+	github.com/ravilushqa/otelgqlgen v0.17.0
 	github.com/robbiet480/go.sns v0.0.0-20210223081447-c7c9eb6836cb
 	github.com/robfig/cron v1.2.0
 	github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06
@@ -176,7 +176,7 @@ require (
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
-	go.opentelemetry.io/contrib v1.21.1 // indirect
+	go.opentelemetry.io/contrib v1.29.0 // indirect
 	golang.org/x/mod v0.23.0 // indirect
 	golang.org/x/net v0.35.0 // indirect
 	golang.org/x/sync v0.13.0
