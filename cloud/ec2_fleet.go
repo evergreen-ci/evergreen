@@ -15,6 +15,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 const launchTemplateExpiration = 24 * time.Hour
@@ -340,6 +341,32 @@ func (m *ec2FleetManager) StopInstance(context.Context, *host.Host, bool, string
 // StartInstance should do nothing for EC2 Fleet.
 func (m *ec2FleetManager) StartInstance(context.Context, *host.Host, string) error {
 	return errors.New("can't start instances for EC2 fleet provider")
+}
+
+// TODO (DEVPROD-17195): remove temporary method once all elastic IPs are
+// allocated into collection.
+func (m *ec2FleetManager) AllocateIP(ctx context.Context) (*host.IPAddress, error) {
+	if err := m.setupClient(ctx); err != nil {
+		return nil, errors.Wrap(err, "creating client")
+	}
+
+	flags, err := evergreen.GetServiceFlags(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting service flags")
+	}
+	if flags.ElasticIPsDisabled {
+		return nil, errors.Errorf("elastic IP features are disabled, cannot allocate IP")
+	}
+	allocationID, err := allocateIPAddress(ctx, m.client, m.settings.Providers.AWS.IPAMPoolID)
+	if err != nil {
+		return nil, errors.Wrap(err, "allocating IP address")
+	}
+	ipAddr := &host.IPAddress{
+		ID:           primitive.NewObjectID().Hex(),
+		AllocationID: allocationID,
+	}
+
+	return ipAddr, nil
 }
 
 // AssociateIP associates the host with its allocated IP address.

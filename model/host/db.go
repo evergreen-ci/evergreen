@@ -24,8 +24,9 @@ import (
 
 const (
 	// Collection is the name of the MongoDB collection that stores hosts.
-	Collection        = "hosts"
-	VolumesCollection = "volumes"
+	Collection          = "hosts"
+	VolumesCollection   = "volumes"
+	IPAddressCollection = "ip_addresses"
 )
 
 var (
