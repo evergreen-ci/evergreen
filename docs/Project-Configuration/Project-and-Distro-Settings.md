@@ -87,8 +87,8 @@ repo-level project settings configuration. This can be learned about at
 #### Spawn Host Script Path
 
 The spawn host script path provides an option to run a script from your repo
-when a spawn host starts. This can be useful for workflows where users typically
-want . This should be specified as a file path relative to the project root.
+when a spawn host starts. This should be specified as a file path relative to
+the project root.
 
 Warning: be careful if the script is meant to run on Windows. On Windows, this
 script does _not_ run as Administrator but rather as a separate service user
