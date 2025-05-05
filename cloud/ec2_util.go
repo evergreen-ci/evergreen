@@ -804,6 +804,9 @@ func allocateIPAddressForHost(ctx context.Context, settings *evergreen.Settings,
 	}
 
 	allocationID, err := allocateIPAddress(ctx, c, settings.Providers.AWS.IPAMPoolID)
+	if err != nil {
+		return errors.Wrap(err, "allocating IP address")
+	}
 	if err := h.SetIPAllocationID(ctx, allocationID); err != nil {
 		return errors.Wrapf(err, "setting IP allocation ID '%s' for host", allocationID)
 	}

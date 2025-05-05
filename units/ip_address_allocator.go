@@ -56,7 +56,9 @@ func NewIPAddressAllocatorJob(env evergreen.Environment, ts string) amboy.Job {
 func (j *ipAddressAllocator) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
-	j.populate()
+	if j.env == nil {
+		j.env = evergreen.GetEnvironment()
+	}
 
 	poolID := j.env.Settings().Providers.AWS.IPAMPoolID
 	if poolID == "" {
@@ -94,13 +96,6 @@ func (j *ipAddressAllocator) Run(ctx context.Context) {
 			return
 		}
 	}
-}
-
-func (j *ipAddressAllocator) populate() error {
-	if j.env == nil {
-		j.env = evergreen.GetEnvironment()
-	}
-	return nil
 }
 
 func (j *ipAddressAllocator) allocateIPAddress(ctx context.Context) error {

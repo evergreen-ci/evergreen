@@ -443,6 +443,8 @@ func (m *ec2FleetManager) cleanupStaleLaunchTemplates(ctx context.Context) error
 // cleanupIdleElasticIPs checks for any elastic IP addresses that are not
 // being actively used and releases them. This is a very slow operation and can
 // take several minutes.
+//
+//nolint:unused
 func (m *ec2FleetManager) cleanupIdleElasticIPs(ctx context.Context) error {
 	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
@@ -508,6 +510,8 @@ func (m *ec2FleetManager) cleanupIdleElasticIPs(ctx context.Context) error {
 
 // getIdleElasticIPs gets all elastic IPs that are not currently associated with
 // any host.
+//
+//nolint:unused
 func (m *ec2FleetManager) getIdleElasticIPs(ctx context.Context) ([]string, error) {
 	descAddrOut, err := m.client.DescribeAddresses(ctx, &ec2.DescribeAddressesInput{
 		Filters: []types.Filter{
