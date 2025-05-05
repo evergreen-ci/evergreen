@@ -399,7 +399,9 @@ func (m *ec2FleetManager) Cleanup(ctx context.Context) error {
 
 	catcher := grip.NewBasicCatcher()
 	catcher.Wrap(m.cleanupStaleLaunchTemplates(ctx), "cleaning up stale launch templates")
-	catcher.Wrap(m.cleanupIdleElasticIPs(ctx), "cleaning up idle elastic IPs")
+	// TODO (DEVPROD-17195): remove this cleanup if pre-allocated elastic IPs
+	// created in DEVPROD-17313 work.
+	// catcher.Wrap(m.cleanupIdleElasticIPs(ctx), "cleaning up idle elastic IPs")
 
 	return catcher.Resolve()
 }
