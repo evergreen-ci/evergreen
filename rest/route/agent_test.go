@@ -954,6 +954,7 @@ func TestAWSAssumeRole(t *testing.T) {
 				assert.NotEmpty(t, data.SecretAccessKey)
 				assert.NotEmpty(t, data.SessionToken)
 				assert.NotEmpty(t, data.Expiration)
+				assert.NotEmpty(t, data.ExternalID)
 			})
 		},
 	} {

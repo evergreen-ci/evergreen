@@ -353,7 +353,7 @@ func (c *s3get) createPailBucket(ctx context.Context, comm client.Communicator, 
 	if c.AwsKey != "" {
 		opts.Credentials = pail.CreateAWSStaticCredentials(c.AwsKey, c.AwsSecret, c.AwsSessionToken)
 	} else if c.getRoleARN() != "" {
-		opts.Credentials = createEvergreenCredentials(comm, c.taskData, c.getRoleARN())
+		opts.Credentials = createEvergreenCredentials(comm, c.taskData, c.getRoleARN(), nil)
 	}
 
 	bucket, err := pail.NewFastGetS3BucketWithHTTPClient(ctx, httpClient, opts)

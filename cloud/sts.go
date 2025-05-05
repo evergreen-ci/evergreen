@@ -59,6 +59,9 @@ type AssumeRoleCredentials struct {
 	SecretAccessKey string
 	SessionToken    string
 	Expiration      time.Time
+
+	// ExternalID is the external ID used to assume the role.
+	ExternalID string
 }
 
 // AssumeRole gets the credentials for a role as the given task. It handles
@@ -93,6 +96,7 @@ func (s *stsManagerImpl) AssumeRole(ctx context.Context, taskID string, opts Ass
 		SecretAccessKey: *output.Credentials.SecretAccessKey,
 		SessionToken:    *output.Credentials.SessionToken,
 		Expiration:      *output.Credentials.Expiration,
+		ExternalID:      externalID,
 	}
 	return creds, nil
 }
