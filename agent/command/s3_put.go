@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
 	s3Types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/smithy-go"
 	"github.com/evergreen-ci/evergreen"
@@ -141,7 +140,7 @@ type s3put struct {
 
 	// externalID is a pointer to the external ID that was used when assuming
 	// the "assumedRoleARN".
-	externalID *string
+	externalID string
 
 	bucket pail.Bucket
 
@@ -566,7 +565,7 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, lo
 			AWSKey:      key,
 			AWSSecret:   secret,
 			AWSRoleARN:  s3pc.getRoleARN(),
-			ExternalID:  utility.FromStringPtr(s3pc.externalID),
+			ExternalID:  s3pc.externalID,
 			Bucket:      bucket,
 			FileKey:     fileKey,
 			ContentType: s3pc.ContentType,
@@ -600,7 +599,7 @@ func (s3pc *s3put) createPailBucket(ctx context.Context, comm client.Communicato
 		// ExternalID needs to be set to nil so it can be set
 		// by the evergreenCredentialProvider.
 		opts.Credentials = createEvergreenCredentials(comm, s3pc.taskData, s3pc.getRoleARN(), func(s string) {
-			s3pc.externalID = aws.String(s)
+			s3pc.externalID = s
 		})
 	}
 
