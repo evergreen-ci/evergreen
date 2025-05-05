@@ -7,11 +7,31 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/utility"
 )
 
 // BannerTheme is the resolver for the bannerTheme field.
 func (r *adminSettingsResolver) BannerTheme(ctx context.Context, obj *model.APIAdminSettings) (*evergreen.BannerTheme, error) {
-	panic(fmt.Errorf("not implemented: BannerTheme - bannerTheme"))
+	if obj == nil {
+		return nil, InternalServerError.Send(ctx, "Banner theme undefined when attempting to resolve communication method")
+	}
+
+	bannerTheme := evergreen.BannerTheme(utility.FromStringPtr(obj.BannerTheme))
+
+	switch bannerTheme {
+	case evergreen.Announcement:
+		return &bannerTheme, nil
+	case evergreen.Information:
+		return &bannerTheme, nil
+	case evergreen.Warning:
+		return &bannerTheme, nil
+	case evergreen.Important:
+		return &bannerTheme, nil
+	case evergreen.Empty:
+		return &bannerTheme, nil
+	default:
+		return nil, InputValidationError.Send(ctx, fmt.Sprintf("Banner theme '%s' is invalid", utility.FromStringPtr(obj.BannerTheme)))
+	}
 }
 
 // Port is the resolver for the port field.
