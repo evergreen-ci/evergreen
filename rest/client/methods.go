@@ -1436,6 +1436,9 @@ func (c *communicatorImpl) GetTaskLogs(ctx context.Context, opts GetTaskLogsOpti
 	header := make(http.Header)
 	header.Add(evergreen.APIUserHeader, c.apiUser)
 	header.Add(evergreen.APIKeyHeader, c.apiKey)
+	if c.jwt != "" {
+		header.Add(evergreen.KanopyTokenHeader, "Bearer "+c.jwt)
+	}
 	return utility.NewPaginatedReadCloser(ctx, c.httpClient, resp, header), nil
 }
 
@@ -1488,6 +1491,9 @@ func (c *communicatorImpl) GetTestLogs(ctx context.Context, opts GetTestLogsOpti
 	header := make(http.Header)
 	header.Add(evergreen.APIUserHeader, c.apiUser)
 	header.Add(evergreen.APIKeyHeader, c.apiKey)
+	if c.jwt != "" {
+		header.Add(evergreen.KanopyTokenHeader, "Bearer "+c.jwt)
+	}
 	return utility.NewPaginatedReadCloser(ctx, c.httpClient, resp, header), nil
 }
 

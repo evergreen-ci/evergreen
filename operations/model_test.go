@@ -1,11 +1,17 @@
 package operations
 
 import (
+	"context"
+	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/rest/client"
+	restmodel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -242,4 +248,60 @@ func TestLoadWorkingChangesFromFile(t *testing.T) {
 	require.NoError(err)
 
 	assert.False(conf.UncommittedChanges)
+}
+
+func TestShouldGenerateJWT(t *testing.T) {
+	ctx := context.Background()
+
+	tests := []struct {
+		name           string
+		settings       *ClientSettings
+		serviceFlags   evergreen.ServiceFlags
+		flagsErr       error
+		expectedResult bool
+	}{
+		{
+			name:           "DoNotRunKanopyOIDC",
+			settings:       &ClientSettings{DoNotRunKanopyOIDC: true},
+			expectedResult: false,
+		},
+		{
+			name:           "NoAPIKey",
+			settings:       &ClientSettings{APIKey: ""},
+			expectedResult: true,
+		},
+		{
+			name:           "UnauthorizedError",
+			settings:       &ClientSettings{APIKey: "key"},
+			flagsErr:       &thirdparty.APIRequestError{StatusCode: http.StatusUnauthorized},
+			expectedResult: true,
+		},
+		{
+			name:     "StaticAPIKeysDisabled",
+			settings: &ClientSettings{APIKey: "key"},
+			serviceFlags: evergreen.ServiceFlags{
+				StaticAPIKeysDisabled: true,
+			},
+			expectedResult: true,
+		},
+		{
+			name:           "ValidAPIKey",
+			settings:       &ClientSettings{APIKey: "key"},
+			serviceFlags:   evergreen.ServiceFlags{},
+			expectedResult: false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			mock := &client.Mock{
+				MockServiceFlags: &restmodel.APIServiceFlags{
+					StaticAPIKeysDisabled: test.serviceFlags.StaticAPIKeysDisabled,
+				},
+				MockServiceFlagErr: test.flagsErr,
+			}
+			result := test.settings.shouldGenerateJWT(ctx, mock)
+			assert.Equal(t, test.expectedResult, result)
+		})
+	}
 }

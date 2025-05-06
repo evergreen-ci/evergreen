@@ -3,6 +3,7 @@ package operations
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -13,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/client"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/kardianos/osext"
 	"github.com/mongodb/grip"
@@ -78,8 +80,10 @@ type ClientSettings struct {
 	UIServerHost          string              `json:"ui_server_host" yaml:"ui_server_host,omitempty"`
 	APIKey                string              `json:"api_key" yaml:"api_key,omitempty"`
 	User                  string              `json:"user" yaml:"user,omitempty"`
+	JWT                   string              `json:"jwt" yaml:"jwt,omitempty"`
 	UncommittedChanges    bool                `json:"patch_uncommitted_changes" yaml:"patch_uncommitted_changes,omitempty"`
 	AutoUpgradeCLI        bool                `json:"auto_upgrade_cli" yaml:"auto_upgrade_cli,omitempty"`
+	DoNotRunKanopyOIDC    bool                `json:"do_not_run_kanopy_oidc" yaml:"do_not_run_kanopy_oidc,omitempty"`
 	PreserveCommits       bool                `json:"preserve_commits" yaml:"preserve_commits,omitempty"`
 	Projects              []ClientProjectConf `json:"projects" yaml:"projects,omitempty"`
 	LoadedFrom            string              `json:"-" yaml:"-"`
@@ -155,7 +159,48 @@ func (s *ClientSettings) setupRestCommunicator(ctx context.Context, printMessage
 	if printMessages {
 		printUserMessages(ctx, c, !s.AutoUpgradeCLI)
 	}
+
+	if s.shouldGenerateJWT(ctx, c) {
+		grip.Info("We will attempt to generate a JWT token, to opt out of this, set 'do_not_run_kanopy_oidc' to true in your config file")
+		if s.JWT, err = RunKanopyOIDCLogin(); err != nil {
+			grip.Warningf("Failed to get JWT token: %s", err)
+			return c, err
+		}
+		c.SetJWT(s.JWT)
+	}
+
 	return c, nil
+}
+
+func (s *ClientSettings) shouldGenerateJWT(ctx context.Context, c client.Communicator) bool {
+	if s.DoNotRunKanopyOIDC {
+		return false
+	}
+
+	if s.APIKey == "" {
+		grip.Info("No API key found, attempting to use a JWT token.")
+		return true
+	}
+
+	flags, err := c.GetServiceFlags(ctx)
+	// if we get an unauthorized error when trying to get the flags, we can assume
+	// that the static api keys are no longer accepted and we should get a JWT token
+	if err != nil && isUnauthorized(err) {
+		return true
+	}
+
+	if err == nil && !flags.JWTTokenForCLIDisabled {
+		return true
+	}
+
+	return false
+}
+
+func isUnauthorized(err error) bool {
+	if clientErr, ok := err.(*thirdparty.APIRequestError); ok {
+		return clientErr.StatusCode == http.StatusUnauthorized
+	}
+	return false
 }
 
 // printUserMessages prints any available info messages.
