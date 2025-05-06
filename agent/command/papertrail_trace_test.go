@@ -129,8 +129,11 @@ func TestPapertrailTrace(t *testing.T) {
 		}
 
 		t.Run(name, func(t *testing.T) {
-			basenames := make([]string, 0, len(tc.filenames))
-			checksums := make([]string, 0, len(tc.filenames))
+			type tracedFile struct {
+				checksum string
+			}
+
+			tracedFiles := make(map[string]tracedFile, len(tc.filenames))
 
 			for _, fullname := range tc.filenames {
 				fullname = getExpandedValue(fullname)
@@ -142,15 +145,17 @@ func TestPapertrailTrace(t *testing.T) {
 
 				require.NoError(t, os.WriteFile(filename, []byte(data), 0755))
 
-				basenames = append(basenames, basename)
-
 				h := sha256.New()
 				_, err := io.Copy(h, strings.NewReader(data))
 				require.NoError(t, err)
 
 				sha256sum := fmt.Sprintf("%x", h.Sum(nil))
 
-				checksums = append(checksums, sha256sum)
+				tf := tracedFile{
+					checksum: sha256sum,
+				}
+
+				tracedFiles[basename] = tf
 			}
 
 			params := map[string]any{
@@ -184,15 +189,13 @@ func TestPapertrailTrace(t *testing.T) {
 			pv, err := pclient.GetProductVersion(ctx, product, version)
 			require.NoError(t, err)
 
-			require.Equal(t, len(pv.Spans), len(basenames))
+			require.Equal(t, len(pv.Spans), len(tracedFiles))
 
-			for i, got := range pv.Spans {
+			for _, got := range pv.Spans {
+				tf, ok := tracedFiles[got.Filename]
+				require.True(t, ok)
 
-				sum := checksums[i]
-				filename := basenames[i]
-
-				require.Equal(t, sum, got.SHA256sum)
-				require.Equal(t, filename, got.Filename)
+				require.Equal(t, tf.checksum, got.SHA256sum)
 
 				build := getPapertrailBuildID(tc.taskID, tc.execution)
 
