@@ -74,5 +74,6 @@ func (p *evergreenCredentialProvider) Retrieve(ctx context.Context) (aws.Credent
 		SecretAccessKey: creds.SecretAccessKey,
 		SessionToken:    creds.SessionToken,
 		Expires:         expires,
+		CanExpire:       true,
 	}, nil
 }
