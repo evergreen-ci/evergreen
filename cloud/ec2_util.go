@@ -776,8 +776,7 @@ func shouldAssignPublicIPv4Address(h *host.Host, ec2Settings *EC2ProviderSetting
 }
 
 func canUseElasticIP(settings *evergreen.Settings, ec2Settings *EC2ProviderSettings, account string, h *host.Host) bool {
-	// if h.UserHost || h.SpawnOptions.SpawnedByTask {
-	if h.SpawnOptions.SpawnedByTask {
+	if h.UserHost || h.SpawnOptions.SpawnedByTask {
 		// Spawn hosts and host.create hosts should not use an elastic IP
 		// because the feature is primarily intended for task hosts.
 		return false
