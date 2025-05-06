@@ -1288,7 +1288,7 @@ and contains these fields:
 
 ## s3.get
 
-`s3.get` downloads a file from Amazon s3. The downloaded location is relative to [task's working directory](./Best-Practices.md#task-directory)
+`s3.get` downloads a file from Amazon s3. The download location is relative to [task's working directory](./Best-Practices.md#task-directory)
 
 ``` yaml
 # Temporary credentials:
