@@ -1299,12 +1299,21 @@ and contains these fields:
     bucket: mciuploads
     region: us-east-1
     local_file: src/mongo-binaries.tgz
-# Static credentials (deprecated):
+# Or:
 - command: s3.get
   params:
     aws_key: ${aws_key}
     aws_secret: ${aws_secret}
     aws_session_token: ${aws_session_token}
+    remote_file: ${mongo_binaries}
+    bucket: mciuploads
+    region: us-east-1
+    local_file: src/mongo-binaries.tgz
+# Static credentials (deprecated):
+- command: s3.get
+  params:
+    aws_key: ${aws_key}
+    aws_secret: ${aws_secret}
     remote_file: ${mongo_binaries}
     bucket: mciuploads
     region: us-east-1
@@ -1316,8 +1325,10 @@ Parameters:
 -   `aws_key`: your AWS key (use expansions to keep this a secret).
 -   `aws_secret`: your AWS secret (use expansions to keep this a secret).
 -   `aws_session_token`: your temporary AWS session token (use expansions to keep this a secret).
-    Note: If you are generating temporary credentials using `ec2.assume_role`, it is recommended
-    to pass in the role_arn directly to your s3 commands instead.
+    Note: If you are generating temporary credentials using `ec2.assume_role`, you can instead
+    pass in the role_arn directly to your s3 commands. If you have multiple S3 commands in quick
+    succession, it is recommended you call ec2.assume_role once and pass in the credentials
+    to each command rather than pass in a `role_arn`.
 -   `role_arn`: your AWS role to be assumed before and during the s3 operation.
     See [AssumeRole AWS setup](#assumerole-aws-setup) for more information on how
     to configure your role.
@@ -1351,12 +1362,25 @@ distribution. Refer to [Task Artifacts Data Retention Policy](../Reference/Limit
     visibility: signed
     content_type: ${content_type|application/x-gzip}
     display_name: Binaries
-# Static credentials (deprecated)
+# Or:
 - command: s3.put
   params:
     aws_key: ${aws_key}
     aws_secret: ${aws_secret}
     aws_session_token: ${aws_session_token}
+    local_file: src/mongodb-binaries.tgz
+    remote_file: mongodb-mongo-master/${build_variant}/${revision}/binaries/mongo-${build_id}.${ext|tgz}
+    bucket: mciuploads
+    region: us-east-1
+    permissions: private
+    visibility: signed
+    content_type: ${content_type|application/x-gzip}
+    display_name: Binaries
+# Static credentials (deprecated):
+- command: s3.put
+  params:
+    aws_key: ${aws_key}
+    aws_secret: ${aws_secret}
     local_file: src/mongodb-binaries.tgz
     remote_file: mongodb-mongo-master/${build_variant}/${revision}/binaries/mongo-${build_id}.${ext|tgz}
     bucket: mciuploads
@@ -1373,9 +1397,9 @@ Parameters:
 -   `aws_secret`: your AWS secret (use expansions to keep this a secret)
 -   `aws_session_token`: your temporary AWS session token (use expansions to keep this a secret).
     Note: If you are generating temporary credentials using `ec2.assume_role`, you can instead
-    pass in the role_arn directly to your s3 commands. They will functionally be the same,
-    but Evergreen ignores the temporary credentials passed in if they are associated with
-    a previous `ec2.assume_role` call and will re-call AssumeRole for each s3 operation.
+    pass in the role_arn directly to your s3 commands. If you have multiple S3 commands in quick
+    succession, it is recommended you call ec2.assume_role once and pass in the credentials
+    to each command rather than pass in a `role_arn`.
 -   `role_arn`: your AWS role to be assumed before and during the s3 operation.
     See [AssumeRole AWS setup](#assumerole-aws-setup) for more information on how
     to configure your role.
