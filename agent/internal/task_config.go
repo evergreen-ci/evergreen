@@ -40,8 +40,10 @@ type TaskConfig struct {
 	// and should persist throughout the task's execution.
 	DynamicExpansions util.Expansions
 
-	// AssumeRoleRoles holds the session tokens and role ARNs that have
-	// been assumed by the agent during the task's execution.
+	// AssumeRoleRoles holds the session tokens with their corresponding
+	// expiration and role ARNs that have been assumed by the agent during the task's execution.
+	// User's don't pass in their expiration, so we need to keep track of it when
+	// we want to use their passed in credentials.
 	AssumeRoleRoles map[string]AssumeRoleInformation
 
 	ProjectVars map[string]string
