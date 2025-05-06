@@ -13,25 +13,14 @@ import (
 // BannerTheme is the resolver for the bannerTheme field.
 func (r *adminSettingsResolver) BannerTheme(ctx context.Context, obj *model.APIAdminSettings) (*evergreen.BannerTheme, error) {
 	if obj == nil {
-		return nil, InternalServerError.Send(ctx, "Banner theme undefined when attempting to resolve communication method")
+		return nil, InternalServerError.Send(ctx, "admin settings object undefined when attempting to resolve banner theme")
 	}
-
-	bannerTheme := evergreen.BannerTheme(utility.FromStringPtr(obj.BannerTheme))
-
-	switch bannerTheme {
-	case evergreen.Announcement:
-		return &bannerTheme, nil
-	case evergreen.Information:
-		return &bannerTheme, nil
-	case evergreen.Warning:
-		return &bannerTheme, nil
-	case evergreen.Important:
-		return &bannerTheme, nil
-	case evergreen.Empty:
-		return &bannerTheme, nil
-	default:
-		return nil, InputValidationError.Send(ctx, fmt.Sprintf("Banner theme '%s' is invalid", utility.FromStringPtr(obj.BannerTheme)))
+	themeString := strings.ToUpper(utility.FromStringPtr(obj.BannerTheme))
+	valid, theme := evergreen.IsValidBannerTheme(themeString)
+	if !valid {
+		return nil, InputValidationError.Send(ctx, fmt.Sprintf("invalid banner theme '%s'", themeString))
 	}
+	return &theme, nil
 }
 
 // Port is the resolver for the port field.
