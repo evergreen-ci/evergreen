@@ -320,6 +320,7 @@ func (s3pc *s3put) Execute(ctx context.Context, comm client.Communicator, logger
 				SecretAccessKey: s3pc.AwsSecret,
 				SessionToken:    s3pc.AwsSessionToken,
 				Expires:         expiration,
+				CanExpire:       true,
 			}
 		} else {
 			logger.Task().Errorf("Error parsing expiration time: '%s'. Continuing command by calling AssumeRole again.", err.Error())

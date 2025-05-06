@@ -192,6 +192,7 @@ func (c *s3get) Execute(ctx context.Context, comm client.Communicator, logger cl
 				SecretAccessKey: c.AwsSecret,
 				SessionToken:    c.AwsSessionToken,
 				Expires:         expiration,
+				CanExpire:       true,
 			}
 		} else {
 			logger.Task().Errorf("Error parsing expiration time: '%s'. Continuing command by calling AssumeRole again.", err.Error())
