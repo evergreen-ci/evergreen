@@ -1128,8 +1128,7 @@ func (h *gitServePatchFileHandler) Run(ctx context.Context) gimlet.Responder {
 
 // GET /task/{task_id}/patch
 type servePatchHandler struct {
-	taskID  string
-	patchID string
+	taskID string
 }
 
 func makeServePatch() gimlet.RouteHandler {
@@ -1144,35 +1143,29 @@ func (h *servePatchHandler) Parse(ctx context.Context, r *http.Request) error {
 	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
 		return errors.New("missing task ID")
 	}
-	if patchParam, exists := r.URL.Query()["patch"]; exists {
-		h.patchID = patchParam[0]
-	}
 	return nil
 }
 
 func (h *servePatchHandler) Run(ctx context.Context) gimlet.Responder {
-	if h.patchID == "" {
-		t, err := task.FindOneId(ctx, h.taskID)
-		if err != nil {
-			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
-		}
-		if t == nil {
-			return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-				StatusCode: http.StatusNotFound,
-				Message:    fmt.Sprintf("task '%s' not found", h.taskID),
-			})
-		}
-		h.patchID = t.Version
+	t, err := task.FindOneId(ctx, h.taskID)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
+	}
+	if t == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
+		})
 	}
 
-	p, err := patch.FindOne(ctx, patch.ByVersion(h.patchID))
+	p, err := patch.FindOne(ctx, patch.ByVersion(t.Version))
 	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding patch '%s'", h.patchID))
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding patch '%s'", t.Version))
 	}
 	if p == nil {
 		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("patch with ID '%s' not found", h.patchID),
+			Message:    fmt.Sprintf("patch with ID '%s' not found", t.Version),
 		})
 	}
 
@@ -1847,5 +1840,6 @@ func (h *awsAssumeRole) Run(ctx context.Context) gimlet.Responder {
 		SecretAccessKey: creds.SecretAccessKey,
 		SessionToken:    creds.SessionToken,
 		Expiration:      creds.Expiration.Format(time.RFC3339),
+		ExternalID:      creds.ExternalID,
 	})
 }

@@ -208,6 +208,10 @@ type AWSCredentials struct {
 	SecretAccessKey string `json:"secret_access_key"`
 	SessionToken    string `json:"session_token"`
 	Expiration      string `json:"expiration"`
+
+	// ExternalID is the external ID used to assume the role
+	// if available.
+	ExternalID string `json:"external_id"`
 }
 
 // S3CredentialsRequest contains the s3 bucket to access.

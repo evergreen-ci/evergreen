@@ -60,6 +60,8 @@ type File struct {
 	AWSSecret string `json:"aws_secret,omitempty" bson:"aws_secret,omitempty"`
 	// AWSRoleARN is the role ARN with which the file was uploaded to S3.
 	AWSRoleARN string `json:"aws_role_arn,omitempty" bson:"aws_role_arn,omitempty"`
+	// ExternalID is the external ID with which the file was uploaded to S3.
+	ExternalID string `json:"external_id,omitempty" bson:"external_id,omitempty"`
 	// Bucket is the aws bucket in which the file is stored.
 	Bucket string `json:"bucket,omitempty" bson:"bucket,omitempty"`
 	// FileKey is the path to the file in the bucket.
@@ -111,13 +113,19 @@ func presignFile(ctx context.Context, file File) (string, error) {
 		file.AWSSecret = ""
 	}
 
+	var externalID *string
+	if file.ExternalID != "" {
+		externalID = &file.ExternalID
+	}
+
 	requestParams := pail.PreSignRequestParams{
 		Bucket:                file.Bucket,
 		FileKey:               file.FileKey,
+		SignatureExpiryWindow: evergreen.PresignMinimumValidTime,
 		AWSKey:                file.AWSKey,
 		AWSSecret:             file.AWSSecret,
 		AWSRoleARN:            file.AWSRoleARN,
-		SignatureExpiryWindow: evergreen.PresignMinimumValidTime,
+		ExternalID:            externalID,
 	}
 	return pail.PreSign(ctx, requestParams)
 }

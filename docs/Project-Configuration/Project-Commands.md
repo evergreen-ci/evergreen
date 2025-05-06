@@ -224,6 +224,8 @@ page.
 - `exact_file_names`: an optional boolean flag which, if set to true,
     indicates to treat the files array as a list of exact filenames to
     match, rather than an array of gitignore file globs.
+-   `optional`: default false; if set to true, will not error if the
+    file(s) specified are not found
 
 ## attach.results
 

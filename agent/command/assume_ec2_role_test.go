@@ -58,6 +58,7 @@ func TestEC2AssumeRoleExecute(t *testing.T) {
 				SecretAccessKey: "secret_access_key",
 				SessionToken:    "session_token",
 				Expiration:      "expiration",
+				ExternalID:      "external_id",
 			}
 
 			c := &ec2AssumeRole{

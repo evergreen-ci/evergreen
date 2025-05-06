@@ -2,7 +2,9 @@ package model
 
 import (
 	"context"
+	"fmt"
 	"sort"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -232,4 +234,20 @@ func getOlderActiveMainlineTask(ctx context.Context, t task.Task) (*task.Task, e
 	}
 	// olderActiveTask can be nil, since it may not exist.
 	return olderActiveTask, nil
+}
+
+// GetTaskOrderByDate returns the revision order of a system-requested task created on or before the given date.
+// The task must match a specific display name, build variant, and project ID.
+func GetTaskOrderByDate(ctx context.Context, date time.Time, opts FindTaskHistoryOptions) (int, error) {
+	filter := getBaseTaskHistoryFilter(opts)
+	filter[task.CreateTimeKey] = bson.M{"$lte": date}
+	q := db.Query(filter).Sort([]string{"-" + task.RevisionOrderNumberKey}).Limit(1).WithFields(task.RevisionOrderNumberKey).Hint(TaskHistoryIndex)
+
+	found, err := task.FindOne(ctx, q)
+	if err != nil {
+		return 0, errors.New(fmt.Sprintf("finding task on or before date '%s': %s", date.Format(time.DateOnly), err.Error()))
+	} else if found == nil {
+		return 0, errors.New(fmt.Sprintf("task on or before date '%s' not found", date.Format(time.DateOnly)))
+	}
+	return found.RevisionOrderNumber, nil
 }

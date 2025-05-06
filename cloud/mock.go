@@ -453,6 +453,10 @@ func (m *mockManager) CheckInstanceType(ctx context.Context, instanceType string
 	return nil
 }
 
+func (m *mockManager) AllocateIP(context.Context) (*host.IPAddress, error) {
+	return nil, errors.Errorf("cannot allocate IP with mock manager")
+}
+
 func (m *mockManager) AssociateIP(ctx context.Context, h *host.Host) error {
 	return nil
 }

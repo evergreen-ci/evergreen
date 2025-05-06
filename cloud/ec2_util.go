@@ -35,13 +35,14 @@ const (
 	EC2VolumeNotFound       = "InvalidVolume.NotFound"
 	EC2VolumeResizeRate     = "VolumeModificationRateExceeded"
 	ec2TemplateNameExists   = "InvalidLaunchTemplateName.AlreadyExistsException"
+	ec2TemplateNotFound     = "InvalidLaunchTemplateId.NotFound"
 
-	// ec2InsufficientAddressCapacity means that there are no IP addresses
+	// EC2InsufficientAddressCapacity means that there are no IP addresses
 	// available to allocate.
-	ec2InsufficientAddressCapacity = "InsufficientAddressCapacity"
+	EC2InsufficientAddressCapacity = "InsufficientAddressCapacity"
 	// ec2InsufficientAddressCapacity means that the account has reached its
 	// limit on the number of elastic IPs it can allocate.
-	ec2AddressLimitExceeded = "AddressLimitExceeded"
+	EC2AddressLimitExceeded = "AddressLimitExceeded"
 	// ec2ResourceAlreadyAssociated means an elastic IP is already associated
 	// with another resource.
 	ec2ResourceAlreadyAssociated = "Resource.AlreadyAssociated"
@@ -803,7 +804,18 @@ func allocateIPAddressForHost(ctx context.Context, settings *evergreen.Settings,
 		return nil
 	}
 
-	ctx, span := tracer.Start(ctx, "allocateIPAddressForHost")
+	allocationID, err := allocateIPAddress(ctx, c, settings.Providers.AWS.IPAMPoolID)
+	if err != nil {
+		return errors.Wrap(err, "allocating IP address")
+	}
+	if err := h.SetIPAllocationID(ctx, allocationID); err != nil {
+		return errors.Wrapf(err, "setting IP allocation ID '%s' for host", allocationID)
+	}
+	return nil
+}
+
+func allocateIPAddress(ctx context.Context, c AWSClient, ipamPoolID string) (string, error) {
+	ctx, span := tracer.Start(ctx, "allocateIPAddress")
 	defer span.End()
 
 	hostname, err := os.Hostname()
@@ -811,7 +823,7 @@ func allocateIPAddressForHost(ctx context.Context, settings *evergreen.Settings,
 		hostname = "unknown"
 	}
 	input := &ec2.AllocateAddressInput{
-		IpamPoolId: aws.String(settings.Providers.AWS.IPAMPoolID),
+		IpamPoolId: aws.String(ipamPoolID),
 		TagSpecifications: []types.TagSpecification{
 			{
 				ResourceType: types.ResourceTypeElasticIp,
@@ -825,19 +837,16 @@ func allocateIPAddressForHost(ctx context.Context, settings *evergreen.Settings,
 
 	allocateAddrOut, err := c.AllocateAddress(ctx, input)
 	if err != nil {
-		return errors.Wrap(err, "allocating new IP address for host")
+		return "", errors.Wrap(err, "allocating new IP address for host")
 	}
 	if allocateAddrOut == nil {
-		return errors.New("address allocation returned nil result")
+		return "", errors.New("address allocation returned nil result")
 	}
 	allocationID := aws.ToString(allocateAddrOut.AllocationId)
 	if allocationID == "" {
-		return errors.New("address allocation did not return an allocation ID")
+		return "", errors.New("address allocation did not return an allocation ID")
 	}
-	if err := h.SetIPAllocationID(ctx, allocationID); err != nil {
-		return errors.Wrapf(err, "setting IP allocation ID '%s' for host", allocationID)
-	}
-	return nil
+	return allocationID, nil
 }
 
 // releaseIPAddressForHost releases the elastic IP address that was associated

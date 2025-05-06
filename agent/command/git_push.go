@@ -65,7 +65,7 @@ func (c *gitPush) Execute(ctx context.Context, comm client.Communicator, logger 
 
 	var p *patch.Patch
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
-	p, err = comm.GetTaskPatch(ctx, td, "")
+	p, err = comm.GetTaskPatch(ctx, td)
 	if err != nil {
 		return errors.Wrap(err, "getting task patch")
 	}
