@@ -377,6 +377,7 @@ func (m *ec2FleetManager) CleanupIP(ctx context.Context, h *host.Host) error {
 	return releaseIPAddressForHost(ctx, h)
 }
 
+// kim: TODO: test cloud cleanup job for this.
 func (m *ec2FleetManager) Cleanup(ctx context.Context) error {
 	if err := m.setupClient(ctx); err != nil {
 		return errors.Wrap(err, "creating client")
@@ -387,6 +388,7 @@ func (m *ec2FleetManager) Cleanup(ctx context.Context) error {
 	// TODO (DEVPROD-17195): remove this cleanup if pre-allocated elastic IPs
 	// created in DEVPROD-17313 work.
 	// catcher.Wrap(m.cleanupIdleElasticIPs(ctx), "cleaning up idle elastic IPs")
+	catcher.Wrap(m.cleanupStaleIPAddresses(ctx), "cleaning up stale IP addresses")
 
 	return catcher.Resolve()
 }
@@ -420,6 +422,27 @@ func (m *ec2FleetManager) cleanupStaleLaunchTemplates(ctx context.Context) error
 		"deleted_count": deletedCount,
 		"provider":      evergreen.ProviderNameEc2Fleet,
 		"region":        m.region,
+	})
+
+	return catcher.Resolve()
+}
+
+func (m *ec2FleetManager) cleanupStaleIPAddresses(ctx context.Context) error {
+	staleIPAddrs, err := host.FindStaleIPAddresses(ctx)
+	if err != nil {
+		return errors.Wrap(err, "finding stale IP addresses")
+	}
+	catcher := grip.NewBasicCatcher()
+	// kim: TODO: turn this into a bulk write, possibly using $in, to reduce
+	// query round-trips.
+	for _, ipAddr := range staleIPAddrs {
+		catcher.Wrapf(ipAddr.UnsetHostTag(ctx), "unsetting host tag for IP address '%s' with allocation ID '%s'", ipAddr.ID, ipAddr.AllocationID)
+	}
+
+	grip.InfoWhen(len(staleIPAddrs) > 0, message.Fields{
+		"message":        "cleaned up stale IP addresses",
+		"num_cleaned_up": len(staleIPAddrs),
+		"provider":       evergreen.ProviderNameEc2Fleet,
 	})
 
 	return catcher.Resolve()

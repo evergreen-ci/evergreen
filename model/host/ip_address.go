@@ -3,7 +3,9 @@ package host
 import (
 	"context"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -74,4 +76,24 @@ func FindIPAddressByAllocationID(ctx context.Context, allocationID string) (*IPA
 		return nil, nil
 	}
 	return ipAddr, err
+}
+
+// FindStaleIPAddresses finds all IP addresses that are currently assigned to
+// some host but whose host is already terminated.
+// kim: TODO: test manually in MDB.
+func FindStaleIPAddresses(ctx context.Context) ([]IPAddress, error) {
+	ipAddrs := []IPAddress{}
+	const hostKey = "host"
+	err := db.Aggregate(ctx, IPAddressCollection, []bson.M{
+		{"$match": bson.M{ipAddressHostTagKey: bson.M{"$exists": true}}},
+		{"$lookup": bson.M{
+			"from":         Collection,
+			"localField":   ipAddressHostTagKey,
+			"foreignField": TagKey,
+			"as":           hostKey,
+		}},
+		{"$unwind": "$" + hostKey},
+		{"$match": bson.M{bsonutil.GetDottedKeyName(hostKey, StatusKey): evergreen.HostTerminated}},
+	}, &ipAddrs)
+	return ipAddrs, err
 }
