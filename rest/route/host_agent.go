@@ -195,7 +195,17 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.MakeJSONErrorResponder(err)
 	}
 	// If there is already a task assigned to the host send back that task.
-	if updatedHost.RunningTask != "" {
+	if h.host.RunningTask != "" || updatedHost.RunningTask != "" {
+		if updatedHost.RunningTask != h.host.RunningTask {
+			grip.Warning(
+				message.Fields{
+					"message":          "running task changed while waiting for next task",
+					"host":             h.host.Id,
+					"old_running_task": h.host.RunningTask,
+					"new_running_task": updatedHost.RunningTask,
+				},
+			)
+		}
 		return sendBackRunningTask(ctx, h.env, h.host, nextTaskResponse)
 	}
 
