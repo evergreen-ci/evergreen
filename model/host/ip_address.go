@@ -92,7 +92,7 @@ func FindUnusedIPAddress(ctx context.Context) (*IPAddress, error) {
 func FindIPAddressByAllocationID(ctx context.Context, allocationID string) (*IPAddress, error) {
 	ipAddr := &IPAddress{}
 	err := db.FindOneQContext(ctx, IPAddressCollection, db.Query(bson.M{
-		ipAddressHostTagKey: allocationID,
+		ipAddressAllocationIDKey: allocationID,
 	}), ipAddr)
 	if adb.ResultsNotFound(err) {
 		return nil, nil
