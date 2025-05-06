@@ -390,6 +390,7 @@ func MockConfig() *evergreen.Settings {
 			UnrecognizedPodCleanupDisabled:  true,
 			CloudCleanupDisabled:            true,
 			SleepScheduleDisabled:           true,
+			StaticAPIKeysDisabled:           true,
 			SystemFailedTaskRestartDisabled: true,
 			CPUDegradedModeDisabled:         true,
 			ElasticIPsDisabled:              true,
