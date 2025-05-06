@@ -1288,7 +1288,7 @@ and contains these fields:
 
 ## s3.get
 
-`s3.get` downloads a file from Amazon s3.
+`s3.get` downloads a file from Amazon s3. The downloaded location is relative to [task's working directory](./Best-Practices.md#task-directory)
 
 ``` yaml
 # Temporary credentials:
@@ -1323,7 +1323,7 @@ Parameters:
     to configure your role.
     This does not have to be a secret but managing it with expansions is recommended.
     This is the recommended way to authenticate with AWS.
--   `local_file`: the local file to save, do not use with `extract_to`
+-   `local_file`: the local file to save, do not use with `extract_to`.
 -   `extract_to`: the local directory to extract to, do not use with
     `local_file`
 -   `remote_file`: the S3 path to get the file from
@@ -1336,7 +1336,7 @@ Parameters:
 ## s3.put
 
 This command uploads a file to Amazon s3, for use in later tasks or
-distribution. Refer to [Task Artifacts Data Retention Policy](../Reference/Limits#task_artifacts_data_retention_policy) for details on the lifecycle of files uploaded via this command. **Files uploaded with this command will also be viewable within the Parsley log viewer if the `content_type` is set to `text/plain`, `application/json` or `text/csv`.**
+distribution. Refer to [Task Artifacts Data Retention Policy](../Reference/Limits#task_artifacts_data_retention_policy) for details on the lifecycle of files uploaded via this command. The upload location is relative to [task's working directory](./Best-Practices.md#task-directory). **Files uploaded with this command will also be viewable within the Parsley log viewer if the `content_type` is set to `text/plain`, `application/json` or `text/csv`.**
 
 ``` yaml
 # Temporary credentials:
