@@ -183,9 +183,8 @@ func (c *s3get) Execute(ctx context.Context, comm client.Communicator, logger cl
 		return errors.Wrap(err, "validating expanded params")
 	}
 
-	c.assumedRoleARN = getAssumedRoleARN(conf, c.AwsSessionToken)
-
 	if expiration, found, err := getAssumedRoleExpiration(conf, c.AwsSessionToken); found {
+		c.assumedRoleARN = getAssumedRoleARN(conf, c.AwsSessionToken)
 		if err != nil {
 			c.existingCredentials = &aws.Credentials{
 				AccessKeyID:     c.AwsKey,
