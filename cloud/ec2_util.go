@@ -804,17 +804,11 @@ func allocateIPAddressForHost(ctx context.Context, h *host.Host) error {
 		return nil
 	}
 
-	ipAddr, err := host.FindUnusedIPAddress(ctx)
+	// This intentionally uses the host tag to identify the host instead of the
+	// host ID because the host ID changes after a host is created.
+	ipAddr, err := host.AssignUnusedIPAddress(ctx, h.Tag)
 	if err != nil {
 		return errors.Wrap(err, "allocating IP address")
-	}
-	if ipAddr == nil {
-		return nil
-	}
-	// This intentionally uses the host tag to identify the host instead of the host ID because the
-	// host ID changes after a host is created.
-	if err := ipAddr.SetHostTag(ctx, h.Tag); err != nil {
-		return errors.Wrapf(err, "setting host ID for IP address '%s'", ipAddr)
 	}
 	if err := h.SetIPAllocationID(ctx, ipAddr.AllocationID); err != nil {
 		return errors.Wrapf(err, "setting IP allocation ID '%s' for host", ipAddr.AllocationID)

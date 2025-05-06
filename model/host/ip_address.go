@@ -23,24 +23,25 @@ func (a *IPAddress) Insert(ctx context.Context) error {
 	return db.Insert(ctx, IPAddressCollection, a)
 }
 
-// SetHostTag sets the host tag for the IP address if it is not already set. If
-// a host tag is already set, this will return an error.
-func (a *IPAddress) SetHostTag(ctx context.Context, hostTag string) error {
-	if err := db.UpdateContext(ctx, IPAddressCollection, bson.M{
-		ipAddressIDKey: a.ID,
-		ipAddressHostTagKey: bson.M{
-			"$exists": false,
-		},
-	}, bson.M{
-		"$set": bson.M{
-			ipAddressHostTagKey: hostTag,
-		},
-	}); err != nil {
-		return err
-	}
+// AssignUnusedIPAddress finds any IP address that's not currently being used by
+// a host and assigns the host to it. If no free IP addresses are available,
+// this will return a nil IPAddress and no error.
+func AssignUnusedIPAddress(ctx context.Context, hostTag string) (*IPAddress, error) {
+	var ipAddr IPAddress
+	changeInfo, err := db.FindAndModify(ctx, IPAddressCollection, bson.M{
+		ipAddressHostTagKey: bson.M{"$exists": false},
+	}, []string{}, adb.Change{
+		Update:    bson.M{"$set": bson.M{ipAddressHostTagKey: hostTag}},
+		ReturnNew: true,
+	}, &ipAddr)
 
-	a.HostTag = hostTag
-	return nil
+	if err != nil {
+		return nil, err
+	}
+	if changeInfo.Updated == 0 {
+		return nil, nil
+	}
+	return &ipAddr, nil
 }
 
 // UnsetHostTag unsets the host tag for the IP address if it's set. If a host
@@ -60,31 +61,6 @@ func (a *IPAddress) UnsetHostTag(ctx context.Context) error {
 
 	a.HostTag = ""
 	return nil
-}
-
-// FindUnusedIPAddress finds any IP address that's not currently being used by a
-// host.
-func FindUnusedIPAddress(ctx context.Context) (*IPAddress, error) {
-	ipAddrs := make([]IPAddress, 0, 1)
-	err := db.Aggregate(ctx, IPAddressCollection, []bson.M{
-		{
-			"$match": bson.M{
-				ipAddressHostTagKey: bson.M{
-					"$exists": false,
-				},
-			},
-		},
-		{
-			"$sample": bson.M{"size": 1},
-		},
-	}, &ipAddrs)
-	if err != nil {
-		return nil, err
-	}
-	if len(ipAddrs) == 0 {
-		return nil, nil
-	}
-	return &ipAddrs[0], nil
 }
 
 // FindIPAddressByAllocationID finds an IP address by the IP address's
