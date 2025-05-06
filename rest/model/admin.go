@@ -201,6 +201,11 @@ func (as *APIAdminSettings) BuildFromService(h any) error {
 			return errors.Wrap(err, "converting single task distro config to API model")
 		}
 		as.SingleTaskDistro = &singleTaskDistroConfig
+		releaseModeConfig := APIReleaseModeConfig{}
+		if err = releaseModeConfig.BuildFromService(v.ReleaseMode); err != nil {
+			return errors.Wrap(err, "converting release mode config to API model")
+		}
+		as.ReleaseMode = &releaseModeConfig
 	default:
 		return errors.Errorf("programmatic error: expected admin settings but got type %T", h)
 	}
@@ -2038,15 +2043,15 @@ func (a *APIRepoTrackerConfig) ToService() (any, error) {
 }
 
 type APIReleaseModeConfig struct {
-	DistroMaxHostsFactor float64 `json:"distro_max_hosts_factor"`
-	TargetTimeOverride   int     `json:"target_time_override"`
+	DistroMaxHostsFactor      float64 `json:"distro_max_hosts_factor"`
+	TargetTimeSecondsOverride int     `json:"target_time_seconds_override"`
 }
 
 func (a *APIReleaseModeConfig) BuildFromService(h any) error {
 	switch v := h.(type) {
 	case evergreen.ReleaseModeConfig:
 		a.DistroMaxHostsFactor = v.DistroMaxHostsFactor
-		a.TargetTimeOverride = v.TargetTimeOverride
+		a.TargetTimeSecondsOverride = v.TargetTimeSecondsOverride
 	default:
 		return errors.Errorf("programmatic error: expected ReleaseModeConfig but got type %T", h)
 	}
@@ -2055,8 +2060,8 @@ func (a *APIReleaseModeConfig) BuildFromService(h any) error {
 
 func (a *APIReleaseModeConfig) ToService() (any, error) {
 	return evergreen.ReleaseModeConfig{
-		DistroMaxHostsFactor: a.DistroMaxHostsFactor,
-		TargetTimeOverride:   a.TargetTimeOverride,
+		DistroMaxHostsFactor:      a.DistroMaxHostsFactor,
+		TargetTimeSecondsOverride: a.TargetTimeSecondsOverride,
 	}, nil
 }
 

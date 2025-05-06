@@ -59,7 +59,7 @@ Admin Settings
 						<div>Degraded Mode</div>
 						<li class="link" ng-click="scrollTo('degraded')">Service Flags</li>
 						<li class="link" ng-click="scrollTo('announcements')">Announcements</li>
-						<li class="link" ng-click="scrollTo('announcements')">Release Mode</li>
+						<li class="link" ng-click="scrollTo('release-mode')">Release Mode</li>
 						<div>Runners</div>
 						<li class="link" ng-click="scrollTo('notify')">Notify</li>
 						<li class="link" ng-click="scrollTo('task_limits')">Task Limits</li>
@@ -585,13 +585,13 @@ Admin Settings
 									<md-card-content>
 										<md-input-container class="control" style="width:45%;">
 											<label>Distro Max Hosts Factor</label>
-											<div class="muted small" style="height:25px;">Increase distro max hosts by this factor (default is 1 if unset).</div>
+											<div class="muted small" style="height:25px;">Multiply distro max hosts by this factor (default is 1 if unset).</div>
 											<input type="number" ng-model="Settings.release_mode.distro_max_hosts_factor">
 										</md-input-container>
 										<md-input-container class="control" style="width:45%; margin-left:50px;">
 											<label>Target Time Seconds Override</label>
 											<div class="muted small">Override for the target time to clear a task from the queue (ignored if 0).</div>
-											<input type="number" ng-model="Settings.release_mode.target_time_override">
+											<input type="number" ng-model="Settings.release_mode.target_time_seconds_override">
 										</md-input-container>
 									</md-card-content>
 								</md-card>
