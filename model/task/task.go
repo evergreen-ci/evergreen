@@ -281,6 +281,8 @@ type Task struct {
 	// DisplayTaskId is set to the display task ID if the task is an execution task, the empty string if it's not an execution task,
 	// and is nil if we haven't yet checked whether or not this task has a display task.
 	DisplayTaskId *string `bson:"display_task_id,omitempty" json:"display_task_id,omitempty"`
+	//DisplayTaskDisplayName is the name of the display task that this task is part of, if any.
+	DisplayTaskDisplayName *string `bson:"display_task_display_name,omitempty" json:"display_task_display_name,omitempty"`
 
 	// GenerateTask indicates that the task generates other tasks, which the
 	// scheduler will use to prioritize this task. This will not be set for
@@ -4061,7 +4063,7 @@ func (t *Task) SetNumDependents(ctx context.Context) error {
 	}, update)
 }
 
-func AddDisplayTaskIdToExecTasks(ctx context.Context, displayTaskId string, execTasksToUpdate []string) error {
+func AddDisplayTaskInfoToExecTasks(ctx context.Context, displayTaskId, displayTaskDisplayName string, execTasksToUpdate []string) error {
 	if len(execTasksToUpdate) == 0 {
 		return nil
 	}
@@ -4069,7 +4071,8 @@ func AddDisplayTaskIdToExecTasks(ctx context.Context, displayTaskId string, exec
 		IdKey: bson.M{"$in": execTasksToUpdate},
 	},
 		bson.M{"$set": bson.M{
-			DisplayTaskIdKey: displayTaskId,
+			DisplayTaskIdKey:          displayTaskId,
+			DisplayTaskDisplayNameKey: displayTaskDisplayName,
 		}},
 	)
 	return err

@@ -3854,20 +3854,23 @@ func TestAddDisplayTaskIdToExecTasks(t *testing.T) {
 	assert.NoError(t, t2.Insert(t.Context()))
 	assert.NoError(t, t3.Insert(t.Context()))
 
-	assert.NoError(t, AddDisplayTaskIdToExecTasks(ctx, "dt", []string{t1.Id, t2.Id}))
+	assert.NoError(t, AddDisplayTaskInfoToExecTasks(ctx, "dt", "dtDisplayName", []string{t1.Id, t2.Id}))
 
 	var err error
 	t1, err = FindOneId(ctx, t1.Id)
 	assert.NoError(t, err)
 	assert.Equal(t, "dt", utility.FromStringPtr(t1.DisplayTaskId))
+	assert.Equal(t, "dtDisplayName", utility.FromStringPtr(t1.DisplayTaskDisplayName))
 
 	t2, err = FindOneId(ctx, t2.Id)
 	assert.NoError(t, err)
 	assert.Equal(t, "dt", utility.FromStringPtr(t2.DisplayTaskId))
+	assert.Equal(t, "dtDisplayName", utility.FromStringPtr(t2.DisplayTaskDisplayName))
 
 	t3, err = FindOneId(ctx, t3.Id)
 	assert.NoError(t, err)
 	assert.NotEqual(t, "dt", utility.FromStringPtr(t3.DisplayTaskId))
+	assert.NotEqual(t, "dtDisplayName", utility.FromStringPtr(t3.DisplayTaskDisplayName))
 }
 
 func TestAddExecTasksToDisplayTask(t *testing.T) {
