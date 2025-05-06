@@ -72,7 +72,8 @@ func TestEC2AssumeRoleExecute(t *testing.T) {
 			assert.Equal(t, "session_token", conf.NewExpansions.Get(globals.AWSSessionToken))
 			assert.Equal(t, "expiration", conf.NewExpansions.Get(globals.AWSRoleExpiration))
 
-			assert.Equal(t, c.RoleARN, conf.AssumeRoleRoles[comm.AssumeRoleResponse.SessionToken])
+			assert.Equal(t, c.RoleARN, conf.AssumeRoleRoles[comm.AssumeRoleResponse.SessionToken].RoleARN)
+			assert.Equal(t, "expiration", conf.AssumeRoleRoles[comm.AssumeRoleResponse.SessionToken].Expiration)
 
 			t.Run("KeysAreRedacted", func(t *testing.T) {
 				hasAccessKey := false
@@ -122,7 +123,7 @@ func TestEC2AssumeRoleExecute(t *testing.T) {
 				},
 				Expansions:      expansions,
 				NewExpansions:   agentutil.NewDynamicExpansions(expansions),
-				AssumeRoleRoles: map[string]string{},
+				AssumeRoleRoles: map[string]internal.AssumeRoleInformation{},
 			}
 
 			comm := client.NewMock("localhost")

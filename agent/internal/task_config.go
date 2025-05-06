@@ -42,7 +42,7 @@ type TaskConfig struct {
 
 	// AssumeRoleRoles holds the session tokens and role ARNs that have
 	// been assumed by the agent during the task's execution.
-	AssumeRoleRoles map[string]string
+	AssumeRoleRoles map[string]AssumeRoleInformation
 
 	ProjectVars map[string]string
 	Redacted    []string
@@ -82,6 +82,11 @@ type CommandCleanup struct {
 	Command string
 	// Run is the function that is called when the task is finished.
 	Run func(context.Context) error
+}
+
+type AssumeRoleInformation struct {
+	RoleARN    string
+	Expiration string
 }
 
 // AddCommandCleanup adds a cleanup function to the TaskConfig.
@@ -224,7 +229,7 @@ func NewTaskConfig(opts TaskConfigOptions) (*TaskConfig, error) {
 		Expansions:         opts.ExpansionsAndVars.Expansions,
 		NewExpansions:      agentutil.NewDynamicExpansions(opts.ExpansionsAndVars.Expansions),
 		DynamicExpansions:  util.Expansions{},
-		AssumeRoleRoles:    map[string]string{},
+		AssumeRoleRoles:    map[string]AssumeRoleInformation{},
 		InternalRedactions: agentutil.NewDynamicExpansions(internalRedactions),
 		ProjectVars:        opts.ExpansionsAndVars.Vars,
 		Redacted:           redacted,

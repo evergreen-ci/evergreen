@@ -16,6 +16,9 @@ type evergreenCredentialProvider struct {
 	comm     client.Communicator
 	taskData client.TaskData
 
+	// existingCredentials is the existing credentials to use.
+	existingCredentials *aws.Credentials
+
 	// roleARN is the ARN of the role to assume.
 	roleARN string
 
@@ -27,16 +30,21 @@ type evergreenCredentialProvider struct {
 // createEvergreenCredentials creates a new evergreenCredentialProvider. It supports
 // long operations or operations that might need to request new credentials during
 // the operation (e.g. multipart bucket uploads).
-func createEvergreenCredentials(comm client.Communicator, taskData client.TaskData, roleARN string, updateExternalID func(string)) *evergreenCredentialProvider {
+func createEvergreenCredentials(comm client.Communicator, taskData client.TaskData, existingCredentials *aws.Credentials, roleARN string, updateExternalID func(string)) *evergreenCredentialProvider {
 	return &evergreenCredentialProvider{
-		comm:             comm,
-		taskData:         taskData,
-		roleARN:          roleARN,
-		updateExternalID: updateExternalID,
+		comm:                comm,
+		taskData:            taskData,
+		existingCredentials: existingCredentials,
+		roleARN:             roleARN,
+		updateExternalID:    updateExternalID,
 	}
 }
 
 func (p *evergreenCredentialProvider) Retrieve(ctx context.Context) (aws.Credentials, error) {
+	if p.existingCredentials != nil && p.existingCredentials.AccessKeyID != "" && !p.existingCredentials.Expired() {
+		return *p.existingCredentials, nil
+	}
+
 	if p.roleARN == "" {
 		return aws.Credentials{}, errors.New("no role ARN provided")
 	}
