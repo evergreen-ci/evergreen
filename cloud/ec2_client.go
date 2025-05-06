@@ -785,6 +785,10 @@ func (c *awsClientImpl) DeleteLaunchTemplate(ctx context.Context, input *ec2.Del
 				if errors.As(err, &apiErr) {
 					grip.Debug(message.WrapError(apiErr, msg))
 				}
+				if strings.Contains(err.Error(), ec2TemplateNotFound) {
+					// The template does not exist, so it's already deleted.
+					return false, nil
+				}
 				return true, err
 			}
 			grip.Info(msg)
