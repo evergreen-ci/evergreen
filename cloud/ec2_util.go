@@ -776,7 +776,8 @@ func shouldAssignPublicIPv4Address(h *host.Host, ec2Settings *EC2ProviderSetting
 }
 
 func canUseElasticIP(settings *evergreen.Settings, ec2Settings *EC2ProviderSettings, account string, h *host.Host) bool {
-	if h.UserHost || h.SpawnOptions.SpawnedByTask {
+	// if h.UserHost || h.SpawnOptions.SpawnedByTask {
+	if h.SpawnOptions.SpawnedByTask {
 		// Spawn hosts and host.create hosts should not use an elastic IP
 		// because the feature is primarily intended for task hosts.
 		return false
@@ -811,8 +812,8 @@ func allocateIPAddressForHost(ctx context.Context, h *host.Host) error {
 	if ipAddr == nil {
 		return nil
 	}
-	// This intentionally uses the host tag to identify the host instead of the
-	// host ID because the host ID changes after a host is created.
+	// This intentionally uses the host tag to identify the host instead of the host ID because the
+	// host ID changes after a host is created.
 	if err := ipAddr.SetHostTag(ctx, h.Tag); err != nil {
 		return errors.Wrapf(err, "setting host ID for IP address '%s'", ipAddr)
 	}
@@ -922,34 +923,5 @@ func associateIPAddressForHost(ctx context.Context, c AWSClient, h *host.Host) e
 	if err := h.SetIPAssociationID(ctx, associationID); err != nil {
 		return errors.Wrapf(err, "setting IP association ID '%s' for host", associationID)
 	}
-	return nil
-}
-
-// disassociateIPAddressForHost initiates the process of disassociating the
-// elastic IP address from the host, if it has an elastic IP. This is not
-// synchronous, so the address is not guaranteed to be disassociated when this
-// returns.
-func disassociateIPAddressForHost(ctx context.Context, c AWSClient, h *host.Host) error {
-	if h.IPAssociationID == "" {
-		return nil
-	}
-
-	flags, err := evergreen.GetServiceFlags(ctx)
-	if err != nil {
-		return errors.Wrap(err, "getting service flags")
-	}
-	if flags.ElasticIPsDisabled {
-		return errors.Errorf("elastic IP features are disabled, host will not disassociate elastic IP '%s'", h.IPAssociationID)
-	}
-
-	ctx, span := tracer.Start(ctx, "disassociateIPAddressForHost")
-	defer span.End()
-
-	if _, err := c.DisassociateAddress(ctx, &ec2.DisassociateAddressInput{
-		AssociationId: aws.String(h.IPAssociationID),
-	}); err != nil {
-		return errors.Wrapf(err, "disassociating host IP address with association ID '%s'", h.IPAssociationID)
-	}
-
 	return nil
 }

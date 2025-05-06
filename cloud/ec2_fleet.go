@@ -289,14 +289,6 @@ func (m *ec2FleetManager) TerminateInstance(ctx context.Context, h *host.Host, u
 		return errors.Wrap(err, "creating client")
 	}
 
-	grip.Error(message.WrapError(disassociateIPAddressForHost(ctx, m.client, h), message.Fields{
-		"message":        "could not disassociate elastic IP address from host",
-		"provider":       h.Distro.Provider,
-		"host_id":        h.Id,
-		"association_id": h.IPAssociationID,
-		"allocation_id":  h.IPAllocationID,
-	}))
-
 	resp, err := m.client.TerminateInstances(ctx, &ec2.TerminateInstancesInput{
 		InstanceIds: []string{h.Id},
 	})
@@ -380,12 +372,8 @@ func (m *ec2FleetManager) AssociateIP(ctx context.Context, h *host.Host) error {
 	return errors.Wrapf(associateIPAddressForHost(ctx, m.client, h), "associating allocated IP address '%s' with host '%s'", h.IPAllocationID, h.Id)
 }
 
-// CleanupIP disassociates the IP address from the host's network interface and
-// releases the IP address back into the IPAM pool.
+// CleanupIP releases the host's IP address.
 func (m *ec2FleetManager) CleanupIP(ctx context.Context, h *host.Host) error {
-	if err := disassociateIPAddressForHost(ctx, m.client, h); err != nil {
-		return err
-	}
 	if err := releaseIPAddressForHost(ctx, h); err != nil {
 		return err
 	}
