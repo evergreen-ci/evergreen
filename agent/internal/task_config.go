@@ -235,7 +235,7 @@ func NewTaskConfig(opts TaskConfigOptions) (*TaskConfig, error) {
 		taskConfig.GithubPatchData = opts.Patch.GithubPatchData
 		taskConfig.GithubMergeData = opts.Patch.GithubMergeData
 		taskConfig.PatchOrVersionDescription = opts.Patch.Description
-	} else if opts.Patch != nil {
+	} else if opts.Version != nil {
 		taskConfig.PatchOrVersionDescription = opts.Version.Message
 	}
 
