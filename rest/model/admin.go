@@ -120,8 +120,6 @@ func (as *APIAdminSettings) BuildFromService(h any) error {
 		for i := 0; i < apiModelReflect.NumField(); i++ {
 			propName := apiModelReflect.Type().Field(i).Name
 			val := apiModelReflect.FieldByName(propName)
-			if strings.ToLower(propName) == "sleepscheduleconfig" {
-			}
 			if val.IsNil() {
 				continue
 			}
