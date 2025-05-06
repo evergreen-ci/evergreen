@@ -342,7 +342,7 @@ func (s3pc *s3put) Execute(ctx context.Context, comm client.Communicator, logger
 	httpClient := utility.GetHTTPClient()
 	httpClient.Timeout = s3HTTPClientTimeout
 	defer utility.PutHTTPClient(httpClient)
-	if err := s3pc.createPailBucket(ctx, comm, conf, httpClient); err != nil {
+	if err := s3pc.createPailBucket(ctx, comm, httpClient); err != nil {
 		return errors.Wrap(err, "connecting to S3")
 	}
 
@@ -599,7 +599,7 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, lo
 	return nil
 }
 
-func (s3pc *s3put) createPailBucket(ctx context.Context, comm client.Communicator, conf *internal.TaskConfig, httpClient *http.Client) error {
+func (s3pc *s3put) createPailBucket(ctx context.Context, comm client.Communicator, httpClient *http.Client) error {
 	if s3pc.bucket != nil {
 		return nil
 	}
