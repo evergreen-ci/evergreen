@@ -322,7 +322,7 @@ func (m *ec2FleetManager) TerminateInstance(ctx context.Context, h *host.Host, u
 		})
 	}
 
-	grip.Error(message.WrapError(releaseIPAddressForHost(ctx, m.client, h), message.Fields{
+	grip.Error(message.WrapError(releaseIPAddressForHost(ctx, h), message.Fields{
 		"message":        "could not release elastic IP address from host",
 		"provider":       h.Distro.Provider,
 		"host_id":        h.Id,
@@ -386,7 +386,7 @@ func (m *ec2FleetManager) CleanupIP(ctx context.Context, h *host.Host) error {
 	if err := disassociateIPAddressForHost(ctx, m.client, h); err != nil {
 		return err
 	}
-	if err := releaseIPAddressForHost(ctx, m.client, h); err != nil {
+	if err := releaseIPAddressForHost(ctx, h); err != nil {
 		return err
 	}
 	return nil
@@ -592,7 +592,7 @@ func (m *ec2FleetManager) spawnFleetHost(ctx context.Context, h *host.Host, ec2S
 		// guaranteed to succeed. For example, if the IPAM pool has no addresses
 		// available currently, Evergreen still needs a usable host, so the
 		// launch template has to fall back to using an AWS-managed IP address.
-		grip.Notice(message.WrapError(allocateIPAddressForHost(ctx, m.settings, m.client, h), message.Fields{
+		grip.Notice(message.WrapError(allocateIPAddressForHost(ctx, h), message.Fields{
 			"message": "could not allocate elastic IP address for host, falling back to using AWS-managed IP",
 			"host_id": h.Id,
 		}))

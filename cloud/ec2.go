@@ -311,7 +311,7 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 		// because the host should fall back to using an AWS-provided IP
 		// address. Using an elastic IP address is a best-effort attempt to save
 		// money.
-		grip.Notice(message.WrapError(allocateIPAddressForHost(ctx, m.settings, m.client, h), message.Fields{
+		grip.Notice(message.WrapError(allocateIPAddressForHost(ctx, h), message.Fields{
 			"message": "could not allocate elastic IP address for host, falling back to using AWS-managed IP",
 			"host_id": h.Id,
 		}))
@@ -948,7 +948,7 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 		})
 	}
 
-	grip.Error(message.WrapError(releaseIPAddressForHost(ctx, m.client, h), message.Fields{
+	grip.Error(message.WrapError(releaseIPAddressForHost(ctx, h), message.Fields{
 		"message":        "could not release elastic IP address from host",
 		"provider":       h.Distro.Provider,
 		"host_id":        h.Id,
@@ -1412,7 +1412,7 @@ func (m *ec2Manager) CleanupIP(ctx context.Context, h *host.Host) error {
 	if err := disassociateIPAddressForHost(ctx, m.client, h); err != nil {
 		return err
 	}
-	if err := releaseIPAddressForHost(ctx, m.client, h); err != nil {
+	if err := releaseIPAddressForHost(ctx, h); err != nil {
 		return err
 	}
 	return nil

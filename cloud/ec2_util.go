@@ -793,9 +793,9 @@ func canUseElasticIP(settings *evergreen.Settings, ec2Settings *EC2ProviderSetti
 	return ec2Settings.ElasticIPsEnabled
 }
 
-// allocateIPAddressForHost allocates an elastic IP address from an IPAM pool
-// for the host.
-func allocateIPAddressForHost(ctx context.Context, settings *evergreen.Settings, c AWSClient, h *host.Host) error {
+// allocateIPAddressForHost allocates an unused elastic IP address for the host.
+// kim: TODO: test new logic for using collection.
+func allocateIPAddressForHost(ctx context.Context, h *host.Host) error {
 	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		return errors.Wrap(err, "getting service flags")
@@ -804,12 +804,20 @@ func allocateIPAddressForHost(ctx context.Context, settings *evergreen.Settings,
 		return nil
 	}
 
-	allocationID, err := allocateIPAddress(ctx, c, settings.Providers.AWS.IPAMPoolID)
+	ipAddr, err := host.FindUnusedIPAddress(ctx)
 	if err != nil {
 		return errors.Wrap(err, "allocating IP address")
 	}
-	if err := h.SetIPAllocationID(ctx, allocationID); err != nil {
-		return errors.Wrapf(err, "setting IP allocation ID '%s' for host", allocationID)
+	if ipAddr == nil {
+		return nil
+	}
+	// This intentionally uses the host tag to identify the host instead of the
+	// host ID because the host ID changes after a host is created.
+	if err := ipAddr.SetHostTag(ctx, h.Tag); err != nil {
+		return errors.Wrapf(err, "setting host ID for IP address '%s'", ipAddr)
+	}
+	if err := h.SetIPAllocationID(ctx, ipAddr.AllocationID); err != nil {
+		return errors.Wrapf(err, "setting IP allocation ID '%s' for host", ipAddr.AllocationID)
 	}
 	return nil
 }
@@ -851,7 +859,8 @@ func allocateIPAddress(ctx context.Context, c AWSClient, ipamPoolID string) (str
 
 // releaseIPAddressForHost releases the elastic IP address that was associated
 // with the host, if it has an elastic IP.
-func releaseIPAddressForHost(ctx context.Context, c AWSClient, h *host.Host) error {
+// kim: TODO: test new logic for using collection.
+func releaseIPAddressForHost(ctx context.Context, h *host.Host) error {
 	if h.IPAllocationID == "" {
 		return nil
 	}
@@ -864,13 +873,19 @@ func releaseIPAddressForHost(ctx context.Context, c AWSClient, h *host.Host) err
 		return errors.Errorf("elastic IP features are disabled, host will leak IP allocation '%s'", h.IPAllocationID)
 	}
 
-	ctx, span := tracer.Start(ctx, "releaseIPAddressForHost")
-	defer span.End()
+	ipAddr, err := host.FindIPAddressByAllocationID(ctx, h.IPAllocationID)
+	if err != nil {
+		return errors.Wrapf(err, "finding IP address with allocation ID '%s'", h.IPAllocationID)
+	}
+	if ipAddr == nil {
+		return errors.Errorf("host '%s' is allocated IP address with allocation ID '%s' but that IP address does not exist", h.Id, h.IPAllocationID)
+	}
+	if ipAddr.HostTag != h.Tag {
+		return errors.Errorf("host '%s' is allocated IP address with allocation ID '%s' but that IP address is actually associated with host '%s'", h.Id, h.IPAllocationID, ipAddr.HostTag)
+	}
 
-	if _, err := c.ReleaseAddress(ctx, &ec2.ReleaseAddressInput{
-		AllocationId: aws.String(h.IPAllocationID),
-	}); err != nil {
-		return errors.Wrapf(err, "releasing host IP address with allocation ID '%s'", h.IPAllocationID)
+	if err := ipAddr.UnsetHostTag(ctx); err != nil {
+		return errors.Wrapf(err, "unsetting IP allocation ID '%s' for host", h.IPAllocationID)
 	}
 
 	return nil
@@ -890,8 +905,9 @@ func associateIPAddressForHost(ctx context.Context, c AWSClient, h *host.Host) e
 	defer span.End()
 
 	assocAddrOut, err := c.AssociateAddress(ctx, &ec2.AssociateAddressInput{
-		InstanceId:   aws.String(h.Id),
-		AllocationId: aws.String(h.IPAllocationID),
+		InstanceId:         aws.String(h.Id),
+		AllocationId:       aws.String(h.IPAllocationID),
+		AllowReassociation: utility.TruePtr(),
 	})
 	if err != nil {
 		return errors.Wrap(err, "associating IP address with host")
