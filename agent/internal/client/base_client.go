@@ -444,22 +444,18 @@ func (c *baseCommunicator) makeSender(ctx context.Context, tsk *task.Task, confi
 // and unmarhals it into a patch struct. The GET request is attempted
 // multiple times upon failure. If patchId is not specified, the task's
 // patch is returned.
-func (c *baseCommunicator) GetTaskPatch(ctx context.Context, taskData TaskData, patchId string) (*patchmodel.Patch, error) {
-	patch := patchmodel.Patch{}
+func (c *baseCommunicator) GetTaskPatch(ctx context.Context, taskData TaskData) (*patchmodel.Patch, error) {
 	info := requestInfo{
 		method:   http.MethodGet,
 		taskData: &taskData,
 	}
-	suffix := "patch"
-	if patchId != "" {
-		suffix = fmt.Sprintf("%s?patch=%s", suffix, patchId)
-	}
-	info.setTaskPathSuffix(suffix)
+	info.setTaskPathSuffix("patch")
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return nil, util.RespError(resp, errors.Wrapf(err, "getting patch '%s' for task", patchId).Error())
+		return nil, util.RespError(resp, errors.Wrapf(err, "getting patch for task").Error())
 	}
 
+	patch := patchmodel.Patch{}
 	if err = utility.ReadJSON(resp.Body, &patch); err != nil {
 		return nil, errors.Wrap(err, "reading patch for task from response")
 	}
@@ -475,8 +471,7 @@ func (c *baseCommunicator) GetTaskVersion(ctx context.Context, taskData TaskData
 		method:   http.MethodGet,
 		taskData: &taskData,
 	}
-	suffix := "version"
-	info.setTaskPathSuffix(suffix)
+	info.setTaskPathSuffix("version")
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
 		return nil, util.RespError(resp, errors.Wrap(err, "getting version for task").Error())

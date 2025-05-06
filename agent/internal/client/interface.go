@@ -90,7 +90,7 @@ type SharedCommunicator interface {
 	// The following operations are used by task commands.
 	SendTestLog(context.Context, TaskData, *testlog.TestLog) (string, error)
 	SendTestResults(context.Context, TaskData, []testresult.TestResult) error
-	GetTaskPatch(context.Context, TaskData, string) (*patchmodel.Patch, error)
+	GetTaskPatch(context.Context, TaskData) (*patchmodel.Patch, error)
 	GetTaskVersion(context.Context, TaskData) (*model.Version, error)
 	GetPatchFile(context.Context, TaskData, string) (string, error)
 

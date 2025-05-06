@@ -697,7 +697,7 @@ func (c *gitFetchProject) fetch(ctx context.Context,
 	var err error
 	if evergreen.IsPatchRequester(conf.Task.Requester) {
 		logger.Execution().Info("Fetching patch.")
-		p, err = comm.GetTaskPatch(ctx, td, "")
+		p, err = comm.GetTaskPatch(ctx, td)
 		if err != nil {
 			return errors.Wrap(err, "getting patch for task")
 		}
