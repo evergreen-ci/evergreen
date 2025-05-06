@@ -198,6 +198,8 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.ServiceFlags.LargeParserProjectsDisabled, apiSettings.ServiceFlags.LargeParserProjectsDisabled)
 	assert.EqualValues(testSettings.ServiceFlags.SleepScheduleDisabled, apiSettings.ServiceFlags.SleepScheduleDisabled)
 	assert.EqualValues(testSettings.ServiceFlags.StaticAPIKeysDisabled, apiSettings.ServiceFlags.StaticAPIKeysDisabled)
+
+	assert.EqualValues(testSettings.ServiceFlags.UseJWTTokenForCLI, apiSettings.ServiceFlags.UseJWTTokenForCLI)
 	assert.EqualValues(testSettings.ServiceFlags.SystemFailedTaskRestartDisabled, apiSettings.ServiceFlags.SystemFailedTaskRestartDisabled)
 	assert.EqualValues(testSettings.ServiceFlags.CPUDegradedModeDisabled, apiSettings.ServiceFlags.DegradedModeDisabled)
 	assert.EqualValues(testSettings.ServiceFlags.ElasticIPsDisabled, apiSettings.ServiceFlags.ElasticIPsDisabled)
