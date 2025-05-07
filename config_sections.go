@@ -41,6 +41,7 @@ func NewConfigSections() ConfigSections {
 		&PodLifecycleConfig{},
 		&ProjectCreationConfig{},
 		&RepoTrackerConfig{},
+		&ReleaseModeConfig{},
 		&RuntimeEnvironmentsConfig{},
 		&SchedulerConfig{},
 		&ServiceFlags{},

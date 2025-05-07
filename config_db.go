@@ -92,6 +92,7 @@ var (
 	systemFailedTaskRestartDisabledKey = bsonutil.MustHaveTag(ServiceFlags{}, "SystemFailedTaskRestartDisabled")
 	cpuDegradedModeDisabledKey         = bsonutil.MustHaveTag(ServiceFlags{}, "CPUDegradedModeDisabled")
 	elasticIPsDisabledKey              = bsonutil.MustHaveTag(ServiceFlags{}, "ElasticIPsDisabled")
+	releaseModeDisabledKey             = bsonutil.MustHaveTag(ServiceFlags{}, "ReleaseModeDisabled")
 
 	// ContainerPoolsConfig keys
 	poolsKey = bsonutil.MustHaveTag(ContainerPoolsConfig{}, "Pools")

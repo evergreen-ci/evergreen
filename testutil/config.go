@@ -363,6 +363,10 @@ func MockConfig() *evergreen.Settings {
 			MaxRepoRevisionsToSearch:   20,
 			MaxConcurrentRequests:      30,
 		},
+		ReleaseMode: evergreen.ReleaseModeConfig{
+			DistroMaxHostsFactor:      2.0,
+			TargetTimeSecondsOverride: 60,
+		},
 		Scheduler: evergreen.SchedulerConfig{
 			TaskFinder: "legacy",
 		},
@@ -395,6 +399,7 @@ func MockConfig() *evergreen.Settings {
 			SystemFailedTaskRestartDisabled: true,
 			CPUDegradedModeDisabled:         true,
 			ElasticIPsDisabled:              true,
+			ReleaseModeDisabled:             true,
 		},
 		SingleTaskDistro: evergreen.SingleTaskDistroConfig{
 			ProjectTasksPairs: []evergreen.ProjectTasksPair{
