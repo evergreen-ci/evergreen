@@ -168,6 +168,8 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.Equal(testSettings.Providers.AWS.IPAMPoolID, settingsFromConnector.Providers.AWS.IPAMPoolID)
 	s.EqualValues(testSettings.Providers.Docker.APIVersion, settingsFromConnector.Providers.Docker.APIVersion)
 	s.EqualValues(testSettings.RepoTracker.MaxConcurrentRequests, settingsFromConnector.RepoTracker.MaxConcurrentRequests)
+	s.EqualValues(testSettings.ReleaseMode.DistroMaxHostsFactor, settingsFromConnector.ReleaseMode.DistroMaxHostsFactor)
+	s.EqualValues(testSettings.ReleaseMode.TargetTimeSecondsOverride, settingsFromConnector.ReleaseMode.TargetTimeSecondsOverride)
 	s.EqualValues(testSettings.Scheduler.TaskFinder, settingsFromConnector.Scheduler.TaskFinder)
 	s.EqualValues(testSettings.ServiceFlags.HostInitDisabled, settingsFromConnector.ServiceFlags.HostInitDisabled)
 	s.EqualValues(testSettings.ServiceFlags.PodInitDisabled, settingsFromConnector.ServiceFlags.PodInitDisabled)
