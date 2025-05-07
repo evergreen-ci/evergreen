@@ -1094,6 +1094,10 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 			"project": v.Identifier,
 			"runner":  RunnerName,
 		})
+		// Mark version creation as complete now that all builds and tasks are created
+		if err := v.MarkVersionCreationComplete(ctx); err != nil {
+			return errors.Wrap(err, "marking version creation complete")
+		}
 		return nil
 	}
 
