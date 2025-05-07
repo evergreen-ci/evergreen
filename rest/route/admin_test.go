@@ -200,7 +200,7 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.EqualValues(testSettings.ServiceFlags.CloudCleanupDisabled, settings.ServiceFlags.CloudCleanupDisabled)
 	s.EqualValues(testSettings.ServiceFlags.SleepScheduleDisabled, settings.ServiceFlags.SleepScheduleDisabled)
 	s.EqualValues(testSettings.ServiceFlags.StaticAPIKeysDisabled, settings.ServiceFlags.StaticAPIKeysDisabled)
-	s.EqualValues(testSettings.ServiceFlags.UseJWTTokenForCLI, settings.ServiceFlags.UseJWTTokenForCLI)
+	s.EqualValues(testSettings.ServiceFlags.JWTTokenForCLIDisabled, settings.ServiceFlags.JWTTokenForCLIDisabled)
 	s.EqualValues(testSettings.ServiceFlags.SystemFailedTaskRestartDisabled, settings.ServiceFlags.SystemFailedTaskRestartDisabled)
 	s.EqualValues(testSettings.ServiceFlags.CPUDegradedModeDisabled, settings.ServiceFlags.CPUDegradedModeDisabled)
 	s.EqualValues(testSettings.ServiceFlags.ElasticIPsDisabled, settings.ServiceFlags.ElasticIPsDisabled)

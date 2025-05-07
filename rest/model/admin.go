@@ -2592,7 +2592,7 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.CloudCleanupDisabled = v.CloudCleanupDisabled
 		as.SleepScheduleDisabled = v.SleepScheduleDisabled
 		as.StaticAPIKeysDisabled = v.StaticAPIKeysDisabled
-		as.JWTTokenForCLIDisabled = v.UseJWTTokenForCLI
+		as.JWTTokenForCLIDisabled = v.JWTTokenForCLIDisabled
 		as.SystemFailedTaskRestartDisabled = v.SystemFailedTaskRestartDisabled
 		as.DegradedModeDisabled = v.CPUDegradedModeDisabled
 		as.ElasticIPsDisabled = v.ElasticIPsDisabled
@@ -2638,7 +2638,7 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		CloudCleanupDisabled:            as.CloudCleanupDisabled,
 		SleepScheduleDisabled:           as.SleepScheduleDisabled,
 		StaticAPIKeysDisabled:           as.StaticAPIKeysDisabled,
-		UseJWTTokenForCLI:               as.JWTTokenForCLIDisabled,
+		JWTTokenForCLIDisabled:          as.JWTTokenForCLIDisabled,
 		SystemFailedTaskRestartDisabled: as.SystemFailedTaskRestartDisabled,
 		CPUDegradedModeDisabled:         as.DegradedModeDisabled,
 		ElasticIPsDisabled:              as.ElasticIPsDisabled,

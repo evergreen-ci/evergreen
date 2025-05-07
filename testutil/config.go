@@ -395,7 +395,7 @@ func MockConfig() *evergreen.Settings {
 			CloudCleanupDisabled:            true,
 			SleepScheduleDisabled:           true,
 			StaticAPIKeysDisabled:           true,
-			UseJWTTokenForCLI:               true,
+			JWTTokenForCLIDisabled:          true,
 			SystemFailedTaskRestartDisabled: true,
 			CPUDegradedModeDisabled:         true,
 			ElasticIPsDisabled:              true,
