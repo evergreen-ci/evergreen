@@ -427,16 +427,20 @@ func (m *ec2FleetManager) cleanupStaleLaunchTemplates(ctx context.Context) error
 	return catcher.Resolve()
 }
 
+// cleanupStaleIPAddresses cleans up IP addresses that are assigned to a host
+// but whose host is already terminated.
 func (m *ec2FleetManager) cleanupStaleIPAddresses(ctx context.Context) error {
 	staleIPAddrs, err := host.FindStaleIPAddresses(ctx)
 	if err != nil {
 		return errors.Wrap(err, "finding stale IP addresses")
 	}
-	catcher := grip.NewBasicCatcher()
-	// kim: TODO: turn this into a bulk write, possibly using $in, to reduce
-	// query round-trips.
+
+	ipAddrIDs := make([]string, 0, len(staleIPAddrs))
 	for _, ipAddr := range staleIPAddrs {
-		catcher.Wrapf(ipAddr.UnsetHostTag(ctx), "unsetting host tag for IP address '%s' with allocation ID '%s'", ipAddr.ID, ipAddr.AllocationID)
+		ipAddrIDs = append(ipAddrIDs, ipAddr.ID)
+	}
+	if err := host.IPAddressUnsetHostTags(ctx, ipAddrIDs...); err != nil {
+		return errors.Wrapf(err, "unsetting host tags for %d IP addresses", len(ipAddrIDs))
 	}
 
 	grip.InfoWhen(len(staleIPAddrs) > 0, message.Fields{
@@ -445,7 +449,7 @@ func (m *ec2FleetManager) cleanupStaleIPAddresses(ctx context.Context) error {
 		"provider":       evergreen.ProviderNameEc2Fleet,
 	})
 
-	return catcher.Resolve()
+	return nil
 }
 
 // cleanupIdleElasticIPs checks for any elastic IP addresses that are not

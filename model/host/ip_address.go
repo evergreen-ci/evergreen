@@ -65,6 +65,20 @@ func (a *IPAddress) UnsetHostTag(ctx context.Context) error {
 	return nil
 }
 
+// IPAddressUnsetHostTags unsets the host tag for many IP addresses by ID.
+func IPAddressUnsetHostTags(ctx context.Context, ids ...string) error {
+	if len(ids) == 0 {
+		return nil
+	}
+
+	_, err := db.UpdateAllContext(ctx, IPAddressCollection, bson.M{
+		ipAddressIDKey: bson.M{"$in": ids},
+	}, bson.M{
+		"$unset": bson.M{ipAddressHostTagKey: 1},
+	})
+	return err
+}
+
 // FindIPAddressByAllocationID finds an IP address by the IP address's
 // allocation ID.
 func FindIPAddressByAllocationID(ctx context.Context, allocationID string) (*IPAddress, error) {
