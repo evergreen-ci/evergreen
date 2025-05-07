@@ -1016,8 +1016,6 @@ func createVersionItems(ctx context.Context, v *model.Version, metadata model.Ve
 	v.ProjectStorageMethod = ppStorageMethod
 
 	txFunc := func(sessCtx mongo.SessionContext) error {
-		// sessCtx := mongo.SessionFromContext(ctx)
-
 		err := sessCtx.StartTransaction()
 		if err != nil {
 			return errors.Wrap(err, "starting transaction")
