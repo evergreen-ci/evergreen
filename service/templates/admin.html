@@ -449,9 +449,18 @@ Admin Settings
 												</td>
 											</tr>
 											<tr>
-												<td>Use Static API credentials for users </td>
+												<td>Allow Static API credentials for users </td>
 												<td colspan="2">
 													<md-radio-group data-ng-model="Settings.service_flags.static_api_keys_disabled" layout="row">
+														<md-radio-button data-ng-value="false"></md-radio-button>
+														<md-radio-button data-ng-value="true"></md-radio-button>
+													</md-radio-group>
+												</td>
+											</tr>
+											<tr>
+												<td>Use JWT token for CLI </td>
+												<td colspan="2">
+													<md-radio-group data-ng-model="Settings.service_flags.jwt_token_for_cli_disabled" layout="row">
 														<md-radio-button data-ng-value="false"></md-radio-button>
 														<md-radio-button data-ng-value="true"></md-radio-button>
 													</md-radio-group>

@@ -2160,6 +2160,7 @@ type APIServiceFlags struct {
 	CloudCleanupDisabled            bool `json:"cloud_cleanup_disabled"`
 	SleepScheduleDisabled           bool `json:"sleep_schedule_disabled"`
 	StaticAPIKeysDisabled           bool `json:"static_api_keys_disabled"`
+	JWTTokenForCLIDisabled          bool `json:"jwt_token_for_cli_disabled"`
 	SystemFailedTaskRestartDisabled bool `json:"system_failed_task_restart_disabled"`
 	DegradedModeDisabled            bool `json:"cpu_degraded_mode_disabled"`
 	ElasticIPsDisabled              bool `json:"elastic_ips_disabled"`
@@ -2591,6 +2592,7 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.CloudCleanupDisabled = v.CloudCleanupDisabled
 		as.SleepScheduleDisabled = v.SleepScheduleDisabled
 		as.StaticAPIKeysDisabled = v.StaticAPIKeysDisabled
+		as.JWTTokenForCLIDisabled = v.JWTTokenForCLIDisabled
 		as.SystemFailedTaskRestartDisabled = v.SystemFailedTaskRestartDisabled
 		as.DegradedModeDisabled = v.CPUDegradedModeDisabled
 		as.ElasticIPsDisabled = v.ElasticIPsDisabled
@@ -2636,6 +2638,7 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		CloudCleanupDisabled:            as.CloudCleanupDisabled,
 		SleepScheduleDisabled:           as.SleepScheduleDisabled,
 		StaticAPIKeysDisabled:           as.StaticAPIKeysDisabled,
+		JWTTokenForCLIDisabled:          as.JWTTokenForCLIDisabled,
 		SystemFailedTaskRestartDisabled: as.SystemFailedTaskRestartDisabled,
 		CPUDegradedModeDisabled:         as.DegradedModeDisabled,
 		ElasticIPsDisabled:              as.ElasticIPsDisabled,
