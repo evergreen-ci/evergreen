@@ -377,7 +377,6 @@ func (m *ec2FleetManager) CleanupIP(ctx context.Context, h *host.Host) error {
 	return releaseIPAddressForHost(ctx, h)
 }
 
-// kim: TODO: test cloud cleanup job for this.
 func (m *ec2FleetManager) Cleanup(ctx context.Context) error {
 	if err := m.setupClient(ctx); err != nil {
 		return errors.Wrap(err, "creating client")

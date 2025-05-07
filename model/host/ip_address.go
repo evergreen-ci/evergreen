@@ -94,7 +94,6 @@ func FindIPAddressByAllocationID(ctx context.Context, allocationID string) (*IPA
 
 // FindStaleIPAddresses finds all IP addresses that are currently assigned to
 // some host but whose host is already terminated.
-// kim: TODO: test manually in MDB.
 func FindStaleIPAddresses(ctx context.Context) ([]IPAddress, error) {
 	ipAddrs := []IPAddress{}
 	const hostKey = "host"
