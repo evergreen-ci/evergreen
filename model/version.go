@@ -324,8 +324,20 @@ func (v *Version) MarkVersionCreationComplete(ctx context.Context) error {
 
 	// Retry activation if it was previously skipped
 	if v.ActivationSkipped {
-		if _, err := DoProjectActivation(ctx, v.Identifier, time.Now()); err != nil {
+		activated, err := DoProjectActivation(ctx, v.Identifier, time.Now())
+		if err != nil {
 			return errors.Wrap(err, "failed to activate version after marking complete")
+		}
+		if activated {
+			// Clear ActivationSkipped flag only after successful activation
+			if err := VersionUpdateOne(
+				ctx,
+				bson.M{VersionIdKey: v.Id},
+				bson.M{"$unset": bson.M{"activation_skipped": ""}},
+			); err != nil {
+				return errors.Wrap(err, "clearing activation skipped flag")
+			}
+			v.ActivationSkipped = false
 		}
 	}
 

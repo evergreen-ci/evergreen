@@ -44,13 +44,19 @@ func TestVersionActivationWithIncompleteVersion(t *testing.T) {
 	assert.NoError(err)
 	assert.False(activated, "version should not be activated when CreateComplete is false")
 
+	// Verify ActivationSkipped was set
+	v, err = VersionFindOne(ctx, VersionById(v.Id))
+	assert.NoError(err)
+	assert.True(v.ActivationSkipped, "version should be marked as activation skipped")
+
 	// Complete version creation
 	require.NoError(v.MarkVersionCreationComplete(ctx))
 
-	// Verify the version was also activated when marked as complete
+	// Verify the version was activated and ActivationSkipped was cleared
 	v, err = VersionFindOne(ctx, VersionById(v.Id))
 	assert.NoError(err)
 	assert.True(utility.FromBoolPtr(v.Activated))
+	assert.False(v.ActivationSkipped, "ActivationSkipped should be cleared after successful activation")
 
 	// Try to activate again - should be skipped since it's already activated
 	activated, err = DoProjectActivation(ctx, "project", time.Now())
