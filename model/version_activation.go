@@ -10,6 +10,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func DoProjectActivation(ctx context.Context, id string, ts time.Time) (bool, error) {
@@ -26,6 +27,18 @@ func DoProjectActivation(ctx context.Context, id string, ts time.Time) (bool, er
 			"operation": "project-activation",
 			"complete":  activateVersion != nil && activateVersion.CreateComplete,
 		})
+
+		// Mark version as skipped if it exists but isn't complete
+		if activateVersion != nil && !activateVersion.CreateComplete {
+			if err := UpdateOne(
+				ctx,
+				VersionCollection,
+				bson.M{IdKey: activateVersion.Id},
+				bson.M{"$set": bson.M{"activation_skipped": true}},
+			); err != nil {
+				return false, errors.Wrap(err, "failed to mark version activation as skipped")
+			}
+		}
 		return false, nil
 	}
 	activated, err := ActivateElapsedBuildsAndTasks(ctx, activateVersion)

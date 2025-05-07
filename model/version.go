@@ -104,7 +104,8 @@ type Version struct {
 	// by generate.tasks for this version is stored. If this is empty, the default storage method is StorageMethodDB.
 	PreGenerationProjectStorageMethod evergreen.ParserProjectStorageMethod `bson:"pre_generation_storage_method" json:"pre_generation_storage_method,omitempty"`
 
-	CreateComplete bool `bson:"create_complete" json:"create_complete"`
+	CreateComplete    bool `bson:"create_complete" json:"create_complete"`
+	ActivationSkipped bool `bson:"activation_skipped,omitempty" json:"activation_skipped,omitempty"`
 }
 
 func (v *Version) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(v) }
@@ -311,7 +312,6 @@ func (v *Version) GetBuildVariants(ctx context.Context) ([]VersionBuildStatus, e
 
 // MarkVersionCreationComplete marks a version as fully created
 func (v *Version) MarkVersionCreationComplete(ctx context.Context) error {
-	v.CreateComplete = true
 	if err := VersionUpdateOne(
 		ctx,
 		bson.M{VersionIdKey: v.Id},
@@ -320,10 +320,16 @@ func (v *Version) MarkVersionCreationComplete(ctx context.Context) error {
 		return errors.Wrap(err, "updating version to mark creation complete")
 	}
 
-	// Check for activation after marking complete, using version's creation time
-	// to ensure we pick up this version
-	_, err := DoProjectActivation(ctx, v.Identifier, v.CreateTime)
-	return errors.Wrap(err, "checking for version activation after marking complete")
+	v.CreateComplete = true
+
+	// Retry activation if it was previously skipped
+	if v.ActivationSkipped {
+		if _, err := DoProjectActivation(ctx, v.Identifier, time.Now()); err != nil {
+			return errors.Wrap(err, "failed to activate version after marking complete")
+		}
+	}
+
+	return nil
 }
 
 // VersionBuildStatus stores metadata relating to each build
