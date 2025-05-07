@@ -30,10 +30,9 @@ func DoProjectActivation(ctx context.Context, id string, ts time.Time) (bool, er
 
 		// Mark version as skipped if it exists but isn't complete
 		if activateVersion != nil && !activateVersion.CreateComplete {
-			if err := UpdateOne(
+			if err := VersionUpdateOne(
 				ctx,
-				VersionCollection,
-				bson.M{IdKey: activateVersion.Id},
+				bson.M{VersionIdKey: activateVersion.Id},
 				bson.M{"$set": bson.M{"activation_skipped": true}},
 			); err != nil {
 				return false, errors.Wrap(err, "failed to mark version activation as skipped")
