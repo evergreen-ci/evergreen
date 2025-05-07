@@ -18,11 +18,13 @@ func DoProjectActivation(ctx context.Context, id string, ts time.Time) (bool, er
 	if err != nil {
 		return false, errors.WithStack(err)
 	}
-	if activateVersion == nil {
+	// Skip activation if version is nil or not fully created yet
+	if activateVersion == nil || !activateVersion.CreateComplete {
 		grip.Info(message.Fields{
-			"message":   "no version to activate for repository",
+			"message":   "no complete version to activate for repository",
 			"project":   id,
 			"operation": "project-activation",
+			"complete":  activateVersion != nil && activateVersion.CreateComplete,
 		})
 		return false, nil
 	}

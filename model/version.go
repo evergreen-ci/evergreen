@@ -103,6 +103,8 @@ type Version struct {
 	// PreGenerationProjectStorageMethod describes how the cached parser project from before it was modified
 	// by generate.tasks for this version is stored. If this is empty, the default storage method is StorageMethodDB.
 	PreGenerationProjectStorageMethod evergreen.ParserProjectStorageMethod `bson:"pre_generation_storage_method" json:"pre_generation_storage_method,omitempty"`
+
+	CreateComplete bool `bson:"create_complete" json:"create_complete"`
 }
 
 func (v *Version) MarshalBSON() ([]byte, error)  { return mgobson.Marshal(v) }
@@ -305,6 +307,23 @@ func (v *Version) GetBuildVariants(ctx context.Context) ([]VersionBuildStatus, e
 	v.BuildVariants = bvs
 
 	return v.BuildVariants, nil
+}
+
+// MarkVersionCreationComplete marks a version as fully created
+func (v *Version) MarkVersionCreationComplete(ctx context.Context) error {
+	v.CreateComplete = true
+	if err := VersionUpdateOne(
+		ctx,
+		bson.M{VersionIdKey: v.Id},
+		bson.M{"$set": bson.M{"create_complete": true}},
+	); err != nil {
+		return errors.Wrap(err, "updating version to mark creation complete")
+	}
+
+	// Check for activation after marking complete, using version's creation time
+	// to ensure we pick up this version
+	_, err := DoProjectActivation(ctx, v.Identifier, v.CreateTime)
+	return errors.Wrap(err, "checking for version activation after marking complete")
 }
 
 // VersionBuildStatus stores metadata relating to each build
