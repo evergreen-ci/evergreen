@@ -362,7 +362,7 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.
 	var confPatch *patch.Patch
 	if evergreen.IsGitHubPatchRequester(tsk.Requester) {
 		grip.Info("Fetching patch document for GitHub PR request.")
-		confPatch, err = a.comm.GetTaskPatch(ctx, tc.task, "")
+		confPatch, err = a.comm.GetTaskPatch(ctx, tc.task)
 		if err != nil {
 			return nil, errors.Wrap(err, "fetching patch for GitHub PR request")
 		}

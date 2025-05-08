@@ -1326,7 +1326,8 @@ Parameters:
 -   `local_file`: the local file to save, do not use with `extract_to`.
     This is relative to [task's working directory](./Best-Practices.md#task-directory)
 -   `extract_to`: the local directory to extract to, do not use with
-    `local_file`. This is relative to [task's working directory](./Best-Practices.md#task-directory)
+    `local_file`. This requires the remote file to be a tarball (eg. `.tgz`).
+    This is relative to [task's working directory](./Best-Practices.md#task-directory)
 -   `remote_file`: the S3 path to get the file from
 -   `bucket`: the S3 bucket to use.
 -   `region`: AWS region of the bucket, defaults to us-east-1.
