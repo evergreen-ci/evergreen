@@ -693,7 +693,7 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, versionID string, ta
 	}
 
 	if len(allTaskOpts) > 0 {
-		samples, err := testresult.GetFailedTestSamples(ctx, evergreen.GetEnvironment(), allTaskOpts, failingTests)
+		samples, err := dbTasks[0].GetFailedTestSamples(ctx, evergreen.GetEnvironment(), allTaskOpts, failingTests)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting test results sample: %s", err.Error()))
 		}

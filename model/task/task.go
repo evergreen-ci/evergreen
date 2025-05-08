@@ -1787,16 +1787,6 @@ func (t *Task) getTaskOutputSafe() (*taskoutput.TaskOutput, bool) {
 	return t.TaskOutputInfo, true
 }
 
-// GetTaskOutputInfoWithError is a convenience function to avoid panics when
-// accessing the task output data.
-func (t *Task) GetTaskOutputWithError() (*taskoutput.TaskOutput, error) {
-	if t.TaskOutputInfo == nil {
-		return nil, errors.New("programmatic error: task output info expected to be set but found nil")
-	}
-
-	return t.TaskOutputInfo, nil
-}
-
 // GetTaskLogs returns the task's task logs with the given options.
 func (t *Task) GetTaskLogs(ctx context.Context, getOpts taskoutput.TaskLogGetOptions) (log.LogIterator, error) {
 	if t.DisplayOnly {
@@ -3215,6 +3205,16 @@ func (t *Task) PopulateTestResults(ctx context.Context) error {
 	return nil
 }
 
+// AppendTestResults returns the task's test results filtered, sorted, and
+// paginated as specified by the optional filter options.
+func (t *Task) AppendTestResults(ctx context.Context, testResults []testresult.TestResult) error {
+	output, ok := t.getTaskOutputSafe()
+	if !ok {
+		return nil
+	}
+	return output.TestResults.AppendTestResults(ctx, testResults)
+}
+
 // GetTestResults returns the task's test results filtered, sorted, and
 // paginated as specified by the optional filter options.
 func (t *Task) GetTestResults(ctx context.Context, env evergreen.Environment, filterOpts *testresult.FilterOptions) (testresult.TaskTestResults, error) {
@@ -3224,6 +3224,21 @@ func (t *Task) GetTestResults(ctx context.Context, env evergreen.Environment, fi
 	}
 	if len(taskOpts) == 0 {
 		return testresult.TaskTestResults{}, nil
+	}
+
+	flags, err := evergreen.GetServiceFlags(ctx)
+	if err != nil {
+		return testresult.TaskTestResults{}, errors.Wrap(err, "retrieving service flags")
+	}
+	if !flags.EvergreenTestResultsDisabled {
+		output, ok := t.getTaskOutputSafe()
+		if !ok {
+			return testresult.TaskTestResults{}, nil
+		}
+		if len(taskOpts) == 0 {
+			return testresult.TaskTestResults{}, nil
+		}
+		return output.TestResults.GetMergedTaskTestResults(ctx, taskOpts, filterOpts)
 	}
 
 	return testresult.GetMergedTaskTestResults(ctx, env, taskOpts, filterOpts)
@@ -3239,10 +3254,25 @@ func (t *Task) GetTestResultsStats(ctx context.Context, env evergreen.Environmen
 		return testresult.TaskTestResultsStats{}, nil
 	}
 
+	flags, err := evergreen.GetServiceFlags(ctx)
+	if err != nil {
+		return testresult.TaskTestResultsStats{}, errors.Wrap(err, "retrieving service flags")
+	}
+	if !flags.EvergreenTestResultsDisabled {
+		output, ok := t.getTaskOutputSafe()
+		if !ok {
+			return testresult.TaskTestResultsStats{}, nil
+		}
+		if len(taskOpts) == 0 {
+			return testresult.TaskTestResultsStats{}, nil
+		}
+		return output.TestResults.GetMergedTaskTestResultsStats(ctx, taskOpts)
+	}
+
 	return testresult.GetMergedTaskTestResultsStats(ctx, env, taskOpts)
 }
 
-// GetTestResultsStats returns a sample of test names (up to 10) that failed in
+// GetFailedTestSample returns a sample of test names (up to 10) that failed in
 // the task. If the task does not have any results or does not have any failing
 // tests, a nil slice is returned.
 func (t *Task) GetFailedTestSample(ctx context.Context, env evergreen.Environment) ([]string, error) {
@@ -3254,7 +3284,46 @@ func (t *Task) GetFailedTestSample(ctx context.Context, env evergreen.Environmen
 		return nil, nil
 	}
 
+	flags, err := evergreen.GetServiceFlags(ctx)
+	if err != nil {
+		return []string{}, errors.Wrap(err, "retrieving service flags")
+	}
+	if !flags.EvergreenTestResultsDisabled {
+		output, ok := t.getTaskOutputSafe()
+		if !ok {
+			return []string{}, nil
+		}
+		if len(taskOpts) == 0 {
+			return []string{}, nil
+		}
+		return output.TestResults.GetMergedFailedTestSample(ctx, taskOpts)
+	}
+
 	return testresult.GetMergedFailedTestSample(ctx, env, taskOpts)
+}
+
+// GetFailedTestSamples returns failed test samples filtered as specified by
+// the optional regex filters for each task specified.
+func (t *Task) GetFailedTestSamples(ctx context.Context, env evergreen.Environment, taskOpts []testresult.TaskOptions, regexFilters []string) ([]testresult.TaskTestResultsFailedSample, error) {
+	if len(taskOpts) == 0 {
+		return nil, nil
+	}
+	flags, err := evergreen.GetServiceFlags(ctx)
+	if err != nil {
+		return []testresult.TaskTestResultsFailedSample{}, errors.Wrap(err, "retrieving service flags")
+	}
+	if !flags.EvergreenTestResultsDisabled {
+		output, ok := t.getTaskOutputSafe()
+		if !ok {
+			return []testresult.TaskTestResultsFailedSample{}, nil
+		}
+		if len(taskOpts) == 0 {
+			return []testresult.TaskTestResultsFailedSample{}, nil
+		}
+		return output.TestResults.GetFailedTestSamples(ctx, taskOpts, regexFilters)
+	}
+
+	return testresult.GetFailedTestSamples(ctx, env, taskOpts, regexFilters)
 }
 
 // CreateTestResultsTaskOptions returns the options required for fetching test

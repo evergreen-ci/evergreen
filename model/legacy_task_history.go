@@ -246,12 +246,12 @@ func (thi *taskHistoryIterator) GetFailedTests(tasks []task.Task) (map[string][]
 			taskIDsToDisplay[opts.TaskID] = tsk.Id
 		}
 	}
-	if len(allTaskOpts) == 0 {
+	if len(allTaskOpts) == 0 || len(tasks) == 0 {
 		// This is an added hack to make tests pass when transitioning
 		// between Mongo drivers.
 		return map[string][]string{}, nil
 	}
-	results, err := testresult.GetFailedTestSamples(ctx, env, allTaskOpts, nil)
+	results, err := tasks[0].GetFailedTestSamples(ctx, env, allTaskOpts, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting failed test results samples from Cedar")
 	}
