@@ -95,7 +95,7 @@ func TestEvergreenCredentials(t *testing.T) {
 					Expiration:      assumeRoleExpires,
 					ExternalID:      "external_id",
 				}
-				existingExpires := time.Now().Add(time.Millisecond * 200)
+				existingExpires := time.Now().Add(200 * time.Millisecond)
 				existingCredentials := &aws.Credentials{
 					AccessKeyID:     "existing_access_key",
 					SecretAccessKey: "existing_secret_access_key",
@@ -115,7 +115,7 @@ func TestEvergreenCredentials(t *testing.T) {
 				assert.Nil(t, provider.updateExternalID)
 
 				t.Run("AssumeRoleAfterExistingExpires", func(t *testing.T) {
-					time.Sleep(time.Millisecond * 300)
+					time.Sleep(200 * time.Millisecond)
 
 					creds, err = provider.Retrieve(t.Context())
 					require.NoError(t, err)
