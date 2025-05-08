@@ -1325,7 +1325,7 @@ Parameters:
     This is the recommended way to authenticate with AWS.
 -   `local_file`: the local file to save, do not use with `extract_to`
 -   `extract_to`: the local directory to extract to, do not use with
-    `local_file`
+    `local_file`. This requires the remote file to be a tarball (eg. `.tgz`)
 -   `remote_file`: the S3 path to get the file from
 -   `bucket`: the S3 bucket to use.
 -   `region`: AWS region of the bucket, defaults to us-east-1.
