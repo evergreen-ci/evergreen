@@ -195,7 +195,7 @@ func (c *s3get) Execute(ctx context.Context, comm client.Communicator, logger cl
 				CanExpire:       true,
 			}
 		} else {
-			logger.Task().Warningf("Error parsing expiration time: '%s'. Continuing command by calling AssumeRole again.", err.Error())
+			logger.Task().Warningf("Error parsing expiration time to determine if credentials are still valid: '%s'. Continuing command by calling AssumeRole again.", err.Error())
 		}
 	}
 
