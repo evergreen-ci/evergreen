@@ -41,7 +41,7 @@ func createEvergreenCredentials(comm client.Communicator, taskData client.TaskDa
 }
 
 func (p *evergreenCredentialProvider) Retrieve(ctx context.Context) (aws.Credentials, error) {
-	if p.existingCredentials != nil && p.existingCredentials.AccessKeyID != "" && !p.existingCredentials.Expired() {
+	if p.existingCredentials != nil && p.existingCredentials.HasKeys() && !p.existingCredentials.Expired() {
 		return *p.existingCredentials, nil
 	}
 
