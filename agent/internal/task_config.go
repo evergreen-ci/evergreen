@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal/taskoutput"
@@ -40,11 +41,11 @@ type TaskConfig struct {
 	// and should persist throughout the task's execution.
 	DynamicExpansions util.Expansions
 
-	// AssumeRoleRoles holds the session tokens with their corresponding
+	// AssumeRoleInformation holds the session tokens with their corresponding
 	// expiration and role ARNs that have been assumed by the agent during the task's execution.
 	// User's don't pass in their expiration, so we need to keep track of it when
 	// we want to use their passed in credentials.
-	AssumeRoleRoles map[string]AssumeRoleInformation
+	AssumeRoleInformation map[string]AssumeRoleInformation
 
 	ProjectVars map[string]string
 	Redacted    []string
@@ -88,7 +89,7 @@ type CommandCleanup struct {
 
 type AssumeRoleInformation struct {
 	RoleARN    string
-	Expiration string
+	Expiration time.Time
 }
 
 // AddCommandCleanup adds a cleanup function to the TaskConfig.
@@ -222,21 +223,21 @@ func NewTaskConfig(opts TaskConfigOptions) (*TaskConfig, error) {
 	}
 
 	taskConfig := &TaskConfig{
-		Distro:             opts.Distro,
-		Host:               opts.Host,
-		ProjectRef:         *opts.ProjectRef,
-		Project:            *opts.Project,
-		Task:               *opts.Task,
-		BuildVariant:       *bv,
-		Expansions:         opts.ExpansionsAndVars.Expansions,
-		NewExpansions:      agentutil.NewDynamicExpansions(opts.ExpansionsAndVars.Expansions),
-		DynamicExpansions:  util.Expansions{},
-		AssumeRoleRoles:    map[string]AssumeRoleInformation{},
-		InternalRedactions: agentutil.NewDynamicExpansions(internalRedactions),
-		ProjectVars:        opts.ExpansionsAndVars.Vars,
-		Redacted:           redacted,
-		WorkDir:            opts.WorkDir,
-		TaskGroup:          taskGroup,
+		Distro:                opts.Distro,
+		Host:                  opts.Host,
+		ProjectRef:            *opts.ProjectRef,
+		Project:               *opts.Project,
+		Task:                  *opts.Task,
+		BuildVariant:          *bv,
+		Expansions:            opts.ExpansionsAndVars.Expansions,
+		NewExpansions:         agentutil.NewDynamicExpansions(opts.ExpansionsAndVars.Expansions),
+		DynamicExpansions:     util.Expansions{},
+		AssumeRoleInformation: map[string]AssumeRoleInformation{},
+		InternalRedactions:    agentutil.NewDynamicExpansions(internalRedactions),
+		ProjectVars:           opts.ExpansionsAndVars.Vars,
+		Redacted:              redacted,
+		WorkDir:               opts.WorkDir,
+		TaskGroup:             taskGroup,
 	}
 	if opts.Patch != nil {
 		taskConfig.GithubPatchData = opts.Patch.GithubPatchData

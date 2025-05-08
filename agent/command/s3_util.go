@@ -88,22 +88,15 @@ func getAssumedRoleARN(conf *internal.TaskConfig, sessionToken string) string {
 		return ""
 	}
 
-	return conf.AssumeRoleRoles[sessionToken].RoleARN
+	return conf.AssumeRoleInformation[sessionToken].RoleARN
 }
 
 // getAssumedRoleExpiration checks if the provided session token
 // is associated with an assumed role. If it is, it returns
 // the expiration time of the role.
-func getAssumedRoleExpiration(conf *internal.TaskConfig, sessionToken string) (time.Time, bool, error) {
+func getAssumedRoleExpiration(conf *internal.TaskConfig, sessionToken string) (time.Time, bool) {
 	if sessionToken == "" {
-		return time.Time{}, false, nil
+		return time.Time{}, false
 	}
-	expiration := conf.AssumeRoleRoles[sessionToken].Expiration
-	if expiration == "" {
-		return time.Time{}, false, nil
-	}
-
-	exp, err := time.Parse(time.RFC3339, expiration)
-
-	return exp, true, errors.Wrapf(err, "parsing expiration time: '%s'", expiration)
+	return conf.AssumeRoleInformation[sessionToken].Expiration, true
 }

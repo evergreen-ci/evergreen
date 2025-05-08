@@ -184,18 +184,14 @@ func (c *s3get) Execute(ctx context.Context, comm client.Communicator, logger cl
 		return errors.Wrap(err, "validating expanded params")
 	}
 
-	if expiration, found, err := getAssumedRoleExpiration(conf, c.AwsSessionToken); found {
+	if expiration, found := getAssumedRoleExpiration(conf, c.AwsSessionToken); found {
 		c.assumedRoleARN = getAssumedRoleARN(conf, c.AwsSessionToken)
-		if err == nil {
-			c.existingCredentials = &aws.Credentials{
-				AccessKeyID:     c.AwsKey,
-				SecretAccessKey: c.AwsSecret,
-				SessionToken:    c.AwsSessionToken,
-				Expires:         expiration,
-				CanExpire:       true,
-			}
-		} else {
-			logger.Task().Warningf("Error parsing expiration time to determine if credentials are still valid: '%s'. Continuing command by calling AssumeRole again.", err.Error())
+		c.existingCredentials = &aws.Credentials{
+			AccessKeyID:     c.AwsKey,
+			SecretAccessKey: c.AwsSecret,
+			SessionToken:    c.AwsSessionToken,
+			Expires:         expiration,
+			CanExpire:       true,
 		}
 	}
 
