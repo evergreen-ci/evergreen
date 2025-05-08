@@ -758,6 +758,8 @@ func (p *ProjectRef) SetGithubAppCredentials(ctx context.Context, appID int64, p
 		if ghApp != nil {
 			return githubapp.RemoveGitHubAppAuth(ctx, ghApp)
 		}
+		// If there's no github app to delete, we don't need to do anything.
+		return nil
 	}
 
 	if appID == 0 || len(privateKey) == 0 {

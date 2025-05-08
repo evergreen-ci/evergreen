@@ -11,7 +11,10 @@
       "build_variant_display_name": "Ubuntu 22.04",
       "execution": 0,
       "order": 101,
-      "r": "gitter_request"
+      "r": "gitter_request",
+      "create_time": {
+        "$date": "2024-12-30T00:00:03Z"
+      }
     },
     {
       "_id": "task_102",
@@ -24,7 +27,10 @@
       "build_variant_display_name": "Ubuntu 22.04",
       "execution": 1,
       "order": 102,
-      "r": "ad_hoc"
+      "r": "ad_hoc",
+      "create_time": {
+        "$date": "2024-12-31T00:00:03Z"
+      }
     },
     {
       "_id": "task_103",
@@ -37,7 +43,10 @@
       "build_variant_display_name": "Ubuntu 22.04",
       "execution": 0,
       "order": 103,
-      "r": "git_tag_request"
+      "r": "git_tag_request",
+      "create_time": {
+        "$date": "2025-01-01T00:00:03Z"
+      }
     },
     {
       "_id": "task_104",
@@ -50,7 +59,10 @@
       "build_variant_display_name": "Ubuntu 22.04",
       "execution": 0,
       "order": 104,
-      "r": "trigger_request"
+      "r": "trigger_request",
+      "create_time": {
+        "$date": "2025-01-02T00:00:03Z"
+      }
     },
     {
       "_id": "task_105",
@@ -63,7 +75,10 @@
       "build_variant_display_name": "Ubuntu 22.04",
       "execution": 0,
       "order": 105,
-      "r": "gitter_request"
+      "r": "gitter_request",
+      "create_time": {
+        "$date": "2025-01-03T00:00:03Z"
+      }
     },
     {
       "_id": "task_106",
@@ -76,7 +91,10 @@
       "build_variant_display_name": "Ubuntu 22.04",
       "execution": 0,
       "order": 106,
-      "r": "gitter_request"
+      "r": "gitter_request",
+      "create_time": {
+        "$date": "2025-01-04T00:00:03Z"
+      }
     },
     {
       "_id": "task_107",
@@ -89,7 +107,10 @@
       "build_variant_display_name": "Ubuntu 22.04",
       "execution": 2,
       "order": 107,
-      "r": "ad_hoc"
+      "r": "ad_hoc",
+      "create_time": {
+        "$date": "2025-01-05T00:00:03Z"
+      }
     },
     {
       "_id": "task_1_trailing_inactive_version",

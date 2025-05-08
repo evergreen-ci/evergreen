@@ -18,16 +18,21 @@ type evergreenCredentialProvider struct {
 
 	// roleARN is the ARN of the role to assume.
 	roleARN string
+
+	// updateExternalID is a function that gets called with
+	// the external ID used in the AssumeRole request.
+	updateExternalID func(string)
 }
 
 // createEvergreenCredentials creates a new evergreenCredentialProvider. It supports
 // long operations or operations that might need to request new credentials during
 // the operation (e.g. multipart bucket uploads).
-func createEvergreenCredentials(comm client.Communicator, taskData client.TaskData, roleARN string) *evergreenCredentialProvider {
+func createEvergreenCredentials(comm client.Communicator, taskData client.TaskData, roleARN string, updateExternalID func(string)) *evergreenCredentialProvider {
 	return &evergreenCredentialProvider{
-		comm:     comm,
-		taskData: taskData,
-		roleARN:  roleARN,
+		comm:             comm,
+		taskData:         taskData,
+		roleARN:          roleARN,
+		updateExternalID: updateExternalID,
 	}
 }
 
@@ -50,6 +55,10 @@ func (p *evergreenCredentialProvider) Retrieve(ctx context.Context) (aws.Credent
 	expires, err := time.Parse(time.RFC3339, creds.Expiration)
 	if err != nil {
 		return aws.Credentials{}, errors.Wrap(err, "parsing expiration time")
+	}
+
+	if p.updateExternalID != nil {
+		p.updateExternalID(creds.ExternalID)
 	}
 
 	return aws.Credentials{

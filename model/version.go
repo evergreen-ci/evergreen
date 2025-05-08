@@ -22,20 +22,27 @@ import (
 )
 
 type Version struct {
-	Id                  string    `bson:"_id" json:"id,omitempty"`
-	CreateTime          time.Time `bson:"create_time" json:"create_time,omitempty"`
-	StartTime           time.Time `bson:"start_time" json:"start_time,omitempty"`
-	FinishTime          time.Time `bson:"finish_time" json:"finish_time,omitempty"`
-	Revision            string    `bson:"gitspec" json:"revision,omitempty"`
-	Author              string    `bson:"author" json:"author,omitempty"`
-	AuthorEmail         string    `bson:"author_email" json:"author_email,omitempty"`
-	Message             string    `bson:"message" json:"message,omitempty"`
-	Status              string    `bson:"status" json:"status,omitempty"`
-	RevisionOrderNumber int       `bson:"order,omitempty" json:"order,omitempty"`
-	Ignored             bool      `bson:"ignored" json:"ignored"`
-	Owner               string    `bson:"owner_name" json:"owner_name,omitempty"`
-	Repo                string    `bson:"repo_name" json:"repo_name,omitempty"`
-	Branch              string    `bson:"branch_name" json:"branch_name,omitempty"`
+	Id         string    `bson:"_id" json:"id,omitempty"`
+	CreateTime time.Time `bson:"create_time" json:"create_time,omitempty"`
+	StartTime  time.Time `bson:"start_time" json:"start_time,omitempty"`
+	FinishTime time.Time `bson:"finish_time" json:"finish_time,omitempty"`
+	Revision   string    `bson:"gitspec" json:"revision,omitempty"`
+	// Author is a reference to the Evergreen user that authored
+	// this commit, if they can be identified. This may refer to the user's
+	// ID or their display name.
+	Author string `bson:"author" json:"author,omitempty"`
+	// AuthorID is an optional reference to the Evergreen user that authored
+	// this commit, if they can be identified. This always refers to the user's
+	// ID.
+	AuthorID            string `bson:"author_id,omitempty" json:"author_id,omitempty"`
+	AuthorEmail         string `bson:"author_email" json:"author_email,omitempty"`
+	Message             string `bson:"message" json:"message,omitempty"`
+	Status              string `bson:"status" json:"status,omitempty"`
+	RevisionOrderNumber int    `bson:"order,omitempty" json:"order,omitempty"`
+	Ignored             bool   `bson:"ignored" json:"ignored"`
+	Owner               string `bson:"owner_name" json:"owner_name,omitempty"`
+	Repo                string `bson:"repo_name" json:"repo_name,omitempty"`
+	Branch              string `bson:"branch_name" json:"branch_name,omitempty"`
 	// BuildVariants contains information about build variant activation. This
 	// is not always loaded in version document queries because it can be large.
 	// See (Version).GetBuildVariants to fetch this field.
@@ -75,10 +82,6 @@ type Version struct {
 	// this field is omitted in the database
 	Errors   []string `bson:"errors,omitempty" json:"errors,omitempty"`
 	Warnings []string `bson:"warnings,omitempty" json:"warnings,omitempty"`
-
-	// AuthorID is an optional reference to the Evergreen user that authored
-	// this comment, if they can be identified
-	AuthorID string `bson:"author_id,omitempty" json:"author_id,omitempty"`
 
 	SatisfiedTriggers []string `bson:"satisfied_triggers,omitempty" json:"satisfied_triggers,omitempty"`
 	// Fields set if triggered by an upstream build
@@ -786,7 +789,7 @@ func constructManifest(ctx context.Context, v *Version, projectRef *ProjectRef, 
 			}
 		}
 
-		mfstModule, err := getManifestModule(v, projectRef, module)
+		mfstModule, err := getManifestModule(ctx, v, projectRef, module)
 		if err != nil {
 			return nil, errors.Wrapf(err, "module '%s'", module.Name)
 		}
@@ -797,14 +800,14 @@ func constructManifest(ctx context.Context, v *Version, projectRef *ProjectRef, 
 	return newManifest, nil
 }
 
-func getManifestModule(v *Version, projectRef *ProjectRef, module Module) (*manifest.Module, error) {
+func getManifestModule(ctx context.Context, v *Version, projectRef *ProjectRef, module Module) (*manifest.Module, error) {
 	owner, repo, err := module.GetOwnerAndRepo()
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting owner and repo for '%s'", module.Name)
 	}
 
 	if module.Ref == "" {
-		ghCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
+		ghCtx, cancel := context.WithTimeout(ctx, time.Minute)
 		defer cancel()
 
 		revisionTime := time.Unix(0, 0)
@@ -842,7 +845,7 @@ func getManifestModule(v *Version, projectRef *ProjectRef, module Module) (*mani
 		}, nil
 	}
 
-	ghCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ghCtx, cancel := context.WithTimeout(ctx, time.Minute)
 	defer cancel()
 
 	sha := module.Ref

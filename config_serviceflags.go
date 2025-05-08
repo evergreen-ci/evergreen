@@ -34,8 +34,12 @@ type ServiceFlags struct {
 	BackgroundCleanupDisabled       bool `bson:"background_cleanup_disabled" json:"background_cleanup_disabled"`
 	CloudCleanupDisabled            bool `bson:"cloud_cleanup_disabled" json:"cloud_cleanup_disabled"`
 	SleepScheduleDisabled           bool `bson:"sleep_schedule_disabled" json:"sleep_schedule_disabled"`
+	StaticAPIKeysDisabled           bool `bson:"static_api_keys_disabled" json:"static_api_keys_disabled"`
+	JWTTokenForCLIDisabled          bool `bson:"jwt_token_for_cli_disabled" json:"jwt_token_for_cli_disabled"`
 	SystemFailedTaskRestartDisabled bool `bson:"system_failed_task_restart_disabled" json:"system_failed_task_restart_disabled"`
 	CPUDegradedModeDisabled         bool `bson:"cpu_degraded_mode_disabled" json:"cpu_degraded_mode_disabled"`
+	ElasticIPsDisabled              bool `bson:"elastic_ips_disabled" json:"elastic_ips_disabled"`
+	ReleaseModeDisabled             bool `bson:"release_mode_disabled" json:"release_mode_disabled"`
 
 	// Notification Flags
 	EventProcessingDisabled      bool `bson:"event_processing_disabled" json:"event_processing_disabled"`
@@ -86,8 +90,12 @@ func (c *ServiceFlags) Set(ctx context.Context) error {
 			cloudCleanupDisabledKey:            c.CloudCleanupDisabled,
 			unrecognizedPodCleanupDisabledKey:  c.UnrecognizedPodCleanupDisabled,
 			sleepScheduleDisabledKey:           c.SleepScheduleDisabled,
+			staticAPIKeysDisabledKey:           c.StaticAPIKeysDisabled,
+			JWTTokenForCLIDisabledKey:          c.JWTTokenForCLIDisabled,
+			elasticIPsDisabledKey:              c.ElasticIPsDisabled,
 			systemFailedTaskRestartDisabledKey: c.SystemFailedTaskRestartDisabled,
 			cpuDegradedModeDisabledKey:         c.CPUDegradedModeDisabled,
+			releaseModeDisabledKey:             c.ReleaseModeDisabled,
 		}}), "updating config section '%s'", c.SectionId(),
 	)
 }

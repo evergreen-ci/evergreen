@@ -954,24 +954,22 @@ func TestAWSAssumeRole(t *testing.T) {
 				assert.NotEmpty(t, data.SecretAccessKey)
 				assert.NotEmpty(t, data.SessionToken)
 				assert.NotEmpty(t, data.Expiration)
+				assert.NotEmpty(t, data.ExternalID)
 			})
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(task.Collection))
 
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-
 			env := &mock.Environment{}
-			require.NoError(t, env.Configure(ctx))
+			require.NoError(t, env.Configure(t.Context()))
 
 			manager := cloud.GetSTSManager(true)
 
 			r, ok := makeAWSAssumeRole(manager).(*awsAssumeRole)
 			require.True(t, ok)
 
-			tCase(ctx, t, r)
+			tCase(t.Context(), t, r)
 		})
 	}
 

@@ -31,11 +31,11 @@ var (
 
 	// ClientVersion is the commandline version string used to control updating
 	// the CLI. The format is the calendar date (YYYY-MM-DD).
-	ClientVersion = "2025-04-22"
+	ClientVersion = "2025-05-06"
 
 	// Agent version to control agent rollover. The format is the calendar date
 	// (YYYY-MM-DD).
-	AgentVersion = "2025-04-24"
+	AgentVersion = "2025-05-02"
 )
 
 const (
@@ -75,6 +75,7 @@ type Settings struct {
 	DomainName          string                  `yaml:"domain_name" bson:"domain_name" json:"domain_name"`
 	Expansions          map[string]string       `yaml:"expansions" bson:"expansions" json:"expansions"`
 	ExpansionsNew       util.KeyValuePairSlice  `yaml:"expansions_new" bson:"expansions_new" json:"expansions_new"`
+	FWS                 FWSConfig               `yaml:"fws" bson:"fws" json:"fws" id:"fws"`
 	GithubPRCreatorOrg  string                  `yaml:"github_pr_creator_org" bson:"github_pr_creator_org" json:"github_pr_creator_org"`
 	GitHubCheckRun      GitHubCheckRunConfig    `yaml:"github_check_run" bson:"github_check_run" json:"github_check_run" id:"github_check_run"`
 	GithubOrgs          []string                `yaml:"github_orgs" bson:"github_orgs" json:"github_orgs"`
@@ -97,6 +98,7 @@ type Settings struct {
 	PprofPort           string                    `yaml:"pprof_port" bson:"pprof_port" json:"pprof_port"`
 	ProjectCreation     ProjectCreationConfig     `yaml:"project_creation" bson:"project_creation" json:"project_creation" id:"project_creation"`
 	Providers           CloudProviders            `yaml:"providers" bson:"providers" json:"providers" id:"providers"`
+	ReleaseMode         ReleaseModeConfig         `yaml:"release_mode" bson:"release_mode" json:"release_mode" id:"release_mode"`
 	RepoTracker         RepoTrackerConfig         `yaml:"repotracker" bson:"repotracker" json:"repotracker" id:"repotracker"`
 	RuntimeEnvironments RuntimeEnvironmentsConfig `yaml:"runtime_environments" bson:"runtime_environments" json:"runtime_environments" id:"runtime_environments"`
 	Scheduler           SchedulerConfig           `yaml:"scheduler" bson:"scheduler" json:"scheduler" id:"scheduler"`

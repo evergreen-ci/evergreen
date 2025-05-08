@@ -42,8 +42,7 @@ import (
 // This file should consist only of private utility functions that are specific to graphql resolver use cases.
 
 const (
-	minRevisionLength = 7
-	gitHashLength     = 40 // A git hash contains 40 characters.
+	gitHashLength = 40 // A git hash contains 40 characters.
 )
 
 // getGroupedFiles returns the files of a Task inside a GroupedFile struct
@@ -1328,31 +1327,4 @@ func flattenOtelVariables(vars map[string]any) map[string]any {
 		}
 	}
 	return flattenedVars
-}
-
-func getRevisionOrder(ctx context.Context, revision string, projectId string, limit int) (int, error) {
-	if len(revision) < minRevisionLength {
-		return 0, errors.New(fmt.Sprintf("at least %d characters must be provided for the revision", minRevisionLength))
-	}
-
-	found, err := model.VersionFindOne(ctx, model.VersionByProjectIdAndRevisionPrefix(projectId, revision).WithFields(model.VersionRevisionOrderNumberKey))
-	if err != nil {
-		return 0, errors.New(fmt.Sprintf("finding version with revision '%s': %s", revision, err.Error()))
-	} else if found == nil {
-		return 0, errors.New(fmt.Sprintf("version with revision '%s' not found", revision))
-	}
-	// Offset the order number so the specified revision lands nearer to the center of the page.
-	return found.RevisionOrderNumber + limit/2 + 1, nil
-}
-
-func getDateOrder(ctx context.Context, date time.Time, projectId string) (int, error) {
-	// Use the end of the provided date to find the most recent version created on or before it.
-	eod := time.Date(date.Year(), date.Month(), date.Day(), 23, 59, 59, 0, date.Location())
-	found, err := model.VersionFindOne(ctx, model.VersionByProjectIdAndCreateTime(projectId, eod).WithFields(model.VersionRevisionOrderNumberKey))
-	if err != nil {
-		return 0, errors.New(fmt.Sprintf("finding version on or before date '%s': %s", eod.Format(time.DateOnly), err.Error()))
-	} else if found == nil {
-		return 0, errors.New(fmt.Sprintf("version on or before date '%s' not found", eod.Format(time.DateOnly)))
-	}
-	return found.RevisionOrderNumber + 1, nil
 }

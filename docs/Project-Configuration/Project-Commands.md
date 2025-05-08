@@ -224,6 +224,8 @@ page.
 - `exact_file_names`: an optional boolean flag which, if set to true,
     indicates to treat the files array as a list of exact filenames to
     match, rather than an array of gitignore file globs.
+-   `optional`: default false; if set to true, will not error if the
+    file(s) specified are not found
 
 ## attach.results
 
@@ -380,6 +382,7 @@ Parameters:
 
 The call to AssumeRole includes an external ID formatted as
 `<project_id>-<requester>`. This cannot be modified by the user.
+The list of requesters can be found [here](../Reference/Glossary.md#requesters).
 The originating role is: 
 `arn:aws:iam::<evergreen_account_id>:role/evergreen.role.production`
 and your role should only trust that exact role. You should add an
@@ -1322,7 +1325,7 @@ Parameters:
     This is the recommended way to authenticate with AWS.
 -   `local_file`: the local file to save, do not use with `extract_to`
 -   `extract_to`: the local directory to extract to, do not use with
-    `local_file`
+    `local_file`. This requires the remote file to be a tarball (eg. `.tgz`)
 -   `remote_file`: the S3 path to get the file from
 -   `bucket`: the S3 bucket to use.
 -   `region`: AWS region of the bucket, defaults to us-east-1.

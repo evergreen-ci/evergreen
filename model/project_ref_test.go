@@ -1773,6 +1773,12 @@ func TestSetGithubAppCredentials(t *testing.T) {
 			app, err = githubapp.FindOneGitHubAppAuth(t.Context(), p.Id)
 			require.NoError(t, err)
 			assert.Nil(t, app)
+
+			// Attempting to remove credentials again should not error.
+			require.NoError(t, p.SetGithubAppCredentials(t.Context(), 0, []byte("")))
+			app, err = githubapp.FindOneGitHubAppAuth(t.Context(), p.Id)
+			require.NoError(t, err)
+			assert.Nil(t, app)
 		},
 		"CredentialsCanBeRemovedByEmptyAppIDAndNilPrivateKey": func(t *testing.T, p *ProjectRef) {
 			// Add credentials.
