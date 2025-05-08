@@ -338,15 +338,20 @@ func TestGetResolvedHostAllocatorSettings(t *testing.T) {
 		MainlineTimeInQueueFactor:     10,
 		ExpectedRuntimeFactor:         7,
 	}
-
-	settings0 := &evergreen.Settings{Scheduler: config0}
+	releaseModeConfig := evergreen.ReleaseModeConfig{
+		DistroMaxHostsFactor: 2.0,
+	}
+	serviceFlags := evergreen.ServiceFlags{
+		ReleaseModeDisabled: true,
+	}
+	settings0 := &evergreen.Settings{Scheduler: config0, ReleaseMode: releaseModeConfig, ServiceFlags: serviceFlags}
 
 	resolved0, err := d0.GetResolvedHostAllocatorSettings(settings0)
 	assert.NoError(t, err)
 	// Fallback to the SchedulerConfig.HostAllocator as HostAllocatorSettings.Version is an empty string.
 	assert.Equal(t, evergreen.HostAllocatorUtilization, resolved0.Version)
 	assert.Equal(t, 4, resolved0.MinimumHosts)
-	assert.Equal(t, 10, resolved0.MaximumHosts)
+	assert.Equal(t, 10, resolved0.MaximumHosts) // Ignore release mode when disabled.
 	assert.Equal(t, evergreen.HostAllocatorRoundDown, resolved0.RoundingRule)
 	assert.Equal(t, evergreen.HostAllocatorNoFeedback, resolved0.FeedbackRule)
 	assert.Equal(t, evergreen.HostsOverallocatedIgnore, resolved0.HostsOverallocatedRule)
@@ -368,6 +373,13 @@ func TestGetResolvedHostAllocatorSettings(t *testing.T) {
 	resolved0, err = d0.GetResolvedHostAllocatorSettings(settings0)
 	assert.NoError(t, err)
 	assert.Equal(t, evergreen.HostsOverallocatedTerminate, resolved0.HostsOverallocatedRule)
+
+	settings1 := &evergreen.Settings{Scheduler: config0, ReleaseMode: releaseModeConfig}
+	resolved1, err := d0.GetResolvedHostAllocatorSettings(settings1)
+	assert.NoError(t, err)
+
+	// Factor in release mode when enabled.
+	assert.Equal(t, 20, resolved1.MaximumHosts)
 }
 
 func TestGetResolvedPlannerSettings(t *testing.T) {
@@ -406,9 +418,9 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 	releaseConfig := evergreen.ReleaseModeConfig{
 		TargetTimeSecondsOverride: 1200,
 	}
-	releaseModeDisabled := evergreen.ServiceFlags{ReleaseModeDisabled: true}
+	serviceFlags := evergreen.ServiceFlags{ReleaseModeDisabled: true}
 
-	settings0 := &evergreen.Settings{Scheduler: config0, ReleaseMode: releaseConfig, ServiceFlags: releaseModeDisabled}
+	settings0 := &evergreen.Settings{Scheduler: config0, ReleaseMode: releaseConfig, ServiceFlags: serviceFlags}
 
 	resolved0, err := d0.GetResolvedPlannerSettings(settings0)
 	assert.NoError(t, err)
