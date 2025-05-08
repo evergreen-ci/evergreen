@@ -689,7 +689,7 @@ func (d *Distro) GetResolvedHostAllocatorSettings(s *evergreen.Settings) (HostAl
 }
 
 // GetResolvedPlannerSettings combines the distro's PlannerSettings fields with the
-// SchedulerConfig defaults to resolve and validate a canonical set of PlannerSettings' field values.
+// SchedulerConfig and Settings and defaults to resolve and validate a canonical set of PlannerSettings' field values.
 func (d *Distro) GetResolvedPlannerSettings(s *evergreen.Settings) (PlannerSettings, error) {
 	config := s.Scheduler
 	ps := d.PlannerSettings
@@ -725,6 +725,9 @@ func (d *Distro) GetResolvedPlannerSettings(s *evergreen.Settings) (PlannerSetti
 	}
 	if resolved.TargetTime == 0 {
 		resolved.TargetTime = time.Duration(config.TargetTimeSeconds) * time.Second
+	}
+	if !s.ServiceFlags.ReleaseModeDisabled && s.ReleaseMode.TargetTimeSecondsOverride > 0 {
+		resolved.TargetTime = time.Duration(s.ReleaseMode.TargetTimeSecondsOverride) * time.Second
 	}
 	if resolved.GroupVersions == nil {
 		resolved.GroupVersions = &config.GroupVersions

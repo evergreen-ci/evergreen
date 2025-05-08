@@ -403,12 +403,17 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 		NumDependentsFactor:           10,
 		StepbackTaskFactor:            40,
 	}
+	releaseConfig := evergreen.ReleaseModeConfig{
+		TargetTimeSecondsOverride: 1200,
+	}
+	releaseModeDisabled := evergreen.ServiceFlags{ReleaseModeDisabled: true}
 
-	settings0 := &evergreen.Settings{Scheduler: config0}
+	settings0 := &evergreen.Settings{Scheduler: config0, ReleaseMode: releaseConfig, ServiceFlags: releaseModeDisabled}
 
 	resolved0, err := d0.GetResolvedPlannerSettings(settings0)
 	assert.NoError(t, err)
 	assert.Equal(t, evergreen.PlannerVersionTunable, resolved0.Version)
+	// Ignore release mode when disabled.
 	assert.Equal(t, time.Duration(112358)*time.Second, resolved0.TargetTime)
 	// Fallback to the SchedulerConfig.GroupVersions as PlannerSettings.GroupVersions is nil.
 	assert.False(t, *resolved0.GroupVersions)
@@ -459,13 +464,14 @@ func TestGetResolvedPlannerSettings(t *testing.T) {
 		NumDependentsFactor:           0,
 	}
 
-	settings1 := &evergreen.Settings{Scheduler: config1}
+	settings1 := &evergreen.Settings{Scheduler: config1, ReleaseMode: releaseConfig}
 
 	// d1.PlannerSettings' field values are all set and valid, so there is no need to fallback on any SchedulerConfig field values
 	resolved1, err := d1.GetResolvedPlannerSettings(settings1)
 	assert.NoError(t, err)
 	assert.Equal(t, evergreen.PlannerVersionTunable, resolved1.Version)
-	assert.Equal(t, time.Duration(98765)*time.Second, resolved1.TargetTime)
+	// Release mode value is used because release mode is enabled.
+	assert.Equal(t, time.Duration(1200)*time.Second, resolved1.TargetTime)
 	assert.True(t, *resolved1.GroupVersions)
 	assert.EqualValues(t, 25, resolved1.PatchFactor)
 	assert.EqualValues(t, 0, resolved1.PatchTimeInQueueFactor)
