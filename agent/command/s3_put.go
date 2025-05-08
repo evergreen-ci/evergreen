@@ -142,7 +142,8 @@ type s3put struct {
 	// existingCredentials holds the existing passed in temporary credentials
 	// and their expiration time. This is used to reuse passed in credentials
 	// whenever possible. User's don't pass in their expiration time, so we
-	// need to parse it from the session token.
+	// need to retrieve it from a cache that is populated by the ec2.assume_role
+	// command.
 	existingCredentials *aws.Credentials
 
 	// externalID is a pointer to the external ID that was used when assuming
