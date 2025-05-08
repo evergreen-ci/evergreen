@@ -105,5 +105,5 @@ func getAssumedRoleExpiration(conf *internal.TaskConfig, sessionToken string) (t
 
 	exp, err := time.Parse(time.RFC3339, expiration)
 
-	return exp, true, errors.Wrap(err, "parsing expiration time")
+	return exp, true, errors.Wrapf(err, "parsing expiration time: '%s'", expiration)
 }
