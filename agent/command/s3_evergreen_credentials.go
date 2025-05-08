@@ -10,6 +10,10 @@ import (
 	"github.com/pkg/errors"
 )
 
+const (
+	expiryWindow = 5 * time.Second
+)
+
 // evergreenCredentialProvider is an AWS credential provider that
 // retrieves credentials from Evergreen.
 type evergreenCredentialProvider struct {
@@ -31,6 +35,15 @@ type evergreenCredentialProvider struct {
 // long operations or operations that might need to request new credentials during
 // the operation (e.g. multipart bucket uploads).
 func createEvergreenCredentials(comm client.Communicator, taskData client.TaskData, existingCredentials *aws.Credentials, roleARN string, updateExternalID func(string)) *evergreenCredentialProvider {
+	if existingCredentials != nil && existingCredentials.CanExpire {
+		// Typically, AWS allows an expiry window when creating the client. The expiry window prevents
+		// credentials expiring timing issues. However, the expiry window wouldn't work with this credential
+		// provider since we may be getting credentials that are really close to the expiration time.
+		// The below is essentially a manual expiry window of 5 seconds. This should be enough to allow
+		// an operation to start. AWS's SDK will handle when they expire and call Retrieve again.
+		existingCredentials.Expires = existingCredentials.Expires.Add(-expiryWindow)
+	}
+
 	return &evergreenCredentialProvider{
 		comm:                comm,
 		taskData:            taskData,
