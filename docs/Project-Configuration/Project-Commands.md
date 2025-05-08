@@ -1288,7 +1288,7 @@ and contains these fields:
 
 ## s3.get
 
-`s3.get` downloads a file from Amazon s3. The download location is relative to [task's working directory](./Best-Practices.md#task-directory)
+`s3.get` downloads a file from Amazon s3.
 
 ``` yaml
 # Temporary credentials:
@@ -1324,8 +1324,9 @@ Parameters:
     This does not have to be a secret but managing it with expansions is recommended.
     This is the recommended way to authenticate with AWS.
 -   `local_file`: the local file to save, do not use with `extract_to`.
+    This is relative to [task's working directory](./Best-Practices.md#task-directory)
 -   `extract_to`: the local directory to extract to, do not use with
-    `local_file`
+    `local_file`. This is relative to [task's working directory](./Best-Practices.md#task-directory)
 -   `remote_file`: the S3 path to get the file from
 -   `bucket`: the S3 bucket to use.
 -   `region`: AWS region of the bucket, defaults to us-east-1.
@@ -1336,7 +1337,7 @@ Parameters:
 ## s3.put
 
 This command uploads a file to Amazon s3, for use in later tasks or
-distribution. Refer to [Task Artifacts Data Retention Policy](../Reference/Limits#task_artifacts_data_retention_policy) for details on the lifecycle of files uploaded via this command. The upload location is relative to [task's working directory](./Best-Practices.md#task-directory). **Files uploaded with this command will also be viewable within the Parsley log viewer if the `content_type` is set to `text/plain`, `application/json` or `text/csv`.**
+distribution. Refer to [Task Artifacts Data Retention Policy](../Reference/Limits#task_artifacts_data_retention_policy) for details on the lifecycle of files uploaded via this command. **Files uploaded with this command will also be viewable within the Parsley log viewer if the `content_type` is set to `text/plain`, `application/json` or `text/csv`.**
 
 ``` yaml
 # Temporary credentials:
@@ -1381,7 +1382,7 @@ Parameters:
     to configure your role.
     This does not have to be a secret but managing it with expansions is recommended.
     This is the recommended way to authenticate with AWS.
--   `local_file`: the local file to post
+-   `local_file`: the local file to posts. This is relative to [task's working directory](./Best-Practices.md#task-directory). 
 -   `remote_file`: the S3 path to post the file to
 -   `bucket`: the S3 bucket to use. Note: buckets created after Sept.
     30, 2020 containing dots (".") are not supported.
@@ -1399,9 +1400,10 @@ Parameters:
     of gitignore file globs. All files that are matched - ones that
     would be ignored by gitignore - are included in the put. If no
     files are found, the task continues execution.
+    This is relative to [task's working directory](./Best-Practices.md#task-directory). 
 -   `local_files_include_filter_prefix`: an optional path to start
-    processing the `local_files_include_filter`, relative to the working
-    directory.
+    processing the `local_files_include_filter`.
+    This is relative to [task's working directory](./Best-Practices.md#task-directory). 
 -   `region`: AWS region for the bucket. We suggest us-east-1, since
     that is where ec2 hosts are located. If you would like to override,
     you can use this parameter.
