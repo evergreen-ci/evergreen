@@ -1323,9 +1323,11 @@ Parameters:
     to configure your role.
     This does not have to be a secret but managing it with expansions is recommended.
     This is the recommended way to authenticate with AWS.
--   `local_file`: the local file to save, do not use with `extract_to`
+-   `local_file`: the local file to save, do not use with `extract_to`.
+    This is relative to [task's working directory](./Best-Practices.md#task-directory)
 -   `extract_to`: the local directory to extract to, do not use with
-    `local_file`. This requires the remote file to be a tarball (eg. `.tgz`)
+    `local_file`. This requires the remote file to be a tarball (eg. `.tgz`).
+    This is relative to [task's working directory](./Best-Practices.md#task-directory)
 -   `remote_file`: the S3 path to get the file from
 -   `bucket`: the S3 bucket to use.
 -   `region`: AWS region of the bucket, defaults to us-east-1.
@@ -1381,7 +1383,7 @@ Parameters:
     to configure your role.
     This does not have to be a secret but managing it with expansions is recommended.
     This is the recommended way to authenticate with AWS.
--   `local_file`: the local file to post
+-   `local_file`: the local file to posts. This is relative to [task's working directory](./Best-Practices.md#task-directory). 
 -   `remote_file`: the S3 path to post the file to
 -   `bucket`: the S3 bucket to use. Note: buckets created after Sept.
     30, 2020 containing dots (".") are not supported.
@@ -1399,9 +1401,10 @@ Parameters:
     of gitignore file globs. All files that are matched - ones that
     would be ignored by gitignore - are included in the put. If no
     files are found, the task continues execution.
+    This is relative to [task's working directory](./Best-Practices.md#task-directory). 
 -   `local_files_include_filter_prefix`: an optional path to start
-    processing the `local_files_include_filter`, relative to the working
-    directory.
+    processing the `local_files_include_filter`.
+    This is relative to [task's working directory](./Best-Practices.md#task-directory). 
 -   `region`: AWS region for the bucket. We suggest us-east-1, since
     that is where ec2 hosts are located. If you would like to override,
     you can use this parameter.
