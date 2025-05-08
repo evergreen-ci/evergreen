@@ -315,7 +315,7 @@ func (s3pc *s3put) Execute(ctx context.Context, comm client.Communicator, logger
 
 	if expiration, found, err := getAssumedRoleExpiration(conf, s3pc.AwsSessionToken); found {
 		s3pc.assumedRoleARN = getAssumedRoleARN(conf, s3pc.AwsSessionToken)
-		if err != nil {
+		if err == nil {
 			s3pc.existingCredentials = &aws.Credentials{
 				AccessKeyID:     s3pc.AwsKey,
 				SecretAccessKey: s3pc.AwsSecret,
@@ -324,7 +324,7 @@ func (s3pc *s3put) Execute(ctx context.Context, comm client.Communicator, logger
 				CanExpire:       true,
 			}
 		} else {
-			logger.Task().Errorf("Error parsing expiration time: '%s'. Continuing command by calling AssumeRole again.", err.Error())
+			logger.Task().Warningf("Error parsing expiration time: '%s'. Continuing command by calling AssumeRole again.", err.Error())
 		}
 	}
 

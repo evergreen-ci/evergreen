@@ -186,7 +186,7 @@ func (c *s3get) Execute(ctx context.Context, comm client.Communicator, logger cl
 
 	if expiration, found, err := getAssumedRoleExpiration(conf, c.AwsSessionToken); found {
 		c.assumedRoleARN = getAssumedRoleARN(conf, c.AwsSessionToken)
-		if err != nil {
+		if err == nil {
 			c.existingCredentials = &aws.Credentials{
 				AccessKeyID:     c.AwsKey,
 				SecretAccessKey: c.AwsSecret,
@@ -195,7 +195,7 @@ func (c *s3get) Execute(ctx context.Context, comm client.Communicator, logger cl
 				CanExpire:       true,
 			}
 		} else {
-			logger.Task().Errorf("Error parsing expiration time: '%s'. Continuing command by calling AssumeRole again.", err.Error())
+			logger.Task().Warningf("Error parsing expiration time: '%s'. Continuing command by calling AssumeRole again.", err.Error())
 		}
 	}
 
