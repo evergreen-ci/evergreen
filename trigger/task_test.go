@@ -1357,6 +1357,10 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 		assert.NoError(t, db.ClearCollections(task.Collection, alertrecord.Collection, build.Collection, model.VersionCollection, model.ProjectRefCollection))
 		assert.NoError(t, testresult.ClearLocal(ctx, env))
 	}()
+	flags := evergreen.ServiceFlags{
+		EvergreenTestResultsDisabled: true,
+	}
+	require.NoError(t, evergreen.SetServiceFlags(ctx, flags))
 	svc := testresult.NewLocalService(env)
 
 	b := build.Build{Id: "b0"}
