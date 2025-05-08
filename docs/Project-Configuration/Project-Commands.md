@@ -1327,7 +1327,7 @@ Parameters:
 -   `aws_session_token`: your temporary AWS session token (use expansions to keep this a secret).
     Note: If you are generating temporary credentials using `ec2.assume_role`, you can instead
     pass in the role_arn directly to your s3 commands. If you have multiple S3 commands in quick
-    succession, it is recommended you call ec2.assume_role once and pass in the credentials
+    succession, it is recommended you call `ec2.assume_role` once and pass in the credentials
     to each command rather than pass in a `role_arn`.
 -   `role_arn`: your AWS role to be assumed before and during the s3 operation.
     See [AssumeRole AWS setup](#assumerole-aws-setup) for more information on how
@@ -1398,7 +1398,7 @@ Parameters:
 -   `aws_session_token`: your temporary AWS session token (use expansions to keep this a secret).
     Note: If you are generating temporary credentials using `ec2.assume_role`, you can instead
     pass in the role_arn directly to your s3 commands. If you have multiple S3 commands in quick
-    succession, it is recommended you call ec2.assume_role once and pass in the credentials
+    succession, it is recommended you call `ec2.assume_role` once and pass in the credentials
     to each command rather than pass in a `role_arn`.
 -   `role_arn`: your AWS role to be assumed before and during the s3 operation.
     See [AssumeRole AWS setup](#assumerole-aws-setup) for more information on how
