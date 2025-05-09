@@ -25,9 +25,9 @@ func Client() cli.Command {
 	}
 }
 
-// RunKanopyOIDCLogin executes the kanopy-oidc login command and captures the JWT token from the output.
+// runKanopyOIDCLogin executes the kanopy-oidc login command and captures the JWT token from the output.
 // It also displays output to the user in real-time while ensuring that the JWT token is not printed.
-func RunKanopyOIDCLogin() (string, error) {
+func runKanopyOIDCLogin() (string, error) {
 	cmd := exec.Command("kanopy-oidc", "login", "-n", "-f", "device")
 
 	stdout, err := cmd.StdoutPipe()
