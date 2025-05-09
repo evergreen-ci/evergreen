@@ -596,23 +596,7 @@ func (c *communicatorImpl) SetServiceFlags(ctx context.Context, f *model.APIServ
 }
 
 func (c *communicatorImpl) GetServiceFlags(ctx context.Context) (*model.APIServiceFlags, error) {
-	info := requestInfo{
-		method: http.MethodGet,
-		path:   "admin",
-	}
-
-	resp, err := c.request(ctx, info, nil)
-	if err != nil {
-		return nil, errors.Wrap(err, "sending request to get service flags")
-	}
-	defer resp.Body.Close()
-
-	settings := model.APIAdminSettings{}
-	if err = utility.ReadJSON(resp.Body, &settings); err != nil {
-		return nil, errors.Wrap(err, "reading JSON response body")
-	}
-
-	return settings.ServiceFlags, nil
+	return nil, nil
 }
 
 func (c *communicatorImpl) RestartRecentTasks(ctx context.Context, startAt, endAt time.Time) error {

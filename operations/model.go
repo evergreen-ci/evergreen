@@ -183,7 +183,9 @@ func (s *ClientSettings) shouldGenerateJWT(ctx context.Context, c client.Communi
 	}
 
 	flags, err := c.GetServiceFlags(ctx)
-	grip.Infof("flags: %s, error: %s", flags, err.Error())
+	if flags == nil {
+		return false
+	}
 
 	// if we get an unauthorized error when trying to get the flags, we can assume
 	// that the static api keys are no longer accepted and we should get a JWT token
