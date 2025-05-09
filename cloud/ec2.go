@@ -311,7 +311,7 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 		// because the host should fall back to using an AWS-provided IP
 		// address. Using an elastic IP address is a best-effort attempt to save
 		// money.
-		grip.Notice(message.WrapError(allocateIPAddressForHost(ctx, m.settings, m.client, h), message.Fields{
+		grip.Notice(message.WrapError(allocateIPAddressForHost(ctx, h), message.Fields{
 			"message": "could not allocate elastic IP address for host, falling back to using AWS-managed IP",
 			"host_id": h.Id,
 		}))
@@ -915,14 +915,6 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 		}))
 	}
 
-	grip.Error(message.WrapError(disassociateIPAddressForHost(ctx, m.client, h), message.Fields{
-		"message":        "could not disassociate elastic IP address from host",
-		"provider":       h.Distro.Provider,
-		"host_id":        h.Id,
-		"association_id": h.IPAssociationID,
-		"allocation_id":  h.IPAllocationID,
-	}))
-
 	resp, err := m.client.TerminateInstances(ctx, &ec2.TerminateInstancesInput{
 		InstanceIds: []string{h.Id},
 	})
@@ -948,7 +940,7 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user, 
 		})
 	}
 
-	grip.Error(message.WrapError(releaseIPAddressForHost(ctx, m.client, h), message.Fields{
+	grip.Error(message.WrapError(releaseIPAddressForHost(ctx, h), message.Fields{
 		"message":        "could not release elastic IP address from host",
 		"provider":       h.Distro.Provider,
 		"host_id":        h.Id,
@@ -1406,16 +1398,9 @@ func (m *ec2Manager) AssociateIP(ctx context.Context, h *host.Host) error {
 	return errors.Wrapf(associateIPAddressForHost(ctx, m.client, h), "associating allocated IP address '%s' with host '%s'", h.IPAllocationID, h.Id)
 }
 
-// CleanupIP disassociates the IP address from the host's network interface and
-// releases the IP address back into the IPAM pool.
+// CleanupIP releases the host's IP address.
 func (m *ec2Manager) CleanupIP(ctx context.Context, h *host.Host) error {
-	if err := disassociateIPAddressForHost(ctx, m.client, h); err != nil {
-		return err
-	}
-	if err := releaseIPAddressForHost(ctx, m.client, h); err != nil {
-		return err
-	}
-	return nil
+	return releaseIPAddressForHost(ctx, h)
 }
 
 // Cleanup is a noop for the EC2 provider.

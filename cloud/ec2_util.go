@@ -793,9 +793,8 @@ func canUseElasticIP(settings *evergreen.Settings, ec2Settings *EC2ProviderSetti
 	return ec2Settings.ElasticIPsEnabled
 }
 
-// allocateIPAddressForHost allocates an elastic IP address from an IPAM pool
-// for the host.
-func allocateIPAddressForHost(ctx context.Context, settings *evergreen.Settings, c AWSClient, h *host.Host) error {
+// allocateIPAddressForHost allocates an unused elastic IP address for the host.
+func allocateIPAddressForHost(ctx context.Context, h *host.Host) error {
 	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
 		return errors.Wrap(err, "getting service flags")
@@ -804,12 +803,14 @@ func allocateIPAddressForHost(ctx context.Context, settings *evergreen.Settings,
 		return nil
 	}
 
-	allocationID, err := allocateIPAddress(ctx, c, settings.Providers.AWS.IPAMPoolID)
+	// This intentionally uses the host tag to identify the host instead of the
+	// host ID because the host ID changes after a host is created.
+	ipAddr, err := host.AssignUnusedIPAddress(ctx, h.Tag)
 	if err != nil {
 		return errors.Wrap(err, "allocating IP address")
 	}
-	if err := h.SetIPAllocationID(ctx, allocationID); err != nil {
-		return errors.Wrapf(err, "setting IP allocation ID '%s' for host", allocationID)
+	if err := h.SetIPAllocationID(ctx, ipAddr.AllocationID); err != nil {
+		return errors.Wrapf(err, "setting IP allocation ID '%s' for host", ipAddr.AllocationID)
 	}
 	return nil
 }
@@ -851,7 +852,7 @@ func allocateIPAddress(ctx context.Context, c AWSClient, ipamPoolID string) (str
 
 // releaseIPAddressForHost releases the elastic IP address that was associated
 // with the host, if it has an elastic IP.
-func releaseIPAddressForHost(ctx context.Context, c AWSClient, h *host.Host) error {
+func releaseIPAddressForHost(ctx context.Context, h *host.Host) error {
 	if h.IPAllocationID == "" {
 		return nil
 	}
@@ -864,13 +865,19 @@ func releaseIPAddressForHost(ctx context.Context, c AWSClient, h *host.Host) err
 		return errors.Errorf("elastic IP features are disabled, host will leak IP allocation '%s'", h.IPAllocationID)
 	}
 
-	ctx, span := tracer.Start(ctx, "releaseIPAddressForHost")
-	defer span.End()
+	ipAddr, err := host.FindIPAddressByAllocationID(ctx, h.IPAllocationID)
+	if err != nil {
+		return errors.Wrapf(err, "finding IP address with allocation ID '%s'", h.IPAllocationID)
+	}
+	if ipAddr == nil {
+		return errors.Errorf("host '%s' is allocated IP address with allocation ID '%s' but that IP address does not exist", h.Id, h.IPAllocationID)
+	}
+	if ipAddr.HostTag != h.Tag {
+		return errors.Errorf("host '%s' is allocated IP address with allocation ID '%s' but that IP address is actually associated with host '%s'", h.Id, h.IPAllocationID, ipAddr.HostTag)
+	}
 
-	if _, err := c.ReleaseAddress(ctx, &ec2.ReleaseAddressInput{
-		AllocationId: aws.String(h.IPAllocationID),
-	}); err != nil {
-		return errors.Wrapf(err, "releasing host IP address with allocation ID '%s'", h.IPAllocationID)
+	if err := ipAddr.UnsetHostTag(ctx); err != nil {
+		return errors.Wrapf(err, "unsetting IP allocation ID '%s' for host", h.IPAllocationID)
 	}
 
 	return nil
@@ -892,6 +899,15 @@ func associateIPAddressForHost(ctx context.Context, c AWSClient, h *host.Host) e
 	assocAddrOut, err := c.AssociateAddress(ctx, &ec2.AssociateAddressInput{
 		InstanceId:   aws.String(h.Id),
 		AllocationId: aws.String(h.IPAllocationID),
+		// Explicitly allowed an elastic IP to be reassociated to a different
+		// host. This is important because when Evergreen requests AWS to
+		// terminate the host, Evergreen assumes the IP address is free to reuse
+		// immediately but in AWS, the host may still hold onto the elastic IP
+		// until it reaches the terminated state on their end. Allowing
+		// reassociation lets the IP be reused immediately for a new host even
+		// if AWS is still working on terminating the host, which removes a
+		// dependency on AWS-side background operations.
+		AllowReassociation: utility.TruePtr(),
 	})
 	if err != nil {
 		return errors.Wrap(err, "associating IP address with host")
@@ -906,34 +922,5 @@ func associateIPAddressForHost(ctx context.Context, c AWSClient, h *host.Host) e
 	if err := h.SetIPAssociationID(ctx, associationID); err != nil {
 		return errors.Wrapf(err, "setting IP association ID '%s' for host", associationID)
 	}
-	return nil
-}
-
-// disassociateIPAddressForHost initiates the process of disassociating the
-// elastic IP address from the host, if it has an elastic IP. This is not
-// synchronous, so the address is not guaranteed to be disassociated when this
-// returns.
-func disassociateIPAddressForHost(ctx context.Context, c AWSClient, h *host.Host) error {
-	if h.IPAssociationID == "" {
-		return nil
-	}
-
-	flags, err := evergreen.GetServiceFlags(ctx)
-	if err != nil {
-		return errors.Wrap(err, "getting service flags")
-	}
-	if flags.ElasticIPsDisabled {
-		return errors.Errorf("elastic IP features are disabled, host will not disassociate elastic IP '%s'", h.IPAssociationID)
-	}
-
-	ctx, span := tracer.Start(ctx, "disassociateIPAddressForHost")
-	defer span.End()
-
-	if _, err := c.DisassociateAddress(ctx, &ec2.DisassociateAddressInput{
-		AssociationId: aws.String(h.IPAssociationID),
-	}); err != nil {
-		return errors.Wrapf(err, "disassociating host IP address with association ID '%s'", h.IPAssociationID)
-	}
-
 	return nil
 }
