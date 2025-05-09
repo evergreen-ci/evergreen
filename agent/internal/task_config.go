@@ -267,6 +267,9 @@ func (tc *TaskConfig) TaskAttributeMap() map[string]string {
 		evergreen.DistroIDOtelAttribute:           tc.Task.DistroId,
 		evergreen.VersionDescriptionOtelAttribute: tc.PatchOrVersionDescription,
 	}
+	if tc.Task.DisplayTaskDisplayName != nil && *tc.Task.DisplayTaskDisplayName != "" {
+		attributes[evergreen.TaskDisplayTaskNameOtelAttribute] = *tc.Task.DisplayTaskDisplayName
+	}
 	if tc.GithubPatchData.PRNumber != 0 {
 		attributes[evergreen.VersionPRNumOtelAttribute] = strconv.Itoa(tc.GithubPatchData.PRNumber)
 	}
