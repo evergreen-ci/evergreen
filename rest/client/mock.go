@@ -144,7 +144,7 @@ func (c *Mock) SetServiceFlags(ctx context.Context, f *model.APIServiceFlags) er
 
 func (c *Mock) GetServiceFlags(ctx context.Context) (*model.APIServiceFlags, error) {
 	if c.MockServiceFlagErr != nil {
-		return nil, c.MockServiceFlagErr
+		return c.MockServiceFlags, c.MockServiceFlagErr
 	}
 	return c.MockServiceFlags, nil
 }

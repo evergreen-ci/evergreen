@@ -183,6 +183,7 @@ func (s *ClientSettings) shouldGenerateJWT(ctx context.Context, c client.Communi
 	}
 
 	flags, err := c.GetServiceFlags(ctx)
+	//todo: remove in DEVPROD-17618
 	if flags == nil {
 		return false
 	}
