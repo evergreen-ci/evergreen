@@ -596,6 +596,7 @@ func (c *communicatorImpl) SetServiceFlags(ctx context.Context, f *model.APIServ
 }
 
 func (c *communicatorImpl) GetServiceFlags(ctx context.Context) (*model.APIServiceFlags, error) {
+	// todo: implement in DEVPROD-17618
 	return nil, nil
 }
 
