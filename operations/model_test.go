@@ -277,17 +277,11 @@ func TestShouldGenerateJWT(t *testing.T) {
 			expectedResult: true,
 		},
 		{
-			name:     "StaticAPIKeysDisabled",
+			name:     "JWTTokenForCLIDisabled",
 			settings: &ClientSettings{APIKey: "key"},
 			serviceFlags: evergreen.ServiceFlags{
-				StaticAPIKeysDisabled: true,
+				JWTTokenForCLIDisabled: true,
 			},
-			expectedResult: true,
-		},
-		{
-			name:           "ValidAPIKey",
-			settings:       &ClientSettings{APIKey: "key"},
-			serviceFlags:   evergreen.ServiceFlags{},
 			expectedResult: false,
 		},
 	}
@@ -296,7 +290,7 @@ func TestShouldGenerateJWT(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			mock := &client.Mock{
 				MockServiceFlags: &restmodel.APIServiceFlags{
-					StaticAPIKeysDisabled: test.serviceFlags.StaticAPIKeysDisabled,
+					JWTTokenForCLIDisabled: test.serviceFlags.JWTTokenForCLIDisabled,
 				},
 				MockServiceFlagErr: test.flagsErr,
 			}
