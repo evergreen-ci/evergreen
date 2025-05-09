@@ -2550,10 +2550,10 @@ func (p *ProjectRef) CheckAndUpdateAutoRestartLimit(ctx context.Context, maxDail
 	return errors.Wrap(db.UpdateContext(ctx, ProjectRefCollection, bson.M{ProjectRefIdKey: p.Id}, update), "updating project's auto-restart limit")
 }
 
-// isActiveCronTimeRange checks that the proposed cron should activate now or
-// has already activated very recently.
 const CronActiveRange = 5 * time.Minute
 
+// isActiveCronTimeRange checks that the proposed cron should activate now or
+// has already activated very recently.
 func (p *ProjectRef) isActiveCronTimeRange(proposedCron time.Time, now time.Time) bool {
 	return !proposedCron.Before(now.Add(-CronActiveRange))
 }

@@ -184,10 +184,8 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 			return errors.WithStack(err)
 		}
 	}
-	// Fetch the most recent, non-ignored version (before the given time, but allowing for a 5 minute buffer).
-	// Do not use a version that is in the active cron range because those will be ignored when the one before
-	// it has an activate_at that is within the cron range.
-	ok, err := model.DoProjectActivation(ctx, projectRef.Id, time.Now().Add(-model.CronActiveRange))
+
+	ok, err := model.DoProjectActivation(ctx, projectRef.Id, time.Now())
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":            "problem activating recent commit for project",
