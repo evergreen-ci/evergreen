@@ -93,7 +93,7 @@ func FindIPAddressByAllocationID(ctx context.Context, allocationID string) (*IPA
 }
 
 // FindStaleIPAddresses finds all IP addresses that are currently assigned to
-// some host but whose host is already terminated.
+// a host but that host is no longer actively using the IP address.
 func FindStaleIPAddresses(ctx context.Context) ([]IPAddress, error) {
 	ipAddrs := []IPAddress{}
 	const hostKey = "host"
@@ -105,8 +105,13 @@ func FindStaleIPAddresses(ctx context.Context) ([]IPAddress, error) {
 			"foreignField": TagKey,
 			"as":           hostKey,
 		}},
-		{"$unwind": "$" + hostKey},
-		{"$match": bson.M{bsonutil.GetDottedKeyName(hostKey, StatusKey): evergreen.HostTerminated}},
+		{"$match": bson.M{"$or": []bson.M{
+			// No corresponding host at all.
+			{hostKey: bson.M{"$size": 0}},
+			// It has a matching host but it's terminated, so the host doesn't
+			// need the IP address anymore.
+			{bsonutil.GetDottedKeyName(hostKey, StatusKey): evergreen.HostTerminated},
+		}}},
 	}, &ipAddrs)
 	return ipAddrs, err
 }
