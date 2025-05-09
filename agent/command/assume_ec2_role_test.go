@@ -72,10 +72,10 @@ func TestEC2AssumeRoleExecute(t *testing.T) {
 			assert.Equal(t, "access_key_id", conf.NewExpansions.Get(globals.AWSAccessKeyId))
 			assert.Equal(t, "secret_access_key", conf.NewExpansions.Get(globals.AWSSecretAccessKey))
 			assert.Equal(t, "session_token", conf.NewExpansions.Get(globals.AWSSessionToken))
-			assert.Equal(t, "expiration", conf.NewExpansions.Get(globals.AWSRoleExpiration))
+			assert.Equal(t, expiration.Format(time.RFC3339), conf.NewExpansions.Get(globals.AWSRoleExpiration))
 
 			assert.Equal(t, c.RoleARN, conf.AssumeRoleInformation[comm.AssumeRoleResponse.SessionToken].RoleARN)
-			assert.Equal(t, expiration, conf.AssumeRoleInformation[comm.AssumeRoleResponse.SessionToken].Expiration)
+			assert.WithinDuration(t, expiration, conf.AssumeRoleInformation[comm.AssumeRoleResponse.SessionToken].Expiration, time.Second)
 
 			t.Run("KeysAreRedacted", func(t *testing.T) {
 				hasAccessKey := false
