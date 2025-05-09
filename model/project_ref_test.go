@@ -4135,6 +4135,63 @@ func TestGetActivationTimeForVariant(t *testing.T) {
 	assert.Equal(activationTime, versionCreatedAt)
 }
 
+func TestActivationTimeWithDuplicate(t *testing.T) {
+	require.NoError(t, db.ClearCollections(ProjectRefCollection, VersionCollection))
+
+	now := time.Date(2025, time.May, 7, 0, 1, 0, 0, time.UTC)                    // 5/7 12:01 AM
+	versionCreateTime := time.Date(2025, time.May, 6, 23, 59, 0, 0, time.UTC)    // 5/6 11:59 PM
+	prevVersionCreateTime := time.Date(2025, time.May, 6, 16, 0, 0, 0, time.UTC) // 5/6 4:00 PM
+	midnightActivateTime := time.Date(2025, time.May, 7, 0, 0, 0, 0, time.UTC)   // 5/7 12:00 AM
+
+	// Set up project
+	projectRef := &ProjectRef{
+		Id:         "myproj",
+		Identifier: "myproj",
+		Enabled:    true,
+	}
+	require.NoError(t, projectRef.Insert(t.Context()))
+
+	// A previous version created at 4pm with activation time at midnight
+	prevVersion := &Version{
+		Id:                  "prev",
+		Identifier:          "myproj",
+		CreateTime:          prevVersionCreateTime,
+		RevisionOrderNumber: 1,
+		Requester:           evergreen.RepotrackerVersionRequester,
+		BuildVariants: []VersionBuildStatus{
+			{
+				BuildVariant: "bv",
+				ActivationStatus: ActivationStatus{
+					Activated:  false,
+					ActivateAt: midnightActivateTime, // scheduled to run at midnight
+				},
+			},
+		},
+	}
+	require.NoError(t, prevVersion.Insert(t.Context()))
+
+	// Create build variant with midnight cron
+	bv := BuildVariant{
+		Name:          "bv",
+		CronBatchTime: "0 0 * * *", // midnight every day
+	}
+
+	activationTime, err := projectRef.GetActivationTimeForVariant(t.Context(), &bv, versionCreateTime, now)
+	require.NoError(t, err)
+
+	// get the previous version to check the activation time
+	dbVersion, err := VersionFindOneId(t.Context(), prevVersion.Id)
+	// Check if the version was found
+	require.NoError(t, err)
+	require.NotNil(t, dbVersion)
+
+	// Since the previous version is scheduled to run at midnight and our new version was created at 11:59pm,
+	// because it's within the five minute window, it should be scheduled for the next midnight instead of
+	// this midnight.
+	nextMidnight := midnightActivateTime.Add(24 * time.Hour)
+	assert.Equal(t, nextMidnight, activationTime)
+}
+
 func TestUserHasRepoViewPermission(t *testing.T) {
 	wrongProjectScopeId := "wrongProjectScope"
 	projectScopeId := "projectScope"
