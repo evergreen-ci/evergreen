@@ -1,7 +1,6 @@
 package operations
 
 import (
-	"context"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -251,8 +250,6 @@ func TestLoadWorkingChangesFromFile(t *testing.T) {
 }
 
 func TestShouldGenerateJWT(t *testing.T) {
-	ctx := context.Background()
-
 	tests := []struct {
 		name           string
 		settings       *ClientSettings
@@ -294,7 +291,7 @@ func TestShouldGenerateJWT(t *testing.T) {
 				},
 				MockServiceFlagErr: test.flagsErr,
 			}
-			result := test.settings.shouldGenerateJWT(ctx, mock)
+			result := test.settings.shouldGenerateJWT(t.Context(), mock)
 			assert.Equal(t, test.expectedResult, result)
 		})
 	}

@@ -161,8 +161,8 @@ func (s *ClientSettings) setupRestCommunicator(ctx context.Context, printMessage
 	}
 
 	if s.shouldGenerateJWT(ctx, c) {
-		grip.Info("We will attempt to generate a JWT token, to opt out of this, set 'do_not_run_kanopy_oidc' to true in your config file")
-		if s.JWT, err = RunKanopyOIDCLogin(); err != nil {
+		grip.Info("Evergreen CLI will attempt to generate a JWT token, to opt out of this, set 'do_not_run_kanopy_oidc' to true in your config file")
+		if s.JWT, err = runKanopyOIDCLogin(); err != nil {
 			grip.Warningf("Failed to get JWT token: %s", err)
 			return c, err
 		}
@@ -178,17 +178,20 @@ func (s *ClientSettings) shouldGenerateJWT(ctx context.Context, c client.Communi
 	}
 
 	if s.APIKey == "" {
-		grip.Info("No API key found, attempting to use a JWT token.")
+		grip.Info("No API key found in local Evergreen YAML, attempting to use a JWT token.")
 		return true
 	}
 
 	flags, err := c.GetServiceFlags(ctx)
+	grip.Infof("flags: %s, error: %s", flags, err.Error())
+
 	// if we get an unauthorized error when trying to get the flags, we can assume
 	// that the static api keys are no longer accepted and we should get a JWT token
 	if err != nil && isUnauthorized(err) {
 		return true
 	}
 
+	// todo: add an isServiceUser check
 	if err == nil && !flags.JWTTokenForCLIDisabled {
 		return true
 	}
