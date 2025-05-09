@@ -374,10 +374,7 @@ func (m *ec2FleetManager) AssociateIP(ctx context.Context, h *host.Host) error {
 
 // CleanupIP releases the host's IP address.
 func (m *ec2FleetManager) CleanupIP(ctx context.Context, h *host.Host) error {
-	if err := releaseIPAddressForHost(ctx, h); err != nil {
-		return err
-	}
-	return nil
+	return releaseIPAddressForHost(ctx, h)
 }
 
 func (m *ec2FleetManager) Cleanup(ctx context.Context) error {

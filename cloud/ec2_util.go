@@ -897,8 +897,16 @@ func associateIPAddressForHost(ctx context.Context, c AWSClient, h *host.Host) e
 	defer span.End()
 
 	assocAddrOut, err := c.AssociateAddress(ctx, &ec2.AssociateAddressInput{
-		InstanceId:         aws.String(h.Id),
-		AllocationId:       aws.String(h.IPAllocationID),
+		InstanceId:   aws.String(h.Id),
+		AllocationId: aws.String(h.IPAllocationID),
+		// Explicitly allowed an elastic IP to be reassociated to a different
+		// host. This is important because when Evergreen requests AWS to
+		// terminate the host, Evergreen assumes the IP address is free to reuse
+		// immediately but in AWS, the host may still hold onto the elastic IP
+		// until it reaches the terminated state on their end. Allowing
+		// reassociation lets the IP be reused immediately for a new host even
+		// if AWS is still working on terminating the host, which removes a
+		// dependency on AWS-side background operations.
 		AllowReassociation: utility.TruePtr(),
 	})
 	if err != nil {

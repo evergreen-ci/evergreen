@@ -1400,10 +1400,7 @@ func (m *ec2Manager) AssociateIP(ctx context.Context, h *host.Host) error {
 
 // CleanupIP releases the host's IP address.
 func (m *ec2Manager) CleanupIP(ctx context.Context, h *host.Host) error {
-	if err := releaseIPAddressForHost(ctx, h); err != nil {
-		return err
-	}
-	return nil
+	return releaseIPAddressForHost(ctx, h)
 }
 
 // Cleanup is a noop for the EC2 provider.
