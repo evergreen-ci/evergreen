@@ -51,7 +51,7 @@ require (
 	github.com/smartystreets/goconvey v1.8.1
 	github.com/stretchr/testify v1.10.0
 	github.com/urfave/cli v1.22.16
-	github.com/vektah/gqlparser/v2 v2.5.26
+	github.com/vektah/gqlparser/v2 v2.5.27
 	go.opentelemetry.io/contrib/detectors/aws/ec2 v1.35.0
 	go.opentelemetry.io/contrib/detectors/aws/ecs v1.35.0
 	go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws v0.60.0
