@@ -91,6 +91,7 @@ var (
 	ExecutionTasksKey              = bsonutil.MustHaveTag(Task{}, "ExecutionTasks")
 	DisplayOnlyKey                 = bsonutil.MustHaveTag(Task{}, "DisplayOnly")
 	DisplayTaskIdKey               = bsonutil.MustHaveTag(Task{}, "DisplayTaskId")
+	DisplayTaskDisplayNameKey      = bsonutil.MustHaveTag(Task{}, "DisplayTaskDisplayName")
 	ParentPatchIDKey               = bsonutil.MustHaveTag(Task{}, "ParentPatchID")
 	TaskGroupKey                   = bsonutil.MustHaveTag(Task{}, "TaskGroup")
 	TaskGroupMaxHostsKey           = bsonutil.MustHaveTag(Task{}, "TaskGroupMaxHosts")
