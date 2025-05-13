@@ -955,7 +955,7 @@ func (c *awsClientImpl) AllocateAddress(ctx context.Context, input *ec2.Allocate
 					grip.Debug(message.WrapError(apiErr, msg))
 				}
 				errMsg := err.Error()
-				if strings.Contains(errMsg, EC2InsufficientAddressCapacity) || strings.Contains(errMsg, EC2AddressLimitExceeded) {
+				if strings.Contains(errMsg, EC2InsufficientAddressCapacity) || strings.Contains(errMsg, EC2AddressLimitExceeded) || strings.Contains(errMsg, ec2InsufficientFreeAddresses) {
 					return false, err
 				}
 				return true, err
