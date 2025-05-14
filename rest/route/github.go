@@ -731,6 +731,34 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 		return errors.Wrapf(err, "getting merge base between branches '%s' and '%s'", pr.Base.GetLabel(), pr.Head.GetLabel())
 	}
 
+	// If the PR is from Devin, try to get the actual author from the commits
+	if owner == "Devin" || owner == "devin-ai-integration[bot]" {
+		// Get the first commit in the PR to identify the actual author
+		commits, resp, err := thirdparty.GetGithubPRCommits(ctx, 
+			baseOwnerAndRepo[0], 
+			baseOwnerAndRepo[1], 
+			pr.GetNumber())
+		
+		if err == nil && len(commits) > 0 && resp != nil {
+			defer resp.Body.Close()
+			firstCommit := commits[0]
+			if firstCommit.Author != nil && firstCommit.Author.Login != nil {
+				owner = *firstCommit.Author.Login
+				
+				grip.Info(message.Fields{
+					"source":        "GitHub hook",
+					"msg_id":        gh.msgID,
+					"event_type":    gh.eventType,
+					"repo":          pr.Base.Repo.GetFullName(),
+					"pr_number":     pr.GetNumber(),
+					"message":       "Using commit author instead of PR creator",
+					"pr_user":       pr.User.GetLogin(),
+					"commit_author": owner,
+				})
+			}
+		}
+	}
+
 	ghi, err := patch.NewGithubIntent(ctx, gh.msgID, owner, calledBy, alias, mergeBase, pr)
 	if err != nil {
 		return errors.Wrap(err, "creating GitHub patch intent")
