@@ -734,17 +734,15 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 	// If the PR is from Devin, try to get the actual author from the commits
 	if owner == "Devin" || owner == "devin-ai-integration[bot]" {
 		// Get the first commit in the PR to identify the actual author
-		commits, resp, err := thirdparty.GetGithubPRCommits(ctx, 
-			baseOwnerAndRepo[0], 
-			baseOwnerAndRepo[1], 
+		commits, resp, err := thirdparty.GetGithubPRCommits(ctx,
+			baseOwnerAndRepo[0],
+			baseOwnerAndRepo[1],
 			pr.GetNumber())
-		
 		if err == nil && len(commits) > 0 && resp != nil {
 			defer resp.Body.Close()
 			firstCommit := commits[0]
 			if firstCommit.Author != nil && firstCommit.Author.Login != nil {
 				owner = *firstCommit.Author.Login
-				
 				grip.Info(message.Fields{
 					"source":        "GitHub hook",
 					"msg_id":        gh.msgID,
