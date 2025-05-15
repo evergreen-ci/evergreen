@@ -3,8 +3,6 @@ package thirdparty
 import (
 	"context"
 	"fmt"
-	"regexp"
-	"strings"
 
 	"github.com/google/go-github/v70/github"
 	"github.com/mongodb/grip"
@@ -12,8 +10,6 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
-
-var CoAuthorPattern = regexp.MustCompile(`(?i)Co-[Aa]uthored-[Bb]y:\s*(.+?)\s*<(.+?)>`)
 
 func GetGithubPRCommits(ctx context.Context, owner, repo string, prNumber int) ([]*github.RepositoryCommit, *github.Response, error) {
 	caller := "GetGithubPRCommits"
@@ -45,17 +41,4 @@ func GetGithubPRCommits(ctx context.Context, owner, repo string, prNumber int) (
 	}
 
 	return commits, resp, nil
-}
-
-func ExtractCoAuthorFromCommit(commit *github.RepositoryCommit) (coAuthorName, coAuthorEmail string) {
-	if commit == nil || commit.Commit == nil || commit.Commit.Message == nil {
-		return "", ""
-	}
-
-	message := *commit.Commit.Message
-	matches := CoAuthorPattern.FindStringSubmatch(message)
-	if len(matches) >= 3 {
-		return strings.TrimSpace(matches[1]), strings.TrimSpace(matches[2])
-	}
-	return "", ""
 }
