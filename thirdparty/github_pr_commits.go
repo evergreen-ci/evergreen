@@ -64,18 +64,18 @@ func GetGitHubUsernameFromEmail(commit *github.RepositoryCommit, email string) s
 	if commit == nil || commit.Author == nil || commit.Author.Login == nil {
 		return ""
 	}
-	
-	if commit.Commit != nil && commit.Commit.Author != nil && 
-	   commit.Commit.Author.Email != nil && *commit.Commit.Author.Email == email {
+
+	if commit.Commit != nil && commit.Commit.Author != nil &&
+		commit.Commit.Author.Email != nil && *commit.Commit.Author.Email == email {
 		return *commit.Author.Login
 	}
-	
-	if commit.Commit != nil && commit.Commit.Committer != nil && 
-	   commit.Commit.Committer.Email != nil && *commit.Commit.Committer.Email == email {
+
+	if commit.Commit != nil && commit.Commit.Committer != nil &&
+		commit.Commit.Committer.Email != nil && *commit.Commit.Committer.Email == email {
 		if commit.Committer != nil && commit.Committer.Login != nil {
 			return *commit.Committer.Login
 		}
 	}
-	
+
 	return ""
 }
