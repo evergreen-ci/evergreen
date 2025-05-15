@@ -125,6 +125,8 @@ while still allowing for other kinds of versions (periodic builds, patches, etc)
 Additionally, admins can **Force Repotracker Run** to check for new commits if needed
 (Evergreen occasionally misses commits due to misconfiguration or GitHub outages).
 
+**Important**: The repotracker requires at least one task to be scheduled to run for it to properly create a commit version. If all build variants or tasks have `activate: false`, the repotracker will not be able to pick up new commits. Ensure that at least one task in your project is configured to run automatically on commits.
+
 ### Access and Admin Settings
 
 To set a Project Administrator edit the

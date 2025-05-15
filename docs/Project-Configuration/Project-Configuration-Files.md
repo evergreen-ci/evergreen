@@ -277,7 +277,10 @@ Fields:
     being activated or if `batchtime` specifies it should be activated. If
     we instead want to activate immediately, then set activate to true.
     If this should only activate when manually scheduled or by
-    stepback/dependencies, set activate to false.
+    stepback/dependencies, set activate to false. **Note**: The repotracker
+    requires at least one task to be scheduled to run for it to properly create
+    a commit version. If all build variants or tasks have `activate: false`,
+    the repotracker will not be able to pick up new commits.
 -   `stepback`: indicate if this variant should opt-in or out of stepback. 
     (If disabled at the project-level, this value will be ignored, otherwise it will override.)
 -   `deactivate_previous`: indicate if this variant should unschedule older 
