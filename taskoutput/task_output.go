@@ -7,8 +7,9 @@ import (
 // TaskOutput is the versioned entry point for coordinating persistent storage
 // of a task run's output data.
 type TaskOutput struct {
-	TaskLogs TaskLogOutput `bson:"task_logs,omitempty" json:"task_logs"`
-	TestLogs TestLogOutput `bson:"test_logs,omitempty" json:"test_logs"`
+	TaskLogs    TaskLogOutput    `bson:"task_logs,omitempty" json:"task_logs"`
+	TestLogs    TestLogOutput    `bson:"test_logs,omitempty" json:"test_logs"`
+	TestResults TestResultOutput `bson:"test_results,omitempty" json:"test_results"`
 }
 
 // TaskOptions represents the task-level information required for accessing
@@ -32,6 +33,10 @@ func InitializeTaskOutput(env evergreen.Environment) *TaskOutput {
 			BucketConfig: settings.Buckets.LogBucket,
 		},
 		TestLogs: TestLogOutput{
+			Version:      1,
+			BucketConfig: settings.Buckets.LogBucket,
+		},
+		TestResults: TestResultOutput{
 			Version:      1,
 			BucketConfig: settings.Buckets.LogBucket,
 		},
