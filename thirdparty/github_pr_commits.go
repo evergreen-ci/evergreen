@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/google/go-github/v70/github"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -61,20 +63,37 @@ func ExtractCoAuthorFromCommit(commit *github.RepositoryCommit) (coAuthorName, c
 }
 
 func GetGitHubUsernameFromEmail(commit *github.RepositoryCommit, email string) string {
-	if commit == nil || commit.Author == nil || commit.Author.Login == nil {
+	if commit != nil {
+		if commit.Commit != nil && commit.Commit.Author != nil &&
+			commit.Commit.Author.Email != nil && *commit.Commit.Author.Email == email {
+			if commit.Author != nil && commit.Author.Login != nil {
+				return *commit.Author.Login
+			}
+		}
+
+		if commit.Commit != nil && commit.Commit.Committer != nil &&
+			commit.Commit.Committer.Email != nil && *commit.Commit.Committer.Email == email {
+			if commit.Committer != nil && commit.Committer.Login != nil {
+				return *commit.Committer.Login
+			}
+		}
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	user, err := GetGithubUserByEmail(ctx, email)
+	if err != nil {
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message": "Failed to look up GitHub user by email",
+			"email":   email,
+			"ticket":  "DEVPROD-16345",
+		}))
 		return ""
 	}
 
-	if commit.Commit != nil && commit.Commit.Author != nil &&
-		commit.Commit.Author.Email != nil && *commit.Commit.Author.Email == email {
-		return *commit.Author.Login
-	}
-
-	if commit.Commit != nil && commit.Commit.Committer != nil &&
-		commit.Commit.Committer.Email != nil && *commit.Commit.Committer.Email == email {
-		if commit.Committer != nil && commit.Committer.Login != nil {
-			return *commit.Committer.Login
-		}
+	if user != nil && user.Login != nil {
+		return *user.Login
 	}
 
 	return ""
