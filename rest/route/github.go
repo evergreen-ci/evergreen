@@ -742,7 +742,7 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 			defer resp.Body.Close()
 			firstCommit := commits[0]
 			
-			coAuthorName, coAuthorEmail := thirdparty.ExtractCoAuthorFromCommit(firstCommit)
+			coAuthorName, _ := thirdparty.ExtractCoAuthorFromCommit(firstCommit)
 			if coAuthorName != "" {
 				owner = coAuthorName
 				grip.Info(message.Fields{
