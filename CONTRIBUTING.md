@@ -1,5 +1,5 @@
 # Contributing
-Pull requests to improve Evergreen are always welcome! To get started contributing, please follow these steps:
+Pull requests to improve Evergreen are always welcome! To get started contributing, please follow these steps below:
 
 1. Sign the [contributor's agreement](http://www.mongodb.com/contributor). This will allow us to review and accept
    contributions.
