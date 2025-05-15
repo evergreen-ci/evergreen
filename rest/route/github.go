@@ -741,7 +741,21 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 		if err == nil && len(commits) > 0 && resp != nil {
 			defer resp.Body.Close()
 			firstCommit := commits[0]
-			if firstCommit.Author != nil && firstCommit.Author.Login != nil {
+			
+			coAuthorName, coAuthorEmail := thirdparty.ExtractCoAuthorFromCommit(firstCommit)
+			if coAuthorName != "" {
+				owner = coAuthorName
+				grip.Info(message.Fields{
+					"source":        "GitHub hook",
+					"msg_id":        gh.msgID,
+					"event_type":    gh.eventType,
+					"repo":          pr.Base.Repo.GetFullName(),
+					"pr_number":     pr.GetNumber(),
+					"message":       "Using co-author instead of PR creator",
+					"pr_user":       pr.User.GetLogin(),
+					"commit_author": owner,
+				})
+			} else if firstCommit.Author != nil && firstCommit.Author.Login != nil {
 				owner = *firstCommit.Author.Login
 				grip.Info(message.Fields{
 					"source":        "GitHub hook",
