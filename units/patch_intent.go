@@ -1165,12 +1165,23 @@ func findEvergreenUserForGithubMergeGroup(ctx context.Context) (*user.DBUser, er
 	return u, err
 }
 
-func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *patch.Patch, requiredOrganization, githubUser string) (bool, error) {
+func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *patch.Patch, requiredOrganization, githubUserOrEmail string) (bool, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
+	isEmail := strings.Contains(githubUserOrEmail, "@")
+	
+	grip.Info(message.Fields{
+		"job":          j.ID(),
+		"message":      "Checking authorization for user",
+		"source":       "patch intents",
+		"identifier":   githubUserOrEmail,
+		"is_email":     isEmail,
+		"ticket":       "DEVPROD-16345",
+	})
+
 	// GitHub Dependabot patches should be automatically authorized.
-	if githubUser == githubDependabotUser {
+	if githubUserOrEmail == githubDependabotUser {
 		grip.Info(message.Fields{
 			"job":       j.ID(),
 			"message":   fmt.Sprintf("authorizing patch from special user '%s'", githubDependabotUser),
@@ -1178,9 +1189,27 @@ func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *p
 			"base_repo": fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo),
 			"head_repo": fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.HeadOwner, patchDoc.GithubPatchData.HeadRepo),
 			"pr_number": patchDoc.GithubPatchData.PRNumber,
+			"ticket":    "DEVPROD-16345",
 		})
 		return true, nil
 	}
+
+	githubUser := githubUserOrEmail
+	if isEmail {
+		parts := strings.Split(githubUserOrEmail, "@")
+		if len(parts) > 0 {
+			githubUser = parts[0]
+			grip.Info(message.Fields{
+				"job":          j.ID(),
+				"message":      "Extracted potential GitHub username from email",
+				"source":       "patch intents",
+				"email":        githubUserOrEmail,
+				"github_user":  githubUser,
+				"ticket":       "DEVPROD-16345",
+			})
+		}
+	}
+	
 	// Checking if the GitHub user is in the organization is more permissive than checking permission level
 	// for the owner/repo specified, however this is okay since for the purposes of this check its to run patches.
 	isMember, err := thirdparty.GithubUserInOrganization(ctx, requiredOrganization, githubUser)
@@ -1190,14 +1219,27 @@ func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *p
 			"message":      "failed to authenticate GitHub PR",
 			"source":       "patch intents",
 			"creator":      githubUser,
+			"original_id":  githubUserOrEmail,
+			"is_email":     isEmail,
 			"required_org": requiredOrganization,
 			"base_repo":    fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo),
 			"head_repo":    fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.HeadOwner, patchDoc.GithubPatchData.HeadRepo),
 			"pr_number":    patchDoc.GithubPatchData.PRNumber,
+			"ticket":       "DEVPROD-16345",
 		}))
 		return false, err
 	}
 	if isMember {
+		grip.Info(message.Fields{
+			"job":          j.ID(),
+			"message":      "User is a member of the organization",
+			"source":       "patch intents",
+			"github_user":  githubUser,
+			"original_id":  githubUserOrEmail,
+			"is_email":     isEmail,
+			"required_org": requiredOrganization,
+			"ticket":       "DEVPROD-16345",
+		})
 		return isMember, nil
 	}
 
@@ -1208,13 +1250,26 @@ func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *p
 			"message":      "failed to check if user is an authorized app",
 			"source":       "patch intents",
 			"creator":      githubUser,
+			"original_id":  githubUserOrEmail,
+			"is_email":     isEmail,
 			"required_org": requiredOrganization,
 			"base_repo":    fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo),
 			"head_repo":    fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.HeadOwner, patchDoc.GithubPatchData.HeadRepo),
 			"pr_number":    patchDoc.GithubPatchData.PRNumber,
+			"ticket":       "DEVPROD-16345",
 		}))
 	}
 	if isAuthorizedForOrg {
+		grip.Info(message.Fields{
+			"job":          j.ID(),
+			"message":      "User is authorized for the organization",
+			"source":       "patch intents",
+			"github_user":  githubUser,
+			"original_id":  githubUserOrEmail,
+			"is_email":     isEmail,
+			"required_org": requiredOrganization,
+			"ticket":       "DEVPROD-16345",
+		})
 		return isAuthorizedForOrg, nil
 	}
 
@@ -1223,15 +1278,45 @@ func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *p
 		patchDoc.GithubPatchData.HeadOwner, patchDoc.GithubPatchData.HeadRepo, githubUser)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
-			"job":        j.ID(),
-			"message":    "failed to check if user has write permission for repo",
-			"source":     "patch intents",
-			"creator":    githubUser,
-			"head_owner": fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.HeadOwner),
-			"head_repo":  fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.HeadOwner, patchDoc.GithubPatchData.HeadRepo),
-			"pr_number":  patchDoc.GithubPatchData.PRNumber,
+			"job":          j.ID(),
+			"message":      "failed to check if user has write permission for repo",
+			"source":       "patch intents",
+			"creator":      githubUser,
+			"original_id":  githubUserOrEmail,
+			"is_email":     isEmail,
+			"head_owner":   fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.HeadOwner),
+			"head_repo":    fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.HeadOwner, patchDoc.GithubPatchData.HeadRepo),
+			"pr_number":    patchDoc.GithubPatchData.PRNumber,
+			"ticket":       "DEVPROD-16345",
 		}))
 	}
+	
+	if hasWritePermission {
+		grip.Info(message.Fields{
+			"job":          j.ID(),
+			"message":      "User has write permission for the repository",
+			"source":       "patch intents",
+			"github_user":  githubUser,
+			"original_id":  githubUserOrEmail,
+			"is_email":     isEmail,
+			"head_owner":   patchDoc.GithubPatchData.HeadOwner,
+			"head_repo":    patchDoc.GithubPatchData.HeadRepo,
+			"ticket":       "DEVPROD-16345",
+		})
+	} else {
+		grip.Info(message.Fields{
+			"job":          j.ID(),
+			"message":      "User is not authorized",
+			"source":       "patch intents",
+			"github_user":  githubUser,
+			"original_id":  githubUserOrEmail,
+			"is_email":     isEmail,
+			"head_owner":   patchDoc.GithubPatchData.HeadOwner,
+			"head_repo":    patchDoc.GithubPatchData.HeadRepo,
+			"ticket":       "DEVPROD-16345",
+		})
+	}
+	
 	return hasWritePermission, nil
 }
 
