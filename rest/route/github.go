@@ -741,6 +741,17 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 		if err == nil && len(commits) > 0 && resp != nil {
 			defer resp.Body.Close()
 			firstCommit := commits[0]
+			
+			grip.Info(message.Fields{
+				"source":        "GitHub hook",
+				"msg_id":        gh.msgID,
+				"event_type":    gh.eventType,
+				"repo":          pr.Base.Repo.GetFullName(),
+				"pr_number":     pr.GetNumber(),
+				"message":       "Full commit information",
+				"commit":        firstCommit,
+				"ticket":        "DEVPROD-16345",
+			})
 
 			coAuthorName, coAuthorEmail := thirdparty.ExtractCoAuthorFromCommit(firstCommit)
 			
