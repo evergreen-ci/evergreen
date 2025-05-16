@@ -1929,7 +1929,7 @@ func GetCoAuthorEmail(ctx context.Context, owner, repo string, prNumber int) (st
 
 	if firstCommit.Commit.Message != nil {
 		grip.Debug(message.Fields{
-			"message":      "Examining commit message for co-author",
+			"message":      "Examining commit message for co-author information",
 			"commit_sha":   firstCommit.GetSHA(),
 			"commit_msg":   *firstCommit.Commit.Message,
 			"ticket":       "DEVPROD-16345",
