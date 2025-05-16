@@ -731,20 +731,57 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 		return errors.Wrapf(err, "getting merge base between branches '%s' and '%s'", pr.Base.GetLabel(), pr.Head.GetLabel())
 	}
 
-	// If the PR is from Devin, use a service user instead
+	// If the PR is from Devin, try to find the GitHub username from the commit author's email
 	if owner == "Devin" || owner == "devin-ai-integration[bot]" {
-		owner = "devin-service-user"
-		grip.Info(message.Fields{
-			"source":        "GitHub hook",
-			"msg_id":        gh.msgID,
-			"event_type":    gh.eventType,
-			"repo":          pr.Base.Repo.GetFullName(),
-			"pr_number":     pr.GetNumber(),
-			"message":       "Using service user instead of Devin",
-			"pr_user":       pr.User.GetLogin(),
-			"service_user":  owner,
-			"ticket":        "DEVPROD-16345",
-		})
+		// Get the commit author's email
+		baseOwner := baseOwnerAndRepo[0]
+		baseRepo := baseOwnerAndRepo[1]
+		commitAuthorEmail, err := thirdparty.GetCommitAuthorEmail(ctx, baseOwner, baseRepo, pr.GetNumber())
+		if err == nil && commitAuthorEmail != "" {
+			user, err := user.FindByEmail(ctx, commitAuthorEmail)
+			if err == nil && user != nil && user.Settings.GithubUser.LastKnownAs != "" {
+				owner = user.Settings.GithubUser.LastKnownAs
+				grip.Info(message.Fields{
+					"source":        "GitHub hook",
+					"msg_id":        gh.msgID,
+					"event_type":    gh.eventType,
+					"repo":          pr.Base.Repo.GetFullName(),
+					"pr_number":     pr.GetNumber(),
+					"message":       "Using GitHub username from user collection",
+					"pr_user":       pr.User.GetLogin(),
+					"commit_email":  commitAuthorEmail,
+					"github_user":   owner,
+					"ticket":        "DEVPROD-16345",
+				})
+			} else {
+				owner = "devin-service-user"
+				grip.Info(message.Fields{
+					"source":        "GitHub hook",
+					"msg_id":        gh.msgID,
+					"event_type":    gh.eventType,
+					"repo":          pr.Base.Repo.GetFullName(),
+					"pr_number":     pr.GetNumber(),
+					"message":       "Using service user (no GitHub user found for email)",
+					"pr_user":       pr.User.GetLogin(),
+					"commit_email":  commitAuthorEmail,
+					"service_user":  owner,
+					"ticket":        "DEVPROD-16345",
+				})
+			}
+		} else {
+			owner = "devin-service-user"
+			grip.Info(message.Fields{
+				"source":        "GitHub hook",
+				"msg_id":        gh.msgID,
+				"event_type":    gh.eventType,
+				"repo":          pr.Base.Repo.GetFullName(),
+				"pr_number":     pr.GetNumber(),
+				"message":       "Using service user (could not get commit email)",
+				"pr_user":       pr.User.GetLogin(),
+				"service_user":  owner,
+				"ticket":        "DEVPROD-16345",
+			})
+		}
 	}
 
 	ghi, err := patch.NewGithubIntent(ctx, gh.msgID, owner, calledBy, alias, mergeBase, pr)

@@ -1881,3 +1881,40 @@ func GetCheckRun(ctx context.Context, owner, repo string, checkRunID int64) (*gi
 	}
 	return checkRun, nil
 }
+func GetCommitAuthorEmail(ctx context.Context, owner, repo string, prNumber int) (string, error) {
+	caller := "GetCommitAuthorEmail"
+	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
+		attribute.String(githubEndpointAttribute, caller),
+		attribute.String(githubOwnerAttribute, owner),
+		attribute.String(githubRepoAttribute, repo),
+	))
+	defer span.End()
+
+	token, err := getInstallationToken(ctx, owner, repo, nil)
+	if err != nil {
+		return "", errors.Wrap(err, "getting installation token")
+	}
+
+	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
+	defer githubClient.Close()
+
+	opts := &github.ListOptions{Page: 1, PerPage: 1}
+	commits, resp, err := githubClient.PullRequests.ListCommits(ctx, owner, repo, prNumber, opts)
+	if resp != nil {
+		defer resp.Body.Close()
+		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
+	}
+	if err != nil {
+		return "", errors.Wrap(err, "listing commits from PR")
+	}
+	if len(commits) == 0 {
+		return "", errors.New("no commits found in PR")
+	}
+
+	firstCommit := commits[0]
+	if firstCommit.Commit == nil || firstCommit.Commit.Author == nil || firstCommit.Commit.Author.Email == nil {
+		return "", errors.New("commit author email not found")
+	}
+
+	return *firstCommit.Commit.Author.Email, nil
+}
