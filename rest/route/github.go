@@ -775,6 +775,7 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 				user, err := user.FindByEmail(ctx, commitAuthorEmail)
 				if err == nil && user != nil && user.Settings.GithubUser.LastKnownAs != "" {
 					owner = user.Settings.GithubUser.LastKnownAs
+					pr.User = &github.User{Login: github.String(owner)}
 					grip.Info(message.Fields{
 						"source":        "GitHub hook",
 						"msg_id":        gh.msgID,
