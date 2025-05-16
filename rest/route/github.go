@@ -775,10 +775,7 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 				user, err := user.FindByEmail(ctx, commitAuthorEmail)
 				if err == nil && user != nil && user.Settings.GithubUser.LastKnownAs != "" {
 					owner = user.Settings.GithubUser.LastKnownAs
-					pr.User = &github.User{
-						Login: github.String(owner),
-						ID:    github.Int64(int64(user.Settings.GithubUser.UID)),
-					}
+					githubUID := user.Settings.GithubUser.UID
 					grip.Info(message.Fields{
 						"source":        "GitHub hook",
 						"msg_id":        gh.msgID,
@@ -789,9 +786,10 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 						"pr_user":       pr.User.GetLogin(),
 						"commit_email":  commitAuthorEmail,
 						"github_user":   owner,
-						"github_uid":    user.Settings.GithubUser.UID,
+						"github_uid":    githubUID,
 						"ticket":        "DEVPROD-16345",
 					})
+
 				} else {
 					grip.Info(message.Fields{
 						"source":        "GitHub hook",
@@ -824,6 +822,39 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 	if err != nil {
 		return errors.Wrap(err, "creating GitHub patch intent")
 	}
+	
+	// If the PR is from Devin and the owner is different from the PR creator, update the patch data directly
+	if (pr.User.GetLogin() == "Devin" || pr.User.GetLogin() == "devin-ai-integration[bot]") && 
+		owner != pr.User.GetLogin() {
+		// Get the patch from the intent and update the GitHub patch data directly
+		patchDoc := ghi.NewPatch()
+		
+		patchDoc.GithubPatchData.Author = owner
+		
+		// Get the email from the commit to find the user's GitHub UID
+		baseOwner := baseOwnerAndRepo[0]
+		baseRepo := baseOwnerAndRepo[1]
+		email, _ := thirdparty.GetCoAuthorEmail(ctx, baseOwner, baseRepo, pr.GetNumber())
+		if email != "" {
+			userObj, err := user.FindByEmail(ctx, email)
+			if err == nil && userObj != nil && userObj.Settings.GithubUser.UID > 0 {
+				patchDoc.GithubPatchData.AuthorUID = userObj.Settings.GithubUser.UID
+				grip.Info(message.Fields{
+					"source":        "GitHub hook",
+					"msg_id":        gh.msgID,
+					"event_type":    gh.eventType,
+					"repo":          pr.Base.Repo.GetFullName(),
+					"pr_number":     pr.GetNumber(),
+					"message":       "Updated GitHub patch data with user information",
+					"pr_user":       pr.User.GetLogin(),
+					"github_user":   owner,
+					"github_uid":    userObj.Settings.GithubUser.UID,
+					"ticket":        "DEVPROD-16345",
+				})
+			}
+		}
+	}
+
 	// If there are no errors with the PR, verify that we aren't skipping CI before adding the intent.
 	for _, label := range skipCILabels {
 		title := strings.ToLower(pr.GetTitle())
