@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -1880,4 +1881,67 @@ func GetCheckRun(ctx context.Context, owner, repo string, checkRunID int64) (*gi
 		return nil, errors.Wrapf(err, "getting check run %d", checkRunID)
 	}
 	return checkRun, nil
+}
+func ExtractCoAuthorEmail(message string) string {
+	re := regexp.MustCompile(`(?i)Co-Authored-By:.*<([^>]+)>`)
+	matches := re.FindStringSubmatch(message)
+	if len(matches) > 1 {
+		return matches[1]
+	}
+	return ""
+}
+
+func GetCoAuthorEmail(ctx context.Context, owner, repo string, prNumber int) (string, error) {
+	caller := "GetCoAuthorEmail"
+	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
+		attribute.String(githubEndpointAttribute, caller),
+		attribute.String(githubOwnerAttribute, owner),
+		attribute.String(githubRepoAttribute, repo),
+	))
+	defer span.End()
+
+	token, err := getInstallationToken(ctx, owner, repo, nil)
+	if err != nil {
+		return "", errors.Wrap(err, "getting installation token")
+	}
+
+	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
+	defer githubClient.Close()
+
+	opts := &github.ListOptions{Page: 1, PerPage: 1}
+	commits, resp, err := githubClient.PullRequests.ListCommits(ctx, owner, repo, prNumber, opts)
+	if resp != nil {
+		defer resp.Body.Close()
+		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
+	}
+	if err != nil {
+		return "", errors.Wrap(err, "listing commits from PR")
+	}
+	if len(commits) == 0 {
+		return "", errors.New("no commits found in PR")
+	}
+
+	firstCommit := commits[0]
+	if firstCommit.Commit == nil {
+		return "", errors.New("commit information not found")
+	}
+
+	if firstCommit.Commit.Message != nil {
+		coAuthorEmail := ExtractCoAuthorEmail(*firstCommit.Commit.Message)
+		if coAuthorEmail != "" {
+			grip.Info(message.Fields{
+				"message":         "Found co-author in commit message",
+				"commit_sha":      firstCommit.GetSHA(),
+				"co_author_email": coAuthorEmail,
+				"ticket":          "DEVPROD-16345",
+			})
+			return coAuthorEmail, nil
+		}
+	}
+
+	if firstCommit.Commit.Author == nil || firstCommit.Commit.Author.Email == nil {
+		return "", errors.New("commit author email not found")
+	}
+
+	return *firstCommit.Commit.Author.Email, nil
 }

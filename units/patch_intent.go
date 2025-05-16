@@ -1169,18 +1169,28 @@ func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *p
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
+	grip.Info(message.Fields{
+		"job":        j.ID(),
+		"message":    "Checking authorization for user",
+		"source":     "patch intents",
+		"identifier": githubUser,
+		"ticket":     "DEVPROD-16345",
+	})
+
 	// GitHub Dependabot patches should be automatically authorized.
 	if githubUser == githubDependabotUser {
 		grip.Info(message.Fields{
 			"job":       j.ID(),
-			"message":   fmt.Sprintf("authorizing patch from special user '%s'", githubDependabotUser),
+			"message":   fmt.Sprintf("authorizing patch from special user '%s'", githubUser),
 			"source":    "patch intents",
 			"base_repo": fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo),
 			"head_repo": fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.HeadOwner, patchDoc.GithubPatchData.HeadRepo),
 			"pr_number": patchDoc.GithubPatchData.PRNumber,
+			"ticket":    "DEVPROD-16345",
 		})
 		return true, nil
 	}
+
 	// Checking if the GitHub user is in the organization is more permissive than checking permission level
 	// for the owner/repo specified, however this is okay since for the purposes of this check its to run patches.
 	isMember, err := thirdparty.GithubUserInOrganization(ctx, requiredOrganization, githubUser)
@@ -1194,10 +1204,19 @@ func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *p
 			"base_repo":    fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo),
 			"head_repo":    fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.HeadOwner, patchDoc.GithubPatchData.HeadRepo),
 			"pr_number":    patchDoc.GithubPatchData.PRNumber,
+			"ticket":       "DEVPROD-16345",
 		}))
 		return false, err
 	}
 	if isMember {
+		grip.Info(message.Fields{
+			"job":          j.ID(),
+			"message":      "User is a member of the organization",
+			"source":       "patch intents",
+			"github_user":  githubUser,
+			"required_org": requiredOrganization,
+			"ticket":       "DEVPROD-16345",
+		})
 		return isMember, nil
 	}
 
@@ -1212,9 +1231,18 @@ func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *p
 			"base_repo":    fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo),
 			"head_repo":    fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.HeadOwner, patchDoc.GithubPatchData.HeadRepo),
 			"pr_number":    patchDoc.GithubPatchData.PRNumber,
+			"ticket":       "DEVPROD-16345",
 		}))
 	}
 	if isAuthorizedForOrg {
+		grip.Info(message.Fields{
+			"job":          j.ID(),
+			"message":      "User is authorized for the organization",
+			"source":       "patch intents",
+			"github_user":  githubUser,
+			"required_org": requiredOrganization,
+			"ticket":       "DEVPROD-16345",
+		})
 		return isAuthorizedForOrg, nil
 	}
 
@@ -1230,8 +1258,32 @@ func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *p
 			"head_owner": fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.HeadOwner),
 			"head_repo":  fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.HeadOwner, patchDoc.GithubPatchData.HeadRepo),
 			"pr_number":  patchDoc.GithubPatchData.PRNumber,
+			"ticket":     "DEVPROD-16345",
 		}))
 	}
+
+	if hasWritePermission {
+		grip.Info(message.Fields{
+			"job":         j.ID(),
+			"message":     "User has write permission for the repository",
+			"source":      "patch intents",
+			"github_user": githubUser,
+			"head_owner":  patchDoc.GithubPatchData.HeadOwner,
+			"head_repo":   patchDoc.GithubPatchData.HeadRepo,
+			"ticket":      "DEVPROD-16345",
+		})
+	} else {
+		grip.Info(message.Fields{
+			"job":         j.ID(),
+			"message":     "User is not authorized",
+			"source":      "patch intents",
+			"github_user": githubUser,
+			"head_owner":  patchDoc.GithubPatchData.HeadOwner,
+			"head_repo":   patchDoc.GithubPatchData.HeadRepo,
+			"ticket":      "DEVPROD-16345",
+		})
+	}
+
 	return hasWritePermission, nil
 }
 
