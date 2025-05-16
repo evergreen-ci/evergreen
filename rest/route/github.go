@@ -750,35 +750,49 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 			})
 		}
 		if err == nil && commitAuthorEmail != "" {
-			user, err := user.FindByEmail(ctx, commitAuthorEmail)
-			if err == nil && user != nil && user.Settings.GithubUser.LastKnownAs != "" {
-				owner = user.Settings.GithubUser.LastKnownAs
+			if strings.Contains(strings.ToLower(commitAuthorEmail), "devin") {
 				grip.Info(message.Fields{
 					"source":        "GitHub hook",
 					"msg_id":        gh.msgID,
 					"event_type":    gh.eventType,
 					"repo":          pr.Base.Repo.GetFullName(),
 					"pr_number":     pr.GetNumber(),
-					"message":       "Using GitHub username from user collection",
+					"message":       "Skipping lookup for Devin email, using original owner",
 					"pr_user":       pr.User.GetLogin(),
 					"commit_email":  commitAuthorEmail,
-					"github_user":   owner,
 					"ticket":        "DEVPROD-16345",
 				})
 			} else {
-				owner = "devin-ai-integration[bot]"
-				grip.Info(message.Fields{
-					"source":        "GitHub hook",
-					"msg_id":        gh.msgID,
-					"event_type":    gh.eventType,
-					"repo":          pr.Base.Repo.GetFullName(),
-					"pr_number":     pr.GetNumber(),
-					"message":       "Using devin-ai-integration[bot] (no GitHub user found for email)",
-					"pr_user":       pr.User.GetLogin(),
-					"commit_email":  commitAuthorEmail,
-					"service_user":  owner,
-					"ticket":        "DEVPROD-16345",
-				})
+				user, err := user.FindByEmail(ctx, commitAuthorEmail)
+				if err == nil && user != nil && user.Settings.GithubUser.LastKnownAs != "" {
+					owner = user.Settings.GithubUser.LastKnownAs
+					grip.Info(message.Fields{
+						"source":        "GitHub hook",
+						"msg_id":        gh.msgID,
+						"event_type":    gh.eventType,
+						"repo":          pr.Base.Repo.GetFullName(),
+						"pr_number":     pr.GetNumber(),
+						"message":       "Using GitHub username from user collection",
+						"pr_user":       pr.User.GetLogin(),
+						"commit_email":  commitAuthorEmail,
+						"github_user":   owner,
+						"ticket":        "DEVPROD-16345",
+					})
+				} else {
+					owner = "devin-ai-integration[bot]"
+					grip.Info(message.Fields{
+						"source":        "GitHub hook",
+						"msg_id":        gh.msgID,
+						"event_type":    gh.eventType,
+						"repo":          pr.Base.Repo.GetFullName(),
+						"pr_number":     pr.GetNumber(),
+						"message":       "Using devin-ai-integration[bot] (no GitHub user found for email)",
+						"pr_user":       pr.User.GetLogin(),
+						"commit_email":  commitAuthorEmail,
+						"service_user":  owner,
+						"ticket":        "DEVPROD-16345",
+					})
+				}
 			}
 		} else {
 			owner = "devin-ai-integration[bot]"
