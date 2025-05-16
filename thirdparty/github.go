@@ -1882,6 +1882,7 @@ func GetCheckRun(ctx context.Context, owner, repo string, checkRunID int64) (*gi
 	}
 	return checkRun, nil
 }
+// Returns an empty string if no co-author information is found.
 func ExtractCoAuthorEmail(message string) string {
 	re := regexp.MustCompile(`(?i)Co-Authored-By:.*<([^>]+)>`)
 	matches := re.FindStringSubmatch(message)
