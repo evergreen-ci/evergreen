@@ -766,14 +766,14 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 					"ticket":        "DEVPROD-16345",
 				})
 			} else {
-				owner = "devin-service-user"
+				owner = "devin-ai-integration[bot]"
 				grip.Info(message.Fields{
 					"source":        "GitHub hook",
 					"msg_id":        gh.msgID,
 					"event_type":    gh.eventType,
 					"repo":          pr.Base.Repo.GetFullName(),
 					"pr_number":     pr.GetNumber(),
-					"message":       "Using service user (no GitHub user found for email)",
+					"message":       "Using devin-ai-integration[bot] (no GitHub user found for email)",
 					"pr_user":       pr.User.GetLogin(),
 					"commit_email":  commitAuthorEmail,
 					"service_user":  owner,
@@ -781,14 +781,14 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 				})
 			}
 		} else {
-			owner = "devin-service-user"
+			owner = "devin-ai-integration[bot]"
 			grip.Info(message.Fields{
 				"source":        "GitHub hook",
 				"msg_id":        gh.msgID,
 				"event_type":    gh.eventType,
 				"repo":          pr.Base.Repo.GetFullName(),
 				"pr_number":     pr.GetNumber(),
-				"message":       "Using service user (could not get commit email)",
+				"message":       "Using devin-ai-integration[bot] (could not get commit email)",
 				"pr_user":       pr.User.GetLogin(),
 				"service_user":  owner,
 				"ticket":        "DEVPROD-16345",
