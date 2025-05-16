@@ -1881,6 +1881,7 @@ func GetCheckRun(ctx context.Context, owner, repo string, checkRunID int64) (*gi
 	}
 	return checkRun, nil
 }
+
 func GetCommitAuthorEmail(ctx context.Context, owner, repo string, prNumber int) (string, error) {
 	caller := "GetCommitAuthorEmail"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(

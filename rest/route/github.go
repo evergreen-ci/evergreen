@@ -737,6 +737,18 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 		baseOwner := baseOwnerAndRepo[0]
 		baseRepo := baseOwnerAndRepo[1]
 		commitAuthorEmail, err := thirdparty.GetCommitAuthorEmail(ctx, baseOwner, baseRepo, pr.GetNumber())
+		if err != nil {
+			grip.Debug(message.Fields{
+				"source":        "GitHub hook",
+				"msg_id":        gh.msgID,
+				"event_type":    gh.eventType,
+				"repo":          pr.Base.Repo.GetFullName(),
+				"pr_number":     pr.GetNumber(),
+				"message":       "Error getting commit author email",
+				"error":         err.Error(),
+				"ticket":        "DEVPROD-16345",
+			})
+		}
 		if err == nil && commitAuthorEmail != "" {
 			user, err := user.FindByEmail(ctx, commitAuthorEmail)
 			if err == nil && user != nil && user.Settings.GithubUser.LastKnownAs != "" {

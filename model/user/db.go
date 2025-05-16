@@ -224,6 +224,21 @@ func FindBySlackUsername(ctx context.Context, userName string) (*DBUser, error) 
 	return &u, nil
 }
 
+func FindByEmail(ctx context.Context, email string) (*DBUser, error) {
+	u := DBUser{}
+	err := db.FindOneQContext(ctx, Collection, db.Query(bson.M{
+		EmailAddressKey: email,
+	}), &u)
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "finding user by email")
+	}
+
+	return &u, nil
+}
+
 func FindByRole(ctx context.Context, role string) ([]DBUser, error) {
 	res := []DBUser{}
 	err := db.FindAllQ(ctx,
@@ -569,19 +584,4 @@ func UpsertOneFromExisting(ctx context.Context, oldUsr *DBUser, newEmail string)
 	}})
 
 	return newUsr, errors.Wrapf(err, "unable to insert new user '%s'", newUsername)
-}
-
-func FindByEmail(ctx context.Context, email string) (*DBUser, error) {
-	u := DBUser{}
-	err := db.FindOneQContext(ctx, Collection, db.Query(bson.M{
-		EmailAddressKey: email,
-	}), &u)
-	if adb.ResultsNotFound(err) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, errors.Wrap(err, "finding user by email")
-	}
-
-	return &u, nil
 }
