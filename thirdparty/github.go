@@ -1152,49 +1152,7 @@ func GetGithubUser(ctx context.Context, loginName string) (*github.User, error) 
 	return user, nil
 }
 
-// GetGithubUserByEmail fetches a github user by email address
-func GetGithubUserByEmail(ctx context.Context, email string) (*github.User, error) {
-	caller := "GetGithubUserByEmail"
-	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
-		attribute.String(githubEndpointAttribute, caller),
-		attribute.String("email", email),
-	))
-	defer span.End()
 
-	token, err := getInstallationTokenWithDefaultOwnerRepo(ctx, nil)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting installation token")
-	}
-
-	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
-	defer githubClient.Close()
-
-	opts := &github.SearchOptions{
-		ListOptions: github.ListOptions{
-			PerPage: 1, // We only need the first result
-		},
-	}
-	query := fmt.Sprintf("%s in:email", email)
-	result, resp, err := githubClient.Search.Users(ctx, query, opts)
-	if resp != nil {
-		defer resp.Body.Close()
-		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
-		if err != nil {
-			return nil, parseGithubErrorResponse(resp)
-		}
-	} else if err != nil {
-		errMsg := fmt.Sprintf("nil response from search for github user with email '%s': %v", email, err)
-		grip.Error(errMsg)
-		return nil, APIResponseError{errMsg}
-	}
-
-	if result.GetTotal() == 0 || len(result.Users) == 0 {
-		return nil, nil
-	}
-
-	username := result.Users[0].GetLogin()
-	return GetGithubUser(ctx, username)
-}
 
 // GithubUserInOrganization returns true if the given github user is in the
 // given organization. The user with the attached token must have

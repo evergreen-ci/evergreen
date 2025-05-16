@@ -731,90 +731,20 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 		return errors.Wrapf(err, "getting merge base between branches '%s' and '%s'", pr.Base.GetLabel(), pr.Head.GetLabel())
 	}
 
-	// If the PR is from Devin, try to get the actual author from the commits
+	// If the PR is from Devin, use a service user instead
 	if owner == "Devin" || owner == "devin-ai-integration[bot]" {
-		// Get the first commit in the PR to identify the actual author
-		commits, resp, err := thirdparty.GetGithubPRCommits(ctx,
-			baseOwnerAndRepo[0],
-			baseOwnerAndRepo[1],
-			pr.GetNumber())
-		if err == nil && len(commits) > 0 && resp != nil {
-			defer resp.Body.Close()
-			firstCommit := commits[0]
-			
-			grip.Info(message.Fields{
-				"source":        "GitHub hook",
-				"msg_id":        gh.msgID,
-				"event_type":    gh.eventType,
-				"repo":          pr.Base.Repo.GetFullName(),
-				"pr_number":     pr.GetNumber(),
-				"message":       "Full commit information",
-				"commit":        firstCommit,
-				"ticket":        "DEVPROD-16345",
-			})
-
-			coAuthorName, coAuthorEmail := thirdparty.ExtractCoAuthorFromCommit(firstCommit)
-			
-			coAuthorGitHubUsername := ""
-			if coAuthorEmail != "" {
-				coAuthorGitHubUsername = thirdparty.GetGitHubUsernameFromEmail(firstCommit, coAuthorEmail)
-			}
-			
-			grip.Info(message.Fields{
-				"source":        "GitHub hook",
-				"msg_id":        gh.msgID,
-				"event_type":    gh.eventType,
-				"repo":          pr.Base.Repo.GetFullName(),
-				"pr_number":     pr.GetNumber(),
-				"message":       "Co-author information from commit",
-				"pr_user":       pr.User.GetLogin(),
-				"co_author_name": coAuthorName,
-				"co_author_email": coAuthorEmail,
-				"co_author_github_username": coAuthorGitHubUsername,
-				"ticket":        "DEVPROD-16345",
-			})
-			
-			if coAuthorGitHubUsername != "" {
-				owner = coAuthorGitHubUsername
-				grip.Info(message.Fields{
-					"source":        "GitHub hook",
-					"msg_id":        gh.msgID,
-					"event_type":    gh.eventType,
-					"repo":          pr.Base.Repo.GetFullName(),
-					"pr_number":     pr.GetNumber(),
-					"message":       "Using co-author GitHub username instead of PR creator",
-					"pr_user":       pr.User.GetLogin(),
-					"commit_author": owner,
-					"ticket":        "DEVPROD-16345",
-				})
-			} else if coAuthorName != "" {
-				owner = coAuthorName
-				grip.Info(message.Fields{
-					"source":        "GitHub hook",
-					"msg_id":        gh.msgID,
-					"event_type":    gh.eventType,
-					"repo":          pr.Base.Repo.GetFullName(),
-					"pr_number":     pr.GetNumber(),
-					"message":       "Using co-author name instead of PR creator (GitHub username not found)",
-					"pr_user":       pr.User.GetLogin(),
-					"commit_author": owner,
-					"ticket":        "DEVPROD-16345",
-				})
-			} else if firstCommit.Author != nil && firstCommit.Author.Login != nil {
-				owner = *firstCommit.Author.Login
-				grip.Info(message.Fields{
-					"source":        "GitHub hook",
-					"msg_id":        gh.msgID,
-					"event_type":    gh.eventType,
-					"repo":          pr.Base.Repo.GetFullName(),
-					"pr_number":     pr.GetNumber(),
-					"message":       "Using commit author instead of PR creator",
-					"pr_user":       pr.User.GetLogin(),
-					"commit_author": owner,
-					"ticket":        "DEVPROD-16345",
-				})
-			}
-		}
+		owner = "devin-service-user"
+		grip.Info(message.Fields{
+			"source":        "GitHub hook",
+			"msg_id":        gh.msgID,
+			"event_type":    gh.eventType,
+			"repo":          pr.Base.Repo.GetFullName(),
+			"pr_number":     pr.GetNumber(),
+			"message":       "Using service user instead of Devin",
+			"pr_user":       pr.User.GetLogin(),
+			"service_user":  owner,
+			"ticket":        "DEVPROD-16345",
+		})
 	}
 
 	ghi, err := patch.NewGithubIntent(ctx, gh.msgID, owner, calledBy, alias, mergeBase, pr)
