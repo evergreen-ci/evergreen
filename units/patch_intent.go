@@ -1169,14 +1169,6 @@ func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *p
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	grip.Info(message.Fields{
-		"job":        j.ID(),
-		"message":    "Checking authorization for user",
-		"source":     "patch intents",
-		"identifier": githubUser,
-		"ticket":     "DEVPROD-16345",
-	})
-
 	// GitHub Dependabot patches should be automatically authorized.
 	if githubUser == githubDependabotUser {
 		grip.Info(message.Fields{
@@ -1209,14 +1201,6 @@ func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *p
 		return false, err
 	}
 	if isMember {
-		grip.Info(message.Fields{
-			"job":          j.ID(),
-			"message":      "User is a member of the organization",
-			"source":       "patch intents",
-			"github_user":  githubUser,
-			"required_org": requiredOrganization,
-			"ticket":       "DEVPROD-16345",
-		})
 		return isMember, nil
 	}
 
@@ -1235,14 +1219,6 @@ func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *p
 		}))
 	}
 	if isAuthorizedForOrg {
-		grip.Info(message.Fields{
-			"job":          j.ID(),
-			"message":      "User is authorized for the organization",
-			"source":       "patch intents",
-			"github_user":  githubUser,
-			"required_org": requiredOrganization,
-			"ticket":       "DEVPROD-16345",
-		})
 		return isAuthorizedForOrg, nil
 	}
 
@@ -1260,28 +1236,6 @@ func (j *patchIntentProcessor) isUserAuthorized(ctx context.Context, patchDoc *p
 			"pr_number":  patchDoc.GithubPatchData.PRNumber,
 			"ticket":     "DEVPROD-16345",
 		}))
-	}
-
-	if hasWritePermission {
-		grip.Info(message.Fields{
-			"job":         j.ID(),
-			"message":     "User has write permission for the repository",
-			"source":      "patch intents",
-			"github_user": githubUser,
-			"head_owner":  patchDoc.GithubPatchData.HeadOwner,
-			"head_repo":   patchDoc.GithubPatchData.HeadRepo,
-			"ticket":      "DEVPROD-16345",
-		})
-	} else {
-		grip.Info(message.Fields{
-			"job":         j.ID(),
-			"message":     "User is not authorized",
-			"source":      "patch intents",
-			"github_user": githubUser,
-			"head_owner":  patchDoc.GithubPatchData.HeadOwner,
-			"head_repo":   patchDoc.GithubPatchData.HeadRepo,
-			"ticket":      "DEVPROD-16345",
-		})
 	}
 
 	return hasWritePermission, nil
