@@ -1152,8 +1152,6 @@ func GetGithubUser(ctx context.Context, loginName string) (*github.User, error) 
 	return user, nil
 }
 
-
-
 // GithubUserInOrganization returns true if the given github user is in the
 // given organization. The user with the attached token must have
 // visibility into organization membership, including private members
