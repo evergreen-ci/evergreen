@@ -775,7 +775,10 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 				user, err := user.FindByEmail(ctx, commitAuthorEmail)
 				if err == nil && user != nil && user.Settings.GithubUser.LastKnownAs != "" {
 					owner = user.Settings.GithubUser.LastKnownAs
-					pr.User = &github.User{Login: github.String(owner)}
+					pr.User = &github.User{
+						Login: github.String(owner),
+						ID:    github.Int64(int64(user.Settings.GithubUser.UID)),
+					}
 					grip.Info(message.Fields{
 						"source":        "GitHub hook",
 						"msg_id":        gh.msgID,
@@ -786,6 +789,7 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 						"pr_user":       pr.User.GetLogin(),
 						"commit_email":  commitAuthorEmail,
 						"github_user":   owner,
+						"github_uid":    user.Settings.GithubUser.UID,
 						"ticket":        "DEVPROD-16345",
 					})
 				} else {
