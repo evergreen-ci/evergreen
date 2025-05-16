@@ -1910,8 +1910,7 @@ func GetCoAuthorEmail(ctx context.Context, owner, repo string, prNumber int) (st
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
 	defer githubClient.Close()
 
-	opts := &github.ListOptions{Page: 1, PerPage: 1}
-	commits, resp, err := githubClient.PullRequests.ListCommits(ctx, owner, repo, prNumber, opts)
+	commits, resp, err := githubClient.PullRequests.ListCommits(ctx, owner, repo, prNumber, nil)
 	if resp != nil {
 		defer resp.Body.Close()
 		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
@@ -1923,23 +1922,30 @@ func GetCoAuthorEmail(ctx context.Context, owner, repo string, prNumber int) (st
 		return "", errors.New("no commits found in PR")
 	}
 
-	firstCommit := commits[0]
-	if firstCommit.Commit == nil {
+	latestCommit := commits[len(commits)-1]
+	grip.Info(message.Fields{
+		"message":     "Using latest commit for co-author extraction",
+		"commit_sha":  latestCommit.GetSHA(),
+		"commit_idx":  len(commits) - 1,
+		"total_commits": len(commits),
+		"ticket":      "DEVPROD-16345",
+	})
+	if latestCommit.Commit == nil {
 		return "", errors.New("commit information not found")
 	}
 
-	if firstCommit.Commit.Message != nil {
+	if latestCommit.Commit.Message != nil {
 		grip.Debug(message.Fields{
 			"message":    "Examining commit message for co-author information",
-			"commit_sha": firstCommit.GetSHA(),
-			"commit_msg": *firstCommit.Commit.Message,
+			"commit_sha": latestCommit.GetSHA(),
+			"commit_msg": *latestCommit.Commit.Message,
 			"ticket":     "DEVPROD-16345",
 		})
-		coAuthorEmail := extractCoAuthorEmail(*firstCommit.Commit.Message)
+		coAuthorEmail := extractCoAuthorEmail(*latestCommit.Commit.Message)
 		if coAuthorEmail != "" {
 			grip.Info(message.Fields{
 				"message":         "Found co-author in commit message",
-				"commit_sha":      firstCommit.GetSHA(),
+				"commit_sha":      latestCommit.GetSHA(),
 				"co_author_email": coAuthorEmail,
 				"ticket":          "DEVPROD-16345",
 			})
@@ -1947,9 +1953,9 @@ func GetCoAuthorEmail(ctx context.Context, owner, repo string, prNumber int) (st
 		}
 	}
 
-	if firstCommit.Commit.Author == nil || firstCommit.Commit.Author.Email == nil {
+	if latestCommit.Commit.Author == nil || latestCommit.Commit.Author.Email == nil {
 		return "", errors.New("commit author email not found")
 	}
 
-	return *firstCommit.Commit.Author.Email, nil
+	return *latestCommit.Commit.Author.Email, nil
 }
