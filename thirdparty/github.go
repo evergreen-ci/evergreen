@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -1880,4 +1881,81 @@ func GetCheckRun(ctx context.Context, owner, repo string, checkRunID int64) (*gi
 		return nil, errors.Wrapf(err, "getting check run %d", checkRunID)
 	}
 	return checkRun, nil
+}
+
+// Returns an empty string if no co-author information is found.
+func extractCoAuthorEmail(message string) string {
+	re := regexp.MustCompile(`(?i)Co-Authored-By:.*<([^>]+)>`)
+	matches := re.FindStringSubmatch(message)
+	if len(matches) > 1 {
+		return matches[1]
+	}
+	return ""
+}
+
+func GetCoAuthorEmail(ctx context.Context, owner, repo string, prNumber int) (string, error) {
+	caller := "GetCoAuthorEmail"
+	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
+		attribute.String(githubEndpointAttribute, caller),
+		attribute.String(githubOwnerAttribute, owner),
+		attribute.String(githubRepoAttribute, repo),
+	))
+	defer span.End()
+
+	token, err := getInstallationToken(ctx, owner, repo, nil)
+	if err != nil {
+		return "", errors.Wrap(err, "getting installation token")
+	}
+
+	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
+	defer githubClient.Close()
+
+	commits, resp, err := githubClient.PullRequests.ListCommits(ctx, owner, repo, prNumber, nil)
+	if resp != nil {
+		defer resp.Body.Close()
+		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
+	}
+	if err != nil {
+		return "", errors.Wrap(err, "listing commits from PR")
+	}
+	if len(commits) == 0 {
+		return "", errors.New("no commits found in PR")
+	}
+
+	latestCommit := commits[len(commits)-1]
+	grip.Info(message.Fields{
+		"message":     "Using latest commit for co-author extraction",
+		"commit_sha":  latestCommit.GetSHA(),
+		"commit_idx":  len(commits) - 1,
+		"total_commits": len(commits),
+		"ticket":      "DEVPROD-16345",
+	})
+	if latestCommit.Commit == nil {
+		return "", errors.New("commit information not found")
+	}
+
+	if latestCommit.Commit.Message != nil {
+		grip.Debug(message.Fields{
+			"message":    "Examining commit message for co-author information",
+			"commit_sha": latestCommit.GetSHA(),
+			"commit_msg": *latestCommit.Commit.Message,
+			"ticket":     "DEVPROD-16345",
+		})
+		coAuthorEmail := extractCoAuthorEmail(*latestCommit.Commit.Message)
+		if coAuthorEmail != "" {
+			grip.Info(message.Fields{
+				"message":         "Found co-author in commit message",
+				"commit_sha":      latestCommit.GetSHA(),
+				"co_author_email": coAuthorEmail,
+				"ticket":          "DEVPROD-16345",
+			})
+			return coAuthorEmail, nil
+		}
+	}
+
+	if latestCommit.Commit.Author == nil || latestCommit.Commit.Author.Email == nil {
+		return "", errors.New("commit author email not found")
+	}
+
+	return *latestCommit.Commit.Author.Email, nil
 }

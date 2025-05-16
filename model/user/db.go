@@ -224,6 +224,24 @@ func FindBySlackUsername(ctx context.Context, userName string) (*DBUser, error) 
 	return &u, nil
 }
 
+// FindByEmail retrieves a user from the database by their email address.
+// It searches the user collection for a user with the given email.
+// Returns the user if found, nil if no user exists with that email, or an error if the database query fails.
+func FindByEmail(ctx context.Context, email string) (*DBUser, error) {
+	u := DBUser{}
+	err := db.FindOneQContext(ctx, Collection, db.Query(bson.M{
+		EmailAddressKey: email,
+	}), &u)
+	if adb.ResultsNotFound(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "finding user by email")
+	}
+
+	return &u, nil
+}
+
 func FindByRole(ctx context.Context, role string) ([]DBUser, error) {
 	res := []DBUser{}
 	err := db.FindAllQ(ctx,

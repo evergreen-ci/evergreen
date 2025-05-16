@@ -731,10 +731,130 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 		return errors.Wrapf(err, "getting merge base between branches '%s' and '%s'", pr.Base.GetLabel(), pr.Head.GetLabel())
 	}
 
+	// If the PR is from Devin, try to find the GitHub username from the commit's co-author
+	if owner == "Devin" || owner == "devin-ai-integration[bot]" {
+		// Get the co-author email from commit message or fall back to commit author email
+		baseOwner := baseOwnerAndRepo[0]
+		baseRepo := baseOwnerAndRepo[1]
+		commitAuthorEmail, err := thirdparty.GetCoAuthorEmail(ctx, baseOwner, baseRepo, pr.GetNumber())
+		if err != nil {
+			grip.Debug(message.Fields{
+				"source":        "GitHub hook",
+				"msg_id":        gh.msgID,
+				"event_type":    gh.eventType,
+				"repo":          pr.Base.Repo.GetFullName(),
+				"pr_number":     pr.GetNumber(),
+				"message":       "Error getting commit author email",
+				"error":         err.Error(),
+				"ticket":        "DEVPROD-16345",
+			})
+			grip.Info(message.Fields{
+				"source":        "GitHub hook",
+				"msg_id":        gh.msgID,
+				"event_type":    gh.eventType,
+				"repo":          pr.Base.Repo.GetFullName(),
+				"pr_number":     pr.GetNumber(),
+				"message":       "Keeping original owner (error getting commit email)",
+				"pr_user":       pr.User.GetLogin(),
+				"ticket":        "DEVPROD-16345",
+			})
+		} else if commitAuthorEmail != "" {
+			if !strings.Contains(strings.ToLower(commitAuthorEmail), "@mongodb.com") {
+				grip.Info(message.Fields{
+					"source":        "GitHub hook",
+					"msg_id":        gh.msgID,
+					"event_type":    gh.eventType,
+					"repo":          pr.Base.Repo.GetFullName(),
+					"pr_number":     pr.GetNumber(),
+					"message":       "Skipping lookup for non-MongoDB email, using original owner",
+					"pr_user":       pr.User.GetLogin(),
+					"commit_email":  commitAuthorEmail,
+					"ticket":        "DEVPROD-16345",
+				})
+			} else {
+				user, err := user.FindByEmail(ctx, commitAuthorEmail)
+				if err == nil && user != nil && user.Settings.GithubUser.LastKnownAs != "" {
+					owner = user.Settings.GithubUser.LastKnownAs
+					githubUID := user.Settings.GithubUser.UID
+					grip.Info(message.Fields{
+						"source":        "GitHub hook",
+						"msg_id":        gh.msgID,
+						"event_type":    gh.eventType,
+						"repo":          pr.Base.Repo.GetFullName(),
+						"pr_number":     pr.GetNumber(),
+						"message":       "Using GitHub username from user collection",
+						"pr_user":       pr.User.GetLogin(),
+						"commit_email":  commitAuthorEmail,
+						"github_user":   owner,
+						"github_uid":    githubUID,
+						"ticket":        "DEVPROD-16345",
+					})
+
+				} else {
+					grip.Info(message.Fields{
+						"source":        "GitHub hook",
+						"msg_id":        gh.msgID,
+						"event_type":    gh.eventType,
+						"repo":          pr.Base.Repo.GetFullName(),
+						"pr_number":     pr.GetNumber(),
+						"message":       "Keeping original owner (no GitHub user found for email)",
+						"pr_user":       pr.User.GetLogin(),
+						"commit_email":  commitAuthorEmail,
+						"ticket":        "DEVPROD-16345",
+					})
+				}
+			}
+		} else {
+			grip.Info(message.Fields{
+				"source":        "GitHub hook",
+				"msg_id":        gh.msgID,
+				"event_type":    gh.eventType,
+				"repo":          pr.Base.Repo.GetFullName(),
+				"pr_number":     pr.GetNumber(),
+				"message":       "Keeping original owner (no commit email found)",
+				"pr_user":       pr.User.GetLogin(),
+				"ticket":        "DEVPROD-16345",
+			})
+		}
+	}
+
 	ghi, err := patch.NewGithubIntent(ctx, gh.msgID, owner, calledBy, alias, mergeBase, pr)
 	if err != nil {
 		return errors.Wrap(err, "creating GitHub patch intent")
 	}
+	
+	// If the PR is from Devin and the owner is different from the PR creator, update the patch data directly
+	if (pr.User.GetLogin() == "Devin" || pr.User.GetLogin() == "devin-ai-integration[bot]") && 
+		owner != pr.User.GetLogin() {
+		// Get the patch from the intent and update the GitHub patch data directly
+		patchDoc := ghi.NewPatch()
+		
+		patchDoc.GithubPatchData.Author = owner
+		
+		// Get the email from the commit to find the user's GitHub UID
+		baseOwner := baseOwnerAndRepo[0]
+		baseRepo := baseOwnerAndRepo[1]
+		email, _ := thirdparty.GetCoAuthorEmail(ctx, baseOwner, baseRepo, pr.GetNumber())
+		if email != "" {
+			userObj, err := user.FindByEmail(ctx, email)
+			if err == nil && userObj != nil && userObj.Settings.GithubUser.UID > 0 {
+				patchDoc.GithubPatchData.AuthorUID = userObj.Settings.GithubUser.UID
+				grip.Info(message.Fields{
+					"source":        "GitHub hook",
+					"msg_id":        gh.msgID,
+					"event_type":    gh.eventType,
+					"repo":          pr.Base.Repo.GetFullName(),
+					"pr_number":     pr.GetNumber(),
+					"message":       "Updated GitHub patch data with user information",
+					"pr_user":       pr.User.GetLogin(),
+					"github_user":   owner,
+					"github_uid":    userObj.Settings.GithubUser.UID,
+					"ticket":        "DEVPROD-16345",
+				})
+			}
+		}
+	}
+
 	// If there are no errors with the PR, verify that we aren't skipping CI before adding the intent.
 	for _, label := range skipCILabels {
 		title := strings.ToLower(pr.GetTitle())
