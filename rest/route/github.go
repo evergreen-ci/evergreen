@@ -802,16 +802,14 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 				}
 			}
 		} else {
-			owner = "devin-ai-integration[bot]"
 			grip.Info(message.Fields{
 				"source":        "GitHub hook",
 				"msg_id":        gh.msgID,
 				"event_type":    gh.eventType,
 				"repo":          pr.Base.Repo.GetFullName(),
 				"pr_number":     pr.GetNumber(),
-				"message":       "Using devin-ai-integration[bot] (could not get commit email)",
+				"message":       "Keeping original owner (no commit email found)",
 				"pr_user":       pr.User.GetLogin(),
-				"service_user":  owner,
 				"ticket":        "DEVPROD-16345",
 			})
 		}
