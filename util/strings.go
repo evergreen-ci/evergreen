@@ -75,3 +75,7 @@ func CoalesceString(in ...string) string {
 func CoalesceStrings(inArray []string, inStrs ...string) string {
 	return CoalesceString(CoalesceString(inArray...), CoalesceString(inStrs...))
 }
+
+func TrimWhitespace(s string) string {
+	return strings.TrimSpace(s)
+}
