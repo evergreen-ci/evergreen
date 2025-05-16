@@ -1882,6 +1882,7 @@ func GetCheckRun(ctx context.Context, owner, repo string, checkRunID int64) (*gi
 	}
 	return checkRun, nil
 }
+
 // Returns an empty string if no co-author information is found.
 func extractCoAuthorEmail(message string) string {
 	re := regexp.MustCompile(`(?i)Co-Authored-By:.*<([^>]+)>`)
@@ -1929,10 +1930,10 @@ func GetCoAuthorEmail(ctx context.Context, owner, repo string, prNumber int) (st
 
 	if firstCommit.Commit.Message != nil {
 		grip.Debug(message.Fields{
-			"message":      "Examining commit message for co-author information",
-			"commit_sha":   firstCommit.GetSHA(),
-			"commit_msg":   *firstCommit.Commit.Message,
-			"ticket":       "DEVPROD-16345",
+			"message":    "Examining commit message for co-author information",
+			"commit_sha": firstCommit.GetSHA(),
+			"commit_msg": *firstCommit.Commit.Message,
+			"ticket":     "DEVPROD-16345",
 		})
 		coAuthorEmail := extractCoAuthorEmail(*firstCommit.Commit.Message)
 		if coAuthorEmail != "" {
