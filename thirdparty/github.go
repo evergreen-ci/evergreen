@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -1882,6 +1883,15 @@ func GetCheckRun(ctx context.Context, owner, repo string, checkRunID int64) (*gi
 	return checkRun, nil
 }
 
+func ExtractCoAuthorEmail(message string) string {
+	re := regexp.MustCompile(`(?i)Co-Authored-By:.*<([^>]+)>`)
+	matches := re.FindStringSubmatch(message)
+	if len(matches) > 1 {
+		return matches[1]
+	}
+	return ""
+}
+
 func GetCommitAuthorEmail(ctx context.Context, owner, repo string, prNumber int) (string, error) {
 	caller := "GetCommitAuthorEmail"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
@@ -1913,7 +1923,24 @@ func GetCommitAuthorEmail(ctx context.Context, owner, repo string, prNumber int)
 	}
 
 	firstCommit := commits[0]
-	if firstCommit.Commit == nil || firstCommit.Commit.Author == nil || firstCommit.Commit.Author.Email == nil {
+	if firstCommit.Commit == nil {
+		return "", errors.New("commit information not found")
+	}
+
+	if firstCommit.Commit.Message != nil {
+		coAuthorEmail := ExtractCoAuthorEmail(*firstCommit.Commit.Message)
+		if coAuthorEmail != "" {
+			grip.Info(message.Fields{
+				"message":         "Found co-author in commit message",
+				"commit_sha":      firstCommit.GetSHA(),
+				"co_author_email": coAuthorEmail,
+				"ticket":          "DEVPROD-16345",
+			})
+			return coAuthorEmail, nil
+		}
+	}
+
+	if firstCommit.Commit.Author == nil || firstCommit.Commit.Author.Email == nil {
 		return "", errors.New("commit author email not found")
 	}
 
