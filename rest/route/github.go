@@ -748,16 +748,25 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 				"error":         err.Error(),
 				"ticket":        "DEVPROD-16345",
 			})
-		}
-		if err == nil && commitAuthorEmail != "" {
-			if strings.Contains(strings.ToLower(commitAuthorEmail), "devin") {
+			grip.Info(message.Fields{
+				"source":        "GitHub hook",
+				"msg_id":        gh.msgID,
+				"event_type":    gh.eventType,
+				"repo":          pr.Base.Repo.GetFullName(),
+				"pr_number":     pr.GetNumber(),
+				"message":       "Keeping original owner (error getting commit email)",
+				"pr_user":       pr.User.GetLogin(),
+				"ticket":        "DEVPROD-16345",
+			})
+		} else if commitAuthorEmail != "" {
+			if !strings.Contains(strings.ToLower(commitAuthorEmail), "@mongodb.com") {
 				grip.Info(message.Fields{
 					"source":        "GitHub hook",
 					"msg_id":        gh.msgID,
 					"event_type":    gh.eventType,
 					"repo":          pr.Base.Repo.GetFullName(),
 					"pr_number":     pr.GetNumber(),
-					"message":       "Skipping lookup for Devin email, using original owner",
+					"message":       "Skipping lookup for non-MongoDB email, using original owner",
 					"pr_user":       pr.User.GetLogin(),
 					"commit_email":  commitAuthorEmail,
 					"ticket":        "DEVPROD-16345",
@@ -779,17 +788,15 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 						"ticket":        "DEVPROD-16345",
 					})
 				} else {
-					owner = "devin-ai-integration[bot]"
 					grip.Info(message.Fields{
 						"source":        "GitHub hook",
 						"msg_id":        gh.msgID,
 						"event_type":    gh.eventType,
 						"repo":          pr.Base.Repo.GetFullName(),
 						"pr_number":     pr.GetNumber(),
-						"message":       "Using devin-ai-integration[bot] (no GitHub user found for email)",
+						"message":       "Keeping original owner (no GitHub user found for email)",
 						"pr_user":       pr.User.GetLogin(),
 						"commit_email":  commitAuthorEmail,
-						"service_user":  owner,
 						"ticket":        "DEVPROD-16345",
 					})
 				}
