@@ -24,6 +24,20 @@ func GetBanner(ctx context.Context) (string, string, error) {
 	return settings.Banner, string(settings.BannerTheme), nil
 }
 
+func GetServiceFlags(ctx context.Context) (evergreen.ServiceFlags, error) {
+	settings, err := evergreen.GetConfig(ctx)
+	if err != nil {
+		return evergreen.ServiceFlags{}, errors.Wrap(err, "retrieving admin settings from DB")
+	}
+	// we should only return the service flags that are necessary at the moment
+	// instead of returning all the service flags
+	neccessaryFlags := evergreen.ServiceFlags{
+		StaticAPIKeysDisabled:  settings.ServiceFlags.StaticAPIKeysDisabled,
+		JWTTokenForCLIDisabled: settings.ServiceFlags.JWTTokenForCLIDisabled,
+	}
+	return neccessaryFlags, nil
+}
+
 // SetEvergreenSettings sets the admin settings document in the DB and event logs it
 func SetEvergreenSettings(ctx context.Context, changes *restModel.APIAdminSettings,
 	oldSettings *evergreen.Settings, u *user.DBUser, persist bool) (*evergreen.Settings, error) {

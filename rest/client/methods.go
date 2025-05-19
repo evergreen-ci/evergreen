@@ -596,8 +596,27 @@ func (c *communicatorImpl) SetServiceFlags(ctx context.Context, f *model.APIServ
 }
 
 func (c *communicatorImpl) GetServiceFlags(ctx context.Context) (*model.APIServiceFlags, error) {
-	// todo: implement in DEVPROD-17618
-	return nil, nil
+	info := requestInfo{
+		method: http.MethodGet,
+		path:   "admin/service_flags",
+	}
+
+	resp, err := c.request(ctx, info, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "error sending request to get service flags")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.Errorf("HTTP request returned unexpected status: %d", resp.StatusCode)
+	}
+
+	flags := &model.APIServiceFlags{}
+	if err = utility.ReadJSON(resp.Body, flags); err != nil {
+		return nil, errors.Wrap(err, "error reading JSON response body")
+	}
+
+	return flags, nil
 }
 
 func (c *communicatorImpl) RestartRecentTasks(ctx context.Context, startAt, endAt time.Time) error {

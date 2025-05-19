@@ -113,6 +113,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	// REST v2 API Routes
 	app.AddRoute("/").Version(2).Get().Wrap(requireUser).RouteHandler(makePlaceHolder())
 	app.AddRoute("/admin/banner").Version(2).Get().Wrap(requireUser).RouteHandler(makeFetchAdminBanner())
+	app.AddRoute("/admin/service_flags").Version(2).Get().Wrap(requireUser).RouteHandler(makeFetchServiceFlags())
 	app.AddRoute("/admin/banner").Version(2).Post().Wrap(requireUser, adminSettings).RouteHandler(makeSetAdminBanner())
 	app.AddRoute("/admin/uiv2_url").Version(2).Get().Wrap(requireUser).RouteHandler(makeFetchAdminUIV2Url())
 	app.AddRoute("/admin/events").Version(2).Get().Wrap(requireUser, adminSettings).RouteHandler(makeFetchAdminEvents(opts.URL))
