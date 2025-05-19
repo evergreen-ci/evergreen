@@ -94,6 +94,11 @@ func (c *communicatorImpl) SetJWT(jwt string) {
 	c.jwt = jwt
 }
 
+// SetAPIServerHost sets the API server host.
+func (c *communicatorImpl) SetAPIServerHost(serverURL string) {
+	c.serverURL = serverURL
+}
+
 // SetHostID sets the host ID for authentication using host credentials instead
 // of API keys.
 func (c *communicatorImpl) SetHostID(hostID string) {
