@@ -333,4 +333,4 @@ func (c *Mock) SetJWT(jwt string) {}
 
 func (c *Mock) SetAPIServerHost(serverURL string) {}
 
-func (c *Mock) IsServiceUser(context.Context) (bool, error) { return false, nil }
+func (c *Mock) IsServiceUser(context.Context, string) (bool, error) { return false, nil }
