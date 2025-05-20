@@ -117,7 +117,7 @@ func (j *hostDrawdownJob) checkAndDecommission(ctx context.Context, h *host.Host
 	}
 
 	// Don't drawdown hosts that are currently in the middle of tearing down a task group.
-	if h.IsTearingDown() && h.TeardownTimeExceededMax() {
+	if h.IsTearingDown() && !h.TeardownTimeExceededMax() {
 		return nil
 	}
 
