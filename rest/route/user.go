@@ -321,32 +321,16 @@ func (h *userPermissionsDeleteHandler) Run(ctx context.Context) gimlet.Responder
 		return gimlet.NewJSONResponse(struct{}{})
 	}
 
-	// kim: NOTE: this finds all project/repo refs that have this resource ID.
-	// Repo scopes are special in that they count as "projects" from the
-	// perspective of the permissions system but repo refs are different from
-	// regular project refs because their scopes always include the child
-	// project refs (so that repo admins get permissions to all the child
-	// project refs). Therefore, they're included in this query.
 	rolesForResource, err := h.rm.FilterForResource(rolesToCheck, h.resourceId, h.resourceType)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "filtering user roles for resource '%s'", h.resourceId))
 	}
-	// kim: NOTE: the bug here is that it filters by resource ID and type but
-	// doesn't consider that repo admins are controlled separately from MANA. If
-	// a project ref and repo ref are using the same GitHub owner/repo and MANA
-	// wants to delete the project ref permissions, it can also end up deleting
-	// the repo ref permissions. Since the admin list is the authoritative
-	// source of repo ref permissions and not MANA, this route should ignore
-	// roles for repo refs.
 	rolesToRemove := []string{}
 	for _, r := range rolesForResource {
 		rolesToRemove = append(rolesToRemove, r.ID)
 	}
 
-	// kim: NOTE: the loss of repo admin permissions appears to be caused by
-	// this route based on yuan.fang example of the bug logging this line. They
-	// stay on the admin list though since the repo ref isn't updated here.
-	grip.InfoWhen(len(rolesToRemove) > 0, message.Fields{
+	grip.Info(message.Fields{
 		"removed_roles": rolesToRemove,
 		"user":          u.Id,
 		"resource_type": h.resourceType,
