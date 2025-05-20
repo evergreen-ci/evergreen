@@ -3645,6 +3645,12 @@ func (t *Task) GetDisplayTask(ctx context.Context) (*Task, error) {
 	}
 
 	if t.DisplayTaskId == nil {
+		grip.Info(message.Fields{
+			"message": "missing display task ID",
+			"task_id": t.Id,
+			"dt_id":   dtId,
+			"ticket":  "DEVPROD-13634",
+		})
 		// Cache display task ID for future use. If we couldn't find the display task,
 		// we cache the empty string to show that it doesn't exist.
 		grip.Error(message.WrapError(t.SetDisplayTaskID(ctx, dtId), message.Fields{

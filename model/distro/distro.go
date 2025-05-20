@@ -3,6 +3,7 @@ package distro
 import (
 	"context"
 	"fmt"
+	"math"
 	"math/rand"
 	"path/filepath"
 	"strings"
@@ -665,6 +666,11 @@ func (d *Distro) GetResolvedHostAllocatorSettings(s *evergreen.Settings) (HostAl
 		catcher.Errorf("'%s' is not a valid host allocator version", resolved.Version)
 	}
 
+	// If release mode is enabled, multiply the distro max hosts by this factor.
+	if !s.ServiceFlags.ReleaseModeDisabled && s.ReleaseMode.DistroMaxHostsFactor > 0 {
+		resolved.MaximumHosts = int(math.Ceil(float64(resolved.MaximumHosts) * s.ReleaseMode.DistroMaxHostsFactor))
+	}
+
 	if resolved.AcceptableHostIdleTime == 0 {
 		resolved.AcceptableHostIdleTime = time.Duration(config.AcceptableHostIdleTimeSeconds) * time.Second
 	}
@@ -689,7 +695,7 @@ func (d *Distro) GetResolvedHostAllocatorSettings(s *evergreen.Settings) (HostAl
 }
 
 // GetResolvedPlannerSettings combines the distro's PlannerSettings fields with the
-// SchedulerConfig defaults to resolve and validate a canonical set of PlannerSettings' field values.
+// SchedulerConfig and Settings and defaults to resolve and validate a canonical set of PlannerSettings' field values.
 func (d *Distro) GetResolvedPlannerSettings(s *evergreen.Settings) (PlannerSettings, error) {
 	config := s.Scheduler
 	ps := d.PlannerSettings
@@ -725,6 +731,10 @@ func (d *Distro) GetResolvedPlannerSettings(s *evergreen.Settings) (PlannerSetti
 	}
 	if resolved.TargetTime == 0 {
 		resolved.TargetTime = time.Duration(config.TargetTimeSeconds) * time.Second
+	}
+	// If enabled, release mode takes precedent over both distro and admin value.
+	if !s.ServiceFlags.ReleaseModeDisabled && s.ReleaseMode.TargetTimeSecondsOverride > 0 {
+		resolved.TargetTime = time.Duration(s.ReleaseMode.TargetTimeSecondsOverride) * time.Second
 	}
 	if resolved.GroupVersions == nil {
 		resolved.GroupVersions = &config.GroupVersions
