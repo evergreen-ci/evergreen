@@ -613,8 +613,7 @@ tasks:
         params:
           directory: evergreen
           token: ${github_token}
-          # The test-repotracker relies on HEAD~100
-          clone_depth: 110
+          shallow_clone: true
       - func: setup-credentials
       - func: setup-mongodb
       - func: run-make
