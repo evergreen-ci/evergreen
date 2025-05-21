@@ -263,6 +263,49 @@ func TestHostDrawdown(t *testing.T) {
 			assert.Contains(t, hosts, oldTeardownHost.Id,
 				"should decommission host with expired teardown")
 		},
+		"HandlesTransitioningTasksHost": func(ctx context.Context, t *testing.T, env *mock.Environment, d distro.Distro) {
+			// Host transitioning tasks but not idle long enough - should be ignored
+			recentTransitionHost := host.Host{
+				Id:                    "recent",
+				Distro:                d,
+				Provider:              evergreen.ProviderNameMock,
+				CreationTime:          time.Now().Add(-30 * time.Minute),
+				Status:                evergreen.HostRunning,
+				StartedBy:             evergreen.User,
+				IsTransitioningTasks:  true,
+				LastCommunicationTime: time.Now().Add(-time.Minute),
+				LastTask:              "dummy_task_name1",
+				LastTaskCompletedTime: time.Now().Add(-15 * time.Second), // Less than idleTransitioningTasksDrawdownCutoff
+			}
+			require.NoError(t, recentTransitionHost.Insert(ctx))
+
+			// Host transitioning tasks and idle long enough - should be decommissioned
+			idleTransitionHost := host.Host{
+				Id:                    "idle",
+				Distro:                d,
+				Provider:              evergreen.ProviderNameMock,
+				CreationTime:          time.Now().Add(-30 * time.Minute),
+				Status:                evergreen.HostRunning,
+				StartedBy:             evergreen.User,
+				IsTransitioningTasks:  true,
+				LastCommunicationTime: time.Now().Add(-time.Minute),
+				LastTask:              "dummy_task_name2",
+				LastTaskCompletedTime: time.Now().Add(-idleTransitioningTasksDrawdownCutoff).Add(-time.Second), // More than cutoff
+			}
+			require.NoError(t, idleTransitionHost.Insert(ctx))
+
+			drawdownInfo := DrawdownInfo{
+				DistroID:     d.Id,
+				NewCapTarget: 0,
+			}
+
+			num, hosts := numHostsDecommissionedForDrawdown(ctx, t, env, drawdownInfo)
+			assert.Equal(t, 1, num, "should only decommission host that exceeded idle transition cutoff")
+			assert.NotContains(t, hosts, recentTransitionHost.Id,
+				"should not decommission host that hasn't been idle long enough")
+			assert.Contains(t, hosts, idleTransitionHost.Id,
+				"should decommission host that exceeded idle transition cutoff")
+		},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())

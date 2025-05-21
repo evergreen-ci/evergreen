@@ -205,6 +205,16 @@ func (j *taskExecutionTimeoutJob) cleanUpTimedOutTask(ctx context.Context) error
 		if err = host.ClearRunningAndSetLastTask(ctx, j.task); err != nil {
 			return errors.Wrapf(err, "clearing running task '%s' from host '%s'", j.task.Id, host.Id)
 		}
+		// The host is about to enter the in between state where it is no longer has a running
+		// task assigned to it but it is not yet ready for a new task to be assigned yet.
+		if err = host.SetIsTransitioningTasks(ctx); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "could not set host to transitioning tasks",
+				"task":    j.task.Id,
+				"pod":     j.task.PodID,
+				"job":     j.ID(),
+			}))
+		}
 	}
 
 	if err := model.FixStaleTask(ctx, j.env.Settings(), j.task); err != nil {
