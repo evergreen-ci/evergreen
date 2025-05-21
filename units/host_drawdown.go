@@ -19,8 +19,9 @@ const (
 	hostDrawdownJobName = "host-drawdown"
 
 	// if we need to drawdown hosts, we want to catch as many hosts as we can that are between jobs
-	idleTimeDrawdownCutoff      = 5 * time.Second
-	idleTaskGroupDrawdownCutoff = 10 * time.Minute
+	idleTimeDrawdownCutoff               = 5 * time.Second
+	idleTaskGroupDrawdownCutoff          = 10 * time.Minute
+	idleTransitioningTasksDrawdownCutoff = 30 * time.Second
 )
 
 func init() {
@@ -135,6 +136,8 @@ func (j *hostDrawdownJob) checkAndDecommission(ctx context.Context, h *host.Host
 	idleThreshold := idleTimeDrawdownCutoff
 	if h.RunningTaskGroup != "" {
 		idleThreshold = idleTaskGroupDrawdownCutoff
+	} else if h.IsTransitioningTasks {
+		idleThreshold = idleTransitioningTasksDrawdownCutoff
 	}
 
 	if idleTime > idleThreshold {

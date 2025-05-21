@@ -114,7 +114,7 @@ func TestHostDrawdown(t *testing.T) {
 				RunningTask:      "dummy_task_name1",
 			}
 			host2 := host.Host{
-				Id:           "h2",
+				Id:           "ih2",
 				Distro:       d,
 				Provider:     evergreen.ProviderNameMock,
 				CreationTime: time.Now().Add(-30 * time.Minute),
@@ -148,7 +148,7 @@ func TestHostDrawdown(t *testing.T) {
 		},
 		"IgnoresHostRunningTask": func(ctx context.Context, t *testing.T, env *mock.Environment, d distro.Distro) {
 			host1 := host.Host{
-				Id:           "h1",
+				Id:           "uuh1",
 				Distro:       d,
 				Provider:     evergreen.ProviderNameMock,
 				CreationTime: time.Now().Add(-30 * time.Minute),
@@ -172,7 +172,7 @@ func TestHostDrawdown(t *testing.T) {
 		},
 		"IgnoresHostThatRecentlyRanTaskGroup": func(ctx context.Context, t *testing.T, env *mock.Environment, d distro.Distro) {
 			host1 := host.Host{
-				Id:                    "h1",
+				Id:                    "yyh1",
 				Distro:                d,
 				Provider:              evergreen.ProviderNameMock,
 				CreationTime:          time.Now().Add(-30 * time.Minute),
@@ -201,7 +201,7 @@ func TestHostDrawdown(t *testing.T) {
 		"DecommissionsIdleMultiHostTaskGroupHost": func(ctx context.Context, t *testing.T, env *mock.Environment, d distro.Distro) {
 
 			host1 := host.Host{
-				Id:                    "h1",
+				Id:                    "tth1",
 				Distro:                d,
 				Provider:              evergreen.ProviderNameMock,
 				CreationTime:          time.Now().Add(-30 * time.Minute),
@@ -223,6 +223,45 @@ func TestHostDrawdown(t *testing.T) {
 			num, hosts := numHostsDecommissionedForDrawdown(ctx, t, env, drawdownInfo)
 			assert.Equal(t, 1, num, "should draw down long idle hosts")
 			assert.Contains(t, hosts, host1.Id)
+		},
+		"HandlesHostInTeardown": func(ctx context.Context, t *testing.T, env *mock.Environment, d distro.Distro) {
+			// Host in recent teardown - should be ignored
+			recentTeardownHost := host.Host{
+				Id:                         "recent",
+				Distro:                     d,
+				Provider:                   evergreen.ProviderNameMock,
+				CreationTime:               time.Now().Add(-30 * time.Minute),
+				Status:                     evergreen.HostRunning,
+				StartedBy:                  evergreen.User,
+				LastCommunicationTime:      time.Now().Add(-time.Minute),
+				TaskGroupTeardownStartTime: time.Now(),
+			}
+			require.NoError(t, recentTeardownHost.Insert(ctx))
+
+			// Host with expired teardown - should be decommissioned
+			oldTeardownHost := host.Host{
+				Id:                         "old",
+				Distro:                     d,
+				Provider:                   evergreen.ProviderNameMock,
+				CreationTime:               time.Now().Add(-30 * time.Minute),
+				Status:                     evergreen.HostRunning,
+				StartedBy:                  evergreen.User,
+				LastCommunicationTime:      time.Now().Add(-time.Minute),
+				TaskGroupTeardownStartTime: time.Now().Add(-30 * time.Minute),
+			}
+			require.NoError(t, oldTeardownHost.Insert(ctx))
+
+			drawdownInfo := DrawdownInfo{
+				DistroID:     d.Id,
+				NewCapTarget: 0,
+			}
+
+			num, hosts := numHostsDecommissionedForDrawdown(ctx, t, env, drawdownInfo)
+			assert.Equal(t, 1, num, "should only decommission host with expired teardown")
+			assert.NotContains(t, hosts, recentTeardownHost.Id,
+				"should not decommission host in recent teardown")
+			assert.Contains(t, hosts, oldTeardownHost.Id,
+				"should decommission host with expired teardown")
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
