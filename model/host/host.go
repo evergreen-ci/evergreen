@@ -680,8 +680,12 @@ func (h *Host) IdleTime() time.Duration {
 		return 0
 	}
 
-	// If the host is currently tearing down a task group, it is not idle.
+	// If the host is currently tearing down a task group, it is only considered idle
+	// if the teardown time has exceeded the maximum allowed time.
 	if h.IsTearingDown() {
+		if h.TeardownTimeExceededMax() {
+			return time.Since(h.TaskGroupTeardownStartTime)
+		}
 		return 0
 	}
 
