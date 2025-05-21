@@ -24,8 +24,9 @@ import (
 
 const (
 	// Collection is the name of the MongoDB collection that stores hosts.
-	Collection        = "hosts"
-	VolumesCollection = "volumes"
+	Collection          = "hosts"
+	VolumesCollection   = "volumes"
+	IPAddressCollection = "ip_addresses"
 )
 
 var (
@@ -122,6 +123,10 @@ var (
 	SleepSchedulePermanentlyExemptKey      = bsonutil.MustHaveTag(SleepScheduleInfo{}, "PermanentlyExempt")
 	SleepScheduleTemporarilyExemptUntilKey = bsonutil.MustHaveTag(SleepScheduleInfo{}, "TemporarilyExemptUntil")
 	SleepScheduleShouldKeepOffKey          = bsonutil.MustHaveTag(SleepScheduleInfo{}, "ShouldKeepOff")
+
+	ipAddressIDKey           = bsonutil.MustHaveTag(IPAddress{}, "ID")
+	ipAddressAllocationIDKey = bsonutil.MustHaveTag(IPAddress{}, "AllocationID")
+	ipAddressHostTagKey      = bsonutil.MustHaveTag(IPAddress{}, "HostTag")
 )
 
 var (
@@ -1757,4 +1762,15 @@ func SyncPermanentExemptions(ctx context.Context, permanentlyExempt []string) er
 	}
 
 	return catcher.Resolve()
+}
+
+// FindByNeedsIPAssociation finds all hosts that have an IP address allocated
+// but are not yet associated with that IP address.
+func FindByNeedsIPAssociation(ctx context.Context) ([]Host, error) {
+	q := bson.M{
+		StatusKey:          evergreen.HostStarting,
+		IPAllocationIDKey:  bson.M{"$exists": true},
+		IPAssociationIDKey: bson.M{"$exists": false},
+	}
+	return Find(ctx, q)
 }

@@ -35,13 +35,14 @@ const (
 	EC2VolumeNotFound       = "InvalidVolume.NotFound"
 	EC2VolumeResizeRate     = "VolumeModificationRateExceeded"
 	ec2TemplateNameExists   = "InvalidLaunchTemplateName.AlreadyExistsException"
+	ec2TemplateNotFound     = "InvalidLaunchTemplateId.NotFound"
 
-	// ec2InsufficientAddressCapacity means that there are no IP addresses
+	// EC2InsufficientAddressCapacity means that there are no IP addresses
 	// available to allocate.
-	ec2InsufficientAddressCapacity = "InsufficientAddressCapacity"
+	EC2InsufficientAddressCapacity = "InsufficientAddressCapacity"
 	// ec2InsufficientAddressCapacity means that the account has reached its
 	// limit on the number of elastic IPs it can allocate.
-	ec2AddressLimitExceeded = "AddressLimitExceeded"
+	EC2AddressLimitExceeded = "AddressLimitExceeded"
 	// ec2ResourceAlreadyAssociated means an elastic IP is already associated
 	// with another resource.
 	ec2ResourceAlreadyAssociated = "Resource.AlreadyAssociated"
@@ -53,6 +54,10 @@ const (
 	stsErrorAccessDenied = "AccessDenied"
 	// This means the role to be assumed does not exist or does not have a trust relationship with the role doing the assuming.
 	stsErrorAssumeRoleAccessDenied = "AssumeRoleAccessDenied"
+
+	// filterTagKey is the key used to filter resources by their tag key's name
+	// in the EC2 API.
+	filterTagKey = "tag-key"
 )
 
 var (
@@ -770,7 +775,7 @@ func shouldAssignPublicIPv4Address(h *host.Host, ec2Settings *EC2ProviderSetting
 	return !ec2Settings.DoNotAssignPublicIPv4Address && !ec2Settings.IPv6
 }
 
-func canUseElasticIP(settings *evergreen.Settings, ec2Settings *EC2ProviderSettings, h *host.Host) bool {
+func canUseElasticIP(settings *evergreen.Settings, ec2Settings *EC2ProviderSettings, account string, h *host.Host) bool {
 	if h.UserHost || h.SpawnOptions.SpawnedByTask {
 		// Spawn hosts and host.create hosts should not use an elastic IP
 		// because the feature is primarily intended for task hosts.
@@ -779,19 +784,47 @@ func canUseElasticIP(settings *evergreen.Settings, ec2Settings *EC2ProviderSetti
 	if settings.Providers.AWS.IPAMPoolID == "" {
 		return false
 	}
+	if account != "" {
+		// The IPAM pool is only available to the default AWS account. Other AWS
+		// accounts do not have an IPAM pool so cannot use elastic IPs.
+		return false
+	}
 
 	return ec2Settings.ElasticIPsEnabled
 }
 
-// allocateIPAddressForHost allocates an elastic IP address from an IPAM pool
-// for the host.
-func allocateIPAddressForHost(ctx context.Context, settings *evergreen.Settings, c AWSClient, h *host.Host) error {
+// allocateIPAddressForHost allocates an unused elastic IP address for the host.
+func allocateIPAddressForHost(ctx context.Context, h *host.Host) error {
+	flags, err := evergreen.GetServiceFlags(ctx)
+	if err != nil {
+		return errors.Wrap(err, "getting service flags")
+	}
+	if flags.ElasticIPsDisabled {
+		return nil
+	}
+
+	// This intentionally uses the host tag to identify the host instead of the
+	// host ID because the host ID changes after a host is created.
+	ipAddr, err := host.AssignUnusedIPAddress(ctx, h.Tag)
+	if err != nil {
+		return errors.Wrap(err, "allocating IP address")
+	}
+	if err := h.SetIPAllocationID(ctx, ipAddr.AllocationID); err != nil {
+		return errors.Wrapf(err, "setting IP allocation ID '%s' for host", ipAddr.AllocationID)
+	}
+	return nil
+}
+
+func allocateIPAddress(ctx context.Context, c AWSClient, ipamPoolID string) (string, error) {
+	ctx, span := tracer.Start(ctx, "allocateIPAddress")
+	defer span.End()
+
 	hostname, err := os.Hostname()
 	if err != nil {
 		hostname = "unknown"
 	}
 	input := &ec2.AllocateAddressInput{
-		IpamPoolId: aws.String(settings.Providers.AWS.IPAMPoolID),
+		IpamPoolId: aws.String(ipamPoolID),
 		TagSpecifications: []types.TagSpecification{
 			{
 				ResourceType: types.ResourceTypeElasticIp,
@@ -805,26 +838,76 @@ func allocateIPAddressForHost(ctx context.Context, settings *evergreen.Settings,
 
 	allocateAddrOut, err := c.AllocateAddress(ctx, input)
 	if err != nil {
-		return errors.Wrap(err, "allocating new IP address for host")
+		return "", errors.Wrap(err, "allocating new IP address for host")
 	}
 	if allocateAddrOut == nil {
-		return errors.New("address allocation returned nil result")
+		return "", errors.New("address allocation returned nil result")
 	}
 	allocationID := aws.ToString(allocateAddrOut.AllocationId)
 	if allocationID == "" {
-		return errors.New("address allocation did not return an allocation ID")
+		return "", errors.New("address allocation did not return an allocation ID")
 	}
-	if err := h.SetIPAllocationID(ctx, allocationID); err != nil {
-		return errors.Wrapf(err, "setting IP allocation ID '%s' for host", allocationID)
+	return allocationID, nil
+}
+
+// releaseIPAddressForHost releases the elastic IP address that was associated
+// with the host, if it has an elastic IP.
+func releaseIPAddressForHost(ctx context.Context, h *host.Host) error {
+	if h.IPAllocationID == "" {
+		return nil
 	}
+
+	flags, err := evergreen.GetServiceFlags(ctx)
+	if err != nil {
+		return errors.Wrap(err, "getting service flags")
+	}
+	if flags.ElasticIPsDisabled {
+		return errors.Errorf("elastic IP features are disabled, host will leak IP allocation '%s'", h.IPAllocationID)
+	}
+
+	ipAddr, err := host.FindIPAddressByAllocationID(ctx, h.IPAllocationID)
+	if err != nil {
+		return errors.Wrapf(err, "finding IP address with allocation ID '%s'", h.IPAllocationID)
+	}
+	if ipAddr == nil {
+		return errors.Errorf("host '%s' is allocated IP address with allocation ID '%s' but that IP address does not exist", h.Id, h.IPAllocationID)
+	}
+	if ipAddr.HostTag != h.Tag {
+		return errors.Errorf("host '%s' is allocated IP address with allocation ID '%s' but that IP address is actually associated with host '%s'", h.Id, h.IPAllocationID, ipAddr.HostTag)
+	}
+
+	if err := ipAddr.UnsetHostTag(ctx); err != nil {
+		return errors.Wrapf(err, "unsetting IP allocation ID '%s' for host", h.IPAllocationID)
+	}
+
 	return nil
 }
 
 // associateIPAddressForHost associates the allocated IP address with the host.
 func associateIPAddressForHost(ctx context.Context, c AWSClient, h *host.Host) error {
+	flags, err := evergreen.GetServiceFlags(ctx)
+	if err != nil {
+		return errors.Wrap(err, "getting service flags")
+	}
+	if flags.ElasticIPsDisabled {
+		return errors.New("elastic IP features are disabled, host will not have an IP address")
+	}
+
+	ctx, span := tracer.Start(ctx, "associateIPAddressForHost")
+	defer span.End()
+
 	assocAddrOut, err := c.AssociateAddress(ctx, &ec2.AssociateAddressInput{
 		InstanceId:   aws.String(h.Id),
 		AllocationId: aws.String(h.IPAllocationID),
+		// Explicitly allowed an elastic IP to be reassociated to a different
+		// host. This is important because when Evergreen requests AWS to
+		// terminate the host, Evergreen assumes the IP address is free to reuse
+		// immediately but in AWS, the host may still hold onto the elastic IP
+		// until it reaches the terminated state on their end. Allowing
+		// reassociation lets the IP be reused immediately for a new host even
+		// if AWS is still working on terminating the host, which removes a
+		// dependency on AWS-side background operations.
+		AllowReassociation: utility.TruePtr(),
 	})
 	if err != nil {
 		return errors.Wrap(err, "associating IP address with host")

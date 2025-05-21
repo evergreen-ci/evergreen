@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/githubapp"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/utility"
+	"github.com/evergreen-ci/utility/ttlcache"
 	"github.com/gonzojive/httpcache"
 	"github.com/google/go-github/v70/github"
 	"github.com/mongodb/anser/bsonutil"
@@ -43,13 +44,14 @@ const (
 )
 
 const (
-	githubEndpointAttribute = "evergreen.github.endpoint"
-	githubOwnerAttribute    = "evergreen.github.owner"
-	githubRepoAttribute     = "evergreen.github.repo"
-	githubRefAttribute      = "evergreen.github.ref"
-	githubPathAttribute     = "evergreen.github.path"
-	githubRetriesAttribute  = "evergreen.github.retries"
-	githubCachedAttribute   = "evergreen.github.cached"
+	githubEndpointAttribute    = "evergreen.github.endpoint"
+	githubOwnerAttribute       = "evergreen.github.owner"
+	githubRepoAttribute        = "evergreen.github.repo"
+	githubRefAttribute         = "evergreen.github.ref"
+	githubPathAttribute        = "evergreen.github.path"
+	githubRetriesAttribute     = "evergreen.github.retries"
+	githubCachedAttribute      = "evergreen.github.cached"
+	githubLocalCachedAttribute = "evergreen.github.local_cached"
 )
 
 var UnblockedGithubStatuses = []string{
@@ -291,7 +293,6 @@ func githubShouldRetry(caller string, config retryConfig) utility.HTTPRetryFunct
 		if limit.Remaining == 0 {
 			return false
 		}
-		logGitHubRateLimit(limit)
 
 		if resp.StatusCode == http.StatusBadGateway {
 			grip.Info(message.Fields{
@@ -658,6 +659,10 @@ func getCommitComparison(ctx context.Context, owner, repo, baseRevision, current
 	return compare, nil
 }
 
+// ghCommitCache is a weak cache for GitHub commits. We can use a cache because
+// the commit data doesn't change.
+var ghCommitCache = ttlcache.WithOtel(ttlcache.NewWeakInMemory[github.RepositoryCommit](), "github-get-commit-event")
+
 func GetCommitEvent(ctx context.Context, owner, repo, githash string) (*github.RepositoryCommit, error) {
 	caller := "GetCommitEvent"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
@@ -667,6 +672,13 @@ func GetCommitEvent(ctx context.Context, owner, repo, githash string) (*github.R
 		attribute.String(githubRefAttribute, githash),
 	))
 	defer span.End()
+
+	ghCommitKey := fmt.Sprintf("%s/%s/%s", owner, repo, githash)
+	commit, found := ghCommitCache.Get(ctx, ghCommitKey, 0)
+	span.SetAttributes(attribute.Bool(githubLocalCachedAttribute, found))
+	if found && commit != nil {
+		return commit, nil
+	}
 
 	var err error
 	token, err := getInstallationToken(ctx, owner, repo, nil)
@@ -716,6 +728,11 @@ func GetCommitEvent(ctx context.Context, owner, repo, githash string) (*github.R
 		return nil, errors.New("commit not found in github")
 	}
 
+	// We use 24 hours as the expiration time for the item in the cache
+	// because the cache only holds weak pointers to the items in it.
+	// This means that the items in the cache can be garbage collected
+	// if there are no strong references to them.
+	ghCommitCache.Put(ctx, ghCommitKey, commit, time.Now().Add(time.Hour*24))
 	return commit, nil
 }
 
@@ -812,7 +829,6 @@ func tryGithubPost(ctx context.Context, url string, oauthToken string, data any)
 			defer resp.Body.Close()
 			err = errors.Errorf("Calling github POST on %v got a bad response code: %v", url, resp.StatusCode)
 		}
-		logGitHubRateLimit(parseGithubRateLimit(resp.Header))
 
 		return false, nil
 	}, utility.RetryOptions{
@@ -842,28 +858,6 @@ func parseGithubRateLimit(h http.Header) github.Rate {
 	}
 
 	return rate
-}
-
-func logGitHubRateLimit(limit github.Rate) {
-	if limit.Limit == 0 {
-		grip.Error(message.Fields{
-			"message": "GitHub API rate limit",
-			"error":   "can't parse rate limit",
-		})
-	} else if limit.Limit == 60 {
-		// Unauthenticated requests have a limit of 60
-		// https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api?apiVersion=2022-11-28#primary-rate-limit-for-unauthenticated-users
-		return
-	} else {
-		grip.Info(message.Fields{
-			"message":           "GitHub API rate limit",
-			"remaining":         limit.Remaining,
-			"limit":             limit.Limit,
-			"reset":             limit.Reset,
-			"minutes_remaining": time.Until(limit.Reset.Time).Minutes(),
-			"percentage":        float32(limit.Remaining) / float32(limit.Limit),
-		})
-	}
 }
 
 // GithubAuthenticate does a POST to github with the code that it received, the ClientId, ClientSecret
@@ -1081,8 +1075,8 @@ func GetGithubTokenUser(ctx context.Context, token string, requiredOrg string) (
 	}, isMember, err
 }
 
-// CheckGithubAPILimit queries Github for the number of API requests remaining
-func CheckGithubAPILimit(ctx context.Context) (int64, error) {
+// CheckGithubAPILimit queries Github for all the API rate limits
+func CheckGithubAPILimit(ctx context.Context) (*github.RateLimits, error) {
 	caller := "CheckGithubAPILimit"
 	ctx, span := tracer.Start(ctx, caller, trace.WithAttributes(
 		attribute.String(githubEndpointAttribute, caller),
@@ -1091,24 +1085,33 @@ func CheckGithubAPILimit(ctx context.Context) (int64, error) {
 
 	token, err := getInstallationTokenWithDefaultOwnerRepo(ctx, nil)
 	if err != nil {
-		return 0, errors.Wrap(err, "getting installation token")
+		return nil, errors.Wrap(err, "getting installation token")
 	}
 
 	githubClient := getGithubClient(token, caller, retryConfig{retry: true})
 	defer githubClient.Close()
 
-	limits, resp, err := githubClient.RateLimits(ctx)
+	limits, resp, err := githubClient.RateLimit.Get(ctx)
 	if resp != nil {
 		defer resp.Body.Close()
 		span.SetAttributes(attribute.Bool(githubCachedAttribute, respFromCache(resp.Response)))
 	}
 	if err != nil {
 		grip.Errorf("github GET rate limit failed: %+v", err)
-		return 0, err
+		return nil, err
+	}
+	if limits.Core == nil {
+		return nil, errors.New("nil github limits")
 	}
 
-	if limits.Core == nil {
-		return 0, errors.New("nil github limits")
+	return limits, nil
+}
+
+// CheckGithubResource queries Github for the number of API requests remaining
+func CheckGithubResource(ctx context.Context) (int64, error) {
+	limits, err := CheckGithubAPILimit(ctx)
+	if err != nil {
+		return int64(0), errors.Wrap(err, "getting github rate limit")
 	}
 	if limits.Core.Remaining < 0 {
 		return int64(0), nil

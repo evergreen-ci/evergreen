@@ -116,6 +116,12 @@ type AWSClient interface {
 	AllocateAddress(context.Context, *ec2.AllocateAddressInput) (*ec2.AllocateAddressOutput, error)
 	// AssociateAddress is a wrapper for ec2.AssociateAddress.
 	AssociateAddress(context.Context, *ec2.AssociateAddressInput) (*ec2.AssociateAddressOutput, error)
+	// DisassociateAddress is a wrapper for ec2.DisassociateAddress.
+	DisassociateAddress(context.Context, *ec2.DisassociateAddressInput) (*ec2.DisassociateAddressOutput, error)
+	// ReleaseAddress is a wrapper for ec2.ReleaseAddress.
+	ReleaseAddress(context.Context, *ec2.ReleaseAddressInput) (*ec2.ReleaseAddressOutput, error)
+	// DescribeAddresses is a wrapper for ec2.DescribeAddresses.
+	DescribeAddresses(context.Context, *ec2.DescribeAddressesInput) (*ec2.DescribeAddressesOutput, error)
 
 	GetPublicDNSName(ctx context.Context, h *host.Host) (string, error)
 
@@ -779,6 +785,10 @@ func (c *awsClientImpl) DeleteLaunchTemplate(ctx context.Context, input *ec2.Del
 				if errors.As(err, &apiErr) {
 					grip.Debug(message.WrapError(apiErr, msg))
 				}
+				if strings.Contains(err.Error(), ec2TemplateNotFound) {
+					// The template does not exist, so it's already deleted.
+					return false, nil
+				}
 				return true, err
 			}
 			grip.Info(msg)
@@ -944,7 +954,8 @@ func (c *awsClientImpl) AllocateAddress(ctx context.Context, input *ec2.Allocate
 				if errors.As(err, &apiErr) {
 					grip.Debug(message.WrapError(apiErr, msg))
 				}
-				if strings.Contains(apiErr.Error(), ec2InsufficientAddressCapacity) || strings.Contains(apiErr.Error(), ec2AddressLimitExceeded) {
+				errMsg := err.Error()
+				if strings.Contains(errMsg, EC2InsufficientAddressCapacity) || strings.Contains(errMsg, EC2AddressLimitExceeded) {
 					return false, err
 				}
 				return true, err
@@ -958,7 +969,47 @@ func (c *awsClientImpl) AllocateAddress(ctx context.Context, input *ec2.Allocate
 	return output, nil
 }
 
+func (c *awsClientImpl) ReleaseAddress(ctx context.Context, input *ec2.ReleaseAddressInput) (*ec2.ReleaseAddressOutput, error) {
+	retryOpts := awsClientDefaultRetryOptions()
+	// If the initial request fails, initiate retries after a longer delay than
+	// usual because the address may still be in use. This reduces the rate of
+	// requests that repeatedly fail due to waiting for the address to be
+	// disassociated from the host's network interface, which helps alleviate
+	// rate limit pressure.
+	retryOpts.MinDelay = 5 * time.Second
+	retryOpts.MaxDelay = 30 * time.Second
+	var output *ec2.ReleaseAddressOutput
+	var err error
+	err = utility.Retry(
+		ctx,
+		func() (bool, error) {
+			msg := makeAWSLogMessage("ReleaseAddress", fmt.Sprintf("%T", c), input)
+			output, err = c.ec2Client.ReleaseAddress(ctx, input)
+			if err != nil {
+				var apiErr smithy.APIError
+				if errors.As(err, &apiErr) {
+					grip.Debug(message.WrapError(apiErr, msg))
+				}
+				return true, err
+			}
+			grip.Info(msg)
+			return false, nil
+		}, retryOpts)
+	if err != nil {
+		return nil, err
+	}
+	return output, nil
+}
+
 func (c *awsClientImpl) AssociateAddress(ctx context.Context, input *ec2.AssociateAddressInput) (*ec2.AssociateAddressOutput, error) {
+	retryOpts := awsClientDefaultRetryOptions()
+	// If the initial request fails, initiate retries after a longer delay than
+	// usual because the host has to be in the "running" state for this to
+	// succeed. This reduces the rate of requests that repeatedly fail due to
+	// waiting for the host state to be "running", which helps alleviate rate
+	// limit pressure.
+	retryOpts.MinDelay = 5 * time.Second
+	retryOpts.MaxDelay = 30 * time.Second
 	var output *ec2.AssociateAddressOutput
 	var err error
 	err = utility.Retry(
@@ -973,6 +1024,54 @@ func (c *awsClientImpl) AssociateAddress(ctx context.Context, input *ec2.Associa
 				}
 				if strings.Contains(err.Error(), ec2ResourceAlreadyAssociated) {
 					return false, err
+				}
+				return true, err
+			}
+			grip.Info(msg)
+			return false, nil
+		}, retryOpts)
+	if err != nil {
+		return nil, err
+	}
+	return output, nil
+}
+
+func (c *awsClientImpl) DisassociateAddress(ctx context.Context, input *ec2.DisassociateAddressInput) (*ec2.DisassociateAddressOutput, error) {
+	var output *ec2.DisassociateAddressOutput
+	var err error
+	err = utility.Retry(
+		ctx,
+		func() (bool, error) {
+			msg := makeAWSLogMessage("DisassociateAddress", fmt.Sprintf("%T", c), input)
+			output, err = c.ec2Client.DisassociateAddress(ctx, input)
+			if err != nil {
+				var apiErr smithy.APIError
+				if errors.As(err, &apiErr) {
+					grip.Debug(message.WrapError(apiErr, msg))
+				}
+				return true, err
+			}
+			grip.Info(msg)
+			return false, nil
+		}, awsClientDefaultRetryOptions())
+	if err != nil {
+		return nil, err
+	}
+	return output, nil
+}
+
+func (c *awsClientImpl) DescribeAddresses(ctx context.Context, input *ec2.DescribeAddressesInput) (*ec2.DescribeAddressesOutput, error) {
+	var output *ec2.DescribeAddressesOutput
+	var err error
+	err = utility.Retry(
+		ctx,
+		func() (bool, error) {
+			msg := makeAWSLogMessage("DescribeAddresses", fmt.Sprintf("%T", c), input)
+			output, err = c.ec2Client.DescribeAddresses(ctx, input)
+			if err != nil {
+				var apiErr smithy.APIError
+				if errors.As(err, &apiErr) {
+					grip.Debug(message.WrapError(apiErr, msg))
 				}
 				return true, err
 			}
@@ -1098,6 +1197,12 @@ type awsClientMock struct { //nolint
 	*ec2.AllocateAddressOutput
 	*ec2.AssociateAddressInput
 	*ec2.AssociateAddressOutput
+	*ec2.DisassociateAddressInput
+	*ec2.DisassociateAddressOutput
+	*ec2.ReleaseAddressInput
+	*ec2.ReleaseAddressOutput
+	*ec2.DescribeAddressesInput
+	*ec2.DescribeAddressesOutput
 	*sts.AssumeRoleInput
 	*sts.GetCallerIdentityOutput
 
@@ -1437,6 +1542,21 @@ func (c *awsClientMock) AllocateAddress(ctx context.Context, input *ec2.Allocate
 func (c *awsClientMock) AssociateAddress(ctx context.Context, input *ec2.AssociateAddressInput) (*ec2.AssociateAddressOutput, error) {
 	c.AssociateAddressInput = input
 	return c.AssociateAddressOutput, nil
+}
+
+func (c *awsClientMock) DisassociateAddress(ctx context.Context, input *ec2.DisassociateAddressInput) (*ec2.DisassociateAddressOutput, error) {
+	c.DisassociateAddressInput = input
+	return c.DisassociateAddressOutput, nil
+}
+
+func (c *awsClientMock) ReleaseAddress(ctx context.Context, input *ec2.ReleaseAddressInput) (*ec2.ReleaseAddressOutput, error) {
+	c.ReleaseAddressInput = input
+	return c.ReleaseAddressOutput, nil
+}
+
+func (c *awsClientMock) DescribeAddresses(ctx context.Context, input *ec2.DescribeAddressesInput) (*ec2.DescribeAddressesOutput, error) {
+	c.DescribeAddressesInput = input
+	return c.DescribeAddressesOutput, nil
 }
 
 func (c *awsClientMock) ChangeResourceRecordSets(ctx context.Context, input *route53.ChangeResourceRecordSetsInput) (*route53.ChangeResourceRecordSetsOutput, error) {

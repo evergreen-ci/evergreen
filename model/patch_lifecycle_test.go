@@ -781,7 +781,8 @@ func TestAddNewPatch(t *testing.T) {
 		Revision:   "1234",
 		Requester:  evergreen.PatchVersionRequester,
 		CreateTime: time.Now(),
-		Author:     "test.user",
+		Author:     "Test User",
+		AuthorID:   "test.user",
 	}
 	baseCommitTime := time.Date(2018, time.July, 15, 16, 45, 0, 0, time.UTC)
 	baseVersion := &Version{

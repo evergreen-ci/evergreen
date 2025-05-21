@@ -54,7 +54,7 @@ Fetching artifacts can also be performed manually; see [fetch](../CLI#fetch) in 
 
 Artifacts are placed in /data/mci. Note that you will likely be able to ssh into the host before the artifacts are finished fetching.
 
-If your project has a project setup script defined at the admin level, you can also check "Use project-specific setup script defined at ..." before creating the spawn host. You can check if there are errors fetching artifacts or running this script on the host page: `https://spruce.mongodb.com/host/<host_id>`.
+If your project has [a project setup script defined at the admin level](../Project-Configuration/Project-And-Distro-Settings.md#spawn-host-script-path), you can also check "Use project-specific setup script defined at ..." before creating the spawn host to run that script when the host starts up. You can check if there are errors fetching artifacts or running this script on the host page: `https://spruce.mongodb.com/host/<host_id>`.
 
 EC2 spawn hosts can be stopped/started and modified from the Spawn Host page, or via the command line, which is documented in [Basic Host Usage](../CLI#basic-host-usage) in the Evergreen command line tool documentation.
 

@@ -1610,8 +1610,8 @@ func addNewBuilds(ctx context.Context, creationInfo TaskCreationInfo, existingBu
 		return nil, nil, errors.Wrap(err, "inserting tasks")
 	}
 	numTasksModified := numEstimatedActivatedGeneratedTasks + len(newActivatedTaskIds)
-	if err = task.UpdateSchedulingLimit(ctx, creationInfo.Version.Author, creationInfo.Version.Requester, numTasksModified, true); err != nil {
-		return nil, nil, errors.Wrapf(err, "fetching user '%s' and updating their scheduling limit", creationInfo.Version.Author)
+	if err = task.UpdateSchedulingLimit(ctx, creationInfo.Version.AuthorID, creationInfo.Version.Requester, numTasksModified, true); err != nil {
+		return nil, nil, errors.Wrapf(err, "fetching user '%s' and updating their scheduling limit", creationInfo.Version.AuthorID)
 	}
 	grip.Error(message.WrapError(batchTimeCatcher.Resolve(), message.Fields{
 		"message": "unable to get all activation times",
@@ -1746,7 +1746,7 @@ func addNewTasksToExistingBuilds(ctx context.Context, creationInfo TaskCreationI
 			return nil, nil, errors.Wrapf(err, "updating task cache for '%s'", b.Id)
 		}
 	}
-	if err = task.CheckUsersPatchTaskLimit(ctx, creationInfo.Version.Requester, creationInfo.Version.Author, false, activatedTasks...); err != nil {
+	if err = task.CheckUsersPatchTaskLimit(ctx, creationInfo.Version.Requester, creationInfo.Version.AuthorID, false, activatedTasks...); err != nil {
 		return nil, nil, errors.Wrap(err, "updating patch task limit for user")
 	}
 	if len(buildIdsToActivate) > 0 {

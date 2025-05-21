@@ -255,7 +255,7 @@ func TestFleet(t *testing.T) {
 			assert.Equal(t, "public_dns_name", dnsName)
 		},
 		"SpawnFleetSpotHost": func(ctx context.Context, t *testing.T, m *ec2FleetManager, client *awsClientMock, h *host.Host) {
-			assert.NoError(t, m.spawnFleetSpotHost(ctx, &host.Host{Tag: "ht_1"}, &EC2ProviderSettings{}))
+			assert.NoError(t, m.spawnFleetHost(ctx, &host.Host{Tag: "ht_1"}, &EC2ProviderSettings{}))
 
 			mockClient := m.client.(*awsClientMock)
 			assert.Equal(t, "ht_1", *mockClient.DeleteLaunchTemplateInput.LaunchTemplateName)
@@ -386,7 +386,9 @@ func TestUploadLaunchTemplate(t *testing.T) {
 }
 
 func TestCleanup(t *testing.T) {
-	client := &awsClientMock{}
+	client := &awsClientMock{
+		DescribeAddressesOutput: &ec2.DescribeAddressesOutput{},
+	}
 	m := &ec2FleetManager{
 		EC2FleetManagerOptions: &EC2FleetManagerOptions{client: client},
 	}

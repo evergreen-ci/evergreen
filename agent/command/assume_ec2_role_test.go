@@ -3,6 +3,7 @@ package command
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/agent/globals"
 	"github.com/evergreen-ci/evergreen/agent/internal"
@@ -53,11 +54,13 @@ func TestEC2AssumeRoleExecute(t *testing.T) {
 			assert.EqualError(t, c.Execute(ctx, comm, logger, conf), "nil credentials returned")
 		},
 		"Success": func(ctx context.Context, t *testing.T, comm *client.Mock, logger client.LoggerProducer, conf *internal.TaskConfig) {
+			expiration := time.Now()
 			comm.AssumeRoleResponse = &apimodels.AWSCredentials{
 				AccessKeyID:     "access_key_id",
 				SecretAccessKey: "secret_access_key",
 				SessionToken:    "session_token",
-				Expiration:      "expiration",
+				Expiration:      expiration.Format(time.RFC3339),
+				ExternalID:      "external_id",
 			}
 
 			c := &ec2AssumeRole{
@@ -69,9 +72,10 @@ func TestEC2AssumeRoleExecute(t *testing.T) {
 			assert.Equal(t, "access_key_id", conf.NewExpansions.Get(globals.AWSAccessKeyId))
 			assert.Equal(t, "secret_access_key", conf.NewExpansions.Get(globals.AWSSecretAccessKey))
 			assert.Equal(t, "session_token", conf.NewExpansions.Get(globals.AWSSessionToken))
-			assert.Equal(t, "expiration", conf.NewExpansions.Get(globals.AWSRoleExpiration))
+			assert.Equal(t, expiration.Format(time.RFC3339), conf.NewExpansions.Get(globals.AWSRoleExpiration))
 
-			assert.Equal(t, c.RoleARN, conf.AssumeRoleRoles[comm.AssumeRoleResponse.SessionToken])
+			assert.Equal(t, c.RoleARN, conf.AssumeRoleInformation[comm.AssumeRoleResponse.SessionToken].RoleARN)
+			assert.WithinDuration(t, expiration, conf.AssumeRoleInformation[comm.AssumeRoleResponse.SessionToken].Expiration, time.Second)
 
 			t.Run("KeysAreRedacted", func(t *testing.T) {
 				hasAccessKey := false
@@ -119,9 +123,9 @@ func TestEC2AssumeRoleExecute(t *testing.T) {
 				ProjectRef: model.ProjectRef{
 					Id: "project_identifier",
 				},
-				Expansions:      expansions,
-				NewExpansions:   agentutil.NewDynamicExpansions(expansions),
-				AssumeRoleRoles: map[string]string{},
+				Expansions:            expansions,
+				NewExpansions:         agentutil.NewDynamicExpansions(expansions),
+				AssumeRoleInformation: map[string]internal.AssumeRoleInformation{},
 			}
 
 			comm := client.NewMock("localhost")

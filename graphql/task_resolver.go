@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/thirdparty/clients/fws"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"go.mongodb.org/mongo-driver/bson"
@@ -578,10 +579,48 @@ func (r *taskResolver) TaskLogs(ctx context.Context, obj *restModel.APITask) (*T
 	return &TaskLogs{TaskID: utility.FromStringPtr(obj.Id), Execution: obj.Execution}, nil
 }
 
+// TaskOwnerTeam is the resolver for the taskOwnerTeam field.
+func (r *taskResolver) TaskOwnerTeam(ctx context.Context, obj *restModel.APITask) (*TaskOwnerTeam, error) {
+	fwsBaseURL := evergreen.GetEnvironment().Settings().FWS.URL
+	if fwsBaseURL == "" {
+		return nil, InternalServerError.Send(ctx, "Foliage Web Services URL not set")
+	}
+	httpClient := utility.GetHTTPClient()
+	defer utility.PutHTTPClient(httpClient)
+
+	cfg := fws.NewConfiguration()
+	cfg.HTTPClient = httpClient
+	cfg.Servers = fws.ServerConfigurations{
+		fws.ServerConfiguration{
+			Description: "Foliage Web Services",
+			URL:         fwsBaseURL,
+		},
+	}
+	cfg.UserAgent = "evergreen"
+
+	client := fws.NewAPIClient(cfg)
+	req := client.OwnerAPI.ByFoliageLogicApiOwnerByFoliageLogicTaskIdGet(ctx, *obj.Id)
+	results, resp, err := req.Execute()
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting task owner team: %s", err.Error()))
+	}
+	teamName := results.SelectedAssignment.GetTeamDataWithOwner().TeamData.TeamName
+	return &TaskOwnerTeam{
+		TeamName:       teamName,
+		AssignmentType: string(results.SelectedAssignment.GetAssignmentType()),
+		Messages:       results.SelectedAssignment.GetMessages(),
+	}, nil
+}
+
 // Tests is the resolver for the tests field.
 func (r *taskResolver) Tests(ctx context.Context, obj *restModel.APITask, opts *TestFilterOptions) (*TaskTestResult, error) {
 	// Return early if it is known that there are no test results to return.
-	if opts != nil && len(opts.Statuses) > 0 {
+	// Display tasks cannot take advantage of this optimization since they
+	// don't populate ResultsFailed.
+	if opts != nil && !obj.DisplayOnly && len(opts.Statuses) > 0 {
 		diffFailureStatuses := utility.GetSetDifference(opts.Statuses, evergreen.TestFailureStatuses)
 		if len(diffFailureStatuses) == 0 && !obj.ResultsFailed {
 			return &TaskTestResult{
@@ -647,7 +686,7 @@ func (r *taskResolver) VersionMetadata(ctx context.Context, obj *restModel.APITa
 	versionID := utility.FromStringPtr(obj.Version)
 	v, err := model.VersionFindOne(ctx, model.VersionById(versionID).Project(bson.M{model.VersionBuildVariantsKey: 0}))
 	if err != nil {
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s': %s", versionID, utility.FromStringPtr(obj.Id)))
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("fetching version '%s' for task '%s': %s", versionID, utility.FromStringPtr(obj.Id), err.Error()))
 	}
 	if v == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("version '%s' not found", versionID))

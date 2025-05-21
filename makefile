@@ -9,9 +9,10 @@ packages += model-commitqueue model-cache model-githubapp
 packages += rest-client rest-data rest-route rest-model trigger model-alertrecord model-notification model-taskstats model-reliability
 packages += taskoutput cloud-parameterstore cloud-parameterstore-fakeparameter
 lintOnlyPackages := api apimodels testutil model-manifest model-testutil service-testutil service-graphql db-mgo db-mgo-bson db-mgo-internal-json rest
-lintOnlyPackages += smoke-internal smoke-internal-host smoke-internal-container smoke-internal-agentmonitor smoke-internal-endpoint
+lintOnlyPackages += smoke-internal smoke-internal-host smoke-internal-container smoke-internal-agentmonitor smoke-internal-endpoint thirdparty-clients-fws
 testOnlyPackages := service-graphql smoke-internal-host smoke-internal-container smoke-internal-agentmonitor smoke-internal-endpoint # has only test files so can't undergo all operations
-orgPath := github.com/evergreen-ci
+orgName := evergreen-ci
+orgPath := github.com/$(orgName)
 projectPath := $(orgPath)/$(name)
 evghome := $(abspath .)
 ifeq ($(OS),Windows_NT)
@@ -370,7 +371,34 @@ swaggo-build:
 swaggo-render:
 	npx @redocly/cli build-docs $(buildDir)/swagger.json -o $(buildDir)/redoc-static.html
 
-phony += swaggo swaggo-install swaggo-format swaggo-build swaggo-render
+
+# Variables
+OPENAPI_FWS_CONFIG_URL := https://foliage-web-services.cloud-build.prod.corp.mongodb.com/foliage_web_services.json
+OPENAPI_FWS_SCHEMA := $(buildDir)/foliage_web_services.json
+OPENAPI_FWS_OUTPUT_DIR := thirdparty/clients/fws
+OPENAPI_FWS_CONFIG := packageName=fws,packageVersion=1.0.0,packageTitle=FoliageWebServices,packageDescription="Foliage Web Services",apiTests=false,modelTests=false
+OPENAPI_GENERATOR := bin/openapi-generator-cli.sh
+
+# Main rule for generating the client
+fws-client: download-fws-config generate-fws-client
+
+download-fws-config:
+	@echo "Authenticating to Kanopy..." && \
+	KANOPY_KEY=$$(kanopy-oidc login) && \
+	echo "Downloading OpenAPI config..." && \
+	curl -H "X-Kanopy-Authorization: Bearer $$KANOPY_KEY" -L -o $(OPENAPI_FWS_SCHEMA) $(OPENAPI_FWS_CONFIG_URL) && \
+	echo "Downloaded OpenAPI config"
+
+generate-fws-client:
+	@echo "Generating OpenAPI client..." && \
+	scripts/setup-openapi-client.sh $(OPENAPI_FWS_SCHEMA) $(OPENAPI_FWS_OUTPUT_DIR) $(OPENAPI_GENERATOR) $(OPENAPI_FWS_CONFIG) && \
+	echo "Generating OpenAPI client done." && \
+	echo "Swaggo format..." && \
+	make swaggo-format && \
+	echo "Swaggo format done."
+
+
+phony += swaggo swaggo-install swaggo-format swaggo-build swaggo-render fws-client generate-fws-client download-fws-config
 
 # sanitizes a json file by hashing string values. Note that this will not work well with
 # string data that only has a subset of valid values

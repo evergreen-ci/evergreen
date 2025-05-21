@@ -22,6 +22,7 @@ func NewConfigModel() *APIAdminSettings {
 		Cedar:               &APICedarConfig{},
 		ContainerPools:      &APIContainerPoolsConfig{},
 		Expansions:          map[string]string{},
+		FWS:                 &APIFWSConfig{},
 		HostInit:            &APIHostInitConfig{},
 		HostJasper:          &APIHostJasperConfig{},
 		Jira:                &APIJiraConfig{},
@@ -35,6 +36,7 @@ func NewConfigModel() *APIAdminSettings {
 		ProjectCreation:     &APIProjectCreationConfig{},
 		Providers:           &APICloudProviders{},
 		RepoTracker:         &APIRepoTrackerConfig{},
+		ReleaseMode:         &APIReleaseModeConfig{},
 		RuntimeEnvironments: &APIRuntimeEnvironmentsConfig{},
 		Scheduler:           &APISchedulerConfig{},
 		ServiceFlags:        &APIServiceFlags{},
@@ -68,6 +70,7 @@ type APIAdminSettings struct {
 	ContainerPools      *APIContainerPoolsConfig      `json:"container_pools,omitempty"`
 	DomainName          *string                       `json:"domain_name,omitempty"`
 	Expansions          map[string]string             `json:"expansions,omitempty"`
+	FWS                 *APIFWSConfig                 `json:"fws,omitempty"`
 	GithubPRCreatorOrg  *string                       `json:"github_pr_creator_org,omitempty"`
 	GithubOrgs          []string                      `json:"github_orgs,omitempty"`
 	GithubWebhookSecret *string                       `json:"github_webhook_secret,omitempty"`
@@ -88,6 +91,7 @@ type APIAdminSettings struct {
 	ProjectCreation     *APIProjectCreationConfig     `json:"project_creation,omitempty"`
 	Providers           *APICloudProviders            `json:"providers,omitempty"`
 	RepoTracker         *APIRepoTrackerConfig         `json:"repotracker,omitempty"`
+	ReleaseMode         *APIReleaseModeConfig         `json:"release_mode,omitempty"`
 	RuntimeEnvironments *APIRuntimeEnvironmentsConfig `json:"runtime_environments,omitempty"`
 	Scheduler           *APISchedulerConfig           `json:"scheduler,omitempty"`
 	ServiceFlags        *APIServiceFlags              `json:"service_flags,omitempty"`
@@ -118,8 +122,6 @@ func (as *APIAdminSettings) BuildFromService(h any) error {
 		for i := 0; i < apiModelReflect.NumField(); i++ {
 			propName := apiModelReflect.Type().Field(i).Name
 			val := apiModelReflect.FieldByName(propName)
-			if strings.ToLower(propName) == "sleepscheduleconfig" {
-			}
 			if val.IsNil() {
 				continue
 			}
@@ -197,6 +199,11 @@ func (as *APIAdminSettings) BuildFromService(h any) error {
 			return errors.Wrap(err, "converting single task distro config to API model")
 		}
 		as.SingleTaskDistro = &singleTaskDistroConfig
+		releaseModeConfig := APIReleaseModeConfig{}
+		if err = releaseModeConfig.BuildFromService(v.ReleaseMode); err != nil {
+			return errors.Wrap(err, "converting release mode config to API model")
+		}
+		as.ReleaseMode = &releaseModeConfig
 	default:
 		return errors.Errorf("programmatic error: expected admin settings but got type %T", h)
 	}
@@ -2033,6 +2040,29 @@ func (a *APIRepoTrackerConfig) ToService() (any, error) {
 	}, nil
 }
 
+type APIReleaseModeConfig struct {
+	DistroMaxHostsFactor      float64 `json:"distro_max_hosts_factor"`
+	TargetTimeSecondsOverride int     `json:"target_time_seconds_override"`
+}
+
+func (a *APIReleaseModeConfig) BuildFromService(h any) error {
+	switch v := h.(type) {
+	case evergreen.ReleaseModeConfig:
+		a.DistroMaxHostsFactor = v.DistroMaxHostsFactor
+		a.TargetTimeSecondsOverride = v.TargetTimeSecondsOverride
+	default:
+		return errors.Errorf("programmatic error: expected ReleaseModeConfig but got type %T", h)
+	}
+	return nil
+}
+
+func (a *APIReleaseModeConfig) ToService() (any, error) {
+	return evergreen.ReleaseModeConfig{
+		DistroMaxHostsFactor:      a.DistroMaxHostsFactor,
+		TargetTimeSecondsOverride: a.TargetTimeSecondsOverride,
+	}, nil
+}
+
 type APISchedulerConfig struct {
 	TaskFinder                    *string `json:"task_finder"`
 	HostAllocator                 *string `json:"host_allocator"`
@@ -2129,8 +2159,12 @@ type APIServiceFlags struct {
 	BackgroundCleanupDisabled       bool `json:"background_cleanup_disabled"`
 	CloudCleanupDisabled            bool `json:"cloud_cleanup_disabled"`
 	SleepScheduleDisabled           bool `json:"sleep_schedule_disabled"`
+	StaticAPIKeysDisabled           bool `json:"static_api_keys_disabled"`
+	JWTTokenForCLIDisabled          bool `json:"jwt_token_for_cli_disabled"`
 	SystemFailedTaskRestartDisabled bool `json:"system_failed_task_restart_disabled"`
 	DegradedModeDisabled            bool `json:"cpu_degraded_mode_disabled"`
+	ElasticIPsDisabled              bool `json:"elastic_ips_disabled"`
+	ReleaseModeDisabled             bool `json:"release_mode_disabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -2502,6 +2536,26 @@ func (ab *APIBanner) ToService() (any, error) {
 	return ab, nil
 }
 
+type APIFWSConfig struct {
+	URL *string `json:"url"`
+}
+
+func (a *APIFWSConfig) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case evergreen.FWSConfig:
+		a.URL = utility.ToStringPtr(v.URL)
+	default:
+		return errors.Errorf("programmatic error: expected FWS config but got type %T", h)
+	}
+	return nil
+}
+
+func (a *APIFWSConfig) ToService() (interface{}, error) {
+	return evergreen.FWSConfig{
+		URL: utility.FromStringPtr(a.URL),
+	}, nil
+}
+
 // BuildFromService builds a model from the service layer
 func (as *APIServiceFlags) BuildFromService(h any) error {
 	switch v := h.(type) {
@@ -2537,8 +2591,12 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.BackgroundReauthDisabled = v.BackgroundReauthDisabled
 		as.CloudCleanupDisabled = v.CloudCleanupDisabled
 		as.SleepScheduleDisabled = v.SleepScheduleDisabled
+		as.StaticAPIKeysDisabled = v.StaticAPIKeysDisabled
+		as.JWTTokenForCLIDisabled = v.JWTTokenForCLIDisabled
 		as.SystemFailedTaskRestartDisabled = v.SystemFailedTaskRestartDisabled
 		as.DegradedModeDisabled = v.CPUDegradedModeDisabled
+		as.ElasticIPsDisabled = v.ElasticIPsDisabled
+		as.ReleaseModeDisabled = v.ReleaseModeDisabled
 	default:
 		return errors.Errorf("programmatic error: expected service flags config but got type %T", h)
 	}
@@ -2579,8 +2637,12 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		BackgroundReauthDisabled:        as.BackgroundReauthDisabled,
 		CloudCleanupDisabled:            as.CloudCleanupDisabled,
 		SleepScheduleDisabled:           as.SleepScheduleDisabled,
+		StaticAPIKeysDisabled:           as.StaticAPIKeysDisabled,
+		JWTTokenForCLIDisabled:          as.JWTTokenForCLIDisabled,
 		SystemFailedTaskRestartDisabled: as.SystemFailedTaskRestartDisabled,
 		CPUDegradedModeDisabled:         as.DegradedModeDisabled,
+		ElasticIPsDisabled:              as.ElasticIPsDisabled,
+		ReleaseModeDisabled:             as.ReleaseModeDisabled,
 	}, nil
 }
 

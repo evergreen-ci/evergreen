@@ -224,6 +224,8 @@ page.
 - `exact_file_names`: an optional boolean flag which, if set to true,
     indicates to treat the files array as a list of exact filenames to
     match, rather than an array of gitignore file globs.
+-   `optional`: default false; if set to true, will not error if the
+    file(s) specified are not found
 
 ## attach.results
 
@@ -380,6 +382,7 @@ Parameters:
 
 The call to AssumeRole includes an external ID formatted as
 `<project_id>-<requester>`. This cannot be modified by the user.
+The list of requesters can be found [here](../Reference/Glossary.md#requesters).
 The originating role is: 
 `arn:aws:iam::<evergreen_account_id>:role/evergreen.role.production`
 and your role should only trust that exact role. You should add an
@@ -1296,12 +1299,21 @@ and contains these fields:
     bucket: mciuploads
     region: us-east-1
     local_file: src/mongo-binaries.tgz
-# Static credentials (deprecated):
+# Or:
 - command: s3.get
   params:
     aws_key: ${aws_key}
     aws_secret: ${aws_secret}
     aws_session_token: ${aws_session_token}
+    remote_file: ${mongo_binaries}
+    bucket: mciuploads
+    region: us-east-1
+    local_file: src/mongo-binaries.tgz
+# Static credentials (deprecated):
+- command: s3.get
+  params:
+    aws_key: ${aws_key}
+    aws_secret: ${aws_secret}
     remote_file: ${mongo_binaries}
     bucket: mciuploads
     region: us-east-1
@@ -1313,16 +1325,20 @@ Parameters:
 -   `aws_key`: your AWS key (use expansions to keep this a secret).
 -   `aws_secret`: your AWS secret (use expansions to keep this a secret).
 -   `aws_session_token`: your temporary AWS session token (use expansions to keep this a secret).
-    Note: If you are generating temporary credentials using `ec2.assume_role`, it is recommended
-    to pass in the role_arn directly to your s3 commands instead.
+    Note: If you are generating temporary credentials using `ec2.assume_role`, you can instead
+    pass in the role_arn directly to your s3 commands. If you have multiple S3 commands in quick
+    succession, it is recommended you call `ec2.assume_role` once and pass in the credentials
+    to each command rather than pass in a `role_arn`.
 -   `role_arn`: your AWS role to be assumed before and during the s3 operation.
     See [AssumeRole AWS setup](#assumerole-aws-setup) for more information on how
     to configure your role.
     This does not have to be a secret but managing it with expansions is recommended.
     This is the recommended way to authenticate with AWS.
--   `local_file`: the local file to save, do not use with `extract_to`
+-   `local_file`: the local file to save, do not use with `extract_to`.
+    This is relative to [task's working directory](./Best-Practices.md#task-directory)
 -   `extract_to`: the local directory to extract to, do not use with
-    `local_file`
+    `local_file`. This requires the remote file to be a tarball (eg. `.tgz`).
+    This is relative to [task's working directory](./Best-Practices.md#task-directory)
 -   `remote_file`: the S3 path to get the file from
 -   `bucket`: the S3 bucket to use.
 -   `region`: AWS region of the bucket, defaults to us-east-1.
@@ -1348,12 +1364,25 @@ distribution. Refer to [Task Artifacts Data Retention Policy](../Reference/Limit
     visibility: signed
     content_type: ${content_type|application/x-gzip}
     display_name: Binaries
-# Static credentials (deprecated)
+# Or:
 - command: s3.put
   params:
     aws_key: ${aws_key}
     aws_secret: ${aws_secret}
     aws_session_token: ${aws_session_token}
+    local_file: src/mongodb-binaries.tgz
+    remote_file: mongodb-mongo-master/${build_variant}/${revision}/binaries/mongo-${build_id}.${ext|tgz}
+    bucket: mciuploads
+    region: us-east-1
+    permissions: private
+    visibility: signed
+    content_type: ${content_type|application/x-gzip}
+    display_name: Binaries
+# Static credentials (deprecated):
+- command: s3.put
+  params:
+    aws_key: ${aws_key}
+    aws_secret: ${aws_secret}
     local_file: src/mongodb-binaries.tgz
     remote_file: mongodb-mongo-master/${build_variant}/${revision}/binaries/mongo-${build_id}.${ext|tgz}
     bucket: mciuploads
@@ -1370,15 +1399,15 @@ Parameters:
 -   `aws_secret`: your AWS secret (use expansions to keep this a secret)
 -   `aws_session_token`: your temporary AWS session token (use expansions to keep this a secret).
     Note: If you are generating temporary credentials using `ec2.assume_role`, you can instead
-    pass in the role_arn directly to your s3 commands. They will functionally be the same,
-    but Evergreen ignores the temporary credentials passed in if they are associated with
-    a previous `ec2.assume_role` call and will re-call AssumeRole for each s3 operation.
+    pass in the role_arn directly to your s3 commands. If you have multiple S3 commands in quick
+    succession, it is recommended you call `ec2.assume_role` once and pass in the credentials
+    to each command rather than pass in a `role_arn`.
 -   `role_arn`: your AWS role to be assumed before and during the s3 operation.
     See [AssumeRole AWS setup](#assumerole-aws-setup) for more information on how
     to configure your role.
     This does not have to be a secret but managing it with expansions is recommended.
     This is the recommended way to authenticate with AWS.
--   `local_file`: the local file to post
+-   `local_file`: the local file to posts. This is relative to [task's working directory](./Best-Practices.md#task-directory). 
 -   `remote_file`: the S3 path to post the file to
 -   `bucket`: the S3 bucket to use. Note: buckets created after Sept.
     30, 2020 containing dots (".") are not supported.
@@ -1396,9 +1425,10 @@ Parameters:
     of gitignore file globs. All files that are matched - ones that
     would be ignored by gitignore - are included in the put. If no
     files are found, the task continues execution.
+    This is relative to [task's working directory](./Best-Practices.md#task-directory). 
 -   `local_files_include_filter_prefix`: an optional path to start
-    processing the `local_files_include_filter`, relative to the working
-    directory.
+    processing the `local_files_include_filter`.
+    This is relative to [task's working directory](./Best-Practices.md#task-directory). 
 -   `region`: AWS region for the bucket. We suggest us-east-1, since
     that is where ec2 hosts are located. If you would like to override,
     you can use this parameter.

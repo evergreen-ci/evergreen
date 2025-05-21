@@ -87,7 +87,10 @@ func (j *versionActivationCatchup) Run(ctx context.Context) {
 		if !ref.Enabled {
 			continue
 		}
-		ok, err := repotracker.ActivateBuildsForProject(ctx, ref, ts)
+
+		// Do not use a version that is in the active cron range because those will be ignored when the one before
+		// it has an activate_at that is within the cron range.
+		ok, err := repotracker.ActivateBuildsForProject(ctx, ref, ts.Add(-model.CronActiveRange))
 		j.AddError(errors.Wrapf(err, "activating builds for project '%s'", ref.Id))
 		if ok {
 			projectsActivated = append(projectsActivated, ref.Identifier)

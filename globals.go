@@ -521,6 +521,7 @@ const (
 	ProjectIDOtelAttribute         = "evergreen.project.id"
 	RepoRefIDOtelAttribute         = "evergreen.project.repo_ref_id"
 	DistroIDOtelAttribute          = "evergreen.distro.id"
+	DistroProviderOtelAttribute    = "evergreen.distro.provider"
 	HostIDOtelAttribute            = "evergreen.host.id"
 	HostnameOtelAttribute          = "evergreen.host.hostname"
 	HostStartedByOtelAttribute     = "evergreen.host.started_by"
@@ -563,6 +564,7 @@ const (
 	ContentLengthHeader = "Content-Length"
 	APIUserHeader       = "Api-User"
 	APIKeyHeader        = "Api-Key"
+	KanopyTokenHeader   = "X-Kanopy-Authorization"
 	EnvironmentHeader   = "X-Evergreen-Environment"
 )
 

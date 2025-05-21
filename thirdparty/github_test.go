@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -161,7 +162,7 @@ func (s *githubSuite) TestGithubShouldRetry() {
 }
 
 func (s *githubSuite) TestCheckGithubAPILimit() {
-	rem, err := CheckGithubAPILimit(s.ctx)
+	rem, err := CheckGithubResource(s.ctx)
 	s.NoError(err)
 	s.NotNil(rem)
 }
@@ -293,6 +294,19 @@ func (s *githubSuite) TestGetCommitEvent() {
 		s.Equal("richardsamuels", *commit.Author.Login)
 		s.Equal("ddf48e044c307e3f8734279be95f2d9d7134410f", *commit.SHA)
 		s.Len(commit.Files, 16)
+	})
+
+	ghCommitKey := fmt.Sprintf("%s/%s/%s", "evergreen-ci", "evergreen", "ddf48e044c307e3f8734279be95f2d9d7134410f")
+	s.Run("StoresItInCache", func() {
+		commit, found := ghCommitCache.Get(s.ctx, ghCommitKey, 0)
+		s.True(found)
+		s.NotNil(commit)
+	})
+	s.Run("ReleasedFromCache", func() {
+		runtime.GC()
+		commit, found := ghCommitCache.Get(s.ctx, ghCommitKey, 0)
+		s.False(found)
+		s.Nil(commit)
 	})
 }
 
