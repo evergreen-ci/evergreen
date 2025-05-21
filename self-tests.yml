@@ -600,24 +600,9 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb-useast
     tags: ["db", "test"]
     name: test-graphql
-  - name: test-repotracker
+  - <<: *run-go-test-suite-with-mongodb
+    name: test-repotracker
     tags: ["db", "test"]
-    commands:
-      - command: github.generate_token
-        params:
-          expansion_name: github_token
-          permissions:
-            contents: read
-      - command: git.get_project
-        type: setup
-        params:
-          directory: evergreen
-          token: ${github_token}
-          shallow_clone: true
-      - func: setup-credentials
-      - func: setup-mongodb
-      - func: run-make
-        vars: { target: "test-repotracker" }
   - name: verify-swaggo-fmt
     tags: ["linter"]
     commands:
