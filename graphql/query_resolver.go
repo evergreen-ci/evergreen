@@ -16,10 +16,10 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/plank"
 	"github.com/evergreen-ci/utility"
@@ -673,7 +673,7 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, versionID string, ta
 		failingTests = append(failingTests, f.TestName)
 	}
 
-	var allTaskOpts []testresult.TaskOptions
+	var allTaskOpts []taskoutput.TaskOptions
 	apiSamples := make([]*TaskTestResultSample, len(dbTasks))
 	apiSamplesByTaskID := map[string]*TaskTestResultSample{}
 	for i, dbTask := range dbTasks {
@@ -693,7 +693,7 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, versionID string, ta
 	}
 
 	if len(allTaskOpts) > 0 {
-		samples, err := dbTasks[0].GetFailedTestSamples(ctx, evergreen.GetEnvironment(), allTaskOpts, failingTests)
+		samples, err := taskoutput.GetFailedTestSamples(ctx, evergreen.GetEnvironment(), allTaskOpts, failingTests)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting test results sample: %s", err.Error()))
 		}

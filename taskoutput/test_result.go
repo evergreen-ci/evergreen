@@ -19,8 +19,8 @@ type TestResultOutput struct {
 }
 
 // AppendTestResults appends test results for the given task run.
-func (o TestResultOutput) AppendTestResults(ctx context.Context, testResults []testresult.TestResult) error {
-	svc, err := o.getTestResultService()
+func (o TestResultOutput) AppendTestResults(ctx context.Context, env evergreen.Environment, testResults []testresult.TestResult) error {
+	svc, err := o.getTestResultService(env)
 	if err != nil {
 		return errors.Wrap(err, "getting test result service")
 	}
@@ -29,46 +29,79 @@ func (o TestResultOutput) AppendTestResults(ctx context.Context, testResults []t
 }
 
 // GetMergedTaskTestResults returns test results belonging to the specified task run.
-func (o TestResultOutput) GetMergedTaskTestResults(ctx context.Context, taskOpts []testresult.TaskOptions, getOpts *testresult.FilterOptions) (testresult.TaskTestResults, error) {
-	svc, err := o.getTestResultService()
+func (o TestResultOutput) GetMergedTaskTestResults(ctx context.Context, env evergreen.Environment, taskOpts []TaskOptions, getOpts *testresult.FilterOptions) (testresult.TaskTestResults, error) {
+	svc, err := o.getTestResultService(env)
 	if err != nil {
 		return testresult.TaskTestResults{}, errors.Wrap(err, "getting test results service")
 	}
 
-	return svc.GetMergedTaskTestResults(ctx, taskOpts, getOpts)
+	return svc.GetMergedTaskTestResults(ctx, ConvertOpts(taskOpts), getOpts)
 }
 
 // GetMergedTaskTestResultsStats returns test results belonging to the specified task run.
-func (o TestResultOutput) GetMergedTaskTestResultsStats(ctx context.Context, taskOpts []testresult.TaskOptions) (testresult.TaskTestResultsStats, error) {
-	svc, err := o.getTestResultService()
+func (o TestResultOutput) GetMergedTaskTestResultsStats(ctx context.Context, env evergreen.Environment, taskOpts []TaskOptions) (testresult.TaskTestResultsStats, error) {
+	svc, err := o.getTestResultService(env)
 	if err != nil {
 		return testresult.TaskTestResultsStats{}, errors.Wrap(err, "getting test results service")
 	}
 
-	return svc.GetMergedTaskTestResultsStats(ctx, taskOpts)
+	return svc.GetMergedTaskTestResultsStats(ctx, ConvertOpts(taskOpts))
 }
 
 // GetMergedFailedTestSample returns test results belonging to the specified task run.
-func (o TestResultOutput) GetMergedFailedTestSample(ctx context.Context, taskOpts []testresult.TaskOptions) ([]string, error) {
-	svc, err := o.getTestResultService()
+func (o TestResultOutput) GetMergedFailedTestSample(ctx context.Context, env evergreen.Environment, taskOpts []TaskOptions) ([]string, error) {
+	svc, err := o.getTestResultService(env)
 	if err != nil {
 		return []string{}, errors.Wrap(err, "getting test results service")
 	}
 
-	return svc.GetMergedFailedTestSample(ctx, taskOpts)
+	return svc.GetMergedFailedTestSample(ctx, ConvertOpts(taskOpts))
 }
 
 // GetFailedTestSamples returns failed test samples filtered as specified by
 // the optional regex filters for each task specified.
-func (o TestResultOutput) GetFailedTestSamples(ctx context.Context, taskOpts []testresult.TaskOptions, regexFilters []string) ([]testresult.TaskTestResultsFailedSample, error) {
-	svc, err := o.getTestResultService()
-	if err != nil {
-		return []testresult.TaskTestResultsFailedSample{}, errors.Wrap(err, "getting test results service")
+func GetFailedTestSamples(ctx context.Context, env evergreen.Environment, taskOpts []TaskOptions, regexFilters []string) ([]testresult.TaskTestResultsFailedSample, error) {
+	if len(taskOpts) == 0 {
+		return nil, errors.New("must specify task options")
 	}
 
-	return svc.GetFailedTestSamples(ctx, taskOpts, regexFilters)
+	var allSamples []testresult.TaskTestResultsFailedSample
+	for service, tasks := range groupTasksByService(taskOpts) {
+		svc, err := testresult.GetServiceImpl(env, service)
+		if err != nil {
+			return nil, err
+		}
+
+		samples, err := svc.GetFailedTestSamples(ctx, ConvertOpts(tasks), regexFilters)
+		if err != nil {
+			return nil, err
+		}
+
+		allSamples = append(allSamples, samples...)
+	}
+
+	return allSamples, nil
 }
 
-func (o TestResultOutput) getTestResultService() (testresult.TestResultsService, error) {
-	return testresult.NewLocalService(evergreen.GetEnvironment()), nil
+func (o TestResultOutput) getTestResultService(env evergreen.Environment) (testresult.TestResultsService, error) {
+	if o.Version == 0 {
+		return testresult.NewCedarService(env), nil
+	}
+	return testresult.NewLocalService(env), nil
+}
+
+func groupTasksByService(taskOpts []TaskOptions) map[string][]TaskOptions {
+	servicesToTasks := map[string][]TaskOptions{}
+	for _, task := range taskOpts {
+		servicesToTasks[task.ResultsService] = append(servicesToTasks[task.ResultsService], task)
+	}
+	return servicesToTasks
+}
+
+func ConvertOpts(taskOpts []TaskOptions) []testresult.TaskOptions {
+	var opts []testresult.TaskOptions
+	for _, taskOpt := range taskOpts {
+		opts = append(opts, testresult.TaskOptions{TaskID: taskOpt.TaskID, Execution: taskOpt.Execution})
+	}
+	return opts
 }

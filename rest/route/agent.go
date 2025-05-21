@@ -790,20 +790,20 @@ func (h *attachTestLogHandler) Run(ctx context.Context) gimlet.Responder {
 
 // POST /task/{task_id}/test_results
 type attachTestResultsHandler struct {
-	settings *evergreen.Settings
-	results  []testresult.TestResult
-	taskID   string
+	env     evergreen.Environment
+	results []testresult.TestResult
+	taskID  string
 }
 
-func makeAttachTestResults(settings *evergreen.Settings) gimlet.RouteHandler {
+func makeAttachTestResults(env evergreen.Environment) gimlet.RouteHandler {
 	return &attachTestResultsHandler{
-		settings: settings,
+		env: env,
 	}
 }
 
 func (h *attachTestResultsHandler) Factory() gimlet.RouteHandler {
 	return &attachTestResultsHandler{
-		settings: h.settings,
+		env: h.env,
 	}
 }
 
@@ -837,7 +837,11 @@ func (h *attachTestResultsHandler) Run(ctx context.Context) gimlet.Responder {
 			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
 		})
 	}
-	err = t.AppendTestResults(ctx, h.results)
+	output, ok := t.GetTaskOutputSafe()
+	if !ok {
+		return nil
+	}
+	err = output.TestResults.AppendTestResults(ctx, h.env, h.results)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "appending test results to '%s'", h.taskID))
 	}

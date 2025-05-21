@@ -181,7 +181,7 @@ type Task struct {
 	//        field and should be initialized before the application can
 	//        safely fetch any output data.
 	// This field should *never* be accessed directly, instead call
-	// `Task.getTaskOutputSafe()`.
+	// `Task.GetTaskOutputSafe()`.
 	TaskOutputInfo *taskoutput.TaskOutput `bson:"task_output_info,omitempty" json:"task_output_info,omitempty"`
 
 	// Set to true if the task should be considered for mainline github checks
@@ -1768,10 +1768,10 @@ func (t *Task) initializeTaskOutputInfo(env evergreen.Environment) (*taskoutput.
 	return taskoutput.InitializeTaskOutput(env), true
 }
 
-// getTaskOutputSafe returns an instantiation of the task output interface and
+// GetTaskOutputSafe returns an instantiation of the task output interface and
 // whether it is safe to fetch task output data. This function should always
 // be called to access task output data.
-func (t *Task) getTaskOutputSafe() (*taskoutput.TaskOutput, bool) {
+func (t *Task) GetTaskOutputSafe() (*taskoutput.TaskOutput, bool) {
 	if t.DisplayOnly || t.Status == evergreen.TaskUndispatched {
 		return nil, false
 	}
@@ -1793,7 +1793,7 @@ func (t *Task) GetTaskLogs(ctx context.Context, getOpts taskoutput.TaskLogGetOpt
 		return nil, errors.New("cannot get task logs for a display task")
 	}
 
-	output, ok := t.getTaskOutputSafe()
+	output, ok := t.GetTaskOutputSafe()
 	if !ok {
 		// We know there task cannot have task output, likely because
 		// it has not run yet. Return an empty iterator.
@@ -1819,7 +1819,7 @@ func (t *Task) GetTestLogs(ctx context.Context, getOpts taskoutput.TestLogGetOpt
 		return nil, errors.New("cannot get test logs for a display task")
 	}
 
-	output, ok := t.getTaskOutputSafe()
+	output, ok := t.GetTaskOutputSafe()
 	if !ok {
 		// We know there task cannot have task output, likely because
 		// it has not run yet. Return an empty iterator.
@@ -3205,18 +3205,9 @@ func (t *Task) PopulateTestResults(ctx context.Context) error {
 	return nil
 }
 
-// AppendTestResults returns the task's test results filtered, sorted, and
-// paginated as specified by the optional filter options.
-func (t *Task) AppendTestResults(ctx context.Context, testResults []testresult.TestResult) error {
-	output, ok := t.getTaskOutputSafe()
-	if !ok {
-		return nil
-	}
-	return output.TestResults.AppendTestResults(ctx, testResults)
-}
-
-// GetTestResults returns the task's test results filtered, sorted, and
-// paginated as specified by the optional filter options.
+// GetTestResults returns the merged test results filtered, sorted,
+// and paginated as specified by the optional filter options for the given
+// tasks.
 func (t *Task) GetTestResults(ctx context.Context, env evergreen.Environment, filterOpts *testresult.FilterOptions) (testresult.TaskTestResults, error) {
 	taskOpts, err := t.CreateTestResultsTaskOptions(ctx)
 	if err != nil {
@@ -3225,23 +3216,20 @@ func (t *Task) GetTestResults(ctx context.Context, env evergreen.Environment, fi
 	if len(taskOpts) == 0 {
 		return testresult.TaskTestResults{}, nil
 	}
-
-	flags, err := evergreen.GetServiceFlags(ctx)
-	if err != nil {
-		return testresult.TaskTestResults{}, errors.Wrap(err, "retrieving service flags")
-	}
-	if !flags.EvergreenTestResultsDisabled {
-		output, ok := t.getTaskOutputSafe()
-		if !ok {
-			return testresult.TaskTestResults{}, nil
+	var tsk *Task
+	if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
+		tsk, err = FindOneId(ctx, t.ExecutionTasks[0])
+		if err != nil {
+			return testresult.TaskTestResults{}, errors.Wrap(err, "finding task")
 		}
-		if len(taskOpts) == 0 {
-			return testresult.TaskTestResults{}, nil
-		}
-		return output.TestResults.GetMergedTaskTestResults(ctx, taskOpts, filterOpts)
+	} else {
+		tsk = t
 	}
-
-	return testresult.GetMergedTaskTestResults(ctx, env, taskOpts, filterOpts)
+	output, ok := tsk.GetTaskOutputSafe()
+	if !ok {
+		return testresult.TaskTestResults{}, nil
+	}
+	return output.TestResults.GetMergedTaskTestResults(ctx, env, taskOpts, filterOpts)
 }
 
 // GetTestResultsStats returns basic statistics of the task's test results.
@@ -3253,23 +3241,20 @@ func (t *Task) GetTestResultsStats(ctx context.Context, env evergreen.Environmen
 	if len(taskOpts) == 0 {
 		return testresult.TaskTestResultsStats{}, nil
 	}
-
-	flags, err := evergreen.GetServiceFlags(ctx)
-	if err != nil {
-		return testresult.TaskTestResultsStats{}, errors.Wrap(err, "retrieving service flags")
-	}
-	if !flags.EvergreenTestResultsDisabled {
-		output, ok := t.getTaskOutputSafe()
-		if !ok {
-			return testresult.TaskTestResultsStats{}, nil
+	var tsk *Task
+	if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
+		tsk, err = FindOneId(ctx, t.ExecutionTasks[0])
+		if err != nil {
+			return testresult.TaskTestResultsStats{}, errors.Wrap(err, "finding task")
 		}
-		if len(taskOpts) == 0 {
-			return testresult.TaskTestResultsStats{}, nil
-		}
-		return output.TestResults.GetMergedTaskTestResultsStats(ctx, taskOpts)
+	} else {
+		tsk = t
 	}
-
-	return testresult.GetMergedTaskTestResultsStats(ctx, env, taskOpts)
+	output, ok := tsk.GetTaskOutputSafe()
+	if !ok {
+		return testresult.TaskTestResultsStats{}, nil
+	}
+	return output.TestResults.GetMergedTaskTestResultsStats(ctx, env, taskOpts)
 }
 
 // GetFailedTestSample returns a sample of test names (up to 10) that failed in
@@ -3283,47 +3268,27 @@ func (t *Task) GetFailedTestSample(ctx context.Context, env evergreen.Environmen
 	if len(taskOpts) == 0 {
 		return nil, nil
 	}
-
-	flags, err := evergreen.GetServiceFlags(ctx)
+	var tsk *Task
+	if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
+		tsk, err = FindOneId(ctx, t.ExecutionTasks[0])
+		if err != nil {
+			return nil, errors.Wrap(err, "finding task")
+		}
+	} else {
+		tsk = t
+	}
+	output, ok := tsk.GetTaskOutputSafe()
+	if !ok {
+		return []string{}, nil
+	}
+	samples, err := output.TestResults.GetMergedFailedTestSample(ctx, env, taskOpts)
 	if err != nil {
-		return []string{}, errors.Wrap(err, "retrieving service flags")
+		return nil, errors.Wrap(err, "getting failed test results")
 	}
-	if !flags.EvergreenTestResultsDisabled {
-		output, ok := t.getTaskOutputSafe()
-		if !ok {
-			return []string{}, nil
-		}
-		if len(taskOpts) == 0 {
-			return []string{}, nil
-		}
-		return output.TestResults.GetMergedFailedTestSample(ctx, taskOpts)
+	if len(samples) >= 10 {
+		samples = samples[0:10]
 	}
-
-	return testresult.GetMergedFailedTestSample(ctx, env, taskOpts)
-}
-
-// GetFailedTestSamples returns failed test samples filtered as specified by
-// the optional regex filters for each task specified.
-func (t *Task) GetFailedTestSamples(ctx context.Context, env evergreen.Environment, taskOpts []testresult.TaskOptions, regexFilters []string) ([]testresult.TaskTestResultsFailedSample, error) {
-	if len(taskOpts) == 0 {
-		return nil, nil
-	}
-	flags, err := evergreen.GetServiceFlags(ctx)
-	if err != nil {
-		return []testresult.TaskTestResultsFailedSample{}, errors.Wrap(err, "retrieving service flags")
-	}
-	if !flags.EvergreenTestResultsDisabled {
-		output, ok := t.getTaskOutputSafe()
-		if !ok {
-			return []testresult.TaskTestResultsFailedSample{}, nil
-		}
-		if len(taskOpts) == 0 {
-			return []testresult.TaskTestResultsFailedSample{}, nil
-		}
-		return output.TestResults.GetFailedTestSamples(ctx, taskOpts, regexFilters)
-	}
-
-	return testresult.GetFailedTestSamples(ctx, env, taskOpts, regexFilters)
+	return samples, nil
 }
 
 // CreateTestResultsTaskOptions returns the options required for fetching test
@@ -3333,8 +3298,8 @@ func (t *Task) GetFailedTestSamples(ctx context.Context, env evergreen.Environme
 // additional tasks are required for fetching test results, such as when
 // sorting results by some base status, using this function to populate those
 // task options is useful.
-func (t *Task) CreateTestResultsTaskOptions(ctx context.Context) ([]testresult.TaskOptions, error) {
-	var taskOpts []testresult.TaskOptions
+func (t *Task) CreateTestResultsTaskOptions(ctx context.Context) ([]taskoutput.TaskOptions, error) {
+	var taskOpts []taskoutput.TaskOptions
 	if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
 		var (
 			execTasksWithResults []Task
@@ -3357,7 +3322,7 @@ func (t *Task) CreateTestResultsTaskOptions(ctx context.Context) ([]testresult.T
 			if execTask.Archived {
 				taskID = execTask.OldTaskId
 			}
-			taskOpts = append(taskOpts, testresult.TaskOptions{
+			taskOpts = append(taskOpts, taskoutput.TaskOptions{
 				TaskID:         taskID,
 				Execution:      execTask.Execution,
 				ResultsService: execTask.ResultsService,
@@ -3368,7 +3333,7 @@ func (t *Task) CreateTestResultsTaskOptions(ctx context.Context) ([]testresult.T
 		if t.Archived {
 			taskID = t.OldTaskId
 		}
-		taskOpts = append(taskOpts, testresult.TaskOptions{
+		taskOpts = append(taskOpts, taskoutput.TaskOptions{
 			TaskID:         taskID,
 			Execution:      t.Execution,
 			ResultsService: t.ResultsService,

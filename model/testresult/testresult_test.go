@@ -2,7 +2,6 @@ package testresult
 
 import (
 	"context"
-	"encoding/json"
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
@@ -31,6 +30,7 @@ func TestGetMergedTaskTestResults(t *testing.T) {
 	srv, handler := newMockCedarServer(env)
 	defer srv.Close()
 	svc := NewLocalService(env)
+	cedarSvc := NewCedarService(env)
 
 	task0 := TaskOptions{
 		TaskID:         "task0",
@@ -96,16 +96,33 @@ func TestGetMergedTaskTestResults(t *testing.T) {
 		taskOpts            []TaskOptions
 		filterOpts          *FilterOptions
 		expectedTaskResults TaskTestResults
+		resultService       TestResultsService
 		hasErr              bool
 	}{
 		{
-			name:   "NilTaskOptions",
-			hasErr: true,
+			name:          "NilTaskOptions",
+			resultService: svc,
+			expectedTaskResults: TaskTestResults{
+				Stats: TaskTestResultsStats{
+					TotalCount:    0,
+					FailedCount:   0,
+					FilteredCount: utility.ToIntPtr(0),
+				},
+				Results: nil,
+			},
 		},
 		{
-			name:     "NilTaskOptions",
-			taskOpts: []TaskOptions{},
-			hasErr:   true,
+			name:          "NilTaskOptions",
+			resultService: svc,
+			taskOpts:      []TaskOptions{},
+			expectedTaskResults: TaskTestResults{
+				Stats: TaskTestResultsStats{
+					TotalCount:    0,
+					FailedCount:   0,
+					FilteredCount: utility.ToIntPtr(0),
+				},
+				Results: nil,
+			},
 		},
 		{
 			name: "ServiceError",
@@ -113,23 +130,14 @@ func TestGetMergedTaskTestResults(t *testing.T) {
 				handler.status = http.StatusInternalServerError
 				handler.data = nil
 			},
-			taskOpts: []TaskOptions{externalServiceTask},
-			hasErr:   true,
+			resultService: cedarSvc,
+			taskOpts:      []TaskOptions{externalServiceTask},
+			hasErr:        true,
 		},
 		{
-			name: "UnsupportedService",
-			taskOpts: []TaskOptions{
-				{
-					TaskID:         "task",
-					Execution:      0,
-					ResultsService: "DNE",
-				},
-			},
-			hasErr: true,
-		},
-		{
-			name:     "WithoutFilterOptions",
-			taskOpts: []TaskOptions{task1, task2, task0},
+			name:          "WithoutFilterOptions",
+			resultService: svc,
+			taskOpts:      []TaskOptions{task1, task2, task0},
 			expectedTaskResults: TaskTestResults{
 				Stats: TaskTestResultsStats{
 					TotalCount:    len(savedResults0) + len(savedResults1) + len(savedResults2),
@@ -140,9 +148,10 @@ func TestGetMergedTaskTestResults(t *testing.T) {
 			},
 		},
 		{
-			name:       "WithFilterOptions",
-			taskOpts:   []TaskOptions{task0},
-			filterOpts: &FilterOptions{TestName: savedResults0[0].GetDisplayTestName()},
+			name:          "WithFilterOptions",
+			resultService: svc,
+			taskOpts:      []TaskOptions{task0},
+			filterOpts:    &FilterOptions{TestName: savedResults0[0].GetDisplayTestName()},
 			expectedTaskResults: TaskTestResults{
 				Stats: TaskTestResultsStats{
 					TotalCount:    len(savedResults0),
@@ -152,37 +161,13 @@ func TestGetMergedTaskTestResults(t *testing.T) {
 				Results: savedResults0[0:1],
 			},
 		},
-		{
-			name: "DifferentServices",
-			setup: func(t *testing.T) {
-				data, err := json.Marshal(&TaskTestResults{
-					Stats: TaskTestResultsStats{
-						TotalCount:    len(externalServiceResults),
-						FilteredCount: utility.ToIntPtr(len(externalServiceResults)),
-					},
-					Results: externalServiceResults,
-				})
-				require.NoError(t, err)
-
-				handler.status = http.StatusOK
-				handler.data = data
-			},
-			taskOpts: []TaskOptions{externalServiceTask, task0},
-			expectedTaskResults: TaskTestResults{
-				Stats: TaskTestResultsStats{
-					TotalCount:    len(externalServiceResults),
-					FilteredCount: utility.ToIntPtr(len(externalServiceResults)),
-				},
-				Results: externalServiceResults,
-			},
-		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			if test.setup != nil {
 				test.setup(t)
 			}
 
-			taskResults, err := GetMergedTaskTestResults(ctx, env, test.taskOpts, test.filterOpts)
+			taskResults, err := test.resultService.GetMergedTaskTestResults(ctx, test.taskOpts, test.filterOpts)
 			if test.hasErr {
 				assert.Error(t, err)
 			} else {
@@ -205,6 +190,7 @@ func TestGetMergedTaskTestResultsStats(t *testing.T) {
 	srv, handler := newMockCedarServer(env)
 	defer srv.Close()
 	svc := NewLocalService(env)
+	cedarSvc := NewCedarService(env)
 
 	task0 := TaskOptions{
 		TaskID:         "task0",
@@ -242,26 +228,23 @@ func TestGetMergedTaskTestResultsStats(t *testing.T) {
 		Execution:      0,
 		ResultsService: TestResultsServiceCedar,
 	}
-	externalServiceStats := TaskTestResultsStats{
-		TotalCount:  5,
-		FailedCount: 2,
-	}
 
 	for _, test := range []struct {
 		name          string
 		setup         func(t *testing.T)
 		taskOpts      []TaskOptions
 		expectedStats TaskTestResultsStats
+		resultService TestResultsService
 		hasErr        bool
 	}{
 		{
-			name:   "NilTaskOptions",
-			hasErr: true,
+			name:          "NilTaskOptions",
+			resultService: svc,
 		},
 		{
-			name:     "NilTaskOptions",
-			taskOpts: []TaskOptions{},
-			hasErr:   true,
+			name:          "NilTaskOptions",
+			taskOpts:      []TaskOptions{},
+			resultService: svc,
 		},
 		{
 			name: "ServiceError",
@@ -269,19 +252,9 @@ func TestGetMergedTaskTestResultsStats(t *testing.T) {
 				handler.status = http.StatusInternalServerError
 				handler.data = nil
 			},
-			taskOpts: []TaskOptions{externalServiceTask},
-			hasErr:   true,
-		},
-		{
-			name: "UnsupportedService",
-			taskOpts: []TaskOptions{
-				{
-					TaskID:         "task",
-					Execution:      0,
-					ResultsService: "DNE",
-				},
-			},
-			hasErr: true,
+			taskOpts:      []TaskOptions{externalServiceTask},
+			hasErr:        true,
+			resultService: cedarSvc,
 		},
 		{
 			name:     "SameService",
@@ -290,21 +263,7 @@ func TestGetMergedTaskTestResultsStats(t *testing.T) {
 				TotalCount:  len(savedResults0) + len(savedResults1),
 				FailedCount: len(savedResults0) / 2,
 			},
-		},
-		{
-			name: "DifferentServices",
-			setup: func(t *testing.T) {
-				data, err := json.Marshal(&externalServiceStats)
-				require.NoError(t, err)
-
-				handler.status = http.StatusOK
-				handler.data = data
-			},
-			taskOpts: []TaskOptions{externalServiceTask, task0},
-			expectedStats: TaskTestResultsStats{
-				TotalCount:  len(savedResults0) + externalServiceStats.TotalCount,
-				FailedCount: len(savedResults0)/2 + externalServiceStats.FailedCount,
-			},
+			resultService: svc,
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -312,7 +271,7 @@ func TestGetMergedTaskTestResultsStats(t *testing.T) {
 				test.setup(t)
 			}
 
-			stats, err := GetMergedTaskTestResultsStats(ctx, env, test.taskOpts)
+			stats, err := test.resultService.GetMergedTaskTestResultsStats(ctx, test.taskOpts)
 			if test.hasErr {
 				assert.Error(t, err)
 			} else {
@@ -335,7 +294,7 @@ func TestGetMergedFailedTestSample(t *testing.T) {
 	srv, handler := newMockCedarServer(env)
 	defer srv.Close()
 	svc := NewLocalService(env)
-
+	cedarSvc := NewCedarService(env)
 	task0 := TaskOptions{
 		TaskID:         "task0",
 		Execution:      0,
@@ -371,7 +330,6 @@ func TestGetMergedFailedTestSample(t *testing.T) {
 		Execution:      0,
 		ResultsService: TestResultsServiceCedar,
 	}
-	externalServiceSample := []string{"test0", "test1"}
 
 	for _, test := range []struct {
 		name           string
@@ -379,15 +337,16 @@ func TestGetMergedFailedTestSample(t *testing.T) {
 		taskOpts       []TaskOptions
 		expectedSample []string
 		hasErr         bool
+		resultService  TestResultsService
 	}{
 		{
-			name:   "NilTaskOptions",
-			hasErr: true,
+			name:          "NilTaskOptions",
+			resultService: svc,
 		},
 		{
-			name:     "NilTaskOptions",
-			taskOpts: []TaskOptions{},
-			hasErr:   true,
+			name:          "NilTaskOptions",
+			taskOpts:      []TaskOptions{},
+			resultService: svc,
 		},
 		{
 			name: "ServiceError",
@@ -395,36 +354,15 @@ func TestGetMergedFailedTestSample(t *testing.T) {
 				handler.status = http.StatusInternalServerError
 				handler.data = nil
 			},
-			taskOpts: []TaskOptions{externalServiceTask},
-			hasErr:   true,
-		},
-		{
-			name: "UnsupportedService",
-			taskOpts: []TaskOptions{
-				{
-					TaskID:         "task",
-					Execution:      0,
-					ResultsService: "DNE",
-				},
-			},
-			hasErr: true,
+			taskOpts:      []TaskOptions{externalServiceTask},
+			hasErr:        true,
+			resultService: cedarSvc,
 		},
 		{
 			name:           "SameService",
 			taskOpts:       []TaskOptions{task0, task1},
 			expectedSample: append(append([]string{}, sample0...), sample1...),
-		},
-		{
-			name: "DifferentServices",
-			setup: func(t *testing.T) {
-				data, err := json.Marshal(&externalServiceSample)
-				require.NoError(t, err)
-
-				handler.status = http.StatusOK
-				handler.data = data
-			},
-			taskOpts:       []TaskOptions{externalServiceTask, task0},
-			expectedSample: append(append([]string{}, externalServiceSample...), sample0...),
+			resultService:  svc,
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -432,7 +370,7 @@ func TestGetMergedFailedTestSample(t *testing.T) {
 				test.setup(t)
 			}
 
-			sample, err := GetMergedFailedTestSample(ctx, env, test.taskOpts)
+			sample, err := test.resultService.GetMergedFailedTestSample(ctx, test.taskOpts)
 			if test.hasErr {
 				assert.Error(t, err)
 			} else {
@@ -455,7 +393,7 @@ func TestGetFailedTestSamples(t *testing.T) {
 	srv, handler := newMockCedarServer(env)
 	defer srv.Close()
 	svc := NewLocalService(env)
-
+	cedarSvc := NewCedarService(env)
 	task0 := TaskOptions{
 		TaskID:         "task0",
 		Execution:      0,
@@ -491,7 +429,6 @@ func TestGetFailedTestSamples(t *testing.T) {
 		Execution:      0,
 		ResultsService: TestResultsServiceCedar,
 	}
-	externalServiceSample := []string{"test0", "test1"}
 
 	for _, test := range []struct {
 		name            string
@@ -500,15 +437,16 @@ func TestGetFailedTestSamples(t *testing.T) {
 		regexFilters    []string
 		expectedSamples []TaskTestResultsFailedSample
 		hasErr          bool
+		resultService   TestResultsService
 	}{
 		{
-			name:   "NilTaskOptions",
-			hasErr: true,
+			name:          "NilTaskOptions",
+			resultService: svc,
 		},
 		{
-			name:     "NilTaskOptions",
-			taskOpts: []TaskOptions{},
-			hasErr:   true,
+			name:          "NilTaskOptions",
+			taskOpts:      []TaskOptions{},
+			resultService: svc,
 		},
 		{
 			name: "ServiceError",
@@ -516,19 +454,9 @@ func TestGetFailedTestSamples(t *testing.T) {
 				handler.status = http.StatusInternalServerError
 				handler.data = nil
 			},
-			taskOpts: []TaskOptions{externalServiceTask},
-			hasErr:   true,
-		},
-		{
-			name: "UnsupportedService",
-			taskOpts: []TaskOptions{
-				{
-					TaskID:         "task",
-					Execution:      0,
-					ResultsService: "DNE",
-				},
-			},
-			hasErr: true,
+			taskOpts:      []TaskOptions{externalServiceTask},
+			hasErr:        true,
+			resultService: cedarSvc,
 		},
 		{
 			name:     "SameService",
@@ -547,56 +475,11 @@ func TestGetFailedTestSamples(t *testing.T) {
 					TotalFailedNames:        len(sample1),
 				},
 			},
+			resultService: svc,
 		},
 		{
-			name: "DifferentServices",
-			setup: func(t *testing.T) {
-				data, err := json.Marshal(&[]TaskTestResultsFailedSample{
-					{
-						TaskID:                  externalServiceTask.TaskID,
-						Execution:               externalServiceTask.Execution,
-						MatchingFailedTestNames: externalServiceSample,
-						TotalFailedNames:        len(externalServiceSample),
-					},
-				})
-				require.NoError(t, err)
-
-				handler.status = http.StatusOK
-				handler.data = data
-			},
-			taskOpts: []TaskOptions{externalServiceTask, task0},
-			expectedSamples: []TaskTestResultsFailedSample{
-				{
-					TaskID:                  task0.TaskID,
-					Execution:               task0.Execution,
-					MatchingFailedTestNames: sample0,
-					TotalFailedNames:        len(sample0),
-				},
-				{
-					TaskID:                  externalServiceTask.TaskID,
-					Execution:               externalServiceTask.Execution,
-					MatchingFailedTestNames: externalServiceSample,
-					TotalFailedNames:        len(externalServiceSample),
-				},
-			},
-		},
-		{
-			name: "WithRegexFilter",
-			setup: func(t *testing.T) {
-				data, err := json.Marshal(&[]TaskTestResultsFailedSample{
-					{
-						TaskID:                  externalServiceTask.TaskID,
-						Execution:               externalServiceTask.Execution,
-						MatchingFailedTestNames: externalServiceSample,
-						TotalFailedNames:        len(externalServiceSample),
-					},
-				})
-				require.NoError(t, err)
-
-				handler.status = http.StatusOK
-				handler.data = data
-			},
-			taskOpts:     []TaskOptions{externalServiceTask, task0},
+			name:         "WithRegexFilter",
+			taskOpts:     []TaskOptions{task0},
 			regexFilters: []string{"test"},
 			expectedSamples: []TaskTestResultsFailedSample{
 				{
@@ -604,13 +487,8 @@ func TestGetFailedTestSamples(t *testing.T) {
 					Execution:        task0.Execution,
 					TotalFailedNames: len(sample0),
 				},
-				{
-					TaskID:                  externalServiceTask.TaskID,
-					Execution:               externalServiceTask.Execution,
-					MatchingFailedTestNames: externalServiceSample,
-					TotalFailedNames:        len(externalServiceSample),
-				},
 			},
+			resultService: svc,
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -618,7 +496,7 @@ func TestGetFailedTestSamples(t *testing.T) {
 				test.setup(t)
 			}
 
-			samples, err := GetFailedTestSamples(ctx, env, test.taskOpts, test.regexFilters)
+			samples, err := test.resultService.GetFailedTestSamples(ctx, test.taskOpts, test.regexFilters)
 			if test.hasErr {
 				assert.Error(t, err)
 			} else {

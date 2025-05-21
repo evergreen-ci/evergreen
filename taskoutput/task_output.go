@@ -21,6 +21,8 @@ type TaskOptions struct {
 	TaskID string `bson:"-" json:"-"`
 	// Execution is the execution number of the task run.
 	Execution int `bson:"-" json:"-"`
+	// ResultsService is the service test results are stored in.
+	ResultsService string `bson:"-" json:"-"`
 }
 
 // InitializeTaskOutput initializes the task output for a new task run.
@@ -38,7 +40,7 @@ func InitializeTaskOutput(env evergreen.Environment) *TaskOutput {
 		},
 		TestResults: TestResultOutput{
 			Version:      1,
-			BucketConfig: settings.Buckets.LogBucket,
+			BucketConfig: settings.Buckets.TestResultsBucket,
 		},
 	}
 }

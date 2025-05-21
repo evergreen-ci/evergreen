@@ -18,8 +18,8 @@ type cedarService struct {
 	baseURL string
 }
 
-// newCedarService returns a Cedar backed test results service implementation.
-func newCedarService(env evergreen.Environment) *cedarService {
+// NewCedarService returns a Cedar backed test results service implementation.
+func NewCedarService(env evergreen.Environment) *cedarService {
 	cedarSettings := env.Settings().Cedar
 	httpScheme := "https"
 	if cedarSettings.Insecure {

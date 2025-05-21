@@ -25,14 +25,15 @@ type TestResultsService interface {
 	AppendTestResults(context.Context, []TestResult) error
 }
 
-func getServiceImpl(env evergreen.Environment, service string) (TestResultsService, error) {
+// GetServiceImpl fetches the specific test results service implementation based on the input service.
+func GetServiceImpl(env evergreen.Environment, service string) (TestResultsService, error) {
 	if service == "" {
 		service = defaultService
 	}
 
 	switch service {
 	case TestResultsServiceCedar:
-		return newCedarService(env), nil
+		return NewCedarService(env), nil
 	case TestResultsServiceLocal:
 		return NewLocalService(env), nil
 	default:
