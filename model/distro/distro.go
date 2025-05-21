@@ -674,6 +674,10 @@ func (d *Distro) GetResolvedHostAllocatorSettings(s *evergreen.Settings) (HostAl
 	if resolved.AcceptableHostIdleTime == 0 {
 		resolved.AcceptableHostIdleTime = time.Duration(config.AcceptableHostIdleTimeSeconds) * time.Second
 	}
+	// If enabled, release mode takes precedent over both distro and admin value.
+	if !s.ServiceFlags.ReleaseModeDisabled && s.ReleaseMode.IdleTimeSecondsOverride > 0 {
+		resolved.AcceptableHostIdleTime = time.Duration(s.ReleaseMode.IdleTimeSecondsOverride) * time.Second
+	}
 	if resolved.RoundingRule == evergreen.HostAllocatorRoundDefault {
 		resolved.RoundingRule = config.HostAllocatorRoundingRule
 	}
