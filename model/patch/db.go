@@ -215,7 +215,13 @@ func ByPatchNameStatusesMergeQueuePaginated(ctx context.Context, opts ByPatchNam
 
 	if len(opts.Requesters) > 0 || utility.FromBoolPtr(opts.OnlyMergeQueue) {
 		matchRequesterStage := bson.M{}
-		requesterMatch := bson.M{"$in": opts.Requesters}
+		validatedRequesters := []string{}
+		for _, requester := range opts.Requesters {
+			if evergreen.IsPatchRequester(requester) {
+				validatedRequesters = append(validatedRequesters, requester)
+			}
+		}
+		requesterMatch := bson.M{"$in": validatedRequesters}
 		// Conditionally add the merge queue requester filter if the user is explicitly filtering on it.
 		// This is only used on the project patches page when we want to conditionally only show merge queue patches.
 		if utility.FromBoolPtr(opts.OnlyMergeQueue) {
