@@ -99,7 +99,6 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 	begin := time.Now()
 
 	setAgentFirstContactTime(ctx, h.host)
-
 	if err := h.host.UnsetTaskGroupTeardownStartTime(ctx); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(err)
 	}
@@ -194,6 +193,7 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 		grip.Error(err)
 		return gimlet.MakeJSONErrorResponder(err)
 	}
+
 	// If there is already a task assigned to the host send back that task.
 	if h.host.RunningTask != "" || updatedHost.RunningTask != "" {
 		if updatedHost.RunningTask != h.host.RunningTask {
@@ -208,6 +208,11 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 		}
 		return sendBackRunningTask(ctx, h.env, h.host, nextTaskResponse)
 	}
+
+	// At this point we are ready to assign a task to the host. We are done transitioning tasks,
+	// we will either find a task to assign, or the host will be idle. We therefore need to
+	// unset the transitioning tasks flag.
+	h.host.UnsetIsTransitioningTasks(ctx)
 
 	var nextTask *task.Task
 	var shouldRunTeardown bool
@@ -1303,6 +1308,10 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 		endTaskResp.ShouldExit = true
 		return gimlet.NewJSONResponse(endTaskResp)
 	}
+
+	// The host is about to enter the in between state where it is no longer has a running
+	// task assigned to it but it is not yet ready for a new task to be assigned yet.
+	currentHost.SetIsTransitioningTasks(ctx)
 
 	// The order of operations here for clearing the task from the host and
 	// marking the task finished is critical and must be done in this particular
