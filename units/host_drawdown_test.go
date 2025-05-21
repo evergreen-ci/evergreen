@@ -114,7 +114,7 @@ func TestHostDrawdown(t *testing.T) {
 				RunningTask:      "dummy_task_name1",
 			}
 			host2 := host.Host{
-				Id:           "ih2",
+				Id:           "h2",
 				Distro:       d,
 				Provider:     evergreen.ProviderNameMock,
 				CreationTime: time.Now().Add(-30 * time.Minute),
@@ -148,7 +148,7 @@ func TestHostDrawdown(t *testing.T) {
 		},
 		"IgnoresHostRunningTask": func(ctx context.Context, t *testing.T, env *mock.Environment, d distro.Distro) {
 			host1 := host.Host{
-				Id:           "uuh1",
+				Id:           "h1",
 				Distro:       d,
 				Provider:     evergreen.ProviderNameMock,
 				CreationTime: time.Now().Add(-30 * time.Minute),
@@ -172,7 +172,7 @@ func TestHostDrawdown(t *testing.T) {
 		},
 		"IgnoresHostThatRecentlyRanTaskGroup": func(ctx context.Context, t *testing.T, env *mock.Environment, d distro.Distro) {
 			host1 := host.Host{
-				Id:                    "yyh1",
+				Id:                    "h1",
 				Distro:                d,
 				Provider:              evergreen.ProviderNameMock,
 				CreationTime:          time.Now().Add(-30 * time.Minute),
@@ -201,7 +201,7 @@ func TestHostDrawdown(t *testing.T) {
 		"DecommissionsIdleMultiHostTaskGroupHost": func(ctx context.Context, t *testing.T, env *mock.Environment, d distro.Distro) {
 
 			host1 := host.Host{
-				Id:                    "tth1",
+				Id:                    "h1",
 				Distro:                d,
 				Provider:              evergreen.ProviderNameMock,
 				CreationTime:          time.Now().Add(-30 * time.Minute),
