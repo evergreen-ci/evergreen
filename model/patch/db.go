@@ -186,17 +186,6 @@ func ByPatchNameStatusesMergeQueuePaginated(ctx context.Context, opts ByPatchNam
 	pipeline := []bson.M{}
 	match := bson.M{}
 
-	if len(opts.Requesters) > 0 || utility.FromBoolPtr(opts.OnlyMergeQueue) {
-		requesterMatch := bson.M{"$in": opts.Requesters}
-		// Conditionally add the merge queue requester filter if the user is explicitly filtering on it.
-		// This is only used on the project patches page when we want to conditionally only show merge queue patches.
-		if utility.FromBoolPtr(opts.OnlyMergeQueue) {
-			requesterMatch = bson.M{"$eq": evergreen.GithubMergeRequester}
-		}
-		pipeline = append(pipeline, bson.M{"$addFields": bson.M{"requester": requesterExpression}})
-		match["requester"] = requesterMatch
-	}
-
 	if !utility.FromBoolTPtr(opts.IncludeHidden) {
 		match[HiddenKey] = bson.M{"$ne": true}
 	}
@@ -223,6 +212,20 @@ func ByPatchNameStatusesMergeQueuePaginated(ctx context.Context, opts ByPatchNam
 	}
 	// paginatePipeline will be used for the results
 	paginatePipeline := append(pipeline, sort)
+
+	if len(opts.Requesters) > 0 || utility.FromBoolPtr(opts.OnlyMergeQueue) {
+		matchRequesterStage := bson.M{}
+		requesterMatch := bson.M{"$in": opts.Requesters}
+		// Conditionally add the merge queue requester filter if the user is explicitly filtering on it.
+		// This is only used on the project patches page when we want to conditionally only show merge queue patches.
+		if utility.FromBoolPtr(opts.OnlyMergeQueue) {
+			requesterMatch = bson.M{"$eq": evergreen.GithubMergeRequester}
+		}
+		pipeline = append(pipeline, bson.M{"$addFields": bson.M{"requester": requesterExpression}})
+		matchRequesterStage["requester"] = requesterMatch
+		pipeline = append(pipeline, bson.M{"$match": matchRequesterStage})
+	}
+
 	if opts.Page > 0 {
 		skipStage := bson.M{
 			"$skip": opts.Page * opts.Limit,
