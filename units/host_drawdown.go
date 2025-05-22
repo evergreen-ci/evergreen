@@ -84,13 +84,18 @@ func (j *hostDrawdownJob) Run(ctx context.Context) {
 		j.AddError(errors.Wrapf(err, "finding idle hosts in distro '%s'", j.DrawdownInfo.DistroID))
 		return
 	}
+	taskQueue, err := model.FindDistroTaskQueue(ctx, j.DrawdownInfo.DistroID)
+	if err != nil {
+		j.AddError(errors.Wrapf(err, "finding task queue for distro '%s'", j.DrawdownInfo.DistroID))
+		return
+	}
 	drawdownTarget := existingHostCount - j.DrawdownInfo.NewCapTarget
 
 	for _, idleHost := range idleHosts {
 		if drawdownTarget <= 0 {
 			break
 		}
-		err = j.checkAndDecommission(ctx, &idleHost, &drawdownTarget)
+		err = j.checkAndDecommission(ctx, &idleHost, taskQueue, &drawdownTarget)
 		grip.Error(message.WrapError(err, message.Fields{
 			"id":        j.ID(),
 			"distro_id": j.DrawdownInfo.DistroID,
@@ -111,7 +116,7 @@ func (j *hostDrawdownJob) Run(ctx context.Context) {
 	})
 }
 
-func (j *hostDrawdownJob) checkAndDecommission(ctx context.Context, h *host.Host, drawdownTarget *int) error {
+func (j *hostDrawdownJob) checkAndDecommission(ctx context.Context, h *host.Host, taskQueue model.TaskQueue, drawdownTarget *int) error {
 	exitEarly, err := checkTerminationExemptions(ctx, h, j.env, j.Type().Name, j.ID())
 	if exitEarly || err != nil {
 		return err
@@ -138,15 +143,9 @@ func (j *hostDrawdownJob) checkAndDecommission(ctx context.Context, h *host.Host
 		idleThreshold = idleTaskGroupDrawdownCutoff
 	}
 
-	if !h.LastTaskCompletedTime.IsZero() {
-		taskQueue, err := model.FindDistroTaskQueue(ctx, h.Distro.Id)
-		if err != nil {
-			return errors.WithStack(err)
-		}
+	if !h.LastTaskCompletedTime.IsZero() && taskQueue.Length() > 0 {
+		idleThreshold = h.Distro.HostAllocatorSettings.AcceptableHostIdleTime
 
-		if taskQueue.Length() > 0 {
-			idleThreshold = h.Distro.HostAllocatorSettings.AcceptableHostIdleTime
-		}
 	}
 
 	if idleTime > idleThreshold {
