@@ -339,7 +339,8 @@ func TestGetResolvedHostAllocatorSettings(t *testing.T) {
 		ExpectedRuntimeFactor:         7,
 	}
 	releaseModeConfig := evergreen.ReleaseModeConfig{
-		DistroMaxHostsFactor: 2.0,
+		DistroMaxHostsFactor:    2.0,
+		IdleTimeSecondsOverride: 300,
 	}
 	serviceFlags := evergreen.ServiceFlags{
 		ReleaseModeDisabled: true,
@@ -380,6 +381,7 @@ func TestGetResolvedHostAllocatorSettings(t *testing.T) {
 
 	// Factor in release mode when enabled.
 	assert.Equal(t, 20, resolved1.MaximumHosts)
+	assert.Equal(t, time.Duration(300)*time.Second, resolved1.AcceptableHostIdleTime)
 }
 
 func TestGetResolvedPlannerSettings(t *testing.T) {
