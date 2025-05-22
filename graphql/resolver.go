@@ -325,8 +325,8 @@ func New(apiURL string) Config {
 	c.Directives.RedactSecrets = func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error) {
 		return next(ctx)
 	}
-	c.Directives.RequireEVGAdmin = func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error) {
-		dbUser := gimlet.GetUser(ctx)
+	c.Directives.RequireAdmin = func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error) {
+		dbUser := mustHaveUser(ctx)
 
 		permissions := gimlet.PermissionOpts{
 			Resource:      evergreen.SuperUserPermissionsID,
@@ -334,10 +334,8 @@ func New(apiURL string) Config {
 			Permission:    evergreen.PermissionAdminSettings,
 			RequiredLevel: evergreen.AdminSettingsEdit.Value,
 		}
-		if dbUser != nil {
-			if dbUser.HasPermission(permissions) {
-				return next(ctx)
-			}
+		if dbUser.HasPermission(permissions) {
+			return next(ctx)
 		}
 
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("checking user permissions: %s", err.Error()))

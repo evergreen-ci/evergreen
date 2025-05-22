@@ -96,8 +96,8 @@ type ResolverRoot interface {
 
 type DirectiveRoot struct {
 	RedactSecrets                func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
+	RequireAdmin                 func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
 	RequireDistroAccess          func(ctx context.Context, obj any, next graphql.Resolver, access DistroSettingsAccess) (res any, err error)
-	RequireEVGAdmin              func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
 	RequireHostAccess            func(ctx context.Context, obj any, next graphql.Resolver, access HostAccessLevel) (res any, err error)
 	RequirePatchOwner            func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
 	RequireProjectAccess         func(ctx context.Context, obj any, next graphql.Resolver, permission ProjectPermission, access AccessLevel) (res any, err error)

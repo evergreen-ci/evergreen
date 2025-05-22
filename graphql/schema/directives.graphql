@@ -60,7 +60,7 @@ requirePatchOwner is used to restrict certain actions to the patch creator, patc
 directive @requirePatchOwner on ARGUMENT_DEFINITION
 
 """
-requireEVGAdmin is used to restrict certain actions to admins.
+requireAdmin is used to restrict certain actions to admins.
 """
 
-directive @requireEVGAdmin on FIELD_DEFINITION
+directive @requireAdmin on FIELD_DEFINITION
