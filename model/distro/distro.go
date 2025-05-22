@@ -671,13 +671,13 @@ func (d *Distro) GetResolvedHostAllocatorSettings(s *evergreen.Settings) (HostAl
 		resolved.MaximumHosts = int(math.Ceil(float64(resolved.MaximumHosts) * s.ReleaseMode.DistroMaxHostsFactor))
 	}
 
-	if resolved.AcceptableHostIdleTime == 0 {
-		resolved.AcceptableHostIdleTime = time.Duration(config.AcceptableHostIdleTimeSeconds) * time.Second
-	}
 	// If enabled, release mode takes precedent over both distro and admin value.
 	if !s.ServiceFlags.ReleaseModeDisabled && s.ReleaseMode.IdleTimeSecondsOverride > 0 {
 		resolved.AcceptableHostIdleTime = time.Duration(s.ReleaseMode.IdleTimeSecondsOverride) * time.Second
+	} else if resolved.AcceptableHostIdleTime == 0 { // Fallback to admin value if not set at the distro level.
+		resolved.AcceptableHostIdleTime = time.Duration(config.AcceptableHostIdleTimeSeconds) * time.Second
 	}
+
 	if resolved.RoundingRule == evergreen.HostAllocatorRoundDefault {
 		resolved.RoundingRule = config.HostAllocatorRoundingRule
 	}
@@ -733,13 +733,14 @@ func (d *Distro) GetResolvedPlannerSettings(s *evergreen.Settings) (PlannerSetti
 	if !utility.StringSliceContains(evergreen.ValidTaskPlannerVersions, resolved.Version) {
 		catcher.Errorf("'%s' is not a valid planner version", resolved.Version)
 	}
-	if resolved.TargetTime == 0 {
-		resolved.TargetTime = time.Duration(config.TargetTimeSeconds) * time.Second
-	}
+
 	// If enabled, release mode takes precedent over both distro and admin value.
 	if !s.ServiceFlags.ReleaseModeDisabled && s.ReleaseMode.TargetTimeSecondsOverride > 0 {
 		resolved.TargetTime = time.Duration(s.ReleaseMode.TargetTimeSecondsOverride) * time.Second
+	} else if resolved.TargetTime == 0 { // Fallback to the admin value if not set at the distro level.
+		resolved.TargetTime = time.Duration(config.TargetTimeSeconds) * time.Second
 	}
+
 	if resolved.GroupVersions == nil {
 		resolved.GroupVersions = &config.GroupVersions
 	}
