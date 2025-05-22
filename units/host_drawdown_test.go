@@ -347,7 +347,7 @@ func TestHostDrawdown(t *testing.T) {
 				NewCapTarget: 0,
 			}
 
-			// Clear task queue and verify hosts are now decommissioned with default threshold
+			// Clear task queue and verify hosts are decommissioned with default threshold
 			require.NoError(t, model.ClearTaskQueue(ctx, d.Id))
 
 			num, hosts := numHostsDecommissionedForDrawdown(ctx, t, env, drawdownInfo)
