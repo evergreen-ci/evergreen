@@ -141,6 +141,9 @@ type Patch struct {
 	// tasks/variants are now scheduled to run). If true, the patch has been
 	// finalized.
 	Activated bool `bson:"activated"`
+	// IsReconfigured indicates whether this patch was finalized with an initial
+	// set of tasks, then later reconfigured to add more tasks to run.
+	IsReconfigured bool `bson:"is_reconfigured,omitempty"`
 	// Project contains the project ID for the patch. The bson tag here is `branch` due to legacy usage.
 	Project string `bson:"branch"`
 	// Branch contains the branch that the project tracks. The tag `branch_name` is
@@ -816,6 +819,25 @@ func (p *Patch) SetParametersFromParent(ctx context.Context) (*Patch, error) {
 		}
 	}
 	return parentPatch, nil
+}
+
+// SetIsReconfigured sets whether the patch was reconfigured after it was
+// already finalized.
+func (p *Patch) SetIsReconfigured(ctx context.Context, isReconfigured bool) error {
+	if p.IsReconfigured == isReconfigured {
+		return nil
+	}
+
+	if err := UpdateOne(ctx, bson.M{IdKey: p.Id}, bson.M{
+		"$set": bson.M{
+			IsReconfiguredKey: isReconfigured,
+		},
+	}); err != nil {
+		return err
+	}
+
+	p.IsReconfigured = isReconfigured
+	return nil
 }
 
 func (p *Patch) GetRequester() string {

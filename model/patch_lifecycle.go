@@ -100,6 +100,8 @@ func addNewTasksAndBuildsForPatch(ctx context.Context, creationInfo TaskCreation
 		return errors.Wrap(err, "adding new tasks")
 	}
 	err = activateExistingInactiveTasks(ctx, creationInfo, existingBuilds, caller)
+	// kim: TODO: set patch "was reconfigured" field. In this particular
+	// function, the patch is already finalized.
 	return errors.Wrap(err, "activating existing inactive tasks")
 }
 
@@ -171,9 +173,17 @@ func ConfigurePatch(ctx context.Context, settings *evergreen.Settings, p *patch.
 				ActivationInfo: specificActivationInfo{},
 				GeneratedBy:    "",
 			}
+			// kim: NOTE: this looks like where patches get new tasks get added
+			// after patch creation.
 			err = addNewTasksAndBuildsForPatch(ctx, creationInfo, patchUpdateReq.Caller)
 			if err != nil {
 				return http.StatusInternalServerError, errors.Wrapf(err, "creating new tasks/builds for version '%s'", version.Id)
+			}
+			// kim: TODO: add unit test
+			// kim: TODO: manually test that this is only set after
+			// reconfiguring an already-finalized patch.
+			if err := p.SetIsReconfigured(ctx, true); err != nil {
+				return http.StatusInternalServerError, errors.Wrap(err, "marking patch as reconfigured")
 			}
 		}
 	}
