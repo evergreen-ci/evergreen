@@ -138,19 +138,17 @@ func (j *hostDrawdownJob) checkAndDecommission(ctx context.Context, h *host.Host
 		idleThreshold = idleTaskGroupDrawdownCutoff
 	}
 
-	a := h.LastTaskCompletedTime
-
 	if !h.LastTaskCompletedTime.IsZero() {
 		taskQueue, err := model.FindDistroTaskQueue(ctx, h.Distro.Id)
 		if err != nil {
 			return errors.WithStack(err)
 		}
-		b := taskQueue.Length()
-		print(a.String(), b)
+
 		if taskQueue.Length() > 0 {
 			idleThreshold = h.Distro.HostAllocatorSettings.AcceptableHostIdleTime
 		}
 	}
+
 	if idleTime > idleThreshold {
 		(*drawdownTarget)--
 		if err = h.SetDecommissioned(ctx, evergreen.User, false, "host decommissioned due to overallocation"); err != nil {
