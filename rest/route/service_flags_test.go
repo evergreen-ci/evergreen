@@ -45,6 +45,7 @@ func (s *ServiceFlagsSuite) TestServiceFlagsGet() {
 
 	flags, ok := resp.Data().(evergreen.ServiceFlags)
 	s.True(ok)
+	s.Require().NotNil(flags)
 	s.Equal(testSettings.ServiceFlags.StaticAPIKeysDisabled, flags.StaticAPIKeysDisabled)
 	s.Equal(testSettings.ServiceFlags.JWTTokenForCLIDisabled, flags.JWTTokenForCLIDisabled)
 	// ensure it only returns the necessary flags

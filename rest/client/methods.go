@@ -306,7 +306,7 @@ func (c *communicatorImpl) GetVolumesByUser(ctx context.Context) ([]model.APIVol
 	return getVolumesResp, nil
 }
 
-// GetUser gets information about a user by their user ID.
+// getUser gets information about a user by their user ID.
 func (c *communicatorImpl) getUser(ctx context.Context, userID string) (*model.APIDBUser, error) {
 	info := requestInfo{
 		method: http.MethodGet,
