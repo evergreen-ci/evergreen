@@ -138,7 +138,7 @@ input DistroInput {
   note: String!
   plannerSettings: PlannerSettingsInput!
   provider: Provider!
-  providerAccount: String!
+  providerAccount: String
   providerSettingsList: [Map!]!
   setup: String!
   setupAsSudo: Boolean!
@@ -292,7 +292,7 @@ type Distro {
   note: String!
   plannerSettings: PlannerSettings!
   provider: Provider!
-  providerAccount: String!
+  providerAccount: String
   providerSettingsList: [Map!]!
   setup: String!
   setupAsSudo: Boolean!

@@ -21093,14 +21093,11 @@ func (ec *executionContext) _Distro_providerAccount(ctx context.Context, field g
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Distro_providerAccount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -77845,7 +77842,7 @@ func (ec *executionContext) unmarshalInputDistroInput(ctx context.Context, obj a
 			}
 		case "providerAccount":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("providerAccount"))
-			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -84102,9 +84099,6 @@ func (ec *executionContext) _Distro(ctx context.Context, sel ast.SelectionSet, o
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "providerAccount":
 			out.Values[i] = ec._Distro_providerAccount(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
 		case "providerSettingsList":
 			field := field
 
