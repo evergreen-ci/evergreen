@@ -89,9 +89,6 @@ type Host struct {
 	// TaskGroupTeardownStartTime represents the time when the teardown of task groups process started for the host.
 	TaskGroupTeardownStartTime time.Time `bson:"teardown_start_time,omitempty" json:"teardown_start_time,omitempty"`
 
-	// IsTransitioningTasks indicates that a host is in the process of ending a task, cleaning up, or looking for a new task.
-	IsTransitioningTasks bool `bson:"is_transitioning_tasks,omitempty" json:"is_transitioning_tasks,omitempty"`
-
 	// the task the most recently finished running on the host
 	LastTask         string `bson:"last_task" json:"last_task"`
 	LastGroup        string `bson:"last_group,omitempty" json:"last_group,omitempty"`
@@ -212,6 +209,7 @@ const (
 
 func (h *Host) UnmarshalBSON(in []byte) error { return mgobson.Unmarshal(in, h) }
 
+// IsFree checks that the host is not running a task and is not in the process of tearing down.
 func (h *Host) IsFree() bool {
 	return h.RunningTask == "" && !h.IsTearingDown()
 }
@@ -692,7 +690,6 @@ func (h *Host) IdleTime() time.Duration {
 	}
 
 	// If the host has run a task it's been idle since that task finished running.
-	// this is true even it h.IsTransitioningTasks is true.
 	if h.LastTask != "" {
 		return time.Since(h.LastTaskCompletedTime)
 	}
@@ -1164,48 +1161,6 @@ func (h *Host) UnsetTaskGroupTeardownStartTime(ctx context.Context) error {
 	}
 
 	h.TaskGroupTeardownStartTime = time.Time{}
-
-	return nil
-}
-
-// SetIsTransitioningTasks sets the isTransitioningTasks field on the host
-func (h *Host) SetIsTransitioningTasks(ctx context.Context) error {
-	if h.IsTransitioningTasks {
-		return nil
-	}
-
-	if err := UpdateOne(ctx, bson.M{
-		IdKey: h.Id,
-	}, bson.M{
-		"$set": bson.M{
-			IsTransitioningTasks: 1,
-		},
-	}); err != nil {
-		return err
-	}
-
-	h.IsTransitioningTasks = true
-
-	return nil
-}
-
-// SetIsTransitioningTasks
-func (h *Host) UnsetIsTransitioningTasks(ctx context.Context) error {
-	if !h.IsTransitioningTasks {
-		return nil
-	}
-
-	if err := UpdateOne(ctx, bson.M{
-		IdKey: h.Id,
-	}, bson.M{
-		"$unset": bson.M{
-			IsTransitioningTasks: true,
-		},
-	}); err != nil {
-		return err
-	}
-
-	h.IsTransitioningTasks = false
 
 	return nil
 }

@@ -209,8 +209,6 @@ func (j *idleHostJob) getIdleInfo(ctx context.Context, h *host.Host, d *distro.D
 		idleThreshold = singleHostTaskGroupIdleCutoff
 	} else if h.RunningTaskGroup != "" {
 		idleThreshold = idleThreshold * 2
-	} else if h.IsTransitioningTasks {
-		idleThreshold = idleTransitioningTasksDrawdownCutoff
 	}
 
 	return hostIdleInfo{

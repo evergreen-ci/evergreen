@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
@@ -19,9 +20,8 @@ const (
 	hostDrawdownJobName = "host-drawdown"
 
 	// if we need to drawdown hosts, we want to catch as many hosts as we can that are between jobs
-	idleTimeDrawdownCutoff               = 5 * time.Second
-	idleTaskGroupDrawdownCutoff          = 10 * time.Minute
-	idleTransitioningTasksDrawdownCutoff = 30 * time.Second
+	idleTimeDrawdownCutoff      = 5 * time.Second
+	idleTaskGroupDrawdownCutoff = 10 * time.Minute
 )
 
 func init() {
@@ -136,10 +136,21 @@ func (j *hostDrawdownJob) checkAndDecommission(ctx context.Context, h *host.Host
 	idleThreshold := idleTimeDrawdownCutoff
 	if h.RunningTaskGroup != "" {
 		idleThreshold = idleTaskGroupDrawdownCutoff
-	} else if h.IsTransitioningTasks {
-		idleThreshold = idleTransitioningTasksDrawdownCutoff
 	}
 
+	a := h.LastTaskCompletedTime
+
+	if !h.LastTaskCompletedTime.IsZero() {
+		taskQueue, err := model.FindDistroTaskQueue(ctx, h.Distro.Id)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		b := taskQueue.Length()
+		print(a.String(), b)
+		if taskQueue.Length() > 0 {
+			idleThreshold = h.Distro.HostAllocatorSettings.AcceptableHostIdleTime
+		}
+	}
 	if idleTime > idleThreshold {
 		(*drawdownTarget)--
 		if err = h.SetDecommissioned(ctx, evergreen.User, false, "host decommissioned due to overallocation"); err != nil {

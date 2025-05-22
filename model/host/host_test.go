@@ -786,62 +786,6 @@ func TestSetTaskGroupTeardownStartTime(t *testing.T) {
 	assert.Less(t, now.Sub(dbHost.TaskGroupTeardownStartTime), time.Second)
 }
 
-func TestSetAndUnsetIsTransitioningTasks(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	require := require.New(t)
-	assert := assert.New(t)
-
-	require.NoError(db.ClearCollections(Collection))
-	defer func() {
-		assert.NoError(db.ClearCollections(Collection))
-	}()
-
-	h := &Host{
-		Id:                   "test",
-		IsTransitioningTasks: true, // Start with true to test both transitions
-	}
-	require.NoError(h.Insert(ctx))
-
-	// Initial state check
-	dbHost, err := FindOneId(ctx, h.Id)
-	require.NoError(err)
-	assert.True(dbHost.IsTransitioningTasks)
-
-	// Test unset when true - should make it false
-	require.NoError(h.UnsetIsTransitioningTasks(ctx))
-	assert.False(h.IsTransitioningTasks, "IsTransitioningTasks should be false in memory after unsetting")
-
-	dbHost, err = FindOneId(ctx, h.Id)
-	require.NoError(err)
-	assert.False(dbHost.IsTransitioningTasks, "IsTransitioningTasks should be false in DB after unsetting")
-
-	// Test set when false - should make it true
-	require.NoError(h.SetIsTransitioningTasks(ctx))
-	assert.True(h.IsTransitioningTasks, "IsTransitioningTasks should be true in memory after setting")
-
-	dbHost, err = FindOneId(ctx, h.Id)
-	require.NoError(err)
-	assert.True(dbHost.IsTransitioningTasks, "IsTransitioningTasks should be true in DB after setting")
-
-	// Test unset when true again - should make it false
-	require.NoError(h.UnsetIsTransitioningTasks(ctx))
-	assert.False(h.IsTransitioningTasks, "IsTransitioningTasks should be false in memory after unsetting")
-
-	dbHost, err = FindOneId(ctx, h.Id)
-	require.NoError(err)
-	assert.False(dbHost.IsTransitioningTasks, "IsTransitioningTasks should be false in DB after unsetting")
-
-	// Test set when false again - should make it true
-	require.NoError(h.SetIsTransitioningTasks(ctx))
-	assert.True(h.IsTransitioningTasks, "IsTransitioningTasks should be true in memory after setting")
-
-	dbHost, err = FindOneId(ctx, h.Id)
-	require.NoError(err)
-	assert.True(dbHost.IsTransitioningTasks, "IsTransitioningTasks should be true in DB after setting")
-}
-
 func TestHostSetExpirationTime(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

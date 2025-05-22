@@ -209,12 +209,6 @@ func (h *hostAgentNextTask) Run(ctx context.Context) gimlet.Responder {
 		return sendBackRunningTask(ctx, h.env, h.host, nextTaskResponse)
 	}
 
-	// At this point we are ready to assign a task to the host. We are no longer in the process of
-	// transitioning tasks because we will either find a task to assign, or the host will be idle.
-	if err = h.host.UnsetIsTransitioningTasks(ctx); err != nil {
-		grip.Error(err)
-	}
-
 	var nextTask *task.Task
 	var shouldRunTeardown bool
 
@@ -1308,12 +1302,6 @@ func (h *hostAgentEndTask) Run(ctx context.Context) gimlet.Responder {
 		})
 		endTaskResp.ShouldExit = true
 		return gimlet.NewJSONResponse(endTaskResp)
-	}
-
-	// The host is about to enter the in between state where it is no longer has a running
-	// task assigned to it but it is not yet ready for a new task to be assigned yet.
-	if err = currentHost.SetIsTransitioningTasks(ctx); err != nil {
-		grip.Error(err)
 	}
 
 	// The order of operations here for clearing the task from the host and

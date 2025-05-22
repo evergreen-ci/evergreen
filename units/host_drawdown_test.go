@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/mock"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -263,36 +264,42 @@ func TestHostDrawdown(t *testing.T) {
 			assert.Contains(t, hosts, oldTeardownHost.Id,
 				"should decommission host with expired teardown")
 		},
-		"HandlesTransitioningTasksHost": func(ctx context.Context, t *testing.T, env *mock.Environment, d distro.Distro) {
-			// Host transitioning tasks but not idle long enough - should be ignored
-			recentTransitionHost := host.Host{
-				Id:                    "recent",
-				Distro:                d,
-				Provider:              evergreen.ProviderNameMock,
-				CreationTime:          time.Now().Add(-30 * time.Minute),
-				Status:                evergreen.HostRunning,
-				StartedBy:             evergreen.User,
-				IsTransitioningTasks:  true,
-				LastCommunicationTime: time.Now().Add(-time.Minute),
-				LastTask:              "dummy_task_name1",
-				LastTaskCompletedTime: time.Now().Add(-15 * time.Second), // Less than idleTransitioningTasksDrawdownCutoff
-			}
-			require.NoError(t, recentTransitionHost.Insert(ctx))
+		"HandlesIdleHostsWithTaskQueue": func(ctx context.Context, t *testing.T, env *mock.Environment, d distro.Distro) {
+			d.HostAllocatorSettings.AcceptableHostIdleTime = 90 * time.Second
 
-			// Host transitioning tasks and idle long enough - should be decommissioned
-			idleTransitionHost := host.Host{
-				Id:                    "idle",
+			hostWithLastTask := host.Host{
+				Id:                    "active",
 				Distro:                d,
 				Provider:              evergreen.ProviderNameMock,
 				CreationTime:          time.Now().Add(-30 * time.Minute),
 				Status:                evergreen.HostRunning,
 				StartedBy:             evergreen.User,
-				IsTransitioningTasks:  true,
 				LastCommunicationTime: time.Now().Add(-time.Minute),
-				LastTask:              "dummy_task_name2",
-				LastTaskCompletedTime: time.Now().Add(-idleTransitioningTasksDrawdownCutoff).Add(-time.Second), // More than cutoff
+				LastTaskCompletedTime: time.Now().Add(-5 * time.Second),
+				LastTask:              "dummy_task_name1",
 			}
-			require.NoError(t, idleTransitionHost.Insert(ctx))
+			require.NoError(t, hostWithLastTask.Insert(ctx))
+
+			hostWithoutLastTask := host.Host{
+				Id:                    "stale",
+				Distro:                d,
+				Provider:              evergreen.ProviderNameMock,
+				CreationTime:          time.Now().Add(-30 * time.Minute),
+				Status:                evergreen.HostRunning,
+				StartedBy:             evergreen.User,
+				LastCommunicationTime: time.Now().Add(-time.Minute),
+				LastTaskCompletedTime: time.Time{}, // zero time
+			}
+			require.NoError(t, hostWithoutLastTask.Insert(ctx))
+
+			// Add task to queue
+			taskQueue := model.TaskQueue{
+				Distro: d.Id,
+				Queue: []model.TaskQueueItem{
+					{Id: "task1"},
+				},
+			}
+			require.NoError(t, taskQueue.Save(ctx))
 
 			drawdownInfo := DrawdownInfo{
 				DistroID:     d.Id,
@@ -300,11 +307,53 @@ func TestHostDrawdown(t *testing.T) {
 			}
 
 			num, hosts := numHostsDecommissionedForDrawdown(ctx, t, env, drawdownInfo)
-			assert.Equal(t, 1, num, "should only decommission host that exceeded idle transition cutoff")
-			assert.NotContains(t, hosts, recentTransitionHost.Id,
-				"should not decommission host that hasn't been idle long enough")
-			assert.Contains(t, hosts, idleTransitionHost.Id,
-				"should decommission host that exceeded idle transition cutoff")
+			assert.Equal(t, 1, num, "should only decommission hostWithoutLastTask")
+			assert.NotContains(t, hosts, hostWithLastTask.Id,
+				"should not decommission recently active host with tasks in queue")
+			assert.Contains(t, hosts, hostWithoutLastTask.Id,
+				"should not decommission stale host within idle threshold")
+
+		},
+		"HandlesIdleHostsWithNoQueue": func(ctx context.Context, t *testing.T, env *mock.Environment, d distro.Distro) {
+			d.HostAllocatorSettings.AcceptableHostIdleTime = 90 * time.Second
+
+			hostWithLastTask := host.Host{
+				Id:                    "active",
+				Distro:                d,
+				Provider:              evergreen.ProviderNameMock,
+				CreationTime:          time.Now().Add(-30 * time.Minute),
+				Status:                evergreen.HostRunning,
+				StartedBy:             evergreen.User,
+				LastCommunicationTime: time.Now().Add(-time.Minute),
+				LastTaskCompletedTime: time.Now().Add(-5 * time.Second),
+				LastTask:              "dummy_task_name1",
+			}
+			require.NoError(t, hostWithLastTask.Insert(ctx))
+
+			hostWithoutLastTask := host.Host{
+				Id:                    "stale",
+				Distro:                d,
+				Provider:              evergreen.ProviderNameMock,
+				CreationTime:          time.Now().Add(-30 * time.Minute),
+				Status:                evergreen.HostRunning,
+				StartedBy:             evergreen.User,
+				LastCommunicationTime: time.Now().Add(-time.Minute),
+				LastTaskCompletedTime: time.Time{}, // zero time
+			}
+			require.NoError(t, hostWithoutLastTask.Insert(ctx))
+
+			drawdownInfo := DrawdownInfo{
+				DistroID:     d.Id,
+				NewCapTarget: 0,
+			}
+
+			// Clear task queue and verify hosts are now decommissioned with default threshold
+			require.NoError(t, model.ClearTaskQueue(ctx, d.Id))
+
+			num, hosts := numHostsDecommissionedForDrawdown(ctx, t, env, drawdownInfo)
+			assert.Equal(t, 2, num, "should decommission both hosts when queue is empty")
+			assert.Contains(t, hosts, hostWithLastTask.Id)
+			assert.Contains(t, hosts, hostWithoutLastTask.Id)
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
