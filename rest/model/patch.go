@@ -471,13 +471,14 @@ func (apiPatch *APIPatch) ToService() (patch.Patch, error) {
 }
 
 type githubPatch struct {
-	PRNumber  int     `json:"pr_number"`
-	BaseOwner *string `json:"base_owner"`
-	BaseRepo  *string `json:"base_repo"`
-	HeadOwner *string `json:"head_owner"`
-	HeadRepo  *string `json:"head_repo"`
-	HeadHash  *string `json:"head_hash"`
-	Author    *string `json:"author"`
+	PRNumber   int     `json:"pr_number"`
+	BaseOwner  *string `json:"base_owner"`
+	BaseRepo   *string `json:"base_repo"`
+	HeadOwner  *string `json:"head_owner"`
+	HeadRepo   *string `json:"head_repo"`
+	HeadBranch *string `json:"head_branch"`
+	HeadHash   *string `json:"head_hash"`
+	Author     *string `json:"author"`
 }
 
 // BuildFromService converts from service level structs to an APIPatch
@@ -487,6 +488,7 @@ func (g *githubPatch) BuildFromService(p thirdparty.GithubPatch) {
 	g.BaseRepo = utility.ToStringPtr(p.BaseRepo)
 	g.HeadOwner = utility.ToStringPtr(p.HeadOwner)
 	g.HeadRepo = utility.ToStringPtr(p.HeadRepo)
+	g.HeadBranch = utility.ToStringPtr(p.HeadBranch)
 	g.HeadHash = utility.ToStringPtr(p.HeadHash)
 	g.Author = utility.ToStringPtr(p.Author)
 }
@@ -499,6 +501,7 @@ func (g *githubPatch) ToService() thirdparty.GithubPatch {
 	res.BaseRepo = utility.FromStringPtr(g.BaseRepo)
 	res.HeadOwner = utility.FromStringPtr(g.HeadOwner)
 	res.HeadRepo = utility.FromStringPtr(g.HeadRepo)
+	res.HeadBranch = utility.FromStringPtr(g.HeadBranch)
 	res.HeadHash = utility.FromStringPtr(g.HeadHash)
 	res.Author = utility.FromStringPtr(g.Author)
 	return res
