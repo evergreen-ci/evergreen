@@ -378,7 +378,7 @@ func (s *AdminDataSuite) TestGetBanner() {
 	s.Equal(string(evergreen.Important), theme)
 }
 
-func (s *AdminDataSuite) TestGetServiceFlags() {
+func (s *AdminDataSuite) TestGetNecessaryServiceFlags() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -396,7 +396,7 @@ func (s *AdminDataSuite) TestGetServiceFlags() {
 	}
 	s.NoError(evergreen.UpdateConfig(ctx, settings))
 
-	flags, err := GetServiceFlags(ctx)
+	flags, err := GetNecessaryServiceFlags(ctx)
 	s.NoError(err)
 	neccesaryFlags := evergreen.ServiceFlags{
 		StaticAPIKeysDisabled:  true,
