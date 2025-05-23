@@ -86,22 +86,31 @@ func ValidateTVPairs(p *Project, in []TVPair) error {
 
 // Given a patch version and a list of variant/task pairs, creates the set of new builds that
 // do not exist yet out of the set of pairs, and adds tasks for builds which already exist.
-func addNewTasksAndBuildsForPatch(ctx context.Context, creationInfo TaskCreationInfo, caller string) error {
+func addNewTasksAndBuildsForPatch(ctx context.Context, p *patch.Patch, creationInfo TaskCreationInfo, caller string) error {
 	existingBuilds, err := build.Find(ctx, build.ByIds(creationInfo.Version.BuildIds).WithFields(build.IdKey, build.BuildVariantKey, build.CreateTimeKey, build.RequesterKey))
 	if err != nil {
 		return err
 	}
-	_, _, err = addNewBuilds(ctx, creationInfo, existingBuilds)
+	activatedTasks, activatedDeps, err := addNewBuilds(ctx, creationInfo, existingBuilds)
 	if err != nil {
 		return errors.Wrap(err, "adding new builds")
 	}
-	_, _, err = addNewTasksToExistingBuilds(ctx, creationInfo, existingBuilds, caller)
+	activatedTasksInExistingBuilds, activatedDepsInExistingBuilds, err := addNewTasksToExistingBuilds(ctx, creationInfo, existingBuilds, caller)
 	if err != nil {
 		return errors.Wrap(err, "adding new tasks")
 	}
 	err = activateExistingInactiveTasks(ctx, creationInfo, existingBuilds, caller)
-	// kim: TODO: set patch "was reconfigured" field. In this particular
-	// function, the patch is already finalized.
+	totalActivatedTasks := len(activatedTasks) + len(activatedTasksInExistingBuilds) + len(activatedDeps) + len(activatedDepsInExistingBuilds)
+	if totalActivatedTasks > 0 {
+		// It's necessary to check if tasks were actually scheduled because it's
+		// valid for a user to use the reconfigure page to modify a patch but it
+		// doesn't change the patch's tasks at all (e.g. if they just updated
+		// the patch description). A patch is only considered reconfigured if
+		// new tasks were added.
+		if err := p.SetIsReconfigured(ctx, true); err != nil {
+			return errors.Wrap(err, "marking patch as reconfigured")
+		}
+	}
 	return errors.Wrap(err, "activating existing inactive tasks")
 }
 
@@ -175,15 +184,9 @@ func ConfigurePatch(ctx context.Context, settings *evergreen.Settings, p *patch.
 			}
 			// kim: NOTE: this looks like where patches get new tasks get added
 			// after patch creation.
-			err = addNewTasksAndBuildsForPatch(ctx, creationInfo, patchUpdateReq.Caller)
+			err = addNewTasksAndBuildsForPatch(ctx, p, creationInfo, patchUpdateReq.Caller)
 			if err != nil {
 				return http.StatusInternalServerError, errors.Wrapf(err, "creating new tasks/builds for version '%s'", version.Id)
-			}
-			// kim: TODO: add unit test
-			// kim: TODO: manually test that this is only set after
-			// reconfiguring an already-finalized patch.
-			if err := p.SetIsReconfigured(ctx, true); err != nil {
-				return http.StatusInternalServerError, errors.Wrap(err, "marking patch as reconfigured")
 			}
 		}
 	}
