@@ -370,6 +370,11 @@ func TestHostDrawdown(t *testing.T) {
 				},
 			}
 			require.NoError(t, d.Insert(ctx))
+			taskQueue := model.TaskQueue{
+				Distro: d.Id,
+				Queue:  []model.TaskQueueItem{},
+			}
+			require.NoError(t, taskQueue.Save(ctx))
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
 
