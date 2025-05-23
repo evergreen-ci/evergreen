@@ -87,7 +87,6 @@ func (j *hostDrawdownJob) Run(ctx context.Context) {
 	taskQueue, err := model.FindDistroTaskQueue(ctx, j.DrawdownInfo.DistroID)
 	if err != nil {
 		j.AddError(errors.Wrapf(err, "finding task queue for distro '%s'", j.DrawdownInfo.DistroID))
-		return
 	}
 	drawdownTarget := existingHostCount - j.DrawdownInfo.NewCapTarget
 
