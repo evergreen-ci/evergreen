@@ -1,7 +1,6 @@
 package operations
 
 import (
-	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
@@ -10,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -265,12 +263,6 @@ func TestShouldGenerateJWT(t *testing.T) {
 		{
 			name:           "NoAPIKey",
 			settings:       &ClientSettings{APIKey: ""},
-			expectedResult: true,
-		},
-		{
-			name:           "UnauthorizedError",
-			settings:       &ClientSettings{APIKey: "key"},
-			flagsErr:       &thirdparty.APIRequestError{StatusCode: http.StatusUnauthorized},
 			expectedResult: true,
 		},
 		{

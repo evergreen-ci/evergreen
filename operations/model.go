@@ -3,7 +3,6 @@ package operations
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -14,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/client"
-	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/kardianos/osext"
 	"github.com/mongodb/grip"
@@ -23,6 +21,10 @@ import (
 )
 
 const localConfigPath = ".evergreen.local.yml"
+const stagingCorpHost = "https://evergreen.staging.corp.mongodb.com/api"
+const stagingNonCorpHost = "https://evergreen-staging.corp.mongodb.com/api"
+const prodCorpHost = "https://evergreen.corp.mongodb.com/api"
+const prodNonCorpHost = "https://evergreen.mongodb.com/api"
 
 type ClientProjectConf struct {
 	Name           string               `json:"name" yaml:"name,omitempty"`
@@ -167,6 +169,8 @@ func (s *ClientSettings) setupRestCommunicator(ctx context.Context, printMessage
 			return c, err
 		}
 		c.SetJWT(s.JWT)
+		// in order to use the JWT token, we need to set the API server host to the corp api server host
+		c.SetAPIServerHost(s.getApiServerHost(true))
 	}
 
 	return c, nil
@@ -182,19 +186,24 @@ func (s *ClientSettings) shouldGenerateJWT(ctx context.Context, c client.Communi
 		return true
 	}
 
-	flags, err := c.GetServiceFlags(ctx)
-	//todo: remove in DEVPROD-17618
-	if flags == nil {
+	// always use the non-corp url for getting the service flags
+	// because the corp url needs a JWT token which we haven't generated yet
+	originalAPIServerHost := s.APIServerHost
+	c.SetAPIServerHost(s.getApiServerHost(false))
+
+	isServiceUser, err := c.IsServiceUser(ctx, s.User)
+	if err != nil {
+		grip.Warningf("Failed to check if user is a service user: %s", err)
+		return false
+	}
+	if isServiceUser {
 		return false
 	}
 
-	// if we get an unauthorized error when trying to get the flags, we can assume
-	// that the static api keys are no longer accepted and we should get a JWT token
-	if err != nil && isUnauthorized(err) {
-		return true
-	}
+	flags, err := c.GetServiceFlags(ctx)
+	// reset the api server host to the original value once we have the flags
+	c.SetAPIServerHost(originalAPIServerHost)
 
-	// todo: add an isServiceUser check
 	if err == nil && !flags.JWTTokenForCLIDisabled {
 		return true
 	}
@@ -202,11 +211,24 @@ func (s *ClientSettings) shouldGenerateJWT(ctx context.Context, c client.Communi
 	return false
 }
 
-func isUnauthorized(err error) bool {
-	if clientErr, ok := err.(*thirdparty.APIRequestError); ok {
-		return clientErr.StatusCode == http.StatusUnauthorized
+// getApiServerHost returns the API server host based on the APIServerHost and the useCorp parameter.
+func (s *ClientSettings) getApiServerHost(useCorp bool) string {
+	if useCorp {
+		if s.APIServerHost == stagingNonCorpHost {
+			return stagingCorpHost
+		}
+		if s.APIServerHost == prodNonCorpHost {
+			return prodCorpHost
+		}
 	}
-	return false
+	if s.APIServerHost == stagingCorpHost {
+		return stagingNonCorpHost
+	}
+	if s.APIServerHost == prodCorpHost {
+		return prodNonCorpHost
+	}
+
+	return s.APIServerHost
 }
 
 // printUserMessages prints any available info messages.
