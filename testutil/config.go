@@ -188,6 +188,10 @@ func MockConfig() *evergreen.Settings {
 				Name: "logs",
 				Type: evergreen.BucketTypeS3,
 			},
+			TestResultsBucket: evergreen.BucketConfig{
+				Name: "test_results",
+				Type: evergreen.BucketTypeS3,
+			},
 			Credentials: evergreen.S3Credentials{
 				Key:    "aws_key",
 				Secret: "aws_secret",

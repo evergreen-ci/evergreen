@@ -15,9 +15,9 @@ const (
 
 const defaultService = TestResultsServiceCedar
 
-// testResultsService is an interface for fetching test results data from an
+// TestResultsService is an interface for fetching test results data from an
 // underlying test results store.
-type testResultsService interface {
+type TestResultsService interface {
 	GetMergedTaskTestResults(context.Context, []TaskOptions, *FilterOptions) (TaskTestResults, error)
 	GetMergedTaskTestResultsStats(context.Context, []TaskOptions) (TaskTestResultsStats, error)
 	GetMergedFailedTestSample(context.Context, []TaskOptions) ([]string, error)
@@ -25,14 +25,15 @@ type testResultsService interface {
 	AppendTestResults(context.Context, []TestResult) error
 }
 
-func getServiceImpl(env evergreen.Environment, service string) (testResultsService, error) {
+// GetServiceImpl fetches the specific test results service implementation based on the input service.
+func GetServiceImpl(env evergreen.Environment, service string) (TestResultsService, error) {
 	if service == "" {
 		service = defaultService
 	}
 
 	switch service {
 	case TestResultsServiceCedar:
-		return newCedarService(env), nil
+		return NewCedarService(env), nil
 	case TestResultsServiceLocal:
 		return NewLocalService(env), nil
 	default:
