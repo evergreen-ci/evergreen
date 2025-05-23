@@ -58,3 +58,9 @@ directive @redactSecrets on INPUT_FIELD_DEFINITION | ARGUMENT_DEFINITION | INPUT
 requirePatchOwner is used to restrict certain actions to the patch creator, patch admin, project admin or superuser.
 """
 directive @requirePatchOwner on ARGUMENT_DEFINITION
+
+"""
+requireAdmin is used to restrict certain actions to admins.
+"""
+
+directive @requireAdmin on FIELD_DEFINITION
