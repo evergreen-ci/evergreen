@@ -861,6 +861,11 @@ func getGitConfigMetadata() (patch.GitMetadata, error) {
 		metadata.GitVersion = version
 	}
 
+	branch, err := gitBranch()
+	if err == nil {
+		metadata.LocalBranch = strings.TrimSpace(branch)
+	}
+
 	return metadata, nil
 }
 

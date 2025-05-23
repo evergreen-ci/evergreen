@@ -103,9 +103,10 @@ type Parameter struct {
 }
 
 type GitMetadata struct {
-	Username   string `bson:"username" json:"username"`
-	Email      string `bson:"email" json:"email"`
-	GitVersion string `bson:"git_version,omitempty" json:"git_version,omitempty"`
+	Username    string `bson:"username" json:"username"`
+	Email       string `bson:"email" json:"email"`
+	GitVersion  string `bson:"git_version,omitempty" json:"git_version,omitempty"`
+	LocalBranch string `bson:"local_branch,omitempty" json:"local_branch,omitempty"`
 }
 
 type LocalModuleInclude struct {
