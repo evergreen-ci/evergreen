@@ -54,6 +54,9 @@ type githubIntent struct {
 	// to be merged
 	HeadRepoName string `bson:"head_repo_name"`
 
+	// HeadBranch is the branch name that contains the changes for this PR
+	HeadBranch string `bson:"head_branch"`
+
 	// PRNumber is the pull request number in GitHub.
 	PRNumber int `bson:"pr_number"`
 
@@ -166,6 +169,7 @@ func NewGithubIntent(ctx context.Context, msgDeliveryID, patchOwner, calledBy, a
 		BaseRepoName:  pr.Base.Repo.GetFullName(),
 		BaseBranch:    pr.Base.GetRef(),
 		HeadRepoName:  pr.Head.Repo.GetFullName(),
+		HeadBranch:    pr.Head.GetRef(),
 		PRNumber:      pr.GetNumber(),
 		User:          patchOwner,
 		UID:           int(pr.User.GetID()),
@@ -293,6 +297,7 @@ func (g *githubIntent) NewPatch() *Patch {
 			BaseBranch: g.BaseBranch,
 			HeadOwner:  headRepo[0],
 			HeadRepo:   headRepo[1],
+			HeadBranch: g.HeadBranch,
 			HeadHash:   g.HeadHash,
 			BaseHash:   g.BaseHash,
 			MergeBase:  g.MergeBase,
