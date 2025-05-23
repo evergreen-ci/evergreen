@@ -102,11 +102,11 @@ func addNewTasksAndBuildsForPatch(ctx context.Context, p *patch.Patch, creationI
 	err = activateExistingInactiveTasks(ctx, creationInfo, existingBuilds, caller)
 	totalActivatedTasks := len(activatedTasks) + len(activatedTasksInExistingBuilds) + len(activatedDeps) + len(activatedDepsInExistingBuilds)
 	if totalActivatedTasks > 0 {
-		// It's necessary to check if tasks were actually scheduled because it's
-		// valid for a user to use the reconfigure page to modify a patch but it
-		// doesn't change the patch's tasks at all (e.g. if they just updated
-		// the patch description). A patch is only considered reconfigured if
-		// new tasks were added.
+		// It's necessary to check if new tasks were actually created because
+		// it's valid for a user to reconfigure a patch without changing the
+		// patch's tasks at all (e.g. if they just updated the patch
+		// description). A patch is only considered reconfigured if new tasks
+		// were added.
 		if err := p.SetIsReconfigured(ctx, true); err != nil {
 			return errors.Wrap(err, "marking patch as reconfigured")
 		}
