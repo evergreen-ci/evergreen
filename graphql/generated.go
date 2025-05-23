@@ -2191,7 +2191,7 @@ func (e *executableSchema) Schema() *ast.Schema {
 	return parsedSchema
 }
 
-func (e *executableSchema) Complexity(typeName, field string, childComplexity int, rawArgs map[string]any) (int, bool) {
+func (e *executableSchema) Complexity(ctx context.Context, typeName, field string, childComplexity int, rawArgs map[string]any) (int, bool) {
 	ec := executionContext{nil, e, 0, 0, nil}
 	_ = ec
 	switch typeName + "." + field {
@@ -3594,7 +3594,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Host_events_args(context.TODO(), rawArgs)
+		args, err := ec.field_Host_events_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4026,7 +4026,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Image_events_args(context.TODO(), rawArgs)
+		args, err := ec.field_Image_events_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4059,7 +4059,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Image_operatingSystem_args(context.TODO(), rawArgs)
+		args, err := ec.field_Image_operatingSystem_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4071,7 +4071,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Image_packages_args(context.TODO(), rawArgs)
+		args, err := ec.field_Image_packages_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4083,7 +4083,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Image_toolchains_args(context.TODO(), rawArgs)
+		args, err := ec.field_Image_toolchains_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4613,7 +4613,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_abortTask_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_abortTask_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4625,7 +4625,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_addAnnotationIssue_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_addAnnotationIssue_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4637,7 +4637,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_addFavoriteProject_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_addFavoriteProject_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4649,7 +4649,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_attachProjectToNewRepo_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_attachProjectToNewRepo_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4661,7 +4661,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_attachProjectToRepo_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_attachProjectToRepo_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4673,7 +4673,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_attachVolumeToHost_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_attachVolumeToHost_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4685,7 +4685,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_bbCreateTicket_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_bbCreateTicket_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4704,7 +4704,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_copyDistro_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_copyDistro_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4716,7 +4716,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_copyProject_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_copyProject_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4728,7 +4728,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_createDistro_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_createDistro_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4740,7 +4740,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_createProject_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_createProject_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4752,7 +4752,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_createPublicKey_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_createPublicKey_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4764,7 +4764,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_deactivateStepbackTask_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_deactivateStepbackTask_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4776,7 +4776,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_defaultSectionToRepo_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_defaultSectionToRepo_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4788,7 +4788,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_deleteDistro_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_deleteDistro_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4800,7 +4800,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_deleteGithubAppCredentials_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_deleteGithubAppCredentials_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4812,7 +4812,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_deleteProject_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_deleteProject_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4824,7 +4824,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_deleteSubscriptions_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_deleteSubscriptions_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4836,7 +4836,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_detachProjectFromRepo_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_detachProjectFromRepo_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4848,7 +4848,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_detachVolumeFromHost_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_detachVolumeFromHost_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4860,7 +4860,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_editAnnotationNote_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_editAnnotationNote_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4872,7 +4872,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_editSpawnHost_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_editSpawnHost_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4884,7 +4884,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_forceRepotrackerRun_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_forceRepotrackerRun_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4896,7 +4896,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_migrateVolume_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_migrateVolume_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4908,7 +4908,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_moveAnnotationIssue_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_moveAnnotationIssue_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4920,7 +4920,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_overrideTaskDependencies_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_overrideTaskDependencies_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4932,7 +4932,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_promoteVarsToRepo_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_promoteVarsToRepo_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4944,7 +4944,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_removeAnnotationIssue_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_removeAnnotationIssue_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4956,7 +4956,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_removeFavoriteProject_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_removeFavoriteProject_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4968,7 +4968,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_removePublicKey_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_removePublicKey_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4980,7 +4980,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_removeVolume_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_removeVolume_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4992,7 +4992,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_reprovisionToNew_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_reprovisionToNew_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -5004,7 +5004,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_restartJasper_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_restartJasper_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -5016,7 +5016,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_restartTask_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_restartTask_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -5028,7 +5028,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_restartVersions_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_restartVersions_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -5040,7 +5040,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_saveDistro_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_saveDistro_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -5052,7 +5052,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_saveProjectSettingsForSection_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_saveProjectSettingsForSection_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -5064,7 +5064,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_saveRepoSettingsForSection_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_saveRepoSettingsForSection_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -5076,7 +5076,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_saveSubscription_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_saveSubscription_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -5088,7 +5088,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_schedulePatch_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_schedulePatch_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -5100,7 +5100,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_scheduleTasks_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_scheduleTasks_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -5112,7 +5112,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_scheduleUndispatchedBaseTasks_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_scheduleUndispatchedBaseTasks_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -5124,7 +5124,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_setAnnotationMetadataLinks_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_setAnnotationMetadataLinks_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -5136,7 +5136,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_setLastRevision_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_setLastRevision_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -5148,7 +5148,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_setPatchVisibility_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_setPatchVisibility_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -5160,7 +5160,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_setTaskPriority_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_setTaskPriority_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -5172,7 +5172,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_setVersionPriority_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_setVersionPriority_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -5184,7 +5184,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_spawnHost_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_spawnHost_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -5196,7 +5196,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_spawnVolume_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_spawnVolume_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -5208,7 +5208,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_unscheduleTask_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_unscheduleTask_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -5220,7 +5220,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_unscheduleVersionTasks_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_unscheduleVersionTasks_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -5232,7 +5232,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_updateBetaFeatures_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_updateBetaFeatures_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -5244,7 +5244,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_updateHostStatus_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_updateHostStatus_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -5256,7 +5256,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_updateParsleySettings_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_updateParsleySettings_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -5268,7 +5268,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_updatePublicKey_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_updatePublicKey_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -5280,7 +5280,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_updateSpawnHostStatus_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_updateSpawnHostStatus_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -5292,7 +5292,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_updateUserSettings_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_updateUserSettings_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -5304,7 +5304,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_updateVolume_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_updateVolume_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -5911,7 +5911,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Permissions_distroPermissions_args(context.TODO(), rawArgs)
+		args, err := ec.field_Permissions_distroPermissions_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -5923,7 +5923,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Permissions_projectPermissions_args(context.TODO(), rawArgs)
+		args, err := ec.field_Permissions_projectPermissions_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -5935,7 +5935,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Permissions_repoPermissions_args(context.TODO(), rawArgs)
+		args, err := ec.field_Permissions_repoPermissions_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -6024,7 +6024,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Pod_events_args(context.TODO(), rawArgs)
+		args, err := ec.field_Pod_events_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -6414,7 +6414,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Project_patches_args(context.TODO(), rawArgs)
+		args, err := ec.field_Project_patches_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -6860,7 +6860,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_bbGetCreatedTickets_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_bbGetCreatedTickets_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -6872,7 +6872,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_buildBaron_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_buildBaron_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -6884,7 +6884,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_buildVariantsForTaskName_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_buildVariantsForTaskName_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -6903,7 +6903,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_distro_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_distro_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -6915,7 +6915,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_distroEvents_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_distroEvents_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -6927,7 +6927,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_distroTaskQueue_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_distroTaskQueue_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -6939,7 +6939,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_distros_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_distros_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -6951,7 +6951,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_githubProjectConflicts_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_githubProjectConflicts_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -6963,7 +6963,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_hasVersion_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_hasVersion_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -6975,7 +6975,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_host_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_host_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -6987,7 +6987,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_hostEvents_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_hostEvents_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -6999,7 +6999,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_hosts_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_hosts_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -7011,7 +7011,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_image_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_image_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -7037,7 +7037,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_isRepo_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_isRepo_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -7049,7 +7049,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_logkeeperBuildMetadata_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_logkeeperBuildMetadata_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -7061,7 +7061,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_mainlineCommits_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_mainlineCommits_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -7094,7 +7094,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_patch_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_patch_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -7106,7 +7106,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_pod_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_pod_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -7118,7 +7118,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_project_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_project_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -7130,7 +7130,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_projectEvents_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_projectEvents_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -7142,7 +7142,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_projectSettings_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_projectSettings_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -7161,7 +7161,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_repoEvents_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_repoEvents_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -7173,7 +7173,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_repoSettings_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_repoSettings_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -7199,7 +7199,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_task_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_task_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -7211,7 +7211,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_taskAllExecutions_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_taskAllExecutions_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -7223,7 +7223,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_taskHistory_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_taskHistory_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -7235,7 +7235,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_taskNamesForBuildVariant_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_taskNamesForBuildVariant_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -7254,7 +7254,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_taskTestSample_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_taskTestSample_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -7266,7 +7266,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_user_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_user_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -7285,7 +7285,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_version_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_version_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -7304,7 +7304,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_waterfall_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_waterfall_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -8618,7 +8618,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Task_tests_args(context.TODO(), rawArgs)
+		args, err := ec.field_Task_tests_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -9645,7 +9645,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_User_patches_args(context.TODO(), rawArgs)
+		args, err := ec.field_User_patches_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -9832,7 +9832,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Version_buildVariantStats_args(context.TODO(), rawArgs)
+		args, err := ec.field_Version_buildVariantStats_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -9844,7 +9844,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Version_buildVariants_args(context.TODO(), rawArgs)
+		args, err := ec.field_Version_buildVariants_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -10031,7 +10031,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Version_taskStatusStats_args(context.TODO(), rawArgs)
+		args, err := ec.field_Version_taskStatusStats_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -10050,7 +10050,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Version_tasks_args(context.TODO(), rawArgs)
+		args, err := ec.field_Version_tasks_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -99015,6 +99015,7 @@ func (ec *executionContext) unmarshalNBannerTheme2githubᚗcomᚋevergreenᚑci�
 }
 
 func (ec *executionContext) marshalNBannerTheme2githubᚗcomᚋevergreenᚑciᚋevergreenᚐBannerTheme(ctx context.Context, sel ast.SelectionSet, v evergreen.BannerTheme) graphql.Marshaler {
+	_ = sel
 	res := graphql.MarshalString(string(v))
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -99039,6 +99040,7 @@ func (ec *executionContext) unmarshalNBoolean2bool(ctx context.Context, v any) (
 }
 
 func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.SelectionSet, v bool) graphql.Marshaler {
+	_ = sel
 	res := graphql.MarshalBoolean(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -99060,6 +99062,7 @@ func (ec *executionContext) marshalNBoolean2ᚖbool(ctx context.Context, sel ast
 		}
 		return graphql.Null
 	}
+	_ = sel
 	res := graphql.MarshalBoolean(*v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -99344,9 +99347,7 @@ func (ec *executionContext) marshalNDispatcherVersion2githubᚗcomᚋevergreen�
 
 func (ec *executionContext) unmarshalNDisplayTask2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDisplayTaskᚄ(ctx context.Context, v any) ([]*DisplayTask, error) {
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]*DisplayTask, len(vSlice))
 	for i := range vSlice {
@@ -99541,6 +99542,7 @@ func (ec *executionContext) unmarshalNDuration2githubᚗcomᚋevergreenᚑciᚋe
 }
 
 func (ec *executionContext) marshalNDuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx context.Context, sel ast.SelectionSet, v model.APIDuration) graphql.Marshaler {
+	_ = sel
 	res := model.MarshalAPIDuration(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -99605,9 +99607,7 @@ func (ec *executionContext) unmarshalNEnvVarInput2githubᚗcomᚋevergreenᚑci�
 
 func (ec *executionContext) unmarshalNEnvVarInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIEnvVarᚄ(ctx context.Context, v any) ([]model.APIEnvVar, error) {
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]model.APIEnvVar, len(vSlice))
 	for i := range vSlice {
@@ -99675,9 +99675,7 @@ func (ec *executionContext) unmarshalNExpansionInput2githubᚗcomᚋevergreenᚑ
 
 func (ec *executionContext) unmarshalNExpansionInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIExpansionᚄ(ctx context.Context, v any) ([]model.APIExpansion, error) {
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]model.APIExpansion, len(vSlice))
 	for i := range vSlice {
@@ -99846,6 +99844,7 @@ func (ec *executionContext) unmarshalNFloat2float64(ctx context.Context, v any) 
 }
 
 func (ec *executionContext) marshalNFloat2float64(ctx context.Context, sel ast.SelectionSet, v float64) graphql.Marshaler {
+	_ = sel
 	res := graphql.MarshalFloatContext(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -100289,6 +100288,7 @@ func (ec *executionContext) unmarshalNHostEventType2string(ctx context.Context, 
 }
 
 func (ec *executionContext) marshalNHostEventType2string(ctx context.Context, sel ast.SelectionSet, v string) graphql.Marshaler {
+	_ = sel
 	res := graphql.MarshalString(marshalNHostEventType2string[v])
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -100371,9 +100371,7 @@ var (
 
 func (ec *executionContext) unmarshalNHostEventType2ᚕstringᚄ(ctx context.Context, v any) ([]string, error) {
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]string, len(vSlice))
 	for i := range vSlice {
@@ -100540,6 +100538,7 @@ func (ec *executionContext) unmarshalNID2string(ctx context.Context, v any) (str
 }
 
 func (ec *executionContext) marshalNID2string(ctx context.Context, sel ast.SelectionSet, v string) graphql.Marshaler {
+	_ = sel
 	res := graphql.MarshalID(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -100561,6 +100560,7 @@ func (ec *executionContext) marshalNID2ᚖstring(ctx context.Context, sel ast.Se
 		}
 		return graphql.Null
 	}
+	_ = sel
 	res := graphql.MarshalID(*v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -100688,6 +100688,7 @@ func (ec *executionContext) unmarshalNImageEventEntryAction2githubᚗcomᚋeverg
 }
 
 func (ec *executionContext) marshalNImageEventEntryAction2githubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐImageEventEntryAction(ctx context.Context, sel ast.SelectionSet, v thirdparty.ImageEventEntryAction) graphql.Marshaler {
+	_ = sel
 	res := graphql.MarshalString(string(v))
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -100704,6 +100705,7 @@ func (ec *executionContext) unmarshalNImageEventType2githubᚗcomᚋevergreenᚑ
 }
 
 func (ec *executionContext) marshalNImageEventType2githubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐImageEventType(ctx context.Context, sel ast.SelectionSet, v thirdparty.ImageEventType) graphql.Marshaler {
+	_ = sel
 	res := graphql.MarshalString(string(v))
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -100828,6 +100830,7 @@ func (ec *executionContext) unmarshalNInt2int(ctx context.Context, v any) (int, 
 }
 
 func (ec *executionContext) marshalNInt2int(ctx context.Context, sel ast.SelectionSet, v int) graphql.Marshaler {
+	_ = sel
 	res := graphql.MarshalInt(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -100843,6 +100846,7 @@ func (ec *executionContext) unmarshalNInt2int64(ctx context.Context, v any) (int
 }
 
 func (ec *executionContext) marshalNInt2int64(ctx context.Context, sel ast.SelectionSet, v int64) graphql.Marshaler {
+	_ = sel
 	res := graphql.MarshalInt64(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -100854,9 +100858,7 @@ func (ec *executionContext) marshalNInt2int64(ctx context.Context, sel ast.Selec
 
 func (ec *executionContext) unmarshalNInt2ᚕintᚄ(ctx context.Context, v any) ([]int, error) {
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]int, len(vSlice))
 	for i := range vSlice {
@@ -100896,6 +100898,7 @@ func (ec *executionContext) marshalNInt2ᚖint(ctx context.Context, sel ast.Sele
 		}
 		return graphql.Null
 	}
+	_ = sel
 	res := graphql.MarshalInt(*v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -101213,6 +101216,7 @@ func (ec *executionContext) marshalNMap2map(ctx context.Context, sel ast.Selecti
 		}
 		return graphql.Null
 	}
+	_ = sel
 	res := graphql.MarshalMap(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -101224,9 +101228,7 @@ func (ec *executionContext) marshalNMap2map(ctx context.Context, sel ast.Selecti
 
 func (ec *executionContext) unmarshalNMap2ᚕmapᚄ(ctx context.Context, v any) ([]map[string]any, error) {
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]map[string]any, len(vSlice))
 	for i := range vSlice {
@@ -101270,9 +101272,7 @@ func (ec *executionContext) marshalNMetadataLink2githubᚗcomᚋevergreenᚑci�
 
 func (ec *executionContext) unmarshalNMetadataLinkInput2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIMetadataLinkᚄ(ctx context.Context, v any) ([]*model.APIMetadataLink, error) {
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]*model.APIMetadataLink, len(vSlice))
 	for i := range vSlice {
@@ -101992,9 +101992,7 @@ func (ec *executionContext) unmarshalNPreconditionScriptInput2githubᚗcomᚋeve
 
 func (ec *executionContext) unmarshalNPreconditionScriptInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPreconditionScriptᚄ(ctx context.Context, v any) ([]model.APIPreconditionScript, error) {
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]model.APIPreconditionScript, len(vSlice))
 	for i := range vSlice {
@@ -102213,6 +102211,7 @@ func (ec *executionContext) unmarshalNProjectHealthView2githubᚗcomᚋevergreen
 }
 
 func (ec *executionContext) marshalNProjectHealthView2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐProjectHealthView(ctx context.Context, sel ast.SelectionSet, v model1.ProjectHealthView) graphql.Marshaler {
+	_ = sel
 	res := graphql.MarshalString(string(v))
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -102551,9 +102550,7 @@ func (ec *executionContext) unmarshalNSelectorInput2githubᚗcomᚋevergreenᚑc
 
 func (ec *executionContext) unmarshalNSelectorInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISelectorᚄ(ctx context.Context, v any) ([]model.APISelector, error) {
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]model.APISelector, len(vSlice))
 	for i := range vSlice {
@@ -102699,6 +102696,7 @@ func (ec *executionContext) unmarshalNString2string(ctx context.Context, v any) 
 }
 
 func (ec *executionContext) marshalNString2string(ctx context.Context, sel ast.SelectionSet, v string) graphql.Marshaler {
+	_ = sel
 	res := graphql.MarshalString(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -102710,9 +102708,7 @@ func (ec *executionContext) marshalNString2string(ctx context.Context, sel ast.S
 
 func (ec *executionContext) unmarshalNString2ᚕstringᚄ(ctx context.Context, v any) ([]string, error) {
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]string, len(vSlice))
 	for i := range vSlice {
@@ -102742,9 +102738,7 @@ func (ec *executionContext) marshalNString2ᚕstringᚄ(ctx context.Context, sel
 
 func (ec *executionContext) unmarshalNString2ᚕᚖstringᚄ(ctx context.Context, v any) ([]*string, error) {
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]*string, len(vSlice))
 	for i := range vSlice {
@@ -102784,6 +102778,7 @@ func (ec *executionContext) marshalNString2ᚖstring(ctx context.Context, sel as
 		}
 		return graphql.Null
 	}
+	_ = sel
 	res := graphql.MarshalString(*v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -102805,6 +102800,7 @@ func (ec *executionContext) marshalNStringMap2map(ctx context.Context, sel ast.S
 		}
 		return graphql.Null
 	}
+	_ = sel
 	res := MarshalStringMap(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -103183,9 +103179,7 @@ func (ec *executionContext) unmarshalNTaskSpecifierInput2githubᚗcomᚋevergree
 
 func (ec *executionContext) unmarshalNTaskSpecifierInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSpecifierᚄ(ctx context.Context, v any) ([]model.APITaskSpecifier, error) {
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]model.APITaskSpecifier, len(vSlice))
 	for i := range vSlice {
@@ -103224,9 +103218,7 @@ func (ec *executionContext) marshalNTaskTestResultSample2ᚖgithubᚗcomᚋeverg
 
 func (ec *executionContext) unmarshalNTestFilter2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTestFilterᚄ(ctx context.Context, v any) ([]*TestFilter, error) {
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]*TestFilter, len(vSlice))
 	for i := range vSlice {
@@ -103333,6 +103325,7 @@ func (ec *executionContext) unmarshalNTime2timeᚐTime(ctx context.Context, v an
 }
 
 func (ec *executionContext) marshalNTime2timeᚐTime(ctx context.Context, sel ast.SelectionSet, v time.Time) graphql.Marshaler {
+	_ = sel
 	res := graphql.MarshalTime(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -103354,6 +103347,7 @@ func (ec *executionContext) marshalNTime2ᚖtimeᚐTime(ctx context.Context, sel
 		}
 		return graphql.Null
 	}
+	_ = sel
 	res := graphql.MarshalTime(*v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -103573,9 +103567,7 @@ func (ec *executionContext) marshalNVariantTask2ᚕgithubᚗcomᚋevergreenᚑci
 
 func (ec *executionContext) unmarshalNVariantTasks2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐVariantTasksᚄ(ctx context.Context, v any) ([]*VariantTasks, error) {
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]*VariantTasks, len(vSlice))
 	for i := range vSlice {
@@ -103667,9 +103659,7 @@ func (ec *executionContext) marshalNVersionTasks2ᚖgithubᚗcomᚋevergreenᚑc
 
 func (ec *executionContext) unmarshalNVersionToRestart2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐVersionToRestartᚄ(ctx context.Context, v any) ([]*model1.VersionToRestart, error) {
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]*model1.VersionToRestart, len(vSlice))
 	for i := range vSlice {
@@ -103940,9 +103930,7 @@ func (ec *executionContext) unmarshalNWebhookHeaderInput2githubᚗcomᚋevergree
 
 func (ec *executionContext) unmarshalNWebhookHeaderInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWebhookHeaderᚄ(ctx context.Context, v any) ([]model.APIWebhookHeader, error) {
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]model.APIWebhookHeader, len(vSlice))
 	for i := range vSlice {
@@ -104022,6 +104010,7 @@ func (ec *executionContext) unmarshalN__DirectiveLocation2string(ctx context.Con
 }
 
 func (ec *executionContext) marshalN__DirectiveLocation2string(ctx context.Context, sel ast.SelectionSet, v string) graphql.Marshaler {
+	_ = sel
 	res := graphql.MarshalString(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -104033,9 +104022,7 @@ func (ec *executionContext) marshalN__DirectiveLocation2string(ctx context.Conte
 
 func (ec *executionContext) unmarshalN__DirectiveLocation2ᚕstringᚄ(ctx context.Context, v any) ([]string, error) {
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]string, len(vSlice))
 	for i := range vSlice {
@@ -104212,6 +104199,7 @@ func (ec *executionContext) unmarshalN__TypeKind2string(ctx context.Context, v a
 }
 
 func (ec *executionContext) marshalN__TypeKind2string(ctx context.Context, sel ast.SelectionSet, v string) graphql.Marshaler {
+	_ = sel
 	res := graphql.MarshalString(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -104262,6 +104250,8 @@ func (ec *executionContext) marshalOBannerTheme2ᚖgithubᚗcomᚋevergreenᚑci
 	if v == nil {
 		return graphql.Null
 	}
+	_ = sel
+	_ = ctx
 	res := graphql.MarshalString(string(*v))
 	return res
 }
@@ -104279,6 +104269,8 @@ func (ec *executionContext) unmarshalOBoolean2bool(ctx context.Context, v any) (
 }
 
 func (ec *executionContext) marshalOBoolean2bool(ctx context.Context, sel ast.SelectionSet, v bool) graphql.Marshaler {
+	_ = sel
+	_ = ctx
 	res := graphql.MarshalBoolean(v)
 	return res
 }
@@ -104295,6 +104287,8 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 	if v == nil {
 		return graphql.Null
 	}
+	_ = sel
+	_ = ctx
 	res := graphql.MarshalBoolean(*v)
 	return res
 }
@@ -104531,9 +104525,7 @@ func (ec *executionContext) unmarshalOContainerResourcesInput2ᚕgithubᚗcomᚋ
 		return nil, nil
 	}
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]model.APIContainerResources, len(vSlice))
 	for i := range vSlice {
@@ -104617,6 +104609,8 @@ func (ec *executionContext) unmarshalODuration2githubᚗcomᚋevergreenᚑciᚋe
 }
 
 func (ec *executionContext) marshalODuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx context.Context, sel ast.SelectionSet, v model.APIDuration) graphql.Marshaler {
+	_ = sel
+	_ = ctx
 	res := model.MarshalAPIDuration(v)
 	return res
 }
@@ -104633,6 +104627,8 @@ func (ec *executionContext) marshalODuration2ᚖgithubᚗcomᚋevergreenᚑciᚋ
 	if v == nil {
 		return graphql.Null
 	}
+	_ = sel
+	_ = ctx
 	res := model.MarshalAPIDuration(*v)
 	return res
 }
@@ -104704,9 +104700,7 @@ func (ec *executionContext) unmarshalOExternalLinkInput2ᚕgithubᚗcomᚋevergr
 		return nil, nil
 	}
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]model.APIExternalLink, len(vSlice))
 	for i := range vSlice {
@@ -104772,6 +104766,7 @@ func (ec *executionContext) unmarshalOFloat2float64(ctx context.Context, v any) 
 }
 
 func (ec *executionContext) marshalOFloat2float64(ctx context.Context, sel ast.SelectionSet, v float64) graphql.Marshaler {
+	_ = sel
 	res := graphql.MarshalFloatContext(v)
 	return graphql.WrapContextMarshaler(ctx, res)
 }
@@ -104788,6 +104783,7 @@ func (ec *executionContext) marshalOFloat2ᚖfloat64(ctx context.Context, sel as
 	if v == nil {
 		return graphql.Null
 	}
+	_ = sel
 	res := graphql.MarshalFloatContext(*v)
 	return graphql.WrapContextMarshaler(ctx, res)
 }
@@ -104891,9 +104887,7 @@ func (ec *executionContext) unmarshalOGitHubDynamicTokenPermissionGroupInput2ᚕ
 		return nil, nil
 	}
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]model.APIGitHubDynamicTokenPermissionGroup, len(vSlice))
 	for i := range vSlice {
@@ -105104,9 +105098,7 @@ func (ec *executionContext) unmarshalOHostEventType2ᚕstringᚄ(ctx context.Con
 		return nil, nil
 	}
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]string, len(vSlice))
 	for i := range vSlice {
@@ -105250,6 +105242,8 @@ func (ec *executionContext) marshalOHostEventType2ᚖstring(ctx context.Context,
 	if v == nil {
 		return graphql.Null
 	}
+	_ = sel
+	_ = ctx
 	res := graphql.MarshalString(marshalOHostEventType2ᚖstring[*v])
 	return res
 }
@@ -105353,6 +105347,8 @@ func (ec *executionContext) marshalOID2ᚖstring(ctx context.Context, sel ast.Se
 	if v == nil {
 		return graphql.Null
 	}
+	_ = sel
+	_ = ctx
 	res := graphql.MarshalID(*v)
 	return res
 }
@@ -105369,9 +105365,7 @@ func (ec *executionContext) unmarshalOInstanceTagInput2ᚕᚖgithubᚗcomᚋever
 		return nil, nil
 	}
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]*host.Tag, len(vSlice))
 	for i := range vSlice {
@@ -105390,6 +105384,8 @@ func (ec *executionContext) unmarshalOInt2int(ctx context.Context, v any) (int, 
 }
 
 func (ec *executionContext) marshalOInt2int(ctx context.Context, sel ast.SelectionSet, v int) graphql.Marshaler {
+	_ = sel
+	_ = ctx
 	res := graphql.MarshalInt(v)
 	return res
 }
@@ -105400,6 +105396,8 @@ func (ec *executionContext) unmarshalOInt2int32(ctx context.Context, v any) (int
 }
 
 func (ec *executionContext) marshalOInt2int32(ctx context.Context, sel ast.SelectionSet, v int32) graphql.Marshaler {
+	_ = sel
+	_ = ctx
 	res := graphql.MarshalInt32(v)
 	return res
 }
@@ -105410,6 +105408,8 @@ func (ec *executionContext) unmarshalOInt2int64(ctx context.Context, v any) (int
 }
 
 func (ec *executionContext) marshalOInt2int64(ctx context.Context, sel ast.SelectionSet, v int64) graphql.Marshaler {
+	_ = sel
+	_ = ctx
 	res := graphql.MarshalInt64(v)
 	return res
 }
@@ -105419,9 +105419,7 @@ func (ec *executionContext) unmarshalOInt2ᚕintᚄ(ctx context.Context, v any) 
 		return nil, nil
 	}
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]int, len(vSlice))
 	for i := range vSlice {
@@ -105464,6 +105462,8 @@ func (ec *executionContext) marshalOInt2ᚖint(ctx context.Context, sel ast.Sele
 	if v == nil {
 		return graphql.Null
 	}
+	_ = sel
+	_ = ctx
 	res := graphql.MarshalInt(*v)
 	return res
 }
@@ -105570,6 +105570,8 @@ func (ec *executionContext) marshalOMap2map(ctx context.Context, sel ast.Selecti
 	if v == nil {
 		return graphql.Null
 	}
+	_ = sel
+	_ = ctx
 	res := graphql.MarshalMap(v)
 	return res
 }
@@ -105648,9 +105650,7 @@ func (ec *executionContext) unmarshalOParameterInput2ᚕᚖgithubᚗcomᚋevergr
 		return nil, nil
 	}
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]*model.APIParameter, len(vSlice))
 	for i := range vSlice {
@@ -105715,9 +105715,7 @@ func (ec *executionContext) unmarshalOParsleyFilterInput2ᚕgithubᚗcomᚋeverg
 		return nil, nil
 	}
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]model.APIParsleyFilter, len(vSlice))
 	for i := range vSlice {
@@ -105864,9 +105862,7 @@ func (ec *executionContext) unmarshalOPatchTriggerAliasInput2ᚕgithubᚗcomᚋe
 		return nil, nil
 	}
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]model.APIPatchTriggerDefinition, len(vSlice))
 	for i := range vSlice {
@@ -105931,9 +105927,7 @@ func (ec *executionContext) unmarshalOPeriodicBuildInput2ᚕgithubᚗcomᚋeverg
 		return nil, nil
 	}
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]model.APIPeriodicBuildDefinition, len(vSlice))
 	for i := range vSlice {
@@ -106063,9 +106057,7 @@ func (ec *executionContext) unmarshalOProjectAliasInput2ᚕgithubᚗcomᚋevergr
 		return nil, nil
 	}
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]model.APIProjectAlias, len(vSlice))
 	for i := range vSlice {
@@ -106098,6 +106090,8 @@ func (ec *executionContext) unmarshalOProjectHealthView2githubᚗcomᚋevergreen
 }
 
 func (ec *executionContext) marshalOProjectHealthView2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐProjectHealthView(ctx context.Context, sel ast.SelectionSet, v model1.ProjectHealthView) graphql.Marshaler {
+	_ = sel
+	_ = ctx
 	res := graphql.MarshalString(string(v))
 	return res
 }
@@ -106227,9 +106221,7 @@ func (ec *executionContext) unmarshalOSortOrder2ᚕᚖgithubᚗcomᚋevergreen�
 		return nil, nil
 	}
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]*SortOrder, len(vSlice))
 	for i := range vSlice {
@@ -106324,6 +106316,8 @@ func (ec *executionContext) unmarshalOString2string(ctx context.Context, v any) 
 }
 
 func (ec *executionContext) marshalOString2string(ctx context.Context, sel ast.SelectionSet, v string) graphql.Marshaler {
+	_ = sel
+	_ = ctx
 	res := graphql.MarshalString(v)
 	return res
 }
@@ -106333,9 +106327,7 @@ func (ec *executionContext) unmarshalOString2ᚕstringᚄ(ctx context.Context, v
 		return nil, nil
 	}
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]string, len(vSlice))
 	for i := range vSlice {
@@ -106371,9 +106363,7 @@ func (ec *executionContext) unmarshalOString2ᚕᚖstringᚄ(ctx context.Context
 		return nil, nil
 	}
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]*string, len(vSlice))
 	for i := range vSlice {
@@ -106416,6 +106406,8 @@ func (ec *executionContext) marshalOString2ᚖstring(ctx context.Context, sel as
 	if v == nil {
 		return graphql.Null
 	}
+	_ = sel
+	_ = ctx
 	res := graphql.MarshalString(*v)
 	return res
 }
@@ -106432,6 +106424,8 @@ func (ec *executionContext) marshalOStringMap2map(ctx context.Context, sel ast.S
 	if v == nil {
 		return graphql.Null
 	}
+	_ = sel
+	_ = ctx
 	res := MarshalStringMap(v)
 	return res
 }
@@ -106445,9 +106439,7 @@ func (ec *executionContext) unmarshalOSubscriptionInput2ᚕgithubᚗcomᚋevergr
 		return nil, nil
 	}
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]model.APISubscription, len(vSlice))
 	for i := range vSlice {
@@ -106648,9 +106640,7 @@ func (ec *executionContext) unmarshalOTestSortOptions2ᚕᚖgithubᚗcomᚋeverg
 		return nil, nil
 	}
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]*TestSortOptions, len(vSlice))
 	for i := range vSlice {
@@ -106669,6 +106659,8 @@ func (ec *executionContext) unmarshalOTime2timeᚐTime(ctx context.Context, v an
 }
 
 func (ec *executionContext) marshalOTime2timeᚐTime(ctx context.Context, sel ast.SelectionSet, v time.Time) graphql.Marshaler {
+	_ = sel
+	_ = ctx
 	res := graphql.MarshalTime(v)
 	return res
 }
@@ -106685,6 +106677,8 @@ func (ec *executionContext) marshalOTime2ᚖtimeᚐTime(ctx context.Context, sel
 	if v == nil {
 		return graphql.Null
 	}
+	_ = sel
+	_ = ctx
 	res := graphql.MarshalTime(*v)
 	return res
 }
@@ -106741,9 +106735,7 @@ func (ec *executionContext) unmarshalOTriggerAliasInput2ᚕgithubᚗcomᚋevergr
 		return nil, nil
 	}
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]model.APITriggerDefinition, len(vSlice))
 	for i := range vSlice {
@@ -106999,9 +106991,7 @@ func (ec *executionContext) unmarshalOWorkstationSetupCommandInput2ᚕgithubᚗc
 		return nil, nil
 	}
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]model.APIWorkstationSetupCommand, len(vSlice))
 	for i := range vSlice {
