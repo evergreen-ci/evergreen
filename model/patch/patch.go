@@ -143,6 +143,9 @@ type Patch struct {
 	Activated bool `bson:"activated"`
 	// IsReconfigured indicates whether this patch was finalized with an initial
 	// set of tasks, then later reconfigured to add more tasks to run.
+	// This doesn't take into account if existing tasks were
+	// scheduled/unscheduled, it's only considered reconfigured if new tasks
+	// were created after the patch was finalized.
 	IsReconfigured bool `bson:"is_reconfigured,omitempty"`
 	// Project contains the project ID for the patch. The bson tag here is `branch` due to legacy usage.
 	Project string `bson:"branch"`
