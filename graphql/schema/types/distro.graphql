@@ -292,7 +292,7 @@ type Distro {
   note: String!
   plannerSettings: PlannerSettings!
   provider: Provider!
-  providerAccount: String
+  providerAccount: String!
   providerSettingsList: [Map!]!
   setup: String!
   setupAsSudo: Boolean!
