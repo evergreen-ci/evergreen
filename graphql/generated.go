@@ -277,6 +277,7 @@ type ComplexityRoot struct {
 		Note                  func(childComplexity int) int
 		PlannerSettings       func(childComplexity int) int
 		Provider              func(childComplexity int) int
+		ProviderAccount       func(childComplexity int) int
 		ProviderSettingsList  func(childComplexity int) int
 		SSHOptions            func(childComplexity int) int
 		Setup                 func(childComplexity int) int
@@ -1789,6 +1790,7 @@ type DistroResolver interface {
 	Arch(ctx context.Context, obj *model.APIDistro) (Arch, error)
 
 	Provider(ctx context.Context, obj *model.APIDistro) (Provider, error)
+
 	ProviderSettingsList(ctx context.Context, obj *model.APIDistro) ([]map[string]any, error)
 }
 type FinderSettingsResolver interface {
@@ -2147,6 +2149,7 @@ type DistroInputResolver interface {
 	Arch(ctx context.Context, obj *model.APIDistro, data Arch) error
 
 	Provider(ctx context.Context, obj *model.APIDistro, data Provider) error
+
 	ProviderSettingsList(ctx context.Context, obj *model.APIDistro, data []map[string]any) error
 }
 type FinderSettingsInputResolver interface {
@@ -2903,6 +2906,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Distro.Provider(childComplexity), true
+
+	case "Distro.providerAccount":
+		if e.complexity.Distro.ProviderAccount == nil {
+			break
+		}
+
+		return e.complexity.Distro.ProviderAccount(childComplexity), true
 
 	case "Distro.providerSettingsList":
 		if e.complexity.Distro.ProviderSettingsList == nil {
@@ -21063,6 +21073,50 @@ func (ec *executionContext) fieldContext_Distro_provider(_ context.Context, fiel
 	return fc, nil
 }
 
+func (ec *executionContext) _Distro_providerAccount(ctx context.Context, field graphql.CollectedField, obj *model.APIDistro) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Distro_providerAccount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ProviderAccount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Distro_providerAccount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Distro",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Distro_providerSettingsList(ctx context.Context, field graphql.CollectedField, obj *model.APIDistro) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Distro_providerSettingsList(ctx, field)
 	if err != nil {
@@ -28625,6 +28679,8 @@ func (ec *executionContext) fieldContext_Image_distros(_ context.Context, field 
 				return ec.fieldContext_Distro_plannerSettings(ctx, field)
 			case "provider":
 				return ec.fieldContext_Distro_provider(ctx, field)
+			case "providerAccount":
+				return ec.fieldContext_Distro_providerAccount(ctx, field)
 			case "providerSettingsList":
 				return ec.fieldContext_Distro_providerSettingsList(ctx, field)
 			case "setup":
@@ -49321,6 +49377,8 @@ func (ec *executionContext) fieldContext_Query_distro(ctx context.Context, field
 				return ec.fieldContext_Distro_plannerSettings(ctx, field)
 			case "provider":
 				return ec.fieldContext_Distro_provider(ctx, field)
+			case "providerAccount":
+				return ec.fieldContext_Distro_providerAccount(ctx, field)
 			case "providerSettingsList":
 				return ec.fieldContext_Distro_providerSettingsList(ctx, field)
 			case "setup":
@@ -49505,6 +49563,8 @@ func (ec *executionContext) fieldContext_Query_distros(ctx context.Context, fiel
 				return ec.fieldContext_Distro_plannerSettings(ctx, field)
 			case "provider":
 				return ec.fieldContext_Distro_provider(ctx, field)
+			case "providerAccount":
+				return ec.fieldContext_Distro_providerAccount(ctx, field)
 			case "providerSettingsList":
 				return ec.fieldContext_Distro_providerSettingsList(ctx, field)
 			case "setup":
@@ -55419,6 +55479,8 @@ func (ec *executionContext) fieldContext_SaveDistroPayload_distro(_ context.Cont
 				return ec.fieldContext_Distro_plannerSettings(ctx, field)
 			case "provider":
 				return ec.fieldContext_Distro_provider(ctx, field)
+			case "providerAccount":
+				return ec.fieldContext_Distro_providerAccount(ctx, field)
 			case "providerSettingsList":
 				return ec.fieldContext_Distro_providerSettingsList(ctx, field)
 			case "setup":
@@ -77588,7 +77650,7 @@ func (ec *executionContext) unmarshalInputDistroInput(ctx context.Context, obj a
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"adminOnly", "aliases", "arch", "authorizedKeysFile", "bootstrapSettings", "containerPool", "disabled", "disableShallowClone", "dispatcherSettings", "execUser", "expansions", "finderSettings", "homeVolumeSettings", "hostAllocatorSettings", "iceCreamSettings", "imageId", "isCluster", "isVirtualWorkStation", "mountpoints", "name", "note", "plannerSettings", "provider", "providerSettingsList", "setup", "setupAsSudo", "singleTaskDistro", "sshOptions", "user", "userSpawnAllowed", "validProjects", "warningNote", "workDir"}
+	fieldsInOrder := [...]string{"adminOnly", "aliases", "arch", "authorizedKeysFile", "bootstrapSettings", "containerPool", "disabled", "disableShallowClone", "dispatcherSettings", "execUser", "expansions", "finderSettings", "homeVolumeSettings", "hostAllocatorSettings", "iceCreamSettings", "imageId", "isCluster", "isVirtualWorkStation", "mountpoints", "name", "note", "plannerSettings", "provider", "providerAccount", "providerSettingsList", "setup", "setupAsSudo", "singleTaskDistro", "sshOptions", "user", "userSpawnAllowed", "validProjects", "warningNote", "workDir"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -77782,6 +77844,13 @@ func (ec *executionContext) unmarshalInputDistroInput(ctx context.Context, obj a
 			if err = ec.resolvers.DistroInput().Provider(ctx, &it, data); err != nil {
 				return it, err
 			}
+		case "providerAccount":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("providerAccount"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ProviderAccount = data
 		case "providerSettingsList":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("providerSettingsList"))
 			data, err := ec.unmarshalNMap2ᚕmapᚄ(ctx, v)
@@ -84032,6 +84101,11 @@ func (ec *executionContext) _Distro(ctx context.Context, sel ast.SelectionSet, o
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "providerAccount":
+			out.Values[i] = ec._Distro_providerAccount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "providerSettingsList":
 			field := field
 
