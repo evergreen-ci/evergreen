@@ -20,8 +20,6 @@ Documentation on limiting when tasks runs beyond the waterfall can be found [her
 `activate: false` prevents a build variant or task on a mainline commit from activating automatically. This can be specified in the
 buildvariants section of the project configuration file on a build variant or a task within the build variant. If a cron job wants to activate a build/task but also has `activate` set to false, the build/task will not run.
 
-**Important**: If all build variants or tasks in a project have `activate: false`, the repotracker will not be able to create a commit version properly, as it requires at least one task to be scheduled to run. Ensure that at least one task in your project is configured to run automatically on commits.
-
 `activate: true` is a special flag that is only usable for the purpose of overriding a batchtime defined in the project
 settings. Instead of using the project settings batchtime, the build variant or task will activate immediately. It does
 not have any other effect.
