@@ -220,12 +220,13 @@ func (s *ClientSettings) getApiServerHost(useCorp bool) string {
 		if s.APIServerHost == prodNonCorpHost {
 			return prodCorpHost
 		}
-	}
-	if s.APIServerHost == stagingCorpHost {
-		return stagingNonCorpHost
-	}
-	if s.APIServerHost == prodCorpHost {
-		return prodNonCorpHost
+	} else {
+		if s.APIServerHost == stagingCorpHost {
+			return stagingNonCorpHost
+		}
+		if s.APIServerHost == prodCorpHost {
+			return prodNonCorpHost
+		}
 	}
 
 	return s.APIServerHost
