@@ -334,11 +334,13 @@ func New(apiURL string) Config {
 			Permission:    evergreen.PermissionAdminSettings,
 			RequiredLevel: evergreen.AdminSettingsEdit.Value,
 		}
+
 		if dbUser.HasPermission(permissions) {
 			return next(ctx)
 		}
 
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("checking user permissions: %s", err.Error()))
+		return nil, InternalServerError.Send(ctx, "user lacks required permissions")
 	}
+
 	return c
 }

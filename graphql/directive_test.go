@@ -891,3 +891,62 @@ func TestRequirePatchOwner(t *testing.T) {
 		})
 	}
 }
+func TestRequireAdmin(t *testing.T) {
+	defer func() {
+		err := db.ClearCollections(user.Collection)
+		require.NoError(t, err, "unable to clear user collection")
+	}()
+
+	setupPermissions(t)
+
+	usr, err := setupUser(t)
+	require.NoError(t, err, "Error while setting up user")
+	require.NotNil(t, usr, "User setup returned nil")
+
+	ctx := context.Background()
+	ctx = gimlet.AttachUser(ctx, usr)
+	require.NotNil(t, ctx, "Context is nil after attaching user")
+
+	config := New("/graphql")
+	require.NotNil(t, config, "Configuration object is nil")
+
+	obj := any(nil)
+
+	testRequireAdmin := func(t *testing.T, role string, shouldSucceed bool) {
+		nextCalled := false
+		wrappedNext := func(rctx context.Context) (any, error) {
+			nextCalled = true
+			return nil, nil
+		}
+
+		if role != "" {
+			require.NoError(t, usr.AddRole(ctx, role), "Failed to add role")
+			defer func() {
+				require.NoError(t, usr.RemoveRole(ctx, role), "Failed to remove role")
+			}()
+		}
+
+		res, err := config.Directives.RequireAdmin(ctx, obj, wrappedNext)
+		if shouldSucceed {
+			assert.NoError(t, err, "RequireAdmin failed unexpectedly for admin user")
+			assert.Nil(t, res, "Result should be nil when permissions succeed")
+			assert.True(t, nextCalled, "next middleware should be called")
+		} else {
+			assert.EqualError(t, err, "input: user lacks required permissions", "Expected permission error")
+			assert.Nil(t, res, "Result should be nil when permissions fail")
+			assert.False(t, nextCalled, "next middleware should not be called")
+		}
+	}
+	t.Run("SucceedsWhenUserIsAdmin", func(t *testing.T) {
+		testRequireAdmin(t, "superuser", true)
+	})
+
+	t.Run("FailsWhenUserIsNotAdmin", func(t *testing.T) {
+		testRequireAdmin(t, "regularuser", false)
+	})
+
+	t.Run("FailsWhenUserHasNoRoles", func(t *testing.T) {
+		testRequireAdmin(t, "", false)
+	})
+
+}
