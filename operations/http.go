@@ -29,6 +29,7 @@ type legacyClient struct {
 	httpClient         http.Client
 	User               string
 	APIKey             string
+	JWT                string
 	APIRootV2          string
 	UIRoot             string
 	stagingEnvironment string
@@ -81,6 +82,9 @@ func (ac *legacyClient) doReq(method, path string, apiVersion int, body io.Reade
 
 	req.Header.Add(evergreen.APIKeyHeader, ac.APIKey)
 	req.Header.Add(evergreen.APIUserHeader, ac.User)
+	if ac.JWT != "" {
+		req.Header.Add(evergreen.KanopyTokenHeader, "Bearer "+ac.JWT)
+	}
 	if ac.stagingEnvironment != "" {
 		req.Header.Add(evergreen.EnvironmentHeader, ac.stagingEnvironment)
 	}

@@ -269,6 +269,7 @@ func (s *ClientSettings) getLegacyClients() (*legacyClient, *legacyClient, error
 		APIRootV2:          s.APIServerHost + "/rest/v2",
 		User:               s.User,
 		APIKey:             s.APIKey,
+		JWT:                s.JWT,
 		UIRoot:             s.UIServerHost,
 		stagingEnvironment: s.StagingEnvironment,
 	}
@@ -278,6 +279,7 @@ func (s *ClientSettings) getLegacyClients() (*legacyClient, *legacyClient, error
 		APIRootV2:          apiURL.Scheme + "://" + apiURL.Host + "/rest/v2",
 		User:               s.User,
 		APIKey:             s.APIKey,
+		JWT:                s.JWT,
 		UIRoot:             s.UIServerHost,
 		stagingEnvironment: s.StagingEnvironment,
 	}
