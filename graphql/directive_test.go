@@ -897,56 +897,72 @@ func TestRequireAdmin(t *testing.T) {
 		require.NoError(t, err, "unable to clear user collection")
 	}()
 
-	setupPermissions(t)
-
-	usr, err := setupUser(t)
-	require.NoError(t, err, "Error while setting up user")
-	require.NotNil(t, usr, "User setup returned nil")
-
-	ctx := context.Background()
-	ctx = gimlet.AttachUser(ctx, usr)
-	require.NotNil(t, ctx, "Context is nil after attaching user")
-
-	config := New("/graphql")
-	require.NotNil(t, config, "Configuration object is nil")
-
 	obj := any(nil)
 
-	testRequireAdmin := func(t *testing.T, role string, shouldSucceed bool) {
-		nextCalled := false
-		wrappedNext := func(rctx context.Context) (any, error) {
-			nextCalled = true
-			return nil, nil
-		}
-
-		if role != "" {
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, config Config, usr *user.DBUser){
+		"SucceedsWhenUserIsAdmin": func(ctx context.Context, t *testing.T, config Config, usr *user.DBUser) {
+			role := "superuser"
 			require.NoError(t, usr.AddRole(ctx, role), "Failed to add role")
 			defer func() {
 				require.NoError(t, usr.RemoveRole(ctx, role), "Failed to remove role")
 			}()
-		}
 
-		res, err := config.Directives.RequireAdmin(ctx, obj, wrappedNext)
-		if shouldSucceed {
+			nextCalled := false
+			wrappedNext := func(rctx context.Context) (any, error) {
+				nextCalled = true
+				return nil, nil
+			}
+
+			res, err := config.Directives.RequireAdmin(ctx, obj, wrappedNext)
 			assert.NoError(t, err, "RequireAdmin failed unexpectedly for admin user")
 			assert.Nil(t, res, "Result should be nil when permissions succeed")
 			assert.True(t, nextCalled, "next middleware should be called")
-		} else {
-			assert.EqualError(t, err, "input: user lacks required permissions", "Expected permission error")
+		},
+		"FailsWhenUserIsNotAdmin": func(ctx context.Context, t *testing.T, config Config, usr *user.DBUser) {
+			role := "regularuser"
+			require.NoError(t, usr.AddRole(ctx, role), "Failed to add role")
+			defer func() {
+				require.NoError(t, usr.RemoveRole(ctx, role), "Failed to remove role")
+			}()
+
+			nextCalled := false
+			wrappedNext := func(rctx context.Context) (any, error) {
+				nextCalled = true
+				return nil, nil
+			}
+
+			res, err := config.Directives.RequireAdmin(ctx, obj, wrappedNext)
+			assert.EqualError(t, err, "input: User 'Evergreen User' lacks required permissions", "Expected permission error")
 			assert.Nil(t, res, "Result should be nil when permissions fail")
 			assert.False(t, nextCalled, "next middleware should not be called")
-		}
+		},
+		"FailsWhenUserHasNoRoles": func(ctx context.Context, t *testing.T, config Config, usr *user.DBUser) {
+			nextCalled := false
+			wrappedNext := func(rctx context.Context) (any, error) {
+				nextCalled = true
+				return nil, nil
+			}
+
+			res, err := config.Directives.RequireAdmin(ctx, obj, wrappedNext)
+			assert.EqualError(t, err, "input: User 'Evergreen User' lacks required permissions", "Expected permission error")
+			assert.Nil(t, res, "Result should be nil when permissions fail")
+			assert.False(t, nextCalled, "next middleware should not be called")
+		},
+	} {
+		setupPermissions(t)
+		usr, err := setupUser(t)
+		require.NoError(t, err, "Error while setting up user")
+		require.NotNil(t, usr, "User setup returned nil")
+
+		ctx := t.Context()
+		ctx = gimlet.AttachUser(ctx, usr)
+		require.NotNil(t, ctx, "Context is nil after attaching user")
+
+		config := New("/graphql")
+		require.NotNil(t, config, "Configuration object is nil")
+
+		t.Run(tName, func(t *testing.T) {
+			tCase(ctx, t, config, usr)
+		})
 	}
-	t.Run("SucceedsWhenUserIsAdmin", func(t *testing.T) {
-		testRequireAdmin(t, "superuser", true)
-	})
-
-	t.Run("FailsWhenUserIsNotAdmin", func(t *testing.T) {
-		testRequireAdmin(t, "regularuser", false)
-	})
-
-	t.Run("FailsWhenUserHasNoRoles", func(t *testing.T) {
-		testRequireAdmin(t, "", false)
-	})
-
 }
