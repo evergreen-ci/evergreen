@@ -119,6 +119,8 @@ in half to reduce the tasks taken from O(n) to O(logn).
 By default, Evergreen creates mainline commits (also known as waterfall versions or
 cron builds) for enabled projects.
 
+Note that the repotracker requires at least one task to be scheduled to run for it to properly create a commit version. If all build variants or tasks have `activate: false`, the repotracker will not be able to pick up new commits. Ensure that at least one task in your project is configured to run to trigger the repotracker.
+
 Admins can prevent projects from creating mainline commits by **disabling repotracking**,
 while still allowing for other kinds of versions (periodic builds, patches, etc).
 
