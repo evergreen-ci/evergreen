@@ -54,6 +54,21 @@ func (r *queryResolver) BuildBaron(ctx context.Context, taskID string, execution
 	}, nil
 }
 
+// AdminSettings is the resolver for the adminSettings field.
+func (r *queryResolver) AdminSettings(ctx context.Context) (*restModel.APIAdminSettings, error) {
+	config, err := evergreen.GetConfig(ctx)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Evergreen configuration: %s", err.Error()))
+	}
+
+	adminSettings := restModel.APIAdminSettings{}
+	err = adminSettings.BuildFromService(config)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("building API admin settings from service: %s", err.Error()))
+	}
+	return &adminSettings, nil
+}
+
 // AWSRegions is the resolver for the awsRegions field.
 func (r *queryResolver) AWSRegions(ctx context.Context) ([]string, error) {
 	return evergreen.GetEnvironment().Settings().Providers.AWS.AllowedRegions, nil
