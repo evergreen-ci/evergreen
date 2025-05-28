@@ -82,6 +82,23 @@ func UpdateStatsStatus(ctx context.Context, projectID string, lastJobRun, proces
 	return nil
 }
 
+// GetUpdateWindow returns the start and end of the time window for the stats.
+// This size of this window is capped at 24 hours to prevent
+// long-running jobs and overwhelming the database, or 12 hours if we're
+// more than 3 days behind, as we may be repeatedly failing due to high load.
+func (status *StatsStatus) GetUpdateWindow() (time.Time, time.Time) {
+	start := status.ProcessedTasksUntil
+	end := time.Now()
+
+	windowSize := end.Sub(start)
+	if windowSize > 72*time.Hour {
+		end = start.Add(12 * time.Hour)
+	} else if windowSize > 24*time.Hour {
+		end = start.Add(24 * time.Hour)
+	}
+	return start, end
+}
+
 ///////////////////////////////////////////
 // Daily task stats generation functions //
 ///////////////////////////////////////////

@@ -241,10 +241,6 @@ func statsToUpdatePipeline(projectID string, requester []string, start, end time
 			statsToUpdateDayKey:       bson.M{"$dateFromString": bson.M{"dateString": "$_id." + statsToUpdateDayKey, "format": "%Y-%m-%d"}},
 			statsToUpdateTasksKey:     1,
 		}},
-		{"$sort": bson.D{
-			{Key: statsToUpdateDayKey, Value: 1},
-			{Key: statsToUpdateRequesterKey, Value: 1},
-		}},
 	}
 }
 
