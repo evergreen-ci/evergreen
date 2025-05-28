@@ -7,9 +7,38 @@ Downloading the Command Line Tool
 --
 
 Go to your [evergreen user settings page](https://spruce.mongodb.com/preferences) and follow the steps there.
-Copy and paste the text in the configuration panel on the settings page into a file in your *home directory* called `.evergreen.yml`, which will contain the authentication information needed for the client to access the server.
+Copy and paste the text in the configuration panel on the settings page into a file in your *home directory* called `.evergreen.yml`, which will contain the information needed for the client to access the server.
 
 On macOS, the evergreen binary is currently not notarized. To allow running it, go to System Preferences, then Security and Privacy. You should be able to make an exception for it in the "General" tab.
+
+Authentication
+--
+[Service users](../Project-Configuration/Project-and-Distro-Settings#service-users) do not need any further authentication as they can rely on the api key in the `.evergreen.yml` file. 
+
+API Keys will soon be deprecated for human users. The following will need to be done to authenticate when using the CLI. 
+
+### Install kanopy-oidc
+  
+  *Note: This will already be configured for you when using a spawn host.*
+  
+  - [Download](https://github.com/kanopy-platform/kanopy-oidc/releases/) the latest release for your laptop’s OS/architecture. If you already have Kanopy-OIDC installed, make sure you’re running version 0.5.0 or later.
+  - untar the release tarball
+  - put the kanopy-oidc binary on your PATH
+  - `sudo mv ~/Downloads/kanopy-oidc-*/bin/kanopy-oidc-* /usr/local/bin/kanopy-oidc`
+  - Create the kanopy-oidc configuration file by Copy/Pasting from [here](https://kanopy.corp.mongodb.com/docs/configuration/kubeconfig/#configure-kanopy-oidc) to ~/.kanopy/config.yaml.
+  - run `kanopy-oidc version` to verify installation
+
+### Authenticate when prompted
+  > **This is coming soon. Please follow [DEVPROD-4160](https://jira.mongodb.org/browse/DEVPROD-4160) for updates. To test this before it is released, delete or comment out the `api_key` from your evergreen authentication file (~/.evergreen.yml).**
+
+  *Note: If you are not prompted, please update your Evergreen CLI using evergreen get-update --install to ensure you have the latest release.*
+  
+  - Any Evergreen CLI commands that talk to evergreen will attempt to generate a token for you using kanopy-oidc behind the scenes. It will then use that instead of the api token saved in your evergreen config file (~/.evergreen.yml).
+   - If you do not have kanopy-oidc installed properly, this will fail.
+   - It will print a url for you to use to authenticate. Open the link in your laptop's browser and authenticate. 
+   - If you need some more time and would like to opt out of the CLI attempting to generate and use a token, you can do that by setting do_not_run_kanopy_oidc to true in your evergreen config file (~/.evergreen.yml).
+   - To test if you are all effectively communicating with Evergreen via a personal access token, you can comment out or delete the api key from your evergreen config file (~/.evergreen.yml) and try running a command, for example, evergreen list --projects.
+
 
 Basic Patch Usage
 --
