@@ -894,75 +894,57 @@ func TestRequirePatchOwner(t *testing.T) {
 func TestRequireAdmin(t *testing.T) {
 	defer func() {
 		err := db.ClearCollections(user.Collection)
-		require.NoError(t, err, "unable to clear user collection")
+		require.NoError(t, err)
 	}()
 
 	obj := any(nil)
 
-	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, config Config, usr *user.DBUser){
-		"SucceedsWhenUserIsAdmin": func(ctx context.Context, t *testing.T, config Config, usr *user.DBUser) {
+	for tName, tCase := range map[string]func(ctx context.Context, t *testing.T, config Config, usr *user.DBUser, wrappedNext func(context.Context) (any, error), nextCalled *bool){
+		"SucceedsWhenUserIsAdmin": func(ctx context.Context, t *testing.T, config Config, usr *user.DBUser, wrappedNext func(context.Context) (any, error), nextCalled *bool) {
 			role := "superuser"
-			require.NoError(t, usr.AddRole(ctx, role), "Failed to add role")
-			defer func() {
-				require.NoError(t, usr.RemoveRole(ctx, role), "Failed to remove role")
-			}()
-
-			nextCalled := false
-			wrappedNext := func(rctx context.Context) (any, error) {
-				nextCalled = true
-				return nil, nil
-			}
-
+			require.NoError(t, usr.AddRole(ctx, role))
 			res, err := config.Directives.RequireAdmin(ctx, obj, wrappedNext)
-			assert.NoError(t, err, "RequireAdmin failed unexpectedly for admin user")
-			assert.Nil(t, res, "Result should be nil when permissions succeed")
-			assert.True(t, nextCalled, "next middleware should be called")
+			assert.NoError(t, err)
+			assert.Nil(t, res)
+			assert.True(t, *nextCalled, "next middleware should be called")
 		},
-		"FailsWhenUserIsNotAdmin": func(ctx context.Context, t *testing.T, config Config, usr *user.DBUser) {
+		"FailsWhenUserIsNotAdmin": func(ctx context.Context, t *testing.T, config Config, usr *user.DBUser, wrappedNext func(context.Context) (any, error), nextCalled *bool) {
 			role := "regularuser"
-			require.NoError(t, usr.AddRole(ctx, role), "Failed to add role")
-			defer func() {
-				require.NoError(t, usr.RemoveRole(ctx, role), "Failed to remove role")
-			}()
-
-			nextCalled := false
-			wrappedNext := func(rctx context.Context) (any, error) {
-				nextCalled = true
-				return nil, nil
-			}
-
+			require.NoError(t, usr.AddRole(ctx, role))
 			res, err := config.Directives.RequireAdmin(ctx, obj, wrappedNext)
-			assert.EqualError(t, err, "input: User 'Evergreen User' lacks required permissions", "Expected permission error")
-			assert.Nil(t, res, "Result should be nil when permissions fail")
-			assert.False(t, nextCalled, "next middleware should not be called")
+			assert.EqualError(t, err, "input: User 'test_user' lacks required admin permissions", "Expected permission error")
+			assert.Nil(t, res)
+			assert.False(t, *nextCalled)
 		},
-		"FailsWhenUserHasNoRoles": func(ctx context.Context, t *testing.T, config Config, usr *user.DBUser) {
-			nextCalled := false
-			wrappedNext := func(rctx context.Context) (any, error) {
-				nextCalled = true
-				return nil, nil
-			}
+		"FailsWhenUserHasNoRoles": func(ctx context.Context, t *testing.T, config Config, usr *user.DBUser, wrappedNext func(context.Context) (any, error), nextCalled *bool) {
 
 			res, err := config.Directives.RequireAdmin(ctx, obj, wrappedNext)
-			assert.EqualError(t, err, "input: User 'Evergreen User' lacks required permissions", "Expected permission error")
-			assert.Nil(t, res, "Result should be nil when permissions fail")
-			assert.False(t, nextCalled, "next middleware should not be called")
+			assert.EqualError(t, err, "input: User 'test_user' lacks required admin permissions", "Expected permission error")
+			assert.Nil(t, res)
+			assert.False(t, *nextCalled)
 		},
 	} {
 		setupPermissions(t)
 		usr, err := setupUser(t)
-		require.NoError(t, err, "Error while setting up user")
-		require.NotNil(t, usr, "User setup returned nil")
+		require.NoError(t, err)
+		require.NotNil(t, usr)
 
 		ctx := t.Context()
 		ctx = gimlet.AttachUser(ctx, usr)
-		require.NotNil(t, ctx, "Context is nil after attaching user")
+		require.NotNil(t, ctx)
 
 		config := New("/graphql")
-		require.NotNil(t, config, "Configuration object is nil")
+		require.NotNil(t, config)
+
+		nextCalled := new(bool)
+		*nextCalled = false
+		wrappedNext := func(rctx context.Context) (any, error) {
+			*nextCalled = true
+			return nil, nil
+		}
 
 		t.Run(tName, func(t *testing.T) {
-			tCase(ctx, t, config, usr)
+			tCase(ctx, t, config, usr, wrappedNext, nextCalled)
 		})
 	}
 }
