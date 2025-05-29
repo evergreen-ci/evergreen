@@ -283,7 +283,7 @@ func TestShouldGenerateJWT(t *testing.T) {
 				},
 				MockServiceFlagErr: test.flagsErr,
 			}
-			result := test.settings.shouldGenerateJWT(t.Context(), mock)
+			result, _ := test.settings.shouldGenerateJWT(t.Context(), mock)
 			assert.Equal(t, test.expectedResult, result)
 		})
 	}

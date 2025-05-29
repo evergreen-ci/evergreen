@@ -47,7 +47,7 @@ func (c *communicatorImpl) newRequest(method, path string, data any) (*http.Requ
 		}
 	}
 
-	if c.apiUser != "" {
+	if c.apiUser != "" && c.apiKey != "" {
 		r.Header.Add(evergreen.APIUserHeader, c.apiUser)
 		r.Header.Add(evergreen.APIKeyHeader, c.apiKey)
 	}
