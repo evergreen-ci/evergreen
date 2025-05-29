@@ -564,6 +564,7 @@ const (
 	ContentLengthHeader = "Content-Length"
 	APIUserHeader       = "Api-User"
 	APIKeyHeader        = "Api-Key"
+	KanopyTokenHeader   = "X-Kanopy-Authorization"
 	EnvironmentHeader   = "X-Evergreen-Environment"
 )
 

@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/mock"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -224,6 +225,136 @@ func TestHostDrawdown(t *testing.T) {
 			assert.Equal(t, 1, num, "should draw down long idle hosts")
 			assert.Contains(t, hosts, host1.Id)
 		},
+		"HandlesHostInTeardown": func(ctx context.Context, t *testing.T, env *mock.Environment, d distro.Distro) {
+			// Host in recent teardown - should be ignored
+			recentTeardownHost := host.Host{
+				Id:                         "recent",
+				Distro:                     d,
+				Provider:                   evergreen.ProviderNameMock,
+				CreationTime:               time.Now().Add(-30 * time.Minute),
+				Status:                     evergreen.HostRunning,
+				StartedBy:                  evergreen.User,
+				LastCommunicationTime:      time.Now().Add(-time.Minute),
+				TaskGroupTeardownStartTime: time.Now(),
+			}
+			require.NoError(t, recentTeardownHost.Insert(ctx))
+
+			// Host with expired teardown - should be decommissioned
+			oldTeardownHost := host.Host{
+				Id:                         "old",
+				Distro:                     d,
+				Provider:                   evergreen.ProviderNameMock,
+				CreationTime:               time.Now().Add(-30 * time.Minute),
+				Status:                     evergreen.HostRunning,
+				StartedBy:                  evergreen.User,
+				LastCommunicationTime:      time.Now().Add(-time.Minute),
+				TaskGroupTeardownStartTime: time.Now().Add(-30 * time.Minute),
+			}
+			require.NoError(t, oldTeardownHost.Insert(ctx))
+
+			drawdownInfo := DrawdownInfo{
+				DistroID:     d.Id,
+				NewCapTarget: 0,
+			}
+
+			num, hosts := numHostsDecommissionedForDrawdown(ctx, t, env, drawdownInfo)
+			assert.Equal(t, 1, num, "should only decommission host with expired teardown")
+			assert.NotContains(t, hosts, recentTeardownHost.Id,
+				"should not decommission host in recent teardown")
+			assert.Contains(t, hosts, oldTeardownHost.Id,
+				"should decommission host with expired teardown")
+		},
+		"HandlesIdleHostsWithTaskQueue": func(ctx context.Context, t *testing.T, env *mock.Environment, d distro.Distro) {
+			d.HostAllocatorSettings.AcceptableHostIdleTime = 90 * time.Second
+
+			hostWithLastTask := host.Host{
+				Id:                    "active",
+				Distro:                d,
+				Provider:              evergreen.ProviderNameMock,
+				CreationTime:          time.Now().Add(-30 * time.Minute),
+				Status:                evergreen.HostRunning,
+				StartedBy:             evergreen.User,
+				LastCommunicationTime: time.Now().Add(-time.Minute),
+				LastTaskCompletedTime: time.Now().Add(-5 * time.Second),
+				LastTask:              "dummy_task_name1",
+			}
+			require.NoError(t, hostWithLastTask.Insert(ctx))
+
+			hostWithoutLastTask := host.Host{
+				Id:                    "stale",
+				Distro:                d,
+				Provider:              evergreen.ProviderNameMock,
+				CreationTime:          time.Now().Add(-30 * time.Minute),
+				Status:                evergreen.HostRunning,
+				StartedBy:             evergreen.User,
+				LastCommunicationTime: time.Now().Add(-time.Minute),
+				LastTaskCompletedTime: time.Time{}, // zero time
+			}
+			require.NoError(t, hostWithoutLastTask.Insert(ctx))
+
+			// Add task to queue
+			taskQueue := model.TaskQueue{
+				Distro: d.Id,
+				Queue: []model.TaskQueueItem{
+					{Id: "task1"},
+				},
+			}
+			require.NoError(t, taskQueue.Save(ctx))
+
+			drawdownInfo := DrawdownInfo{
+				DistroID:     d.Id,
+				NewCapTarget: 0,
+			}
+
+			num, hosts := numHostsDecommissionedForDrawdown(ctx, t, env, drawdownInfo)
+			assert.Equal(t, 1, num, "should only decommission hostWithoutLastTask")
+			assert.NotContains(t, hosts, hostWithLastTask.Id,
+				"should not decommission recently active host with tasks in queue")
+			assert.Contains(t, hosts, hostWithoutLastTask.Id,
+				"should not decommission stale host within idle threshold")
+
+		},
+		"HandlesIdleHostsWithNoQueue": func(ctx context.Context, t *testing.T, env *mock.Environment, d distro.Distro) {
+			d.HostAllocatorSettings.AcceptableHostIdleTime = 90 * time.Second
+
+			hostWithLastTask := host.Host{
+				Id:                    "active",
+				Distro:                d,
+				Provider:              evergreen.ProviderNameMock,
+				CreationTime:          time.Now().Add(-30 * time.Minute),
+				Status:                evergreen.HostRunning,
+				StartedBy:             evergreen.User,
+				LastCommunicationTime: time.Now().Add(-time.Minute),
+				LastTaskCompletedTime: time.Now().Add(-5 * time.Second),
+				LastTask:              "dummy_task_name1",
+			}
+			require.NoError(t, hostWithLastTask.Insert(ctx))
+
+			hostWithoutLastTask := host.Host{
+				Id:                    "stale",
+				Distro:                d,
+				Provider:              evergreen.ProviderNameMock,
+				CreationTime:          time.Now().Add(-30 * time.Minute),
+				Status:                evergreen.HostRunning,
+				StartedBy:             evergreen.User,
+				LastCommunicationTime: time.Now().Add(-time.Minute),
+				LastTaskCompletedTime: time.Time{}, // zero time
+			}
+			require.NoError(t, hostWithoutLastTask.Insert(ctx))
+
+			drawdownInfo := DrawdownInfo{
+				DistroID:     d.Id,
+				NewCapTarget: 0,
+			}
+
+			// Clear task queue and verify hosts are decommissioned with default threshold
+			require.NoError(t, model.ClearTaskQueue(ctx, d.Id))
+
+			num, hosts := numHostsDecommissionedForDrawdown(ctx, t, env, drawdownInfo)
+			assert.Equal(t, 2, num, "should decommission both hosts when queue is empty")
+			assert.Contains(t, hosts, hostWithLastTask.Id)
+			assert.Contains(t, hosts, hostWithoutLastTask.Id)
+		},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
@@ -239,7 +370,11 @@ func TestHostDrawdown(t *testing.T) {
 				},
 			}
 			require.NoError(t, d.Insert(ctx))
-
+			taskQueue := model.TaskQueue{
+				Distro: d.Id,
+				Queue:  []model.TaskQueueItem{},
+			}
+			require.NoError(t, taskQueue.Save(ctx))
 			env := &mock.Environment{}
 			require.NoError(t, env.Configure(ctx))
 

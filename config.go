@@ -31,11 +31,11 @@ var (
 
 	// ClientVersion is the commandline version string used to control updating
 	// the CLI. The format is the calendar date (YYYY-MM-DD).
-	ClientVersion = "2025-04-22"
+	ClientVersion = "2025-05-28"
 
 	// Agent version to control agent rollover. The format is the calendar date
 	// (YYYY-MM-DD).
-	AgentVersion = "2025-05-02"
+	AgentVersion = "2025-05-08"
 )
 
 const (
@@ -98,6 +98,7 @@ type Settings struct {
 	PprofPort           string                    `yaml:"pprof_port" bson:"pprof_port" json:"pprof_port"`
 	ProjectCreation     ProjectCreationConfig     `yaml:"project_creation" bson:"project_creation" json:"project_creation" id:"project_creation"`
 	Providers           CloudProviders            `yaml:"providers" bson:"providers" json:"providers" id:"providers"`
+	ReleaseMode         ReleaseModeConfig         `yaml:"release_mode" bson:"release_mode" json:"release_mode" id:"release_mode"`
 	RepoTracker         RepoTrackerConfig         `yaml:"repotracker" bson:"repotracker" json:"repotracker" id:"repotracker"`
 	RuntimeEnvironments RuntimeEnvironmentsConfig `yaml:"runtime_environments" bson:"runtime_environments" json:"runtime_environments" id:"runtime_environments"`
 	Scheduler           SchedulerConfig           `yaml:"scheduler" bson:"scheduler" json:"scheduler" id:"scheduler"`

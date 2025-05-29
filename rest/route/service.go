@@ -119,6 +119,7 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	app.AddRoute("/admin/spawn_hosts").Version(2).Get().Wrap(requireUser, adminSettings).RouteHandler(makeFetchSpawnHostUsage())
 	app.AddRoute("/admin/restart/tasks").Version(2).Post().Wrap(adminSettings).RouteHandler(makeRestartRoute(opts.APIQueue))
 	app.AddRoute("/admin/revert").Version(2).Post().Wrap(requireUser, adminSettings).RouteHandler(makeRevertRouteManager())
+	app.AddRoute("/admin/service_flags").Version(2).Get().Wrap(requireUser).RouteHandler(makeFetchServiceFlags())
 	app.AddRoute("/admin/service_flags").Version(2).Post().Wrap(requireUser, adminSettings).RouteHandler(makeSetServiceFlagsRouteManager())
 	app.AddRoute("/admin/settings").Version(2).Get().Wrap(requireUser, adminSettings).RouteHandler(makeFetchAdminSettings())
 	app.AddRoute("/admin/settings").Version(2).Post().Wrap(requireUser, adminSettings).RouteHandler(makeSetAdminSettings())

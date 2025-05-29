@@ -24,8 +24,9 @@ import (
 
 const (
 	// Collection is the name of the MongoDB collection that stores hosts.
-	Collection        = "hosts"
-	VolumesCollection = "volumes"
+	Collection          = "hosts"
+	VolumesCollection   = "volumes"
+	IPAddressCollection = "ip_addresses"
 )
 
 var (
@@ -122,6 +123,10 @@ var (
 	SleepSchedulePermanentlyExemptKey      = bsonutil.MustHaveTag(SleepScheduleInfo{}, "PermanentlyExempt")
 	SleepScheduleTemporarilyExemptUntilKey = bsonutil.MustHaveTag(SleepScheduleInfo{}, "TemporarilyExemptUntil")
 	SleepScheduleShouldKeepOffKey          = bsonutil.MustHaveTag(SleepScheduleInfo{}, "ShouldKeepOff")
+
+	ipAddressIDKey           = bsonutil.MustHaveTag(IPAddress{}, "ID")
+	ipAddressAllocationIDKey = bsonutil.MustHaveTag(IPAddress{}, "AllocationID")
+	ipAddressHostTagKey      = bsonutil.MustHaveTag(IPAddress{}, "HostTag")
 )
 
 var (

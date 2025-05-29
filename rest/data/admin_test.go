@@ -168,6 +168,8 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.Equal(testSettings.Providers.AWS.IPAMPoolID, settingsFromConnector.Providers.AWS.IPAMPoolID)
 	s.EqualValues(testSettings.Providers.Docker.APIVersion, settingsFromConnector.Providers.Docker.APIVersion)
 	s.EqualValues(testSettings.RepoTracker.MaxConcurrentRequests, settingsFromConnector.RepoTracker.MaxConcurrentRequests)
+	s.EqualValues(testSettings.ReleaseMode.DistroMaxHostsFactor, settingsFromConnector.ReleaseMode.DistroMaxHostsFactor)
+	s.EqualValues(testSettings.ReleaseMode.TargetTimeSecondsOverride, settingsFromConnector.ReleaseMode.TargetTimeSecondsOverride)
 	s.EqualValues(testSettings.Scheduler.TaskFinder, settingsFromConnector.Scheduler.TaskFinder)
 	s.EqualValues(testSettings.ServiceFlags.HostInitDisabled, settingsFromConnector.ServiceFlags.HostInitDisabled)
 	s.EqualValues(testSettings.ServiceFlags.PodInitDisabled, settingsFromConnector.ServiceFlags.PodInitDisabled)
@@ -176,6 +178,8 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.ServiceFlags.LargeParserProjectsDisabled, settingsFromConnector.ServiceFlags.LargeParserProjectsDisabled)
 	s.EqualValues(testSettings.ServiceFlags.CloudCleanupDisabled, settingsFromConnector.ServiceFlags.CloudCleanupDisabled)
 	s.EqualValues(testSettings.ServiceFlags.SleepScheduleDisabled, settingsFromConnector.ServiceFlags.SleepScheduleDisabled)
+	s.EqualValues(testSettings.ServiceFlags.StaticAPIKeysDisabled, settingsFromConnector.ServiceFlags.StaticAPIKeysDisabled)
+	s.EqualValues(testSettings.ServiceFlags.JWTTokenForCLIDisabled, settingsFromConnector.ServiceFlags.JWTTokenForCLIDisabled)
 	s.EqualValues(testSettings.ServiceFlags.SystemFailedTaskRestartDisabled, settingsFromConnector.ServiceFlags.SystemFailedTaskRestartDisabled)
 	s.EqualValues(testSettings.ServiceFlags.CPUDegradedModeDisabled, settingsFromConnector.ServiceFlags.CPUDegradedModeDisabled)
 	s.EqualValues(testSettings.ServiceFlags.ElasticIPsDisabled, settingsFromConnector.ServiceFlags.ElasticIPsDisabled)
@@ -314,6 +318,8 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.ServiceFlags.LargeParserProjectsDisabled, settingsFromConnector.ServiceFlags.LargeParserProjectsDisabled)
 	s.EqualValues(testSettings.ServiceFlags.CloudCleanupDisabled, settingsFromConnector.ServiceFlags.CloudCleanupDisabled)
 	s.EqualValues(testSettings.ServiceFlags.SleepScheduleDisabled, settingsFromConnector.ServiceFlags.SleepScheduleDisabled)
+	s.EqualValues(testSettings.ServiceFlags.StaticAPIKeysDisabled, settingsFromConnector.ServiceFlags.StaticAPIKeysDisabled)
+	s.EqualValues(testSettings.ServiceFlags.JWTTokenForCLIDisabled, settingsFromConnector.ServiceFlags.JWTTokenForCLIDisabled)
 	s.EqualValues(testSettings.ServiceFlags.SystemFailedTaskRestartDisabled, settingsFromConnector.ServiceFlags.SystemFailedTaskRestartDisabled)
 	s.EqualValues(testSettings.ServiceFlags.CPUDegradedModeDisabled, settingsFromConnector.ServiceFlags.CPUDegradedModeDisabled)
 	s.EqualValues(testSettings.ServiceFlags.ElasticIPsDisabled, settingsFromConnector.ServiceFlags.ElasticIPsDisabled)
@@ -370,4 +376,31 @@ func (s *AdminDataSuite) TestGetBanner() {
 	s.NoError(err)
 	s.Equal("banner text", text)
 	s.Equal(string(evergreen.Important), theme)
+}
+
+func (s *AdminDataSuite) TestGetNecessaryServiceFlags() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	settings := &evergreen.Settings{
+		ServiceFlags: evergreen.ServiceFlags{
+			HostInitDisabled:               true,
+			RepotrackerDisabled:            true,
+			TaskDispatchDisabled:           false,
+			PodInitDisabled:                true,
+			CloudCleanupDisabled:           false,
+			StaticAPIKeysDisabled:          true,
+			JWTTokenForCLIDisabled:         false,
+			UnrecognizedPodCleanupDisabled: true,
+		},
+	}
+	s.NoError(evergreen.UpdateConfig(ctx, settings))
+
+	flags, err := GetNecessaryServiceFlags(ctx)
+	s.NoError(err)
+	neccesaryFlags := evergreen.ServiceFlags{
+		StaticAPIKeysDisabled:  true,
+		JWTTokenForCLIDisabled: false,
+	}
+	s.Equal(neccesaryFlags, flags)
 }

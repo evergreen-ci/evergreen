@@ -342,6 +342,7 @@ type APIDistro struct {
 	UserSpawnAllowed      bool                     `json:"user_spawn_allowed"`
 	Provider              *string                  `json:"provider"`
 	ProviderSettingsList  []*birch.Document        `json:"provider_settings" swaggertype:"object"`
+	ProviderAccount       *string                  `json:"provider_account"`
 	Arch                  *string                  `json:"arch"`
 	WorkDir               *string                  `json:"work_dir"`
 	SetupAsSudo           bool                     `json:"setup_as_sudo"`
@@ -379,6 +380,7 @@ func (apiDistro *APIDistro) BuildFromService(d distro.Distro) {
 	apiDistro.UserSpawnAllowed = d.SpawnAllowed
 	apiDistro.Provider = utility.ToStringPtr(d.Provider)
 	apiDistro.ProviderSettingsList = d.ProviderSettingsList
+	apiDistro.ProviderAccount = utility.ToStringPtr(d.ProviderAccount)
 	apiDistro.Arch = utility.ToStringPtr(d.Arch)
 	apiDistro.WorkDir = utility.ToStringPtr(d.WorkDir)
 	apiDistro.SetupAsSudo = d.SetupAsSudo
@@ -446,6 +448,7 @@ func (apiDistro *APIDistro) ToService() *distro.Distro {
 	d.WorkDir = utility.FromStringPtr(apiDistro.WorkDir)
 	d.Provider = utility.FromStringPtr(apiDistro.Provider)
 	d.ProviderSettingsList = apiDistro.ProviderSettingsList
+	d.ProviderAccount = utility.FromStringPtr(apiDistro.ProviderAccount)
 	d.SetupAsSudo = apiDistro.SetupAsSudo
 	d.Setup = utility.FromStringPtr(apiDistro.Setup)
 	d.User = utility.FromStringPtr(apiDistro.User)

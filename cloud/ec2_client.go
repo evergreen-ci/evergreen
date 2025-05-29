@@ -785,6 +785,10 @@ func (c *awsClientImpl) DeleteLaunchTemplate(ctx context.Context, input *ec2.Del
 				if errors.As(err, &apiErr) {
 					grip.Debug(message.WrapError(apiErr, msg))
 				}
+				if strings.Contains(err.Error(), ec2TemplateNotFound) {
+					// The template does not exist, so it's already deleted.
+					return false, nil
+				}
 				return true, err
 			}
 			grip.Info(msg)
@@ -951,7 +955,7 @@ func (c *awsClientImpl) AllocateAddress(ctx context.Context, input *ec2.Allocate
 					grip.Debug(message.WrapError(apiErr, msg))
 				}
 				errMsg := err.Error()
-				if strings.Contains(errMsg, ec2InsufficientAddressCapacity) || strings.Contains(errMsg, ec2AddressLimitExceeded) {
+				if strings.Contains(errMsg, EC2InsufficientAddressCapacity) || strings.Contains(errMsg, EC2AddressLimitExceeded) {
 					return false, err
 				}
 				return true, err

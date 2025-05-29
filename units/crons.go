@@ -1198,6 +1198,12 @@ func sleepSchedulerJobs(ctx context.Context, env evergreen.Environment, ts time.
 	return []amboy.Job{NewSleepSchedulerJob(env, ts.Format(TSFormat))}, nil
 }
 
+func populateIPAddressAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
+	return func(ctx context.Context, queue amboy.Queue) error {
+		return amboy.EnqueueUniqueJob(ctx, queue, NewIPAddressAllocatorJob(env, utility.RoundPartOfMinute(0).Format(TSFormat)))
+	}
+}
+
 func populateQueueGroup(ctx context.Context, env evergreen.Environment, queueGroupName string, factory cronJobFactory, ts time.Time) error {
 	appCtx, _ := env.Context()
 	queueGroup, err := env.RemoteQueueGroup().Get(appCtx, queueGroupName)

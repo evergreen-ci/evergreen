@@ -15,6 +15,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 const launchTemplateExpiration = 24 * time.Hour
@@ -288,14 +289,6 @@ func (m *ec2FleetManager) TerminateInstance(ctx context.Context, h *host.Host, u
 		return errors.Wrap(err, "creating client")
 	}
 
-	grip.Error(message.WrapError(disassociateIPAddressForHost(ctx, m.client, h), message.Fields{
-		"message":        "could not disassociate elastic IP address from host",
-		"provider":       h.Distro.Provider,
-		"host_id":        h.Id,
-		"association_id": h.IPAssociationID,
-		"allocation_id":  h.IPAllocationID,
-	}))
-
 	resp, err := m.client.TerminateInstances(ctx, &ec2.TerminateInstancesInput{
 		InstanceIds: []string{h.Id},
 	})
@@ -321,7 +314,7 @@ func (m *ec2FleetManager) TerminateInstance(ctx context.Context, h *host.Host, u
 		})
 	}
 
-	grip.Error(message.WrapError(releaseIPAddressForHost(ctx, m.client, h), message.Fields{
+	grip.Error(message.WrapError(releaseIPAddressForHost(ctx, h), message.Fields{
 		"message":        "could not release elastic IP address from host",
 		"provider":       h.Distro.Provider,
 		"host_id":        h.Id,
@@ -342,6 +335,32 @@ func (m *ec2FleetManager) StartInstance(context.Context, *host.Host, string) err
 	return errors.New("can't start instances for EC2 fleet provider")
 }
 
+// TODO (DEVPROD-17195): remove temporary method once all elastic IPs are
+// allocated into collection.
+func (m *ec2FleetManager) AllocateIP(ctx context.Context) (*host.IPAddress, error) {
+	if err := m.setupClient(ctx); err != nil {
+		return nil, errors.Wrap(err, "creating client")
+	}
+
+	flags, err := evergreen.GetServiceFlags(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting service flags")
+	}
+	if flags.ElasticIPsDisabled {
+		return nil, errors.Errorf("elastic IP features are disabled, cannot allocate IP")
+	}
+	allocationID, err := allocateIPAddress(ctx, m.client, m.settings.Providers.AWS.IPAMPoolID)
+	if err != nil {
+		return nil, errors.Wrap(err, "allocating IP address")
+	}
+	ipAddr := &host.IPAddress{
+		ID:           primitive.NewObjectID().Hex(),
+		AllocationID: allocationID,
+	}
+
+	return ipAddr, nil
+}
+
 // AssociateIP associates the host with its allocated IP address.
 func (m *ec2FleetManager) AssociateIP(ctx context.Context, h *host.Host) error {
 	if h.IPAllocationID == "" {
@@ -353,16 +372,9 @@ func (m *ec2FleetManager) AssociateIP(ctx context.Context, h *host.Host) error {
 	return errors.Wrapf(associateIPAddressForHost(ctx, m.client, h), "associating allocated IP address '%s' with host '%s'", h.IPAllocationID, h.Id)
 }
 
-// CleanupIP disassociates the IP address from the host's network interface and
-// releases the IP address back into the IPAM pool.
+// CleanupIP releases the host's IP address.
 func (m *ec2FleetManager) CleanupIP(ctx context.Context, h *host.Host) error {
-	if err := disassociateIPAddressForHost(ctx, m.client, h); err != nil {
-		return err
-	}
-	if err := releaseIPAddressForHost(ctx, m.client, h); err != nil {
-		return err
-	}
-	return nil
+	return releaseIPAddressForHost(ctx, h)
 }
 
 func (m *ec2FleetManager) Cleanup(ctx context.Context) error {
@@ -372,7 +384,9 @@ func (m *ec2FleetManager) Cleanup(ctx context.Context) error {
 
 	catcher := grip.NewBasicCatcher()
 	catcher.Wrap(m.cleanupStaleLaunchTemplates(ctx), "cleaning up stale launch templates")
-	catcher.Wrap(m.cleanupIdleElasticIPs(ctx), "cleaning up idle elastic IPs")
+	// TODO (DEVPROD-17195): remove this cleanup if pre-allocated elastic IPs
+	// created in DEVPROD-17313 work.
+	// catcher.Wrap(m.cleanupIdleElasticIPs(ctx), "cleaning up idle elastic IPs")
 
 	return catcher.Resolve()
 }
@@ -414,6 +428,8 @@ func (m *ec2FleetManager) cleanupStaleLaunchTemplates(ctx context.Context) error
 // cleanupIdleElasticIPs checks for any elastic IP addresses that are not
 // being actively used and releases them. This is a very slow operation and can
 // take several minutes.
+//
+//nolint:unused
 func (m *ec2FleetManager) cleanupIdleElasticIPs(ctx context.Context) error {
 	flags, err := evergreen.GetServiceFlags(ctx)
 	if err != nil {
@@ -479,6 +495,8 @@ func (m *ec2FleetManager) cleanupIdleElasticIPs(ctx context.Context) error {
 
 // getIdleElasticIPs gets all elastic IPs that are not currently associated with
 // any host.
+//
+//nolint:unused
 func (m *ec2FleetManager) getIdleElasticIPs(ctx context.Context) ([]string, error) {
 	descAddrOut, err := m.client.DescribeAddresses(ctx, &ec2.DescribeAddressesInput{
 		Filters: []types.Filter{
@@ -559,7 +577,7 @@ func (m *ec2FleetManager) spawnFleetHost(ctx context.Context, h *host.Host, ec2S
 		// guaranteed to succeed. For example, if the IPAM pool has no addresses
 		// available currently, Evergreen still needs a usable host, so the
 		// launch template has to fall back to using an AWS-managed IP address.
-		grip.Notice(message.WrapError(allocateIPAddressForHost(ctx, m.settings, m.client, h), message.Fields{
+		grip.Notice(message.WrapError(allocateIPAddressForHost(ctx, h), message.Fields{
 			"message": "could not allocate elastic IP address for host, falling back to using AWS-managed IP",
 			"host_id": h.Id,
 		}))

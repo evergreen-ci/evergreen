@@ -48,7 +48,7 @@ func getDistantEVGRevision() (string, error) {
 	buf := &bufCloser{&bytes.Buffer{}}
 	bufErr := &bufCloser{&bytes.Buffer{}}
 
-	cmd := jasper.NewCommand().Add([]string{"git", "rev-list", "--reverse", "--max-count=1", "HEAD~100"}).Directory(cwd).
+	cmd := jasper.NewCommand().Add([]string{"git", "rev-list", "--reverse", "--max-count=1", "HEAD~50"}).Directory(cwd).
 		SetOutputWriter(buf).SetErrorWriter(bufErr)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
@@ -63,7 +63,6 @@ func getDistantEVGRevision() (string, error) {
 }
 
 func resetProjectRefs() {
-	// TODO: should use an evergreen-owned repo for the integration tests.
 	projectRef = &model.ProjectRef{
 		Id:          "mci-test",
 		DisplayName: "MCI Test",
