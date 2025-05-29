@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	htmlTemplate "html/template"
 	"net/http"
 	"path/filepath"
@@ -450,4 +451,32 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 	}
 
 	return app
+}
+
+// waterfallPage implements a permanent redirect to the new UI waterfall page
+func (uis *UIServer) waterfallPage(w http.ResponseWriter, r *http.Request) {
+	projCtx := MustHaveProjectContext(r)
+	project, err := projCtx.GetProject(r.Context())
+
+	if err != nil || project == nil {
+		uis.LoggedError(w, r, http.StatusNotFound, errors.New("project not found"))
+		return
+	}
+
+	newUIURL := fmt.Sprintf("%s/project/%s/waterfall", uis.Settings.Ui.UIv2Url, project.Identifier)
+	http.Redirect(w, r, newUIURL, http.StatusMovedPermanently)
+}
+
+// mainlineCommitsRedirect redirects to the new UI waterfall page
+func (uis *UIServer) mainlineCommitsRedirect(w http.ResponseWriter, r *http.Request) {
+	projCtx := MustHaveProjectContext(r)
+	project, err := projCtx.GetProject(r.Context())
+
+	if err != nil || project == nil {
+		uis.LoggedError(w, r, http.StatusNotFound, errors.New("project not found"))
+		return
+	}
+
+	newUIURL := fmt.Sprintf("%s/project/%s/waterfall", uis.Settings.Ui.UIv2Url, project.Identifier)
+	http.Redirect(w, r, newUIURL, http.StatusMovedPermanently)
 }
