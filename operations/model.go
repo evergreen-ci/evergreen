@@ -164,7 +164,7 @@ func (s *ClientSettings) setupRestCommunicator(ctx context.Context, printMessage
 
 	shouldGenerate, reason := s.shouldGenerateJWT(ctx, c)
 
-	grip.Info(kanopyAuthHeader(true))
+	printKanopyAuthHeader(true)
 	if reason != "" {
 		grip.Info(reason)
 	}
@@ -178,18 +178,18 @@ func (s *ClientSettings) setupRestCommunicator(ctx context.Context, printMessage
 		// in order to use the JWT token, we need to set the API server host to the corp api server host
 		c.SetAPIServerHost(s.getApiServerHost(true))
 	}
-	grip.Info(kanopyAuthHeader(false))
+	printKanopyAuthHeader(false)
 
 	return c, nil
 }
 
-func kanopyAuthHeader(start bool) string {
+func printKanopyAuthHeader(start bool) {
 	title := strings.Repeat("*", 23)
 	if start {
 		title = " Kanopy Authentication "
 	}
-
-	return "\n" + strings.Repeat("*", 40) + title + strings.Repeat("*", 40) + "\n"
+	grip.Info("\n" + strings.Repeat("*", 40) + title + strings.Repeat("*", 40) + "\n")
+	return
 }
 
 func (s *ClientSettings) shouldGenerateJWT(ctx context.Context, c client.Communicator) (bool, string) {
