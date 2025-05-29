@@ -370,6 +370,7 @@ func MockConfig() *evergreen.Settings {
 		ReleaseMode: evergreen.ReleaseModeConfig{
 			DistroMaxHostsFactor:      2.0,
 			TargetTimeSecondsOverride: 60,
+			IdleTimeSecondsOverride:   120,
 		},
 		Scheduler: evergreen.SchedulerConfig{
 			TaskFinder: "legacy",

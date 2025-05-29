@@ -594,7 +594,7 @@ Admin Settings
 										</md-input-container>
 									</md-card-content>
 								</md-card>
-								<md-card flex=50 id="release-mode" style="height:240px">
+								<md-card flex=50 id="release-mode" style="height:300px">
 									<md-card-title>
 										<md-card-title-text>
 											<span>Release Mode Settings</span>
@@ -610,6 +610,11 @@ Admin Settings
 											<label>Target Time Seconds Override</label>
 											<div class="muted small">Override for the target time to clear a task from the queue (ignored if 0).</div>
 											<input type="number" ng-model="Settings.release_mode.target_time_seconds_override">
+										</md-input-container>
+										<md-input-container class="control" style="width:45%;">
+											<label>Idle Time Seconds Override</label>
+											<div class="muted small">Override for the acceptable host idle time (ignored if 0).</div>
+											<input type="number" ng-model="Settings.release_mode.idle_time_seconds_override">
 										</md-input-container>
 									</md-card-content>
 								</md-card>
@@ -2701,7 +2706,7 @@ Admin Settings
 													<md-input-container class="control" flex=25>
 														<input class="control" type="text" ng-model="new_owner_repo.owner" placeholder="Owner Name">
 													</md-input-container>
-	
+
 													<md-input-container class="control" flex=50>
 														<input class="control" type="text" ng-model="new_owner_repo.repo" placeholder="Repo Name">
 													</md-input-container>

@@ -330,3 +330,7 @@ func (c *Mock) SetHostID(hostID string) {}
 func (c *Mock) SetHostSecret(hostSecret string) {}
 
 func (c *Mock) SetJWT(jwt string) {}
+
+func (c *Mock) SetAPIServerHost(serverURL string) {}
+
+func (c *Mock) IsServiceUser(context.Context, string) (bool, error) { return false, nil }

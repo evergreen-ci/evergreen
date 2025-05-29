@@ -30,6 +30,7 @@ mutation {
             security_group_ids: ["2"]
           }
         ]
+        providerAccount: "aws"
         user: "mci-exec"
         bootstrapSettings: {
           clientDir: "/home/mci-exec/evergreen_provisioning"

@@ -13,6 +13,7 @@ mutation {
         workDir: "/data/mci"
         mountpoints: ["/"]
         provider: EC2_ON_DEMAND
+        providerAccount: "aws"
         providerSettingsList: [
           {
             ami: "who-ami"

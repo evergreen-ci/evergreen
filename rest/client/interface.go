@@ -28,6 +28,7 @@ type Communicator interface {
 	SetAPIUser(string)
 	SetAPIKey(string)
 	SetJWT(string)
+	SetAPIServerHost(string)
 	// Client authentication methods (for hosts)
 	SetHostID(string)
 	SetHostSecret(string)
@@ -41,6 +42,7 @@ type Communicator interface {
 	GetUiV2URL(context.Context) (string, error)
 	SetServiceFlags(context.Context, *restmodel.APIServiceFlags) error
 	GetServiceFlags(context.Context) (*restmodel.APIServiceFlags, error)
+	IsServiceUser(context.Context, string) (bool, error)
 	RestartRecentTasks(context.Context, time.Time, time.Time) error
 	GetSettings(context.Context) (*evergreen.Settings, error)
 	UpdateSettings(context.Context, *restmodel.APIAdminSettings) (*restmodel.APIAdminSettings, error)

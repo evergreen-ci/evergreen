@@ -2053,6 +2053,7 @@ func (a *APIRepoTrackerConfig) ToService() (any, error) {
 type APIReleaseModeConfig struct {
 	DistroMaxHostsFactor      float64 `json:"distro_max_hosts_factor"`
 	TargetTimeSecondsOverride int     `json:"target_time_seconds_override"`
+	IdleTimeSecondsOverride   int     `json:"idle_time_seconds_override"`
 }
 
 func (a *APIReleaseModeConfig) BuildFromService(h any) error {
@@ -2060,6 +2061,7 @@ func (a *APIReleaseModeConfig) BuildFromService(h any) error {
 	case evergreen.ReleaseModeConfig:
 		a.DistroMaxHostsFactor = v.DistroMaxHostsFactor
 		a.TargetTimeSecondsOverride = v.TargetTimeSecondsOverride
+		a.IdleTimeSecondsOverride = v.IdleTimeSecondsOverride
 	default:
 		return errors.Errorf("programmatic error: expected ReleaseModeConfig but got type %T", h)
 	}
@@ -2070,6 +2072,7 @@ func (a *APIReleaseModeConfig) ToService() (any, error) {
 	return evergreen.ReleaseModeConfig{
 		DistroMaxHostsFactor:      a.DistroMaxHostsFactor,
 		TargetTimeSecondsOverride: a.TargetTimeSecondsOverride,
+		IdleTimeSecondsOverride:   a.IdleTimeSecondsOverride,
 	}, nil
 }
 

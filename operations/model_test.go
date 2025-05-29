@@ -1,7 +1,6 @@
 package operations
 
 import (
-	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
@@ -10,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -268,12 +266,6 @@ func TestShouldGenerateJWT(t *testing.T) {
 			expectedResult: true,
 		},
 		{
-			name:           "UnauthorizedError",
-			settings:       &ClientSettings{APIKey: "key"},
-			flagsErr:       &thirdparty.APIRequestError{StatusCode: http.StatusUnauthorized},
-			expectedResult: true,
-		},
-		{
 			name:     "JWTTokenForCLIDisabled",
 			settings: &ClientSettings{APIKey: "key"},
 			serviceFlags: evergreen.ServiceFlags{
@@ -291,7 +283,7 @@ func TestShouldGenerateJWT(t *testing.T) {
 				},
 				MockServiceFlagErr: test.flagsErr,
 			}
-			result := test.settings.shouldGenerateJWT(t.Context(), mock)
+			result, _ := test.settings.shouldGenerateJWT(t.Context(), mock)
 			assert.Equal(t, test.expectedResult, result)
 		})
 	}
