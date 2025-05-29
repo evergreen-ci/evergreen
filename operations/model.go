@@ -169,7 +169,7 @@ func (s *ClientSettings) setupRestCommunicator(ctx context.Context, printMessage
 		grip.Info(reason)
 	}
 	if shouldGenerate {
-		grip.Info("Evergreen CLI will attempt to generate a JWT token, to opt out of this, set 'do_not_run_kanopy_oidc' to true in your config file")
+		grip.Info("Evergreen CLI will attempt to retrieve or generate a JWT token, to opt out of this, set 'do_not_run_kanopy_oidc' to true in your config file")
 		if s.JWT, err = runKanopyOIDCLogin(); err != nil {
 			grip.Warningf("Failed to get JWT token: %s", err)
 			return c, err
