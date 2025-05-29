@@ -189,7 +189,6 @@ func printKanopyAuthHeader(start bool) {
 		title = " Kanopy Authentication "
 	}
 	grip.Info("\n" + strings.Repeat("*", 40) + title + strings.Repeat("*", 40) + "\n")
-	return
 }
 
 func (s *ClientSettings) shouldGenerateJWT(ctx context.Context, c client.Communicator) (bool, string) {
