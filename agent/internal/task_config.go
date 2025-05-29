@@ -21,12 +21,13 @@ import (
 )
 
 type TaskConfig struct {
-	Distro       *apimodels.DistroView
-	Host         *apimodels.HostView
-	ProjectRef   model.ProjectRef
-	Project      model.Project
-	Task         task.Task
-	BuildVariant model.BuildVariant
+	Distro          *apimodels.DistroView
+	Host            *apimodels.HostView
+	ProjectRef      model.ProjectRef
+	Project         model.Project
+	Task            task.Task
+	DisplayTaskInfo *apimodels.DisplayTaskInfo
+	BuildVariant    model.BuildVariant
 
 	// Expansions store the fundamental expansions set by Evergreen.
 	// e.g. execution, project_id, task_id, etc. It also stores
@@ -159,6 +160,7 @@ type TaskConfigOptions struct {
 	Host              *apimodels.HostView
 	Project           *model.Project
 	Task              *task.Task
+	DisplayTaskInfo   *apimodels.DisplayTaskInfo
 	ProjectRef        *model.ProjectRef
 	Patch             *patch.Patch
 	Version           *model.Version
@@ -228,6 +230,7 @@ func NewTaskConfig(opts TaskConfigOptions) (*TaskConfig, error) {
 		ProjectRef:            *opts.ProjectRef,
 		Project:               *opts.Project,
 		Task:                  *opts.Task,
+		DisplayTaskInfo:       opts.DisplayTaskInfo,
 		BuildVariant:          *bv,
 		Expansions:            opts.ExpansionsAndVars.Expansions,
 		NewExpansions:         agentutil.NewDynamicExpansions(opts.ExpansionsAndVars.Expansions),
@@ -272,6 +275,10 @@ func (tc *TaskConfig) TaskAttributeMap() map[string]string {
 	}
 	if tc.Host != nil && tc.Host.Hostname != "" {
 		attributes[evergreen.HostnameOtelAttribute] = tc.Host.Hostname
+	}
+	if tc.DisplayTaskInfo != nil {
+		attributes[evergreen.DisplayTaskIDOtelAttribute] = tc.DisplayTaskInfo.ID
+		attributes[evergreen.DisplayTaskNameOtelAttribute] = tc.DisplayTaskInfo.Name
 	}
 	return attributes
 }
