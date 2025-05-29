@@ -18,7 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestGetMergedTaskTestResults(t *testing.T) {
+func TestGetTaskTestResults(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
@@ -167,7 +167,7 @@ func TestGetMergedTaskTestResults(t *testing.T) {
 				test.setup(t)
 			}
 
-			taskResults, err := test.resultService.GetMergedTaskTestResults(ctx, test.taskOpts, test.filterOpts)
+			taskResults, err := test.resultService.GetTaskTestResults(ctx, test.taskOpts, test.filterOpts)
 			if test.hasErr {
 				assert.Error(t, err)
 			} else {
@@ -178,7 +178,7 @@ func TestGetMergedTaskTestResults(t *testing.T) {
 	}
 }
 
-func TestGetMergedTaskTestResultsStats(t *testing.T) {
+func TestGetTaskTestResultsStats(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
@@ -271,7 +271,7 @@ func TestGetMergedTaskTestResultsStats(t *testing.T) {
 				test.setup(t)
 			}
 
-			stats, err := test.resultService.GetMergedTaskTestResultsStats(ctx, test.taskOpts)
+			stats, err := test.resultService.GetTaskTestResultsStats(ctx, test.taskOpts)
 			if test.hasErr {
 				assert.Error(t, err)
 			} else {
@@ -496,7 +496,7 @@ func TestGetFailedTestSamples(t *testing.T) {
 				test.setup(t)
 			}
 
-			samples, err := test.resultService.GetFailedTestSamples(ctx, test.taskOpts, test.regexFilters)
+			samples, err := GetFailedTestSamples(ctx, test.taskOpts, test.regexFilters)
 			if test.hasErr {
 				assert.Error(t, err)
 			} else {

@@ -3216,14 +3216,9 @@ func (t *Task) GetTestResults(ctx context.Context, env evergreen.Environment, fi
 	if len(taskOpts) == 0 {
 		return testresult.TaskTestResults{}, nil
 	}
-	var tsk *Task
-	if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
-		tsk, err = FindOneId(ctx, t.ExecutionTasks[0])
-		if err != nil {
-			return testresult.TaskTestResults{}, errors.Wrap(err, "finding task")
-		}
-	} else {
-		tsk = t
+	tsk, err := t.getTaskOrFirstExecutionTask(ctx)
+	if err != nil {
+		return testresult.TaskTestResults{}, errors.Wrap(err, "finding task or first execution task")
 	}
 	output, ok := tsk.GetTaskOutputSafe()
 	if !ok {
@@ -3241,54 +3236,39 @@ func (t *Task) GetTestResultsStats(ctx context.Context, env evergreen.Environmen
 	if len(taskOpts) == 0 {
 		return testresult.TaskTestResultsStats{}, nil
 	}
-	var tsk *Task
-	if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
-		tsk, err = FindOneId(ctx, t.ExecutionTasks[0])
-		if err != nil {
-			return testresult.TaskTestResultsStats{}, errors.Wrap(err, "finding task")
-		}
-	} else {
-		tsk = t
+	tsk, err := t.getTaskOrFirstExecutionTask(ctx)
+	if err != nil {
+		return testresult.TaskTestResultsStats{}, errors.Wrap(err, "finding task or first execution task")
 	}
 	output, ok := tsk.GetTaskOutputSafe()
 	if !ok {
 		return testresult.TaskTestResultsStats{}, nil
 	}
-	return output.TestResults.GetMergedTaskTestResultsStats(ctx, env, taskOpts)
+	return output.TestResults.GetTaskTestResultsStats(ctx, env, taskOpts)
 }
 
-// GetFailedTestSample returns a sample of test names (up to 10) that failed in
-// the task. If the task does not have any results or does not have any failing
-// tests, a nil slice is returned.
-func (t *Task) GetFailedTestSample(ctx context.Context, env evergreen.Environment) ([]string, error) {
-	taskOpts, err := t.CreateTestResultsTaskOptions(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "creating test results task options")
+// getTaskOrFirstExecutionTask either returns the task immediately, or in the case the task is display task,
+// its first execution task will be retrieved. In the case that a single execution task is retrieved, the subsequent
+// test result service function will fetch test result data for all execution tasks from the result service used
+// by the first execution task (e.g. local testing service or cedar/evergreen service).
+//
+// Note that s3 test result downloads still need to be done on a per-execution task basis, since different execution
+// tasks can have different external bucket configs in the case of e.g. a bucket versioning upgrade (TODO: DEVPROD-16200)
+func (t *Task) getTaskOrFirstExecutionTask(ctx context.Context) (*Task, error) {
+	if !t.DisplayOnly {
+		return t, nil
 	}
-	if len(taskOpts) == 0 {
-		return nil, nil
-	}
-	var tsk *Task
-	if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
-		tsk, err = FindOneId(ctx, t.ExecutionTasks[0])
+	if len(t.ExecutionTasks) > 0 {
+		execTask, err := FindOneId(ctx, t.ExecutionTasks[0])
 		if err != nil {
 			return nil, errors.Wrap(err, "finding task")
 		}
-	} else {
-		tsk = t
+		if execTask == nil {
+			return nil, errors.Errorf("no execution tasks found for display task '%s", t.Id)
+		}
+		return execTask, nil
 	}
-	output, ok := tsk.GetTaskOutputSafe()
-	if !ok {
-		return []string{}, nil
-	}
-	samples, err := output.TestResults.GetMergedFailedTestSample(ctx, env, taskOpts)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting failed test results")
-	}
-	if len(samples) >= 10 {
-		samples = samples[0:10]
-	}
-	return samples, nil
+	return nil, errors.Errorf("no execution tasks found for display task '%s", t.Id)
 }
 
 // CreateTestResultsTaskOptions returns the options required for fetching test

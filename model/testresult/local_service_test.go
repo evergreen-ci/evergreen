@@ -80,7 +80,7 @@ func TestLocalService(t *testing.T) {
 	t.Run("GetMergedTaskTestResults", func(t *testing.T) {
 		t.Run("WithoutFilterAndSortOpts", func(t *testing.T) {
 			taskOpts := []TaskOptions{task1, task2, task0, emptyTask}
-			taskResults, err := svc.GetMergedTaskTestResults(ctx, taskOpts, nil)
+			taskResults, err := svc.GetTaskTestResults(ctx, taskOpts, nil)
 			require.NoError(t, err)
 
 			assert.Equal(t, len(taskResults.Results), taskResults.Stats.TotalCount)
@@ -92,7 +92,7 @@ func TestLocalService(t *testing.T) {
 		t.Run("WithFilterAndSortOpts", func(t *testing.T) {
 			taskOpts := []TaskOptions{task0}
 			filterOpts := &FilterOptions{Statuses: []string{evergreen.TestSucceededStatus}}
-			taskResults, err := svc.GetMergedTaskTestResults(ctx, taskOpts, filterOpts)
+			taskResults, err := svc.GetTaskTestResults(ctx, taskOpts, filterOpts)
 			require.NoError(t, err)
 
 			assert.Equal(t, len(savedResults0), taskResults.Stats.TotalCount)
@@ -104,9 +104,9 @@ func TestLocalService(t *testing.T) {
 			}
 		})
 	})
-	t.Run("GetMergedTaskTestResultsStats", func(t *testing.T) {
+	t.Run("GetTaskTestResultsStats", func(t *testing.T) {
 		taskOpts := []TaskOptions{task1, task2, task0, emptyTask}
-		stats, err := svc.GetMergedTaskTestResultsStats(ctx, taskOpts)
+		stats, err := svc.GetTaskTestResultsStats(ctx, taskOpts)
 		require.NoError(t, err)
 
 		assert.Equal(t, len(savedResults0)+len(savedResults1)+len(savedResults2), stats.TotalCount)
