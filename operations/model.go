@@ -162,7 +162,13 @@ func (s *ClientSettings) setupRestCommunicator(ctx context.Context, printMessage
 		printUserMessages(ctx, c, !s.AutoUpgradeCLI)
 	}
 
-	if s.shouldGenerateJWT(ctx, c) {
+	shouldGenerate, reason := s.shouldGenerateJWT(ctx, c)
+
+	grip.Info(kanopyAuthHeader(true))
+	if reason != "" {
+		grip.Info(reason)
+	}
+	if shouldGenerate {
 		grip.Info("Evergreen CLI will attempt to generate a JWT token, to opt out of this, set 'do_not_run_kanopy_oidc' to true in your config file")
 		if s.JWT, err = runKanopyOIDCLogin(); err != nil {
 			grip.Warningf("Failed to get JWT token: %s", err)
@@ -172,18 +178,27 @@ func (s *ClientSettings) setupRestCommunicator(ctx context.Context, printMessage
 		// in order to use the JWT token, we need to set the API server host to the corp api server host
 		c.SetAPIServerHost(s.getApiServerHost(true))
 	}
+	grip.Info(kanopyAuthHeader(false))
 
 	return c, nil
 }
 
-func (s *ClientSettings) shouldGenerateJWT(ctx context.Context, c client.Communicator) bool {
+func kanopyAuthHeader(start bool) string {
+	title := strings.Repeat("*", 23)
+	if start {
+		title = " Kanopy Authentication "
+	}
+
+	return "\n" + strings.Repeat("*", 40) + title + strings.Repeat("*", 40) + "\n"
+}
+
+func (s *ClientSettings) shouldGenerateJWT(ctx context.Context, c client.Communicator) (bool, string) {
 	if s.DoNotRunKanopyOIDC {
-		return false
+		return false, ""
 	}
 
 	if s.APIKey == "" {
-		grip.Info("No API key found in local Evergreen YAML, attempting to use a JWT token.")
-		return true
+		return true, "No API key found in local Evergreen YAML, defaulting to a JWT token."
 	}
 
 	// always use the non-corp url for getting the service flags
@@ -193,11 +208,10 @@ func (s *ClientSettings) shouldGenerateJWT(ctx context.Context, c client.Communi
 
 	isServiceUser, err := c.IsServiceUser(ctx, s.User)
 	if err != nil {
-		grip.Warningf("Failed to check if user is a service user: %s", err)
-		return false
+		return false, fmt.Sprintf("Failed to check if user is a service user: %s", err)
 	}
 	if isServiceUser {
-		return false
+		return false, ""
 	}
 
 	flags, err := c.GetServiceFlags(ctx)
@@ -205,10 +219,10 @@ func (s *ClientSettings) shouldGenerateJWT(ctx context.Context, c client.Communi
 	c.SetAPIServerHost(originalAPIServerHost)
 
 	if err == nil && !flags.JWTTokenForCLIDisabled {
-		return true
+		return true, ""
 	}
 
-	return false
+	return false, ""
 }
 
 // getApiServerHost returns the API server host based on the APIServerHost and the useCorp parameter.
@@ -264,9 +278,10 @@ func (s *ClientSettings) getLegacyClients() (*legacyClient, *legacyClient, error
 		return nil, nil, errors.Wrap(err, "parsing API server URL from settings file")
 	}
 
+	root := s.getApiServerHost(s.JWT != "")
 	ac := &legacyClient{
-		APIRoot:            s.APIServerHost,
-		APIRootV2:          s.APIServerHost + "/rest/v2",
+		APIRoot:            root,
+		APIRootV2:          root + "/rest/v2",
 		User:               s.User,
 		APIKey:             s.APIKey,
 		JWT:                s.JWT,
