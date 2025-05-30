@@ -1,0 +1,24 @@
+{
+  "admin": [
+    {
+      "_id": "no_permissions",
+      "default_project": "evergreen",
+      "url": "localhost:9090",
+      "http_listen_addr": ":9090",
+      "admin_settings": {
+        "banner": "",
+        "banner_theme": ""
+      }
+    },
+    {
+      "_id": "ui",
+      "default_project": "evergreen",
+      "url": "localhost:9090",
+      "http_listen_addr": ":9090",
+      "admin_settings": {
+        "banner": "",
+        "banner_theme": ""
+      }
+    }
+  ]
+}

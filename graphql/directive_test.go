@@ -906,7 +906,7 @@ func TestRequireAdmin(t *testing.T) {
 			res, err := config.Directives.RequireAdmin(ctx, obj, wrappedNext)
 			assert.NoError(t, err)
 			assert.Nil(t, res)
-			assert.True(t, *nextCalled, "next middleware should be called")
+			assert.True(t, utility.FromBoolPtr(nextCalled), "next middleware should be called")
 		},
 		"FailsWhenUserIsNotAdmin": func(ctx context.Context, t *testing.T, config Config, usr *user.DBUser, wrappedNext func(context.Context) (any, error), nextCalled *bool) {
 			role := "regularuser"
@@ -914,14 +914,13 @@ func TestRequireAdmin(t *testing.T) {
 			res, err := config.Directives.RequireAdmin(ctx, obj, wrappedNext)
 			assert.EqualError(t, err, "input: User 'test_user' lacks required admin permissions", "Expected permission error")
 			assert.Nil(t, res)
-			assert.False(t, *nextCalled)
+			assert.False(t, utility.FromBoolPtr(nextCalled))
 		},
 		"FailsWhenUserHasNoRoles": func(ctx context.Context, t *testing.T, config Config, usr *user.DBUser, wrappedNext func(context.Context) (any, error), nextCalled *bool) {
-
 			res, err := config.Directives.RequireAdmin(ctx, obj, wrappedNext)
 			assert.EqualError(t, err, "input: User 'test_user' lacks required admin permissions", "Expected permission error")
 			assert.Nil(t, res)
-			assert.False(t, *nextCalled)
+			assert.False(t, utility.FromBoolPtr(nextCalled))
 		},
 	} {
 		setupPermissions(t)
@@ -936,15 +935,13 @@ func TestRequireAdmin(t *testing.T) {
 		config := New("/graphql")
 		require.NotNil(t, config)
 
-		nextCalled := new(bool)
-		*nextCalled = false
+		nextCalled := false
 		wrappedNext := func(rctx context.Context) (any, error) {
-			*nextCalled = true
+			nextCalled = true
 			return nil, nil
 		}
-
 		t.Run(tName, func(t *testing.T) {
-			tCase(ctx, t, config, usr, wrappedNext, nextCalled)
+			tCase(ctx, t, config, usr, wrappedNext, &nextCalled)
 		})
 	}
 }
