@@ -57,8 +57,8 @@ const (
 	nsInASecond                = time.Second / time.Nanosecond
 )
 
-// statsPipelineIndex is the branch_1_finish_time_1 index.
-var statsPipelineIndex = bson.D{{Key: "branch", Value: 1}, {Key: "finish_time", Value: 1}}
+// StatsPipelineIndex is the branch_1_finish_time_1 index.
+var StatsPipelineIndex = bson.D{{Key: "branch", Value: 1}, {Key: "finish_time", Value: 1}}
 
 var (
 	// '$' references to the BSON fields of tasks.

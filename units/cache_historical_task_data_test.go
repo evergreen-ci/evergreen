@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"go.mongodb.org/mongo-driver/mongo"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -252,6 +254,7 @@ func TestCacheHistoricalTaskDataJob(t *testing.T) {
 			tctx := testutil.TestSpan(ctx, t)
 
 			require.NoError(t, db.ClearCollections(task.Collection, taskstats.DailyTaskStatsCollection, taskstats.DailyStatsStatusCollection))
+			require.NoError(t, db.EnsureIndex(task.Collection, mongo.IndexModel{Keys: taskstats.StatsPipelineIndex}))
 			if test.pre != nil {
 				test.pre(tctx, t)
 			}

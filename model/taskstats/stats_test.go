@@ -42,7 +42,7 @@ func (s *statsSuite) SetupTest() {
 	for _, coll := range collectionsToClear {
 		s.NoError(db.Clear(coll))
 	}
-	s.NoError(db.EnsureIndex(task.Collection, mongo.IndexModel{Keys: statsPipelineIndex}), "problem setting up index")
+	s.NoError(db.EnsureIndex(task.Collection, mongo.IndexModel{Keys: StatsPipelineIndex}), "problem setting up index")
 
 }
 
