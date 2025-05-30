@@ -1,8 +1,5 @@
 query {
   user(userId: "bob.smith") {
     userId
-    betaFeatures {
-      spruceWaterfallEnabled
-    }
   }
 }
