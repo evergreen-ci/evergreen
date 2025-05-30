@@ -330,7 +330,7 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.
 	}
 
 	grip.Info("Fetching task info.")
-	tsk, project, expansionsAndVars, err := a.fetchTaskInfo(ctx, tc)
+	tsk, dtInfo, project, expansionsAndVars, err := a.fetchTaskInfo(ctx, tc)
 	if err != nil {
 		return nil, errors.Wrap(err, "fetching task info")
 	}
@@ -385,6 +385,7 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.
 		Host:              confHost,
 		Project:           project,
 		Task:              tsk,
+		DisplayTaskInfo:   dtInfo,
 		ProjectRef:        confRef,
 		Patch:             confPatch,
 		Version:           versionDoc,

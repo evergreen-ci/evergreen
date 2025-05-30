@@ -607,20 +607,25 @@ func shouldRunSetupGroup(nextTask *apimodels.NextTaskResponse, tc *taskContext) 
 	return false
 }
 
-func (a *Agent) fetchTaskInfo(ctx context.Context, tc *taskContext) (*task.Task, *model.Project, *apimodels.ExpansionsAndVars, error) {
+func (a *Agent) fetchTaskInfo(ctx context.Context, tc *taskContext) (*task.Task, *apimodels.DisplayTaskInfo, *model.Project, *apimodels.ExpansionsAndVars, error) {
 	project, err := a.comm.GetProject(ctx, tc.task)
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(err, "getting project")
+		return nil, nil, nil, nil, errors.Wrap(err, "getting project")
 	}
 
 	taskModel, err := a.comm.GetTask(ctx, tc.task)
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(err, "getting task")
+		return nil, nil, nil, nil, errors.Wrap(err, "getting task")
 	}
 
 	expAndVars, err := a.comm.GetExpansionsAndVars(ctx, tc.task)
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(err, "getting expansions and variables")
+		return nil, nil, nil, nil, errors.Wrap(err, "getting expansions and variables")
+	}
+
+	displayTaskInfo, err := a.comm.GetDisplayTaskInfoFromExecution(ctx, tc.task)
+	if err != nil {
+		return nil, nil, nil, nil, errors.Wrap(err, "getting task's display task info")
 	}
 
 	// GetExpansionsAndVars does not include build variant expansions or project
@@ -644,7 +649,7 @@ func (a *Agent) fetchTaskInfo(ctx context.Context, tc *taskContext) (*task.Task,
 	// user-specified.
 	expAndVars.Expansions.Update(expAndVars.Parameters)
 
-	return taskModel, project, expAndVars, nil
+	return taskModel, displayTaskInfo, project, expAndVars, nil
 }
 
 func (a *Agent) startLogging(ctx context.Context, tc *taskContext) error {

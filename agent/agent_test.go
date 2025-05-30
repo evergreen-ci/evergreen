@@ -2602,7 +2602,7 @@ func (s *AgentSuite) TestFetchTaskInfo() {
 		Identifier: "some_cool_project",
 	}
 
-	_, project, expansionsAndVars, err := s.a.fetchTaskInfo(s.ctx, s.tc)
+	_, _, project, expansionsAndVars, err := s.a.fetchTaskInfo(s.ctx, s.tc)
 	s.NoError(err)
 
 	s.Require().NotZero(s.tc.taskConfig.Project)
