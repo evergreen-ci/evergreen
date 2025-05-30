@@ -7,10 +7,7 @@
           "spruceConfig": {
             "ui": {
               "defaultProject": "evergreen",
-              "userVoice": "https://uservoice.com",
-              "betaFeatures": {
-                "spruceWaterfallEnabled": true
-              }
+              "userVoice": "https://uservoice.com"
             }
           }
         }

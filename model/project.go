@@ -1033,6 +1033,7 @@ func PopulateExpansions(ctx context.Context, t *task.Task, h *host.Host, appToke
 	expansions.Put("build_variant", t.BuildVariant)
 	expansions.Put("revision", t.Revision)
 	expansions.Put("github_commit", t.Revision)
+	expansions.Put("activated_by", t.ActivatedBy)
 	expansions.Put(evergreen.GithubKnownHosts, knownHosts)
 	expansions.Put("project", projectRef.Identifier)
 	expansions.Put("project_identifier", projectRef.Identifier)
