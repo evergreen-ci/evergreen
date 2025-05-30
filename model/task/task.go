@@ -181,7 +181,7 @@ type Task struct {
 	//        field and should be initialized before the application can
 	//        safely fetch any output data.
 	// This field should *never* be accessed directly, instead call
-	// `Task.getTaskOutputSafe()`.
+	// `Task.GetTaskOutputSafe()`.
 	TaskOutputInfo *taskoutput.TaskOutput `bson:"task_output_info,omitempty" json:"task_output_info,omitempty"`
 
 	// Set to true if the task should be considered for mainline github checks
@@ -1768,10 +1768,10 @@ func (t *Task) initializeTaskOutputInfo(env evergreen.Environment) (*taskoutput.
 	return taskoutput.InitializeTaskOutput(env), true
 }
 
-// getTaskOutputSafe returns an instantiation of the task output interface and
+// GetTaskOutputSafe returns an instantiation of the task output interface and
 // whether it is safe to fetch task output data. This function should always
 // be called to access task output data.
-func (t *Task) getTaskOutputSafe() (*taskoutput.TaskOutput, bool) {
+func (t *Task) GetTaskOutputSafe() (*taskoutput.TaskOutput, bool) {
 	if t.DisplayOnly || t.Status == evergreen.TaskUndispatched {
 		return nil, false
 	}
@@ -1787,23 +1787,13 @@ func (t *Task) getTaskOutputSafe() (*taskoutput.TaskOutput, bool) {
 	return t.TaskOutputInfo, true
 }
 
-// GetTaskOutputInfoWithError is a convenience function to avoid panics when
-// accessing the task output data.
-func (t *Task) GetTaskOutputWithError() (*taskoutput.TaskOutput, error) {
-	if t.TaskOutputInfo == nil {
-		return nil, errors.New("programmatic error: task output info expected to be set but found nil")
-	}
-
-	return t.TaskOutputInfo, nil
-}
-
 // GetTaskLogs returns the task's task logs with the given options.
 func (t *Task) GetTaskLogs(ctx context.Context, getOpts taskoutput.TaskLogGetOptions) (log.LogIterator, error) {
 	if t.DisplayOnly {
 		return nil, errors.New("cannot get task logs for a display task")
 	}
 
-	output, ok := t.getTaskOutputSafe()
+	output, ok := t.GetTaskOutputSafe()
 	if !ok {
 		// We know there task cannot have task output, likely because
 		// it has not run yet. Return an empty iterator.
@@ -1829,7 +1819,7 @@ func (t *Task) GetTestLogs(ctx context.Context, getOpts taskoutput.TestLogGetOpt
 		return nil, errors.New("cannot get test logs for a display task")
 	}
 
-	output, ok := t.getTaskOutputSafe()
+	output, ok := t.GetTaskOutputSafe()
 	if !ok {
 		// We know there task cannot have task output, likely because
 		// it has not run yet. Return an empty iterator.
@@ -3215,8 +3205,9 @@ func (t *Task) PopulateTestResults(ctx context.Context) error {
 	return nil
 }
 
-// GetTestResults returns the task's test results filtered, sorted, and
-// paginated as specified by the optional filter options.
+// GetTestResults returns the merged test results filtered, sorted,
+// and paginated as specified by the optional filter options for the given
+// tasks.
 func (t *Task) GetTestResults(ctx context.Context, env evergreen.Environment, filterOpts *testresult.FilterOptions) (testresult.TaskTestResults, error) {
 	taskOpts, err := t.CreateTestResultsTaskOptions(ctx)
 	if err != nil {
@@ -3225,8 +3216,15 @@ func (t *Task) GetTestResults(ctx context.Context, env evergreen.Environment, fi
 	if len(taskOpts) == 0 {
 		return testresult.TaskTestResults{}, nil
 	}
-
-	return testresult.GetMergedTaskTestResults(ctx, env, taskOpts, filterOpts)
+	tsk, err := t.getTaskOrFirstExecutionTask(ctx)
+	if err != nil {
+		return testresult.TaskTestResults{}, errors.Wrap(err, "finding task or first execution task")
+	}
+	output, ok := tsk.GetTaskOutputSafe()
+	if !ok {
+		return testresult.TaskTestResults{}, nil
+	}
+	return output.TestResults.GetMergedTaskTestResults(ctx, env, taskOpts, filterOpts)
 }
 
 // GetTestResultsStats returns basic statistics of the task's test results.
@@ -3238,23 +3236,39 @@ func (t *Task) GetTestResultsStats(ctx context.Context, env evergreen.Environmen
 	if len(taskOpts) == 0 {
 		return testresult.TaskTestResultsStats{}, nil
 	}
-
-	return testresult.GetMergedTaskTestResultsStats(ctx, env, taskOpts)
+	tsk, err := t.getTaskOrFirstExecutionTask(ctx)
+	if err != nil {
+		return testresult.TaskTestResultsStats{}, errors.Wrap(err, "finding task or first execution task")
+	}
+	output, ok := tsk.GetTaskOutputSafe()
+	if !ok {
+		return testresult.TaskTestResultsStats{}, nil
+	}
+	return output.TestResults.GetTaskTestResultsStats(ctx, env, taskOpts)
 }
 
-// GetTestResultsStats returns a sample of test names (up to 10) that failed in
-// the task. If the task does not have any results or does not have any failing
-// tests, a nil slice is returned.
-func (t *Task) GetFailedTestSample(ctx context.Context, env evergreen.Environment) ([]string, error) {
-	taskOpts, err := t.CreateTestResultsTaskOptions(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "creating test results task options")
+// getTaskOrFirstExecutionTask either returns the task immediately, or in the case the task is display task,
+// its first execution task will be retrieved. In the case that a single execution task is retrieved, the subsequent
+// test result service function will fetch test result data for all execution tasks from the result service used
+// by the first execution task (e.g. local testing service or cedar/evergreen service).
+//
+// Note that s3 test result downloads still need to be done on a per-execution task basis, since different execution
+// tasks can have different external bucket configs in the case of e.g. a bucket versioning upgrade (TODO: DEVPROD-16200)
+func (t *Task) getTaskOrFirstExecutionTask(ctx context.Context) (*Task, error) {
+	if !t.DisplayOnly {
+		return t, nil
 	}
-	if len(taskOpts) == 0 {
-		return nil, nil
+	if len(t.ExecutionTasks) > 0 {
+		execTask, err := FindOneId(ctx, t.ExecutionTasks[0])
+		if err != nil {
+			return nil, errors.Wrap(err, "finding task")
+		}
+		if execTask == nil {
+			return nil, errors.Errorf("no execution tasks found for display task '%s", t.Id)
+		}
+		return execTask, nil
 	}
-
-	return testresult.GetMergedFailedTestSample(ctx, env, taskOpts)
+	return nil, errors.Errorf("no execution tasks found for display task '%s", t.Id)
 }
 
 // CreateTestResultsTaskOptions returns the options required for fetching test
@@ -3264,8 +3278,8 @@ func (t *Task) GetFailedTestSample(ctx context.Context, env evergreen.Environmen
 // additional tasks are required for fetching test results, such as when
 // sorting results by some base status, using this function to populate those
 // task options is useful.
-func (t *Task) CreateTestResultsTaskOptions(ctx context.Context) ([]testresult.TaskOptions, error) {
-	var taskOpts []testresult.TaskOptions
+func (t *Task) CreateTestResultsTaskOptions(ctx context.Context) ([]taskoutput.TaskOptions, error) {
+	var taskOpts []taskoutput.TaskOptions
 	if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
 		var (
 			execTasksWithResults []Task
@@ -3288,7 +3302,7 @@ func (t *Task) CreateTestResultsTaskOptions(ctx context.Context) ([]testresult.T
 			if execTask.Archived {
 				taskID = execTask.OldTaskId
 			}
-			taskOpts = append(taskOpts, testresult.TaskOptions{
+			taskOpts = append(taskOpts, taskoutput.TaskOptions{
 				TaskID:         taskID,
 				Execution:      execTask.Execution,
 				ResultsService: execTask.ResultsService,
@@ -3299,7 +3313,7 @@ func (t *Task) CreateTestResultsTaskOptions(ctx context.Context) ([]testresult.T
 		if t.Archived {
 			taskID = t.OldTaskId
 		}
-		taskOpts = append(taskOpts, testresult.TaskOptions{
+		taskOpts = append(taskOpts, taskoutput.TaskOptions{
 			TaskID:         taskID,
 			Execution:      t.Execution,
 			ResultsService: t.ResultsService,
