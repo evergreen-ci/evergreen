@@ -163,12 +163,11 @@ func (s *ClientSettings) setupRestCommunicator(ctx context.Context, printMessage
 	}
 
 	shouldGenerate, reason := s.shouldGenerateJWT(ctx, c)
-
-	printKanopyAuthHeader(true)
 	if reason != "" {
 		grip.Info(reason)
 	}
 	if shouldGenerate {
+		printKanopyAuthHeader(true)
 		grip.Info("Evergreen CLI will attempt to retrieve or generate a JWT token, to opt out of this, set 'do_not_run_kanopy_oidc' to true in your config file")
 		if s.JWT, err = runKanopyOIDCLogin(); err != nil {
 			grip.Warningf("Failed to get JWT token: %s", err)
@@ -177,8 +176,8 @@ func (s *ClientSettings) setupRestCommunicator(ctx context.Context, printMessage
 		c.SetJWT(s.JWT)
 		// in order to use the JWT token, we need to set the API server host to the corp api server host
 		c.SetAPIServerHost(s.getApiServerHost(true))
+		printKanopyAuthHeader(false)
 	}
-	printKanopyAuthHeader(false)
 
 	return c, nil
 }
