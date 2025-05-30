@@ -764,6 +764,7 @@ file a ticket or issues. That's a bug.
 Every task has some expansions available by default:
 
 
+-   `${activated_by}` is username of the user who caused the task to run
 -   `${author}` is the patch author's username for patch tasks or the
     git commit author for git tasks
 -   `${author_email}` is the patch or the git commit authors email
