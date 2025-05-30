@@ -312,7 +312,6 @@ func TestGetFailedTestSamples(t *testing.T) {
 	srv, handler := newMockCedarServer(env)
 	defer srv.Close()
 	svc := testresult.NewLocalService(env)
-	cedarSvc := testresult.NewCedarService(env)
 	task0 := testresult.TaskOptions{
 		TaskID:         "task0",
 		Execution:      0,
@@ -356,16 +355,15 @@ func TestGetFailedTestSamples(t *testing.T) {
 		regexFilters    []string
 		expectedSamples []testresult.TaskTestResultsFailedSample
 		hasErr          bool
-		resultService   testresult.TestResultsService
 	}{
 		{
-			name:          "NilTaskOptions",
-			resultService: svc,
+			name:   "NilTaskOptions",
+			hasErr: true,
 		},
 		{
-			name:          "NilTaskOptions",
-			taskOpts:      []testresult.TaskOptions{},
-			resultService: svc,
+			name:     "NilTaskOptions",
+			taskOpts: []testresult.TaskOptions{},
+			hasErr:   true,
 		},
 		{
 			name: "ServiceError",
@@ -373,9 +371,8 @@ func TestGetFailedTestSamples(t *testing.T) {
 				handler.status = http.StatusInternalServerError
 				handler.data = nil
 			},
-			taskOpts:      []testresult.TaskOptions{externalServiceTask},
-			hasErr:        true,
-			resultService: cedarSvc,
+			taskOpts: []testresult.TaskOptions{externalServiceTask},
+			hasErr:   true,
 		},
 		{
 			name:     "SameService",
@@ -394,7 +391,6 @@ func TestGetFailedTestSamples(t *testing.T) {
 					TotalFailedNames:        len(sample1),
 				},
 			},
-			resultService: svc,
 		},
 		{
 			name:         "WithRegexFilter",
@@ -407,7 +403,6 @@ func TestGetFailedTestSamples(t *testing.T) {
 					TotalFailedNames: len(sample0),
 				},
 			},
-			resultService: svc,
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -415,7 +410,7 @@ func TestGetFailedTestSamples(t *testing.T) {
 				test.setup(t)
 			}
 
-			samples, err := test.resultService.GetFailedTestSamples(ctx, test.taskOpts, test.regexFilters)
+			samples, err := GetFailedTestSamples(ctx, env, createTaskoutputTaskOpts(test.taskOpts), test.regexFilters)
 			if test.hasErr {
 				assert.Error(t, err)
 			} else {

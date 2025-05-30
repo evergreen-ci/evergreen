@@ -35,7 +35,7 @@ func TestLocalService(t *testing.T) {
 		assert.NoError(t, testresult.ClearLocal(ctx, env))
 	}()
 
-	task0 := TaskOptions{TaskID: "task0", Execution: 0}
+	task0 := TaskOptions{TaskID: "task0", Execution: 0, ResultsService: testresult.TestResultsServiceLocal}
 	savedResults0 := make([]testresult.TestResult, 10)
 	for i := 0; i < len(savedResults0); i++ {
 		result := getTestResult()
@@ -48,7 +48,7 @@ func TestLocalService(t *testing.T) {
 	}
 	require.NoError(t, svc.AppendTestResults(ctx, savedResults0))
 
-	task1 := TaskOptions{TaskID: "task1", Execution: 0}
+	task1 := TaskOptions{TaskID: "task1", Execution: 0, ResultsService: testresult.TestResultsServiceLocal}
 	savedResults1 := make([]testresult.TestResult, 10)
 	for i := 0; i < len(savedResults1); i++ {
 		result := getTestResult()
@@ -57,7 +57,7 @@ func TestLocalService(t *testing.T) {
 		savedResults1[i] = result
 	}
 	require.NoError(t, svc.AppendTestResults(ctx, savedResults1))
-	task2 := TaskOptions{TaskID: "task2", Execution: 1}
+	task2 := TaskOptions{TaskID: "task2", Execution: 1, ResultsService: testresult.TestResultsServiceLocal}
 	savedResults2 := make([]testresult.TestResult, 10)
 	for i := 0; i < len(savedResults2); i++ {
 		result := getTestResult()
@@ -66,7 +66,7 @@ func TestLocalService(t *testing.T) {
 		savedResults2[i] = result
 	}
 	require.NoError(t, svc.AppendTestResults(ctx, savedResults2))
-	task3 := TaskOptions{TaskID: "task3", Execution: 0}
+	task3 := TaskOptions{TaskID: "task3", Execution: 0, ResultsService: testresult.TestResultsServiceLocal}
 	savedResults3 := make([]testresult.TestResult, MaxSampleSize)
 	for i := 0; i < len(savedResults3); i++ {
 		result := getTestResult()
@@ -78,7 +78,7 @@ func TestLocalService(t *testing.T) {
 		savedResults3[i] = result
 	}
 	require.NoError(t, svc.AppendTestResults(ctx, savedResults3))
-	task4 := TaskOptions{TaskID: "task4", Execution: 1}
+	task4 := TaskOptions{TaskID: "task4", Execution: 1, ResultsService: testresult.TestResultsServiceLocal}
 	savedResults4 := make([]testresult.TestResult, MaxSampleSize)
 	for i := 0; i < len(savedResults3); i++ {
 		result := getTestResult()
@@ -88,7 +88,7 @@ func TestLocalService(t *testing.T) {
 		savedResults4[i] = result
 	}
 	require.NoError(t, svc.AppendTestResults(ctx, savedResults4))
-	emptyTask := TaskOptions{TaskID: "DNE", Execution: 0}
+	emptyTask := TaskOptions{TaskID: "DNE", Execution: 0, ResultsService: testresult.TestResultsServiceLocal}
 
 	t.Run("GetMergedTaskTestResults", func(t *testing.T) {
 		t.Run("WithoutFilterAndSortOpts", func(t *testing.T) {

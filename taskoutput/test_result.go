@@ -168,7 +168,7 @@ func groupTasksByService(taskOpts []TaskOptions) map[string][]TaskOptions {
 func CreateTestresultTaskOpts(taskOpts []TaskOptions) []testresult.TaskOptions {
 	var opts []testresult.TaskOptions
 	for _, taskOpt := range taskOpts {
-		opts = append(opts, testresult.TaskOptions{TaskID: taskOpt.TaskID, Execution: taskOpt.Execution})
+		opts = append(opts, testresult.TaskOptions{TaskID: taskOpt.TaskID, Execution: taskOpt.Execution, ResultsService: taskOpt.ResultsService})
 	}
 	return opts
 }
@@ -177,7 +177,7 @@ func CreateTestresultTaskOpts(taskOpts []TaskOptions) []testresult.TaskOptions {
 func createTaskoutputTaskOpts(taskOpts []testresult.TaskOptions) []TaskOptions {
 	var opts []TaskOptions
 	for _, taskOpt := range taskOpts {
-		opts = append(opts, TaskOptions{TaskID: taskOpt.TaskID, Execution: taskOpt.Execution})
+		opts = append(opts, TaskOptions{TaskID: taskOpt.TaskID, Execution: taskOpt.Execution, ResultsService: taskOpt.ResultsService})
 	}
 	return opts
 }
