@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"go.mongodb.org/mongo-driver/mongo"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -95,7 +97,7 @@ func TestCacheHistoricalTaskDataJob(t *testing.T) {
 			},
 		},
 		{
-			name: "UpdateWindowNoMoreThan24Hours",
+			name: "UpdateWindowNoMoreThan12Hours",
 			pre: func(ctx context.Context, t *testing.T) {
 				for _, tsk := range []task.Task{
 					{
@@ -151,7 +153,7 @@ func TestCacheHistoricalTaskDataJob(t *testing.T) {
 				status, err := taskstats.GetStatsStatus(t.Context(), "p0")
 				require.NoError(t, err)
 				assert.WithinDuration(t, time.Now(), status.LastJobRun, time.Minute)
-				assert.WithinDuration(t, t0.Add(22*time.Hour), status.ProcessedTasksUntil, time.Minute)
+				assert.WithinDuration(t, t0.Add(10*time.Hour), status.ProcessedTasksUntil, time.Minute)
 			},
 		},
 		{
@@ -252,6 +254,7 @@ func TestCacheHistoricalTaskDataJob(t *testing.T) {
 			tctx := testutil.TestSpan(ctx, t)
 
 			require.NoError(t, db.ClearCollections(task.Collection, taskstats.DailyTaskStatsCollection, taskstats.DailyStatsStatusCollection))
+			require.NoError(t, db.EnsureIndex(task.Collection, mongo.IndexModel{Keys: taskstats.StatsPipelineIndex}))
 			if test.pre != nil {
 				test.pre(tctx, t)
 			}
