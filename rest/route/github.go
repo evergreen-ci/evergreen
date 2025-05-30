@@ -719,6 +719,13 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 		return errors.Wrap(err, "finding project ref for patch")
 	}
 	if projectRef == nil {
+		grip.Info(message.Fields{
+			"message": "skipping CI on PR due to no project ref with PR testing found",
+			"owner":   pr.Base.User.GetLogin(),
+			"repo":    pr.Base.Repo.GetName(),
+			"ref":     pr.Head.GetRef(),
+			"pr_num":  pr.GetNumber(),
+		})
 		return nil
 	}
 
