@@ -6,8 +6,11 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -22,6 +25,7 @@ func Client() cli.Command {
 			getAPIUrl(),
 			getUIUrl(),
 			getJWTFromKanopy(),
+			setJWTInConfig(),
 		},
 	}
 }
@@ -148,6 +152,40 @@ func getJWTFromKanopy() cli.Command {
 		Action: func(c *cli.Context) error {
 			jwt, _ := runKanopyOIDCLogin()
 			fmt.Println(jwt)
+			return nil
+		},
+	}
+}
+
+func setJWTInConfig() cli.Command {
+	return cli.Command{
+		Name:    "set-jwt",
+		Usage:   "generate a JWT token through kanopy-oidc and set it as \"jwt\" in the evergreen config file",
+		Aliases: []string{"sjwt"},
+		Action: func(c *cli.Context) error {
+			jwt, _ := runKanopyOIDCLogin()
+			if jwt == "" {
+				return errors.New("no JWT received - ensure kanopy-oidc is installed and configured correctly")
+			}
+
+			confPath := c.Parent().String(confFlagName)
+			conf, err := NewClientSettings(confPath)
+			conf.JWT = jwt
+
+			if err != nil {
+				return errors.Wrap(err, "loading configuration")
+			}
+
+			cwd, err := os.Getwd()
+			grip.Error(errors.Wrap(err, "getting current working directory"))
+			cwd, err = filepath.EvalSymlinks(cwd)
+			grip.Error(errors.Wrapf(err, "resolving symlinks for the current working directory '%s'", cwd))
+
+			if err := conf.Write(""); err != nil {
+				grip.Warning(message.WrapError(err, "failed to set a jwt token "))
+			}
+
+			grip.Info("The jwt token was set.")
 			return nil
 		},
 	}
