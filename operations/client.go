@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -156,8 +155,8 @@ func getJWTFromKanopy() cli.Command {
 	}
 }
 
-// Setting the kanopy token in the Evergreen config file is helpful for services that already 
-// set up to read auth information from he Evergreen config file. 
+// Setting the kanopy token in the Evergreen config file is helpful for services that already
+// set up to read auth information from he Evergreen config file.
 func setJWTInConfig() cli.Command {
 	return cli.Command{
 		Name:    "set-jwt",
