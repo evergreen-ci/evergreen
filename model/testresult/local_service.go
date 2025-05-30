@@ -10,8 +10,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-const maxSampleSize = 10
-
 // ClearLocal clears the local test results store.
 func ClearLocal(ctx context.Context, env evergreen.Environment) error {
 	return errors.Wrap(env.DB().Collection(Collection).Drop(ctx), "clearing the local test results store")
