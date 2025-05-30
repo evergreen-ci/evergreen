@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 
 	"github.com/mongodb/grip"
@@ -163,23 +162,21 @@ func setJWTInConfig() cli.Command {
 		Usage:   "generate a JWT token through kanopy-oidc and set it as \"jwt\" in the evergreen config file",
 		Aliases: []string{"sjwt"},
 		Action: func(c *cli.Context) error {
-			jwt, _ := runKanopyOIDCLogin()
+			jwt, err := runKanopyOIDCLogin()
 			if jwt == "" {
 				return errors.New("no JWT received - ensure kanopy-oidc is installed and configured correctly")
+			}
+			if err != nil {
+				return errors.Wrap(err, "running kanopy-oidc login")
 			}
 
 			confPath := c.Parent().String(confFlagName)
 			conf, err := NewClientSettings(confPath)
-			conf.JWT = jwt
-
 			if err != nil {
 				return errors.Wrap(err, "loading configuration")
 			}
 
-			cwd, err := os.Getwd()
-			grip.Error(errors.Wrap(err, "getting current working directory"))
-			cwd, err = filepath.EvalSymlinks(cwd)
-			grip.Error(errors.Wrapf(err, "resolving symlinks for the current working directory '%s'", cwd))
+			conf.JWT = jwt
 
 			if err := conf.Write(""); err != nil {
 				grip.Warning(message.WrapError(err, "failed to set a jwt token "))
