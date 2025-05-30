@@ -511,6 +511,9 @@ const (
 	VersionPRNumOtelAttribute            = "evergreen.version.pr_num"
 	VersionDescriptionOtelAttribute      = "evergreen.version.description"
 
+	// patch otel attributes
+	PatchIsReconfiguredOtelAttribute = "evergreen.patch.is_reconfigured"
+
 	// build otel attributes
 	BuildIDOtelAttribute   = "evergreen.build.id"
 	BuildNameOtelAttribute = "evergreen.build.name"
