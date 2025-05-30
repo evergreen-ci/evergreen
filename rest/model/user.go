@@ -110,9 +110,7 @@ type APIUserSettings struct {
 }
 
 type APIUseSpruceOptions struct {
-	HasUsedSpruceBefore          *bool `json:"has_used_spruce_before" bson:"has_used_spruce_before,omitempty"`
-	HasUsedMainlineCommitsBefore *bool `json:"has_used_mainline_commits_before" bson:"has_used_mainline_commits_before,omitempty"`
-	SpruceV1                     *bool `json:"spruce_v1" bson:"spruce_v1,omitempty"`
+	SpruceV1 *bool `json:"spruce_v1" bson:"spruce_v1,omitempty"`
 }
 
 func (s *APIUserSettings) BuildFromService(settings user.UserSettings) {
@@ -121,9 +119,7 @@ func (s *APIUserSettings) BuildFromService(settings user.UserSettings) {
 	s.SlackUsername = utility.ToStringPtr(settings.SlackUsername)
 	s.SlackMemberId = utility.ToStringPtr(settings.SlackMemberId)
 	s.UseSpruceOptions = &APIUseSpruceOptions{
-		HasUsedSpruceBefore:          utility.ToBoolPtr(settings.UseSpruceOptions.HasUsedSpruceBefore),
-		HasUsedMainlineCommitsBefore: utility.ToBoolPtr(settings.UseSpruceOptions.HasUsedMainlineCommitsBefore),
-		SpruceV1:                     utility.ToBoolPtr(settings.UseSpruceOptions.SpruceV1),
+		SpruceV1: utility.ToBoolPtr(settings.UseSpruceOptions.SpruceV1),
 	}
 	s.GithubUser = &APIGithubUser{}
 	s.GithubUser.BuildFromService(settings.GithubUser)
@@ -146,9 +142,7 @@ func (s *APIUserSettings) ToService() (user.UserSettings, error) {
 
 	useSpruceOptions := user.UseSpruceOptions{}
 	if s.UseSpruceOptions != nil {
-		useSpruceOptions.HasUsedSpruceBefore = utility.FromBoolPtr(s.UseSpruceOptions.HasUsedSpruceBefore)
 		useSpruceOptions.SpruceV1 = utility.FromBoolPtr(s.UseSpruceOptions.SpruceV1)
-		useSpruceOptions.HasUsedMainlineCommitsBefore = utility.FromBoolPtr(s.UseSpruceOptions.HasUsedMainlineCommitsBefore)
 	}
 	return user.UserSettings{
 		Timezone:         utility.FromStringPtr(s.Timezone),
