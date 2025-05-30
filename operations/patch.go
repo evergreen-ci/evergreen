@@ -392,6 +392,7 @@ func PatchFile() cli.Command {
 			diffPatchId := c.String(diffPatchIdFlagName)
 			diffFilePath := c.String(diffPathFlagName)
 			allowEmpty := c.Bool(allowEmptyFlagName)
+			jsonOutput := c.Bool(jsonFlagName)
 			if diffPatchId == "" && diffFilePath != "" {
 				if _, err := os.Stat(diffFilePath); os.IsNotExist(err) {
 					return errors.Errorf("file '%s' does not exist", diffFilePath)
@@ -431,7 +432,7 @@ func PatchFile() cli.Command {
 				return errors.Wrap(err, "loading configuration")
 			}
 
-			comm, err := conf.setupRestCommunicator(ctx, true)
+			comm, err := conf.setupRestCommunicator(ctx, !jsonOutput)
 			if err != nil {
 				return errors.Wrap(err, "setting up REST communicator")
 			}
@@ -489,8 +490,9 @@ func PatchFile() cli.Command {
 					if err = ac.UpdatePatchModule(moduleParams); err != nil {
 						return err
 					}
-					grip.Infof("Module '%s' updated.", module.Name)
-
+					if !jsonOutput {
+						grip.Infof("Module '%s' updated.", module.Name)
+					}
 				}
 			}
 
@@ -511,7 +513,7 @@ func PatchFile() cli.Command {
 			outputParams := outputPatchParams{
 				patches:    []patch.Patch{*newPatch},
 				uiHost:     conf.UIServerHost,
-				outputJSON: c.Bool(jsonFlagName),
+				outputJSON: jsonOutput,
 			}
 
 			return params.displayPatch(ctx, ac, outputParams)
