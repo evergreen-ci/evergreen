@@ -123,7 +123,8 @@ func GenerateStats(ctx context.Context, opts GenerateStatsOptions) error {
 	})
 	start := utility.GetUTCDay(opts.Date)
 	end := start.Add(24 * time.Hour)
-	if err := aggregateIntoCollection(ctx, task.Collection, statsPipeline(opts.ProjectID, opts.Requester, start, end, opts.Tasks), DailyTaskStatsCollection); err != nil {
+	if err := aggregateIntoCollectionWithHint(ctx, task.Collection, statsPipeline(opts.ProjectID, opts.Requester, start, end, opts.Tasks),
+		statsPipelineIndex, DailyTaskStatsCollection); err != nil {
 		return errors.Wrap(err, "aggregating daily task stats")
 	}
 

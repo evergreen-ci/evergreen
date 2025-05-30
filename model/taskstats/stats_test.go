@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 var baseTime = time.Date(2018, 7, 15, 16, 45, 0, 0, time.UTC)
@@ -41,6 +42,8 @@ func (s *statsSuite) SetupTest() {
 	for _, coll := range collectionsToClear {
 		s.NoError(db.Clear(coll))
 	}
+	s.NoError(db.EnsureIndex(task.Collection, mongo.IndexModel{Keys: statsPipelineIndex}), "problem setting up index")
+
 }
 
 func (s *statsSuite) TestStatsStatus() {
