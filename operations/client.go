@@ -156,6 +156,8 @@ func getJWTFromKanopy() cli.Command {
 	}
 }
 
+// Setting the kanopy token in the Evergreen config file is helpful for services that already 
+// set up to read auth information from he Evergreen config file. 
 func setJWTInConfig() cli.Command {
 	return cli.Command{
 		Name:    "set-jwt",
@@ -179,7 +181,7 @@ func setJWTInConfig() cli.Command {
 			conf.JWT = jwt
 
 			if err := conf.Write(""); err != nil {
-				grip.Warning(message.WrapError(err, "failed to set a jwt token "))
+				return errors.Wrap(err, "failed to set a jwt token ")
 			}
 
 			grip.Info("The jwt token was set.")
