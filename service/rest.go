@@ -87,7 +87,6 @@ func GetRESTv1App(evgService restAPIService) *gimlet.APIApp {
 	app.AddRoute("/versions/{version_id}/config").Version(1).Get().Handler(rest.getVersionConfig).Wrap(middleware)
 	app.AddRoute("/versions/{version_id}/parser_project").Version(1).Get().Handler(rest.getVersionProject).Wrap(middleware)
 	app.AddRoute("/versions/{version_id}/status").Version(1).Get().Handler(rest.getVersionStatus).Wrap(middleware)
-	app.AddRoute("/waterfall/{project_id}").Version(1).Get().Handler(rest.getWaterfallData).Wrap(middleware)
 
 	return app
 }

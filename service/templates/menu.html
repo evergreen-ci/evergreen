@@ -26,7 +26,7 @@ window.NewUILink = {{.NewUILink}};
 
       <div id="navbar-collapse-content" class="collapse navbar-collapse">
         <ul class="nav navbar-nav">
-          <li><a ng-href="/waterfall/[[project]]">Waterfall</a></li>
+          <li><a ng-href="[[newUILink ? newUILink : '']]/project/[[project]]/waterfall">Waterfall</a></li>
           <li><a ng-href="/patches/project/[[project]]">Patches</a></li>
           <li><a ng-href="/task_timing/[[project]]">Stats</a></li>
           {{if .User}}
@@ -43,7 +43,7 @@ window.NewUILink = {{.NewUILink}};
             <span ng-repeat-start="kv in groupedProjects | orderBy:getGroupName"></span>
             <li ng-repeat="p in kv[1] | filter:filter.projects | orderBy:getName">
             <b ng-show="$index == 0 && kv[1].length > 1">&nbsp;[[ kv[0] ]]</b>
-            <a href="/waterfall/[[p.identifier]]"><span ng-show="kv[1].length>1">&nbsp;&nbsp;&nbsp;</span>
+            <a ng-href="[[newUILink ? newUILink : '']]/project/[[p.identifier]]/waterfall"><span ng-show="kv[1].length>1">&nbsp;&nbsp;&nbsp;</span>
               <i ng-show="p.repotracker_error.exists" style= "color:red" class="fa fa-exclamation-circle"></i>
               [[getName(p)]]
             </a>
