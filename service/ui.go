@@ -309,7 +309,7 @@ func (uis *UIServer) GetServiceApp() *gimlet.APIApp {
 		Post().Get()
 
 	// Waterfall pages
-	app.AddRoute("/").Wrap(needsLogin, needsContext).Handler(uis.mainlineCommitsRedirect).Get().Head()
+	app.AddRoute("/").Wrap(needsLogin, needsContext).Handler(uis.waterfallPage).Get().Head()
 	app.AddRoute("/waterfall").Wrap(needsLogin, needsContext).Handler(uis.waterfallPage).Get()
 	app.AddRoute("/waterfall/{project_id}").Wrap(needsLogin, needsContext, viewTasks).Handler(uis.waterfallPage).Get()
 
@@ -459,21 +459,7 @@ func (uis *UIServer) waterfallPage(w http.ResponseWriter, r *http.Request) {
 	project, err := projCtx.GetProject(r.Context())
 
 	if err != nil || project == nil {
-		uis.LoggedError(w, r, http.StatusNotFound, errors.New("project not found"))
-		return
-	}
-
-	newUIURL := fmt.Sprintf("%s/project/%s/waterfall", uis.Settings.Ui.UIv2Url, project.Identifier)
-	http.Redirect(w, r, newUIURL, http.StatusMovedPermanently)
-}
-
-// mainlineCommitsRedirect redirects to the new UI waterfall page
-func (uis *UIServer) mainlineCommitsRedirect(w http.ResponseWriter, r *http.Request) {
-	projCtx := MustHaveProjectContext(r)
-	project, err := projCtx.GetProject(r.Context())
-
-	if err != nil || project == nil {
-		uis.LoggedError(w, r, http.StatusNotFound, errors.New("project not found"))
+		http.Redirect(w, r, uis.Settings.Ui.UIv2Url, http.StatusMovedPermanently)
 		return
 	}
 
