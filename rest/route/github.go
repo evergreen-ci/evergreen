@@ -752,12 +752,13 @@ func (gh *githubHookApi) AddIntentForPR(ctx context.Context, pr *github.PullRequ
 		}
 		if strings.Contains(title, label) || strings.Contains(limitedDesc, label) {
 			grip.Info(message.Fields{
-				"message": "skipping CI on PR due to skip label in title/description",
-				"owner":   pr.Base.User.GetLogin(),
-				"repo":    pr.Base.Repo.GetName(),
-				"ref":     pr.Head.GetRef(),
-				"pr_num":  pr.GetNumber(),
-				"label":   label,
+				"message":     "skipping CI on PR due to skip label in title/description",
+				"org":         pr.Base.Repo.Owner.GetLogin(),
+				"repo":        pr.Base.Repo.GetName(),
+				"github_user": pr.Base.User.GetLogin(),
+				"ref":         pr.Head.GetRef(),
+				"pr_num":      pr.GetNumber(),
+				"label":       label,
 			})
 			return nil
 		}
