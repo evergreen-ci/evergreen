@@ -13,13 +13,13 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/command"
 	"github.com/evergreen-ci/evergreen/agent/globals"
+	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/agent/internal/redactor"
 	"github.com/evergreen-ci/evergreen/agent/internal/taskoutput"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/thirdparty/docker"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
@@ -607,49 +607,53 @@ func shouldRunSetupGroup(nextTask *apimodels.NextTaskResponse, tc *taskContext) 
 	return false
 }
 
-func (a *Agent) fetchTaskInfo(ctx context.Context, tc *taskContext) (*task.Task, *apimodels.DisplayTaskInfo, *model.Project, *apimodels.ExpansionsAndVars, error) {
-	project, err := a.comm.GetProject(ctx, tc.task)
+// fetchTaskInfo gets the Project, Task, ExpansionAndVars, and DisplayTaskInfo. It stores them inside
+// a TaskConfigOptions struct- it does not set any of its other fields.
+func (a *Agent) fetchTaskInfo(ctx context.Context, tc *taskContext) (*internal.TaskConfigOptions, error) {
+	opts := &internal.TaskConfigOptions{}
+	var err error
+	opts.Project, err = a.comm.GetProject(ctx, tc.task)
 	if err != nil {
-		return nil, nil, nil, nil, errors.Wrap(err, "getting project")
+		return nil, errors.Wrap(err, "getting project")
 	}
 
-	taskModel, err := a.comm.GetTask(ctx, tc.task)
+	opts.Task, err = a.comm.GetTask(ctx, tc.task)
 	if err != nil {
-		return nil, nil, nil, nil, errors.Wrap(err, "getting task")
+		return nil, errors.Wrap(err, "getting task")
 	}
 
-	expAndVars, err := a.comm.GetExpansionsAndVars(ctx, tc.task)
+	opts.ExpansionsAndVars, err = a.comm.GetExpansionsAndVars(ctx, tc.task)
 	if err != nil {
-		return nil, nil, nil, nil, errors.Wrap(err, "getting expansions and variables")
+		return nil, errors.Wrap(err, "getting expansions and variables")
 	}
 
-	displayTaskInfo, err := a.comm.GetDisplayTaskInfoFromExecution(ctx, tc.task)
+	opts.DisplayTaskInfo, err = a.comm.GetDisplayTaskInfoFromExecution(ctx, tc.task)
 	if err != nil {
-		return nil, nil, nil, nil, errors.Wrap(err, "getting task's display task info")
+		return nil, errors.Wrap(err, "getting task's display task info")
 	}
 
 	// GetExpansionsAndVars does not include build variant expansions or project
 	// parameters, so load them from the project.
-	for _, bv := range project.BuildVariants {
-		if bv.Name == taskModel.BuildVariant {
-			expAndVars.Expansions.Update(bv.Expansions)
+	for _, bv := range opts.Project.BuildVariants {
+		if bv.Name == opts.Task.BuildVariant {
+			opts.ExpansionsAndVars.Expansions.Update(bv.Expansions)
 			break
 		}
 	}
-	expAndVars.Expansions.Update(expAndVars.Vars)
-	for _, param := range project.Parameters {
+	opts.ExpansionsAndVars.Expansions.Update(opts.ExpansionsAndVars.Vars)
+	for _, param := range opts.Project.Parameters {
 		// If the key doesn't exist, the value will default to "" anyway; this
 		// prevents an un-specified project parameter from overwriting
 		// lower-priority expansions.
 		if param.Value != "" {
-			expAndVars.Expansions.Put(param.Key, param.Value)
+			opts.ExpansionsAndVars.Expansions.Put(param.Key, param.Value)
 		}
 	}
 	// Overwrite any empty values here since these parameters were explicitly
 	// user-specified.
-	expAndVars.Expansions.Update(expAndVars.Parameters)
+	opts.ExpansionsAndVars.Expansions.Update(opts.ExpansionsAndVars.Parameters)
 
-	return taskModel, displayTaskInfo, project, expAndVars, nil
+	return opts, nil
 }
 
 func (a *Agent) startLogging(ctx context.Context, tc *taskContext) error {

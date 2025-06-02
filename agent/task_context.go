@@ -330,7 +330,7 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.
 	}
 
 	grip.Info("Fetching task info.")
-	tsk, dtInfo, project, expansionsAndVars, err := a.fetchTaskInfo(ctx, tc)
+	tcOpts, err := a.fetchTaskInfo(ctx, tc)
 	if err != nil {
 		return nil, errors.Wrap(err, "fetching task info")
 	}
@@ -360,7 +360,7 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.
 	}
 
 	var confPatch *patch.Patch
-	if evergreen.IsGitHubPatchRequester(tsk.Requester) {
+	if evergreen.IsGitHubPatchRequester(tcOpts.Task.Requester) {
 		grip.Info("Fetching patch document for GitHub PR request.")
 		confPatch, err = a.comm.GetTaskPatch(ctx, tc.task)
 		if err != nil {
@@ -379,19 +379,13 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.
 	}
 
 	grip.Info("Constructing task config.")
-	tcOpts := internal.TaskConfigOptions{
-		WorkDir:           a.opts.WorkingDirectory,
-		Distro:            confDistro,
-		Host:              confHost,
-		Project:           project,
-		Task:              tsk,
-		DisplayTaskInfo:   dtInfo,
-		ProjectRef:        confRef,
-		Patch:             confPatch,
-		Version:           versionDoc,
-		ExpansionsAndVars: expansionsAndVars,
-	}
-	taskConfig, err := internal.NewTaskConfig(tcOpts)
+	tcOpts.WorkDir = a.opts.WorkingDirectory
+	tcOpts.Distro = confDistro
+	tcOpts.Host = confHost
+	tcOpts.ProjectRef = confRef
+	tcOpts.Patch = confPatch
+	tcOpts.Version = versionDoc
+	taskConfig, err := internal.NewTaskConfig(*tcOpts)
 	if err != nil {
 		return nil, err
 	}
