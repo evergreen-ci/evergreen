@@ -39,7 +39,7 @@ func InitializeTaskOutput(env evergreen.Environment) *TaskOutput {
 			BucketConfig: settings.Buckets.LogBucket,
 		},
 		TestResults: TestResultOutput{
-			Version:      1,
+			Version:      0,
 			BucketConfig: settings.Buckets.TestResultsBucket,
 		},
 	}
