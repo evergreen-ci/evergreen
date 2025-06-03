@@ -497,6 +497,10 @@ const (
 	TaskFailureTypeOtelAttribute = "evergreen.task.failure_type"
 	TaskTagsOtelAttribute        = "evergreen.task.tags"
 
+	// task otel attributes
+	DisplayTaskIDOtelAttribute   = "evergreen.display_task.id"
+	DisplayTaskNameOtelAttribute = "evergreen.display_task.name"
+
 	// version otel attributes
 	VersionIDOtelAttribute               = "evergreen.version.id"
 	VersionRequesterOtelAttribute        = "evergreen.version.requester"
@@ -510,6 +514,9 @@ const (
 	VersionTimeTakenSecondsOtelAttribute = "evergreen.version.time_taken_seconds"
 	VersionPRNumOtelAttribute            = "evergreen.version.pr_num"
 	VersionDescriptionOtelAttribute      = "evergreen.version.description"
+
+	// patch otel attributes
+	PatchIsReconfiguredOtelAttribute = "evergreen.patch.is_reconfigured"
 
 	// build otel attributes
 	BuildIDOtelAttribute   = "evergreen.build.id"

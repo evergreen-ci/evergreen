@@ -930,6 +930,7 @@ type JiraIssueParameters struct {
 	SubID     string
 	Project   string
 	UiURL     string
+	UiV2URL   string
 	EventID   string
 	TestNames string
 	Mappings  *evergreen.JIRANotificationsConfig
@@ -974,6 +975,7 @@ func JIRATaskPayload(ctx context.Context, params JiraIssueParameters) (*message.
 	data := jiraTemplateData{
 		Context:         ctx,
 		UIRoot:          params.UiURL,
+		UIv2Url:         params.UiV2URL,
 		SubscriptionID:  params.SubID,
 		EventID:         params.EventID,
 		Task:            params.Task,

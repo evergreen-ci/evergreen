@@ -1039,7 +1039,7 @@ func logTaskEndStats(ctx context.Context, t *task.Task) error {
 }
 
 // getVersionCtxForTracing returns a context with version attributes for tracing
-func getVersionCtxForTracing(ctx context.Context, v *Version, project string) (context.Context, error) {
+func getVersionCtxForTracing(ctx context.Context, v *Version, project string, p *patch.Patch) (context.Context, error) {
 	if v == nil {
 		return nil, errors.New("version is nil")
 	}
@@ -1049,7 +1049,7 @@ func getVersionCtxForTracing(ctx context.Context, v *Version, project string) (c
 		return nil, errors.Wrap(err, "getting time spent")
 	}
 
-	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{
+	attrs := []attribute.KeyValue{
 		attribute.String(evergreen.VersionIDOtelAttribute, v.Id),
 		attribute.String(evergreen.VersionRequesterOtelAttribute, v.Requester),
 		attribute.String(evergreen.ProjectIDOtelAttribute, project),
@@ -1062,7 +1062,12 @@ func getVersionCtxForTracing(ctx context.Context, v *Version, project string) (c
 		attribute.Int(evergreen.VersionMakespanSecondsOtelAttribute, int(makespan.Seconds())),
 		attribute.String(evergreen.VersionAuthorOtelAttribute, v.Author),
 		attribute.String(evergreen.VersionBranchOtelAttribute, v.Branch),
-	})
+	}
+	if p != nil && p.IsReconfigured {
+		attrs = append(attrs, attribute.Bool(evergreen.PatchIsReconfiguredOtelAttribute, true))
+	}
+
+	ctx = utility.ContextWithAttributes(ctx, attrs)
 
 	return ctx, nil
 }
@@ -1688,7 +1693,7 @@ func UpdateBuildAndVersionStatusForTask(ctx context.Context, t *task.Task) error
 
 	if evergreen.IsFinishedVersionStatus(newVersionStatus) && !evergreen.IsPatchRequester(taskVersion.Requester) {
 		// only add tracing for versions, patches need to wait for child patches
-		traceContext, err := getVersionCtxForTracing(ctx, taskVersion, t.Project)
+		traceContext, err := getVersionCtxForTracing(ctx, taskVersion, t.Project, nil)
 		if err != nil {
 			return errors.Wrap(err, "getting context for tracing")
 		}
@@ -1728,7 +1733,7 @@ func UpdateBuildAndVersionStatusForTask(ctx context.Context, t *task.Task) error
 			if err = UpdatePatchStatus(ctx, p, newVersionStatus); err != nil {
 				return errors.Wrapf(err, "updating patch '%s' status", p.Id.Hex())
 			}
-			traceContext, err := getVersionCtxForTracing(ctx, taskVersion, t.Project)
+			traceContext, err := getVersionCtxForTracing(ctx, taskVersion, t.Project, p)
 			if err != nil {
 				return errors.Wrap(err, "getting context for tracing")
 			}

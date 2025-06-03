@@ -2602,16 +2602,16 @@ func (s *AgentSuite) TestFetchTaskInfo() {
 		Identifier: "some_cool_project",
 	}
 
-	_, project, expansionsAndVars, err := s.a.fetchTaskInfo(s.ctx, s.tc)
+	tcOpts, err := s.a.fetchTaskInfo(s.ctx, s.tc)
 	s.NoError(err)
 
 	s.Require().NotZero(s.tc.taskConfig.Project)
-	s.Equal(s.mockCommunicator.GetProjectResponse.Identifier, project.Identifier)
-	s.Require().NotZero(expansionsAndVars.Expansions)
-	s.Equal("bar", expansionsAndVars.Expansions["foo"], "should include mock communicator expansions")
-	s.Equal("new-parameter-value", expansionsAndVars.Expansions["overwrite-this-parameter"], "user-specified parameter should overwrite any other conflicting expansion")
-	s.Require().NotZero(expansionsAndVars.PrivateVars)
-	s.True(expansionsAndVars.PrivateVars["some_private_var"], "should include mock communicator private variables")
+	s.Equal(s.mockCommunicator.GetProjectResponse.Identifier, tcOpts.project.Identifier)
+	s.Require().NotZero(tcOpts.expansionsAndVars.Expansions)
+	s.Equal("bar", tcOpts.expansionsAndVars.Expansions["foo"], "should include mock communicator expansions")
+	s.Equal("new-parameter-value", tcOpts.expansionsAndVars.Expansions["overwrite-this-parameter"], "user-specified parameter should overwrite any other conflicting expansion")
+	s.Require().NotZero(tcOpts.expansionsAndVars.PrivateVars)
+	s.True(tcOpts.expansionsAndVars.PrivateVars["some_private_var"], "should include mock communicator private variables")
 }
 
 func (s *AgentSuite) TestAbortExitsMainAndRunsPost() {

@@ -607,44 +607,60 @@ func shouldRunSetupGroup(nextTask *apimodels.NextTaskResponse, tc *taskContext) 
 	return false
 }
 
-func (a *Agent) fetchTaskInfo(ctx context.Context, tc *taskContext) (*task.Task, *model.Project, *apimodels.ExpansionsAndVars, error) {
-	project, err := a.comm.GetProject(ctx, tc.task)
+type taskInfo struct {
+	project           *model.Project
+	task              *task.Task
+	displayTaskInfo   *apimodels.DisplayTaskInfo
+	expansionsAndVars *apimodels.ExpansionsAndVars
+}
+
+// fetchTaskInfo gets the Project, Task, ExpansionAndVars, and DisplayTaskInfo. It stores them inside
+// a TaskConfigOptions struct- it does not set any of its other fields.
+func (a *Agent) fetchTaskInfo(ctx context.Context, tc *taskContext) (*taskInfo, error) {
+	opts := &taskInfo{}
+	var err error
+	opts.project, err = a.comm.GetProject(ctx, tc.task)
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(err, "getting project")
+		return nil, errors.Wrap(err, "getting project")
 	}
 
-	taskModel, err := a.comm.GetTask(ctx, tc.task)
+	opts.task, err = a.comm.GetTask(ctx, tc.task)
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(err, "getting task")
+		return nil, errors.Wrap(err, "getting task")
 	}
 
-	expAndVars, err := a.comm.GetExpansionsAndVars(ctx, tc.task)
+	opts.expansionsAndVars, err = a.comm.GetExpansionsAndVars(ctx, tc.task)
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(err, "getting expansions and variables")
+		return nil, errors.Wrap(err, "getting expansions and variables")
+	}
+
+	opts.displayTaskInfo, err = a.comm.GetDisplayTaskInfoFromExecution(ctx, tc.task)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting task's display task info")
 	}
 
 	// GetExpansionsAndVars does not include build variant expansions or project
 	// parameters, so load them from the project.
-	for _, bv := range project.BuildVariants {
-		if bv.Name == taskModel.BuildVariant {
-			expAndVars.Expansions.Update(bv.Expansions)
+	for _, bv := range opts.project.BuildVariants {
+		if bv.Name == opts.task.BuildVariant {
+			opts.expansionsAndVars.Expansions.Update(bv.Expansions)
 			break
 		}
 	}
-	expAndVars.Expansions.Update(expAndVars.Vars)
-	for _, param := range project.Parameters {
+	opts.expansionsAndVars.Expansions.Update(opts.expansionsAndVars.Vars)
+	for _, param := range opts.project.Parameters {
 		// If the key doesn't exist, the value will default to "" anyway; this
 		// prevents an un-specified project parameter from overwriting
 		// lower-priority expansions.
 		if param.Value != "" {
-			expAndVars.Expansions.Put(param.Key, param.Value)
+			opts.expansionsAndVars.Expansions.Put(param.Key, param.Value)
 		}
 	}
 	// Overwrite any empty values here since these parameters were explicitly
 	// user-specified.
-	expAndVars.Expansions.Update(expAndVars.Parameters)
+	opts.expansionsAndVars.Expansions.Update(opts.expansionsAndVars.Parameters)
 
-	return taskModel, project, expAndVars, nil
+	return opts, nil
 }
 
 func (a *Agent) startLogging(ctx context.Context, tc *taskContext) error {

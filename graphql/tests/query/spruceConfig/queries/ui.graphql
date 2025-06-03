@@ -3,9 +3,7 @@ query {
     ui {
       defaultProject
       userVoice
-      betaFeatures {
-        spruceWaterfallEnabled
-      }
+
     }
   }
 }

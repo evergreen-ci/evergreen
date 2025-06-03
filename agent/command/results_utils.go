@@ -67,13 +67,9 @@ func attachTestResults(ctx context.Context, conf *internal.TaskConfig, td client
 	if err != nil {
 		return errors.Wrap(err, "creating test results client")
 	}
-	displayTaskInfo, err := comm.GetDisplayTaskInfoFromExecution(ctx, td)
-	if err != nil {
-		return errors.Wrap(err, "getting this task's display task info")
-	}
 
 	if conf.CedarTestResultsID == "" {
-		conf.CedarTestResultsID, err = client.CreateRecord(ctx, makeCedarTestResultsRecord(conf, displayTaskInfo))
+		conf.CedarTestResultsID, err = client.CreateRecord(ctx, makeCedarTestResultsRecord(conf, conf.DisplayTaskInfo))
 		if err != nil {
 			return errors.Wrap(err, "creating test results record")
 		}

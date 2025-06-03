@@ -1584,9 +1584,7 @@ type ComplexityRoot struct {
 	}
 
 	UseSpruceOptions struct {
-		HasUsedMainlineCommitsBefore func(childComplexity int) int
-		HasUsedSpruceBefore          func(childComplexity int) int
-		SpruceV1                     func(childComplexity int) int
+		SpruceV1 func(childComplexity int) int
 	}
 
 	User struct {
@@ -9594,20 +9592,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.UpstreamProject.Version(childComplexity), true
-
-	case "UseSpruceOptions.hasUsedMainlineCommitsBefore":
-		if e.complexity.UseSpruceOptions.HasUsedMainlineCommitsBefore == nil {
-			break
-		}
-
-		return e.complexity.UseSpruceOptions.HasUsedMainlineCommitsBefore(childComplexity), true
-
-	case "UseSpruceOptions.hasUsedSpruceBefore":
-		if e.complexity.UseSpruceOptions.HasUsedSpruceBefore == nil {
-			break
-		}
-
-		return e.complexity.UseSpruceOptions.HasUsedSpruceBefore(childComplexity), true
 
 	case "UseSpruceOptions.spruceV1":
 		if e.complexity.UseSpruceOptions.SpruceV1 == nil {
@@ -68195,88 +68179,6 @@ func (ec *executionContext) fieldContext_UpstreamProject_version(_ context.Conte
 	return fc, nil
 }
 
-func (ec *executionContext) _UseSpruceOptions_hasUsedMainlineCommitsBefore(ctx context.Context, field graphql.CollectedField, obj *model.APIUseSpruceOptions) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_UseSpruceOptions_hasUsedMainlineCommitsBefore(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.HasUsedMainlineCommitsBefore, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*bool)
-	fc.Result = res
-	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_UseSpruceOptions_hasUsedMainlineCommitsBefore(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "UseSpruceOptions",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _UseSpruceOptions_hasUsedSpruceBefore(ctx context.Context, field graphql.CollectedField, obj *model.APIUseSpruceOptions) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_UseSpruceOptions_hasUsedSpruceBefore(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.HasUsedSpruceBefore, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*bool)
-	fc.Result = res
-	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_UseSpruceOptions_hasUsedSpruceBefore(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "UseSpruceOptions",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _UseSpruceOptions_spruceV1(ctx context.Context, field graphql.CollectedField, obj *model.APIUseSpruceOptions) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UseSpruceOptions_spruceV1(ctx, field)
 	if err != nil {
@@ -69330,10 +69232,6 @@ func (ec *executionContext) fieldContext_UserSettings_useSpruceOptions(_ context
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "hasUsedMainlineCommitsBefore":
-				return ec.fieldContext_UseSpruceOptions_hasUsedMainlineCommitsBefore(ctx, field)
-			case "hasUsedSpruceBefore":
-				return ec.fieldContext_UseSpruceOptions_hasUsedSpruceBefore(ctx, field)
 			case "spruceV1":
 				return ec.fieldContext_UseSpruceOptions_spruceV1(ctx, field)
 			}
@@ -82021,27 +81919,13 @@ func (ec *executionContext) unmarshalInputUseSpruceOptionsInput(ctx context.Cont
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"hasUsedMainlineCommitsBefore", "hasUsedSpruceBefore", "spruceV1"}
+	fieldsInOrder := [...]string{"spruceV1"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
-		case "hasUsedMainlineCommitsBefore":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasUsedMainlineCommitsBefore"))
-			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.HasUsedMainlineCommitsBefore = data
-		case "hasUsedSpruceBefore":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasUsedSpruceBefore"))
-			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.HasUsedSpruceBefore = data
 		case "spruceV1":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("spruceV1"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -96774,10 +96658,6 @@ func (ec *executionContext) _UseSpruceOptions(ctx context.Context, sel ast.Selec
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("UseSpruceOptions")
-		case "hasUsedMainlineCommitsBefore":
-			out.Values[i] = ec._UseSpruceOptions_hasUsedMainlineCommitsBefore(ctx, field, obj)
-		case "hasUsedSpruceBefore":
-			out.Values[i] = ec._UseSpruceOptions_hasUsedSpruceBefore(ctx, field, obj)
 		case "spruceV1":
 			out.Values[i] = ec._UseSpruceOptions_spruceV1(ctx, field, obj)
 		default:
