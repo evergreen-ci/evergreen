@@ -1099,9 +1099,9 @@ func TestConfigurePatch(t *testing.T) {
 					},
 				},
 			}
-			varTasksMap := map[string]patch.VariantTasks{}
+			expectedVarsTasks := map[string]patch.VariantTasks{}
 			for _, vt := range req.VariantsTasks {
-				varTasksMap[vt.Variant] = vt
+				expectedVarsTasks[vt.Variant] = vt
 			}
 			_, err := ConfigurePatch(ctx, &evergreen.Settings{}, p, v, pRef, req)
 			assert.NoError(t, err)
@@ -1111,11 +1111,11 @@ func TestConfigurePatch(t *testing.T) {
 			require.NotNil(t, p)
 			assert.Len(t, dbPatch.VariantsTasks, len(req.VariantsTasks))
 			for _, vt := range dbPatch.VariantsTasks {
-				expectedVarTasks, ok := varTasksMap[vt.Variant]
+				expected, ok := expectedVarsTasks[vt.Variant]
 				if !assert.True(t, ok, "expected variant tasks not found for variant '%s'", vt.Variant) {
 					continue
 				}
-				assert.ElementsMatch(t, expectedVarTasks.Tasks, vt.Tasks)
+				assert.ElementsMatch(t, expected.Tasks, vt.Tasks)
 			}
 			assert.True(t, p.Activated)
 			assert.True(t, p.IsReconfigured)
