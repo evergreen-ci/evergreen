@@ -328,7 +328,7 @@ Evergreen.
 
 Configuration files listed in `include` will be merged with the main
 project configuration file. All top-level configuration files can define
-includes. This will accept a list of filenames and module names. If the
+includes. This will accept a list of filenames and [module names](#modules). If the
 include isn't given, we will only use the main project configuration
 file.
 
