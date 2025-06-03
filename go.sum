@@ -216,6 +216,8 @@ github.com/evergreen-ci/evg-lint v0.0.0-20211115144425-3b19c8e83a57/go.mod h1:lb
 github.com/evergreen-ci/gimlet v0.0.0-20220401150826-5898de01dbd8/go.mod h1:LfnJ3oYEVFUHwIPoAotvn9bbtAT+lAaCpH5YYnyxluk=
 github.com/evergreen-ci/gimlet v0.0.0-20250410201752-38682bd5bae1 h1:7pcKdYzWC6A/REj2aHO0n3uHg3COuVIPbJUmW5XKeto=
 github.com/evergreen-ci/gimlet v0.0.0-20250410201752-38682bd5bae1/go.mod h1:PFgU07WUMqVLlNiWH2SmggIkLx2UGt7kyYe2NQpOO6w=
+github.com/evergreen-ci/gimlet v0.0.0-20250603140109-a3fc26efadf3 h1:JPSFvl4jtlEGQl593fvn7+KIqIlhxkeyfzJIxkdGV8Y=
+github.com/evergreen-ci/gimlet v0.0.0-20250603140109-a3fc26efadf3/go.mod h1:PFgU07WUMqVLlNiWH2SmggIkLx2UGt7kyYe2NQpOO6w=
 github.com/evergreen-ci/juniper v0.0.0-20230901183147-c805ea7351aa h1:42kGqVm2tQOVtB/gj7AgOPPq3lBiuGUgLA0NOSpd2EM=
 github.com/evergreen-ci/juniper v0.0.0-20230901183147-c805ea7351aa/go.mod h1:LewZWRe1jV5XJhNksoB0rpvlwsg+D6M3yvzIFJZ8OJs=
 github.com/evergreen-ci/lru v0.0.0-20250224223041-c0d64dfbee1d h1:MuXYpCV887NYLiRj5ijRKRf7XpGQm84Op6kbdsNnIzM=
