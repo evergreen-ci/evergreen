@@ -1,24 +1,15 @@
 {
   "admin": [
     {
-      "_id": "no_permissions",
-      "default_project": "evergreen",
-      "url": "localhost:9090",
-      "http_listen_addr": ":9090",
-      "admin_settings": {
-        "banner": "",
-        "banner_theme": ""
-      }
-    },
-    {
-      "_id": "ui",
-      "default_project": "evergreen",
-      "url": "localhost:9090",
-      "http_listen_addr": ":9090",
-      "admin_settings": {
-        "banner": "",
-        "banner_theme": ""
-      }
+        "_id": "global",
+        "uiv2_url": "http://localhost:3000",
+        "configdir": "../config",
+        "domain_name": "localhost",
+        "banner": "This is an important notification",
+        "banner_theme": "announcement",
+        "github_orgs": [
+            "evergreen-ci"
+        ]
     }
   ]
 }

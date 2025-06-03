@@ -338,7 +338,7 @@ func New(apiURL string) Config {
 		if dbUser.HasPermission(permissions) {
 			return next(ctx)
 		}
-		return nil, InternalServerError.Send(ctx, fmt.Sprintf("User '%s' lacks required admin permissions", dbUser.Username()))
+		return nil, Forbidden.Send(ctx, fmt.Sprintf("User '%s' lacks required admin permissions", dbUser.Username()))
 	}
 
 	return c
