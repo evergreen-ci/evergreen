@@ -243,7 +243,9 @@ func (pd *parserDependency) UnmarshalYAML(unmarshal func(any) error) error {
 
 type parserInclude struct {
 	FileName string `yaml:"filename,omitempty" bson:"filename,omitempty"`
-	Module   string `yaml:"module,omitempty" bson:"module,omitempty"`
+	// kim; NOTE: this is used to determine includes coming from modules instead
+	// of the project itself.
+	Module string `yaml:"module,omitempty" bson:"module,omitempty"`
 }
 
 // TaskSelector handles the selection of specific task/variant combinations
