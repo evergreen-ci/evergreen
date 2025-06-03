@@ -193,14 +193,17 @@ func (o TestResultOutput) filterAndSortTestResults(ctx context.Context, env ever
 	}
 
 	baseStatusMap := map[string]string{}
-	baseResults, err := o.GetMergedTaskTestResults(ctx, env, createTaskoutputTaskOpts(opts.BaseTasks), nil)
-	if err != nil {
-		return nil, 0, errors.Wrap(err, "getting base test results")
-	}
-	for _, result := range baseResults.Results {
-		baseStatusMap[result.GetDisplayTestName()] = result.Status
+	if len(opts.BaseTasks) > 0 {
+		baseResults, err := o.GetMergedTaskTestResults(ctx, env, createTaskoutputTaskOpts(opts.BaseTasks), nil)
+		if err != nil {
+			return nil, 0, errors.Wrap(err, "getting base test results")
+		}
+		for _, result := range baseResults.Results {
+			baseStatusMap[result.GetDisplayTestName()] = result.Status
+		}
 	}
 
+	var err error
 	results, err = filterTestResults(results, opts)
 	if err != nil {
 		return nil, 0, errors.Wrap(err, "filtering test results")
