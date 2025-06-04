@@ -328,7 +328,7 @@ Evergreen.
 
 Configuration files listed in `include` will be merged with the main
 project configuration file. All top-level configuration files can define
-includes. This will accept a list of filenames and module names. If the
+includes. This will accept a list of filenames and [module names](#modules). If the
 include isn't given, we will only use the main project configuration
 file.
 
@@ -352,7 +352,6 @@ We do limit the [number of included files](../Reference/Limits#include-limits) t
 An alternative to relying on Evergreen for including the files would be to use `evergreen evaluate` as a pre-commit hook. 
 [This command](#Validating-changes-to-config-files) generates the effective project yaml from all the include files and remove the includes list, 
 so you could have one "generated" yaml that's committed to your repo to use for Evergreen testing that doesn't need to pull files from GitHub.
-Note that files included from modules aren't supported right now for the `evaluate` command. If you have questions about this please reach out.
 
 #### Merging Rules
 
