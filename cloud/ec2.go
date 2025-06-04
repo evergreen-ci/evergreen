@@ -305,7 +305,13 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 	}
 
 	assignPublicIPv4 := shouldAssignPublicIPv4Address(h, ec2Settings)
-	useElasticIP := assignPublicIPv4 && canUseElasticIP(m.settings, ec2Settings, m.account, h)
+	settings, err := evergreen.GetConfig(ctx)
+	if err != nil {
+		return errors.Wrap(err, "getting admin settings")
+	}
+	// kim: TODO: verify that % probability of using elastic IP works in
+	// staging.
+	useElasticIP := assignPublicIPv4 && canUseElasticIP(settings, ec2Settings, m.account, h)
 	if useElasticIP && h.IPAllocationID == "" {
 		// If the host can't be allocated an IP address, continue on error
 		// because the host should fall back to using an AWS-provided IP

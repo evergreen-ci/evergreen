@@ -1990,51 +1990,55 @@ Admin Settings
 										<input type="text" ng-model="Settings.providers.aws.ipam_pool_id">
 									</md-input-container>
 									<md-input-container class="control" style="width:45%; margin-left: 50px;">
+										<label>Elastic IP Usage Rate</label>
+										<input type="number" ng-model="Settings.providers.aws.elastic_ip_usage_rate">
+									</md-input-container>
+									<md-input-container class="control" style="width:45%;">
 										<label>Allowed Container Images</label>
 										<textarea ng-model="Settings.providers.aws.pod.ecs.allowed_images" ng-list="&#10;" ng-trim="false" rows="3"
 											md-select-on-focus></textarea>
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
+									<md-input-container class="control" style="width:45%; margin-left: 50px;">
 										<label>Pod ECS Max CPU Units Per Pod</label>
 										<input type="number" ng-model="Settings.providers.aws.pod.ecs.max_cpu">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left: 50px;">
+									<md-input-container class="control" style="width:45%;">
 										<label>Pod ECS Max Memory (MB) Per Pod</label>
 										<input type="number" ng-model="Settings.providers.aws.pod.ecs.max_memory_mb">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
+									<md-input-container class="control" style="width:45%; margin-left: 50px;">
 										<label>Pod Role</label>
 										<input type="text" ng-model="Settings.providers.aws.pod.role">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left: 50px;">
+									<md-input-container class="control" style="width:45%;">
 										<label>Pod Region</label>
 										<input type="text" ng-model="Settings.providers.aws.pod.region">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
+									<md-input-container class="control" style="width:45%; margin-left: 50px;">
 										<label>Pod Secrets Manager Secret Prefix</label>
 										<input type="text" ng-model="Settings.providers.aws.pod.secrets_manager.secret_prefix">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left: 50px;">
+									<md-input-container class="control" style="width:45%;">
 										<label>Pod ECS Task Definition Prefix</label>
 										<input type="text" ng-model="Settings.providers.aws.pod.ecs.task_definition_prefix">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
+									<md-input-container class="control" style="width:45%; margin-left: 50px;">
 										<label>Pod ECS Task Role</label>
 										<input type="text" ng-model="Settings.providers.aws.pod.ecs.task_role">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left: 50px;">
+									<md-input-container class="control" style="width:45%;">
 										<label>Pod ECS Execution Role</label>
 										<input type="text" ng-model="Settings.providers.aws.pod.ecs.execution_role">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
+									<md-input-container class="control" style="width:45%; margin-left: 50px;">
 										<label>Pod ECS Log Region</label>
 										<input type="text" ng-model="Settings.providers.aws.pod.ecs.log_region">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%; margin-left: 50px;">
+									<md-input-container class="control" style="width:45%;">
 										<label>Pod ECS Log Group Name</label>
 										<input type="text" ng-model="Settings.providers.aws.pod.ecs.log_group">
 									</md-input-container>
-									<md-input-container class="control" style="width:45%;">
+									<md-input-container class="control" style="width:45%; margin-left: 50px;">
 										<label>Pod ECS Log Stream Prefix</label>
 										<input type="text" ng-model="Settings.providers.aws.pod.ecs.log_stream_prefix">
 									</md-input-container>
