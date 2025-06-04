@@ -1,6 +1,6 @@
 # Controlling When a Task Runs on the Waterfall
 
-There are multiple ways to control the scheduling of builds/tasks on a project's *waterfall* page.
+There are multiple ways to control the scheduling of builds/tasks on a project's *waterfall* page. This means that tasks manually scheduled by a PR or patch will run regardless of cron/batchtime settings. 
 
 In short:
 
