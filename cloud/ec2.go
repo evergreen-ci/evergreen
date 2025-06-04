@@ -309,8 +309,6 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 	if err != nil {
 		return errors.Wrap(err, "getting admin settings")
 	}
-	// kim: TODO: verify that % probability of using elastic IP works in
-	// staging.
 	useElasticIP := assignPublicIPv4 && canUseElasticIP(settings, ec2Settings, m.account, h)
 	if useElasticIP && h.IPAllocationID == "" {
 		// If the host can't be allocated an IP address, continue on error
