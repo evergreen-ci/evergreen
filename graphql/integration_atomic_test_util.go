@@ -34,7 +34,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/log"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -534,7 +533,7 @@ func setupDBData(ctx context.Context, env evergreen.Environment, data map[string
 func setupTaskOutputData(ctx context.Context, state *AtomicGraphQLState) error {
 	for taskOutputType, data := range state.TaskOutputData {
 		switch taskOutputType {
-		case taskoutput.TaskLogOutput{}.ID():
+		case task.TaskLogOutput{}.ID():
 			if err := setupTaskLogData(ctx, data); err != nil {
 				return errors.Wrap(err, "setting up task log data")
 			}
@@ -548,10 +547,10 @@ func setupTaskOutputData(ctx context.Context, state *AtomicGraphQLState) error {
 
 func setupTaskLogData(ctx context.Context, data json.RawMessage) error {
 	taskLogs := []struct {
-		TaskID    string                 `json:"task_id"`
-		Execution int                    `json:"execution"`
-		LogType   taskoutput.TaskLogType `json:"log_type"`
-		Lines     []log.LogLine          `json:"lines"`
+		TaskID    string           `json:"task_id"`
+		Execution int              `json:"execution"`
+		LogType   task.TaskLogType `json:"log_type"`
+		Lines     []log.LogLine    `json:"lines"`
 	}{}
 	if err := json.Unmarshal(data, &taskLogs); err != nil {
 		return errors.Wrap(err, "unmarshalling task log data")
@@ -567,12 +566,7 @@ func setupTaskLogData(ctx context.Context, data json.RawMessage) error {
 			return errors.New("task missing task output info")
 		}
 
-		taskOpts := taskoutput.TaskOptions{
-			ProjectID: tsk.Project,
-			TaskID:    tsk.Id,
-			Execution: tsk.Execution,
-		}
-		if err := tsk.TaskOutputInfo.TaskLogs.Append(ctx, taskOpts, taskLog.LogType, taskLog.Lines); err != nil {
+		if err := tsk.TaskOutputInfo.TaskLogs.Append(ctx, *tsk, taskLog.LogType, taskLog.Lines); err != nil {
 			return errors.Wrap(err, "appending task log lines")
 		}
 	}

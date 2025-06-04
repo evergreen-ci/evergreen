@@ -20,7 +20,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/pod"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -1996,7 +1995,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 
 		Convey("task should not fail if there are no failed test", func() {
 			reset()
-			testTask.ResultsService = testresult.TestResultsServiceLocal
+			testTask.ResultsService = task.TestResultsServiceLocal
 			So(MarkEnd(ctx, settings, testTask, "", time.Now(), detail), ShouldBeNil)
 
 			v, err := VersionFindOneId(t.Context(), v.Id)
@@ -2014,7 +2013,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 
 		Convey("task should fail if there are failing tests", func() {
 			reset()
-			testTask.ResultsService = testresult.TestResultsServiceLocal
+			testTask.ResultsService = task.TestResultsServiceLocal
 			testTask.ResultsFailed = true
 			So(MarkEnd(ctx, settings, testTask, "", time.Now(), detail), ShouldBeNil)
 
@@ -5327,7 +5326,7 @@ func TestMarkEndWithNoResults(t *testing.T) {
 		BuildId:         "b",
 		Version:         "v",
 		MustHaveResults: true,
-		ResultsService:  testresult.TestResultsServiceLocal,
+		ResultsService:  task.TestResultsServiceLocal,
 		HostId:          "hostId",
 	}
 	assert.NoError(t, testTask2.Insert(t.Context()))

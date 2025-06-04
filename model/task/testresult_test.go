@@ -1,4 +1,4 @@
-package taskoutput
+package task
 
 import (
 	"context"
@@ -21,22 +21,22 @@ func TestGetTaskTestResults(t *testing.T) {
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
 
-	require.NoError(t, testresult.ClearLocal(ctx, env))
+	require.NoError(t, ClearLocal(ctx, env))
 	defer func() {
-		assert.NoError(t, testresult.ClearLocal(ctx, env))
+		assert.NoError(t, ClearLocal(ctx, env))
 	}()
 	srv, handler := newMockCedarServer(env)
 	defer srv.Close()
-	svc := testresult.NewLocalService(env)
-	task0 := testresult.TaskOptions{
-		TaskID:         "task0",
+	svc := NewLocalService(env)
+	task0 := Task{
+		Id:             "task0",
 		Execution:      0,
-		ResultsService: testresult.TestResultsServiceLocal,
+		ResultsService: TestResultsServiceLocal,
 	}
 	savedResults0 := make([]testresult.TestResult, 10)
 	for i := 0; i < len(savedResults0); i++ {
 		result := getTestResult()
-		result.TaskID = task0.TaskID
+		result.TaskID = task0.Id
 		result.Execution = task0.Execution
 		if i%2 != 0 {
 			result.Status = evergreen.TestFailedStatus
@@ -45,43 +45,43 @@ func TestGetTaskTestResults(t *testing.T) {
 	}
 	require.NoError(t, svc.AppendTestResults(ctx, savedResults0))
 
-	task1 := testresult.TaskOptions{
-		TaskID:         "task1",
+	task1 := Task{
+		Id:             "task1",
 		Execution:      0,
-		ResultsService: testresult.TestResultsServiceLocal,
+		ResultsService: TestResultsServiceLocal,
 	}
 	savedResults1 := make([]testresult.TestResult, 10)
 	for i := 0; i < len(savedResults1); i++ {
 		result := getTestResult()
-		result.TaskID = task1.TaskID
+		result.TaskID = task1.Id
 		result.Execution = task1.Execution
 		savedResults1[i] = result
 	}
 	require.NoError(t, svc.AppendTestResults(ctx, savedResults1))
 
-	task2 := testresult.TaskOptions{
-		TaskID:         "task2",
+	task2 := Task{
+		Id:             "task2",
 		Execution:      1,
-		ResultsService: testresult.TestResultsServiceLocal,
+		ResultsService: TestResultsServiceLocal,
 	}
 	savedResults2 := make([]testresult.TestResult, 10)
 	for i := 0; i < len(savedResults2); i++ {
 		result := getTestResult()
-		result.TaskID = task2.TaskID
+		result.TaskID = task2.Id
 		result.Execution = task2.Execution
 		savedResults2[i] = result
 	}
 	require.NoError(t, svc.AppendTestResults(ctx, savedResults2))
 
-	externalServiceTask := testresult.TaskOptions{
-		TaskID:         "external_service_task",
+	externalServiceTask := Task{
+		Id:             "external_service_task",
 		Execution:      1,
-		ResultsService: testresult.TestResultsServiceCedar,
+		ResultsService: TestResultsServiceCedar,
 	}
 	externalServiceResults := make([]testresult.TestResult, 10)
 	for i := 0; i < len(externalServiceResults); i++ {
 		result := getTestResult()
-		result.TaskID = externalServiceTask.TaskID
+		result.TaskID = externalServiceTask.Id
 		result.Execution = externalServiceTask.Execution
 		externalServiceResults[i] = result
 	}
@@ -89,14 +89,14 @@ func TestGetTaskTestResults(t *testing.T) {
 	for _, test := range []struct {
 		name                string
 		setup               func(t *testing.T)
-		taskOpts            []testresult.TaskOptions
-		filterOpts          *testresult.FilterOptions
+		taskOpts            []Task
+		filterOpts          *FilterOptions
 		expectedTaskResults testresult.TaskTestResults
 		output              TestResultOutput
 		hasErr              bool
 	}{
 		{
-			name:   "NilTaskOptions",
+			name:   "Niltask.Task",
 			output: output,
 			expectedTaskResults: testresult.TaskTestResults{
 				Stats: testresult.TaskTestResultsStats{
@@ -108,9 +108,9 @@ func TestGetTaskTestResults(t *testing.T) {
 			},
 		},
 		{
-			name:     "NilTaskOptions",
+			name:     "Niltask.Task",
 			output:   output,
-			taskOpts: []testresult.TaskOptions{},
+			taskOpts: []Task{},
 			expectedTaskResults: testresult.TaskTestResults{
 				Stats: testresult.TaskTestResultsStats{
 					TotalCount:    0,
@@ -127,13 +127,13 @@ func TestGetTaskTestResults(t *testing.T) {
 				handler.data = nil
 			},
 			output:   outputCedar,
-			taskOpts: []testresult.TaskOptions{externalServiceTask},
+			taskOpts: []Task{externalServiceTask},
 			hasErr:   true,
 		},
 		{
 			name:     "WithoutFilterOptions",
 			output:   output,
-			taskOpts: []testresult.TaskOptions{task1, task2, task0},
+			taskOpts: []Task{task1, task2, task0},
 			expectedTaskResults: testresult.TaskTestResults{
 				Stats: testresult.TaskTestResultsStats{
 					TotalCount:    len(savedResults0) + len(savedResults1) + len(savedResults2),
@@ -146,8 +146,8 @@ func TestGetTaskTestResults(t *testing.T) {
 		{
 			name:       "WithFilterOptions",
 			output:     output,
-			taskOpts:   []testresult.TaskOptions{task0},
-			filterOpts: &testresult.FilterOptions{TestName: savedResults0[0].GetDisplayTestName()},
+			taskOpts:   []Task{task0},
+			filterOpts: &FilterOptions{TestName: savedResults0[0].GetDisplayTestName()},
 			expectedTaskResults: testresult.TaskTestResults{
 				Stats: testresult.TaskTestResultsStats{
 					TotalCount:    len(savedResults0),
@@ -162,7 +162,7 @@ func TestGetTaskTestResults(t *testing.T) {
 			if test.setup != nil {
 				test.setup(t)
 			}
-			taskResults, err := test.output.GetMergedTaskTestResults(ctx, env, createTaskoutputTaskOpts(test.taskOpts), test.filterOpts)
+			taskResults, err := test.output.GetMergedTaskTestResults(ctx, env, test.taskOpts, test.filterOpts)
 			if test.hasErr {
 				assert.Error(t, err)
 			} else {
@@ -178,22 +178,22 @@ func TestGetTaskTestResultsStats(t *testing.T) {
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
 
-	require.NoError(t, testresult.ClearLocal(ctx, env))
+	require.NoError(t, ClearLocal(ctx, env))
 	defer func() {
-		assert.NoError(t, testresult.ClearLocal(ctx, env))
+		assert.NoError(t, ClearLocal(ctx, env))
 	}()
 	srv, handler := newMockCedarServer(env)
 	defer srv.Close()
-	svc := testresult.NewLocalService(env)
-	task0 := testresult.TaskOptions{
-		TaskID:         "task0",
+	svc := NewLocalService(env)
+	task0 := Task{
+		Id:             "task0",
 		Execution:      0,
-		ResultsService: testresult.TestResultsServiceLocal,
+		ResultsService: TestResultsServiceLocal,
 	}
 	savedResults0 := make([]testresult.TestResult, 10)
 	for i := 0; i < len(savedResults0); i++ {
 		result := getTestResult()
-		result.TaskID = task0.TaskID
+		result.TaskID = task0.Id
 		result.Execution = task0.Execution
 		if i%2 != 0 {
 			result.Status = evergreen.TestFailedStatus
@@ -202,41 +202,41 @@ func TestGetTaskTestResultsStats(t *testing.T) {
 	}
 	require.NoError(t, svc.AppendTestResults(ctx, savedResults0))
 
-	task1 := testresult.TaskOptions{
-		TaskID:         "task1",
+	task1 := Task{
+		Id:             "task1",
 		Execution:      0,
-		ResultsService: testresult.TestResultsServiceLocal,
+		ResultsService: TestResultsServiceLocal,
 	}
 	savedResults1 := make([]testresult.TestResult, 10)
 	for i := 0; i < len(savedResults1); i++ {
 		result := getTestResult()
-		result.TaskID = task1.TaskID
+		result.TaskID = task1.Id
 		result.Execution = task1.Execution
 		savedResults1[i] = result
 	}
 	require.NoError(t, svc.AppendTestResults(ctx, savedResults1))
 
-	externalServiceTask := testresult.TaskOptions{
-		TaskID:         "external_service_task",
+	externalServiceTask := Task{
+		Id:             "external_service_task",
 		Execution:      0,
-		ResultsService: testresult.TestResultsServiceCedar,
+		ResultsService: TestResultsServiceCedar,
 	}
 
 	for _, test := range []struct {
 		name          string
 		setup         func(t *testing.T)
-		taskOpts      []testresult.TaskOptions
+		taskOpts      []Task
 		expectedStats testresult.TaskTestResultsStats
 		output        TestResultOutput
 		hasErr        bool
 	}{
 		{
-			name:   "NilTaskOptions",
+			name:   "Niltask.Task",
 			output: output,
 		},
 		{
-			name:     "NilTaskOptions",
-			taskOpts: []testresult.TaskOptions{},
+			name:     "Niltask.Task",
+			taskOpts: []Task{},
 			output:   output,
 		},
 		{
@@ -245,13 +245,13 @@ func TestGetTaskTestResultsStats(t *testing.T) {
 				handler.status = http.StatusInternalServerError
 				handler.data = nil
 			},
-			taskOpts: []testresult.TaskOptions{externalServiceTask},
+			taskOpts: []Task{externalServiceTask},
 			hasErr:   true,
 			output:   outputCedar,
 		},
 		{
 			name:     "SameService",
-			taskOpts: []testresult.TaskOptions{task0, task1},
+			taskOpts: []Task{task0, task1},
 			expectedStats: testresult.TaskTestResultsStats{
 				TotalCount:  len(savedResults0) + len(savedResults1),
 				FailedCount: len(savedResults0) / 2,
@@ -264,7 +264,7 @@ func TestGetTaskTestResultsStats(t *testing.T) {
 				test.setup(t)
 			}
 
-			stats, err := test.output.GetTaskTestResultsStats(ctx, env, createTaskoutputTaskOpts(test.taskOpts))
+			stats, err := test.output.GetTaskTestResultsStats(ctx, env, test.taskOpts)
 			if test.hasErr {
 				assert.Error(t, err)
 			} else {
@@ -305,64 +305,64 @@ func TestGetFailedTestSamples(t *testing.T) {
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
 
-	require.NoError(t, testresult.ClearLocal(ctx, env))
+	require.NoError(t, ClearLocal(ctx, env))
 	defer func() {
-		assert.NoError(t, testresult.ClearLocal(ctx, env))
+		assert.NoError(t, ClearLocal(ctx, env))
 	}()
 	srv, handler := newMockCedarServer(env)
 	defer srv.Close()
-	svc := testresult.NewLocalService(env)
-	task0 := testresult.TaskOptions{
-		TaskID:         "task0",
+	svc := NewLocalService(env)
+	task0 := Task{
+		Id:             "task0",
 		Execution:      0,
-		ResultsService: testresult.TestResultsServiceLocal,
+		ResultsService: TestResultsServiceLocal,
 	}
 	sample0 := make([]string, 2)
 	for i := 0; i < len(sample0); i++ {
 		result := getTestResult()
-		result.TaskID = task0.TaskID
+		result.TaskID = task0.Id
 		result.Execution = task0.Execution
 		result.Status = evergreen.TestFailedStatus
 		sample0[i] = result.GetDisplayTestName()
 		require.NoError(t, svc.AppendTestResults(ctx, []testresult.TestResult{result}))
 	}
 
-	task1 := testresult.TaskOptions{
-		TaskID:         "task1",
+	task1 := Task{
+		Id:             "task1",
 		Execution:      1,
-		ResultsService: testresult.TestResultsServiceLocal,
+		ResultsService: TestResultsServiceLocal,
 	}
 	sample1 := make([]string, 2)
 	for i := 0; i < len(sample1); i++ {
 		result := getTestResult()
-		result.TaskID = task1.TaskID
+		result.TaskID = task1.Id
 		result.Execution = task1.Execution
 		result.Status = evergreen.TestFailedStatus
 		sample1[i] = result.GetDisplayTestName()
 		require.NoError(t, svc.AppendTestResults(ctx, []testresult.TestResult{result}))
 	}
 
-	externalServiceTask := testresult.TaskOptions{
-		TaskID:         "external_service_task",
+	externalServiceTask := Task{
+		Id:             "external_service_task",
 		Execution:      0,
-		ResultsService: testresult.TestResultsServiceCedar,
+		ResultsService: TestResultsServiceCedar,
 	}
 
 	for _, test := range []struct {
 		name            string
 		setup           func(t *testing.T)
-		taskOpts        []testresult.TaskOptions
+		taskOpts        []Task
 		regexFilters    []string
 		expectedSamples []testresult.TaskTestResultsFailedSample
 		hasErr          bool
 	}{
 		{
-			name:   "NilTaskOptions",
+			name:   "Niltask.Task",
 			hasErr: true,
 		},
 		{
-			name:     "NilTaskOptions",
-			taskOpts: []testresult.TaskOptions{},
+			name:     "Niltask.Task",
+			taskOpts: []Task{},
 			hasErr:   true,
 		},
 		{
@@ -371,21 +371,21 @@ func TestGetFailedTestSamples(t *testing.T) {
 				handler.status = http.StatusInternalServerError
 				handler.data = nil
 			},
-			taskOpts: []testresult.TaskOptions{externalServiceTask},
+			taskOpts: []Task{externalServiceTask},
 			hasErr:   true,
 		},
 		{
 			name:     "SameService",
-			taskOpts: []testresult.TaskOptions{task0, task1},
+			taskOpts: []Task{task0, task1},
 			expectedSamples: []testresult.TaskTestResultsFailedSample{
 				{
-					TaskID:                  task0.TaskID,
+					TaskID:                  task0.Id,
 					Execution:               task0.Execution,
 					MatchingFailedTestNames: sample0,
 					TotalFailedNames:        len(sample0),
 				},
 				{
-					TaskID:                  task1.TaskID,
+					TaskID:                  task1.Id,
 					Execution:               task1.Execution,
 					MatchingFailedTestNames: sample1,
 					TotalFailedNames:        len(sample1),
@@ -394,11 +394,11 @@ func TestGetFailedTestSamples(t *testing.T) {
 		},
 		{
 			name:         "WithRegexFilter",
-			taskOpts:     []testresult.TaskOptions{task0},
+			taskOpts:     []Task{task0},
 			regexFilters: []string{"test"},
 			expectedSamples: []testresult.TaskTestResultsFailedSample{
 				{
-					TaskID:           task0.TaskID,
+					TaskID:           task0.Id,
 					Execution:        task0.Execution,
 					TotalFailedNames: len(sample0),
 				},
@@ -410,7 +410,7 @@ func TestGetFailedTestSamples(t *testing.T) {
 				test.setup(t)
 			}
 
-			samples, err := GetFailedTestSamples(ctx, env, createTaskoutputTaskOpts(test.taskOpts), test.regexFilters)
+			samples, err := GetFailedTestSamples(ctx, env, test.taskOpts, test.regexFilters)
 			if test.hasErr {
 				assert.Error(t, err)
 			} else {

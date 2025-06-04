@@ -8,6 +8,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	_ "github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
@@ -25,20 +26,20 @@ func TestAppendResults(t *testing.T) {
 	defer cancel()
 	env := testutil.NewEnvironment(ctx, t)
 
-	require.NoError(t, ClearLocal(ctx, env))
+	require.NoError(t, task.ClearLocal(ctx, env))
 	defer func() {
-		assert.NoError(t, ClearLocal(ctx, env))
+		assert.NoError(t, task.ClearLocal(ctx, env))
 	}()
-	svc := NewLocalService(env)
-	task0 := TaskOptions{
-		TaskID:         "task0",
+	svc := task.NewLocalService(env)
+	task0 := task.Task{
+		Id:             "task0",
 		Execution:      0,
-		ResultsService: TestResultsServiceLocal,
+		ResultsService: task.TestResultsServiceLocal,
 	}
 	savedResults0 := make([]TestResult, 10)
 	for i := 0; i < len(savedResults0); i++ {
 		result := generateTestResult()
-		result.TaskID = task0.TaskID
+		result.TaskID = task0.Id
 		result.Execution = task0.Execution
 		if i%2 != 0 {
 			result.Status = evergreen.TestFailedStatus
@@ -47,35 +48,35 @@ func TestAppendResults(t *testing.T) {
 	}
 	require.NoError(t, svc.AppendTestResults(ctx, savedResults0))
 
-	task1 := TaskOptions{
-		TaskID:         "task1",
+	task1 := task.Task{
+		Id:             "task1",
 		Execution:      0,
-		ResultsService: TestResultsServiceLocal,
+		ResultsService: task.TestResultsServiceLocal,
 	}
 	savedResults1 := make([]TestResult, 10)
 	for i := 0; i < len(savedResults1); i++ {
 		result := generateTestResult()
-		result.TaskID = task1.TaskID
+		result.TaskID = task1.Id
 		result.Execution = task1.Execution
 		savedResults1[i] = result
 	}
 	require.NoError(t, svc.AppendTestResults(ctx, savedResults1))
 
-	task2 := TaskOptions{
-		TaskID:         "task2",
+	task2 := task.Task{
+		Id:             "task2",
 		Execution:      1,
-		ResultsService: TestResultsServiceLocal,
+		ResultsService: task.TestResultsServiceLocal,
 	}
 	savedResults2 := make([]TestResult, 10)
 	for i := 0; i < len(savedResults2); i++ {
 		result := generateTestResult()
-		result.TaskID = task2.TaskID
+		result.TaskID = task2.Id
 		result.Execution = task2.Execution
 		savedResults2[i] = result
 	}
 	require.NoError(t, svc.AppendTestResults(ctx, savedResults2))
 
-	dbResults, err := svc.get(ctx, []TaskOptions{task0, task1, task2})
+	dbResults, err := svc.Get(ctx, []task.Task{task0, task1, task2})
 	require.NoError(t, err)
 	require.Len(t, dbResults, 3)
 	for i, result := range dbResults {

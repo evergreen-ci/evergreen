@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
@@ -1487,7 +1486,7 @@ func TestByBeforeMidwayTaskFromIds(t *testing.T) {
 
 	// Usually, the midway task will be found- but if what would be the midway
 	// task is from a version (like periodic builds) that does not have the task
-	// we should get the task from earlier versions.
+	// we should Get the task from earlier versions.
 	t.Run("MissingTasks", func(t *testing.T) {
 		assert.NoError(db.ClearCollections(Collection))
 		// tasks 7-13 are missing.
@@ -4853,7 +4852,7 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 		tsk               *Task
 		executionTasks    []Task
 		oldExecutionTasks []Task
-		expectedOpts      []taskoutput.TaskOptions
+		expectedOpts      []Task
 	}{
 		{
 			name: "RegularTaskNoResults",
@@ -4866,8 +4865,8 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 				Execution:       1,
 				HasCedarResults: true,
 			},
-			expectedOpts: []taskoutput.TaskOptions{
-				{TaskID: "task", Execution: 1},
+			expectedOpts: []Task{
+				{Id: "task", Execution: 1},
 			},
 		},
 		{
@@ -4877,8 +4876,8 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 				Execution:      1,
 				ResultsService: "some_service",
 			},
-			expectedOpts: []taskoutput.TaskOptions{
-				{TaskID: "task", Execution: 1, ResultsService: "some_service"},
+			expectedOpts: []Task{
+				{Id: "task", Execution: 1, ResultsService: "some_service"},
 			},
 		},
 		{
@@ -4891,8 +4890,8 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 				HasCedarResults: true,
 				Archived:        true,
 			},
-			expectedOpts: []taskoutput.TaskOptions{
-				{TaskID: "task", Execution: 0},
+			expectedOpts: []Task{
+				{Id: "task", Execution: 0},
 			},
 		},
 		{
@@ -4904,8 +4903,8 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 				ResultsService: "some_service",
 				Archived:       true,
 			},
-			expectedOpts: []taskoutput.TaskOptions{
-				{TaskID: "task", Execution: 0, ResultsService: "some_service"},
+			expectedOpts: []Task{
+				{Id: "task", Execution: 0, ResultsService: "some_service"},
 			},
 		},
 		{
@@ -4933,9 +4932,9 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 				{Id: "exec_task1", Execution: 1, HasCedarResults: true},
 				{Id: "exec_task2"},
 			},
-			expectedOpts: []taskoutput.TaskOptions{
-				{TaskID: "exec_task0"},
-				{TaskID: "exec_task1", Execution: 1},
+			expectedOpts: []Task{
+				{Id: "exec_task0"},
+				{Id: "exec_task1", Execution: 1},
 			},
 		},
 		{
@@ -4951,9 +4950,9 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 				{Id: "exec_task1", Execution: 1, ResultsService: "some_service"},
 				{Id: "exec_task2"},
 			},
-			expectedOpts: []taskoutput.TaskOptions{
-				{TaskID: "exec_task0", ResultsService: "some_service"},
-				{TaskID: "exec_task1", Execution: 1, ResultsService: "some_service"},
+			expectedOpts: []Task{
+				{Id: "exec_task0", ResultsService: "some_service"},
+				{Id: "exec_task1", Execution: 1, ResultsService: "some_service"},
 			},
 		},
 		{
@@ -4976,10 +4975,10 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 				{Id: "exec_task3_0", OldTaskId: "exec_task3", Execution: 0, HasCedarResults: true},
 				{Id: "exec_task3_1", OldTaskId: "exec_task3", Execution: 1, HasCedarResults: true},
 			},
-			expectedOpts: []taskoutput.TaskOptions{
-				{TaskID: "exec_task0"},
-				{TaskID: "exec_task1", Execution: 2},
-				{TaskID: "exec_task3", Execution: 1},
+			expectedOpts: []Task{
+				{Id: "exec_task0"},
+				{Id: "exec_task1", Execution: 2},
+				{Id: "exec_task3", Execution: 1},
 			},
 		},
 		{
@@ -5002,10 +5001,10 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 				{Id: "exec_task3_0", OldTaskId: "exec_task3", Execution: 0, ResultsService: "some_service"},
 				{Id: "exec_task3_1", OldTaskId: "exec_task3", Execution: 1, ResultsService: "some_service"},
 			},
-			expectedOpts: []taskoutput.TaskOptions{
-				{TaskID: "exec_task0", ResultsService: "some_service"},
-				{TaskID: "exec_task1", Execution: 2, ResultsService: "some_service"},
-				{TaskID: "exec_task3", Execution: 1, ResultsService: "some_service"},
+			expectedOpts: []Task{
+				{Id: "exec_task0", ResultsService: "some_service"},
+				{Id: "exec_task1", Execution: 2, ResultsService: "some_service"},
+				{Id: "exec_task3", Execution: 1, ResultsService: "some_service"},
 			},
 		},
 	} {
@@ -5023,7 +5022,7 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			opts, err := test.tsk.CreateTestResultsTaskOptions(ctx)
+			opts, err := test.tsk.GetTestResultsTasks(ctx)
 			require.NoError(t, err)
 			assert.ElementsMatch(t, test.expectedOpts, opts)
 		})
@@ -5172,7 +5171,7 @@ func TestReset(t *testing.T) {
 			Id:                      "t0",
 			Status:                  evergreen.TaskSucceeded,
 			Details:                 apimodels.TaskEndDetail{Status: evergreen.TaskSucceeded},
-			TaskOutputInfo:          &taskoutput.TaskOutput{TaskLogs: taskoutput.TaskLogOutput{Version: 1}},
+			TaskOutputInfo:          &TaskOutput{TaskLogs: TaskLogOutput{Version: 1}},
 			ResultsService:          "r",
 			ResultsFailed:           true,
 			HasCedarResults:         true,
