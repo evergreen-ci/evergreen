@@ -2,114 +2,48 @@ package testresult
 
 import (
 	"context"
-	"math/rand"
-	"testing"
-	"time"
-
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
-	_ "github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/utility"
-	"github.com/mongodb/grip/sometimes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"testing"
+
+	"github.com/evergreen-ci/evergreen"
+	_ "github.com/evergreen-ci/evergreen/testutil"
 )
 
-func TestAppendResults(t *testing.T) {
-	defer func() {
-		assert.NoError(t, db.ClearCollections(Collection))
-	}()
+func init() { testutil.Setup() }
 
+func TestGetLogURL(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	env := testutil.NewEnvironment(ctx, t)
 
-	require.NoError(t, task.ClearLocal(ctx, env))
-	defer func() {
-		assert.NoError(t, task.ClearLocal(ctx, env))
-	}()
-	svc := task.NewLocalService(env)
-	task0 := task.Task{
-		Id:             "task0",
-		Execution:      0,
-		ResultsService: task.TestResultsServiceLocal,
-	}
-	savedResults0 := make([]TestResult, 10)
-	for i := 0; i < len(savedResults0); i++ {
-		result := generateTestResult()
-		result.TaskID = task0.Id
-		result.Execution = task0.Execution
-		if i%2 != 0 {
-			result.Status = evergreen.TestFailedStatus
-		}
-		savedResults0[i] = result
-	}
-	require.NoError(t, svc.AppendTestResults(ctx, savedResults0))
+	settings := testutil.TestConfig()
+	require.NoError(t, db.Clear(evergreen.ConfigCollection))
+	settings.Ui.ParsleyUrl = "https://parsley.mongodb.org"
+	require.NoError(t, evergreen.UpdateConfig(ctx, settings))
 
-	task1 := task.Task{
-		Id:             "task1",
-		Execution:      0,
-		ResultsService: task.TestResultsServiceLocal,
+	test1 := TestResult{
+		TaskID:   "task1",
+		TestName: "test1",
+		LogURL:   "http://www.something.com/absolute",
+		Status:   evergreen.TestSucceededStatus,
 	}
-	savedResults1 := make([]TestResult, 10)
-	for i := 0; i < len(savedResults1); i++ {
-		result := generateTestResult()
-		result.TaskID = task1.Id
-		result.Execution = task1.Execution
-		savedResults1[i] = result
+	test2 := TestResult{
+		TaskID:   "task1",
+		TestName: "test2",
+		Status:   evergreen.TestFailedStatus,
 	}
-	require.NoError(t, svc.AppendTestResults(ctx, savedResults1))
-
-	task2 := task.Task{
-		Id:             "task2",
-		Execution:      1,
-		ResultsService: task.TestResultsServiceLocal,
-	}
-	savedResults2 := make([]TestResult, 10)
-	for i := 0; i < len(savedResults2); i++ {
-		result := generateTestResult()
-		result.TaskID = task2.Id
-		result.Execution = task2.Execution
-		savedResults2[i] = result
-	}
-	require.NoError(t, svc.AppendTestResults(ctx, savedResults2))
-
-	dbResults, err := svc.Get(ctx, []task.Task{task0, task1, task2})
-	require.NoError(t, err)
-	require.Len(t, dbResults, 3)
-	for i, result := range dbResults {
-		assert.Equal(t, result.Stats.TotalCount, 10)
-		assert.Len(t, result.Results, 10)
-		if i == 0 {
-			assert.Equal(t, result.Stats.FailedCount, 5)
-			failedResults := 0
-			for _, r := range result.Results {
-				if r.Status == evergreen.TestFailedStatus {
-					failedResults++
-				}
-			}
-			assert.Equal(t, result.Stats.FailedCount, failedResults)
-		}
+	test3 := TestResult{
+		TaskID:   "task1",
+		TestName: "test3",
+		Status:   evergreen.TestFailedStatus,
 	}
 
-}
-
-func generateTestResult() TestResult {
-	result := TestResult{
-		TestName:      utility.RandomString(),
-		Status:        evergreen.TestSucceededStatus,
-		TestStartTime: time.Now().Add(-30 * time.Hour).UTC().Round(time.Millisecond),
-		TestEndTime:   time.Now().UTC().Round(time.Millisecond),
-	}
-	if sometimes.Half() {
-		result.DisplayTestName = utility.RandomString()
-		result.GroupID = utility.RandomString()
-		result.LogTestName = utility.RandomString()
-		result.LogURL = utility.RandomString()
-		result.RawLogURL = utility.RandomString()
-		result.LineNum = rand.Intn(1000)
-	}
-	return result
+	url := test1.GetLogURL(evergreen.GetEnvironment(), evergreen.LogViewerRaw)
+	assert.Equal(t, url, "https://localhost:8443/rest/v2/tasks/task1/build/TestLogs/test1?execution=0&print_time=true")
+	url = test2.GetLogURL(evergreen.GetEnvironment(), evergreen.LogViewerHTML)
+	assert.Equal(t, url, "https://localhost:8443/test_log/task1/0?test_name=test2#L0")
+	url = test3.GetLogURL(evergreen.GetEnvironment(), evergreen.LogViewerParsley)
+	assert.Equal(t, url, "https://localhost:4173/test/task1/0/test3?shareLine=0")
 }
