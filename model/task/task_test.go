@@ -4866,7 +4866,11 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 				HasCedarResults: true,
 			},
 			expectedOpts: []Task{
-				{Id: "task", Execution: 1},
+				{
+					Id:              "task",
+					Execution:       1,
+					HasCedarResults: true,
+				},
 			},
 		},
 		{
@@ -4877,7 +4881,11 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 				ResultsService: "some_service",
 			},
 			expectedOpts: []Task{
-				{Id: "task", Execution: 1, ResultsService: "some_service"},
+				{
+					Id:             "task",
+					Execution:      1,
+					ResultsService: "some_service",
+				},
 			},
 		},
 		{
@@ -4891,7 +4899,13 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 				Archived:        true,
 			},
 			expectedOpts: []Task{
-				{Id: "task", Execution: 0},
+				{
+					Id:              "task",
+					OldTaskId:       "task",
+					Execution:       0,
+					HasCedarResults: true,
+					Archived:        true,
+				},
 			},
 		},
 		{
@@ -4904,7 +4918,13 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 				Archived:       true,
 			},
 			expectedOpts: []Task{
-				{Id: "task", Execution: 0, ResultsService: "some_service"},
+				{
+					Id:             "task",
+					OldTaskId:      "task",
+					Execution:      0,
+					ResultsService: "some_service",
+					Archived:       true,
+				},
 			},
 		},
 		{
@@ -4933,8 +4953,8 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 				{Id: "exec_task2"},
 			},
 			expectedOpts: []Task{
-				{Id: "exec_task0"},
-				{Id: "exec_task1", Execution: 1},
+				{Id: "exec_task0", HasCedarResults: true},
+				{Id: "exec_task1", Execution: 1, HasCedarResults: true},
 			},
 		},
 		{
@@ -4976,9 +4996,9 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 				{Id: "exec_task3_1", OldTaskId: "exec_task3", Execution: 1, HasCedarResults: true},
 			},
 			expectedOpts: []Task{
-				{Id: "exec_task0"},
-				{Id: "exec_task1", Execution: 2},
-				{Id: "exec_task3", Execution: 1},
+				{Id: "exec_task0", Execution: 0, HasCedarResults: true, DependsOn: []Dependency{}},
+				{Id: "exec_task1", Execution: 2, HasCedarResults: true, DependsOn: []Dependency{}},
+				{Id: "exec_task3", OldTaskId: "exec_task3", Archived: true, Execution: 1, HasCedarResults: true, DependsOn: []Dependency{}},
 			},
 		},
 		{
@@ -5002,9 +5022,9 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 				{Id: "exec_task3_1", OldTaskId: "exec_task3", Execution: 1, ResultsService: "some_service"},
 			},
 			expectedOpts: []Task{
-				{Id: "exec_task0", ResultsService: "some_service"},
-				{Id: "exec_task1", Execution: 2, ResultsService: "some_service"},
-				{Id: "exec_task3", Execution: 1, ResultsService: "some_service"},
+				{Id: "exec_task0", ResultsService: "some_service", DependsOn: []Dependency{}},
+				{Id: "exec_task1", Execution: 2, ResultsService: "some_service", DependsOn: []Dependency{}},
+				{Id: "exec_task3", OldTaskId: "exec_task3", Execution: 1, Archived: true, ResultsService: "some_service", DependsOn: []Dependency{}},
 			},
 		},
 	} {
