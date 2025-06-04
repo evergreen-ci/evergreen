@@ -368,6 +368,7 @@ func restartTasks(ctx context.Context, allFinishedTasks []task.Task, caller, ver
 	if err := task.CheckUsersPatchTaskLimit(ctx, allFinishedTasks[0].Requester, caller, false, toArchive...); err != nil {
 		return errors.Wrap(err, "updating patch task limit for user")
 	}
+	// kim: TODO: may need to consolidate bulk update into a transaction.
 	if err := task.ArchiveMany(ctx, toArchive); err != nil {
 		return errors.Wrap(err, "archiving tasks")
 	}

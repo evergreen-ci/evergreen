@@ -2997,42 +2997,65 @@ func (t *Task) Archive(ctx context.Context) error {
 	if !utility.StringSliceContains(evergreen.TaskCompletedStatuses, t.Status) {
 		return nil
 	}
+	if t.CanReset {
+		// This check is necessary to avoid a race where the same task data can
+		// be archived for two task executions. If restart is called quickly in
+		// succession, the concurrency can cause the updates below to 1.
+		// archives the current task execution and 2. increments the current
+		// task execution to the new one. But if it hasn't reset the task yet, a
+		// second restart operation can archive the task again (which archives
+		// the just-incremented task execution).
+		// kim: TODO: add test that multiple calls to Archive only archives
+		// execution once.
+		return nil
+	}
+
 	if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
 		return errors.Wrapf(ArchiveMany(ctx, []Task{*t}), "archiving display task '%s'", t.Id)
-	} else {
-		// Archiving a single task.
-		archiveTask := t.makeArchivedTask()
-		err := db.Insert(ctx, OldCollection, archiveTask)
-		if err != nil && !db.IsDuplicateKey(err) {
-			return errors.Wrap(err, "inserting archived task into old tasks")
-		}
-		t.Aborted = false
-		err = UpdateOne(
-			ctx,
-			bson.M{
-				IdKey:     t.Id,
-				StatusKey: bson.M{"$in": evergreen.TaskCompletedStatuses},
-				"$or": []bson.M{
-					{
-						CanResetKey: bson.M{"$exists": false},
-					},
-					{
-						CanResetKey: false,
-					},
+	}
+
+	// Archiving a single task.
+	archiveTask := t.makeArchivedTask()
+	// kim: NOTE: since the task execution has been incremented, it can end
+	// up being re-inserted into the old_tasks collection (same exact task
+	// data but the execution is +1). This is the source of the bug. A
+	// transaction may help here but it would be tricky because the current
+	// task has to be cross-referenced (to check CanReset) before the old
+	// task can be inserted.
+	err := db.Insert(ctx, OldCollection, archiveTask)
+	if err != nil && !db.IsDuplicateKey(err) {
+		return errors.Wrap(err, "inserting archived task into old tasks")
+	}
+	t.Aborted = false
+	err = UpdateOne(
+		ctx,
+		bson.M{
+			IdKey:     t.Id,
+			StatusKey: bson.M{"$in": evergreen.TaskCompletedStatuses},
+			"$or": []bson.M{
+				{
+					CanResetKey: bson.M{"$exists": false},
+				},
+				{
+					CanResetKey: false,
 				},
 			},
-			[]bson.M{
-				updateDisplayTasksAndTasksSet,
-				updateDisplayTasksAndTasksUnset,
-				addDisplayStatusCache,
-			},
-		)
-		// Return nil if the task has already been archived
-		if adb.ResultsNotFound(err) {
-			return nil
-		}
-		return errors.Wrap(err, "updating task")
+		},
+		[]bson.M{
+			// kim: NOTE: this updates the task execution WITHOUT actually
+			// resetting the task. If we increment the execution here, then
+			// we could have a race since archive can be called again on the
+			// just-incremented execution.
+			updateDisplayTasksAndTasksSet,
+			updateDisplayTasksAndTasksUnset,
+			addDisplayStatusCache,
+		},
+	)
+	// Return nil if the task has already been archived
+	if adb.ResultsNotFound(err) {
+		return nil
 	}
+	return errors.Wrap(err, "updating task")
 }
 
 // ArchiveMany accepts tasks and display tasks (no execution tasks). The function
@@ -3047,6 +3070,16 @@ func ArchiveMany(ctx context.Context, tasks []Task) error {
 
 	for _, t := range tasks {
 		if !utility.StringSliceContains(evergreen.TaskCompletedStatuses, t.Status) {
+			continue
+		}
+		if t.CanReset {
+			// This check is necessary to avoid a race where the same task data
+			// can be archived for two task executions. If restart is called
+			// quickly in succession, the concurrency can cause the updates
+			// below to 1. archives the current task execution and 2. increments
+			// the current task execution to the new one. But if it hasn't reset
+			// the task yet, a second restart operation can archive the task
+			// again (which archives the just-incremented task execution).
 			continue
 		}
 		allTaskIds = append(allTaskIds, t.Id)

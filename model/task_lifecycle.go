@@ -376,6 +376,7 @@ func TryResetTask(ctx context.Context, settings *evergreen.Settings, taskId, use
 
 // resetTask finds a finished task, attempts to archive it, and resets the task and
 // resets the TaskCache in the build as well.
+// kim: NOTE: this is what the /restart endpoint calls.
 func resetTask(ctx context.Context, taskId, caller string) error {
 	t, err := task.FindOneId(ctx, taskId)
 	if err != nil {
@@ -387,6 +388,7 @@ func resetTask(ctx context.Context, taskId, caller string) error {
 	if err = task.CheckUsersPatchTaskLimit(ctx, t.Requester, caller, false, *t); err != nil {
 		return errors.Wrap(err, "updating patch task limit for user")
 	}
+	// kim: TODO: may need transaction here to prevent user spamming restart.
 	if err = t.Archive(ctx); err != nil {
 		return errors.Wrap(err, "can't restart task because it can't be archived")
 	}
