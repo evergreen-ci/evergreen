@@ -90,8 +90,9 @@ func (status *StatsStatus) GetUpdateWindow() (time.Time, time.Time) {
 	end := time.Now()
 
 	windowSize := end.Sub(start)
-	if windowSize >= 12*time.Hour {
-		end = start.Add(12 * time.Hour)
+	cutoffDuration := 12 * time.Hour
+	if windowSize >= cutoffDuration {
+		end = start.Add(cutoffDuration)
 	}
 	return start, end
 }
