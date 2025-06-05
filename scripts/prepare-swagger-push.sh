@@ -11,6 +11,7 @@
 # has since been incremented.
 
 set -o errexit
+set -o xtrace
 
 # Default to local development swagger.json file.
 if [[ "${SWAGGER_JSON_FILE}" == "" ]]; then
