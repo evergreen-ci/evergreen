@@ -166,6 +166,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 		s.Equal(testSettings.Providers.AWS.AccountRoles[i], settingsFromConnector.Providers.AWS.AccountRoles[i])
 	}
 	s.Equal(testSettings.Providers.AWS.IPAMPoolID, settingsFromConnector.Providers.AWS.IPAMPoolID)
+	s.Equal(testSettings.Providers.AWS.ElasticIPUsageRate, settingsFromConnector.Providers.AWS.ElasticIPUsageRate)
 	s.EqualValues(testSettings.Providers.Docker.APIVersion, settingsFromConnector.Providers.Docker.APIVersion)
 	s.EqualValues(testSettings.RepoTracker.MaxConcurrentRequests, settingsFromConnector.RepoTracker.MaxConcurrentRequests)
 	s.EqualValues(testSettings.ReleaseMode.DistroMaxHostsFactor, settingsFromConnector.ReleaseMode.DistroMaxHostsFactor)

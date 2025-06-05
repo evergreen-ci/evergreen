@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"math/rand"
 	"os"
 	"os/user"
 	"regexp"
@@ -790,7 +791,11 @@ func canUseElasticIP(settings *evergreen.Settings, ec2Settings *EC2ProviderSetti
 		return false
 	}
 
-	return ec2Settings.ElasticIPsEnabled
+	if !ec2Settings.ElasticIPsEnabled {
+		return false
+	}
+
+	return rand.Float64() < settings.Providers.AWS.ElasticIPUsageRate
 }
 
 // allocateIPAddressForHost allocates an unused elastic IP address for the host.
