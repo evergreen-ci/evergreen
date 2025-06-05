@@ -18,7 +18,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/gimlet"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -59,7 +58,6 @@ func insertTaskForTesting(ctx context.Context, env evergreen.Environment, taskId
 		Aborted:          false,
 		TimeTaken:        100 * time.Millisecond,
 		ExpectedDuration: 99 * time.Millisecond,
-		TaskOutputInfo:   &taskoutput.TaskOutput{TestResults: taskoutput.TestResultOutput{Version: 1}},
 	}
 
 	if len(testResults) > 0 {
@@ -292,7 +290,6 @@ func TestGetTaskStatus(t *testing.T) {
 				Description: "some-stage",
 			},
 			ResultsService: testresult.TestResultsServiceLocal,
-			TaskOutputInfo: &taskoutput.TaskOutput{TestResults: taskoutput.TestResultOutput{Version: 1}},
 		}
 		testResult := testresult.TestResult{
 			Status:        "success",
@@ -397,10 +394,7 @@ func TestGetDisplayTaskInfo(t *testing.T) {
 	require.NoError(env.Configure(ctx))
 	router, err := newTestUIRouter(ctx, env)
 	require.NoError(err, "error setting up router")
-	flags := evergreen.ServiceFlags{
-		EvergreenTestResultsDisabled: true,
-	}
-	require.NoError(evergreen.SetServiceFlags(ctx, flags))
+
 	defer func() {
 		assert.NoError(db.ClearCollections(task.Collection))
 		assert.NoError(testresult.ClearLocal(ctx, env))

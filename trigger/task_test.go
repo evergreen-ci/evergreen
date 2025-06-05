@@ -18,7 +18,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/repotracker"
-	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -203,7 +202,6 @@ func (s *taskSuite) SetupTest() {
 		FinishTime:          startTime.Add(20 * time.Minute),
 		RevisionOrderNumber: 1,
 		Requester:           evergreen.RepotrackerVersionRequester,
-		TaskOutputInfo:      &taskoutput.TaskOutput{TestResults: taskoutput.TestResultOutput{Version: 1}},
 	}
 	s.NoError(s.task.Insert(s.ctx))
 
@@ -1082,7 +1080,6 @@ func (s *taskSuite) TestRegressionByTestWithRegex() {
 		Project:        "myproj",
 		ResultsService: "local",
 		ResultsFailed:  true,
-		TaskOutputInfo: &taskoutput.TaskOutput{TestResults: taskoutput.TestResultOutput{Version: 1}},
 	}
 	s.NoError(t1.Insert(s.ctx))
 	t2 := task.Task{
@@ -1095,7 +1092,6 @@ func (s *taskSuite) TestRegressionByTestWithRegex() {
 		Project:        "myproj",
 		ResultsService: "local",
 		ResultsFailed:  true,
-		TaskOutputInfo: &taskoutput.TaskOutput{TestResults: taskoutput.TestResultOutput{Version: 1}},
 	}
 	s.NoError(t2.Insert(s.ctx))
 	svc := testresult.NewLocalService(s.env)
@@ -1361,10 +1357,6 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 		assert.NoError(t, db.ClearCollections(task.Collection, alertrecord.Collection, build.Collection, model.VersionCollection, model.ProjectRefCollection))
 		assert.NoError(t, testresult.ClearLocal(ctx, env))
 	}()
-	flags := evergreen.ServiceFlags{
-		EvergreenTestResultsDisabled: true,
-	}
-	require.NoError(t, evergreen.SetServiceFlags(ctx, flags))
 	svc := testresult.NewLocalService(env)
 
 	b := build.Build{Id: "b0"}
@@ -1388,20 +1380,17 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 			Requester:           evergreen.RepotrackerVersionRequester,
 			FinishTime:          time.Now(),
 			DisplayOnly:         true,
-			TaskOutputInfo:      &taskoutput.TaskOutput{TestResults: taskoutput.TestResultOutput{Version: 1}},
 		},
 		{
 			Id:             "et0_0",
 			DisplayName:    "et0",
 			ResultsService: testresult.TestResultsServiceLocal,
 			ResultsFailed:  true,
-			TaskOutputInfo: &taskoutput.TaskOutput{TestResults: taskoutput.TestResultOutput{Version: 1}},
 		},
 		{
 			Id:             "et1_0",
 			DisplayName:    "et1",
 			ResultsService: testresult.TestResultsServiceLocal,
-			TaskOutputInfo: &taskoutput.TaskOutput{TestResults: taskoutput.TestResultOutput{Version: 1}},
 		},
 		{
 			Id:                  "dt0_1",
@@ -1417,16 +1406,14 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 			DisplayOnly:         true,
 		},
 		{
-			Id:             "et0_1",
-			DisplayName:    "et0",
-			TaskOutputInfo: &taskoutput.TaskOutput{TestResults: taskoutput.TestResultOutput{Version: 1}},
+			Id:          "et0_1",
+			DisplayName: "et0",
 		},
 		{
 			Id:             "et1_1",
 			DisplayName:    "et1",
 			ResultsService: testresult.TestResultsServiceLocal,
 			ResultsFailed:  true,
-			TaskOutputInfo: &taskoutput.TaskOutput{TestResults: taskoutput.TestResultOutput{Version: 1}},
 		},
 	}
 	for _, task := range tasks {

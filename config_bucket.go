@@ -31,16 +31,13 @@ func (b BucketType) validate() error {
 type BucketsConfig struct {
 	// LogBucket is the bucket information for logs.
 	LogBucket BucketConfig `bson:"log_bucket" json:"log_bucket" yaml:"log_bucket"`
-	// TestResultsBucket is the bucket information for test results.
-	TestResultsBucket BucketConfig `bson:"test_results_bucket" json:"test_results_bucket" yaml:"test_results_bucket"`
 	// Credentials for accessing the LogBucket.
 	Credentials S3Credentials `bson:"credentials" json:"credentials" yaml:"credentials"`
 }
 
 var (
-	bucketsConfigLogBucketKey         = bsonutil.MustHaveTag(BucketsConfig{}, "LogBucket")
-	bucketsConfigTestResultsBucketKey = bsonutil.MustHaveTag(BucketsConfig{}, "TestResultsBucket")
-	bucketsConfigCredentialsKey       = bsonutil.MustHaveTag(BucketsConfig{}, "Credentials")
+	bucketsConfigLogBucketKey   = bsonutil.MustHaveTag(BucketsConfig{}, "LogBucket")
+	bucketsConfigCredentialsKey = bsonutil.MustHaveTag(BucketsConfig{}, "Credentials")
 )
 
 // BucketConfig represents the admin config for an individual bucket.
@@ -71,9 +68,8 @@ func (c *BucketsConfig) Get(ctx context.Context) error {
 func (c *BucketsConfig) Set(ctx context.Context) error {
 	return errors.Wrapf(setConfigSection(ctx, c.SectionId(), bson.M{
 		"$set": bson.M{
-			bucketsConfigLogBucketKey:         c.LogBucket,
-			bucketsConfigTestResultsBucketKey: c.TestResultsBucket,
-			bucketsConfigCredentialsKey:       c.Credentials,
+			bucketsConfigLogBucketKey:   c.LogBucket,
+			bucketsConfigCredentialsKey: c.Credentials,
 		}}), "updating config section '%s'", c.SectionId(),
 	)
 }

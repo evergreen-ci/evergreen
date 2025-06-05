@@ -790,20 +790,20 @@ func (h *attachTestLogHandler) Run(ctx context.Context) gimlet.Responder {
 
 // POST /task/{task_id}/test_results
 type attachTestResultsHandler struct {
-	env     evergreen.Environment
-	results []testresult.TestResult
-	taskID  string
+	settings *evergreen.Settings
+	results  []testresult.TestResult
+	taskID   string
 }
 
-func makeAttachTestResults(env evergreen.Environment) gimlet.RouteHandler {
+func makeAttachTestResults(settings *evergreen.Settings) gimlet.RouteHandler {
 	return &attachTestResultsHandler{
-		env: env,
+		settings: settings,
 	}
 }
 
 func (h *attachTestResultsHandler) Factory() gimlet.RouteHandler {
 	return &attachTestResultsHandler{
-		env: h.env,
+		settings: h.settings,
 	}
 }
 
@@ -827,24 +827,6 @@ func (h *attachTestResultsHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONResponse(struct{}{})
 	}
 	// TODO: DEVPROD-16200 Implement the new DB/S3-backed Evergreen test results service
-	t, err := task.FindOneId(ctx, h.taskID)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
-	}
-	if t == nil {
-		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
-			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
-		})
-	}
-	output, ok := t.GetTaskOutputSafe()
-	if !ok {
-		return nil
-	}
-	err = output.TestResults.AppendTestResults(ctx, h.env, h.results)
-	if err != nil {
-		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "appending test results to '%s'", h.taskID))
-	}
 	return gimlet.NewJSONResponse(struct{}{})
 }
 

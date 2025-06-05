@@ -11,12 +11,7 @@
       "r": "github_pull_request",
       "branch": "spruce",
       "results_service": "local",
-      "results_failed": true,
-      "task_output_info": {
-        "test_results": {
-          "version": 1
-        }
-      }
+      "results_failed": true
     }
   ],
   "testresults": [

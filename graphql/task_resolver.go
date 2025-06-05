@@ -369,13 +369,9 @@ func (r *taskResolver) ExecutionTasksFull(ctx context.Context, obj *restModel.AP
 
 // FailedTestCount is the resolver for the failedTestCount field.
 func (r *taskResolver) FailedTestCount(ctx context.Context, obj *restModel.APITask) (int, error) {
-	taskID := utility.FromStringPtr(obj.Id)
-	dbTask, err := task.FindOneId(ctx, taskID)
+	dbTask, err := obj.ToService()
 	if err != nil {
-		return 0, InternalServerError.Send(ctx, fmt.Sprintf("fetching task '%s': %s", taskID, err.Error()))
-	}
-	if dbTask == nil {
-		return 0, ResourceNotFound.Send(ctx, fmt.Sprintf("task '%s' not found", taskID))
+		return 0, InternalServerError.Send(ctx, fmt.Sprintf("converting APITask '%s' to service: %s", utility.FromStringPtr(obj.Id), err.Error()))
 	}
 
 	stats, err := dbTask.GetTestResultsStats(ctx, evergreen.GetEnvironment())
@@ -672,14 +668,11 @@ func (r *taskResolver) Tests(ctx context.Context, obj *restModel.APITask, opts *
 
 // TotalTestCount is the resolver for the totalTestCount field.
 func (r *taskResolver) TotalTestCount(ctx context.Context, obj *restModel.APITask) (int, error) {
-	taskID := utility.FromStringPtr(obj.Id)
-	dbTask, err := task.FindOneId(ctx, taskID)
+	dbTask, err := obj.ToService()
 	if err != nil {
-		return 0, InternalServerError.Send(ctx, fmt.Sprintf("fetching task '%s': %s", taskID, err.Error()))
+		return 0, InternalServerError.Send(ctx, fmt.Sprintf("converting APITask '%s' to service: %s", utility.FromStringPtr(obj.Id), err.Error()))
 	}
-	if dbTask == nil {
-		return 0, ResourceNotFound.Send(ctx, fmt.Sprintf("task '%s' not found", taskID))
-	}
+
 	stats, err := dbTask.GetTestResultsStats(ctx, evergreen.GetEnvironment())
 	if err != nil {
 		return 0, InternalServerError.Send(ctx, fmt.Sprintf("getting test count: %s", err.Error()))

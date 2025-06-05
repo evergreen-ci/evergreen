@@ -405,7 +405,6 @@ func (a *Agent) makeTaskConfig(ctx context.Context, tc *taskContext) (*internal.
 	}
 	taskConfig.Task.TaskOutputInfo.TaskLogs.AWSCredentials = awsCreds
 	taskConfig.Task.TaskOutputInfo.TestLogs.AWSCredentials = awsCreds
-	taskConfig.Task.TaskOutputInfo.TestResults.AWSCredentials = awsCreds
 
 	if a.opts.HostSecret != "" {
 		// Redact the host secret from the logs. While the host secret isn't

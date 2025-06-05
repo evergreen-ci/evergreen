@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/annotations"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -4853,7 +4854,7 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 		tsk               *Task
 		executionTasks    []Task
 		oldExecutionTasks []Task
-		expectedOpts      []taskoutput.TaskOptions
+		expectedOpts      []testresult.TaskOptions
 	}{
 		{
 			name: "RegularTaskNoResults",
@@ -4866,7 +4867,7 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 				Execution:       1,
 				HasCedarResults: true,
 			},
-			expectedOpts: []taskoutput.TaskOptions{
+			expectedOpts: []testresult.TaskOptions{
 				{TaskID: "task", Execution: 1},
 			},
 		},
@@ -4877,7 +4878,7 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 				Execution:      1,
 				ResultsService: "some_service",
 			},
-			expectedOpts: []taskoutput.TaskOptions{
+			expectedOpts: []testresult.TaskOptions{
 				{TaskID: "task", Execution: 1, ResultsService: "some_service"},
 			},
 		},
@@ -4891,7 +4892,7 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 				HasCedarResults: true,
 				Archived:        true,
 			},
-			expectedOpts: []taskoutput.TaskOptions{
+			expectedOpts: []testresult.TaskOptions{
 				{TaskID: "task", Execution: 0},
 			},
 		},
@@ -4904,7 +4905,7 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 				ResultsService: "some_service",
 				Archived:       true,
 			},
-			expectedOpts: []taskoutput.TaskOptions{
+			expectedOpts: []testresult.TaskOptions{
 				{TaskID: "task", Execution: 0, ResultsService: "some_service"},
 			},
 		},
@@ -4933,7 +4934,7 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 				{Id: "exec_task1", Execution: 1, HasCedarResults: true},
 				{Id: "exec_task2"},
 			},
-			expectedOpts: []taskoutput.TaskOptions{
+			expectedOpts: []testresult.TaskOptions{
 				{TaskID: "exec_task0"},
 				{TaskID: "exec_task1", Execution: 1},
 			},
@@ -4951,7 +4952,7 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 				{Id: "exec_task1", Execution: 1, ResultsService: "some_service"},
 				{Id: "exec_task2"},
 			},
-			expectedOpts: []taskoutput.TaskOptions{
+			expectedOpts: []testresult.TaskOptions{
 				{TaskID: "exec_task0", ResultsService: "some_service"},
 				{TaskID: "exec_task1", Execution: 1, ResultsService: "some_service"},
 			},
@@ -4976,7 +4977,7 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 				{Id: "exec_task3_0", OldTaskId: "exec_task3", Execution: 0, HasCedarResults: true},
 				{Id: "exec_task3_1", OldTaskId: "exec_task3", Execution: 1, HasCedarResults: true},
 			},
-			expectedOpts: []taskoutput.TaskOptions{
+			expectedOpts: []testresult.TaskOptions{
 				{TaskID: "exec_task0"},
 				{TaskID: "exec_task1", Execution: 2},
 				{TaskID: "exec_task3", Execution: 1},
@@ -5002,7 +5003,7 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 				{Id: "exec_task3_0", OldTaskId: "exec_task3", Execution: 0, ResultsService: "some_service"},
 				{Id: "exec_task3_1", OldTaskId: "exec_task3", Execution: 1, ResultsService: "some_service"},
 			},
-			expectedOpts: []taskoutput.TaskOptions{
+			expectedOpts: []testresult.TaskOptions{
 				{TaskID: "exec_task0", ResultsService: "some_service"},
 				{TaskID: "exec_task1", Execution: 2, ResultsService: "some_service"},
 				{TaskID: "exec_task3", Execution: 1, ResultsService: "some_service"},

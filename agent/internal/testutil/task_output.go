@@ -23,13 +23,6 @@ func InitializeTaskOutput(t *testing.T) *taskoutput.TaskOutput {
 				Type: evergreen.BucketTypeLocal,
 			},
 		},
-		TestResults: taskoutput.TestResultOutput{
-			Version: 1,
-			BucketConfig: evergreen.BucketConfig{
-				Name: t.TempDir(),
-				Type: evergreen.BucketTypeLocal,
-			},
-		},
 	}
 
 }
