@@ -42,7 +42,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/mongodb/amboy v0.0.0-20250313150805-ef0cd9968322
 	github.com/mongodb/anser v0.0.0-20250324144457-fcc2c57eee09
-	github.com/mongodb/grip v0.0.0-20250410161241-7cb1e90e324d
+	github.com/mongodb/grip v0.0.0-20250605170751-42f96c9d4abf
 	github.com/pkg/errors v0.9.1
 	github.com/ravilushqa/otelgqlgen v0.17.0
 	github.com/robbiet480/go.sns v0.0.0-20210223081447-c7c9eb6836cb
