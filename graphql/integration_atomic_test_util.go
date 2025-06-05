@@ -99,6 +99,11 @@ func MakeTestsInDirectory(state *AtomicGraphQLState, pathToTests string) func(t 
 		setupUsers(t)
 		setupScopesAndRoles(t, state)
 
+		flags := evergreen.ServiceFlags{
+			EvergreenTestResultsDisabled: true,
+		}
+		require.NoError(t, evergreen.SetServiceFlags(ctx, flags))
+
 		for _, testCase := range tests.Tests {
 			singleTest := func(t *testing.T) {
 				f, err := os.ReadFile(filepath.Join(pathToTests, "tests", state.Directory, "queries", testCase.QueryFile))
