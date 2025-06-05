@@ -43,6 +43,8 @@ cp "${SWAGGER_JSON_FILE}" "${temp_swagger_json}"
 
 # Replace the version placeholder with the current version number.
 perl -pi -e 's/\{OPENAPI_VERSION\}/'$version_number'/' "${temp_swagger_json}"
+
+# Replace the host placeholder with the environment-specific host URL.
 perl -pi -e 's/\{OPENAPI_HOST\}/'$host_url'/' "${temp_swagger_json}"
 
 # Generate the sum of the temporary swagger.json file.
