@@ -266,7 +266,7 @@ and these versions will have the following properties:
     revision.
     -   It is possible to push the tag on the same line as the commit
         using `&&` but this is recommended for low-risk commits only.
--   Versions are displayed on the waterfall and project health page.
+-   Versions are displayed on the waterfall page.
 -   The version is titled "Triggered From Git Tag '`<`git tag`>`':
     `<`commit message for this revision`>`"
 -   The expansion `${triggered_by_git_tag}` is set to the git tag that
