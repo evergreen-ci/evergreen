@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/log"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
@@ -162,7 +161,7 @@ func (h *getTaskOutputLogsBaseHandler) createResponse(it log.LogIterator) gimlet
 
 // GET /tasks/{task_id}/build/TaskLogs
 type getTaskLogsHandler struct {
-	logType taskoutput.TaskLogType
+	logType task.TaskLogType
 
 	getTaskOutputLogsBaseHandler
 }
@@ -198,8 +197,8 @@ func (h *getTaskLogsHandler) Factory() gimlet.RouteHandler {
 }
 
 func (h *getTaskLogsHandler) Parse(ctx context.Context, r *http.Request) error {
-	if h.logType = taskoutput.TaskLogType(r.URL.Query().Get("type")); h.logType == "" {
-		h.logType = taskoutput.TaskLogTypeAll
+	if h.logType = task.TaskLogType(r.URL.Query().Get("type")); h.logType == "" {
+		h.logType = task.TaskLogTypeAll
 	} else if err := h.logType.Validate(false); err != nil {
 		return err
 	}
@@ -212,7 +211,7 @@ func (h *getTaskLogsHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *getTaskLogsHandler) Run(ctx context.Context) gimlet.Responder {
-	it, err := h.tsk.GetTaskLogs(ctx, taskoutput.TaskLogGetOptions{
+	it, err := h.tsk.GetTaskLogs(ctx, task.TaskLogGetOptions{
 		LogType:   h.logType,
 		Start:     h.start,
 		End:       h.end,
@@ -275,7 +274,7 @@ func (h *getTestLogsHandler) Parse(ctx context.Context, r *http.Request) error {
 }
 
 func (h *getTestLogsHandler) Run(ctx context.Context) gimlet.Responder {
-	it, err := h.tsk.GetTestLogs(ctx, taskoutput.TestLogGetOptions{
+	it, err := h.tsk.GetTestLogs(ctx, task.TestLogGetOptions{
 		LogPaths:  h.logPaths,
 		Start:     h.start,
 		End:       h.end,

@@ -17,7 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/log"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/tarjan"
 	"github.com/evergreen-ci/utility"
@@ -182,7 +181,7 @@ type Task struct {
 	//        safely fetch any output data.
 	// This field should *never* be accessed directly, instead call
 	// `Task.GetTaskOutputSafe()`.
-	TaskOutputInfo *taskoutput.TaskOutput `bson:"task_output_info,omitempty" json:"task_output_info,omitempty"`
+	TaskOutputInfo *TaskOutput `bson:"task_output_info,omitempty" json:"task_output_info,omitempty"`
 
 	// Set to true if the task should be considered for mainline github checks
 	IsGithubCheck bool `bson:"is_github_check,omitempty" json:"is_github_check,omitempty"`
@@ -1452,7 +1451,7 @@ func setDependenciesMetTimeForTasks(ctx context.Context, uniqueIDsToSetDependenc
 	return nil
 }
 
-// ByBeforeMidwayTaskFromIds tries to get the midway task between two tasks
+// ByBeforeMidwayTaskFromIds tries to Get the midway task between two tasks
 // but if it does not find it (i.e. periodic builds), it gets the closest task
 // (with lower order number). If there are no matching tasks, or the task it
 // gets is out of bounds, it returns the given lower order revision task.
@@ -1760,18 +1759,18 @@ func SetNextStepbackId(ctx context.Context, taskId string, s StepbackInfo) error
 // up-to-date configuration for the task run. Returns false if the task will
 // never have output. This function should only be used to set the task output
 // field upon task dispatch.
-func (t *Task) initializeTaskOutputInfo(env evergreen.Environment) (*taskoutput.TaskOutput, bool) {
+func (t *Task) initializeTaskOutputInfo(env evergreen.Environment) (*TaskOutput, bool) {
 	if t.DisplayOnly || t.Archived {
 		return nil, false
 	}
 
-	return taskoutput.InitializeTaskOutput(env), true
+	return InitializeTaskOutput(env), true
 }
 
 // GetTaskOutputSafe returns an instantiation of the task output interface and
 // whether it is safe to fetch task output data. This function should always
 // be called to access task output data.
-func (t *Task) GetTaskOutputSafe() (*taskoutput.TaskOutput, bool) {
+func (t *Task) GetTaskOutputSafe() (*TaskOutput, bool) {
 	if t.DisplayOnly || t.Status == evergreen.TaskUndispatched {
 		return nil, false
 	}
@@ -1781,16 +1780,16 @@ func (t *Task) GetTaskOutputSafe() (*taskoutput.TaskOutput, bool) {
 		// output metadata saved in the database. This is for backwards
 		// compatibility. We can safely assume version zero for each
 		// task output type.
-		return &taskoutput.TaskOutput{}, true
+		return &TaskOutput{}, true
 	}
 
 	return t.TaskOutputInfo, true
 }
 
 // GetTaskLogs returns the task's task logs with the given options.
-func (t *Task) GetTaskLogs(ctx context.Context, getOpts taskoutput.TaskLogGetOptions) (log.LogIterator, error) {
+func (t *Task) GetTaskLogs(ctx context.Context, getOpts TaskLogGetOptions) (log.LogIterator, error) {
 	if t.DisplayOnly {
-		return nil, errors.New("cannot get task logs for a display task")
+		return nil, errors.New("cannot Get task logs for a display task")
 	}
 
 	output, ok := t.GetTaskOutputSafe()
@@ -1800,23 +1799,17 @@ func (t *Task) GetTaskLogs(ctx context.Context, getOpts taskoutput.TaskLogGetOpt
 		return log.EmptyIterator(), nil
 	}
 
-	taskID := t.Id
+	task := t
 	if t.Archived {
-		taskID = t.OldTaskId
+		task.Id = t.OldTaskId
 	}
-	taskOpts := taskoutput.TaskOptions{
-		ProjectID: t.Project,
-		TaskID:    taskID,
-		Execution: t.Execution,
-	}
-
-	return output.TaskLogs.Get(ctx, taskOpts, getOpts)
+	return output.TaskLogs.Get(ctx, *task, getOpts)
 }
 
 // GetTestLogs returns the task's test logs with the specified options.
-func (t *Task) GetTestLogs(ctx context.Context, getOpts taskoutput.TestLogGetOptions) (log.LogIterator, error) {
+func (t *Task) GetTestLogs(ctx context.Context, getOpts TestLogGetOptions) (log.LogIterator, error) {
 	if t.DisplayOnly {
-		return nil, errors.New("cannot get test logs for a display task")
+		return nil, errors.New("cannot Get test logs for a display task")
 	}
 
 	output, ok := t.GetTaskOutputSafe()
@@ -1826,17 +1819,11 @@ func (t *Task) GetTestLogs(ctx context.Context, getOpts taskoutput.TestLogGetOpt
 		return log.EmptyIterator(), nil
 	}
 
-	taskID := t.Id
+	task := t
 	if t.Archived {
-		taskID = t.OldTaskId
+		task.Id = t.OldTaskId
 	}
-	taskOpts := taskoutput.TaskOptions{
-		ProjectID: t.Project,
-		TaskID:    taskID,
-		Execution: t.Execution,
-	}
-
-	return output.TestLogs.Get(ctx, taskOpts, getOpts)
+	return output.TestLogs.Get(ctx, *task, getOpts)
 }
 
 // SetResultsInfo sets the task's test results info.
@@ -2013,13 +2000,13 @@ func getDependencyTaskIdsToActivate(ctx context.Context, tasks []string, updateD
 	}
 
 	// do a topological sort so we've dealt with
-	// all a task's dependencies by the time we get up to it
+	// all a task's dependencies by the time we Get up to it
 	sortedDependencies, err := topologicalSort(tasksDependingOnTheseTasks)
 	if err != nil {
 		return nil, nil, errors.WithStack(err)
 	}
 
-	// get dependencies we don't have yet and add them to a map
+	// Get dependencies we don't have yet and add them to a map
 	tasksToGet := []string{}
 	depTaskMap := make(map[string]bool)
 	for _, t := range sortedDependencies {
@@ -2677,7 +2664,7 @@ func getRecursiveDependenciesDown(ctx context.Context, tasks []string, taskMap m
 	}).WithFields(IdKey, ActivatedKey, DeactivatedForDependencyKey, ExecutionKey, DependsOnKey, BuildIdKey)
 	dependOnUsTasks, err := FindAll(ctx, query)
 	if err != nil {
-		return nil, errors.Wrap(err, "can't get dependencies")
+		return nil, errors.Wrap(err, "can't Get dependencies")
 	}
 
 	// if the task hasn't yet been visited we need to recurse on it
@@ -3208,8 +3195,8 @@ func (t *Task) PopulateTestResults(ctx context.Context) error {
 // GetTestResults returns the merged test results filtered, sorted,
 // and paginated as specified by the optional filter options for the given
 // tasks.
-func (t *Task) GetTestResults(ctx context.Context, env evergreen.Environment, filterOpts *testresult.FilterOptions) (testresult.TaskTestResults, error) {
-	taskOpts, err := t.CreateTestResultsTaskOptions(ctx)
+func (t *Task) GetTestResults(ctx context.Context, env evergreen.Environment, filterOpts *FilterOptions) (testresult.TaskTestResults, error) {
+	taskOpts, err := t.GetTestResultsTasks(ctx)
 	if err != nil {
 		return testresult.TaskTestResults{}, errors.Wrap(err, "creating test results task options")
 	}
@@ -3229,7 +3216,7 @@ func (t *Task) GetTestResults(ctx context.Context, env evergreen.Environment, fi
 
 // GetTestResultsStats returns basic statistics of the task's test results.
 func (t *Task) GetTestResultsStats(ctx context.Context, env evergreen.Environment) (testresult.TaskTestResultsStats, error) {
-	taskOpts, err := t.CreateTestResultsTaskOptions(ctx)
+	taskOpts, err := t.GetTestResultsTasks(ctx)
 	if err != nil {
 		return testresult.TaskTestResultsStats{}, errors.Wrap(err, "creating test results task options")
 	}
@@ -3271,15 +3258,15 @@ func (t *Task) getTaskOrFirstExecutionTask(ctx context.Context) (*Task, error) {
 	return nil, errors.Errorf("no execution tasks found for display task '%s", t.Id)
 }
 
-// CreateTestResultsTaskOptions returns the options required for fetching test
+// GetTestResultsTasks returns the options required for fetching test
 // results for the task.
 //
 // Calling this function explicitly is typically not necessary. In cases where
 // additional tasks are required for fetching test results, such as when
 // sorting results by some base status, using this function to populate those
 // task options is useful.
-func (t *Task) CreateTestResultsTaskOptions(ctx context.Context) ([]taskoutput.TaskOptions, error) {
-	var taskOpts []taskoutput.TaskOptions
+func (t *Task) GetTestResultsTasks(ctx context.Context) ([]Task, error) {
+	var tasks []Task
 	if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
 		var (
 			execTasksWithResults []Task
@@ -3298,29 +3285,21 @@ func (t *Task) CreateTestResultsTaskOptions(ctx context.Context) ([]taskoutput.T
 		}
 
 		for _, execTask := range execTasksWithResults {
-			taskID := execTask.Id
+			et := execTask
 			if execTask.Archived {
-				taskID = execTask.OldTaskId
+				et.Id = execTask.OldTaskId
 			}
-			taskOpts = append(taskOpts, taskoutput.TaskOptions{
-				TaskID:         taskID,
-				Execution:      execTask.Execution,
-				ResultsService: execTask.ResultsService,
-			})
+			tasks = append(tasks, et)
 		}
 	} else if t.HasResults(ctx) {
-		taskID := t.Id
+		task := t
 		if t.Archived {
-			taskID = t.OldTaskId
+			task.Id = t.OldTaskId
 		}
-		taskOpts = append(taskOpts, taskoutput.TaskOptions{
-			TaskID:         taskID,
-			Execution:      t.Execution,
-			ResultsService: t.ResultsService,
-		})
+		tasks = append(tasks, *task)
 	}
 
-	return taskOpts, nil
+	return tasks, nil
 }
 
 // SetResetWhenFinished requests that a display task or single-host task group
@@ -3434,7 +3413,7 @@ func updateSchedulingLimitForResetWhenFinished(ctx context.Context, t *Task, cal
 	return errors.Wrap(CheckUsersPatchTaskLimit(ctx, t.Requester, caller, true, tasks...), "updating patch task limit for user")
 }
 
-// CheckUsersPatchTaskLimit takes in an input list of tasks that is set to get activated, and checks if they're
+// CheckUsersPatchTaskLimit takes in an input list of tasks that is set to Get activated, and checks if they're
 // non commit-queue patch tasks, and that the request has been submitted by a user. If so, the maximum hourly patch tasks counter
 // will be incremented accordingly. The includeDisplayAndTaskGroups parameter indicates that execution tasks and single host task
 // group tasks are to be counted as part of the limit update, otherwise they will be ignored.
@@ -3544,7 +3523,7 @@ func (t *Task) IsPartOfDisplay(ctx context.Context) bool {
 		dt, err := t.GetDisplayTask(ctx)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
-				"message":        "unable to get display task",
+				"message":        "unable to Get display task",
 				"execution_task": t.Id,
 			}))
 			return false

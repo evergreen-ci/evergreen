@@ -1,4 +1,4 @@
-package taskoutput
+package task
 
 import (
 	"context"
@@ -73,7 +73,7 @@ type TaskLogGetOptions struct {
 }
 
 // NewSender returns a new task log sender for the given task run.
-func (o TaskLogOutput) NewSender(ctx context.Context, taskOpts TaskOptions, senderOpts EvergreenSenderOptions, logType TaskLogType) (send.Sender, error) {
+func (o TaskLogOutput) NewSender(ctx context.Context, task Task, senderOpts EvergreenSenderOptions, logType TaskLogType) (send.Sender, error) {
 	if err := logType.Validate(true); err != nil {
 		return nil, err
 	}
@@ -84,14 +84,14 @@ func (o TaskLogOutput) NewSender(ctx context.Context, taskOpts TaskOptions, send
 	}
 
 	senderOpts.appendLines = func(ctx context.Context, lines []log.LogLine) error {
-		return svc.Append(ctx, o.getLogName(taskOpts, logType), 0, lines)
+		return svc.Append(ctx, o.getLogName(task, logType), 0, lines)
 	}
 
-	return newEvergreenSender(ctx, fmt.Sprintf("%s-%s", taskOpts.TaskID, logType), senderOpts)
+	return newEvergreenSender(ctx, fmt.Sprintf("%s-%s", task.Id, logType), senderOpts)
 }
 
 // Append appends log lines to the specified task log for the given task run.
-func (o TaskLogOutput) Append(ctx context.Context, taskOpts TaskOptions, logType TaskLogType, lines []log.LogLine) error {
+func (o TaskLogOutput) Append(ctx context.Context, task Task, logType TaskLogType, lines []log.LogLine) error {
 	if err := logType.Validate(true); err != nil {
 		return err
 	}
@@ -101,17 +101,17 @@ func (o TaskLogOutput) Append(ctx context.Context, taskOpts TaskOptions, logType
 		return errors.Wrap(err, "getting log service")
 	}
 
-	return svc.Append(ctx, o.getLogName(taskOpts, logType), 0, lines)
+	return svc.Append(ctx, o.getLogName(task, logType), 0, lines)
 }
 
 // Get returns task logs belonging to the specified task run.
-func (o TaskLogOutput) Get(ctx context.Context, taskOpts TaskOptions, getOpts TaskLogGetOptions) (log.LogIterator, error) {
+func (o TaskLogOutput) Get(ctx context.Context, task Task, getOpts TaskLogGetOptions) (log.LogIterator, error) {
 	if err := getOpts.LogType.Validate(false); err != nil {
 		return nil, err
 	}
 
 	if o.Version == 0 {
-		return o.getBuildloggerLogs(ctx, taskOpts, getOpts)
+		return o.getBuildloggerLogs(ctx, task, getOpts)
 	}
 
 	svc, err := o.getLogService(ctx)
@@ -120,7 +120,7 @@ func (o TaskLogOutput) Get(ctx context.Context, taskOpts TaskOptions, getOpts Ta
 	}
 
 	return svc.Get(ctx, log.GetOptions{
-		LogNames:  []string{o.getLogName(taskOpts, getOpts.LogType)},
+		LogNames:  []string{o.getLogName(task, getOpts.LogType)},
 		Start:     getOpts.Start,
 		End:       getOpts.End,
 		LineLimit: getOpts.LineLimit,
@@ -128,8 +128,8 @@ func (o TaskLogOutput) Get(ctx context.Context, taskOpts TaskOptions, getOpts Ta
 	})
 }
 
-func (o TaskLogOutput) getLogName(taskOpts TaskOptions, logType TaskLogType) string {
-	prefix := fmt.Sprintf("%s/%s/%d/%s", taskOpts.ProjectID, taskOpts.TaskID, taskOpts.Execution, o.ID())
+func (o TaskLogOutput) getLogName(task Task, logType TaskLogType) string {
+	prefix := fmt.Sprintf("%s/%s/%d/%s", task.Project, task.Id, task.Execution, o.ID())
 
 	var logTypePrefix string
 	switch logType {
@@ -156,11 +156,11 @@ func (o TaskLogOutput) getLogService(ctx context.Context) (log.LogService, error
 }
 
 // getBuildloggerLogs makes request to Cedar Buildlogger for logs.
-func (o TaskLogOutput) getBuildloggerLogs(ctx context.Context, taskOpts TaskOptions, getOpts TaskLogGetOptions) (log.LogIterator, error) {
+func (o TaskLogOutput) getBuildloggerLogs(ctx context.Context, task Task, getOpts TaskLogGetOptions) (log.LogIterator, error) {
 	opts := apimodels.GetBuildloggerLogsOptions{
 		BaseURL:   evergreen.GetEnvironment().Settings().Cedar.BaseURL,
-		TaskID:    taskOpts.TaskID,
-		Execution: utility.ToIntPtr(taskOpts.Execution),
+		TaskID:    task.Id,
+		Execution: utility.ToIntPtr(task.Execution),
 		Start:     utility.FromInt64Ptr(getOpts.Start),
 		End:       utility.FromInt64Ptr(getOpts.End),
 		Limit:     getOpts.LineLimit,

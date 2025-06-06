@@ -184,14 +184,6 @@ type TaskTestResultsFailedSample struct {
 	TotalFailedNames        int      `json:"total_failed_names"`
 }
 
-// TaskOptions represents the task-level information required to fetch test
-// results from an Evergreen test run.
-type TaskOptions struct {
-	TaskID         string
-	Execution      int
-	ResultsService string
-}
-
 // SortBy describes the properties by which to sort a set of test results.
 type SortBy struct {
 	Key      string
@@ -206,15 +198,3 @@ const (
 	SortByStatusKey     = "status"
 	SortByBaseStatusKey = "base_status"
 )
-
-// FilterOptions represents the filtering arguments for fetching test results.
-type FilterOptions struct {
-	TestName            string
-	ExcludeDisplayNames bool
-	Statuses            []string
-	GroupID             string
-	Sort                []SortBy
-	Limit               int
-	Page                int
-	BaseTasks           []TaskOptions
-}
