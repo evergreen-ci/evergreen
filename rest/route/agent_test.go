@@ -974,3 +974,130 @@ func TestAWSAssumeRole(t *testing.T) {
 	}
 
 }
+
+func TestTaskDetailsHandler(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	t.Run("ValidRequest", func(t *testing.T) {
+		assert.NoError(t, db.ClearCollections(task.Collection))
+
+		// Create a test task
+		testTask := &task.Task{
+			Id:      "test_task_id",
+			Status:  evergreen.TaskStarted,
+			Details: apimodels.TaskEndDetail{},
+		}
+		assert.NoError(t, testTask.Insert(ctx))
+		details := apimodels.TaskDetailsRequest{
+			TraceID:     "test-trace-id-123",
+			DiskDevices: []string{"sda1", "sdb1"},
+		}
+
+		jsonBody, err := json.Marshal(details)
+		assert.NoError(t, err)
+
+		request, err := http.NewRequest(http.MethodPost, "/task/test_task_id/details", bytes.NewBuffer(jsonBody))
+		assert.NoError(t, err)
+		request = gimlet.SetURLVars(request, map[string]string{"task_id": "test_task_id"})
+
+		handler := makeTaskDetails()
+		assert.NoError(t, handler.Parse(ctx, request))
+
+		resp := handler.Run(ctx)
+		assert.NotNil(t, resp)
+		assert.Equal(t, http.StatusOK, resp.Status())
+
+		// Verify the task was updated
+		updatedTask, err := task.FindOneId(ctx, "test_task_id")
+		assert.NoError(t, err)
+		assert.Equal(t, "test-trace-id-123", updatedTask.Details.TraceID)
+		assert.Equal(t, []string{"sda1", "sdb1"}, updatedTask.Details.DiskDevices)
+	})
+
+	t.Run("MissingTaskID", func(t *testing.T) {
+		request, err := http.NewRequest(http.MethodPost, "/task//details", bytes.NewBuffer([]byte("{}")))
+		assert.NoError(t, err)
+
+		handler := makeTaskDetails()
+		err = handler.Parse(ctx, request)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "missing task ID")
+	})
+
+	t.Run("TaskNotFound", func(t *testing.T) {
+		assert.NoError(t, db.ClearCollections(task.Collection))
+		details := apimodels.TaskDetailsRequest{
+			TraceID: "test-trace-id",
+		}
+
+		jsonBody, err := json.Marshal(details)
+		assert.NoError(t, err)
+
+		request, err := http.NewRequest(http.MethodPost, "/task/nonexistent_task/details", bytes.NewBuffer(jsonBody))
+		assert.NoError(t, err)
+		request = gimlet.SetURLVars(request, map[string]string{"task_id": "nonexistent_task"})
+
+		handler := makeTaskDetails()
+		assert.NoError(t, handler.Parse(ctx, request))
+
+		resp := handler.Run(ctx)
+		assert.NotNil(t, resp)
+		assert.Equal(t, http.StatusNotFound, resp.Status())
+	})
+
+	t.Run("InvalidJSON", func(t *testing.T) {
+		assert.NoError(t, db.ClearCollections(task.Collection))
+
+		// Create a test task
+		testTask := &task.Task{
+			Id:      "test_task_id",
+			Status:  evergreen.TaskStarted,
+			Details: apimodels.TaskEndDetail{},
+		}
+		assert.NoError(t, testTask.Insert(ctx))
+
+		request, err := http.NewRequest(http.MethodPost, "/task/test_task_id/details", bytes.NewBuffer([]byte("invalid json")))
+		assert.NoError(t, err)
+		request = gimlet.SetURLVars(request, map[string]string{"task_id": "test_task_id"})
+
+		handler := makeTaskDetails()
+		err = handler.Parse(ctx, request)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "reading task details request")
+	})
+
+	t.Run("EmptyRequest", func(t *testing.T) {
+		assert.NoError(t, db.ClearCollections(task.Collection))
+
+		// Create a test task
+		testTask := &task.Task{
+			Id:      "test_task_id",
+			Status:  evergreen.TaskStarted,
+			Details: apimodels.TaskEndDetail{},
+		}
+		assert.NoError(t, testTask.Insert(ctx))
+		details := apimodels.TaskDetailsRequest{}
+
+		jsonBody, err := json.Marshal(details)
+		assert.NoError(t, err)
+
+		request, err := http.NewRequest(http.MethodPost, "/task/test_task_id/details", bytes.NewBuffer(jsonBody))
+		assert.NoError(t, err)
+		request = gimlet.SetURLVars(request, map[string]string{"task_id": "test_task_id"})
+
+		handler := makeTaskDetails()
+		assert.NoError(t, handler.Parse(ctx, request))
+
+		resp := handler.Run(ctx)
+		assert.NotNil(t, resp)
+		assert.Equal(t, http.StatusOK, resp.Status())
+
+		// Verify the task was not updated (no changes made)
+		updatedTask, err := task.FindOneId(ctx, "test_task_id")
+		assert.NoError(t, err)
+		// Should still have the original empty details
+		assert.Empty(t, updatedTask.Details.TraceID)
+		assert.Empty(t, updatedTask.Details.DiskDevices)
+	})
+}

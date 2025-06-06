@@ -72,6 +72,8 @@ type Mock struct {
 	RevokeGitHubDynamicAccessTokenFail   bool
 	AssumeRoleResponse                   *apimodels.AWSCredentials
 	S3Response                           *apimodels.AWSCredentials
+	SendTaskDetailsShouldFail            bool
+	TaskDetailsRequests                  []apimodels.TaskDetailsRequest
 
 	CedarGRPCConn *grpc.ClientConn
 
@@ -615,4 +617,16 @@ func (c *Mock) AssumeRole(ctx context.Context, td TaskData, request apimodels.As
 
 func (c *Mock) S3Credentials(ctx context.Context, td TaskData, bucket string) (*apimodels.AWSCredentials, error) {
 	return c.S3Response, nil
+}
+
+func (c *Mock) SendTaskDetails(ctx context.Context, td TaskData, details *apimodels.TaskDetailsRequest) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.SendTaskDetailsShouldFail {
+		return errors.New("mock send task details error")
+	}
+
+	c.TaskDetailsRequests = append(c.TaskDetailsRequests, *details)
+	return nil
 }

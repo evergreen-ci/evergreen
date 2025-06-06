@@ -720,6 +720,17 @@ func (a *Agent) runTask(ctx context.Context, tcInput *taskContext, nt *apimodels
 	defer span.End()
 	tc.traceID = span.SpanContext().TraceID().String()
 
+	// Send DiskDevice and TraceId information to be stored in TaskEndDetail
+	if len(tc.diskDevices) > 0 || tc.traceID != "" {
+		detailsReq := &apimodels.TaskDetailsRequest{
+			TraceID:     tc.traceID,
+			DiskDevices: tc.diskDevices,
+		}
+		if err := a.comm.SendTaskDetails(tskCtx, tc.task, detailsReq); err != nil {
+			tc.logger.Execution().Error(errors.Wrap(err, "sending task details"))
+		}
+	}
+
 	shutdown, err := a.startMetrics(tskCtx, tc.taskConfig)
 	grip.Error(errors.Wrap(err, "starting metrics collection"))
 	if shutdown != nil {

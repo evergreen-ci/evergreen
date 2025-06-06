@@ -101,6 +101,13 @@ type TaskEndDetails struct {
 	TimedOut     bool   `bson:"timed_out,omitempty" json:"timed_out,omitempty"`
 }
 
+// TaskDetailsRequest contains data sent from the agent to store in TaskEndDetail
+// after getDeviceNames is called, before the task finishes
+type TaskDetailsRequest struct {
+	TraceID     string   `json:"trace_id,omitempty"`
+	DiskDevices []string `json:"disk_devices,omitempty"`
+}
+
 type GetNextTaskDetails struct {
 	TaskGroup     string `json:"task_group"`
 	AgentRevision string `json:"agent_revision"`
