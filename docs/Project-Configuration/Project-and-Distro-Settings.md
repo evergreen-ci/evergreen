@@ -471,10 +471,6 @@ monitoring charts. Use a cron to schedule your tasks if you'd like to
 use performance tooling.
 
 ### Views and Filters
-#### Project Health View
-Customize the default behavior of the Project Health page by choosing to show failed task icons or all task icons. This setting corresponds to the toggle on the Project Health page (pictured below).
-
-![project_health_view.png](../images/project_health_view.png)
 
 #### Parsley Filters
 Define default filters for your project. Users can access these filters in Parsley and apply them directly to their logs.
