@@ -717,6 +717,7 @@ func TestReliabilityRun(t *testing.T) {
 			} {
 				t.Run(testName, func(t *testing.T) {
 					handler := makeGetProjectTaskReliability().(*taskReliabilityHandler)
+					handler.url = "https://example.net/test"
 					withSetupAndTeardown(t, func() {
 						testCase(paginationContext, t, handler)
 					})
