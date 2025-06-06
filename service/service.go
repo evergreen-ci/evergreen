@@ -63,8 +63,7 @@ func GetRouter(ctx context.Context, as *APIServer, uis *UIServer) (http.Handler,
 	rest := GetRESTv1App(as)
 
 	opts := route.HandlerOpts{
-		APIQueue: as.queue,
-		// chaya here this should not be the ui URL, but the API URL.
+		APIQueue:            as.queue,
 		URL:                 as.Settings.Ui.Url,
 		GithubSecret:        []byte(as.Settings.GithubWebhookSecret),
 		TaskDispatcher:      as.taskDispatcher,

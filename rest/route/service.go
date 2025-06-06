@@ -32,7 +32,6 @@ func AttachHandler(app *gimlet.APIApp, opts HandlerOpts) {
 	settings := env.Settings()
 	parsleyURL := settings.Ui.ParsleyUrl
 
-	// chaya here this ends up being used in next
 	sc.SetURL(opts.URL)
 
 	// Middleware
