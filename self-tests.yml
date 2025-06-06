@@ -695,7 +695,7 @@ tasks:
         params:
           role_arn: ${assume_role_arn}
           local_file: evergreen/docs/swagger.old.sum
-          remote_file: evergreen/latest/swagger.sum
+          remote_file: evergreen/latest/swagger${environment-suffix}.sum
           bucket: mciuploads
           content_type: text/plain
           optional: true
@@ -708,6 +708,8 @@ tasks:
             SWAGGER_JSON_FILE: docs/swagger.json
             SWAGGER_OLD_SUM_FILE: docs/swagger.old.sum
             OUTPUT_SUM_FILE: docs/swagger.sum
+            environment: ${environment}
+            environment-suffix: ${environment-suffix}
       - command: s3.put
         params:
           role_arn: ${assume_role_arn}
@@ -721,7 +723,7 @@ tasks:
         params:
           role_arn: ${assume_role_arn}
           local_file: evergreen/docs/swagger.json
-          remote_file: evergreen/latest/swagger.json
+          remote_file: evergreen/latest/swagger${environment-suffix}.json
           bucket: mciuploads
           content_type: application/json
           permissions: public-read
@@ -731,7 +733,7 @@ tasks:
         params:
           role_arn: ${assume_role_arn}
           local_file: evergreen/docs/swagger.sum
-          remote_file: evergreen/latest/swagger.sum
+          remote_file: evergreen/latest/swagger${environment-suffix}.sum
           bucket: mciuploads
           content_type: text/plain
           permissions: public-read
@@ -829,7 +831,6 @@ buildvariants:
       - name: test-cloud
       - name: "js-test"
       - name: generate-api-docs
-      - name: push-api-docs
       - name: write-downstream-expansions-for-pine
       - name: generate-graphql-merged-schema
 
