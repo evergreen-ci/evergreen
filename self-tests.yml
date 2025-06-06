@@ -634,7 +634,13 @@ tasks:
   - name: verify-agent-version-update
     tags: ["linter"]
     patch_only: true
+
     commands:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |
+            sleep 300
       - func: get-project-and-modules
       - func: verify-agent-version-update
   - name: verify-client-version-update

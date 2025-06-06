@@ -727,7 +727,7 @@ func (a *Agent) runTask(ctx context.Context, tcInput *taskContext, nt *apimodels
 			DiskDevices: tc.diskDevices,
 		}
 		if err := a.comm.SendTaskDetails(tskCtx, tc.task, detailsReq); err != nil {
-			tc.logger.Execution().Error(errors.Wrap(err, "sending task details"))
+			tc.logger.Execution().Debug(errors.Wrap(err, "sending task details"))
 		}
 	}
 
