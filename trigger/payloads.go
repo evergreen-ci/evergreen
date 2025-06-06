@@ -442,7 +442,7 @@ func makeCommonPayload(sub *event.Subscription, eventAttributes event.Attributes
 	case event.SlackSubscriberType:
 		return slack(data)
 	case event.RunChildPatchSubscriberType:
-		return commonTemplateData{}, nil
+		return nil, nil
 	}
 
 	return nil, errors.Errorf("unknown subscriber type '%s'", sub.Subscriber.Type)
