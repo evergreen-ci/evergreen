@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/anser/bsonutil"
@@ -207,7 +208,7 @@ func (restapi restAPI) getRecentVersions(w http.ResponseWriter, r *http.Request)
 				Relation:        "next",
 				LimitQueryParam: "limit",
 				KeyQueryParam:   "start",
-				BaseURL:         restapi.GetSettings().Api.URL,
+				BaseURL:         util.HttpsUrl(r.Host),
 				Key:             nextPageStart,
 				Limit:           l,
 			},
