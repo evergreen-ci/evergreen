@@ -72,55 +72,76 @@ type TaskLogGetOptions struct {
 	TailN int
 }
 
-// NewSender returns a new task log sender for the given task run.
-func (o TaskLogOutput) NewSender(ctx context.Context, task Task, senderOpts EvergreenSenderOptions, logType TaskLogType) (send.Sender, error) {
+// NewTaskLogSender returns a new task log sender for the given task run.
+func NewTaskLogSender(ctx context.Context, task Task, senderOpts EvergreenSenderOptions, logType TaskLogType) (send.Sender, error) {
+	output, ok := task.GetTaskOutputSafe()
+	if !ok {
+		// We know there task cannot have task output, likely because
+		// it has not run yet. Return an empty iterator.
+		return nil, nil
+	}
+
 	if err := logType.Validate(true); err != nil {
 		return nil, err
 	}
 
-	svc, err := o.getLogService(ctx)
+	svc, err := getLogService(ctx, output.TaskLogs)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting log service")
 	}
 
 	senderOpts.appendLines = func(ctx context.Context, lines []log.LogLine) error {
-		return svc.Append(ctx, o.getLogName(task, logType), 0, lines)
+		return svc.Append(ctx, getLogName(task, logType, output.TaskLogs.ID()), 0, lines)
 	}
 
 	return newEvergreenSender(ctx, fmt.Sprintf("%s-%s", task.Id, logType), senderOpts)
 }
 
-// Append appends log lines to the specified task log for the given task run.
-func (o TaskLogOutput) Append(ctx context.Context, task Task, logType TaskLogType, lines []log.LogLine) error {
+// AppendTaskLogs appends log lines to the specified task log for the given task run.
+func AppendTaskLogs(ctx context.Context, task Task, logType TaskLogType, lines []log.LogLine) error {
+	output, ok := task.GetTaskOutputSafe()
+	if !ok {
+		// We know there task cannot have task output, likely because
+		// it has not run yet. Return an empty iterator.
+		return nil
+	}
+
 	if err := logType.Validate(true); err != nil {
 		return err
 	}
 
-	svc, err := o.getLogService(ctx)
+	svc, err := getLogService(ctx, output.TaskLogs)
 	if err != nil {
 		return errors.Wrap(err, "getting log service")
 	}
 
-	return svc.Append(ctx, o.getLogName(task, logType), 0, lines)
+	return svc.Append(ctx, getLogName(task, logType, output.TaskLogs.ID()), 0, lines)
 }
 
-// Get returns task logs belonging to the specified task run.
-func (o TaskLogOutput) Get(ctx context.Context, task Task, getOpts TaskLogGetOptions) (log.LogIterator, error) {
+// getTaskLogs returns task logs belonging to the specified task run.
+func getTaskLogs(ctx context.Context, task Task, getOpts TaskLogGetOptions) (log.LogIterator, error) {
+	output, ok := task.GetTaskOutputSafe()
+	if !ok {
+		// We know there task cannot have task output, likely because
+		// it has not run yet. Return an empty iterator.
+		return log.EmptyIterator(), nil
+	}
+
 	if err := getOpts.LogType.Validate(false); err != nil {
 		return nil, err
 	}
 
-	if o.Version == 0 {
-		return o.getBuildloggerLogs(ctx, task, getOpts)
+	if output.TaskLogs.Version == 0 {
+		return getBuildloggerLogs(ctx, task, getOpts)
 	}
 
-	svc, err := o.getLogService(ctx)
+	svc, err := getLogService(ctx, output.TaskLogs)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting log service")
 	}
 
 	return svc.Get(ctx, log.GetOptions{
-		LogNames:  []string{o.getLogName(task, getOpts.LogType)},
+		LogNames:  []string{getLogName(task, getOpts.LogType, output.TaskLogs.ID())},
 		Start:     getOpts.Start,
 		End:       getOpts.End,
 		LineLimit: getOpts.LineLimit,
@@ -128,8 +149,8 @@ func (o TaskLogOutput) Get(ctx context.Context, task Task, getOpts TaskLogGetOpt
 	})
 }
 
-func (o TaskLogOutput) getLogName(task Task, logType TaskLogType) string {
-	prefix := fmt.Sprintf("%s/%s/%d/%s", task.Project, task.Id, task.Execution, o.ID())
+func getLogName(task Task, logType TaskLogType, id string) string {
+	prefix := fmt.Sprintf("%s/%s/%d/%s", task.Project, task.Id, task.Execution, id)
 
 	var logTypePrefix string
 	switch logType {
@@ -146,7 +167,7 @@ func (o TaskLogOutput) getLogName(task Task, logType TaskLogType) string {
 	return fmt.Sprintf("%s/%s", prefix, logTypePrefix)
 }
 
-func (o TaskLogOutput) getLogService(ctx context.Context) (log.LogService, error) {
+func getLogService(ctx context.Context, o TaskLogOutput) (log.LogService, error) {
 	b, err := newBucket(ctx, o.BucketConfig, o.AWSCredentials)
 	if err != nil {
 		return nil, err
@@ -156,7 +177,7 @@ func (o TaskLogOutput) getLogService(ctx context.Context) (log.LogService, error
 }
 
 // getBuildloggerLogs makes request to Cedar Buildlogger for logs.
-func (o TaskLogOutput) getBuildloggerLogs(ctx context.Context, task Task, getOpts TaskLogGetOptions) (log.LogIterator, error) {
+func getBuildloggerLogs(ctx context.Context, task Task, getOpts TaskLogGetOptions) (log.LogIterator, error) {
 	opts := apimodels.GetBuildloggerLogsOptions{
 		BaseURL:   evergreen.GetEnvironment().Settings().Cedar.BaseURL,
 		TaskID:    task.Id,

@@ -421,7 +421,7 @@ func (c *baseCommunicator) makeSender(ctx context.Context, tsk *task.Task, confi
 		LevelInfo:     levelInfo,
 		FlushInterval: time.Minute,
 	}
-	sender, err = tsk.TaskOutputInfo.TaskLogs.NewSender(ctx, *tsk, senderOpts, logType)
+	sender, err = task.NewTaskLogSender(ctx, *tsk, senderOpts, logType)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating Evergreen task log sender")
 	}

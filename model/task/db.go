@@ -745,7 +745,7 @@ func UndispatchedContainerTasksQuery() bson.M {
 	}
 }
 
-// TasksByProjectAndCommitPipeline fetches the pipeline to Get the retrieve all mainline commit tasks
+// TasksByProjectAndCommitPipeline fetches the pipeline to get the retrieve all mainline commit tasks
 // associated with a given project and commit hash. Filtering by task status, task name, and
 // buildvariant name are optionally available.
 func TasksByProjectAndCommitPipeline(opts GetTasksByProjectAndCommitOptions) []bson.M {

@@ -1786,24 +1786,17 @@ func (t *Task) GetTaskOutputSafe() (*TaskOutput, bool) {
 	return t.TaskOutputInfo, true
 }
 
-// GetTaskLogs returns the task's task logs with the given options.
+// getTaskLogs returns the task's task logs with the given options.
 func (t *Task) GetTaskLogs(ctx context.Context, getOpts TaskLogGetOptions) (log.LogIterator, error) {
 	if t.DisplayOnly {
 		return nil, errors.New("cannot Get task logs for a display task")
 	}
 
-	output, ok := t.GetTaskOutputSafe()
-	if !ok {
-		// We know there task cannot have task output, likely because
-		// it has not run yet. Return an empty iterator.
-		return log.EmptyIterator(), nil
-	}
-
-	task := t
+	tsk := t
 	if t.Archived {
-		task.Id = t.OldTaskId
+		tsk.Id = t.OldTaskId
 	}
-	return output.TaskLogs.Get(ctx, *task, getOpts)
+	return getTaskLogs(ctx, *tsk, getOpts)
 }
 
 // GetTestLogs returns the task's test logs with the specified options.
@@ -1812,18 +1805,11 @@ func (t *Task) GetTestLogs(ctx context.Context, getOpts TestLogGetOptions) (log.
 		return nil, errors.New("cannot Get test logs for a display task")
 	}
 
-	output, ok := t.GetTaskOutputSafe()
-	if !ok {
-		// We know there task cannot have task output, likely because
-		// it has not run yet. Return an empty iterator.
-		return log.EmptyIterator(), nil
-	}
-
 	task := t
 	if t.Archived {
 		task.Id = t.OldTaskId
 	}
-	return output.TestLogs.Get(ctx, *task, getOpts)
+	return getTestLogs(ctx, *task, getOpts)
 }
 
 // SetResultsInfo sets the task's test results info.
@@ -3203,15 +3189,7 @@ func (t *Task) GetTestResults(ctx context.Context, env evergreen.Environment, fi
 	if len(taskOpts) == 0 {
 		return testresult.TaskTestResults{}, nil
 	}
-	tsk, err := t.getTaskOrFirstExecutionTask(ctx)
-	if err != nil {
-		return testresult.TaskTestResults{}, errors.Wrap(err, "finding task or first execution task")
-	}
-	output, ok := tsk.GetTaskOutputSafe()
-	if !ok {
-		return testresult.TaskTestResults{}, nil
-	}
-	return output.TestResults.GetMergedTaskTestResults(ctx, env, taskOpts, filterOpts)
+	return getMergedTaskTestResults(ctx, env, taskOpts, filterOpts)
 }
 
 // GetTestResultsStats returns basic statistics of the task's test results.
@@ -3223,15 +3201,7 @@ func (t *Task) GetTestResultsStats(ctx context.Context, env evergreen.Environmen
 	if len(taskOpts) == 0 {
 		return testresult.TaskTestResultsStats{}, nil
 	}
-	tsk, err := t.getTaskOrFirstExecutionTask(ctx)
-	if err != nil {
-		return testresult.TaskTestResultsStats{}, errors.Wrap(err, "finding task or first execution task")
-	}
-	output, ok := tsk.GetTaskOutputSafe()
-	if !ok {
-		return testresult.TaskTestResultsStats{}, nil
-	}
-	return output.TestResults.GetTaskTestResultsStats(ctx, env, taskOpts)
+	return getTaskTestResultsStats(ctx, env, taskOpts)
 }
 
 // getTaskOrFirstExecutionTask either returns the task immediately, or in the case the task is display task,
@@ -3278,7 +3248,7 @@ func (t *Task) GetTestResultsTasks(ctx context.Context) ([]Task, error) {
 		} else {
 			query := ByIds(t.ExecutionTasks)
 			query["$or"] = hasResults
-			execTasksWithResults, err = FindWithFields(ctx, query, ExecutionKey, ResultsServiceKey, HasCedarResultsKey)
+			execTasksWithResults, err = FindWithFields(ctx, query, ExecutionKey, ResultsServiceKey, HasCedarResultsKey, TaskOutputInfoKey)
 		}
 		if err != nil {
 			return nil, errors.Wrap(err, "getting execution tasks for display task")

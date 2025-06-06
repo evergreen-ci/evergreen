@@ -36,6 +36,7 @@ func TestGetTaskTestResults(t *testing.T) {
 		Id:             "task0",
 		Execution:      0,
 		ResultsService: TestResultsServiceLocal,
+		TaskOutputInfo: &output,
 	}
 	savedResults0 := make([]testresult.TestResult, 10)
 	for i := 0; i < len(savedResults0); i++ {
@@ -53,6 +54,7 @@ func TestGetTaskTestResults(t *testing.T) {
 		Id:             "task1",
 		Execution:      0,
 		ResultsService: TestResultsServiceLocal,
+		TaskOutputInfo: &output,
 	}
 	savedResults1 := make([]testresult.TestResult, 10)
 	for i := 0; i < len(savedResults1); i++ {
@@ -67,6 +69,7 @@ func TestGetTaskTestResults(t *testing.T) {
 		Id:             "task2",
 		Execution:      1,
 		ResultsService: TestResultsServiceLocal,
+		TaskOutputInfo: &output,
 	}
 	savedResults2 := make([]testresult.TestResult, 10)
 	for i := 0; i < len(savedResults2); i++ {
@@ -81,6 +84,7 @@ func TestGetTaskTestResults(t *testing.T) {
 		Id:             "external_service_task",
 		Execution:      1,
 		ResultsService: TestResultsServiceCedar,
+		TaskOutputInfo: &outputCedar,
 	}
 	externalServiceResults := make([]testresult.TestResult, 10)
 	for i := 0; i < len(externalServiceResults); i++ {
@@ -96,7 +100,7 @@ func TestGetTaskTestResults(t *testing.T) {
 		taskOpts            []Task
 		filterOpts          *FilterOptions
 		expectedTaskResults testresult.TaskTestResults
-		output              TestResultOutput
+		output              TaskOutput
 		hasErr              bool
 	}{
 		{
@@ -130,13 +134,11 @@ func TestGetTaskTestResults(t *testing.T) {
 				handler.status = http.StatusInternalServerError
 				handler.data = nil
 			},
-			output:   outputCedar,
 			taskOpts: []Task{externalServiceTask},
 			hasErr:   true,
 		},
 		{
 			name:     "WithoutFilterOptions",
-			output:   output,
 			taskOpts: []Task{task1, task2, task0},
 			expectedTaskResults: testresult.TaskTestResults{
 				Stats: testresult.TaskTestResultsStats{
@@ -166,7 +168,7 @@ func TestGetTaskTestResults(t *testing.T) {
 			if test.setup != nil {
 				test.setup(t)
 			}
-			taskResults, err := test.output.GetMergedTaskTestResults(ctx, env, test.taskOpts, test.filterOpts)
+			taskResults, err := getMergedTaskTestResults(ctx, env, test.taskOpts, test.filterOpts)
 			if test.hasErr {
 				assert.Error(t, err)
 			} else {
@@ -224,6 +226,7 @@ func TestGetTaskTestResultsStats(t *testing.T) {
 		Id:             "external_service_task",
 		Execution:      0,
 		ResultsService: TestResultsServiceCedar,
+		TaskOutputInfo: &outputCedar,
 	}
 
 	for _, test := range []struct {
@@ -231,7 +234,7 @@ func TestGetTaskTestResultsStats(t *testing.T) {
 		setup         func(t *testing.T)
 		taskOpts      []Task
 		expectedStats testresult.TaskTestResultsStats
-		output        TestResultOutput
+		output        TaskOutput
 		hasErr        bool
 	}{
 		{
@@ -268,7 +271,7 @@ func TestGetTaskTestResultsStats(t *testing.T) {
 				test.setup(t)
 			}
 
-			stats, err := test.output.GetTaskTestResultsStats(ctx, env, test.taskOpts)
+			stats, err := getTaskTestResultsStats(ctx, env, test.taskOpts)
 			if test.hasErr {
 				assert.Error(t, err)
 			} else {
@@ -350,6 +353,7 @@ func TestGetFailedTestSamples(t *testing.T) {
 		Id:             "external_service_task",
 		Execution:      0,
 		ResultsService: TestResultsServiceCedar,
+		TaskOutputInfo: &outputCedar,
 	}
 
 	for _, test := range []struct {

@@ -31,7 +31,7 @@ var defaultTestLogSequenceSize = int64(1e7)
 // AppendTestLog appends log lines to the specified test log for the given task
 // run.
 func AppendTestLog(ctx context.Context, tsk *task.Task, redactionOpts redactor.RedactionOptions, testLog *testlog.TestLog) error {
-	sender, err := tsk.TaskOutputInfo.TestLogs.NewSender(ctx, *tsk, task.EvergreenSenderOptions{}, testLog.Name, 0)
+	sender, err := task.NewTestLogSender(ctx, *tsk, task.EvergreenSenderOptions{}, testLog.Name, 0)
 	if err != nil {
 		return errors.Wrapf(err, "creating Evergreen logger for test log '%s'", testLog.Name)
 	}
@@ -60,7 +60,7 @@ func newTestLogDirectoryHandler(dir string, logger client.LoggerProducer, handle
 		logger: logger,
 	}
 	h.createSender = func(ctx context.Context, logPath string, sequence int) (send.Sender, error) {
-		evgSender, err := handlerOpts.output.TestLogs.NewSender(ctx, *handlerOpts.tsk, task.EvergreenSenderOptions{
+		evgSender, err := task.NewTestLogSender(ctx, *handlerOpts.tsk, task.EvergreenSenderOptions{
 			Local: logger.Task().GetSender(),
 			Parse: h.spec.getParser(),
 		}, logPath, sequence)
