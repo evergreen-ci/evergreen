@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mongodb/anser/bsonutil"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/cloud"
@@ -30,6 +32,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 // GET /rest/v2/agent/cedar_config
@@ -892,6 +895,67 @@ func (h *heartbeatHandler) Run(ctx context.Context) gimlet.Responder {
 		grip.Warningf("updating heartbeat for task %s: %+v", t.Id, err)
 	}
 	return gimlet.NewJSONResponse(heartbeatResponse)
+}
+
+// POST /task/{task_id}/details
+type taskDetailsHandler struct {
+	taskID  string
+	details apimodels.TaskDetailsRequest
+}
+
+func makeTaskDetails() gimlet.RouteHandler {
+	return &taskDetailsHandler{}
+}
+
+func (h *taskDetailsHandler) Factory() gimlet.RouteHandler {
+	return &taskDetailsHandler{}
+}
+
+func (h *taskDetailsHandler) Parse(ctx context.Context, r *http.Request) error {
+	if h.taskID = gimlet.GetVars(r)["task_id"]; h.taskID == "" {
+		return errors.New("missing task ID")
+	}
+	if err := utility.ReadJSON(r.Body, &h.details); err != nil {
+		return errors.Wrap(err, "reading task details request")
+	}
+	return nil
+}
+
+// Run stores DiskDevice and TraceId information in the task's TaskEndDetail.
+// This is called by the agent shortly before the task begins.
+func (h *taskDetailsHandler) Run(ctx context.Context) gimlet.Responder {
+	t, err := task.FindOneId(ctx, h.taskID)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
+	}
+	if t == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
+		})
+	}
+
+	// Update the task's Details with DiskDevices and TraceID
+	update := bson.M{}
+	if len(h.details.DiskDevices) > 0 {
+		update[bsonutil.GetDottedKeyName(task.DetailsKey, task.TaskEndDetailDiskDevicesKey)] = h.details.DiskDevices
+	}
+	if h.details.TraceID != "" {
+		update[bsonutil.GetDottedKeyName(task.DetailsKey, task.TaskEndDetailTraceIDKey)] = h.details.TraceID
+	}
+
+	if len(update) > 0 {
+		err = task.UpdateOne(
+			ctx,
+			bson.M{task.IdKey: h.taskID},
+			bson.M{"$set": update},
+		)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "updating task '%s' end details", h.taskID))
+		}
+	}
+
+	return gimlet.NewJSONResponse(struct{}{})
 }
 
 // GET /task/{task_id}/

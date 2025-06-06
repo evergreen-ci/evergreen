@@ -139,10 +139,12 @@ var (
 
 var (
 	// BSON fields for task status details struct
-	TaskEndDetailStatus      = bsonutil.MustHaveTag(apimodels.TaskEndDetail{}, "Status")
-	TaskEndDetailTimedOut    = bsonutil.MustHaveTag(apimodels.TaskEndDetail{}, "TimedOut")
-	TaskEndDetailType        = bsonutil.MustHaveTag(apimodels.TaskEndDetail{}, "Type")
-	TaskEndDetailDescription = bsonutil.MustHaveTag(apimodels.TaskEndDetail{}, "Description")
+	TaskEndDetailStatus         = bsonutil.MustHaveTag(apimodels.TaskEndDetail{}, "Status")
+	TaskEndDetailTimedOut       = bsonutil.MustHaveTag(apimodels.TaskEndDetail{}, "TimedOut")
+	TaskEndDetailType           = bsonutil.MustHaveTag(apimodels.TaskEndDetail{}, "Type")
+	TaskEndDetailDescription    = bsonutil.MustHaveTag(apimodels.TaskEndDetail{}, "Description")
+	TaskEndDetailDiskDevicesKey = bsonutil.MustHaveTag(apimodels.TaskEndDetail{}, "DiskDevices")
+	TaskEndDetailTraceIDKey     = bsonutil.MustHaveTag(apimodels.TaskEndDetail{}, "TraceID")
 )
 
 var (

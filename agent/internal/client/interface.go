@@ -138,6 +138,9 @@ type SharedCommunicator interface {
 
 	// S3Credentials returns the S3 credentials for the task when uploading to devprod owned buckets.
 	S3Credentials(ctx context.Context, td TaskData, bucket string) (*apimodels.AWSCredentials, error)
+
+	// SendTaskDetails sends DiskDevice and TraceId information to be stored in TaskEndDetail
+	SendTaskDetails(ctx context.Context, td TaskData, details *apimodels.TaskDetailsRequest) error
 }
 
 // TaskData contains the taskData.ID and taskData.Secret. It must be set for
