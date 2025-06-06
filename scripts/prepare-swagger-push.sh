@@ -23,6 +23,12 @@ if [[ ! -f "${SWAGGER_JSON_FILE}" ]]; then
     exit 1
 fi
 
+# Set host URL based on environment, defaulting to production
+host_url="evergreen.mongodb.com"
+if [[ "${environment}" == "staging" ]]; then
+    host_url="evergreen-staging.corp.mongodb.com"
+fi
+
 version_number=1
 
 # Check if the old sum file exists and read values if it does.
@@ -38,6 +44,9 @@ cp "${SWAGGER_JSON_FILE}" "${temp_swagger_json}"
 # Replace the version placeholder with the current version number.
 perl -pi -e 's/\{OPENAPI_VERSION\}/'$version_number'/' "${temp_swagger_json}"
 
+# Replace the host placeholder with the environment-specific host URL.
+perl -pi -e 's/\{OPENAPI_HOST\}/'$host_url'/' "${temp_swagger_json}"
+
 # Generate the sum of the temporary swagger.json file.
 temp_sha=$(shasum -a 256 "${temp_swagger_json}" | cut -d ' ' -f 1)
 
@@ -52,6 +61,9 @@ fi
 
 # Replace the version placeholder with the new version number.
 perl -pi -e 's/\{OPENAPI_VERSION\}/'$version_number'/' "${SWAGGER_JSON_FILE}"
+
+# Replace the host placeholder with the environment-specific host URL.
+perl -pi -e 's/\{OPENAPI_HOST\}/'$host_url'/' "${SWAGGER_JSON_FILE}"
 
 # Compute a new SHA with the latest version number.
 new_sha=$(shasum -a 256 "${SWAGGER_JSON_FILE}" | cut -d ' ' -f 1)

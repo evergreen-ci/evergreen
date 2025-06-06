@@ -1546,6 +1546,7 @@ type APIAWSConfig struct {
 	Pod                  *APIAWSPodConfig           `json:"pod"`
 	AccountRoles         []APIAWSAccountRoleMapping `json:"account_roles"`
 	IPAMPoolID           *string                    `json:"ipam_pool_id"`
+	ElasticIPUsageRate   *float64                   `json:"elastic_ip_usage_rate"`
 }
 
 func (a *APIAWSConfig) BuildFromService(h any) error {
@@ -1596,6 +1597,7 @@ func (a *APIAWSConfig) BuildFromService(h any) error {
 		}
 		a.AccountRoles = roleMappings
 		a.IPAMPoolID = utility.ToStringPtr(v.IPAMPoolID)
+		a.ElasticIPUsageRate = utility.ToFloat64Ptr(v.ElasticIPUsageRate)
 	default:
 		return errors.Errorf("programmatic error: expected AWS config but got type %T", h)
 	}
@@ -1685,6 +1687,7 @@ func (a *APIAWSConfig) ToService() (any, error) {
 	config.AccountRoles = roleMappings
 
 	config.IPAMPoolID = utility.FromStringPtr(a.IPAMPoolID)
+	config.ElasticIPUsageRate = utility.FromFloat64Ptr(a.ElasticIPUsageRate)
 
 	return config, nil
 }

@@ -84,6 +84,9 @@ type AWSConfig struct {
 
 	// IPAMPoolID is the ID for the IP address management (IPAM) pool in AWS.
 	IPAMPoolID string `bson:"ipam_pool_id" json:"ipam_pool_id" yaml:"ipam_pool_id"`
+	// ElasticIPUsageRate is the probability (out of 1) of a host that has
+	// elastic IPs enabled being assigned an elastic IP address.
+	ElasticIPUsageRate float64 `bson:"elastic_ip_usage_rate" json:"elastic_ip_usage_rate" yaml:"elastic_ip_usage_rate"`
 }
 
 // AccountRoleMapping is a mapping of an AWS account to the role that needs to
