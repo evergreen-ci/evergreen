@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/taskstats"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/pkg/errors"
@@ -38,12 +39,12 @@ type taskReliabilityHandler struct {
 	url    string
 }
 
-func makeGetProjectTaskReliability(url string) gimlet.RouteHandler {
-	return &taskReliabilityHandler{url: url}
+func makeGetProjectTaskReliability() gimlet.RouteHandler {
+	return &taskReliabilityHandler{}
 }
 
 func (trh *taskReliabilityHandler) Factory() gimlet.RouteHandler {
-	return &taskReliabilityHandler{url: trh.url}
+	return &taskReliabilityHandler{}
 }
 
 // Get the default before_date.
@@ -215,6 +216,8 @@ func (trh *taskReliabilityHandler) readSort(sortValue string) (taskstats.Sort, e
 }
 
 func (trh *taskReliabilityHandler) Parse(ctx context.Context, r *http.Request) error {
+	trh.url = util.HttpsUrl(r.Host)
+
 	trh.filter = reliability.TaskReliabilityFilter{
 		StatsFilter:  taskstats.StatsFilter{Project: gimlet.GetVars(r)["project_id"]},
 		Significance: reliability.DefaultSignificance,

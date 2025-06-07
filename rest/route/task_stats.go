@@ -16,6 +16,7 @@ import (
 	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/taskstats"
 	"github.com/evergreen-ci/evergreen/rest/data"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/pkg/errors"
 )
@@ -277,14 +278,16 @@ type taskStatsHandler struct {
 }
 
 func (tsh *taskStatsHandler) Factory() gimlet.RouteHandler {
-	return &taskStatsHandler{url: tsh.url}
+	return &taskStatsHandler{}
 }
 
-func makeGetProjectTaskStats(url string) gimlet.RouteHandler {
-	return &taskStatsHandler{url: url}
+func makeGetProjectTaskStats() gimlet.RouteHandler {
+	return &taskStatsHandler{}
 }
 
 func (tsh *taskStatsHandler) Parse(ctx context.Context, r *http.Request) error {
+	tsh.url = util.HttpsUrl(r.Host)
+
 	project := gimlet.GetVars(r)["project_id"]
 	projectId, err := dbModel.GetIdForProject(ctx, project)
 	if err != nil {
