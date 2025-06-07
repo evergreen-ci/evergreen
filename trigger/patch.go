@@ -335,6 +335,9 @@ func (t *patchTriggers) generate(ctx context.Context, sub *event.Subscription) (
 	if err != nil {
 		return nil, errors.Wrap(err, "building notification")
 	}
+	if payload == nil {
+		return nil, nil
+	}
 	return notification.New(t.event.ID, sub.Trigger, &sub.Subscriber, payload)
 }
 
