@@ -83,18 +83,16 @@ func UpdateStatsStatus(ctx context.Context, projectID string, lastJobRun, proces
 }
 
 // GetUpdateWindow returns the start and end of the time window for the stats.
-// This size of this window is capped at 24 hours to prevent
-// long-running jobs and overwhelming the database, or 12 hours if we're
-// more than 3 days behind, as we may be repeatedly failing due to high load.
+// This size of this window is capped at 12 hours to prevent
+// long-running jobs, overwhelming the database, and avoid excessive load.
 func (status *StatsStatus) GetUpdateWindow() (time.Time, time.Time) {
 	start := status.ProcessedTasksUntil
 	end := time.Now()
 
 	windowSize := end.Sub(start)
-	if windowSize > 72*time.Hour {
-		end = start.Add(12 * time.Hour)
-	} else if windowSize > 24*time.Hour {
-		end = start.Add(24 * time.Hour)
+	cutoffDuration := 12 * time.Hour
+	if windowSize >= cutoffDuration {
+		end = start.Add(cutoffDuration)
 	}
 	return start, end
 }
@@ -123,8 +121,7 @@ func GenerateStats(ctx context.Context, opts GenerateStatsOptions) error {
 	})
 	start := utility.GetUTCDay(opts.Date)
 	end := start.Add(24 * time.Hour)
-	if err := aggregateIntoCollectionWithHint(ctx, task.Collection, statsPipeline(opts.ProjectID, opts.Requester, start, end, opts.Tasks),
-		StatsPipelineIndex, DailyTaskStatsCollection); err != nil {
+	if err := aggregateIntoCollection(ctx, task.Collection, statsPipeline(opts.ProjectID, opts.Requester, start, end, opts.Tasks), DailyTaskStatsCollection); err != nil {
 		return errors.Wrap(err, "aggregating daily task stats")
 	}
 

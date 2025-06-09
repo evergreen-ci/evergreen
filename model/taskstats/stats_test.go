@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
 var baseTime = time.Date(2018, 7, 15, 16, 45, 0, 0, time.UTC)
@@ -42,8 +41,6 @@ func (s *statsSuite) SetupTest() {
 	for _, coll := range collectionsToClear {
 		s.NoError(db.Clear(coll))
 	}
-	s.NoError(db.EnsureIndex(task.Collection, mongo.IndexModel{Keys: StatsPipelineIndex}), "problem setting up index")
-
 }
 
 func (s *statsSuite) TestStatsStatus() {
@@ -171,22 +168,22 @@ func (s *statsSuite) TestGenerateStats() {
 func TestGetUpdateWindow(t *testing.T) {
 	startTime := time.Now()
 
-	t.Run("Within24HourWindow", func(t *testing.T) {
-		processedTasksUntil := startTime.Add(-12 * time.Hour)
+	t.Run("Within12HourWindow", func(t *testing.T) {
+		processedTasksUntil := startTime.Add(-10 * time.Hour)
 		status := StatsStatus{ProcessedTasksUntil: processedTasksUntil}
 		start, end := status.GetUpdateWindow()
 		assert.WithinDuration(t, processedTasksUntil, start, time.Minute)
 		assert.WithinDuration(t, time.Now(), end, time.Minute)
 	})
-	t.Run("2DayWindowShouldBeCapped", func(t *testing.T) {
-		processedTasksUntil := startTime.Add(-2 * 24 * time.Hour)
+	t.Run("24HourWindowShouldBeCapped", func(t *testing.T) {
+		processedTasksUntil := startTime.Add(-24 * time.Hour)
 		status := StatsStatus{ProcessedTasksUntil: processedTasksUntil}
 		start, end := status.GetUpdateWindow()
 		assert.WithinDuration(t, processedTasksUntil, start, time.Minute)
-		assert.WithinDuration(t, processedTasksUntil.Add(24*time.Hour), end, time.Minute)
+		assert.WithinDuration(t, processedTasksUntil.Add(12*time.Hour), end, time.Minute)
 	})
-	t.Run("4DayWindowShouldBeCapped", func(t *testing.T) {
-		processedTasksUntil := startTime.Add(-4 * 24 * time.Hour)
+	t.Run("2DayWindowShouldBeCapped", func(t *testing.T) {
+		processedTasksUntil := startTime.Add(-2 * 24 * time.Hour)
 		status := StatsStatus{ProcessedTasksUntil: processedTasksUntil}
 		start, end := status.GetUpdateWindow()
 		assert.WithinDuration(t, processedTasksUntil, start, time.Minute)
