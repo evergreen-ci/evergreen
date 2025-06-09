@@ -1241,12 +1241,10 @@ func TestDetachFromRepo(t *testing.T) {
 			require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
 			pRef := &ProjectRef{
-				Id:        "myProject",
-				Owner:     "evergreen-ci",
-				Repo:      "evergreen",
-				Admins:    []string{"me"},
-				RepoRefId: "myRepo",
-
+				Id:                    "myProject",
+				Owner:                 "evergreen-ci",
+				Repo:                  "evergreen",
+				RepoRefId:             "myRepo",
 				PeriodicBuilds:        []PeriodicBuildDefinition{}, // also shouldn't be overwritten
 				PRTestingEnabled:      utility.FalsePtr(),          // neither of these should be changed when overwriting
 				GitTagVersionsEnabled: utility.TruePtr(),
@@ -1263,6 +1261,7 @@ func TestDetachFromRepo(t *testing.T) {
 				GitTagVersionsEnabled: utility.FalsePtr(),
 				GithubChecksEnabled:   utility.TruePtr(),
 				GithubTriggerAliases:  []string{"my_trigger"},
+				Admins:                []string{"me"},
 				PeriodicBuilds: []PeriodicBuildDefinition{
 					{ID: "my_build"},
 				},
@@ -1307,6 +1306,8 @@ func TestDetachFromRepo(t *testing.T) {
 				Id: "me",
 			}
 			assert.NoError(t, u.Insert(t.Context()))
+			assert.NoError(t, repoRef.addPermissions(t.Context(), u))
+
 			test(t, pRef, u)
 		})
 	}
