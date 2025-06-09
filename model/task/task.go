@@ -3204,30 +3204,6 @@ func (t *Task) GetTestResultsStats(ctx context.Context, env evergreen.Environmen
 	return getTaskTestResultsStats(ctx, env, taskOpts)
 }
 
-// getTaskOrFirstExecutionTask either returns the task immediately, or in the case the task is display task,
-// its first execution task will be retrieved. In the case that a single execution task is retrieved, the subsequent
-// test result service function will fetch test result data for all execution tasks from the result service used
-// by the first execution task (e.g. local testing service or cedar/evergreen service).
-//
-// Note that s3 test result downloads still need to be done on a per-execution task basis, since different execution
-// tasks can have different external bucket configs in the case of e.g. a bucket versioning upgrade (TODO: DEVPROD-16200)
-func (t *Task) getTaskOrFirstExecutionTask(ctx context.Context) (*Task, error) {
-	if !t.DisplayOnly {
-		return t, nil
-	}
-	if len(t.ExecutionTasks) > 0 {
-		execTask, err := FindOneId(ctx, t.ExecutionTasks[0])
-		if err != nil {
-			return nil, errors.Wrap(err, "finding task")
-		}
-		if execTask == nil {
-			return nil, errors.Errorf("no execution tasks found for display task '%s", t.Id)
-		}
-		return execTask, nil
-	}
-	return nil, errors.Errorf("no execution tasks found for display task '%s", t.Id)
-}
-
 // GetTestResultsTasks returns the options required for fetching test
 // results for the task.
 //

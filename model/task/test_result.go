@@ -38,6 +38,9 @@ func AppendTestResults(ctx context.Context, t *Task, env evergreen.Environment, 
 
 // getMergedTaskTestResults returns test results belonging to the specified task run.
 func getMergedTaskTestResults(ctx context.Context, env evergreen.Environment, tasks []Task, getOpts *FilterOptions) (testresult.TaskTestResults, error) {
+	if len(tasks) == 0 {
+		return testresult.TaskTestResults{}, nil
+	}
 	output, ok := tasks[0].GetTaskOutputSafe()
 	if !ok {
 		return testresult.TaskTestResults{}, nil
@@ -76,6 +79,9 @@ func getMergedTaskTestResults(ctx context.Context, env evergreen.Environment, ta
 
 // getTaskTestResultsStats returns test results belonging to the specified task run.
 func getTaskTestResultsStats(ctx context.Context, env evergreen.Environment, tasks []Task) (testresult.TaskTestResultsStats, error) {
+	if len(tasks) == 0 {
+		return testresult.TaskTestResultsStats{}, nil
+	}
 	output, ok := tasks[0].GetTaskOutputSafe()
 	if !ok {
 		return testresult.TaskTestResultsStats{}, nil

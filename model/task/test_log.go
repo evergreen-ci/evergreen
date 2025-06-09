@@ -68,23 +68,6 @@ func NewTestLogSender(ctx context.Context, task Task, senderOpts EvergreenSender
 	return newEvergreenSender(ctx, fmt.Sprintf("%s-%s", task.Id, logPath), senderOpts)
 }
 
-// appendTestLogs appends log lines to the specified test log for the given task run.
-func appendTestLogs(ctx context.Context, task Task, logPath string, lines []log.LogLine) error {
-	output, ok := task.GetTaskOutputSafe()
-	if !ok {
-		// We know there task cannot have task output, likely because
-		// it has not run yet. Return an empty iterator.
-		return nil
-	}
-
-	svc, err := getTestLogService(ctx, output.TestLogs)
-	if err != nil {
-		return errors.Wrap(err, "getting log service")
-	}
-
-	return svc.Append(ctx, getLogNames(task, []string{logPath}, output.TestLogs.ID())[0], 0, lines)
-}
-
 // getTestLogs returns test logs belonging to the specified task run.
 func getTestLogs(ctx context.Context, task Task, getOpts TestLogGetOptions) (log.LogIterator, error) {
 	output, ok := task.GetTaskOutputSafe()
