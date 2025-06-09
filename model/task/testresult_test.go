@@ -110,7 +110,7 @@ func TestGetTaskTestResults(t *testing.T) {
 				Stats: testresult.TaskTestResultsStats{
 					TotalCount:    0,
 					FailedCount:   0,
-					FilteredCount: utility.ToIntPtr(0),
+					FilteredCount: nil,
 				},
 				Results: nil,
 			},
@@ -123,7 +123,7 @@ func TestGetTaskTestResults(t *testing.T) {
 				Stats: testresult.TaskTestResultsStats{
 					TotalCount:    0,
 					FailedCount:   0,
-					FilteredCount: utility.ToIntPtr(0),
+					FilteredCount: nil,
 				},
 				Results: nil,
 			},
@@ -195,6 +195,7 @@ func TestGetTaskTestResultsStats(t *testing.T) {
 		Id:             "task0",
 		Execution:      0,
 		ResultsService: TestResultsServiceLocal,
+		TaskOutputInfo: &output,
 	}
 	savedResults0 := make([]testresult.TestResult, 10)
 	for i := 0; i < len(savedResults0); i++ {
@@ -212,6 +213,7 @@ func TestGetTaskTestResultsStats(t *testing.T) {
 		Id:             "task1",
 		Execution:      0,
 		ResultsService: TestResultsServiceLocal,
+		TaskOutputInfo: &output,
 	}
 	savedResults1 := make([]testresult.TestResult, 10)
 	for i := 0; i < len(savedResults1); i++ {
