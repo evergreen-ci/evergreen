@@ -1019,6 +1019,28 @@ func TestAttachToRepo(t *testing.T) {
 	}
 	assert.NoError(t, pRef.Insert(t.Context()))
 	assert.Error(t, pRef.AttachToRepo(ctx, u))
+
+	// Try attaching with project admin but not repo admin.
+	pRef = ProjectRef{
+		Id:      "myThirdProject",
+		Owner:   "evergreen-ci",
+		Repo:    "evergreen",
+		Branch:  "main",
+		Admins:  []string{"nonRepoAdmin"},
+		Enabled: true,
+	}
+	assert.NoError(t, pRef.Insert(t.Context()))
+
+	nonRepoAdmin := &user.DBUser{
+		Id:          "nonRepoAdmin",
+		SystemRoles: []string{GetProjectAdminRole(pRef.Id)},
+	}
+
+	hasRepoPermission, err := UserHasRepoViewPermission(t.Context(), nonRepoAdmin, pRef.RepoRefId)
+	assert.NoError(t, err)
+	assert.False(t, hasRepoPermission)
+
+	assert.Error(t, pRef.AttachToRepo(ctx, nonRepoAdmin))
 }
 
 func checkParametersMatchVars(ctx context.Context, t *testing.T, pm ParameterMappings, vars map[string]string) {
