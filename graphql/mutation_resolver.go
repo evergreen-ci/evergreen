@@ -377,7 +377,6 @@ func (r *mutationResolver) AttachProjectToRepo(ctx context.Context, projectID st
 	if pRef == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("project '%s' not found", projectID))
 	}
-
 	if err = pRef.AttachToRepo(ctx, usr); err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("attaching project '%s' to repo: %s", projectID, err.Error()))
 	}
