@@ -975,7 +975,7 @@ func TestAWSAssumeRole(t *testing.T) {
 
 }
 
-func TestStartTaskWithDetails(t *testing.T) {
+func TestStartTaskWithOtelMetadata(t *testing.T) {
 	testCases := []struct {
 		name          string
 		diskDevices   []string
