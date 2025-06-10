@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
-	"strconv"
 	"sync"
 	"time"
 
@@ -837,14 +835,16 @@ func (c *baseCommunicator) GetDistroByName(ctx context.Context, id string) (*res
 
 }
 
-// StartTask marks the task as started.
-func (c *baseCommunicator) StartTask(ctx context.Context, taskData TaskData) error {
+// StartTask marks the task as started, and sends traceId and diskDevices to be stored with the task.
+func (c *baseCommunicator) StartTask(ctx context.Context, taskData TaskData, traceID string, diskDevices []string) error {
 	grip.Info(message.Fields{
 		"message": "started StartTask",
 		"task_id": taskData.ID,
 	})
-	pidStr := strconv.Itoa(os.Getpid())
-	taskStartRequest := &apimodels.TaskStartRequest{Pid: pidStr}
+	taskStartRequest := &apimodels.TaskStartRequest{
+		TraceID:     traceID,
+		DiskDevices: diskDevices,
+	}
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &taskData,

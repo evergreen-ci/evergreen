@@ -137,7 +137,7 @@ func (c *Mock) GetAgentSetupData(ctx context.Context) (*apimodels.AgentSetupData
 	return &apimodels.AgentSetupData{}, nil
 }
 
-func (c *Mock) StartTask(ctx context.Context, td TaskData) error {
+func (c *Mock) StartTask(ctx context.Context, td TaskData, _ string, _ []string) error {
 	if c.StartTaskShouldFail {
 		return errors.New("start task mock failure")
 	}

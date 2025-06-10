@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -2569,4 +2570,31 @@ func HandleEndTaskForGithubMergeQueueTask(ctx context.Context, t *task.Task, sta
 		return errors.WithStack(err)
 	}
 	return errors.WithStack(task.AbortVersionTasks(ctx, t.Version, task.AbortInfo{TaskID: t.Id, User: evergreen.GithubMergeRequester}))
+}
+
+// UpdateTaskDetails is called to update the task's Details with DiskDevices and TraceID.
+// If there's an error here, we log but we don't return an error.
+func UpdateTaskDetails(ctx context.Context, t *task.Task, diskDevices []string, traceID string) {
+	// Update the task's Details with DiskDevices and TraceID
+	update := bson.M{}
+	if len(diskDevices) > 0 {
+		update[bsonutil.GetDottedKeyName(task.DetailsKey, task.TaskEndDetailDiskDevicesKey)] = diskDevices
+	}
+	if traceID != "" {
+		update[bsonutil.GetDottedKeyName(task.DetailsKey, task.TaskEndDetailTraceIDKey)] = traceID
+	}
+
+	var err error
+	if len(update) > 0 {
+		err = errors.Wrapf(task.UpdateOne(
+			ctx,
+			task.ById(t.Id),
+			bson.M{"$set": update},
+		), "updating task '%s' end details", t.Id)
+	}
+	grip.Error(message.WrapError(err, message.Fields{
+		"message": "problem updating task end details",
+		"task_id": t.Id,
+		"update":  update,
+	}))
 }

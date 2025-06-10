@@ -975,129 +975,93 @@ func TestAWSAssumeRole(t *testing.T) {
 
 }
 
-func TestTaskDetailsHandler(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+func TestStartTaskWithDetails(t *testing.T) {
+	testCases := []struct {
+		name          string
+		diskDevices   []string
+		traceID       string
+		expectedDisk  []string
+		expectedTrace string
+	}{
+		{
+			name:          "BothDiskDevicesAndTraceID",
+			diskDevices:   []string{"sda1", "sdb1"},
+			traceID:       "test-trace-id-123",
+			expectedDisk:  []string{"sda1", "sdb1"},
+			expectedTrace: "test-trace-id-123",
+		},
+		{
+			name:          "JustTraceID",
+			diskDevices:   nil,
+			traceID:       "test-trace-id-456",
+			expectedDisk:  nil,
+			expectedTrace: "test-trace-id-456",
+		},
+		{
+			name:          "JustDiskDevices",
+			diskDevices:   []string{"nvme0n1", "nvme1n1"},
+			traceID:       "",
+			expectedDisk:  []string{"nvme0n1", "nvme1n1"},
+			expectedTrace: "",
+		},
+	}
 
-	t.Run("ValidRequest", func(t *testing.T) {
-		assert.NoError(t, db.ClearCollections(task.Collection))
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
 
-		// Create a test task
-		testTask := &task.Task{
-			Id:      "test_task_id",
-			Status:  evergreen.TaskStarted,
-			Details: apimodels.TaskEndDetail{},
-		}
-		assert.NoError(t, testTask.Insert(ctx))
-		details := apimodels.TaskDetailsRequest{
-			TraceID:     "test-trace-id-123",
-			DiskDevices: []string{"sda1", "sdb1"},
-		}
+			require.NoError(t, db.ClearCollections(task.Collection, host.Collection))
 
-		jsonBody, err := json.Marshal(details)
-		assert.NoError(t, err)
+			// Create a test task
+			testTask := task.Task{
+				Id:      "test-task-id",
+				Project: "test-project",
+				Version: "test-version",
+				Status:  evergreen.TaskUndispatched,
+			}
+			require.NoError(t, testTask.Insert(ctx))
 
-		request, err := http.NewRequest(http.MethodPost, "/task/test_task_id/details", bytes.NewBuffer(jsonBody))
-		assert.NoError(t, err)
-		request = gimlet.SetURLVars(request, map[string]string{"task_id": "test_task_id"})
+			// Create a test host
+			testHost := host.Host{
+				Id:          "test-host-id",
+				Status:      evergreen.HostRunning,
+				RunningTask: testTask.Id,
+			}
+			require.NoError(t, testHost.Insert(ctx))
 
-		handler := makeTaskDetails()
-		assert.NoError(t, handler.Parse(ctx, request))
+			// Create the request body using TaskStartRequest
+			requestBody := apimodels.TaskStartRequest{
+				TraceID:     tc.traceID,
+				DiskDevices: tc.diskDevices,
+			}
+			bodyBytes, err := json.Marshal(requestBody)
+			require.NoError(t, err)
 
-		resp := handler.Run(ctx)
-		assert.NotNil(t, resp)
-		assert.Equal(t, http.StatusOK, resp.Status())
+			// Create the HTTP request
+			req, err := http.NewRequest(http.MethodPost, "/task/test-task-id/start", bytes.NewReader(bodyBytes))
+			require.NoError(t, err)
+			req = gimlet.SetURLVars(req, map[string]string{"task_id": "test-task-id"})
+			req.Header.Set(evergreen.HostHeader, "test-host-id")
 
-		// Verify the task was updated
-		updatedTask, err := task.FindOneId(ctx, "test_task_id")
-		assert.NoError(t, err)
-		assert.Equal(t, "test-trace-id-123", updatedTask.Details.TraceID)
-		assert.Equal(t, []string{"sda1", "sdb1"}, updatedTask.Details.DiskDevices)
-	})
+			// Create and test the handler
+			env := &mock.Environment{}
+			require.NoError(t, env.Configure(ctx))
+			handler := makeStartTask(env).(*startTaskHandler)
+			require.NoError(t, handler.Parse(ctx, req))
 
-	t.Run("MissingTaskID", func(t *testing.T) {
-		request, err := http.NewRequest(http.MethodPost, "/task//details", bytes.NewBuffer([]byte("{}")))
-		assert.NoError(t, err)
+			resp := handler.Run(ctx)
+			require.NotNil(t, resp)
+			assert.Equal(t, http.StatusOK, resp.Status())
 
-		handler := makeTaskDetails()
-		err = handler.Parse(ctx, request)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "missing task ID")
-	})
+			// Verify the task was updated with the correct details
+			updatedTask, err := task.FindOneId(ctx, "test-task-id")
+			require.NoError(t, err)
+			require.NotNil(t, updatedTask)
 
-	t.Run("TaskNotFound", func(t *testing.T) {
-		assert.NoError(t, db.ClearCollections(task.Collection))
-		details := apimodels.TaskDetailsRequest{
-			TraceID: "test-trace-id",
-		}
-
-		jsonBody, err := json.Marshal(details)
-		assert.NoError(t, err)
-
-		request, err := http.NewRequest(http.MethodPost, "/task/nonexistent_task/details", bytes.NewBuffer(jsonBody))
-		assert.NoError(t, err)
-		request = gimlet.SetURLVars(request, map[string]string{"task_id": "nonexistent_task"})
-
-		handler := makeTaskDetails()
-		assert.NoError(t, handler.Parse(ctx, request))
-
-		resp := handler.Run(ctx)
-		assert.NotNil(t, resp)
-		assert.Equal(t, http.StatusNotFound, resp.Status())
-	})
-
-	t.Run("InvalidJSON", func(t *testing.T) {
-		assert.NoError(t, db.ClearCollections(task.Collection))
-
-		// Create a test task
-		testTask := &task.Task{
-			Id:      "test_task_id",
-			Status:  evergreen.TaskStarted,
-			Details: apimodels.TaskEndDetail{},
-		}
-		assert.NoError(t, testTask.Insert(ctx))
-
-		request, err := http.NewRequest(http.MethodPost, "/task/test_task_id/details", bytes.NewBuffer([]byte("invalid json")))
-		assert.NoError(t, err)
-		request = gimlet.SetURLVars(request, map[string]string{"task_id": "test_task_id"})
-
-		handler := makeTaskDetails()
-		err = handler.Parse(ctx, request)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "reading task details request")
-	})
-
-	t.Run("EmptyRequest", func(t *testing.T) {
-		assert.NoError(t, db.ClearCollections(task.Collection))
-
-		// Create a test task
-		testTask := &task.Task{
-			Id:      "test_task_id",
-			Status:  evergreen.TaskStarted,
-			Details: apimodels.TaskEndDetail{},
-		}
-		assert.NoError(t, testTask.Insert(ctx))
-		details := apimodels.TaskDetailsRequest{}
-
-		jsonBody, err := json.Marshal(details)
-		assert.NoError(t, err)
-
-		request, err := http.NewRequest(http.MethodPost, "/task/test_task_id/details", bytes.NewBuffer(jsonBody))
-		assert.NoError(t, err)
-		request = gimlet.SetURLVars(request, map[string]string{"task_id": "test_task_id"})
-
-		handler := makeTaskDetails()
-		assert.NoError(t, handler.Parse(ctx, request))
-
-		resp := handler.Run(ctx)
-		assert.NotNil(t, resp)
-		assert.Equal(t, http.StatusOK, resp.Status())
-
-		// Verify the task was not updated (no changes made)
-		updatedTask, err := task.FindOneId(ctx, "test_task_id")
-		assert.NoError(t, err)
-		// Should still have the original empty details
-		assert.Empty(t, updatedTask.Details.TraceID)
-		assert.Empty(t, updatedTask.Details.DiskDevices)
-	})
+			// Check that the task details were stored correctly
+			assert.Equal(t, tc.expectedTrace, updatedTask.Details.TraceID)
+			assert.Equal(t, tc.expectedDisk, updatedTask.Details.DiskDevices)
+		})
+	}
 }
