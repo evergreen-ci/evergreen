@@ -1031,7 +1031,7 @@ func (a *Agent) handleTimeoutAndOOM(ctx context.Context, tc *taskContext, detail
 // finishTask finishes up a running task. It runs any post-task command blocks
 // such as timeout and post, then sends the final end task response.
 func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, systemFailureDescription string) (*apimodels.EndTaskResponse, error) {
-	detail := a.endTaskResponse(tc, status, systemFailureDescription)
+	detail := a.endTaskResponse(ctx, tc, status, systemFailureDescription)
 	switch detail.Status {
 	case evergreen.TaskSucceeded:
 		a.handleTimeoutAndOOM(ctx, tc, detail, status)
@@ -1044,6 +1044,7 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 
 		detail.PostErrored = tc.getPostErrored()
 		detail.OtherFailingCommands = tc.getOtherFailingCommands()
+		updateEndTaskFailureDetailsForTestResults(tc, detail)
 
 	case evergreen.TaskFailed:
 		a.handleTimeoutAndOOM(ctx, tc, detail, status)
@@ -1124,6 +1125,8 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 	span := trace.SpanFromContext(ctx)
 	span.SetAttributes(attribute.String(evergreen.TaskStatusOtelAttribute, detail.Status))
 	if detail.Status != evergreen.TaskSucceeded {
+		// kim: TODO: verify in staging that task status is set to failure for
+		// test result reasons.
 		span.SetStatus(codes.Error, fmt.Sprintf("failing status '%s'", detail.Status))
 	}
 	if detail.Type != "" {
@@ -1196,7 +1199,7 @@ func buildCheckRun(ctx context.Context, tc *taskContext) (*apimodels.CheckRunOut
 
 }
 
-func (a *Agent) endTaskResponse(tc *taskContext, status string, systemFailureDescription string) *apimodels.TaskEndDetail {
+func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status string, systemFailureDescription string) *apimodels.TaskEndDetail {
 	highestPriorityDescription := systemFailureDescription
 	var userDefinedFailureType string
 	var userDefinedFailureMetadataTags []string
@@ -1252,6 +1255,7 @@ func setEndTaskFailureDetails(tc *taskContext, detail *apimodels.TaskEndDetail, 
 		} else {
 			detail.FailingCommand = currCmd.FullDisplayName()
 			tc.setFailingCommand(currCmd)
+			fmt.Println("kim: failing command set to:", tc.getFailingCommand().FullDisplayName())
 		}
 		detail.Type = failureType
 		detail.FailureMetadataTags = utility.UniqueStrings(append(tc.getFailingCommand().FailureMetadataTags(), failureMetadataTagsToAdd...))
@@ -1272,7 +1276,9 @@ func setEndTaskFailureDetails(tc *taskContext, detail *apimodels.TaskEndDetail, 
 
 // kim: TODO: add test for failure setting and priority relative to command
 // failures.
-func updateEndTaskFailureDetailsForMissingTestResults(tc *taskContext, detail *apimodels.TaskEndDetail) {
+// updateEndTaskFailureDetailsForTestResults checks and updates the task failure
+// details for missing or failed test results.
+func updateEndTaskFailureDetailsForTestResults(tc *taskContext, detail *apimodels.TaskEndDetail) {
 	if detail.Status == evergreen.TaskFailed {
 		// If the task has already failed for another reason, do not overwrite
 		// it with a test result-related failure. Test results failures are
@@ -1282,21 +1288,16 @@ func updateEndTaskFailureDetailsForMissingTestResults(tc *taskContext, detail *a
 
 	// kim: TODO: need to check if task has any test results. Possibly can set
 	// in the test results-setting commands.
-	if tc.taskConfig.Task.MustHaveResults {
-	}
-}
-
-// kim: TODO: add test for failure setting and priority relative to command
-// failures.
-func updateEndTaskFailureDetailsForFailingTestResults(tc *taskContext, detail *apimodels.TaskEndDetail) {
-	if detail.Status == evergreen.TaskFailed {
-		// If the task has already failed for another reason, do not overwrite
-		// it with a test result-related failure. Test results failures are
-		// lower priority.
+	if tc.taskConfig.Task.MustHaveResults && !tc.taskConfig.HasTestResults {
+		tc.logger.Task().Info("Test results are missing and this task must have attached test results. Overall task status changed to FAILED.")
+		detail.Type = evergreen.CommandTypeTest
+		detail.Status = evergreen.TaskFailed
+		detail.Description = evergreen.TaskDescriptionNoResults
 		return
 	}
 
-	if tc.taskConfig.Task.ResultsFailed {
+	if tc.taskConfig.HasFailingTestResult {
+		tc.logger.Task().Info("Test results contain at least one failure. Overall task status changed to FAILED.")
 		detail.Type = evergreen.CommandTypeTest
 		detail.Status = evergreen.TaskFailed
 		detail.Description = evergreen.TaskDescriptionResultsFailed
