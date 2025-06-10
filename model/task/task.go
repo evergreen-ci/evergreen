@@ -2998,15 +2998,16 @@ func (t *Task) Archive(ctx context.Context) error {
 		return nil
 	}
 	if t.CanReset {
-		// This check is necessary to avoid a race where the same task data can
-		// be archived for two task executions. If restart is called quickly in
-		// succession, the concurrency can cause the updates below to 1.
-		// archives the current task execution and 2. increments the current
-		// task execution to the new one. But if it hasn't reset the task yet, a
-		// second restart operation can archive the task again (which archives
-		// the just-incremented task execution).
-		// kim: TODO: add test that multiple calls to Archive only archives
-		// execution once.
+		// For idempotency reasons, skip tasks that are currently waiting to
+		// reset. It prevents a race where the same task data can be
+		// archived for two consecutive task executions. If restart is
+		// called multiple times, it can produce a race where the same task
+		// data will be archived for two task executions. The first restart
+		// can 1. archive the current task execution and 2. increment the
+		// current task execution to the new one. But if the operation
+		// hasn't reset the task yet, a second restart operation can run
+		// concurrently and archive the task again (which archives the
+		// just-incremented task execution).
 		return nil
 	}
 
@@ -3014,14 +3015,7 @@ func (t *Task) Archive(ctx context.Context) error {
 		return errors.Wrapf(ArchiveMany(ctx, []Task{*t}), "archiving display task '%s'", t.Id)
 	}
 
-	// Archiving a single task.
 	archiveTask := t.makeArchivedTask()
-	// kim: NOTE: since the task execution has been incremented, it can end
-	// up being re-inserted into the old_tasks collection (same exact task
-	// data but the execution is +1). This is the source of the bug. A
-	// transaction may help here but it would be tricky because the current
-	// task has to be cross-referenced (to check CanReset) before the old
-	// task can be inserted.
 	err := db.Insert(ctx, OldCollection, archiveTask)
 	if err != nil && !db.IsDuplicateKey(err) {
 		return errors.Wrap(err, "inserting archived task into old tasks")
@@ -3042,10 +3036,6 @@ func (t *Task) Archive(ctx context.Context) error {
 			},
 		},
 		[]bson.M{
-			// kim: NOTE: this updates the task execution WITHOUT actually
-			// resetting the task. If we increment the execution here, then
-			// we could have a race since archive can be called again on the
-			// just-incremented execution.
 			updateDisplayTasksAndTasksSet,
 			updateDisplayTasksAndTasksUnset,
 			addDisplayStatusCache,
@@ -3073,15 +3063,19 @@ func ArchiveMany(ctx context.Context, tasks []Task) error {
 			continue
 		}
 		if t.CanReset {
-			// This check is necessary to avoid a race where the same task data
-			// can be archived for two task executions. If restart is called
-			// quickly in succession, the concurrency can cause the updates
-			// below to 1. archives the current task execution and 2. increments
-			// the current task execution to the new one. But if it hasn't reset
-			// the task yet, a second restart operation can archive the task
-			// again (which archives the just-incremented task execution).
+			// For idempotency reasons, skip tasks that are currently waiting to
+			// reset. It prevents a race where the same task data can be
+			// archived for two consecutive task executions. If restart is
+			// called multiple times, it can produce a race where the same task
+			// data will be archived for two task executions. The first restart
+			// can 1. archive the current task execution and 2. increment the
+			// current task execution to the new one. But if the operation
+			// hasn't reset the task yet, a second restart operation can run
+			// concurrently and archive the task again (which archives the
+			// just-incremented task execution).
 			continue
 		}
+
 		allTaskIds = append(allTaskIds, t.Id)
 		archivedTasks = append(archivedTasks, t.makeArchivedTask())
 		if t.DisplayOnly && len(t.ExecutionTasks) > 0 {

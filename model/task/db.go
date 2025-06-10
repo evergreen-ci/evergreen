@@ -197,7 +197,6 @@ var (
 	updateDisplayTasksAndTasksSet = bson.M{
 		"$set": bson.M{
 			CanResetKey: true,
-			// kim: NOTE: this increments the task execution during archive.
 			ExecutionKey: bson.M{
 				"$add": bson.A{"$" + ExecutionKey, 1},
 			},
