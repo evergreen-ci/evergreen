@@ -3951,8 +3951,7 @@ func TestAbortVersionTasks(t *testing.T) {
 }
 
 func TestArchive(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	defer func() {
 		assert.NoError(t, db.ClearCollections(Collection, OldCollection, event.EventCollection))
@@ -4028,17 +4027,49 @@ func TestArchive(t *testing.T) {
 		"ArchivesContainerTask": func(t *testing.T, tsk Task) {
 			archivedTaskID := MakeOldID(tsk.Id, tsk.Execution)
 			tsk.ExecutionPlatform = ExecutionPlatformContainer
-			require.NoError(t, tsk.Insert(t.Context()))
+			require.NoError(t, tsk.Insert(ctx))
 
 			require.NoError(t, tsk.Archive(ctx))
 			checkTaskIsArchived(t, archivedTaskID)
+		},
+		"ArchivingIncompleteTaskIsANoop": func(t *testing.T, tsk Task) {
+			tsk.Status = evergreen.TaskUndispatched
+			require.NoError(t, tsk.Insert(ctx))
+
+			require.NoError(t, tsk.Archive(ctx))
+
+			dbOldTask, err := FindOneOldByIdAndExecution(ctx, tsk.Id, tsk.Execution)
+			require.NoError(t, err)
+			assert.Zero(t, dbOldTask, "should not archive an incomplete task")
+		},
+		"MultipleArchivesOnSameTaskIsIdempotent": func(t *testing.T, tsk Task) {
+			originalExecution := tsk.Execution
+			require.NoError(t, tsk.Insert(ctx))
+
+			require.NoError(t, tsk.Archive(ctx))
+
+			checkTaskIsArchived(t, MakeOldID(tsk.Id, originalExecution))
+
+			dbTask, err := FindOneId(ctx, tsk.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbTask)
+			assert.Equal(t, originalExecution+1, dbTask.Execution, "execution number should be incremented after archiving")
+
+			require.NoError(t, dbTask.Archive(ctx))
+
+			checkTaskIsArchived(t, MakeOldID(tsk.Id, originalExecution))
+
+			dbNextTaskExecution, err := FindOneOldByIdAndExecution(ctx, tsk.Id, originalExecution+1)
+			require.NoError(t, err)
+			assert.Zero(t, dbNextTaskExecution, "should not archive the task again when it's already been archived and is in the process of restarting")
 		},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(Collection, OldCollection, event.EventCollection))
 			tsk := Task{
-				Id:     "taskID",
-				Status: evergreen.TaskSucceeded,
+				Id:        "taskID",
+				Status:    evergreen.TaskSucceeded,
+				Execution: 0,
 			}
 			tCase(t, tsk)
 		})
@@ -4165,6 +4196,7 @@ func TestArchiveFailedOnly(t *testing.T) {
 			bson.M{"$set": bson.M{CanResetKey: false}},
 		)
 		require.NoError(t, err)
+		dt.CanReset = false
 		dt.ResetFailedWhenFinished = false
 		// Verifies the results from the last test as a basis (more on below comment)
 		require.Equal(t, 1, dt.Execution)
@@ -4184,7 +4216,7 @@ func TestArchiveFailedOnly(t *testing.T) {
 		event.LogHostRunningTaskSet(ctx, hostID, t1.Id, 1)
 		event.LogHostRunningTaskCleared(ctx, hostID, t1.Id, 1)
 
-		// Verifies the display task is archived after calling archive
+		// Verifies the display task is archived a second time after calling archive
 		archivedDisplayTaskID := MakeOldID(dt.Id, dt.Execution)
 		require.NoError(t, dt.Archive(ctx))
 		dt, err = FindOneId(ctx, dt.Id)
