@@ -368,26 +368,6 @@ func (c *baseCommunicator) Heartbeat(ctx context.Context, taskData TaskData) (st
 	return "", nil
 }
 
-// SendTaskDetails sends DiskDevice and TraceId information to be stored in TaskEndDetail.
-func (c *baseCommunicator) SendTaskDetails(ctx context.Context, taskData TaskData, details *apimodels.TaskDetailsRequest) error {
-	ctx, cancel := context.WithTimeout(ctx, heartbeatTimeout)
-	defer cancel()
-	info := requestInfo{
-		method:   http.MethodPost,
-		taskData: &taskData,
-	}
-	info.setTaskPathSuffix("details")
-	resp, err := c.request(ctx, info, details)
-	if err != nil {
-		return errors.Wrap(err, "sending task details")
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return util.RespError(resp, "sending task details")
-	}
-	return nil
-}
-
 // GetCedarGRPCConn returns the client connection to cedar if it exists, or
 // creates it if it doesn't exist.
 func (c *baseCommunicator) GetCedarGRPCConn(ctx context.Context) (*grpc.ClientConn, error) {

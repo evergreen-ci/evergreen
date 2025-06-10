@@ -2572,9 +2572,9 @@ func HandleEndTaskForGithubMergeQueueTask(ctx context.Context, t *task.Task, sta
 	return errors.WithStack(task.AbortVersionTasks(ctx, t.Version, task.AbortInfo{TaskID: t.Id, User: evergreen.GithubMergeRequester}))
 }
 
-// UpdateTaskDetails is called to update the task's Details with DiskDevices and TraceID.
+// UpdateOtelMetadata is called to update the task's Details with DiskDevices and TraceID.
 // If there's an error here, we log but we don't return an error.
-func UpdateTaskDetails(ctx context.Context, t *task.Task, diskDevices []string, traceID string) {
+func UpdateOtelMetadata(ctx context.Context, t *task.Task, diskDevices []string, traceID string) {
 	// Update the task's Details with DiskDevices and TraceID
 	update := bson.M{}
 	if len(diskDevices) > 0 {
@@ -2584,17 +2584,16 @@ func UpdateTaskDetails(ctx context.Context, t *task.Task, diskDevices []string, 
 		update[bsonutil.GetDottedKeyName(task.DetailsKey, task.TaskEndDetailTraceIDKey)] = traceID
 	}
 
-	var err error
 	if len(update) > 0 {
-		err = errors.Wrapf(task.UpdateOne(
+		err := task.UpdateOne(
 			ctx,
 			task.ById(t.Id),
 			bson.M{"$set": update},
-		), "updating task '%s' end details", t.Id)
+		)
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "problem updating otel metadata",
+			"task_id": t.Id,
+			"update":  update,
+		}))
 	}
-	grip.Error(message.WrapError(err, message.Fields{
-		"message": "problem updating task end details",
-		"task_id": t.Id,
-		"update":  update,
-	}))
 }
