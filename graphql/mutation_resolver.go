@@ -35,7 +35,6 @@ import (
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
-	"github.com/pkg/errors"
 	werrors "github.com/pkg/errors"
 )
 
@@ -377,24 +376,6 @@ func (r *mutationResolver) AttachProjectToRepo(ctx context.Context, projectID st
 	}
 	if pRef == nil {
 		return nil, ResourceNotFound.Send(ctx, fmt.Sprintf("project '%s' not found", projectID))
-	}
-
-	// If repo project exists, only allow repo admins to attach to a project.
-	repoRef, err := model.FindRepoRefByOwnerAndRepo(ctx, pRef.Owner, pRef.Repo)
-	if err != nil {
-		return nil, errors.Wrapf(err, "finding repo ref '%s'", pRef.RepoRefId)
-	}
-	if repoRef != nil {
-		isRepoAdmin := usr.HasPermission(gimlet.PermissionOpts{
-			Resource:      repoRef.Id,
-			ResourceType:  evergreen.ProjectResourceType,
-			Permission:    evergreen.PermissionProjectSettings,
-			RequiredLevel: evergreen.ProjectSettingsEdit.Value,
-		})
-
-		if !isRepoAdmin {
-			return nil, errors.Errorf("user '%s' does not have permission to attach project '%s' to repo '%s'", usr.Id, pRef.Id, pRef.Repo)
-		}
 	}
 
 	if err = pRef.AttachToRepo(ctx, usr); err != nil {
