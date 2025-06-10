@@ -84,8 +84,21 @@ func attachTestResults(ctx context.Context, conf *internal.TaskConfig, td client
 		return errors.Wrap(err, "closing test results record")
 	}
 
+	// kim: NOTE: this sets whether the task has at least one failing test
+	// result.
 	if err := comm.SetResultsInfo(ctx, td, testresult.TestResultsServiceCedar, failed); err != nil {
 		return errors.Wrap(err, "setting results info in the task")
+	}
+
+	// kim: NOTE: code can only get here if it has more than one test result
+	// because of sendTestResults check. Therefore, if we get here, we can mark
+	// the task as having test results within the local task config.
+	// Could indirectly check this by looking for CedarTestResultsID.
+	// kim: TODO: test in staging to verify this propagates back when resolving
+	// task end details. I assume it does but should check.
+	conf.HasTestResults = true
+	if failed {
+		conf.HasFailingTestResult = true
 	}
 
 	return nil

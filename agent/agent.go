@@ -1031,7 +1031,7 @@ func (a *Agent) handleTimeoutAndOOM(ctx context.Context, tc *taskContext, detail
 // finishTask finishes up a running task. It runs any post-task command blocks
 // such as timeout and post, then sends the final end task response.
 func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, systemFailureDescription string) (*apimodels.EndTaskResponse, error) {
-	detail := a.endTaskResponse(ctx, tc, status, systemFailureDescription)
+	detail := a.endTaskResponse(tc, status, systemFailureDescription)
 	switch detail.Status {
 	case evergreen.TaskSucceeded:
 		a.handleTimeoutAndOOM(ctx, tc, detail, status)
@@ -1196,7 +1196,7 @@ func buildCheckRun(ctx context.Context, tc *taskContext) (*apimodels.CheckRunOut
 
 }
 
-func (a *Agent) endTaskResponse(ctx context.Context, tc *taskContext, status string, systemFailureDescription string) *apimodels.TaskEndDetail {
+func (a *Agent) endTaskResponse(tc *taskContext, status string, systemFailureDescription string) *apimodels.TaskEndDetail {
 	highestPriorityDescription := systemFailureDescription
 	var userDefinedFailureType string
 	var userDefinedFailureMetadataTags []string
@@ -1267,6 +1267,39 @@ func setEndTaskFailureDetails(tc *taskContext, detail *apimodels.TaskEndDetail, 
 		detail.TimedOut = tc.hadTimedOut()
 		detail.TimeoutType = string(tc.getTimeoutType())
 		detail.TimeoutDuration = tc.getTimeoutDuration()
+	}
+}
+
+// kim: TODO: add test for failure setting and priority relative to command
+// failures.
+func updateEndTaskFailureDetailsForMissingTestResults(tc *taskContext, detail *apimodels.TaskEndDetail) {
+	if detail.Status == evergreen.TaskFailed {
+		// If the task has already failed for another reason, do not overwrite
+		// it with a test result-related failure. Test results failures are
+		// lower priority.
+		return
+	}
+
+	// kim: TODO: need to check if task has any test results. Possibly can set
+	// in the test results-setting commands.
+	if tc.taskConfig.Task.MustHaveResults {
+	}
+}
+
+// kim: TODO: add test for failure setting and priority relative to command
+// failures.
+func updateEndTaskFailureDetailsForFailingTestResults(tc *taskContext, detail *apimodels.TaskEndDetail) {
+	if detail.Status == evergreen.TaskFailed {
+		// If the task has already failed for another reason, do not overwrite
+		// it with a test result-related failure. Test results failures are
+		// lower priority.
+		return
+	}
+
+	if tc.taskConfig.Task.ResultsFailed {
+		detail.Type = evergreen.CommandTypeTest
+		detail.Status = evergreen.TaskFailed
+		detail.Description = evergreen.TaskDescriptionResultsFailed
 	}
 }
 
