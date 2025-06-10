@@ -220,7 +220,6 @@ func (s *PatchesByProjectSuite) TestInvalidTimesAsKeyShouldError() {
 }
 
 func (s *PatchesByProjectSuite) TestValidTimesAsKeyShouldNotError() {
-	// Time format: APITimeFormat = "\"2006-01-02T15:04:05.000Z\""
 	inputs := []string{
 		"2023-10-01T12:30:45.000Z", // valid time
 		"2000-01-01T00:00:00.000Z", // start of the 21st century
@@ -233,13 +232,13 @@ func (s *PatchesByProjectSuite) TestValidTimesAsKeyShouldNotError() {
 	}
 
 	for _, i := range inputs {
-		s.Run("Time: "+i, func() {
+		s.Run("Time:"+i, func() {
 			req, err := http.NewRequest(http.MethodGet, "https://example.net/foo/?limit=10&start_at="+i, nil)
 			s.Require().NoError(err)
 			err = s.route.Parse(context.Background(), req)
 			s.NoError(err)
 		})
-		s.Run("Time wrapped in quotes: "+i, func() {
+		s.Run("TimeWrappedInQuotes:"+i, func() {
 			req, err := http.NewRequest(http.MethodGet, "https://example.net/foo/?limit=10&start_at=\""+i+"\"", nil)
 			s.Require().NoError(err)
 			err = s.route.Parse(context.Background(), req)
