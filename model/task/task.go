@@ -3000,14 +3000,7 @@ func (t *Task) Archive(ctx context.Context) error {
 	if t.CanReset {
 		// For idempotency reasons, skip tasks that are currently waiting to
 		// reset. It prevents a race where the same task data can be
-		// archived for two consecutive task executions. If restart is
-		// called multiple times, it can produce a race where the same task
-		// data will be archived for two task executions. The first restart
-		// can 1. archive the current task execution and 2. increment the
-		// current task execution to the new one. But if the operation
-		// hasn't reset the task yet, a second restart operation can run
-		// concurrently and archive the task again (which archives the
-		// just-incremented task execution).
+		// archived for two consecutive task executions.
 		return nil
 	}
 
@@ -3065,14 +3058,7 @@ func ArchiveMany(ctx context.Context, tasks []Task) error {
 		if t.CanReset {
 			// For idempotency reasons, skip tasks that are currently waiting to
 			// reset. It prevents a race where the same task data can be
-			// archived for two consecutive task executions. If restart is
-			// called multiple times, it can produce a race where the same task
-			// data will be archived for two task executions. The first restart
-			// can 1. archive the current task execution and 2. increment the
-			// current task execution to the new one. But if the operation
-			// hasn't reset the task yet, a second restart operation can run
-			// concurrently and archive the task again (which archives the
-			// just-incremented task execution).
+			// archived for two consecutive task executions.
 			continue
 		}
 
