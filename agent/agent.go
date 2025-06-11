@@ -809,7 +809,7 @@ func (a *Agent) runPreAndMain(ctx context.Context, tc *taskContext) (status stri
 
 	// notify API server that the task has been started.
 	tc.logger.Execution().Info("Reporting task started.")
-	if err := a.comm.StartTask(execTimeoutCtx, tc.task); err != nil {
+	if err := a.comm.StartTask(execTimeoutCtx, tc.task, tc.traceID, tc.diskDevices); err != nil {
 		tc.logger.Execution().Error(errors.Wrap(err, "marking task started"))
 		return evergreen.TaskSystemFailed
 	}

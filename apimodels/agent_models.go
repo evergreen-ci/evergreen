@@ -26,7 +26,8 @@ const (
 // TaskStartRequest holds information sent by the agent to the
 // API server at the beginning of each task run.
 type TaskStartRequest struct {
-	Pid string `json:"pid"`
+	TraceID     string   `json:"trace_id,omitempty"`
+	DiskDevices []string `json:"disk_devices,omitempty"`
 }
 
 // HeartbeatResponse is sent by the API server in response to
