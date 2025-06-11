@@ -653,7 +653,7 @@ Parameters:
     If you do not specify any revisions, all of them will be cloned that
     are defined in the [build variant](Project-Configuration-Files#build-variants)'s
     `modules` field.
--   `token`: Use a token to clone instead of the ssh key on the host.
+-   `token`: Use a token to clone instead of the default Evergreen generated GitHub token.
     Since this is a secret, it should be provided as a project
     expansion. For example, you could provide an expansion called
     "github_token" and then set this field to \${github_token}.
