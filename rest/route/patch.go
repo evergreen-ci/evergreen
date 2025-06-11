@@ -365,13 +365,13 @@ func (p *patchesByProjectHandler) Parse(ctx context.Context, r *http.Request) er
 	vals := r.URL.Query()
 
 	var err error
-	start_at := vals.Get("start_at")
-	if start_at == "" {
+	startAt := vals.Get("start_at")
+	if startAt == "" {
 		p.key = time.Now()
 	} else {
-		p.key, err = model.ParseTime(start_at)
+		p.key, err = model.ParseTime(startAt)
 		if err != nil {
-			return errors.Wrapf(err, "parsing start_at '%s'", start_at)
+			return errors.Wrapf(err, "parsing start_at '%s'", startAt)
 		}
 	}
 
