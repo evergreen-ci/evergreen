@@ -1130,6 +1130,12 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 	if detail.Type != "" {
 		span.SetAttributes(attribute.String(evergreen.TaskFailureTypeOtelAttribute, detail.Type))
 	}
+	if detail.FailingCommand != "" {
+		span.SetAttributes(attribute.String(evergreen.TaskFailingCommandOtelAttribute, detail.FailingCommand))
+	}
+	if detail.Description != "" {
+		span.SetAttributes(attribute.String(evergreen.TaskDescriptionOtelAttribute, detail.Description))
+	}
 
 	return resp, nil
 }
