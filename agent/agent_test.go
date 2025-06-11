@@ -1143,6 +1143,7 @@ tasks:
 	s.Equal(evergreen.CommandTypeTest, s.mockCommunicator.EndTaskResult.Detail.Type)
 	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
 	s.Equal(evergreen.TaskDescriptionNoResults, s.mockCommunicator.EndTaskResult.Detail.Description)
+	s.Zero(s.mockCommunicator.EndTaskResult.Detail.FailingCommand)
 
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
@@ -1174,6 +1175,7 @@ tasks:
 	s.Zero(s.mockCommunicator.EndTaskResult.Detail.Type)
 	s.Equal(evergreen.TaskSucceeded, s.mockCommunicator.EndTaskResult.Detail.Status)
 	s.Zero(s.mockCommunicator.EndTaskResult.Detail.Description)
+	s.Zero(s.mockCommunicator.EndTaskResult.Detail.FailingCommand)
 
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
@@ -1221,7 +1223,7 @@ tasks:
 	})
 }
 
-func (s *AgentSuite) TestFailureForFailingTestResult() {
+func (s *AgentSuite) TestFailingTestResultFailsTask() {
 	projYml := `
 tasks:
   - name: this_is_a_task_name
@@ -1243,6 +1245,7 @@ tasks:
 	s.Equal(evergreen.CommandTypeTest, s.mockCommunicator.EndTaskResult.Detail.Type)
 	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
 	s.Equal(evergreen.TaskDescriptionResultsFailed, s.mockCommunicator.EndTaskResult.Detail.Description)
+	s.Zero(s.mockCommunicator.EndTaskResult.Detail.FailingCommand)
 
 	s.NoError(s.tc.logger.Close())
 	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
