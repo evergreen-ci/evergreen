@@ -130,14 +130,14 @@ func TestSendTestResults(t *testing.T) {
 					checkRecord(t, srv)
 					checkResults(t, srv)
 					assert.NotZero(t, srv.Close.TestResultsRecordId)
-					assert.Equal(t, testresult.TestResultsServiceCedar, comm.ResultsService)
+					assert.Equal(t, task.TestResultsServiceCedar, comm.ResultsService)
 					assert.False(t, comm.ResultsFailed)
 				})
 				t.Run("FailingResults", func(t *testing.T) {
 					results[0].Status = evergreen.TestFailedStatus
 					require.NoError(t, sendTestResults(ctx, comm, logger, conf, results))
 
-					assert.Equal(t, testresult.TestResultsServiceCedar, comm.ResultsService)
+					assert.Equal(t, task.TestResultsServiceCedar, comm.ResultsService)
 					assert.True(t, comm.ResultsFailed)
 					results[0].Status = "pass"
 				})
@@ -151,7 +151,7 @@ func TestSendTestResults(t *testing.T) {
 				checkRecord(t, srv)
 				checkResults(t, srv)
 				assert.NotZero(t, srv.Close.TestResultsRecordId)
-				assert.Equal(t, testresult.TestResultsServiceCedar, comm.ResultsService)
+				assert.Equal(t, task.TestResultsServiceCedar, comm.ResultsService)
 				assert.False(t, comm.ResultsFailed)
 				results[0].DisplayTestName = displayTestName
 			},

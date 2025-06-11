@@ -837,11 +837,7 @@ func (h *attachTestResultsHandler) Run(ctx context.Context) gimlet.Responder {
 			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
 		})
 	}
-	output, ok := t.GetTaskOutputSafe()
-	if !ok {
-		return nil
-	}
-	err = output.TestResults.AppendTestResults(ctx, h.env, h.results)
+	err = task.AppendTestResults(ctx, t, h.env, h.results)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "appending test results to '%s'", h.taskID))
 	}

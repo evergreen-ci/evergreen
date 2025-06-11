@@ -6,18 +6,18 @@ import (
 
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/task"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/taskoutput"
 )
 
 // AgentLogs is the resolver for the agentLogs field.
 func (r *taskLogsResolver) AgentLogs(ctx context.Context, obj *TaskLogs) ([]*apimodels.LogMessage, error) {
-	return getTaskLogs(ctx, obj, taskoutput.TaskLogTypeAgent)
+	return getTaskLogs(ctx, obj, task.TaskLogTypeAgent)
 }
 
 // AllLogs is the resolver for the allLogs field.
 func (r *taskLogsResolver) AllLogs(ctx context.Context, obj *TaskLogs) ([]*apimodels.LogMessage, error) {
-	return getTaskLogs(ctx, obj, taskoutput.TaskLogTypeAll)
+	return getTaskLogs(ctx, obj, task.TaskLogTypeAll)
 }
 
 // EventLogs is the resolver for the eventLogs field.
@@ -50,12 +50,12 @@ func (r *taskLogsResolver) EventLogs(ctx context.Context, obj *TaskLogs) ([]*res
 
 // SystemLogs is the resolver for the systemLogs field.
 func (r *taskLogsResolver) SystemLogs(ctx context.Context, obj *TaskLogs) ([]*apimodels.LogMessage, error) {
-	return getTaskLogs(ctx, obj, taskoutput.TaskLogTypeSystem)
+	return getTaskLogs(ctx, obj, task.TaskLogTypeSystem)
 }
 
 // TaskLogs is the resolver for the taskLogs field.
 func (r *taskLogsResolver) TaskLogs(ctx context.Context, obj *TaskLogs) ([]*apimodels.LogMessage, error) {
-	return getTaskLogs(ctx, obj, taskoutput.TaskLogTypeTask)
+	return getTaskLogs(ctx, obj, task.TaskLogTypeTask)
 }
 
 // TaskLogs returns TaskLogsResolver implementation.

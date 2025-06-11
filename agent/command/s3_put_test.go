@@ -18,7 +18,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/pail"
@@ -697,8 +696,8 @@ func TestS3PutSkipExisting(t *testing.T) {
 		Task: task.Task{
 			Project: testPrefix,
 			Id:      "task-abc123",
-			TaskOutputInfo: &taskoutput.TaskOutput{
-				TaskLogs: taskoutput.TaskLogOutput{
+			TaskOutputInfo: &task.TaskOutput{
+				TaskLogs: task.TaskLogOutput{
 					Version: 1,
 					BucketConfig: evergreen.BucketConfig{
 						Name: bucketName,
@@ -706,7 +705,7 @@ func TestS3PutSkipExisting(t *testing.T) {
 					},
 					AWSCredentials: creds,
 				},
-				TestLogs: taskoutput.TestLogOutput{},
+				TestLogs: task.TestLogOutput{},
 			},
 		},
 		WorkDir: temproot,
@@ -748,8 +747,8 @@ func TestS3PutSkipExisting(t *testing.T) {
 	// verify that file content wasn't overwritten by the second file
 	assert.Equal(t, payload, content)
 
-	logopts := taskoutput.TaskLogGetOptions{
-		LogType: taskoutput.TaskLogTypeAll,
+	logopts := task.TaskLogGetOptions{
+		LogType: task.TaskLogTypeAll,
 	}
 
 	it, err := tconf.Task.GetTaskLogs(ctx, logopts)

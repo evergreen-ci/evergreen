@@ -22,7 +22,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -2819,7 +2818,7 @@ tasks:
 	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.testTmpDirName)
 	s.Require().NoError(err)
 
-	it, err := s.task.GetTestLogs(s.ctx, taskoutput.TestLogGetOptions{LogPaths: []string{"test.log"}})
+	it, err := s.task.GetTestLogs(s.ctx, task.TestLogGetOptions{LogPaths: []string{"test.log"}})
 	s.Require().NoError(err)
 
 	var actualLines string

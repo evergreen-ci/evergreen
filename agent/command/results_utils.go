@@ -84,7 +84,7 @@ func attachTestResults(ctx context.Context, conf *internal.TaskConfig, td client
 		return errors.Wrap(err, "closing test results record")
 	}
 
-	if err := comm.SetResultsInfo(ctx, td, testresult.TestResultsServiceCedar, failed); err != nil {
+	if err := comm.SetResultsInfo(ctx, td, task.TestResultsServiceCedar, failed); err != nil {
 		return errors.Wrap(err, "setting results info in the task")
 	}
 

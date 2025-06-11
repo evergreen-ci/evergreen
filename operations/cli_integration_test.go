@@ -287,10 +287,10 @@ func TestCLITestHistory(t *testing.T) {
 	env := evergreen.GetEnvironment()
 	defer func() {
 		assert.NoError(t, db.ClearCollections(task.Collection))
-		assert.NoError(t, testresult.ClearLocal(ctx, env))
+		assert.NoError(t, task.ClearLocal(ctx, env))
 	}()
 	testutil.ConfigureIntegrationTest(t, testConfig)
-	svc := testresult.NewLocalService(env)
+	svc := task.NewLocalService(env)
 	Convey("with API test server running", t, func() {
 		testSetup := setupCLITestHarness(ctx)
 		defer testSetup.testServer.Close()
@@ -333,7 +333,7 @@ func TestCLITestHistory(t *testing.T) {
 					Version:        fmt.Sprintf("version%v", i%3),
 					BuildVariant:   "osx",
 					Status:         evergreen.TaskFailed,
-					ResultsService: testresult.TestResultsServiceLocal,
+					ResultsService: task.TestResultsServiceLocal,
 				}
 				So(tsk.Insert(ctx), ShouldBeNil)
 

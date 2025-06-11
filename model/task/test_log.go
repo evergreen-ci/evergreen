@@ -1,4 +1,4 @@
-package taskoutput
+package task
 
 import (
 	"context"
@@ -47,43 +47,47 @@ type TestLogGetOptions struct {
 	TailN int
 }
 
-// NewSender returns a new test log sender for the given task run.
-func (o TestLogOutput) NewSender(ctx context.Context, taskOpts TaskOptions, senderOpts EvergreenSenderOptions, logPath string, sequence int) (send.Sender, error) {
-	svc, err := o.getLogService(ctx)
+// NewTestLogSender returns a new test log sender for the given task run.
+func NewTestLogSender(ctx context.Context, task Task, senderOpts EvergreenSenderOptions, logPath string, sequence int) (send.Sender, error) {
+	output, ok := task.GetTaskOutputSafe()
+	if !ok {
+		// We know there task cannot have task output, likely because
+		// it has not run yet. Return an empty iterator.
+		return nil, nil
+	}
+
+	svc, err := getTestLogService(ctx, output.TestLogs)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting log service")
 	}
 
 	senderOpts.appendLines = func(ctx context.Context, lines []log.LogLine) error {
-		return svc.Append(ctx, o.getLogNames(taskOpts, []string{logPath})[0], sequence, lines)
+		return svc.Append(ctx, getLogNames(task, []string{logPath}, output.TestLogs.ID())[0], sequence, lines)
 	}
 
-	return newEvergreenSender(ctx, fmt.Sprintf("%s-%s", taskOpts.TaskID, logPath), senderOpts)
+	return newEvergreenSender(ctx, fmt.Sprintf("%s-%s", task.Id, logPath), senderOpts)
 }
 
-// Append appends log lines to the specified test log for the given task run.
-func (o TestLogOutput) Append(ctx context.Context, taskOpts TaskOptions, logPath string, lines []log.LogLine) error {
-	svc, err := o.getLogService(ctx)
-	if err != nil {
-		return errors.Wrap(err, "getting log service")
+// getTestLogs returns test logs belonging to the specified task run.
+func getTestLogs(ctx context.Context, task Task, getOpts TestLogGetOptions) (log.LogIterator, error) {
+	output, ok := task.GetTaskOutputSafe()
+	if !ok {
+		// We know there task cannot have task output, likely because
+		// it has not run yet. Return an empty iterator.
+		return log.EmptyIterator(), nil
 	}
 
-	return svc.Append(ctx, o.getLogNames(taskOpts, []string{logPath})[0], 0, lines)
-}
-
-// Get returns test logs belonging to the specified task run.
-func (o TestLogOutput) Get(ctx context.Context, taskOpts TaskOptions, getOpts TestLogGetOptions) (log.LogIterator, error) {
-	if o.Version == 0 {
-		return o.getBuildloggerLogs(ctx, taskOpts, getOpts)
+	if output.TestLogs.Version == 0 {
+		return getTestBuildloggerLogs(ctx, task, getOpts)
 	}
 
-	svc, err := o.getLogService(ctx)
+	svc, err := getTestLogService(ctx, output.TestLogs)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting log service")
 	}
 
 	return svc.Get(ctx, log.GetOptions{
-		LogNames:                   o.getLogNames(taskOpts, getOpts.LogPaths),
+		LogNames:                   getLogNames(task, getOpts.LogPaths, output.TestLogs.ID()),
 		Start:                      getOpts.Start,
 		End:                        getOpts.End,
 		DefaultTimeRangeOfFirstLog: true,
@@ -92,8 +96,8 @@ func (o TestLogOutput) Get(ctx context.Context, taskOpts TaskOptions, getOpts Te
 	})
 }
 
-func (o TestLogOutput) getLogNames(taskOpts TaskOptions, logPaths []string) []string {
-	prefix := fmt.Sprintf("%s/%s/%d/%s", taskOpts.ProjectID, taskOpts.TaskID, taskOpts.Execution, o.ID())
+func getLogNames(task Task, logPaths []string, id string) []string {
+	prefix := fmt.Sprintf("%s/%s/%d/%s", task.Project, task.Id, task.Execution, id)
 
 	logNames := make([]string, len(logPaths))
 	for i, path := range logPaths {
@@ -103,7 +107,7 @@ func (o TestLogOutput) getLogNames(taskOpts TaskOptions, logPaths []string) []st
 	return logNames
 }
 
-func (o TestLogOutput) getLogService(ctx context.Context) (log.LogService, error) {
+func getTestLogService(ctx context.Context, o TestLogOutput) (log.LogService, error) {
 	b, err := newBucket(ctx, o.BucketConfig, o.AWSCredentials)
 	if err != nil {
 		return nil, err
@@ -112,16 +116,16 @@ func (o TestLogOutput) getLogService(ctx context.Context) (log.LogService, error
 	return log.NewLogServiceV0(b), nil
 }
 
-// getBuildloggerLogs makes request to Cedar Buildlogger for logs.
-func (o TestLogOutput) getBuildloggerLogs(ctx context.Context, taskOpts TaskOptions, getOpts TestLogGetOptions) (log.LogIterator, error) {
+// getTestBuildloggerLogs makes request to Cedar Buildlogger for logs.
+func getTestBuildloggerLogs(ctx context.Context, task Task, getOpts TestLogGetOptions) (log.LogIterator, error) {
 	if len(getOpts.LogPaths) != 1 {
 		return nil, errors.New("must request exactly one test log from Cedar Buildlogger")
 	}
 
 	return apimodels.GetBuildloggerLogs(ctx, apimodels.GetBuildloggerLogsOptions{
 		BaseURL:   evergreen.GetEnvironment().Settings().Cedar.BaseURL,
-		TaskID:    taskOpts.TaskID,
-		Execution: utility.ToIntPtr(taskOpts.Execution),
+		TaskID:    task.Id,
+		Execution: utility.ToIntPtr(task.Execution),
 		TestName:  getOpts.LogPaths[0],
 		Start:     utility.FromInt64Ptr(getOpts.Start),
 		End:       utility.FromInt64Ptr(getOpts.End),
