@@ -1125,8 +1125,6 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 	span := trace.SpanFromContext(ctx)
 	span.SetAttributes(attribute.String(evergreen.TaskStatusOtelAttribute, detail.Status))
 	if detail.Status != evergreen.TaskSucceeded {
-		// kim: TODO: verify in staging that task status is set to failure for
-		// test result reasons.
 		span.SetStatus(codes.Error, fmt.Sprintf("failing status '%s'", detail.Status))
 	}
 	if detail.Type != "" {
@@ -1255,7 +1253,6 @@ func setEndTaskFailureDetails(tc *taskContext, detail *apimodels.TaskEndDetail, 
 		} else {
 			detail.FailingCommand = currCmd.FullDisplayName()
 			tc.setFailingCommand(currCmd)
-			fmt.Println("kim: failing command set to:", tc.getFailingCommand().FullDisplayName())
 		}
 		detail.Type = failureType
 		detail.FailureMetadataTags = utility.UniqueStrings(append(tc.getFailingCommand().FailureMetadataTags(), failureMetadataTagsToAdd...))
@@ -1274,8 +1271,6 @@ func setEndTaskFailureDetails(tc *taskContext, detail *apimodels.TaskEndDetail, 
 	}
 }
 
-// kim: TODO: add test for failure setting and priority relative to command
-// failures.
 // updateEndTaskFailureDetailsForTestResults checks and updates the task failure
 // details for missing or failed test results.
 func updateEndTaskFailureDetailsForTestResults(tc *taskContext, detail *apimodels.TaskEndDetail) {
@@ -1286,8 +1281,6 @@ func updateEndTaskFailureDetailsForTestResults(tc *taskContext, detail *apimodel
 		return
 	}
 
-	// kim: TODO: need to check if task has any test results. Possibly can set
-	// in the test results-setting commands.
 	if tc.taskConfig.Task.MustHaveResults && !tc.taskConfig.HasTestResults {
 		tc.logger.Task().Info("Test results are missing and this task must have attached test results. Overall task status changed to FAILED.")
 		detail.Type = evergreen.CommandTypeTest

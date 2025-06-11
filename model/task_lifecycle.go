@@ -807,7 +807,6 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 			"task_id": t.Id,
 			"host_id": t.HostId,
 		})
-		// kim: TODO: try moving into agent
 		detailsCopy.Type = evergreen.CommandTypeTest
 		detailsCopy.Status = evergreen.TaskFailed
 		detailsCopy.Description = evergreen.TaskDescriptionNoResults
