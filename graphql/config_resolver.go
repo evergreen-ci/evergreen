@@ -46,14 +46,7 @@ func (r *adminSettingsInputResolver) BannerTheme(ctx context.Context, obj *model
 	if data == nil {
 		return nil
 	}
-
-	themeString := strings.ToUpper(string(*data))
-	valid, theme := evergreen.IsValidBannerTheme(themeString)
-
-	if !valid {
-		return InputValidationError.Send(ctx, fmt.Sprintf("invalid banner theme '%s'", themeString))
-	}
-	*data = theme
+	themeString := string(*data)
 	obj.BannerTheme = utility.ToStringPtr(themeString)
 	return nil
 }
