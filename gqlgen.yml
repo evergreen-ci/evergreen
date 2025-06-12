@@ -16,6 +16,8 @@ resolver:
 models:
   AdminSettings:
     model: github.com/evergreen-ci/evergreen/rest/model.APIAdminSettings
+  AdminSettingsInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIAdminSettings
   Annotation:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskAnnotation
   AWSConfig:

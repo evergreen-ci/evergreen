@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"reflect"
 	"runtime/debug"
 	"sort"
 	"time"
@@ -144,6 +145,62 @@ func (r *mutationResolver) SetAnnotationMetadataLinks(ctx context.Context, taskI
 		return false, InternalServerError.Send(ctx, fmt.Sprintf("setting metadata link: %s", err.Error()))
 	}
 	return true, nil
+}
+
+// SaveAdminSettings is the resolver for the saveAdminSettings field.
+func (r *mutationResolver) SaveAdminSettings(ctx context.Context, adminSettings restModel.APIAdminSettings) (*restModel.APIAdminSettings, error) {
+	oldSettings, err := evergreen.GetConfig(ctx)
+
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Evergreen configuration: %s", err.Error()))
+	}
+
+	settingsAPI := restModel.NewConfigModel()
+	err = settingsAPI.BuildFromService(oldSettings)
+
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting existing settings to API model: %s", err.Error()))
+	}
+
+	changesReflect := reflect.ValueOf(adminSettings)
+	settingsReflect := reflect.ValueOf(settingsAPI)
+
+	//iterate over each field in the changes struct and apply any changes to the existing settings
+	for i := 0; i < changesReflect.NumField(); i++ {
+		// get the property name and find its value within the settings struct
+		propName := changesReflect.Type().Field(i).Name
+		changedVal := changesReflect.FieldByName(propName)
+		if changedVal.IsNil() {
+			continue
+		}
+
+		settingsReflect.Elem().FieldByName(propName).Set(changedVal)
+	}
+
+	i, err := settingsAPI.ToService()
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting settings to service model: %s", err.Error()))
+	}
+	newSettings := i.(evergreen.Settings)
+
+	// We have to call Validate before we attempt to persist it because the
+	// evergreen.Settings internally calls ValidateAndDefault to set the
+	// default values.
+	if err = newSettings.Validate(); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("new admin settings are invalid: %s", err.Error()))
+	}
+	err = evergreen.UpdateConfig(ctx, &newSettings)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("saving new admin settings: %s", err.Error()))
+	}
+	newSettings.Id = evergreen.ConfigDocID
+
+	updatedSettingsAPI := restModel.NewConfigModel()
+	if err := updatedSettingsAPI.BuildFromService(&newSettings); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting updated settings to API model: %s", err.Error()))
+	}
+
+	return updatedSettingsAPI, nil
 }
 
 // DeleteDistro is the resolver for the deleteDistro field.

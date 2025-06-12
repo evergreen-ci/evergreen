@@ -393,6 +393,12 @@ type RepoPermissionsOptions struct {
 	RepoID string `json:"repoId"`
 }
 
+// SpruceConfig defines settings that apply to all users of Evergreen.
+// For example, if the banner field is populated, then a sitewide banner will be shown to all users.
+type SaveAdminSettingsInput struct {
+	AdminSettings *model.APIAdminSettings `json:"adminSettings"`
+}
+
 // SaveDistroInput is the input to the saveDistro mutation.
 type SaveDistroInput struct {
 	Distro *model.APIDistro      `json:"distro"`
