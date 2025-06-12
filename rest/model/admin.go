@@ -470,6 +470,7 @@ func (a *APIAmboyNamedQueueConfig) ToService() evergreen.AmboyNamedQueueConfig {
 type APIapiConfig struct {
 	HttpListenAddr *string `json:"http_listen_addr"`
 	URL            *string `json:"url"`
+	CorpURL        *string `json:"corp_url"`
 }
 
 func (a *APIapiConfig) BuildFromService(h any) error {
@@ -477,6 +478,7 @@ func (a *APIapiConfig) BuildFromService(h any) error {
 	case evergreen.APIConfig:
 		a.HttpListenAddr = utility.ToStringPtr(v.HttpListenAddr)
 		a.URL = utility.ToStringPtr(v.URL)
+		a.CorpURL = utility.ToStringPtr(v.CorpURL)
 	default:
 		return errors.Errorf("programmatic error: expected REST API config but got type %T", h)
 	}
@@ -487,6 +489,7 @@ func (a *APIapiConfig) ToService() (any, error) {
 	return evergreen.APIConfig{
 		HttpListenAddr: utility.FromStringPtr(a.HttpListenAddr),
 		URL:            utility.FromStringPtr(a.URL),
+		CorpURL:        utility.FromStringPtr(a.CorpURL),
 	}, nil
 }
 
