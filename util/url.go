@@ -27,3 +27,7 @@ func CheckURL(str string) error {
 	}
 	return nil
 }
+
+func HttpsUrl(url string) string {
+	return "https://" + url
+}

@@ -20,6 +20,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/units"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
@@ -35,8 +36,8 @@ type projectGetHandler struct {
 	url   string
 }
 
-func makeFetchProjectsRoute(url string) gimlet.RouteHandler {
-	return &projectGetHandler{url: url}
+func makeFetchProjectsRoute() gimlet.RouteHandler {
+	return &projectGetHandler{}
 }
 
 // Factory creates an instance of the handler.
@@ -50,13 +51,14 @@ func makeFetchProjectsRoute(url string) gimlet.RouteHandler {
 //	@Param			limit		query	int		false	"The number of hosts to be returned per page of pagination. Defaults to 100"
 //	@Success		200			{array}	model.APIProjectRef
 func (p *projectGetHandler) Factory() gimlet.RouteHandler {
-	return &projectGetHandler{url: p.url}
+	return &projectGetHandler{}
 }
 
 func (p *projectGetHandler) Parse(ctx context.Context, r *http.Request) error {
 	p.user, _ = gimlet.GetUser(ctx).(*user.DBUser)
 
 	vals := r.URL.Query()
+	p.url = util.HttpsUrl(r.Host)
 
 	p.key = vals.Get("start_at")
 	var err error
@@ -883,8 +885,8 @@ type getProjectVersionsHandler struct {
 	url         string
 }
 
-func makeGetProjectVersionsHandler(url string) gimlet.RouteHandler {
-	return &getProjectVersionsHandler{url: url}
+func makeGetProjectVersionsHandler() gimlet.RouteHandler {
+	return &getProjectVersionsHandler{}
 }
 
 // Factory creates an instance of the handler.
@@ -906,12 +908,13 @@ func makeGetProjectVersionsHandler(url string) gimlet.RouteHandler {
 //	@Param			by_task				query	string	false	"If set, will only include information for this task, and will only return versions with this task activated. Must have include_tasks set."
 //	@Success		200					{array}	model.APIVersion
 func (h *getProjectVersionsHandler) Factory() gimlet.RouteHandler {
-	return &getProjectVersionsHandler{url: h.url}
+	return &getProjectVersionsHandler{}
 }
 
 func (h *getProjectVersionsHandler) Parse(ctx context.Context, r *http.Request) error {
 	h.projectName = gimlet.GetVars(r)["project_id"]
 	params := r.URL.Query()
+	h.url = util.HttpsUrl(r.Host)
 
 	// body is optional
 	b, _ := io.ReadAll(r.Body)
