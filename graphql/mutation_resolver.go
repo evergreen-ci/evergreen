@@ -146,6 +146,28 @@ func (r *mutationResolver) SetAnnotationMetadataLinks(ctx context.Context, taskI
 	return true, nil
 }
 
+// SaveAdminSettings is the resolver for the saveAdminSettings field.
+func (r *mutationResolver) SaveAdminSettings(ctx context.Context, adminSettings restModel.APIAdminSettings) (*restModel.APIAdminSettings, error) {
+	oldSettings, err := evergreen.GetConfig(ctx)
+
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Evergreen configuration: %s", err.Error()))
+	}
+
+	newSettings, err := data.SetEvergreenSettings(ctx, &adminSettings, oldSettings, mustHaveUser(ctx), true)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("setting admin settings: %s", err.Error()))
+	}
+
+	updatedSettingsAPI := restModel.APIAdminSettings{}
+
+	if err := updatedSettingsAPI.BuildFromService(newSettings); err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("converting updated settings to API model: %s", err.Error()))
+	}
+
+	return &updatedSettingsAPI, nil
+}
+
 // DeleteDistro is the resolver for the deleteDistro field.
 func (r *mutationResolver) DeleteDistro(ctx context.Context, opts DeleteDistroInput) (*DeleteDistroPayload, error) {
 	usr := mustHaveUser(ctx)

@@ -82,6 +82,7 @@ type ResolverRoot interface {
 	User() UserResolver
 	Version() VersionResolver
 	Volume() VolumeResolver
+	AdminSettingsInput() AdminSettingsInputResolver
 	BootstrapSettingsInput() BootstrapSettingsInputResolver
 	DispatcherSettingsInput() DispatcherSettingsInputResolver
 	DistroInput() DistroInputResolver
@@ -719,6 +720,7 @@ type ComplexityRoot struct {
 		RestartJasper                 func(childComplexity int, hostIds []string) int
 		RestartTask                   func(childComplexity int, taskID string, failedOnly bool) int
 		RestartVersions               func(childComplexity int, versionID string, abort bool, versionsToRestart []*model1.VersionToRestart) int
+		SaveAdminSettings             func(childComplexity int, adminSettings model.APIAdminSettings) int
 		SaveDistro                    func(childComplexity int, opts SaveDistroInput) int
 		SaveProjectSettingsForSection func(childComplexity int, projectSettings *model.APIProjectSettings, section ProjectSettingsSection) int
 		SaveRepoSettingsForSection    func(childComplexity int, repoSettings *model.APIProjectSettings, section ProjectSettingsSection) int
@@ -1841,6 +1843,7 @@ type MutationResolver interface {
 	MoveAnnotationIssue(ctx context.Context, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) (bool, error)
 	RemoveAnnotationIssue(ctx context.Context, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) (bool, error)
 	SetAnnotationMetadataLinks(ctx context.Context, taskID string, execution int, metadataLinks []*model.APIMetadataLink) (bool, error)
+	SaveAdminSettings(ctx context.Context, adminSettings model.APIAdminSettings) (*model.APIAdminSettings, error)
 	DeleteDistro(ctx context.Context, opts DeleteDistroInput) (*DeleteDistroPayload, error)
 	CopyDistro(ctx context.Context, opts model.CopyDistroOpts) (*NewDistroPayload, error)
 	CreateDistro(ctx context.Context, opts CreateDistroInput) (*NewDistroPayload, error)
@@ -2137,6 +2140,9 @@ type VolumeResolver interface {
 	Host(ctx context.Context, obj *model.APIVolume) (*model.APIHost, error)
 }
 
+type AdminSettingsInputResolver interface {
+	BannerTheme(ctx context.Context, obj *model.APIAdminSettings, data *evergreen.BannerTheme) error
+}
 type BootstrapSettingsInputResolver interface {
 	Communication(ctx context.Context, obj *model.APIBootstrapSettings, data CommunicationMethod) error
 
@@ -5045,6 +5051,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.RestartVersions(childComplexity, args["versionId"].(string), args["abort"].(bool), args["versionsToRestart"].([]*model1.VersionToRestart)), true
+
+	case "Mutation.saveAdminSettings":
+		if e.complexity.Mutation.SaveAdminSettings == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_saveAdminSettings_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.SaveAdminSettings(childComplexity, args["adminSettings"].(model.APIAdminSettings)), true
 
 	case "Mutation.saveDistro":
 		if e.complexity.Mutation.SaveDistro == nil {
@@ -10497,6 +10515,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	ec := executionContext{opCtx, e, 0, 0, make(chan graphql.DeferredResult)}
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
 		ec.unmarshalInputAddFavoriteProjectInput,
+		ec.unmarshalInputAdminSettingsInput,
 		ec.unmarshalInputBetaFeaturesInput,
 		ec.unmarshalInputBootstrapSettingsInput,
 		ec.unmarshalInputBuildBaronSettingsInput,
@@ -10560,6 +10579,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputRepoRefInput,
 		ec.unmarshalInputRepoSettingsInput,
 		ec.unmarshalInputResourceLimitsInput,
+		ec.unmarshalInputSaveAdminSettingsInput,
 		ec.unmarshalInputSaveDistroInput,
 		ec.unmarshalInputSelectorInput,
 		ec.unmarshalInputSetLastRevisionInput,
@@ -12828,6 +12848,34 @@ func (ec *executionContext) field_Mutation_restartVersions_argsVersionsToRestart
 	}
 
 	var zeroVal []*model1.VersionToRestart
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_saveAdminSettings_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_saveAdminSettings_argsAdminSettings(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["adminSettings"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_saveAdminSettings_argsAdminSettings(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (model.APIAdminSettings, error) {
+	if _, ok := rawArgs["adminSettings"]; !ok {
+		var zeroVal model.APIAdminSettings
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("adminSettings"))
+	if tmp, ok := rawArgs["adminSettings"]; ok {
+		return ec.unmarshalNAdminSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAdminSettings(ctx, tmp)
+	}
+
+	var zeroVal model.APIAdminSettings
 	return zeroVal, nil
 }
 
@@ -33144,6 +33192,89 @@ func (ec *executionContext) fieldContext_Mutation_setAnnotationMetadataLinks(ctx
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_setAnnotationMetadataLinks_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_saveAdminSettings(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_saveAdminSettings(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		directive0 := func(rctx context.Context) (any, error) {
+			ctx = rctx // use context from middleware stack in children
+			return ec.resolvers.Mutation().SaveAdminSettings(rctx, fc.Args["adminSettings"].(model.APIAdminSettings))
+		}
+
+		directive1 := func(ctx context.Context) (any, error) {
+			if ec.directives.RequireAdmin == nil {
+				var zeroVal *model.APIAdminSettings
+				return zeroVal, errors.New("directive requireAdmin is not implemented")
+			}
+			return ec.directives.RequireAdmin(ctx, nil, directive0)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(*model.APIAdminSettings); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *github.com/evergreen-ci/evergreen/rest/model.APIAdminSettings`, tmp)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIAdminSettings)
+	fc.Result = res
+	return ec.marshalNAdminSettings2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAdminSettings(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_saveAdminSettings(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "banner":
+				return ec.fieldContext_AdminSettings_banner(ctx, field)
+			case "bannerTheme":
+				return ec.fieldContext_AdminSettings_bannerTheme(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AdminSettings", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_saveAdminSettings_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -76732,6 +76863,42 @@ func (ec *executionContext) unmarshalInputAddFavoriteProjectInput(ctx context.Co
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context, obj any) (model.APIAdminSettings, error) {
+	var it model.APIAdminSettings
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"banner", "bannerTheme"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "banner":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("banner"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Banner = data
+		case "bannerTheme":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bannerTheme"))
+			data, err := ec.unmarshalOBannerTheme2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚐBannerTheme(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			if err = ec.resolvers.AdminSettingsInput().BannerTheme(ctx, &it, data); err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputBetaFeaturesInput(ctx context.Context, obj any) (model.APIBetaFeatures, error) {
 	var it model.APIBetaFeatures
 	asMap := map[string]any{}
@@ -80768,6 +80935,33 @@ func (ec *executionContext) unmarshalInputResourceLimitsInput(ctx context.Contex
 				return it, err
 			}
 			it.VirtualMemoryKB = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputSaveAdminSettingsInput(ctx context.Context, obj any) (SaveAdminSettingsInput, error) {
+	var it SaveAdminSettingsInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"adminSettings"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "adminSettings":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("adminSettings"))
+			data, err := ec.unmarshalNAdminSettingsInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAdminSettings(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AdminSettings = data
 		}
 	}
 
@@ -87696,6 +87890,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "setAnnotationMetadataLinks":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_setAnnotationMetadataLinks(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "saveAdminSettings":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_saveAdminSettings(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -99048,6 +99249,30 @@ func (ec *executionContext) marshalNAccessLevel2githubᚗcomᚋevergreenᚑciᚋ
 func (ec *executionContext) unmarshalNAddFavoriteProjectInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐAddFavoriteProjectInput(ctx context.Context, v any) (AddFavoriteProjectInput, error) {
 	res, err := ec.unmarshalInputAddFavoriteProjectInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNAdminSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAdminSettings(ctx context.Context, sel ast.SelectionSet, v model.APIAdminSettings) graphql.Marshaler {
+	return ec._AdminSettings(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNAdminSettings2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAdminSettings(ctx context.Context, sel ast.SelectionSet, v *model.APIAdminSettings) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._AdminSettings(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNAdminSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAdminSettings(ctx context.Context, v any) (model.APIAdminSettings, error) {
+	res, err := ec.unmarshalInputAdminSettingsInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNAdminSettingsInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAdminSettings(ctx context.Context, v any) (*model.APIAdminSettings, error) {
+	res, err := ec.unmarshalInputAdminSettingsInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalNArch2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐArch(ctx context.Context, v any) (Arch, error) {

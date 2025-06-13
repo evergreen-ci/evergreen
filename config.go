@@ -348,7 +348,7 @@ func (settings *Settings) Validate() error {
 		}
 		err := section.ValidateAndDefault()
 		if err != nil {
-			catcher.Add(err)
+			catcher.Add(fmt.Errorf("validation failed for section '%s' (field '%s'): %w", sectionId, propName, err))
 			continue
 		}
 
