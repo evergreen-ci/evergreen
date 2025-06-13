@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/hoststat"
 	"github.com/evergreen-ci/evergreen/scheduler"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
@@ -170,6 +171,15 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		ContainerPool:   containerPool,
 		DistroQueueInfo: distroQueueInfo,
 	}
+
+	// kim: TODO: verify that this is stored in time series collection as
+	// expected.
+	hs := hoststat.NewHostStat(distro.Id, len(upHosts))
+	grip.Error(message.WrapError(hs.Insert(ctx), message.Fields{
+		"message":   "could not insert latest host stat data for distro",
+		"distro":    distro.Id,
+		"num_hosts": len(upHosts),
+	}))
 
 	if distro.SingleTaskDistro {
 		// Single tasks distros should spawn a host for each task available to run in the queue.
