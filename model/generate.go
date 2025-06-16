@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"slices"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -748,6 +749,10 @@ func (g *GeneratedProject) addGeneratedProjectToConfig(intermediateProject *Pars
 	// Append buildvariants, tasks, and functions to the config.
 	intermediateProject.TaskGroups = append(intermediateProject.TaskGroups, g.TaskGroups...)
 	intermediateProject.Tasks = append(intermediateProject.Tasks, g.Tasks...)
+	var mergedTaskNames = []string{}
+	for _, t := range intermediateProject.Tasks {
+		mergedTaskNames = append(mergedTaskNames, t.Name)
+	}
 	for key, val := range g.Functions {
 		intermediateProject.Functions[key] = val
 	}
@@ -764,8 +769,13 @@ func (g *GeneratedProject) addGeneratedProjectToConfig(intermediateProject *Pars
 						for j, intermediateProjectDT := range intermediateProjectBV.DisplayTasks {
 							if intermediateProjectDT.Name == dt.Name {
 								foundExisting = true
-								// avoid adding duplicates
-								_, execTasksToAdd := utility.StringSliceSymmetricDifference(intermediateProjectDT.ExecutionTasks, dt.ExecutionTasks)
+								execTasksToAdd := []string{}
+								for _, generatedExecTask := range dt.ExecutionTasks {
+									// Avoid adding duplicate execution tasks to the display task.
+									if !slices.Contains(intermediateProjectDT.ExecutionTasks, generatedExecTask) {
+										execTasksToAdd = append(execTasksToAdd, generatedExecTask)
+									}
+								}
 								intermediateProject.BuildVariants[i].DisplayTasks[j].ExecutionTasks = append(
 									intermediateProject.BuildVariants[i].DisplayTasks[j].ExecutionTasks, execTasksToAdd...)
 								break
@@ -880,6 +890,30 @@ func (g *GeneratedProject) validateNoRecursiveGenerateTasks(cachedProject projec
 	return catcher.Resolve()
 }
 
+// validateGeneratedExecutionTasks validates that all generated execution tasks are defined.
+func (g *GeneratedProject) validateGeneratedExecutionTasks(cachedProject projectMaps) error {
+	catcher := grip.NewBasicCatcher()
+
+	allTaskNames := []string{}
+	for _, t := range cachedProject.tasks {
+		allTaskNames = append(allTaskNames, t.Name)
+	}
+	for _, t := range g.Tasks {
+		allTaskNames = append(allTaskNames, t.Name)
+	}
+
+	for _, bv := range g.BuildVariants {
+		for _, dt := range bv.DisplayTasks {
+			for _, execTask := range dt.ExecutionTasks {
+				if !slices.Contains(allTaskNames, execTask) {
+					catcher.Errorf("display task '%s' in buildvariant '%s' references undefined execution task '%s'", dt.Name, bv.Name, execTask)
+				}
+			}
+		}
+	}
+	return catcher.Resolve()
+}
+
 func validateCommands(projectTask *ProjectTask, cachedProject projectMaps, pvt parserBVTaskUnit) error {
 	catcher := grip.NewBasicCatcher()
 	for _, cmd := range projectTask.Commands {
@@ -905,6 +939,7 @@ func (g *GeneratedProject) validateGeneratedProject(cachedProject projectMaps) e
 	catcher.Add(g.validateMaxTasksAndVariants())
 	catcher.Add(g.validateNoRedefine(cachedProject))
 	catcher.Add(g.validateNoRecursiveGenerateTasks(cachedProject))
+	catcher.Add(g.validateGeneratedExecutionTasks(cachedProject))
 
 	return errors.WithStack(catcher.Resolve())
 }
