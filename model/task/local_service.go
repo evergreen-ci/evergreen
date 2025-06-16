@@ -2,7 +2,6 @@ package task
 
 import (
 	"context"
-	adb "github.com/mongodb/anser/db"
 	"runtime"
 	"sync"
 
@@ -11,6 +10,7 @@ import (
 	mgobson "github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/mongodb/anser/bsonutil"
+	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
@@ -151,45 +151,48 @@ func (s *localService) Get(ctx context.Context, taskOpts []Task, fields ...strin
 		return nil, errors.Wrap(err, "reading DB test results")
 	}
 	allTaskResults := make([]testresult.TaskTestResults, len(allDBTaskResults))
-	toDownload := make(chan *testresult.DbTaskTestResults, len(allDBTaskResults))
-	for i := range allDBTaskResults {
-		toDownload <- &allDBTaskResults[i]
-	}
-	close(toDownload)
 
-	config, err := evergreen.GetConfig(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "retrieving config")
-	}
+	if len(fields) == 0 {
+		toDownload := make(chan *testresult.DbTaskTestResults, len(allDBTaskResults))
+		for i := range allDBTaskResults {
+			toDownload <- &allDBTaskResults[i]
+		}
+		close(toDownload)
 
-	var wg sync.WaitGroup
-	catcher := grip.NewBasicCatcher()
-	for i := 0; i < runtime.NumCPU(); i++ {
-		wg.Add(1)
-		go func() {
-			defer func() {
-				catcher.Add(recovery.HandlePanicWithError(recover(), nil, "test results download producer"))
-				wg.Done()
+		config, err := evergreen.GetConfig(ctx)
+		if err != nil {
+			return nil, errors.Wrap(err, "retrieving config")
+		}
+
+		var wg sync.WaitGroup
+		catcher := grip.NewBasicCatcher()
+		for i := 0; i < runtime.NumCPU(); i++ {
+			wg.Add(1)
+			go func() {
+				defer func() {
+					catcher.Add(recovery.HandlePanicWithError(recover(), nil, "test results download producer"))
+					wg.Done()
+				}()
+
+				for trs := range toDownload {
+					results, err := download(ctx, config.Buckets.Credentials, trs)
+					if err != nil {
+						catcher.Add(err)
+						return
+					}
+					trs.Results = results
+
+					if err = ctx.Err(); err != nil {
+						catcher.Add(err)
+						return
+					}
+				}
 			}()
-
-			for trs := range toDownload {
-				results, err := download(ctx, config.Buckets.Credentials, trs)
-				if err != nil {
-					catcher.Add(err)
-					return
-				}
-				trs.Results = results
-
-				if err = ctx.Err(); err != nil {
-					catcher.Add(err)
-					return
-				}
-			}
-		}()
-	}
-	wg.Wait()
-	if catcher.HasErrors() {
-		return nil, catcher.Resolve()
+		}
+		wg.Wait()
+		if catcher.HasErrors() {
+			return nil, catcher.Resolve()
+		}
 	}
 	for i, dbTaskResults := range allDBTaskResults {
 		allTaskResults[i].Stats = dbTaskResults.Stats
