@@ -1019,6 +1019,28 @@ func TestAttachToRepo(t *testing.T) {
 	}
 	assert.NoError(t, pRef.Insert(t.Context()))
 	assert.Error(t, pRef.AttachToRepo(ctx, u))
+
+	// Try attaching with project admin but not repo admin.
+	pRef = ProjectRef{
+		Id:      "myThirdProject",
+		Owner:   "evergreen-ci",
+		Repo:    "evergreen",
+		Branch:  "main",
+		Admins:  []string{"nonRepoAdmin"},
+		Enabled: true,
+	}
+	assert.NoError(t, pRef.Insert(t.Context()))
+
+	nonRepoAdmin := &user.DBUser{
+		Id:          "nonRepoAdmin",
+		SystemRoles: []string{GetProjectAdminRole(pRef.Id)},
+	}
+
+	hasRepoPermission, err := UserHasRepoViewPermission(t.Context(), nonRepoAdmin, pRef.RepoRefId)
+	assert.NoError(t, err)
+	assert.False(t, hasRepoPermission)
+
+	assert.Error(t, pRef.AttachToRepo(ctx, nonRepoAdmin))
 }
 
 func checkParametersMatchVars(ctx context.Context, t *testing.T, pm ParameterMappings, vars map[string]string) {
@@ -1219,12 +1241,10 @@ func TestDetachFromRepo(t *testing.T) {
 			require.NoError(t, db.CreateCollections(evergreen.ScopeCollection))
 
 			pRef := &ProjectRef{
-				Id:        "myProject",
-				Owner:     "evergreen-ci",
-				Repo:      "evergreen",
-				Admins:    []string{"me"},
-				RepoRefId: "myRepo",
-
+				Id:                    "myProject",
+				Owner:                 "evergreen-ci",
+				Repo:                  "evergreen",
+				RepoRefId:             "myRepo",
 				PeriodicBuilds:        []PeriodicBuildDefinition{}, // also shouldn't be overwritten
 				PRTestingEnabled:      utility.FalsePtr(),          // neither of these should be changed when overwriting
 				GitTagVersionsEnabled: utility.TruePtr(),
@@ -1241,6 +1261,7 @@ func TestDetachFromRepo(t *testing.T) {
 				GitTagVersionsEnabled: utility.FalsePtr(),
 				GithubChecksEnabled:   utility.TruePtr(),
 				GithubTriggerAliases:  []string{"my_trigger"},
+				Admins:                []string{"me"},
 				PeriodicBuilds: []PeriodicBuildDefinition{
 					{ID: "my_build"},
 				},
@@ -1285,6 +1306,8 @@ func TestDetachFromRepo(t *testing.T) {
 				Id: "me",
 			}
 			assert.NoError(t, u.Insert(t.Context()))
+			assert.NoError(t, repoRef.addPermissions(t.Context(), u))
+
 			test(t, pRef, u)
 		})
 	}

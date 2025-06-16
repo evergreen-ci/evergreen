@@ -41,6 +41,16 @@ func (r *spruceConfigResolver) SecretFields(ctx context.Context, obj *model.APIA
 	return redactedFieldsAsSlice, nil
 }
 
+// BannerTheme is the resolver for the bannerTheme field.
+func (r *adminSettingsInputResolver) BannerTheme(ctx context.Context, obj *model.APIAdminSettings, data *evergreen.BannerTheme) error {
+	if data == nil {
+		return nil
+	}
+	themeString := string(*data)
+	obj.BannerTheme = utility.ToStringPtr(themeString)
+	return nil
+}
+
 // AdminSettings returns AdminSettingsResolver implementation.
 func (r *Resolver) AdminSettings() AdminSettingsResolver { return &adminSettingsResolver{r} }
 
@@ -50,6 +60,12 @@ func (r *Resolver) ContainerPool() ContainerPoolResolver { return &containerPool
 // SpruceConfig returns SpruceConfigResolver implementation.
 func (r *Resolver) SpruceConfig() SpruceConfigResolver { return &spruceConfigResolver{r} }
 
+// AdminSettingsInput returns AdminSettingsInputResolver implementation.
+func (r *Resolver) AdminSettingsInput() AdminSettingsInputResolver {
+	return &adminSettingsInputResolver{r}
+}
+
 type adminSettingsResolver struct{ *Resolver }
 type containerPoolResolver struct{ *Resolver }
 type spruceConfigResolver struct{ *Resolver }
+type adminSettingsInputResolver struct{ *Resolver }

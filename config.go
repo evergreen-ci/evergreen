@@ -35,7 +35,7 @@ var (
 
 	// Agent version to control agent rollover. The format is the calendar date
 	// (YYYY-MM-DD).
-	AgentVersion = "2025-06-04"
+	AgentVersion = "2025-06-16"
 )
 
 const (
@@ -348,7 +348,7 @@ func (settings *Settings) Validate() error {
 		}
 		err := section.ValidateAndDefault()
 		if err != nil {
-			catcher.Add(err)
+			catcher.Add(fmt.Errorf("validation failed for section '%s' (field '%s'): %w", sectionId, propName, err))
 			continue
 		}
 

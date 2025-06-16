@@ -1120,6 +1120,176 @@ post:
 	})
 }
 
+func (s *AgentSuite) TestMissingTestResultFailsTask() {
+	projYml := `
+tasks:
+  - name: this_is_a_task_name
+    must_have_test_results: true
+    commands:
+      - command: shell.exec
+        params:
+          script: exit 0
+`
+	s.setupRunTask(projYml)
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:     s.tc.task.ID,
+		TaskSecret: s.tc.task.Secret,
+	}
+	s.tc.taskConfig.Task.MustHaveResults = true
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.testTmpDirName)
+	s.NoError(err)
+
+	s.Equal(evergreen.CommandTypeTest, s.mockCommunicator.EndTaskResult.Detail.Type)
+	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
+	s.Equal(evergreen.TaskDescriptionNoResults, s.mockCommunicator.EndTaskResult.Detail.Description)
+	s.Zero(s.mockCommunicator.EndTaskResult.Detail.FailingCommand)
+
+	s.NoError(s.tc.logger.Close())
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Running task commands",
+		"Running command 'shell.exec' (step 1 of 1)",
+		"Finished command 'shell.exec' (step 1 of 1)",
+		"Test results are missing and this task must have attached test results. Overall task status changed to FAILED.",
+	}, []string{panicLog})
+}
+
+func (s *AgentSuite) TestMissingTestResultDoesNotFailTaskForOptionalTestResults() {
+	projYml := `
+tasks:
+  - name: this_is_a_task_name
+    commands:
+      - command: shell.exec
+        params:
+          script: exit 0
+`
+	s.setupRunTask(projYml)
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:     s.tc.task.ID,
+		TaskSecret: s.tc.task.Secret,
+	}
+	s.tc.taskConfig.Task.MustHaveResults = false
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.testTmpDirName)
+	s.NoError(err)
+
+	s.Zero(s.mockCommunicator.EndTaskResult.Detail.Type)
+	s.Equal(evergreen.TaskSucceeded, s.mockCommunicator.EndTaskResult.Detail.Status)
+	s.Zero(s.mockCommunicator.EndTaskResult.Detail.Description)
+	s.Zero(s.mockCommunicator.EndTaskResult.Detail.FailingCommand)
+
+	s.NoError(s.tc.logger.Close())
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Running task commands",
+		"Running command 'shell.exec' (step 1 of 1)",
+		"Finished command 'shell.exec' (step 1 of 1)",
+	}, []string{
+		panicLog,
+		"Test results are missing and this task must have attached test results. Overall task status changed to FAILED.",
+	})
+}
+
+func (s *AgentSuite) TestFailingCommandIsNotOverwrittenByMissingTestResult() {
+	projYml := `
+tasks:
+  - name: this_is_a_task_name
+    must_have_test_results: true
+    commands:
+      - command: shell.exec
+        params:
+          script: exit 1
+`
+	s.setupRunTask(projYml)
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:     s.tc.task.ID,
+		TaskSecret: s.tc.task.Secret,
+	}
+	s.tc.taskConfig.Task.MustHaveResults = true
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.testTmpDirName)
+	s.NoError(err)
+
+	s.Equal(evergreen.CommandTypeTest, s.mockCommunicator.EndTaskResult.Detail.Type)
+	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
+	s.Empty(s.mockCommunicator.EndTaskResult.Detail.Description)
+	s.Equal(s.tc.getFailingCommand().FullDisplayName(), s.mockCommunicator.EndTaskResult.Detail.FailingCommand)
+
+	s.NoError(s.tc.logger.Close())
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Running task commands",
+		"Running command 'shell.exec' (step 1 of 1)",
+		"Finished command 'shell.exec' (step 1 of 1)",
+	}, []string{
+		panicLog,
+		"Test results are missing and this task must have attached test results. Overall task status changed to FAILED.",
+	})
+}
+
+func (s *AgentSuite) TestFailingTestResultFailsTask() {
+	projYml := `
+tasks:
+  - name: this_is_a_task_name
+    commands:
+      - command: shell.exec
+        params:
+          script: exit 0
+`
+	s.setupRunTask(projYml)
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:     s.tc.task.ID,
+		TaskSecret: s.tc.task.Secret,
+	}
+	s.tc.taskConfig.HasTestResults = true
+	s.tc.taskConfig.HasFailingTestResult = true
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.testTmpDirName)
+	s.NoError(err)
+
+	s.Equal(evergreen.CommandTypeTest, s.mockCommunicator.EndTaskResult.Detail.Type)
+	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
+	s.Equal(evergreen.TaskDescriptionResultsFailed, s.mockCommunicator.EndTaskResult.Detail.Description)
+	s.Zero(s.mockCommunicator.EndTaskResult.Detail.FailingCommand)
+
+	s.NoError(s.tc.logger.Close())
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Running task commands",
+		"Running command 'shell.exec' (step 1 of 1)",
+		"Finished command 'shell.exec' (step 1 of 1)",
+		"Test results contain at least one failure. Overall task status changed to FAILED.",
+	}, []string{panicLog})
+}
+
+func (s *AgentSuite) TestFailingCommandIsNotOverwrittenByFailingTestResult() {
+	projYml := `
+tasks:
+  - name: this_is_a_task_name
+    commands:
+      - command: shell.exec
+        params:
+          script: exit 1
+`
+	s.setupRunTask(projYml)
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:     s.tc.task.ID,
+		TaskSecret: s.tc.task.Secret,
+	}
+	s.tc.taskConfig.HasTestResults = true
+	s.tc.taskConfig.HasFailingTestResult = true
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.testTmpDirName)
+	s.NoError(err)
+
+	s.Equal(evergreen.CommandTypeTest, s.mockCommunicator.EndTaskResult.Detail.Type)
+	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
+	s.Empty(s.mockCommunicator.EndTaskResult.Detail.Description)
+	s.Equal(s.tc.getFailingCommand().FullDisplayName(), s.mockCommunicator.EndTaskResult.Detail.FailingCommand)
+
+	s.NoError(s.tc.logger.Close())
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Running task commands",
+		"Running command 'shell.exec' (step 1 of 1)",
+		"Finished command 'shell.exec' (step 1 of 1)",
+	}, []string{
+		panicLog,
+		"Test results are missing and this task must have attached test results. Overall task status changed to FAILED.",
+	})
+}
+
 func (s *AgentSuite) TestRetryOnFailure() {
 	projYml := `
 tasks:

@@ -88,6 +88,11 @@ func attachTestResults(ctx context.Context, conf *internal.TaskConfig, td client
 		return errors.Wrap(err, "setting results info in the task")
 	}
 
+	conf.HasTestResults = true
+	if failed {
+		conf.HasFailingTestResult = true
+	}
+
 	return nil
 }
 

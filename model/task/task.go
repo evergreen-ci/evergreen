@@ -2970,42 +2970,48 @@ func (t *Task) Archive(ctx context.Context) error {
 	if !utility.StringSliceContains(evergreen.TaskCompletedStatuses, t.Status) {
 		return nil
 	}
+	if t.CanReset {
+		// For idempotency reasons, skip tasks that are currently waiting to
+		// reset. It prevents a race where the same task data can be
+		// archived for two consecutive task executions.
+		return nil
+	}
+
 	if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
 		return errors.Wrapf(ArchiveMany(ctx, []Task{*t}), "archiving display task '%s'", t.Id)
-	} else {
-		// Archiving a single task.
-		archiveTask := t.makeArchivedTask()
-		err := db.Insert(ctx, OldCollection, archiveTask)
-		if err != nil && !db.IsDuplicateKey(err) {
-			return errors.Wrap(err, "inserting archived task into old tasks")
-		}
-		t.Aborted = false
-		err = UpdateOne(
-			ctx,
-			bson.M{
-				IdKey:     t.Id,
-				StatusKey: bson.M{"$in": evergreen.TaskCompletedStatuses},
-				"$or": []bson.M{
-					{
-						CanResetKey: bson.M{"$exists": false},
-					},
-					{
-						CanResetKey: false,
-					},
+	}
+
+	archiveTask := t.makeArchivedTask()
+	err := db.Insert(ctx, OldCollection, archiveTask)
+	if err != nil && !db.IsDuplicateKey(err) {
+		return errors.Wrap(err, "inserting archived task into old tasks")
+	}
+	t.Aborted = false
+	err = UpdateOne(
+		ctx,
+		bson.M{
+			IdKey:     t.Id,
+			StatusKey: bson.M{"$in": evergreen.TaskCompletedStatuses},
+			"$or": []bson.M{
+				{
+					CanResetKey: bson.M{"$exists": false},
+				},
+				{
+					CanResetKey: false,
 				},
 			},
-			[]bson.M{
-				updateDisplayTasksAndTasksSet,
-				updateDisplayTasksAndTasksUnset,
-				addDisplayStatusCache,
-			},
-		)
-		// Return nil if the task has already been archived
-		if adb.ResultsNotFound(err) {
-			return nil
-		}
-		return errors.Wrap(err, "updating task")
+		},
+		[]bson.M{
+			updateDisplayTasksAndTasksSet,
+			updateDisplayTasksAndTasksUnset,
+			addDisplayStatusCache,
+		},
+	)
+	// Return nil if the task has already been archived
+	if adb.ResultsNotFound(err) {
+		return nil
 	}
+	return errors.Wrap(err, "updating task")
 }
 
 // ArchiveMany accepts tasks and display tasks (no execution tasks). The function
@@ -3022,6 +3028,13 @@ func ArchiveMany(ctx context.Context, tasks []Task) error {
 		if !utility.StringSliceContains(evergreen.TaskCompletedStatuses, t.Status) {
 			continue
 		}
+		if t.CanReset {
+			// For idempotency reasons, skip tasks that are currently waiting to
+			// reset. It prevents a race where the same task data can be
+			// archived for two consecutive task executions.
+			continue
+		}
+
 		allTaskIds = append(allTaskIds, t.Id)
 		archivedTasks = append(archivedTasks, t.makeArchivedTask())
 		if t.DisplayOnly && len(t.ExecutionTasks) > 0 {
