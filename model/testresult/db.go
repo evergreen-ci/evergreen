@@ -1,7 +1,10 @@
 package testresult
 
 import (
+	"crypto/sha1"
 	"fmt"
+	"hash"
+	"io"
 	"time"
 
 	"github.com/mongodb/anser/bsonutil"
@@ -15,7 +18,7 @@ const (
 type DbTaskTestResults struct {
 	ID          string               `bson:"_id"`
 	Stats       TaskTestResultsStats `bson:"stats"`
-	Info        testResultsInfo      `bson:"info"`
+	Info        TestResultsInfo      `bson:"info"`
 	CreatedAt   time.Time            `bson:"created_at"`
 	CompletedAt time.Time            `bson:"completed_at"`
 	// FailedTestsSample is the first X failing tests of the test Results.
@@ -23,6 +26,24 @@ type DbTaskTestResults struct {
 	// limited number of failing tests for a task.
 	FailedTestsSample []string `bson:"failed_tests_sample"`
 	Results           []TestResult
+}
+
+// ID creates a unique hash for a TestResultsInfo.
+func (t *TestResultsInfo) ID() string {
+	var hash hash.Hash
+
+	hash = sha1.New()
+	_, _ = io.WriteString(hash, t.Project)
+	_, _ = io.WriteString(hash, t.Version)
+	_, _ = io.WriteString(hash, t.Variant)
+	_, _ = io.WriteString(hash, t.TaskName)
+	_, _ = io.WriteString(hash, t.DisplayTaskName)
+	_, _ = io.WriteString(hash, t.TaskID)
+	_, _ = io.WriteString(hash, t.DisplayTaskID)
+	_, _ = io.WriteString(hash, fmt.Sprint(t.Execution))
+	_, _ = io.WriteString(hash, t.RequestType)
+
+	return fmt.Sprintf("%x", hash.Sum(nil))
 }
 
 // PrestoPartitionKey returns the partition key for the S3 bucket in Presto.
@@ -42,7 +63,7 @@ var (
 	TestResultsCompletedAtKey       = bsonutil.MustHaveTag(DbTaskTestResults{}, "CompletedAt")
 	TestResultsFailedTestsSampleKey = bsonutil.MustHaveTag(DbTaskTestResults{}, "FailedTestsSample")
 
-	TestResultsInfoTaskIDKey        = bsonutil.MustHaveTag(testResultsInfo{}, "TaskID")
-	TestResultsInfoDisplayTaskIDKey = bsonutil.MustHaveTag(testResultsInfo{}, "DisplayTaskID")
-	TestResultsInfoExecutionKey     = bsonutil.MustHaveTag(testResultsInfo{}, "Execution")
+	TestResultsInfoTaskIDKey        = bsonutil.MustHaveTag(TestResultsInfo{}, "TaskID")
+	TestResultsInfoDisplayTaskIDKey = bsonutil.MustHaveTag(TestResultsInfo{}, "DisplayTaskID")
+	TestResultsInfoExecutionKey     = bsonutil.MustHaveTag(TestResultsInfo{}, "Execution")
 )

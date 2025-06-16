@@ -2,24 +2,35 @@ package task
 
 import (
 	"context"
+	"fmt"
 	"math/rand"
 	"testing"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
+	goparquet "github.com/fraugster/parquet-go"
+	"github.com/fraugster/parquet-go/floor"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func init() { testutil.Setup() }
 
 const MaxSampleSize = 10
 
 var output = TaskOutput{
 	TestResults: TestResultOutput{
 		Version: 1,
+		BucketConfig: evergreen.BucketConfig{
+			Type:                    evergreen.BucketTypeLocal,
+			PrestoTestResultsPrefix: "presto-test-results",
+		},
 	},
 }
 
@@ -35,64 +46,29 @@ func TestLocalService(t *testing.T) {
 	env := testutil.NewEnvironment(ctx, t)
 	svc := NewLocalService(env)
 	require.NoError(t, ClearLocal(ctx, env))
+	require.NoError(t, db.Clear(Collection))
 	defer func() {
 		assert.NoError(t, ClearLocal(ctx, env))
+		assert.NoError(t, db.Clear(Collection))
 	}()
 
-	task0 := Task{Id: "task0", Execution: 0, ResultsService: TestResultsServiceLocal, TaskOutputInfo: &output}
-	savedResults0 := make([]testresult.TestResult, 10)
-	for i := 0; i < len(savedResults0); i++ {
-		result := getTestResult()
-		result.TaskID = task0.Id
-		result.Execution = task0.Execution
-		if i%2 != 0 {
-			result.Status = evergreen.TestFailedStatus
-		}
-		savedResults0[i] = result
-	}
-	require.NoError(t, svc.AppendTestResults(ctx, savedResults0))
+	output.TestResults.BucketConfig.PrestoBucket = t.TempDir()
+	testBucket, err := pail.NewLocalBucket(pail.LocalOptions{Path: output.TestResults.BucketConfig.PrestoBucket})
+	require.NoError(t, err)
 
+	task0 := Task{Id: "task0", Execution: 0, ResultsService: TestResultsServiceLocal, TaskOutputInfo: &output}
 	task1 := Task{Id: "task1", Execution: 0, ResultsService: TestResultsServiceLocal, TaskOutputInfo: &output}
-	savedResults1 := make([]testresult.TestResult, 10)
-	for i := 0; i < len(savedResults1); i++ {
-		result := getTestResult()
-		result.TaskID = task1.Id
-		result.Execution = task1.Execution
-		savedResults1[i] = result
-	}
-	require.NoError(t, svc.AppendTestResults(ctx, savedResults1))
 	task2 := Task{Id: "task2", Execution: 1, ResultsService: TestResultsServiceLocal, TaskOutputInfo: &output}
-	savedResults2 := make([]testresult.TestResult, 10)
-	for i := 0; i < len(savedResults2); i++ {
-		result := getTestResult()
-		result.TaskID = task2.Id
-		result.Execution = task2.Execution
-		savedResults2[i] = result
-	}
-	require.NoError(t, svc.AppendTestResults(ctx, savedResults2))
 	task3 := Task{Id: "task3", Execution: 0, ResultsService: TestResultsServiceLocal, TaskOutputInfo: &output}
-	savedResults3 := make([]testresult.TestResult, MaxSampleSize)
-	for i := 0; i < len(savedResults3); i++ {
-		result := getTestResult()
-		result.TaskID = task3.Id
-		result.Execution = task3.Execution
-		if i%2 == 0 {
-			result.Status = evergreen.TestFailedStatus
-		}
-		savedResults3[i] = result
-	}
-	require.NoError(t, svc.AppendTestResults(ctx, savedResults3))
 	task4 := Task{Id: "task4", Execution: 1, ResultsService: TestResultsServiceLocal, TaskOutputInfo: &output}
-	savedResults4 := make([]testresult.TestResult, MaxSampleSize)
-	for i := 0; i < len(savedResults3); i++ {
-		result := getTestResult()
-		result.TaskID = task4.Id
-		result.Execution = task4.Execution
-		result.Status = evergreen.TestFailedStatus
-		savedResults4[i] = result
-	}
-	require.NoError(t, svc.AppendTestResults(ctx, savedResults4))
 	emptyTask := Task{Id: "DNE", Execution: 0, ResultsService: TestResultsServiceLocal, TaskOutputInfo: &output}
+	require.NoError(t, db.InsertMany(t.Context(), Collection, task0, task1, task2, task3, task4))
+
+	savedResults0 := saveAndWrite(t, ctx, testBucket, svc, &task0, true)
+	savedResults1 := saveAndWrite(t, ctx, testBucket, svc, &task1, false)
+	savedResults2 := saveAndWrite(t, ctx, testBucket, svc, &task2, false)
+	savedResults3 := saveAndWrite(t, ctx, testBucket, svc, &task3, true)
+	savedResults4 := saveAndWrite(t, ctx, testBucket, svc, &task4, true)
 
 	t.Run("GetMergedTaskTestResults", func(t *testing.T) {
 		t.Run("WithoutFilterAndSortOpts", func(t *testing.T) {
@@ -609,10 +585,11 @@ func TestLocalFilterAndSortTestResults(t *testing.T) {
 
 func getTestResult() testresult.TestResult {
 	result := testresult.TestResult{
-		TestName:      utility.RandomString(),
-		Status:        evergreen.TestSucceededStatus,
-		TestStartTime: time.Now().Add(-30 * time.Hour).UTC().Round(time.Millisecond),
-		TestEndTime:   time.Now().UTC().Round(time.Millisecond),
+		TestName:       utility.RandomString(),
+		Status:         evergreen.TestSucceededStatus,
+		TestStartTime:  time.Now().Add(-30 * time.Hour).UTC().Round(time.Millisecond),
+		TaskCreateTime: time.Now().Add(-30 * time.Hour).UTC().Round(time.Millisecond),
+		TestEndTime:    time.Now().UTC().Round(time.Millisecond),
 	}
 	// Optional fields, we should test that we handle them properly when
 	// they are populated and when they do not.
@@ -626,4 +603,85 @@ func getTestResult() testresult.TestResult {
 	}
 
 	return result
+}
+
+func getTestResults() *testresult.DbTaskTestResults {
+	info := testresult.TestResultsInfo{
+		Project:     utility.RandomString(),
+		Version:     utility.RandomString(),
+		Variant:     utility.RandomString(),
+		TaskName:    utility.RandomString(),
+		TaskID:      utility.RandomString(),
+		Execution:   rand.Intn(5),
+		RequestType: utility.RandomString(),
+	}
+	// Optional fields, we should test that we handle them properly when
+	// they are populated and when they do not.
+	if sometimes.Half() {
+		info.DisplayTaskName = utility.RandomString()
+		info.DisplayTaskID = utility.RandomString()
+	}
+
+	return &testresult.DbTaskTestResults{
+		ID:          info.ID(),
+		Info:        info,
+		CreatedAt:   time.Now().Add(-time.Hour).UTC().Round(time.Millisecond),
+		CompletedAt: time.Now().UTC().Round(time.Millisecond),
+	}
+}
+
+func saveAndWrite(t *testing.T, ctx context.Context, testBucket pail.Bucket, svc TestResultsService, tsk *Task, failedTests bool) []testresult.TestResult {
+	tr := getTestResults()
+	tr.Info.TaskID = tsk.Id
+	tr.Info.Execution = tsk.Execution
+	savedResults := make([]testresult.TestResult, 10)
+
+	savedParquet := testresult.ParquetTestResults{
+		Version:     tr.Info.Version,
+		Variant:     tr.Info.Variant,
+		TaskName:    tr.Info.TaskName,
+		TaskID:      tr.Info.TaskID,
+		Execution:   int32(tr.Info.Execution),
+		RequestType: tr.Info.RequestType,
+		CreatedAt:   tr.CreatedAt.UTC(),
+		Results:     make([]testresult.ParquetTestResult, 10),
+	}
+
+	for i := 0; i < len(savedResults); i++ {
+		result := getTestResult()
+		result.TaskID = tr.Info.TaskID
+		result.Execution = tr.Info.Execution
+		if failedTests && i%2 != 0 {
+			result.Status = evergreen.TestFailedStatus
+		}
+		savedResults[i] = result
+		savedParquet.Results[i] = testresult.ParquetTestResult{
+			TestName:       result.TestName,
+			GroupID:        utility.ToStringPtr(result.GroupID),
+			Status:         result.Status,
+			LogInfo:        result.LogInfo,
+			TaskCreateTime: result.TaskCreateTime.UTC(),
+			TestStartTime:  result.TestStartTime.UTC(),
+			TestEndTime:    result.TestEndTime.UTC(),
+		}
+		if result.DisplayTestName != "" {
+			savedParquet.Results[i].DisplayTestName = utility.ToStringPtr(result.DisplayTestName)
+			savedParquet.Results[i].GroupID = utility.ToStringPtr(result.GroupID)
+			savedParquet.Results[i].LogTestName = utility.ToStringPtr(result.LogTestName)
+			savedParquet.Results[i].LogURL = utility.ToStringPtr(result.LogURL)
+			savedParquet.Results[i].RawLogURL = utility.ToStringPtr(result.RawLogURL)
+			savedParquet.Results[i].LineNum = utility.ToInt32Ptr(int32(result.LineNum))
+		}
+	}
+
+	w, err := testBucket.Writer(ctx, fmt.Sprintf("%s/%s", output.TestResults.BucketConfig.PrestoTestResultsPrefix, tr.PrestoPartitionKey()))
+	require.NoError(t, err)
+	defer func() { assert.NoError(t, w.Close()) }()
+
+	pw := floor.NewWriter(goparquet.NewFileWriter(w, goparquet.WithSchemaDefinition(parquetTestResultsSchemaDef)))
+	require.NoError(t, pw.Write(savedParquet))
+	require.NoError(t, pw.Close())
+	require.NoError(t, db.Insert(ctx, testresult.Collection, tr))
+	require.NoError(t, svc.AppendTestResults(ctx, savedResults))
+	return savedResults
 }

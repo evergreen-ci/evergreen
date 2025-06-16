@@ -88,7 +88,8 @@ func TestGetTaskInfo(t *testing.T) {
 	}()
 
 	Convey("When finding info on a particular task", t, func() {
-		require.NoError(t, db.ClearCollections(task.Collection, artifact.Collection, testresult.Collection))
+		require.NoError(t, db.ClearCollections(task.Collection, artifact.Collection))
+		require.NoError(t, task.ClearLocal(ctx, env))
 
 		taskId := "my-task"
 		versionId := "my-version"

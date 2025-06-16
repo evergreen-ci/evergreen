@@ -26,8 +26,8 @@ type TaskTestResultsStats struct {
 	FilteredCount *int `json:"filtered_count" bson:"-"`
 }
 
-// testResultsInfo describes information unique to a single task execution.
-type testResultsInfo struct {
+// TestResultsInfo describes information unique to a single task execution.
+type TestResultsInfo struct {
 	Project         string `bson:"project"`
 	Version         string `bson:"version"`
 	Variant         string `bson:"variant"`
@@ -52,6 +52,7 @@ type TestResult struct {
 	BaseStatus      string       `json:"base_status" bson:"base_status"`
 	LogInfo         *TestLogInfo `json:"log_info" bson:"log_info"`
 	TestStartTime   time.Time    `json:"test_start_time" bson:"test_start_time"`
+	TaskCreateTime  time.Time    `json:"task_create_time" bson:"task_create_time"`
 	TestEndTime     time.Time    `json:"test_end_time" bson:"test_end_time"`
 
 	// Legacy test log fields.
@@ -83,17 +84,18 @@ type ParquetTestResults struct {
 	Execution       int32               `parquet:"name=execution"`
 	RequestType     string              `parquet:"name=request_type"`
 	CreatedAt       time.Time           `parquet:"name=created_at, timeunit=MILLIS"`
-	Results         []parquetTestResult `parquet:"name=results"`
+	Results         []ParquetTestResult `parquet:"name=results"`
 }
 
-// parquetTestResult describes a single test result to be stored in Apache
+// ParquetTestResult describes a single test result to be stored in Apache
 // Parquet file format.
-type parquetTestResult struct {
+type ParquetTestResult struct {
 	TestName        string       `parquet:"name=test_name"`
 	DisplayTestName *string      `parquet:"name=display_test_name"`
 	GroupID         *string      `parquet:"name=group_id"`
 	Status          string       `parquet:"name=status"`
 	LogInfo         *TestLogInfo `parquet:"name=log_info"`
+	TaskCreateTime  time.Time    `parquet:"name=task_create_time, timeunit=MILLIS"`
 	TestStartTime   time.Time    `parquet:"name=test_start_time, timeunit=MILLIS"`
 	TestEndTime     time.Time    `parquet:"name=test_end_time, timeunit=MILLIS"`
 
@@ -120,6 +122,7 @@ func (r ParquetTestResults) ConvertToTestResultSlice() []TestResult {
 			RawLogURL:       utility.FromStringPtr(r.Results[i].RawLogURL),
 			LineNum:         int(utility.FromInt32Ptr(r.Results[i].LineNum)),
 			TestStartTime:   r.Results[i].TestStartTime,
+			TaskCreateTime:  r.Results[i].TaskCreateTime,
 			TestEndTime:     r.Results[i].TestEndTime,
 		}
 	}
