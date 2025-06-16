@@ -19,7 +19,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/plank"
 	"github.com/evergreen-ci/utility"
@@ -688,27 +687,27 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, versionID string, ta
 		failingTests = append(failingTests, f.TestName)
 	}
 
-	var allTaskOpts []taskoutput.TaskOptions
+	var allTasks []task.Task
 	apiSamples := make([]*TaskTestResultSample, len(dbTasks))
 	apiSamplesByTaskID := map[string]*TaskTestResultSample{}
 	for i, dbTask := range dbTasks {
 		if dbTask.Version != versionID && dbTask.ParentPatchID != versionID {
 			return nil, InputValidationError.Send(ctx, fmt.Sprintf("task '%s' does not belong to version '%s'", dbTask.Id, versionID))
 		}
-		taskOpts, err := dbTask.CreateTestResultsTaskOptions(ctx)
+		tasks, err := dbTask.GetTestResultsTasks(ctx)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("creating test results task options for task '%s': %s", dbTask.Id, err.Error()))
 		}
 
 		apiSamples[i] = &TaskTestResultSample{TaskID: dbTask.Id, Execution: dbTask.Execution}
-		for _, o := range taskOpts {
-			apiSamplesByTaskID[o.TaskID] = apiSamples[i]
+		for _, o := range tasks {
+			apiSamplesByTaskID[o.Id] = apiSamples[i]
 		}
-		allTaskOpts = append(allTaskOpts, taskOpts...)
+		allTasks = append(allTasks, tasks...)
 	}
 
-	if len(allTaskOpts) > 0 {
-		samples, err := taskoutput.GetFailedTestSamples(ctx, evergreen.GetEnvironment(), allTaskOpts, failingTests)
+	if len(allTasks) > 0 {
+		samples, err := task.GetFailedTestSamples(ctx, evergreen.GetEnvironment(), allTasks, failingTests)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting test results sample: %s", err.Error()))
 		}

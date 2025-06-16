@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal/redactor"
 	agentutil "github.com/evergreen-ci/evergreen/agent/util"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -38,8 +37,8 @@ func TestLoggerProducerRedactorOptions(t *testing.T) {
 		return &task.Task{
 			Id:      "task",
 			Project: "project",
-			TaskOutputInfo: &taskoutput.TaskOutput{
-				TaskLogs: taskoutput.TaskLogOutput{
+			TaskOutputInfo: &task.TaskOutput{
+				TaskLogs: task.TaskLogOutput{
 					Version: 1,
 					BucketConfig: evergreen.BucketConfig{
 						Name: t.TempDir(),
@@ -125,8 +124,8 @@ func TestLoggerClose(t *testing.T) {
 	tsk := &task.Task{
 		Id:      "task",
 		Project: "project",
-		TaskOutputInfo: &taskoutput.TaskOutput{
-			TaskLogs: taskoutput.TaskLogOutput{
+		TaskOutputInfo: &task.TaskOutput{
+			TaskLogs: task.TaskLogOutput{
 				Version: 1,
 				BucketConfig: evergreen.BucketConfig{
 					Name: t.TempDir(),

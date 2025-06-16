@@ -22,7 +22,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/testlog"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/google/go-github/v70/github"
@@ -189,7 +188,7 @@ func (c *Mock) GetTask(ctx context.Context, td TaskData) (*task.Task, error) {
 		DisplayName:    "build",
 		Execution:      c.TaskExecution,
 		Version:        "mock_version_id",
-		TaskOutputInfo: &taskoutput.TaskOutput{},
+		TaskOutputInfo: &task.TaskOutput{},
 	}, nil
 }
 
