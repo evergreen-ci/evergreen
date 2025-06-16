@@ -749,10 +749,6 @@ func (g *GeneratedProject) addGeneratedProjectToConfig(intermediateProject *Pars
 	// Append buildvariants, tasks, and functions to the config.
 	intermediateProject.TaskGroups = append(intermediateProject.TaskGroups, g.TaskGroups...)
 	intermediateProject.Tasks = append(intermediateProject.Tasks, g.Tasks...)
-	var mergedTaskNames = []string{}
-	for _, t := range intermediateProject.Tasks {
-		mergedTaskNames = append(mergedTaskNames, t.Name)
-	}
 	for key, val := range g.Functions {
 		intermediateProject.Functions[key] = val
 	}
