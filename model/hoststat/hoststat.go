@@ -22,10 +22,8 @@ type HostStatMetadata struct {
 
 func NewHostStat(distro string, numHosts int) *HostStat {
 	return &HostStat{
-		ID: primitive.NewObjectID(),
-		// kim: NOTE: rounded to the nearest minute to reduce density of data
-		// points. Host allocator runs more than once per minute.
-		Timestamp: time.Now(),
+		ID:        primitive.NewObjectID(),
+		Timestamp: time.Now().Round(time.Minute),
 		Metadata: HostStatMetadata{
 			Distro: distro,
 		},

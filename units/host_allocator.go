@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -172,14 +173,7 @@ func (j *hostAllocatorJob) Run(ctx context.Context) {
 		DistroQueueInfo: distroQueueInfo,
 	}
 
-	// kim: TODO: verify that this is stored in time series collection as
-	// expected.
-	hs := hoststat.NewHostStat(distro.Id, len(upHosts))
-	grip.Error(message.WrapError(hs.Insert(ctx), message.Fields{
-		"message":   "could not insert latest host stat data for distro",
-		"distro":    distro.Id,
-		"num_hosts": len(upHosts),
-	}))
+	j.saveHostStats(ctx, distro, len(upHosts))
 
 	if distro.SingleTaskDistro {
 		// Single tasks distros should spawn a host for each task available to run in the queue.
@@ -420,6 +414,24 @@ func (j *hostAllocatorJob) setTargetAndTerminate(ctx context.Context, numUpHosts
 			}))
 		}
 
+	}
+
+}
+
+// saveHostStats saves the latest host usage stats for an EC2 distro.
+// kim: TODO: test that this is saved in staging DB.
+func (j *hostAllocatorJob) saveHostStats(ctx context.Context, d *distro.Distro, numUpHosts int) {
+	if !evergreen.IsEc2Provider(d.Provider) {
+		return
+	}
+
+	hs := hoststat.NewHostStat(d.Id, numUpHosts)
+	if err := hs.Insert(ctx); err != nil && !db.IsDuplicateKey(err) {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":   "could not insert latest host stat data for distro",
+			"distro":    d.Id,
+			"num_hosts": numUpHosts,
+		}))
 	}
 
 }
