@@ -10,24 +10,20 @@ import (
 
 // HostStat records statistics about host usage by distro.
 type HostStat struct {
-	ID        primitive.ObjectID `bson:"_id"`
-	Timestamp time.Time          `bson:"timestamp"`
-	Metadata  HostStatMetadata   `bson:"metadata"`
-	NumHosts  int                `bson:"num_hosts"`
+	ID        string    `bson:"_id"`
+	DistroID  string    `bson:"distro"`
+	Timestamp time.Time `bson:"timestamp"`
+	NumHosts  int       `bson:"num_hosts"`
 }
 
-type HostStatMetadata struct {
-	Distro string `bson:"distro"`
-}
+const tsFormat = "2006-01-02.15-04-05"
 
-func NewHostStat(distro string, numHosts int) *HostStat {
+func NewHostStat(distroID string, numHosts int) *HostStat {
 	return &HostStat{
-		ID:        primitive.NewObjectID(),
+		ID:        primitive.NewObjectID().Hex(),
 		Timestamp: time.Now().Round(time.Minute),
-		Metadata: HostStatMetadata{
-			Distro: distro,
-		},
-		NumHosts: numHosts,
+		DistroID:  distroID,
+		NumHosts:  numHosts,
 	}
 }
 
