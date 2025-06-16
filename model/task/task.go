@@ -1451,7 +1451,7 @@ func setDependenciesMetTimeForTasks(ctx context.Context, uniqueIDsToSetDependenc
 	return nil
 }
 
-// ByBeforeMidwayTaskFromIds tries to Get the midway task between two tasks
+// ByBeforeMidwayTaskFromIds tries to get the midway task between two tasks
 // but if it does not find it (i.e. periodic builds), it gets the closest task
 // (with lower order number). If there are no matching tasks, or the task it
 // gets is out of bounds, it returns the given lower order revision task.
@@ -1786,10 +1786,10 @@ func (t *Task) GetTaskOutputSafe() (*TaskOutput, bool) {
 	return t.TaskOutputInfo, true
 }
 
-// getTaskLogs returns the task's task logs with the given options.
+// GetTaskLogs returns the task's task logs with the given options.
 func (t *Task) GetTaskLogs(ctx context.Context, getOpts TaskLogGetOptions) (log.LogIterator, error) {
 	if t.DisplayOnly {
-		return nil, errors.New("cannot Get task logs for a display task")
+		return nil, errors.New("cannot get task logs for a display task")
 	}
 
 	tsk := t
@@ -1802,7 +1802,7 @@ func (t *Task) GetTaskLogs(ctx context.Context, getOpts TaskLogGetOptions) (log.
 // GetTestLogs returns the task's test logs with the specified options.
 func (t *Task) GetTestLogs(ctx context.Context, getOpts TestLogGetOptions) (log.LogIterator, error) {
 	if t.DisplayOnly {
-		return nil, errors.New("cannot Get test logs for a display task")
+		return nil, errors.New("cannot get test logs for a display task")
 	}
 
 	task := t
@@ -1986,7 +1986,7 @@ func getDependencyTaskIdsToActivate(ctx context.Context, tasks []string, updateD
 	}
 
 	// do a topological sort so we've dealt with
-	// all a task's dependencies by the time we Get up to it
+	// all a task's dependencies by the time we get up to it
 	sortedDependencies, err := topologicalSort(tasksDependingOnTheseTasks)
 	if err != nil {
 		return nil, nil, errors.WithStack(err)
@@ -2650,7 +2650,7 @@ func getRecursiveDependenciesDown(ctx context.Context, tasks []string, taskMap m
 	}).WithFields(IdKey, ActivatedKey, DeactivatedForDependencyKey, ExecutionKey, DependsOnKey, BuildIdKey)
 	dependOnUsTasks, err := FindAll(ctx, query)
 	if err != nil {
-		return nil, errors.Wrap(err, "can't Get dependencies")
+		return nil, errors.Wrap(err, "can't get dependencies")
 	}
 
 	// if the task hasn't yet been visited we need to recurse on it
@@ -3372,7 +3372,7 @@ func updateSchedulingLimitForResetWhenFinished(ctx context.Context, t *Task, cal
 	return errors.Wrap(CheckUsersPatchTaskLimit(ctx, t.Requester, caller, true, tasks...), "updating patch task limit for user")
 }
 
-// CheckUsersPatchTaskLimit takes in an input list of tasks that is set to Get activated, and checks if they're
+// CheckUsersPatchTaskLimit takes in an input list of tasks that is set to get activated, and checks if they're
 // non commit-queue patch tasks, and that the request has been submitted by a user. If so, the maximum hourly patch tasks counter
 // will be incremented accordingly. The includeDisplayAndTaskGroups parameter indicates that execution tasks and single host task
 // group tasks are to be counted as part of the limit update, otherwise they will be ignored.
@@ -3482,7 +3482,7 @@ func (t *Task) IsPartOfDisplay(ctx context.Context) bool {
 		dt, err := t.GetDisplayTask(ctx)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
-				"message":        "unable to Get display task",
+				"message":        "unable to get display task",
 				"execution_task": t.Id,
 			}))
 			return false
