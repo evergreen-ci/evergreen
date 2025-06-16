@@ -44221,14 +44221,11 @@ func (ec *executionContext) _PodEventLogEntry_processedAt(ctx context.Context, f
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*time.Time)
 	fc.Result = res
-	return ec.marshalNTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_PodEventLogEntry_processedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -90185,9 +90182,6 @@ func (ec *executionContext) _PodEventLogEntry(ctx context.Context, sel ast.Selec
 			out.Values[i] = ec._PodEventLogEntry_eventType(ctx, field, obj)
 		case "processedAt":
 			out.Values[i] = ec._PodEventLogEntry_processedAt(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "resourceId":
 			out.Values[i] = ec._PodEventLogEntry_resourceId(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
