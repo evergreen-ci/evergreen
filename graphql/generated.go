@@ -28016,14 +28016,11 @@ func (ec *executionContext) _HostEventLogEntry_processedAt(ctx context.Context, 
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*time.Time)
 	fc.Result = res
-	return ec.marshalNTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_HostEventLogEntry_processedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -63358,14 +63355,11 @@ func (ec *executionContext) _TaskEventLogEntry_processedAt(ctx context.Context, 
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*time.Time)
 	fc.Result = res
-	return ec.marshalNTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_TaskEventLogEntry_processedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -86347,9 +86341,6 @@ func (ec *executionContext) _HostEventLogEntry(ctx context.Context, sel ast.Sele
 			out.Values[i] = ec._HostEventLogEntry_eventType(ctx, field, obj)
 		case "processedAt":
 			out.Values[i] = ec._HostEventLogEntry_processedAt(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "resourceId":
 			out.Values[i] = ec._HostEventLogEntry_resourceId(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -95477,9 +95468,6 @@ func (ec *executionContext) _TaskEventLogEntry(ctx context.Context, sel ast.Sele
 			out.Values[i] = ec._TaskEventLogEntry_eventType(ctx, field, obj)
 		case "processedAt":
 			out.Values[i] = ec._TaskEventLogEntry_processedAt(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "resourceId":
 			out.Values[i] = ec._TaskEventLogEntry_resourceId(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
