@@ -19,13 +19,17 @@ import (
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/gimlet"
+	"github.com/evergreen-ci/pail"
+	"github.com/evergreen-ci/utility"
+	goparquet "github.com/fraugster/parquet-go"
+	"github.com/fraugster/parquet-go/floor"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-func insertTaskForTesting(ctx context.Context, env evergreen.Environment, taskId, versionId, projectName string, testResults []testresult.TestResult) (*task.Task, error) {
+func insertTaskForTesting(ctx context.Context, env evergreen.Environment, taskId, versionId, projectName string, testResults []testresult.TestResult, path string) (*task.Task, error) {
 	svc := task.NewLocalService(env)
 	tsk := &task.Task{
 		Id:                  taskId,
@@ -58,11 +62,75 @@ func insertTaskForTesting(ctx context.Context, env evergreen.Environment, taskId
 		Aborted:          false,
 		TimeTaken:        100 * time.Millisecond,
 		ExpectedDuration: 99 * time.Millisecond,
-		TaskOutputInfo:   &task.TaskOutput{TestResults: task.TestResultOutput{Version: 1}},
+		TaskOutputInfo: &task.TaskOutput{
+			TestResults: task.TestResultOutput{
+				Version: 1,
+				BucketConfig: evergreen.BucketConfig{
+					Type:                    evergreen.BucketTypeLocal,
+					PrestoTestResultsPrefix: "presto-test-results",
+					PrestoBucket:            path,
+				},
+			},
+		},
 	}
 
 	if len(testResults) > 0 {
 		tsk.ResultsService = task.TestResultsServiceLocal
+		info := testresult.TestResultsInfo{TaskID: taskId, Execution: 0}
+		tr := &testresult.DbTaskTestResults{
+			ID:          info.ID(),
+			Info:        info,
+			CompletedAt: time.Now().UTC().Round(time.Millisecond),
+		}
+
+		testBucket, err := pail.NewLocalBucket(pail.LocalOptions{Path: tsk.TaskOutputInfo.TestResults.BucketConfig.PrestoBucket})
+		if err != nil {
+			return nil, err
+		}
+		w, err := testBucket.Writer(ctx, fmt.Sprintf("%s/%s", tsk.TaskOutputInfo.TestResults.BucketConfig.PrestoTestResultsPrefix, tr.PrestoPartitionKey()))
+		if err != nil {
+			return nil, err
+		}
+		defer func() { w.Close() }()
+
+		pw := floor.NewWriter(goparquet.NewFileWriter(w, goparquet.WithSchemaDefinition(task.ParquetTestResultsSchemaDef)))
+		savedParquet := testresult.ParquetTestResults{
+			Version:     tr.Info.Version,
+			Variant:     tr.Info.Variant,
+			TaskName:    tr.Info.TaskName,
+			TaskID:      tr.Info.TaskID,
+			Execution:   int32(tr.Info.Execution),
+			RequestType: tr.Info.RequestType,
+			CreatedAt:   tr.CreatedAt.UTC(),
+			Results:     make([]testresult.ParquetTestResult, len(testResults)),
+		}
+		for i := 0; i < len(testResults); i++ {
+			savedParquet.Results[i] = testresult.ParquetTestResult{
+				TestName:       testResults[i].TestName,
+				GroupID:        utility.ToStringPtr(testResults[i].GroupID),
+				Status:         testResults[i].Status,
+				LogInfo:        testResults[i].LogInfo,
+				LogURL:         utility.ToStringPtr(testResults[i].LogURL),
+				TaskCreateTime: testResults[i].TaskCreateTime.UTC(),
+				TestStartTime:  testResults[i].TestStartTime.UTC(),
+				TestEndTime:    testResults[i].TestEndTime.UTC(),
+			}
+		}
+		err = pw.Write(savedParquet)
+		if err != nil {
+			return nil, err
+		}
+		err = pw.Close()
+		if err != nil {
+			return nil, err
+		}
+
+		if err := db.Insert(ctx, testresult.Collection, testresult.DbTaskTestResults{
+			ID:   info.ID(),
+			Info: info,
+		}); err != nil {
+			return nil, err
+		}
 		if err := svc.AppendTestResults(ctx, testResults); err != nil {
 			return nil, err
 		}
@@ -104,7 +172,7 @@ func TestGetTaskInfo(t *testing.T) {
 			TestStartTime: time.Now().Add(-9 * time.Minute),
 			TestEndTime:   time.Now().Add(-1 * time.Minute),
 		}
-		testTask, err := insertTaskForTesting(ctx, env, taskId, versionId, projectName, []testresult.TestResult{testResult})
+		testTask, err := insertTaskForTesting(ctx, env, taskId, versionId, projectName, []testresult.TestResult{testResult}, t.TempDir())
 		So(err, ShouldBeNil)
 
 		publicFile := artifact.File{
@@ -276,15 +344,17 @@ func TestGetTaskStatus(t *testing.T) {
 	require.NoError(t, env.Configure(ctx))
 	router, err := newTestUIRouter(ctx, env)
 	require.NoError(t, err, "error setting up router")
-	svc := task.NewLocalService(env)
 	Convey("When finding the status of a particular task", t, func() {
 		require.NoError(t, db.ClearCollections(task.Collection),
 			"Error clearing '%v' collection", task.Collection)
+		require.NoError(t, task.ClearLocal(ctx, env))
 
 		taskId := "my-task"
 
 		testTask := &task.Task{
 			Id:          taskId,
+			Version:     "my-version",
+			Project:     "my-project",
 			DisplayName: "My task",
 			Status:      "success",
 			Details: apimodels.TaskEndDetail{
@@ -292,7 +362,16 @@ func TestGetTaskStatus(t *testing.T) {
 				Description: "some-stage",
 			},
 			ResultsService: task.TestResultsServiceLocal,
-			TaskOutputInfo: &task.TaskOutput{TestResults: task.TestResultOutput{Version: 1}},
+			TaskOutputInfo: &task.TaskOutput{
+				TestResults: task.TestResultOutput{
+					Version: 1,
+					BucketConfig: evergreen.BucketConfig{
+						Type:                    evergreen.BucketTypeLocal,
+						PrestoTestResultsPrefix: "presto-test-results",
+						PrestoBucket:            t.TempDir(),
+					},
+				},
+			},
 		}
 		testResult := testresult.TestResult{
 			Status:        "success",
@@ -303,8 +382,8 @@ func TestGetTaskStatus(t *testing.T) {
 			TestStartTime: time.Now().Add(-9 * time.Minute),
 			TestEndTime:   time.Now().Add(-1 * time.Minute),
 		}
-		require.NoError(t, testTask.Insert(t.Context()))
-		require.NoError(t, svc.AppendTestResults(ctx, []testresult.TestResult{testResult}))
+		_, err = insertTaskForTesting(ctx, env, taskId, testTask.Version, testTask.Project, []testresult.TestResult{testResult}, t.TempDir())
+		require.NoError(t, err)
 
 		url := "/rest/v1/tasks/" + taskId + "/status"
 
@@ -420,9 +499,9 @@ func TestGetDisplayTaskInfo(t *testing.T) {
 		TestStartTime: time.Now().Add(-9 * time.Minute),
 		TestEndTime:   time.Now().Add(-1 * time.Minute),
 	}
-	_, err = insertTaskForTesting(ctx, env, executionTaskId, versionId, projectName, []testresult.TestResult{testResult})
+	_, err = insertTaskForTesting(ctx, env, executionTaskId, versionId, projectName, []testresult.TestResult{testResult}, t.TempDir())
 	assert.NoError(err)
-	displayTask, err := insertTaskForTesting(ctx, env, displayTaskId, versionId, projectName, nil)
+	displayTask, err := insertTaskForTesting(ctx, env, displayTaskId, versionId, projectName, nil, t.TempDir())
 	assert.NoError(err)
 	displayTask.ExecutionTasks = []string{executionTaskId}
 	err = db.UpdateContext(t.Context(), task.Collection,

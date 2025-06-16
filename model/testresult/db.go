@@ -3,7 +3,6 @@ package testresult
 import (
 	"crypto/sha1"
 	"fmt"
-	"hash"
 	"io"
 	"time"
 
@@ -30,9 +29,7 @@ type DbTaskTestResults struct {
 
 // ID creates a unique hash for a TestResultsInfo.
 func (t *TestResultsInfo) ID() string {
-	var hash hash.Hash
-
-	hash = sha1.New()
+	hash := sha1.New()
 	_, _ = io.WriteString(hash, t.Project)
 	_, _ = io.WriteString(hash, t.Version)
 	_, _ = io.WriteString(hash, t.Variant)

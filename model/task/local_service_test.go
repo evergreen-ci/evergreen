@@ -22,8 +22,6 @@ import (
 
 func init() { testutil.Setup() }
 
-const MaxSampleSize = 10
-
 var output = TaskOutput{
 	TestResults: TestResultOutput{
 		Version: 1,
@@ -678,7 +676,7 @@ func saveAndWrite(t *testing.T, ctx context.Context, testBucket pail.Bucket, svc
 	require.NoError(t, err)
 	defer func() { assert.NoError(t, w.Close()) }()
 
-	pw := floor.NewWriter(goparquet.NewFileWriter(w, goparquet.WithSchemaDefinition(parquetTestResultsSchemaDef)))
+	pw := floor.NewWriter(goparquet.NewFileWriter(w, goparquet.WithSchemaDefinition(ParquetTestResultsSchemaDef)))
 	require.NoError(t, pw.Write(savedParquet))
 	require.NoError(t, pw.Close())
 	require.NoError(t, db.Insert(ctx, testresult.Collection, tr))

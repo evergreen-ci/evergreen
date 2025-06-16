@@ -24,11 +24,11 @@ import (
 	"github.com/pkg/errors"
 )
 
-var parquetTestResultsSchemaDef *parquetschema.SchemaDefinition
+var ParquetTestResultsSchemaDef *parquetschema.SchemaDefinition
 
 func init() {
 	var err error
-	parquetTestResultsSchemaDef, err = autoschema.GenerateSchema(new(testresult.ParquetTestResults))
+	ParquetTestResultsSchemaDef, err = autoschema.GenerateSchema(new(testresult.ParquetTestResults))
 	if err != nil {
 		panic(errors.Wrap(err, "generating Parquet test results schema definition"))
 	}
