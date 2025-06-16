@@ -826,7 +826,7 @@ func (h *attachTestResultsHandler) Run(ctx context.Context) gimlet.Responder {
 	if flags.EvergreenTestResultsDisabled {
 		return gimlet.NewJSONResponse(struct{}{})
 	}
-	// TODO: DEVPROD-16200 Implement the new DB/S3-backed Evergreen test results service
+	// TODO: DEVPROD-16201 Ensure this accurately appends test result info as expected
 	t, err := task.FindOneId(ctx, h.taskID)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))

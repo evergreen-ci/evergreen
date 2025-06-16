@@ -26,6 +26,21 @@ type TaskTestResultsStats struct {
 	FilteredCount *int `json:"filtered_count" bson:"-"`
 }
 
+// testResultsInfo describes information unique to a single task execution.
+type testResultsInfo struct {
+	Project         string `bson:"project"`
+	Version         string `bson:"version"`
+	Variant         string `bson:"variant"`
+	TaskName        string `bson:"task_name"`
+	DisplayTaskName string `bson:"display_task_name,omitempty"`
+	TaskID          string `bson:"task_id"`
+	DisplayTaskID   string `bson:"display_task_id,omitempty"`
+	Execution       int    `bson:"execution"`
+	RequestType     string `bson:"request_type"`
+	Mainline        bool   `bson:"mainline"`
+	Schema          int    `bson:"schema"`
+}
+
 // TestResult represents a single test result from an Evergreen task run.
 type TestResult struct {
 	TaskID          string       `json:"task_id" bson:"task_id"`
@@ -54,6 +69,62 @@ type TestLogInfo struct {
 	LineNum       int32     `json:"line_num" bson:"line_num"`
 	RenderingType *string   `json:"rendering_type" bson:"rendering_type"`
 	Version       int32     `json:"version" bson:"version"`
+}
+
+// ParquetTestResults describes a set of test results from a task execution to
+// be stored in Apache Parquet format.
+type ParquetTestResults struct {
+	Version         string              `parquet:"name=version"`
+	Variant         string              `parquet:"name=variant"`
+	TaskName        string              `parquet:"name=task_name"`
+	DisplayTaskName *string             `parquet:"name=display_task_name"`
+	TaskID          string              `parquet:"name=task_id"`
+	DisplayTaskID   *string             `parquet:"name=display_task_id"`
+	Execution       int32               `parquet:"name=execution"`
+	RequestType     string              `parquet:"name=request_type"`
+	CreatedAt       time.Time           `parquet:"name=created_at, timeunit=MILLIS"`
+	Results         []parquetTestResult `parquet:"name=results"`
+}
+
+// parquetTestResult describes a single test result to be stored in Apache
+// Parquet file format.
+type parquetTestResult struct {
+	TestName        string       `parquet:"name=test_name"`
+	DisplayTestName *string      `parquet:"name=display_test_name"`
+	GroupID         *string      `parquet:"name=group_id"`
+	Status          string       `parquet:"name=status"`
+	LogInfo         *TestLogInfo `parquet:"name=log_info"`
+	TestStartTime   time.Time    `parquet:"name=test_start_time, timeunit=MILLIS"`
+	TestEndTime     time.Time    `parquet:"name=test_end_time, timeunit=MILLIS"`
+
+	// Legacy test log fields.
+	LogTestName *string `parquet:"name=log_test_name"`
+	LogURL      *string `parquet:"name=log_url"`
+	RawLogURL   *string `parquet:"name=raw_log_url"`
+	LineNum     *int32  `parquet:"name=line_num"`
+}
+
+func (r ParquetTestResults) ConvertToTestResultSlice() []TestResult {
+	results := make([]TestResult, len(r.Results))
+	for i := range r.Results {
+		results[i] = TestResult{
+			TaskID:          r.TaskID,
+			Execution:       int(r.Execution),
+			TestName:        r.Results[i].TestName,
+			DisplayTestName: utility.FromStringPtr(r.Results[i].DisplayTestName),
+			GroupID:         utility.FromStringPtr(r.Results[i].GroupID),
+			Status:          r.Results[i].Status,
+			LogInfo:         r.Results[i].LogInfo,
+			LogTestName:     utility.FromStringPtr(r.Results[i].LogTestName),
+			LogURL:          utility.FromStringPtr(r.Results[i].LogURL),
+			RawLogURL:       utility.FromStringPtr(r.Results[i].RawLogURL),
+			LineNum:         int(utility.FromInt32Ptr(r.Results[i].LineNum)),
+			TestStartTime:   r.Results[i].TestStartTime,
+			TestEndTime:     r.Results[i].TestEndTime,
+		}
+	}
+
+	return results
 }
 
 // GetDisplayTestName returns the name of the test that should be displayed in

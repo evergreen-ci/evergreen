@@ -1,17 +1,38 @@
 package task
 
 import (
+	"bytes"
 	"context"
+	"io/ioutil"
 	"regexp"
 	"sort"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/testresult"
+	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
+	goparquet "github.com/fraugster/parquet-go"
+	"github.com/fraugster/parquet-go/floor"
+	"github.com/fraugster/parquet-go/parquetschema"
+	"github.com/fraugster/parquet-go/parquetschema/autoschema"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
+
+var parquetTestResultsSchemaDef *parquetschema.SchemaDefinition
+
+func init() {
+	var err error
+	parquetTestResultsSchemaDef, err = autoschema.GenerateSchema(new(testresult.ParquetTestResults))
+	if err != nil {
+		panic(errors.Wrap(err, "generating Parquet test results schema definition"))
+	}
+}
 
 // TestResultOutput is the versioned entry point for coordinating persistent
 // storage of a task run's test result data.
@@ -73,7 +94,6 @@ func getMergedTaskTestResults(ctx context.Context, env evergreen.Environment, ta
 	mergedTaskResults.Results = filteredResults
 	mergedTaskResults.Stats.FilteredCount = &filteredCount
 
-	// TODO: DEVPROD-16200 Download test results from s3 based on the bucket config of each individual task.
 	return mergedTaskResults, nil
 }
 
@@ -344,4 +364,124 @@ func sortTestResults(results []testresult.TestResult, opts *FilterOptions, baseS
 
 		return false
 	})
+}
+
+func (o TestResultOutput) downloadParquet(ctx context.Context, credentials evergreen.S3Credentials, t *testresult.DbTaskTestResults) ([]testresult.TestResult, error) {
+	prestoBucket, err := o.GetPrestoBucket(ctx, credentials)
+	if err != nil {
+		return nil, err
+	}
+
+	r, err := prestoBucket.Get(ctx, t.PrestoPartitionKey())
+	if err != nil {
+		return nil, errors.Wrap(err, "getting Parquet test results")
+	}
+	defer func() {
+		err = r.Close()
+		grip.WarningWhen(err != nil, message.WrapError(err, message.Fields{
+			"message": "closing Presto test results bucket reader",
+		}))
+	}()
+	data, err := ioutil.ReadAll(r)
+	if err != nil {
+		return nil, errors.Wrap(err, "reading Parquet test results")
+	}
+
+	fr, err := goparquet.NewFileReader(bytes.NewReader(data))
+	if err != nil {
+		return nil, errors.Wrap(err, "creating Parquet reader")
+	}
+	pr := floor.NewReader(fr)
+	defer func() {
+		err = pr.Close()
+		grip.WarningWhen(err != nil, message.WrapError(err, message.Fields{
+			"message": "closing Parquet test results reader",
+		}))
+	}()
+
+	var parquetResults []testresult.ParquetTestResults
+	for pr.Next() {
+		row := testresult.ParquetTestResults{}
+		if err := pr.Scan(&row); err != nil {
+			return nil, errors.Wrap(err, "reading Parquet test results row")
+		}
+
+		parquetResults = append(parquetResults, row)
+	}
+
+	if err := pr.Err(); err != nil {
+		return nil, errors.Wrap(err, "reading Parquet test results rows")
+	}
+
+	var results []testresult.TestResult
+	for _, result := range parquetResults {
+		results = append(results, result.ConvertToTestResultSlice()...)
+	}
+	grip.Info(message.Fields{
+		"message": "MALIK9 finishing parquet",
+		"results": results,
+		"parquet": parquetResults,
+		"data":    string(data),
+	})
+	return results, nil
+}
+
+func (o TestResultOutput) GetPrestoBucket(ctx context.Context, credentials evergreen.S3Credentials) (pail.Bucket, error) {
+	bucket, err := o.createPresto(ctx, credentials, o.BucketConfig.PrestoTestResultsPrefix, string(pail.S3PermissionsPrivate), false)
+	if err != nil {
+		return nil, errors.Wrap(err, "creating bucket")
+	}
+
+	return bucket, nil
+}
+
+// createPresto returns a Pail Bucket backed by PailType specifically for
+// buckets in our Presto ecosystem
+func (o TestResultOutput) createPresto(ctx context.Context, credentials evergreen.S3Credentials, prefix, permissions string, compress bool) (pail.Bucket, error) {
+	switch o.BucketConfig.Type {
+	case evergreen.BucketTypeS3:
+		stsConfig, err := config.LoadDefaultConfig(ctx,
+			config.WithRegion(evergreen.DefaultS3Region),
+		)
+		if err != nil {
+			return nil, errors.Wrap(err, "loading config")
+		}
+		stsConfig.Credentials = pail.CreateAWSStaticCredentials(credentials.Key, credentials.Secret, "")
+		stsClient := sts.NewFromConfig(stsConfig)
+		grip.Info(message.Fields{
+			"message":        "MALIK7 starting presto bucket",
+			"Name":           o.BucketConfig.PrestoBucket,
+			"Prefix":         prefix,
+			"Region":         evergreen.DefaultS3Region,
+			"Permissions":    pail.S3Permissions(permissions),
+			"AssumeRoleARN":  o.BucketConfig.PrestoRoleARN,
+			"MaxRetries":     utility.ToIntPtr(evergreen.DefaultS3MaxRetries),
+			"Compress":       compress,
+			"HasEmptyKey":    credentials.Key == "",
+			"HasEmptySecret": credentials.Secret == "",
+		})
+		opts := pail.S3Options{
+			Name:        o.BucketConfig.PrestoBucket,
+			Prefix:      prefix,
+			Region:      evergreen.DefaultS3Region,
+			Permissions: pail.S3PermissionsPrivate,
+			Credentials: stscreds.NewAssumeRoleProvider(stsClient, o.BucketConfig.PrestoRoleARN),
+			MaxRetries:  utility.ToIntPtr(evergreen.DefaultS3MaxRetries),
+			Compress:    compress,
+			Verbose:     true,
+		}
+		b, err := pail.NewS3Bucket(ctx, opts)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+
+		if err = b.Check(ctx); err != nil {
+			return nil, errors.WithStack(err)
+		}
+
+		return b, nil
+	default:
+		//return t.Create(ctx, env, conf.Bucket.PrestoBucket, prefix, permissions, compress)..
+		return nil, errors.Errorf("unsupported bucket type: %s", o.BucketConfig.Type)
+	}
 }
