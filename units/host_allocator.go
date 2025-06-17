@@ -419,7 +419,6 @@ func (j *hostAllocatorJob) setTargetAndTerminate(ctx context.Context, numUpHosts
 }
 
 // saveHostStats saves the latest host usage stats for an EC2 distro.
-// kim: TODO: test that this is saved in staging DB.
 func (j *hostAllocatorJob) saveHostStats(ctx context.Context, d *distro.Distro, numUpHosts int) {
 	if !evergreen.IsEc2Provider(d.Provider) {
 		return

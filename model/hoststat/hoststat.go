@@ -27,8 +27,6 @@ func NewHostStat(distroID string, numHosts int) *HostStat {
 	}
 }
 
-// kim: NOTE: need to suppress duplicate key errors if the compound
-// index on timestamp requires unique timestamps.
 func (hs *HostStat) Insert(ctx context.Context) error {
 	_, err := evergreen.GetEnvironment().DB().Collection(Collection).InsertOne(ctx, hs)
 	return err
