@@ -821,38 +821,6 @@ func (s *GenerateSuite) TestValidateNoRecursiveGenerateTasks() {
 	s.Error(g.validateNoRecursiveGenerateTasks(cachedProject))
 }
 
-func (s *GenerateSuite) TestValidateGeneratedExecutionTasks() {
-	p := &Project{}
-	_, err := LoadProjectInto(s.ctx, []byte(sampleProjYml), nil, "", p)
-	s.NoError(err)
-	cachedProject := cacheProjectData(p)
-
-	g := GeneratedProject{
-		BuildVariants: []parserBV{
-			{
-				Name: "a_variant", // existing variant
-				DisplayTasks: []displayTask{
-					{
-						Name:           "new_display_task",
-						ExecutionTasks: []string{"undefined_task"}, // new task not defined
-					},
-				},
-			},
-		},
-	}
-
-	// Should error if an execution task is not defined in the project.
-	s.Error(g.validateGeneratedExecutionTasks(cachedProject))
-
-	// Should pass after defining the task in the project.
-	g.Tasks = []parserTask{
-		{
-			Name: "undefined_task",
-		},
-	}
-	s.NoError(g.validateGeneratedExecutionTasks(cachedProject))
-}
-
 func (s *GenerateSuite) TestCacheProjectData() {
 	var p Project
 	_, err := LoadProjectInto(s.ctx, []byte(sampleProjYAMLWithMultiFields), nil, "", &p)

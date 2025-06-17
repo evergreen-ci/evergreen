@@ -1029,6 +1029,19 @@ func ensureReferentialIntegrity(project *model.Project, containerNameMap map[str
 			}
 			errs = append(errs, checkRunOn(runOnHasDistro, runOnHasContainer, task.RunOn)...)
 		}
+		for _, dt := range buildVariant.DisplayTasks {
+			for _, execTask := range dt.ExecTasks {
+				if _, ok := allTaskNames[execTask]; !ok {
+					errs = append(errs,
+						ValidationError{
+							Level: Error,
+							Message: fmt.Sprintf("display task '%s' in buildvariant '%s' references a non-existent execution task '%s'",
+								dt.Name, buildVariant.Name, execTask),
+						},
+					)
+				}
+			}
+		}
 		runOnHasDistro := false
 		runOnHasContainer := false
 		for _, name := range buildVariant.RunOn {
