@@ -26,8 +26,8 @@ import (
 )
 
 func insertTaskForTesting(ctx context.Context, env evergreen.Environment, taskId, versionId, projectName string, testResults []testresult.TestResult) (*task.Task, error) {
-	svc := testresult.NewLocalService(env)
-	task := &task.Task{
+	svc := task.NewLocalService(env)
+	tsk := &task.Task{
 		Id:                  taskId,
 		CreateTime:          time.Now().Add(-20 * time.Minute),
 		ScheduledTime:       time.Now().Add(-15 * time.Minute),
@@ -58,19 +58,20 @@ func insertTaskForTesting(ctx context.Context, env evergreen.Environment, taskId
 		Aborted:          false,
 		TimeTaken:        100 * time.Millisecond,
 		ExpectedDuration: 99 * time.Millisecond,
+		TaskOutputInfo:   &task.TaskOutput{TestResults: task.TestResultOutput{Version: 1}},
 	}
 
 	if len(testResults) > 0 {
-		task.ResultsService = testresult.TestResultsServiceLocal
+		tsk.ResultsService = task.TestResultsServiceLocal
 		if err := svc.AppendTestResults(ctx, testResults); err != nil {
 			return nil, err
 		}
 	}
-	if err := task.Insert(ctx); err != nil {
+	if err := tsk.Insert(ctx); err != nil {
 		return nil, err
 	}
 
-	return task, nil
+	return tsk, nil
 }
 
 func TestGetTaskInfo(t *testing.T) {
@@ -83,7 +84,7 @@ func TestGetTaskInfo(t *testing.T) {
 
 	defer func() {
 		assert.NoError(t, db.ClearCollections(task.Collection))
-		assert.NoError(t, testresult.ClearLocal(ctx, env))
+		assert.NoError(t, task.ClearLocal(ctx, env))
 	}()
 
 	Convey("When finding info on a particular task", t, func() {
@@ -274,7 +275,7 @@ func TestGetTaskStatus(t *testing.T) {
 	require.NoError(t, env.Configure(ctx))
 	router, err := newTestUIRouter(ctx, env)
 	require.NoError(t, err, "error setting up router")
-	svc := testresult.NewLocalService(env)
+	svc := task.NewLocalService(env)
 	Convey("When finding the status of a particular task", t, func() {
 		require.NoError(t, db.ClearCollections(task.Collection),
 			"Error clearing '%v' collection", task.Collection)
@@ -289,7 +290,8 @@ func TestGetTaskStatus(t *testing.T) {
 				TimedOut:    false,
 				Description: "some-stage",
 			},
-			ResultsService: testresult.TestResultsServiceLocal,
+			ResultsService: task.TestResultsServiceLocal,
+			TaskOutputInfo: &task.TaskOutput{TestResults: task.TestResultOutput{Version: 1}},
 		}
 		testResult := testresult.TestResult{
 			Status:        "success",
@@ -394,10 +396,13 @@ func TestGetDisplayTaskInfo(t *testing.T) {
 	require.NoError(env.Configure(ctx))
 	router, err := newTestUIRouter(ctx, env)
 	require.NoError(err, "error setting up router")
-
+	flags := evergreen.ServiceFlags{
+		EvergreenTestResultsDisabled: true,
+	}
+	require.NoError(evergreen.SetServiceFlags(ctx, flags))
 	defer func() {
 		assert.NoError(db.ClearCollections(task.Collection))
-		assert.NoError(testresult.ClearLocal(ctx, env))
+		assert.NoError(task.ClearLocal(ctx, env))
 	}()
 
 	executionTaskId := "execution-task"

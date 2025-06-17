@@ -53,8 +53,6 @@ input NotificationsInput {
 }
 
 input UseSpruceOptionsInput {
-  hasUsedMainlineCommitsBefore: Boolean
-  hasUsedSpruceBefore: Boolean
   spruceV1: Boolean
 }
 
@@ -188,7 +186,5 @@ type Notifications {
 }
 
 type UseSpruceOptions {
-  hasUsedMainlineCommitsBefore: Boolean
-  hasUsedSpruceBefore: Boolean
   spruceV1: Boolean
 }

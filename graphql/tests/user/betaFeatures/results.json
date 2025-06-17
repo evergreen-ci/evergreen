@@ -5,10 +5,8 @@
       "result": {
         "data": {
           "user": {
-            "userId": "jane.smith",
-            "betaFeatures": {
-              "spruceWaterfallEnabled": false
-            }
+            "userId": "jane.smith"
+
           }
         }
       }
@@ -18,10 +16,7 @@
       "result": {
         "data": {
           "user": {
-            "userId": "bob.smith",
-            "betaFeatures": {
-              "spruceWaterfallEnabled": true
-            }
+            "userId": "bob.smith"
           }
         }
       }

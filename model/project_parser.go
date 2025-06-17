@@ -247,7 +247,7 @@ type parserInclude struct {
 }
 
 // TaskSelector handles the selection of specific task/variant combinations
-// in the context of dependencies. //TODO no export?
+// in the context of dependencies.
 type taskSelector struct {
 	Name    string           `yaml:"name,omitempty"`
 	Variant *variantSelector `yaml:"variant,omitempty" bson:"variant,omitempty"`

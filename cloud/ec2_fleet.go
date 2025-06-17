@@ -592,7 +592,11 @@ func (m *ec2FleetManager) spawnFleetHost(ctx context.Context, h *host.Host, ec2S
 	ctx, span := tracer.Start(ctx, "spawnFleetHost")
 	defer span.End()
 
-	useElasticIP := shouldAssignPublicIPv4Address(h, ec2Settings) && canUseElasticIP(m.env.Settings(), ec2Settings, m.account, h)
+	settings, err := evergreen.GetConfig(ctx)
+	if err != nil {
+		return errors.Wrap(err, "getting admin settings")
+	}
+	useElasticIP := shouldAssignPublicIPv4Address(h, ec2Settings) && canUseElasticIP(settings, ec2Settings, m.account, h)
 	if useElasticIP && h.IPAllocationID == "" {
 		// If the host can't be allocated an IP address, continue on error
 		// because the host should fall back to using an AWS-provided IP

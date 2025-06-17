@@ -790,20 +790,20 @@ func (h *attachTestLogHandler) Run(ctx context.Context) gimlet.Responder {
 
 // POST /task/{task_id}/test_results
 type attachTestResultsHandler struct {
-	settings *evergreen.Settings
-	results  []testresult.TestResult
-	taskID   string
+	env     evergreen.Environment
+	results []testresult.TestResult
+	taskID  string
 }
 
-func makeAttachTestResults(settings *evergreen.Settings) gimlet.RouteHandler {
+func makeAttachTestResults(env evergreen.Environment) gimlet.RouteHandler {
 	return &attachTestResultsHandler{
-		settings: settings,
+		env: env,
 	}
 }
 
 func (h *attachTestResultsHandler) Factory() gimlet.RouteHandler {
 	return &attachTestResultsHandler{
-		settings: h.settings,
+		env: h.env,
 	}
 }
 
@@ -827,6 +827,20 @@ func (h *attachTestResultsHandler) Run(ctx context.Context) gimlet.Responder {
 		return gimlet.NewJSONResponse(struct{}{})
 	}
 	// TODO: DEVPROD-16200 Implement the new DB/S3-backed Evergreen test results service
+	t, err := task.FindOneId(ctx, h.taskID)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "finding task '%s'", h.taskID))
+	}
+	if t == nil {
+		return gimlet.MakeJSONErrorResponder(gimlet.ErrorResponse{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
+		})
+	}
+	err = task.AppendTestResults(ctx, t, h.env, h.results)
+	if err != nil {
+		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "appending test results to '%s'", h.taskID))
+	}
 	return gimlet.NewJSONResponse(struct{}{})
 }
 
@@ -979,6 +993,7 @@ func (h *startTaskHandler) Run(ctx context.Context) gimlet.Responder {
 	if err = model.MarkStart(ctx, t, &updates); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "marking task '%s' started", t.Id))
 	}
+	model.UpdateOtelMetadata(ctx, t, h.taskStartInfo.DiskDevices, h.taskStartInfo.TraceID)
 
 	if len(updates.PatchNewStatus) != 0 {
 		event.LogPatchStateChangeEvent(ctx, t.Version, updates.PatchNewStatus)

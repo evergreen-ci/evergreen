@@ -1,0 +1,15 @@
+{
+  "admin": [
+    {
+        "_id": "global",
+        "uiv2_url": "http://localhost:3000",
+        "configdir": "../config",
+        "domain_name": "localhost",
+        "banner": "This is an important notification",
+        "banner_theme": "announcement",
+        "github_orgs": [
+            "evergreen-ci"
+        ]
+    }
+  ]
+}

@@ -917,6 +917,24 @@ func (p *ProjectRef) DetachFromRepo(ctx context.Context, u *user.DBUser) error {
 // Any values that previously were unset will now use the repo value, unless this would introduce
 // a GitHub project conflict. If no repo ref currently exists, the user attaching it will be added as the repo ref admin.
 func (p *ProjectRef) AttachToRepo(ctx context.Context, u *user.DBUser) error {
+	// If repo project exists, only allow repo admins to attach to a project.
+	repoRef, err := FindRepoRefByOwnerAndRepo(ctx, p.Owner, p.Repo)
+	if err != nil {
+		return errors.Wrapf(err, "finding repo ref '%s'", p.RepoRefId)
+	}
+	if repoRef != nil {
+		isRepoAdmin := u.HasPermission(gimlet.PermissionOpts{
+			Resource:      repoRef.Id,
+			ResourceType:  evergreen.ProjectResourceType,
+			Permission:    evergreen.PermissionProjectSettings,
+			RequiredLevel: evergreen.ProjectSettingsEdit.Value,
+		})
+
+		if !isRepoAdmin {
+			return errors.Errorf("user '%s' does not have permission to attach project '%s' to repo '%s'", u.Id, p.Id, p.Repo)
+		}
+	}
+
 	// Before allowing a project to attach to a repo, verify that this is a valid GitHub organization.
 	config, err := evergreen.GetConfig(ctx)
 	if err != nil {
@@ -2550,11 +2568,12 @@ func (p *ProjectRef) CheckAndUpdateAutoRestartLimit(ctx context.Context, maxDail
 	return errors.Wrap(db.UpdateContext(ctx, ProjectRefCollection, bson.M{ProjectRefIdKey: p.Id}, update), "updating project's auto-restart limit")
 }
 
+const CronActiveRange = 5 * time.Minute
+
 // isActiveCronTimeRange checks that the proposed cron should activate now or
 // has already activated very recently.
 func (p *ProjectRef) isActiveCronTimeRange(proposedCron time.Time, now time.Time) bool {
-	const cronActiveRange = 5 * time.Minute
-	return !proposedCron.Before(now.Add(-cronActiveRange))
+	return !proposedCron.Before(now.Add(-CronActiveRange))
 }
 
 // isValidBVCron checks is a build variant cron is valid.

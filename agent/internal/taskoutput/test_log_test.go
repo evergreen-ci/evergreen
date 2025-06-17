@@ -16,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/log"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testlog"
-	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip/level"
 	"github.com/stretchr/testify/assert"
@@ -35,8 +34,8 @@ func TestAppendTestLog(t *testing.T) {
 		BuildVariant: "build_variant",
 		Execution:    5,
 		Requester:    evergreen.GithubPRRequester,
-		TaskOutputInfo: &taskoutput.TaskOutput{
-			TestLogs: taskoutput.TestLogOutput{
+		TaskOutputInfo: &task.TaskOutput{
+			TestLogs: task.TestLogOutput{
 				Version: 1,
 				BucketConfig: evergreen.BucketConfig{
 					Type: evergreen.BucketTypeLocal,
@@ -78,7 +77,7 @@ func TestAppendTestLog(t *testing.T) {
 			testLog.Lines = testCase.input
 
 			require.NoError(t, AppendTestLog(ctx, tsk, testCase.redactOpts, testLog))
-			it, err := tsk.GetTestLogs(ctx, taskoutput.TestLogGetOptions{LogPaths: []string{testLog.Name}})
+			it, err := tsk.GetTestLogs(ctx, task.TestLogGetOptions{LogPaths: []string{testLog.Name}})
 			require.NoError(t, err)
 
 			var actual []string
@@ -184,7 +183,7 @@ func TestTestLogDirectoryHandlerRun(t *testing.T) {
 
 			require.NoError(t, h.run(ctx))
 			for _, li := range test.logs {
-				it, err := tsk.GetTestLogs(ctx, taskoutput.TestLogGetOptions{LogPaths: []string{li.logPath}})
+				it, err := tsk.GetTestLogs(ctx, task.TestLogGetOptions{LogPaths: []string{li.logPath}})
 				require.NoError(t, err)
 				var persistedRawLines []string
 				for it.Next() {
@@ -285,7 +284,7 @@ func TestTestLogDirectoryHandlerGetSpecFile(t *testing.T) {
 
 			// Check that raw log lines were correctly parsed in
 			// accordance with their format.
-			it, err := tsk.GetTestLogs(ctx, taskoutput.TestLogGetOptions{LogPaths: []string{logPath}})
+			it, err := tsk.GetTestLogs(ctx, task.TestLogGetOptions{LogPaths: []string{logPath}})
 			require.NoError(t, err)
 			defer func() {
 				assert.NoError(t, it.Close())
@@ -400,8 +399,8 @@ func setupTestTestLogDirectoryHandler(t *testing.T, comm *client.Mock, redactOpt
 	tsk := &task.Task{
 		Project: "project",
 		Id:      utility.RandomString(),
-		TaskOutputInfo: &taskoutput.TaskOutput{
-			TestLogs: taskoutput.TestLogOutput{
+		TaskOutputInfo: &task.TaskOutput{
+			TestLogs: task.TestLogOutput{
 				Version: 1,
 				BucketConfig: evergreen.BucketConfig{
 					Name: t.TempDir(),
@@ -412,15 +411,10 @@ func setupTestTestLogDirectoryHandler(t *testing.T, comm *client.Mock, redactOpt
 	}
 	logger, err := comm.GetLoggerProducer(context.TODO(), tsk, nil)
 	require.NoError(t, err)
-	taskOpts := taskoutput.TaskOptions{
-		ProjectID: tsk.Project,
-		TaskID:    tsk.Id,
-		Execution: tsk.Execution,
-	}
 	handlerOpts := directoryHandlerOpts{
 		redactorOpts: redactOpts,
 		output:       tsk.TaskOutputInfo,
-		taskOpts:     taskOpts,
+		tsk:          tsk,
 	}
 	h := newTestLogDirectoryHandler(t.TempDir(), logger, handlerOpts).(*testLogDirectoryHandler)
 	h.sequenceSize = seqSize

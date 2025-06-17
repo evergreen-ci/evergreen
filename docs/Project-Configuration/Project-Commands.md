@@ -388,7 +388,7 @@ The originating role is:
 and your role should only trust that exact role. You should add an
 external ID to your role's trust policy to ensure only your project
 can assume the role. Evergreen's account ID can be found on the 
-[wiki page](https://wiki.corp.mongodb.com/display/SYSENG/AWS+Accounts+Overview) 
+[wiki page](https://wiki.corp.mongodb.com/spaces/IAMSEC/pages/346197399/AWS+Account+List) 
 under `Kernel-Build`.
 
 An example of a trust policy with an external ID is below:
@@ -653,7 +653,7 @@ Parameters:
     If you do not specify any revisions, all of them will be cloned that
     are defined in the [build variant](Project-Configuration-Files#build-variants)'s
     `modules` field.
--   `token`: Use a token to clone instead of the ssh key on the host.
+-   `token`: Use a token to clone instead of the default Evergreen generated GitHub token.
     Since this is a secret, it should be provided as a project
     expansion. For example, you could provide an expansion called
     "github_token" and then set this field to \${github_token}.

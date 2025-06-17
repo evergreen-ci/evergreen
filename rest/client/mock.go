@@ -29,6 +29,8 @@ type Mock struct {
 
 	// mock behavior
 	GetSubscriptionsFail bool
+	MockServiceFlags     *model.APIServiceFlags
+	MockServiceFlagErr   error
 }
 
 func (c *Mock) Close() {}
@@ -137,9 +139,16 @@ func (c *Mock) GetHosts(ctx context.Context, data model.APIHostParams) ([]*model
 func (c *Mock) SetBannerMessage(ctx context.Context, m string, t evergreen.BannerTheme) error {
 	return nil
 }
-func (c *Mock) GetBannerMessage(ctx context.Context) (string, error)                  { return "", nil }
-func (c *Mock) SetServiceFlags(ctx context.Context, f *model.APIServiceFlags) error   { return nil }
-func (c *Mock) GetServiceFlags(ctx context.Context) (*model.APIServiceFlags, error)   { return nil, nil }
+func (c *Mock) GetBannerMessage(ctx context.Context) (string, error)                { return "", nil }
+func (c *Mock) SetServiceFlags(ctx context.Context, f *model.APIServiceFlags) error { return nil }
+
+func (c *Mock) GetServiceFlags(ctx context.Context) (*model.APIServiceFlags, error) {
+	if c.MockServiceFlagErr != nil {
+		return c.MockServiceFlags, c.MockServiceFlagErr
+	}
+	return c.MockServiceFlags, nil
+}
+
 func (c *Mock) RestartRecentTasks(ctx context.Context, starAt, endAt time.Time) error { return nil }
 func (c *Mock) GetSettings(ctx context.Context) (*evergreen.Settings, error)          { return nil, nil }
 func (c *Mock) UpdateSettings(ctx context.Context, update *model.APIAdminSettings) (*model.APIAdminSettings, error) {
@@ -321,3 +330,7 @@ func (c *Mock) SetHostID(hostID string) {}
 func (c *Mock) SetHostSecret(hostSecret string) {}
 
 func (c *Mock) SetJWT(jwt string) {}
+
+func (c *Mock) SetAPIServerHost(serverURL string) {}
+
+func (c *Mock) IsServiceUser(context.Context, string) (bool, error) { return false, nil }

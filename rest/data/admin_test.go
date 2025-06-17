@@ -166,6 +166,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 		s.Equal(testSettings.Providers.AWS.AccountRoles[i], settingsFromConnector.Providers.AWS.AccountRoles[i])
 	}
 	s.Equal(testSettings.Providers.AWS.IPAMPoolID, settingsFromConnector.Providers.AWS.IPAMPoolID)
+	s.Equal(testSettings.Providers.AWS.ElasticIPUsageRate, settingsFromConnector.Providers.AWS.ElasticIPUsageRate)
 	s.EqualValues(testSettings.Providers.Docker.APIVersion, settingsFromConnector.Providers.Docker.APIVersion)
 	s.EqualValues(testSettings.RepoTracker.MaxConcurrentRequests, settingsFromConnector.RepoTracker.MaxConcurrentRequests)
 	s.EqualValues(testSettings.ReleaseMode.DistroMaxHostsFactor, settingsFromConnector.ReleaseMode.DistroMaxHostsFactor)
@@ -376,4 +377,31 @@ func (s *AdminDataSuite) TestGetBanner() {
 	s.NoError(err)
 	s.Equal("banner text", text)
 	s.Equal(string(evergreen.Important), theme)
+}
+
+func (s *AdminDataSuite) TestGetNecessaryServiceFlags() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	settings := &evergreen.Settings{
+		ServiceFlags: evergreen.ServiceFlags{
+			HostInitDisabled:               true,
+			RepotrackerDisabled:            true,
+			TaskDispatchDisabled:           false,
+			PodInitDisabled:                true,
+			CloudCleanupDisabled:           false,
+			StaticAPIKeysDisabled:          true,
+			JWTTokenForCLIDisabled:         false,
+			UnrecognizedPodCleanupDisabled: true,
+		},
+	}
+	s.NoError(evergreen.UpdateConfig(ctx, settings))
+
+	flags, err := GetNecessaryServiceFlags(ctx)
+	s.NoError(err)
+	neccesaryFlags := evergreen.ServiceFlags{
+		StaticAPIKeysDisabled:  true,
+		JWTTokenForCLIDisabled: false,
+	}
+	s.Equal(neccesaryFlags, flags)
 }

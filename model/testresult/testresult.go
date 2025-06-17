@@ -1,7 +1,6 @@
 package testresult
 
 import (
-	"context"
 	"fmt"
 	"net/url"
 	"strings"
@@ -10,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
-	"github.com/pkg/errors"
 )
 
 // TaskTestResults represents a set of test results. These results may come
@@ -186,120 +184,6 @@ type TaskTestResultsFailedSample struct {
 	TotalFailedNames        int      `json:"total_failed_names"`
 }
 
-// GetMergedTaskTestResults returns the merged test results filtered, sorted,
-// and paginated as specified by the optional filter options for the given
-// tasks. This function requires that all specified tasks have persisted their
-// results using the same test results service.
-func GetMergedTaskTestResults(ctx context.Context, env evergreen.Environment, taskOpts []TaskOptions, filterOpts *FilterOptions) (TaskTestResults, error) {
-	if len(taskOpts) == 0 {
-		return TaskTestResults{}, errors.New("must specify task options")
-	}
-
-	svc, err := getServiceImpl(env, taskOpts[0].ResultsService)
-	if err != nil {
-		return TaskTestResults{}, err
-	}
-
-	return svc.GetMergedTaskTestResults(ctx, taskOpts, filterOpts)
-}
-
-// GetMergedTaskTestResultsStats returns the aggregated statistics of the test
-// results for the given tasks.
-func GetMergedTaskTestResultsStats(ctx context.Context, env evergreen.Environment, taskOpts []TaskOptions) (TaskTestResultsStats, error) {
-	if len(taskOpts) == 0 {
-		return TaskTestResultsStats{}, errors.New("must specify task options")
-	}
-
-	var allStats TaskTestResultsStats
-	for service, tasks := range groupTasksByService(taskOpts) {
-		svc, err := getServiceImpl(env, service)
-		if err != nil {
-			return TaskTestResultsStats{}, err
-		}
-
-		stats, err := svc.GetMergedTaskTestResultsStats(ctx, tasks)
-		if err != nil {
-			return TaskTestResultsStats{}, err
-		}
-
-		allStats.TotalCount += stats.TotalCount
-		allStats.FailedCount += stats.FailedCount
-	}
-
-	return allStats, nil
-}
-
-// GetMergedFailedTestSample returns a sample of test names (up to 10) that
-// failed in the given tasks.
-func GetMergedFailedTestSample(ctx context.Context, env evergreen.Environment, taskOpts []TaskOptions) ([]string, error) {
-	if len(taskOpts) == 0 {
-		return nil, errors.New("must specify task options")
-	}
-
-	var allSamples []string
-	for service, tasks := range groupTasksByService(taskOpts) {
-		svc, err := getServiceImpl(env, service)
-		if err != nil {
-			return nil, err
-		}
-
-		samples, err := svc.GetMergedFailedTestSample(ctx, tasks)
-		if err != nil {
-			return nil, err
-		}
-
-		allSamples = append(allSamples, samples...)
-		if len(allSamples) >= 10 {
-			allSamples = allSamples[0:10]
-			break
-		}
-	}
-
-	return allSamples, nil
-}
-
-// GetFailedTestSamples returns failed test samples filtered as specified by
-// the optional regex filters for each task specified.
-func GetFailedTestSamples(ctx context.Context, env evergreen.Environment, taskOpts []TaskOptions, regexFilters []string) ([]TaskTestResultsFailedSample, error) {
-	if len(taskOpts) == 0 {
-		return nil, errors.New("must specify task options")
-	}
-
-	var allSamples []TaskTestResultsFailedSample
-	for service, tasks := range groupTasksByService(taskOpts) {
-		svc, err := getServiceImpl(env, service)
-		if err != nil {
-			return nil, err
-		}
-
-		samples, err := svc.GetFailedTestSamples(ctx, tasks, regexFilters)
-		if err != nil {
-			return nil, err
-		}
-
-		allSamples = append(allSamples, samples...)
-	}
-
-	return allSamples, nil
-}
-
-func groupTasksByService(taskOpts []TaskOptions) map[string][]TaskOptions {
-	servicesToTasks := map[string][]TaskOptions{}
-	for _, task := range taskOpts {
-		servicesToTasks[task.ResultsService] = append(servicesToTasks[task.ResultsService], task)
-	}
-
-	return servicesToTasks
-}
-
-// TaskOptions represents the task-level information required to fetch test
-// results from an Evergreen test run.
-type TaskOptions struct {
-	TaskID         string
-	Execution      int
-	ResultsService string
-}
-
 // SortBy describes the properties by which to sort a set of test results.
 type SortBy struct {
 	Key      string
@@ -314,15 +198,3 @@ const (
 	SortByStatusKey     = "status"
 	SortByBaseStatusKey = "base_status"
 )
-
-// FilterOptions represents the filtering arguments for fetching test results.
-type FilterOptions struct {
-	TestName            string
-	ExcludeDisplayNames bool
-	Statuses            []string
-	GroupID             string
-	Sort                []SortBy
-	Limit               int
-	Page                int
-	BaseTasks           []TaskOptions
-}

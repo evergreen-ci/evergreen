@@ -189,6 +189,7 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 		s.Equal(testSettings.Providers.AWS.AccountRoles[i], settings.Providers.AWS.AccountRoles[i])
 	}
 	s.EqualValues(testSettings.Providers.AWS.IPAMPoolID, settings.Providers.AWS.IPAMPoolID)
+	s.EqualValues(testSettings.Providers.AWS.ElasticIPUsageRate, settings.Providers.AWS.ElasticIPUsageRate)
 	s.EqualValues(testSettings.Providers.Docker.APIVersion, settings.Providers.Docker.APIVersion)
 	s.EqualValues(testSettings.RepoTracker.MaxConcurrentRequests, settings.RepoTracker.MaxConcurrentRequests)
 	s.EqualValues(testSettings.Scheduler.TaskFinder, settings.Scheduler.TaskFinder)

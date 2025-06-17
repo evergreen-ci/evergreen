@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/anser/bsonutil"
 	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -775,6 +776,15 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 
 	detailsCopy := *detail
 	if t.ResultsFailed && detailsCopy.Status != evergreen.TaskFailed {
+		// TODO (DEVPROD-12889): remove this log and this logic once it's
+		// confirmed that all agents are on the newer version and the test
+		// results check has been moved.
+		grip.Debug(message.Fields{
+			"message": "overwriting task status to failed in app server due to test results containing failure",
+			"ticket":  "DEVPROD-12889",
+			"task_id": t.Id,
+			"host_id": t.HostId,
+		})
 		detailsCopy.Type = evergreen.CommandTypeTest
 		detailsCopy.Status = evergreen.TaskFailed
 		detailsCopy.Description = evergreen.TaskDescriptionResultsFailed
@@ -788,6 +798,15 @@ func MarkEnd(ctx context.Context, settings *evergreen.Settings, t *task.Task, ca
 		return nil
 	}
 	if detailsCopy.Status == evergreen.TaskSucceeded && t.MustHaveResults && !t.HasResults(ctx) {
+		// TODO (DEVPROD-12889): remove this log and this logic once it's
+		// confirmed that all agents are on the newer version and the test
+		// results check has been moved.
+		grip.Debug(message.Fields{
+			"message": "overwriting task status to failed in app server due to missing test results",
+			"ticket":  "DEVPROD-12889",
+			"task_id": t.Id,
+			"host_id": t.HostId,
+		})
 		detailsCopy.Type = evergreen.CommandTypeTest
 		detailsCopy.Status = evergreen.TaskFailed
 		detailsCopy.Description = evergreen.TaskDescriptionNoResults
@@ -1039,7 +1058,7 @@ func logTaskEndStats(ctx context.Context, t *task.Task) error {
 }
 
 // getVersionCtxForTracing returns a context with version attributes for tracing
-func getVersionCtxForTracing(ctx context.Context, v *Version, project string) (context.Context, error) {
+func getVersionCtxForTracing(ctx context.Context, v *Version, project string, p *patch.Patch) (context.Context, error) {
 	if v == nil {
 		return nil, errors.New("version is nil")
 	}
@@ -1049,7 +1068,7 @@ func getVersionCtxForTracing(ctx context.Context, v *Version, project string) (c
 		return nil, errors.Wrap(err, "getting time spent")
 	}
 
-	ctx = utility.ContextWithAttributes(ctx, []attribute.KeyValue{
+	attrs := []attribute.KeyValue{
 		attribute.String(evergreen.VersionIDOtelAttribute, v.Id),
 		attribute.String(evergreen.VersionRequesterOtelAttribute, v.Requester),
 		attribute.String(evergreen.ProjectIDOtelAttribute, project),
@@ -1062,7 +1081,12 @@ func getVersionCtxForTracing(ctx context.Context, v *Version, project string) (c
 		attribute.Int(evergreen.VersionMakespanSecondsOtelAttribute, int(makespan.Seconds())),
 		attribute.String(evergreen.VersionAuthorOtelAttribute, v.Author),
 		attribute.String(evergreen.VersionBranchOtelAttribute, v.Branch),
-	})
+	}
+	if p != nil && p.IsReconfigured {
+		attrs = append(attrs, attribute.Bool(evergreen.PatchIsReconfiguredOtelAttribute, true))
+	}
+
+	ctx = utility.ContextWithAttributes(ctx, attrs)
 
 	return ctx, nil
 }
@@ -1688,7 +1712,7 @@ func UpdateBuildAndVersionStatusForTask(ctx context.Context, t *task.Task) error
 
 	if evergreen.IsFinishedVersionStatus(newVersionStatus) && !evergreen.IsPatchRequester(taskVersion.Requester) {
 		// only add tracing for versions, patches need to wait for child patches
-		traceContext, err := getVersionCtxForTracing(ctx, taskVersion, t.Project)
+		traceContext, err := getVersionCtxForTracing(ctx, taskVersion, t.Project, nil)
 		if err != nil {
 			return errors.Wrap(err, "getting context for tracing")
 		}
@@ -1728,7 +1752,7 @@ func UpdateBuildAndVersionStatusForTask(ctx context.Context, t *task.Task) error
 			if err = UpdatePatchStatus(ctx, p, newVersionStatus); err != nil {
 				return errors.Wrapf(err, "updating patch '%s' status", p.Id.Hex())
 			}
-			traceContext, err := getVersionCtxForTracing(ctx, taskVersion, t.Project)
+			traceContext, err := getVersionCtxForTracing(ctx, taskVersion, t.Project, p)
 			if err != nil {
 				return errors.Wrap(err, "getting context for tracing")
 			}
@@ -2564,4 +2588,30 @@ func HandleEndTaskForGithubMergeQueueTask(ctx context.Context, t *task.Task, sta
 		return errors.WithStack(err)
 	}
 	return errors.WithStack(task.AbortVersionTasks(ctx, t.Version, task.AbortInfo{TaskID: t.Id, User: evergreen.GithubMergeRequester}))
+}
+
+// UpdateOtelMetadata is called to update the task's Details with DiskDevices and TraceID.
+// If there's an error here, we log but we don't return an error.
+func UpdateOtelMetadata(ctx context.Context, t *task.Task, diskDevices []string, traceID string) {
+	// Update the task's Details with DiskDevices and TraceID
+	update := bson.M{}
+	if len(diskDevices) > 0 {
+		update[bsonutil.GetDottedKeyName(task.DetailsKey, task.TaskEndDetailDiskDevicesKey)] = diskDevices
+	}
+	if traceID != "" {
+		update[bsonutil.GetDottedKeyName(task.DetailsKey, task.TaskEndDetailTraceIDKey)] = traceID
+	}
+
+	if len(update) > 0 {
+		err := task.UpdateOne(
+			ctx,
+			task.ById(t.Id),
+			bson.M{"$set": update},
+		)
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "problem updating otel metadata",
+			"task_id": t.Id,
+			"update":  update,
+		}))
+	}
 }

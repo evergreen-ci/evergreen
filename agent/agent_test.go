@@ -22,7 +22,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/grip"
@@ -1118,6 +1117,176 @@ post:
 		"Finished running post-task commands",
 	}, []string{
 		panicLog,
+	})
+}
+
+func (s *AgentSuite) TestMissingTestResultFailsTask() {
+	projYml := `
+tasks:
+  - name: this_is_a_task_name
+    must_have_test_results: true
+    commands:
+      - command: shell.exec
+        params:
+          script: exit 0
+`
+	s.setupRunTask(projYml)
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:     s.tc.task.ID,
+		TaskSecret: s.tc.task.Secret,
+	}
+	s.tc.taskConfig.Task.MustHaveResults = true
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.testTmpDirName)
+	s.NoError(err)
+
+	s.Equal(evergreen.CommandTypeTest, s.mockCommunicator.EndTaskResult.Detail.Type)
+	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
+	s.Equal(evergreen.TaskDescriptionNoResults, s.mockCommunicator.EndTaskResult.Detail.Description)
+	s.Zero(s.mockCommunicator.EndTaskResult.Detail.FailingCommand)
+
+	s.NoError(s.tc.logger.Close())
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Running task commands",
+		"Running command 'shell.exec' (step 1 of 1)",
+		"Finished command 'shell.exec' (step 1 of 1)",
+		"Test results are missing and this task must have attached test results. Overall task status changed to FAILED.",
+	}, []string{panicLog})
+}
+
+func (s *AgentSuite) TestMissingTestResultDoesNotFailTaskForOptionalTestResults() {
+	projYml := `
+tasks:
+  - name: this_is_a_task_name
+    commands:
+      - command: shell.exec
+        params:
+          script: exit 0
+`
+	s.setupRunTask(projYml)
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:     s.tc.task.ID,
+		TaskSecret: s.tc.task.Secret,
+	}
+	s.tc.taskConfig.Task.MustHaveResults = false
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.testTmpDirName)
+	s.NoError(err)
+
+	s.Zero(s.mockCommunicator.EndTaskResult.Detail.Type)
+	s.Equal(evergreen.TaskSucceeded, s.mockCommunicator.EndTaskResult.Detail.Status)
+	s.Zero(s.mockCommunicator.EndTaskResult.Detail.Description)
+	s.Zero(s.mockCommunicator.EndTaskResult.Detail.FailingCommand)
+
+	s.NoError(s.tc.logger.Close())
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Running task commands",
+		"Running command 'shell.exec' (step 1 of 1)",
+		"Finished command 'shell.exec' (step 1 of 1)",
+	}, []string{
+		panicLog,
+		"Test results are missing and this task must have attached test results. Overall task status changed to FAILED.",
+	})
+}
+
+func (s *AgentSuite) TestFailingCommandIsNotOverwrittenByMissingTestResult() {
+	projYml := `
+tasks:
+  - name: this_is_a_task_name
+    must_have_test_results: true
+    commands:
+      - command: shell.exec
+        params:
+          script: exit 1
+`
+	s.setupRunTask(projYml)
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:     s.tc.task.ID,
+		TaskSecret: s.tc.task.Secret,
+	}
+	s.tc.taskConfig.Task.MustHaveResults = true
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.testTmpDirName)
+	s.NoError(err)
+
+	s.Equal(evergreen.CommandTypeTest, s.mockCommunicator.EndTaskResult.Detail.Type)
+	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
+	s.Empty(s.mockCommunicator.EndTaskResult.Detail.Description)
+	s.Equal(s.tc.getFailingCommand().FullDisplayName(), s.mockCommunicator.EndTaskResult.Detail.FailingCommand)
+
+	s.NoError(s.tc.logger.Close())
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Running task commands",
+		"Running command 'shell.exec' (step 1 of 1)",
+		"Finished command 'shell.exec' (step 1 of 1)",
+	}, []string{
+		panicLog,
+		"Test results are missing and this task must have attached test results. Overall task status changed to FAILED.",
+	})
+}
+
+func (s *AgentSuite) TestFailingTestResultFailsTask() {
+	projYml := `
+tasks:
+  - name: this_is_a_task_name
+    commands:
+      - command: shell.exec
+        params:
+          script: exit 0
+`
+	s.setupRunTask(projYml)
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:     s.tc.task.ID,
+		TaskSecret: s.tc.task.Secret,
+	}
+	s.tc.taskConfig.HasTestResults = true
+	s.tc.taskConfig.HasFailingTestResult = true
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.testTmpDirName)
+	s.NoError(err)
+
+	s.Equal(evergreen.CommandTypeTest, s.mockCommunicator.EndTaskResult.Detail.Type)
+	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
+	s.Equal(evergreen.TaskDescriptionResultsFailed, s.mockCommunicator.EndTaskResult.Detail.Description)
+	s.Zero(s.mockCommunicator.EndTaskResult.Detail.FailingCommand)
+
+	s.NoError(s.tc.logger.Close())
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Running task commands",
+		"Running command 'shell.exec' (step 1 of 1)",
+		"Finished command 'shell.exec' (step 1 of 1)",
+		"Test results contain at least one failure. Overall task status changed to FAILED.",
+	}, []string{panicLog})
+}
+
+func (s *AgentSuite) TestFailingCommandIsNotOverwrittenByFailingTestResult() {
+	projYml := `
+tasks:
+  - name: this_is_a_task_name
+    commands:
+      - command: shell.exec
+        params:
+          script: exit 1
+`
+	s.setupRunTask(projYml)
+	nextTask := &apimodels.NextTaskResponse{
+		TaskId:     s.tc.task.ID,
+		TaskSecret: s.tc.task.Secret,
+	}
+	s.tc.taskConfig.HasTestResults = true
+	s.tc.taskConfig.HasFailingTestResult = true
+	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.testTmpDirName)
+	s.NoError(err)
+
+	s.Equal(evergreen.CommandTypeTest, s.mockCommunicator.EndTaskResult.Detail.Type)
+	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
+	s.Empty(s.mockCommunicator.EndTaskResult.Detail.Description)
+	s.Equal(s.tc.getFailingCommand().FullDisplayName(), s.mockCommunicator.EndTaskResult.Detail.FailingCommand)
+
+	s.NoError(s.tc.logger.Close())
+	checkMockLogs(s.T(), s.mockCommunicator, s.tc.taskConfig.Task.Id, []string{
+		"Running task commands",
+		"Running command 'shell.exec' (step 1 of 1)",
+		"Finished command 'shell.exec' (step 1 of 1)",
+	}, []string{
+		panicLog,
+		"Test results are missing and this task must have attached test results. Overall task status changed to FAILED.",
 	})
 }
 
@@ -2602,16 +2771,16 @@ func (s *AgentSuite) TestFetchTaskInfo() {
 		Identifier: "some_cool_project",
 	}
 
-	_, project, expansionsAndVars, err := s.a.fetchTaskInfo(s.ctx, s.tc)
+	tcOpts, err := s.a.fetchTaskInfo(s.ctx, s.tc)
 	s.NoError(err)
 
 	s.Require().NotZero(s.tc.taskConfig.Project)
-	s.Equal(s.mockCommunicator.GetProjectResponse.Identifier, project.Identifier)
-	s.Require().NotZero(expansionsAndVars.Expansions)
-	s.Equal("bar", expansionsAndVars.Expansions["foo"], "should include mock communicator expansions")
-	s.Equal("new-parameter-value", expansionsAndVars.Expansions["overwrite-this-parameter"], "user-specified parameter should overwrite any other conflicting expansion")
-	s.Require().NotZero(expansionsAndVars.PrivateVars)
-	s.True(expansionsAndVars.PrivateVars["some_private_var"], "should include mock communicator private variables")
+	s.Equal(s.mockCommunicator.GetProjectResponse.Identifier, tcOpts.project.Identifier)
+	s.Require().NotZero(tcOpts.expansionsAndVars.Expansions)
+	s.Equal("bar", tcOpts.expansionsAndVars.Expansions["foo"], "should include mock communicator expansions")
+	s.Equal("new-parameter-value", tcOpts.expansionsAndVars.Expansions["overwrite-this-parameter"], "user-specified parameter should overwrite any other conflicting expansion")
+	s.Require().NotZero(tcOpts.expansionsAndVars.PrivateVars)
+	s.True(tcOpts.expansionsAndVars.PrivateVars["some_private_var"], "should include mock communicator private variables")
 }
 
 func (s *AgentSuite) TestAbortExitsMainAndRunsPost() {
@@ -2819,7 +2988,7 @@ tasks:
 	_, _, err := s.a.runTask(s.ctx, s.tc, nextTask, false, s.testTmpDirName)
 	s.Require().NoError(err)
 
-	it, err := s.task.GetTestLogs(s.ctx, taskoutput.TestLogGetOptions{LogPaths: []string{"test.log"}})
+	it, err := s.task.GetTestLogs(s.ctx, task.TestLogGetOptions{LogPaths: []string{"test.log"}})
 	s.Require().NoError(err)
 
 	var actualLines string

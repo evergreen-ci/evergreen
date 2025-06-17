@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/internal"
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	serviceutil "github.com/evergreen-ci/evergreen/service/testutil"
@@ -56,6 +57,10 @@ func TestSendTestResults(t *testing.T) {
 			DisplayName:  "task_name",
 			Execution:    5,
 			Requester:    evergreen.GithubPRRequester,
+		},
+		DisplayTaskInfo: &apimodels.DisplayTaskInfo{
+			ID:   "mock_display_task_id",
+			Name: "display_task_name",
 		},
 	}
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
@@ -125,14 +130,14 @@ func TestSendTestResults(t *testing.T) {
 					checkRecord(t, srv)
 					checkResults(t, srv)
 					assert.NotZero(t, srv.Close.TestResultsRecordId)
-					assert.Equal(t, testresult.TestResultsServiceCedar, comm.ResultsService)
+					assert.Equal(t, task.TestResultsServiceCedar, comm.ResultsService)
 					assert.False(t, comm.ResultsFailed)
 				})
 				t.Run("FailingResults", func(t *testing.T) {
 					results[0].Status = evergreen.TestFailedStatus
 					require.NoError(t, sendTestResults(ctx, comm, logger, conf, results))
 
-					assert.Equal(t, testresult.TestResultsServiceCedar, comm.ResultsService)
+					assert.Equal(t, task.TestResultsServiceCedar, comm.ResultsService)
 					assert.True(t, comm.ResultsFailed)
 					results[0].Status = "pass"
 				})
@@ -146,7 +151,7 @@ func TestSendTestResults(t *testing.T) {
 				checkRecord(t, srv)
 				checkResults(t, srv)
 				assert.NotZero(t, srv.Close.TestResultsRecordId)
-				assert.Equal(t, testresult.TestResultsServiceCedar, comm.ResultsService)
+				assert.Equal(t, task.TestResultsServiceCedar, comm.ResultsService)
 				assert.False(t, comm.ResultsFailed)
 				results[0].DisplayTestName = displayTestName
 			},

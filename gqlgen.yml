@@ -14,6 +14,10 @@ resolver:
   dir: graphql
   filename_template: "{name}_resolver.go"
 models:
+  AdminSettings:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIAdminSettings
+  AdminSettingsInput:
+    model: github.com/evergreen-ci/evergreen/rest/model.APIAdminSettings
   Annotation:
     model: github.com/evergreen-ci/evergreen/rest/model.APITaskAnnotation
   AWSConfig:

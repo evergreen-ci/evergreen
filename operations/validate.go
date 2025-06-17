@@ -29,7 +29,7 @@ func Validate() cli.Command {
 			Usage: "treat warnings as errors",
 		}, cli.StringSliceFlag{
 			Name:  joinFlagNames(localModulesFlagName, "lm"),
-			Usage: "specify local modules as MODULE_NAME=PATH pairs",
+			Usage: "specify local modules for included files as MODULE_NAME=PATH pairs",
 		}, cli.StringFlag{
 			Name:  joinFlagNames(projectFlagName, "p"),
 			Usage: "specify project identifier in order to run validation requiring project settings",
@@ -52,11 +52,6 @@ func Validate() cli.Command {
 				return errors.Wrap(err, "loading configuration")
 			}
 
-			ac, _, err := conf.getLegacyClients()
-			if err != nil {
-				return errors.Wrap(err, "setting up legacy Evergreen client")
-			}
-
 			if projectID == "" {
 				cwd, err := os.Getwd()
 				grip.Error(errors.Wrap(err, "getting current working directory"))
@@ -77,12 +72,12 @@ func Validate() cli.Command {
 				}
 				catcher := grip.NewSimpleCatcher()
 				for _, file := range files {
-					catcher.Add(validateFile(conf, filepath.Join(path, file.Name()), ac, quiet, errorOnWarnings, localModuleMap, projectID))
+					catcher.Add(validateFile(conf, filepath.Join(path, file.Name()), quiet, errorOnWarnings, localModuleMap, projectID))
 				}
 				return catcher.Resolve()
 			}
 
-			return validateFile(conf, path, ac, quiet, errorOnWarnings, localModuleMap, projectID)
+			return validateFile(conf, path, quiet, errorOnWarnings, localModuleMap, projectID)
 		},
 	}
 }
@@ -100,7 +95,7 @@ func getLocalModulesFromInput(localModulePaths []string) (map[string]string, err
 	return moduleMap, catcher.Resolve()
 }
 
-func validateFile(conf *ClientSettings, path string, ac *legacyClient, quiet, errorOnWarnings bool, localModuleMap map[string]string, projectID string) error {
+func validateFile(conf *ClientSettings, path string, quiet, errorOnWarnings bool, localModuleMap map[string]string, projectID string) error {
 	confFile, err := os.ReadFile(path)
 	if err != nil {
 		return errors.Wrapf(err, "reading file '%s'", path)

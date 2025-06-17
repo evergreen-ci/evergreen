@@ -188,6 +188,10 @@ func MockConfig() *evergreen.Settings {
 				Name: "logs",
 				Type: evergreen.BucketTypeS3,
 			},
+			TestResultsBucket: evergreen.BucketConfig{
+				Name: "test_results",
+				Type: evergreen.BucketTypeS3,
+			},
 			Credentials: evergreen.S3Credentials{
 				Key:    "aws_key",
 				Secret: "aws_secret",
@@ -352,7 +356,8 @@ func MockConfig() *evergreen.Settings {
 						Role:    "role",
 					},
 				},
-				IPAMPoolID: "pool_id",
+				IPAMPoolID:         "pool_id",
+				ElasticIPUsageRate: 0.3,
 			},
 			Docker: evergreen.DockerConfig{
 				APIVersion: "docker_version",
@@ -366,6 +371,7 @@ func MockConfig() *evergreen.Settings {
 		ReleaseMode: evergreen.ReleaseModeConfig{
 			DistroMaxHostsFactor:      2.0,
 			TargetTimeSecondsOverride: 60,
+			IdleTimeSecondsOverride:   120,
 		},
 		Scheduler: evergreen.SchedulerConfig{
 			TaskFinder: "legacy",
@@ -400,6 +406,7 @@ func MockConfig() *evergreen.Settings {
 			CPUDegradedModeDisabled:         true,
 			ElasticIPsDisabled:              true,
 			ReleaseModeDisabled:             true,
+			AdminParameterStoreDisabled:     true,
 		},
 		SingleTaskDistro: evergreen.SingleTaskDistroConfig{
 			ProjectTasksPairs: []evergreen.ProjectTasksPair{

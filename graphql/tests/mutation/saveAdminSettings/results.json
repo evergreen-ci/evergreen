@@ -1,0 +1,33 @@
+{
+  "tests": [
+    {
+        "query_file": "save.graphql",
+        "result": {
+          "data": {
+            "saveAdminSettings": {
+                "banner": "New Banner",
+                "bannerTheme": "ANNOUNCEMENT"
+            }
+          }
+        }
+    },
+    {
+      "query_file": "no_permissions.graphql",
+      "test_user_id": "regular_user",
+      "result": {
+        "data": null,
+        "errors": [
+          {
+            "message": "User 'regular_user' lacks required admin permissions",
+            "path": [
+              "saveAdminSettings"
+            ],
+            "extensions": {
+              "code": "FORBIDDEN"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

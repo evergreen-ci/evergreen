@@ -48,6 +48,7 @@ type Config struct {
 }
 
 type ResolverRoot interface {
+	AdminSettings() AdminSettingsResolver
 	Annotation() AnnotationResolver
 	BootstrapSettings() BootstrapSettingsResolver
 	ContainerPool() ContainerPoolResolver
@@ -81,6 +82,7 @@ type ResolverRoot interface {
 	User() UserResolver
 	Version() VersionResolver
 	Volume() VolumeResolver
+	AdminSettingsInput() AdminSettingsInputResolver
 	BootstrapSettingsInput() BootstrapSettingsInputResolver
 	DispatcherSettingsInput() DispatcherSettingsInputResolver
 	DistroInput() DistroInputResolver
@@ -95,6 +97,7 @@ type ResolverRoot interface {
 
 type DirectiveRoot struct {
 	RedactSecrets                func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
+	RequireAdmin                 func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
 	RequireDistroAccess          func(ctx context.Context, obj any, next graphql.Resolver, access DistroSettingsAccess) (res any, err error)
 	RequireHostAccess            func(ctx context.Context, obj any, next graphql.Resolver, access HostAccessLevel) (res any, err error)
 	RequirePatchOwner            func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error)
@@ -120,6 +123,11 @@ type ComplexityRoot struct {
 		TaskDisplayName         func(childComplexity int) int
 		TaskID                  func(childComplexity int) int
 		User                    func(childComplexity int) int
+	}
+
+	AdminSettings struct {
+		Banner      func(childComplexity int) int
+		BannerTheme func(childComplexity int) int
 	}
 
 	Annotation struct {
@@ -270,6 +278,7 @@ type ComplexityRoot struct {
 		Note                  func(childComplexity int) int
 		PlannerSettings       func(childComplexity int) int
 		Provider              func(childComplexity int) int
+		ProviderAccount       func(childComplexity int) int
 		ProviderSettingsList  func(childComplexity int) int
 		SSHOptions            func(childComplexity int) int
 		Setup                 func(childComplexity int) int
@@ -711,6 +720,7 @@ type ComplexityRoot struct {
 		RestartJasper                 func(childComplexity int, hostIds []string) int
 		RestartTask                   func(childComplexity int, taskID string, failedOnly bool) int
 		RestartVersions               func(childComplexity int, versionID string, abort bool, versionsToRestart []*model1.VersionToRestart) int
+		SaveAdminSettings             func(childComplexity int, adminSettings model.APIAdminSettings) int
 		SaveDistro                    func(childComplexity int, opts SaveDistroInput) int
 		SaveProjectSettingsForSection func(childComplexity int, projectSettings *model.APIProjectSettings, section ProjectSettingsSection) int
 		SaveRepoSettingsForSection    func(childComplexity int, repoSettings *model.APIProjectSettings, section ProjectSettingsSection) int
@@ -1059,6 +1069,7 @@ type ComplexityRoot struct {
 
 	Query struct {
 		AWSRegions               func(childComplexity int) int
+		AdminSettings            func(childComplexity int) int
 		BbGetCreatedTickets      func(childComplexity int, taskID string) int
 		BuildBaron               func(childComplexity int, taskID string, execution int) int
 		BuildVariantsForTaskName func(childComplexity int, projectIdentifier string, taskName string) int
@@ -1374,15 +1385,16 @@ type ComplexityRoot struct {
 	}
 
 	TaskEndDetail struct {
-		Description    func(childComplexity int) int
-		DiskDevices    func(childComplexity int) int
-		FailingCommand func(childComplexity int) int
-		OOMTracker     func(childComplexity int) int
-		Status         func(childComplexity int) int
-		TimedOut       func(childComplexity int) int
-		TimeoutType    func(childComplexity int) int
-		TraceID        func(childComplexity int) int
-		Type           func(childComplexity int) int
+		Description         func(childComplexity int) int
+		DiskDevices         func(childComplexity int) int
+		FailingCommand      func(childComplexity int) int
+		FailureMetadataTags func(childComplexity int) int
+		OOMTracker          func(childComplexity int) int
+		Status              func(childComplexity int) int
+		TimedOut            func(childComplexity int) int
+		TimeoutType         func(childComplexity int) int
+		TraceID             func(childComplexity int) int
+		Type                func(childComplexity int) int
 	}
 
 	TaskEventLogData struct {
@@ -1575,9 +1587,7 @@ type ComplexityRoot struct {
 	}
 
 	UseSpruceOptions struct {
-		HasUsedMainlineCommitsBefore func(childComplexity int) int
-		HasUsedSpruceBefore          func(childComplexity int) int
-		SpruceV1                     func(childComplexity int) int
+		SpruceV1 func(childComplexity int) int
 	}
 
 	User struct {
@@ -1760,6 +1770,9 @@ type ComplexityRoot struct {
 	}
 }
 
+type AdminSettingsResolver interface {
+	BannerTheme(ctx context.Context, obj *model.APIAdminSettings) (*evergreen.BannerTheme, error)
+}
 type AnnotationResolver interface {
 	WebhookConfigured(ctx context.Context, obj *model.APITaskAnnotation) (bool, error)
 }
@@ -1778,6 +1791,7 @@ type DistroResolver interface {
 	Arch(ctx context.Context, obj *model.APIDistro) (Arch, error)
 
 	Provider(ctx context.Context, obj *model.APIDistro) (Provider, error)
+
 	ProviderSettingsList(ctx context.Context, obj *model.APIDistro) ([]map[string]any, error)
 }
 type FinderSettingsResolver interface {
@@ -1829,6 +1843,7 @@ type MutationResolver interface {
 	MoveAnnotationIssue(ctx context.Context, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) (bool, error)
 	RemoveAnnotationIssue(ctx context.Context, taskID string, execution int, apiIssue model.APIIssueLink, isIssue bool) (bool, error)
 	SetAnnotationMetadataLinks(ctx context.Context, taskID string, execution int, metadataLinks []*model.APIMetadataLink) (bool, error)
+	SaveAdminSettings(ctx context.Context, adminSettings model.APIAdminSettings) (*model.APIAdminSettings, error)
 	DeleteDistro(ctx context.Context, opts DeleteDistroInput) (*DeleteDistroPayload, error)
 	CopyDistro(ctx context.Context, opts model.CopyDistroOpts) (*NewDistroPayload, error)
 	CreateDistro(ctx context.Context, opts CreateDistroInput) (*NewDistroPayload, error)
@@ -1946,6 +1961,7 @@ type ProjectVarsResolver interface {
 type QueryResolver interface {
 	BbGetCreatedTickets(ctx context.Context, taskID string) ([]*thirdparty.JiraTicket, error)
 	BuildBaron(ctx context.Context, taskID string, execution int) (*BuildBaron, error)
+	AdminSettings(ctx context.Context) (*model.APIAdminSettings, error)
 	AWSRegions(ctx context.Context) ([]string, error)
 	ClientConfig(ctx context.Context) (*model.APIClientConfig, error)
 	InstanceTypes(ctx context.Context) ([]string, error)
@@ -2011,6 +2027,7 @@ type TaskResolver interface {
 
 	Ami(ctx context.Context, obj *model.APITask) (*string, error)
 	Annotation(ctx context.Context, obj *model.APITask) (*model.APITaskAnnotation, error)
+
 	BaseStatus(ctx context.Context, obj *model.APITask) (*string, error)
 	BaseTask(ctx context.Context, obj *model.APITask) (*model.APITask, error)
 
@@ -2033,7 +2050,6 @@ type TaskResolver interface {
 	ExecutionTasksFull(ctx context.Context, obj *model.APITask) ([]*model.APITask, error)
 
 	FailedTestCount(ctx context.Context, obj *model.APITask) (int, error)
-
 	Files(ctx context.Context, obj *model.APITask) (*TaskFiles, error)
 
 	GeneratedByName(ctx context.Context, obj *model.APITask) (*string, error)
@@ -2124,6 +2140,9 @@ type VolumeResolver interface {
 	Host(ctx context.Context, obj *model.APIVolume) (*model.APIHost, error)
 }
 
+type AdminSettingsInputResolver interface {
+	BannerTheme(ctx context.Context, obj *model.APIAdminSettings, data *evergreen.BannerTheme) error
+}
 type BootstrapSettingsInputResolver interface {
 	Communication(ctx context.Context, obj *model.APIBootstrapSettings, data CommunicationMethod) error
 
@@ -2136,6 +2155,7 @@ type DistroInputResolver interface {
 	Arch(ctx context.Context, obj *model.APIDistro, data Arch) error
 
 	Provider(ctx context.Context, obj *model.APIDistro, data Provider) error
+
 	ProviderSettingsList(ctx context.Context, obj *model.APIDistro, data []map[string]any) error
 }
 type FinderSettingsInputResolver interface {
@@ -2181,7 +2201,7 @@ func (e *executableSchema) Schema() *ast.Schema {
 	return parsedSchema
 }
 
-func (e *executableSchema) Complexity(typeName, field string, childComplexity int, rawArgs map[string]any) (int, bool) {
+func (e *executableSchema) Complexity(ctx context.Context, typeName, field string, childComplexity int, rawArgs map[string]any) (int, bool) {
 	ec := executionContext{nil, e, 0, 0, nil}
 	_ = ec
 	switch typeName + "." + field {
@@ -2248,6 +2268,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.AbortInfo.User(childComplexity), true
+
+	case "AdminSettings.banner":
+		if e.complexity.AdminSettings.Banner == nil {
+			break
+		}
+
+		return e.complexity.AdminSettings.Banner(childComplexity), true
+
+	case "AdminSettings.bannerTheme":
+		if e.complexity.AdminSettings.BannerTheme == nil {
+			break
+		}
+
+		return e.complexity.AdminSettings.BannerTheme(childComplexity), true
 
 	case "Annotation.createdIssues":
 		if e.complexity.Annotation.CreatedIssues == nil {
@@ -2878,6 +2912,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Distro.Provider(childComplexity), true
+
+	case "Distro.providerAccount":
+		if e.complexity.Distro.ProviderAccount == nil {
+			break
+		}
+
+		return e.complexity.Distro.ProviderAccount(childComplexity), true
 
 	case "Distro.providerSettingsList":
 		if e.complexity.Distro.ProviderSettingsList == nil {
@@ -3570,7 +3611,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Host_events_args(context.TODO(), rawArgs)
+		args, err := ec.field_Host_events_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4002,7 +4043,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Image_events_args(context.TODO(), rawArgs)
+		args, err := ec.field_Image_events_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4035,7 +4076,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Image_operatingSystem_args(context.TODO(), rawArgs)
+		args, err := ec.field_Image_operatingSystem_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4047,7 +4088,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Image_packages_args(context.TODO(), rawArgs)
+		args, err := ec.field_Image_packages_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4059,7 +4100,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Image_toolchains_args(context.TODO(), rawArgs)
+		args, err := ec.field_Image_toolchains_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4589,7 +4630,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_abortTask_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_abortTask_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4601,7 +4642,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_addAnnotationIssue_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_addAnnotationIssue_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4613,7 +4654,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_addFavoriteProject_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_addFavoriteProject_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4625,7 +4666,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_attachProjectToNewRepo_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_attachProjectToNewRepo_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4637,7 +4678,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_attachProjectToRepo_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_attachProjectToRepo_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4649,7 +4690,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_attachVolumeToHost_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_attachVolumeToHost_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4661,7 +4702,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_bbCreateTicket_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_bbCreateTicket_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4680,7 +4721,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_copyDistro_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_copyDistro_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4692,7 +4733,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_copyProject_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_copyProject_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4704,7 +4745,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_createDistro_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_createDistro_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4716,7 +4757,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_createProject_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_createProject_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4728,7 +4769,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_createPublicKey_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_createPublicKey_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4740,7 +4781,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_deactivateStepbackTask_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_deactivateStepbackTask_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4752,7 +4793,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_defaultSectionToRepo_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_defaultSectionToRepo_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4764,7 +4805,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_deleteDistro_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_deleteDistro_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4776,7 +4817,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_deleteGithubAppCredentials_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_deleteGithubAppCredentials_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4788,7 +4829,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_deleteProject_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_deleteProject_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4800,7 +4841,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_deleteSubscriptions_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_deleteSubscriptions_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4812,7 +4853,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_detachProjectFromRepo_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_detachProjectFromRepo_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4824,7 +4865,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_detachVolumeFromHost_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_detachVolumeFromHost_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4836,7 +4877,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_editAnnotationNote_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_editAnnotationNote_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4848,7 +4889,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_editSpawnHost_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_editSpawnHost_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4860,7 +4901,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_forceRepotrackerRun_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_forceRepotrackerRun_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4872,7 +4913,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_migrateVolume_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_migrateVolume_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4884,7 +4925,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_moveAnnotationIssue_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_moveAnnotationIssue_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4896,7 +4937,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_overrideTaskDependencies_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_overrideTaskDependencies_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4908,7 +4949,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_promoteVarsToRepo_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_promoteVarsToRepo_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4920,7 +4961,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_removeAnnotationIssue_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_removeAnnotationIssue_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4932,7 +4973,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_removeFavoriteProject_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_removeFavoriteProject_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4944,7 +4985,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_removePublicKey_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_removePublicKey_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4956,7 +4997,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_removeVolume_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_removeVolume_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4968,7 +5009,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_reprovisionToNew_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_reprovisionToNew_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4980,7 +5021,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_restartJasper_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_restartJasper_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -4992,7 +5033,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_restartTask_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_restartTask_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -5004,19 +5045,31 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_restartVersions_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_restartVersions_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
 
 		return e.complexity.Mutation.RestartVersions(childComplexity, args["versionId"].(string), args["abort"].(bool), args["versionsToRestart"].([]*model1.VersionToRestart)), true
 
+	case "Mutation.saveAdminSettings":
+		if e.complexity.Mutation.SaveAdminSettings == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_saveAdminSettings_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.SaveAdminSettings(childComplexity, args["adminSettings"].(model.APIAdminSettings)), true
+
 	case "Mutation.saveDistro":
 		if e.complexity.Mutation.SaveDistro == nil {
 			break
 		}
 
-		args, err := ec.field_Mutation_saveDistro_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_saveDistro_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -5028,7 +5081,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_saveProjectSettingsForSection_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_saveProjectSettingsForSection_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -5040,7 +5093,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_saveRepoSettingsForSection_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_saveRepoSettingsForSection_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -5052,7 +5105,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_saveSubscription_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_saveSubscription_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -5064,7 +5117,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_schedulePatch_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_schedulePatch_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -5076,7 +5129,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_scheduleTasks_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_scheduleTasks_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -5088,7 +5141,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_scheduleUndispatchedBaseTasks_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_scheduleUndispatchedBaseTasks_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -5100,7 +5153,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_setAnnotationMetadataLinks_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_setAnnotationMetadataLinks_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -5112,7 +5165,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_setLastRevision_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_setLastRevision_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -5124,7 +5177,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_setPatchVisibility_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_setPatchVisibility_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -5136,7 +5189,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_setTaskPriority_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_setTaskPriority_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -5148,7 +5201,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_setVersionPriority_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_setVersionPriority_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -5160,7 +5213,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_spawnHost_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_spawnHost_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -5172,7 +5225,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_spawnVolume_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_spawnVolume_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -5184,7 +5237,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_unscheduleTask_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_unscheduleTask_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -5196,7 +5249,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_unscheduleVersionTasks_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_unscheduleVersionTasks_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -5208,7 +5261,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_updateBetaFeatures_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_updateBetaFeatures_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -5220,7 +5273,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_updateHostStatus_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_updateHostStatus_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -5232,7 +5285,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_updateParsleySettings_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_updateParsleySettings_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -5244,7 +5297,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_updatePublicKey_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_updatePublicKey_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -5256,7 +5309,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_updateSpawnHostStatus_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_updateSpawnHostStatus_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -5268,7 +5321,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_updateUserSettings_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_updateUserSettings_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -5280,7 +5333,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Mutation_updateVolume_args(context.TODO(), rawArgs)
+		args, err := ec.field_Mutation_updateVolume_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -5887,7 +5940,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Permissions_distroPermissions_args(context.TODO(), rawArgs)
+		args, err := ec.field_Permissions_distroPermissions_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -5899,7 +5952,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Permissions_projectPermissions_args(context.TODO(), rawArgs)
+		args, err := ec.field_Permissions_projectPermissions_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -5911,7 +5964,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Permissions_repoPermissions_args(context.TODO(), rawArgs)
+		args, err := ec.field_Permissions_repoPermissions_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -6000,7 +6053,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Pod_events_args(context.TODO(), rawArgs)
+		args, err := ec.field_Pod_events_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -6390,7 +6443,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Project_patches_args(context.TODO(), rawArgs)
+		args, err := ec.field_Project_patches_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -6831,12 +6884,19 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.AWSRegions(childComplexity), true
 
+	case "Query.adminSettings":
+		if e.complexity.Query.AdminSettings == nil {
+			break
+		}
+
+		return e.complexity.Query.AdminSettings(childComplexity), true
+
 	case "Query.bbGetCreatedTickets":
 		if e.complexity.Query.BbGetCreatedTickets == nil {
 			break
 		}
 
-		args, err := ec.field_Query_bbGetCreatedTickets_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_bbGetCreatedTickets_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -6848,7 +6908,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_buildBaron_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_buildBaron_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -6860,7 +6920,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_buildVariantsForTaskName_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_buildVariantsForTaskName_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -6879,7 +6939,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_distro_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_distro_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -6891,7 +6951,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_distroEvents_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_distroEvents_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -6903,7 +6963,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_distroTaskQueue_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_distroTaskQueue_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -6915,7 +6975,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_distros_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_distros_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -6927,7 +6987,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_githubProjectConflicts_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_githubProjectConflicts_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -6939,7 +6999,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_hasVersion_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_hasVersion_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -6951,7 +7011,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_host_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_host_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -6963,7 +7023,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_hostEvents_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_hostEvents_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -6975,7 +7035,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_hosts_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_hosts_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -6987,7 +7047,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_image_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_image_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -7013,7 +7073,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_isRepo_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_isRepo_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -7025,7 +7085,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_logkeeperBuildMetadata_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_logkeeperBuildMetadata_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -7037,7 +7097,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_mainlineCommits_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_mainlineCommits_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -7070,7 +7130,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_patch_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_patch_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -7082,7 +7142,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_pod_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_pod_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -7094,7 +7154,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_project_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_project_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -7106,7 +7166,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_projectEvents_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_projectEvents_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -7118,7 +7178,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_projectSettings_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_projectSettings_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -7137,7 +7197,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_repoEvents_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_repoEvents_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -7149,7 +7209,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_repoSettings_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_repoSettings_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -7175,7 +7235,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_task_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_task_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -7187,7 +7247,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_taskAllExecutions_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_taskAllExecutions_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -7199,7 +7259,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_taskHistory_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_taskHistory_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -7211,7 +7271,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_taskNamesForBuildVariant_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_taskNamesForBuildVariant_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -7230,7 +7290,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_taskTestSample_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_taskTestSample_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -7242,7 +7302,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_user_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_user_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -7261,7 +7321,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_version_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_version_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -7280,7 +7340,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Query_waterfall_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_waterfall_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -8594,7 +8654,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Task_tests_args(context.TODO(), rawArgs)
+		args, err := ec.field_Task_tests_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -8691,6 +8751,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.TaskEndDetail.FailingCommand(childComplexity), true
+
+	case "TaskEndDetail.failureMetadataTags":
+		if e.complexity.TaskEndDetail.FailureMetadataTags == nil {
+			break
+		}
+
+		return e.complexity.TaskEndDetail.FailureMetadataTags(childComplexity), true
 
 	case "TaskEndDetail.oomTracker":
 		if e.complexity.TaskEndDetail.OOMTracker == nil {
@@ -9553,20 +9620,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.UpstreamProject.Version(childComplexity), true
 
-	case "UseSpruceOptions.hasUsedMainlineCommitsBefore":
-		if e.complexity.UseSpruceOptions.HasUsedMainlineCommitsBefore == nil {
-			break
-		}
-
-		return e.complexity.UseSpruceOptions.HasUsedMainlineCommitsBefore(childComplexity), true
-
-	case "UseSpruceOptions.hasUsedSpruceBefore":
-		if e.complexity.UseSpruceOptions.HasUsedSpruceBefore == nil {
-			break
-		}
-
-		return e.complexity.UseSpruceOptions.HasUsedSpruceBefore(childComplexity), true
-
 	case "UseSpruceOptions.spruceV1":
 		if e.complexity.UseSpruceOptions.SpruceV1 == nil {
 			break
@@ -9614,7 +9667,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_User_patches_args(context.TODO(), rawArgs)
+		args, err := ec.field_User_patches_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -9801,7 +9854,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Version_buildVariantStats_args(context.TODO(), rawArgs)
+		args, err := ec.field_Version_buildVariantStats_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -9813,7 +9866,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Version_buildVariants_args(context.TODO(), rawArgs)
+		args, err := ec.field_Version_buildVariants_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -10000,7 +10053,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Version_taskStatusStats_args(context.TODO(), rawArgs)
+		args, err := ec.field_Version_taskStatusStats_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -10019,7 +10072,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Version_tasks_args(context.TODO(), rawArgs)
+		args, err := ec.field_Version_tasks_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
@@ -10462,6 +10515,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	ec := executionContext{opCtx, e, 0, 0, make(chan graphql.DeferredResult)}
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
 		ec.unmarshalInputAddFavoriteProjectInput,
+		ec.unmarshalInputAdminSettingsInput,
 		ec.unmarshalInputBetaFeaturesInput,
 		ec.unmarshalInputBootstrapSettingsInput,
 		ec.unmarshalInputBuildBaronSettingsInput,
@@ -10525,6 +10579,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputRepoRefInput,
 		ec.unmarshalInputRepoSettingsInput,
 		ec.unmarshalInputResourceLimitsInput,
+		ec.unmarshalInputSaveAdminSettingsInput,
 		ec.unmarshalInputSaveDistroInput,
 		ec.unmarshalInputSelectorInput,
 		ec.unmarshalInputSetLastRevisionInput,
@@ -12793,6 +12848,34 @@ func (ec *executionContext) field_Mutation_restartVersions_argsVersionsToRestart
 	}
 
 	var zeroVal []*model1.VersionToRestart
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_saveAdminSettings_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_saveAdminSettings_argsAdminSettings(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["adminSettings"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_saveAdminSettings_argsAdminSettings(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (model.APIAdminSettings, error) {
+	if _, ok := rawArgs["adminSettings"]; !ok {
+		var zeroVal model.APIAdminSettings
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("adminSettings"))
+	if tmp, ok := rawArgs["adminSettings"]; ok {
+		return ec.unmarshalNAdminSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAdminSettings(ctx, tmp)
+	}
+
+	var zeroVal model.APIAdminSettings
 	return zeroVal, nil
 }
 
@@ -16846,6 +16929,88 @@ func (ec *executionContext) fieldContext_AbortInfo_user(_ context.Context, field
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AdminSettings_banner(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AdminSettings_banner(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Banner, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AdminSettings_banner(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdminSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AdminSettings_bannerTheme(ctx context.Context, field graphql.CollectedField, obj *model.APIAdminSettings) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AdminSettings_bannerTheme(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.AdminSettings().BannerTheme(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*evergreen.BannerTheme)
+	fc.Result = res
+	return ec.marshalOBannerTheme2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚐBannerTheme(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AdminSettings_bannerTheme(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdminSettings",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type BannerTheme does not have child fields")
 		},
 	}
 	return fc, nil
@@ -20949,6 +21114,50 @@ func (ec *executionContext) fieldContext_Distro_provider(_ context.Context, fiel
 	return fc, nil
 }
 
+func (ec *executionContext) _Distro_providerAccount(ctx context.Context, field graphql.CollectedField, obj *model.APIDistro) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Distro_providerAccount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ProviderAccount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Distro_providerAccount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Distro",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Distro_providerSettingsList(ctx context.Context, field graphql.CollectedField, obj *model.APIDistro) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Distro_providerSettingsList(ctx, field)
 	if err != nil {
@@ -24378,8 +24587,6 @@ func (ec *executionContext) fieldContext_GroupedBuildVariant_tasks(_ context.Con
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "id":
-				return ec.fieldContext_Task_id(ctx, field)
 			case "aborted":
 				return ec.fieldContext_Task_aborted(ctx, field)
 			case "abortInfo":
@@ -24394,6 +24601,8 @@ func (ec *executionContext) fieldContext_GroupedBuildVariant_tasks(_ context.Con
 				return ec.fieldContext_Task_ami(ctx, field)
 			case "annotation":
 				return ec.fieldContext_Task_annotation(ctx, field)
+			case "id":
+				return ec.fieldContext_Task_id(ctx, field)
 			case "baseStatus":
 				return ec.fieldContext_Task_baseStatus(ctx, field)
 			case "baseTask":
@@ -24434,10 +24643,10 @@ func (ec *executionContext) fieldContext_GroupedBuildVariant_tasks(_ context.Con
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
-			case "displayStatus":
-				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayTask":
 				return ec.fieldContext_Task_displayTask(ctx, field)
 			case "distroId":
@@ -24454,10 +24663,10 @@ func (ec *executionContext) fieldContext_GroupedBuildVariant_tasks(_ context.Con
 				return ec.fieldContext_Task_expectedDuration(ctx, field)
 			case "failedTestCount":
 				return ec.fieldContext_Task_failedTestCount(ctx, field)
-			case "finishTime":
-				return ec.fieldContext_Task_finishTime(ctx, field)
 			case "files":
 				return ec.fieldContext_Task_files(ctx, field)
+			case "finishTime":
+				return ec.fieldContext_Task_finishTime(ctx, field)
 			case "generatedBy":
 				return ec.fieldContext_Task_generatedBy(ctx, field)
 			case "generatedByName":
@@ -24516,6 +24725,8 @@ func (ec *executionContext) fieldContext_GroupedBuildVariant_tasks(_ context.Con
 				return ec.fieldContext_Task_taskGroup(ctx, field)
 			case "taskGroupMaxHosts":
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
+			case "stepbackInfo":
+				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "taskOwnerTeam":
@@ -24528,8 +24739,6 @@ func (ec *executionContext) fieldContext_GroupedBuildVariant_tasks(_ context.Con
 				return ec.fieldContext_Task_totalTestCount(ctx, field)
 			case "versionMetadata":
 				return ec.fieldContext_Task_versionMetadata(ctx, field)
-			case "stepbackInfo":
-				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Task", field.Name)
 		},
@@ -27807,14 +28016,11 @@ func (ec *executionContext) _HostEventLogEntry_processedAt(ctx context.Context, 
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*time.Time)
 	fc.Result = res
-	return ec.marshalNTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_HostEventLogEntry_processedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -28511,6 +28717,8 @@ func (ec *executionContext) fieldContext_Image_distros(_ context.Context, field 
 				return ec.fieldContext_Distro_plannerSettings(ctx, field)
 			case "provider":
 				return ec.fieldContext_Distro_provider(ctx, field)
+			case "providerAccount":
+				return ec.fieldContext_Distro_providerAccount(ctx, field)
 			case "providerSettingsList":
 				return ec.fieldContext_Distro_providerSettingsList(ctx, field)
 			case "setup":
@@ -28679,8 +28887,6 @@ func (ec *executionContext) fieldContext_Image_latestTask(_ context.Context, fie
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "id":
-				return ec.fieldContext_Task_id(ctx, field)
 			case "aborted":
 				return ec.fieldContext_Task_aborted(ctx, field)
 			case "abortInfo":
@@ -28695,6 +28901,8 @@ func (ec *executionContext) fieldContext_Image_latestTask(_ context.Context, fie
 				return ec.fieldContext_Task_ami(ctx, field)
 			case "annotation":
 				return ec.fieldContext_Task_annotation(ctx, field)
+			case "id":
+				return ec.fieldContext_Task_id(ctx, field)
 			case "baseStatus":
 				return ec.fieldContext_Task_baseStatus(ctx, field)
 			case "baseTask":
@@ -28735,10 +28943,10 @@ func (ec *executionContext) fieldContext_Image_latestTask(_ context.Context, fie
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
-			case "displayStatus":
-				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayTask":
 				return ec.fieldContext_Task_displayTask(ctx, field)
 			case "distroId":
@@ -28755,10 +28963,10 @@ func (ec *executionContext) fieldContext_Image_latestTask(_ context.Context, fie
 				return ec.fieldContext_Task_expectedDuration(ctx, field)
 			case "failedTestCount":
 				return ec.fieldContext_Task_failedTestCount(ctx, field)
-			case "finishTime":
-				return ec.fieldContext_Task_finishTime(ctx, field)
 			case "files":
 				return ec.fieldContext_Task_files(ctx, field)
+			case "finishTime":
+				return ec.fieldContext_Task_finishTime(ctx, field)
 			case "generatedBy":
 				return ec.fieldContext_Task_generatedBy(ctx, field)
 			case "generatedByName":
@@ -28817,6 +29025,8 @@ func (ec *executionContext) fieldContext_Image_latestTask(_ context.Context, fie
 				return ec.fieldContext_Task_taskGroup(ctx, field)
 			case "taskGroupMaxHosts":
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
+			case "stepbackInfo":
+				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "taskOwnerTeam":
@@ -28829,8 +29039,6 @@ func (ec *executionContext) fieldContext_Image_latestTask(_ context.Context, fie
 				return ec.fieldContext_Task_totalTestCount(ctx, field)
 			case "versionMetadata":
 				return ec.fieldContext_Task_versionMetadata(ctx, field)
-			case "stepbackInfo":
-				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Task", field.Name)
 		},
@@ -31185,8 +31393,6 @@ func (ec *executionContext) fieldContext_LogkeeperBuild_task(_ context.Context, 
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "id":
-				return ec.fieldContext_Task_id(ctx, field)
 			case "aborted":
 				return ec.fieldContext_Task_aborted(ctx, field)
 			case "abortInfo":
@@ -31201,6 +31407,8 @@ func (ec *executionContext) fieldContext_LogkeeperBuild_task(_ context.Context, 
 				return ec.fieldContext_Task_ami(ctx, field)
 			case "annotation":
 				return ec.fieldContext_Task_annotation(ctx, field)
+			case "id":
+				return ec.fieldContext_Task_id(ctx, field)
 			case "baseStatus":
 				return ec.fieldContext_Task_baseStatus(ctx, field)
 			case "baseTask":
@@ -31241,10 +31449,10 @@ func (ec *executionContext) fieldContext_LogkeeperBuild_task(_ context.Context, 
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
-			case "displayStatus":
-				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayTask":
 				return ec.fieldContext_Task_displayTask(ctx, field)
 			case "distroId":
@@ -31261,10 +31469,10 @@ func (ec *executionContext) fieldContext_LogkeeperBuild_task(_ context.Context, 
 				return ec.fieldContext_Task_expectedDuration(ctx, field)
 			case "failedTestCount":
 				return ec.fieldContext_Task_failedTestCount(ctx, field)
-			case "finishTime":
-				return ec.fieldContext_Task_finishTime(ctx, field)
 			case "files":
 				return ec.fieldContext_Task_files(ctx, field)
+			case "finishTime":
+				return ec.fieldContext_Task_finishTime(ctx, field)
 			case "generatedBy":
 				return ec.fieldContext_Task_generatedBy(ctx, field)
 			case "generatedByName":
@@ -31323,6 +31531,8 @@ func (ec *executionContext) fieldContext_LogkeeperBuild_task(_ context.Context, 
 				return ec.fieldContext_Task_taskGroup(ctx, field)
 			case "taskGroupMaxHosts":
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
+			case "stepbackInfo":
+				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "taskOwnerTeam":
@@ -31335,8 +31545,6 @@ func (ec *executionContext) fieldContext_LogkeeperBuild_task(_ context.Context, 
 				return ec.fieldContext_Task_totalTestCount(ctx, field)
 			case "versionMetadata":
 				return ec.fieldContext_Task_versionMetadata(ctx, field)
-			case "stepbackInfo":
-				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Task", field.Name)
 		},
@@ -32981,6 +33189,89 @@ func (ec *executionContext) fieldContext_Mutation_setAnnotationMetadataLinks(ctx
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_setAnnotationMetadataLinks_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_saveAdminSettings(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_saveAdminSettings(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		directive0 := func(rctx context.Context) (any, error) {
+			ctx = rctx // use context from middleware stack in children
+			return ec.resolvers.Mutation().SaveAdminSettings(rctx, fc.Args["adminSettings"].(model.APIAdminSettings))
+		}
+
+		directive1 := func(ctx context.Context) (any, error) {
+			if ec.directives.RequireAdmin == nil {
+				var zeroVal *model.APIAdminSettings
+				return zeroVal, errors.New("directive requireAdmin is not implemented")
+			}
+			return ec.directives.RequireAdmin(ctx, nil, directive0)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(*model.APIAdminSettings); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *github.com/evergreen-ci/evergreen/rest/model.APIAdminSettings`, tmp)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIAdminSettings)
+	fc.Result = res
+	return ec.marshalNAdminSettings2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAdminSettings(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_saveAdminSettings(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "banner":
+				return ec.fieldContext_AdminSettings_banner(ctx, field)
+			case "bannerTheme":
+				return ec.fieldContext_AdminSettings_bannerTheme(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AdminSettings", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_saveAdminSettings_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -35646,8 +35937,6 @@ func (ec *executionContext) fieldContext_Mutation_abortTask(ctx context.Context,
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "id":
-				return ec.fieldContext_Task_id(ctx, field)
 			case "aborted":
 				return ec.fieldContext_Task_aborted(ctx, field)
 			case "abortInfo":
@@ -35662,6 +35951,8 @@ func (ec *executionContext) fieldContext_Mutation_abortTask(ctx context.Context,
 				return ec.fieldContext_Task_ami(ctx, field)
 			case "annotation":
 				return ec.fieldContext_Task_annotation(ctx, field)
+			case "id":
+				return ec.fieldContext_Task_id(ctx, field)
 			case "baseStatus":
 				return ec.fieldContext_Task_baseStatus(ctx, field)
 			case "baseTask":
@@ -35702,10 +35993,10 @@ func (ec *executionContext) fieldContext_Mutation_abortTask(ctx context.Context,
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
-			case "displayStatus":
-				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayTask":
 				return ec.fieldContext_Task_displayTask(ctx, field)
 			case "distroId":
@@ -35722,10 +36013,10 @@ func (ec *executionContext) fieldContext_Mutation_abortTask(ctx context.Context,
 				return ec.fieldContext_Task_expectedDuration(ctx, field)
 			case "failedTestCount":
 				return ec.fieldContext_Task_failedTestCount(ctx, field)
-			case "finishTime":
-				return ec.fieldContext_Task_finishTime(ctx, field)
 			case "files":
 				return ec.fieldContext_Task_files(ctx, field)
+			case "finishTime":
+				return ec.fieldContext_Task_finishTime(ctx, field)
 			case "generatedBy":
 				return ec.fieldContext_Task_generatedBy(ctx, field)
 			case "generatedByName":
@@ -35784,6 +36075,8 @@ func (ec *executionContext) fieldContext_Mutation_abortTask(ctx context.Context,
 				return ec.fieldContext_Task_taskGroup(ctx, field)
 			case "taskGroupMaxHosts":
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
+			case "stepbackInfo":
+				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "taskOwnerTeam":
@@ -35796,8 +36089,6 @@ func (ec *executionContext) fieldContext_Mutation_abortTask(ctx context.Context,
 				return ec.fieldContext_Task_totalTestCount(ctx, field)
 			case "versionMetadata":
 				return ec.fieldContext_Task_versionMetadata(ctx, field)
-			case "stepbackInfo":
-				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Task", field.Name)
 		},
@@ -35855,8 +36146,6 @@ func (ec *executionContext) fieldContext_Mutation_overrideTaskDependencies(ctx c
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "id":
-				return ec.fieldContext_Task_id(ctx, field)
 			case "aborted":
 				return ec.fieldContext_Task_aborted(ctx, field)
 			case "abortInfo":
@@ -35871,6 +36160,8 @@ func (ec *executionContext) fieldContext_Mutation_overrideTaskDependencies(ctx c
 				return ec.fieldContext_Task_ami(ctx, field)
 			case "annotation":
 				return ec.fieldContext_Task_annotation(ctx, field)
+			case "id":
+				return ec.fieldContext_Task_id(ctx, field)
 			case "baseStatus":
 				return ec.fieldContext_Task_baseStatus(ctx, field)
 			case "baseTask":
@@ -35911,10 +36202,10 @@ func (ec *executionContext) fieldContext_Mutation_overrideTaskDependencies(ctx c
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
-			case "displayStatus":
-				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayTask":
 				return ec.fieldContext_Task_displayTask(ctx, field)
 			case "distroId":
@@ -35931,10 +36222,10 @@ func (ec *executionContext) fieldContext_Mutation_overrideTaskDependencies(ctx c
 				return ec.fieldContext_Task_expectedDuration(ctx, field)
 			case "failedTestCount":
 				return ec.fieldContext_Task_failedTestCount(ctx, field)
-			case "finishTime":
-				return ec.fieldContext_Task_finishTime(ctx, field)
 			case "files":
 				return ec.fieldContext_Task_files(ctx, field)
+			case "finishTime":
+				return ec.fieldContext_Task_finishTime(ctx, field)
 			case "generatedBy":
 				return ec.fieldContext_Task_generatedBy(ctx, field)
 			case "generatedByName":
@@ -35993,6 +36284,8 @@ func (ec *executionContext) fieldContext_Mutation_overrideTaskDependencies(ctx c
 				return ec.fieldContext_Task_taskGroup(ctx, field)
 			case "taskGroupMaxHosts":
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
+			case "stepbackInfo":
+				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "taskOwnerTeam":
@@ -36005,8 +36298,6 @@ func (ec *executionContext) fieldContext_Mutation_overrideTaskDependencies(ctx c
 				return ec.fieldContext_Task_totalTestCount(ctx, field)
 			case "versionMetadata":
 				return ec.fieldContext_Task_versionMetadata(ctx, field)
-			case "stepbackInfo":
-				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Task", field.Name)
 		},
@@ -36064,8 +36355,6 @@ func (ec *executionContext) fieldContext_Mutation_restartTask(ctx context.Contex
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "id":
-				return ec.fieldContext_Task_id(ctx, field)
 			case "aborted":
 				return ec.fieldContext_Task_aborted(ctx, field)
 			case "abortInfo":
@@ -36080,6 +36369,8 @@ func (ec *executionContext) fieldContext_Mutation_restartTask(ctx context.Contex
 				return ec.fieldContext_Task_ami(ctx, field)
 			case "annotation":
 				return ec.fieldContext_Task_annotation(ctx, field)
+			case "id":
+				return ec.fieldContext_Task_id(ctx, field)
 			case "baseStatus":
 				return ec.fieldContext_Task_baseStatus(ctx, field)
 			case "baseTask":
@@ -36120,10 +36411,10 @@ func (ec *executionContext) fieldContext_Mutation_restartTask(ctx context.Contex
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
-			case "displayStatus":
-				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayTask":
 				return ec.fieldContext_Task_displayTask(ctx, field)
 			case "distroId":
@@ -36140,10 +36431,10 @@ func (ec *executionContext) fieldContext_Mutation_restartTask(ctx context.Contex
 				return ec.fieldContext_Task_expectedDuration(ctx, field)
 			case "failedTestCount":
 				return ec.fieldContext_Task_failedTestCount(ctx, field)
-			case "finishTime":
-				return ec.fieldContext_Task_finishTime(ctx, field)
 			case "files":
 				return ec.fieldContext_Task_files(ctx, field)
+			case "finishTime":
+				return ec.fieldContext_Task_finishTime(ctx, field)
 			case "generatedBy":
 				return ec.fieldContext_Task_generatedBy(ctx, field)
 			case "generatedByName":
@@ -36202,6 +36493,8 @@ func (ec *executionContext) fieldContext_Mutation_restartTask(ctx context.Contex
 				return ec.fieldContext_Task_taskGroup(ctx, field)
 			case "taskGroupMaxHosts":
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
+			case "stepbackInfo":
+				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "taskOwnerTeam":
@@ -36214,8 +36507,6 @@ func (ec *executionContext) fieldContext_Mutation_restartTask(ctx context.Contex
 				return ec.fieldContext_Task_totalTestCount(ctx, field)
 			case "versionMetadata":
 				return ec.fieldContext_Task_versionMetadata(ctx, field)
-			case "stepbackInfo":
-				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Task", field.Name)
 		},
@@ -36273,8 +36564,6 @@ func (ec *executionContext) fieldContext_Mutation_scheduleTasks(ctx context.Cont
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "id":
-				return ec.fieldContext_Task_id(ctx, field)
 			case "aborted":
 				return ec.fieldContext_Task_aborted(ctx, field)
 			case "abortInfo":
@@ -36289,6 +36578,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleTasks(ctx context.Cont
 				return ec.fieldContext_Task_ami(ctx, field)
 			case "annotation":
 				return ec.fieldContext_Task_annotation(ctx, field)
+			case "id":
+				return ec.fieldContext_Task_id(ctx, field)
 			case "baseStatus":
 				return ec.fieldContext_Task_baseStatus(ctx, field)
 			case "baseTask":
@@ -36329,10 +36620,10 @@ func (ec *executionContext) fieldContext_Mutation_scheduleTasks(ctx context.Cont
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
-			case "displayStatus":
-				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayTask":
 				return ec.fieldContext_Task_displayTask(ctx, field)
 			case "distroId":
@@ -36349,10 +36640,10 @@ func (ec *executionContext) fieldContext_Mutation_scheduleTasks(ctx context.Cont
 				return ec.fieldContext_Task_expectedDuration(ctx, field)
 			case "failedTestCount":
 				return ec.fieldContext_Task_failedTestCount(ctx, field)
-			case "finishTime":
-				return ec.fieldContext_Task_finishTime(ctx, field)
 			case "files":
 				return ec.fieldContext_Task_files(ctx, field)
+			case "finishTime":
+				return ec.fieldContext_Task_finishTime(ctx, field)
 			case "generatedBy":
 				return ec.fieldContext_Task_generatedBy(ctx, field)
 			case "generatedByName":
@@ -36411,6 +36702,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleTasks(ctx context.Cont
 				return ec.fieldContext_Task_taskGroup(ctx, field)
 			case "taskGroupMaxHosts":
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
+			case "stepbackInfo":
+				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "taskOwnerTeam":
@@ -36423,8 +36716,6 @@ func (ec *executionContext) fieldContext_Mutation_scheduleTasks(ctx context.Cont
 				return ec.fieldContext_Task_totalTestCount(ctx, field)
 			case "versionMetadata":
 				return ec.fieldContext_Task_versionMetadata(ctx, field)
-			case "stepbackInfo":
-				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Task", field.Name)
 		},
@@ -36482,8 +36773,6 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriority(ctx context.Co
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "id":
-				return ec.fieldContext_Task_id(ctx, field)
 			case "aborted":
 				return ec.fieldContext_Task_aborted(ctx, field)
 			case "abortInfo":
@@ -36498,6 +36787,8 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriority(ctx context.Co
 				return ec.fieldContext_Task_ami(ctx, field)
 			case "annotation":
 				return ec.fieldContext_Task_annotation(ctx, field)
+			case "id":
+				return ec.fieldContext_Task_id(ctx, field)
 			case "baseStatus":
 				return ec.fieldContext_Task_baseStatus(ctx, field)
 			case "baseTask":
@@ -36538,10 +36829,10 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriority(ctx context.Co
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
-			case "displayStatus":
-				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayTask":
 				return ec.fieldContext_Task_displayTask(ctx, field)
 			case "distroId":
@@ -36558,10 +36849,10 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriority(ctx context.Co
 				return ec.fieldContext_Task_expectedDuration(ctx, field)
 			case "failedTestCount":
 				return ec.fieldContext_Task_failedTestCount(ctx, field)
-			case "finishTime":
-				return ec.fieldContext_Task_finishTime(ctx, field)
 			case "files":
 				return ec.fieldContext_Task_files(ctx, field)
+			case "finishTime":
+				return ec.fieldContext_Task_finishTime(ctx, field)
 			case "generatedBy":
 				return ec.fieldContext_Task_generatedBy(ctx, field)
 			case "generatedByName":
@@ -36620,6 +36911,8 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriority(ctx context.Co
 				return ec.fieldContext_Task_taskGroup(ctx, field)
 			case "taskGroupMaxHosts":
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
+			case "stepbackInfo":
+				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "taskOwnerTeam":
@@ -36632,8 +36925,6 @@ func (ec *executionContext) fieldContext_Mutation_setTaskPriority(ctx context.Co
 				return ec.fieldContext_Task_totalTestCount(ctx, field)
 			case "versionMetadata":
 				return ec.fieldContext_Task_versionMetadata(ctx, field)
-			case "stepbackInfo":
-				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Task", field.Name)
 		},
@@ -36691,8 +36982,6 @@ func (ec *executionContext) fieldContext_Mutation_unscheduleTask(ctx context.Con
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "id":
-				return ec.fieldContext_Task_id(ctx, field)
 			case "aborted":
 				return ec.fieldContext_Task_aborted(ctx, field)
 			case "abortInfo":
@@ -36707,6 +36996,8 @@ func (ec *executionContext) fieldContext_Mutation_unscheduleTask(ctx context.Con
 				return ec.fieldContext_Task_ami(ctx, field)
 			case "annotation":
 				return ec.fieldContext_Task_annotation(ctx, field)
+			case "id":
+				return ec.fieldContext_Task_id(ctx, field)
 			case "baseStatus":
 				return ec.fieldContext_Task_baseStatus(ctx, field)
 			case "baseTask":
@@ -36747,10 +37038,10 @@ func (ec *executionContext) fieldContext_Mutation_unscheduleTask(ctx context.Con
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
-			case "displayStatus":
-				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayTask":
 				return ec.fieldContext_Task_displayTask(ctx, field)
 			case "distroId":
@@ -36767,10 +37058,10 @@ func (ec *executionContext) fieldContext_Mutation_unscheduleTask(ctx context.Con
 				return ec.fieldContext_Task_expectedDuration(ctx, field)
 			case "failedTestCount":
 				return ec.fieldContext_Task_failedTestCount(ctx, field)
-			case "finishTime":
-				return ec.fieldContext_Task_finishTime(ctx, field)
 			case "files":
 				return ec.fieldContext_Task_files(ctx, field)
+			case "finishTime":
+				return ec.fieldContext_Task_finishTime(ctx, field)
 			case "generatedBy":
 				return ec.fieldContext_Task_generatedBy(ctx, field)
 			case "generatedByName":
@@ -36829,6 +37120,8 @@ func (ec *executionContext) fieldContext_Mutation_unscheduleTask(ctx context.Con
 				return ec.fieldContext_Task_taskGroup(ctx, field)
 			case "taskGroupMaxHosts":
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
+			case "stepbackInfo":
+				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "taskOwnerTeam":
@@ -36841,8 +37134,6 @@ func (ec *executionContext) fieldContext_Mutation_unscheduleTask(ctx context.Con
 				return ec.fieldContext_Task_totalTestCount(ctx, field)
 			case "versionMetadata":
 				return ec.fieldContext_Task_versionMetadata(ctx, field)
-			case "stepbackInfo":
-				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Task", field.Name)
 		},
@@ -37849,8 +38140,6 @@ func (ec *executionContext) fieldContext_Mutation_scheduleUndispatchedBaseTasks(
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "id":
-				return ec.fieldContext_Task_id(ctx, field)
 			case "aborted":
 				return ec.fieldContext_Task_aborted(ctx, field)
 			case "abortInfo":
@@ -37865,6 +38154,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleUndispatchedBaseTasks(
 				return ec.fieldContext_Task_ami(ctx, field)
 			case "annotation":
 				return ec.fieldContext_Task_annotation(ctx, field)
+			case "id":
+				return ec.fieldContext_Task_id(ctx, field)
 			case "baseStatus":
 				return ec.fieldContext_Task_baseStatus(ctx, field)
 			case "baseTask":
@@ -37905,10 +38196,10 @@ func (ec *executionContext) fieldContext_Mutation_scheduleUndispatchedBaseTasks(
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
-			case "displayStatus":
-				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayTask":
 				return ec.fieldContext_Task_displayTask(ctx, field)
 			case "distroId":
@@ -37925,10 +38216,10 @@ func (ec *executionContext) fieldContext_Mutation_scheduleUndispatchedBaseTasks(
 				return ec.fieldContext_Task_expectedDuration(ctx, field)
 			case "failedTestCount":
 				return ec.fieldContext_Task_failedTestCount(ctx, field)
-			case "finishTime":
-				return ec.fieldContext_Task_finishTime(ctx, field)
 			case "files":
 				return ec.fieldContext_Task_files(ctx, field)
+			case "finishTime":
+				return ec.fieldContext_Task_finishTime(ctx, field)
 			case "generatedBy":
 				return ec.fieldContext_Task_generatedBy(ctx, field)
 			case "generatedByName":
@@ -37987,6 +38278,8 @@ func (ec *executionContext) fieldContext_Mutation_scheduleUndispatchedBaseTasks(
 				return ec.fieldContext_Task_taskGroup(ctx, field)
 			case "taskGroupMaxHosts":
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
+			case "stepbackInfo":
+				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "taskOwnerTeam":
@@ -37999,8 +38292,6 @@ func (ec *executionContext) fieldContext_Mutation_scheduleUndispatchedBaseTasks(
 				return ec.fieldContext_Task_totalTestCount(ctx, field)
 			case "versionMetadata":
 				return ec.fieldContext_Task_versionMetadata(ctx, field)
-			case "stepbackInfo":
-				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Task", field.Name)
 		},
@@ -43062,8 +43353,6 @@ func (ec *executionContext) fieldContext_Pod_task(_ context.Context, field graph
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "id":
-				return ec.fieldContext_Task_id(ctx, field)
 			case "aborted":
 				return ec.fieldContext_Task_aborted(ctx, field)
 			case "abortInfo":
@@ -43078,6 +43367,8 @@ func (ec *executionContext) fieldContext_Pod_task(_ context.Context, field graph
 				return ec.fieldContext_Task_ami(ctx, field)
 			case "annotation":
 				return ec.fieldContext_Task_annotation(ctx, field)
+			case "id":
+				return ec.fieldContext_Task_id(ctx, field)
 			case "baseStatus":
 				return ec.fieldContext_Task_baseStatus(ctx, field)
 			case "baseTask":
@@ -43118,10 +43409,10 @@ func (ec *executionContext) fieldContext_Pod_task(_ context.Context, field graph
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
-			case "displayStatus":
-				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayTask":
 				return ec.fieldContext_Task_displayTask(ctx, field)
 			case "distroId":
@@ -43138,10 +43429,10 @@ func (ec *executionContext) fieldContext_Pod_task(_ context.Context, field graph
 				return ec.fieldContext_Task_expectedDuration(ctx, field)
 			case "failedTestCount":
 				return ec.fieldContext_Task_failedTestCount(ctx, field)
-			case "finishTime":
-				return ec.fieldContext_Task_finishTime(ctx, field)
 			case "files":
 				return ec.fieldContext_Task_files(ctx, field)
+			case "finishTime":
+				return ec.fieldContext_Task_finishTime(ctx, field)
 			case "generatedBy":
 				return ec.fieldContext_Task_generatedBy(ctx, field)
 			case "generatedByName":
@@ -43200,6 +43491,8 @@ func (ec *executionContext) fieldContext_Pod_task(_ context.Context, field graph
 				return ec.fieldContext_Task_taskGroup(ctx, field)
 			case "taskGroupMaxHosts":
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
+			case "stepbackInfo":
+				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "taskOwnerTeam":
@@ -43212,8 +43505,6 @@ func (ec *executionContext) fieldContext_Pod_task(_ context.Context, field graph
 				return ec.fieldContext_Task_totalTestCount(ctx, field)
 			case "versionMetadata":
 				return ec.fieldContext_Task_versionMetadata(ctx, field)
-			case "stepbackInfo":
-				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Task", field.Name)
 		},
@@ -43605,8 +43896,6 @@ func (ec *executionContext) fieldContext_PodEventLogData_task(_ context.Context,
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "id":
-				return ec.fieldContext_Task_id(ctx, field)
 			case "aborted":
 				return ec.fieldContext_Task_aborted(ctx, field)
 			case "abortInfo":
@@ -43621,6 +43910,8 @@ func (ec *executionContext) fieldContext_PodEventLogData_task(_ context.Context,
 				return ec.fieldContext_Task_ami(ctx, field)
 			case "annotation":
 				return ec.fieldContext_Task_annotation(ctx, field)
+			case "id":
+				return ec.fieldContext_Task_id(ctx, field)
 			case "baseStatus":
 				return ec.fieldContext_Task_baseStatus(ctx, field)
 			case "baseTask":
@@ -43661,10 +43952,10 @@ func (ec *executionContext) fieldContext_PodEventLogData_task(_ context.Context,
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
-			case "displayStatus":
-				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayTask":
 				return ec.fieldContext_Task_displayTask(ctx, field)
 			case "distroId":
@@ -43681,10 +43972,10 @@ func (ec *executionContext) fieldContext_PodEventLogData_task(_ context.Context,
 				return ec.fieldContext_Task_expectedDuration(ctx, field)
 			case "failedTestCount":
 				return ec.fieldContext_Task_failedTestCount(ctx, field)
-			case "finishTime":
-				return ec.fieldContext_Task_finishTime(ctx, field)
 			case "files":
 				return ec.fieldContext_Task_files(ctx, field)
+			case "finishTime":
+				return ec.fieldContext_Task_finishTime(ctx, field)
 			case "generatedBy":
 				return ec.fieldContext_Task_generatedBy(ctx, field)
 			case "generatedByName":
@@ -43743,6 +44034,8 @@ func (ec *executionContext) fieldContext_PodEventLogData_task(_ context.Context,
 				return ec.fieldContext_Task_taskGroup(ctx, field)
 			case "taskGroupMaxHosts":
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
+			case "stepbackInfo":
+				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "taskOwnerTeam":
@@ -43755,8 +44048,6 @@ func (ec *executionContext) fieldContext_PodEventLogData_task(_ context.Context,
 				return ec.fieldContext_Task_totalTestCount(ctx, field)
 			case "versionMetadata":
 				return ec.fieldContext_Task_versionMetadata(ctx, field)
-			case "stepbackInfo":
-				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Task", field.Name)
 		},
@@ -43930,14 +44221,11 @@ func (ec *executionContext) _PodEventLogEntry_processedAt(ctx context.Context, f
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*time.Time)
 	fc.Result = res
-	return ec.marshalNTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_PodEventLogEntry_processedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -48884,6 +49172,75 @@ func (ec *executionContext) fieldContext_Query_buildBaron(ctx context.Context, f
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_adminSettings(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_adminSettings(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		directive0 := func(rctx context.Context) (any, error) {
+			ctx = rctx // use context from middleware stack in children
+			return ec.resolvers.Query().AdminSettings(rctx)
+		}
+
+		directive1 := func(ctx context.Context) (any, error) {
+			if ec.directives.RequireAdmin == nil {
+				var zeroVal *model.APIAdminSettings
+				return zeroVal, errors.New("directive requireAdmin is not implemented")
+			}
+			return ec.directives.RequireAdmin(ctx, nil, directive0)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(*model.APIAdminSettings); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *github.com/evergreen-ci/evergreen/rest/model.APIAdminSettings`, tmp)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIAdminSettings)
+	fc.Result = res
+	return ec.marshalOAdminSettings2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAdminSettings(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_adminSettings(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "banner":
+				return ec.fieldContext_AdminSettings_banner(ctx, field)
+			case "bannerTheme":
+				return ec.fieldContext_AdminSettings_bannerTheme(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AdminSettings", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_awsRegions(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_awsRegions(ctx, field)
 	if err != nil {
@@ -49207,6 +49564,8 @@ func (ec *executionContext) fieldContext_Query_distro(ctx context.Context, field
 				return ec.fieldContext_Distro_plannerSettings(ctx, field)
 			case "provider":
 				return ec.fieldContext_Distro_provider(ctx, field)
+			case "providerAccount":
+				return ec.fieldContext_Distro_providerAccount(ctx, field)
 			case "providerSettingsList":
 				return ec.fieldContext_Distro_providerSettingsList(ctx, field)
 			case "setup":
@@ -49391,6 +49750,8 @@ func (ec *executionContext) fieldContext_Query_distros(ctx context.Context, fiel
 				return ec.fieldContext_Distro_plannerSettings(ctx, field)
 			case "provider":
 				return ec.fieldContext_Distro_provider(ctx, field)
+			case "providerAccount":
+				return ec.fieldContext_Distro_providerAccount(ctx, field)
 			case "providerSettingsList":
 				return ec.fieldContext_Distro_providerSettingsList(ctx, field)
 			case "setup":
@@ -50904,8 +51265,6 @@ func (ec *executionContext) fieldContext_Query_task(ctx context.Context, field g
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "id":
-				return ec.fieldContext_Task_id(ctx, field)
 			case "aborted":
 				return ec.fieldContext_Task_aborted(ctx, field)
 			case "abortInfo":
@@ -50920,6 +51279,8 @@ func (ec *executionContext) fieldContext_Query_task(ctx context.Context, field g
 				return ec.fieldContext_Task_ami(ctx, field)
 			case "annotation":
 				return ec.fieldContext_Task_annotation(ctx, field)
+			case "id":
+				return ec.fieldContext_Task_id(ctx, field)
 			case "baseStatus":
 				return ec.fieldContext_Task_baseStatus(ctx, field)
 			case "baseTask":
@@ -50960,10 +51321,10 @@ func (ec *executionContext) fieldContext_Query_task(ctx context.Context, field g
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
-			case "displayStatus":
-				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayTask":
 				return ec.fieldContext_Task_displayTask(ctx, field)
 			case "distroId":
@@ -50980,10 +51341,10 @@ func (ec *executionContext) fieldContext_Query_task(ctx context.Context, field g
 				return ec.fieldContext_Task_expectedDuration(ctx, field)
 			case "failedTestCount":
 				return ec.fieldContext_Task_failedTestCount(ctx, field)
-			case "finishTime":
-				return ec.fieldContext_Task_finishTime(ctx, field)
 			case "files":
 				return ec.fieldContext_Task_files(ctx, field)
+			case "finishTime":
+				return ec.fieldContext_Task_finishTime(ctx, field)
 			case "generatedBy":
 				return ec.fieldContext_Task_generatedBy(ctx, field)
 			case "generatedByName":
@@ -51042,6 +51403,8 @@ func (ec *executionContext) fieldContext_Query_task(ctx context.Context, field g
 				return ec.fieldContext_Task_taskGroup(ctx, field)
 			case "taskGroupMaxHosts":
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
+			case "stepbackInfo":
+				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "taskOwnerTeam":
@@ -51054,8 +51417,6 @@ func (ec *executionContext) fieldContext_Query_task(ctx context.Context, field g
 				return ec.fieldContext_Task_totalTestCount(ctx, field)
 			case "versionMetadata":
 				return ec.fieldContext_Task_versionMetadata(ctx, field)
-			case "stepbackInfo":
-				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Task", field.Name)
 		},
@@ -51113,8 +51474,6 @@ func (ec *executionContext) fieldContext_Query_taskAllExecutions(ctx context.Con
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "id":
-				return ec.fieldContext_Task_id(ctx, field)
 			case "aborted":
 				return ec.fieldContext_Task_aborted(ctx, field)
 			case "abortInfo":
@@ -51129,6 +51488,8 @@ func (ec *executionContext) fieldContext_Query_taskAllExecutions(ctx context.Con
 				return ec.fieldContext_Task_ami(ctx, field)
 			case "annotation":
 				return ec.fieldContext_Task_annotation(ctx, field)
+			case "id":
+				return ec.fieldContext_Task_id(ctx, field)
 			case "baseStatus":
 				return ec.fieldContext_Task_baseStatus(ctx, field)
 			case "baseTask":
@@ -51169,10 +51530,10 @@ func (ec *executionContext) fieldContext_Query_taskAllExecutions(ctx context.Con
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
-			case "displayStatus":
-				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayTask":
 				return ec.fieldContext_Task_displayTask(ctx, field)
 			case "distroId":
@@ -51189,10 +51550,10 @@ func (ec *executionContext) fieldContext_Query_taskAllExecutions(ctx context.Con
 				return ec.fieldContext_Task_expectedDuration(ctx, field)
 			case "failedTestCount":
 				return ec.fieldContext_Task_failedTestCount(ctx, field)
-			case "finishTime":
-				return ec.fieldContext_Task_finishTime(ctx, field)
 			case "files":
 				return ec.fieldContext_Task_files(ctx, field)
+			case "finishTime":
+				return ec.fieldContext_Task_finishTime(ctx, field)
 			case "generatedBy":
 				return ec.fieldContext_Task_generatedBy(ctx, field)
 			case "generatedByName":
@@ -51251,6 +51612,8 @@ func (ec *executionContext) fieldContext_Query_taskAllExecutions(ctx context.Con
 				return ec.fieldContext_Task_taskGroup(ctx, field)
 			case "taskGroupMaxHosts":
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
+			case "stepbackInfo":
+				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "taskOwnerTeam":
@@ -51263,8 +51626,6 @@ func (ec *executionContext) fieldContext_Query_taskAllExecutions(ctx context.Con
 				return ec.fieldContext_Task_totalTestCount(ctx, field)
 			case "versionMetadata":
 				return ec.fieldContext_Task_versionMetadata(ctx, field)
-			case "stepbackInfo":
-				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Task", field.Name)
 		},
@@ -52165,6 +52526,8 @@ func (ec *executionContext) fieldContext_Query___type(ctx context.Context, field
 				return ec.fieldContext___Type_name(ctx, field)
 			case "description":
 				return ec.fieldContext___Type_description(ctx, field)
+			case "specifiedByURL":
+				return ec.fieldContext___Type_specifiedByURL(ctx, field)
 			case "fields":
 				return ec.fieldContext___Type_fields(ctx, field)
 			case "interfaces":
@@ -52177,8 +52540,6 @@ func (ec *executionContext) fieldContext_Query___type(ctx context.Context, field
 				return ec.fieldContext___Type_inputFields(ctx, field)
 			case "ofType":
 				return ec.fieldContext___Type_ofType(ctx, field)
-			case "specifiedByURL":
-				return ec.fieldContext___Type_specifiedByURL(ctx, field)
 			case "isOneOf":
 				return ec.fieldContext___Type_isOneOf(ctx, field)
 			}
@@ -55305,6 +55666,8 @@ func (ec *executionContext) fieldContext_SaveDistroPayload_distro(_ context.Cont
 				return ec.fieldContext_Distro_plannerSettings(ctx, field)
 			case "provider":
 				return ec.fieldContext_Distro_provider(ctx, field)
+			case "providerAccount":
+				return ec.fieldContext_Distro_providerAccount(ctx, field)
 			case "providerSettingsList":
 				return ec.fieldContext_Distro_providerSettingsList(ctx, field)
 			case "setup":
@@ -57616,50 +57979,6 @@ func (ec *executionContext) fieldContext_SubscriberWrapper_type(_ context.Contex
 	return fc, nil
 }
 
-func (ec *executionContext) _Task_id(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Task_id(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Id, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Task_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Task",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Task_aborted(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Task_aborted(ctx, field)
 	if err != nil {
@@ -57987,6 +58306,50 @@ func (ec *executionContext) fieldContext_Task_annotation(_ context.Context, fiel
 	return fc, nil
 }
 
+func (ec *executionContext) _Task_id(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Task_id(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Id, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Task_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Task",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Task_baseStatus(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Task_baseStatus(ctx, field)
 	if err != nil {
@@ -58064,8 +58427,6 @@ func (ec *executionContext) fieldContext_Task_baseTask(_ context.Context, field 
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "id":
-				return ec.fieldContext_Task_id(ctx, field)
 			case "aborted":
 				return ec.fieldContext_Task_aborted(ctx, field)
 			case "abortInfo":
@@ -58080,6 +58441,8 @@ func (ec *executionContext) fieldContext_Task_baseTask(_ context.Context, field 
 				return ec.fieldContext_Task_ami(ctx, field)
 			case "annotation":
 				return ec.fieldContext_Task_annotation(ctx, field)
+			case "id":
+				return ec.fieldContext_Task_id(ctx, field)
 			case "baseStatus":
 				return ec.fieldContext_Task_baseStatus(ctx, field)
 			case "baseTask":
@@ -58120,10 +58483,10 @@ func (ec *executionContext) fieldContext_Task_baseTask(_ context.Context, field 
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
-			case "displayStatus":
-				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayTask":
 				return ec.fieldContext_Task_displayTask(ctx, field)
 			case "distroId":
@@ -58140,10 +58503,10 @@ func (ec *executionContext) fieldContext_Task_baseTask(_ context.Context, field 
 				return ec.fieldContext_Task_expectedDuration(ctx, field)
 			case "failedTestCount":
 				return ec.fieldContext_Task_failedTestCount(ctx, field)
-			case "finishTime":
-				return ec.fieldContext_Task_finishTime(ctx, field)
 			case "files":
 				return ec.fieldContext_Task_files(ctx, field)
+			case "finishTime":
+				return ec.fieldContext_Task_finishTime(ctx, field)
 			case "generatedBy":
 				return ec.fieldContext_Task_generatedBy(ctx, field)
 			case "generatedByName":
@@ -58202,6 +58565,8 @@ func (ec *executionContext) fieldContext_Task_baseTask(_ context.Context, field 
 				return ec.fieldContext_Task_taskGroup(ctx, field)
 			case "taskGroupMaxHosts":
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
+			case "stepbackInfo":
+				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "taskOwnerTeam":
@@ -58214,8 +58579,6 @@ func (ec *executionContext) fieldContext_Task_baseTask(_ context.Context, field 
 				return ec.fieldContext_Task_totalTestCount(ctx, field)
 			case "versionMetadata":
 				return ec.fieldContext_Task_versionMetadata(ctx, field)
-			case "stepbackInfo":
-				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Task", field.Name)
 		},
@@ -58921,8 +59284,12 @@ func (ec *executionContext) fieldContext_Task_details(_ context.Context, field g
 			switch field.Name {
 			case "description":
 				return ec.fieldContext_TaskEndDetail_description(ctx, field)
+			case "diskDevices":
+				return ec.fieldContext_TaskEndDetail_diskDevices(ctx, field)
 			case "failingCommand":
 				return ec.fieldContext_TaskEndDetail_failingCommand(ctx, field)
+			case "failureMetadataTags":
+				return ec.fieldContext_TaskEndDetail_failureMetadataTags(ctx, field)
 			case "oomTracker":
 				return ec.fieldContext_TaskEndDetail_oomTracker(ctx, field)
 			case "status":
@@ -58931,12 +59298,10 @@ func (ec *executionContext) fieldContext_Task_details(_ context.Context, field g
 				return ec.fieldContext_TaskEndDetail_timedOut(ctx, field)
 			case "timeoutType":
 				return ec.fieldContext_TaskEndDetail_timeoutType(ctx, field)
-			case "type":
-				return ec.fieldContext_TaskEndDetail_type(ctx, field)
 			case "traceID":
 				return ec.fieldContext_TaskEndDetail_traceID(ctx, field)
-			case "diskDevices":
-				return ec.fieldContext_TaskEndDetail_diskDevices(ctx, field)
+			case "type":
+				return ec.fieldContext_TaskEndDetail_type(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type TaskEndDetail", field.Name)
 		},
@@ -59029,6 +59394,47 @@ func (ec *executionContext) fieldContext_Task_displayName(_ context.Context, fie
 	return fc, nil
 }
 
+func (ec *executionContext) _Task_displayOnly(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Task_displayOnly(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DisplayOnly, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Task_displayOnly(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Task",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Task_displayStatus(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Task_displayStatus(ctx, field)
 	if err != nil {
@@ -59073,47 +59479,6 @@ func (ec *executionContext) fieldContext_Task_displayStatus(_ context.Context, f
 	return fc, nil
 }
 
-func (ec *executionContext) _Task_displayOnly(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Task_displayOnly(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.DisplayOnly, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(bool)
-	fc.Result = res
-	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Task_displayOnly(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Task",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Task_displayTask(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Task_displayTask(ctx, field)
 	if err != nil {
@@ -59150,8 +59515,6 @@ func (ec *executionContext) fieldContext_Task_displayTask(_ context.Context, fie
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "id":
-				return ec.fieldContext_Task_id(ctx, field)
 			case "aborted":
 				return ec.fieldContext_Task_aborted(ctx, field)
 			case "abortInfo":
@@ -59166,6 +59529,8 @@ func (ec *executionContext) fieldContext_Task_displayTask(_ context.Context, fie
 				return ec.fieldContext_Task_ami(ctx, field)
 			case "annotation":
 				return ec.fieldContext_Task_annotation(ctx, field)
+			case "id":
+				return ec.fieldContext_Task_id(ctx, field)
 			case "baseStatus":
 				return ec.fieldContext_Task_baseStatus(ctx, field)
 			case "baseTask":
@@ -59206,10 +59571,10 @@ func (ec *executionContext) fieldContext_Task_displayTask(_ context.Context, fie
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
-			case "displayStatus":
-				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayTask":
 				return ec.fieldContext_Task_displayTask(ctx, field)
 			case "distroId":
@@ -59226,10 +59591,10 @@ func (ec *executionContext) fieldContext_Task_displayTask(_ context.Context, fie
 				return ec.fieldContext_Task_expectedDuration(ctx, field)
 			case "failedTestCount":
 				return ec.fieldContext_Task_failedTestCount(ctx, field)
-			case "finishTime":
-				return ec.fieldContext_Task_finishTime(ctx, field)
 			case "files":
 				return ec.fieldContext_Task_files(ctx, field)
+			case "finishTime":
+				return ec.fieldContext_Task_finishTime(ctx, field)
 			case "generatedBy":
 				return ec.fieldContext_Task_generatedBy(ctx, field)
 			case "generatedByName":
@@ -59288,6 +59653,8 @@ func (ec *executionContext) fieldContext_Task_displayTask(_ context.Context, fie
 				return ec.fieldContext_Task_taskGroup(ctx, field)
 			case "taskGroupMaxHosts":
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
+			case "stepbackInfo":
+				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "taskOwnerTeam":
@@ -59300,8 +59667,6 @@ func (ec *executionContext) fieldContext_Task_displayTask(_ context.Context, fie
 				return ec.fieldContext_Task_totalTestCount(ctx, field)
 			case "versionMetadata":
 				return ec.fieldContext_Task_versionMetadata(ctx, field)
-			case "stepbackInfo":
-				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Task", field.Name)
 		},
@@ -59515,8 +59880,6 @@ func (ec *executionContext) fieldContext_Task_executionTasksFull(_ context.Conte
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "id":
-				return ec.fieldContext_Task_id(ctx, field)
 			case "aborted":
 				return ec.fieldContext_Task_aborted(ctx, field)
 			case "abortInfo":
@@ -59531,6 +59894,8 @@ func (ec *executionContext) fieldContext_Task_executionTasksFull(_ context.Conte
 				return ec.fieldContext_Task_ami(ctx, field)
 			case "annotation":
 				return ec.fieldContext_Task_annotation(ctx, field)
+			case "id":
+				return ec.fieldContext_Task_id(ctx, field)
 			case "baseStatus":
 				return ec.fieldContext_Task_baseStatus(ctx, field)
 			case "baseTask":
@@ -59571,10 +59936,10 @@ func (ec *executionContext) fieldContext_Task_executionTasksFull(_ context.Conte
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
-			case "displayStatus":
-				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayTask":
 				return ec.fieldContext_Task_displayTask(ctx, field)
 			case "distroId":
@@ -59591,10 +59956,10 @@ func (ec *executionContext) fieldContext_Task_executionTasksFull(_ context.Conte
 				return ec.fieldContext_Task_expectedDuration(ctx, field)
 			case "failedTestCount":
 				return ec.fieldContext_Task_failedTestCount(ctx, field)
-			case "finishTime":
-				return ec.fieldContext_Task_finishTime(ctx, field)
 			case "files":
 				return ec.fieldContext_Task_files(ctx, field)
+			case "finishTime":
+				return ec.fieldContext_Task_finishTime(ctx, field)
 			case "generatedBy":
 				return ec.fieldContext_Task_generatedBy(ctx, field)
 			case "generatedByName":
@@ -59653,6 +60018,8 @@ func (ec *executionContext) fieldContext_Task_executionTasksFull(_ context.Conte
 				return ec.fieldContext_Task_taskGroup(ctx, field)
 			case "taskGroupMaxHosts":
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
+			case "stepbackInfo":
+				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "taskOwnerTeam":
@@ -59665,8 +60032,6 @@ func (ec *executionContext) fieldContext_Task_executionTasksFull(_ context.Conte
 				return ec.fieldContext_Task_totalTestCount(ctx, field)
 			case "versionMetadata":
 				return ec.fieldContext_Task_versionMetadata(ctx, field)
-			case "stepbackInfo":
-				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Task", field.Name)
 		},
@@ -59759,47 +60124,6 @@ func (ec *executionContext) fieldContext_Task_failedTestCount(_ context.Context,
 	return fc, nil
 }
 
-func (ec *executionContext) _Task_finishTime(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Task_finishTime(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.FinishTime, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*time.Time)
-	fc.Result = res
-	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Task_finishTime(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Task",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Time does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Task_files(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Task_files(ctx, field)
 	if err != nil {
@@ -59845,6 +60169,47 @@ func (ec *executionContext) fieldContext_Task_files(_ context.Context, field gra
 				return ec.fieldContext_TaskFiles_groupedFiles(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type TaskFiles", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Task_finishTime(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Task_finishTime(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.FinishTime, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*time.Time)
+	fc.Result = res
+	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Task_finishTime(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Task",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
 		},
 	}
 	return fc, nil
@@ -61267,6 +61632,57 @@ func (ec *executionContext) fieldContext_Task_taskGroupMaxHosts(_ context.Contex
 	return fc, nil
 }
 
+func (ec *executionContext) _Task_stepbackInfo(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Task_stepbackInfo(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.StepbackInfo, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.APIStepbackInfo)
+	fc.Result = res
+	return ec.marshalOStepbackInfo2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIStepbackInfo(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Task_stepbackInfo(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Task",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "lastFailingStepbackTaskId":
+				return ec.fieldContext_StepbackInfo_lastFailingStepbackTaskId(ctx, field)
+			case "lastPassingStepbackTaskId":
+				return ec.fieldContext_StepbackInfo_lastPassingStepbackTaskId(ctx, field)
+			case "nextStepbackTaskId":
+				return ec.fieldContext_StepbackInfo_nextStepbackTaskId(ctx, field)
+			case "previousStepbackTaskId":
+				return ec.fieldContext_StepbackInfo_previousStepbackTaskId(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type StepbackInfo", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Task_taskLogs(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Task_taskLogs(ctx, field)
 	if err != nil {
@@ -61652,57 +62068,6 @@ func (ec *executionContext) fieldContext_Task_versionMetadata(_ context.Context,
 	return fc, nil
 }
 
-func (ec *executionContext) _Task_stepbackInfo(ctx context.Context, field graphql.CollectedField, obj *model.APITask) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Task_stepbackInfo(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.StepbackInfo, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*model.APIStepbackInfo)
-	fc.Result = res
-	return ec.marshalOStepbackInfo2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIStepbackInfo(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Task_stepbackInfo(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Task",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "lastFailingStepbackTaskId":
-				return ec.fieldContext_StepbackInfo_lastFailingStepbackTaskId(ctx, field)
-			case "lastPassingStepbackTaskId":
-				return ec.fieldContext_StepbackInfo_lastPassingStepbackTaskId(ctx, field)
-			case "nextStepbackTaskId":
-				return ec.fieldContext_StepbackInfo_nextStepbackTaskId(ctx, field)
-			case "previousStepbackTaskId":
-				return ec.fieldContext_StepbackInfo_previousStepbackTaskId(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type StepbackInfo", field.Name)
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _TaskAnnotationSettings_fileTicketWebhook(ctx context.Context, field graphql.CollectedField, obj *model.APITaskAnnotationSettings) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_TaskAnnotationSettings_fileTicketWebhook(ctx, field)
 	if err != nil {
@@ -62058,6 +62423,50 @@ func (ec *executionContext) fieldContext_TaskEndDetail_description(_ context.Con
 	return fc, nil
 }
 
+func (ec *executionContext) _TaskEndDetail_diskDevices(ctx context.Context, field graphql.CollectedField, obj *model.ApiTaskEndDetail) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TaskEndDetail_diskDevices(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DiskDevices, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_TaskEndDetail_diskDevices(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TaskEndDetail",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _TaskEndDetail_failingCommand(ctx context.Context, field graphql.CollectedField, obj *model.ApiTaskEndDetail) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_TaskEndDetail_failingCommand(ctx, field)
 	if err != nil {
@@ -62087,6 +62496,50 @@ func (ec *executionContext) _TaskEndDetail_failingCommand(ctx context.Context, f
 }
 
 func (ec *executionContext) fieldContext_TaskEndDetail_failingCommand(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TaskEndDetail",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TaskEndDetail_failureMetadataTags(ctx context.Context, field graphql.CollectedField, obj *model.ApiTaskEndDetail) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TaskEndDetail_failureMetadataTags(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.FailureMetadataTags, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_TaskEndDetail_failureMetadataTags(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "TaskEndDetail",
 		Field:      field,
@@ -62275,50 +62728,6 @@ func (ec *executionContext) fieldContext_TaskEndDetail_timeoutType(_ context.Con
 	return fc, nil
 }
 
-func (ec *executionContext) _TaskEndDetail_type(ctx context.Context, field graphql.CollectedField, obj *model.ApiTaskEndDetail) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_TaskEndDetail_type(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Type, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_TaskEndDetail_type(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "TaskEndDetail",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _TaskEndDetail_traceID(ctx context.Context, field graphql.CollectedField, obj *model.ApiTaskEndDetail) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_TaskEndDetail_traceID(ctx, field)
 	if err != nil {
@@ -62360,8 +62769,8 @@ func (ec *executionContext) fieldContext_TaskEndDetail_traceID(_ context.Context
 	return fc, nil
 }
 
-func (ec *executionContext) _TaskEndDetail_diskDevices(ctx context.Context, field graphql.CollectedField, obj *model.ApiTaskEndDetail) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_TaskEndDetail_diskDevices(ctx, field)
+func (ec *executionContext) _TaskEndDetail_type(ctx context.Context, field graphql.CollectedField, obj *model.ApiTaskEndDetail) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TaskEndDetail_type(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -62374,7 +62783,7 @@ func (ec *executionContext) _TaskEndDetail_diskDevices(ctx context.Context, fiel
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.DiskDevices, nil
+		return obj.Type, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -62386,12 +62795,12 @@ func (ec *executionContext) _TaskEndDetail_diskDevices(ctx context.Context, fiel
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]string)
+	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_TaskEndDetail_diskDevices(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_TaskEndDetail_type(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "TaskEndDetail",
 		Field:      field,
@@ -62943,14 +63352,11 @@ func (ec *executionContext) _TaskEventLogEntry_processedAt(ctx context.Context, 
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*time.Time)
 	fc.Result = res
-	return ec.marshalNTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_TaskEventLogEntry_processedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -63232,8 +63638,6 @@ func (ec *executionContext) fieldContext_TaskHistory_tasks(_ context.Context, fi
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "id":
-				return ec.fieldContext_Task_id(ctx, field)
 			case "aborted":
 				return ec.fieldContext_Task_aborted(ctx, field)
 			case "abortInfo":
@@ -63248,6 +63652,8 @@ func (ec *executionContext) fieldContext_TaskHistory_tasks(_ context.Context, fi
 				return ec.fieldContext_Task_ami(ctx, field)
 			case "annotation":
 				return ec.fieldContext_Task_annotation(ctx, field)
+			case "id":
+				return ec.fieldContext_Task_id(ctx, field)
 			case "baseStatus":
 				return ec.fieldContext_Task_baseStatus(ctx, field)
 			case "baseTask":
@@ -63288,10 +63694,10 @@ func (ec *executionContext) fieldContext_TaskHistory_tasks(_ context.Context, fi
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
-			case "displayStatus":
-				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayTask":
 				return ec.fieldContext_Task_displayTask(ctx, field)
 			case "distroId":
@@ -63308,10 +63714,10 @@ func (ec *executionContext) fieldContext_TaskHistory_tasks(_ context.Context, fi
 				return ec.fieldContext_Task_expectedDuration(ctx, field)
 			case "failedTestCount":
 				return ec.fieldContext_Task_failedTestCount(ctx, field)
-			case "finishTime":
-				return ec.fieldContext_Task_finishTime(ctx, field)
 			case "files":
 				return ec.fieldContext_Task_files(ctx, field)
+			case "finishTime":
+				return ec.fieldContext_Task_finishTime(ctx, field)
 			case "generatedBy":
 				return ec.fieldContext_Task_generatedBy(ctx, field)
 			case "generatedByName":
@@ -63370,8 +63776,12 @@ func (ec *executionContext) fieldContext_TaskHistory_tasks(_ context.Context, fi
 				return ec.fieldContext_Task_taskGroup(ctx, field)
 			case "taskGroupMaxHosts":
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
+			case "stepbackInfo":
+				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
+			case "taskOwnerTeam":
+				return ec.fieldContext_Task_taskOwnerTeam(ctx, field)
 			case "tests":
 				return ec.fieldContext_Task_tests(ctx, field)
 			case "timeTaken":
@@ -63380,8 +63790,6 @@ func (ec *executionContext) fieldContext_TaskHistory_tasks(_ context.Context, fi
 				return ec.fieldContext_Task_totalTestCount(ctx, field)
 			case "versionMetadata":
 				return ec.fieldContext_Task_versionMetadata(ctx, field)
-			case "stepbackInfo":
-				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Task", field.Name)
 		},
@@ -67601,8 +68009,6 @@ func (ec *executionContext) fieldContext_UpstreamProject_task(_ context.Context,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "id":
-				return ec.fieldContext_Task_id(ctx, field)
 			case "aborted":
 				return ec.fieldContext_Task_aborted(ctx, field)
 			case "abortInfo":
@@ -67617,6 +68023,8 @@ func (ec *executionContext) fieldContext_UpstreamProject_task(_ context.Context,
 				return ec.fieldContext_Task_ami(ctx, field)
 			case "annotation":
 				return ec.fieldContext_Task_annotation(ctx, field)
+			case "id":
+				return ec.fieldContext_Task_id(ctx, field)
 			case "baseStatus":
 				return ec.fieldContext_Task_baseStatus(ctx, field)
 			case "baseTask":
@@ -67657,10 +68065,10 @@ func (ec *executionContext) fieldContext_UpstreamProject_task(_ context.Context,
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
-			case "displayStatus":
-				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayTask":
 				return ec.fieldContext_Task_displayTask(ctx, field)
 			case "distroId":
@@ -67677,10 +68085,10 @@ func (ec *executionContext) fieldContext_UpstreamProject_task(_ context.Context,
 				return ec.fieldContext_Task_expectedDuration(ctx, field)
 			case "failedTestCount":
 				return ec.fieldContext_Task_failedTestCount(ctx, field)
-			case "finishTime":
-				return ec.fieldContext_Task_finishTime(ctx, field)
 			case "files":
 				return ec.fieldContext_Task_files(ctx, field)
+			case "finishTime":
+				return ec.fieldContext_Task_finishTime(ctx, field)
 			case "generatedBy":
 				return ec.fieldContext_Task_generatedBy(ctx, field)
 			case "generatedByName":
@@ -67739,6 +68147,8 @@ func (ec *executionContext) fieldContext_UpstreamProject_task(_ context.Context,
 				return ec.fieldContext_Task_taskGroup(ctx, field)
 			case "taskGroupMaxHosts":
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
+			case "stepbackInfo":
+				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "taskOwnerTeam":
@@ -67751,8 +68161,6 @@ func (ec *executionContext) fieldContext_UpstreamProject_task(_ context.Context,
 				return ec.fieldContext_Task_totalTestCount(ctx, field)
 			case "versionMetadata":
 				return ec.fieldContext_Task_versionMetadata(ctx, field)
-			case "stepbackInfo":
-				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Task", field.Name)
 		},
@@ -67966,88 +68374,6 @@ func (ec *executionContext) fieldContext_UpstreamProject_version(_ context.Conte
 				return ec.fieldContext_Version_waterfallBuilds(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Version", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _UseSpruceOptions_hasUsedMainlineCommitsBefore(ctx context.Context, field graphql.CollectedField, obj *model.APIUseSpruceOptions) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_UseSpruceOptions_hasUsedMainlineCommitsBefore(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.HasUsedMainlineCommitsBefore, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*bool)
-	fc.Result = res
-	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_UseSpruceOptions_hasUsedMainlineCommitsBefore(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "UseSpruceOptions",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _UseSpruceOptions_hasUsedSpruceBefore(ctx context.Context, field graphql.CollectedField, obj *model.APIUseSpruceOptions) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_UseSpruceOptions_hasUsedSpruceBefore(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.HasUsedSpruceBefore, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*bool)
-	fc.Result = res
-	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_UseSpruceOptions_hasUsedSpruceBefore(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "UseSpruceOptions",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -69106,10 +69432,6 @@ func (ec *executionContext) fieldContext_UserSettings_useSpruceOptions(_ context
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "hasUsedMainlineCommitsBefore":
-				return ec.fieldContext_UseSpruceOptions_hasUsedMainlineCommitsBefore(ctx, field)
-			case "hasUsedSpruceBefore":
-				return ec.fieldContext_UseSpruceOptions_hasUsedSpruceBefore(ctx, field)
 			case "spruceV1":
 				return ec.fieldContext_UseSpruceOptions_spruceV1(ctx, field)
 			}
@@ -71649,8 +71971,6 @@ func (ec *executionContext) fieldContext_VersionTasks_data(_ context.Context, fi
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "id":
-				return ec.fieldContext_Task_id(ctx, field)
 			case "aborted":
 				return ec.fieldContext_Task_aborted(ctx, field)
 			case "abortInfo":
@@ -71665,6 +71985,8 @@ func (ec *executionContext) fieldContext_VersionTasks_data(_ context.Context, fi
 				return ec.fieldContext_Task_ami(ctx, field)
 			case "annotation":
 				return ec.fieldContext_Task_annotation(ctx, field)
+			case "id":
+				return ec.fieldContext_Task_id(ctx, field)
 			case "baseStatus":
 				return ec.fieldContext_Task_baseStatus(ctx, field)
 			case "baseTask":
@@ -71705,10 +72027,10 @@ func (ec *executionContext) fieldContext_VersionTasks_data(_ context.Context, fi
 				return ec.fieldContext_Task_dispatchTime(ctx, field)
 			case "displayName":
 				return ec.fieldContext_Task_displayName(ctx, field)
-			case "displayStatus":
-				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayOnly":
 				return ec.fieldContext_Task_displayOnly(ctx, field)
+			case "displayStatus":
+				return ec.fieldContext_Task_displayStatus(ctx, field)
 			case "displayTask":
 				return ec.fieldContext_Task_displayTask(ctx, field)
 			case "distroId":
@@ -71725,10 +72047,10 @@ func (ec *executionContext) fieldContext_VersionTasks_data(_ context.Context, fi
 				return ec.fieldContext_Task_expectedDuration(ctx, field)
 			case "failedTestCount":
 				return ec.fieldContext_Task_failedTestCount(ctx, field)
-			case "finishTime":
-				return ec.fieldContext_Task_finishTime(ctx, field)
 			case "files":
 				return ec.fieldContext_Task_files(ctx, field)
+			case "finishTime":
+				return ec.fieldContext_Task_finishTime(ctx, field)
 			case "generatedBy":
 				return ec.fieldContext_Task_generatedBy(ctx, field)
 			case "generatedByName":
@@ -71787,6 +72109,8 @@ func (ec *executionContext) fieldContext_VersionTasks_data(_ context.Context, fi
 				return ec.fieldContext_Task_taskGroup(ctx, field)
 			case "taskGroupMaxHosts":
 				return ec.fieldContext_Task_taskGroupMaxHosts(ctx, field)
+			case "stepbackInfo":
+				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			case "taskLogs":
 				return ec.fieldContext_Task_taskLogs(ctx, field)
 			case "taskOwnerTeam":
@@ -71799,8 +72123,6 @@ func (ec *executionContext) fieldContext_VersionTasks_data(_ context.Context, fi
 				return ec.fieldContext_Task_totalTestCount(ctx, field)
 			case "versionMetadata":
 				return ec.fieldContext_Task_versionMetadata(ctx, field)
-			case "stepbackInfo":
-				return ec.fieldContext_Task_stepbackInfo(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Task", field.Name)
 		},
@@ -74639,6 +74961,50 @@ func (ec *executionContext) fieldContext___Directive_description(_ context.Conte
 	return fc, nil
 }
 
+func (ec *executionContext) ___Directive_isRepeatable(ctx context.Context, field graphql.CollectedField, obj *introspection.Directive) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext___Directive_isRepeatable(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.IsRepeatable, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext___Directive_isRepeatable(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "__Directive",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) ___Directive_locations(ctx context.Context, field graphql.CollectedField, obj *introspection.Directive) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext___Directive_locations(ctx, field)
 	if err != nil {
@@ -74748,50 +75114,6 @@ func (ec *executionContext) fieldContext___Directive_args(ctx context.Context, f
 	if fc.Args, err = ec.field___Directive_args_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) ___Directive_isRepeatable(ctx context.Context, field graphql.CollectedField, obj *introspection.Directive) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext___Directive_isRepeatable(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.IsRepeatable, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(bool)
-	fc.Result = res
-	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext___Directive_isRepeatable(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "__Directive",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
 	}
 	return fc, nil
 }
@@ -75165,6 +75487,8 @@ func (ec *executionContext) fieldContext___Field_type(_ context.Context, field g
 				return ec.fieldContext___Type_name(ctx, field)
 			case "description":
 				return ec.fieldContext___Type_description(ctx, field)
+			case "specifiedByURL":
+				return ec.fieldContext___Type_specifiedByURL(ctx, field)
 			case "fields":
 				return ec.fieldContext___Type_fields(ctx, field)
 			case "interfaces":
@@ -75177,8 +75501,6 @@ func (ec *executionContext) fieldContext___Field_type(_ context.Context, field g
 				return ec.fieldContext___Type_inputFields(ctx, field)
 			case "ofType":
 				return ec.fieldContext___Type_ofType(ctx, field)
-			case "specifiedByURL":
-				return ec.fieldContext___Type_specifiedByURL(ctx, field)
 			case "isOneOf":
 				return ec.fieldContext___Type_isOneOf(ctx, field)
 			}
@@ -75403,6 +75725,8 @@ func (ec *executionContext) fieldContext___InputValue_type(_ context.Context, fi
 				return ec.fieldContext___Type_name(ctx, field)
 			case "description":
 				return ec.fieldContext___Type_description(ctx, field)
+			case "specifiedByURL":
+				return ec.fieldContext___Type_specifiedByURL(ctx, field)
 			case "fields":
 				return ec.fieldContext___Type_fields(ctx, field)
 			case "interfaces":
@@ -75415,8 +75739,6 @@ func (ec *executionContext) fieldContext___InputValue_type(_ context.Context, fi
 				return ec.fieldContext___Type_inputFields(ctx, field)
 			case "ofType":
 				return ec.fieldContext___Type_ofType(ctx, field)
-			case "specifiedByURL":
-				return ec.fieldContext___Type_specifiedByURL(ctx, field)
 			case "isOneOf":
 				return ec.fieldContext___Type_isOneOf(ctx, field)
 			}
@@ -75638,6 +75960,8 @@ func (ec *executionContext) fieldContext___Schema_types(_ context.Context, field
 				return ec.fieldContext___Type_name(ctx, field)
 			case "description":
 				return ec.fieldContext___Type_description(ctx, field)
+			case "specifiedByURL":
+				return ec.fieldContext___Type_specifiedByURL(ctx, field)
 			case "fields":
 				return ec.fieldContext___Type_fields(ctx, field)
 			case "interfaces":
@@ -75650,8 +75974,6 @@ func (ec *executionContext) fieldContext___Schema_types(_ context.Context, field
 				return ec.fieldContext___Type_inputFields(ctx, field)
 			case "ofType":
 				return ec.fieldContext___Type_ofType(ctx, field)
-			case "specifiedByURL":
-				return ec.fieldContext___Type_specifiedByURL(ctx, field)
 			case "isOneOf":
 				return ec.fieldContext___Type_isOneOf(ctx, field)
 			}
@@ -75706,6 +76028,8 @@ func (ec *executionContext) fieldContext___Schema_queryType(_ context.Context, f
 				return ec.fieldContext___Type_name(ctx, field)
 			case "description":
 				return ec.fieldContext___Type_description(ctx, field)
+			case "specifiedByURL":
+				return ec.fieldContext___Type_specifiedByURL(ctx, field)
 			case "fields":
 				return ec.fieldContext___Type_fields(ctx, field)
 			case "interfaces":
@@ -75718,8 +76042,6 @@ func (ec *executionContext) fieldContext___Schema_queryType(_ context.Context, f
 				return ec.fieldContext___Type_inputFields(ctx, field)
 			case "ofType":
 				return ec.fieldContext___Type_ofType(ctx, field)
-			case "specifiedByURL":
-				return ec.fieldContext___Type_specifiedByURL(ctx, field)
 			case "isOneOf":
 				return ec.fieldContext___Type_isOneOf(ctx, field)
 			}
@@ -75771,6 +76093,8 @@ func (ec *executionContext) fieldContext___Schema_mutationType(_ context.Context
 				return ec.fieldContext___Type_name(ctx, field)
 			case "description":
 				return ec.fieldContext___Type_description(ctx, field)
+			case "specifiedByURL":
+				return ec.fieldContext___Type_specifiedByURL(ctx, field)
 			case "fields":
 				return ec.fieldContext___Type_fields(ctx, field)
 			case "interfaces":
@@ -75783,8 +76107,6 @@ func (ec *executionContext) fieldContext___Schema_mutationType(_ context.Context
 				return ec.fieldContext___Type_inputFields(ctx, field)
 			case "ofType":
 				return ec.fieldContext___Type_ofType(ctx, field)
-			case "specifiedByURL":
-				return ec.fieldContext___Type_specifiedByURL(ctx, field)
 			case "isOneOf":
 				return ec.fieldContext___Type_isOneOf(ctx, field)
 			}
@@ -75836,6 +76158,8 @@ func (ec *executionContext) fieldContext___Schema_subscriptionType(_ context.Con
 				return ec.fieldContext___Type_name(ctx, field)
 			case "description":
 				return ec.fieldContext___Type_description(ctx, field)
+			case "specifiedByURL":
+				return ec.fieldContext___Type_specifiedByURL(ctx, field)
 			case "fields":
 				return ec.fieldContext___Type_fields(ctx, field)
 			case "interfaces":
@@ -75848,8 +76172,6 @@ func (ec *executionContext) fieldContext___Schema_subscriptionType(_ context.Con
 				return ec.fieldContext___Type_inputFields(ctx, field)
 			case "ofType":
 				return ec.fieldContext___Type_ofType(ctx, field)
-			case "specifiedByURL":
-				return ec.fieldContext___Type_specifiedByURL(ctx, field)
 			case "isOneOf":
 				return ec.fieldContext___Type_isOneOf(ctx, field)
 			}
@@ -75902,12 +76224,12 @@ func (ec *executionContext) fieldContext___Schema_directives(_ context.Context, 
 				return ec.fieldContext___Directive_name(ctx, field)
 			case "description":
 				return ec.fieldContext___Directive_description(ctx, field)
+			case "isRepeatable":
+				return ec.fieldContext___Directive_isRepeatable(ctx, field)
 			case "locations":
 				return ec.fieldContext___Directive_locations(ctx, field)
 			case "args":
 				return ec.fieldContext___Directive_args(ctx, field)
-			case "isRepeatable":
-				return ec.fieldContext___Directive_isRepeatable(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type __Directive", field.Name)
 		},
@@ -76041,6 +76363,47 @@ func (ec *executionContext) fieldContext___Type_description(_ context.Context, f
 	return fc, nil
 }
 
+func (ec *executionContext) ___Type_specifiedByURL(ctx context.Context, field graphql.CollectedField, obj *introspection.Type) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext___Type_specifiedByURL(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SpecifiedByURL(), nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext___Type_specifiedByURL(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "__Type",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) ___Type_fields(ctx context.Context, field graphql.CollectedField, obj *introspection.Type) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext___Type_fields(ctx, field)
 	if err != nil {
@@ -76149,6 +76512,8 @@ func (ec *executionContext) fieldContext___Type_interfaces(_ context.Context, fi
 				return ec.fieldContext___Type_name(ctx, field)
 			case "description":
 				return ec.fieldContext___Type_description(ctx, field)
+			case "specifiedByURL":
+				return ec.fieldContext___Type_specifiedByURL(ctx, field)
 			case "fields":
 				return ec.fieldContext___Type_fields(ctx, field)
 			case "interfaces":
@@ -76161,8 +76526,6 @@ func (ec *executionContext) fieldContext___Type_interfaces(_ context.Context, fi
 				return ec.fieldContext___Type_inputFields(ctx, field)
 			case "ofType":
 				return ec.fieldContext___Type_ofType(ctx, field)
-			case "specifiedByURL":
-				return ec.fieldContext___Type_specifiedByURL(ctx, field)
 			case "isOneOf":
 				return ec.fieldContext___Type_isOneOf(ctx, field)
 			}
@@ -76214,6 +76577,8 @@ func (ec *executionContext) fieldContext___Type_possibleTypes(_ context.Context,
 				return ec.fieldContext___Type_name(ctx, field)
 			case "description":
 				return ec.fieldContext___Type_description(ctx, field)
+			case "specifiedByURL":
+				return ec.fieldContext___Type_specifiedByURL(ctx, field)
 			case "fields":
 				return ec.fieldContext___Type_fields(ctx, field)
 			case "interfaces":
@@ -76226,8 +76591,6 @@ func (ec *executionContext) fieldContext___Type_possibleTypes(_ context.Context,
 				return ec.fieldContext___Type_inputFields(ctx, field)
 			case "ofType":
 				return ec.fieldContext___Type_ofType(ctx, field)
-			case "specifiedByURL":
-				return ec.fieldContext___Type_specifiedByURL(ctx, field)
 			case "isOneOf":
 				return ec.fieldContext___Type_isOneOf(ctx, field)
 			}
@@ -76396,6 +76759,8 @@ func (ec *executionContext) fieldContext___Type_ofType(_ context.Context, field 
 				return ec.fieldContext___Type_name(ctx, field)
 			case "description":
 				return ec.fieldContext___Type_description(ctx, field)
+			case "specifiedByURL":
+				return ec.fieldContext___Type_specifiedByURL(ctx, field)
 			case "fields":
 				return ec.fieldContext___Type_fields(ctx, field)
 			case "interfaces":
@@ -76408,53 +76773,10 @@ func (ec *executionContext) fieldContext___Type_ofType(_ context.Context, field 
 				return ec.fieldContext___Type_inputFields(ctx, field)
 			case "ofType":
 				return ec.fieldContext___Type_ofType(ctx, field)
-			case "specifiedByURL":
-				return ec.fieldContext___Type_specifiedByURL(ctx, field)
 			case "isOneOf":
 				return ec.fieldContext___Type_isOneOf(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type __Type", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) ___Type_specifiedByURL(ctx context.Context, field graphql.CollectedField, obj *introspection.Type) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext___Type_specifiedByURL(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.SpecifiedByURL(), nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext___Type_specifiedByURL(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "__Type",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -76526,6 +76848,42 @@ func (ec *executionContext) unmarshalInputAddFavoriteProjectInput(ctx context.Co
 				return it, err
 			}
 			it.ProjectIdentifier = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputAdminSettingsInput(ctx context.Context, obj any) (model.APIAdminSettings, error) {
+	var it model.APIAdminSettings
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"banner", "bannerTheme"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "banner":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("banner"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Banner = data
+		case "bannerTheme":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bannerTheme"))
+			data, err := ec.unmarshalOBannerTheme2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚐBannerTheme(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			if err = ec.resolvers.AdminSettingsInput().BannerTheme(ctx, &it, data); err != nil {
+				return it, err
+			}
 		}
 	}
 
@@ -77426,7 +77784,7 @@ func (ec *executionContext) unmarshalInputDistroInput(ctx context.Context, obj a
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"adminOnly", "aliases", "arch", "authorizedKeysFile", "bootstrapSettings", "containerPool", "disabled", "disableShallowClone", "dispatcherSettings", "execUser", "expansions", "finderSettings", "homeVolumeSettings", "hostAllocatorSettings", "iceCreamSettings", "imageId", "isCluster", "isVirtualWorkStation", "mountpoints", "name", "note", "plannerSettings", "provider", "providerSettingsList", "setup", "setupAsSudo", "singleTaskDistro", "sshOptions", "user", "userSpawnAllowed", "validProjects", "warningNote", "workDir"}
+	fieldsInOrder := [...]string{"adminOnly", "aliases", "arch", "authorizedKeysFile", "bootstrapSettings", "containerPool", "disabled", "disableShallowClone", "dispatcherSettings", "execUser", "expansions", "finderSettings", "homeVolumeSettings", "hostAllocatorSettings", "iceCreamSettings", "imageId", "isCluster", "isVirtualWorkStation", "mountpoints", "name", "note", "plannerSettings", "provider", "providerAccount", "providerSettingsList", "setup", "setupAsSudo", "singleTaskDistro", "sshOptions", "user", "userSpawnAllowed", "validProjects", "warningNote", "workDir"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -77620,6 +77978,13 @@ func (ec *executionContext) unmarshalInputDistroInput(ctx context.Context, obj a
 			if err = ec.resolvers.DistroInput().Provider(ctx, &it, data); err != nil {
 				return it, err
 			}
+		case "providerAccount":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("providerAccount"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ProviderAccount = data
 		case "providerSettingsList":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("providerSettingsList"))
 			data, err := ec.unmarshalNMap2ᚕmapᚄ(ctx, v)
@@ -80567,6 +80932,33 @@ func (ec *executionContext) unmarshalInputResourceLimitsInput(ctx context.Contex
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputSaveAdminSettingsInput(ctx context.Context, obj any) (SaveAdminSettingsInput, error) {
+	var it SaveAdminSettingsInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"adminSettings"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "adminSettings":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("adminSettings"))
+			data, err := ec.unmarshalNAdminSettingsInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAdminSettings(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AdminSettings = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputSaveDistroInput(ctx context.Context, obj any) (SaveDistroInput, error) {
 	var it SaveDistroInput
 	asMap := map[string]any{}
@@ -81790,27 +82182,13 @@ func (ec *executionContext) unmarshalInputUseSpruceOptionsInput(ctx context.Cont
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"hasUsedMainlineCommitsBefore", "hasUsedSpruceBefore", "spruceV1"}
+	fieldsInOrder := [...]string{"spruceV1"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
-		case "hasUsedMainlineCommitsBefore":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasUsedMainlineCommitsBefore"))
-			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.HasUsedMainlineCommitsBefore = data
-		case "hasUsedSpruceBefore":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasUsedSpruceBefore"))
-			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.HasUsedSpruceBefore = data
 		case "spruceV1":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("spruceV1"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -82514,6 +82892,75 @@ func (ec *executionContext) _AbortInfo(ctx context.Context, sel ast.SelectionSet
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var adminSettingsImplementors = []string{"AdminSettings"}
+
+func (ec *executionContext) _AdminSettings(ctx context.Context, sel ast.SelectionSet, obj *model.APIAdminSettings) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, adminSettingsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AdminSettings")
+		case "banner":
+			out.Values[i] = ec._AdminSettings_banner(ctx, field, obj)
+		case "bannerTheme":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._AdminSettings_bannerTheme(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -83801,6 +84248,11 @@ func (ec *executionContext) _Distro(ctx context.Context, sel ast.SelectionSet, o
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "providerAccount":
+			out.Values[i] = ec._Distro_providerAccount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "providerSettingsList":
 			field := field
 
@@ -85886,9 +86338,6 @@ func (ec *executionContext) _HostEventLogEntry(ctx context.Context, sel ast.Sele
 			out.Values[i] = ec._HostEventLogEntry_eventType(ctx, field, obj)
 		case "processedAt":
 			out.Values[i] = ec._HostEventLogEntry_processedAt(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "resourceId":
 			out.Values[i] = ec._HostEventLogEntry_resourceId(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -87429,6 +87878,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "setAnnotationMetadataLinks":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_setAnnotationMetadataLinks(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "saveAdminSettings":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_saveAdminSettings(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -89726,9 +90182,6 @@ func (ec *executionContext) _PodEventLogEntry(ctx context.Context, sel ast.Selec
 			out.Values[i] = ec._PodEventLogEntry_eventType(ctx, field, obj)
 		case "processedAt":
 			out.Values[i] = ec._PodEventLogEntry_processedAt(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "resourceId":
 			out.Values[i] = ec._PodEventLogEntry_resourceId(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -90923,6 +91376,25 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "adminSettings":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_adminSettings(ctx, field)
 				return res
 			}
 
@@ -93280,11 +93752,6 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Task")
-		case "id":
-			out.Values[i] = ec._Task_id(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
 		case "aborted":
 			out.Values[i] = ec._Task_aborted(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -93398,6 +93865,11 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "id":
+			out.Values[i] = ec._Task_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "baseStatus":
 			field := field
 
@@ -93846,13 +94318,13 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "displayOnly":
+			out.Values[i] = ec._Task_displayOnly(ctx, field, obj)
 		case "displayStatus":
 			out.Values[i] = ec._Task_displayStatus(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
-		case "displayOnly":
-			out.Values[i] = ec._Task_displayOnly(ctx, field, obj)
 		case "displayTask":
 			field := field
 
@@ -94002,8 +94474,6 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-		case "finishTime":
-			out.Values[i] = ec._Task_finishTime(ctx, field, obj)
 		case "files":
 			field := field
 
@@ -94040,6 +94510,8 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "finishTime":
+			out.Values[i] = ec._Task_finishTime(ctx, field, obj)
 		case "generatedBy":
 			out.Values[i] = ec._Task_generatedBy(ctx, field, obj)
 		case "generatedByName":
@@ -94475,6 +94947,8 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._Task_taskGroup(ctx, field, obj)
 		case "taskGroupMaxHosts":
 			out.Values[i] = ec._Task_taskGroupMaxHosts(ctx, field, obj)
+		case "stepbackInfo":
+			out.Values[i] = ec._Task_stepbackInfo(ctx, field, obj)
 		case "taskLogs":
 			field := field
 
@@ -94654,8 +95128,6 @@ func (ec *executionContext) _Task(ctx context.Context, sel ast.SelectionSet, obj
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-		case "stepbackInfo":
-			out.Values[i] = ec._Task_stepbackInfo(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -94857,8 +95329,18 @@ func (ec *executionContext) _TaskEndDetail(ctx context.Context, sel ast.Selectio
 			out.Values[i] = graphql.MarshalString("TaskEndDetail")
 		case "description":
 			out.Values[i] = ec._TaskEndDetail_description(ctx, field, obj)
+		case "diskDevices":
+			out.Values[i] = ec._TaskEndDetail_diskDevices(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "failingCommand":
 			out.Values[i] = ec._TaskEndDetail_failingCommand(ctx, field, obj)
+		case "failureMetadataTags":
+			out.Values[i] = ec._TaskEndDetail_failureMetadataTags(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "oomTracker":
 			out.Values[i] = ec._TaskEndDetail_oomTracker(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -94873,15 +95355,10 @@ func (ec *executionContext) _TaskEndDetail(ctx context.Context, sel ast.Selectio
 			out.Values[i] = ec._TaskEndDetail_timedOut(ctx, field, obj)
 		case "timeoutType":
 			out.Values[i] = ec._TaskEndDetail_timeoutType(ctx, field, obj)
-		case "type":
-			out.Values[i] = ec._TaskEndDetail_type(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "traceID":
 			out.Values[i] = ec._TaskEndDetail_traceID(ctx, field, obj)
-		case "diskDevices":
-			out.Values[i] = ec._TaskEndDetail_diskDevices(ctx, field, obj)
+		case "type":
+			out.Values[i] = ec._TaskEndDetail_type(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -94985,9 +95462,6 @@ func (ec *executionContext) _TaskEventLogEntry(ctx context.Context, sel ast.Sele
 			out.Values[i] = ec._TaskEventLogEntry_eventType(ctx, field, obj)
 		case "processedAt":
 			out.Values[i] = ec._TaskEventLogEntry_processedAt(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "resourceId":
 			out.Values[i] = ec._TaskEventLogEntry_resourceId(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -96464,10 +96938,6 @@ func (ec *executionContext) _UseSpruceOptions(ctx context.Context, sel ast.Selec
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("UseSpruceOptions")
-		case "hasUsedMainlineCommitsBefore":
-			out.Values[i] = ec._UseSpruceOptions_hasUsedMainlineCommitsBefore(ctx, field, obj)
-		case "hasUsedSpruceBefore":
-			out.Values[i] = ec._UseSpruceOptions_hasUsedSpruceBefore(ctx, field, obj)
 		case "spruceV1":
 			out.Values[i] = ec._UseSpruceOptions_spruceV1(ctx, field, obj)
 		default:
@@ -98431,6 +98901,11 @@ func (ec *executionContext) ___Directive(ctx context.Context, sel ast.SelectionS
 			}
 		case "description":
 			out.Values[i] = ec.___Directive_description(ctx, field, obj)
+		case "isRepeatable":
+			out.Values[i] = ec.___Directive_isRepeatable(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "locations":
 			out.Values[i] = ec.___Directive_locations(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -98438,11 +98913,6 @@ func (ec *executionContext) ___Directive(ctx context.Context, sel ast.SelectionS
 			}
 		case "args":
 			out.Values[i] = ec.___Directive_args(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "isRepeatable":
-			out.Values[i] = ec.___Directive_isRepeatable(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -98705,6 +99175,8 @@ func (ec *executionContext) ___Type(ctx context.Context, sel ast.SelectionSet, o
 			out.Values[i] = ec.___Type_name(ctx, field, obj)
 		case "description":
 			out.Values[i] = ec.___Type_description(ctx, field, obj)
+		case "specifiedByURL":
+			out.Values[i] = ec.___Type_specifiedByURL(ctx, field, obj)
 		case "fields":
 			out.Values[i] = ec.___Type_fields(ctx, field, obj)
 		case "interfaces":
@@ -98717,8 +99189,6 @@ func (ec *executionContext) ___Type(ctx context.Context, sel ast.SelectionSet, o
 			out.Values[i] = ec.___Type_inputFields(ctx, field, obj)
 		case "ofType":
 			out.Values[i] = ec.___Type_ofType(ctx, field, obj)
-		case "specifiedByURL":
-			out.Values[i] = ec.___Type_specifiedByURL(ctx, field, obj)
 		case "isOneOf":
 			out.Values[i] = ec.___Type_isOneOf(ctx, field, obj)
 		default:
@@ -98763,6 +99233,30 @@ func (ec *executionContext) unmarshalNAddFavoriteProjectInput2githubᚗcomᚋeve
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalNAdminSettings2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAdminSettings(ctx context.Context, sel ast.SelectionSet, v model.APIAdminSettings) graphql.Marshaler {
+	return ec._AdminSettings(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNAdminSettings2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAdminSettings(ctx context.Context, sel ast.SelectionSet, v *model.APIAdminSettings) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._AdminSettings(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNAdminSettingsInput2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAdminSettings(ctx context.Context, v any) (model.APIAdminSettings, error) {
+	res, err := ec.unmarshalInputAdminSettingsInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNAdminSettingsInput2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAdminSettings(ctx context.Context, v any) (*model.APIAdminSettings, error) {
+	res, err := ec.unmarshalInputAdminSettingsInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNArch2githubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐArch(ctx context.Context, v any) (Arch, error) {
 	var res Arch
 	err := res.UnmarshalGQL(v)
@@ -98780,6 +99274,7 @@ func (ec *executionContext) unmarshalNBannerTheme2githubᚗcomᚋevergreenᚑci�
 }
 
 func (ec *executionContext) marshalNBannerTheme2githubᚗcomᚋevergreenᚑciᚋevergreenᚐBannerTheme(ctx context.Context, sel ast.SelectionSet, v evergreen.BannerTheme) graphql.Marshaler {
+	_ = sel
 	res := graphql.MarshalString(string(v))
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -98804,6 +99299,7 @@ func (ec *executionContext) unmarshalNBoolean2bool(ctx context.Context, v any) (
 }
 
 func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.SelectionSet, v bool) graphql.Marshaler {
+	_ = sel
 	res := graphql.MarshalBoolean(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -98825,6 +99321,7 @@ func (ec *executionContext) marshalNBoolean2ᚖbool(ctx context.Context, sel ast
 		}
 		return graphql.Null
 	}
+	_ = sel
 	res := graphql.MarshalBoolean(*v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -99109,9 +99606,7 @@ func (ec *executionContext) marshalNDispatcherVersion2githubᚗcomᚋevergreen�
 
 func (ec *executionContext) unmarshalNDisplayTask2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐDisplayTaskᚄ(ctx context.Context, v any) ([]*DisplayTask, error) {
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]*DisplayTask, len(vSlice))
 	for i := range vSlice {
@@ -99306,6 +99801,7 @@ func (ec *executionContext) unmarshalNDuration2githubᚗcomᚋevergreenᚑciᚋe
 }
 
 func (ec *executionContext) marshalNDuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx context.Context, sel ast.SelectionSet, v model.APIDuration) graphql.Marshaler {
+	_ = sel
 	res := model.MarshalAPIDuration(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -99370,9 +99866,7 @@ func (ec *executionContext) unmarshalNEnvVarInput2githubᚗcomᚋevergreenᚑci�
 
 func (ec *executionContext) unmarshalNEnvVarInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIEnvVarᚄ(ctx context.Context, v any) ([]model.APIEnvVar, error) {
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]model.APIEnvVar, len(vSlice))
 	for i := range vSlice {
@@ -99440,9 +99934,7 @@ func (ec *executionContext) unmarshalNExpansionInput2githubᚗcomᚋevergreenᚑ
 
 func (ec *executionContext) unmarshalNExpansionInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIExpansionᚄ(ctx context.Context, v any) ([]model.APIExpansion, error) {
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]model.APIExpansion, len(vSlice))
 	for i := range vSlice {
@@ -99611,6 +100103,7 @@ func (ec *executionContext) unmarshalNFloat2float64(ctx context.Context, v any) 
 }
 
 func (ec *executionContext) marshalNFloat2float64(ctx context.Context, sel ast.SelectionSet, v float64) graphql.Marshaler {
+	_ = sel
 	res := graphql.MarshalFloatContext(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -100054,6 +100547,7 @@ func (ec *executionContext) unmarshalNHostEventType2string(ctx context.Context, 
 }
 
 func (ec *executionContext) marshalNHostEventType2string(ctx context.Context, sel ast.SelectionSet, v string) graphql.Marshaler {
+	_ = sel
 	res := graphql.MarshalString(marshalNHostEventType2string[v])
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -100136,9 +100630,7 @@ var (
 
 func (ec *executionContext) unmarshalNHostEventType2ᚕstringᚄ(ctx context.Context, v any) ([]string, error) {
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]string, len(vSlice))
 	for i := range vSlice {
@@ -100305,6 +100797,7 @@ func (ec *executionContext) unmarshalNID2string(ctx context.Context, v any) (str
 }
 
 func (ec *executionContext) marshalNID2string(ctx context.Context, sel ast.SelectionSet, v string) graphql.Marshaler {
+	_ = sel
 	res := graphql.MarshalID(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -100326,6 +100819,7 @@ func (ec *executionContext) marshalNID2ᚖstring(ctx context.Context, sel ast.Se
 		}
 		return graphql.Null
 	}
+	_ = sel
 	res := graphql.MarshalID(*v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -100453,6 +100947,7 @@ func (ec *executionContext) unmarshalNImageEventEntryAction2githubᚗcomᚋeverg
 }
 
 func (ec *executionContext) marshalNImageEventEntryAction2githubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐImageEventEntryAction(ctx context.Context, sel ast.SelectionSet, v thirdparty.ImageEventEntryAction) graphql.Marshaler {
+	_ = sel
 	res := graphql.MarshalString(string(v))
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -100469,6 +100964,7 @@ func (ec *executionContext) unmarshalNImageEventType2githubᚗcomᚋevergreenᚑ
 }
 
 func (ec *executionContext) marshalNImageEventType2githubᚗcomᚋevergreenᚑciᚋevergreenᚋthirdpartyᚐImageEventType(ctx context.Context, sel ast.SelectionSet, v thirdparty.ImageEventType) graphql.Marshaler {
+	_ = sel
 	res := graphql.MarshalString(string(v))
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -100593,6 +101089,7 @@ func (ec *executionContext) unmarshalNInt2int(ctx context.Context, v any) (int, 
 }
 
 func (ec *executionContext) marshalNInt2int(ctx context.Context, sel ast.SelectionSet, v int) graphql.Marshaler {
+	_ = sel
 	res := graphql.MarshalInt(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -100608,6 +101105,7 @@ func (ec *executionContext) unmarshalNInt2int64(ctx context.Context, v any) (int
 }
 
 func (ec *executionContext) marshalNInt2int64(ctx context.Context, sel ast.SelectionSet, v int64) graphql.Marshaler {
+	_ = sel
 	res := graphql.MarshalInt64(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -100619,9 +101117,7 @@ func (ec *executionContext) marshalNInt2int64(ctx context.Context, sel ast.Selec
 
 func (ec *executionContext) unmarshalNInt2ᚕintᚄ(ctx context.Context, v any) ([]int, error) {
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]int, len(vSlice))
 	for i := range vSlice {
@@ -100661,6 +101157,7 @@ func (ec *executionContext) marshalNInt2ᚖint(ctx context.Context, sel ast.Sele
 		}
 		return graphql.Null
 	}
+	_ = sel
 	res := graphql.MarshalInt(*v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -100978,6 +101475,7 @@ func (ec *executionContext) marshalNMap2map(ctx context.Context, sel ast.Selecti
 		}
 		return graphql.Null
 	}
+	_ = sel
 	res := graphql.MarshalMap(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -100989,9 +101487,7 @@ func (ec *executionContext) marshalNMap2map(ctx context.Context, sel ast.Selecti
 
 func (ec *executionContext) unmarshalNMap2ᚕmapᚄ(ctx context.Context, v any) ([]map[string]any, error) {
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]map[string]any, len(vSlice))
 	for i := range vSlice {
@@ -101035,9 +101531,7 @@ func (ec *executionContext) marshalNMetadataLink2githubᚗcomᚋevergreenᚑci�
 
 func (ec *executionContext) unmarshalNMetadataLinkInput2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIMetadataLinkᚄ(ctx context.Context, v any) ([]*model.APIMetadataLink, error) {
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]*model.APIMetadataLink, len(vSlice))
 	for i := range vSlice {
@@ -101757,9 +102251,7 @@ func (ec *executionContext) unmarshalNPreconditionScriptInput2githubᚗcomᚋeve
 
 func (ec *executionContext) unmarshalNPreconditionScriptInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIPreconditionScriptᚄ(ctx context.Context, v any) ([]model.APIPreconditionScript, error) {
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]model.APIPreconditionScript, len(vSlice))
 	for i := range vSlice {
@@ -101978,6 +102470,7 @@ func (ec *executionContext) unmarshalNProjectHealthView2githubᚗcomᚋevergreen
 }
 
 func (ec *executionContext) marshalNProjectHealthView2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐProjectHealthView(ctx context.Context, sel ast.SelectionSet, v model1.ProjectHealthView) graphql.Marshaler {
+	_ = sel
 	res := graphql.MarshalString(string(v))
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -102316,9 +102809,7 @@ func (ec *executionContext) unmarshalNSelectorInput2githubᚗcomᚋevergreenᚑc
 
 func (ec *executionContext) unmarshalNSelectorInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPISelectorᚄ(ctx context.Context, v any) ([]model.APISelector, error) {
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]model.APISelector, len(vSlice))
 	for i := range vSlice {
@@ -102464,6 +102955,7 @@ func (ec *executionContext) unmarshalNString2string(ctx context.Context, v any) 
 }
 
 func (ec *executionContext) marshalNString2string(ctx context.Context, sel ast.SelectionSet, v string) graphql.Marshaler {
+	_ = sel
 	res := graphql.MarshalString(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -102475,9 +102967,7 @@ func (ec *executionContext) marshalNString2string(ctx context.Context, sel ast.S
 
 func (ec *executionContext) unmarshalNString2ᚕstringᚄ(ctx context.Context, v any) ([]string, error) {
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]string, len(vSlice))
 	for i := range vSlice {
@@ -102507,9 +102997,7 @@ func (ec *executionContext) marshalNString2ᚕstringᚄ(ctx context.Context, sel
 
 func (ec *executionContext) unmarshalNString2ᚕᚖstringᚄ(ctx context.Context, v any) ([]*string, error) {
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]*string, len(vSlice))
 	for i := range vSlice {
@@ -102549,6 +103037,7 @@ func (ec *executionContext) marshalNString2ᚖstring(ctx context.Context, sel as
 		}
 		return graphql.Null
 	}
+	_ = sel
 	res := graphql.MarshalString(*v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -102570,6 +103059,7 @@ func (ec *executionContext) marshalNStringMap2map(ctx context.Context, sel ast.S
 		}
 		return graphql.Null
 	}
+	_ = sel
 	res := MarshalStringMap(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -102948,9 +103438,7 @@ func (ec *executionContext) unmarshalNTaskSpecifierInput2githubᚗcomᚋevergree
 
 func (ec *executionContext) unmarshalNTaskSpecifierInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskSpecifierᚄ(ctx context.Context, v any) ([]model.APITaskSpecifier, error) {
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]model.APITaskSpecifier, len(vSlice))
 	for i := range vSlice {
@@ -102989,9 +103477,7 @@ func (ec *executionContext) marshalNTaskTestResultSample2ᚖgithubᚗcomᚋeverg
 
 func (ec *executionContext) unmarshalNTestFilter2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐTestFilterᚄ(ctx context.Context, v any) ([]*TestFilter, error) {
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]*TestFilter, len(vSlice))
 	for i := range vSlice {
@@ -103098,6 +103584,7 @@ func (ec *executionContext) unmarshalNTime2timeᚐTime(ctx context.Context, v an
 }
 
 func (ec *executionContext) marshalNTime2timeᚐTime(ctx context.Context, sel ast.SelectionSet, v time.Time) graphql.Marshaler {
+	_ = sel
 	res := graphql.MarshalTime(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -103119,6 +103606,7 @@ func (ec *executionContext) marshalNTime2ᚖtimeᚐTime(ctx context.Context, sel
 		}
 		return graphql.Null
 	}
+	_ = sel
 	res := graphql.MarshalTime(*v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -103338,9 +103826,7 @@ func (ec *executionContext) marshalNVariantTask2ᚕgithubᚗcomᚋevergreenᚑci
 
 func (ec *executionContext) unmarshalNVariantTasks2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋgraphqlᚐVariantTasksᚄ(ctx context.Context, v any) ([]*VariantTasks, error) {
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]*VariantTasks, len(vSlice))
 	for i := range vSlice {
@@ -103432,9 +103918,7 @@ func (ec *executionContext) marshalNVersionTasks2ᚖgithubᚗcomᚋevergreenᚑc
 
 func (ec *executionContext) unmarshalNVersionToRestart2ᚕᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐVersionToRestartᚄ(ctx context.Context, v any) ([]*model1.VersionToRestart, error) {
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]*model1.VersionToRestart, len(vSlice))
 	for i := range vSlice {
@@ -103705,9 +104189,7 @@ func (ec *executionContext) unmarshalNWebhookHeaderInput2githubᚗcomᚋevergree
 
 func (ec *executionContext) unmarshalNWebhookHeaderInput2ᚕgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIWebhookHeaderᚄ(ctx context.Context, v any) ([]model.APIWebhookHeader, error) {
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]model.APIWebhookHeader, len(vSlice))
 	for i := range vSlice {
@@ -103787,6 +104269,7 @@ func (ec *executionContext) unmarshalN__DirectiveLocation2string(ctx context.Con
 }
 
 func (ec *executionContext) marshalN__DirectiveLocation2string(ctx context.Context, sel ast.SelectionSet, v string) graphql.Marshaler {
+	_ = sel
 	res := graphql.MarshalString(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -103798,9 +104281,7 @@ func (ec *executionContext) marshalN__DirectiveLocation2string(ctx context.Conte
 
 func (ec *executionContext) unmarshalN__DirectiveLocation2ᚕstringᚄ(ctx context.Context, v any) ([]string, error) {
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]string, len(vSlice))
 	for i := range vSlice {
@@ -103977,6 +104458,7 @@ func (ec *executionContext) unmarshalN__TypeKind2string(ctx context.Context, v a
 }
 
 func (ec *executionContext) marshalN__TypeKind2string(ctx context.Context, sel ast.SelectionSet, v string) graphql.Marshaler {
+	_ = sel
 	res := graphql.MarshalString(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -104007,11 +104489,37 @@ func (ec *executionContext) marshalOAbortInfo2ᚖgithubᚗcomᚋevergreenᚑci�
 	return ec._AbortInfo(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalOAdminSettings2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIAdminSettings(ctx context.Context, sel ast.SelectionSet, v *model.APIAdminSettings) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._AdminSettings(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalOAnnotation2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPITaskAnnotation(ctx context.Context, sel ast.SelectionSet, v *model.APITaskAnnotation) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return ec._Annotation(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOBannerTheme2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚐBannerTheme(ctx context.Context, v any) (*evergreen.BannerTheme, error) {
+	if v == nil {
+		return nil, nil
+	}
+	tmp, err := graphql.UnmarshalString(v)
+	res := evergreen.BannerTheme(tmp)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOBannerTheme2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚐBannerTheme(ctx context.Context, sel ast.SelectionSet, v *evergreen.BannerTheme) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	_ = sel
+	_ = ctx
+	res := graphql.MarshalString(string(*v))
+	return res
 }
 
 func (ec *executionContext) marshalOBetaFeatures2ᚖgithubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIBetaFeatures(ctx context.Context, sel ast.SelectionSet, v *model.APIBetaFeatures) graphql.Marshaler {
@@ -104027,6 +104535,8 @@ func (ec *executionContext) unmarshalOBoolean2bool(ctx context.Context, v any) (
 }
 
 func (ec *executionContext) marshalOBoolean2bool(ctx context.Context, sel ast.SelectionSet, v bool) graphql.Marshaler {
+	_ = sel
+	_ = ctx
 	res := graphql.MarshalBoolean(v)
 	return res
 }
@@ -104043,6 +104553,8 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 	if v == nil {
 		return graphql.Null
 	}
+	_ = sel
+	_ = ctx
 	res := graphql.MarshalBoolean(*v)
 	return res
 }
@@ -104279,9 +104791,7 @@ func (ec *executionContext) unmarshalOContainerResourcesInput2ᚕgithubᚗcomᚋ
 		return nil, nil
 	}
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]model.APIContainerResources, len(vSlice))
 	for i := range vSlice {
@@ -104365,6 +104875,8 @@ func (ec *executionContext) unmarshalODuration2githubᚗcomᚋevergreenᚑciᚋe
 }
 
 func (ec *executionContext) marshalODuration2githubᚗcomᚋevergreenᚑciᚋevergreenᚋrestᚋmodelᚐAPIDuration(ctx context.Context, sel ast.SelectionSet, v model.APIDuration) graphql.Marshaler {
+	_ = sel
+	_ = ctx
 	res := model.MarshalAPIDuration(v)
 	return res
 }
@@ -104381,6 +104893,8 @@ func (ec *executionContext) marshalODuration2ᚖgithubᚗcomᚋevergreenᚑciᚋ
 	if v == nil {
 		return graphql.Null
 	}
+	_ = sel
+	_ = ctx
 	res := model.MarshalAPIDuration(*v)
 	return res
 }
@@ -104452,9 +104966,7 @@ func (ec *executionContext) unmarshalOExternalLinkInput2ᚕgithubᚗcomᚋevergr
 		return nil, nil
 	}
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]model.APIExternalLink, len(vSlice))
 	for i := range vSlice {
@@ -104520,6 +105032,7 @@ func (ec *executionContext) unmarshalOFloat2float64(ctx context.Context, v any) 
 }
 
 func (ec *executionContext) marshalOFloat2float64(ctx context.Context, sel ast.SelectionSet, v float64) graphql.Marshaler {
+	_ = sel
 	res := graphql.MarshalFloatContext(v)
 	return graphql.WrapContextMarshaler(ctx, res)
 }
@@ -104536,6 +105049,7 @@ func (ec *executionContext) marshalOFloat2ᚖfloat64(ctx context.Context, sel as
 	if v == nil {
 		return graphql.Null
 	}
+	_ = sel
 	res := graphql.MarshalFloatContext(*v)
 	return graphql.WrapContextMarshaler(ctx, res)
 }
@@ -104639,9 +105153,7 @@ func (ec *executionContext) unmarshalOGitHubDynamicTokenPermissionGroupInput2ᚕ
 		return nil, nil
 	}
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]model.APIGitHubDynamicTokenPermissionGroup, len(vSlice))
 	for i := range vSlice {
@@ -104852,9 +105364,7 @@ func (ec *executionContext) unmarshalOHostEventType2ᚕstringᚄ(ctx context.Con
 		return nil, nil
 	}
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]string, len(vSlice))
 	for i := range vSlice {
@@ -104998,6 +105508,8 @@ func (ec *executionContext) marshalOHostEventType2ᚖstring(ctx context.Context,
 	if v == nil {
 		return graphql.Null
 	}
+	_ = sel
+	_ = ctx
 	res := graphql.MarshalString(marshalOHostEventType2ᚖstring[*v])
 	return res
 }
@@ -105101,6 +105613,8 @@ func (ec *executionContext) marshalOID2ᚖstring(ctx context.Context, sel ast.Se
 	if v == nil {
 		return graphql.Null
 	}
+	_ = sel
+	_ = ctx
 	res := graphql.MarshalID(*v)
 	return res
 }
@@ -105117,9 +105631,7 @@ func (ec *executionContext) unmarshalOInstanceTagInput2ᚕᚖgithubᚗcomᚋever
 		return nil, nil
 	}
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]*host.Tag, len(vSlice))
 	for i := range vSlice {
@@ -105138,6 +105650,8 @@ func (ec *executionContext) unmarshalOInt2int(ctx context.Context, v any) (int, 
 }
 
 func (ec *executionContext) marshalOInt2int(ctx context.Context, sel ast.SelectionSet, v int) graphql.Marshaler {
+	_ = sel
+	_ = ctx
 	res := graphql.MarshalInt(v)
 	return res
 }
@@ -105148,6 +105662,8 @@ func (ec *executionContext) unmarshalOInt2int32(ctx context.Context, v any) (int
 }
 
 func (ec *executionContext) marshalOInt2int32(ctx context.Context, sel ast.SelectionSet, v int32) graphql.Marshaler {
+	_ = sel
+	_ = ctx
 	res := graphql.MarshalInt32(v)
 	return res
 }
@@ -105158,6 +105674,8 @@ func (ec *executionContext) unmarshalOInt2int64(ctx context.Context, v any) (int
 }
 
 func (ec *executionContext) marshalOInt2int64(ctx context.Context, sel ast.SelectionSet, v int64) graphql.Marshaler {
+	_ = sel
+	_ = ctx
 	res := graphql.MarshalInt64(v)
 	return res
 }
@@ -105167,9 +105685,7 @@ func (ec *executionContext) unmarshalOInt2ᚕintᚄ(ctx context.Context, v any) 
 		return nil, nil
 	}
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]int, len(vSlice))
 	for i := range vSlice {
@@ -105212,6 +105728,8 @@ func (ec *executionContext) marshalOInt2ᚖint(ctx context.Context, sel ast.Sele
 	if v == nil {
 		return graphql.Null
 	}
+	_ = sel
+	_ = ctx
 	res := graphql.MarshalInt(*v)
 	return res
 }
@@ -105318,6 +105836,8 @@ func (ec *executionContext) marshalOMap2map(ctx context.Context, sel ast.Selecti
 	if v == nil {
 		return graphql.Null
 	}
+	_ = sel
+	_ = ctx
 	res := graphql.MarshalMap(v)
 	return res
 }
@@ -105396,9 +105916,7 @@ func (ec *executionContext) unmarshalOParameterInput2ᚕᚖgithubᚗcomᚋevergr
 		return nil, nil
 	}
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]*model.APIParameter, len(vSlice))
 	for i := range vSlice {
@@ -105463,9 +105981,7 @@ func (ec *executionContext) unmarshalOParsleyFilterInput2ᚕgithubᚗcomᚋeverg
 		return nil, nil
 	}
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]model.APIParsleyFilter, len(vSlice))
 	for i := range vSlice {
@@ -105612,9 +106128,7 @@ func (ec *executionContext) unmarshalOPatchTriggerAliasInput2ᚕgithubᚗcomᚋe
 		return nil, nil
 	}
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]model.APIPatchTriggerDefinition, len(vSlice))
 	for i := range vSlice {
@@ -105679,9 +106193,7 @@ func (ec *executionContext) unmarshalOPeriodicBuildInput2ᚕgithubᚗcomᚋeverg
 		return nil, nil
 	}
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]model.APIPeriodicBuildDefinition, len(vSlice))
 	for i := range vSlice {
@@ -105811,9 +106323,7 @@ func (ec *executionContext) unmarshalOProjectAliasInput2ᚕgithubᚗcomᚋevergr
 		return nil, nil
 	}
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]model.APIProjectAlias, len(vSlice))
 	for i := range vSlice {
@@ -105846,6 +106356,8 @@ func (ec *executionContext) unmarshalOProjectHealthView2githubᚗcomᚋevergreen
 }
 
 func (ec *executionContext) marshalOProjectHealthView2githubᚗcomᚋevergreenᚑciᚋevergreenᚋmodelᚐProjectHealthView(ctx context.Context, sel ast.SelectionSet, v model1.ProjectHealthView) graphql.Marshaler {
+	_ = sel
+	_ = ctx
 	res := graphql.MarshalString(string(v))
 	return res
 }
@@ -105975,9 +106487,7 @@ func (ec *executionContext) unmarshalOSortOrder2ᚕᚖgithubᚗcomᚋevergreen�
 		return nil, nil
 	}
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]*SortOrder, len(vSlice))
 	for i := range vSlice {
@@ -106072,6 +106582,8 @@ func (ec *executionContext) unmarshalOString2string(ctx context.Context, v any) 
 }
 
 func (ec *executionContext) marshalOString2string(ctx context.Context, sel ast.SelectionSet, v string) graphql.Marshaler {
+	_ = sel
+	_ = ctx
 	res := graphql.MarshalString(v)
 	return res
 }
@@ -106081,9 +106593,7 @@ func (ec *executionContext) unmarshalOString2ᚕstringᚄ(ctx context.Context, v
 		return nil, nil
 	}
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]string, len(vSlice))
 	for i := range vSlice {
@@ -106119,9 +106629,7 @@ func (ec *executionContext) unmarshalOString2ᚕᚖstringᚄ(ctx context.Context
 		return nil, nil
 	}
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]*string, len(vSlice))
 	for i := range vSlice {
@@ -106164,6 +106672,8 @@ func (ec *executionContext) marshalOString2ᚖstring(ctx context.Context, sel as
 	if v == nil {
 		return graphql.Null
 	}
+	_ = sel
+	_ = ctx
 	res := graphql.MarshalString(*v)
 	return res
 }
@@ -106180,6 +106690,8 @@ func (ec *executionContext) marshalOStringMap2map(ctx context.Context, sel ast.S
 	if v == nil {
 		return graphql.Null
 	}
+	_ = sel
+	_ = ctx
 	res := MarshalStringMap(v)
 	return res
 }
@@ -106193,9 +106705,7 @@ func (ec *executionContext) unmarshalOSubscriptionInput2ᚕgithubᚗcomᚋevergr
 		return nil, nil
 	}
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]model.APISubscription, len(vSlice))
 	for i := range vSlice {
@@ -106396,9 +106906,7 @@ func (ec *executionContext) unmarshalOTestSortOptions2ᚕᚖgithubᚗcomᚋeverg
 		return nil, nil
 	}
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]*TestSortOptions, len(vSlice))
 	for i := range vSlice {
@@ -106417,6 +106925,8 @@ func (ec *executionContext) unmarshalOTime2timeᚐTime(ctx context.Context, v an
 }
 
 func (ec *executionContext) marshalOTime2timeᚐTime(ctx context.Context, sel ast.SelectionSet, v time.Time) graphql.Marshaler {
+	_ = sel
+	_ = ctx
 	res := graphql.MarshalTime(v)
 	return res
 }
@@ -106433,6 +106943,8 @@ func (ec *executionContext) marshalOTime2ᚖtimeᚐTime(ctx context.Context, sel
 	if v == nil {
 		return graphql.Null
 	}
+	_ = sel
+	_ = ctx
 	res := graphql.MarshalTime(*v)
 	return res
 }
@@ -106489,9 +107001,7 @@ func (ec *executionContext) unmarshalOTriggerAliasInput2ᚕgithubᚗcomᚋevergr
 		return nil, nil
 	}
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]model.APITriggerDefinition, len(vSlice))
 	for i := range vSlice {
@@ -106747,9 +107257,7 @@ func (ec *executionContext) unmarshalOWorkstationSetupCommandInput2ᚕgithubᚗc
 		return nil, nil
 	}
 	var vSlice []any
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
+	vSlice = graphql.CoerceList(v)
 	var err error
 	res := make([]model.APIWorkstationSetupCommand, len(vSlice))
 	for i := range vSlice {

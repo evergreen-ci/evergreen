@@ -325,5 +325,21 @@ func New(apiURL string) Config {
 	c.Directives.RedactSecrets = func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error) {
 		return next(ctx)
 	}
+	c.Directives.RequireAdmin = func(ctx context.Context, obj any, next graphql.Resolver) (res any, err error) {
+		dbUser := mustHaveUser(ctx)
+
+		permissions := gimlet.PermissionOpts{
+			Resource:      evergreen.SuperUserPermissionsID,
+			ResourceType:  evergreen.SuperUserResourceType,
+			Permission:    evergreen.PermissionAdminSettings,
+			RequiredLevel: evergreen.AdminSettingsEdit.Value,
+		}
+
+		if dbUser.HasPermission(permissions) {
+			return next(ctx)
+		}
+		return nil, Forbidden.Send(ctx, fmt.Sprintf("User '%s' lacks required admin permissions", dbUser.Username()))
+	}
+
 	return c
 }

@@ -3,6 +3,16 @@
 SpruceConfig defines settings that apply to all users of Evergreen.
 For example, if the banner field is populated, then a sitewide banner will be shown to all users.
 """
+
+input SaveAdminSettingsInput {
+  adminSettings: AdminSettingsInput!
+}
+
+input AdminSettingsInput {
+  banner: String
+  bannerTheme: BannerTheme
+}
+
 type SpruceConfig {
   banner: String
   bannerTheme: String
@@ -15,6 +25,11 @@ type SpruceConfig {
   slack: SlackConfig
   spawnHost: SpawnHostConfig!
   ui: UIConfig!
+}
+
+type AdminSettings {
+  banner: String
+  bannerTheme: BannerTheme
 }
 
 type ContainerPoolsConfig {

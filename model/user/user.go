@@ -76,9 +76,7 @@ type UserSettings struct {
 }
 
 type UseSpruceOptions struct {
-	SpruceV1                     bool `json:"spruce_v1" bson:"spruce_v1"`                                               // represents users opted into the new Evergreen UI
-	HasUsedSpruceBefore          bool `json:"has_used_spruce_before" bson:"has_used_spruce_before"`                     // used to know whether or not to display spruce welcome modal
-	HasUsedMainlineCommitsBefore bool `json:"has_used_mainline_commits_before" bson:"has_used_mainline_commits_before"` // used to know whether or not to display spruce mainline commits modal
+	SpruceV1 bool `json:"spruce_v1" bson:"spruce_v1"` // represents users opted into the new Evergreen UI
 }
 
 type NotificationPreferences struct {

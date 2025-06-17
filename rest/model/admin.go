@@ -619,9 +619,10 @@ func (a *APIAuthConfig) ToService() (any, error) {
 }
 
 type APIBucketsConfig struct {
-	LogBucket       APIBucketConfig  `json:"log_bucket"`
-	InternalBuckets []string         `json:"internal_buckets"`
-	Credentials     APIS3Credentials `json:"credentials"`
+	LogBucket         APIBucketConfig  `json:"log_bucket"`
+	TestResultsBucket APIBucketConfig  `json:"test_results_bucket"`
+	InternalBuckets   []string         `json:"internal_buckets"`
+	Credentials       APIS3Credentials `json:"credentials"`
 }
 
 type APIBucketConfig struct {
@@ -647,6 +648,10 @@ func (a *APIBucketsConfig) BuildFromService(h any) error {
 		a.LogBucket.Name = utility.ToStringPtr(v.LogBucket.Name)
 		a.LogBucket.Type = utility.ToStringPtr(string(v.LogBucket.Type))
 		a.LogBucket.DBName = utility.ToStringPtr(v.LogBucket.DBName)
+
+		a.TestResultsBucket.Name = utility.ToStringPtr(v.TestResultsBucket.Name)
+		a.TestResultsBucket.Type = utility.ToStringPtr(string(v.TestResultsBucket.Type))
+		a.TestResultsBucket.DBName = utility.ToStringPtr(v.TestResultsBucket.DBName)
 
 		creds := APIS3Credentials{}
 		if err := creds.BuildFromService(v.Credentials); err != nil {
@@ -674,6 +679,11 @@ func (a *APIBucketsConfig) ToService() (any, error) {
 			Name:   utility.FromStringPtr(a.LogBucket.Name),
 			Type:   evergreen.BucketType(utility.FromStringPtr(a.LogBucket.Type)),
 			DBName: utility.FromStringPtr(a.LogBucket.DBName),
+		},
+		TestResultsBucket: evergreen.BucketConfig{
+			Name:   utility.FromStringPtr(a.TestResultsBucket.Name),
+			Type:   evergreen.BucketType(utility.FromStringPtr(a.TestResultsBucket.Type)),
+			DBName: utility.FromStringPtr(a.TestResultsBucket.DBName),
 		},
 		Credentials: creds,
 	}, nil
@@ -1533,6 +1543,7 @@ type APIAWSConfig struct {
 	Pod                  *APIAWSPodConfig           `json:"pod"`
 	AccountRoles         []APIAWSAccountRoleMapping `json:"account_roles"`
 	IPAMPoolID           *string                    `json:"ipam_pool_id"`
+	ElasticIPUsageRate   *float64                   `json:"elastic_ip_usage_rate"`
 }
 
 func (a *APIAWSConfig) BuildFromService(h any) error {
@@ -1583,6 +1594,7 @@ func (a *APIAWSConfig) BuildFromService(h any) error {
 		}
 		a.AccountRoles = roleMappings
 		a.IPAMPoolID = utility.ToStringPtr(v.IPAMPoolID)
+		a.ElasticIPUsageRate = utility.ToFloat64Ptr(v.ElasticIPUsageRate)
 	default:
 		return errors.Errorf("programmatic error: expected AWS config but got type %T", h)
 	}
@@ -1672,6 +1684,7 @@ func (a *APIAWSConfig) ToService() (any, error) {
 	config.AccountRoles = roleMappings
 
 	config.IPAMPoolID = utility.FromStringPtr(a.IPAMPoolID)
+	config.ElasticIPUsageRate = utility.FromFloat64Ptr(a.ElasticIPUsageRate)
 
 	return config, nil
 }
@@ -2043,6 +2056,7 @@ func (a *APIRepoTrackerConfig) ToService() (any, error) {
 type APIReleaseModeConfig struct {
 	DistroMaxHostsFactor      float64 `json:"distro_max_hosts_factor"`
 	TargetTimeSecondsOverride int     `json:"target_time_seconds_override"`
+	IdleTimeSecondsOverride   int     `json:"idle_time_seconds_override"`
 }
 
 func (a *APIReleaseModeConfig) BuildFromService(h any) error {
@@ -2050,6 +2064,7 @@ func (a *APIReleaseModeConfig) BuildFromService(h any) error {
 	case evergreen.ReleaseModeConfig:
 		a.DistroMaxHostsFactor = v.DistroMaxHostsFactor
 		a.TargetTimeSecondsOverride = v.TargetTimeSecondsOverride
+		a.IdleTimeSecondsOverride = v.IdleTimeSecondsOverride
 	default:
 		return errors.Errorf("programmatic error: expected ReleaseModeConfig but got type %T", h)
 	}
@@ -2060,6 +2075,7 @@ func (a *APIReleaseModeConfig) ToService() (any, error) {
 	return evergreen.ReleaseModeConfig{
 		DistroMaxHostsFactor:      a.DistroMaxHostsFactor,
 		TargetTimeSecondsOverride: a.TargetTimeSecondsOverride,
+		IdleTimeSecondsOverride:   a.IdleTimeSecondsOverride,
 	}, nil
 }
 
@@ -2165,6 +2181,7 @@ type APIServiceFlags struct {
 	DegradedModeDisabled            bool `json:"cpu_degraded_mode_disabled"`
 	ElasticIPsDisabled              bool `json:"elastic_ips_disabled"`
 	ReleaseModeDisabled             bool `json:"release_mode_disabled"`
+	AdminParameterStoreDisabled     bool `json:"admin_parameter_store_disabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -2597,6 +2614,7 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.DegradedModeDisabled = v.CPUDegradedModeDisabled
 		as.ElasticIPsDisabled = v.ElasticIPsDisabled
 		as.ReleaseModeDisabled = v.ReleaseModeDisabled
+		as.AdminParameterStoreDisabled = v.AdminParameterStoreDisabled
 	default:
 		return errors.Errorf("programmatic error: expected service flags config but got type %T", h)
 	}
@@ -2643,6 +2661,7 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		CPUDegradedModeDisabled:         as.DegradedModeDisabled,
 		ElasticIPsDisabled:              as.ElasticIPsDisabled,
 		ReleaseModeDisabled:             as.ReleaseModeDisabled,
+		AdminParameterStoreDisabled:     as.AdminParameterStoreDisabled,
 	}, nil
 }
 

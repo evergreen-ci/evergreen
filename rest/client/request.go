@@ -47,12 +47,14 @@ func (c *communicatorImpl) newRequest(method, path string, data any) (*http.Requ
 		}
 	}
 
-	if c.apiUser != "" {
+	if c.apiUser != "" && c.apiKey != "" {
 		r.Header.Add(evergreen.APIUserHeader, c.apiUser)
-	}
-	if c.apiUser != "" {
 		r.Header.Add(evergreen.APIKeyHeader, c.apiKey)
 	}
+	if c.jwt != "" {
+		r.Header.Add(evergreen.KanopyTokenHeader, "Bearer "+c.jwt)
+	}
+
 	if c.hostID != "" && c.hostSecret != "" {
 		r.Header.Add(evergreen.HostHeader, c.hostID)
 		r.Header.Add(evergreen.HostSecretHeader, c.hostSecret)

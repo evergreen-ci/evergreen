@@ -24,6 +24,22 @@ func GetBanner(ctx context.Context) (string, string, error) {
 	return settings.Banner, string(settings.BannerTheme), nil
 }
 
+// GetNecessaryServiceFlags returns a specific set of necessary service flags from admin settings
+func GetNecessaryServiceFlags(ctx context.Context) (evergreen.ServiceFlags, error) {
+	flags, err := evergreen.GetServiceFlags(ctx)
+	if err != nil {
+		return evergreen.ServiceFlags{}, errors.Wrap(err, "getting service flags")
+	}
+
+	// we should only return the service flags that are necessary at the moment
+	// instead of returning all the service flags
+	neccessaryFlags := evergreen.ServiceFlags{
+		StaticAPIKeysDisabled:  flags.StaticAPIKeysDisabled,
+		JWTTokenForCLIDisabled: flags.JWTTokenForCLIDisabled,
+	}
+	return neccessaryFlags, nil
+}
+
 // SetEvergreenSettings sets the admin settings document in the DB and event logs it
 func SetEvergreenSettings(ctx context.Context, changes *restModel.APIAdminSettings,
 	oldSettings *evergreen.Settings, u *user.DBUser, persist bool) (*evergreen.Settings, error) {
@@ -37,7 +53,7 @@ func SetEvergreenSettings(ctx context.Context, changes *restModel.APIAdminSettin
 	settingsReflect := reflect.ValueOf(settingsAPI)
 
 	//iterate over each field in the changes struct and apply any changes to the existing settings
-	for i := 0; i < changesReflect.NumField(); i++ {
+	for i := range changesReflect.NumField() {
 		// get the property name and find its value within the settings struct
 		propName := changesReflect.Type().Field(i).Name
 		changedVal := changesReflect.FieldByName(propName)

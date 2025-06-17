@@ -16,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
@@ -52,6 +51,21 @@ func (r *queryResolver) BuildBaron(ctx context.Context, taskID string, execution
 		BuildBaronConfigured:    bbConfig.ProjectFound && bbConfig.SearchConfigured,
 		BbTicketCreationDefined: bbConfig.TicketCreationDefined,
 	}, nil
+}
+
+// AdminSettings is the resolver for the adminSettings field.
+func (r *queryResolver) AdminSettings(ctx context.Context) (*restModel.APIAdminSettings, error) {
+	config, err := evergreen.GetConfig(ctx)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting Evergreen configuration: %s", err.Error()))
+	}
+
+	adminSettings := restModel.APIAdminSettings{}
+	err = adminSettings.BuildFromService(config)
+	if err != nil {
+		return nil, InternalServerError.Send(ctx, fmt.Sprintf("building API admin settings from service: %s", err.Error()))
+	}
+	return &adminSettings, nil
 }
 
 // AWSRegions is the resolver for the awsRegions field.
@@ -673,27 +687,27 @@ func (r *queryResolver) TaskTestSample(ctx context.Context, versionID string, ta
 		failingTests = append(failingTests, f.TestName)
 	}
 
-	var allTaskOpts []testresult.TaskOptions
+	var allTasks []task.Task
 	apiSamples := make([]*TaskTestResultSample, len(dbTasks))
 	apiSamplesByTaskID := map[string]*TaskTestResultSample{}
 	for i, dbTask := range dbTasks {
 		if dbTask.Version != versionID && dbTask.ParentPatchID != versionID {
 			return nil, InputValidationError.Send(ctx, fmt.Sprintf("task '%s' does not belong to version '%s'", dbTask.Id, versionID))
 		}
-		taskOpts, err := dbTask.CreateTestResultsTaskOptions(ctx)
+		tasks, err := dbTask.GetTestResultsTasks(ctx)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("creating test results task options for task '%s': %s", dbTask.Id, err.Error()))
 		}
 
 		apiSamples[i] = &TaskTestResultSample{TaskID: dbTask.Id, Execution: dbTask.Execution}
-		for _, o := range taskOpts {
-			apiSamplesByTaskID[o.TaskID] = apiSamples[i]
+		for _, o := range tasks {
+			apiSamplesByTaskID[o.Id] = apiSamples[i]
 		}
-		allTaskOpts = append(allTaskOpts, taskOpts...)
+		allTasks = append(allTasks, tasks...)
 	}
 
-	if len(allTaskOpts) > 0 {
-		samples, err := testresult.GetFailedTestSamples(ctx, evergreen.GetEnvironment(), allTaskOpts, failingTests)
+	if len(allTasks) > 0 {
+		samples, err := task.GetFailedTestSamples(ctx, evergreen.GetEnvironment(), allTasks, failingTests)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("getting test results sample: %s", err.Error()))
 		}

@@ -119,6 +119,8 @@ in half to reduce the tasks taken from O(n) to O(logn).
 By default, Evergreen creates mainline commits (also known as waterfall versions or
 cron builds) for enabled projects.
 
+Note that the repotracker requires at least one task to be scheduled to run for it to properly create a commit version. If all build variants or tasks have `activate: false`, the repotracker will not be able to pick up new commits. Ensure that at least one task in your project is configured to run to trigger the repotracker.
+
 Admins can prevent projects from creating mainline commits by **disabling repotracking**,
 while still allowing for other kinds of versions (periodic builds, patches, etc).
 
@@ -264,7 +266,7 @@ and these versions will have the following properties:
     revision.
     -   It is possible to push the tag on the same line as the commit
         using `&&` but this is recommended for low-risk commits only.
--   Versions are displayed on the waterfall and project health page.
+-   Versions are displayed on the waterfall page.
 -   The version is titled "Triggered From Git Tag '`<`git tag`>`':
     `<`commit message for this revision`>`"
 -   The expansion `${triggered_by_git_tag}` is set to the git tag that
@@ -469,10 +471,6 @@ monitoring charts. Use a cron to schedule your tasks if you'd like to
 use performance tooling.
 
 ### Views and Filters
-#### Project Health View
-Customize the default behavior of the Project Health page by choosing to show failed task icons or all task icons. This setting corresponds to the toggle on the Project Health page (pictured below).
-
-![project_health_view.png](../images/project_health_view.png)
 
 #### Parsley Filters
 Define default filters for your project. Users can access these filters in Parsley and apply them directly to their logs.

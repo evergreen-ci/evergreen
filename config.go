@@ -31,11 +31,11 @@ var (
 
 	// ClientVersion is the commandline version string used to control updating
 	// the CLI. The format is the calendar date (YYYY-MM-DD).
-	ClientVersion = "2025-05-06"
+	ClientVersion = "2025-06-03"
 
 	// Agent version to control agent rollover. The format is the calendar date
 	// (YYYY-MM-DD).
-	AgentVersion = "2025-05-08"
+	AgentVersion = "2025-06-16"
 )
 
 const (
@@ -348,7 +348,7 @@ func (settings *Settings) Validate() error {
 		}
 		err := section.ValidateAndDefault()
 		if err != nil {
-			catcher.Add(err)
+			catcher.Add(fmt.Errorf("validation failed for section '%s' (field '%s'): %w", sectionId, propName, err))
 			continue
 		}
 

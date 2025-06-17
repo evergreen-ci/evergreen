@@ -1,16 +1,33 @@
-package testresult
+package task
 
 import (
 	"context"
+	"math/rand"
 	"testing"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/utility"
+	"github.com/mongodb/grip/sometimes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+const MaxSampleSize = 10
+
+var output = TaskOutput{
+	TestResults: TestResultOutput{
+		Version: 1,
+	},
+}
+
+var outputCedar = TaskOutput{
+	TestResults: TestResultOutput{
+		Version: 0,
+	},
+}
 
 func TestLocalService(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -22,11 +39,11 @@ func TestLocalService(t *testing.T) {
 		assert.NoError(t, ClearLocal(ctx, env))
 	}()
 
-	task0 := TaskOptions{TaskID: "task0", Execution: 0}
-	savedResults0 := make([]TestResult, 10)
+	task0 := Task{Id: "task0", Execution: 0, ResultsService: TestResultsServiceLocal, TaskOutputInfo: &output}
+	savedResults0 := make([]testresult.TestResult, 10)
 	for i := 0; i < len(savedResults0); i++ {
 		result := getTestResult()
-		result.TaskID = task0.TaskID
+		result.TaskID = task0.Id
 		result.Execution = task0.Execution
 		if i%2 != 0 {
 			result.Status = evergreen.TestFailedStatus
@@ -35,29 +52,29 @@ func TestLocalService(t *testing.T) {
 	}
 	require.NoError(t, svc.AppendTestResults(ctx, savedResults0))
 
-	task1 := TaskOptions{TaskID: "task1", Execution: 0}
-	savedResults1 := make([]TestResult, 10)
+	task1 := Task{Id: "task1", Execution: 0, ResultsService: TestResultsServiceLocal, TaskOutputInfo: &output}
+	savedResults1 := make([]testresult.TestResult, 10)
 	for i := 0; i < len(savedResults1); i++ {
 		result := getTestResult()
-		result.TaskID = task1.TaskID
+		result.TaskID = task1.Id
 		result.Execution = task1.Execution
 		savedResults1[i] = result
 	}
 	require.NoError(t, svc.AppendTestResults(ctx, savedResults1))
-	task2 := TaskOptions{TaskID: "task2", Execution: 1}
-	savedResults2 := make([]TestResult, 10)
+	task2 := Task{Id: "task2", Execution: 1, ResultsService: TestResultsServiceLocal, TaskOutputInfo: &output}
+	savedResults2 := make([]testresult.TestResult, 10)
 	for i := 0; i < len(savedResults2); i++ {
 		result := getTestResult()
-		result.TaskID = task2.TaskID
+		result.TaskID = task2.Id
 		result.Execution = task2.Execution
 		savedResults2[i] = result
 	}
 	require.NoError(t, svc.AppendTestResults(ctx, savedResults2))
-	task3 := TaskOptions{TaskID: "task3", Execution: 0}
-	savedResults3 := make([]TestResult, maxSampleSize)
+	task3 := Task{Id: "task3", Execution: 0, ResultsService: TestResultsServiceLocal, TaskOutputInfo: &output}
+	savedResults3 := make([]testresult.TestResult, MaxSampleSize)
 	for i := 0; i < len(savedResults3); i++ {
 		result := getTestResult()
-		result.TaskID = task3.TaskID
+		result.TaskID = task3.Id
 		result.Execution = task3.Execution
 		if i%2 == 0 {
 			result.Status = evergreen.TestFailedStatus
@@ -65,34 +82,34 @@ func TestLocalService(t *testing.T) {
 		savedResults3[i] = result
 	}
 	require.NoError(t, svc.AppendTestResults(ctx, savedResults3))
-	task4 := TaskOptions{TaskID: "task4", Execution: 1}
-	savedResults4 := make([]TestResult, maxSampleSize)
+	task4 := Task{Id: "task4", Execution: 1, ResultsService: TestResultsServiceLocal, TaskOutputInfo: &output}
+	savedResults4 := make([]testresult.TestResult, MaxSampleSize)
 	for i := 0; i < len(savedResults3); i++ {
 		result := getTestResult()
-		result.TaskID = task4.TaskID
+		result.TaskID = task4.Id
 		result.Execution = task4.Execution
 		result.Status = evergreen.TestFailedStatus
 		savedResults4[i] = result
 	}
 	require.NoError(t, svc.AppendTestResults(ctx, savedResults4))
-	emptyTask := TaskOptions{TaskID: "DNE", Execution: 0}
+	emptyTask := Task{Id: "DNE", Execution: 0, ResultsService: TestResultsServiceLocal, TaskOutputInfo: &output}
 
 	t.Run("GetMergedTaskTestResults", func(t *testing.T) {
 		t.Run("WithoutFilterAndSortOpts", func(t *testing.T) {
-			taskOpts := []TaskOptions{task1, task2, task0, emptyTask}
-			taskResults, err := svc.GetMergedTaskTestResults(ctx, taskOpts, nil)
+			taskOpts := []Task{task1, task2, task0, emptyTask}
+			taskResults, err := getMergedTaskTestResults(ctx, env, taskOpts, nil)
 			require.NoError(t, err)
 
 			assert.Equal(t, len(taskResults.Results), taskResults.Stats.TotalCount)
 			assert.Equal(t, len(savedResults0)/2, taskResults.Stats.FailedCount)
 			assert.Equal(t, len(taskResults.Results), utility.FromIntPtr(taskResults.Stats.FilteredCount))
-			expectedResults := append(append(append([]TestResult{}, savedResults0...), savedResults1...), savedResults2...)
+			expectedResults := append(append(append([]testresult.TestResult{}, savedResults0...), savedResults1...), savedResults2...)
 			assert.Equal(t, expectedResults, taskResults.Results)
 		})
 		t.Run("WithFilterAndSortOpts", func(t *testing.T) {
-			taskOpts := []TaskOptions{task0}
+			taskOpts := []Task{task0}
 			filterOpts := &FilterOptions{Statuses: []string{evergreen.TestSucceededStatus}}
-			taskResults, err := svc.GetMergedTaskTestResults(ctx, taskOpts, filterOpts)
+			taskResults, err := getMergedTaskTestResults(ctx, env, taskOpts, filterOpts)
 			require.NoError(t, err)
 
 			assert.Equal(t, len(savedResults0), taskResults.Stats.TotalCount)
@@ -104,45 +121,24 @@ func TestLocalService(t *testing.T) {
 			}
 		})
 	})
-	t.Run("GetMergedTaskTestResultsStats", func(t *testing.T) {
-		taskOpts := []TaskOptions{task1, task2, task0, emptyTask}
-		stats, err := svc.GetMergedTaskTestResultsStats(ctx, taskOpts)
+	t.Run("GetTaskTestResultsStats", func(t *testing.T) {
+		taskOpts := []Task{task1, task2, task0, emptyTask}
+		stats, err := getTaskTestResultsStats(ctx, env, taskOpts)
 		require.NoError(t, err)
 
 		assert.Equal(t, len(savedResults0)+len(savedResults1)+len(savedResults2), stats.TotalCount)
 		assert.Equal(t, len(savedResults0)/2, stats.FailedCount)
 		assert.Nil(t, stats.FilteredCount)
 	})
-	t.Run("GetMergedFailedTestSample", func(t *testing.T) {
-		t.Run("FailingTests", func(t *testing.T) {
-			taskOpts := []TaskOptions{task3, task4, emptyTask}
-			sample, err := svc.GetMergedFailedTestSample(ctx, taskOpts)
-			require.NoError(t, err)
-
-			require.Len(t, sample, maxSampleSize)
-			for i := 0; i < maxSampleSize/2; i++ {
-				require.Equal(t, savedResults3[2*i].GetDisplayTestName(), sample[i])
-			}
-			for i := maxSampleSize / 2; i < maxSampleSize; i++ {
-				require.Equal(t, savedResults4[i-maxSampleSize/2].GetDisplayTestName(), sample[i])
-			}
-		})
-		t.Run("NoFailingTests", func(t *testing.T) {
-			taskOpts := []TaskOptions{task1, task2}
-			sample, err := svc.GetMergedFailedTestSample(ctx, taskOpts)
-			require.NoError(t, err)
-			assert.Nil(t, sample)
-		})
-	})
 	t.Run("GetFailedTestSamples", func(t *testing.T) {
 		t.Run("WithoutRegexFilters", func(t *testing.T) {
-			taskOpts := []TaskOptions{task3, task4, emptyTask}
-			samples, err := svc.GetFailedTestSamples(ctx, taskOpts, nil)
+			taskOpts := []Task{task3, task4, emptyTask}
+			samples, err := GetFailedTestSamples(ctx, env, taskOpts, nil)
 			require.NoError(t, err)
 
-			expectedSamples := []TaskTestResultsFailedSample{
+			expectedSamples := []testresult.TaskTestResultsFailedSample{
 				{
-					TaskID:    task3.TaskID,
+					TaskID:    task3.Id,
 					Execution: task3.Execution,
 					MatchingFailedTestNames: func() []string {
 						sample := make([]string, len(savedResults3)/2)
@@ -155,7 +151,7 @@ func TestLocalService(t *testing.T) {
 					TotalFailedNames: len(savedResults3) / 2,
 				},
 				{
-					TaskID:    task4.TaskID,
+					TaskID:    task4.Id,
 					Execution: task4.Execution,
 					MatchingFailedTestNames: func() []string {
 						sample := make([]string, len(savedResults4))
@@ -171,20 +167,20 @@ func TestLocalService(t *testing.T) {
 			assert.ElementsMatch(t, expectedSamples, samples)
 		})
 		t.Run("WithRegexFiltersMatch", func(t *testing.T) {
-			taskOpts := []TaskOptions{task3, task4}
+			taskOpts := []Task{task3, task4}
 			regexFilters := []string{savedResults4[0].GetDisplayTestName(), savedResults4[1].GetDisplayTestName()}
-			samples, err := svc.GetFailedTestSamples(ctx, taskOpts, regexFilters)
+			samples, err := GetFailedTestSamples(ctx, env, taskOpts, regexFilters)
 			require.NoError(t, err)
 
-			expectedSamples := []TaskTestResultsFailedSample{
+			expectedSamples := []testresult.TaskTestResultsFailedSample{
 				{
-					TaskID:                  task3.TaskID,
+					TaskID:                  task3.Id,
 					Execution:               task3.Execution,
 					MatchingFailedTestNames: nil,
 					TotalFailedNames:        len(savedResults3) / 2,
 				},
 				{
-					TaskID:                  task4.TaskID,
+					TaskID:                  task4.Id,
 					Execution:               task4.Execution,
 					MatchingFailedTestNames: regexFilters,
 					TotalFailedNames:        len(savedResults4),
@@ -193,20 +189,20 @@ func TestLocalService(t *testing.T) {
 			assert.ElementsMatch(t, expectedSamples, samples)
 		})
 		t.Run("WithRegexFiltersNoMatch", func(t *testing.T) {
-			taskOpts := []TaskOptions{task3, task4}
+			taskOpts := []Task{task3, task4}
 			regexFilters := []string{"DNE"}
-			samples, err := svc.GetFailedTestSamples(ctx, taskOpts, regexFilters)
+			samples, err := GetFailedTestSamples(ctx, env, taskOpts, regexFilters)
 			require.NoError(t, err)
 
-			expectedSamples := []TaskTestResultsFailedSample{
+			expectedSamples := []testresult.TaskTestResultsFailedSample{
 				{
-					TaskID:                  task3.TaskID,
+					TaskID:                  task3.Id,
 					Execution:               task3.Execution,
 					MatchingFailedTestNames: nil,
 					TotalFailedNames:        len(savedResults3) / 2,
 				},
 				{
-					TaskID:                  task4.TaskID,
+					TaskID:                  task4.Id,
 					Execution:               task4.Execution,
 					MatchingFailedTestNames: nil,
 					TotalFailedNames:        len(savedResults4),
@@ -226,8 +222,8 @@ func TestLocalFilterAndSortTestResults(t *testing.T) {
 		assert.NoError(t, ClearLocal(ctx, env))
 	}()
 
-	getResults := func() []TestResult {
-		return []TestResult{
+	getResults := func() []testresult.TestResult {
+		return []testresult.TestResult{
 			{
 				TestName:      "A test",
 				Status:        "Pass",
@@ -259,27 +255,27 @@ func TestLocalFilterAndSortTestResults(t *testing.T) {
 	}
 	results := getResults()
 
-	baseTaskID := "base_task"
-	baseResults := []TestResult{
+	baseId := "base_task"
+	baseResults := []testresult.TestResult{
 		{
-			TaskID:   baseTaskID,
+			TaskID:   baseId,
 			TestName: "A test",
 			Status:   "Pass",
 		},
 		{
-			TaskID:          baseTaskID,
+			TaskID:          baseId,
 			TestName:        "B test",
 			DisplayTestName: "Display",
 			Status:          "Fail",
 		},
 		{
-			TaskID:          baseTaskID,
+			TaskID:          baseId,
 			TestName:        "C test",
 			DisplayTestName: "B",
 			Status:          "Pass",
 		},
 		{
-			TaskID:   baseTaskID,
+			TaskID:   baseId,
 			TestName: "D test",
 			Status:   "Fail",
 		},
@@ -294,15 +290,15 @@ func TestLocalFilterAndSortTestResults(t *testing.T) {
 	for _, test := range []struct {
 		name            string
 		opts            *FilterOptions
-		expectedResults []TestResult
+		expectedResults []testresult.TestResult
 		expectedCount   int
 		hasErr          bool
 	}{
 		{
 			name: "InvalidSortByKey",
 			opts: &FilterOptions{
-				Sort: []SortBy{
-					{Key: SortByTestNameKey},
+				Sort: []testresult.SortBy{
+					{Key: testresult.SortByTestNameKey},
 					{Key: "invalid"},
 				},
 			},
@@ -311,10 +307,10 @@ func TestLocalFilterAndSortTestResults(t *testing.T) {
 		{
 			name: "DuplicateSortByKey",
 			opts: &FilterOptions{
-				Sort: []SortBy{
-					{Key: SortByTestNameKey},
-					{Key: SortByStatusKey},
-					{Key: SortByTestNameKey},
+				Sort: []testresult.SortBy{
+					{Key: testresult.SortByTestNameKey},
+					{Key: testresult.SortByStatusKey},
+					{Key: testresult.SortByTestNameKey},
 				},
 			},
 			hasErr: true,
@@ -322,7 +318,7 @@ func TestLocalFilterAndSortTestResults(t *testing.T) {
 		{
 			name: "SortByBaseStatusWithoutBaseTasksFindOptions",
 			opts: &FilterOptions{
-				Sort: []SortBy{{Key: SortByBaseStatusKey}},
+				Sort: []testresult.SortBy{{Key: testresult.SortByBaseStatusKey}},
 			},
 			hasErr: true,
 		},
@@ -358,7 +354,7 @@ func TestLocalFilterAndSortTestResults(t *testing.T) {
 		{
 			name: "TestNameRegexFilter",
 			opts: &FilterOptions{TestName: "A|B"},
-			expectedResults: []TestResult{
+			expectedResults: []testresult.TestResult{
 				results[0],
 				results[2],
 			},
@@ -394,9 +390,9 @@ func TestLocalFilterAndSortTestResults(t *testing.T) {
 		{
 			name: "SortByDurationASC",
 			opts: &FilterOptions{
-				Sort: []SortBy{{Key: SortByDurationKey}},
+				Sort: []testresult.SortBy{{Key: testresult.SortByDurationKey}},
 			},
-			expectedResults: []TestResult{
+			expectedResults: []testresult.TestResult{
 				results[3],
 				results[0],
 				results[2],
@@ -407,14 +403,14 @@ func TestLocalFilterAndSortTestResults(t *testing.T) {
 		{
 			name: "SortByDurationDSC",
 			opts: &FilterOptions{
-				Sort: []SortBy{
+				Sort: []testresult.SortBy{
 					{
-						Key:      SortByDurationKey,
+						Key:      testresult.SortByDurationKey,
 						OrderDSC: true,
 					},
 				},
 			},
-			expectedResults: []TestResult{
+			expectedResults: []testresult.TestResult{
 				results[1],
 				results[2],
 				results[0],
@@ -425,9 +421,9 @@ func TestLocalFilterAndSortTestResults(t *testing.T) {
 		{
 			name: "SortByTestNameASC",
 			opts: &FilterOptions{
-				Sort: []SortBy{{Key: SortByTestNameKey}},
+				Sort: []testresult.SortBy{{Key: testresult.SortByTestNameKey}},
 			},
-			expectedResults: []TestResult{
+			expectedResults: []testresult.TestResult{
 				results[0],
 				results[2],
 				results[3],
@@ -438,14 +434,14 @@ func TestLocalFilterAndSortTestResults(t *testing.T) {
 		{
 			name: "SortByTestNameDCS",
 			opts: &FilterOptions{
-				Sort: []SortBy{
+				Sort: []testresult.SortBy{
 					{
-						Key:      SortByTestNameKey,
+						Key:      testresult.SortByTestNameKey,
 						OrderDSC: true,
 					},
 				},
 			},
-			expectedResults: []TestResult{
+			expectedResults: []testresult.TestResult{
 				results[1],
 				results[3],
 				results[2],
@@ -456,9 +452,9 @@ func TestLocalFilterAndSortTestResults(t *testing.T) {
 		{
 			name: "SortByStatusASC",
 			opts: &FilterOptions{
-				Sort: []SortBy{{Key: SortByStatusKey}},
+				Sort: []testresult.SortBy{{Key: testresult.SortByStatusKey}},
 			},
-			expectedResults: []TestResult{
+			expectedResults: []testresult.TestResult{
 				results[1],
 				results[2],
 				results[0],
@@ -469,14 +465,14 @@ func TestLocalFilterAndSortTestResults(t *testing.T) {
 		{
 			name: "SortByStatusDSC",
 			opts: &FilterOptions{
-				Sort: []SortBy{
+				Sort: []testresult.SortBy{
 					{
-						Key:      SortByStatusKey,
+						Key:      testresult.SortByStatusKey,
 						OrderDSC: true,
 					},
 				},
 			},
-			expectedResults: []TestResult{
+			expectedResults: []testresult.TestResult{
 				results[0],
 				results[3],
 				results[1],
@@ -487,9 +483,9 @@ func TestLocalFilterAndSortTestResults(t *testing.T) {
 		{
 			name: "SortByStartTimeASC",
 			opts: &FilterOptions{
-				Sort: []SortBy{{Key: SortByStartKey}},
+				Sort: []testresult.SortBy{{Key: testresult.SortByStartKey}},
 			},
-			expectedResults: []TestResult{
+			expectedResults: []testresult.TestResult{
 				results[0],
 				results[2],
 				results[1],
@@ -500,14 +496,14 @@ func TestLocalFilterAndSortTestResults(t *testing.T) {
 		{
 			name: "SortByStartTimeDSC",
 			opts: &FilterOptions{
-				Sort: []SortBy{
+				Sort: []testresult.SortBy{
 					{
-						Key:      SortByStartKey,
+						Key:      testresult.SortByStartKey,
 						OrderDSC: true,
 					},
 				},
 			},
-			expectedResults: []TestResult{
+			expectedResults: []testresult.TestResult{
 				results[3],
 				results[1],
 				results[2],
@@ -518,10 +514,10 @@ func TestLocalFilterAndSortTestResults(t *testing.T) {
 		{
 			name: "SortByBaseStatusASC",
 			opts: &FilterOptions{
-				Sort:      []SortBy{{Key: SortByBaseStatusKey}},
-				BaseTasks: []TaskOptions{{TaskID: baseTaskID}},
+				Sort:      []testresult.SortBy{{Key: testresult.SortByBaseStatusKey}},
+				BaseTasks: []Task{{Id: baseId, TaskOutputInfo: &output}},
 			},
-			expectedResults: []TestResult{
+			expectedResults: []testresult.TestResult{
 				resultsWithBaseStatus[1],
 				resultsWithBaseStatus[3],
 				resultsWithBaseStatus[0],
@@ -532,15 +528,15 @@ func TestLocalFilterAndSortTestResults(t *testing.T) {
 		{
 			name: "SortByBaseStatusDSC",
 			opts: &FilterOptions{
-				Sort: []SortBy{
+				Sort: []testresult.SortBy{
 					{
-						Key:      SortByBaseStatusKey,
+						Key:      testresult.SortByBaseStatusKey,
 						OrderDSC: true,
 					},
 				},
-				BaseTasks: []TaskOptions{{TaskID: baseTaskID}},
+				BaseTasks: []Task{{Id: baseId, TaskOutputInfo: &output}},
 			},
-			expectedResults: []TestResult{
+			expectedResults: []testresult.TestResult{
 				resultsWithBaseStatus[0],
 				resultsWithBaseStatus[2],
 				resultsWithBaseStatus[1],
@@ -551,17 +547,17 @@ func TestLocalFilterAndSortTestResults(t *testing.T) {
 		{
 			name: "MultiSort",
 			opts: &FilterOptions{
-				Sort: []SortBy{
+				Sort: []testresult.SortBy{
 					{
-						Key: SortByStatusKey,
+						Key: testresult.SortByStatusKey,
 					},
 					{
-						Key:      SortByTestNameKey,
+						Key:      testresult.SortByTestNameKey,
 						OrderDSC: true,
 					},
 				},
 			},
-			expectedResults: []TestResult{
+			expectedResults: []testresult.TestResult{
 				results[1],
 				results[2],
 				results[3],
@@ -571,8 +567,8 @@ func TestLocalFilterAndSortTestResults(t *testing.T) {
 		},
 		{
 			name: "BaseStatus",
-			opts: &FilterOptions{BaseTasks: []TaskOptions{{TaskID: baseTaskID}}},
-			expectedResults: []TestResult{
+			opts: &FilterOptions{BaseTasks: []Task{{Id: baseId, TaskOutputInfo: &output}}},
+			expectedResults: []testresult.TestResult{
 				resultsWithBaseStatus[0],
 				resultsWithBaseStatus[1],
 				resultsWithBaseStatus[2],
@@ -597,7 +593,7 @@ func TestLocalFilterAndSortTestResults(t *testing.T) {
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			actualResults, count, err := svc.filterAndSortTestResults(ctx, getResults(), test.opts)
+			actualResults, count, err := filterAndSortTestResults(ctx, env, getResults(), test.opts)
 			if test.hasErr {
 				assert.Nil(t, actualResults)
 				assert.Zero(t, count)
@@ -609,4 +605,25 @@ func TestLocalFilterAndSortTestResults(t *testing.T) {
 			}
 		})
 	}
+}
+
+func getTestResult() testresult.TestResult {
+	result := testresult.TestResult{
+		TestName:      utility.RandomString(),
+		Status:        evergreen.TestSucceededStatus,
+		TestStartTime: time.Now().Add(-30 * time.Hour).UTC().Round(time.Millisecond),
+		TestEndTime:   time.Now().UTC().Round(time.Millisecond),
+	}
+	// Optional fields, we should test that we handle them properly when
+	// they are populated and when they do not.
+	if sometimes.Half() {
+		result.DisplayTestName = utility.RandomString()
+		result.GroupID = utility.RandomString()
+		result.LogTestName = utility.RandomString()
+		result.LogURL = utility.RandomString()
+		result.RawLogURL = utility.RandomString()
+		result.LineNum = rand.Intn(1000)
+	}
+
+	return result
 }

@@ -23,7 +23,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/plugin"
-	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/evergreen-ci/gimlet/rolemanager"
 	"github.com/evergreen-ci/utility"
@@ -529,7 +528,7 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	it, err := tsk.GetTaskLogs(r.Context(), taskoutput.TaskLogGetOptions{
+	it, err := tsk.GetTaskLogs(r.Context(), task.TaskLogGetOptions{
 		LogType: getTaskLogTypeMapping(logType),
 		TailN:   DefaultLogMessages,
 	})
@@ -577,7 +576,7 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	it, err := tsk.GetTaskLogs(r.Context(), taskoutput.TaskLogGetOptions{LogType: getTaskLogTypeMapping(r.FormValue("type"))})
+	it, err := tsk.GetTaskLogs(r.Context(), task.TaskLogGetOptions{LogType: getTaskLogTypeMapping(r.FormValue("type"))})
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -614,16 +613,16 @@ func getUserTimeZone(u *user.DBUser) *time.Location {
 	return loc
 }
 
-func getTaskLogTypeMapping(prefix string) taskoutput.TaskLogType {
+func getTaskLogTypeMapping(prefix string) task.TaskLogType {
 	switch prefix {
 	case apimodels.AgentLogPrefix:
-		return taskoutput.TaskLogTypeAgent
+		return task.TaskLogTypeAgent
 	case apimodels.SystemLogPrefix:
-		return taskoutput.TaskLogTypeSystem
+		return task.TaskLogTypeSystem
 	case apimodels.TaskLogPrefix:
-		return taskoutput.TaskLogTypeTask
+		return task.TaskLogTypeTask
 	default:
-		return taskoutput.TaskLogTypeAll
+		return task.TaskLogTypeAll
 	}
 }
 
@@ -869,7 +868,7 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 	if testName == "" {
 		testName = vals.Get("test_name")
 	}
-	it, err := tsk.GetTestLogs(r.Context(), taskoutput.TestLogGetOptions{LogPaths: []string{testName}})
+	it, err := tsk.GetTestLogs(r.Context(), task.TestLogGetOptions{LogPaths: []string{testName}})
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return

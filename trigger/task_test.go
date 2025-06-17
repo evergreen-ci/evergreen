@@ -170,7 +170,7 @@ func (s *taskSuite) TearDownSuite() {
 		build.Collection,
 		model.ProjectRefCollection,
 	))
-	s.NoError(testresult.ClearLocal(ctx, s.env))
+	s.NoError(task.ClearLocal(ctx, s.env))
 }
 
 func (s *taskSuite) SetupTest() {
@@ -187,7 +187,7 @@ func (s *taskSuite) SetupTest() {
 		build.Collection,
 		model.ProjectRefCollection,
 	))
-	s.Require().NoError(testresult.ClearLocal(s.ctx, s.env))
+	s.Require().NoError(task.ClearLocal(s.ctx, s.env))
 	startTime := time.Now().Truncate(time.Millisecond).Add(-time.Hour)
 
 	s.task = task.Task{
@@ -202,6 +202,7 @@ func (s *taskSuite) SetupTest() {
 		FinishTime:          startTime.Add(20 * time.Minute),
 		RevisionOrderNumber: 1,
 		Requester:           evergreen.RepotrackerVersionRequester,
+		TaskOutputInfo:      &task.TaskOutput{TestResults: task.TestResultOutput{Version: 1}},
 	}
 	s.NoError(s.task.Insert(s.ctx))
 
@@ -832,7 +833,7 @@ func (s *taskSuite) makeTest(ctx context.Context, testName, testStatus string) {
 	if len(testName) == 0 {
 		testName = "test_0"
 	}
-	svc := testresult.NewLocalService(s.env)
+	svc := task.NewLocalService(s.env)
 
 	s.Require().NoError(svc.AppendTestResults(ctx, []testresult.TestResult{{
 		TestName:  testName,
@@ -840,7 +841,7 @@ func (s *taskSuite) makeTest(ctx context.Context, testName, testStatus string) {
 		Execution: s.task.Execution,
 		Status:    testStatus,
 	}}))
-	s.Require().NoError(s.task.SetResultsInfo(ctx, testresult.TestResultsServiceLocal, testStatus == evergreen.TestFailedStatus))
+	s.Require().NoError(s.task.SetResultsInfo(ctx, task.TestResultsServiceLocal, testStatus == evergreen.TestFailedStatus))
 }
 
 func (s *taskSuite) tryDoubleTrigger(shouldGenerate bool) {
@@ -1080,6 +1081,7 @@ func (s *taskSuite) TestRegressionByTestWithRegex() {
 		Project:        "myproj",
 		ResultsService: "local",
 		ResultsFailed:  true,
+		TaskOutputInfo: &task.TaskOutput{TestResults: task.TestResultOutput{Version: 1}},
 	}
 	s.NoError(t1.Insert(s.ctx))
 	t2 := task.Task{
@@ -1092,9 +1094,10 @@ func (s *taskSuite) TestRegressionByTestWithRegex() {
 		Project:        "myproj",
 		ResultsService: "local",
 		ResultsFailed:  true,
+		TaskOutputInfo: &task.TaskOutput{TestResults: task.TestResultOutput{Version: 1}},
 	}
 	s.NoError(t2.Insert(s.ctx))
-	svc := testresult.NewLocalService(s.env)
+	svc := task.NewLocalService(s.env)
 	s.Require().NoError(svc.AppendTestResults(ctx, []testresult.TestResult{{TaskID: "t1", TestName: "test1", Status: evergreen.TestFailedStatus}, {TaskID: "t1", TestName: "something", Status: evergreen.TestSucceededStatus}, {TaskID: "t2", TestName: "test1", Status: evergreen.TestSucceededStatus}, {TaskID: "t2", TestName: "something", Status: evergreen.TestFailedStatus}}))
 
 	ref := model.ProjectRef{
@@ -1352,12 +1355,16 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 	defer cancel()
 	env := evergreen.GetEnvironment()
 	require.NoError(t, db.ClearCollections(task.Collection, alertrecord.Collection, build.Collection, model.VersionCollection, model.ProjectRefCollection))
-	require.NoError(t, testresult.ClearLocal(ctx, env))
+	require.NoError(t, task.ClearLocal(ctx, env))
 	defer func() {
 		assert.NoError(t, db.ClearCollections(task.Collection, alertrecord.Collection, build.Collection, model.VersionCollection, model.ProjectRefCollection))
-		assert.NoError(t, testresult.ClearLocal(ctx, env))
+		assert.NoError(t, task.ClearLocal(ctx, env))
 	}()
-	svc := testresult.NewLocalService(env)
+	flags := evergreen.ServiceFlags{
+		EvergreenTestResultsDisabled: true,
+	}
+	require.NoError(t, evergreen.SetServiceFlags(ctx, flags))
+	svc := task.NewLocalService(env)
 
 	b := build.Build{Id: "b0"}
 	require.NoError(t, b.Insert(t.Context()))
@@ -1380,17 +1387,20 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 			Requester:           evergreen.RepotrackerVersionRequester,
 			FinishTime:          time.Now(),
 			DisplayOnly:         true,
+			TaskOutputInfo:      &task.TaskOutput{TestResults: task.TestResultOutput{Version: 1}},
 		},
 		{
 			Id:             "et0_0",
 			DisplayName:    "et0",
-			ResultsService: testresult.TestResultsServiceLocal,
+			ResultsService: task.TestResultsServiceLocal,
 			ResultsFailed:  true,
+			TaskOutputInfo: &task.TaskOutput{TestResults: task.TestResultOutput{Version: 1}},
 		},
 		{
 			Id:             "et1_0",
 			DisplayName:    "et1",
-			ResultsService: testresult.TestResultsServiceLocal,
+			ResultsService: task.TestResultsServiceLocal,
+			TaskOutputInfo: &task.TaskOutput{TestResults: task.TestResultOutput{Version: 1}},
 		},
 		{
 			Id:                  "dt0_1",
@@ -1406,14 +1416,16 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 			DisplayOnly:         true,
 		},
 		{
-			Id:          "et0_1",
-			DisplayName: "et0",
+			Id:             "et0_1",
+			DisplayName:    "et0",
+			TaskOutputInfo: &task.TaskOutput{TestResults: task.TestResultOutput{Version: 1}},
 		},
 		{
 			Id:             "et1_1",
 			DisplayName:    "et1",
-			ResultsService: testresult.TestResultsServiceLocal,
+			ResultsService: task.TestResultsServiceLocal,
 			ResultsFailed:  true,
+			TaskOutputInfo: &task.TaskOutput{TestResults: task.TestResultOutput{Version: 1}},
 		},
 	}
 	for _, task := range tasks {
@@ -1444,7 +1456,7 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 		TestName: "f1",
 		Status:   evergreen.TestFailedStatus,
 	}}))
-	require.NoError(t, tasks[4].SetResultsInfo(ctx, testresult.TestResultsServiceLocal, true))
+	require.NoError(t, tasks[4].SetResultsInfo(ctx, task.TestResultsServiceLocal, true))
 	notification, err = tr.taskRegressionByTest(ctx, &event.Subscription{ID: "s1", Subscriber: subscriber, Trigger: "t1"})
 	assert.NoError(t, err)
 	require.NotNil(t, notification)

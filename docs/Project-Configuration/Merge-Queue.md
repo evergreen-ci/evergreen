@@ -189,13 +189,23 @@ Merge Queue project settings page.
 
 Evergreen will post a status check called "evergreen" when the entire merge
 queue build has finished, and it will post a status for each variant that
-finishes called "evergreen/variant_name". Typically projects should set a branch
+finishes called "evergreen/<variant_name>". Typically projects should set a branch
 protection rule for "evergreen". However, it's also possible to instead to set a
-branch protection rule for one or more "evergreen/variant_name" statuses. You
+branch protection rule for one or more "evergreen/<variant_name>" statuses. You
 might wish to do this if you wish more variants to run in a PR than are actually
 required to merge. For example, there may be long-running tasks which users care
 about only some of the time, and you do not wish to block PRs or merges on those
 tasks, but you still wish them to run automatically.
+
+**Q:** How do I add a new branch protection rule for a new variant?
+
+
+**A:** If you rely on having branch protection rules for individual variants, then changes for this need to be made both
+in Evergreen and in GitHub. In Evergreen, at least one task from this variant needs to be added to both the PR aliases 
+and the merge queue aliases (as mentioned above, these rules apply to both the PR and 
+the merge queue). Ensure you've saved the page. 
+
+In GitHub, you can now add a new branch protection rule for the "evergreen/<variant_name>" status check.
 
 **Q:** How can I turn off the merge queue to block users from merging?
 

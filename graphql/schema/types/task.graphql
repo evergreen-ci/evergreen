@@ -44,7 +44,6 @@ input TestFilter {
 Task models a task, the simplest unit of execution for Evergreen.
 """
 type Task {
-  id: String!
   aborted: Boolean!
   abortInfo: AbortInfo
   activated: Boolean!
@@ -52,6 +51,7 @@ type Task {
   activatedTime: Time
   ami: String
   annotation: Annotation
+  id: String!
   """
   This is a base task's display status.
   """
@@ -78,8 +78,8 @@ type Task {
   """
   This is a task's display status and is what is commonly used on the UI.
   """
-  displayStatus: String!
   displayOnly: Boolean
+  displayStatus: String!
   displayTask: Task
   distroId: String!
   estimatedStart: Duration
@@ -88,8 +88,8 @@ type Task {
   executionTasksFull: [Task!]
   expectedDuration: Duration
   failedTestCount: Int!
-  finishTime: Time
   files: TaskFiles!
+  finishTime: Time
   generatedBy: String
   generatedByName: String
   generateTask: Boolean
@@ -125,13 +125,13 @@ type Task {
   """
   taskLogs returns the tail 100 lines of the task's logs.
   """
+  stepbackInfo: StepbackInfo
   taskLogs: TaskLogs!
   taskOwnerTeam: TaskOwnerTeam
   tests(opts: TestFilterOptions): TaskTestResult!
   timeTaken: Duration
   totalTestCount: Int!
   versionMetadata: Version!
-  stepbackInfo: StepbackInfo
 }
 
 type AbortInfo {
@@ -166,14 +166,15 @@ enum RequiredStatus {
 
 type TaskEndDetail {
   description: String
+  diskDevices: [String!]!
   failingCommand: String
+  failureMetadataTags: [String!]!
   oomTracker: OomTrackerInfo!
   status: String!
   timedOut: Boolean
   timeoutType: String
-  type: String!
   traceID: String
-  diskDevices: [String!]!
+  type: String!
 }
 
 type OomTrackerInfo {

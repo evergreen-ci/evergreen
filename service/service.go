@@ -80,7 +80,7 @@ func GetRouter(ctx context.Context, as *APIServer, uis *UIServer) (http.Handler,
 	//
 	//	@title						Evergreen REST v2 API
 	//	@version					{OPENAPI_VERSION}
-	//	@host						evergreen.mongodb.com
+	//	@host						{OPENAPI_HOST}
 	//	@BasePath					/rest/v2
 	//	@accept						json
 	//	@produce					json

@@ -45,8 +45,8 @@ type SharedCommunicator interface {
 	UpdateLastMessageTime()
 	LastMessageAt() time.Time
 
-	// StartTask marks the task as started.
-	StartTask(context.Context, TaskData) error
+	// StartTask marks the task as started and sends initial information.
+	StartTask(context.Context, TaskData, string, []string) error
 	// GetTask returns the active task.
 	GetTask(context.Context, TaskData) (*task.Task, error)
 	// GetDisplayTaskInfoFromExecution returns the display task info of an
