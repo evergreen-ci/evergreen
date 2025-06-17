@@ -5170,6 +5170,79 @@ func TestResetStaleTask(t *testing.T) {
 	}
 }
 
+<<<<<<< HEAD
+=======
+func TestMarkEndWithNoResults(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	require.NoError(t, db.ClearCollections(task.Collection, build.Collection, host.Collection, VersionCollection, event.EventCollection, ParserProjectCollection))
+
+	testTask1 := task.Task{
+		Id:              "t1",
+		Status:          evergreen.TaskStarted,
+		Activated:       true,
+		ActivatedTime:   time.Now(),
+		BuildId:         "b",
+		Version:         "v",
+		MustHaveResults: true,
+		HostId:          "hostId",
+	}
+	assert.NoError(t, testTask1.Insert(t.Context()))
+	taskHost := host.Host{
+		Id:          "hostId",
+		RunningTask: testTask1.Id,
+	}
+	assert.NoError(t, taskHost.Insert(ctx))
+	testTask2 := task.Task{
+		Id:              "t2",
+		Status:          evergreen.TaskStarted,
+		Activated:       true,
+		ActivatedTime:   time.Now(),
+		BuildId:         "b",
+		Version:         "v",
+		MustHaveResults: true,
+		ResultsService:  task.TestResultsServiceLocal,
+		HostId:          "hostId",
+	}
+	assert.NoError(t, testTask2.Insert(t.Context()))
+	b := build.Build{
+		Id:      "b",
+		Version: "v",
+	}
+	assert.NoError(t, b.Insert(t.Context()))
+	v := &Version{
+		Id:        "v",
+		Requester: evergreen.RepotrackerVersionRequester,
+		Status:    evergreen.VersionStarted,
+	}
+	assert.NoError(t, v.Insert(t.Context()))
+	pp := ParserProject{
+		Id:         v.Id,
+		Identifier: utility.ToStringPtr("sample"),
+	}
+	assert.NoError(t, pp.Insert(t.Context()))
+	details := &apimodels.TaskEndDetail{
+		Status: evergreen.TaskSucceeded,
+		Type:   "test",
+	}
+
+	settings := testutil.TestConfig()
+	err := MarkEnd(ctx, settings, &testTask1, "", time.Now(), details)
+	assert.NoError(t, err)
+	dbTask, err := task.FindOneId(ctx, testTask1.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, evergreen.TaskFailed, dbTask.Status)
+	assert.Equal(t, evergreen.TaskDescriptionNoResults, dbTask.Details.Description)
+
+	err = MarkEnd(ctx, settings, &testTask2, "", time.Now(), details)
+	assert.NoError(t, err)
+	dbTask, err = task.FindOneId(ctx, testTask2.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, evergreen.TaskSucceeded, dbTask.Status)
+}
+
+>>>>>>> 1edb03db5705d5bb039230c9cf26280bf39d319e
 func TestDisplayTaskUpdates(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

@@ -1,4 +1,4 @@
-package taskoutput
+package task
 
 import (
 	"context"

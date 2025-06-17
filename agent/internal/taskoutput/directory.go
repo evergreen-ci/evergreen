@@ -24,7 +24,6 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/internal/client"
 	"github.com/evergreen-ci/evergreen/agent/internal/redactor"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
@@ -57,11 +56,7 @@ type DirectoryOpts struct {
 // the given task.
 func NewDirectory(opts DirectoryOpts) *Directory {
 	handlerOpts := directoryHandlerOpts{
-		taskOpts: taskoutput.TaskOptions{
-			ProjectID: opts.Tsk.Project,
-			TaskID:    opts.Tsk.Id,
-			Execution: opts.Tsk.Execution,
-		},
+		tsk:          opts.Tsk,
 		redactorOpts: opts.RedactorOpts,
 		output:       opts.Tsk.TaskOutputInfo,
 		traceClient:  opts.TraceClient,
@@ -122,8 +117,8 @@ type directoryHandler interface {
 
 // directoryHandlerOpts contains options to be passed into each directory handler implementation initialization.
 type directoryHandlerOpts struct {
-	output       *taskoutput.TaskOutput
-	taskOpts     taskoutput.TaskOptions
+	output       *task.TaskOutput
+	tsk          *task.Task
 	redactorOpts redactor.RedactionOptions
 	traceClient  otlptrace.Client
 }
