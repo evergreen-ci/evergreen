@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -16,8 +16,6 @@ type HostStat struct {
 	NumHosts  int       `bson:"num_hosts"`
 }
 
-const tsFormat = "2006-01-02.15-04-05"
-
 func NewHostStat(distroID string, numHosts int) *HostStat {
 	return &HostStat{
 		ID:        primitive.NewObjectID().Hex(),
@@ -28,6 +26,5 @@ func NewHostStat(distroID string, numHosts int) *HostStat {
 }
 
 func (hs *HostStat) Insert(ctx context.Context) error {
-	_, err := evergreen.GetEnvironment().DB().Collection(Collection).InsertOne(ctx, hs)
-	return err
+	return db.Insert(ctx, Collection, hs)
 }
