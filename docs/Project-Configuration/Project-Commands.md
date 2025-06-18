@@ -382,7 +382,10 @@ Parameters:
 
 The call to AssumeRole includes an external ID formatted as
 `<project_id>-<requester>`. This cannot be modified by the user.
-The list of requesters can be found [here](../Reference/Glossary.md#requesters).
+
+- An Evergreen project's ID can be found on its General Settings page.
+- The list of requesters can be found [here](../Reference/Glossary.md#requesters).
+
 The originating role is: 
 `arn:aws:iam::<evergreen_account_id>:role/evergreen.role.production`
 and your role should only trust that exact role. You should add an
