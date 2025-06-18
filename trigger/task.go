@@ -356,6 +356,9 @@ func (t *taskTriggers) generate(ctx context.Context, sub *event.Subscription, pa
 		if err != nil {
 			return nil, errors.Wrap(err, "building notification")
 		}
+		if payload == nil {
+			return nil, nil
+		}
 	}
 	n, err := notification.New(t.event.ID, sub.Trigger, &sub.Subscriber, payload)
 	if err != nil {
