@@ -4761,8 +4761,8 @@ func TestHasResults(t *testing.T) {
 		{
 			name: "RegularTaskLegacyCedarResultsFlag",
 			tsk: &Task{
-				Id:              "task",
-				HasCedarResults: true,
+				Id:             "task",
+				HasTestResults: true,
 			},
 			hasResults: true,
 		},
@@ -4794,8 +4794,8 @@ func TestHasResults(t *testing.T) {
 				ExecutionTasks: []string{"exec_task0", "exec_task1", "exec_task2"},
 			},
 			executionTasks: []Task{
-				{Id: "exec_task0", HasCedarResults: true},
-				{Id: "exec_task1", HasCedarResults: true},
+				{Id: "exec_task0", HasTestResults: true},
+				{Id: "exec_task1", HasTestResults: true},
 				{Id: "exec_task2"},
 			},
 			hasResults: true,
@@ -4830,7 +4830,7 @@ func TestHasResults(t *testing.T) {
 			},
 			oldExecutionTasks: []Task{
 				{Id: "exec_task3_0", OldTaskId: "exec_task3", Execution: 0},
-				{Id: "exec_task3_1", OldTaskId: "exec_task3", Execution: 1, HasCedarResults: true},
+				{Id: "exec_task3_1", OldTaskId: "exec_task3", Execution: 1, HasTestResults: true},
 			},
 			hasResults: true,
 		},
@@ -4850,7 +4850,7 @@ func TestHasResults(t *testing.T) {
 			},
 			oldExecutionTasks: []Task{
 				{Id: "exec_task3_0", OldTaskId: "exec_task3", Execution: 0},
-				{Id: "exec_task3_1", OldTaskId: "exec_task3", Execution: 1, HasCedarResults: true},
+				{Id: "exec_task3_1", OldTaskId: "exec_task3", Execution: 1, HasTestResults: true},
 			},
 			hasResults: true,
 		},
@@ -4893,15 +4893,15 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 		{
 			name: "RegularTaskResultsLegacyCedarResultsFlag",
 			tsk: &Task{
-				Id:              "task",
-				Execution:       1,
-				HasCedarResults: true,
+				Id:             "task",
+				Execution:      1,
+				HasTestResults: true,
 			},
 			expectedOpts: []Task{
 				{
-					Id:              "task",
-					Execution:       1,
-					HasCedarResults: true,
+					Id:             "task",
+					Execution:      1,
+					HasTestResults: true,
 				},
 			},
 		},
@@ -4924,19 +4924,19 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 
 			name: "ArchivedRegularTaskResultsLegacyCedarResultsFlags",
 			tsk: &Task{
-				Id:              "task_0",
-				OldTaskId:       "task",
-				Execution:       0,
-				HasCedarResults: true,
-				Archived:        true,
+				Id:             "task_0",
+				OldTaskId:      "task",
+				Execution:      0,
+				HasTestResults: true,
+				Archived:       true,
 			},
 			expectedOpts: []Task{
 				{
-					Id:              "task",
-					OldTaskId:       "task",
-					Execution:       0,
-					HasCedarResults: true,
-					Archived:        true,
+					Id:             "task",
+					OldTaskId:      "task",
+					Execution:      0,
+					HasTestResults: true,
+					Archived:       true,
 				},
 			},
 		},
@@ -4980,13 +4980,13 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 				ExecutionTasks: []string{"exec_task0", "exec_task1", "exec_task2"},
 			},
 			executionTasks: []Task{
-				{Id: "exec_task0", HasCedarResults: true},
-				{Id: "exec_task1", Execution: 1, HasCedarResults: true},
+				{Id: "exec_task0", HasTestResults: true},
+				{Id: "exec_task1", Execution: 1, HasTestResults: true},
 				{Id: "exec_task2"},
 			},
 			expectedOpts: []Task{
-				{Id: "exec_task0", HasCedarResults: true},
-				{Id: "exec_task1", Execution: 1, HasCedarResults: true},
+				{Id: "exec_task0", HasTestResults: true},
+				{Id: "exec_task1", Execution: 1, HasTestResults: true},
 			},
 		},
 		{
@@ -5017,20 +5017,20 @@ func TestCreateTestResultsTaskOptions(t *testing.T) {
 				Archived:       true,
 			},
 			executionTasks: []Task{
-				{Id: "exec_task0", HasCedarResults: true},
-				{Id: "exec_task1", Execution: 2, HasCedarResults: true},
+				{Id: "exec_task0", HasTestResults: true},
+				{Id: "exec_task1", Execution: 2, HasTestResults: true},
 				{Id: "exec_task2"},
 			},
 			oldExecutionTasks: []Task{
-				{Id: "exec_task1_0", OldTaskId: "exec_task1", HasCedarResults: true},
-				{Id: "exec_task1_1", OldTaskId: "exec_task1", Execution: 1, HasCedarResults: true},
-				{Id: "exec_task3_0", OldTaskId: "exec_task3", Execution: 0, HasCedarResults: true},
-				{Id: "exec_task3_1", OldTaskId: "exec_task3", Execution: 1, HasCedarResults: true},
+				{Id: "exec_task1_0", OldTaskId: "exec_task1", HasTestResults: true},
+				{Id: "exec_task1_1", OldTaskId: "exec_task1", Execution: 1, HasTestResults: true},
+				{Id: "exec_task3_0", OldTaskId: "exec_task3", Execution: 0, HasTestResults: true},
+				{Id: "exec_task3_1", OldTaskId: "exec_task3", Execution: 1, HasTestResults: true},
 			},
 			expectedOpts: []Task{
-				{Id: "exec_task0", Execution: 0, HasCedarResults: true, DependsOn: []Dependency{}},
-				{Id: "exec_task1", Execution: 2, HasCedarResults: true, DependsOn: []Dependency{}},
-				{Id: "exec_task3", OldTaskId: "exec_task3", Archived: true, Execution: 1, HasCedarResults: true, DependsOn: []Dependency{}},
+				{Id: "exec_task0", Execution: 0, HasTestResults: true, DependsOn: []Dependency{}},
+				{Id: "exec_task1", Execution: 2, HasTestResults: true, DependsOn: []Dependency{}},
+				{Id: "exec_task3", OldTaskId: "exec_task3", Archived: true, Execution: 1, HasTestResults: true, DependsOn: []Dependency{}},
 			},
 		},
 		{
@@ -5226,7 +5226,7 @@ func TestReset(t *testing.T) {
 			TaskOutputInfo:          &TaskOutput{TaskLogs: TaskLogOutput{Version: 1}},
 			ResultsService:          "r",
 			ResultsFailed:           true,
-			HasCedarResults:         true,
+			HasTestResults:          true,
 			ResetWhenFinished:       true,
 			IsAutomaticRestart:      true,
 			ResetFailedWhenFinished: true,
@@ -5245,7 +5245,7 @@ func TestReset(t *testing.T) {
 		dbTask, err := FindOneId(ctx, t0.Id)
 		assert.NoError(t, err)
 		assert.False(t, dbTask.ResultsFailed)
-		assert.False(t, dbTask.HasCedarResults)
+		assert.False(t, dbTask.HasTestResults)
 		assert.False(t, dbTask.ResetWhenFinished)
 		assert.False(t, dbTask.IsAutomaticRestart)
 		assert.False(t, dbTask.ResetFailedWhenFinished)

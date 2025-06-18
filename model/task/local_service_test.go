@@ -50,7 +50,7 @@ func TestLocalService(t *testing.T) {
 		}
 		savedResults0[i] = result
 	}
-	require.NoError(t, svc.AppendTestResults(ctx, savedResults0))
+	require.NoError(t, svc.AppendTestResults(ctx, testresult.DbTaskTestResults{Results: savedResults0}))
 
 	task1 := Task{Id: "task1", Execution: 0, ResultsService: TestResultsServiceLocal, TaskOutputInfo: &output}
 	savedResults1 := make([]testresult.TestResult, 10)
@@ -60,7 +60,7 @@ func TestLocalService(t *testing.T) {
 		result.Execution = task1.Execution
 		savedResults1[i] = result
 	}
-	require.NoError(t, svc.AppendTestResults(ctx, savedResults1))
+	require.NoError(t, svc.AppendTestResults(ctx, testresult.DbTaskTestResults{Results: savedResults1}))
 	task2 := Task{Id: "task2", Execution: 1, ResultsService: TestResultsServiceLocal, TaskOutputInfo: &output}
 	savedResults2 := make([]testresult.TestResult, 10)
 	for i := 0; i < len(savedResults2); i++ {
@@ -69,7 +69,7 @@ func TestLocalService(t *testing.T) {
 		result.Execution = task2.Execution
 		savedResults2[i] = result
 	}
-	require.NoError(t, svc.AppendTestResults(ctx, savedResults2))
+	require.NoError(t, svc.AppendTestResults(ctx, testresult.DbTaskTestResults{Results: savedResults2}))
 	task3 := Task{Id: "task3", Execution: 0, ResultsService: TestResultsServiceLocal, TaskOutputInfo: &output}
 	savedResults3 := make([]testresult.TestResult, MaxSampleSize)
 	for i := 0; i < len(savedResults3); i++ {
@@ -81,7 +81,7 @@ func TestLocalService(t *testing.T) {
 		}
 		savedResults3[i] = result
 	}
-	require.NoError(t, svc.AppendTestResults(ctx, savedResults3))
+	require.NoError(t, svc.AppendTestResults(ctx, testresult.DbTaskTestResults{Results: savedResults3}))
 	task4 := Task{Id: "task4", Execution: 1, ResultsService: TestResultsServiceLocal, TaskOutputInfo: &output}
 	savedResults4 := make([]testresult.TestResult, MaxSampleSize)
 	for i := 0; i < len(savedResults3); i++ {
@@ -91,7 +91,7 @@ func TestLocalService(t *testing.T) {
 		result.Status = evergreen.TestFailedStatus
 		savedResults4[i] = result
 	}
-	require.NoError(t, svc.AppendTestResults(ctx, savedResults4))
+	require.NoError(t, svc.AppendTestResults(ctx, testresult.DbTaskTestResults{Results: savedResults4}))
 	emptyTask := Task{Id: "DNE", Execution: 0, ResultsService: TestResultsServiceLocal, TaskOutputInfo: &output}
 
 	t.Run("GetMergedTaskTestResults", func(t *testing.T) {
@@ -280,7 +280,7 @@ func TestLocalFilterAndSortTestResults(t *testing.T) {
 			Status:   "Fail",
 		},
 	}
-	require.NoError(t, svc.AppendTestResults(ctx, baseResults))
+	require.NoError(t, svc.AppendTestResults(ctx, testresult.DbTaskTestResults{Results: baseResults}))
 	resultsWithBaseStatus := getResults()
 	require.Len(t, resultsWithBaseStatus, len(baseResults))
 	for i := range resultsWithBaseStatus {

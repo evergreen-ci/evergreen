@@ -7,14 +7,16 @@ import (
 	"github.com/evergreen-ci/evergreen/db/mgo/bson"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/mongodb/anser/bsonutil"
-	"github.com/mongodb/grip"
+	adb "github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+const failedTestsSampleSize = 10
+
 // ClearLocal clears the local test results store.
 func ClearLocal(ctx context.Context, env evergreen.Environment) error {
-	return errors.Wrap(env.DB().Collection(testresult.Collection).Drop(ctx), "clearing the local test results store")
+	return errors.Wrap(env.CedarDB().Collection(testresult.Collection).Drop(ctx), "clearing the local test results store")
 }
 
 // localService implements the local test results service.
@@ -28,43 +30,34 @@ func NewLocalService(env evergreen.Environment) *localService {
 }
 
 // AppendTestResults appends test results to the local test results collection.
-func (s *localService) AppendTestResults(ctx context.Context, results []testresult.TestResult) error {
-	ids := map[testresult.DbTaskTestResultsID][]testresult.TestResult{}
-	for _, result := range results {
-		id := testresult.DbTaskTestResultsID{
-			TaskID:    result.TaskID,
-			Execution: result.Execution,
-		}
-		ids[id] = append(ids[id], result)
+func (s *localService) AppendTestResults(ctx context.Context, record testresult.DbTaskTestResults) error {
+	results := record.Results
+	info := record.Info
+	err := s.env.CedarDB().Collection(testresult.Collection).FindOne(ctx, CreateFindQuery(info.TaskID, info.Execution)).Decode(&record)
+	if err != nil && !adb.ResultsNotFound(err) {
+		return errors.Wrapf(err, "finding test result '%s' execution '%d'", info.TaskID, info.Execution)
 	}
 
-	catcher := grip.NewBasicCatcher()
-	for id, results := range ids {
-		catcher.Add(s.appendResults(ctx, results, id))
-	}
-	if catcher.HasErrors() {
-		return errors.Wrap(catcher.Resolve(), "appending test results")
-	}
-
-	return nil
-}
-
-func (s *localService) appendResults(ctx context.Context, results []testresult.TestResult, id testresult.DbTaskTestResultsID) error {
 	var failedCount int
 	for _, result := range results {
 		if result.Status == evergreen.TestFailedStatus {
+			if len(record.FailedTestsSample) < failedTestsSampleSize {
+				record.FailedTestsSample = append(record.FailedTestsSample, result.GetDisplayTestName())
+			}
 			failedCount++
 		}
 	}
 
 	update := bson.M{
-		"$push": bson.M{testresult.ResultsKey: bson.M{"$each": results}},
 		"$inc": bson.M{
 			bsonutil.GetDottedKeyName(testresult.StatsKey, testresult.TotalCountKey):  len(results),
 			bsonutil.GetDottedKeyName(testresult.StatsKey, testresult.FailedCountKey): failedCount,
 		},
+		"$set": bson.M{
+			testresult.TestResultsFailedTestsSampleKey: record.FailedTestsSample,
+		},
 	}
-	_, err := s.env.DB().Collection(testresult.Collection).UpdateOne(ctx, bson.M{IdKey: id}, update, options.Update().SetUpsert(true))
+	_, err = s.env.CedarDB().Collection(testresult.Collection).UpdateOne(ctx, bson.M{IdKey: record.ID}, update, options.Update().SetUpsert(true))
 	return errors.Wrap(err, "appending DB test results")
 }
 
@@ -131,4 +124,12 @@ func (s *localService) Get(ctx context.Context, taskOpts []Task, fields ...strin
 	}
 
 	return allTaskResults, nil
+}
+
+// CreateFindQuery creates a find query to fetch a task result record by id and execution.
+func CreateFindQuery(id string, execution int) bson.M {
+	return bson.M{
+		bsonutil.GetDottedKeyName(testresult.TestResultsInfoKey, testresult.TestResultsInfoTaskIDKey):    id,
+		bsonutil.GetDottedKeyName(testresult.TestResultsInfoKey, testresult.TestResultsInfoExecutionKey): execution,
+	}
 }

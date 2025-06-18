@@ -568,7 +568,7 @@ func (c *baseCommunicator) SendTestLog(ctx context.Context, taskData TaskData, l
 }
 
 // SendTestResults sends test result metadata to the app servers for persistent DB storage.
-func (c *baseCommunicator) SendTestResults(ctx context.Context, taskData TaskData, testResults []testresult.TestResult) error {
+func (c *baseCommunicator) SendTestResults(ctx context.Context, taskData TaskData, testResults []testresult.TestResult, resultInfo testresult.TestResultsInfo, createdAt time.Time) error {
 	if len(testResults) == 0 {
 		return nil
 	}
@@ -577,21 +577,26 @@ func (c *baseCommunicator) SendTestResults(ctx context.Context, taskData TaskDat
 		method:   http.MethodPost,
 		taskData: &taskData,
 	}
+	body := apimodels.AttachTestResultsRequest{
+		TestResults: testResults,
+		Info:        resultInfo,
+		CreatedAt:   createdAt,
+	}
 	info.setTaskPathSuffix("test_results")
-	resp, err := c.retryRequest(ctx, info, testResults)
+	resp, err := c.retryRequest(ctx, info, &body)
 	if err != nil {
 		return util.RespError(resp, errors.Wrap(err, "sending test results").Error())
 	}
 	return nil
 }
 
-func (c *baseCommunicator) SetResultsInfo(ctx context.Context, taskData TaskData, service string, failed bool) error {
+func (c *baseCommunicator) SetResultsInfo(ctx context.Context, taskData TaskData, failed bool) error {
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &taskData,
 	}
 	info.path = fmt.Sprintf("task/%s/set_results_info", taskData.ID)
-	resp, err := c.retryRequest(ctx, info, &apimodels.TaskTestResultsInfo{Service: service, Failed: failed})
+	resp, err := c.retryRequest(ctx, info, &apimodels.TaskTestResultsInfo{Failed: failed})
 	if err != nil {
 		return util.RespError(resp, errors.Wrap(err, "setting results info").Error())
 	}

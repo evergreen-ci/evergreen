@@ -48,7 +48,7 @@ func TestGetTaskTestResults(t *testing.T) {
 		}
 		savedResults0[i] = result
 	}
-	require.NoError(t, svc.AppendTestResults(ctx, savedResults0))
+	require.NoError(t, svc.AppendTestResults(ctx, testresult.DbTaskTestResults{Results: savedResults0}))
 
 	task1 := Task{
 		Id:             "task1",
@@ -63,7 +63,7 @@ func TestGetTaskTestResults(t *testing.T) {
 		result.Execution = task1.Execution
 		savedResults1[i] = result
 	}
-	require.NoError(t, svc.AppendTestResults(ctx, savedResults1))
+	require.NoError(t, svc.AppendTestResults(ctx, testresult.DbTaskTestResults{Results: savedResults1}))
 
 	task2 := Task{
 		Id:             "task2",
@@ -78,7 +78,7 @@ func TestGetTaskTestResults(t *testing.T) {
 		result.Execution = task2.Execution
 		savedResults2[i] = result
 	}
-	require.NoError(t, svc.AppendTestResults(ctx, savedResults2))
+	require.NoError(t, svc.AppendTestResults(ctx, testresult.DbTaskTestResults{Results: savedResults2}))
 
 	externalServiceTask := Task{
 		Id:             "external_service_task",
@@ -207,7 +207,15 @@ func TestGetTaskTestResultsStats(t *testing.T) {
 		}
 		savedResults0[i] = result
 	}
-	require.NoError(t, svc.AppendTestResults(ctx, savedResults0))
+	info := testresult.TestResultsInfo{
+		TaskID:    task0.Id,
+		Execution: task0.Execution,
+	}
+	require.NoError(t, db.Insert(ctx, testresult.Collection, testresult.DbTaskTestResults{
+		ID:   info.ID(),
+		Info: info,
+	}))
+	require.NoError(t, svc.AppendTestResults(ctx, testresult.DbTaskTestResults{Results: savedResults0}))
 
 	task1 := Task{
 		Id:             "task1",
@@ -222,7 +230,15 @@ func TestGetTaskTestResultsStats(t *testing.T) {
 		result.Execution = task1.Execution
 		savedResults1[i] = result
 	}
-	require.NoError(t, svc.AppendTestResults(ctx, savedResults1))
+	info = testresult.TestResultsInfo{
+		TaskID:    task1.Id,
+		Execution: task1.Execution,
+	}
+	require.NoError(t, db.Insert(ctx, testresult.Collection, testresult.DbTaskTestResults{
+		ID:   info.ID(),
+		Info: info,
+	}))
+	require.NoError(t, svc.AppendTestResults(ctx, testresult.DbTaskTestResults{Results: savedResults1}))
 
 	externalServiceTask := Task{
 		Id:             "external_service_task",
@@ -301,10 +317,8 @@ func (h *mockHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func newMockCedarServer(env evergreen.Environment) (*httptest.Server, *mockHandler) {
 	handler := &mockHandler{}
 	srv := httptest.NewServer(handler)
-	env.Settings().Cedar = evergreen.CedarConfig{
-		BaseURL:  strings.TrimPrefix(srv.URL, "http://"),
-		Insecure: true,
-	}
+	env.Settings().Cedar.BaseURL = strings.TrimPrefix(srv.URL, "http://")
+	env.Settings().Cedar.Insecure = true
 
 	return srv, handler
 }
@@ -333,7 +347,7 @@ func TestGetFailedTestSamples(t *testing.T) {
 		result.Execution = task0.Execution
 		result.Status = evergreen.TestFailedStatus
 		sample0[i] = result.GetDisplayTestName()
-		require.NoError(t, svc.AppendTestResults(ctx, []testresult.TestResult{result}))
+		require.NoError(t, svc.AppendTestResults(ctx, testresult.DbTaskTestResults{Results: []testresult.TestResult{result}}))
 	}
 
 	task1 := Task{
@@ -348,7 +362,7 @@ func TestGetFailedTestSamples(t *testing.T) {
 		result.Execution = task1.Execution
 		result.Status = evergreen.TestFailedStatus
 		sample1[i] = result.GetDisplayTestName()
-		require.NoError(t, svc.AppendTestResults(ctx, []testresult.TestResult{result}))
+		require.NoError(t, svc.AppendTestResults(ctx, testresult.DbTaskTestResults{Results: []testresult.TestResult{result}}))
 	}
 
 	externalServiceTask := Task{
@@ -460,7 +474,7 @@ func TestAppendResults(t *testing.T) {
 		}
 		savedResults0[i] = result
 	}
-	require.NoError(t, svc.AppendTestResults(ctx, savedResults0))
+	require.NoError(t, svc.AppendTestResults(ctx, testresult.DbTaskTestResults{Results: savedResults0}))
 
 	task1 := Task{
 		Id:             "task1",
@@ -474,7 +488,7 @@ func TestAppendResults(t *testing.T) {
 		result.Execution = task1.Execution
 		savedResults1[i] = result
 	}
-	require.NoError(t, svc.AppendTestResults(ctx, savedResults1))
+	require.NoError(t, svc.AppendTestResults(ctx, testresult.DbTaskTestResults{Results: savedResults1}))
 
 	task2 := Task{
 		Id:             "task2",
@@ -488,7 +502,7 @@ func TestAppendResults(t *testing.T) {
 		result.Execution = task2.Execution
 		savedResults2[i] = result
 	}
-	require.NoError(t, svc.AppendTestResults(ctx, savedResults2))
+	require.NoError(t, svc.AppendTestResults(ctx, testresult.DbTaskTestResults{Results: savedResults2}))
 
 	dbResults, err := svc.Get(ctx, []Task{task0, task1, task2})
 	require.NoError(t, err)

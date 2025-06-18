@@ -353,7 +353,7 @@ func TestCLITestHistory(t *testing.T) {
 					TestStartTime: startTime,
 					TestEndTime:   endTime,
 				}
-				require.NoError(t, svc.AppendTestResults(ctx, []testresult.TestResult{passingResult, failedResult}))
+				require.NoError(t, svc.AppendTestResults(ctx, testresult.DbTaskTestResults{Results: []testresult.TestResult{passingResult, failedResult}}))
 			}
 		})
 	})
