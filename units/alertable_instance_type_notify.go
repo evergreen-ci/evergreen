@@ -112,7 +112,7 @@ func (j *alertableInstanceTypeNotifyJob) Run(ctx context.Context) {
 	}
 
 	// Log summary to Splunk for admin monitoring
-	j.logToSplunkForAdmins(userHosts)
+	j.logNotificationSummary(userHosts)
 }
 
 func (j *alertableInstanceTypeNotifyJob) notifyUser(userID string, hosts []host.Host) error {
@@ -125,27 +125,16 @@ func (j *alertableInstanceTypeNotifyJob) notifyUser(userID string, hosts []host.
 		return errors.Errorf("user '%s' not found", userID)
 	}
 
-	// Send email notification
+	catcher := grip.NewBasicCatcher()
 	if err := j.sendEmailNotification(u, hosts); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"job_id":   j.ID(),
-			"job_type": j.Type().Name,
-			"user_id":  userID,
-			"message":  "failed to send email notification",
-		}))
+		catcher.Wrap(err, "failed to send email notification")
 	}
 
-	// Send Slack notification if user has Slack configured
 	if err := j.sendSlackNotification(u, hosts); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"job_id":   j.ID(),
-			"job_type": j.Type().Name,
-			"user_id":  userID,
-			"message":  "failed to send Slack notification",
-		}))
+		catcher.Wrap(err, "failed to send slack notification")
 	}
 
-	return nil
+	return catcher.Resolve()
 }
 
 func (j *alertableInstanceTypeNotifyJob) sendEmailNotification(u *user.DBUser, hosts []host.Host) error {
@@ -177,22 +166,17 @@ func (j *alertableInstanceTypeNotifyJob) sendEmailNotification(u *user.DBUser, h
 }
 
 func (j *alertableInstanceTypeNotifyJob) sendSlackNotification(u *user.DBUser, hosts []host.Host) error {
-	// Check if user has Slack configured
-	if u.Settings.SlackUsername == "" && u.Settings.SlackMemberId == "" {
-		return nil // Skip if no Slack information available
-	}
-
 	// Determine the Slack target (prefer member ID over username)
 	var slackTarget string
 	if u.Settings.SlackMemberId != "" {
 		slackTarget = u.Settings.SlackMemberId
-	} else {
+	} else if u.Settings.SlackUsername != "" {
 		slackTarget = fmt.Sprintf("@%s", u.Settings.SlackUsername)
+	} else {
+		return nil // Skip if no Slack information available
 	}
 
-	// Build Slack message
 	slackMsg := j.buildSlackMessage(hosts)
-
 	sender, err := j.env.GetSender(evergreen.SenderSlack)
 	if err != nil {
 		return errors.Wrap(err, "getting Slack sender")
@@ -233,7 +217,7 @@ func (j *alertableInstanceTypeNotifyJob) buildSlackMessage(hosts []host.Host) st
 	return msg
 }
 
-func (j *alertableInstanceTypeNotifyJob) logToSplunkForAdmins(userHosts map[string][]host.Host) {
+func (j *alertableInstanceTypeNotifyJob) logNotificationSummary(userHosts map[string][]host.Host) {
 	totalHosts := 0
 	hostList := []host.Host{}
 	userList := []string{}
@@ -244,7 +228,6 @@ func (j *alertableInstanceTypeNotifyJob) logToSplunkForAdmins(userHosts map[stri
 		hostList = append(hostList, hosts...)
 	}
 
-	// Log structured data to Splunk via grip
 	grip.Info(message.Fields{
 		"message":                           "alerted users about spawn hosts using alertable instance types",
 		"job_id":                            j.ID(),

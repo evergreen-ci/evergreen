@@ -982,7 +982,7 @@ func TestByUserSpawnHostsQuery(t *testing.T) {
 			StartedBy: "test-user",
 			Status:    evergreen.HostRunning,
 		},
-		// Task host - should be excluded (StartedBy = evergreen.User)
+		// Task host - should be excluded
 		{
 			Id:        "task-host-1",
 			UserHost:  false,
@@ -1005,14 +1005,14 @@ func TestByUserSpawnHostsQuery(t *testing.T) {
 		},
 		// Host with UserHost=false but StartedBy != evergreen.User - should be excluded
 		{
-			Id:        "non-user-host",
+			Id:        "strange-host",
 			UserHost:  false,
 			StartedBy: "some-user",
 			Status:    evergreen.HostRunning,
 		},
 		// Host with UserHost=true but StartedBy = evergreen.User - should be excluded
 		{
-			Id:        "user-host-started-by-system",
+			Id:        "weird-host",
 			UserHost:  true,
 			StartedBy: evergreen.User,
 			Status:    evergreen.HostRunning,
@@ -1023,11 +1023,8 @@ func TestByUserSpawnHostsQuery(t *testing.T) {
 		require.NoError(t, h.Insert(ctx))
 	}
 
-	// Query using our function
 	foundHosts, err := Find(ctx, ByUnterminatedSpawnHosts())
 	require.NoError(t, err)
-
-	// Should find exactly 2 hosts: user-spawn-1 and user-spawn-stopped
 	require.Len(t, foundHosts, 2)
 
 	expectedIds := []string{"user-spawn-1", "user-spawn-stopped"}
