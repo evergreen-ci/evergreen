@@ -65,11 +65,6 @@ func (j *alertableInstanceTypeNotifyJob) Run(ctx context.Context) {
 
 	alertableTypes := settings.Providers.AWS.AlertableInstanceTypes
 	if len(alertableTypes) == 0 {
-		grip.Debug(message.Fields{
-			"job_id":   j.ID(),
-			"job_type": j.Type().Name,
-			"message":  "no alertable instance types configured",
-		})
 		return
 	}
 
@@ -82,7 +77,7 @@ func (j *alertableInstanceTypeNotifyJob) Run(ctx context.Context) {
 
 	// Group hosts by user and check for alertable instance types.
 	userHosts := make(map[string][]host.Host)
-	const alertThreshhold = -72 * time.Hour
+	const alertThreshhold = 72 * time.Hour
 
 	for _, h := range hosts {
 		if h.UserHost && h.StartedBy != "" {
@@ -192,14 +187,16 @@ func (j *alertableInstanceTypeNotifyJob) sendSlackNotification(u *user.DBUser, h
 }
 
 func (j *alertableInstanceTypeNotifyJob) buildEmailBody(hosts []host.Host) string {
-	body := "You have spawn hosts using large instance types:\n\n"
+	body := "You have spawn hosts using large instance types ("
 
-	for _, h := range hosts {
-		body += fmt.Sprintf("- Host: %s (Instance Type: %s, Status: %s)\n", h.Id, h.InstanceType, h.Status)
+	for idx, h := range hosts {
+		if idx > 1 {
+			body += ", "
+		}
+		body += fmt.Sprintf("Host: %s (Instance Type: %s, Status: %s)", h.Id, h.InstanceType, h.Status)
 	}
 
-	body += "\nPlease remember to switch to smaller instance types when you're finished with development.\n\n"
-	body += "Thank you,\nThe Evergreen Team"
+	body += ") . Please remember to switch to smaller instance types when you're finished with development."
 
 	return body
 }
@@ -219,13 +216,15 @@ func (j *alertableInstanceTypeNotifyJob) buildSlackMessage(hosts []host.Host) st
 
 func (j *alertableInstanceTypeNotifyJob) logNotificationSummary(userHosts map[string][]host.Host) {
 	totalHosts := 0
-	hostList := []host.Host{}
+	hostList := []string{}
 	userList := []string{}
 
 	for userID, hosts := range userHosts {
 		totalHosts += len(hosts)
 		userList = append(userList, userID)
-		hostList = append(hostList, hosts...)
+		for _, userHost := range hosts {
+			hostList = append(hostList, userHost.Id)
+		}
 	}
 
 	grip.Info(message.Fields{
