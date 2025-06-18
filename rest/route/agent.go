@@ -849,6 +849,9 @@ func (h *attachTestResultsHandler) Run(ctx context.Context) gimlet.Responder {
 		}
 	} else {
 		err = h.env.CedarDB().Collection(testresult.Collection).FindOne(ctx, task.CreateFindQuery(h.body.Info.TaskID, h.body.Info.Execution)).Decode(&record)
+		if err != nil {
+			return gimlet.MakeJSONInternalErrorResponder(errors.Wrap(err, "finding test result record"))
+		}
 	}
 	record.Results = h.body.TestResults
 	err = task.AppendTestResults(ctx, t, h.env, record)

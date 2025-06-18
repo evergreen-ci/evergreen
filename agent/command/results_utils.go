@@ -253,9 +253,7 @@ func makeTestResults(t *task.Task, results []testresult.TestResult) ([]testresul
 				RenderingType: r.LogInfo.RenderingType,
 				Version:       r.LogInfo.Version,
 			}
-			for _, logName := range r.LogInfo.LogsToMerge {
-				logInfo.LogsToMerge = append(logInfo.LogsToMerge, logName)
-			}
+			logInfo.LogsToMerge = append(logInfo.LogsToMerge, r.LogInfo.LogsToMerge...)
 		}
 
 		newResults = append(newResults, testresult.TestResult{
