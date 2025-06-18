@@ -969,3 +969,74 @@ func TestFindByTemporaryExemptionsExpiringBetween(t *testing.T) {
 		})
 	}
 }
+
+func TestByUserSpawnHostsQuery(t *testing.T) {
+	ctx := context.Background()
+	assert.NoError(t, db.ClearCollections(Collection))
+	// Create various types of hosts
+	hosts := []Host{
+		// User spawn host - should be included
+		{
+			Id:        "user-spawn-1",
+			UserHost:  true,
+			StartedBy: "test-user",
+			Status:    evergreen.HostRunning,
+		},
+		// Task host - should be excluded (StartedBy = evergreen.User)
+		{
+			Id:        "task-host-1",
+			UserHost:  false,
+			StartedBy: evergreen.User,
+			Status:    evergreen.HostRunning,
+		},
+		// Terminated user spawn host - should be excluded
+		{
+			Id:        "user-spawn-terminated",
+			UserHost:  true,
+			StartedBy: "test-user",
+			Status:    evergreen.HostTerminated,
+		},
+		// User spawn host with different status - should be included
+		{
+			Id:        "user-spawn-stopped",
+			UserHost:  true,
+			StartedBy: "test-user",
+			Status:    evergreen.HostStopped,
+		},
+		// Host with UserHost=false but StartedBy != evergreen.User - should be excluded
+		{
+			Id:        "non-user-host",
+			UserHost:  false,
+			StartedBy: "some-user",
+			Status:    evergreen.HostRunning,
+		},
+		// Host with UserHost=true but StartedBy = evergreen.User - should be excluded
+		{
+			Id:        "user-host-started-by-system",
+			UserHost:  true,
+			StartedBy: evergreen.User,
+			Status:    evergreen.HostRunning,
+		},
+	}
+
+	for _, h := range hosts {
+		require.NoError(t, h.Insert(ctx))
+	}
+
+	// Query using our function
+	foundHosts, err := Find(ctx, ByUnterminatedSpawnHosts())
+	require.NoError(t, err)
+
+	// Should find exactly 2 hosts: user-spawn-1 and user-spawn-stopped
+	require.Len(t, foundHosts, 2)
+
+	expectedIds := []string{"user-spawn-1", "user-spawn-stopped"}
+	foundIDs := make([]string, len(foundHosts))
+	for i, h := range foundHosts {
+		foundIDs[i] = h.Id
+	}
+
+	assert.Contains(t, expectedIds, foundHosts[0].Id)
+	assert.Contains(t, expectedIds, foundHosts[1].Id)
+	assert.NotEqual(t, foundHosts[0].Id, foundHosts[1].Id)
+}

@@ -1532,18 +1532,19 @@ func (a *APISubnet) ToService() (any, error) {
 }
 
 type APIAWSConfig struct {
-	EC2Keys              []APIEC2Key                `json:"ec2_keys"`
-	Subnets              []APISubnet                `json:"subnets"`
-	ParserProject        *APIParserProjectS3Config  `json:"parser_project"`
-	PersistentDNS        *APIPersistentDNSConfig    `json:"persistent_dns"`
-	DefaultSecurityGroup *string                    `json:"default_security_group"`
-	AllowedInstanceTypes []*string                  `json:"allowed_instance_types"`
-	AllowedRegions       []*string                  `json:"allowed_regions"`
-	MaxVolumeSizePerUser *int                       `json:"max_volume_size"`
-	Pod                  *APIAWSPodConfig           `json:"pod"`
-	AccountRoles         []APIAWSAccountRoleMapping `json:"account_roles"`
-	IPAMPoolID           *string                    `json:"ipam_pool_id"`
-	ElasticIPUsageRate   *float64                   `json:"elastic_ip_usage_rate"`
+	EC2Keys                []APIEC2Key                `json:"ec2_keys"`
+	Subnets                []APISubnet                `json:"subnets"`
+	ParserProject          *APIParserProjectS3Config  `json:"parser_project"`
+	PersistentDNS          *APIPersistentDNSConfig    `json:"persistent_dns"`
+	DefaultSecurityGroup   *string                    `json:"default_security_group"`
+	AllowedInstanceTypes   []*string                  `json:"allowed_instance_types"`
+	AlertableInstanceTypes []*string                  `json:"alertable_instance_types"`
+	AllowedRegions         []*string                  `json:"allowed_regions"`
+	MaxVolumeSizePerUser   *int                       `json:"max_volume_size"`
+	Pod                    *APIAWSPodConfig           `json:"pod"`
+	AccountRoles           []APIAWSAccountRoleMapping `json:"account_roles"`
+	IPAMPoolID             *string                    `json:"ipam_pool_id"`
+	ElasticIPUsageRate     *float64                   `json:"elastic_ip_usage_rate"`
 }
 
 func (a *APIAWSConfig) BuildFromService(h any) error {
