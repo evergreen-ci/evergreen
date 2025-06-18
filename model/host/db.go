@@ -179,14 +179,18 @@ func byCanOrWillRunTasks() bson.M {
 	}
 }
 
-// ByUnterminatedSpawnHosts returns a query that finds
-// all user spawn hosts that are not terminated.
-func ByUnterminatedSpawnHosts() bson.M {
-	return bson.M{
+// ByUnterminatedSpawnHostsWithInstanceTypes returns a query that finds all user spawn hosts that are not terminated
+// that have the given instance types, if provided.
+func ByUnterminatedSpawnHostsWithInstanceTypes(instanceTypes []string) bson.M {
+	query := bson.M{
 		UserHostKey:  true,
 		StartedByKey: bson.M{"$ne": evergreen.User},
 		StatusKey:    bson.M{"$ne": evergreen.HostTerminated},
 	}
+	if len(instanceTypes) > 0 {
+		query[InstanceTypeKey] = bson.M{"$in": instanceTypes}
+	}
+	return query
 }
 
 // ByUserWithUnterminatedStatus produces a query that returns all running hosts

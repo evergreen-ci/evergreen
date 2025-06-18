@@ -7,260 +7,227 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/alertrecord"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
-type AlertableInstanceTypeNotifySuite struct {
+type alertableInstanceTypeSuite struct {
+	j *alertableInstanceTypeNotifyJob
 	suite.Suite
-	env evergreen.Environment
-	ctx context.Context
+	suiteCtx context.Context
+	cancel   context.CancelFunc
+	ctx      context.Context
 }
 
-func TestAlertableInstanceTypeNotifySuite(t *testing.T) {
-	suite.Run(t, new(AlertableInstanceTypeNotifySuite))
+func TestAlertableInstanceType(t *testing.T) {
+	s := new(alertableInstanceTypeSuite)
+	s.suiteCtx, s.cancel = context.WithCancel(context.Background())
+	s.suiteCtx = testutil.TestSpan(s.suiteCtx, t)
+	suite.Run(t, s)
 }
 
-func (s *AlertableInstanceTypeNotifySuite) SetupSuite() {
-	s.ctx = context.Background()
-	s.env = testutil.NewEnvironment(s.ctx, s.T())
+func (s *alertableInstanceTypeSuite) SetupSuite() {
+	s.j = makeAlertableInstanceTypeNotifyJob()
 }
 
-func (s *AlertableInstanceTypeNotifySuite) SetupTest() {
-	s.Require().NoError(db.ClearCollections(host.Collection, user.Collection, evergreen.ConfigCollection))
+func (s *alertableInstanceTypeSuite) TearDownSuite() {
+	s.cancel()
 }
 
-func (s *AlertableInstanceTypeNotifySuite) TestJobWithNoAlertableTypes() {
-	// Set up config with no alertable instance types
-	settings := &evergreen.Settings{
+func (s *alertableInstanceTypeSuite) SetupTest() {
+	s.ctx = testutil.TestSpan(s.suiteCtx, s.T())
+
+	s.NoError(db.ClearCollections(event.EventCollection, host.Collection, alertrecord.Collection))
+
+	// Set up test configuration with alertable instance types
+	s.NoError(evergreen.UpdateConfig(s.ctx, &evergreen.Settings{
 		Providers: evergreen.CloudProviders{
 			AWS: evergreen.AWSConfig{
-				AlertableInstanceTypes: []string{},
+				AlertableInstanceTypes: []string{"m5.large", "m5.xlarge", "c5.2xlarge"},
 			},
 		},
+	}))
+
+	now := time.Now()
+
+	// Host that has been using alertable instance type for 4 days (should get notification)
+	h1 := host.Host{
+		Id:                   "h1",
+		UserHost:             true,
+		StartedBy:            "user1",
+		InstanceType:         "m5.large",
+		Status:               evergreen.HostRunning,
+		LastInstanceEditTime: now.Add(-4 * 24 * time.Hour),
 	}
-	s.Require().NoError(settings.Set(s.ctx))
 
-	job := NewAlertableInstanceTypeNotifyJob("test-id").(*alertableInstanceTypeNotifyJob)
-	job.env = s.env
-	job.Run(s.ctx)
-
-	s.NoError(job.Error())
-}
-
-func (s *AlertableInstanceTypeNotifySuite) TestJobWithNoMatchingHosts() {
-	// Set up config with alertable instance types
-	settings := &evergreen.Settings{
-		Providers: evergreen.CloudProviders{
-			AWS: evergreen.AWSConfig{
-				AlertableInstanceTypes: []string{"m5.large", "c5.xlarge"},
-			},
-		},
+	// Host that has been using alertable instance type for 2 days (should NOT get notification)
+	h2 := host.Host{
+		Id:                   "h2",
+		UserHost:             true,
+		StartedBy:            "user2",
+		InstanceType:         "m5.xlarge",
+		Status:               evergreen.HostRunning,
+		LastInstanceEditTime: now.Add(-2 * 24 * time.Hour),
 	}
-	s.Require().NoError(settings.Set(s.ctx))
 
-	// Create a spawn host with a non-alertable instance type
-	h := &host.Host{
-		Id:           "test-host-1",
+	// Host using non-alertable instance type (should NOT get notification)
+	h3 := host.Host{
+		Id:                   "h3",
+		UserHost:             true,
+		StartedBy:            "user3",
+		InstanceType:         "t3.micro",
+		Status:               evergreen.HostRunning,
+		LastInstanceEditTime: now.Add(-5 * 24 * time.Hour),
+	}
+
+	// Host with zero LastInstanceEditTime (created 4 days ago, should get notification)
+	h4 := host.Host{
+		Id:           "h4",
 		UserHost:     true,
-		StartedBy:    "test-user",
+		StartedBy:    "user4",
+		InstanceType: "c5.2xlarge",
 		Status:       evergreen.HostRunning,
-		InstanceType: "t3.micro",
-		Provider:     evergreen.ProviderNameEc2OnDemand,
-		Distro: distro.Distro{
-			Id: "test-distro",
-		},
-	}
-	s.Require().NoError(h.Insert(s.ctx))
-
-	job := NewAlertableInstanceTypeNotifyJob("test-id").(*alertableInstanceTypeNotifyJob)
-	job.env = s.env
-	job.Run(s.ctx)
-
-	s.NoError(job.Error())
-}
-
-func (s *AlertableInstanceTypeNotifySuite) TestJobWithMatchingHosts() {
-	// Set up config with alertable instance types
-	settings := &evergreen.Settings{
-		Providers: evergreen.CloudProviders{
-			AWS: evergreen.AWSConfig{
-				AlertableInstanceTypes: []string{"m5.large", "c5.xlarge"},
-			},
-		},
-	}
-	s.Require().NoError(settings.Set(s.ctx))
-
-	// Create a user
-	u := &user.DBUser{
-		Id:           "test-user",
-		EmailAddress: "test@example.com",
-		Settings: user.UserSettings{
-			SlackUsername: "testuser",
-			SlackMemberId: "U123456",
-		},
-	}
-	s.Require().NoError(u.Insert(s.ctx))
-
-	// Create spawn hosts with alertable instance types
-	h1 := &host.Host{
-		Id:           "test-host-1",
-		UserHost:     true,
-		StartedBy:    "test-user",
-		Status:       evergreen.HostRunning,
-		InstanceType: "m5.large",
-		Provider:     evergreen.ProviderNameEc2OnDemand,
-		Distro: distro.Distro{
-			Id: "test-distro",
-		},
-	}
-	s.Require().NoError(h1.Insert(s.ctx))
-
-	h2 := &host.Host{
-		Id:           "test-host-2",
-		UserHost:     true,
-		StartedBy:    "test-user",
-		Status:       evergreen.HostRunning,
-		InstanceType: "c5.xlarge",
-		Provider:     evergreen.ProviderNameEc2OnDemand,
-		Distro: distro.Distro{
-			Id: "test-distro",
-		},
-	}
-	s.Require().NoError(h2.Insert(s.ctx))
-
-	// Create a non-user host (should be ignored)
-	h3 := &host.Host{
-		Id:           "test-host-3",
-		UserHost:     false,
-		StartedBy:    evergreen.User,
-		Status:       evergreen.HostRunning,
-		InstanceType: "m5.large",
-		Provider:     evergreen.ProviderNameEc2OnDemand,
-		Distro: distro.Distro{
-			Id: "test-distro",
-		},
-	}
-	s.Require().NoError(h3.Insert(s.ctx))
-
-	job := NewAlertableInstanceTypeNotifyJob("test-id").(*alertableInstanceTypeNotifyJob)
-	job.env = s.env
-	job.Run(s.ctx)
-
-	s.NoError(job.Error())
-}
-
-func (s *AlertableInstanceTypeNotifySuite) TestBuildEmailBody() {
-	hosts := []host.Host{
-		{
-			Id:           "host-1",
-			InstanceType: "m5.large",
-			Status:       evergreen.HostRunning,
-		},
-		{
-			Id:           "host-2",
-			InstanceType: "c5.xlarge",
-			Status:       evergreen.HostStopped,
-		},
+		CreationTime: now.Add(-4 * 24 * time.Hour),
+		// LastInstanceEditTime is zero
 	}
 
-	job := &alertableInstanceTypeNotifyJob{}
-	body := job.buildEmailBody(hosts)
-
-	s.Contains(body, "host-1")
-	s.Contains(body, "m5.large")
-	s.Contains(body, "host-2")
-	s.Contains(body, "c5.xlarge")
-}
-
-func (s *AlertableInstanceTypeNotifySuite) TestBuildSlackMessage() {
-	hosts := []host.Host{
-		{
-			Id:           "host-1",
-			InstanceType: "m5.large",
-			Status:       evergreen.HostRunning,
-		},
+	// Non-user host (should NOT get notification)
+	h5 := host.Host{
+		Id:                   "h5",
+		UserHost:             false,
+		InstanceType:         "m5.large",
+		Status:               evergreen.HostRunning,
+		LastInstanceEditTime: now.Add(-5 * 24 * time.Hour),
 	}
 
-	job := &alertableInstanceTypeNotifyJob{}
-	msg := job.buildSlackMessage(hosts)
-
-	s.Contains(msg, "host-1")
-	s.Contains(msg, "m5.large")
-}
-
-func (s *AlertableInstanceTypeNotifySuite) TestJobWithCorrectHostFiltering() {
-	// Set up config with alertable instance types
-	settings := &evergreen.Settings{
-		Providers: evergreen.CloudProviders{
-			AWS: evergreen.AWSConfig{
-				AlertableInstanceTypes: []string{"m5.large"},
-			},
-		},
-	}
-	s.Require().NoError(settings.Set(s.ctx))
-
-	// Create a user
-	u := &user.DBUser{
-		Id:           "test-user",
-		EmailAddress: "test@example.com",
-	}
-	s.Require().NoError(u.Insert(s.ctx))
-
-	// Create hosts with different configurations
-	hosts := []host.Host{
-		// User spawn host with alertable instance type - should trigger alert
-		{
-			Id:                   "user-spawn-alertable",
-			UserHost:             true,
-			StartedBy:            "test-user",
-			Status:               evergreen.HostRunning,
-			InstanceType:         "m5.large",
-			CreationTime:         time.Now().Add(-4 * 24 * time.Hour), // 4 days old
-			LastInstanceEditTime: time.Now().Add(-4 * 24 * time.Hour), // 4 days since edit
-		},
-		// Task host with alertable instance type - should NOT trigger alert
-		{
-			Id:           "task-host-alertable",
-			UserHost:     false,
-			StartedBy:    evergreen.User,
-			Status:       evergreen.HostRunning,
-			InstanceType: "m5.large",
-			CreationTime: time.Now().Add(-4 * 24 * time.Hour),
-		},
-		// User spawn host with non-alertable instance type - should NOT trigger alert
-		{
-			Id:           "user-spawn-non-alertable",
-			UserHost:     true,
-			StartedBy:    "test-user",
-			Status:       evergreen.HostRunning,
-			InstanceType: "t3.micro",
-			CreationTime: time.Now().Add(-4 * 24 * time.Hour),
-		},
-		// Terminated user spawn host with alertable instance type - should NOT trigger alert
-		{
-			Id:           "user-spawn-terminated",
-			UserHost:     true,
-			StartedBy:    "test-user",
-			Status:       evergreen.HostTerminated,
-			InstanceType: "m5.large",
-			CreationTime: time.Now().Add(-4 * 24 * time.Hour),
-		},
-	}
-
+	hosts := []host.Host{h1, h2, h3, h4, h5}
 	for _, h := range hosts {
-		s.Require().NoError(h.Insert(s.ctx))
+		s.NoError(h.Insert(s.ctx))
+	}
+}
+
+func (s *alertableInstanceTypeSuite) TestEventsAreLogged() {
+	s.j.Run(s.ctx)
+	events, err := event.FindUnprocessedEvents(s.T().Context(), -1)
+	s.NoError(err)
+
+	// Should have 2 events: h1 and h4 (both have been using alertable types for 3+ days)
+	s.Len(events, 2)
+
+	expectedHosts := map[string]bool{
+		"h1": false,
+		"h4": false,
 	}
 
-	job := NewAlertableInstanceTypeNotifyJob("test-id").(*alertableInstanceTypeNotifyJob)
-	job.env = s.env
-	job.Run(s.ctx)
+	for _, e := range events {
+		s.Equal(event.EventAlertableInstanceTypeWarningSent, e.EventType)
+		s.Contains(expectedHosts, e.ResourceId)
+		expectedHosts[e.ResourceId] = true
+	}
 
-	s.NoError(job.Error())
+	// Verify all expected hosts had events logged
+	for hostID, found := range expectedHosts {
+		s.True(found, "Expected event for host %s", hostID)
+	}
+}
+
+func (s *alertableInstanceTypeSuite) TestAlertRecordsAreCreated() {
+	s.j.Run(s.ctx)
+
+	// Check that alert records were created for the hosts that should be notified
+	for _, hostID := range []string{"h1", "h4"} {
+		rec, err := alertrecord.FindByMostRecentAlertableInstanceTypeWithHours(s.ctx, hostID, 0)
+		s.NoError(err)
+		s.NotNil(rec, "Expected alert record for host %s", hostID)
+		s.Equal(hostID, rec.HostId)
+		s.Equal("alertable_instance_type_0hour", rec.Type)
+	}
+
+	// Check that no alert records were created for hosts that shouldn't be notified
+	for _, hostID := range []string{"h2", "h3", "h5"} {
+		rec, err := alertrecord.FindByMostRecentAlertableInstanceTypeWithHours(s.ctx, hostID, 0)
+		s.NoError(err)
+		s.Nil(rec, "Should not have alert record for host %s", hostID)
+	}
+}
+
+func (s *alertableInstanceTypeSuite) TestDuplicateEventsAreNotLoggedWithinRenotificationInterval() {
+	// First run - should log events
+	s.j.Run(s.ctx)
+	events, err := event.FindUnprocessedEvents(s.T().Context(), -1)
+	s.NoError(err)
+	s.Len(events, 2, "should log expected events on first run")
+
+	// Second run immediately - should NOT log duplicate events
+	s.j.Run(s.ctx)
+	eventsAfterRerun, err := event.FindUnprocessedEvents(s.T().Context(), -1)
+	s.NoError(err)
+	s.Len(eventsAfterRerun, len(events), "should not log duplicate events on second run")
+}
+
+func (s *alertableInstanceTypeSuite) TestDuplicateEventsAreLoggedAfterRenotificationIntervalElapses() {
+	// First run - should log events
+	s.j.Run(s.ctx)
+	events, err := event.FindUnprocessedEvents(s.T().Context(), -1)
+	s.NoError(err)
+	s.Len(events, 2, "should log expected events on first run")
+
+	// Update alert records to simulate they were created more than 24 hours ago
+	oldTime := time.Now().Add(-25 * time.Hour)
+	filter := bson.M{
+		"type": "alertable_instance_type_0hour",
+	}
+	update := bson.M{
+		"$set": bson.M{
+			"alert_time": oldTime,
+		},
+	}
+	res, err := db.UpdateAllContext(s.ctx, alertrecord.Collection, filter, update)
+	s.NoError(err)
+	s.Equal(2, res.Updated, "should have updated 2 alert records")
+
+	// Third run - should log new events since renotification interval has passed
+	s.j.Run(s.ctx)
+	eventsAfterRerun, err := event.FindUnprocessedEvents(s.T().Context(), -1)
+	s.NoError(err)
+	s.Len(eventsAfterRerun, len(events)+2, "should log new events when renotification interval has passed")
+
+	// Fourth run immediately - should NOT log duplicate events again
+	s.j.Run(s.ctx)
+	eventsAfterSecondRerun, err := event.FindUnprocessedEvents(s.T().Context(), -1)
+	s.NoError(err)
+	s.Len(eventsAfterSecondRerun, len(events)+2, "should not log any more events when recently renotified")
+}
+
+func (s *alertableInstanceTypeSuite) TestNoEventsWhenNoAlertableTypes() {
+	// Clear alertable instance types from config
+	s.NoError(evergreen.UpdateConfig(s.ctx, &evergreen.Settings{
+		Providers: evergreen.CloudProviders{
+			AWS: evergreen.AWSConfig{
+				AlertableInstanceTypes: []string{}, // Empty list
+			},
+		},
+	}))
+
+	s.j.Run(s.ctx)
+	events, err := event.FindUnprocessedEvents(s.T().Context(), -1)
+	s.NoError(err)
+	s.Empty(events, "should not log any events when no alertable instance types configured")
+}
+
+func (s *alertableInstanceTypeSuite) TestCanceledJob() {
+	ctx, cancel := context.WithCancel(s.ctx)
+	cancel()
+
+	s.j.Run(ctx)
+	events, err := event.FindUnprocessedEvents(s.T().Context(), -1)
+	s.NoError(err)
+	s.Empty(events, "should not log events when job is canceled")
 }
 
 func TestNewAlertableInstanceTypeNotifyJob(t *testing.T) {

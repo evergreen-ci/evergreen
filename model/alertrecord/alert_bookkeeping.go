@@ -32,6 +32,7 @@ const (
 	spawnHostWarningTemplate              = "spawn_%dhour"
 	hostTemporaryExemptionWarningTemplate = "temporary_exemption_%dhour"
 	volumeWarningTemplate                 = "volume_%dhour"
+	alertableInstanceTypeWarningTemplate  = "alertable_instance_type_%dhour"
 )
 
 const legacyAlertsSubscription = "legacy-alerts"
@@ -203,6 +204,16 @@ func FindByVolumeExpirationWithHours(ctx context.Context, volumeID string, hours
 	return FindOne(ctx, db.Query(q).Limit(1))
 }
 
+// FindByMostRecentAlertableInstanceTypeWithHours finds the most recent alert
+// record for a host using alertable instance types.
+func FindByMostRecentAlertableInstanceTypeWithHours(ctx context.Context, hostID string, hours int) (*AlertRecord, error) {
+	alertType := fmt.Sprintf(alertableInstanceTypeWarningTemplate, hours)
+	q := subscriptionIDQuery(legacyAlertsSubscription)
+	q[TypeKey] = alertType
+	q[HostIdKey] = hostID
+	return FindOne(ctx, db.Query(q).Sort([]string{"-" + AlertTimeKey}).Limit(1))
+}
+
 func InsertNewTaskRegressionByTestRecord(ctx context.Context, subscriptionID, taskID, testName, taskDisplayName, variant, projectID string, revision int) error {
 	record := AlertRecord{
 		Id:                  mgobson.NewObjectId(),
@@ -255,6 +266,19 @@ func InsertNewVolumeExpirationRecord(ctx context.Context, volumeID string, hours
 		SubscriptionID: legacyAlertsSubscription,
 		Type:           alertType,
 		VolumeId:       volumeID,
+		AlertTime:      time.Now(),
+	}
+
+	return errors.Wrapf(record.Insert(ctx), "inserting alert record '%s'", alertType)
+}
+
+func InsertNewAlertableInstanceTypeRecord(ctx context.Context, hostID string, hours int) error {
+	alertType := fmt.Sprintf(alertableInstanceTypeWarningTemplate, hours)
+	record := AlertRecord{
+		Id:             mgobson.NewObjectId(),
+		SubscriptionID: legacyAlertsSubscription,
+		Type:           alertType,
+		HostId:         hostID,
 		AlertTime:      time.Now(),
 	}
 
