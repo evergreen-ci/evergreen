@@ -3,7 +3,6 @@ package units
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
@@ -15,7 +14,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -146,11 +144,4 @@ func (j *spawnhostModifyJob) Run(ctx context.Context) {
 		j.AddError(err)
 		return
 	}
-}
-
-// updateLastInstanceEditTime updates the LastInstanceEditTime field for a host
-func (j *spawnhostModifyJob) updateLastInstanceEditTime(ctx context.Context, hostID string) error {
-	return host.UpdateOne(ctx, bson.M{host.IdKey: hostID}, bson.M{
-		"$set": bson.M{host.LastInstanceEditTimeKey: time.Now()},
-	})
 }
