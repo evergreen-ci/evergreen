@@ -59,7 +59,6 @@ func NewDistroAutoTuneJob(distroID, ts string) amboy.Job {
 	return j
 }
 
-// kim: TODO: implement
 func (j *distroAutoTuneJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
