@@ -7,15 +7,21 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/hoststat"
 	"github.com/evergreen-ci/utility"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
-const distroAutoTuneJobName = "distro-auto-tune"
+const (
+	distroAutoTuneJobName = "distro-auto-tune"
+	distroAutoTuneUser    = "distro_auto_tune"
+)
 
 func init() {
 	registry.AddJobType(distroAutoTuneJobName, func() amboy.Job {
@@ -26,6 +32,7 @@ func init() {
 type distroAutoTuneJob struct {
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
 	DistroID string `bson:"distro_id" json:"distro_id" yaml:"distro_id"`
+	settings *evergreen.Settings
 	distro   *distro.Distro
 }
 
@@ -65,10 +72,9 @@ func (j *distroAutoTuneJob) Run(ctx context.Context) {
 		return
 	}
 
-	// kim: TODO: needs distro feature flag merged.
-	// if !j.distro.HostAllocatorSettings.AutoTuneMaximumHosts {
-	//     return
-	// }
+	if !j.distro.HostAllocatorSettings.AutoTuneMaximumHosts {
+		return
+	}
 
 	const recentStatsWindow = 7 * utility.Day
 	stats, err := hoststat.FindByDistroSince(ctx, j.DistroID, time.Now().Add(-recentStatsWindow))
@@ -77,69 +83,152 @@ func (j *distroAutoTuneJob) Run(ctx context.Context) {
 		return
 	}
 
-	// kim: TODO: use stats to decide whether to adjust up/down.
 	if len(stats) == 0 {
 		return
 	}
 
 	summary := j.summarizeStatsUsage(stats)
 
-	const (
-		thresholdFractionToReduceHosts = 0.5
-		maxFractionalHostReduction     = 0.1
-	)
-	maxHostUtilization := float64(summary.maxHostUsage) / float64(j.distro.HostAllocatorSettings.MaximumHosts)
-	if maxHostUtilization < thresholdFractionToReduceHosts {
-		// Reduce max hosts a bit due to low usage (based on % above).
+	// Avoid tuning rarely or infrequently-used distros because they may not
+	// have enough data to make a reasonable decision about the distro's host
+	// usage.
+	const minFractionOfTimeUsingHostsToAutoTune = 0.01
+	if summary.fractionOfTimeUsingHosts < minFractionOfTimeUsingHostsToAutoTune {
 		return
 	}
 
 	const (
+		thresholdFractionToDecreaseHosts = 0.5
+		maxFractionalHostReduction       = 0.1
+
 		thresholdFractionToIncreaseHosts = 0.02
-		maxFractionalHostIncrease        = 0.5
+		maxFractionalHostIncrease        = 0.25
 	)
-	fractionOfTimeAtMaxHosts := float64(summary.numTimesMaxHostsHit) / float64(len(stats))
-	if fractionOfTimeAtMaxHosts > thresholdFractionToIncreaseHosts {
-		// Increase max hosts a bit (based on % of times hitting max hosts).
+	newMaxHosts := j.distro.HostAllocatorSettings.MaximumHosts
+	if summary.fractionOfMaxHostsUsed < thresholdFractionToDecreaseHosts {
+		// Decrease max hosts due to low usage based on percentage of distro
+		// max hosts utilized.
+		fractionToDecrease := min(thresholdFractionToDecreaseHosts-summary.fractionOfMaxHostsUsed, maxFractionalHostReduction)
+		newMaxHosts = int(float64(j.distro.HostAllocatorSettings.MaximumHosts) * (1 - fractionToDecrease))
+	} else if summary.fractionOfTimeAtMaxHosts >= thresholdFractionToIncreaseHosts {
+		// Increase max hosts based on % of times distro max hosts was hit.
+		fractionToIncrease := min(summary.fractionOfMaxHostsUsed, maxFractionalHostIncrease)
+		newMaxHosts = int(float64(j.distro.HostAllocatorSettings.MaximumHosts) * (1 + fractionToIncrease))
 		// kim: NOTE: increasing max hosts would cause later days to not hit
-		// max hosts, so autotune would not kick in.
+		// max hosts, so autotune would not kick in for a few days unless it was
+		// consistently hitting it.
 	}
 
-	// kim: TODO: ensure it's different from below + above min hosts before
-	// saving.
+	// Put reasonable bounds on hosts so that it's not increased extremely high
+	// or reduced extremely low relative to global max hosts.
+	const (
+		lowerBoundMaxHostsFraction = 0.005
+		upperBoundMaxHostsFraction = 0.4
+	)
+	lowerBoundMaxHosts := int(float64(j.settings.HostInit.MaxTotalDynamicHosts) * lowerBoundMaxHostsFraction)
+	upperBoundMaxHosts := int(float64(j.settings.HostInit.MaxTotalDynamicHosts) * upperBoundMaxHostsFraction)
+	newMaxHosts = max(newMaxHosts, lowerBoundMaxHosts)
+	newMaxHosts = min(newMaxHosts, upperBoundMaxHosts)
+	newMaxHosts = max(newMaxHosts, j.distro.HostAllocatorSettings.MinimumHosts)
+
+	if newMaxHosts == j.distro.HostAllocatorSettings.MaximumHosts {
+		return
+	}
+
+	if err := j.updateMaxHosts(ctx, newMaxHosts); err != nil {
+		j.AddError(err)
+	}
 }
 
 func (j *distroAutoTuneJob) populate(ctx context.Context) error {
-	d, err := distro.FindOneId(ctx, j.DistroID)
-	if err != nil {
-		return errors.Wrapf(err, "finding distro '%s'", j.DistroID)
+	if j.settings == nil {
+		settings, err := evergreen.GetConfig(ctx)
+		if err != nil {
+			return errors.Wrap(err, "getting admin settings")
+		}
+		j.settings = settings
 	}
-	if d == nil {
-		return errors.Errorf("distro '%s' not found", j.DistroID)
+
+	if j.distro == nil {
+		d, err := distro.FindOneId(ctx, j.DistroID)
+		if err != nil {
+			return errors.Wrapf(err, "finding distro '%s'", j.DistroID)
+		}
+		if d == nil {
+			return errors.Errorf("distro '%s' not found", j.DistroID)
+		}
+		j.distro = d
 	}
-	j.distro = d
 
 	return nil
 }
 
 type hostStatsSummary struct {
+	// maxHosts is the current distro max hosts.
+	maxHosts int
 	// NumTimesMaxHostsHit is how many times max hosts was hit or exceeded.
 	numTimesMaxHostsHit int
+	// fractionOfTimeAtMaxHosts is the fraction of time that the distro was at
+	// or above max hosts.
+	fractionOfTimeAtMaxHosts float64
 	// MaxHostUsage is the max amount of hosts that were actually used by the
 	// distro.
 	maxHostUsage int
+	// fractionOfMaxHostsUsed is the maximum number of hosts used as a fraction
+	// of distro max hosts.
+	fractionOfMaxHostsUsed float64
+	// numTimesHostsUsed is the number of minutes that the distro
+	// used any non-zero amount of hosts.
+	numTimesHostsUsed int
+	// fractionOfTimeUsingHosts is the fraction of time that the distro used any
+	// non-zero number of hosts.
+	fractionOfTimeUsingHosts float64
+	// numStats is the number of times that host data was collected for the
+	// distro.
+	numStats int
 }
 
+// kim: TODO: add tests
 func (j *distroAutoTuneJob) summarizeStatsUsage(stats []hoststat.HostStat) hostStatsSummary {
-	summary := hostStatsSummary{}
-	distroMaxHosts := j.distro.HostAllocatorSettings.MaximumHosts
+	summary := hostStatsSummary{
+		numStats: len(stats),
+		maxHosts: j.distro.HostAllocatorSettings.MaximumHosts,
+	}
 	for _, stat := range stats {
-		if stat.NumHosts >= distroMaxHosts {
+		if stat.NumHosts > 0 {
+			summary.numTimesHostsUsed++
+		}
+		if stat.NumHosts >= j.distro.HostAllocatorSettings.MaximumHosts {
 			summary.numTimesMaxHostsHit++
 		}
-		if stat.NumHosts > summary.maxHostUsage {
-			summary.maxHostUsage = stat.NumHosts
-		}
+		summary.maxHostUsage = max(summary.maxHostUsage, stat.NumHosts)
 	}
+	summary.fractionOfTimeUsingHosts = float64(summary.numTimesHostsUsed) / float64(len(stats))
+	summary.fractionOfTimeAtMaxHosts = float64(summary.numTimesMaxHostsHit) / float64(len(stats))
+	summary.fractionOfMaxHostsUsed = float64(summary.maxHostUsage) / float64(j.distro.HostAllocatorSettings.MaximumHosts)
 	return summary
+}
+
+func (j *distroAutoTuneJob) updateMaxHosts(ctx context.Context, newMaxHosts int) error {
+	updatedDistro := *j.distro
+	updatedDistro.HostAllocatorSettings.MaximumHosts = newMaxHosts
+
+	if err := updatedDistro.ReplaceOne(ctx); err != nil {
+		return errors.Wrapf(err, "updating maximum hosts for distro '%s' from %d to %d", j.DistroID, j.distro.HostAllocatorSettings.MaximumHosts, newMaxHosts)
+	}
+
+	event.LogDistroModified(ctx, j.DistroID, distroAutoTuneUser, j.distro.DistroData(), updatedDistro.DistroData())
+
+	maxHostsDiff := newMaxHosts - j.distro.HostAllocatorSettings.MaximumHosts
+	grip.Info(message.Fields{
+		"message":                 "automatically updated distro maximum hosts",
+		"old_max_hosts":           j.distro.HostAllocatorSettings.MaximumHosts,
+		"new_max_hosts":           newMaxHosts,
+		"max_hosts_diff_absolute": maxHostsDiff,
+		"max_hosts_diff_fraction": float64(maxHostsDiff) / float64(j.distro.HostAllocatorSettings.MaximumHosts),
+		"distro":                  j.DistroID,
+		"job":                     j.ID(),
+	})
+
+	return nil
 }
