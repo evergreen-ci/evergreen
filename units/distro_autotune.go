@@ -50,6 +50,7 @@ func makeDistroAutoTuneJob() *distroAutoTuneJob {
 
 // NewDistroAutoTuneJob returns a job to automatically adjust a distro's maximum
 // hosts.
+// kim: TODO: test job in staging
 func NewDistroAutoTuneJob(distroID, ts string) amboy.Job {
 	j := makeDistroAutoTuneJob()
 	j.SetID(fmt.Sprintf("%s.%s.%s", distroAutoTuneJobName, distroID, ts))
