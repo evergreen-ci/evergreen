@@ -89,9 +89,8 @@ func (j *distroAutoTuneJob) Run(ctx context.Context) {
 
 	summary := j.summarizeStatsUsage(stats)
 
-	// Avoid tuning rarely or infrequently-used distros because they may not
-	// have enough data to make a reasonable decision about the distro's host
-	// usage.
+	// Avoid tuning rarely-used distros because they may not have enough data to
+	// make a reasonable decision about the distro's host usage.
 	const minFractionOfTimeUsingHostsToAutoTune = 0.01
 	if summary.fractionOfTimeUsingHosts < minFractionOfTimeUsingHostsToAutoTune {
 		return
@@ -164,48 +163,36 @@ func (j *distroAutoTuneJob) populate(ctx context.Context) error {
 }
 
 type hostStatsSummary struct {
-	// maxHosts is the current distro max hosts.
-	maxHosts int
-	// NumTimesMaxHostsHit is how many times max hosts was hit or exceeded.
-	numTimesMaxHostsHit int
 	// fractionOfTimeAtMaxHosts is the fraction of time that the distro was at
 	// or above max hosts.
 	fractionOfTimeAtMaxHosts float64
-	// MaxHostUsage is the max amount of hosts that were actually used by the
-	// distro.
-	maxHostUsage int
 	// fractionOfMaxHostsUsed is the maximum number of hosts used as a fraction
 	// of distro max hosts.
 	fractionOfMaxHostsUsed float64
-	// numTimesHostsUsed is the number of minutes that the distro
-	// used any non-zero amount of hosts.
-	numTimesHostsUsed int
 	// fractionOfTimeUsingHosts is the fraction of time that the distro used any
 	// non-zero number of hosts.
 	fractionOfTimeUsingHosts float64
-	// numStats is the number of times that host data was collected for the
-	// distro.
-	numStats int
 }
 
-// kim: TODO: add tests
 func (j *distroAutoTuneJob) summarizeStatsUsage(stats []hoststat.HostStat) hostStatsSummary {
-	summary := hostStatsSummary{
-		numStats: len(stats),
-		maxHosts: j.distro.HostAllocatorSettings.MaximumHosts,
-	}
+	summary := hostStatsSummary{}
+	var (
+		numTimesMaxHostsHit int
+		numTimesHostsUsed   int
+		maxHostsUsed        int
+	)
 	for _, stat := range stats {
 		if stat.NumHosts > 0 {
-			summary.numTimesHostsUsed++
+			numTimesHostsUsed++
 		}
 		if stat.NumHosts >= j.distro.HostAllocatorSettings.MaximumHosts {
-			summary.numTimesMaxHostsHit++
+			numTimesMaxHostsHit++
 		}
-		summary.maxHostUsage = max(summary.maxHostUsage, stat.NumHosts)
+		maxHostsUsed = max(maxHostsUsed, stat.NumHosts)
 	}
-	summary.fractionOfTimeUsingHosts = float64(summary.numTimesHostsUsed) / float64(len(stats))
-	summary.fractionOfTimeAtMaxHosts = float64(summary.numTimesMaxHostsHit) / float64(len(stats))
-	summary.fractionOfMaxHostsUsed = float64(summary.maxHostUsage) / float64(j.distro.HostAllocatorSettings.MaximumHosts)
+	summary.fractionOfTimeUsingHosts = float64(numTimesHostsUsed) / float64(len(stats))
+	summary.fractionOfTimeAtMaxHosts = float64(numTimesMaxHostsHit) / float64(len(stats))
+	summary.fractionOfMaxHostsUsed = float64(maxHostsUsed) / float64(j.distro.HostAllocatorSettings.MaximumHosts)
 	return summary
 }
 

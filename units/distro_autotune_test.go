@@ -110,7 +110,7 @@ func TestDistroAutoTuneJob(t *testing.T) {
 			require.NotZero(t, dbDistro)
 			assert.Equal(t, originalMaxHosts, dbDistro.HostAllocatorSettings.MaximumHosts, "max hosts should not change if there's no host data")
 		},
-		"NoopsForExtremelyLowAmountOfTimeUsingHosts": func(t *testing.T, env *mock.Environment, j *distroAutoTuneJob) {
+		"DoesNotChangeMaxHostsForExtremelyLowAmountOfTimeUsingHosts": func(t *testing.T, env *mock.Environment, j *distroAutoTuneJob) {
 			originalMaxHosts := j.distro.HostAllocatorSettings.MaximumHosts
 			require.NoError(t, j.distro.Insert(t.Context()))
 
