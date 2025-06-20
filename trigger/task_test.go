@@ -835,13 +835,13 @@ func (s *taskSuite) makeTest(ctx context.Context, testName, testStatus string) {
 	}
 	svc := task.NewLocalService(s.env)
 
-	s.Require().NoError(svc.AppendTestResults(ctx, []testresult.TestResult{{
+	s.Require().NoError(svc.AppendTestResults(ctx, testresult.DbTaskTestResults{Results: []testresult.TestResult{{
 		TestName:  testName,
 		TaskID:    s.task.Id,
 		Execution: s.task.Execution,
 		Status:    testStatus,
-	}}))
-	s.Require().NoError(s.task.SetResultsInfo(ctx, task.TestResultsServiceLocal, testStatus == evergreen.TestFailedStatus))
+	}}}))
+	s.Require().NoError(s.task.SetResultsInfo(ctx, testStatus == evergreen.TestFailedStatus))
 }
 
 func (s *taskSuite) tryDoubleTrigger(shouldGenerate bool) {
@@ -1098,7 +1098,11 @@ func (s *taskSuite) TestRegressionByTestWithRegex() {
 	}
 	s.NoError(t2.Insert(s.ctx))
 	svc := task.NewLocalService(s.env)
-	s.Require().NoError(svc.AppendTestResults(ctx, []testresult.TestResult{{TaskID: "t1", TestName: "test1", Status: evergreen.TestFailedStatus}, {TaskID: "t1", TestName: "something", Status: evergreen.TestSucceededStatus}, {TaskID: "t2", TestName: "test1", Status: evergreen.TestSucceededStatus}, {TaskID: "t2", TestName: "something", Status: evergreen.TestFailedStatus}}))
+	s.Require().NoError(svc.AppendTestResults(ctx, testresult.DbTaskTestResults{Results: []testresult.TestResult{
+		{TaskID: "t1", TestName: "test1", Status: evergreen.TestFailedStatus},
+		{TaskID: "t1", TestName: "something", Status: evergreen.TestSucceededStatus},
+		{TaskID: "t2", TestName: "test1", Status: evergreen.TestSucceededStatus},
+		{TaskID: "t2", TestName: "something", Status: evergreen.TestFailedStatus}}}))
 
 	ref := model.ProjectRef{
 		Id: "myproj",
@@ -1431,7 +1435,11 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 	for _, task := range tasks {
 		require.NoError(t, task.Insert(t.Context()))
 	}
-	require.NoError(t, svc.AppendTestResults(ctx, []testresult.TestResult{{TaskID: "et0_0", TestName: "f0", Status: evergreen.TestFailedStatus}, {TaskID: "et1_0", TestName: "f1", Status: evergreen.TestSucceededStatus}, {TaskID: "et1_1", TestName: "f0", Status: evergreen.TestFailedStatus}}))
+	require.NoError(t, svc.AppendTestResults(ctx, testresult.DbTaskTestResults{Results: []testresult.TestResult{
+		{TaskID: "et0_0", TestName: "f0", Status: evergreen.TestFailedStatus},
+		{TaskID: "et1_0", TestName: "f1", Status: evergreen.TestSucceededStatus},
+		{TaskID: "et1_1", TestName: "f0", Status: evergreen.TestFailedStatus}},
+	}))
 
 	tr := taskTriggers{event: &event.EventLogEntry{ID: "e0"}, jiraMappings: &evergreen.JIRANotificationsConfig{}}
 	subscriber := event.Subscriber{Type: event.JIRAIssueSubscriberType, Target: &event.JIRAIssueSubscriber{}}
@@ -1451,12 +1459,12 @@ func TestTaskRegressionByTestDisplayTask(t *testing.T) {
 
 	// alert for the second run of the display task with the same execution task (et0) failing with a new test (f1)
 	tr.task = &tasks[3]
-	require.NoError(t, svc.AppendTestResults(ctx, []testresult.TestResult{{
+	require.NoError(t, svc.AppendTestResults(ctx, testresult.DbTaskTestResults{Results: []testresult.TestResult{{
 		TaskID:   "et0_1",
 		TestName: "f1",
 		Status:   evergreen.TestFailedStatus,
-	}}))
-	require.NoError(t, tasks[4].SetResultsInfo(ctx, task.TestResultsServiceLocal, true))
+	}}}))
+	require.NoError(t, tasks[4].SetResultsInfo(ctx, true))
 	notification, err = tr.taskRegressionByTest(ctx, &event.Subscription{ID: "s1", Subscriber: subscriber, Trigger: "t1"})
 	assert.NoError(t, err)
 	require.NotNil(t, notification)

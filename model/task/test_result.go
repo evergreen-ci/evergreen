@@ -6,12 +6,28 @@ import (
 	"sort"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/testresult"
+	"github.com/evergreen-ci/pail"
 	"github.com/evergreen-ci/utility"
+	"github.com/fraugster/parquet-go/parquetschema"
+	"github.com/fraugster/parquet-go/parquetschema/autoschema"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
+
+var ParquetTestResultsSchemaDef *parquetschema.SchemaDefinition
+
+func init() {
+	var err error
+	ParquetTestResultsSchemaDef, err = autoschema.GenerateSchema(new(testresult.ParquetTestResults))
+	if err != nil {
+		panic(errors.Wrap(err, "generating Parquet test results schema definition"))
+	}
+}
 
 // TestResultOutput is the versioned entry point for coordinating persistent
 // storage of a task run's test result data.
@@ -23,7 +39,7 @@ type TestResultOutput struct {
 }
 
 // AppendTestResults appends test results for the given task run.
-func AppendTestResults(ctx context.Context, t *Task, env evergreen.Environment, testResults []testresult.TestResult) error {
+func AppendTestResults(ctx context.Context, t *Task, env evergreen.Environment, record testresult.DbTaskTestResults) error {
 	output, ok := t.GetTaskOutputSafe()
 	if !ok {
 		return nil
@@ -33,7 +49,7 @@ func AppendTestResults(ctx context.Context, t *Task, env evergreen.Environment, 
 		return errors.Wrap(err, "getting test result service")
 	}
 
-	return svc.AppendTestResults(ctx, testResults)
+	return svc.AppendTestResults(ctx, record)
 }
 
 // getMergedTaskTestResults returns test results belonging to the specified task run.
@@ -73,7 +89,6 @@ func getMergedTaskTestResults(ctx context.Context, env evergreen.Environment, ta
 	mergedTaskResults.Results = filteredResults
 	mergedTaskResults.Stats.FilteredCount = &filteredCount
 
-	// TODO: DEVPROD-16200 Download test results from s3 based on the bucket config of each individual task.
 	return mergedTaskResults, nil
 }
 
@@ -344,4 +359,63 @@ func sortTestResults(results []testresult.TestResult, opts *FilterOptions, baseS
 
 		return false
 	})
+}
+
+func (o TestResultOutput) GetPrestoBucket(ctx context.Context, credentials evergreen.S3Credentials) (pail.Bucket, error) {
+	bucket, err := o.createPresto(ctx, credentials, o.BucketConfig.PrestoTestResultsPrefix, false)
+	if err != nil {
+		return nil, errors.Wrap(err, "creating bucket")
+	}
+
+	return bucket, nil
+}
+
+// createPresto returns a Pail Bucket backed by PailType specifically for
+// buckets in our Presto ecosystem
+func (o TestResultOutput) createPresto(ctx context.Context, credentials evergreen.S3Credentials, prefix string, compress bool) (pail.Bucket, error) {
+	var b pail.Bucket
+	var stsConfig aws.Config
+	var err error
+
+	switch o.BucketConfig.Type {
+	case evergreen.BucketTypeS3:
+		stsConfig, err = config.LoadDefaultConfig(ctx,
+			config.WithRegion(evergreen.DefaultS3Region),
+		)
+		if err != nil {
+			return nil, errors.Wrap(err, "loading config")
+		}
+		stsConfig.Credentials = pail.CreateAWSStaticCredentials(credentials.Key, credentials.Secret, "")
+		stsClient := sts.NewFromConfig(stsConfig)
+		opts := pail.S3Options{
+			Name:        o.BucketConfig.PrestoBucket,
+			Prefix:      prefix,
+			Region:      evergreen.DefaultS3Region,
+			Permissions: pail.S3PermissionsPrivate,
+			Credentials: stscreds.NewAssumeRoleProvider(stsClient, o.BucketConfig.PrestoRoleARN),
+			MaxRetries:  utility.ToIntPtr(evergreen.DefaultS3MaxRetries),
+			Compress:    compress,
+			Verbose:     true,
+		}
+		b, err = pail.NewS3Bucket(ctx, opts)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+	case evergreen.BucketTypeLocal:
+		opts := pail.LocalOptions{
+			Path:   o.BucketConfig.PrestoBucket,
+			Prefix: prefix,
+		}
+		b, err = pail.NewLocalBucket(opts)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+	default:
+		return nil, errors.Errorf("unsupported bucket type: %s", o.BucketConfig.Type)
+	}
+
+	if err = b.Check(ctx); err != nil {
+		return nil, errors.WithStack(err)
+	}
+	return b, nil
 }

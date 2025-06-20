@@ -30,7 +30,7 @@ func NewCedarService(env evergreen.Environment) *cedarService {
 	return &cedarService{baseURL: fmt.Sprintf("%s://%s", httpScheme, cedarSettings.BaseURL)}
 }
 
-func (s *cedarService) AppendTestResults(ctx context.Context, results []testresult.TestResult) error {
+func (s *cedarService) AppendTestResults(ctx context.Context, record testresult.DbTaskTestResults) error {
 	return errors.New("not implemented")
 }
 
