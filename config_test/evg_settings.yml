@@ -5,6 +5,10 @@ database:
   write_concern:
     wmode: "majority"
 
+cedar:
+  db_url: "mongodb://localhost:27017"
+  db_name: "mci_test"
+
 buckets:
   log_bucket:
     name: "logs"

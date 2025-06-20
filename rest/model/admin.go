@@ -626,9 +626,12 @@ type APIBucketsConfig struct {
 }
 
 type APIBucketConfig struct {
-	Name   *string `json:"name"`
-	Type   *string `json:"type"`
-	DBName *string `json:"db_name"`
+	Name                    *string `json:"name"`
+	Type                    *string `json:"type"`
+	DBName                  *string `json:"db_name"`
+	PrestoTestResultsPrefix *string `json:"presto_test_results_prefix"`
+	PrestoRoleARN           *string `json:"presto_role_arn"`
+	PrestoBucket            *string `json:"presto_bucket"`
 }
 
 type APIProjectToPrefixMapping struct {
@@ -652,6 +655,9 @@ func (a *APIBucketsConfig) BuildFromService(h any) error {
 		a.TestResultsBucket.Name = utility.ToStringPtr(v.TestResultsBucket.Name)
 		a.TestResultsBucket.Type = utility.ToStringPtr(string(v.TestResultsBucket.Type))
 		a.TestResultsBucket.DBName = utility.ToStringPtr(v.TestResultsBucket.DBName)
+		a.TestResultsBucket.PrestoBucket = utility.ToStringPtr(v.TestResultsBucket.PrestoBucket)
+		a.TestResultsBucket.PrestoTestResultsPrefix = utility.ToStringPtr(v.TestResultsBucket.PrestoTestResultsPrefix)
+		a.TestResultsBucket.PrestoRoleARN = utility.ToStringPtr(v.TestResultsBucket.PrestoRoleARN)
 
 		creds := APIS3Credentials{}
 		if err := creds.BuildFromService(v.Credentials); err != nil {
@@ -681,9 +687,12 @@ func (a *APIBucketsConfig) ToService() (any, error) {
 			DBName: utility.FromStringPtr(a.LogBucket.DBName),
 		},
 		TestResultsBucket: evergreen.BucketConfig{
-			Name:   utility.FromStringPtr(a.TestResultsBucket.Name),
-			Type:   evergreen.BucketType(utility.FromStringPtr(a.TestResultsBucket.Type)),
-			DBName: utility.FromStringPtr(a.TestResultsBucket.DBName),
+			Name:                    utility.FromStringPtr(a.TestResultsBucket.Name),
+			Type:                    evergreen.BucketType(utility.FromStringPtr(a.TestResultsBucket.Type)),
+			DBName:                  utility.FromStringPtr(a.TestResultsBucket.DBName),
+			PrestoRoleARN:           utility.FromStringPtr(a.TestResultsBucket.PrestoRoleARN),
+			PrestoBucket:            utility.FromStringPtr(a.TestResultsBucket.PrestoBucket),
+			PrestoTestResultsPrefix: utility.FromStringPtr(a.TestResultsBucket.PrestoTestResultsPrefix),
 		},
 		Credentials: creds,
 	}, nil
