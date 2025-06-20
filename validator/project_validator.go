@@ -1155,8 +1155,7 @@ func validateTimeoutLimits(_ context.Context, settings *evergreen.Settings, proj
 			if task.ExecTimeoutSecs > settings.TaskLimits.MaxExecTimeoutSecs {
 				errs = append(errs, ValidationError{
 					Message: fmt.Sprintf("task '%s' exec timeout (%d) is too high and will be set to maximum limit (%d)", task.Name, task.ExecTimeoutSecs, settings.TaskLimits.MaxExecTimeoutSecs),
-					// TODO DEVPROD-11204: Update to Error once the exec timeout limit can be enforced
-					Level: Warning,
+					Level:   Error,
 				})
 			}
 		}
