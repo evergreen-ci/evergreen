@@ -91,6 +91,7 @@ const (
 	TriggerTaskFirstFailureInVersion = "first-failure-in-version"
 	TriggerTaskStarted               = "task-started"
 	TriggerSpawnHostIdle             = "spawn-host-idle"
+	TriggerAlertableInstanceType     = "alertable-instance-type"
 )
 
 type Subscription struct {

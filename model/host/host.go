@@ -138,6 +138,8 @@ type Host struct {
 	// InstanceType is the EC2 host's requested instance type. This is kept
 	// up-to-date even if the instance type is changed.
 	InstanceType string `bson:"instance_type" json:"instance_type,omitempty"`
+	// LastInstanceEditTime tracks when the instance type was last modified
+	LastInstanceEditTime time.Time `bson:"last_instance_edit_time,omitempty" json:"last_instance_edit_time,omitempty"`
 	// The volumeID and device name for each volume attached to the host
 	Volumes []VolumeAttachment `bson:"volumes,omitempty" json:"volumes,omitempty"`
 
@@ -3022,7 +3024,8 @@ func (h *Host) SetInstanceType(ctx context.Context, instanceType string) error {
 		},
 		bson.M{
 			"$set": bson.M{
-				InstanceTypeKey: instanceType,
+				InstanceTypeKey:         instanceType,
+				LastInstanceEditTimeKey: time.Now(),
 			},
 		},
 	)

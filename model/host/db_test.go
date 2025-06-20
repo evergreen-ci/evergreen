@@ -969,3 +969,97 @@ func TestFindByTemporaryExemptionsExpiringBetween(t *testing.T) {
 		})
 	}
 }
+
+func TestByUnterminatedSpawnHostsWithInstanceTypes(t *testing.T) {
+	ctx := context.Background()
+	require.NoError(t, db.ClearCollections(Collection))
+
+	// Create test hosts covering all scenarios
+	hosts := []Host{
+		// User spawn hosts - should be included in both queries
+		{
+			Id:           "user-spawn-m5-large",
+			UserHost:     true,
+			StartedBy:    "test-user",
+			Status:       evergreen.HostRunning,
+			InstanceType: "m5.large",
+		},
+		{
+			Id:           "user-spawn-m5-xlarge",
+			UserHost:     true,
+			StartedBy:    "test-user",
+			Status:       evergreen.HostStopped,
+			InstanceType: "m5.xlarge",
+		},
+		{
+			Id:           "user-spawn-c5-large",
+			UserHost:     true,
+			StartedBy:    "test-user",
+			Status:       evergreen.HostRunning,
+			InstanceType: "c5.large",
+		},
+		// Task host - should be excluded from both queries
+		{
+			Id:           "task-host",
+			UserHost:     false,
+			StartedBy:    evergreen.User,
+			Status:       evergreen.HostRunning,
+			InstanceType: "m5.large",
+		},
+		// Terminated user spawn host - should be excluded from both queries
+		{
+			Id:           "user-spawn-terminated",
+			UserHost:     true,
+			StartedBy:    "test-user",
+			Status:       evergreen.HostTerminated,
+			InstanceType: "m5.large",
+		},
+		// User spawn host with no instance type - included in ByUnterminatedSpawnHosts, excluded from WithInstanceTypes
+		{
+			Id:        "user-spawn-no-instance-type",
+			UserHost:  true,
+			StartedBy: "test-user",
+			Status:    evergreen.HostRunning,
+		},
+		// Host with UserHost=true but StartedBy = evergreen.User - should be excluded from both
+		{
+			Id:           "weird-host",
+			UserHost:     true,
+			StartedBy:    evergreen.User,
+			Status:       evergreen.HostRunning,
+			InstanceType: "m5.large",
+		},
+	}
+
+	for _, h := range hosts {
+		require.NoError(t, h.Insert(ctx))
+	}
+
+	// Test ByUnterminatedSpawnHostsWithInstanceTypes with m5.large
+	foundHosts, err := Find(ctx, ByUnterminatedSpawnHostsWithInstanceTypes([]string{"m5.large"}))
+	require.NoError(t, err)
+	require.Len(t, foundHosts, 1)
+	assert.Equal(t, "user-spawn-m5-large", foundHosts[0].Id)
+
+	// Test ByUnterminatedSpawnHostsWithInstanceTypes with multiple instance types
+	foundHosts, err = Find(ctx, ByUnterminatedSpawnHostsWithInstanceTypes([]string{"m5.large", "m5.xlarge"}))
+	require.NoError(t, err)
+	require.Len(t, foundHosts, 2)
+	expectedIds := []string{"user-spawn-m5-large", "user-spawn-m5-xlarge"}
+	for _, h := range foundHosts {
+		assert.Contains(t, expectedIds, h.Id)
+	}
+
+	// Test ByUnterminatedSpawnHostsWithInstanceTypes with non-existent instance type
+	foundHosts, err = Find(ctx, ByUnterminatedSpawnHostsWithInstanceTypes([]string{"non-existent"}))
+	require.NoError(t, err)
+	assert.Empty(t, foundHosts)
+
+	// Test ByUnterminatedSpawnHostsWithInstanceTypes with empty list
+	foundHosts, err = Find(ctx, ByUnterminatedSpawnHostsWithInstanceTypes([]string{}))
+	require.NoError(t, err)
+	assert.Len(t, foundHosts, 4)
+	for _, h := range foundHosts {
+		assert.Contains(t, []string{"user-spawn-m5-large", "user-spawn-m5-xlarge", "user-spawn-c5-large", "user-spawn-no-instance-type"}, h.Id)
+	}
+}

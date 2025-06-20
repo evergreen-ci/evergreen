@@ -76,6 +76,7 @@ var (
 	NeedsReprovisionKey                    = bsonutil.MustHaveTag(Host{}, "NeedsReprovision")
 	StartedByKey                           = bsonutil.MustHaveTag(Host{}, "StartedBy")
 	InstanceTypeKey                        = bsonutil.MustHaveTag(Host{}, "InstanceType")
+	LastInstanceEditTimeKey                = bsonutil.MustHaveTag(Host{}, "LastInstanceEditTime")
 	VolumesKey                             = bsonutil.MustHaveTag(Host{}, "Volumes")
 	LastCommunicationTimeKey               = bsonutil.MustHaveTag(Host{}, "LastCommunicationTime")
 	UserHostKey                            = bsonutil.MustHaveTag(Host{}, "UserHost")
@@ -176,6 +177,20 @@ func byCanOrWillRunTasks() bson.M {
 		StartedByKey: evergreen.User,
 		StatusKey:    bson.M{"$in": evergreen.IsRunningOrWillRunStatuses},
 	}
+}
+
+// ByUnterminatedSpawnHostsWithInstanceTypes returns a query that finds all user spawn hosts that are not terminated
+// that have the given instance types, if provided.
+func ByUnterminatedSpawnHostsWithInstanceTypes(instanceTypes []string) bson.M {
+	query := bson.M{
+		UserHostKey:  true,
+		StartedByKey: bson.M{"$ne": evergreen.User},
+		StatusKey:    bson.M{"$ne": evergreen.HostTerminated},
+	}
+	if len(instanceTypes) > 0 {
+		query[InstanceTypeKey] = bson.M{"$in": instanceTypes}
+	}
+	return query
 }
 
 // ByUserWithUnterminatedStatus produces a query that returns all running hosts
