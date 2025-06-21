@@ -796,6 +796,7 @@ func (s *ProjectGetSuite) TestPaginatorShouldReturnResultsIfDataExists() {
 	defer cancel()
 	s.route.key = "projectC"
 	s.route.limit = 1
+	s.route.url = "http://evergreen.example.net/"
 
 	resp := s.route.Run(ctx)
 	s.NotNil(resp)
