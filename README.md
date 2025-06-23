@@ -56,5 +56,6 @@ Possible Targets:
 - run `make local-evergreen` to start a local Evergreen. You will need a mongod
   running, listening on 27017. Log in at http://localhost:9090/login with user
   `admin` and password `password`. Visiting http://localhost:9090/ should show
-  you the waterfall. The new UI is available at
-  https://github.com/evergreen-ci/ui.
+  redirect you the waterfall on the new UI. The new UI is available at
+  https://github.com/evergreen-ci/ui. You need to run the UI server separately
+  in order to view the new UI.

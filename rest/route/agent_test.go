@@ -974,3 +974,94 @@ func TestAWSAssumeRole(t *testing.T) {
 	}
 
 }
+
+func TestStartTaskWithOtelMetadata(t *testing.T) {
+	testCases := []struct {
+		name          string
+		diskDevices   []string
+		traceID       string
+		expectedDisk  []string
+		expectedTrace string
+	}{
+		{
+			name:          "BothDiskDevicesAndTraceID",
+			diskDevices:   []string{"sda1", "sdb1"},
+			traceID:       "test-trace-id-123",
+			expectedDisk:  []string{"sda1", "sdb1"},
+			expectedTrace: "test-trace-id-123",
+		},
+		{
+			name:          "JustTraceID",
+			diskDevices:   nil,
+			traceID:       "test-trace-id-456",
+			expectedDisk:  nil,
+			expectedTrace: "test-trace-id-456",
+		},
+		{
+			name:          "JustDiskDevices",
+			diskDevices:   []string{"nvme0n1", "nvme1n1"},
+			traceID:       "",
+			expectedDisk:  []string{"nvme0n1", "nvme1n1"},
+			expectedTrace: "",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			require.NoError(t, db.ClearCollections(task.Collection, host.Collection))
+
+			// Create a test task
+			testTask := task.Task{
+				Id:      "test-task-id",
+				Project: "test-project",
+				Version: "test-version",
+				Status:  evergreen.TaskUndispatched,
+			}
+			require.NoError(t, testTask.Insert(ctx))
+
+			// Create a test host
+			testHost := host.Host{
+				Id:          "test-host-id",
+				Status:      evergreen.HostRunning,
+				RunningTask: testTask.Id,
+			}
+			require.NoError(t, testHost.Insert(ctx))
+
+			// Create the request body using TaskStartRequest
+			requestBody := apimodels.TaskStartRequest{
+				TraceID:     tc.traceID,
+				DiskDevices: tc.diskDevices,
+			}
+			bodyBytes, err := json.Marshal(requestBody)
+			require.NoError(t, err)
+
+			// Create the HTTP request
+			req, err := http.NewRequest(http.MethodPost, "/task/test-task-id/start", bytes.NewReader(bodyBytes))
+			require.NoError(t, err)
+			req = gimlet.SetURLVars(req, map[string]string{"task_id": "test-task-id"})
+			req.Header.Set(evergreen.HostHeader, "test-host-id")
+
+			// Create and test the handler
+			env := &mock.Environment{}
+			require.NoError(t, env.Configure(ctx))
+			handler := makeStartTask(env).(*startTaskHandler)
+			require.NoError(t, handler.Parse(ctx, req))
+
+			resp := handler.Run(ctx)
+			require.NotNil(t, resp)
+			assert.Equal(t, http.StatusOK, resp.Status())
+
+			// Verify the task was updated with the correct details
+			updatedTask, err := task.FindOneId(ctx, "test-task-id")
+			require.NoError(t, err)
+			require.NotNil(t, updatedTask)
+
+			// Check that the task details were stored correctly
+			assert.Equal(t, tc.expectedTrace, updatedTask.Details.TraceID)
+			assert.Equal(t, tc.expectedDisk, updatedTask.Details.DiskDevices)
+		})
+	}
+}

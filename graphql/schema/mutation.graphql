@@ -35,6 +35,11 @@ type Mutation {
     metadataLinks: [MetadataLinkInput!]!
   ): Boolean!
 
+  # config
+  saveAdminSettings(
+    adminSettings: AdminSettingsInput! 
+  ): AdminSettings! @requireAdmin
+
   # distros
   deleteDistro(opts: DeleteDistroInput!): DeleteDistroPayload! # Has directive on DeleteDistroInput.
   copyDistro(opts: CopyDistroInput! @requireDistroAccess(access: CREATE)): NewDistroPayload!

@@ -27,7 +27,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
@@ -899,7 +898,7 @@ func getProjectMetadata(ctx context.Context, projectId *string, patchId *string)
 // Helper functions for task logs.
 //////////////////////////////////
 
-func getTaskLogs(ctx context.Context, obj *TaskLogs, logType taskoutput.TaskLogType) ([]*apimodels.LogMessage, error) {
+func getTaskLogs(ctx context.Context, obj *TaskLogs, logType task.TaskLogType) ([]*apimodels.LogMessage, error) {
 	dbTask, err := task.FindOneIdAndExecution(ctx, obj.TaskID, obj.Execution)
 	if err != nil {
 		return nil, InternalServerError.Send(ctx, fmt.Sprintf("finding task '%s': %s", obj.TaskID, err.Error()))
@@ -908,7 +907,7 @@ func getTaskLogs(ctx context.Context, obj *TaskLogs, logType taskoutput.TaskLogT
 		return []*apimodels.LogMessage{}, nil
 	}
 
-	it, err := dbTask.GetTaskLogs(ctx, taskoutput.TaskLogGetOptions{
+	it, err := dbTask.GetTaskLogs(ctx, task.TaskLogGetOptions{
 		LogType: logType,
 		TailN:   100,
 	})
@@ -928,7 +927,7 @@ func getTaskLogs(ctx context.Context, obj *TaskLogs, logType taskoutput.TaskLogT
 // Helper functions for task test results.
 //////////////////////////////////////////
 
-func convertTestFilterOptions(ctx context.Context, dbTask *task.Task, opts *TestFilterOptions) (*testresult.FilterOptions, error) {
+func convertTestFilterOptions(ctx context.Context, dbTask *task.Task, opts *TestFilterOptions) (*task.FilterOptions, error) {
 	if opts == nil {
 		return nil, nil
 	}
@@ -938,7 +937,7 @@ func convertTestFilterOptions(ctx context.Context, dbTask *task.Task, opts *Test
 		return nil, err
 	}
 
-	return &testresult.FilterOptions{
+	return &task.FilterOptions{
 		TestName:            utility.FromStringPtr(opts.TestName),
 		ExcludeDisplayNames: utility.FromBoolPtr(opts.ExcludeDisplayNames),
 		Statuses:            opts.Statuses,
@@ -950,7 +949,7 @@ func convertTestFilterOptions(ctx context.Context, dbTask *task.Task, opts *Test
 	}, nil
 }
 
-func convertTestSortOptions(ctx context.Context, dbTask *task.Task, opts []*TestSortOptions) ([]testresult.SortBy, []testresult.TaskOptions, error) {
+func convertTestSortOptions(ctx context.Context, dbTask *task.Task, opts []*TestSortOptions) ([]testresult.SortBy, []task.Task, error) {
 	baseTaskOpts, err := getBaseTaskTestResultsOptions(ctx, dbTask)
 	if err != nil {
 		return nil, nil, err
@@ -984,10 +983,10 @@ func convertTestSortOptions(ctx context.Context, dbTask *task.Task, opts []*Test
 	return sort, baseTaskOpts, nil
 }
 
-func getBaseTaskTestResultsOptions(ctx context.Context, dbTask *task.Task) ([]testresult.TaskOptions, error) {
+func getBaseTaskTestResultsOptions(ctx context.Context, dbTask *task.Task) ([]task.Task, error) {
 	var (
 		baseTask *task.Task
-		taskOpts []testresult.TaskOptions
+		tasks    []task.Task
 		err      error
 	)
 
@@ -1001,14 +1000,13 @@ func getBaseTaskTestResultsOptions(ctx context.Context, dbTask *task.Task) ([]te
 	}
 
 	if baseTask != nil && baseTask.ResultsService == dbTask.ResultsService {
-		taskOutputOpts, err := baseTask.CreateTestResultsTaskOptions(ctx)
-		taskOpts = taskoutput.CreateTestresultTaskOpts(taskOutputOpts)
+		tasks, err = baseTask.GetTestResultsTasks(ctx)
 		if err != nil {
 			return nil, InternalServerError.Send(ctx, fmt.Sprintf("creating test results task options for base task '%s': %s", baseTask.Id, err.Error()))
 		}
 	}
 
-	return taskOpts, nil
+	return tasks, nil
 }
 
 func handleDistroOnSaveOperation(ctx context.Context, distroID string, onSave DistroOnSaveOperation, userID string) (int, error) {

@@ -266,7 +266,7 @@ and these versions will have the following properties:
     revision.
     -   It is possible to push the tag on the same line as the commit
         using `&&` but this is recommended for low-risk commits only.
--   Versions are displayed on the waterfall and project health page.
+-   Versions are displayed on the waterfall page.
 -   The version is titled "Triggered From Git Tag '`<`git tag`>`':
     `<`commit message for this revision`>`"
 -   The expansion `${triggered_by_git_tag}` is set to the git tag that
@@ -471,10 +471,6 @@ monitoring charts. Use a cron to schedule your tasks if you'd like to
 use performance tooling.
 
 ### Views and Filters
-#### Project Health View
-Customize the default behavior of the Project Health page by choosing to show failed task icons or all task icons. This setting corresponds to the toggle on the Project Health page (pictured below).
-
-![project_health_view.png](../images/project_health_view.png)
 
 #### Parsley Filters
 Define default filters for your project. Users can access these filters in Parsley and apply them directly to their logs.

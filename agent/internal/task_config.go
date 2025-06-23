@@ -64,10 +64,15 @@ type TaskConfig struct {
 	Timeout            Timeout
 	TaskOutput         evergreen.S3Credentials
 	ModulePaths        map[string]string
-	CedarTestResultsID string
-	TaskGroup          *model.TaskGroup
-	CommandCleanups    []CommandCleanup
-	MaxExecTimeoutSecs int
+	// HasTestResults is true if the task has sent at least one test result.
+	HasTestResults bool
+	// HasFailingTestResult is true if the task has sent at least one test
+	// result and at least one of those tests failed.
+	HasFailingTestResult bool
+	CedarTestResultsID   string
+	TaskGroup            *model.TaskGroup
+	CommandCleanups      []CommandCleanup
+	MaxExecTimeoutSecs   int
 
 	// PatchOrVersionDescription holds the description of a patch or
 	// message of a version to be used in the otel attributes.

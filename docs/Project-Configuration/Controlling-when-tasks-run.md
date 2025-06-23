@@ -36,7 +36,7 @@ Cron can be specified in the buildvariants section in the project configuration 
 buildvariants:
 - name: the-main-bv
   display_name: The Main BV
-  cron: 0 * * * *
+  cron: 0 12 * * * # at 12:00 every day
   run_on:
   - my-distro
   tasks:
@@ -44,6 +44,12 @@ buildvariants:
   - name: second_test
     cron: '@daily' # overrides build variant cron
 ```
+
+In the example above, when a mainline commit is triggered at 10:00, it will not initially schedule any tasks in `the-main-bv`. Let's also say that there was another mainline commit triggered at 11:00.
+
+At 12:00, Evergreen's cron jobs will look for the latest mainline commit, which happens to be the one made at 11:00 in this example. Then, Evergreen will activate `first_test` task in the mainline commit that was created in 11:00 because the cron settings specify that the task should run at 12:00 every day. 
+
+Similarly, the `second_test` task will be scheduled at 0:00 on the latest mainline commit at the time due to the `@daily` cron.
 
 ### Batchtime
 

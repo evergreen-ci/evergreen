@@ -150,6 +150,7 @@ func MockConfig() *evergreen.Settings {
 		Api: evergreen.APIConfig{
 			HttpListenAddr: "addr",
 			URL:            "api",
+			CorpURL:        "corp",
 		},
 		AuthConfig: evergreen.AuthConfig{
 			Okta: &evergreen.OktaConfig{
@@ -406,6 +407,7 @@ func MockConfig() *evergreen.Settings {
 			CPUDegradedModeDisabled:         true,
 			ElasticIPsDisabled:              true,
 			ReleaseModeDisabled:             true,
+			AdminParameterStoreDisabled:     true,
 		},
 		SingleTaskDistro: evergreen.SingleTaskDistroConfig{
 			ProjectTasksPairs: []evergreen.ProjectTasksPair{

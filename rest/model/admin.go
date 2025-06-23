@@ -470,6 +470,7 @@ func (a *APIAmboyNamedQueueConfig) ToService() evergreen.AmboyNamedQueueConfig {
 type APIapiConfig struct {
 	HttpListenAddr *string `json:"http_listen_addr"`
 	URL            *string `json:"url"`
+	CorpURL        *string `json:"corp_url"`
 }
 
 func (a *APIapiConfig) BuildFromService(h any) error {
@@ -477,6 +478,7 @@ func (a *APIapiConfig) BuildFromService(h any) error {
 	case evergreen.APIConfig:
 		a.HttpListenAddr = utility.ToStringPtr(v.HttpListenAddr)
 		a.URL = utility.ToStringPtr(v.URL)
+		a.CorpURL = utility.ToStringPtr(v.CorpURL)
 	default:
 		return errors.Errorf("programmatic error: expected REST API config but got type %T", h)
 	}
@@ -487,6 +489,7 @@ func (a *APIapiConfig) ToService() (any, error) {
 	return evergreen.APIConfig{
 		HttpListenAddr: utility.FromStringPtr(a.HttpListenAddr),
 		URL:            utility.FromStringPtr(a.URL),
+		CorpURL:        utility.FromStringPtr(a.CorpURL),
 	}, nil
 }
 
@@ -2181,6 +2184,7 @@ type APIServiceFlags struct {
 	DegradedModeDisabled            bool `json:"cpu_degraded_mode_disabled"`
 	ElasticIPsDisabled              bool `json:"elastic_ips_disabled"`
 	ReleaseModeDisabled             bool `json:"release_mode_disabled"`
+	AdminParameterStoreDisabled     bool `json:"admin_parameter_store_disabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -2613,6 +2617,7 @@ func (as *APIServiceFlags) BuildFromService(h any) error {
 		as.DegradedModeDisabled = v.CPUDegradedModeDisabled
 		as.ElasticIPsDisabled = v.ElasticIPsDisabled
 		as.ReleaseModeDisabled = v.ReleaseModeDisabled
+		as.AdminParameterStoreDisabled = v.AdminParameterStoreDisabled
 	default:
 		return errors.Errorf("programmatic error: expected service flags config but got type %T", h)
 	}
@@ -2659,6 +2664,7 @@ func (as *APIServiceFlags) ToService() (any, error) {
 		CPUDegradedModeDisabled:         as.DegradedModeDisabled,
 		ElasticIPsDisabled:              as.ElasticIPsDisabled,
 		ReleaseModeDisabled:             as.ReleaseModeDisabled,
+		AdminParameterStoreDisabled:     as.AdminParameterStoreDisabled,
 	}, nil
 }
 

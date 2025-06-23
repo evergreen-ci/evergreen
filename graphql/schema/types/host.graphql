@@ -157,7 +157,7 @@ type HostEventLogEntry {
   id: String!
   data: HostEventLogData!
   eventType: HostEventType
-  processedAt: Time!
+  processedAt: Time
   resourceId: String!
   resourceType: String!
   timestamp: Time

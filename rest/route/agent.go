@@ -837,11 +837,7 @@ func (h *attachTestResultsHandler) Run(ctx context.Context) gimlet.Responder {
 			Message:    fmt.Sprintf("task '%s' not found", h.taskID),
 		})
 	}
-	output, ok := t.GetTaskOutputSafe()
-	if !ok {
-		return nil
-	}
-	err = output.TestResults.AppendTestResults(ctx, h.env, h.results)
+	err = task.AppendTestResults(ctx, t, h.env, h.results)
 	if err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "appending test results to '%s'", h.taskID))
 	}
@@ -997,6 +993,7 @@ func (h *startTaskHandler) Run(ctx context.Context) gimlet.Responder {
 	if err = model.MarkStart(ctx, t, &updates); err != nil {
 		return gimlet.MakeJSONInternalErrorResponder(errors.Wrapf(err, "marking task '%s' started", t.Id))
 	}
+	model.UpdateOtelMetadata(ctx, t, h.taskStartInfo.DiskDevices, h.taskStartInfo.TraceID)
 
 	if len(updates.PatchNewStatus) != 0 {
 		event.LogPatchStateChangeEvent(ctx, t.Version, updates.PatchNewStatus)
