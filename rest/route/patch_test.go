@@ -145,13 +145,13 @@ func (s *PatchesByProjectSuite) SetupSuite() {
 
 func (s *PatchesByProjectSuite) SetupTest() {
 	s.route = makePatchesByProjectRoute().(*patchesByProjectHandler)
+	s.route.url = "https://evergreen.example.net"
 }
 
 func (s *PatchesByProjectSuite) TestPaginatorShouldSucceedIfNoResults() {
 	s.route.projectId = "project3"
 	s.route.key = s.now
 	s.route.limit = 1
-	s.route.url = "https://evergreen.example.net"
 
 	resp := s.route.Run(context.Background())
 	s.NotNil(resp)
