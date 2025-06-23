@@ -93,12 +93,18 @@ func (j *distroAutoTuneJob) Run(ctx context.Context) {
 	// make a reasonable decision about the distro's host usage.
 	const minFractionOfTimeUsingHostsToAutoTune = 0.01
 	if summary.fractionOfTimeUsingHosts < minFractionOfTimeUsingHostsToAutoTune {
+		grip.Info(message.Fields{
+			"message":                      "skipping auto-tuning maximum hosts for rarely-used distro",
+			"distro":                       j.DistroID,
+			"fraction_of_time_using_hosts": summary.fractionOfTimeUsingHosts,
+			"job":                          j.ID(),
+		})
 		return
 	}
 
 	const (
 		thresholdFractionToDecreaseHosts = 0.5
-		maxFractionalHostReduction       = 0.1
+		maxFractionalHostDecrease        = 0.1
 
 		thresholdFractionToIncreaseHosts = 0.02
 		maxFractionalHostIncrease        = 0.25
@@ -107,11 +113,11 @@ func (j *distroAutoTuneJob) Run(ctx context.Context) {
 	if summary.fractionOfMaxHostsUsed < thresholdFractionToDecreaseHosts {
 		// Decrease max hosts due to low usage based on percentage of distro
 		// max hosts utilized.
-		fractionToDecrease := min(thresholdFractionToDecreaseHosts-summary.fractionOfMaxHostsUsed, maxFractionalHostReduction)
+		fractionToDecrease := min(thresholdFractionToDecreaseHosts-summary.fractionOfMaxHostsUsed, maxFractionalHostDecrease)
 		newMaxHosts = int(float64(j.distro.HostAllocatorSettings.MaximumHosts) * (1 - fractionToDecrease))
 	} else if summary.fractionOfTimeAtMaxHosts >= thresholdFractionToIncreaseHosts {
 		// Increase max hosts based on % of times distro max hosts was hit.
-		fractionToIncrease := min(summary.fractionOfMaxHostsUsed, maxFractionalHostIncrease)
+		fractionToIncrease := min(summary.fractionOfTimeAtMaxHosts, maxFractionalHostIncrease)
 		newMaxHosts = int(float64(j.distro.HostAllocatorSettings.MaximumHosts) * (1 + fractionToIncrease))
 		// kim: NOTE: increasing max hosts would cause later days to not hit
 		// max hosts, so autotune would not kick in for a few days unless it was
@@ -119,18 +125,26 @@ func (j *distroAutoTuneJob) Run(ctx context.Context) {
 	}
 
 	// Put reasonable bounds on hosts so that it's not increased extremely high
-	// or reduced extremely low relative to global max hosts.
+	// or decreased extremely low relative to global max hosts.
 	const (
 		lowerBoundMaxHostsFraction = 0.005
+		lowerBoundMaxHostsNum      = 5
 		upperBoundMaxHostsFraction = 0.4
 	)
 	lowerBoundMaxHosts := int(float64(j.settings.HostInit.MaxTotalDynamicHosts) * lowerBoundMaxHostsFraction)
+	lowerBoundMaxHosts = max(lowerBoundMaxHosts, lowerBoundMaxHostsNum)
 	upperBoundMaxHosts := int(float64(j.settings.HostInit.MaxTotalDynamicHosts) * upperBoundMaxHostsFraction)
-	newMaxHosts = max(newMaxHosts, lowerBoundMaxHosts)
 	newMaxHosts = min(newMaxHosts, upperBoundMaxHosts)
+	newMaxHosts = max(newMaxHosts, lowerBoundMaxHosts)
 	newMaxHosts = max(newMaxHosts, j.distro.HostAllocatorSettings.MinimumHosts)
 
 	if newMaxHosts == j.distro.HostAllocatorSettings.MaximumHosts {
+		grip.Info(message.Fields{
+			"message":                      "did not change maximum hosts during auto-tuning",
+			"distro":                       j.DistroID,
+			"fraction_of_time_using_hosts": summary.fractionOfTimeUsingHosts,
+			"job":                          j.ID(),
+		})
 		return
 	}
 
@@ -208,7 +222,7 @@ func (j *distroAutoTuneJob) updateMaxHosts(ctx context.Context, newMaxHosts int)
 
 	maxHostsDiff := newMaxHosts - j.distro.HostAllocatorSettings.MaximumHosts
 	grip.Info(message.Fields{
-		"message":                 "automatically updated distro maximum hosts",
+		"message":                 "auto-tuned distro maximum hosts",
 		"old_max_hosts":           j.distro.HostAllocatorSettings.MaximumHosts,
 		"new_max_hosts":           newMaxHosts,
 		"max_hosts_diff_absolute": maxHostsDiff,

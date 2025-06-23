@@ -32,7 +32,7 @@ func TestDistroAutoTuneJob(t *testing.T) {
 	}
 
 	for tName, tCase := range map[string]func(t *testing.T, env *mock.Environment, j *distroAutoTuneJob){
-		"IncreasesMaxHostsWhenHittingMaxHostsFrequently": func(t *testing.T, env *mock.Environment, j *distroAutoTuneJob) {
+		"IncreasesMaxHostsWhenAlwaysHittingMaxHosts": func(t *testing.T, env *mock.Environment, j *distroAutoTuneJob) {
 			originalMaxHosts := j.distro.HostAllocatorSettings.MaximumHosts
 			require.NoError(t, j.distro.Insert(t.Context()))
 
@@ -43,7 +43,27 @@ func TestDistroAutoTuneJob(t *testing.T) {
 			dbDistro, err := distro.FindOneId(t.Context(), j.distro.Id)
 			require.NoError(t, err)
 			require.NotZero(t, dbDistro)
-			assert.Greater(t, dbDistro.HostAllocatorSettings.MaximumHosts, originalMaxHosts, "max hosts should be increased due to hitting max hosts frequently")
+			assert.Greater(t, dbDistro.HostAllocatorSettings.MaximumHosts, originalMaxHosts, "max hosts should be increased due to always hitting max hosts")
+
+			events, err := event.FindAllByResourceID(t.Context(), j.distro.Id)
+			require.NoError(t, err)
+			require.Len(t, events, 1)
+			assert.Equal(t, event.ResourceTypeDistro, events[0].ResourceType)
+			assert.Equal(t, event.EventDistroModified, events[0].EventType)
+		},
+		"IncreasesMaxHostsWhenHittingMaxHostsOccasionally": func(t *testing.T, env *mock.Environment, j *distroAutoTuneJob) {
+			originalMaxHosts := j.distro.HostAllocatorSettings.MaximumHosts
+			require.NoError(t, j.distro.Insert(t.Context()))
+
+			addDistroHostStats(t, j.distro.Id, slices.Repeat([]int{j.distro.HostAllocatorSettings.MaximumHosts}, 10)...)
+			addDistroHostStats(t, j.distro.Id, slices.Repeat([]int{0}, 20)...)
+			j.Run(t.Context())
+			assert.NoError(t, j.Error())
+
+			dbDistro, err := distro.FindOneId(t.Context(), j.distro.Id)
+			require.NoError(t, err)
+			require.NotZero(t, dbDistro)
+			assert.Greater(t, dbDistro.HostAllocatorSettings.MaximumHosts, originalMaxHosts, "max hosts should be increased due to hitting max hosts occasionally")
 
 			events, err := event.FindAllByResourceID(t.Context(), j.distro.Id)
 			require.NoError(t, err)

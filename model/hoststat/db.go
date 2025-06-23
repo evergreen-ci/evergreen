@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	distroIDKey  = bsonutil.MustHaveTag(HostStat{}, "DistroID")
+	distroKey    = bsonutil.MustHaveTag(HostStat{}, "Distro")
 	timestampKey = bsonutil.MustHaveTag(HostStat{}, "Timestamp")
 )
 
@@ -31,7 +31,7 @@ func Find(ctx context.Context, q db.Q) ([]HostStat, error) {
 // timestamp.
 func FindByDistroSince(ctx context.Context, distroID string, startAt time.Time) ([]HostStat, error) {
 	q := db.Query(bson.M{
-		distroIDKey:  distroID,
+		distroKey:    distroID,
 		timestampKey: bson.M{"$gte": startAt},
 	})
 	return Find(ctx, q)
