@@ -50,7 +50,6 @@ func makeDistroAutoTuneJob() *distroAutoTuneJob {
 
 // NewDistroAutoTuneJob returns a job to automatically adjust a distro's maximum
 // hosts.
-// kim: TODO: test job in staging
 func NewDistroAutoTuneJob(distroID, ts string) amboy.Job {
 	j := makeDistroAutoTuneJob()
 	j.SetID(fmt.Sprintf("%s.%s.%s", distroAutoTuneJobName, distroID, ts))
@@ -68,11 +67,7 @@ func (j *distroAutoTuneJob) Run(ctx context.Context) {
 		return
 	}
 
-	if !evergreen.IsEc2Provider(j.distro.Provider) {
-		return
-	}
-
-	if !j.distro.HostAllocatorSettings.AutoTuneMaximumHosts {
+	if !evergreen.IsEc2Provider(j.distro.Provider) || !j.distro.HostAllocatorSettings.AutoTuneMaximumHosts {
 		return
 	}
 
@@ -119,9 +114,6 @@ func (j *distroAutoTuneJob) Run(ctx context.Context) {
 		// Increase max hosts based on % of times distro max hosts was hit.
 		fractionToIncrease := min(summary.fractionOfTimeAtMaxHosts, maxFractionalHostIncrease)
 		newMaxHosts = int(float64(j.distro.HostAllocatorSettings.MaximumHosts) * (1 + fractionToIncrease))
-		// kim: NOTE: increasing max hosts would cause later days to not hit
-		// max hosts, so autotune would not kick in for a few days unless it was
-		// consistently hitting it.
 	}
 
 	// Put reasonable bounds on hosts so that it's not increased extremely high

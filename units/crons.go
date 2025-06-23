@@ -1204,7 +1204,6 @@ func populateIPAddressAllocatorJobs(env evergreen.Environment) amboy.QueueOperat
 	}
 }
 
-// kim: TODO: test in staging that the jobs are enqueued to run once per day.
 func PopulateDistroAutoTuneJobs() amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		distrosToAutoTune, err := distro.FindByNeedsAutoTune(ctx)
@@ -1213,7 +1212,6 @@ func PopulateDistroAutoTuneJobs() amboy.QueueOperation {
 		}
 		catcher := grip.NewBasicCatcher()
 		for _, d := range distrosToAutoTune {
-			// kim: TODO: ensure this only runs once per day.
 			ts := utility.RoundPartOfDay(0).Format(TSFormat)
 			if err := amboy.EnqueueUniqueJob(ctx, queue, NewDistroAutoTuneJob(d.Id, ts)); err != nil {
 				catcher.Wrapf(err, "enqueueing auto-tune job for distro '%s'", d.Id)
