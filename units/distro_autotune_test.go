@@ -191,7 +191,6 @@ func TestDistroAutoTuneJob(t *testing.T) {
 			require.NotZero(t, dbDistro)
 			assert.Equal(t, originalMaxHosts, dbDistro.HostAllocatorSettings.MaximumHosts, "max hosts should not be changed if it occasionally is close to hitting max hosts")
 		},
-		// "": func(t *testing.T, env *mock.Environment, j *distroAutoTuneJob) {},
 	} {
 		t.Run(tName, func(t *testing.T) {
 			require.NoError(t, db.ClearCollections(colls...))
