@@ -1,0 +1,124 @@
+{
+  "admin": [
+    {
+      "_id": "ui",
+      "default_project": "evergreen",
+      "url": "http://localhost:9090",
+      "http_listen_addr": ":9090",
+      "secret": "this is a secret",
+      "cors_origins": [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://localhost:4173"
+      ],
+      "file_streaming_content_types": [
+        "application/json",
+        "text/plain",
+        "text/csv"
+      ],
+      "userVoice": "https://uservoice.com",
+      "uiv2_url": "http://localhost:3000",
+      "parsley_url": "http://localhost:4173",
+      "beta_features": {
+        "spruce_waterfall_enabled": true
+      },
+      "cache_templates": false,
+      "csrf_key": "",
+      "help_url": "",
+      "login_domain": "",
+      "staging_environment": ""
+    },
+
+    {
+      "_id": "auth",
+      "preferred_type": "naive",
+      "naive": {
+        "users": [
+          {
+            "username": "admin",
+            "display_name": "Evergreen Admin",
+            "password": "password",
+            "email": ""
+          },
+          {
+            "username": "regular",
+            "display_name": "Regular User",
+            "password": "password",
+            "email": ""
+          },
+          {
+            "username": "privileged",
+            "display_name": "Privileged User",
+            "password": "password",
+            "email": ""
+          }
+        ]
+      },
+      "github": {
+        "app_id": {
+          "$numberLong": "1234"
+        },
+        "client_id": "",
+        "client_secret": "",
+        "default_owner": "",
+        "default_repo": "",
+        "organization": "",
+        "users": null
+      },
+      "allow_service_users": false,
+      "background_reauth_minutes": 0,
+      "kanopy": null,
+      "multi": null,
+      "okta": null
+    },
+
+    {
+      "_id": "global",
+      "uiv2_url": "http://localhost:3000",
+      "configdir": "../config",
+      "domain_name": "localhost",
+      "banner": "",
+      "banner_theme": "",
+      "github_orgs": ["evergreen-ci"],
+      "expansions": {
+        "github_app_key": "-----BEGIN RSA PRIVATE KEY-----\nMIIEogIBAAKCAQEAvel6JNTgiRewu1tquv5AWMUapaWt12345/O1uO+pXUekSZUy\nET2bKyKsv0Zk74bEknbdaKjvi7uNj5YhGc/ObRgWL9u0OP2Cw9EnzOtj18NqWQ1T\nrdY1swi6gyQB6rgn4EVN+29x1eSIFUSggdpXq8eurzb5moaHS+Th+PDNBObwOJNG\naxEXsGUoRtJ9jjCh3lSZgb2iyzn4jJByt8we9HNy4n0TfcBaJdvi0QIjKjk2a9bp\nTM3q/wGjeWkoQuZ6WkGPbAK1ThsONgm2RmMePC6k5/4qFQ3/E9pgzvwepsLfaW39\nD71ZxrLqNz/1WdsD6lv31eu3SyqaFIAy2sqjLwIDAQABAoIBAF1mAOsyQodJvmI2\nUGRMfIrrzPIga+VGuDDH39xnCY1VmYeSt3/hI3nwATECUjEB9LcYIGDa+P1xmYS\neI8AM05V5Tt+OsE412345AKI1Z6cfaX0Nu4shlZZeZjbUZIFJZ9XlkWNBpgh/4cu\nLB4QqsNRvihvygvkE5AQrc3HZ5z7uMajHLBE3PZkj3oW2Bj6Bv0+HtcQB6DWN3v6\nJHPb+ZVfO6Awo+6lbLY3tSNN7tmfvGeIyLmpPkakfQAeuRFIlxHnpi5M/K9TBn5/\ntcJSqSHz4FbYH69WQ9Iv8eCL8OIBjJw6pt3GmSaIyRvST31rrj0FCkmgr/24hzBk\n1aSsRiECgYEA8zCO5r7E7PxcW70wU3aRX7qR9lVyWkcLWLEK7gusOrKxtut1Cweq\n9nOv7XbgWtkn29t5BCqsTlxk/HNji4nyj1kt+NftcuY1oFt499QHtxKqOdXfQKpd\nIsC6/qdi9LtCiPTvvtYnLtLK+1uEUGRPPAvStsSwWPG7WSgOPCTrur8CgYEAx+p2\nnEfNdKW9yhwmM6gbKggUSY3zPcVeabPwM2ESKca36siauaLQVURaZXZyblqH4cUO\nkdG2SoRUE0DdBhDjhYJINSl9vMCN9T+J826UuLh0D94Ni3/BVRz2oxUBhuWtCLzj\ncJYC/aWRaJMoVE21TsUV7JuPwSMQG/F08SFyY5ECgYAEe4imyC1pEN3C8yHI6A6V\n7SJzn++TqmuTHvBMovpxuol8DasCoQmatehuFQuWIJbkxgP85lpeFqELLxQ/iHy\ncnpec9x0mbmzUvxP1SCvRzDMEB0lW/6LfXH077DrQehgDeO9aMUgH9KN/4nY0YCE\nYtNnewilGw+Q/SQGB8gwkQKBgD36hLdC04GceNCWFYniTjmjs5ZyOb0m2XRv4sIr\nEBR/lTlm5AE1Zt1oiZX3ONbZnlLyYuf2WkuT5vTpIRzmU4NqtrQ0ntTL5bbo8f3U\nhKsYFHNu5kgfXXLjvdslggmuXwzccq7O8zJsCD6hkNlCFjnLhFaMi+7WzgG7xAOV\n2P7hAoGAWC+w3m5ngpbkVp221OtszUteNjUNRbRqiVBc9J2jC98Glzj2EWISc0n6\nkVTxcle0XhUJjZTdMti6UBgxfBasx2Dxpcu2IE3A5xTXduIAmSewbE1c9+MM9k+a\npF0PxicFvnY4lJdYZfRyGQ195ktZ6sXnuTBu2pV4hg5Qe42vL8M=\n-----END RSA PRIVATE KEY-----"
+      },
+      "aws_instance_role": "",
+      "disabled_gql_queries": null,
+      "expansions_new": null,
+      "github_pr_creator_org": "",
+      "github_webhook_secret": "",
+      "kanopy_ssh_key_path": "",
+      "log_path": "LOCAL",
+      "plugins": {},
+      "plugins_new": null,
+      "pprof_port": "",
+      "shutdown_wait_seconds": 0,
+      "spawnhost": {
+        "unexpirable_hosts_per_user": 2,
+        "unexpirable_volumes_per_user": 1,
+        "spawn_hosts_per_user": 6
+      },
+      "splunk": {
+        "url": "",
+        "token": "",
+        "channel": ""
+      },
+      "ssh": {
+        "task_host_key": {
+          "name": "",
+          "secret_arn": ""
+        },
+        "spawn_host_key": {
+          "name": "",
+          "secret_arn": ""
+        }
+      }
+    },
+    {
+    "_id": "api",
+    "url": "http://localhost:9090",
+    "http_listen_addr": ""
+    }
+  ]
+}

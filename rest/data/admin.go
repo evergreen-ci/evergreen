@@ -53,7 +53,7 @@ func SetEvergreenSettings(ctx context.Context, changes *restModel.APIAdminSettin
 	settingsReflect := reflect.ValueOf(settingsAPI)
 
 	//iterate over each field in the changes struct and apply any changes to the existing settings
-	for i := 0; i < changesReflect.NumField(); i++ {
+	for i := range changesReflect.NumField() {
 		// get the property name and find its value within the settings struct
 		propName := changesReflect.Type().Field(i).Name
 		changedVal := changesReflect.FieldByName(propName)

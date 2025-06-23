@@ -196,6 +196,15 @@ Admin Settings
 												</td>
 											</tr>
 											<tr>
+												<td>Admin Parameter Store Enabled</td>
+												<td colspan="2">
+													<md-radio-group data-ng-model="Settings.service_flags.admin_parameter_store_disabled" layout="row">
+														<md-radio-button data-ng-value="false"></md-radio-button>
+														<md-radio-button data-ng-value="true"></md-radio-button>
+													</md-radio-group>
+												</td>
+											</tr>
+											<tr>
 												<td>Monitor hosts and tasks</td>
 												<td colspan="2">
 													<md-radio-group
@@ -909,9 +918,13 @@ Admin Settings
 											<label>HTTP listener address</label>
 											<input type="text" ng-model="Settings.api.http_listen_addr">
 										</md-input-container>
-										<md-input-container class="control" style="width:45%; margin-left:50px;">
+										<md-input-container class="control" style="width:45%;">
 											<label>Backend URL</label>
 											<input type="text" ng-model="Settings.api.url">
+										</md-input-container>
+										<md-input-container class="control" style="width:45%;">
+											<label>Corp URL</label>
+											<input type="text" ng-model="Settings.api.corp_url">
 										</md-input-container>
 									</md-card-content>
 								</md-card>

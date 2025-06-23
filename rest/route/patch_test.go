@@ -219,6 +219,34 @@ func (s *PatchesByProjectSuite) TestInvalidTimesAsKeyShouldError() {
 	}
 }
 
+func (s *PatchesByProjectSuite) TestValidTimesAsKeyShouldNotError() {
+	inputs := []string{
+		"2023-10-01T12:30:45.000Z", // valid time
+		"2000-01-01T00:00:00.000Z", // start of the 21st century
+		"2050-12-31T23:59:59.999Z", // end-of-year edge case
+
+		// Edge cases for formatting
+		"2023-01-01T00:00:00.000Z", // start of a day
+		"2023-05-01T15:04:05.123Z", // random valid timestamp
+		"2023-10-01T00:00:00.000Z", // midnight edge case
+	}
+
+	for _, i := range inputs {
+		s.Run("Time:"+i, func() {
+			req, err := http.NewRequest(http.MethodGet, "https://example.net/foo/?limit=10&start_at="+i, nil)
+			s.Require().NoError(err)
+			err = s.route.Parse(context.Background(), req)
+			s.NoError(err)
+		})
+		s.Run("TimeWrappedInQuotes:"+i, func() {
+			req, err := http.NewRequest(http.MethodGet, "https://example.net/foo/?limit=10&start_at=\""+i+"\"", nil)
+			s.Require().NoError(err)
+			err = s.route.Parse(context.Background(), req)
+			s.NoError(err)
+		})
+	}
+}
+
 func (s *PatchesByProjectSuite) TestEmptyTimeShouldSetNow() {
 	req, err := http.NewRequest(http.MethodGet, "https://example.net/foo/?limit=10", nil)
 	s.Require().NoError(err)

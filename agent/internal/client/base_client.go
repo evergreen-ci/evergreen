@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
-	"strconv"
 	"sync"
 	"time"
 
@@ -22,7 +20,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/testlog"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/taskoutput"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/juniper/gopb"
 	"github.com/evergreen-ci/timber"
@@ -388,27 +385,27 @@ func (c *baseCommunicator) GetLoggerProducer(ctx context.Context, tsk *task.Task
 		}
 	}
 
-	exec, err := c.makeSender(ctx, tsk, config, taskoutput.TaskLogTypeAgent)
+	exec, err := c.makeSender(ctx, tsk, config, task.TaskLogTypeAgent)
 	if err != nil {
 		return nil, errors.Wrap(err, "making agent logger")
 	}
-	task, err := c.makeSender(ctx, tsk, config, taskoutput.TaskLogTypeTask)
+	sender, err := c.makeSender(ctx, tsk, config, task.TaskLogTypeTask)
 	if err != nil {
 		return nil, errors.Wrap(err, "making task logger")
 	}
-	system, err := c.makeSender(ctx, tsk, config, taskoutput.TaskLogTypeSystem)
+	system, err := c.makeSender(ctx, tsk, config, task.TaskLogTypeSystem)
 	if err != nil {
 		return nil, errors.Wrap(err, "making system logger")
 	}
 
 	return &logHarness{
 		execution: logging.MakeGrip(exec),
-		task:      logging.MakeGrip(task),
+		task:      logging.MakeGrip(sender),
 		system:    logging.MakeGrip(system),
 	}, nil
 }
 
-func (c *baseCommunicator) makeSender(ctx context.Context, tsk *task.Task, config *LoggerConfig, logType taskoutput.TaskLogType) (send.Sender, error) {
+func (c *baseCommunicator) makeSender(ctx context.Context, tsk *task.Task, config *LoggerConfig, logType task.TaskLogType) (send.Sender, error) {
 	levelInfo := send.LevelInfo{Default: level.Info, Threshold: level.Debug}
 	var senders []send.Sender
 	if config.SendToGlobalSender {
@@ -418,22 +415,17 @@ func (c *baseCommunicator) makeSender(ctx context.Context, tsk *task.Task, confi
 	var sender send.Sender
 	var err error
 
-	taskOpts := taskoutput.TaskOptions{
-		ProjectID: tsk.Project,
-		TaskID:    tsk.Id,
-		Execution: tsk.Execution,
-	}
-	senderOpts := taskoutput.EvergreenSenderOptions{
+	senderOpts := task.EvergreenSenderOptions{
 		LevelInfo:     levelInfo,
 		FlushInterval: time.Minute,
 	}
-	sender, err = tsk.TaskOutputInfo.TaskLogs.NewSender(ctx, taskOpts, senderOpts, logType)
+	sender, err = task.NewTaskLogSender(ctx, *tsk, senderOpts, logType)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating Evergreen task log sender")
 	}
 
 	sender = redactor.NewRedactingSender(sender, config.RedactorOpts)
-	if logType == taskoutput.TaskLogTypeTask {
+	if logType == task.TaskLogTypeTask {
 		sender = makeTimeoutLogSender(sender, c)
 	}
 	senders = append(senders, sender)
@@ -817,14 +809,16 @@ func (c *baseCommunicator) GetDistroByName(ctx context.Context, id string) (*res
 
 }
 
-// StartTask marks the task as started.
-func (c *baseCommunicator) StartTask(ctx context.Context, taskData TaskData) error {
+// StartTask marks the task as started, and sends traceId and diskDevices to be stored with the task.
+func (c *baseCommunicator) StartTask(ctx context.Context, taskData TaskData, traceID string, diskDevices []string) error {
 	grip.Info(message.Fields{
 		"message": "started StartTask",
 		"task_id": taskData.ID,
 	})
-	pidStr := strconv.Itoa(os.Getpid())
-	taskStartRequest := &apimodels.TaskStartRequest{Pid: pidStr}
+	taskStartRequest := &apimodels.TaskStartRequest{
+		TraceID:     traceID,
+		DiskDevices: diskDevices,
+	}
 	info := requestInfo{
 		method:   http.MethodPost,
 		taskData: &taskData,

@@ -57,9 +57,6 @@ const (
 	nsInASecond                = time.Second / time.Nanosecond
 )
 
-// StatsPipelineIndex is the branch_1_finish_time_1 index.
-var StatsPipelineIndex = bson.D{{Key: "branch", Value: 1}, {Key: "finish_time", Value: 1}}
-
 var (
 	// '$' references to the BSON fields of tasks.
 	taskIdKeyRef           = "$" + task.IdKey
@@ -572,11 +569,11 @@ func (pf PaginationField) GetNextExpression() bson.M {
 // Internal helpers for writing documents, running aggregations //
 //////////////////////////////////////////////////////////////////
 
-// aggregateIntoCollectionWithHint runs an aggregation pipeline on a collection and bulk upserts all the documents
+// aggregateIntoCollection runs an aggregation pipeline on a collection and bulk upserts all the documents
 // into the target collection, using the given hint.
-func aggregateIntoCollectionWithHint(ctx context.Context, collection string, pipeline []bson.M, hint bson.D, outputCollection string) error {
+func aggregateIntoCollection(ctx context.Context, collection string, pipeline []bson.M, outputCollection string) error {
 	env := evergreen.GetEnvironment()
-	opts := options.Aggregate().SetAllowDiskUse(true).SetHint(hint)
+	opts := options.Aggregate().SetAllowDiskUse(true)
 	cursor, err := env.DB().Collection(collection, options.Collection().SetReadPreference(readpref.SecondaryPreferred())).Aggregate(ctx, pipeline, opts)
 	if err != nil {
 		return errors.Wrap(err, "running aggregation")

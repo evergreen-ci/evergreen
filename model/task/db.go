@@ -139,10 +139,12 @@ var (
 
 var (
 	// BSON fields for task status details struct
-	TaskEndDetailStatus      = bsonutil.MustHaveTag(apimodels.TaskEndDetail{}, "Status")
-	TaskEndDetailTimedOut    = bsonutil.MustHaveTag(apimodels.TaskEndDetail{}, "TimedOut")
-	TaskEndDetailType        = bsonutil.MustHaveTag(apimodels.TaskEndDetail{}, "Type")
-	TaskEndDetailDescription = bsonutil.MustHaveTag(apimodels.TaskEndDetail{}, "Description")
+	TaskEndDetailStatus         = bsonutil.MustHaveTag(apimodels.TaskEndDetail{}, "Status")
+	TaskEndDetailTimedOut       = bsonutil.MustHaveTag(apimodels.TaskEndDetail{}, "TimedOut")
+	TaskEndDetailType           = bsonutil.MustHaveTag(apimodels.TaskEndDetail{}, "Type")
+	TaskEndDetailDescription    = bsonutil.MustHaveTag(apimodels.TaskEndDetail{}, "Description")
+	TaskEndDetailDiskDevicesKey = bsonutil.MustHaveTag(apimodels.TaskEndDetail{}, "DiskDevices")
+	TaskEndDetailTraceIDKey     = bsonutil.MustHaveTag(apimodels.TaskEndDetail{}, "TraceID")
 )
 
 var (
@@ -774,7 +776,7 @@ func TasksByProjectAndCommitPipeline(opts GetTasksByProjectAndCommitOptions) []b
 	return pipeline
 }
 
-// TasksByBuildIdPipeline fetches the pipeline to get the retrieve all tasks
+// TasksByBuildIdPipeline fetches the pipeline to Get the retrieve all tasks
 // associated with a given build.
 func TasksByBuildIdPipeline(buildId, taskId, taskStatus string,
 	limit, sortDir int) []bson.M {
@@ -789,7 +791,7 @@ func TasksByBuildIdPipeline(buildId, taskId, taskStatus string,
 		}},
 	}
 
-	// sort the tasks before limiting to get the next [limit] tasks
+	// sort the tasks before limiting to Get the next [limit] tasks
 	pipeline = append(pipeline, bson.M{"$sort": bson.M{IdKey: sortDir}})
 
 	if taskStatus != "" {
@@ -1181,7 +1183,7 @@ func FindUniqueBuildVariantNamesByTask(ctx context.Context, projectId string, ta
 	}
 	pipeline := []bson.M{{"$match": query}}
 
-	// group the build variants by unique build variant names and get a build id for each
+	// group the build variants by unique build variant names and Get a build id for each
 	groupByBuildVariant := bson.M{
 		"$group": bson.M{
 			"_id": bson.M{
@@ -1195,7 +1197,7 @@ func FindUniqueBuildVariantNamesByTask(ctx context.Context, projectId string, ta
 	}
 	pipeline = append(pipeline, groupByBuildVariant)
 
-	// reorganize the results to get the build variant names and a corresponding build id
+	// reorganize the results to Get the build variant names and a corresponding build id
 	projectBuildIdAndVariant := bson.M{
 		"$project": bson.M{
 			"_id":                      0,
@@ -2297,7 +2299,7 @@ func GetBaseStatusesForActivatedTasks(ctx context.Context, versionID string, bas
 	pipeline = append(pipeline, bson.M{
 		"$match": bson.M{bsonutil.GetDottedKeyName(taskField, VersionKey): baseVersionID},
 	})
-	// Group to get rid of duplicate statuses
+	// Group to Get rid of duplicate statuses
 	pipeline = append(pipeline, bson.M{
 		"$group": bson.M{
 			"_id": "$" + bsonutil.GetDottedKeyName(taskField, DisplayStatusKey),

@@ -1758,7 +1758,7 @@ func TestValidateTimeoutLimits(t *testing.T) {
 		}
 		errs := validateTimeoutLimits(ctx, settings, project, &model.ProjectRef{}, false)
 		require.Len(t, errs, 1)
-		assert.Equal(t, Warning, errs[0].Level)
+		assert.Equal(t, Error, errs[0].Level)
 		assert.Contains(t, "task 'task' exec timeout (10) is too high and will be set to maximum limit (1)", errs[0].Message)
 	})
 	t.Run("SucceedsWithNoMaxTimeoutLimit", func(t *testing.T) {
@@ -3478,6 +3478,56 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 			So(errs, ShouldNotResemble, ValidationErrors{})
 			So(len(errs), ShouldEqual, 1)
 			So(errs[0].Message, ShouldContainSubstring, "task 'allowedSingleTask' in buildvariant 'bv' runs on a single task distro 'singleTaskDistro' and cannot use the generate tasks")
+		})
+
+		Convey("no error should be thrown if a display task references an existing execution task", func() {
+			project := &model.Project{
+				Identifier: "project",
+				BuildVariants: []model.BuildVariant{
+					{
+						Name: "bv",
+						DisplayTasks: []patch.DisplayTask{
+							{
+								Name:      "displayTask",
+								ExecTasks: []string{"existingTask"},
+							},
+						},
+					},
+				},
+				Tasks: []model.ProjectTask{
+					{
+						Name: "existingTask",
+					},
+				},
+			}
+			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroWhitelist, nil)
+			So(errs, ShouldResemble, ValidationErrors{})
+		})
+
+		Convey("error should be thrown if a display task references a non-existent execution task", func() {
+			project := &model.Project{
+				Identifier: "project",
+				BuildVariants: []model.BuildVariant{
+					{
+						Name: "bv",
+						DisplayTasks: []patch.DisplayTask{
+							{
+								Name:      "displayTask",
+								ExecTasks: []string{"nonExistentTask"},
+							},
+						},
+					},
+				},
+				Tasks: []model.ProjectTask{
+					{
+						Name: "otherTask",
+					},
+				},
+			}
+			errs := ensureReferentialIntegrity(project, nil, distroIds, distroAliases, singleTaskDistroIDs, singleTaskDistroWhitelist, nil)
+			So(errs, ShouldNotResemble, ValidationErrors{})
+			So(len(errs), ShouldEqual, 1)
+			So(errs[0].Message, ShouldContainSubstring, "display task 'displayTask' in buildvariant 'bv' references a non-existent execution task 'nonExistentTask'")
 		})
 	})
 }

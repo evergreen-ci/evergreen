@@ -917,6 +917,24 @@ func (p *ProjectRef) DetachFromRepo(ctx context.Context, u *user.DBUser) error {
 // Any values that previously were unset will now use the repo value, unless this would introduce
 // a GitHub project conflict. If no repo ref currently exists, the user attaching it will be added as the repo ref admin.
 func (p *ProjectRef) AttachToRepo(ctx context.Context, u *user.DBUser) error {
+	// If repo project exists, only allow repo admins to attach to a project.
+	repoRef, err := FindRepoRefByOwnerAndRepo(ctx, p.Owner, p.Repo)
+	if err != nil {
+		return errors.Wrapf(err, "finding repo ref '%s'", p.RepoRefId)
+	}
+	if repoRef != nil {
+		isRepoAdmin := u.HasPermission(gimlet.PermissionOpts{
+			Resource:      repoRef.Id,
+			ResourceType:  evergreen.ProjectResourceType,
+			Permission:    evergreen.PermissionProjectSettings,
+			RequiredLevel: evergreen.ProjectSettingsEdit.Value,
+		})
+
+		if !isRepoAdmin {
+			return errors.Errorf("user '%s' does not have permission to attach project '%s' to repo '%s'", u.Id, p.Id, p.Repo)
+		}
+	}
+
 	// Before allowing a project to attach to a repo, verify that this is a valid GitHub organization.
 	config, err := evergreen.GetConfig(ctx)
 	if err != nil {

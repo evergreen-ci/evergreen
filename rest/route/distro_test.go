@@ -191,6 +191,7 @@ func (s *DistroByIDSuite) SetupSuite() {
 				Version:                evergreen.HostAllocatorUtilization,
 				MinimumHosts:           5,
 				MaximumHosts:           10,
+				AutoTuneMaximumHosts:   true,
 				AcceptableHostIdleTime: 10000000000,
 			},
 			FinderSettings: distro.FinderSettings{
@@ -235,6 +236,7 @@ func (s *DistroByIDSuite) TestFindByIdFound() {
 
 	s.Equal(5, d.HostAllocatorSettings.MinimumHosts)
 	s.Equal(10, d.HostAllocatorSettings.MaximumHosts)
+	s.True(d.HostAllocatorSettings.AutoTuneMaximumHosts)
 	s.Equal(restModel.NewAPIDuration(10000000000), d.HostAllocatorSettings.AcceptableHostIdleTime)
 	s.Equal(utility.ToStringPtr(evergreen.PlannerVersionTunable), d.PlannerSettings.Version)
 	s.Equal(restModel.NewAPIDuration(80000000000), d.PlannerSettings.TargetTime)
