@@ -15,7 +15,7 @@ type JiraConfig struct {
 	BasicAuthConfig     JiraBasicAuthConfig `yaml:"basic_auth" bson:"basic_auth" json:"basic_auth"`
 	OAuth1Config        JiraOAuth1Config    `yaml:"oauth1" bson:"oauth1" json:"oauth1"`
 	Email               string              `yaml:"email" bson:"email" json:"email"`
-	PersonalAccessToken string              `yaml:"personal_access_token" bson:"personal_access_token" json:"personal_access_token"`
+	PersonalAccessToken string              `yaml:"personal_access_token" bson:"personal_access_token" json:"personal_access_token" secret:"true"`
 }
 
 type JiraBasicAuthConfig struct {
