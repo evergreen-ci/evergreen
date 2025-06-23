@@ -109,11 +109,13 @@
               "id": "sandbox_project_id",
               "parsleyFilters": [
                 {
+                  "description": "",
                   "expression": "filter_one",
                   "caseSensitive": true,
                   "exactMatch": false
                 },
                 {
+                  "description": "the second filter",
                   "expression": "filter_two",
                   "caseSensitive": false,
                   "exactMatch": false

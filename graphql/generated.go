@@ -791,6 +791,7 @@ type ComplexityRoot struct {
 
 	ParsleyFilter struct {
 		CaseSensitive func(childComplexity int) int
+		Description   func(childComplexity int) int
 		ExactMatch    func(childComplexity int) int
 		Expression    func(childComplexity int) int
 	}
@@ -5500,6 +5501,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ParsleyFilter.CaseSensitive(childComplexity), true
+
+	case "ParsleyFilter.description":
+		if e.complexity.ParsleyFilter.Description == nil {
+			break
+		}
+
+		return e.complexity.ParsleyFilter.Description(childComplexity), true
 
 	case "ParsleyFilter.exactMatch":
 		if e.complexity.ParsleyFilter.ExactMatch == nil {
@@ -39357,50 +39365,6 @@ func (ec *executionContext) fieldContext_Parameter_value(_ context.Context, fiel
 	return fc, nil
 }
 
-func (ec *executionContext) _ParsleyFilter_expression(ctx context.Context, field graphql.CollectedField, obj *model.APIParsleyFilter) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ParsleyFilter_expression(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Expression, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*string)
-	fc.Result = res
-	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_ParsleyFilter_expression(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ParsleyFilter",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _ParsleyFilter_caseSensitive(ctx context.Context, field graphql.CollectedField, obj *model.APIParsleyFilter) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_ParsleyFilter_caseSensitive(ctx, field)
 	if err != nil {
@@ -39445,6 +39409,50 @@ func (ec *executionContext) fieldContext_ParsleyFilter_caseSensitive(_ context.C
 	return fc, nil
 }
 
+func (ec *executionContext) _ParsleyFilter_description(ctx context.Context, field graphql.CollectedField, obj *model.APIParsleyFilter) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ParsleyFilter_description(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Description, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ParsleyFilter_description(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ParsleyFilter",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ParsleyFilter_exactMatch(ctx context.Context, field graphql.CollectedField, obj *model.APIParsleyFilter) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_ParsleyFilter_exactMatch(ctx, field)
 	if err != nil {
@@ -39484,6 +39492,50 @@ func (ec *executionContext) fieldContext_ParsleyFilter_exactMatch(_ context.Cont
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ParsleyFilter_expression(ctx context.Context, field graphql.CollectedField, obj *model.APIParsleyFilter) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ParsleyFilter_expression(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Expression, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalNString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ParsleyFilter_expression(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ParsleyFilter",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -45833,12 +45885,14 @@ func (ec *executionContext) fieldContext_Project_parsleyFilters(_ context.Contex
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "expression":
-				return ec.fieldContext_ParsleyFilter_expression(ctx, field)
 			case "caseSensitive":
 				return ec.fieldContext_ParsleyFilter_caseSensitive(ctx, field)
+			case "description":
+				return ec.fieldContext_ParsleyFilter_description(ctx, field)
 			case "exactMatch":
 				return ec.fieldContext_ParsleyFilter_exactMatch(ctx, field)
+			case "expression":
+				return ec.fieldContext_ParsleyFilter_expression(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ParsleyFilter", field.Name)
 		},
@@ -53864,12 +53918,14 @@ func (ec *executionContext) fieldContext_RepoRef_parsleyFilters(_ context.Contex
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "expression":
-				return ec.fieldContext_ParsleyFilter_expression(ctx, field)
 			case "caseSensitive":
 				return ec.fieldContext_ParsleyFilter_caseSensitive(ctx, field)
+			case "description":
+				return ec.fieldContext_ParsleyFilter_description(ctx, field)
 			case "exactMatch":
 				return ec.fieldContext_ParsleyFilter_exactMatch(ctx, field)
+			case "expression":
+				return ec.fieldContext_ParsleyFilter_expression(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ParsleyFilter", field.Name)
 		},
@@ -68595,12 +68651,14 @@ func (ec *executionContext) fieldContext_User_parsleyFilters(_ context.Context, 
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "expression":
-				return ec.fieldContext_ParsleyFilter_expression(ctx, field)
 			case "caseSensitive":
 				return ec.fieldContext_ParsleyFilter_caseSensitive(ctx, field)
+			case "description":
+				return ec.fieldContext_ParsleyFilter_description(ctx, field)
 			case "exactMatch":
 				return ec.fieldContext_ParsleyFilter_exactMatch(ctx, field)
+			case "expression":
+				return ec.fieldContext_ParsleyFilter_expression(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ParsleyFilter", field.Name)
 		},
@@ -79176,20 +79234,13 @@ func (ec *executionContext) unmarshalInputParsleyFilterInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"expression", "caseSensitive", "exactMatch"}
+	fieldsInOrder := [...]string{"caseSensitive", "description", "exactMatch", "expression"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
-		case "expression":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("expression"))
-			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Expression = data
 		case "caseSensitive":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("caseSensitive"))
 			data, err := ec.unmarshalNBoolean2ᚖbool(ctx, v)
@@ -79197,6 +79248,13 @@ func (ec *executionContext) unmarshalInputParsleyFilterInput(ctx context.Context
 				return it, err
 			}
 			it.CaseSensitive = data
+		case "description":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("description"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Description = data
 		case "exactMatch":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("exactMatch"))
 			data, err := ec.unmarshalNBoolean2ᚖbool(ctx, v)
@@ -79204,6 +79262,13 @@ func (ec *executionContext) unmarshalInputParsleyFilterInput(ctx context.Context
 				return it, err
 			}
 			it.ExactMatch = data
+		case "expression":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("expression"))
+			data, err := ec.unmarshalNString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Expression = data
 		}
 	}
 
@@ -88585,18 +88650,23 @@ func (ec *executionContext) _ParsleyFilter(ctx context.Context, sel ast.Selectio
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("ParsleyFilter")
-		case "expression":
-			out.Values[i] = ec._ParsleyFilter_expression(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "caseSensitive":
 			out.Values[i] = ec._ParsleyFilter_caseSensitive(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "description":
+			out.Values[i] = ec._ParsleyFilter_description(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "exactMatch":
 			out.Values[i] = ec._ParsleyFilter_exactMatch(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "expression":
+			out.Values[i] = ec._ParsleyFilter_expression(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
