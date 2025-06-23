@@ -143,7 +143,7 @@ func (s *alertableInstanceTypeSuite) TestAlertRecordsAreCreated() {
 	for _, hostID := range []string{"h1", "h4"} {
 		rec, err := alertrecord.FindByMostRecentAlertableInstanceTypeWithHours(s.ctx, hostID, 0)
 		s.NoError(err)
-		s.NotNil(rec, "Expected alert record for host %s", hostID)
+		s.Require().NotNil(rec, "Expected alert record for host %s", hostID)
 		s.Equal(hostID, rec.HostId)
 		s.Equal("alertable_instance_type_0hour", rec.Type)
 	}

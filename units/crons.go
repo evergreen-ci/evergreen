@@ -823,6 +823,7 @@ func periodicNotificationJobs(ctx context.Context, _ evergreen.Environment, ts t
 	return []amboy.Job{
 		NewSpawnhostExpirationWarningsJob(ts.Format(TSFormat)),
 		NewVolumeExpirationWarningsJob(ts.Format(TSFormat)),
+		NewAlertableInstanceTypeNotifyJob(utility.RoundPartOfDay(0).Format(TSFormat)),
 	}, nil
 }
 
@@ -1201,12 +1202,6 @@ func sleepSchedulerJobs(ctx context.Context, env evergreen.Environment, ts time.
 func populateIPAddressAllocatorJobs(env evergreen.Environment) amboy.QueueOperation {
 	return func(ctx context.Context, queue amboy.Queue) error {
 		return amboy.EnqueueUniqueJob(ctx, queue, NewIPAddressAllocatorJob(env, utility.RoundPartOfMinute(0).Format(TSFormat)))
-	}
-}
-
-func populateAlertableInstanceTypeNotifyJobs() amboy.QueueOperation {
-	return func(ctx context.Context, queue amboy.Queue) error {
-		return amboy.EnqueueUniqueJob(ctx, queue, NewAlertableInstanceTypeNotifyJob(utility.RoundPartOfDay(0).Format(TSFormat)))
 	}
 }
 

@@ -245,7 +245,7 @@ func InsertNewSpawnHostExpirationRecord(ctx context.Context, hostID string, hour
 }
 
 // InsertNewTemporaryExemptionExpirationRecord inserts a new alert record for a
-// temporary exemption that is about to exipre.
+// temporary exemption that is about to expire.
 func InsertNewHostTemporaryExemptionExpirationRecord(ctx context.Context, hostID string, hours int) error {
 	alertType := fmt.Sprintf(hostTemporaryExemptionWarningTemplate, hours)
 	record := AlertRecord{
@@ -272,6 +272,7 @@ func InsertNewVolumeExpirationRecord(ctx context.Context, volumeID string, hours
 	return errors.Wrapf(record.Insert(ctx), "inserting alert record '%s'", alertType)
 }
 
+// InsertNewAlertableInstanceTypeRecord inserts a new alert record for a host that's using an alertable instance type.
 func InsertNewAlertableInstanceTypeRecord(ctx context.Context, hostID string, hours int) error {
 	alertType := fmt.Sprintf(alertableInstanceTypeWarningTemplate, hours)
 	record := AlertRecord{

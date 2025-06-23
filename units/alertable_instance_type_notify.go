@@ -75,7 +75,7 @@ func (j *alertableInstanceTypeNotifyJob) Run(ctx context.Context) {
 	for _, h := range hosts {
 		// Check if this host has been using an alertable instance type for longer than 3 days
 		if h.LastInstanceEditTime.IsZero() || (time.Since(h.LastInstanceEditTime) >= alertThreshold) {
-			if err = runAlertableInstanceTypeWarningTriggers(ctx, &h); err != nil {
+			if err = tryAlertableInstanceTypeNotification(ctx, &h); err != nil {
 				j.AddError(errors.Wrap(err, "logging events for alertable instance type"))
 				grip.Error(message.WrapError(err, message.Fields{
 					"runner":  "monitor",
@@ -106,22 +106,17 @@ func tryAlertableInstanceTypeNotification(ctx context.Context, h *host.Host) err
 	if err != nil {
 		return err
 	}
-	if shouldExec {
-		event.LogAlertableInstanceTypeWarningSent(ctx, h.Id)
-		grip.Info(message.Fields{
-			"message":       "sent alertable instance type warning",
-			"host_id":       h.Id,
-			"owner":         h.StartedBy,
-			"instance_type": h.InstanceType,
-		})
-		// Use 0 as a fixed identifier for daily alertable instance type notifications
-		if err = alertrecord.InsertNewAlertableInstanceTypeRecord(ctx, h.Id, 0); err != nil {
-			return err
-		}
+	if !shouldExec {
+		return nil
 	}
-	return nil
-}
 
-func runAlertableInstanceTypeWarningTriggers(ctx context.Context, h *host.Host) error {
-	return tryAlertableInstanceTypeNotification(ctx, h)
+	event.LogAlertableInstanceTypeWarningSent(ctx, h.Id)
+	grip.Info(message.Fields{
+		"message":       "sent alertable instance type warning",
+		"host_id":       h.Id,
+		"owner":         h.StartedBy,
+		"instance_type": h.InstanceType,
+	})
+	// Use 0 as a fixed identifier for daily alertable instance type notifications
+	return alertrecord.InsertNewAlertableInstanceTypeRecord(ctx, h.Id, 0)
 }
