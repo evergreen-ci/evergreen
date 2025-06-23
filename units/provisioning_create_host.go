@@ -3,6 +3,7 @@ package units
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -236,7 +237,12 @@ func (j *createHostJob) Run(ctx context.Context) {
 		}
 	}()
 
-	j.AddRetryableError(j.createHost(ctx))
+	err = j.createHost(ctx)
+	if err != nil && strings.Contains(err.Error(), cloud.EC2InsufficientCapacity) {
+		j.AddRetryableError(err)
+	} else {
+		j.AddError(err)
+	}
 }
 
 func (j *createHostJob) selfThrottle(ctx context.Context, hostInit evergreen.HostInitConfig) bool {
