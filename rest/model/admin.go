@@ -1022,12 +1022,10 @@ func (a *APIPodLifecycleConfig) ToService() (any, error) {
 }
 
 type APIJiraConfig struct {
-	Host                *string           `json:"host"`
-	DefaultProject      *string           `json:"default_project"`
-	Email               *string           `json:"email"`
-	PersonalAccessToken *string           `json:"personal_access_token"`
-	BasicAuthConfig     *APIJiraBasicAuth `json:"basic_auth"`
-	OAuth1Config        *APIJiraOAuth1    `json:"oauth1"`
+	Host                *string `json:"host"`
+	DefaultProject      *string `json:"default_project"`
+	Email               *string `json:"email"`
+	PersonalAccessToken *string `json:"personal_access_token"`
 }
 
 func (a *APIJiraConfig) BuildFromService(h any) error {
@@ -1036,10 +1034,6 @@ func (a *APIJiraConfig) BuildFromService(h any) error {
 		a.Host = utility.ToStringPtr(v.Host)
 		a.Email = utility.ToStringPtr(v.Email)
 		a.PersonalAccessToken = utility.ToStringPtr(v.PersonalAccessToken)
-		a.BasicAuthConfig = &APIJiraBasicAuth{}
-		a.BasicAuthConfig.BuildFromService(v.BasicAuthConfig)
-		a.OAuth1Config = &APIJiraOAuth1{}
-		a.OAuth1Config.BuildFromService(v.OAuth1Config)
 	default:
 		return errors.Errorf("programmatic error: expected Jira config but got type %T", h)
 	}
@@ -1052,30 +1046,7 @@ func (a *APIJiraConfig) ToService() (any, error) {
 		Email:               utility.FromStringPtr(a.Email),
 		PersonalAccessToken: utility.FromStringPtr(a.PersonalAccessToken),
 	}
-	if a.BasicAuthConfig != nil {
-		c.BasicAuthConfig = a.BasicAuthConfig.ToService()
-	}
-	if a.OAuth1Config != nil {
-		c.OAuth1Config = a.OAuth1Config.ToService()
-	}
 	return c, nil
-}
-
-type APIJiraBasicAuth struct {
-	Username *string `json:"username"`
-	Password *string `json:"password"`
-}
-
-func (a *APIJiraBasicAuth) BuildFromService(c evergreen.JiraBasicAuthConfig) {
-	a.Username = utility.ToStringPtr(c.Username)
-	a.Password = utility.ToStringPtr(c.Password)
-}
-
-func (a *APIJiraBasicAuth) ToService() evergreen.JiraBasicAuthConfig {
-	return evergreen.JiraBasicAuthConfig{
-		Username: utility.FromStringPtr(a.Username),
-		Password: utility.FromStringPtr(a.Password),
-	}
 }
 
 type APIJiraOAuth1 struct {
@@ -1083,22 +1054,6 @@ type APIJiraOAuth1 struct {
 	AccessToken *string `json:"access_token"`
 	TokenSecret *string `json:"token_secret"`
 	ConsumerKey *string `json:"consumer_key"`
-}
-
-func (a *APIJiraOAuth1) BuildFromService(c evergreen.JiraOAuth1Config) {
-	a.PrivateKey = utility.ToStringPtr(c.PrivateKey)
-	a.AccessToken = utility.ToStringPtr(c.AccessToken)
-	a.TokenSecret = utility.ToStringPtr(c.TokenSecret)
-	a.ConsumerKey = utility.ToStringPtr(c.ConsumerKey)
-}
-
-func (a *APIJiraOAuth1) ToService() evergreen.JiraOAuth1Config {
-	return evergreen.JiraOAuth1Config{
-		PrivateKey:  utility.FromStringPtr(a.PrivateKey),
-		AccessToken: utility.FromStringPtr(a.AccessToken),
-		TokenSecret: utility.FromStringPtr(a.TokenSecret),
-		ConsumerKey: utility.FromStringPtr(a.ConsumerKey),
-	}
 }
 
 type APILoggerConfig struct {
