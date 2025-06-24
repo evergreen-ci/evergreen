@@ -50,7 +50,6 @@ func (c JiraConfig) GetHostURL() string {
 }
 
 func (c JiraConfig) Export() *send.JiraOptions {
-	// TODO-ZACKARY
 	return &send.JiraOptions{
 		Name:    "evergreen",
 		BaseURL: c.GetHostURL(),
