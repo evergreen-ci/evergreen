@@ -561,8 +561,8 @@ Notes:
     generate.tasks succeeds once, later task restarts will cause generate.tasks
     to no-op rather than generate duplicate configuration.
 -   The command does not give any feedback (via logs or the UI) what
-    tasks were generated so using [s3.put](#s3put) to upload the JSON file used
-    in recommended for debuggability.
+    tasks were generated so using [s3.put](#s3put) after the command to upload
+    the JSON file used in recommended for debuggability.
 
 ``` yaml
 - command: generate.tasks
