@@ -241,9 +241,12 @@ func (d *Distro) ShellBinary() string {
 }
 
 type HostAllocatorSettings struct {
-	Version                string `bson:"version" json:"version" mapstructure:"version"`
-	MinimumHosts           int    `bson:"minimum_hosts" json:"minimum_hosts" mapstructure:"minimum_hosts"`
-	MaximumHosts           int    `bson:"maximum_hosts" json:"maximum_hosts" mapstructure:"maximum_hosts"`
+	Version      string `bson:"version" json:"version" mapstructure:"version"`
+	MinimumHosts int    `bson:"minimum_hosts" json:"minimum_hosts" mapstructure:"minimum_hosts"`
+	MaximumHosts int    `bson:"maximum_hosts" json:"maximum_hosts" mapstructure:"maximum_hosts"`
+	// AutoTuneMaximumHosts determines if Evergreen is allowed to automatically
+	// tune the distro's maximum hosts.
+	AutoTuneMaximumHosts   bool   `bson:"auto_tune_maximum_hosts" json:"auto_tune_maximum_hosts" mapstructure:"auto_tune_maximum_hosts"`
 	RoundingRule           string `bson:"rounding_rule" json:"rounding_rule" mapstructure:"rounding_rule"`
 	FeedbackRule           string `bson:"feedback_rule" json:"feedback_rule" mapstructure:"feedback_rule"`
 	HostsOverallocatedRule string `bson:"hosts_overallocated_rule" json:"hosts_overallocated_rule" mapstructure:"hosts_overallocated_rule"`
@@ -648,6 +651,7 @@ func (d *Distro) GetResolvedHostAllocatorSettings(s *evergreen.Settings) (HostAl
 		Version:                has.Version,
 		MinimumHosts:           has.MinimumHosts,
 		MaximumHosts:           has.MaximumHosts,
+		AutoTuneMaximumHosts:   has.AutoTuneMaximumHosts,
 		AcceptableHostIdleTime: has.AcceptableHostIdleTime,
 		RoundingRule:           has.RoundingRule,
 		FeedbackRule:           has.FeedbackRule,

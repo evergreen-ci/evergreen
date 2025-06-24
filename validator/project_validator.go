@@ -1029,6 +1029,19 @@ func ensureReferentialIntegrity(project *model.Project, containerNameMap map[str
 			}
 			errs = append(errs, checkRunOn(runOnHasDistro, runOnHasContainer, task.RunOn)...)
 		}
+		for _, dt := range buildVariant.DisplayTasks {
+			for _, execTask := range dt.ExecTasks {
+				if _, ok := allTaskNames[execTask]; !ok {
+					errs = append(errs,
+						ValidationError{
+							Level: Error,
+							Message: fmt.Sprintf("display task '%s' in buildvariant '%s' references a non-existent execution task '%s'",
+								dt.Name, buildVariant.Name, execTask),
+						},
+					)
+				}
+			}
+		}
 		runOnHasDistro := false
 		runOnHasContainer := false
 		for _, name := range buildVariant.RunOn {
@@ -1142,8 +1155,7 @@ func validateTimeoutLimits(_ context.Context, settings *evergreen.Settings, proj
 			if task.ExecTimeoutSecs > settings.TaskLimits.MaxExecTimeoutSecs {
 				errs = append(errs, ValidationError{
 					Message: fmt.Sprintf("task '%s' exec timeout (%d) is too high and will be set to maximum limit (%d)", task.Name, task.ExecTimeoutSecs, settings.TaskLimits.MaxExecTimeoutSecs),
-					// TODO DEVPROD-11204: Update to Error once the exec timeout limit can be enforced
-					Level: Warning,
+					Level:   Error,
 				})
 			}
 		}

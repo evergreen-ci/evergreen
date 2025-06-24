@@ -7,13 +7,14 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/rest/data"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/gimlet"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
-func makeFetchAdminEvents(url string) gimlet.RouteHandler {
-	return &adminEventsGet{url: url}
+func makeFetchAdminEvents() gimlet.RouteHandler {
+	return &adminEventsGet{}
 }
 
 type adminEventsGet struct {
@@ -26,13 +27,13 @@ func (h *adminEventsGet) Factory() gimlet.RouteHandler {
 	return &adminEventsGet{
 		Timestamp: time.Now(),
 		Limit:     10,
-		url:       h.url,
 	}
 }
 
 func (h *adminEventsGet) Parse(ctx context.Context, r *http.Request) error {
 	var err error
 	vals := r.URL.Query()
+	h.url = util.HttpsUrl(r.Host)
 
 	k, ok := vals["ts"]
 	if ok && len(k) > 0 {

@@ -387,6 +387,7 @@ func (m *ec2FleetManager) Cleanup(ctx context.Context) error {
 	// TODO (DEVPROD-17195): remove this cleanup if pre-allocated elastic IPs
 	// created in DEVPROD-17313 work.
 	// catcher.Wrap(m.cleanupIdleElasticIPs(ctx), "cleaning up idle elastic IPs")
+	catcher.Wrap(m.cleanupStaleIPAddresses(ctx), "cleaning up stale IP addresses")
 
 	return catcher.Resolve()
 }
@@ -423,6 +424,31 @@ func (m *ec2FleetManager) cleanupStaleLaunchTemplates(ctx context.Context) error
 	})
 
 	return catcher.Resolve()
+}
+
+// cleanupStaleIPAddresses cleans up IP addresses that are assigned to a host
+// but whose host is already terminated.
+func (m *ec2FleetManager) cleanupStaleIPAddresses(ctx context.Context) error {
+	staleIPAddrs, err := host.FindStaleIPAddresses(ctx)
+	if err != nil {
+		return errors.Wrap(err, "finding stale IP addresses")
+	}
+
+	ipAddrIDs := make([]string, 0, len(staleIPAddrs))
+	for _, ipAddr := range staleIPAddrs {
+		ipAddrIDs = append(ipAddrIDs, ipAddr.ID)
+	}
+	if err := host.IPAddressUnsetHostTags(ctx, ipAddrIDs...); err != nil {
+		return errors.Wrapf(err, "unsetting host tags for %d IP addresses", len(ipAddrIDs))
+	}
+
+	grip.InfoWhen(len(staleIPAddrs) > 0, message.Fields{
+		"message":        "cleaned up stale IP addresses",
+		"num_cleaned_up": len(staleIPAddrs),
+		"provider":       evergreen.ProviderNameEc2Fleet,
+	})
+
+	return nil
 }
 
 // cleanupIdleElasticIPs checks for any elastic IP addresses that are not

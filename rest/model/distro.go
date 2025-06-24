@@ -69,6 +69,7 @@ type APIHostAllocatorSettings struct {
 	Version                *string     `json:"version"`
 	MinimumHosts           int         `json:"minimum_hosts"`
 	MaximumHosts           int         `json:"maximum_hosts"`
+	AutoTuneMaximumHosts   bool        `json:"auto_tune_maximum_hosts"`
 	RoundingRule           *string     `json:"rounding_rule"`
 	FeedbackRule           *string     `json:"feedback_rule"`
 	HostsOverallocatedRule *string     `json:"hosts_overallocated_rule"`
@@ -85,6 +86,7 @@ func (s *APIHostAllocatorSettings) BuildFromService(settings distro.HostAllocato
 	}
 	s.MinimumHosts = settings.MinimumHosts
 	s.MaximumHosts = settings.MaximumHosts
+	s.AutoTuneMaximumHosts = settings.AutoTuneMaximumHosts
 	s.AcceptableHostIdleTime = NewAPIDuration(settings.AcceptableHostIdleTime)
 	s.RoundingRule = utility.ToStringPtr(settings.RoundingRule)
 	s.FeedbackRule = utility.ToStringPtr(settings.FeedbackRule)
@@ -102,6 +104,7 @@ func (s *APIHostAllocatorSettings) ToService() distro.HostAllocatorSettings {
 	}
 	settings.MinimumHosts = s.MinimumHosts
 	settings.MaximumHosts = s.MaximumHosts
+	settings.AutoTuneMaximumHosts = s.AutoTuneMaximumHosts
 	settings.AcceptableHostIdleTime = s.AcceptableHostIdleTime.ToDuration()
 	settings.RoundingRule = utility.FromStringPtr(s.RoundingRule)
 	settings.FeedbackRule = utility.FromStringPtr(s.FeedbackRule)

@@ -716,7 +716,8 @@ func TestReliabilityRun(t *testing.T) {
 				},
 			} {
 				t.Run(testName, func(t *testing.T) {
-					handler := makeGetProjectTaskReliability("https://example.net/test").(*taskReliabilityHandler)
+					handler := makeGetProjectTaskReliability().(*taskReliabilityHandler)
+					handler.url = "https://example.net/test"
 					withSetupAndTeardown(t, func() {
 						testCase(paginationContext, t, handler)
 					})
@@ -777,8 +778,9 @@ func TestReliability(t *testing.T) {
 						"after_date":    "2019-01-02",
 						"group_by_days": "10",
 					})
-					handler := makeGetProjectTaskReliability(url).(*taskReliabilityHandler)
+					handler := makeGetProjectTaskReliability().(*taskReliabilityHandler)
 					require.NoError(t, err)
+					handler.url = url
 
 					// 1 page size of documents are available but 2 page sizes requested.
 					day := time.Now()
@@ -827,7 +829,8 @@ func TestReliability(t *testing.T) {
 						"group_by_days": "10",
 					})
 
-					handler := makeGetProjectTaskReliability(url).(*taskReliabilityHandler)
+					handler := makeGetProjectTaskReliability().(*taskReliabilityHandler)
+					handler.url = url
 					require.NoError(t, err)
 
 					// 1 page size of documents will be returned
@@ -880,7 +883,8 @@ func TestReliability(t *testing.T) {
 						"group_by_days": "10",
 					})
 
-					handler := makeGetProjectTaskReliability(url).(*taskReliabilityHandler)
+					handler := makeGetProjectTaskReliability().(*taskReliabilityHandler)
+					handler.url = url
 					require.NoError(t, err)
 
 					// 2 pages of documents are available.
