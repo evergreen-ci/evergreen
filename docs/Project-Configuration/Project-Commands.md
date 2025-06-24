@@ -569,6 +569,20 @@ Notes:
   params:
     files:
       - example.json
+
+# Example s3.put command to upload the JSON file used to generate tasks
+- command: s3.put
+  params:
+    role_arn: ${role_arn}
+    local_file: example.json
+    remote_file: mongodb-mongo-master/${build_variant}/${revision}/generate_tasks/example.json
+    bucket: mciuploads
+    region: us-east-1
+    permissions: private
+    visibility: signed
+    content_type: application/json
+    display_name: Generate Tasks example.json JSON
+
 ```
 
 Parameters:
