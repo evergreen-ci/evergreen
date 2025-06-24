@@ -27,7 +27,6 @@ func init() {
 
 type alertableInstanceTypeNotifyJob struct {
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
-	env      evergreen.Environment
 }
 
 func makeAlertableInstanceTypeNotifyJob() *alertableInstanceTypeNotifyJob {
