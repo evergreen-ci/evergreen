@@ -407,8 +407,8 @@ func (s *DistroPutSuite) TestRunNewWithValidEntity() {
 
 	dbUser, err := user.FindOneById("user")
 	s.NoError(err)
-	s.NotNil(dbUser)
-	s.Len(dbUser.Roles(), 1)
+	s.Require().NotNil(dbUser)
+	s.Require().Len(dbUser.Roles(), 1)
 	s.Equal("admin_distro_distro5", dbUser.Roles()[0])
 }
 
